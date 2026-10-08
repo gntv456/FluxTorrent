@@ -7,6 +7,7 @@ use super::ledger_guard::ledger_guard;
 use sqlx::PgPool;
 
 mod audit_hold;
+pub(crate) mod seeding_gate;
 
 /// ZT81（2026-10-02）：按**字符边界**截断。原实现用 `&s[..len.min(200)]` 按字节
 /// 切片，UA 含多字节 UTF-8 且恰好落在第 200 字节非边界时会 panic。
@@ -62,7 +63,8 @@ pub(crate) async fn process_event(
         return Ok(None);
     }
 
-    let g = ledger_guard(&mut tx, ev, torrent_id, torrent_size).await?;
+    let g =
+        ledger_guard(&mut tx, ev, torrent_id, torrent_size, seed_cap).await?;
     let (anchor_up, anchor_down) = (g.anchor_up, g.anchor_down);
     let (had_baseline, held_up, held_down) =
         (g.had_baseline, g.held_up, g.held_down);
@@ -114,40 +116,30 @@ pub(crate) async fn process_event(
             .await;
     }
 
-    // P0-2 幽灵做种（保种组审计 2026-10-07 二轮 + 2026-10-08 辅种豁免）：
-    //   left=0 AND port>0 AND connectable!=0 AND（物理下载量>0 达 10.4%
-    //   **或辅种佐证**）。phys_down 用倍率前物理量（freeleech 照常非零）。
-    //   辅种豁免：通用 PT 站辅种是主流——数据来自外站，phys_down 恒 0。
-    //   豁免判据 = upload_corroborated 有 leecher 佐证过的上传量（>0）：
-    //   能真实上传给别人本身证明手里有数据，伪造者给不出这个证据。
-    //   豁免只放行 seeding/completed，速率钳/基线守卫/佐证上界照常；
-    //   零下载零佐证的纯幽灵仍被拦 + 留痕申诉。
-    let has_payload = g.phys_down > 0;
-    let cross_seed_vouched = corroborated.is_some_and(|c| c > 0);
-    // 比例下限与 H&R buffer 同口径（size×10.4%），整数运算避免浮点误差。
-    let payload_ratio_ok = torrent_size <= 0
-        || g.phys_down.saturating_mul(1000) >= torrent_size.saturating_mul(104);
-    let seeding = ev.left == 0
-        && ev.port > 0
-        && ev.conn != Some(0)
-        && (has_payload || cross_seed_vouched)
-        && (payload_ratio_ok || cross_seed_vouched);
-    // P0-2C completed 下载侧证据（2026-10-07 二轮加固）：旧判据仅
-    // `event=="completed" && ev.down > 0` —— 报 1 字节 + 一个 completed
-    // 事件即可把 times_completed / 完成榜 / 「完成 N 颗」类任务考核全部
-    // 注水，且不要求 left=0（没下完也能标记完成，与真实语义不符）。
-    // 现在要求：① 真发 completed 事件；② left=0（确实下完）；
-    // ③ 物理下载量非零或辅种佐证；④ 达种子大小 10%（同上豁免）；
-    // ⑤ 之前已有 peer 行——UNIT3D 口径：首报即自称完成的不算，否则一颗没人
-    // 碰过的种子可以被凭空刷 times_completed / 完成榜 / 「完成 N 颗」类考核。
-    let completed = ev.event == "completed"
-        && ev.left == 0
-        && (has_payload || cross_seed_vouched)
-        && (payload_ratio_ok || cross_seed_vouched)
-        && g.had_baseline;
-    // 幽灵签名留痕（2026-10-08 收紧）：left=0 却零下载**且零佐证**——纯幽灵
-    // 画像。辅种者（有佐证）不进待办；有下载未达 10% 的也不记（误触/秒删）。
-    if ev.left == 0 && ev.port > 0 && !has_payload && !cross_seed_vouched {
+    // P0-2 幽灵做种 / 完成数判定：判据本体在 seeding_gate::verdict（纯函数 + 单测）。
+    //   left=0 AND port>0 AND conn≠实测不可达 AND（物理下载量达 size×10.4%
+    //   **或**达到可信规模的佐证）。辅种人群的数据来自外站、phys_down 恒 0，
+    //   佐证就是他们的物理量——但佐证本身也是 leecher 自报的，所以豁免门槛
+    //   与 phys_down 同一把尺子（2026-10-08 五轮：旧判据「corroborated>0 即
+    //   豁免」= 另一账号一条 xreport=<peer>:1 就把两条不变量一起作废）。
+    //   completed 另加「此前已有 peer 行」（UNIT3D 首报即自称完成不算）。
+    let v = seeding_gate::verdict(
+        &seeding_gate::Evidence {
+            left: ev.left,
+            port: ev.port,
+            conn: ev.conn,
+            phys_down: g.phys_down,
+            corroborated,
+            had_baseline,
+            completed_event: ev.event == "completed",
+        },
+        torrent_size,
+    );
+    let (seeding, completed, ghost_note) =
+        (v.seeding, v.completed, v.ghost_note);
+    // 幽灵签名留痕（2026-10-08 收紧）：left=0 却零下载**且无可信佐证**。
+    // 辅种者（佐证达门槛）不进待办；有下载未达 10.4% 的也不记（误触/秒删）。
+    if ghost_note {
         // 现场描述仍可引用自报读数，但判据已改用站点侧物理量
         let ratio = if g.raw_down > 0 {
             format!("（自报下载 {} 字节，credited 未达门槛）", g.raw_down)
@@ -183,8 +175,15 @@ pub(crate) async fn process_event(
           -- P0-1 基线单向（2026-10-07 审计）：last_up/last_down 是增量换算的锚点，
           -- 必须只进不退——EXCLUDED 已是 Rust 侧守卫后的锚点（大幅回退沿用旧值），
           -- GREATEST 再兜一层，防止任何路径把锚点拉低后重吃增量。
-          last_up = GREATEST(snatches.last_up, EXCLUDED.last_up),
-          last_down = GREATEST(snatches.last_down, EXCLUDED.last_down),
+          -- 例外（2026-10-08 五轮）：$18/$19 = 本侧刚**认可**了一次近零重置
+          -- （客户端真重启/换机，读数回到 1 GiB 以下）。这时锚点必须允许下调，
+          -- 否则 GREATEST 把它钉回旧高位，下一次 announce 的读数仍远小于旧锚点
+          -- ⇒ 被判「回退且非近零」→ 记 counter_reset 作弊 + 增量恒 0，
+          -- 真实用户从此流量冻结（探针场景：NAS 重启后第二天就中招）。
+          last_up = CASE WHEN $18::boolean THEN EXCLUDED.last_up
+                         ELSE GREATEST(snatches.last_up, EXCLUDED.last_up) END,
+          last_down = CASE WHEN $19::boolean THEN EXCLUDED.last_down
+                           ELSE GREATEST(snatches.last_down, EXCLUDED.last_down) END,
           leeching = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.leeching END,
           seeding = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.seeding OR snatches.seeding END,
           completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at),
@@ -252,6 +251,9 @@ pub(crate) async fn process_event(
     // total=1/near=0 起步（upsert 分支按间隔 CASE 累加）
     .bind(1)
     .bind(0)
+    // $18/$19：本侧是否认可了一次近零重置（锚点允许下调，见上方 CASE）
+    .bind(g.reset_up)
+    .bind(g.reset_down)
     .execute(&mut *tx)
     .await?;
 

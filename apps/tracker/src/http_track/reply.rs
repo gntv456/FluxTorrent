@@ -20,18 +20,29 @@ pub(crate) async fn announce_body(
     let (interval, min_interval) = state.intervals();
     if hide {
         return bencode_announce(
-            0, 0, 0, &[], &[], interval, min_interval, compact,
+            0,
+            0,
+            0,
+            &[],
+            &[],
+            interval,
+            min_interval,
+            compact,
         );
     }
+    // 全站同一个 interval 会让全体客户端同秒重发（惊群，峰值正好压在限流窗
+    // 与 PG 上）。这里下发按 (种子, 账号) 稳定抖动后的值：同一客户端不会
+    // 每次拿到不同值（客户端据此排程，值跳变等于自己制造重发），
+    // 不同 peer 之间彼此错开。chihaya 为此专门有 interval_variation 中间件。
+    // 最短间隔的裁决在 announce 入口（gate::peer_interval 同一口径），
+    // 这里只负责编码。
+    let interval = super::limits::peer_interval(state, info_hash, self_user);
     if crate::peers::external::external_enabled() {
         let mut r = state.redis.clone();
         let (seeders, leechers) =
             crate::peers::external::counts(&mut r, info_hash).await;
         let snap = crate::peers::external::snapshot(
-            &mut r,
-            info_hash,
-            numwant,
-            self_user,
+            &mut r, info_hash, numwant, self_user,
         )
         .await;
         return bencode_announce(

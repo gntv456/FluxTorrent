@@ -36,10 +36,12 @@ pub(crate) async fn scrape(
     if suspended {
         return bencode_err("账号已挂起，请联系管理组");
     }
-    // 待审种子的实时做种数对非发布者/非 staff 不外泄（审计 10-07 P1-2；
-    // 策略 allow_all 时 pending_policy()==0，行为回到旧口径）
-    let pending_hidden = super::guard_store::pending_policy() != 0
-        && super::guard_store::pending_policy() != 2;
+    // 待审种子的实时做种数对非发布者/非 staff 不外泄（审计 10-07 P1-2）。
+    // 五轮实测纠正（2026-10-08）：旧判据写成 `policy != 0 && policy != 2`，
+    // 把**最严**的 owner_only(2) 从隐藏名单里排除掉了——站长选 owner_only 时
+    // announce 直接拒人，scrape 却照常把真实做种数送出去（探针 C1 组实测
+    // 「对外不外发」只有 HTTP scrape 这一口是 False）。档位只能单向变严，
+    // 判据统一收进 guard_store::hides_pending（四个读口一份口径）。
     // BEP48：info_hash 可重复出现多次，每次为 20 字节 percent-encoding。
     // 审计 10-07 P2：旧版不限量不去重——实测单个 GET 能塞 1039 个 hash
     // （8KB 请求换 70KB 响应），外置模式下每条还是一次 HGETALL；
@@ -62,17 +64,11 @@ pub(crate) async fn scrape(
                 }
                 // 白名单（审计 10-06 第 3 条）：未注册种子计数恒 0，
                 // 不暴露随机探测的命中/未命中差异之外的任何 swarm 信息。
-                let registered =
-                    state.torrent_registered_scrape(&hexkey).await;
+                let registered = state.torrent_registered_scrape(&hexkey).await;
                 let registered = registered
-                    && !(pending_hidden
-                        && state.swarm_owner(&hexkey).is_some_and(
-                            |(owner, approval)| {
-                                approval == 0
-                                    && owner != uid
-                                    && class_id < 90
-                            },
-                        ));
+                    && !super::guard_store::hides_pending(
+                        &hexkey, uid, class_id,
+                    );
                 let (s, l) = if !registered {
                     (0, 0)
                 } else if crate::peers::external::external_enabled() {

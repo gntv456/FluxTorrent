@@ -44,6 +44,10 @@ pub(crate) struct Metrics {
     pub(crate) announce_peer_taken: AtomicU64,
     /// 合并窗内被并掉的周期 announce 条数（P2-1：只回 peer 列表不发事件）
     pub(crate) announce_evt_merged: AtomicU64,
+    /// xreport 声称的单笔佐证量超过种子总大小 ⇒ 物理不可能，直接丢弃
+    /// （五轮 2026-10-08：佐证量过去只有 worker 侧的 10 GiB 荒废线，
+    /// 一颗 4 MiB 的种可以被反复背书成 TiB 级「可信上传」）
+    pub(crate) announce_xreport_rejected: AtomicU64,
 }
 
 /// 本地滑动窗口限流（Redis 故障降级用）：key → (计数, 窗口起点)

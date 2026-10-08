@@ -50,7 +50,7 @@ pub(super) async fn scrape(
             "scrape 需在 info_hash 列表后附带 passkey",
         );
     }
-    let Some((_uid, _de, suspended, _class_id)) =
+    let Some((uid, _de, suspended, class_id)) =
         t.state.resolve_passkey_cached(passkey).await
     else {
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");
@@ -68,9 +68,11 @@ pub(super) async fn scrape(
     for chunk in pkt[16..16 + n_show * 20].chunks_exact(20) {
         let hexkey = crate::peers::hex(chunk);
         // 白名单（审计 10-06 第 3 条）：与 HTTP scrape 同口径，未注册种子计 0；
-        // 外置模式计数同源（多副本互见），否则内存表。
-        let registered =
-            t.state.torrent_registered_scrape(&hexkey).await;
+        // 待审种子对局外人同样归零（五轮实测：这个口此前完全不看档位）。
+        let registered = t.state.torrent_registered_scrape(&hexkey).await
+            && !crate::http_track::guard_store::hides_pending(
+                &hexkey, uid, class_id,
+            );
         let (s, l) = if !registered {
             (0, 0)
         } else if crate::peers::external::external_enabled() {
@@ -86,9 +88,14 @@ pub(super) async fn scrape(
         } else {
             0
         };
+        // BEP15 的 scrape 响应每格顺序是 **complete, downloaded, incomplete**
+        // （不是 HTTP scrape 的 complete/incomplete/downloaded 字典！）。
+        // 五轮实测（对照设成 77 的 times_completed 与在场 leecher 数）确认
+        // 旧写法把第 2、3 格发了 (incomplete, downloaded) —— 与规范正好对调，
+        // 标准客户端读到的「完成数」其实是「下载中人数」。
         out.extend_from_slice(&s.to_be_bytes());
-        out.extend_from_slice(&l.to_be_bytes());
-        out.extend_from_slice(&done.to_be_bytes()); // BEP15 downloads
+        out.extend_from_slice(&done.to_be_bytes()); // BEP15 downloaded = 完成数
+        out.extend_from_slice(&l.to_be_bytes()); // BEP15 incomplete = 下载中
     }
     out
 }

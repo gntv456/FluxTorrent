@@ -29,8 +29,7 @@ pub(crate) fn metrics_authorized(req: &actix_web::HttpRequest) -> bool {
         .strip_prefix("Bearer ")
         .unwrap_or_default()
         .trim();
-    ct_eq(hdr("x-metrics-token"), tok.clone())
-        || ct_eq(bearer, tok)
+    ct_eq(hdr("x-metrics-token"), tok.clone()) || ct_eq(bearer, tok)
 }
 
 /// 定长时间比较：`/metrics` 挂在公网 :7070 上，`==` 的短路会把 token
@@ -102,6 +101,8 @@ pub(crate) async fn metrics(
             "flux_tracker_announce_peer_taken_total {}\n",
             "# TYPE flux_tracker_announce_evt_merged_total counter\n",
             "flux_tracker_announce_evt_merged_total {}\n",
+            "# TYPE flux_tracker_announce_xreport_rejected_total counter\n",
+            "flux_tracker_announce_xreport_rejected_total {}\n",
             "# TYPE flux_tracker_peers_active gauge\n",
             "flux_tracker_peers_active {}\n",
             "# TYPE flux_tracker_swarms_active gauge\n",
@@ -126,6 +127,7 @@ pub(crate) async fn metrics(
         m.announce_fake_left.load(Ordering::Relaxed),
         m.announce_peer_taken.load(Ordering::Relaxed),
         m.announce_evt_merged.load(Ordering::Relaxed),
+        m.announce_xreport_rejected.load(Ordering::Relaxed),
         state.peers.len(),
         swarms,
         passkey_cache,

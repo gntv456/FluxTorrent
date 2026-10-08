@@ -5,13 +5,17 @@ pub(crate) mod emit;
 pub(crate) mod gate;
 pub(crate) mod guard;
 pub(crate) mod guard_refresh;
+pub(crate) mod guard_miss;
 pub(crate) mod guard_store;
+pub(crate) mod guard_whitelist;
 pub(crate) mod helpers;
 pub(crate) mod ip_trust;
+pub(crate) mod limits;
 pub(crate) mod metrics;
 pub(crate) mod params;
 pub(crate) mod reply;
 pub(crate) mod scrape;
+pub(crate) mod xreport_in;
 
 pub(crate) use announce::*;
 pub(crate) use emit::*;

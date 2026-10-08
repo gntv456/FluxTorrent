@@ -2,24 +2,103 @@
 
 use super::announce_main::AnnounceEvent;
 
-/// P0-1/P1 计账守卫（2026-10-07 保种组实测审计，原 process_event 内联段抽出）：
-/// ① 基线守卫——累计计数器**只应单调增长**。任何下降都视为可疑：
-///   上报值 ≤ RESET_ACCEPT（1 GiB，真实重启/换机后从零起算的量级）时
-///   允许重置、锚点跟随新读数；否则（读数很大却变小，如 800 GiB→0）
-///   本笔增量按 0 计且**锚点钉死在旧值**，并记 cheat_events。
-///   修 2026-10-07 二轮：旧实现用 `COUNTER_RESET_FLOOR=8GiB` 判「大幅回退」
-///   并**不更新基线**，而 ≤8 GiB 的下降一律当正常重置、锚点下移——攻击者
-///   每次把上传读数下调 8 GiB 再抬升，即可反复搬动基线无限重吃入账额度。
-///   改为「下降即锁死、仅近零值可重置」后，搬基线不再可行。
-/// ② 物理速率钳制——增量 ≤ 距上次上报秒数 × traffic_credit_max_bps；
-///   首报（无基线）按 ≤120s 计。
-/// ③ 终身天花板——单种子累计入账上传 ≤ 种子大小 × 1000。
-/// 返回 `GuardOutcome`（锚点/可入账/扣留/基线标记/原始读数）。
+/// 近零读数才算「客户端真的重启了」（真实重启/换机后从零起算的量级）。
+pub(crate) const RESET_ACCEPT: i64 = 1024 * 1024 * 1024; // 1 GiB
+
+/// 锚点判定结论（见 [`anchor_for`]）。
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Anchor {
+    /// 写回 `snatches.last_up / last_down` 的新锚点
+    pub(crate) up: i64,
+    pub(crate) down: i64,
+    /// 本侧刚认可了一次「近零重置」⇒ 调用方必须让锚点**下调**
+    /// （SQL 侧的 `GREATEST` 兜底要把这一格让路，否则真重启的用户
+    /// 第二次 announce 永远追不回锚点 = 流量永久冻结，五轮实测发现）
+    pub(crate) reset_up: bool,
+    pub(crate) reset_down: bool,
+    /// 读数下降但新值仍不接近零 ⇒ 搬基线企图，锚点钉死 + 留痕
+    pub(crate) refused: bool,
+}
+
+/// 锚点判定（纯函数，单测覆盖）：给定本次上报的累计读数与上次锚点，
+/// 决定写回的新锚点。三种情形必须分清楚：
+///
+/// ① **单调增长（正常路径）** ⇒ 锚点跟随新读数，增量 = 新读数 − 旧锚点。
+///    2026-10-08 五轮实测：批一把这条和③并进了同一个 else 分支
+///    （判据写成 `reset_ok && accept`，正常上报时 `reset_ok` 恒 false），
+///    于是 `raw_up = (anchor - last) = 0` —— 全站流量入账停摆，并且
+///    `phys_down` 恒 0 把所有真做种者打成 ghost_seed（cheat_enforce
+///    实测 L2 告警 hits=70）。**判据的否定式分支必须自带反例单测。**
+/// ② **下降且新值 ≤ RESET_ACCEPT** ⇒ 认可为真实重启：锚点跟随新读数，
+///    本笔增量按 0 计（增量从新读数起算要到下一次 announce）。
+/// ③ **下降但新值仍很大**（如 800 GiB→0→500 GiB 这种搬基线）⇒ 锚点钉死
+///    在旧值，本笔按 0 计，调用方记 cheat_events。
+pub(crate) fn anchor_for(
+    ev_up: i64,
+    ev_down: i64,
+    last: Option<(i64, i64)>,
+) -> Anchor {
+    let (last_up, last_down) = last.unwrap_or((0, 0));
+    // 首报（无基线）：只立基线，谈不上回退
+    if last.is_none() {
+        return Anchor {
+            up: ev_up,
+            down: ev_down,
+            reset_up: false,
+            reset_down: false,
+            refused: false,
+        };
+    }
+    let dropped_up = ev_up < last_up;
+    let dropped_down = ev_down < last_down;
+    let refused = (dropped_up && ev_up > RESET_ACCEPT)
+        || (dropped_down && ev_down > RESET_ACCEPT);
+    if refused {
+        return Anchor {
+            up: last_up,
+            down: last_down,
+            reset_up: false,
+            reset_down: false,
+            refused: true,
+        };
+    }
+    Anchor {
+        up: ev_up,
+        down: ev_down,
+        reset_up: dropped_up,
+        reset_down: dropped_down,
+        refused: false,
+    }
+}
+
+/// P0-1/P1 计账守卫：① 基线/锚点（[`anchor_for`]）；② 物理速率钳制；
+/// ③ 终身天花板。
+///
+/// ②的口径（2026-10-08 五轮加固）：增量 ≤ `min(距上次上报秒数, secs_cap)`
+/// × `traffic_credit_max_bps`。**秒窗必须封上界**：secs 取自
+/// `snatches.last_seen_at`，也就是由攻击者的「沉默时长」决定——旧写法只有
+/// 下界，一次 announce 前静默 24h 就能把单笔额度撑到
+/// 128 MiB/s × 86400 s ≈ 11.26 TiB，等于「announce 越稀疏越能吃」，速率钳被
+/// 自己的时间基准反噬。secs_cap 由调用方传入的做种时长容忍窗
+/// （2 × announce_interval）决定：正常客户端的相邻事件间隔本就不该超过它，
+/// 超出部分不配换算成带宽——与 seeded_seconds 的封顶同一口径，两条判据
+/// 不会互相矛盾。
+///
+/// 首报（无基线）：raw 恒 0，只立锚点。客户端的累计计数器是**全局**的
+/// （不是每种一个），把首次 announce 的读数当增量入账等于把别的种子的量
+/// 记到这颗种上；旧写法靠 120 s 窗口给它限额，仍是「换种子无限首报」的
+/// 铸币口（假种审计 P1「单种首报额度」）。
+///
+/// ③终身天花板：单种子累计入账上传 ≤ 种子大小 × 1000（只约束上传侧——
+/// 下载是消费不是收益，且天然被 H&R/buffer 义务约束）。
+///
+/// 返回 `GuardOutcome`（锚点/可入账/扣留/基线标记/原始读数/物理下载量）。
 pub(crate) async fn ledger_guard(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ev: &AnnounceEvent,
     torrent_id: i64,
     torrent_size: i64,
+    secs_cap: i64,
 ) -> anyhow::Result<GuardOutcome> {
     let last: Option<(i64, i64, Option<i64>, i64, i64)> = sqlx::query_as(
         "SELECT last_up, last_down, \
@@ -35,66 +114,47 @@ pub(crate) async fn ledger_guard(
     let (last_up, last_down, acc_up, acc_down) = last
         .map(|(u, d, _, au, ad)| (u, d, au, ad))
         .unwrap_or((0, 0, 0, 0));
-    // P0-1 基线守卫（保种组实测审计 2026-10-07 二轮）：客户端累计计数器只应
-    // 单调增长。旧实现把「降幅 ≤ 8 GiB」当正常重置并让锚点跟随下移，等于
-    // 送出一把搬基线的钥匙：每次下调 8 GiB 再抬升，就能反复重吃入账额度。
-    // 新口径——**任何下降都锁死基线**，只有上报值本身已回到「接近零」
-    // （真实重启/换机后计数器从 0 重新起算）才认可这次重置：
-    //   · 认可：锚点跟随新读数，增量从新读数起算（仍受速率钳制）。
-    //   · 不认可：锚点钉死旧值，本笔增量恒为 0，并留痕 cheat_events。
-    const RESET_ACCEPT: i64 = 1024 * 1024 * 1024; // 1 GiB
-    let dropped_up = last.is_some() && ev.up < last_up;
-    let dropped_down = last.is_some() && ev.down < last_down;
-    let reset_ok = dropped_up || dropped_down;
-    // 仅当「发生下降的那一侧」读到近零值才算真实重置
-    let accept_up = !dropped_up || ev.up <= RESET_ACCEPT;
-    let accept_down = !dropped_down || ev.down <= RESET_ACCEPT;
-    let (anchor_up, anchor_down) = if reset_ok && (accept_up && accept_down) {
-        (ev.up, ev.down)
+    let anchor = anchor_for(ev.up, ev.down, last.map(|(u, d, _, _, _)| (u, d)));
+    let (anchor_up, anchor_down) = (anchor.up, anchor.down);
+    if anchor.refused {
+        let _ = sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
+             VALUES ($1, $2, $3, 'counter_reset（累计读数回退且非近零值，疑似搬动基线刷量）') \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE \
+               SET hits = cheat_events.hits + 1, last_seen = now()",
+        )
+        .bind(ev.user)
+        .bind(format!("reset:{torrent_id}"))
+        .bind(&ev.ip)
+        .execute(&mut **tx)
+        .await;
+        tracing::warn!(
+            user = ev.user,
+            torrent = torrent_id,
+            ev_up = ev.up,
+            last_up,
+            ev_down = ev.down,
+            last_down,
+            "累计读数回退且非近零值，本笔按 0 入账且基线保持不变"
+        );
+    }
+    // 增量 = 新锚点 − 旧锚点；首报（无基线）恒 0，只立基线
+    let (raw_up, raw_down) = if last.is_some() {
+        (
+            (anchor_up - last_up).max(0),
+            (anchor_down - last_down).max(0),
+        )
     } else {
-        if reset_ok {
-            let _ = sqlx::query(
-                "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
-                 VALUES ($1, $2, $3, 'counter_reset（累计读数回退且非近零值，疑似搬动基线刷量）') \
-                 ON CONFLICT (user_id, agent, reason) DO UPDATE \
-                   SET hits = cheat_events.hits + 1, last_seen = now()",
-            )
-            .bind(ev.user)
-            .bind(format!("reset:{torrent_id}"))
-            .bind(&ev.ip)
-            .execute(&mut **tx)
-            .await;
-            tracing::warn!(
-                user = ev.user,
-                torrent = torrent_id,
-                ev_up = ev.up,
-                last_up,
-                ev_down = ev.down,
-                last_down,
-                "累计读数回退且非近零值，本笔按 0 入账且基线保持不变"
-            );
-        }
-        // 沿用旧锚点：增量自然为负 → max(0) → 本笔 0
-        (last_up, last_down)
+        (0, 0)
     };
-    // 计数器回绕/客户端重置时按 0 处理
-    let raw_up = (anchor_up - last_up).max(0);
-    let raw_down = (anchor_down - last_down).max(0);
-    // 物理可入账上限（P0-1 主防线）：增量不得超过「距上次上报秒数 × 站点声明速率」。
-    // 旧实现只留痕不扣量，且 secs>=30 盲区让同秒连投的多笔大增量全额入账；
-    // 首报（无基线）按一个 announce 周期计，不惩罚正常下载。
-    // P2（2026-10-06 安全审计）：首报窗口从 seed_cap/2（缺省 900s）收紧。
-    // 2026-10-07 二轮再从 300s 收到 120s：首报无基线、按满窗口给额度，
-    // 「换 peer_id / 换种子无限首报」每颗都能吃满 window × 速率上限；
-    // 120s 仍足以覆盖正常客户端首个 announce 周期内的真实增量。
-    let secs = last.and_then(|(_, _, s, _, _)| s).unwrap_or(120).max(1);
+    let secs = last
+        .and_then(|(_, _, s, _, _)| s)
+        .unwrap_or(120)
+        .clamp(1, secs_cap.max(1));
     let ceiling_bps = credit_ceiling(tx).await;
     let allowance = ceiling_bps.saturating_mul(secs);
     let credit_up = raw_up.min(allowance);
     let credit_down = raw_down.min(allowance);
-    // P1 终身天花板（保种组实测审计 2026-10-07）：正常做种几十年也到不了
-    // 「种子大小 × 1000」的累计上传；伪造者把速率钳制贴着吃时在此二次截断。
-    // 只约束上传侧（下载侧天然被 H&R/buffer 义务约束，且下载是消费不是收益）。
     let lifetime_cap = torrent_size.saturating_mul(1000);
     let credit_up = if torrent_size > 0 {
         credit_up.min((lifetime_cap - acc_up).max(0))
@@ -107,6 +167,8 @@ pub(crate) async fn ledger_guard(
     Ok(GuardOutcome {
         anchor_up,
         anchor_down,
+        reset_up: anchor.reset_up,
+        reset_down: anchor.reset_down,
         credit_up,
         credit_down,
         held_up,
@@ -127,9 +189,12 @@ pub(crate) async fn ledger_guard(
 
 /// 计账守卫结论（字段化替代 10 元组：调用方按名取，可读性优先）。
 pub(crate) struct GuardOutcome {
-    /// 写库锚点（GREATEST 单调，杜绝任何路径把基线拉低）
+    /// 写库锚点（近零重置时允许下调，其余只进不退）
     pub(crate) anchor_up: i64,
     pub(crate) anchor_down: i64,
+    /// 本次认可了 up/down 侧的重置（SQL 侧 GREATEST 要据此让路）
+    pub(crate) reset_up: bool,
+    pub(crate) reset_down: bool,
     /// 本笔可入账量（已过速率钳 + 终身上限）
     pub(crate) credit_up: i64,
     pub(crate) credit_down: i64,
@@ -177,3 +242,6 @@ pub(super) async fn credit_ceiling(
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

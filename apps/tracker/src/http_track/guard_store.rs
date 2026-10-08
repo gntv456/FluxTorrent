@@ -11,8 +11,16 @@ use std::sync::{OnceLock, RwLock};
 /// `host(ip)` 会把掩码剥掉 ⇒ 段封禁静默降级成「只封 10.9.8.0 这个主机」。
 /// PT 现实是动态 IP：机房 /24、教育网 /64 复发，按段封才管用。
 pub(crate) enum NetBan {
-    V4 { net: u32, mask: u32, reason: String },
-    V6 { net: u128, mask: u128, reason: String },
+    V4 {
+        net: u32,
+        mask: u32,
+        reason: String,
+    },
+    V6 {
+        net: u128,
+        mask: u128,
+        reason: String,
+    },
 }
 
 /// 解析 `a.b.c.d/nn`。无掩码（单 host）返回 None —— 那类走既有精确匹配表。
@@ -123,8 +131,9 @@ pub(crate) fn ban_hit(ip: &str) -> Option<String> {
         for ban in nets.iter() {
             if hits(ban, p) {
                 return match ban {
-                    NetBan::V4 { reason, .. }
-                    | NetBan::V6 { reason, .. } => Some(reason.clone()),
+                    NetBan::V4 { reason, .. } | NetBan::V6 { reason, .. } => {
+                        Some(reason.clone())
+                    }
                 };
             }
         }
@@ -144,46 +153,13 @@ pub(crate) struct SwarmMeta {
 
 pub(crate) fn meta_map(
 ) -> &'static RwLock<std::collections::HashMap<String, SwarmMeta>> {
-    static V: OnceLock<
-        RwLock<std::collections::HashMap<String, SwarmMeta>>,
-    > = OnceLock::new();
+    static V: OnceLock<RwLock<std::collections::HashMap<String, SwarmMeta>>> =
+        OnceLock::new();
     V.get_or_init(|| RwLock::new(std::collections::HashMap::new()))
 }
 
 pub(crate) fn meta_of(info_hash: &str) -> Option<SwarmMeta> {
     meta_map().read().ok()?.get(info_hash).copied()
-}
-
-/// 未注册 info_hash 负缓存（审计 10-07 P3）：旧版每次 miss 都直查 PG，
-/// 随机 hash 洪水 = 一请求一查询，白名单自己成了 DB 放大器。
-/// 60s 且每次 guard 刷新即清 ⇒ 新发种最迟一个刷新周期可 announce。
-pub(crate) fn hash_miss(
-) -> &'static RwLock<std::collections::HashSet<String>> {
-    static V: OnceLock<RwLock<std::collections::HashSet<String>>> =
-        OnceLock::new();
-    V.get_or_init(|| RwLock::new(std::collections::HashSet::new()))
-}
-
-pub(crate) fn miss_seen(info_hash: &str) -> bool {
-    match hash_miss().read() {
-        Ok(r) => r.contains(info_hash),
-        Err(e) => e.into_inner().contains(info_hash),
-    }
-}
-
-pub(crate) fn remember_miss(info_hash: &str) {
-    if let Ok(mut w) = hash_miss().write() {
-        if w.len() > 200_000 {
-            w.clear(); // 洪水兜底：宁可重新查一轮
-        }
-        w.insert(info_hash.to_string());
-    }
-}
-
-pub(crate) fn clear_miss() {
-    if let Ok(mut w) = hash_miss().write() {
-        w.clear();
-    }
 }
 
 /// 待审种子（approval_status=0）的准入档位（审计 10-07 P1-2，站长可配，
@@ -198,6 +174,21 @@ pub(crate) fn pending_policy() -> i8 {
 }
 pub(crate) fn set_pending_policy(v: i8) {
     PENDING_POLICY.store(v, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// 这颗种子的 swarm 对某个 caller 是否应当**不外发**（待审 + 局外人）。
+///
+/// 四个读口（HTTP announce / HTTP scrape / UDP announce / UDP scrape）共用这一份
+/// 判据——五轮实测就是在 UDP 两个口与 scrape 的档位上各漏了一次（档位越严，
+/// scrape 反而越漏）。announce 还多一档「owner_only 直接拒」（见
+/// `gate::announce_gate`），scrape 侧不能整包拒绝（一次请求可带几十个 hash），
+/// 所以对外只归零计数。
+pub(crate) fn hides_pending(info_hash: &str, uid: i64, class_id: i32) -> bool {
+    if pending_policy() == 0 {
+        return false;
+    }
+    meta_of(info_hash)
+        .is_some_and(|m| m.approval == 0 && m.owner_id != uid && class_id < 90)
 }
 
 /// scrape 侧限流档：与 announce 分桶（旧版共用 `rl:ann:ip:`，一次全站轮询
@@ -278,17 +269,6 @@ mod tests {
         let _g = lock();
         let _ = load_bans(&[("0.0.0.0/0".into(), "封全站".into())]);
         assert!(ban_hit("1.1.1.1").is_none(), "/0 必须被拒绝");
-    }
-
-    #[test]
-    fn miss_cache_roundtrip_and_clear() {
-        let _g = lock();
-        let h = "ff".repeat(20);
-        assert!(!miss_seen(&h));
-        remember_miss(&h);
-        assert!(miss_seen(&h));
-        clear_miss();
-        assert!(!miss_seen(&h));
     }
 
     #[test]
