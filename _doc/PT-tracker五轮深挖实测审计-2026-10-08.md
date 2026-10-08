@@ -557,10 +557,34 @@ self_seed_only：两口都收口（默认档恰好是对的，所以一直没被
 
 （另记一处产品侧自我纠正：§八-6 那条我实现后又撤掉的「最短间隔直接拒」。）
 
-## 十二、清理
+## 十二、清理（已全部归零）
 
-探针资产：账号 `r5*`（本轮 3 组）、种子 `R5Credit/R5Pending/R5Corr/R5CorrOne`
-及其 `snatches / traffic_ledger / upload_corroborated / xreport_credited /
-leecher_xreports / cheat_events` 关联行、`announce_pending_policy` 已复原为
-`self_seed_only`。删除手法沿用 10-07 那份报告的口径：先 `class_id=1`、
-`status=2`，再 `DELETE /admin/users/{id}`。
+探针资产：18 个账号（`r5******a/b`）、种子 `R5Credit / R5Pending / R5Corr /
+R5CorrOne / R5Big`，以及 `snatches / traffic_ledger / upload_corroborated /
+xreport_credited / leecher_xreports / cheat_events / torrent_files` 关联行。
+`announce_pending_policy` 已复原为 `self_seed_only`；本轮没有新建侧容器
+（全部在主栈 7070/6969 上打），`docker ps` 只剩主栈 6 个容器。
+
+**清理本身学到的三条**（已写进 `.workbuddy/_r5_cleanup.py` 与
+`_r5_tombstone.py`，别再按 10-07 那份报告的口径重做一遍）：
+
+1. **本站的用户删除是墓碑化，不是删行**。`admin_http/user_del.rs:137` 写着
+   「刻意不动 audit_log：actor_id 继续指向该账号」；实测墓碑化会把
+   `username` 改成 `deleted-<id>-<8hex>`、`passkey` 换成 `deleted…` 前缀、`status=3`。
+   ⇒ 两条看着合理的归零判据其实都是错的：
+   · `count(*) FROM users WHERE username ~ '^r5…'` 一定归零，因为名字已经不是
+     r5 了——**假通过**；
+   · `user_by_passkey` 里还剩 36 行也不是没清干净，视图本来不过滤 status
+     （门槛在 tracker 那句 `AND status < 2`）。
+   正确的判据是**「还能不能被解析成可用账号」**：
+   `count(*) … WHERE status < 2 = 0`，且墓碑行数 = 探针数，两个一起看。
+2. **裸 `DELETE FROM users` 走不通**：先被 `messages` 顶回来
+   （`cheat_enforce` 的 L1 站内信就是这条外键的来源），清了 messages 又被
+   `audit_log` 顶回来——而 audit_log 是产品**有意保留**的。
+   所以必须走 API 的 `status=2 → DELETE /admin/users/{id}`，不是 psql 硬删。
+   第一版脚本因此在库里留了 18 个半死账号，重跑才对。
+3. 顺手清掉一条**上一轮遗留**的 `upload_corroborated` 行
+   （`uploader_id=1(root) / torrent_id=42508 / bytes=2 GiB`）——
+   10-07 报告写「已全部归零」时，0300 这张表还不在清理清单里。
+   教训：**新增一张计费相关表，老的清理脚本不会自动覆盖它**，
+   归零核对的清单必须跟着表结构一起长。
