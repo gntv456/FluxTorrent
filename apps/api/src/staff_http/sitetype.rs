@@ -289,4 +289,9 @@ pub(crate) struct SiteTypePack {
     #[serde(default)]
     #[sqlx(default)]
     pub(super) terms: Option<serde_json::Value>,
+    /// 首页排版段（H10/0322）：`[{key,span}]`，键 ∈ HOME_SECTIONS 白名单。
+    /// apply 时写入 site_settings.home_layout（站长自定义值守卫见 pack_core）
+    #[serde(default)]
+    #[sqlx(default)]
+    pub(super) home_sections: Option<serde_json::Value>,
 }

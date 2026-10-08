@@ -7,6 +7,24 @@ use super::sitetype::SiteTypePack;
 use crate::errors::{DomainError, DomainResult};
 use sqlx::PgPool;
 
+/// home_sections 段的键白名单（H10/0322）：与首页排版保存端点同一清单
+/// （http/home_layout.rs 的 HOME_SECTIONS）——包声明的键必须在此内，
+/// 否则整条跳过（非法键不进 home_layout）。
+fn is_known_home_key(k: &str) -> bool {
+    [
+        "news",
+        "attendance",
+        "shoutbox",
+        "funbox",
+        "resource_stats",
+        "site_data",
+        "lucky_draw",
+        "links",
+        "latest",
+    ]
+    .contains(&k)
+}
+
 /// 应用一个站型包的完整物化（事务体 + 提交后回调）。
 /// 返回 (categories 数, extras 应用清单)。
 ///
@@ -345,6 +363,49 @@ pub(crate) async fn apply_pack_full(
     }
     // ===== 标签数据节（0160 P2）：pack 层重建，global 层硬性不触碰 =====
     super::pack_tags::apply_pack_tags(&mut tx, pack).await?;
+    // 首页排版（H10/0322）：包声明 home_sections 时写入 site_settings.home_layout。
+    // 站长守卫与 tagline 0145 同口径——只改「空值或等于任一预置包默认」的现值，
+    // 手工排版不被切站型复位；restore 回滚走快照重放不受限（快照存的就是
+    // apply 前的排版）。
+    if let Some(layout) = pack
+        .home_sections
+        .as_ref()
+        .and_then(serde_json::Value::as_array)
+    {
+        if !layout.is_empty() && mode != "restore" {
+            let norm: Vec<String> = layout
+                .iter()
+                .filter_map(|it| {
+                    let key = it.get("key").and_then(|v| v.as_str())?;
+                    let span =
+                        it.get("span").and_then(|v| v.as_i64()).unwrap_or(0);
+                    if !is_known_home_key(key) || !(0..=3).contains(&span) {
+                        return None;
+                    }
+                    Some(format!(r#"{{"key":"{key}","span":{span}}}"#))
+                })
+                .collect();
+            if !norm.is_empty() {
+                let value = format!("[{}]", norm.join(","));
+                sqlx::query(
+                    "INSERT INTO site_settings (name, value, descr, grp) \
+                     SELECT 'home_layout', $1, '首页板块排版（JSON 数组，\
+                     空 = 默认布局）', 'main' \
+                     WHERE NOT EXISTS (SELECT 1 FROM site_settings WHERE \
+                     name = 'home_layout' AND value <> '' AND value NOT IN \
+                     (SELECT COALESCE(home_sections::text, '') FROM \
+                     site_type_packs WHERE jsonb_typeof(home_sections) = \
+                     'array')) \
+                     ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
+                     updated_at = now()",
+                )
+                .bind(&value)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            }
+        }
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

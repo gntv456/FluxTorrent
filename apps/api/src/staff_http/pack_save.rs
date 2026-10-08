@@ -155,15 +155,16 @@ pub async fn site_type_pack_save(
     sqlx::query(
         "INSERT INTO site_type_packs (code, name, description, brand, categories, \
          modules, sort, tagline, subtitle_kind, sections, tags, classes, economy, \
-         metadata, terms) \
+         metadata, terms, home_sections) \
          VALUES ($1, $2, '自定义站型（另存快照）', $3, $4::jsonb, $5::jsonb, $6, \
          $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, \
-         $14::jsonb) \
+         $14::jsonb, $15::jsonb) \
          ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, brand = EXCLUDED.brand, \
            categories = EXCLUDED.categories, modules = EXCLUDED.modules, tagline = EXCLUDED.tagline, \
            subtitle_kind = EXCLUDED.subtitle_kind, sections = EXCLUDED.sections, \
            tags = EXCLUDED.tags, classes = EXCLUDED.classes, economy = EXCLUDED.economy, \
-           metadata = EXCLUDED.metadata, terms = EXCLUDED.terms",
+           metadata = EXCLUDED.metadata, terms = EXCLUDED.terms, \
+           home_sections = EXCLUDED.home_sections",
     )
     .bind(&code)
     .bind(body.name.trim())
@@ -180,6 +181,19 @@ pub async fn site_type_pack_save(
     .bind(nullable(snap.metadata))
     // 术语（0206）：另存即如实捕获，apply 才有东西可还原；NULL 才是「不声明」
     .bind(snap.terms.to_string())
+    // 首页排版快照（H10/0322）：另存带上当前生效排版（home_layout 原文；
+    // 空串存 NULL——apply 侧按「未声明」处理）
+    .bind(
+        sqlx::query_scalar::<_, Option<String>>(
+            "SELECT NULLIF(value, '') FROM site_settings \
+             WHERE name = 'home_layout'",
+        )
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten()
+        .flatten(),
+    )
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

@@ -88,6 +88,10 @@ fn snapshot_to_pack(
         tagline: text("site_tagline").unwrap_or_default(),
         subtitle_kind: text("subtitle_kind"),
         terms: seg("terms"),
+        // 首页排版不进快照重放（restore 模式在 pack_core 里被显式跳过）：
+        // 回滚后 home_layout 保持 apply 后的值，站长可在后台「首页排版」改回。
+        // 给 None 让编译器满足字段完整性，不产生任何写动作。
+        home_sections: None,
     })
 }
 
