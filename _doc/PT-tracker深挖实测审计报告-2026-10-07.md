@@ -502,6 +502,28 @@ P3-6 `no_peer_id=1`（`announce.rs`+`bencode.rs`）、P3-7 metrics 独立 bind�
 | `python scripts/audit_migration_checksums.py` | 0303 提交后归零（此前唯一 problem row 就是「0303 NOT-IN-HEAD」） |
 | `/metrics` 新计数器 | 侧容器实喂：一条 `left>size` 的 announce ⇒ 拒 + `flux_tracker_announce_fake_left_total 1`（不是只声明不出数） |
 | 死消费者回收（P2-3） | 线上 `XINFO GROUPS flux:announce`：`consumers` 从修前实测的 **24** 降到 **2**，`pending=0`、`lag=0` |
+| 新档口的配置面（`_verify_policy_switch.py`，9/9） | 见下「站长开关真能拧」 |
+
+### 站长开关真能拧（P1-2 的配置面闭环）
+
+`announce_pending_policy` 不是「迁移里写了一行、界面看不见」的哑配置——实测三段：
+
+1. `GET /admin/settings/schema` 里这条字段以 `type=enum` + 三个选项 + `writable=true`
+   出现（root class 99 命中 `min_class=99`）；`GET /admin/settings` 读得到行。
+2. 把一颗待审种（临时把 e2e 演示种 `approval_status` 置 0，用完复原）让发布者做种后，
+   局外人 announce：`self_seed_only` 下**接受但 complete=0、无 peer**；
+   `PUT allow_all` 后**同一请求 complete=1 并拿到发布者 peer**；再改回 `self_seed_only`
+   又恢复不外发（证明不是一次性生效）。
+3. 档位改动实测各等约 **60s** 才在 announce 上生效。原因只能确认到「tracker 侧防护缓存
+   的 60s 刷新节律」这一层：`refresh_guard` 自带 60s 节流，而 settings PUT 是否 bump
+   版本号从外部观察不出来（bump 了也仍受这个节流约束）。**留给下一批**：若站长要
+   「改完立刻生效」，得把 `bump_guard_ver` 与节流窗口一起改（现行为是安全的最终一致，
+   不是缺陷）。
+
+探针自身两处假红已当场纠正并留档：① 局外人账号选成了 `status=3` 的死号 ⇒ tracker 报
+「passkey 无效」，三条红是探针错（改从 `user_by_passkey` 里带 `status < 2` 选）；
+② 断言写成 `field.kind == "enum"`，而 schema 序列化的键叫 `type`（改断言前先 dump 过
+真实响应确认数据本身没问题）。
 
 G1/G2（P0 幽灵做种/完成数）在 worker 出镜像前是红的，部署后翻绿：同一账号一次
 announce 报 `downloaded=种子大小` 现在得到 `seeding=false`、`completed_at IS NULL`、
