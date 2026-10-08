@@ -38,6 +38,11 @@ pub use view_layout::*;
 
 // auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
 
+/// 出网抓取统一超时：GitHub 更新检查 / 商店远程索引 / 远程包 / PT-Gen /
+/// 适配器 http_allow 拉取共用。原 8s（更新检查、商店索引）与 20s 两档并存，
+/// 统一为 20（P2 收敛）——向上统一只影响失败得更慢，不影响正确性。
+pub(crate) const OUTBOUND_FETCH_TIMEOUT_SECS: u64 = 20;
+
 use crate::social_http::{
     endangered_list, team_create, team_join, team_leave, team_list, team_mine,
 };
@@ -109,7 +114,11 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::torrent_http::detail)
         .service(crate::torrent_http::torrent_aggregate)
         .service(crate::torrent_http::torrent_detail_ext)
+        // 抓轨日志正文（0312）：详情页「查看日志」懒加载，四段路径不与
+        // /torrents/{id} 冲突
+        .service(crate::torrent_http::torrent_log_body)
         .service(crate::torrent_http::torrent_peers)
+        .service(crate::torrent_http::torrent_related)
         .service(crate::torrent_http::torrent_magnet)
         .service(crate::torrent_http::batch_download)
         .service(crate::torrent_http::torrent_files)

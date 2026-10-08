@@ -152,7 +152,9 @@ pub async fn ptgen(
     let client = reqwest::Client::new();
     let resp = client
         .get(api)
-        .timeout(std::time::Duration::from_secs(20))
+        .timeout(std::time::Duration::from_secs(
+            crate::http::OUTBOUND_FETCH_TIMEOUT_SECS,
+        ))
         .send()
         .await
         // 网络层失败降级为 Validation（0284 P0-2）：DNS 断/连不上是上游环境的

@@ -15,6 +15,10 @@ use crate::state::AppState;
 
 // ============ 认证（M01） ============
 
+/// 通用登录/敏感操作 throttle 上限（60s 固定窗口）：login/register/apply/
+/// attachment/profile 等共用此阈值，超限即 429。
+const LOGIN_THROTTLE_MAX: i64 = 5;
+
 pub async fn throttle(state: &Arc<AppState>, key: String) -> DomainResult<()> {
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
@@ -27,7 +31,7 @@ pub async fn throttle(state: &Arc<AppState>, key: String) -> DomainResult<()> {
     if n == 1 {
         let _: () = c.expire(&k, 60).await.unwrap_or(());
     }
-    if n > 5 {
+    if n > LOGIN_THROTTLE_MAX {
         return Err(DomainError::RateLimited);
     }
     Ok(())

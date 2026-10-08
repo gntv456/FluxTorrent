@@ -45,7 +45,9 @@ async fn admin_update_check(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL)
         .await?;
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(8))
+        .timeout(std::time::Duration::from_secs(
+            crate::http::OUTBOUND_FETCH_TIMEOUT_SECS,
+        ))
         .build()
         .map_err(|e| DomainError::Internal(e.into()))?;
     let resp = client

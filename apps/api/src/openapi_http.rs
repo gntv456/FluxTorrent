@@ -71,6 +71,9 @@ pub struct TokenCtx {
 }
 
 /// 允许的 scope 白名单（拼错即拒绝，不做静默忽略）
+/// API Token 有效期（0069）：签发与滚动续期共用同一 TTL，响应字段同源。
+pub const API_TOKEN_TTL_DAYS: i64 = 180;
+
 pub const SCOPE_READ: &str = "read";
 pub const SCOPE_UPLOAD: &str = "upload";
 
@@ -309,13 +312,14 @@ async fn token_issue(
     let plain = format!("fxo_{}", uuid::Uuid::new_v4().simple());
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO api_tokens (user_id, name, token_hash, scopes, rate_per_min, expires_at) \
-         VALUES ($1, $2, $3, $4, $5, now() + interval '180 days') RETURNING id",
+         VALUES ($1, $2, $3, $4, $5, now() + make_interval(days => $6)) RETURNING id",
     )
     .bind(auth.id)
     .bind(name)
     .bind(hash_token(&plain))
     .bind(&scopes)
     .bind(body.rate_per_min)
+    .bind(API_TOKEN_TTL_DAYS)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -354,12 +358,13 @@ async fn token_refresh(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let expires: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
-        "UPDATE api_tokens SET expires_at = now() + interval '180 days' \
+        "UPDATE api_tokens SET expires_at = now() + make_interval(days => $3) \
          WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL \
          RETURNING expires_at",
     )
     .bind(body.id)
     .bind(auth.id)
+    .bind(API_TOKEN_TTL_DAYS)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -373,7 +378,7 @@ async fn token_refresh(
     Ok(ok(serde_json::json!({
         "id": body.id,
         "expires_at": expires,
-        "ttl_days": 180,
+        "ttl_days": API_TOKEN_TTL_DAYS,
     })))
 }
 

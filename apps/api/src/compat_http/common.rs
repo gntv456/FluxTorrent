@@ -6,6 +6,10 @@ use sha3::{Digest, Sha3_256};
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
+/// passkey 端点的同 IP 每分钟探测上限（防换 passkey 绕过分桶的资源消耗面）：
+/// 覆盖正常用户多 passkey 端点的合理使用，见 limit_passkey 二轮补注。
+pub(crate) const PASSKEY_IP_PER_MIN: i64 = 120;
+
 pub(super) fn sha3_hex(bytes: &[u8]) -> String {
     let mut h = Sha3_256::new();
     h.update(bytes);
@@ -61,7 +65,7 @@ pub(crate) async fn limit_passkey(
     if m == 1 {
         let _: () = c.expire(&ip_key, 60).await.unwrap_or(());
     }
-    if m > 120 {
+    if m > PASSKEY_IP_PER_MIN {
         return Err(DomainError::RateLimited);
     }
     Ok(())

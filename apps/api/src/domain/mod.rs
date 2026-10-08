@@ -8,9 +8,6 @@ use rand::Rng;
 
 use crate::errors::{DomainError, DomainResult};
 
-#[allow(dead_code)]
-pub const INVITE_TTL_HOURS: i64 = 72;
-
 pub struct NewUser {
     pub username: String,
     pub email: String,
@@ -130,9 +127,10 @@ pub fn invite_expired(expires_at: chrono::DateTime<Utc>) -> bool {
     Utc::now() > expires_at
 }
 
+/// 邀请码签发时的到期时间（旧站口径 72h，LIMITS.INVITE_TTL_HOURS）
 #[allow(dead_code)]
 pub fn invite_expiry() -> chrono::DateTime<Utc> {
-    Utc::now() + Duration::hours(INVITE_TTL_HOURS)
+    Utc::now() + Duration::hours(72)
 }
 
 /// 促销裁决（M06 §5.5）：单种子促销覆盖全站，取折扣更优者。
