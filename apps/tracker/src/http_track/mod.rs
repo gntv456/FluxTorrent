@@ -13,6 +13,7 @@ pub(crate) mod ip_trust;
 pub(crate) mod limits;
 pub(crate) mod metrics;
 pub(crate) mod params;
+pub(crate) mod probe_cfg;
 pub(crate) mod ratio_gate;
 pub(crate) mod reply;
 pub(crate) mod scrape;

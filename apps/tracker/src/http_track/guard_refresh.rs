@@ -139,10 +139,9 @@ impl TrackerState {
                 "announce_pending_policy 读取失败，保留旧档位"
             ),
         }
-        // 即时分享率闸门的四个值（2026-10-08 站长拍板）。一次查全，
-        // 并沿用刚立的纪律：**查询失败保留旧值**，只有「行确实不存在」才用缺省。
-        // 缺省口径本身就是安全的：ratio_gate 缺省 warn（不拦）、
-        // ratiolimit 缺省 0（不设门槛）、ratio_gate_max 缺省 1.0（截断荒谬值）。
+        // 即时分享率闸门的四个值（2026-10-08 站长拍板）。一次查全；
+        // 纪律同上：Err 保留旧值，行不存在才用缺省（缺省本身安全：
+        // ratio_gate=warn 不拦、ratiolimit=0 无门槛、gate_max=1.0 截荒谬值）。
         let gates: Result<Vec<(String, String)>, sqlx::Error> = sqlx::query_as(
             "SELECT name, value FROM site_settings \
                  WHERE name IN ('ratio_gate', 'ratiolimit', \
@@ -199,6 +198,7 @@ impl TrackerState {
         // peer 存活 TTL 随 interval 伸缩（审计 10-06 第 4 条）：leecher 曾硬编码
         // 90s，interval=1800s 下两次 announce 之间即被除名，在线数长期偏低。
         crate::peers::set_interval_secs(interval);
+        self.refresh_probe_cfg().await;
         // 种子白名单（P0-2）：全量 info_hash 双口径（规范化 + 原始字节），
         // 顺带带出大小/完成数/发布者/审核态供白名单兜底与 scrape 完成数用。
         // 十万级字符串 + 定长元数据 ≈ 20MB 内，60s 全量重拉可接受；
@@ -257,5 +257,43 @@ impl TrackerState {
         g.refreshed_at = Instant::now();
         // 刷新即清未注册负缓存：新发种与审核态翻转最迟一个刷新周期内生效
         super::guard_miss::clear_miss();
+    }
+
+    /// 探测调度两键（0309 开源威胁模型收口）：抖动上界 + piece 抽查比例。
+    /// 与本文件其它读取同一纪律：**Err 保留旧值**，只有「行确实不存在」
+    /// 才用出厂缺省（90s / 0.25）。
+    async fn refresh_probe_cfg(&self) {
+        let rows: Result<Vec<(String, String)>, sqlx::Error> =
+            sqlx::query_as(
+                "SELECT name, value FROM site_settings \
+                 WHERE name IN ('probe_jitter_secs', 'probe_piece_ratio')",
+            )
+            .fetch_all(&self.db)
+            .await;
+        let (mut jitter, mut ratio) = {
+            let keep = super::probe_cfg::current();
+            (keep.jitter_secs, keep.piece_ratio)
+        };
+        if let Ok(rows) = rows {
+            for (k, v) in &rows {
+                match k.as_str() {
+                    "probe_jitter_secs" => {
+                        jitter =
+                            v.trim().parse::<u32>().unwrap_or(90).min(600)
+                    }
+                    "probe_piece_ratio" => {
+                        ratio = v
+                            .trim()
+                            .parse::<f64>()
+                            .map(|r| r.clamp(0.0, 1.0))
+                            .unwrap_or(0.25)
+                    }
+                    _ => {}
+                }
+            }
+            super::probe_cfg::refresh(jitter, ratio);
+        } else {
+            tracing::warn!("探测调度设定读取失败，保留上一次的抖动与抽查比例");
+        }
     }
 }
