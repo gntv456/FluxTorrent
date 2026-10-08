@@ -28,7 +28,7 @@ pub(crate) async fn scrape(
     if let Some(msg) = state.rate_limited_scrape(&ip).await {
         return bencode_err(msg);
     }
-    let Some((_uid, _de, suspended)) =
+    let Some((uid, _de, suspended, class_id)) =
         state.resolve_passkey_cached(&passkey).await
     else {
         return bencode_err("passkey 无效");
@@ -36,6 +36,10 @@ pub(crate) async fn scrape(
     if suspended {
         return bencode_err("账号已挂起，请联系管理组");
     }
+    // 待审种子的实时做种数对非发布者/非 staff 不外泄（审计 10-07 P1-2；
+    // 策略 allow_all 时 pending_policy()==0，行为回到旧口径）
+    let pending_hidden = super::guard_store::pending_policy() != 0
+        && super::guard_store::pending_policy() != 2;
     // BEP48：info_hash 可重复出现多次，每次为 20 字节 percent-encoding。
     // 审计 10-07 P2：旧版不限量不去重——实测单个 GET 能塞 1039 个 hash
     // （8KB 请求换 70KB 响应），外置模式下每条还是一次 HGETALL；
@@ -60,6 +64,15 @@ pub(crate) async fn scrape(
                 // 不暴露随机探测的命中/未命中差异之外的任何 swarm 信息。
                 let registered =
                     state.torrent_registered_scrape(&hexkey).await;
+                let registered = registered
+                    && !(pending_hidden
+                        && state.swarm_owner(&hexkey).is_some_and(
+                            |(owner, approval)| {
+                                approval == 0
+                                    && owner != uid
+                                    && class_id < 90
+                            },
+                        ));
                 let (s, l) = if !registered {
                     (0, 0)
                 } else if crate::peers::external::external_enabled() {

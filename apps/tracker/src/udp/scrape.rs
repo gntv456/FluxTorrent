@@ -50,7 +50,7 @@ pub(super) async fn scrape(
             "scrape 需在 info_hash 列表后附带 passkey",
         );
     }
-    let Some((_uid, _de, suspended)) =
+    let Some((_uid, _de, suspended, _class_id)) =
         t.state.resolve_passkey_cached(passkey).await
     else {
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");

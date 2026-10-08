@@ -38,6 +38,10 @@ pub(crate) struct Metrics {
     pub(crate) redis_fallback: AtomicU64,
     /// passkey 查询**报错**（≠ 查无此钥）的次数：瞬时抖动与真无效必须分开
     pub(crate) passkey_query_failed: AtomicU64,
+    /// `left > 种子大小` 被拒次数（假 announce 的可观测面）
+    pub(crate) announce_fake_left: AtomicU64,
+    /// peer_id 槽位归属冲突被拒次数（顶号企图）
+    pub(crate) announce_peer_taken: AtomicU64,
 }
 
 /// 本地滑动窗口限流（Redis 故障降级用）：key → (计数, 窗口起点)
@@ -86,15 +90,15 @@ pub(crate) fn env_i64(key: &str, default: i64) -> i64 {
 
 // IP 取信与校验整体搬到 ip_trust.rs（300 行门禁 + 便于单测）；
 // 这里再导出，使 announce/scrape 的 `use super::helpers::client_ip` 不变。
-pub(crate) use super::ip_trust::{
-    client_ip, injectable_ip, ip_inject_rejected, probeable_ip,
-};
+pub(crate) use super::ip_trust::client_ip;
 
 /// 内存防护缓存：高频路径不再逐请求打 PG。
 /// - passkey：60s TTL（挂起/禁下载最迟 60s 生效，可接受的折衷）
 /// - ip_bans / agent_rules / announce_interval：60s 定期刷新
 pub(crate) struct GuardInner {
-    pub(crate) passkeys: HashMap<String, (i64, bool, bool, Instant)>,
+    /// (user_id, download_enabled, suspended, class_id, 缓存时刻)
+    pub(crate) passkeys:
+        HashMap<String, (i64, bool, bool, i32, Instant)>,
     /// 无效 passkey 负缓存（审计 10-06 第 7 条）：旧实现只缓存命中——
     /// 随机 passkey 洪水每发必查 PG，缓存形同虚设。
     pub(crate) passkey_miss: HashMap<String, Instant>,

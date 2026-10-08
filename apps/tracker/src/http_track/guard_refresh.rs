@@ -87,6 +87,22 @@ impl TrackerState {
         .and_then(|v| v.parse::<i64>().ok())
         .map(|v| v.clamp(60, 86400))
         .unwrap_or(self.cfg.default_interval);
+        // 待审种子准入策略（审计 10-07 P1-2）：缺失/非法一律按 self_seed_only(1)
+        let policy: i8 = sqlx::query_scalar::<_, String>(
+            "SELECT value FROM site_settings WHERE name = $1",
+        )
+        .bind("announce_pending_policy")
+        .fetch_optional(&self.db)
+        .await
+        .ok()
+        .flatten()
+        .map(|v| match v.trim() {
+            "allow_all" => 0,
+            "owner_only" => 2,
+            _ => 1,
+        })
+        .unwrap_or(1);
+        super::guard_store::set_pending_policy(policy);
         // peer 存活 TTL 随 interval 伸缩（审计 10-06 第 4 条）：leecher 曾硬编码
         // 90s，interval=1800s 下两次 announce 之间即被除名，在线数长期偏低。
         crate::peers::set_interval_secs(interval);
@@ -228,16 +244,7 @@ impl TrackerState {
             .unwrap_or_default()
     }
 
-    /// 该种子的大小（`left > size` 假 announce 判据的数据源）。
-    /// 消费点在 announce.rs——那文件此刻正被另一路改动，故本批先留读口
-    /// （同 table.rs `all_unreachable` 的预留口径）。
-    #[allow(dead_code)] // 预留：left>size 假 announce 与待审准入都读它
-    pub(crate) fn swarm_size(&self, info_hash: &str) -> Option<i64> {
-        super::guard_store::meta_of(info_hash).map(|m| m.size)
-    }
-
     /// 该种子的发布者与审核态（待审种子准入策略用，下一批接进 announce）。
-    #[allow(dead_code)] // 预留：announce_pending_policy
     pub(crate) fn swarm_owner(&self, info_hash: &str) -> Option<(i64, i16)> {
         super::guard_store::meta_of(info_hash).map(|m| (m.owner_id, m.approval))
     }

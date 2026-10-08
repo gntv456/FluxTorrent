@@ -6,6 +6,8 @@ use super::billing_mults::resolve_billing_mults;
 use super::ledger_guard::ledger_guard;
 use sqlx::PgPool;
 
+mod audit_hold;
+
 /// ZT81（2026-10-02）：按**字符边界**截断。原实现用 `&s[..len.min(200)]` 按字节
 /// 切片，UA 含多字节 UTF-8 且恰好落在第 200 字节非边界时会 panic。
 fn truncate_chars(s: &str, n: usize) -> String {
@@ -103,51 +105,13 @@ pub(crate) async fn process_event(
 
     // 交叉佐证不足的扣量留痕：与 speed: 超速率同类，agent 用 corr: 前缀区分
     if corr_held > 0 {
-        let _ = sqlx::query(
-            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
-             VALUES ($1, $2, $3, 'uncorroborated_upload（自报上传量超出 leecher 佐证上限，超出部分未入账）') \
-             ON CONFLICT (user_id, agent, reason) DO UPDATE \
-               SET hits = cheat_events.hits + 1, last_seen = now()",
-        )
-        .bind(ev.user)
-        .bind(format!("corr:{torrent_id}"))
-        .bind(&ev.ip)
-        .execute(&mut *tx)
-        .await;
-        tracing::warn!(
-            user = ev.user,
-            torrent = torrent_id,
-            corr_held,
-            "自报上传超出交叉佐证上限，超出部分未入账"
-        );
+        audit_hold::note_corr(&mut *tx, ev, torrent_id, corr_held).await;
     }
 
-    // 超上限留痕：agent 沿用 cheat_audit 的 torrent:{id} 约定、speed: 前缀区分来源，
-    // reason 带被扣量与证据，供管理组复核后用补量接口发还。
+    // 超上限留痕：agent 沿用 cheat_audit 的 torrent:{id} 约定、speed: 前缀区分来源
     if had_baseline && (held_up > 0 || held_down > 0) {
-        let _ = sqlx::query(
-            "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
-             VALUES ($1, $2, $3, $4) \
-             ON CONFLICT (user_id, agent, reason) DO UPDATE \
-               SET hits = cheat_events.hits + 1, last_seen = now()",
-        )
-        .bind(ev.user)
-        .bind(format!("speed:{torrent_id}"))
-        .bind(&ev.ip)
-        // 二轮审计：reason 是去重键的一部分，内嵌每次都变的数值会让
-        // ON CONFLICT 恒不命中 → hits 聚合失效、行无限膨胀，管理端前 200
-        // 条可被"每次超一点"的攻击冲掉（告警稀释）。数值挪出键：
-        // reason 固定文案聚合，明细走 tracing（有 request 上下文可查）。
-        .bind("over_ceiling（增量超物理速率上限，超出部分未入账）")
-        .execute(&mut *tx)
-        .await;
-        tracing::warn!(
-            user = ev.user,
-            torrent = torrent_id,
-            held_up,
-            held_down,
-            "增量超物理速率上限，超出部分未入账"
-        );
+        audit_hold::note_speed(&mut *tx, ev, torrent_id, held_up, held_down)
+            .await;
     }
 
     // P0-2 幽灵做种四条件（保种组实测审计 2026-10-07 二轮）：

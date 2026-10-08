@@ -15,6 +15,8 @@
 
 use redis::aio::ConnectionManager;
 
+use super::group_parse::{parse_autoclaim_reply, parse_stream_reply};
+
 /// 消费者组参数（两条流各一份常量）。
 pub(crate) struct GroupCfg {
     pub stream: &'static str,
@@ -41,6 +43,17 @@ pub(crate) const AGENTBLOCK_GROUP: GroupCfg = GroupCfg {
     legacy_cursor: "flux:agentblock:cursor",
     dlq: "flux:agentblock:dlq",
     batch: 100,
+};
+
+/// 交叉上报流（2026-10-07 P0-2 治本）：leecher 声明的「从某 peer 下载了
+/// N 字节」经 tracker 校验后投递此流，worker 消费写入 upload_corroborated
+/// 作为上传量的可信上界。独立流不与 announce 混流（两类消费方幂等口径不同）。
+pub(crate) const XREPORT_GROUP: GroupCfg = GroupCfg {
+    stream: "flux:xreport",
+    group: "fluxcg-xreport",
+    legacy_cursor: "flux:xreport:cursor",
+    dlq: "flux:xreport:dlq",
+    batch: 200,
 };
 
 impl GroupCfg {
@@ -105,6 +118,8 @@ async fn ensure_group(redis: &mut ConnectionManager, cfg: &GroupCfg) {
         .map(|v| format!("{v:?}").contains(cfg.group))
         .unwrap_or(false);
     if exists {
+        super::group_housekeeping::reap_dead_consumers(redis, cfg)
+            .await;
         return;
     }
     // 起点：旧游标（有则从它之后继续）否则 $（只消费新事件——历史事件在
@@ -211,89 +226,3 @@ pub(crate) async fn reclaim_stale(
     }
 }
 
-/// 解析 XREADGROUP 的 redis::Value（nil / [[stream, entries]..]）。
-fn parse_stream_reply(v: &redis::Value) -> Vec<(String, String)> {
-    match v {
-        redis::Value::Array(items) => items
-            .iter()
-            .filter_map(|se| match se {
-                redis::Value::Array(pair) if pair.len() >= 2 => {
-                    parse_entries(&pair[1])
-                }
-                _ => None,
-            })
-            .flatten()
-            .collect(),
-        _ => Vec::new(),
-    }
-}
-
-/// 解析 XAUTOCLAIM 回复——entries 都在下标 1：Redis 7 为
-/// [next-id, entries, deleted] 三元，6.2 为 [next-id, entries] 二元
-/// （两种形态兼容；当前 compose 固定 redis:7）。
-fn parse_autoclaim_reply(v: &redis::Value) -> Vec<(String, String)> {
-    match v {
-        redis::Value::Array(items) if items.len() >= 2 => {
-            parse_entries(&items[1]).unwrap_or_default()
-        }
-        _ => Vec::new(),
-    }
-}
-
-/// 条目列表 → (id, payload)；无 payload 字段的损坏条目返回 ("", "") 由
-/// 调用方按 DLQ 处理。
-fn parse_entries(v: &redis::Value) -> Option<Vec<(String, String)>> {
-    let redis::Value::Array(entries) = v else {
-        return None;
-    };
-    let mut out = Vec::with_capacity(entries.len());
-    for e in entries {
-        let redis::Value::Array(pair) = e else {
-            continue;
-        };
-        if pair.len() < 2 {
-            continue;
-        }
-        let id = value_to_string(&pair[0]);
-        let payload = flat_fields(&pair[1])
-            .into_iter()
-            .find(|(k, _)| k == "payload")
-            .map(|(_, v)| v)
-            .unwrap_or_default();
-        out.push((id, payload));
-    }
-    Some(out)
-}
-
-/// XID 在 redis 0.27 里可能是 BulkString("ms-seq") 或 Bulk([ms, seq])
-fn value_to_string(v: &redis::Value) -> String {
-    match v {
-        redis::Value::BulkString(b) => String::from_utf8_lossy(b).to_string(),
-        redis::Value::Array(parts) => parts
-            .iter()
-            .map(value_to_string)
-            .collect::<Vec<_>>()
-            .join("-"),
-        other => format!("{other:?}"),
-    }
-}
-
-/// field-value 扁平列表 → (k, v) 对
-fn flat_fields(v: &redis::Value) -> Vec<(String, String)> {
-    let redis::Value::Array(items) = v else {
-        return Vec::new();
-    };
-    items
-        .chunks(2)
-        .filter_map(|c| match (&c[0], c.get(1)) {
-            (
-                redis::Value::BulkString(k),
-                Some(redis::Value::BulkString(val)),
-            ) => Some((
-                String::from_utf8_lossy(k).to_string(),
-                String::from_utf8_lossy(val).to_string(),
-            )),
-            _ => None,
-        })
-        .collect()
-}

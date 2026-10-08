@@ -15,12 +15,12 @@ impl TrackerState {
     pub async fn resolve_passkey_cached(
         &self,
         passkey: &str,
-    ) -> Option<(i64, bool, bool)> {
+    ) -> Option<(i64, bool, bool, i32)> {
         {
             let g = self.guard_read();
-            if let Some((uid, de, su, at)) = g.passkeys.get(passkey) {
+            if let Some((uid, de, su, cls, at)) = g.passkeys.get(passkey) {
                 if at.elapsed() < PASSKEY_TTL {
-                    return Some((*uid, *de, *su));
+                    return Some((*uid, *de, *su, *cls));
                 }
             }
             if g.passkey_miss
@@ -33,9 +33,9 @@ impl TrackerState {
         // 改密后的宽限窗（审计 10-07 P1-4）：passkey 烤在用户已下载的每一个
         // .torrent 里，旧密钥一失效就等于手上所有种子集体停种（libtorrent 系
         // 客户端还会把 tracker 标成错误、长时间不再重试）。prev 由改密接口写入。
-        let outcome = sqlx::query_as::<_, (i64, bool, bool)>(
-            "SELECT id, download_enabled, suspended FROM user_by_passkey \
-             WHERE passkey = $1 AND status < 2",
+        let outcome = sqlx::query_as::<_, (i64, bool, bool, i32)>(
+            "SELECT id, download_enabled, suspended, class_id \
+             FROM user_by_passkey WHERE passkey = $1 AND status < 2",
         )
         .bind(passkey)
         .fetch_optional(&self.db)
@@ -60,10 +60,9 @@ impl TrackerState {
         }
         match &row {
             Some(v) => {
-                g.passkeys.insert(
-                    passkey.to_string(),
-                    (v.0, v.1, v.2, Instant::now()),
-                );
+                g.passkeys
+                    .insert(passkey.to_string(), (v.0, v.1, v.2, v.3,
+                                                  Instant::now()));
             }
             None => {
                 g.passkey_miss.insert(passkey.to_string(), Instant::now());
