@@ -9,24 +9,80 @@
 //!      客户端压低下载拉高 ratio 的画像特征。
 //!   ③ bitthief —— 完成后零上传长期挂机：连通端口正常、swarm 一直有人
 //!      等数据，却从未上传过一个字节（乐观解锁机制的纯索取者）。
-//! 三者都只落 cheat_events（进管理组待办处置视图），不自动处罚——
+//!   ④ near_cap —— 贴边汇报节奏：网盘临时挂载型假做种（0304），间隔
+//!      长期贴着容忍上限是它抹不掉的指纹（正常客户端按 interval 汇报）。
+//! 四者都只落 cheat_events（进管理组待办处置视图），不自动处罚——
 //! 教育站误伤代价高于放行（NAT 型恶劣环境的真实用户可能命中 ②/③）。
 
 use sqlx::PgPool;
 
-/// 三合一入口（run.rs 调度 + 面板手触）：①对刷 ②谎报下载 ③BitThief，
-/// 顺带做两张窗口日志表的裁剪。返回本轮新增 cheat_events 的对数。
+/// 四合一入口（run.rs 调度 + 面板手触）：①对刷 ②谎报下载 ③BitThief
+/// ④贴边汇报，顺带做两张窗口日志表的裁剪。返回本轮新增 cheat_events 数。
 pub async fn collusion_check(db: &PgPool) -> anyhow::Result<u64> {
     let deals = self_deal_check(db).await?;
     let unders = down_under_check(db).await?;
     let thieves = bitthief_check(db).await?;
+    let near_caps = near_cap_check(db).await?;
     let _ = prune_announce_ips(db).await;
     let _ = prune_leecher_xreports(db).await;
-    let total = deals + unders + thieves;
+    let total = deals + unders + thieves + near_caps;
     if total > 0 {
-        tracing::warn!(deals, unders, thieves, "collusion_check 命中");
+        tracing::warn!(
+            deals,
+            unders,
+            thieves,
+            near_caps,
+            "collusion_check 命中"
+        );
     }
     Ok(total)
+}
+
+/// ④ 贴边汇报节奏（0304）：网盘挂 NAS 挂机型假做种专杀。
+/// 手法 = 平时撤存储、只在汇报前临时挂上——客户端常开所以回连探测
+/// 测不出数据不在盘（端口应答正常），唯一抹不掉的指纹是 announce
+/// 间隔长期贴着做种时长容忍上限（seed_cap=2×interval）之下：挂
+/// ~3400-3590s 汇报一次、每轮照拿满间隔时长。正常客户端按 interval
+/// （=cap/2）汇报，抖动/休眠只是偶发贴边。
+/// 画像：计入时长的汇报 ≥20 次且贴边占比 ≥80%。只记录不处罚——
+/// 弱网/移动端用户可能长期高间隔（仍是真实挂种），留人工裁量。
+pub async fn near_cap_check(db: &PgPool) -> anyhow::Result<u64> {
+    // 计数列是 integer（INT4）——解码按 i32，防 sqlx 类型协商失败
+    let rows: Vec<(i64, i64, i32, i32)> = sqlx::query_as(
+        r#"
+        SELECT s.user_id, s.torrent_id,
+               s.near_cap_announces, s.total_announces
+        FROM snatches s
+        WHERE s.total_announces >= 20
+          AND s.near_cap_announces * 100 >= s.total_announces * 80
+          AND s.last_seen_at > now() - interval '2 days'
+        "#,
+    )
+    .fetch_all(db)
+    .await?;
+    let mut n = 0u64;
+    for (uid, torrent_id, near, total) in rows {
+        let _ = sqlx::query(
+            "INSERT INTO cheat_events (user_id, agent, reason) \
+             VALUES ($1, $2, \
+             'near_cap_rhythm（汇报间隔长期贴近容忍上限，疑似临时挂载型假做种）') \
+             ON CONFLICT (user_id, agent, reason) DO UPDATE \
+               SET hits = cheat_events.hits + 1, last_seen = now()",
+        )
+        .bind(uid)
+        .bind(format!("nearcap:{torrent_id}"))
+        .execute(db)
+        .await?;
+        tracing::warn!(
+            user = uid,
+            torrent = torrent_id,
+            near,
+            total,
+            "贴边汇报占比 ≥80%"
+        );
+        n += 1;
+    }
+    Ok(n)
 }
 
 /// ① 同 IP 双账号对刷（30 分钟窗口聚合 announce_ips）。
