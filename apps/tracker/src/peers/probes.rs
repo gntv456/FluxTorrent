@@ -3,6 +3,10 @@
 
 use super::model::{PeerKey, CONN_UNTESTED};
 
+/// 探测轮转周期（秒）：probe_loop 的 tick 与本文件两处轮转 epoch
+/// 共用同一常量——改周期必须三处同源，否则轮转起点跳变。
+pub(crate) const PROBE_PERIOD_SECS: usize = 300;
+
 /// 一个 swarm 的抽样候选快照（table 侧收集，避免跨模块暴露内部表结构）。
 /// 字段：(peer_key, ip, port, connectable, is_seeder)
 pub(crate) struct SwarmCandidates {
@@ -52,7 +56,7 @@ pub(crate) fn sample_probes(
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as usize)
             .unwrap_or(0)
-            / 300; // 抽样周期 5min，同轮内稳定、跨轮前进
+            / PROBE_PERIOD_SECS; // 同轮内稳定、跨轮前进
         let skip = epoch % out.len();
         out.rotate_left(skip);
         out.truncate(n);
@@ -65,7 +69,7 @@ pub(crate) fn sample_probes(
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as usize)
             .unwrap_or(0)
-            / 300;
+            / PROBE_PERIOD_SECS;
         let skip = epoch % retriable.len();
         retriable.rotate_left(skip);
     }
