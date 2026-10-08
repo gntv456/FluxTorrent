@@ -91,9 +91,7 @@ pub fn bencode_announce(
 
 /// BEP3 scrape 响应：files 字典键为 20 字节原始 info_hash，
 /// 第三条元数据是**完成数**（旧版硬写 0，客户端「完成」列永远空）。
-pub fn bencode_scrape(
-    files: &[(Vec<u8>, usize, usize, usize)],
-) -> Vec<u8> {
+pub fn bencode_scrape(files: &[(Vec<u8>, usize, usize, usize)]) -> Vec<u8> {
     let mut out = b"d5:filesd".to_vec();
     for (ih, seeders, leechers, completed) in files {
         out.extend_from_slice(b"20:");

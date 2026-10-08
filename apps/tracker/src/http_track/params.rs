@@ -32,11 +32,9 @@ impl<'a> RawParams<'a> {
     /// `uploaded/downloaded/port` 仍走 `get_i64` 的「解析失败回落默认值」，
     /// 于是 `uploaded=99999999999999999999999` 被当成 0 —— 客户端读数被清空
     /// 还会被 ledger_guard 判成「读数回退」而误记 counter_reset 作弊留痕。
-    pub(crate) fn get_i64_strict(
-        &self,
-        key: &str,
-    ) -> Option<Result<i64, ()>> {
-        self.get_str(key).map(|v| v.trim().parse::<i64>().map_err(|_| ()))
+    pub(crate) fn get_i64_strict(&self, key: &str) -> Option<Result<i64, ()>> {
+        self.get_str(key)
+            .map(|v| v.trim().parse::<i64>().map_err(|_| ()))
     }
     /// announce 的三个数值参数（port / uploaded / downloaded）一次解析完。
     /// 缺失按 0（BEP3 允许 stopped 不带 port），有值但非法一律回 bencode 失败。
@@ -89,9 +87,7 @@ impl<'a> RawParams<'a> {
             if it.next() == Some(key) {
                 let v = it.next().unwrap_or("");
                 let decoded = percent_decode(v.as_bytes());
-                out.push(
-                    String::from_utf8_lossy(&decoded).into_owned(),
-                );
+                out.push(String::from_utf8_lossy(&decoded).into_owned());
             }
         }
         out

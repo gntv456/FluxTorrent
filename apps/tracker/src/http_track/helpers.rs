@@ -20,6 +20,10 @@ pub struct TrackerState {
     /// 管理端变更通知（flux:guard:ver 版本轮询）→ 立即刷新防护缓存
     pub(crate) force_refresh: AtomicBool,
     pub(crate) ver: AtomicI64,
+    /// piece 级抽查预算：每轮最多对多少个 peer 做 piece SHA-1 校验。
+    /// 0 = 关闭（只做握手+bitfield）。由 `FLUX_TRACKER_PIECE_PROBE` 覆盖，
+    /// 默认取环境变量、缺省 8（带宽可控：8 × 4MiB ≈ 32MB/轮/5min）。
+    pub(crate) piece_probe_budget: std::sync::atomic::AtomicUsize,
 }
 
 /// Prometheus 指标（/metrics，需 ANN_METRICS_TOKEN）

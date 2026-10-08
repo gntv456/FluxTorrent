@@ -118,8 +118,7 @@ async fn ensure_group(redis: &mut ConnectionManager, cfg: &GroupCfg) {
         .map(|v| format!("{v:?}").contains(cfg.group))
         .unwrap_or(false);
     if exists {
-        super::group_housekeeping::reap_dead_consumers(redis, cfg)
-            .await;
+        super::group_housekeeping::reap_dead_consumers(redis, cfg).await;
         return;
     }
     // 起点：旧游标（有则从它之后继续）否则 $（只消费新事件——历史事件在
@@ -225,4 +224,3 @@ pub(crate) async fn reclaim_stale(
         }
     }
 }
-

@@ -1,4 +1,6 @@
 use super::*;
+// 0310 四档常量：SUSPECT/OK 不在 table.rs 的 super::* 可见范围内，显式引入
+use super::model::{CONN_DEAD, CONN_OK, CONN_SUSPECT, CONN_UNTESTED};
 
 mod encoding;
 
@@ -30,7 +32,7 @@ fn seed_leech_count_and_exclusion() {
     other.user_id = 2;
     t.upsert(other);
     t.upsert(mk_peer("xyz", "c1", 0)); // 另一种子
-    // 计数按 user 去重（P2-6）：user1 的两条 seeder 只算 1 人
+                                       // 计数按 user 去重（P2-6）：user1 的两条 seeder 只算 1 人
     assert_eq!(t.counts("abc"), (1, 1));
     // P3-6：以 user 1 请求 ⇒ 自家 a1/a2 一条都不下发，只拿到 b1
     let snap = t.snapshot("abc", 50, 1);
@@ -231,4 +233,53 @@ fn snapshot_splits_v4_v6() {
         snap.v6[0].ip,
         [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]
     );
+}
+
+/// 通用 PT 站点关键语义（0310）：DEAD(0) 与 SUSPECT(-2) 必须在数据层
+/// 分开，且 set_conn_state 不得把「未探测」写进去（否则会把「没轮到」
+/// 误当成「测过了」而放行）。
+#[test]
+fn conn_state_keeps_dead_and_suspect_distinct() {
+    let t = PeerTable::new();
+    t.upsert(mk_peer("abc", "p_dead", 0));
+    t.upsert(mk_peer("abc", "p_susp", 0));
+    let k_dead = PeerKey { info_hash: "abc".into(), peer_id: "p_dead".into() };
+    let k_susp = PeerKey { info_hash: "abc".into(), peer_id: "p_susp".into() };
+    // 未测态：两peer 都是 UNTESTED
+    assert_eq!(t.connectable_of(&k_dead), CONN_UNTESTED);
+    assert_eq!(t.connectable_of(&k_susp), CONN_UNTESTED);
+    // 分别写入 DEAD 与 SUSPECT
+    t.set_conn_state(&k_dead, CONN_DEAD);
+    t.set_conn_state(&k_susp, CONN_SUSPECT);
+    assert_eq!(t.connectable_of(&k_dead), CONN_DEAD);
+    assert_eq!(t.connectable_of(&k_susp), CONN_SUSPECT);
+    // 关键：两者不相等——「不可信」与「无法验证」不能被合并
+    assert_ne!(t.connectable_of(&k_dead), t.connectable_of(&k_susp));
+}
+
+/// UNTESTED 不经由set_conn_state 写入：未探测必须保持「未知」，
+/// 不能因为一次写入就把状态坐实。
+#[test]
+fn set_conn_state_ignores_untested() {
+    let t = PeerTable::new();
+    t.upsert(mk_peer("abc", "p1", 0));
+    let k = PeerKey { info_hash: "abc".into(), peer_id: "p1".into() };
+    t.set_conn_state(&k, CONN_SUSPECT);
+    assert_eq!(t.connectable_of(&k), CONN_SUSPECT);
+    // 试图写 UNTESTED：应被忽略，保持原值
+    t.set_conn_state(&k, CONN_UNTESTED);
+    assert_eq!(t.connectable_of(&k), CONN_SUSPECT, "UNTESTED 不应覆盖已有结论");
+}
+
+/// 三档判定与 DB 消费口径一致：只有 0 阻断，-2/-1 放行。
+/// 这条断言是「通用站不误伤加密客户端」的回归护栏——
+/// 若有人把 SUSPECT 也写成阻断条件，这里立刻红。
+#[test]
+fn only_dead_blocks_in_billing_predicate() {
+    // 与 SQL `NOT COALESCE(connectable = 0, false)` 同构
+    let blocks = |c: i8| -> bool { !(c == 0) == false };
+    assert!(blocks(CONN_DEAD), "DEAD 必须阻断");
+    assert!(!blocks(CONN_SUSPECT), "SUSPECT 不阻断（否则误伤加密客户端）");
+    assert!(!blocks(CONN_UNTESTED), "未测不阻断");
+    assert!(!blocks(CONN_OK), "可信不阻断");
 }

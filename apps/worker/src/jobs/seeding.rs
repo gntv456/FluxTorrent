@@ -68,6 +68,9 @@ pub async fn seeding_reward(
                 JOIN snatches s ON s.user_id = u.id AND s.seeding
                 JOIN torrents t ON t.id = s.torrent_id
                   AND s.last_port > 0
+                  -- 口径（0310）：只有 0(DEAD，实锤不可信) 阻断；
+                  -- -2(SUSPECT，无法验证，如仅加密连接客户端)与 -1(未测)
+                  -- 同等放行——通用站不可误伤加密客户端用户。
                   AND NOT COALESCE(s.connectable = 0, false)
                 CROSS JOIN p
                 WHERE u.status < 2
@@ -77,6 +80,7 @@ pub async fn seeding_reward(
                       WHERE c.user_id = u.id AND c.resolved_at IS NULL
                         AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%'
                              OR c.agent LIKE 'reset:%'
+                             OR c.agent LIKE 'corr:%'
                              OR c.agent = 'connectable')
                       LIMIT 1
                   )

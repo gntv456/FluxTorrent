@@ -92,11 +92,6 @@ impl TrackerState {
             .unwrap_or_default()
     }
 
-    /// 该种子的发布者与审核态（待审种子准入策略用）。
-    pub(crate) fn swarm_owner(&self, info_hash: &str) -> Option<(i64, i16)> {
-        guard_store::meta_of(info_hash).map(|m| (m.owner_id, m.approval))
-    }
-
     /// ip_bans 命中 → 封禁理由。精确表之外再查段表（审计 10-07 P2）。
     pub fn ip_banned(&self, ip: &str) -> Option<String> {
         if let Some(r) = self.guard_read().ip_bans.get(ip).cloned() {
