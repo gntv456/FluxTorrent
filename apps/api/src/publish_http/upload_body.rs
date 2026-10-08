@@ -14,6 +14,7 @@ use sqlx::PgPool;
 
 use crate::errors::{DomainError, DomainResult};
 
+use super::upload_artifacts as artifacts;
 use super::upload_logcheck as logcheck;
 use super::upload_precheck as precheck;
 
@@ -30,6 +31,8 @@ pub(super) struct UploadBody {
     pub logs: Vec<logcheck::LogPart>,
     /// 本次生效的日志闸门（含站型）——读一次，判定与落库共用
     pub logcheck: logcheck::Policy,
+    /// 种子工件 part（0323：校验和清单/更新日志，顺序即提交序）
+    pub artifacts: Vec<artifacts::ArtifactPart>,
 }
 
 pub(super) async fn read_body(
@@ -47,6 +50,7 @@ pub(super) async fn read_body(
     let mut nfo_bytes: Option<Bytes> = None;
     let mut mp_fields: Vec<(String, String)> = Vec::new();
     let mut logs: Vec<logcheck::LogPart> = Vec::new();
+    let mut arts: Vec<artifacts::ArtifactPart> = Vec::new();
     while let Some(item) = payload.next().await {
         let mut field =
             item.map_err(|e| DomainError::Validation(e.to_string()))?;
@@ -71,6 +75,20 @@ pub(super) async fn read_body(
             Some(other) => {
                 let is_log =
                     matches!(other, "log" | "logs") || is_log_filename(&ffile);
+                // 种子工件（0323）：checksums/changelog/license 文本 part。
+                // name=artifact 或文件名命中工件后缀都认领；超量拒收。
+                let is_artifact = matches!(other, "artifact" | "artifacts")
+                    || matches!(
+                        ffile.as_deref().map(|f| {
+                            f.to_ascii_lowercase()
+                        }),
+                        Some(f)
+                        if f.ends_with(".sfv")
+                            || f.ends_with(".md5")
+                            || f.ends_with(".sha1")
+                            || f.ends_with(".sha256")
+                            || f.contains("changelog")
+                    );
                 if is_log && collect_logs {
                     let bytes =
                         drain(&mut field, policy.log_cap, "日志").await?;
@@ -84,6 +102,30 @@ pub(super) async fn read_body(
                 } else if is_log {
                     // 闸门关闭：读完丢弃（不消费会把后续 field 留在半截流上）
                     drain(&mut field, usize::MAX, "日志").await?;
+                } else if is_artifact {
+                    if arts.len() >= artifacts::ARTIFACT_MAX_COUNT {
+                        return Err(DomainError::Validation(format!(
+                            "工件至多 {} 件（校验和/更新日志等）",
+                            artifacts::ARTIFACT_MAX_COUNT
+                        )));
+                    }
+                    let buf = drain(
+                        &mut field,
+                        artifacts::ARTIFACT_MAX,
+                        "工件",
+                    )
+                    .await?;
+                    let text = String::from_utf8_lossy(&buf).into_owned();
+                    let fname = ffile
+                        .filter(|f| !f.trim().is_empty())
+                        .unwrap_or_else(|| {
+                            format!("artifact-{}", arts.len() + 1)
+                        });
+                    arts.push(artifacts::ArtifactPart {
+                        kind: artifacts::infer_kind(&fname).to_string(),
+                        filename: fname,
+                        body: text,
+                    });
                 } else {
                     let buf = drain(&mut field, FIELD_MAX, "发种字段").await?;
                     let text = String::from_utf8_lossy(&buf).into_owned();
@@ -104,6 +146,7 @@ pub(super) async fn read_body(
         fields: mp_fields,
         logs,
         logcheck: policy,
+        artifacts: arts,
     })
 }
 

@@ -31,6 +31,10 @@ struct TorrentAggregate {
     tags: serde_json::Value,
     /// 抓轨日志清单（0312；正文不进首屏，点开走 /torrents/{id}/logs/{ordinal}）
     logs: Vec<torrents::LogRow>,
+    /// 种子工件清单（0323 game/software）：校验和/更新日志（不带正文）
+    artifacts: Vec<serde_json::Value>,
+    /// 更新链（0323）：挂在本种下的更新包（GGn GameDOX 语义）
+    artifact_children: Vec<serde_json::Value>,
 }
 
 /// 共享段缓存键：reveal 影响 owner_name 口径，必须分桶。
@@ -92,6 +96,12 @@ async fn torrent_aggregate(
     let nfo_f = torrents::get_nfo(&state.repo.db, id, viewer);
     let tags_f = torrents::list_tags(&state.repo.db, id, viewer);
     let logs_f = torrents::list_logs(&state.repo.db, id);
+    let arts_f = crate::publish_http::list_artifacts_for_detail(
+        &state.repo.db, id,
+    );
+    let arts_children_f = crate::publish_http::list_artifact_children(
+        &state.repo.db, id,
+    );
 
     // torrent/detail 失败才整体短路（种子不存在 → 404）；files/nfo/tags
     // 为纯静态块降级为空。detail/thanks 带 viewer 态，留在个人段实时算。
@@ -105,8 +115,11 @@ async fn torrent_aggregate(
             tags_f.await.unwrap_or_else(|_| empty())
         },
         async { logs_f.await.unwrap_or_default() },
+        async { arts_f.await },
+        async { arts_children_f.await },
     );
-    let (torrent_r, detail_r, files, nfo, tags, logs) = joined;
+    let (torrent_r, detail_r, files, nfo, tags, logs, artifacts, artifact_children) =
+        joined;
     // 只有对外可见的种子才允许进共享缓存（见上方命中判定）
     let cacheable = matches!(&torrent_r, Ok(t) if t.approval_status == 1);
     let torrent = torrent_r?;
@@ -120,6 +133,8 @@ async fn torrent_aggregate(
         nfo,
         tags,
         logs,
+        artifacts,
+        artifact_children,
     };
     if cacheable {
         if let Ok(json) = serde_json::to_string(&shared) {
@@ -146,6 +161,8 @@ struct TorrentAggregateShared {
     nfo: Option<String>,
     tags: serde_json::Value,
     logs: Vec<torrents::LogRow>,
+    artifacts: Vec<serde_json::Value>,
+    artifact_children: Vec<serde_json::Value>,
 }
 
 /// 个人段：thanks（是否已感谢带 viewer 态）+ comments（点赞 viewer 态，0155）
@@ -193,5 +210,7 @@ async fn assemble(
         nfo: shared.nfo,
         tags: shared.tags,
         logs: shared.logs,
+        artifacts: shared.artifacts,
+        artifact_children: shared.artifact_children,
     })
 }

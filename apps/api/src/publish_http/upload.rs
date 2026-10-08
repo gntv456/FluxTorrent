@@ -64,6 +64,14 @@ async fn upload_core(
     // 体积上限、multipart 读取与元数据装配都在 upload_body.rs
     let body =
         super::upload_body::read_body(&state.repo.db, &mut payload).await?;
+    // 更新链挂链（0323）：parent_torrent_id 是自由字段，不进 UploadForm
+    // 对外契约——发种成功前先抓出来（build_form 会消费 body.fields）
+    let mp_artifact_parent: Option<String> = body
+        .fields
+        .iter()
+        .find(|(k, _)| k == "parent_torrent_id")
+        .map(|(_, v)| v.trim().to_string())
+        .filter(|v| !v.is_empty());
     let form = super::upload_fields::build_form(query_string, body.fields)?;
 
     let parsed = crate::bencode::parse_torrent(&body.torrent)
@@ -339,6 +347,18 @@ async fn upload_core(
     )
     .await?;
     super::upload_logcheck::store(&state.repo.db, id, &rip).await?;
+    // 种子工件（0323）：校验和/更新日志落库；更新链 parent 走表单字段
+    // parent_torrent_id（文本通道自由字段，上面在 build_form 消费前抓出）
+    let artifact_parent: Option<i64> = mp_artifact_parent
+        .as_deref()
+        .and_then(|v| v.parse().ok());
+    super::upload_artifacts::store(
+        &state.repo.db,
+        id,
+        artifact_parent,
+        &body.artifacts,
+    )
+    .await?;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
     state.plugins.dispatch_upload(state.get_ref(), id, auth.id);
 
