@@ -168,6 +168,26 @@ pub(super) async fn offer_promote(
     let Some(tid) = tid else {
         return Err(DomainError::NotFound(body.offer_id));
     };
+    // 审计 2026-10-08 P2-5：转正是第二条「过审」入口，旧版绕过审核台的
+    // 全部口径（自审拦截/操作日志），这里是补齐而非收走——offers 候选
+    // 本身已过社区投票，转正仍应保留。写 approved_at 是它一直做对的那个。
+    let owner_id: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(tid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
+    if owner_id == Some(auth.id) {
+        // 自审回滚：offers 行还没被其他动作动过，直接还原
+        let _ = sqlx::query("UPDATE offers SET promoted = false WHERE id = $1")
+            .bind(body.offer_id)
+            .execute(&state.repo.db)
+            .await;
+        return Err(DomainError::Validation(
+            "不能把自己的候选转正（利益冲突）".into(),
+        ));
+    }
     sqlx::query(
         "UPDATE torrents SET approval_status = 1, \
      approved_at = now() WHERE id = $1",
@@ -193,6 +213,23 @@ pub(super) async fn offer_promote(
         (auth.id, auth.class_id as i16),
     )
     .await?;
+    // 与审核台 decide 同口径：操作时间线 + 过审副作用（自动促销/组订阅推送）
+    let _ = sqlx::query(
+        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
+         VALUES ($1, $2, 'offer_promote', $3)",
+    )
+    .bind(tid)
+    .bind(auth.id)
+    .bind(serde_json::json!({ "offer_id": body.offer_id }).to_string())
+    .execute(&state.repo.db)
+    .await;
+    crate::admin_http::review_side_effects::apply_approval_side_effects(
+        &state.repo.db,
+        tid,
+        auth.id,
+    )
+    .await;
+    crate::http::bump_guard_ver(&state).await;
     state
         .repo
         .audit(Some(auth.id), "offer_promote", Some(tid))

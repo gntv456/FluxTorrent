@@ -72,6 +72,11 @@ pub async fn edit_torrent(
             edition_id = COALESCE($9, edition_id),
             imdb_id = COALESCE($10, imdb_id),
             approval_status = CASE WHEN $11::bool THEN approval_status ELSE 0 END,
+            // 回退待审时同步清 approved_at（P1-1 对齐）：过审时间戳只属于
+            // approval_status=1 的行，否则 worker 的泄露检测会拿旧时间戳
+            // 对新一轮审核周期误判。
+            approved_at = CASE WHEN $11::bool OR approval_status <> 1
+                THEN approved_at ELSE NULL END,
             media_info = CASE
                 WHEN $12::text IS NULL AND $13::text IS NULL THEN media_info
                 ELSE COALESCE(media_info, '{}'::jsonb)
@@ -180,6 +185,7 @@ pub async fn delete_torrent(
 pub async fn restore_torrent(db: &PgPool, torrent_id: i64) -> DomainResult<()> {
     let n = sqlx::query(
         "UPDATE torrents SET approval_status = 0, \
+         deny_reason_id = NULL, deny_note = NULL, \
          mtime = now() WHERE id = $1 AND approval_status = 3",
     )
     .bind(torrent_id)

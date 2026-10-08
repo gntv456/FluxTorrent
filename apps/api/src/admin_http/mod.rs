@@ -106,8 +106,8 @@ mod review;
 // 审核台批量裁决（0286）：单条 decide 之外的吞吐口，副作用与 decide 同源
 mod review_batch;
 mod review_notify;
-// 过审副作用（自动促销 + 组订阅）：单条与批量裁决共用
-mod review_side_effects;
+// 过审副作用（自动促销 + 组订阅）：单条与批量裁决共用；offers 转正也走同一份（0306）
+pub(crate) mod review_side_effects;
 mod roles;
 mod site;
 mod subtitle_awards;

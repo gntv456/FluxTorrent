@@ -3018,6 +3018,13 @@ const zhTwBase: Omit<
     queueWaiting: "已等 {t}",
     queueOpen: "看詳情",
     denyPickNone: "手填理由",
+    postpone: "暫緩",
+    postponeReason: "暫緩理由（如：等上傳者補充mediainfo）：",
+    postponed: "已暫緩 #{id}",
+    batchApprove: "本頁全過",
+    batchReject: "本頁全拒",
+    batchConfirm: "將批次處理 {n} 條（{verdict}），自審條目會自動跳過。確定？",
+    batchDone: "批次處理 {n} 條，跳過 {skipped} 條",
 
     resolve: "標記已處理",
     resolved: "已處理舉報 #{id}",

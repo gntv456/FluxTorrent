@@ -86,17 +86,17 @@ fn parse_ban_target(raw: &str) -> Result<String, DomainError> {
         .map_err(|_| DomainError::Validation("CIDR 前缀长度无效".into()))?;
     let max = if ip.is_ipv4() { 32 } else { 128 };
     if bits == 0 || bits > max {
-        return Err(DomainError::Validation(
-            "CIDR 前缀长度无效".into(),
-        ));
+        return Err(DomainError::Validation("CIDR 前缀长度无效".into()));
     }
     // 掩码归一：10.9.8.77/24 → 10.9.8.0/24，避免同段以不同写法重复登记
     let norm = match ip {
         std::net::IpAddr::V4(v4) => {
-            let mask =
-                if bits == 32 { !0u32 } else { !0u32 << (32 - bits) };
-            let net: std::net::Ipv4Addr =
-                (u32::from(v4) & mask).into();
+            let mask = if bits == 32 {
+                !0u32
+            } else {
+                !0u32 << (32 - bits)
+            };
+            let net: std::net::Ipv4Addr = (u32::from(v4) & mask).into();
             std::net::IpAddr::V4(net)
         }
         std::net::IpAddr::V6(v6) => {
@@ -105,8 +105,7 @@ fn parse_ban_target(raw: &str) -> Result<String, DomainError> {
             } else {
                 !0u128 << (128 - bits)
             };
-            let net: std::net::Ipv6Addr =
-                (u128::from(v6) & mask).into();
+            let net: std::net::Ipv6Addr = (u128::from(v6) & mask).into();
             std::net::IpAddr::V6(net)
         }
     };
@@ -150,10 +149,7 @@ mod tests {
     #[test]
     fn single_ip_still_works() {
         assert_eq!(parse_ban_target(" 8.8.8.8 ").unwrap(), "8.8.8.8");
-        assert_eq!(
-            parse_ban_target("2001:DB8::1").unwrap(),
-            "2001:db8::1"
-        );
+        assert_eq!(parse_ban_target("2001:DB8::1").unwrap(), "2001:db8::1");
     }
 
     #[test]
@@ -171,8 +167,16 @@ mod tests {
     #[test]
     fn junk_and_whole_internet_are_rejected() {
         for bad in [
-            "", "  ", "not-an-ip", "10.9.8.0/", "10.9.8.0/33",
-            "10.9.8.0/0", "0.0.0.0/0", "::/0", "1.2.3/24", "10.9.8.0/abc",
+            "",
+            "  ",
+            "not-an-ip",
+            "10.9.8.0/",
+            "10.9.8.0/33",
+            "10.9.8.0/0",
+            "0.0.0.0/0",
+            "::/0",
+            "1.2.3/24",
+            "10.9.8.0/abc",
         ] {
             assert!(
                 parse_ban_target(bad).is_err(),

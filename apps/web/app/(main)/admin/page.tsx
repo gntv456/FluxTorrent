@@ -183,6 +183,55 @@ export default function AdminPage() {
     }
   }
 
+  /** 0306：暂缓（证据不足挂起）——后端 /admin/reviews/postpone 早已就绪，此前无 UI 入口 */
+  async function postpone(torrentId: number) {
+    const reason = prompt(a.postponeReason ?? "postpone-reason") ?? "";
+    try {
+      await api.post("/api/v1/admin/reviews/postpone", {
+        torrent_id: torrentId,
+        reason,
+      });
+      setMsg(fmt(a.postponed, { id: torrentId }));
+      load();
+      rq.reload().catch(() => {});
+    } catch (e) {
+      setMsg(errText(e, a, dict));
+    }
+  }
+
+  /** 0306：批量裁决本页待审（自审条目后端逐条跳过并在回执里说明原因） */
+  async function batchDecide(ids: number[], approve: boolean) {
+    const useDict = !approve && rq.reasonId !== null;
+    const reason = approve || useDict ? "" : (prompt(a.rejectReason) ?? "");
+    if (!approve && !useDict && !reason) return;
+    const okay = window.confirm(
+      fmt(a.batchConfirm, { n: ids.length, verdict: approve ? a.approve : a.reject }),
+    );
+    if (!okay) return;
+    try {
+      const r = await api.post<{
+        handled: number;
+        requested: number;
+        skipped: { id: number; why: string }[];
+      }>("/api/v1/admin/reviews/batch", {
+        torrent_ids: ids,
+        approve,
+        reason,
+        ...(useDict ? { deny_reason_id: rq.reasonId } : {}),
+      });
+      setMsg(
+        fmt(a.batchDone, {
+          n: r.handled,
+          skipped: r.skipped?.length ?? 0,
+        }),
+      );
+      load();
+      rq.reload().catch(() => {});
+    } catch (e) {
+      setMsg(errText(e, a, dict));
+    }
+  }
+
   async function handleAppeal(id: number, accept: boolean) {
     const note =
       prompt(
@@ -246,6 +295,8 @@ export default function AdminPage() {
             denyReasonId={rq.reasonId}
             onDenyReason={rq.setReasonId}
             onDecide={decide}
+            onPostpone={postpone}
+            onBatch={batchDecide}
           />
         );
 

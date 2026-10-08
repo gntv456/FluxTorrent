@@ -3068,6 +3068,14 @@ const enBase: Omit<
     queueWaiting: "waiting {t}",
     queueOpen: "Open",
     denyPickNone: "Type a reason",
+    postpone: "Hold",
+    postponeReason: "Hold reason (e.g. waiting for mediainfo):",
+    postponed: "Held #{id}",
+    batchApprove: "Approve page",
+    batchReject: "Reject page",
+    batchConfirm:
+      "Batch-process {n} items ({verdict}); own uploads are skipped. Continue?",
+    batchDone: "Processed {n}, skipped {skipped}",
 
     resolve: "Mark resolved",
     resolved: "Resolved report #{id}",

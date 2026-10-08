@@ -271,6 +271,8 @@ async fn restore_torrent(
         .repo
         .audit(Some(auth.id), "torrent.restore", Some(id))
         .await;
+    // 恢复回待审（0）重新进 tracker 白名单，同样立即刷新（P2-2）
+    crate::http::bump_guard_ver(&state).await;
     super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({ "restored": id })))
 }
@@ -303,8 +305,27 @@ async fn resubmit_torrent(
             "仅被拒种子可重提（当前状态不符）".into(),
         ));
     }
+    // 审计 2026-10-08 P2-1：重提此前不要求任何实际修改，被拒种可原样重提
+    // 反复占用审核队列。加 10 分钟冷却（以 mtime 计，编辑/裁决都会刷新它），
+    // 留出「看完拒因→修改→重提」的正常节奏，只挡机械刷队列。
+    let mtime: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT mtime FROM torrents WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
+    if let Some(mt) = mtime {
+        if chrono::Utc::now() - mt < chrono::Duration::minutes(10) {
+            return Err(DomainError::Validation(
+                "重提冷却中（被拒后请至少 10 分钟后再试，期间可修改内容）"
+                    .into(),
+            ));
+        }
+    }
     let n = sqlx::query(
-        "UPDATE torrents SET approval_status = 0, deny_reason_id = NULL, deny_note = NULL \
+        "UPDATE torrents SET approval_status = 0, \
+         approved_at = NULL, deny_reason_id = NULL, deny_note = NULL \
          WHERE id = $1 AND approval_status = 2",
     )
     .bind(id)
@@ -342,6 +363,9 @@ async fn delete_torrent(
         .repo
         .audit(Some(auth.id), "torrent.delete", Some(id))
         .await;
+    // 软删把审核态翻成 3，tracker 白名单（只载 0/1）须立即刷新，
+    // 否则一个 guard 周期内被删种仍可 announce（P2-2）
+    crate::http::bump_guard_ver(&state).await;
     super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
