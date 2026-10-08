@@ -94,22 +94,34 @@ export function StaffCatsPanel({
                   disabled={busy}
                   title={pk.description ?? ""}
                   onClick={() => {
-                    // U2 §8.2 切换向导：先 diff 预览（旧值→新值），确认后才 apply
+                    // U2 §8.2 切换向导：先 diff 预览（旧值→新值），确认后才 apply。
+                    // 0317 H2：预览含分类段（改名带在用种子数/新增/失活），
+                    // 站长在点应用前就能看到分类语义将被如何动。
                     void (async () => {
                       let lines: string[] = [];
                       try {
                         const d = await api.post<{
                           changes: {
                             key: string;
-                            old: string;
-                            new: string;
+                            old?: string;
+                            new?: string;
+                            torrents?: number;
                           }[];
                         }>("/api/v1/admin/site-type-packs/diff", {
                           code: pk.code,
                         });
-                        lines = d.changes.map(
-                          (c) => `${c.key}: ${c.old} → ${c.new}`,
-                        );
+                        lines = d.changes.map((c) => {
+                          if (c.key === "category_rename") {
+                            return `${c.old} → ${c.new}（在用种子 ${c.torrents ?? 0} 枚，分类将改名）`;
+                          }
+                          if (c.key === "category_new") {
+                            return `新增分类：${c.new}`;
+                          }
+                          if (c.key === "category_inactive") {
+                            return `${c.old}（在用种子 ${c.torrents ?? 0} 枚，本包不含——将保留但不再由包维护）`;
+                          }
+                          return `${c.key}: ${c.old ?? "(未设置)"} → ${c.new}`;
+                        });
                       } catch {
                         /* diff 失败不阻塞——回落旧确认文案 */
                       }

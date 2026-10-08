@@ -174,10 +174,13 @@ pub async fn site_pack_rollback(
         super::pack_terms::apply_pack_terms(&state.repo.db, &pack).await?;
     crate::cfgver::bump(state.get_ref(), "terms").await;
     // 4) 清理本次 apply 新建、快照里没有的分类：被引用（种子/促销/愿望单等外键
-    //    拒绝）或有子级的一律保留——宁残留不破坏
+    //    拒绝）或有子级的一律保留——宁残留不破坏。
+    //    0317 起优先按 key 对（快照分类带 key；id 仅对老快照回落）
     let stale: Vec<i32> = sqlx::query_scalar(
         "SELECT c.id FROM categories c WHERE NOT EXISTS (SELECT 1 FROM \
-         jsonb_array_elements($1::jsonb) e WHERE (e->>'id')::int = c.id)",
+         jsonb_array_elements($1::jsonb) e WHERE \
+           (e->>'key' IS NOT NULL AND e->>'key' = c.key) \
+           OR (e->>'key' IS NULL AND (e->>'id')::int = c.id))",
     )
     .bind(pack.categories.to_string())
     .fetch_all(&state.repo.db)

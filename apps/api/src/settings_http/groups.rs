@@ -187,6 +187,22 @@ pub(super) async fn settings_groups_put(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let mut changed: Vec<String> = Vec::new();
     for (name, new) in &pending {
+        // 模块开关手工覆盖位（0318 H4）：设置面改过的 module_* 在此登记，
+        // 之后的站型包 apply 跳过这些键——站长手工状态不被切站型复位
+        if let Some(mk) = name.strip_prefix("module_") {
+            if !mk.is_empty() {
+                sqlx::query(
+                    "INSERT INTO pack_module_overrides (module_key, set_by) \
+                     VALUES ($1, $2) ON CONFLICT (module_key) DO UPDATE \
+                     SET set_by = EXCLUDED.set_by, set_at = now()",
+                )
+                .bind(mk)
+                .bind(auth.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            }
+        }
         // 行锁 + 以库中现值为准（并发下避免覆盖他人修改）
         let current: Option<String> = sqlx::query_scalar(
             "SELECT value FROM site_settings WHERE name = $1 FOR UPDATE",

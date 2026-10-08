@@ -177,6 +177,10 @@ pub(super) async fn collect(db: &PgPool) -> DomainResult<PackSnapshot> {
 /// 站型包 apply 的 diff 预览（U2 §8.2 / G21 回看）：apply 将改动的键旧值→新值，
 /// 不落库。向导端点与 apply 台账共用同一实现，保证「预览所见 = 记录所存」。
 /// 返回 (未变动项数, changes)。
+///
+/// H2（0317）：除 site_type/site_name/module_* 外还含**分类段**——
+/// 改名（同 key/同 id 命中且名字变化，带在用种子数）/ 新增 / 失活
+/// （现存但包未声明的分类）。分类语义偷换此前在预览里完全不可见。
 pub(super) async fn diff_preview(
     db: &PgPool,
     pack: &SiteTypePack,
@@ -197,7 +201,10 @@ pub(super) async fn diff_preview(
         }
     };
     push("site_type", cur.get("site_type"), &pack.code);
-    push("site_name", cur.get("site_name"), &pack.brand);
+    // H3 对齐：brand 为空时 apply 不再写 site_name，预览同样不虚报「站名将被清空」
+    if !pack.brand.trim().is_empty() {
+        push("site_name", cur.get("site_name"), pack.brand.trim());
+    }
     if let Some(mods) = pack.modules.as_object() {
         for (k, v) in mods {
             let setting = format!("module_{k}");
@@ -209,11 +216,74 @@ pub(super) async fn diff_preview(
             push(&setting, cur.get(&setting), new);
         }
     }
+    // ---- 分类段（H2）----
+    let cat_rows: Vec<(i32, Option<String>, String, i64)> = sqlx::query_as(
+        "SELECT c.id, c.key, c.name, (SELECT count(*) FROM torrents t \
+         WHERE t.category_id = c.id) FROM categories c",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    if let Some(cats) = pack.categories.as_array() {
+        let declared_keys: std::collections::HashSet<&str> = cats
+            .iter()
+            .filter_map(|c| c.get("key").and_then(Value::as_str))
+            .collect();
+        let declared_ids: std::collections::HashSet<i64> = cats
+            .iter()
+            .filter_map(|c| c.get("id").and_then(Value::as_i64))
+            .collect();
+        for c in cats {
+            let Some(new_name) = c.get("name").and_then(Value::as_str) else {
+                continue;
+            };
+            let pkey = c.get("key").and_then(Value::as_str);
+            let pid = c.get("id").and_then(Value::as_i64);
+            let hit = cat_rows.iter().find(|(id, k, _, _)| {
+                pkey.is_some_and(|pk| k.as_deref() == Some(pk))
+                    || (pkey.is_none()
+                        && pid.is_some_and(|pi| *id as i64 == pi))
+            });
+            match hit {
+                Some((_, _, old_name, torrents)) if old_name != new_name => {
+                    changes.push(json!({
+                        "key": "category_rename",
+                        "old": old_name,
+                        "new": new_name,
+                        "torrents": torrents,
+                        "cat_key": pkey,
+                    }));
+                }
+                None => {
+                    changes.push(json!({
+                        "key": "category_new",
+                        "new": new_name,
+                        "cat_key": pkey,
+                    }));
+                }
+                _ => {}
+            }
+        }
+        // 失活：现存且在用，但包没声明（key 载荷按 key 对、无 key 载荷按 id 对）
+        for (id, k, name, torrents) in &cat_rows {
+            let declared = k.as_deref().is_some_and(|kv| declared_keys.contains(kv))
+                || (k.is_none()
+                    && declared_ids.contains(&(*id as i64)));
+            if !declared && *torrents > 0 {
+                changes.push(json!({
+                    "key": "category_inactive",
+                    "old": name,
+                    "torrents": torrents,
+                    "cat_key": k,
+                }));
+            }
+        }
+    }
     Ok((cur.len().saturating_sub(changes.len()), changes))
 }
 
-/// 分类树载荷（G20 另存 / G21 快照共用）：带层级/排序/图标/分类色，且**父先于子**——
-/// parent_id 外键在 INSERT 当场校验，顺序错会让子分类静默落空。
+/// 分类树载荷（G20 另存 / G21 快照共用）：带 key/层级/排序/图标/分类色，且
+/// **父先于子**——parent_id 外键在 INSERT 当场校验，顺序错会让子分类静默落空。
 pub(super) async fn collect_categories(
     db: &PgPool,
 ) -> DomainResult<Vec<Value>> {
@@ -229,11 +299,21 @@ pub(super) async fn collect_categories(
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // key（0317）单独查一次：老库迁移中途（表已有列）与 query_as 元组解耦，
+    // 避免六元组形状变更波及快照/另存两条链路的既有契约
+    let keys: std::collections::HashMap<i32, String> =
+        sqlx::query_as("SELECT id, key FROM categories WHERE key IS NOT NULL")
+            .fetch_all(db)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
     Ok(rows
         .into_iter()
         .map(|(id, name, icon, parent, sort, bg)| {
             json!({
                 "id": id,
+                "key": keys.get(&id),
                 "name": name,
                 "icon_key": icon,
                 "parent_id": parent,
