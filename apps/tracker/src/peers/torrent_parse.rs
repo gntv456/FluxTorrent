@@ -10,19 +10,21 @@
 //! 本身成为攻击面（tracker 处理的是站内已注册的种子文件，但解析仍按
 //! 「遇到无法识别的结构立即返回 None、绝不 panic」写）。
 //!
-//! 只取**第一个** piece 的哈希：抽查只需验证一个 piece 即可判定真伪，
-//! 全量哈希列表（动辄数千个）对内存无益。
+//! 取**全部** piece 哈希（2026-10-08 开源反作弊收口）：旧版只取第一个，
+//! 抽查恒打 piece 0——作弊者持有一块真 piece 0 即可过检。全量哈希让
+//! 抽查位置可随机（见 bt_probe::probe_piece_hash）。内存口径：4096 条
+//! 缓存上限 × 每条 hashes（大种子数千 piece × 20B ≈ 百 KB 级），可接受。
 
 /// 从 .torrent raw 字节里抽出 piece 抽查所需的最小信息。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PieceProbe {
     /// `info.piece length`（BEP3 要求是 2 的幂且 >0）
     pub(crate) piece_len: u32,
-    /// `info.pieces` 的**第一个** 20 字节 SHA-1
-    pub(crate) first_hash: [u8; 20],
+    /// `info.pieces` 的全部 20 字节 SHA-1（抽查随机选一）
+    pub(crate) hashes: Vec<[u8; 20]>,
 }
 
-/// 从 .torrent raw 中解析 piece_length 与首个 piece 哈希。
+/// 从 .torrent raw 中解析 piece_length 与 piece 哈希列表。
 /// 结构不符/截断/字段缺失一律 `None`（保守：拿不到就不做 piece 抽查，
 /// 退回握手+bitfield 判定，绝不因解析失败把真做种者误杀）。
 pub(crate) fn parse_piece_probe(raw: &[u8]) -> Option<PieceProbe> {
@@ -33,7 +35,7 @@ pub(crate) fn parse_piece_probe(raw: &[u8]) -> Option<PieceProbe> {
     }
     p.i += 1; // 吃掉 'd'
     let mut piece_len: Option<u32> = None;
-    let mut first_hash: Option<[u8; 20]> = None;
+    let mut hashes: Option<Vec<[u8; 20]>> = None;
     loop {
         p.skip_ws();
         if p.peek()? == b'e' {
@@ -43,13 +45,13 @@ pub(crate) fn parse_piece_probe(raw: &[u8]) -> Option<PieceProbe> {
         let key = p.dict_key()?;
         if key.as_slice() == b"info" {
             // info 是嵌套 dict，递归找 piece length / pieces
-            let (pl, fh) = p.parse_info_dict()?;
+            let (pl, hs) = p.parse_info_dict()?;
             piece_len = pl;
-            first_hash = fh;
+            hashes = hs;
             // 已拿到所需信息就不再解析外层剩余字段（announce/comment/…）：
             // 既省掉无谓的容错分支（那些字段的 skip 一旦遇到畸形结构会
             // 让整个函数假失败），也符合「只取两个字段」的最小解析目标。
-            if piece_len.is_some() && first_hash.is_some() {
+            if piece_len.is_some() && hashes.is_some() {
                 break;
             }
         } else {
@@ -58,7 +60,7 @@ pub(crate) fn parse_piece_probe(raw: &[u8]) -> Option<PieceProbe> {
     }
     Some(PieceProbe {
         piece_len: piece_len?,
-        first_hash: first_hash?,
+        hashes: hashes?,
     })
 }
 
@@ -178,14 +180,16 @@ impl<'a> Parser<'a> {
         }
     }
     /// 解析 info 子 dict，找 piece length 与首个 pieces 哈希
-    fn parse_info_dict(&mut self) -> Option<(Option<u32>, Option<[u8; 20]>)> {
+    fn parse_info_dict(
+        &mut self,
+    ) -> Option<(Option<u32>, Option<Vec<[u8; 20]>>)> {
         self.skip_ws();
         if self.peek()? != b'd' {
             return None;
         }
         self.i += 1;
         let mut piece_len = None;
-        let mut first_hash = None;
+        let mut hashes: Option<Vec<[u8; 20]>> = None;
         loop {
             self.skip_ws();
             if self.peek()? == b'e' {
@@ -214,29 +218,33 @@ impl<'a> Parser<'a> {
                     }
                 }
                 b"pieces" => {
-                    // string：只取前 20 字节
+                    // string：全部 20 字节 SHA-1 逐块收进 hashes
                     let n = self.digits()?;
                     self.skip_ws();
                     if self.peek()? != b':' {
                         return None;
                     }
                     self.i += 1;
-                    if n < 20 {
+                    if n < 20 || n % 20 != 0 {
                         return None;
                     }
                     let end = self.i.checked_add(n)?;
                     if end > self.b.len() {
                         return None;
                     }
-                    let mut h = [0u8; 20];
-                    h.copy_from_slice(&self.b[self.i..self.i + 20]);
-                    first_hash = Some(h);
+                    // 上界防御（1 GiB 哈希串 = 5000 万 piece）已由 CAP 与
+                    // 种子文件本身约束；这里直接切齐
+                    let hs: Vec<[u8; 20]> = self.b[self.i..end]
+                        .chunks_exact(20)
+                        .map(|c| c.try_into().unwrap())
+                        .collect();
+                    hashes = Some(hs);
                     self.i = end; // 跳到整个 string 之后
                 }
                 _ => self.skip_value()?,
             }
         }
-        Some((piece_len, first_hash))
+        Some((piece_len, hashes))
     }
 }
 
@@ -271,12 +279,12 @@ mod tests {
     }
 
     #[test]
-    fn parses_piece_len_and_first_hash() {
+    fn parses_piece_len_and_hashes() {
         let h = [7u8; 20];
         let raw = sample(16384, h);
         let got = parse_piece_probe(&raw).expect("应解析成功");
         assert_eq!(got.piece_len, 16384);
-        assert_eq!(got.first_hash, h);
+        assert_eq!(got.hashes, vec![h]);
     }
 
     #[test]
@@ -301,7 +309,7 @@ mod tests {
         raw.extend_from_slice(b"e");
         let got = parse_piece_probe(&raw).expect("应跳过无关字段");
         assert_eq!(got.piece_len, 32768);
-        assert_eq!(got.first_hash, [9u8; 20]);
+        assert_eq!(got.hashes, vec![[9u8; 20]]);
     }
 
     #[test]
@@ -348,6 +356,6 @@ mod tests {
             0xd6, 0xbf, 0x52, 0x70, 0xc9, 0x96, 0xdd, 0x3b, 0xef, 0x9b, 0x9f,
             0x23, 0x56, 0xdf, 0x7e, 0xd7, 0x36, 0x7e, 0x6d, 0xa5,
         ];
-        assert_eq!(got.first_hash, expect_first);
+        assert_eq!(got.hashes[0], expect_first);
     }
 }

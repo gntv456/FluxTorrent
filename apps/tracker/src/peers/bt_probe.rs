@@ -27,17 +27,27 @@ const RESERVED: [u8; 8] = [0u8; 8];
 /// 标准客户端握手长度：1+19 +8+20 +20 = 68
 const HANDSHAKE_LEN: usize = 68;
 
-/// tracker 探测用的固定 peer_id：ASCII "FLUXPROBE000"（12 字节）+ 8 字节
-/// 填充 = 20 字节。自报 id 便于站方在 peer 端日志里识别探测流量。
-const PROBE_PEER_ID: [u8; 20] = [
-    b'F', b'L', b'U', b'X', b'P', b'R', b'O', b'B', b'E', b'0', b'0',
-    b'0', // 12
-    0, 0, 0, 0, 0, 0, 0, 0, // 8 填充 = 20
-];
+/// tracker 探测的 peer_id：**每次握手随机生成**（开源反作弊威胁模型收口，
+/// 2026-10-08）。旧版固定 "FLUXPROBE000"——注释自辩「便于站方识别」，但开源后
+/// 同样便于作弊者识别：一条 peer_id 前缀规则即可对探针连接优待（回真握手/
+/// 真 bitfield/真 piece），对普通 leecher 不供数据。随机化后探针与正常
+/// leecher 在协议层不可区分。种子由调用方传入（probe_loop 的 xorshift 流）。
+fn probe_peer_id(seed: &mut u64) -> [u8; 20] {
+    let mut id = [0u8; 20];
+    for chunk in id.chunks_mut(8) {
+        let r = crate::http_track::probe_cfg::cheap_rand(seed).to_be_bytes();
+        chunk.copy_from_slice(&r[r.len() - chunk.len()..]);
+    }
+    // 保持 Azureus 风格的可见前缀不必要——不可识别正是目的
+    id
+}
 
 /// 构造 68 字节 handshake。
 /// `info_hash` 必须是 20 字节原始值（不是 hex 字符串）。
-fn build_handshake(info_hash: &[u8; 20]) -> [u8; HANDSHAKE_LEN] {
+fn build_handshake(
+    info_hash: &[u8; 20],
+    peer_id: &[u8; 20],
+) -> [u8; HANDSHAKE_LEN] {
     let mut h = [0u8; HANDSHAKE_LEN];
     let mut i = 0;
     h[i] = PSTR_LEN as u8; // pstrlen = 19
@@ -48,7 +58,7 @@ fn build_handshake(info_hash: &[u8; 20]) -> [u8; HANDSHAKE_LEN] {
     i += 8;
     h[i..i + 20].copy_from_slice(info_hash);
     i += 20;
-    h[i..i + 20].copy_from_slice(&PROBE_PEER_ID);
+    h[i..i + 20].copy_from_slice(peer_id);
     h
 }
 
@@ -63,11 +73,7 @@ pub(crate) async fn probe_tcp_reachable(
     timeout: std::time::Duration,
 ) -> bool {
     matches!(
-        tokio::time::timeout(
-            timeout,
-            TcpStream::connect((ip, port))
-        )
-        .await,
+        tokio::time::timeout(timeout, TcpStream::connect((ip, port))).await,
         Ok(Ok(_))
     )
 }
@@ -90,11 +96,23 @@ pub(crate) async fn probe_bt_handshake(
     info_hash_hex: &str,
     timeout: std::time::Duration,
 ) -> bool {
+    probe_bt_handshake_seeded(ip, port, info_hash_hex, timeout, &mut 0).await
+}
+
+/// 带随机种子的握手探测（probe_loop 传入自己的 xorshift 流，探针身份随机）。
+pub(crate) async fn probe_bt_handshake_seeded(
+    ip: &str,
+    port: u16,
+    info_hash_hex: &str,
+    timeout: std::time::Duration,
+    seed: &mut u64,
+) -> bool {
     // hex → 20 字节；非法直接判不可信（宁可保守）
     let Ok(ih) = hex_to_20(info_hash_hex) else {
         return false;
     };
-    let hs = build_handshake(&ih);
+    let pid = probe_peer_id(seed);
+    let hs = build_handshake(&ih, &pid);
     let attempt = tokio::time::timeout(timeout, async {
         let mut stream = TcpStream::connect((ip, port)).await.ok()?;
         // ① 握手：发 handshake → 读 68B 响应
@@ -111,7 +129,10 @@ pub(crate) async fn probe_bt_handshake(
             return None;
         }
         // ② 发 interested（len=1, id=2），诱使对端回 bitfield
-        stream.write_all(&[0u8, 0, 1, INTERESTED_ID]).await.ok()?;
+        stream
+            .write_all(&[0u8, 0, 0, 1, INTERESTED_ID])
+            .await
+            .ok()?;
         stream.flush().await.ok()?;
         // ③ 读一条 peer 消息，取出 bitfield（msg id 5）判定是否有数据
         //    消息帧：<4B len><1B id><payload>；只读到第一条含 bitfield 的为止。
@@ -160,14 +181,14 @@ const PIECE_ID: u8 = 7;
 /// 超过此值直接判失败，防止畸形 length 让我们分配巨量内存。
 const MAX_PIECE_LEN: u32 = 8 * 1024 * 1024;
 
-/// piece 级抽查：请求第 0 号 piece 并比对 SHA-1。
+/// piece 级抽查：请求**随机一个** piece 并比对 SHA-1。
 ///
 /// 这是「声称有数据」与「真有数据」的分界：bitfield 可以随便声明，
 /// 但 piece 内容必须哈希正确才算数（真做种客户端从磁盘读真实数据，
 /// 临时伪造的假数据过不了 SHA-1）。
 ///
-/// 流程：握手 → interested → 等 bitfield（确认对方有 piece 0）→ 等 unchoke
-/// → 发 request(index=0, begin=0, len=piece_len) → 收 piece → 比对 SHA-1。
+/// 流程：握手 → interested → 等 bitfield（确认对方有该 piece）→ 等 unchoke
+/// → 发 request(index=随机, begin=0, len=piece_len) → 收 piece → 比对 SHA-1。
 ///
 /// 返回值语义：
 ///   `Some(true)`  = piece 哈希匹配（确认真有数据）
@@ -175,22 +196,34 @@ const MAX_PIECE_LEN: u32 = 8 * 1024 * 1024;
 ///   `None`        = 没能完成校验（对方不给数据/超时/畸形）——调用方应
 ///                   保守处理：**不要**据此判为作弊，只是不算通过抽查。
 ///
-/// 只抽查第 0 号 piece：验证一个即可判定真伪，避免为每个 peer 传多个
-/// piece 造成 tracker 出站带宽爆炸。
+/// 抽查位置随机（2026-10-08 开源反作弊收口）：旧版恒查 piece 0——作弊者
+/// 只需持有真实 piece 0（从任意真种子副本读一次）即可过检，其余全假。
+/// 随机选 index 后，针对性预备任意单块的成本与全量做种相同。种子由
+/// `piece_probe_for` 侧的哈希数组提供（`hashes[idx]`），请求与校验同源。
+/// 每次仍只查一块：验证一个即可判定真伪，避免 tracker 出站带宽爆炸。
 pub(crate) async fn probe_piece_hash(
     ip: &str,
     port: u16,
     info_hash_hex: &str,
     info: &super::torrent_parse::PieceProbe,
     timeout: std::time::Duration,
+    seed: &mut u64,
 ) -> Option<bool> {
     if info.piece_len == 0 || info.piece_len > MAX_PIECE_LEN {
         return None;
     }
+    if info.hashes.is_empty() {
+        return None;
+    }
     let ih = hex_to_20(info_hash_hex).ok()?;
-    let hs = build_handshake(&ih);
+    let pid = probe_peer_id(seed);
+    let hs = build_handshake(&ih, &pid);
     let piece_len = info.piece_len;
-    let expect_hash = info.first_hash;
+    // 随机选 piece index（开源威胁模型：位置不可预测）
+    let index = (crate::http_track::probe_cfg::cheap_rand(seed)
+        % info.hashes.len() as u64) as usize;
+    let expect_hash = info.hashes[index];
+    let index_u32 = index as u32;
     let attempt = tokio::time::timeout(timeout, async {
         use tokio::io::AsyncReadExt as _;
         let mut stream = TcpStream::connect((ip, port)).await.ok()?;
@@ -206,22 +239,29 @@ pub(crate) async fn probe_piece_hash(
             return None;
         }
         // ② interested
-        stream.write_all(&[0u8, 0, 1, INTERESTED_ID]).await.ok()?;
+        stream
+            .write_all(&[0u8, 0, 0, 1, INTERESTED_ID])
+            .await
+            .ok()?;
         stream.flush().await.ok()?;
 
         let mut unchoked = false;
-        // ③ 等 bitfield（确认有 piece 0）+ unchoke
+        // ③ 等 bitfield（确认对方有目标 piece）+ unchoke
         //    注意 `read_peer_msg` 返回的 body 已**剥离 id 字节**，对 bitfield
-        //    而言 body[0] 就是位图首字节（piece 0 的位在它的最高位）。
+        //    而言 body[0] 起就是位图（piece i 的位在 byte[i/8] 的
+        //    (0x80 >> i%8)）。
         for _ in 0..8 {
             let Some((id, body)) = read_peer_msg(&mut stream).await else {
                 break;
             };
             match id {
                 BITFIELD_ID => {
-                    // 必须声明有 piece 0（位图第 0 位 = body[0] 的 0x80）
-                    if body.is_empty() || body[0] & 0x80 == 0 {
-                        return None; // 没有 piece 0，抽查无从进行
+                    // 必须声明有目标 piece，否则抽查无从进行
+                    let byte = (index / 8) as usize;
+                    if body.len() <= byte
+                        || body[byte] & (0x80u8 >> (index % 8)) == 0
+                    {
+                        return None;
                     }
                 }
                 UNCHOKE_ID => unchoked = true,
@@ -234,11 +274,11 @@ pub(crate) async fn probe_piece_hash(
         if !unchoked {
             return None; // 未被 unchoke（正常客户端会 unchoke；不上传则不该算作弊）
         }
-        // ④ request piece 0
+        // ④ request 目标 piece（随机 index）
         let mut req = Vec::with_capacity(17);
         req.extend_from_slice(&13u32.to_be_bytes()); // len = 1+4+4+4
         req.push(REQUEST_ID);
-        req.extend_from_slice(&0u32.to_be_bytes()); // index
+        req.extend_from_slice(&index_u32.to_be_bytes()); // index
         req.extend_from_slice(&0u32.to_be_bytes()); // begin
         req.extend_from_slice(&piece_len.to_be_bytes()); // length
         stream.write_all(&req).await.ok()?;
@@ -258,7 +298,7 @@ pub(crate) async fn probe_piece_hash(
             }
             let idx = u32::from_be_bytes(body[0..4].try_into().ok()?);
             let begin = u32::from_be_bytes(body[4..8].try_into().ok()?);
-            if idx != 0 || begin != 0 {
+            if idx != index_u32 || begin != 0 {
                 continue; // 不是我们要的那块，继续等
             }
             let block = &body[8..];
@@ -324,19 +364,28 @@ mod tests {
     #[test]
     fn handshake_is_68_bytes_with_correct_layout() {
         let ih = [0x5Au8; 20];
-        let hs = build_handshake(&ih);
+        let mut seed = 42u64;
+        let pid = probe_peer_id(&mut seed);
+        let hs = build_handshake(&ih, &pid);
         assert_eq!(hs.len(), 68);
         assert_eq!(hs[0], 19); // pstrlen
         assert_eq!(&hs[1..20], PSTR); // "BitTorrent protocol"（19 字节）
         assert_eq!(&hs[20..28], &RESERVED); // 8 字节 reserved
         assert_eq!(&hs[28..48], &ih); // info_hash
-        assert_eq!(&hs[48..68], &PROBE_PEER_ID); // peer_id 20 字节
+        assert_eq!(&hs[48..68], &pid); // peer_id 20 字节
     }
 
     #[test]
-    fn probe_peer_id_is_20_bytes() {
-        assert_eq!(PROBE_PEER_ID.len(), 20);
-        assert_eq!(&PROBE_PEER_ID[..12], b"FLUXPROBE000");
+    fn probe_peer_id_is_random_and_not_identifiable() {
+        // 随机化后：同一种子可复现（确定性好测），不同种子必不同，
+        // 且不含可识别的固定前缀（开源威胁模型：探针不可被指纹）
+        let a = probe_peer_id(&mut 1u64);
+        let b = probe_peer_id(&mut 2u64);
+        assert_eq!(a.len(), 20);
+        assert_ne!(a, b, "不同种子的 peer_id 必须不同");
+        assert_ne!(&a[..12], b"FLUXPROBE000");
+        let mut seed = 7u64;
+        assert_eq!(probe_peer_id(&mut seed), probe_peer_id(&mut 7u64));
     }
 
     #[test]
@@ -472,9 +521,15 @@ mod tests {
         // 真做种：握手正确 + 有 bitfield 数据 → 通过
         let ih = [0x42u8; 20];
         let (ip, port) = spawn_mock(Mock::SeederWithData).await;
-        let ok =
-            probe_bt_handshake(&ip, port, &hex_of(&ih), Duration::from_secs(3))
-                .await;
+        let mut sd = 42u64;
+        let ok = probe_bt_handshake_seeded(
+            &ip,
+            port,
+            &hex_of(&ih),
+            Duration::from_secs(3),
+            &mut sd,
+        )
+        .await;
         assert!(ok, "握手正确且有 bitfield 数据的真做种应判为可达");
     }
 
@@ -483,11 +538,13 @@ mod tests {
         // 关键用例：握手过了但拿不出 bitfield = 幽灵做种 → 拒绝
         let ih = [0x42u8; 20];
         let (ip, port) = spawn_mock(Mock::HandshakeNoData).await;
-        let ok = probe_bt_handshake(
+        let mut sd = 43u64;
+        let ok = probe_bt_handshake_seeded(
             &ip,
             port,
             &hex_of(&ih),
             Duration::from_millis(1200),
+            &mut sd,
         )
         .await;
         assert!(!ok, "只回握手但无 bitfield 数据的幽灵必须被拒");
@@ -498,11 +555,13 @@ mod tests {
         // 裸 TCP 监听：accept 后不回任何 BT 数据
         let ih = [0x42u8; 20];
         let (ip, port) = spawn_mock(Mock::Silent).await;
-        let ok = probe_bt_handshake(
+        let mut sd = 44u64;
+        let ok = probe_bt_handshake_seeded(
             &ip,
             port,
             &hex_of(&ih),
             Duration::from_millis(800),
+            &mut sd,
         )
         .await;
         assert!(!ok, "裸监听（无 BT 应答）必须判为不可信");
@@ -515,9 +574,15 @@ mod tests {
         let mut wrong = good_response(&ih);
         wrong[28] = 0x77; // 篡改 info_hash 首字节
         let (ip, port) = spawn_mock(Mock::Handshake(wrong)).await;
-        let ok =
-            probe_bt_handshake(&ip, port, &hex_of(&ih), Duration::from_secs(3))
-                .await;
+        let mut sd = 45u64;
+        let ok = probe_bt_handshake_seeded(
+            &ip,
+            port,
+            &hex_of(&ih),
+            Duration::from_secs(3),
+            &mut sd,
+        )
+        .await;
         assert!(!ok, "info_hash 不匹配的握手必须被拒");
     }
 
@@ -528,9 +593,15 @@ mod tests {
         let mut garbage = [0u8; 68];
         garbage[..9].copy_from_slice(b"HTTP/1.1 ");
         let (ip, port) = spawn_mock(Mock::Handshake(garbage)).await;
-        let ok =
-            probe_bt_handshake(&ip, port, &hex_of(&ih), Duration::from_secs(3))
-                .await;
+        let mut sd = 46u64;
+        let ok = probe_bt_handshake_seeded(
+            &ip,
+            port,
+            &hex_of(&ih),
+            Duration::from_secs(3),
+            &mut sd,
+        )
+        .await;
         assert!(!ok, "非 BT 应答（pstrlen 不符）必须被拒");
     }
 
@@ -548,6 +619,8 @@ mod tests {
     /// 起一个会走完「握手 → bitfield → unchoke → piece」全流程的 mock。
     /// `block` 是它返回的 piece 内容；其 SHA-1 会与调用方给的期望哈希比对，
     /// 因此同一 mock 可用于「哈希匹配（真做种）」与「哈希不符（伪造）」两测。
+    /// mock 会**回读 request 的 index 并按请求的 piece 回包**——随机抽查
+    /// 位置下，请求与响应同 index 才是真实客户端行为。
     async fn spawn_piece_mock(
         block: Vec<u8>,
         declare_piece0: bool,
@@ -575,13 +648,18 @@ mod tests {
                 return;
             }
             let _ = sock.flush().await;
-            // ③ 读 interested → ④ 回 bitfield（声明有 piece 0）
-            let mut interested = [0u8; 4];
+            // ③ 读 interested（完整帧 5 字节：<4B len=1><id=2>）→ ④ 回 bitfield。
+            //    旧版只读 4 字节，interested 的 id 字节滞留流里，后续 request
+            //    帧错位——旧版 mock 回写写死的 index=0 恰好掩盖了它。
+            let mut interested = [0u8; 5];
             if sock.read_exact(&mut interested).await.is_err() {
                 return;
             }
-            let bf_bit = if declare_piece0 { 0x80u8 } else { 0x00u8 };
-            let bf = [0u8, 0, 0, 2, BITFIELD_ID, bf_bit];
+            let bf_bit = if declare_piece0 { 0xFFu8 } else { 0x00u8 };
+            // 声明「全部 piece 都有」（多 piece 位图，随机 index 必命中）；
+            // 不声明则全零。len 字段 = id(1) + 位图(4) = 5
+            let bf =
+                [0u8, 0, 0, 5, BITFIELD_ID, bf_bit, bf_bit, bf_bit, bf_bit];
             let _ = sock.write_all(&bf).await;
             // ⑤ 回 unchoke（<4B len=1><id=1> = 5 字节）
             //    长度字段是固定 **4 字节** [0,0,0,1]——写成 3 字节会让
@@ -594,11 +672,12 @@ mod tests {
             if sock.read_exact(&mut req).await.is_err() {
                 return;
             }
-            // ⑦ 回 piece（len=9+block, id=7, index=0, begin=0, block）
+            // ⑦ 回 piece（len=9+block, id=7, **index 回读请求值**, begin=0）
+            let req_index = u32::from_be_bytes(req[5..9].try_into().unwrap());
             let mut msg = Vec::with_capacity(9 + block.len());
             msg.extend_from_slice(&((9 + block.len()) as u32).to_be_bytes());
             msg.push(PIECE_ID);
-            msg.extend_from_slice(&0u32.to_be_bytes()); // index
+            msg.extend_from_slice(&req_index.to_be_bytes()); // index 同请求
             msg.extend_from_slice(&0u32.to_be_bytes()); // begin
             msg.extend_from_slice(&block);
             let _ = sock.write_all(&msg).await;
@@ -625,15 +704,17 @@ mod tests {
         let block = vec![0xABu8; 256];
         let info = crate::peers::torrent_parse::PieceProbe {
             piece_len: 256,
-            first_hash: sha1_of(&block),
+            hashes: vec![sha1_of(&block); 32],
         };
         let (ip, port) = spawn_piece_mock(block, true).await;
+        let mut sd = 100u64;
         let got = probe_piece_hash(
             &ip,
             port,
             &hex_of(&ih),
             &info,
             Duration::from_secs(3),
+            &mut sd,
         )
         .await;
         assert_eq!(got, Some(true), "哈希匹配的 piece 应判定为真数据");
@@ -646,15 +727,18 @@ mod tests {
         let block = vec![0xCDu8; 256]; // 伪造内容
         let info = crate::peers::torrent_parse::PieceProbe {
             piece_len: 256,
-            first_hash: [0x00u8; 20], // 期望的（不同的）哈希
+            // 期望的（不同的）哈希：全部 piece 都不匹配
+            hashes: vec![[0x00u8; 20]; 32],
         };
         let (ip, port) = spawn_piece_mock(block, true).await;
+        let mut sd = 100u64;
         let got = probe_piece_hash(
             &ip,
             port,
             &hex_of(&ih),
             &info,
             Duration::from_secs(3),
+            &mut sd,
         )
         .await;
         assert_eq!(got, Some(false), "哈希不符的 piece 必须判为伪造");
@@ -666,15 +750,17 @@ mod tests {
         let ih = [0x42u8; 20];
         let info = crate::peers::torrent_parse::PieceProbe {
             piece_len: 256,
-            first_hash: [0x00u8; 20],
+            hashes: vec![[0x00u8; 20]; 32],
         };
         let (ip, port) = spawn_piece_mock(vec![0u8; 16], false).await;
+        let mut sd = 101u64;
         let got = probe_piece_hash(
             &ip,
             port,
             &hex_of(&ih),
             &info,
             Duration::from_millis(1200),
+            &mut sd,
         )
         .await;
         assert_eq!(got, None, "未声明 piece 0 时应返回 None 而非判伪造");

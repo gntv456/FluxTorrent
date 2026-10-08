@@ -17,7 +17,9 @@ use crate::http_track::helpers::TrackerState;
 /// 起探测循环（每 5min 一轮 + 随机抖动）。调用方在 actix rt 内 spawn。
 pub(crate) fn spawn(st: actix_web::web::Data<TrackerState>) {
     actix_web::rt::spawn(async move {
-        let mut tick = tokio::time::interval(Duration::from_secs(300));
+        let mut tick = tokio::time::interval(Duration::from_secs(
+            super::probes::PROBE_PERIOD_SECS as u64,
+        ));
         // xorshift 种子取启动时刻：不引 rand，够用且每次重启不同
         let mut seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -37,10 +39,7 @@ pub(crate) fn spawn(st: actix_web::web::Data<TrackerState>) {
 }
 
 /// 单轮探测：采样 → 预算/比例 → 握手（全量）→ piece 抽查（随机子集）。
-async fn run_round(
-    st: &actix_web::web::Data<TrackerState>,
-    seed: &mut u64,
-) {
+async fn run_round(st: &actix_web::web::Data<TrackerState>, seed: &mut u64) {
     // 预算随在线规模线性扩容（每 peer 每轮至少 1/8 覆盖，上限 400）：
     // 固定 50 时热门种子的绝大多数 peer 永远轮不到探测，conn 恒为
     // None（未测）被 seeding 判定直接放行——幽灵做种几乎无门槛。
@@ -63,13 +62,14 @@ async fn run_round(
         seed,
     );
     let mut inflight = tokio::task::JoinSet::new();
-    for (idx, (key, probe_ip, probe_port)) in
-        sampled.into_iter().enumerate()
-    {
+    for (idx, (key, probe_ip, probe_port)) in sampled.into_iter().enumerate() {
         let do_piece = env_cap > 0 && idx < env_cap && picked.contains(&idx);
+        // 子种子：从父流抽取（每个 probe_one 独立、不可预测）
+        let sub_seed = crate::http_track::probe_cfg::cheap_rand(seed);
         let st2 = st.clone();
         inflight.spawn(async move {
-            probe_one(&st2, key, probe_ip, probe_port, do_piece).await;
+            probe_one(&st2, key, probe_ip, probe_port, do_piece, sub_seed)
+                .await;
         });
     }
     // 等本轮全部探测收敛（每个探测自身 3s 超时，JoinSet 并发执行，
@@ -95,16 +95,23 @@ async fn probe_one(
     probe_ip: String,
     probe_port: u16,
     do_piece: bool,
+    seed: u64,
 ) {
     use super::model::{CONN_DEAD, CONN_OK, CONN_SUSPECT};
+    // 每个 probe_one 独立种子流（spawn 后无法借用外层 &mut seed）：
+    // 从父流再抽一段做子种子，子流仍不可预测
+    let mut seed = seed | 1;
+
+    // 探测超时读站点配置（开源反作弊收口）：出厂 3s/8s 是公开值，
+    // 各站可调（probe_timeout_secs / probe_piece_timeout_secs）。
+    let cfg = crate::http_track::probe_cfg::current();
+    let tcp_bt_to = Duration::from_secs(cfg.tcp_bt_timeout_secs);
+    let piece_to = Duration::from_secs(cfg.piece_timeout_secs);
 
     // ① 纯 TCP 可达性（最便宜，先筛）
-    let tcp_ok = super::bt_probe::probe_tcp_reachable(
-        &probe_ip,
-        probe_port,
-        Duration::from_secs(3),
-    )
-    .await;
+    let tcp_ok =
+        super::bt_probe::probe_tcp_reachable(&probe_ip, probe_port, tcp_bt_to)
+            .await;
     if !tcp_ok {
         write_back(st, &key, CONN_DEAD).await;
         return;
@@ -112,11 +119,13 @@ async fn probe_one(
 
     // ② BT 协议验证（握手 + bitfield）。失败落 SUSPECT 而非 DEAD——
     //    端口开着却不响应明文协议，最可能是加密客户端而非作弊。
-    let bt_ok = super::bt_probe::probe_bt_handshake(
+    //    peer_id 随机生成（探针身份不可识别）。
+    let bt_ok = super::bt_probe::probe_bt_handshake_seeded(
         &probe_ip,
         probe_port,
         &key.info_hash,
-        Duration::from_secs(3),
+        tcp_bt_to,
+        &mut seed,
     )
     .await;
     if !bt_ok {
@@ -124,20 +133,19 @@ async fn probe_one(
         return;
     }
 
-    // ③ piece 级抽查（昂贵，仅抽样且仅对 ①② 已通过者）
+    // ③ piece 级抽查（昂贵，仅抽样且仅对 ①② 已通过者）。
+    //    抽查的 piece index 由子种子流随机决定（开源威胁模型：位置不可预测）。
     if do_piece {
-        if let Some(info) = super::piece_cache::piece_probe_for(
-            &st.db,
-            &key.info_hash,
-        )
-        .await
+        if let Some(info) =
+            super::piece_cache::piece_probe_for(&st.db, &key.info_hash).await
         {
             if let Some(false) = super::bt_probe::probe_piece_hash(
                 &probe_ip,
                 probe_port,
                 &key.info_hash,
                 &info,
-                Duration::from_secs(8),
+                piece_to,
+                &mut seed,
             )
             .await
             {

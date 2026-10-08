@@ -15,6 +15,10 @@ pub(crate) struct ProbeCfg {
     pub(crate) jitter_secs: u32,
     /// piece 抽查比例（0.0-1.0，对已通过握手+bitfield 的 peer）
     pub(crate) piece_ratio: f64,
+    /// TCP/BT 握手探测超时（秒）
+    pub(crate) tcp_bt_timeout_secs: u64,
+    /// piece 抽查超时（秒，含握手+bitfield+unchoke+传输）
+    pub(crate) piece_timeout_secs: u64,
 }
 
 pub(crate) fn cfg_statics() -> &'static std::sync::RwLock<ProbeCfg> {
@@ -24,12 +28,19 @@ pub(crate) fn cfg_statics() -> &'static std::sync::RwLock<ProbeCfg> {
         std::sync::RwLock::new(ProbeCfg {
             jitter_secs: 90,
             piece_ratio: 0.25,
+            tcp_bt_timeout_secs: 3,
+            piece_timeout_secs: 8,
         })
     })
 }
 
 /// 站点级刷新（guard_refresh 在读到设定后调用）
-pub(crate) fn refresh(jitter_secs: u32, piece_ratio: f64) {
+pub(crate) fn refresh(
+    jitter_secs: u32,
+    piece_ratio: f64,
+    tcp_bt_timeout_secs: u64,
+    piece_timeout_secs: u64,
+) {
     if let Ok(mut w) = cfg_statics().write() {
         w.jitter_secs = jitter_secs.min(600);
         w.piece_ratio = if piece_ratio.is_finite() {
@@ -37,6 +48,8 @@ pub(crate) fn refresh(jitter_secs: u32, piece_ratio: f64) {
         } else {
             0.25
         };
+        w.tcp_bt_timeout_secs = tcp_bt_timeout_secs.clamp(1, 30);
+        w.piece_timeout_secs = piece_timeout_secs.clamp(2, 60);
     }
 }
 
@@ -46,12 +59,16 @@ pub(crate) fn current() -> ProbeCfg {
         Ok(r) => ProbeCfg {
             jitter_secs: r.jitter_secs,
             piece_ratio: r.piece_ratio,
+            tcp_bt_timeout_secs: r.tcp_bt_timeout_secs,
+            piece_timeout_secs: r.piece_timeout_secs,
         },
         Err(e) => {
             let g = e.into_inner();
             ProbeCfg {
                 jitter_secs: g.jitter_secs,
                 piece_ratio: g.piece_ratio,
+                tcp_bt_timeout_secs: g.tcp_bt_timeout_secs,
+                piece_timeout_secs: g.piece_timeout_secs,
             }
         }
     }
@@ -114,20 +131,20 @@ mod tests {
 
     #[test]
     fn jitter_respects_zero_upper_bound() {
-        refresh(0, 0.25);
+        refresh(0, 0.25, 3, 8);
         let mut seed = 42u64;
         assert_eq!(jitter_duration(&mut seed).as_secs(), 0);
     }
 
     #[test]
     fn jitter_stays_within_bound() {
-        refresh(90, 0.25);
+        refresh(90, 0.25, 3, 8);
         let mut seed = 7u64;
         for _ in 0..64 {
             assert!(jitter_duration(&mut seed).as_secs() <= 90);
         }
         // 恢复出厂，避免影响其它用例（statics 是进程级）
-        refresh(90, 0.25);
+        refresh(90, 0.25, 3, 8);
     }
 
     #[test]
@@ -160,12 +177,14 @@ mod tests {
 
     #[test]
     fn refresh_clamps_out_of_range() {
-        refresh(99_999, 5.0);
+        refresh(99_999, 5.0, 99, 99);
         let c = current();
         assert_eq!(c.jitter_secs, 600);
+        assert_eq!(c.tcp_bt_timeout_secs, 30, "超时应被钳到 30");
+        assert_eq!(c.piece_timeout_secs, 60, "piece 超时应被钳到 60");
         assert!((c.piece_ratio - 1.0).abs() < f64::EPSILON);
         // NaN 比例回落 0.25
-        refresh(90, f64::NAN);
+        refresh(90, f64::NAN, 3, 8);
         assert!((current().piece_ratio - 0.25).abs() < f64::EPSILON);
     }
 }

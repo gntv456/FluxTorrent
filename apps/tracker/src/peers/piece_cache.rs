@@ -70,10 +70,8 @@ pub(crate) async fn piece_probe_for(
             // 容量满：淘汰最旧的一条（六轮审计 P2-G——旧写法整体 clear()
             // 会把热种子的缓存一起丢，下一轮 400 个并发探测全部重新打 DB，
             // 形成周期性 DB 尖峰；逐条淘汰最旧者保持其余命中）。
-            if let Some(oldest) = m
-                .iter()
-                .min_by_key(|(_, e)| e.at)
-                .map(|(k, _)| k.clone())
+            if let Some(oldest) =
+                m.iter().min_by_key(|(_, e)| e.at).map(|(k, _)| k.clone())
             {
                 m.remove(&oldest);
             }
@@ -81,7 +79,7 @@ pub(crate) async fn piece_probe_for(
         m.insert(
             info_hash_hex.to_string(),
             Entry {
-                probe,
+                probe: probe.clone(),
                 at: Instant::now(),
             },
         );
@@ -97,7 +95,7 @@ mod tests {
     fn cache_stores_and_expires_by_ttl() {
         let p = PieceProbe {
             piece_len: 16384,
-            first_hash: [1u8; 20],
+            hashes: vec![[1u8; 20]; 4],
         };
         let mut m = HashMap::new();
         m.insert(

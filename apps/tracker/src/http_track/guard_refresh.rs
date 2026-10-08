@@ -259,27 +259,32 @@ impl TrackerState {
         super::guard_miss::clear_miss();
     }
 
-    /// 探测调度两键（0309 开源威胁模型收口）：抖动上界 + piece 抽查比例。
-    /// 与本文件其它读取同一纪律：**Err 保留旧值**，只有「行确实不存在」
-    /// 才用出厂缺省（90s / 0.25）。
+    /// 探测调度四键（0309 起，0311 补两键超时）：抖动上界 + piece 抽查
+    /// 比例 + TCP/BT 超时 + piece 超时。与本文件其它读取同一纪律：
+    /// **Err 保留旧值**，只有「行确实不存在」才用出厂缺省
+    /// （90s / 0.25 / 3s / 8s）。
     async fn refresh_probe_cfg(&self) {
-        let rows: Result<Vec<(String, String)>, sqlx::Error> =
-            sqlx::query_as(
-                "SELECT name, value FROM site_settings \
-                 WHERE name IN ('probe_jitter_secs', 'probe_piece_ratio')",
-            )
-            .fetch_all(&self.db)
-            .await;
-        let (mut jitter, mut ratio) = {
+        let rows: Result<Vec<(String, String)>, sqlx::Error> = sqlx::query_as(
+            "SELECT name, value FROM site_settings \
+                 WHERE name IN ('probe_jitter_secs', 'probe_piece_ratio', \
+                 'probe_timeout_secs', 'probe_piece_timeout_secs')",
+        )
+        .fetch_all(&self.db)
+        .await;
+        let (mut jitter, mut ratio, mut tcp_to, mut piece_to) = {
             let keep = super::probe_cfg::current();
-            (keep.jitter_secs, keep.piece_ratio)
+            (
+                keep.jitter_secs,
+                keep.piece_ratio,
+                keep.tcp_bt_timeout_secs,
+                keep.piece_timeout_secs,
+            )
         };
         if let Ok(rows) = rows {
             for (k, v) in &rows {
                 match k.as_str() {
                     "probe_jitter_secs" => {
-                        jitter =
-                            v.trim().parse::<u32>().unwrap_or(90).min(600)
+                        jitter = v.trim().parse::<u32>().unwrap_or(90).min(600)
                     }
                     "probe_piece_ratio" => {
                         ratio = v
@@ -288,12 +293,28 @@ impl TrackerState {
                             .map(|r| r.clamp(0.0, 1.0))
                             .unwrap_or(0.25)
                     }
+                    "probe_timeout_secs" => {
+                        tcp_to = v
+                            .trim()
+                            .parse::<u64>()
+                            .map(|t| t.clamp(1, 30))
+                            .unwrap_or(3)
+                    }
+                    "probe_piece_timeout_secs" => {
+                        piece_to = v
+                            .trim()
+                            .parse::<u64>()
+                            .map(|t| t.clamp(2, 60))
+                            .unwrap_or(8)
+                    }
                     _ => {}
                 }
             }
-            super::probe_cfg::refresh(jitter, ratio);
+            super::probe_cfg::refresh(jitter, ratio, tcp_to, piece_to);
         } else {
-            tracing::warn!("探测调度设定读取失败，保留上一次的抖动与抽查比例");
+            tracing::warn!(
+                "探测调度设定读取失败，保留上一次的抖动/抽查比例/超时"
+            );
         }
     }
 }

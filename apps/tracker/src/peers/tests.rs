@@ -243,8 +243,14 @@ fn conn_state_keeps_dead_and_suspect_distinct() {
     let t = PeerTable::new();
     t.upsert(mk_peer("abc", "p_dead", 0));
     t.upsert(mk_peer("abc", "p_susp", 0));
-    let k_dead = PeerKey { info_hash: "abc".into(), peer_id: "p_dead".into() };
-    let k_susp = PeerKey { info_hash: "abc".into(), peer_id: "p_susp".into() };
+    let k_dead = PeerKey {
+        info_hash: "abc".into(),
+        peer_id: "p_dead".into(),
+    };
+    let k_susp = PeerKey {
+        info_hash: "abc".into(),
+        peer_id: "p_susp".into(),
+    };
     // 未测态：两peer 都是 UNTESTED
     assert_eq!(t.connectable_of(&k_dead), CONN_UNTESTED);
     assert_eq!(t.connectable_of(&k_susp), CONN_UNTESTED);
@@ -263,12 +269,19 @@ fn conn_state_keeps_dead_and_suspect_distinct() {
 fn set_conn_state_ignores_untested() {
     let t = PeerTable::new();
     t.upsert(mk_peer("abc", "p1", 0));
-    let k = PeerKey { info_hash: "abc".into(), peer_id: "p1".into() };
+    let k = PeerKey {
+        info_hash: "abc".into(),
+        peer_id: "p1".into(),
+    };
     t.set_conn_state(&k, CONN_SUSPECT);
     assert_eq!(t.connectable_of(&k), CONN_SUSPECT);
     // 试图写 UNTESTED：应被忽略，保持原值
     t.set_conn_state(&k, CONN_UNTESTED);
-    assert_eq!(t.connectable_of(&k), CONN_SUSPECT, "UNTESTED 不应覆盖已有结论");
+    assert_eq!(
+        t.connectable_of(&k),
+        CONN_SUSPECT,
+        "UNTESTED 不应覆盖已有结论"
+    );
 }
 
 /// 三档判定与 DB 消费口径一致：只有 0 阻断，-2/-1 放行。
@@ -279,7 +292,10 @@ fn only_dead_blocks_in_billing_predicate() {
     // 与 SQL `NOT COALESCE(connectable = 0, false)` 同构
     let blocks = |c: i8| -> bool { !(c == 0) == false };
     assert!(blocks(CONN_DEAD), "DEAD 必须阻断");
-    assert!(!blocks(CONN_SUSPECT), "SUSPECT 不阻断（否则误伤加密客户端）");
+    assert!(
+        !blocks(CONN_SUSPECT),
+        "SUSPECT 不阻断（否则误伤加密客户端）"
+    );
     assert!(!blocks(CONN_UNTESTED), "未测不阻断");
     assert!(!blocks(CONN_OK), "可信不阻断");
 }
