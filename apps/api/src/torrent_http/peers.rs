@@ -140,8 +140,7 @@ async fn torrent_peers(
     };
 
     let mut c = state.redis.clone();
-    let (available, peers) =
-        load_peers(&mut c, &ih, ih_raw.as_deref()).await;
+    let (available, peers) = load_peers(&mut c, &ih, ih_raw.as_deref()).await;
     let full_ip = auth.class_id >= 90;
     let now = chrono::Utc::now();
     let mut items: Vec<PeerItem> = Vec::new();
@@ -205,8 +204,7 @@ async fn load_peers(
 ) -> (bool, Vec<SnapPeer>) {
     use redis::AsyncCommands;
     if peer_store_external() {
-        let key =
-            format!("{SWARM_KEY_PREFIX}{}", ih_raw.unwrap_or(ih));
+        let key = format!("{SWARM_KEY_PREFIX}{}", ih_raw.unwrap_or(ih));
         let exists: i64 = redis::cmd("EXISTS")
             .arg(&key)
             .query_async(c)
@@ -222,19 +220,16 @@ async fn load_peers(
             .collect();
         return (exists > 0, peers);
     }
-    let raw: Option<String> =
-        redis::AsyncCommands::get(c, SNAPSHOT_KEY)
-            .await
-            .unwrap_or(None);
+    let raw: Option<String> = redis::AsyncCommands::get(c, SNAPSHOT_KEY)
+        .await
+        .unwrap_or(None);
     let available = raw.is_some();
     type Snap = Vec<(String, Vec<SnapPeer>)>;
     let peers = raw
         .and_then(|r| serde_json::from_str::<Snap>(&r).ok())
         .map(|snap| {
             snap.into_iter()
-                .filter(|(h, _)| {
-                    h == ih || ih_raw.is_some_and(|r| h == r)
-                })
+                .filter(|(h, _)| h == ih || ih_raw.is_some_and(|r| h == r))
                 .flat_map(|(_, ps)| ps)
                 .collect()
         })

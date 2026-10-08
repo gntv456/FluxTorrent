@@ -121,6 +121,7 @@ async fn review_batch(
         }
         let n = sqlx::query(
             "UPDATE torrents SET approval_status = $2, \
+             approved_at = CASE WHEN $2::smallint = 1 THEN now() ELSE NULL END, \
              deny_reason_id = $3, deny_note = $4 \
              WHERE id = $1 AND approval_status = 0",
         )
@@ -147,12 +148,11 @@ async fn review_batch(
             });
             continue;
         }
-        // 与 review_decide 同口径的连击/被拒计数
+        // 与 review_decide 同口径的连击/被拒计数（过审清零 deny_count，P2-1）
         let _ = sqlx::query(
             "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
              u.approve_streak + 1 ELSE 0 END, \
-             deny_count = CASE WHEN $2 THEN u.deny_count \
-             ELSE u.deny_count + 1 END \
+             deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END \
              FROM torrents t \
              WHERE t.id = $1 AND u.id = t.owner_id",
         )
@@ -207,6 +207,10 @@ async fn review_batch(
         )
         .await;
     crate::torrent_http::bump_list_cache_gen(&state).await;
+    // 批量翻转审核态同样要立即刷新 tracker 白名单（P2-2，与单条裁决同口径）
+    if handled > 0 {
+        crate::http::bump_guard_ver(&state).await;
+    }
     Ok(ok(serde_json::json!({
         "handled": handled,
         "skipped": skipped,

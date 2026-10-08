@@ -102,6 +102,26 @@ async fn upload_core(
         }
         None => None,
     };
+    // 异主墓碑（P2-7）：内容仍被软删锁着，直接回「种子重复」等于死路——
+    // 上传者不知道该找谁。落一条 staff 待办（reports 队列），站务恢复后
+    // 上传者即可正常重发。同表已有 (ref_type, ref_id, reporter_id) 开件
+    // 唯一约束，重复撞同一墓碑不会刷屏。
+    if let Some((id, owner, status)) = &existing {
+        if *status == 3 && *owner != Some(auth.id) {
+            let _ = sqlx::query(
+                "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) \
+                 SELECT $1, 'tombstone_reupload', $2, \
+                 '异主墓碑重发：内容被他人删除后同 hash 重发被拦，待站务恢复' \
+                 WHERE NOT EXISTS (SELECT 1 FROM reports \
+                 WHERE ref_type = 'tombstone_reupload' AND ref_id = $2 \
+                   AND status IN (0, 2))",
+            )
+            .bind(auth.id)
+            .bind(id)
+            .execute(&state.repo.db)
+            .await;
+        }
+    }
 
     let name = form
         .name
@@ -120,7 +140,10 @@ async fn upload_core(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(false);
-    // 0077 被拒禁发（NP upload_deny_approval_deny_count 口径）：累计被拒达阈值直接拦
+    // 0077 被拒禁发（NP upload_deny_approval_deny_count 口径）：累计被拒达阈值直接拦。
+    // 审计 2026-10-08 P1-2：旧代码读 `upload_deny_limit`，而设置页（0039 迁移）
+    // 种的是 `upload_deny_approval_deny_count` —— 两键互不相认，站长在设置页
+    // 改阈值恒不生效（实测改 5 后仍按缺省 2 拦）。统一读设置页的键。
     let (deny_count, streak): (i32, i32) = sqlx::query_as(
         "SELECT deny_count, approve_streak FROM users WHERE id = $1",
     )
@@ -130,7 +153,7 @@ async fn upload_core(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let deny_limit: i32 = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value::int FROM site_settings WHERE \
-         name = 'upload_deny_limit'), 2)",
+         name = 'upload_deny_approval_deny_count'), 2)",
     )
     .fetch_one(&state.repo.db)
     .await
@@ -231,10 +254,11 @@ async fn upload_core(
                 "INSERT INTO torrents (info_hash, raw_info_hash, pieces_hash, \
                  group_id, name, small_descr, descr, category_id, medium_id, \
                  grade_id, edition_id, owner_id, anonymous, size, numfiles, \
-                 approval_status, media_info, nfo, price, imdb_id, \
+                 approval_status, approved_at, media_info, nfo, price, imdb_id, \
                  screenshots) \
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, \
-                 $13, $14, $15, $16, $17, $18, $19, $20, \
+                 $13, $14, $15, $16, CASE WHEN $16::smallint = 1 THEN now() ELSE NULL END, \
+                 $17, $18, $19, $20, \
                  $21::jsonb) RETURNING id",
             )
             .bind(&parsed.info_hash_hex)
@@ -298,6 +322,9 @@ async fn upload_core(
     // 新种子进列表：推进列表缓存代际，否则首屏 45s 内看不到刚发的种
     let app: &AppState = state;
     crate::torrent_http::bump_list_cache_gen(app).await;
+    // 免审种（approval_status=1）即刻在 tracker 白名单内，待审种本就装载；
+    // 这里统一 bump 一次，免审种不必等下一个 60s 周期才能做种（P2-2）
+    crate::http::bump_guard_ver(state.get_ref()).await;
     // 存原始 .torrent 字节（下载时重新注入 announce，M05）
     sqlx::query("INSERT INTO torrent_files (torrent_id, raw) VALUES ($1, $2)")
         .bind(id)

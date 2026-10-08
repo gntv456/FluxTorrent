@@ -193,14 +193,12 @@ async fn agent_rules_import(
         .repo
         .audit(Some(auth.id), "agentrule.import", Some(added))
         .await;
-    Ok(ok(
-        serde_json::json!({
-            "added": added,
-            "skipped": body.rules.len() as i64 - added,
-            // 单独报出来：正则非法的规则存进去也不会生效，别让它假成功
-            "invalid": invalid,
-        }),
-    ))
+    Ok(ok(serde_json::json!({
+        "added": added,
+        "skipped": body.rules.len() as i64 - added,
+        // 单独报出来：正则非法的规则存进去也不会生效，别让它假成功
+        "invalid": invalid,
+    })))
 }
 
 #[post("/admin/agentrules/delete")]

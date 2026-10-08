@@ -34,6 +34,8 @@ export function ReviewsPanel({
   denyReasonId,
   onDenyReason,
   onDecide,
+  onPostpone,
+  onBatch,
 }: {
   reviews: PendingTorrent[];
   total: number;
@@ -43,10 +45,15 @@ export function ReviewsPanel({
   denyReasonId: number | null;
   onDenyReason: (id: number | null) => void;
   onDecide: (torrentId: number, approve: boolean) => void;
+  /** 暂缓（证据不足挂起，POST /admin/reviews/postpone；0306 补接线） */
+  onPostpone: (torrentId: number) => void;
+  /** 批量通过本页全部待审（POST /admin/reviews/batch；自审条目由后端跳过） */
+  onBatch: (ids: number[], approve: boolean) => void;
 }) {
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
   const pageSize = reviews.length || 50;
+  const pageIds = reviews.map((t) => t.id);
   return (
     <section className={PANEL_LG}>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
@@ -65,6 +72,23 @@ export function ReviewsPanel({
             </option>
           ))}
         </select>
+        {/* 0306：批量裁决后端早已就绪（0288），积压时审核员此前仍只能逐条点 */}
+        <span className="flex gap-1">
+          <button
+            disabled={pageIds.length === 0}
+            onClick={() => onBatch(pageIds, true)}
+            className="min-h-[36px] rounded-full border border-mint px-3 py-1 font-bold text-mint disabled:opacity-40"
+          >
+            {a.batchApprove}
+          </button>
+          <button
+            disabled={pageIds.length === 0}
+            onClick={() => onBatch(pageIds, false)}
+            className="min-h-[36px] rounded-full border border-coral px-3 py-1 font-bold text-danger disabled:opacity-40"
+          >
+            {a.batchReject}
+          </button>
+        </span>
         <span className="ml-auto flex gap-1">
           <button
             disabled={offset <= 0}
@@ -135,6 +159,13 @@ export function ReviewsPanel({
               className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white"
             >
               {a.reject}
+            </button>
+            {/* 0306：暂缓口（证据不足挂起），后端 v4_http 早已就绪 */}
+            <button
+              onClick={() => onPostpone(t.id)}
+              className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+            >
+              {a.postpone}
             </button>
           </li>
         ))}

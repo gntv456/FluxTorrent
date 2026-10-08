@@ -91,12 +91,27 @@ async fn review_postpone(
     body: web::Json<PostponeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 审计 2026-10-08 P2-4：暂缓与裁决同权（旧口径 torrent.manage，收窄
+    // review 权后暂缓口反而更大）；并补自审拦截，与 decide 同口径。
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::TORRENT_MANAGE,
+        crate::authz::perm::TORRENT_REVIEW,
     )
     .await?;
+    let owner_id: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(body.torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .flatten();
+    let Some(owner_id) = owner_id else {
+        return Err(DomainError::NotFound(body.torrent_id));
+    };
+    if owner_id == auth.id {
+        return Err(DomainError::Validation("不能审核自己发布的种子".into()));
+    }
     let n = sqlx::query(
         "UPDATE torrents SET approval_status = 4, deny_note = COALESCE(NULLIF($2,''), deny_note) \
          WHERE id = $1 AND approval_status IN (0, 2)",
@@ -112,6 +127,16 @@ async fn review_postpone(
             "种子不存在或不在可暂缓状态".into(),
         ));
     }
+    // 与 decide 同口径留痕（P2-4：旧版只写 audit_log，操作时间线缺这一环）
+    let _ = sqlx::query(
+        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
+         VALUES ($1, $2, 'postpone', $3)",
+    )
+    .bind(body.torrent_id)
+    .bind(auth.id)
+    .bind(serde_json::json!({ "reason": body.reason.trim() }).to_string())
+    .execute(&state.repo.db)
+    .await;
     state
         .repo
         .audit(Some(auth.id), "review.postpone", Some(body.torrent_id))
@@ -129,10 +154,11 @@ async fn review_resume(
     body: web::Json<PostponeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 与 postpone 同权（P2-4：resume 的对手面是暂缓操作者，同样是审核动作）
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::TORRENT_MANAGE,
+        crate::authz::perm::TORRENT_REVIEW,
     )
     .await?;
     let n = sqlx::query(
@@ -147,6 +173,15 @@ async fn review_resume(
     if n == 0 {
         return Err(DomainError::Validation("种子不存在或不在暂缓状态".into()));
     }
+    // 与 decide 同口径留痕（P2-4）
+    let _ = sqlx::query(
+        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
+         VALUES ($1, $2, 'resume', '{}')",
+    )
+    .bind(body.torrent_id)
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await;
     state
         .repo
         .audit(Some(auth.id), "review.resume", Some(body.torrent_id))

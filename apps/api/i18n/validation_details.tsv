@@ -50,3 +50,5 @@ key 需为小写字母/数字/下划线，≤40 字符	key 需為小寫字母/�
 单次最多处理 100 条	單次最多處理 100 條	At most 100 items per batch
 CIDR 前缀长度无效	CIDR 前綴長度無效	Invalid CIDR prefix length
 pattern 需是合法正则表达式	pattern 需是合法正則運算式	pattern must be a valid regular expression
+重提冷却中（被拒后请至少 10 分钟后再试，期间可修改内容）	重提冷卻中（被拒後請至少 10 分鐘後再試，期間可修改內容）	Resubmission cooldown active (please wait at least 10 minutes after rejection; you may edit in the meantime)
+不能把自己的候选转正（利益冲突）	不能把自己的候選轉正（利益衝突）	You cannot promote your own offer (conflict of interest)

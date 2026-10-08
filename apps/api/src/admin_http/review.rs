@@ -58,7 +58,16 @@ async fn review_queue(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<QueueQuery>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // 审计 2026-10-08 P2-3：队列下发 descr 摘要与发布者过审/被拒史，
+    // 与裁决同权——只查 staff.panel 时，站点用权限矩阵单独收窄
+    // torrent.review 后队列内容仍对全体 90+ 可见。
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TORRENT_REVIEW,
+    )
+    .await?;
     // 旧口径是 `ORDER BY id LIMIT 200` 且无分页：实测积压 207 条时只回 200 条，
     // **最新提交的那几条根本不在返回里**（升序 + 截断 = 新种对审核员永久不可见）。
     let limit = q.limit.unwrap_or(50).clamp(1, 200);
@@ -85,11 +94,13 @@ async fn review_queue(
                   COALESCE(t.official_tag, false) AS official_tag,
                   COALESCE(t.price, 0)::bigint AS price,
                   (SELECT count(*) FROM torrents d
-                    WHERE d.info_hash = t.info_hash
-                      AND d.id <> t.id) AS dup_hash,
+                    WHERE d.id <> t.id
+                      AND d.pieces_hash = t.pieces_hash
+                      AND d.approval_status <> 3) AS dup_hash,
                   (SELECT count(*) FROM torrents d
                     WHERE d.id <> t.id
-                      AND lower(d.name) = lower(t.name)) AS dup_name,
+                      AND lower(d.name) = lower(t.name)
+                      AND d.approval_status <> 3) AS dup_name,
                   (SELECT count(*) FROM torrents w
                     WHERE w.owner_id = t.owner_id
                       AND w.approval_status = 1) AS owner_approved,
@@ -187,9 +198,12 @@ async fn review_decide(
             "拒绝必须选择原因或填写理由".into(),
         ));
     }
-    // 1=已过 2=被拒
+    // 1=已过 2=被拒。过审写 approved_at（审计 2026-10-08 P1-1：该字段此前
+    // 在审核链路从不落值，worker 的泄露检测与社交队小时窗都以
+    // `approved_at IS NOT NULL` 为前提 ⇒ 全部常规过审种恒空转）。
     let n = sqlx::query(
         "UPDATE torrents SET approval_status = $2, \
+            approved_at = CASE WHEN $2::smallint = 1 THEN now() ELSE NULL END, \
             deny_reason_id = $3, deny_note = $4 \
          WHERE id = $1 AND approval_status = 0",
     )
@@ -214,10 +228,12 @@ async fn review_decide(
     }
     // 0075 免审积分：过审连击 +1 / 被拒清零（阈值放行在 upload 的 auto_approve 判定）
     // 0077 被拒禁发：累计 deny_count（阈值校验在 upload 前置）
+    // 审计 2026-10-08 P2-1：过审同时清零 deny_count——该计数此前只增不减，
+    // 叠加阈值后等于「累计被拒 N 次永久禁发」，改过自新没有出口。
     let _ = sqlx::query(
                 "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
          u.approve_streak + 1 ELSE 0 END, \
-         deny_count = CASE WHEN $2 THEN u.deny_count ELSE u.deny_count + 1 END FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
+         deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
     )
     .bind(body.torrent_id)
     .bind(body.approve)
@@ -270,6 +286,9 @@ async fn review_decide(
             Some(body.torrent_id),
         )
         .await;
+    // tracker 白名单按审核态过滤（guard 只载 0/1）：翻转后立即通知刷新，
+    // 否则被拒种在一个 guard 周期内仍可 announce 并拿到 peer 列表（P2-2）
+    crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({
         "torrent_id": body.torrent_id, "approved": body.approve, "reason": body.reason,
         "deny_reason_id": body.deny_reason_id,

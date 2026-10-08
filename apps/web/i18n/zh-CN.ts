@@ -3001,6 +3001,13 @@ const zhCnBase = {
     queueWaiting: "已等 {t}",
     queueOpen: "看详情",
     denyPickNone: "手填理由",
+    postpone: "暂缓",
+    postponeReason: "暂缓理由（如：等上传者补充mediainfo）：",
+    postponed: "已暂缓 #{id}",
+    batchApprove: "本页全过",
+    batchReject: "本页全拒",
+    batchConfirm: "将批量处理 {n} 条（{verdict}），自审条目会自动跳过。确定？",
+    batchDone: "批量处理 {n} 条，跳过 {skipped} 条",
 
     resolve: "标记已处理",
     resolved: "已处理举报 #{id}",
