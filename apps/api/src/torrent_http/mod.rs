@@ -13,8 +13,11 @@ mod interact;
 mod list;
 mod magnet;
 mod manage;
+// 抓轨日志正文（0312）
+mod logs;
 mod peers;
 mod query;
+mod related;
 mod sec_params;
 mod suggest;
 
@@ -25,12 +28,14 @@ pub use detail::*;
 // 复制一份必然漂移（历史上 RSS/Torznab 的促销标签就是这么各写一份的）
 pub use interact::*;
 pub use list::*;
+pub use logs::*;
 pub use magnet::*;
 pub use manage::*;
 pub use peers::*;
 pub(crate) use query::{
     norm_date, norm_promo, norm_tags, norm_text, parse_size,
 };
+pub use related::*;
 /// 多维筛选参数解析：后台管理列表也要用同一实现（B3）。
 pub(crate) use sec_params::parse_section_params;
 pub use suggest::*;

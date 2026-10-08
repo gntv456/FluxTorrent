@@ -13,6 +13,7 @@ mod friend;
 mod interact;
 mod leak_bot;
 mod like;
+mod list_prefs;
 mod lottery;
 pub mod medal;
 mod medal_buy;
@@ -46,6 +47,7 @@ pub use friend::*;
 pub use interact::*;
 pub use leak_bot::*;
 pub use like::*;
+pub use list_prefs::*;
 pub use lottery::*;
 pub use medal::*;
 pub use medal_buy::*;
@@ -78,6 +80,8 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(my_medals)
         .service(notice_prefs_get)
         .service(notice_prefs_set)
+        .service(list_prefs_get)
+        .service(list_prefs_set)
         .service(pool_honor)
         // M15 论坛
         .service(forum_list)

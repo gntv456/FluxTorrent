@@ -35,6 +35,8 @@ mod geo;
 mod http;
 mod i18n;
 mod invite_http;
+// 抓轨日志识别与打分（0312 音乐站 Logchecker）
+mod logcheck;
 mod mailer;
 mod modules;
 mod openapi_http;

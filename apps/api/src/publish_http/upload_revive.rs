@@ -85,6 +85,8 @@ pub(super) async fn revive_tombstone(
         "DELETE FROM tags WHERE torrent_id = $1",
         "DELETE FROM files WHERE torrent_id = $1",
         "DELETE FROM torrent_files WHERE torrent_id = $1",
+        // 0312：上一次发布的抓轨日志同样作废（本次若没带日志，不能沿用旧分数）
+        "DELETE FROM torrent_logs WHERE torrent_id = $1",
     ] {
         sqlx::query(sql)
             .bind(old_id)

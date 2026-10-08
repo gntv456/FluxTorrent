@@ -63,6 +63,15 @@ export interface MetaValues {
   pick_type: number;
 }
 
+/** 发种表单当前选中的抓轨日志（0312），由 <UploadRipLogs /> 写入。
+ *  放模块层而非主表单的 ref：主表单已在行数基线上，加不起一对 ref 声明 +
+ *  属性透传；appendMeta 只有发种提交一个调用方，不会串台。 */
+let ripFiles: File[] = [];
+
+export function setRipFiles(files: File[]) {
+  ripFiles = files;
+}
+
 /** 组装成 FormData（空串一律不提交，避免把「没填」写成「填了空值」） */
 export function appendMeta(fd: FormData, v: MetaValues) {
   const put = (k: string, val: string) => {
@@ -86,4 +95,8 @@ export function appendMeta(fd: FormData, v: MetaValues) {
     if (v.pos_state_until) put("pos_state_until", v.pos_state_until);
   }
   if (v.pick_type > 0) put("pick_type", String(v.pick_type));
+  // 抓轨日志（0312）：二进制 part，与上面的文本字段不同通道。文本通道按
+  // 256 KiB 截断并做 UTF-8 lossy，而 EAC 日志常是 GBK 码页、判分依据又
+  // 正好在尾部（No errors occurred / End of status report）。
+  for (const f of ripFiles) fd.append("log", f);
 }

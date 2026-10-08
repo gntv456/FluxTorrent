@@ -13,9 +13,12 @@ mod interact;
 mod list;
 mod list_noclamp;
 mod list_noclamp_as;
+// 抓轨日志读路径（0312）
+mod logs;
 mod manage;
 pub(crate) mod manage_perm;
 pub(crate) mod promo;
+pub(crate) mod related;
 pub(crate) mod section_filter;
 mod section_pred;
 mod syn_search;
@@ -32,7 +35,9 @@ pub(crate) mod view_scope;
 mod visibility;
 pub use list::*;
 pub use list_noclamp::*;
+pub use logs::*;
 pub use manage::*;
+pub use related::*;
 pub use section_filter::SectionFilter;
 /// 多维筛选谓词（B3）：后台管理列表复用前台同一实现。
 pub(crate) use section_pred::section_where;
