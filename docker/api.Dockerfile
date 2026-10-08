@@ -1,11 +1,16 @@
+ARG BASE_REGISTRY=docker.1ms.run
 # cargo-chef 分层构建（六维强化方案 阶段三「构建提速」）：
 # planner 层产出 recipe.json（依赖清单指纹），cook 层只编依赖——
 # 改业务代码时 recipe 不变、依赖层直接命中缓存，不再全量重编译。
 # 三个 Rust 服务共用同一分层结构，仅 build 目标与运行时差异不同。
-FROM docker.1ms.run/library/rust:1.97-slim-bookworm AS chef
+FROM ${BASE_REGISTRY}/library/rust:1.97-slim-bookworm AS chef
 WORKDIR /build
 RUN cargo install cargo-chef --locked
-COPY docker/cargo-config.toml /usr/local/cargo/config.toml
+# cargo 源可覆盖：默认 rsproxy 国内镜像；海外构建
+# --build-arg CARGO_REGISTRY=sparse+https://index.crates.io/
+ARG CARGO_REGISTRY=sparse+https://rsproxy.cn/index/
+COPY docker/cargo-config.toml /tmp/cargo-config.toml
+RUN sed "s|sparse+https://rsproxy.cn/index/|${CARGO_REGISTRY}|" /tmp/cargo-config.toml > /usr/local/cargo/config.toml && rm /tmp/cargo-config.toml
 
 FROM chef AS planner
 # 适配器 wasm 单独成层：adapter_seed.rs 的 include_bytes! 在编译期就要这个产物，
@@ -35,7 +40,7 @@ RUN cargo build --release -p flux-api \
 # 保证下方 COPY 可复现——空目录 = geo.rs 找不到 mmdb，GeoIP 字段静默降级为 null
 RUN mkdir -p apps/api/geoip
 
-FROM docker.1ms.run/library/debian:bookworm-slim
+FROM ${BASE_REGISTRY}/library/debian:bookworm-slim
 RUN sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list.d/debian.sources 2>/dev/null; sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list 2>/dev/null; apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
 # 非 root 运行（审计 P1）：专用用户 uid/gid 1000；附件卷 /app/attachments 与
 # 备份卷 /backups 由 compose 卷首次创建时按此属主落盘（named volume 初次挂载会
