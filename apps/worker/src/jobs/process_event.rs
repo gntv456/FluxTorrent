@@ -128,8 +128,7 @@ pub(crate) async fn process_event(
     let has_payload = g.phys_down > 0;
     // 比例下限与 H&R buffer 同口径（size×10.4%），整数运算避免浮点误差。
     let payload_ratio_ok = torrent_size <= 0
-        || g.phys_down.saturating_mul(1000)
-            >= torrent_size.saturating_mul(104);
+        || g.phys_down.saturating_mul(1000) >= torrent_size.saturating_mul(104);
     let seeding = ev.left == 0
         && ev.port > 0
         && ev.conn != Some(0)
@@ -184,8 +183,8 @@ pub(crate) async fn process_event(
     let stopped = ev.event == "stopped";
     sqlx::query(
         r#"
-        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at, connectable, agent, progress, last_port)
-        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now(), COALESCE($12, 1), $13, $14, $15)
+        INSERT INTO snatches (user_id, torrent_id, uploaded, downloaded, last_up, last_down, leeching, seeding, completed_at, last_seen_at, connectable, agent, progress, last_port, total_announces, near_cap_announces)
+        VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $11 THEN FALSE ELSE $7 END, CASE WHEN $11 THEN FALSE ELSE $8 END, CASE WHEN $9 THEN now() ELSE NULL END, now(), COALESCE($12, 1), $13, $14, $15, $16, $17)
         ON CONFLICT (user_id, torrent_id) DO UPDATE SET
           uploaded = snatches.uploaded + EXCLUDED.uploaded,
           downloaded = snatches.downloaded + EXCLUDED.downloaded,
@@ -206,6 +205,20 @@ pub(crate) async fn process_event(
                    THEN LEAST(GREATEST(EXTRACT(EPOCH FROM (now() - snatches.last_seen_at))::bigint, 0), $10::bigint)
                    ELSE 0 END
           ),
+          -- 贴边汇报计数（0304，与时长累计同一 CASE 口径）：网盘临时挂载型
+          -- 假做种的节奏指纹——间隔 > 0.85×seed_cap 才计入时长的汇报，
+          -- 正常客户端按 interval（=cap/2）汇报，持续贴边即画像命中。
+          total_announces = snatches.total_announces + (
+              CASE WHEN EXCLUDED.seeding
+                        AND snatches.last_seen_at > now() - ($10::bigint * interval '1 second')
+                   THEN 1 ELSE 0 END
+          ),
+          near_cap_announces = snatches.near_cap_announces + (
+              CASE WHEN EXCLUDED.seeding
+                        AND snatches.last_seen_at > now() - ($10::bigint * interval '1 second')
+                        AND snatches.last_seen_at <= now() - ($10::bigint * interval '1 second' * 0.85)
+                   THEN 1 ELSE 0 END
+          ),
           -- connectable（0071）：tracker 回连抽样结果覆盖（NULL=本次未测，保持原值）
           connectable = COALESCE($12, snatches.connectable),
           -- P2（2026-10-07 审计）：UDP 事件 agent 恒空，不能用它冲掉 HTTP 侧
@@ -222,7 +235,8 @@ pub(crate) async fn process_event(
     // P0-1：写库锚点用守卫后的 anchor（大幅回退时沿用旧基线），与
     // upsert 侧的 GREATEST 双保险——EXCLUDED.last_up 永远是「合法单调」的。
     .bind(anchor_up)
-    .bind(anchor_down)    .bind(!seeding)
+    .bind(anchor_down)
+    .bind(!seeding)
     .bind(seeding)
     .bind(completed)
     // 审计修复（P0 真根因）：$10 在 SQL 中是 bigint（时长容忍窗）、$11 是 boolean（stopped），
@@ -242,6 +256,10 @@ pub(crate) async fn process_event(
     })
     // P0-2：上报端口（幽灵做种判定基础；i32 与迁移 0298 列型一致）
     .bind(ev.port as i32)
+    // 0304 贴边计数：INSERT 首行（无既有行）的初值——首报无间隔概念，
+    // total=1/near=0 起步（upsert 分支按间隔 CASE 累加）
+    .bind(1)
+    .bind(0)
     .execute(&mut *tx)
     .await?;
 
