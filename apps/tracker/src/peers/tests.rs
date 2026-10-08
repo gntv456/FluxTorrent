@@ -1,5 +1,7 @@
 use super::*;
 
+mod encoding;
+
 fn mk_peer(ih: &str, pid: &str, left: i64) -> Peer {
     Peer {
         key: PeerKey {
@@ -20,12 +22,23 @@ fn mk_peer(ih: &str, pid: &str, left: i64) -> Peer {
 #[test]
 fn seed_leech_count_and_exclusion() {
     let t = PeerTable::new();
-    t.upsert(mk_peer("abc", "p1", 0)); // seeder
-    t.upsert(mk_peer("abc", "p2", 100)); // leecher
-    t.upsert(mk_peer("xyz", "p3", 0)); // 另一种子
+    // peer_id 一律用合法十六进制串：peer_id_bytes 会把非 hex 解码成全 0，
+    // 那种用例里的「比 peer_id」断言咬不住任何东西。
+    t.upsert(mk_peer("abc", "a1", 0)); // seeder（user 1）
+    t.upsert(mk_peer("abc", "a2", 0)); // 同账号第二个 peer_id（user 1）
+    let mut other = mk_peer("abc", "b1", 100); // 另一账号的 leecher
+    other.user_id = 2;
+    t.upsert(other);
+    t.upsert(mk_peer("xyz", "c1", 0)); // 另一种子
+    // 计数按 user 去重（P2-6）：user1 的两条 seeder 只算 1 人
     assert_eq!(t.counts("abc"), (1, 1));
-    let snap = t.snapshot("abc", 50, "p1");
-    assert_eq!(snap.v4.len() + snap.v6.len(), 1); // 排除自己
+    // P3-6：以 user 1 请求 ⇒ 自家 a1/a2 一条都不下发，只拿到 b1
+    let snap = t.snapshot("abc", 50, 1);
+    assert_eq!(snap.v4.len() + snap.v6.len(), 1);
+    assert_eq!(snap.v4[0].peer_id[0], 0xb1);
+    // self_user=0 表示不排除（真实 user_id 恒 >= 1）
+    let all = t.snapshot("abc", 50, 0);
+    assert_eq!(all.v4.len() + all.v6.len(), 3);
 }
 
 #[test]
@@ -61,7 +74,7 @@ fn per_user_swarm_cap_evicts_oldest() {
     let t = PeerTable::new();
     let base = chrono::Utc::now();
     for i in 0..12i64 {
-        let mut p = mk_peer("abc", &format!("p{i}"), 0);
+        let mut p = mk_peer("abc", &format!("{i:02x}"), 0);
         p.last_seen = base + chrono::Duration::seconds(i);
         if i == 11 {
             p.user_id = 2; // 另一账号的 peer 不受配额影响
@@ -70,10 +83,13 @@ fn per_user_swarm_cap_evicts_oldest() {
     }
     // P2-6（2026-10-07）：实时计数按 user_id 去重——11 条 peer 分属 user1(10)+user2(1)，
     // 去重后 seeder 只算 2 个「人」。本测试的真正目的是**每账号配额淘汰**，
-    // 由下面的 snapshot 断言独立验证（p0 已淘汰）；计数断言同步为去重口径。
+    // 由下面的 snapshot 断言独立验证（最旧的 "00" 已淘汰）；计数断言同步为去重口径。
     assert_eq!(t.count_seeders("abc"), 2);
-    let snap = t.snapshot("abc", 50, "");
-    assert!(!snap.v4.iter().any(|p| p.peer_id[..2] == *b"p0")); // p0 已淘汰
+    // self_user=0：不按账号过滤，才能单独验「配额淘汰」这件事
+    let snap = t.snapshot("abc", 50, 0);
+    // 最旧的 "00" 应被该账号配额淘汰（peer_id 首字节即 0x00）
+    assert!(snap.v4.iter().any(|p| p.peer_id[0] == 0x0b)); // 新的还在
+    assert!(!snap.v4.iter().any(|p| p.peer_id[0] == 0x00)); // "00" 已淘汰
 }
 
 /// 审计 10-06 第 5 条：port=0 的 peer 不可连接，计数口径应与下发一致
@@ -200,139 +216,6 @@ fn connectable_probe_roundtrip() {
 }
 
 #[test]
-fn bencode_announce_binary_integrity() {
-    let body = bencode_announce(
-        1,
-        2,
-        3,
-        &[CompactPeer {
-            ip: [10, 0, 0, 1],
-            port: 0xC201, // 高字节非 ASCII —— 验证不经 UTF-8 损坏
-            peer_id: [0u8; 20],
-        }],
-        &[],
-        1800,
-        600,
-        true,
-    );
-    assert!(body.windows(6).any(|w| w == [10, 0, 0, 1, 0xC2, 0x01]));
-    assert!(body.starts_with(b"d8:completei1e"));
-    assert!(body.ends_with(b"e"));
-}
-
-#[test]
-fn bencode_announce_ipv6_bep7() {
-    let body = bencode_announce(
-        1,
-        1,
-        0,
-        &[CompactPeer {
-            ip: [10, 0, 0, 1],
-            port: 51413,
-            peer_id: [0u8; 20],
-        }],
-        &[CompactPeer6 {
-            ip: [
-                0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01,
-            ],
-            port: 0xC201,
-        }],
-        1800,
-        600,
-        true,
-    );
-    // BEP-7：peers6 紧跟 peers（字节序），18 字节/peer；二进制内容不经 UTF-8 损坏
-    // 51413 = 0xC8D5
-    assert!(body.windows(6).any(|w| w == [10, 0, 0, 1, 0xC8, 0xD5]));
-    assert!(body.windows(18).any(|w| w[..16]
-        == [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01]
-        && w[16] == 0xC2
-        && w[17] == 0x01));
-    let s = String::from_utf8_lossy(&body);
-    assert!(s.contains("6:peers618:"), "缺 peers6: {s}");
-    assert!(
-        s.find("5:peers").unwrap() < s.find("6:peers6").unwrap(),
-        "字典键序"
-    );
-}
-
-#[test]
-fn bencode_announce_omits_empty_peers6() {
-    let body = bencode_announce(1, 2, 3, &[], &[], 1800, 600, true);
-    let s = String::from_utf8(body).unwrap();
-    assert!(!s.contains("peers6"), "空 v6 列表不应输出 peers6 键: {s}");
-}
-
-/// BEP3 要求字典键按原始字节序排列。旧实现写成 complete/incomplete/downloaded，
-/// 宽容客户端能忍但严格校验器会拒收 —— 0267 修正后必须锁死这个顺序。
-#[test]
-fn bencode_announce_dict_key_order_is_byte_sorted() {
-    let body = bencode_announce(1, 2, 3, &[], &[], 1800, 600, true);
-    let s = String::from_utf8(body).unwrap();
-    let pos = |k: &str| s.find(k).unwrap_or_else(|| panic!("缺 {k}"));
-    let (c, dl, inc, itv, min, p) = (
-        pos("8:complete"),
-        pos("10:downloaded"),
-        pos("10:incomplete"),
-        pos("8:interval"),
-        pos("12:min interval"),
-        pos("5:peers"),
-    );
-    assert!(
-        c < dl && dl < inc && inc < itv && itv < min && min < p,
-        "键序不合 BEP3: {s}"
-    );
-}
-
-/// 非 compact 回退：peers 必须是字典列表（老客户端），且 peer id 原样透传
-#[test]
-fn bencode_announce_non_compact_dict_list() {
-    let mut pid = [0u8; 20];
-    pid[..8].copy_from_slice(b"-qB4650-");
-    let body = bencode_announce(
-        1,
-        0,
-        0,
-        &[CompactPeer {
-            ip: [192, 168, 1, 9],
-            port: 6881,
-            peer_id: pid,
-        }],
-        &[],
-        1800,
-        600,
-        false,
-    );
-    // 列表而非字节串
-    assert!(
-        body.windows(8).any(|w| w == b"5:peersl"),
-        "非 compact 的 peers 应为列表"
-    );
-    let s = String::from_utf8_lossy(&body);
-    assert!(s.contains("d2:ip11:192.168.1.9"), "应发 IP 字符串: {s}");
-    assert!(s.contains("7:peer id20:"), "应含 20 字节 peer id: {s}");
-    assert!(s.contains("4:porti6881ee"), "应含端口: {s}");
-    // 非 compact 不发 peers6（那些客户端读不懂 BEP7）
-    assert!(!s.contains("peers6"), "非 compact 不应发 peers6");
-    assert!(body.windows(8).any(|w| w == b"-qB4650-"));
-}
-
-/// peer_id 解码容错：脏数据不能把 tracker 打挂
-#[test]
-fn peer_id_bytes_tolerates_junk() {
-    assert_eq!(peer_id_bytes(""), [0u8; 20]);
-    assert_eq!(peer_id_bytes("zz"), [0u8; 20]);
-    assert_eq!(peer_id_bytes("0102"), {
-        let mut e = [0u8; 20];
-        e[0] = 1;
-        e[1] = 2;
-        e
-    });
-    // 超长（>40 hex）只取前 20 字节
-    assert_eq!(peer_id_bytes(&"ff".repeat(50)), [0xffu8; 20]);
-}
-
-#[test]
 fn snapshot_splits_v4_v6() {
     let t = PeerTable::new();
     let mut p4 = mk_peer("abc", "p4", 0);
@@ -341,24 +224,11 @@ fn snapshot_splits_v4_v6() {
     p6.ip = "2001:db8::5".into();
     t.upsert(p4);
     t.upsert(p6);
-    let snap = t.snapshot("abc", 50, "");
+    let snap = t.snapshot("abc", 50, 0);
     assert_eq!(snap.v4.len(), 1);
     assert_eq!(snap.v6.len(), 1);
     assert_eq!(
         snap.v6[0].ip,
         [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]
     );
-}
-
-#[test]
-fn percent_decode_binary_safe() {
-    assert_eq!(percent_decode(b"%98%72%0b"), vec![0x98, 0x72, 0x0b]);
-    assert_eq!(percent_decode(b"a%20b"), b"a b".to_vec());
-    assert_eq!(percent_decode(b"plain"), b"plain".to_vec());
-    assert_eq!(percent_decode(b"100%"), b"100%".to_vec()); // 尾部孤立 % 保留
-}
-
-#[test]
-fn hex_roundtrip() {
-    assert_eq!(hex(&[0x98, 0x72, 0x0b]), "98720b");
 }

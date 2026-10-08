@@ -218,7 +218,7 @@ pub(super) async fn announce(
             &mut r,
             &info_hash_hex,
             numwant.clamp(0, 200),
-            &key.peer_id,
+            user_id,
         )
         .await;
         (seeders as i32, leechers as i32, snap)
@@ -226,7 +226,7 @@ pub(super) async fn announce(
         let snap = t.state.peers.snapshot(
             &info_hash_hex,
             numwant.clamp(0, 200),
-            &key.peer_id,
+            user_id,
         );
         (
             t.state.peers.count_seeders(&info_hash_hex) as i32,
