@@ -74,9 +74,30 @@ pub(super) async fn email_invite_handler(
             "站点未配置邮件服务（SMTP），请复制邀请码手动发送给对方".into(),
         ));
     };
+    // 邮件外发场景的站点基址（硬编码审计 P1）：env 未配置且非开发态时
+    // **拒发**——寄出 localhost 死链的邀请函比不发更糟（收件人点开必失败，
+    // 还暴露部署形态）。开发态保留闭环。
     let base = std::env::var("PUBLIC_WEB_URL")
         .or_else(|_| std::env::var("PUBLIC_API_URL"))
-        .unwrap_or_else(|_| "http://localhost:3000".into());
+        .ok()
+        .map(|v| v.trim().trim_end_matches('/').to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| {
+            if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
+                String::new() // 生产拒发标记：下方空串检查兜住
+            } else {
+                "http://localhost:3000".to_string()
+            }
+        });
+    if base.is_empty() {
+        tracing::error!(
+            "invite mail refused: PUBLIC_WEB_URL/PUBLIC_API_URL unset \
+             (FLUX_DEV=1 to bypass)"
+        );
+        return Err(DomainError::Validation(
+            "站点未配置对外访问地址（PUBLIC_WEB_URL），无法发送邀请邮件".into(),
+        ));
+    }
     let link = format!("{base}/register?invite={code}");
     let site: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'site_name'",

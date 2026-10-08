@@ -107,8 +107,28 @@ pub async fn donate_topup(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let provider = crate::payment::provider_from(&gw);
+    // 支付回跳/回调基址（硬编码审计 P1）：未配置且非开发态拒单——
+    // 带 localhost 回调地址的支付单，网关异步通知永远打不到本站，
+    // 订单会停在待支付。
     let base = std::env::var("PUBLIC_SITE_URL")
-        .unwrap_or_else(|_| "http://localhost:3000".into());
+        .ok()
+        .map(|v| v.trim().trim_end_matches('/').to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| {
+            if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
+                String::new() // 生产拒单标记：下方空串检查兜住
+            } else {
+                "http://localhost:3000".to_string()
+            }
+        });
+    if base.is_empty() {
+        tracing::error!(
+            "donate order refused: PUBLIC_SITE_URL unset (FLUX_DEV=1 to bypass)"
+        );
+        return Err(DomainError::Validation(
+            "站点未配置对外访问地址（PUBLIC_SITE_URL），无法创建支付单".into(),
+        ));
+    }
     let url = provider.pay_url(
         &order_no,
         &format!("{:.2}", body.amount_usd),

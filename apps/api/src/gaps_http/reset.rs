@@ -70,8 +70,29 @@ pub async fn password_forgot(
             let cfg = cfg.unwrap();
             // 真实投递（lettre）：URL = smtps://user:pass@host:port 或 smtp://host:port；
             // 后台线程发送，失败仅记日志不影响响应。
+            // 基址（硬编码审计 P1）：未配置且非开发态拒发——寄 localhost
+            // 死链的重置邮件等于把「点开必失败」发给最着急的用户。
             let base = std::env::var("PUBLIC_API_URL")
-                .unwrap_or_else(|_| "http://localhost:3000".into());
+                .ok()
+                .map(|v| v.trim().trim_end_matches('/').to_string())
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| {
+                    if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
+                        String::new() // 生产拒发标记：下方空串检查兜住
+                    } else {
+                        "http://localhost:3000".to_string()
+                    }
+                });
+            if base.is_empty() {
+                tracing::error!(
+                    uid,
+                    "reset mail refused: PUBLIC_API_URL unset \
+                     (FLUX_DEV=1 to bypass)"
+                );
+                return Err(DomainError::Internal(anyhow::anyhow!(
+                    "站点未配置对外访问地址（PUBLIC_API_URL），无法发送重置邮件"
+                )));
+            }
             let link = format!("{base}/reset?token={token}");
             let email_addr = body.email.trim().to_lowercase();
             let site = sqlx::query_scalar::<_, String>(
