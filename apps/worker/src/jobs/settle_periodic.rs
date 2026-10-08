@@ -46,10 +46,16 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
                         -- P0-2（2026-10-07 保种组审计）：幽灵挂种不计——实测
                         -- port=0 纯 curl announce 无文件无下载即可累计做种时长
                         -- 领取复活奖励；补与做种收益同口径的端口/回连过滤，
-                        -- 另要求存在真实下载（completed 侧证据：累计下载>0）。
+                        -- 另要求「下载过 或 辅种佐证」（2026-10-08：辅种者
+                        -- 数据来自外站，downloaded 恒 0，有 leecher 佐证上传
+                        -- 即证明手里有数据，与 process_event 豁免同口径）。
                         AND s.last_port > 0
                         AND NOT COALESCE(s.connectable = 0, false)
-                        AND s.downloaded > 0)
+                        AND (s.downloaded > 0 OR EXISTS (
+                            SELECT 1 FROM upload_corroborated uc
+                            WHERE uc.uploader_id = s.user_id
+                              AND uc.torrent_id = s.torrent_id
+                              AND uc.bytes > 0)))
         "#,
     )
     .fetch_all(db)

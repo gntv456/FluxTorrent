@@ -114,48 +114,40 @@ pub(crate) async fn process_event(
             .await;
     }
 
-    // P0-2 幽灵做种四条件（保种组实测审计 2026-10-07 二轮）：
-    //   left=0（声称数据完整）AND port>0（开了监听端口）AND
-    //   connectable!=0（回连不可达的不算）AND
-    //   **原始累计下载量 > 0**（真的下过数据）。
-    // 第四条是本轮新增的不变量：left=0 声称「我持有完整数据」，却从未
-    // 下载过一个字节 —— 逻辑上不可能（数据只能靠下载获得，跨种/秒传也
-    // 仍要经由本账户的 snatches 下载量）。此前只要开一个监听端口即可
-    // 伪装，conn 探测又只验 TCP 三手、且大 swarm 多数 peer 根本没轮到
-    // 探测（conn=None 直接放行），幽灵做种几乎无门槛。
-    // 判定用 `g.phys_down`（本笔 credited ∪ 历史 credited，倍率前物理量），
-    // 不再用 ev.down 这个自报读数——freeleech 下照常非零，不误杀真做种者。
+    // P0-2 幽灵做种（保种组审计 2026-10-07 二轮 + 2026-10-08 辅种豁免）：
+    //   left=0 AND port>0 AND connectable!=0 AND（物理下载量>0 达 10.4%
+    //   **或辅种佐证**）。phys_down 用倍率前物理量（freeleech 照常非零）。
+    //   辅种豁免：通用 PT 站辅种是主流——数据来自外站，phys_down 恒 0。
+    //   豁免判据 = upload_corroborated 有 leecher 佐证过的上传量（>0）：
+    //   能真实上传给别人本身证明手里有数据，伪造者给不出这个证据。
+    //   豁免只放行 seeding/completed，速率钳/基线守卫/佐证上界照常；
+    //   零下载零佐证的纯幽灵仍被拦 + 留痕申诉。
     let has_payload = g.phys_down > 0;
+    let cross_seed_vouched = corroborated.is_some_and(|c| c > 0);
     // 比例下限与 H&R buffer 同口径（size×10.4%），整数运算避免浮点误差。
     let payload_ratio_ok = torrent_size <= 0
         || g.phys_down.saturating_mul(1000) >= torrent_size.saturating_mul(104);
     let seeding = ev.left == 0
         && ev.port > 0
         && ev.conn != Some(0)
-        && has_payload
-        && payload_ratio_ok;
+        && (has_payload || cross_seed_vouched)
+        && (payload_ratio_ok || cross_seed_vouched);
     // P0-2C completed 下载侧证据（2026-10-07 二轮加固）：旧判据仅
     // `event=="completed" && ev.down > 0` —— 报 1 字节 + 一个 completed
     // 事件即可把 times_completed / 完成榜 / 「完成 N 颗」类任务考核全部
     // 注水，且不要求 left=0（没下完也能标记完成，与真实语义不符）。
     // 现在要求：① 真发 completed 事件；② left=0（确实下完）；
-    // ③ 物理下载量非零；④ 达种子大小 10%（低于 10% 属误触/秒删）；
+    // ③ 物理下载量非零或辅种佐证；④ 达种子大小 10%（同上豁免）；
     // ⑤ 之前已有 peer 行——UNIT3D 口径：首报即自称完成的不算，否则一颗没人
     // 碰过的种子可以被凭空刷 times_completed / 完成榜 / 「完成 N 颗」类考核。
     let completed = ev.event == "completed"
         && ev.left == 0
-        && has_payload
-        && payload_ratio_ok
+        && (has_payload || cross_seed_vouched)
+        && (payload_ratio_ok || cross_seed_vouched)
         && g.had_baseline;
-    // 幽灵签名留痕（2026-10-07 二轮）：声称 left=0（持有完整数据）却从未
-    // 下载过任何字节 —— 记 cheat_events 供管理组复核。
-    // 为什么不直接封号：确有合法例外（跨种/二传者从别处拿到数据直接做种，
-    // 本站 downloaded 恒为 0）。这类账号会被本判定挡下做种收益，但保留
-    // 人工申诉通道——管理组确认后可在 cheat_events 处置并放行，
-    // 比静默误杀或全站一刀切更稳妥。
-    // 顺带把「上传额远超下载额」也并入 reason：正常做种者上传可略大于
-    // 下载，但两个数量级的落差是纯刷量的强信号。
-    if ev.left == 0 && ev.port > 0 && !has_payload {
+    // 幽灵签名留痕（2026-10-08 收紧）：left=0 却零下载**且零佐证**——纯幽灵
+    // 画像。辅种者（有佐证）不进待办；有下载未达 10% 的也不记（误触/秒删）。
+    if ev.left == 0 && ev.port > 0 && !has_payload && !cross_seed_vouched {
         // 现场描述仍可引用自报读数，但判据已改用站点侧物理量
         let ratio = if g.raw_down > 0 {
             format!("（自报下载 {} 字节，credited 未达门槛）", g.raw_down)
