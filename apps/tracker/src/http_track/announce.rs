@@ -265,7 +265,7 @@ pub(crate) async fn announce(
             &mut r,
             &info_hash_hex,
             numwant,
-            &key.peer_id,
+            user_id,
         )
         .await;
         bencode_announce(
@@ -281,7 +281,7 @@ pub(crate) async fn announce(
     } else {
         let seeders = state.peers.count_seeders(&info_hash_hex);
         let leechers = state.peers.count_leechers(&info_hash_hex);
-        let snap = state.peers.snapshot(&info_hash_hex, numwant, &key.peer_id);
+        let snap = state.peers.snapshot(&info_hash_hex, numwant, user_id);
         bencode_announce(
             seeders as i64,
             leechers as i64,

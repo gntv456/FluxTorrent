@@ -134,7 +134,7 @@ pub async fn snapshot(
     redis: &mut ConnectionManager,
     info_hash: &str,
     numwant: usize,
-    exclude: &str,
+    self_user: i64,
 ) -> Snapshot {
     let mut snap = Snapshot::default();
     let peers = swarm_peers(redis, info_hash).await;
@@ -142,7 +142,8 @@ pub async fn snapshot(
         if snap.v4.len() + snap.v6.len() >= numwant {
             break;
         }
-        if p.key.peer_id == exclude {
+        // 与内存表同口径：请求者同账号的 peer 一律不下发（P3-6）
+        if p.user_id == self_user {
             continue;
         }
         // 与内存表 snapshot 同口径（审计 10-06 第 5 条）：port=0 不可连接

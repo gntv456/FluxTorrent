@@ -554,3 +554,28 @@ announce 报 `downloaded=种子大小` 现在得到 `seeding=false`、`completed
 不能只看已提交代码。行数门禁拆出的三个新模块（`group_parse.rs`、
 `peers/table/table_persist.rs`、`process_event/audit_hold.rs`）是纯搬运，
 不改线上语义。
+
+## 十四、批三：同账号 peer 不外发（P3-6，2026-10-08）
+
+§八 那条「peer 列表不含同 user 的其他 peer」落地了。
+
+- **改法**：`snapshot()` 的过滤维度从 `exclude: &str`（只排请求者自己那条
+  peer_id）换成 `self_user: i64`（排掉请求者**整个账号**的 peer），内存表与
+  外置 Redis 表同语义，HTTP/UDP 两个入口同步。参数少了一个、没有兼容分支。
+  `self_user=0` 表示不排除（真实 user_id 恒 ≥ 1，单测用它保留「全量可见」语义）。
+- **为什么按账号而不是按 peer_id**：请求者自己的 peer 自己早就知道；把同账号
+  有几个 peer_id、各自 ip:port 回发给本账号客户端，等于把「本站怎么标识你」
+  的内部结构告诉客户端，正好是 P1-1 顶号链想读的东西。代价是同账号多设备
+  （NAS + 笔记本）不再能靠 tracker 互找——它们仍可经 swarm 里其他 peer 会面，
+  这与 UNIT3D/NexusPHP「不给请求者它自己的 peer」的口径一致。
+- **没做的另一半**：`no_peer_id=1`。compact（BEP23，现代客户端唯一实际在用的
+  形态）本来就不带 peer id，只有 `compact=0` 的字典列表才有得剥——为一个
+  遗留客户端形态给 `bencode_announce` 加参数、改动三处测试不值得。
+- **验收**：`_verify_batch_1008.py` 加了 V 组并**当场按修复后期望写**——
+  V1 同账号换 peer_id 拿不到自家 peer（0 条）、V2 他人账号照样拿到（≥1 条，
+  防「一刀切」假绿）。V 组跑完自己发 `stopped` 收尾，不污染后面的 P 组。
+  线上复验：**24/24**；10-06 轮回归 `_verify_tracker_round.py` **20/20**；
+  配置面 `_verify_policy_switch.py` 9/9。
+- **门禁债顺手还掉**：`peers/tests.rs` 因这次改动会长到 376 行（上限 300），
+  把协议编码侧用例拆成 `peers/tests/encoding.rs` 后 tests.rs 回到 232 行，
+  门禁对 tracker 目录重新全绿。

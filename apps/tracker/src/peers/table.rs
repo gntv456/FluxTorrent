@@ -118,11 +118,16 @@ impl PeerTable {
 
     /// 取同一 info_hash 的活跃 peer（排除自己，numwant 上限），v4/v6 分列。
     /// BEP-7：v6 peer 不再被丢弃；只扫本 swarm 桶（P0-3）。
+    /// 取一份可下发的 peer 列表。`self_user` = 请求者账号：
+    /// 同账号的 peer **一条都不下发**（UNIT3D/Ocelot 口径——自己的 peer 自己
+    /// 早就知道，发回去既无信息量，又把「同一账号有几个 peer_id、各自
+    /// ip:port」这类可被用来对撞顶号/影子 peer 的内部结构暴露给客户端）。
+    /// 传 0 表示不排除（真实 user_id 恒 >= 1，单测里用它保留「全量可见」语义）。
     pub fn snapshot(
         &self,
         info_hash: &str,
         numwant: usize,
-        exclude: &str,
+        self_user: i64,
     ) -> Snapshot {
         self.gc_swarm(info_hash);
         // ZT81：允许 numwant=0（客户端明确不要 peer 列表时不返回）；上限照旧钳死
@@ -135,7 +140,7 @@ impl PeerTable {
             if snap.v4.len() + snap.v6.len() >= limit {
                 break;
             }
-            if p.key.peer_id == exclude {
+            if p.user_id == self_user {
                 continue;
             }
             // ZT81：port=0 的 peer 不可连接，不下发给其他客户端
