@@ -12,6 +12,8 @@ mod upload;
 // 发种前置校验（0288）：把「报错时种子已入库」的校验全部提到 INSERT 之前
 mod upload_body;
 mod upload_fields;
+// 种子工件（0323 game/software）：校验和清单/更新日志的 part 通道与落库
+mod upload_artifacts;
 // 抓轨日志闸门与落库（0312）
 mod upload_logcheck;
 mod upload_precheck;
@@ -21,6 +23,22 @@ mod upload_revive;
 mod upload_suggest;
 // 多维属性解析/写入（B2 六类型）：编辑口与批量口也要调，故公开
 pub(crate) mod upload_sections;
+
+/// 详情聚合的工件清单（0323）：aggregate.rs 跨模块调用面
+pub(crate) async fn list_artifacts_for_detail(
+    db: &sqlx::PgPool,
+    torrent_id: i64,
+) -> Vec<serde_json::Value> {
+    upload_artifacts::list_for_detail(db, torrent_id).await
+}
+
+/// 详情聚合的更新链（0323）
+pub(crate) async fn list_artifact_children(
+    db: &sqlx::PgPool,
+    parent_id: i64,
+) -> Vec<serde_json::Value> {
+    upload_artifacts::children_of(db, parent_id).await
+}
 
 pub use collections::*;
 pub use download::*;
