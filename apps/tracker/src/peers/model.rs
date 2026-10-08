@@ -8,10 +8,27 @@ pub struct PeerKey {
     pub peer_id: String,
 }
 
-/// 回连可达性（0071 connectable 抽样）：-1 未测 / 0 不可达 / 1 可达
+/// 回连/协议实测结果（0071 connectable 抽样 + 2026-10-08 BT 三阶段探测）：
+///   -1 UNTESTED —— 本轮未探测（未知，不作任何判定）
+///    0 DEAD     —— **实测不可信**：端口不通 / 裸监听 / BT 握手应答但
+///                 piece 哈希不符（实锤伪造数据）
+///    1 OK       —— 实测可信：BT 握手 + bitfield + （抽样时）piece 哈希全过
+///   -2 SUSPECT —— **无法验证**（2026-10-08 新增）：TCP 可连但不响应明文
+///                 BT 协议。典型是「仅加密连接」客户端（qBittorrent 的
+///                 only-encrypted / MSE-PE）或 peer 白名单限定。
+///
+///                 这一档存在的理由（通用 PT 站点尤其重要）：私有站客户端
+///                 基线已知、可以要求用户关加密；通用站必须假设用户群里有
+///                 各种客户端偏好，把它们一并判 DEAD 会误伤好用户、砍掉
+///                 站点的做种供给。它与 DEAD 的区别必须在数据层保留——
+///                 合并成一个值就再也分不出「骗钱的」和「用加密客户端的」。
+///
+///                 消费口径：只有 **DEAD(0)** 阻断收益/惩罚；
+///                 SUSPECT(-2) 与 UNTESTED(-1) 同样放行，仅供观测。
 pub const CONN_UNTESTED: i8 = -1;
 pub const CONN_DEAD: i8 = 0;
 pub const CONN_OK: i8 = 1;
+pub const CONN_SUSPECT: i8 = -2;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[allow(dead_code)] // uploaded/downloaded/user_id 供后续审计扩展读取（all_unreachable 等）

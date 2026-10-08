@@ -8,7 +8,22 @@
 
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
-import type { AgentRow, PollRow } from "./staff-tools-site-shared";
+import type { AgentRow, ConnDistRow, PollRow } from "./staff-tools-site-shared";
+
+/** connectable 四档的中文标签与提示（0310）。
+ *  -2 与 0 必须分开显示：前者是「查不出来」，后者是「查出来了，不可信」。 */
+const CONN_STATE_META: Record<number, { label: string; hint: string }> = {
+  [-1]: { label: "未测", hint: "本轮未被抽中探测，不作判定" },
+  [-2]: {
+    label: "无法验证",
+    hint: "端口可连但不响应明文 BT 协议：多为仅加密连接客户端 / MSE-PE / peer 白名单 / CGNAT。通用站不应据此惩罚",
+  },
+  0: {
+    label: "不可信",
+    hint: "实锤：端口不通，或 piece SHA-1 与 info.pieces 不符（伪造数据）",
+  },
+  1: { label: "可信", hint: "BT 握手 + bitfield（+ 抽样 piece 哈希）全部通过" },
+};
 
 interface SiteListsProps {
   tab: "notconnect" | "uploaders" | "agents" | "polls";
@@ -27,6 +42,8 @@ interface SiteListsProps {
   }[];
   agentRows: AgentRow[];
   pollRows: PollRow[];
+  /** 做种结论四档分布（0310）：-2 无法验证 / 0 不可信 / -1 未测 / 1 可信 */
+  connDist?: ConnDistRow[];
 }
 
 export function StaffSiteLists({
@@ -35,6 +52,7 @@ export function StaffSiteLists({
   uploaderRows,
   agentRows,
   pollRows,
+  connDist,
 }: SiteListsProps) {
   const { dict, locale } = useI18n();
   const t = dict.stafftools;
@@ -42,6 +60,29 @@ export function StaffSiteLists({
     <>
       {/* 无法连接的用户（notconnectable） */}
       {tab === "notconnect" && (
+        <>
+        {/* 四档分布（0310）：先把「无法验证」与「不可信」摆在一起，再决定
+            要不要收紧口径。-2 占比高 = 站内多加密客户端/白名单用户，
+            此时处罚他们等于自伤做种供给。 */}
+        {connDist && connDist.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2 text-xs">
+            {connDist.map((d) => {
+              const meta = CONN_STATE_META[d.state];
+              if (!meta) return null;
+              return (
+                <span
+                  key={d.state}
+                  className="rounded border border-line px-2 py-1"
+                  title={meta.hint}
+                >
+                  <span className="font-bold">{meta.label}</span>
+                  <span className="ml-2 num">{d.n}</span>
+                  <span className="ml-1 text-sub">({d.users} 人)</span>
+                </span>
+              );
+            })}
+          </div>
+        )}
         <table className="nexus-table">
           <tbody>
             <tr>
@@ -73,6 +114,7 @@ export function StaffSiteLists({
             )}
           </tbody>
         </table>
+        </>
       )}
 
       {/* 上传者（uploaders） */}

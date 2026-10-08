@@ -38,6 +38,16 @@ export interface NotConnectRow {
   last_seen_at: string | null;
 }
 
+/** 做种结论四档分布（/admin/conn/dist，0310）
+ *  -1 未测 | -2 无法验证（加密客户端/白名单/CGNAT）| 0 不可信 | 1 可信
+ *  通用站用 -2 与 0 的比例判断该不该收紧口径：-2 大 = 站内多加密客户端，
+ *  此时把「无法验证」当作弊罚就是自伤做种供给。 */
+export interface ConnDistRow {
+  state: number;
+  n: number;
+  users: number;
+}
+
 export interface UploaderRow {
   id: number;
   username: string;
