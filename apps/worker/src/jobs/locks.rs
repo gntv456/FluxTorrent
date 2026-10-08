@@ -3,6 +3,10 @@
 
 use sqlx::PgPool;
 
+/// job 硬超时：超时只掐业务 future，不掐持锁连接（见 with_lock）。
+/// 超时文案（日志 + job_status.last_result）的数值由此常量派生，改一处即全同步。
+pub(crate) const JOB_HARD_TIMEOUT_SECS: u64 = 900;
+
 pub(crate) async fn with_lock<F, T>(db: &PgPool, key: &str, fut: F) -> Option<T>
 where
     F: std::future::Future<Output = anyhow::Result<T>>,
@@ -36,8 +40,11 @@ where
     // 业务 future 与锁连接解耦：超时只掐业务，不掐持锁连接
     let job = key.strip_prefix("job:").unwrap_or(key);
     mark_start(db, job).await;
-    let outcome =
-        tokio::time::timeout(std::time::Duration::from_secs(900), fut).await;
+    let outcome = tokio::time::timeout(
+        std::time::Duration::from_secs(JOB_HARD_TIMEOUT_SECS),
+        fut,
+    )
+    .await;
     // 同一连接上解锁（连接归还池前必须释放，否则锁随连接泄漏到复用方）
     let unlock: Result<bool, _> =
         sqlx::query_scalar("SELECT pg_advisory_unlock(hashtext($1))")
@@ -50,7 +57,9 @@ where
     match &outcome {
         Ok(Ok(_)) => mark_end(db, job, None).await,
         Ok(Err(e)) => mark_end(db, job, Some(&format!("{e:#}"))).await,
-        Err(_) => mark_end(db, job, Some("超时（900s）被掐断")).await,
+        Err(_) => {
+            mark_end(db, job, Some(&timeout_msg())).await;
+        }
     }
     match outcome {
         Ok(Ok(v)) => Some(v),
@@ -59,10 +68,15 @@ where
             None
         }
         Err(_) => {
-            tracing::error!(key, "job 超时（900s）被掐断");
+            tracing::error!(key, "job {}", timeout_msg());
             None
         }
     }
+}
+
+/// 超时文案：数值跟 JOB_HARD_TIMEOUT_SECS 走，避免常量与文案漂移。
+fn timeout_msg() -> String {
+    format!("超时（{}s）被掐断", JOB_HARD_TIMEOUT_SECS)
 }
 
 /// 运行登记（0218 G7）：自动/手动共用本函数，后台「任务面板」的

@@ -17,7 +17,7 @@ fn a(up: i64, down: i64) -> (i64, i64) {
 /// 拒与不记账在同一个断言里长得一模一样（假通过）。
 #[test]
 fn monotonic_reading_advances_anchor() {
-    let got = anchor_for(GIB, GIB / 2, Some(a(0, 0)));
+    let got = anchor_for(GIB, GIB / 2, Some(a(0, 0)), RESET_ACCEPT);
     assert_eq!((got.up, got.down), a(GIB, GIB / 2));
     assert!(!got.refused && !got.reset_up && !got.reset_down);
     // 增量 = 新锚点 − 旧锚点
@@ -27,7 +27,7 @@ fn monotonic_reading_advances_anchor() {
 #[test]
 fn anchor_never_moves_back_without_near_zero() {
     // 800 GiB → 500 GiB：读数很大却变小 ⇒ 搬基线，锚点钉死
-    let got = anchor_for(500 * GIB, 0, Some(a(800 * GIB, 0)));
+    let got = anchor_for(500 * GIB, 0, Some(a(800 * GIB, 0)), RESET_ACCEPT);
     assert!(got.refused);
     assert_eq!((got.up, got.down), a(800 * GIB, 0));
     // 钉死后本笔增量恒 0，等真实计数器重新超过旧锚点才继续入账
@@ -42,7 +42,8 @@ fn one_gib_reset_is_no_longer_near_zero() {
     // 六轮实测用的正是 1 MiB——真实重启（从 0 起算）合法，但攻击者也用
     // 它反复重置；频次窗（ledger_guard 侧 24h 一次）负责限制真近零的
     // 重复使用，本测试钉住「中等幅度（16MiB~1GiB）的下降直接拒」。
-    let got = anchor_for(64 * 1024 * 1024, 0, Some(a(500 * GIB, 0)));
+    let got =
+        anchor_for(64 * 1024 * 1024, 0, Some(a(500 * GIB, 0)), RESET_ACCEPT);
     assert!(got.refused, "64 MiB 的「重置」不是重启，是搬基线");
     assert_eq!((got.up, got.down), a(500 * GIB, 0), "锚点钉死旧值");
 }
@@ -53,7 +54,8 @@ fn one_gib_reset_is_no_longer_near_zero() {
 #[test]
 fn one_sided_reset_with_large_other_side_is_refused() {
     // up 归零但 down 只降到 5 GiB（远超 16 MiB）：另一侧没有跟着近零重启
-    let got = anchor_for(0, 5 * GIB, Some(a(500 * GIB, 20 * GIB)));
+    let got =
+        anchor_for(0, 5 * GIB, Some(a(500 * GIB, 20 * GIB)), RESET_ACCEPT);
     assert!(got.refused, "一侧归零另一侧仍很大，不是真实重启的画像");
     assert_eq!((got.up, got.down), a(500 * GIB, 20 * GIB));
 }
@@ -61,7 +63,12 @@ fn one_sided_reset_with_large_other_side_is_refused() {
 #[test]
 fn near_zero_reset_is_accepted_and_lowers_anchor() {
     // 客户端重启：两侧读数同时回到近零 ⇒ 认可，且标记 reset_* 让 GREATEST 让路
-    let got = anchor_for(12 * 1024, 8 * 1024, Some(a(500 * GIB, 20 * GIB)));
+    let got = anchor_for(
+        12 * 1024,
+        8 * 1024,
+        Some(a(500 * GIB, 20 * GIB)),
+        RESET_ACCEPT,
+    );
     assert!(!got.refused);
     assert_eq!((got.up, got.down), a(12 * 1024, 8 * 1024));
     assert!(got.reset_up, "up 侧发生了近零重置，必须允许锚点下调");
@@ -70,7 +77,7 @@ fn near_zero_reset_is_accepted_and_lowers_anchor() {
     assert_eq!((got.up - 500 * GIB).max(0), 0);
     // 纯做种侧的合法形态：up 归零、down 恒 0（从未下降）⇒ 认可
     // （down 侧「没降」不构成否决条件——攻击面是「降了却不近零」）
-    let up_only = anchor_for(12 * 1024, 0, Some(a(500 * GIB, 0)));
+    let up_only = anchor_for(12 * 1024, 0, Some(a(500 * GIB, 0)), RESET_ACCEPT);
     assert!(!up_only.refused && up_only.reset_up);
     assert!(!up_only.reset_down, "down 侧没降就不标记");
 }
@@ -78,16 +85,17 @@ fn near_zero_reset_is_accepted_and_lowers_anchor() {
 #[test]
 fn first_reading_only_establishes_baseline() {
     // 无基线时谈不上「回退」；调用方另按 raw=0 处理（首报只立基线）
-    let got = anchor_for(9000 * GIB, 7000 * GIB, None);
+    let got = anchor_for(9000 * GIB, 7000 * GIB, None, RESET_ACCEPT);
     assert!(!got.refused && !got.reset_up && !got.reset_down);
     assert_eq!((got.up, got.down), a(9000 * GIB, 7000 * GIB));
 }
 
 #[test]
 fn reset_accept_boundary_is_inclusive() {
-    let at = anchor_for(RESET_ACCEPT, 0, Some(a(50 * GIB, 0)));
+    let at = anchor_for(RESET_ACCEPT, 0, Some(a(50 * GIB, 0)), RESET_ACCEPT);
     assert!(!at.refused && at.reset_up, "= 16 MiB 算近零，认可");
-    let over = anchor_for(RESET_ACCEPT + 1, 0, Some(a(50 * GIB, 0)));
+    let over =
+        anchor_for(RESET_ACCEPT + 1, 0, Some(a(50 * GIB, 0)), RESET_ACCEPT);
     assert!(over.refused, "16 MiB + 1 不算近零，钉死");
 }
 
@@ -98,18 +106,18 @@ fn reboot_then_resume_keeps_accruing() {
     let mut last = a(0, 0);
     let mut total = 0;
     // 第一轮：客户端累计 10 GiB
-    let g = anchor_for(10 * GIB, 0, Some(last));
+    let g = anchor_for(10 * GIB, 0, Some(last), RESET_ACCEPT);
     total += (g.up - last.0).max(0);
     last = (g.up, g.down);
     assert_eq!(total, 10 * GIB);
     // 重启：读数回到 8 MiB（近零）⇒ 认可并下调锚点
-    let g = anchor_for(8 * 1024 * 1024, 0, Some(last));
+    let g = anchor_for(8 * 1024 * 1024, 0, Some(last), RESET_ACCEPT);
     assert!(g.reset_up);
     total += (g.up - last.0).max(0);
     last = (g.up, g.down);
     assert_eq!(total, 10 * GIB, "重启本笔不计，等后续读数");
     // 重启后又上传 3 GiB ⇒ 从新低锚点起算，正常入账
-    let g = anchor_for(3 * GIB, 0, Some(last));
+    let g = anchor_for(3 * GIB, 0, Some(last), RESET_ACCEPT);
     assert!(!g.refused && !g.reset_up);
     total += (g.up - last.0).max(0);
     assert_eq!(total, 13 * GIB - 8 * 1024 * 1024, "追平后照常入账");

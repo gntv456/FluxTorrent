@@ -49,6 +49,11 @@ mod xreport;
 mod social_team;
 mod social_team_expire;
 mod usage_stats;
+
+/// worker 批处理任务的每轮批量上限（结算/结息/到期扫行等 LIMIT）：
+/// 控制单轮事务时长与锁持有时间，剩余行靠下一轮 tick 补跑。
+pub(crate) const JOB_BATCH: i64 = 500;
+
 pub(crate) use announce::*;
 pub(crate) use catalog::*;
 pub(crate) use locks::*;

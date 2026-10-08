@@ -57,8 +57,9 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
                 t.kind, t.name AS task_name, t.metric, c.claimed_at, \
                 c.base_uploaded, c.base_seed_seconds, c.base_uploads \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
-         WHERE c.status = 0 AND c.exempted_at IS NULL LIMIT 500",
+         WHERE c.status = 0 AND c.exempted_at IS NULL LIMIT $1",
     )
+    .bind(crate::jobs::JOB_BATCH)
     .fetch_all(db)
     .await?;
 

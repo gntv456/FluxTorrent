@@ -6,6 +6,8 @@ use super::announce_main::AnnounceEvent;
 /// **16 MiB**：真重启后几分钟内重新累积的量级是 0~几 MiB，而 1 GiB 的口子
 /// 实测构成铸币链——「报 ≤1 GiB 重置锚点 → 等速率窗 → 报增量」每循环可再铸
 /// ≤ 速率钳 × 时窗（128 MiB/s × 120s ≈ 15.6 GiB），详见报告 §九 P0-1。
+/// 0311 site_settings 化（anticheat_reset_accept_mb）：本常量退化为出厂值
+/// 兜底与单测锚点，运行时实际值每事件从 site_settings 读。
 pub(crate) const RESET_ACCEPT: i64 = 16 * 1024 * 1024; // 16 MiB
 
 /// 近零重置的频次窗（秒）：窗内第二次起不被认可（真实用户一年重启几次；
@@ -48,6 +50,7 @@ pub(crate) fn anchor_for(
     ev_up: i64,
     ev_down: i64,
     last: Option<(i64, i64)>,
+    reset_accept: i64,
 ) -> Anchor {
     let (last_up, last_down) = last.unwrap_or((0, 0));
     // 首报（无基线）：只立基线，谈不上回退
@@ -66,7 +69,7 @@ pub(crate) fn anchor_for(
     // 那侧是否近零」，于是 `up: 500GiB→0` 而 down 停在 20GiB 也被认可——那正是
     // 搬基线的最小动作（只把要刷的一侧打回 0）。真实客户端的 up/down 是同一
     // 进程内的一对计数器，重启必然一起归零 ⇒ 这条不误伤。
-    let near_zero = ev_up <= RESET_ACCEPT && ev_down <= RESET_ACCEPT;
+    let near_zero = ev_up <= reset_accept && ev_down <= reset_accept;
     let accepted_reset = (dropped_up || dropped_down) && near_zero;
     let refused = (dropped_up || dropped_down) && !accepted_reset;
     if refused {
@@ -114,6 +117,22 @@ pub(crate) async fn ledger_guard(
     torrent_size: i64,
     secs_cap: i64,
 ) -> anyhow::Result<GuardOutcome> {
+    // 近零重置接受窗（0311 site_settings 化，anticheat_reset_accept_mb，
+    // 缺省同 RESET_ACCEPT 出厂值）：每事件一次查询可接受——本守卫每 announce
+    // 至多调用一次。
+    let reset_accept_bytes: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings \
+         WHERE name = 'anticheat_reset_accept_mb'",
+    )
+    .fetch_optional(&mut **tx)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(RESET_ACCEPT / (1024 * 1024))
+    .clamp(1, 1024)
+        * 1024
+        * 1024;
     let last: Option<(
         i64,
         i64,
@@ -135,8 +154,12 @@ pub(crate) async fn ledger_guard(
     let (last_up, last_down, acc_up, acc_down, reset_last_at) = last
         .map(|(u, d, _, au, ad, r)| (u, d, au, ad, r))
         .unwrap_or((0, 0, 0, 0, None));
-    let mut anchor =
-        anchor_for(ev.up, ev.down, last.map(|(u, d, _, _, _, _)| (u, d)));
+    let mut anchor = anchor_for(
+        ev.up,
+        ev.down,
+        last.map(|(u, d, _, _, _, _)| (u, d)),
+        reset_accept_bytes,
+    );
     // P0-1 频次限制（六轮审计）：近零重置在 RESET_WINDOW_SECS 窗内只认可一次。
     // 真实用户一年重启几次；短窗内反复「重置锚点 → 吃增量」每循环可再铸
     // ≤ 速率钳 × 时窗的量（128 MiB/s × 120s ≈ 15.6 GiB，实测复现）。

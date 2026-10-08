@@ -37,11 +37,8 @@ macro_rules! shard_lock {
 /// 实测 collusion_check 慢查询曾让计费停摆 20 分钟。重活一律走本 helper。
 fn spawn_heavy<F>(db: &PgPool, shard: &Option<Vec<String>>, reg: F)
 where
-    F: FnOnce(
-            &mut tokio::task::JoinSet<()>,
-            &PgPool,
-            &Option<Vec<String>>,
-        ) + Send
+    F: FnOnce(&mut tokio::task::JoinSet<()>, &PgPool, &Option<Vec<String>>)
+        + Send
         + 'static,
 {
     let (db2, shard2) = (db.clone(), shard.clone());

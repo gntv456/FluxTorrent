@@ -8,6 +8,8 @@ use sqlx::PgPool;
 /// 审计修复：保留一年历史窗口——hr_enforce 建 H&R 快照时要按 completed_at 时点
 /// 回查「当时是否处于免费窗口」豁免，物理删掉近期促销会让回查失明（误判违规）。
 /// 计费查询全部走 `starts_at <= now() < ends_at` 生效窗口，不受历史保留影响。
+/// 口径对齐（P2）：边界日含当日删除（`<=`），与 API 侧
+/// apps/api/src/staff_http/stats.rs do_cleanup 完全一致。
 pub async fn expire_promotions(db: &PgPool) -> anyhow::Result<u64> {
     let res = sqlx::query(
         "DELETE FROM promotions WHERE ends_at <= now() - interval '365 days'",

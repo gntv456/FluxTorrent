@@ -1335,6 +1335,7 @@ dependencies = [
  "chrono",
  "data-encoding",
  "dotenvy",
+ "encoding_rs",
  "envy",
  "evalexpr",
  "futures-util",
