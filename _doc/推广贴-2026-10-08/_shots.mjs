@@ -15,7 +15,8 @@ const specs = (profile === "mobile" ? targets : targets).map((t) => {
   const i = t.indexOf("=");
   // 路径不带前导斜杠传入（Git Bash 会把 "/games" 改写成 Windows 路径）
   const raw = t.slice(i + 1).replace(/^\/+/, "");
-  return { name: t.slice(0, i), path: raw === "root" ? "/" : "/" + raw };
+  const [p, scroll] = raw.split("@@");
+  return { name: t.slice(0, i), path: p === "root" ? "/" : "/" + p, scroll: Number(scroll || 0) };
 });
 
 const VIEWPORT = profile === "mobile"
@@ -90,7 +91,9 @@ async function shot(name, path, { fullPage = false, scroll = 0 } = {}) {
   await goto(path);
   await evalJs(`(() => {
     document.querySelectorAll('[class*=fixed]').forEach(e => e.remove());
-    document.querySelectorAll('button[aria-label*="关闭"], button[aria-label*="close" i]').forEach(e => e.remove());
+    [...document.querySelectorAll('div,section')].filter(e =>
+      /把本站安装到桌面|像原生应用一样使用/.test(e.textContent || '') && e.offsetHeight < 140
+    ).forEach(e => e.remove());
     return "cleaned";
   })()`);
   if (scroll) {
@@ -139,7 +142,7 @@ async function main() {
   await evalJs(`document.cookie = 'flux.session=1; path=/; max-age=43200; samesite=lax'; "ok"`);
   await sleep(600);
 
-  for (const s of specs) await shot(s.name, s.path);
+  for (const s of specs) await shot(s.name, s.path, { scroll: s.scroll });
   ws.close();
   browser.kill();
 }
