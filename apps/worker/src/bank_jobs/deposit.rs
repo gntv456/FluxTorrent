@@ -52,8 +52,9 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
          FROM bank_deposits \
          WHERE status = 0 AND settle_mode = 'daily' \
            AND COALESCE(last_interest_date, (start_at::date - 1)) < LEAST(CURRENT_DATE, maturity_at::date) \
-         LIMIT 500",
+         LIMIT $1",
     )
+    .bind(crate::jobs::JOB_BATCH)
     .fetch_all(db)
     .await?;
     let mut count = 0u64;
@@ -143,8 +144,9 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
 pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
     let rows: Vec<(i64, i64, i64, i64, i64, String)> = sqlx::query_as(
         "SELECT id, user_id, amount, interest, paid_interest, settle_mode FROM bank_deposits \
-         WHERE status = 0 AND maturity_at <= now() LIMIT 500",
+         WHERE status = 0 AND maturity_at <= now() LIMIT $1",
     )
+    .bind(crate::jobs::JOB_BATCH)
     .fetch_all(db)
     .await?;
     let mut count = 0u64;
