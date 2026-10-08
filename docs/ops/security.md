@@ -44,6 +44,37 @@ frame-ancestors 'none'
 - 外域视频 embed（论坛/公告）默认被 `frame-src 'self'` 收口；如站长启用了外域 embed 白名单，需在反向代理层为对应路径放宽 frame-src（文档见 [论坛视频内嵌] 章节）。
 - 访问日志不落凭据：actix Logger 用 `%m %U`（不含 query），防止 passkey/token/apikey 进日志。
 
+## 威胁模型：开源引擎下的反作弊（0309）
+
+本引擎 MIT 开源，**检测算法与出厂默认值人人可读**——这是战略选择（对
+GPL/AGPL 竞品的差异化 + 站长零法律摩擦二开），不是疏漏。应对模型是
+「**算法公开、密钥私有**」：代码里公开的是检测的形状，每个站实际的
+钥匙（参数/时机/比例）私有且可变。
+
+分层与对策：
+
+| 层 | 对策 | 落点 |
+|---|---|---|
+| 出厂默认值 = 公开知识 | 反作弊组全部键 hint 带「开源提示」；上线必改非默认值 | 后台「反作弊」卡片（迁移 0309） |
+| 固定节拍可被「卡表」 | 探测循环每轮加 0~`probe_jitter_secs` 随机延迟（缺省 90s，可后台改） | tracker 探测任务（0309） |
+| piece 抽查位置可预测 | 按 `probe_piece_ratio`（缺省 0.25）随机抽人，与采样序无关 | 同上 |
+| 规则可读码绕过 | 重心压在**物理验证**：BT 握手（`bt_probe.rs`）→ bitfield → piece SHA-1 比对——对抗的是现实不是规则，读源码也绕不过 | tracker `peers/` |
+| 服务端数据不对称 | traffic_ledger 全量流水、xreport 交叉佐证、贴边节奏画像（0304）——站方知道作弊者不知道的 | worker `jobs/` |
+| 引擎层不够用 | **私有检测层**：适配器沙箱（wasmtime）+ 规则包体系允许站长部署私有反作弊规则，MIT 下完全合法且官方支持，见 [适配器](../customize/adapters.md) | `apps/api/src/adapter_runtime.rs` |
+
+给站长的三条纪律：
+
+1. **上线后把反作弊组的值全改成非出厂值**——出厂默认随源码公开，留着
+   等于把调参插在门上。重点：`traffic_credit_max_bps`（速率钳制）、
+   `ratio_watch_threshold`、`probe_jitter_secs`、`probe_piece_ratio`。
+2. 私有调参不要外传——它就是你的「密钥」。代建/交接场景传 fork 合法
+   （MIT），但传出去就不再是私有参数。
+3. 升级引擎不会覆盖你的调参（迁移只补缺行 `ON CONFLICT DO NOTHING`），
+   但新增检测键的出厂值仍要按第 1 条处理。
+
+红队自查：`scripts/redteam_probe.py` 用作弊者视角对本站做黑盒探测
+（幽灵做种/伪造握手/伪 piece/速率超窗），大版本发布前跑一轮。
+
 ## 注入与输入
 
 - SQL：全程 sqlx 参数绑定（历史 SQL 注入点已修，见 CHANGELOG）；LIKE 通配符转义防全表扫描 DoS。
@@ -97,4 +128,5 @@ frame-ancestors 'none'
 3. `CORS_ORIGINS` 已显式配置为站点域名（生产必填）；
 4. root 已改密 + 已建日常管理账号；
 5. 验证码驱动已选（生产不建议 none）；
-6. 备份 cron 已配（`scripts/backup.sh`，见 webmaster/launch-checklist）。
+6. 备份 cron 已配（`scripts/backup.sh`，见 webmaster/launch-checklist）；
+7. 反作弊组的键已全部改为非出厂值（见上方「威胁模型」一节——出厂默认随源码公开）。

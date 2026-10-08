@@ -46,9 +46,10 @@ async fn main() -> anyhow::Result<()> {
 
     let bind =
         std::env::var("TRACKER_BIND").unwrap_or_else(|_| "0.0.0.0:7070".into());
-    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-        "postgres://flux:fluxdevpass@127.0.0.1:5432/fluxtorrent".into()
-    });
+    // 凭据走 env 强制注入（compose 是 ${DB_PASSWORD:?} 硬失败）；代码里不留
+    // 任何带口令的缺省连接串——开源可见的缺省口令等于给暴露 5432 的部署发钥匙。
+    let db_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://127.0.0.1:5432/fluxtorrent".into());
     let redis_url = std::env::var("REDIS_URL")
         .unwrap_or_else(|_| "redis://127.0.0.1:6379".into());
 
