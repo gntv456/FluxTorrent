@@ -28,12 +28,11 @@ pub(crate) async fn scrape(
     if let Some(msg) = state.rate_limited_scrape(&ip).await {
         return bencode_err(msg);
     }
-    let Some((uid, _de, suspended, class_id)) =
-        state.resolve_passkey_cached(&passkey).await
-    else {
+    let Some(pku) = state.resolve_passkey_cached(&passkey).await else {
         return bencode_err("passkey 无效");
     };
-    if suspended {
+    let (uid, class_id) = (pku.id, pku.class_id);
+    if pku.suspended {
         return bencode_err("账号已挂起，请联系管理组");
     }
     // 待审种子的实时做种数对非发布者/非 staff 不外泄（审计 10-07 P1-2）。

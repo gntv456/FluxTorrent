@@ -105,16 +105,45 @@ pub(super) async fn announce(
             "本 tracker 的 UDP 通道需扩展 passkey；请使用 HTTP announce（或联系站方客户端）",
         );
     }
-    let Some((user_id, download_enabled, suspended, class_id)) =
-        t.state.resolve_passkey_cached(passkey).await
-    else {
+    let Some(pku) = t.state.resolve_passkey_cached(passkey).await else {
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");
     };
-    if suspended {
+    let (user_id, class_id) = (pku.id, pku.class_id);
+    if pku.suspended {
         return UdpTracker::err_pkt(transaction_id, "账号已被挂起");
     }
-    if !download_enabled && left > 0 {
+    if !pku.download_enabled && left > 0 {
         return UdpTracker::err_pkt(transaction_id, "下载权限已被禁用");
+    }
+    // 即时分享率闸门：与 HTTP 侧同一条 `ratio_gate::decide`（五轮的教训是
+    // 「只在一个入口收口」= 没收口，这里必须两条通道一起判）。
+    if left > 0 {
+        let gate = crate::http_track::ratio_gate::gate_for(
+            pku.class_min_ratio,
+            pku.class_age_days,
+        );
+        match crate::http_track::ratio_gate::decide(&gate, &pku.who()) {
+            crate::http_track::ratio_gate::Decision::Block => {
+                t.state
+                    .metrics
+                    .ratio_gate_block
+                    .fetch_add(1, Ordering::Relaxed);
+                let (th, _) = crate::http_track::ratio_gate::threshold(&gate);
+                return UdpTracker::err_pkt(
+                    transaction_id,
+                    &format!(
+                        "分享率低于本站门槛（要求 {th:.2}），请先做种提升上传量"
+                    ),
+                );
+            }
+            crate::http_track::ratio_gate::Decision::Warn => {
+                t.state
+                    .metrics
+                    .ratio_gate_warn
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            crate::http_track::ratio_gate::Decision::Allow => {}
+        }
     }
     if let Some(msg) = t.state.rate_limited_user(user_id).await {
         t.state

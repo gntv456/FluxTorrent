@@ -429,9 +429,10 @@ self_seed_only：两口都收口（默认档恰好是对的，所以一直没被
    我们把 `ev.conn != Some(0)` 做进了 `seeding` 必要条件（保种组审计那轮的决策），
    代价是：**NAT 后没有映射入站端口的真做种者会被判不在种**。
    本轮不改语义（属产品取舍），但按 P3/§八 的规矩明确记为待拍板项：
-   建议做成 `connectable_gate: off | soft | hard`（soft = 留痕+面板可见，不否决在种），
-   并把 BT 握手探测失败与「根本没被抽中」在留痕文案里分开——现在两者都表现为
-   `conn=None/1`，版主看不出区别。
+   建议做成 `connectable_gate: off | hard`（缺省 off = 不否决，实测结果仍留在
+   `snatches.connectable` 供面板筛），并把「BT 握手失败」与「TCP 连不上」在留痕里
+   分开——两者现在都塌成 `conn=0`，版主看不出是「端口没开」还是「开着但不是
+   BT 协议」。（同日已按此落地两档；第三档 soft 写过又删，见 §十。）
 8. **scrape**：UNIT3D **根本没有 scrape 端点**（`routes/announce.php` 只有
    `{passkey}` 一条），所以「私募站 scrape 该怎么收口」没有上游可抄；
    NexusPHP `public/scrape.php` 复用 announce 的鉴权（passkey/停用/下载位/浏览器块），
@@ -477,18 +478,26 @@ self_seed_only：两口都收口（默认档恰好是对的，所以一直没被
 | 端口黑名单 | `http_track/limits.rs`（新，与 interval 抖动同域） | 2 条单测 + 探针 E |
 | interval 稳定抖动 | 同上（`peer_interval` 唯一口径，`reply.rs` 消费） | 单测（同 key 恒定 / ±10% 内 / 60 颗种 >10 个取值） |
 
+### 站长拍板三件（同日追加，「按这个方案推进」之后落地）
+
+| 件 | 落点 | 判据要点 | 验证状态 |
+|---|---|---|---|
+| ① passkey 显式重置 = 立即撤销 | `repo/passkey.rs`（新，`update_passkey(user_id, grace)`）、`me_security.rs` 自助轮换与 `admin_http/user_passkey.rs` 后台代重置传 `grace=false`、改密顺带轮换保留 `grace=true` | 泄露后按「重置密钥」是**安全处置**，留 7 天窗 = 撤销了但攻击者还能接着做种 7 天；UNIT3D 换钥即 `forget(旧钥)`，且「改密」与「重置 passkey」是两个互不相干的控制器 | 单测待补 + 部署后行为探针（旧钥 announce 必须 4xx） |
+| ② connectable 只作信息位 | `site_settings.connectable_gate` = `off`（默认）/ `hard`、`seeding_gate::verdict` 的 `reachable` 只在 hard 档否决、`refresh_conn_gate` 60 s 节流且读失败保留旧档 | 三家主流都把可达性当信息位（§八-7）；硬否决会把 NAT 后无映射入站端口的**真做种者**判成不在种。**只有两档**——曾写的第三档 soft 与 off 行为无差别，是没有后果的假枚举，已删 | 判据有单测（off/hard 对 `conn=0` 的差别）；行为探针待跑 |
+| ③ 即时分享率闸门 | `ratio_gate.rs` + `ratio_gate/tests.rs`（新，announce 热路径）、迁移 0308 四个键、视图 `user_by_passkey` 补 `uploaded/downloaded/created_at/ratio_watch_until` | 原先 `ratiolimit` 与全部 `user_classes.min_ratio` **零消费者**＝假开关。门槛 `min(max(等级 min_ratio, ratiolimit), ratio_gate_max)`；缺省档 **warn**（只计数不拦）；豁免：员工/`downloaded=0`/新人（`ratio_gate_grace_days`，与等级 `min_age_days` 取大者）/观察期内；只拦 `left>0` 的下载侧，做种永不拦 | 7 条纯函数单测；行为探针待跑 |
+
+安全轨（本机现状决定的，不是可选项）：`ratiolimit` 现值 **6**、所有 `min_ratio` **0** ⇒
+直接把 block 打开等于全站锁死，所以 `ratio_gate_max` 缺省 **1.0** 并会在截断时打
+warn，档位缺省 **warn**。这两个缺省值都要站长核对过数字之后再往严里拧。
+
 ### 本轮没做（明确交代，别当已修）
 
-1. **passkey 显式重置的即时撤销**（P2-6）——产品语义需拍板。
-2. **`seeding.rs` 经济拉黑名单扩类**——该文件是另一路在制品；
+1. **`seeding.rs` 经济拉黑名单扩类**——该文件是另一路在制品；
    需把 `corr:` / `nearcap:` 一并纳入（与 `cheat_enforce` 的告警面区分开，两个口径）。
-3. **connectable 档位化**（§八-7）——策略取舍。
-4. **最低分享率闸门**：`ratiolimit / min_ratio / psratio* / ratiocheck` 这些设置键
-   在 0001/0034/0039/0053/0058/0278 里都有行，**全仓 Rust 侧零消费者**（grep 命中 0）。
-   这是「后台能填、填了不生效」的假开关，也是 PT 站 tracker 最核心的准入策略之一
-   （NexusPHP 按 `class` 最低比率 + 积分抵扣放行，UNIT3D 走 `ratiocheck/ratiolimit`）。
-   不动它是因为它改变**下载准入语义**、且必须做成站型可配，需要站长定档。
-5. `numwant` 单常量、`+` 解码、`/metrics` 独立 bind、`sweep` 阈值口径（P3 四条）。
+2. `numwant` 单常量、`+` 解码、`/metrics` 独立 bind、`sweep` 阈值口径（P3 四条）。
+3. **后台面板**：②③ 四个键写进了 `settings_meta`（面板可见可改），但
+   `ratio_gate` 的计数目前只有 `metrics` + `cheat_events` 两处出口，
+   站长要看「本档拦了多少人」仍需进后台审计页——待行为探针跑通后一并评估。
 
 ### 验收数字（本机 `docker compose up -d tracker worker` + api 重启后实测）
 

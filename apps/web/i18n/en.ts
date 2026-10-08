@@ -1474,7 +1474,7 @@ const enBase: Omit<
     passkeyRotating: "Rotating…",
     passkeyRotated: "Rotated — re-download torrents in your BT client",
     passkeyConfirm:
-      "All seeding/leeching clients must re-download torrents after rotation. Continue?",
+      "The old passkey stops working at once: re-download every .torrent from the site and update your RSS links. Continue?",
     bmRemove: "Remove",
     bmEmpty: "No bookmarks yet — open a torrent and hit the bookmark button",
     tlSeeding: "Seeding",

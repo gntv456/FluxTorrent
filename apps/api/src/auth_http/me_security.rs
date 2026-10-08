@@ -16,7 +16,10 @@ pub async fn rotate_passkey(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let pk = state.repo.update_passkey(auth.id).await?;
+    // 自助「重置密钥」= 安全处置动作 ⇒ grace=false，旧钥当场失效
+    // （留宽限窗等于没撤销；改密顺带轮换那条路才给宽限，见
+    // repo::update_passkey 与 me_security 的改密分支）
+    let pk = state.repo.update_passkey(auth.id, false).await?;
     state
         .repo
         .audit(Some(auth.id), "passkey_rotate", Some(auth.id))

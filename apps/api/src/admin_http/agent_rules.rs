@@ -247,12 +247,28 @@ mod tests {
 
     #[test]
     fn invalid_regex_is_rejected_at_the_write_door() {
-        // 站长按「前缀匹配」直觉填的括号写法——旧版能存进去，但永远不生效
-        for bad in ["uTorrent/3.5.5 (build)", "(", "a{2,1}", "[z-a]", "*x"] {
+        for bad in ["(", "a{2,1}", "[z-a]", "*x", "(?P<n>x", "x)"] {
             assert!(
                 check_pattern(bad).is_err(),
                 "{bad} 应在写入口就被拒，而不是加载时静默跳过"
             );
         }
+    }
+
+    /// 写入口只判语法，判不出**意图**——这条断言钉住这个边界，免得以后
+    /// 有人以为「存进去了就一定按字面生效」。`uTorrent/3.5.5 (build)` 是
+    /// 合法正则（括号成了捕获组），它匹配的是 `uTorrent/3.5.5 build`，
+    /// 而真实 UA 里那对括号是字面字符 ⇒ 规则永远不命中，却不报错。
+    /// 想按字面匹配必须自己转义：`uTorrent/3\.5\.5 \(build\)`。
+    #[test]
+    fn legal_but_literal_looking_parens_are_accepted_not_escaped() {
+        assert!(check_pattern("uTorrent/3.5.5 (build)").is_ok());
+        assert!(check_pattern(r"uTorrent/3\.5\.5 \(build\)").is_ok());
+        let loose = regex::Regex::new("uTorrent/3.5.5 (build)").unwrap();
+        let strict = regex::Regex::new(r"uTorrent/3\.5\.5 \(build\)").unwrap();
+        // 拿站长填的那串字面本身当 UA：未转义时连自己都匹配不到
+        let ua = "uTorrent/3.5.5 (build)";
+        assert!(!loose.is_match(ua), "未转义的括号组匹配不到字面 UA");
+        assert!(strict.is_match(ua), "转义后才按字面匹配");
     }
 }
