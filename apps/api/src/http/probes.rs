@@ -33,13 +33,25 @@ async fn about(state: web::Data<std::sync::Arc<AppState>>) -> impl Responder {
     .ok()
     .flatten()
     .unwrap_or_default();
+    // 文档地址（0313 site_settings 化）：开源通用建站系统的每个部署
+    // 都不该默认外链到上游作者的私人 wiki。站长可在后台改指到自己的
+    // 帮助页；缺行回落上游官方文档（写死值仅作缺省，不再是唯一真相）。
+    let docs_url: String = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'docs_url'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten()
+    .filter(|v: &String| !v.trim().is_empty())
+    .unwrap_or_else(|| "https://github.com/gntv456/FluxTorrent#readme".into());
     ok(serde_json::json!({
         "product": "FluxTorrent",
         "version": env!("CARGO_PKG_VERSION"),
         "site_name": site_name,
         // 开源主页（页尾 FluxTorrent 链接的跳转目标之一）
         "source_url": "https://github.com/gntv456/FluxTorrent",
-        "docs_url": "https://wiki.ptang.top/ft/",
+        "docs_url": docs_url,
     }))
 }
 
