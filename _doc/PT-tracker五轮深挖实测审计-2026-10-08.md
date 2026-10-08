@@ -533,7 +533,7 @@ warn，档位缺省 **warn**。这两个缺省值都要站长核对过数字之�
 | 四读口 × 三档矩阵 | owner_only 下 HTTP scrape 泄漏 | allow_all 四口全可见（含 scrape 的 `(1, 77, 1)` 证明 BEP15 格序），owner_only/self_seed_only 四口全部归零或拒绝 |
 | 端口黑名单 | 5432 / 6379 进表并下发他人 | 三口（445/5432/6379）全拒；正控 6881 不被误杀 |
 | 佐证铸币 / 1 字节豁免 | `upload_corroborated=9663676416` 而佐证者 credited 下载 0 ⇒ `seeding=t` | **`upload_corroborated=0`**，1 字节与 9 GiB 两档都不再点亮 `seeding`（D1/D2/D3 全绿） |
-| 常驻回归 | — | `_verify_batch_1008.py` **24/24**、`_verify_tracker_round.py` **20/20**、`_verify_event_merge.py` **5/5**、`_verify_policy_switch.py` **9/9** |
+| 常驻回归 | — | `_verify_batch_1008.py` **24/24**、`_verify_tracker_round.py` **20/20**、`_verify_event_merge.py` **5/5**、`_verify_policy_switch.py` **9/9**（拍板三件上线后在同一套新镜像上重跑：batch **24/24**、policy **9/9**，两支探针原先写死 root 口令登录，已改为自签 JWT 优先——连试口令会把账号打进 15 分钟登录锁） |
 | 单测 | 58 + 11 | `cargo test -p flux-tracker` **60/60**、`-p flux-worker` **26/26**（本轮新增 12 条，全是判据级） |
 | 门禁 | — | `line_limit_guard` 本批文件零红（残留 7 条全属另一路在制品：`main.rs`/`bt_probe.rs`/`piece_cache.rs`/`torrent_parse.rs`，按规矩不代洗）；`check_type_drift.mjs` TYPE_DRIFT_OK；`docker compose config -q` 通过 |
 | 迁移 0305 | — | 已在本机库 `psql` 应用（`xreport_credited` 4 列 + `leecher_xreports.over_bytes`）；`_sqlx_migrations` 尚未记 305——api 镜像是 10:29 构建的，不含该文件，**下次 api 出镜像启动时按幂等重放补记**（与 0303 同一处理，非异常） |
@@ -547,6 +547,7 @@ warn，档位缺省 **warn**。这两个缺省值都要站长核对过数字之�
 | `.workbuddy/_probe_r5_secs.py` | 速率秒窗封顶 | 教了一课：**判据要可判别**。用 31 MiB 的种跑这条永远绿（终身天花板 30.5 GiB 比封顶额度 450 GiB 先截），必须造名义 > 11.26 GiB 的种让 `size×1000 > ceiling×86400`，脚本里把这条前置做成硬断言 |
 | `.workbuddy/_probe_r5_udp_scrape.py` | 四读口×三档 + BEP15 scrape 格序（`complete, downloaded, incomplete`） | 把完成数设成 77 再数第几格——**用可区分的值定位字段**，而不是读码猜 |
 | `.workbuddy/_r5_cleanup.py` | 探针账号/种子/关联行清理 + 归零核对 | 归零核对看的是计数而不是「应该没了」 |
+| `.workbuddy/_probe_r6_three_switches.py` | 拍板三件的线上行为验收：①重置即撤销 / ②connectable 两档 / ③即时分享率闸门 | **每次改这三处判据都要跑**：②③ 的每条拒绝都配了「换一份合法输入必须放行」的判别正控，③ 还钉住「档位是两档不是三档」；脚本自带现场建号/发种、设定复原与墓碑化清理 |
 
 ### 方法论回执（三条，都付过学费）
 
