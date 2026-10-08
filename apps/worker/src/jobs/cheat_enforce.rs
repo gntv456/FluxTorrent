@@ -16,15 +16,29 @@
 use sqlx::PgPool;
 
 pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
-    // 高危三类：直接进做种收益拉黑名单的事件（与 seeding_reward 的
-    // agent LIKE 过滤同源：ghost:% / speed:% / reset:%）
+    // 高危类：进 L1/L2 告警网的事件。
+    // 五轮实测两处断口（2026-10-08）：
+    //  ① 旧写法 `c.agent = 'torrent:%'` 是**等值**比较，字面量里带 %——
+    //     永远匹配不到任何行（audit.rs 写的是 `torrent:{id}`）。应为 LIKE。
+    //  ② `corr:`（自报上传超佐证上界）、`xreport_over:`（佐证量超出本人物理
+    //     额度）、`xreport:absurd`（单次佐证超 10 GiB）、`nearcap:`（0304 贴边
+    //     汇报画像）这四类此前**不在任何处置过滤器里**：写了台账、面板看得见，
+    //     但 L1/L2 永不触发——0304 那套「网盘挂 NAS 临时挂载型假做种专杀」
+    //     实测就是只产画像不产处置。
+    // 注意本表与 seeding_reward 的「做种收益拉黑名单」（ghost/speed/reset 三类）
+    // 是**有意的两个口径**：告警面宽于经济拉黑面。seeding.rs 此刻是另一路的
+    // 在制品，扩它那份名单留到下一批（见本轮报告「遗留」）。
     let rows: Vec<(i64, String, String, i64)> = sqlx::query_as(
         "SELECT c.user_id, c.agent, c.reason, c.hits \
          FROM cheat_events c \
          JOIN users u ON u.id = c.user_id \
          WHERE c.resolved_at IS NULL AND c.hits >= 1 \
            AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%' \
-                OR c.agent LIKE 'reset:%' OR c.agent = 'torrent:%') \
+                OR c.agent LIKE 'reset:%' OR c.agent LIKE 'torrent:%' \
+                OR c.agent LIKE 'corr:%' \
+                OR c.agent LIKE 'xreport_over:%' \
+                OR c.agent LIKE 'nearcap:%' \
+                OR c.agent = 'xreport:absurd') \
            AND u.class_id < 90 AND u.status < 2",
     )
     .fetch_all(db)

@@ -79,6 +79,11 @@ pub(crate) fn announce_gate(
     if port != 0 && port < 1024 && !stopped {
         return Err("port 无效（特权端口）");
     }
+    // 服务端口黑名单（五轮补齐的另一半：UNIT3D `BLACK_PORTS` /
+    // NexusPHP `portblacklisted()`）
+    if super::limits::port_blacklisted(port) && !stopped {
+        return Err("port 在本站黑名单内（不是可用的 BT 监听端口）");
+    }
     if let Some(meta) = super::guard_store::meta_of(info_hash) {
         if meta.size > 0 && left > meta.size {
             state

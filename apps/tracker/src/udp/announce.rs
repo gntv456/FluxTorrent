@@ -3,7 +3,7 @@
 use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
 
-use crate::peers::{Peer, PeerKey};
+use crate::peers::PeerKey;
 
 use super::core::UdpTracker;
 use super::pkt::{passkey_from_tracker_id, ANNOUNCE_ACTION};
@@ -60,12 +60,9 @@ pub(super) async fn announce(
         3 => "stopped",
         _ => "",
     };
-    // 特权端口拒绝（PT 惯例：UNIT3D 除 stopped 外拒 <1024 并有端口黑名单，
-    // NexusPHP portblacklisted()）：这类地址既不是真实 BT 监听端口，
-    // 又会被下发给同 swarm 的其他客户端、并被 tracker 自己回连探测。
-    if port != 0 && port < 1024 && event != "stopped" {
-        return UdpTracker::err_pkt(transaction_id, "port 无效（特权端口）");
-    }
+    // 端口口径（特权端口 + 服务端口黑名单）不在这里重复一份，
+    // 统一由 gate::announce_gate 判（五轮实测：本地抄一份的两条通道
+    // 各自演化，正是黑名单一直没生效的那半边）。
     let ip = peer.ip().to_string();
 
     // —— 防护链（与 HTTP announce 同源） ——
@@ -108,7 +105,7 @@ pub(super) async fn announce(
             "本 tracker 的 UDP 通道需扩展 passkey；请使用 HTTP announce（或联系站方客户端）",
         );
     }
-    let Some((user_id, download_enabled, suspended, _class_id)) =
+    let Some((user_id, download_enabled, suspended, class_id)) =
         t.state.resolve_passkey_cached(passkey).await
     else {
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");
@@ -148,7 +145,25 @@ pub(super) async fn announce(
     }
 
     // —— peer 表与事件流（与 HTTP 同源） ——
+    //
+    // 准入判定必须走同一个 gate：五轮实测发现 UDP 这条路整个绕过了
+    // `gate::announce_gate` —— ① HTTP 侧拒 `left > 种子大小`（假 announce），
+    // UDP 侧照收并进事件流；② HTTP 侧待审种子对局外人清空 peer 与计数，
+    // UDP 侧照样把发布者的 ip:port 发给任何人。同一份 swarm 数据两个入口，
+    // 严的那个形同虚设——攻击者只要换个协议就打通整条防线。
     let peer_id_hex = crate::peers::hex(&peer_id);
+    let hide_peers = match crate::http_track::gate::announce_gate(
+        &t.state,
+        &info_hash_hex,
+        user_id,
+        class_id,
+        left,
+        port,
+        event == "stopped",
+    ) {
+        Ok(hide) => hide,
+        Err(msg) => return UdpTracker::err_pkt(transaction_id, msg),
+    };
     let key = PeerKey {
         info_hash: info_hash_hex.clone(),
         peer_id: peer_id_hex.clone(),
@@ -156,35 +171,14 @@ pub(super) async fn announce(
     // 0227 G31 审查遗留#1：外置模式（FLUX_TRACKER_PEER_STORE=redis）下 UDP
     // 与 HTTP 同读写 Redis swarm——此前 UDP 只进本进程内存，多副本/双协议下
     // peer 视图分裂。内存表仍同步维护（快照导出/降级路径不变）。
-    if event == "stopped" {
-        if crate::peers::external::external_enabled() {
-            let mut r = t.state.redis.clone();
-            let _ = crate::peers::external::remove(&mut r, &key, user_id).await;
-        }
-        t.state.peers.remove_owned(&key, user_id);
-    } else {
-        let peer = Peer {
-            key: key.clone(),
-            ip: ip.clone(),
-            port,
-            uploaded,
-            downloaded,
-            left,
-            last_seen: chrono::Utc::now(),
-            user_id,
-            connectable: crate::peers::CONN_UNTESTED,
-        };
-        if crate::peers::external::external_enabled() {
-            let mut r = t.state.redis.clone();
-            let _ = crate::peers::external::upsert(&mut r, peer.clone()).await;
-        }
-        // 归属校验（HTTP 侧同源，审计 10-07 P1-1）
-        if !t.state.peers.upsert(peer) {
-            return UdpTracker::err_pkt(
-                transaction_id,
-                "peer_id 与本站其他账号冲突，请重置 peer_id",
-            );
-        }
+    // stopped 归属校验 + 顶号拒写也统一走 gate::write_peer（旧写法在这里
+    // 自己抄了一份 upsert/remove，与 HTTP 侧各自演化）。
+    if let Err(msg) = crate::http_track::gate::write_peer(
+        &t.state, &key, &ip, event, port, uploaded, downloaded, left, user_id,
+    )
+    .await
+    {
+        return UdpTracker::err_pkt(transaction_id, msg);
     }
     let connectable = if crate::peers::external::external_enabled() {
         let mut r = t.state.redis.clone();
@@ -218,8 +212,15 @@ pub(super) async fn announce(
         .await;
     }
 
-    let (interval, min_interval) = t.state.intervals();
-    let (complete, incomplete, snap) = if event == "stopped" {
+    // 下发的 interval 与上面判快发用的是同一个值（gate::peer_interval）
+    let interval = crate::http_track::limits::peer_interval(
+        &t.state,
+        &info_hash_hex,
+        user_id,
+    );
+    // hide_peers：待审种子对局外人清空计数与 peer 列表（与 HTTP 侧
+    // reply::announce_body 的 `hide` 同一语义）
+    let (complete, incomplete, snap) = if event == "stopped" || hide_peers {
         (0, 0, Default::default())
     } else if crate::peers::external::external_enabled() {
         let mut r = t.state.redis.clone();
@@ -262,6 +263,5 @@ pub(super) async fn announce(
     out.extend_from_slice(&(incomplete as i32).to_be_bytes());
     out.extend_from_slice(&(complete as i32).to_be_bytes());
     out.extend_from_slice(&peers_bytes);
-    let _ = min_interval; // BEP15 响应无此字段
     out
 }

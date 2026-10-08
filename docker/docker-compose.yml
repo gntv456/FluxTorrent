@@ -118,6 +118,11 @@ services:
       # 反代模式（P1）：api 经 Nginx/Pingora 等反代对外时设 1，限流/封禁/登录事件改信
       # X-Forwarded-For 首值；api 直连暴露时必须留空（否则客户端可伪造头绕过风控）
       TRUST_PROXY: ${TRUST_PROXY:-}
+      # 改密/重置密钥后**旧 passkey 的宽限时长**（小时，0 = 立即失效）。
+      # passkey 烤在用户已下载的每一个 .torrent 里，一刀切失效 = 手上种子集体
+      # 停种（10-07 P1-4）。注意这只该管「改密顺带轮换」；后台显式「重置密钥」
+      # 是安全处置动作，旧钥必须立刻失效（见本轮报告 P2：两处目前共用同一档）。
+      PASSKEY_GRACE_HOURS: ${PASSKEY_GRACE_HOURS:-168}
       # 只读副本（0227 G31 L 档）：空 = 无副本；设流复制实例时热点读分流
       DATABASE_REPLICA_URL: ${DATABASE_REPLICA_URL:-}
       FLUX_DEV: ${FLUX_DEV:-}                      # 1 = 开发态（CORS 宽松/SMTP 日志闭环）
@@ -216,9 +221,30 @@ services:
       ANN_RATE_GLOBAL_PER_MIN: "0"
       # 指标端点 /metrics：设置非空 token 后启用（抓取端带 X-Metrics-Token 头）；留空=端点返回 404
       ANN_METRICS_TOKEN: "${ANN_METRICS_TOKEN:-}"
-      # tracker 挂 LB 后取 XFF 首值（0225 G30-B3；与 api 侧同名 env 同口径：
-      # 直连暴露时必须留空，否则客户端可伪造头绕过 IP 封禁/限流）
+      # tracker 挂 LB 后取 X-Forwarded-For（0225 G30-B3；与 api 侧同名 env 同口径：
+      # 直连暴露时必须留空，否则客户端可伪造头绕过 IP 封禁/限流）。
+      # 取的是**右数第 TRUST_PROXY_DEPTH 段**（不是首值——首值由客户端自己写）；
+      # DEPTH 必须等于本站可信代理跳数，配错等于不信。
       TRUST_PROXY: ${TRUST_PROXY:-}
+      TRUST_PROXY_DEPTH: ${TRUST_PROXY_DEPTH:-1}
+      # —— 以下 6 项是 10-07/10-08 两批新增的开关，此前只存在于代码默认值里：
+      #    文档写了、compose 没写 ⇒ 站长既看不见也拧不动（建站产品的配置面缺口）。
+      #    现在全部显式列出，默认值与代码一致，改这里即生效（无需重建镜像）。
+      # 同 (账号,种子) 的周期 announce 事件合并窗比例（0 = 整条关闭）
+      ANN_EVENT_MERGE_PCT: "${ANN_EVENT_MERGE_PCT:-40}"
+      # 下发 interval 的稳定抖动幅度（±%，0 = 关闭）：防全站同秒重发（惊群）
+      ANN_INTERVAL_JITTER_PCT: "${ANN_INTERVAL_JITTER_PCT:-10}"
+      # 服务端口黑名单（逗号分隔）。留空串 = 整条关闭，只保留「拒 <1024」那一档；
+      # 这里的默认值就是代码内置的那一份，写出来是为了让站长看得见能改
+      ANN_BLACK_PORTS: "${ANN_BLACK_PORTS:-25,110,135,139,445,1214,1433,2049,3306,3389,4662,5432,5900,5984,6346,6347,6379,6699,8080,8081,9200,11211}"
+      # scrape 独立限流档（与 announce 分桶）与单次请求的 info_hash 上限
+      SCR_RATE_IP_PER_MIN: "${SCR_RATE_IP_PER_MIN:-600}"
+      SCR_MAX_HASHES: "${SCR_MAX_HASHES:-64}"
+      # 纯内网部署（校园网/机房内部 tracker，客户端本来就是 10.x/172.x）才放开：
+      # 允许自报内网地址进 peer 表。默认关——开着它等于允许 peer 列表投毒到内网
+      ALLOW_PRIVATE_PEER_IP: "${ALLOW_PRIVATE_PEER_IP:-}"
+      # piece 级抽查预算（每 5min 抽查多少个 peer，0 = 只握手不传 piece）
+      FLUX_TRACKER_PIECE_PROBE: "${FLUX_TRACKER_PIECE_PROBE:-8}"
       # UDP tracker 下发开关（api 侧 build_torrent_bytes 读取）：
       # 私有站 passkey 走 HTTP announce URL path；UDP 标准包不携带身份，仅对
       # 支持「URL path 填入 tracker_id」扩展约定的客户端可用。默认空 = 只发 HTTP tier；

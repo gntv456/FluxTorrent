@@ -9,7 +9,6 @@ use super::params::RawParams;
 
 use crate::peers::{hex, PeerKey};
 
-
 #[get("/announce/{passkey}")]
 pub(crate) async fn announce(
     state: web::Data<TrackerState>,
@@ -174,55 +173,30 @@ pub(crate) async fn announce(
     // 0225 G30-B12：FLUX_TRACKER_PEER_STORE=redis 时外置 Hash 为主（多副本
     // 互见），内存表仍同步维护（快照导出/降级路径不受影响）。
     if let Err(msg) = super::gate::write_peer(
-        &state,
-        &key,
-        &ip,
-        event,
-        port,
-        uploaded,
-        downloaded,
-        left,
-        user_id,
+        &state, &key, &ip, event, port, uploaded, downloaded, left, user_id,
     )
     .await
     {
         return bencode_err(msg);
     }
 
-    // 交叉上报（P0-2 治本，2026-10-07）：leecher 声明「本轮从哪些 peer
-    // 下载了多少字节」——`xreport=<peer_id_hex>:<bytes>`，可重复多段/逗号分隔。
-    // 这是把「上传量全自报」变成「上传量有第三方佐证」的关键：上传者的
-    // 上传额最终只认这些被 leecher 确认过的量（见 worker 侧消费）。
-    // 校验在 tracker 做（廉价、peer 表内存命中）：目标 peer 必须是本
-    // swarm 里**存活且在做种**的真实 peer，且不能是自己。
-    let mut xreports: Vec<(i64, i64)> = Vec::new();
-    for raw_seg in params.get_all("xreport") {
-        for item in raw_seg.split(',') {
-            let Some((pid_hex, bytes_s)) = item.rsplit_once(':') else {
-                continue;
-            };
-            let Ok(bytes) = bytes_s.parse::<i64>() else {
-                continue;
-            };
-            if bytes <= 0 {
-                continue;
-            }
-            let pid_norm = pid_hex.trim().to_ascii_lowercase();
-            if pid_norm.is_empty() {
-                continue;
-            }
-            if let Some(target_uid) = state
-                .peers
-                .corroboration_target(&info_hash_hex, &pid_norm, user_id)
-            {
-                xreports.push((target_uid, bytes));
-            }
-        }
-    }
-
+    // 交叉上报投递前的解析与校验（拆到 xreport_in，本文件只管主链路）
+    let xreports =
+        super::xreport_in::collect(&state, &params, &info_hash_hex, user_id);
     // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn/port 供 worker 反作弊分析）。
     // 同 (user,torrent) 的**周期** announce 在合并窗内只回 peer 列表、不发事件
     // （P2-1）；started/completed/stopped 是事件语义，永不被并。
+    //
+    // conn 取数必须与回连探测**写数的地方**同源：启用外置存储时探测结果写的是
+    // `flux:swarm:{hash}`（main.rs 探测循环），多副本下本进程的内存表可能从没
+    // 测过这条 peer ⇒ 读内存表恒得「未测」，worker 的「实测不可达即不算在种」
+    // 判据被静默放水。UDP 侧早就是读外置的，两条通道此前口径不一致。
+    let connectable = if crate::peers::external::external_enabled() {
+        let mut r = state.redis.clone();
+        crate::peers::external::connectable_of(&mut r, &key).await
+    } else {
+        state.peers.connectable_of(&key)
+    };
     let merged = event.is_empty()
         && !state.claim_event_window(user_id, &info_hash_hex).await;
     if merged {
@@ -240,7 +214,7 @@ pub(crate) async fn announce(
             event,
             left,
             &ip,
-            state.peers.connectable_of(&key),
+            connectable,
             &agent_str,
             port,
         )
@@ -251,14 +225,8 @@ pub(crate) async fn announce(
     // 单独一条流而非塞进 announce 事件：两类消费方（计费 / 上传佐证）
     // 生命周期与幂等口径不同，混流会让任一方的重投影响另一方。
     if !xreports.is_empty() {
-        emit_xreport(
-            &state.redis,
-            &info_hash_hex,
-            user_id,
-            &xreports,
-            &ip,
-        )
-        .await;
+        emit_xreport(&state.redis, &info_hash_hex, user_id, &xreports, &ip)
+            .await;
     }
 
     // ③ 响应编码（区间下发 + compact/BEP3 + BEP7 v6）见 http_track::reply
