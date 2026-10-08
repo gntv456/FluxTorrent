@@ -300,7 +300,8 @@ pub(super) async fn collect_categories(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // key（0317）单独查一次：老库迁移中途（表已有列）与 query_as 元组解耦，
-    // 避免六元组形状变更波及快照/另存两条链路的既有契约
+    // 避免六元组形状变更波及快照/另存两条链路的既有契约。
+    // newznab_id（0325）同理——另存要带上对外分类号，回滚重放才能还原
     let keys: std::collections::HashMap<i32, String> =
         sqlx::query_as("SELECT id, key FROM categories WHERE key IS NOT NULL")
             .fetch_all(db)
@@ -308,6 +309,15 @@ pub(super) async fn collect_categories(
             .unwrap_or_default()
             .into_iter()
             .collect();
+    let nzs: std::collections::HashMap<i32, i32> =
+        sqlx::query_as(
+            "SELECT id, newznab_id FROM categories WHERE newznab_id IS NOT NULL",
+        )
+        .fetch_all(db)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
     Ok(rows
         .into_iter()
         .map(|(id, name, icon, parent, sort, bg)| {
@@ -319,6 +329,7 @@ pub(super) async fn collect_categories(
                 "parent_id": parent,
                 "sort": sort,
                 "bg_color": bg,
+                "newznab_id": nzs.get(&id),
             })
         })
         .collect())
