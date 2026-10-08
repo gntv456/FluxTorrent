@@ -10,7 +10,7 @@ use super::helpers::{
 };
 
 impl TrackerState {
-    /// passkey → (user_id, download_enabled, suspended)，60s 内存缓存。
+    /// passkey → (user_id, download_enabled, suspended, class_id)，60s 内存缓存。
     /// 未命中负缓存 30s（审计 10-06 第 7 条）：随机 passkey 洪水不落 PG。
     pub async fn resolve_passkey_cached(
         &self,
@@ -164,6 +164,41 @@ impl TrackerState {
     }
 
     /// (interval, min_interval)：min 取 interval 一半，夹在 [30, 3600]
+    /// 同 `(user, torrent)` 的**周期** announce 认领合并窗：
+    /// `true` = 窗口内第一条（照常发事件）；`false` = 已在窗内（不发事件，
+    /// peer 列表照常回）。`event` 非空（started/completed/stopped）时调用方
+    /// 不走这里——事件语义不能并。
+    ///
+    /// Redis 不可达 ⇒ 一律 `true`（fail-open）：合并只是省 PG 负载，静默丢事件
+    /// 会连带丢活跃度与完成数读数，代价比省下的事务大。
+    pub async fn claim_event_window(&self, user_id: i64, info_hash: &str) -> bool {
+        let window = super::gate::merge_window_secs(
+            self.intervals().0,
+            super::gate::event_merge_pct(),
+        );
+        if window <= 0 {
+            return true;
+        }
+        let key = format!("ann:evt:{user_id}:{info_hash}");
+        let mut c = self.redis.clone();
+        let got: Result<Option<String>, redis::RedisError> = redis::cmd("SET")
+            .arg(&key)
+            .arg("1")
+            .arg("NX")
+            .arg("EX")
+            .arg(window)
+            .query_async(&mut c)
+            .await;
+        match got {
+            // SET NX 有值 = 键原本不存在 ⇒ 这条是窗口内第一条
+            Ok(v) => v.is_some(),
+            Err(_) => {
+                self.metrics.redis_fallback.fetch_add(1, Ordering::Relaxed);
+                true
+            }
+        }
+    }
+
     pub fn intervals(&self) -> (i64, i64) {
         let v = self.guard_read().announce_interval;
         (v, (v / 2).clamp(30, 3600))

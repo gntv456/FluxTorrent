@@ -7,7 +7,7 @@ use super::emit::{bencode_err, emit_agent_block, emit_event, emit_xreport};
 use super::helpers::{client_ip, TrackerState};
 use super::params::RawParams;
 
-use crate::peers::{bencode_announce, hex, PeerKey};
+use crate::peers::{hex, PeerKey};
 
 
 #[get("/announce/{passkey}")]
@@ -220,21 +220,32 @@ pub(crate) async fn announce(
         }
     }
 
-    // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn/port 供 worker 反作弊分析）
-    emit_event(
-        &state.redis,
-        &info_hash_hex,
-        user_id,
-        uploaded,
-        downloaded,
-        event,
-        left,
-        &ip,
-        state.peers.connectable_of(&key),
-        &agent_str,
-        port,
-    )
-    .await;
+    // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn/port 供 worker 反作弊分析）。
+    // 同 (user,torrent) 的**周期** announce 在合并窗内只回 peer 列表、不发事件
+    // （P2-1）；started/completed/stopped 是事件语义，永不被并。
+    let merged = event.is_empty()
+        && !state.claim_event_window(user_id, &info_hash_hex).await;
+    if merged {
+        state
+            .metrics
+            .announce_evt_merged
+            .fetch_add(1, Ordering::Relaxed);
+    } else {
+        emit_event(
+            &state.redis,
+            &info_hash_hex,
+            user_id,
+            uploaded,
+            downloaded,
+            event,
+            left,
+            &ip,
+            state.peers.connectable_of(&key),
+            &agent_str,
+            port,
+        )
+        .await;
+    }
 
     // ④' 交叉上报投递：独立流，worker 侧用于佐证上传者的上传量。
     // 单独一条流而非塞进 announce 事件：两类消费方（计费 / 上传佐证）
@@ -250,48 +261,16 @@ pub(crate) async fn announce(
         .await;
     }
 
-    // ③ compact 二进制响应（interval 按 site_settings.announce_interval 下发；BEP-7 v6 进 peers6）
-    // 0267：`compact=0` 时回退 BEP3 原始 peer 字典列表，供不支持 BEP23 的老客户端；
-    // 缺省/其它值一律按 compact（现代客户端的事实标准，也是唯一被压测覆盖的路径）。
+    // ③ 响应编码（区间下发 + compact/BEP3 + BEP7 v6）见 http_track::reply
     let compact = params.get_i64("compact", 1) != 0;
-    let (interval, min_interval) = state.intervals();
-    let body = if event == "stopped" || hide_peers {
-        bencode_announce(0, 0, 0, &[], &[], interval, min_interval, compact)
-    } else if crate::peers::external::external_enabled() {
-        let mut r = state.redis.clone();
-        let (seeders, leechers) =
-            crate::peers::external::counts(&mut r, &info_hash_hex).await;
-        let snap = crate::peers::external::snapshot(
-            &mut r,
-            &info_hash_hex,
-            numwant,
-            user_id,
-        )
-        .await;
-        bencode_announce(
-            seeders as i64,
-            leechers as i64,
-            0,
-            &snap.v4,
-            &snap.v6,
-            interval,
-            min_interval,
-            compact,
-        )
-    } else {
-        let seeders = state.peers.count_seeders(&info_hash_hex);
-        let leechers = state.peers.count_leechers(&info_hash_hex);
-        let snap = state.peers.snapshot(&info_hash_hex, numwant, user_id);
-        bencode_announce(
-            seeders as i64,
-            leechers as i64,
-            0,
-            &snap.v4,
-            &snap.v6,
-            interval,
-            min_interval,
-            compact,
-        )
-    };
+    let body = super::reply::announce_body(
+        &state,
+        &info_hash_hex,
+        numwant,
+        user_id,
+        event == "stopped" || hide_peers,
+        compact,
+    )
+    .await;
     HttpResponse::Ok().content_type("text/plain").body(body)
 }

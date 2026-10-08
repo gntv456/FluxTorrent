@@ -10,6 +10,7 @@ pub(crate) mod helpers;
 pub(crate) mod ip_trust;
 pub(crate) mod metrics;
 pub(crate) mod params;
+pub(crate) mod reply;
 pub(crate) mod scrape;
 
 pub(crate) use announce::*;
