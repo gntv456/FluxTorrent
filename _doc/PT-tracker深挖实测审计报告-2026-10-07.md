@@ -359,9 +359,9 @@ UDP connection_id 跨源端口不可复用（实测 R12）、随机化、connect
 | `completed` 需既有 peer 行背书（UNIT3D err 152） | 首报即可 completed | **该做**（与 P0 一并） |
 | `left > size` 判假 announce（NexusPHP） | 无校验 | **该做**，一行 |
 | 特权端口 / 端口黑名单（UNIT3D `BLACK_PORTS`、NP `portblacklisted`） | 无 | **该做**，与 P1-3 的入表过滤一起 |
-| per-(passkey,info_hash) 最短间隔锁（NP Redis NX 5s / UNIT3D 30s） | 只有每分钟总量 | **该做**，同时解决 P2-1 与惊群 |
+| per-(passkey,info_hash) 最短间隔锁（NP Redis NX 5s / UNIT3D 30s） | 只有每分钟总量 | **该做**，同时解决 P2-1 与惊群 → **10-08 已做**（§十五：合并窗，不是拒绝；per-hash 全站那一半**故意没做**——会吞别人的 completed） |
 | `interval` 随机抖动（chihaya interval_variation） | 固定值 | 建议做（±10%，低成本） |
-| peer 列表不含同 user 的其他 peer（NP/UNIT3D 排除自己） | 只按 peer_id 排除 | **该做**，一行（骚扰/隐私面） |
+| peer 列表不含同 user 的其他 peer（NP/UNIT3D 排除自己） | 只按 peer_id 排除 | **该做**，一行（骚扰/隐私面） → **10-08 已做**（§十四，按账号排除；`no_peer_id` 经判定**不做**——compact 本就不带 peer id） |
 | 按 /24 与 /64 归一统计骚扰源（opentracker woodpecker） | ip_bans 只能封单 host | **该做**（版主刚需：动态 IPv6） |
 | UA 必需且拒绝浏览器/爬虫 UA（NP/UNIT3D） | 无 UA 要求 | 建议做，但**必须可配**（自研客户端/下载器场景） |
 | 站型可配的准入策略（建站定位） | 白名单硬编码 `IN (0,1)` | **该做**（见 P1-2） |
@@ -579,3 +579,42 @@ announce 报 `downloaded=种子大小` 现在得到 `seeding=false`、`completed
 - **门禁债顺手还掉**：`peers/tests.rs` 因这次改动会长到 376 行（上限 300），
   把协议编码侧用例拆成 `peers/tests/encoding.rs` 后 tests.rs 回到 232 行，
   门禁对 tracker 目录重新全绿。
+
+## 十五、批四：事件合并窗（P2-1，2026-10-08）
+
+§八 的「per-(passkey,info_hash) 最短间隔锁」按 §五-1 的口径落地成**合并窗**，
+而不是回错误拒掉。
+
+- **改法**：同一 `(账号, 种子)` 的**无 event**（周期）announce，若落在
+  `interval × ANN_EVENT_MERGE_PCT%`（默认 40%，夹在 60s–900s）内，则
+  **只回 peer 列表、不再向 worker 投事件**。键 `ann:evt:{user}:{hash}` 用
+  Redis `SET NX EX` 认领；`ANN_EVENT_MERGE_PCT=0` 整条关闭；Redis 不可达一律
+  照常投（fail-open——合并只是省 PG 负载，静默丢事件会连带丢活跃度与完成数
+  读数）。被并掉的条数进 `flux_tracker_announce_evt_merged_total`。
+  HTTP 与 UDP 两个入口同语义。
+- **无损的前提**（为什么并得掉）：一条事件 = 一个 PG 事务 + `FOR UPDATE` 行锁；
+  计账是「客户端累计读数 − 上次锚点」，做种时长按相邻事件的时间差累计（封顶
+  2×interval）——窗口内多条并成一条，流量与时长一分不差。
+  `started`/`completed`/`stopped` 是事件语义，**永不合并**。
+- **与 §八 建议的偏差**（照 §八 原话做会做错）：§八 还写了「+ per-hash 维度限流」
+  （NP 的 30s/torrent）。按 info_hash 全站只发一条事件，会把**别人**的
+  `completed` 一起吞掉 ⇒ `times_completed`/完成榜少记。只有 per-(user,torrent)
+  才是安全口径，故按此实现，并在 §八 该行标注偏差。
+- **验收**：新探针 `.workbuddy/_verify_event_merge.py`（侧容器
+  `ANN_EVENT_MERGE_PCT=3` ⇒ 窗长取到 60s 下限）：**5/5**——
+  M1 两条周期 announce 只落 1 条事件（未修时是 2 条 ⇒ 这条会红）；
+  M2 completed 不被并；M3 过窗后重新落事件（证明是窗、不是永久静默）；
+  M4 被并的那条照样拿到合法响应。回归同步复跑：验收批 **24/24**、
+  10-06 轮 **20/20**、配置面 **9/9**、`cargo test -p flux-tracker` **58/58**。
+- **顺手**：P2-1 让 announce.rs 越过 300 行 ⇒ 把「③ 响应编码」整段拆到
+  `http_track/reply.rs`（区间下发 + compact/BEP3 + BEP7 v6 的选择），
+  announce.rs 回到 277 行。
+- **探针自我纠正**：M4 起初写成「peer 列表照常回」，但那颗种里只有请求者自己
+  一条 peer，而批三已按账号排除自家 peer ⇒ 列表本就该是空，那个措辞会把
+  「空列表」当成已验证的下发。断言已改成如实的「两条都拿到合法响应」。
+- **给下一轮审计的方法论提醒**（合并窗带来的新取证约束）：凡是「去
+  `flux:announce` 里找一条带某 port/ip 的事件」类断言，现在必须先确认
+  该 `(账号,种子)` 的窗已空，或直接改用 `event=started/completed`（这两类
+  永不合并）打点，否则可能因为**事件本就不该投**而误判成「证据缺失」。
+  反作弊侧不受影响：`speed:`/幽灵判定读的是累计读数与锚点差，合并只是变粗
+  不是变瞎；同 IP 双账号（`announce_ips`）是每个账号各自一条窗，照常落。

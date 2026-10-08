@@ -54,6 +54,7 @@ frame-ancestors 'none'
 
 - 登录/敏感写：Redis 滑窗（`rl:` 键）；开放 API 独立 token 限流 60 req/min。
 - announce：tracker 侧防护缓存（Redis 3s 轮询版本号 bump），不打 PG。
+- announce 事件合并（P2-1）：同一 `(账号, 种子)` 的周期 announce 在 `interval × ANN_EVENT_MERGE_PCT%`（默认 40%，60s–900s 夹取）内只回 peer 列表、不投事件——一条事件是一个 PG 事务 + 行锁，而差值计账/做种时长按间隔累计，合并无损。`started`/`completed`/`stopped` 永不合并；Redis 挂了照常投（fail-open）。
 - 待审种子准入：`site_settings.announce_pending_policy`（迁移 0303，后台「反作弊」卡片可选）——
   `self_seed_only`（默认）照常接受发布者的 announce 与计费，但对非发布者/非员工清空 peer 列表与计数；
   `allow_all` 为旧行为，`owner_only` 直接拒绝非发布者。站点详情页本就隐藏待审种（visibility.rs），

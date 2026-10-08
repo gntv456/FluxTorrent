@@ -192,20 +192,31 @@ pub(super) async fn announce(
     } else {
         t.state.peers.connectable_of(&key)
     };
-    crate::emit_event(
-        &t.state.redis,
-        &info_hash_hex,
-        user_id,
-        uploaded,
-        downloaded,
-        event,
-        left,
-        &ip,
-        connectable,
-        "", // UDP 不携带 UA；agent 列以 HTTP announce 为准
-        port,
-    )
-    .await;
+    // 事件合并（P2-1，与 HTTP 侧同语义）：周期 announce 触窗则不发事件，
+    // started/completed/stopped 不受影响。
+    let merged = event.is_empty()
+        && !t.state.claim_event_window(user_id, &info_hash_hex).await;
+    if merged {
+        t.state
+            .metrics
+            .announce_evt_merged
+            .fetch_add(1, Ordering::Relaxed);
+    } else {
+        crate::emit_event(
+            &t.state.redis,
+            &info_hash_hex,
+            user_id,
+            uploaded,
+            downloaded,
+            event,
+            left,
+            &ip,
+            connectable,
+            "", // UDP 不携带 UA；agent 列以 HTTP announce 为准
+            port,
+        )
+        .await;
+    }
 
     let (interval, min_interval) = t.state.intervals();
     let (complete, incomplete, snap) = if event == "stopped" {
