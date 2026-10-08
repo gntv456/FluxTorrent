@@ -1,3 +1,7 @@
+# 构建期 cargo 源覆盖（Dockerfile COPY 进 ~/.cargo/config.toml）。
+# 默认走 rsproxy 国内镜像加速；海外构建/CI 可用 build-arg 覆盖：
+#   --build-arg CARGO_REGISTRY=sparse+https://index.crates.io/
+# （Dockerfile 侧 sed 替换本文件的 registry 行。）
 [source.crates-io]
 replace-with = "rsproxy-sparse"
 
