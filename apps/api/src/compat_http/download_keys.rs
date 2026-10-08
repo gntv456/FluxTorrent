@@ -11,6 +11,10 @@ use crate::publish_http::build_torrent_bytes;
 use crate::state::AppState;
 use crate::torrents::charge_for_download;
 
+/// 临时下载凭证有效期（0069，YemaPT generateDownloadKey 口径）：
+/// SQL 过期窗口与响应 `ttl_minutes` 字段共用同一来源。
+const DOWNLOAD_KEY_TTL_MINUTES: i64 = 30;
+
 /// 第三方不能拿长期 API Token 直接下载：先为单个种子签发 30 分钟临时凭证，
 /// 再用凭证换 .torrent。Token 泄露的损失窗口从"永久"收敛到"30 分钟"。
 #[derive(Deserialize)]
@@ -54,12 +58,13 @@ async fn download_key_issue(
     let expires: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
         "INSERT INTO download_keys (token_hash, user_id, torrent_id, \
          expires_at) \
-         VALUES ($1, $2, $3, now() + interval '30 minutes') \
+         VALUES ($1, $2, $3, now() + make_interval(mins => $4)) \
          RETURNING expires_at",
     )
     .bind(sha3_hex(plain.as_bytes()))
     .bind(uid)
     .bind(body.torrent_id)
+    .bind(DOWNLOAD_KEY_TTL_MINUTES)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -68,7 +73,7 @@ async fn download_key_issue(
         ok(serde_json::json!({
             "key": plain,
             "expires_at": expires,
-            "ttl_minutes": 30,
+            "ttl_minutes": DOWNLOAD_KEY_TTL_MINUTES,
             "download_url": format!(
                           "/api/v1/downloads/{}?token={}",
                           body.torrent_id, plain

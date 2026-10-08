@@ -138,8 +138,11 @@ pub async fn do_cleanup(
     // 审计修复（P0）：旧版删 7 天前过期促销，而 worker expire_promotions 保留 365 天——
     // hr_enforce 建快照需按 completed_at 时点回查当时促销，物理删掉近期历史会让
     // H&R 豁免回查失明（免费期完成的下载被误判违规）。与 worker 统一为 365 天。
+    // 口径对齐（P2）：边界日含当日删除（`<=`），与 worker 侧
+    // apps/worker/src/jobs/promos.rs expire_promotions 完全一致，消除两处
+    // `ends_at = now() - interval '365 days'` 恰好差一天的行为漂移。
     let expired_promos = sqlx::query(
-        "DELETE FROM promotions WHERE ends_at < now() - interval '365 days'",
+        "DELETE FROM promotions WHERE ends_at <= now() - interval '365 days'",
     )
     .execute(&state.repo.db)
     .await

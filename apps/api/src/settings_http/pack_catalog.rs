@@ -109,7 +109,9 @@ async fn remote_catalog(
     let client = reqwest::Client::new();
     let resp = client
         .get(&url)
-        .timeout(std::time::Duration::from_secs(8))
+        .timeout(std::time::Duration::from_secs(
+            crate::http::OUTBOUND_FETCH_TIMEOUT_SECS,
+        ))
         .send()
         .await
         .map_err(|e| {
@@ -422,7 +424,9 @@ async fn fetch_remote_pack(url: &str) -> DomainResult<serde_json::Value> {
     let client = reqwest::Client::new();
     let resp = client
         .get(url)
-        .timeout(std::time::Duration::from_secs(20))
+        .timeout(std::time::Duration::from_secs(
+            crate::http::OUTBOUND_FETCH_TIMEOUT_SECS,
+        ))
         .send()
         .await
         .map_err(|e| DomainError::Validation(format!("远程包拉取失败：{e}")))?;

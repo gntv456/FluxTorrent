@@ -481,7 +481,9 @@ fn adapter_http_exec(
                     "User-Agent",
                     "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)                         AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
                 )
-                .timeout(std::time::Duration::from_secs(20))
+                .timeout(std::time::Duration::from_secs(
+                    crate::http::OUTBOUND_FETCH_TIMEOUT_SECS,
+                ))
                 .send()
                 .await
                 .map_err(|e| e.to_string())?;
