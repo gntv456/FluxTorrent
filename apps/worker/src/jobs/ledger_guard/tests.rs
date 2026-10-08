@@ -34,20 +34,45 @@ fn anchor_never_moves_back_without_near_zero() {
     assert_eq!((got.up - 800 * GIB).max(0), 0);
 }
 
+/// 六轮审计 P0-1 的攻击剧本回归钉：报 1 MiB「重置」+ 120s 后报增量，
+/// 在 1 GiB 口径下每个循环可再铸 ≤ 速率钳 × 时窗的量（实测复现）。
+/// 收紧到 16 MiB 后，16 MiB ~ 1 GiB 之间的「重置」一律 refused。
+#[test]
+fn one_gib_reset_is_no_longer_near_zero() {
+    // 六轮实测用的正是 1 MiB——真实重启（从 0 起算）合法，但攻击者也用
+    // 它反复重置；频次窗（ledger_guard 侧 24h 一次）负责限制真近零的
+    // 重复使用，本测试钉住「中等幅度（16MiB~1GiB）的下降直接拒」。
+    let got = anchor_for(64 * 1024 * 1024, 0, Some(a(500 * GIB, 0)));
+    assert!(got.refused, "64 MiB 的「重置」不是重启，是搬基线");
+    assert_eq!((got.up, got.down), a(500 * GIB, 0), "锚点钉死旧值");
+}
+
+/// 只归零一侧、另一侧读数仍很大 = 搬基线攻击的最小动作（真实客户端
+/// 重启时 up/down 计数器一起归零）⇒ refused。
+/// 这是六轮跑红的那个输入——当时它暴露的正是「单侧重置语义未定义」。
+#[test]
+fn one_sided_reset_with_large_other_side_is_refused() {
+    // up 归零但 down 只降到 5 GiB（远超 16 MiB）：另一侧没有跟着近零重启
+    let got = anchor_for(0, 5 * GIB, Some(a(500 * GIB, 20 * GIB)));
+    assert!(got.refused, "一侧归零另一侧仍很大，不是真实重启的画像");
+    assert_eq!((got.up, got.down), a(500 * GIB, 20 * GIB));
+}
+
 #[test]
 fn near_zero_reset_is_accepted_and_lowers_anchor() {
-    // 客户端重启：up 读数回到 12 KiB ⇒ 认可，且标记 reset_up 让 GREATEST 让路
-    let got = anchor_for(12 * 1024, 20 * GIB, Some(a(500 * GIB, 20 * GIB)));
+    // 客户端重启：两侧读数同时回到近零 ⇒ 认可，且标记 reset_* 让 GREATEST 让路
+    let got = anchor_for(12 * 1024, 8 * 1024, Some(a(500 * GIB, 20 * GIB)));
     assert!(!got.refused);
-    assert_eq!(got.up, 12 * 1024);
+    assert_eq!((got.up, got.down), a(12 * 1024, 8 * 1024));
     assert!(got.reset_up, "up 侧发生了近零重置，必须允许锚点下调");
-    // down 侧这次没降 ⇒ 不该被标记
-    assert!(!got.reset_down, "只降了一侧时另一侧不应被当成重置");
+    assert!(got.reset_down, "down 侧也同时归零，两侧都要让路");
     // 本笔增量按 0（新读数比旧锚点小），下一次从新低锚点起算
     assert_eq!((got.up - 500 * GIB).max(0), 0);
-    // 两侧都降到近零 ⇒ 两侧都要让路
-    let both = anchor_for(12 * 1024, 8 * 1024, Some(a(500 * GIB, 20 * GIB)));
-    assert!(both.reset_up && both.reset_down);
+    // 纯做种侧的合法形态：up 归零、down 恒 0（从未下降）⇒ 认可
+    // （down 侧「没降」不构成否决条件——攻击面是「降了却不近零」）
+    let up_only = anchor_for(12 * 1024, 0, Some(a(500 * GIB, 0)));
+    assert!(!up_only.refused && up_only.reset_up);
+    assert!(!up_only.reset_down, "down 侧没降就不标记");
 }
 
 #[test]
@@ -61,9 +86,9 @@ fn first_reading_only_establishes_baseline() {
 #[test]
 fn reset_accept_boundary_is_inclusive() {
     let at = anchor_for(RESET_ACCEPT, 0, Some(a(50 * GIB, 0)));
-    assert!(!at.refused && at.reset_up, "= 1 GiB 算近零，认可");
+    assert!(!at.refused && at.reset_up, "= 16 MiB 算近零，认可");
     let over = anchor_for(RESET_ACCEPT + 1, 0, Some(a(50 * GIB, 0)));
-    assert!(over.refused, "1 GiB + 1 不算近零，钉死");
+    assert!(over.refused, "16 MiB + 1 不算近零，钉死");
 }
 
 /// 连续剧本：正常 → 重启 → 重启后继续做种。整条链必须始终能记账，

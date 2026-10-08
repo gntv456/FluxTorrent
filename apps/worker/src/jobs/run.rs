@@ -32,6 +32,28 @@ macro_rules! shard_lock {
     };
 }
 
+/// 六轮审计 P1-C：select 调度循环的分支内**只允许 spawn**——任何同步 await
+/// 的慢任务都会拖死同循环里的计费消费（consume_announce，revenue path），
+/// 实测 collusion_check 慢查询曾让计费停摆 20 分钟。重活一律走本 helper。
+fn spawn_heavy<F>(db: &PgPool, shard: &Option<Vec<String>>, reg: F)
+where
+    F: FnOnce(
+            &mut tokio::task::JoinSet<()>,
+            &PgPool,
+            &Option<Vec<String>>,
+        ) + Send
+        + 'static,
+{
+    let (db2, shard2) = (db.clone(), shard.clone());
+    tokio::spawn(async move {
+        let mut js = tokio::task::JoinSet::new();
+        reg(&mut js, &db2, &shard2);
+        while let Some(res) = js.join_next().await {
+            let _ = res.map_err(|e| tracing::error!(?e, "join 失败"));
+        }
+    });
+}
+
 /// 同上，但丢进 JoinSet 并发跑（60s 分支：900s 慢任务不堵同轮）。
 /// 传函数名而非调用式：克隆出的池在宏内，调用式里的变量过不卫生检查。
 macro_rules! spawn_lock {
@@ -264,18 +286,23 @@ pub async fn run_all(
         }
         _ = tick10.tick() => {
             if first_tick10 { first_tick10 = false; continue; }
-            shard_lock!(&db, "job:cheat_audit", cheat_audit(&db), &shard);
-            // 作弊事件累进处置（P1-5）+ 对刷/谎报/BitThief 三件套（0301）
-            shard_lock!(&db, "job:cheat_enforce",
-                cheat_enforce(&db), &shard);
-            shard_lock!(&db, "job:collusion_check",
-                collusion_check(&db), &shard);
+            // 六轮 P1-C：检测任务不得与计费消费共抢调度（见 spawn_heavy）
+            spawn_heavy(&db, &shard, |js, db2, shard2| {
+                spawn_lock!(js, db2, "job:cheat_audit", cheat_audit, shard2);
+                spawn_lock!(js, db2, "job:cheat_enforce",
+                            cheat_enforce, shard2);
+                spawn_lock!(js, db2, "job:collusion_check",
+                            collusion_check, shard2);
+            });
         }
         _ = tick30.tick() => {
             if first_tick30 { first_tick30 = false; continue; }
-            shard_lock!(&db, "job:multi_ip_check",
-                multi_ip_check(&db), &shard);
-            shard_lock!(&db, "job:leak_scan", leak_scan(&db), &shard);
+            // 同 P1-C：全表扫描后台化
+            spawn_heavy(&db, &shard, |js, db2, shard2| {
+                spawn_lock!(js, db2, "job:multi_ip_check",
+                            multi_ip_check, shard2);
+                spawn_lock!(js, db2, "job:leak_scan", leak_scan, shard2);
+            });
         }
         _ = tick6h.tick() => {
             if first_tick6h { first_tick6h = false; continue; }

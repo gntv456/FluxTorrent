@@ -5,10 +5,14 @@
 //! bencode（BEP3/BEP-7 编码与字节工具）。
 
 mod bencode;
+pub(crate) mod bt_probe;
 pub mod external;
 mod model;
+pub(crate) mod piece_cache;
+pub(crate) mod probe_loop;
 pub(crate) mod probes;
 mod table;
+pub(crate) mod torrent_parse;
 
 pub use bencode::{
     bencode_announce, bencode_scrape, hex, peer_id_bytes, percent_decode,

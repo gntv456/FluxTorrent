@@ -95,6 +95,13 @@ async fn main() -> anyhow::Result<()> {
         },
         force_refresh: AtomicBool::new(false),
         ver: AtomicI64::new(0),
+        // piece 级抽查预算：环境变量覆盖，缺省 8。0 = 关闭。
+        piece_probe_budget: std::sync::atomic::AtomicUsize::new(
+            std::env::var("FLUX_TRACKER_PIECE_PROBE")
+                .ok()
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(8),
+        ),
     });
 
     // peer 快照预热（0101）：重启后从 Redis 恢复未超时 peer，缩短做种列表空窗。
@@ -207,54 +214,13 @@ async fn main() -> anyhow::Result<()> {
     // tracker 不订阅 flux:cfg:ver：术语/模块开关不在 tracker 进程内缓存（它只
     // 读 ip_bans/agent_rules/passkey 小表，走上方 guard:ver），保持单一通道不重复。
 
-    // connectable 抽样（0071 P1-9，防假保种）：每 5min 抽 50 个 peer 做 TCP 回连（3s 超时），
-    // 未测优先、已测轮替复测。结果写回 peer 表 → 随 announce 事件流入 snatches.connectable，
-    // 「不可达 + 零上传」的做种不计做种收益并进作弊探测。纯探测不阻断任何响应路径。
+    // connectable 抽样（0071 P1-9，防假保种）：每 5min 抽 peer 做探测
+    // （任务体在 peers/probe_loop.rs，300 行门禁拆分）。三层链：
+    // BT 握手+bitfield（全量采样）→ piece SHA-1 抽查（随机抽人）→ 写回
+    // peer 表随 announce 流入 snatches.connectable。纯探测不阻断响应。
+    // 0309 开源威胁模型：探测时机抖动 + 抽查随机化，随站私有可调。
     {
-        let st = state.clone();
-        actix_web::rt::spawn(async move {
-            let mut tick = tokio::time::interval(Duration::from_secs(300));
-            loop {
-                tick.tick().await;
-                // P0-1（2026-10-07 保种组审计二轮）：预算从固定 50 改为随在线
-                // 规模线性扩容（每 peer 每轮至少 1/8 覆盖，上限 400）。原实现
-                // 无论 swarm 多大每轮只抽 50 个：热门种子里绝大多数 peer 永远
-                // 轮不到探测，conn 恒为 None（未测）而被 seeding 判定直接放行
-                // ——幽灵做种因此几乎无门槛。并发回连（每探测 3s 超时，
-                // buffer_unordered(64) 限在飞数量），一轮内收敛。
-                let budget = (st.peers.len() / 8).clamp(50, 400);
-                let candidates = st.peers.probe_candidates();
-                let mut inflight = tokio::task::JoinSet::new();
-                for (key, probe_ip, probe_port) in
-                    peers::probes::sample_probes(&candidates, budget)
-                {
-                    let st2 = st.clone();
-                    inflight.spawn(async move {
-                        let attempt = tokio::time::timeout(
-                            Duration::from_secs(3),
-                            tokio::net::TcpStream::connect((
-                                probe_ip.as_str(),
-                                probe_port,
-                            )),
-                        )
-                        .await;
-                        let reachable = matches!(attempt, Ok(Ok(_)));
-                        st2.peers.set_connectable(&key, reachable);
-                        // 外置模式同步写回（0225 G30-B12）：多副本共读同一测量值
-                        if peers::external::external_enabled() {
-                            let mut r = st2.redis.clone();
-                            peers::external::set_connectable(
-                                &mut r, &key, reachable,
-                            )
-                            .await;
-                        }
-                    });
-                }
-                // 等本轮全部探测收敛（每个探测自身 3s 超时，JoinSet
-                // 并发执行、在飞数量即预算上限 400，不会打爆 fd）
-                while inflight.join_next().await.is_some() {}
-            }
-        });
+        peers::probe_loop::spawn(state.clone());
     }
 
     // UDP tracker（BEP15）：TRACKER_UDP_BIND 未设置（空）则不启用；

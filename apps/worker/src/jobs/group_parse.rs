@@ -81,10 +81,7 @@ fn flat_fields(v: &Value) -> Vec<(String, String)> {
     items
         .chunks(2)
         .filter_map(|c| match (&c[0], c.get(1)) {
-            (
-                Value::BulkString(k),
-                Some(Value::BulkString(val)),
-            ) => Some((
+            (Value::BulkString(k), Some(Value::BulkString(val))) => Some((
                 String::from_utf8_lossy(k).to_string(),
                 String::from_utf8_lossy(val).to_string(),
             )),

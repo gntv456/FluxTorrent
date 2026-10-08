@@ -3,14 +3,33 @@
 
 use sqlx::PgPool;
 
-/// 保种区移出（M19 旧站口径：做种 > 7 移出，免费延续 3 天）。
+/// 保种区移出（M19 旧站口径：做种 > 阈值移出，免费延续 3 天）。
+///
+/// P2-8（2026-10-07）：出种人数阈值从硬编码 7 改为后台可配置
+/// `uploader_seed_min`（默认 3，与「发布者保种出种 3 人」口径一致），
+/// 站长可在设置面板「上传限制」卡调整。clamp 0..=50 防止填出
+/// 永不移出（极大）或全部移出（0）的极端值；0 视为「不移出」。
 pub async fn preserve_exit(db: &PgPool) -> anyhow::Result<u64> {
+    let min_seeders: i64 = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'uploader_seed_min'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.parse::<i64>().ok())
+    .unwrap_or(3)
+    .clamp(0, 50);
+    // 阈值 0 = 关闭「做种人数达标即移出」，只保留人工移出
+    if min_seeders == 0 {
+        return Ok(0);
+    }
     let res = sqlx::query(
         r#"
         WITH exited AS (
-            UPDATE seed_preserve sp SET exited_at = now(), exit_reason = 'seeders_gt_7'
+            UPDATE seed_preserve sp SET exited_at = now(), exit_reason = 'seeders_gt_threshold'
             FROM torrents t
-            WHERE t.id = sp.torrent_id AND t.seeders > 7 AND sp.exited_at IS NULL
+            WHERE t.id = sp.torrent_id AND t.seeders > $1 AND sp.exited_at IS NULL
             RETURNING sp.torrent_id
         )
         INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source)
@@ -19,6 +38,7 @@ pub async fn preserve_exit(db: &PgPool) -> anyhow::Result<u64> {
         ON CONFLICT DO NOTHING
         "#,
     )
+    .bind(min_seeders)
     .execute(db)
     .await?;
     Ok(res.rows_affected())
@@ -62,6 +82,7 @@ pub async fn preserve_settle(db: &PgPool) -> anyhow::Result<u64> {
             JOIN snatches s
               ON s.torrent_id = sp.torrent_id AND s.user_id = sp.claimed_by AND s.seeding
             WHERE sp.claimed_by IS NOT NULL AND sp.exited_at IS NULL
+              -- 口径（0310）：仅 0(DEAD) 阻断；-2(SUSPECT)/-1(未测) 放行。
               AND s.last_port > 0 AND NOT COALESCE(s.connectable = 0, false)
               AND now() - COALESCE((SELECT max(l.created_at) FROM spark_ledger l
                     WHERE l.kind = 'preserve_reward'

@@ -158,14 +158,20 @@ pub(crate) async fn process_event(
           -- 必须只进不退——EXCLUDED 已是 Rust 侧守卫后的锚点（大幅回退沿用旧值），
           -- GREATEST 再兜一层，防止任何路径把锚点拉低后重吃增量。
           -- 例外（2026-10-08 五轮）：$18/$19 = 本侧刚**认可**了一次近零重置
-          -- （客户端真重启/换机，读数回到 1 GiB 以下）。这时锚点必须允许下调，
+          -- （客户端真重启/换机，读数回到近零）。这时锚点必须允许下调，
           -- 否则 GREATEST 把它钉回旧高位，下一次 announce 的读数仍远小于旧锚点
           -- ⇒ 被判「回退且非近零」→ 记 counter_reset 作弊 + 增量恒 0，
           -- 真实用户从此流量冻结（探针场景：NAS 重启后第二天就中招）。
+          -- 六轮收口：认可条件已收紧为「两侧同时 ≤16MiB 且 24h 窗内首次」
+          -- （判在 Rust 侧 anchor_for + 频次窗，SQL 只消费结论）。
           last_up = CASE WHEN $18::boolean THEN EXCLUDED.last_up
                          ELSE GREATEST(snatches.last_up, EXCLUDED.last_up) END,
           last_down = CASE WHEN $19::boolean THEN EXCLUDED.last_down
                            ELSE GREATEST(snatches.last_down, EXCLUDED.last_down) END,
+          -- P0-1 频次窗游标（六轮）：认可了重置才置 now，配合 worker 侧
+          -- 「24h 内二次重置 → 锚点钉死」堵「重置 → 吃增量」循环铸币。
+          reset_last_at = CASE WHEN $20::boolean THEN now() ELSE snatches.reset_last_at END,
+          reset_count = snatches.reset_count + (CASE WHEN $20::boolean THEN 1 ELSE 0 END),
           leeching = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.leeching END,
           seeding = CASE WHEN $11 THEN FALSE ELSE EXCLUDED.seeding OR snatches.seeding END,
           completed_at = COALESCE(snatches.completed_at, EXCLUDED.completed_at),
@@ -236,6 +242,8 @@ pub(crate) async fn process_event(
     // $18/$19：本侧是否认可了一次近零重置（锚点允许下调，见上方 CASE）
     .bind(g.reset_up)
     .bind(g.reset_down)
+    // $20：频次窗游标（六轮 P0-1）：认可重置 ⇒ reset_last_at=now / reset_count+1
+    .bind(g.reset_accepted)
     .execute(&mut *tx)
     .await?;
 

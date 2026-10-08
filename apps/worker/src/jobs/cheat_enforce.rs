@@ -9,9 +9,11 @@
 //!   （经济侧拉黑由 seeding_reward 的 NOT EXISTS 承担：存在未处置
 //!     ghost/speed/reset 事件的用户停发做种收益，管理组处置后自动恢复）
 //!
-//! 幂等：每用户每事件只发一次 L1/L2——告警去重键 flux:cheat:warned:{user}:{agent}
-//! （SET NX EX 7d），管理组处置（resolved_at 置位）后同一事件不再重复告警。
-//! 员工（class_id ≥ 90）不自动发信，避免测试/运维流量误伤。
+//! 幂等：每用户每事件只发一次 L1/L2——L1 靠 messages 里带 `[[cheat:{agent}]]`
+//! 隐式键的 7 天 NOT EXISTS（六轮补齐，此前 L1 无去重、实测 10 分钟一刷）；
+//! L2 靠 staffmessages 的 NOT EXISTS（管理组处置 resolved_at 置位后同
+//! 一事件不再重复告警）。员工（class_id ≥ 90）不自动发信，避免测试/运维
+//! 流量误伤。
 
 use sqlx::PgPool;
 
@@ -57,20 +59,36 @@ pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
 
     let mut acted = 0u64;
     for (uid, agent, reason, hits) in rows {
-        // L1：用户告知（每用户×事件 7 天一次；站点可整体关闭）
-        if warn_action {
+        // L1：用户告知。六轮审计 P2-E 修两件：
+        //  ① 阈值 hits>=1 太低——任何一条低置信信号（贴边节奏/单次超窗）
+        //    就发信，且每轮（10 分钟）重发：实测用户 39 收 50 条同文提醒。
+        //    提到 hits>=3（L1 是教育性告知，不是处罚）。
+        //  ② 去重——文档声称的「每用户×事件只发一次」此前只对 L2 生效
+        //    （staffmessages 靠 NOT EXISTS resolved 挡重），L1 无任何去重。
+        //    与 L2 同源：该 (user, agent) 存在**已发出且对应事件未处置**
+        //    的提醒即跳过——用 messages 的 subject + body 前缀匹配（messages
+        //    无 (receiver, kind) 唯一键，不能上硬约束）。
+        if warn_action && hits >= 3 {
             let n = sqlx::query(
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-                 SELECT NULL, $1, '流量记录异常提醒', \
-                 $2 FROM users WHERE id = $1 AND class_id < 90",
+                 SELECT NULL, $1, '流量记录异常提醒', $2 \
+                 FROM users u \
+                 WHERE u.id = $1 AND u.class_id < 90 \
+                   AND NOT EXISTS ( \
+                     SELECT 1 FROM messages m \
+                     WHERE m.receiver_id = $1 \
+                       AND m.subject = '流量记录异常提醒' \
+                       AND m.body LIKE $3 || '%' \
+                       AND m.created_at > now() - interval '7 days')",
             )
             .bind(uid)
             .bind(format!(
-                "系统检测到您的做种/流量数据存在异常记录（{}，累计 {} 次）。\
+                "[[cheat:{agent}]]系统检测到您的做种/流量数据存在异常记录（{}，累计 {} 次）。\
                  若您确在使用特殊客户端或代理，请联系管理组说明；未处理的异常记录\
                  将暂停做种收益结算，管理组核实后自动恢复。",
                 reason, hits
             ))
+            .bind(format!("[[cheat:{agent}]]"))
             .execute(db)
             .await
             .map(|r| r.rows_affected())

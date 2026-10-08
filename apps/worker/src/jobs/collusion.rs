@@ -91,24 +91,44 @@ pub async fn near_cap_check(db: &PgPool) -> anyhow::Result<u64> {
 pub async fn self_deal_check(db: &PgPool) -> anyhow::Result<u64> {
     // 近 30 分钟内，同 IP 同 swarm 里「我下你种 + 你下我种」任一方向的账号对。
     // 去重键 = 无序账号对 + hash（a<b 规范化），防止一 swarm 多 peer 重复计数。
+    // 六轮审计 P1-A：旧写法 `recent a JOIN recent b` 是 O(n²) 自连接——
+    // 30 分钟窗口内同 (ip, hash) 的行数平方级膨胀（2 万活跃 peer 的站
+    // ≈ 6.9 亿中间行，实测 56 行就产生 400 行过滤）。改为先按 (ip, hash)
+    // 聚合成小数组再在数组内配对：每组通常只有 2~4 个账号，配对数是组内
+    // 平方但组极小；聚合在索引扫描上下推，PG 只物化多账号组。
     let rows: Vec<(i64, i64, String)> = sqlx::query_as(
         r#"
-        WITH recent AS (
-            SELECT DISTINCT ip, info_hash, user_id, seeding, leeching
+        WITH per_group AS (
+            SELECT ip, info_hash,
+                   array_agg(DISTINCT user_id)  AS users,
+                   bool_or(seeding)              AS any_seeding,
+                   bool_or(leeching)             AS any_leeching
             FROM announce_ips
             WHERE seen_at > now() - interval '30 minutes'
+            GROUP BY ip, info_hash
+            HAVING count(DISTINCT user_id) >= 2
+               -- 方向性预筛：组内既出现过做种又出现过下载才可能配对
+               AND bool_or(seeding) AND bool_or(leeching)
         ),
         deals AS (
-            SELECT a.ip, a.info_hash,
-                   LEAST(a.user_id, b.user_id)  AS ua,
-                   GREATEST(a.user_id, b.user_id) AS ub
-            FROM recent a
-            JOIN recent b
-              ON a.ip = b.ip
-             AND a.info_hash = b.info_hash
-             AND a.user_id < b.user_id
-             -- 方向性：一方在做种、另一方在下载（对倒）
-             AND ((a.seeding AND b.leeching) OR (a.leeching AND b.seeding))
+            SELECT g.ip, g.info_hash,
+                   LEAST(s1.user_id, s2.user_id)  AS ua,
+                   GREATEST(s1.user_id, s2.user_id) AS ub
+            FROM per_group g
+            CROSS JOIN LATERAL unnest(g.users) AS s1(user_id)
+            CROSS JOIN LATERAL unnest(g.users) AS s2(user_id)
+            JOIN LATERAL (
+                VALUES (s1.user_id, s2.user_id), (s2.user_id, s1.user_id)
+            ) AS sides(seeder, leecher) ON true
+            JOIN announce_ips a
+              ON a.ip = g.ip AND a.info_hash = g.info_hash
+             AND a.user_id = sides.seeder AND a.seeding
+             AND a.seen_at > now() - interval '30 minutes'
+            JOIN announce_ips b
+              ON b.ip = g.ip AND b.info_hash = g.info_hash
+             AND b.user_id = sides.leecher AND b.leeching
+             AND b.seen_at > now() - interval '30 minutes'
+            WHERE s1.user_id < s2.user_id
         )
         SELECT DISTINCT ua, ub, info_hash FROM deals
         "#,
@@ -144,19 +164,23 @@ pub async fn self_deal_check(db: &PgPool) -> anyhow::Result<u64> {
 /// 账龄时天然「佐证 < 自报」，不会误报；只有「窗口内佐证反超累计自报」
 /// 才命中，即自报明显压低。
 pub async fn down_under_check(db: &PgPool) -> anyhow::Result<u64> {
+    // 六轮审计 P1-A：`sum(s.downloaded)` 是 NUMERIC，按 i64 解码会
+    // "Rust type i64 is not compatible with SQL type NUMERIC"——本 job 自
+    // 上线起每 10 分钟必炸（worker 日志实锤），谎报下载检测从未跑通。
+    // 必须显式 ::bigint（sqlx 的 NUMERIC 老坑）。
     let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
         r#"
-        SELECT l.leecher, l.corr_total, COALESCE(sum(s.downloaded), 0)
+        SELECT l.leecher, l.corr_total, COALESCE(sum(s.downloaded), 0)::bigint
         FROM (
-            SELECT leecher, sum(bytes) AS corr_total
+            SELECT leecher, sum(bytes)::bigint AS corr_total
             FROM leecher_xreports
             WHERE reported_at > now() - interval '7 days'
             GROUP BY leecher
         ) l
         JOIN snatches s ON s.user_id = l.leecher
         GROUP BY l.leecher, l.corr_total
-        HAVING l.corr_total > COALESCE(sum(s.downloaded), 0) * 6 / 5
-           AND l.corr_total - COALESCE(sum(s.downloaded), 0)
+        HAVING l.corr_total > COALESCE(sum(s.downloaded), 0)::bigint * 6 / 5
+           AND l.corr_total - COALESCE(sum(s.downloaded), 0)::bigint
                > 1073741824
         "#,
     )

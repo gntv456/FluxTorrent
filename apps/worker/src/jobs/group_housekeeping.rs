@@ -47,8 +47,8 @@ pub(crate) async fn reap_dead_consumers(
         let mut idle_ms = u64::MAX;
         let mut it = fields.into_iter();
         while let (Some(k), Some(v)) = (it.next(), it.next()) {
-            let key = redis::from_owned_redis_value::<String>(k)
-                .unwrap_or_default();
+            let key =
+                redis::from_owned_redis_value::<String>(k).unwrap_or_default();
             match key.as_str() {
                 "name" => {
                     name = redis::from_owned_redis_value::<String>(v)
@@ -82,4 +82,3 @@ pub(crate) async fn reap_dead_consumers(
         }
     }
 }
-

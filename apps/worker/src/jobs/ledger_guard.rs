@@ -2,8 +2,16 @@
 
 use super::announce_main::AnnounceEvent;
 
-/// 近零读数才算「客户端真的重启了」（真实重启/换机后从零起算的量级）。
-pub(crate) const RESET_ACCEPT: i64 = 1024 * 1024 * 1024; // 1 GiB
+/// 近零读数才算「客户端真的重启了」。六轮审计（2026-10-08）从 1 GiB 收紧到
+/// **16 MiB**：真重启后几分钟内重新累积的量级是 0~几 MiB，而 1 GiB 的口子
+/// 实测构成铸币链——「报 ≤1 GiB 重置锚点 → 等速率窗 → 报增量」每循环可再铸
+/// ≤ 速率钳 × 时窗（128 MiB/s × 120s ≈ 15.6 GiB），详见报告 §九 P0-1。
+pub(crate) const RESET_ACCEPT: i64 = 16 * 1024 * 1024; // 16 MiB
+
+/// 近零重置的频次窗（秒）：窗内第二次起不被认可（真实用户一年重启几次；
+/// 短窗内反复「重置 → 吃增量」是搬基线攻击的节奏指纹）。判定见
+/// [`ledger_guard`] 对 `snatches.reset_last_at` 的检查。
+pub(crate) const RESET_WINDOW_SECS: i64 = 24 * 3600;
 
 /// 锚点判定结论（见 [`anchor_for`]）。
 #[derive(Debug, PartialEq, Eq)]
@@ -31,6 +39,9 @@ pub(crate) struct Anchor {
 ///    实测 L2 告警 hits=70）。**判据的否定式分支必须自带反例单测。**
 /// ② **下降且新值 ≤ RESET_ACCEPT** ⇒ 认可为真实重启：锚点跟随新读数，
 ///    本笔增量按 0 计（增量从新读数起算要到下一次 announce）。
+///    **两侧必须同时近零**（六轮审计 P0-1）：真实客户端重启 up/down 计数器
+///    一起归零；只归零一侧（尤其只归零 up 侧）是搬基线攻击的最小动作。
+///    单侧近零不认可下调，锚点钉死 + refused（与③同路）。
 /// ③ **下降但新值仍很大**（如 800 GiB→0→500 GiB 这种搬基线）⇒ 锚点钉死
 ///    在旧值，本笔按 0 计，调用方记 cheat_events。
 pub(crate) fn anchor_for(
@@ -51,8 +62,13 @@ pub(crate) fn anchor_for(
     }
     let dropped_up = ev_up < last_up;
     let dropped_down = ev_down < last_down;
-    let refused = (dropped_up && ev_up > RESET_ACCEPT)
-        || (dropped_down && ev_down > RESET_ACCEPT);
+    // 六轮 P0-1：**两侧读数同时近零**才算真实重启。旧写法逐侧判断「下降的
+    // 那侧是否近零」，于是 `up: 500GiB→0` 而 down 停在 20GiB 也被认可——那正是
+    // 搬基线的最小动作（只把要刷的一侧打回 0）。真实客户端的 up/down 是同一
+    // 进程内的一对计数器，重启必然一起归零 ⇒ 这条不误伤。
+    let near_zero = ev_up <= RESET_ACCEPT && ev_down <= RESET_ACCEPT;
+    let accepted_reset = (dropped_up || dropped_down) && near_zero;
+    let refused = (dropped_up || dropped_down) && !accepted_reset;
     if refused {
         return Anchor {
             up: last_up,
@@ -77,12 +93,10 @@ pub(crate) fn anchor_for(
 /// ②的口径（2026-10-08 五轮加固）：增量 ≤ `min(距上次上报秒数, secs_cap)`
 /// × `traffic_credit_max_bps`。**秒窗必须封上界**：secs 取自
 /// `snatches.last_seen_at`，也就是由攻击者的「沉默时长」决定——旧写法只有
-/// 下界，一次 announce 前静默 24h 就能把单笔额度撑到
-/// 128 MiB/s × 86400 s ≈ 11.26 TiB，等于「announce 越稀疏越能吃」，速率钳被
-/// 自己的时间基准反噬。secs_cap 由调用方传入的做种时长容忍窗
-/// （2 × announce_interval）决定：正常客户端的相邻事件间隔本就不该超过它，
-/// 超出部分不配换算成带宽——与 seeded_seconds 的封顶同一口径，两条判据
-/// 不会互相矛盾。
+/// 下界，一次 announce 前静默 24h 就能把单笔额度撑到 128 MiB/s × 86400 s
+/// ≈ 11.26 TiB，等于「announce 越稀疏越能吃」。secs_cap 由调用方传入的做种
+/// 时长容忍窗（2 × announce_interval）决定，与 seeded_seconds 的封顶同一
+/// 口径，两条判据不会互相矛盾。
 ///
 /// 首报（无基线）：raw 恒 0，只立锚点。客户端的累计计数器是**全局**的
 /// （不是每种一个），把首次 announce 的读数当增量入账等于把别的种子的量
@@ -100,22 +114,55 @@ pub(crate) async fn ledger_guard(
     torrent_size: i64,
     secs_cap: i64,
 ) -> anyhow::Result<GuardOutcome> {
-    let last: Option<(i64, i64, Option<i64>, i64, i64)> = sqlx::query_as(
+    let last: Option<(
+        i64,
+        i64,
+        Option<i64>,
+        i64,
+        i64,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )> = sqlx::query_as(
         "SELECT last_up, last_down, \
-         EXTRACT(EPOCH FROM (now() - last_seen_at))::bigint, \
-         uploaded, downloaded \
-         FROM snatches WHERE user_id = $1 AND torrent_id = $2 \
-         FOR UPDATE",
+             EXTRACT(EPOCH FROM (now() - last_seen_at))::bigint, \
+             uploaded, downloaded, reset_last_at \
+             FROM snatches WHERE user_id = $1 AND torrent_id = $2 \
+             FOR UPDATE",
     )
     .bind(ev.user)
     .bind(torrent_id)
     .fetch_optional(&mut **tx)
     .await?;
-    let (last_up, last_down, acc_up, acc_down) = last
-        .map(|(u, d, _, au, ad)| (u, d, au, ad))
-        .unwrap_or((0, 0, 0, 0));
-    let anchor = anchor_for(ev.up, ev.down, last.map(|(u, d, _, _, _)| (u, d)));
+    let (last_up, last_down, acc_up, acc_down, reset_last_at) = last
+        .map(|(u, d, _, au, ad, r)| (u, d, au, ad, r))
+        .unwrap_or((0, 0, 0, 0, None));
+    let mut anchor =
+        anchor_for(ev.up, ev.down, last.map(|(u, d, _, _, _, _)| (u, d)));
+    // P0-1 频次限制（六轮审计）：近零重置在 RESET_WINDOW_SECS 窗内只认可一次。
+    // 真实用户一年重启几次；短窗内反复「重置锚点 → 吃增量」每循环可再铸
+    // ≤ 速率钳 × 时窗的量（128 MiB/s × 120s ≈ 15.6 GiB，实测复现）。
+    // 窗内第二次起按搬基线处理：锚点钉死 + refused 留痕。
+    if (anchor.reset_up || anchor.reset_down)
+        && reset_last_at.is_some_and(|t| {
+            chrono::Utc::now() - t
+                < chrono::Duration::seconds(RESET_WINDOW_SECS)
+        })
+    {
+        tracing::warn!(
+            user = ev.user,
+            torrent = torrent_id,
+            "近零重置频发（24h 窗内二次），锚点钉死"
+        );
+        anchor = Anchor {
+            up: last_up,
+            down: last_down,
+            reset_up: false,
+            reset_down: false,
+            refused: true,
+        };
+    }
     let (anchor_up, anchor_down) = (anchor.up, anchor.down);
+    // 认可了重置 ⇒ 让 upsert 侧把 reset_last_at 置为 now（频次窗的游标）
+    let reset_accepted = anchor.reset_up || anchor.reset_down;
     if anchor.refused {
         let _ = sqlx::query(
             "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
@@ -148,7 +195,7 @@ pub(crate) async fn ledger_guard(
         (0, 0)
     };
     let secs = last
-        .and_then(|(_, _, s, _, _)| s)
+        .and_then(|(_, _, s, _, _, _)| s)
         .unwrap_or(120)
         .clamp(1, secs_cap.max(1));
     let ceiling_bps = credit_ceiling(tx).await;
@@ -169,6 +216,8 @@ pub(crate) async fn ledger_guard(
         anchor_down,
         reset_up: anchor.reset_up,
         reset_down: anchor.reset_down,
+        // 频次窗游标：本笔认可了近零重置 ⇒ upsert 侧把 reset_last_at 置 now
+        reset_accepted,
         credit_up,
         credit_down,
         held_up,
@@ -195,6 +244,8 @@ pub(crate) struct GuardOutcome {
     /// 本次认可了 up/down 侧的重置（SQL 侧 GREATEST 要据此让路）
     pub(crate) reset_up: bool,
     pub(crate) reset_down: bool,
+    /// 本次认可了近零重置（upsert 侧据此置 reset_last_at = now，做 24h 频次窗游标）
+    pub(crate) reset_accepted: bool,
     /// 本笔可入账量（已过速率钳 + 终身上限）
     pub(crate) credit_up: i64,
     pub(crate) credit_down: i64,
