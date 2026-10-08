@@ -482,13 +482,31 @@ self_seed_only：两口都收口（默认档恰好是对的，所以一直没被
 
 | 件 | 落点 | 判据要点 | 验证状态 |
 |---|---|---|---|
-| ① passkey 显式重置 = 立即撤销 | `repo/passkey.rs`（新，`update_passkey(user_id, grace)`）、`me_security.rs` 自助轮换与 `admin_http/user_passkey.rs` 后台代重置传 `grace=false`、改密顺带轮换保留 `grace=true` | 泄露后按「重置密钥」是**安全处置**，留 7 天窗 = 撤销了但攻击者还能接着做种 7 天；UNIT3D 换钥即 `forget(旧钥)`，且「改密」与「重置 passkey」是两个互不相干的控制器 | 单测待补 + 部署后行为探针（旧钥 announce 必须 4xx） |
-| ② connectable 只作信息位 | `site_settings.connectable_gate` = `off`（默认）/ `hard`、`seeding_gate::verdict` 的 `reachable` 只在 hard 档否决、`refresh_conn_gate` 60 s 节流且读失败保留旧档 | 三家主流都把可达性当信息位（§八-7）；硬否决会把 NAT 后无映射入站端口的**真做种者**判成不在种。**只有两档**——曾写的第三档 soft 与 off 行为无差别，是没有后果的假枚举，已删 | 判据有单测（off/hard 对 `conn=0` 的差别）；行为探针待跑 |
-| ③ 即时分享率闸门 | `ratio_gate.rs` + `ratio_gate/tests.rs`（新，announce 热路径）、迁移 0308 四个键、视图 `user_by_passkey` 补 `uploaded/downloaded/created_at/ratio_watch_until` | 原先 `ratiolimit` 与全部 `user_classes.min_ratio` **零消费者**＝假开关。门槛 `min(max(等级 min_ratio, ratiolimit), ratio_gate_max)`；缺省档 **warn**（只计数不拦）；豁免：员工/`downloaded=0`/新人（`ratio_gate_grace_days`，与等级 `min_age_days` 取大者）/观察期内；只拦 `left>0` 的下载侧，做种永不拦 | 7 条纯函数单测；行为探针待跑 |
+| ① passkey 显式重置 = 立即撤销 | `repo/passkey.rs`（新，`update_passkey(user_id, grace)`）、`me_security.rs` 自助轮换与 `admin_http/user_passkey.rs` 后台代重置传 `grace=false`、改密顺带轮换保留 `grace=true` | 泄露后按「重置密钥」是**安全处置**，留 7 天窗 = 撤销了但攻击者还能接着做种 7 天；UNIT3D 换钥即 `forget(旧钥)`，且「改密」与「重置 passkey」是两个互不相干的控制器 | **已部署已实测**（探针 ① 组 9/9，含「改密旧钥仍可用」正控） |
+| ② connectable 只作信息位 | `site_settings.connectable_gate` = `off`（默认）/ `hard`、`seeding_gate::verdict` 的 `reachable` 只在 hard 档否决、`refresh_conn_gate` 60 s 节流且读失败保留旧档 | 三家主流都把可达性当信息位（§八-7）；硬否决会把 NAT 后无映射入站端口的**真做种者**判成不在种。**只有两档**——曾写的第三档 soft 与 off 行为无差别，是没有后果的假枚举，已删 | **已部署已实测**（探针 ③ 组 14/14：同一份 `conn=0` 在两档下结论相反） |
+| ③ 即时分享率闸门 | `ratio_gate.rs` + `ratio_gate/tests.rs`（新，announce 热路径）、迁移 0308 四个键、视图 `user_by_passkey` 补 `uploaded/downloaded/created_at/ratio_watch_until` | 原先 `ratiolimit` 与全部 `user_classes.min_ratio` **零消费者**＝假开关。门槛 `min(max(等级 min_ratio, ratiolimit), ratio_gate_max)`；缺省档 **warn**（只计数不拦）；豁免：员工/`downloaded=0`/新人（`ratio_gate_grace_days`，与等级 `min_age_days` 取大者）/观察期内；只拦 `left>0` 的下载侧，做种永不拦 | **已部署已实测**（探针 ② 组 20/20，含四条豁免各自判别正控） |
+
+线上行为验收（`.workbuddy/_probe_r6_three_switches.py`；api/tracker/worker 均为本轮
+工作树出的新镜像，迁移 306/307/308 由 api 启动时 sqlx 应用；每条否定式断言都配正控）：
+
+| 组 | 关键判据 | 结果 |
+|---|---|---|
+| ① passkey（9 条） | 改密后旧钥**仍可用**（`passkey_prev=旧钥 AND passkey_prev_until>now()`）；`/me/passkey/rotate` 后 `passkey_prev IS NULL`、旧钥 announce 回 `passkey 无效`；上一代宽限窗里的钥一并失效；新钥立即可用 | **9/9** |
+| ② ratio（20 条） | `off` 放行；`warn` 放行且 `flux_tracker_ratio_gate_warn_total` 0→1；`block` 拒且 `…_block_total` 0→1；比率 2.0 正控放行；**left=0 做种侧永不拦**；员工(class 91)/零下载/注册 1 天/观察期内四条豁免各自成立，且各自配「换一份输入就必须被拒」的判别正控；`ratio_gate_max=1.0` 把 `ratiolimit=6` 截住（比率 2.0 放行）而 0.50 仍被拒；等级门槛 1.5 赢过站点门槛 0.8（同一份 0.9 在 class 3 被拒、在 class 2 放行）；踩线（比率正好等于执行门槛）放行 | **20/20** |
+| ③ conn（14 条） | 每步先打一发 `event=stopped` 把**粘滞的** `seeding` 清成 false（`EXCLUDED.seeding OR snatches.seeding`，不清就判不出档位作用），再喂同一份 `conn=0` 事件：`off` 点亮、`hard` 不点亮；`hard` 下 `conn=1` 仍点亮（不是恒 false）；`port=0` 两档都不点亮；不带 conn 字段（未抽样）按 off 点亮；`snatches.connectable=0` 留痕照写 | **14/14** |
+
+跑完复原并回读：`connectable_gate=off`、`ratio_gate=warn`、`ratio_gate_max=1.0`、
+`ratio_gate_grace_days=7`、`ratiolimit=6`；现场 10 个探针账号已墓碑化、5 颗探针种子已删、
+`announce_seen`/`cheat_events` 残留 0。
 
 安全轨（本机现状决定的，不是可选项）：`ratiolimit` 现值 **6**、所有 `min_ratio` **0** ⇒
 直接把 block 打开等于全站锁死，所以 `ratio_gate_max` 缺省 **1.0** 并会在截断时打
 warn，档位缺省 **warn**。这两个缺省值都要站长核对过数字之后再往严里拧。
+
+一处「文档比代码诚实」的反例：`docs/user/07-account.md` 一直写着自助重置后
+「旧 key 立即失效」，而代码给的是 7 天宽限窗（`passkey_prev`）——**这条用户可见文案
+在 ① 之前是假的**，用户照它操作会以为泄露已经止血。① 落地后文案与实现第一次一致。
+`docs/ops/security.md` 原先把「重置」与「改密」混写成同一种宽限语义，也已按两档拆开。
 
 ### 本轮没做（明确交代，别当已修）
 
@@ -496,8 +514,11 @@ warn，档位缺省 **warn**。这两个缺省值都要站长核对过数字之�
    需把 `corr:` / `nearcap:` 一并纳入（与 `cheat_enforce` 的告警面区分开，两个口径）。
 2. `numwant` 单常量、`+` 解码、`/metrics` 独立 bind、`sweep` 阈值口径（P3 四条）。
 3. **后台面板**：②③ 四个键写进了 `settings_meta`（面板可见可改），但
-   `ratio_gate` 的计数目前只有 `metrics` + `cheat_events` 两处出口，
-   站长要看「本档拦了多少人」仍需进后台审计页——待行为探针跑通后一并评估。
+   `ratio_gate` 的判定结果只有两处出口——`flux_tracker_ratio_gate_{warn,block}_total`
+   两个计数器与 `tracing` 日志（**不写 `cheat_events`**：低分享率是准入问题，不是作弊证据，
+   混进 cheat_events 会把 `cheat_enforce` 的告警与累进处置一起误伤），
+   也没有按人留痕。站长要看「本档拦了谁、拦了多少次」目前只能抓 `/metrics` 的增量
+   或读运行日志——待行为探针跑通后一并评估要不要做成面板可读的一页。
 
 ### 验收数字（本机 `docker compose up -d tracker worker` + api 重启后实测）
 
