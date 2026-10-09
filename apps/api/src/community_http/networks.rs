@@ -97,13 +97,12 @@ pub async fn network_detail(
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
-    let row: Option<(String, String)> = sqlx::query_as(
-        "SELECT kind, name FROM content_networks WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(String, String)> =
+        sqlx::query_as("SELECT kind, name FROM content_networks WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((kind, name)) = row else {
         return Err(DomainError::NotFound(id));
     };

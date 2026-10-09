@@ -144,9 +144,10 @@ pub(super) async fn open_recent_torrents(
     let items: Vec<_> = rows
         .into_iter()
         .map(|(id, ih, ph, name, descr, size, ts, sd, lc, cat)| {
-            let d = dims.get(&id).cloned().unwrap_or(
-                serde_json::Map::new().into(),
-            );
+            let d = dims
+                .get(&id)
+                .cloned()
+                .unwrap_or(serde_json::Map::new().into());
             project(id, ih, ph, name, descr, size, ts, sd, lc, cat, &cats, d)
         })
         .collect();
@@ -205,9 +206,10 @@ pub(super) async fn open_announces(
     let items: Vec<_> = rows
         .into_iter()
         .map(|(id, ih, ph, name, descr, size, ts, sd, lc, cat)| {
-            let d = dims.get(&id).cloned().unwrap_or(
-                serde_json::Map::new().into(),
-            );
+            let d = dims
+                .get(&id)
+                .cloned()
+                .unwrap_or(serde_json::Map::new().into());
             project(id, ih, ph, name, descr, size, ts, sd, lc, cat, &cats, d)
         })
         .collect();

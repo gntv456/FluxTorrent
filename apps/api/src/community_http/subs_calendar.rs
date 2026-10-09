@@ -85,8 +85,7 @@ pub async fn my_subscription_calendar(
     .await
     .unwrap_or_default();
     use std::collections::BTreeMap;
-    let mut days: BTreeMap<String, Vec<serde_json::Value>> =
-        BTreeMap::new();
+    let mut days: BTreeMap<String, Vec<serde_json::Value>> = BTreeMap::new();
     for (day, tid, name, gid, ep) in rows {
         days.entry(day).or_default().push(serde_json::json!({
             "torrent_id": tid, "name": name,
@@ -97,8 +96,6 @@ pub async fn my_subscription_calendar(
     Ok(ok(days
         .into_iter()
         .rev()
-        .map(|(day, items)| {
-            serde_json::json!({ "date": day, "items": items })
-        })
+        .map(|(day, items)| serde_json::json!({ "date": day, "items": items }))
         .collect::<Vec<_>>()))
 }

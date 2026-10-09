@@ -63,12 +63,11 @@ pub(crate) async fn apply_pack_full(
     // 建议序号」，不能拿来直接 INSERT——跨包切换时旧行占着同号主键，会撞
     // categories_pkey。max+1 分配在事务内逐行递增；apply 是 sysop 级低频
     // 操作且 replace 已清表，无并发重号风险。
-    let mut next_id: i32 = sqlx::query_scalar(
-        "SELECT COALESCE(max(id), 0) + 1 FROM categories",
-    )
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut next_id: i32 =
+        sqlx::query_scalar("SELECT COALESCE(max(id), 0) + 1 FROM categories")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     for (i, c) in cats.iter().enumerate() {
         let id = c
             .get("id")

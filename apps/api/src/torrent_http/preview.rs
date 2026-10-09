@@ -74,9 +74,7 @@ pub async fn preview_add(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((fname, mime, size)) = att else {
-        return Err(DomainError::Validation(
-            "附件不存在或未对本站共享".into(),
-        ));
+        return Err(DomainError::Validation("附件不存在或未对本站共享".into()));
     };
     let filename = body
         .filename

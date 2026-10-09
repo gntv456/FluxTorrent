@@ -32,7 +32,9 @@ struct MatchBody {
     kickoff: Option<String>,
 }
 
-fn parse_ts(v: &Option<String>) -> DomainResult<Option<chrono::DateTime<chrono::Utc>>> {
+fn parse_ts(
+    v: &Option<String>,
+) -> DomainResult<Option<chrono::DateTime<chrono::Utc>>> {
     v.as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty())
@@ -41,7 +43,8 @@ fn parse_ts(v: &Option<String>) -> DomainResult<Option<chrono::DateTime<chrono::
                 .map(|d| d.with_timezone(&chrono::Utc))
                 .map_err(|_| {
                     DomainError::Validation(
-                        "kickoff 需为 RFC3339（如 2026-10-11T19:30:00Z）".into(),
+                        "kickoff 需为 RFC3339（如 2026-10-11T19:30:00Z）"
+                            .into(),
                     )
                 })
         })
@@ -63,12 +66,11 @@ pub async fn admin_match_create(
     )
     .await?;
     let b = body.into_inner();
-    if b.league.trim().is_empty() || b.home.trim().is_empty()
+    if b.league.trim().is_empty()
+        || b.home.trim().is_empty()
         || b.away.trim().is_empty()
     {
-        return Err(DomainError::Validation(
-            "联赛/主队/客队不能为空".into(),
-        ));
+        return Err(DomainError::Validation("联赛/主队/客队不能为空".into()));
     }
     if b.home.trim() == b.away.trim() {
         return Err(DomainError::Validation("主客队不能相同".into()));
@@ -156,10 +158,7 @@ struct MatchQuery {
     limit: Option<i64>,
 }
 
-fn match_row(
-    m: &serde_json::Value,
-    torrents: i64,
-) -> serde_json::Value {
+fn match_row(m: &serde_json::Value, torrents: i64) -> serde_json::Value {
     let mut v = m.clone();
     if let Some(o) = v.as_object_mut() {
         o.insert("torrents".into(), serde_json::json!(torrents));

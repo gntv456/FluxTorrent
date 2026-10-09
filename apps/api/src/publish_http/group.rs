@@ -149,9 +149,18 @@ pub async fn group_info(
     let Some((name, descr, category_id)) = row else {
         return Ok(ok(serde_json::json!({ "group": null })));
     };
-    let items: Vec<(i64, String, Option<String>, i64, i32, i32, i32, bool, Option<String>)> =
-        sqlx::query_as(
-            "SELECT t.id, t.name, t.small_descr, t.size, t.seeders, \
+    let items: Vec<(
+        i64,
+        String,
+        Option<String>,
+        i64,
+        i32,
+        i32,
+        i32,
+        bool,
+        Option<String>,
+    )> = sqlx::query_as(
+        "SELECT t.id, t.name, t.small_descr, t.size, t.seeders, \
                     t.leechers, t.times_completed, t.official_tag, s.std \
              FROM torrents t \
              LEFT JOIN LATERAL ( \
@@ -163,11 +172,11 @@ pub async fn group_info(
              ) s ON TRUE \
              WHERE t.group_id = $1 AND t.approval_status = 1 \
              ORDER BY t.id",
-        )
-        .bind(gid)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .bind(gid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let items: Vec<_> = items
         .into_iter()
         .map(|(id, n, sd, size, s, l, c, official, std)| {
