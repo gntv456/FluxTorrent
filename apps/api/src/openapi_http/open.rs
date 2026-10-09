@@ -39,6 +39,7 @@ fn project(
     leechers: i32,
     category: i32,
     cats: &CatMap,
+    dims: serde_json::Value,
 ) -> serde_json::Value {
     serde_json::json!({
         "id": id,
@@ -56,7 +57,45 @@ fn project(
         // 文档却建议「按 pieces_hash 查重」——承诺大于能力，工具照做必踩空）
         "info_hash": info_hash,
         "pieces_hash": pieces_hash,
+        // 分型字段（批次 3 尾巴/0329）：label→首值的扁平摘要
+        // （季/话数/作者/联赛…按站型），列表工具不用再逐条打详情
+        "dimensions": dims,
     })
+}
+
+/// 批量取一组种子的维度摘要（label→首值）。列表投影用：
+/// 一条 SQL 覆盖整页，避免 N+1。
+#[allow(clippy::type_complexity)]
+async fn dims_for(
+    db: &sqlx::PgPool,
+    ids: &[i64],
+) -> std::collections::HashMap<i64, serde_json::Value> {
+    let mut out: std::collections::HashMap<i64, serde_json::Value> =
+        std::collections::HashMap::new();
+    if ids.is_empty() {
+        return out;
+    }
+    let rows: Vec<(i64, String, Option<String>, Option<String>)> =
+        sqlx::query_as(
+            "SELECT ts.torrent_id, COALESCE(k.label, ts.kind),              d.name, ts.value #>> '{}'              FROM torrent_sections ts              LEFT JOIN section_dict d ON d.id = ts.dict_id              LEFT JOIN section_kinds k ON k.kind = ts.kind              WHERE ts.torrent_id = ANY($1)              ORDER BY COALESCE(k.sort, 999), ts.ordinal",
+        )
+        .bind(ids)
+        .fetch_all(db)
+        .await
+        .unwrap_or_default();
+    for (tid, label, dict_name, free) in rows {
+        let v = dict_name.or(free);
+        if let Some(v) = v {
+            let e = out
+                .entry(tid)
+                .or_insert_with(|| serde_json::Map::new().into());
+            if let Some(m) = e.as_object_mut() {
+                // 同 label 多值保首个（列表摘要语义；全值走详情 sections）
+                m.entry(label).or_insert(serde_json::json!(v));
+            }
+        }
+    }
+    out
 }
 
 /// 开放接口：最新种子（RSS 增强客户端/移动壳可用的稳定只读契约）。
@@ -97,10 +136,18 @@ pub(super) async fn open_recent_torrents(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    let dims = dims_for(
+        &state.repo.db,
+        &rows.iter().map(|r| r.0).collect::<Vec<_>>(),
+    )
+    .await;
     let items: Vec<_> = rows
         .into_iter()
         .map(|(id, ih, ph, name, descr, size, ts, sd, lc, cat)| {
-            project(id, ih, ph, name, descr, size, ts, sd, lc, cat, &cats)
+            let d = dims.get(&id).cloned().unwrap_or(
+                serde_json::Map::new().into(),
+            );
+            project(id, ih, ph, name, descr, size, ts, sd, lc, cat, &cats, d)
         })
         .collect();
     Ok(with_rl(ok(items), &tk))
@@ -150,10 +197,18 @@ pub(super) async fn open_announces(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let next_since_id = rows.last().map(|r| r.0).unwrap_or(since_id);
     let count = rows.len();
+    let dims = dims_for(
+        &state.repo.db,
+        &rows.iter().map(|r| r.0).collect::<Vec<_>>(),
+    )
+    .await;
     let items: Vec<_> = rows
         .into_iter()
         .map(|(id, ih, ph, name, descr, size, ts, sd, lc, cat)| {
-            project(id, ih, ph, name, descr, size, ts, sd, lc, cat, &cats)
+            let d = dims.get(&id).cloned().unwrap_or(
+                serde_json::Map::new().into(),
+            );
+            project(id, ih, ph, name, descr, size, ts, sd, lc, cat, &cats, d)
         })
         .collect();
     Ok(with_rl(
