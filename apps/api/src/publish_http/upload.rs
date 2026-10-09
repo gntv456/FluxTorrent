@@ -65,13 +65,19 @@ async fn upload_core(
     let body =
         super::upload_body::read_body(&state.repo.db, &mut payload).await?;
     // 更新链挂链（0323）：parent_torrent_id 是自由字段，不进 UploadForm
-    // 对外契约——发种成功前先抓出来（build_form 会消费 body.fields）
+    // 对外契约——发种成功前先抓出来（build_form 会消费 body.fields）。
+    // 对阵挂链（0330 sports）同范式：match_id → torrents.match_id
     let mp_artifact_parent: Option<String> = body
         .fields
         .iter()
         .find(|(k, _)| k == "parent_torrent_id")
         .map(|(_, v)| v.trim().to_string())
         .filter(|v| !v.is_empty());
+    let mp_match_id: Option<i64> = body
+        .fields
+        .iter()
+        .find(|(k, _)| k == "match_id")
+        .and_then(|(_, v)| v.trim().parse().ok());
     let form = super::upload_fields::build_form(query_string, body.fields)?;
 
     let parsed = crate::bencode::parse_torrent(&body.torrent)
@@ -347,6 +353,17 @@ async fn upload_core(
     )
     .await?;
     super::upload_logcheck::store(&state.repo.db, id, &rip).await?;
+    // 对阵挂链（0330）：match_id 自由字段 → torrents.match_id；
+    // 悬空 id 静默降级为无链（与 artifact parent 同口径）
+    if let Some(mid) = mp_match_id {
+        let _ = sqlx::query(
+            "UPDATE torrents SET match_id = $2 WHERE id = $1 AND EXISTS              (SELECT 1 FROM sport_matches WHERE id = $2)",
+        )
+        .bind(id)
+        .bind(mid)
+        .execute(&state.repo.db)
+        .await;
+    }
     // 种子工件（0323）：校验和/更新日志落库；更新链 parent 走表单字段
     // parent_torrent_id（文本通道自由字段，上面在 build_form 消费前抓出）
     let artifact_parent: Option<i64> = mp_artifact_parent
