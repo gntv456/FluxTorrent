@@ -349,7 +349,7 @@
  "apps/api/src/openapi_http/spec.rs::wide": 1,
  "apps/api/src/openapi_http/spec_np.rs::wide": 1,
  "apps/api/src/openapi_http/spec_schemas.rs::wide": 3,
- "apps/api/src/logcheck/eac.rs": 491,
+ "apps/api/src/logcheck/eac.rs": 493,
  "apps/api/src/logcheck/eac.rs::wide": 1,
  "apps/api/src/invite_http/email.rs::wide": 3,
  "apps/api/src/http/auth_infra.rs": 311,
