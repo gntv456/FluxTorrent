@@ -14,6 +14,11 @@ export type MenuItem = Awaited<ReturnType<typeof getMenuItems>>[number];
 /** 模块开关视图（U1 §6.2）：缺键视为开（T3 缺省=现状） */
 export type ModuleGate = (key: string) => boolean;
 
+/** 维度开关视图（0330）：条目依赖某个 section 维度是否存在时用。
+ *  例：出品方页只在站型挂了 `network` 维度（纪录片站）时有意义——
+ *  在音乐站给一个空页面是「假成熟」，宁可整条不显示。 */
+export type DimGate = (kind: string) => boolean;
+
 export type NavConfigInput = {
   /** dict.nav / dict.tabbar（调用方从 getDict 取） */
   nav: Record<string, string>;
@@ -21,6 +26,8 @@ export type NavConfigInput = {
   /** {magic} 占位符替换后的站点货币名上下文：nav.spark 等模板需要 */
   currency: string;
   modules: ModuleGate;
+  /** 维度开关（可选）：缺省视为全闭，避免调用方漏传时凭空多出条目 */
+  dims?: DimGate;
   customItems: MenuItem[];
 };
 
@@ -57,12 +64,15 @@ export function defaultNav({
   tabbar,
   currency,
   modules,
+  dims,
 }: NavConfigInput): {
   primary: NavItem[];
   groups: NavGroup[];
 } {
   const t = (tpl: string) => tpl.replace("{magic}", currency);
   const socialOn = modules("social");
+  // 维度开关缺省全闭：调用方漏传 dims 时条目消失（宁可少一条，不可空页）
+  const dimOn = (k: string) => dims?.(k) ?? false;
   const primary: NavItem[] = [
     { href: "/", label: nav.home },
     { href: "/torrents", label: nav.library },
@@ -93,6 +103,10 @@ export function defaultNav({
           : []),
         ...(modules("textbooks")
           ? [{ href: "/textbooks", label: nav.textbooks }]
+          : []),
+        // 出品方聚合页（0330）：仅当站型挂了 network 维度（纪录片站）才出现
+        ...(dimOn("network")
+          ? [{ href: "/networks", label: nav.networks }]
           : []),
       ],
     },
