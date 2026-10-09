@@ -17,7 +17,8 @@
 | 现象 | 怎么定位 | 怎么处理 |
 | :--- | :--- | :--- |
 | api 容器反复重启 | `docker logs flux-api` | `.env` 三项必填缺失（DB/REDIS_PASSWORD、JWT_SECRET），或 JWT_SECRET 含 `change_me` 且非开发态——补齐后重启 |
-| 向导打不开 / 一直 404 | 你访问的是哪个端口 | 向导在网站侧 `http://localhost:3000/setup`；`/setup/status` 能看装机状态（JSON） |
+| 向导打不开 / 一直 404 | 你访问的是哪个端口 | 向导在网站侧 `http://localhost:3000/setup`；`/api/v1/setup/status` 能看装机状态（JSON） |
+| 向导首屏报「无法加载向导状态，请确认 API 可达」 | 看红条下方的**技术细节**行 | **多数不是故障**：api 启动时要先跑完 330+ 个数据库迁移才监听端口，全新装机/重建卷后有几十秒~几分钟空窗，向导会自动退避重试约 3 分钟，等着就行。细节行会给出真实原因：① `code 1003` = 网站容器连不上 API 容器 → `docker ps` 看 api 是否 healthy，核对 `API_SERVER_URL`；② `code 1000` +「非 JSON」= 反向代理把 `/api` 转到了非 API 服务，或 API 仍在启动；③ 「浏览器请求失败」= 反代没放行 `/api/` 路径。也可直接命令行确认：`curl http://127.0.0.1:8080/api/v1/setup/status`（把端口换成 `.env` 里的 `FLUX_API_PORT`），返回 JSON 即 API 正常 |
 | 登不进 root | 初始密码 `password123` 是否已改 | 首次登录强制改密；改过忘了可走数据库重置（已实测可行）：① 生成 argon2id 哈希 `python -c "from argon2 import PasswordHasher; print(PasswordHasher(time_cost=2,memory_cost=19456,parallelism=1).hash('新口令'))"`（需 `pip install argon2-cffi`）；② `docker exec flux-postgres psql -U flux -d fluxtorrent -c "UPDATE users SET pass_hash='<上述哈希>', must_reset_password=false WHERE username='root'"`；③ 用新口令登录。仍登不进且邮箱可用 → 走「忘记密码」邮件找回 |
 | 装完页面全空 | 向导是否完成 | 完成前业务接口被锁是**正常设计**；跑完向导即放开 |
 | 打开是「Welcome to nginx!」欢迎页 | `curl -H "Host: 你的域名" http://127.0.0.1/` ① | 这是**宿主机 Nginx 的默认页**（本栈不含 Nginx，正常页面应由 web 容器出）：① 若 curl 也返回欢迎页 → 反代 server 块没生效：宝塔走 [宝塔部署](deploy-baota.md) G.3 建站+反向代理（目标 `http://127.0.0.1:3000`）；系统直装按 [域名部署](domain-deploy.md) §3.2 整段复制配置，确认软链进 `sites-enabled`、`nginx -t` 通过、已 reload；② 若 curl 返回的是你的站 → 配置没问题，是**用裸 IP 访问了**（server 只认域名）——改用域名访问，先确认 DNS 已解析到本机 |
@@ -35,6 +36,7 @@
 | tracker 报 429 / announce 被拒 | 限流阈值 | 每用户 1800 次/分、每 IP 3600 次/分（参数可调）；被限只延迟计费不丢数据 |
 | 5xx 且 Grafana 告警 Stream 积压 / DLQ | 消费链 | 后台「运行日志」看 worker 死信；DLQ 有看门狗任务自动重试 |
 | 慢查询 | pg 统计 | 后台 `?tool=dbstats`（pg_stat_statements 已由 compose 预装启用，≥300ms 自动落日志） |
+| 端口被同机其它服务占了（容器 `Created` 不起 / `address already in use`） | `ss -lntp \| grep <端口>` | 换宿主端口映射即可，一行 `FLUX_*_PORT` 写进 `.env` 再 `up -d`——总表与联动变量见 [端口指南](ports.md) |
 
 ---
 

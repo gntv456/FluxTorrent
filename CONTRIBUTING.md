@@ -82,6 +82,17 @@ node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
    里手搓 HttpResponse 绕过 `ok()`/`DomainError`。
 8. **组件内禁止裸 fetch**：前端统一走 `lib/api-client.ts`；凭证是 HttpOnly cookie，
    不要把 token 放进 localStorage 或 JS 可读的 cookie。
+8a. **首屏拉后端的页面必须退避重试 + 透传业务码**（2026-10-09 事故教训）：
+   api 进程**先跑完全部 sqlx 迁移才 `bind` 端口**（`main.rs` 迁移在
+   `HttpServer::bind` 之前），330+ 个迁移意味着全新装机 / 重建卷后有几十秒到
+   几分钟「进程活着但不监听任何端口」的窗口，而 web 容器此时已 healthy、页面能
+   渲染。因此：① 禁止 `useEffect` 里一次性 fetch 完就 `catch(() => setError("…
+   请确认 API 可达"))`——那既不自愈（站长只能手动刷页面）又销毁诊断线索
+   （`ApiError.code` 被丢掉，`1003` web→api 网关不通与浏览器网络故障渲染成同一句
+   话，处置方式完全不同）。② 正确形态见 `app/setup/_parts/use-setup-status.ts`：
+   退避重试（1→2→4→8→15→30s，上限约 3 分钟）+ 按 `code` 分类给处置建议 +
+   手动重试兜底 + 加载态渲染（**别在 loading 时 `return null`**，否则冷启动期是
+   纯白页，站长连标题都看不到，只会觉得站点坏了）。
 9. **文件行数与行宽只许瘦不许胖**：源码软上限 Rust/TS/TSX/JS/MJS 300 行、
    Python 500 行、CSS 3000 行；行宽 ≤80 字符（`scripts/line_limit_guard.mjs`
    门禁；例外=迁移/i18n 字典/锁/生成物/domain-types 契约）。新文件超限或

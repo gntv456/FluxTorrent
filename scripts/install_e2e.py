@@ -91,6 +91,16 @@ check("S1 未装机且已有引导 root", status.get("has_admin") is True, statu
 check("S1b 状态下发「root 仍是临时密码」",
       status.get("root_temp_password") is True,
       str(status.get("root_temp_password")))
+# 2026-10-09：向导第二步凭据区收敛——旧口令是系统已知常量时自动填，
+# 站长只设新密码。两个字段由后端权威下发（账号名取库、默认口令由
+# argon2 哈希比对 0017 常量得出，不按用户名假定——ipcheck 重置过口令
+# 的管理员哈希不同，必须回落手填，否则向导静默用错口令锁死站长）。
+check("S1d 状态下发临时密码管理员账号名",
+      status.get("temp_admin_username") == "root",
+      repr(status.get("temp_admin_username")))
+check("S1e 引导默认口令判定为真（哈希比对）",
+      status.get("temp_admin_default_pw") is True,
+      repr(status.get("temp_admin_default_pw")))
 check("S1c 状态下发当前站名（Step2 留空提示用）",
       isinstance(status.get("site_name"), str),
       repr(status.get("site_name")))
@@ -137,6 +147,13 @@ check("S7 setup_done 已置位",
 check("S7b 改密后临时密码标记归位",
       (json.loads(call("GET", "/setup/status")[1]).get("data") or {})
       .get("root_temp_password") is False, "")
+# 新字段同步归位：账号名清空 + 默认口令判定翻假（否则前端凭据区
+# 会一直渲染「已自动填入」的旧口径）
+st7 = (json.loads(call("GET", "/setup/status")[1]).get("data") or {})
+check("S7c 临时管理员账号名已归位", st7.get("temp_admin_username") == "",
+      repr(st7.get("temp_admin_username")))
+check("S7d 默认口令判定已归位", st7.get("temp_admin_default_pw") is False,
+      repr(st7.get("temp_admin_default_pw")))
 
 # 5) 装完是真空站：演示数据清 0、词表来自包、业务 API 可用
 check("S8 演示账号已清",

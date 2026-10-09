@@ -6,13 +6,17 @@ import { useI18n } from "@/i18n/client";
 import { SetupStepFinish } from "./_parts/step-finish";
 import { SetupStepSite, type SiteDraft } from "./_parts/step-site";
 import type { Status } from "./_parts/setup-types";
+import { useSetupStatus } from "./_parts/use-setup-status";
+import { SetupBootStatus } from "./_parts/setup-boot-status";
 
 /**
  * 安装向导（U3 §8.3 + C4 四步）：① 选站型 ② 站名+管理员登录
  * ③ 新手运营模板（可选，0226） ④ 合规勾选完成。
  * 消费 GET /api/v1/setup/status 与 POST /api/v1/setup（后端已就绪）。
  * setup_done 已置位时显示已完成态（可重复访问，POST 幂等）。
- * 第二/四步拆至 ./_parts/step-site.tsx、step-finish.tsx（300 行门禁）。
+ * 第二/四步拆至 ./_parts/step-site.tsx、step-finish.tsx（300 行门禁）；
+ * 首屏加载（退避重试 + 错误保真）拆至 ./_parts/use-setup-status.ts，
+ * 其加载态/失败诊断 UI 拆至 setup-boot-status.tsx。
  */
 
 export default function SetupWizard() {
@@ -23,7 +27,6 @@ export default function SetupWizard() {
   ).setup;
   const t = (k: string, fallback: string) => setupDict?.[k] ?? fallback;
 
-  const [status, setStatus] = useState<Status | null>(null);
   const [step, setStep] = useState(1);
   const [pack, setPack] = useState("");
   // 新手运营模板（C4）："" 跳过 | strict | lenient
@@ -43,17 +46,17 @@ export default function SetupWizard() {
   // 首个邀请码（P0-2.2）：向导完成时后端自动发的一枚，展示 + 一键复制
   const [firstInvite, setFirstInvite] = useState<string | null>(null);
 
+  // 首屏加载：api 迁移未跑完时会连不上，退避重试 + 保留真实错误原因
+  const boot = useSetupStatus(t);
+  const { status } = boot;
+  // 向导完成后就地置位（boot.status 只读，故本地维护一个覆盖值）
+  const [doneOverride, setDoneOverride] = useState(false);
+  const statusView: Status | null =
+    status && doneOverride ? { ...status, done: true } : status;
+
   useEffect(() => {
-    api
-      .get<Status>("/api/v1/setup/status")
-      .then((s) => {
-        setStatus(s);
-        if (s.done) setStep(4);
-      })
-      .catch(() =>
-        setError(t("loadFailed", "无法加载向导状态，请确认 API 可达")),
-      );
-  }, []);
+    if (status?.done) setStep(4);
+  }, [status]);
 
   async function finish() {
     setBusy(true);
@@ -80,7 +83,7 @@ export default function SetupWizard() {
       const purged = res.purged?.map(([k, n]) => `${k}:${n}`).join(" ") ?? "";
       setResult(t("done", "安装完成") + (purged ? `（清理 ${purged}）` : ""));
       setFirstInvite(res.first_invite ?? null);
-      setStatus((s) => (s ? { ...s, done: true } : s));
+      setDoneOverride(true);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -94,7 +97,8 @@ export default function SetupWizard() {
     "text-[var(--accent-contrast)]",
   ].join(" ");
 
-  if (!status && !error) return null;
+  // 首屏未拿到状态时也要渲染外壳（标题/步骤条/加载态），否则冷启动期
+  // 是一个纯白页，站长既看不到标题也看不到「正在重试」，只会以为站点坏了
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
@@ -123,6 +127,9 @@ export default function SetupWizard() {
         ))}
       </ol>
 
+      {/* 首屏加载态 / 失败诊断：api 迁移未跑完时会命中（迁移在 bind 之前跑） */}
+      <SetupBootStatus boot={boot} t={t} />
+
       {error && (
         <p className="mt-4 rounded-md border border-danger/40 bg-danger/10
           px-3 py-2 text-sm text-danger">
@@ -130,10 +137,10 @@ export default function SetupWizard() {
         </p>
       )}
 
-      {step === 1 && status && (
+      {step === 1 && statusView && (
         <div className="mt-6">
           <div className="grid gap-3 sm:grid-cols-2">
-            {status.packs.map((p) => (
+            {statusView.packs.map((p) => (
               <button
                 key={p.code}
                 onClick={() => {
@@ -181,12 +188,17 @@ export default function SetupWizard() {
         <SetupStepSite
           t={t}
           btn={btn}
-          status={status}
+          status={statusView}
           initial={draft}
           onBack={() => setStep(1)}
           onNext={(d) => {
             setDraft(d);
             setStep(3);
+            // 改密已落库（must_reset 清位），但 boot.status 还是旧值——
+            // 不重拉的话，用户从③/④退回②时会看到「再设一次新密码」，
+            // 而能填的只有刚设过的那个 ⇒ 后端拒「新旧相同」⇒ 死锁。
+            // 重拉后 root_temp_password=false ⇒ ②渲染成登录区（口令已预填）。
+            boot.reload();
           }}
         />
       )}
@@ -233,7 +245,12 @@ export default function SetupWizard() {
               </button>
             ))}
           </div>
-          <div className="mt-4 text-center">
+          <div className="mt-4 flex gap-2">
+            {/* 此前第三步没有上一步：站名/announce 填错只能刷新重来，
+                而此时密码已改 ⇒ 刷新后还得重新登录。补上回退。 */}
+            <button className={btn} onClick={() => setStep(2)}>
+              {t("prev", "上一步")}
+            </button>
             <button
               className="rounded-md border border-line px-4 py-2 text-sm
                 text-muted transition-colors hover:border-accent"
@@ -252,7 +269,7 @@ export default function SetupWizard() {
         <SetupStepFinish
           t={t}
           btn={btn}
-          status={status}
+          status={statusView}
           ack={ack}
           setAck={setAck}
           result={result}
