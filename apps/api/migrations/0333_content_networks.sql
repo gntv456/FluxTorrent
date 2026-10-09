@@ -1,4 +1,11 @@
--- 0330_content_networks.sql
+-- 0333_content_networks.sql
+-- 号位说明（第三次撞号，2026-10-09）：本迁移原建为 0330，与并行会话的
+--   0330_sport_matches.sql 撞号——本文件先应用（03:25），对方随后建号，
+--   镜像 build 时对方的 checksum 覆盖了 330 号记录（现象：
+--   `migration 330 was previously applied but has been modified`）
+--   → 依 `CONTRIBUTING.md` 1a，本批让号到 0333（SQL 幂等，可重跑）。
+--   诊断口径：DB 记录 330 的 description='content networks'（旧扫描名）
+--   但 checksum 已是 sport_matches 的 → **归属只看 checksum**。
 -- 站型成熟度 · 出品方聚合页（documentary 专项 P1 深水区，对标 §7.1）：
 --
 -- 纪录片最核心的检索入口不是"题材"而是"哪家出品"——BBC/NHK/PBS/国家地理

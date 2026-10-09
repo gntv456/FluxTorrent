@@ -46,6 +46,17 @@ node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
      `description` 修正为实际归属（sqlx 只按 version 记账，同号文件会互相覆盖）。
    - 已应用过的迁移改名后，需在目标库**删除 `_sqlx_migrations` 旧记录**（checksum
      不符会启动报错），再 rebuild api 让新号以幂等 SQL 重跑。
+   - **⚠️ 归属只看 checksum，别看 description**（2026-10-09 第三次撞号实测）：
+     sqlx 的 `description` 取自「最后一次扫描到的文件名」，`checksum` 也同批覆盖，
+     二者可能**分属不同文件**。诊断：
+     `python -c "import hashlib;print(hashlib.sha384(open('migrations/0330_x.sql','rb').read()).hexdigest())"`
+     与 `SELECT encode(checksum,'hex') FROM _sqlx_migrations WHERE version=N` 比对，
+     相等那个文件才是该号的真实归属。
+   - **撞号覆盖发生在 build 时、不只在建号时**：本批 330 号我先应用（03:25），
+     对方 20 分钟后才建同号文件，但**下次 `build api` 扫目录时才把 330 的
+     checksum 换成对方的**，api 随后 crash-loop。⇒ 光「建号前查目录」不够；
+     **每次 build 前重跑一次** `ls migrations/ | awk -F_ '{print $1}' | uniq -d`。
+     已应用方能不改内容、直接让号到更大空号（SQL 幂等可重跑）。
 1b. **改迁移后必须 rebuild api 镜像，不能只 restart**（2026-10-09 事故教训）：
    容器内 `apps/api/src/main.rs:145` 用 `Migrator::new(Path)` **运行时读
    `./migrations`**，但该目录在容器里是 **build 时的镜像拷贝**。只 `restart`
