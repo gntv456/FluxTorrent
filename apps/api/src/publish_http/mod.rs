@@ -7,7 +7,9 @@ mod collections;
 mod descr_image;
 mod download;
 mod group;
+mod auto_meta;
 mod ptgen;
+mod ptgen_html;
 mod upload;
 // 发种前置校验（0288）：把「报错时种子已入库」的校验全部提到 INSERT 之前
 mod upload_body;
@@ -40,6 +42,7 @@ pub(crate) async fn list_artifact_children(
     upload_artifacts::children_of(db, parent_id).await
 }
 
+pub use auto_meta::*;
 pub use collections::*;
 pub use download::*;
 pub use group::*;

@@ -131,6 +131,18 @@ pub async fn ptgen(
             "name": name, "descr": descr, "via": "adapter",
         })));
     }
+    let (name, descr, poster) = fetch_meta(&state, url).await?;
+    Ok(ok(serde_json::json!({
+        "name": name, "descr": descr, "poster": poster,
+    })))
+}
+
+/// PT-Gen 抓取内核（/ptgen 端点与发种自动补全共用，避免两套口径漂移）。
+/// 返回 `(name, descr, poster)`；poster 取自返回 HTML 的首张图（多数源把海报放首个 img）。
+pub(super) async fn fetch_meta(
+    state: &AppState,
+    url: &str,
+) -> DomainResult<(String, String, Option<String>)> {
     // 上游可配（0284 P0-2）：site_settings.ptgen_upstream 优先（自托管可替换），
     // 缺省回落内置公共实例；空串 = 站长显式禁用——返回可操作文案而非 500
     let upstream: String = sqlx::query_scalar(
@@ -183,57 +195,33 @@ pub async fn ptgen(
     {
         return Err(DomainError::Validation("PT-Gen 未能解析该链接".into()));
     }
-    Ok(ok(serde_json::json!({
-        "name": body.get("name").and_then(|v| v.as_str()).unwrap_or(""),
-        "descr": html_to_text(html),
-    })))
+    Ok((
+        body.get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        super::ptgen_html::html_to_text(html),
+        first_img(html),
+    ))
 }
 
-/// 简易 HTML → 纯文本（PT-Gen 返回物）：块级标签转行、剥其余标签、解常见实体
-fn html_to_text(html: &str) -> String {
-    let mut s = html
-        .replace("<br>", "\n")
-        .replace("<br/>", "\n")
-        .replace("<br />", "\n")
-        .replace("</p>", "\n")
-        .replace("</div>", "\n")
-        .replace("</tr>", "\n")
-        .replace("</li>", "\n")
-        .replace("<li>", "- ")
-        .replace("</td>", "  ")
-        .replace("</th>", "  ");
-    // 剥离其余标签（PT-Gen 输出为受信源生成的受控 HTML，逐字符状态机即可）
-    let mut out = String::with_capacity(s.len());
-    let mut in_tag = false;
-    for ch in s.chars() {
-        match ch {
-            '<' => in_tag = true,
-            '>' => in_tag = false,
-            c if !in_tag => out.push(c),
-            _ => {}
-        }
+/// 取 HTML 首张图 URL（仅 http/https；用于海报自动回填）。
+fn first_img(html: &str) -> Option<String> {
+    let i = html.find("<img")?;
+    let rest = &html[i..];
+    let j = rest.find("src=")?;
+    let after = &rest[j + 4..];
+    let q = after.chars().next()?;
+    if q != '"' && q != '\'' {
+        return None;
     }
-    s = out;
-    for (ent, ch) in [
-        ("&nbsp;", " "),
-        ("&amp;", "&"),
-        ("&lt;", "<"),
-        ("&gt;", ">"),
-        ("&quot;", "\""),
-        ("&#39;", "'"),
-    ] {
-        s = s.replace(ent, ch);
+    let end = after[1..].find(q)?;
+    let u = &after[1..1 + end];
+    if u.starts_with("http://") || u.starts_with("https://") {
+        Some(u.to_string())
+    } else {
+        None
     }
-    // 折叠空行 + 去行尾空白
-    let mut lines: Vec<String> = Vec::new();
-    for line in s.lines() {
-        let t = line.trim_end();
-        if t.is_empty() && lines.last().map(String::is_empty).unwrap_or(true) {
-            continue;
-        }
-        lines.push(t.to_string());
-    }
-    lines.join("\n").trim().to_string()
 }
 
 /// .torrent 本体远小于附件（极端多文件大 piece 也在 MiB 级）；nfo 为纯文本。

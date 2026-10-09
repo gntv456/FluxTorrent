@@ -52,12 +52,16 @@ def main():
     try:
         token = login()
     except SystemExit:
-        token = login("root", os.environ.get("FLUX_DRILL_PW", "Audit#Passw0rd!"))
+        token = login(
+            "root",
+            os.environ.get("FLUX_DRILL_PW", "Audit#Passw0rd!"),
+        )
 
     # ---- 前置快照（站点现状） ----
     site_type0 = psql("SELECT value FROM site_settings WHERE name='site_type'")
     site_name0 = psql(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name='site_name'),'')"
+        "SELECT COALESCE((SELECT value FROM site_settings "
+        "WHERE name='site_name'),'')"
     )
     cats0 = {
         row.split("|")[0]: row.split("|")[1]
@@ -123,7 +127,8 @@ def main():
 
     # H3：site_name 不被清空（预置包 brand 全空）
     site_name1 = psql(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name='site_name'),'')"
+        "SELECT COALESCE((SELECT value FROM site_settings "
+        "WHERE name='site_name'),'')"
     )
     ok("H3 site_name 不被空 brand 清空",
        site_name1 == site_name0 and site_name1 != "",
@@ -149,7 +154,8 @@ def main():
     ok("回滚后 site_type 还原", site_type2 == site_type0,
        (site_type0, site_type2))
     name2 = psql(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name='site_name'),'')"
+        "SELECT COALESCE((SELECT value FROM site_settings "
+        "WHERE name='site_name'),'')"
     )
     ok("回滚后 site_name 还原", name2 == site_name0, (site_name0, name2))
     # 清理探针覆盖位（不留测试痕迹）

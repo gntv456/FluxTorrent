@@ -221,23 +221,30 @@ async fn sync_content_anchors(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    // artist（text 维度）：自由值 → artists 锚点
-    let artist_vals: Vec<String> = parsed
-        .iter()
-        .filter(|s| s.kind == "artist")
-        .flat_map(|s| s.values.iter())
-        .filter_map(|v| v.as_str())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-    if !artist_vals.is_empty() {
+    // 自由值维度（text）：值 → artists 锚点（kind = 维度名）
+    // 0338 起 kind 参数化：artist（音乐）/ author（电子书）/ studio（动漫），
+    // 与 0338 的 (kind, name) 唯一键配套。
+    for kind in ["artist", "author", "studio"] {
+        let vals: Vec<String> = parsed
+            .iter()
+            .filter(|s| s.kind == kind)
+            .flat_map(|s| s.values.iter())
+            .filter_map(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if vals.is_empty() {
+            continue;
+        }
         sqlx::query(
-            "INSERT INTO artists (name, norm_name) \
-             SELECT DISTINCT v, LOWER(REGEXP_REPLACE(v, '\\s+', '', 'g')) \
+            "INSERT INTO artists (kind, name, norm_name) \
+             SELECT DISTINCT $2, v, \
+                    LOWER(REGEXP_REPLACE(v, '\\s+', '', 'g')) \
                FROM unnest($1::text[]) AS v WHERE v <> '' \
-             ON CONFLICT (name) DO NOTHING",
+             ON CONFLICT (kind, name) DO NOTHING",
         )
-        .bind(&artist_vals)
+        .bind(&vals)
+        .bind(kind)
         .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
