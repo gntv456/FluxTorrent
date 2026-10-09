@@ -214,10 +214,51 @@ pub async fn consume_xreport(
         Ok(true)
     }
 
+    // 失败即转死信的包装（与 announce 流同款 streak 机制）：handle 的 Err
+    // 若直接 `?` 上抛会打断整轮消费，该条留 PEL 被 reclaim 反复接管——
+    // 持续失败（如坏行打挂事务）等于无限打转，佐证事件「只进不出」。
+    // 同一 ID 连续失败 6 次进 DLQ 并 ACK，供人工补偿。
+    async fn guarded(
+        db: &PgPool,
+        redis: &mut redis::aio::ConnectionManager,
+        id: &str,
+        payload: &str,
+    ) -> anyhow::Result<bool> {
+        match handle(db, id, payload).await {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                let fail_key = format!("flux:xreport:fail:{id}");
+                let streak: i64 = redis::cmd("INCR")
+                    .arg(&fail_key)
+                    .query_async::<i64>(redis)
+                    .await
+                    .unwrap_or(1);
+                let _ = redis::cmd("EXPIRE")
+                    .arg(&fail_key)
+                    .arg(3600)
+                    .query_async::<()>(redis)
+                    .await;
+                tracing::error!(%id, ?e, streak, "xreport 事件处理失败");
+                if streak >= 6 {
+                    tracing::error!(%id, "同一事件连续 6 次失败，转死信并跳过");
+                    XREPORT_GROUP
+                        .dlq_push_with(redis, &format!("{id}\t{payload}"))
+                        .await;
+                    let _ = redis::cmd("DEL")
+                        .arg(&fail_key)
+                        .query_async::<()>(redis)
+                        .await;
+                    return Ok(true);
+                }
+                Ok(false)
+            }
+        }
+    }
+
     for (id, payload) in
         group::read_group(redis, &XREPORT_GROUP, &consumer).await
     {
-        if handle(db, &id, &payload).await? {
+        if guarded(db, redis, &id, &payload).await? {
             XREPORT_GROUP.ack(redis, &id).await;
             applied += 1;
         }
@@ -226,7 +267,7 @@ pub async fn consume_xreport(
     for (id, payload) in
         group::reclaim_stale(redis, &XREPORT_GROUP, &consumer, 360_000).await
     {
-        if handle(db, &id, &payload).await? {
+        if guarded(db, redis, &id, &payload).await? {
             XREPORT_GROUP.ack(redis, &id).await;
             applied += 1;
         }

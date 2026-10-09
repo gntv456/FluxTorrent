@@ -124,6 +124,18 @@
   --panel: var(--surface-card);
   --fill-2: var(--surface-sunken);
   --accent-soft: var(--sky-soft);
+  /* 遗漏别名补全（2026-10-09 审计批）：cddb7f1 只补了 2 处，以下引用点
+     在 TSX 里 var() 引用但从未定义，浏览器静默回退（向导主 CTA 透明、
+     字幕弹窗浮在遮罩上、等级进度条失色）。--gold-deep 引用的
+     --sweet-gold-deep 定义在 arcade-gacha.css（按需引入），此处给
+     兜底真值，主题加载后覆盖。 */
+  --accent: var(--sky);
+  --accent-contrast: var(--text-on-accent);
+  --field-bg: var(--surface-card);
+  --surface: var(--surface-card);
+  --gold-deep: var(--sweet-gold-deep, var(--sun));
+  --baozi-bg-input: var(--surface-sunken);
+  --brand: var(--sky);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   /* ===== 兼容层：--baozi-* → Aurora 语义映射（30+ 组件零改动） ===== */
   --baozi-bg: var(--surface-page);

@@ -80,8 +80,7 @@ pub async fn seeding_reward(
                       WHERE c.user_id = u.id AND c.resolved_at IS NULL
                         AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%'
                              OR c.agent LIKE 'reset:%'
-                             OR c.agent LIKE 'corr:%'
-                             OR c.agent = 'connectable')
+                             OR c.agent LIKE 'corr:%')
                       LIMIT 1
                   )
             ),

@@ -37,6 +37,10 @@ pub(super) fn infer_kind(filename: &str) -> &'static str {
         || low.contains("checksum")
     {
         "checksums"
+    } else if low.ends_with(".cue") {
+        // cue.rs 的存量取证回落口查 kind='cue' 的工件——缺这一支
+        // 「发种时上传 .cue」永远落不进该通道（0337 HasCue 断链）
+        "cue"
     } else if low.contains("changelog")
         || low.contains("update")
         || low.contains("更新")

@@ -87,6 +87,11 @@ pub(super) async fn revive_tombstone(
         "DELETE FROM torrent_files WHERE torrent_id = $1",
         // 0312：上一次发布的抓轨日志同样作废（本次若没带日志，不能沿用旧分数）
         "DELETE FROM torrent_logs WHERE torrent_id = $1",
+        // 0323：工件同理——不清的话同 kind+filename 的新工件（新版校验和/
+        // changelog）会被 ON CONFLICT DO NOTHING 静默吞掉，库里留旧 body
+        "DELETE FROM torrent_artifacts WHERE torrent_id = $1",
+        // 0337：预览关联随上次发布作废（附件本体归附件体系，不在此删）
+        "DELETE FROM torrent_previews WHERE torrent_id = $1",
     ] {
         sqlx::query(sql)
             .bind(old_id)

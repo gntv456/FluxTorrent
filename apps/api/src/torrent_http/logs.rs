@@ -77,6 +77,19 @@ pub async fn log_adjust(
     if !hit {
         return Err(DomainError::NotFound(id));
     }
+    // 公信动作进审计日志（本仓 admin 写操作的留痕口径）
+    state
+        .repo
+        .audit_detail(
+            Some(auth.id),
+            "torrent.log_adjust",
+            Some(id),
+            Some(reason),
+            Some(serde_json::json!({
+                "ordinal": ordinal, "adjusted_score": score,
+            })),
+        )
+        .await;
     // 改判是**判定口径**的变更：不清详情缓存的话，版主裁完分数在页面上
     // 还要旧 30 秒（manage.rs 五个写口都清，0337 这条漏了）
     super::aggregate::invalidate_tdetail_cache(&state, id).await;

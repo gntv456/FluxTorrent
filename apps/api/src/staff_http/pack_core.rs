@@ -43,10 +43,11 @@ pub(crate) async fn apply_pack_full(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let cats = pack.categories.as_array().cloned().unwrap_or_default();
     if mode == "replace" {
+        // H5：查库失败必须上抛——失败当 0 会对有种子的站执行整表重建
         let used: i64 = sqlx::query_scalar("SELECT count(*) FROM torrents")
             .fetch_one(&mut *tx)
             .await
-            .unwrap_or(0);
+            .map_err(|e| DomainError::Internal(e.into()))?;
         if used > 0 {
             // 有种子时禁止整表重建（避免悬挂引用）：提示改用 merge
             return Err(DomainError::Validation(
@@ -189,7 +190,7 @@ pub(crate) async fn apply_pack_full(
                 .bind(k)
                 .fetch_one(&mut *tx)
                 .await
-                .unwrap_or(false);
+                .map_err(|e| DomainError::Internal(e.into()))?;
                 if overridden {
                     continue;
                 }
@@ -270,7 +271,7 @@ pub(crate) async fn apply_pack_full(
             .bind(kind)
             .fetch_one(&mut *tx)
             .await
-            .unwrap_or(0);
+            .map_err(|e| DomainError::Internal(e.into()))?;
             if in_use == 0 {
                 sqlx::query("DELETE FROM section_kinds WHERE kind = $1")
                     .bind(kind)
@@ -325,7 +326,7 @@ pub(crate) async fn apply_pack_full(
                 .bind(kind)
                 .fetch_one(&mut *tx)
                 .await
-                .unwrap_or(0);
+                .map_err(|e| DomainError::Internal(e.into()))?;
                 if in_use > 0 {
                     for name in &packed {
                         sqlx::query(
@@ -395,15 +396,27 @@ pub(crate) async fn apply_pack_full(
                 .collect();
             if !norm.is_empty() {
                 let value = format!("[{}]", norm.join(","));
+                // 只改「空或等于任一预置包默认」的现值。不能用
+                // home_sections::text 比——jsonb::text 在冒号/逗号后带
+                // 空格，与写路径的紧凑串永不相等（守卫恒跳过=H10 只
+                // 生效一次）；改为按同一 format! 规则规范化后比。
                 sqlx::query(
                     "INSERT INTO site_settings (name, value, descr, grp) \
                      SELECT 'home_layout', $1, '首页板块排版（JSON 数组，\
                      空 = 默认布局）', 'main' \
                      WHERE NOT EXISTS (SELECT 1 FROM site_settings WHERE \
-                     name = 'home_layout' AND value <> '' AND value NOT IN \
-                     (SELECT COALESCE(home_sections::text, '') FROM \
-                     site_type_packs WHERE jsonb_typeof(home_sections) = \
-                     'array')) \
+                     name = 'home_layout' AND value NOT IN ('', '[]') \
+                     AND value <> ALL( \
+                       SELECT format('[%s]', string_agg( \
+                         format('{\"key\":\"%s\",\"span\":%s}', \
+                           e->>'key', \
+                           COALESCE(e->>'span', '0')), ',')) \
+                       FROM site_type_packs p, jsonb_array_elements( \
+                         CASE WHEN jsonb_typeof(p.home_sections) = 'array' \
+                              THEN p.home_sections \
+                              ELSE '[]'::jsonb END) AS e \
+                       WHERE p.home_sections IS NOT NULL \
+                       GROUP BY p.code)) \
                      ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
                      updated_at = now()",
                 )

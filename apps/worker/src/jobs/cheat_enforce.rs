@@ -40,7 +40,10 @@ pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
                 OR c.agent LIKE 'corr:%' \
                 OR c.agent LIKE 'xreport_over:%' \
                 OR c.agent LIKE 'nearcap:%' \
-                OR c.agent = 'xreport:absurd') \
+                OR c.agent LIKE 'deal:%' \
+                OR c.agent = 'xreport:absurd' \
+                OR c.agent = 'down_under' \
+                OR c.agent = 'bitthief') \
            AND u.class_id < 90 AND u.status < 2",
     )
     .fetch_all(db)
@@ -115,7 +118,11 @@ pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
                 acted += 1;
             }
         }
-        // L2：管理组信箱（首次命中即报，同一 (user, agent) 7 天去重）
+        // L2：管理组信箱（首次命中即报，同一 (user, agent) 7 天去重）。
+        // 去重方向（六轮同款教训）：挡的是**7 天内已告警过**，不是「处置过
+        // 就永久静默」——旧写法 NOT EXISTS resolved 会两个方向都错：
+        // ① 未处置事件每 10 分钟重刷管理组信箱；② 处置后 hits 再涨也永不
+        // 告警。改按 staffmessages 侧 7 天窗口去重（body 前缀带 user+agent）。
         if hits >= l2_hits {
             let n = sqlx::query(
                 "INSERT INTO staffmessages \
@@ -123,18 +130,19 @@ pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
                  SELECT MIN(id), '作弊事件累进告警', $1, 'cheater' \
                  FROM users WHERE class_id >= 90 \
                    AND NOT EXISTS ( \
-                     SELECT 1 FROM cheat_events e2 \
-                     WHERE e2.user_id = $2 AND e2.agent = $3 \
-                       AND e2.resolved_at IS NOT NULL)",
+                     SELECT 1 FROM staffmessages sm \
+                     WHERE sm.permission = 'cheater' \
+                       AND sm.subject = '作弊事件累进告警' \
+                       AND sm.body LIKE $2 || '%' \
+                       AND sm.created_at > now() - interval '7 days')",
             )
             .bind(format!(
-                "用户 #{} 的作弊事件累计达 {hits} 次（{agent} / \
+                "[[cheat:{agent}]]用户 #{} 的作弊事件累计达 {hits} 次（{agent} / \
                  {reason}），其做种收益已被自动暂停。\
                  请在后台「作弊探测」核实并处置。",
                 uid
             ))
-            .bind(uid)
-            .bind(&agent)
+            .bind(format!("[[cheat:{agent}]]用户 #{uid} "))
             .execute(db)
             .await
             .map(|r| r.rows_affected())

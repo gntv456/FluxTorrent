@@ -17,11 +17,16 @@ interface PreviewItem {
 
 /** 试读 / 试听（0337）：清单 + 管理入口。
  *
- *  管理按钮**常显、权限由后端 403 兜底**（与删评按钮同一范式）：
- *  作者/staff 走「先传附件拿 sha256 → 再关联」两步；移除只解除关联，
- *  物理文件仍归附件体系。凭证走 HttpOnly cookie（与图床上传同款）。
- *  `audio` 用 <audio controls> 内联播放，其余（图文样章）给新窗链接。 */
-export function TorrentPreviews({ torrentId }: { torrentId: number }) {
+ *  空清单且无管理权时整段不渲染（与 rip-logs 同款空态自隐——未启用
+ *  预览的站型不该出现空折叠区）。管理按钮仅 owner/staff 显示；
+ *  后端仍 403 兜底，但前端先收口可避免「先传附件再被拒」白占存储。 */
+export function TorrentPreviews({
+  torrentId,
+  canManage = false,
+}: {
+  torrentId: number;
+  canManage?: boolean;
+}) {
   const { dict } = useI18n();
   const d = dict.tdetail;
   const [items, setItems] = useState<PreviewItem[]>([]);
@@ -42,6 +47,8 @@ export function TorrentPreviews({ torrentId }: { torrentId: number }) {
     load();
   }, [load]);
 
+  if (items.length === 0 && !canManage) return null;
+
   async function add(file: File) {
     setBusy(true);
     setMsg(null);
@@ -61,6 +68,8 @@ export function TorrentPreviews({ torrentId }: { torrentId: number }) {
       await api.post(`/api/v1/torrents/${torrentId}/previews`, {
         sha256: sha,
         filename: file.name,
+        // 音频文件自动按试听片段入库（后端缺省 kind=preview 只当图文样章）
+        kind: file.type.startsWith("audio/") ? "audio" : "preview",
       });
       setMsg(d.previewDone);
       load();
@@ -108,40 +117,44 @@ export function TorrentPreviews({ torrentId }: { torrentId: number }) {
                   </a>
                 )}
                 <span className="text-xs text-sub">{formatBytes(p.size)}</span>
-                <button
-                  type="button"
-                  className="sticker ml-1"
-                  disabled={busy}
-                  onClick={() => remove(p.sha256)}
-                >
-                  {d.previewRemove}
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    className="sticker ml-1"
+                    disabled={busy}
+                    onClick={() => remove(p.sha256)}
+                  >
+                    {d.previewRemove}
+                  </button>
+                )}
               </li>
             );
           })}
         </ul>
       )}
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          ref={fileRef}
-          type="file"
-          className="sr-only"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void add(f);
-            e.target.value = "";
-          }}
-        />
-        <button
-          type="button"
-          className="sticker"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-        >
-          {busy ? d.previewUploading : d.previewAdd}
-        </button>
-        {msg && <span className="text-xs text-sub">{msg}</span>}
-      </div>
+      {canManage && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            className="sr-only"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void add(f);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            className="sticker"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            {busy ? d.previewUploading : d.previewAdd}
+          </button>
+          {msg && <span className="text-xs text-sub">{msg}</span>}
+        </div>
+      )}
     </Fold>
   );
 }

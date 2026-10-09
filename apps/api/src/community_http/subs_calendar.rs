@@ -25,13 +25,16 @@ pub async fn my_group_subscriptions(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    // 追更进度 = 组内过审种的 ep_last 最大值（number 维度）；
+    // 追更进度 = 组内过审种的话数/集数最大值（number 维度）；
+    // anime 站型维度键是 ep_last，movie/documentary 是 episode_last——
+    // 两键都在包字典里真实存在（0320/0321），跨站型站取两边。
     let rows: Vec<(i64, String, Option<i64>, Option<String>, i64)> =
         sqlx::query_as(
             r#"SELECT g.id, g.name,
                (SELECT max((ts.value #>> '{}')::numeric)::bigint
                   FROM torrents t JOIN torrent_sections ts
-                    ON ts.torrent_id = t.id AND ts.kind = 'ep_last'
+                    ON ts.torrent_id = t.id
+                   AND ts.kind IN ('ep_last', 'episode_last')
                  WHERE t.group_id = g.id AND t.approval_status = 1),
                (SELECT to_char(max(t.approved_at), 'YYYY-MM-DD HH24:MI')
                   FROM torrents t WHERE t.group_id = g.id
@@ -71,7 +74,8 @@ pub async fn my_subscription_calendar(
                   t.id, t.name, g.id,
                   (SELECT max((ts.value #>> '{}')::numeric)::bigint
                      FROM torrent_sections ts
-                    WHERE ts.torrent_id = t.id AND ts.kind = 'ep_last')
+                    WHERE ts.torrent_id = t.id
+                      AND ts.kind IN ('ep_last', 'episode_last'))
            FROM torrents t
            JOIN torrent_groups g ON g.id = t.group_id
            JOIN group_subscriptions gs ON gs.group_id = g.id

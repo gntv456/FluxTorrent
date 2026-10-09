@@ -27,8 +27,15 @@ pub async fn cue_check(
     path: web::Path<i64>,
     body: web::Json<CueCheckReq>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
+    // 子资源准入门（0288 口径）：CUE 判定结果对不可见种不提供
+    crate::torrents::assert_visible(
+        &state.repo.db,
+        id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM torrents \
                             WHERE id = $1)",

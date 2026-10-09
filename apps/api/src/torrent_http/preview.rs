@@ -108,8 +108,16 @@ pub async fn preview_list(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
+    // 子资源准入门（0288 口径）：待审/被拒种的主详情 404 时，
+    // 预览文件名不能从这里漏出去
+    crate::torrents::assert_visible(
+        &state.repo.db,
+        id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let rows: Vec<(String, String, String, i64, String)> = sqlx::query_as(
         "SELECT sha256, filename, mime, size_bytes, kind \
          FROM torrent_previews WHERE torrent_id = $1 \

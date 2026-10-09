@@ -87,6 +87,7 @@ pub(super) async fn read_body(
                             || f.ends_with(".md5")
                             || f.ends_with(".sha1")
                             || f.ends_with(".sha256")
+                            || f.ends_with(".cue")
                             || f.contains("changelog")
                     );
                 if is_log && collect_logs {
