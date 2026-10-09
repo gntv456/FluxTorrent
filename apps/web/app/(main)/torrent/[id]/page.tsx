@@ -359,8 +359,11 @@ export default async function TorrentDetailPage({
         <GroupVersions group={group} dict={dict} />
       )}
 
-      {/* 试读 / 试听（0337）：清单懒加载，空清单整段不渲染 */}
-      <TorrentPreviews torrentId={t.id} />
+      {/* 试读 / 试听（0337）：清单懒加载，空清单且无管理权时整段不渲染 */}
+      <TorrentPreviews
+        torrentId={t.id}
+        canManage={isStaff || !!ext?.is_owner}
+      />
 
 
       {sectOn("collections") && inCollections.length > 0 && (

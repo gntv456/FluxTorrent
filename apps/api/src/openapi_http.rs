@@ -311,8 +311,10 @@ async fn token_issue(
     // 明文仅此一次返回：fxo_ 前缀 + 32 随机字节 hex；有效期 180 天（0069）
     let plain = format!("fxo_{}", uuid::Uuid::new_v4().simple());
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO api_tokens (user_id, name, token_hash, scopes, rate_per_min, expires_at) \
-         VALUES ($1, $2, $3, $4, $5, now() + make_interval(days => $6)) RETURNING id",
+        "INSERT INTO api_tokens \
+           (user_id, name, token_hash, scopes, rate_per_min, expires_at) \
+         VALUES ($1, $2, $3, $4, $5, \
+                 now() + make_interval(days => $6::int)) RETURNING id",
     )
     .bind(auth.id)
     .bind(name)
@@ -358,7 +360,8 @@ async fn token_refresh(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let expires: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
-        "UPDATE api_tokens SET expires_at = now() + make_interval(days => $3) \
+        "UPDATE api_tokens \
+           SET expires_at = now() + make_interval(days => $3::int) \
          WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL \
          RETURNING expires_at",
     )

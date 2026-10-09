@@ -102,7 +102,8 @@ pub(crate) async fn dlq_watch(
     use redis::AsyncCommands;
     let a_len: i64 = redis.llen("flux:announce:dlq").await.unwrap_or(0);
     let b_len: i64 = redis.llen("flux:agentblock:dlq").await.unwrap_or(0);
-    let len: i64 = a_len + b_len;
+    let x_len: i64 = redis.llen("flux:xreport:dlq").await.unwrap_or(0);
+    let len: i64 = a_len + b_len + x_len;
     if len == 0 {
         // 队列清空后复位告警游标，下批积压可再次告警
         let _: () = redis.del("flux:announce:dlq:alerted").await.unwrap_or(());
@@ -114,7 +115,8 @@ pub(crate) async fn dlq_watch(
         let body = format!(
             "死信队列当前积压 {len} 条（连续失败 6 次进入）：计费流 \
              flux:announce:dlq {a_len} 条（计费已跳过需人工补偿）、客户端拦截流 \
-             flux:agentblock:dlq {b_len} 条（仅告警记录）。请按队列排查。"
+             flux:agentblock:dlq {b_len} 条（仅告警记录）、交叉佐证流 \
+             flux:xreport:dlq {x_len} 条（佐证未入账需人工补算）。请按队列排查。"
         );
         let _: Result<_, _> = sqlx::query(
             "INSERT INTO staffmessages (user_id, subject, body, permission) \

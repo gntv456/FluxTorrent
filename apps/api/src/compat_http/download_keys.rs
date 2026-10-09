@@ -58,7 +58,7 @@ async fn download_key_issue(
     let expires: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
         "INSERT INTO download_keys (token_hash, user_id, torrent_id, \
          expires_at) \
-         VALUES ($1, $2, $3, now() + make_interval(mins => $4)) \
+         VALUES ($1, $2, $3, now() + make_interval(mins => $4::int)) \
          RETURNING expires_at",
     )
     .bind(sha3_hex(plain.as_bytes()))

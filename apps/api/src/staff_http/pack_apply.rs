@@ -97,6 +97,10 @@ pub async fn site_type_pack_apply(
     // 模块开关进程缓存失效（apply 改 module_* 后立即生效，不等 30s TTL）
     state.module_flags.invalidate().await;
     crate::cfgver::bump(state.get_ref(), "modules").await;
+    // 首页共享段含 home_layout/site_profile（TTL 300s 写失效式）：apply
+    // 可能改了排版与站点档案，与保存端点同口径立即失效，不等 5 分钟
+    crate::http::invalidate_home_cache(&state).await;
+    crate::cfgver::bump(state.get_ref(), "home").await;
     state
         .repo
         .audit(Some(auth.id), "site_type_pack_apply", Some(apply_id))

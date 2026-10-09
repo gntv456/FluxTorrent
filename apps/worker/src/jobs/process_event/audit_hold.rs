@@ -80,11 +80,9 @@ pub(super) async fn note_ghost<'c>(
     raw_down: i64,
     raw_up: i64,
 ) {
-    let ratio = if raw_down > 0 {
-        format!("（自报下载 {raw_down} 字节，credited 未达门槛）")
-    } else {
-        format!("（声称上传 {raw_up} 字节）")
-    };
+    // reason 必须是**固定文案**（本文件头注释的纪律）：变化的读数（自报
+    // 上/下载字节）只进 tracing——拼进 reason 会让 ON CONFLICT 恒不命中，
+    // hits 聚合与 L1/L2 累进处置在这条最高危画像上整体失效。
     let _ = sqlx::query(
         "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
          VALUES ($1, $2, $3, $4) \
@@ -94,7 +92,14 @@ pub(super) async fn note_ghost<'c>(
     .bind(ev.user)
     .bind(format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]))
     .bind(&ev.ip)
-    .bind(format!("{GHOST_PREFIX}{ratio}{GHOST_SUFFIX}"))
+    .bind(format!("{GHOST_PREFIX}{GHOST_SUFFIX}"))
     .execute(exec)
     .await;
+    tracing::warn!(
+        user = ev.user,
+        hash = %ev.hash,
+        raw_down,
+        raw_up,
+        "幽灵做种画像（判据见 seeding_gate::verdict）"
+    );
 }

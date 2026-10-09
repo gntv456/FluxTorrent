@@ -22,8 +22,15 @@ pub async fn file_conflicts(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
+    // 子资源准入门（0288 口径）：被拒/待审种的文件树不可对普通用户泄漏
+    crate::torrents::assert_visible(
+        &state.repo.db,
+        id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     // torrents.group_id 可空：fetch_optional 得 Option<Option<i64>>
     let gid: Option<Option<i64>> =
         sqlx::query_scalar("SELECT group_id FROM torrents WHERE id = $1")

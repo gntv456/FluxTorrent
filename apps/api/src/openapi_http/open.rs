@@ -111,6 +111,7 @@ pub(super) async fn open_recent_torrents(
     q: web::Query<OpenQuery>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
+    require_scope(&tk, SCOPE_READ)?;
     let limit = q.limit.unwrap_or(50).clamp(1, MAX_ROWS);
     let cats = CatMap::load(&state.repo.db).await;
     type Row = (
@@ -166,6 +167,7 @@ pub(super) async fn open_announces(
     q: web::Query<OpenQuery>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
+    require_scope(&tk, SCOPE_READ)?;
     let limit = q.limit.unwrap_or(100).clamp(1, MAX_ROWS);
     let since_id = q.since_id.unwrap_or(0);
     let since_ts = q.since.unwrap_or(0);

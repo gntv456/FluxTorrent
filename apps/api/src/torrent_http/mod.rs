@@ -26,8 +26,9 @@ mod file_conflict;
 mod preview;
 mod sec_params;
 mod suggest;
-// 举报/替换（0336 trumping）
+// 举报/替换（0336 trumping；裁决侧面在 trump_admin）
 mod trump;
+mod trump_admin;
 
 pub use aggregate::*;
 pub use batch::*;
@@ -51,3 +52,4 @@ pub use related::*;
 pub(crate) use sec_params::parse_section_params;
 pub use suggest::*;
 pub use trump::*;
+pub use trump_admin::*;

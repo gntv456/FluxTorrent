@@ -139,7 +139,8 @@ async fn review_queue(
                     AS artifacts,
                   -- 抓轨日志（0312 音乐站）：最低分与碟数
                   (SELECT jsonb_build_object(
-                        'min', min(l.log_score), 'discs', count(*))
+                        'min', min(COALESCE(l.adjusted_score, l.log_score)),
+                        'discs', count(*))
                    FROM torrent_logs l WHERE l.torrent_id = t.id) AS logs
            FROM torrents t
            LEFT JOIN categories c ON c.id = t.category_id

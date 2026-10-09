@@ -3708,15 +3708,15 @@ const enBase: Omit<
     },
     invites: { label: "Invites", tip: "Browse every invitation on the site" },
     userlogs: { label: "User Logs", tip: "Rename and profile change records" },
+    donateorders: {
+      label: "Donation Orders",
+      tip: "List / reconcile / manually complete payment orders",
+    },
+    panelentries: {
+      label: "Panel Entries",
+      tip: "CRUD admin nav entries with permission keys",
+    },
     attendance: {
-      donateorders: {
-        label: "Donation Orders",
-        tip: "List / reconcile / manually complete payment orders",
-      },
-      panelentries: {
-        label: "Panel Entries",
-        tip: "CRUD admin nav entries with permission keys",
-      },
       label: "Attendance",
       tip: "Check-in history and manual backfill",
     },

@@ -58,6 +58,11 @@ pub fn spawn_poll(state: std::sync::Arc<crate::state::AppState>) {
                             state.module_flags.invalidate().await;
                             crate::plugins::invalidate_plugin_cache();
                         }
+                        "home" => {
+                            // 站型 apply 改 home_layout/site_profile 后
+                            // 跨副本失效首页共享段（写侧：pack_apply）
+                            crate::http::invalidate_home_cache(&state).await;
+                        }
                         _ => {}
                     }
                 }

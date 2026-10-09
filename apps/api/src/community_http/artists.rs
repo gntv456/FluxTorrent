@@ -24,6 +24,16 @@ fn norm_kind(v: Option<&str>) -> String {
     }
 }
 
+/// 值匹配谓词：把 `torrent_sections.value`（现行写路径是标量 jsonb、
+/// 历史行可能是数组）展平后与实体名**精确等值**。
+/// 0327 时代用 ILIKE '%name%' 子串匹配，「周」会误命中「周杰伦」、
+/// 「Jay」误命中「Jason」，列表角标/榜单计数全数虚高——锚点表本就按
+/// 整名 upsert，等值即正确口径。
+const MATCH_PRED: &str = "EXISTS (SELECT 1 FROM jsonb_array_elements( \
+     CASE jsonb_typeof(ts.value) WHEN 'array' THEN ts.value \
+     ELSE jsonb_build_array(ts.value #>> '{}') END) AS ev \
+     WHERE ev #>> '{}' = ";
+
 /// 实体列表（登录可读；搜索 + 分页）。
 #[derive(Deserialize)]
 struct ArtistQuery {
@@ -49,16 +59,18 @@ pub async fn artists_list(
     let kw = q.q.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let kind = norm_kind(q.kind.as_deref());
     // 该实体名下过审种数（值可能多人共用一条 sections 行）
-    let rows: Vec<(i64, String, i64)> = sqlx::query_as(
+    let rows: Vec<(i64, String, i64)> = sqlx::query_as(&format!(
         "SELECT a.id, a.name, \
-         (SELECT count(DISTINCT ts.torrent_id) FROM torrent_sections ts \
-          WHERE ts.kind = $4 \
-            AND ts.value #>> '{}' ILIKE '%' || a.name || '%') \
-         FROM artists a \
-         WHERE a.kind = $4 \
-           AND ($1::text IS NULL OR a.name ILIKE '%' || $1 || '%') \
-         ORDER BY 3 DESC, a.norm_name LIMIT $2 OFFSET $3",
-    )
+             (SELECT count(DISTINCT ts.torrent_id) FROM torrent_sections ts \
+              JOIN torrents t ON t.id = ts.torrent_id \
+              WHERE ts.kind = $4 AND t.approval_status = 1 \
+                AND {} a.name)) \
+             FROM artists a \
+             WHERE a.kind = $4 \
+               AND ($1::text IS NULL OR a.name ILIKE '%' || $1 || '%') \
+             ORDER BY 3 DESC, a.norm_name LIMIT $2 OFFSET $3",
+        MATCH_PRED
+    ))
     .bind(kw)
     .bind(limit)
     .bind(offset)
@@ -102,14 +114,15 @@ pub async fn artist_detail(
     let Some((name, kind)) = row else {
         return Err(DomainError::NotFound(id));
     };
-    let items: Vec<(i64, String, i64, i32, i32)> = sqlx::query_as(
+    let items: Vec<(i64, String, i64, i32, i32)> = sqlx::query_as(&format!(
         "SELECT DISTINCT t.id, t.name, t.size, t.seeders, t.times_completed \
-         FROM torrents t JOIN torrent_sections ts ON ts.torrent_id = t.id \
-         WHERE ts.kind = $2 \
-           AND ts.value #>> '{}' ILIKE '%' || $1 || '%' \
-           AND t.approval_status = 1 \
-         ORDER BY t.id DESC LIMIT 100",
-    )
+             FROM torrents t JOIN torrent_sections ts ON ts.torrent_id = t.id \
+             WHERE ts.kind = $2 \
+               AND {} $1) \
+               AND t.approval_status = 1 \
+             ORDER BY t.id DESC LIMIT 100",
+        MATCH_PRED
+    ))
     .bind(&name)
     .bind(&kind)
     .fetch_all(&state.repo.db)
@@ -133,19 +146,21 @@ pub async fn artists_top(
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let kind = norm_kind(q.kind.as_deref());
-    let rows: Vec<(i64, String, i64, i64)> = sqlx::query_as(
+    let rows: Vec<(i64, String, i64, i64)> = sqlx::query_as(&format!(
         "SELECT a.id, a.name, \
-         (SELECT count(DISTINCT ts.torrent_id) FROM torrent_sections ts \
-          WHERE ts.kind = $1 \
-            AND ts.value #>> '{}' ILIKE '%' || a.name || '%') AS releases, \
-         (SELECT COALESCE(SUM(t.seeders), 0) FROM torrents t \
-          JOIN torrent_sections ts ON ts.torrent_id = t.id \
-          WHERE ts.kind = $1 \
-            AND ts.value #>> '{}' ILIKE '%' || a.name || '%' \
-            AND t.approval_status = 1) AS seeders \
-         FROM artists a WHERE a.kind = $1 \
-         ORDER BY seeders DESC, releases DESC, a.norm_name LIMIT 20",
-    )
+             (SELECT count(DISTINCT ts.torrent_id) FROM torrent_sections ts \
+              JOIN torrents t ON t.id = ts.torrent_id \
+              WHERE ts.kind = $1 AND t.approval_status = 1 \
+                AND {} a.name)) AS releases, \
+             (SELECT COALESCE(SUM(t.seeders), 0) FROM torrents t \
+              JOIN torrent_sections ts ON ts.torrent_id = t.id \
+              WHERE ts.kind = $1 \
+                AND {} a.name) \
+                AND t.approval_status = 1) AS seeders \
+             FROM artists a WHERE a.kind = $1 \
+             ORDER BY seeders DESC, releases DESC, a.norm_name LIMIT 20",
+        MATCH_PRED, MATCH_PRED
+    ))
     .bind(&kind)
     .fetch_all(&state.repo.db)
     .await
