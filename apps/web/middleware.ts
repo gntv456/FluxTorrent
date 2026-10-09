@@ -23,6 +23,9 @@ function isAnonymousOk(pathname: string): boolean {
   return (
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/icons/") ||
+    // 自托管字体（public/fonts/*.woff2）必须匿名可达：被 307 成登录页 HTML 时
+    // 浏览器只报「字体解码失败」，字库静默回退成系统字体，界面看不出破口
+    pathname.startsWith("/fonts/") ||
     // 内置品牌资产（站标/字标/OG 卡）：登录页品牌区与爬虫 OG 抓取都要匿名可达，
     // 否则站标图被 307 成登录页 HTML、分享卡抓取落空
     pathname.startsWith("/brand/") ||
