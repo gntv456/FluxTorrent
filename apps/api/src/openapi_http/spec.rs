@@ -14,16 +14,18 @@ use super::spec_util::{op, qp};
 
 fn paths_open() -> Value {
     json!({
-        "/open/recent": { "get": op("最新种子（id 倒序）", "开放数据", None,
+        "/open/recent": { "get": op("最新种子（id 倒序）", "开放数据",
+            Some("每条含 dimensions（站型维度键值对：季/话数/联赛…按站型不同）。"),
             vec![qp("limit", "1-200，默认 50", "integer")],
-            "TorrentSummaryList", "Envelope<TorrentSummary[]>") },
+            "TorrentSummaryList",
+            "Envelope<TorrentSummary[]>, 条目含 dimensions") },
         "/open/announces": { "get": op("增量新种流（只推新种轮询）", "开放数据",
             Some("返回 id > since_id 的过审种子（升序）。保存响应里的 \
     next_since_id 作下次游标。"),
             vec![qp("since_id", "上次游标，缺省 0", "integer"),
                  qp("since", "发布时间下界（Unix 秒）", "integer"),
                  qp("limit", "1-200，默认 100", "integer")],
-            "AnnouncePage", "items + next_since_id + count") },
+            "AnnouncePage", "items + next_since_id + count, 条目含 dimensions") },
         "/open/categories": { "get": op("分类与媒介字典", "开放数据",
             Some("每条分类同时给站内 id / NexusPHP 4xx 号 / Newznab 标准号，\
     工具无需自备映射表。"),
@@ -38,12 +40,14 @@ fn paths_open() -> Value {
                  qp("small_descr", "副标题", "string"),
                  qp("anonymous", "1 = 匿名发布", "string"),
                  qp("price", "付费下载定价，0=免费", "integer")],
-            "UploadResult", "id/approval_status/duplicate/info_hash/pieces_hash") },
+            "UploadResult",
+            "id/approval_status/duplicate/info_hash/pieces_hash") },
         "/open/torrents/{id}": { "get": op("种子深详情", "开放数据",
             Some("文件清单 / MediaInfo / 多维属性 / 促销倍率 / H&R 策略，\
-    与站内详情页同一批数据。"),
+    与站内详情页同一批数据。0329 分型补全：artifacts[]（校验和/更新日志等工件；
+    music 另有 logs[]：ordinal/engine/log_score/adjusted_score 等，分型站型各取所需）。"),
             vec![qp("with_nfo", "1 = 附 NFO 全文（默认不带）", "string")],
-            "TorrentDetail", "含 files[]") },
+            "TorrentDetail", "含 files[] / sections / artifacts[] / logs[]") },
     })
 }
 
@@ -107,7 +111,7 @@ pub(super) fn build() -> Value {
         "openapi": "3.1.0",
         "info": {
             "title": "FluxTorrent Open API",
-            "version": "1.2.0",
+            "version": "1.3.0",
             "description": "第三方接口全集：开放数据 / 兼容层（NexusPHP 口径）\
     / Torznab / RSS / Token 管理。鉴权三选一：Authorization: Token <fxo_>（推荐）、\
     ?apikey=<fxo_>（Torznab 客户端习惯）、passkey（下载与 RSS，URL 内传递）。\

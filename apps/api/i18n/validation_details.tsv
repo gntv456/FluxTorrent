@@ -77,3 +77,4 @@ sha256 格式不正确	sha256 格式不正確	Invalid sha256 format
 说明需 ≤500 字	說明需 ≤500 字	Description must be ≤500 characters
 附件不存在或未对本站共享	附件不存在或未對本站共享	Attachment not found or not shared with this site
 预览类型不合法	預覽類型不合法	Invalid preview kind
+newznab 分类号需为非负整数	newznab 分類號需為非負整數	newznab category id must be a non-negative integer

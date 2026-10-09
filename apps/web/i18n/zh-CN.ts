@@ -5698,6 +5698,9 @@ const zhCnBase = {
       "分类图标键（film/tv/music/anime/game/app/book/sport/doc/edu，留空=首字色块）：",
     bgColorPrompt: "分类色（#rrggbb，留空=中性灰）：",
     sortPrompt: "排序值（数字，小的在前；留空=不改）：",
+    newznabPrompt:
+      "newznab 分类号（Torznab 客户端按号过滤；留空=不改，0=清除）：",
+    colNewznab: "newznab",
     mailNew: "发送批量邮件",
     btnSend: "发送",
     mailQueued: "邮件已入队",
