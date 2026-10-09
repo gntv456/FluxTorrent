@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { api } from "@/lib/api-client";
 import { formatBytes } from "@/lib/format";
+import { siteBase } from "@/lib/site-url";
 import {
   byId,
   catColor,
@@ -54,6 +56,80 @@ interface Aggregate {
   comments: TorrentComment[];
   nfo: string | null;
   tags: TagPayload;
+}
+
+/** 详情页 SEO/OG（站型分型尾巴）：标题带分类，描述带维度摘要（季/话数/
+ *  作者/联赛…按站型自动生效）；og 卡只在站长开启 indexable 时发——
+ *  私有站默认对爬虫关门（robots 口径与 layout 全局一致），
+ *  分享卡（Telegram/Discord 预览）在关闭时同样收敛，不泄漏种子标题。 */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const tid = Number((await params).id);
+  if (!Number.isFinite(tid)) return {};
+  const enc = encodeURIComponent(tid);
+  const [agg, profile] = await Promise.all([
+    api
+      .get<Aggregate>(`/api/v1/torrents/${enc}/aggregate`)
+      .catch(() => null),
+    getSiteProfile().catch(() => null),
+  ]);
+  if (!agg) return {};
+  const t = agg.torrent;
+  const base = siteBase();
+  const brand = profile?.brand || "";
+  const indexable = profile?.seo?.indexable === true;
+  // 维度摘要：label → 首值（sections 值对象里取 name），拼进 description
+  const secs = (agg.detail.sections ?? {}) as Record<
+    string,
+    { label?: string; name?: string; values?: string[] }
+  >;
+  const dims = Object.values(secs)
+    .map((s) => {
+      const v = s.name?.trim() || s.values?.[0]?.trim() || "";
+      const label = s.label?.trim() || "";
+      return label && v ? `${label}: ${v}` : "";
+    })
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(" · ");
+  const title = `${t.name} | ${brand}`.slice(0, 95);
+  const desc =
+    [t.small_descr?.trim(), dims, `${formatBytes(t.size)} · #${t.category_id}`]
+      .filter(Boolean)
+      .join(" — ")
+      .slice(0, 200);
+  return {
+    title,
+    description: desc || undefined,
+    robots: indexable
+      ? { index: true, follow: true }
+      : { index: false, follow: false },
+    // Next 的 metadata 继承是「子页只增不删」：layout 的全局 og 卡会穿透
+    // 到子页。私有站（indexable=false）须显式置空 og/twitter 各键，
+    // 否则分享卡照样把种子标题泄漏出去。
+    ...(indexable
+      ? {
+          openGraph: {
+            type: "article",
+            siteName: brand || undefined,
+            title,
+            description: desc || undefined,
+            ...(base ? { url: `${base.href}torrent/${enc}` } : {}),
+            images: ["/brand/og.png"],
+          },
+        }
+      : {
+          openGraph: {
+            title: brand || undefined,
+            description: undefined,
+            images: [],
+          },
+          twitter: { card: "summary", title: brand || undefined, images: [] },
+        }),
+  };
 }
 
 export default async function TorrentDetailPage({
