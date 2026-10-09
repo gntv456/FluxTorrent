@@ -28,6 +28,8 @@ export const ja: DeepPartial<Dict> = {
     endangered: "絶滅危惧",
     teams: "保種チーム",
     networks: "製作会社",
+    artists: "アーティスト",
+    subsCenter: "更新追跡",
     classes: "等級",
     resurrections: "復活タスク",
     more: "その他",

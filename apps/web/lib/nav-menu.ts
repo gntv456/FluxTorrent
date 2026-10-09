@@ -108,6 +108,10 @@ export function defaultNav({
         ...(dimOn("network")
           ? [{ href: "/networks", label: nav.networks }]
           : []),
+        // 艺人聚合页（0327）：同理，仅音乐站挂 artist 维度时出现
+        ...(dimOn("artist")
+          ? [{ href: "/artists", label: nav.artists }]
+          : []),
       ],
     },
     {
@@ -175,6 +179,9 @@ export function defaultNav({
         // H&R 入口恒可见：hr_enforce 执法独立于 exams 模块，入口随 exams
         // 关闭会形成「执法在跑、记录不可见」断链（见 /me/hr 网关注释）
         { href: "/myhr", label: nav.myhr },
+        // 追更中心（0328 前端补齐）：我在追的剧集进度 + 更新日历。
+        // 无订阅时是空态，不算「假成熟」——与 /me/achievements 同类。
+        { href: "/me/subscriptions", label: nav.subsCenter },
         { href: "/faq", label: nav.faq },
         ...(modules("magic_pool")
           ? [{ href: "/donate", label: nav.donate }]

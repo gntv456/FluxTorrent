@@ -47,6 +47,12 @@ def main():
          "(SELECT id FROM section_dict WHERE kind='network' AND name='%s')"
          % NAME)
     psql("DELETE FROM content_networks WHERE name = '%s'" % NAME)
+    # 马甲残留（上一次中断运行）：先清 FK 引用再删用户
+    psql("DELETE FROM messages WHERE receiver_id IN "
+         "(SELECT id FROM users WHERE username='audit-poster')")
+    psql("DELETE FROM torrents WHERE owner_id IN "
+         "(SELECT id FROM users WHERE username='audit-poster')")
+    psql("DELETE FROM users WHERE username='audit-poster'")
     orig_type = psql("SELECT value FROM site_settings WHERE name='site_type'")
     made = []
 
@@ -134,10 +140,87 @@ def main():
        s == 200 and isinstance(d.get("network"), list)
        and len(d["network"]) > 0, len(d.get("network") or []))
 
+    # 9. 厂牌订阅（0332）：订 → 我的订阅 → 过审发信 → 退订
+    psql("DELETE FROM network_subscriptions WHERE network_id = %s" % nid)
+    psql("DELETE FROM messages WHERE kind='network_new_release' "
+         "AND receiver_id = (SELECT id FROM users WHERE username='root')")
+    s, r = call("POST", "/networks/%s/subscribe" % nid, None, token=tok)
+    ok("订阅厂牌", s == 200 and r.get("code") == 0, r)
+    # 幂等：重复订阅不报错
+    s, r = call("POST", "/networks/%s/subscribe" % nid, None, token=tok)
+    ok("重复订阅幂等", s == 200 and r.get("code") == 0, r)
+    n_sub = psql("SELECT count(*) FROM network_subscriptions "
+                 "WHERE network_id = %s" % nid)
+    ok("订阅行唯一", int(n_sub or 0) == 1, n_sub)
+
+    s, r = call("GET", "/me/subscriptions/networks", token=tok)
+    mine = r.get("data") or []
+    mrow = next((m for m in mine if m.get("network_id") == int(nid)), None)
+    ok("我的订阅含该厂牌", s == 200 and mrow is not None, mine)
+    ok("我的订阅带收录数=2",
+       mrow is not None and mrow.get("torrents") == 2, mrow)
+
+    # 过审发信：发一枚带 network 的新种并过审，检查站内信
+    s, r = upload(
+        tok, make_torrent(name="Audit.Net.Sub"),
+        sections=json.dumps({"network": {"dict_ids": [int(did)]}}))
+    tid = (r.get("data") or {}).get("id")
+    ok("订阅后发种成功", s == 200 and tid, r)
+    if tid:
+        made.append(tid)
+        # 走真实过审链路（review_decide），触发 side_effects 发信。
+        # 前置：decide 拒绝「审核自己发的种」（review.rs:207），而订阅人是
+        # root、发布人也是 root。把待审种的 owner_id 改到一个一次性马甲，
+        # 让 root 以审核人身份裁决——这样通知接收人仍是订阅的 root。
+        psql("INSERT INTO users (username, email, pass_hash, passkey, "
+             "class_id, status) SELECT 'audit-poster', 'ap@audit.local', "
+             "pass_hash, 'auditposterpasskey00000000000000', 1, 3 "
+             "FROM users WHERE username='root' "
+             "ON CONFLICT (username) DO NOTHING")
+        poster = psql("SELECT id FROM users WHERE username='audit-poster'")
+        # root 持 torrent.approval.auto ⇒ 发布即过审（approval_status=1），
+        # decide 要求 status=0。手动置回待审，再走真实裁决链路——这样
+        # 副作用（发信）确实由 review_decide 触发，不是直接改库伪造。
+        psql("UPDATE torrents SET owner_id = %s, approval_status = 0, "
+             "approved_at = NULL WHERE id = %s" % (poster, tid))
+        # 走真实过审链路（review_decide），触发 side_effects 发信
+        s2, r2 = call("POST", "/admin/reviews/decide",
+                      {"torrent_id": int(tid), "approve": True}, token=tok)
+        ok("过审端点可用", s2 == 200 and r2.get("code") == 0, r2)
+        n_msg = psql(
+            "SELECT count(*) FROM messages WHERE kind='network_new_release' "
+            "AND receiver_id = (SELECT id FROM users WHERE "
+            "username='root')")
+        ok("过审触发厂牌新片站内信", int(n_msg or 0) >= 1, n_msg)
+
+    # 退订
+    s, r = call("POST", "/networks/%s/unsubscribe" % nid, None, token=tok)
+    ok("退订厂牌", s == 200 and r.get("code") == 0, r)
+    n_sub2 = psql("SELECT count(*) FROM network_subscriptions "
+                  "WHERE network_id = %s" % nid)
+    ok("退订后订阅行清零", int(n_sub2 or 0) == 0, n_sub2)
+
+    # 10. 通知偏好键已放行
+    s, r = call("POST", "/me/notice-prefs",
+                {"key": "network_new_release", "enabled": False},
+                token=tok)
+    ok("通知偏好键 network_new_release 可设",
+       s == 200 and r.get("code") == 0, r)
+    call("POST", "/me/notice-prefs",
+         {"key": "network_new_release", "enabled": True}, token=tok)
+
     # 清理
+    psql("DELETE FROM network_subscriptions WHERE network_id = %s" % nid)
+    psql("DELETE FROM messages WHERE kind='network_new_release'")
     for t in made:
         if t:
             psql("DELETE FROM torrents WHERE id=%s" % t)
+    # 马甲用户清理：先清其名下种与站内信（FK：过审会给他发 review_approved）
+    psql("DELETE FROM messages WHERE receiver_id IN "
+         "(SELECT id FROM users WHERE username='audit-poster')")
+    psql("DELETE FROM torrents WHERE owner_id IN "
+         "(SELECT id FROM users WHERE username='audit-poster')")
+    psql("DELETE FROM users WHERE username='audit-poster'")
     psql("DELETE FROM section_dict WHERE kind='network' AND name='%s'"
          % NAME)
     psql("DELETE FROM content_networks WHERE name='%s'" % NAME)

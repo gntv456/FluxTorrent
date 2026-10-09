@@ -12,6 +12,7 @@ mod forum_util;
 mod forums;
 mod friend;
 mod interact;
+mod sport_matches;
 mod subs_calendar;
 mod leak_bot;
 mod like;
@@ -23,6 +24,7 @@ mod medal_gift;
 mod message;
 mod message_box;
 mod message_send;
+mod network_subs;
 mod networks;
 mod notice;
 mod post_ctx;
@@ -49,6 +51,7 @@ pub use forum_util::*;
 pub use forums::*;
 pub use friend::*;
 pub use interact::*;
+pub use sport_matches::*;
 pub use subs_calendar::*;
 pub use leak_bot::*;
 pub use like::*;
@@ -60,6 +63,7 @@ pub use medal_gift::*;
 pub use message::*;
 pub use message_box::*;
 pub use message_send::*;
+pub use network_subs::*;
 pub use networks::*;
 pub use notice::*;
 pub use post_ctx::*;
@@ -85,9 +89,18 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(networks_list)
         .service(networks_top)
         .service(network_detail)
+        // 厂牌订阅（0332 收官）：订新片 + 我的订阅
+        .service(network_subscribe)
+        .service(network_unsubscribe)
+        .service(my_network_subscriptions)
         // 追更中心（0328 剧集批）：我的订阅进度 + 日历
         .service(my_group_subscriptions)
         .service(my_subscription_calendar)
+        // 体育对阵（0330 sports 批）
+        .service(matches_list)
+        .service(match_detail)
+        .service(admin_match_create)
+        .service(admin_match_score)
         // M14 勋章
         .service(medal_rarities)
         .service(medal_list)
