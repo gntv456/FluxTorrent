@@ -63,8 +63,19 @@ export function TorrentPeers({ torrentId }: { torrentId: number }) {
 
   useEffect(() => {
     load();
-    const timer = setInterval(load, 15000);
-    return () => clearInterval(timer);
+    // 后台标签页不拉：实时 swarm 没人看的时候照样 4 次/分钟，挂着的详情页
+    // 会一直吃 tracker/redis 读；回到前台立刻补一次，读数不会旧一整个周期。
+    const timer = setInterval(() => {
+      if (!document.hidden) load();
+    }, 15000);
+    const onVisible = () => {
+      if (!document.hidden) load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
   if (err) {
