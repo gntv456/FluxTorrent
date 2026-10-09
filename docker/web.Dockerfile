@@ -1,6 +1,10 @@
 ARG BASE_REGISTRY=docker.1ms.run
 ARG NPM_REGISTRY=https://registry.npmmirror.com
 FROM ${BASE_REGISTRY}/library/node:20-slim AS builder
+# 全局 ARG（FROM 前声明）在 stage 内不可见，必须在本 stage 重新声明才能
+# 被 ENV/RUN 引用——否则 COREPACK_NPM_REGISTRY 落空，corepack 回落
+# registry.npmjs.org，在受限网络下 pnpm install 直接失败（实测 exit 1）。
+ARG NPM_REGISTRY
 WORKDIR /build
 # Corepack 下载 pnpm 二进制也走镜像（默认 registry.npmjs.org 在该网络不可达）
 ENV COREPACK_NPM_REGISTRY=${NPM_REGISTRY}
@@ -9,7 +13,8 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/domain-types/package.json ./packages/domain-types/
-RUN pnpm config set registry ${NPM_REGISTRY} && pnpm install --frozen-lockfile
+RUN pnpm config set registry "${NPM_REGISTRY:-https://registry.npmmirror.com}" \
+    && pnpm install --frozen-lockfile
 COPY apps/web ./apps/web
 COPY packages/domain-types ./packages/domain-types
 ARG NEXT_PUBLIC_API_URL=
