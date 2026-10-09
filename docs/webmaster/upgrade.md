@@ -25,6 +25,21 @@ docker compose -f docker/docker-compose.yml up -d --build   # 用镜像方式则
 - **你的设置不会丢**：站点设定都存在数据库里，升级代码不动数据；
 - **看变更说明**：每个版本的升级注意项（比如删了某个旧设置、需要手工处理的迁移）写在 `CHANGELOG.md` 对应版本段，动手前扫一眼。
 
+### 一次性：2026-10 之前的存量库升级前先对齐迁移校验和
+
+适用于：**v0.3.2（2026-10-04 发版）或更早装的站**，升级到修复了「0332 空库断链」的版本（f3afef2 及之后）时——那次修复修改了已应用迁移 `0332` 的文件内容，库里记的旧校验和会对不上，api 启动会报
+`migration 332 was previously applied but has been modified` 然后反复重启。
+
+升级**之前**先对库执行一次对齐（幂等，重复跑无害）：
+
+```bash
+docker exec -i flux-postgres psql -U flux -d fluxtorrent \
+  < scripts/align_migration_checksums_0332_reorder.sql
+```
+
+之后再按正常流程升级。v0.3.2 之后新装的站不受影响，跳过本步。
+（判断方法：`docker exec flux-postgres psql -U flux -d fluxtorrent -tAc "SELECT count(*) FROM _sqlx_migrations WHERE version=332"` 为 1 且你的首装时间早于 2026-10-10，就需要跑。）
+
 ---
 
 ## 回滚（升错了怎么办）
