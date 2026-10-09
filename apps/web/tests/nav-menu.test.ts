@@ -43,6 +43,8 @@ const nav = {
   endangered: "濒危预警",
   teams: "保种协作",
   networks: "出品方",
+  artists: "艺人",
+  subsCenter: "追更中心",
   upload: "发布",
   exams: "我的考核",
   achievements: "成就墙",
@@ -128,6 +130,33 @@ describe("defaultNav", () => {
         .flatMap((g) => g.items)
         .some((i) => i.href === "/networks"),
     ).toBe(false);
+  });
+
+  it("维度开关：artist 维度在 → 艺人入口出现（与 network 并列）", () => {
+    const r = defaultNav({
+      nav,
+      tabbar,
+      currency: "魔力",
+      modules: allOn,
+      dims: (k) => k === "artist",
+      customItems: [],
+    });
+    const hrefs = r.groups.flatMap((g) => g.items).map((i) => i.href);
+    expect(hrefs).toContain("/artists");
+    // artist 挂载不影响 network：未开 network 时出品方入口仍不出现
+    expect(hrefs).not.toContain("/networks");
+  });
+
+  it("追更中心恒在更多组（无订阅时空态，非模块门控）", () => {
+    const r = defaultNav({
+      nav,
+      tabbar,
+      currency: "魔力",
+      modules: () => false,
+      customItems: [],
+    });
+    const more = r.groups.find((g) => g.group === "更多")!;
+    expect(more.items.some((i) => i.href === "/me/subscriptions")).toBe(true);
   });
 });
 
