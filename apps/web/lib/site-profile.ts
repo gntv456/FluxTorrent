@@ -118,20 +118,21 @@ export const getSiteProfile = cache(async (): Promise<SiteProfile> => {
 
 /** 公开：站点当前启用的 section 维度清单（0330）。
  *  导航条目按维度显隐要用（出品方页只在挂了 network 维度的站型出现）。
- *  数据源 = `/api/v1/section-dict`（读 section_kinds + 可见性白名单），
- *  **不是**站型包 sections —— 维度可能被管理端手工增删，表才是真值。
- *  只取「有词表」的维度，与列表页 dimKinds 过滤口径一致（配了词表才算
- *  真正可用）——否则空词表的维度会给出一个永远空的页面。
+ *  数据源 = `/api/v1/section-dict` 的 `kinds`（section_kinds 注册表 +
+ *  可见性白名单），**不是**站型包 sections —— 维度可能被管理端手工增删，
+ *  表才是真值；也**不是**词表键值：`text` 维度（artist/narrator/award）
+ *  本就无词条，按「词表非空」过滤会把它们全漏掉（0330 首版即此坑，
+ *  艺人入口在音乐站不出现）。以 `enabled` 为准。
  *  失败返回空数组（宁可少一个入口，不可给死链）。 */
 export const getSiteDims = cache(async (): Promise<string[]> => {
   try {
-    const d = await api.get<Record<string, unknown>>(
+    const d = await api.get<{ kinds?: { kind: string; enabled?: boolean }[] }>(
       "/api/v1/section-dict",
       PROFILE_REVALIDATE,
     );
-    return Object.entries(d)
-      .filter(([k, v]) => k !== "kinds" && Array.isArray(v) && v.length > 0)
-      .map(([k]) => k);
+    return (d.kinds ?? [])
+      .filter((k) => k.enabled !== false && Boolean(k.kind))
+      .map((k) => k.kind);
   } catch {
     return [];
   }
