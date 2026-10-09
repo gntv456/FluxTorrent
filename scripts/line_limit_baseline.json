@@ -189,7 +189,7 @@
  "apps/web/app/(main)/users/[id]/_parts/profile-center.tsx::wide": 10,
  "apps/web/app/(main)/users/[id]/_parts/profile-hero.tsx::wide": 5,
  "apps/web/app/(main)/torrents/page.tsx": 368,
- "apps/web/app/(main)/torrent/[id]/page.tsx": 429,
+ "apps/web/app/(main)/torrent/[id]/page.tsx": 430,
  "apps/web/app/(main)/top/page.tsx::wide": 8,
  "apps/web/app/(main)/textbooks/page.tsx::wide": 1,
  "apps/web/app/(main)/preserve/page.tsx::wide": 1,
