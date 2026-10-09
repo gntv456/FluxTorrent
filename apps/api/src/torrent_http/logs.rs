@@ -77,6 +77,9 @@ pub async fn log_adjust(
     if !hit {
         return Err(DomainError::NotFound(id));
     }
+    // 改判是**判定口径**的变更：不清详情缓存的话，版主裁完分数在页面上
+    // 还要旧 30 秒（manage.rs 五个写口都清，0337 这条漏了）
+    super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({
         "torrent_id": id, "ordinal": ordinal, "adjusted_score": score,
     })))
