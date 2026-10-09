@@ -86,6 +86,15 @@ pub(super) async fn open_torrent_detail(
         "bookmark_count": detail.bookmark_count,
         "last_action": detail.last_action,
         "sections": detail.sections,
+        // 分型补全（批次 3 尾巴/0329）：工件与日志让工具侧（聚合器/
+        // 校验器）不必再打站内端点——music 拿日志分、game 拿校验和
+        "artifacts": crate::publish_http::list_artifacts_for_detail(
+            &state.repo.db, id,
+        )
+        .await,
+        "logs": crate::torrents::list_logs(&state.repo.db, id)
+            .await
+            .unwrap_or_default(),
         "mediainfo": detail.mediainfo,
         "nfo": nfo,
         "download": format!(

@@ -1,0 +1,13 @@
+-- 0329_openapi_typed_fields.sql
+-- 站型成熟度 · 批次 3 尾巴：开放 API 分型字段。
+--
+-- 纯文档性迁移（代码在 openapi_http/）：
+--   · /open/torrents/{id} 详情补 artifacts（工件清单）与 logs（日志行，
+--     含 log_score）——music 工具拿日志分、game 工具拿校验和不必再打
+--     站内端点；
+--   · /open/recent 与 /open/announces 列表行补 dimensions：label→首值
+--     的扁平分型摘要（季/话数/作者/联赛…按站型），一条 SQL 批量取
+--     （无 N+1），全值仍走详情 sections。
+-- 至此批次 3「分类型 openapi 字段」清账（SEO/OG 的分型随前端 metadata
+-- 主题另批，属 web 侧）。
+SELECT 1;
