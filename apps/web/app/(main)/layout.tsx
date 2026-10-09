@@ -2,7 +2,7 @@ import { Header, MobileTabBar } from "@/components/layout";
 import { TabletSidebar } from "@/components/tablet-sidebar";
 import { buildNav } from "@/lib/nav-menu";
 import { getMenuItems } from "@/lib/data";
-import { getSiteProfile } from "@/lib/site-profile";
+import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
 import { Footer } from "@/components/footer";
 import { MotionShell } from "@/components/motion";
 import { ScrollButtons } from "@/components/scroll-buttons";
@@ -18,12 +18,14 @@ export default async function MainLayout({
   const { dict, currency } = await getDict(); // 布局语言与页面同源
   // M4 平板细侧栏：与顶栏同源配置（lib/nav-menu.ts）
   const profile = await getSiteProfile().catch(() => null);
+  const dims = await getSiteDims();
   const customItems = await getMenuItems("topbar").catch(() => []);
   const { primary: navPrimary } = buildNav({
     nav: dict.nav,
     tabbar: dict.tabbar,
     currency,
     modules: (k) => (profile?.modules?.[k] ?? true) !== false,
+    dims: (k) => dims.includes(k),
     customItems,
   });
   return (

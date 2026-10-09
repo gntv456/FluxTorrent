@@ -23,6 +23,7 @@ mod medal_gift;
 mod message;
 mod message_box;
 mod message_send;
+mod networks;
 mod notice;
 mod post_ctx;
 mod post_edit;
@@ -59,6 +60,7 @@ pub use medal_gift::*;
 pub use message::*;
 pub use message_box::*;
 pub use message_send::*;
+pub use networks::*;
 pub use notice::*;
 pub use post_ctx::*;
 pub use post_edit::*;
@@ -79,6 +81,10 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(artists_list)
         .service(artists_top)
         .service(artist_detail)
+        // 出品方聚合页（0330 documentary 专项 P1）：厂牌列表/厂牌页/榜单
+        .service(networks_list)
+        .service(networks_top)
+        .service(network_detail)
         // 追更中心（0328 剧集批）：我的订阅进度 + 日历
         .service(my_group_subscriptions)
         .service(my_subscription_calendar)

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
-import { getSiteProfile } from "@/lib/site-profile";
+import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
@@ -23,6 +23,7 @@ import { api } from "@/lib/api-client";
 export async function Header() {
   const { dict, locale, currency } = await getDict();
   const profile = await getSiteProfile();
+  const dims = await getSiteDims();
   /** 模块开关（U1 §6.2）：缺键视为开（T3 缺省=现状），与 API 侧 default_on 口径一致 */
   const mod = (k: string) => profile.modules[k] !== false;
   const brand = profile.brand || dict.common.brand;
@@ -51,6 +52,7 @@ export async function Header() {
     tabbar: dict.tabbar,
     currency,
     modules: mod,
+    dims: (k) => dims.includes(k),
     customItems,
   });
 

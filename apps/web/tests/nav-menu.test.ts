@@ -42,6 +42,7 @@ const nav = {
   preserve: "保种区",
   endangered: "濒危预警",
   teams: "保种协作",
+  networks: "出品方",
   upload: "发布",
   exams: "我的考核",
   achievements: "成就墙",
@@ -98,6 +99,35 @@ describe("defaultNav", () => {
     expect(r.primary.some((p) => p.href === "/forums")).toBe(false);
     const fun = r.groups.find((g) => g.group === "娱乐")!;
     expect(fun.items.some((i) => i.href === "/games")).toBe(false);
+  });
+
+  it("维度开关：network 维度在 → 出品方入口出现；缺 dims → 不出现", () => {
+    const on = defaultNav({
+      nav,
+      tabbar,
+      currency: "魔力",
+      modules: allOn,
+      dims: (k) => k === "network",
+      customItems: [],
+    });
+    expect(
+      on.groups
+        .flatMap((g) => g.items)
+        .some((i) => i.href === "/networks"),
+    ).toBe(true);
+    // 未传 dims：缺省全闭，不给空页面入口
+    const off = defaultNav({
+      nav,
+      tabbar,
+      currency: "魔力",
+      modules: allOn,
+      customItems: [],
+    });
+    expect(
+      off.groups
+        .flatMap((g) => g.items)
+        .some((i) => i.href === "/networks"),
+    ).toBe(false);
   });
 });
 

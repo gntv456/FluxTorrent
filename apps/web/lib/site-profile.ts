@@ -116,6 +116,27 @@ export const getSiteProfile = cache(async (): Promise<SiteProfile> => {
   }
 });
 
+/** 公开：站点当前启用的 section 维度清单（0330）。
+ *  导航条目按维度显隐要用（出品方页只在挂了 network 维度的站型出现）。
+ *  数据源 = `/api/v1/section-dict`（读 section_kinds + 可见性白名单），
+ *  **不是**站型包 sections —— 维度可能被管理端手工增删，表才是真值。
+ *  只取「有词表」的维度，与列表页 dimKinds 过滤口径一致（配了词表才算
+ *  真正可用）——否则空词表的维度会给出一个永远空的页面。
+ *  失败返回空数组（宁可少一个入口，不可给死链）。 */
+export const getSiteDims = cache(async (): Promise<string[]> => {
+  try {
+    const d = await api.get<Record<string, unknown>>(
+      "/api/v1/section-dict",
+      PROFILE_REVALIDATE,
+    );
+    return Object.entries(d)
+      .filter(([k, v]) => k !== "kinds" && Array.isArray(v) && v.length > 0)
+      .map(([k]) => k);
+  } catch {
+    return [];
+  }
+});
+
 /** 站型字典（分类 + 旧三列）的唯一真值源：一律来自后端，前端不持有词表。
  *  取不到就是空表——显示侧回落 `#id`，筛选侧只剩「全部」，
  *  绝不拿另一套硬编码词表顶替（那是分类显示 bug 的源头）。
