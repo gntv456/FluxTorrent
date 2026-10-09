@@ -1,4 +1,4 @@
-﻿[workspace]
+[workspace]
 resolver = "2"
 members = [
     "apps/api",
@@ -31,7 +31,7 @@ rand = "0.8"
 regex = "1"
 envy = "0.4"
 dotenvy = "0.15"
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "1.7", features = ["tokio-comp", "connection-manager"] }
 tokio-util = "0.7"
 futures-util = "0.3"
 sha1 = "0.10"
