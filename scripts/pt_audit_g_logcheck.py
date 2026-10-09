@@ -368,7 +368,10 @@ def run_cases(tok, uid, made, orig):
     # 详情聚合与正文读口
     s, agg = call("GET", "/torrents/%s/aggregate" % tid, token=tok)
     logs = (agg.get("data") or {}).get("logs") or []
-    ok("aggregate 带 logs 段（2 行）", len(logs) == 2, logs)
+    # detail 必须自带：logs 为 [] 时是 falsy，原来那行会把失败原因吞掉
+    ok("aggregate 带 logs 段（2 行）", len(logs) == 2,
+       "http=%s code=%s msg=%s logs=%r" % (
+           s, agg.get("code"), agg.get("message"), logs))
     ok("aggregate 的 logs 不含正文（正文懒加载）",
        all("body" not in l for l in logs), logs)
     s, one = call("GET", "/torrents/%s/logs/1" % tid, token=tok)
