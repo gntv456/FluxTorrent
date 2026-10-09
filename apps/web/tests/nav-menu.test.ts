@@ -44,6 +44,8 @@ const nav = {
   teams: "保种协作",
   networks: "出品方",
   artists: "艺人",
+  seasonal: "当季新番",
+  subtitleGroups: "字幕组",
   subsCenter: "追更中心",
   upload: "发布",
   exams: "我的考核",
@@ -157,6 +159,23 @@ describe("defaultNav", () => {
     });
     const more = r.groups.find((g) => g.group === "更多")!;
     expect(more.items.some((i) => i.href === "/me/subscriptions")).toBe(true);
+  });
+
+  it("维度开关：air_season/subtitle_group → 动漫站两个入口出现", () => {
+    const r = defaultNav({
+      nav,
+      tabbar,
+      currency: "魔力",
+      modules: allOn,
+      dims: (k) => k === "air_season" || k === "subtitle_group",
+      customItems: [],
+    });
+    const hrefs = r.groups.flatMap((g) => g.items).map((i) => i.href);
+    expect(hrefs).toContain("/seasonal");
+    expect(hrefs).toContain("/subtitle-groups");
+    // 未挂 network/artist：对应入口仍不出现
+    expect(hrefs).not.toContain("/networks");
+    expect(hrefs).not.toContain("/artists");
   });
 });
 

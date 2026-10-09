@@ -112,6 +112,14 @@ export function defaultNav({
         ...(dimOn("artist")
           ? [{ href: "/artists", label: nav.artists }]
           : []),
+        // 当季新番（0334 anime）：仅挂 air_season 维度的站型出现
+        ...(dimOn("air_season")
+          ? [{ href: "/seasonal", label: nav.seasonal }]
+          : []),
+        // 字幕组聚合（0334 anime）：挂 subtitle_group 维度的站型出现
+        ...(dimOn("subtitle_group")
+          ? [{ href: "/subtitle-groups", label: nav.subtitleGroups }]
+          : []),
       ],
     },
     {

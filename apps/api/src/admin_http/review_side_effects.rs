@@ -54,27 +54,37 @@ pub(crate) async fn apply_approval_side_effects(
     .bind(torrent_id)
     .execute(db)
     .await;
-    // 0332 厂牌订阅推送：种子带 network 维度且该厂牌有人订阅 → 通知订阅者。
-    // 与组订阅同口径（每人一信 + 通知偏好过滤）；`network` 值经
-    // section_dict 反查 content_networks（枚举维度的标准关联路径）。
+    // 0332 厂牌订阅 / 0334 字幕组订阅推送：种子带 network / subtitle_group
+    // 维度且该实体有人订阅 → 通知订阅者。与组订阅同口径（每人一信 + 通知
+    // 偏好过滤）；实体值经 section_dict 反查 content_networks（枚举维度的
+    // 标准关联路径）。两种 kind 共用一张 content_networks + 一张订阅表，
+    // 这里的 VALUES 列表即「可订阅维度的白名单」——加新可订阅维度只改此处。
     let _ = sqlx::query(
         r#"
         INSERT INTO messages
                (sender_id, receiver_id, subject, body, kind, params)
-        SELECT NULL, ns.user_id, '订阅的出品方有新片',
-               format('你订阅的出品方「%s」有新种子过审：#%s %s。',
+        SELECT NULL, ns.user_id,
+               CASE k.kind WHEN 'network' THEN '订阅的出品方有新片'
+                           ELSE '订阅的字幕组有新作' END,
+               format('你订阅的%s「%s」有新种子过审：#%s %s。',
+                      CASE k.kind WHEN 'network' THEN '出品方' ELSE '字幕组' END,
                       cn.name, t.id, t.name),
-               'network_new_release',
-               jsonb_build_object('network', cn.name, 'id', t.id, 'name', t.name)
+               CASE k.kind WHEN 'network' THEN 'network_new_release'
+                           ELSE 'subgroup_new_release' END,
+               jsonb_build_object('kind', k.kind, 'name', cn.name,
+                                  'id', t.id, 'name', t.name)
         FROM torrents t
+        JOIN (VALUES ('network'), ('subtitle_group')) AS k(kind) ON TRUE
         JOIN torrent_sections ts
-          ON ts.torrent_id = t.id AND ts.kind = 'network'
+          ON ts.torrent_id = t.id AND ts.kind = k.kind
         JOIN section_dict sd ON sd.id = ts.dict_id
         JOIN content_networks cn
-          ON cn.kind = 'network' AND cn.name = sd.name
+          ON cn.kind = k.kind AND cn.name = sd.name
         JOIN network_subscriptions ns ON ns.network_id = cn.id
         WHERE t.id = $1
-          AND (u_notice_enabled(ns.user_id, 'network_new_release'))
+          AND (u_notice_enabled(ns.user_id,
+                 CASE k.kind WHEN 'network' THEN 'network_new_release'
+                             ELSE 'subgroup_new_release' END))
         "#,
     )
     .bind(torrent_id)
