@@ -29,6 +29,8 @@ export const ja: DeepPartial<Dict> = {
     teams: "保種チーム",
     networks: "製作会社",
     artists: "アーティスト",
+    seasonal: "今季アニメ",
+    subtitleGroups: "字幕グループ",
     subsCenter: "更新追跡",
     classes: "等級",
     resurrections: "復活タスク",

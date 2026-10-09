@@ -133,6 +133,10 @@ pub(crate) async fn write_sections(
     for sv in parsed {
         write_one(&mut tx, torrent_id, sv).await?;
     }
+    // 0334：内容实体锚点同步（与 sections 同事务——发种 / 编辑共用本函数）。
+    // 否则 content_networks / artists 只有迁移回填、无增量，聚合页永远查不到
+    // 新出现的实体。
+    sync_content_anchors(&mut *tx, parsed).await?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -181,6 +185,62 @@ async fn write_one(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         ord += 1;
+    }
+    Ok(())
+}
+
+/// 内容实体锚点同步（0334）：把本次写入的枚举维度值 upsert 进
+/// `content_networks`（按 kind+name 聚合的锚点行），并把 `artist` 维度的
+/// 自由值 upsert 进 `artists`。
+///
+/// 背景：`content_networks`（0330/0333）与 `artists`（0327）此前**只有
+/// 迁移回填、没有增量写入口**——聚合页按锚点表遍历，新建的词条/新出现的
+/// 艺人在页面上永远查不到。发种/编辑是实体出现的唯一入口，锚点在此补齐，
+/// 聚合页才随内容增长。口径与两条迁移的回填 SQL 完全一致（TRIM +
+/// 小写去空白归一），故幂等且不产生重复行。
+async fn sync_content_anchors(
+    tx: &mut sqlx::PgConnection,
+    parsed: &[SectionValue],
+) -> DomainResult<()> {
+    // 枚举值（select/multiselect）：dict_ids → section_dict(kind,name)
+    let dict_ids: Vec<i64> = parsed
+        .iter()
+        .flat_map(|s| s.dict_ids.iter().copied())
+        .collect();
+    if !dict_ids.is_empty() {
+        sqlx::query(
+            "INSERT INTO content_networks (kind, name, norm_name) \
+             SELECT DISTINCT sd.kind, TRIM(sd.name), \
+                    LOWER(REGEXP_REPLACE(TRIM(sd.name), '\\s+', '', 'g')) \
+               FROM section_dict sd \
+              WHERE sd.id = ANY($1) AND TRIM(sd.name) <> '' \
+             ON CONFLICT (kind, name) DO NOTHING",
+        )
+        .bind(&dict_ids)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    // artist（text 维度）：自由值 → artists 锚点
+    let artist_vals: Vec<String> = parsed
+        .iter()
+        .filter(|s| s.kind == "artist")
+        .flat_map(|s| s.values.iter())
+        .filter_map(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if !artist_vals.is_empty() {
+        sqlx::query(
+            "INSERT INTO artists (name, norm_name) \
+             SELECT DISTINCT v, LOWER(REGEXP_REPLACE(v, '\\s+', '', 'g')) \
+               FROM unnest($1::text[]) AS v WHERE v <> '' \
+             ON CONFLICT (name) DO NOTHING",
+        )
+        .bind(&artist_vals)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     }
     Ok(())
 }

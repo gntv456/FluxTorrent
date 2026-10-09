@@ -32,6 +32,7 @@ mod post_edit;
 mod post_group;
 mod post_read;
 mod post_write;
+mod seasonal;
 mod shoutbox;
 mod staff_answer;
 mod staffbox;
@@ -70,6 +71,7 @@ pub use post_ctx::*;
 pub use post_edit::*;
 pub use post_read::*;
 pub use post_write::*;
+pub use seasonal::*;
 pub use shoutbox::*;
 pub use staff_answer::*;
 pub use staffbox::*;
@@ -96,6 +98,8 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         // 追更中心（0328 剧集批）：我的订阅进度 + 日历
         .service(my_group_subscriptions)
         .service(my_subscription_calendar)
+        // 当季新番（0334 anime 批）：按播出季浏览
+        .service(seasonal_anime)
         // 体育对阵（0330 sports 批）
         .service(matches_list)
         .service(match_detail)

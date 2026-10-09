@@ -41,12 +41,13 @@ async fn notice_prefs_set(
     body: web::Json<NoticePrefsSetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    const KEYS: [&str; 14] = [
+    const KEYS: [&str; 15] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
         "group_new_version",
         "network_new_release",
+        "subgroup_new_release",
         "resurrection",
         "class_promo",
         "gift",
