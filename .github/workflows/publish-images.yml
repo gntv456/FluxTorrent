@@ -60,7 +60,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # amd64 用 provenance 附平台清单；arm64 由独立 job 追加（见 arm64-native）
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -117,7 +117,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
