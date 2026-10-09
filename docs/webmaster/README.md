@@ -26,6 +26,7 @@
 - Wiki：站内帮助中心在 `/help`（后台「自定义页面」可编辑）；对外文档站在 [wiki.ptang.top/ft](https://wiki.ptang.top/ft/)（Git 权威，改本册后由 docs-hub 同步发布）。建设过程方案见 `wiki-plan.md`（内部档案，不进对外 wiki）
 - [运营 playbook](playbook/README.md)：怎么把站办好——开站第一周 / 促销编排 / 考核与 H&R 标定 / 邀请策略 / 反作弊巡检 / 内容冷启动
 - [故障排查](troubleshooting.md)：装机坑典与常见故障
+- [端口一览与改端口指南](ports.md)：8 个宿主端口变量总表、端口被占怎么换、改 tracker/web/api 端口要联动哪些变量
 
 ## 深度运维（技术向，可选）
 
