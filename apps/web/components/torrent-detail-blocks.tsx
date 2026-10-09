@@ -57,6 +57,8 @@ export interface GroupInfo {
     times_completed: number;
     official: boolean;
     current: boolean;
+    /** 多版本分槽（0336 G2）：由 standard 维度派生 UHD/HD/SD/Other */
+    tier?: string;
   }>;
 }
 
@@ -101,6 +103,7 @@ export function GroupVersions({
                     {dict.torrent.official}
                   </span>
                 )}
+                {tierBadge(g.tier)}
               </td>
               <td className="num shrink-0 text-right text-sub">
                 {g.current ? (
@@ -118,6 +121,19 @@ export function GroupVersions({
       </table>
       </div>
     </Fold>
+  );
+}
+
+/** 多版本分槽徽标（0336 G2，PTP 口径）：UHD/HD/SD 三档可见，Other 不显示。
+ *  tier 由后端按 standard 维度派生下发，前端不自行推断。 */
+function tierBadge(tier?: string) {
+  if (!tier || tier === "Other") return null;
+  const color =
+    tier === "UHD" ? "#7c3aed" : tier === "HD" ? "#2563eb" : "#64748b";
+  return (
+    <span className="sticker ml-1 text-white" style={{ background: color }}>
+      {tier}
+    </span>
   );
 }
 

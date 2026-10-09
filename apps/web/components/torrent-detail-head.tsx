@@ -1,6 +1,7 @@
 import { DownloadButton } from "@/components/download-button";
 import { TorrentSocial } from "@/components/torrent-social";
 import { ResurrectButton } from "@/components/resurrect-button";
+import { TrumpButton } from "@/components/torrent-trump-button";
 import { WishlistButton } from "@/components/wishlist";
 import { PosterBlock } from "@/components/torrent-detail-parts";
 import { promotionBadge } from "@/lib/format";
@@ -181,6 +182,7 @@ export function TorrentHead({
             {t.seeders === 0 && (
               <ResurrectButton torrentId={t.id} name={t.name} />
             )}
+            <TrumpButton torrentId={t.id} />
             {manage}
           </div>
         </div>

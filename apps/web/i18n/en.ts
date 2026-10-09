@@ -156,7 +156,29 @@ const enBase: Omit<
     needNewPwHint:
       "The seeded admin root (initial password: password123) uses a temporary password — with it, every endpoint except the password change is blocked, so setup cannot complete. After setting one, the wizard finishes with the new password (other devices must sign in again).",
     newPw: "New password (min 8 chars)",
-    newPw2: "Confirm new password",
+    newPw2: "Type the new password again",
+    // Credential section consolidation (real-user confusion: two password
+    // groups with opposite meanings sat side by side)
+    credResetTitle: "① Set a new password for the admin",
+    credResetIntroAuto:
+      "A system admin account already exists and still uses the initial password password123. With a temporary password every endpoint except the password change is blocked, so setup cannot finish until you change it.",
+    credResetIntroManual:
+      "The seeded admin account's password was reset to a random temporary one — enter it first so it can be replaced.",
+    credAdminUser: "Admin account",
+    credCurrentPw: "Current password",
+    credFilledAuto: "filled in automatically",
+    credCurrentPwHint:
+      "The temporary password shown to you when it was reset — it will be replaced by your new one.",
+    credNewPwHint:
+      "This is the password you will use to sign in from now on. Save it now — if you lose it, only a database reset can recover it.",
+    credResetFoot:
+      "Changing it also signs this account out on other devices. This site currently has only this one admin, so sign in with the new password afterwards.",
+    credLoginTitle: "② Sign in with the existing admin account",
+    credLoginHint:
+      "An admin already exists. Enter its credentials — the wizard uses them to apply the final setup step.",
+    credMissing: "Please fill in the admin account and password",
+    pwOldWrong:
+      "Incorrect current password — enter the temporary password you were given when it was reset. (The new password is yours to choose; this field wants the one from before the change.)",
     pwTooShort: "New password must be at least 8 characters",
     pwMismatch: "The two new passwords do not match",
     goHome: "Enter the site",
@@ -183,6 +205,20 @@ const enBase: Omit<
     done: "Setup completed",
     alreadyDone: "Setup already completed (idempotent).",
     loadFailed: "Failed to load wizard status; check API availability",
+    // Cold-start load state and failure diagnosis (api binds only after
+    // migrations finish, so a fresh install hits this often)
+    loadingStatus: "Loading wizard status…",
+    stillWaiting:
+      "API not ready yet, retrying automatically… (first start waits for database migrations)",
+    retrying: "Retrying…",
+    retryLoad: "Reload",
+    attempt: "Attempt {n}",
+    hintGateway:
+      "The web container cannot reach the API container: check that api is healthy in docker compose and that API_SERVER_URL points at the right address.",
+    hintHttp:
+      "The response was not JSON: usually a reverse proxy sending /api to a non-API service, or the API is still starting up.",
+    hintNetwork:
+      "The browser could not reach the site: make sure the reverse proxy allows the /api/ path and does not block the request.",
     // 0214: announce capture + first invite code + checklist links
     announceUrl: "Public Tracker announce URL",
     announceHint:
@@ -205,6 +241,9 @@ const enBase: Omit<
     copied: "Copied",
     chkGoFix: "Fix it in Settings → Basic → Announce URL",
     chkGoSmtp: "Configure SMTP",
+    checklistTitle: "Launch checklist",
+    chkReg: "Registration mode: ",
+    chkRegOpen: "(open registration)",
   },
   mod: {
     disabledTitle: "This feature is not enabled",
@@ -6101,6 +6140,34 @@ medalDaysPh: "Days (empty = medal default)",
     ripViewLog: "View log",
     ripLoading: "Loading…",
     ripLoadFailed: "Failed to load log",
+    reportButton: "Report",
+    reportTitle: "Report this torrent",
+    reportSubmit: "Submit",
+    reportCancel: "Cancel",
+    adjustLog: "Adjust",
+    adjustHint: "New log score (0-100, empty to reset)",
+    adjustDone: "Adjusted",
+    adjustFail: "Adjust failed",
+    previewTitle: "Preview / Listen",
+    previewAdd: "Add preview",
+    previewRemove: "Remove",
+    previewUploading: "Uploading…",
+    previewDone: "Added",
+    reportQueue: "Report queue",
+    reportQueueEmpty: "No pending reports",
+    reportAccept: "Accept (remove)",
+    reportReject: "Reject",
+    reportHandled: "Handled",
+    reportColTarget: "Torrent / target",
+    reportColReason: "Reason",
+    reportColNote: "Note",
+    reportDone: "Submitted. Staff will review it.",
+    reportFail: "Submit failed",
+    reasonBadQuality: "Low quality",
+    reasonDead: "Dead",
+    reasonWrongContent: "Wrong content",
+    reasonDuplicate: "Duplicate",
+    reasonOther: "Other",
   },
   offers2: {
     title: "Offers",
