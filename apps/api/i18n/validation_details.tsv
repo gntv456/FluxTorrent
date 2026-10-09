@@ -60,3 +60,20 @@ per_page 只能是 20/50/100	per_page 只能是 20/50/100	per_page must be one o
 hidden_cols 需为数组	hidden_cols 需為陣列	hidden_cols must be an array
 view 需为字符串	view 需為字串	view must be a string
 view 只能是 table/card/poster	view 只能是 table/card/poster	view must be one of table/card/poster
+kickoff 需为 RFC3339（如 2026-10-11T19:30:00Z）	kickoff 需為 RFC3339（如 2026-10-11T19:30:00Z）	kickoff must be RFC3339 (e.g. 2026-10-11T19:30:00Z)
+sha256 格式不正确	sha256 格式不正確	Invalid sha256 format
+不能举报自己发布的种子	不能舉報自己發布的種子	You cannot report your own torrent
+主客队不能相同	主客隊不能相同	Home and away teams cannot be the same
+举报理由不合法	舉報理由不合法	Invalid report reason
+改判理由需 ≤200 字	改判理由需 ≤200 字	Ruling note must be ≤200 characters
+替代种不存在或未过审	替代種不存在或未過審	Replacement torrent not found or not approved
+替代种不能是被举报种自身	替代種不能是被舉報種自身	Replacement torrent cannot be the reported torrent itself
+未提供 CUE 正文，且该种未挂 kind='cue' 的工件	未提供 CUE 正文，且該種未掛 kind='cue' 的工件	No CUE content provided and the torrent has no artifact of kind 'cue'
+本站型未启用举报替换（trumping）能力	本站型未啟用舉報替換（trumping）能力	Trumping is not enabled for this site type
+本站型未启用预览（试读/试听）能力	本站型未啟用預覽（試讀/試聽）能力	Previews are not enabled for this site type
+联赛/主队/客队不能为空	聯賽/主隊/客隊不能為空	League/home/away cannot be empty
+该举报已裁决	該舉報已裁決	This report has already been ruled on
+该种未填 IMDb 链接	該種未填 IMDb 連結	This torrent has no IMDb link
+说明需 ≤500 字	說明需 ≤500 字	Description must be ≤500 characters
+附件不存在或未对本站共享	附件不存在或未對本站共享	Attachment not found or not shared with this site
+预览类型不合法	預覽類型不合法	Invalid preview kind
