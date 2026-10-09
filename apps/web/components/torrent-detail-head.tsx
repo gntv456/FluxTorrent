@@ -54,9 +54,9 @@ export function TorrentHead({
 }) {
   const d = dict.tdetail;
   const promo = promotionBadge(t.promotion);
-  // 日志分徽标（0312）：多碟取**最低**，与后端 upload_logcheck::overall 同口径
+  // 日志分徽标（0312）：取**有效分**（0337 改判优先）后多碟取最低，与面板同口径
   const ripScores = (ripLogs ?? [])
-    .map((l) => l.log_score)
+    .map((l) => l.adjusted_score ?? l.log_score)
     .filter((v): v is number => v !== null);
   const ripScore = ripScores.length > 0 ? Math.min(...ripScores) : null;
   return (

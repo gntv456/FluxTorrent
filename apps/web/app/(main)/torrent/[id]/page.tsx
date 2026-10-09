@@ -264,6 +264,7 @@ export default async function TorrentDetailPage({
         )}
         subtitleChain={subtitleChain}
         relTime={relTime}
+        ripLogs={agg.logs}
         tags={
           agg.tags.dict.length + agg.tags.mine.length > 0 ? (
             <TorrentTags torrentId={t.id} initial={agg.tags} />
