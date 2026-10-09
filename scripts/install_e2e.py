@@ -52,8 +52,10 @@ def code_of(body):
 
 
 def psql(sql):
-    """CI（service container 无固定名）走 DATABASE_URL 直连；本地 compose 栈
-    （容器名 flux-postgres）走 docker exec——两种环境同一语义。"""
+    """三种环境同一语义：
+    - CI（service container 无固定名）走 DATABASE_URL 直连；
+    - 本地 compose 栈（容器名 flux-postgres）走 docker exec；
+    - 隔离闸门栈（.env.e2e-gate，容器名不同）走 FLUX_E2E_PG_CONTAINER。"""
     url = os.environ.get("DATABASE_URL")
     if url:
         r = subprocess.run(
@@ -61,8 +63,9 @@ def psql(sql):
             capture_output=True, text=True, encoding="utf-8",
             errors="replace")
     else:
+        pg = os.environ.get("FLUX_E2E_PG_CONTAINER", "flux-postgres")
         r = subprocess.run(
-            ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+            ["docker", "exec", pg, "psql", "-U", "flux",
              "-d", "fluxtorrent", "-tAc", sql],
             capture_output=True, text=True, encoding="utf-8",
             errors="replace")
