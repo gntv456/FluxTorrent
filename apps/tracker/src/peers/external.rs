@@ -202,17 +202,24 @@ pub async fn connectable_of(
         .unwrap_or(CONN_UNTESTED)
 }
 
-/// 写：回连结果
-pub async fn set_connectable(
+/// 写：回连结论（四档 smallint，与内存表/DB 同语义）。
+///
+/// 历史版本只存 bool（reachable → 1/0），SUSPECT 被压成 DEAD——外置多副本
+/// 模式下「仅加密客户端」会被 gates/统计面误伤。peer.connectable 本就是
+/// i8（-2/-1/0/1 四态），这里直存整值；旧数据 0/1 天然兼容。
+/// 读改写竞态：与 announce 侧 upsert 并发时可互相覆盖对方字段——沿用
+/// 既有形态（探测写回频率低，损失限于 connectable 之外字段短暂回旧值），
+/// Lua 原子化留给外置通道整体升级时一并做。
+pub async fn set_conn_state(
     redis: &mut ConnectionManager,
     key: &PeerKey,
-    reachable: bool,
+    state: i8,
 ) {
     let k = swarm_key(&key.info_hash);
     let v: Option<String> = redis.hget(&k, &key.peer_id).await.unwrap_or(None);
     if let Some(s) = v {
         if let Ok(mut p) = serde_json::from_str::<Peer>(&s) {
-            p.connectable = if reachable { 1 } else { 0 };
+            p.connectable = state;
             let val = serde_json::to_string(&p).unwrap_or_default();
             let _: () = redis.hset(&k, &key.peer_id, val).await.unwrap_or(());
         }

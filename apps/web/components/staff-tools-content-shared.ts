@@ -30,6 +30,8 @@ export interface CatItem {
   icon_key?: string;
   /** 分类色（0183）：#rrggbb；空=中性兜底 */
   bg_color?: string | null;
+  /** newznab 分类号（0325）：Torznab/兼容层对外映射；空=无 */
+  newznab_id?: number | null;
 }
 
 export interface TypePack {

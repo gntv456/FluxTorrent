@@ -134,6 +134,9 @@ struct CatBody {
     /// 图标键（0166）：前端 Icon 语义名（film/tv/music/…）；空 = 回落分类名首字
     #[serde(default)]
     icon_key: Option<String>,
+    /// newznab 分类号（0325）：Torznab/兼容层按此对外映射；None = 不改
+    #[serde(default)]
+    newznab_id: Option<i32>,
     /// 分类色（0183）：`#rrggbb`；缺省或空 = 不改
     #[serde(default)]
     bg_color: Option<String>,
@@ -156,6 +159,8 @@ struct CatRow {
     name: String,
     /// 父分类（0188 层级）：NULL = 顶级
     parent_id: Option<i32>,
+    /// newznab 分类号（0325）：torznab caps/搜索与 NP 兼容层的对外映射
+    newznab_id: Option<i32>,
     mode_id: Option<i32>,
     auto_approve: bool,
     torrents: i64,
@@ -178,7 +183,7 @@ pub async fn category_list(
     )
     .await?;
     let rows: Vec<CatRow> = sqlx::query_as(
-        "SELECT c.id, c.name, c.parent_id, c.mode_id, c.auto_approve, c.icon_key, c.sort, c.bg_color, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
+        "SELECT c.id, c.name, c.parent_id, c.mode_id, c.auto_approve, c.icon_key, c.sort, c.bg_color, c.newznab_id, (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint AS torrents \
          FROM categories c ORDER BY c.sort, c.id",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -238,11 +243,19 @@ pub async fn category_update(
             ));
         }
     }
+    if let Some(nz) = body.newznab_id {
+        if !(0..=100_000_000).contains(&(nz as i64)) {
+            return Err(DomainError::Validation(
+                "newznab 分类号需为非负整数".into(),
+            ));
+        }
+    }
     let n = sqlx::query(
         "UPDATE categories SET name=$2, icon_key=$3, \
          bg_color = COALESCE(NULLIF($4, ''), bg_color), \
          parent_id = COALESCE(NULLIF($5, 0), parent_id), \
-         sort = COALESCE($6, sort) WHERE id=$1",
+         sort = COALESCE($6, sort), \
+         newznab_id = COALESCE($7, newznab_id) WHERE id=$1",
     )
     .bind(*path)
     .bind(&body.name)
@@ -250,6 +263,7 @@ pub async fn category_update(
     .bind(body.bg_color.clone().unwrap_or_default())
     .bind(body.parent_id.unwrap_or(0))
     .bind(body.sort)
+    .bind(body.newznab_id)
     .execute(&state.repo.db)
     .await
     .map_err(|e| crate::errors::db_to_domain(e, "分类"))?;

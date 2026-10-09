@@ -226,6 +226,7 @@ export function StaffCatsPanel({
               <td className="colhead">#</td>
               <td className="colhead">{t.fldCatName}</td>
               <td className="colhead">{t.fldCatSort}</td>
+              <td className="colhead">{t.colNewznab}</td>
               <td className="colhead">{t.catTorrents}</td>
               <td className="colhead text-right">{dict.cmgmt.colActions}</td>
             </tr>
@@ -238,6 +239,7 @@ export function StaffCatsPanel({
                     : c.name}
                 </td>
                 <td className="num">{c.sort}</td>
+                <td className="num">{c.newznab_id ?? "—"}</td>
                 <td className="num">{c.torrents}</td>
                 <td className="text-right">
                   <button
@@ -259,6 +261,14 @@ export function StaffCatsPanel({
                       const so = prompt(t.sortPrompt, String(c.sort));
                       if (so === null) return;
                       const soT = so.trim();
+                      // newznab 分类号（0325）：Torznab 客户端按号过滤；
+                      // 空串=不改、0=清除映射
+                      const nz = prompt(
+                        t.newznabPrompt,
+                        c.newznab_id != null ? String(c.newznab_id) : "",
+                      );
+                      if (nz === null) return;
+                      const nzT = nz.trim();
                       void guard(async () => {
                         await api.put(`/api/v1/admin/categories/${c.id}`, {
                           name: nn,
@@ -266,6 +276,10 @@ export function StaffCatsPanel({
                           bg_color: bg.trim(),
                           parent_id: Number(pp) || null,
                           sort: soT === "" ? undefined : Number(soT),
+                          newznab_id:
+                            nzT === ""
+                              ? undefined
+                              : Number(nzT) || 0,
                         });
                       }, t.saved);
                     }}

@@ -134,6 +134,30 @@ export function ReviewsPanel({
               {t.small_descr ? (
                 <p className="mt-1 text-xs">{t.small_descr}</p>
               ) : null}
+              {/* 0326 分型字段：季/话数/作者/联赛…按站型各取所需（后端早已
+                  下发，这里补渲染——审影视看季集、审音乐看日志分） */}
+              {t.sections &&
+                Object.keys(t.sections).length > 0 && (
+                  <p className="mt-1 text-xs">
+                    {Object.entries(t.sections)
+                      .map(
+                        ([k, v]) =>
+                          `${k}: ${(v.vs ?? []).filter(Boolean).join(" / ") || v.v || "—"}`,
+                      )
+                      .join(" · ")}
+                  </p>
+                )}
+              {t.logs && (
+                <p className="text-xs text-sub">
+                  LOG {t.logs.min ?? "—"}分 × {t.logs.discs}碟
+                </p>
+              )}
+              {t.artifacts && t.artifacts.length > 0 && (
+                <p className="text-xs text-sub">
+                  ART{" "}
+                  {t.artifacts.map((x) => x.filename).join(" / ")}
+                </p>
+              )}
               {t.descr_excerpt ? (
                 <p className="mt-1 line-clamp-3 text-xs text-sub">
                   {t.descr_excerpt.replace(/<[^>]+>/g, "")}

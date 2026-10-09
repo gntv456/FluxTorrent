@@ -44,6 +44,12 @@ export interface PendingTorrent {
   dup_name?: number;
   owner_approved?: number;
   owner_denied?: number;
+  /** 分型审核字段（0326 后端已下发）：label → { v: 首值, vs: 全值 } */
+  sections?: Record<string, { v: string | null; vs: (string | null)[] }> | null;
+  /** 工件清单（0323 game/software）；NULL = 无工件 */
+  artifacts?: { kind: string; filename: string; sha256: string }[] | null;
+  /** 抓轨日志概要（0312 音乐站）{ min, discs }；NULL = 无日志 */
+  logs?: { min: number | null; discs: number } | null;
 }
 
 export interface AppealRow {

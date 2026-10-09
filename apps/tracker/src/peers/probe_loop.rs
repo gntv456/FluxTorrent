@@ -161,24 +161,16 @@ async fn probe_one(
 
 /// 四档结论写回（内存表 + 外置 Redis）。
 ///
-/// 外置 Redis 仍是 bool（0225 G30-B12 的既有契约，多副本共读），因此
-/// SUSPECT 在外置通道里与 DEAD 同为 false——**外置模式下无法区分「不可信」
-/// 与「无法验证」**。这是已知的表达力缺口：多副本部署要精确分档，需把
-/// Redis 侧升成 smallint（与 DB 侧对齐）后再改。单实例（本项目默认）不受影响。
+/// 外置 Redis 与内存/DB 同为 smallint 四态（历史 bool 契约已升级：
+/// SUSPECT 被压成 DEAD 会在外置多副本模式下误伤仅加密客户端）。
 async fn write_back(
     st: &actix_web::web::Data<TrackerState>,
     key: &super::model::PeerKey,
     state: i8,
 ) {
-    use super::model::{CONN_DEAD, CONN_SUSPECT};
     st.peers.set_conn_state(key, state);
     if super::external::external_enabled() {
         let mut r = st.redis.clone();
-        super::external::set_connectable(
-            &mut r,
-            key,
-            state != CONN_DEAD && state != CONN_SUSPECT,
-        )
-        .await;
+        super::external::set_conn_state(&mut r, key, state).await;
     }
 }
