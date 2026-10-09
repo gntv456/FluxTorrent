@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<style>
+  :root{
+    --sky:#2FA8FF; --sun:#FFC93C; --coral:#FF7A59; --mint:#2FBF9B;
+    --candy:#FF8FC7; --indigo:#5B6BF5; --cloud:#F5FAFF; --ink:#1F2A44;
+    --sub:#93A1BC; --line:#E3EDF7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1600px;height:900px;overflow:hidden;font-family:"Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+       background:var(--cloud);color:var(--ink);position:relative}
+  .glow{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5}
+  .g1{width:620px;height:620px;background:var(--sky);top:-220px;left:-160px;opacity:.28}
+  .g2{width:520px;height:520px;background:var(--candy);bottom:-200px;right:180px;opacity:.22}
+  .g3{width:420px;height:420px;background:var(--sun);top:-140px;right:-100px;opacity:.26}
+  .wrap{position:relative;padding:64px 72px;height:100%;display:flex;gap:56px}
+  .left{width:660px;flex:none;display:flex;flex-direction:column;justify-content:center}
+  .logo{display:flex;align-items:center;gap:16px;margin-bottom:26px}
+  .mark{width:62px;height:62px;border-radius:16px;background:linear-gradient(150deg,#1F2A44,#2b3d63);
+        color:#fff;font-weight:900;font-size:26px;display:flex;align-items:center;justify-content:center;
+        box-shadow:0 8px 24px rgba(31,42,68,.22);letter-spacing:-1px}
+  .mark b{background:linear-gradient(90deg,#2FA8FF,#FF8FC7);-webkit-background-clip:text;color:transparent}
+  .name{font-size:40px;font-weight:900;letter-spacing:-.5px}
+  h1{font-size:48px;line-height:1.2;font-weight:900;letter-spacing:-1px;margin-bottom:20px}
+  h1 em{font-style:normal;background:linear-gradient(90deg,var(--sky),var(--indigo));-webkit-background-clip:text;color:transparent}
+  .tag{font-size:20px;line-height:1.7;color:#41527a;margin-bottom:32px}
+  .chips{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:38px}
+  .chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:11px 20px;
+        font-size:17px;font-weight:700;box-shadow:0 4px 14px rgba(47,168,255,.08)}
+  .chip span{color:var(--sky)}
+  .links{display:flex;gap:26px;font-size:18px;color:#5a6b90;font-weight:600}
+  .links i{font-style:normal;color:var(--mint);margin-right:7px}
+  .right{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+  .shot{position:absolute;border-radius:18px;border:6px solid #fff;box-shadow:0 18px 46px rgba(31,42,68,.20);background:#fff}
+  .s1{width:660px;top:150px;right:0;transform:rotate(-2deg);z-index:2}
+  .s3{width:236px;bottom:44px;right:30px;transform:rotate(3deg);z-index:4}
+  .badge{position:absolute;top:64px;left:0;z-index:5;background:linear-gradient(90deg,var(--sun),var(--coral));
+         color:#fff;font-weight:900;font-size:19px;padding:12px 22px;border-radius:999px;transform:rotate(-2deg);
+         box-shadow:0 10px 24px rgba(255,122,89,.35)}
+  .foot{position:absolute;bottom:0;left:0;right:0;height:8px;
+        background:linear-gradient(90deg,#FFC93C,#FF7A59,#FF8FC7,#5B6BF5,#2FA8FF)}
+</style></head><body>
+<div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
+<div class="wrap">
+  <div class="left">
+    <div class="logo"><div class="mark"><b>FT</b></div><div class="name">FluxTorrent</div></div>
+    <h1>通用 <em>PT 建站系统</em><br>选一个站型，其余都能改</h1>
+    <div class="tag">Rust（Actix-web）四服务 + Next.js 15 + PostgreSQL 16<br>
+      一条 <code>docker compose up -d</code> 起站，自定义字段 / 页面 / 菜单 / 术语 / 主题</div>
+    <div class="chips">
+      <div class="chip"><span>11</span> 种预置站型</div>
+      <div class="chip"><span>30+</span> 模块开关四端联动</div>
+      <div class="chip"><span>六类型</span> 自定义字段引擎</div>
+      <div class="chip"><span>300+</span> 迁移启动自动执行</div>
+      <div class="chip"><span>MIT</span> 开源</div>
+    </div>
+    <div class="links">
+      <div><i>◆</i>github.com/gntv456/FluxTorrent</div>
+      <div><i>◆</i>wiki.ptang.top/ft</div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="badge">零魔改 · 升级不丢改</div>
+    <img class="shot s1" src="img/01-torrents.png">
+    <img class="shot s3" src="img/m1-torrents.png">
+  </div>
+</div>
+<div class="foot"></div>
+</body></html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<style>
+  :root{--sky:#2FA8FF;--sun:#FFC93C;--coral:#FF7A59;--mint:#2FBF9B;--candy:#FF8FC7;--indigo:#5B6BF5;
+        --cloud:#F5FAFF;--ink:#1F2A44;--sub:#93A1BC;--line:#E3EDF7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1600px;height:1000px;font-family:"Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+       background:var(--cloud);color:var(--ink);padding:44px 56px;position:relative;overflow:hidden}
+  h2{font-size:34px;font-weight:900;letter-spacing:-.5px}
+  h2 span{color:var(--sky)}
+  .sub{font-size:17px;color:#5a6b90;margin:6px 0 26px}
+  .layer{display:flex;align-items:stretch;gap:18px;margin-bottom:14px}
+  .lane{width:118px;flex:none;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+        font-size:15px;font-weight:800;color:#fff;border-radius:14px;padding:14px;text-align:left}
+  .l1{background:linear-gradient(140deg,var(--sky),#1E8AE8)}
+  .l2{background:linear-gradient(140deg,var(--indigo),#4150d8)}
+  .l3{background:linear-gradient(140deg,var(--mint),#1f9d7f)}
+  .l4{background:linear-gradient(140deg,var(--coral),#e85c3d)}
+  .lane small{font-weight:600;opacity:.85;font-size:12px;margin-top:3px}
+  .cards{flex:1;display:grid;gap:14px}
+  .c4{grid-template-columns:repeat(4,1fr)} .c2{grid-template-columns:repeat(2,1fr)} .c3{grid-template-columns:repeat(3,1fr)}
+  .card{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;
+        box-shadow:0 6px 18px rgba(31,42,68,.06)}
+  .card b{display:block;font-size:19px;margin-bottom:5px}
+  .card i{font-style:normal;font-size:13.5px;color:#61729a;line-height:1.65;display:block}
+  .card .tag{display:inline-block;margin-top:8px;font-size:12px;font-weight:800;color:var(--sky);
+             background:#E8F4FF;border-radius:999px;padding:3px 10px}
+  .arrow{height:26px;margin-left:136px;display:flex;align-items:center;color:var(--sub);font-size:19px;gap:10px}
+  .arrow s{text-decoration:none;font-size:13px;color:#7b8bab}
+  .chain{margin-top:22px;background:#fff;border:1.5px dashed var(--sky);border-radius:16px;padding:18px 22px}
+  .chain h3{font-size:18px;font-weight:900;color:var(--sky);margin-bottom:12px}
+  .flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .node{background:#F2F8FF;border:1.5px solid var(--line);border-radius:10px;padding:9px 14px;font-size:14.5px;font-weight:700}
+  .node.hot{background:#FFF6E0;border-color:#FFDF9B}
+  .sep{color:var(--sub);font-size:16px}
+  .foot{position:absolute;bottom:0;left:0;right:0;height:7px;
+        background:linear-gradient(90deg,#FFC93C,#FF7A59,#FF8FC7,#5B6BF5,#2FA8FF)}
+</style></head><body>
+<h2>架构：<span>四个 Rust/Node 服务</span> + PostgreSQL + Redis，全部容器化</h2>
+<div class="sub">无状态服务可水平扩展；多机部署已实证（计费流消费者组 + worker 分片 SKIP LOCKED + tracker 挂 LB）</div>
+
+<div class="layer"><div class="lane l1">接入层<small>浏览器 / 客户端</small></div>
+  <div class="cards c4">
+    <div class="card"><b>浏览器 / PWA</b><i>Next.js 15 RSC 首屏，可安装到桌面，推送订阅</i></div>
+    <div class="card"><b>BT 客户端</b><i>qBittorrent / Transmission 等，announce 走 passkey</i></div>
+    <div class="card"><b>第三方工具</b><i>PT-Plugin-Plus · Jackett/Prowlarr · Sonarr/Radarr（Torznab）· RSS</i></div>
+    <div class="card"><b>NexusPHP 生态</b><i>/compat/nexusphp/* 字段口径兼容 + NP 别名路径</i></div>
+  </div></div>
+<div class="arrow">↓<s>反向代理：Nginx / 宝塔 / 1Panel（TLS 与域名由站长侧掌握）</s></div>
+
+<div class="layer"><div class="lane l2">服务层<small>四进程独立</small></div>
+  <div class="cards c4">
+    <div class="card"><b>web</b><i>Next.js 15 前端；四语 i18n、移动端全路由适配、主题令牌</i><span class="tag">无状态</span></div>
+    <div class="card"><b>api</b><i>Actix-web 业务 REST：认证 / 种子 / 经济 / 社区 / 管理 / 开放 API</i><span class="tag">无状态</span></div>
+    <div class="card"><b>tracker</b><i>自研私有 Tracker：HTTP BEP3 + UDP BEP15 + IPv6 BEP7 + scrape</i><span class="tag">内存热数据</span></div>
+    <div class="card"><b>worker</b><i>45 个 job 应用内调度：计费落库、促销到期、结算、NP 导入器</i><span class="tag">按队列分区</span></div>
+  </div></div>
+<div class="arrow">↓<s>sqlx 参数化查询 / 编译期校验；schema 变更全部走迁移，启动自动执行</s></div>
+
+<div class="layer"><div class="lane l3">数据层<small>事实源</small></div>
+  <div class="cards c3">
+    <div class="card"><b>PostgreSQL 16</b><i>分区流水表 + 覆盖索引 + 游标分页；pg_trgm 中文全文搜索；300+ 迁移（0001 起）</i></div>
+    <div class="card"><b>Redis 7</b><i>L2 缓存、会话、announce 事件流（Redis Stream + 消费组 ack）</i></div>
+    <div class="card"><b>统一账本</b><i>spark_ledger 流水为唯一事实源，余额=流水重放；幂等键防重复扣减</i></div>
+  </div></div>
+<div class="arrow">↓<s>--profile monitoring 一键起</s></div>
+
+<div class="layer"><div class="lane l4">可观测<small>运维</small></div>
+  <div class="cards c3">
+    <div class="card"><b>Prometheus + Grafana</b><i>五条告警预置；/metrics 出口</i></div>
+    <div class="card"><b>任务面板</b><i>45 个 job 可观测、可手动触发、失败留痕</i></div>
+    <div class="card"><b>备份与演练</b><i>backup.sh + restore --drill 两段式；审计日志 HMAC 链</i></div>
+  </div></div>
+
+<div class="chain">
+  <h3>关键链路：announce 计费（PT 站的心脏）</h3>
+  <div class="flow">
+    <div class="node">BT 客户端 announce</div><div class="sep">→</div>
+    <div class="node">tracker：passkey 鉴权 + peer 内存维护</div><div class="sep">→</div>
+    <div class="node hot">立即返回 compact 响应<br><small>路径内零 DB 依赖</small></div><div class="sep">→</div>
+    <div class="node">Redis Stream 事件</div><div class="sep">→</div>
+    <div class="node">worker 聚合窗口 + 死信重试</div><div class="sep">→</div>
+    <div class="node">批量 upsert 流水 / snatches</div><div class="sep">→</div>
+    <div class="node hot">促销裁决同源<br><small>徽章与计费不打架</small></div><div class="sep">→</div>
+    <div class="node">排行榜 / 考核 / 账单</div>
+  </div>
+  <div class="sub" style="margin:14px 0 0">实测：announce 2138 req/s、P50 7.2ms、零失败（压测端饱和值，见 docs/ops/performance.md）</div>
+</div>
+<div class="foot"></div>
+</body></html>
