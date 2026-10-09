@@ -41,7 +41,7 @@
 .td-related__list { display: flex; flex-direction: column; gap: 2px; }
 .td-related__link { display: flex; align-items: center; gap: 8px;
   min-height: 32px; padding: 4px 8px; border-radius: 6px; font-size: 13px; }
-.td-related__link:hover { background: var(--hover, rgba(0,0,0,.04)); }
+.td-related__link:hover { background: var(--surface-hover); }
 .td-related__name { flex: 1 1 auto; min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
 .td-related__meta { display: inline-flex; flex: 0 0 auto; gap: 10px;
