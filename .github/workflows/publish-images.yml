@@ -39,7 +39,7 @@ jobs:
           - { name: tracker, dockerfile: docker/tracker.Dockerfile }
           - { name: web,     dockerfile: docker/web.Dockerfile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -93,7 +93,7 @@ jobs:
           - { name: tracker, dockerfile: docker/tracker.Dockerfile }
           - { name: web,     dockerfile: docker/web.Dockerfile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
