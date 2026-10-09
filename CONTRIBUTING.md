@@ -36,6 +36,27 @@ node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
 1. **迁移文件不可变**：`apps/api/migrations/` 中已合并的迁移禁止改名/改号/改内容——
    sqlx 按版本号 + checksum 记账，任何改动都会让存量部署启动失败。撞号时把自己的
    迁移挪到更大的号（如 0143+），永远不要让已存在的编号让位。
+1a. **建号前先查目录、建号后立刻提交占位**（防撞号，2026-10-09 事故教训）：
+   - 新建迁移前**必须**先 `ls apps/api/migrations/ | sort | tail` 取当前最大号，
+     号 = 最大号 + 1。**并行开发时"我看到的最大号"可能已经过时**。
+   - 建号后**立即 `git add` 该文件并提交占位**（哪怕内容是 `SELECT 1;` 后补）。
+     未提交的新号文件最容易被另一方在不知情下复用同一号。
+   - 撞号表现：`ls migrations/ | awk -F_ '{print $1}' | uniq -d` 有输出。
+     此时**让号的一方改名到更大的空号**，并把 `_sqlx_migrations` 里该 version 的
+     `description` 修正为实际归属（sqlx 只按 version 记账，同号文件会互相覆盖）。
+   - 已应用过的迁移改名后，需在目标库**删除 `_sqlx_migrations` 旧记录**（checksum
+     不符会启动报错），再 rebuild api 让新号以幂等 SQL 重跑。
+1b. **改迁移后必须 rebuild api 镜像，不能只 restart**（2026-10-09 事故教训）：
+   容器内 `apps/api/src/main.rs:145` 用 `Migrator::new(Path)` **运行时读
+   `./migrations`**，但该目录在容器里是 **build 时的镜像拷贝**。只 `restart`
+   读到的仍是旧文件（现象：迁移 `success=t` 但数据没变）。改 .sql 后必须
+   `docker compose -f docker/docker-compose.yml build api` +
+   `up -d --no-deps api`。迁移必须幂等（rebuild 后会重跑已改动的号）。
+1c. **JSONB 只读一次构造、别链式累加**：`jsonb_set(obj,'{a,b}',v,true)` 的第 4 参
+   `true` **只控制"值已存在时是否替换"，父路径不存在时不会创建中间层级**（直接返回
+   原对象）；`jsonb_agg(...)` 过滤后**空集返回 NULL**，`NULL || x` 仍 NULL。
+   两者叠加会把整段 JSONB 抹成 NULL/`{}`。构造多层 JSONB 用
+   `jsonb_build_object` 一次性建；聚合前 `COALESCE(agg, '[]'::jsonb)`。
 2. **资金动账必须走统一管线**：`spend_spark`/`earn_spark`（或 `_tx` 事务版），
    禁止直接 UPDATE 余额；`SpendOutcome` 是 `#[must_use]`——丢弃返回值继续执行
    副作用等于打开幂等重放印钞口。
