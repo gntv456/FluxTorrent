@@ -57,6 +57,17 @@ node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
      checksum 换成对方的**，api 随后 crash-loop。⇒ 光「建号前查目录」不够；
      **每次 build 前重跑一次** `ls migrations/ | awk -F_ '{print $1}' | uniq -d`。
      已应用方能不改内容、直接让号到更大空号（SQL 幂等可重跑）。
+   - **⚠️ 让号/重排必须过三视角**（2026-10-09 第四次撞号让号 0330→0333
+     实测漏了第二视角，空库装机第一步即崩，见 f3afef2）：
+     ① 存量库——checksum 对齐（该提交做了）；
+     ② **空库——文件序依赖**：让号把建表挪到更小号之后，所有 `REFERENCES`
+     它的迁移就断链（0332 引用 0333 才建的表）。让号后必须 grep 一遍
+     「谁引用被挪的表」并确认引用方新序号在被挪文件**之前**；
+     ③ CI/本地空库闸门——`install_e2e.py` 真跑一遍（`sed ROLLBACK`
+     干跑只验语法不验顺序）。另：让号若伴随**内容修改**（如本次 0332
+     前置建表），存量库 checksum 必失配 ⇒ 配套
+     `scripts/align_migration_checksums_*.sql` 对账脚本 + upgrade 文档
+     写明执行时机，缺一不可。
 1b. **改迁移后必须 rebuild api 镜像，不能只 restart**（2026-10-09 事故教训）：
    容器内 `apps/api/src/main.rs:145` 用 `Migrator::new(Path)` **运行时读
    `./migrations`**，但该目录在容器里是 **build 时的镜像拷贝**。只 `restart`
