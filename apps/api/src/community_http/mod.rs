@@ -12,6 +12,7 @@ mod forum_util;
 mod forums;
 mod friend;
 mod interact;
+mod subs_calendar;
 mod leak_bot;
 mod like;
 mod list_prefs;
@@ -47,6 +48,7 @@ pub use forum_util::*;
 pub use forums::*;
 pub use friend::*;
 pub use interact::*;
+pub use subs_calendar::*;
 pub use leak_bot::*;
 pub use like::*;
 pub use list_prefs::*;
@@ -77,6 +79,9 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(artists_list)
         .service(artists_top)
         .service(artist_detail)
+        // 追更中心（0328 剧集批）：我的订阅进度 + 日历
+        .service(my_group_subscriptions)
+        .service(my_subscription_calendar)
         // M14 勋章
         .service(medal_rarities)
         .service(medal_list)

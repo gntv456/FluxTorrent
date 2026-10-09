@@ -1,0 +1,12 @@
+-- 0328_subs_calendar.sql
+-- 站型成熟度 · movie/anime 剧集追更（P1 深水区可落地半场）。
+--
+-- 纯文档性迁移（代码在 community_http/subs_calendar.rs）：
+--   · GET /me/subscriptions/groups  我的订阅 + 追更进度（ep_last 最大值
+--     ——anime 语境=追到第几话，movie 语境=更到第几集，按站型维度自动生效）
+--   · GET /me/subscriptions/calendar 追更日历（近 14 天订阅组新种过审
+--     事件按天分组）
+-- 写路径零新增：订阅（group_subscribe）/过审通知（review_side_effects
+-- 站内信）/组并列（group_info）全部复用既有件。
+-- 记迁移号锚定「剧集追更批完成」到水位（本仓纪律）。
+SELECT 1;
