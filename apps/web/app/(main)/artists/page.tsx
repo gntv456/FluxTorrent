@@ -14,16 +14,24 @@ interface ArtistItem {
   torrents: number;
 }
 
-/** 艺人总览页（0327 music 批补齐前端）。
- *  后端 /artists 系列早已交付（列表/艺人页/榜单），本页补上入口——
- *  此前只有 API，用户点不到。形态与 /networks 一致（卡片墙 + 收录数）。 */
-export default async function ArtistsPage() {
+/** 自由值实体总览页（0327 music 批；0338 通用化）。
+ *  后端 /artists 系列已交付（列表/实体页/榜单），本页补上入口——
+ *  此前只有 API，用户点不到。形态与 /networks 一致（卡片墙 + 收录数）。
+ *  0338 起 `?kind=` 参数化：artist（音乐艺人）/ author（电子书作者）/
+ *  studio（动漫制作公司）复用同一页面。 */
+export default async function ArtistsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kind?: string }>;
+}) {
   const { dict } = await getDict();
+  const sp = await searchParams;
+  const kind = (sp?.kind ?? "artist").trim().toLowerCase() || "artist";
   let items: ArtistItem[] = [];
   let failed = false;
   try {
     const r = await api.get<{ items: ArtistItem[] }>(
-      "/api/v1/artists?limit=100",
+      `/api/v1/artists?limit=100&kind=${encodeURIComponent(kind)}`,
     );
     items = r.items ?? [];
   } catch {

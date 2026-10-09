@@ -131,7 +131,28 @@ const zhCnBase = {
     needNewPwHint:
       "系统预置管理员 root（初始密码 password123）为临时密码——临时密码下除改密外的接口都会被拦截，不先改密无法完成安装。设置后向导会直接用新密码完成安装（其他设备需重新登录）。",
     newPw: "新密码（至少 8 位）",
-    newPw2: "确认新密码",
+    newPw2: "再输一次新密码",
+    // 凭据区收敛（实测困惑：新旧两组密码框并列，无从判断填哪个）
+    credResetTitle: "① 先给管理员设置新密码",
+    credResetIntroAuto:
+      "系统已预置管理员账号，且仍在使用初始密码 password123。临时密码下除改密外的接口都会被拦截，不改密就无法完成安装。",
+    credResetIntroManual:
+      "系统预置管理员账号的密码已被重置为随机临时密码，请先输入它以完成改密。",
+    credAdminUser: "管理员账号",
+    credCurrentPw: "当前密码",
+    credFilledAuto: "已自动填入，无需修改",
+    credCurrentPwHint:
+      "即重置密码时显示给你的那串临时密码——它将被新密码替换。",
+    credNewPwHint:
+      "这就是你之后登录本站用的密码，请立即牢记——忘记后只能走数据库重置。",
+    credResetFoot:
+      "改密会同时注销该账号在其他设备上的登录；本站目前只有这一个管理员，改密后请用新密码登录。",
+    credLoginTitle: "② 用已有管理员账号登录",
+    credLoginHint:
+      "本站已存在管理员。请填它的账号密码，向导用它完成最后一步安装确认。",
+    credMissing: "请填写管理员账号与密码",
+    pwOldWrong:
+      "当前密码不正确——请填重置密码时显示给你的那串临时密码。（新密码可以随便改，这一栏要填的是改密前那串）",
     pwTooShort: "新密码至少 8 位",
     pwMismatch: "两次输入的新密码不一致",
     goHome: "进入站点",
@@ -157,6 +178,18 @@ const zhCnBase = {
     done: "安装完成",
     alreadyDone: "本站已完成安装向导（重复完成幂等）。",
     loadFailed: "无法加载向导状态，请确认 API 可达",
+    // 冷启动加载态与失败诊断（api 迁移跑完才 bind，首次装机常命中）
+    loadingStatus: "正在加载向导状态…",
+    stillWaiting: "API 尚未就绪，正在自动重试…（首次启动需等待数据库迁移完成）",
+    retrying: "重试中…",
+    retryLoad: "重新加载",
+    attempt: "第 {n} 次探测",
+    hintGateway:
+      "网站容器连不上 API 容器：检查 docker compose 中 api 是否已 healthy，以及 API_SERVER_URL 是否指向正确地址。",
+    hintHttp:
+      "收到的不是 JSON：通常是反向代理把 /api 转到了非 API 服务，或 API 仍在启动中。",
+    hintNetwork:
+      "浏览器未能连接到网站：确认反向代理已放行 /api/ 路径，且未拦截该请求。",
     // 0214：announce 采集 + 首个邀请码 + checklist 链接化
     announceUrl: "Tracker 公网地址（announce URL）",
     announceHint:
@@ -178,6 +211,10 @@ const zhCnBase = {
     copied: "已复制",
     chkGoFix: "去「基础设定 → Tracker 地址」修改",
     chkGoSmtp: "去配置 SMTP",
+    // 0209 检查清单三键此前漏登记（代码在用、字典没有 ⇒ 三语全靠简中兜底）
+    checklistTitle: "开站检查清单",
+    chkReg: "注册模式：",
+    chkRegOpen: "（开放注册）",
   },
   mod: {
     disabledTitle: "本站未开放此功能",
@@ -5932,6 +5969,34 @@ const zhCnBase = {
     ripViewLog: "查看日志",
     ripLoading: "读取中…",
     ripLoadFailed: "日志读取失败",
+    reportButton: "举报",
+    reportTitle: "举报此种子",
+    reportSubmit: "提交",
+    reportCancel: "取消",
+    adjustLog: "改判",
+    adjustHint: "输入新的日志分（0-100，留空撤销改判）",
+    adjustDone: "已改判",
+    adjustFail: "改判失败",
+    previewTitle: "试读 / 试听",
+    previewAdd: "添加预览",
+    previewRemove: "移除",
+    previewUploading: "上传中…",
+    previewDone: "已添加",
+    reportQueue: "举报处理",
+    reportQueueEmpty: "暂无待处理举报",
+    reportAccept: "接受并淘汰",
+    reportReject: "驳回",
+    reportHandled: "已处理",
+    reportColTarget: "被举报 / 替代",
+    reportColReason: "理由",
+    reportColNote: "说明",
+    reportDone: "已提交，等待版主处理",
+    reportFail: "提交失败",
+    reasonBadQuality: "劣质版本",
+    reasonDead: "死种",
+    reasonWrongContent: "内容不符",
+    reasonDuplicate: "重复发布",
+    reasonOther: "其他",
   },
   offers2: {
     title: "候选",

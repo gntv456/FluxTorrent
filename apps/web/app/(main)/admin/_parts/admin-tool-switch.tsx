@@ -35,6 +35,7 @@ import { AdminArcade } from "@/components/admin-arcade";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { ViewHiddenEditor } from "@/components/view-hidden-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
+import { AdminTrumps } from "@/components/admin-trumps";
 import { AdminPromoKinds } from "./admin-promo-kinds";
 
 /** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名）
@@ -64,6 +65,9 @@ export function renderSimpleTool(
       return <AdminUsers classes={dict.admin.classList} />;
     case "torrents":
       return <AdminTorrents />;
+    // 举报处理（0336 trumping 的版主入口；导航项见迁移 0339）
+    case "trumps":
+      return <AdminTrumps />;
     case "content":
       return (
         <section className="nexus-detail">

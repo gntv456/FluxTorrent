@@ -18,6 +18,7 @@ import { FileTree } from "@/components/file-tree";
 import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
 import { Descr, Spec, Fold } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
+import { TorrentPreviews } from "@/components/torrent-previews";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
 import { TorrentPeers } from "@/components/torrent-peers";
@@ -347,6 +348,9 @@ export default async function TorrentDetailPage({
       {sectOn("group") && group?.group && group.items.length > 1 && (
         <GroupVersions group={group} dict={dict} />
       )}
+
+      {/* 试读 / 试听（0337）：清单懒加载，空清单整段不渲染 */}
+      <TorrentPreviews torrentId={t.id} />
 
 
       {sectOn("collections") && inCollections.length > 0 && (

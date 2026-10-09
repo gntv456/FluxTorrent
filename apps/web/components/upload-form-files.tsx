@@ -99,8 +99,16 @@ export function UploadFilesBlock({
     }
   }
 
-  async function genDescr() {
-    const url = ptgenUrl.trim();
+  /** 元数据自动拉取（G7）：IMDb 链接失焦、且用户还没自己填 PT-Gen 链接时
+   *  自动拉一次简介。手动按钮行为不变（仍可改链接后重拉）。 */
+  async function autoFill() {
+    const u = imdb.trim();
+    if (!u || ptgenBusy || ptgenUrl.trim()) return;
+    await genDescr(u);
+  }
+
+  async function genDescr(urlArg?: string) {
+    const url = (urlArg ?? ptgenUrl).trim();
     if (!url || ptgenBusy) return;
     setPtgenBusy(true);
     try {
@@ -166,6 +174,7 @@ export function UploadFilesBlock({
               type="url"
               value={imdb}
               onChange={(e) => setImdb(e.target.value)}
+              onBlur={autoFill}
               placeholder="https://www.imdb.com/title/tt0468569/"
               maxLength={300}
               className={fieldCls}
@@ -191,7 +200,7 @@ export function UploadFilesBlock({
               <button
                 type="button"
                 disabled={ptgenBusy || !ptgenUrl.trim()}
-                onClick={genDescr}
+                onClick={() => genDescr()}
                 className="min-h-10 rounded-[10px] border border-[var(--baozi-line)] px-4 text-sm font-bold text-ink hover:border-[var(--baozi-orange)] disabled:opacity-50"
               >
                 {ptgenBusy ? (dict.upload.ptgenBusy) : (dict.upload.ptgenBtn)}

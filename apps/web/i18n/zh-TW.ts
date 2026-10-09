@@ -154,7 +154,28 @@ const zhTwBase: Omit<
     needNewPwHint:
       "系統預置管理員 root（初始密碼 password123）為臨時密碼——臨時密碼下除改密外的介面都會被攔截，不先改密無法完成安裝。設定後嚮導會直接用新密碼完成安裝（其他裝置需重新登入）。",
     newPw: "新密碼（至少 8 位）",
-    newPw2: "確認新密碼",
+    newPw2: "再輸一次新密碼",
+    // 憑據區收斂（實測困惑：新舊兩組密碼框並列，無從判斷填哪個）
+    credResetTitle: "① 先給管理員設定新密碼",
+    credResetIntroAuto:
+      "系統已預置管理員帳號，且仍在使用初始密碼 password123。臨時密碼下除改密外的介面都會被攔截，不改密就無法完成安裝。",
+    credResetIntroManual:
+      "系統預置管理員帳號的密碼已被重置為隨機臨時密碼，請先輸入它以完成改密。",
+    credAdminUser: "管理員帳號",
+    credCurrentPw: "目前密碼",
+    credFilledAuto: "已自動填入，無需修改",
+    credCurrentPwHint:
+      "即重置密碼時顯示給你的那串臨時密碼——它將被新密碼取代。",
+    credNewPwHint:
+      "這就是你之後登入本站用的密碼，請立即牢記——忘記後只能走資料庫重置。",
+    credResetFoot:
+      "改密會同時登出該帳號在其他裝置上的登入；本站目前只有這一個管理員，改密後請用新密碼登入。",
+    credLoginTitle: "② 用已有管理員帳號登入",
+    credLoginHint:
+      "本站已存在管理員。請填它的帳號密碼，向導用它完成最後一步安裝確認。",
+    credMissing: "請填寫管理員帳號與密碼",
+    pwOldWrong:
+      "目前密碼不正確——請填重置密碼時顯示給你的那串臨時密碼。（新密碼可以隨便改，這一欄要填的是改密前那串）",
     pwTooShort: "新密碼至少 8 位",
     pwMismatch: "兩次輸入的新密碼不一致",
     goHome: "進入站點",
@@ -180,6 +201,18 @@ const zhTwBase: Omit<
     done: "安裝完成",
     alreadyDone: "本站已完成安裝嚮導（重複完成冪等）。",
     loadFailed: "無法載入嚮導狀態，請確認 API 可達",
+    // 冷啟動載入態與失敗診斷（api 遷移跑完才 bind，首次裝機常命中）
+    loadingStatus: "正在載入嚮導狀態…",
+    stillWaiting: "API 尚未就緒，正在自動重試…（首次啟動需等待資料庫遷移完成）",
+    retrying: "重試中…",
+    retryLoad: "重新載入",
+    attempt: "第 {n} 次探測",
+    hintGateway:
+      "網站容器連不上 API 容器：檢查 docker compose 中 api 是否已 healthy，以及 API_SERVER_URL 是否指向正確位址。",
+    hintHttp:
+      "收到的不是 JSON：通常是反向代理把 /api 轉到了非 API 服務，或 API 仍在啟動中。",
+    hintNetwork:
+      "瀏覽器未能連線到網站：確認反向代理已放行 /api/ 路徑，且未攔截該請求。",
     // 0214：announce 採集 + 首個邀請碼 + checklist 連結化
     announceUrl: "Tracker 公網位址（announce URL）",
     announceHint:
@@ -201,6 +234,9 @@ const zhTwBase: Omit<
     copied: "已複製",
     chkGoFix: "去「基礎設定 → Tracker 位址」修改",
     chkGoSmtp: "去設定 SMTP",
+    checklistTitle: "開站檢查清單",
+    chkReg: "註冊模式：",
+    chkRegOpen: "（開放註冊）",
   },
   mod: {
     disabledTitle: "本站未開放此功能",
@@ -5925,6 +5961,34 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     ripViewLog: "檢視日誌",
     ripLoading: "讀取中…",
     ripLoadFailed: "日誌讀取失敗",
+    reportButton: "檢舉",
+    reportTitle: "檢舉此種子",
+    reportSubmit: "提交",
+    reportCancel: "取消",
+    adjustLog: "改判",
+    adjustHint: "輸入新的日誌分（0-100，留空撤銷改判）",
+    adjustDone: "已改判",
+    adjustFail: "改判失敗",
+    previewTitle: "試讀 / 試聽",
+    previewAdd: "新增預覽",
+    previewRemove: "移除",
+    previewUploading: "上傳中…",
+    previewDone: "已新增",
+    reportQueue: "檢舉處理",
+    reportQueueEmpty: "暫無待處理檢舉",
+    reportAccept: "接受並淘汰",
+    reportReject: "駁回",
+    reportHandled: "已處理",
+    reportColTarget: "被檢舉 / 替代",
+    reportColReason: "理由",
+    reportColNote: "說明",
+    reportDone: "已提交，等待版主處理",
+    reportFail: "提交失敗",
+    reasonBadQuality: "劣質版本",
+    reasonDead: "死種",
+    reasonWrongContent: "內容不符",
+    reasonDuplicate: "重複發布",
+    reasonOther: "其他",
   },
   offers2: {
     title: "候選",
