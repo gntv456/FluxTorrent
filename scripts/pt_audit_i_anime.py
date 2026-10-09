@@ -50,9 +50,11 @@ def main():
     ok("season 是 select", kinds.get("season") == "select", kinds)
     ok("ep_first 是 number", kinds.get("ep_first") == "number", kinds)
     ok("ep_last 是 number", kinds.get("ep_last") == "number", kinds)
-    ok("subtitle_group 是 multiselect", kinds.get("subtitle_group") == "multiselect", kinds)
+    ok("subtitle_group 是 multiselect",
+       kinds.get("subtitle_group") == "multiselect", kinds)
     n_season = psql("SELECT count(*) FROM section_dict WHERE kind='season'")
-    n_sub = psql("SELECT count(*) FROM section_dict WHERE kind='subtitle_group'")
+    n_sub = psql(
+        "SELECT count(*) FROM section_dict WHERE kind='subtitle_group'")
     ok("season 词表非空", n_season != "0", n_season)
     ok("字幕组词表非空（0317 已补）", n_sub != "0", n_sub)
 
@@ -78,7 +80,8 @@ def main():
         "SELECT kind || ':' || COALESCE(value::text, dict_id::text) "
         "FROM torrent_sections WHERE torrent_id=%s ORDER BY kind" % tid)
     ok("话数落 torrent_sections（ep_first=1）",
-       "ep_first:1" in stored or "ep_first: 1" in stored.replace(" ", ""), stored)
+       "ep_first:1" in stored
+       or "ep_first: 1" in stored.replace(" ", ""), stored)
     ok("季落库（dict）",
        psql("SELECT count(*) FROM torrent_sections ts JOIN section_dict sd "
             "ON sd.id = ts.dict_id WHERE ts.torrent_id=%s AND sd.kind='season'"
@@ -113,9 +116,11 @@ def main():
        list((secs or {}).keys()) if isinstance(secs, dict) else secs)
 
     # ---- 清理（探针种 + 回滚 anime apply 恢复原站型）
-    s, r = call("GET", "/admin/torrents/%s" % tid, token=tok) if False else (200, None)
+    s, r = (call("GET", "/admin/torrents/%s" % tid, token=tok)
+            if False else (200, None))
     psql("DELETE FROM torrents WHERE id=%s" % tid)
-    aid = psql("SELECT max(id) FROM site_pack_applies WHERE rolled_back_at IS NULL")
+    aid = psql(
+        "SELECT max(id) FROM site_pack_applies WHERE rolled_back_at IS NULL")
     if aid:
         s, r = call("POST", "/admin/site-type-packs/applies/%s/rollback" % aid,
                     None, token=tok)
@@ -127,7 +132,8 @@ def main():
         back = psql("SELECT value FROM site_settings "
                     "WHERE name='site_type'")
     ok("站型还原", back == orig_type, (orig_type, back))
-    psql("DELETE FROM section_kinds WHERE kind IN ('season','ep_first','ep_last')"
+    psql("DELETE FROM section_kinds "
+         "WHERE kind IN ('season','ep_first','ep_last')"
          " AND NOT EXISTS (SELECT 1 FROM torrent_sections ts"
          " WHERE ts.kind IN ('season','ep_first','ep_last'))")
 

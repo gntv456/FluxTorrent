@@ -96,12 +96,10 @@ async fn torrent_aggregate(
     let nfo_f = torrents::get_nfo(&state.repo.db, id, viewer);
     let tags_f = torrents::list_tags(&state.repo.db, id, viewer);
     let logs_f = torrents::list_logs(&state.repo.db, id);
-    let arts_f = crate::publish_http::list_artifacts_for_detail(
-        &state.repo.db, id,
-    );
-    let arts_children_f = crate::publish_http::list_artifact_children(
-        &state.repo.db, id,
-    );
+    let arts_f =
+        crate::publish_http::list_artifacts_for_detail(&state.repo.db, id);
+    let arts_children_f =
+        crate::publish_http::list_artifact_children(&state.repo.db, id);
 
     // torrent/detail 失败才整体短路（种子不存在 → 404）；files/nfo/tags
     // 为纯静态块降级为空。detail/thanks 带 viewer 态，留在个人段实时算。
@@ -118,8 +116,16 @@ async fn torrent_aggregate(
         async { arts_f.await },
         async { arts_children_f.await },
     );
-    let (torrent_r, detail_r, files, nfo, tags, logs, artifacts, artifact_children) =
-        joined;
+    let (
+        torrent_r,
+        detail_r,
+        files,
+        nfo,
+        tags,
+        logs,
+        artifacts,
+        artifact_children,
+    ) = joined;
     // 只有对外可见的种子才允许进共享缓存（见上方命中判定）
     let cacheable = matches!(&torrent_r, Ok(t) if t.approval_status == 1);
     let torrent = torrent_r?;

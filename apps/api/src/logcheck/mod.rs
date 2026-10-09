@@ -22,6 +22,7 @@
 //! 决定「不查 / 只标注 / 达线才让发」，多碟取 **MIN** 作为种子日志分
 //! （一张碟 99 分，整包就不是 100 分的发行）。
 
+pub mod cue;
 mod decode;
 mod detect;
 mod eac;

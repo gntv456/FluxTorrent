@@ -149,21 +149,33 @@ pub async fn group_info(
     let Some((name, descr, category_id)) = row else {
         return Ok(ok(serde_json::json!({ "group": null })));
     };
-    let items: Vec<(i64, String, Option<String>, i64, i32, i32, i32, bool)> = sqlx::query_as(
-        "SELECT id, name, small_descr, size, seeders, leechers, times_completed, official_tag \
-         FROM torrents WHERE group_id = $1 AND approval_status = 1 ORDER BY id",
-    )
-    .bind(gid)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let items: Vec<(i64, String, Option<String>, i64, i32, i32, i32, bool, Option<String>)> =
+        sqlx::query_as(
+            "SELECT t.id, t.name, t.small_descr, t.size, t.seeders, \
+                    t.leechers, t.times_completed, t.official_tag, s.std \
+             FROM torrents t \
+             LEFT JOIN LATERAL ( \
+                 SELECT d.name AS std FROM torrent_sections ts \
+                 JOIN section_dict d ON d.kind = ts.kind \
+                   AND d.id = ts.dict_id \
+                 WHERE ts.torrent_id = t.id AND ts.kind = 'standard' \
+                 LIMIT 1 \
+             ) s ON TRUE \
+             WHERE t.group_id = $1 AND t.approval_status = 1 \
+             ORDER BY t.id",
+        )
+        .bind(gid)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let items: Vec<_> = items
         .into_iter()
-        .map(|(id, n, sd, size, s, l, c, official)| {
+        .map(|(id, n, sd, size, s, l, c, official, std)| {
             serde_json::json!({
                 "id": id, "name": n, "small_descr": sd, "size": size,
                 "seeders": s, "leechers": l, "times_completed": c,
                 "official": official, "current": id == torrent_id,
+                "tier": tier_of(std.as_deref()),
             })
         })
         .collect();
@@ -180,4 +192,21 @@ struct GroupAttachReq {
     name: String,
     #[serde(default)]
     descr: Option<String>,
+}
+
+/// 多版本分槽（0336 G2）：由 `standard` 维度值**派生** tier，零 schema 改动
+/// （PTP 的分槽语义；不存列、不 match site_type，读路径算）。
+/// 2160p/4K→UHD、1080p→HD、720p/480p→SD、其余或缺失→Other。
+fn tier_of(std_name: Option<&str>) -> &'static str {
+    let Some(s) = std_name else { return "Other" };
+    let s = s.to_ascii_lowercase();
+    if s.contains("2160") || s.contains("4k") || s.contains("uhd") {
+        "UHD"
+    } else if s.contains("1080") {
+        "HD"
+    } else if s.contains("720") || s.contains("480") {
+        "SD"
+    } else {
+        "Other"
+    }
 }

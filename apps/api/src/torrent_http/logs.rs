@@ -3,7 +3,7 @@
 //! 正文不进 aggregate 首屏（单碟 EAC 日志可上百 KiB，多碟会把共享段缓存体积
 //! 打爆），点开才取；可见性由 `torrents::get_log` 内的统一口径判定。
 
-use actix_web::{get, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, web, HttpRequest, HttpResponse};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -34,5 +34,50 @@ async fn torrent_log_body(
         "issues": meta.issues,
         "size": meta.size,
         "body": body,
+    })))
+}
+
+#[derive(serde::Deserialize)]
+pub(crate) struct AdjustLogReq {
+    /// 空 = 撤销改判，回到引擎判分
+    #[serde(default)]
+    score: Option<i16>,
+    #[serde(default)]
+    reason: Option<String>,
+}
+
+/// 版主人工改判日志分（0337，Gazelle `AdjustedScore` 口径）。
+/// 原始 `log_score` 不动，改判写 `adjusted_*` 四列（可审计）。
+#[post("/admin/torrents/{id}/logs/{ordinal}/adjust")]
+pub async fn log_adjust(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<(i64, i32)>,
+    body: web::Json<AdjustLogReq>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let (id, ordinal) = path.into_inner();
+    let score = body.score.map(|s| s.clamp(0, 100));
+    let reason = body.reason.as_deref().unwrap_or("").trim();
+    if reason.chars().count() > 200 {
+        return Err(DomainError::Validation("改判理由需 ≤200 字".into()));
+    }
+    let hit = torrents::adjust_log(
+        &state.repo.db,
+        id,
+        ordinal,
+        score,
+        auth.id,
+        reason,
+    )
+    .await?;
+    if !hit {
+        return Err(DomainError::NotFound(id));
+    }
+    Ok(ok(serde_json::json!({
+        "torrent_id": id, "ordinal": ordinal, "adjusted_score": score,
     })))
 }

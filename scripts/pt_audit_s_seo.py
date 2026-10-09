@@ -64,7 +64,8 @@ def main():
     req.add_header("Content-Type",
                    "multipart/form-data; boundary=%s" % BOUNDARY)
     req.add_header("Authorization", "Bearer " + tok)
-    tid = json.loads(urllib.request.urlopen(req, timeout=30).read())["data"]["id"]
+    tid = json.loads(
+        urllib.request.urlopen(req, timeout=30).read())["data"]["id"]
     psql("UPDATE torrents SET approval_status=1, approved_at=now(), "
          "seeders=1 WHERE id=%s" % tid)
 

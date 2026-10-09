@@ -99,7 +99,8 @@ def main():
     # ---- 3. 更新链：更新包挂本体
     s, r = upload_with_artifacts(
         tok, make_torrent(name="Audit.Art.Patch"),
-        [("artifact", "patch.md5", "patch.dat fedcba9876543210fedcba9876543210"),
+        [("artifact", "patch.md5",
+          "patch.dat fedcba9876543210fedcba9876543210"),
          ("artifact", "changelog_1.1.txt", "v1.1 修复崩溃")],
         "Audit.Art.Patch", parent=base_id)
     ok("更新包发种成功", s == 200 and r.get("code") == 0, "%s %s" % (s, r))
