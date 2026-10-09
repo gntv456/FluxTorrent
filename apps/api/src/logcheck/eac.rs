@@ -359,7 +359,13 @@ mod tests {
     /// 换掉一行的工具：判据定位用行前缀
     fn replace_line(log: &str, prefix: &str, with: &str) -> String {
         log.lines()
-            .map(|l| if l.trim().starts_with(prefix) { with } else { l })
+            .map(|l| {
+                if l.trim().starts_with(prefix) {
+                    with
+                } else {
+                    l
+                }
+            })
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -414,7 +420,8 @@ mod tests {
     #[test]
     fn bare_quality_marker_is_not_evidence() {
         // 旧判分表把裸 `Quality` 当证据；真实 EAC 写的是 `Track quality`
-        let log = replace_line(&perfect_log(), "Track quality", "Quality 100 %");
+        let log =
+            replace_line(&perfect_log(), "Track quality", "Quality 100 %");
         let c = check(&log, Engine::Eac);
         assert_eq!(c.score, Some(90), "issues: {:?}", c.issues);
         assert!(c.issues.iter().any(|i| i.code == "missing_evidence"));
@@ -422,8 +429,7 @@ mod tests {
 
     #[test]
     fn copy_aborted_is_zero() {
-        let log =
-            replace_line(&perfect_log(), "Copy OK", "Copy aborted");
+        let log = replace_line(&perfect_log(), "Copy OK", "Copy aborted");
         let c = check(&log, Engine::Eac);
         assert_eq!(c.score, Some(0));
         assert!(c.issues.iter().any(|i| i.code == "aborted"));
@@ -431,11 +437,7 @@ mod tests {
 
     #[test]
     fn crc_mismatch_is_zero() {
-        let log = replace_line(
-            &perfect_log(),
-            "Copy CRC",
-            "Copy CRC 00000001",
-        );
+        let log = replace_line(&perfect_log(), "Copy CRC", "Copy CRC 00000001");
         let c = check(&log, Engine::Eac);
         assert_eq!(c.score, Some(0));
         assert!(c.issues.iter().any(|i| i.code == "crc_mismatch"));

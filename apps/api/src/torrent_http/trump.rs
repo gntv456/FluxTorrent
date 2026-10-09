@@ -78,7 +78,9 @@ pub async fn torrent_trump(
     }
     if let Some(t) = body.target_torrent_id {
         if t == id {
-            return Err(DomainError::Validation("替代种不能是被举报种自身".into()));
+            return Err(DomainError::Validation(
+                "替代种不能是被举报种自身".into(),
+            ));
         }
         let ok_target: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM torrents \
@@ -163,7 +165,9 @@ pub async fn torrent_trumps(
             })
         })
         .collect();
-    Ok(ok(serde_json::json!({ "pending": pending, "items": items })))
+    Ok(ok(
+        serde_json::json!({ "pending": pending, "items": items }),
+    ))
 }
 
 /// 版主：待处理举报列表。

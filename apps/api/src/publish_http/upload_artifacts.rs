@@ -30,13 +30,17 @@ pub(super) struct ArtifactPart {
 /// kind 推断：文件名小写包含后缀/关键词 → 缺省 other。
 pub(super) fn infer_kind(filename: &str) -> &'static str {
     let low = filename.to_ascii_lowercase();
-    if low.ends_with(".sfv") || low.ends_with(".md5")
-        || low.ends_with(".sha1") || low.ends_with(".sha256")
+    if low.ends_with(".sfv")
+        || low.ends_with(".md5")
+        || low.ends_with(".sha1")
+        || low.ends_with(".sha256")
         || low.contains("checksum")
     {
         "checksums"
-    } else if low.contains("changelog") || low.contains("update")
-        || low.contains("更新") {
+    } else if low.contains("changelog")
+        || low.contains("update")
+        || low.contains("更新")
+    {
         "changelog"
     } else if low.contains("license") || low.contains("licence") {
         "license"

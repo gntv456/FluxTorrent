@@ -266,9 +266,9 @@ pub(super) async fn diff_preview(
         }
         // 失活：现存且在用，但包没声明（key 载荷按 key 对、无 key 载荷按 id 对）
         for (id, k, name, torrents) in &cat_rows {
-            let declared = k.as_deref().is_some_and(|kv| declared_keys.contains(kv))
-                || (k.is_none()
-                    && declared_ids.contains(&(*id as i64)));
+            let declared =
+                k.as_deref().is_some_and(|kv| declared_keys.contains(kv))
+                    || (k.is_none() && declared_ids.contains(&(*id as i64)));
             if !declared && *torrents > 0 {
                 changes.push(json!({
                     "key": "category_inactive",
@@ -309,15 +309,14 @@ pub(super) async fn collect_categories(
             .unwrap_or_default()
             .into_iter()
             .collect();
-    let nzs: std::collections::HashMap<i32, i32> =
-        sqlx::query_as(
-            "SELECT id, newznab_id FROM categories WHERE newznab_id IS NOT NULL",
-        )
-        .fetch_all(db)
-        .await
-        .unwrap_or_default()
-        .into_iter()
-        .collect();
+    let nzs: std::collections::HashMap<i32, i32> = sqlx::query_as(
+        "SELECT id, newznab_id FROM categories WHERE newznab_id IS NOT NULL",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .collect();
     Ok(rows
         .into_iter()
         .map(|(id, name, icon, parent, sort, bg)| {

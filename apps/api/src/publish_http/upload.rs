@@ -366,9 +366,8 @@ async fn upload_core(
     }
     // 种子工件（0323）：校验和/更新日志落库；更新链 parent 走表单字段
     // parent_torrent_id（文本通道自由字段，上面在 build_form 消费前抓出）
-    let artifact_parent: Option<i64> = mp_artifact_parent
-        .as_deref()
-        .and_then(|v| v.parse().ok());
+    let artifact_parent: Option<i64> =
+        mp_artifact_parent.as_deref().and_then(|v| v.parse().ok());
     super::upload_artifacts::store(
         &state.repo.db,
         id,

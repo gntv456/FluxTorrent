@@ -29,13 +29,14 @@ pub async fn cue_check(
 ) -> DomainResult<HttpResponse> {
     let _auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
-    let exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM torrents \
-                            WHERE id = $1)")
-            .bind(id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM torrents \
+                            WHERE id = $1)",
+    )
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if !exists {
         return Err(DomainError::NotFound(id));
     }

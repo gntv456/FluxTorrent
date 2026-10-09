@@ -109,18 +109,14 @@ pub(super) async fn read_body(
                             artifacts::ARTIFACT_MAX_COUNT
                         )));
                     }
-                    let buf = drain(
-                        &mut field,
-                        artifacts::ARTIFACT_MAX,
-                        "工件",
-                    )
-                    .await?;
+                    let buf =
+                        drain(&mut field, artifacts::ARTIFACT_MAX, "工件")
+                            .await?;
                     let text = String::from_utf8_lossy(&buf).into_owned();
-                    let fname = ffile
-                        .filter(|f| !f.trim().is_empty())
-                        .unwrap_or_else(|| {
-                            format!("artifact-{}", arts.len() + 1)
-                        });
+                    let fname =
+                        ffile.filter(|f| !f.trim().is_empty()).unwrap_or_else(
+                            || format!("artifact-{}", arts.len() + 1),
+                        );
                     arts.push(artifacts::ArtifactPart {
                         kind: artifacts::infer_kind(&fname).to_string(),
                         filename: fname,
