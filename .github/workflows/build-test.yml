@@ -86,11 +86,14 @@ jobs:
       # 首页板块键 后端 HOME_SECTIONS ↔ 前端渲染 case。CI 无库时模块键检查跳过 DB 侧。
       # 术语规则门禁（四审 L7）额外要求每条启用中的规则至少命中一处文案——
       # CI 无库时它仍会扫源码确认机制在位（DB 侧自动跳过）。
+      # prop_wiring_guard 管另一个方向：view_layout 盯「段落键存得进但页面不认」，
+      # 它盯「aggregate 供得到、组件声明收得到、调用点没喂」（可选 prop 漏传不红 tsc）。
       - name: Module keys & home sections guard
         run: |
           node ../../scripts/module_keys_guard.mjs
           node ../../scripts/home_sections_guard.mjs
           node ../../scripts/view_layout_guard.mjs
+          node ../../scripts/prop_wiring_guard.mjs
           node ../../scripts/terms_guard.mjs
       # 构建门禁（P1）：rewrites/standalone 输出/页面构建错误此前推迟到 publish-images
       # 发版构建才第一次暴露；tsc 通过不代表 next build 通过
