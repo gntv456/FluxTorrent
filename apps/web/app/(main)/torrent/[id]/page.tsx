@@ -18,6 +18,8 @@ import { FileTree } from "@/components/file-tree";
 import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
 import { Descr, Spec, Fold } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
+import type { RipLog } from "@/components/torrent-rip-logs";
+import { TorrentRipLogs } from "@/components/torrent-rip-logs";
 import { TorrentPreviews } from "@/components/torrent-previews";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
@@ -53,6 +55,8 @@ interface Aggregate {
   torrent: TorrentListItem;
   detail: TorrentDetailExt;
   files: FileItem[];
+  /** 抓轨日志清单（0312；正文按碟懒加载 /torrents/{id}/logs/{ordinal}） */
+  logs: RipLog[];
   thanks: ThankItem[];
   comments: TorrentComment[];
   nfo: string | null;
@@ -335,6 +339,11 @@ export default async function TorrentDetailPage({
         <Fold title="NFO">
           <pre className="td-nfo">{nfo.nfo}</pre>
         </Fold>
+      )}
+
+      {/* 抓轨日志正文（0312/0337）：清单+按碟懒加载；无日志时组件自隐 */}
+      {sectOn("logs") && (
+        <TorrentRipLogs torrentId={t.id} logs={agg.logs} />
       )}
 
       {/* ===== 当前在线（tracker swarm 快照：做种/下载者明细，非 staff IP 已脱敏） ===== */}
