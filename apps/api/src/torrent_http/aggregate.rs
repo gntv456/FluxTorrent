@@ -112,7 +112,14 @@ async fn torrent_aggregate(
             let empty = || serde_json::json!({ "dict": [], "mine": [] });
             tags_f.await.unwrap_or_else(|_| empty())
         },
-        async { logs_f.await.unwrap_or_default() },
+        async {
+            // 降级本身是有意的，但静默降级不是：logs 读失败会让
+            // 整个日志板块凭空消失（2026-10-09 实测到过一次空段）
+            logs_f.await.unwrap_or_else(|e| {
+                tracing::warn!(error = ?e, "aggregate logs 段降级为空");
+                Vec::new()
+            })
+        },
         async { arts_f.await },
         async { arts_children_f.await },
     );
