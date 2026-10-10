@@ -35,7 +35,18 @@ use http_track::*;
 use peers::{Peer, PeerTable};
 
 #[actix_web::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
+    // 启动失败必须留下字面量：旧写法 `main() -> anyhow::Result<()>` 的 Err 走到
+    // 的是 tokio 的静默丢弃，2026-10-10 那次「Redis 不可达 ⇒ 容器 running、
+    // 端口不监听、docker logs 零行」就是这么排不出根因的。
+    if let Err(e) = run().await {
+        eprintln!("flux-tracker 启动失败: {e:#}");
+        tracing::error!(error = ?e, "flux-tracker 启动失败");
+        std::process::exit(70);
+    }
+}
+
+async fn run() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -57,9 +68,23 @@ async fn main() -> anyhow::Result<()> {
         .max_connections(8)
         .connect(&db_url)
         .await?;
+    // Redis 句柄必须带 response_timeout。默认值是 None（redis 0.27.6
+    // `ConnectionManagerConfig::default()`），含义是「管理器正在重连时，任何
+    // 命令都**永远挂着**」——表现就是 2026-10-10 实测到的：Redis 一不可达，
+    // 容器 running、端口不监听、`docker logs` 一行没有，客户端拿到
+    // RemoteDisconnected。加上 2s 响应上限后命令返回错误，热路径照常降级
+    // （限流走本地兜底、计费事件进重投队列），是「降级」而不是「停摆」。
     let redis = redis::Client::open(redis_url.as_str())?
-        .get_connection_manager()
-        .await?;
+        .get_connection_manager_with_config(
+            redis::aio::ConnectionManagerConfig::new()
+                .set_number_of_retries(3)
+                .set_exponent_base(100)
+                .set_factor(10)
+                .set_max_delay(2)
+                .set_response_timeout(Duration::from_secs(2)),
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Redis 不可用（{redis_url}）：{e}"))?;
     let cfg = GuardCfg {
         // 保种大户口径：interval 1800s 时，每分钟 announce 数 ≈ 挂种数/30。
         // 1800/min 覆盖 5.4 万挂种；超限只是计费延迟（累计量差值口径，不丢），且账号可挂起兜底。
