@@ -16,8 +16,6 @@ pub async fn consume_announce(
     db: &PgPool,
     redis: &mut redis::aio::ConnectionManager,
 ) -> anyhow::Result<u64> {
-    use redis::AsyncCommands;
-
     // 保种时长累计容忍窗 = 2 × announce_interval（与 tracker 下发口径一致，站点设定缺省 1800）。
     // 客户端按 interval 汇报，相邻两次做种 announce 的时间差即真实做种时长；
     // 超窗（离线/故障）不计，防挂机伪造做种时长。
@@ -188,11 +186,9 @@ pub async fn consume_announce(
             applied += 1;
         }
     }
-    // XTRIM 修剪（与旧机制同口径，只裁长度不动组）
-    let _: () = redis
-        .xtrim("flux:announce", redis::streams::StreamMaxlen::Approx(10000))
-        .await
-        .unwrap_or(());
+    // XTRIM：以「最旧未确认条目」为界裁，无 pending 才按长度裁（旧写法盲裁
+    // 长度，worker 落后时未投递的事件会被削掉）。详见 group::trim_safe。
+    group::trim_safe(redis, &ANNOUNCE_GROUP).await;
 
     // 幂等键表清理（0285）：重投/回收窗口最长 12 分钟，留 3 天已极宽；
     // 就地跟着消费循环裁，不另开 job（避免「表在但没人清」的长跑泄漏）。

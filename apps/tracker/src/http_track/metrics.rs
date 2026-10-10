@@ -115,6 +115,10 @@ pub(crate) async fn metrics(
             "flux_tracker_guard_cache{{kind=\"passkey\"}} {}\n",
             "flux_tracker_guard_cache{{kind=\"ip_ban\"}} {}\n",
             "flux_tracker_guard_cache{{kind=\"agent_rule\"}} {}\n",
+            "# TYPE flux_tracker_evt_spill_depth gauge\n",
+            "flux_tracker_evt_spill_depth {}\n",
+            "# TYPE flux_tracker_evt_spill_dropped_total counter\n",
+            "flux_tracker_evt_spill_dropped_total {}\n",
         ),
         m.announce_total.load(Ordering::Relaxed),
         m.announce_ip_banned.load(Ordering::Relaxed),
@@ -139,6 +143,8 @@ pub(crate) async fn metrics(
         passkey_cache,
         ip_bans,
         agent_rules,
+        super::emit::SPILL_DEPTH.load(Ordering::Relaxed),
+        super::emit::SPILL_DROPPED.load(Ordering::Relaxed),
     );
     HttpResponse::Ok()
         .content_type("text/plain; version=0.0.4")
