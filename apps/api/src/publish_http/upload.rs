@@ -354,8 +354,12 @@ async fn upload_core(
     .await?;
     super::upload_logcheck::store(&state.repo.db, id, &rip).await?;
     // 判分维度回流（0314 补全）：log_score/haslog 从权威 torrent_logs
-    // 自动同步进筛选维度，不再依赖用户手填已算好的分
-    crate::torrents::sync_log_dims(&state.repo.db, id).await?;
+    // 自动同步进筛选维度，不再依赖用户手填已算好的分。降级不阻断：
+    // 种子已入库，这里 500 会让重发撞「种子重复」（precheck 注释立的规矩；
+    // 与下方 match_id 挂链同款 let _ 口径），改判/编辑口的重算会补回
+    if let Err(e) = crate::torrents::sync_log_dims(&state.repo.db, id).await {
+        tracing::warn!(error = ?e, torrent = id, "判分维度回流失败（不阻断发种）");
+    }
     // 对阵挂链（0330）：match_id 自由字段 → torrents.match_id；
     // 悬空 id 静默降级为无链（与 artifact parent 同口径）
     if let Some(mid) = mp_match_id {

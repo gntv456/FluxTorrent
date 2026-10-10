@@ -26,8 +26,10 @@ const COMP_DIRS = [
   "apps/web/components",
   "apps/web/app/(main)/torrent/[id]/_parts",
 ];
-// 有意不传的 prop（当前应为空；加条目必须写理由）
-const EXEMPT = new Set([]);
+// 有意不传的 prop（加条目必须写理由，且只许减不许加）：
+// - Fold.open：折叠区默认收起是有意行为（详情页只有简介默认展开）
+// - Spec.num：num=true 走等宽数字排版，仅数值型格子用（size/评分等已在传）
+const EXEMPT = new Set(["Fold.open", "Spec.num"]);
 
 const strip = process.argv.includes("--strip")
   ? process.argv[process.argv.indexOf("--strip") + 1]
@@ -42,7 +44,10 @@ const src = strip
 const stripComments = (t) =>
   t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-// 「导出组件名 → 文件」索引：组件文件名与组件名不同源，靠命名猜测会漏
+// 「组件名 → 该组件的 prop 表」索引：一个文件可导出多个组件
+// （torrent-detail-parts.tsx 里 Descr/Spec/Fold/PosterBlock 四件），
+// prop 表必须按组件名取各自的解构，拿「文件第一个导出」会给整文件
+// 所有组件套同一个表——漏检时是假绿，修完 import 收集后会变误报源。
 const INDEX = new Map();
 for (const dir of COMP_DIRS) {
   let entries = [];
@@ -60,22 +65,19 @@ for (const dir of COMP_DIRS) {
     } catch {
       continue;
     }
-    for (const m of t.matchAll(/export function ([A-Z]\w*)/g)) {
-      if (!INDEX.has(m[1])) INDEX.set(m[1], p);
+    const clean = stripComments(t);
+    for (const m of clean.matchAll(
+      /export function ([A-Z]\w*)\s*\(\s*\{([^}]*)\}/g,
+    )) {
+      const props = new Set(
+        m[2]
+          .split(",")
+          .map((s) => s.trim().split(":")[0].trim())
+          .filter((s) => /^[a-zA-Z_$][\w$]*$/.test(s)),
+      );
+      if (!INDEX.has(m[1])) INDEX.set(m[1], { file: p, props });
     }
   }
-}
-
-function declaredProps(file) {
-  const t = stripComments(readFileSync(R(file), "utf8"));
-  const m = t.match(/export function \w+\(\s*\{([^}]*)\}/);
-  if (!m) return null;
-  return new Set(
-    m[1]
-      .split(",")
-      .map((s) => s.trim().split(":")[0].trim())
-      .filter((s) => /^[a-zA-Z_$][\w$]*$/.test(s)),
-  );
 }
 
 // 调用点属性：深度只按 { ( 计（表达式里的 `>` 不是结束符），
@@ -94,6 +96,10 @@ function passedAttrs(name) {
       else if (ch === ">" && d === 0) break;
     }
     const body = src.slice(start, i);
+    // JSX 子内容即 children 传参（<Fold>…</Fold> 不会出现 children= 属性）：
+    // 标签体非空（去掉纯空白/自闭合）视为 children 已传
+    const selfClosing = src.slice(start, i).trimEnd().endsWith("/");
+    if (!selfClosing && body.trim() !== "") out.add("children");
     const depthAt = [0];
     let k2 = 0;
     for (let k = 0; k < body.length; k++) {
@@ -110,10 +116,28 @@ function passedAttrs(name) {
   return out;
 }
 
+// 调用点组件收集：解析页面 import 的**全部**命名绑定。旧正则只认
+// `import { X } from "@/…"`（花括号内恰一个标识符），多成员导入
+// （`import { TorrentTags, type TagPayload }`）整条不命中——实测
+// 18 个受管组件里 7 个（Descr/Spec/Fold/Comments/Thankers/…）在守门
+// 范围外，而多导出共享文件恰是最易断线的地方。剥掉 `type X` 与 `as X`。
 const comps = [
   ...new Set(
-    [...src.matchAll(/import \{ ([A-Z]\w*) \} from "@\/(components|app)/g)].map(
-      (m) => m[1],
+    [
+      ...src.matchAll(
+        /import \{([^}]*)\} from ["']@\/(components|app)/g,
+      ),
+    ].flatMap((m) =>
+      m[1]
+        .split(",")
+        .map((s) =>
+          s
+            .trim()
+            .replace(/^type\s+/, "")
+            .split(/\s+as\s+/)[0]
+            .trim(),
+        )
+        .filter((s) => /^[A-Z]\w*$/.test(s)),
     ),
   ),
 ].sort();
@@ -121,9 +145,9 @@ const comps = [
 let bad = [];
 let checked = 0;
 for (const c of comps) {
-  const file = INDEX.get(c);
-  if (!file) continue;
-  const decl = declaredProps(file);
+  const entry = INDEX.get(c);
+  if (!entry) continue;
+  const decl = entry.props;
   const passed = passedAttrs(c);
   if (!decl || decl.size === 0 || passed.size === 0) continue;
   checked++;

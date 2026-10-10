@@ -269,6 +269,12 @@ export function StaffCatsPanel({
                       );
                       if (nz === null) return;
                       const nzT = nz.trim();
+                      // 非法输入（非数字）必须拦下：Number(NaN) || 0 会把
+                      // 手滑打成 0 = 静默清除映射
+                      if (nzT !== "" && !/^\d+$/.test(nzT)) {
+                        alert(t.newznabInvalid);
+                        return;
+                      }
                       void guard(async () => {
                         await api.put(`/api/v1/admin/categories/${c.id}`, {
                           name: nn,
@@ -277,9 +283,7 @@ export function StaffCatsPanel({
                           parent_id: Number(pp) || null,
                           sort: soT === "" ? undefined : Number(soT),
                           newznab_id:
-                            nzT === ""
-                              ? undefined
-                              : Number(nzT) || 0,
+                            nzT === "" ? undefined : Number(nzT),
                         });
                       }, t.saved);
                     }}

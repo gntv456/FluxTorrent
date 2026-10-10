@@ -255,7 +255,7 @@ pub async fn category_update(
          bg_color = COALESCE(NULLIF($4, ''), bg_color), \
          parent_id = COALESCE(NULLIF($5, 0), parent_id), \
          sort = COALESCE($6, sort), \
-         newznab_id = COALESCE($7, newznab_id) WHERE id=$1",
+         newznab_id = COALESCE(NULLIF($7, 0), newznab_id) WHERE id=$1",
     )
     .bind(*path)
     .bind(&body.name)
