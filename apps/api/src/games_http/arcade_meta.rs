@@ -42,6 +42,10 @@ pub(super) async fn arcade_meta(
     let base = eco_i64(&state, "arcade_budget_base", 1500).await;
     let pct = eco_i64(&state, "arcade_budget_pct", 20).await;
     let win = eco_i64(&state, "arcade_budget_window_days", 7).await;
+    // make_interval(days => $2::int) 只吃 int4：这里曾把 eco_i64 的 i64 直绑进去，
+    // Postgres 按 int4 解析参数而 sqlx 发 8 字节 → 「incorrect binary data format
+    // in bind parameter 2」，整个娱乐屋大厅聚合当场 500（不是降级，是整页坏）。
+    let win_days = win.clamp(1, 3650) as i32;
 
     // 真回收：窗口内玩法流水净额（玩家净输 = 站点回收；下注为负、派彩为正）
     let back: i64 = sqlx::query_scalar(
@@ -50,7 +54,7 @@ pub(super) async fn arcade_meta(
            AND created_at >= now() - make_interval(days => $2::int)",
     )
     .bind(uid)
-    .bind(win)
+    .bind(win_days)
     .fetch_one(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -63,11 +67,11 @@ pub(super) async fn arcade_meta(
            AND created_at >= now() - make_interval(days => $2::int)",
     )
     .bind(uid)
-    .bind(win)
+    .bind(win_days)
     .fetch_one(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let det_item_value = det_cost_value(db, uid, win).await?;
+    let det_item_value = det_cost_value(db, uid, win_days as i64).await?;
     let det = det_spark + det_item_value;
 
     // 预算 = 基数 + 回收×比例（窗口只是「往回看多久」的分母，不是乘数——

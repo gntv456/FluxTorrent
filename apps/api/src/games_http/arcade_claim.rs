@@ -149,7 +149,7 @@ pub(super) async fn claim_quest(
                AND created_at >= now() - make_interval(days => $2::int)",
         )
         .bind(uid)
-        .bind(win as i32)
+        .bind(win.clamp(1, 3650) as i32)
         .fetch_one(db)
         .await
         .map_err(dberr)?;
