@@ -68,23 +68,44 @@ async fn run() -> anyhow::Result<()> {
         .max_connections(8)
         .connect(&db_url)
         .await?;
-    // Redis 句柄必须带 response_timeout。默认值是 None（redis 0.27.6
-    // `ConnectionManagerConfig::default()`），含义是「管理器正在重连时，任何
-    // 命令都**永远挂着**」——表现就是 2026-10-10 实测到的：Redis 一不可达，
-    // 容器 running、端口不监听、`docker logs` 一行没有，客户端拿到
-    // RemoteDisconnected。加上 2s 响应上限后命令返回错误，热路径照常降级
-    // （限流走本地兜底、计费事件进重投队列），是「降级」而不是「停摆」。
-    let redis = redis::Client::open(redis_url.as_str())?
-        .get_connection_manager_with_config(
-            redis::aio::ConnectionManagerConfig::new()
-                .set_number_of_retries(3)
-                .set_exponent_base(100)
-                .set_factor(10)
-                .set_max_delay(2)
-                .set_response_timeout(Duration::from_secs(2)),
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!("Redis 不可用（{redis_url}）：{e}"))?;
+    // Redis 句柄两处必须显式设，都有实测事故背书（2026-10-10）：
+    // ① `response_timeout`：默认 None（redis 0.27.6
+    //    `ConnectionManagerConfig::default()`，见 src/aio/connection_manager.rs:73），
+    //    含义是「管理器正在重连时，任何命令**永远挂着**」——所以 Redis 一不可达就
+    //    变成「容器 running、端口不监听、docker logs 零行、客户端 RemoteDisconnected」。
+    //    设 2s 上限后命令返回错误，热路径按既有设计降级（限流走本地兜底、
+    //    计费事件进重投队列），是降级不是停摆。
+    // ② `number_of_retries` 与「引导超时」分工：运行期要无限重连，否则一次
+    //    比预算长的抖动就把管理器永久弃用，之后只能靠 20k 上限的重投队列兜；
+    //    而引导期反过来必须有界——连不上就响亮地失败退出，交给
+    //    `restart: unless-stopped` 重试，绝不带着挂死的句柄把端口都不 bind 地活着。
+    let boot_budget = Duration::from_secs(
+        env_i64("FLUX_TRACKER_REDIS_BOOT_BUDGET_SECS", 15).clamp(2, 120) as u64,
+    );
+    let mgr_cfg = redis::aio::ConnectionManagerConfig::new()
+        .set_number_of_retries(usize::MAX)
+        .set_exponent_base(2)
+        .set_factor(100)
+        .set_max_delay(2)
+        .set_response_timeout(Duration::from_secs(2));
+    let redis = match tokio::time::timeout(
+        boot_budget,
+        redis::Client::open(redis_url.as_str())?
+            .get_connection_manager_with_config(mgr_cfg),
+    )
+    .await
+    {
+        Ok(Ok(m)) => m,
+        Ok(Err(e)) => {
+            return Err(anyhow::anyhow!("Redis 不可用（{redis_url}）：{e}"))
+        }
+        Err(_) => {
+            return Err(anyhow::anyhow!(
+                "Redis 在 {redis_url} 上 {}s 内连不上，启动中止",
+                boot_budget.as_secs()
+            ))
+        }
+    };
     let cfg = GuardCfg {
         // 保种大户口径：interval 1800s 时，每分钟 announce 数 ≈ 挂种数/30。
         // 1800/min 覆盖 5.4 万挂种；超限只是计费延迟（累计量差值口径，不丢），且账号可挂起兜底。
