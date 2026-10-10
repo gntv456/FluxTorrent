@@ -24,7 +24,8 @@ import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import BASE, call, login, ok, summary  # noqa: E402
+from pt_audit_lib import (BASE, call, clear_register_rl, login, ok,
+                         summary)  # noqa: E402
 
 ROOT = login()
 CLEANUP = []
@@ -126,6 +127,7 @@ def upload(tok, torrent_name, **fields):
 
 def new_member(tag):
     """管理员发码 → 注册 → 登录。作者视角（重提/收信）必须用真成员号。"""
+    clear_register_rl()
     s, r = call("POST", "/admin/invites", {"user_id": 1, "count": 1},
                 token=ROOT)
     codes = ((r.get("data") or {}).get("codes")) or []

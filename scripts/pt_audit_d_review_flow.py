@@ -216,9 +216,15 @@ try:
     s, _ = call("GET", "/torrents/%s" % t2, token=view)
     ok("A3c 被拒种对无关用户仍不可见", s == 404, s)
     s, r = call("POST", "/torrents/%s/resubmit" % t2, {}, token=seed)
+    ok("A3d 刚被拒立刻重提被冷却挡住（10-08 P2-1 加的闸门）",
+       s == 400 and "冷却" in str(r.get("message")),
+       "%s %s" % (s, r.get("message")))
+    q("UPDATE torrents SET mtime = now() - interval '11 minutes' "
+      "WHERE id=%s" % t2)
+    s, r = call("POST", "/torrents/%s/resubmit" % t2, {}, token=seed)
     st = q("SELECT approval_status FROM torrents WHERE id=%s" % t2)
-    ok("A3d 作者可重新送审（端点有真实调用方）", s == 200 and st == "0",
-       "%s status=%s %s" % (s, st, r.get("message")))
+    ok("A3d2 冷却期后作者可重新送审（端点有真实调用方）", s == 200
+       and st == "0", "%s status=%s %s" % (s, st, r.get("message")))
 
     # ================= B 校验不许后置 =================
     for label, extra in (("B1 官方标签越权", {"tags": "[3]"}),
