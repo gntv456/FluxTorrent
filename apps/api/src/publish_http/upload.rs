@@ -353,6 +353,9 @@ async fn upload_core(
     )
     .await?;
     super::upload_logcheck::store(&state.repo.db, id, &rip).await?;
+    // 判分维度回流（0314 补全）：log_score/haslog 从权威 torrent_logs
+    // 自动同步进筛选维度，不再依赖用户手填已算好的分
+    crate::torrents::sync_log_dims(&state.repo.db, id).await?;
     // 对阵挂链（0330）：match_id 自由字段 → torrents.match_id；
     // 悬空 id 静默降级为无链（与 artifact parent 同口径）
     if let Some(mid) = mp_match_id {

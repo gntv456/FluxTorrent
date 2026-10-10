@@ -117,3 +117,78 @@ pub async fn adjust_log(
     .rows_affected();
     Ok(n == 1)
 }
+
+/// 判分维度回流（0314 补全）：把 `torrent_logs` 的权威分（多碟取最低，
+/// 有效分 = adjusted ?? engine）与 haslog（有日志且 100）同步进
+/// `torrent_sections` 的 log_score/haslog 两维度——筛选面（sec_log_score_min
+/// 区间 / haslog=true）从此有自动数据，不再依赖用户手填已算好的数。
+/// 维度未在 section_kinds 声明的站型（0314 只给 music 族包种了）自动跳过；
+/// 幂等：先清后写，重复调用安全。无日志时清掉两维度行（复活/删日志）。
+pub async fn sync_log_dims(db: &PgPool, torrent_id: i64) -> DomainResult<()> {
+    let has_dims: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM section_kinds \
+          WHERE kind IN ('log_score', 'haslog'))",
+    )
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if !has_dims {
+        return Ok(());
+    }
+    let worst: Option<i16> = sqlx::query_scalar(
+        "SELECT min(COALESCE(adjusted_score, log_score)) FROM torrent_logs \
+         WHERE torrent_id = $1 AND COALESCE(adjusted_score, log_score) \
+           IS NOT NULL",
+    )
+    .bind(torrent_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // Gazelle 口径：有日志、且每一碟都是有效分 100（判不了分的碟不算 100）
+    let has_log: bool = sqlx::query_scalar(
+        "SELECT count(*) > 0 AND count(*) = count(*) FILTER \
+           (WHERE COALESCE(adjusted_score, log_score) = 100) \
+           FROM torrent_logs WHERE torrent_id = $1",
+    )
+    .bind(torrent_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut tx = db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "DELETE FROM torrent_sections WHERE torrent_id = $1 \
+         AND kind IN ('log_score', 'haslog')",
+    )
+    .bind(torrent_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(w) = worst {
+        sqlx::query(
+            "INSERT INTO torrent_sections (torrent_id, kind, value) \
+             VALUES ($1, 'log_score', to_jsonb($2::int))",
+        )
+        .bind(torrent_id)
+        .bind(w as i32)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    if has_log {
+        sqlx::query(
+            "INSERT INTO torrent_sections (torrent_id, kind, value) \
+             VALUES ($1, 'haslog', 'true'::jsonb)",
+        )
+        .bind(torrent_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(())
+}

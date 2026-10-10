@@ -77,6 +77,8 @@ pub async fn log_adjust(
     if !hit {
         return Err(DomainError::NotFound(id));
     }
+    // 改判改变有效分 → 筛选维度（log_score/haslog）随之回流（0314 补全）
+    torrents::sync_log_dims(&state.repo.db, id).await?;
     // 公信动作进审计日志（本仓 admin 写操作的留痕口径）
     state
         .repo

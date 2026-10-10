@@ -102,18 +102,28 @@ pub async fn seasonal_anime(
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+        // 字幕组批取（0334 性能补全）：一次 ANY 拿全部 tid → 名单，
+        // 替换逐行子查询（≤301 条 SQL 的 N+1；与 openapi dims_for 同范式）
+        let tids: Vec<i64> = rows.iter().map(|r| r.0).collect();
+        let sub_rows: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT DISTINCT ts3.torrent_id, sd2.name \
+               FROM torrent_sections ts3 \
+               JOIN section_dict sd2 ON sd2.id = ts3.dict_id \
+              WHERE ts3.torrent_id = ANY($1) \
+                AND ts3.kind = 'subtitle_group' \
+              ORDER BY 2",
+        )
+        .bind(&tids)
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
+        use std::collections::BTreeMap;
+        let mut subs_map: BTreeMap<i64, Vec<String>> = BTreeMap::new();
+        for (tid, name) in sub_rows {
+            subs_map.entry(tid).or_default().push(name);
+        }
         for (tid, name, size, seeders, done, gid, ep) in rows {
-            let subs: Vec<String> = sqlx::query_scalar(
-                "SELECT DISTINCT sd2.name FROM torrent_sections ts3 \
-                   JOIN section_dict sd2 ON sd2.id = ts3.dict_id \
-                  WHERE ts3.torrent_id = $1 \
-                    AND ts3.kind = 'subtitle_group' \
-                  ORDER BY 1",
-            )
-            .bind(tid)
-            .fetch_all(&state.repo.db)
-            .await
-            .unwrap_or_default();
+            let subs = subs_map.get(&tid).cloned().unwrap_or_default();
             items.push(serde_json::json!({
                 "id": tid, "name": name, "size": size,
                 "seeders": seeders, "times_completed": done,
