@@ -243,7 +243,8 @@ async fn friend_action(
             sqlx::query(
                 "INSERT INTO friendships (user_id, friend_id, list) \
                  VALUES ($1, $2, 'friend') \
-                 ON CONFLICT (user_id, friend_id) DO UPDATE SET list = 'friend'",
+                 ON CONFLICT (user_id, friend_id) \
+                 DO UPDATE SET list = 'friend'",
             )
             .bind(auth.id)
             .bind(fid)
