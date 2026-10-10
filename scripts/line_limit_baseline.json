@@ -454,7 +454,7 @@
  "apps/api/src/admin_p3_http/shop.rs::wide": 1,
  "apps/api/src/admin_p3_http/tags.rs::wide": 8,
  "apps/api/src/admin_p3_http/tasks.rs::wide": 12,
- "apps/api/src/admin_p3_http/torrent_batch.rs": 332,
+ "apps/api/src/admin_p3_http/torrent_batch.rs": 324,
  "apps/api/src/admin_p3_http/torrent_batch.rs::wide": 5,
  "apps/api/src/admin_p3_http/user_props.rs::wide": 1,
  "apps/api/src/admin_p2_http/menus.rs::wide": 3,

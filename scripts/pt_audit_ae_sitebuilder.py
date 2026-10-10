@@ -409,30 +409,37 @@ if gone == "0":
     ok("E6 渲染层反向：删掉后 SSR HTML 不再含该标签名",
        TAG_NAME not in page(T4, ROOT), "")
 
-print("== E7 后台批量动作：置顶徽标要立刻跟着变 ==")
+print("== E7 后台批量置顶：真实消费点是列表的置顶位 sticky_rank ==")
 
 
-def agg_field(tid, key):
-    _, a = call("GET", "/torrents/%s/aggregate" % tid, token=ROOT)
-    return ((a.get("data") or {}).get("torrent") or {}).get(key)
+def list_row(tid):
+    _, l = call("GET", "/torrents?limit=100&alive=0", token=ROOT)
+    for x in (l.get("data") or {}).get("items") or []:
+        if str((x or {}).get("id")) == str(tid):
+            return x or {}
+    return {}
 
 
-# 先热一次缓存：批量口此前只推进列表代际，详情聚合缓存原封不动
-WARM_STICKY = agg_field(T4, "sticky")
+def pos_of(tid):
+    return q("SELECT pos_state FROM torrents WHERE id = %d" % tid)
+
+
+WAS = list_row(T4).get("sticky_rank")
 s, r = call("POST", "/admin/torrents/batch",
             {"action": "sticky", "ids": [T4], "pos_state": 1}, token=ROOT)
-ok("E7 批量置顶落库",
-   s == 200 and q("SELECT pos_state FROM torrents WHERE id = %d" % T4) == "1",
-   "http=%s %s pos=%s" % (s, brief(r),
-                          q("SELECT pos_state FROM torrents WHERE id = %d"
-                            % T4)))
-ok("E7 聚合立刻反映置顶（详情页的置顶徽标消费点）",
-   agg_field(T4, "sticky") is True,
-   "warm=%s now=%s" % (WARM_STICKY, agg_field(T4, "sticky")))
+NOW = list_row(T4).get("sticky_rank")
+ok("E7 批量置顶落库", s == 200 and pos_of(T4) == "1",
+   "http=%s %s pos=%s" % (s, brief(r), pos_of(T4)))
+# 判据取列表的 sticky_rank（list_noclamp_as 的 GREATEST(sticky, pos_state…)），
+# 不是详情聚合里的 legacy 布尔列 `sticky`——后者只由官种联动写，
+# 拿它判「置顶生效」是错层的判据（本条判据先前就写错了一次，实测才发现）。
+ok("E7 列表立刻把该种顶到置顶位（缓存代际跟着批量动作走）",
+   (NOW or 0) >= 1, "was=%s now=%s" % (WAS, NOW))
 call("POST", "/admin/torrents/batch",
      {"action": "sticky", "ids": [T4], "pos_state": 0}, token=ROOT)
-ok("E7 正控：取消置顶后聚合也立刻回落（不是只在变真时看得见）",
-   agg_field(T4, "sticky") is False, "now=%s" % agg_field(T4, "sticky"))
+AFTER = list_row(T4).get("sticky_rank")
+ok("E7 正控：取消置顶后 sticky_rank 回落（不是只在变高时看得见）",
+   (AFTER or 0) == 0, "now=%s" % AFTER)
 
 print("== E8 收尾：删分类的处置 ==")
 s, r = call("DELETE", "/admin/categories/%s" % CID, token=ROOT)
