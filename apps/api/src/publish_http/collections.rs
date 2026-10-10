@@ -161,7 +161,8 @@ pub async fn collections_list(
         sqlx::query_as(
             "SELECT c.id, c.kind, c.name, c.descr, c.cover, \
                 (SELECT count(*) FROM torrent_collections tc \
-                 WHERE tc.collection_id = c.id) AS n \
+                 JOIN torrents t ON t.id = tc.torrent_id \
+                 WHERE tc.collection_id = c.id AND t.approval_status = 1) AS n \
              FROM collections c WHERE ($1::text IS NULL OR c.kind = $1) \
              ORDER BY c.sort_order, c.id LIMIT 200",
         )
