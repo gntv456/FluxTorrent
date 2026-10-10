@@ -20,13 +20,15 @@ pub(crate) async fn notify_review_result(
     free_reason: &str,
 ) {
     let db = &state.repo.db;
-    let row =
-        sqlx::query_as::<_, (Option<i64>, String, Option<String>, Option<String>)>(
-            "SELECT t.owner_id, t.name, d.reason, t.deny_note \
+    let row = sqlx::query_as::<
+        _,
+        (Option<i64>, String, Option<String>, Option<String>),
+    >(
+        "SELECT t.owner_id, t.name, d.reason, t.deny_note \
          FROM torrents t \
          LEFT JOIN torrent_deny_reasons d ON d.id = t.deny_reason_id \
          WHERE t.id = $1",
-        )
+    )
         .bind(torrent_id)
         .fetch_optional(db)
         .await;
