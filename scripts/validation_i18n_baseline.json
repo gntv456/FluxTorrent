@@ -16,7 +16,6 @@
   "URL 需以 http(s):// 开头",
   "action 仅支持 approve / reject",
   "action 需为 act/dismiss",
-  "action 需为 black / unblack",
   "adapter_id 必填",
   "adapter_id 必填且 ≤100 字符",
   "amount 需在 1~1,000,000",

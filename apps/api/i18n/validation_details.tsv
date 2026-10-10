@@ -79,3 +79,5 @@ sha256 格式不正确	sha256 格式不正確	Invalid sha256 format
 预览类型不合法	預覽類型不合法	Invalid preview kind
 newznab 分类号需为非负整数	newznab 分類號需為非負整數	newznab category id must be a non-negative integer
 套餐标题首段数量无效，已拒单未扣款	套餐標題首段數量無效，已拒單未扣款	Invalid quantity in the plan title: order rejected, nothing charged
+action 需为 black / unblack / accept / reject	action 需為 black / unblack / accept / reject	action must be black / unblack / accept / reject
+没有待处理的好友申请	沒有待處理的好友申請	No pending friend request to act on

@@ -46,7 +46,7 @@ async fn message_inbox(
                 (m.sender_id IS NULL) AS is_system, m.kind, m.params \
          FROM messages m LEFT JOIN users u ON u.id = m.sender_id \
          WHERE m.receiver_id = $1 AND m.location = 1 \
-           AND ($2::int IS NULL OR m.folder = $2) \
+           AND m.folder IS NOT DISTINCT FROM $2::int \
            AND ($3::text IS NULL OR m.subject ILIKE $3 OR m.body ILIKE $3) \
            AND ($4::bool IS NULL OR m.unread = $4) \
          ORDER BY m.id DESC LIMIT 100",
