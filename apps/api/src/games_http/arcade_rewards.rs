@@ -244,7 +244,7 @@ pub(super) async fn det_cost_value(
         "#,
     )
     .bind(uid)
-    .bind(window_days as i32)
+    .bind(window_days.clamp(1, 3650) as i32)
     .fetch_one(db)
     .await
     .map_err(dberr)?;

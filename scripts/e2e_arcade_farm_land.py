@@ -167,9 +167,11 @@ def main():
     set_key("farm_max_plots", SNAP["farm_max_plots"])
 
     # ── ④⑤ 升级买到的是时长，不是价值 ──
-    crop = psql("SELECT id || '/' || seed_price || '/' || grow_hours "
-                "FROM farm_crops ORDER BY seed_price LIMIT 1").split("/")
+    crop = psql("SELECT id || '/' || seed_price || '/' || grow_hours"
+                " || '/' || base_yield FROM farm_crops"
+                " ORDER BY seed_price LIMIT 1").split("/")
     cid, grow_h = int(crop[0]), int(crop[2])
+    base_y = int(crop[3])
     base_min = grow_h * 60
     # 基线用 slot 4（Lv.1 免费地）：同一槽位一分钟内只许种一次（反刷保护），
     # 后面还要在 slot 3 升级后复测，这里换槽避免撞上那一分钟窗口。
@@ -227,8 +229,16 @@ def main():
     win1 = land_of(pt)[1].get("data", {}).get("window_start")
     check("两次收获落在同一个价格窗口（否则价值比较不成立）",
           win0 == win1, (win0, win1))
-    check("等级只买周转：Lv.3 与 Lv.1 的价值侧一字不差",
-          paid.get(3) is not None and paid.get(3) == paid.get(1), paid)
+    # 价值侧只由 base_yield × 请求内随机因子决定（P1-1 安全审计 2026-10-06 把
+    # 因子从「窗口起点纯哈希」改成 thread_rng，就是为了堵「低价窗买种 × 高价窗
+    # 收获」的离线预计算套利）。所以这里不能要求两侧「一字不差」——那等于要求
+    # 随机数相等，是断言写错，不是产品坏了。带内判定只挡等级因子大额混入。
+    lo, hi = base_y // 2, base_y * 3 // 2 + 2
+    check("等级只买周转：两侧价值都只落在 base_yield×(1±50%) 带内"
+          "（随机因子使精确等价不可测，见注释）",
+          paid.get(3) is not None and paid.get(1) is not None
+          and lo <= paid[3] <= hi and lo <= paid[1] <= hi,
+          (paid, base_y, lo, hi))
 
     psql("UPDATE farm_land SET level = 12 WHERE user_id = %d AND slot = 3"
          % uid)
