@@ -92,7 +92,14 @@ pub async fn admin_export_torrents(
     let page = q.page.unwrap_or(1).clamp(1, 1_000_000);
     let rows: Vec<serde_json::Value> = sqlx::query_as::<
         _,
-        (i64, String, i64, i64, i32, chrono::DateTime<chrono::Utc>),
+        (
+            i64,
+            String,
+            Option<i64>,
+            i64,
+            i32,
+            chrono::DateTime<chrono::Utc>,
+        ),
     >(
         "SELECT t.id, t.name, t.owner_id, t.size, t.seeders, t.created_at \
              FROM torrents t ORDER BY t.id LIMIT $1 OFFSET $2",
