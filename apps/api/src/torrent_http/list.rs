@@ -50,7 +50,16 @@ async fn list(
     )
     .await;
     // 0170 站点开关：默认视图（approval 未指定 / 0）是否放行「审核中/失败」种子。
-    // 审核状态视图（1=通过 2=被拒）不受开关影响；单条查询两列点查，主键命中极便宜。
+    // 审核状态视图（1=通过 2=被拒 3=回收站）不受开关影响；单条查询两列点查，主键命中极便宜。
+    // `?approval=` 只认 0..=3：此前越界值（如 9）静默落到默认视图，
+    // 伸手要回收站的人拿到一批过审种——答非所问还不报错。
+    if let Some(v) = q.approval {
+        if !(0..=3).contains(&v) {
+            return Err(DomainError::Validation(
+                "approval 取值无效：0 待审 / 1 过审 / 2 被拒 / 3 回收站".into(),
+            ));
+        }
+    }
     let default_view = q.approval.is_none() || q.approval == Some(0);
     let (show_pending, show_rejected) = if default_view {
         sqlx::query_as::<_, (bool, bool)>(

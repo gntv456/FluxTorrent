@@ -216,12 +216,22 @@ async fn upload_core(
     let price = precheck::check_price(form.price)?;
     precheck::check_tags(&state.repo.db, &form, auth).await?;
     let promo = precheck::check_promo(&form, auth)?;
-    // 0148 C1：descr/name 里的 IMDB 引用自动提取（tt1234567，大小写不敏感）
+    // 0148 C1：IMDb 编号落 `imdb_id` 列（详情页/编辑页/审核台/`?imdb=`
+    // 并集都以它为准）。三个来源按优先级取，同一条正则口径：①表单 imdb
+    // 栏（可能是 `tt0468569` 或整条链接）②正文引用 ③种子名。
+    // 此前只认 ②③，表单那一栏只进 `media_info.imdb` ⇒ 用户在发种页填了
+    // IMDb，详情页仍是一片空白，编辑回填也是空（2026-10-10 实测）。
     let imdb_id: Option<String> = form
-        .descr
+        .imdb
         .as_deref()
         .and_then(extract_imdb)
+        .or_else(|| form.descr.as_deref().and_then(extract_imdb))
         .or_else(|| extract_imdb(&name));
+    // 那一栏填了却解析不出编号 ⇒ 当场报错，静默收下等于骗用户「填上了」
+    let raw_imdb = form.imdb.as_deref().map(str::trim).unwrap_or("");
+    if !raw_imdb.is_empty() && extract_imdb(raw_imdb).is_none() {
+        return Err(DomainError::Validation(IMDB_HINT.into()));
+    }
     // 简介里的图 → screenshots 列（该列过去全仓无写入，审核队列的「截图数」恒 0）
     let shots = descr_images(form.descr.as_deref());
     precheck::check_quality(&state.repo.db, &form, &parsed, shots.len())
@@ -410,6 +420,10 @@ async fn upload_core(
 pub(crate) fn extract_imdb_pub(text: &str) -> Option<String> {
     extract_imdb(text)
 }
+
+/// IMDb 输入校验提示（发种与编辑两个入口共用同一句，防两处规则漂移）。
+pub(crate) const IMDB_HINT: &str =
+    "IMDb 编号格式无效：需 tt 加 7~8 位数字，或直接贴 IMDb 链接";
 
 fn extract_imdb(text: &str) -> Option<String> {
     let re = regex::Regex::new(r"(?i)\b(tt[0-9]{7,8})\b").ok()?;

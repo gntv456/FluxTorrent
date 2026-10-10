@@ -48,21 +48,37 @@ const SKIP_DIR =
   /(^|[/\\])(node_modules|\.next|coverage|target|dist|\.git)([/\\]|$)/;
 const EXT = new Set([".rs", ".ts", ".tsx", ".js", ".mjs", ".sql", ".json"]);
 
-/** 收集所有在 settings_meta 里登记过的键（INSERT 语句的字符串字面量首列）。 */
+/** 收集所有在 settings_meta 里登记过的键（登记语句首列的字符串字面量）。
+ *
+ * 扫描范围必须锁在 `INSERT INTO settings_meta …;` 这一段里。此前的写法是
+ * 「整份迁移只要提到 settings_meta 就通吃」，于是同一份迁移里给别的表
+ * （section_kinds 之类）INSERT 的首列字面量也被当成设置键——
+ * 0340 的 `season_label` 假红就是这么来的（门禁自己假红，比漏检更伤：
+ * 人们从此不信这个门）。
+ */
 function metaKeys() {
   const keys = new Map(); // key -> 首次登记的迁移文件
   const sqls = readdirSync(MIGRATIONS)
     .filter((n) => n.endsWith(".sql"))
     .sort();
+  const BLOCK = /INSERT\s+INTO\s+["']?settings_meta["']?\b[^;]*;/gi;
   for (const f of sqls) {
     const text = readFileSync(path.join(MIGRATIONS, f), "utf-8");
-    if (!/settings_meta/i.test(text)) continue;
-    // VALUES ('key', …) / ('key','group',… ：只取每行第一个字面量，
-    // 这与 0193 的清理判据一致（键名就是第一列）
-    const re = /\(\s*'([a-zA-Z][a-zA-Z0-9_]*)'\s*,/g;
-    let m;
-    while ((m = re.exec(text))) {
-      if (!keys.has(m[1])) keys.set(m[1], f);
+    // 两种登记形态都要收到，缺一种就是漏检：
+    //   VALUES ('key', …)            —— 元组首列
+    //   SELECT 'key', 'yesno', …     —— 配 WHERE NOT EXISTS 的补录写法
+    // 键名都是第一列（与 0193 的清理判据一致）。
+    const reTuple = /\(\s*'([a-zA-Z][a-zA-Z0-9_]*)'\s*[,)]/g;
+    const reSelect = /\bSELECT\s+'([a-zA-Z][a-zA-Z0-9_]*)'\s*,/gi;
+    let block;
+    while ((block = BLOCK.exec(text))) {
+      for (const re of [reTuple, reSelect]) {
+        re.lastIndex = 0;
+        let m;
+        while ((m = re.exec(block[0]))) {
+          if (!keys.has(m[1])) keys.set(m[1], f);
+        }
+      }
     }
   }
   return keys;

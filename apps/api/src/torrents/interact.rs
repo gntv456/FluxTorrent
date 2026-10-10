@@ -59,6 +59,14 @@ pub async fn edit_torrent(
     } else {
         editor.1 >= super::manage_perm::auto_approve_threshold(db).await
     };
+    // 回退待审时同步清 approved_at（P1-1 对齐）：过审时间戳只属于
+    // approval_status=1 的行，否则 worker 的泄露检测会拿旧时间戳
+    // 对新一轮审核周期误判。
+    //
+    // 这段 SQL 里不许出现 Rust 风格的 `//`：Postgres 把 `//` 当整除
+    // 运算符，整条 UPDATE 直接 syntax error —— 2026-10-10 实测种子编辑
+    // 口 PUT /torrents/{id} 100% 500（注释被粘进 r#"…"# 内部）。
+    // 串内注释一律用 `--`，或干脆提到 Rust 侧。
     let n = sqlx::query(
         r#"
         UPDATE torrents SET
@@ -70,11 +78,13 @@ pub async fn edit_torrent(
             medium_id = COALESCE($7, medium_id),
             grade_id = COALESCE($8, grade_id),
             edition_id = COALESCE($9, edition_id),
-            imdb_id = COALESCE($10, imdb_id),
-            approval_status = CASE WHEN $11::bool THEN approval_status ELSE 0 END,
-            // 回退待审时同步清 approved_at（P1-1 对齐）：过审时间戳只属于
-            // approval_status=1 的行，否则 worker 的泄露检测会拿旧时间戳
-            // 对新一轮审核周期误判。
+            -- $10 是 IMDb 三态：NULL=不动，''=清空，其余=写入。
+            -- 用 COALESCE 的话空串清不掉（'' 非 NULL 会被直接写入），
+            -- 所以清空要落回 NULL。
+            imdb_id = CASE WHEN $10::text IS NULL THEN imdb_id
+                           ELSE NULLIF($10::text, '') END,
+            approval_status = CASE WHEN $11::bool
+                THEN approval_status ELSE 0 END,
             approved_at = CASE WHEN $11::bool OR approval_status <> 1
                 THEN approved_at ELSE NULL END,
             media_info = CASE
