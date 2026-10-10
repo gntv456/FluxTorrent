@@ -21,7 +21,7 @@ pub(crate) async fn notify_review_result(
 ) {
     let db = &state.repo.db;
     let row =
-        sqlx::query_as::<_, (i64, String, Option<String>, Option<String>)>(
+        sqlx::query_as::<_, (Option<i64>, String, Option<String>, Option<String>)>(
             "SELECT t.owner_id, t.name, d.reason, t.deny_note \
          FROM torrents t \
          LEFT JOIN torrent_deny_reasons d ON d.id = t.deny_reason_id \
@@ -30,11 +30,15 @@ pub(crate) async fn notify_review_result(
         .bind(torrent_id)
         .fetch_optional(db)
         .await;
-    let Ok(Some((owner, title, deny_label, deny_note))) = row else {
-        if let Err(e) = row {
+    // owner_id 可空（站方代发 / 系统导入的种子没有上传者）：以前按 i64 解码，
+    // 这类种子一过审就走「取数失败」分支，日志里全是假警告。
+    let (owner, title, deny_label, deny_note) = match row {
+        Ok(Some((Some(o), t, dl, dn))) => (o, t, dl, dn),
+        Ok(_) => return,
+        Err(e) => {
             tracing::warn!(?e, torrent = torrent_id, "审核通知取数失败");
+            return;
         }
-        return;
     };
     let email = sqlx::query_scalar::<_, String>(
         "SELECT email FROM users WHERE id = $1 AND email <> ''",

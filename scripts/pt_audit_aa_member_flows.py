@@ -107,6 +107,32 @@ nulls = [x for x in rows if x.get("uploaded") is None]
 ok("A1 正控：判据可判别（确有 uploaded=null 的行）", bool(nulls),
    "rows=%d null_flow=%d" % (len(rows), len(nulls)))
 
+print("A8 种子导出：无主种子（owner_id IS NULL）不该让整页 500")
+if int(psql("SELECT count(*) FROM torrents WHERE owner_id IS NULL") or 0) == 0:
+    row0 = psql("SELECT id || ' ' || owner_id FROM torrents "
+                "WHERE owner_id IS NOT NULL ORDER BY id LIMIT 1")
+    if row0:
+        oid0, oowner = row0.split()
+        psql("UPDATE torrents SET owner_id = NULL WHERE id = %s" % oid0)
+        CLEANUP.append("UPDATE torrents SET owner_id = %s WHERE id = %s"
+                       % (oowner, oid0))
+        print("（已把种子 %s 置为无主当判据）" % oid0)
+per = int((call("GET", "/admin/export/torrents?page=1",
+                token=ROOT)[1].get("data") or {}).get("per") or 50)
+null_id = psql("SELECT min(id) FROM torrents WHERE owner_id IS NULL")
+page = 1
+if null_id:
+    pos = int(psql("SELECT count(*) FROM torrents "
+                   "WHERE id < %s" % null_id) or 0)
+    page = pos // per + 1
+s, r = call("GET", "/admin/export/torrents?page=%d" % page, token=ROOT)
+d8 = r.get("data") or {}
+ok("A8 /admin/export/torrents 200", s == 200 and r.get("code") == 0,
+   "http=%s page=%d %s" % (s, page, str(r.get("message"))[:120]))
+ok("A8 正控：该页确有 owner_id=null 的行",
+   any(x.get("owner_id") is None for x in d8.get("items") or []),
+   "page=%d items=%d" % (page, len(d8.get("items") or [])))
+
 print("A2 保种区四档视图：信封同构（前端按 {items,total,stats} 解构）")
 KEYS = {"items", "total", "stats", "page", "per_page"}
 for st in ["?status=current", "?status=active", "?status=grace",
