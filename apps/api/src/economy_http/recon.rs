@@ -125,7 +125,8 @@ fn tattr(name: &str, value: &str) -> String {
 ///
 /// 支持的模式（与 caps 的 `<searching>` 声明一致，不再静默忽略）：
 ///   - `t=search`（缺省）：`q` 关键字，或 `imdbid` 走 IMDb 精确区
-///   - `t=movie`   ：`imdbid` / `tmdbid` → IMDb 精确区；否则 `q`
+///   - `t=movie`   ：`imdbid` → IMDb 精确区；否则 `q`
+///     （`tmdbid` 不支持：库中无该列，caps 亦未声明，收到即忽略）
 ///   - `t=tvsearch`：`q` + `season`/`ep` 收窄标题（`S01E02` token）
 ///   - `t=music` / `t=book`：按 `q`（本站不区分维度，等价 search）
 ///   - `cat`       ：逗号分隔 Newznab 分类号；命中不到任何站内分类时
@@ -182,7 +183,6 @@ async fn torznab_search_inner(
     let mode = get("t").unwrap_or_else(|| "search".into());
     let keyword = get("q");
     let imdb = get("imdbid").or_else(|| get("imdb"));
-    let tmdb = get("tmdbid");
     let season = get("season").and_then(|v| v.parse::<u32>().ok());
     let ep = get("ep").and_then(|v| v.parse::<u32>().ok());
     let limit: usize = get("limit")
@@ -202,7 +202,14 @@ async fn torznab_search_inner(
     };
     match mode.as_str() {
         "movie" => {
-            if let Some(id) = imdb.as_ref().or(tmdb.as_ref()) {
+            // 只认 imdbid：库里没有 tmdb/tvdb 列，caps 也只声明
+            // `movie-search supportedParams="q,imdbid"`。旧实现把 tmdbid
+            // `.or()` 进来塞进 IMDb 精确区（search_area=4），而 Radarr /
+            // Sonarr 习惯 **同时** 传 q 与 tmdbid —— 于是
+            // `t=movie&q=X&tmdbid=123` 的标题搜索被一个数字顶掉，
+            // 实测同一条 q 单独传命中 3 条、带上 tmdbid 变 0 条。
+            // 不支持的参数就该当没收到，不能反过来毁掉能用的那条。
+            if let Some(id) = imdb.as_ref() {
                 filter.search = Some(id.clone());
                 filter.search_area = Some(4);
             } else {
