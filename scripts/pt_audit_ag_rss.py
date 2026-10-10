@@ -271,8 +271,77 @@ if encs:
     ok("G7 下载响应 no-store（.torrent 内嵌本人 passkey）",
        dcc is not None and "no-store" in dcc.lower(), "cc=%r" % dcc)
 
+print("== G9 Torznab：不支持的标识符不得顶掉能用的关键词 ==")
+s, r = call("POST", "/me/tokens", {"name": "agtz %d" % int(time.time())},
+            token=ROOT)
+TZTOK = (r.get("data") or {}).get("token")
+ok("G9 可签发 API Token（Torznab 鉴权入口）", s == 200 and TZTOK,
+   "http=%s" % s)
+TID = None
+s2, lr = call("GET", "/me/tokens", token=ROOT)
+rows = (lr.get("data") or {})
+lst = rows.get("tokens") if isinstance(rows, dict) else rows
+for it in (lst or []):
+    if it.get("token") == TZTOK or it.get("key") == TZTOK:
+        TID = it.get("id")
+CLEAN.append("__revoke_token__")
+
+def tz(qs):
+    rq = urllib.request.Request(BASE + "/torznab/search?" + qs)
+    rq.add_header("Authorization", "Token " + (TZTOK or ""))
+    try:
+        return urllib.request.urlopen(rq, timeout=30).read().decode(
+            "utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.read().decode("utf-8", "replace")
+
+q_kw = "agrss"
+a = tz("t=movie&q=%s" % q_kw).count("<item>")
+b = tz("t=movie&q=%s&tmdbid=693113" % q_kw).count("<item>")
+ok("G9 仅 q 的片名搜索有结果（正控）", a >= 2, "items=%s" % a)
+ok("G9 同时带 tmdbid 不得把结果打成空（本批修复判据）", b == a,
+   "只传q=%s 条 / 加 tmdbid=%s 条" % (a, b))
+c = tz("t=movie&imdbid=tt0000000").count("<item>")
+ok("G9 imdbid 仍走 IMDb 精确区（反向：不是一律忽略标识符）", c == 0,
+   "items=%s" % c)
+
+print("== G8 /compat/meta 声明的每个口都真实存在（对外契约不虚报）==")
+import re as _re2
+s, body, _, _cc = call("GET", "/compat/meta")
+meta = (body.get("data") or {}) if s == 200 else {}
+eps = meta.get("endpoints") or {}
+def first_tok(v):
+    return _re2.split(r"[\s（(]", v.strip(), 1)[0]
+gets = {k: first_tok(v) for k, v in eps.items()
+        if isinstance(v, str) and v.strip().startswith("/api/v1")}
+for k, v in (eps.get("aliases") or {}).items():
+    if isinstance(v, str) and v.strip().startswith("/api"):
+        gets["alias." + k] = first_tok(v)
+missing = []
+for k, path in sorted(gets.items()):
+    url = (path.replace("{passkey}", PK).replace("{id}", "1")
+           .replace("{token}", "fxo_none")
+           .replace("{anchor}", "1"))
+    rq = urllib.request.Request(BASE.replace("/api/v1", "") + url)
+    try:
+        st = urllib.request.urlopen(rq, timeout=25).status
+    except urllib.error.HTTPError as e:
+        st = e.code
+    except Exception:
+        st = 0
+    # 401/400/429 都是「口在、只是要凭证」；404/1004 才是虚报
+    if st in (0, 404, 405):
+        missing.append("%s(%s→%s)" % (k, path, st))
+ok("G8 声明的 GET 口全部在册（≥6 条，无 404）",
+       len(gets) >= 6 and not missing,
+       "checked=%d missing=%s" % (len(gets), missing or "无"))
+
 print("== G5 收尾 ==")
 for stmt in reversed(CLEAN):
+    if stmt == "__revoke_token__":
+        if TID:
+            call("POST", "/me/tokens/revoke", {"id": TID}, token=ROOT)
+        continue
     exec_sql(stmt)
 ok("G5 语料无残留",
    q("SELECT count(*) FROM torrents WHERE name LIKE 'agrss%'") == "0",
