@@ -129,6 +129,26 @@ def drop_torrent(tid):
              "DELETE FROM torrents WHERE id = %d" % (tid, tid, tid))
 
 
+WEB = os.environ.get("FLUX_WEB_BASE", "http://127.0.0.1:3000")
+
+
+def page(tid, tok):
+    """SSR 出的详情页 HTML（带会话 cookie）。
+
+    配置面的最终判据在这一层：接口供得到而页面渲染不出，站长看到的仍是
+    「改了没反应」。web 容器不在时这里会回 HTTPxxx，断言如实红。
+    """
+    req = urllib.request.Request("%s/torrent/%s" % (WEB, tid))
+    req.add_header("Cookie", "flux.session=1; flux_token=%s" % tok)
+    try:
+        body = urllib.request.urlopen(req, timeout=60).read()
+        return body.decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return "HTTP%s" % e.code
+    except Exception as e:  # 端口不通/超时也要如实报，不让页面断言静默消失
+        return "ERR:%s" % e
+
+
 def kinds_of(resp):
     """/section-dict 形态：{kinds: [元数据…], <kind>: [选项行…], …}"""
     d = resp.get("data") or {}
@@ -369,6 +389,11 @@ tg = (agg.get("data") or {}).get("tags") or {}
 ok("E6 详情页标签条渲染得出它",
    str(TD) in [str(x) for x in (tg.get("mine") or [])],
    "http=%s mine=%s" % (s, tg.get("mine")))
+HTML = page(T4, ROOT)
+ok("E6 渲染层：SSR 出的 HTML 里有这个新标签名",
+   TAG_NAME in HTML, "%s… len=%s" % (HTML[:70], len(HTML)))
+ok("E6 渲染层：新维度的选项名也在 HTML 里（规格区）",
+   "选项甲" in HTML, "len=%s" % len(HTML))
 s, r = call("DELETE", "/admin/tags-dict/%s" % TD, token=ROOT)
 ok("E6 删除仍被引用的标签：有可读反应（不许 500）",
    s != 500 and s != 0, "http=%s %s 库里 tag_dict=%s tags=%s"
@@ -379,6 +404,10 @@ if gone == "0":
     ok("E6 若删除放行，则种上的引用一并清掉（不留悬空行）",
        q("SELECT count(*) FROM tags WHERE tag_id = %s" % TD) == "0",
        "悬空=%s" % q("SELECT count(*) FROM tags WHERE tag_id = %s" % TD))
+    # 反向正控：删掉后 HTML 里就该没有它了。有前面「里面有」对照，
+    # 这一条才是判别的（同一条渲染链的两个方向各验一次）。
+    ok("E6 渲染层反向：删掉后 SSR HTML 不再含该标签名",
+       TAG_NAME not in page(T4, ROOT), "")
 
 print("== E7 收尾：删分类的处置 ==")
 s, r = call("DELETE", "/admin/categories/%s" % CID, token=ROOT)
