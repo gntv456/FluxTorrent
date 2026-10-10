@@ -128,7 +128,7 @@ async fn rss_feed(
         .bind(categories.as_deref())
         .bind(mediums.as_deref())
         .bind(q.official)
-        // LIKE 通配转义（2026-10-10 批九）：与主列表 esc_like 同口径——裸 %/_ 当
+        // LIKE 通配转义（2026-10-10 批十）：与主列表 esc_like 同口径——裸 %/_ 当
         // 通配会让 search=% 退化成「不过滤」，RSS 与列表两个出口语义漂移
         .bind(
             q.search
