@@ -16,7 +16,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import call, login, ok, summary  # noqa: E402
+from pt_audit_lib import (call, clear_register_rl, login, ok,
+                         summary)  # noqa: E402
 
 DB = "fluxtorrent"
 
@@ -198,6 +199,7 @@ ok("A5 comments/bids 为 null（读作「—」而不是「无人应求」）",
 
 def new_member(tag):
     """管理员发码 → 验证码 → 注册 → 登录，拿真实成员令牌（不借演示号）。"""
+    clear_register_rl()
     s, r = call("POST", "/admin/invites", {"user_id": 1, "count": 1},
                 token=ROOT)
     codes = ((r.get("data") or {}).get("codes")) or []

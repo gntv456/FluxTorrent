@@ -17,7 +17,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import call, login, ok, summary  # noqa: E402
+from pt_audit_lib import (call, clear_register_rl, login, ok,
+                         summary)  # noqa: E402
 
 ROOT = login()
 CLEAN = []
@@ -90,27 +91,39 @@ def inbox(tok):
 
 
 def new_member(tag):
-    """发码 → 验证码 → 注册 → 登录（演示号密码会被随机化，不借）。"""
+    """发码 → 验证码 → 注册 → 登录（演示号密码会被随机化，不借）。
+
+    用户名带毫秒后缀：探针号收尾只能 `status=2`（audit_log 防篡改链不许删号），
+    名字因此长期占位。用同一 TAG 复跑时旧名还在库里，注册会被拒——
+    表现是「成员准备失败」，看着像站点坏了，其实是自己撞自己的历史。
+    失败原因直接打出来：这一条断言的判据是「四个号都能准备」，
+    光给 True/False 等于没报因。
+    """
+    def why(msg):
+        print("   成员 %s 准备失败：%s" % (tag, msg))
+        return None
+
     r = call("POST", "/admin/invites", {"user_id": 1, "count": 1},
              token=ROOT)[1]
     codes = ((r.get("data") or {}).get("codes")) or []
     if not codes:
-        return None
+        return why("发码 http=%s %s" % (r.get("code"), r.get("message")))
     code, cid = codes[0]["code"], codes[0]["id"]
     cap = call("GET", "/auth/captcha", token=ROOT)[1].get("data") or {}
     nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
     if len(nums) < 2:
-        return None
-    user = "ab%s%d" % (tag, TAG)
+        return why("验证码题解析失败 %s" % (cap,))
+    user = "ab%s%d" % (tag, int(time.time() * 1000) % 10000000)
     reg = {"username": user, "email": "%s@ab.local" % user,
            "password": "password123", "invite_code": code,
            "captcha_id": cap.get("captcha_id"),
            "captcha_answer": int(nums[0]) + int(nums[1]),
            "captcha_token": "", "fields": {}}
-    data = call("POST", "/auth/register", reg)[1].get("data") or {}
+    resp = call("POST", "/auth/register", reg)
+    data = resp[1].get("data") or {}
     uid = data.get("user_id")
     if not uid:
-        return None
+        return why("注册 http=%s %s" % (resp[0], resp[1].get("message")))
     CLEAN.append("UPDATE users SET status = 2 WHERE id = %s" % uid)
     CLEAN.append("DELETE FROM invites WHERE id = %d" % cid)
     # 连开多个探针号时登录会吃 429；令牌拿不到就重试，
@@ -122,7 +135,7 @@ def new_member(tag):
         if tok:
             return (tok, uid, user)
         time.sleep(4)
-    return None
+    return why("登录 6 次都拿不到 token（多半是 429 限流）")
 
 
 def send(frm, to_user, subject, text, reply_to=None):
@@ -134,6 +147,9 @@ def send(frm, to_user, subject, text, reply_to=None):
     return call("POST", "/messages", body, token=frm[0])[1]
 
 
+# 注册限流按 IP 计数（5/分钟）：几套闸门连跑会互相吃光额度，
+# 先清自己造的计数，免得「成员准备失败」被读成站点故障。
+clear_register_rl()
 A, B = new_member("a"), new_member("b")
 C, D = new_member("c"), new_member("d")
 if not all([A, B, C, D]):

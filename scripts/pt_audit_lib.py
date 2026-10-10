@@ -64,3 +64,17 @@ def summary():
         print("== FAILURES (%d): %s" % (len(FAILURES), ", ".join(FAILURES)))
         sys.exit(1)
     print("== ALL PASS")
+
+def clear_register_rl():
+    """闸门侧清掉注册限流键（rl:register-ip:<IP>，Redis 计数 + 60s TTL）。
+
+    几套闸门连着跑时各自要注册 1~4 个成员，额度（5/分钟/IP）会互相吃光，
+    表现是 `new_member` 返回无 token、下游一片「未认证」。与其每人睡 60 秒，
+    不如清掉自己造的计数——只碰 register-ip 这一个面，登录/发信限流照旧生效。
+    """
+    import subprocess
+    cmd = ('redis-cli -a "$REDIS_PASSWORD" --no-auth-warning --scan '
+           ' --pattern "rl:register-ip:*" '
+           '| xargs -r redis-cli -a "$REDIS_PASSWORD" --no-auth-warning del')
+    subprocess.run(["docker", "exec", "flux-redis", "sh", "-c", cmd],
+                   capture_output=True, text=True, encoding="utf-8")
