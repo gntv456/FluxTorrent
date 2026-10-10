@@ -17,7 +17,7 @@ pub(crate) mod torrent_parse;
 pub use bencode::{
     bencode_announce, bencode_scrape, hex, peer_id_bytes, percent_decode,
 };
-pub use model::{Peer, PeerKey, CONN_UNTESTED};
+pub use model::{Peer, PeerKey, Snapshot, CONN_UNTESTED};
 // 以下仅在 peers 内部与测试使用（bin crate 私有模块的 re-export 未用时告警）
 #[cfg(test)]
 pub use model::{CompactPeer, CompactPeer6};
