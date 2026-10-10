@@ -40,7 +40,7 @@ struct OrderBody {
     plan_id: i32,
 }
 
-/// 用余额订购套餐（上传量 / 片单额度 / VIP）
+/// 用余额订购套餐（上传量 / 邀请名额 / VIP）
 #[post("/donate/order")]
 pub async fn donate_order(
     req: HttpRequest,
