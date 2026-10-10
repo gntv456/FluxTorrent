@@ -37,15 +37,19 @@ SIDE_ANN = "http://127.0.0.1:%d/announce" % SIDE_PORT
 TOKEN = ""
 
 
-def redis_cli(*args):
-    """flux-redis 开了 requirepass，漏 -a 就是静默 noop（10-08 踩过）。"""
-    pw = ""
+def redis_pw():
     for line in open("D:/FluxTorrent/docker/.env", encoding="utf-8"):
         if line.startswith("REDIS_PASSWORD="):
-            pw = line.split("=", 1)[1].strip()
+            return line.split("=", 1)[1].strip()
+    return ""
+
+
+def redis_cli(*args, db=0):
+    """flux-redis 开了 requirepass，漏 -a 就是静默 noop（10-08 踩过）。
+    db 只允许指到闸门自用的 13 库，别碰主栈的 0 库。"""
     r = subprocess.run(
-        ["docker", "exec", "flux-redis", "redis-cli", "-a", pw,
-         "--no-auth-warning", *args],
+        ["docker", "exec", "flux-redis", "redis-cli", "-a", redis_pw(),
+         "--no-auth-warning", "-n", str(db), *args],
         capture_output=True, text=True, encoding="utf-8")
     return r.stdout.strip()
 
@@ -157,25 +161,44 @@ def parse_peers(body, key):
     return out
 
 
+COMPOSE = ["docker", "compose", "-f",
+           "D:/FluxTorrent/docker/docker-compose.yml"]
+
+
+def side_docker(env, mode):
+    """侧 tracker：用 compose 的服务环境变量（手挂 -e 会缺 DATABASE_URL 等，
+    容器当场退掉），只覆盖限流阈值/Redis，并把端口挪到 7171/6970。"""
+    args = COMPOSE + ["run", mode, "--rm", "--name", SIDE, "--no-deps",
+                      "--publish", "127.0.0.1:%d:7070" % SIDE_PORT,
+                      "--publish", "127.0.0.1:%d:6969" % (SIDE_PORT + 1)]
+    for k, v in env.items():
+        args += ["-e", "%s=%s" % (k, v)]
+    args.append("tracker")
+    r = subprocess.run(args, capture_output=True, text=True,
+                       encoding="utf-8")
+    if mode == "-d" and r.returncode != 0:
+        raise SystemExit("侧 tracker 起不来：%s" % r.stderr.strip()[-400:])
+    if mode == "-d":
+        # 轮询到端口通为止（sleep 固定秒数在 compose run 上不成立）
+        for _ in range(24):
+            try:
+                socket.create_connection(("127.0.0.1", SIDE_PORT), 1).close()
+                break
+            except OSError:
+                time.sleep(1)
+        else:
+            raise SystemExit("侧 tracker 端口 127.0.0.1:%d 一直没通"
+                             % SIDE_PORT)
+
+
 def side_start(env):
     side_docker(env, "-d")
 
 
-def side_docker(env, mode):
-    args = ["docker", "run", mode, "--rm", "--name", SIDE,
-            "--network", "docker_default",
-            "--publish", "127.0.0.1:%d:7070" % SIDE_PORT,
-            "--publish", "127.0.0.1:%d:6969" % (SIDE_PORT + 1)]
-    for k, v in env.items():
-        args += ["-e", "%s=%s" % (k, v)]
-    args.append(os.environ.get(
-        "FLUX_TRACKER_IMAGE", "ghcr.io/gntv456/fluxtorrent/tracker:latest"))
-    r = subprocess.run(args, capture_output=True, text=True,
-                       encoding="utf-8")
-    if mode == "-d" and r.returncode != 0:
-        raise SystemExit("侧 tracker 起不来：%s" % r.stderr.strip()[:300])
-    if mode == "-d":
-        time.sleep(6)
+def side_alive():
+    r = subprocess.run(["docker", "ps", "--format", "{{.Names}}"],
+                       capture_output=True, text=True, encoding="utf-8")
+    return SIDE in r.stdout.split()
 
 
 def side_stop():
@@ -207,6 +230,18 @@ def urllib_parse_quote(raw):
     return urllib.parse.quote(raw, safe="")
 
 
+def metrics_text(tok):
+    """侧容器 /metrics（ANN_METRICS_TOKEN 走标准 Bearer 头）。"""
+    req = urllib.request.Request(
+        "http://127.0.0.1:%d/metrics" % SIDE_PORT,
+        headers={"Authorization": "Bearer " + tok})
+    try:
+        return urllib.request.urlopen(req, timeout=12).read().decode(
+            "utf-8", "replace")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def sec_a_tiers():
     print("\n-- A .torrent 的 announce-list 形状（BEP 12）--")
     global TOKEN
@@ -228,6 +263,7 @@ def sec_a_tiers():
             url, headers={"Authorization": "Bearer " + TOKEN})
         body = urllib.request.urlopen(req, timeout=30).read()
         d, _ = bdec(body)
+        ann2 = d.get(b"announce", b"").decode()
         tiers = d.get(b"announce-list")
         ok("A3 配了回退就出 announce-list", isinstance(tiers, list),
            type(tiers).__name__)
@@ -237,7 +273,10 @@ def sec_a_tiers():
                all(s == 1 for s in sizes), sizes)
             ok("A5 tier 数 = 首选 + 回退", len(tiers) == 2, len(tiers))
             first = tiers[0][0].decode()
-            ok("A6 首选 tier 是 announce 那个地址", first == ann, first)
+            # 比的是**同一次下载**的 announce 与 tier0（https_announce_url
+            # 一设，顶层 announce 就换成 https，拿旧那次比必然假红）
+            ok("A6 首选 tier 就是顶层 announce", first == ann2,
+               (first, ann2))
     finally:
         psql("UPDATE site_settings SET value='' WHERE"
              " name='https_announce_url'")
@@ -246,82 +285,146 @@ def sec_a_tiers():
     ok("A7 回退设置已复原为空", back == "", repr(back))
 
 
+def scrape_counts(passkey, ih_hex, url=None):
+    """scrape → (complete, incomplete)；结构不认识就返回 None。"""
+    base = url or SCR
+    s, body = raw_get("%s/%s?info_hash=%s"
+                      % (base, passkey, hex_to_url_ih(ih_hex)), timeout=20)
+    try:
+        d, _ = bdec(body)
+        entry = d.get(b"files", {}).get(bytes.fromhex(ih_hex))
+        if not isinstance(entry, dict):
+            return None
+        return (entry.get(b"complete"), entry.get(b"incomplete"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def announce_counts(body):
+    """announce 响应里的 (complete, incomplete)——这两个数由内存实时表算出，
+    不像 scrape 只认 60s 白名单快照（10-08 记过这条，本轮又被它假红了一次）。"""
+    try:
+        d, _ = bdec(body)
+        if b"complete" not in d:
+            return None
+        return (d[b"complete"], d.get(b"incomplete", 0))
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def sec_b_stopped_exempt():
     print("\n-- B stopped 不被限流吞掉（侧容器低阈值）--")
-    ih = hex_to_url_ih(torrent_row()[1])
-    mypass = psql("SELECT passkey FROM users WHERE id=1")
+    ih_hex = torrent_row()[1]
+    ih = hex_to_url_ih(ih_hex)
+    keys = passkeys(2)
+    if len(keys) < 2:
+        print("[SKIP] B 组需要两个账号：一个上报、一个旁观读数")
+        return
+    a, o = keys[0], keys[1]
     env = {
         "ANN_RATE_USER_PER_MIN": "4",
         "ANN_RATE_IP_PER_MIN": "100000",
-        "ANNOUNCE_INTERVAL": "3600",
     }
     side_start(env)
+    ok("B0 侧容器活着（compose run 起的）", side_alive(), SIDE)
     try:
+        # A0 用一个独一无二的监听端口，判据落在「它本人在不在表里」——
+        # 绝对计数不可用：侧容器启动时会从 Redis 热恢复主栈的 swarm（本轮实测
+        # complete 一上来就是 2），拿数字判增减必然假红/假绿。
+        side_port = 45123
+        announce(SIDE_ANN, a, ih, pid("A0"), left=0, port=side_port)
+        s, body = announce(SIDE_ANN, o, ih, pid("OBS1"), left=0)
+        seen = [p[1] for p in parse_peers(body, b"peers")]
+        ok("B1 正控——A0 的端点确实在 swarm 里",
+           side_port in seen, (seen[:6], announce_counts(body)))
         limited = None
         for i in range(8):
-            s, body = announce(SIDE_ANN, mypass, ih, pid("A%d" % i))
-            fr = failure_reason(body)
-            if fr and "频率超限（用户）" in fr:
+            # 打桶用的其他 peer 换端口：45123 必须是 A0 独有，否则
+            # 「A0 消失没消失」这条判据会被同端口的别的 peer 假红（本轮实测）
+            s, body = announce(SIDE_ANN, a, ih, pid("A%d" % i), left=0,
+                               port=45999)
+            if failure_reason(body):
                 limited = i + 1
                 break
-        ok("B1 正控——周期 announce 确实被用户限流挡住（证明桶是活的）",
+        ok("B2 正控——A 的周期 announce 已被用户限流挡住（桶是活的）",
            limited is not None, limited)
-        s, body = announce(SIDE_ANN, mypass, ih, pid("A0"), event="stopped")
-        fr = failure_reason(body)
-        ok("B2 stopped 不被限流拒（旧写法这里就丢了状态转换）",
-           fr is None or "频率超限" not in fr, fr)
-        s, body = announce(SIDE_ANN, mypass, ih, pid("A1"))
-        fr2 = failure_reason(body)
-        ok("B3 正控——stopped 之后周期 announce 仍被拒（桶没被顺手清空）",
-           fr2 is not None and "频率超限" in fr2, fr2)
+        announce(SIDE_ANN, a, ih, pid("A0"), left=0, event="stopped",
+                 port=side_port)
+        s, body = announce(SIDE_ANN, o, ih, pid("OBS2"), left=0)
+        after = [p[1] for p in parse_peers(body, b"peers")]
+        # 判据落在后果上而不是响应文案：旧写法把 stopped 丢在限流里 ⇒
+        # A0 仍在别人的 peer 列表里（幽灵在种），新写法必须消失
+        ok("B3 stopped 真落表（A0 从 peer 列表消失；旧写法这里仍在）",
+           side_port not in after, (side_port, after[:6]))
     finally:
+        # 收尾把打桶用的 8 个 peer 也停掉（它们现在是豁免通道，一发就落表）
+        for i in range(8):
+            announce(SIDE_ANN, a, ih, pid("A%d" % i), left=0,
+                     event="stopped", port=45999)
         side_stop()
         # 侧容器与主栈同库 Redis，用户/IP 桶是共享键：清掉，别让别的闸门
         # 或真实用户在下一分钟里被我们压出来的限流误伤
         for u in passkeys(4):
             uid = psql("SELECT id FROM users WHERE passkey='%s'" % u)
             redis_cli("DEL", "rl:ann:u:%s" % uid)
-        redis_cli("DEL", "rl:ann:ipstop:%s" % "127.0.0.1")
+        # 侧容器看到的来源 IP 是 docker 网关（172.20.0.1），不是 127.0.0.1
+        # ⇒ 按模式扫着删，别写死（写死就等于没清，下一分钟真实用户被误伤）
+        for k in redis_cli("--scan", "--pattern",
+                           "rl:ann:ipstop:*").splitlines():
+            if k:
+                redis_cli("DEL", k)
 
 
 def sec_c_no_silent_loss():
     print("\n-- C 计费事件不静默丢 --")
     ih = hex_to_url_ih(torrent_row()[1])
-    mypass = psql("SELECT passkey FROM users WHERE id=1")
-    tok = "gatemetric"
+    keys = passkeys(1)
+    if not keys:
+        print("[SKIP] C 组需要一个在册账号的 passkey")
+        return
+    mypass, tok = keys[0], "gatemetric"
+    # 只污染 13 库（侧容器专用）：把 flux:announce 做成 string，对它的 XADD
+    # 必返 WRONGTYPE，而其余 Redis 用法照常。**绝不能碰 0 库的真流**——覆盖它
+    # 等于删掉线上尚未消费的 announce 事件。EX 120 兜底，收尾再 DEL 一次。
+    redis_cli("SET", "flux:announce", "gate-wrongtype", "EX", "120", db=13)
     env = {
-        # 故意把 Redis 指到不可达口令：XADD 必失败
-        "REDIS_URL": "redis://:wrongpw@flux-redis:6379",
+        "REDIS_URL": "redis://:%s@flux-redis:6379/13" % redis_pw(),
         "ANN_METRICS_TOKEN": tok,
     }
     side_start(env)
+    ok("C0 侧容器活着", side_alive(), SIDE)
     try:
-        s, body = announce(SIDE_ANN, mypass, ih, pid("C1"))
-        fr = failure_reason(body)
-        ok("C1 Redis 不可达时 announce 仍正常服务（不 500 不假成功）",
-           s == 200 and fr is None, (s, fr))
-        s, m = raw_get("http://127.0.0.1:%d/metrics" % SIDE_PORT, timeout=10)
-        if s != 200:
-            import urllib.request as ur
-            req = ur.Request("http://127.0.0.1:%d/metrics" % SIDE_PORT,
-                             headers={"Authorization": "Bearer " + tok})
-            m = ur.urlopen(req, timeout=10).read()
-        text = m.decode("utf-8", "replace")
+        # started 不参与事件合并（P2-1 只并周期 announce），保证这一发一定走到
+        # XADD —— 否则合并窗里的旧键会让它压根不发事件，spill_depth 恒 0 假红
+        s, body = announce(SIDE_ANN, mypass, ih, pid("C1"), event="started")
+        ok("C1 XADD 被拒时 announce 仍正常响应（不假成功也不掉线）",
+           s == 200 and b"interval" in body, (s, body[:80]))
+        text = metrics_text(tok)
         hit = re.search(r"flux_tracker_evt_spill_depth (\d+)", text)
-        ok("C2 事件进了重投队列而不是被丢弃",
+        ok("C2 事件进了重投队列而不是被丢弃（spill_depth >= 1）",
            hit is not None and int(hit.group(1)) >= 1,
-           hit.group(1) if hit else text[-120:])
+           hit.group(1) if hit else text[-140:])
+        dropped = re.search(r"flux_tracker_evt_spill_dropped_total (\d+)",
+                            text)
+        ok("C3 正控——队列未满时不该有丢弃计数",
+           dropped is not None and int(dropped.group(1)) == 0,
+           dropped.group(1) if dropped else None)
     finally:
         side_stop()
-    has_new = subprocess.run(
-        ["docker", "exec", "flux-worker", "sh", "-c",
-         "grep -ac XPENDING /usr/local/bin/flux-worker"],
-        capture_output=True, text=True, encoding="utf-8").stdout.strip()
-    has_old = subprocess.run(
-        ["docker", "exec", "flux-worker", "sh", "-c",
-         "grep -ac XREADGROUP /usr/local/bin/flux-worker"],
-        capture_output=True, text=True, encoding="utf-8").stdout.strip()
-    ok("C3 上线的 worker 含裁剪下界 XPENDING（正控 XREADGROUP=%s）" % has_old,
+        redis_cli("DEL", "flux:announce", db=13)
+    left = redis_cli("GET", "flux:announce", db=13)
+    ok("C4 13 库的污染键已清干净", left == "", repr(left))
+
+    # 结构判据：裁剪下界真的编进了上线的 worker 二进制
+    def in_bin(needle):
+        r = subprocess.run(
+            ["docker", "exec", "flux-worker", "sh", "-c",
+             "grep -ac %s /usr/local/bin/flux-worker" % needle],
+            capture_output=True, text=True, encoding="utf-8")
+        return r.stdout.strip()
+
+    has_new, has_old = in_bin("XPENDING"), in_bin("XREADGROUP")
+    ok("C5 上线的 worker 含裁剪下界 XPENDING（正控 XREADGROUP=%s）" % has_old,
        int(has_new or 0) >= 1 and int(has_old or 0) >= 1,
        (has_new, has_old))
 
@@ -338,8 +441,10 @@ def sec_d_dual_stack():
     announce(ANN, mypass, ih, pid("D1"), ip=v4)
     announce(ANN, mypass, ih, pid("D1"), ip=v6)
     s, body = announce(ANN, other, ih, pid("D9"))
-    if failure_reason(body):
-        ok("D0 正控——旁观 announce 取到响应", False, failure_reason(body))
+    ok("D0 旁观 announce 取到有效响应（正控：限流/鉴权都通）",
+       b"failure reason" not in body, failure_reason(body) or body[:90])
+    if b"interval" not in body:
+        print("[SKIP] D 组拿不到 peer 列表，后面两条不判")
         return
     got4 = [p[0] for p in parse_peers(body, b"peers")]
     got6 = [p[0] for p in parse_peers(body, b"peers6")]
@@ -357,6 +462,8 @@ def sec_d_dual_stack():
 
 def main():
     global TOKEN
+    # 上一轮崩在侧容器起来之前也会留下同名容器占住 7171 ⇒ 开局先自扫
+    side_stop()
     TOKEN = login_retry()
     s, r = call("GET", "/me", None, TOKEN)
     if s != 200:
