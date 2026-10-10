@@ -173,6 +173,20 @@ impl TrackerState {
             .then_some("announce 频率超限（用户），请稍后再试")
     }
 
+    /// `stopped` 用的独立 IP 桶（4× 宽阈）。状态转换被限流吞掉的代价不成比例：
+    /// `snatches.seeding` 是粘滞的，只有 stopped 能清，drop 一发就等于让对端
+    /// 永久滞留在 swarm 里，H&R 与做种收益判定全部跟着错。4× 仍给洪水留上限，
+    /// 所以这里不是豁免限流、只是把额度按事件语义分账。
+    pub async fn rate_limited_ip_stopped(
+        &self,
+        ip: &str,
+    ) -> Option<&'static str> {
+        let k = format!("rl:ann:ipstop:{ip}");
+        self.rate_over(&k, (self.cfg.ip_per_min * 4).max(1))
+            .await
+            .then_some("announce 频率超限（IP），请稍后再试")
+    }
+
     /// scrape 独立限流（审计 10-07 P2）：旧版与 announce 共用 `rl:ann:ip:` 桶，
     /// 一次全站轮询就把该 IP 的 announce 额度吃光，用户表现为「突然全站在报超限」。
     pub async fn rate_limited_scrape(&self, ip: &str) -> Option<&'static str> {

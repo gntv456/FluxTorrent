@@ -81,8 +81,16 @@ pub(crate) async fn announce(
             .fetch_add(1, Ordering::Relaxed);
         return bencode_err(&format!("IP 已被封禁：{reason}"));
     }
-    // ⓪' 每 IP 频率（在 passkey 之前拦垃圾流量，防无效 passkey 洪水打缓存/DB）
-    if let Some(msg) = state.rate_limited_ip(&ip).await {
+    // ⓪' 每 IP 频率（在 passkey 之前拦垃圾流量，防无效 passkey 洪水打缓存/DB）。
+    // stopped 落独立宽阈桶：这一发被 drop 就等于让 peer 永久滞留在 swarm 里
+    // （snatches.seeding 只有 stopped 能清），所以按事件语义分账而不是共用额度。
+    let is_stopped = event == "stopped";
+    let limited = if is_stopped {
+        state.rate_limited_ip_stopped(&ip).await
+    } else {
+        state.rate_limited_ip(&ip).await
+    };
+    if let Some(msg) = limited {
         state
             .metrics
             .announce_limited_ip
@@ -160,13 +168,17 @@ pub(crate) async fn announce(
         Ok(hide) => hide,
         Err(msg) => return bencode_err(msg),
     };
-    // ①' 每用户频率（按 user_id 而非 IP —— NAT 场景按 IP 会误伤）
-    if let Some(msg) = state.rate_limited_user(user_id).await {
-        state
-            .metrics
-            .announce_limited_user
-            .fetch_add(1, Ordering::Relaxed);
-        return bencode_err(msg);
+    // ①' 每用户频率（按 user_id 而非 IP —— NAT 场景按 IP 会误伤）。
+    // stopped 豁免：能走到这里鉴权已过，而丢弃状态转换的代价是幽灵在种，
+    // 且 gate::write_peer 对 stopped 另有归属校验（10-06 补），伪造停种撤不掉别人。
+    if !is_stopped {
+        if let Some(msg) = state.rate_limited_user(user_id).await {
+            state
+                .metrics
+                .announce_limited_user
+                .fetch_add(1, Ordering::Relaxed);
+            return bencode_err(msg);
+        }
     }
 
     // ①'' 客户端黑名单（G-06 / P0-7）：UA 与 peer_id 双正则交叉匹配；
