@@ -57,6 +57,8 @@ if [ "${1:-}" = "--with-pt" ]; then
   python scripts/pt_audit_d_review_flow.py
   step "道具发放面不变式（0291：单发/券/勋章/批量幂等/回收/台账，含「购买不可退」口径）"
   python scripts/pt_audit_e_grant.py
+  step "法币套餐发放面不变式（0341：文案与消费点对得上/发放量随标题数字/数量非法扣款前拒单）"
+  python scripts/pt_audit_donate_plans.py
   step "权益与到期不变式（0295：待遇读时判定/券拦截与过期/任务手触真实性/写来源闸三态）"
   python scripts/pt_audit_f_entitlement.py
 fi
