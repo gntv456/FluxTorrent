@@ -3,12 +3,15 @@
 //! NexusPHP 口径：用户专属 token（我们复用 passkey）+ 可选过滤参数；
 //! 刷流工具（RSS 阅读器/下载器）凭 URL 自动拉新种。
 //! 参数对齐参考站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
+//! NP 惯用名 `cat`/`slot_number` 经 serde alias 同时受理（见 rss_http/query.rs）。
 //! B3（2026-09-25）起另认 `sec_{kind}` 六类型维度筛选——与前台列表、
 //! 后台管理列表共用同一解析与谓词实现，三处语义不漂移。
 
 mod forum;
+mod query;
 mod util;
 
+use query::RssQuery;
 pub use util::{format_size, parse_ids, xml_escape};
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
@@ -260,40 +263,4 @@ async fn rss_feed(
         // 0267：enclosure/link 里带本人 passkey，绝不能被中间层缓存
         .insert_header(("cache-control", "private, no-store, max-age=0"))
         .body(xml)
-}
-
-#[derive(serde::Deserialize)]
-struct RssQuery {
-    /// 旧版单值兼容
-    category: Option<i32>,
-    categories: Option<String>,
-    mediums: Option<String>,
-    official: Option<bool>,
-    search: Option<String>,
-    showrows: Option<i64>,
-    /// dl = 标题带元信息（默认）；page = 仅标题
-    linktype: Option<String>,
-    /// 0=全部（含未购付费种） 1=仅免费促销（free/x2free；与好学 paid 口径对齐）；
-    /// 缺省 = 排除「付费且未购」的种子（深测 2026-10-03：付费种无差别推送会让
-    /// 刷流器反复拿到 402，默认挡掉；需要全量监控付费种的用户显式传 paid=0）
-    paid: Option<i32>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_ids;
-
-    #[test]
-    fn parse_ids_multi_and_invalid() {
-        assert_eq!(parse_ids(Some("1,2, 3")), Ok(Some(vec![1, 2, 3])));
-        assert_eq!(parse_ids(Some("5")), Ok(Some(vec![5])));
-        assert_eq!(parse_ids(Some("")), Ok(None));
-        assert_eq!(parse_ids(None), Ok(None));
-        // 给了值却解析不出来：报错，不再退化成「不过滤 = 返回全站」
-        assert!(parse_ids(Some("x,y")).is_err());
-        assert!(parse_ids(Some("1,abc")).is_err());
-        // 重复值合并，避免生成重复谓词
-        assert_eq!(parse_ids(Some("2,2")), Ok(Some(vec![2])));
-        // 旧字段兼容由 handler 单独处理
-    }
 }
