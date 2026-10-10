@@ -409,9 +409,34 @@ if gone == "0":
     ok("E6 渲染层反向：删掉后 SSR HTML 不再含该标签名",
        TAG_NAME not in page(T4, ROOT), "")
 
-print("== E7 收尾：删分类的处置 ==")
+print("== E7 后台批量动作：置顶徽标要立刻跟着变 ==")
+
+
+def agg_field(tid, key):
+    _, a = call("GET", "/torrents/%s/aggregate" % tid, token=ROOT)
+    return ((a.get("data") or {}).get("torrent") or {}).get(key)
+
+
+# 先热一次缓存：批量口此前只推进列表代际，详情聚合缓存原封不动
+WARM_STICKY = agg_field(T4, "sticky")
+s, r = call("POST", "/admin/torrents/batch",
+            {"action": "sticky", "ids": [T4], "pos_state": 1}, token=ROOT)
+ok("E7 批量置顶落库",
+   s == 200 and q("SELECT pos_state FROM torrents WHERE id = %d" % T4) == "1",
+   "http=%s %s pos=%s" % (s, brief(r),
+                          q("SELECT pos_state FROM torrents WHERE id = %d"
+                            % T4)))
+ok("E7 聚合立刻反映置顶（详情页的置顶徽标消费点）",
+   agg_field(T4, "sticky") is True,
+   "warm=%s now=%s" % (WARM_STICKY, agg_field(T4, "sticky")))
+call("POST", "/admin/torrents/batch",
+     {"action": "sticky", "ids": [T4], "pos_state": 0}, token=ROOT)
+ok("E7 正控：取消置顶后聚合也立刻回落（不是只在变真时看得见）",
+   agg_field(T4, "sticky") is False, "now=%s" % agg_field(T4, "sticky"))
+
+print("== E8 收尾：删分类的处置 ==")
 s, r = call("DELETE", "/admin/categories/%s" % CID, token=ROOT)
-ok("E7 分类下有种时删除有可读反应（不许 500）",
+ok("E8 分类下有种时删除有可读反应（不许 500）",
    s != 500 and s != 0, "http=%s %s 余种=%s"
    % (s, brief(r), q("SELECT count(*) FROM torrents WHERE category_id = %d"
                      % CID)))

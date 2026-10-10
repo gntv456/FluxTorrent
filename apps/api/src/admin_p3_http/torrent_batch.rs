@@ -319,5 +319,13 @@ async fn torrent_batch(
     if n > 0 {
         crate::torrent_http::bump_list_cache_gen(&state).await;
     }
+    // 也改详情可见内容（分类名、标签、置顶/推荐位、HR 策略都在 aggregate
+    // 的 detail 与 torrent 段里）：只推列表代际的话，这些种的详情页要等
+    // 缓存自然过期才跟着变——站长批量改完刷新详情看到的是旧值。
+    if n > 0 {
+        for tid in ids.iter().take(2000) {
+            crate::torrent_http::invalidate_tdetail_cache(&state, *tid).await;
+        }
+    }
     Ok(ok(serde_json::json!({ "affected": n as i64 })))
 }
