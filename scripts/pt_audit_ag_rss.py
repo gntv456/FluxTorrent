@@ -251,17 +251,20 @@ print("== G7 enclosure 端到端（订阅器只会照抄这个地址）==")
 import html as _html
 import re as _re
 s, body, _, _cc = rss("showrows=2", ROOT, PK)
-encs = [_html.unescape(x) for x in _re.findall(r'<enclosure url="([^"]+)"', body)]
+encs = [_html.unescape(x) for x in
+        _re.findall(r'<enclosure url="([^"]+)"', body)]
 ok("G7 feed 里每条都带 enclosure 下载直链", s == 200 and len(encs) == 2,
    "enclosures=%d" % len(encs))
 if encs:
     try:
         rr = urllib.request.urlopen(encs[0], timeout=40)
         data, dst = rr.read(), rr.status
-        dct, dcc = rr.headers.get("Content-Type"),             rr.headers.get("Cache-Control")
+        dct = rr.headers.get("Content-Type")
+        dcc = rr.headers.get("Cache-Control")
     except urllib.error.HTTPError as e:
         data, dst = b"", e.code
-        dct, dcc = e.headers.get("Content-Type"), e.headers.get("Cache-Control")
+        dct = e.headers.get("Content-Type")
+        dcc = e.headers.get("Cache-Control")
     ok("G7 enclosure 真下得到 .torrent（bencode 起手 + 正确内容类型）",
        dst == 200 and data[:1] == b"d" and "bittorrent" in (dct or ""),
        "http=%s bytes=%d ct=%s" % (dst, len(data), dct))
