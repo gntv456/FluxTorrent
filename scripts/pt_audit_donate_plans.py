@@ -8,10 +8,13 @@ users.quota_extra——全站唯一消费者是领邀请码时优先扣的额外
 用法：PYTHONIOENCODING=utf-8 python scripts/pt_audit_donate_plans.py
 可 FLUX_API_BASE 覆盖基址。探针号与 9xx 段探针套餐在 finally 自清。
 """
+import json
 import os
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import call, ok, summary  # noqa: E402
@@ -135,7 +138,20 @@ def sec_b_grant():
 def refused(r):
     """只认我们这条闸门的拒单——500/权限错也会 code!=0，不能当通过。"""
     msg = (r or {}).get("message") or ""
-    return (r or {}).get("code") != 0 and "拒单" in msg
+    return (r or {}).get("code") != 0 and "数量无效" in msg
+
+
+def order_lang(tok, pid, lang):
+    """带 Accept-Language 打一次订购：验拒单文案已进 validation_details.tsv。"""
+    req = urllib.request.Request(BASE + "/donate/order", method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept-Language", lang)
+    req.add_header("Authorization", "Bearer " + tok)
+    body = json.dumps({"plan_id": pid}).encode()
+    try:
+        return json.loads(urllib.request.urlopen(req, body, 20).read())
+    except urllib.error.HTTPError as e:  # 拒单是 400，信封在 body 里
+        return json.loads(e.read())
 
 
 def sec_c_refuse():
@@ -146,6 +162,10 @@ def sec_c_refuse():
     add_plan(902, "quota", "枚邀请名额", 5)
     s, r = order(tok, 902)
     ok("C1 无数字的 quota 标题被拒", refused(r), (s, r))
+    en = order_lang(tok, 902, "en")
+    ok("C1b 拒单句已进译文表（Accept-Language: en）",
+       "Invalid quantity in the plan title" in (en.get("message") or ""),
+       en)
     ok("C2 拒单未扣款", abs(float(wallet(uid)) - w0) < 1e-6, wallet(uid))
     ok("C3 拒单未发货", quota(uid) == q0, quota(uid))
 
