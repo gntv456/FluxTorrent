@@ -164,12 +164,17 @@ pub async fn donate_order(
         }
         _ => {}
     }
-    // 附赠邀请 1（invite_quota 是 (user_id, period) 结构：当天无行则插入 used=0）
-    if reward.as_deref().unwrap_or("").contains("邀请") {
+    // 附赠邀请 1（2026-10-10 实测修复：旧实现是空写）：额外邀请名额的
+    // 全站唯一杠杆是 `users.quota_extra`——领码时它优先于周配额被消耗
+    // （invite_http.rs:183 `if extra.is_none()`），管理发放 Effect::Invite
+    // 也是加这一列。旧代码往 invite_quota 插一行 used=0：既不加额度，
+    // period 又写 current_date（周口径是 date_trunc('week')，只有周一才
+    // 撞同一个键），等于「套餐文案写着送、付完钱什么都没送」。
+    // plan_type='quota' 已在上面按 grant 枚数加过，这里跳过防双发。
+    if plan_type != "quota" && reward.as_deref().unwrap_or("").contains("邀请")
+    {
         sqlx::query(
-            "INSERT INTO invite_quota (user_id, period, used) \
-             VALUES ($1, current_date, 0) ON CONFLICT (user_id, period) DO \
-             NOTHING",
+            "UPDATE users SET quota_extra = quota_extra + 1 WHERE id = $1",
         )
         .bind(auth.id)
         .execute(&mut *tx)

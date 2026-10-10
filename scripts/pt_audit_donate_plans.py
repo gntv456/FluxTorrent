@@ -25,7 +25,7 @@ if os.environ.get("FLUX_API_BASE"):
 
 BASE = pt_audit_lib.BASE
 PW = "ProbePass123"
-PROBE_PLAN_IDS = list(range(901, 907))
+PROBE_PLAN_IDS = list(range(901, 909))
 CREATED = []
 TOKEN = ""
 PROBE = None
@@ -69,11 +69,16 @@ def new_user(tag):
     return uid, login_retry(name, "ProbePass456")
 
 
-def add_plan(pid, ptype, title, price):
-    psql("INSERT INTO donation_plans (id, plan_type, title, price_usd, sort)"
-         " VALUES (%d, '%s', '%s', %s, %d) ON CONFLICT (id) DO UPDATE SET"
-         " title = EXCLUDED.title, price_usd = EXCLUDED.price_usd,"
-         " plan_type = EXCLUDED.plan_type" % (pid, ptype, title, price, pid))
+def add_plan(pid, ptype, title, price, reward=None):
+    sql = ("INSERT INTO donation_plans (id, plan_type, title, price_usd,"
+           " sort%s) VALUES (%d, '%s', '%s', %s, %d%s) ON CONFLICT (id) DO"
+           " UPDATE SET title = EXCLUDED.title,"
+           " price_usd = EXCLUDED.price_usd,"
+           " plan_type = EXCLUDED.plan_type%s"
+           % (", reward" if reward else "", pid, ptype, title, price, pid,
+              ", '%s'" % reward if reward else "",
+              ", reward = EXCLUDED.reward" if reward else ""))
+    psql(sql)
 
 
 def state(tok):
@@ -205,6 +210,24 @@ def sec_d_upload_vip():
     days = psql("SELECT EXTRACT(day FROM (vip_until - now()))::int"
                 " FROM users WHERE id=%d" % uid)
     ok("D3 vip 套餐加 30 天", 29 <= int(days or 0) <= 31, (s, r, days))
+
+    # D4/D5（2026-10-10 实测修复判据）：出厂 vip 套餐 4/5/6 的 reward 都写
+    # 「获赠邀请 1」，而旧实现只往 invite_quota 插一行 used=0（period 还写
+    # current_date，与周口径 date_trunc('week') 只有周一才撞键）——买 vip 的
+    # 人付了钱、一枚名额都没得到。名额的唯一杠杆是 users.quota_extra。
+    add_plan(907, "vip", "30 天（含邀请）", 1, reward="获赠邀请 1")
+    q0 = quota(uid)
+    s, r = order(tok, 907)
+    ok("D4 非 quota 套餐的「获赠邀请」真发名额（quota_extra +1）",
+       s == 200 and quota(uid) == q0 + 1, "%s -> %s %s" % (q0, quota(uid), r))
+
+    # 反向防双发：plan_type='quota' 已按 grant 枚数加过，reward 再写邀请
+    # 也不能二次入账
+    add_plan(908, "quota", "2 枚邀请名额", 1, reward="获赠邀请 1")
+    q1 = quota(uid)
+    s, r = order(tok, 908)
+    ok("D5 quota 套餐不因 reward 双发（只 +2）",
+       s == 200 and quota(uid) == q1 + 2, "%s -> %s %s" % (q1, quota(uid), r))
 
 
 def sec_e_consume():
