@@ -59,6 +59,8 @@ if [ "${1:-}" = "--with-pt" ]; then
   python scripts/pt_audit_e_grant.py
   step "法币套餐发放面不变式（0341：文案与消费点对得上/发放量随标题数字/数量非法扣款前拒单）"
   python scripts/pt_audit_donate_plans.py
+  step "announce 协议面不变式（.torrent 分 tier / stopped 不被限流吞 / 计费事件不静默丢 / 双栈端点）"
+  python scripts/pt_audit_tracker_events.py
   step "权益与到期不变式（0295：待遇读时判定/券拦截与过期/任务手触真实性/写来源闸三态）"
   python scripts/pt_audit_f_entitlement.py
 fi
