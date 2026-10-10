@@ -165,9 +165,10 @@ COMPOSE = ["docker", "compose", "-f",
            "D:/FluxTorrent/docker/docker-compose.yml"]
 
 
-def side_docker(env, mode):
+def side_docker(env, mode, strict=True):
     """侧 tracker：用 compose 的服务环境变量（手挂 -e 会缺 DATABASE_URL 等，
-    容器当场退掉），只覆盖限流阈值/Redis，并把端口挪到 7171/6970。"""
+    容器当场退掉），只覆盖限流阈值/Redis，端口挪到 7171/6970。
+    strict=False 时「端口没通」是结果而不是故障——E 组量的就是它。"""
     args = COMPOSE + ["run", mode, "--rm", "--name", SIDE, "--no-deps",
                       "--publish", "127.0.0.1:%d:7070" % SIDE_PORT,
                       "--publish", "127.0.0.1:%d:6969" % (SIDE_PORT + 1)]
@@ -176,23 +177,24 @@ def side_docker(env, mode):
     args.append("tracker")
     r = subprocess.run(args, capture_output=True, text=True,
                        encoding="utf-8")
-    if mode == "-d" and r.returncode != 0:
+    if mode != "-d":
+        return True
+    if r.returncode != 0 and strict:
         raise SystemExit("侧 tracker 起不来：%s" % r.stderr.strip()[-400:])
-    if mode == "-d":
-        # 轮询到端口通为止（sleep 固定秒数在 compose run 上不成立）
-        for _ in range(24):
-            try:
-                socket.create_connection(("127.0.0.1", SIDE_PORT), 1).close()
-                break
-            except OSError:
-                time.sleep(1)
-        else:
-            raise SystemExit("侧 tracker 端口 127.0.0.1:%d 一直没通"
-                             % SIDE_PORT)
+    for _ in range(24):
+        try:
+            socket.create_connection(("127.0.0.1", SIDE_PORT), 1).close()
+            return True
+        except OSError:
+            time.sleep(1)
+    if strict:
+        raise SystemExit("侧 tracker 端口没通（%d）" % SIDE_PORT)
+    return False
 
 
-def side_start(env):
-    side_docker(env, "-d")
+def side_start(env, strict=True):
+    return side_docker(env, "-d", strict)
+
 
 
 def side_alive():
@@ -460,6 +462,46 @@ def sec_d_dual_stack():
     announce(ANN, other, ih, pid("D9"), event="stopped")
 
 
+
+def run_foreground(env, budget):
+    """前台跑一次性 tracker（compose run --rm），当场收 stdout —— --rm 之后
+    `docker logs` 就查不到了。超时后 CLI 被杀但容器还在，所以无论如何都按
+    名字扫一遍删掉。"""
+    args = COMPOSE + ["run", "--rm", "--no-deps"]
+    for k, v in env.items():
+        args += ["-e", "%s=%s" % (k, v)]
+    args.append("tracker")
+    rc, out = None, ""
+    try:
+        r = subprocess.run(args, capture_output=True, text=True,
+                           encoding="utf-8", timeout=budget)
+        rc = r.returncode
+        out = (r.stdout or "") + (r.stderr or "")
+    except subprocess.TimeoutExpired as e:
+        out = ((e.stdout or b"").decode("utf-8", "replace")
+               + (e.stderr or b"").decode("utf-8", "replace"))
+    subprocess.run(
+        "docker ps -aq --filter name=tracker-run | xargs -r docker rm -f",
+        shell=True,
+        capture_output=True,
+    )
+    return rc, out
+
+
+def sec_e_boot_loud():
+    print("\n-- E Redis 不可达时启动响亮失败（旧写法是零日志僵尸）--")
+    rc_ok, out_ok = run_foreground({}, 25)
+    ok("E1 正控——Redis 可用时同一条路径能 bind（日志有 listening）",
+       "listening" in out_ok, out_ok[-160:])
+    rc, out = run_foreground({"REDIS_URL": "redis://127.0.0.1:6399"}, 60)
+    ok("E2 Redis 不可达时启动失败留下明确原因（含连接串）",
+       "启动失败" in out and "Redis 不可用" in out, out[-200:])
+    # 70 = EX_SOFTWARE。退出码非 0 才会被 restart: unless-stopped 重试；
+    # 旧写法是「进程挂着不动 + 端口不监听 + 容器显示 running + 零日志」
+    ok("E3 以非 0 退出（70），不是永不返回", rc == 70, rc)
+
+
+
 def main():
     global TOKEN
     # 上一轮崩在侧容器起来之前也会留下同名容器占住 7171 ⇒ 开局先自扫
@@ -473,6 +515,7 @@ def main():
         sec_b_stopped_exempt()
         sec_c_no_silent_loss()
         sec_d_dual_stack()
+        sec_e_boot_loud()
     finally:
         side_stop()
     summary()
