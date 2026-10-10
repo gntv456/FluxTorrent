@@ -28,10 +28,16 @@ pub struct SnatchRow {
     completed_at: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(rename = "done")]
     uploaded_here: i64,
-    /// 发布者视角的状态（仅 kind=uploads 填充）：0=待审 1=过审 2=被拒
+    /// 发布者视角的状态（仅 kind=uploads 填充）：0=待审 1=过审 2=被拒。
+    /// `#[sqlx(default)]`：这两列只有 /me/torrentlist 的 uploads 查询会投影，
+    /// 公开资料的 `/users/{id}/torrentlist` 复用同一结构体却不投影——sqlx 对
+    /// Option 字段只容忍 NULL、不容忍「列不存在」，于是只要那 6 个查询里任何
+    /// 一条返回过行，整个资料页种子列表就 500。
+    #[sqlx(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     approval_status: Option<i16>,
     /// 被拒原因（approval_status=2 时给发布者自助整改）
+    #[sqlx(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     deny_reason: Option<String>,
 }

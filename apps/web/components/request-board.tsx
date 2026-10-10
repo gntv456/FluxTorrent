@@ -16,8 +16,8 @@ export interface RequestRow {
   descr: string | null;
   bounty: number;
   latest_bounty: number;
-  comments: number;
-  bids: number;
+  comments: number | null;
+  bids: number | null;
   status: number;
   fulfilled_torrent_id: number | null;
   created_at: string;
@@ -167,12 +167,7 @@ export function RequestBoard({
               {(rows ?? []).map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <a
-                      className="request-center__name"
-                      href={`/requests/${r.id}`}
-                    >
-                      {r.title}
-                    </a>
+                    <span className="request-center__name">{r.title}</span>
                     {r.descr && (
                       <p className="request-center__descr">{r.descr}</p>
                     )}
@@ -183,8 +178,8 @@ export function RequestBoard({
                     </strong>
                   </td>
                   <td className="num">{r.bounty.toLocaleString()}</td>
-                  <td className="num">{r.comments}</td>
-                  <td className="num">{r.bids}</td>
+                  <td className="num">{r.comments ?? "—"}</td>
+                  <td className="num">{r.bids ?? "—"}</td>
                   <td>
                     <span className="nowrap">{r.username ?? "—"}</span>
                   </td>

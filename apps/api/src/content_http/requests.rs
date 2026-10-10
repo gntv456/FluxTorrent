@@ -146,7 +146,10 @@ pub(super) async fn request_list(
         serde_json::json!({
             "id": id, "username": username, "title": title, "descr": descr,
             "bounty": bounty, "latest_bounty": bounty,
-            "comments": 0, "bids": 0,
+            // 求种单没有评论线，offers 也不带 request_id（候选与求种之间无外键），
+            // 此前这里硬写 0 让界面读成「零人应求/零条讨论」。改回 null，
+            // 由界面显示「—」，不把「无数据」伪装成「无人响应」。
+            "comments": null, "bids": null,
             "status": status, "fulfilled_torrent_id": fulfilled, "created_at": ts,
         })
     })

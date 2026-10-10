@@ -50,15 +50,19 @@ pub(super) async fn subtitle_request_claim(
                 "你近期多次弃单，30 天内暂停认领求字幕".into(),
             ));
         }
-        // B1：并发在身单数上限——防霸住一串单坐等行情；staff 不受限
+        // B1：并发在身单数上限——防霸住一串单坐等行情；staff 不受限。
+        // 审计修复：这里的 SQL 曾多写一个转义引号（`subtitle_requests \"`），
+        // Postgres 报 42601，而下方 unwrap_or(0) 把错误吞成「0 单在身」——
+        // 上限形同虚设，一人可占满整排求字幕。现在同 recent 一起改为报错外抛，
+        // 闸门宁可拒绝认领也不能 fail-open。
         let open: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM subtitle_requests \"
+            "SELECT count(*) FROM subtitle_requests \
              WHERE claimed_by = $1 AND status IN (3, 4)",
         )
         .bind(auth.id)
         .fetch_one(&state.repo.db)
         .await
-        .unwrap_or(0);
+        .map_err(|e| DomainError::Internal(e.into()))?;
         if open >= 3 {
             return Err(DomainError::Validation(
                 "你在身的求字幕已达 3 单，请先交稿或弃单后再认领".into(),

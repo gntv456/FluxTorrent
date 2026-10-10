@@ -15,8 +15,9 @@ interface HrRow {
   username: string;
   torrent_id: number;
   torrent_name: string | null;
-  uploaded: number;
-  downloaded: number;
+  /** 上传/下载流水取自 snatches 现值，快照存续期间 snatch 可能已被清理 */
+  uploaded: number | null;
+  downloaded: number | null;
   required_seconds: number;
   seeded_seconds: number;
   deadline: string;
@@ -203,13 +204,18 @@ export function AdminHr() {
                 </a>
               </td>
               <td className="num">
-                {(r.uploaded / 1024 ** 3).toFixed(1)}G /{" "}
-                {(r.downloaded / 1024 ** 3).toFixed(1)}G
+                {r.uploaded === null || r.downloaded === null
+                  ? "—"
+                  : `${(r.uploaded / 1024 ** 3).toFixed(1)}G / ${
+                      (r.downloaded / 1024 ** 3).toFixed(1)
+                    }G`}
               </td>
               <td className="num">
-                {r.downloaded > 0
-                  ? (r.uploaded / r.downloaded).toFixed(2)
-                  : "∞"}
+                {r.uploaded === null || r.downloaded === null
+                  ? "—"
+                  : r.downloaded > 0
+                    ? (r.uploaded / r.downloaded).toFixed(2)
+                    : "∞"}
               </td>
               <td className="num">
                 {fmtHours(r.seeded_seconds)} / {fmtHours(r.required_seconds)}

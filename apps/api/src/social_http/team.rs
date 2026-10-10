@@ -178,7 +178,7 @@ async fn team_join(
         return Err(DomainError::Validation("社交玩法未开放".into()));
     }
 
-    let row: Option<(i64, i16, i32, i64)> = sqlx::query_as(
+    let row: Option<(Option<i64>, i16, i32, i64)> = sqlx::query_as(
         "SELECT r.torrent_id, t.status, t.team_size_max, t.leader_uid \
          FROM social_team t LEFT JOIN resurrections r ON r.team_id = t.id \
          WHERE t.id = $1",
@@ -189,6 +189,10 @@ async fn team_join(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (torrent_id, status, size_max, leader) =
         row.ok_or(DomainError::NotFound(body.team_id))?;
+    // 复活任务被撤销后 resurrections 行没了，队伍成为孤儿；team_members 侧
+    // 早已按 Option 读同一列，这里非按 i64 解码——孤儿队伍一加人就 500。
+    let torrent_id =
+        torrent_id.ok_or(DomainError::Validation("该队伍已结束".into()))?;
     if status != 0 && status != 1 {
         return Err(DomainError::Validation("该队伍已结束".into()));
     }

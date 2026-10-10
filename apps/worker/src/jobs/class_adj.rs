@@ -51,7 +51,8 @@ pub(crate) async fn preserve_seed(db: &PgPool) -> anyhow::Result<u64> {
         WHERE t.approval_status = 1
           AND t.owner_id IS NOT NULL
           AND t.created_at < now() - make_interval(days => $1::int)
-          AND NOT EXISTS (SELECT 1 FROM seed_preserve sp WHERE sp.torrent_id = t.id)
+          AND NOT EXISTS (SELECT 1 FROM seed_preserve sp
+                          WHERE sp.torrent_id = t.id AND sp.exited_at IS NULL)
           AND (
             -- 既有死种条件（0 做种 0 下载）
             (t.seeders = 0 AND t.leechers = 0)
@@ -69,7 +70,10 @@ pub(crate) async fn preserve_seed(db: &PgPool) -> anyhow::Result<u64> {
                      AND s.seeding
                      AND s.last_seen_at > now() - interval '2 days'))
           )
-        ON CONFLICT (torrent_id) DO NOTHING
+        ON CONFLICT (torrent_id) DO UPDATE
+          SET exited_at = NULL, exit_reason = NULL,
+              claimed_by = NULL, claimed_at = NULL, last_settle_at = NULL
+          WHERE seed_preserve.exited_at IS NOT NULL
         "#,
     )
     .bind(dead_days as i32)

@@ -20,8 +20,8 @@ export interface RequestCardRow {
   descr: string | null;
   bounty: number;
   latest_bounty: number;
-  comments: number;
-  bids: number;
+  comments: number | null;
+  bids: number | null;
   fulfilled_torrent_id: number | null;
   created_at: string;
 }
@@ -66,9 +66,7 @@ export function RequestCardList({
     <ul className="flex flex-col gap-2">
       {rows.map((r) => (
         <li key={r.id} className={CARD}>
-          <a className="block text-sm font-bold" href={`/requests/${r.id}`}>
-            {r.title}
-          </a>
+          <span className="block text-sm font-bold">{r.title}</span>
           {r.descr && (
             <p className="mt-1 line-clamp-2 text-xs text-sub">{r.descr}</p>
           )}
@@ -85,11 +83,11 @@ export function RequestCardList({
             </div>
             <div className={ROW}>
               <dt className="text-sub">{t.colComments}</dt>
-              <dd className="num">{r.comments}</dd>
+              <dd className="num">{r.comments ?? "—"}</dd>
             </div>
             <div className={ROW}>
               <dt className="text-sub">{t.colBids}</dt>
-              <dd className="num">{r.bids}</dd>
+              <dd className="num">{r.bids ?? "—"}</dd>
             </div>
           </dl>
           <div className="mt-2 flex items-center justify-between gap-2">
