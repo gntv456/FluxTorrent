@@ -463,43 +463,53 @@ def sec_d_dual_stack():
 
 
 
-def run_foreground(env, budget):
-    """前台跑一次性 tracker（compose run --rm），当场收 stdout —— --rm 之后
-    `docker logs` 就查不到了。超时后 CLI 被杀但容器还在，所以无论如何都按
-    名字扫一遍删掉。"""
-    args = COMPOSE + ["run", "--rm", "--no-deps"]
+def boot_case(env, wait_s=30):
+    """`compose run -d`（**不带 --rm**，否则退出后日志就查不到了）起一次性
+    tracker，等它自己退出或到点，返回 (退出码, 日志)。
+
+    旧写法靠 subprocess 超时收 stdout，两个坑：健康那次服务器永不退出，
+    而 `text=True` 下 `TimeoutExpired.stdout` 是 str 不是 bytes，`.decode()`
+    当场抛异常把整组判据吞掉。"""
+    args = COMPOSE + ["run", "-d", "--name", SIDE, "--no-deps"]
     for k, v in env.items():
         args += ["-e", "%s=%s" % (k, v)]
     args.append("tracker")
-    rc, out = None, ""
-    try:
-        r = subprocess.run(args, capture_output=True, text=True,
-                           encoding="utf-8", timeout=budget)
-        rc = r.returncode
-        out = (r.stdout or "") + (r.stderr or "")
-    except subprocess.TimeoutExpired as e:
-        out = ((e.stdout or b"").decode("utf-8", "replace")
-               + (e.stderr or b"").decode("utf-8", "replace"))
-    subprocess.run(
-        "docker ps -aq --filter name=tracker-run | xargs -r docker rm -f",
-        shell=True,
-        capture_output=True,
-    )
-    return rc, out
+    subprocess.run(args, capture_output=True, text=True, encoding="utf-8")
+    code = ""
+    for _ in range(wait_s):
+        code = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.ExitCode}}", SIDE],
+            capture_output=True, text=True, encoding="utf-8").stdout.strip()
+        if code and code != "0":
+            break
+        time.sleep(1)
+    logs = subprocess.run(["docker", "logs", SIDE], capture_output=True,
+                          text=True, encoding="utf-8")
+    text = (logs.stdout or "") + (logs.stderr or "")
+    subprocess.run(["docker", "rm", "-f", SIDE], capture_output=True)
+    return code, text
 
 
 def sec_e_boot_loud():
     print("\n-- E Redis 不可达时启动响亮失败（旧写法是零日志僵尸）--")
-    rc_ok, out_ok = run_foreground({}, 25)
-    ok("E1 正控——Redis 可用时同一条路径能 bind（日志有 listening）",
-       "listening" in out_ok, out_ok[-160:])
-    rc, out = run_foreground({"REDIS_URL": "redis://127.0.0.1:6399"}, 60)
-    ok("E2 Redis 不可达时启动失败留下明确原因（含连接串）",
-       "启动失败" in out and "Redis 不可用" in out, out[-200:])
+    # E1 正控：同一镜像、同一条 compose run 路径，Redis 可用时必须 bind 并打日志
+    code_ok, logs_ok = boot_case({}, 20)
+    ok("E1 正控——Redis 可用时正常 listen（日志有 listening，进程不退）",
+       "listening" in logs_ok and code_ok in ("", "0"),
+       (code_ok, logs_ok[-160:]))
+    code, logs = boot_case({"REDIS_URL": "redis://127.0.0.1:6399"}, 40)
+    # 两条分支都算通过：连不上被引导超时挡下（「15s 内连不上」），或
+    # Client::open/管理器当场报错（「Redis 不可用」）——判据是「留下原因、
+    # 且原因里点名了连接串」，不是某一特定措辞
+    ok("E2 Redis 不可达时启动失败留下原因并点名连接串",
+       "启动失败" in logs and "redis://127.0.0.1:6399" in logs, logs[-200:])
     # 70 = EX_SOFTWARE。退出码非 0 才会被 restart: unless-stopped 重试；
     # 旧写法是「进程挂着不动 + 端口不监听 + 容器显示 running + 零日志」
-    ok("E3 以非 0 退出（70），不是永不返回", rc == 70, rc)
-
+    ok("E3 以 70 退出而不是永不返回", code == "70", code)
+    code2, logs2 = boot_case(
+        {"REDIS_URL": "redis://:wrongpw@flux-redis:6379"}, 40)
+    ok("E4 错口令（能连上但 AUTH 失败）同样响亮退出",
+       code2 == "70" and "启动失败" in logs2, (code2, logs2[-160:]))
 
 
 def main():
