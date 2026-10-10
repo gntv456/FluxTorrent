@@ -501,6 +501,25 @@ ok("G10 非法 UTF-8 搜索不炸（非 500，回统一信封；actix 宽容解�
    "http=500" not in utf8 and ("http=200" in utf8
                                or "code=" in utf8), utf8)
 
+
+def probe_lang(lang):
+    rq = urllib.request.Request(BASE + "/torrents?limit=2&limit=3")
+    rq.add_header("Authorization", "Bearer " + ROOT)
+    rq.add_header("Accept-Language", lang)
+    try:
+        urllib.request.urlopen(rq, timeout=30)
+        return "http=200"
+    except urllib.error.HTTPError as e:
+        return "%d|%s" % (e.code, json.loads(e.read()).get("message") or "")
+
+
+en = probe_lang("en")
+ok("G10 拒单译文真烤进镜像（Accept-Language: en 回英文整句）",
+   en.startswith("400|") and "Invalid list filter parameters" in en, en)
+zh = probe_lang("zh-CN")
+ok("G10 中文拒单同一断言面（zh-CN 回原句）",
+   zh.startswith("400|") and "列表筛选参数格式无效" in zh, zh)
+
 print("== G11 收尾 ==")
 for stmt in reversed(CLEAN):
     exec_sql(stmt)
