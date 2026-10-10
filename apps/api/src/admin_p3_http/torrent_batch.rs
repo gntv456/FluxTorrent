@@ -277,6 +277,9 @@ async fn torrent_batch(
                     .map_err(|e| DomainError::Internal(e.into()))?;
                 }
                 crate::torrents::sync_legacy_columns(db, *tid).await?;
+                // 批量改维度同样可能清到派生维度（log_score/haslog），
+                // 逐种子重算一遍（幂等；与 manage.rs 编辑口同口径）
+                crate::torrents::sync_log_dims(db, *tid).await?;
                 n += 1;
             }
             n

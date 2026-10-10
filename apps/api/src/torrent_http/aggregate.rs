@@ -114,10 +114,11 @@ async fn torrent_aggregate(
         },
         async {
             // 降级本身是有意的，但静默降级不是：logs 读失败会让
-            // 整个日志板块凭空消失（2026-10-09 实测到过一次空段）
-            logs_f.await.unwrap_or_else(|e| {
+            // 整个日志板块凭空消失（2026-10-09 实测到过一次空段）。
+            // 返回 (rows, degraded)：降级产物只给本次请求，不进共享缓存
+            logs_f.await.map(|v| (v, false)).unwrap_or_else(|e| {
                 tracing::warn!(error = ?e, "aggregate logs 段降级为空");
-                Vec::new()
+                (Vec::new(), true)
             })
         },
         async { arts_f.await },
@@ -129,12 +130,15 @@ async fn torrent_aggregate(
         files,
         nfo,
         tags,
-        logs,
+        (logs, logs_degraded),
         artifacts,
         artifact_children,
     ) = joined;
-    // 只有对外可见的种子才允许进共享缓存（见上方命中判定）
-    let cacheable = matches!(&torrent_r, Ok(t) if t.approval_status == 1);
+    // 只有对外可见的种子才允许进共享缓存（见上方命中判定）；
+    // logs 段降级时也不进——一次瞬时 DB 抖动的空段不该被放大成
+    // 30 秒内所有访客共享的「无日志」事实
+    let cacheable =
+        matches!(&torrent_r, Ok(t) if t.approval_status == 1) && !logs_degraded;
     let torrent = torrent_r?;
     let detail = detail_r?;
 

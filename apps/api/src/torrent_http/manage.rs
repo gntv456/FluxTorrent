@@ -127,6 +127,10 @@ async fn edit_torrent(
         // sections 是这一轮的真值源：按名称反向落旧三列（维度已被站长删除的列不动），
         // 否则「改了学段但按学段筛搜不到」会继续存在
         crate::torrents::sync_legacy_columns(&state.repo.db, tid).await?;
+        // log_score/haslog 是派生维度（b9a3e90 起由 torrent_logs 回流）：
+        // 编辑表单不带它们，clear_absent=true 会把回流行删掉——
+        // 编辑后重算一遍（幂等），筛选面不因常规编辑而失效
+        crate::torrents::sync_log_dims(&state.repo.db, tid).await?;
     }
     // 推荐位（0184 编辑对齐发布页，NP 挑选口径）：staff 专属；
     // 任一字段出现即整组覆写，校验与 upload_files_promo 同源
