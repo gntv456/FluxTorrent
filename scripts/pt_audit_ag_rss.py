@@ -219,6 +219,34 @@ if tid2:
     ok("G4 class 1 成员门槛版 RSS 无该帖（反向：不放行全量）",
        s == 200 and TT2 not in body, "items=%d" % items_of(body))
 
+print("== G6 NP 惯用参数名（批十一修复判据）==")
+# 语料两颗都在分类 1；分类 24 里没有 agrss 语料——若 cat 被静默忽略，
+# 两条断言会同为 2 条命中，红在这里
+s, body, _, _cc = rss("search=agrss&cat=1", ROOT, PK)
+ok("G6 cat=1 生效（语料两颗命中）", s == 200 and items_of(body) == 2,
+   "items=%d" % items_of(body))
+s, body, _, _cc = rss("search=agrss&cat=24", ROOT, PK)
+ok("G6 cat=24 生效（该分类无语料 → 空集）",
+   s == 200 and items_of(body) == 0, "items=%d" % items_of(body))
+s, body, _, _cc = rss("search=agrss&categories=1", ROOT, PK)
+ok("G6 本站名 categories 同时受理（正控不被别名打死）",
+   s == 200 and items_of(body) == 2, "items=%d" % items_of(body))
+s, body, _, _cc = rss("slot_number=3", ROOT, PK)
+ok("G6 slot_number=3 限到 3 条（NP 条数名）",
+   s == 200 and items_of(body) == 3, "items=%d" % items_of(body))
+# 别名转发链：getrss.php?passkey=…&cat=24 经 302 落到真端点后仍生效
+import urllib.request
+al = BASE.replace("/api/v1", "") + (
+    "/api/v1/compat/nexusphp/getrss.php?passkey=%s&cat=24&search=agrss" % PK)
+try:
+    r = urllib.request.urlopen(al, timeout=30)
+    ab = r.read().decode("utf-8", "replace")
+    asc = r.status
+except urllib.error.HTTPError as e:
+    ab, asc = e.read().decode("utf-8", "replace"), e.code
+ok("G6 getrss.php 别名转发后 cat 仍生效（空集）",
+   asc == 200 and items_of(ab) == 0, "http=%s items=%d" % (asc, items_of(ab)))
+
 print("== G5 收尾 ==")
 for stmt in reversed(CLEAN):
     exec_sql(stmt)
