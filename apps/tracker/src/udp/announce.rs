@@ -88,7 +88,14 @@ pub(super) async fn announce(
             &format!("IP 已被封禁：{reason}"),
         );
     }
-    if let Some(msg) = t.state.rate_limited_ip(&ip).await {
+    // 与 HTTP 出口同口径：stopped 落独立宽阈 IP 桶（丢了状态转换 = 幽灵在种）。
+    let is_stopped = event == "stopped";
+    let limited = if is_stopped {
+        t.state.rate_limited_ip_stopped(&ip).await
+    } else {
+        t.state.rate_limited_ip(&ip).await
+    };
+    if let Some(msg) = limited {
         t.state
             .metrics
             .announce_limited_ip
@@ -145,12 +152,15 @@ pub(super) async fn announce(
             crate::http_track::ratio_gate::Decision::Allow => {}
         }
     }
-    if let Some(msg) = t.state.rate_limited_user(user_id).await {
-        t.state
-            .metrics
-            .announce_limited_user
-            .fetch_add(1, Ordering::Relaxed);
-        return UdpTracker::err_pkt(transaction_id, msg);
+    // stopped 豁免每用户限流（HTTP 出口同口径；归属校验在 gate::write_peer）
+    if !is_stopped {
+        if let Some(msg) = t.state.rate_limited_user(user_id).await {
+            t.state
+                .metrics
+                .announce_limited_user
+                .fetch_add(1, Ordering::Relaxed);
+            return UdpTracker::err_pkt(transaction_id, msg);
+        }
     }
     let peer_id_readable = String::from_utf8_lossy(&peer_id).into_owned();
     if let Some(reason) = t.state.agent_blocked(None, &peer_id_readable) {
@@ -248,38 +258,17 @@ pub(super) async fn announce(
         user_id,
     );
     // hide_peers：待审种子对局外人清空计数与 peer 列表（与 HTTP 侧
-    // reply::announce_body 的 `hide` 同一语义）
-    let (complete, incomplete, snap) = if event == "stopped" || hide_peers {
-        (0, 0, Default::default())
-    } else if crate::peers::external::external_enabled() {
-        let mut r = t.state.redis.clone();
-        let (seeders, leechers) =
-            crate::peers::external::counts(&mut r, &info_hash_hex).await;
-        let snap = crate::peers::external::snapshot(
-            &mut r,
-            &info_hash_hex,
-            numwant.clamp(0, 200),
-            user_id,
-        )
-        .await;
-        (seeders as i32, leechers as i32, snap)
-    } else {
-        let snap = t.state.peers.snapshot(
-            &info_hash_hex,
-            numwant.clamp(0, 200),
-            user_id,
-        );
-        (
-            t.state.peers.count_seeders(&info_hash_hex) as i32,
-            t.state.peers.count_leechers(&info_hash_hex) as i32,
-            snap,
-        )
-    };
-    let mut peers_bytes = Vec::with_capacity(snap.v4.len() * 6);
-    for p in &snap.v4 {
-        peers_bytes.extend_from_slice(&p.ip);
-        peers_bytes.extend_from_slice(&p.port.to_be_bytes());
-    }
+    // reply::announce_body 的 `hide` 同一语义）；取数与打包拆在 udp::reply
+    let (complete, incomplete, snap) = super::reply::resolve(
+        &t.state,
+        &info_hash_hex,
+        event,
+        hide_peers,
+        numwant,
+        user_id,
+    )
+    .await;
+    let peers_bytes = super::reply::pack_v4(&snap);
 
     // 响应：action + tid + interval + leechers + seeders + peers
     let mut out = Vec::with_capacity(20 + peers_bytes.len());

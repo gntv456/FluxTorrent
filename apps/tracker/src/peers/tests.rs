@@ -1,24 +1,27 @@
 use super::*;
 // 0310 四档常量：SUSPECT/OK 不在 table.rs 的 super::* 可见范围内，显式引入
-use super::model::{CONN_DEAD, CONN_OK, CONN_SUSPECT, CONN_UNTESTED};
+use super::model::{Endpoint, CONN_DEAD, CONN_OK, CONN_SUSPECT, CONN_UNTESTED};
 
 mod encoding;
+mod endpoints;
 
 fn mk_peer(ih: &str, pid: &str, left: i64) -> Peer {
-    Peer {
+    let mut p = Peer {
         key: PeerKey {
             info_hash: ih.into(),
             peer_id: pid.into(),
         },
-        ip: "10.0.0.1".into(),
-        port: 51413,
+        v4: None,
+        v6: None,
         uploaded: 0,
         downloaded: 0,
         left,
         last_seen: chrono::Utc::now(),
         user_id: 1,
         connectable: CONN_UNTESTED,
-    }
+    };
+    p.set_endpoint("10.0.0.1", 51413);
+    p
 }
 
 #[test]
@@ -93,19 +96,6 @@ fn per_user_swarm_cap_evicts_oldest() {
     assert!(snap.v4.iter().any(|p| p.peer_id[0] == 0x0b)); // 新的还在
     assert!(!snap.v4.iter().any(|p| p.peer_id[0] == 0x00)); // "00" 已淘汰
 }
-
-/// 审计 10-06 第 5 条：port=0 的 peer 不可连接，计数口径应与下发一致
-#[test]
-fn port_zero_not_counted() {
-    let t = PeerTable::new();
-    t.upsert(Peer {
-        port: 0,
-        ..mk_peer("abc", "p0", 0)
-    });
-    t.upsert(mk_peer("abc", "p1", 0));
-    assert_eq!(t.count_seeders("abc"), 1);
-}
-
 /// 审计 10-06：TTL 随 interval 伸缩（做种=2×interval+120，leecher=interval+120）
 #[test]
 fn ttl_follows_interval() {
@@ -183,7 +173,11 @@ fn corroboration_target_validates_peer() {
     // user4 做种但 port=0（未开监听）→ 不可连接，不应被佐证
     t.upsert(Peer {
         user_id: 4,
-        port: 0,
+        v4: Some(Endpoint {
+            ip: "10.0.0.1".into(),
+            port: 0,
+        }),
+        v6: None,
         ..mk_peer("abc", "seeder4", 0)
     });
     // 合法：存活做种者被解析为其 user_id
@@ -216,25 +210,6 @@ fn connectable_probe_roundtrip() {
     let again = super::probes::sample_probes(&t.probe_candidates(), 10);
     assert_eq!(again.len(), 2); // 已测 peer 进入复测轮替
 }
-
-#[test]
-fn snapshot_splits_v4_v6() {
-    let t = PeerTable::new();
-    let mut p4 = mk_peer("abc", "p4", 0);
-    p4.ip = "192.168.1.2".into();
-    let mut p6 = mk_peer("abc", "p6", 0);
-    p6.ip = "2001:db8::5".into();
-    t.upsert(p4);
-    t.upsert(p6);
-    let snap = t.snapshot("abc", 50, 0);
-    assert_eq!(snap.v4.len(), 1);
-    assert_eq!(snap.v6.len(), 1);
-    assert_eq!(
-        snap.v6[0].ip,
-        [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]
-    );
-}
-
 /// 通用 PT 站点关键语义（0310）：DEAD(0) 与 SUSPECT(-2) 必须在数据层
 /// 分开，且 set_conn_state 不得把「未探测」写进去（否则会把「没轮到」
 /// 误当成「测过了」而放行）。

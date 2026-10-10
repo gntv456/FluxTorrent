@@ -31,10 +31,10 @@ pub(crate) async fn write_peer(
         state.peers.remove_owned(key, user_id);
         return Ok(());
     }
-    let peer = Peer {
+    let mut peer = Peer {
         key: key.clone(),
-        ip: ip.to_string(),
-        port,
+        v4: None,
+        v6: None,
         uploaded,
         downloaded,
         left,
@@ -42,6 +42,8 @@ pub(crate) async fn write_peer(
         user_id,
         connectable: CONN_UNTESTED, // upsert 内部保留同账号的既有测量值
     };
+    // 落哪一族由 IP 自己判（BEP 7：同一 peer_id 会用 v4/v6 各自 announce）
+    peer.set_endpoint(ip, port);
     if crate::peers::external::external_enabled() {
         let mut r = state.redis.clone();
         let _ = crate::peers::external::upsert(&mut r, peer.clone()).await;

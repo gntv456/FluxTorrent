@@ -146,23 +146,28 @@ pub async fn snapshot(
         if p.user_id == self_user {
             continue;
         }
-        // 与内存表 snapshot 同口径（审计 10-06 第 5 条）：port=0 不可连接
-        if p.port == 0 {
-            continue;
-        }
-        let port = p.port;
+        // 与内存表 snapshot 同口径（审计 10-06 第 5 条）：port=0 不可连接；
+        // 两族各自下发（BEP 7），与 table.rs 同步改造
         let peer_id = crate::peers::peer_id_bytes(&p.key.peer_id);
-        if let Ok(v6) = p.ip.parse::<std::net::Ipv6Addr>() {
-            snap.v6.push(CompactPeer6 {
-                ip: v6.octets(),
-                port,
-            });
-        } else if let Ok(v4) = p.ip.parse::<std::net::Ipv4Addr>() {
-            snap.v4.push(CompactPeer {
-                ip: v4.octets(),
-                port,
-                peer_id,
-            });
+        for ep in p.endpoints() {
+            if snap.v4.len() + snap.v6.len() >= numwant {
+                break;
+            }
+            if ep.port == 0 {
+                continue;
+            }
+            if let Ok(v6) = ep.ip.parse::<std::net::Ipv6Addr>() {
+                snap.v6.push(CompactPeer6 {
+                    ip: v6.octets(),
+                    port: ep.port,
+                });
+            } else if let Ok(v4) = ep.ip.parse::<std::net::Ipv4Addr>() {
+                snap.v4.push(CompactPeer {
+                    ip: v4.octets(),
+                    port: ep.port,
+                    peer_id,
+                });
+            }
         }
     }
     snap
@@ -178,7 +183,7 @@ pub async fn counts(
     let peers = swarm_peers(redis, info_hash).await;
     let mut seeders = std::collections::HashSet::new();
     let mut leechers = std::collections::HashSet::new();
-    for p in peers.iter().filter(|p| p.port != 0) {
+    for p in peers.iter().filter(|p| p.has_listening()) {
         if p.is_seeder() {
             seeders.insert(p.user_id);
         } else {
@@ -241,7 +246,10 @@ pub async fn sample_probes(
             .unwrap_or(None);
         if let Some(s) = v {
             if let Ok(p) = serde_json::from_str::<Peer>(&s) {
-                out.push((key.clone(), p.ip.clone(), p.port));
+                // 探测按主端点单值口径（与内存表 probe_candidates 同构）
+                if let Some(ep) = p.primary() {
+                    out.push((key.clone(), ep.ip.clone(), ep.port));
+                }
             }
         }
     }

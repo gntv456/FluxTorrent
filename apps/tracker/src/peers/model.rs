@@ -30,12 +30,28 @@ pub const CONN_DEAD: i8 = 0;
 pub const CONN_OK: i8 = 1;
 pub const CONN_SUSPECT: i8 = -2;
 
+/// 一个可连接端点（BEP 3 的 v4 / BEP 7 的 v6 各一份）。
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct Endpoint {
+    pub ip: String,
+    pub port: u16,
+}
+
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[allow(dead_code)] // uploaded/downloaded/user_id 供后续审计扩展读取（all_unreachable 等）
 pub struct Peer {
     pub key: PeerKey,
-    pub ip: String,
-    pub port: u16,
+    /// BEP 7：同一 `(info_hash, peer_id)` 的客户端会用 v4 与 v6 **各自** announce。
+    /// 旧写法只有一格 `ip`，后报的一族把前一族覆盖掉 ⇒ 另一族的对端拿到不可达
+    /// 地址（`snap.v4/v6` 只是按这唯一 ip 归类），纯 v6 用户尤其受影响。
+    /// 分两槽存；`stopped` 仍整条删除（客户端已下线，两族一起走）。
+    /// 回连测量（`connectable`）仍按主端点单值口径——计费侧读的是事件里的 conn。
+    /// `serde(default)`：外置通道里旧版本的行只有单一 `ip/port`，
+    /// 反序列化要能容缺（那类行落成新形态的「无端点」，由 TTL 自然淘汰）。
+    #[serde(default)]
+    pub v4: Option<Endpoint>,
+    #[serde(default)]
+    pub v6: Option<Endpoint>,
     pub uploaded: i64,
     pub downloaded: i64,
     pub left: i64,
@@ -47,6 +63,34 @@ pub struct Peer {
 impl Peer {
     pub fn is_seeder(&self) -> bool {
         self.left == 0
+    }
+
+    /// 按 IP 字面量落族（含 `:` 即 v6），只更新该族、不动另一族。
+    pub fn set_endpoint(&mut self, ip: &str, port: u16) {
+        let ep = Endpoint {
+            ip: ip.to_string(),
+            port,
+        };
+        if ip.contains(':') {
+            self.v6 = Some(ep);
+        } else {
+            self.v4 = Some(ep);
+        }
+    }
+
+    /// 主端点：v4 优先（与旧单一 `ip` 的行为一致），供事件、审计与回连探测用。
+    pub fn primary(&self) -> Option<&Endpoint> {
+        self.v4.as_ref().or(self.v6.as_ref())
+    }
+
+    /// 现存的全部端点（响应构建按族各取各的）。
+    pub fn endpoints(&self) -> impl Iterator<Item = &Endpoint> {
+        self.v4.as_ref().into_iter().chain(self.v6.as_ref())
+    }
+
+    /// 至少有一个「在监听」的端点（port=0 的 peer 不下发给别人）。
+    pub fn has_listening(&self) -> bool {
+        self.endpoints().any(|e| e.port != 0)
     }
 }
 
