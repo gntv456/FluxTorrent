@@ -88,8 +88,11 @@ pub async fn list_torrents_noclamp_as(
     };
     // 审核状态（0102 + 0170 站点开关）：默认视图 = 已通过；开关放行待审/被拒
     // （列表带徽标）。集合由白名单枚举拼接常量文本，无注入面。
+    // 3 = 回收站独立视图：`POST /torrents/{id}/restore` 的读端，没有它
+    // 软删种只能靠 approval=2 混在被拒种里被看见，恢复口等于没入口。
     // 被拒视图含软删 3 维持原口径；外层闸门与计数侧同口径（见 approval_gate）。
     let allowed: Vec<i16> = match filter.approval {
+        Some(3) => vec![3],
         Some(2) => vec![2, 3],
         Some(1) => vec![1],
         _ => {

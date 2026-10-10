@@ -81,3 +81,5 @@ newznab 分类号需为非负整数	newznab 分類號需為非負整數	newznab 
 套餐标题首段数量无效，已拒单未扣款	套餐標題首段數量無效，已拒單未扣款	Invalid quantity in the plan title: order rejected, nothing charged
 action 需为 black / unblack / accept / reject	action 需為 black / unblack / accept / reject	action must be black / unblack / accept / reject
 没有待处理的好友申请	沒有待處理的好友申請	No pending friend request to act on
+IMDb 编号格式无效：需 tt 加 7~8 位数字，或直接贴 IMDb 链接	IMDb 編號格式無效：需 tt 加 7~8 位數字，或直接貼 IMDb 連結	Invalid IMDb id: needs tt plus 7-8 digits, or paste the IMDb URL
+approval 取值无效：0 待审 / 1 过审 / 2 被拒 / 3 回收站	approval 取值無效：0 待審 / 1 過審 / 2 被拒 / 3 資源回收站	approval must be 0 pending / 1 approved / 2 rejected / 3 trash

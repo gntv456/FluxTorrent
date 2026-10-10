@@ -41,6 +41,11 @@ jobs:
       # 这是 i18n_guard 现有实现的坑，新门不再犯。
       - name: Validation i18n ratchet
         run: python3 scripts/validation_i18n_guard.py
+      # SQL 串内注释门禁（2026-10-10 批七）：`//` 在 Rust 代码里是注释，
+      # 粘进 SQL 字符串就成了 Postgres 的整除运算符 ⇒ 整条语句 syntax error。
+      # 当日实测：种子编辑口 `PUT /torrents/{id}` 因此 100% 500。
+      - name: SQL comment guard
+        run: python3 scripts/sql_comment_guard.py apps
 
   web:
     if: github.actor != 'dependabot[bot]'

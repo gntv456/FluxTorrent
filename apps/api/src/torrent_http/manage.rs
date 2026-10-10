@@ -20,20 +20,20 @@ async fn edit_torrent(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
-    // 0150：IMDB 直填暂存（TorrentEdit.imdb_id 是 &str，借本地变量）
-    let imdb_norm: Option<String> =
-        body.imdb_id.as_deref().map(str::trim).and_then(|s| {
-            // 空串 = 清空；非空统一大写后校验 TT+7~8 位；非法回落 None
-            let up = s.to_ascii_uppercase();
-            let valid = up.len() >= 9
-                && up.starts_with("TT")
-                && up[2..].chars().all(|c| c.is_ascii_digit());
-            if s.is_empty() || valid {
-                Some(up)
-            } else {
-                None
-            }
-        });
+    // 0150：IMDB 直填三态——未填 = 不动，空串 = 清空，非空必须解析得出
+    // 编号（也接受整条 IMDb 链接），与发种口同一把正则（extract_imdb_pub）。
+    // 此前非法形态被静默回落成 None，也就是「保持原值」，接口照样回 200 ⇒
+    // 用户手滑填了 `abc` 以为保存成功（2026-10-10 实测）。
+    let raw_imdb = body.imdb_id.as_deref().map(str::trim);
+    let imdb_norm: Option<String> = match raw_imdb {
+        None => None,
+        Some("") => Some(String::new()),
+        Some(raw) => Some(
+            crate::publish_http::extract_imdb_pub(raw).ok_or_else(|| {
+                DomainError::Validation(crate::publish_http::IMDB_HINT.into())
+            })?,
+        ),
+    };
     // 0170：返回 true = 编辑后保持原审核状态（staff 管理通道或 ≥ 免审等级作者）
     let kept = torrents::edit_torrent(
         &state.repo.db,
