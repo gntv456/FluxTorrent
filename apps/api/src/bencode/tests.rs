@@ -48,29 +48,44 @@ fn download_rebuild_injects_announce() {
 }
 
 #[test]
-fn download_rebuild_announce_list_https_first() {
+fn download_rebuild_announce_list_one_tier_per_url() {
     let bytes = make_torrent();
     let out = build_download_torrent(
         &bytes,
         "https://tracker.flux.local/announce/PK",
-        &["http://tracker.flux.local/announce/PK".to_string()],
+        &[
+            "http://tracker.flux.local/announce/PK".to_string(),
+            "http://bak.flux.local/announce/PK".to_string(),
+        ],
     )
     .unwrap();
     let (root, _) = parse(&out).unwrap();
-    // BEP12：单 tier [https 首选, http 回退]
+    // BEP12：同 tier 内每个 tracker 都会被长期 announce ⇒ 一个地址独占一个 tier，
+    // 首选失败才降级。旧断言写的「单 tier [首选, 回退]」正是双倍上报的形状。
     let list = root.get(b"announce-list").expect("announce-list 缺失");
-    let tier = match list {
-        Bencode::List(tiers) => match &tiers[0] {
-            Bencode::List(t) => t,
-            _ => panic!("tier 结构错误"),
-        },
+    let urls: Vec<String> = match list {
+        Bencode::List(tiers) => tiers
+            .iter()
+            .map(|t| match t {
+                Bencode::List(one) => {
+                    assert_eq!(one.len(), 1, "一个 tier 只能有一个地址");
+                    String::from_utf8(one[0].as_bytes().unwrap().to_vec())
+                        .unwrap()
+                }
+                _ => panic!("tier 结构错误"),
+            })
+            .collect(),
         _ => panic!("announce-list 结构错误"),
     };
-    let first = std::str::from_utf8(tier[0].as_bytes().unwrap()).unwrap();
-    let second = std::str::from_utf8(tier[1].as_bytes().unwrap()).unwrap();
-    assert_eq!(first, "https://tracker.flux.local/announce/PK");
-    assert_eq!(second, "http://tracker.flux.local/announce/PK");
-    // info_hash 稳定
+    assert_eq!(
+        urls,
+        vec![
+            "https://tracker.flux.local/announce/PK",
+            "http://tracker.flux.local/announce/PK",
+            "http://bak.flux.local/announce/PK",
+        ]
+    );
+    // info_hash 稳定：announce-list 在根级，不在 info 字典内
     assert_eq!(
         parse_torrent(&bytes).unwrap().info_hash_hex,
         parse_torrent(&out).unwrap().info_hash_hex

@@ -118,8 +118,8 @@ pub fn parse_torrent(bytes: &[u8]) -> Result<ParsedTorrent, String> {
 }
 
 /// 生成下载用 .torrent：重新注入本站 announce（含 passkey，M05）。
-/// announce_fallbacks 非空时按 BEP12 追加 announce-list（单 tier：首选地址 + 回退地址，
-/// 如 https 首选 + http 回退），客户端汇报失败时自动降级。
+/// announce_fallbacks 非空时按 BEP12 追加 announce-list，**一个地址一个 tier**
+/// （首选在 tier0、回退各占后续 tier），客户端只在整 tier 失败时才降级。
 /// info 字典整段保留原始字节（不重编码）：键序非标准的种子 info_hash 与上传时一致。
 pub fn build_download_torrent(
     raw: &[u8],
@@ -151,19 +151,24 @@ pub fn build_download_torrent(
         b"announce".to_vec(),
         Bencode::Bytes(announce_url.as_bytes().to_vec()),
     ));
-    let mut tier: Vec<Bencode> =
+    // BEP 12：同一 tier 内的每个 tracker 客户端都会**长期各自 announce**，只有
+    // 整 tier 全失败才降级到下一 tier。所以回退地址必须独占一个 tier——旧写法把
+    // 首选与回退塞进同一个 tier，「https 首选 + http 回退」实际变成两路常驻上报
+    // （双倍 announce 与配额消耗），而不是失败才切。
+    let mut tiers: Vec<Bencode> =
         Vec::with_capacity(1 + announce_fallbacks.len());
-    tier.push(Bencode::Bytes(announce_url.as_bytes().to_vec()));
+    tiers.push(Bencode::List(vec![Bencode::Bytes(
+        announce_url.as_bytes().to_vec(),
+    )]));
     for u in announce_fallbacks {
         if !u.is_empty() && u != announce_url {
-            tier.push(Bencode::Bytes(u.as_bytes().to_vec()));
+            tiers.push(Bencode::List(vec![Bencode::Bytes(
+                u.as_bytes().to_vec(),
+            )]));
         }
     }
-    if tier.len() > 1 {
-        pairs.push((
-            b"announce-list".to_vec(),
-            Bencode::List(vec![Bencode::List(tier)]),
-        ));
+    if tiers.len() > 1 {
+        pairs.push((b"announce-list".to_vec(), Bencode::List(tiers)));
     }
     pairs.push((b"private".to_vec(), Bencode::Int(1)));
     // 根级元数据（0283 P1-10）：`created by` 声明生成器（排障时能区分本站
