@@ -7,6 +7,9 @@
 //! 后台管理列表共用同一解析与谓词实现，三处语义不漂移。
 
 mod forum;
+mod util;
+
+pub use util::{format_size, parse_ids, xml_escape};
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
@@ -29,12 +32,6 @@ struct RssRow {
     promotion: Option<String>,
     #[sqlx(default)]
     owner_name: Option<String>,
-}
-
-fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
 }
 
 /// GET /rss/{passkey}?categories=1,2&mediums=3&official=&search=&showrows=&linktype=&paid=
@@ -119,7 +116,8 @@ async fn rss_feed(
                            AND sd.name IN (SELECT name FROM media \
                                            WHERE id = ANY($2)))) \
            AND ($3::bool IS NULL OR t.official_tag = $3) \
-           AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%') \
+           AND ($4::text IS NULL OR t.name ILIKE '%' || $4 || '%' \
+                ESCAPE chr(92)) \
            AND (NOT $6::bool OR {free_clause}){sec_sql} \
            AND (NOT $7::bool OR t.price <= 0 OR t.owner_id = $8 \
                 OR EXISTS (SELECT 1 FROM torrent_purchases tp \
@@ -130,7 +128,14 @@ async fn rss_feed(
         .bind(categories.as_deref())
         .bind(mediums.as_deref())
         .bind(q.official)
-        .bind(q.search.as_deref().filter(|s| !s.is_empty()))
+        // LIKE 通配转义（2026-10-10 批九）：与主列表 esc_like 同口径——裸 %/_ 当
+        // 通配会让 search=% 退化成「不过滤」，RSS 与列表两个出口语义漂移
+        .bind(
+            q.search
+                .as_deref()
+                .filter(|s| !s.is_empty())
+                .map(crate::torrents::esc_like),
+        )
         .bind(q.showrows.unwrap_or(50).clamp(1, 200))
         .bind(free_only)
         .bind(exclude_paid)
@@ -272,44 +277,6 @@ struct RssQuery {
     /// 缺省 = 排除「付费且未购」的种子（深测 2026-10-03：付费种无差别推送会让
     /// 刷流器反复拿到 402，默认挡掉；需要全量监控付费种的用户显式传 paid=0）
     paid: Option<i32>,
-}
-
-/// 逗号分隔 id 串 → 数组。空/未给 = 不过滤（Ok(None)）；
-/// 给了值却有解析不出的 token → Err（此前静默丢弃，全非法时等于不加谓词、
-/// 返回全站订阅源，比报错危险）
-fn parse_ids(s: Option<&str>) -> Result<Option<Vec<i32>>, String> {
-    let s = match s {
-        Some(v) => v.trim(),
-        None => return Ok(None),
-    };
-    if s.is_empty() {
-        return Ok(None);
-    }
-    let mut ids: Vec<i32> = Vec::new();
-    for p in s.split(',') {
-        let p = p.trim();
-        if p.is_empty() {
-            continue;
-        }
-        match p.parse::<i32>() {
-            Ok(v) => {
-                if !ids.contains(&v) {
-                    ids.push(v);
-                }
-            }
-            Err(_) => return Err(format!("参数非法：{p}")),
-        }
-    }
-    Ok(if ids.is_empty() { None } else { Some(ids) })
-}
-
-fn format_size(b: i64) -> String {
-    let gb = b as f64 / 1024f64.powi(3);
-    if gb >= 1.0 {
-        format!("{gb:.2} GB")
-    } else {
-        format!("{:.0} MB", b as f64 / 1024f64.powi(2))
-    }
 }
 
 #[cfg(test)]

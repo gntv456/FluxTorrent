@@ -28,9 +28,11 @@ mod viewer_preds;
 
 pub use cat_map::{newznab_name, CatMap, MediaMap, NEWZNAB_OTHER};
 pub use charge::*;
+// LIKE 通配转义（批九 RSS 出口对齐主列表口径）
 pub use comments::*;
 pub use detail::*;
 pub use interact::*;
+pub(crate) use list::esc_like;
 pub(crate) mod view_scope;
 mod visibility;
 pub use list::*;

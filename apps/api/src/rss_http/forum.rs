@@ -72,6 +72,8 @@ async fn forum_rss_feed(
         .await
         .unwrap_or(1)],
     };
+    // 逐行复刻 forum_access 的 can_read：class>=90 全版块放行（2026-10-10 批九
+    // 补齐——漏了这条时 class 90-98 职员网页可读的版块 RSS 不推，口径漂移）
     let rows: Vec<(i64, String, i64, String, Option<String>, DateTime<Utc>)> =
         sqlx::query_as(
             "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at \
@@ -79,7 +81,8 @@ async fn forum_rss_feed(
              JOIN forums f ON f.id = t.forum_id \
              LEFT JOIN users u ON u.id = t.user_id \
              WHERE f.id = ANY($1) \
-               AND (f.minclassread <= $2 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3)) \
+               AND (f.minclassread <= $2 OR $2 >= 90 \
+                    OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3)) \
              ORDER BY t.id DESC LIMIT $4",
         )
         .bind(&fids)
