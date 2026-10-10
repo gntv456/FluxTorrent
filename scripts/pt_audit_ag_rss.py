@@ -247,6 +247,27 @@ except urllib.error.HTTPError as e:
 ok("G6 getrss.php 别名转发后 cat 仍生效（空集）",
    asc == 200 and items_of(ab) == 0, "http=%s items=%d" % (asc, items_of(ab)))
 
+print("== G7 enclosure 端到端（订阅器只会照抄这个地址）==")
+import html as _html
+import re as _re
+s, body, _, _cc = rss("showrows=2", ROOT, PK)
+encs = [_html.unescape(x) for x in _re.findall(r'<enclosure url="([^"]+)"', body)]
+ok("G7 feed 里每条都带 enclosure 下载直链", s == 200 and len(encs) == 2,
+   "enclosures=%d" % len(encs))
+if encs:
+    try:
+        rr = urllib.request.urlopen(encs[0], timeout=40)
+        data, dst = rr.read(), rr.status
+        dct, dcc = rr.headers.get("Content-Type"),             rr.headers.get("Cache-Control")
+    except urllib.error.HTTPError as e:
+        data, dst = b"", e.code
+        dct, dcc = e.headers.get("Content-Type"), e.headers.get("Cache-Control")
+    ok("G7 enclosure 真下得到 .torrent（bencode 起手 + 正确内容类型）",
+       dst == 200 and data[:1] == b"d" and "bittorrent" in (dct or ""),
+       "http=%s bytes=%d ct=%s" % (dst, len(data), dct))
+    ok("G7 下载响应 no-store（.torrent 内嵌本人 passkey）",
+       dcc is not None and "no-store" in dcc.lower(), "cc=%r" % dcc)
+
 print("== G5 收尾 ==")
 for stmt in reversed(CLEAN):
     exec_sql(stmt)
