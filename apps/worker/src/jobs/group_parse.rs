@@ -89,3 +89,92 @@ fn flat_fields(v: &Value) -> Vec<(String, String)> {
         })
         .collect()
 }
+
+/// XTRIM 的安全下界，由 XPENDING 摘要判出（消费方见 `group::trim_safe`）。
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum TrimBound {
+    /// 组内没有未确认条目 ⇒ 可以按长度裁，留一段历史供排障
+    NoPending,
+    /// 最旧未确认条目 id ⇒ 只允许裁掉它之前的条目
+    Oldest(String),
+    /// 回复读不出结论 ⇒ 本轮不裁（宁可涨长度，也不丢未入账的事件）
+    Unknown,
+}
+
+/// 解析 `XPENDING <stream> <group>` 摘要
+/// `[count, min-id, max-id, [[consumer, pending]..]]`。
+/// count>0 而 min-id 是 Nil 属于读不出结论，落 `Unknown`。
+pub(super) fn parse_xpending_reply(v: &Value) -> TrimBound {
+    let Value::Array(rows) = v else {
+        return TrimBound::Unknown;
+    };
+    if rows.len() < 3 {
+        return TrimBound::Unknown;
+    }
+    let count: i64 = match &rows[0] {
+        Value::Int(n) => *n,
+        other => value_to_string(other).parse().unwrap_or(-1),
+    };
+    if count < 0 {
+        return TrimBound::Unknown;
+    }
+    if count == 0 {
+        return TrimBound::NoPending;
+    }
+    if matches!(&rows[1], Value::Nil) {
+        return TrimBound::Unknown;
+    }
+    TrimBound::Oldest(value_to_string(&rows[1]))
+}
+
+#[cfg(test)]
+mod trim_tests {
+    use super::*;
+
+    fn arr(items: Vec<Value>) -> Value {
+        Value::Array(items)
+    }
+
+    fn bulk(s: &str) -> Value {
+        Value::BulkString(s.as_bytes().to_vec())
+    }
+
+    #[test]
+    fn zero_pending_allows_length_trim() {
+        let v = arr(vec![Value::Int(0), Value::Nil, Value::Nil, arr(vec![])]);
+        assert_eq!(parse_xpending_reply(&v), TrimBound::NoPending);
+    }
+
+    #[test]
+    fn pending_reports_oldest_id() {
+        let v = arr(vec![
+            Value::Int(7),
+            bulk("1700000000001-0"),
+            bulk("1700000000009-0"),
+            arr(vec![]),
+        ]);
+        assert_eq!(
+            parse_xpending_reply(&v),
+            TrimBound::Oldest("1700000000001-0".into())
+        );
+    }
+
+    #[test]
+    fn count_as_string_still_parses() {
+        // RESP2 下 count 可能是整数字节串
+        let v = arr(vec![bulk("3"), bulk("10-0"), bulk("12-0"), arr(vec![])]);
+        assert_eq!(parse_xpending_reply(&v), TrimBound::Oldest("10-0".into()));
+    }
+
+    #[test]
+    fn unreadable_replies_never_trim() {
+        // 有 pending 却读不到 min-id：不能当成「无 pending」去盲裁
+        let v = arr(vec![Value::Int(2), Value::Nil, Value::Nil, arr(vec![])]);
+        assert_eq!(parse_xpending_reply(&v), TrimBound::Unknown);
+        assert_eq!(parse_xpending_reply(&Value::Nil), TrimBound::Unknown);
+        assert_eq!(
+            parse_xpending_reply(&arr(vec![Value::Int(1)])),
+            TrimBound::Unknown
+        );
+    }
+}

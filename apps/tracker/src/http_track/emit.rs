@@ -3,10 +3,28 @@
 
 use crate::peers;
 use actix_web::HttpResponse;
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
 
-/// Prometheus 指标（/metrics，需 ANN_METRICS_TOKEN）
+/// 计费事件投递失败后的进程内重投队列：`(stream, payload)` 先进先出。
+///
+/// 为什么不给客户端回 `failure reason` 让它重发：`completed` 事件客户端只发
+/// 一次，报错并不保证重发，snatch 完成态与 H&R 记录会永久丢；而 up/down 是
+/// 累计值，重投成功的第二条被 worker 的 anchor 判成零增量。队列两头都不丢。
+const SPILL_MAX: usize = 20_000;
+/// 单轮顺带排空的上限（Redis 刚恢复时不一次灌满）
+const SPILL_DRAIN_BATCH: usize = 500;
 
-/// 本地滑动窗口限流（Redis 故障降级用）：key → (计数, 窗口起点)
+static SPILL: OnceLock<Mutex<VecDeque<(String, serde_json::Value)>>> =
+    OnceLock::new();
+/// 队列深度与累计丢弃数（/metrics 暴露，见 http_track::metrics）
+pub(crate) static SPILL_DEPTH: AtomicU64 = AtomicU64::new(0);
+pub(crate) static SPILL_DROPPED: AtomicU64 = AtomicU64::new(0);
+
+fn spill() -> &'static Mutex<VecDeque<(String, serde_json::Value)>> {
+    SPILL.get_or_init(Default::default)
+}
 
 pub(crate) async fn emit_event(
     redis: &redis::aio::ConnectionManager,
@@ -43,7 +61,7 @@ pub(crate) async fn emit_event(
         let ua: String = agent.chars().take(200).collect();
         payload["agent"] = serde_json::json!(ua);
     }
-    xadd(redis, "flux:announce", &payload).await;
+    xadd_durable(redis, "flux:announce", &payload).await;
 }
 
 /// 交叉上报投递（2026-10-07 P0-2 治本）：把 leecher 声明的
@@ -67,7 +85,8 @@ pub(crate) async fn emit_xreport(
         "ip": ip,
         "ts": chrono::Utc::now().to_rfc3339(),
     });
-    xadd(redis, "flux:xreport", &payload).await;
+    // 佐证量也是账：漏一条 = 上传者少一笔可信上传，走 durable 通道
+    xadd_durable(redis, "flux:xreport", &payload).await;
 }
 
 /// agent_rules 命中投递：同 (user, agent) 1 小时去重（SET NX EX），命中才 XADD flux:agent_block。
@@ -106,10 +125,84 @@ pub(crate) async fn xadd(
     stream: &str,
     payload: &serde_json::Value,
 ) {
+    if let Err(e) = xadd_once(redis, stream, payload).await {
+        tracing::warn!(?e, "事件投递失败（不影响响应）");
+    }
+}
+
+/// 计费事件投递（announce / xreport 主链路专用）。
+///
+/// 先补历史欠账，本条失败重试一次，仍失败进进程内重投队列 —— 而不是只
+/// `warn!` 后照常回成功：那样这条 announce 的流量增量根本没进流，worker 侧
+/// 的 `announce_seen` 幂等键挡得住重投、挡不住「根本没投过来」。
+pub(crate) async fn xadd_durable(
+    redis: &redis::aio::ConnectionManager,
+    stream: &str,
+    payload: &serde_json::Value,
+) {
+    drain_spill(redis).await;
+    if xadd_once(redis, stream, payload).await.is_ok() {
+        return;
+    }
+    if xadd_once(redis, stream, payload).await.is_ok() {
+        return;
+    }
+    let Ok(mut q) = spill().lock() else {
+        tracing::error!(stream, "重投队列锁损坏，本条计费事件丢弃");
+        SPILL_DROPPED.fetch_add(1, Ordering::Relaxed);
+        return;
+    };
+    if q.len() >= SPILL_MAX {
+        // 有界：极端长时间 Redis 不可用时丢最旧的并计数上报，
+        // 不能让它把进程内存吃穿（那是把一次故障升级成整站故障）。
+        q.pop_front();
+        SPILL_DROPPED.fetch_add(1, Ordering::Relaxed);
+    }
+    q.push_back((stream.to_string(), payload.clone()));
+    SPILL_DEPTH.store(q.len() as u64, Ordering::Relaxed);
+    tracing::warn!(stream, depth = q.len(), "计费事件进重投队列（Redis 未收）");
+}
+
+/// 排空重投队列（单轮上限，Redis 刚恢复时不一次灌满）。
+/// 锁只在取出/放回时持有，不在 `.await` 上持有。
+async fn drain_spill(redis: &redis::aio::ConnectionManager) {
+    let batch: Vec<(String, serde_json::Value)> = match spill().lock() {
+        Ok(q) if q.is_empty() => return,
+        Ok(mut q) => {
+            let n = q.len().min(SPILL_DRAIN_BATCH);
+            q.drain(..n).collect()
+        }
+        Err(_) => return,
+    };
+    let mut back: Vec<(String, serde_json::Value)> = Vec::new();
+    let mut sent = 0usize;
+    for item in batch {
+        if xadd_once(redis, &item.0, &item.1).await.is_ok() {
+            sent += 1;
+        } else {
+            back.push(item);
+        }
+    }
+    if sent > 0 {
+        tracing::info!(sent, "重投队列补投成功");
+    }
+    if !back.is_empty() {
+        if let Ok(mut q) = spill().lock() {
+            // 放回队首并保持原顺序（欠账必须先于新事件入账）
+            for item in back.into_iter().rev() {
+                q.push_front(item);
+            }
+            SPILL_DEPTH.store(q.len() as u64, Ordering::Relaxed);
+        }
+    }
+}
+
+fn xadd_cmd<'a>(stream: &'a str, payload: &'a serde_json::Value) -> redis::Cmd {
     let mut cmd = redis::cmd("XADD");
-    // 裁剪只发生在 worker 的消费轮里（announce_main 每轮 XTRIM ~10000），
-    // worker 停机/落后时这条流与 session、首页缓存同库 Redis ⇒ 无界增长会把
-    // 整站缓存一起拖垮。XADD 侧自己封顶（近似裁剪，开销可忽略）。
+    // 裁剪只发生在 worker 的消费轮里（announce_main 每轮按最旧未确认条目
+    // 裁，见 group::trim_safe），worker 停机/落后时这条流与 session、首页
+    // 缓存同库 Redis ⇒ 无界增长会把整站缓存一起拖垮。XADD 侧自己封顶
+    // （近似裁剪，开销可忽略）——这是内存保险丝，不是正常裁剪路径。
     cmd.arg(stream)
         .arg("MAXLEN")
         .arg("~")
@@ -117,10 +210,16 @@ pub(crate) async fn xadd(
         .arg("*")
         .arg("payload")
         .arg(payload.to_string());
+    cmd
+}
+
+async fn xadd_once(
+    redis: &redis::aio::ConnectionManager,
+    stream: &str,
+    payload: &serde_json::Value,
+) -> Result<(), redis::RedisError> {
     let mut conn = redis.clone();
-    if let Err(e) = cmd.query_async::<()>(&mut conn).await {
-        tracing::warn!(?e, "事件投递失败（不影响响应）");
-    }
+    xadd_cmd(stream, payload).query_async::<()>(&mut conn).await
 }
 
 pub(crate) fn bencode_err(msg: &str) -> HttpResponse {

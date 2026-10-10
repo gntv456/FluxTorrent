@@ -15,7 +15,9 @@
 
 use redis::aio::ConnectionManager;
 
-use super::group_parse::{parse_autoclaim_reply, parse_stream_reply};
+use super::group_parse::{
+    parse_autoclaim_reply, parse_stream_reply, parse_xpending_reply, TrimBound,
+};
 
 /// 消费者组参数（两条流各一份常量）。
 pub(crate) struct GroupCfg {
@@ -222,5 +224,49 @@ pub(crate) async fn reclaim_stale(
             }
             Vec::new()
         }
+    }
+}
+
+/// 安全修剪：只裁「最旧未确认条目」之前的条目，无 pending 才按长度裁。
+///
+/// 旧写法是消费完盲发 `XTRIM MAXLEN ~10000`：worker 落后或停机时**尚未投递的
+/// 条目会被一起裁掉**，而 PEL 只记 id ⇒ XAUTOCLAIM 拿回 nil，那段流量增量静默
+/// 消失（结算侧 `announce_seen` 幂等键挡得住重投，挡不住「根本没投过来」）。
+/// XPENDING 读不出结论时本轮不裁——宁可让流涨一段，也不丢未入账的事件。
+pub(crate) async fn trim_safe(redis: &mut ConnectionManager, cfg: &GroupCfg) {
+    let bound = match redis::cmd("XPENDING")
+        .arg(cfg.stream)
+        .arg(cfg.group)
+        .query_async::<redis::Value>(redis)
+        .await
+    {
+        Ok(v) => parse_xpending_reply(&v),
+        Err(e) => {
+            if !format!("{e}").contains("NOGROUP") {
+                tracing::warn!(?e, stream = cfg.stream, "XPENDING 失败");
+            }
+            TrimBound::Unknown
+        }
+    };
+    match bound {
+        TrimBound::Oldest(min) => {
+            let _: Result<(), _> = redis::cmd("XTRIM")
+                .arg(cfg.stream)
+                .arg("MINID")
+                .arg("~")
+                .arg(&min)
+                .query_async(redis)
+                .await;
+        }
+        TrimBound::NoPending => {
+            let _: Result<(), _> = redis::cmd("XTRIM")
+                .arg(cfg.stream)
+                .arg("MAXLEN")
+                .arg("~")
+                .arg(10_000)
+                .query_async(redis)
+                .await;
+        }
+        TrimBound::Unknown => {}
     }
 }

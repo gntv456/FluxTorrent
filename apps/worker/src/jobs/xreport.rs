@@ -272,13 +272,8 @@ pub async fn consume_xreport(
             applied += 1;
         }
     }
-    let _: () = {
-        use redis::AsyncCommands;
-        redis
-            .xtrim("flux:xreport", redis::streams::StreamMaxlen::Approx(10000))
-            .await
-            .unwrap_or(())
-    };
+    // XTRIM：与 announce 同口径，按最旧未确认条目为界裁（不盲裁长度）
+    group::trim_safe(redis, &XREPORT_GROUP).await;
 
     // 幂等键表清理：与 announce_seen 同口径（消费循环内就地裁剪，不另开 job）
     let _ = sqlx::query(
