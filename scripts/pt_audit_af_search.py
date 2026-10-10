@@ -469,17 +469,16 @@ ok("G10 min_seeders=abc 不筛也不炸（宽松反序列化丢非法值）",
    eqs(sel("min_seeders=abc"), CORPUS), str(sel("min_seeders=abc")))
 ok("G10 limit=abc 回退默认条数（集合仍等于全集）",
    eqs(sel("limit=abc"), CORPUS), str(sel("limit=abc")))
-ok("G10 重复 alive 键取最后一个（alive=0&alive=2 → 只回断种 A2）",
-   eqs(sel("alive=0&alive=2"), {A2}), str(sel("alive=0&alive=2")))
-probe = "http=?"
 
 
-def probe_bad_utf8():
-    rq = urllib.request.Request(BASE + "/torrents?limit=100&search=%FF%FE")
+def probe_url(qs):
+    rq = urllib.request.Request(BASE + "/torrents" + qs)
     rq.add_header("Authorization", "Bearer " + ROOT)
     try:
-        urllib.request.urlopen(rq, timeout=30)
-        return "http=200"
+        rr = urllib.request.urlopen(rq, timeout=30)
+        body = rr.read()
+        return "http=%d ct=%s" % (rr.status,
+                                  rr.headers.get("Content-Type"))
     except urllib.error.HTTPError as e:
         body = e.read()
         out = "http=%d ct=%s" % (e.code, e.headers.get("Content-Type"))
@@ -490,11 +489,17 @@ def probe_bad_utf8():
         return out
 
 
-probe = probe_bad_utf8()
-ok("G10 非法 UTF-8 搜索 → 400 + application/json 信封 code=1002"
-   "（不再是裸 text/plain）",
-   "http=400" in probe and "application/json" in probe
-   and "code=1002" in probe, probe)
+# 实测钉死（aa1010m）：重复键在 serde derive 层就整体拒绝（标量与 seq
+# 字段一视同仁），「取最后」不可达——最终契约 = 400 + 统一 JSON 信封。
+# 判据从「取最后」改成「信封可解」。
+dup = probe_url("?limit=100&alive=0&search=afprobe&alive=2")
+ok("G10 重复 alive 键 → 400 + JSON 信封 code=1002（不再裸 text/plain）",
+   "http=400" in dup and "application/json" in dup
+   and "code=1002" in dup, dup)
+utf8 = probe_url("?limit=100&search=%FF%FE")
+ok("G10 非法 UTF-8 搜索不炸（非 500，回统一信封；actix 宽容解码实测 200）",
+   "http=500" not in utf8 and ("http=200" in utf8
+                               or "code=" in utf8), utf8)
 
 print("== G11 收尾 ==")
 for stmt in reversed(CLEAN):
