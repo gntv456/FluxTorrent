@@ -9,14 +9,36 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
+/// 保种区「移出宽限」证据：worker 出种时给该种挂 3 天免费促销（source=preserve_grace）。
+/// `{j}` 处填 LATERAL 别名引用前缀。列表与计数共用，两处各写一份必然漂移。
+const GRACE_JOIN: &str = "LEFT JOIN LATERAL \
+     (SELECT p.ends_at FROM promotions p \
+      WHERE p.source = 'preserve_grace' AND p.torrent_id = sp.torrent_id \
+      ORDER BY p.ends_at DESC LIMIT 1) gr ON true";
+
+/// 四档视图判定片段，`{m}` 由调用方填占位符编号（列表/计数的参数序不同）。
+/// in=在保全部（默认）、active=保种中（已认领）、grace=延续中（已移出但宽限未过）、
+/// out=已移出（宽限已过或从未挂宽限）。
+const VIEW_FILTER: &str = "(   ({m} = 'in' AND sp.exited_at IS NULL) \
+     OR ({m} = 'active' AND sp.exited_at IS NULL \
+         AND sp.claimed_by IS NOT NULL) \
+     OR ({m} = 'grace' AND sp.exited_at IS NOT NULL \
+         AND gr.ends_at > now()) \
+     OR ({m} = 'out' AND sp.exited_at IS NOT NULL \
+         AND (gr.ends_at IS NULL OR gr.ends_at <= now())))";
+
 /// 保种区列表（同类站 requireseed.php 口径）：统计六格 + 筛选 + 分页 + 种子九列表格
 #[get("/preserve")]
 pub(super) async fn preserve_list(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<PreserveQuery>,
 ) -> DomainResult<impl Responder> {
-    let page = q.page.unwrap_or(0).max(0);
+    // 分页与全站列表同口径（dto::page_window 是 1 基）。此前这里按 0 基算 offset，
+    // 客户端照惯例传 page=1 时翻到的是第二页——保种区首页整页空白，
+    // 而 total 明明 >0。
+    let page = q.page.unwrap_or(1).max(1);
     let per = 50i64;
+    let offset = (page - 1) * per;
     let kw = q
         .keyword
         .as_deref()
@@ -29,27 +51,19 @@ pub(super) async fn preserve_list(
         matches!(q.scope.as_deref(), Some("official") | Some("general"));
     let official_only = q.scope.as_deref() == Some("official");
     let general_only = q.scope.as_deref() == Some("general");
-    // status=expired 需要查已移出行——主查询固定 exited_at IS NULL，expired 单独走分支
-    if q.status.as_deref() == Some("expired") {
-        let rows: Vec<(i64, String, i64)> = sqlx::query_as(
-            "SELECT sp.torrent_id, t.name, t.size FROM seed_preserve sp \
-             JOIN torrents t ON t.id = sp.torrent_id \
-             WHERE sp.exited_at IS NOT NULL \
-               AND (NOT $1::bool OR t.official_tag) \
-               AND (NOT $2::bool OR NOT t.official_tag) \
-             ORDER BY sp.exited_at DESC LIMIT 50",
-        )
-        .bind(official_only)
-        .bind(general_only)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        return Ok(ok(rows));
-    }
     let _ = scope_ok;
+    // 视图档位（此前 grace 选中即被忽略、expired 走独立分支只回三列裸数组，
+    // 前端按 {items,total,stats} 解构 → 选「已移出」整页 500）
+    let mode = match q.status.as_deref() {
+        Some("active") => "active",
+        Some("grace") => "grace",
+        Some("expired") => "out",
+        _ => "in",
+    };
 
     let rows = sqlx::query_as::<_, PreserveRow>(
-        "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by, \
+        &format!(
+            "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by, \
          t.small_descr, t.category_id, t.medium_id, t.grade_id, t.edition_id, \
          t.leechers, t.times_completed, \
          (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments, \
@@ -75,38 +89,69 @@ pub(super) async fn preserve_list(
          t.media_info->>'poster' AS poster, \
          CASE WHEN t.anonymous THEN NULL ELSE o.username END AS owner_name, \
          t.created_at \
-         FROM seed_preserve sp \
-         JOIN torrents t ON t.id = sp.torrent_id \
-         LEFT JOIN users u ON u.id = sp.claimed_by \
-         LEFT JOIN users o ON o.id = t.owner_id \
-         WHERE sp.exited_at IS NULL AND t.approval_status = 1 \
-           AND (NOT $5::bool OR t.official_tag) \
-           AND (NOT $6::bool OR NOT t.official_tag) \
-           AND (NOT $7::bool OR sp.claimed_by IS NOT NULL) \
-           AND ($1::int IS NULL OR t.category_id = $1) \
-           AND t.name ILIKE $2 \
-         ORDER BY t.seeders ASC, sp.torrent_id LIMIT $3 OFFSET $4",
+             FROM seed_preserve sp \
+             JOIN torrents t ON t.id = sp.torrent_id \
+             LEFT JOIN users u ON u.id = sp.claimed_by \
+             LEFT JOIN users o ON o.id = t.owner_id \
+             {grace} \
+             WHERE t.approval_status = 1 \
+               AND (NOT $5::bool OR t.official_tag) \
+               AND (NOT $6::bool OR NOT t.official_tag) \
+               AND ($1::int IS NULL OR t.category_id = $1) \
+               AND t.name ILIKE $2 \
+               AND {view} \
+             ORDER BY CASE WHEN sp.exited_at IS NULL \
+                       THEN t.seeders ELSE 0 END ASC, \
+                      COALESCE(sp.exited_at, t.created_at) DESC, sp.torrent_id \
+             LIMIT $3 OFFSET $4",
+            grace = GRACE_JOIN,
+            view = VIEW_FILTER.replace("{m}", "$7"),
+        ),
     )
     .bind(q.category)
-    .bind(kw)
+    .bind(kw.as_str())
     .bind(per)
-    .bind(page * per)
+    .bind(offset)
     .bind(official_only)
     .bind(general_only)
-    .bind(q.status.as_deref() == Some("active"))
+    .bind(mode)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 「共 N 条」与当前视图/筛选同源。此前 total 恒等于「全部在保」行数，
+    // 与筛选结果无关——换一档筛选，计数就说谎。
+    let total: i64 = sqlx::query_scalar(&format!(
+        "SELECT count(*) FROM seed_preserve sp \
+         JOIN torrents t ON t.id = sp.torrent_id \
+         {grace} \
+         WHERE t.approval_status = 1 \
+           AND (NOT $1::bool OR t.official_tag) \
+           AND (NOT $2::bool OR NOT t.official_tag) \
+           AND ($3::int IS NULL OR t.category_id = $3) \
+           AND t.name ILIKE $4 AND {view}",
+        grace = GRACE_JOIN,
+        view = VIEW_FILTER.replace("{m}", "$5"),
+    ))
+    .bind(official_only)
+    .bind(general_only)
+    .bind(q.category)
+    .bind(kw.as_str())
+    .bind(mode)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+
     // 统计六格（同类站保种区口径：保种中/延续中/官方保种/普通保种/今日新增/今日移出）
-    let (preserving, _exited, total, today_in, today_out): (i64, i64, i64, i64, i64) =
+    let (preserving, _exited, today_in, today_out): (i64, i64, i64, i64) =
         sqlx::query_as(
             "SELECT \
                 (SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL), \
                 (SELECT count(*) FROM seed_preserve WHERE exited_at IS NOT NULL), \
-                (SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL), \
-                (SELECT count(*) FROM seed_preserve WHERE claimed_at > now() - interval '1 day'), \
-                (SELECT count(*) FROM seed_preserve WHERE exited_at > now() - interval '1 day')",
+                (SELECT count(*) FROM seed_preserve WHERE claimed_at \
+                   > now() - interval '1 day'), \
+                (SELECT count(*) FROM seed_preserve WHERE exited_at \
+                   > now() - interval '1 day')",
         )
         .fetch_one(&state.repo.db)
         .await

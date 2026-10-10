@@ -105,10 +105,12 @@ pub async fn user_torrentlist(
     // （认领本身公开；snatch 派生字段只对本人/staff 展示）
     let preserved: Vec<SnatchRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
-         CASE WHEN $3 THEN s.seeding ELSE false END AS seeding, \
-         CASE WHEN $3 THEN s.leeching ELSE false END AS leeching, \
+         CASE WHEN $3 THEN COALESCE(s.seeding, false) \
+              ELSE false END AS seeding, \
+         CASE WHEN $3 THEN COALESCE(s.leeching, false) \
+              ELSE false END AS leeching, \
          CASE WHEN $3 THEN s.completed_at END AS completed_at, \
-         CASE WHEN $3 THEN s.uploaded ELSE 0 END AS uploaded_here \
+         CASE WHEN $3 THEN COALESCE(s.uploaded, 0) ELSE 0 END AS uploaded_here \
          FROM seed_preserve sp \
          JOIN torrents t ON t.id = sp.torrent_id \
          LEFT JOIN snatches s ON s.torrent_id = sp.torrent_id AND s.user_id = $1 \

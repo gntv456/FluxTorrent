@@ -18,8 +18,11 @@ struct HrRecordRow {
     username: String,
     torrent_id: i64,
     torrent_name: Option<String>,
-    uploaded: i64,
-    downloaded: i64,
+    /// H&R 快照按 (user_id, torrent_id) 存义务，流水从 snatches 现取；
+    /// 复活/清理任务删掉 snatch 后这里就是 NULL——曾按 i64 解码导致
+    /// 整个后台 H&R 页 500（一行缺流水，全表都读不出）。
+    uploaded: Option<i64>,
+    downloaded: Option<i64>,
     required_seconds: i32,
     seeded_seconds: i32,
     deadline: chrono::DateTime<chrono::Utc>,
