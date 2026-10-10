@@ -3054,7 +3054,7 @@ const zhCnBase = {
     balance: "储值余额",
     btnTopup: "充值",
     btnLedger: "流水",
-    quotaZone: "增加片单额度",
+    quotaZone: "增加邀请名额",
     uploadZone: "增加上传量",
     vipZone: "升级VIP",
     vipHelp: "VIP 期间享邀请赠礼与专属标识",
@@ -5700,6 +5700,7 @@ const zhCnBase = {
     sortPrompt: "排序值（数字，小的在前；留空=不改）：",
     newznabPrompt:
       "newznab 分类号（Torznab 客户端按号过滤；留空=不改，0=清除）：",
+    newznabInvalid: "newznab 分类号必须是纯数字。",
     colNewznab: "newznab",
     mailNew: "发送批量邮件",
     btnSend: "发送",

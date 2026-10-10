@@ -59,6 +59,25 @@ pub async fn donate_order(
     let Some((plan_type, title, reward, price)) = plan else {
         return Err(DomainError::NotFound(body.plan_id as i64));
     };
+    // 发放量取自标题首段数字（upload 计 GB、quota 计枚），上限沿用批量发放口径
+    // （上传 10 TB / 邀请 50 枚）。必须在扣款之前判定：解析不出就拒单，
+    // 收钱不给货是这条链路上唯一不可逆的损失。
+    let cap: i64 = match plan_type.as_str() {
+        "upload" => 10_000,
+        "quota" => 50,
+        _ => 0,
+    };
+    let grant: i64 = title
+        .split_whitespace()
+        .next()
+        .and_then(|w| w.parse().ok())
+        .filter(|v| (1..=cap).contains(v))
+        .unwrap_or(0);
+    if cap > 0 && grant == 0 {
+        return Err(DomainError::Validation(format!(
+            "套餐「{title}」标题首段数字无效（应在 1-{cap}），已拒单未扣款"
+        )));
+    }
     let mut tx = state
         .repo
         .db
@@ -83,12 +102,7 @@ pub async fn donate_order(
     // 套餐生效
     match plan_type.as_str() {
         "upload" => {
-            // 「100 GB 上传量」/「500 GB 上传量」
-            let gb: i64 = title
-                .split_whitespace()
-                .next()
-                .and_then(|w| w.parse().ok())
-                .unwrap_or(0);
+            // 「100 GB 上传量」/「500 GB 上传量」→ grant 已是 GB 数
             // 必须落差额流水（P1）：快照权威在 traffic_ledger，reconcile_snapshots 每 6h
             // 把 users.uploaded 重算为 sum(delta_up)——只 UPDATE 快照不落流水，付费购买的
             // 上传量会在 6h 内被静默抹掉。对照 shop upload_credit 的双写。
@@ -97,7 +111,7 @@ pub async fn donate_order(
                  VALUES (nextval('traffic_ledger_id_seq'), $1, 0, $2, 0, now())",
             )
             .bind(auth.id)
-            .bind(gb * 1024 * 1024 * 1024)
+            .bind(grant * 1024 * 1024 * 1024)
             .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
@@ -105,16 +119,18 @@ pub async fn donate_order(
                 "UPDATE users SET uploaded = uploaded + $2 WHERE id = $1",
             )
             .bind(auth.id)
-            .bind(gb * 1024 * 1024 * 1024)
+            .bind(grant * 1024 * 1024 * 1024)
             .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
         "quota" => {
+            // 「10 枚邀请名额」→ grant 已是枚数；领码时 quota_extra 优先于周配额消耗
             sqlx::query(
-                "UPDATE users SET quota_extra = quota_extra + 10 WHERE id = $1",
+                "UPDATE users SET quota_extra = quota_extra + $2 WHERE id = $1",
             )
             .bind(auth.id)
+            .bind(grant as i32)
             .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
