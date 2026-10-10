@@ -245,6 +245,19 @@ else:
        sum(1 for g in got if g[1] != 200) == 1
        and any("3 单" in g[2] for g in got if g[1] != 200), str(got))
 
+    # A7：用户中心「活跃会话/登录记录」两处读口。login_events.ip 是 inet，
+    # 曾经直接投影给 String → sqlx 判类型不合，整卡 500。
+    print("A7 会话与登录记录：inet 列要投影成文本，成员刚登录过必有行")
+    s, r = call("GET", "/me/sessions", token=member_tok)
+    rows = r.get("data") or []
+    ok("A7 GET /me/sessions 200", s == 200 and r.get("code") == 0,
+       "http=%s %s" % (s, str(r.get("message"))[:140]))
+    ok("A7 正控：会话列表非空且 ip 是文本", bool(rows)
+       and isinstance(rows[0].get("ip"), str), str(rows)[:160])
+    s, r = call("GET", "/me/logins", token=member_tok)
+    ok("A7 GET /me/logins 200", s == 200 and r.get("code") == 0,
+       "http=%s %s" % (s, str(r.get("message"))[:140]))
+
 try:
     summary()
 finally:
