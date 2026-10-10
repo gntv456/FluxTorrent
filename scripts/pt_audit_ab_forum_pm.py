@@ -49,6 +49,29 @@ def exec_sql(q):
         capture_output=True, text=True, encoding="utf-8")
 
 
+def raw_friends(tok):
+    return call("GET", "/friends", token=tok)[1].get("data") or []
+
+
+def friend_rows(tok):
+    """形状归一后再断言语义：行是元组也要能验 accept/reject 对不对，
+    否则一条形状回归会把后面所有判据一起冲掉（读起来像「功能坏了」）。"""
+    out = []
+    for r in raw_friends(tok):
+        if isinstance(r, dict):
+            out.append(r)
+        elif isinstance(r, (list, tuple)) and len(r) == 2:
+            out.append({"username": r[0], "list": r[1]})
+    return out
+
+
+def friend_pairs(x, y):
+    """两人之间已是好友的行数（双向各一行）"""
+    where = ("list = 'friend' AND ((user_id = %s AND friend_id = %s)"
+             " OR (user_id = %s AND friend_id = %s))") % (x, y, y, x)
+    return cnt("friendships", where)
+
+
 def cnt(table, where):
     return int(psql("SELECT count(*) FROM %s WHERE %s" % (table, where)) or 0)
 
@@ -90,9 +113,16 @@ def new_member(tag):
         return None
     CLEAN.append("UPDATE users SET status = 2 WHERE id = %s" % uid)
     CLEAN.append("DELETE FROM invites WHERE id = %d" % cid)
-    login_r = call("POST", "/auth/login",
-                   {"username": user, "password": "password123"})[1]
-    return ((login_r.get("data") or {}).get("token"), uid, user)
+    # 连开多个探针号时登录会吃 429；令牌拿不到就重试，
+    # 否则后面每个请求都是「未认证」，红的全是假案。
+    for _ in range(6):
+        login_r = call("POST", "/auth/login",
+                       {"username": user, "password": "password123"})[1]
+        tok = (login_r.get("data") or {}).get("token")
+        if tok:
+            return (tok, uid, user)
+        time.sleep(4)
+    return None
 
 
 def send(frm, to_user, subject, text, reply_to=None):
@@ -178,33 +208,34 @@ ok("E3 =yes 时放行", cnt("messages", "subject = '%s'" % S_YES) == 1)
 
 print("E4 好友申请：接受与拒绝必须是两件事")
 call("POST", "/friends", {"username": C[2]}, token=DT)
-rows = call("GET", "/friends", token=CT)[1].get("data") or []
+rows = raw_friends(CT)
+# 形状断言：必须是 {username, list} 对象（元组数组会让两个消费端读到空）
+ok("E4 /friends 行形状是对象", bool(rows) and isinstance(rows[0], dict)
+   and "username" in rows[0] and "list" in rows[0], str(rows)[:140])
 ok("E4 前置：C 看到 incoming 申请",
-   any(r.get("list") == "incoming" for r in rows), str(rows)[:140])
+   any(r.get("list") == "incoming" for r in friend_rows(CT)), str(rows)[:140])
+# 先拒：必须只是撤掉申请，绝不能把对方变成好友
+s, r = call("POST", "/friends/action", {"username": D[2], "action": "reject"},
+            token=CT)
+ok("E4 「拒绝」返回 200", s == 200, str(r)[:130])
+ok("E4 正控：拒绝没把申请人变好友（曾经的反转 bug）",
+   friend_pairs(C[1], D[1]) == 0)
+ok("E4 拒绝后 pending 申请消失",
+   cnt("friendships", "user_id = %s AND friend_id = %s AND list = 'pending'"
+       % (D[1], C[1])) == 0)
+s, r = call("POST", "/friends/action", {"username": D[2], "action": "accept"},
+            token=CT)
+ok("E4 无申请可处理时 accept 明确报错",
+   s == 400 and "没有待处理的好友申请" in (r.get("message") or ""), str(r)[:130])
+# 再申请一次并接受
+call("POST", "/friends", {"username": C[2]}, token=DT)
 s, r = call("POST", "/friends/action", {"username": D[2], "action": "accept"},
             token=CT)
 ok("E4 界面「接受」用的 action=accept 被后端接受", s == 200, str(r)[:130])
-ok("E4 接受后双向成为好友",
-   cnt("friendships", "list = 'friend' AND ((user_id = %s"
-       " AND friend_id = %s) OR (user_id = %s AND friend_id = %s))"
-       % (C[1], D[1], D[1], C[1])) == 2)
+ok("E4 接受后双向成为好友", friend_pairs(C[1], D[1]) == 2)
 ok("E4 接受会给对方发系统信",
    cnt("messages", "receiver_id = %s AND subject = '%s'"
        % (D[1], SUBJ_OK)) == 1)
-call("POST", "/friends", {"username": A[2]}, token=BT)
-s, r = call("POST", "/friends/action", {"username": B[2], "action": "reject"},
-            token=AT)
-ok("E4 「拒绝」返回 200", s == 200, str(r)[:130])
-ok("E4 正控：拒绝没把申请人变好友（曾经的反转 bug）",
-   cnt("friendships", "list = 'friend' AND user_id = %s AND friend_id = %s"
-       % (A[1], B[1])) == 0)
-ok("E4 拒绝后 pending 申请消失",
-   cnt("friendships", "user_id = %s AND friend_id = %s AND list = 'pending'"
-       % (B[1], A[1])) == 0)
-s, r = call("POST", "/friends/action", {"username": C[2], "action": "accept"},
-            token=DT)
-ok("E4 无申请可处理时 accept 明确报错",
-   s == 400 and "没有待处理的好友申请" in (r.get("message") or ""), str(r)[:130])
 
 print("E5 论坛回帖通知 + notify_topic_reply 偏好闸门")
 boards = call("GET", "/forums/boards", token=AT)[1].get("data") or []
