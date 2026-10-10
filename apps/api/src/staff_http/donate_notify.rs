@@ -74,9 +74,17 @@ pub async fn donate_order(
         .filter(|v| (1..=cap).contains(v))
         .unwrap_or(0);
     if cap > 0 && grant == 0 {
-        return Err(DomainError::Validation(format!(
-            "套餐「{title}」标题首段数字无效（应在 1-{cap}），已拒单未扣款"
-        )));
+        // 校验详情必须整句可查 validation_details.tsv，所以不能用 format! 拼
+        // （validation_i18n_guard 锁动态串条数）；标题与上限只进日志。
+        tracing::warn!(
+            plan_id = body.plan_id,
+            title = %title,
+            cap,
+            "donate order rejected: plan title head number invalid"
+        );
+        return Err(DomainError::Validation(
+            "套餐标题首段数量无效，已拒单未扣款".into(),
+        ));
     }
     let mut tx = state
         .repo
