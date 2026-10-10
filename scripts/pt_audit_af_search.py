@@ -18,6 +18,7 @@ import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pt_audit_form import BOUNDARY, make_torrent, multipart  # noqa: E402
 from pt_audit_lib import BASE, call, login, ok, summary  # noqa: E402
 
 ROOT = login()
@@ -46,51 +47,6 @@ def exec_sql(sql_text):
 def brief(resp):
     return "msg=%s code=%s" % (str(resp.get("message"))[:56],
                                resp.get("code"))
-
-
-# ---------- bencode / multipart（与真实客户端一致） ----------
-def benc(obj):
-    if isinstance(obj, int):
-        return b"i%de" % obj
-    if isinstance(obj, bytes):
-        return b"%d:%s" % (len(obj), obj)
-    if isinstance(obj, str):
-        return benc(obj.encode())
-    if isinstance(obj, list):
-        return b"l" + b"".join(benc(x) for x in obj) + b"e"
-    if isinstance(obj, dict):
-        out = b"d"
-        for k in sorted(obj.keys()):
-            out += benc(k) + benc(obj[k])
-        return out + b"e"
-    raise TypeError(type(obj))
-
-
-def make_torrent(name, total=4096, piece=16384):
-    count = max(1, (total + piece - 1) // piece)
-    info = {b"name": name.encode(), b"piece length": piece,
-            b"pieces": hashlib.sha1(b"piece").digest() * count,
-            b"private": 1, b"length": total}
-    return benc({b"info": info,
-                 b"announce": b"http://127.0.0.1:7070/announce/x"})
-
-
-BOUNDARY = "----fluxaf9"
-
-
-def multipart(fields, content):
-    out = b""
-    for k, v in fields.items():
-        if v is None:
-            continue
-        out += ('--%s\r\nContent-Disposition: form-data; name="%s"\r\n'
-                '\r\n%s\r\n' % (BOUNDARY, k, v)).encode()
-    out += ('--%s\r\nContent-Disposition: form-data; name="file"; '
-            'filename="af.torrent"\r\n'
-            "Content-Type: application/x-bittorrent\r\n\r\n"
-            % BOUNDARY).encode()
-    out += content + b"\r\n" + ("--%s--\r\n" % BOUNDARY).encode()
-    return out
 
 
 def upload(tok, name, **fields):
