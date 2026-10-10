@@ -116,12 +116,13 @@ pub(super) struct ListQuery {
     pub(super) rating_min: Option<f64>,
 }
 
-/// 日期参数校验（严格 `YYYY-MM-DD`）：非法值直接丢弃——宁可不筛，
-/// 也不让 PG 对烂字符串抛错变成 500。
+/// 日期参数校验（严格 `YYYY-MM-DD` **且日历上真存在**）：非法值直接丢弃——
+/// 宁可不筛，也不让 PG 对烂字符串抛错变成 500。只查逐位形状不够：
+/// `2025-02-30` / `2025-13-45` 形状全对却会在 `$n::date` 处炸（2026-10-10 实测）。
 pub(crate) fn norm_date(s: Option<String>) -> Option<String> {
     let s = s?;
     let s = s.trim();
-    let ok = s.len() == 10
+    let shape_ok = s.len() == 10
         && s.as_bytes().iter().enumerate().all(|(i, b)| {
             if i == 4 || i == 7 {
                 *b == b'-'
@@ -129,7 +130,8 @@ pub(crate) fn norm_date(s: Option<String>) -> Option<String> {
                 b.is_ascii_digit()
             }
         });
-    ok.then(|| s.to_string())
+    let real = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_ok();
+    (shape_ok && real).then(|| s.to_string())
 }
 
 /// 优惠参数白名单（未知取值丢弃，避免静默返回空列表让用户以为「没数据」）。
@@ -226,7 +228,22 @@ pub(crate) fn parse_size(s: Option<String>) -> Option<i64> {
 
 #[cfg(test)]
 mod tests {
-    use super::norm_promo;
+    use super::{norm_date, norm_promo};
+
+    /// 形状对但日历上不存在的日期必须丢弃：它们会在 PG 的 `$n::date`
+    /// 处抛错，把列表高级搜索打成 500（2026-10-10 实测 date_from/date_to）。
+    #[test]
+    fn date_needs_a_real_calendar_day() {
+        for bad in ["2025-13-45", "2025-02-30", "2025-06-31", "2025-00-10"] {
+            assert!(
+                norm_date(Some(bad.into())).is_none(),
+                "{bad} 形状合法但日历上没有这一天"
+            );
+        }
+        assert!(norm_date(Some("2024-02-29".into())).is_some(), "闰日要放行");
+        assert!(norm_date(Some("2025-10-05".into())).is_some(), "正常日放行");
+        assert!(norm_date(Some("2025-1-5".into())).is_none(), "必须零补齐");
+    }
 
     /// 单值白名单口径不变（阶段三多选改造的回归护栏）
     #[test]

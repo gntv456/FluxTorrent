@@ -36,11 +36,17 @@ pub async fn bump_list_cache_gen(state: &AppState) {
 async fn list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ListQuery>,
 ) -> DomainResult<impl Responder> {
-    let auth = require_auth(&req, &state).await?; // 站点准入收口：资源元数据不对外
-                                                  // 标签多选（0159 P1）：norm_tags 在 filter 构造块里赋值；声明在此因
-                                                  // struct 字面量内不能先解构再引用同名字段
+    // 站点准入收口：资源元数据不对外
+    let auth = require_auth(&req, &state).await?;
+    // 参数抽取失败要回站内统一信封：此前 `web::Query<ListQuery>` 形参在抽取
+    // 失败时由 actix 直接回 text/plain 400（无 code/message，前端只显未知错误；
+    // 重复键 `?alive=0&alive=2`、`?limit=abc` 全中，2026-10-10 批九实测）。
+    let q = web::Query::<ListQuery>::from_query(req.query_string())
+        .map_err(|_| DomainError::Validation("列表筛选参数格式无效".into()))?
+        .into_inner();
+    // 标签多选（0159 P1）：norm_tags 在 filter 构造块里赋值；声明在此因
+    // struct 字面量内不能先解构再引用同名字段
     let (tag_ids, tag_all) =
         super::query::norm_tags(q.tag_id, &q.tag_ids, q.tag_mode.as_deref());
     // 多维筛选（B3 六类型）：`sec_{kind}` / `_min` / `_max`，解析见 sec_params.rs
