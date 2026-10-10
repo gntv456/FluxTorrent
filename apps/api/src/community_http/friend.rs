@@ -111,6 +111,13 @@ async fn friend_add(
     ))
 }
 
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct FriendRow {
+    username: String,
+    /// friend | black | incoming（他人发给我的 pending 申请）
+    list: String,
+}
+
 #[get("/friends")]
 async fn friend_list(
     req: HttpRequest,
@@ -119,7 +126,10 @@ async fn friend_list(
     let auth = require_auth(&req, &state).await?;
     // 双向口径：我发出的行（user_id=我，含 pending/black）+ 他人发给我的 pending 申请（list='incoming'）。
     // 旧版只查 user_id=$1，被申请方永远看不到收到的申请 → pending 流程发得出、收不到。
-    let rows: Vec<(String, String)> = sqlx::query_as(
+    // 行必须是**对象**：`friends-actions.tsx` 的 FriendRow 读 r.username/r.list，
+    // 早前这里返回 (String,String) 元组，序列化成 [["bob","incoming"]]，
+    // r.list 恒为 undefined → 「收到的好友申请」整段不渲染，接受/拒绝无从点起。
+    let rows: Vec<FriendRow> = sqlx::query_as(
         "SELECT u.username, f.list FROM friendships f JOIN users u ON u.id = f.friend_id WHERE f.user_id = $1 \
          UNION ALL \
          SELECT u.username, 'incoming' FROM friendships f JOIN users u ON u.id = f.user_id \
@@ -221,6 +231,19 @@ async fn friend_action(
                 "UPDATE friendships SET list = 'friend' WHERE \
                  (user_id = $1 AND friend_id = $2) \
                  OR (user_id = $2 AND friend_id = $1)",
+            )
+            .bind(auth.id)
+            .bind(fid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            // 单向接受时我这一侧还没有行，光 UPDATE 只会翻转对方那一行——
+            // 好友关系必须是双向两行（accept_pm='friends' 之外，
+            // 好友列表/黑名单两侧都按 user_id=我 读）。
+            sqlx::query(
+                "INSERT INTO friendships (user_id, friend_id, list) \
+                 VALUES ($1, $2, 'friend') \
+                 ON CONFLICT (user_id, friend_id) DO UPDATE SET list = 'friend'",
             )
             .bind(auth.id)
             .bind(fid)
