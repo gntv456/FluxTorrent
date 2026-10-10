@@ -410,10 +410,16 @@ p1, c1 = page_of()
 p2, c2 = page_of(c1)
 p3, _ = page_of(c2)
 prev2, _ = page_of(c2, "prev")
+prev1, _ = page_of(c1, "prev")
 ok("G7 三页互不重叠", not (set(p1) & set(p2)) and not (set(p2) & set(p3)),
    "p1=%s p2=%s p3=%s" % (p1, p2, p3))
-ok("G7 dir=prev 用第二页游标回到第一页那两颗",
-   c2 and set(prev2) == set(p1), "p1=%s prev=%s" % (p1, prev2))
+# dir=prev 锚定语义（0170，实测钉死）：游标锚在某行 ⇒ 回「以该行结尾的一页」
+# （锚行属上一页，cursor.rs tie_inclusive）。客户端从第二页回翻时传的是
+# 第一页的末游标 c1 —— 判据用它，不用 c2。
+ok("G7 dir=prev 用第一页末游标回翻得到第一页（锚行属上一页）",
+   c1 and set(prev1) == set(p1), "p1=%s prev1=%s" % (p1, prev1))
+ok("G7 dir=prev 用第二页末游标得到第二页（同一语义的另一面）",
+   c2 and set(prev2) == set(p2), "p2=%s prev2=%s" % (p2, prev2))
 
 print("== G8 注入与 LIKE 转义 ==")
 bad = urllib.parse.quote("x' OR 1=1;--")
