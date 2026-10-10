@@ -29,7 +29,10 @@ pub async fn my_sessions(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<SessionRow> = sqlx::query_as(
-        "SELECT ip, user_agent, max(created_at) AS last_at, \
+        // host(ip)：login_events.ip 是 inet，直接投影给 String 会被 sqlx 判
+        // 类型不合（mismatched types … INET），「活跃会话」卡整卡 500。
+        // 同表其余读口（me_history/admin records/ipcheck）一贯用 host()。
+        "SELECT host(ip) AS ip, user_agent, max(created_at) AS last_at, \
              count(*)::bigint AS logins \
          FROM login_events WHERE user_id = $1 AND ok AND \
          created_at > now() - interval '24 hours' \
