@@ -255,6 +255,16 @@ async fn tags_dict_delete(
     )
     .await?;
     let id = path.into_inner();
+    // 先取受影响种子：删标签会连带抹掉它们的 tags 行，而详情页读的是
+    // 聚合缓存（2.5）。不失效的话，后台删完标签，前台那些种仍然挂着这个
+    // 标签名，直到缓存自然过期（2026-10-10 实测 SSR HTML 里还在）。
+    let tids: Vec<i64> = sqlx::query_scalar(
+        "SELECT torrent_id FROM tags WHERE tag_id = $1 LIMIT 2000",
+    )
+    .bind(id)
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
     sqlx::query("DELETE FROM tags WHERE tag_id = $1")
         .bind(id)
         .execute(&state.repo.db)
@@ -268,6 +278,9 @@ async fn tags_dict_delete(
         .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(id as i64));
+    }
+    for tid in tids {
+        crate::torrent_http::invalidate_tdetail_cache(&state, tid).await;
     }
     state
         .repo
