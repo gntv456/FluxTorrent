@@ -238,9 +238,15 @@ ok("D1 aggregate 供得到 MediaInfo 全文",
    % str(det.get("mediainfo"))[:60])
 ok("D1 aggregate 供得到维度名（详情页「规格」区消费的就是它）",
    bool(det.get("sections")), "sections=%r" % (det.get("sections"),))
-tags_blob = json.dumps(agg.get("tags") or [], ensure_ascii=False)
+tg = agg.get("tags") or {}
+mine = [str(x) for x in (tg.get("mine") or [])]
+dict_names = {str(x.get("id")): x.get("name") for x in (tg.get("dict") or [])}
+# `tags.dict` 是全站标签字典（恒含全部标签名），拿它判「供得到」是空判据；
+# 真正随种子变的是 `tags.mine`（打标的那几个 id），名称再由 dict 解出。
 ok("D1 aggregate 供得到两个标签名（详情页标签条）",
-   "官种" in tags_blob and "首发" in tags_blob, tags_blob[:120])
+   {"3", "6"} <= set(mine)
+   and {dict_names.get(m) for m in mine} >= {"官种", "首发"},
+   "mine=%s names=%s" % (mine, [dict_names.get(m) for m in mine]))
 s, d = call("GET", "/torrents/%s/tags" % TID, token=ROOT)
 ok("D1 标签接口（打标面板）也读得到",
    s == 200 and "官种" in json.dumps(d.get("data") or [], ensure_ascii=False),
@@ -393,6 +399,56 @@ s, r = decide(TID, True)
 ok("D5 正控：已过审的种再裁决报错（不静默改一遍）",
    s == 400 and "不在待审" in str(r.get("message")),
    "http=%s %s" % (s, brief(r)))
+
+print("== D6 详情页聚合缓存：写完必须跟着变 ==")
+# 详情页读的是 /aggregate（2.5 缓存）。此前只有编辑/删除/恢复等管理口
+# 会失效缓存，打标/收藏/评论这类用户写口全漏——表现是「点完没反应，
+# 刷新还是老样子」，要等缓存自然过期。每条都先热一次缓存再改再读。
+def agg_tags_mine():
+    _, a = call("GET", "/torrents/%s/aggregate" % TID, token=ROOT)
+    tg = (a.get("data") or {}).get("tags") or {}
+    return [str(x) for x in (tg.get("mine") or [])]
+
+
+def agg_detail():
+    _, a = call("GET", "/torrents/%s/aggregate" % TID, token=ROOT)
+    return (a.get("data") or {}).get("detail") or {}
+
+
+def agg_comments():
+    _, a = call("GET", "/torrents/%s/aggregate" % TID, token=ROOT)
+    c = (a.get("data") or {}).get("comments")
+    if isinstance(c, dict):
+        return len(c.get("items") or [])
+    return len(c or [])
+
+
+WARM = agg_tags_mine()
+s, r = call("PUT", "/torrents/%s/tags" % TID, {"tag_id": 8, "on": True},
+            token=ROOT)
+ok("D6 打标后聚合立刻反映（缓存有失效）",
+   s == 200 and "8" in agg_tags_mine(),
+   "warm=%s now=%s %s" % (WARM, agg_tags_mine(), brief(r)))
+call("PUT", "/torrents/%s/tags" % TID, {"tag_id": 8, "on": False}, token=ROOT)
+ok("D6 正控：取消标后也立刻反映（不是只在变多时看得见）",
+   "8" not in agg_tags_mine(), str(agg_tags_mine()))
+BEFORE = agg_detail().get("bookmark_count") or 0
+s, r = call("PUT", "/torrents/%s/bookmark" % TID, {"on": True}, token=ROOT)
+ok("D6 收藏数写完立刻反映",
+   s == 200 and (agg_detail().get("bookmark_count") or 0) == BEFORE + 1,
+   "before=%s after=%s http=%s %s" % (BEFORE,
+                                      agg_detail().get("bookmark_count"),
+                                      s, brief(r)))
+call("PUT", "/torrents/%s/bookmark" % TID, {"on": False}, token=ROOT)
+CBEF = agg_comments()
+s, r = call("POST", "/torrents/%s/comments" % TID,
+            {"body": "聚合失效探针评论"}, token=ROOT)
+CID_OK = (r.get("data") or {}).get("id")
+if CID_OK:
+    CLEANUP.append("DELETE FROM comments WHERE id = %s" % CID_OK)
+ok("D6 评论写完立刻反映在聚合里",
+   s == 200 and CID_OK and agg_comments() == CBEF + 1,
+   "before=%s after=%s http=%s %s" % (CBEF, agg_comments(), s, brief(r)))
 
 print("== 收尾 ==")
 for stmt in reversed(CLEANUP):

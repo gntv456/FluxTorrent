@@ -22,14 +22,18 @@ async fn create_comment(
     body: web::Json<CommentReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
     let id = torrents::add_comment_as(
         &state.repo.db,
-        path.into_inner(),
+        tid,
         auth.id,
         &body.body,
         body.parent_id,
     )
     .await?;
+    // 详情页聚合缓存（2.5）：评论数/评论列表是 aggregate 的一部分，
+    // 写完不失效就会端着旧快照（与打标/感谢同一批漏项）
+    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -79,6 +83,8 @@ async fn delete_comment(
             Some(comment_id),
         )
         .await;
+    // 聚合缓存：评论数与评论列表都在 aggregate 里
+    super::aggregate::invalidate_tdetail_cache(&state, torrent_id).await;
     Ok(ok(serde_json::json!({ "deleted": comment_id })))
 }
 
@@ -117,6 +123,8 @@ async fn toggle_comment_like(
     .fetch_one(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 聚合缓存：aggregate.comments 带着每条评论的点赞数
+    super::aggregate::invalidate_tdetail_cache(&state, torrent_id).await;
     Ok(ok(serde_json::json!({ "liked": liked, "likes": likes })))
 }
 
@@ -171,6 +179,8 @@ async fn do_thank(
             }
         }
     }
+    // 聚合缓存：thanks_count 与「最近活动」都在 aggregate 里
+    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(
         serde_json::json!({ "thanked": true, "spark_given": amount }),
     ))
@@ -294,6 +304,9 @@ async fn torrent_tag_put(
         .repo
         .audit(Some(auth.id), "torrent.tag", Some(tid))
         .await;
+    // 聚合缓存：详情页标签条读的就是 aggregate.tags.mine——不失效的话，
+    // 用户点完「官种/中字」刷新页面标签条纹丝不动（2026-10-10 实测）
+    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(serde_json::json!({ "tag": body.tag_id, "on": body.on })))
 }
 
@@ -305,7 +318,9 @@ async fn do_bookmark(
     body: web::Json<BookmarkReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    torrents::bookmark(&state.repo.db, path.into_inner(), auth.id, body.on)
-        .await?;
+    let tid = path.into_inner();
+    torrents::bookmark(&state.repo.db, tid, auth.id, body.on).await?;
+    // 聚合缓存：bookmark_count 在 aggregate.detail 里
+    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(serde_json::json!({ "bookmarked": body.on })))
 }
