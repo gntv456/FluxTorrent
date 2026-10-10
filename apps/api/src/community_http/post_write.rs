@@ -98,8 +98,11 @@ async fn post_reply(
     // 回帖 +1 火花
     let idem = format!("forum-reply:{}:{}", auth.id, post_id);
     earn_spark(&state.repo.db, auth.id, 1, "forum", &idem).await?;
-    // 通知楼主有新回复（自己回自己不通知）；@提及 排除楼主，避免同一件事两条通知
-    if author != auth.id && author != 0 {
+    // 通知楼主有新回复（自己回自己不通知）；@提及 排除楼主，避免同一件事两条通知。
+    // 接收方闸门：users.notify_topic_reply 此前是「设置页能改、代码零读」的假开关，
+    // 用户关掉后照样被发站内信。
+    let want_author = reply_pref_wanted(&state.repo.db, author).await;
+    if author != auth.id && author != 0 && want_author {
         notify_user(
             &state.repo.db,
             author,
@@ -111,9 +114,11 @@ async fn post_reply(
         )
         .await;
     }
-    // 楼中楼（0163）：被回复楼层作者收到定向通知（自己/匿名楼不通知）
+    // 楼中楼（0163）：被回复楼层作者收到定向通知（自己/匿名楼不通知，
+    // 且同样受 notify_topic_reply 闸门约束）
     if let Some(pa) = parent_author {
-        if pa != auth.id {
+        let want_parent = reply_pref_wanted(&state.repo.db, pa).await;
+        if pa != auth.id && want_parent {
             notify_user(
                 &state.repo.db,
                 pa,
@@ -147,6 +152,21 @@ async fn post_reply(
     )
     .await;
     Ok(ok(serde_json::json!({ "post_id": post_id })))
+}
+
+/// 接收方是否还想收「被回复」类站内信。读不到（用户已注销等）按站点缺省 true 处理，
+/// 宁可多发一条也不静默吞掉通知。
+async fn reply_pref_wanted(db: &sqlx::PgPool, to: i64) -> bool {
+    if to <= 0 {
+        return false;
+    }
+    sqlx::query_scalar("SELECT notify_topic_reply FROM users WHERE id = $1")
+        .bind(to)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(true)
 }
 
 // ---- 论坛关注订阅（0121）：用户 / 版块 / 主题 ----

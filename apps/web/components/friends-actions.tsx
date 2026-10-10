@@ -152,7 +152,7 @@ export function FriendsActions() {
                 disabled={busy}
                 className="min-h-[28px] rounded-full bg-mint px-2 text-xs font-bold text-white"
                 onClick={() =>
-                  void act("/api/v1/friends", {
+                  void act("/api/v1/friends/action", {
                     username: r.username,
                     action: "accept",
                   })
@@ -165,7 +165,10 @@ export function FriendsActions() {
                 disabled={busy}
                 className="min-h-[28px] rounded-full bg-line px-2 text-xs font-bold text-ink"
                 onClick={() =>
-                  void act("/api/v1/friends", { username: r.username })
+                  void act("/api/v1/friends/action", {
+                    username: r.username,
+                    action: "reject",
+                  })
                 }
               >
                 {t.reject}
