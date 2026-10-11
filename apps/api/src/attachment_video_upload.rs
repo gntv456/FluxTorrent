@@ -68,6 +68,10 @@ pub async fn upload_video(
     if on == 0 {
         return Err(DomainError::Forbidden);
     }
+    // P-59：附件总开关 enableattach 也管住这个口（两个上传入口同一判据）
+    if !crate::attachment_util::attach_enabled(&state.repo.db).await {
+        return Err(DomainError::Forbidden);
+    }
     let max_mib = setting_i64(&state.repo.db, "video_max_mib", 200).await;
     if max_mib <= 0 {
         return Err(DomainError::Validation("视频上传已停用".into()));
@@ -221,7 +225,10 @@ async fn persist(
         d.iter().map(|b| format!("{b:02x}")).collect::<String>()
     };
     let exists: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM attachments WHERE sha256 = $1")
+        sqlx::query_scalar(
+            "SELECT id FROM attachments WHERE sha256 = $1 \
+             ORDER BY id LIMIT 1",
+        )
             .bind(&sha)
             .fetch_optional(&state.repo.db)
             .await

@@ -36,6 +36,7 @@ const ATTACH_MIME_ALLOW: [&str; 14] = [
     "application/vnd.rar",
 ];
 
+
 /// 上传附件（multipart 字段 file，可选字段 visibility）。
 /// 存本地 savedirectory（缺省 ./attachments），sha256 全站去重（同文件只存
 /// 一份物理文件）；受 attach_quota_mib 配额约束。visibility 缺省 shared
@@ -51,6 +52,12 @@ pub async fn upload_attachment(
     use futures_util::StreamExt;
 
     let auth = require_auth(&req, &state).await?;
+    // P-59：enableattach 自 0034 就在后台「附件设定」里可见可改，却全仓零
+    // 消费（fake_switch 基线 289 条之一）——站长以为关了附件，实际上传照过。
+    // 这里接上：关=两个上传口都 403。读取端不判，否则关一次把老帖的图全 404。
+    if !attach_enabled(&state.repo.db).await {
+        return Err(DomainError::Forbidden);
+    }
     let mut visibility = String::new();
     // 单文件上限（0214 可配）：缺省 8MiB = 既有硬编码口径，0 = 不限
     let max_mib: i64 = sqlx::query_scalar(
@@ -172,8 +179,13 @@ pub async fn upload_attachment(
     if quota_mib > 0 {
         // sum(bigint)→numeric 必须显式 ::bigint，否则 i64 解码失败被
         // unwrap_or 吞掉 → 配额已用量恒 0（等于配额永不生效）
+        // P-58（批二十九实测）：0190 的口径是「视频只吃 video_quota_mib，
+        // 不吃图片配额」，视频侧 SQL 也确实筛了 kind='video'；图片侧漏了
+        // kind ⇒ 传过视频的人图片配额被视频字节吃掉。实测配额 1MiB、
+        // 图片 900KB + 视频 500KB 时，再传 100KB 图被判「已用 1/1 MiB」。
         let used: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(size), 0)::bigint FROM attachments WHERE user_id = $1",
+            "SELECT COALESCE(sum(size), 0)::bigint FROM attachments \
+             WHERE user_id = $1 AND kind = 'file'",
         )
         .bind(auth.id)
         .fetch_one(&state.repo.db)
@@ -280,28 +292,9 @@ pub async fn upload_attachment(
 
 /// 文本类嗅探：UTF-8 可解码且不含 NUL 即视为字幕文本（srt/ass/ssa/cue/idx
 /// 均为纯文本；只查前 8KiB 防 8MiB 大文件全量扫描）。
-fn is_textlike(bytes: &[u8]) -> bool {
-    let head = &bytes[..bytes.len().min(8192)];
-    std::str::from_utf8(head).is_ok() && !head.contains(&0u8)
-}
 
-fn ext_of(mime: &str) -> &'static str {
-    match mime {
-        "image/png" => "png",
-        "image/jpeg" => "jpg",
-        "image/gif" => "gif",
-        "image/webp" => "webp",
-        "image/avif" => "avif",
-        "application/pdf" => "pdf",
-        "application/x-subrip" => "srt",
-        "application/x-ssa" => "ass",
-        "application/zip" => "zip",
-        "application/x-7z-compressed" => "7z",
-        "application/x-rar-compressed" | "application/vnd.rar" => "rar",
-        "application/octet-stream" => "bin",
-        _ => "txt",
-    }
-}
+
+use crate::attachment_util::{attach_enabled, ext_of, is_textlike};
 
 /// 附件读取（图床）：按 sha256 寻址（内容寻址不可猜测），mime 回放。
 /// 需登录（防匿名爬图床占带宽）。Range/206 支持在 attachment_video.rs（0190）。

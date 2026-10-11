@@ -10,6 +10,7 @@ mod admin_p3_http;
 mod archive;
 mod attachment_http;
 mod attachment_video;
+mod attachment_util;
 mod attachment_video_upload;
 mod auth;
 mod auth_http;

@@ -15,27 +15,9 @@ use crate::state::AppState;
 
 // ============ 认证（M01） ============
 
-/// 通用登录/敏感操作 throttle 上限（60s 固定窗口）：login/register/apply/
-/// attachment/profile 等共用此阈值，超限即 429。
-const LOGIN_THROTTLE_MAX: i64 = 5;
-
-pub async fn throttle(state: &Arc<AppState>, key: String) -> DomainResult<()> {
-    use redis::AsyncCommands;
-    let mut c = state.redis.clone();
-    let k = format!("rl:{}", key);
-    // ZT81：Redis 故障时 fail-close（原 `unwrap_or(0)` 让计数恒 0 → 限流永不触发，
-    // 抖动期间密码爆破/撞库全部失守）。与游戏侧 check_rate_scoped 口径对齐。
-    let n: i64 = c.incr(&k, 1).await.map_err(|e| {
-        DomainError::Internal(anyhow::anyhow!("限流服务不可用: {e}"))
-    })?;
-    if n == 1 {
-        let _: () = c.expire(&k, 60).await.unwrap_or(());
-    }
-    if n > LOGIN_THROTTLE_MAX {
-        return Err(DomainError::RateLimited);
-    }
-    Ok(())
-}
+// throttle / throttle_limited 已按域拆到 http/throttle.rs（P-61：
+// 十个出口曾共用登录档 5 次/分，附件读取/种子下载/档案页注释里的
+// 60/20/60 一个都没落地）。
 
 /// ILIKE/LIKE 模式构造：转义用户输入中的通配符（% _ \），防 `%` 全表通配扫描的性能滥用。
 /// PG 的 LIKE/ILIKE 默认转义符即反斜杠，无需 ESCAPE 子句；torrents.rs 的 ESCAPE chr(92) 口径兼容。

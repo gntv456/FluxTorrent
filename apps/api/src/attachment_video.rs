@@ -45,31 +45,39 @@ pub(crate) async fn visibility_denied(
     uid: i64,
     sha: &str,
 ) -> DomainResult<Option<bool>> {
-    // class_id 顺带取：staff 读 private/staff 附件均放行。
-    // users.class_id 是 INT4，必须按 i32 解码（二轮审计线上验证发现：
-    // i64 解码 INT4 报 mismatched types → 他人读取 private 附件 500）
-    let row: Option<(String, i32)> = sqlx::query_as(
-        "SELECT a.visibility, u.class_id FROM attachments a \
-         JOIN users u ON u.id = $1 WHERE a.sha256 = $2 AND a.user_id <> $1",
+    // P-57（批二十九实测）：同一 sha 现在可以有多行（0347 起按人隔离权限
+    // 行、物理文件共享），所以这里必须是**聚合**判据，不能拿「任意一行」的
+    // visibility 说话——两行（A private + B shared）时旧写法取到哪条全凭
+    // 数据库心情，同一张图可能对某些人 404、对某些人全站可读。
+    // 放行 = staff（class≥90）∥ 自己有行 ∥ 存在 shared 行；
+    // 等级比较放在 SQL 里做，也顺手绕开「i64 解码 INT4」那个老坑。
+    let (has_row, visible): (bool, bool) = sqlx::query_as(
+        "SELECT (SELECT EXISTS(SELECT 1 FROM attachments WHERE sha256 = $2)), \
+                COALESCE((SELECT u.class_id >= 90 FROM users u \
+                          WHERE u.id = $1), FALSE) \
+             OR EXISTS (SELECT 1 FROM attachments m WHERE m.sha256 = $2 \
+                        AND m.user_id = $1) \
+             OR EXISTS (SELECT 1 FROM attachments s WHERE s.sha256 = $2 \
+                        AND s.visibility = 'shared')",
     )
     .bind(uid)
     .bind(sha)
-    .fetch_optional(db)
+    .fetch_one(db)
     .await
     .map_err(internal)?;
-    Ok(row.map(|(vis, class)| {
-        // 他人行：private 仅 staff 可读；staff 档同样仅 staff；shared 放行
-        vis != "shared" && class < 90
-    }))
+    // 库里没有这份内容时不算「拒绝」：交给调用方按 404 处理（与旧口径一致）
+    Ok(if has_row { Some(!visible) } else { None })
 }
 
 /// 附件读取限流（P2，2026-10-06 安全审计）：读取是「S3/本地盘 IO + DB 查询」
 /// 路径，登录用户可循环打。60 次/分钟（页面一次加载几十张缩略图远够）。
+/// P-61：这个数字以前只写在注释里——实际走的是登录档 5 次/分，一页第 6 张
+/// 图就 429。现在显式传 60。
 async fn read_throttled(
     state: &web::Data<std::sync::Arc<AppState>>,
     uid: i64,
 ) -> DomainResult<()> {
-    crate::http::throttle(state, format!("att:{}", uid)).await
+    crate::http::throttle_limited(&state, format!("att:{}", uid), 60).await
 }
 
 /// HEAD：预检长度与可区间性（<video> 元数据预载依赖）。
@@ -93,19 +101,23 @@ pub async fn head_attachment(
     {
         return Err(DomainError::NotFound(0));
     }
-    let row: Option<(String, i64)> =
-        sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
-            .bind(&sha)
-            .fetch_optional(&state.repo.db)
+    // P-57：同 sha 可能有多行权限行，mime/size 由内容决定 ⇒ 任取一行等价，
+    // 但必须显式 LIMIT 1，否则 fetch_optional 遇多行直接报错。
+    let row: Option<(String, i64)> = sqlx::query_as(
+        "SELECT mime, size FROM attachments WHERE sha256 = $1 \
+         ORDER BY id LIMIT 1",
+    )
+    .bind(&sha)
+    .fetch_optional(&state.repo.db)
             .await
             .map_err(internal)?;
     let Some((mime, size)) = row else {
         return Err(DomainError::NotFound(0));
     };
-    // actix 对 HEAD 会剥 body 并把 Content-Length 清零；视频元数据预载依赖
-    // 真实长度 → 挂一个等长占位 body（actix HEAD 管线剥 body 时会保留其
-    // Content-Length 头值，不再重算为 0）。
-    let n = usize::try_from(size).unwrap_or(usize::MAX);
+    // P-60（批二十九）：旧实现为「怕 actix 把 HEAD 的 Content-Length 归零」
+    // 挂了一份与文件等长的 0 占位 body——HEAD 只要头不要体，200MiB 的视频
+    // 每预检一次就整块分配一次（限流只是把放大器关小，没关）。
+    // 现在只显式插 Content-Length，AT 闸门钉 HEAD 回来的是真实长度。
     let mut resp = HttpResponse::Ok()
         .content_type(mime)
         .insert_header(("Accept-Ranges", "bytes"))
@@ -113,7 +125,7 @@ pub async fn head_attachment(
             actix_web::http::header::CACHE_CONTROL,
             "private, max-age=31536000, immutable",
         ))
-        .body(vec![0u8; n]);
+        .finish();
     resp.headers_mut().insert(
         actix_web::http::header::CONTENT_LENGTH,
         actix_web::http::header::HeaderValue::from_str(&size.to_string())
@@ -140,10 +152,14 @@ pub async fn serve_attachment(
     {
         return Err(DomainError::NotFound(0));
     }
-    let row: Option<(String, i64)> =
-        sqlx::query_as("SELECT mime, size FROM attachments WHERE sha256 = $1")
-            .bind(&sha)
-            .fetch_optional(&state.repo.db)
+    // P-57：同 sha 可能有多行权限行，mime/size 由内容决定 ⇒ 任取一行等价，
+    // 但必须显式 LIMIT 1，否则 fetch_optional 遇多行直接报错。
+    let row: Option<(String, i64)> = sqlx::query_as(
+        "SELECT mime, size FROM attachments WHERE sha256 = $1 \
+         ORDER BY id LIMIT 1",
+    )
+    .bind(&sha)
+    .fetch_optional(&state.repo.db)
             .await
             .map_err(internal)?;
     let Some((mime, size)) = row else {
