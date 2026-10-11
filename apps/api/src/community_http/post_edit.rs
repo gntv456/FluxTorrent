@@ -29,6 +29,9 @@ async fn post_edit(
     }
     // 敏感词（Phase3）：编辑同样过闸（防止先发合规后改敏感词绕过）
     check_banned_words(&state.repo.db, &body.body).await?;
+    // P-54：视频上限同样要在编辑口过闸——旧版只有发帖/回帖查，
+    // 「先发一条、再改成十条」把 post_video_max 直接抹平。
+    check_video_count(&state.repo.db, &body.body).await?;
     let pid = path.into_inner();
     let Some((_tid, fid, author_id)) =
         post_context(&state.repo.db, pid).await?
