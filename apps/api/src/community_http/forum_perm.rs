@@ -201,28 +201,8 @@ fn strip_video_syntax(line: &str) -> &str {
     line
 }
 
-/// 每帖视频块上限（0190：post_video_max，0=不限）——发主题与回帖共用。
-/// 计数口径与前端一致：正文里 `!video(` 出现次数。
-pub async fn check_video_count(
-    db: &sqlx::PgPool,
-    body: &str,
-) -> DomainResult<()> {
-    let max: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
-         'post_video_max'), '3')::bigint",
-    )
-    .fetch_one(db)
-    .await
-    .unwrap_or(3);
-    if max <= 0 {
-        return Ok(());
-    }
-    let n = body.matches("!video(").count() as i64;
-    if n > max {
-        return Err(DomainError::Validation(format!("每帖最多 {max} 个视频")));
-    }
-    Ok(())
-}
+/// 每帖视频块上限实现在 embed_video.rs（0190 post_video_max；
+/// 计数要与前端渲染口径同源，故与规则匹配放在一起）。
 
 pub fn strip_inline_links(s: &str) -> String {
     let b = s.as_bytes();
