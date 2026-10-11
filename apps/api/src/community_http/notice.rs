@@ -1,4 +1,4 @@
-//! 通知偏好 + 站免池荣誉榜。
+﻿//! 通知偏好 + 站免池荣誉榜。
 //! 从 community_http.rs 按域拆出。
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
@@ -41,13 +41,14 @@ async fn notice_prefs_set(
     body: web::Json<NoticePrefsSetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    const KEYS: [&str; 15] = [
+    const KEYS: [&str; 16] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
         "group_new_version",
         "network_new_release",
         "subgroup_new_release",
+        "request_fulfilled",
         "resurrection",
         "class_promo",
         "gift",

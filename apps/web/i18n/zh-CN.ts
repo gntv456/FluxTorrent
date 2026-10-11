@@ -1,4 +1,4 @@
-/** 简体中文字典（源字典：其他语言以此结构为类型基准） */
+﻿/** 简体中文字典（源字典：其他语言以此结构为类型基准） */
 
 import { termsPanelZh } from "./terms-panel";
 import { auditLabelsZh } from "./audit-labels";
@@ -6237,6 +6237,9 @@ export const zhCN = {
       comment_reply: "评论回复",
       system: "系统通知",
       donate_tier: "捐赠回馈",
+      network_new_release: "订阅出品方新片",
+      subgroup_new_release: "订阅字幕组新作",
+      request_fulfilled: "求种应求",
     } as Record<string, string>,
   },
 

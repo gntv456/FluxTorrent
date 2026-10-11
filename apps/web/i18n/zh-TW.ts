@@ -1,4 +1,4 @@
-/** 繁體中文字典（與 zh-CN 同構） */
+﻿/** 繁體中文字典（與 zh-CN 同構） */
 
 import type { Dict } from "./zh-CN";
 import { termsPanelTw } from "./terms-panel";
@@ -6187,6 +6187,9 @@ const noticePrefsTw: Dict["noticePrefs"] = {
     comment_reply: "評論回覆",
     system: "系統通知",
     donate_tier: "捐贈回饋",
+    network_new_release: "訂閱出品方新片",
+    subgroup_new_release: "訂閱字幕組新作",
+    request_fulfilled: "求種應求",
   } as Record<string, string>,
 };
 
