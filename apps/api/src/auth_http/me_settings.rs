@@ -122,12 +122,26 @@ pub async fn me_overview(
     let seed_points = (seeding as f64) * 100.0;
     let (next_name, next_req) =
         next.unwrap_or_else(|| ("Max".into(), uploaded.max(1)));
+    // 通知中心「未读私信」卡片读的就是这个字段（批二十 P-29：/me/overview
+    // 原本没有它，页面 `ov?.unread_messages ?? 0` 于是对谁都恒显示 0——
+    // 实测 root 收件箱 56 封未读，卡片仍写 0）。谓词与 `/messages?unread=true`
+    // 那条一致（unread + location=1 + 主收件箱）：卡片上的数字必须等于点进去
+    // 看到的条数，否则数字与它自己的链接打架。
+    let unread_messages: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM messages WHERE receiver_id = $1 AND unread \
+         AND location = 1 AND folder IS NULL",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
 
     Ok(ok(serde_json::json!({
         "id": uid,
         "username": get_str("username"),
         "email": get_str("email"),
         "class_name": get("class_name"),
+        "unread_messages": unread_messages,
         "avatar_url": get_opt_str("avatar_url"),
         "avatar_frame_css": get_opt_str("avatar_frame_css"),
         "avatar_frame_image": get_opt_str("avatar_frame_image"),
