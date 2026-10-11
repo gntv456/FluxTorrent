@@ -18,16 +18,25 @@ async fn admin_overview(
             "SELECT \
             (SELECT count(*) FROM torrents WHERE approval_status = 0), \
             (SELECT count(*) FROM reports WHERE status = 0), \
-            (SELECT count(*) FROM users), \
+            (SELECT count(*) FROM users WHERE status < 2), \
             (SELECT count(*) FROM torrents), \
             (SELECT count(*) FROM users WHERE status >= 2)",
         )
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    let users_total: i64 = sqlx::query_scalar("SELECT count(*) FROM users")
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
+        // P-32：`users` 原本是无状态过滤的 count(*)，与同屏的 `banned_users`
+        // 相加才等于它，读起来像「551 人里 457 人被封」；而对外页脚用
+        // `status < 2`（同一库实测 94）。现主数改回在册成员，另出 `users_total`
+        // 保留总量口径（users + banned_users == users_total，三者自洽）。
         "pending_reviews": pending, "open_reports": reports,
-        "users": users, "torrents": torrents, "banned_users": banned,
+        "users": users, "users_total": users_total,
+        "torrents": torrents, "banned_users": banned,
         "operator": auth.id,
         // E16 数据大盘三块：14 天注册/发种趋势（今日倒排）、做种健康度
         // （活种率/死种数）、周活（7 天内有 announce 或登录的用户数）。
