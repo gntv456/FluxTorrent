@@ -365,9 +365,27 @@ print("== S5 读取限流的额度是不是注释里那个数（P-61）==")
 def clear_att_bucket(uid):
     subprocess.run(
         ["docker", "exec", "flux-redis", "sh", "-c",
-         'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning del '
-         '"rl:att:%s"' % uid],
+         'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning '
+         '--scan --pattern "rl:att:%s*" | xargs -r '
+         'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning del' % uid],
         capture_output=True, text=True, encoding="utf-8")
+
+
+def att_bucket(uid):
+    """返回 (键名, TTL)。TTL=-1 就是「无过期时间的计数键」= 永久 429 的形态。"""
+    p = subprocess.run(
+        ["docker", "exec", "flux-redis", "sh", "-c",
+         'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning '
+         '--scan --pattern "rl:att:%s*" | head -1' % uid],
+        capture_output=True, text=True, encoding="utf-8")
+    key = (p.stdout or "").strip()
+    if not key:
+        return ("", -2)
+    t = subprocess.run(
+        ["docker", "exec", "flux-redis", "sh", "-c",
+         'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning TTL "%s"' % key],
+        capture_output=True, text=True, encoding="utf-8")
+    return (key, int((t.stdout or "-2").strip() or -2))
 
 
 # 一頁几十张缩略图是常态：连读 8 张必须全 200（旧版共用登录档 5/分，
@@ -388,6 +406,14 @@ tail = codes2[50:]
 ok("S5 反控：60 次/分之上仍然 429（修的是额度不是关掉限流）",
    codes2.count(200) == 60 - 8 and 429 in codes2,
    "200 计数=%s 尾=%s" % (sum(1 for c in codes2 if c == 200), tail))
+# P-65（本批我自己引入过又改掉的那个毛病）：计数键必须带分钟桶且有 TTL。
+# 窗口写在**键名**里 ⇒ 滑动续期不会把限流变成永不复位（第一版每次 EXPIRE
+# 就是踩这个坑，闸门一边重试一边把 429 续命）；TTL 存在 ⇒ 不会留下
+# 「无过期时间的计数键 = 该用户在这一面上永久 429」。
+tname, ttl = att_bucket(AID)
+ok("S5 结构：限流键按分钟分桶且带 TTL（无 TTL 就是永久 429 的老毛病）",
+   bool(re.match(r"^rl:att:%s:[0-9]+$" % AID, tname)) and 0 < ttl <= 120,
+   "key=%s ttl=%s" % (tname, ttl))
 clear_att_bucket(AID)
 
 print("== S6 附件查看最低等级（P-64）==")
