@@ -390,5 +390,25 @@ ok("S5 反控：60 次/分之上仍然 429（修的是额度不是关掉限流�
    "200 计数=%s 尾=%s" % (sum(1 for c in codes2 if c == 200), tail))
 clear_att_bucket(AID)
 
+print("== S6 附件查看最低等级（P-64）==")
+pin2 = q("SELECT value FROM site_settings WHERE name = "
+         "'attachment_authority'")
+CLEAN.append("UPDATE site_settings SET value = '%s' WHERE name = "
+             "'attachment_authority'" % (pin2 or "0"))
+myclass = q("SELECT class_id FROM users WHERE id = %s" % AID)
+ok("S6 地基：探针成员等级低于门槛档（class 应为 0/1）",
+   myclass in ("0", "1"), "class=%s" % myclass)
+setv("attachment_authority", "9")
+s, _, _ = raw("GET", "/attachments/" + sid, AT)
+ok("S6 等级不足读附件被拒（旧版这条设置零消费，照样 200）", s == 403,
+   "http=%s" % s)
+s, _, _ = raw("HEAD", "/attachments/" + sid, AT)
+ok("S6 HEAD 同判（两个读取口一套门槛）", s == 403, "http=%s" % s)
+s, _, _ = raw("GET", "/attachments/" + sid, ROOT)
+ok("S6 正控：staff（class≥90）不受这一档限制", s == 200, "http=%s" % s)
+setv("attachment_authority", "0")
+s, _, _ = raw("GET", "/attachments/" + sid, AT)
+ok("S6 反控：置 0（不限）后立刻读得到", s == 200, "http=%s" % s)
+
 cleanup()
 summary()
