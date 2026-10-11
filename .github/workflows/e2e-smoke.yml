@@ -136,6 +136,13 @@ jobs:
               FROM users WHERE username = 'root'
             ON CONFLICT DO NOTHING;"
 
+      # 管理台导航三源一致（DB staff_panel_entries.tab_key / ToolTab 联合 /
+      # renderSimpleTool+STAFF_TOOL_TABS）。任一处漏配的表现都是「点了静默
+      # 落进概览」，没有报错可看——P-19（等级规则有 API 无界面）就是这么藏的。
+      # 迁移已跑完（Boot api），psql 客户端上一步刚装。
+      - name: Admin nav alignment guard
+        run: python3 scripts/admin_nav_align_guard.py
+
       - name: HTTP 冒烟（schema 驱动，不依赖种子业务数据）
         run: |
           set -e
