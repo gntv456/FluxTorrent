@@ -122,6 +122,12 @@ pub async fn head_attachment(
     if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(DomainError::Validation("sha256 格式无效".into()));
     }
+    // P-64：等级门槛先判（后台「附件查看最低等级」）。
+    if !crate::attachment_util::attach_class_ok(&state.repo.db, auth.class_id)
+        .await
+    {
+        return Err(DomainError::Forbidden);
+    }
     if visibility_denied(&state.repo.db, auth.id, &sha)
         .await?
         .unwrap_or(false)
@@ -174,6 +180,12 @@ pub async fn serve_attachment(
     let sha = path.into_inner();
     if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(DomainError::Validation("sha256 格式无效".into()));
+    }
+    // P-64：等级门槛先判（后台「附件查看最低等级」）。
+    if !crate::attachment_util::attach_class_ok(&state.repo.db, auth.class_id)
+        .await
+    {
+        return Err(DomainError::Forbidden);
     }
     if visibility_denied(&state.repo.db, auth.id, &sha)
         .await?

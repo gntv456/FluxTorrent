@@ -46,6 +46,16 @@ pub(super) async fn subtitle_download(
     // C1：附件可见性闸门——字幕绕过附件接口直取他人 private 附件字节
     // （借道 subtitles/{id}/download 不走 attachment_video 的 visibility 检查）。
     if let Some(sha) = file_ref.strip_prefix("attach://") {
+        // P-64：这条口也是附件读取（借道 subtitles/{id}/download 直取字节），
+        // 等级门槛必须与 GET/HEAD /attachments/{sha} 同判据，否则开关只管一半
+        if !crate::attachment_util::attach_class_ok(
+            &state.repo.db,
+            auth.class_id,
+        )
+        .await
+        {
+            return Err(DomainError::Forbidden);
+        }
         if let Some(true) = crate::attachment_video::visibility_denied(
             &state.repo.db,
             auth.id,
