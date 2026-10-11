@@ -2,7 +2,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::earn_spark;
+use crate::economy_http::earn_spark_tx;
 use crate::economy_http::spend_spark_tx;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -170,14 +170,14 @@ pub(super) async fn request_fulfill(
     body: web::Json<FulfillReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let r: Option<(i64, i64, i64, i16)> = sqlx::query_as(
-        "SELECT id, user_id, bounty, status FROM requests WHERE id = $1",
+    let r: Option<(i64, i64, i64, i16, String)> = sqlx::query_as(
+        "SELECT id, user_id, bounty, status, title FROM requests WHERE id = $1",
     )
     .bind(body.request_id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((id, requester, bounty, status)) = r else {
+    let Some((id, requester, bounty, status, title)) = r else {
         return Err(DomainError::NotFound(body.request_id));
     };
     if status != 0 {
@@ -209,19 +209,31 @@ pub(super) async fn request_fulfill(
             "只有该种子的发布者可以应种此求种".into(),
         ));
     }
+    // 完结与发奖必须同事务（批十九 P-26）：旧实现把「UPDATE status=1」与
+    // 「earn_spark 转悬赏」拆成两条 autocommit。发钱一失败（余额溢出、
+    // 流水冲突、瞬断）请求已经是「完结」，而入口守卫 `status != 0` 又把
+    // 重试路径堵死——求种人被冻结的悬赏既回不到他账上、也到不了应种人手里，
+    // 后台没有任何补救口。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let updated = sqlx::query(
         "UPDATE requests SET status = 1, \
          fulfilled_torrent_id = $2 WHERE id = $1 AND status = 0",
     )
     .bind(id)
     .bind(body.torrent_id)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
         return Err(DomainError::LedgerConflict);
     }
     // 悬赏：应种给他人 → 转移；自己应自己的 → 退还
+    let mut pm_bounty = 0i64;
     if bounty > 0 {
         let payee = if requester != auth.id {
             auth.id
@@ -229,7 +241,45 @@ pub(super) async fn request_fulfill(
             requester
         };
         let idem = format!("req-payout:{}", id);
-        earn_spark(&state.repo.db, payee, bounty, "task_reward", &idem).await?;
+        // Replayed = 这笔悬赏早就入账过；那说明有上一次尝试半途而废，
+        // 此时不能把「完结」落库（会再次掩盖问题），显式冲突回滚。
+        if !matches!(
+            earn_spark_tx(&mut tx, payee, bounty, "task_reward", &idem)
+                .await?,
+            crate::economy_http::SpendOutcome::Spent
+        ) {
+            return Err(DomainError::LedgerConflict);
+        }
+        pm_bounty = bounty;
+    }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 求种人应当被通知（旧实现发完钱就走，求种人只能自己回列表翻）。
+    // 站内信按 0286 口径带 kind/params 并过 u_notice_enabled；写入失败只
+    // 出声不阻断——完结已落库，因通知失败回 500 会让人重复应求。
+    if requester != auth.id {
+        let pm = sqlx::query(
+            "INSERT INTO messages (sender_id, receiver_id, subject, body, \
+                kind, params) \
+             SELECT NULL, $1, '你求的种已被应求', \
+                format('求种 #%s「%s」已被应求，关联种子 #%s，悬赏 %s 魔力已转给应种人。', \
+                       $2::text, $3, $4::text, $5), \
+                'request_fulfilled', \
+                jsonb_build_object('request_id', $2, 'title', $3, \
+                                   'torrent_id', $4, 'bounty', $5) \
+             WHERE u_notice_enabled($1, 'request_fulfilled')",
+        )
+        .bind(requester)
+        .bind(id)
+        .bind(&title)
+        .bind(body.torrent_id)
+        .bind(pm_bounty)
+        .execute(&state.repo.db)
+        .await;
+        if let Err(e) = pm {
+            tracing::warn!(?e, request = id, "求种应求通知写入失败");
+        }
     }
     Ok(ok(
         serde_json::json!({ "request_id": id, "bounty_paid": bounty }),
