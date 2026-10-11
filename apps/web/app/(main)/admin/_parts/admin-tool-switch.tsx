@@ -37,6 +37,7 @@ import { ViewHiddenEditor } from "@/components/view-hidden-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
 import { AdminTrumps } from "@/components/admin-trumps";
 import { AdminPromoKinds } from "./admin-promo-kinds";
+import { AdminClasses } from "@/components/admin-classes";
 
 /** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名）
  *
@@ -92,6 +93,9 @@ export function renderSimpleTool(
     // 第八轮 P3 套件（同类站后台逐页深挖落地）
     case "hr":
       return <AdminHr />;
+    // P-19：等级规则（class_rules + user_classes 的后台编辑面）
+    case "classes":
+      return <AdminClasses />;
     case "invites":
       return <AdminInvites />;
     case "userlogs":
