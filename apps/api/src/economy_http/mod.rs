@@ -60,6 +60,7 @@ mod loans_apply;
 mod my_orders;
 mod pool;
 mod recon;
+mod torznab_fmt;
 mod shop;
 mod shop_effects;
 mod shop_list;

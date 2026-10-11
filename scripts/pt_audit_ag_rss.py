@@ -305,6 +305,9 @@ ok("G9 同时带 tmdbid 不得把结果打成空（本批修复判据）", b == 
 c = tz("t=movie&imdbid=tt0000000").count("<item>")
 ok("G9 imdbid 仍走 IMDb 精确区（反向：不是一律忽略标识符）", c == 0,
    "items=%s" % c)
+d_only = tz("t=movie&tmdbid=693113").count("<item>")
+ok("G9 只给不支持的标识符时回空 feed 而非 50 条未筛（P-21 判据）",
+   d_only == 0, "items=%s" % d_only)
 
 print("== G8 /compat/meta 声明的每个口都真实存在（对外契约不虚报）==")
 import re as _re2
