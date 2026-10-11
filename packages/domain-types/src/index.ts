@@ -541,6 +541,8 @@ export interface MyFollows {
 
 export interface TopRow {
   rank: number;
+  /** 榜主 user id（P-33：排行榜用户名要链去资料页） */
+  id: number;
   username: string;
   class_name: string;
   title: string | null;

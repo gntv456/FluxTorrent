@@ -130,7 +130,7 @@ function Board({
                     <Avatar u={u} />
                     <div className="min-w-0">
                       <a
-                        href={`/users?q=${encodeURIComponent(u.username)}`}
+                        href={`/users/${u.id}`}
                         className="block max-w-[160px] truncate text-sm font-bold text-ink hover:text-[var(--baozi-orange)]"
                       >
                         {u.username}

@@ -67,6 +67,9 @@ pub(super) async fn textbook_link(
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct TopRow {
     rank: i64,
+    /// 榜主的 user id（P-33：排行榜的用户名链接要有真实去处，
+    /// 资料页是 `/users/[id]`，此前榜行只带 username，链过去是自环）
+    id: i64,
     username: String,
     class_name: String,
     title: Option<String>,
@@ -84,7 +87,8 @@ struct TopRow {
 pub(super) async fn top_boards(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
-    let sel = "row_number() OVER (ORDER BY val DESC) AS rank, u.username, c.name AS class_name, \
+    let sel = "row_number() OVER (ORDER BY val DESC) AS rank, x.uid AS id, \
+        u.username, c.name AS class_name, \
         u.title, u.avatar_url, f.css AS avatar_frame_css, f.image_url AS avatar_frame_image, x.val::float8 AS val";
     let base = |agg: &str,
                 joins: &str,
