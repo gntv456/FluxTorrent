@@ -42,35 +42,7 @@ pub(super) async fn subtitle_download(
     let Some((file_ref, torrent_id, title, lang, sub_ext)) = row else {
         return Err(DomainError::NotFound(sid));
     };
-    // C2：下载计数去重——Redis SETNX 每 (字幕,用户) 每小时只计一次。
-    // 月度评选 downloads 占 0.05/名权重，重复点按可无限抬分；Redis 故障时
-    // 保守计一次（计数是统计面，不为它 fail-close 拦下载）。
-    {
-        use redis::AsyncCommands;
-        let mut c = state.redis.clone();
-        let k = format!("subdl:{}:{}", sid, auth.id);
-        // SET k 1 NX EX（与 twofa 重放闸同式）：nil=已存在（本小时内
-        // 计过数），Some(())=首次。Redis 故障时按首次计（统计面不 fail-close）
-        let fresh: Option<()> = redis::cmd("SET")
-            .arg(&k)
-            .arg(1i64)
-            .arg("NX")
-            .arg("EX")
-            .arg(3600u64)
-            .query_async(&mut c)
-            .await
-            .unwrap_or(None);
-        let fresh = fresh.is_some();
-        if fresh {
-            sqlx::query(
-                "UPDATE subtitles SET downloads = downloads + 1 WHERE id = $1",
-            )
-            .bind(sid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        }
-    }
+    // C2：下载计数——见 bump_download（P-48 起只在成功出口计）
     // C1：附件可见性闸门——字幕绕过附件接口直取他人 private 附件字节
     // （借道 subtitles/{id}/download 不走 attachment_video 的 visibility 检查）。
     if let Some(sha) = file_ref.strip_prefix("attach://") {
@@ -96,6 +68,8 @@ pub(super) async fn subtitle_download(
         let bytes = crate::storage::get(&state.repo.db, sha)
             .await
             .ok_or(DomainError::NotFound(sid))?;
+        // P-48：计一次——只有真的取到字节才算一次下载
+        bump_download(&state, sid, auth.id).await?;
         let safe_title = safe_filename(&title);
         // 扩展名优先级：落库 ext（上传时按文件名判定）> mime 常见映射 > .srt
         let ext =
@@ -119,12 +93,50 @@ pub(super) async fn subtitle_download(
             ))
             .body(bytes));
     }
+    // 外链字幕：把 URL 交给前端新窗口打开，这一跳就是一次下载（P-48 起
+    // 也只在成功出口计）
+    bump_download(&state, sid, auth.id).await?;
     Ok(ok(serde_json::json!({
         "id": sid,
         "title": title,
         "torrent_id": torrent_id,
         "file_ref": file_ref,
     })))
+}
+
+/// 计一次下载（C2 去重：同人同字幕每小时一次；Redis 故障按首次计，
+/// 统计面不 fail-close 拦下载）。
+/// P-48（本批实测）：调用点必须在**成功出口**——原实现把计数放在函数
+/// 开头，于是可见性被拒（403）与取不到字节（404）也照样 +1（实测 404
+/// 一次 downloads 0→1）。这个数字进月度评选加权与列表排序，等于用坏链
+/// 或越权探测就能刷排名。
+async fn bump_download(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    sid: i64,
+    uid: i64,
+) -> DomainResult<()> {
+    use redis::AsyncCommands;
+    let mut c = state.redis.clone();
+    let k = format!("subdl:{sid}:{uid}");
+    // SET k 1 NX EX（与 twofa 重放闸同式）：nil=本小时内已计过
+    let fresh: Option<()> = redis::cmd("SET")
+        .arg(&k)
+        .arg(1i64)
+        .arg("NX")
+        .arg("EX")
+        .arg(3600u64)
+        .query_async(&mut c)
+        .await
+        .unwrap_or(None);
+    if fresh.is_none() {
+        return Ok(());
+    }
+    sqlx::query("UPDATE subtitles SET downloads = downloads + 1 WHERE id = $1")
+        .bind(sid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(())
 }
 
 /// 下载文件名清洗（与旧链路口径一致：字母数字 + 常见标点，截 80 字符）
