@@ -23,21 +23,27 @@ pub(super) async fn classes_public(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     // 成长线（0-12）+ 门槛四维；职务级（90+）不列门槛、只列名称
-    let rows: Vec<(i32, String, i64, i64, i64, i64, bool)> = sqlx::query_as(
-        "SELECT uc.id, uc.name, \
+    // has_rule：这一档在 class_rules 里有没有规则行。贵宾（20）这类
+    // 「捐赠/任命发放」档只存在于 user_classes，四维是 COALESCE 出来的
+    // 占位 0，前端若把它们一并画进晋升阶梯，成员读到的是
+    // 「贵宾不设门槛，人人都该是贵宾」（批十七 P-24）。
+    let rows: Vec<(i32, String, i64, i64, i64, i64, bool, bool)> =
+        sqlx::query_as(
+            "SELECT uc.id, uc.name, \
                     COALESCE(cr.min_uploaded, 0)::bigint, \
                     COALESCE(cr.min_download_count, 0)::bigint, \
                     COALESCE(cr.min_seed_hours, 0)::bigint, \
                     COALESCE(cr.min_account_age_days, 0)::bigint, \
-                    COALESCE(cr.demotable, false) \
+                    COALESCE(cr.demotable, false), \
+                    (cr.class_id IS NOT NULL) AS has_rule \
              FROM user_classes uc \
              LEFT JOIN class_rules cr ON cr.class_id = uc.id \
              WHERE uc.id < 90 \
              ORDER BY uc.id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let staff: Vec<(i32, String)> = sqlx::query_as(
         "SELECT id, name FROM user_classes WHERE id >= 90 ORDER BY id",
     )
@@ -75,12 +81,14 @@ pub(super) async fn classes_public(
     Ok(ok(json!({
         "me_class": me_class,
         "me_stats": me_stats,
-        "classes": rows.iter().map(|(id, name, up, dl, sh, age, demo)| json!({
-            "id": id, "name": name,
-            "min_uploaded": up, "min_download_count": dl,
-            "min_seed_hours": sh, "min_account_age_days": age,
-            "demotable": demo,
-        })).collect::<Vec<_>>(),
+        "classes": rows.iter().map(
+            |(id, name, up, dl, sh, age, demo, has_rule)| json!({
+                "id": id, "name": name, "has_rule": has_rule,
+                "min_uploaded": up, "min_download_count": dl,
+                "min_seed_hours": sh, "min_account_age_days": age,
+                "demotable": demo,
+            }),
+        ).collect::<Vec<_>>(),
         "staff_classes": staff.iter().map(|(id, name)| json!({
             "id": id, "name": name,
         })).collect::<Vec<_>>(),

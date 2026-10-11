@@ -263,6 +263,20 @@ ok("G4 等级规则项出现在导航接口里（在册不等于可见）",
 ok("G4 举报处理（trumps）同坑同修（0339 起就没在导航出现过）",
    "trumps" in nav, "nav=%s" % ",".join(sorted(x for x in nav if x)[:6]))
 
+print("== G6 成员侧等级页：贵宾不能被画进自动晋升阶梯 ==")
+mt = login(user, pw + "x")
+s, r = call("GET", "/classes", None, token=mt)
+cl = {int(x["id"]): x for x in (r.get("data") or {}).get("classes") or []}
+ok("G6 公开接口带 has_rule 标记（前端据此把阶梯与授予档分开）",
+   bool(cl) and all("has_rule" in v for v in cl.values()),
+   "http=%s ids=%s" % (s, ",".join(str(k) for k in sorted(cl))))
+ok("G6 成长档 0-12 全为 has_rule=true（这些才是统计晋升线）",
+   all(cl.get(i, {}).get("has_rule") is True for i in range(13)),
+   ",".join("%d=%s" % (i, cl.get(i, {}).get("has_rule"))
+            for i in range(13)))
+ok("G6 贵宾（20）标为无规则档（四维是 COALESCE 的 0，展示成门槛会误导）",
+   cl.get(20, {}).get("has_rule") is False, str(cl.get(20))[:110])
+
 print("== G5 收尾：原值还原 + 残料清零 ==")
 for stmt in reversed(CLEAN):
     if stmt == "__restore_tier__":

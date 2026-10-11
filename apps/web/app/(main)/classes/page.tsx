@@ -13,6 +13,9 @@ import { useI18n } from "@/i18n/client";
 interface ClassRow {
   id: number;
   name: string;
+  /** 这一档有没有升降级规则行；false = 捐赠/任命发放档（如贵宾），
+   *  四维是后端 COALESCE 出来的占位 0，不该出现在晋升阶梯里 */
+  has_rule: boolean;
   min_uploaded: number;
   min_download_count: number;
   min_seed_hours: number;
@@ -163,6 +166,11 @@ export default function ClassesPage() {
   if (err) return <p className="py-8 text-center text-danger">{err}</p>;
   if (!d) return <p className="py-8 text-center text-sub">…</p>;
 
+  // 阶梯只画有规则行的档；贵宾一类「捐赠/任命发放」档另起一句说明，
+  // 否则成员在自动晋升表里看到一排破折号，读到的是「贵宾零门槛」
+  const ladder = d.classes.filter((c) => c.has_rule);
+  const granted = d.classes.filter((c) => !c.has_rule);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="font-display text-xl">等级要求</h1>
@@ -183,7 +191,7 @@ export default function ClassesPage() {
             </tr>
           </thead>
           <tbody>
-            {d.classes.map((c) => (
+            {ladder.map((c) => (
               <tr
                 key={c.id}
                 className={`border-b border-line/50 ${
@@ -216,6 +224,12 @@ export default function ClassesPage() {
           </tbody>
         </table>
       </div>
+      {granted.length > 0 && (
+        <p className="mt-3 text-xs text-sub">
+          授予等级（捐赠或任命发放，不进上面的自动晋升线，也没有统计门槛）：
+          {granted.map((g) => g.name).join(" / ")}
+        </p>
+      )}
       {d.staff_classes.length > 0 && (
         <p className="mt-3 text-xs text-sub">
           职务等级（站长任命，不在自动晋升线内）：
