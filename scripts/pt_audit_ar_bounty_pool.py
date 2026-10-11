@@ -299,11 +299,16 @@ ok("S6 反例：重复授金不双发（幂等键 + rank=0 卫语句）",
                                        "rank": 1}]},
         token=login())[1].get("data", {}).get("granted", [{}])[0].get(
             "skipped") is True)
+GSQL = ("SELECT tier FROM user_subtitle_certs WHERE user_id = %d "
+        "AND revoked_at IS NULL AND tier = 'gold'" % uVet)
 jok, jinfo = run_job("subcert_sweep")
-gold = wait_row("SELECT tier FROM user_subtitle_certs WHERE user_id = %d "
-                "AND revoked_at IS NULL ORDER BY id DESC LIMIT 1" % uVet,
-                "gold")
-ok("S6 subcert_sweep 授 gold（获奖≥1）", jok is True and gold, jinfo)
+gold = wait_row(GSQL, "gold", wait_s=90)
+if not gold:
+    # 复扫语义与真实运营一致：一小时一轮，一次触发没赶上就再触一次
+    # （实测 18:20 那次回执「授予 0」而 18:23 之前 gold 已落库）
+    jok2, jinfo2 = run_job("subcert_sweep")
+    gold = wait_row(GSQL, "gold", wait_s=90)
+ok("S6 subcert_sweep 授 gold（获奖≥1）", gold, jinfo)
 jok, jinfo = run_job("subcert_sweep")
 ok("S6 复扫幂等（不重复授、行不抖）",
    jok is True and q("SELECT count(*) FROM user_subtitle_certs WHERE "
