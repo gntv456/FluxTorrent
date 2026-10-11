@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { petLineOf, PET_SPECIES_KEY } from "@/lib/pet-lines";
@@ -50,9 +50,8 @@ export default async function UserProfilePage({
     data = await api.get<ProfileData>(
       `/api/v1/users/${encodeURIComponent(uid)}`,
     );
-  } catch (e) {
-    // 只有后端 NotFound(1004) 才是「不存在」；429/5xx/瞬断交 error.tsx 重试
-    if (e instanceof ApiError && e.code === 1004) notFound(); else throw e;
+  } catch {
+    notFound();
   }
   let torrents: TorrentLists | null = null;
   if (listTabs.includes(active)) {
