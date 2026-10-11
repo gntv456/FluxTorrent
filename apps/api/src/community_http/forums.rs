@@ -41,6 +41,15 @@ struct ForumSearchQuery {
 /// 论坛搜索（NP 顶栏搜索搜帖口径，Phase3 增强）：标题 OR 正文纯文本（body_text，0115 落列）
 /// 命中正文时带回摘要片段（关键词前后各 ~30 字符，前端高亮用）。
 /// 权限：与列表同套谓词（minclassread / 版主），无权版块的内容搜不到。
+///
+/// P-51/P-52（批二十八实测）：这条谓词此前只管 minclassread，两件事没管——
+/// ① `protected` 版块在帖子页把「2 楼起正文」替换成提示，搜索却直接
+///    `left(p2.body_text, 90)` 取任意楼层，等于把同一批正文原样发给任何
+///    登录成员（实测：详情返回 `……`，搜索返回「二楼私密回复 …」）；
+/// ② 后台把分区 `visible=false`（下架）后，版块从 `/forums` 列表消失了，
+///    搜索却照样命中并把主题递出去。
+/// 现在：非特权读者在 protected 版块只匹配/只出「一楼」（一楼本就是公开
+/// 正文）；隐藏分区的内容只对 staff（class≥90）可见。
 #[get("/forums/search")]
 async fn forum_search(
     req: HttpRequest,
@@ -58,20 +67,38 @@ async fn forum_search(
         .replace("%", "\\%")
         .replace("_", "\\_");
     let pattern = format!("%{esc_kw}%");
+    // 「此读者能否看该版非一楼正文」——特权：staff / 楼主本人 / 本版版主。
+    // 非特权时 protected 版块的匹配与片段都只认一楼（一楼本就是公开正文）。
+    let priv_floor = "(f.protected = FALSE OR $2 >= 90 OR t.user_id = $3 \
+                       OR EXISTS (SELECT 1 FROM forum_mods fm3 WHERE \
+                       fm3.forum_id = f.id AND fm3.user_id = $3)";
+    let first_of = "(SELECT min(pp.id) FROM posts pp WHERE pp.topic_id = \
+                    t.id)";
+    let sql = format!(
+        "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at, \
+                (SELECT count(*) FROM posts p WHERE p.topic_id = t.id), \
+                t.locked, \
+                (SELECT left(p2.body_text, 90) FROM posts p2 WHERE \
+                   p2.topic_id = t.id AND p2.body_text ILIKE $1 \
+                   AND ({priv_floor} OR p2.id = {first_of}) \
+                 ORDER BY p2.id LIMIT 1) AS snippet \
+         FROM topics t \
+         JOIN forums f ON f.id = t.forum_id \
+         LEFT JOIN users u ON u.id = t.user_id \
+         WHERE (t.title ILIKE $1 OR EXISTS (SELECT 1 FROM posts p3 \
+                   WHERE p3.topic_id = t.id AND p3.body_text ILIKE $1 \
+                     AND ({priv_floor} OR p3.id = {first_of}))) \
+           AND (f.minclassread <= $2 OR EXISTS (SELECT 1 FROM forum_mods fm \
+                   WHERE fm.forum_id = f.id AND fm.user_id = $3)) \
+           AND ($2 >= 90 OR NOT EXISTS (SELECT 1 FROM forum_categories c \
+                   WHERE c.id = f.category_id AND c.visible = FALSE)) \
+         ORDER BY t.id DESC LIMIT 30",
+        priv_floor = priv_floor,
+        first_of = first_of,
+    );
     // 每主题取「标题命中优先，否则正文最早命中」的楼层做片段；t.id 去重保一主题一行
     let rows: Vec<(i64, String, i64, String, Option<String>, chrono::DateTime<chrono::Utc>, i64, bool, Option<String>)> =
-        sqlx::query_as(
-            "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at, \
-                    (SELECT count(*) FROM posts p WHERE p.topic_id = t.id), t.locked, \
-                    (SELECT left(p2.body_text, 90) FROM posts p2 WHERE p2.topic_id = t.id \
-                      AND p2.body_text ILIKE $1 ORDER BY p2.id LIMIT 1) AS snippet \
-             FROM topics t \
-             JOIN forums f ON f.id = t.forum_id \
-             LEFT JOIN users u ON u.id = t.user_id \
-             WHERE (t.title ILIKE $1 OR EXISTS (SELECT 1 FROM posts p3 WHERE p3.topic_id = t.id AND p3.body_text ILIKE $1)) \
-               AND (f.minclassread <= $2 OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3)) \
-             ORDER BY t.id DESC LIMIT 30",
-        )
+        sqlx::query_as(&sql)
         .bind(&pattern)
         .bind(auth.class_id)
         .bind(auth.id)
