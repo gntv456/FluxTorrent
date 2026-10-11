@@ -1,7 +1,7 @@
 //! 字幕列表与下载（0146：分页信封、真实 size、评分、匿名脱敏、扩展名修正）。
 //! 上传链路在 subtitles.rs；元数据治理在 subtitles_meta.rs。
 
-use actix_web::{get, web, Responder};
+use actix_web::{get, web, HttpRequest, Responder};
 
 use super::subtitles_util::subtitle_bad_threshold;
 use crate::dto::ok;
@@ -24,7 +24,7 @@ struct SubtitleRow {
     anon: bool,
     rating_sum: i32,
     rating_count: i32,
-    /// 上传者 id（anon 行照常返回，前端按本人判定编辑/删除入口）
+    /// 上传者 id（anon 行只对本人/staff 回，其余访客为 null——P-46）
     user_id: i64,
     verified: bool,
     /// 0148 C0/C6：三态口径——纯 AI（machine && proofreader 空）/
@@ -40,9 +40,31 @@ struct SubtitleRow {
 /// 只出未删且过审（或免审）的行；坏字幕达阈值自动隐藏。
 #[get("/subtitles")]
 pub(super) async fn subtitle_list(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl Responder> {
+    // P-46/P-47（本批实测）：列表此前完全不看鉴权也不看种子审核态，于是
+    // ① anon 行把 user_id 原样发给**未认证**访客（用户名脱了、id 没脱，
+    // 按 id 一枚举就去匿名化）；② 挂在待审/封禁种子上的字幕公开出现在
+    // 列表并回 torrent_id，而同一条字幕在 detail/download 都要求过审或
+    // staff（list 的文件注释本来就写着「只出未删且过审」）。
+    // 这里取「可选登录态」：匿名访客照常看公开行，只是拿到更少的字段。
+    let viewer = crate::http::require_auth(&req, &state).await.ok();
+    let viewer_id = viewer.as_ref().map(|a| a.id).unwrap_or(-1);
+    let is_staff = viewer
+        .as_ref()
+        .map(|a| a.class_id >= 90)
+        .unwrap_or(false);
+    let see_banned = match &viewer {
+        Some(a) => crate::authz::can(
+            &state,
+            a,
+            crate::authz::perm::TORRENT_SEE_BANNED,
+        )
+        .await,
+        None => false,
+    };
     let search = q
         .get("search")
         .map(|s| crate::http::like_pattern(s))
@@ -137,6 +159,8 @@ pub(super) async fn subtitle_list(
     let ai_demote = "(CASE WHEN s.machine_translated AND \
          COALESCE(s.proofreader, '') = '' THEN 1 ELSE 0 END)";
     let threshold = subtitle_bad_threshold(&state.repo.db).await?;
+    // 服务端算出的布尔，直接内联为字面量（不经字符串拼接的用户输入）
+    let banned_lit = if see_banned { "TRUE" } else { "FALSE" };
     // 谓词只拼一份：count 与列表同谓词（A7 验收点）。
     // 0148：$5/$6 同传时为「本种子字幕 ∪ 同片字幕」（种子页 C1 合并口径）：
     //   imdb 未传（$6 NULL）→ 仅 torrent_id 过滤（原有行为不变）
@@ -146,6 +170,8 @@ pub(super) async fn subtitle_list(
         "\
          s.deleted_at IS NULL AND s.status = 1 \
          AND (s.bad_reports < $4 OR $4 <= 0) \
+         AND (s.torrent_id IS NULL OR tr.approval_status = 1 \
+              OR {banned_lit}) \
          AND s.title ILIKE $1 \
          AND ($2::text IS NULL OR s.lang = $2) \
          AND ($3::text IS NULL OR s.title ILIKE $3 || '%') \
@@ -154,7 +180,8 @@ pub(super) async fn subtitle_list(
               = $5 OR s.imdb_id = $6)){ai_filter}"
     );
     let total: i64 = sqlx::query_scalar(&format!(
-        "SELECT count(*) FROM subtitles s WHERE {predicates}"
+        "SELECT count(*) FROM subtitles s \
+         LEFT JOIN torrents tr ON tr.id = s.torrent_id WHERE {predicates}"
     ))
     .bind(&search)
     .bind(&lang)
@@ -171,6 +198,7 @@ pub(super) async fn subtitle_list(
              s.rating_sum, s.rating_count, s.user_id, s.verified, \
              s.machine_translated, s.proofreader, cert.cert_tier \
              FROM subtitles s LEFT JOIN users u ON u.id = s.user_id \
+             LEFT JOIN torrents tr ON tr.id = s.torrent_id \
              LEFT JOIN LATERAL ( \
                  SELECT c.tier AS cert_tier FROM user_subtitle_certs c \
                  WHERE c.user_id = s.user_id AND c.revoked_at IS NULL \
@@ -196,6 +224,14 @@ pub(super) async fn subtitle_list(
         .into_iter()
         .map(|mut r| {
             let name = if r.anon { None } else { r.username.take() };
+            // P-46：anon 行的 user_id 也要按同一口径脱敏——此前只藏用户名、
+            // id 照发，未认证访客拿到 id 就能枚举同一人的其它上传/徽章。
+            // 本人（编辑/删除入口需要）与 staff（治理需要）仍可见。
+            let uid_out = if r.anon && r.user_id != viewer_id && !is_staff {
+                None
+            } else {
+                Some(r.user_id)
+            };
             let rating = if r.rating_count > 0 {
                 // 1-10 均分保留一位小数（sum/count 四舍五入到 0.1）
                 serde_json::json!(
@@ -212,8 +248,8 @@ pub(super) async fn subtitle_list(
                 "downloads": r.downloads, "created_at": r.created_at,
                 "size": r.size, "ext": r.ext, "rating": rating,
                 "rating_count": r.rating_count,
-                // 本人判定用（anon 行 username 已脱敏但 id 保留给编辑/删除入口）
-                "user_id": r.user_id, "verified": r.verified,
+                // 本人判定用（anon 行只对本人/staff 回 id）
+                "user_id": uid_out, "verified": r.verified,
                 // 0149：上传者身份徽章（certified / gold）
                 "cert_tier": r.cert_tier,
                 // 0148 C0/C6：ai 三态（human / ai_proofread / ai）
