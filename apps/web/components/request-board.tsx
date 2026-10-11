@@ -15,7 +15,7 @@ export interface RequestRow {
   title: string;
   descr: string | null;
   bounty: number;
-  latest_bounty: number;
+  latest_bounty: number | null;
   comments: number | null;
   bids: number | null;
   status: number;
@@ -174,7 +174,7 @@ export function RequestBoard({
                   </td>
                   <td className="request-center__reward">
                     <strong className="num">
-                      {r.latest_bounty.toLocaleString()}
+                      {r.latest_bounty?.toLocaleString() ?? "—"}
                     </strong>
                   </td>
                   <td className="num">{r.bounty.toLocaleString()}</td>

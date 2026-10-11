@@ -165,6 +165,18 @@ ok("R2 重复应求被拒（状态机不许二次发钱）",
    "http=%s balance=%s" % (s, q("SELECT spark_balance::text FROM users "
                                "WHERE id = %d" % ub)))
 
+print("== R2b 列表口径：无能力的列回 null，不拿 0/等值冒充数据 ==")
+s, r = call("GET", "/requests?finished=all", None, token=ta)
+mine = [x for x in (r.get("data") or []) if str(x.get("id")) == str(rid)]
+row0 = mine[0] if mine else {}
+ok("R2b 命中列表能读到自己那张单", bool(row0), "http=%s n=%s"
+   % (s, len((r.get("data") or []))))
+ok("R2b 评论数/应求数/最新出价为 null（加价与评论线都不存在）",
+   row0.get("comments") is None and row0.get("bids") is None
+   and row0.get("latest_bounty") is None, str(row0)[:150])
+ok("R2b 原始出价仍是真值（null 只给「没有的东西」，不给有的）",
+   row0.get("bounty") == BOUNTY, "bounty=%s" % row0.get("bounty"))
+
 print("== R3 原子性：发奖失败必须连状态一起回滚 ==")
 s, r = call("POST", "/requests", {"title": "aj 悬赏失败探针 %d" % TS,
                                   "bounty": 500}, token=ta)
