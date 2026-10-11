@@ -286,8 +286,6 @@ pub(super) async fn request_fulfill(
     ))
 }
 
-// ============ M17 候选 ============
-
 // ============ M17 求种 ============
 
 #[derive(Deserialize)]
