@@ -134,6 +134,17 @@ ok("S2 下载计数同人每小时去重（两次点按只 +1）", D1 - D0 == 1,
 ok("S2 反例：分页 per_page 白名单外的值回落 50",
    len(((call("GET", "/subtitles?per_page=9999", token=tVet)[1].get("data")
          or {}).get("items")) or []) <= 50)
+# P-48：取不到字节（404）不得计下载——downloads 进评选加权与列表排序，
+# 计数在结果之前等于「拿坏链或越权探测就能刷排名」
+sidDead = int(q("INSERT INTO subtitles (user_id, title, lang, file_ref, "
+                "size, ext, status, deleted_at) VALUES (%d, 'AqSub dead', "
+                "'zh', 'attach://%s', 10, 'srt', 1, NULL) RETURNING id"
+                % (uVet, "b" * 64)))
+s, _ = call("GET", "/subtitles/%d/download" % sidDead, token=tVet)
+ok("S2 哨兵：下载 404 不计入 downloads（P-48 修复点）",
+   s == 404 and q("SELECT downloads FROM subtitles WHERE id = %d" % sidDead)
+   == "0", "http=%s dl=%s" % (s, q("SELECT downloads FROM subtitles WHERE "
+                                   "id = %d" % sidDead)))
 
 print("== AQ-S2b 读路径脱敏（P-46 anon id / P-47 待审种子） ==")
 sidAnon = int(q("INSERT INTO subtitles (user_id, title, lang, file_ref, "
