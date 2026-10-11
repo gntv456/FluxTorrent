@@ -18,13 +18,4 @@ UPDATE staff_panel_entries
  WHERE tab_key = 'classes'
    AND info <> '成长档升降级阈值与晋升奖励（贵宾/职务档只读）';
 
--- P-25：module_key 的空串是「静默隐形」的坑。判据 `module_on_sql` 旧版
--- 只认 NULL，于是迁移里手写 module_key='' 的导航项（0339 trumps、
--- 0342 classes）在管理台导航里根本不出现——接口 200、页面上没有、
--- 一致性守卫全绿。后台「面板条目」写路径一直把 '' 归一成 NULL，
--- 这里把存量两行也归一（判据同批一并容忍 ''，双保险）。
-UPDATE staff_panel_entries
-   SET module_key = NULL
- WHERE module_key = '';
-
 COMMIT;
