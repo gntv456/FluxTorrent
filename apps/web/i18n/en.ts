@@ -2236,6 +2236,10 @@ const enBase: Omit<
     claimBtn: "Claim",
     deliverBtn: "Deliver",
     abandonBtn: "Abandon",
+    abandonConfirm: "Abandon this claim and release it back to the pool?",
+    cancelBtn: "Cancel",
+    cancelConfirm:
+      "Cancel this request and refund the frozen bounty to every contributor?",
     acceptBtn: "Accept",
     acceptConfirm: "Accept this delivery and settle the whole bounty pool?",
     deliverPh: "Enter the delivered subtitle ID (visible in list after upload)",

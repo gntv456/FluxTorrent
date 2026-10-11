@@ -2185,6 +2185,10 @@ const zhTwBase: Omit<
     claimBtn: "認領",
     deliverBtn: "交稿",
     abandonBtn: "棄單",
+    abandonConfirm: "確認棄單？該求字幕將退回池中，其他人可再認領。",
+    cancelBtn: "撤銷",
+    cancelConfirm:
+      "撤銷後凍結的賞金將按入池明細原路退回給每位出資人，確認撤銷？",
     acceptBtn: "驗收",
     acceptConfirm: "驗收該交付並結算整池賞金？",
     deliverPh: "請輸入交付的字幕 ID（上傳後列表可見）",

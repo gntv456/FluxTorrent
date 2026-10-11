@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRequestRow } from "@/components/subtitle-board-shared";
+import { SubtitleRequestActions } from "@/components/subtitle-request-actions";
 
 /** 求字幕悬赏 + 工作流（0146 pots → 0148 认领/交稿/验收/协作/free）。
  *  从 subtitle-board.tsx 按域拆出（300 行门禁）；附件上传共用件在尾部。 */
@@ -28,7 +29,9 @@ export function SubtitleRequestPanel({
   const [rBounty, setRBounty] = useState("");
   const [rFree, setRFree] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [me, setMe] = useState<{ id: number } | null>(null);
+  const [me, setMe] = useState<{ id: number; username?: string } | null>(
+    null,
+  );
   // 工作流开关（site-profile 暴露；关 = NP 直交付口径）
   const [wfOn, setWfOn] = useState(false);
 
@@ -47,7 +50,7 @@ export function SubtitleRequestPanel({
   useEffect(() => {
     loadReqs();
     api
-      .get<{ id: number }>("/api/v1/me")
+      .get<{ id: number; username?: string }>("/api/v1/me")
       .then(setMe)
       .catch(() => setMe(null));
     fetch("/api/v1/site-profile")
@@ -95,9 +98,9 @@ export function SubtitleRequestPanel({
     }
   }
 
-  /** 工作流动作（0148）：认领（可带协作者）/弃单/交稿/发起人验收 */
+  /** 工作流动作（0148）：认领（可带协作者）/弃单/交稿/发起人验收/撤销 */
   async function wfAction(
-    act: "claim" | "abandon" | "deliver" | "accept",
+    act: "claim" | "abandon" | "deliver" | "accept" | "cancel",
     r: SubtitleRequestRow,
   ) {
     try {
@@ -126,6 +129,16 @@ export function SubtitleRequestPanel({
         await api.post(`/api/v1/subtitles/requests/${r.id}/deliver`, {
           subtitle_id: Number(sid.replace(/\D/g, "")),
         });
+      } else if (act === "abandon") {
+        // P-44（本批实测）：这一支此前落进 else，点「弃单」实际 POST 的是
+        // /accept ——status=3 下验收端点回「不在待验收状态」，弃单在界面上
+        // 永远失败，F3 的弃单计数/禁令也就只剩 worker 超时那条路能记账。
+        if (!window.confirm(t.abandonConfirm ?? "abandon?")) return;
+        await api.post(`/api/v1/subtitles/requests/${r.id}/abandon`, {});
+      } else if (act === "cancel") {
+        // P-43：未被认领的单可撤销，冻结的赏金按入池明细原路退回
+        if (!window.confirm(t.cancelConfirm ?? "cancel and refund?")) return;
+        await api.post(`/api/v1/subtitles/requests/${r.id}/cancel`, {});
       } else {
         if (!window.confirm(t.acceptConfirm ?? "accept?")) return;
         await api.post(`/api/v1/subtitles/requests/${r.id}/accept`, {});
@@ -194,51 +207,14 @@ export function SubtitleRequestPanel({
                       <span className="ml-1 text-[11px] text-mint">Free</span>
                     )}
                   </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn2"
-                      onClick={() => void contribute(r.id)}
-                    >
-                      {t.contributeBtn}
-                    </button>
-                    {wfOn && r.status === 0 && (
-                      <button
-                        type="button"
-                        className="btn2 ml-1"
-                        onClick={() => void wfAction("claim", r)}
-                      >
-                        {t.claimBtn}
-                      </button>
-                    )}
-                    {wfOn && r.status === 3 && r.claimed_by === me?.id && (
-                      <>
-                        <button
-                          type="button"
-                          className="btn2 ml-1"
-                          onClick={() => void wfAction("deliver", r)}
-                        >
-                          {t.deliverBtn}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn2 ml-1"
-                          onClick={() => void wfAction("abandon", r)}
-                        >
-                          {t.abandonBtn}
-                        </button>
-                      </>
-                    )}
-                    {wfOn && r.status === 4 && r.username && (
-                      <button
-                        type="button"
-                        className="btn2 ml-1"
-                        onClick={() => void wfAction("accept", r)}
-                      >
-                        {t.acceptBtn}
-                      </button>
-                    )}
-                  </td>
+                  <SubtitleRequestActions
+                    r={r}
+                    meId={me?.id ?? 0}
+                    meName={me?.username ?? ""}
+                    wfOn={wfOn}
+                    onAct={(a, row) => void wfAction(a, row)}
+                    onContribute={(id) => void contribute(id)}
+                  />
                 </tr>
               );
             })}
