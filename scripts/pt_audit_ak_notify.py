@@ -89,6 +89,40 @@ ok("N3 root 的 overview 未读数与 SQL 原值一致", root_ov == root_sql,
    "api=%s sql=%d" % (root_ov, root_sql))
 ok("N3 存量确实非零（判据不是靠空表蒙对）", root_sql > 0, "sql=%d" % root_sql)
 
+print("== N5 分流到自建文件夹后：三处口径必须同一个数 ==")
+# P-31 实测：/me 的角标计数原本不看 folder，把未读信移进自建夹后它仍报
+# 56，而通知中心报 53——同一用户同一屏看到两个「未读私信」。现三处统一为
+# 主收件箱口径（unread + location=1 + folder IS NULL）。
+s, r = call("POST", "/messages/boxes", {"name": "AK 分流夹"}, token=mt)
+bid = (r.get("data") or {}).get("id")
+mv = call("POST", "/messages/move", {"ids": [rows[0]["id"]], "folder": bid},
+          token=mt)
+ok("N5 能建夹并把一封未读移进去", bool(bid) and mv[1].get("code") == 0,
+   "box=%s %s" % (bid, str(mv[1])[:60]))
+
+
+def three_counts():
+    a = (call("GET", "/me", None, token=mt)[1].get("data") or {}).get(
+        "unread_messages")
+    b = (call("GET", "/me/overview", None, token=mt)[1].get("data") or {}).get(
+        "unread_messages")
+    rr = call("GET", "/messages/inbox?unread=true", None, token=mt)[1].get(
+        "data") or []
+    return a, b, len(rr)
+
+
+mv_me, mv_ov, mv_list = three_counts()
+ok("N5 移走一封后三个读数都是 1（角标/卡片/列表同一口径）",
+   mv_me == mv_ov == mv_list == 1,
+   "me=%s overview=%s list=%s" % (mv_me, mv_ov, mv_list))
+call("POST", "/messages/move", {"ids": [rows[0]["id"]], "folder": None},
+     token=mt)
+call("POST", "/messages/boxes/delete", {"id": bid}, token=mt)
+bk_me, bk_ov, bk_list = three_counts()
+ok("N5 移回后三数复原为 2 且未留自建夹",
+   bk_me == bk_ov == bk_list == 2,
+   "me=%s overview=%s list=%s" % (bk_me, bk_ov, bk_list))
+
 print("== N4 收尾 ==")
 for stmt in reversed(CLEAN):
     exec_sql(stmt)

@@ -85,10 +85,14 @@ pub async fn me(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 未读站内信数（userbar 邮箱图标角标）
+    // 未读站内信数（userbar 邮箱图标角标）。口径必须与 /me/overview 那一条
+    // 完全一致：`unread + location=1 + folder IS NULL`（P-31 实测：把 3 封
+    // 未读信移进自建文件夹后，本端点仍报 56、通知中心报 53——同一个用户在
+    // 同一屏上看到两个「未读数」）。选「主收件箱」这一侧而不是「所有
+    // 收件夹」，是因为角标点开就是主收件箱：数字必须等于点进去看到的条数。
     let unread: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM messages WHERE receiver_id = $1 AND \
-         unread = true AND location = 1",
+         unread = true AND location = 1 AND folder IS NULL",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)
