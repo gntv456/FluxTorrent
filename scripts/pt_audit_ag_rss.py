@@ -281,8 +281,9 @@ TID = None
 s2, lr = call("GET", "/me/tokens", token=ROOT)
 rows = (lr.get("data") or {})
 lst = rows.get("tokens") if isinstance(rows, dict) else rows
+# 列表回显是掩码，不能拿 Token 明文去比；按本次签发用的 name 找 id
 for it in (lst or []):
-    if it.get("token") == TZTOK or it.get("key") == TZTOK:
+    if (it.get("name") or "").startswith("agtz"):
         TID = it.get("id")
 CLEAN.append("__revoke_token__")
 
@@ -307,8 +308,8 @@ ok("G9 imdbid 仍走 IMDb 精确区（反向：不是一律忽略标识符）", 
 
 print("== G8 /compat/meta 声明的每个口都真实存在（对外契约不虚报）==")
 import re as _re2
-s, body, _, _cc = call("GET", "/compat/meta")
-meta = (body.get("data") or {}) if s == 200 else {}
+s, resp = call("GET", "/compat/meta")
+meta = (resp.get("data") or {}) if s == 200 else {}
 eps = meta.get("endpoints") or {}
 def first_tok(v):
     return _re2.split(r"[\s（(]", v.strip(), 1)[0]
@@ -318,10 +319,13 @@ for k, v in (eps.get("aliases") or {}).items():
     if isinstance(v, str) and v.strip().startswith("/api"):
         gets["alias." + k] = first_tok(v)
 missing = []
+# {id} 要换成库里真实存在的过审种号：download.php 对不存在的种回 404 是
+# 「资源没有」，不是「路由不存在」，拿 1 去探会把正确行为报成虚报
+LIVE = q("SELECT COALESCE(max(id), 1)::text FROM torrents "
+         "WHERE approval_status = 1")
 for k, path in sorted(gets.items()):
-    url = (path.replace("{passkey}", PK).replace("{id}", "1")
-           .replace("{token}", "fxo_none")
-           .replace("{anchor}", "1"))
+    url = (path.replace("{passkey}", PK).replace("{id}", LIVE)
+           .replace("{token}", "fxo_none").replace("{anchor}", "1"))
     rq = urllib.request.Request(BASE.replace("/api/v1", "") + url)
     try:
         st = urllib.request.urlopen(rq, timeout=25).status
