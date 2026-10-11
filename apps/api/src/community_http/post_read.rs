@@ -27,11 +27,9 @@ async fn topic_detail(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
-    sqlx::query("UPDATE topics SET views = views + 1 WHERE id = $1")
-        .bind(tid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-53（批二十八实测）：views+1 原来写在权限判定之前——403 的探测也
+    // 照涨热度，而 403（存在但无权）与 404（不存在）可区分，等于给
+    // 低权号一个「枚举主题 id + 刷热度」的入口。挪到判权之后。
     // NexusPHP 帖子页头部：主题标题 + 所属版块（找不到主题时 404）
     let meta: Option<(
         String,
@@ -75,6 +73,12 @@ async fn topic_detail(
     if !perm.can_read {
         return Err(DomainError::Forbidden);
     }
+    // 读到才算一次浏览（与上面的权限判定同序）
+    sqlx::query("UPDATE topics SET views = views + 1 WHERE id = $1")
+        .bind(tid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let mut posts = sqlx::query_as::<_, PostRow>(
         "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden, \
             u.avatar_url, c.name AS class_name, \

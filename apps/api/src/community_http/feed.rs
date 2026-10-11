@@ -87,6 +87,10 @@ async fn forum_feed(
            AND ($2 >= 90 OR x.forum_id IN ( \
                  SELECT fc2.id FROM forums fc2 WHERE fc2.minclassread <= $2 \
              ) OR EXISTS(SELECT 1 FROM forum_mods fm WHERE fm.forum_id = x.forum_id AND fm.user_id = $1)) \
+           AND ($2 >= 90 OR NOT EXISTS ( \
+                 SELECT 1 FROM forums fh \
+                   JOIN forum_categories ch ON ch.id = fh.category_id \
+                  WHERE fh.id = x.forum_id AND ch.visible = FALSE)) \
          ORDER BY x.last_post_at DESC NULLS LAST, x.topic_id DESC LIMIT $3",
     )
     .bind(auth.id)

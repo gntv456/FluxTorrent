@@ -83,6 +83,10 @@ async fn forum_rss_feed(
              WHERE f.id = ANY($1) \
                AND (f.minclassread <= $2 OR $2 >= 90 \
                     OR EXISTS (SELECT 1 FROM forum_mods fm WHERE fm.forum_id = f.id AND fm.user_id = $3)) \
+               AND ($2 >= 90 OR NOT EXISTS ( \
+                     SELECT 1 FROM forums fh \
+                       JOIN forum_categories ch ON ch.id = fh.category_id \
+                      WHERE fh.id = f.id AND ch.visible = FALSE)) \
              ORDER BY t.id DESC LIMIT $4",
         )
         .bind(&fids)
