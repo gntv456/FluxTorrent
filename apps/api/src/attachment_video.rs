@@ -5,7 +5,10 @@
 //! 无 Range 头维持 200 全量语义（GET /attachments/{sha} 原图片路径共用，
 //! 行为不变）；需登录（防匿名爬附件占带宽）。
 
+use actix_web::body::{BodySize, MessageBody};
 use actix_web::{head, web, HttpRequest, HttpResponse};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -13,6 +16,30 @@ use crate::state::AppState;
 
 fn internal(e: sqlx::Error) -> DomainError {
     DomainError::Internal(e.into())
+}
+
+/// 只报长度、不持有字节的 body（HEAD 专用，P-60）。
+///
+/// actix 对 HEAD 的 Content-Length 取自媒体：给空 body 就归零（本批实测
+/// CL=0，`<video>` 的元数据预检因此废掉），旧实现为此挂了
+/// `vec![0u8; size]` 的等长占位——预检一次 200MiB 视频就整块分配一次。
+/// 这里报 `BodySize::Sized(size)` 而 `poll_next` 立刻 `Ready(None)`：
+/// 头里的长度是真的，内存里一个字节都不多占。
+struct HeadSize(i64);
+
+impl MessageBody for HeadSize {
+    type Error = actix_web::Error;
+
+    fn size(&self) -> BodySize {
+        BodySize::Sized(self.0.max(0) as u64)
+    }
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<web::Bytes, Self::Error>>> {
+        Poll::Ready(None)
+    }
 }
 
 /// Range 解析：`bytes=start-[end]`（单区间；后缀区间不支持→200 全量）。
@@ -109,15 +136,17 @@ pub async fn head_attachment(
     )
     .bind(&sha)
     .fetch_optional(&state.repo.db)
-            .await
-            .map_err(internal)?;
+    .await
+    .map_err(internal)?;
     let Some((mime, size)) = row else {
         return Err(DomainError::NotFound(0));
     };
     // P-60（批二十九）：旧实现为「怕 actix 把 HEAD 的 Content-Length 归零」
     // 挂了一份与文件等长的 0 占位 body——HEAD 只要头不要体，200MiB 的视频
     // 每预检一次就整块分配一次（限流只是把放大器关小，没关）。
-    // 现在只显式插 Content-Length，AT 闸门钉 HEAD 回来的是真实长度。
+    // 改成 HeadSize：报同样的长度，但不持有字节。空 body 会让 CL 变 0
+    // （本批实测），所以 AT 的 S4 用「HEAD 的 Content-Length == 库里 size」
+    // 守着这一点。
     let mut resp = HttpResponse::Ok()
         .content_type(mime)
         .insert_header(("Accept-Ranges", "bytes"))
@@ -125,7 +154,7 @@ pub async fn head_attachment(
             actix_web::http::header::CACHE_CONTROL,
             "private, max-age=31536000, immutable",
         ))
-        .finish();
+        .body(HeadSize(size));
     resp.headers_mut().insert(
         actix_web::http::header::CONTENT_LENGTH,
         actix_web::http::header::HeaderValue::from_str(&size.to_string())
@@ -160,8 +189,8 @@ pub async fn serve_attachment(
     )
     .bind(&sha)
     .fetch_optional(&state.repo.db)
-            .await
-            .map_err(internal)?;
+    .await
+    .map_err(internal)?;
     let Some((mime, size)) = row else {
         return Err(DomainError::NotFound(0));
     };
