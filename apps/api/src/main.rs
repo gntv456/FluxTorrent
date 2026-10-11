@@ -1,6 +1,7 @@
 //! FluxTorrent API 服务入口。
 //! 启动：迁移 schema → 连接池/Redis → HTTP 服务（信封 + CORS + tracing）。
 
+mod access_log;
 mod adapter_http;
 mod adapter_runtime;
 mod adapter_seed;
@@ -66,7 +67,7 @@ mod twofa_http;
 mod v4_http;
 
 use actix_cors::Cors;
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_web::{web, App, HttpServer};
 
 /// CORS：CORS_ORIGINS 逗号分隔白名单（生产必填）；未配置时仅开发态（FLUX_DEV=1）退化为宽松并打警告
 fn build_cors() -> actix_cors::Cors {
@@ -244,15 +245,8 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .into()
             }))
-            // 访问日志（P2 防凭据泄漏）：默认 %r 含完整 query——compat 下载走 ?passkey=、
-            // 凭证下载走 ?token=、开放 API 走 ?apikey=，等价把长期/短期凭据写进 access log。
-            // 自定义格式以 %r 换成 %m %U（method + 不含 query 的 path）；其余与 default 对齐。
-            .wrap(Logger::new("%a \"%m %U\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T")
-                .exclude("/api/v1/health")
-                // 二轮审计（中）：/rss/{passkey} 的 passkey 在**路径**里，
-                // %U（不含 query）挡不住路径形态——整个 RSS 前缀不落 access log。
-                // RSS 自身有 30/min/passkey 限流，不记日志不影响排障粒度。
-                .exclude("/api/v1/rss"))
+            // 访问日志与凭据脱敏（口径见 access_log.rs）
+            .wrap(crate::access_log::build())
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
             // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略 / CSP
             // （HSTS 由 TLS 终结的反代统一注入）。E1：API 只出 JSON 与文件流，

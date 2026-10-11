@@ -55,7 +55,7 @@ pub async fn request_id_mw(
         .map(str::to_string)
         .unwrap_or_else(|| Uuid::new_v4().to_string());
     let method = req.method().as_str().to_string();
-    let path = req.path().to_string();
+    let path = log_safe_path(req.path());
     let mut res = REQUEST_ID.scope(rid.clone(), next.call(req)).await?;
     // 请求开始行：与 access log（Logger）互补—— Logger 不含 request_id 字段
     tracing::info!(request_id = %rid, method = %method, path = %path, "request start");
@@ -64,6 +64,62 @@ pub async fn request_id_mw(
         rid.parse().expect("uuid 解析为HeaderValue必然成功"),
     );
     Ok(res)
+}
+
+/// 日志里的路径脱敏（P-66）。
+///
+/// 私有站的 passkey 走**路径**形态（`/rss/{passkey}`、`/rss/forum/{passkey}`、
+/// tracker `/announce/{passkey}`）。Logger 侧靠 `%U`（不含 query）+
+/// `exclude("/api/v1/rss*")` 挡，但这一行记的是原始 path——访问日志排除得
+/// 再干净，「请求开始」行照样把 64 位 passkey 写进日志（实测：
+/// `path=/api/v1/rss/c7b335dc…` 整串落盘）。passkey 是长期凭据：拿到即可
+/// 下种、订阅 RSS、替该账号 announce，等于账号级接管。
+///
+/// 判据按**形态**不按端点名：≥32 字符且全字母数字的路径段一律掩成 `***`。
+/// 这样未来任何「凭据进路径」的端点都自动安全，不靠人记得加白名单。
+fn log_safe_path(p: &str) -> String {
+    p.split('/')
+        .map(|seg| {
+            if seg.len() >= 32
+                && seg.bytes().all(|b| b.is_ascii_alphanumeric())
+            {
+                "***"
+            } else {
+                seg
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+#[cfg(test)]
+mod safe_path_tests {
+    // 单独一个模块：上面那个 tests 里 `use actix_web::test` 会把属性宏
+    // `#[test]` 解析成 actix 的异步测试宏，同步测试放进去会报
+    // 「the async keyword is missing」。
+    use super::log_safe_path;
+
+    #[test]
+    fn masks_credential_shaped_path_segments() {
+        let pk = "c7".repeat(32); // 64 位 hex，passkey 形态
+        assert_eq!(
+            log_safe_path(&format!("/api/v1/rss/{pk}")),
+            "/api/v1/rss/***"
+        );
+        assert_eq!(
+            log_safe_path(&format!("/api/v1/rss/forum/{pk}")),
+            "/api/v1/rss/forum/***"
+        );
+        // 普通路径不误伤
+        assert_eq!(
+            log_safe_path("/api/v1/torrents/12345"),
+            "/api/v1/torrents/12345"
+        );
+        assert_eq!(
+            log_safe_path("/api/v1/users/4411/edit"),
+            "/api/v1/users/4411/edit"
+        );
+    }
 }
 
 #[cfg(test)]
