@@ -69,9 +69,12 @@ async fn forum_search(
     let pattern = format!("%{esc_kw}%");
     // 「此读者能否看该版非一楼正文」——特权：staff / 楼主本人 / 本版版主。
     // 非特权时 protected 版块的匹配与片段都只认一楼（一楼本就是公开正文）。
+    // 这一坨是**自带闭合**的完整布尔式：模板里 `({priv_floor} OR …)` 只负责
+    // 外层那一层括号，谁也不欠谁（拼错括号数在 format! 阶段看不出来，直到
+    // Postgres 报 syntax error at or near "ORDER"）。
     let priv_floor = "(f.protected = FALSE OR $2 >= 90 OR t.user_id = $3 \
                        OR EXISTS (SELECT 1 FROM forum_mods fm3 WHERE \
-                       fm3.forum_id = f.id AND fm3.user_id = $3)";
+                       fm3.forum_id = f.id AND fm3.user_id = $3))";
     let first_of = "(SELECT min(pp.id) FROM posts pp WHERE pp.topic_id = \
                     t.id)";
     let sql = format!(
