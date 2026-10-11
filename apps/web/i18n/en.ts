@@ -1,4 +1,4 @@
-/** English dictionary (mirrors zh-CN structure) */
+﻿/** English dictionary (mirrors zh-CN structure) */
 
 import type { Dict } from "./zh-CN";
 import { termsPanelEn } from "./terms-panel";
@@ -6371,6 +6371,9 @@ const noticePrefsEn: Dict["noticePrefs"] = {
     comment_reply: "Comment replies",
     system: "System notices",
     donate_tier: "Donation rewards",
+    network_new_release: "Subscribed network releases",
+    subgroup_new_release: "Subscribed subgroup releases",
+    request_fulfilled: "Request fulfilled",
   } as Record<string, string>,
 };
 
