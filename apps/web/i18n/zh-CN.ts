@@ -2174,6 +2174,10 @@ const zhCnBase = {
     claimBtn: "认领",
     deliverBtn: "交稿",
     abandonBtn: "弃单",
+    abandonConfirm: "确认弃单？该求字幕将退回池中，其他人可再认领。",
+    cancelBtn: "撤销",
+    cancelConfirm:
+      "撤销后冻结的赏金将按入池明细原路退回给每位出资人，确认撤销？",
     acceptBtn: "验收",
     acceptConfirm: "验收该交付并结算整池赏金？",
     deliverPh: "请输入交付的字幕 ID（上传后列表可见）",
