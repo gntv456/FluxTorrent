@@ -14,6 +14,8 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::openapi_http::{require_token, with_rl};
 use crate::state::AppState;
+
+use super::torznab_fmt::{feed_xml, tattr, xml_escape};
 use crate::torrents::{newznab_name, CatMap, TorrentFilter, NEWZNAB_OTHER};
 
 /// 经济路由（挂载进主 /api/v1 scope，单 scope 避免遮蔽）
@@ -99,27 +101,7 @@ async fn torznab_caps(
     Ok(HttpResponse::Ok().content_type("application/xml").body(xml))
 }
 
-/// Torznab feed 外壳（caps 之外的 search 响应仍是 RSS 2.0 + torznab 命名空间）。
-fn feed_xml(items: &str) -> String {
-    format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
-<rss version=\"2.0\" xmlns:torznab=\"http://torznab.com/schemas/2015/feed\">\n\
-<channel>\n\
-  <title>FluxTorrent</title>\n\
-  <description>FluxTorrent Torznab feed</description>\n\
-{items}</channel>\n\
-</rss>\n"
-    )
-}
 
-/// 单条 `torznab:attr`。属性值是客户端解析的唯一入口 ——
-/// 旧实现把 seeders/peers/size 写成裸标签，Sonarr/Radarr 一律读成 0。
-fn tattr(name: &str, value: &str) -> String {
-    format!(
-        "    <torznab:attr name=\"{name}\" value=\"{}\" />\n",
-        xml_escape(value)
-    )
-}
 
 /// Torznab search（0079 落地 / 0267 合规化）。
 ///
@@ -227,6 +209,22 @@ async fn torznab_search_inner(
                 filter.search = keyword.clone();
             }
         }
+    }
+
+    // 只给了本站不支持的标识符（tmdbid/tvdbid）且没有任何可用条件时回
+    // **空 feed**：与 cat 映射不到时同口径。把 50 条未筛列表发给以为自己在
+    // 按 id 精确搜的客户端，等于让它收下一堆它没要的内容。
+    if (get("tmdbid").is_some() || get("tvdbid").is_some())
+        && filter.search.is_none()
+        && filter.search_area.is_none()
+        && filter.title_like.is_none()
+    {
+        return Ok(with_rl(
+            HttpResponse::Ok()
+                .content_type("application/xml")
+                .body(feed_xml("")),
+            &tk,
+        ));
     }
 
     let cats = CatMap::load(&state.repo.db).await;
@@ -340,9 +338,3 @@ async fn torznab_search_inner(
     ))
 }
 
-fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-}
