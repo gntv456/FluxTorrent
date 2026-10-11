@@ -84,3 +84,7 @@ action 需为 black / unblack / accept / reject	action 需為 black / unblack / 
 IMDb 编号格式无效：需 tt 加 7~8 位数字，或直接贴 IMDb 链接	IMDb 編號格式無效：需 tt 加 7~8 位數字，或直接貼 IMDb 連結	Invalid IMDb id: needs tt plus 7-8 digits, or paste the IMDb URL
 approval 取值无效：0 待审 / 1 过审 / 2 被拒 / 3 回收站	approval 取值無效：0 待審 / 1 過審 / 2 被拒 / 3 資源回收站	approval must be 0 pending / 1 approved / 2 rejected / 3 trash
 列表筛选参数格式无效	列表篩選參數格式無效	Invalid list filter parameters
+仅开放 1-12 用户档编辑（staff 档位不开放后台修改）	僅開放 1-12 用戶檔編輯（staff 檔位不開放後台修改）	Only member tiers 1-12 are editable (staff tiers are locked)
+档位名需 1-32 字符	檔位名需 1-32 字元	Tier name must be 1-32 characters
+该档位没有升降级规则（贵宾/职务档不开放后台编辑）	該档位沒有升降級規則（貴賓/職務檔不開放後台編輯）	This tier has no promotion rules (VIP and staff tiers are not editable here)
+阈值/奖励不能为负	閾值/獎勵不能為負	Thresholds and rewards cannot be negative
