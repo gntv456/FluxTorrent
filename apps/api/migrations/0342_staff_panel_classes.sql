@@ -10,8 +10,13 @@
 -- 跑批即 1→3 晋升、入账 70 火花并收到祝贺信，且再跑一轮不重复入账——
 -- 链路本身是好的，缺的只是界面。
 --
+-- 段归属：放 `users`（与职务管理/邀请管理/签到记录同族，都是成员养成
+-- 侧），不放 `system`（那段是日志/数据库/权限等基础设施）；sort 取段内
+-- 最大值 +1，不与既有排序撞位。
+--
 -- ⚠️ `tab_key` 必须与 `renderSimpleTool` 的 case、i18n 命名空间一致，
--- 改完跑 `_admin_nav_align.py` 对差集。幂等：WHERE NOT EXISTS。
+-- 该一致性现由 scripts/admin_nav_align_guard.py 守（本批补的门禁）。
+-- 幂等：WHERE NOT EXISTS。
 
 BEGIN;
 
@@ -20,7 +25,9 @@ INSERT INTO staff_panel_entries
      module_key, perm_key)
 SELECT 'admin', '等级规则', '/admin?tool=classes',
        '成员档升降级阈值与晋升奖励（staff 档只读）',
-       10, 'system', 93, 'classes', '', 'sitepacks.manage'
+       (SELECT COALESCE(max(sort), 0) + 1 FROM staff_panel_entries
+          WHERE section = 'users'),
+       'users', 93, 'classes', '', 'sitepacks.manage'
  WHERE NOT EXISTS (
      SELECT 1 FROM staff_panel_entries WHERE tab_key = 'classes'
  );
