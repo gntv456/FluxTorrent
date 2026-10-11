@@ -258,6 +258,24 @@ ok("S3b 反控：超限回复带 retry-after（订阅端可退避）",
    "只见到 %s" % sorted(set(hits)))
 
 
+print("== S6 限流桶的 TTL 自愈（P-69）==")
+# 模拟「当年那条 EXPIRE 失败」留下的后遗症：一个没有 TTL 的计数键。
+# 旧写法只在 n==1 时补 TTL ⇒ 之后每次调用 n 都 >1，这个键永不过期，
+# 计数一路累加 = 该用户在这一档上永久 429。
+PETK = "rl:pet:%s" % MID
+redis_cmd('DEL "%s"' % PETK)
+redis_cmd('SET "%s" 999' % PETK)
+ttl0 = redis_cmd('TTL "%s"' % PETK)
+ok("S6 前置：造出一个无 TTL 的计数键（TTL=-1）", ttl0 == "-1",
+   "ttl=%s" % ttl0)
+s, r = call("POST", "/games/pet/feed", {}, token=MT)
+ok("S6 超限照样被拒（自愈不能把限流放宽）", s == 429,
+   "http=%s %s" % (s, brief(r)))
+ttl1 = redis_cmd('TTL "%s"' % PETK)
+ok("S6 自愈：调用之后计数键必须带上 TTL（旧写法留 -1 = 永久 429）",
+   ttl1.isdigit() and int(ttl1) > 0, "ttl=%s" % ttl1)
+redis_cmd('DEL "%s"' % PETK)
+
 print("== S4 收尾自检 ==")
 def bad(key):
     v = redis_cmd('GET "%s"' % key)
