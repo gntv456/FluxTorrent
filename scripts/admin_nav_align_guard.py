@@ -83,13 +83,21 @@ def tool_tab_union(src):
     return set(re.findall(r'"([^"]+)"', seg))
 
 
+def psql_argv(sql):
+    """本地 compose 走 docker exec；CI（e2e-smoke 带 postgres service）
+    走 DATABASE_URL 直连 psql —— 同一份校验两条通路都要能跑。"""
+    url = os.environ.get("DATABASE_URL", "").strip()
+    if url:
+        return ["psql", url, "-q", "-tAc", sql]
+    return ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+            "-q", "-d", "fluxtorrent", "-tAc", sql]
+
+
 def db_tab_keys():
     sql = "SELECT tab_key FROM staff_panel_entries " \
           "WHERE COALESCE(tab_key, '') <> ''"
-    p = subprocess.run(
-        ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-q",
-         "-d", "fluxtorrent", "-tAc", sql],
-        capture_output=True, text=True, encoding="utf-8")
+    p = subprocess.run(psql_argv(sql), capture_output=True, text=True,
+                       encoding="utf-8")
     if p.returncode:
         raise RuntimeError("psql 失败: %s" % (p.stderr or "")[:200])
     return {x.strip() for x in p.stdout.splitlines() if x.strip()}
