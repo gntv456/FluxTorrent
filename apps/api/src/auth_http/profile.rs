@@ -17,9 +17,10 @@ pub async fn user_public_profile(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // P2（2026-10-06 安全审计）：档案页含多个聚合子查询，登录用户可顺序
-    // 遍历 id 拉全站——加 60 次/分钟 per-user 限流（正常浏览远够）
-    crate::http::throttle(&state, format!("profile:{}", auth.id)).await?;
+    // P2（2026-10-06）：档案页含聚合子查询，可被顺序遍历 id 拉全站——60 次/分
+    // per-user。P-61：这个 60 以前只在注释里，实际共用登录档 5 次/分。
+    crate::http::throttle_limited(&state, format!("profile:{}", auth.id), 60)
+        .await?;
     let uid = path.into_inner();
     let profile: Option<PublicProfile> = sqlx::query_as(
         r#"

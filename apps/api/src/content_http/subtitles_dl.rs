@@ -56,7 +56,8 @@ pub(super) async fn subtitle_download(
             return Err(DomainError::Forbidden);
         }
         let row: Option<(String, i64)> = sqlx::query_as(
-            "SELECT mime, size FROM attachments WHERE sha256 = $1",
+            "SELECT mime, size FROM attachments WHERE sha256 = $1 \
+             ORDER BY id LIMIT 1",
         )
         .bind(sha)
         .fetch_optional(&state.repo.db)

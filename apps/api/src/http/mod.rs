@@ -21,6 +21,7 @@ mod news_fun;
 mod plugins;
 mod probes;
 mod reports_http;
+mod throttle;
 pub mod view_layout;
 
 pub use auth_infra::*;
@@ -34,6 +35,7 @@ pub use misc_handlers::*;
 pub use news_fun::*;
 pub use plugins::*;
 pub use probes::*;
+pub use throttle::*;
 pub use view_layout::*;
 
 // auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
