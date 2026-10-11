@@ -68,17 +68,23 @@ pub async fn rate_window(
     Ok(())
 }
 
-/// 读一个计数键（fail-close）。
+/// 读一个计数键。
 ///
 /// 用在「读侧决定放行」的地方（登录账号锁定）：`unwrap_or(0)` 等于
 /// 「Redis 挂了就当没锁」，锁定防线整条失守——这是本模块最坏的一处。
+///
+/// 但 fail-close 不能写歪：键**不存在**时 Redis 的 GET 返回 nil，而
+/// `get::<_, i64>` 把 nil 判成类型错误 ⇒ 每个「从没失败过」的账号都 500，
+/// 我第一版就把登录打成了全量不可用（闸门在 `login()` 第一步当场撞死）。
+/// 正确形状是 `Option<i64>`：没键 = 0，命令真报错才 fail-close。
 pub async fn counter_peek(
     state: &Arc<AppState>,
     key: &str,
 ) -> DomainResult<i64> {
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
-    c.get(key).await.map_err(rl_err)
+    let v: Option<i64> = c.get(key).await.map_err(rl_err)?;
+    Ok(v.unwrap_or(0))
 }
 
 /// 计数 +1 并把 TTL 续到 `ttl` 秒（fail-close）。
