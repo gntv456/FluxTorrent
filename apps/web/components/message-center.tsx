@@ -20,19 +20,21 @@ import { ToolbarSwitcher, BulkBar } from "@/components/message-center-toolbar";
 
 export function MessageCenter() {
   const { dict } = useI18n();
-  // 支持 userbar 深链：/messages?box=sent
-  const [box, setBox] = useState<"inbox" | "sent">(() => {
-    if (typeof window === "undefined") return "inbox";
-    return new URLSearchParams(window.location.search).get("box") === "sent"
-      ? "sent"
-      : "inbox";
-  });
+  // 深链参数一次读齐：userbar 的 ?box=sent、通知中心卡片的 ?unread=true
+  // （P-30：后者此前没有任何读取点——卡片说「有 56 封未读」，点过去筛的
+  // 却是全箱，数字与它自己的链接第二段打架。沿用本文件既有的 box 写法）
+  const params = typeof window === "undefined"
+    ? null
+    : new URLSearchParams(window.location.search);
+  const [box, setBox] = useState<"inbox" | "sent">(
+    () => (params?.get("box") === "sent" ? "sent" : "inbox"));
   const [folder, setFolder] = useState<number | null>(null); // null=主收件箱
   const [rows, setRows] = useState<MessageRow[] | null>(null);
   const [boxes, setBoxes] = useState<PmBox[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [search, setSearch] = useState("");
-  const [onlyUnread, setOnlyUnread] = useState(false);
+  const [onlyUnread, setOnlyUnread] = useState(
+    () => params?.get("unread") === "true");
   const [err, setErr] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [replyTo, setReplyTo] = useState<number | null>(null);
