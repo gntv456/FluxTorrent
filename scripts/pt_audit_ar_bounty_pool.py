@@ -155,12 +155,14 @@ ok("S3 认领生效（status=3、crew 2 人、deadline 7 天）",
                   % (rid3 or 0)) == "3"
    and q("SELECT jsonb_array_length(crew) FROM subtitle_requests WHERE "
          "id = %d" % (rid3 or 0)) == "2", str(r)[:110])
+# claim 的 body 必须给 {}：字段全是 Option 却强制要 JSON body，
+# 空 body 会被 serde 挡成「EOF while parsing」（契约毛刺，见文档 P-50）
 ok("S3 反例：已被认领的单不能再认领",
-   call("POST", "/subtitles/requests/%d/claim" % (rid3 or 0), None,
+   call("POST", "/subtitles/requests/%d/claim" % (rid3 or 0), {},
         token=tC1)[0] == 400)
 s, rid4, _ = new_req(0, "AqGate sm")
 ok("S3 反例：发起人不能认领自己的单",
-   call("POST", "/subtitles/requests/%d/claim" % (rid4 or 0), None,
+   call("POST", "/subtitles/requests/%d/claim" % (rid4 or 0), {},
         token=tMe)[0] == 400)
 ok("S3 反例：份额合计超 100 被拒",
    call("POST", "/subtitles/requests/%d/claim" % (rid4 or 0),
@@ -217,7 +219,7 @@ ok("S3 反例：已验收单再验收被拒（不双发）",
 print("== AR-S4 弃单端点语义（P-44 的后端面） ==")
 s, rid5, _ = new_req(0, "AqGate ab")
 ok("S4 正控：第三人可认领空池单",
-   call("POST", "/subtitles/requests/%d/claim" % (rid5 or 0), None,
+   call("POST", "/subtitles/requests/%d/claim" % (rid5 or 0), {},
         token=tC1)[0] == 200
    and q("SELECT status FROM subtitle_requests WHERE id = %d" % (rid5 or 0))
    == "3", str(s))
@@ -245,9 +247,10 @@ ok("S5 认领超时→回池 status=0、claimed_by 清空",
    q("SELECT status::text||'|'||COALESCE(claimed_by::text,'null') FROM "
      "subtitle_requests WHERE id = %d" % rid4) == "0|null",
    q("SELECT status FROM subtitle_requests WHERE id = %d" % rid4))
-ok("S5 超时回池落 subreq.abandon 审计（拖到超时也记账）",
+# jsonb 转文本渲染成 {"id": 74} 带空格，按 ->> 取值比对才稳
+ok("S5 超时回池落 subreq.abandon 审计（拖到超时也记账，P-49）",
    int(q("SELECT count(*) FROM audit_log WHERE action = 'subreq.abandon' "
-         "AND ref::text LIKE '%%\"id\":%d%%'" % rid4)) >= 1)
+         "AND ref->>'id' = '%d'" % rid4)) >= 1)
 ok("S5 超时通知认领人 x1",
    wait_row("SELECT count(*) FROM messages WHERE receiver_id = %d AND "
             "subject = '字幕认领已超时'" % uC1, "1"), jinfo)

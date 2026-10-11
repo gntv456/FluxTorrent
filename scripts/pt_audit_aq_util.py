@@ -118,10 +118,12 @@ def make_exec(CLEAN):
                 "IN (@U); DELETE FROM spark_ledger WHERE user_id IN (@U); "
                 "DELETE FROM subtitle_requests WHERE user_id IN (@U); "
                 "DELETE FROM subtitles WHERE user_id IN (@U); "
-                "DELETE FROM audit_log WHERE actor_id IN (@U) AND action "
-                "LIKE 'sub%'; DELETE FROM shoutbox WHERE user_id IN (@U); "
+                "DELETE FROM shoutbox WHERE user_id IN (@U); "
                 "UPDATE users SET status = 2, spark_balance = 0 "
                 "WHERE id IN (@U)").replace("@U", stale))
+            # audit_log 不能删：库上有 audit_log_chain() 防篡改触发器
+            # （实测 DELETE 直接 RAISE）。留着历史审计无害，本闸门所有
+            # 判据都按「本轮新建的 user id」计数，不受旧行影响。
         exec_sql("DELETE FROM subtitle_votes WHERE subtitle_id IN (SELECT id"
                  " FROM subtitles WHERE title LIKE 'Aq%'); "
                  "DELETE FROM subtitle_awards WHERE subtitle_id IN (SELECT "
