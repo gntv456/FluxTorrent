@@ -47,16 +47,6 @@ export function MessageCenter() {
   const [newBoxName, setNewBoxName] = useState("");
   const t = dict.messages;
 
-  // 通知中心的卡片链到这里是 `/messages?unread=true`，但这个开关此前只认
-  // 本地点击、从不读 URL：点「未读私信 56」过去看到的是全部收件箱，链接的
-  // 承诺被静默丢掉（批二十 P-30，与 P-19/P-25 同族——入口在、数字在，
-  // 点过去什么都没发生）。放在 effect 里而不是初始值，避免 SSR 读不到
-  // location 造成 hydration 抖动。
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("unread") === "true")
-      setOnlyUnread(true);
-  }, []);
-
   const load = useCallback(() => {
     setRows(null);
     setErr(null);
