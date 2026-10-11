@@ -80,7 +80,7 @@ async fn torznab_caps(
     let mut cats_xml = String::new();
     for id in ids {
         cats_xml.push_str(&format!(
-            "    <category id=\"{id}\" name=\"{}\" />\n",
+            "    <cat id=\"{id}\" name=\"{}\" parent=\"0\" />\n",
             xml_escape(newznab_name(id)),
         ));
     }
