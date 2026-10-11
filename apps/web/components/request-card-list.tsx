@@ -19,7 +19,7 @@ export interface RequestCardRow {
   title: string;
   descr: string | null;
   bounty: number;
-  latest_bounty: number;
+  latest_bounty: number | null;
   comments: number | null;
   bids: number | null;
   fulfilled_torrent_id: number | null;
@@ -74,7 +74,7 @@ export function RequestCardList({
             <div className={ROW}>
               <dt className="text-sub">{t.colLatestBounty}</dt>
               <dd className="num font-bold">
-                {r.latest_bounty.toLocaleString()}
+                {r.latest_bounty?.toLocaleString() ?? "—"}
               </dd>
             </div>
             <div className={ROW}>
