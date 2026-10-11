@@ -103,6 +103,18 @@ def db_tab_keys():
     return {x.strip() for x in p.stdout.splitlines() if x.strip()}
 
 
+def db_blank_module_keys():
+    """module_key='' 的导航项。规范值是 NULL（后台写路径就归一成 NULL），
+    判据 `module_on_sql` 虽然同批起容忍 ''，但这类行仍是「迁移手写列时
+    踩空串哨兵」的产物——批十七实测两条导航项因此从导航里静默消失。"""
+    sql = "SELECT tab_key FROM staff_panel_entries WHERE module_key = ''"
+    p = subprocess.run(psql_argv(sql), capture_output=True, text=True,
+                       encoding="utf-8")
+    if p.returncode:
+        raise RuntimeError("psql 失败: %s" % (p.stderr or "")[:200])
+    return {x.strip() for x in p.stdout.splitlines() if x.strip()}
+
+
 def main():
     switch_src = read(SWITCH)
     page_src = read(PAGE)
@@ -140,6 +152,11 @@ def main():
         if orphan:
             warns.append("ToolTab/staff 面板有、后台导航无（可能有意）：%s"
                          % ", ".join(orphan))
+        blank = sorted(db_blank_module_keys())
+        if blank:
+            problems.append(
+                "导航项 module_key 写成空串（规范值是 NULL，空串是"
+                "「迁移手写列踩哨兵」的产物）：%s" % ", ".join(blank))
     unused_case = sorted(k for k in (cases | page_cases)
                          if k not in dbk and k not in subroutes)
     if unused_case and dbk:

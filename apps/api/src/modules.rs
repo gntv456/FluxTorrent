@@ -143,9 +143,9 @@ pub async fn require_known_module(
     Ok(())
 }
 
-/// 「挂了模块键的行是否该出现」的 SQL 判据（同 menus_public 的 T3 语义：
-/// 未配置键按关处理）。集中一处，避免每个读路径各写一份而悄悄漂移。
-/// `alias` 传表名或别名；传空串则用裸列名。
+/// 「挂了模块键的行是否该出现」的 SQL 判据（同 menus_public 的 T3：未配置
+/// 键按关处理；'' 视同不挂键——迁移手写 module_key 惯填 ''，判据只认 NULL
+/// 就让这类导航项静默消失，批十七 P-25）。集中一处，避免各读路径漂移。
 pub fn module_on_sql(alias: &str) -> String {
     let p = if alias.is_empty() {
         String::new()
@@ -153,9 +153,9 @@ pub fn module_on_sql(alias: &str) -> String {
         format!("{alias}.")
     };
     format!(
-        "({p}module_key IS NULL OR COALESCE((SELECT value = 'yes' \
-         FROM site_settings sg WHERE sg.name = 'module_' || \
-         {p}module_key), false))"
+        "({p}module_key IS NULL OR {p}module_key = '' OR \
+         COALESCE((SELECT value = 'yes' FROM site_settings sg \
+         WHERE sg.name = 'module_' || {p}module_key), false))"
     )
 }
 
