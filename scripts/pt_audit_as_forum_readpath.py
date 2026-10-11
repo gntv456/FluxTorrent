@@ -10,7 +10,14 @@
   S4 post_video_max 与前端渲染同口径：裸 URL 自动内嵌要计数、编辑口也要过闸
      （P-54：旧版只数 `!video(`，且只有发帖/回帖查，编辑不查）；
   S5 内嵌规则真的能命中（P-55：0189 把正则里的 `\\.` 写成 `\\\\.`，四条内置
-     规则自上线以来永不命中），且保存侧拦住这种「能编译、永不命中」的形态。
+     规则自上线以来永不命中），且保存侧拦住这种「能编译、永不命中」的形态；
+     命中之外还要断言**生成物**（P-56：bilibili 模板取 $1，而 1 组是可选的
+     `(www\\.)?`，播放器加载的是 `bvid=www.` 这个不存在的稿件）。
+
+假绿自查（写这条闸门时真实踩过）：搜索/RSS 的「送不出去」不能拿空数组当判据
+——SQL 拼坏让接口 500 时 data 也是空，四条负控一起绿、四条正控一起灭。
+所以 search() 非 200/非列表直接炸，S2 还加了「可见时三出口都送得出」的地基
+与「恢复可见后立刻恢复」的反控。
 
 自建数据自收尾：探针分区/版块跑完删除，探针号置 status=2（audit_log 防篡改
 链不允许真删号），site_settings 的先读后写、finally 原值写回。
@@ -136,8 +143,14 @@ def detail(tok, tid):
 
 
 def search(tok, kw):
-    d = call("GET", "/forums/search?q=" + quote(kw), token=tok)[1].get("data")
-    return d if isinstance(d, list) else []
+    """搜索返回必须 200 + 列表。把「空数组」直接当成「被权限挡住」是假绿
+    机制——本批就撞过一次：format! 拼出的坏 SQL 让接口 500、data 为 null，
+    于是四条负控全绿、四条正控全灭。"""
+    s, r = call("GET", "/forums/search?q=" + quote(kw), token=tok)
+    d = r.get("data")
+    if s != 200 or not isinstance(d, list):
+        raise SystemExit("搜索接口不可用：http=%s %s" % (s, brief(r)))
+    return d
 
 
 def hit_of(rows, tid, kw):
@@ -154,6 +167,31 @@ def pmatch(pat, url):
         return re.search(pat, url, re.I)
     except (re.error, TypeError):
         return None
+
+
+def embed_src(rule, url):
+    """复刻 forum-video-embed.tsx 的 fillTemplate：$n → 捕获组，再拼
+    extra_params。命中与否返回 None/字符串。
+    只断言「正则命中」是不够的——模板取错捕获组时正则照样命中，播放器
+    却加载一个不存在的 id（P-56：bilibili 模板写 $1，而 1 组是可选的
+    (www\\.)?，生成 bvid=www.）。"""
+    m = pmatch(rule.get("url_pattern") or "", url)
+    if not m:
+        return None
+
+    def sub(x):
+        n = int(x.group(1))
+        try:
+            return m.group(n) or ""
+        except IndexError:
+            return ""
+
+    src = re.sub(r"\$([1-9])", sub, rule.get("embed_template") or "")
+    extra = rule.get("extra_params")
+    if extra:
+        src += "" if extra[:1] in ("&", "?") else "?"
+        src += extra
+    return src
 
 
 def brief(x):
@@ -215,8 +253,8 @@ ok("S1 地基：详情页对普通成员把 2 楼正文替换成提示",
    f2.get("body") == "……", "二楼=%s" % brief(f2.get("body")))
 rows = search(LT, "ASPROTSEC%s" % TAG)
 h = hit_of(rows, T1, "ASPROTSEC")
-ok("S1 搜索不得把 protected 版块的非一楼正文送出去",
-   h is None or not h.get("snippet"), "命中=%s" % brief(h))
+ok("S1 搜索不得把 protected 版块的非一楼正文送出去（连命中都不该有）",
+   h is None, "命中=%s" % brief(h))
 rows = search(LT, "ASPROT1F%s" % TAG)
 ok("S1 正控：一楼正文（本就公开）仍搜得到",
    hit_of(rows, T1, "ASPROT1F") is not None, brief(rows))
@@ -231,6 +269,16 @@ ok("S1 正控：站长读到的二楼是原文", REPLY.split()[0] in str(rf.get(
 exec_sql("UPDATE forums SET protected = FALSE WHERE id = %s" % FID)
 
 print("== S2 分区下架 × 四个分发口（P-52）==")
+# 地基：分区可见时三个出口都送得出这条主题——没有这一步，下面的
+# 「送不出去」可能是接口挂了而不是权限挡住了（本批真实踩过）。
+feed0 = call("GET", "/forums/feed", token=LT)[1].get("data") or {}
+items0 = feed0.get("items") if isinstance(feed0, dict) else feed0
+s0, xml0 = rss_body(LT, LUID, FID)
+ok("S2 地基：可见时搜索/关注流/RSS 三出口都送得出 T2",
+   hit_of(search(LT, "ASHIDDEN%s" % TAG), T2, "ASHIDDEN") is not None
+   and any(x.get("topic_id") == int(T2) for x in items0 or [])
+   and s0 == 200 and ("AS闸门T2%s" % TAG) in xml0,
+   "rss=%s feed=%s" % (s0, brief(items0)))
 exec_sql("UPDATE forum_categories SET visible = FALSE WHERE id = %s" % CAT)
 lst = call("GET", "/forums", token=LT)[1].get("data") or []
 lrows = lst if isinstance(lst, list) else (lst.get("forums") or [])
@@ -246,12 +294,22 @@ ok("S2 关注流不送下架分区的主题",
    brief(fitems))
 s, xml = rss_body(LT, LUID, FID)
 ok("S2 RSS 不送下架分区的主题（RSS 出口不在网关里，必须自证）",
-   "AS闸门T2%s" % TAG not in xml, "http=%s len=%d" % (s, len(xml)))
+   s == 200 and "AS闸门T2%s" % TAG not in xml,
+   "http=%s len=%d" % (s, len(xml)))
+sr, xmlr = rss_body(ROOT, 1, FID)
+ok("S2 正控：站长 RSS 仍推得到下架分区的主题（出口活着，判据按等级）",
+   sr == 200 and "AS闸门T2%s" % TAG in xmlr, "http=%s len=%d"
+   % (sr, len(xmlr)))
 ok("S2 正控：站长仍能搜到下架分区",
    hit_of(search(ROOT, "ASHIDDEN%s" % TAG), T2, "ASHIDDEN") is not None)
 exec_sql("UPDATE forum_categories SET visible = TRUE WHERE id = %s" % CAT)
 ok("S2 反控：分区恢复可见后普通成员立刻搜得到（过滤器不是永真）",
    hit_of(search(LT, "ASHIDDEN%s" % TAG), T2, "ASHIDDEN") is not None)
+feed1 = call("GET", "/forums/feed", token=LT)[1].get("data") or {}
+items1 = feed1.get("items") if isinstance(feed1, dict) else feed1
+ok("S2 反控：关注流也随之恢复（不是缓存或一次性判定）",
+   any(x.get("topic_id") == int(T2) for x in items1 or []),
+   brief(items1))
 
 print("== S3 无权读取不涨热度（P-53）==")
 exec_sql("UPDATE forums SET minclassread = 90 WHERE id = %s" % FID)
@@ -343,6 +401,15 @@ for p, url in CANON.items():
     pat = (by_provider.get(p) or {}).get("url_pattern") or ""
     ok("S5 规则 %s 命中该平台规范 URL" % p, bool(pmatch(pat, url)),
        "pattern=%s url=%s" % (brief(pat), url))
+NEED = {"bilibili": "BV1xx411c7mD", "youtube": "dQw4w9WgXcQ",
+        "youtube_short": "dQw4w9WgXcQ", "vimeo": "76979871",
+        "self": "0" * 64}
+for p, url in CANON.items():
+    rule = by_provider.get(p) or {}
+    src = embed_src(rule, url)
+    ok("S5 %s 生成的播放器 src 取对捕获组且落在 embed_origin 内" % p,
+       bool(src) and src.startswith(rule.get("embed_origin") or "无Origin")
+       and NEED[p] in src, "src=%s" % brief(src))
 bad = pmatch((by_provider.get("bilibili") or {}).get("url_pattern") or "",
              "https://evil.com/video/BV1xx411c7mD")
 ok("S5 反控：域名锚定生效，仿冒域不命中", not bad, brief(bad))
