@@ -5125,8 +5125,9 @@ medalDaysPh: "Days (empty = medal default)",
   /** H&R admin overview (admin-hr) */
   adminClasses: {
     title: "Class rules",
-    intro: "Member tiers (1-12): promotion thresholds and rewards. "
-      + "Staff tiers (90+) are read-only here.",
+    intro: "Member tiers (1-12) carry the promotion thresholds and "
+      + "rewards. VIP (20) and staff tiers (90+) have no rule row, so "
+      + "they are listed read-only.",
     loadFail: "Load failed",
     saveFail: "Save failed",
     savedMsg: "Tier {n} saved",
@@ -5140,7 +5141,7 @@ medalDaysPh: "Days (empty = medal default)",
     thSparks: "Promotion reward (sparks)",
     thUsers: "Users now",
     save: "Save",
-    staffLocked: "Staff tier (read-only)",
+    staffLocked: "Read-only (no rules)",
     sparksHint: "0 disables the reward. The worker re-checks tiers every "
       + "60s, pays the difference across tiers and is idempotent per tier.",
     demoteHint: "When off, members in this tier are never demoted.",

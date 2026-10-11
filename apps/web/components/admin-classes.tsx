@@ -12,7 +12,8 @@ import { fmt } from "@/i18n/config";
  *  worker `class_auto_adjust` 每分钟按这里的阈值升降级，并按
  *  `promo_sparks` 发放晋升奖励；奖励路径（0072）实现完整却因无界面而
  *  常年 0 值空转——本页就是把这条链接给站长的入口。
- *  staff 档（class_id >= 90）后端拒绝编辑（403/校验），前端一并只读。 */
+ *  档位全集来自 user_classes：只有成长档 1-12 在 class_rules 里有规则行，
+ *  贵宾（20）与职务档（90+）没有规则，六列为 null，整行只读。 */
 
 const GB = 1024 ** 3;
 /** 后端锁死的 staff 线（classes_admin.rs STAFF_CLASS_FLOOR） */
@@ -21,26 +22,27 @@ const STAFF_FLOOR = 90;
 interface ClassRow {
   class_id: number;
   name: string;
+  min_uploaded: number | null;
+  min_download_count: number | null;
+  min_seed_hours: number | null;
+  min_account_age_days: number | null;
+  demotable: boolean | null;
+  promo_sparks: number | null;
+  users: number;
+}
+
+/** 草稿只存被改动的档位；字节门槛在界面上按 GB 编辑。
+ *  六列在 ClassRow 里可空（只读档无规则），进草稿前一律补 0，
+ *  免得 null 落进 PUT body 被后端类型校验打回。 */
+type Draft = {
+  name: string;
   min_uploaded: number;
   min_download_count: number;
   min_seed_hours: number;
   min_account_age_days: number;
   demotable: boolean;
   promo_sparks: number;
-  users: number;
-}
-
-/** 草稿只存被改动的档位；字节门槛在界面上按 GB 编辑 */
-type Draft = Pick<
-  ClassRow,
-  | "name"
-  | "min_uploaded"
-  | "min_download_count"
-  | "min_seed_hours"
-  | "min_account_age_days"
-  | "demotable"
-  | "promo_sparks"
->;
+};
 
 export function AdminClasses() {
   const { dict } = useI18n();
@@ -71,12 +73,12 @@ export function AdminClasses() {
 
   const draftOf = (r: ClassRow): Draft => drafts[r.class_id] ?? {
     name: r.name,
-    min_uploaded: r.min_uploaded,
-    min_download_count: r.min_download_count,
-    min_seed_hours: r.min_seed_hours,
-    min_account_age_days: r.min_account_age_days,
-    demotable: r.demotable,
-    promo_sparks: r.promo_sparks,
+    min_uploaded: r.min_uploaded ?? 0,
+    min_download_count: r.min_download_count ?? 0,
+    min_seed_hours: r.min_seed_hours ?? 0,
+    min_account_age_days: r.min_account_age_days ?? 0,
+    demotable: r.demotable ?? false,
+    promo_sparks: r.promo_sparks ?? 0,
   };
 
   const patch = (r: ClassRow, k: keyof Draft, v: number | string | boolean) =>
@@ -97,18 +99,23 @@ export function AdminClasses() {
     }
   }
 
-  const num = (
-    r: ClassRow, k: keyof Draft, scale = 1, disabled = false,
-  ) => (
+  /** 无规则行（贵宾/职务档）或后端 staff 线以下才允许编辑 */
+  const locked = (r: ClassRow) =>
+    r.min_uploaded === null || r.class_id >= STAFF_FLOOR;
+
+  const num = (r: ClassRow, k: keyof Draft, scale = 1) => (
     <input
       type="number"
       className={`${INPUT_MD} w-24`}
       value={Number(draftOf(r)[k]) / scale}
-      disabled={disabled}
       onChange={(e) =>
         patch(r, k, Math.round(Number(e.target.value) * scale))}
     />
   );
+
+  /** 只读档的四维/奖励显示「—」而不是 0：0 会被读成「门槛为零」 */
+  const cell = (r: ClassRow, k: keyof Draft, scale = 1) =>
+    locked(r) ? <span className="text-xs text-sub">—</span> : num(r, k, scale);
 
   return (
     <div className="flex flex-col gap-3">
@@ -139,7 +146,6 @@ export function AdminClasses() {
           </thead>
           <tbody>
             {rows.map((r) => {
-              const locked = r.class_id >= STAFF_FLOOR;
               const d = draftOf(r);
               return (
                 <tr
@@ -148,37 +154,49 @@ export function AdminClasses() {
                 >
                   <td>{r.class_id}</td>
                   <td>
-                    <input
-                      className={`${INPUT_MD} w-32`}
-                      value={d.name}
-                      disabled={locked}
-                      onChange={(e) => patch(r, "name", e.target.value)}
-                    />
+                    {locked(r) ? (
+                      r.name
+                    ) : (
+                      <input
+                        className={`${INPUT_MD} w-32`}
+                        value={d.name}
+                        onChange={(e) => patch(r, "name", e.target.value)}
+                      />
+                    )}
                   </td>
                   <td>
-                    {num(r, "min_uploaded", GB, locked)}
-                    <span className="ml-1 text-xs text-sub">{at.upHint}</span>
+                    {cell(r, "min_uploaded", GB)}
+                    {!locked(r) && (
+                      <span className="ml-1 text-xs text-sub">
+                        {at.upHint}
+                      </span>
+                    )}
                   </td>
-                  <td>{num(r, "min_download_count", 1, locked)}</td>
-                  <td>{num(r, "min_seed_hours", 1, locked)}</td>
-                  <td>{num(r, "min_account_age_days", 1, locked)}</td>
+                  <td>{cell(r, "min_download_count")}</td>
+                  <td>{cell(r, "min_seed_hours")}</td>
+                  <td>{cell(r, "min_account_age_days")}</td>
                   <td>
-                    <input
-                      type="checkbox"
-                      checked={d.demotable}
-                      disabled={locked}
-                      title={at.demoteHint}
-                      onChange={(e) =>
-                        patch(r, "demotable", e.target.checked)}
-                    />
+                    {locked(r) ? (
+                      <span className="text-xs text-sub">—</span>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={d.demotable}
+                        title={at.demoteHint}
+                        onChange={(e) =>
+                          patch(r, "demotable", e.target.checked)}
+                      />
+                    )}
                   </td>
                   <td>
-                    {num(r, "promo_sparks", 1, locked)}
-                    <div className="text-xs text-sub">{at.sparksHint}</div>
+                    {cell(r, "promo_sparks")}
+                    {!locked(r) && (
+                      <div className="text-xs text-sub">{at.sparksHint}</div>
+                    )}
                   </td>
                   <td className="text-right">{r.users}</td>
                   <td className="text-right">
-                    {locked ? (
+                    {locked(r) ? (
                       <span className="text-xs text-sub">
                         {at.staffLocked}
                       </span>
