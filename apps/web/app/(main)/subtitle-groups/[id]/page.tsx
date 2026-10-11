@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { formatBytes } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import { SubscribeNetworkButton } from "@/components/subscribe-network-button";
@@ -42,8 +42,8 @@ export default async function SubtitleGroupPage({
     g = await api.get<SubGroupDetail>(
       `/api/v1/networks/${encodeURIComponent(gid)}`,
     );
-  } catch {
-    notFound();
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) notFound(); else throw e;
   }
   const { dict } = await getDict();
   const t = dict.subtitleGroups;

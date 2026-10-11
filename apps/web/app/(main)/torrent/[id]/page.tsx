@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { formatBytes } from "@/lib/format";
 import { siteBase } from "@/lib/site-url";
 import {
@@ -155,8 +155,8 @@ export default async function TorrentDetailPage({
   let agg: Aggregate;
   try {
     agg = await api.get<Aggregate>(`/api/v1/torrents/${enc}/aggregate`);
-  } catch {
-    notFound();
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) notFound(); else throw e;
   }
   const t = agg.torrent;
   const ext = agg.detail;
