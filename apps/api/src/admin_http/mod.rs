@@ -93,6 +93,7 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
 mod agent_rules;
 mod audit;
 mod deny;
+mod embed_rule_check;
 mod embed_rules;
 mod forum;
 mod forum_check;
