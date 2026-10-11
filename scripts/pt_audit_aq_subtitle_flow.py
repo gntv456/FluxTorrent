@@ -125,10 +125,17 @@ ok("S2 列表可按种过滤", s == 200 and any(
 ok("S2 详情可读",
    call("GET", "/subtitles/%d/detail" % sid2, token=tVet)[1].get(
        "data", {}).get("id") == sid2)
-D0 = int(q("SELECT downloads FROM subtitles WHERE id = %d" % sid2) or 0)
-call("GET", "/subtitles/%d/download" % sid2, token=tVet)
-call("GET", "/subtitles/%d/download" % sid2, token=tVet)
-D1 = int(q("SELECT downloads FROM subtitles WHERE id = %d" % sid2) or 0)
+# 去重断言用**外链行**（成功出口，两版口径都成立）；附件行在本闸门
+# 没有真实字节（storage 里取不到 → 404），P-48 之后 404 不再计数，
+# 拿它测「+1」会把修复测成回归。
+sidExt = int(q("INSERT INTO subtitles (user_id, title, lang, file_ref, "
+               "size, ext, status, deleted_at) VALUES (%d, 'AqSub ext', "
+               "'zh', 'https://x/ext.srt', 10, 'srt', 1, NULL) RETURNING id"
+               % uVet))
+D0 = int(q("SELECT downloads FROM subtitles WHERE id = %d" % sidExt) or 0)
+call("GET", "/subtitles/%d/download" % sidExt, token=tVet)
+call("GET", "/subtitles/%d/download" % sidExt, token=tVet)
+D1 = int(q("SELECT downloads FROM subtitles WHERE id = %d" % sidExt) or 0)
 ok("S2 下载计数同人每小时去重（两次点按只 +1）", D1 - D0 == 1,
    "before=%s after=%s" % (D0, D1))
 ok("S2 反例：分页 per_page 白名单外的值回落 50",
