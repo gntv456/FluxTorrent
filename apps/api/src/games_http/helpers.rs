@@ -132,10 +132,15 @@ pub(super) async fn check_rate_scoped(
     let n: i64 = conn.incr(&key, 1).await.map_err(|_| {
         DomainError::Internal(anyhow::anyhow!("限流服务不可用"))
     })?;
-    if n == 1 {
-        let _: () = conn.expire(&key, 3600).await.map_err(|_| {
-            DomainError::Internal(anyhow::anyhow!("限流服务不可用"))
-        })?;
+    // P-69：原来只在 n==1 时 EXPIRE——那条命令一旦失败（或那次请求正好落在
+    // 两个连接之间），这个键就永不过期：计数一直累加，用户超过额度后
+    // **永久 429**。改成 tracker 的 pttl 写法：发现没有 TTL 就补一次，
+    // 固定小时窗不变，失败也能被下一次调用自愈（不因此打回本次请求）。
+    let ttl: i64 = conn.pttl(&key).await.unwrap_or(-1);
+    if ttl < 0 {
+        if let Err(e) = conn.expire::<_, i64>(&key, 3600).await {
+            tracing::warn!(%e, key = %key, "游戏额度桶续期失败（下一次调用会补）");
+        }
     }
     if n > limit {
         return Err(DomainError::RateLimited);
