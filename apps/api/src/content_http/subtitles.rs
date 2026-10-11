@@ -104,7 +104,8 @@ pub(super) async fn subtitle_upload(
     // P-42（本批实测）：幂等键必须锚「文件」而不是「字幕行」——旧键
     // subtitle:{uid}:{id} 每次重传都是新 id，而查重只看 deleted_at IS NULL，
     // 于是「上传→自删→再传」可无限再领 +5（实测流水 2 条 / 10 火花）。
-    let reward: i64 = if file_ref.starts_with("attach://") {
+    // 顺带：已发过的这一次不再谎报 reward=5（响应要与流水一致）。
+    let mut reward: i64 = if file_ref.starts_with("attach://") {
         5
     } else {
         0
@@ -112,7 +113,20 @@ pub(super) async fn subtitle_upload(
     if reward > 0 {
         let sha = &file_ref["attach://".len()..];
         let idem = format!("subtitle:file:{}:{}", auth.id, sha);
-        earn_spark(&state.repo.db, auth.id, reward, "subtitle", &idem).await?;
+        let already: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE \
+             idempotency_key = $1)",
+        )
+        .bind(&idem)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if already {
+            reward = 0;
+        } else {
+            earn_spark(&state.repo.db, auth.id, reward, "subtitle", &idem)
+                .await?;
+        }
     }
     announce_upload(&state, &auth, &meta, body.title.trim()).await;
     Ok(ok(
