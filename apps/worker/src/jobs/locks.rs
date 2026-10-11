@@ -110,12 +110,12 @@ pub(crate) async fn mark_end(db: &PgPool, job: &str, err: Option<&str>) {
 /// 二审 G8 补登：magic_pool/funding/subtitles/论坛抽奖此前漏挂锁——模块关闭后
 /// 仍开全站促销/退款动账/验收交稿/开奖发奖。
 pub(crate) fn job_module(job_key: &str) -> Option<&'static str> {
-    // 组队契约的 settle/expire 有意**不挂**模块开关（见
-    // _doc/契约失败流转与信誉.md §3.4）：两者只处理既有契约——settle 不给
-    // 任何人新开契约、expire 只做终止——关模块后不增加新玩法面，但一支
-    // 开着的契约若被判「模块已关闭」而整轮跳过，会永远悬在「进行中」，
-    // 成员的做种增量与奖励拿不到。故与 resurrection_settle 同款：
-    // worker 侧不拦，只有 API 入口做开关。
+    // 收尾类 settle/expire **不挂**模块开关（见 _doc/契约失败流转与信誉.md
+    // §3.4）：组队契约（P-38，2026-10-11）与单人复活（P-40，同日）都只
+    // 处理既有契约——settle 不给任何人新开契约、expire 只做终止——关模块
+    // 后不增加新玩法面，但一支开着的契约若被判「模块已关闭」而整轮跳过，
+    // 会永远悬在「进行中」/open，成员的做种增量与奖励拿不到。worker 侧
+    // 一律不拦，「办新契约」只在 API 入口做开关。
     Some(match job_key {
         "job:bank_daily" => "bank",
         "job:task_settle" => "tasks",
@@ -124,7 +124,6 @@ pub(crate) fn job_module(job_key: &str) -> Option<&'static str> {
         "job:preserve_exit" | "job:preserve_settle" | "job:preserve_seed" => {
             "preserve"
         }
-        "job:resurrection_settle" => "resurrections",
         "job:wishlist_notify" => "wishlist",
         "job:magic_pool_promo" | "job:funding_settle" => "magic_pool",
         "job:subreq_sweep" | "job:subawards" | "job:subcert_sweep" => {
