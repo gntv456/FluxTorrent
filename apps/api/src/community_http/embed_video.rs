@@ -14,7 +14,12 @@ fn video_candidate_url(line: &str) -> Option<&str> {
     let t = line.trim();
     if let Some(inner) = t.strip_prefix("!video(") {
         let url = inner.strip_suffix(')')?;
-        if url.is_empty() || url.chars().any(char::is_whitespace) {
+        // 前端 VIDEO_RE 是 ^!video\(([^)\s]+)\)$：URL 里不许有 ')' 或空白，
+        // 否则整行按普通文本渲染，不该计入视频数。
+        if url.is_empty()
+            || url.contains(')')
+            || url.chars().any(char::is_whitespace)
+        {
             return None;
         }
         // SAFE_URL：http(s)/mailto/站内绝对路径
