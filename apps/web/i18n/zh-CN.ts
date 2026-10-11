@@ -4964,6 +4964,27 @@ const zhCnBase = {
     pvReason: "重复发布",
   },
   /** H&R 后台总览（admin-hr） */
+  adminClasses: {
+    title: "等级规则",
+    intro: "成员档（1-12）的升降级阈值与晋升奖励；staff 档（90+）不开放编辑。",
+    loadFail: "加载失败",
+    saveFail: "保存失败",
+    savedMsg: "档位 {n} 已保存",
+    thTier: "档",
+    thName: "名称",
+    thUp: "上传量门槛",
+    thDl: "完成下载数",
+    thSeedH: "做种小时",
+    thAge: "账号天数",
+    thDemote: "可降级",
+    thSparks: "晋升奖励（火花）",
+    thUsers: "当前人数",
+    save: "保存",
+    staffLocked: "staff 档只读",
+    sparksHint: "0 = 不发奖励；worker 每 60 秒按阈值判定升降级，跨档补发差额且幂等（同人同档不重复入账）",
+    demoteHint: "关闭后该档成员不会再被降回低档",
+    upHint: "GB",
+  },
   adminHr: {
     statusLabels: {
       open: "考察中",

@@ -5123,6 +5123,29 @@ medalDaysPh: "Days (empty = medal default)",
     pvReason: "Duplicate posting",
   },
   /** H&R admin overview (admin-hr) */
+  adminClasses: {
+    title: "Class rules",
+    intro: "Member tiers (1-12): promotion thresholds and rewards. "
+      + "Staff tiers (90+) are read-only here.",
+    loadFail: "Load failed",
+    saveFail: "Save failed",
+    savedMsg: "Tier {n} saved",
+    thTier: "Tier",
+    thName: "Name",
+    thUp: "Min upload",
+    thDl: "Min completed",
+    thSeedH: "Min seed hours",
+    thAge: "Min account age (days)",
+    thDemote: "Demotable",
+    thSparks: "Promotion reward (sparks)",
+    thUsers: "Users now",
+    save: "Save",
+    staffLocked: "Staff tier (read-only)",
+    sparksHint: "0 disables the reward. The worker re-checks tiers every "
+      + "60s, pays the difference across tiers and is idempotent per tier.",
+    demoteHint: "When off, members in this tier are never demoted.",
+    upHint: "GB",
+  },
   adminHr: {
     statusLabels: {
       open: "Under watch",
