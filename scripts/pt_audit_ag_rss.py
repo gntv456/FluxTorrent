@@ -339,6 +339,17 @@ for k, path in sorted(gets.items()):
     # 401/400/429 都是「口在、只是要凭证」；404/1004 才是虚报
     if st in (0, 404, 405):
         missing.append("%s(%s→%s)" % (k, path, st))
+rq = urllib.request.Request(BASE + "/torznab")
+try:
+    caps_body = urllib.request.urlopen(rq, timeout=30).read().decode(
+        "utf-8", "replace")
+except Exception:
+    caps_body = ""
+ok("G8 caps 分类元素用规范名 <cat>（客户端按 //categories/cat 解析）",
+   "<cat id=" in caps_body and "<category id=" not in caps_body
+   and 'parent="0"' in caps_body,
+   "cat=%s category=%s" % ("<cat id=" in caps_body,
+                           "<category id=" in caps_body))
 ok("G8 声明的 GET 口全部在册（≥6 条，无 404）",
        len(gets) >= 6 and not missing,
        "checked=%d missing=%s" % (len(gets), missing or "无"))
