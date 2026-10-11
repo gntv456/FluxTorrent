@@ -53,12 +53,18 @@ export default async function NotificationsPage() {
       count: unread,
       tone: unread > 0 ? "hot" : "idle",
     },
-    {
-      href: "/staffbox",
-      title: t.staffCard,
-      count: staffUnread,
-      tone: staffUnread > 0 ? "warm" : "idle",
-    },
+    // 管理组信箱只对进得去 /staffbox 的人存在：成员那边接口 403 → staff=null，
+    // 这张卡此前照样渲染一个恒 0 的数字，等于对着成员演「信箱是空的」。
+    ...(staff !== null
+      ? [
+          {
+            href: "/staffbox",
+            title: t.staffCard,
+            count: staffUnread,
+            tone: staffUnread > 0 ? ("warm" as const) : ("idle" as const),
+          },
+        ]
+      : []),
     {
       href: "/myhr",
       title: t.hrCard,
