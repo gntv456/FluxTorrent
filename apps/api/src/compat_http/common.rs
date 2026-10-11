@@ -3,7 +3,7 @@
 use actix_web::web;
 use sha3::{Digest, Sha3_256};
 
-use crate::errors::{DomainError, DomainResult};
+use crate::errors::DomainResult;
 use crate::state::AppState;
 
 /// passkey 端点的同 IP 每分钟探测上限（防换 passkey 绕过分桶的资源消耗面）：
@@ -40,35 +40,29 @@ pub(crate) async fn limit_passkey(
     passkey: &str,
     max: i64,
 ) -> DomainResult<()> {
-    use redis::AsyncCommands;
+    // P-67：两维都交给 `http::rate_window`——它 fail-close，且把窗口写进
+    // 键名。旧写法虽然 incr 已 map_err，但 EXPIRE 只在 n==1 时做且吞错：
+    // 那条命令一失败就留下无 TTL 的计数键 ⇒ 该 passkey/IP 永久 429。
     let bucket = sha3_hex(passkey.as_bytes());
-    let key = format!("rl:{scope}:{}", &bucket[..16]);
-    let mut c = state.redis.clone();
-    let n: i64 = c.incr(&key, 1).await.map_err(|e| {
-        DomainError::Internal(anyhow::anyhow!("限流服务不可用: {e}"))
-    })?;
-    if n == 1 {
-        let _: () = c.expire(&key, 60).await.unwrap_or(());
-    }
-    if n > max {
-        return Err(DomainError::RateLimited);
-    }
+    crate::http::rate_window(
+        state,
+        &format!("rl:{scope}:{}", &bucket[..16]),
+        max,
+        60,
+    )
+    .await?;
     // 二轮遗留（2026-10-07）：IP 第二维——旧版只按被试 passkey 分桶，攻击者
     // 每次换随机 passkey 即新桶 = 等效无限流（匿名无界打 users 索引查询）。
     // passkey 空间 36^32 枚举不可行，但资源消耗面要堵：同 IP 每分钟最多
     // 120 次探测（覆盖正常用户多 passkey 端点的合理使用）。
     let ip = crate::http::client_ip(req);
-    let ip_key = format!("rl:{scope}-ip:{}", ip);
-    let m: i64 = c.incr(&ip_key, 1).await.map_err(|e| {
-        DomainError::Internal(anyhow::anyhow!("限流服务不可用: {e}"))
-    })?;
-    if m == 1 {
-        let _: () = c.expire(&ip_key, 60).await.unwrap_or(());
-    }
-    if m > PASSKEY_IP_PER_MIN {
-        return Err(DomainError::RateLimited);
-    }
-    Ok(())
+    crate::http::rate_window(
+        state,
+        &format!("rl:{scope}-ip:{ip}"),
+        PASSKEY_IP_PER_MIN,
+        60,
+    )
+    .await
 }
 
 #[cfg(test)]

@@ -3,7 +3,6 @@
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
-use super::common::sha3_hex;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::openapi_http::{no_store, require_token, with_rl};
@@ -395,29 +394,14 @@ async fn compat_np_download(
     req: HttpRequest,
     q: web::Query<NpDownloadQuery>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // passkey 限流（防枚举/暴力）：每 passkey 30 次/分钟 + IP 维 120/min
-    // （换随机 passkey 打散桶的资源面，与 limit_passkey 同口径）
-    let bucket = sha3_hex(q.passkey.as_bytes());
-    let key = format!("rl:npdl:{}", &bucket[..16]);
-    {
-        use redis::AsyncCommands;
-        let mut c = state.redis.clone();
-        let n: i64 = c.incr(&key, 1).await.unwrap_or(0);
-        if n == 1 {
-            let _: () = c.expire(&key, 60).await.unwrap_or(());
-        }
-        if n > 30 {
-            return Err(DomainError::RateLimited.into());
-        }
-        let ip_key = format!("rl:npdl-ip:{}", crate::http::client_ip(&req));
-        let m: i64 = c.incr(&ip_key, 1).await.unwrap_or(0);
-        if m == 1 {
-            let _: () = c.expire(&ip_key, 60).await.unwrap_or(());
-        }
-        if m > 120 {
-            return Err(DomainError::RateLimited.into());
-        }
-    }
+    // passkey 限流（防枚举/暴力）：每 passkey 30 次/分钟 + IP 维 120/min。
+    // P-67：这段原先自己写 Redis 且 `incr(...).unwrap_or(0)`——Redis 一抖动
+    // 两维闸同时失守，而本端点没有 Authorization，正是 passkey 爆破的
+    // 主要面。改调 limit_passkey：键名与额度都不变，但 fail-close 且
+    // 窗口写进键名（不再依赖「n==1 时那条被吞掉的 EXPIRE」）。
+    super::limit_passkey(&state, &req, "npdl", &q.passkey, 30)
+        .await
+        .map_err(actix_web::Error::from)?;
     let user_id: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2 \
          AND download_enabled AND NOT suspended",

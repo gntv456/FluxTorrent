@@ -111,10 +111,11 @@ pub async fn login(
     // 成功登录即清零）。与既有 IP/用户名限流叠加——限流拦高频，锁定拦低慢
     // 定向爆破。锁定期内连正确密码也拒（不给探测反馈）。
     {
-        use redis::AsyncCommands;
         let lock_key = format!("acctlock:{}", body.username.to_lowercase());
-        let mut c = state.redis.clone();
-        let fails: i64 = c.get(&lock_key).await.unwrap_or(0i64);
+        // P-67：旧写法 `get(...).unwrap_or(0)` = 「Redis 挂了就当没锁」，
+        // 锁定判定形同虚设。改 fail-close：上方 throttle() 本就 fail-close，
+        // Redis 不可用时登录根本到不了这里，不新增可用性风险。
+        let fails: i64 = crate::http::counter_peek(&state, &lock_key).await?;
         if fails >= 5 {
             return Err(DomainError::Validation(
                 "该账号因连续登录失败已被临时锁定，请 15 分钟后再试".into(),
@@ -151,11 +152,11 @@ pub async fn login(
     if !domain::verify_password(&user.pass_hash, &body.password) {
         // 账户级锁定计数 +1（15 分钟窗口累计；命中 5 次后见上方拦截）
         {
-            use redis::AsyncCommands;
             let lock_key = format!("acctlock:{}", body.username.to_lowercase());
-            let mut c = state.redis.clone();
-            let _: i64 = c.incr(&lock_key, 1).await.unwrap_or(0);
-            let _: () = c.expire(&lock_key, 900).await.unwrap_or(());
+            // P-67：旧写法 `incr(...).unwrap_or(0)` 把「记不上失败数」当成
+            // 「没超限」⇒ 永不锁定，改 fail-close（顺序不必调：Redis 挂时
+            // 上方 throttle() 已经先拒，这段到不了）。
+            crate::http::counter_bump(&state, &lock_key, 900).await?;
         }
         let _ = sqlx::query(
                         "INSERT INTO login_events (user_id, ip, ok, \
@@ -179,11 +180,11 @@ pub async fn login(
     .await
     {
         {
-            use redis::AsyncCommands;
             let lock_key = format!("acctlock:{}", body.username.to_lowercase());
-            let mut c = state.redis.clone();
-            let _: i64 = c.incr(&lock_key, 1).await.unwrap_or(0);
-            let _: () = c.expire(&lock_key, 900).await.unwrap_or(());
+            // P-67：旧写法 `incr(...).unwrap_or(0)` 把「记不上失败数」当成
+            // 「没超限」⇒ 永不锁定，改 fail-close（顺序不必调：Redis 挂时
+            // 上方 throttle() 已经先拒，这段到不了）。
+            crate::http::counter_bump(&state, &lock_key, 900).await?;
         }
         let _ = sqlx::query(
                         "INSERT INTO login_events (user_id, ip, ok, \
@@ -250,10 +251,9 @@ pub async fn login(
     .clamp(1, 720);
     // 成功登录清锁定计数（P2 账户级锁定配套）
     {
-        use redis::AsyncCommands;
         let lock_key = format!("acctlock:{}", body.username.to_lowercase());
-        let mut c = state.redis.clone();
-        let _: () = c.del(&lock_key).await.unwrap_or(());
+        // 清不掉只记 warn：不能为清理动作把已成功的登录打成 5xx（键按 TTL 过期）。
+        crate::http::counter_clear(&state, &lock_key).await;
     }
     let token = state
         .jwt
