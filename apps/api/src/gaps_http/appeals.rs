@@ -2,7 +2,6 @@
 //! 从 gaps_http.rs 按域拆出。
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
-use redis::AsyncCommands;
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -84,17 +83,18 @@ pub async fn appeal_create(
                 DomainError::Validation("未找到该用户名的封禁记录".into())
             })?;
             // 防刷：每用户名 3 次/小时（未结申诉上限 3 条之外的第二道闸）
-            {
-                let mut c = state.redis.clone();
-                let k = format!("rl:appeal:{uid}");
-                let n: i64 = c.incr(&k, 1).await.unwrap_or(0);
-                if n == 1 {
-                    let _: () = c.expire(&k, 3600).await.unwrap_or(());
-                }
-                if n > 3 {
-                    return Err(DomainError::RateLimited);
-                }
-            }
+            //
+            // P-67：旧写法 `incr(...).unwrap_or(0)`——Redis 抖动时这道闸不
+            // 存在，可无限灌申诉表。改 fail-close 的 rate_window（1 小时窗，
+            // 键名与额度不变）。同分支的 captcha 校验本来就是 fail-close，
+            // 这一道不该比它更松。
+            crate::http::rate_window(
+                &state,
+                &format!("rl:appeal:{uid}"),
+                3,
+                3600,
+            )
+            .await?;
             uid
         }
     };

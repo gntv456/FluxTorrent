@@ -32,13 +32,24 @@ async fn forum_rss_feed(
     if !crate::compat_http::valid_passkey(&passkey) {
         return HttpResponse::BadRequest().body("invalid passkey");
     }
-    if crate::compat_http::limit_passkey(&state, &req, "rssforum", &passkey, 30)
-        .await
-        .is_err()
+    // P-68：与主 RSS 同修——限流命中回 429，限流服务本身不可用回 503，
+    // 不要把后端故障伪装成「你太快了」。
+    match crate::compat_http::limit_passkey(
+        &state, &req, "rssforum", &passkey, 30,
+    )
+    .await
     {
-        return HttpResponse::TooManyRequests()
-            .insert_header(("retry-after", "60"))
-            .body("rate limited");
+        Ok(()) => {}
+        Err(crate::errors::DomainError::RateLimited) => {
+            return HttpResponse::TooManyRequests()
+                .insert_header(("retry-after", "60"))
+                .body("rate limited");
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "论坛 RSS 限流服务不可用");
+            return HttpResponse::ServiceUnavailable()
+                .body("rate limiter unavailable");
+        }
     }
     let user: Option<(i64, i32)> = sqlx::query_as(
         "SELECT id, class_id FROM user_by_passkey \

@@ -62,18 +62,11 @@ pub(super) async fn open_upload(
     require_scope(&tk, SCOPE_UPLOAD)?;
     // 发种独立限流（每用户 20 次/分钟）：Token 默认 60 req/min 对「发种」
     // 这个动作太宽松（60 个种子/分钟足以灌爆审核队列）
-    {
-        use redis::AsyncCommands;
-        let mut c = state.redis.clone();
-        let key = format!("rl:openup:{}", tk.uid);
-        let n: i64 = c.incr(&key, 1).await.unwrap_or(0);
-        if n == 1 {
-            let _: () = c.expire(&key, 60).await.unwrap_or(());
-        }
-        if n > 20 {
-            return Err(DomainError::RateLimited);
-        }
-    }
+    //
+    // P-67：旧写法 `incr(...).unwrap_or(0)`——Redis 一抖动这道闸就不存在。
+    // 改 fail-close 的 rate_window（键名/额度/窗口都不变）。
+    crate::http::rate_window(&state, &format!("rl:openup:{}", tk.uid), 20, 60)
+        .await?;
     let auth = auth_from_token(&state, tk.uid).await?;
     // 复用网页上传的查询参数解析（不把 UploadForm 提升为对外契约）
     let qs = req.query_string().to_string();

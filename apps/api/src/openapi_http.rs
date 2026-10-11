@@ -15,7 +15,6 @@ mod spec_util;
 mod upload;
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
-use redis::AsyncCommands;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
@@ -175,12 +174,13 @@ pub async fn require_token(
     };
     // 独立限流：按 token 哈希前 16 位分桶
     let bucket = &token_hash[..16];
-    let key = format!("rl:openapi:{bucket}");
-    let mut c = state.redis.clone();
-    let n: i64 = c.incr(&key, 1).await.unwrap_or(0);
-    if n == 1 {
-        let _: () = c.expire(&key, 60).await.unwrap_or(());
-    }
+    // P-67：旧写法 `unwrap_or(0)` 在 Redis 抖动时既不限流、又把 n=0 填进
+    // 下面 TokenCtx.used ⇒ 响应头谎报「还剩满额」。改 fail-close 的
+    // counter_bump（键名/窗口/额度不变）。代价：Redis 抖动期开放 API 整片
+    // 5xx——与登录侧 throttle 的 ZT81 口径一致（宁拒服务不静默放开防护）。
+    let n: i64 =
+        crate::http::counter_bump(&state, &format!("rl:openapi:{bucket}"), 60)
+            .await?;
     if n > i64::from(rpm) {
         return Err(DomainError::RateLimited);
     }

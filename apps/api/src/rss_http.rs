@@ -54,14 +54,26 @@ async fn rss_feed(
     }
     // 0267 安全补：RSS 此前**没有限流** —— 一枚泄露的 passkey 可无限拉订阅源
     // （打库 + 放大信息面）。30 次/分钟对分钟级轮询的订阅器绰绰有余。
-    if crate::compat_http::limit_passkey(&state, &req, "rss", &passkey, 30)
+    //
+    // P-68：旧写法 `if ... .is_err()` 把「限流服务不可用」也回成
+    // 429 + retry-after: 60 —— 订阅端据此退避，而真实故障在后端 Redis：
+    // 症状被伪装成「你拉太快了」，排障方向从第一天就是错的。分开回。
+    match crate::compat_http::limit_passkey(&state, &req, "rss", &passkey, 30)
         .await
-        .is_err()
     {
-        return HttpResponse::TooManyRequests()
-            .insert_header(("retry-after", "60"))
-            .content_type("text/plain; charset=utf-8")
-            .body("too many requests");
+        Ok(()) => {}
+        Err(crate::errors::DomainError::RateLimited) => {
+            return HttpResponse::TooManyRequests()
+                .insert_header(("retry-after", "60"))
+                .content_type("text/plain; charset=utf-8")
+                .body("too many requests");
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "RSS 限流服务不可用");
+            return HttpResponse::ServiceUnavailable()
+                .content_type("text/plain; charset=utf-8")
+                .body("rate limiter unavailable");
+        }
     }
     let user: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
