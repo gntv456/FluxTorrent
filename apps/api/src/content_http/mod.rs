@@ -8,6 +8,7 @@ mod promo;
 mod requests;
 mod subtitles;
 mod subtitles_awards;
+mod subtitles_cancel;
 mod subtitles_close;
 mod subtitles_detail;
 mod subtitles_dl;
@@ -25,6 +26,7 @@ use promo::*;
 use requests::*;
 use subtitles::*;
 use subtitles_awards::*;
+use subtitles_cancel::*;
 use subtitles_close::*;
 use subtitles_detail::*;
 use subtitles_dl::*;
@@ -60,6 +62,8 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(subtitle_request_create)
         .service(subtitle_request_list)
         .service(subtitle_request_contribute)
+        // P-43：撤销 + 按入池明细退款（0146 词表 status=2 的缺失出口）
+        .service(subtitle_request_cancel)
         .service(subtitle_request_fulfill)
         // 0148 字幕工作流（认领/弃单/交稿/验收/协作确认 + 评选榜）
         .service(subtitle_request_claim)
