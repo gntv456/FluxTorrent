@@ -65,6 +65,8 @@ export class ApiError extends Error {
     message: string,
     /** 信封 data：站点设定的字段级校验错误等结构化的错误载荷 */
     public readonly data?: unknown,
+    /** HTTP 状态码：业务 code 分不出「不存在」与「暂时读不到」（P-35b） */
+    public readonly status?: number,
   ) {
     super(message);
   }
@@ -101,7 +103,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   // 非 JSON 响应（网关错误页等）归一化为 ApiError
   const ctype = res.headers.get("content-type") ?? "";
   if (!ctype.includes("application/json")) {
-    throw new ApiError(1000, `服务异常（HTTP ${res.status}）`);
+    throw new ApiError(1000, `服务异常（HTTP ${res.status}）`, undefined, res.status);
   }
   const body = (await res.json()) as ApiEnvelope<T>;
   if (body.code !== 0) {
@@ -119,7 +121,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       );
       window.location.assign(`/login?next=${next}&expired=1`);
     }
-    throw new ApiError(body.code, body.message, body.data);
+    throw new ApiError(body.code, body.message, body.data, res.status);
   }
   return body.data;
 }
