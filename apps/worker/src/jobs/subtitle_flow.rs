@@ -66,11 +66,30 @@ async fn spark_award(
 /// 认领超时回池（3→0）+ 交稿超时自动验收（4→1）
 pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
     // 认领超时：deadline 已过 → 回池 + 通知认领人
+    //
+    // P-49（本批实测，闸门 AR 抓到）：`UPDATE ... SET claimed_by = NULL
+    // ... RETURNING claimed_by` 里 RETURNING 给的是**更新后**的行，
+    // 取回的恒是 NULL ⇒ 下面的 `if let Some(uid)` 永远不成立，
+    // 「超时=系统代行弃单」的 subreq.abandon 审计与认领人站内信双双静默
+    // 丢失（实测：回池成功、audit_log 里 subreq.abandon 全库 0 条）。
+    // 后果不只是少一封信：F3 的弃单禁令（30 天内 3 次禁认领）正是靠这条
+    // 计数补上「主动弃单」之外的漏洞，漏计等于故意拖到超时的霸单人免罚。
+    // 正确写法=先用 CTE 快照候选行，RETURNING 取 cand 的旧值。
     let expired: Vec<(i64, Option<i64>)> = sqlx::query_as(
-        "UPDATE subtitle_requests SET status = 0, claimed_by = NULL, \
-         claimed_at = NULL, deadline_at = NULL, crew = '[]' \
-         WHERE status = 3 AND deadline_at IS NOT NULL AND deadline_at < now() \
-         RETURNING id, claimed_by",
+        r#"
+        WITH cand AS (
+            SELECT id, claimed_by FROM subtitle_requests
+            WHERE status = 3 AND deadline_at IS NOT NULL
+              AND deadline_at < now()
+        ), upd AS (
+            UPDATE subtitle_requests s
+               SET status = 0, claimed_by = NULL, claimed_at = NULL,
+                   deadline_at = NULL, crew = '[]'
+              FROM cand c WHERE s.id = c.id
+            RETURNING c.id AS id, c.claimed_by AS claimed_by
+        )
+        SELECT id, claimed_by FROM upd
+        "#,
     )
     .fetch_all(db)
     .await?;
