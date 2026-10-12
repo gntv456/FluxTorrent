@@ -105,7 +105,13 @@ pub async fn delete_user_cascade(
         "DELETE FROM bookmarks WHERE user_id = $1",
         "DELETE FROM api_tokens WHERE user_id = $1",
         "DELETE FROM password_resets WHERE user_id = $1",
-        "DELETE FROM invites WHERE inviter_id = $1 OR used_by = $1",
+        // P-160（批四十一实测）：旧写法 `DELETE FROM invites WHERE
+        // inviter_id = $1 OR used_by = $1` 是纯证据损失——账号在这一步是
+        // **墓碑化、不物理删除**，两条 FK 本来就仍满足，没有非删不可的约束。
+        // 删掉的却是「他是被谁请进来的」（used_by 行）与「他请了谁」
+        // （inviter_id 行里 used_by 指向的是别人）。改为只作废未使用的码，
+        // 已使用的行原样留着，与本文件开头「账本/证据表不再删除」同口径。
+        "UPDATE invites SET status = 2 WHERE inviter_id = $1 AND status = 0",
         "DELETE FROM invite_quota WHERE user_id = $1",
         "DELETE FROM friendships WHERE user_id = $1 OR friend_id = $1",
         "DELETE FROM thanks WHERE user_id = $1",
