@@ -18,17 +18,19 @@ pub async fn password_forgot(
     body: web::Json<ForgotReq>,
 ) -> DomainResult<HttpResponse> {
     // 限流：按邮箱 3 次/小时
-    let mut c = state.redis.clone();
-    let key = format!("rl:pwdforgot:{}", body.email.to_lowercase());
-    let n: i64 = AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
-    if n == 1 {
-        let _: () = AsyncCommands::expire(&mut c, &key, 3600)
-            .await
-            .unwrap_or(());
-    }
-    if n > 3 {
-        return Err(DomainError::RateLimited);
-    }
+    // P-73：这是四条匿名计数里最贵的一条——旧写法的 `unwrap_or(0)` 在 Redis
+    // 抖动时把闸门拆掉，重置邮件可同时铸 6 条流水并连发垃圾信；而
+    // `if n == 1 { expire }` 一失败就留下永不过期的键 ⇒ 这个邮箱此后**永远**
+    // 申请不到找回密码（真正的账号恢复拒绝服务，且只能人工删键）。
+    // rate_window 两者都堵：fail-close，窗口进键名（按整点对齐，跨窗最坏
+    // 2×3 的尖峰是所有固定窗口的通性，与申诉档同口径）。
+    crate::http::rate_window(
+        &state,
+        &format!("pwdforgot:{}", body.email.to_lowercase()),
+        3,
+        3600,
+    )
+    .await?;
 
     let uid: Option<i64> =
         sqlx::query_scalar("SELECT id FROM users WHERE email = $1")

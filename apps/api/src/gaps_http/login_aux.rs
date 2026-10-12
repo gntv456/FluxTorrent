@@ -4,7 +4,6 @@
 //!  「要么真驱动要么删」口径下删除。）
 
 use actix_web::{get, web, Responder};
-use redis::AsyncCommands;
 use serde::Deserialize;
 use sha3::{Digest, Sha3_256};
 
@@ -38,15 +37,16 @@ pub async fn ban_log(
     q: web::Query<BanLogQuery>,
 ) -> DomainResult<impl Responder> {
     // 限流：按用户名 5 次/分钟，防探测
-    let mut c = state.redis.clone();
-    let key = format!("rl:banlog:{}", q.username.trim().to_lowercase());
-    let n: i64 = AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
-    if n == 1 {
-        let _: () = AsyncCommands::expire(&mut c, &key, 60).await.unwrap_or(());
-    }
-    if n > 5 {
-        return Err(DomainError::RateLimited);
-    }
+    // P-73：旧写法 `unwrap_or(0)` 让 Redis 抖动时这道防探测闸不存在；
+    // `if n == 1 { expire }` 一失败就留下无 TTL 的键 ⇒ 该用户名的封禁查询
+    // 永久 429，而被封的人正是最需要用这个页面查申诉进度的人。
+    crate::http::rate_window(
+        &state,
+        &format!("banlog:{}", q.username.trim().to_lowercase()),
+        5,
+        60,
+    )
+    .await?;
     // 最近一次对该用户的 status 变更（audit ref.id = 目标用户）
     let row = sqlx::query_as::<_, BanLogRow>(
         r#"
