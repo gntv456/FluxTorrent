@@ -272,6 +272,17 @@ if encs:
        dcc is not None and "no-store" in dcc.lower(), "cc=%r" % dcc)
 
 print("== G9 Torznab：不支持的标识符不得顶掉能用的关键词 ==")
+# 每人有效 Token 上限 3 枚（产品口径）。本闸门每跑一次签一枚、结尾撤销，
+# 但中途任何早退都会把这一枚留在库里（实测留过 2 枚），攒够 3 枚后
+# 「签 Token」这一步就变成永久 400 —— 闸门自己把自己的入口焊死。
+# 开局先按名字把自己上几轮的残枚撤销（走真实撤销口，不裸改库）。
+_, lr0 = call("GET", "/me/tokens", token=ROOT)
+_d0 = lr0.get("data") or {}
+lst0 = (_d0.get("tokens") if isinstance(_d0, dict) else _d0) or []
+for it in lst0:
+    if str(it.get("name") or "").startswith("agtz") and not it.get(
+            "revoked_at"):
+        call("POST", "/me/tokens/revoke", {"id": it.get("id")}, token=ROOT)
 s, r = call("POST", "/me/tokens", {"name": "agtz %d" % int(time.time())},
             token=ROOT)
 TZTOK = (r.get("data") or {}).get("token")
