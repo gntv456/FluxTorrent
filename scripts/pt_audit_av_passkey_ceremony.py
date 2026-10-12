@@ -17,6 +17,12 @@
   S7 这一族该有的限流：begin/finish 都是匿名端点，对照 /auth/login 的
      5 次/分 + 账号锁定，这里原本一条都没有。
 
+  S8 注册仪式要 step-up（P-107）：begin/finish 原本只要 `require_auth`，
+     拿到一次会话就能自绑 passkey；而 passkey 登录不查 TOTP ⇒ 给已开 2FA 的
+     成员绑一把之后，**用 passkey 登录完全绕过 2FA**。本闸先真开 2FA（闸门
+     自己按 RFC 6238 算码，顺带证明两边口径一致），再只用会话打 begin——
+     红线是它直接发 challenge，并把整条绕过链的后果打在日志里。
+
 判据取「渲染层」：接管是否成立不看接口返回什么，看**受害者库里那把公钥
 有没有被换掉**，以及**攻击者拿到的 token 解出来是谁**。
 
@@ -41,14 +47,27 @@ from cryptography.hazmat.primitives.serialization import (
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
-    call, clear_register_rl, login, ok, summary)
+    call, clear_register_rl, login, ok, summary, totp_now)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
 CLEAN = []
 
 
+def clear_rl(pattern):
+    """清掉本闸自己打出来的限流计数（与 clear_register_rl 同一口径：只碰
+    点名的那族键，站点限流机制本身不动）。S8 的档判据要一个干净的窗口才能
+    说「第 n 次才被拦」，否则前面各节正常的 begin 会把额度吃光，把判据打成
+    429 假红。"""
+    cmd = ('redis-cli -a "$REDIS_PASSWORD" --no-auth-warning --scan '
+           '--pattern "%s" | xargs -r redis-cli -a "$REDIS_PASSWORD" '
+           '--no-auth-warning del' % pattern)
+    subprocess.run(["docker", "exec", "flux-redis", "sh", "-c", cmd],
+                   capture_output=True, text=True, encoding="utf-8")
+
+
 def psql(q):
+
     r = subprocess.run(
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-q", "-d",
          "fluxtorrent", "-tAc", q],
@@ -105,10 +124,17 @@ def begin_login(username):
     return s, (r.get("data") or {})
 
 
-def reg_bind(token, priv, pub, cred_id, rp):
-    """走一遍注册仪式（begin→finish）。"""
-    s, r = call("POST", "/auth/passkeys/begin", {"label": "AV%d" % TAG},
-                token=token)
+def reg_bind(token, priv, pub, cred_id, rp, step_up=None):
+    """走一遍注册仪式（begin→finish）。
+
+    P-107 之后 begin 要复核凭证：探针号口令都是 password123，默认就带上
+    （旧镜像上这个字段被忽略，两态都能走完正常动线）。`step_up` 用来覆盖
+    （如密码错的负控）。
+    """
+    body = {"label": "AV%d" % TAG, "password": "password123"}
+    if step_up is not None:
+        body = {"label": "AV%d" % TAG, **step_up}
+    s, r = call("POST", "/auth/passkeys/begin", body, token=token)
     chal = (r.get("data") or {}).get("challenge") or ""
     cd = json.dumps({"type": "webauthn.create", "challenge": chal})
     return s, call("POST", "/auth/passkeys/finish", {
@@ -319,8 +345,84 @@ for _ in range(12):
 ok("S7 finish：连续 12 次必须出现 429（ECDSA 验签是 CPU 活，且这是"
    "认证端点）", 429 in hits2, brief(sorted(set(hits2))))
 
-print("== S8 收尾自检 ==")
-ok("S8 COSE 那把没在库里留下任何行（拒了就是没写）",
+print("== S8 注册仪式要 step-up（P-107：会话被偷不得白送一把永久后门）==")
+# 先给「受害者」真开 2FA：闸门自己按 RFC 6238 算码，口径与服务端 totp_at 同
+s, r = call("POST", "/me/2fa/setup", {}, token=VTOK)
+SEC_B32 = ((r.get("data") or {}).get("secret") or "").strip()
+ok("S8 前置：探针可生成 2FA 密钥（拿得到 base32）", bool(SEC_B32), brief(r))
+s, r = call("POST", "/me/2fa/enable", {"code": totp_now(SEC_B32)}, token=VTOK)
+ok("S8 前置：探针已开 2FA（闸门自算的码被服务端接受 = 两边口径一致）",
+   s == 200, "%s %s" % (s, brief(r)))
+CLEAN.append("UPDATE users SET totp_secret = NULL, totp_enabled = FALSE "
+             "WHERE id = %s" % VID)
+# begin 的档要干净窗口：前面各节的正常 begin 也在同一个桶里计过数
+clear_rl("rl:pkregbegin*")
+
+# 攻击者手里只有偷来的一次会话：没有密码，没有验证码
+STOLEN = "av-steal-%d" % TAG
+s_steal, r_steal = call("POST", "/auth/passkeys/begin", {"label": "stolen"},
+                        token=VTOK)
+CH_STEAL = (r_steal.get("data") or {}).get("challenge") or ""
+ok("S8 仅凭会话（不给密码/码）begin 必须被拒（红线：200 直接发 challenge"
+   " ⇒ 攻击者自绑一把 passkey，此后 passkey 登录完全不问 2FA）",
+   s_steal != 200 and not CH_STEAL, "%s %s" % (s_steal, brief(r_steal)))
+if CH_STEAL:
+    # 红线要把后果打在日志上（修好后不再进入这一支）。S7 那节会连打匿名端点
+    # 把 pklogin 的档吃光，所以这里先清掉本闸自己造的计数，好让「绑上之后真能
+    # 用它登录」这一步不被自己的前一轮拖成 429 假象。
+    clear_rl("rl:pklogin*")
+    sk, _, pk = new_cred()
+    cd = json.dumps({"type": "webauthn.create", "challenge": CH_STEAL})
+    s_ff, r_ff = call("POST", "/auth/passkeys/finish", {
+        "cred_id": STOLEN, "public_key": b64u(pk),
+        "client_data_json": b64u(cd.encode()),
+        "auth_data": b64u(authdata(RP)), "sign_count": 1}, token=VTOK)
+    _, _, s_lg, r_lg = pk_login(VNAME, sk, STOLEN, RP, count=2)
+    print("   [红线后果] finish=%s，passkey 登录=%s，token 解出 uid=%s"
+          "——该号已开 2FA，而攻击者自始至终没提供任何 2FA 凭证"
+          % (s_ff, s_lg, token_uid((r_lg.get("data") or {}).get("token")
+                                   or "")))
+s_pw, r_pw = call("POST", "/auth/passkeys/begin",
+                  {"label": "x", "password": "Wrong#2026pw"}, token=VTOK)
+ok("S8 密码错必须拒（400 + 点到凭证），不许静默放行",
+   s_pw == 400 and "凭证" in str(r_pw.get("message", "")),
+   "%s %s" % (s_pw, brief(r_pw)))
+s_np, r_np = call("POST", "/auth/passkeys/begin",
+                  {"label": "x", "password": "password123"}, token=VTOK)
+ok("S8 开了 2FA 却只复核密码，仍必须拒（红线：200——2FA 在这一口被跳过）",
+   s_np == 400 and "验证码" in str(r_np.get("message", "")),
+   "%s %s" % (s_np, brief(r_np)))
+sk2, _, pk2 = new_cred()
+s_okb, r_okb = call("POST", "/auth/passkeys/begin", {
+    "label": "legit", "password": "password123",
+    "totp": totp_now(SEC_B32)}, token=VTOK)
+ok("S8 正控：密码 + 当前验证码 = 正常动线照走（step-up 不是把功能关掉）",
+   s_okb == 200 and (r_okb.get("data") or {}).get("challenge"),
+   "%s %s" % (s_okb, brief(r_okb)))
+s_fin, r_fin = call("POST", "/auth/passkeys/finish", {
+    "cred_id": "av-legit-%d" % TAG, "public_key": b64u(pk2),
+    "client_data_json": b64u(json.dumps({
+        "type": "webauthn.create",
+        "challenge": (r_okb.get("data") or {}).get("challenge") or ""
+    }).encode()),
+    "auth_data": b64u(authdata(RP)), "sign_count": 1}, token=VTOK)
+got = psql("SELECT user_id FROM user_passkeys WHERE cred_id = "
+           "'av-legit-%d'" % TAG)
+ok("S8 正控：合法 step-up 后 finish 成功且库里落本人凭证（uid=%s）" % VID,
+   s_fin == 200 and got == str(VID), "%s %s 库里=%s"
+   % (s_fin, brief(r_fin), got))
+codes = []
+for _ in range(6):
+    st, _ = call("POST", "/auth/passkeys/begin",
+                 {"label": "x", "password": "Wrong#2026pw"}, token=VTOK,
+                 raw=True)
+    codes.append(st)
+ok("S8 begin 也要有档（连发 6 次错密码必须出现 429；红线：全 200，"
+   "无上限 = 在线爆破密码的口）", 429 in codes,
+   "状态序列=%s" % codes)
+
+print("== S9 收尾自检 ==")
+ok("S9 COSE 那把没在库里留下任何行（拒了就是没写）",
    psql("SELECT count(*) FROM user_passkeys WHERE cred_id = '%s'"
         % COSE_CRED) == "0", "left=%s" % psql(
             "SELECT count(*) FROM user_passkeys WHERE cred_id = '%s'"
@@ -330,7 +432,7 @@ call("POST", "/auth/passkeys/remove", {"cred_id": SEC1_CRED}, token=VTOK)
 call("POST", "/auth/passkeys/remove", {"cred_id": afresh}, token=ATOK)
 left = psql("SELECT count(*) FROM user_passkeys WHERE cred_id LIKE "
             "'av-cred-%%-%d'" % TAG)
-ok("S8 探针凭证已清（库里不残留）", left == "0", "left=%s" % left)
+ok("S9 探针凭证已清（库里不残留）", left == "0", "left=%s" % left)
 for stmt in list(reversed(CLEAN)):
     ex(stmt)
 summary()

@@ -386,6 +386,15 @@ ok("S7 P-109 拒发不得作废旧链接、不得铸新链接（红线：%d/%d �
 ok("S7 P-109 信箱里那枚链接必须还是同一枚（红线：live 数不变但被换成永不达的新枚）",
    tk1 == tk0, "%s… → %s…" % (tk0[:12], tk1[:12]))
 
+# P-111：resend 自己的档——模块注释与界面文案都写「1 分钟一次」，代码却走
+# 通用 throttle()（=登录档 5 次/分）。档不对，用户连点就把可用链接连杀几枚。
+seens = []
+for _ in range(3):
+    seens.append(call("POST", "/auth/email/resend", {"email": BEMAIL})[0])
+ok("S7b P-111 resend 同邮箱同 IP 连发：第 2 次起必须 429（红线：通用档"
+   " 5 次/分，三次全是 503）", seens[1:] == [429, 429],
+   "状态序列=%s" % seens)
+
 print("== S5 P-105 /auth/password/reset 匿名限流（同族漏网）==")
 seen = []
 for i in range(12):
