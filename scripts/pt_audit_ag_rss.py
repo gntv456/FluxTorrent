@@ -294,10 +294,15 @@ TID = None
 s2, lr = call("GET", "/me/tokens", token=ROOT)
 rows = (lr.get("data") or {})
 lst = rows.get("tokens") if isinstance(rows, dict) else rows
-# 列表回显是掩码，不能拿 Token 明文去比；按本次签发用的 name 找 id
+# 列表回显是掩码，不能拿 Token 明文去比；按本次签发用的 name 找 id。
+# 必须**只挑未撤销的**那一枚：列表按 id DESC，旧的同名行还留在表里（撤销是
+# 软撤），不筛就会一路覆盖到最旧那枚，收尾的 revoke 拿到 400「已撤销」，
+# 本轮新签的那枚反而长在线上（每人上限 3 枚，攒三轮就把这个口焊死）。
 for it in (lst or []):
-    if (it.get("name") or "").startswith("agtz"):
+    if (it.get("name") or "").startswith("agtz") and not it.get(
+            "revoked_at"):
         TID = it.get("id")
+        break
 CLEAN.append("__revoke_token__")
 
 def tz(qs):
@@ -377,6 +382,11 @@ for stmt in reversed(CLEAN):
 ok("G5 语料无残留",
    q("SELECT count(*) FROM torrents WHERE name LIKE 'agrss%'") == "0",
    q("SELECT count(*) FROM torrents WHERE name LIKE 'agrss%'"))
+ok("G5 本轮签发的 Token 已撤销（撤销是软撤，要数 revoked_at IS NULL）",
+   q("SELECT count(*) FROM api_tokens WHERE name LIKE 'agtz%' "
+     "AND revoked_at IS NULL") == "0",
+   q("SELECT count(*) FROM api_tokens WHERE name LIKE 'agtz%' "
+     "AND revoked_at IS NULL"))
 ok("G5 探针版块无残留",
    q("SELECT count(*) FROM forums WHERE name = 'agrss 门槛版'") == "0",
    q("SELECT count(*) FROM forums WHERE name = 'agrss 门槛版'"))
