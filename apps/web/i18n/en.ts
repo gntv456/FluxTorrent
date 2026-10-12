@@ -442,6 +442,8 @@ const enBase: Omit<
     bannedLog: "View ban log",
     appealIntro: "Disagree with a decision?",
     appealLink: "Appeals",
+    activateIntro: "No verification email?",
+    activateLink: "Resend it",
     inviteOnly:
       "Invite-based private community — accounts are registered via invite codes",
   },
@@ -564,6 +566,9 @@ const enBase: Omit<
     expiredHint:
       "Link expired? Enter your registered email to resend the verification email.",
     emailPh: "Registered email",
+    noTokenHint:
+      "Link didn't open? Enter your registered email to request a new " +
+      "verification email.",
     resendBtn: "Resend",
     resentNote:
       "If an unverified account exists for this email, the verification email has been sent (do not resend within 1 minute).",

@@ -433,6 +433,8 @@ const zhTwBase: Omit<
     bannedLog: "查看封禁記錄",
     appealIntro: "對處理結果有異議？",
     appealLink: "申訴通道",
+    activateIntro: "收不到啟用郵件？",
+    activateLink: "去啟用頁重發",
     inviteOnly: "本站為邀請制私有社群，帳號由邀請碼註冊",
   },
 
@@ -545,6 +547,7 @@ const zhTwBase: Omit<
     alreadyLink: " 登入",
     alreadySuffix: "即可。",
     expiredHint: "連結過期？輸入註冊信箱重新發送啟用郵件。",
+    noTokenHint: "沒點開郵件裡的連結？輸入註冊信箱重發一封啟用郵件。",
     emailPh: "註冊信箱",
     resendBtn: "重新發送",
     resentNote: "若該信箱有未啟用帳號，啟用郵件已發出（1 分鐘內勿重複發送）。",

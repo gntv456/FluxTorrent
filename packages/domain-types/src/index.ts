@@ -36,6 +36,9 @@ export const ErrorCode = {
   // 卡池经济守卫（方案 §5 G31-B）：含保底综合返还率 >100% 时运行时拒抽，
   // HTTP 409 —— 后台保存拦截不够，站长直连改库也要被拦
   POOL_GUARD: 4102,
+  // 站点未开通邮件服务（SMTP 或对外地址未配）：找回密码/邮箱激活这类
+  // 「必须发信」的链路应给这一码，而不是 1000 内部错误（HTTP 503）
+  MAIL_UNCONFIGURED: 4103,
   // 5xxx 社区
   COMMENT_NOT_FOUND: 5001,
   ALREADY_THANKED: 5002,

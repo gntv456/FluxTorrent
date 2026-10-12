@@ -9,6 +9,35 @@
 
 use sqlx::PgPool;
 
+/// 邮件里「点开就到站内页面」的站点基址（P-100 收口）。
+///
+/// 站内页面链接（找回密码 `/reset?token=`、邮箱激活 `/email-verify?token=`、
+/// 邀请函）必须用**站点对外地址**，口径与 rss / 支付回调 / sitemap 一致：
+/// `PUBLIC_SITE_URL` 优先。此前各条邮件链各读一个名字——reset 读
+/// `PUBLIC_API_URL`（那是 API 域名，拼出来是死链）、邀请读
+/// `PUBLIC_WEB_URL`——现网只配了 `PUBLIC_SITE_URL`，于是找回密码即使 SMTP
+/// 完全可用也一律拒发（实测 500 + 信箱 0 封）。旧两个名字继续作为回落读，
+/// 已按它们部署的站点行为不变。空串按「未配置」处理（不设兜底 flag）。
+pub fn site_base() -> Option<String> {
+    ["PUBLIC_SITE_URL", "PUBLIC_WEB_URL", "PUBLIC_API_URL"]
+        .iter()
+        .find_map(|k| std::env::var(k).ok())
+        .map(|v| v.trim().trim_end_matches('/').to_string())
+        .filter(|v| !v.is_empty())
+}
+
+/// 邮件能否真正投递到用户手里（P-102/P-104 的前置判据）：站点基址可解析，
+/// 且 SMTP 已配（开发态 FLUX_DEV=1 允许缺 SMTP 走日志闭环，方便本地自测）。
+/// 判据为假时，找回密码/邮箱激活等「必须发信」的动作应回
+/// `DomainError::MailUnconfigured`（503/4103），而不是 500 或静默建号。
+pub async fn mail_deliverable(db: &PgPool) -> bool {
+    if site_base().is_none() {
+        return false;
+    }
+    smtp_config(db).await.is_some()
+        || std::env::var("FLUX_DEV").unwrap_or_default() == "1"
+}
+
 /// 后台可配的 SMTP 形状（smtp_* 设定键装配；host/from 任一为空视为未配置）
 #[derive(Clone, Debug)]
 pub struct SmtpConfig {
