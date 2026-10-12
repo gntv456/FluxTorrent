@@ -57,8 +57,12 @@ pub fn validate_value(
     let allowed = allowed_values(options);
     match field_type {
         "text" => {
+            // P-137（批三十九实测）：上限按**字符**判。旧写法 `s.len()` 数是
+            // UTF-8 字节，而报错文案与 doc 都写「≤500 字符」——中文一字
+            // 3 字节，实测 200 个汉字（600 字节）当场被拒，等于中文用户
+            // 只配写 166 字。
             v.as_str()
-                .filter(|s| s.len() <= 500)
+                .filter(|s| s.chars().count() <= 500)
                 .map(|_| ())
                 .ok_or("text 字段需为 ≤500 字符字符串")?;
         }
@@ -170,6 +174,22 @@ mod tests {
         assert!(validate_value("text", &o, &serde_json::json!(long)).is_err());
         let ok = "x".repeat(500);
         assert!(validate_value("text", &o, &serde_json::json!(ok)).is_ok());
+    }
+
+    /// P-137：上限文案写的是「字符」，就必须按字符判。
+    /// 上面那条用例全是 ASCII——字节/字符两种写法都能过，**永远抓不到这条洞**
+    /// （批三十九实测：闸门红在中文 200 字被拒）。
+    #[test]
+    fn text_length_counts_chars_not_utf8_bytes() {
+        let o = serde_json::json!([]);
+        let zh300 = "汉字".repeat(150); // 300 字符 = 900 字节
+        assert_eq!(zh300.chars().count(), 300);
+        assert!(
+            validate_value("text", &o, &serde_json::json!(zh300)).is_ok(),
+            "300 个汉字必须收下（≤500 字符）"
+        );
+        let zh501 = "字".repeat(501);
+        assert!(validate_value("text", &o, &serde_json::json!(zh501)).is_err());
     }
 
     #[test]

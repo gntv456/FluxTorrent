@@ -47,10 +47,18 @@ pub async fn register(
     // 注册自定义字段（0186）：required 校验前置（缺→拒绝，先于邀请码/验证码
     // 报出更明确的提示）；值形状校验同批，落库在建号后
     {
+        // P-140（批三十九实测，P0）：这里必须与 `/register-fields` **同一口径**
+        // 过滤模块。字段挂在某个模块键下时，模块关着 ⇒ 表单根本不展示它，
+        // 而旧写法这里只看 `enabled AND show_on_register`、不查模块，
+        // 于是「表单看不见、后端硬要」= 谁都注册不了（实测红线：
+        // `400 「Label bc_off」为必填字段`，而 /register-fields 里没有这条）。
         let defs: Vec<(String, String, bool, String, serde_json::Value)> =
-            sqlx::query_as(
-                "SELECT key, label, required, type, options FROM                  user_field_defs WHERE enabled AND show_on_register",
-            )
+            sqlx::query_as(&format!(
+                "SELECT key, label, required, type, options \
+                 FROM user_field_defs \
+                 WHERE enabled AND show_on_register AND {}",
+                crate::modules::module_on_sql("")
+            ))
             .fetch_all(&state.repo.db)
             .await
             .unwrap_or_default();
@@ -142,22 +150,36 @@ pub async fn register(
         .await?;
     // 字段值落库（required 已在前置校验；失败不回滚账号——附属数据）
     {
-        let defs: Vec<String> = sqlx::query_scalar(
-            "SELECT key FROM user_field_defs WHERE enabled AND              show_on_register",
-        )
+        // 与上面的 required 校验、与 `/register-fields` 三处同一口径
+        // （P-140）：模块关着的字段既不该要求填，也不该偷偷存下用户塞来的值
+        let defs: Vec<String> = sqlx::query_scalar(&format!(
+            "SELECT key FROM user_field_defs \
+             WHERE enabled AND show_on_register AND {}",
+            crate::modules::module_on_sql("")
+        ))
         .fetch_all(&state.repo.db)
         .await
         .unwrap_or_default();
         for key in defs {
             if let Some(v) = body.fields.get(&key).filter(|v| !v.is_null()) {
-                let _ = sqlx::query(
+                // 账号已建成、这个值没落上——静默吞掉就是「用户填了却查无此值」
+                // （P-135 同族）：不回滚账号是既定口径，但必须留痕
+                if let Err(e) = sqlx::query(
                     "INSERT INTO user_field_values (user_id, field_key,                      value) VALUES ($1, $2, $3) ON CONFLICT (user_id,                      field_key) DO NOTHING",
                 )
                 .bind(user_id)
                 .bind(&key)
                 .bind(v)
                 .execute(&state.repo.db)
-                .await;
+                .await
+                {
+                    tracing::warn!(
+                        %e,
+                        user = user_id,
+                        field = %key,
+                        "注册字段值落库失败（账号已建，该值丢失）"
+                    );
+                }
             }
         }
     }
