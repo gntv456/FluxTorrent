@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""闸门 AX：签到主链 + 首页签到段口径 + 管理补签面板（批三十三）。
+"""闸门 AX：签到主链 + 首页签到段口径 + 签到配置（批三十三）。
 
 钉四件事（每件先说清「为什么这样断言」）：
   S2 P-90 首页连签口径漂移：/attendance 的 current_streak 取「最后一条非补签
@@ -15,22 +15,24 @@
      日——北京 0-8 点窗口「昨天」不在列表、尾项落到第 8 天（后端必拒）。
      断言：node 在固定「北京 03:00」求值旧/新两式（旧式缺昨天、含第 8 天；
      新式恰为 7 天合法窗口），并静态钉住 tsx 已带 +8 偏移。
-     注：文件层红绿证据取自已跑的 HEAD 对照（旧式无偏移、新式有），见审计
-     文档批三十三。
-
-  S7 P-96 管理补签没有日期上界：站长手滑把补签点到未来某天，那一天会先被
-     makeup 行（streak=0、reward=0）占位，用户当天签到直接被「今天已经签到
-     过啦」拒掉，火花与抽卡券一起蒸发，且要到那天才看得见。断言：明天/
-     未来 30 天均 400『不能晚于今天』且不落库；今天及以前照常。
+     注：文件层红绿证据取自 HEAD 对照（旧式无偏移、新式有），见审计文档。
+  S8 P-97 签到里程碑假开关：全仓 grep 命中 0——后台摆着
+     attendance_continuous_day="10,20,30" 与 attendance_continuous_value=
+     "200,500,1000"，而代码把同一串数字硬编码在 economy::checkin_reward 的
+     match 里，站长改了不生效（且界面上的数字与真实生效那份「撞脸」，最容易被
+     当成已生效）。另有 initial/step/max/bonus/card 五个旧公式残留与在读键
+     同义（0350 摘除）。断言：把里程碑改成「2,5 → 50,150」后，第 2 天签到
+     必须 +50；红线（旧镜像）实测同一形状拿到 bonus=0 reward=8。
 
 S1/S6 为链路正控：首签（含火花流水幂等键、抽卡券 daily_free）、连签 3→4、
 里程碑 9→10(+200)、里程碑 29→30（日封顶）、重复签到拒单且不动账、
 module_attendance 真开关关→404/4101（签到/状态/补签三口 + 首页段置 off）
-→恢复回 200。补签链路与并发形状在闸门 AY（pt_audit_ay_resub.py）。
+→恢复回 200。补签链路（含管理补签面板与并发形状）在闸门 AY
+（pt_audit_ay_resub.py）。
 
-共享设置：module_attendance 串行改、快照原值写回并回读；attendance_* 只读。
-探针产物（6 个成员号 + 出勤/发放/券账/流水/站内信/修改记录）自己收尾；
-audit_log 是防篡改链（库上触发器不许删），管理动作只断言、不清理。
+共享设置：module_attendance 与 attendance_continuous_day/value 串行改、
+快照原值写回并回读；attendance_first/streak/daily_cap 只读。
+探针产物（6 个成员号 + 出勤/发放/券账/流水/站内信）自己收尾。
 
 跑法（仓库根目录）：
     PYTHONIOENCODING=utf-8 python scripts/pt_audit_ax_attendance.py
@@ -104,10 +106,9 @@ def pin(name):
 
 def cleanup():
     """可重复执行：设置原值回读、出勤/发放/券账/流水全收干净。"""
-    for name in ("module_attendance",):
-        if name in PIN:
-            ex("UPDATE site_settings SET value = '%s' WHERE name = '%s'"
-               % (PIN[name], name))
+    for name in PIN:
+        ex("UPDATE site_settings SET value = '%s' WHERE name = '%s'"
+           % (PIN[name], name))
     for uid in UIDS:
         for t in ("attendance", "resub_uses", "shop_orders",
                   "arcade_item_grants", "arcade_item_uses",
@@ -206,6 +207,8 @@ def craft_att(uid, off, streak, reward, makeup):
 
 print("== S0 地基：探针成员 + 设置快照 ==")
 pin("module_attendance")
+pin("attendance_continuous_day")
+pin("attendance_continuous_value")
 FIRST = qi("SELECT value::int FROM site_settings WHERE name = "
            "'attendance_first'", 10)
 STREAK = qi("SELECT value::int FROM site_settings WHERE name = "
@@ -220,17 +223,17 @@ D = new_member("d")   # 首签正控
 E = new_member("e")   # 连签 3→4
 G = new_member("g")   # 里程碑 9→10
 H = new_member("h")   # 里程碑 29→30 封顶
-M = new_member("m")   # 管理补签面板
-ok("六个探针成员可准备（注册/登录限流下）", all((C, D, E, G, H, M)))
-if not all((C, D, E, G, H, M)):
+N = new_member("n")   # 里程碑配置改写后生效（P-97）
+ok("六个探针成员可准备（注册/登录限流下）", all((C, D, E, G, H, N)))
+if not all((C, D, E, G, H, N)):
     sys.exit(1)
 CT, CID = C
 DT, DID = D
 ET, EID = E
 GT, GID = G
 HT, HID = H
-MT, MID = M
-for uid in (CID, DID, EID, GID, HID, MID):
+NT, NID = N
+for uid in (CID, DID, EID, GID, HID, NID):
     SPARK0[uid] = spark(uid)
 T0 = site_day(0)
 
@@ -372,81 +375,24 @@ tsx = os.path.join(REPO, "apps", "web", "components",
 txt = open(tsx, encoding="utf-8").read()
 ok("S5 前端已按站点时区取日（+8 偏移在案）", "8 * 3600e3" in txt)
 
-print("== S7 管理补签面板：权限 / 落库与审计 / 未来日期（P-96）==")
-D2 = site_day(2)
-FUT1 = site_day(-1)    # 站点明天的日期
-FUT30 = site_day(-30)
-rej("S7 成员令牌调管理补签：403『无权限』",
-    *call("POST", "/admin/attendance/makeup",
-          {"user_id": MID, "date": D2}, token=MT), 403, "无权限")
-rej("S7 成员令牌调管理补签撤销：403『无权限』",
-    *call("DELETE", "/admin/attendance/makeup",
-          {"user_id": MID, "date": D2}, token=MT), 403, "无权限")
-rej("S7 成员令牌读管理列表：403『无权限』",
-    *call("GET", "/admin/attendance?uid=%d" % MID, token=MT),
-    403, "无权限")
-rej("S7 per_page=0 拒单",
-    *call("GET", "/admin/attendance?per_page=0", token=ROOT),
-    400, "per_page 取值 1-100")
-rej("S7 per_page=101 拒单",
-    *call("GET", "/admin/attendance?per_page=101", token=ROOT),
-    400, "per_page 取值 1-100")
-s, r = call("POST", "/admin/attendance/makeup",
-            {"user_id": MID, "date": D2}, token=ROOT)
-ok("S7 站长补签 d-2 落 makeup 行（streak/reward=0）",
-   s == 200 and qi("SELECT count(*) FROM attendance WHERE user_id = %d AND "
-                   "date = '%s' AND makeup AND streak = 0 AND reward = 0"
-                   % (MID, D2)) == 1, "%s %s" % (s, brief(r)))
-ok("S7 审计（attendance.makeup，ref.id 指到人）与修改记录各一条",
-   qi("SELECT count(*) FROM audit_log WHERE action = 'attendance.makeup' "
-      "AND ref->>'id' = '%d' AND created_at > now() - interval '60 seconds'"
-      % MID) >= 1
-   and qi("SELECT count(*) FROM user_modify_logs WHERE uid = %d AND "
-          "content = '管理补签 %s'" % (MID, D2)) == 1, brief(r))
-rej("S7 同日重复管理补签被拒",
-    *call("POST", "/admin/attendance/makeup",
-          {"user_id": MID, "date": D2}, token=ROOT), 400, "已有签到记录")
-rej("S7 P-96 明天拒单", *call("POST", "/admin/attendance/makeup",
-                             {"user_id": MID, "date": FUT1},
-                             token=ROOT), 400, "不能晚于今天")
-rej("S7 P-96 未来 30 天拒单", *call("POST", "/admin/attendance/makeup",
-                                  {"user_id": MID, "date": FUT30},
-                                  token=ROOT), 400, "不能晚于今天")
-ok("S7 P-96 拒单后未来日期未落库",
-   qi("SELECT count(*) FROM attendance WHERE user_id = %d AND date IN "
-      "('%s', '%s')" % (MID, FUT1, FUT30)) == 0)
-s, r = call("POST", "/attendance/checkin", {}, token=MT)
+print("== S8 P-97 里程碑配置改写必须生效（旧镜像实测 bonus=0）==")
+setv("attendance_continuous_day", "2,5")
+setv("attendance_continuous_value", "50,150")
+craft_att(NID, 1, 1, STREAK, False)
+sp0 = spark(NID)
+s, r = call("POST", "/attendance/checkin", {}, token=NT)
 d = r.get("data") or {}
-ok("S7 反控：仅有补签行时本人今日签到仍算首签（streak=1 reward=%d）"
-   % FIRST,
-   s == 200 and d.get("streak") == 1 and d.get("reward") == FIRST,
-   "%s %s" % (s, brief(r)))
-s, r = call("GET", "/admin/attendance?uid=%d&per_page=20" % MID,
-            token=ROOT)
-dd = r.get("data") or {}
-ok("S7 面板按人过滤：total=2 且补签/正常两类都在",
-   s == 200 and dd.get("total") == 2
-   and sorted([bool(x.get("makeup")) for x in dd.get("rows") or []])
-   == [False, True], "%s %s" % (s, brief(dd)))
-s, r = call("GET", "/admin/attendance?uid=%d&makeup=true" % MID,
-            token=ROOT)
-ok("S7 makeup=true 过滤只剩补签行",
-   s == 200 and (r.get("data") or {}).get("total") == 1, brief(r))
-rej("S7 撤销正常签到行被拒（只许撤 makeup）",
-    *call("DELETE", "/admin/attendance/makeup",
-          {"user_id": MID, "date": T0}, token=ROOT),
-    400, "无对应补签记录")
-ok("S7 拒撤后正常签到行仍在",
-   qi("SELECT count(*) FROM attendance WHERE user_id = %d AND date = '%s' "
-      "AND NOT makeup" % (MID, T0)) == 1)
-s, r = call("DELETE", "/admin/attendance/makeup",
-            {"user_id": MID, "date": D2}, token=ROOT)
-ok("S7 撤销补签行成功且落审计",
-   s == 200 and qi("SELECT count(*) FROM attendance WHERE user_id = %d AND "
-                   "date = '%s'" % (MID, D2)) == 0
-   and qi("SELECT count(*) FROM audit_log WHERE action = "
-          "'attendance.makeup_del' AND ref->>'id' = '%d' AND created_at > "
-          "now() - interval '60 seconds'" % MID) >= 1, "%s %s" % (s, r))
+ok("S8 P-97 第 2 天签到按新配置加送 50（reward=%d）" % (STREAK + 50),
+   s == 200 and d.get("streak") == 2 and d.get("streak_bonus") == 50
+   and d.get("reward") == STREAK + 50
+   and spark(NID) == sp0 + STREAK + 50, "%s %s" % (s, brief(r)))
+ok("S8 P-97 出勤行落的就是配置口径（reward=%d）" % (STREAK + 50),
+   qi("SELECT reward FROM attendance WHERE user_id = %d AND date = '%s'"
+      % (NID, T0)) == STREAK + 50)
+ok("S8 复原两键并回读一致",
+   setv("attendance_continuous_day", PIN["attendance_continuous_day"])
+   and setv("attendance_continuous_value",
+            PIN["attendance_continuous_value"]))
 
 print("== S6 module_attendance 真开关：关→404/4101→恢复 ==")
 setv("module_attendance", "no")
