@@ -57,7 +57,7 @@ pub(super) async fn passkey_begin(
     .await;
     Ok(ok(serde_json::json!({
         "challenge": challenge,
-        "rp_id": rp_id(&state, &req).await,
+        "rp_id": rp_id(&req),
         "user_id": auth.id,
     })))
 }
@@ -157,7 +157,7 @@ pub(super) async fn passkey_finish(
     }
     // RP ID hash
     let auth_data = b64url(&body.auth_data);
-    let expect_rp = Sha256::digest(rp_id(&state, &req).await.as_bytes());
+    let expect_rp = Sha256::digest(rp_id(&req).as_bytes());
     if rp_id_hash(&auth_data) != Some(expect_rp.into()) {
         return Err(DomainError::Validation(
             "RP ID 不匹配（前端 rpId 须与站点域名一致）".into(),
