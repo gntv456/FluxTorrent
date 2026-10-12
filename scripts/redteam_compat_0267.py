@@ -279,7 +279,8 @@ chk("R-09/R-13 open/recent 有数据且带 hash",
 st, _, b = req("POST", f"{API}/me/tokens/refresh",
                {"Authorization": f"Bearer {jwt}",
                 "Content-Type": "application/json"},
-               json.dumps({"id": TOK_ID}).encode())
+               json.dumps({"id": TOK_ID,
+                           "password": "password123"}).encode())
 chk("R-16 Token 续期可用", st == 200 and json.loads(b)["data"]["ttl_days"] == 180,
     f"HTTP {st}")
 

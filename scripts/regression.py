@@ -214,8 +214,10 @@ s, r = call("GET", "/top/boards")
 check("运营·排行榜", r.get("code") == 0)
 
 # ============ 7.5 开放 API / 插件 / 管理 ============
-s, r = call("POST", "/me/tokens", {"name": "回归-开放API", "rate_per_min": 120},
-    token=tok)
+s, r = call("POST", "/me/tokens", {"name": "回归-开放API",
+                                   "rate_per_min": 120,
+                                   "password": "password123"},
+            token=tok)
 tok_plain = (r.get("data") or {}).get("token", "")
 tok_fid = (r.get("data") or {}).get("id")
 check("开放API·签发token", r.get("code") == 0 and tok_plain.startswith("fxo_"))
