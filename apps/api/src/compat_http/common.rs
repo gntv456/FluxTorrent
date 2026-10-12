@@ -44,9 +44,12 @@ pub(crate) async fn limit_passkey(
     // 键名。旧写法虽然 incr 已 map_err，但 EXPIRE 只在 n==1 时做且吞错：
     // 那条命令一失败就留下无 TTL 的计数键 ⇒ 该 passkey/IP 永久 429。
     let bucket = sha3_hex(passkey.as_bytes());
+    // P-72：调用方**不要**再自带 `rl:` 前缀——rate_window 自己加，两处都写
+    // 就落出 `rl:rl:npdl:…` 这种双前缀键（实测线上就是这个形状），与运维
+    // 文档/闸门脚本约定的 `rl:<scope>:<id>:<窗口>` 对不上。
     crate::http::rate_window(
         state,
-        &format!("rl:{scope}:{}", &bucket[..16]),
+        &format!("{scope}:{}", &bucket[..16]),
         max,
         60,
     )
@@ -58,11 +61,12 @@ pub(crate) async fn limit_passkey(
     let ip = crate::http::client_ip(req);
     crate::http::rate_window(
         state,
-        &format!("rl:{scope}-ip:{ip}"),
+        &format!("{scope}-ip:{ip}"),
         PASSKEY_IP_PER_MIN,
         60,
     )
     .await
+    .map(|_| ())
 }
 
 #[cfg(test)]
