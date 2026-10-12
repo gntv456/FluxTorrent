@@ -46,7 +46,11 @@ async fn report_queue(
               WHEN 'torrent' THEN (SELECT t.name FROM torrents t WHERE t.id = r.ref_id) \
               WHEN 'user' THEN (SELECT ru.username FROM users ru WHERE ru.id = r.ref_id) \
               WHEN 'comment' THEN (SELECT left(c.body, 80) FROM comments c WHERE c.id = r.ref_id) \
-              WHEN 'forum' THEN (SELECT left(p.body, 80) FROM posts p WHERE p.id = r.ref_id) \
+              /* 审计修复（P-127）：写口 /reports 对 ref_type='forum' 校验的是
+                 **topics**.id，这里却按 posts.id 取正文——两张表是各自的 id 空间，
+                 版主看到要么是空、要么是**另一条帖子的正文**（演示库 topics
+                 13..77 与 posts 7..102 大面积重叠）。举报单的证据都不能错位。 */ \
+              WHEN 'forum' THEN (SELECT tt.title FROM topics tt WHERE tt.id = r.ref_id) \
               WHEN 'subtitle' THEN (SELECT s.title FROM subtitles s WHERE s.id = r.ref_id) \
             END AS ref_label \
          FROM reports r \
@@ -70,144 +74,6 @@ async fn report_queue(
 struct ReportQueueQuery {
     #[serde(default)]
     status: Option<String>,
-}
-
-/// 处置举报：action = act(已处置) | dismiss(驳回)；结果自动 PM 通知举报人
-#[derive(Deserialize)]
-struct ResolveReq {
-    report_id: i64,
-    #[serde(default)]
-    action: Option<String>, // act / dismiss，缺省 act
-    #[serde(default)]
-    note: String,
-}
-
-#[post("/admin/reports/resolve")]
-async fn report_resolve(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<ResolveReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    let action = body.action.as_deref().unwrap_or("act");
-    if !["act", "dismiss"].contains(&action) {
-        return Err(DomainError::Validation("action 需为 act/dismiss".into()));
-    }
-    // 取举报人与对象（供 PM）
-    let info: Option<(i64, String, i64, Option<i64>)> = sqlx::query_as(
-        "SELECT reporter_id, ref_type, \
-         ref_id, claimed_by FROM reports WHERE id = $1 AND status IN (0, 2)",
-    )
-    .bind(body.report_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((reporter_id, ref_type, ref_id, claimed_by)) = info else {
-        return Err(DomainError::Validation("举报不存在或已处理".into()));
-    };
-    // 认领互斥（0285）：resolve 此前无视 claimed_by，任何人可关掉别人正在办的工单。
-    if claimed_by.is_some() && claimed_by != Some(auth.id) {
-        return Err(DomainError::Validation(
-            "该举报已被其他管理员认领，请先由认领人释放".into(),
-        ));
-    }
-    sqlx::query(
-        "UPDATE reports SET status = 1, handled_by = $1, handled_at = now() \
-         WHERE id = $2 AND status IN (0, 2)",
-    )
-    .bind(auth.id)
-    .bind(body.report_id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    // PM 通知举报人
-    let subject = if action == "act" {
-        "您的举报已处置"
-    } else {
-        "您的举报已审阅（未处置）"
-    };
-    let mut pm = format!(
-        "您举报的对象（{} #{ref_id}）已被管理组审阅。\n\n结果：{}",
-        ref_type,
-        if action == "act" {
-            "已按规则处置"
-        } else {
-            "经核实未违反规则，予以驳回"
-        }
-    );
-    if !body.note.trim().is_empty() {
-        pm.push_str("\n\n管理备注：");
-        pm.push_str(body.note.trim());
-    }
-    let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES ($1, $2, $3, $4)",
-    )
-    .bind(auth.id)
-    .bind(reporter_id)
-    .bind(subject)
-    .bind(&pm)
-    .execute(&state.repo.db)
-    .await;
-    // 字幕举报奖惩闭环（0146 P1-8，NP 口径：成立 → 举报者 +50、上传者 −100、
-    // 删字幕；dismiss 不动账）。幂等键锚定举报单：重复处理不会二次动账。
-    if action == "act" && ref_type == "subtitle" {
-        let uploader: Option<i64> = sqlx::query_scalar(
-            "SELECT user_id FROM subtitles WHERE id = $1 AND deleted_at \
-             IS NULL",
-        )
-        .bind(ref_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let n = sqlx::query(
-            "UPDATE subtitles SET deleted_at = now(), moderated_by = $1, \
-             moderated_at = now() WHERE id = $2 AND deleted_at IS NULL",
-        )
-        .bind(auth.id)
-        .bind(ref_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
-        if n > 0 {
-            let rid = body.report_id;
-            let reward_idem = format!("subtitle-report-reward:{rid}");
-            crate::economy_http::earn_spark(
-                &state.repo.db,
-                reporter_id,
-                50,
-                "subtitle_report",
-                &reward_idem,
-            )
-            .await?;
-            if let Some(uploader) = uploader {
-                if uploader != reporter_id {
-                    let fine_idem =
-                        format!("subtitle-report-fine:{}", body.report_id);
-                    // 余额不足扣不满也无妨：spend_spark 会报 InsufficientSpark，
-                    // 悬赏已发、字幕已删，罚金失败不阻断举报结案
-                    let _ = crate::economy_http::spend_spark(
-                        &state.repo.db,
-                        uploader,
-                        100,
-                        "subtitle_violation",
-                        &fine_idem,
-                        "subtitle",
-                        ref_id,
-                    )
-                    .await;
-                }
-            }
-        }
-    }
-    state
-        .repo
-        .audit(Some(auth.id), "report.resolve", Some(body.report_id))
-        .await;
-    Ok(ok(
-        serde_json::json!({ "resolved": body.report_id, "action": action }),
-    ))
 }
 
 /// 认领举报（0 pending → 2 handling）：原子 CAS 防多人重复认领

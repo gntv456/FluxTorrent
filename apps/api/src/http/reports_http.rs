@@ -30,15 +30,34 @@ pub async fn report_create(
     if !allowed.contains(&body.ref_type.as_str()) {
         return Err(DomainError::Validation("非法的举报对象".into()));
     }
-    if body.reason.trim().is_empty() || body.reason.len() > 500 {
+    // 审计修复（P-128，批三十八实测）：理由长度按**字**判。旧写法
+    // `body.reason.len() > 500` 数的是 UTF-8 字节，而文案写「1-500 字」——
+    // 中文一字 3 字节，实测 200 个汉字（600 字节）当场 400，
+    // 中文用户实际只配写 166 字，等于把「把问题说清楚」的那点空间掐掉。
+    let reason = body.reason.trim();
+    let chars = reason.chars().count();
+    if chars == 0 || chars > 500 {
         return Err(DomainError::Validation("举报理由需 1-500 字".into()));
     }
+    // 审计修复（P-130）：这一口此前**没有任何速率档**——同一成员可以对不同目标
+    // 连点（去重索引只挡「同一目标重复」），实测连发 12 条全 200 全落库，
+    // 版主队列能被一个人灌满。档按人计，8 次/分钟足够正常举报（一次事件一两条），
+    // 挡住「用举报当刷屏工具」。放在存在性校验之前：洪水最贵的部分是每次
+    // 一次的库查询，不是那行 INSERT。
+    crate::http::throttle_limited(
+        &state,
+        format!("rep:{}", auth.id),
+        8,
+    )
+    .await?;
     // 目标存在性校验（此前任意 ref_id 含不存在对象可无限提交）
     let target_table = match body.ref_type.as_str() {
         "torrent" => Some(("torrents", "approval_status = 1")),
         "comment" => Some(("comments", "true")),
         "user" => Some(("users", "status < 2")),
-        "subtitle" => Some(("subtitles", "true")),
+        // 已软删的字幕不是可举报对象（P-131 同族：`/subtitles/{id}/report`
+        // 拒它，这里若放行，队列就会攒「处置不了」的死单）
+        "subtitle" => Some(("subtitles", "deleted_at IS NULL")),
         "forum" => Some(("topics", "true")),
         _ => None,
     };
@@ -67,7 +86,7 @@ pub async fn report_create(
     .bind(auth.id)
     .bind(&body.ref_type)
     .bind(body.ref_id)
-    .bind(body.reason.trim())
+    .bind(reason)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
