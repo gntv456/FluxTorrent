@@ -59,6 +59,62 @@ pub(super) async fn passkey_finish(
     body: web::Json<FinishRegBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // P-75：这是**登录态**端点，但一次会话被偷就走完它 = 永久后门，
+    // 所以自己也上限量（10 次/分/人）。
+    crate::http::rate_window(
+        &state,
+        &format!("pkreg:{}", auth.id),
+        10,
+        60,
+    )
+    .await?;
+    let cred_id = body.cred_id.trim();
+    if cred_id.is_empty() || cred_id.len() > 512 {
+        return Err(DomainError::Validation("cred_id 长度不符".into()));
+    }
+    // P-75（P0）：cred_id 在库里是**全局唯一**（user_passkeys_cred_id_key），
+    // 而下面的 ON CONFLICT 目标就是这个全局键、DO UPDATE 又不带 user_id
+    // 条件 ⇒ 任何登录用户把 body 里的 cred_id 填成别人的凭证 ID
+    // （匿名端点 passkey-login/begin 会按用户名回吐 cred_ids），
+    // 就把**受害者的公钥换成自己的**；随后正常走登录仪式即可拿到受害者
+    // 身份的 JWT —— 账号接管。服务端对 client 自报的
+    // (cred_id, public_key, auth_data) 三元组不做一致性校验是根因，
+    // 这里先把「越界覆盖」这条最直白的路堵死。
+    let owner: Option<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM user_passkeys WHERE cred_id = $1",
+    )
+    .bind(cred_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some(oid) = owner {
+        if oid != auth.id {
+            state
+                .repo
+                .audit(Some(auth.id), "passkey_takeover_attempt", None)
+                .await;
+            tracing::warn!(
+                cred_id = %cred_id,
+                owner = oid,
+                attacker = auth.id,
+                "passkey 绑定撞了别人的凭证 ID（已拒）"
+            );
+            return Err(DomainError::Forbidden);
+        }
+    }
+    // 每人最多 5 把（PasskeysCard 口径）：会话被偷的人不该能一次埋几十把
+    let held: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM user_passkeys WHERE user_id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if held >= 5 && owner.is_none() {
+        return Err(DomainError::Validation(
+            "每人最多绑定 5 把 passkey，请先解绑".into(),
+        ));
+    }
     let stored = take_challenge(&state, format!("pkreg:{}", auth.id))
         .await
         .ok_or(DomainError::Validation(
@@ -98,11 +154,12 @@ pub(super) async fn passkey_finish(
         "INSERT INTO user_passkeys \
          (user_id, label, cred_id, public_key, sign_count) \
          VALUES ($1, $2, $3, $4, $5) ON CONFLICT (cred_id) \
-         DO UPDATE SET public_key = $4, sign_count = $5",
+         DO UPDATE SET public_key = $4, sign_count = $5 \
+         WHERE user_passkeys.user_id = EXCLUDED.user_id",
     )
     .bind(auth.id)
     .bind(if label.is_empty() { "passkey" } else { label })
-    .bind(&body.cred_id)
+    .bind(cred_id)
     .bind(&pk_bytes)
     .bind(body.sign_count)
     .execute(&state.repo.db)
