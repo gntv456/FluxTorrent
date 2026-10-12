@@ -105,6 +105,11 @@ async fn user_set_status(
     if !(0..=2).contains(&body.status) {
         return Err(DomainError::Validation("status 取值 0/1/2".into()));
     }
+    // 理由上限 200 字（P-157 红线：4000 字的 reason 原样进了留痕表，还会被写进
+    // 给当事人的 PM 正文与运营 webhook；同仓 `audit_detail` 是按 200 字截断的）
+    if body.reason.chars().count() > 200 {
+        return Err(DomainError::Validation("理由需 ≤200 字符".into()));
+    }
     // 操作者等级须严格大于目标用户（防同级/下级操作上级）
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     // 禁言必须落到论坛侧真正读的那面旗子：`users.forumpost`。
@@ -240,18 +245,13 @@ async fn user_set_status(
                 format!(
                     "用户 {username}（#{id}）{label}：{reason}",
                     id = body.user_id,
-                    reason = if body.reason.trim().is_empty() {
-                        "（未填写）".to_string()
-                    } else {
-                        body.reason.trim().to_string()
-                    },
+                    reason = reason_txt.clone(),
                 ),
             );
         }
     }
-    Ok(ok(
-        serde_json::json!({ "user_id": body.user_id, "status": body.status }),
-    ))
+    Ok(ok(serde_json::json!({ "user_id": body.user_id,
+                             "status": body.status })))
 }
 
 #[derive(Deserialize)]
