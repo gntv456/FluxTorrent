@@ -12,7 +12,12 @@
   S3 P-67 计数 fail-close：全仓 8 处自写 `incr(...).unwrap_or(0)` 里取 4 处
      代表（登录 acctlock 读侧、compat download.php 的 npdl 桶、论坛 RSS 的
      rssforum 桶、开放 API 的 token 桶），用「把计数键 SET 成非数字」逼出
-     Redis 报错路径：修前静默放行，修后 5xx。其余站点共用同一 helper。
+     Redis 报错路径：修前静默放行，修后 5xx。其余站点共用同一 helper；
+  S5 P-72 键名契约：`rl:` 前缀只由 rate_window 加一次，实测键名必须等于
+     文档口径 `rl:<scope>:<id>:<窗口>`（双前缀 `rl:rl:*` 即红）；
+  S6 P-69 计数键 TTL 自愈；
+  S7 P-73 无 TTL 孤键不得等于永久拒绝（shoutbox/captcha/banlog/pwdforgot
+     四站从自写 Redis 收进 rate_window）。
 
 诚实边界：不断言「Redis 真挂了」的行为（不敢为验证去重启承载 announce
 计费流的 Redis）；SET 造类型错误只能覆盖「命令报错」这一支，覆盖不到
@@ -188,6 +193,14 @@ ok("S1 正控：脱敏后的 RSS 行确实在（说明请求被记过，不是�
 ok("S1 反控：脱敏只掩凭据段，普通路径原样可读",
    "/api/v1/forums" in log, brief([l for l in log.split("\n")
                                    if "forums" in l][-1:]))
+# P-74：同一行里的第二个方向——格式符写错 actix 不报错，直接把 `%m` 印成
+# 字面量，于是 access log 只剩 `"m /path"`，HTTP 方法整列没了（POST 发种与
+# GET 列表再也分不出来）。泄漏挡住 ≠ 字段还在，两头都要钉。
+samp = [l for l in log.split("\n") if "/api/v1/forums" in l]
+ok("S1/P-74 正控：access log 行里带 HTTP 方法",
+   any('"GET /api/v1/forums"' in l for l in samp), brief(samp[-1:]))
+ok("S1/P-74 反控：没有被当字面量印出的 %m（形如 \"m /api/…\"）",
+   not any('"m /api' in l for l in samp), brief(samp[-1:]))
 
 print("== S2 封号即失效 × 三个 passkey 出口 ==")
 s, r = call("GET", "/compat/nexusphp/userdetails.php?passkey=%s&id=1" % PK)
@@ -275,6 +288,59 @@ ttl1 = redis_cmd('TTL "%s"' % PETK)
 ok("S6 自愈：调用之后计数键必须带上 TTL（旧写法留 -1 = 永久 429）",
    ttl1.isdigit() and int(ttl1) > 0, "ttl=%s" % ttl1)
 redis_cmd('DEL "%s"' % PETK)
+
+print("== S5 限流键名契约（P-72）==")
+# 键名不是内部细节，它是闸门与运维的**读数接口**：`rl:` 前缀归 rate_window
+# 统一加。调用方再自带一次就落出 `rl:rl:npdl:…`（本批在跑着的容器里实测
+# 到的正是这个形状）——文档里 `redis-cli --scan --pattern "rl:npdl:*"`
+# 一条都数不到，往 `rl:npdl:…` 投毒也打不中，「fail-close 已生效」这类
+# 判据会在键名错位的情况下假绿。
+def live_keys(pat):
+    out = redis_cmd('--scan --pattern "%s"' % pat)
+    return [k.strip() for k in out.split("\n") if k.strip()]
+
+
+s, _ = call("GET", "/compat/nexusphp/download.php?id=1&passkey=%s" % PK,
+            raw=True)
+dbl = live_keys("rl:rl:*")
+ok("S5 不存在双前缀限流键（rl:rl:*）——文档口径与实际键名同源", not dbl,
+   brief(dbl))
+buckets = [k for k in live_keys("rl:npdl:*")
+           if re.match(r"^rl:npdl:[0-9a-f]{16}:\d+$", k)]
+ok("S5 正控：npdl 桶存在，形状是 rl:<scope>:<passkey 哈希前 16>:<窗口>",
+   buckets, "命中=%s http=%s" % (len(buckets), s))
+ok("S5 反控：窗口写进键名（不是把窗口留在值/TTL 里滑动）",
+   buckets and int(buckets[0].rsplit(":", 1)[1]) == int(time.time()) // 60,
+   brief(buckets))
+t5 = redis_cmd('TTL "%s"' % buckets[0]) if buckets else "-2"
+ok("S5 窗口键 TTL 落在 (0,120]：TTL 只为回收，滑动续期会把 429 续命（P-65）",
+   t5.isdigit() and 0 < int(t5) <= 120, "ttl=%s" % t5)
+
+print("== S7 计数键必须能复位（P-73：无 TTL 孤键 = 永久拒绝）==")
+# 旧四站（shoutbox 10s / captcha / banlog / pwdforgot）自己写 Redis，
+# `incr(...).unwrap_or(0)` + `if n == 1 { expire }`。EXPIRE 只在第一次调用
+# 时补，那条命令一失败就留下一个**永不过期**的计数键，此后计数只增不减：
+# pwdforgot 那个邮箱永远申请不到找回密码，captcha 那个出口 IP（CGNAT 后
+# 成千用户共用）永远拿不到验证码。这里直接造出「失败之后」的现场。
+ORPH = "%so" % MUSER
+redis_cmd('DEL "rl:banlog:%s"' % ORPH)
+redis_cmd('SET "rl:banlog:%s" 999' % ORPH)
+t7 = redis_cmd('TTL "rl:banlog:%s"' % ORPH)
+ok("S7 前置：造出一个没有 TTL 的计数键（TTL=-1，正是旧版 EXPIRE 失败后"
+   "留下的现场）", t7 == "-1", "ttl=%s" % t7)
+s7, _ = call("GET", "/auth/ban-log?username=%s" % ORPH, raw=True)
+ok("S7 孤键不得变成永久拒绝：一次调用后窗口要能自己复位（旧版在这里"
+   "一路 429 到天荒地老）", s7 != 429, "http=%s" % s7)
+nb = [k for k in live_keys("rl:banlog:%s:*" % ORPH)
+      if re.match(r"^rl:banlog:[a-z0-9]+:\d+$", k)]
+ok("S7 正控：本次调用落在带窗口的桶上，而不是那个孤键", nb, brief(nb))
+redis_cmd('DEL "rl:banlog:%s"' % ORPH)
+hits7 = []
+for _ in range(7):
+    s7, _ = call("GET", "/auth/ban-log?username=%s" % ORPH, raw=True)
+    hits7.append(s7)
+ok("S7 反控：限流本身没被拆——5 次/分钟，第 6 次起照样 429",
+   429 in hits7, brief(sorted(set(hits7))))
 
 print("== S4 收尾自检 ==")
 def bad(key):
