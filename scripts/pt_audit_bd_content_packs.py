@@ -126,7 +126,8 @@ ENDPOINTS = [
     ("GET", "/admin/content-packs", None),
     ("GET", "/admin/content-packs/export?kind=theme", None),
     ("POST", "/admin/content-packs/import", {"pack": {}, "confirm": False}),
-    ("POST", "/admin/content-packs/install", {"pack_id": "x", "confirm": 1}),
+    ("POST", "/admin/content-packs/install",
+     {"pack_id": "x", "confirm": True}),
     ("POST", "/admin/content-packs/rollback", {"id": 1}),
     ("POST", "/admin/content-packs/rule-try",
      {"key": "rule_bank_term_rate", "expr": "1", "vars": {}})]
@@ -313,8 +314,7 @@ s, r = call("POST", "/admin/content-packs/rule-try",
             {"key": "rule_bank_term_rate", "expr": "term_days",
              "vars": {"term_days": 90}}, token=ROOT)
 ok("S4f2 越域表达式回落到默认值 0（不是夹到 1.0），荒谬利率不会当真",
-   s == 200 and abs((data(r).get("value") or -1) - 0.0) < 1e-9,
-   "%s %s" % (s, blob(r)[:140]))
+   s == 200 and data(r).get("value") == 0.0, "%s %s" % (s, blob(r)[:140]))
 ok("S4g rule-try 只读：没把表达式写进 site_settings",
    sval("rule_bank_term_rate") == NEWEXPR)
 s, r = call("POST", "/admin/content-packs/rule-try",
