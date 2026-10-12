@@ -60,7 +60,7 @@ pub(super) async fn passkey_login_begin(
     let uid = match uid {
         Some(u) => u,
         None => {
-            let rp = rp_id(&state, &req).await;
+            let rp = rp_id(&req);
             return Ok(ok(serde_json::json!({
                 "challenge": fake_challenge.unwrap(),
                 "rp_id": rp,
@@ -83,7 +83,7 @@ pub(super) async fn passkey_login_begin(
         .await;
     Ok(ok(serde_json::json!({
         "challenge": challenge,
-        "rp_id": rp_id(&state, &req).await,
+        "rp_id": rp_id(&req),
         "cred_ids": creds,
     })))
 }
@@ -154,7 +154,7 @@ pub(super) async fn passkey_login_finish(
     }
     // authenticatorData：RP ID hash + UV
     let auth_data = b64url(&body.auth_data);
-    let expect_rp = Sha256::digest(rp_id(&state, &req).await.as_bytes());
+    let expect_rp = Sha256::digest(rp_id(&req).as_bytes());
     if rp_id_hash(&auth_data) != Some(expect_rp.into()) {
         return Err(DomainError::Validation("RP ID 不匹配".into()));
     }

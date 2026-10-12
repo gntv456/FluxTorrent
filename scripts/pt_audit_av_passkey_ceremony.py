@@ -23,6 +23,11 @@
      自己按 RFC 6238 算码，顺带证明两边口径一致），再只用会话打 begin——
      红线是它直接发 challenge，并把整条绕过链的后果打在日志里。
 
+  S9 rp_id 的口径（P-114）：relying party 是**站点本身**，旧实现第一优先级
+     取 announce_url 的 host——PT 站的 announce 常在另一台主机甚至裸 IP，
+     而浏览器要求 rpId 与页面可注册域一致 ⇒ 这类部署下每次注册都当场
+     SecurityError，passkey 整条不可用（面板上就是这句英文报错）。
+
 判据取「渲染层」：接管是否成立不看接口返回什么，看**受害者库里那把公钥
 有没有被换掉**，以及**攻击者拿到的 token 解出来是谁**。
 
@@ -434,8 +439,40 @@ ok("S8 跳过 begin 直接 finish 必须被拒，且库里不落凭证（challen
    s_no == 400 and psql("SELECT count(*) FROM user_passkeys WHERE "
    "cred_id = '%s'" % NOKEY) == "0", "%s %s" % (s_no, brief(r_no)))
 
-print("== S9 收尾自检 ==")
-ok("S9 COSE 那把没在库里留下任何行（拒了就是没写）",
+print("== S9 rp_id 的口径（P-114：relying party 是站点本身，不是 tracker）==")
+
+
+def site_host():
+    """读 api 容器自己的 PUBLIC_SITE_URL（与产品同一份配置，不写死）。"""
+    out = subprocess.run(
+        ["docker", "exec", "flux-api", "sh", "-c", "printenv PUBLIC_SITE_URL"],
+        capture_output=True, text=True, encoding="utf-8").stdout.strip()
+    if not out:
+        return None
+    return re.split(r"[:/?]", out.split("://")[-1])[0]
+
+
+SH = site_host()
+ANN = psql("SELECT value FROM site_settings WHERE name = 'announce_url'")
+clear_rl("rl:pkregbegin*")  # S8 把这一档吃满了，这里要的是干净的 begin
+s_b9, r_b9 = call("POST", "/auth/passkeys/begin", {
+    "label": "rp", "password": "password123",
+    "totp": totp_now(SEC_B32)}, token=VTOK)
+RID = (r_b9.get("data") or {}).get("rp_id")
+ok("S9 begin 回里的 rp_id 必须是**站点对外地址**的 host（红线：它取的是 "
+   "announce_url 的 host ⇒ rpId 与页面域不一致，浏览器对每一次注册当场 "
+   "SecurityError，passkey 在「announce 主机 ≠ 站点主机」的部署里整条不可用）",
+   SH is not None and RID == SH,
+   "rp_id=%s 站点 host=%s announce=%s" % (RID, SH, ANN))
+# S7 那节把 pklogin 的桶连打 25 次吃满了——这里要的是「同源」这件事本身，
+# 不是自己被限流打出的空 data（先清自己造的计数，别把探针的账记到站点头上）
+clear_rl("rl:pklogin*")
+_, d9 = begin_login(VNAME)
+ok("S9 登录侧的 rp_id 与注册侧同源（两处一旦漂移，已绑凭证集体验不过）",
+   d9.get("rp_id") == RID, "%s vs %s" % (d9.get("rp_id"), RID))
+
+print("== S10 收尾自检 ==")
+ok("S10 COSE 那把没在库里留下任何行（拒了就是没写）",
    psql("SELECT count(*) FROM user_passkeys WHERE cred_id = '%s'"
         % COSE_CRED) == "0", "left=%s" % psql(
             "SELECT count(*) FROM user_passkeys WHERE cred_id = '%s'"
@@ -445,7 +482,7 @@ call("POST", "/auth/passkeys/remove", {"cred_id": SEC1_CRED}, token=VTOK)
 call("POST", "/auth/passkeys/remove", {"cred_id": afresh}, token=ATOK)
 left = psql("SELECT count(*) FROM user_passkeys WHERE cred_id LIKE "
             "'av-cred-%%-%d'" % TAG)
-ok("S9 探针凭证已清（库里不残留）", left == "0", "left=%s" % left)
+ok("S10 探针凭证已清（库里不残留）", left == "0", "left=%s" % left)
 for stmt in list(reversed(CLEAN)):
     ex(stmt)
 summary()

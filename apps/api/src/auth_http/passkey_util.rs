@@ -53,31 +53,39 @@ pub(super) async fn take_challenge(
         .unwrap_or(None)
 }
 
-/// RP ID（= 站点注册域，WebAuthn 纪律）：从 announce_url 取 host。
-/// 前端必须用同一 rpId，跨子域不匹配会直接验证失败——属于防钓鱼设计。
-/// 取不到时回落请求 Host（开发机 localhost 也能走通浏览器注册）。
-pub(super) async fn rp_id(state: &AppState, req: &HttpRequest) -> String {
-    let announce: Option<String> = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = 'announce_url'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten();
-    let from_url = announce.and_then(|u| {
-        let rest = u.split_once("://").map(|(_, r)| r).unwrap_or(&u);
-        let host = rest.split(['/', ':', '?']).next().unwrap_or("").trim();
-        if host.is_empty() {
-            None
-        } else {
-            Some(host.to_string())
+/// 从 `http://host:port/path` 或裸 `host:port` 里取 host。
+fn host_of(raw: &str) -> Option<String> {
+    let rest = raw.split_once("://").map(|(_, r)| r).unwrap_or(raw);
+    let host = rest.split(['/', ':', '?']).next().unwrap_or("").trim();
+    (!host.is_empty()).then(|| host.to_string())
+}
+
+/// RP ID（= 用户当前页面的注册域，WebAuthn 纪律）：**站点对外地址**的 host。
+///
+/// P-114：旧实现第一优先级取 `announce_url` 的 host，注释还把这事说成
+/// 「防钓鱼设计」——恰好弄反了。浏览器要求 rpId 与页面所在的可注册域一致，
+/// 而 PT 站的 announce 经常在另一台主机上（甚至裸 IP：现网
+/// `announce_url=http://127.0.0.1:7070` 而站点是 `http://localhost:3000`），
+/// 于是每一次 `navigator.credentials.create` 都在**浏览器里**当场抛
+/// SecurityError——服务端连问都没被问到，红线现场就是面板上那句英文报错。
+/// announce 与站点同主机的那些部署行为不变；不同主机的，此前根本没人能
+/// 用浏览器绑成，所以没有「老凭证突然验不过」的实际受影响面。
+///
+/// 口径与邮件里的站内链接同源（`PUBLIC_SITE_URL`，回落 `PUBLIC_WEB_URL`），
+/// 都没配时退到浏览器自己报的 `Origin`，再退 `Host`，最后 localhost。
+pub(super) fn rp_id(req: &HttpRequest) -> String {
+    for key in ["PUBLIC_SITE_URL", "PUBLIC_WEB_URL"] {
+        if let Some(h) = host_of(&std::env::var(key).unwrap_or_default()) {
+            return h;
         }
-    });
-    from_url.unwrap_or_else(|| {
-        req.headers()
-            .get("host")
-            .and_then(|v| v.to_str().ok())
-            .map(|h| h.split(':').next().unwrap_or(h).to_string())
-            .unwrap_or_else(|| "localhost".into())
-    })
+    }
+    let hdr = req.headers();
+    for name in ["origin", "host"] {
+        if let Some(h) =
+            hdr.get(name).and_then(|v| v.to_str().ok()).and_then(host_of)
+        {
+            return h;
+        }
+    }
+    "localhost".into()
 }
