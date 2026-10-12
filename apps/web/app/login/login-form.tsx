@@ -242,6 +242,13 @@ export function LoginForm() {
             {dict.login.forgotPassword}
             <Link href="/forgot">{dict.login.forgotLink}</Link>
           </p>
+          {/* P-103：未激活用户的自救出口。后端拦截文案让用户「在登录页重发
+              激活邮件」，而这张卡里此前没有该入口（resend 表单只在
+              /email-verify 页，而那页过去只能由邮件抵达）。 */}
+          <p>
+            {dict.login.activateIntro}
+            <Link href="/email-verify">{dict.login.activateLink}</Link>
+          </p>
           <p>
             {dict.login.bannedIntro}
             <Link href="/ban-log">{dict.login.bannedLog}</Link>

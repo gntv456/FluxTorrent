@@ -45,22 +45,59 @@ function VerifyInner() {
     }
   }, [email]);
 
+  const resendForm = (
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        <input
+          className="min-h-[38px] flex-1 rounded border border-line
+            bg-cloud px-3 text-sm"
+          placeholder={dict.emailVerify.emailPh}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          inputMode="email"
+        />
+        <button
+          className="btn text-sm"
+          disabled={!email.includes("@")}
+          onClick={() => void resend()}
+        >
+          {dict.emailVerify.resendBtn}
+        </button>
+      </div>
+      {resent && (
+        <p className="text-xs text-muted">{dict.emailVerify.resentNote}</p>
+      )}
+    </div>
+  );
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4">
       <div className="card p-6">
         <h1 className="font-display text-xl">{dict.emailVerify.title}</h1>
         {state === "idle" && (
           <div className="mt-4 flex flex-col gap-3">
-            <p className="text-sm text-muted">
-              {fmt(dict.emailVerify.intro, { hours: 48 })}
-            </p>
-            <button
-              className="btn btn-primary"
-              disabled={!token}
-              onClick={() => void verify()}
-            >
-              {dict.emailVerify.verifyBtn}
-            </button>
+            {token ? (
+              <>
+                <p className="text-sm text-muted">
+                  {fmt(dict.emailVerify.intro, { hours: 48 })}
+                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => void verify()}
+                >
+                  {dict.emailVerify.verifyBtn}
+                </button>
+              </>
+            ) : (
+              <>
+                {/* 从登录页/邮件客户端空手进来（没带 token）时，旧版只剩一个
+                    禁用按钮——重发表单藏在「验证失败」之后，用户无路可走。 */}
+                <p className="text-sm text-muted">
+                  {dict.emailVerify.noTokenHint}
+                </p>
+                {resendForm}
+              </>
+            )}
           </div>
         )}
         {state === "ok" && (
@@ -85,26 +122,7 @@ function VerifyInner() {
           <div className="mt-4 flex flex-col gap-3">
             <p className="text-sm text-destructive">{msg}</p>
             <p className="text-xs text-muted">{dict.emailVerify.expiredHint}</p>
-            <div className="flex gap-2">
-              <input
-                className="min-h-[38px] flex-1 rounded border border-line
-                  bg-cloud px-3 text-sm"
-                placeholder={dict.emailVerify.emailPh}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                inputMode="email"
-              />
-              <button
-                className="btn text-sm"
-                disabled={!email.includes("@")}
-                onClick={() => void resend()}
-              >
-                {dict.emailVerify.resendBtn}
-              </button>
-            </div>
-            {resent && (
-              <p className="text-xs text-muted">{dict.emailVerify.resentNote}</p>
-            )}
+            {resendForm}
           </div>
         )}
       </div>

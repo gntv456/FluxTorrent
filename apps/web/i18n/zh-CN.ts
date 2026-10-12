@@ -412,6 +412,8 @@ const zhCnBase = {
     bannedLog: "查看封禁记录",
     appealIntro: "对处理结果有异议？",
     appealLink: "申诉通道",
+    activateIntro: "收不到激活邮件？",
+    activateLink: "去激活页重发",
     inviteOnly: "本站为邀请制私有社区，账号由邀请码注册",
   },
 
@@ -528,6 +530,7 @@ const zhCnBase = {
     alreadyLink: " 登录",
     alreadySuffix: "即可。",
     expiredHint: "链接过期？输入注册邮箱重新发送激活邮件。",
+    noTokenHint: "没有点开邮件里的链接？输入注册邮箱重发一封激活邮件。",
     emailPh: "注册邮箱",
     resendBtn: "重新发送",
     resentNote: "若该邮箱有未激活账号，激活邮件已发出（1 分钟内勿重复发送）。",

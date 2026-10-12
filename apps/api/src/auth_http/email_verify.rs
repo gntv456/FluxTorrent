@@ -93,10 +93,15 @@ async fn send_verification_inner(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or_else(|_| "FluxTorrent".into());
+    // P-101：正文必须是「点开就到站内页面」的绝对链接。旧写法印的是相对
+    // API 路径 `/auth/email/verify?token=…`——邮件客户端不会把它连成链接，
+    // 用户手抄也没有协议主机可用；而站内其实有落地页 `/email-verify`
+    // （带重发表单），此前没有任何一条路能抵达它。
+    let base = crate::mailer::site_base().unwrap_or_default();
     let body = format!(
         "你好 {username}，欢迎注册 {site}。\n\n\
          请在 48 小时内点击以下链接完成邮箱激活（激活后才能登录）：\n\
-         /auth/email/verify?token={plain}\n\n\
+         {base}/email-verify?token={plain}\n\n\
          如果这不是你的操作，请忽略本邮件。"
     );
     crate::mailer::send_mail_with(
@@ -109,7 +114,9 @@ async fn send_verification_inner(
 }
 
 /// 登录拦截点（login 调用）：email_verify 模式且该用户未激活 → Some。
-/// 返回 Some 时登录终止（Validation 带标记前缀，login 转译成 4103 信封）。
+/// 返回 Some 时登录终止；login.rs 把带 `EMAIL_NOT_VERIFIED:` 前缀的标记
+/// 转成可直接展示的中文提示（信封仍是 1002 参数校验失败——历史上写过
+/// 「转 4103」，代码里从来没有那个码，注释就此对齐实现）。
 pub(super) async fn guard_login(
     state: &Db,
     user_id: i64,

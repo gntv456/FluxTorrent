@@ -23,10 +23,11 @@ pub async fn register(
         password: body.password.clone(),
     };
     domain::validate_register(&new_user)?;
-    // 注册模式（U1 §11.5）：invite_only（默认，现状）/ open。
-    // open 模式旁路邀请码（inviter 置 NULL，链路其余不变）。
-    // （0208 P0：email_verify 选项已移除——旧实现不发验证信也不拦登录，
-    // 留着是空壳；存量选了该值的站点由迁移归一为 open，行为本就等同。）
+    // 注册模式（U1 §11.5）：invite_only（默认）/ open / email_verify。
+    // open 旁路邀请码（inviter 置 NULL，链路其余不变）；email_verify 建号后
+    // 发激活信并由 guard_login 拦登录（0208 时该模式确为空壳，其注释与
+    // 「已移除」的说法沿用至今已与实现不符——发信/拦截都在，设置中心也仍提供
+    // 该选项，故这里改成对齐实现的说法）。
     let reg_mode: String = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
          'registration_mode'), 'invite_only')",
@@ -34,6 +35,15 @@ pub async fn register(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or_else(|_| "invite_only".into());
+    // P-104 前置：选了「开放注册 + 邮件激活」却发不出信（SMTP 或站点基址未
+    // 配）时，建号即死锁——email_verified_at 恒 NULL、登录被 guard_login 永久
+    // 拦下、用户又收不到任何可用链接，只能等管理员手工激活。红线实测：旧写法
+    // 在此配置下注册返回 200 并留下一个进不去的账号。现在如实拒绝、不建号。
+    if reg_mode == "email_verify"
+        && !crate::mailer::mail_deliverable(&state.repo.db).await
+    {
+        return Err(DomainError::MailUnconfigured);
+    }
     // 注册自定义字段（0186）：required 校验前置（缺→拒绝，先于邀请码/验证码
     // 报出更明确的提示）；值形状校验同批，落库在建号后
     {

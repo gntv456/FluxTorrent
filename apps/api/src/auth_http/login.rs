@@ -181,8 +181,11 @@ pub async fn login(
         .execute(&state.repo.db)
         .await;
         return Err(DomainError::Validation(
+            // P-103：文案指的路径必须真存在。登录页原先没有重发入口，
+            // resend 表单只在 /email-verify 页——现在登录页挂上了
+            // 「收不到激活邮件？」，文案按界面上的实际字面量写。
             "邮箱尚未激活：请到注册邮箱点击激活链接，\
-             或在登录页用注册邮箱重新发送激活邮件"
+             或在登录页点「收不到激活邮件？」进激活页重发"
                 .into(),
         ));
     }

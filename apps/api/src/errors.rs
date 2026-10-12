@@ -51,6 +51,11 @@ pub enum DomainError {
     /// 后台保存拦截不够，站长直连改库也要被拦（样张：合成价后门 202.8%）
     #[error("卡池经济守卫触发，抽取已停止")]
     PoolGuard(String),
+    /// 站点未开通邮件服务（SMTP 或对外地址未配置）：找回密码/邮箱激活必须
+    /// 发信的动作，此前用 `Internal` 表达 ⇒ 500「内部错误」，用户与运维都看
+    /// 不出是配置状态（P-102）。语义是「服务当前不可用」，故 HTTP 503。
+    #[error("站点未开通邮件服务，请联系管理组")]
+    MailUnconfigured,
     #[error("内部错误")]
     Internal(#[from] anyhow::Error),
 }
@@ -78,6 +83,7 @@ impl DomainError {
             DomainError::TorrentDuplicate => 3004,
             DomainError::ModuleDisabled(_) => 4101,
             DomainError::PoolGuard(_) => 4102,
+            DomainError::MailUnconfigured => 4103,
             DomainError::Internal(_) => 1000,
         }
     }
@@ -106,6 +112,10 @@ impl DomainError {
             DomainError::ModuleDisabled(_) => StatusCode::NOT_FOUND,
             // 经济守卫：409 语义是「资源当前状态冲突」，与 429 限频区分
             DomainError::PoolGuard(_) => StatusCode::CONFLICT,
+            // 邮件链路依赖的外部配置缺失：503 比 500 诚实（不是我们的 bug）
+            DomainError::MailUnconfigured => {
+                StatusCode::SERVICE_UNAVAILABLE
+            }
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

@@ -1,7 +1,7 @@
 //! 找回密码端点（0020）：POST /auth/password/forgot + reset。
 //! 从 gaps_http/mail.rs 按域拆出（SMTP/发信助手留在 mail.rs）。
 
-use actix_web::{post, web, HttpResponse};
+use actix_web::{post, web, HttpRequest, HttpResponse};
 use redis::AsyncCommands;
 use serde::Deserialize;
 
@@ -32,6 +32,25 @@ pub async fn password_forgot(
     )
     .await?;
 
+    // P-102/P-104 能力前置：SMTP 或站点基址任一缺失，就在这里如实回
+    // 503/4103——旧写法是「先铸令牌 → 拼不出链接 → 抛 500 内部错误」，
+    // 结果是库里每次尝试多留一行无效 token，而用户和运维都看不出真正原因
+    // （实测现网 SMTP 已配好仍一律 500，因为基址读的是 PUBLIC_API_URL）。
+    // 该判据与「邮箱是否存在」无关，不给账号枚举开口子。
+    let cfg = crate::mailer::smtp_config(&state.repo.db).await;
+    let base = crate::mailer::site_base();
+    let dev = std::env::var("FLUX_DEV").unwrap_or_default() == "1";
+    if base.is_none() || (cfg.is_none() && !dev) {
+        tracing::error!(
+            base_set = base.is_some(),
+            smtp_set = cfg.is_some(),
+            "password reset refused: 邮件能力不完整（站点基址/SMTP）"
+        );
+        return Err(DomainError::MailUnconfigured);
+    }
+    // 开发态缺 SMTP 时的日志闭环沿用旧行为（token 只进日志，不入库外流）
+    let base = base.unwrap_or_default();
+
     let uid: Option<i64> =
         sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
             .bind(body.email.trim().to_lowercase())
@@ -53,78 +72,44 @@ pub async fn password_forgot(
         .map_err(|e| DomainError::Internal(e.into()))?;
         state.repo.audit(Some(uid), "pwd.forgot", None).await;
 
-        // 0208 P0：SMTP 配置「站点设定优先，env 兜底」——后台填好 smtp_* 即生效
-        let cfg = crate::mailer::smtp_config(&state.repo.db).await;
-        if cfg.is_none() {
-            // 审计修复（P1 凭据泄露面）：重置 token 明文进日志任何可读日志的人都能接管
-            // 账号。生产（FLUX_DEV≠1）直接拒绝服务并要求配置 SMTP；开发态保留日志闭环。
-            if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
-                tracing::error!(
-                    uid,
-                    "SMTP 未配置且非开发态：拒绝生成密码重置 token（防凭据经日志泄露）"
-                );
-                return Err(DomainError::Internal(anyhow::anyhow!(
-                    "SMTP 未配置：生产环境禁止以日志方式暴露重置 token"
-                )));
-            }
+        let Some(cfg) = cfg else {
+            // 仅开发态可达（生产已在上面拒）：重置 token 明文进日志，闭环用
             tracing::warn!(%token, "SMTP 未配置：重置 token 输出到日志（仅限开发态闭环）");
-        } else {
-            let cfg = cfg.unwrap();
-            // 真实投递（lettre）：URL = smtps://user:pass@host:port 或 smtp://host:port；
-            // 后台线程发送，失败仅记日志不影响响应。
-            // 基址（硬编码审计 P1）：未配置且非开发态拒发——寄 localhost
-            // 死链的重置邮件等于把「点开必失败」发给最着急的用户。
-            let base = std::env::var("PUBLIC_API_URL")
-                .ok()
-                .map(|v| v.trim().trim_end_matches('/').to_string())
-                .filter(|v| !v.is_empty())
-                .unwrap_or_else(|| {
-                    if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
-                        String::new() // 生产拒发标记：下方空串检查兜住
-                    } else {
-                        "http://localhost:3000".to_string()
-                    }
-                });
-            if base.is_empty() {
-                tracing::error!(
-                    uid,
-                    "reset mail refused: PUBLIC_API_URL unset \
-                     (FLUX_DEV=1 to bypass)"
-                );
-                return Err(DomainError::Internal(anyhow::anyhow!(
-                    "站点未配置对外访问地址（PUBLIC_API_URL），无法发送重置邮件"
-                )));
-            }
-            let link = format!("{base}/reset?token={token}");
-            let email_addr = body.email.trim().to_lowercase();
-            let site = sqlx::query_scalar::<_, String>(
-                "SELECT value FROM site_settings WHERE name = 'site_name'",
+            return Ok(ok(serde_json::json!({
+                "message": "如邮箱存在，重置链接已发送（30 分钟有效）"
+            })));
+        };
+        // 真实投递（lettre）：基址走 mailer::site_base() 的统一口径
+        // （P-100：站内页面链接不能用 API 域名，那样点开后必然 404）。
+        let link = format!("{base}/reset?token={token}");
+        let email_addr = body.email.trim().to_lowercase();
+        let site = sqlx::query_scalar::<_, String>(
+            "SELECT value FROM site_settings WHERE name = 'site_name'",
+        )
+        .fetch_optional(&state.repo.db)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "FluxTorrent".into());
+        actix_web::rt::spawn(async move {
+            match send_reset_mail(
+                &cfg.url,
+                &cfg.from,
+                &email_addr,
+                &site,
+                &link,
             )
-            .fetch_optional(&state.repo.db)
             .await
-            .ok()
-            .flatten()
-            .unwrap_or_else(|| "FluxTorrent".into());
-            actix_web::rt::spawn(async move {
-                match send_reset_mail(
-                    &cfg.url,
-                    &cfg.from,
-                    &email_addr,
-                    &site,
-                    &link,
-                )
-                .await
-                {
-                    Ok(_) => tracing::info!(
-                        uid,
-                        "password reset mail sent to {email_addr}"
-                    ),
-                    Err(e) => {
-                        tracing::error!(uid, "password reset mail failed: {e}")
-                    }
+            {
+                Ok(_) => tracing::info!(
+                    uid,
+                    "password reset mail sent to {email_addr}"
+                ),
+                Err(e) => {
+                    tracing::error!(uid, "password reset mail failed: {e}")
                 }
-            });
-        }
+            }
+        });
     }
     Ok(ok(serde_json::json!({
         "message": "如邮箱存在，重置链接已发送（30 分钟有效）"
@@ -139,9 +124,21 @@ struct ResetReq {
 
 #[post("/auth/password/reset")]
 pub async fn password_reset(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<ResetReq>,
 ) -> DomainResult<HttpResponse> {
+    // P-105 同族收口：这是全站唯一没有匿名限流的认证仪式端点——
+    // passkey-login begin/finish、passkeys finish、password/forgot 都上了
+    // rate_window，唯独留下它做无限次的令牌试错预言机（错码与「已用/过期」
+    // 可分辨）。uuid4 猜不中不等于可以不限：撞库与打库的门槛都在这条口上。
+    crate::http::rate_window(
+        &state,
+        &format!("pwdreset:{}", crate::http::client_ip(&req)),
+        10,
+        60,
+    )
+    .await?;
     if body.new_password.len() < 8 {
         return Err(DomainError::Validation("密码至少 8 位".into()));
     }

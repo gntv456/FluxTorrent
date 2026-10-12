@@ -77,25 +77,25 @@ pub(super) async fn email_invite_handler(
     // 邮件外发场景的站点基址（硬编码审计 P1）：env 未配置且非开发态时
     // **拒发**——寄出 localhost 死链的邀请函比不发更糟（收件人点开必失败，
     // 还暴露部署形态）。开发态保留闭环。
-    let base = std::env::var("PUBLIC_WEB_URL")
-        .or_else(|_| std::env::var("PUBLIC_API_URL"))
-        .ok()
-        .map(|v| v.trim().trim_end_matches('/').to_string())
-        .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| {
-            if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
-                String::new() // 生产拒发标记：下方空串检查兜住
-            } else {
-                "http://localhost:3000".to_string()
-            }
-        });
+    // 基址统一走 mailer::site_base()（P-100）：站点口径 PUBLIC_SITE_URL 优先，
+    // PUBLIC_WEB_URL / PUBLIC_API_URL 作旧部署回落；开发态兜 localhost。
+    // 此前这里只认 PUBLIC_WEB_URL，而现网按 rss/支付/sitemap 的口径配的是
+    // PUBLIC_SITE_URL ⇒ 邀请函一律拒发（错误文案还让用户去配一个他没见过的
+    // 变量名）。
+    let base = crate::mailer::site_base().unwrap_or_else(|| {
+        if std::env::var("FLUX_DEV").unwrap_or_default() != "1" {
+            String::new() // 生产拒发标记：下方空串检查兜住
+        } else {
+            "http://localhost:3000".to_string()
+        }
+    });
     if base.is_empty() {
         tracing::error!(
-            "invite mail refused: PUBLIC_WEB_URL/PUBLIC_API_URL unset \
+            "invite mail refused: PUBLIC_SITE_URL unset \
              (FLUX_DEV=1 to bypass)"
         );
         return Err(DomainError::Validation(
-            "站点未配置对外访问地址（PUBLIC_WEB_URL），无法发送邀请邮件".into(),
+            "站点未配置对外访问地址（PUBLIC_SITE_URL），无法发送邀请邮件".into(),
         ));
     }
     let link = format!("{base}/register?invite={code}");

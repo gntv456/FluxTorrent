@@ -2,6 +2,7 @@
 //! 迁移：0021（users.totp_secret / 邮箱验证列）。
 
 mod admin_misc;
+mod otpauth;
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use data_encoding::BASE32_NOPAD;
@@ -107,11 +108,20 @@ async fn totp_setup(
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let site = std::env::var("PUBLIC_SITE_NAME")
-        .unwrap_or_else(|_| "FluxTorrent".into());
+    // P-106：标签用用户名、issuer 用站点名（装配与百分号编码见 otpauth.rs，
+    // 那里也记了红线现场 `otpauth://totp/:4867?...&issuer=`）。
+    let uname: Option<String> =
+        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten();
+    let account = uname.unwrap_or_else(|| format!("user-{}", auth.id));
+    let site = otpauth::issuer(&state.repo.db).await;
     Ok(ok(serde_json::json!({
         "secret": b32,
-        "otpauth_uri": format!("otpauth://totp/{site}:{}?secret={b32}&issuer={site}", auth.id),
+        "otpauth_uri": otpauth::uri(&site, &account, &b32),
     })))
 }
 
