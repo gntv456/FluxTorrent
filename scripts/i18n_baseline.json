@@ -439,8 +439,8 @@
  "components/home-resource-stats.tsx": [],
  "components/home-resub-button.tsx": [
   14,
-  34,
-  37
+  37,
+  40
  ],
  "components/home-sections.tsx": [],
  "components/home-site-data.tsx": [],
