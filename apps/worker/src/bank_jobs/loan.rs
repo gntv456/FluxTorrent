@@ -49,10 +49,12 @@ pub async fn bank_overdue_penalty(db: &PgPool) -> anyhow::Result<u64> {
         r#"
         WITH due AS (
             SELECT id, user_id, remaining, penalty_rate_bp,
-                   (CURRENT_DATE - COALESCE(last_interest_date, CURRENT_DATE - 1)) AS days
+                   -- P-89：NULL 游标按到期日起算（该行正常计息止于 due，
+                   -- 罚息只补逾期段；正常行游标由 loan_interest 维护，无影响）
+                   (CURRENT_DATE - COALESCE(last_interest_date, due_at::date)) AS days
             FROM bank_loans
             WHERE status = 'active' AND due_at < now()
-              AND last_interest_date < CURRENT_DATE
+              AND COALESCE(last_interest_date, due_at::date) < CURRENT_DATE
         ),
         calc AS (
             SELECT id, user_id, penalty_rate_bp,

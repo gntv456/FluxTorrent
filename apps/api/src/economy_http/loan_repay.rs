@@ -32,6 +32,11 @@ async fn loan_repay(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let body = body.map(|b| b.into_inner()).unwrap_or_default();
+    // P-85：负数显式拒绝——旧版 filter(*a > 0) 把 -1 静默降级成「缺省=全结清」，
+    // 手滑一个负号直接销账扣款（0/缺省才是全结清兼容口径）
+    if body.amount.is_some_and(|a| a < 0) {
+        return Err(DomainError::Validation("还款金额必须为正".into()));
+    }
     let partial = body.amount.filter(|a| *a > 0);
     // 单事务（P1 收口）：旧版 FOR UPDATE 用在 autocommit 连接上——语句结束锁即释放，
     // payoff 按陈旧应计利息计算；扣款/销账两段提交靠退款补偿。现在锁、算、扣、销同事务。
@@ -51,8 +56,12 @@ async fn loan_repay(
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 结清额 = 剩余本金 + 计提至今利息（含当日，一次性结清）
     //（daily_rate_bp 是 INT4：显式 cast 防 query_as 解码 i64 报类型不匹配）
+    // P-83：last_interest_date 可空（legacy/迁移残留），NULL 让 query_as 解
+    // NaiveDate 直接 500。COALESCE 与 worker bank_loan_interest 同口径：
+    // 无游标按 created_at::date - 1 起算
     let loan: Option<(i64, i64, i64, i32, chrono::NaiveDate)> = sqlx::query_as(
-        "SELECT id, remaining, accrued_interest, daily_rate_bp::int, last_interest_date \
+        "SELECT id, remaining, accrued_interest, daily_rate_bp::int, \
+         COALESCE(last_interest_date, (created_at::date - 1)) \
          FROM bank_loans WHERE user_id = $1 AND status IN ('active', 'defaulted') FOR UPDATE",
     )
     .bind(auth.id)
@@ -74,9 +83,6 @@ async fn loan_repay(
     let (paid_total, principal_paid, interest_paid, settled_all) = match partial
     {
         Some(amount) if amount < payoff => {
-            if amount < 0 {
-                return Err(DomainError::Validation("还款金额必须为正".into()));
-            }
             let to_interest = amount.min(accrued + today_interest);
             let to_principal = amount - to_interest;
             let idem = body
@@ -104,42 +110,27 @@ async fn loan_repay(
                     "该笔还款已受理，请勿重复提交".into(),
                 ));
             }
-            // 利息冲抵顺序：今日计提先于往期累计（时序上更「新」的债务先清）
+            // 利息冲抵顺序：今日计提先于往期累计（时序上更「新」的债务先清）。
+            // P-84：未付的今日计提必须落回 accrued_interest——旧版在还息不足
+            // 今日计提时把游标推到今天、「今日计提-已付」却漏在账外，该段债务
+            // 随游标前移永久蒸发（每日还 1 魔力即可无限免息）。本金、利息、
+            // 游标三项一次 UPDATE 收口。
             let today_deduct = today_interest.min(to_interest);
             let accrued_deduct = to_interest - today_deduct;
-            if accrued_deduct > 0 {
-                sqlx::query(
-                    "UPDATE bank_loans SET accrued_interest = accrued_interest - $2 \
-                     WHERE id = $1",
-                )
-                .bind(id)
-                .bind(accrued_deduct)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-            }
+            let unpaid_today = today_interest - today_deduct;
             let new_remaining = remaining - to_principal;
-            if to_principal > 0 {
-                sqlx::query(
-                    "UPDATE bank_loans SET remaining = $2, \
-                     last_interest_date = CURRENT_DATE WHERE id = $1",
-                )
-                .bind(id)
-                .bind(new_remaining)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-            } else if today_deduct > 0 {
-                // 只还息不动本：计息游标也要推到今天，否则明日按双倍天数补计今日利息
-                sqlx::query(
-                    "UPDATE bank_loans SET last_interest_date = CURRENT_DATE \
-                     WHERE id = $1",
-                )
-                .bind(id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-            }
+            sqlx::query(
+                "UPDATE bank_loans SET remaining = $2, \
+                 accrued_interest = accrued_interest - $3 + $4, \
+                 last_interest_date = CURRENT_DATE WHERE id = $1",
+            )
+            .bind(id)
+            .bind(new_remaining)
+            .bind(accrued_deduct)
+            .bind(unpaid_today)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             (amount, to_principal, to_interest, false)
         }
         _ => {
