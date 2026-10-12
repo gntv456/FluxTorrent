@@ -1547,6 +1547,12 @@ const enBase: Omit<
       privacyStrong: "Strong (all personal info hidden)",
       webauthnTitle: "Passkey (fingerprint / security key)",
       webauthnBind: "Bind new credential",
+      webauthnStepUpHint:
+        "Confirm your credentials first: the password is required, and so " +
+        "is the current code when two-factor is on.",
+      webauthnPwPh: "Current password",
+      webauthnCodePh: "2FA code (6 digits)",
+      webauthnStepUpBtn: "Verify and continue",
       webauthnEmpty:
         "No passkey bound yet. Bind one to sign in without a password.",
       webauthnNamePrompt: "Name this credential (e.g. laptop)",

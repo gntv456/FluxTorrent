@@ -5,14 +5,14 @@
 //! → GET /auth/email/verify?token=... 激活 → 登录放行。
 //! 重发：POST /auth/email/resend（登录被拦也会走到这里拿 token 重发）。
 //! 幂等/限流：同 user 未过期 token 只有一枚有效（重发作废旧枚）；
-//! resend 按 user 60s 一次（throttle 键）。
+//! resend 按 (email, IP) 1 次/60s（P-111：显式带档，不用通用登录档）。
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::{client_ip, require_auth, throttle};
+use crate::http::{client_ip, require_auth, throttle_limited};
 use crate::state::AppState;
 
 type Db = web::Data<std::sync::Arc<AppState>>;
@@ -219,7 +219,12 @@ pub(crate) async fn email_resend(
         return Err(DomainError::Validation("邮箱格式无效".into()));
     }
     let ip = client_ip(&req);
-    throttle(&state, format!("ev:resend:{email}:{ip}")).await?;
+    // P-111：这一口每次成功都会**作废**该用户手上仍有效的激活链接
+    // （见 send_verification_inner），所以档必须是界面承诺的 1 次/60s，
+    // 而不是通用 throttle() 的登录档 5 次/分（throttle.rs:18）——按 5 次
+    // 算，1 分钟内可以连杀 5 枚链接，用户自己把自己的入口关掉。
+    throttle_limited(&state, format!("ev:resend:{email}:{ip}"), 1)
+        .await?;
     // P-109 能力前置（与 P-102 forgot、P-104 register 同一口径）：站点根本发
     // 不出邮件时，旧写法照样「作废旧链接 → 铸新链接 → 回 200 sent:true」，
     // 前端如实显示「激活邮件已发出」。用户按登录页指引来自救，结果把手里

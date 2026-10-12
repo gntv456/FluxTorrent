@@ -20,6 +20,12 @@ use crate::state::AppState;
 pub(super) struct BeginRegBody {
     #[serde(default)]
     pub label: String,
+    /// P-107：注册凭证是敏感动线，必须复核本人——密码必给且必对。
+    #[serde(default)]
+    pub password: String,
+    /// 该账号开了 2FA 时必填（当前窗口 ±1 的码）
+    #[serde(default)]
+    pub totp: Option<u32>,
 }
 
 #[post("/auth/passkeys/begin")]
@@ -29,6 +35,19 @@ pub(super) async fn passkey_begin(
     body: web::Json<BeginRegBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    // 复核本身也要有档：这里是全站唯一「拿一次会话就能试密码」的口，
+    // 不设上限就等于给在线爆破开门（finish 早已有 10 次/分，begin 原本裸奔）。
+    crate::http::rate_window(
+        &state,
+        &format!("pkregbegin:{}", auth.id),
+        5,
+        60,
+    )
+    .await?;
+    // P-107：challenge 只在复核通过后才发。攻击者手里只有一次被偷的会话时，
+    // 既拿不到 challenge，也就走不完 finish —— 见 twofa_http/step_up.rs 的因果说明。
+    crate::twofa_http::step_up(&state, auth.id, &body.password, body.totp)
+        .await?;
     let challenge = uuid::Uuid::new_v4().to_string();
     store_challenge(
         &state,
@@ -59,8 +78,9 @@ pub(super) async fn passkey_finish(
     body: web::Json<FinishRegBody>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // P-75：这是**登录态**端点，但一次会话被偷就走完它 = 永久后门，
-    // 所以自己也上限量（10 次/分/人）。
+    // P-75：这是**登录态**端点。它的威胁模型在 P-107 之后才闭合：challenge
+    // 只由 begin 在凭证复核通过后发出（本口不认没有 challenge 的请求），
+    // 单凭一次被偷的会话已绑不上；这里再保留每人的调用上限做兜底。
     crate::http::rate_window(
         &state,
         &format!("pkreg:{}", auth.id),

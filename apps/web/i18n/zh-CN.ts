@@ -1502,6 +1502,11 @@ const zhCnBase = {
       // Passkey（WebAuthn）绑定卡（0227 P2）
       webauthnTitle: "Passkey（指纹 / 安全钥匙）",
       webauthnBind: "绑定新凭证",
+      webauthnStepUpHint:
+        "绑定新凭证需先复核本人凭证：密码必填，已开两步验证还要当前验证码。",
+      webauthnPwPh: "当前密码",
+      webauthnCodePh: "两步验证码（6 位）",
+      webauthnStepUpBtn: "复核并继续",
       webauthnEmpty: "尚未绑定 Passkey。绑定后可在登录页免密登录。",
       webauthnNamePrompt: "给这枚凭证起个名字（如：笔记本）",
       webauthnNameFallback: "passkey",
