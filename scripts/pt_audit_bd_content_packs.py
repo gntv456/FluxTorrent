@@ -250,7 +250,7 @@ ok("S3e 品牌色单独装包可用（theme_token_sky=#123456）",
 s, r = roll(rowc2)
 ok("S3f 回滚到「未设置」的空值：不得被 color 校验反锁（装得上滚不回）",
    s == 200 and sval("theme_token_sky") == ""
-   and not cnt("content_packs", "id = %d" % rowc2),
+   and cnt("content_packs", "id = %d" % rowc2) == "0",
    "%s now=%r %s" % (s, sval("theme_token_sky"), blob(r)[:170]))
 s, r = imp(pack("theme", "bd.theme.big.%d" % TAG, {"settings": {
     "site_tagline": "A" * (4 * 1024 * 1024)}}), True)
@@ -412,7 +412,7 @@ s, r = roll(rowe)
 ok("S5h embed 包可回滚（原先没有 embed 分支，报「未知包类别」）"
    "：非 builtin 回到 %s 行" % EB,
    s == 200 and cnt("video_embed_rules", "NOT builtin") == EB
-   and not cnt("video_embed_rules", "id = %d" % EID) == "1"
+   and cnt("video_embed_rules", "id = %d" % EID) == "0"
    and cnt("content_packs") == BASE["packs"], "%s %s" % (s, blob(r)[:120]))
 # ============ S6 assets：包没声明的表不碰 + 净化 + 范围校验 ============
 s, r = install("builtin.assets.season-wafu", True)
