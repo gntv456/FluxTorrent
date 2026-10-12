@@ -65,7 +65,7 @@ pub(super) async fn open_upload(
     //
     // P-67：旧写法 `incr(...).unwrap_or(0)`——Redis 一抖动这道闸就不存在。
     // 改 fail-close 的 rate_window（键名/额度/窗口都不变）。
-    crate::http::rate_window(&state, &format!("rl:openup:{}", tk.uid), 20, 60)
+    crate::http::rate_window(&state, &format!("openup:{}", tk.uid), 20, 60)
         .await?;
     let auth = auth_from_token(&state, tk.uid).await?;
     // 复用网页上传的查询参数解析（不把 UploadForm 提升为对外契约）

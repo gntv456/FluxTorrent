@@ -45,7 +45,7 @@ async fn download_key_issue(
     // P-67：旧写法 `incr(...).unwrap_or(0)` 在 Redis 故障时记不上数
     // ⇒ 永不触发限流（可无限量签发凭证）。统一走 rate_window（fail-close，
     // 窗口写在键名里，不会因续期失败留下无 TTL 的键）。
-    crate::http::rate_window(&state, &format!("rl:dlkey:issue:{uid}"), 10, 60)
+    crate::http::rate_window(&state, &format!("dlkey:issue:{uid}"), 10, 60)
         .await?;
     let plain = format!("fxk_{}", uuid::Uuid::new_v4().simple());
     let expires: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
@@ -107,13 +107,13 @@ async fn download_key_fetch(
         .unwrap_or_default();
     crate::http::rate_window(
         &state,
-        &format!("rl:dlkey:use:{}", &hash[..16]),
+        &format!("dlkey:use:{}", &hash[..16]),
         20,
         60,
     )
     .await
     .map_err(actix_web::Error::from)?;
-    crate::http::rate_window(&state, &format!("rl:dlkey:use-ip:{ip}"), 30, 60)
+    crate::http::rate_window(&state, &format!("dlkey:use-ip:{ip}"), 30, 60)
         .await
         .map_err(actix_web::Error::from)?;
     let row: Option<(i64,)> = sqlx::query_as(

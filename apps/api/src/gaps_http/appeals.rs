@@ -90,7 +90,7 @@ pub async fn appeal_create(
             // 这一道不该比它更松。
             crate::http::rate_window(
                 &state,
-                &format!("rl:appeal:{uid}"),
+                &format!("appeal:{uid}"),
                 3,
                 3600,
             )
