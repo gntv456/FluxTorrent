@@ -1559,6 +1559,14 @@ const enBase: Omit<
       webauthnNameFallback: "passkey",
       webauthnCancelErr: "Registration cancelled by the browser",
       webauthnNoPkErr: "Browser does not support getPublicKey(); please upgrade",
+      webauthnErrNotAllowed:
+        "No passkey is available on this device or browser (or the "
+        + "verification was cancelled). Password + 2FA still works.",
+      webauthnErrSecurity:
+        "This site's address does not match the passkey relying-party "
+        + "domain; open the site through its public domain and retry.",
+      webauthnErrTimeout:
+        "The security key timed out. Try again or use another device.",
       webauthnBindOk: "Bound",
       webauthnUnbind: "Unbind",
       webauthnLastUsed: "Last used {date}",
@@ -6372,6 +6380,9 @@ const apitokensEn: Dict["apitokens"] = {
   neverUsed: "Never used",
   plainOnce: "Plain token shown only once — save it now:",
   limit: "Up to 3 active tokens; usage Authorization: Token fxo_…",
+  stepUpHint:
+    "Confirm your credentials before issuing: password is required, and so " +
+    "is the current code when two-factor is on.",
 };
 
 const noticePrefsEn: Dict["noticePrefs"] = {

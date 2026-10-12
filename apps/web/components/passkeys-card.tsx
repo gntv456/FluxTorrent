@@ -118,7 +118,21 @@ export function PasskeysCard() {
       setCode("");
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : String(e));
+      // P-115：WebAuthn 抛的是 DOMException，`name` 才是可分类的信息，
+      // message 是写给开发者看的英文（含 w3.org 链接）。面板原先把它原文
+      // 甩在界面上，用户既看不懂也不知道下一步该做什么。
+      const nm =
+        e instanceof DOMException || e instanceof Error ? e.name : "";
+      const sec = dict.usercp.security;
+      const hint =
+        nm === "NotAllowedError"
+          ? sec.webauthnErrNotAllowed
+          : nm === "SecurityError"
+            ? sec.webauthnErrSecurity
+            : nm === "TimeoutError"
+              ? sec.webauthnErrTimeout
+              : null;
+      setMsg(hint ?? (e instanceof ApiError ? e.message : String(e)));
     } finally {
       setBusy(false);
     }

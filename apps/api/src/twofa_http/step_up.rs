@@ -27,11 +27,12 @@ pub(crate) async fn step_up(
     uid: i64,
     password: &str,
     code: Option<u32>,
+    what: &str,
 ) -> DomainResult<()> {
     if password.is_empty() {
-        return Err(DomainError::Validation(
-            "绑定 passkey 需先复核密码（开了 2FA 还要当前验证码）".into(),
-        ));
+        return Err(DomainError::Validation(format!(
+            "{what}需先复核密码（开了 2FA 还要当前验证码）"
+        )));
     }
     let row: Option<(String, Option<String>, bool)> = sqlx::query_as(
         "SELECT pass_hash, totp_secret, totp_enabled FROM users WHERE id = $1",
@@ -41,11 +42,11 @@ pub(crate) async fn step_up(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((hash, secret, enabled)) = row else {
-        return Err(DomainError::Validation("凭证无效，未绑定 passkey".into()));
+        return Err(DomainError::Validation(format!("凭证无效，{what}未执行")));
     };
     if !crate::domain::verify_password(&hash, password) {
-        state.repo.audit(Some(uid), "passkey_stepup_failed", None).await;
-        return Err(DomainError::Validation("凭证无效，未绑定 passkey".into()));
+        state.repo.audit(Some(uid), "stepup_failed", None).await;
+        return Err(DomainError::Validation(format!("凭证无效，{what}未执行")));
     }
     if !enabled {
         return Ok(());
@@ -60,7 +61,7 @@ pub(crate) async fn step_up(
         .decode(b32.as_bytes())
         .map_err(|e| DomainError::Validation(format!("密钥损坏: {e}")))?;
     if !totp_verify(&raw, code) {
-        state.repo.audit(Some(uid), "passkey_stepup_failed", None).await;
+        state.repo.audit(Some(uid), "stepup_failed", None).await;
         return Err(DomainError::Validation("验证码不正确".into()));
     }
     Ok(())

@@ -1527,6 +1527,12 @@ const zhTwBase: Omit<
       webauthnNameFallback: "passkey",
       webauthnCancelErr: "瀏覽器取消了註冊",
       webauthnNoPkErr: "瀏覽器不支援 getPublicKey()，請升級",
+      webauthnErrNotAllowed:
+        "這個裝置或瀏覽器沒有可用的通行密鑰（也可能是驗證被取消）。"
+        + "可改用密碼 + 兩步驗證。",
+      webauthnErrSecurity:
+        "本站存取位址與 passkey 註冊域不一致，請改用站點對外的域名再綁定。",
+      webauthnErrTimeout: "等待安全鑰匙回應逾時，請重試或換一台裝置。",
       webauthnBindOk: "綁定成功",
       webauthnUnbind: "解綁",
       webauthnLastUsed: "最近使用 {date}",
@@ -6183,6 +6189,8 @@ const apitokensTw: Dict["apitokens"] = {
   neverUsed: "未使用",
   plainOnce: "權杖明文僅此一次顯示，請立即保存：",
   limit: "每人最多 3 枚有效權杖；用法 Authorization: Token fxo_…",
+  stepUpHint:
+    "簽發需先複核本人憑證：密碼必填，已開兩步驗證還要目前驗證碼。",
 };
 
 const noticePrefsTw: Dict["noticePrefs"] = {
