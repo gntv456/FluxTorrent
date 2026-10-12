@@ -246,6 +246,13 @@ ok("S1 注册仪式可走完（begin %s / finish %s）——公钥按浏览器�
 ok("S1 正控：库里落下了本人 uid 的凭证",
    psql("SELECT user_id FROM user_passkeys WHERE cred_id = '%s'"
         % VCRED) == str(VID), "cred=%s" % VCRED)
+# 设备名以 **begin 的 label** 落库（finish 的 body 里根本没有 label 字段）——
+# 这条钉住契约，web 侧「先问名字再 begin」才是有依据的写法（P-112）。
+ok("S1 正控：落库的 label 就是 begin 给的那个名字（finish 不接收 label）",
+   psql("SELECT label FROM user_passkeys WHERE cred_id = '%s'"
+        % VCRED) == "AV%d" % TAG,
+   "label=%s" % psql("SELECT label FROM user_passkeys WHERE cred_id = '%s'"
+                     % VCRED))
 _, dbs, s1, r1 = pk_login(VNAME, vpriv, VCRED, RP, count=2)
 T1 = (r1.get("data") or {}).get("token") or ""
 ok("S1 用这把 passkey 能登录，且 token 归属是本人（uid=%s）" % VID,
