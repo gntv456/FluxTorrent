@@ -58,7 +58,12 @@ pub(crate) struct UserFieldDefBody {
 }
 
 pub(crate) fn validate_def(body: &UserFieldDefBody) -> DomainResult<()> {
-    if body.label.trim().is_empty() || body.label.len() > 50 {
+    // P-137（批三十九实测）：两处上限都按**字符**判，与文案「1-50 字符 /
+    // 1-100 字符」一致。旧写法 `str::len()` 数 UTF-8 字节 ⇒ 站方连
+    // 「毕业学校及专业名称」这类中文 label 都可能被判超长（30 汉字当场 400），
+    // 而单选值只要 34 个汉字就撞 100 上限。
+    let label = body.label.trim();
+    if label.is_empty() || label.chars().count() > 50 {
         return Err(DomainError::Validation("字段名需 1-50 字符".into()));
     }
     if !valid_field_type(&body.r#type) {
@@ -87,7 +92,7 @@ pub(crate) fn validate_def(body: &UserFieldDefBody) -> DomainResult<()> {
                         "options 项需含 value 字符串".into(),
                     )
                 })?;
-            if val.is_empty() || val.len() > 100 {
+            if val.is_empty() || val.chars().count() > 100 {
                 return Err(DomainError::Validation(
                     "option value 需 1-100 字符".into(),
                 ));
