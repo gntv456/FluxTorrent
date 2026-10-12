@@ -74,12 +74,24 @@ def b64u(b):
 
 
 def new_cred():
-    """一把 P-256 密钥；公钥取 X9.62 非压缩点（65 字节，正是服务端
-    p256::EncodedPoint::from_bytes 吃的形状）。"""
+    """一把 P-256 密钥，同时给出两种公钥编码：
+    - SPKI DER：浏览器 `getPublicKey()` 交回来的形态（本闸门主用，
+      因为「闸门按真实客户端形状跑」才有意义 —— P-82 就是被服务端
+      只认 SEC1 卡死的）；
+    - SEC1 未压缩点（0x04‖X‖Y）：库里实际存的形状，非浏览器客户端会交这个。"""
     priv = ec.generate_private_key(ec.SECP256R1())
-    pub = priv.public_key().public_bytes(
-        Encoding.X962, PublicFormat.UncompressedPoint)
-    return priv, pub
+    pub = priv.public_key()
+    sec1 = pub.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+    spki = pub.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+    return priv, sec1, spki
+
+
+def cose_of(sec1):
+    """手工 CBOR 编出 COSE_Key {1:2, 3:-7, -1:1, -2:x, -3:y}——即
+    authenticatorData 里那个结构。服务端不该拿它当公钥收（P-82 负控）。"""
+    x, y = sec1[1:33], sec1[33:65]
+    return (b"\xa5" + b"\x01\x02" + b"\x03\x26" + b"\x20\x01"
+            + b"\x21\x58\x20" + x + b"\x22\x58\x20" + y)
 
 
 def authdata(rp, uv=True, count=1):
@@ -195,11 +207,11 @@ RP = d0.get("rp_id") or "127.0.0.1"
 print("   rpId=%s（服务端从 announce_url 推，闸门照它造 authData）" % RP)
 
 print("== S1 地基：绑定自己的 passkey 并用它登录 ==")
-vpriv, vpub = new_cred()
+vpriv, vsec1, vspki = new_cred()
 VCRED = "av-cred-v-%d" % TAG
-s_b, (s_f, r_f) = reg_bind(VTOK, vpriv, vpub, VCRED, RP)
-ok("S1 注册仪式可走完（begin %s / finish %s）" % (s_b, s_f), s_f == 200,
-   brief(r_f))
+s_b, (s_f, r_f) = reg_bind(VTOK, vpriv, vspki, VCRED, RP)
+ok("S1 注册仪式可走完（begin %s / finish %s）——公钥按浏览器形态（SPKI "
+   "DER）提交" % (s_b, s_f), s_f == 200, brief(r_f))
 ok("S1 正控：库里落下了本人 uid 的凭证",
    psql("SELECT user_id FROM user_passkeys WHERE cred_id = '%s'"
         % VCRED) == str(VID), "cred=%s" % VCRED)
@@ -215,6 +227,20 @@ ok("S1b 定宽 r‖s 这种「浏览器不会发」的形态必须被拒（验�
    "CTAP2 的 ASN.1 DER；两种都收 = 口径没定）", s1b != 200,
    "http=%s %s" % (s1b, brief(r1b)))
 
+print("== S1c 公钥编码口径（P-82）==")
+COSE_CRED = "av-cose-%d" % TAG
+_, (sc, rc) = reg_bind(VTOK, vpriv, cose_of(vsec1), COSE_CRED, RP)
+ok("S1c COSE_Key（authenticatorData 里那个 CBOR 结构）必须明确拒——"
+   "不许当 SEC1 蒙混收下，也不许 500", sc >= 400 and sc < 500
+   and "COSE" in str(rc), "http=%s %s" % (sc, brief(rc)))
+SEC1_CRED = VCRED + "-sec1"
+_, (sc2, rc2) = reg_bind(VTOK, vpriv, vsec1, SEC1_CRED, RP)
+ok("S1c 正控：SEC1 未压缩点照收（库里实际存的形状，非浏览器客户端交这个）",
+   sc2 == 200, brief(rc2))
+_, _, sc3, rc3 = pk_login(VNAME, vpriv, SEC1_CRED, RP, count=4)
+ok("S1c 用 SPKI 绑进来的那把能登录之外，SEC1 绑的这把也能（归一只在入口，"
+   "没把两条路都改坏）", sc3 == 200, "http=%s %s" % (sc3, brief(rc3)))
+
 print("== S2 begin 的防枚举形状 ==")
 ids = dbs.get("cred_ids") or []
 ok("S2 地基：begin 按用户名回该账号的 cred_ids（下一步的靶单）",
@@ -226,8 +252,8 @@ ok("S2 反控：用户名不存在也回 200 空列表（不许退化成 404 报
 
 print("== S3 跨用户凭证覆盖（P0：账号接管）==")
 before = pub_of(VCRED)
-apriv, apub = new_cred()
-_, (s3f, r3f) = reg_bind(ATOK, apriv, apub, VCRED, RP)
+apriv, asec1, aspki = new_cred()
+_, (s3f, r3f) = reg_bind(ATOK, apriv, aspki, VCRED, RP)
 ok("S3 攻击者绑定「与别人同 cred_id」的凭证必须被拒（而不是覆盖）",
    s3f >= 400, "http=%s %s" % (s3f, brief(r3f)))
 ok("S3 受害者存着的公钥一个字节都没变", before == pub_of(VCRED),
@@ -246,7 +272,7 @@ _, _, s4, r4 = pk_login(VNAME, vpriv, VCRED, RP, count=100)
 ok("S4 受害者仍能用自己的 passkey 登录", s4 == 200,
    "http=%s %s" % (s4, brief(r4)))
 afresh = "av-cred-a-%d" % TAG
-_, (s4b, r4b) = reg_bind(ATOK, apriv, apub, afresh, RP)
+_, (s4b, r4b) = reg_bind(ATOK, apriv, aspki, afresh, RP)
 ok("S4 攻击者绑定自己的新 cred_id 照常成功", s4b == 200,
    "http=%s %s" % (s4b, brief(r4b)))
 _, _, s4c, r4c = pk_login(ANAME, apriv, afresh, RP, count=2)
@@ -294,7 +320,13 @@ ok("S7 finish：连续 12 次必须出现 429（ECDSA 验签是 CPU 活，且这
    "认证端点）", 429 in hits2, brief(sorted(set(hits2))))
 
 print("== S8 收尾自检 ==")
+ok("S8 COSE 那把没在库里留下任何行（拒了就是没写）",
+   psql("SELECT count(*) FROM user_passkeys WHERE cred_id = '%s'"
+        % COSE_CRED) == "0", "left=%s" % psql(
+            "SELECT count(*) FROM user_passkeys WHERE cred_id = '%s'"
+            % COSE_CRED))
 call("POST", "/auth/passkeys/remove", {"cred_id": VCRED}, token=VTOK)
+call("POST", "/auth/passkeys/remove", {"cred_id": SEC1_CRED}, token=VTOK)
 call("POST", "/auth/passkeys/remove", {"cred_id": afresh}, token=ATOK)
 left = psql("SELECT count(*) FROM user_passkeys WHERE cred_id LIKE "
             "'av-cred-%%-%d'" % TAG)
