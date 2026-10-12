@@ -28,6 +28,19 @@ pub(super) async fn passkey_login_begin(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<BeginLoginBody>,
 ) -> DomainResult<impl Responder> {
+    // P-79：匿名端点，且每次都要打一次库 + 一次 Redis 写。密码登录那侧
+    // 有 5 次/分（按用户名）+ IP 档 + 账号锁定，这里原本一条限流都没有
+    // ——既是用户名枚举的放大器，也是免费的算力放大口。
+    let ip = crate::http::client_ip(&req);
+    crate::http::rate_window(&state, &format!("pkloginb:{ip}"), 20, 60)
+        .await?;
+    crate::http::rate_window(
+        &state,
+        &format!("pkloginb-u:{}", body.username.trim().to_lowercase()),
+        10,
+        60,
+    )
+    .await?;
     // 用户存在性与凭证列表（不泄敏感：匿名端点只回 cred_id 列表）
     let uid: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM users WHERE username = $1 AND status < 2",
@@ -61,7 +74,10 @@ pub(super) async fn passkey_login_begin(
     .bind(uid)
     .fetch_all(&state.repo.db)
     .await
-    .unwrap_or_default();
+    // P-80：`unwrap_or_default()` 把「查崩了」写成「你没有 passkey」——
+    // 一次 DB 抖动就让正常用户在自己的凭证页上看到空列表（并被引导去
+    // 重复绑定）。读侧的错要如实报出去。
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let challenge = uuid::Uuid::new_v4().to_string();
     store_challenge(&state, format!("pklogin:{}", challenge), uid.to_string())
         .await;
@@ -87,6 +103,10 @@ pub(super) async fn passkey_login_finish(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<FinishLoginBody>,
 ) -> DomainResult<HttpResponse> {
+    // P-79：认证端点 + 每次一把 ECDSA 验签，此前无任何上限。
+    let ip = crate::http::client_ip(&req);
+    crate::http::rate_window(&state, &format!("pkloginf:{ip}"), 10, 60)
+        .await?;
     let cd = serde_json::from_slice::<serde_json::Value>(&b64url(
         &body.client_data_json,
     ))
@@ -106,7 +126,12 @@ pub(super) async fn passkey_login_finish(
     let uid: i64 = uid_str
         .parse()
         .map_err(|_| DomainError::Validation("验证失败".into()))?;
-    let row: Option<(i64, Vec<u8>, i64, i64, i16, bool)> = sqlx::query_as(
+    // P-78：第三列 `COALESCE(u.class_id, 0)` 是 **integer(INT4)**，按 i64 解
+    // 必然 `mismatched types; Rust type i64 (as SQL type INT8) is not
+    // compatible with SQL type INT4` ⇒ 这条查询从写下起就没成功过一次，
+    // passkey 登录**全量 500**（注册侧却是 200，于是界面上「绑定成功」，
+    // 谁都用不了）。类型要和列本身对齐，不是靠 `as i32` 蒙过去。
+    let row: Option<(i64, Vec<u8>, i64, i32, i16, bool)> = sqlx::query_as(
         "SELECT u.id, pk.public_key, pk.sign_count, \
                 COALESCE(u.class_id, 0), u.status, \
                 u.must_reset_password \
@@ -180,7 +205,7 @@ pub(super) async fn passkey_login_finish(
     .clamp(1, 720);
     let token = state
         .jwt
-        .issue(user_id, class_id as i32, ttl)
+        .issue(user_id, class_id, ttl)
         .map_err(DomainError::Internal)?;
     state
         .repo
