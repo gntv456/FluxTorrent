@@ -231,6 +231,8 @@ set_promo("torrent", "free", torrent_id=tid)
 r1 = measure(ann, state, "free")
 ok("S1 free → delta_down=0 且 delta_up 仍计（促销真的进到了计费）",
    r1 is not None and r1[1] == 0 and r1[0] == STEP, "%s" % (r1,))
+ok("S1 落账促销码=1(free)（0286 那列的留痕要能反查倍率）",
+   r1 is not None and r1[2] == 1, "%s" % (r1,))
 
 print("== S2 x2：上传翻倍、下载照常 ==")
 clear_promos()
@@ -238,6 +240,7 @@ set_promo("torrent", "x2", torrent_id=tid)
 r2 = measure(ann, state, "x2")
 ok("S2 x2 → delta_up=2×步长 且 delta_down 按 1× 计",
    r2 is not None and r2[0] == 2 * STEP and r2[1] == STEP, "%s" % (r2,))
+ok("S2 落账促销码=2(x2)", r2 is not None and r2[2] == 2, "%s" % (r2,))
 
 print("== S3 x2free：上传翻倍 + 下载计 0 ==")
 clear_promos()
@@ -245,6 +248,7 @@ set_promo("torrent", "x2free", torrent_id=tid)
 r3 = measure(ann, state, "x2free")
 ok("S3 x2free → 上传翻倍且下载为 0",
    r3 is not None and r3[0] == 2 * STEP and r3[1] == 0, "%s" % (r3,))
+ok("S3 落账促销码=3(x2free)", r3 is not None and r3[2] == 3, "%s" % (r3,))
 
 print("== S4 过期一致性：计费与展示必须同时失效 ==")
 clear_promos()
@@ -257,7 +261,7 @@ ok("S4 正控：在促期间展示侧下发促销码（实测 %s / 结束 %s）"
 psql("UPDATE promotions SET starts_at = now() - interval '2 hours', "
      "ends_at = now() - interval '5 minutes' WHERE id = %s" % pid)
 r4 = measure(ann, state, "过期")
-ok("S4 促销一过 ends_at，计费立刻回到 1×1",
+ok("S4 促销一过 ends_at，计费立刻回到 1×1 且落账不留促销码",
    r4 is not None and r4[0] == STEP and r4[1] == STEP and r4[2] == 0,
    "%s" % (r4,))
 d2 = (call("GET", "/torrents/%s" % tid, token=ROOT)[1].get("data") or {})
@@ -272,6 +276,8 @@ set_promo("torrent", "x2", torrent_id=tid)
 r5 = measure(ann, state, "free+x2 同种")
 ok("S5 同种子两条促销并存时按维度择优（up 取最大、down 取最小）⇒ 2×STEP / 0",
    r5 is not None and r5[0] == 2 * STEP and r5[1] == 0, "%s" % (r5,))
+ok("S5 落账促销码=3(x2free)（合成后的倍率反查档位，不是「最强的一条」）",
+   r5 is not None and r5[2] == 3, "%s" % (r5,))
 clear_promos()
 set_promo("global", "x2")
 set_promo("torrent", "free", torrent_id=tid)
@@ -301,6 +307,10 @@ ok("S5b 后台列表角标同值且「促销中」筛选把全站促销作用到
                                  len(arows)),
    bool(arow) and arow[0].get("promotion") == "x2free",
    "%s total=%s" % ([x.get("promotion") for x in arow], adm.get("total")))
+r5b_code = r5b is not None and r5b[2] == 3
+ok("S5b 落账促销码=3(x2free)——H&R 与作弊差距判据都按 1/3 豁免，"
+   "记成 2(x2) 就会把免流期间的合法差额拿去告警",
+   r5b_code, "%s" % (r5b,))
 clear_promos()
 set_promo("global", "half")
 set_promo("torrent", "x2", torrent_id=tid)
@@ -308,6 +318,12 @@ r5c = measure(ann, state, "全站half+本种x2")
 ok("S5c 全站 half + 本种 x2 ⇒ 上传翻倍且下载半计（2×STEP / 步长÷2）",
    r5c is not None and r5c[0] == 2 * STEP and r5c[1] == STEP // 2,
    "%s" % (r5c,))
+ok("S5c 落账促销码=5(x2half)", r5c is not None and r5c[2] == 5,
+   "%s" % (r5c,))
+d7 = (call("GET", "/torrents/%s" % tid, token=ROOT)[1].get("data") or {})
+ok("S5c 角标同值：half + x2 合成应显示 2x50%%（实测 %s）"
+   % (d7.get("promotion"),), d7.get("promotion") == "x2half",
+   "%s" % (d7.get("promotion"),))
 clear_promos()
 
 print("== S6 写口卫生（/admin/freeleech）==")
