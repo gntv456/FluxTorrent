@@ -375,9 +375,9 @@ ok("S8 反控：放宽 IP 档不等于放宽账号档——同一账号被爆破
    "429", 429 in hits8, brief(sorted(set(hits8))))
 
 print("== S9 API Token 建口的 step-up（P-113）==")
-# 与 P-107 同族：Token 是**长期凭证**（180 天，明文只回一次），而且不像会话
-# JWT 会随改密/撤销线死——只能逐条 revoke。会话被偷的人若能直接签一枚带
-# upload 的 Token，就等于留下一个「改完密码也赶不走」的后门。
+# 与 P-107 同族：Token 是 180 天的**长期凭证**，不像会话 JWT 会随改密/撤销线死，
+# 只能逐条 revoke。会话被偷的人若能直接签一枚带 upload 的 Token，就等于留下
+# 一个「改完密码也赶不走」的后门。
 def active_ids():
     got = q("SELECT COALESCE(string_agg(id::text, ','), '') FROM api_tokens "
             "WHERE user_id = %s AND revoked_at IS NULL" % MID)
@@ -391,11 +391,10 @@ def revoke_all_active(keep=None):
         call("POST", "/me/tokens/revoke", {"id": rid}, token=MT)
 
 
-# 先把本探针号的有效 Token 清空（**留下 S0 那枚**，续期那一判要用它）：
-# 产品口径「每人最多 3 枚有效」会先一步 400，把「这一口到底有没有档」
-# 这件事遮掉（红线第一轮就是这么被掩盖的）。
+# 先清场（**留下 S0 那枚**，续期那一判要用它）：产品口径「每人最多 3 枚有效」
+# 会先一步 400，把「这一口到底有没有档」遮掉——红线第一轮正是这样被掩盖的。
 revoke_all_active(keep=TOKEN_ID)
-ok("S9 前置：探针号只剩 S0 那枚 Token（上限 3 枚会掩盖「有没有档」）",
+ok("S9 前置：探针号只剩 S0 那枚 Token（上限会掩盖「有没有档」）",
    active_ids() == [TOKEN_ID], "active=%s" % active_ids())
 s_np, r_np = call("POST", "/me/tokens", {"name": "no-pw"}, token=MT)
 ok("S9 不给密码就签 Token 必须被拒（红线：200 直接吐明文 Token）",
@@ -409,24 +408,16 @@ ok("S9 密码错必须拒且点到「凭证无效」（这个口此前根本不�
 left = [x for x in active_ids() if x != TOKEN_ID]
 ok("S9 两次被拒都不该落下新 Token 行（红线：照样 INSERT，而明文已回显过一次）",
    not left, "多留=%s" % left)
-if left:
-    # 红线现场：只撤**误签的那几枚**（TOKEN_ID 还留着，下面续期那一判要用它）
-    for rid in left:
-        EXTRA_IDS.append(rid)
-        call("POST", "/me/tokens/revoke", {"id": rid}, token=MT)
+for rid in left:
+    EXTRA_IDS.append(rid)
+    call("POST", "/me/tokens/revoke", {"id": rid}, token=MT)
 s_rf, r_rf = call("POST", "/me/tokens/refresh", {"id": TOKEN_ID}, token=MT)
 ok("S9 续期同样要复核（红线：200 把有效期再推 180 天 = 让后门永生）",
    s_rf == 400 and "复核密码" in str(r_rf.get("message", "")),
    "%s %s" % (s_rf, brief(r_rf)))
-codes9 = []
-for _ in range(6):
-    codes9.append(call("POST", "/me/tokens",
-                       {"name": "brute", "password": "Wrong#2026pw"},
-                       token=MT, raw=True)[0])
-ok("S9 建口要有档（连发 6 次错密码必须出现 429；红线：该口零限流）",
-   429 in codes9, "状态序列=%s" % codes9)
+# 正控放在限速风暴**之前**：这一口的新档是 5 次/分，先把额度吃光就会把自己
+# 的正常动线打成 429 假红（同一课在批三十四/三十五已经交过两次学费）。
 revoke_all_active()
-# 正控：带正确凭证照常签出（step-up 不是把功能关掉）
 s_ok, r_ok = call("POST", "/me/tokens",
                   {"name": "AU正控%d" % TAG, "password": "password123"},
                   token=MT)
@@ -435,6 +426,13 @@ if d_ok.get("id"):
     EXTRA_IDS.append(d_ok["id"])
 ok("S9 正控：复核通过后仍能签出 Token（且明文只在这一次返回）",
    s_ok == 200 and bool(d_ok.get("token")), "%s %s" % (s_ok, brief(r_ok)))
+codes9 = []
+for _ in range(6):
+    codes9.append(call("POST", "/me/tokens",
+                       {"name": "brute", "password": "Wrong#2026pw"},
+                       token=MT, raw=True)[0])
+ok("S9 建口要有档（连发 6 次错密码必须出现 429；红线：该口零限流）",
+   429 in codes9, "状态序列=%s" % codes9)
 revoke_all_active()
 ok("S9 收尾：本探针号不留有效 Token（撤销是软撤，数 revoked_at IS NULL）",
    not active_ids(), "still=%s" % active_ids())
