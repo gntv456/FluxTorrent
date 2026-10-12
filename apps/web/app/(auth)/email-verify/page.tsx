@@ -18,6 +18,7 @@ function VerifyInner() {
     "idle",
   );
   const [msg, setMsg] = useState("");
+  const [rmsg, setRmsg] = useState("");
   const [email, setEmail] = useState("");
   const [resent, setResent] = useState(false);
 
@@ -36,12 +37,12 @@ function VerifyInner() {
 
   const resend = useCallback(async () => {
     setResent(false);
-    setMsg("");
+    setRmsg("");
     try {
       await api.post("/api/v1/auth/email/resend", { email });
       setResent(true);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : String(e));
+      setRmsg(e instanceof ApiError ? e.message : String(e));
     }
   }, [email]);
 
@@ -64,6 +65,10 @@ function VerifyInner() {
           {dict.emailVerify.resendBtn}
         </button>
       </div>
+      {/* P-110：重发的失败必须有落点。旧版把错误写进 msg，而 msg 只在
+          「验证失败」那一支渲染——空手进来（没带 token）的用户点重发，
+          限流/未配邮件服务时界面一动不动，像按钮坏了。 */}
+      {rmsg && <p className="text-sm text-destructive">{rmsg}</p>}
       {resent && (
         <p className="text-xs text-muted">{dict.emailVerify.resentNote}</p>
       )}

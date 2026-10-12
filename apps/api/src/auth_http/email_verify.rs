@@ -220,6 +220,16 @@ pub(crate) async fn email_resend(
     }
     let ip = client_ip(&req);
     throttle(&state, format!("ev:resend:{email}:{ip}")).await?;
+    // P-109 能力前置（与 P-102 forgot、P-104 register 同一口径）：站点根本发
+    // 不出邮件时，旧写法照样「作废旧链接 → 铸新链接 → 回 200 sent:true」，
+    // 前端如实显示「激活邮件已发出」。用户按登录页指引来自救，结果把手里
+    // 唯一还可能有效的激活链接打死，换成一枚永远送不达的新链接——自救口
+    // 反而比原地不动更糟。这里在碰任何令牌之前就回 503/4103。
+    // 判据只反映站点配置（有邮件服务吗），不区分这个邮箱是否存在，
+    // 因此不构成账号枚举的开口。
+    if !crate::mailer::mail_deliverable(&state.repo.db).await {
+        return Err(DomainError::MailUnconfigured);
+    }
     let row: Option<(i64, String)> = sqlx::query_as(
         "SELECT id, username FROM users \
          WHERE lower(email) = $1 AND email_verified_at IS NULL",
