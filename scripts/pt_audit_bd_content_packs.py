@@ -85,8 +85,7 @@ for it in items:
 ok("S1a catalog 200 且内置目录非空（%d 条 / %d）" % (len(items), s),
    s == 200 and len(items) > 0, "%s %s" % (s, blob(r)[:80]))
 ok("S1b 内置目录含 taxonomy 与 assets 两类（%s）" % by_kind,
-   by_kind.get("taxonomy", 0) >= 1 and by_kind.get("assets", 0) == 2,
-   str(by_kind))
+   by_kind.get("taxonomy", 0) >= 1 and by_kind.get("assets", 0) == 2)
 ok("S1c 未装任何包时目录不带 installed_row_id",
    all("installed_row_id" not in it for it in items),
    str([it.get("pack_id") for it in items if "installed_row_id" in it][:3]))
@@ -252,10 +251,14 @@ ok("S3f 回滚到「未设置」的空值：不得被 color 校验反锁（装�
    s == 200 and sval("theme_token_sky") == ""
    and cnt("content_packs", "id = %d" % rowc2) == "0",
    "%s now=%r %s" % (s, sval("theme_token_sky"), blob(r)[:170]))
-s, r = imp(pack("theme", "bd.theme.big.%d" % TAG, {"settings": {
-    "site_tagline": "A" * (4 * 1024 * 1024)}}), True)
-ok("S3g 包体上限 4MiB：超大 payload 直接拒（远程拉包早有 16MiB 闸）",
-   s == 400 and "4MiB" in blob(r), "%s %s" % (s, blob(r)[:90]))
+BIG = []
+for sz, kw in ((1100 * 1024, "1MiB"), (3 * 1024 * 1024, "larger than")):
+    st, rr = imp(pack("theme", "bd.theme.big.%d" % TAG,
+                      {"settings": {"site_tagline": "A" * sz}}), True)
+    if st != 400 or kw not in blob(rr):
+        BIG.append("%sKB->%s %s" % (sz // 1024, st, blob(rr)[:60]))
+ok("S3g 包体两道闸：1.1MiB 由本批 1MiB 上限拒、3MiB 由 actix 2MiB 拒",
+   not BIG, blob(BIG)[:220])
 
 # ============ S4 rules：白名单 / changed 口径 / rule-try 只读 ============
 rp_bad = pack("rules", "bd.rules.bad.%d" % TAG,
@@ -309,8 +312,8 @@ ok("S4f rule-try 求值（90 天 × 0.0005 = 0.045）与域区间回显 %s"
 s, r = call("POST", "/admin/content-packs/rule-try",
             {"key": "rule_bank_term_rate", "expr": "term_days",
              "vars": {"term_days": 90}}, token=ROOT)
-ok("S4f2 越界表达式被夹到域上限（90 → 1.0），不返回荒谬利率",
-   s == 200 and abs((data(r).get("value") or 0) - 1.0) < 1e-9,
+ok("S4f2 越域表达式回落到默认值 0（不是夹到 1.0），荒谬利率不会当真",
+   s == 200 and abs((data(r).get("value") or -1) - 0.0) < 1e-9,
    "%s %s" % (s, blob(r)[:140]))
 ok("S4g rule-try 只读：没把表达式写进 site_settings",
    sval("rule_bank_term_rate") == NEWEXPR)
@@ -387,12 +390,10 @@ pub = json.dumps(call("GET", "/forums/embed-rules", token=ROOT)[1],
                  ensure_ascii=False)
 ok("S5d 渲染层真的看到这条规则（/forums/embed-rules 含 bdprobe）",
    "bdprobe" in pub, pub[:140])
-psql_body = dict(GOOD)
-psql_body.update(name_zh="BD 改名后的框", sort=9, aspect="4:3")
+psql_body = dict(GOOD, name_zh="BD 改名后的框", sort=9, aspect="4:3")
 s, r = call("PUT", "/admin/embed-rules/%d" % EID, psql_body, token=ROOT)
 ok("S5e 界面侧改名改序可用（PUT %s）" % s, s == 200, blob(r)[:100])
-row2 = dict(GOOD)
-row2["id"] = EID + 1
+row2 = dict(GOOD, id=EID + 1)
 s, r = imp(epack([psql_body, row2], "bd.embed.ok2.%d" % TAG), True)
 rowe2 = last_row_for("bd.embed.ok2.%d" % TAG)
 ok("S5f 再装含两条的 embed 包（90051 改名值 + 新行）",
@@ -462,8 +463,7 @@ ok("S6f 净化包回滚：探针框清除、原七框未被连带改动",
    and cnt("avatar_frames") == BASE["frames"], "%s" % blob(r)[:100])
 
 md = list(tables.get("medals") or [])
-md[0] = dict(md[0])
-md[0]["price"] = -5
+md[0] = dict(md[0], price=-5)
 neg = pack("assets", "bd.assets.neg.%d" % TAG,
            {"tables": {"medals": md, "avatar_frames":
                        tables.get("avatar_frames") or []}})

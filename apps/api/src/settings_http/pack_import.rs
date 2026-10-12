@@ -39,10 +39,11 @@ pub(super) async fn import(
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
     let head = parse_pack(pack)?;
-    // 包体上限 4MiB：远程侧早有 16MiB/2MiB 两道闸，本地导入原先什么都不限
-    // ——actix Json 默认 32MiB 整份进内存，还原样登记进 content_packs。
-    if head.payload.to_string().len() > 4 * 1024 * 1024 {
-        return Err(bad("包体 payload 超过 4MiB 上限"));
+    // 包体上限 1MiB。本地上传先被 actix Json 的 2MiB 挡下（实测回「larger
+    // than allowed」），但商店远程路径不走 Json 提取器——`fetch_remote_pack`
+    // 拉 16MiB 后直接进这里，所以闸必须建在两条路共用的入口上。
+    if head.payload.to_string().len() > 1024 * 1024 {
+        return Err(bad("包体 payload 超过 1MiB 上限"));
     }    match head.kind.as_str() {
         "taxonomy" => import_taxonomy(state, actor, &head, confirm).await,
         "rules" => import_rules(state, actor, &head, confirm).await,
