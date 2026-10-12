@@ -283,7 +283,9 @@ for it in lst0:
     if str(it.get("name") or "").startswith("agtz") and not it.get(
             "revoked_at"):
         call("POST", "/me/tokens/revoke", {"id": it.get("id")}, token=ROOT)
-s, r = call("POST", "/me/tokens", {"name": "agtz %d" % int(time.time())},
+# P-113：签发 Token 现在要复核凭证（长期凭证不能只靠一次会话）
+s, r = call("POST", "/me/tokens", {"name": "agtz %d" % int(time.time()),
+                                   "password": "password123"},
             token=ROOT)
 TZTOK = (r.get("data") or {}).get("token")
 ok("G9 可签发 API Token（Torznab 鉴权入口）", s == 200 and TZTOK,

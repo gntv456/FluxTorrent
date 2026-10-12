@@ -222,7 +222,9 @@ def main():
         # ---------- J6 API 令牌跟随撤销线 ----------
         print("\n[J6] 改密/踢会话后 API 令牌必须失效")
         st, d = call(jwt(PROBE, 1), "POST", "/me/tokens",
-                     {"name": "E2E 探针", "scopes": ["read"]})
+                     {"name": "E2E 探针", "scopes": ["read"],
+                      "password": os.environ.get("FLUX_PROBE_PW",
+                                                 "password123")})
         tok = ((d.get("data") or {}).get("token")
                or (d.get("data") or {}).get("plaintext"))
         check("J6a 令牌可签发", st == 200 and bool(tok), "HTTP %s" % st)
