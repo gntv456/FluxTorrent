@@ -420,6 +420,19 @@ for _ in range(6):
 ok("S8 begin 也要有档（连发 6 次错密码必须出现 429；红线：全 200，"
    "无上限 = 在线爆破密码的口）", 429 in codes,
    "状态序列=%s" % codes)
+# 复核只挡在 begin，那么 finish 必须真的离不开 challenge——否则攻击者可以
+# 自己编一个 challenge 直接收尾，step-up 就白加了。
+NOKEY = "av-nocred-%d" % TAG
+s_no, r_no = call("POST", "/auth/passkeys/finish", {
+    "cred_id": NOKEY, "public_key": b64u(new_cred()[2]),
+    "client_data_json": b64u(json.dumps(
+        {"type": "webauthn.create", "challenge": "forged-by-attacker"}
+    ).encode()),
+    "auth_data": b64u(authdata(RP)), "sign_count": 1}, token=VTOK)
+ok("S8 跳过 begin 直接 finish 必须被拒，且库里不落凭证（challenge 是唯一"
+   "入口：begin 不放行这条链就走不完）",
+   s_no == 400 and psql("SELECT count(*) FROM user_passkeys WHERE "
+   "cred_id = '%s'" % NOKEY) == "0", "%s %s" % (s_no, brief(r_no)))
 
 print("== S9 收尾自检 ==")
 ok("S9 COSE 那把没在库里留下任何行（拒了就是没写）",
