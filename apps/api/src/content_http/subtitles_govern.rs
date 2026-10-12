@@ -91,43 +91,63 @@ pub(super) async fn subtitle_report(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let sid = path.into_inner();
-    // 去重：已有未处理举报不再累计（reports 表 status IN (0,2)）
-    let dup: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM reports WHERE ref_type = 'subtitle' \
-         AND ref_id = $1 AND reporter_id = $2 AND status IN (0, 2))",
+    // 审计修复（P-131，批三十八实测）：旧写法三条语句各跑各的——
+    // ① EXISTS 去重 → ② INSERT reports（**立即提交**）→ ③ UPDATE subtitles
+    // 带 `deleted_at IS NULL`，0 行才回 404。于是对一条**已软删**的字幕点举报
+    // 会「报 404 + 已经落了一张处置不了的孤儿举报单」（实测 rows 1→2），
+    // 版主队列里全是这种点进去只会 500/空白的死单；两个人同时点还会双双越过
+    // EXISTS、第二个撞部分唯一索引 uq_reports_open_per_reporter 变成 500。
+    // 现在一把事务：先锁「还活着的字幕」，没有就直接 404（事务里没写过任何东西），
+    // 有就靠唯一索引去重——举报单与 bad_reports 同生同死。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let alive: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM subtitles WHERE id = $1 AND deleted_at IS NULL \
+         FOR UPDATE",
     )
     .bind(sid)
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
-    .unwrap_or(false);
-    if dup {
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if alive.is_none() {
+        return Err(DomainError::NotFound(sid));
+    }
+    let fresh: Option<i64> = sqlx::query_scalar(
+        "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) VALUES \
+         ($1, 'subtitle', $2, '坏字幕标记（自动）') \
+         ON CONFLICT (ref_type, ref_id, reporter_id) WHERE status IN (0, 2) \
+         DO NOTHING RETURNING id",
+    )
+    .bind(auth.id)
+    .bind(sid)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let already = fresh.is_none();
+    if already {
+        // 已有在处理中的同款举报：本次不累计计数，但要把刚拿到的锁放掉
+        tx.commit()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         return Ok(ok(serde_json::json!({
             "id": sid, "already": true,
             "msg": "你已标记过该字幕",
         })));
     }
     sqlx::query(
-        "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) VALUES \
-         ($1, 'subtitle', $2, '坏字幕标记（自动）')",
+        "UPDATE subtitles SET bad_reports = bad_reports + 1 WHERE id = $1",
     )
-    .bind(auth.id)
     .bind(sid)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let n = sqlx::query(
-        "UPDATE subtitles SET bad_reports = bad_reports + 1 WHERE id = $1 \
-         AND deleted_at IS NULL",
-    )
-    .bind(sid)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if n == 0 {
-        return Err(DomainError::NotFound(sid));
-    }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let threshold = subtitle_bad_threshold(&state.repo.db).await?;
     let mut hidden = false;
     if threshold > 0 {
@@ -145,6 +165,7 @@ pub(super) async fn subtitle_report(
         hidden = n > 0;
     }
     Ok(ok(serde_json::json!({
-        "id": sid, "hidden": hidden, "threshold": threshold,
+        "id": sid, "already": false, "hidden": hidden,
+        "threshold": threshold,
     })))
 }

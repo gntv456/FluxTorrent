@@ -103,6 +103,7 @@ mod overview;
 mod perms;
 mod records;
 mod reports;
+mod reports_resolve;
 mod review;
 // 审核台批量裁决（0286）：单条 decide 之外的吞吐口，副作用与 decide 同源
 mod review_batch;
@@ -132,6 +133,7 @@ pub use agent_rules::*;
 pub use audit::*;
 pub use deny::*;
 pub use embed_rules::*;
+pub use reports_resolve::*;
 pub use forum::*;
 pub use forum_mods::*;
 pub use overview::*;
