@@ -11,6 +11,10 @@ const PUBLIC_PATHS = [
   "/register",
   "/forgot",
   "/reset",
+  // 邮箱激活页必须匿名可达（P-108）：未激活的新用户本来就登不进（登录被
+  // guard_login 拦），若准入闸门再把他弹去 /login，邮件里的链接就永远走不到
+  // —— `/reset` 在表里而 `/email-verify` 漏了，等于激活链最后一步是死的。
+  "/email-verify",
   "/offline",
   "/appeals",
   "/ban-log",
