@@ -42,6 +42,33 @@ async fn user_adjust(
     {
         return Err(DomainError::Validation("至少提供一项调整".into()));
     }
+    // 留痕长度上限（批四十一 P-156/157 同族）：note 原样进 traffic_ledger.reason
+    // 与 user_modify_logs.content，实测 2000 字的 note 落成 2003 字符；同仓
+    // `audit_detail` 的 reason 是按 200 字截断的。管理侧的理由一律拒超长而非
+    // 静默截——截掉的正是纠纷仲裁要的那半句。
+    if let Some(n) = body.note.as_deref() {
+        if n.chars().count() > 200 {
+            return Err(DomainError::Validation("note 需 ≤200 字符".into()));
+        }
+    }
+    // 单次数值上限（P-154，实测红线）：旧实现只 `max(0)` 再 `as i64`，
+    // `uploaded_delta = i64::MAX` 直接 200 落库 ⇒ uploaded 变 9.2E18、
+    // traffic_ledger 照记这条天量流水。而余额权威是
+    // `balance_baseline + SUM(traffic_ledger)`，脏账不会自愈，还会污染
+    // 分享率 / H&R / 排行榜 / 促销资格。上限取 1 TiB（流量）与 10 亿（火花）。
+    const MAX_TRAFFIC: i64 = 1_i64 << 40;
+    const MAX_SPARK: i64 = 1_000_000_000;
+    for (k, v, lim) in [
+        ("uploaded_delta", body.uploaded_delta.unwrap_or(0), MAX_TRAFFIC),
+        ("downloaded_delta", body.downloaded_delta.unwrap_or(0), MAX_TRAFFIC),
+        ("spark_delta", body.spark_delta.unwrap_or(0), MAX_SPARK),
+    ] {
+        if v.abs() > lim {
+            return Err(DomainError::Validation(format!(
+                "{k} 超单次上限（流量 ±1TiB、火花 ±10 亿）"
+            )));
+        }
+    }
     // 邀请上限要在动任何账之前拒掉。旧版是 `grant.min(50)` 静默截断，
     // 再把**请求值**回显给站长（实测：要 100 拿到 50，响应写 100），
     // 于是报表与库对不上，而且没人知道被截过。
@@ -84,6 +111,29 @@ async fn user_adjust(
     }
     // 数值调整同属伤害性操作，须严格高于目标等级
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
+    // 键的归属：只发邀请的请求不写任何流水，旧实现于是「同键连发两次各 5
+    // 张码 = 库里 10 张」（P-155 红线实拍）。复用本仓给「无流水的管理动作」
+    // 留的幂等位 `grant_batches`（idempotency_key 有唯一约束，撞键即 400）。
+    if let Some(k) = idem {
+        let batch_id = uuid::Uuid::new_v4().simple().to_string();
+        crate::admin_p3_http::batch_open(
+            &state.repo.db,
+            &crate::admin_p3_http::BatchSpec {
+                batch_id: &batch_id,
+                idem: Some(k),
+                actor_id: auth.id,
+                kind: "user_adjust",
+                amount: body.invite_grant.unwrap_or(0) as i64,
+                item_id: None,
+                medal_id: None,
+                days: None,
+                selector: serde_json::json!({"note": body.note}),
+                targets: &[body.user_id],
+                subject: body.note.as_deref(),
+            },
+        )
+        .await?;
+    }
     let row: Option<(i64, i64, i64)> = sqlx::query_as(
         "SELECT uploaded, downloaded, spark_balance FROM users WHERE id = $1",
     )
@@ -93,12 +143,14 @@ async fn user_adjust(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (up0, down0, spark0) =
         row.ok_or(DomainError::NotFound(body.user_id))?;
-    let up = ((up0 as i128 + body.uploaded_delta.unwrap_or(0) as i128).max(0))
-        as i64;
-    let down = ((down0 as i128 + body.downloaded_delta.unwrap_or(0) as i128)
-        .max(0)) as i64;
-    let spark = ((spark0 as i128 + body.spark_delta.unwrap_or(0) as i128)
-        .max(0)) as i64;
+    // clamp 到 [0, i64::MAX]：上限校验已挡住常规越界，这里兜住「库里已有
+    // 天量脏值」的存量情形，绝不再用 `as i64` 把溢出截成乱数。
+    let add = |base: i64, delta: i64| -> i64 {
+        (base as i128 + delta as i128).clamp(0, i64::MAX as i128) as i64
+    };
+    let up = add(up0, body.uploaded_delta.unwrap_or(0));
+    let down = add(down0, body.downloaded_delta.unwrap_or(0));
+    let spark = add(spark0, body.spark_delta.unwrap_or(0));
     // 流量调整必须走流水（P0-2，0285）：users.uploaded/downloaded 只是
     // 「balance_baseline + SUM(traffic_ledger)」的快照，worker 每次消费 announce 都会重算覆盖。
     // 旧实现只 UPDATE users ⇒ 实测站长补的 1GB 在用户下一次 announce 后归零，

@@ -30,7 +30,7 @@ pub async fn delete_user_cascade(
             email = 'deleted-' || id::text || '-' || substr(md5(random()::text), 1, 8) || '@deleted.invalid',
             pass_hash = '!', passkey = 'deleted-' || id::text,
             title = NULL, avatar_url = NULL, status = 3
-        WHERE id = $1 AND status >= 2
+        WHERE id = $1 AND status = 2
         "#,
     )
     .bind(uid)
@@ -41,7 +41,10 @@ pub async fn delete_user_cascade(
     .try_into()
     .unwrap_or(0);
     if softened == 0 {
-        // 竞态：账号已被恢复/删除——按无行处理，幂等返回
+        // 竞态或已删：账号已被恢复，或**早已被墓碑化**（status=3）。按无行处理、
+        // 幂等返回。旧写法放行 status>=2，于是第二次删除仍会命中并再改写一次
+        // 用户名/邮箱——同一账号留下两个墓碑名，历史留痕反查不到当时的名字
+        // （批四十一 P-159 红线：重复 DELETE 回 200 且用户名又变了一遍）。
         tx.commit().await?;
         return Ok(());
     }
