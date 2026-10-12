@@ -45,9 +45,14 @@ pub async fn issuer(db: &PgPool) -> String {
 
 /// `otpauth://totp/{issuer}:{account}?secret=…&issuer=…`
 pub fn uri(issuer: &str, account: &str, secret_b32: &str) -> String {
+    // 冒号是 RFC 6238 标签的**分隔符**，保持字面量，只分别编码 issuer 与
+    // account。把冒号一起编码（%3A）后，「先按冒号切、再解码」的验证器 App
+    // 会把整段标签当 issuer 显示，账号名就丢了（批三十四自写的单测正是切在
+    // 这里，当时只跑了 cargo check 没跑 cargo test，红着进了 master）。
     format!(
-        "otpauth://totp/{}?secret={}&issuer={}",
-        pct(&format!("{issuer}:{account}")),
+        "otpauth://totp/{}:{}?secret={}&issuer={}",
+        pct(issuer),
+        pct(account),
         secret_b32,
         pct(issuer)
     )
