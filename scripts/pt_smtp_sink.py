@@ -14,8 +14,9 @@
      能用 text=True：通用换行会把邮件里的 CRLF 折成 LF，而「头部与正文之间
      那个空行」恰恰是 \\r\\n\\r\\n，折了就再也切不出正文。
 
-用法：start_sink() → setv("smtp_host", SINK_NAME) 等四键 → 触发业务 →
-wait_mails(n) / find_link("/reset")；退出前 stop_sink()（AZ 的 atexit 里已挂）。
+用法：start_sink() → setv("smtp_host", SINK_NAME) 等四键 → selftest()（信箱
+通电正控）→ 触发业务 → wait_mails(n) / find_link("/reset")；退出前
+stop_sink()（AZ 的 atexit 里已挂）。
 """
 import base64
 import os
@@ -136,6 +137,29 @@ def sink_raw():
     r = subprocess.run(["docker", "logs", SINK_NAME], stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE)
     return (r.stdout or b"").decode("utf-8", "replace")
+
+
+def selftest():
+    """信箱通电正控：自己往诱捕口发一封，必须能在 mails() 里看到它。
+    缺这一步就分不清「0 封」到底是站点没发信，还是信箱根本没接上（本模块
+    的前一版正是后者：写 bind mount 文件在 Windows 宿主下静默失败，整条
+    「读真邮件」的判据空转了一整轮红线）。"""
+    prev = len(mails())
+    if not prev and not _started:
+        return False, "sink 未启动"
+    code = ("import smtplib;"
+            "c=smtplib.SMTP('%s',2525,timeout=8);"
+            "c.mail('sink-selftest@local');c.rcpt('gate@local');"
+            "print(c.data('Subject: AZ-SELFCTEST-BODY')[0])" % SINK_NAME)
+    r = subprocess.run(["docker", "run", "--rm", "--network", net_name(),
+                        "python:3.12-alpine", "python", "-c", code],
+                       capture_output=True, text=True, timeout=120)
+    ok_send = "250" in (r.stdout or "")
+    # 标记只在头部（自测那封没有正文，正文分隔空行都没有），所以查整块
+    seen = wait_mails(prev) and any("AZ-SELFCTEST-BODY" in m["raw"]
+                                    for m in mails())
+    detail = "发信=%s 回读=%s rc=%s" % (ok_send, seen, r.returncode)
+    return ok_send and seen, detail[:160]
 
 
 def mails():

@@ -62,7 +62,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
     call, clear_register_rl, login, ok, summary)
 from pt_smtp_sink import (  # noqa: E402
-    SINK_NAME, find_link, link_note, mails, reachable,
+    SINK_NAME, find_link, link_note, mails, reachable, selftest,
     start_sink, stop_sink, wait_mails)
 
 ROOT = login()
@@ -258,6 +258,9 @@ BEMAIL = "%s@az.local" % BUSER
 cond_rc, detail_rc = reachable()
 ok("api 容器到诱捕 SMTP 网络可达（红线：连不上就全是假红）",
    cond_rc, detail_rc)
+cond_st, detail_st = selftest()
+ok("信箱通电正控：自己发一封必须能原样读回（缺它则「0 封」不可信）",
+   cond_st, detail_st)
 
 print("== S1 找回密码全链（P-100 基址 / P-102 错误语义）==")
 n0 = len(mails())
