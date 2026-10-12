@@ -262,7 +262,8 @@ g1 = (data(r) or {}).get("invite_granted")
 s2, r2 = adjust({"invite_grant": 5, "idempotency_key": k2})
 live = cnt("invites", "inviter_id = %d AND status = 0" % PU)
 ok("S2h 只发邀请也吃幂等键：同键第二次必须被拒，库里恰好 5 张码（不是 10）",
-   s == 200 and g1 == 5 and s2 == 400 and "已使用" in blob(r2) and live == "5",
+   s == 200 and g1 == 5 and s2 == 400 and "idempotency_key" in blob(r2)
+   and live == "5",
    "第一次=%s 第二次=%s 库中=%s %s" % (g1, blob(r2)[:60], live, blob(r)[:60]))
 ok("S2i 邀请单次 ±50：要 100 张当场被拒（不静默截断）",
    adjust({"invite_grant": 100})[0] == 400
@@ -403,6 +404,11 @@ ok("S6b 没开 2FA 的号清 2FA：400 且点名「未开启」（不许假装�
 s, r = call("DELETE", "/admin/users/%d" % PU, None, token=ROOT)
 ok("S6c 删号必须先封禁（活跃账号防误删）", s == 400 and "先封禁" in blob(r),
    "%s %s" % (s, blob(r)[:110]))
+# 造证据：删号**之前**探针号名下有两张未使用邀请码
+pre_inv = adjust({"invite_grant": 2})
+ok("S6c2 前置条件：探针号名下确有 2 张未用码（否则 S6g 是空判）",
+   pre_inv[0] == 200 and cnt("invites", "inviter_id = %d AND status = 0"
+                             % PU) == "2", blob(pre_inv[1])[:90])
 post("/admin/users/status", {"user_id": PU, "status": 2})
 s, r = call("DELETE", "/admin/users/%d" % PU, None, token=ROOT)
 u = psql("SELECT username || '|' || pass_hash || '|' || coalesce(passkey,'-') "
@@ -413,16 +419,25 @@ ok("S6e 墓碑三件套：改名 deleted-*、pass_hash 置不可登录、passkey
    and u.split("|")[2].startswith("deleted-"), u[:110])
 ok("S6f 删号后 api_tokens 清零",
    cnt("api_tokens", "user_id = %d" % PU) == "0")
+# 旧实现 `DELETE FROM invites WHERE inviter_id = $1 OR used_by = $1` 会连
+# 「谁请进来的 / 他请了谁」一起抹掉；账号只是墓碑化，FK 并不要求删行
+ok("S6g 删号保留邀请留痕：两张码行仍在且被作废（不是被 DELETE 掉）",
+   cnt("invites", "inviter_id = %d" % PU) == "2"
+   and cnt("invites", "inviter_id = %d AND status = 2" % PU) == "2",
+   "行=%s 作废=%s" % (cnt("invites", "inviter_id = %d" % PU),
+                      cnt("invites", "inviter_id = %d AND status = 2" % PU)))
 u2 = psql("SELECT username FROM users WHERE id = %d" % PU)
 s, r = call("DELETE", "/admin/users/%d" % PU, None, token=ROOT)
 u3 = psql("SELECT username FROM users WHERE id = %d" % PU)
-ok("S6g 重复删除幂等：不报 500，且**不再二次改名**（旧实现放行 status>=2，"
+ok("S6h 重复删除幂等：不报 500，且**不再二次改名**（旧实现放行 status>=2，"
    "同一账号留下两个墓碑名）", s in (200, 400, 404) and u2 == u3 and bool(u3),
    "%s 第一次=%s 第二次=%s" % (s, u2, u3))
 s, r = call("DELETE", "/admin/users/1", None, token=ROOT)
-ok("S6h root 不能删自己", s == 400 and "自己" in blob(r), "%s" % s)
+ok("S6i root 不能删自己", s == 400 and "自己" in blob(r), "%s" % s)
 
 # ============ S7 收尾 ============
+wipe()
+CLEAN.append("DELETE FROM invites WHERE inviter_id = %d" % PU)
 wipe()
 NOW = {"users": cnt("users"), "invites": cnt("invites")}
 ok("S7a 邀请码与流水回到基线，探针号已墓碑",
