@@ -205,6 +205,19 @@ def craft_att(uid, off, streak, reward, makeup):
        % (uid, off, streak, reward, "TRUE" if makeup else "FALSE"))
 
 
+def pos_ids(raw):
+    """'10,20,30' → [10,20,30]（与 economy_checkin::parse_id_list 同口径）。"""
+    out = []
+    for x in (raw or "").split(","):
+        try:
+            n = int(x.strip())
+        except ValueError:
+            continue
+        if n > 0:
+            out.append(n)
+    return out
+
+
 print("== S0 地基：探针成员 + 设置快照 ==")
 pin("module_attendance")
 pin("attendance_continuous_day")
@@ -215,9 +228,12 @@ STREAK = qi("SELECT value::int FROM site_settings WHERE name = "
             "'attendance_streak'", 5)
 CAP = qi("SELECT value::int FROM site_settings WHERE name = "
          "'attendance_daily_cap'", 1000)
-ok("S0 module_attendance=yes 且设置三键可读",
+MILE = dict(zip(pos_ids(setting("attendance_continuous_day")),
+                pos_ids(setting("attendance_continuous_value"))))
+ok("S0 module_attendance=yes 且三直读键 + 里程碑两键可读",
    setting("module_attendance") == "yes" and FIRST > 0 and STREAK > 0
-   and CAP > 0, "first=%s streak=%s cap=%s" % (FIRST, STREAK, CAP))
+   and CAP > 0 and len(MILE) >= 3,
+   "first=%s streak=%s cap=%s mile=%s" % (FIRST, STREAK, CAP, MILE))
 C = new_member("c")   # 首页口径（造补签行 + 娱乐屋卡）
 D = new_member("d")   # 首签正控
 E = new_member("e")   # 连签 3→4
@@ -239,10 +255,11 @@ T0 = site_day(0)
 
 
 def expect_reward(streak_after, first_ever):
-    """economy::checkin_reward 同口径：首签 +first，整日 +streak，
-    连签 10/20/30 额外 200/500/1000，单日封顶 daily_cap。"""
+    """economy_checkin::checkin_reward 同口径：首签 +first，整日 +streak，
+    命中里程碑（MILE，取自库里 attendance_continuous_*）当天加送，
+    单日封顶 daily_cap。期望值读库而来，不写死数字。"""
     base = FIRST if first_ever else STREAK
-    bonus = {10: 200, 20: 500, 30: 1000}.get(streak_after, 0)
+    bonus = MILE.get(streak_after, 0)
     return base, bonus, min(base + bonus, CAP)
 
 
@@ -312,9 +329,10 @@ b, bn, tot = expect_reward(30, False)
 sp0 = spark(HID)
 s, r = call("POST", "/attendance/checkin", {}, token=HT)
 d = r.get("data") or {}
-ok("S1 里程碑 29→30：reward=min(%d+1000,cap)=%d" % (b, tot),
+ok("S1 里程碑 29→30：reward=min(base %d + bonus %d, cap)=%d"
+   % (b, bn, tot),
    s == 200 and d.get("streak") == 30 and d.get("reward") == tot
-   and d.get("streak_bonus") == 1000 and spark(HID) == sp0 + tot,
+   and d.get("streak_bonus") == bn and bn > 0 and spark(HID) == sp0 + tot,
    "exp=%s %s" % (tot, brief(r)))
 
 print("== S2 P-90 首页连签把补签行当基线（红=首页显示 0）==")
