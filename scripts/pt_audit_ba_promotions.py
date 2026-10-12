@@ -6,18 +6,11 @@ H&R 豁免、RSS 的「仅免费」筛选、对外 compat 的 free 标记，全�
 `promotions` 表。这条链此前只在批一/批二的 tracker 审计里被顺路碰过。
 
 判据一律取「真发 announce → 真读 traffic_ledger 的入账增量」，不读代码注释：
-  S0 地基：探针成员 + 探针种，**不碰任何站点共享设定**
-     —— 首报只立锚点、增量按 0 计，所以每节必须**两轮**上报才有一条可判的账；
-     而 tracker 对「周期」announce 有 60~900s 的事件合并窗（默认 interval×40%，
-     下限 60s），窗内第二条根本不进流。两条路：把 announce_interval 调到 3 秒
-     （合并窗仍要 60s，且全站 peer TTL 随 interval 缩到秒级 = 真实做种者从
-     swarm 里消失），或按事件语义发 `event=started`（永不合并，计费侧
-     process_event 对 started 与周期上报走同一条差值路径）。这里取后者。
-     正控：无促销时两轮 announce 必须产出一行 delta_down=步长；产不出就说明
-     信箱没通电（本闸所有判据不可信），当场整体判红并打出 tracker 回执。
-  S1 free   → 下载计 0、上传照常
-  S2 x2     → 上传翻倍、下载照常
-  S3 x2free → 上传翻倍 + 下载计 0
+  S0 地基：探针成员 + 探针种，**不碰任何站点共享设定**（每节两轮上报的理由、
+     为什么发 event=started 而不是调 announce_interval，见 make_announcer 注释）。
+     正控：无促销时两轮上报必须产出一行 delta_down=步长；产不出就说明信箱没通电
+     （本闸所有判据不可信），当场整体判红并打出 tracker 回执。
+  S1-S3 → free 下载计 0 / x2 上传翻倍 / x2free 两者兼得，逐档实测
   S4 过期   → ends_at 一过，计费回到 1×1，且展示侧（/torrents/{id}）同步不再
               显示促销——两侧都要断言（先证在促时**看得见**，再证过期**看不见**，
               否则这条判据永远不可能红）
@@ -28,6 +21,9 @@ H&R 豁免、RSS 的「仅免费」筛选、对外 compat 的 free 标记，全�
   S6 写口卫生 → kind 白名单、hours 上下界、category 不存在/漏传、scope 取值；
               拒收必须点到具体判据（不许写成 != 200）；被拒的请求一条都不许落库；
               建/删一条促销后**详情侧的 promotion 字段要跟着变**（展示与计费同窗）
+  S8 自购促销（/promo/buy）→ 花魔力买「限时免费」：按价目扣款并落 spark_ledger
+     → 出现 scope=torrent/kind=free 的促销行 → 详情角标跟着变 →
+     **同幂等键重放不双扣、不多加促销行**；再叠全站 x2 必须合成 x2free
   S7 收尾   → 促销行清零、announce_interval 前后同值（证明确实没动共享设定）、
               探针号墓碑、探针的 snatch/流水与 announce_seen 全删（不留计费残料）
 
@@ -50,6 +46,7 @@ from pt_audit_lib import (  # noqa: E402
 ANN = os.environ.get("FLUX_ANN_BASE", "http://127.0.0.1:7070/announce")
 ROOT = login()
 TAG = int(time.time()) % 100000
+MNAME = "ba%d" % TAG  # 探针成员名（S8 要用同一身份登录自购口）
 STEP = 1024 * 1024  # 每轮 1 MiB，落在任何速率钳之内
 PROMO_IDS = []
 AUDIT_IDS = []  # 本轮造过的全部促销行（收尾判「一条不剩」）
@@ -124,7 +121,7 @@ def new_member():
     code, cid = codes[0]["code"], codes[0]["id"]
     cap = call("GET", "/auth/captcha", token=ROOT)[1].get("data") or {}
     nums = [int(x) for x in re.findall(r"-?\d+", str(cap.get("question")))]
-    name = "ba%d" % TAG
+    name = MNAME
     call("POST", "/auth/register", {
         "username": name, "email": "%s@ba.local" % name,
         "password": "password123", "invite_code": code,
@@ -404,6 +401,76 @@ d5 = (call("GET", "/torrents/%s" % tid, token=ROOT)[1].get("data") or {})
 ok("S6 分类促销在详情侧同样可见（实测 %s）" % (d5.get("promotion"),),
    d5.get("promotion") == "free", "%s" % (d5.get("promotion"),))
 clear_promos()
+
+print("== S8 自购促销（/promo/buy）：扣魔力 → 落促销 → 角标 → 幂等 ==")
+clear_promos()
+# 探针号自己要能登录：注册口令与 new_member() 里写的一致
+s8, r8 = call("POST", "/auth/login", {"username": MNAME,
+                                      "password": "password123"})
+mtok = ((r8 or {}).get("data") or {}).get("token")
+ok("S8 正控：探针成员可登录（自购口只认登录态，不认 staff）",
+   bool(mtok), "login http=%s %s" % (s8, str((r8 or {}).get("message"))[:60]))
+if not mtok:
+    sys.exit(1)
+psql("UPDATE users SET spark_balance = 20000 WHERE id = %s" % UID)
+bal0 = int(psql("SELECT spark_balance FROM users WHERE id = %s" % UID))
+idem = "ba%d-free" % TAG
+# 服务端把幂等键前缀成 `promo:<uid>:<客户端键>`
+# （content_http/promo.rs 里 `format!("promo:{}:{}", auth.id, k)`），
+# 所以查流水要按这个整键查——旧写法把顺序猜成 `promo:<键>:<uid>` ⇒ 恒 0 行，
+# 「没落账」被读成「没扣款」，正控自己假红
+idem_full = "promo:%d:%s" % (UID, idem)
+s, r = call("POST", "/promo/buy", {"torrent_id": int(tid), "kind": "free",
+                                   "hours": 24, "idempotency_key": idem},
+            token=mtok)
+d8 = (r or {}).get("data") or {}
+bal1 = int(psql("SELECT spark_balance FROM users WHERE id = %s" % UID))
+led = int(psql("SELECT count(*) FROM spark_ledger WHERE user_id = %s "
+               "AND idempotency_key = '%s'" % (UID, idem_full)))
+ok("S8 买 24h 限时免费：200 + 按价目扣款（%d→%d，价 %s）+ 落 1 条流水"
+   % (bal0, bal1, d8.get("price")), s == 200 and (r or {}).get("code") == 0
+   and bal0 - bal1 == int(d8.get("price") or -1) and led == 1,
+   "%s %s bal %d->%d ledger=%d" % (s, str(r)[:120], bal0, bal1, led))
+bought = psql("SELECT id || '/' || scope || '/' || kind FROM promotions "
+              "WHERE torrent_id = %s AND source = 'manual' ORDER BY id DESC "
+              "LIMIT 1" % tid)
+if bought.split("/")[0].isdigit():
+    AUDIT_IDS.append(int(bought.split("/")[0]))
+    PROMO_IDS.append(int(bought.split("/")[0]))
+ok("S8 促销行按 scope=torrent / kind=free 落库（实测 %s）" % (bought,),
+   bought.endswith("/torrent/free"), "%s" % (bought,))
+d9 = (call("GET", "/torrents/%s" % tid, token=ROOT)[1].get("data") or {})
+ok("S8 自购的免流立刻进详情角标（实测 %s）" % (d9.get("promotion"),),
+   d9.get("promotion") == "free", "%s" % (d9.get("promotion"),))
+s, r = call("POST", "/promo/buy", {"torrent_id": int(tid), "kind": "free",
+                                   "hours": 24, "idempotency_key": idem},
+            token=mtok)
+bal2 = int(psql("SELECT spark_balance FROM users WHERE id = %s" % UID))
+led2 = int(psql("SELECT count(*) FROM spark_ledger WHERE user_id = %s "
+                "AND idempotency_key = '%s'" % (UID, idem_full)))
+n_promo = int(psql("SELECT count(*) FROM promotions WHERE torrent_id = %s "
+                   "AND kind = 'free' AND ends_at > now()" % tid))
+ok("S8 同幂等键重放：不双扣（%d→%d）、流水仍 1 条、不多加促销行（%d 条）"
+   % (bal1, bal2, n_promo), bal2 == bal1 and led2 == 1 and n_promo == 1,
+   "bal %d->%d ledger=%d promo=%d" % (bal1, bal2, led2, n_promo))
+set_promo("global", "x2")
+d10 = (call("GET", "/torrents/%s" % tid, token=ROOT)[1].get("data") or {})
+ok("S8 自购 free 遇全站 x2 ⇒ 角标合成 x2free（实测 %s）"
+   % (d10.get("promotion"),), d10.get("promotion") == "x2free",
+   "%s" % (d10.get("promotion"),))
+lst2 = (call("GET", "/torrents?limit=200&alive=0&promo=x2",
+             token=ROOT)[1].get("data") or {})
+ids2 = [str(x.get("id")) for x in (lst2.get("items") or [])]
+ok("S8 「仅双倍」筛选把这条 free+x2 的种也收进来（命中 %d 条）"
+   % len(ids2), str(tid) in ids2, "ids=%s…" % (ids2[:5],))
+clear_promos()
+psql("DELETE FROM spark_ledger WHERE user_id = %s AND kind = 'promo_buy'"
+     % UID)
+psql("UPDATE users SET spark_balance = 0 WHERE id = %s" % UID)
+ok("S8 自购残料已清（流水 0 条、促销 0 条）",
+   psql("SELECT count(*) FROM spark_ledger WHERE user_id = %s" % UID) == "0"
+   and psql("SELECT count(*) FROM promotions WHERE torrent_id = %s "
+            "AND ends_at > now()" % tid) == "0")
 
 print("== S7 收尾 ==")
 ok("S7 站点设定 announce_interval 全程未被改动（前 %s / 后 %s）"
