@@ -12,16 +12,16 @@ mod spec;
 mod spec_np;
 mod spec_schemas;
 mod spec_util;
+mod tokens;
 mod upload;
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse};
-use serde::Deserialize;
+use actix_web::{web, HttpRequest, HttpResponse};
 use sha3::{Digest, Sha3_256};
 
-use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
 use crate::state::AppState;
+
+use tokens::{token_issue, token_list, token_refresh, token_revoke};
 
 pub fn mount_openapi(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -42,7 +42,7 @@ pub fn mount_openapi(scope: actix_web::Scope) -> actix_web::Scope {
         .service(upload::open_upload)
 }
 
-fn hash_token(token: &str) -> String {
+pub(super) fn hash_token(token: &str) -> String {
     let mut h = Sha3_256::new();
     h.update(token.as_bytes());
     hex(&h.finalize())
@@ -61,7 +61,7 @@ pub struct TokenCtx {
     pub rpm: i32,
     /// 当前 60s 窗口内已用次数
     pub used: i64,
-    /// 当前窗口剩余秒数（Redis TTL；拿不到时回落 60）
+    /// 当前窗口剩余秒数（固定窗口按分钟边界复位）
     pub reset: i64,
     /// 签发时声明的权限面（0267 起**真正强制**）。
     /// 此前 scopes 只落库不校验 —— 一枚声明 `["read"]` 的 Token
@@ -175,15 +175,19 @@ pub async fn require_token(
     // 独立限流：按 token 哈希前 16 位分桶
     let bucket = &token_hash[..16];
     // P-67：旧写法 `unwrap_or(0)` 在 Redis 抖动时既不限流、又把 n=0 填进
-    // 下面 TokenCtx.used ⇒ 响应头谎报「还剩满额」。改 fail-close 的
-    // counter_bump（键名/窗口/额度不变）。代价：Redis 抖动期开放 API 整片
-    // 5xx——与登录侧 throttle 的 ZT81 口径一致（宁拒服务不静默放开防护）。
-    let n: i64 =
-        crate::http::counter_bump(&state, &format!("rl:openapi:{bucket}"), 60)
-            .await?;
-    if n > i64::from(rpm) {
-        return Err(DomainError::RateLimited);
-    }
+    // 下面 TokenCtx.used ⇒ 响应头谎报「还剩满额」，要改 fail-close。
+    // P-71：但 P-67 第一版选的 `counter_bump`（每次 EXPIRE 续 60）是
+    // **空闲超时窗**不是限流窗——客户端只要不停调用，计数就永不复位，
+    // 一枚正常轮询的 Token 累计到 rpm 后会被永久 429。限流必须用
+    // 窗口写进键名的固定窗口 `rate_window`，顺带用它的返回值填 used。
+    let bucket_key = format!("openapi:{bucket}");
+    let n: i64 = crate::http::rate_window(
+        &state,
+        &bucket_key,
+        i64::from(rpm),
+        60,
+    )
+    .await?;
     // 异步刷新 last_used_at（失败不影响请求）
     // 0267 修：此前只绑了 $1、漏绑 $2，sqlx 报参数不足被 `let _ =` 吞掉
     // → last_used_at 永远不更新（工具面板看不出 Token 何时被用过）。
@@ -203,211 +207,9 @@ pub async fn require_token(
         uid,
         rpm,
         used: n,
-        reset: 60,
+        // P-71：窗口进了键名 ⇒ 复位时刻就是分钟边界，报「距边界几秒」；
+        // 此前恒 60 会让退让的客户端白等（边界可能 3 秒后就到）。
+        reset: 60 - chrono::Utc::now().timestamp() % 60,
         scopes,
     })
-}
-
-// ============ Token 管理（用户会话鉴权） ============
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct TokenRow {
-    id: i64,
-    name: String,
-    scopes: Vec<String>,
-    rate_per_min: i32,
-    last_used_at: Option<chrono::DateTime<chrono::Utc>>,
-    expires_at: Option<chrono::DateTime<chrono::Utc>>,
-    revoked_at: Option<chrono::DateTime<chrono::Utc>>,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[get("/me/tokens")]
-async fn token_list(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let rows: Vec<TokenRow> = sqlx::query_as(
-        "SELECT id, name, scopes, rate_per_min, last_used_at, expires_at, revoked_at, created_at \
-         FROM api_tokens WHERE user_id = $1 ORDER BY id DESC",
-    )
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
-}
-
-#[derive(Deserialize)]
-struct IssueTokenReq {
-    name: String,
-    #[serde(default = "default_scopes")]
-    scopes: Vec<String>,
-    #[serde(default = "default_rpm")]
-    rate_per_min: i32,
-}
-fn default_scopes() -> Vec<String> {
-    vec!["read".into()]
-}
-fn default_rpm() -> i32 {
-    60
-}
-
-#[post("/me/tokens")]
-async fn token_issue(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<IssueTokenReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let name = body.name.trim();
-    if name.is_empty() || name.len() > 50 {
-        return Err(DomainError::Validation("name 长度 1-50".into()));
-    }
-    if !(1..=600).contains(&body.rate_per_min) {
-        return Err(DomainError::Validation("rate_per_min 取值 1-600".into()));
-    }
-    // 0267：scope 白名单校验。写端点（/open/torrents）靠 `upload` 把关，
-    // 拼错的 scope 必须报错 —— 静默接受会变成「用户以为给了权限、实际没有」
-    // 或更糟的反面（未来扩了白名单就悄悄多授权）。
-    for s in &body.scopes {
-        if s != SCOPE_READ && s != SCOPE_UPLOAD {
-            return Err(DomainError::Validation(format!(
-                "未知 scope：{s}（可用：read / upload）"
-            )));
-        }
-    }
-    if body.scopes.is_empty() {
-        return Err(DomainError::Validation(
-            "scopes 不能为空（至少 read）".into(),
-        ));
-    }
-    // read 是所有 Token 的隐含权限（用于列表/搜索/用户信息），显式声明 upload
-    // 才额外获得发种能力 —— 避免出现「能发种但看不了列表」这种半残状态。
-    let scopes: Vec<String> = {
-        let mut v = vec![SCOPE_READ.to_string()];
-        for s in &body.scopes {
-            if s != SCOPE_READ && !v.iter().any(|x| x == s) {
-                v.push(s.clone());
-            }
-        }
-        v
-    };
-    // 每人最多 3 枚有效 token（YemaPT 口径：少而精，泄露面可控）
-    let active: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM api_tokens WHERE user_id = $1 AND \
-         revoked_at IS NULL",
-    )
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if active >= 3 {
-        return Err(DomainError::Validation(
-            "有效 token 上限 3 枚，请先撤销旧的".into(),
-        ));
-    }
-    // 明文仅此一次返回：fxo_ 前缀 + 32 随机字节 hex；有效期 180 天（0069）
-    let plain = format!("fxo_{}", uuid::Uuid::new_v4().simple());
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO api_tokens \
-           (user_id, name, token_hash, scopes, rate_per_min, expires_at) \
-         VALUES ($1, $2, $3, $4, $5, \
-                 now() + make_interval(days => $6::int)) RETURNING id",
-    )
-    .bind(auth.id)
-    .bind(name)
-    .bind(hash_token(&plain))
-    .bind(&scopes)
-    .bind(body.rate_per_min)
-    .bind(API_TOKEN_TTL_DAYS)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    state
-        .repo
-        .audit(Some(auth.id), "apitoken.issue", Some(id))
-        .await;
-    Ok(ok(serde_json::json!({
-        "id": id, "name": name, "token": plain,
-        "scopes": scopes,
-        "hint": "明文仅显示一次，请立即保存",
-        "usage": "Authorization: Token <fxo_...>",
-        "scope_note": "scopes 自 0267 起真正强制：upload 才可调用 POST /open/torrents"
-    })))
-}
-
-#[derive(Deserialize)]
-struct RevokeReq {
-    id: i64,
-}
-
-#[derive(Deserialize)]
-struct RefreshReq {
-    id: i64,
-}
-
-/// 滚动续期（0267）：把到期时间从「现在」起再推 180 天。
-/// NAS 上长期运行的工具（Prowlarr / cross-seed / 自写脚本）此前只能等到
-/// 到期后重新签发，而发起端（微信支付/自动化容器）未必有人看着 →
-/// Token 静默失效、工具静默停摆。续期不动 Token 明文，只推后到期时间。
-#[post("/me/tokens/refresh")]
-async fn token_refresh(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<RefreshReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let expires: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
-        "UPDATE api_tokens \
-           SET expires_at = now() + make_interval(days => $3::int) \
-         WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL \
-         RETURNING expires_at",
-    )
-    .bind(body.id)
-    .bind(auth.id)
-    .bind(API_TOKEN_TTL_DAYS)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(expires) = expires else {
-        return Err(DomainError::Validation("token 不存在或已撤销".into()));
-    };
-    state
-        .repo
-        .audit(Some(auth.id), "apitoken.refresh", Some(body.id))
-        .await;
-    Ok(ok(serde_json::json!({
-        "id": body.id,
-        "expires_at": expires,
-        "ttl_days": API_TOKEN_TTL_DAYS,
-    })))
-}
-
-#[post("/me/tokens/revoke")]
-async fn token_revoke(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<RevokeReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let n = sqlx::query(
-        "UPDATE api_tokens SET revoked_at = now() \
-         WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL",
-    )
-    .bind(body.id)
-    .bind(auth.id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if n == 0 {
-        return Err(DomainError::Validation("token 不存在或已撤销".into()));
-    }
-    state
-        .repo
-        .audit(Some(auth.id), "apitoken.revoke", Some(body.id))
-        .await;
-    Ok(ok(serde_json::json!({ "revoked": body.id })))
 }
