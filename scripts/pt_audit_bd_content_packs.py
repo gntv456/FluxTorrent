@@ -92,26 +92,29 @@ ok("S1c 未装任何包时目录不带 installed_row_id",
    all("installed_row_id" not in it for it in items),
    str([it.get("pack_id") for it in items if "installed_row_id" in it][:3]))
 
-# 普通成员：六个口全 403（不是 401，令牌是真的，只是没权）
+# 普通成员：七个口全 403（不是 401，令牌是真的，只是没权）
 clear_register_rl()
 s, r = call("POST", "/admin/invites", {"user_id": 1, "count": 1}, token=ROOT)
 codes = (data(r).get("codes") or [])
-MEM = None
-if codes:
+MEM, WHY = None, ""
+if not codes:
+    WHY = "发码 http=%s %s" % (s, blob(r)[:110])
+else:
     cid = codes[0]["id"]
     CLEANUP.append("DELETE FROM invites WHERE id = %d" % cid)
-    s, r = call("GET", "/auth/captcha")
-    cap = data(r)
+    cap = data(call("GET", "/auth/captcha")[1])
     nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
     MEMBER = uname = "bd%d%d" % (TAG, int(time.time()) % 100000)
-    if len(nums) >= 2:
+    if len(nums) < 2:
+        WHY = "验证码题面解析不出 %r" % cap
+    else:
         s, r = call("POST", "/auth/register", {
             "username": uname, "email": "%s@bd.local" % uname,
             "password": "password123", "invite_code": codes[0]["code"],
             "captcha_id": cap.get("captcha_id"),
             "captcha_answer": int(nums[0]) + int(nums[1]),
             "captcha_token": "", "fields": {}})
-        if s != 200:
+        if not data(r).get("token"):
             s, r = call("POST", "/auth/login", {"username": uname,
                                                 "password": "password123"})
         MEM = data(r).get("token")
@@ -119,11 +122,8 @@ if codes:
             CLEANUP.append("UPDATE users SET status = 2 WHERE username = '%s'"
                            % uname)
         else:
-            print("   成员 %s 准备失败：注册 http=%s %s"
-                  % (uname, s, blob(r)[:150]))
-    else:
-        print("   成员 %s 准备失败：验证码题面解析不出 %r" % (uname, cap))
-ok("S1d 探针普通成员可用（注册+登录）", MEM is not None, "准备失败")
+            WHY = "注册/登录 http=%s %s" % (s, blob(r)[:140])
+ok("S1d 探针普通成员可用（注册+登录）", MEM is not None, WHY)
 ENDPOINTS = [
     ("GET", "/admin/content-packs/catalog", None),
     ("GET", "/admin/content-packs", None),
