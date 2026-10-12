@@ -98,6 +98,17 @@ async fn admin_attendance_makeup(
         crate::authz::perm::ATTENDANCE_MANAGE,
     )
     .await?;
+    // 站点时区 UTC+8（与 /attendance、/checkin 同口径）
+    let today =
+        (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
+    if body.date > today {
+        // P-96：未来的日期一旦先占位，用户那天签到会被「今天已经签到过啦」
+        // 永久拒掉，而补签行 reward=0 —— 那一天的火花与抽卡券一起蒸发，且要
+        // 到那天才看得见。补签只对「今天及以前」成立。
+        return Err(DomainError::Validation(
+            "补签日期不能晚于今天".into(),
+        ));
+    }
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
             .bind(body.user_id)
