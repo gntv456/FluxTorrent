@@ -34,8 +34,7 @@ pub(crate) async fn step_up(
         ));
     }
     let row: Option<(String, Option<String>, bool)> = sqlx::query_as(
-        "SELECT password_hash, totp_secret, totp_enabled FROM users \
-         WHERE id = $1",
+        "SELECT pass_hash, totp_secret, totp_enabled FROM users WHERE id = $1",
     )
     .bind(uid)
     .fetch_optional(&state.repo.db)
