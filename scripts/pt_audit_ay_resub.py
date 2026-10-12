@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""闸门 AY：补签链路与并发形状（批三十三）。
+"""闸门 AY：补签链路与并发形状 + 管理补签面板（批三十三）。
 
-钉三件事（每件先说清「为什么这样断言」）：
+钉四件事（每件先说清「为什么这样断言」）：
   S3 P-93 补签并发双花：resub_uses 此前只有 idempotency_key UNIQUE，而
      「该日已有签到记录」的检查在事务外——同用户同一天两张并发：两个请求都
      通过检查、各锁一单、幂等键各不同 → 一天耗两卡（红基线实测 3 轮全部
@@ -21,12 +21,19 @@
   S2 P-94 拒单文案顺序：用完最后一张卡后再点同一天，旧顺序先判持有数，报
      「没有可用补签卡」，用户以为卡被吞；真因是日期已占。断言：0 卡 +
      已补过的日期 → 「该日已有签到记录」。
+  S6 P-96 管理补签没有日期上界：站长手滑把补签点到未来某天（实测现网旧镜像
+     接受 2026-10-13 与 30 天后），那一天先被 makeup 行（streak=0、reward=0）
+     占位，用户当天签到直接被「今天已经签到过啦」永久拒掉，火花与抽卡券一起
+     蒸发，且要到那天才看得见。断言：明天/未来 30 天均 400『不能晚于今天』
+     且不落库；今天及以前照常落库并留审计与用户修改记录。
 
-S1 为链路正控：7 天窗口边界（d-8、d-0 都拒）、无卡拒单且不留痕。
+S1 为链路正控：7 天窗口边界（d-8、d-0 都拒）、无卡拒单且不留痕；S6 另含
+面板三口的门卫（403『无权限』）、per_page 边界、只许撤 makeup 行。
 签到主链与首页口径在闸门 AX（pt_audit_ax_attendance.py）。
 
 共享设置：本闸不写任何站点设置（module_attendance 由 AX 负责实测与复原）。
-探针产物（3 个成员号 + 出勤/补签/订单/发放消耗/流水）自己收尾。
+探针产物（4 个成员号 + 出勤/补签/订单/发放消耗/流水/用户修改记录）自己收尾；
+audit_log 是防篡改链（库上触发器不许删），管理动作只断言、不清理。
 
 跑法（仓库根目录）：
     PYTHONIOENCODING=utf-8 python scripts/pt_audit_ay_resub.py
@@ -95,6 +102,7 @@ def cleanup():
                   "spark_ledger"):
             ex("DELETE FROM %s WHERE user_id = %d" % (t, uid))
         ex("DELETE FROM messages WHERE receiver_id = %d" % uid)
+        ex("DELETE FROM user_modify_logs WHERE uid = %d" % uid)
         if uid in SPARK0:
             ex("UPDATE users SET spark_balance = %d WHERE id = %d"
                % (SPARK0[uid], uid))
@@ -205,13 +213,15 @@ ok("S0 补签商品存在且 module_attendance=yes",
 C = new_member("c")   # 拒单 + 正路径 + P-94 文案
 F = new_member("f")   # 同日并发（P-93）
 X = new_member("x")   # 异日并发（P-95）
-ok("三个探针成员可准备（注册/登录限流下）", all((C, F, X)))
-if not all((C, F, X)):
+M = new_member("m")   # 管理补签面板（P-96）
+ok("四个探针成员可准备（注册/登录限流下）", all((C, F, X, M)))
+if not all((C, F, X, M)):
     sys.exit(1)
 CT, CID = C
 FT, FID = F
 XT, XID = X
-for uid in (CID, FID, XID):
+MT, MID = M
+for uid in (CID, FID, XID, MID):
     SPARK0[uid] = qi("SELECT spark_balance FROM users WHERE id = %d" % uid)
 T0 = site_day(0)
 D1 = site_day(1)
@@ -299,6 +309,81 @@ ok("S5 P-95 娱乐屋账未被凭空扣（uses=0）",
 s, xa = get_att(XT)
 ok("S5 X 持有数回读=0（发 3 单耗 3、无负账）",
    xa.get("makeup_cards") == 0, "mc=%s" % xa.get("makeup_cards"))
+
+print("== S6 管理补签面板：门卫 / 落库与审计 / 未来日期（P-96）==")
+D2 = site_day(2)
+FUT1 = site_day(-1)    # 站点明天的日期
+FUT30 = site_day(-30)
+rej("S6 成员令牌调管理补签：403『无权限』",
+    *call("POST", "/admin/attendance/makeup",
+          {"user_id": MID, "date": D2}, token=MT), 403, "无权限")
+rej("S6 成员令牌调管理补签撤销：403『无权限』",
+    *call("DELETE", "/admin/attendance/makeup",
+          {"user_id": MID, "date": D2}, token=MT), 403, "无权限")
+rej("S6 成员令牌读管理列表：403『无权限』",
+    *call("GET", "/admin/attendance?uid=%d" % MID, token=MT),
+    403, "无权限")
+rej("S6 per_page=0 拒单",
+    *call("GET", "/admin/attendance?per_page=0", token=ROOT),
+    400, "per_page 取值 1-100")
+rej("S6 per_page=101 拒单",
+    *call("GET", "/admin/attendance?per_page=101", token=ROOT),
+    400, "per_page 取值 1-100")
+s, r = call("POST", "/admin/attendance/makeup",
+            {"user_id": MID, "date": D2}, token=ROOT)
+ok("S6 站长补签 d-2 落 makeup 行（streak/reward=0）",
+   s == 200 and qi("SELECT count(*) FROM attendance WHERE user_id = %d AND "
+                   "date = '%s' AND makeup AND streak = 0 AND reward = 0"
+                   % (MID, D2)) == 1, "%s %s" % (s, brief(r)))
+ok("S6 审计（attendance.makeup，ref.id 指到人）与修改记录各一条",
+   qi("SELECT count(*) FROM audit_log WHERE action = 'attendance.makeup' "
+      "AND ref->>'id' = '%d' AND created_at > now() - interval '60 seconds'"
+      % MID) >= 1
+   and qi("SELECT count(*) FROM user_modify_logs WHERE uid = %d AND "
+          "content = '管理补签 %s'" % (MID, D2)) == 1, brief(r))
+rej("S6 同日重复管理补签被拒",
+    *call("POST", "/admin/attendance/makeup",
+          {"user_id": MID, "date": D2}, token=ROOT), 400, "已有签到记录")
+rej("S6 P-96 明天拒单",
+    *call("POST", "/admin/attendance/makeup",
+          {"user_id": MID, "date": FUT1}, token=ROOT),
+    400, "不能晚于今天")
+rej("S6 P-96 未来 30 天拒单",
+    *call("POST", "/admin/attendance/makeup",
+          {"user_id": MID, "date": FUT30}, token=ROOT),
+    400, "不能晚于今天")
+ok("S6 P-96 拒单后未来日期未落库",
+   qi("SELECT count(*) FROM attendance WHERE user_id = %d AND date IN "
+      "('%s', '%s')" % (MID, FUT1, FUT30)) == 0)
+s, r = call("POST", "/attendance/checkin", {}, token=MT)
+d = r.get("data") or {}
+ok("S6 反控：仅有补签行时本人今日签到仍算首签（streak=1）",
+   s == 200 and d.get("streak") == 1, "%s %s" % (s, brief(r)))
+s, r = call("GET", "/admin/attendance?uid=%d&per_page=20" % MID,
+            token=ROOT)
+dd = r.get("data") or {}
+ok("S6 面板按人过滤：total=2 且补签/正常两类都在",
+   s == 200 and dd.get("total") == 2
+   and sorted([bool(x.get("makeup")) for x in dd.get("rows") or []])
+   == [False, True], "%s %s" % (s, brief(dd)))
+s, r = call("GET", "/admin/attendance?uid=%d&makeup=true" % MID, token=ROOT)
+ok("S6 makeup=true 过滤只剩补签行",
+   s == 200 and (r.get("data") or {}).get("total") == 1, brief(r))
+rej("S6 撤销正常签到行被拒（只许撤 makeup）",
+    *call("DELETE", "/admin/attendance/makeup",
+          {"user_id": MID, "date": T0}, token=ROOT),
+    400, "无对应补签记录")
+ok("S6 拒撤后正常签到行仍在",
+   qi("SELECT count(*) FROM attendance WHERE user_id = %d AND date = '%s' "
+      "AND NOT makeup" % (MID, T0)) == 1)
+s, r = call("DELETE", "/admin/attendance/makeup",
+            {"user_id": MID, "date": D2}, token=ROOT)
+ok("S6 撤销补签行成功且落审计",
+   s == 200 and qi("SELECT count(*) FROM attendance WHERE user_id = %d AND "
+                   "date = '%s'" % (MID, D2)) == 0
+   and qi("SELECT count(*) FROM audit_log WHERE action = "
+          "'attendance.makeup_del' AND ref->>'id' = '%d' AND created_at > "
+          "now() - interval '60 seconds'" % MID) >= 1, "%s %s" % (s, r))
 
 print()
 summary()
