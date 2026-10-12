@@ -46,8 +46,14 @@ pub(super) async fn passkey_begin(
     .await?;
     // P-107：challenge 只在复核通过后才发。攻击者手里只有一次被偷的会话时，
     // 既拿不到 challenge，也就走不完 finish —— 见 twofa_http/step_up.rs 的因果说明。
-    crate::twofa_http::step_up(&state, auth.id, &body.password, body.totp)
-        .await?;
+    crate::twofa_http::step_up(
+        &state,
+        auth.id,
+        &body.password,
+        body.totp,
+        "绑定 passkey",
+    )
+    .await?;
     let challenge = uuid::Uuid::new_v4().to_string();
     store_challenge(
         &state,

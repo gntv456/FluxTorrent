@@ -27,13 +27,23 @@ export function ApiTokens() {
     revoked: "已吊销",
     neverUsed: "未使用",
     plainOnce: "令牌明文仅此一次显示，请立即保存：",
-    limit: "每人最多 5 枚有效令牌",
+    limit: "每人最多 3 枚有效令牌",
+    stepUpHint: "",
   };
+  // 输入框文案直接复用安全面板那组（字面量本身就是通用的「当前密码」
+  // 「两步验证码」），免得同一句话在三语字典里各写两份。
+  const sec = dict.usercp.security;
   const [rows, setRows] = useState<TokenRow[]>([]);
   const [name, setName] = useState("");
   const [plain, setPlain] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P-113：Token 是 180 天的长期凭证，改密也不会让它失效，服务端现在要
+  // 复核凭证才签。启用态探测沿用 twofa-setup / passkeys-card 的同一口径
+  // （/me/overview 的 totp_enabled），服务端仍会自己再核一遍。
+  const [pw, setPw] = useState("");
+  const [code, setCode] = useState("");
+  const [twofa, setTwofa] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -45,6 +55,10 @@ export function ApiTokens() {
 
   useEffect(() => {
     load();
+    void api
+      .get<{ totp_enabled?: boolean }>("/api/v1/me/overview")
+      .then((o) => setTwofa(Boolean(o?.totp_enabled)))
+      .catch(() => setTwofa(false));
   }, [load]);
 
   async function issue() {
@@ -54,9 +68,13 @@ export function ApiTokens() {
     try {
       const r = await api.post<{ token: string }>("/api/v1/me/tokens", {
         name: name.trim(),
+        password: pw,
+        ...(twofa ? { totp: Number(code) } : {}),
       });
       setPlain(r.token);
       setName("");
+      setPw("");
+      setCode("");
       load();
     } catch (e) {
       setMsg(apiErrorMessage(dict, e));
@@ -81,6 +99,9 @@ export function ApiTokens() {
   return (
     <div className="flex flex-col gap-2 text-sm">
       <p className="text-xs text-sub">{t.limit}</p>
+      {t.stepUpHint && (
+        <p className="text-xs text-sub">{t.stepUpHint}</p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={name}
@@ -89,9 +110,32 @@ export function ApiTokens() {
           aria-label={t.namePlaceholder}
           className="min-h-[36px] w-56 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
         />
+        <input
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          type="password"
+          autoComplete="current-password"
+          aria-label={sec.webauthnPwPh}
+          placeholder={sec.webauthnPwPh}
+          className="min-h-[36px] w-40 rounded-[var(--r-sm)] border
+            border-line bg-[var(--surface-card)] px-3 text-sm"
+        />
+        {twofa && (
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            maxLength={6}
+            autoComplete="one-time-code"
+            aria-label={sec.webauthnCodePh}
+            placeholder={sec.webauthnCodePh}
+            className="min-h-[36px] w-32 rounded-[var(--r-sm)] border
+              border-line bg-[var(--surface-card)] px-3 text-sm"
+          />
+        )}
         <button
           type="button"
-          disabled={busy || !name.trim()}
+          disabled={busy || !name.trim() || !pw || (twofa && code.length < 6)}
           onClick={issue}
           className={BTN_SM_SKY}
         >

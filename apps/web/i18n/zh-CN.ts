@@ -1512,6 +1512,12 @@ const zhCnBase = {
       webauthnNameFallback: "passkey",
       webauthnCancelErr: "浏览器取消了注册",
       webauthnNoPkErr: "浏览器不支持 getPublicKey()，请升级",
+      webauthnErrNotAllowed:
+        "这台设备或浏览器没有可用的通行密钥（也可能验证被取消）。"
+        + "可以改用密码 + 两步验证。",
+      webauthnErrSecurity:
+        "本站访问地址与 passkey 注册域不一致，请改用站点对外的域名再绑定。",
+      webauthnErrTimeout: "等待安全钥匙响应超时，请重试或换一台设备。",
       webauthnBindOk: "绑定成功",
       webauthnUnbind: "解绑",
       webauthnLastUsed: "最近使用 {date}",
@@ -6204,6 +6210,8 @@ export interface ApiTokensDict {
   neverUsed: string;
   plainOnce: string;
   limit: string;
+  /** P-113：签发前复核凭证的提示（服务端不再只看会话） */
+  stepUpHint: string;
 }
 
 const security2fa: Security2faDict = {
@@ -6232,6 +6240,8 @@ export const zhCN = {
     neverUsed: "未使用",
     plainOnce: "令牌明文仅此一次显示，请立即保存：",
     limit: "每人最多 3 枚有效令牌；用法 Authorization: Token fxo_…",
+    stepUpHint:
+      "签发需先复核本人凭证：密码必填，已开两步验证还要当前验证码。",
   } as ApiTokensDict,
 
   /** 通知偏好（/me/notice-prefs，键与后端 0075 白名单一一对应） */

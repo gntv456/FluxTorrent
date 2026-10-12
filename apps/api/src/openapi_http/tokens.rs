@@ -10,7 +10,7 @@ use serde::Deserialize;
 use super::{hash_token, API_TOKEN_TTL_DAYS, SCOPE_READ, SCOPE_UPLOAD};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
+use crate::http::{rate_window, require_auth};
 use crate::state::AppState;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -50,6 +50,12 @@ struct IssueTokenReq {
     scopes: Vec<String>,
     #[serde(default = "default_rpm")]
     rate_per_min: i32,
+    /// P-113：Token 是 180 天的**长期凭证**，且不像会话 JWT 会随改密失效，
+    /// 只能逐条撤销 ⇒ 签发必须复核本人（密码，开了 2FA 还要当前码）。
+    #[serde(default)]
+    password: String,
+    #[serde(default)]
+    totp: Option<u32>,
 }
 fn default_scopes() -> Vec<String> {
     vec!["read".into()]
@@ -65,6 +71,17 @@ pub(super) async fn token_issue(
     body: web::Json<IssueTokenReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 先上档再复核：argon2 校验是 CPU 活，这一口此前**连限流都没有**，
+    // 等于给「拿会话试密码」开门（红线：连发 6 次错密码全被放行）。
+    rate_window(&state, &format!("tokissue:{}", auth.id), 5, 60).await?;
+    crate::twofa_http::step_up(
+        &state,
+        auth.id,
+        &body.password,
+        body.totp,
+        "签发 API Token",
+    )
+    .await?;
     let name = body.name.trim();
     if name.is_empty() || name.len() > 50 {
         return Err(DomainError::Validation("name 长度 1-50".into()));
@@ -151,6 +168,11 @@ struct RevokeReq {
 #[derive(Deserialize)]
 struct RefreshReq {
     id: i64,
+    /// P-113：续期等于「把这枚长期凭证再往后推 180 天」，与签发同类 ⇒ 同判据
+    #[serde(default)]
+    password: String,
+    #[serde(default)]
+    totp: Option<u32>,
 }
 
 /// 滚动续期（0267）：把到期时间从「现在」起再推 180 天。
@@ -164,6 +186,15 @@ pub(super) async fn token_refresh(
     body: web::Json<RefreshReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    rate_window(&state, &format!("tokrefresh:{}", auth.id), 10, 60).await?;
+    crate::twofa_http::step_up(
+        &state,
+        auth.id,
+        &body.password,
+        body.totp,
+        "续期 API Token",
+    )
+    .await?;
     let expires: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
         "UPDATE api_tokens \
            SET expires_at = now() + make_interval(days => $3::int) \
@@ -190,6 +221,8 @@ pub(super) async fn token_refresh(
     })))
 }
 
+/// 撤销**不**要求复核凭证：这是受害者的自救口——被偷了会话的人第一反应
+/// 就是来撤 Token，再加一道密码反而挡住自救（与 passkey 解绑同口径）。
 #[post("/me/tokens/revoke")]
 pub(super) async fn token_revoke(
     req: HttpRequest,
