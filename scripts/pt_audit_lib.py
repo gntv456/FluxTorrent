@@ -78,3 +78,20 @@ def clear_register_rl():
            '| xargs -r redis-cli -a "$REDIS_PASSWORD" --no-auth-warning del')
     subprocess.run(["docker", "exec", "flux-redis", "sh", "-c", cmd],
                    capture_output=True, text=True, encoding="utf-8")
+
+
+def totp_now(secret_b32, skew=0):
+    """按 RFC 6238 算 TOTP 码，与服务端 `twofa_http::totp_at` 同口径
+    （HMAC-SHA1、30 秒窗口、动态截断、%1e6）。闸门要「真开 2FA」时才用它：
+    `/me/2fa/setup` 回里就带 base32 密钥，返回 int 可直接进 JSON 的 code。
+    `skew` 用来取相邻窗口的码（服务端容差 ±1 窗）。"""
+    import base64
+    import hashlib
+    import hmac
+    import time
+    raw = base64.b32decode(secret_b32.upper().replace(" ", "").rstrip("="))
+    step = int(time.time()) // 30 + skew
+    digest = hmac.new(raw, step.to_bytes(8, "big"), hashlib.sha1).digest()
+    off = digest[19] & 0x0F
+    code = int.from_bytes(digest[off:off + 4], "big") & 0x7FFF_FFFF
+    return code % 1_000_000
