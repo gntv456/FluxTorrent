@@ -33,6 +33,12 @@ export function AdminAttendance() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // 站点时区（UTC+8）的今天：与后端补签上界（P-96）同口径。直接切 UTC 日期
+  // 会在北京 0-8 点窗口错一天（P-92 同族）。
+  const siteToday = new Date(Date.now() + 8 * 3600e3)
+    .toISOString()
+    .slice(0, 10);
+
   const flash = (m: string) => {
     setMsg(m);
     setTimeout(() => setMsg(null), 3000);
@@ -73,6 +79,33 @@ export function AdminAttendance() {
       await load();
     } catch (e) {
       flash(e instanceof ApiError ? e.message : at.opFail);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** 撤销补签：该口是 DELETE + JSON body（与 torrents/previews 同形），
+   *  api-client 的 del() 不带 body，沿用组件内 fetch 写法。 */
+  async function revoke(r: AttendanceRow) {
+    const tip = fmt(at.delConfirm, { user: r.username, date: r.date });
+    if (!window.confirm(tip)) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/v1/admin/attendance/makeup", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: r.user_id, date: r.date }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as {
+          message?: string;
+        };
+        throw new Error(j.message ?? at.opFail);
+      }
+      flash(at.deleted);
+      await load();
+    } catch (e) {
+      flash(e instanceof Error ? e.message : at.opFail);
     } finally {
       setBusy(false);
     }
@@ -130,6 +163,7 @@ export function AdminAttendance() {
           <input
             type="date"
             value={mkDate}
+            max={siteToday}
             onChange={(e) => setMkDate(e.target.value)}
             className={INPUT_MD}
           />
@@ -151,6 +185,7 @@ export function AdminAttendance() {
             <td className="colhead">{at.thStreak}</td>
             <td className="colhead">{fmt(at.thReward, { magic: currency })}</td>
             <td className="colhead">{at.thType}</td>
+            <td className="colhead">{at.thOp}</td>
           </tr>
         </thead>
         <tbody>
@@ -176,11 +211,24 @@ export function AdminAttendance() {
                   at.normal
                 )}
               </td>
+              <td>
+                {r.makeup ? (
+                  <button
+                    disabled={busy}
+                    onClick={() => revoke(r)}
+                    className={BTN_SM_GHOST}
+                  >
+                    {at.delBtn}
+                  </button>
+                ) : (
+                  <span className="text-sub">—</span>
+                )}
+              </td>
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-6 text-center text-sub">
+              <td colSpan={6} className="py-6 text-center text-sub">
                 {at.empty}
               </td>
             </tr>
