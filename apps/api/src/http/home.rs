@@ -69,7 +69,8 @@ pub async fn home_sections(
     // 空数据会让关闭模块的站首页仍出现签到日历/抽奖流水。
     let attendance_on = state.require_module("attendance").await.is_ok();
     let attendance = if attendance_on {
-        attendance_json(&state.repo.read_db, uid).await?
+        super::home_attendance::attendance_json(&state.repo.read_db, uid)
+            .await?
     } else {
         serde_json::json!({ "off": true })
     };
@@ -219,75 +220,5 @@ async fn home_shared_fresh(
         // 前端按 home_sections 清单解析（清单单源在后端，四审 L6）
         "home_layout": crate::http::home_layout_raw(db).await,
         "home_sections": crate::http::home_sections_json(),
-    }))
-}
-
-/// 签到日历个人段（0152 拆出）：当月逐日 + 连签/累计 + 补签卡。
-/// per-user 数据永不进共享缓存（UNIT3D 范式），每次实时算。
-async fn attendance_json(
-    db: &sqlx::PgPool,
-    uid: i64,
-) -> DomainResult<serde_json::Value> {
-    let makeup_cards: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM shop_orders o \
-         JOIN shop_items i ON i.id = o.item_id \
-         WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
-           AND NOT EXISTS (SELECT 1 FROM resub_uses r \
-                WHERE r.idempotency_key = concat('resub:', o.id))",
-    )
-    .bind(uid)
-    .fetch_one(db)
-    .await
-    .unwrap_or(0);
-    let att: Vec<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
-        "SELECT date, streak, \
-         reward FROM attendance WHERE user_id = $1 ORDER BY date",
-    )
-    .bind(uid)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    // 站点时区 UTC+8（与 /attendance、/checkin 同口径；容器 TZ=UTC 时 Local 会让
-    // 首页日历在北京 0-8 点窗口显示「昨日未签」）
-    let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
-    let month_start = chrono::Datelike::with_day(&today, 1).unwrap_or(today);
-    let days_in_month = {
-        let next_month = if chrono::Datelike::month(&month_start) == 12 {
-            chrono::NaiveDate::from_ymd_opt(
-                chrono::Datelike::year(&month_start) + 1,
-                1,
-                1,
-            )
-        } else {
-            chrono::NaiveDate::from_ymd_opt(
-                chrono::Datelike::year(&month_start),
-                chrono::Datelike::month(&month_start) + 1,
-                1,
-            )
-        }
-        .unwrap_or(today);
-        (next_month.pred_opt().unwrap_or(today) - month_start).num_days() as u32
-            + 1
-    };
-    let calendar: Vec<serde_json::Value> = (0..days_in_month)
-        .map(|i| {
-            let d = month_start + chrono::Duration::days(i as i64);
-            let hit = att.iter().find(|(ad, _, _)| *ad == d);
-            serde_json::json!({
-                "date": d.format("%Y-%m-%d").to_string(),
-                "day": chrono::Datelike::day(&d),
-                "done": hit.is_some(),
-                "reward": hit.map(|(_, _, r)| r).unwrap_or(&0),
-            })
-        })
-        .collect();
-    let streak = att.iter().rev().next().map(|(_, s, _)| *s).unwrap_or(0);
-    let total_days = att.len() as i32;
-    let checked_today = att.iter().any(|(d, _, _)| *d == today);
-    Ok(serde_json::json!({
-        "month": today.format("%Y年%m月").to_string(),
-        "streak": streak, "total_days": total_days,
-        "checked_today": checked_today,
-        "calendar": calendar, "makeup_cards": makeup_cards,
     }))
 }

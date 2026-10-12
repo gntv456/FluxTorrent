@@ -35,6 +35,21 @@ pub async fn resub_use(
     if !(1..=7).contains(&days_ago) {
         return Err(DomainError::Validation("只能补过去 7 天内".into()));
     }
+    // 先判「该日是否已签」再判持有数（P-94）：用完最后一张卡再点同一天，旧
+    // 顺序先撞「没有可用补签卡」，用户以为卡被吞；真因是日期已占。
+    // 已签过则拒绝
+    let signed: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM attendance WHERE user_id = $1 AND \
+         date = $2)",
+    )
+    .bind(auth.id)
+    .bind(date)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if signed {
+        return Err(DomainError::Validation("该日已有签到记录".into()));
+    }
     // 是否持有补签卡。双源（0262 起）：商店未消耗订单 + 娱乐屋奖池发放的
     // 「补签卡」（发放账 − 消耗账，与背包同口径）—— 财神式「游戏产出 → 签到
     // 救急」闭环：刮刮乐抽到的卡就是能拿来补签的卡。
@@ -62,19 +77,6 @@ pub async fn resub_use(
             "没有可用补签卡：商店购买、奖池抽取或管理发放后可在此使用".into(),
         ));
     }
-    // 已签过则拒绝
-    let signed: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM attendance WHERE user_id = $1 AND \
-         date = $2)",
-    )
-    .bind(auth.id)
-    .bind(date)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if signed {
-        return Err(DomainError::Validation("该日已有签到记录".into()));
-    }
     // 消耗一张卡（先商店订单，没有再扣娱乐屋发放的）+ 补签记录 + 出勤记录（事务）
     let mut tx = state
         .repo
@@ -82,11 +84,15 @@ pub async fn resub_use(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 挑一张未消耗的商店订单。P-95：`FOR UPDATE OF o` 只锁订单表——此前
+    // 不带 OF 会把 JOIN 进来的 shop_items 参照行一起锁住，并发的第二个人
+    // 因 SKIP LOCKED 把所有候选订单全跳光而拿到「无卡」，于是错走娱乐屋分支
+    // （farm_actions.rs:318 同族坑，那边已写成 OF p）。
     let shop_order: Option<i64> = sqlx::query_scalar(
         "SELECT o.id FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
          WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
            AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id)) \
-         ORDER BY o.id LIMIT 1 FOR UPDATE SKIP LOCKED",
+         ORDER BY o.id LIMIT 1 FOR UPDATE OF o SKIP LOCKED",
     )
     .bind(auth.id)
     .fetch_optional(&mut *tx)
@@ -94,32 +100,69 @@ pub async fn resub_use(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let resub_idem = match shop_order {
         Some(order_id) => format!("resub:{order_id}"),
-        None => {
-            // 娱乐屋发放的卡：扣一件（use_kind='resub'），幂等键按「人 + 目标日」
-            // 定死 —— 同一天重放不重复扣
-            sqlx::query(
-                "INSERT INTO arcade_item_uses \
-                     (item_key, user_id, qty, use_kind, idem) \
-                 VALUES ('resub_card', $1, 1, 'resub', $2)",
-            )
-            .bind(auth.id)
-            .bind(format!("resub-arc:{}:{}", auth.id, date.format("%Y%m%d")))
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            format!("resub:arc:{}:{}", auth.id, date.format("%Y%m%d"))
-        }
+        None => format!("resub:arc:{}:{}", auth.id, date.format("%Y%m%d")),
     };
-    sqlx::query(
+    // P-93 并发双花收口：上面「该日已有签到记录」的检查在事务外，两张卡同
+    // 发同一天时两个请求都能通过。唯一约束 (user_id, target_date) 把「一人
+    // 一天至多一次补签」钉进库层：后到者 0 行 → 回滚，不耗卡、不撞 500。
+    let ins = sqlx::query(
         "INSERT INTO resub_uses (user_id, target_date, \
-         idempotency_key) VALUES ($1, $2, $3)",
+         idempotency_key) VALUES ($1, $2, $3) \
+         ON CONFLICT (user_id, target_date) DO NOTHING",
     )
     .bind(auth.id)
     .bind(date)
-    .bind(resub_idem)
+    .bind(&resub_idem)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    if ins.rows_affected() == 0 {
+        return Err(DomainError::Validation("该日已有签到记录".into()));
+    }
+    if shop_order.is_none() {
+        // 娱乐屋发放的卡：扣一件（use_kind='resub'），幂等键按「人 + 目标日」
+        // 定死 —— 同一天重放不重复扣。落在唯一键闸门之后：并发败者先回滚，
+        // 不会撞 idem 唯一约束抛 500。
+        // P-95：扣减前先锁住该用户的发放行，让「查持有 → 扣减」串行。实测
+        // （红基线）：并发补签能把零发放的成员凭空写进 arcade_item_uses，
+        // 此后按双源口径（发放−消耗）他新买的卡直接归零 —— 卡被吞。
+        let _locked: Vec<(i64,)> = sqlx::query_as(
+            "SELECT g.id FROM arcade_item_grants g \
+             WHERE g.user_id = $1 AND g.item_key = 'resub_card' \
+             FOR UPDATE",
+        )
+        .bind(auth.id)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let held: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(g.qty), 0)::bigint - \
+                    (SELECT COALESCE(SUM(u.qty), 0)::bigint \
+                       FROM arcade_item_uses u \
+                      WHERE u.user_id = $1 AND u.item_key = 'resub_card') \
+             FROM arcade_item_grants g \
+             WHERE g.user_id = $1 AND g.item_key = 'resub_card'",
+        )
+        .bind(auth.id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if held < 1 {
+            return Err(DomainError::Validation(
+                "没有可用补签卡：商店购买、奖池抽取或管理发放后可在此使用".into(),
+            ));
+        }
+        sqlx::query(
+            "INSERT INTO arcade_item_uses \
+                 (item_key, user_id, qty, use_kind, idem) \
+             VALUES ('resub_card', $1, 1, 'resub', $2)",
+        )
+        .bind(auth.id)
+        .bind(format!("resub-arc:{}:{}", auth.id, date.format("%Y%m%d")))
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     // 补签出勤行：streak 不续（补的是漏签日）、reward=0（火花在正常签到发放）
     sqlx::query(
         "INSERT INTO attendance (user_id, date, streak, reward, makeup) \
