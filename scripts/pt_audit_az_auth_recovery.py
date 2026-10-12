@@ -4,7 +4,7 @@
 本闸自己起一个 SMTP 诱捕容器，**读用户真收到的邮件正文**来判链路——找回密码
 与邮箱激活这类链，接口 200 不代表用户能用，只有落进信箱的那串字符才算数。
 
-钉七件事（红线现场见审计文档批三十四）：
+钉八件事（红线现场见审计文档批三十四）：
   S1 P-100 重置邮件基址取错变量：站点对外地址的实际口径是 PUBLIC_SITE_URL
      （rss/donate/sitemap/web lib 都用它），而 reset.rs 拼网页链接却读
      PUBLIC_API_URL——现网只配了前者 ⇒ 即使 SMTP 完全可用也一律拒发
@@ -20,6 +20,10 @@
   S3 P-103 未激活自救断链：登录被拦时文案让用户「在登录页用注册邮箱重新发送
      激活邮件」，但登录页没有这个入口（resend 表单只在 /email-verify 页，而
      那页只能由那封不可点的邮件抵达）。本闸钉 API 侧：resend 必须真再投一封。
+  S2 P-108 更要命的一层：`/email-verify` 不在站点准入白名单里（middleware 的
+     PUBLIC_PATHS 收了 /reset、/forgot，独独漏了它）——未激活用户本来就登不进
+     （guard_login 拦），访问激活页却被 307 回 /login，等于「链接就算修好也
+     走不到」。红线：匿名 GET /email-verify → 307 → /login?next=/email-verify。
   S4 P-104 死锁前置校验缺失：registration_mode=email_verify（设置中心确有此项）
      而 SMTP 不可用时，注册照样建号成功 ⇒ 用户永远收不到激活信、又永远登不进
      （红线实测：200 + email_verified_at NULL + 登录 400 拦死）。修法：注册
@@ -299,6 +303,29 @@ def new_member(role, invite=True):
     return (tok, uid, user) if tok else None
 
 
+WEB_ORIGIN = os.environ.get("AZ_WEB_ORIGIN", "http://localhost:3000")
+
+
+def web_probe(path):
+    """匿名访问站点页面，返回 (状态码, Location)——故意不跟随重定向：
+    准入闸门把人 307 回 /login 正是要抓的现象（P-108）。"""
+    import urllib.error
+    import urllib.request
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k):
+            return None
+
+    op = urllib.request.build_opener(NoRedirect)
+    try:
+        with op.open(WEB_ORIGIN + path, timeout=10) as r:
+            return r.status, r.headers.get("location") or ""
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers.get("location") or ""
+    except Exception:  # noqa: BLE001
+        return 0, ""
+
+
 def open_register(role):
     """email_verify 模式下开放注册：只建号，不登录（未激活本就登不进）。"""
     clear_register_rl()
@@ -379,8 +406,12 @@ rej("S1 同 token 重放被拒（一次性）", *call(
     {"token": tok1 or "x", "new_password": "Another#2026pw"}),
     400, "无效或已过期")
 
-print("== S2 邮箱激活链（P-101 相对路径 / P-103 resend）==")
+print("== S2 邮箱激活链（P-101 相对路径 / P-103 resend / P-108 准入）==")
 setv("registration_mode", "email_verify")
+st_w, loc_w = web_probe("/email-verify")
+ok("S2 P-108 激活页必须匿名可达（红线：准入闸门把未登录者 307 回 /login，"
+   "而未激活用户恰恰登不进——链接再好也走不到）",
+   st_w == 200 and "/login" not in loc_w, "%s → %s" % (st_w, loc_w))
 n1 = len(mails())
 V = open_register("v")
 ok("S2 email_verify 模式下开放注册可建号", bool(V and V["uid"]),
