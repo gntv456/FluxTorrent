@@ -9,7 +9,8 @@
 mod email_policy;
 mod email_verify;
 mod login;
-pub(crate) use login::origin_matches;
+mod login_origin;
+pub(crate) use login_origin::origin_matches;
 mod login_types;
 mod logout;
 mod me;
