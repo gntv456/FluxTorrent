@@ -105,7 +105,19 @@ def reg_bind(token, priv, pub, cred_id, rp):
         "auth_data": b64u(authdata(rp)), "sign_count": 1}, token=token)
 
 
-def pk_login(username, priv, cred_id, rp, count=2, uv=True):
+def der_to_raw(der):
+    """ASN.1 SEQUENCE { r, s } -> 定宽 r‖s（64 字节）。浏览器不会发这种
+    形态，本闸门用它当**负控**：不许有人把验签改回 from_slice 或「两种都收」
+    （P-81 的口径就是 CTAP2 规定的 DER）。"""
+    def rd(buf, i):
+        return buf[i + 2:i + 2 + buf[i + 1]], i + 2 + buf[i + 1]
+    seq, _ = rd(der, 0)
+    r, i = rd(seq, 0)
+    s, _ = rd(seq, i)
+    return r.rjust(32, b"\0")[-32:] + s.rjust(32, b"\0")[-32:]
+
+
+def pk_login(username, priv, cred_id, rp, count=2, uv=True, raw=False):
     """走一遍登录仪式，返回 (begin 状态, begin 数据, finish 状态, 响应)。"""
     s0, d = begin_login(username)
     ad = authdata(rp, uv=uv, count=count)
@@ -113,6 +125,8 @@ def pk_login(username, priv, cred_id, rp, count=2, uv=True):
                      "challenge": d.get("challenge") or ""})
     msg = ad + hashlib.sha256(cd.encode()).digest()
     sig = priv.sign(msg, ec.ECDSA(ch.SHA256())) if priv else b""
+    if sig and raw:
+        sig = der_to_raw(sig)
     s1, r1 = call("POST", "/auth/passkey-login/finish", {
         "cred_id": cred_id, "client_data_json": b64u(cd.encode()),
         "auth_data": b64u(ad), "signature": b64u(sig),
@@ -156,7 +170,10 @@ def mkuser(prefix, pw="password123"):
     uid = (r.get("data") or {}).get("user_id")
     if uid:
         CLEAN.append("DELETE FROM user_passkeys WHERE user_id = %s" % uid)
-        CLEAN.append("DELETE FROM users WHERE id = %s" % uid)
+        # 探针号一律墓碑（status=2，全站闸门同口径），不物理删：注册即有一
+        # 条系统私信，`DELETE FROM users` 会被 messages_receiver_id_fkey
+        # 挡下来——挡下不等于删掉，探针号就此攒在库里（本闸门第一版就是这样）。
+        CLEAN.append("UPDATE users SET status = 2 WHERE id = %s" % uid)
     tok = None
     for _ in range(10):
         tok = (call("POST", "/auth/login", {"username": name,
@@ -191,6 +208,12 @@ T1 = (r1.get("data") or {}).get("token") or ""
 ok("S1 用这把 passkey 能登录，且 token 归属是本人（uid=%s）" % VID,
    s1 == 200 and token_uid(T1) == str(VID),
    "http=%s 解出=%s %s" % (s1, token_uid(T1), brief(r1)))
+
+print("== S1b 签名编码口径（P-81 负控）==")
+_, _, s1b, r1b = pk_login(VNAME, vpriv, VCRED, RP, count=3, raw=True)
+ok("S1b 定宽 r‖s 这种「浏览器不会发」的形态必须被拒（验签口径只有一个："
+   "CTAP2 的 ASN.1 DER；两种都收 = 口径没定）", s1b != 200,
+   "http=%s %s" % (s1b, brief(r1b)))
 
 print("== S2 begin 的防枚举形状 ==")
 ids = dbs.get("cred_ids") or []
