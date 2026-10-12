@@ -179,7 +179,14 @@ pub(super) async fn passkey_login_finish(
         .map_err(|_| DomainError::Validation("凭证公钥损坏".into()))?;
     let mut msg = auth_data.clone();
     msg.extend_from_slice(&Sha256::digest(b64url(&body.client_data_json)));
-    let sig = Signature::from_slice(&b64url(&body.signature))
+    // P-81：CTAP2/WebAuthn 规定 `sig` 是 **ASN.1 DER**（ECDSA-sig-structure），
+    // 而 `Signature::from_slice` 只吃定宽 64 字节 r‖s（ecdsa-0.16.9
+    // /src/lib.rs:224-230），DER 得走 `from_der`（同文件 232-236 行，
+    // `der` feature 已由 p256 打开，cargo tree 可查）。用 from_slice 的实际
+    // 后果：任何浏览器/认证器交回来的签名都在这里被判「签名格式错误」——
+    // 也就是说 passkey 登录对**真实客户端从来没通过过**。实测同一份签名的
+    // 两种编码：DER ⇒ 400 签名格式错误；把它转成 r‖s ⇒ 200 + 本人 JWT。
+    let sig = Signature::from_der(&b64url(&body.signature))
         .map_err(|_| DomainError::Validation("签名格式错误".into()))?;
     vk.verify(&msg, &sig)
         .map_err(|_| DomainError::InvalidCredentials)?;
