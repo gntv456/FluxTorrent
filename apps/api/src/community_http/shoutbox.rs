@@ -67,22 +67,13 @@ async fn shoutbox_send(
     if !can_chat {
         return Err(DomainError::Validation("你已被禁言".into()));
     }
-    // 防刷：每用户 10 秒冷却（Redis 计数，首条设 TTL；故障静默放行不影响可用性）
-    {
-        let mut c = state.redis.clone();
-        let key = format!("rl:shout:{}", auth.id);
-        let n: i64 = redis::AsyncCommands::incr(&mut c, &key, 1)
-            .await
-            .unwrap_or(0);
-        if n == 1 {
-            let _: () = redis::AsyncCommands::expire(&mut c, &key, 10)
-                .await
-                .unwrap_or(());
-        }
-        if n > 1 {
-            return Err(DomainError::RateLimited);
-        }
-    }
+    // 防刷：每用户 10 秒冷却。
+    // P-73：旧写法两处同族病——`incr(...).unwrap_or(0)` 在 Redis 抖动时
+    // 计数当成 0（冷却形同不存在），而 `if n == 1 { expire }` 一失败就留下
+    // 一个**永不过期**的计数键 ⇒ 该用户从那一刻起永久 429，刷不了屏也发不了
+    // 言，只能等运维手删键。统一走 rate_window：fail-close + 窗口写进键名。
+    crate::http::rate_window(&state, &format!("shout:{}", auth.id), 1, 10)
+        .await?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2) RETURNING id",
     )

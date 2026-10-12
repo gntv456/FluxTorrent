@@ -6,7 +6,7 @@ use redis::AsyncCommands;
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::errors::{DomainError, DomainResult};
+use crate::errors::DomainResult;
 use crate::state::AppState;
 
 // ============ 图形验证码（注册防机） ============
@@ -27,18 +27,12 @@ pub async fn captcha_issue(
 ) -> DomainResult<impl Responder> {
     // 防刷限流（审计 P2）：20+20 算术题可脚本化批量取题，30 次/分钟/ISP 按来源 IP
     let ip = crate::http::client_ip(&req);
-    {
-        let mut c = state.redis.clone();
-        let key = format!("rl:captcha:{ip}");
-        let n: i64 = AsyncCommands::incr(&mut c, &key, 1).await.unwrap_or(0);
-        if n == 1 {
-            let _: () =
-                AsyncCommands::expire(&mut c, &key, 60).await.unwrap_or(());
-        }
-        if n > 30 {
-            return Err(DomainError::RateLimited);
-        }
-    }
+    // P-73：本维度是**匿名 IP**，旧写法两处同族病被放大成整片故障：
+    // `unwrap_or(0)` 让 Redis 抖动时批量取题不设限；`if n == 1 { expire }`
+    // 一失败就留下无 TTL 的计数键，而运营商 CGNAT 后成千用户共用一个出口 IP
+    // ⇒ 那个 IP 从此拿不到验证码，连带注册/登录全部走不下去。
+    crate::http::rate_window(&state, &format!("captcha:{ip}"), 30, 60)
+        .await?;
     use rand::Rng;
     let a: i32 = rand::thread_rng().gen_range(1..=20);
     let b: i32 = rand::thread_rng().gen_range(1..=20);
