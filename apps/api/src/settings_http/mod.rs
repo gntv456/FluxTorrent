@@ -11,7 +11,9 @@ mod export;
 mod groups;
 mod history;
 mod meta;
+mod pack_assets;
 mod pack_catalog;
+mod pack_embed;
 mod pack_format;
 mod pack_import;
 // 站型包 apply（staff_http/pack_core.rs）要复用本模块的九列全字段解析，

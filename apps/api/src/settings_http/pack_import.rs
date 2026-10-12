@@ -15,13 +15,15 @@ use crate::state::AppState;
 use super::engine::validate_field;
 use super::groups::invalidate_cache;
 use super::meta::MetaRow;
+use super::pack_assets;
+use super::pack_embed;
 use super::pack_format::{
     bad, parse_pack, parse_taxonomy, PackHead, THEME_KEYS,
 };
 use super::pack_store::{
-    apply_assets, apply_taxonomy, apply_taxonomy_guarded, apply_theme_import,
-    apply_theme_rollback, referenced_categories, snapshot_assets,
-    snapshot_taxonomy, snapshot_theme, snapshot_to_payload,
+    apply_taxonomy, apply_taxonomy_guarded, apply_theme_import,
+    apply_theme_restore, referenced_categories, snapshot_taxonomy,
+    snapshot_theme, snapshot_to_payload,
 };
 
 fn internal(e: sqlx::Error) -> DomainError {
@@ -47,102 +49,43 @@ pub(super) async fn import(
 }
 
 /// embed 包导入（0190）：payload.rules = [video_embed_rules 行数组]。
-/// 白名单只有 video_embed_rules 一张表；快照重放（同 assets 口径）。
-/// builtin 行不受包影响（包只覆盖非 builtin 行；builtin 种子跟版本走）。
+/// 白名单只有 video_embed_rules 一张表；校验/落库/快照/回滚都在
+/// pack_embed.rs，与后台「视频内嵌规则」CRUD 共用同一道 `validate_body`。
+/// 预检与确认共用同一次 `check_rows`，两态不可能口径分叉；
+/// builtin 行不受包影响（要覆写即整包拒绝，0176：内置种子跟随版本）。
 async fn import_embed(
     state: &web::Data<std::sync::Arc<AppState>>,
     actor: &i64,
     head: &PackHead,
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
-    let Some(rows) = head.payload.get("rules").and_then(Value::as_array) else {
+    let Some(rows) = head
+        .payload
+        .get("rules")
+        .and_then(Value::as_array)
+    else {
         return Err(bad("embed 包缺少 payload.rules"));
     };
+    let rows = rows.clone();
     let mut tx = state.repo.db.begin().await.map_err(internal)?;
+    let bodies = match pack_embed::check_rows(&mut tx, &rows).await {
+        Ok(v) => v,
+        Err(e) => {
+            tx.rollback().await.ok();
+            return Err(e);
+        }
+    };
     if !confirm {
         tx.rollback().await.ok();
         return Ok(ok(serde_json::json!({
             "dry_run": true,
             "kind": "embed",
             "pack_id": head.pack_id,
-            "will_change": rows.len(),
+            "will_change": bodies.len(),
         })));
     }
-    // 快照（回滚 = 逆向重放，同 assets 口径）
-    let snap: Vec<(i64, String, String, String, String, String)> =
-        sqlx::query_as(
-            "SELECT id, provider, url_pattern, embed_template, \
-             embed_origin, render_kind FROM video_embed_rules \
-             WHERE NOT builtin ORDER BY id",
-        )
-        .fetch_all(&mut *tx)
-        .await
-        .map_err(internal)?;
-    let snapshot = serde_json::json!({
-        "rules": snap.iter().map(|r| serde_json::json!({
-            "id": r.0, "provider": r.1, "url_pattern": r.2,
-            "embed_template": r.3, "embed_origin": r.4,
-            "render_kind": r.5,
-        })).collect::<Vec<_>>()
-    });
-    // 纯覆盖：删包外非 builtin 行 → 逐行 upsert
-    let keep: Vec<i64> = rows
-        .iter()
-        .filter_map(|r| r.get("id").and_then(Value::as_i64))
-        .collect();
-    sqlx::query(
-        "DELETE FROM video_embed_rules WHERE NOT builtin \
-         AND NOT (id = ANY($1))",
-    )
-    .bind(&keep)
-    .execute(&mut *tx)
-    .await
-    .map_err(internal)?;
-    let mut applied = 0usize;
-    for r in rows {
-        let s = |k: &str| r.get(k).and_then(Value::as_str).unwrap_or_default();
-        let id = r.get("id").and_then(Value::as_i64).unwrap_or(0);
-        if id <= 0 {
-            continue;
-        }
-        sqlx::query(
-            "INSERT INTO video_embed_rules (id, provider, name_zh, \
-             url_pattern, embed_template, embed_origin, render_kind, \
-             aspect, extra_params, builtin, enabled, sort) \
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE,$10,$11) \
-             ON CONFLICT (id) DO UPDATE SET \
-             provider=EXCLUDED.provider, name_zh=EXCLUDED.name_zh, \
-             url_pattern=EXCLUDED.url_pattern, \
-             embed_template=EXCLUDED.embed_template, \
-             embed_origin=EXCLUDED.embed_origin, \
-             render_kind=EXCLUDED.render_kind, aspect=EXCLUDED.aspect, \
-             extra_params=EXCLUDED.extra_params, \
-             enabled=EXCLUDED.enabled, sort=EXCLUDED.sort",
-        )
-        .bind(id)
-        .bind(s("provider"))
-        .bind(s("name_zh"))
-        .bind(s("url_pattern"))
-        .bind(s("embed_template"))
-        .bind(s("embed_origin"))
-        .bind(s("render_kind"))
-        .bind(s("aspect"))
-        .bind(r.get("extra_params").cloned().unwrap_or(Value::Null))
-        .bind(r.get("enabled").and_then(Value::as_bool).unwrap_or(true))
-        .bind(r.get("sort").and_then(Value::as_i64).unwrap_or(100) as i32)
-        .execute(&mut *tx)
-        .await
-        .map_err(internal)?;
-        applied += 1;
-    }
-    // 重放需要 sequence 对齐（显式 id 插入不推进 bigserial）
-    sqlx::query(
-        "SELECT setval('video_embed_rules_id_seq', \
-         GREATEST((SELECT COALESCE(max(id),1) FROM video_embed_rules), 1))",
-    )
-    .execute(&mut *tx)
-    .await
-    .map_err(internal)?;
+    let snapshot = pack_embed::snapshot(&mut tx).await?;
+    let applied = pack_embed::replay(&mut tx, &bodies).await?;
     upsert_pack_row(&mut tx, actor, head, snapshot).await?;
     audit(
         &mut tx,
@@ -289,6 +232,10 @@ async fn import_rules(
         snap.insert(k.clone(), Value::String(v.clone()));
     }
     let snapshot = serde_json::json!({ "rules": Value::Object(snap) });
+    let before: std::collections::HashMap<&str, &str> = cur
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
     let mut changed = Vec::new();
     for (key, expr_v) in rules {
         let expr = expr_v.as_str().unwrap_or_default();
@@ -303,7 +250,11 @@ async fn import_rules(
         .execute(&mut *tx)
         .await
         .map_err(internal)?;
-        changed.push(key.clone());
+        // 只报「真的变了」的键：预检的 will_change 按差异计数，确认侧原先
+        // 无条件 push，同一张包两态数字对不上（界面据此提示「已改 N 项」）
+        if before.get(key.as_str()).copied() != Some(expr) {
+            changed.push(key.clone());
+        }
     }
     upsert_pack_row(&mut tx, actor, head, snapshot).await?;
     audit(
@@ -328,7 +279,8 @@ async fn import_rules(
 }
 
 /// assets 包导入（M1 增量）：payload.tables = {medals:[...], avatar_frames:[...]}。
-/// 白名单表 + 快照重放（同 taxonomy 口径）。
+/// 白名单表 + 快照重放（同 taxonomy 口径）；行值过后台道具 CRUD 同一道闸
+/// （范围校验 + CSS/图片净化），落库与快照在 pack_assets.rs。
 async fn import_assets(
     state: &web::Data<std::sync::Arc<AppState>>,
     actor: &i64,
@@ -348,20 +300,25 @@ async fn import_assets(
     } else {
         return Err(bad("assets 包缺少 payload.tables"));
     }
+    let payload = match pack_assets::check_input(&head.payload) {
+        Ok(v) => v,
+        Err(errors) => return Err(DomainError::FieldErrors(errors)),
+    };
     let mut tx = state.repo.db.begin().await.map_err(internal)?;
+    let declared: Vec<String> = payload
+        .get("tables")
+        .and_then(Value::as_object)
+        .map(|o| o.keys().cloned().collect())
+        .unwrap_or_default();
     if !confirm {
-        let medals = head
-            .payload
-            .pointer("/tables/medals")
-            .and_then(Value::as_array)
-            .map(|a| a.len())
-            .unwrap_or(0);
-        let frames = head
-            .payload
-            .pointer("/tables/avatar_frames")
-            .and_then(Value::as_array)
-            .map(|a| a.len())
-            .unwrap_or(0);
+        let count = |t: &str| {
+            payload
+                .pointer(&format!("/tables/{t}"))
+                .and_then(Value::as_array)
+                .map(|a| a.len())
+                .unwrap_or(0)
+        };
+        let (medals, frames) = (count("medals"), count("avatar_frames"));
         tx.rollback().await.ok();
         return Ok(ok(serde_json::json!({
             "dry_run": true,
@@ -370,10 +327,17 @@ async fn import_assets(
             "will_change": medals + frames,
             "medals": medals,
             "avatar_frames": frames,
+            // 包没声明的表不会被碰（旧写法把缺键当空集 = 整表清空）
+            "tables_untouched": super::pack_format::ASSET_TABLES
+                .iter()
+                .filter(|t| !declared.iter().any(|d| d == *t))
+                .map(|t| t.to_string())
+                .collect::<Vec<_>>(),
         })));
     }
-    let snapshot = snapshot_assets(&mut tx).await?;
-    let (n_medals, n_frames) = apply_assets(&mut tx, &head.payload).await?;
+    let snapshot = pack_assets::snapshot_assets(&mut tx, &payload).await?;
+    let (n_medals, n_frames) =
+        pack_assets::apply_assets(&mut tx, &payload).await?;
     upsert_pack_row(&mut tx, actor, head, snapshot).await?;
     audit(
         &mut tx,
@@ -450,9 +414,9 @@ async fn import_theme(
             "errors": errors,
         })));
     }
-    let snapshot = snapshot_theme(&mut tx).await?;
+    let snapshot = snapshot_theme(&mut tx, &names).await?;
     let (changed, errors) =
-        apply_theme_import(&mut tx, settings, &by_name, false).await?;
+        apply_theme_import(&mut tx, settings, &by_name).await?;
     if !errors.is_empty() {
         return Err(DomainError::FieldErrors(errors));
     }
@@ -537,17 +501,44 @@ pub(super) async fn rollback(
     actor: &i64,
     id: i64,
 ) -> DomainResult<HttpResponse> {
-    let row: Option<(String, String, String)> = sqlx::query_as(
-        "SELECT pack_id, kind, snapshot::text FROM content_packs \
-         WHERE id = $1",
+    let mut tx = state.repo.db.begin().await.map_err(internal)?;
+    // FOR UPDATE：连点两次「回滚」时第二条必须等第一条删掉登记行，否则
+    // 各自重放一次快照，下面的按序判据也一起失效
+    let row: Option<(
+        String,
+        String,
+        String,
+        chrono::DateTime<chrono::Utc>,
+    )> = sqlx::query_as(
+        "SELECT pack_id, kind, snapshot::text, applied_at \
+         FROM content_packs WHERE id = $1 FOR UPDATE",
     )
     .bind(id)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(internal)?;
-    let Some((pack_id, kind, snapshot)) = row else {
+    let Some((pack_id, kind, snapshot, applied_at)) = row else {
         return Err(DomainError::Validation("内容包记录不存在".into()));
     };
+    // 后装先回：快照记的是「本次导入前」的状态，同 kind 若还有更晚的包，
+    // 重放旧快照会把它们的覆盖一起吃掉，而它们的登记行仍显示「已装」
+    // （批四十 P-147：回滚 A 再回滚 B，A 的内容还会借 B 的快照复活）
+    let newer: Vec<String> = sqlx::query_scalar(
+        "SELECT pack_id FROM content_packs WHERE kind = $1 AND id <> $2 \
+         AND applied_at > $3 ORDER BY applied_at DESC LIMIT 3",
+    )
+    .bind(&kind)
+    .bind(id)
+    .bind(applied_at)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(internal)?;
+    if !newer.is_empty() {
+        return Err(DomainError::Validation(format!(
+            "请先回滚更晚安装的同类型包：{}",
+            newer.join("、")
+        )));
+    }
     let snapshot: Value = serde_json::from_str(&snapshot)
         .map_err(|e| DomainError::Internal(e.into()))?;
     // R11：回滚需要知道「包写过哪些键」——从登记的 payload 读取
@@ -556,13 +547,12 @@ pub(super) async fn rollback(
         "SELECT payload::text FROM content_packs WHERE id = $1",
     )
     .bind(id)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
-    .unwrap_or(None)
+    .map_err(internal)?
     .flatten()
     .and_then(|t| serde_json::from_str(&t).ok())
     .unwrap_or(Value::Null);
-    let mut tx = state.repo.db.begin().await.map_err(internal)?;
     if kind == "taxonomy" {
         // 快照 dict 带 sort；转回 payload 形状走同一落库路径
         let payload = snapshot_to_payload(&snapshot);
@@ -576,7 +566,7 @@ pub(super) async fn rollback(
                 "快照损坏（缺少 settings 节）".into(),
             ));
         };
-        let (_, errors) = apply_theme_rollback(&mut tx, settings).await?;
+        let (_, errors) = apply_theme_restore(&mut tx, settings).await?;
         if !errors.is_empty() {
             return Err(DomainError::FieldErrors(errors));
         }
@@ -625,8 +615,12 @@ pub(super) async fn rollback(
             .map_err(internal)?;
         }
     } else if kind == "assets" {
-        // 快照即 payload 形状（tables 原样），直接重放
-        apply_assets(&mut tx, &snapshot).await?;
+        // 快照即 payload 形状，且只含包声明的那张表 → 重放范围 = 导入范围
+        pack_assets::apply_assets(&mut tx, &snapshot).await?;
+    } else if kind == "embed" {
+        // 0190 起 embed 也登记 content_packs，但这里此前没有对应分支：
+        // 装完就回滚不了，报「未知包类别」且登记行永远删不掉（P-146）
+        pack_embed::rollback(&mut tx, &snapshot).await?;
     } else {
         return Err(DomainError::Validation("未知包类别".into()));
     }
@@ -646,5 +640,8 @@ pub(super) async fn rollback(
     state.module_flags.invalidate().await;
     crate::cfgver::bump(state.get_ref(), "modules").await;
     invalidate_cache(state, "appearance").await;
+    if kind == "embed" {
+        crate::http::invalidate_home_cache(&**state).await;
+    }
     Ok(ok(serde_json::json!({ "rolled_back": pack_id })))
 }

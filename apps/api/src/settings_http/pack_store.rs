@@ -69,20 +69,31 @@ pub(super) async fn snapshot_taxonomy(
     }))
 }
 
-/// theme 快照：只存白名单涉及的设置键（回滚 = 恢复这些键的导入前值）
+/// theme 快照：**只拍包声明的键**，且把「导入前没有这一行」如实记成 null。
+/// 旧写法把十四个白名单键全拍进快照，回滚时连包没碰过的键一起重放——
+/// 既会吃掉站长在别处改过的外观，又会因重新校验而把自己锁死（见
+/// `apply_theme_restore`）。
 pub(super) async fn snapshot_theme(
     tx: &mut sqlx::PgTransaction<'_>,
+    names: &[String],
 ) -> DomainResult<Value> {
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT name, value FROM site_settings WHERE name = ANY($1)",
     )
-    .bind(THEME_KEYS)
+    .bind(names)
     .fetch_all(&mut **tx)
     .await
     .map_err(internal)?;
     let mut settings = serde_json::Map::new();
-    for (k, v) in rows {
-        settings.insert(k, Value::String(v));
+    for name in names {
+        let cur = rows.iter().find(|(k, _)| k == name).map(|(_, v)| v);
+        settings.insert(
+            name.clone(),
+            match cur {
+                Some(v) => Value::String(v.clone()),
+                None => Value::Null,
+            },
+        );
     }
     Ok(serde_json::json!({ "settings": Value::Object(settings) }))
 }
@@ -243,13 +254,11 @@ pub(super) async fn apply_taxonomy(
 }
 
 /// theme 落库：逐键白名单 + validate_field（settings_http 同一校验引擎）。
-/// 返回 (将变更键, 校验错误)。rollback 语义（allow_missing=true）时快照键
-/// 不在库中 = 删除该设置行（回到「未设置=默认」态，A2 还原语义）。
+/// 返回 (将变更键, 校验错误)。
 pub(super) async fn apply_theme_import(
     tx: &mut sqlx::PgTransaction<'_>,
     settings: &serde_json::Map<String, Value>,
     by_name: &std::collections::HashMap<String, MetaRow>,
-    allow_missing: bool,
 ) -> DomainResult<(Vec<String>, Vec<(String, String)>)> {
     let mut errors = Vec::new();
     let mut changed = Vec::new();
@@ -259,17 +268,7 @@ pub(super) async fn apply_theme_import(
             continue;
         }
         let Some(meta) = by_name.get(name) else {
-            // 未落库的键：快照回放允许删除，正向导入不允许凭空造键
-            if allow_missing {
-                sqlx::query("DELETE FROM site_settings WHERE name = $1")
-                    .bind(name)
-                    .execute(&mut **tx)
-                    .await
-                    .map_err(internal)?;
-                changed.push(name.clone());
-            } else {
-                errors.push((name.clone(), "设置键不存在".into()));
-            }
+            errors.push((name.clone(), "设置键不存在".into()));
             continue;
         };
         let raw = raw.as_str().unwrap_or_default();
@@ -295,23 +294,45 @@ pub(super) async fn apply_theme_import(
     Ok((changed, errors))
 }
 
-/// theme 回滚：读白名单键当前元数据后走 apply_theme_import（allow_missing）
-pub(super) async fn apply_theme_rollback(
+/// theme 回滚：逐键写回快照原值，**不重新校验**。
+/// 批四十实测立案依据：快照是导入前从库里拍下来的现值，回滚再校验一遍等于
+/// 「装包时合法、回滚时被自己的校验挡在门外」——八个品牌色键的现值是空串，
+/// `color` 校验直接报「须为合法 hex 颜色」，任何没填齐八色的站点都装得上
+/// theme 包、却永远滚不回去（登记行也删不掉，400 在删行之前）。
+/// 快照里的 null = 导入前没有这一行 → 删掉，回到未设置=默认（A2 还原语义）。
+pub(super) async fn apply_theme_restore(
     tx: &mut sqlx::PgTransaction<'_>,
     settings: &serde_json::Map<String, Value>,
 ) -> DomainResult<(Vec<String>, Vec<(String, String)>)> {
-    let names: Vec<String> = settings.keys().cloned().collect();
-    let metas: Vec<MetaRow> = sqlx::query_as(&format!(
-        "{} WHERE s.name = ANY($1)",
-        super::meta::META_SELECT
-    ))
-    .bind(&names)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(internal)?;
-    let by_name: std::collections::HashMap<String, MetaRow> =
-        metas.into_iter().map(|m| (m.name.clone(), m)).collect();
-    apply_theme_import(tx, settings, &by_name, true).await
+    let mut changed = Vec::new();
+    let mut errors = Vec::new();
+    for (name, raw) in settings {
+        if !THEME_KEYS.contains(&name.as_str()) {
+            errors.push((name.clone(), "theme 包不允许触碰该设置键".into()));
+            continue;
+        }
+        if raw.is_null() {
+            sqlx::query("DELETE FROM site_settings WHERE name = $1")
+                .bind(name)
+                .execute(&mut **tx)
+                .await
+                .map_err(internal)?;
+            changed.push(name.clone());
+            continue;
+        }
+        sqlx::query(
+            "INSERT INTO site_settings (name, value) VALUES ($1, $2) \
+             ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, \
+             updated_at = now()",
+        )
+        .bind(name)
+        .bind(raw.as_str().unwrap_or_default())
+        .execute(&mut **tx)
+        .await
+        .map_err(internal)?;
+        changed.push(name.clone());
+    }
+    Ok((changed, errors))
 }
 
 /// 回滚侧的分类学落库：守卫（快照分类改名也不得悬挂）+ 纯覆盖
@@ -357,7 +378,7 @@ async fn apply_taxonomy_sections(
         .bind(kind)
         .fetch_one(&mut **tx)
         .await
-        .unwrap_or(0);
+        .map_err(internal)?;
         if in_use == 0 {
             sqlx::query("DELETE FROM section_kinds WHERE kind = $1")
                 .bind(kind)
@@ -383,17 +404,20 @@ async fn apply_taxonomy_sections(
             .filter(|(k, _)| k == kind)
             .map(|(_, n)| n.clone())
             .collect();
-        // 被种子引用且不在包内的选项（清掉会悬挂 torrent_sections）
+        // 该维度只要有任一条选项被种子引用，就不能整维重建：重建 = 先
+        // DELETE 全维再按包重插（新 id），而 `torrent_sections.dict_id` 是
+        // ON DELETE CASCADE，包内同名选项照删不误 —— 种子的维度标注跟着
+        // 旧 id 一起蒸发（批四十 P-144：站型分类学包一装，在用标注清零）。
+        // 退化为「只追加、不动在用行」：id 稳定，包外选项残留（A3 口径）。
         let in_use: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM torrent_sections ts \
              JOIN section_dict sd ON sd.id = ts.dict_id \
-             WHERE sd.kind = $1 AND sd.name <> ALL($2)",
+             WHERE sd.kind = $1",
         )
         .bind(kind)
-        .bind(&packed)
         .fetch_one(&mut **tx)
         .await
-        .unwrap_or(0);
+        .map_err(internal)?;
         if in_use > 0 {
             // 退化口径：只追加缺失选项，不动在用选项
             for name in &packed {
@@ -432,230 +456,6 @@ async fn apply_taxonomy_sections(
     Ok(())
 }
 
-// ============ 素材包落库（M1 增量，kind=assets） ============
-
-/// 素材快照/落库的行形状（两张白名单表）
-pub(super) async fn snapshot_assets(
-    tx: &mut sqlx::PgTransaction<'_>,
-) -> DomainResult<Value> {
-    let medals: Vec<(
-        i64,
-        String,
-        Option<i64>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<i32>,
-        i16,
-        Option<i32>,
-        Option<chrono::DateTime<chrono::Utc>>,
-        Option<chrono::DateTime<chrono::Utc>>,
-        f64,
-        i32,
-        i32,
-    )> = sqlx::query_as(
-        "SELECT id, name, price, rarity, description, asset_ref, \
-         duration_days, get_type, inventory, sale_begin_at, sale_end_at, \
-         bonus_addition_factor::float8, category_id, limited::int \
-         FROM medals ORDER BY id",
-    )
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(internal)?;
-    let frames: Vec<(i32, String, String, i32, i32, Option<String>)> =
-        sqlx::query_as(
-            "SELECT id, name, css, price, sort, image_url \
-             FROM avatar_frames ORDER BY id",
-        )
-        .fetch_all(&mut **tx)
-        .await
-        .map_err(internal)?;
-    let medals_json: Vec<Value> = medals
-        .into_iter()
-        .map(|m| {
-            let (
-                id,
-                name,
-                price,
-                rarity,
-                description,
-                asset_ref,
-                duration_days,
-                get_type,
-                inventory,
-                sale_begin_at,
-                sale_end_at,
-                bonus,
-                category_id,
-                limited,
-            ) = m;
-            serde_json::json!({
-                "id": id, "name": name, "price": price, "rarity": rarity,
-                "description": description, "asset_ref": asset_ref,
-                "duration_days": duration_days, "get_type": get_type,
-                "inventory": inventory, "sale_begin_at": sale_begin_at,
-                "sale_end_at": sale_end_at,
-                "bonus_addition_factor": bonus, "category_id": category_id,
-                "limited": limited != 0,
-            })
-        })
-        .collect();
-    let frames_json: Vec<Value> = frames
-        .into_iter()
-        .map(|(id, name, css, price, sort, image_url)| {
-            serde_json::json!({
-                "id": id, "name": name, "css": css, "price": price,
-                "sort": sort, "image_url": image_url,
-            })
-        })
-        .collect();
-    Ok(serde_json::json!({
-        "tables": {
-            "medals": medals_json,
-            "avatar_frames": frames_json,
-        },
-    }))
-}
-
-/// 素材纯覆盖落库：包内行 upsert（按 id）；包外表行删除——被引用的跳过
-/// （medals 被 user_medals 持有、frames 被用户佩戴，宁残留不破坏）。
-pub(super) async fn apply_assets(
-    tx: &mut sqlx::PgTransaction<'_>,
-    payload: &Value,
-) -> DomainResult<(usize, usize)> {
-    let Some(tables) = payload.get("tables").and_then(Value::as_object) else {
-        return Err(DomainError::Validation(
-            "assets 包缺少 payload.tables".into(),
-        ));
-    };
-    for t in tables.keys() {
-        if !super::pack_format::ASSET_TABLES.contains(&t.as_str()) {
-            return Err(DomainError::Validation(format!(
-                "assets 包不允许触碰表：{t}"
-            )));
-        }
-    }
-    // ---- medals ----
-    let medal_rows: Vec<Value> = tables
-        .get("medals")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let medal_ids: Vec<i64> = medal_rows
-        .iter()
-        .filter_map(|r| r.get("id").and_then(Value::as_i64))
-        .collect();
-    // 包外且被持有 → 跳过删除；其余删除
-    sqlx::query(
-        "DELETE FROM medals WHERE NOT (id = ANY($1)) AND NOT EXISTS (\
-           SELECT 1 FROM user_medals um WHERE um.medal_id = medals.id)",
-    )
-    .bind(&medal_ids)
-    .execute(&mut **tx)
-    .await
-    .map_err(internal)?;
-    let mut n_medals = 0usize;
-    for r in &medal_rows {
-        let Some(id) = r.get("id").and_then(Value::as_i64) else {
-            continue;
-        };
-        let Some(name) = r.get("name").and_then(Value::as_str) else {
-            continue;
-        };
-        let g = |k: &str| r.get(k).cloned().unwrap_or(Value::Null);
-        let dt = |k: &str| -> Option<String> {
-            r.get(k).and_then(Value::as_str).map(str::to_string)
-        };
-        sqlx::query(
-            "INSERT INTO medals (id, name, price, rarity, description, \
-             asset_ref, duration_days, get_type, inventory, sale_begin_at, \
-             sale_end_at, bonus_addition_factor, category_id, limited) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, \
-             $10::timestamptz, $11::timestamptz, $12, $13, $14) \
-             ON CONFLICT (id) DO UPDATE SET \
-             name = EXCLUDED.name, price = EXCLUDED.price, \
-             rarity = EXCLUDED.rarity, description = EXCLUDED.description, \
-             asset_ref = EXCLUDED.asset_ref, \
-             duration_days = EXCLUDED.duration_days, \
-             get_type = EXCLUDED.get_type, inventory = EXCLUDED.inventory, \
-             sale_begin_at = EXCLUDED.sale_begin_at, \
-             sale_end_at = EXCLUDED.sale_end_at, \
-             bonus_addition_factor = EXCLUDED.bonus_addition_factor, \
-             category_id = EXCLUDED.category_id, limited = EXCLUDED.limited",
-        )
-        .bind(id)
-        .bind(name)
-        .bind(r.get("price").and_then(Value::as_i64))
-        .bind(r.get("rarity").and_then(Value::as_str))
-        .bind(r.get("description").and_then(Value::as_str))
-        .bind(r.get("asset_ref").and_then(Value::as_str))
-        .bind(
-            r.get("duration_days")
-                .and_then(Value::as_i64)
-                .map(|v| v as i32),
-        )
-        .bind(r.get("get_type").and_then(Value::as_i64).unwrap_or(1) as i16)
-        .bind(r.get("inventory").and_then(Value::as_i64).map(|v| v as i32))
-        .bind(dt("sale_begin_at"))
-        .bind(dt("sale_end_at"))
-        .bind(
-            r.get("bonus_addition_factor")
-                .and_then(Value::as_f64)
-                .unwrap_or(0.0),
-        )
-        .bind(r.get("category_id").and_then(Value::as_i64).unwrap_or(0) as i32)
-        .bind(r.get("limited").and_then(Value::as_bool).unwrap_or(false))
-        .execute(&mut **tx)
-        .await
-        .map_err(internal)?;
-        n_medals += 1;
-        let _ = g; // 未知列忽略（白名单列集）
-    }
-    // ---- avatar_frames ----
-    let frame_rows: Vec<Value> = tables
-        .get("avatar_frames")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let frame_ids: Vec<i32> = frame_rows
-        .iter()
-        .filter_map(|r| r.get("id").and_then(Value::as_i64).map(|v| v as i32))
-        .collect();
-    sqlx::query(
-        "DELETE FROM avatar_frames WHERE NOT (id = ANY($1)) \
-         AND NOT EXISTS (\
-           SELECT 1 FROM users u WHERE u.avatar_frame_id = avatar_frames.id)",
-    )
-    .bind(&frame_ids)
-    .execute(&mut **tx)
-    .await
-    .map_err(internal)?;
-    let mut n_frames = 0usize;
-    for r in &frame_rows {
-        let (Some(id), Some(name), Some(css)) = (
-            r.get("id").and_then(Value::as_i64).map(|v| v as i32),
-            r.get("name").and_then(Value::as_str),
-            r.get("css").and_then(Value::as_str),
-        ) else {
-            continue;
-        };
-        sqlx::query(
-            "INSERT INTO avatar_frames (id, name, css, price, sort, \
-             image_url) VALUES ($1, $2, $3, $4, $5, $6) \
-             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, \
-             css = EXCLUDED.css, price = EXCLUDED.price, \
-             sort = EXCLUDED.sort, image_url = EXCLUDED.image_url",
-        )
-        .bind(id)
-        .bind(name)
-        .bind(css)
-        .bind(r.get("price").and_then(Value::as_i64).unwrap_or(0) as i32)
-        .bind(r.get("sort").and_then(Value::as_i64).unwrap_or(0) as i32)
-        .bind(r.get("image_url").and_then(Value::as_str))
-        .execute(&mut **tx)
-        .await
-        .map_err(internal)?;
-        n_frames += 1;
-    }
-    Ok((n_medals, n_frames))
-}
+// 素材包（kind=assets）的快照与落库已按域拆到 pack_assets.rs：那两张表的
+// 删除范围要跟着「包声明了哪张表」走，和这里的分类学/theme 原语不是同一
+// 套判据。
