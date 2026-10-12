@@ -77,7 +77,6 @@ BASE = {"cats": cnt("categories"), "dict": cnt("section_dict"),
         "rule": sval("rule_bank_term_rate"),
         "announce": sval("announce_interval")}
 print("基线：%s" % BASE)
-# ============ S1 目录与权限 ============
 s, r = call("GET", "/admin/content-packs/catalog", token=ROOT)
 items = data(r).get("items") or []
 by_kind = {}
@@ -92,7 +91,6 @@ ok("S1c 未装任何包时目录不带 installed_row_id",
    all("installed_row_id" not in it for it in items),
    str([it.get("pack_id") for it in items if "installed_row_id" in it][:3]))
 
-# 普通成员：七个口全 403（不是 401，令牌是真的，只是没权）
 clear_register_rl()
 s, r = call("POST", "/admin/invites", {"user_id": 1, "count": 1}, token=ROOT)
 codes = (data(r).get("codes") or [])
@@ -254,6 +252,11 @@ ok("S3f 回滚到「未设置」的空值：不得被 color 校验反锁（装�
    s == 200 and sval("theme_token_sky") == ""
    and not cnt("content_packs", "id = %d" % rowc2),
    "%s now=%r %s" % (s, sval("theme_token_sky"), blob(r)[:170]))
+s, r = imp(pack("theme", "bd.theme.big.%d" % TAG, {"settings": {
+    "site_tagline": "A" * (4 * 1024 * 1024)}}), True)
+ok("S3g 包体上限 4MiB：超大 payload 直接拒（远程拉包早有 16MiB 闸）",
+   s == 400 and "4MiB" in blob(r), "%s %s" % (s, blob(r)[:90]))
+
 # ============ S4 rules：白名单 / changed 口径 / rule-try 只读 ============
 rp_bad = pack("rules", "bd.rules.bad.%d" % TAG,
               {"rules": {"rule_bank_term_rate": "term_days * 0.002",
@@ -363,8 +366,8 @@ for label, key, val, kw in MUT:
     two = (("预检", imp(pk, False)), ("确认", imp(pk, True)))
     for state, res in two:
         if res[0] != 400 or kw not in blob(res[1]):
-            bad.append("%s %s=%s %s"
-                       % (label, state, res[0], blob(res[1])[:48]))
+            bad.append("%s %s=%s %s" % (label, state, res[0],
+                           blob(res[1])[:48]))
 ok("S5a 九道形状/安全闸：预检与确认两态都 400 并点名原因（%d 组）"
    % len(MUT), not bad, blob(bad)[:260])
 ok("S5b 被拒的包一条规则也没写进去（非 builtin 仍 %s 行、内置未动）" % EB,
@@ -384,7 +387,6 @@ pub = json.dumps(call("GET", "/forums/embed-rules", token=ROOT)[1],
                  ensure_ascii=False)
 ok("S5d 渲染层真的看到这条规则（/forums/embed-rules 含 bdprobe）",
    "bdprobe" in pub, pub[:140])
-# 快照拍全：改名改序后装第二个包，回滚不得抹平在用行
 psql_body = dict(GOOD)
 psql_body.update(name_zh="BD 改名后的框", sort=9, aspect="4:3")
 s, r = call("PUT", "/admin/embed-rules/%d" % EID, psql_body, token=ROOT)
@@ -470,11 +472,9 @@ b = imp(neg, True)
 ok("S6g 勋章负价格：预检与确认两态都 400 且点名原因",
    a[0] == 400 and "价格" in blob(a[1]) and b[0] == 400
    and "价格" in blob(b[1]), blob(b[1])[:90])
-ok("S6h 被拒的素材包没有动任何一行（medals/frames 均基线）",
+ok("S6h 被拒的素材包没有动任何一行（medals/frames/登记均基线）",
    cnt("medals") == BASE["medals"] and cnt("avatar_frames") == BASE["frames"]
-   and cnt("content_packs") == BASE["packs"],
-   "%s/%s/%s" % (cnt("medals"), cnt("avatar_frames"), cnt("content_packs")))
-# ============ S7 收尾：残留与审计 ============
+   and cnt("content_packs") == BASE["packs"])
 for stmt in CLEANUP:
     psql(stmt)
 now_tag = psql("SELECT value FROM site_settings WHERE name = 'site_tagline'")

@@ -39,7 +39,11 @@ pub(super) async fn import(
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
     let head = parse_pack(pack)?;
-    match head.kind.as_str() {
+    // 包体上限 4MiB：远程侧早有 16MiB/2MiB 两道闸，本地导入原先什么都不限
+    // ——actix Json 默认 32MiB 整份进内存，还原样登记进 content_packs。
+    if head.payload.to_string().len() > 4 * 1024 * 1024 {
+        return Err(bad("包体 payload 超过 4MiB 上限"));
+    }    match head.kind.as_str() {
         "taxonomy" => import_taxonomy(state, actor, &head, confirm).await,
         "rules" => import_rules(state, actor, &head, confirm).await,
         "assets" => import_assets(state, actor, &head, confirm).await,
@@ -125,11 +129,9 @@ async fn import_taxonomy(
         )));
     }
     if !confirm {
-        let cur_cats: i64 =
-            sqlx::query_scalar("SELECT count(*) FROM categories")
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap_or(0);
+        let cur_cats: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM categories")
+            .fetch_one(&mut *tx).await.unwrap_or(0);
         tx.rollback().await.ok();
         return Ok(ok(serde_json::json!({
             "dry_run": true,
