@@ -38,19 +38,27 @@ pub async fn throttle_limited(
     key: String,
     max: i64,
 ) -> DomainResult<()> {
-    rate_window(state, &key, max, 60).await
+    rate_window(state, &key, max, 60).await.map(|_| ())
 }
 
-/// 固定窗口计数。**窗口写在键名里**（`rl:<key>:<窗口序号>`），TTL 只为
-/// 回收存在——这样滑动续期不会影响窗口复位（P-65：我第一版改成每次
-/// EXPIRE，结果闸门一边退避重试一边给自己把 429 续命）。
+/// 固定窗口计数，**返回本窗口内是第几次调用**（开放 API 要往响应头报
+/// 已用/剩余，靠这个返回值，不再自己 INCR）。
+/// 窗口写在键名里（`rl:<key>:<窗口序号>`），TTL 只为回收存在——这样滑动
+/// 续期不会影响窗口复位（P-65：我第一版改成每次 EXPIRE，结果闸门一边
+/// 退避重试一边给自己把 429 续命）。
 /// 跨窗口最坏 2×max 的尖峰是所有固定窗口的通性，不额外处理。
+///
+/// **键名契约（P-72）**：`rl:` 前缀由这里统一加，调用方只传业务段
+/// （`npdl:<hash16>`、`att:<uid>`）。七处调用点原本自带 `rl:`，于是线上
+/// 真实键是 `rl:rl:npdl:…`（实测抓到的就是这个形状）——闸门脚本按文档里的
+/// `rl:npdl:…` 投毒打不中，「fail-close 生效」这类判据会假绿；运维照文档
+/// 写的 `redis-cli --scan --pattern` 同样一条都数不到。
 pub async fn rate_window(
     state: &Arc<AppState>,
     key: &str,
     max: i64,
     window: i64,
-) -> DomainResult<()> {
+) -> DomainResult<i64> {
     use redis::AsyncCommands;
     let window = window.max(1);
     let bucket = chrono::Utc::now().timestamp() / window;
@@ -65,7 +73,7 @@ pub async fn rate_window(
     if n > max {
         return Err(DomainError::RateLimited);
     }
-    Ok(())
+    Ok(n)
 }
 
 /// 读一个计数键。
@@ -91,6 +99,10 @@ pub async fn counter_peek(
 ///
 /// 与 `rate_window` 的区别是**语义**：acctlock 这类「连续失败计数」要的是
 /// 「距最后一次失败起算 N 秒」，每次续期才是正确窗口，所以不进键名。
+///
+/// 别拿它做限流（P-71，我在 P-67 里差点带出去）：在限流桶上每次续期等于把
+/// 固定窗写成**空闲超时窗**——只要客户端持续调用，计数就永不复位，
+/// 慢速但不停的正常客户端会被永久锁死。
 pub async fn counter_bump(
     state: &Arc<AppState>,
     key: &str,
