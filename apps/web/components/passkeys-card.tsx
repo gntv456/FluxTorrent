@@ -73,8 +73,12 @@ export function PasskeysCard() {
       const r = c.response as AuthenticatorAttestationResponse & {
         getAuthenticatorData?: () => ArrayBuffer;
       };
-      // 公钥从 attestationObject 里取太深——服务端兼容「裸 COSE 公钥」提交：
-      // 现代浏览器可用 getPublicKey()（Chrome 103+/Safari 16.4+）
+      // 公钥取 getPublicKey()（Chrome 103+/Safari 16.4+），它返回的是
+      // **DER SubjectPublicKeyInfo**（WebAuthn L2 规定，MDN 同）；服务端在
+      // 入口把它归一成库里存的 SEC1 未压缩点（P-82：此前服务端只认 SEC1，
+      // 浏览器交 SPKI 一律「公钥格式错误」，passkey 对浏览器从未绑成功过）。
+      // 注意：不是 COSE——COSE_Key 在 attestationObject/authData 里，
+      // 服务端明确拒收（闸门 AV S1c 钉住这个口径）。
       const pk = (
         r as AuthenticatorAttestationResponse & {
           getPublicKey?: () => ArrayBuffer | null;
