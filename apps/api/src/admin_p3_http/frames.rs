@@ -28,9 +28,10 @@ struct AvatarFrameRow {
     worn_count: i64,
 }
 
-/// css 净化：只放行 border-color / box-shadow 声明（与前端 avatarFrameStyle 白名单一致，
-/// 防后台误编辑注入无关样式）；全被滤掉时回退默认灰描边，保证框永远可见
-fn sanitize_frame_css(css: &str) -> String {
+/// css 净化：只放行 border-color / box-shadow 声明（与前端 avatarFrameStyle
+/// 白名单一致，防后台误编辑注入无关样式）；全被滤掉时回退默认灰描边，
+/// 保证框永远可见。素材包（`settings_http/pack_assets.rs`）同用这一道。
+pub fn sanitize_frame_css(css: &str) -> String {
     let kept: Vec<String> = css
         .split(';')
         .filter_map(|decl| {
@@ -78,8 +79,9 @@ struct AvatarFrameReq {
     sort: Option<i32>,
 }
 
-/// 图片链接净化：只收 http(s)/协议相对的 URL，去首尾空白；空串归一为 NULL（清图）
-fn normalize_frame_image(url: Option<&str>) -> Option<String> {
+/// 图片链接净化：只收 http(s)/协议相对的 URL，去首尾空白；空串归一为
+/// NULL（清图）。素材包同用这一道。
+pub fn normalize_frame_image(url: Option<&str>) -> Option<String> {
     let u = url?.trim();
     if u.is_empty() {
         return None;
