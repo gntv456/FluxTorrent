@@ -44,6 +44,24 @@ export function useI18n(): { dict: Dict; locale: Locale; currency: string } {
 
 /** 错误消息：优先按 code 查字典（与后端 Accept-Language 协商互为兜底） */
 export function apiErrorMessage(dict: Dict, err: unknown): string {
-  if (err instanceof ApiError) return dict.errors[err.code] ?? err.message;
+  if (err instanceof ApiError) {
+    // P-117：1002（Validation）的报文带着**具体判据**——「签发 API Token
+    // 未执行：凭证无效」「还款金额必须为正」这类。旧写法一律拿字典里
+    // 「参数校验失败」盖掉它，用户只知道「失败了」，看不出是自己密码错、
+    // 还是要输验证码。取第一个分隔符之后的正文；正文为空时退回原映射。
+    // 其余码（1004/2001/4103…）的字典文案更完整，保持原样。
+    if (err.code === 1002) {
+      const raw = err.message ?? "";
+      const at = [":", "："]
+        .map((c) => raw.indexOf(c))
+        .filter((i) => i >= 0)
+        .sort((a, b) => a - b)[0];
+      if (at !== undefined) {
+        const tail = raw.slice(at + 1).trim();
+        if (tail) return tail;
+      }
+    }
+    return dict.errors[err.code] ?? err.message;
+  }
   return err instanceof Error ? err.message : dict.common.networkError;
 }
