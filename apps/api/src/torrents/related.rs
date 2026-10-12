@@ -63,7 +63,11 @@ pub async fn list_related(
     limit: i64,
 ) -> DomainResult<Vec<RelatedRow>> {
     let limit = limit.clamp(1, 20);
-    let rows = sqlx::query_as::<_, RelatedRow>(
+    // 促销角标与列表/详情/后台/计费共用同一份「按维度合成」片段
+    // （P-121：旧写法 `ORDER BY p.id DESC LIMIT 1` 取最新一条，
+    // 同一粒子多条促销时相关推荐的角标能与详情页不一致）
+    let ekind = super::promo::effective_kind();
+    let sql = format!(
         r#"
         WITH base AS (
             SELECT t.id, t.name, t.category_id, t.group_id
@@ -111,17 +115,7 @@ pub async fn list_related(
             SELECT t.id, t.name, t.small_descr, t.category_id, t.size,
                    t.seeders, t.leechers, t.times_completed,
                    t.media_info->>'poster' AS poster,
-                   (SELECT p.kind::text FROM promotions p
-                      WHERE p.starts_at <= now() AND p.ends_at > now()
-                        AND (p.torrent_id = t.id
-                          OR (p.torrent_id IS NULL AND (
-                              p.scope = 'global'
-                              OR (p.scope = 'official' AND t.official_tag)
-                              OR (p.scope = 'non_official'
-                                  AND NOT t.official_tag)
-                              OR (p.scope = 'category'
-                                  AND t.category_id = p.category_id))))
-                      ORDER BY p.id DESC LIMIT 1) AS promotion,
+                   {ekind} AS promotion,
                    (
                      CASE WHEN b.group_id IS NOT NULL
                                AND t.group_id = b.group_id
@@ -148,7 +142,8 @@ pub async fn list_related(
          ORDER BY score DESC, seeders DESC, id DESC
          LIMIT $5
         "#,
-    )
+    );
+    let rows = sqlx::query_as::<_, RelatedRow>(&sql)
     .bind(id)
     .bind(TAG_CAND)
     .bind(TRGM_CAND)
