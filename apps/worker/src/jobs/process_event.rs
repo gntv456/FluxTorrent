@@ -266,8 +266,13 @@ pub(crate) async fn process_event(
 
     // 零增量不落流水；0286：promotion_kind 是 0001 起无人写的死列 ⇒ 倍率无法追溯
     if delta_up > 0 || delta_down > 0 {
-        let (promo_code, promo_note) =
-            super::promo_audit::promo_audit(kind.as_deref(), global.as_deref());
+        // 促销码按**裁决后的实际倍率**反查（P-120：free+x2 合成 2×/0 要记
+        // x2free，不能记「最强的一条」x2——作弊差距判据按 1/3 豁免免费档）
+        let (promo_code, promo_note) = super::promo_audit::promo_audit(
+            kind.as_deref(),
+            global.as_deref(),
+            (up_mult, down_mult),
+        );
         sqlx::query(
             "INSERT INTO traffic_ledger (id, user_id, torrent_id, delta_up, \
              delta_down, window_start, event_id, promotion_kind, reason) \
