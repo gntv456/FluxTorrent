@@ -143,8 +143,31 @@ pub(super) async fn passkey_finish(
             "RP ID 不匹配（前端 rpId 须与站点域名一致）".into(),
         ));
     }
-    // 公钥（SEC1 uncompressed）：p256 VerifyingKey
-    let pk_bytes = b64url(&body.public_key);
+    // 公钥归一（P-82）：浏览器 `AuthenticatorAttestationResponse.getPublicKey()`
+    // 交回来的是 **DER SubjectPublicKeyInfo**（WebAuthn L2 明文规定；MDN 同），
+    // 而这里原本只认 SEC1 未压缩点（0x04‖X‖Y，65 字节）⇒ 真实浏览器绑定时
+    // `EncodedPoint::from_bytes` 当场失败，用户看到「公钥格式错误」，
+    // passkey 对浏览器从头就是死的（前端注释还写着「服务端兼容裸 COSE 公钥」，
+    // 两头都不对：既不是 COSE，服务端也不收 COSE）。
+    // 库里存的仍是 SEC1（登录侧要拿它建验签器），所以只在入口归一一次：
+    // SPKI 解出点存 SEC1；SEC1 原样收；其余（含 COSE 的 CBOR map）明确拒。
+    let raw_pk = b64url(&body.public_key);
+    let pk_bytes = if raw_pk.first() == Some(&0x04) && raw_pk.len() == 65 {
+        raw_pk
+    } else if raw_pk.first() == Some(&0x30) {
+        use p256::pkcs8::DecodePublicKey;
+        let vk = p256::ecdsa::VerifyingKey::from_public_key_der(&raw_pk)
+            .map_err(|_| DomainError::Validation(
+                "公钥格式错误（SPKI 解析失败）".into(),
+            ))?;
+        vk.to_encoded_point(false).as_bytes().to_vec()
+    } else {
+        return Err(DomainError::Validation(
+            "公钥格式不支持：请提交 getPublicKey() 的 SPKI DER，\
+             不是 COSE"
+                .into(),
+        ));
+    };
     let point = p256::EncodedPoint::from_bytes(&pk_bytes)
         .map_err(|_| DomainError::Validation("公钥格式错误".into()))?;
     // 只验「是合法公钥点」，不在此处构造验签器（登录侧再建）
