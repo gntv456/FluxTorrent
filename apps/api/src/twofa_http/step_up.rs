@@ -31,7 +31,7 @@ pub(crate) async fn step_up(
 ) -> DomainResult<()> {
     if password.is_empty() {
         return Err(DomainError::Validation(format!(
-            "{what}需先复核密码（开了 2FA 还要当前验证码）"
+            "{what}：需先复核密码（开了 2FA 还要当前验证码）"
         )));
     }
     let row: Option<(String, Option<String>, bool)> = sqlx::query_as(
@@ -42,11 +42,15 @@ pub(crate) async fn step_up(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((hash, secret, enabled)) = row else {
-        return Err(DomainError::Validation(format!("凭证无效，{what}未执行")));
+        return Err(DomainError::Validation(format!(
+            "{what} 未执行：凭证无效"
+        )));
     };
     if !crate::domain::verify_password(&hash, password) {
         state.repo.audit(Some(uid), "stepup_failed", None).await;
-        return Err(DomainError::Validation(format!("凭证无效，{what}未执行")));
+        return Err(DomainError::Validation(format!(
+            "{what} 未执行：凭证无效"
+        )));
     }
     if !enabled {
         return Ok(());
