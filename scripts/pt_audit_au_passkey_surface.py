@@ -342,6 +342,31 @@ for _ in range(7):
 ok("S7 反控：限流本身没被拆——5 次/分钟，第 6 次起照样 429",
    429 in hits7, brief(sorted(set(hits7))))
 
+print("== S8 登录限流的两档分工（P-76）==")
+# IP 档原本与用户名档同宽（5 次/分），于是它挡不住字典爆破（那由用户名档 +
+# acctlock 两条线负责），挡住的却是合法场景：一个 NAT/CGNAT 出口下 6 个成员
+# 在同一分钟各自登录，第 6 个起全量 429。闸门连跑时也是同一个出口，AB 就撞
+# 死在这里（「登录 6 次都拿不到 token」）。先清桶，让断言只测这一档。
+for pat in ("rl:login:%s:*" % MUSER, "rl:login:root:*", "rl:login-ip:*"):
+    for k in live_keys(pat):
+        redis_cmd('DEL "%s"' % k)
+sts = []
+for _ in range(5):
+    sts.append(call("POST", "/auth/login", {"username": "root",
+                                            "password": "password123"})[0])
+    sts.append(call("POST", "/auth/login", {"username": MUSER,
+                                            "password": "password123"})[0])
+ok("S8 同一出口 IP 上两个账号各 5 次（共 10 次）都该正常——IP 档放宽到"
+   " 20/分（旧版第 6 次起 429，家庭/NAT 出口会被自己人挤掉）",
+   set(sts) == {200}, brief(sorted(set(sts))))
+hits8 = []
+for _ in range(7):
+    hits8.append(call("POST", "/auth/login", {"username": MUSER,
+                                              "password": "password123"},
+                      raw=True)[0])
+ok("S8 反控：放宽 IP 档不等于放宽账号档——同一账号被爆破时第 6 次起照样"
+   "429", 429 in hits8, brief(sorted(set(hits8))))
+
 print("== S4 收尾自检 ==")
 def bad(key):
     v = redis_cmd('GET "%s"' % key)
