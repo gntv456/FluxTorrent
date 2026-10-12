@@ -1517,6 +1517,11 @@ const zhTwBase: Omit<
       privacyStrong: "強(個人信息全部隱藏)",
       webauthnTitle: "Passkey（指紋 / 安全金鑰）",
       webauthnBind: "綁定新憑證",
+      webauthnStepUpHint:
+        "綁定新憑證需先複核本人憑證：密碼必填，已開兩步驗證還要目前驗證碼。",
+      webauthnPwPh: "目前密碼",
+      webauthnCodePh: "兩步驗證碼（6 位）",
+      webauthnStepUpBtn: "複核並繼續",
       webauthnEmpty: "尚未綁定 Passkey。綁定後可在登入頁免密登入。",
       webauthnNamePrompt: "給這枚憑證起個名字（如：筆電）",
       webauthnNameFallback: "passkey",

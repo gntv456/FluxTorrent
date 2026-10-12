@@ -3,6 +3,9 @@
 
 mod admin_misc;
 mod otpauth;
+mod step_up;
+
+pub(crate) use step_up::step_up;
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use data_encoding::BASE32_NOPAD;
