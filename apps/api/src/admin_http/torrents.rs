@@ -120,9 +120,10 @@ async fn admin_torrent_list(
         Some("no") => Some(false),
         _ => None,
     };
-    let promo_exists = r#"(SELECT count(*) FROM promotions p
-     WHERE p.starts_at <= now() AND p.ends_at > now()
-       AND p.torrent_id = t.id) > 0"#;
+    // 「促销中」筛选与角标共用 promo 模块的命中片段（P-121：旧写法只数
+    // `p.torrent_id = t.id` 直挂促销，全站/官种/分类促销期间的种在这里
+    // 一律算「没促销」——站长勾这个筛选核对活动覆盖面会漏掉全部作用域级促销）
+    let promo_exists = crate::torrents::promo::exists_clause(None);
     let where_sql = r#"(CASE WHEN $1 = 1 THEN t.approval_status = 0 WHEN $1 = 2 THEN t.approval_status = 1 WHEN $1 = 3 THEN t.approval_status = 2 WHEN $1 = 4 THEN t.approval_status = 1 AND t.seeders = 0 ELSE TRUE END)
            AND ($2::int IS NULL OR t.category_id = $2)
            AND ($3::bigint IS NULL OR t.owner_id = $3)
@@ -136,24 +137,26 @@ async fn admin_torrent_list(
            AND ($11::timestamptz IS NULL OR t.created_at >= $11)
            AND ($12::timestamptz IS NULL OR t.created_at <= $12)
            AND ($13::text IS NULL OR t.name ILIKE $13)"#;
-    let where_sql = where_sql.replace("{promo_exists}", promo_exists);
+    let where_sql = where_sql.replace("{promo_exists}", &promo_exists);
     // 多维筛选（B3 六类型）：`sec_{kind}` / `_min` / `_max`，解析见 sec_params.rs。
     // 片段形如 ` AND (...)`，与前台同一实现；列表与 count 共用此变量。
     let sections =
         parse_admin_sections(&state.repo.db, req.query_string()).await;
     let sec_sql =
         crate::torrents::section_where(&state.repo.db, &sections).await;
+    // 促销角标与前台详情/列表、worker 计费同一份片段（P-121：旧写法这里
+    // 只看 `torrent_id = t.id` 直挂促销且 `ORDER BY p.id DESC` 取最新一条，
+    // 于是全站促销在后台一律显示「无促销」、多条并存时后台显示的和前台
+    // 显示的和实际计费的是三套答案——站长按后台面板核对促销时必然误判）
+    let ekind = crate::torrents::promo::effective_kind();
+    let eends = crate::torrents::promo::effective_ends();
     let sql = format!(
         r#"SELECT t.id, t.name, t.owner_id, u.username AS owner_name, t.category_id,
                   t.size, t.seeders, t.leechers, t.approval_status,
                   dr.reason AS deny_reason, t.deny_note, t.sticky,
                   t.pos_state, t.pos_state_until, t.pick_type,
-                  (SELECT p.kind::text FROM promotions p
-                     WHERE p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id
-                     ORDER BY p.id DESC LIMIT 1) AS promotion,
-                  (SELECT p.ends_at FROM promotions p
-                     WHERE p.starts_at <= now() AND p.ends_at > now() AND p.torrent_id = t.id
-                     ORDER BY p.id DESC LIMIT 1) AS promotion_ends_at,
+                  {ekind} AS promotion,
+                  {eends} AS promotion_ends_at,
                   COALESCE((t.hr_policy->>'on')::bool, FALSE) AS hr,
                   (SELECT COALESCE(json_agg(
                             COALESCE(x.name, ts.value #>> '{{}}')

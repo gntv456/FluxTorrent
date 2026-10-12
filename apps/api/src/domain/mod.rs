@@ -133,86 +133,16 @@ pub fn invite_expiry() -> chrono::DateTime<Utc> {
     Utc::now() + Duration::hours(72)
 }
 
-/// 促销裁决（M06 §5.5）：单种子促销覆盖全站，取折扣更优者。
-/// 纯函数，可穷举单测。
-#[allow(dead_code)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum PromotionKind {
-    None,
-    Free,
-    X2,
-    X2Free,
-    Half,
-    X2Half,
-    P30,
-}
-
-#[allow(dead_code)]
-impl PromotionKind {
-    /// 计费倍率 (up_mult, down_mult)
-    pub fn multipliers(self) -> (f64, f64) {
-        match self {
-            PromotionKind::None => (1.0, 1.0),
-            PromotionKind::Free => (1.0, 0.0),
-            PromotionKind::X2 => (2.0, 1.0),
-            PromotionKind::X2Free => (2.0, 0.0),
-            PromotionKind::Half => (1.0, 0.5),
-            PromotionKind::X2Half => (2.0, 0.5),
-            PromotionKind::P30 => (1.0, 0.3),
-        }
-    }
-
-    /// 促销强度序（用于「折扣最大」裁决）
-    fn strength(self) -> u8 {
-        match self {
-            PromotionKind::None => 0,
-            PromotionKind::P30 => 1,
-            PromotionKind::Half => 2,
-            PromotionKind::Free => 3,
-            PromotionKind::X2 => 4,
-            PromotionKind::X2Half => 5,
-            PromotionKind::X2Free => 6,
-        }
-    }
-}
-
-#[allow(dead_code)]
-pub fn resolve_promotion(
-    torrent_level: PromotionKind,
-    global_level: PromotionKind,
-) -> PromotionKind {
-    if torrent_level.strength() >= global_level.strength() {
-        torrent_level
-    } else {
-        global_level
-    }
-}
+// 促销档位枚举曾在这里是 M06 的第二份倍率表（外加「取最强档」的合并规则），
+// 全站无人调用却带着一条把 free+x2 判成 x2 的单测（批三十七 P-120 实测：
+// 那条规则会吞掉免流）。口径唯一来源改为：
+//   计费 = worker `jobs::billing::billing_multipliers`
+//   展示 = api  `torrents::promo`（同一规则的 SQL 片段）
+// 两处不一致由闸门 BA（真发 announce → 真读 traffic_ledger + 详情角标）钉住。
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn promotion_resolution_prefers_stronger() {
-        assert_eq!(
-            resolve_promotion(PromotionKind::Free, PromotionKind::X2),
-            PromotionKind::X2
-        );
-        assert_eq!(
-            resolve_promotion(PromotionKind::X2Free, PromotionKind::Free),
-            PromotionKind::X2Free
-        );
-        assert_eq!(
-            resolve_promotion(PromotionKind::None, PromotionKind::Free),
-            PromotionKind::Free
-        );
-    }
-
-    #[test]
-    fn multipliers_table() {
-        assert_eq!(PromotionKind::Free.multipliers(), (1.0, 0.0));
-        assert_eq!(PromotionKind::X2Half.multipliers(), (2.0, 0.5));
-    }
 
     #[test]
     fn passkey_is_32_chars() {

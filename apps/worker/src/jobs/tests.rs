@@ -147,19 +147,43 @@ fn seeding_formula_dying_beats_daily() {
 
 #[test]
 fn free_zeroes_download() {
-    assert_eq!(billing_multipliers(Some("free"), None), (1.0, 0.0));
+    assert_eq!(billing_multipliers(&["free"]), (1.0, 0.0));
 }
 
+/// P-120（批三十七实测）：促销合并必须**逐维**取更优，不能把两维压成
+/// 一个标量强度序取「最强档」——旧实现下 `free` 输给 `x2`，
+/// 全站 2x 活动期间单种免流被吞（该下的流量照扣）。
 #[test]
-fn stronger_promotion_wins() {
-    assert_eq!(billing_multipliers(Some("free"), Some("x2")), (2.0, 1.0));
-    assert_eq!(
-        billing_multipliers(Some("x2free"), Some("free")),
-        (2.0, 0.0)
-    );
+fn promotions_combine_per_dimension() {
+    assert_eq!(billing_multipliers(&["free", "x2"]), (2.0, 0.0));
+    assert_eq!(billing_multipliers(&["x2", "free"]), (2.0, 0.0));
+    assert_eq!(billing_multipliers(&["half", "x2"]), (2.0, 0.5));
+    assert_eq!(billing_multipliers(&["x2free", "free"]), (2.0, 0.0));
+    // 同维多条：下载取最小、上传取最大
+    assert_eq!(billing_multipliers(&["p30", "half", "x2"]), (2.0, 0.3));
+    assert_eq!(billing_multipliers(&["x2", "x2"]), (2.0, 1.0));
 }
 
 #[test]
 fn none_is_normal() {
-    assert_eq!(billing_multipliers(None, None), (1.0, 1.0));
+    assert_eq!(billing_multipliers(&[]), (1.0, 1.0));
+}
+
+/// 未知档位不参与合并（倍率恒 1×1）：拼错的 kind 不该把流量打成 0
+#[test]
+fn unknown_kind_is_neutral() {
+    assert_eq!(billing_multipliers(&["x9free", "nonsense"]), (1.0, 1.0));
+    assert_eq!(billing_multipliers(&["x9free", "free"]), (1.0, 0.0));
+}
+
+/// 代表档挑选：等强取先出现的一条（SQL 已按 id DESC），跨维不影响它
+#[test]
+fn strongest_kind_picks_first_on_ties() {
+    use super::billing::strongest_kind;
+    assert_eq!(strongest_kind(&["free", "x2"]), Some("x2"));
+    assert_eq!(strongest_kind(&["x2", "x2free"]), Some("x2free"));
+    assert_eq!(strongest_kind(&["p30", "half"]), Some("half"));
+    assert_eq!(strongest_kind(&[]), None);
+    // 等强（两条同档）取第一条 = id 最大那条
+    assert_eq!(strongest_kind(&["free", "free"]), Some("free"));
 }

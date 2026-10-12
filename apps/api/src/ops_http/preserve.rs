@@ -61,6 +61,10 @@ pub(super) async fn preserve_list(
         _ => "in",
     };
 
+    // 促销角标：与前台列表/详情、worker 计费共用「逐维合并」片段（P-120 配套，
+    // 旧写法在此内联两份按强度取最强档的子查询，多条促销并存时会与计费漂移）
+    let ekind = crate::torrents::promo::effective_kind();
+    let eends = crate::torrents::promo::effective_ends();
     let rows = sqlx::query_as::<_, PreserveRow>(
         &format!(
             "SELECT sp.torrent_id, t.name, t.size, t.seeders, u.username AS claimed_by, \
@@ -68,24 +72,8 @@ pub(super) async fn preserve_list(
          t.leechers, t.times_completed, \
          (SELECT count(*) FROM comments c WHERE c.torrent_id = t.id) AS comments, \
          t.official_tag, t.sticky, t.anonymous, \
-         (SELECT p.kind::text FROM promotions p WHERE p.starts_at <= now() AND p.ends_at > now() \
-            AND (
-                    p.torrent_id = t.id
-                    OR (p.torrent_id IS NULL AND (
-                        p.scope = 'global'
-                        OR (p.scope = 'official' AND t.official_tag)
-                        OR (p.scope = 'non_official' AND NOT t.official_tag)
-                        OR (p.scope = 'category' AND t.category_id = p.category_id)))) \
-            ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion, \
-         (SELECT p.ends_at FROM promotions p WHERE p.starts_at <= now() AND p.ends_at > now() \
-            AND (
-                    p.torrent_id = t.id
-                    OR (p.torrent_id IS NULL AND (
-                        p.scope = 'global'
-                        OR (p.scope = 'official' AND t.official_tag)
-                        OR (p.scope = 'non_official' AND NOT t.official_tag)
-                        OR (p.scope = 'category' AND t.category_id = p.category_id)))) \
-            ORDER BY CASE p.kind::text WHEN 'x2free' THEN 6 WHEN 'x2half' THEN 5 WHEN 'x2' THEN 4 WHEN 'free' THEN 3 WHEN 'half' THEN 2 WHEN 'p30' THEN 1 ELSE 0 END DESC, p.id DESC LIMIT 1) AS promotion_ends_at, \
+         {ekind} AS promotion, \
+         {eends} AS promotion_ends_at, \
          t.media_info->>'poster' AS poster, \
          CASE WHEN t.anonymous THEN NULL ELSE o.username END AS owner_name, \
          t.created_at \
