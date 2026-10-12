@@ -16,7 +16,10 @@ pub async fn bank_demand_settle(db: &PgPool) -> anyhow::Result<u64> {
             -- 封禁后利息照发并 1:1 兑回火花，等于给被封账号留了台提款机
             JOIN users u ON u.id = a.user_id AND u.status < 2
             WHERE a.balance > 0
-              AND a.last_interest_date < CURRENT_DATE
+              -- P-86：NULL 游标行旧版被永久跳过（活期利息再也发不出）；
+              -- 按 0 天处理并同步修复游标，自明日起正常复利
+              AND (a.last_interest_date IS NULL
+                   OR a.last_interest_date < CURRENT_DATE)
         ),
         calc AS (
             SELECT id, user_id, daily_rate_bp,
