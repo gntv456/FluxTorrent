@@ -25,6 +25,7 @@ mod content_http;
 mod domain;
 mod dto;
 mod economy;
+mod economy_checkin;
 mod economy_http;
 mod errors;
 mod fields;

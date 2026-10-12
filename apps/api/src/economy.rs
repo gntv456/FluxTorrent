@@ -3,96 +3,6 @@
 
 use chrono::{Datelike, Duration, Utc};
 
-// ============ 签到规则（M12 旧站口径） ============
-
-/// 一次签到的奖励拆解。
-#[derive(Debug, PartialEq)]
-pub struct CheckInReward {
-    pub base: i64,
-    pub streak_bonus: i64,
-    pub total: i64,
-    pub streak: i64,
-}
-
-/// 签到奖励参数（0109 三个 `attendance_*` 设置键）。此前这三个键只在迁移里登记、
-/// 无人读取，站长在后台改数字不生效——四审 L8 P0 假开关族之一。
-#[derive(Debug, Clone, PartialEq)]
-pub struct CheckInParams {
-    pub first: i64,
-    pub streak: i64,
-    pub daily_cap: i64,
-}
-
-impl Default for CheckInParams {
-    fn default() -> Self {
-        Self {
-            first: 10,
-            streak: 5,
-            daily_cap: 1000,
-        }
-    }
-}
-
-impl CheckInParams {
-    /// 用 site_settings 的现有值覆盖默认。缺键、空值、非数字一律回落默认——
-    /// 脏配置不该让签到整条链路失败。
-    pub fn from_settings(rows: &[(String, String)]) -> Self {
-        let mut p = Self::default();
-        for (k, v) in rows {
-            let Ok(n) = v.trim().parse::<i64>() else {
-                continue;
-            };
-            match k.as_str() {
-                "attendance_first" => p.first = n,
-                "attendance_streak" => p.streak = n,
-                "attendance_daily_cap" => p.daily_cap = n,
-                _ => {}
-            }
-        }
-        p
-    }
-}
-
-/// 签到奖励：首次 +first；连签每日 +streak（整日封顶 daily_cap）；
-/// 连签 10/20/30 天额外 200/500/1000。
-pub fn checkin_reward(
-    streak_after: i64,
-    is_first_ever: bool,
-    params: &CheckInParams,
-) -> CheckInReward {
-    let base = if is_first_ever {
-        params.first
-    } else {
-        params.streak
-    };
-    // 连签额外奖励按里程碑判断（在 streak_after 达到 10/20/30 当天发放）
-    let streak_bonus = match streak_after {
-        30 => 1000,
-        20 => 500,
-        10 => 200,
-        _ => 0,
-    };
-    let total = (base + streak_bonus).min(params.daily_cap);
-    CheckInReward {
-        base,
-        streak_bonus,
-        total,
-        streak: streak_after,
-    }
-}
-
-/// 连签计算：昨天有记录 → 连签+1；否则重置为 1
-#[allow(dead_code)]
-pub fn next_streak(
-    last_date: Option<chrono::NaiveDate>,
-    today: chrono::NaiveDate,
-) -> i64 {
-    match last_date {
-        Some(d) if (today - d).num_days() == 1 => 2, // 调用方在此基础上 + 原连签数
-        _ => 1,
-    }
-}
-
 // ============ 银行规则（M11 旧站口径：7/30/90/180/365 天定期） ============
 
 /// 定期利率（年化，旧站口径）——内置阶梯是**回退默认**；
@@ -281,57 +191,11 @@ mod tests {
         assert_eq!(gift_tax(-100, 500), 0);
     }
 
-    #[test]
-    fn checkin_first_ever() {
-        let r = checkin_reward(1, true, &CheckInParams::default());
-        assert_eq!(r.total, 10);
-    }
 
-    #[test]
-    fn checkin_streak_milestones() {
-        let p = CheckInParams::default();
-        assert_eq!(checkin_reward(10, false, &p).total, 5 + 200);
-        assert_eq!(checkin_reward(20, false, &p).total, 5 + 500);
-        // 连签 30 天：5 + 1000 = 1005，但单日封顶 1000（旧站口径）
-        assert_eq!(checkin_reward(30, false, &p).total, 1000);
-        assert_eq!(checkin_reward(11, false, &p).total, 5); // 非里程碑日
-    }
 
-    #[test]
-    fn checkin_cap_1000() {
-        // 连签 30 天且首签叠加场景也不会超过封顶
-        let r = checkin_reward(30, true, &CheckInParams::default());
-        assert!(r.total <= 1000);
-    }
 
-    #[test]
-    fn checkin_params_come_from_settings() {
-        let rows = vec![
-            ("attendance_first".to_string(), "30".to_string()),
-            ("attendance_streak".to_string(), "8".to_string()),
-            ("attendance_daily_cap".to_string(), "500".to_string()),
-        ];
-        let p = CheckInParams::from_settings(&rows);
-        assert_eq!(checkin_reward(1, true, &p).total, 30);
-        assert_eq!(checkin_reward(11, false, &p).total, 8);
-        // 里程碑 200 + 每日 8 = 208 < 500 未触顶；30 天里程碑 1000 被日封顶截断
-        assert_eq!(checkin_reward(30, false, &p).total, 500);
-        // 脏值/缺键回落默认
-        let dirty = vec![("attendance_first".to_string(), "".to_string())];
-        assert_eq!(CheckInParams::from_settings(&dirty).first, 10);
-    }
 
-    #[test]
-    fn streak_break_and_continue() {
-        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 8).unwrap();
-        let yesterday = today - chrono::Duration::days(1);
-        assert_eq!(next_streak(Some(yesterday), today), 2);
-        assert_eq!(
-            next_streak(Some(today - chrono::Duration::days(2)), today),
-            1
-        );
-        assert_eq!(next_streak(None, today), 1);
-    }
+
 
     #[test]
     fn interest_math() {

@@ -5,7 +5,7 @@ use super::spend::earn_spark_tx;
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 
 use crate::dto::ok;
-use crate::economy::checkin_reward;
+use crate::economy_checkin::checkin_reward;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -62,10 +62,12 @@ async fn checkin(
     let reward = checkin_reward(
         streak,
         total_days == 0,
-        &crate::economy::CheckInParams::from_settings(
+        &crate::economy_checkin::CheckInParams::from_settings(
             &sqlx::query_as::<_, (String, String)>(
                 "SELECT name, value FROM site_settings WHERE name IN \
-                 ('attendance_first','attendance_streak','attendance_daily_cap')",
+                 ('attendance_first','attendance_streak', \
+                  'attendance_daily_cap','attendance_continuous_day', \
+                  'attendance_continuous_value')",
             )
             .fetch_all(&state.repo.db)
             .await
