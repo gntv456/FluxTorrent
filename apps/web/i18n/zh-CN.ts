@@ -385,13 +385,11 @@ const zhCnBase = {
   login: {
     loginTitle: "用户登录",
     forgotLink: "找回密码",
-    ssoLabel: "其他登录方式",
     introTagline: "分享 · 交流 · 共建",
     introDesc: "资源分享社区，邀请制注册",
     securityNote: "登录即代表同意社区规则",
     remember: "记住登录",
     passkey: "Passkey 登录",
-    passkeySoon: "Passkey 登录即将上线，当前请使用账号密码登录",
     welcome: "欢迎回来",
     subtitle: "种子等你很久啦",
     username: "用户名",

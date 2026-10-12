@@ -48,16 +48,6 @@ export function IconShield() {
     </svg>
   );
 }
-export function IconFinger() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden>
-      <path d="M7 11.5a5 5 0 0 1 10 0v2.2" />
-      <path d="M10 11.5a2 2 0 0 1 4 0v4.6" />
-      <path d="M12 18.5v.5" />
-      <path d="M4.5 11.5a7.5 7.5 0 0 1 15 0" />
-    </svg>
-  );
-}
 
 /** 登录表单（useSearchParams 需 Suspense 包裹以满足静态预渲染） */
 export function LoginForm() {
@@ -261,19 +251,6 @@ export function LoginForm() {
             <Link href="/appeals">{dict.login.appealLink}</Link>
           </p>
         </div>
-      </div>
-
-      {/* 其他登录方式（虚线上分隔的方法 chips） */}
-      <div className="bz-methods" aria-label={dict.login.ssoLabel}>
-        <button
-          type="button"
-          className="bz-method"
-          disabled
-          title={dict.login.passkeySoon}
-        >
-          <IconFinger />
-          <span>{dict.login.passkey}</span>
-        </button>
       </div>
     </form>
   );
