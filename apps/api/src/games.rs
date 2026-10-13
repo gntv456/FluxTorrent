@@ -64,3 +64,11 @@ pub use scratch::{scratch_pay, ScratchOutcome};
 pub const MAX_BET: i64 = 1000;
 /// 每用户每小时游戏次数上限（0109 games_max_plays_per_hour 可调，此值为缺省）
 pub const MAX_PLAYS_PER_HOUR: i64 = 60;
+/// 后台一行配置**最多能配出多少魔力**的硬上限（批四十六 P-181/P-182）。
+///
+/// 口径抄管理端手工调整（P-154：火花单次 ±10 亿）。街机这三处写口
+/// （奖励行的 `reward_spark`、物品目录的 `anchor`）都是「一次配置 = 之后每次
+/// 领取都按它入账」的形状：`anchor` 还是物品回落成魔力时的单价，一次领取
+/// 就乘上件数。少了这一道，一位小数点打错就是全站增发，而且没有任何地方
+/// 会报错 —— 领完才发现账面不对。
+pub const MAX_SPARK_GRANT: i64 = 1_000_000_000;

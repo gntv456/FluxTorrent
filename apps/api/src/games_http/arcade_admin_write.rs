@@ -74,7 +74,7 @@ pub(super) struct PoolEntryReq {
 
 /// 倍数 → 千分比。四舍五入而不是截断：0.5 在二进制浮点里是精确的，
 /// 但 1.1 这类值截断会少 1‰，对站长填的数字不诚实。
-fn side_of(e: &PoolEntryReq) -> &str {
+pub(super) fn side_of(e: &PoolEntryReq) -> &str {
     e.side.as_deref().unwrap_or("any")
 }
 
@@ -124,6 +124,9 @@ pub(super) async fn arcade_pool_save(
         }
         _ => b.ticket,
     };
+    // 档位形状校验（判据本体在 helpers::ensure_pool_shapes，批四十六 P-180）
+    super::helpers::ensure_pool_shapes(&b.entries)?;
+
     // 先逐个解析物品 anchor 再校验：anchor 要查库，闭包里 await 不合法，
     // 而且「先全解析、再一次校验」才能保证坏配置一条都不会写进去。
     let mut entries: Vec<games::PoolEntry> = Vec::new();
