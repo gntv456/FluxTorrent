@@ -3,6 +3,7 @@
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -44,6 +45,12 @@ struct TorrentBatchReq {
     /// `publish_http::upload_sections`）。
     #[serde(default)]
     sections: serde_json::Value,
+    /// 乐观并发（F2 / FRAME §5 推广，仅 hr/unhr 动作消费）：torrent_id →
+    /// 客户端读到的 mtime（RFC3339）。携带的种子 mtime 与库中不一致 →
+    /// 409 VersionConflict(5003)。缺省 / 键未携带 = 不校验（灰度兼容，
+    /// 与 settings_http/expected.rs 同三原则）。
+    #[serde(default)]
+    expected_mtime: Option<HashMap<i64, String>>,
 }
 
 const PROMO_KINDS: [&str; 6] =
@@ -178,6 +185,39 @@ async fn torrent_batch(
         .rows_affected(),
         "hr" | "unhr" => {
             let on = body.action == "hr";
+            // 乐观并发（F2 / FRAME §5 推广）：挂/摘 H&R 改写整份 hr_policy，
+            // 此前 last-write-wins——两个版主同时操作，后提交者把前者的
+            // 口径整条覆盖且无感知。携带 expected_mtime 时先 FOR UPDATE
+            // 行锁下比对，任一种子 mtime 不匹配 → 409（整批不动，与
+            // settings 域 check_expected 同形：非 RFC3339 也按冲突处理，
+            // 静默放行会在灰度期掩盖真并发）。缺省不校验：老客户端行为不变。
+            let expected = body.expected_mtime.clone().unwrap_or_default();
+            if !expected.is_empty() {
+                let rows: Vec<(i64, chrono::DateTime<chrono::Utc>)> =
+                    sqlx::query_as(
+                        "SELECT id, mtime FROM torrents WHERE id = ANY($1) \
+                         FOR UPDATE",
+                    )
+                    .bind(&id_arr)
+                    .fetch_all(db)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
+                let mut conflicts: Vec<String> = Vec::new();
+                for (tid, cur) in rows {
+                    let Some(got) = expected.get(&tid) else {
+                        continue; // 键未携带版本戳：该种子不校验
+                    };
+                    let ok = chrono::DateTime::parse_from_rfc3339(got)
+                        .map(|t| t.with_timezone(&chrono::Utc) == cur)
+                        .unwrap_or(false);
+                    if !ok && !conflicts.iter().any(|x| x == &tid.to_string()) {
+                        conflicts.push(tid.to_string());
+                    }
+                }
+                if !conflicts.is_empty() {
+                    return Err(DomainError::VersionConflict(conflicts));
+                }
+            }
             // 深测 2026-10-03：挂 H&R 时把站点缺省口径（hr_hours 设定；days 缺省 14）
             // 落进种子 policy —— worker 快照与详情页展示都优先读种子 policy，
             // 只写 {"on":true} 会让策略全靠 COALESCE 兜底，后台改 hr_hours 不生效。

@@ -3,6 +3,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::services::review_decide::{decide_one, DecideOutcome};
 use crate::state::AppState;
 
 use super::guard::staff;
@@ -197,16 +198,7 @@ async fn review_decide(
         crate::authz::perm::TORRENT_REVIEW,
     )
     .await?;
-    // 利益冲突拦截（0285 实测：class 91 发布员可审并放行自己的种）
-    let owner_id: Option<i64> =
-        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-            .bind(body.torrent_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    if owner_id == Some(auth.id) {
-        return Err(DomainError::Validation("不能审核自己发布的种子".into()));
-    }
+    // 入参校验（参数适配层职责）：字典拒因存在且启用才放行
     let deny_reason_valid = if let Some(dr) = body.deny_reason_id {
         if body.approve {
             return Err(DomainError::Validation("通过时不需要拒绝原因".into()));
@@ -232,83 +224,30 @@ async fn review_decide(
             "拒绝必须选择原因或填写理由".into(),
         ));
     }
-    // 1=已过 2=被拒。过审写 approved_at（审计 2026-10-08 P1-1：该字段此前
-    // 在审核链路从不落值，worker 的泄露检测与社交队小时窗都以
-    // `approved_at IS NOT NULL` 为前提 ⇒ 全部常规过审种恒空转）。
-    let n = sqlx::query(
-        "UPDATE torrents SET approval_status = $2, \
-            approved_at = CASE WHEN $2::smallint = 1 THEN now() ELSE NULL END, \
-            deny_reason_id = $3, deny_note = $4 \
-         WHERE id = $1 AND approval_status = 0",
-    )
-    .bind(body.torrent_id)
-    .bind(if body.approve { 1 } else { 2 })
-    .bind(if body.approve {
-        None
-    } else {
-        body.deny_reason_id
-    })
-    .bind(if body.approve {
-        None
-    } else {
-        Some(body.reason.trim().to_string())
-    })
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if n == 0 {
-        return Err(DomainError::Validation("种子不存在或不在待审状态".into()));
-    }
-    // 0075 连击 +1/被拒清零；0077 deny_count 累计（P2-1 过审清零）；
-    // 0355 信用分独立累积：+1（上限 5）/ -2（下限 0）。
-    let _ = sqlx::query(
-        "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
-         u.approve_streak + 1 ELSE 0 END, \
-         deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END, \
-         publish_credits = GREATEST(0, LEAST(5, u.publish_credits \
-         + CASE WHEN $2 THEN 1 ELSE -2 END)) FROM torrents t \
-         WHERE t.id = $1 AND u.id = t.owner_id",
-    )
-    .bind(body.torrent_id)
-    .bind(body.approve)
-    .execute(&state.repo.db)
-    .await;
-    // 过审副作用（自动促销 + 组订阅推送）：与批量裁决共用同一实现
-    if body.approve {
-        super::review_side_effects::apply_approval_side_effects(
-            &state.repo.db,
-            body.torrent_id,
-            auth.id,
-        )
-        .await;
-    }
-    let action = if body.approve { "approve" } else { "reject" };
-    // U2 §12.5 审核结果通知：取数与发送在 review_notify.rs（0285 拆出并修列名）
-    super::review_notify::notify_review_result(
+    // 裁决的全部副作用收在服务层用例函数（F2 抽离，SQL 原样搬移；
+    // 此前与批量口各自维护一份，靠 0288 人工同步纪律）
+    match decide_one(
         &state,
+        auth.id,
         body.torrent_id,
         body.approve,
         &body.reason,
+        body.deny_reason_id,
+        false,
     )
-    .await;
-    // 种子操作记录：留痕失败不阻断裁决，但必须报出来（与 postpone/resume 同形）
-    if let Err(e) = sqlx::query(
-        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
-         VALUES ($1, $2, $3, $4::jsonb)",
-    )
-    .bind(body.torrent_id)
-    .bind(auth.id)
-    .bind(action)
-    .bind(
-        serde_json::json!({"reason": body.reason,
-            "deny_reason_id": body.deny_reason_id})
-            .to_string(),
-    )
-    .execute(&state.repo.db)
-    .await
+    .await?
     {
-        tracing::warn!(%e, torrent = body.torrent_id, "审核留痕写入失败");
+        DecideOutcome::SelfConflict => {
+            return Err(DomainError::Validation(
+                "不能审核自己发布的种子".into(),
+            ));
+        }
+        DecideOutcome::NotFound | DecideOutcome::NotPending => {
+            return Err(DomainError::Validation(
+                "种子不存在或不在待审状态".into(),
+            ));
+        }
+        DecideOutcome::Done => {}
     }
     state
         .repo

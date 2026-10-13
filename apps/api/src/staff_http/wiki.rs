@@ -222,13 +222,12 @@ pub async fn wiki_delete(
     let pid = path.into_inner();
     // 先读回对象：revisions 随 ON DELETE CASCADE 一起没了，删完再问
     // 「删的是哪一页、谁删的」就完全没有出处
-    let gone: Option<(String, String)> = sqlx::query_as(
-        "SELECT slug, title FROM wiki_pages WHERE id = $1",
-    )
-    .bind(pid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
+    let gone: Option<(String, String)> =
+        sqlx::query_as("SELECT slug, title FROM wiki_pages WHERE id = $1")
+            .bind(pid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(internal)?;
     let (slug, title) = match gone {
         Some(t) => t,
         None => return Err(DomainError::Validation("页面不存在".into())),
@@ -254,7 +253,6 @@ pub async fn wiki_delete(
         .await;
     Ok(ok(serde_json::json!({ "deleted": true })))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -291,7 +289,7 @@ mod tests {
     #[test]
     fn title_bounds_enforced() {
         assert!(validate_wiki_body(&wb("ok", "", "b")).is_err());
-        let long = "标".repeat(51); // 51×3 字节 > 100
+        let long = "标".repeat(101); // 101 字符 > 100（按 chars 计，非字节）
         assert!(validate_wiki_body(&wb("ok", &long, "b")).is_err());
         assert!(validate_wiki_body(&wb("ok", "标题", "b")).is_ok());
     }

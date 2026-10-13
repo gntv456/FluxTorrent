@@ -1,20 +1,21 @@
 //! FluxTorrent API 服务入口。
 //! 启动：迁移 schema → 连接池/Redis → HTTP 服务（信封 + CORS + tracing）。
+//! 服务层 services/（FRAME §2）：写用例居所，禁 actix（layer_guard 门禁）。
 
 mod access_log;
 mod adapter_call;
 mod adapter_host;
-mod adapter_sandbox;
 mod adapter_http;
 mod adapter_runtime;
+mod adapter_sandbox;
 mod adapter_seed;
 mod admin_http;
 mod admin_p2_http;
 mod admin_p3_http;
 mod archive;
 mod attachment_http;
-mod attachment_video;
 mod attachment_util;
+mod attachment_video;
 mod attachment_video_upload;
 mod auth;
 mod auth_http;
@@ -58,6 +59,7 @@ mod request_id;
 mod rss_http;
 mod rules_engine;
 mod runtime_log;
+mod services;
 mod settings_http;
 mod setup_http;
 mod social_http;
@@ -141,11 +143,7 @@ async fn main() -> anyhow::Result<()> {
                 tracing_subscriber::EnvFilter::try_from_default_env()
                     .unwrap_or_else(|_| "info,sqlx=warn".into()),
             )
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .json()
-                    .flatten_event(true),
-            )
+            .with(tracing_subscriber::fmt::layer().json().flatten_event(true))
             .with(runtime_log::layer("api"))
             .init();
     } else {
