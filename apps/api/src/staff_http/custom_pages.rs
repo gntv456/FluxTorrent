@@ -105,10 +105,12 @@ pub(super) fn norm_module_key(k: &Option<String>) -> Option<&str> {
 pub(super) fn norm_doc_group(g: &Option<String>) -> DomainResult<Option<&str>> {
     match g.as_deref().map(str::trim) {
         Some(s) if s.is_empty() => Ok(None),
-        Some(s) if s.len() <= 60 => Ok(Some(s)),
+        Some(s) if s.chars().count() <= 60 => Ok(Some(s)),
         Some(s) => Err(DomainError::Validation(format!(
-            "帮助分组名「{s}」超长（{} 字节 > 60）：分组名过长会让 /help 目录无法归类，请缩短",
-            s.len()
+            "帮助分组名「{}」超长（{} 字符 > 60）：分组名过长会让 /help \
+             目录无法归类，请缩短",
+            s.chars().take(12).collect::<String>(),
+            s.chars().count()
         ))),
         None => Ok(None),
     }
@@ -120,7 +122,9 @@ fn validate_body(b: &CustomPageBody) -> DomainResult<()> {
             "slug 需为小写字母/数字/连字符，≤60 字符".into(),
         ));
     }
-    if b.title.trim().is_empty() || b.title.len() > 100 {
+    // 限长按**字符**判：页名是给站长写的中文标题，按字节判会拦掉
+    // 「活动规则与投稿指引」这类 34 字的正常页名（102 字节 > 100）。
+    if b.title.trim().is_empty() || b.title.chars().count() > 100 {
         return Err(DomainError::Validation("标题需 1-100 字符".into()));
     }
     if b.body.len() > 200_000 {
@@ -166,7 +170,15 @@ pub async fn custom_pages_add(
     })?;
     state
         .repo
-        .audit(Some(auth.id), "custom_page_add", None)
+        .audit_detail(
+            Some(auth.id),
+            "custom_page_add",
+            Some(id),
+            None,
+            Some(serde_json::json!({
+                "slug": body.slug.trim(), "title": body.title.trim()
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
@@ -186,12 +198,13 @@ pub async fn custom_pages_update(
         norm_module_key(&body.module_key),
     )
     .await?;
+    let pid = path.into_inner();
     let n = sqlx::query(
         "UPDATE custom_pages SET slug = $2, title = $3, body = $4, \
          visible = $5, sort = $6, module_key = $7, doc_group = $8, \
          doc_sort = $9, updated_at = now() WHERE id = $1",
     )
-    .bind(path.into_inner())
+    .bind(pid)
     .bind(body.slug.trim())
     .bind(body.title.trim())
     .bind(&body.body)
@@ -214,7 +227,15 @@ pub async fn custom_pages_update(
     }
     state
         .repo
-        .audit(Some(auth.id), "custom_page_update", None)
+        .audit_detail(
+            Some(auth.id),
+            "custom_page_update",
+            Some(pid),
+            None,
+            Some(serde_json::json!({
+                "slug": body.slug.trim(), "title": body.title.trim()
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "updated": true })))
 }
@@ -227,8 +248,21 @@ pub async fn custom_pages_delete(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     require_cp_manage(&state, &auth).await?;
+    let pid = path.into_inner();
+    // 删之前把对象读回来：删完再想知道「删的是哪个 slug/页名」就没有出处了
+    let gone: Option<(String, String)> = sqlx::query_as(
+        "SELECT slug, title FROM custom_pages WHERE id = $1",
+    )
+    .bind(pid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(internal)?;
+    let (slug, title) = match gone {
+        Some(t) => t,
+        None => return Err(DomainError::Validation("页面不存在".into())),
+    };
     let n = sqlx::query("DELETE FROM custom_pages WHERE id = $1")
-        .bind(path.into_inner())
+        .bind(pid)
         .execute(&state.repo.db)
         .await
         .map_err(internal)?
@@ -238,62 +272,13 @@ pub async fn custom_pages_delete(
     }
     state
         .repo
-        .audit(Some(auth.id), "custom_page_delete", None)
+        .audit_detail(
+            Some(auth.id),
+            "custom_page_delete",
+            Some(pid),
+            None,
+            Some(serde_json::json!({ "slug": slug, "title": title })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "deleted": true })))
-}
-
-// ============ 公开展示 ============
-
-/// GET /public-pages：可被前台访问的自定义页清单（sitemap 用；无登录态）。
-/// 与 /pages/{slug} 同一条可见性判据——挂了模块键且模块关闭的页面不出现在这里，
-/// 免得爬虫拿到一个必然 404 的地址。
-#[get("/public-pages")]
-pub async fn custom_pages_public_list(
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let rows: Vec<(String, String)> =
-        sqlx::query_as::<_, (String, String)>(&format!(
-            "SELECT slug, updated_at::date::text FROM custom_pages \
-             WHERE visible AND {} ORDER BY sort, id LIMIT 500",
-            crate::modules::module_on_sql("custom_pages")
-        ))
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(internal)?;
-    Ok(ok(
-        rows.into_iter()
-            .map(|(slug, updated)| {
-                serde_json::json!({ "slug": slug, "updated_at": updated })
-            })
-            .collect::<Vec<_>>(),
-    ))
-}
-
-/// GET /pages/{slug}：消毒后的页面内容（visible=false 或不存在 → 404 信封）
-#[get("/pages/{slug}")]
-pub async fn custom_page_public(
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<String>,
-) -> DomainResult<HttpResponse> {
-    let slug = path.into_inner();
-    let row: Option<(String, String, String)> =
-        sqlx::query_as::<_, (String, String, String)>(&format!(
-            "SELECT title, body, updated_at::text FROM custom_pages \
-             WHERE slug = $1 AND visible AND {}",
-            crate::modules::module_on_sql("custom_pages")
-        ))
-        .bind(&slug)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(internal)?;
-    let Some((title, body, updated)) = row else {
-        return Err(DomainError::NotFound(0));
-    };
-    // 出站消毒（与公告 home.rs 同防线）：剥 script/事件属性/javascript: 协议
-    let safe = ammonia::Builder::default().clean(&body).to_string();
-    Ok(ok(serde_json::json!({
-        "slug": slug, "title": title,
-        "body": safe, "updated_at": updated,
-    })))
 }
