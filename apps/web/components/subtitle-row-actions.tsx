@@ -5,6 +5,7 @@ import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
 import { SubtitleEditDialog } from "@/components/subtitle-edit-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** 字幕行操作列（从 subtitle-board-table.tsx 拆出，300 行门禁）：
  *  举报 ⚑ + 本人/管理可见的 ✎ 编辑（0150 起弹全元数据表单）/ ✕ 删除。 */
@@ -25,6 +26,26 @@ export function SubtitleRowActions({
   const { dict } = useI18n();
   const t = dict.subtitles;
   const [editing, setEditing] = useState(false);
+  // A1 反馈协议：window.confirm → ConfirmDialog（举报/删除各一态）
+  const [ask, setAsk] = useState<"report" | "del" | null>(null);
+
+  async function confirmAsk() {
+    if (!ask) return;
+    try {
+      if (ask === "report") {
+        await api.post(`/api/v1/subtitles/${s.id}/report`, {});
+        onMsg(t.reportOk);
+      } else {
+        await api.del(`/api/v1/subtitles/${s.id}`);
+        onMsg(t.delOk ?? "ok");
+      }
+      setAsk(null);
+      onReload();
+    } catch (e) {
+      onMsg(e instanceof Error ? e.message : "fail");
+    }
+  }
+
   return (
     <td className="text-center">
       <button
@@ -32,28 +53,7 @@ export function SubtitleRowActions({
         className="subtitles-report"
         title={t.reportTitle}
         aria-label={t.reportTitle}
-        onClick={async () => {
-          if (
-            !window.confirm(
-              t.badMarkConfirm,
-            )
-          )
-            return;
-          try {
-            await api.post(
-              `/api/v1/subtitles/${s.id}/report`,
-              {},
-            );
-            onMsg(t.reportOk);
-            onReload();
-          } catch (e) {
-            onMsg(
-              e instanceof Error
-                ? e.message
-                : t.reportFail,
-            );
-          }
-        }}
+        onClick={() => setAsk("report")}
       >
         ⚑
       </button>
@@ -75,22 +75,25 @@ export function SubtitleRowActions({
             className="subtitles-report"
             title={t.delLabel}
             aria-label={t.delLabel}
-            onClick={async () => {
-              if (!window.confirm(t.delConfirm ?? "delete?"))
-                return;
-              try {
-                await api.del(`/api/v1/subtitles/${s.id}`);
-                onMsg(t.delOk ?? "ok");
-                onReload();
-              } catch (e) {
-                onMsg(
-                  e instanceof Error ? e.message : "fail",
-                );
-              }
-            }}
+            onClick={() => setAsk("del")}
           >
             ✕
           </button>
+          <ConfirmDialog
+            open={ask !== null}
+            onClose={() => setAsk(null)}
+            onConfirm={() => void confirmAsk()}
+            tone={ask === "del" ? "danger" : "neutral"}
+            title={ask === "del" ? (t.delLabel ?? "delete") : t.reportTitle}
+            message={
+              ask === "del"
+                ? (t.delConfirm ?? "delete?")
+                : t.badMarkConfirm
+            }
+            confirmLabel={
+              ask === "del" ? dict.ui.confirmDelete : dict.ui.confirmOk
+            }
+          />
           {editing && (
             <SubtitleEditDialog
               sid={s.id}

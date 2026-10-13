@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { ErrorPanel, normalizeError } from "@/components/ui/error-panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +24,12 @@ interface CollectionItem {
  *  kind=collection 策展合集 / kind=series 作品系列，卡片墙展示 */
 export default async function CollectionsPage() {
   const { dict } = await getDict();
-  let items: CollectionItem[] = [];
-  let failed = false;
+  let items: CollectionItem[] | null = null;
+  let loadErr: unknown = null;
   try {
     items = await api.get<CollectionItem[]>("/api/v1/collections");
-  } catch {
-    failed = true;
+  } catch (e) {
+    loadErr = e;
   }
   const t = dict.collections;
 
@@ -36,12 +39,16 @@ export default async function CollectionsPage() {
         <h1 className="font-display text-2xl">{t.title}</h1>
         <span className="text-sm text-sub">{t.subtitle}</span>
       </div>
-      {failed && <p className="text-sm text-sub">{t.loadFailed}</p>}
-      {!failed && items.length === 0 && (
-        <p className="py-8 text-center text-sub">{t.empty}</p>
+      {/* A3 四态：RSC 侧手写三态段落 → ErrorPanel / EmptyState / Skeleton */}
+      {loadErr !== null && <ErrorPanel error={normalizeError(loadErr)} />}
+      {loadErr === null && items === null && (
+        <SkeletonRows rows={4} height={96} />
+      )}
+      {loadErr === null && items !== null && items.length === 0 && (
+        <EmptyState icon="info" title={t.empty} />
       )}
       <ul className="grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
-        {items.map((c) => (
+        {(items ?? []).map((c) => (
           <li key={c.id} data-collection-id={c.id}>
             <Link
               href={`/collections/${c.id}`}

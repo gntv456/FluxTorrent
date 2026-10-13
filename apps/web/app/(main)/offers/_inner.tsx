@@ -5,6 +5,9 @@ import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { isStaffClass } from "@/lib/domain/user-class";
+import { toast } from "@/components/ui/toast";
+import { StatePanel } from "@/components/ui/state-panel";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 interface OfferItem {
   id: number;
@@ -20,9 +23,8 @@ interface OfferItem {
 export default function OffersPage() {
   const { dict, locale, currency } = useI18n();
   const t = dict.offers2;
-  const [rows, setRows] = useState<OfferItem[]>([]);
+  const [rows, setRows] = useState<OfferItem[] | null>(null);
   const [newTorrentId, setNewTorrentId] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
 
@@ -42,18 +44,18 @@ export default function OffersPage() {
       .catch(() => {});
   }, []);
 
-  function flash(m: string) {
-    setMsg(m);
-    setTimeout(() => setMsg(null), 2500);
-  }
   async function guard(fn: () => Promise<void>, ok: string) {
     setBusy(true);
     try {
       await fn();
-      flash(ok);
+      toast.success(ok);
       load();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+        {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -65,11 +67,6 @@ export default function OffersPage() {
         <h1 className="font-display text-2xl">{t.title}</h1>
         <span className="text-sm text-sub">{t.subtitle}</span>
       </div>
-      {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
-        </p>
-      )}
 
       <section className="brand-panel p-4">
         <h2 className="mb-3 text-base font-bold text-ink">{t.newOffer}</h2>
@@ -104,8 +101,13 @@ export default function OffersPage() {
         </div>
       </section>
 
-      {/* M6.3：裸表补 M1 同款横滚包裹（前台无 admin 兜底，直裹） */}
-      <div className="brand-wide-table-scroll">
+      {/* M6.3：裸表补 M1 同款横滚包裹（前台无 admin 兜底，直裹）。
+          A3 四态：加载骨架 + 空态走 StatePanel（表内空行保底不变） */}
+      <StatePanel
+        loading={rows === null}
+        loadingFallback={<SkeletonRows rows={5} />}
+      >
+        <div className="brand-wide-table-scroll">
         <table className="nexus-table">
         <tbody>
           <tr>
@@ -115,7 +117,7 @@ export default function OffersPage() {
             <td className="colhead">{t.colAt}</td>
             <td className="colhead text-right">{dict.cmgmt.colActions}</td>
           </tr>
-          {rows.map((o) => (
+          {(rows ?? []).map((o) => (
             <tr key={o.id}>
               <td>
                 <a href={`/torrent/${o.torrent_id}`} className="text-sky">
@@ -157,7 +159,7 @@ export default function OffersPage() {
               </td>
             </tr>
           ))}
-          {rows.length === 0 && (
+          {(rows ?? []).length === 0 && (
             <tr>
               <td colSpan={5} className="py-6 text-center text-sub">
                 {t.empty}
@@ -166,7 +168,8 @@ export default function OffersPage() {
           )}
         </tbody>
         </table>
-      </div>
+        </div>
+      </StatePanel>
     </div>
   );
 }

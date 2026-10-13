@@ -223,9 +223,43 @@
 /* ============ 头像弹窗（usermenu，0147 同类站 同类站 口径） ============ */
 .usermenu {
   position: relative;
+  /* IA-2 ①：chip 与头像同排常显 */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .usermenu-login {
   /* 未登录态：登录链接沿用主菜单链接样式 */
+}
+/* 顶栏魔力 chip（W-31 / IA-2 ①）：单一货币常态直显，点击进 /my-spark */
+.usermenu-spark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 108px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-body-deep);
+  transition: border-color var(--motion-fast) var(--motion-ease);
+}
+.usermenu-spark:hover {
+  border-color: var(--tone-brand);
+  color: var(--tone-brand);
+}
+.usermenu-spark b {
+  overflow: hidden;
+  max-width: 68px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.usermenu-spark__dot {
+  flex: none; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--tone-warn);
 }
 .usermenu__trigger {
   position: relative;
@@ -318,7 +352,9 @@
   box-shadow: inset 0 0 0 3px var(--hairline-strong);
   overflow: hidden;
 }
-.usermenu__avatar-lg[style] {
+/* W-31 头像抽 avatar() 后样式在 inner span 上：框描边存在时
+   压掉默认 inset 发丝环（原 [style] 判定随嵌套迁到 :has） */
+.usermenu__avatar-lg:has([style]) {
   box-shadow: none;
 }
 .usermenu__summary-main {

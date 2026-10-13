@@ -5,6 +5,9 @@ import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRequestRow } from "@/components/subtitle-board-shared";
 import { SubtitleRequestActions } from "@/components/subtitle-request-actions";
+import type { SubReqAct } from "@/components/subtitle-request-actions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toast";
 
 /** 求字幕悬赏 + 工作流（0146 pots → 0148 认领/交稿/验收/协作/free）。
  *  从 subtitle-board.tsx 按域拆出（300 行门禁）；附件上传共用件在尾部。 */
@@ -34,6 +37,12 @@ export function SubtitleRequestPanel({
   );
   // 工作流开关（site-profile 暴露；关 = NP 直交付口径）
   const [wfOn, setWfOn] = useState(false);
+  // A1 反馈协议：prompt/confirm 弹窗 → ConfirmDialog + 输入槽；结果走 toast
+  const [ask, setAsk] = useState<{
+    kind: SubReqAct | "contribute";
+    row: SubtitleRequestRow;
+  } | null>(null);
+  const [input, setInput] = useState("");
 
   const loadReqs = useCallback(async () => {
     try {
@@ -74,41 +83,34 @@ export function SubtitleRequestPanel({
       setRLang("");
       setRBounty("");
       setRFree(false);
-      onMsg(t.reqOk?.replace("{magic}", currency) ?? "request created");
+      toast.success(t.reqOk?.replace("{magic}", currency) ?? "created");
       loadReqs();
     } catch (e) {
-      onMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(String((e as Error)?.message ?? dict.common.networkError), {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
     }
   }
 
-  async function contribute(id: number) {
-    const v = window.prompt(
-      t.contribPh?.replace("{magic}", currency) ?? "amount",
-    );
-    if (!v) return;
-    try {
-      await api.post(`/api/v1/subtitles/requests/${id}/contribute`, {
-        amount: Number(v.replace(/\D/g, "")) || 0,
-      });
-      loadReqs();
-    } catch (e) {
-      onMsg(e instanceof Error ? e.message : "failed");
-    }
+  function openAsk(kind: SubReqAct | "contribute", row: SubtitleRequestRow) {
+    setInput("");
+    setAsk({ kind, row });
   }
 
-  /** 工作流动作（0148）：认领（可带协作者）/弃单/交稿/发起人验收/撤销 */
-  async function wfAction(
-    act: "claim" | "abandon" | "deliver" | "accept" | "cancel",
-    r: SubtitleRequestRow,
-  ) {
+  /** 确认对话框提交：按 kind 补输入校验再发请求 */
+  async function confirmAsk() {
+    if (!ask) return;
+    const { kind, row } = ask;
     try {
-      if (act === "claim") {
-        const crewRaw = window.prompt(
-          t.crewPh ?? "crew (uid:share:role, comma, empty=none)",
-        );
-        const crew = (crewRaw ?? "")
+      if (kind === "contribute") {
+        const amount = Number(input.replace(/\D/g, "")) || 0;
+        await api.post(`/api/v1/subtitles/requests/${row.id}/contribute`, {
+          amount,
+        });
+      } else if (kind === "claim") {
+        const crew = input
           .split(/[,，]/)
           .map((s) => s.trim())
           .filter(Boolean)
@@ -120,35 +122,52 @@ export function SubtitleRequestPanel({
               role: role || (t.crewRoleDefault ?? "translate"),
             };
           });
-        await api.post(`/api/v1/subtitles/requests/${r.id}/claim`, {
+        await api.post(`/api/v1/subtitles/requests/${row.id}/claim`, {
           crew: crew.length ? crew : undefined,
         });
-      } else if (act === "deliver") {
-        const sid = window.prompt(t.deliverPh ?? "subtitle id");
-        if (!sid) return;
-        await api.post(`/api/v1/subtitles/requests/${r.id}/deliver`, {
-          subtitle_id: Number(sid.replace(/\D/g, "")),
+      } else if (kind === "deliver") {
+        await api.post(`/api/v1/subtitles/requests/${row.id}/deliver`, {
+          subtitle_id: Number(input.replace(/\D/g, "")),
         });
-      } else if (act === "abandon") {
-        // P-44（本批实测）：这一支此前落进 else，点「弃单」实际 POST 的是
-        // /accept ——status=3 下验收端点回「不在待验收状态」，弃单在界面上
-        // 永远失败，F3 的弃单计数/禁令也就只剩 worker 超时那条路能记账。
-        if (!window.confirm(t.abandonConfirm ?? "abandon?")) return;
-        await api.post(`/api/v1/subtitles/requests/${r.id}/abandon`, {});
-      } else if (act === "cancel") {
-        // P-43：未被认领的单可撤销，冻结的赏金按入池明细原路退回
-        if (!window.confirm(t.cancelConfirm ?? "cancel and refund?")) return;
-        await api.post(`/api/v1/subtitles/requests/${r.id}/cancel`, {});
       } else {
-        if (!window.confirm(t.acceptConfirm ?? "accept?")) return;
-        await api.post(`/api/v1/subtitles/requests/${r.id}/accept`, {});
+        // abandon / cancel / accept：纯确认，无输入
+        await api.post(
+          `/api/v1/subtitles/requests/${row.id}/${kind}`,
+          {},
+        );
       }
-      onMsg(t.wfDone?.replace("{act}", act) ?? "done");
+      toast.success(t.wfDone?.replace("{act}", kind) ?? "done");
+      setAsk(null);
       loadReqs();
     } catch (e) {
-      onMsg(e instanceof Error ? e.message : "failed");
+      toast.error(e instanceof Error ? e.message : "failed", {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     }
   }
+
+  /** 对话框文案与输入槽（contribute 金额 / claim 协作者 / deliver 字幕 id） */
+  const askMeta = (() => {
+    if (!ask) return null;
+    const ph =
+      ask.kind === "contribute"
+        ? (t.contribPh?.replace("{magic}", currency) ?? "amount")
+        : ask.kind === "claim"
+          ? (t.crewPh ?? "crew (uid:share:role, comma, empty=none)")
+          : ask.kind === "deliver"
+            ? (t.deliverPh ?? "subtitle id")
+            : null;
+    const msg =
+      ask.kind === "abandon"
+        ? (t.abandonConfirm ?? "abandon?")
+        : ask.kind === "cancel"
+          ? (t.cancelConfirm ?? "cancel and refund?")
+          : ask.kind === "accept"
+            ? (t.acceptConfirm ?? "accept?")
+            : null;
+    const title = ph ?? msg ?? "";
+    return { ph, msg, title };
+  })();
 
   return (
     <section className="mt-6">
@@ -212,8 +231,10 @@ export function SubtitleRequestPanel({
                     meId={me?.id ?? 0}
                     meName={me?.username ?? ""}
                     wfOn={wfOn}
-                    onAct={(a, row) => void wfAction(a, row)}
-                    onContribute={(id) => void contribute(id)}
+                    onAct={(a, row) => openAsk(a, row)}
+                    onContribute={(id) =>
+                      openAsk("contribute", { ...r, id } as SubtitleRequestRow)
+                    }
                   />
                 </tr>
               );
@@ -228,6 +249,29 @@ export function SubtitleRequestPanel({
           </tbody>
         </table>
       </div>
+
+      {/* 工作流/悬赏确认对话框（替代 window.prompt/confirm 家族） */}
+      <ConfirmDialog
+        open={ask !== null}
+        onClose={() => setAsk(null)}
+        onConfirm={() => void confirmAsk()}
+        title={askMeta?.title ?? ""}
+        message={askMeta?.msg ?? undefined}
+        confirmLabel={dict.ui.confirmOk}
+      >
+        {askMeta?.ph && (
+          <label className="mt-2 flex flex-col gap-1 text-xs text-sub">
+            {askMeta.ph}
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              autoFocus
+              className="min-h-[36px] rounded-[var(--r-sm)] border
+                border-line bg-[var(--surface-card)] px-3 text-sm text-ink"
+            />
+          </label>
+        )}
+      </ConfirmDialog>
     </section>
   );
 }

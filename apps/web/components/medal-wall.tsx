@@ -11,6 +11,9 @@ import {
   WallStats,
   type WallUser,
 } from "@/components/medal-wall-parts";
+import { StatePanel } from "@/components/ui/state-panel";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // 勋章墙主体（medal_wall.php 口径）：一卡一人、持勋数降序。
 // 改版要点（2026-09-23）：统计条 + 稀有度筛选 + 排序 + 分布条 + 徽章槽位悬停档案。
@@ -141,32 +144,33 @@ export function MedalWall({
         </select>
       </form>
 
-      {err && <p className="brand-panel p-4 text-sm text-sub">{err}</p>}
-      {!err && data === null && (
-        <p className="brand-panel p-4 text-sm text-sub">{t.loading}</p>
-      )}
-      {!err && data?.rows.length === 0 && (
-        <p className="brand-panel p-4 text-sm text-sub">{t.empty}</p>
-      )}
-      {!err && data !== null && data.rows.length > 0 && visible.length === 0 && (
-        <p className="brand-panel p-4 text-sm text-sub">{t.emptyFilter}</p>
-      )}
-
-      {rows.length > 0 && (
-        <div className="honor-grid">
-          {rows.map((u, i) => (
-            <HonorCard
-              key={u.user_id}
-              user={u}
-              rank={rankBase + i + 1}
-              list={rarities}
-              t={t}
-              locale={locale}
-              only={rar}
-            />
-          ))}
-        </div>
-      )}
+      <StatePanel
+        loading={data === null}
+        error={err}
+        empty={data?.rows.length === 0}
+        loadingFallback={<SkeletonRows rows={4} height={96} />}
+        onRetry={load}
+        emptyTitle={t.empty}
+      >
+        {data !== null && data.rows.length > 0 && visible.length === 0 && (
+          <EmptyState icon="search" title={t.emptyFilter} compact />
+        )}
+        {visible.length > 0 && (
+          <div className="honor-grid">
+            {rows.map((u, i) => (
+              <HonorCard
+                key={u.user_id}
+                user={u}
+                rank={rankBase + i + 1}
+                list={rarities}
+                t={t}
+                locale={locale}
+                only={rar}
+              />
+            ))}
+          </div>
+        )}
+      </StatePanel>
 
       {data && data.total > perPage && (
         <div className="flex items-center justify-between gap-3 flex-wrap">

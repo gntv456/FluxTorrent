@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 
 /** 好友操作面板（审计修复 P1 闭环补全）：后端 /friends + /friends/action 早已存在，
  *  前端却只有只读列表——加好友/拉黑/接受申请全程无入口。
@@ -30,7 +31,6 @@ export function FriendsActions() {
   const [rows, setRows] = useState<FriendRow[] | null>(null);
   const [addName, setAddName] = useState("");
   const [blackName, setBlackName] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -47,16 +47,15 @@ export function FriendsActions() {
 
   async function act(path: string, body: unknown, okText?: string) {
     setBusy(true);
-    setMsg(null);
     try {
       await api.post(path, body);
-      setMsg(okText ?? t.ok);
+      // A1 反馈协议：写操作结果走 toast（失败带 requestId 芯片）
+      toast.success(okText ?? t.ok);
       await load();
     } catch (e) {
-      setMsg(
-        e instanceof ApiError
-          ? e.message
-          : (dict.common.networkError),
+      toast.error(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
     } finally {
       setBusy(false);
@@ -177,8 +176,6 @@ export function FriendsActions() {
           ))}
         </div>
       )}
-
-      {msg && <p className="text-xs text-mint">{msg}</p>}
     </section>
   );
 }
