@@ -1,0 +1,210 @@
+//! 种分类管理（catmanage）：从 rules_cats.rs 按域拆出（300 行门禁）。
+//! 权限 CATEGORIES_MANAGE。
+
+use actix_web::{delete, get, post, put, web, HttpRequest, Responder};
+use serde::Deserialize;
+
+use crate::dto::ok;
+use crate::errors::{DomainError, DomainResult};
+use crate::http::require_auth;
+use crate::state::AppState;
+
+// ---- 分类管理（catmanage）----
+
+#[derive(Deserialize)]
+struct CatBody {
+    name: String,
+    /// 图标键（0166）：前端 Icon 语义名（film/tv/music/…）；空 = 回落分类名首字
+    #[serde(default)]
+    icon_key: Option<String>,
+    /// newznab 分类号（0325）：Torznab/兼容层按此对外映射；None = 不改
+    #[serde(default)]
+    newznab_id: Option<i32>,
+    /// 分类色（0183）：`#rrggbb`；缺省或空 = 不改
+    #[serde(default)]
+    bg_color: Option<String>,
+    /// 父分类（0188 层级）：None/0 = 顶级；触发器防环（≤8 层）
+    #[serde(default)]
+    parent_id: Option<i32>,
+    #[serde(default)]
+    sort: Option<i32>,
+}
+
+/// 只接受 `#rrggbb`：这个值最终进前端内联 style，库里也有同形 CHECK 兜底
+fn is_hex_color(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.len() == 7 && b[0] == b'#' && b[1..].iter().all(|c| c.is_ascii_hexdigit())
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+struct CatRow {
+    id: i32,
+    name: String,
+    /// 父分类（0188 层级）：NULL = 顶级
+    parent_id: Option<i32>,
+    /// newznab 分类号（0325）：torznab caps/搜索与 NP 兼容层的对外映射
+    newznab_id: Option<i32>,
+    mode_id: Option<i32>,
+    auto_approve: bool,
+    torrents: i64,
+    icon_key: String,
+    sort: i32,
+    /// 分类色（0183）：#rrggbb，NULL = 用前端中性兜底
+    bg_color: Option<String>,
+}
+
+#[get("/admin/categories")]
+pub async fn category_list(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
+    let rows: Vec<CatRow> = sqlx::query_as(
+        "SELECT c.id, c.name, c.parent_id, c.mode_id, c.auto_approve, \
+         c.icon_key, c.sort, c.bg_color, c.newznab_id, \
+         (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint \
+         AS torrents FROM categories c ORDER BY c.sort, c.id",
+    ).fetch_all(&state.repo.db).await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}
+
+#[post("/admin/categories")]
+pub async fn category_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<CatBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO categories (id, name, parent_id, sort) \
+     VALUES ((SELECT max(id)+1 FROM categories), $1, NULLIF($2, 0), \
+     COALESCE($3, 100)) RETURNING id",
+    )
+    .bind(&body.name)
+    .bind(body.parent_id.unwrap_or(0))
+    .bind(body.sort)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 审计修复（P1）：分类增删改此前完全不写审计日志
+    state
+        .repo
+        .audit(Some(auth.id), "category.create", Some(id as i64))
+        .await;
+    Ok(ok(serde_json::json!({ "id": id })))
+}
+
+#[put("/admin/categories/{id}")]
+pub async fn category_update(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+    body: web::Json<CatBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
+    if let Some(c) = body.bg_color.as_deref() {
+        if !c.is_empty() && !is_hex_color(c) {
+            return Err(DomainError::Validation(
+                "分类色需为 #rrggbb 十六进制".into(),
+            ));
+        }
+    }
+    if let Some(nz) = body.newznab_id {
+        if !(0..=100_000_000).contains(&(nz as i64)) {
+            return Err(DomainError::Validation(
+                "newznab 分类号需为非负整数".into(),
+            ));
+        }
+    }
+    let n = sqlx::query(
+        "UPDATE categories SET name=$2, icon_key=$3, \
+         bg_color = COALESCE(NULLIF($4, ''), bg_color), \
+         parent_id = COALESCE(NULLIF($5, 0), parent_id), \
+         sort = COALESCE($6, sort), \
+         newznab_id = COALESCE(NULLIF($7, 0), newznab_id) WHERE id=$1",
+    )
+    .bind(*path)
+    .bind(&body.name)
+    .bind(body.icon_key.clone().unwrap_or_default())
+    .bind(body.bg_color.clone().unwrap_or_default())
+    .bind(body.parent_id.unwrap_or(0))
+    .bind(body.sort)
+    .bind(body.newznab_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| crate::errors::db_to_domain(e, "分类"))?;
+    if n.rows_affected() == 0 {
+        return Err(DomainError::NotFound(*path as i64));
+    }
+    let cid = *path as i64;
+    state
+        .repo
+        .audit(Some(auth.id), "category.update", Some(cid))
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+
+#[delete("/admin/categories/{id}")]
+pub async fn category_delete(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i32>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
+    // P-228：引用面按库数全——categories 被五张表以 NO ACTION 引用，
+    // 旧护栏只数 torrents ⇒ 其余四张表的引用撞外键成 500；且计数查询
+    // 失败时 `unwrap_or(0)` 直接当「没人用」放行。
+    let refs: i64 = sqlx::query_scalar(
+        "SELECT (SELECT count(*) FROM torrents WHERE category_id = $1) + \
+         (SELECT count(*) FROM promotions WHERE category_id = $1) + \
+         (SELECT count(*) FROM promo_intents WHERE category_id = $1) + \
+         (SELECT count(*) FROM auto_promo_rules WHERE category_id = $1) \
+         + (SELECT count(*) FROM wishlist WHERE category_id = $1)",
+    )
+    .bind(*path)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if refs > 0 {
+        return Err(DomainError::Validation(format!(
+            "该分类仍被 {refs} 处引用（种子/促销/自动促销/收藏），不能删除"
+        )));
+    }
+    sqlx::query("DELETE FROM categories WHERE id=$1")
+        .bind(*path)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let did = *path as i64;
+    state
+        .repo
+        .audit(Some(auth.id), "category.delete", Some(did))
+        .await;
+    Ok(ok(serde_json::json!({ "ok": true })))
+}
+

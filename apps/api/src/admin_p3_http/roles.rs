@@ -32,7 +32,9 @@ async fn roles_dict_list(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+    serde_json::to_value(rows)
+        .map_err(|e| DomainError::Internal(e.into()))
+        .map(ok)
 }
 
 #[derive(Deserialize)]
@@ -74,7 +76,7 @@ async fn roles_dict_add(
             .bind(&key)
             .fetch_one(&state.repo.db)
             .await
-            .unwrap_or(false);
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if dup {
         return Err(DomainError::Validation("职务已存在".into()));
     }
@@ -89,7 +91,11 @@ async fn roles_dict_add(
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "roles.add", None).await;
+    state
+        .repo
+        .audit_detail(Some(auth.id), "roles.add", None, None,
+            Some(serde_json::json!({"key": key})))
+        .await;
     Ok(ok(serde_json::json!({ "key": key })))
 }
 
@@ -124,7 +130,11 @@ async fn roles_dict_update(
         return Err(DomainError::NotFound(0));
     }
     crate::http::bump_guard_ver(&state).await;
-    state.repo.audit(Some(auth.id), "roles.update", None).await;
+    state
+        .repo
+        .audit_detail(Some(auth.id), "roles.update", None, None,
+            Some(serde_json::json!({"key": key})))
+        .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -150,6 +160,14 @@ async fn roles_dict_delete(
             "仍有 {holders} 人持有该职务，请先撤销全部授予"
         )));
     }
+    // 先读后删：行没了以后 extra 里的 name 是它存在过的唯一出处
+    let gone: Option<String> = sqlx::query_scalar(
+        "SELECT name FROM roles WHERE key = $1",
+    )
+    .bind(&key)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query("DELETE FROM roles WHERE key = $1")
         .bind(&key)
         .execute(&state.repo.db)
@@ -160,6 +178,10 @@ async fn roles_dict_delete(
         return Err(DomainError::NotFound(0));
     }
     crate::http::bump_guard_ver(&state).await;
-    state.repo.audit(Some(auth.id), "roles.del", None).await;
+    state
+        .repo
+        .audit_detail(Some(auth.id), "roles.del", None, None,
+            Some(serde_json::json!({"key": key, "name": gone})))
+        .await;
     Ok(ok(serde_json::json!({ "deleted": key })))
 }
