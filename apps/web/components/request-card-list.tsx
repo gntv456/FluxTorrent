@@ -1,8 +1,11 @@
 "use client";
 
-import { api } from "@/lib/api-client";
+import { useState } from "react";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { timeAgo } from "@/lib/time-ago";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toast";
 
 /** 样式常量（抽出来避免 JSX 内联 className 行超 80 列门禁） */
 const CARD =
@@ -42,24 +45,37 @@ export function RequestCardList({
 }) {
   const { dict } = useI18n();
   const t = dict.requests;
+  // A1 反馈协议：应求（prompt/alert）→ ConfirmDialog + toast
+  const [askId, setAskId] = useState<number | null>(null);
+  const [tid, setTid] = useState("");
 
-  async function fulfill(id: number) {
-    const v = window.prompt(t.fulfillTorrentId);
-    const tid = v ? parseInt(v, 10) : NaN;
-    if (!Number.isFinite(tid) || tid <= 0) {
-      if (v !== null) window.alert(t.fulfillInvalid);
+  function submit() {
+    const id = askId;
+    if (id == null) return;
+    const n = parseInt(tid, 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      toast.warn(t.fulfillInvalid);
       return;
     }
-    try {
-      await api.post("/api/v1/requests/fulfill", {
+    api
+      .post("/api/v1/requests/fulfill", {
         request_id: id,
-        torrent_id: tid,
+        torrent_id: n,
+      })
+      .then(() => {
+        toast.success(t.fulfillOk);
+        setAskId(null);
+        setTid("");
+        onChanged();
+      })
+      .catch((e: unknown) => {
+        toast.error(
+          t.fulfillFailed + (e instanceof Error ? e.message : ""),
+          {
+            requestId: e instanceof ApiError ? e.requestId : undefined,
+          },
+        );
       });
-      onChanged();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "";
-      window.alert(t.fulfillFailed + msg);
-    }
   }
 
   return (
@@ -109,7 +125,7 @@ export function RequestCardList({
                 <button
                   type="button"
                   className={FULFILL_BTN}
-                  onClick={() => void fulfill(r.id)}
+                  onClick={() => setAskId(r.id)}
                 >
                   {t.fulfillBtn}
                 </button>
@@ -118,6 +134,26 @@ export function RequestCardList({
           </div>
         </li>
       ))}
+      <ConfirmDialog
+        open={askId !== null}
+        onClose={() => setAskId(null)}
+        onConfirm={submit}
+        title={t.fulfillBtn}
+        confirmLabel={t.fulfillBtn}
+      >
+        <label className="mt-2 flex flex-col gap-1 text-xs text-sub">
+          {t.fulfillTorrentId}
+          <input
+            value={tid}
+            onChange={(e) => setTid(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder="#"
+            autoFocus
+            className="min-h-[36px] rounded-[var(--r-sm)] border border-line
+              bg-[var(--surface-card)] px-3 text-sm text-ink"
+          />
+        </label>
+      </ConfirmDialog>
     </ul>
   );
 }

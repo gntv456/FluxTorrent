@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { StatePanel } from "@/components/ui/state-panel";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 interface SparkInfo {
   balance: number;
@@ -60,9 +62,8 @@ export default function MySparkPage() {
         <h1 className="font-display text-2xl">
           {t.title.replace("{magic}", currency)}
         </h1>
-        <p className="baozi-panel p-4 text-sm text-sub">
-          {dict.common.loading}
-        </p>
+        {/* A3 四态：裸「加载中」文字 → 骨架占位 */}
+        <SkeletonRows rows={5} />
       </div>
     );
   }
@@ -166,17 +167,25 @@ export default function MySparkPage() {
           </span>
         </div>
         {/* M6.5：compact 档 CSS 双态（.profilet 同款：thead 隐藏+块化+小标签），
-         *  客户端组件但免 useIsCompact 双树——流水 4 列窄屏改行读 */}
-        <div className="baozi-wide-table-scroll">
-          <table className="nexus-table profilet">
-            <tbody>
-              <tr>
-                <td className="colhead">{t.ledgerKind}</td>
-                <td className="colhead">{t.ledgerAmount}</td>
-                <td className="colhead">{t.ledgerBalance}</td>
-                <td className="colhead">{t.ledgerAt}</td>
-              </tr>
-              {rows.map((r, i) => (
+         *  客户端组件但免 useIsCompact 双树——流水 4 列窄屏改行读。
+         *  A3 四态：流水表 loading 骨架 / 错误占位 / 空态走 StatePanel */}
+        <StatePanel
+          loading={rows.length === 0 && err === null}
+          error={rows.length === 0 ? err : null}
+          empty={rows.length === 0}
+          loadingFallback={<SkeletonRows rows={5} />}
+          onRetry={load}
+        >
+          <div className="baozi-wide-table-scroll">
+            <table className="nexus-table profilet">
+              <tbody>
+                <tr>
+                  <td className="colhead">{t.ledgerKind}</td>
+                  <td className="colhead">{t.ledgerAmount}</td>
+                  <td className="colhead">{t.ledgerBalance}</td>
+                  <td className="colhead">{t.ledgerAt}</td>
+                </tr>
+                {rows.map((r, i) => (
                 <tr key={i}>
                   <td>
                     <span className="profilet__label">{t.ledgerKind}</span>
@@ -207,16 +216,10 @@ export default function MySparkPage() {
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-sub">
-                    {err ?? t.ledgerEmpty}
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
+        </StatePanel>
       </div>
 
       {rows.length >= limit && (

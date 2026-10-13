@@ -2,35 +2,37 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { toast } from "@/components/ui/toast";
 
 /** 站免池捐赠表单（M13 众筹触发下月双免）：走 spark 支出管线，成功后刷新进度 */
 export function PoolDonate() {
   const { dict, locale, currency } = useI18n();
   const router = useRouter();
   const [amount, setAmount] = useState("1000");
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const t = dict.magicPool;
 
   async function donate() {
     const n = parseInt(amount, 10);
     if (!Number.isFinite(n) || n <= 0) {
-      setMsg(t.amountInvalid.replace("{magic}", currency));
+      toast.warn(t.amountInvalid.replace("{magic}", currency));
       return;
     }
     setBusy(true);
-    setMsg(null);
     try {
       await api.post("/api/v1/magic-pool/donate", {
         amount: n,
       });
-      setMsg(t.donatedOk);
+      // A1 反馈协议：捐赠结果走 toast（失败带 requestId 芯片）
+      toast.success(t.donatedOk);
       router.refresh();
     } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
+      toast.error(apiErrorMessage(dict, e), {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -63,11 +65,6 @@ export function PoolDonate() {
       >
         {busy ? t.donating : t.donate.replace("{magic}", currency)}
       </button>
-      {msg && (
-        <span className="text-xs text-sub" role="status">
-          {msg}
-        </span>
-      )}
     </div>
   );
 }

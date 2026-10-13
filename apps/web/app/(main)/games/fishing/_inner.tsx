@@ -10,37 +10,36 @@ import { GameTabs } from "@/components/game/game-tabs";
 import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
-import { FishingPond, type FishPhase } from "@/components/game/fishing-pond";
+import type { FishPhase } from "@/components/game/fishing-pond";
+import dynamic from "next/dynamic";
+
+// W-33：重画布（pond 视觉层 ~300 行）延迟加载
+const FishingPond = dynamic(() =>
+  import("@/components/game/fishing-pond").then((m) => m.FishingPond),
+  { loading: () => <SkeletonBlock height={280} /> });
 import { FishingSide } from "@/components/game/fishing-side";
 import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { SwRules } from "@/components/game/sw-enrich";
 import { clientUuid } from "@/lib/client-uuid";
+import { SkeletonBlock } from "@/components/ui/skeleton";
 
 export interface Overview {
   max_bet: number;
   fishing?: {
     ticket: number;
     prizes: {
-      label: string;
-      weight_permille: number;
-      payout: number;
-      value?: number;
+      label: string; weight_permille: number;
+      payout: number; value?: number;
     }[];
   };
   me?: {
-    balance: number;
-    today_net: number;
-    today_plays: number;
-    limit_left: number;
+    balance: number; today_net: number;
+    today_plays: number; limit_left: number;
   };
 }
 
 interface RoundRow {
-  game: string;
-  bet: number;
-  payout: number;
-  net: number;
-  at?: string;
+  game: string; bet: number; payout: number; net: number; at?: string;
 }
 
 interface CastResult {

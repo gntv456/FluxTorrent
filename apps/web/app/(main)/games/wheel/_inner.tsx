@@ -14,26 +14,27 @@ import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { StreakPill } from "@/components/game/streak-pill";
-import { LuckyWheel, type WheelPrize } from "@/components/game/lucky-wheel";
+import type { WheelPrize } from "@/components/game/lucky-wheel";
+import dynamic from "next/dynamic";
+import { SkeletonBlock } from "@/components/ui/skeleton";
+
+// W-33：转轮画布延迟加载（骨架防白屏）
+const LuckyWheel = dynamic(() =>
+  import("@/components/game/lucky-wheel").then((m) => m.LuckyWheel),
+  { loading: () => <SkeletonBlock height={300} /> });
 import { GameStage } from "@/components/game/game-stage";
 import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
   me?: {
-    balance: number;
-    today_net: number;
-    today_plays: number;
-    limit_left: number;
+    balance: number; today_net: number;
+    today_plays: number; limit_left: number;
   };
   wheel?: { ticket: number; prizes: WheelPrize[] };
 }
 
 interface RoundRow {
-  game: string;
-  bet: number;
-  payout: number;
-  net: number;
-  at?: string;
+  game: string; bet: number; payout: number; net: number; at?: string;
 }
 
 interface DrawResult {

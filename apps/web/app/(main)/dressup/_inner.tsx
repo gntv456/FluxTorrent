@@ -8,6 +8,9 @@ import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { FramePreview } from "@/components/frame-preview";
 import { clientUuid } from "@/lib/client-uuid";
+import { toast } from "@/components/ui/toast";
+import { StatePanel } from "@/components/ui/state-panel";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 interface Dressup {
   item_id: number;
@@ -27,7 +30,8 @@ interface Dressup {
 export default function DressupPage() {
   const { dict, locale, currency } = useI18n();
   const [items, setItems] = useState<Dressup[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   // 幂等键按（用户+商品）在会话内固定：双击/网络重试共用同一键，杜绝双扣
   const idemRef = useRef<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
@@ -40,12 +44,15 @@ export default function DressupPage() {
   const refresh = useCallback(async () => {
     try {
       setItems(await api.get<Dressup[]>("/api/v1/dressup/list"));
+      setLoadErr(null);
     } catch (e) {
-      setMsg(
+      setLoadErr(
         e instanceof ApiError && e.code === 2001
           ? dict.errors[2001]
           : dict.common.loadFailed,
       );
+    } finally {
+      setLoaded(true);
     }
   }, [dict]);
 
@@ -55,23 +62,23 @@ export default function DressupPage() {
 
   async function wear(item: Dressup, wear: boolean) {
     setBusy(true);
-    setMsg(null);
     try {
       await api.post("/api/v1/dressup/wear", {
         item_id: item.item_id,
         wear,
       });
-      setMsg(
+      toast.success(
         wear
           ? fmt(dict.dressup.worn, { name: item.name })
           : fmt(dict.dressup.unworn, { name: item.name }),
       );
       refresh();
     } catch (e) {
-      setMsg(
+      toast.error(
         e instanceof ApiError
           ? (dict.errors[e.code] ?? e.message)
           : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
     } finally {
       setBusy(false);
@@ -80,14 +87,13 @@ export default function DressupPage() {
 
   async function buy(item: Dressup) {
     setBusy(true);
-    setMsg(null);
     try {
       await api.post("/api/v1/shop/buy", {
         item_id: item.item_id,
         idempotency_key: (idemRef.current[item.item_id] ??=
           `dressup-${item.item_id}-${clientUuid()}`),
       });
-      setMsg(
+      toast.success(
         fmtCur(
           dict.dressup.buyOk,
           { name: item.name, price: item.price },
@@ -96,10 +102,11 @@ export default function DressupPage() {
       );
       refresh();
     } catch (e) {
-      setMsg(
+      toast.error(
         e instanceof ApiError
           ? (dict.errors[e.code] ?? e.message)
           : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
     } finally {
       setBusy(false);
@@ -118,7 +125,14 @@ export default function DressupPage() {
         <span className="sub">{dict.dressup.subtitle}</span>
       </div>
 
-      {slots.map((slot) => {
+      <StatePanel
+        loading={!loaded}
+        error={loadErr}
+        empty={items.length === 0}
+        loadingFallback={<SkeletonRows rows={4} height={64} />}
+        onRetry={refresh}
+      >
+        {slots.map((slot) => {
         const slotItems = items.filter((i) => (i.slot ?? "avatar") === slot);
         if (slotItems.length === 0) return null;
         return (
@@ -194,12 +208,7 @@ export default function DressupPage() {
           </section>
         );
       })}
-
-      {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
-        </p>
-      )}
+      </StatePanel>
     </div>
   );
 }

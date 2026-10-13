@@ -79,6 +79,28 @@
   --info: #1e8ae8;
   --muted-soft: #eef2f8;
   --accent-purple: #5b6bf5;
+  /* ===== 设计词汇层 tone（DS-PLAN-01 §3：原语 API 只认 tone/size）=====
+     组件代码禁止出现色值，只写 var(--tone-*)；本层是 tone → Aurora
+     语义色的唯一映射点。仅在浅色块声明一次即双主题生效：var() 间接
+     引用在声明元素（html）上求值，夜间块覆盖 --success 等之后，
+     本层自动跟随（同 --ink → --text-strong 别名机制）。 */
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --tone-brand-border: var(--border-deep);
+  --tone-success: var(--success);
+  --tone-success-soft: var(--success-soft);
+  --tone-success-border: var(--success-border);
+  --tone-warn: var(--warning);
+  --tone-warn-soft: var(--warning-soft);
+  --tone-warn-border: var(--warning-border);
+  --tone-danger: var(--danger);
+  --tone-danger-soft: var(--danger-soft);
+  --tone-danger-border: var(--danger-border);
+  --tone-neutral: var(--text-body);
+  --tone-neutral-strong: var(--text-strong);
+  --tone-neutral-soft: var(--muted-soft);
+  --tone-on-accent: var(--text-on-accent);
   /* ===== 圆角（按钮统一胶囊 999，见 .btn 类） ===== */
   --r-xl: 24px;
   --r-lg: 20px;
@@ -375,6 +397,14 @@
      2026-10-03 补：全站 346 处可交互元素 < 44px。新增代码必须
      满足 min-height/min-width: var(--tap-min)。 */
   --tap-min: 44px;
+
+  /* ===== 动效令牌（DS-PLAN-01 §3.6）=====
+     动效只允许引用令牌时长，禁止散落 transition: 0.2s 裸值。
+     reduced-motion 全局短路见 base.css 末尾（时长一并归零）。 */
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 320ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html {
@@ -389,6 +419,25 @@ html {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* 动效令牌全局短路（DS-PLAN-01 §3.6）：reduced-motion 用户所有过渡/
+   动画时长归零、迭代一次——组件只写 var(--motion-*) 即自动降级，
+   不依赖每个文件各自补降级块（既有按文件降级保留，双保险）。 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 1ms;
+    --motion-normal: 1ms;
+    --motion-slow: 1ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

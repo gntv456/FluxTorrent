@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { FrameShop } from "@/components/plugins";
+import { StatePanel } from "@/components/ui/state-panel";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 /** 头像挂件（avatar_frame 插件复刻）：佩戴/更换头像挂件，付费件扣魔力 */
 export default function AvatarFramesPage() {
@@ -30,16 +32,19 @@ export default function AvatarFramesPage() {
       <p className="text-sm text-sub">
         {dict.frames.subtitle.replace("{magic}", currency)}
       </p>
-      {err ? (
-        <p className="baozi-panel p-4 text-sm text-sub">{err}</p>
-      ) : (
+      {/* A3 四态：错误占位（ErrorPanel）而非裸段落；未登录=直通商店 */}
+      <StatePanel
+        loading={hasSessionCookie() && me === null && err === null}
+        error={err}
+        loadingFallback={<SkeletonRows rows={3} height={120} />}
+      >
         <FrameShop
           current={me?.avatar_frame_id ?? null}
           onChange={(id) =>
             setMe((m) => (m ? { ...m, avatar_frame_id: id } : m))
           }
         />
-      )}
+      </StatePanel>
     </div>
   );
 }

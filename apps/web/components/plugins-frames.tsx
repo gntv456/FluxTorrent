@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 
 /** hxpt 插件移植前台（从 components/plugins.tsx 按域拆出）：
  *  头像挂件 FrameShop——挂件卡片网格 + 佩戴/取下。 */
@@ -42,7 +43,6 @@ export function FrameShop({
   const { dict } = useI18n();
   const t = dict.frames;
   const [frames, setFrames] = useState<Frame[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -56,23 +56,22 @@ export function FrameShop({
     setBusy(true);
     try {
       await api.put("/api/v1/me/avatar-frame", { frame_id: id });
-      setMsg(id === null ? t.removed : t.equipped);
+      toast.success(id === null ? t.removed : t.equipped);
       onChange?.(id);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      // A1 反馈协议：写操作结果走 toast（requestId 芯片必附）
+      toast.error(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+        {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
-      setTimeout(() => setMsg(null), 2500);
     }
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
-        </p>
-      )}
       <div className={FRAME_GRID}>
         <div className={FRAME_CARD}>
           <span

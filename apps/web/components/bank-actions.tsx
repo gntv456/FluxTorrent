@@ -13,6 +13,7 @@ import { Stat, DepositRow } from "@/components/bank-actions-parts";
 import { BankDepositPanel } from "@/components/bank-actions-deposit";
 import { BankLoanPanel, LoanHistoryRow } from "@/components/bank-actions-loan";
 import { clientUuid } from "@/lib/client-uuid";
+import { toast } from "@/components/ui/toast";
 
 // 银行系统（火花银行对齐）：活期复利 + 定期 + 贷款 + 资产概览。
 // 拆出：资产格/存款行 @/components/bank-actions-parts、
@@ -33,7 +34,6 @@ export function BankCard() {
   const [loanAmount, setLoanAmount] = useState("");
   const [loanTerm, setLoanTerm] = useState(30);
   const [repayAmount, setRepayAmount] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // 部分还款幂等键：一次输入会话一个键，成功后轮换（§8.2 幂等语义）
   const repayIdemRef = useRef<string>("");
@@ -73,12 +73,14 @@ export function BankCard() {
 
   async function act(fn: () => Promise<string>) {
     setBusy(true);
-    setMsg(null);
     try {
-      setMsg(await fn());
+      // A1 反馈协议：存取/贷款结果走 toast（失败带 requestId 芯片）
+      toast.success(await fn());
       refresh();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(e instanceof ApiError ? e.message : dict.common.networkError, {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -206,15 +208,6 @@ export function BankCard() {
 
   return (
     <div className="flex flex-col gap-4">
-      {msg && (
-        <p
-          role="alert"
-          className="rounded-[var(--r-sm)] bg-mint/20 px-3 py-2 text-sm text-sky-deep"
-        >
-          {msg}
-        </p>
-      )}
-
       {/* 站点银行条：运营概览 + 结息健康 */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-xs text-sub shadow-[var(--shadow-card)]">
         <span className="font-bold text-ink">{dict.bank.siteOverview}</span>

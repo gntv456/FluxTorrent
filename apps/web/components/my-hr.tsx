@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { useIsCompact } from "@/lib/hooks/use-media";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/toast";
 
 interface HrRow {
   torrent_id: number;
@@ -23,20 +25,21 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
   const t = dict.myhr;
   const dl = locale === "zh-TW" ? "zh-TW" : locale === "en" ? "en-US" : "zh-CN";
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const compact = useIsCompact();
+  // A1 反馈协议：window.confirm → ConfirmDialog；结果行内 msg → toast
+  const [askTid, setAskTid] = useState<number | null>(null);
 
   async function selfPardon(tid: number) {
-    if (!window.confirm(dict.myhr2.pardonConfirm.replace("{magic}", currency)))
-      return;
     setBusyId(tid);
-    setMsg(null);
     try {
       await api.post("/api/v1/me/hr/pardon", { torrent_id: tid });
-      setMsg(dict.myhr2.pardonOk);
+      toast.success(dict.myhr2.pardonOk);
+      setAskTid(null);
       router.refresh();
     } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
+      toast.error(apiErrorMessage(dict, e), {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusyId(null);
     }
@@ -91,7 +94,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                     <button
                       type="button"
                       disabled={busyId === r.torrent_id}
-                      onClick={() => selfPardon(r.torrent_id)}
+                      onClick={() => setAskTid(r.torrent_id)}
                       className="hrcard__btn"
                       title={dict.myhr2.pardonNote.replace(
                         "{magic}",
@@ -170,7 +173,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                             <button
                               type="button"
                               disabled={busyId === r.torrent_id}
-                              onClick={() => selfPardon(r.torrent_id)}
+                              onClick={() => setAskTid(r.torrent_id)}
                               className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-sky-deep disabled:opacity-50"
                               title={dict.myhr2.pardonNote.replace(
                                 "{magic}",
@@ -200,11 +203,15 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
           </table>
         </div>
       )}
-      {msg && (
-        <p className="text-xs text-sub" role="status">
-          {msg}
-        </p>
-      )}
+      {/* 自助免罪确认（花费魔力，二次确认防误触） */}
+      <ConfirmDialog
+        open={askTid !== null}
+        onClose={() => setAskTid(null)}
+        onConfirm={() => askTid !== null && void selfPardon(askTid)}
+        tone="danger"
+        title={dict.myhr2.pardonBtn.replace("{magic}", currency)}
+        message={dict.myhr2.pardonConfirm.replace("{magic}", currency)}
+      />
     </div>
   );
 }

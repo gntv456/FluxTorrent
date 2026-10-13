@@ -11,6 +11,7 @@ import {
   TaskDashboard,
   TaskHistory,
 } from "@/components/task-board-parts";
+import { toast } from "@/components/ui/toast";
 
 // 任务系统（参考站 task.php 复刻）：TASK SYSTEM hero + 01 规则 + 02 可领取任务（五档卡）
 // + 03 任务商店 + 06 最新动态 + 07 任务统计 + 08 我的任务记录。
@@ -21,7 +22,6 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
   const t = dict.tasks2;
   const [tasks, setTasks] = useState<TaskRow[] | null>(null);
   const [ov, setOv] = useState<TaskOverview | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = async () => {
@@ -42,13 +42,17 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
 
   async function claim(id: number) {
     setBusyId(id);
-    setMsg(null);
     try {
       await api.post("/api/v1/tasks/claim", { task_id: id });
-      setMsg(t.claimOk);
+      // A1 反馈协议：领取结果走 toast（失败带 requestId 芯片）
+      toast.success(t.claimOk);
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+        {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusyId(null);
     }
@@ -101,7 +105,8 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
             <h2>{t.tiersTitle}</h2>
           </div>
           <p>
-            {/* 0094：quota_total 由后端 COALESCE(claim_limit, quota_total) 下发，运营改 claim_limit 即生效 */}
+            {/* 0094：quota_total 由后端 COALESCE(claim_limit,
+                quota_total) 下发，运营改 claim_limit 即生效 */}
             {t.quota}: {tierTasks.reduce((a, x) => a + x.claimed, 0)} /{" "}
             {tierTasks[0]?.quota_total ?? 200}；{t.vipNote}
           </p>
@@ -253,8 +258,6 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
 
       {/* 08 我的任务记录 */}
       <TaskHistory ov={ov} />
-
-      {msg && <p className="task-msg">{msg}</p>}
     </div>
   );
 }
