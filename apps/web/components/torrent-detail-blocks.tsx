@@ -128,8 +128,13 @@ export function GroupVersions({
  *  tier 由后端按 standard 维度派生下发，前端不自行推断。 */
 function tierBadge(tier?: string) {
   if (!tier || tier === "Other") return null;
+  // 画质档是内容语义（PTP 口径三色），不随主题换肤（W-36 content-* 令牌）
   const color =
-    tier === "UHD" ? "#7c3aed" : tier === "HD" ? "#2563eb" : "#64748b";
+    tier === "UHD"
+      ? "var(--content-tier-uhd)"
+      : tier === "HD"
+        ? "var(--content-tier-hd)"
+        : "var(--content-tier-sd)";
   return (
     <span className="sticker ml-1 text-white" style={{ background: color }}>
       {tier}

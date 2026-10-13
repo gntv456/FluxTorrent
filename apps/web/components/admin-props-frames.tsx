@@ -35,7 +35,9 @@ export function FramesPanel({
   const c = dict.common;
   const emptyFrame = {
     name: "",
-    css: "border-color:#2fa878; box-shadow: 0 0 0 2px rgba(47,168,120,.5), 0 0 12px rgba(47,168,120,.85);",
+    // design-cov-exempt: 头像框 css 是「存库的站长 CSS 字符串」的初始
+    // 样例（格式教学，预览直接展示），不接受 var() 写法
+    css: "border-color:#2fa878; box-shadow: 0 0 0 2px rgba(47,168,120,.5), 0 0 12px rgba(47,168,120,.85);", // design-cov-exempt
     image: "",
     price: "5000",
     sort: "20",

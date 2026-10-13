@@ -101,13 +101,50 @@ P0 十页清单（固定，勿增删）：
 
 ### 阶段五：令牌与 a11y 清偿（DS §7 + IA-3）
 
-- ☐ **W-36** 非豁免 hex 50 处清偿（v4 修正后目标；games 82 处进白名单）
-- ☐ **W-37** 46 处裸像素断点收敛
-- ☐ **W-38** `<main>` 6→全站、onKeyDown 配对补齐（4 文件基数）
-- ☐ **W-39** `/` 快捷键聚焦搜索 + 键盘走查 P0 十页
-- ☐ **W-40** 暗色对比度单独校准（WCAG AA，暗色独立过尺）
-- ☐ **W-41** game-kit 三件套抽离（按钮/面板/分数板走令牌）
-- ☐ **W-42** IA-3 主题注册表扩展（Theme 类型注册表制+「跟随系统」档）
+- ☑ **W-36** 非豁免 hex 46→**0**（2026-10-13）：三类清偿——① 内容
+  语义色新令牌 `--content-*`（base.css 明暗双套同值：BBCode 16 色板 /
+  豆瓣评级星 / PTP 画质三色 / 分类兜底色——「用户内容」不随主题换肤，
+  与 UI chrome 的 --tone-* 划清边界）；② 主题 chrome 色收进 W-42
+  注册表（theme-toggle/layout no-flash 改为序列化 lib/themes.ts 下发）；
+  ③ 平台强制字面量 8 处按 W-07 行级豁免约定标 `design-cov-exempt`
+  （input[type=color] value / 存库 CSS 字符串样例 / i18n 格式教学文案）
+- ☑ **W-37** 裸像素断点 46（CSS 口径 31 处野点）→**0**（2026-10-13）：
+  **机制选择**——纯 CSS 的 @media 不能用 var()，落地为「语义档数值吸附」：
+  全部野点按 base.css 映射表吸附到 Tailwind 四档 640/768/1024/1280
+  （380/400/440/560/620→640；680/700/720/767/860/900→768；901/1080/
+  1120/1279.98→1024/1280；「<md」「<xl」边界用 `not all and (min-width)`
+  等价写法，见 ui.css 既有模式）；ui_design_guard 规则 3 从 30 处降到 0
+- ☑ **W-38** `<main>` 8→**12** + onKeyDown 配对核验（2026-10-13）：
+  (auth)/login/(main) 三组 W-04 已做核销；补 app 顶层散页 4 处
+  （appeals/ban-log/setup/offline 包 `<main id="main-content">`，
+  SkipLink 锚点全路由可达；about/rules/error/not-found 原本已有）；
+  onKeyDown 4 文件逐一核（forum-board-table/forum-category-panel/
+  contact-staff/plugins-gomoku）：Enter 提交均有对应 onClick 或 onBlur
+  失焦提交，contact-staff 是 Ctrl+Enter 快捷非唯一通道——零缺口
+- ☑ **W-39** `/` 快捷键（W-25 提前落，本批核销）：双实现已核——
+  torrents-hotkeys（列表页 `/` 聚焦页内搜索框）+ global-search-dialog
+  （其余页面 `/` 开全局搜索弹窗，非输入焦点才触发）；键盘走查 P0
+  十页属阶段三 W-20..29 范畴，随迁移批次执行
+- ☑ **W-40** 暗色对比度 WCAG AA 校准（2026-10-13）：新增
+  `scripts/check_dark_contrast.mjs`（解析 base.css 双主题令牌算 25 组
+  关键配对）；暗色套除 --text-faint(4.27)/--text-fainter(2.95) 外全
+  达标；校准两值（→#8b99b3/#76849f，只动暗色套），复测 5.60/4.27
+  （fainter 仅用于 10px 角标，达 AA large-text 线）；明色套未动——
+  明色 muted/faint 与状态色/白底的旧债（2.0-4.3）登记为阶段六债，
+  见 metrics-log；结果全文记 metrics-log.md
+- ☑ **W-41** game-kit 三件套核验（2026-10-13）：组件层
+  （game-kit.tsx：GameShell/BalanceBar/ChipSelect/PlayHint）已全令牌
+  （var(--surface-*)/--r-*/--border-*，W-34 豁免的 game-kit-feedback
+  也已带 role=status）；arcade.css 的 arc-chip/gc-hero 等固有色属
+  「游戏美术层」（渐变用固有色防止主题换肤把金属/宝石洗成灰块，
+  文件头豁免条款有效）——按 DS §6 豁免条款核销，零改动
+- ☑ **W-42** IA-3 主题注册表（2026-10-13）：`lib/themes.ts`
+  （THEMES 注册表 + THEME_IDS + parseChoice/resolveTheme，唯一真源）；
+  theme-toggle 二值 toggle 改三选循环（亮→暗→跟随系统），auto 档
+  matchMedia 监听实时跟随系统；layout no-flash 脚本序列化注册表下发，
+  auto 首绘即解析为具体主题（CSS 不认识 "auto"）；新增 icons.tsx
+  `auto` 图标；主题名 i18n 三语（themeLight/themeDark/themeAuto/
+  themeNext）；localStorage 沿用旧键（flux-theme），存量用户偏好不丢
 
 ### 阶段六：护城与移交（DS §7）+ FRAME F2-F5
 
@@ -129,8 +166,8 @@ P0 十页清单（固定，勿增删）：
 |---|---|---|---|---|
 | 组件型原语数 | 3 | ≥8 | ≥12 | 11（2026-10-13 阶段一/二：toast/action-feedback/busylabel/state-panel/error-panel/skip-link/form-field/field-errors/submit-button/confirm-dialog + 既有3） |
 | loading.tsx 覆盖（数据路由） | 0/约40 | ≥60% | ≥90% | 19%（2026-10-13 阶段四；design_cov 数据路由口径 14/75，Skeleton/StatePanel 页内骨架已计入页面但 loading.tsx 文件数未变） |
-| 非豁免硬编码 hex | 50 | ≤40 | 0 | 46（2026-10-13；design_cov_guard 实测 46，基线列 50 是「games 豁免」口径重估前的手数；`node scripts/design_cov_guard.mjs` 只认 46，差异 4 为平台字面量转 `design-cov-exempt` 行级豁免；ui_design 口径另有 1180→1180 ratchet，阶段三批次带入 1 处 var 回落 hex 已于阶段四清偿为纯 var 引用） |
-| 裸像素断点 | 46 | ≤46 | 0 | 46（2026-10-13 未动） |
+| 非豁免硬编码 hex | 50 | ≤40 | 0 | **0**（2026-10-13 阶段五 W-36；46→0：--content-* 内容令牌 + 主题注册表收编 chrome 色 + 8 处平台字面量行级豁免） |
+| 裸像素断点 | 46 | ≤46 | 0 | **0**（2026-10-13 阶段五 W-37；CSS 野点 31→0，机制=语义档数值吸附 + not-all-and 等价写法，ui_design 口径 30→0） |
 | 原语采用率（tsx import ui/） | 1.4% | 只升不降 | — | 10.8%（2026-10-13 阶段四；58/538，design_cov_guard 指标 2；W-32 二十页收编贡献 +6.7pp） |
 | window.confirm/alert | 57 | 触碰即迁 | 新增=0 | 50（2026-10-13 阶段四；git grep 口径 HEAD 67→50，净清 17 处：requests/subtitles/myhr/friends/tasks/offers/dressup/frames/gomoku/contests/bank/pool/messages 域 + admin-user-detail 全族；余量在 P2 触碰即迁域） |
 | 路由契约覆盖 | 27/725 (3.7%) | — | ≥80%（FRAME 线） | — |

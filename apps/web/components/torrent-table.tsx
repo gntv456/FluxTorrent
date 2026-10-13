@@ -22,7 +22,7 @@ const KNOWN_ICONS = new Set<string>(ICON_NAMES as readonly string[]);
 /** 保种区行（/preserve 下发的同构行：id 键为 torrent_id） */
 type PreserveRowAlias = PreserveItem;
 
-/** 促销行高亮（同类站口径：免费=浅蓝 #89c9e6 系、2x=暖黄系） */
+/** 促销行高亮（同类站口径：免费=浅蓝系、2x=暖黄系；色值走 promo 令牌） */
 function promoRowBg(promo: string | null | undefined): string | undefined {
   if (promo === "free" || promo === "x2free") return "var(--promo-free-bg)";
   if (promo === "x2" || promo === "x2half") return "var(--promo-x2-bg)";
@@ -289,7 +289,7 @@ async function TorrentTr({
       {extra}
       {/* 行为列：下载 + ⋮ 下拉（收藏/编辑/删除，同类站 staff 菜单口径） */}
       <td className="torrents-td-actions">
-        <TorrentActions torrentId={id} downloadLabel={dict.torrents.download} />
+        <TorrentActions torrentId={id} torrentName={t.name} />
       </td>
     </tr>
   );

@@ -4,28 +4,38 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** 种子行操作列（同类站口径）：下载钮 + ⋮ 下拉菜单（收藏 / 编辑 / 删除）。
  *  编辑/删除对无权者后端会拒（owner 或 staff），前端不预判权限、按需提示错误。
  *  菜单用 fixed 定位（0145 修复）：.nexus-table 有 overflow:hidden（圆角裁剪）、
  *  滚动包裹层 overflow-x:auto 连带把 y 也变 auto——种子少时最后一行的下拉菜单
  *  伸出表格底边即被裁。fixed 按按钮实测坐标定位可逃离全部祖先裁剪；
- *  下方空间不足自动向上翻；打开期间页面/容器滚动即关闭（避免菜单悬空错位）。 */
+ *  下方空间不足自动向上翻；打开期间页面/容器滚动即关闭（避免菜单悬空错位）。
+ *  反馈协议（DS-PLAN-01 W-19）：删除确认走 ConfirmDialog（danger + 种子名
+ *  二次输入），收藏/下载失败走 toast——原 window.confirm/alert 与行内 msg
+ *  全部退役（存量 confirm/alert「触碰即迁」纪律）。 */
 export function TorrentActions({
   torrentId,
-  downloadLabel,
+  torrentName,
+  dl,
 }: {
   torrentId: number;
-  downloadLabel: string;
+  /** 删除二次输入用（ConfirmDialog requireText）；列表行传入 */
+  torrentName?: string;
+  /** 下载钮标签；缺省走字典 torrents.download */
+  dl?: string;
 }) {
   const { dict } = useI18n();
+  const dlLabel = dl ?? dict.torrents.download;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
     null,
   );
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [askDelete, setAskDelete] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -70,25 +80,35 @@ export function TorrentActions({
     setBusy(true);
     try {
       await api.put(`/api/v1/torrents/${torrentId}/bookmark`, { on: true });
-      setMsg(dict.torrents.bookmarked);
+      toast.success(dict.torrents.bookmarked);
       setOpen(false);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
+      );
     } finally {
       setBusy(false);
     }
   }
 
   async function remove() {
-    if (!window.confirm(dict.torrents.deleteConfirm))
-      return;
     setBusy(true);
     try {
       await api.del(`/api/v1/torrents/${torrentId}`);
+      setAskDelete(false);
       setOpen(false);
       router.refresh();
+      toast.success(dict.torrents.deleted);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(
+        e instanceof ApiError
+          ? (dict.errors[e.code] ?? e.message)
+          : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
+      );
     } finally {
       setBusy(false);
     }
@@ -113,12 +133,13 @@ export function TorrentActions({
       URL.revokeObjectURL(url);
     } catch (e) {
       const noauth = e instanceof ApiError && e.code === 2001;
-      alert(
+      toast.error(
         noauth
-          ? (dict.torrent.downloadNoauth)
-          : e instanceof Error
-            ? e.message
-            : (dict.common.networkError),
+          ? dict.torrent.downloadNoauth
+          : e instanceof ApiError
+            ? (dict.errors[e.code] ?? e.message)
+            : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
     } finally {
       setBusy(false);
@@ -132,8 +153,8 @@ export function TorrentActions({
         onClick={downloadRow}
         disabled={busy}
         className="torrents-action"
-        title={downloadLabel}
-        aria-label={downloadLabel}
+        title={dlLabel}
+        aria-label={dlLabel}
       >
         ⬇
       </button>
@@ -171,13 +192,26 @@ export function TorrentActions({
             role="menuitem"
             className="danger"
             disabled={busy}
-            onClick={remove}
+            onClick={() => {
+              setOpen(false);
+              setAskDelete(true);
+            }}
           >
             🗑 {dict.torrents.delete}
           </button>
         </span>
       )}
-      {msg && <span className="torrents-actions-msg">{msg}</span>}
+      {/* W-19：删除确认（danger + 种子名二次输入；遮罩误触不关） */}
+      <ConfirmDialog
+        open={askDelete}
+        onClose={() => setAskDelete(false)}
+        onConfirm={remove}
+        tone="danger"
+        title={dict.torrents.delete}
+        message={dict.torrents.deleteConfirm}
+        requireText={torrentName}
+        busy={busy}
+      />
     </span>
   );
 }

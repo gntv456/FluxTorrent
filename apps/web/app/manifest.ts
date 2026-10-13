@@ -18,7 +18,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
+    // design-cov-exempt: PWA manifest 安装时静态读取，不吃 CSS 变量
     background_color: "#F6FBFF",
+    // design-cov-exempt: 同上（与 --sky 同值）
     theme_color: "#2FA8FF",
     // 0216：跟随站点默认语言（与 <html lang> 同源），英文站不再挂 zh-CN
     lang: siteLangToLocale(profile.default_language) ?? "zh-CN",

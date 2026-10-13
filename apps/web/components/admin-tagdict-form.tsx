@@ -120,7 +120,9 @@ export function TagEditForm({
           <input
             value={edit.f.bg_color}
             onChange={(e) => set("bg_color", e.target.value)}
-            placeholder="#ff0000"
+            // design-cov-exempt: 标签色输入框 placeholder 是「输入格式」
+            // 的字面样例（存库的是 CSS 字符串，不接受 var() 写法）
+            placeholder="#ff0000" // design-cov-exempt
             className={`${INP} w-24`}
           />
         </Field>

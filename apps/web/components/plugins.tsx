@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { toast } from "@/components/ui/toast";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 import { FrameShop } from "./plugins-frames";
 import { GomokuBoard } from "./plugins-gomoku";
@@ -29,8 +31,8 @@ interface Contest {
 export function ContestBoard() {
   const { dict, locale } = useI18n();
   const t = dict.contests2;
-  const [rows, setRows] = useState<Contest[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
+  // null=加载中（A3 四态：骨架代替静默空表）
+  const [rows, setRows] = useState<Contest[] | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -45,24 +47,25 @@ export function ContestBoard() {
     setBusy(true);
     try {
       await api.post(`/api/v1/contests/${id}/join`);
-      setMsg(t.joined);
+      toast.success(t.joined);
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+        {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
-      setTimeout(() => setMsg(null), 2500);
     }
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
-        </p>
-      )}
-      <div className="brand-wide-table-scroll">
+      {rows === null ? (
+        <SkeletonRows rows={4} />
+      ) : (
+        <div className="brand-wide-table-scroll">
       <table className="nexus-table">
         <tbody>
           <tr>
@@ -80,7 +83,8 @@ export function ContestBoard() {
                 {c.descr && <p className="mt-1 text-xs text-sub">{c.descr}</p>}
               </td>
               <td className="text-xs text-sub">
-                {new Date(c.starts_at).toLocaleDateString(dateLocale(locale))} ~{" "}
+                {new Date(c.starts_at).toLocaleDateString(dateLocale(locale))}
+                {" ~ "}
                 {new Date(c.ends_at).toLocaleDateString(dateLocale(locale))}
               </td>
               <td className="num">{c.entries}</td>
@@ -108,6 +112,7 @@ export function ContestBoard() {
         </tbody>
       </table>
       </div>
+      )}
     </div>
   );
 }

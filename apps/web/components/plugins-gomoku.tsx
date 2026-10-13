@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 
 /** 同类站 插件移植前台（从 components/plugins.tsx 按域拆出）：
  *  五子棋 GomokuBoard——15x15 棋盘、建房/加入、4s 轮询刷新。 */
@@ -28,7 +29,6 @@ export function GomokuBoard({ meId }: { meId: number }) {
   const t = dict.gomoku;
   const [game, setGame] = useState<GomokuGame | null>(null);
   const [gameId, setGameId] = useState<number | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // 加入已有对局（URL ?id=）
@@ -42,11 +42,11 @@ export function GomokuBoard({ meId }: { meId: number }) {
       try {
         const g = await api.get<GomokuGame>(`/api/v1/gomoku/games/${gid}`);
         setGame(g);
-      } catch (e) {
-        setMsg(e instanceof ApiError ? e.message : dict.common.loadFailed);
+      } catch {
+        // 4s 轮询失败静默：单次抖动不该反复弹 toast 打扰对局
       }
     },
-    [dict],
+    [],
   );
   useEffect(() => {
     if (gameId === null) return;
@@ -59,12 +59,16 @@ export function GomokuBoard({ meId }: { meId: number }) {
     setBusy(true);
     try {
       await fn();
-      if (ok) setMsg(ok);
+      // A1 反馈协议：落子/建房/加入结果走 toast（错误带 requestId）
+      if (ok) toast.success(ok);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toast.error(
+        e instanceof ApiError ? e.message : dict.common.networkError,
+        {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
-      setTimeout(() => setMsg(null), 3000);
     }
   }
 
@@ -111,11 +115,9 @@ export function GomokuBoard({ meId }: { meId: number }) {
             }}
           />
         </div>
-        {msg && <p className="text-xs text-sub">{msg}</p>}
       </div>
     );
   }
-
   return (
     <div className="brand-panel flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -175,7 +177,6 @@ export function GomokuBoard({ meId }: { meId: number }) {
           );
         })}
       </div>
-      {msg && <p className="text-center text-xs text-sub">{msg}</p>}
     </div>
   );
 }

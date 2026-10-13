@@ -97,7 +97,7 @@
   box-shadow: var(--shadow-card);
 }
 
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .mainmenu-drop {
     /* 手机上锚点 li 离右缘远（实测 li.right=259 < 375），absolute
        right:0 对齐锚点时 345px 宽的 drop 左缘会冲出视口（x=-86）。
@@ -606,7 +606,7 @@
   border-top: 1px solid var(--brand-line-soft);
   background: var(--brand-paper);
 }
-@media (min-width: 900px) {
+@media (min-width: 1024px) {
   .userbar__stats {
     border-top: 0;
     border-left: 1px solid var(--brand-line-soft);
@@ -1197,7 +1197,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 
 /* ≤1120px：单列堆叠 */
-@media (max-width: 1120px) {
+@media (max-width: 1024px) {
   .bz-login-canvas {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
@@ -1245,7 +1245,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   }
 }
 
-@media (max-width: 440px) {
+@media (max-width: 640px) {
   .bz-login-card {
     padding: 8px 18px 24px;
   }
@@ -1339,7 +1339,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     overflow: hidden;
   }
 }
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .usercp-nav {
     display: flex;
     flex-direction: row;
@@ -1518,7 +1518,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .usercp-dashboard > .uc-more {
   grid-column: 1 / -1;
 }
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .usercp-dashboard {
     grid-template-columns: 1fr;
   }
@@ -1842,7 +1842,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 
 /* 移动端：侧边导航折成横向滚动条 */
-@media (max-width: 860px) {
+@media (max-width: 768px) {
   .usercp-wrap {
     grid-template-columns: 1fr;
   }
@@ -1878,7 +1878,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .home-row--bottom {
   grid-template-columns: minmax(0, 1fr) 340px;
 }
-@media (max-width: 1080px) {
+@media (max-width: 1024px) {
   .home-row--top,
   .home-row--bottom {
     grid-template-columns: 1fr;
@@ -1913,7 +1913,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   grid-column: span 3;
 }
 /* 窄屏退化为单列（与原响应式口径一致） */
-@media (max-width: 1080px) {
+@media (max-width: 1024px) {
   .home-stack.home-stack--custom {
     grid-template-columns: 1fr;
   }
@@ -1993,7 +1993,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   gap: 14px;
   padding: 14px;
 }
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .home-news__body {
     grid-template-columns: 1fr;
   }
@@ -2924,7 +2924,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 /* ============ M6.5 统计条 compact 两列（pgstats，/my-spark /donate 共用） ============
  * auto-fit(150px) 在 390px 会挤成三断列；compact 档固定两列更可读。 */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .pgstats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

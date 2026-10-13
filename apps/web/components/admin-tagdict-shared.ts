@@ -34,8 +34,11 @@ export const EMPTY: Omit<TagRow, "id"> = {
   name: "",
   kind: "plain",
   scope: "torrent",
-  bg_color: "#3b82f6",
-  color: "#ffffff",
+  // W-36：新建标签默认底色走品牌蓝令牌（UI 缺省值，非内容数据）
+  bg_color: "var(--sky)",
+  // design-cov-exempt: 标签字典的 color 是存库 CSS 字符串（用户数据
+  // 格式），标签正文惯例白字——令牌写法会让预览与存库值失真
+  color: "#ffffff", // design-cov-exempt
   font_size: "12px",
   margin: "0 4px 0 0",
   padding: "1px 4px",

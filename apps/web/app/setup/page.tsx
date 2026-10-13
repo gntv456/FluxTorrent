@@ -101,7 +101,7 @@ export default function SetupWizard() {
   // 是一个纯白页，站长既看不到标题也看不到「正在重试」，只会以为站点坏了
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12">
+    <main id="main-content" className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="text-xl font-semibold">🚀 {t("title", "站点安装向导")}</h1>
       <p className="mt-2 text-sm text-muted">
         {t("subtitle", "四步完成建站：选择站型 → 站点信息 → 新手模板 → 合规确认")}
@@ -280,6 +280,6 @@ export default function SetupWizard() {
         />
       )}
 
-    </div>
+    </main>
   );
 }

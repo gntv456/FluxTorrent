@@ -26,6 +26,11 @@ const zhCnBase = {
     cancel: "取消",
     save: "保存",
     themeToggle: "切换主题",
+    // W-42 主题注册表三档名 + 循环提示（theme-toggle.tsx 消费）
+    themeLight: "日间",
+    themeDark: "夜间",
+    themeAuto: "跟随系统",
+    themeNext: "点击切换下一档",
     globalSearchPh: "搜索种子 / 帖子…",
     globalSearchBtn: "搜索",
     gsTorrents: "种子",
@@ -4795,7 +4800,9 @@ const zhCnBase = {
     fCss: "css（仅 border-color / box-shadow）",
     fImage: "框图链接（可选，PNG/GIF，配置后优先于 css）",
     imgPh: "https://…/frame.png（清空则移除）",
-    cssHint:
+    // design-cov-exempt: 头像框 CSS 示例文案——教站长写什么格式的色值
+    // （存库字段只收字面 hex/CSS，不接受 var()），非 UI 配色
+    cssHint: // design-cov-exempt
       "CSS 款示例色：春 #f4a7bb / 夏 #2fa878 / 秋 #d99419 / 冬 #8fc3e8；框图需透明底圆形素材。删除框会先自动摘下所有佩戴者。",
     thId: "ID",
     thPreview: "预览",

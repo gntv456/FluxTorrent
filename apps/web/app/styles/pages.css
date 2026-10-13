@@ -129,7 +129,7 @@ table.brand-wide-table-scroll {
  * 528px），连带 w-full 失效。恢复点取 1280 而非 1024：1024–1279 窄桌面
  * 内容区仍 ~1016px，users 表 min-content 1014 / torrents 780 会顶破
  * （display:table 无滚动容器），该段保持块化内滚。 */
-@media (max-width: 1279.98px) {
+@media not all and (min-width: 1280px) {
   .admin-panel-content table {
     display: block;
     width: max-content;
@@ -1695,7 +1695,7 @@ textarea.bbcode {
   gap: 14px;
 }
 /* 折叠外屏（~342px）单列：minmax 280 也会在 300px 内容宽下溢出轨道 */
-@media (max-width: 400px) {
+@media (max-width: 640px) {
   .task-dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -2447,7 +2447,7 @@ textarea.bbcode {
   color: var(--text-faint);
   text-align: center;
 }
-@media (max-width: 860px) {
+@media (max-width: 768px) {
   .pting-forums {
     /* minmax(0,1fr)：grid 隐式 min-width:auto 会让内部不可断元素
        （搜索框/长标题）把列撑出视口——总验收 375 横滚的根因 */
@@ -3050,7 +3050,7 @@ textarea.bbcode {
   color: var(--text-muted);
   font-size: 13px;
 }
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .up-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3519,7 +3519,7 @@ input.batch-all {
   gap: 12px;
   align-items: start;
 }
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .tsplit {
     display: block;
   }
@@ -3658,7 +3658,7 @@ input.batch-all {
  * 信息密度不可读。统一在此收敛：767px 以下五张网格全部降单列。
  * 断点口径与 M1 断点归一（<768 = compact）一致。
  * （task-shop-grid 复用 task-card-grid 列定义，无独立规则，故无需列条目） */
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .task-card-grid,
   .hall-grid,
   .honor-grid,
@@ -3751,7 +3751,7 @@ input.batch-all {
 .profilet__label {
   display: none;
 }
-@media (max-width: 767px) {
+@media not all and (min-width: 768px) {
   .profilet thead {
     display: none;
   }

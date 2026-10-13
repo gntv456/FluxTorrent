@@ -7,6 +7,11 @@ import { LocaleProvider } from "@/i18n/client";
 import { PwaInstallBar } from "@/components/pwa-install-bar";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { SkipLink } from "@/components/ui/skip-link";
+import {
+  THEMES,
+  THEME_IDS,
+  THEME_STORAGE_KEY,
+} from "@/lib/themes";
 
 /** 移动端方案 M1：viewport-fit=cover 让 env(safe-area-inset-*) 生效——
  *  layout.tsx 底 Tab/操作条的 safe-area 内边距此前在 iOS 全面屏完全不工作。 */
@@ -120,20 +125,32 @@ window.__fluxSwUpdated=false;location.reload();
 
 /** 主题 no-flash：首绘前读 localStorage（缺省跟随系统 prefers-color-scheme）
  *  并写入 <html data-theme>，避免夜间用户刷新时白屏闪烁；
- *  同时同步 PWA theme-color，并监听系统偏好变化（未手动选择时实时跟随）。 */
+ *  同时同步 PWA theme-color，并监听系统偏好变化（未手动选择时实时跟随）。
+ *  W-42：chrome 色表与档位解析搬到 lib/themes.ts 注册表（唯一真源），
+ *  本脚本序列化注册表下发（保持内联、零水合依赖）；"auto" 档存库值
+ *  在首绘即解析为具体主题——CSS 与 meta theme-color 都不认识 "auto"。 */
 function ThemeNoFlash() {
+  const CH = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(THEMES).map(([k, v]) => [k, v.chrome]),
+    ),
+  );
+  const ids = JSON.stringify(THEME_IDS);
   const script =
-    `(function(){var CH={brand:'#f5faff','brand-night':'#0f1424'};` +
+    `(function(){var CH=${CH},IDS=${ids};` +
     `function chrome(t){var m=document.querySelector('meta[name="theme-color"]');` +
     `if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}m.content=CH[t];}` +
     `function apply(t){document.documentElement.dataset.theme=t;chrome(t);}` +
-    `try{var t=localStorage.getItem('flux-theme');` +
-    `if(t!=='brand'&&t!=='brand-night'){` +
-    `t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'brand-night':'brand';` +
+    `function pick(v){return (v==='auto'||IDS.indexOf(v)<0)?` +
+    `(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?IDS[1]:IDS[0]):v;}` +
+    `try{var saved=localStorage.getItem('${THEME_STORAGE_KEY}');` +
+    `apply(pick(saved));` +
+    `if(!saved||saved==='auto'){` +
     `var mq=window.matchMedia('(prefers-color-scheme: dark)');` +
     `if(mq.addEventListener){mq.addEventListener('change',function(e){` +
-    `try{if(!localStorage.getItem('flux-theme')){apply(e.matches?'brand-night':'brand');}}catch(_){}});}}` +
-    `apply(t);}catch(e){}})();`;
+    `try{var cur=localStorage.getItem('${THEME_STORAGE_KEY}');` +
+    `if(!cur||cur==='auto'){apply(e.matches?IDS[1]:IDS[0]);}}catch(_){}});}}` +
+    `}catch(e){}})();`;
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
 

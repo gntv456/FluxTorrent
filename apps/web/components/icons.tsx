@@ -633,6 +633,18 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   moon: <path d="M19.4 14.6A8 8 0 0 1 9.4 4.6a8.4 8.4 0 1 0 10 10Z" />,
+  auto: (
+    <>
+      {/* 跟随系统（W-42）：左实日右虚月 + 竖分界 */}
+      <path d="M12 3.6v16.8" />
+      <path
+        d="M9 5.2a6.4 6.4 0 0 0 0 13.6V5.2Z"
+        fill="currentColor"
+        stroke="none"
+      />
+      <path d="M15 5.2a6.4 6.4 0 0 1 0 13.6V5.2Z" strokeDasharray="2.2 1.6" />
+    </>
+  ),
   globe: (
     <>
       <circle cx="12" cy="12" r="8.4" />

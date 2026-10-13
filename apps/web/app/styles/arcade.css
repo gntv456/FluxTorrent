@@ -301,7 +301,7 @@
   text-overflow: ellipsis; white-space: nowrap;
 }
 .arc-board-col .nv { flex: none; font-weight: 800; }
-@media (max-width: 620px) { .arc-board { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .arc-board { grid-template-columns: 1fr; } }
 
 /* ── 九宫格灯阵（样图 04 的器件：玻璃砖 + 中心徽章 + 押中率角牌 + 斜射光带）──
    颜色一律走 token + color-mix，不抄样张的裸 rgba —— 样张只有暗色，生产有

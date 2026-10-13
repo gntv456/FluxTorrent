@@ -51,6 +51,11 @@ const zhTwBase: Omit<
     cancel: "取消",
     save: "保存",
     themeToggle: "切換主題",
+    // W-42 主题注册表三档名 + 循环提示（theme-toggle.tsx 消费）
+    themeLight: "日間",
+    themeDark: "夜間",
+    themeAuto: "跟隨系統",
+    themeNext: "點擊切換下一檔",
     globalSearchPh: "搜尋種子 / 帖子…",
     globalSearchBtn: "搜尋",
     gsTorrents: "種子",
@@ -4783,7 +4788,9 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     fCss: "css（僅 border-color / box-shadow）",
     fImage: "框圖連結（可選，PNG/GIF，設定後優先於 css）",
     imgPh: "https://…/frame.png（清空則移除）",
-    cssHint:
+    // design-cov-exempt: 头像框 CSS 示例文案——教站长写什么格式的
+    // 色值（存库字段只收字面 hex/CSS，不接受 var()），非 UI 配色
+    cssHint: // design-cov-exempt
       "CSS 款示例色：春 #f4a7bb / 夏 #2fa878 / 秋 #d99419 / 冬 #8fc3e8；框圖需透明底圓形素材。刪除框會先自動摘下所有佩戴者。",
     thId: "ID",
     thPreview: "預覽",

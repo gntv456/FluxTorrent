@@ -52,7 +52,10 @@ export default function BanLogPage() {
         : dict.banlog.normal;
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-12">
+    <main
+      id="main-content"
+      className="mx-auto flex max-w-sm flex-col items-center gap-6 py-12"
+    >
       <Icon name="seed" size={72} className="text-[var(--sky)]" />
       <h1 className="font-display text-3xl">{dict.banlog.title}</h1>
       <p className="-mt-4 text-sm text-sub">{dict.banlog.subtitle}</p>
@@ -119,6 +122,6 @@ export default function BanLogPage() {
           {dict.forgot.backToLogin}
         </Link>
       </p>
-    </div>
+    </main>
   );
 }
