@@ -15,6 +15,7 @@ pub(crate) mod aliases;
 mod common;
 mod download_keys;
 mod nexusphp;
+mod np_query;
 mod ptpp;
 
 // 0267：passkey 维度限流与形状校验 —— RSS 等对外端点共用（避免各自实现漂移）
@@ -95,6 +96,7 @@ pub fn mount_compat(scope: actix_web::Scope) -> actix_web::Scope {
         .service(nexusphp::compat_np_download)
         .service(ptpp::ptpp_user_info)
         .service(download_keys::download_key_issue)
+        .service(download_keys::download_key_revoke)
         .service(download_keys::download_key_fetch);
     // NP 别名薄壳（0267）：只认硬编码路径的老脚本走这里
     scope

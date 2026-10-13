@@ -56,6 +56,10 @@ async fn batch_download(
     let names: std::collections::HashMap<i64, String> =
         rows.into_iter().collect();
 
+    // 资格闸门整单只判一次，且必须在扣费循环之前（P-162）：被停下载/挂起
+    // 的账号此前会把选中的付费种逐个扣完（实测上限 50 × 价）才发现一个都
+    // 发不出去 —— 已购流水留下，重试还会跳过扣费段，钱回不来。
+    torrents::ensure_downloadable(&state.repo.db, auth.id).await?;
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
     let mut skipped: usize = 0;
     for id in &ids {
@@ -92,7 +96,9 @@ async fn batch_download(
         format!("attachment; filename=\"fluxtorrent-{count}items.zip\""),
     ));
     resp.insert_header(("X-Batch-Skipped", skipped.to_string()));
-    Ok(resp.body(zip))
+    // zip 内每个 .torrent 都内嵌本人 announce+passkey：与单种下载同口径
+    // 禁缓存（P-163 的同一条不变式）
+    Ok(crate::openapi_http::no_store(resp.body(zip)))
 }
 
 #[cfg(test)]

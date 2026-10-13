@@ -77,6 +77,55 @@ async fn download_key_issue(
     )))
 }
 
+/// 用户自助吊销请求：torrent_id 缺省 = 吊销本人全部**未过期**凭证；
+/// 指定 torrent_id = 只吊销该种子的（其余凭证不受影响，刷流工具链
+/// 里单种泄露不必伤及全家）。
+#[derive(Deserialize)]
+struct DownloadKeyRevokeReq {
+    torrent_id: Option<i64>,
+}
+
+/// DELETE 语义的吊销 SQL：`($2::BIGINT IS NULL OR torrent_id=$2)` 让
+/// 「全部」与「单个」共用一条语句；`expires_at > now()` 保证已过期行
+/// 不被重复计数（过期行本就不可用，无需真删）。
+const REVOKE_KEY_SQL: &str = "DELETE FROM download_keys \
+     WHERE user_id = $1 \
+       AND ($2::BIGINT IS NULL OR torrent_id = $2) \
+       AND expires_at > now()";
+
+/// POST /downloads/keys/revoke：用户自助吊销临时下载凭证。
+/// 鉴权与签发同口径（require_token）—— 第三方工具只有 Token 没有
+/// 会话，泄露的自救动作必须在同一凭证体系内可完成。
+#[post("/downloads/keys/revoke")]
+async fn download_key_revoke(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: Option<web::Json<DownloadKeyRevokeReq>>,
+) -> DomainResult<HttpResponse> {
+    let tk = require_token(&req, &state).await?;
+    let uid = tk.uid;
+    // 吊销限流独立成键（10 次/分钟）：写操作比签发更敏感，且不与
+    // 签发共用计数可以让「签发被限」不连带锁死自救路径。
+    crate::http::rate_window(&state, &format!("dlkey:revoke:{uid}"), 10, 60)
+        .await?;
+    let torrent_id = body.and_then(|b| b.torrent_id);
+    let n = sqlx::query(REVOKE_KEY_SQL)
+        .bind(uid)
+        .bind(torrent_id)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    Ok(no_store(with_rl(
+        ok(serde_json::json!({
+            "revoked": n,
+            "scope": if torrent_id.is_some() { "torrent" } else { "all" },
+            "hint": "已过期凭证不参与计数；撤销立即生效",
+        })),
+        &tk,
+    )))
+}
+
 #[derive(Deserialize)]
 struct DlTokenQuery {
     token: String,
@@ -136,6 +185,11 @@ async fn download_key_fetch(
     .bind(&hash)
     .execute(&state.repo.db)
     .await;
+    // 资格闸门先于扣费（P-162）：凭证是「30 分钟内免 Authorization」的
+    // 通道，签发之后账号被停下载/挂起/封禁都要当场生效，不能先扣钱再拒发
+    crate::torrents::ensure_downloadable(&state.repo.db, user_id)
+        .await
+        .map_err(actix_web::Error::from)?;
     // 付费种子（0086）与网页下载同口径扣费：凭证下载不得绕过 charge_for_download
     charge_for_download(&state.repo.db, user_id, torrent_id)
         .await
@@ -147,4 +201,31 @@ async fn download_key_fetch(
             .content_type("application/x-bittorrent")
             .body(body),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    /// SQL 语义单测：吊销语句必须同时满足「只删自己的」与「只删未过期的」。
+    /// 表结构与 REVOKE_KEY_SQL 文本同源断言——本 crate 无 sqlx 测试库，
+    /// 用字符串形状锁定关键谓词（user_id 绑定 / torrent_id 可空短路 /
+    /// expires_at > now()），SQL 变更时测试随之失败，防止口径漂移。
+    #[test]
+    fn revoke_sql_scopes_to_owner_unexpired_and_optional_torrent() {
+        let s = super::REVOKE_KEY_SQL;
+        // 只删本人：user_id 以绑定参数出现，而非字面量（防误写成全局 DELETE）
+        assert!(
+            s.to_lowercase().contains("where user_id = $1"),
+            "revoke SQL 必须以 user_id=$1 限定属主: {s}"
+        );
+        // 只删未过期：expires_at > now() 必须存在
+        assert!(
+            s.to_lowercase().contains("expires_at > now()"),
+            "revoke SQL 必须排除已过期凭证: {s}"
+        );
+        // torrent_id 可空短路：缺省吊销全部、指定则只吊销该种子
+        assert!(
+            s.contains("($2::BIGINT IS NULL OR torrent_id = $2)"),
+            "revoke SQL 必须支持 torrent_id 缺省=全部: {s}"
+        );
+    }
 }
