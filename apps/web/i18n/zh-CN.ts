@@ -49,6 +49,40 @@ const zhCnBase = {
       "链接可能已失效，或资源已被删除。种子页地址形如 /torrent/{id}，可回首页搜索关键词找到同类资源。",
     backIndex: "返回首页",
   },
+  // 设计系统原语文案（DS-PLAN-01：components/ui 全部文案的唯一来源）
+  ui: {
+    // Toast（W-01）
+    toastClose: "关闭提示",
+    copyRequestId: "复制 request_id",
+    copied: "已复制",
+    requestIdLabel: "request_id",
+    // ActionFeedback / BusyLabel（W-02，带前缀键名：调用方写
+    // dict.ui.actionFeedback* 而非裸 busy/ok/fail，防与表单域键混淆）
+    actionFeedbackBusy: "处理中…",
+    actionFeedbackOk: "已保存",
+    actionFeedbackFail: "操作失败",
+    // 四态路由（W-03）
+    loadingList: "正在获取列表…",
+    loadingDetail: "正在获取详情…",
+    loadingForm: "正在加载表单…",
+    emptyTitle: "暂无内容",
+    emptyDesc: "这里还没有任何数据。",
+    errorTitle: "加载失败",
+    errorDesc: "数据加载时发生异常，可重试一次；若反复出现，请反馈并附上 request_id。",
+    errorCode: "错误码",
+    showDetails: "技术细节",
+    hideDetails: "收起细节",
+    // SkipLink（W-04）
+    skipToMain: "跳到主要内容",
+    // 表单协议（W-14/16）
+    fieldOptional: "选填",
+    fieldErrorsTitle: "请修正以下问题",
+    confirmOk: "确认",
+    confirmDelete: "删除",
+    confirmTypeTo: "输入「{text}」以确认",
+    // 乐观更新回滚（W-17）
+    optimisticRollback: "操作未生效，已恢复原状",
+  },
   navDrawer: {
     open: "打开导航菜单",
     close: "关闭菜单",
@@ -101,6 +135,9 @@ const zhCnBase = {
     ariaPrimary: "主导航",
     more: "更多",
     discover: "发现",
+    // IA-1（W-30）：发现组 12 项拆两层——资源发现 / 字幕与保种
+    discoverRes: "资源发现",
+    discoverSubs: "字幕与保种",
     spark: "{magic}经济",
     growth: "成长荣誉",
     fun: "娱乐",
@@ -313,6 +350,10 @@ const zhCnBase = {
     delete: "删除",
     moreActions: "更多操作",
     deleteConfirm: "确认删除该种子？此操作不可恢复。",
+    // W-20：列表拉取失败的重试引导（ErrorPanel desc）
+    loadFailedHint: "可能是网络波动或后端暂时无响应，可重试；反复出现请到「联系管理组」反馈。",
+    // W-19：删除成功反馈（toast 协议）
+    deleted: "种子已删除",
     bookmarked: "已收藏，可在我的-收藏中查看",
     alive: "存活",
     today: "今天",
@@ -441,6 +482,10 @@ const zhCnBase = {
     send: "发送",
     sending: "发送中…",
     sentOk: "已发送 ✓",
+    // W-10 试点（toast 协议）：批量操作与文件夹管理的成功反馈
+    bulkDone: "已处理 {n} 条消息",
+    boxCreated: "文件夹已创建",
+    boxRenamed: "文件夹已重命名",
     loading: "加载中…",
     empty: "暂无消息",
     from: "{name} 寄来",

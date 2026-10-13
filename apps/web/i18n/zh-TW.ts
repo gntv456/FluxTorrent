@@ -72,6 +72,35 @@ const zhTwBase: Omit<
       "連結可能已失效，或資源已被刪除。種子頁地址形如 /torrent/{id}，可回首頁搜尋關鍵詞找到同類資源。",
     backIndex: "返回首頁",
   },
+  // 設計系統原語文案（DS-PLAN-01：components/ui 全部文案的唯一來源）
+  ui: {
+    toastClose: "關閉提示",
+    copyRequestId: "複製 request_id",
+    copied: "已複製",
+    requestIdLabel: "request_id",
+    // ActionFeedback / BusyLabel（W-02，帶前綴鍵名）
+    actionFeedbackBusy: "處理中…",
+    actionFeedbackOk: "已儲存",
+    actionFeedbackFail: "操作失敗",
+    loadingList: "正在取得列表…",
+    loadingDetail: "正在取得詳情…",
+    loadingForm: "正在載入表單…",
+    emptyTitle: "暫無內容",
+    emptyDesc: "這裡還沒有任何資料。",
+    errorTitle: "載入失敗",
+    errorDesc: "資料載入時發生異常，可重試一次；若反覆出現，請回報並附上 request_id。",
+    errorCode: "錯誤碼",
+    showDetails: "技術細節",
+    hideDetails: "收起細節",
+    skipToMain: "跳到主要內容",
+    // 表單協定（W-14/16）
+    fieldOptional: "選填",
+    fieldErrorsTitle: "請修正以下問題",
+    confirmOk: "確認",
+    confirmDelete: "刪除",
+    confirmTypeTo: "輸入「{text}」以確認",
+    optimisticRollback: "操作未生效，已恢復原狀",
+  },
   navDrawer: {
     open: "開啟導航選單",
     close: "關閉選單",
@@ -124,6 +153,9 @@ const zhTwBase: Omit<
     ariaPrimary: "主導航",
     more: "更多",
     discover: "發現",
+    // IA-1（W-30）：發現組 12 項拆兩層——資源發現 / 字幕與保種
+    discoverRes: "資源發現",
+    discoverSubs: "字幕與保種",
     spark: "{magic}經濟",
     growth: "成長榮譽",
     fun: "娛樂",
@@ -334,6 +366,10 @@ const zhTwBase: Omit<
     delete: "刪除",
     moreActions: "更多操作",
     deleteConfirm: "確認刪除該種子？此操作不可恢復。",
+    // W-20：列表拉取失敗的重試引導（ErrorPanel desc）
+    loadFailedHint: "可能是網路波動或後端暫時無回應，可重試；反覆出現請到「聯繫管理組」回報。",
+    // W-19：刪除成功回饋（toast 協定）
+    deleted: "種子已刪除",
     bookmarked: "已收藏，可在我的-收藏中查看",
     alive: "存活",
     today: "今天",
@@ -461,6 +497,10 @@ const zhTwBase: Omit<
     send: "傳送",
     sending: "傳送中…",
     sentOk: "已傳送 ✓",
+    // W-10 試點（toast 協定）：批量操作與資料夾管理的成功回饋
+    bulkDone: "已處理 {n} 則訊息",
+    boxCreated: "資料夾已建立",
+    boxRenamed: "資料夾已重新命名",
     loading: "載入中…",
     empty: "暫無訊息",
     from: "{name} 寄來",
