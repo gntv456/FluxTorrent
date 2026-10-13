@@ -193,30 +193,28 @@ try:
        s3 == 400 and cnt("arcade_ranch_pens", "user_id = %d" % P2) == "0",
        "http=%s msg=%s" % (s3, msg((s3, r3))[:60]))
 
-        # P-183 的机制证据（不依赖撞上时间窗）：同一条 SELECT … FOR UPDATE，
-    # 包在事务里第二发会等锁，不包事务两发都立刻读到同一行
-    psql("UPDATE arcade_ranch_pens SET ready_at = now() WHERE "
-         "user_id = %d AND animal = 'chick'" % P1)   # 自造可收态
-    LOCKQ = ("BEGIN; SELECT count(*) FROM arcade_ranch_pens WHERE user_id = "
-             "%d AND animal = 'chick' AND ready_at <= now() FOR UPDATE OF p; "
+        # P-183 的机制证据（不依赖撞上时间窗）：`FOR UPDATE` 只在同一事务里挡人。
+    # 另一会话 BEGIN + SELECT … FOR UPDATE + pg_sleep(3) 持锁时，带 FOR UPDATE
+    # 的读必须等待；而修前 `ranch_collect` 没有事务 ⇒ 它的 SELECT 一返回锁就没了，
+    # 两发都不用等（那正是 K2a 的红：台账双计 80 / 实收 40）。
+    LOCKQ = ("BEGIN; SELECT p.user_id FROM arcade_ranch_pens p WHERE "
+             "p.user_id = %d AND p.animal = 'chick' FOR UPDATE OF p; "
              "SELECT pg_sleep(3); COMMIT" % P1)
-    solo = psql("SELECT count(*) FROM arcade_ranch_pens WHERE user_id = %d "
-                "AND animal = 'chick' AND ready_at <= now() FOR UPDATE OF p"
-                % P1)
     r2 = subprocess.Popen(
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-q", "-d",
-         "fluxtorrent", "-c", LOCKQ], capture_output=True, text=True,
-        encoding="utf-8")
+         "fluxtorrent", "-c", LOCKQ], stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, universal_newlines=True)
     time.sleep(1)
-    held = psql("SELECT count(*) FROM arcade_ranch_pens WHERE user_id = %d "
-                "AND animal = 'chick' AND ready_at <= now() FOR UPDATE OF p"
-                % P1)
-    r2.wait(timeout=30)
-    ok("K2c 机制证据：不包事务时 FOR UPDATE 读得到（%s 行）、包在事务里被另一"
-       "会话持锁时同样立刻读到（%s 行）⇒ 锁根本没挡住第二发；collect 已收进事务"
-       "后这条判据仍成立（它是库层事实），改动的意义在 UPDATE 与入账同事务"
-       % (solo, held), solo == "1" and held == "1",
-       "solo=%s held=%s" % (solo, held))
+    t0 = time.time()
+    blocked = psql("SELECT p.user_id FROM arcade_ranch_pens p WHERE p.user_id"
+                   " = %d AND p.animal = 'chick' FOR UPDATE OF p" % P1)
+    waited = round(time.time() - t0, 1)
+    r2.wait(timeout=40)
+    ok("K2c 机制证据：另一会话在事务里持锁时，这条 FOR UPDATE 读必须等"
+       "（实测等 %.1fs ≥ 2s，读到=%s）⇒ 锁只在事务内有效，而修前的 collect "
+       "没在事务里" % (waited, blocked),
+       blocked == str(P1) and waited >= 2.0,
+       "waited=%s blocked=%s" % (waited, blocked))
 
     # ============ K3 投喂是空操作（P-185，只取证不断言） ============
     rd0 = psql("SELECT floor(extract(epoch from ready_at))::text FROM "
