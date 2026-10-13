@@ -25,6 +25,10 @@ pub async fn download(
     // 第 6 次点击就 429。现在显式传 20。
     throttle_limited(&state, format!("dl:{}", auth.id), 20).await?;
     let torrent_id = path.into_inner();
+    // 资格闸门排在扣费之前（P-162）：付费种 + 被停下载/挂起账号原先会先
+    // 扣魔力、写「已购」，再由 build_torrent_bytes 拒发 —— 钱当场花了、
+    // 文件没拿到，重试还被已购记录放行扣费段。
+    torrents::ensure_downloadable(&state.repo.db, auth.id).await?;
     // 付费下载（0086）：免费/发布者/已购直接放行，否则扣费（余额不足拦截）
     torrents::charge_for_download(&state.repo.db, auth.id, torrent_id).await?;
     let body = build_torrent_bytes(&state, auth.id, torrent_id).await?;
@@ -38,7 +42,9 @@ pub async fn download(
             "application/x-bittorrent",
         ),
     );
-    Ok(resp)
+    // 响应体内嵌本人 announce（含 passkey）：与 download.php / 凭证下载
+    // 同一口径禁缓存（P-163 —— 同一份字节，另两路口都带，唯独网页口漏了）
+    Ok(crate::openapi_http::no_store(resp))
 }
 
 /// 构建给指定用户的 .torrent 字节（注入本站 announce + passkey + private=1）。
@@ -82,24 +88,10 @@ pub async fn build_torrent_bytes(
         .find_user_by_id(user_id)
         .await?
         .ok_or(DomainError::Unauthorized)?;
-    // 下载闸门：与 tracker announce 的 left>0 拦截同口径——被停下载/挂起账号
-    // 不应还能提前拿到 .torrent 文件
-    let (download_enabled, suspended): (bool, bool) = sqlx::query_as(
-        "SELECT download_enabled, suspended FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .ok_or(DomainError::Unauthorized)?;
-    if suspended {
-        return Err(DomainError::Forbidden);
-    }
-    if !download_enabled {
-        return Err(DomainError::Validation(
-            "您的下载权限已被暂停，请联系管理组".into(),
-        ));
-    }
+    // 下载闸门：判据只有一份（`torrents::ensure_downloadable`）——被停下载/
+    // 挂起账号不应还能提前拿到 .torrent 文件。三条下载路都在扣费**之前**
+    // 调它，这里再兜一次：将来若有新调用方漏判，最坏是拒单变晚，不是放行。
+    crate::torrents::ensure_downloadable(&state.repo.db, user_id).await?;
     // info dict 不动 → info_hash 与上传时一致（M05）
     async fn setting(db: &sqlx::PgPool, name: &str) -> Option<String> {
         sqlx::query_scalar::<_, String>(

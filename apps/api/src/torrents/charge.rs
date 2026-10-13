@@ -5,7 +5,42 @@ use sqlx::PgPool;
 
 use crate::errors::{DomainError, DomainResult};
 
-/// 付费下载扣费（0086，NP 价格 口径）：下载前调用。
+/// 下载资格闸门（P-162 新立的唯一判据）：挂起 / 被停下载的账号不得拿到
+/// .torrent，与 tracker 对 `left > 0` 的拦截同口径。
+///
+/// **必须在 `charge_for_download` 之前调用**。审计实测（批四十二）：原先
+/// 只有 `download.php` 先判资格，网页口、临时凭证口、批量口都把扣费排在
+/// 前面 —— 付费种 + 被停下载/挂起/封禁账号会先扣走魔力、写好「已购」流水，
+/// 再由 `build_torrent_bytes` 拒发。单种是「扣 500 拿不到文件」，批量口
+/// 一次最多能把 50 个付费种全扣完再回 404，且已购记录让此后重试直接跳过
+/// 扣费段（钱回不来，文件照样拿不到）。
+/// `build_torrent_bytes` 内部也走本函数：漏调不会放行，只会把拒单时机
+/// 推迟到扣费之后。
+pub async fn ensure_downloadable(
+    db: &PgPool,
+    user_id: i64,
+) -> DomainResult<()> {
+    let (download_enabled, suspended): (bool, bool) = sqlx::query_as(
+        "SELECT download_enabled, suspended FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or(DomainError::Unauthorized)?;
+    if suspended {
+        return Err(DomainError::Forbidden);
+    }
+    if !download_enabled {
+        return Err(DomainError::Validation(
+            "您的下载权限已被暂停，请联系管理组".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// 付费下载扣费（0086，NP 价格 口径）：下载前调用（资格闸门须已在前面
+/// 跑过 —— 见 `ensure_downloadable`）。
 /// 免费/发布者本人/已购 → 直接放行；否则原子扣款 → 发布者得 (100-税)% → 税入当月魔法池。
 /// 全程单事务，余额不足返回校验错误。
 /// 审计修复（P0 错账）：旧版直接 UPDATE users.spark_balance、不写 spark_ledger ——

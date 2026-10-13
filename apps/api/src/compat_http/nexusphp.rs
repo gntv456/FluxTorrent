@@ -3,13 +3,15 @@
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
+use super::np_query::{resolve_alive, NpListQuery};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::openapi_http::{no_store, require_token, with_rl};
 use crate::publish_http::build_torrent_bytes;
 use crate::state::AppState;
 use crate::torrents::{
-    charge_for_download, list_torrents_noclamp, CatMap, MediaMap, TorrentFilter,
+    charge_for_download, ensure_downloadable, list_torrents_noclamp, CatMap,
+    MediaMap, TorrentFilter,
 };
 
 // ============ NexusPHP 兼容端点（Token 鉴权，只读） ============
@@ -87,84 +89,6 @@ pub(super) async fn np_user_json(
         "ratio_display": ratio_display,
         "passkey": passkey, // 本人 Token 才能读取；工具用它拼接 download.php 与 tracker 汇报
     }))
-}
-
-#[derive(Deserialize)]
-struct NpListQuery {
-    #[serde(default)]
-    page: Option<i64>,
-    #[serde(default)]
-    pagesize: Option<i64>,
-    #[serde(default)]
-    keyword: Option<String>,
-    #[serde(default)]
-    category: Option<i32>,
-    /// 搜索范围（NP 口径 0=标题 1=简介 3=发布者 4=IMDb）：主流工具（PT-Plugin-Plus 等）透传
-    #[serde(default)]
-    search_area: Option<i32>,
-    /// 匹配模式（0=and 2=精确）
-    #[serde(default)]
-    search_mode: Option<i32>,
-    /// IMDb 关键字（设置后等效 search_area=4）
-    #[serde(default)]
-    imdb: Option<String>,
-    /// 存活筛选（0102 内部口径）：0=全部 1=仅活种 2=仅断种；
-    /// **对外缺省 = 0（全部）** —— 新种在有人做种前也必须对第三方可见，
-    /// 否则冷启动期工具搜索恒空（被误判成「对接坏了」）。
-    #[serde(default)]
-    alive: Option<i16>,
-    /// 旧习惯兼容：1/true=全部（含断种） 0/false=仅活种。给了 alive 时以 alive 为准。
-    /// 取 String 而非 bool —— 老工具常发 `include_dead=1`，serde 的 bool
-    /// 遇 "1" 会整条 Query 反序列化失败（此项目历史上踩过同名坑）。
-    #[serde(default)]
-    include_dead: Option<String>,
-    // ===== 0268：对外层透出站内已有的高级筛选（此前只有 9 个参数，
-    // 「只看 free、>5GB、做种<3」这类刷流规则做不了；口径与网页搜索一致） =====
-    /// 优惠筛选：free / x2 / half / any / none，支持逗号多选（与站内搜索同口径）
-    #[serde(default)]
-    promo: Option<String>,
-    /// 体积下/上界：字节数或 `5GB`/`500MB`/`2TB`（与站内搜索同一解析器）
-    #[serde(default)]
-    size_min: Option<String>,
-    #[serde(default)]
-    size_max: Option<String>,
-    /// 做种数下/上界（含）
-    #[serde(default)]
-    min_seeders: Option<i32>,
-    #[serde(default)]
-    max_seeders: Option<i32>,
-    /// 发布时间范围（`YYYY-MM-DD`，含当天；非法值丢弃不筛）
-    #[serde(default)]
-    date_from: Option<String>,
-    #[serde(default)]
-    date_to: Option<String>,
-    /// 发布者用户名（模糊）
-    #[serde(default)]
-    owner: Option<String>,
-    /// 官种：1/true = 仅官种
-    #[serde(default)]
-    official: Option<String>,
-    /// 排序：created(默认)/seeders/size/completed，可加 `_asc` 反转
-    #[serde(default)]
-    sort: Option<String>,
-    /// 标签：tag_dict.id 逗号串；`tag_mode=any|all`（缺省 any）
-    #[serde(default)]
-    tags: Option<String>,
-    #[serde(default)]
-    tag_mode: Option<String>,
-}
-
-/// 解析对外存活口径：alive 优先，其次 include_dead，最后缺省「全部」。
-fn resolve_alive(alive: Option<i16>, include_dead: Option<&str>) -> i16 {
-    if let Some(v) = alive {
-        if (0..=2).contains(&v) {
-            return v;
-        }
-    }
-    match include_dead.map(str::trim) {
-        Some("0") | Some("false") | Some("no") => 1,
-        _ => 0,
-    }
 }
 
 /// 种子列表（NP torrents.php 字段口径，游标分页内部转 page 语义）
@@ -403,8 +327,7 @@ async fn compat_np_download(
         .await
         .map_err(actix_web::Error::from)?;
     let user_id: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2 \
-         AND download_enabled AND NOT suspended",
+        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
     )
     .bind(&q.passkey)
     .fetch_optional(&state.repo.db)
@@ -413,6 +336,13 @@ async fn compat_np_download(
     let Some(user_id) = user_id else {
         return Err(DomainError::Unauthorized.into());
     };
+    // 这一路只把「凭证是不是本人」判在这里；「停下载/挂起」不再顺手报成
+    // 401（P-164：凭证没坏，报未认证会让刷流工具去重置 passkey、把账号
+    // 问题当对接问题查）。资格判定改由 ensure_downloadable 给出可行动的
+    // 原话，且**必须在扣费之前**（P-162）。
+    ensure_downloadable(&state.repo.db, user_id)
+        .await
+        .map_err(actix_web::Error::from)?;
     // 付费种子（0086）与网页下载同口径扣费：兼容端点不得绕过 charge_for_download
     charge_for_download(&state.repo.db, user_id, q.id)
         .await
