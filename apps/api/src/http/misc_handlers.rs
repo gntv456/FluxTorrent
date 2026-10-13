@@ -188,12 +188,35 @@ pub async fn rss_info(
             format!("http://{host}")
         }
     };
+    // 0352：加挂用户有效 RSS token 列表（id/name/created_at——不回明文，
+    // 明文只在创建/轮换响应里出现一次）。passkey 字段保留：旧 URL 永远兼容。
+    let tokens: Vec<(i64, String, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT id, name, created_at FROM rss_tokens \
+             WHERE user_id = $1 AND revoked_at IS NULL \
+             ORDER BY created_at DESC, id DESC",
+        )
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default();
+    let token_items: Vec<serde_json::Value> = tokens
+        .iter()
+        .map(|(id, name, at)| {
+            serde_json::json!({
+                "id": id,
+                "name": name,
+                "created_at": at,
+            })
+        })
+        .collect();
     Ok(ok(serde_json::json!({
         "urls": [
             { "label": "全部种子", "url": format!("{}/api/v1/rss/{}", base, passkey) },
             { "label": "官种", "url": format!("{}/api/v1/rss/{}?official=true", base, passkey) },
         ],
         "passkey": passkey,
+        "tokens": token_items,
         "base": format!("{}/api/v1/rss/", base),
     })))
 }

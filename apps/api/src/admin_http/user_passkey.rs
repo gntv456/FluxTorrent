@@ -103,6 +103,20 @@ pub async fn admin_passkey_reset(
     let (username, _) = target.ok_or(DomainError::NotFound(uid))?;
     // 代为重置同样是处置动作：旧钥立刻失效（grace=false）
     let passkey = state.repo.update_passkey(uid, false).await?;
+    // 轮换联动（0352/竞品对标批）：与自助轮换同口径——未过期下载键与
+    // RSS token 不活过一次管理端处置（见 me_security::rotate_passkey）
+    for sql in [
+        "DELETE FROM download_keys WHERE user_id = $1 \
+         AND expires_at > now()",
+        "UPDATE rss_tokens SET revoked_at = now() \
+         WHERE user_id = $1 AND revoked_at IS NULL",
+    ] {
+        sqlx::query(sql)
+            .bind(uid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     crate::http::bump_guard_ver(&state).await;
     state
         .repo

@@ -5,11 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { catPath } from "@/lib/site-profile";
+import { RssTokenPanel, type RssTokenMeta } from "./rss-tokens";
 
 interface RssInfo {
   urls: { label: string; url: string }[];
   passkey: string;
   base: string;
+  /** 0352：用户有效 RSS token 元数据（无明文；面板内创建/轮换才暂存明文） */
+  tokens?: RssTokenMeta[];
 }
 
 interface ProfileCats {
@@ -243,6 +246,10 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
           ))}
         </div>
       </section>
+
+      {/* 0352：默认链接（passkey）之外的第二段——命名 token 管理。
+       *  passkey 直链保留在上方「订阅链接」区，旧 URL 永远兼容。 */}
+      <RssTokenPanel base={info.base} initial={info.tokens ?? []} />
     </div>
   );
 }

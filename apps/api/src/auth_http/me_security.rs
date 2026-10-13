@@ -20,6 +20,25 @@ pub async fn rotate_passkey(
     // （留宽限窗等于没撤销；改密顺带轮换那条路才给宽限，见
     // repo::update_passkey 与 me_security 的改密分支）
     let pk = state.repo.update_passkey(auth.id, false).await?;
+    // 轮换联动（0352/竞品对标批）：旧钥名下的一切凭据随处置动作一并作废——
+    // 未过期下载键（30 分钟窗内可复用）与 RSS token（fxr_，与 passkey 解耦
+    // 的命名订阅凭证）都不该活过一次「我怀疑密钥泄露」的轮换。
+    sqlx::query(
+        "DELETE FROM download_keys WHERE user_id = $1 \
+         AND expires_at > now()",
+    )
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE rss_tokens SET revoked_at = now() \
+         WHERE user_id = $1 AND revoked_at IS NULL",
+    )
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "passkey_rotate", Some(auth.id))
