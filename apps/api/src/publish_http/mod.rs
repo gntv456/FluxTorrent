@@ -10,6 +10,8 @@ mod download;
 mod group;
 mod ptgen;
 mod ptgen_html;
+// TMDB 第五源直连适配（0358）：fetch_meta 按 host 分流到这里
+mod ptgen_tmdb;
 mod upload;
 // 发种前置校验（0288）：把「报错时种子已入库」的校验全部提到 INSERT 之前
 mod upload_body;
@@ -19,6 +21,8 @@ mod upload_artifacts;
 // 抓轨日志闸门与落库（0312）
 mod upload_logcheck;
 mod upload_precheck;
+// 0355 信用分免审（第五条）：阈值读取与口径锁定单测
+mod upload_credits;
 // 墓碑复活（0288）：同作者删除后重发同一 .torrent 走 UPDATE 复用原 id
 mod upload_files_promo;
 mod upload_revive;

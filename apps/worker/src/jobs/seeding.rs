@@ -102,6 +102,11 @@ pub async fn seeding_reward(
     .bind(stale_secs)
     .execute(db)
     .await?;
+    // 0354 harem 邀请分润：紧随主结算的独立语句（同小时参数、独立 kind
+    // 'seeding_referral'，实现与钳制口径单测在 seeding_referral.rs）。
+    // 余额重算段（下方「近 2 小时有流水」）以 kind 无关的窗口取数，
+    // 新 kind 的行天然被覆盖，无需放宽条件。
+    super::seeding_referral::seeding_referral(db, &hour).await?;
     // 0072：顺手物化做种体积（ptppUserInfo 的 seedingSize 字段来源；earners 已扫全量做种行）
     sqlx::query(
         "UPDATE users u SET seeding_size = COALESCE(s.sz, 0) \
