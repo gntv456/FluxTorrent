@@ -43,7 +43,12 @@ async fn admin_user_medals(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<UserMedalQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-247：这一页给的是**每个人的勋章名、授予/到期时间与是否过期**，同页
+    // 对应的删除口要 `medal.manage`(93)，读口却只判 `staff()` ⇒ 91 发布员
+    // 能把「谁有什么荣誉、哪个已过期」整页读走。台账与操作共用一把键。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }
@@ -71,7 +76,10 @@ async fn admin_user_medals(
     .bind(q.uid)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
+    // P-248：旧写法 `.unwrap_or(0)` 把「count 查询失败」当成 0 ——列表里
+    // 明明有行、面板却写「共 0 条」，翻页器也算不出页数（账面自相矛盾且
+    // 无声）。同函数上面的 rows 已经是错误传播，两条判据必须同规格。
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(
         serde_json::json!({ "rows": rows, "total": total, "page": q.page.max(1), "per_page": q.per_page }),
     ))

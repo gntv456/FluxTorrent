@@ -134,6 +134,12 @@ pub(super) async fn user_medal_redate(
     body: web::Json<MedalRedateReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-246：同域的授予（`/admin/users/{id}/medal/{medal_id}`）与回收
+    // （`/admin/user-medals/delete`）都判 `medal.manage`，只有改期这一条不判——
+    // 而它写的正是「别人的荣誉有效期」，`days=null` 还能把限时章改成**永久**。
+    // 下面的 `ensure_outranks` 只是等级护栏（批六十五第七段病形），不是能力档。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
+        .await?;
     let (uid, medal_id) = path.into_inner();
     ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
     if let Some(d) = body.days {
