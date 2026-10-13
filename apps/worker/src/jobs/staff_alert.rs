@@ -63,22 +63,35 @@ pub(crate) async fn staff_alert(
 }
 
 /// 7 天内是否已就同一前缀告警过（去重要读得出来，不能靠 INSERT 报错）。
+///
+/// ⚠ 返回类型必须是 `bool`：本件首版写 `SELECT 1` + `query_scalar::<_, i64>`，
+/// PG 的 `1` 是 int4，sqlx 按 i64 解码报错 ⇒ 错误被当成「没告警过」，
+/// 去重整条失效，每个 tick 重发一封（闸门 BQ 的 R4a/R4c 抓到并钉住）。
 pub(crate) async fn alerted_within_7d(
     db: &PgPool,
     permission: &str,
     subject: &str,
     body_prefix: &str,
 ) -> bool {
-    sqlx::query_scalar::<_, i64>(
-        "SELECT 1 FROM staffmessages \
+    let r = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (SELECT 1 FROM staffmessages \
           WHERE permission = $1 AND subject = $2 AND body LIKE $3 || '%' \
-            AND created_at > now() - interval '7 days' LIMIT 1",
+            AND created_at > now() - interval '7 days')",
     )
     .bind(permission)
     .bind(subject)
     .bind(body_prefix)
-    .fetch_optional(db)
-    .await
-    .unwrap_or(None)
-    .is_some()
+    .fetch_one(db)
+    .await;
+    match r {
+        Ok(hit) => hit,
+        Err(e) => {
+            tracing::warn!(
+                %e,
+                subject,
+                "alerted_within_7d: 去重读取失败，本轮按未告警处理"
+            );
+            false
+        }
+    }
 }
