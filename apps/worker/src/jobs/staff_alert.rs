@@ -24,7 +24,10 @@
 use sqlx::PgPool;
 
 /// 发一条管理组告警，返回真正写入的行数（0 = 此刻没有可署名的在册职员）。
-/// 占位符顺序：`$2=subject`、`$3=body`、`$4=permission`。
+/// 占位符顺序：`$1=subject`、`$2=body`、`$3=permission`。sqlx 按**绑定顺序**
+/// 编号，写 `$2..$4` 会让 PG 认为要 4 个参数而只收到 3 个（bind message
+/// supplies 3 parameters ... requires 4）——本件首版就中过这一枪，
+/// 是它自己新加的 `warn!` 在一轮里把它暴露出来的。
 pub(crate) async fn staff_alert(
     db: &PgPool,
     subject: &str,
@@ -34,7 +37,7 @@ pub(crate) async fn staff_alert(
     // `t.uid IS NOT NULL` 是关键：把「没有收件署名」变成不插入，而不是插 NULL
     let r = sqlx::query(
         "INSERT INTO staffmessages (user_id, subject, body, permission) \
-         SELECT t.uid, $2, $3, $4 \
+         SELECT t.uid, $1, $2, $3 \
          FROM (SELECT MIN(id) AS uid FROM users \
                 WHERE class_id >= 90 AND status < 2) t \
          WHERE t.uid IS NOT NULL",
