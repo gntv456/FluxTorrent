@@ -58,6 +58,10 @@ pub const UPLOADERS_VIEW: &str = "uploaders.view";
 /// 会员名单/详情/下载流水（0363，批六十三 P-233）：版主及以上可查人，发布员
 /// 不该手里有一整本名册
 pub const USER_VIEW: &str = "user.view";
+/// 给成员登记考核岗位与金额（0365，批六十五 P-240）：写进去的是待发金额
+pub const JIXIAO_ASSIGN: &str = "jixiao.assign";
+/// 举报工单的认领/放号/结案（P-243）：结案还会给举报人发私信
+pub const REPORTS_HANDLE: &str = "reports.handle";
 /// 登录日志（P-234）：用户名 + 来源 IP + 成败，属安全事件数据
 pub const LOGINLOGS_VIEW: &str = "loginlogs.view";
 /// 魔力流水 / 种子购买流水（P-235）：含 balance_after 余额，与凭证同档
