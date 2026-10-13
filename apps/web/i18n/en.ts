@@ -72,6 +72,35 @@ const enBase: Omit<
       "The link may have expired, or the resource was removed. Torrent URLs look like /torrent/{id}; go back home and search for similar resources.",
     backIndex: "Back to home",
   },
+  // Design-system primitive copy (DS-PLAN-01: single source for components/ui)
+  ui: {
+    toastClose: "Dismiss notification",
+    copyRequestId: "Copy request_id",
+    copied: "Copied",
+    requestIdLabel: "request_id",
+    // ActionFeedback / BusyLabel (W-02, prefixed key names)
+    actionFeedbackBusy: "Working…",
+    actionFeedbackOk: "Saved",
+    actionFeedbackFail: "Action failed",
+    loadingList: "Fetching list…",
+    loadingDetail: "Fetching details…",
+    loadingForm: "Loading form…",
+    emptyTitle: "Nothing here yet",
+    emptyDesc: "There is no data to show right now.",
+    errorTitle: "Failed to load",
+    errorDesc: "Something went wrong while loading. Try again; if it keeps failing, report it with the request_id attached.",
+    errorCode: "Error code",
+    showDetails: "Technical details",
+    hideDetails: "Hide details",
+    skipToMain: "Skip to main content",
+    // Form protocol (W-14/16)
+    fieldOptional: "optional",
+    fieldErrorsTitle: "Please fix the following",
+    confirmOk: "Confirm",
+    confirmDelete: "Delete",
+    confirmTypeTo: "Type \"{text}\" to confirm",
+    optimisticRollback: "The action did not go through; changes were reverted",
+  },
   navDrawer: {
     open: "Open navigation menu",
     close: "Close menu",
@@ -124,6 +153,9 @@ const enBase: Omit<
     ariaPrimary: "Primary navigation",
     more: "More",
     discover: "Discover",
+    // IA-1 (W-30): discover group split in two tiers
+    discoverRes: "Resources",
+    discoverSubs: "Subtitles & Seeding",
     spark: "{magic} Economy",
     growth: "Growth & Honors",
     fun: "Fun",
@@ -342,6 +374,10 @@ const enBase: Omit<
     delete: "Delete",
     moreActions: "More actions",
     deleteConfirm: "Delete this torrent? This cannot be undone.",
+    // W-20: retry hint for failed list loads (ErrorPanel desc)
+    loadFailedHint: "Possibly a network hiccup or a temporarily unresponsive backend. Try again; if it keeps failing, report it via Contact Staff.",
+    // W-19: delete success feedback (toast protocol)
+    deleted: "Torrent deleted",
     bookmarked: "Bookmarked — see My → Bookmarks",
     alive: "Alive",
     today: "today",
@@ -471,6 +507,10 @@ const enBase: Omit<
     send: "Send",
     sending: "Sending…",
     sentOk: "Sent ✓",
+    // W-10 pilot (toast protocol): success feedback for bulk ops & boxes
+    bulkDone: "{n} message(s) processed",
+    boxCreated: "Folder created",
+    boxRenamed: "Folder renamed",
     loading: "Loading…",
     empty: "No messages",
     from: "From {name}",
