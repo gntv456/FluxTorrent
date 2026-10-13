@@ -98,7 +98,10 @@ JUNK0 = sorted({x for x in psql(
 
 
 def real_role(k):
-    return psql("SELECT count(*) FROM roles WHERE key = '%s'" % k)         != "0" or psql("SELECT count(*) FROM user_classes WHERE "
+    if psql("SELECT count(*) FROM roles WHERE key = '%s'" % k) != "0":
+        return True
+    return psql("SELECT count(*) FROM user_classes WHERE "
+                "id::text = '%s'" % k) != "0"
                        "id::text = '%s'" % k) != "0"
 
 
