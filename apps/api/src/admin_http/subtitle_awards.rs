@@ -32,11 +32,16 @@ async fn awards_candidates(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
-    // P-258：候选池给的是 username + 字幕标题 + score + rating + downloads，而同文件
+    let auth = staff(&req, &state).await?;
+    // P-258：候选池给的是 username + 字幕标题 + score + rating + downloads
+    // ，而同文件
     // 的授奖口要 `subtitles.grant`(95) ⇒ 台账与操作同一把键。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SUBTITLES_GRANT)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SUBTITLES_GRANT,
+    )
+    .await?;
     let period = q.get("period").cloned().unwrap_or_else(default_period);
     let rows: Vec<CandidateRow> = sqlx::query_as(
         "SELECT a.id, a.period, a.subtitle_id, a.user_id, u.username, \
@@ -63,10 +68,15 @@ async fn awards_build(
     q: web::Query<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    // P-259：这是**写口**（重建候选池 = 决定谁在池子里、谁能拿奖），过去只判
+    // P-259：这是**写口**（重建候选池 = 决定谁在池子里、谁能拿奖），过去只
+    // 判
     // staff()；与授奖同键。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SUBTITLES_GRANT)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SUBTITLES_GRANT,
+    )
+    .await?;
     let period = q.get("period").cloned().unwrap_or_else(default_period);
     if period.len() != 7
         || !period
