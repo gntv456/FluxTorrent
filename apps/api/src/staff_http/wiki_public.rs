@@ -29,7 +29,15 @@ pub async fn wiki_public_index(
     .fetch_all(&state.repo.db)
     .await
     .map_err(internal)?;
-    Ok(ok(rows))
+    // 必须投影成对象：`Vec<tuple>` 直接序列化是 JSON 数组的数组，而 web 侧
+    // （app/(main)/wiki/[[...slug]]/page.tsx:19）按 {id,slug,title} 取字段 ⇒
+    // 元组形态下目录页每条的 slug/title 都是 undefined（批十一 /friends 同型）
+    Ok(ok(rows
+        .into_iter()
+        .map(|(id, slug, title)| {
+            serde_json::json!({ "id": id, "slug": slug, "title": title })
+        })
+        .collect::<Vec<_>>()))
 }
 
 /// GET /wiki/{slug}：正文（visible=true 才返回，否则 404 信封）。

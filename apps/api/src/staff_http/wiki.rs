@@ -54,7 +54,9 @@ pub(crate) fn validate_wiki_body(b: &WikiBody) -> DomainResult<()> {
             "slug 需为小写字母/数字/连字符，≤60 字符".into(),
         ));
     }
-    if b.title.trim().is_empty() || b.title.len() > 100 {
+    // 按字符判长：wiki 页名是站长写的中文标题，按字节判会让 34 字的正常
+    // 页名被自拒（custom_pages 同族，见批五十三 P-200）
+    if b.title.trim().is_empty() || b.title.chars().count() > 100 {
         return Err(DomainError::Validation("标题需 1-100 字符".into()));
     }
     if b.body.len() > WIKI_BODY_LIMIT {
@@ -132,7 +134,15 @@ pub async fn wiki_create(
     })?;
     state
         .repo
-        .audit(Some(auth.id), "wiki_create", Some(id))
+        .audit_detail(
+            Some(auth.id),
+            "wiki_create",
+            Some(id),
+            None,
+            Some(serde_json::json!({
+                "slug": body.slug.trim(), "title": body.title.trim()
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
@@ -187,7 +197,15 @@ pub async fn wiki_update(
     }
     state
         .repo
-        .audit(Some(auth.id), "wiki_update", Some(*path))
+        .audit_detail(
+            Some(auth.id),
+            "wiki_update",
+            Some(*path),
+            None,
+            Some(serde_json::json!({
+                "slug": body.slug.trim(), "title": body.title.trim()
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "updated": true })))
 }
@@ -201,8 +219,22 @@ pub async fn wiki_delete(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     require_wiki_manage(&state, &auth).await?;
+    let pid = path.into_inner();
+    // 先读回对象：revisions 随 ON DELETE CASCADE 一起没了，删完再问
+    // 「删的是哪一页、谁删的」就完全没有出处
+    let gone: Option<(String, String)> = sqlx::query_as(
+        "SELECT slug, title FROM wiki_pages WHERE id = $1",
+    )
+    .bind(pid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(internal)?;
+    let (slug, title) = match gone {
+        Some(t) => t,
+        None => return Err(DomainError::Validation("页面不存在".into())),
+    };
     let n = sqlx::query("DELETE FROM wiki_pages WHERE id = $1")
-        .bind(path.into_inner())
+        .bind(pid)
         .execute(&state.repo.db)
         .await
         .map_err(internal)?
@@ -210,7 +242,16 @@ pub async fn wiki_delete(
     if n == 0 {
         return Err(DomainError::Validation("页面不存在".into()));
     }
-    state.repo.audit(Some(auth.id), "wiki_delete", None).await;
+    state
+        .repo
+        .audit_detail(
+            Some(auth.id),
+            "wiki_delete",
+            Some(pid),
+            None,
+            Some(serde_json::json!({ "slug": slug, "title": title })),
+        )
+        .await;
     Ok(ok(serde_json::json!({ "deleted": true })))
 }
 

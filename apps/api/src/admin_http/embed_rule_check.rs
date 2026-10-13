@@ -63,7 +63,7 @@ pub fn validate_body(b: &EmbedRuleBody) -> DomainResult<()> {
     if b.provider.trim().is_empty() || b.provider.len() > 40 {
         return Err(DomainError::Validation("provider 需 1-40 字符".into()));
     }
-    if b.name_zh.trim().is_empty() || b.name_zh.len() > 60 {
+    if b.name_zh.trim().is_empty() || b.name_zh.chars().count() > 60 {
         return Err(DomainError::Validation("展示名需 1-60 字符".into()));
     }
     if !matches!(b.render_kind.as_str(), "iframe" | "video") {

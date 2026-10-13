@@ -53,7 +53,7 @@ pub async fn sticky_promos_add(
         crate::authz::perm::SETTINGS_MANAGE,
     )
     .await?;
-    if body.title.trim().is_empty() || body.title.len() > 200 {
+    if body.title.trim().is_empty() || body.title.chars().count() > 200 {
         return Err(DomainError::Validation("标题长度 1-200".into()));
     }
     let id: i64 = sqlx::query_scalar(
