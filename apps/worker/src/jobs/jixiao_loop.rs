@@ -85,6 +85,10 @@ pub(crate) async fn jixiao_settle_loop(
         .await?
         .unwrap_or((0, 0));
         let ops: i64 = sqlx::query_scalar(
+            // 口径提示（0357 审计归档）：audit_log 超期行会被
+            // audit_retain 移入 audit_log_archive——归档后的历史月此处
+            // count 变 0（只查活表）。当月/近期月不受影响（保留期 180 天
+            // 缺省远大于结算窗口）；按归档表补查历史绩效属后续工作，本批不做。
             "SELECT count(*) FROM audit_log WHERE actor_id = $1 \
              AND to_char(created_at, 'YYYY-MM') = $2",
         )

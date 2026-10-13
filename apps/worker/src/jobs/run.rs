@@ -78,11 +78,8 @@ fn every(secs: u64) -> tokio::time::Interval {
 
 /// 银行结算日切门（原 run.rs 60s 分支内联块抽出）：
 /// 站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证重启/宕机跨日也能补跑。
-async fn bank_daily_gate(
-    db: &PgPool,
-    last_bank_day: &mut Option<chrono::NaiveDate>,
-) {
-    let mut state = *last_bank_day;
+async fn bank_daily_gate(db: &PgPool, last: &mut Option<chrono::NaiveDate>) {
+    let mut state = *last;
     let site_day =
         (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
     if state.is_none() {
@@ -105,7 +102,7 @@ async fn bank_daily_gate(
                 .flatten();
         state = Some(after.unwrap_or(site_day - chrono::Duration::days(1)));
     }
-    *last_bank_day = state;
+    *last = state;
 }
 
 pub async fn run_all(
@@ -254,6 +251,9 @@ pub async fn run_all(
                 purge_expired_tokens(&db), &shard);
             shard_lock!(&db, "job:purge_runtime_logs",
                 purge_runtime_logs(&db), &shard);
+            // 审计日志归档（0357）：小时内检查，Redis 键节流每日最多一批
+            shard_lock!(&db, "job:audit_retain",
+                audit_retain_tick(&db, &redis), &shard);
             // DLQ 积压告警（只进不出等于变相丢计费）
             {
                 let (db2, mut r) = (db.clone(), redis.clone());
