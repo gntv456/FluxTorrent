@@ -65,7 +65,7 @@ pub(crate) fn validate_wiki_body(b: &WikiBody) -> DomainResult<()> {
     Ok(())
 }
 
-async fn require_wiki_manage(
+pub(super) async fn require_wiki_manage(
     state: &web::Data<std::sync::Arc<AppState>>,
     auth: &crate::http::AuthUser,
 ) -> DomainResult<()> {
@@ -255,39 +255,6 @@ pub async fn wiki_delete(
     Ok(ok(serde_json::json!({ "deleted": true })))
 }
 
-/// GET /admin/wiki/{id}/revisions：版本历史（照 v4_http rule_revisions，
-/// LIMIT 50 新况在前；只读，回滚不做——最小落地）
-#[get("/admin/wiki/{id}/revisions")]
-pub async fn wiki_revisions(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    require_wiki_manage(&state, &auth).await?;
-    let rows: Vec<WikiRevisionRow> = sqlx::query_as(
-        "SELECT r.id, r.page_id, r.title, r.body, r.sort, \
-         u.username AS edited_by_name, r.created_at \
-         FROM wiki_revisions r LEFT JOIN users u ON u.id = r.edited_by \
-         WHERE r.page_id = $1 ORDER BY r.created_at DESC LIMIT 50",
-    )
-    .bind(*path)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(internal)?;
-    Ok(ok(rows))
-}
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct WikiRevisionRow {
-    id: i64,
-    page_id: i64,
-    title: String,
-    body: String,
-    sort: i32,
-    edited_by_name: Option<String>,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
 
 #[cfg(test)]
 mod tests {

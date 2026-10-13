@@ -126,7 +126,16 @@ async fn user_role_grant(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "user.role_grant", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "user.role_grant",
+            Some(body.user_id),
+            None,
+            Some(serde_json::json!({
+                "role_key": body.role_key,
+                "expires_at": body.expires_at,
+            })),
+        )
         .await;
     Ok(ok(
         serde_json::json!({ "user_id": body.user_id, "role_key": body.role_key }),
@@ -155,7 +164,13 @@ async fn user_role_revoke(
     }
     state
         .repo
-        .audit(Some(auth.id), "user.role_revoke", Some(uid))
+        .audit_detail(
+            Some(auth.id),
+            "user.role_revoke",
+            Some(uid),
+            None,
+            Some(serde_json::json!({ "role_key": role_key })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "deleted": n })))
 }
