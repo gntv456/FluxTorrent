@@ -59,12 +59,12 @@ mod loans;
 mod loans_apply;
 mod my_orders;
 mod pool;
-mod recon;
-mod torznab_fmt;
+pub(crate) mod recon;
 mod shop;
 mod shop_effects;
 mod shop_list;
 mod spend;
+mod torznab_fmt;
 mod voucher_use;
 mod vouchers;
 

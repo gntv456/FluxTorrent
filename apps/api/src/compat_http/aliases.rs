@@ -69,6 +69,18 @@ fn qs_without(qs: &str, key: &str) -> String {
 /// 刷流脚本（auto_feed_js 等）习惯拼 `getrss.php?passkey=`，
 /// 此前打这个是 404 —— 现在 302 到 `/api/v1/rss/{passkey}`，其余筛选参数原样带过去。
 /// 限流在目标端点（`/rss/{passkey}`）统一计，别名层不重复计数。
+#[utoipa::path(
+    get,
+    path = "/api/v1/compat/nexusphp/getrss.php",
+    tag = "兼容层(NP)",
+    description = "别名：getrss.php → 302 到 /rss/{passkey}，其余筛选参数原样\
+透传；限流在目标端点计。",
+    params(("passkey" = String, Query, description = "32 位 passkey（必填）")),
+    responses(
+        (status = 302, description = "302 重定向到 /rss/{passkey}"),
+        (status = 401, description = "passkey 形状非法（code 2001）"),
+    )
+)]
 #[get("/compat/nexusphp/getrss.php")]
 async fn alias_getrss(req: HttpRequest) -> DomainResult<HttpResponse> {
     let qs = req.query_string();
@@ -91,6 +103,16 @@ async fn alias_getrss(req: HttpRequest) -> DomainResult<HttpResponse> {
 /// POST /compat/nexusphp/takelogin.php → 307 转发到 `/api/v1/auth/login`。
 /// 307 保留方法与 body，所以表单 POST 会原样落到真登录端点
 /// （该端点已兼容 `application/x-www-form-urlencoded`，见 auth_http/login.rs）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/compat/nexusphp/takelogin.php",
+    tag = "兼容层(NP)",
+    description = "别名：takelogin.php → 307 到 /auth/login，保留 POST body；\
+登录端点同时接受表单与 JSON。",
+    responses(
+        (status = 307, description = "307 重定向到 /api/v1/auth/login"),
+    )
+)]
 #[post("/compat/nexusphp/takelogin.php")]
 async fn alias_takelogin(req: HttpRequest) -> DomainResult<HttpResponse> {
     let qs = req.query_string();
@@ -113,6 +135,19 @@ async fn alias_takelogin(req: HttpRequest) -> DomainResult<HttpResponse> {
 /// 0267 安全补：本端点**必须**限流 —— 此前无限流意味着拿到一枚 passkey
 /// 就能无限次读账号数据（打库 + 放大信息面）。现按 passkey 30 次/分钟，
 /// 与 download.php 同口径；响应禁缓存（含 passkey，不得被中间层留存）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/compat/nexusphp/userdetails.php",
+    tag = "兼容层(NP)",
+    description = "别名：userdetails.php?passkey= → 账号 JSON。passkey 即身份\
+（与 tracker/下载同源凭证）；30 次/分钟。",
+    params(("passkey" = String, Query, description = "32 位 passkey（必填）")),
+    responses(
+        (status = 200, description = "NpUser（与 user.json 同形状）"),
+        (status = 401, description = "passkey 无效（code 2001）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/compat/nexusphp/userdetails.php")]
 async fn alias_userdetails(
     state: web::Data<std::sync::Arc<AppState>>,
@@ -151,6 +186,17 @@ struct DetailsQuery {
 /// GET /compat/nexusphp/details.php?id=xxx → 302 到站点详情页。
 /// 不伪造 HTML：本站详情页是 RSC 渲染，硬拼一份假 DOM 只会让解析型工具
 /// 拿到看似成功实则错位的字段。跳转是诚实的降级。
+#[utoipa::path(
+    get,
+    path = "/api/v1/compat/nexusphp/details.php",
+    tag = "兼容层(NP)",
+    description = "别名：details.php → 302 到站点详情页。不伪造 HTML：\
+解析型工具请改用 /open/torrents/{id}。",
+    params(("id" = String, Query, description = "种子 id（必填）")),
+    responses(
+        (status = 302, description = "302 重定向到站点详情页"),
+    )
+)]
 #[get("/compat/nexusphp/details.php")]
 async fn alias_details(
     req: HttpRequest,

@@ -37,6 +37,10 @@ futures-util = "0.3"
 sha1 = "0.10"
 dashmap = "6"
 ammonia = "4"
+# F3/W-49（frame-plan §3 步③）：OpenAPI 注解化。utoipa 5.x 经 rsproxy 镜像
+# 可拉取（crates.io 实查 5.0.0 存在，最新 6.0.0）；actix_extras 让
+# #[utoipa::path] 的 method/path 可由 actix-web 路由宏推导，降低手抄漂移面。
+utoipa = { version = "5", features = ["actix_extras"] }
 
 [profile.release]
 lto = "fat"

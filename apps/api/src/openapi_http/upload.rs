@@ -50,6 +50,27 @@ async fn auth_from_token(
 ///
 /// 幂等：按 `info_hash` / `raw_info_hash` 判重，已存在时返回 200 且
 /// `duplicate=true` 并附上既有 id —— 工具重试同一 .torrent 不会失败。
+#[utoipa::path(
+    post,
+    path = "/api/v1/open/torrents",
+    tag = "发种",
+    description = "Token 化发种（需 upload scope）。multipart/form-data：\
+file=<.torrent>（必填，≤4MiB）、nfo=<文本>（≤1MiB）；元数据走查询参数。\
+按 info_hash 幂等：已存在返回 200 且 duplicate=true。",
+    params(
+        ("category_id" = String, Query, description = "站内分类 id（必填）"),
+        ("name" = String, Query, description = "标题（缺省用 .torrent 内名）"),
+        ("small_descr" = String, Query, description = "副标题"),
+        ("anonymous" = String, Query, description = "1 = 匿名发布"),
+        ("price" = String, Query, description = "付费下载定价，0=免费"),
+    ),
+    responses(
+        (status = 200, description = "id/approval_status/duplicate/info_hash/pieces_hash"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[post("/open/torrents")]
 pub(super) async fn open_upload(
     req: HttpRequest,

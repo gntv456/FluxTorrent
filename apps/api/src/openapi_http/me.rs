@@ -16,6 +16,19 @@ use super::{require_scope, require_token, with_rl, SCOPE_READ};
 pub(super) const MAX_ROWS: i64 = 100;
 
 /// GET /open/me/overview —— 一张面板聚合（自动化工具轮询这一条就够）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/me/overview",
+    tag = "我的数据",
+    description = "我的面板聚合：上传量/做种/未读/H&R 一条拿齐；\
+自动化工具轮询这条即可感知账号变化。",
+    responses(
+        (status = 200, description = "细项见 /open/me/seeding|history|hr|messages"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/me/overview")]
 pub(super) async fn me_overview(
     req: HttpRequest,
@@ -68,6 +81,22 @@ pub(super) async fn me_overview(
 }
 
 /// GET /open/me/hr?status=open —— H&R 违约清单（open=未解决，all=全部）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/me/hr",
+    tag = "我的数据",
+    description = "H&R 违约清单（open=未解决，all=全部），含 shortfall_seconds。",
+    params(
+        ("status" = String, Query, description = "open（默认）/ all"),
+        ("limit" = String, Query, description = "1-100，默认 50"),
+    ),
+    responses(
+        (status = 200, description = "items + count"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/me/hr")]
 pub(super) async fn me_hr(
     req: HttpRequest,
@@ -126,6 +155,22 @@ pub(super) async fn me_hr(
 }
 
 /// GET /open/me/messages?unread=1&limit=50 —— 站内信（本人）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/me/messages",
+    tag = "我的数据",
+    description = "站内信（本人）。",
+    params(
+        ("unread" = String, Query, description = "1 = 仅未读"),
+        ("limit" = String, Query, description = "1-100，默认 50"),
+    ),
+    responses(
+        (status = 200, description = "items + count"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/me/messages")]
 pub(super) async fn me_messages(
     req: HttpRequest,

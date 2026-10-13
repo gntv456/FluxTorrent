@@ -13,10 +13,10 @@
 
 pub(crate) mod aliases;
 mod common;
-mod download_keys;
-mod nexusphp;
+pub(crate) mod download_keys;
+pub(crate) mod nexusphp;
 mod np_query;
-mod ptpp;
+pub(crate) mod ptpp;
 
 // 0267：passkey 维度限流与形状校验 —— RSS 等对外端点共用（避免各自实现漂移）
 pub(crate) use common::{limit_passkey, valid_passkey};
