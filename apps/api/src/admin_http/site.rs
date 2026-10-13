@@ -300,15 +300,16 @@ struct CheaterRow {
     announced_at: chrono::DateTime<chrono::Utc>,
 }
 
-/// 作弊者探测（cheaters.php 口径）：snatches 实时上报速度 / 短窗上传增量超阈值的会话
+/// 作弊者探测（cheaters.php 口径）：近 1 小时上传增量 > 500 GB，
+/// 或折算平均速度 > 100 MB/s 的会话
 #[get("/admin/cheaters")]
 async fn cheaters_scan(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
-    // 阈值：上报速度 > 100 MB/s 或 1 小时内上传增量 > 500 GB 判为可疑
-    // 口径：近 1 小时上传增量折算平均速度 > 100 MB/s，或 1 小时增量绝对值 > 500 GB
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::CHEATERS_VIEW)
+        .await?;
     let rows: Vec<CheaterRow> = sqlx::query_as(
                 "SELECT s.user_id, u.username, s.torrent_id, t.name, \
          (g.uploaded_delta / 3600)::bigint AS upspeed, \
