@@ -5,6 +5,8 @@ import { getSiteProfile } from "@/lib/site-profile";
 import { siteBase } from "@/lib/site-url";
 import { LocaleProvider } from "@/i18n/client";
 import { PwaInstallBar } from "@/components/pwa-install-bar";
+import { ToastProvider } from "@/components/ui/toast-provider";
+import { SkipLink } from "@/components/ui/skip-link";
 
 /** 移动端方案 M1：viewport-fit=cover 让 env(safe-area-inset-*) 生效——
  *  layout.tsx 底 Tab/操作条的 safe-area 内边距此前在 iOS 全面屏完全不工作。 */
@@ -13,7 +15,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
+    // design-cov-exempt: meta theme-color 不吃 CSS 变量，只能字面量
     { media: "(prefers-color-scheme: light)", color: "#f5faff" },
+    // design-cov-exempt: 同上（与 --surface-page 明暗两值同源）
     { media: "(prefers-color-scheme: dark)", color: "#0f1424" },
   ],
 };
@@ -193,9 +197,14 @@ export default async function RootLayout({
         <LegacyRuntimePolyfill />
         <ThemeNoFlash />
         <LocaleProvider dict={dict} locale={locale} currency={currency}>
-          <PwaInstallBar />
-          {children}
-          <ServiceWorkerRegister />
+          {/* 设计系统 W-01/W-04：SkipLink 是 Tab 第一站；ToastProvider
+              挂载一次，全站写操作反馈走 toast 协议（role=status/alert） */}
+          <SkipLink />
+          <ToastProvider>
+            <PwaInstallBar />
+            {children}
+            <ServiceWorkerRegister />
+          </ToastProvider>
         </LocaleProvider>
       </body>
     </html>

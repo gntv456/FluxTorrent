@@ -122,8 +122,8 @@ export function LoginShell() {
           </div>
         </div>
 
-        {/* 右：表单卡 */}
-        <div className="bz-login-card">
+        {/* 右：表单卡（W-04：main 锚点，SkipLink 目标） */}
+        <main id="main-content" className="bz-login-card">
           <header className="bz-login-header">
             <h2>{dict.login.loginTitle}</h2>
           </header>
@@ -135,7 +135,7 @@ export function LoginShell() {
             <br />
             {fmt(dict.login.failBanNote, { n: 5 })} {dict.login.inviteOnly}
           </p>
-        </div>
+        </main>
       </div>
     </div>
   );
