@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use redis::AsyncCommands;
 
 use super::engine::validate_field;
+use super::expected::{check_expected, merge_conflict};
 use super::meta::write_min;
 use super::meta::MAX_BATCH;
 use super::meta::{MetaRow, META_SELECT};
@@ -27,6 +28,11 @@ struct GroupsPut {
     group: String,
     /// 字段名 -> 新值（secret 字段留空 = 保持不变）
     values: HashMap<String, String>,
+    /// 乐观并发（灰度可选，0354）：字段名 -> 客户端读取时的 updated_at
+    /// （RFC3339）。缺省或键不在其中 = 不校验（老客户端不受影响）；
+    /// 与库中现值不一致 = 他人先改过 → 5003 VersionConflict 整批拒绝
+    #[serde(default)]
+    expected: Option<HashMap<String, String>>,
 }
 
 pub(super) fn push_unique(out: &mut Vec<String>, s: &str) {
@@ -186,6 +192,9 @@ pub(super) async fn settings_groups_put(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let mut changed: Vec<String> = Vec::new();
+    // 乐观并发冲突键收集：整批一次 409（check_expected 见 expected.rs）
+    let mut conflicts: Vec<String> = Vec::new();
+    let expected = body.expected.clone().unwrap_or_default();
     for (name, new) in &pending {
         // 模块开关手工覆盖位（0318 H4）：设置面改过的 module_* 在此登记，
         // 之后的站型包 apply 跳过这些键——站长手工状态不被切站型复位
@@ -204,17 +213,25 @@ pub(super) async fn settings_groups_put(
             }
         }
         // 行锁 + 以库中现值为准（并发下避免覆盖他人修改）
-        let current: Option<String> = sqlx::query_scalar(
-            "SELECT value FROM site_settings WHERE name = $1 FOR UPDATE",
-        )
-        .bind(name)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let current = current.ok_or_else(|| {
+        let current: Option<(String, chrono::DateTime<chrono::Utc>)> =
+            sqlx::query_as(
+                "SELECT value, updated_at FROM site_settings \
+                 WHERE name = $1 FOR UPDATE",
+            )
+            .bind(name)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let (cur_value, cur_at) = current.ok_or_else(|| {
             DomainError::Validation(format!("设定项不存在 {name}"))
         })?;
-        if current == *new {
+        // 值相同跳过在版本校验之前——没改动的键不触发冲突
+        if cur_value == *new {
+            continue;
+        }
+        // 乐观并发：expected 带了该键的版本戳才比对（灰度兼容）
+        if let Err(e) = check_expected(&expected, name, cur_at) {
+            merge_conflict(&mut conflicts, e);
             continue;
         }
         sqlx::query(
@@ -227,17 +244,12 @@ pub(super) async fn settings_groups_put(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         let meta = &by_name[name];
+        let meta = &by_name[name];
         let (audit_old, audit_new) = if meta.secret {
-            (
-                if current.is_empty() {
-                    "(空)".to_string()
-                } else {
-                    "已设置".to_string()
-                },
-                "已更新".to_string(),
-            )
+            (if cur_value.is_empty() { "(空)" } else { "已设置" }.to_string(),
+                "已更新".to_string())
         } else {
-            (truncate(&current), truncate(new))
+            (truncate(&cur_value), truncate(new))
         };
         sqlx::query(
             "INSERT INTO audit_log (id, actor_id, action, ref) \
@@ -275,6 +287,11 @@ pub(super) async fn settings_groups_put(
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
+    // 乐观并发：任一携带版本戳的键不一致 → 整批拒绝（事务回滚防部分落库），
+    // 冲突键列表随 5003 data 返回，前端提示刷新后重试
+    if !conflicts.is_empty() {
+        return Err(DomainError::VersionConflict(conflicts));
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -307,5 +324,8 @@ pub(super) fn truncate(s: &str) -> String {
         format!("{head}…")
     }
 }
+
+// 乐观并发（check_expected / merge_conflict）拆至 expected.rs；
+// 单元测试拆至 groups_tests.rs（300 行门禁）
 
 // ============================================================================

@@ -42,6 +42,9 @@ export const ErrorCode = {
   // 5xxx 社区
   COMMENT_NOT_FOUND: 5001,
   ALREADY_THANKED: 5002,
+  // 站点设定乐观并发冲突（expected updated_at 不匹配，HTTP 409）：
+  // 他人先保存过同一键，前端应提示刷新后重试而不是静默覆盖
+  SETTINGS_VERSION_CONFLICT: 5003,
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
