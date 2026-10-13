@@ -4,8 +4,11 @@ import { useI18n } from "@/i18n/client";
 
 /** 消息中心写信道与文件夹管理（从 components/message-center.tsx 按域拆出）：
  *  ComposeForm 回复/转发/新写三态表单；BoxManager 建/改名/删除（=清空名）。
- *  状态与发送逻辑留在 MessageCenter，动作回调注入。 */
+ *  状态与发送逻辑留在 MessageCenter，动作回调注入。
+ *  反馈协议（W-10）：发送/批量/文件夹操作的结果统一走 toast（见
+ *  MessageCenter），本组件不再渲染行内 msg 文字。 */
 
+import { BusyLabel } from "@/components/ui/busy-label";
 import { inputCls } from "@/components/message-center-table";
 
 export function ComposeForm({
@@ -19,7 +22,6 @@ export function ComposeForm({
   body,
   setBody,
   busy,
-  msg,
   onSend,
   onCancel,
 }: {
@@ -33,7 +35,6 @@ export function ComposeForm({
   body: string;
   setBody: (v: string) => void;
   busy: boolean;
-  msg: string | null;
   onSend: (e: React.FormEvent) => void;
   onCancel: () => void;
 }) {
@@ -82,12 +83,15 @@ export function ComposeForm({
             />
             {replyTo && <p className="text-[11px] text-sub">{t.quoteHint}</p>}
             <div className="flex items-center gap-3">
+              {/* W-10：busy 态走 BusyLabel 原语（spinner 与文案同色同行，
+                  替代裸文字切换），提交语义仍由本表单掌握 */}
               <button
                 type="submit"
                 disabled={busy}
+                aria-busy={busy || undefined}
                 className="min-h-[44px] rounded-[10px] border border-[var(--brand-orange-dark)] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
               >
-                {busy ? t.sending : t.send}
+                <BusyLabel label={t.send} busy={busy} size="sm" />
               </button>
               <button
                 type="button"
@@ -97,11 +101,6 @@ export function ComposeForm({
                 {t.backToList}
               </button>
             </div>
-            {msg && (
-              <p role="status" className="text-sm text-sub">
-                {msg}
-              </p>
-            )}
           </td>
         </tr>
       </tbody>

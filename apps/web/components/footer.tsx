@@ -6,11 +6,15 @@ import { fmt } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
 import { MenuItemLink } from "@/components/custom-menu";
 import { getSiteProfile } from "@/lib/site-profile";
+import { api } from "@/lib/api-client";
 
 /**
  * 页脚：
  * 站点信息 / 快捷导航 / 帮助 三栏卡片 + 运行统计条 + 免责声明 + 版权条。
  * 统计接口需登录，未登录时该条自动隐藏（页面其余部分照常渲染）。
+ * IA-5（DS-PLAN-01 W-11）：版权条带程序版本（/api/v1/about 的
+ * product+version）——六站横评三家页脚直显版本，是行业惯例；
+ * 版本拉取失败不影响页脚其余部分（about 接口失败时省略版本号）。
  */
 export async function Footer() {
   const { dict } = await getDict();
@@ -22,6 +26,10 @@ export async function Footer() {
   const profile = await getSiteProfile();
   const siteName = profile.brand || "FluxTorrent";
   const foundedDate = profile.founded || String(year);
+  // IA-5：版本号与 about 页同源（/api/v1/about），失败静默省略
+  const about = await api
+    .get<{ product: string; version: string }>("/api/v1/about")
+    .catch(() => null);
 
   // 快捷导航按模块开关过滤（二审 G2-8 修复）：forums/requests 关闭的站
   // 页脚不再保留死入口；缺键视为开（与 requireModule 口径一致）
@@ -154,7 +162,9 @@ export async function Footer() {
               href="/about"
               className="text-sky hover:text-[var(--brand-orange)]"
             >
-              Powered by FluxTorrent
+              {about
+                ? `Powered by ${about.product} ${about.version}`
+                : "Powered by FluxTorrent"}
             </Link>
           </p>
         </div>

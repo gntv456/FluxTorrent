@@ -30,7 +30,9 @@ export default async function AuthLayout({
           </span>
         </Link>
       </header>
-      <main className="auth-shell__body">{children}</main>
+      <main id="main-content" className="auth-shell__body">
+        {children}
+      </main>
       <footer className="auth-shell__foot">
         <Link href="/" className="auth-shell__home">
           ← {dict.nav.home}

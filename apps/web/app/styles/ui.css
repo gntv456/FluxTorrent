@@ -38,6 +38,21 @@
   width: 38px;
   height: 38px;
 }
+/* 空态语气色（DS-PLAN-01 §3.2 / W-03：EmptyState tone 协议）。
+   只改图标圆底的颜色族（tone × soft 三族令牌 base.css 已有），
+   布局/尺寸不动；缺省无修饰类 = 旧 neutral 视觉，存量引用零回归。 */
+.ui-empty--brand .ui-empty__icon {
+  color: var(--tone-brand);
+  background: var(--tone-brand-soft);
+}
+.ui-empty--success .ui-empty__icon {
+  color: var(--tone-success);
+  background: var(--tone-success-soft);
+}
+.ui-empty--warn .ui-empty__icon {
+  color: var(--tone-warn);
+  background: var(--tone-warn-soft);
+}
 .ui-empty__title {
   margin: 0;
   color: var(--text-body-deep);
@@ -495,4 +510,647 @@
   max-height: 46vh;
   margin-top: 8px;
   box-shadow: none;
+}
+
+/* ============================================================
+   设计系统原语层（DS-PLAN-01 W-01..W-05，2026-10-13 新建）
+   范围：Toast / ActionFeedback+BusyLabel / ErrorPanel /
+        StatePanel（消费上面三件，无自有样式）/ SkipLink。
+   纪律同本文件头部：只读令牌（tone/表面/动效三族），零硬编码色值；
+        动效时长一律 var(--motion-*)（reduced-motion 全局短路）。
+   ============================================================ */
+
+/* ---------- SkipLink（W-04） ---------- */
+.ui-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: var(--z-toast);
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  background: var(--tone-brand);
+  color: var(--tone-on-accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  /* 视觉隐藏但保留可聚焦：移出视口而非 display:none */
+  transform: translateY(-200%);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.ui-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---------- Toast（W-01） ---------- */
+.ui-toast__vp {
+  position: fixed;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 桌面：右下角；指针事件穿透容器、只让卡片接收 */
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  right: 20px;
+  width: min(420px, calc(100vw - 24px));
+  pointer-events: none;
+}
+.ui-toast__vp > * {
+  pointer-events: auto;
+}
+/* 移动端（<md）：顶部下滑入场，避开顶栏安全区。
+   写法说明：max-width:767px 属野断点（ui_design_guard 规则 3 只放行
+   640/768/1024/1280），用 not all and (min-width:768px) 等价表达
+   「低于 md」——只引用语义档，零新增野断点。 */
+@media not all and (min-width: 768px) {
+  .ui-toast__vp {
+    top: calc(8px + env(safe-area-inset-top));
+    bottom: auto;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+.ui-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  animation: ui-toast-in var(--motion-normal) var(--motion-ease);
+}
+.ui-toast--leave {
+  animation: ui-toast-out var(--motion-fast) var(--motion-ease) forwards;
+}
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes ui-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+/* 移动端从顶部下滑：覆盖上面两个关键帧的位移方向（同 <md 门禁友好写法） */
+@media not all and (min-width: 768px) {
+  @keyframes ui-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+  }
+  @keyframes ui-toast-out {
+    to {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+}
+.ui-toast__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-circle, 50%);
+  margin-top: 1px;
+}
+.ui-toast__body {
+  flex: 1;
+  min-width: 0;
+}
+.ui-toast__msg {
+  margin: 0;
+  color: var(--text-body-deep);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ui-toast__rid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--tone-danger-border);
+  border-radius: var(--r-2xs);
+  background: var(--tone-danger-soft);
+  color: var(--tone-danger);
+  font-size: 11px;
+  cursor: pointer;
+}
+.ui-toast__rid:hover {
+  border-color: var(--tone-danger);
+}
+.ui-toast__rid-value {
+  font-family: ui-monospace, monospace;
+}
+.ui-toast__action {
+  flex: none;
+  align-self: center;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--tone-brand);
+  color: var(--tone-on-accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ui-toast__action:hover {
+  background: var(--tone-brand-strong);
+}
+.ui-toast__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--r-2xs);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.ui-toast__close:hover {
+  background: var(--surface-hover);
+  color: var(--text-body);
+}
+/* tone × 图标底（品牌/成功/警告/危险 四档，只读 tone 令牌） */
+.ui-toast--success .ui-toast__icon {
+  background: var(--tone-success-soft);
+  color: var(--tone-success);
+}
+.ui-toast--info .ui-toast__icon {
+  background: var(--tone-brand-soft);
+  color: var(--tone-brand);
+}
+.ui-toast--warn .ui-toast__icon {
+  background: var(--tone-warn-soft);
+  color: var(--tone-warn);
+}
+.ui-toast--error .ui-toast__icon {
+  background: var(--tone-danger-soft);
+  color: var(--tone-danger);
+}
+
+/* ---------- 行内反馈（W-02：ActionFeedback / BusyLabel） ---------- */
+.ui-fb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-base, 13px);
+  line-height: 1.4;
+}
+/* size 三档（DS-PLAN-01 §3 tone×size 矩阵的 size 轴） */
+.ui-fb--sm {
+  gap: 4px;
+  font-size: var(--fs-xs, 12px);
+}
+.ui-fb--sm .ui-spinner {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}
+.ui-fb--lg {
+  gap: 6px;
+  font-size: var(--fs-md, 16px);
+}
+.ui-fb--lg .ui-spinner {
+  width: 14px;
+  height: 14px;
+}
+.ui-fb--busy {
+  color: var(--tone-neutral);
+}
+.ui-fb--ok {
+  color: var(--tone-success);
+}
+.ui-fb--fail {
+  color: var(--tone-danger);
+}
+/* 旋转 spinner：currentColor 单色，12px 与文本行高对齐 */
+.ui-spinner {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--r-circle, 50%);
+  animation: ui-spin 0.7s linear infinite;
+}
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- ErrorPanel（W-03） ---------- */
+.ui-err {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--tone-danger-border);
+  border-radius: var(--r-md);
+  background: var(--tone-danger-soft);
+}
+.ui-err__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-circle, 50%);
+  background: var(--surface-card);
+  color: var(--tone-danger);
+}
+.ui-err__body {
+  flex: 1;
+  min-width: 0;
+}
+.ui-err__title {
+  margin: 0;
+  color: var(--tone-danger);
+  font-size: 14px;
+  font-weight: 700;
+}
+.ui-err__msg {
+  margin: 4px 0 0;
+  color: var(--text-body-deep);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ui-err__desc {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ui-err__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ui-err__code {
+  padding: 2px 8px;
+  border: 1px solid var(--tone-danger-border);
+  border-radius: var(--r-2xs);
+  background: var(--surface-card);
+  color: var(--tone-danger);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ui-err__rid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--tone-danger-border);
+  border-radius: var(--r-2xs);
+  background: var(--surface-card);
+  color: var(--text-body);
+  font-size: 11px;
+  cursor: pointer;
+}
+.ui-err__rid:hover {
+  border-color: var(--tone-danger);
+  color: var(--tone-danger);
+}
+.ui-err__rid code {
+  font-family: ui-monospace, monospace;
+}
+.ui-err__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--tone-danger);
+  color: var(--tone-on-accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ui-err__retry:hover {
+  filter: brightness(1.08);
+}
+.ui-err__stack {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.ui-err__stack pre {
+  max-height: 160px;
+  margin: 4px 0 0;
+  padding: 8px;
+  border-radius: var(--r-2xs);
+  background: var(--surface-sunken);
+  color: var(--text-body);
+  font-size: 11px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+/* ============================================================
+   表单与确认协议（DS-PLAN-01 W-14..W-17，2026-10-13 新建）
+   范围：FormField / FieldErrors / SubmitButton / ConfirmDialog /
+        toast desc 行。纪律同上：只读令牌，零硬编码色值。
+   ============================================================ */
+
+/* ---------- toast 第二行（desc：生效影响等次要信息） ---------- */
+.ui-toast__desc {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- FormField ---------- */
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ui-field__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-body-deep);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ui-field__req {
+  color: var(--tone-danger);
+}
+.ui-field__opt {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 400;
+}
+.ui-field__ctl {
+  display: block;
+}
+.ui-field__err {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: var(--tone-danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ui-field__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+/* 错误态控件描红（经 aria-invalid 选择，不依赖调用方传 className） */
+.ui-field__ctl :is(input, textarea, select)[aria-invalid="true"] {
+  border-color: var(--tone-danger);
+}
+.ui-field__ctl :is(input, textarea, select)[aria-invalid="true"]:focus-visible {
+  outline-color: var(--tone-danger);
+}
+
+/* ---------- FieldErrors（表单级汇总） ---------- */
+.ui-ferr {
+  padding: 10px 12px;
+  border: 1px solid var(--tone-danger-border);
+  border-radius: var(--r-md);
+  background: var(--tone-danger-soft);
+}
+.ui-ferr__title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--tone-danger);
+  font-size: 13px;
+  font-weight: 700;
+}
+.ui-ferr__list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ui-ferr__list li {
+  color: var(--text-body-deep);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ui-ferr__field {
+  color: var(--tone-danger);
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+/* ---------- SubmitButton ---------- */
+.ui-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-5);
+  border: none;
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+}
+.ui-submit:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.ui-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ui-submit--brand {
+  background: var(--tone-brand);
+  color: var(--tone-on-accent);
+}
+.ui-submit--brand:hover:not(:disabled) {
+  background: var(--tone-brand-strong);
+}
+.ui-submit--danger {
+  background: var(--tone-danger);
+  color: var(--tone-on-accent);
+}
+.ui-submit--danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* ---------- ConfirmDialog ---------- */
+.ui-cfm__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--overlay-scrim);
+}
+.ui-cfm {
+  width: min(420px, 100%);
+  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  animation: ui-cfm-in var(--motion-normal) var(--motion-ease);
+}
+@keyframes ui-cfm-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+.ui-cfm--danger {
+  border-color: var(--tone-danger-border);
+}
+.ui-cfm__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ui-cfm__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-circle, 50%);
+  background: var(--tone-neutral-soft);
+  color: var(--tone-neutral);
+}
+.ui-cfm--danger .ui-cfm__icon {
+  background: var(--tone-danger-soft);
+  color: var(--tone-danger);
+}
+.ui-cfm__title {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 700;
+}
+.ui-cfm__msg {
+  margin: 8px 0 0;
+  color: var(--text-body);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ui-cfm__type {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  color: var(--text-body-deep);
+  font-size: 12px;
+}
+.ui-cfm__type input {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  color: var(--text-strong);
+  font-size: 13px;
+}
+.ui-cfm__type input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.ui-cfm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.ui-cfm__btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ui-cfm__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ui-cfm__btn--ghost {
+  border-color: var(--border-soft);
+  background: var(--surface-card);
+  color: var(--text-body);
+}
+.ui-cfm__btn--ghost:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.ui-cfm__btn--neutral {
+  background: var(--tone-brand);
+  color: var(--tone-on-accent);
+}
+.ui-cfm__btn--neutral:hover:not(:disabled) {
+  background: var(--tone-brand-strong);
+}
+.ui-cfm__btn--danger {
+  background: var(--tone-danger);
+  color: var(--tone-on-accent);
+}
+.ui-cfm__btn--danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* ---------- 顶栏搜索直显框（W-30 / IA-1） ---------- */
+.ui-hsearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-pill);
+  background: var(--surface-raised);
+  color: var(--text-faint);
+  transition: border-color var(--motion-fast) var(--motion-ease);
+}
+.ui-hsearch:focus-within {
+  border-color: var(--tone-brand);
+  color: var(--tone-brand);
+}
+.ui-hsearch__input {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-body-deep);
+  font-size: 13px;
+  outline: none;
+}
+.ui-hsearch__input::placeholder {
+  color: var(--text-faint);
 }

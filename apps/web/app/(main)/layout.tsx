@@ -40,6 +40,7 @@ export default async function MainLayout({
           ariaLabel={dict.nav.ariaPrimary}
         />
         <main
+          id="main-content"
           className="mx-auto min-w-0 w-full max-w-[1280px] flex-1 px-4 pb-24
             pt-6 md:px-6"
         >
