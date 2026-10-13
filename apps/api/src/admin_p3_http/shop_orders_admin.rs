@@ -49,7 +49,11 @@ async fn admin_shop_orders(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<AdminOrdersQuery>,
 ) -> DomainResult<impl Responder> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-253：全站商店流水（买家用户名 + 道具 + 实付价格 + 时间）只判 staff()，
+    // 而同域道具管理写口要 prop.manage(93) ⇒ 同一把键。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     // 分页必须有上界（口径同 dto::page_window）：原先只 `max(1)` 不封顶，
     // `?page=99999999` 会把 OFFSET 拼成 50 亿，库从第一行数完再整段丢掉。
     // per 仍守本页的 50 上限（列多，不随 page_window 的 100 放宽）。
