@@ -1,0 +1,4478 @@
+{
+ "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
+ "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
+ "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
+ "total": 745,
+ "routes": [
+  {
+   "method": "POST",
+   "path": "/admin/adapters/install",
+   "handler": "adapter_install",
+   "file": "apps/api/src/adapter_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/adapters",
+   "handler": "adapter_list",
+   "file": "apps/api/src/adapter_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/adapters/toggle",
+   "handler": "adapter_toggle",
+   "file": "apps/api/src/adapter_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/adapters/delete",
+   "handler": "adapter_delete",
+   "file": "apps/api/src/adapter_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/adapters/try",
+   "handler": "adapter_try",
+   "file": "apps/api/src/adapter_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/agentrules",
+   "handler": "agent_rules_list",
+   "file": "apps/api/src/admin_http/agent_rules.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/agentrules",
+   "handler": "agent_rules_add",
+   "file": "apps/api/src/admin_http/agent_rules.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/agentrules/export",
+   "handler": "agent_rules_export",
+   "file": "apps/api/src/admin_http/agent_rules.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/agentrules/import",
+   "handler": "agent_rules_import",
+   "file": "apps/api/src/admin_http/agent_rules.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/agentrules/delete",
+   "handler": "agent_rules_del",
+   "file": "apps/api/src/admin_http/agent_rules.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/audit",
+   "handler": "audit_query",
+   "file": "apps/api/src/admin_http/audit.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/audit/chain-verify",
+   "handler": "audit_chain_verify",
+   "file": "apps/api/src/admin_http/audit.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/deny-reasons",
+   "handler": "deny_reasons_list",
+   "file": "apps/api/src/admin_http/deny.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/deny-reasons",
+   "handler": "deny_reasons_add",
+   "file": "apps/api/src/admin_http/deny.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/deny-reasons/{id}",
+   "handler": "deny_reasons_update",
+   "file": "apps/api/src/admin_http/deny.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/deny-reasons/{id}",
+   "handler": "deny_reasons_delete",
+   "file": "apps/api/src/admin_http/deny.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/embed-rules",
+   "handler": "embed_rules_list",
+   "file": "apps/api/src/admin_http/embed_rules.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/embed-rules",
+   "handler": "embed_rules_add",
+   "file": "apps/api/src/admin_http/embed_rules.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/embed-rules/{id}",
+   "handler": "embed_rules_update",
+   "file": "apps/api/src/admin_http/embed_rules.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/embed-rules/{id}/delete",
+   "handler": "embed_rules_delete",
+   "file": "apps/api/src/admin_http/embed_rules.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/forums",
+   "handler": "forum_admin_list",
+   "file": "apps/api/src/admin_http/forum.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/forum-categories",
+   "handler": "forum_category_create",
+   "file": "apps/api/src/admin_http/forum.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/forum-categories/{id}",
+   "handler": "forum_category_update",
+   "file": "apps/api/src/admin_http/forum.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/forum-categories/{id}",
+   "handler": "forum_category_delete",
+   "file": "apps/api/src/admin_http/forum.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/forum-categories/reorder",
+   "handler": "forum_category_reorder",
+   "file": "apps/api/src/admin_http/forum.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/forums",
+   "handler": "forum_admin_create",
+   "file": "apps/api/src/admin_http/forum_mods.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/forums/{id}",
+   "handler": "forum_admin_update",
+   "file": "apps/api/src/admin_http/forum_mods.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/forums/{id}",
+   "handler": "forum_admin_delete",
+   "file": "apps/api/src/admin_http/forum_mods.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/forums/{id}/mods",
+   "handler": "forum_mod_add",
+   "file": "apps/api/src/admin_http/forum_mods.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/forums/{id}/mods/{user_id}",
+   "handler": "forum_mod_remove",
+   "file": "apps/api/src/admin_http/forum_mods.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/overview",
+   "handler": "admin_overview",
+   "file": "apps/api/src/admin_http/overview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/permission-matrix",
+   "handler": "permission_matrix",
+   "file": "apps/api/src/admin_http/perms.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/permission-matrix",
+   "handler": "permission_matrix_update",
+   "file": "apps/api/src/admin_http/perms.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/user-permissions",
+   "handler": "user_permission_view",
+   "file": "apps/api/src/admin_http/perms.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/user-permissions",
+   "handler": "user_permission_set",
+   "file": "apps/api/src/admin_http/perms.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/spark-logs",
+   "handler": "admin_spark_logs",
+   "file": "apps/api/src/admin_http/records.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/torrent-buys",
+   "handler": "admin_torrent_buys",
+   "file": "apps/api/src/admin_http/records.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/login-logs",
+   "handler": "admin_login_logs",
+   "file": "apps/api/src/admin_http/records.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/reports",
+   "handler": "report_queue",
+   "file": "apps/api/src/admin_http/reports.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reports/claim",
+   "handler": "report_claim",
+   "file": "apps/api/src/admin_http/reports.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reports/release",
+   "handler": "report_release",
+   "file": "apps/api/src/admin_http/reports.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reports/resolve",
+   "handler": "report_resolve",
+   "file": "apps/api/src/admin_http/reports_resolve.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/reviews",
+   "handler": "review_queue",
+   "file": "apps/api/src/admin_http/review.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reviews/decide",
+   "handler": "review_decide",
+   "file": "apps/api/src/admin_http/review.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reviews/batch",
+   "handler": "review_batch",
+   "file": "apps/api/src/admin_http/review_batch.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/roles",
+   "handler": "role_list",
+   "file": "apps/api/src/admin_http/roles.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/user-roles",
+   "handler": "user_role_list",
+   "file": "apps/api/src/admin_http/roles.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/user-roles",
+   "handler": "user_role_grant",
+   "file": "apps/api/src/admin_http/roles.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/user-roles/{user_id}/{role_key}",
+   "handler": "user_role_revoke",
+   "file": "apps/api/src/admin_http/roles.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/staffpanel",
+   "handler": "staff_panel",
+   "file": "apps/api/src/admin_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/staffpanel-entries",
+   "handler": "staff_panel_entries_list",
+   "file": "apps/api/src/admin_http/site.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/staffpanel-entries",
+   "handler": "staff_panel_entries_add",
+   "file": "apps/api/src/admin_http/site.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/staffpanel-entries/{id}",
+   "handler": "staff_panel_entries_update",
+   "file": "apps/api/src/admin_http/site.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/staffpanel-entries/delete",
+   "handler": "staff_panel_entries_delete",
+   "file": "apps/api/src/admin_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/settings",
+   "handler": "site_settings_get",
+   "file": "apps/api/src/admin_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/cheaters",
+   "handler": "cheaters_scan",
+   "file": "apps/api/src/admin_http/site.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/settings",
+   "handler": "site_settings_put",
+   "file": "apps/api/src/admin_http/site_put.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/subtitles/awards/candidates",
+   "handler": "awards_candidates",
+   "file": "apps/api/src/admin_http/subtitle_awards.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/subtitles/awards/build",
+   "handler": "awards_build",
+   "file": "apps/api/src/admin_http/subtitle_awards.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/subtitles/awards/grant",
+   "handler": "awards_grant",
+   "file": "apps/api/src/admin_http/subtitle_awards.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/subtitles/certs/grant",
+   "handler": "certs_grant",
+   "file": "apps/api/src/admin_http/subtitle_certs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/subtitles/certs/revoke",
+   "handler": "certs_revoke",
+   "file": "apps/api/src/admin_http/subtitle_certs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/subtitles/certs",
+   "handler": "certs_list",
+   "file": "apps/api/src/admin_http/subtitle_certs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/torrent-ops",
+   "handler": "torrent_op_logs",
+   "file": "apps/api/src/admin_http/torrent_ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/torrents",
+   "handler": "admin_torrent_list",
+   "file": "apps/api/src/admin_http/torrents.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/users/{id}",
+   "handler": "user_admin_delete",
+   "file": "apps/api/src/admin_http/user_del.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/users/{id}",
+   "handler": "user_admin_detail",
+   "file": "apps/api/src/admin_http/user_detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/users/{id}/snatches",
+   "handler": "user_admin_snatches",
+   "file": "apps/api/src/admin_http/user_detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/users/{id}/fields",
+   "handler": "admin_user_fields",
+   "file": "apps/api/src/admin_http/user_fields_admin.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/users/{id}/fields",
+   "handler": "admin_user_fields_put",
+   "file": "apps/api/src/admin_http/user_fields_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/{id}/jixiao",
+   "handler": "user_assign_jixiao",
+   "file": "apps/api/src/admin_http/user_grant.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/{id}/grant-item/{item_id}",
+   "handler": "user_grant_item",
+   "file": "apps/api/src/admin_http/user_grant_item.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/{id}/medal/{medal_id}",
+   "handler": "user_grant_medal",
+   "file": "apps/api/src/admin_http/user_grant_medal.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/users",
+   "handler": "user_admin_list",
+   "file": "apps/api/src/admin_http/user_list.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/adjust",
+   "handler": "user_adjust",
+   "file": "apps/api/src/admin_http/user_ops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/passkey/reveal",
+   "handler": "admin_passkey_reveal",
+   "file": "apps/api/src/admin_http/user_passkey.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/passkey/reset",
+   "handler": "admin_passkey_reset",
+   "file": "apps/api/src/admin_http/user_passkey.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/{id}/revoke-item/{order_id}",
+   "handler": "user_revoke_item",
+   "file": "apps/api/src/admin_http/user_revoke.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/{id}/medal/{medal_id}/redate",
+   "handler": "user_medal_redate",
+   "file": "apps/api/src/admin_http/user_revoke.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/users/flags",
+   "handler": "user_flags",
+   "file": "apps/api/src/admin_http/user_status.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/status",
+   "handler": "user_set_status",
+   "file": "apps/api/src/admin_http/user_status.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/class",
+   "handler": "user_set_class",
+   "file": "apps/api/src/admin_http/user_status.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/user-vouchers",
+   "handler": "admin_voucher_list",
+   "file": "apps/api/src/admin_http/user_vouchers.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/user-vouchers/void",
+   "handler": "admin_voucher_void",
+   "file": "apps/api/src/admin_http/user_vouchers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/export/users",
+   "handler": "admin_export_users",
+   "file": "apps/api/src/admin_p2_http/export_ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/export/torrents",
+   "handler": "admin_export_torrents",
+   "file": "apps/api/src/admin_p2_http/export_ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/menu-items",
+   "handler": "menu_items_list",
+   "file": "apps/api/src/admin_p2_http/menus.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/menu-settings",
+   "handler": "menu_settings_update",
+   "file": "apps/api/src/admin_p2_http/menus.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/menu-items",
+   "handler": "menu_items_add",
+   "file": "apps/api/src/admin_p2_http/menus_crud.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/menu-items/{id}",
+   "handler": "menu_items_update",
+   "file": "apps/api/src/admin_p2_http/menus_crud.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/menu-items/{id}",
+   "handler": "menu_items_delete",
+   "file": "apps/api/src/admin_p2_http/menus_crud.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/menu-items",
+   "handler": "menu_items_public",
+   "file": "apps/api/src/admin_p2_http/menus_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/sticky-promos",
+   "handler": "sticky_promos_list",
+   "file": "apps/api/src/admin_p2_http/promos.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/sticky-promos",
+   "handler": "sticky_promos_add",
+   "file": "apps/api/src/admin_p2_http/promos.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/sticky-promos/{id}",
+   "handler": "sticky_promos_update",
+   "file": "apps/api/src/admin_p2_http/promos.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/sticky-promos/{id}",
+   "handler": "sticky_promos_delete",
+   "file": "apps/api/src/admin_p2_http/promos.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/sticky-promos",
+   "handler": "sticky_promos_public",
+   "file": "apps/api/src/admin_p2_http/promos.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/message-templates",
+   "handler": "msg_templates_list",
+   "file": "apps/api/src/admin_p2_http/templates.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/message-templates/{id}",
+   "handler": "msg_templates_update",
+   "file": "apps/api/src/admin_p2_http/templates.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/message-templates/preview",
+   "handler": "msg_templates_preview",
+   "file": "apps/api/src/admin_p2_http/templates.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/claims",
+   "handler": "admin_claims",
+   "file": "apps/api/src/admin_p2_http/templates.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/claims/release",
+   "handler": "admin_claim_release",
+   "file": "apps/api/src/admin_p2_http/templates.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/attendance",
+   "handler": "admin_attendance",
+   "file": "apps/api/src/admin_p3_http/attendance.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/attendance/makeup",
+   "handler": "admin_attendance_makeup",
+   "file": "apps/api/src/admin_p3_http/attendance.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/attendance/makeup",
+   "handler": "admin_attendance_makeup_delete",
+   "file": "apps/api/src/admin_p3_http/attendance.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/bans/by-ip/delete",
+   "handler": "admin_ban_delete_by_ip",
+   "file": "apps/api/src/admin_p3_http/ban_ip.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/classes",
+   "handler": "admin_classes_list",
+   "file": "apps/api/src/admin_p3_http/classes_admin.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/classes/{id}",
+   "handler": "admin_class_put",
+   "file": "apps/api/src/admin_p3_http/classes_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/classes/{id}/impact-preview",
+   "handler": "admin_class_impact_preview",
+   "file": "apps/api/src/admin_p3_http/classes_preview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/exam-users",
+   "handler": "exam_users",
+   "file": "apps/api/src/admin_p3_http/exam_users.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/exam-users/{claim_id}/exempt",
+   "handler": "exam_user_exempt",
+   "file": "apps/api/src/admin_p3_http/exam_users.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/exam-users/{claim_id}/recover",
+   "handler": "exam_user_recover",
+   "file": "apps/api/src/admin_p3_http/exam_users.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/avatar-frames",
+   "handler": "admin_avatar_frames",
+   "file": "apps/api/src/admin_p3_http/frames.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/avatar-frames",
+   "handler": "admin_avatar_frame_add",
+   "file": "apps/api/src/admin_p3_http/frames.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/avatar-frames/{id}",
+   "handler": "admin_avatar_frame_update",
+   "file": "apps/api/src/admin_p3_http/frames.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/avatar-frames/{id}",
+   "handler": "admin_avatar_frame_delete",
+   "file": "apps/api/src/admin_p3_http/frames.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/grants",
+   "handler": "admin_grants",
+   "file": "apps/api/src/admin_p3_http/grants.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/hr/records",
+   "handler": "hr_records",
+   "file": "apps/api/src/admin_p3_http/hr.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/hr/batch-pardon",
+   "handler": "hr_batch_pardon",
+   "file": "apps/api/src/admin_p3_http/hr.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/increment-bulk",
+   "handler": "increment_bulk",
+   "file": "apps/api/src/admin_p3_http/increment_bulk.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/invites",
+   "handler": "admin_invites",
+   "file": "apps/api/src/admin_p3_http/invites.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/invites",
+   "handler": "admin_invite_issue",
+   "file": "apps/api/src/admin_p3_http/invites.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/invites/revoke",
+   "handler": "admin_invite_revoke",
+   "file": "apps/api/src/admin_p3_http/invites.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/jixiao/assign-batch",
+   "handler": "jixiao_assign_batch",
+   "file": "apps/api/src/admin_p3_http/jixiao_ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/jixiao/overview",
+   "handler": "jixiao_overview",
+   "file": "apps/api/src/admin_p3_http/jixiao_ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/jixiao/payroll",
+   "handler": "jixiao_payroll",
+   "file": "apps/api/src/admin_p3_http/jixiao_ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/jixiao-types",
+   "handler": "jixiao_types_list",
+   "file": "apps/api/src/admin_p3_http/jixiao_types.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/jixiao-types",
+   "handler": "jixiao_type_add",
+   "file": "apps/api/src/admin_p3_http/jixiao_types.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/jixiao-types/{id}",
+   "handler": "jixiao_type_update",
+   "file": "apps/api/src/admin_p3_http/jixiao_types.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/jixiao-types/{id}",
+   "handler": "jixiao_type_delete",
+   "file": "apps/api/src/admin_p3_http/jixiao_types.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/medal-rarities",
+   "handler": "admin_medal_rarities",
+   "file": "apps/api/src/admin_p3_http/medal_rarities.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/medal-rarities",
+   "handler": "admin_medal_rarity_add",
+   "file": "apps/api/src/admin_p3_http/medal_rarities.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/medal-rarities/{value}",
+   "handler": "admin_medal_rarity_update",
+   "file": "apps/api/src/admin_p3_http/medal_rarities.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/medal-rarities/{value}",
+   "handler": "admin_medal_rarity_delete",
+   "file": "apps/api/src/admin_p3_http/medal_rarities.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/user-medals",
+   "handler": "admin_user_medals",
+   "file": "apps/api/src/admin_p3_http/medal_users.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/user-medals/delete",
+   "handler": "admin_user_medal_revoke",
+   "file": "apps/api/src/admin_p3_http/medal_users.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/medals",
+   "handler": "admin_medals",
+   "file": "apps/api/src/admin_p3_http/medals.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/medals",
+   "handler": "admin_medal_add",
+   "file": "apps/api/src/admin_p3_http/medals.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/medals/{id}",
+   "handler": "admin_medal_update",
+   "file": "apps/api/src/admin_p3_http/medals.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/medals/{id}",
+   "handler": "admin_medal_delete",
+   "file": "apps/api/src/admin_p3_http/medals.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/backups",
+   "handler": "admin_backups_list",
+   "file": "apps/api/src/admin_p3_http/ops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/backups/run",
+   "handler": "admin_backup_run",
+   "file": "apps/api/src/admin_p3_http/ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/jobs",
+   "handler": "admin_jobs_list",
+   "file": "apps/api/src/admin_p3_http/ops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/jobs/run",
+   "handler": "admin_job_run",
+   "file": "apps/api/src/admin_p3_http/ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/version",
+   "handler": "admin_version",
+   "file": "apps/api/src/admin_p3_http/ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/promo-kinds",
+   "handler": "promo_kinds_list",
+   "file": "apps/api/src/admin_p3_http/promo_kinds.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/promo-kinds",
+   "handler": "promo_kind_add",
+   "file": "apps/api/src/admin_p3_http/promo_kinds.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/promo-kinds/{kind}",
+   "handler": "promo_kind_update",
+   "file": "apps/api/src/admin_p3_http/promo_kinds.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/promo-kinds/{kind}",
+   "handler": "promo_kind_delete",
+   "file": "apps/api/src/admin_p3_http/promo_kinds.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/promo-kinds/tiers",
+   "handler": "promo_tier_upsert",
+   "file": "apps/api/src/admin_p3_http/promo_tiers.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/promo-kinds/tiers/{id}",
+   "handler": "promo_tier_delete",
+   "file": "apps/api/src/admin_p3_http/promo_tiers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/rename-logs",
+   "handler": "admin_rename_logs",
+   "file": "apps/api/src/admin_p3_http/rename_logs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/modify-logs",
+   "handler": "admin_modify_logs",
+   "file": "apps/api/src/admin_p3_http/rename_logs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/roles-dict",
+   "handler": "roles_dict_list",
+   "file": "apps/api/src/admin_p3_http/roles.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/roles",
+   "handler": "roles_dict_add",
+   "file": "apps/api/src/admin_p3_http/roles.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/roles/{key}",
+   "handler": "roles_dict_update",
+   "file": "apps/api/src/admin_p3_http/roles.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/roles/{key}",
+   "handler": "roles_dict_delete",
+   "file": "apps/api/src/admin_p3_http/roles.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/section-dict",
+   "handler": "section_dict_admin",
+   "file": "apps/api/src/admin_p3_http/section_dict.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/section-dict",
+   "handler": "section_dict_add",
+   "file": "apps/api/src/admin_p3_http/section_dict.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/section-dict/{id}",
+   "handler": "section_dict_update",
+   "file": "apps/api/src/admin_p3_http/section_dict.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/section-dict/{id}",
+   "handler": "section_dict_delete",
+   "file": "apps/api/src/admin_p3_http/section_dict.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/section-kinds",
+   "handler": "section_kinds_list",
+   "file": "apps/api/src/admin_p3_http/section_kinds.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/section-kinds",
+   "handler": "section_kinds_add",
+   "file": "apps/api/src/admin_p3_http/section_kinds.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/section-kinds/{kind}",
+   "handler": "section_kinds_update",
+   "file": "apps/api/src/admin_p3_http/section_kinds.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/section-kinds/{kind}",
+   "handler": "section_kinds_delete",
+   "file": "apps/api/src/admin_p3_http/section_kinds.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/section-dict",
+   "handler": "section_dict_public",
+   "file": "apps/api/src/admin_p3_http/section_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/tags-dict",
+   "handler": "tags_dict_public",
+   "file": "apps/api/src/admin_p3_http/section_public.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/categories/{id}/flags",
+   "handler": "category_flags",
+   "file": "apps/api/src/admin_p3_http/section_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/section-modes",
+   "handler": "section_modes_list",
+   "file": "apps/api/src/admin_p3_http/sections.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/section-modes",
+   "handler": "section_mode_add",
+   "file": "apps/api/src/admin_p3_http/sections.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/section-modes/{id}",
+   "handler": "section_mode_update",
+   "file": "apps/api/src/admin_p3_http/sections.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/section-modes/{id}",
+   "handler": "section_mode_delete",
+   "file": "apps/api/src/admin_p3_http/sections.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/shop-items",
+   "handler": "admin_shop_items",
+   "file": "apps/api/src/admin_p3_http/shop.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/shop-items",
+   "handler": "admin_shop_item_add",
+   "file": "apps/api/src/admin_p3_http/shop.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/shop-items/{id}",
+   "handler": "admin_shop_item_update",
+   "file": "apps/api/src/admin_p3_http/shop.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/shop-items/{id}",
+   "handler": "admin_shop_item_delete",
+   "file": "apps/api/src/admin_p3_http/shop.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/shop-orders",
+   "handler": "admin_shop_orders",
+   "file": "apps/api/src/admin_p3_http/shop_orders_admin.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/tags-dict",
+   "handler": "tags_dict_list",
+   "file": "apps/api/src/admin_p3_http/tags.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/tags-dict",
+   "handler": "tags_dict_add",
+   "file": "apps/api/src/admin_p3_http/tags.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/tags-dict/{id}",
+   "handler": "tags_dict_update",
+   "file": "apps/api/src/admin_p3_http/tags.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/tags-dict/{id}",
+   "handler": "tags_dict_delete",
+   "file": "apps/api/src/admin_p3_http/tags.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/tasks",
+   "handler": "tasks_list",
+   "file": "apps/api/src/admin_p3_http/tasks.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/tasks",
+   "handler": "task_add",
+   "file": "apps/api/src/admin_p3_http/tasks.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/tasks/{id}",
+   "handler": "task_update",
+   "file": "apps/api/src/admin_p3_http/tasks.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/tasks/{id}",
+   "handler": "task_delete",
+   "file": "apps/api/src/admin_p3_http/tasks.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/message-templates",
+   "handler": "admin_template_create",
+   "file": "apps/api/src/admin_p3_http/templates.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/message-templates/{id}",
+   "handler": "admin_template_delete",
+   "file": "apps/api/src/admin_p3_http/templates.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/torrents/batch",
+   "handler": "torrent_batch",
+   "file": "apps/api/src/admin_p3_http/torrent_batch.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/tracker-urls",
+   "handler": "tracker_urls_list",
+   "file": "apps/api/src/admin_p3_http/tracker_urls.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/tracker-urls",
+   "handler": "tracker_url_add",
+   "file": "apps/api/src/admin_p3_http/tracker_urls.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/tracker-urls/{id}",
+   "handler": "tracker_url_update",
+   "file": "apps/api/src/admin_p3_http/tracker_urls.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/tracker-urls/{id}",
+   "handler": "tracker_url_delete",
+   "file": "apps/api/src/admin_p3_http/tracker_urls.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/update_check",
+   "handler": "admin_update_check",
+   "file": "apps/api/src/admin_p3_http/update_check.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/user-props",
+   "handler": "admin_user_props",
+   "file": "apps/api/src/admin_p3_http/user_props.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/user-props/{order_id}",
+   "handler": "admin_user_prop_revoke",
+   "file": "apps/api/src/admin_p3_http/user_props.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/{id}/rename",
+   "handler": "admin_user_rename",
+   "file": "apps/api/src/admin_p3_http/user_rename.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/batch",
+   "handler": "admin_users_batch",
+   "file": "apps/api/src/admin_p3_http/users_batch.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/attachments",
+   "handler": "upload_attachment",
+   "file": "apps/api/src/attachment_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/attachments/{sha}",
+   "handler": "get_attachment",
+   "file": "apps/api/src/attachment_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/attachments/video",
+   "handler": "upload_video",
+   "file": "apps/api/src/attachment_video_upload.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/auth/email-policy",
+   "handler": "email_policy_endpoint",
+   "file": "apps/api/src/auth_http/email_policy.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/auth/email/verify",
+   "handler": "email_verify",
+   "file": "apps/api/src/auth_http/email_verify.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/email/resend",
+   "handler": "email_resend",
+   "file": "apps/api/src/auth_http/email_verify.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/login",
+   "handler": "login",
+   "file": "apps/api/src/auth_http/login.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/logout",
+   "handler": "logout",
+   "file": "apps/api/src/auth_http/logout.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/perms",
+   "handler": "me_perms",
+   "file": "apps/api/src/auth_http/me.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me",
+   "handler": "me",
+   "file": "apps/api/src/auth_http/me.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/logins",
+   "handler": "my_login_history",
+   "file": "apps/api/src/auth_http/me_history.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/passkey/rotate",
+   "handler": "rotate_passkey",
+   "file": "apps/api/src/auth_http/me_security.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/password/change",
+   "handler": "me_password_change",
+   "file": "apps/api/src/auth_http/me_security.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/sessions",
+   "handler": "my_sessions",
+   "file": "apps/api/src/auth_http/me_sessions.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/sessions/revoke-others",
+   "handler": "revoke_other_sessions",
+   "file": "apps/api/src/auth_http/me_sessions.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/overview",
+   "handler": "me_overview",
+   "file": "apps/api/src/auth_http/me_settings.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/settings",
+   "handler": "me_settings_get",
+   "file": "apps/api/src/auth_http/me_settings_kv.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/me/settings",
+   "handler": "me_settings_put",
+   "file": "apps/api/src/auth_http/me_settings_kv.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/title",
+   "handler": "me_title_get",
+   "file": "apps/api/src/auth_http/me_title.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/title",
+   "handler": "me_title_set",
+   "file": "apps/api/src/auth_http/me_title.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/passkeys",
+   "handler": "passkey_list",
+   "file": "apps/api/src/auth_http/passkey.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/passkeys/remove",
+   "handler": "passkey_remove",
+   "file": "apps/api/src/auth_http/passkey.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/passkey-login/begin",
+   "handler": "passkey_login_begin",
+   "file": "apps/api/src/auth_http/passkey_login.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/passkey-login/finish",
+   "handler": "passkey_login_finish",
+   "file": "apps/api/src/auth_http/passkey_login.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/passkeys/begin",
+   "handler": "passkey_begin",
+   "file": "apps/api/src/auth_http/passkey_reg.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/passkeys/finish",
+   "handler": "passkey_finish",
+   "file": "apps/api/src/auth_http/passkey_reg.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/users/{id}",
+   "handler": "user_public_profile",
+   "file": "apps/api/src/auth_http/profile.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/register",
+   "handler": "register",
+   "file": "apps/api/src/auth_http/register.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/register-mode",
+   "handler": "register_mode_endpoint",
+   "file": "apps/api/src/auth_http/register_mode.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/fields",
+   "handler": "my_fields",
+   "file": "apps/api/src/auth_http/user_fields.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/me/fields",
+   "handler": "my_fields_put",
+   "file": "apps/api/src/auth_http/user_fields.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/register-fields",
+   "handler": "register_fields_endpoint",
+   "file": "apps/api/src/auth_http/user_fields.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/user-fields",
+   "handler": "user_fields_list",
+   "file": "apps/api/src/auth_http/user_fields_crud.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/user-fields/{key}",
+   "handler": "user_fields_add",
+   "file": "apps/api/src/auth_http/user_fields_crud.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/user-fields/{key}",
+   "handler": "user_fields_update",
+   "file": "apps/api/src/auth_http/user_fields_crud.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/user-fields/{key}/delete",
+   "handler": "user_fields_delete",
+   "file": "apps/api/src/auth_http/user_fields_crud.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/users/{id}/torrentlist",
+   "handler": "user_torrentlist",
+   "file": "apps/api/src/auth_http/user_torrentlist.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/artists",
+   "handler": "artists_list",
+   "file": "apps/api/src/community_http/artists.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/artists/{id}",
+   "handler": "artist_detail",
+   "file": "apps/api/src/community_http/artists.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/artists/top",
+   "handler": "artists_top",
+   "file": "apps/api/src/community_http/artists.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/bounty/award",
+   "handler": "bounty_award",
+   "file": "apps/api/src/community_http/bounty.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/embed-rules",
+   "handler": "forum_embed_rules",
+   "file": "apps/api/src/community_http/embed_rules.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/feed",
+   "handler": "forum_feed",
+   "file": "apps/api/src/community_http/feed.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/follows",
+   "handler": "follow_create",
+   "file": "apps/api/src/community_http/follow.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/follows/{ttype}/{tid}",
+   "handler": "follow_delete",
+   "file": "apps/api/src/community_http/follow.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/follows/status",
+   "handler": "follow_status",
+   "file": "apps/api/src/community_http/follow.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/follows/mine",
+   "handler": "follow_mine",
+   "file": "apps/api/src/community_http/follow.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/tags",
+   "handler": "forum_tags_dict",
+   "file": "apps/api/src/community_http/forum_util.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/search",
+   "handler": "forum_search",
+   "file": "apps/api/src/community_http/forums.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums",
+   "handler": "forum_list",
+   "file": "apps/api/src/community_http/forums.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/boards",
+   "handler": "forum_boards",
+   "file": "apps/api/src/community_http/forums.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/friends",
+   "handler": "friend_add",
+   "file": "apps/api/src/community_http/friend.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/friends",
+   "handler": "friend_list",
+   "file": "apps/api/src/community_http/friend.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/friends/action",
+   "handler": "friend_action",
+   "file": "apps/api/src/community_http/friend.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/poll/vote",
+   "handler": "poll_vote",
+   "file": "apps/api/src/community_http/interact.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/poll/close",
+   "handler": "poll_close",
+   "file": "apps/api/src/community_http/interact.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/staff/leaks",
+   "handler": "leak_list",
+   "file": "apps/api/src/community_http/leak_bot.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staff/leaks/resolve",
+   "handler": "leak_resolve",
+   "file": "apps/api/src/community_http/leak_bot.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/shoutbox/bot",
+   "handler": "shoutbox_bot_help",
+   "file": "apps/api/src/community_http/leak_bot.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/shoutbox/bot/exec",
+   "handler": "shoutbox_bot_exec",
+   "file": "apps/api/src/community_http/leak_bot.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/posts/{id}/like",
+   "handler": "post_like",
+   "file": "apps/api/src/community_http/like.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/posts/{id}/like",
+   "handler": "post_unlike",
+   "file": "apps/api/src/community_http/like.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/{id}/favorite",
+   "handler": "topic_favorite",
+   "file": "apps/api/src/community_http/like.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/topics/{id}/favorite",
+   "handler": "topic_unfavorite",
+   "file": "apps/api/src/community_http/like.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/list-prefs",
+   "handler": "list_prefs_get",
+   "file": "apps/api/src/community_http/list_prefs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/list-prefs",
+   "handler": "list_prefs_set",
+   "file": "apps/api/src/community_http/list_prefs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/lottery/join",
+   "handler": "lottery_join",
+   "file": "apps/api/src/community_http/lottery.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/lottery/draw",
+   "handler": "lottery_draw",
+   "file": "apps/api/src/community_http/lottery.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/medal-rarities",
+   "handler": "medal_rarities",
+   "file": "apps/api/src/community_http/medal.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/medals",
+   "handler": "medal_list",
+   "file": "apps/api/src/community_http/medal.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/medals/wear",
+   "handler": "medal_wear",
+   "file": "apps/api/src/community_http/medal.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/medals",
+   "handler": "my_medals",
+   "file": "apps/api/src/community_http/medal.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/medals/buy",
+   "handler": "medal_buy",
+   "file": "apps/api/src/community_http/medal_buy.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/medals/gift",
+   "handler": "medal_gift",
+   "file": "apps/api/src/community_http/medal_gift.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/messages/inbox",
+   "handler": "message_inbox",
+   "file": "apps/api/src/community_http/message.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/messages/sent",
+   "handler": "message_sent",
+   "file": "apps/api/src/community_http/message.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/messages/staff",
+   "handler": "message_staff",
+   "file": "apps/api/src/community_http/message.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/messages/markread",
+   "handler": "message_markread",
+   "file": "apps/api/src/community_http/message_box.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/messages/delete",
+   "handler": "message_delete",
+   "file": "apps/api/src/community_http/message_box.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/messages/move",
+   "handler": "message_move",
+   "file": "apps/api/src/community_http/message_box.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/messages/boxes",
+   "handler": "message_boxes",
+   "file": "apps/api/src/community_http/message_box.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/messages/boxes",
+   "handler": "message_box_upsert",
+   "file": "apps/api/src/community_http/message_box.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/messages",
+   "handler": "message_send",
+   "file": "apps/api/src/community_http/message_send.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/messages/stream",
+   "handler": "message_stream",
+   "file": "apps/api/src/community_http/message_stream.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/networks/{id}/subscribe",
+   "handler": "network_subscribe",
+   "file": "apps/api/src/community_http/network_subs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/networks/{id}/unsubscribe",
+   "handler": "network_unsubscribe",
+   "file": "apps/api/src/community_http/network_subs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/subscriptions/networks",
+   "handler": "my_network_subscriptions",
+   "file": "apps/api/src/community_http/network_subs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/networks",
+   "handler": "networks_list",
+   "file": "apps/api/src/community_http/networks.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/networks/{id}",
+   "handler": "network_detail",
+   "file": "apps/api/src/community_http/networks.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/networks/top",
+   "handler": "networks_top",
+   "file": "apps/api/src/community_http/networks.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/notice-prefs",
+   "handler": "notice_prefs_get",
+   "file": "apps/api/src/community_http/notice.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/notice-prefs",
+   "handler": "notice_prefs_set",
+   "file": "apps/api/src/community_http/notice.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/pool/honor",
+   "handler": "pool_honor",
+   "file": "apps/api/src/community_http/notice.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/forums/posts/{id}",
+   "handler": "post_edit",
+   "file": "apps/api/src/community_http/post_edit.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/posts/{id}",
+   "handler": "post_delete",
+   "file": "apps/api/src/community_http/post_edit.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/topics/{id}",
+   "handler": "topic_delete",
+   "file": "apps/api/src/community_http/post_edit.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/topics/{id}",
+   "handler": "topic_detail",
+   "file": "apps/api/src/community_http/post_read.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/{id}/reply",
+   "handler": "post_reply",
+   "file": "apps/api/src/community_http/post_write.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/seasonal",
+   "handler": "seasonal_anime",
+   "file": "apps/api/src/community_http/seasonal.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/shoutbox",
+   "handler": "shoutbox_list",
+   "file": "apps/api/src/community_http/shoutbox.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/shoutbox",
+   "handler": "shoutbox_send",
+   "file": "apps/api/src/community_http/shoutbox.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/shoutbox/delete",
+   "handler": "shoutbox_delete",
+   "file": "apps/api/src/community_http/shoutbox.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/matches",
+   "handler": "admin_match_create",
+   "file": "apps/api/src/community_http/sport_matches.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/matches/{id}/score",
+   "handler": "admin_match_score",
+   "file": "apps/api/src/community_http/sport_matches.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/matches",
+   "handler": "matches_list",
+   "file": "apps/api/src/community_http/sport_matches.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/matches/{id}",
+   "handler": "match_detail",
+   "file": "apps/api/src/community_http/sport_matches.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staffmessages/answer",
+   "handler": "staff_answer",
+   "file": "apps/api/src/community_http/staff_answer.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staffmessages/mark",
+   "handler": "staff_mark",
+   "file": "apps/api/src/community_http/staff_answer.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staffmessages/delete",
+   "handler": "staff_delete",
+   "file": "apps/api/src/community_http/staff_answer.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/contactstaff",
+   "handler": "contact_staff",
+   "file": "apps/api/src/community_http/staffbox.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/staffmessages",
+   "handler": "staff_messages",
+   "file": "apps/api/src/community_http/staffbox.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/staffmessages",
+   "handler": "my_staff_messages",
+   "file": "apps/api/src/community_http/staffbox.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/staffmessages/confirm",
+   "handler": "my_ticket_confirm",
+   "file": "apps/api/src/community_http/staffbox.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/subscriptions/groups",
+   "handler": "my_group_subscriptions",
+   "file": "apps/api/src/community_http/subs_calendar.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/subscriptions/calendar",
+   "handler": "my_subscription_calendar",
+   "file": "apps/api/src/community_http/subs_calendar.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/stafftickets",
+   "handler": "ticket_list",
+   "file": "apps/api/src/community_http/ticket.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/stafftickets/update",
+   "handler": "ticket_update",
+   "file": "apps/api/src/community_http/ticket.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/tip",
+   "handler": "post_tip",
+   "file": "apps/api/src/community_http/tip.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/{id}/topics",
+   "handler": "topic_list",
+   "file": "apps/api/src/community_http/topic.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/{id}/manage",
+   "handler": "topic_manage",
+   "file": "apps/api/src/community_http/topic_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/manage-batch",
+   "handler": "topic_manage_batch",
+   "file": "apps/api/src/community_http/topic_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics",
+   "handler": "topic_create",
+   "file": "apps/api/src/community_http/topic_create.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/meta",
+   "handler": "compat_meta",
+   "file": "apps/api/src/compat_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/nexusphp/getrss.php",
+   "handler": "alias_getrss",
+   "file": "apps/api/src/compat_http/aliases.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/compat/nexusphp/takelogin.php",
+   "handler": "alias_takelogin",
+   "file": "apps/api/src/compat_http/aliases.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/nexusphp/userdetails.php",
+   "handler": "alias_userdetails",
+   "file": "apps/api/src/compat_http/aliases.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/nexusphp/details.php",
+   "handler": "alias_details",
+   "file": "apps/api/src/compat_http/aliases.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/downloads/keys",
+   "handler": "download_key_issue",
+   "file": "apps/api/src/compat_http/download_keys.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/downloads/keys/revoke",
+   "handler": "download_key_revoke",
+   "file": "apps/api/src/compat_http/download_keys.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/downloads/{torrent_id}",
+   "handler": "download_key_fetch",
+   "file": "apps/api/src/compat_http/download_keys.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/nexusphp/user.json",
+   "handler": "compat_np_user",
+   "file": "apps/api/src/compat_http/nexusphp.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/nexusphp/torrents.json",
+   "handler": "compat_np_torrents",
+   "file": "apps/api/src/compat_http/nexusphp.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/nexusphp/torrent/{id}.json",
+   "handler": "compat_np_torrent_detail",
+   "file": "apps/api/src/compat_http/nexusphp.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/compat/nexusphp/download.php",
+   "handler": "compat_np_download",
+   "file": "apps/api/src/compat_http/nexusphp.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/plugins/ptppUserInfo",
+   "handler": "ptpp_user_info",
+   "file": "apps/api/src/compat_http/ptpp.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/textbooks",
+   "handler": "textbook_list",
+   "file": "apps/api/src/content_http/misc.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/textbooks/link",
+   "handler": "textbook_link",
+   "file": "apps/api/src/content_http/misc.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/top/boards",
+   "handler": "top_boards",
+   "file": "apps/api/src/content_http/misc.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/offers",
+   "handler": "offer_create",
+   "file": "apps/api/src/content_http/offers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/offers",
+   "handler": "offer_list",
+   "file": "apps/api/src/content_http/offers.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/offers/vote",
+   "handler": "offer_vote",
+   "file": "apps/api/src/content_http/offers.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/offers/promote",
+   "handler": "offer_promote",
+   "file": "apps/api/src/content_http/offers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/promo/plans",
+   "handler": "promo_plans",
+   "file": "apps/api/src/content_http/promo.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/promo/buy",
+   "handler": "promo_buy",
+   "file": "apps/api/src/content_http/promo.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/requests",
+   "handler": "request_create",
+   "file": "apps/api/src/content_http/requests.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/requests",
+   "handler": "request_list",
+   "file": "apps/api/src/content_http/requests.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/requests/fulfill",
+   "handler": "request_fulfill",
+   "file": "apps/api/src/content_http/requests.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles",
+   "handler": "subtitle_upload",
+   "file": "apps/api/src/content_http/subtitles.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/subtitles/awards",
+   "handler": "subtitle_awards_board",
+   "file": "apps/api/src/content_http/subtitles_awards.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/cancel",
+   "handler": "subtitle_request_cancel",
+   "file": "apps/api/src/content_http/subtitles_cancel.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/accept",
+   "handler": "subtitle_request_accept",
+   "file": "apps/api/src/content_http/subtitles_close.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/crew-accept",
+   "handler": "subtitle_request_crew_accept",
+   "file": "apps/api/src/content_http/subtitles_close.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/deliver",
+   "handler": "subtitle_request_deliver",
+   "file": "apps/api/src/content_http/subtitles_close.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/subtitles/{id}/detail",
+   "handler": "subtitle_detail",
+   "file": "apps/api/src/content_http/subtitles_detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/subtitles/{id}/download",
+   "handler": "subtitle_download",
+   "file": "apps/api/src/content_http/subtitles_dl.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/subtitles/langs",
+   "handler": "subtitle_langs",
+   "file": "apps/api/src/content_http/subtitles_dl.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/claim",
+   "handler": "subtitle_request_claim",
+   "file": "apps/api/src/content_http/subtitles_flow.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/abandon",
+   "handler": "subtitle_request_abandon",
+   "file": "apps/api/src/content_http/subtitles_flow.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/fulfill",
+   "handler": "subtitle_request_fulfill",
+   "file": "apps/api/src/content_http/subtitles_fulfill.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/{id}/vote",
+   "handler": "subtitle_vote",
+   "file": "apps/api/src/content_http/subtitles_govern.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/{id}/report",
+   "handler": "subtitle_report",
+   "file": "apps/api/src/content_http/subtitles_govern.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/subtitles",
+   "handler": "subtitle_list",
+   "file": "apps/api/src/content_http/subtitles_list.rs"
+  },
+  {
+   "method": "PATCH",
+   "path": "/subtitles/{id}",
+   "handler": "subtitle_patch",
+   "file": "apps/api/src/content_http/subtitles_meta.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/subtitles/{id}",
+   "handler": "subtitle_delete",
+   "file": "apps/api/src/content_http/subtitles_meta.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests",
+   "handler": "subtitle_request_create",
+   "file": "apps/api/src/content_http/subtitles_requests.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/subtitles/requests",
+   "handler": "subtitle_request_list",
+   "file": "apps/api/src/content_http/subtitles_requests.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/subtitles/requests/{id}/contribute",
+   "handler": "subtitle_request_contribute",
+   "file": "apps/api/src/content_http/subtitles_requests.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/bank/deposit",
+   "handler": "bank_deposit",
+   "file": "apps/api/src/economy_http/bank.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/bank/deposits",
+   "handler": "bank_list",
+   "file": "apps/api/src/economy_http/bank.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/bank/withdraw",
+   "handler": "bank_withdraw",
+   "file": "apps/api/src/economy_http/bank_withdraw.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/attendance/checkin",
+   "handler": "checkin",
+   "file": "apps/api/src/economy_http/checkin.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/attendance",
+   "handler": "checkin_status",
+   "file": "apps/api/src/economy_http/checkin.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/economy-dashboard",
+   "handler": "economy_dashboard",
+   "file": "apps/api/src/economy_http/dashboard.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/dressup/list",
+   "handler": "dressup_list",
+   "file": "apps/api/src/economy_http/dressup.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/dressup/wear",
+   "handler": "dressup_wear",
+   "file": "apps/api/src/economy_http/dressup.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/fundings",
+   "handler": "fundings_list",
+   "file": "apps/api/src/economy_http/funding.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/fundings",
+   "handler": "funding_create",
+   "file": "apps/api/src/economy_http/funding.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/fundings",
+   "handler": "admin_fundings_list",
+   "file": "apps/api/src/economy_http/funding.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/fundings/cancel",
+   "handler": "admin_funding_cancel",
+   "file": "apps/api/src/economy_http/funding.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/fundings/contribute",
+   "handler": "funding_contribute",
+   "file": "apps/api/src/economy_http/funding_contribute.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/fundings/mine",
+   "handler": "funding_my",
+   "file": "apps/api/src/economy_http/funding_contribute.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/bank/loan/repay",
+   "handler": "loan_repay",
+   "file": "apps/api/src/economy_http/loan_repay.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/bank/interest/records",
+   "handler": "bank_interest_records",
+   "file": "apps/api/src/economy_http/loan_repay.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/bank/status",
+   "handler": "bank_status_alias",
+   "file": "apps/api/src/economy_http/loan_repay.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/bank/overview",
+   "handler": "bank_overview",
+   "file": "apps/api/src/economy_http/loan_repay.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/bank/demand/deposit",
+   "handler": "demand_deposit",
+   "file": "apps/api/src/economy_http/loans.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/bank/demand/withdraw",
+   "handler": "demand_withdraw",
+   "file": "apps/api/src/economy_http/loans.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/bank/loan/apply",
+   "handler": "loan_apply",
+   "file": "apps/api/src/economy_http/loans_apply.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/bank/loans",
+   "handler": "loan_history",
+   "file": "apps/api/src/economy_http/loans_apply.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/orders",
+   "handler": "my_orders",
+   "file": "apps/api/src/economy_http/my_orders.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/magic-pool",
+   "handler": "pool_status",
+   "file": "apps/api/src/economy_http/pool.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/magic-pool/donate",
+   "handler": "pool_donate",
+   "file": "apps/api/src/economy_http/pool.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/spark-flow",
+   "handler": "spark_flow_report",
+   "file": "apps/api/src/economy_http/recon.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torznab",
+   "handler": "torznab_caps",
+   "file": "apps/api/src/economy_http/recon.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torznab/search",
+   "handler": "torznab_search",
+   "file": "apps/api/src/economy_http/recon.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/shop/buy",
+   "handler": "shop_buy",
+   "file": "apps/api/src/economy_http/shop.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/shop/items",
+   "handler": "shop_items",
+   "file": "apps/api/src/economy_http/shop_list.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/vouchers/use",
+   "handler": "voucher_use",
+   "file": "apps/api/src/economy_http/voucher_use.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/spark",
+   "handler": "my_spark",
+   "file": "apps/api/src/economy_http/voucher_use.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/spark/ledger",
+   "handler": "my_ledger",
+   "file": "apps/api/src/economy_http/voucher_use.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/vouchers",
+   "handler": "my_vouchers",
+   "file": "apps/api/src/economy_http/vouchers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/gacha/stats",
+   "handler": "gacha_admin_stats",
+   "file": "apps/api/src/gacha_http/admin_stats.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/gacha/dismantle",
+   "handler": "gacha_dismantle",
+   "file": "apps/api/src/gacha_http/craft.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/gacha/exchange",
+   "handler": "gacha_exchange",
+   "file": "apps/api/src/gacha_http/craft.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/gacha/levelup",
+   "handler": "gacha_levelup",
+   "file": "apps/api/src/gacha_http/craft.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/gacha/draw",
+   "handler": "gacha_draw",
+   "file": "apps/api/src/gacha_http/draw.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/gacha/me",
+   "handler": "gacha_me",
+   "file": "apps/api/src/gacha_http/me.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/gacha/rarities",
+   "handler": "gacha_rarities",
+   "file": "apps/api/src/gacha_http/rates.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/gacha/cards",
+   "handler": "gacha_cards",
+   "file": "apps/api/src/gacha_http/rates.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/gacha/banners",
+   "handler": "gacha_banners",
+   "file": "apps/api/src/gacha_http/rates.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/gacha/banner/{id}/rates",
+   "handler": "gacha_banner_rates",
+   "file": "apps/api/src/gacha_http/rates.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/gacha/grant",
+   "handler": "gacha_grant_tickets",
+   "file": "apps/api/src/gacha_http/staff.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/gacha/grant-shards",
+   "handler": "gacha_grant_shards",
+   "file": "apps/api/src/gacha_http/staff.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/arcade/overview",
+   "handler": "arcade_overview",
+   "file": "apps/api/src/games_http/arcade_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/arcade/pool",
+   "handler": "arcade_pool_save",
+   "file": "apps/api/src/games_http/arcade_admin_write.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/arcade/quest/{code}/claim",
+   "handler": "claim_quest",
+   "file": "apps/api/src/games_http/arcade_claim.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/arcade/season/{code}/claim",
+   "handler": "claim_season",
+   "file": "apps/api/src/games_http/arcade_claim.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/arcade/crops",
+   "handler": "arcade_crops_list",
+   "file": "apps/api/src/games_http/arcade_crops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/arcade/crop",
+   "handler": "arcade_crop_save",
+   "file": "apps/api/src/games_http/arcade_crops.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/arcade/crop/{id}",
+   "handler": "arcade_crop_delete",
+   "file": "apps/api/src/games_http/arcade_crops.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/arcade/items/{key}",
+   "handler": "arcade_item_delete",
+   "file": "apps/api/src/games_http/arcade_items_delete.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/arcade/items",
+   "handler": "arcade_item_save",
+   "file": "apps/api/src/games_http/arcade_items_write.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/arcade/leaderboard",
+   "handler": "arcade_leaderboard",
+   "file": "apps/api/src/games_http/arcade_leaderboard.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/arcade-meta",
+   "handler": "arcade_meta",
+   "file": "apps/api/src/games_http/arcade_meta.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/arcade/rewards",
+   "handler": "arcade_reward_save",
+   "file": "apps/api/src/games_http/arcade_rewards_write.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/scratch",
+   "handler": "scratch",
+   "file": "apps/api/src/games_http/casino.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/bigsmall",
+   "handler": "guess_bigsmall",
+   "file": "apps/api/src/games_http/casino.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/collection/{game}",
+   "handler": "game_collection",
+   "file": "apps/api/src/games_http/collection.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/farm",
+   "handler": "farm_overview",
+   "file": "apps/api/src/games_http/farm.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/plant",
+   "handler": "farm_plant",
+   "file": "apps/api/src/games_http/farm_actions.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/water",
+   "handler": "farm_water",
+   "file": "apps/api/src/games_http/farm_actions.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/fertilize",
+   "handler": "farm_fertilize",
+   "file": "apps/api/src/games_http/farm_actions.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/harvest",
+   "handler": "farm_harvest",
+   "file": "apps/api/src/games_http/farm_actions.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/farm/collection",
+   "handler": "farm_collection",
+   "file": "apps/api/src/games_http/farm_collection.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/land/buy",
+   "handler": "farm_land_buy",
+   "file": "apps/api/src/games_http/farm_land_write.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/land/upgrade",
+   "handler": "farm_land_upgrade",
+   "file": "apps/api/src/games_http/farm_land_write.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fishing/cast",
+   "handler": "fishing_cast",
+   "file": "apps/api/src/games_http/fishing.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fishing/reel",
+   "handler": "fishing_reel",
+   "file": "apps/api/src/games_http/fishing.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/fishing/rod",
+   "handler": "fishing_rod",
+   "file": "apps/api/src/games_http/fishing_extra.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/fishing/rod/upgrade",
+   "handler": "fishing_rod_upgrade",
+   "file": "apps/api/src/games_http/fishing_extra.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/fishing/collection",
+   "handler": "fishing_collection",
+   "file": "apps/api/src/games_http/fishing_extra.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/fun/polls",
+   "handler": "fun_polls",
+   "file": "apps/api/src/games_http/fun.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/fun/vote",
+   "handler": "fun_vote",
+   "file": "apps/api/src/games_http/fun.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/arcade/backpack/use",
+   "handler": "backpack_use",
+   "file": "apps/api/src/games_http/item_use.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/linkage/status",
+   "handler": "linkage_status",
+   "file": "apps/api/src/games_http/linkage.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/coupons/use",
+   "handler": "use_coupon",
+   "file": "apps/api/src/games_http/linkage.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games",
+   "handler": "games_overview",
+   "file": "apps/api/src/games_http/overview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/history",
+   "handler": "game_history",
+   "file": "apps/api/src/games_http/overview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/rounds",
+   "handler": "game_rounds",
+   "file": "apps/api/src/games_http/overview.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/pet/customize",
+   "handler": "pet_customize",
+   "file": "apps/api/src/games_http/pet_custom.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/pet/of",
+   "handler": "pet_of",
+   "file": "apps/api/src/games_http/pet_custom.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/pet/log",
+   "handler": "pet_log",
+   "file": "apps/api/src/games_http/pet_log.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/games/pet",
+   "handler": "pet_status",
+   "file": "apps/api/src/games_http/pets.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/pet/feed",
+   "handler": "pet_feed",
+   "file": "apps/api/src/games_http/pets.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/pet/claim",
+   "handler": "pet_claim",
+   "file": "apps/api/src/games_http/pets.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/jgg",
+   "handler": "jgg",
+   "file": "apps/api/src/games_http/pool_games.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/capsule",
+   "handler": "capsule",
+   "file": "apps/api/src/games_http/pool_games.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/games/wheel",
+   "handler": "wheel",
+   "file": "apps/api/src/games_http/pool_games.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/farm/ranch",
+   "handler": "ranch_state",
+   "file": "apps/api/src/games_http/ranch.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/craft",
+   "handler": "craft_start",
+   "file": "apps/api/src/games_http/ranch.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/craft/collect",
+   "handler": "craft_collect",
+   "file": "apps/api/src/games_http/ranch.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/ranch/buy",
+   "handler": "ranch_buy",
+   "file": "apps/api/src/games_http/ranch_pens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/ranch/feed",
+   "handler": "ranch_feed",
+   "file": "apps/api/src/games_http/ranch_pens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/farm/ranch/collect",
+   "handler": "ranch_collect",
+   "file": "apps/api/src/games_http/ranch_pens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/appeals",
+   "handler": "appeal_create",
+   "file": "apps/api/src/gaps_http/appeals.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/appeals",
+   "handler": "appeal_my",
+   "file": "apps/api/src/gaps_http/appeals.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/appeals",
+   "handler": "appeal_queue",
+   "file": "apps/api/src/gaps_http/appeals.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/appeals/handle",
+   "handler": "appeal_handle",
+   "file": "apps/api/src/gaps_http/appeals.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/apply",
+   "handler": "apply_submit",
+   "file": "apps/api/src/gaps_http/applications.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/applications",
+   "handler": "apply_queue",
+   "file": "apps/api/src/gaps_http/applications.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/applications/decide",
+   "handler": "apply_decide",
+   "file": "apps/api/src/gaps_http/applications.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/auth/captcha",
+   "handler": "captcha_issue",
+   "file": "apps/api/src/gaps_http/captcha.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/classes",
+   "handler": "classes_public",
+   "file": "apps/api/src/gaps_http/classes_public.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/self-unban",
+   "handler": "self_unban",
+   "file": "apps/api/src/gaps_http/classes_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/hr",
+   "handler": "my_hr_status",
+   "file": "apps/api/src/gaps_http/hr.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/hr/pardon",
+   "handler": "hr_pardon",
+   "file": "apps/api/src/gaps_http/hr.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/hr/pardon/batch",
+   "handler": "hr_pardon_batch",
+   "file": "apps/api/src/gaps_http/hr.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/hr/pardon",
+   "handler": "hr_self_pardon",
+   "file": "apps/api/src/gaps_http/hr.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/auth/ban-log",
+   "handler": "ban_log",
+   "file": "apps/api/src/gaps_http/login_aux.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/attendance/resub",
+   "handler": "resub_use",
+   "file": "apps/api/src/gaps_http/misc.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/class-rules",
+   "handler": "class_rules_list",
+   "file": "apps/api/src/gaps_http/misc.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/class-progress",
+   "handler": "my_class_progress",
+   "file": "apps/api/src/gaps_http/misc.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/auth/pow-challenge",
+   "handler": "pow_challenge",
+   "file": "apps/api/src/gaps_http/pow.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/password/forgot",
+   "handler": "password_forgot",
+   "file": "apps/api/src/gaps_http/reset.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/password/reset",
+   "handler": "password_reset",
+   "file": "apps/api/src/gaps_http/reset.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/wishlist",
+   "handler": "wishlist_list",
+   "file": "apps/api/src/gaps_http/wishlist.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/wishlist",
+   "handler": "wishlist_add",
+   "file": "apps/api/src/gaps_http/wishlist.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/wishlist/remove",
+   "handler": "wishlist_remove",
+   "file": "apps/api/src/gaps_http/wishlist.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/cheat-events",
+   "handler": "cheat_events_list",
+   "file": "apps/api/src/http/cheat_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/cheat-events/resolve",
+   "handler": "cheat_events_resolve",
+   "file": "apps/api/src/http/cheat_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/avatar-frames",
+   "handler": "frame_list",
+   "file": "apps/api/src/http/frames_gomoku.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/me/avatar-frame",
+   "handler": "frame_equip",
+   "file": "apps/api/src/http/frames_gomoku.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/gomoku/games",
+   "handler": "gomoku_create",
+   "file": "apps/api/src/http/frames_gomoku.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/gomoku/games/{id}/join",
+   "handler": "gomoku_join",
+   "file": "apps/api/src/http/frames_gomoku.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/gomoku/games/{id}/move",
+   "handler": "gomoku_move",
+   "file": "apps/api/src/http/frames_gomoku.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/gomoku/games/{id}",
+   "handler": "gomoku_get",
+   "file": "apps/api/src/http/frames_gomoku.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/fun/items",
+   "handler": "fun_items",
+   "file": "apps/api/src/http/fun_links.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/fun/items/vote",
+   "handler": "fun_item_vote",
+   "file": "apps/api/src/http/fun_links.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/fun/items",
+   "handler": "fun_item_create",
+   "file": "apps/api/src/http/fun_links.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/fun/items/{id}",
+   "handler": "fun_item_update",
+   "file": "apps/api/src/http/fun_links.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/fun/items/{id}/status",
+   "handler": "fun_item_set_status",
+   "file": "apps/api/src/http/fun_links.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/fun/items/{id}",
+   "handler": "fun_item_delete",
+   "file": "apps/api/src/http/fun_links.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/home",
+   "handler": "home_sections",
+   "file": "apps/api/src/http/home.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/home-layout",
+   "handler": "admin_home_layout_put",
+   "file": "apps/api/src/http/home_layout.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/links/apply",
+   "handler": "link_apply",
+   "file": "apps/api/src/http/links.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/links/{id}",
+   "handler": "link_update",
+   "file": "apps/api/src/http/links.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/links/{id}",
+   "handler": "link_delete",
+   "file": "apps/api/src/http/links.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/links",
+   "handler": "link_admin_list",
+   "file": "apps/api/src/http/links.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/torrentlist",
+   "handler": "my_torrentlist",
+   "file": "apps/api/src/http/misc_handlers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/bookmarks",
+   "handler": "my_bookmarks",
+   "file": "apps/api/src/http/misc_handlers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/stats",
+   "handler": "stats",
+   "file": "apps/api/src/http/misc_handlers.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/rss-info",
+   "handler": "rss_info",
+   "file": "apps/api/src/http/misc_handlers.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/news",
+   "handler": "news_create",
+   "file": "apps/api/src/http/news_fun.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/news/{id}",
+   "handler": "news_update",
+   "file": "apps/api/src/http/news_fun.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/news/{id}",
+   "handler": "news_delete",
+   "file": "apps/api/src/http/news_fun.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/medal-wall",
+   "handler": "medal_wall",
+   "file": "apps/api/src/http/plugins.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/contests",
+   "handler": "contest_list",
+   "file": "apps/api/src/http/plugins.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/contests/{id}/join",
+   "handler": "contest_join",
+   "file": "apps/api/src/http/plugins.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/health",
+   "handler": "health",
+   "file": "apps/api/src/http/probes.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/about",
+   "handler": "about",
+   "file": "apps/api/src/http/probes.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/ready",
+   "handler": "ready",
+   "file": "apps/api/src/http/probes.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/reports",
+   "handler": "report_create",
+   "file": "apps/api/src/http/reports_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/view-layout",
+   "handler": "view_layout_keys",
+   "file": "apps/api/src/http/view_layout.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/view-hidden",
+   "handler": "admin_view_hidden_put",
+   "file": "apps/api/src/http/view_layout.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/invites/status",
+   "handler": "invites_status_handler",
+   "file": "apps/api/src/invite_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/invites",
+   "handler": "list_invites_handler",
+   "file": "apps/api/src/invite_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/invites",
+   "handler": "issue_invite_handler",
+   "file": "apps/api/src/invite_http.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/invites/{id}",
+   "handler": "revoke_invite_handler",
+   "file": "apps/api/src/invite_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/invites/invitees",
+   "handler": "list_invitees_handler",
+   "file": "apps/api/src/invite_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/invites/redeem",
+   "handler": "redeem_invite_handler",
+   "file": "apps/api/src/invite_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/invites/email",
+   "handler": "email_invite_handler",
+   "file": "apps/api/src/invite_http/email.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/torrents/{id}",
+   "handler": "open_torrent_detail",
+   "file": "apps/api/src/openapi_http/detail_open.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/me/overview",
+   "handler": "me_overview",
+   "file": "apps/api/src/openapi_http/me.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/me/hr",
+   "handler": "me_hr",
+   "file": "apps/api/src/openapi_http/me.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/me/messages",
+   "handler": "me_messages",
+   "file": "apps/api/src/openapi_http/me.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/me/seeding",
+   "handler": "me_seeding",
+   "file": "apps/api/src/openapi_http/me_torrents.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/me/history",
+   "handler": "me_history",
+   "file": "apps/api/src/openapi_http/me_torrents.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/recent",
+   "handler": "open_recent_torrents",
+   "file": "apps/api/src/openapi_http/open.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/announces",
+   "handler": "open_announces",
+   "file": "apps/api/src/openapi_http/open.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/open/categories",
+   "handler": "open_categories",
+   "file": "apps/api/src/openapi_http/open.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/openapi.json",
+   "handler": "openapi_spec",
+   "file": "apps/api/src/openapi_http/open.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/tokens",
+   "handler": "token_list",
+   "file": "apps/api/src/openapi_http/tokens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/tokens",
+   "handler": "token_issue",
+   "file": "apps/api/src/openapi_http/tokens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/tokens/refresh",
+   "handler": "token_refresh",
+   "file": "apps/api/src/openapi_http/tokens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/tokens/revoke",
+   "handler": "token_revoke",
+   "file": "apps/api/src/openapi_http/tokens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/open/torrents",
+   "handler": "open_upload",
+   "file": "apps/api/src/openapi_http/upload.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/exams",
+   "handler": "my_exams",
+   "file": "apps/api/src/ops_http/exams.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/jixiao/types",
+   "handler": "jixiao_types",
+   "file": "apps/api/src/ops_http/jixiao.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/jixiao/me",
+   "handler": "jixiao_me",
+   "file": "apps/api/src/ops_http/jixiao.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/jixiao/claim",
+   "handler": "jixiao_claim",
+   "file": "apps/api/src/ops_http/jixiao_claim.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/jixiao/my",
+   "handler": "jixiao_my",
+   "file": "apps/api/src/ops_http/jixiao_claim.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/onboarding",
+   "handler": "onboarding_status",
+   "file": "apps/api/src/ops_http/onboarding.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/onboarding",
+   "handler": "onboarding_apply",
+   "file": "apps/api/src/ops_http/onboarding.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/preserve",
+   "handler": "preserve_list",
+   "file": "apps/api/src/ops_http/preserve.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/preserve/claim",
+   "handler": "preserve_claim",
+   "file": "apps/api/src/ops_http/preserve.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/plugins",
+   "handler": "plugins_overview",
+   "file": "apps/api/src/ops_http/preserve.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/resurrections",
+   "handler": "resurrection_list",
+   "file": "apps/api/src/ops_http/resurrections.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/resurrections/claim",
+   "handler": "resurrection_claim",
+   "file": "apps/api/src/ops_http/resurrections.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/resurrections/mine",
+   "handler": "resurrection_my",
+   "file": "apps/api/src/ops_http/resurrections.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/tasks/overview",
+   "handler": "task_overview",
+   "file": "apps/api/src/ops_http/task_overview.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/tasks/claim",
+   "handler": "task_claim",
+   "file": "apps/api/src/ops_http/task_overview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/tasks",
+   "handler": "task_list",
+   "file": "apps/api/src/ops_http/tasks.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/auto-meta",
+   "handler": "auto_meta",
+   "file": "apps/api/src/publish_http/auto_meta.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/collections",
+   "handler": "collection_create",
+   "file": "apps/api/src/publish_http/collections.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/collections/{id}/items",
+   "handler": "collection_add",
+   "file": "apps/api/src/publish_http/collections.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/collections",
+   "handler": "collections_list",
+   "file": "apps/api/src/publish_http/collections.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/collections/{id}",
+   "handler": "collection_detail",
+   "file": "apps/api/src/publish_http/collections.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/collections",
+   "handler": "torrent_collections",
+   "file": "apps/api/src/publish_http/collections.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/download",
+   "handler": "download",
+   "file": "apps/api/src/publish_http/download.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/group",
+   "handler": "group_attach",
+   "file": "apps/api/src/publish_http/group.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/groups/{group_id}/subscribe",
+   "handler": "group_subscribe",
+   "file": "apps/api/src/publish_http/group.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/groups/{group_id}/unsubscribe",
+   "handler": "group_unsubscribe",
+   "file": "apps/api/src/publish_http/group.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/group",
+   "handler": "group_info",
+   "file": "apps/api/src/publish_http/group.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/ptgen",
+   "handler": "ptgen",
+   "file": "apps/api/src/publish_http/ptgen.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents",
+   "handler": "upload",
+   "file": "apps/api/src/publish_http/upload.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/push/subscribe",
+   "handler": "subscribe",
+   "file": "apps/api/src/push_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/push/unsubscribe",
+   "handler": "unsubscribe",
+   "file": "apps/api/src/push_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/push/test",
+   "handler": "push_test",
+   "file": "apps/api/src/push_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/push/vapid-key",
+   "handler": "vapid_public_key",
+   "file": "apps/api/src/push_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/rss/{passkey}",
+   "handler": "rss_feed",
+   "file": "apps/api/src/rss_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/rss/forum/{passkey}",
+   "handler": "forum_rss_feed",
+   "file": "apps/api/src/rss_http/forum.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/rss/tokens",
+   "handler": "list_tokens",
+   "file": "apps/api/src/rss_http/tokens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/rss/tokens",
+   "handler": "create_token",
+   "file": "apps/api/src/rss_http/tokens.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/rss/tokens/{id}/rotate",
+   "handler": "rotate_token",
+   "file": "apps/api/src/rss_http/tokens.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/rss/tokens/{id}",
+   "handler": "revoke_token",
+   "file": "apps/api/src/rss_http/tokens.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/settings/export",
+   "handler": "settings_export",
+   "file": "apps/api/src/settings_http/export.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/settings/import",
+   "handler": "settings_import",
+   "file": "apps/api/src/settings_http/export.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/settings/groups",
+   "handler": "settings_groups_put",
+   "file": "apps/api/src/settings_http/groups.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/settings/history",
+   "handler": "settings_history",
+   "file": "apps/api/src/settings_http/history.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/content-packs/catalog",
+   "handler": "pack_catalog",
+   "file": "apps/api/src/settings_http/pack_catalog.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/content-packs/install",
+   "handler": "pack_install",
+   "file": "apps/api/src/settings_http/pack_catalog.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/content-packs/export",
+   "handler": "pack_export",
+   "file": "apps/api/src/settings_http/packs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/content-packs/import",
+   "handler": "pack_import_ep",
+   "file": "apps/api/src/settings_http/packs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/content-packs",
+   "handler": "pack_list",
+   "file": "apps/api/src/settings_http/packs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/content-packs/rollback",
+   "handler": "pack_rollback",
+   "file": "apps/api/src/settings_http/packs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/content-packs/rule-try",
+   "handler": "rule_try",
+   "file": "apps/api/src/settings_http/packs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/settings/schema",
+   "handler": "settings_schema",
+   "file": "apps/api/src/settings_http/schema.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/settings/smtp-test",
+   "handler": "settings_smtp_test",
+   "file": "apps/api/src/settings_http/smtp_test.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/settings/validate",
+   "handler": "settings_validate",
+   "file": "apps/api/src/settings_http/validate.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/setup",
+   "handler": "setup_finish",
+   "file": "apps/api/src/setup_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/setup/status",
+   "handler": "setup_status",
+   "file": "apps/api/src/setup_http/status.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/social/endangered/list",
+   "handler": "endangered_list",
+   "file": "apps/api/src/social_http/endangered.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/social/team/create",
+   "handler": "team_create",
+   "file": "apps/api/src/social_http/team.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/social/team/join",
+   "handler": "team_join",
+   "file": "apps/api/src/social_http/team.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/social/team/mine",
+   "handler": "team_mine",
+   "file": "apps/api/src/social_http/team_members.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/social/team/leave",
+   "handler": "team_leave",
+   "file": "apps/api/src/social_http/team_members.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/social/team/list",
+   "handler": "team_list",
+   "file": "apps/api/src/social_http/team_members.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/bans",
+   "handler": "ban_list",
+   "file": "apps/api/src/staff_http/bans.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/bans",
+   "handler": "ban_create",
+   "file": "apps/api/src/staff_http/bans.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/bans/{id}",
+   "handler": "ban_delete",
+   "file": "apps/api/src/staff_http/bans.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/faq",
+   "handler": "faq_list",
+   "file": "apps/api/src/staff_http/content.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/faq",
+   "handler": "faq_create",
+   "file": "apps/api/src/staff_http/content.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/faq/{id}",
+   "handler": "faq_update",
+   "file": "apps/api/src/staff_http/content.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/faq/{id}",
+   "handler": "faq_delete",
+   "file": "apps/api/src/staff_http/content.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/custom-pages",
+   "handler": "custom_pages_list",
+   "file": "apps/api/src/staff_http/custom_pages.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/custom-pages",
+   "handler": "custom_pages_add",
+   "file": "apps/api/src/staff_http/custom_pages.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/custom-pages/{id}",
+   "handler": "custom_pages_update",
+   "file": "apps/api/src/staff_http/custom_pages.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/custom-pages/{id}/delete",
+   "handler": "custom_pages_delete",
+   "file": "apps/api/src/staff_http/custom_pages.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/public-pages",
+   "handler": "custom_pages_public_list",
+   "file": "apps/api/src/staff_http/custom_pages.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/pages/{slug}",
+   "handler": "custom_page_public",
+   "file": "apps/api/src/staff_http/custom_pages.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/donate/state",
+   "handler": "donate_state",
+   "file": "apps/api/src/staff_http/donate.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/donate/topup",
+   "handler": "donate_topup",
+   "file": "apps/api/src/staff_http/donate.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/donate/order-status",
+   "handler": "donate_order_status",
+   "file": "apps/api/src/staff_http/donate.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/payment-orders",
+   "handler": "admin_payment_orders",
+   "file": "apps/api/src/staff_http/donate_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/payment-orders/complete",
+   "handler": "admin_payment_complete",
+   "file": "apps/api/src/staff_http/donate_admin.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/donate/notify",
+   "handler": "donate_notify",
+   "file": "apps/api/src/staff_http/donate_notify.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/donate/order",
+   "handler": "donate_order",
+   "file": "apps/api/src/staff_http/donate_notify.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/emailbans",
+   "handler": "emailban_list",
+   "file": "apps/api/src/staff_http/emailbans.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/emailbans",
+   "handler": "emailban_create",
+   "file": "apps/api/src/staff_http/emailbans.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/emailbans/{id}",
+   "handler": "emailban_delete",
+   "file": "apps/api/src/staff_http/emailbans.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/testip",
+   "handler": "test_ip",
+   "file": "apps/api/src/staff_http/emailbans.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/help-docs",
+   "handler": "help_docs_list",
+   "file": "apps/api/src/staff_http/help_docs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/ipcheck",
+   "handler": "ipcheck",
+   "file": "apps/api/src/staff_http/ipcheck.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/maxlogin",
+   "handler": "maxlogin",
+   "file": "apps/api/src/staff_http/ipcheck.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/amountupload",
+   "handler": "admin_amount_upload",
+   "file": "apps/api/src/staff_http/ipcheck.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/resetpass",
+   "handler": "admin_reset_pass",
+   "file": "apps/api/src/staff_http/ipcheck.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/deletedisabled",
+   "handler": "admin_delete_disabled",
+   "file": "apps/api/src/staff_http/ipcheck.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/massmail",
+   "handler": "massmail_list",
+   "file": "apps/api/src/staff_http/massmail.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/massmail",
+   "handler": "massmail_send",
+   "file": "apps/api/src/staff_http/massmail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/site-type-packs/applies",
+   "handler": "site_pack_applies",
+   "file": "apps/api/src/staff_http/pack_applies.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/site-type-packs/applies/{id}/rollback",
+   "handler": "site_pack_rollback",
+   "file": "apps/api/src/staff_http/pack_applies.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/site-type-packs/apply",
+   "handler": "site_type_pack_apply",
+   "file": "apps/api/src/staff_http/pack_apply.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/site-type-packs/diff",
+   "handler": "site_type_pack_diff",
+   "file": "apps/api/src/staff_http/pack_save.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/site-type-packs/save",
+   "handler": "site_type_pack_save",
+   "file": "apps/api/src/staff_http/pack_save.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staff/promo-intents/{id}/approve",
+   "handler": "promo_intent_approve",
+   "file": "apps/api/src/staff_http/promo_intent_approve.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staff/promo-intents/{id}/reject",
+   "handler": "promo_intent_reject",
+   "file": "apps/api/src/staff_http/promo_intent_approve.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staff/promo-intents/{id}/cancel",
+   "handler": "promo_intent_cancel",
+   "file": "apps/api/src/staff_http/promo_intent_approve.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/staff/promo-intents",
+   "handler": "promo_intent_submit",
+   "file": "apps/api/src/staff_http/promo_intent_list.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/staff/promo-intents",
+   "handler": "promo_intent_list",
+   "file": "apps/api/src/staff_http/promo_intent_list.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/freeleech",
+   "handler": "freeleech_set",
+   "file": "apps/api/src/staff_http/promo_set.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/freeleech",
+   "handler": "freeleech_clear",
+   "file": "apps/api/src/staff_http/promo_set.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/freeleech/{id}",
+   "handler": "freeleech_update",
+   "file": "apps/api/src/staff_http/promo_set.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/freeleech/{id}",
+   "handler": "freeleech_delete",
+   "file": "apps/api/src/staff_http/promo_set.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/freeleech",
+   "handler": "freeleech_list",
+   "file": "apps/api/src/staff_http/promo_set.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/rules-content",
+   "handler": "rules_content",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/rules",
+   "handler": "rule_create",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/rules/{id}",
+   "handler": "rule_update",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/rules/{id}",
+   "handler": "rule_delete",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/categories",
+   "handler": "category_list",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/categories",
+   "handler": "category_create",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/categories/{id}",
+   "handler": "category_update",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/categories/{id}",
+   "handler": "category_delete",
+   "file": "apps/api/src/staff_http/rules_cats.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/ads",
+   "handler": "ad_list",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/ads",
+   "handler": "ad_create",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/ads/{id}",
+   "handler": "ad_update",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/ads/{id}/toggle",
+   "handler": "ad_toggle",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/ads/{id}",
+   "handler": "ad_delete",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/notconnectable",
+   "handler": "not_connectable",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/conn/dist",
+   "handler": "conn_dist",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/uploaders",
+   "handler": "uploaders",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/allagents",
+   "handler": "all_agents",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/polloverview",
+   "handler": "poll_overview",
+   "file": "apps/api/src/staff_http/site.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/dbstats",
+   "handler": "db_stats",
+   "file": "apps/api/src/staff_http/site_db.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/syslog",
+   "handler": "sys_log",
+   "file": "apps/api/src/staff_http/site_db.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/locations",
+   "handler": "locations",
+   "file": "apps/api/src/staff_http/site_db.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/site-profile",
+   "handler": "site_profile",
+   "file": "apps/api/src/staff_http/sitetype.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/site-type-packs",
+   "handler": "site_type_pack_list",
+   "file": "apps/api/src/staff_http/sitetype.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/stats",
+   "handler": "admin_stats",
+   "file": "apps/api/src/staff_http/stats.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/seed-stats",
+   "handler": "seed_stats",
+   "file": "apps/api/src/staff_http/stats.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/clearcache",
+   "handler": "clear_cache",
+   "file": "apps/api/src/staff_http/stats.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/docleanup",
+   "handler": "do_cleanup",
+   "file": "apps/api/src/staff_http/stats.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/terms",
+   "handler": "terms_list",
+   "file": "apps/api/src/staff_http/terms.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/terms",
+   "handler": "terms_upsert",
+   "file": "apps/api/src/staff_http/terms.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/terms/{canonical}/toggle",
+   "handler": "terms_toggle",
+   "file": "apps/api/src/staff_http/terms.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/terms/{canonical}/delete",
+   "handler": "terms_delete",
+   "file": "apps/api/src/staff_http/terms.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/staffmess",
+   "handler": "staffmess_send",
+   "file": "apps/api/src/staff_http/users_ops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/adduser",
+   "handler": "admin_add_user",
+   "file": "apps/api/src/staff_http/users_ops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/amountbonus",
+   "handler": "admin_amount_bonus",
+   "file": "apps/api/src/staff_http/users_ops.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/warned",
+   "handler": "warned_list",
+   "file": "apps/api/src/staff_http/warned.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/warned",
+   "handler": "warn_user",
+   "file": "apps/api/src/staff_http/warned.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/warned/{user_id}",
+   "handler": "unwarn_user",
+   "file": "apps/api/src/staff_http/warned.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/wiki",
+   "handler": "wiki_list",
+   "file": "apps/api/src/staff_http/wiki.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/wiki",
+   "handler": "wiki_create",
+   "file": "apps/api/src/staff_http/wiki.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/wiki/{id}",
+   "handler": "wiki_update",
+   "file": "apps/api/src/staff_http/wiki.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/wiki/{id}/delete",
+   "handler": "wiki_delete",
+   "file": "apps/api/src/staff_http/wiki.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/wiki/{id}/revisions",
+   "handler": "wiki_revisions",
+   "file": "apps/api/src/staff_http/wiki.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/wiki",
+   "handler": "wiki_public_index",
+   "file": "apps/api/src/staff_http/wiki_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/wiki/{slug}",
+   "handler": "wiki_public_page",
+   "file": "apps/api/src/staff_http/wiki_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/aggregate",
+   "handler": "torrent_aggregate",
+   "file": "apps/api/src/torrent_http/aggregate.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/batch-download",
+   "handler": "batch_download",
+   "file": "apps/api/src/torrent_http/batch.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/cue-check",
+   "handler": "cue_check",
+   "file": "apps/api/src/torrent_http/cue.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}",
+   "handler": "detail",
+   "file": "apps/api/src/torrent_http/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/detail",
+   "handler": "torrent_detail_ext",
+   "file": "apps/api/src/torrent_http/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/files",
+   "handler": "torrent_files",
+   "file": "apps/api/src/torrent_http/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/thanks",
+   "handler": "torrent_thanks",
+   "file": "apps/api/src/torrent_http/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/comments",
+   "handler": "comments",
+   "file": "apps/api/src/torrent_http/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/snatches",
+   "handler": "torrent_snatches",
+   "file": "apps/api/src/torrent_http/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/nfo",
+   "handler": "torrent_nfo",
+   "file": "apps/api/src/torrent_http/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/file-conflicts",
+   "handler": "file_conflicts",
+   "file": "apps/api/src/torrent_http/file_conflict.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/comments",
+   "handler": "create_comment",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/torrents/{id}/comments/{cid}",
+   "handler": "delete_comment",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/comments/{cid}/like",
+   "handler": "toggle_comment_like",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/thanks",
+   "handler": "do_thank",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/reseed",
+   "handler": "request_reseed",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/tags",
+   "handler": "torrent_tags",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}/tags",
+   "handler": "torrent_tag_put",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}/bookmark",
+   "handler": "do_bookmark",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents",
+   "handler": "list",
+   "file": "apps/api/src/torrent_http/list.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/logs/{ordinal}",
+   "handler": "torrent_log_body",
+   "file": "apps/api/src/torrent_http/logs.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/torrents/{id}/logs/{ordinal}/adjust",
+   "handler": "log_adjust",
+   "file": "apps/api/src/torrent_http/logs.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/magnet",
+   "handler": "torrent_magnet",
+   "file": "apps/api/src/torrent_http/magnet.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}",
+   "handler": "edit_torrent",
+   "file": "apps/api/src/torrent_http/manage.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}/price",
+   "handler": "set_torrent_price",
+   "file": "apps/api/src/torrent_http/manage.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/restore",
+   "handler": "restore_torrent",
+   "file": "apps/api/src/torrent_http/manage.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/resubmit",
+   "handler": "resubmit_torrent",
+   "file": "apps/api/src/torrent_http/manage.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/torrents/{id}",
+   "handler": "delete_torrent",
+   "file": "apps/api/src/torrent_http/manage.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/peers",
+   "handler": "torrent_peers",
+   "file": "apps/api/src/torrent_http/peers.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/previews",
+   "handler": "preview_add",
+   "file": "apps/api/src/torrent_http/preview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/previews",
+   "handler": "preview_list",
+   "file": "apps/api/src/torrent_http/preview.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/torrents/{id}/previews",
+   "handler": "preview_remove",
+   "file": "apps/api/src/torrent_http/preview.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/related",
+   "handler": "torrent_related",
+   "file": "apps/api/src/torrent_http/related.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/suggest",
+   "handler": "torrent_suggest",
+   "file": "apps/api/src/torrent_http/suggest.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/trump",
+   "handler": "torrent_trump",
+   "file": "apps/api/src/torrent_http/trump.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/trumps",
+   "handler": "torrent_trumps",
+   "file": "apps/api/src/torrent_http/trump.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/trumps",
+   "handler": "trump_list",
+   "file": "apps/api/src/torrent_http/trump_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/trumps/{id}/resolve",
+   "handler": "trump_resolve",
+   "file": "apps/api/src/torrent_http/trump_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/2fa/setup",
+   "handler": "totp_setup",
+   "file": "apps/api/src/twofa_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/2fa/enable",
+   "handler": "totp_enable",
+   "file": "apps/api/src/twofa_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/2fa/disable",
+   "handler": "totp_disable",
+   "file": "apps/api/src/twofa_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users/{id}/2fa/clear",
+   "handler": "admin_2fa_clear",
+   "file": "apps/api/src/twofa_http/admin_misc.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/rules/box",
+   "handler": "box_rules",
+   "file": "apps/api/src/twofa_http/admin_misc.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/tg-bind",
+   "handler": "tg_bind",
+   "file": "apps/api/src/twofa_http/admin_misc.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/spark-flow/daily",
+   "handler": "spark_flow_daily",
+   "file": "apps/api/src/v4_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/achievements",
+   "handler": "my_achievements",
+   "file": "apps/api/src/v4_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reviews/postpone",
+   "handler": "review_postpone",
+   "file": "apps/api/src/v4_http.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reviews/resume",
+   "handler": "review_resume",
+   "file": "apps/api/src/v4_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/rules/{id}/revisions",
+   "handler": "rule_revisions",
+   "file": "apps/api/src/v4_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/metrics",
+   "handler": "api_metrics",
+   "file": "apps/api/src/v4_http/metrics.rs"
+  }
+ ]
+}
