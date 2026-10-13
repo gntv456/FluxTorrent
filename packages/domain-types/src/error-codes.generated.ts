@@ -1,0 +1,28 @@
+// 生成物，勿手改（node scripts/error_codes_gen.mjs --update）
+// 源：apps/api/src/errors.rs 的 code() 映射（变体名 SCREAMING_SNAKE）
+// 注意：同码多变体（1002 ← Validation/FieldErrors）后者覆盖前者；
+// 前端消费端常量表仍是 index.ts 手写 ErrorCode（F4 替换，两处并存对拍）
+export const ERROR_CODES = {
+  INTERNAL: 1000,
+  FIELD_ERRORS: 1002,
+  VALIDATION: 1002,
+  NOT_FOUND: 1004,
+  RATE_LIMITED: 1015,
+  UNAUTHORIZED: 2001,
+  FORBIDDEN: 2003,
+  INVALID_CREDENTIALS: 2004,
+  INVITE_INVALID: 2005,
+  INVITE_USED: 2006,
+  USERNAME_TAKEN: 2007,
+  TWO_FACTOR_REQUIRED: 2010,
+  TWO_FACTOR_INVALID: 2011,
+  TORRENT_INVALID: 3003,
+  TORRENT_DUPLICATE: 3004,
+  INSUFFICIENT_SPARK: 4001,
+  LEDGER_CONFLICT: 4002,
+  MODULE_DISABLED: 4101,
+  POOL_GUARD: 4102,
+  MAIL_UNCONFIGURED: 4103,
+  ALREADY_THANKED: 5002,
+  VERSION_CONFLICT: 5003,
+} as const;

@@ -67,30 +67,55 @@ pub enum DomainError {
 
 impl DomainError {
     /// 信封 code：与前端 ErrorCode 常量一一对应
+    ///
+    /// 每个码一行的触发条件注释（W-13 注册表口径；`scripts/error_codes_gen.mjs`
+    /// 按本格式抓取生成 docs/api/error-codes.md，格式：`// <code> <变体>：触发条件`）
     fn code(&self) -> i32 {
         match self {
+            // 1004 NotFound：按 id 查资源（种子/评论/工单/订单…）无行命中
             DomainError::NotFound(_) => 1004,
+            // 2001 Unauthorized：JWT 缺失/过期/签名不对，或匿名访问需登录端点
             DomainError::Unauthorized => 2001,
+            // 2003 Forbidden：已认证但等级/权限不足（先过模块开关再查权限，§5.5）
             DomainError::Forbidden => 2003,
+            // 2004 InvalidCredentials：登录用户名或密码不匹配
             DomainError::InvalidCredentials => 2004,
+            // 2005 InviteInvalid：注册邀请码不存在或已过有效期
             DomainError::InviteInvalid => 2005,
+            // 2006 InviteUsed：注册邀请码已被消费（一码一用）
             DomainError::InviteUsed => 2006,
+            // 2007 UsernameTaken：注册/改名的用户名与他人冲突
             DomainError::UsernameTaken => 2007,
+            // 1002 Validation：字段校验不通过或外键引用了不存在的 id（db_to_domain 23503）
             DomainError::Validation(_) => 1002,
+            // 1002 FieldErrors：站点设定批量保存预校验多字段不通过（§4.1）
             DomainError::FieldErrors(_) => 1002,
+            // 2010 TwoFactorRequired：密码已对但未提交 2FA 验证码（登录第二步）
             DomainError::TwoFactorRequired => 2010,
+            // 2011 TwoFactorInvalid：已提交 2FA 验证码但校验不匹配
             DomainError::TwoFactorInvalid => 2011,
+            // 4001 InsufficientSpark：经济操作（购买/抽卡/打赏…）火花余额不足
             DomainError::InsufficientSpark => 4001,
+            // 4002 LedgerConflict：spark_ledger 乐观并发版本冲突，客户端应重试
             DomainError::LedgerConflict => 4002,
+            // 1015 RateLimited：命中限流桶（openapi 登录/下载 passkey，60s 窗口）
             DomainError::RateLimited => 1015,
+            // 5002 AlreadyThanked：对同一资源重复提交感谢
             DomainError::AlreadyThanked => 5002,
+            // 3003 TorrentInvalid：种子文件解析失败或不合规（缺 info_hash 等）
             DomainError::TorrentInvalid(_) => 3003,
+            // 3004 TorrentDuplicate：info_hash 与库中已有种子重复
             DomainError::TorrentDuplicate => 3004,
+            // 4101 ModuleDisabled：站点关闭了该功能模块（先模块后权限，§5.5）
             DomainError::ModuleDisabled(_) => 4101,
+            // 4102 PoolGuard：抽卡池含保底综合返还率 >100% 被运行时拒绝（G31-B）
             DomainError::PoolGuard(_) => 4102,
+            // 4103 MailUnconfigured：站点未配邮件服务却走了必须发信的链路（P-102）
             DomainError::MailUnconfigured => 4103,
             // 5xxx 社区段：5003 = 设定乐观并发冲突（5001/5002 已占）
+            // 5003 VersionConflict：设定保存携带的 expected updated_at 与库中不一致
             DomainError::VersionConflict(_) => 5003,
+            // 1000 Internal：未分类的服务端故障（含 db_to_domain 兜底的数据库错误）
             DomainError::Internal(_) => 1000,
         }
     }
@@ -122,9 +147,7 @@ impl DomainError {
             // 设定乐观并发：携带的版本戳已过期（他人先改），409 让前端提示刷新
             DomainError::VersionConflict(_) => StatusCode::CONFLICT,
             // 邮件链路依赖的外部配置缺失：503 比 500 诚实（不是我们的 bug）
-            DomainError::MailUnconfigured => {
-                StatusCode::SERVICE_UNAVAILABLE
-            }
+            DomainError::MailUnconfigured => StatusCode::SERVICE_UNAVAILABLE,
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

@@ -775,3 +775,7 @@ export interface PollItem {
   total_votes: number;
   counts: { index: number; votes: number }[];
 }
+
+// 生成物常量表（W-13 注册表）：按 errors.rs code() 映射生成，与上面手写
+// ErrorCode 并存对拍（drift 见 check_type_drift.mjs 第 4 维；F4 消费端替换）。
+export { ERROR_CODES } from "./error-codes.generated";
