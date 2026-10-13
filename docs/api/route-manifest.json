@@ -206,13 +206,13 @@
    "method": "GET",
    "path": "/admin/user-permissions",
    "handler": "user_permission_view",
-   "file": "apps/api/src/admin_http/perms.rs"
+   "file": "apps/api/src/admin_http/perms_user.rs"
   },
   {
    "method": "PUT",
    "path": "/admin/user-permissions",
    "handler": "user_permission_set",
-   "file": "apps/api/src/admin_http/perms.rs"
+   "file": "apps/api/src/admin_http/perms_user.rs"
   },
   {
    "method": "GET",
@@ -858,21 +858,21 @@
   },
   {
    "method": "GET",
+   "path": "/admin/version",
+   "handler": "admin_version",
+   "file": "apps/api/src/admin_p3_http/ops.rs"
+  },
+  {
+   "method": "GET",
    "path": "/admin/jobs",
    "handler": "admin_jobs_list",
-   "file": "apps/api/src/admin_p3_http/ops.rs"
+   "file": "apps/api/src/admin_p3_http/ops_jobs.rs"
   },
   {
    "method": "POST",
    "path": "/admin/jobs/run",
    "handler": "admin_job_run",
-   "file": "apps/api/src/admin_p3_http/ops.rs"
-  },
-  {
-   "method": "GET",
-   "path": "/admin/version",
-   "handler": "admin_version",
-   "file": "apps/api/src/admin_p3_http/ops.rs"
+   "file": "apps/api/src/admin_p3_http/ops_jobs.rs"
   },
   {
    "method": "GET",
@@ -992,7 +992,7 @@
    "method": "DELETE",
    "path": "/admin/section-kinds/{kind}",
    "handler": "section_kinds_delete",
-   "file": "apps/api/src/admin_p3_http/section_kinds.rs"
+   "file": "apps/api/src/admin_p3_http/section_kinds_del.rs"
   },
   {
    "method": "GET",
@@ -3648,6 +3648,30 @@
   },
   {
    "method": "GET",
+   "path": "/admin/categories",
+   "handler": "category_list",
+   "file": "apps/api/src/staff_http/categories_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/categories",
+   "handler": "category_create",
+   "file": "apps/api/src/staff_http/categories_admin.rs"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/categories/{id}",
+   "handler": "category_update",
+   "file": "apps/api/src/staff_http/categories_admin.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/admin/categories/{id}",
+   "handler": "category_delete",
+   "file": "apps/api/src/staff_http/categories_admin.rs"
+  },
+  {
+   "method": "GET",
    "path": "/faq",
    "handler": "faq_list",
    "file": "apps/api/src/staff_http/content.rs"
@@ -3698,13 +3722,13 @@
    "method": "GET",
    "path": "/public-pages",
    "handler": "custom_pages_public_list",
-   "file": "apps/api/src/staff_http/custom_pages.rs"
+   "file": "apps/api/src/staff_http/custom_pages_public.rs"
   },
   {
    "method": "GET",
    "path": "/pages/{slug}",
    "handler": "custom_page_public",
-   "file": "apps/api/src/staff_http/custom_pages.rs"
+   "file": "apps/api/src/staff_http/custom_pages_public.rs"
   },
   {
    "method": "GET",
@@ -3936,30 +3960,6 @@
   },
   {
    "method": "GET",
-   "path": "/admin/categories",
-   "handler": "category_list",
-   "file": "apps/api/src/staff_http/rules_cats.rs"
-  },
-  {
-   "method": "POST",
-   "path": "/admin/categories",
-   "handler": "category_create",
-   "file": "apps/api/src/staff_http/rules_cats.rs"
-  },
-  {
-   "method": "PUT",
-   "path": "/admin/categories/{id}",
-   "handler": "category_update",
-   "file": "apps/api/src/staff_http/rules_cats.rs"
-  },
-  {
-   "method": "DELETE",
-   "path": "/admin/categories/{id}",
-   "handler": "category_delete",
-   "file": "apps/api/src/staff_http/rules_cats.rs"
-  },
-  {
-   "method": "GET",
    "path": "/admin/ads",
    "handler": "ad_list",
    "file": "apps/api/src/staff_http/site.rs"
@@ -4158,12 +4158,6 @@
   },
   {
    "method": "GET",
-   "path": "/admin/wiki/{id}/revisions",
-   "handler": "wiki_revisions",
-   "file": "apps/api/src/staff_http/wiki.rs"
-  },
-  {
-   "method": "GET",
    "path": "/wiki",
    "handler": "wiki_public_index",
    "file": "apps/api/src/staff_http/wiki_public.rs"
@@ -4173,6 +4167,12 @@
    "path": "/wiki/{slug}",
    "handler": "wiki_public_page",
    "file": "apps/api/src/staff_http/wiki_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/wiki/{id}/revisions",
+   "handler": "wiki_revisions",
+   "file": "apps/api/src/staff_http/wiki_revisions.rs"
   },
   {
    "method": "GET",

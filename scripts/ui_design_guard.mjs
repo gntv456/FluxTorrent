@@ -17,6 +17,9 @@
  *   4. z-index 门禁：只允许 9 个语义档
  *   5. 圆角/字号门禁：硬编码值必须落在令牌档内
  *   6. 焦点环门禁：outline-none 必须配 focus-visible 描边
+ *   7-8. 作用域与注释（ui_design_guard_dom.mjs）
+ *   9. L4→L1 禁令（ui_design_guard_hex.mjs）：页面/组件 tsx 出现
+ *        6 位 hex 即违规（W-44，防新增硬编码色；存量进 baseline）
  *
  * 维护约定：**修完一类问题后跑 `node scripts/ui_design_guard.mjs --update`
  * 把 baseline 刷到新值**（确认是「有意放行」才刷，不要养成随手刷的习惯）。
@@ -29,6 +32,7 @@ import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
 
 import { checkDomScopes } from "./ui_design_guard_dom.mjs";
+import { checkTsxHex } from "./ui_design_guard_hex.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const BASELINE = path.resolve(
@@ -38,6 +42,7 @@ const BASELINE = path.resolve(
 const UPDATE = process.argv.includes("--update");
 
 const failBox = { n: 0 };
+const warnBox = { n: 0 };
 let fails = 0;
 let warns = 0;
 const section = (t) => console.log(`\n== ${t} ==`);
@@ -259,11 +264,24 @@ checkDomScopes({
   read,
 });
 
+// ---------- 9. L4→L1 禁令（独立模块，见 ui_design_guard_hex.mjs）----------
+checkTsxHex({
+  section,
+  failBox,
+  warnBox,
+  read,
+  base,
+  UPDATE,
+  globSync,
+  ROOT,
+});
+
 // ---------- 汇总 ----------
 const total = fails + failBox.n;
+const warnTotal = warns + warnBox.n;
 console.log(
   `\n${total ? "FAIL" : "PASS"}：${total} 项违规` +
-    `${warns ? `，${warns} 项改善` : ""}`,
+    `${warnTotal ? `，${warnTotal} 项改善` : ""}`,
 );
 if (UPDATE) {
   writeFileSync(BASELINE, JSON.stringify(base, null, 2) + "\n");

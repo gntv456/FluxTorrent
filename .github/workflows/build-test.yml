@@ -98,6 +98,15 @@ jobs:
       # 硬编码与 47 个野断点无任何阻断能力（详见 scripts/ui_design_guard.mjs）。
       - name: UI design guard
         run: node ../../scripts/ui_design_guard.mjs
+      # 设计系统覆盖率门禁（W-43）：四指标只许向好——路由加载态覆盖/
+      # 原语采用率/<main> 只许升、非豁免 hex 只许降；指标恶化 → 红灯。
+      - name: Design coverage guard
+        run: node ../../scripts/design_cov_guard.mjs
+      # 双主题对比度门禁（W-40 校准+W-43 挂 CI）：暗色套任一关键配对
+      # 跌破 WCAG AA 即回潮拦截；明色套旧债（2.0-4.3）只测不调，
+      # 不达标组合数比基线增多 → 红灯（防新增更差的配对）。
+      - name: Theme contrast guard
+        run: node ../../scripts/check_dark_contrast.mjs
       # 单源清单门禁（四审 L5/L6）：模块键 Rust key::ALL ↔ TS MODULE_KEYS ↔ DB modules；
       # 首页板块键 后端 HOME_SECTIONS ↔ 前端渲染 case。CI 无库时模块键检查跳过 DB 侧。
       # 术语规则门禁（四审 L7）额外要求每条启用中的规则至少命中一处文案——

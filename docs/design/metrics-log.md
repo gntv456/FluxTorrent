@@ -156,3 +156,41 @@ Tailwind 四档字面量（640/768/1024/1280），「低于某档」边界用
   不变（flux-theme），"auto" 为新增合法值，旧值 baozi/baozi-night
   向后兼容。
 
+## 2026-10-13 · 阶段六 W-43..47 护城批
+
+| 日期 | 指标 | 前 → 后 | 来源命令 |
+|---|---|---|---|
+| 2026-10-13 | ui_design 规则 9 hex 棘轮 | 新增，存量 **0** | ui_design_guard.mjs |
+| 2026-10-13 | design_cov 四指标 | 19%/10.8%/0/×12 无恶化 | design_cov_guard.mjs |
+| 2026-10-13 | 暗色对比度回潮门禁 | 新增，最低 4.27 无回潮 | check_dark_contrast.mjs |
+| 2026-10-13 | 明色对比度（只测不调） | **债 17/25 组 <AA** | 同上（lightDebt 17 条） |
+| 2026-10-13 | route_manifest --check | **红**：批五十九拆文件漂移 | route_manifest.mjs |
+
+### 明色套已知债清单（W-40 登记，W-43 入 baseline 盯防；调值牵动
+### soft 底配套，独立决策，本批只测不调）
+
+17 组不达标（AA=4.5）：
+
+- muted 族：muted/卡片 4.31、muted/页面 4.11、muted/沉降面 3.85、
+  禁用态 muted/柔和底 3.84；
+- faint 族：faint/卡片 3.11、fainter/卡片 2.17；
+- brand：brand/卡片 3.59、brand/页面 3.42、表头 brand/表头底 3.21；
+- 状态色/白底：success/软底 2.07、success/卡片 2.32、warning/软底
+  1.91、warning/卡片 2.09、danger/软底 2.38、danger/卡片 2.78、
+  info/卡片 3.59、sky/卡片 2.57。
+
+正文/标题类全过（7.7-16.8）。债主为 --success/--warning/--danger
+亮色值与白底组合（亮色徽章沿袭浅底亮色画法），清偿需成组调深并
+同步 soft 底配套色——独立批次处理。check_dark_contrast.mjs 的
+lightDebt baseline（scripts/dark_contrast_baseline.json）只许减
+不许增，防新增更差组合。
+
+### 路由清单漂移（HEAD 即红，移交 ROUTE 线）
+
+批五十九（a1412028）把 12 条 admin 路由拆进新文件
+（perms_user/ops_jobs/categories_admin/wiki_revisions/
+custom_pages_public 等），路由本体未变但 handler 归属文件漂移，
+route_manifest --check 拦截（745=745，±12）。修复：`node scripts/
+route_manifest.mjs --write` 刷新清单。属 ROUTE 线工作范围，本批
+不越权改 docs/api/route-manifest.json。
+
