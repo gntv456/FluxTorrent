@@ -57,7 +57,9 @@ async fn deny_reasons_add(
     )
     .await?;
     let r = body.reason.trim();
-    if r.is_empty() || r.len() > 200 {
+    // 按字符判长：这条文案写的是「1-200」，而理由几乎都是中文
+    // （字节判长会把 67 字的中文理由自拒；P-200/203/214 同族）
+    if r.is_empty() || r.chars().count() > 200 {
         return Err(DomainError::Validation("原因长度 1-200".into()));
     }
     let id: i64 = sqlx::query_scalar(
@@ -99,8 +101,9 @@ async fn deny_reasons_update(
         crate::authz::perm::SETTINGS_MANAGE,
     )
     .await?;
+    let rid = path.into_inner();
     if let Some(r) = body.reason.as_deref() {
-        if r.trim().is_empty() || r.len() > 200 {
+        if r.trim().is_empty() || r.chars().count() > 200 {
             return Err(DomainError::Validation("原因长度 1-200".into()));
         }
     }
@@ -109,7 +112,7 @@ async fn deny_reasons_update(
             reason = COALESCE($2, reason), sort = COALESCE($3, sort), enabled = COALESCE($4, enabled) \
          WHERE id = $1",
     )
-    .bind(path.into_inner())
+    .bind(rid)
     .bind(body.reason.as_deref().map(str::trim))
     .bind(body.sort)
     .bind(body.enabled)
@@ -122,7 +125,16 @@ async fn deny_reasons_update(
     }
     state
         .repo
-        .audit(Some(auth.id), "deny_reason.update", None)
+        .audit_detail(
+            Some(auth.id),
+            "deny_reason.update",
+            Some(rid),
+            None,
+            Some(serde_json::json!({
+                "reason": body.reason.as_deref().map(str::trim),
+                "enabled": body.enabled,
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
@@ -144,18 +156,33 @@ async fn deny_reasons_delete(
     let rid = path.into_inner();
     // 审计修复（P1）：被种子引用（torrents.deny_reason_id del=a FK）时删除必 500。
     // 与 category_delete 同款前置护栏：有引用先解绑/换用别的理由。
+    // 护栏自己不许吞错：查询失败时旧写法把引用数当成 0 ⇒ 直接放行删除
+    // （本库该外键是 NO ACTION，最坏从「友好 400」退化成 500；若是 SET NULL
+    //  就会静默解绑历史种子的驳回理由——同一形状不能留给运气）
     let refs: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents WHERE deny_reason_id = $1",
     )
     .bind(rid)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if refs > 0 {
         return Err(DomainError::Validation(format!(
             "仍有 {refs} 个种子使用该拒绝理由（含已删除种子），请先改用其他理由"
         )));
     }
+    // 先读后删：行没了以后 reason 文本是「删掉了哪条理由」的唯一出处
+    let gone: Option<String> = sqlx::query_scalar(
+        "SELECT reason FROM torrent_deny_reasons WHERE id = $1",
+    )
+    .bind(rid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let gone = match gone {
+        Some(t) => t,
+        None => return Err(DomainError::Validation("拒绝原因不存在".into())),
+    };
     let n = sqlx::query("DELETE FROM torrent_deny_reasons WHERE id = $1")
         .bind(rid)
         .execute(&state.repo.db)
@@ -167,7 +194,13 @@ async fn deny_reasons_delete(
     }
     state
         .repo
-        .audit(Some(auth.id), "deny_reason.delete", None)
+        .audit_detail(
+            Some(auth.id),
+            "deny_reason.delete",
+            Some(rid),
+            None,
+            Some(serde_json::json!({ "reason": gone })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "deleted": n })))
 }
