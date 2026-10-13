@@ -110,12 +110,13 @@ for f in ("admin_http/site.rs", "staff_http/site.rs"):
     named += n
     where.append("%s：粗闸 %d / 专属 VIEW %d" % (f, c, n))
 print("   取证 %s" % "；".join(where))
-ok("Z4 取证不算红：/admin/cheaters（admin_http/site.rs）只有粗闸 "
-   "`let _auth = staff(`，而 staff_http/site.rs 的 uploaders/"
-   "notconnectable/conn-dist 各有专属 *.view 档 ⇒ 最低档职员即可读"
-   "「疑似作弊名单 + 每人流量增速」与全量授权矩阵；口径差在册，"
-   "修法要新增权限键（迁移+目录+面板三处同步），本批不夹带",
-   coarse >= 1 and named >= 3, "粗闸=%d 专属=%d" % (coarse, named))
+# 批六十一把这条取证转成了收口判据：cheaters 与矩阵读口都配上了专属位，
+# admin_http/site.rs 里的粗闸应当归零。判据要跟着缺陷的消失改写，
+# 否则它就成了永远红的噪声，下一个人的动作会是「删掉这条断言」。
+ok("Z4 收口：admin_http/site.rs 不再有「只判 staff() 就读敏感数据」的口子"
+   "（批六十一 P-231/232 已收），staff_http/site.rs 的专属 *.view 档仍 >= 4"
+   "；粗闸清单由 CA6b 栅栏继续盯：命中=%s" % where,
+   coarse == 0 and named >= 4, "粗闸=%d 专属=%d" % (coarse, named))
 
 # ===== Z5 收尾：矩阵条目数与目录一致（确认扫描读的是同一张表） =====
 r = subprocess.run(
