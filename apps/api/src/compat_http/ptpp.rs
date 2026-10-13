@@ -11,6 +11,18 @@ use crate::state::AppState;
 /// 这是朱雀（zhuque.in）验证过的「自研站进插件生态的最短路径」——插件的用户信息卡片、
 /// 等级/魔力展示、未读提醒全部取自本端点，字段名即插件 schema 的约定。
 /// 鉴权走开放 API Token（比朱雀的 cookie+CSRF 更适合纯前端插件外的工具）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/plugins/ptppUserInfo",
+    tag = "兼容层(NP)",
+    description = "PT-Plugin-Plus 字段口径聚合端点：插件用户卡的全部字段，\
+含 passkey（拼下载链必须）。",
+    responses(
+        (status = 200, description = "PtppUser"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/plugins/ptppUserInfo")]
 async fn ptpp_user_info(
     req: HttpRequest,

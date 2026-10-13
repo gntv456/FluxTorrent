@@ -752,13 +752,13 @@
    "method": "GET",
    "path": "/admin/jixiao/overview",
    "handler": "jixiao_overview",
-   "file": "apps/api/src/admin_p3_http/jixiao_ops.rs"
+   "file": "apps/api/src/admin_p3_http/jixiao_reads.rs"
   },
   {
    "method": "GET",
    "path": "/admin/jixiao/payroll",
    "handler": "jixiao_payroll",
-   "file": "apps/api/src/admin_p3_http/jixiao_ops.rs"
+   "file": "apps/api/src/admin_p3_http/jixiao_reads.rs"
   },
   {
    "method": "GET",

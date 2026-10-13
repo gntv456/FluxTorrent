@@ -52,6 +52,19 @@ async fn spark_flow_report(
 /// ZT2：caps/search 原为两条独立路径，而 Prowlarr/Jackett 只配一个 API Path + `?t=`
 /// 分发——配 `/torznab` 则搜索恒返 caps、配 `/torznab/search` 则 caps 解析失败，两种
 /// 配法都残缺。现按 `t` 分流；`/torznab/search` 保留为兼容别名。
+#[utoipa::path(
+    get,
+    path = "/api/v1/torznab",
+    tag = "Torznab",
+    description = "Torznab caps：规范的 <caps> 根节点 + <searching> 能力声明 + \
+分类映射；Prowlarr/Jackett 直接可加。带 ?t= 时按 t 分流（ZT2 单基址）。",
+    params(("t" = String, Query, description = "caps（缺省）/ search / tvsearch / movie")),
+    responses(
+        (status = 200, description = "application/xml"),
+        (status = 401, description = "apikey 无效（code 2001）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/torznab")]
 async fn torznab_caps(
     req: HttpRequest,
@@ -101,8 +114,6 @@ async fn torznab_caps(
     Ok(HttpResponse::Ok().content_type("application/xml").body(xml))
 }
 
-
-
 /// Torznab search（0079 落地 / 0267 合规化）。
 ///
 /// 支持的模式（与 caps 的 `<searching>` 声明一致，不再静默忽略）：
@@ -115,6 +126,29 @@ async fn torznab_caps(
 ///                   静默忽略会让工具拿到一堆它没要的内容）
 ///
 /// 兼容别名：把 API Path 配成 `/torznab/search` 的旧工具仍可用。
+#[utoipa::path(
+    get,
+    path = "/api/v1/torznab/search",
+    tag = "Torznab",
+    description = "Torznab search：支持 t=search|tvsearch|movie（season/ep、\
+imdbid/tmdbid）与 cat=Newznab 分类号；item 带完整 torznab:attr（含免费倍率）。",
+    params(
+        ("apikey" = String, Query, description = "Token（或用 Authorization 头）"),
+        ("t" = String, Query, description = "search/tvsearch/movie"),
+        ("q" = String, Query, description = "关键字"),
+        ("season" = String, Query, description = "季（tvsearch）"),
+        ("ep" = String, Query, description = "集（tvsearch）"),
+        ("imdbid" = String, Query, description = "IMDb id（movie/search）"),
+        ("cat" = String, Query, description = "Newznab 分类号，逗号分隔"),
+        ("limit" = String, Query, description = "1-100，默认 50"),
+        ("offset" = String, Query, description = "offset+limit ≤ 1000"),
+    ),
+    responses(
+        (status = 200, description = "application/xml（RSS 2.0 + torznab 命名空间）"),
+        (status = 401, description = "apikey 无效（code 2001）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/torznab/search")]
 async fn torznab_search(
     req: HttpRequest,
@@ -337,4 +371,3 @@ async fn torznab_search_inner(
         &tk,
     ))
 }
-

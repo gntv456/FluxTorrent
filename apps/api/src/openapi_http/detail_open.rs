@@ -17,6 +17,22 @@ use super::{no_store, require_scope, require_token, with_rl, SCOPE_READ};
 ///
 /// 只放行**过审**种（与站内浏览页同口径）；`with_nfo=1` 才带 NFO 全文
 /// （默认不带：NFO 动辄几十 KB，列表预览场景没必要）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/torrents/{id}",
+    tag = "开放数据",
+    description = "种子深详情：文件清单 / MediaInfo / 多维属性 / 促销倍率 / H&R 策略，\
+与站内详情页同一批数据。0329 分型补全：artifacts[]（校验和/更新日志等工件；\
+music 另有 logs[]：ordinal/engine/log_score/adjusted_score 等，分型站型各取所需）。",
+    params(("with_nfo" = String, Query, description = "1 = 附 NFO 全文（默认不带）")),
+    responses(
+        (status = 200, description = "含 files[] / sections / artifacts[] / logs[]"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 404, description = "资源不存在（code 1004）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/torrents/{id}")]
 pub(super) async fn open_torrent_detail(
     req: HttpRequest,

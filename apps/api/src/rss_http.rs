@@ -18,8 +18,8 @@ pub use util::{format_size, parse_ids, xml_escape};
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 
-use query::RssQuery;
 use crate::state::AppState;
+use query::RssQuery;
 
 pub fn mount_rss(scope: actix_web::Scope) -> actix_web::Scope {
     tokens::mount_tokens(scope)
@@ -43,8 +43,30 @@ struct RssRow {
 
 /// GET /rss/{passkey}?categories=1,2&mediums=3&official=&search=&showrows=&linktype=&paid=
 /// passkey 即用户身份（BEP3 同源凭证，泄露可自助 rotate —— 与 tracker 一致的暴露面）
+#[utoipa::path(
+    get,
+    path = "/api/v1/rss/{passkey}",
+    tag = "RSS",
+    description = "个性化 RSS 订阅：item 含 <enclosure> 下载直链（qB RSS/\
+autobrr/Flexget 直接用）；passkey 在路径里，30 次/分钟。",
+    params(
+        ("passkey" = String, Path, description = "32 位 passkey（或 fxr_ RSS token）"),
+        ("categories" = String, Query, description = "分类 id 逗号多选"),
+        ("mediums" = String, Query, description = "媒介 id 逗号多选"),
+        ("search" = String, Query, description = "关键字"),
+        ("official" = String, Query, description = "1 = 仅官种"),
+        ("paid" = String, Query, description = "1 = 仅免费（free/x2free）"),
+        ("showrows" = String, Query, description = "1-200，默认 50"),
+        ("linktype" = String, Query, description = "page = link 指详情页且标题仅名称"),
+    ),
+    responses(
+        (status = 200, description = "application/rss+xml"),
+        (status = 400, description = "passkey 形状非法"),
+        (status = 429, description = "限流（每 passkey 30 次/分钟）"),
+    )
+)]
 #[get("/rss/{passkey}")]
-async fn rss_feed(
+pub(crate) async fn rss_feed(
     req: HttpRequest,
     path: web::Path<String>,
     state: web::Data<std::sync::Arc<AppState>>,

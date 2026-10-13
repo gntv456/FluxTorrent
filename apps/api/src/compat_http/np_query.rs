@@ -109,9 +109,8 @@ mod tests {
     /// 与 query 编码格式无关 —— 同 rss_http::query::RssQuery 的既有做法）
     #[test]
     fn np_and_native_param_names() {
-        let q = parse(
-            r#"{"search":"大电影","cat":5,"incldead":"0","rowset":25}"#,
-        );
+        let q =
+            parse(r#"{"search":"大电影","cat":5,"incldead":"0","rowset":25}"#);
         assert_eq!(q.keyword.as_deref(), Some("大电影"));
         assert_eq!(q.category, Some(5));
         assert_eq!(q.include_dead.as_deref(), Some("0"));
@@ -129,8 +128,10 @@ mod tests {
     #[test]
     fn incldead_zero_means_alive_only() {
         assert_eq!(
-            resolve_alive(parse(r#"{"incldead":"0"}"#).alive,
-                parse(r#"{"incldead":"0"}"#).include_dead.as_deref()),
+            resolve_alive(
+                parse(r#"{"incldead":"0"}"#).alive,
+                parse(r#"{"incldead":"0"}"#).include_dead.as_deref()
+            ),
             1
         );
         let q = parse(r#"{"incldead":"1"}"#);

@@ -17,6 +17,18 @@ use crate::torrents::{
 // ============ NexusPHP 兼容端点（Token 鉴权，只读） ============
 
 /// 当前 Token 所属用户（NP userdetails 口径：uploaded/downloaded/seedbonus/passkey）
+#[utoipa::path(
+    get,
+    path = "/api/v1/compat/nexusphp/user.json",
+    tag = "兼容层(NP)",
+    description = "NP userdetails 口径账号信息：含 passkey（工具用它拼 download.php \
+与 tracker 汇报）。分享率恒非负，downloaded=0 时 ratio_infinite=true。",
+    responses(
+        (status = 200, description = "NpUser"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/compat/nexusphp/user.json")]
 async fn compat_np_user(
     req: HttpRequest,
@@ -92,6 +104,40 @@ pub(super) async fn np_user_json(
 }
 
 /// 种子列表（NP torrents.php 字段口径，游标分页内部转 page 语义）
+#[utoipa::path(
+    get,
+    path = "/api/v1/compat/nexusphp/torrents.json",
+    tag = "兼容层(NP)",
+    description = "NP 口径种子列表（高级筛选）：category 仍是站内 id；\
+新增 category_name/category_np/category_newznab、info_hash/pieces_hash。\
+默认含零做种新种。",
+    params(
+        ("page" = String, Query, description = "1-400"),
+        ("pagesize" = String, Query, description = "≤50，默认 30"),
+        ("keyword" = String, Query, description = "关键字（标题）"),
+        ("category" = String, Query, description = "站内分类 id"),
+        ("search_area" = String, Query, description = "0=标题 1=简介 3=发布者 4=IMDb"),
+        ("imdb" = String, Query, description = "IMDb id（等效 search_area=4）"),
+        ("alive" = String, Query, description = "0=全部(默认) 1=活种 2=断种"),
+        ("promo" = String, Query, description = "free/x2/half/any/none，逗号多选"),
+        ("size_min" = String, Query, description = "字节数或 5GB/500MB/2TB"),
+        ("size_max" = String, Query, description = "同上"),
+        ("min_seeders" = String, Query, description = "做种数下界（含）"),
+        ("max_seeders" = String, Query, description = "做种数上界（含）"),
+        ("date_from" = String, Query, description = "YYYY-MM-DD（含当天）"),
+        ("date_to" = String, Query, description = "YYYY-MM-DD（含当天）"),
+        ("owner" = String, Query, description = "发布者用户名（模糊）"),
+        ("official" = String, Query, description = "1 = 仅官种"),
+        ("sort" = String, Query, description = "created/seeders/size/completed（可加 _asc）"),
+        ("tags" = String, Query, description = "tag_dict.id 逗号串"),
+        ("tag_mode" = String, Query, description = "any（默认）/ all"),
+    ),
+    responses(
+        (status = 200, description = "NpTorrentList：items + has_more 分页语义"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/compat/nexusphp/torrents.json")]
 async fn compat_np_torrents(
     req: HttpRequest,
@@ -225,6 +271,18 @@ async fn compat_np_torrents(
 }
 
 /// 种子详情（NP details 口径 + 本站扩展；download 字段为模板，passkey 由工具自行拼接）
+#[utoipa::path(
+    get,
+    path = "/api/v1/compat/nexusphp/torrent/{id}.json",
+    tag = "兼容层(NP)",
+    description = "NP 口径种子详情：含双指纹（info_hash/pieces_hash）与 download 模板。",
+    responses(
+        (status = 200, description = "NpTorrentDetail"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 404, description = "资源不存在（code 1004）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/compat/nexusphp/torrent/{id}.json")]
 async fn compat_np_torrent_detail(
     req: HttpRequest,
@@ -312,6 +370,23 @@ struct NpDownloadQuery {
 /// NP 形状下载端点：`download.php?id={id}&passkey={passkey}`。
 /// 与 NexusPHP 工具生态的既有 URL 习惯一致（passkey 查询参数鉴权）。
 /// 防护与网页下载同口径：过审校验 + 下载闸门（挂起/停下载拒发）+ passkey 限流。
+#[utoipa::path(
+    get,
+    path = "/api/v1/compat/nexusphp/download.php",
+    tag = "兼容层(NP)",
+    description = "NP 形状下载（passkey 鉴权，免 cookie）：返回 .torrent，\
+内嵌本人 announce；每 passkey 30 次/分钟。",
+    params(
+        ("id" = String, Query, description = "种子 id（必填）"),
+        ("passkey" = String, Query, description = "32 位 passkey（必填）"),
+    ),
+    responses(
+        (status = 200, description = "application/x-bittorrent"),
+        (status = 401, description = "passkey 无效（code 2001）"),
+        (status = 404, description = "资源不存在（code 1004）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/compat/nexusphp/download.php")]
 async fn compat_np_download(
     state: web::Data<std::sync::Arc<AppState>>,

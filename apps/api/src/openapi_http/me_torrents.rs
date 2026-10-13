@@ -91,6 +91,19 @@ fn project(
 }
 
 /// GET /open/me/seeding?limit=50 —— 我正在做种的清单（含本人收益口径）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/me/seeding",
+    tag = "我的数据",
+    description = "我正在做种的清单（含 my_uploaded 与进度）。",
+    params(("limit" = String, Query, description = "1-100，默认 50")),
+    responses(
+        (status = 200, description = "items + count"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/me/seeding")]
 pub(super) async fn me_seeding(
     req: HttpRequest,
@@ -138,6 +151,19 @@ pub(super) async fn me_seeding(
 }
 
 /// GET /open/me/history?limit=50 —— 我的下载/抓取历史（按最近活跃排序）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/me/history",
+    tag = "我的数据",
+    description = "我的下载/抓取历史（按最近活跃排序）。",
+    params(("limit" = String, Query, description = "1-100，默认 50")),
+    responses(
+        (status = 200, description = "items + count"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/me/history")]
 pub(super) async fn me_history(
     req: HttpRequest,

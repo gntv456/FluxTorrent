@@ -46,6 +46,11 @@ jobs:
       # 当日实测：种子编辑口 `PUT /torrents/{id}` 因此 100% 500。
       - name: SQL comment guard
         run: python3 scripts/sql_comment_guard.py apps
+      # OpenAPI 覆盖门禁（FRAME-PLAN-01 F3 / W-49）：compat+开放两域的
+      # #[utoipa::path] 注解集合 ⊇ 手写域 28 条路由——注解被误删/路径
+      # 被改即红灯（产物侧另有 cargo 单测 openapi_json_covers_all_annotated_domains 双锁）。
+      - name: OpenAPI coverage guard
+        run: node scripts/openapi_cov_guard.mjs
 
   web:
     if: github.actor != 'dependabot[bot]'

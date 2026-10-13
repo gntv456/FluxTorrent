@@ -104,6 +104,19 @@ async fn dims_for(
 /// 但本端点要求有效 API Token —— 调用者已是本站注册用户，游客策略管的是
 /// 「未登录可见度」，不该拦已认证成员（文档承诺「拿最新 50 条做批量反查」，
 /// 默认配置下却恒空，工具无从判断是「站里没种」还是「被策略挡了」）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/recent",
+    tag = "开放数据",
+    description = "最新种子（id 倒序）。每条含 dimensions（站型维度键值对：季/话数/联赛…按站型不同）。",
+    params(("limit" = String, Query, description = "1-200，默认 50")),
+    responses(
+        (status = 200, description = "Envelope<TorrentSummary[]>，条目含 dimensions"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/recent")]
 pub(super) async fn open_recent_torrents(
     req: HttpRequest,
@@ -160,6 +173,24 @@ pub(super) async fn open_recent_torrents(
 /// 语义：返回 `id > since_id`（且发布时间 ≥ `since`）的过审种子，按 id 升序。
 /// 调用方保存响应里的 `next_since_id` 作为下次游标，即可做「只推新种」的轮询，
 /// 无需反复拉全量列表。无匹配时返回空数组（不是 404）——空数组是正常态。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/announces",
+    tag = "开放数据",
+    description = "增量新种流（只推新种轮询）：返回 id > since_id 的过审种子（升序）。\
+保存响应里的 next_since_id 作下次游标。",
+    params(
+        ("since_id" = String, Query, description = "上次游标，缺省 0"),
+        ("since" = String, Query, description = "发布时间下界（Unix 秒）"),
+        ("limit" = String, Query, description = "1-200，默认 100"),
+    ),
+    responses(
+        (status = 200, description = "items + next_since_id + count，条目含 dimensions"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/announces")]
 pub(super) async fn open_announces(
     req: HttpRequest,
@@ -229,6 +260,19 @@ pub(super) async fn open_announces(
 ///
 /// 工具做分类下拉/筛选 UI 不再需要自备映射表：每条分类同时给出
 /// 站内 id、NexusPHP 4xx 号与 Newznab 标准号（与列表/详情/Torznab 同源）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/open/categories",
+    tag = "开放数据",
+    description = "分类与媒介字典：每条分类同时给站内 id / NexusPHP 4xx 号 / \
+Newznab 标准号，工具无需自备映射表。",
+    responses(
+        (status = 200, description = "categories + media"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 403, description = "缺所需 scope（code 2003）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/open/categories")]
 pub(super) async fn open_categories(
     req: HttpRequest,

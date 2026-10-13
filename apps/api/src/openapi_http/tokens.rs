@@ -25,6 +25,16 @@ struct TokenRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/tokens",
+    tag = "凭据",
+    description = "列出我的 Token。",
+    responses(
+        (status = 200, description = "TokenList（会话鉴权，非 Token 自证）"),
+        (status = 401, description = "会话未登录（code 2001）"),
+    )
+)]
 #[get("/me/tokens")]
 pub(super) async fn token_list(
     req: HttpRequest,
@@ -43,7 +53,7 @@ pub(super) async fn token_list(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct IssueTokenReq {
     name: String,
     #[serde(default = "default_scopes")]
@@ -64,6 +74,23 @@ fn default_rpm() -> i32 {
     60
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/me/tokens",
+    tag = "凭据",
+    description = "签发 Token（明文仅返回一次）：180 天、每人 ≤3 枚；\
+scopes 白名单 read/upload，read 恒隐含 —— 发种必须显式 upload。",
+    params(
+        ("name" = String, Query, description = "Token 名称 1-50（body 字段）"),
+        ("scopes" = String, Query, description = "read / upload（body 字段）"),
+        ("rate_per_min" = String, Query, description = "1-600，默认 60（body 字段）"),
+    ),
+    responses(
+        (status = 200, description = "TokenIssued（含一次性明文 token）"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 429, description = "复核限流 5 次/分钟（code 1015）"),
+    )
+)]
 #[post("/me/tokens")]
 pub(super) async fn token_issue(
     req: HttpRequest,
@@ -160,12 +187,12 @@ pub(super) async fn token_issue(
     })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct RevokeReq {
     id: i64,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct RefreshReq {
     id: i64,
     /// P-113：续期等于「把这枚长期凭证再往后推 180 天」，与签发同类 ⇒ 同判据
@@ -179,6 +206,17 @@ struct RefreshReq {
 /// NAS 上长期运行的工具（Prowlarr / cross-seed / 自写脚本）此前只能等到
 /// 到期后重新签发，而发起端（微信支付/自动化容器）未必有人看着 →
 /// Token 静默失效、工具静默停摆。续期不动 Token 明文，只推后到期时间。
+#[utoipa::path(
+    post,
+    path = "/api/v1/me/tokens/refresh",
+    tag = "凭据",
+    description = "滚动续期 180 天（不动明文，只推后到期时间）。",
+    responses(
+        (status = 200, description = "id + expires_at + ttl_days"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 429, description = "复核限流 10 次/分钟（code 1015）"),
+    )
+)]
 #[post("/me/tokens/refresh")]
 pub(super) async fn token_refresh(
     req: HttpRequest,
@@ -223,6 +261,16 @@ pub(super) async fn token_refresh(
 
 /// 撤销**不**要求复核凭证：这是受害者的自救口——被偷了会话的人第一反应
 /// 就是来撤 Token，再加一道密码反而挡住自救（与 passkey 解绑同口径）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/me/tokens/revoke",
+    tag = "凭据",
+    description = "吊销 Token（受害者自救口：不要求复核凭证）。",
+    responses(
+        (status = 200, description = "revoked: <id>"),
+        (status = 401, description = "会话未登录（code 2001）"),
+    )
+)]
 #[post("/me/tokens/revoke")]
 pub(super) async fn token_revoke(
     req: HttpRequest,

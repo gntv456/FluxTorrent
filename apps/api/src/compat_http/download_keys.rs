@@ -17,11 +17,25 @@ const DOWNLOAD_KEY_TTL_MINUTES: i64 = 30;
 
 /// 第三方不能拿长期 API Token 直接下载：先为单个种子签发 30 分钟临时凭证，
 /// 再用凭证换 .torrent。Token 泄露的损失窗口从"永久"收敛到"30 分钟"。
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct DownloadKeyReq {
     torrent_id: i64,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/downloads/keys",
+    tag = "兼容层(NP)",
+    description = "签发 30 分钟临时下载凭证：把「下载」从长期 Token/passkey \
+里解耦，泄露窗口 30 分钟；每用户 10 次/分钟。body：{torrent_id}（JSON）。",
+    request_body = DownloadKeyReq,
+    responses(
+        (status = 200, description = "DownloadKey：key + download_url"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 404, description = "种子不存在或未过审（code 1004）"),
+        (status = 429, description = "签发限流 10 次/分钟（code 1015）"),
+    )
+)]
 #[post("/downloads/keys")]
 async fn download_key_issue(
     req: HttpRequest,
@@ -80,7 +94,7 @@ async fn download_key_issue(
 /// 用户自助吊销请求：torrent_id 缺省 = 吊销本人全部**未过期**凭证；
 /// 指定 torrent_id = 只吊销该种子的（其余凭证不受影响，刷流工具链
 /// 里单种泄露不必伤及全家）。
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct DownloadKeyRevokeReq {
     torrent_id: Option<i64>,
 }
@@ -96,6 +110,19 @@ const REVOKE_KEY_SQL: &str = "DELETE FROM download_keys \
 /// POST /downloads/keys/revoke：用户自助吊销临时下载凭证。
 /// 鉴权与签发同口径（require_token）—— 第三方工具只有 Token 没有
 /// 会话，泄露的自救动作必须在同一凭证体系内可完成。
+#[utoipa::path(
+    post,
+    path = "/api/v1/downloads/keys/revoke",
+    tag = "兼容层(NP)",
+    description = "用户自助吊销临时下载凭证：torrent_id 缺省 = 吊销本人全部\
+未过期凭证；指定 torrent_id = 只吊销该种子的。body：{torrent_id?}（JSON）。",
+    request_body = DownloadKeyRevokeReq,
+    responses(
+        (status = 200, description = "revoked 数量 + scope（torrent/all）"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 429, description = "吊销限流 10 次/分钟（code 1015）"),
+    )
+)]
 #[post("/downloads/keys/revoke")]
 async fn download_key_revoke(
     req: HttpRequest,
@@ -133,6 +160,21 @@ struct DlTokenQuery {
 
 /// 凭证换 .torrent：无需 Authorization（凭证即凭据），校验哈希/种子/有效期。
 /// 与长期 Token / passkey 完全解耦 —— 泄露只影响单个种子 30 分钟。
+#[utoipa::path(
+    get,
+    path = "/api/v1/downloads/{torrent_id}",
+    tag = "兼容层(NP)",
+    description = "凭证换 .torrent（免 Authorization）：凭证与用户+种子绑定；\
+每凭证 20 次/分钟 + IP 维 30 次/分钟。",
+    params(("token" = String, Query, description = "fxk_ 凭证（必填）")),
+    responses(
+        (status = 200, description = "application/x-bittorrent"),
+        (status = 401, description = "凭证无效/过期（code 2001）"),
+        (status = 403, description = "下载闸门拒绝（停下载/挂起/封禁，code 2003）"),
+        (status = 404, description = "资源不存在（code 1004）"),
+        (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
+    )
+)]
 #[get("/downloads/{torrent_id}")]
 async fn download_key_fetch(
     req: HttpRequest,
