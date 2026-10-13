@@ -44,6 +44,26 @@ pub fn forum_upsert_check(body: &ForumUpsertReq) -> DomainResult<String> {
 }
 
 /// 归属分区存在性校验（None = 不分组，放行）
+/// 版块 id 必须对得上真实版块：版主两张口此前不查，直接撞
+/// `forum_mods_forum_id_fkey` ⇒ 对外是 500（内部错误），站长看不出是「版块不存在」。
+/// 与 `ensure_category_exists` 同一个先例（版块 create 早在用它）。
+pub async fn ensure_forum_exists(
+    db: &PgPool,
+    forum_id: i64,
+) -> DomainResult<()> {
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM forums WHERE id = $1)",
+    )
+    .bind(forum_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if !exists {
+        return Err(DomainError::Validation("版块不存在".into()));
+    }
+    Ok(())
+}
+
 pub async fn ensure_category_exists(
     db: &PgPool,
     category_id: Option<i64>,

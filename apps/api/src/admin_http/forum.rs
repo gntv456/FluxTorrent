@@ -120,6 +120,11 @@ async fn forum_category_create(
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("分区名不能为空".into()));
     }
+    // 上限按字符判（P-196/P-200 同族）：分区名会进左栏徽标与版块表头，
+    // 无限长能把那两处撑破版
+    if body.name.trim().chars().count() > 60 {
+        return Err(DomainError::Validation("分区名需 1-60 字符".into()));
+    }
     let name = body.name.trim();
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO forum_categories (name, sort, visible) VALUES \
@@ -154,6 +159,11 @@ async fn forum_category_update(
     .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("分区名不能为空".into()));
+    }
+    // 上限按字符判（P-196/P-200 同族）：分区名会进左栏徽标与版块表头，
+    // 无限长能把那两处撑破版
+    if body.name.trim().chars().count() > 60 {
+        return Err(DomainError::Validation("分区名需 1-60 字符".into()));
     }
     let cid = path.into_inner();
     let name = body.name.trim();

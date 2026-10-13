@@ -159,7 +159,7 @@ async fn forum_admin_delete(
             .bind(fid)
             .fetch_one(&state.repo.db)
             .await
-            .unwrap_or(0);
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if topic_cnt > 0 && !force {
         return Err(DomainError::Validation(format!(
             "该版块仍有 {topic_cnt} 个主题（删除将级联清空全部帖子）。确认知悉请传 force=true"
@@ -202,6 +202,7 @@ async fn forum_mod_add(
     )
     .await?;
     let fid = path.into_inner();
+    super::forum_check::ensure_forum_exists(&state.repo.db, fid).await?;
     let uid: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM users WHERE username = $1 AND status < 2",
     )
@@ -212,7 +213,7 @@ async fn forum_mod_add(
     let Some(uid) = uid else {
         return Err(DomainError::NotFound(0));
     };
-    sqlx::query(
+    let added = sqlx::query(
         "INSERT INTO forum_mods (forum_id, user_id, created_by) \
      VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
     )
@@ -221,12 +222,29 @@ async fn forum_mod_add(
     .bind(auth.id)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if added == 0 {
+        // 已经是这个版块的版主：不能再写审计，也不能回一个「像新建成功」的体
+        //（假成功 + 假审计：站长以为多任命了一个人，账上还多一条 mod_add）
+        return Ok(ok(serde_json::json!({
+            "forum_id": fid, "user_id": uid, "added": false,
+            "already": true,
+        })));
+    }
     state
         .repo
-        .audit(Some(auth.id), "forum.mod_add", Some(uid))
+        .audit_detail(
+            Some(auth.id),
+            "forum.mod_add",
+            Some(uid),
+            None,
+            Some(serde_json::json!({ "forum_id": fid })),
+        )
         .await;
-    Ok(ok(serde_json::json!({ "forum_id": fid, "user_id": uid })))
+    Ok(ok(serde_json::json!(
+        { "forum_id": fid, "user_id": uid, "added": true }
+    )))
 }
 
 #[delete("/admin/forums/{id}/mods/{user_id}")]
@@ -243,15 +261,27 @@ async fn forum_mod_remove(
     )
     .await?;
     let (fid, uid) = path.into_inner();
-    sqlx::query("DELETE FROM forum_mods WHERE forum_id = $1 AND user_id = $2")
-        .bind(fid)
-        .bind(uid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let n = sqlx::query(
+        "DELETE FROM forum_mods WHERE forum_id = $1 AND user_id = $2",
+    )
+    .bind(fid)
+    .bind(uid)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n == 0 {
+        return Err(DomainError::Validation("该版块没有这名版主".into()));
+    }
     state
         .repo
-        .audit(Some(auth.id), "forum.mod_remove", Some(uid))
+        .audit_detail(
+            Some(auth.id),
+            "forum.mod_remove",
+            Some(uid),
+            None,
+            Some(serde_json::json!({ "forum_id": fid })),
+        )
         .await;
-    Ok(ok(serde_json::json!({ "removed": uid })))
+    Ok(ok(serde_json::json!({ "removed": uid, "forum_id": fid })))
 }
