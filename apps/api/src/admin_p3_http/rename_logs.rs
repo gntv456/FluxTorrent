@@ -40,9 +40,11 @@ async fn admin_rename_logs(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<UidPageQ>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
-    // P-256：`username_change_logs` 是**成员的身份变更史**（旧名→新名 + 操作者 +
-    // 时间），只判 staff() ⇒ 91 发布员整页读走（社工与冒充素材）。同键接 `user.view`(92)，
+    let auth = staff(&req, &state).await?;
+    // P-256：`username_change_logs` 是**成员的身份变更史**（旧名→新名 + 操
+    // 作者 +
+    // 时间），只判 staff() ⇒ 91 发布员整页读走（社工与冒充素材）。同键接 `u
+    // ser.view`(92)，
     // 与批六十八给「读他人数据」定的档一致。
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_VIEW)
         .await?;
@@ -94,8 +96,9 @@ async fn admin_modify_logs(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<UidPageQ>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
-    // P-257：`user_modify_logs` 记的是**管理组对成员改了什么**（uid+username+content），
+    let auth = staff(&req, &state).await?;
+    // P-257：`user_modify_logs` 记的是**管理组对成员改了什么**（uid+usernam
+    // e+content），
     // 同样只判 staff() ⇒ 同接 `user.view`(92)。
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_VIEW)
         .await?;
