@@ -7,14 +7,14 @@
 //! 现在列名对齐，失败也不再静默：一律 WARN 出声，通知仍不打断审核动作本身
 //! （通过/驳回已落库，因通知失败而 500 会让版主重复操作）。
 
-use actix_web::web;
-use std::sync::Arc;
-
 use crate::state::AppState;
 
 /// 向发布者发审核结果（PM + 尽力邮件）。被拒时优先用拒绝字典条目，其次自由文本。
+/// F2（FRAME §4）：服务层 services/review_decide.rs 复用本函数——签名从
+/// `web::Data<Arc<AppState>>` 放宽为 `&AppState`（同一对象的两种视图，
+/// SQL 原样，行为零变）。
 pub(crate) async fn notify_review_result(
-    state: &web::Data<Arc<AppState>>,
+    state: &AppState,
     torrent_id: i64,
     approve: bool,
     free_reason: &str,
@@ -29,9 +29,9 @@ pub(crate) async fn notify_review_result(
          LEFT JOIN torrent_deny_reasons d ON d.id = t.deny_reason_id \
          WHERE t.id = $1",
     )
-        .bind(torrent_id)
-        .fetch_optional(db)
-        .await;
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await;
     // owner_id 可空（站方代发 / 系统导入的种子没有上传者）：以前按 i64 解码，
     // 这类种子一过审就走「取数失败」分支，日志里全是假警告。
     let (owner, title, deny_label, deny_note) = match row {

@@ -84,6 +84,12 @@ jobs:
       # 修复：node scripts/route_manifest.mjs --update 后连清单一起提交。
       - name: Route manifest guard
         run: node ../../scripts/route_manifest.mjs --check
+      # 分层宪法门禁（FRAME-PLAN-01 F2 / W-48）：H 路由层禁 SQL（存量按
+      # scripts/layer_baseline.json 棘轮「只许瘦不许胖」）、services/ 禁
+      # actix_web、domain/ 双禁——新文件零容忍，存量迁移净 SQL 后
+      # `--update` 收缩基线。红测口径见脚本头注。
+      - name: Layer guard
+        run: node ../../scripts/layer_guard.mjs
       # 错误码注册表门禁（W-13）：errors.rs code() ↔ i18n.rs MESSAGES ↔
       # TS ErrorCode 三方对拍（check_type_drift 的全量超集），并要求
       # docs/api/error-codes.md 与源码同步（--update 刷新）。

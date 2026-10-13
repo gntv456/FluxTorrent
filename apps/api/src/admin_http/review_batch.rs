@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::services::review_decide::{decide_one, DecideOutcome};
 use crate::state::AppState;
 
 use super::guard::staff;
@@ -95,107 +96,34 @@ async fn review_batch(
             ));
         }
     }
-    let db = &state.repo.db;
+    // 逐条裁决：副作用收在服务层用例函数（F2 抽离，SQL 原样搬移），
+    // 本层只把用例结果映射成 skipped 条目
     let mut handled: i64 = 0;
     let mut skipped: Vec<Skipped> = Vec::new();
     for id in &ids {
-        let owner: Option<i64> =
-            sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-                .bind(id)
-                .fetch_optional(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-        let Some(owner_id) = owner else {
-            skipped.push(Skipped {
-                id: *id,
-                why: "种子不存在".into(),
-            });
-            continue;
-        };
-        if owner_id == auth.id {
-            skipped.push(Skipped {
-                id: *id,
-                why: "不能审核自己发布的种子".into(),
-            });
-            continue;
-        }
-        let n = sqlx::query(
-            "UPDATE torrents SET approval_status = $2, \
-             approved_at = CASE WHEN $2::smallint = 1 THEN now() ELSE NULL END, \
-             deny_reason_id = $3, deny_note = $4 \
-             WHERE id = $1 AND approval_status = 0",
-        )
-        .bind(id)
-        .bind(if body.approve { 1 } else { 2 })
-        .bind(if body.approve {
-            None
-        } else {
-            body.deny_reason_id
-        })
-        .bind(if body.approve {
-            None
-        } else {
-            Some(reason.clone())
-        })
-        .execute(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
-        if n == 0 {
-            skipped.push(Skipped {
-                id: *id,
-                why: "不在待审状态".into(),
-            });
-            continue;
-        }
-        // 与 review_decide 同口径的连击/被拒计数（过审清零 deny_count，P2-1）
-        // 0355 发布信用分：过审 +1（上限 5）/ 被拒 -2（下限 0），独立累积
-        let _ = sqlx::query(
-            "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
-             u.approve_streak + 1 ELSE 0 END, \
-             deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END, \
-             publish_credits = GREATEST(0, LEAST(5, u.publish_credits \
-             + CASE WHEN $2 THEN 1 ELSE -2 END)) \
-             FROM torrents t \
-             WHERE t.id = $1 AND u.id = t.owner_id",
-        )
-        .bind(id)
-        .bind(body.approve)
-        .execute(db)
-        .await;
-        // 过审自动促销 / 组订阅推送：与 review_decide 共用同一实现
-        if body.approve {
-            super::review_side_effects::apply_approval_side_effects(
-                db, *id, auth.id,
-            )
-            .await;
-        }
-        let _ = sqlx::query(
-            r#"INSERT INTO torrent_operation_logs
-            (torrent_id, operator_id, action, detail)
-            VALUES ($1, $2, $3, $4::jsonb)"#,
-        )
-        .bind(id)
-        .bind(auth.id)
-        .bind(if body.approve { "approve" } else { "reject" })
-        .bind(
-            serde_json::json!({
-                "reason": reason,
-                "deny_reason_id": body.deny_reason_id,
-                "batch": true,
-            })
-            .to_string(),
-        )
-        .execute(db)
-        .await;
-        super::review_notify::notify_review_result(
+        let why = match decide_one(
             &state,
+            auth.id,
             *id,
             body.approve,
             &reason,
+            body.deny_reason_id,
+            true,
         )
-        .await;
-        handled += 1;
+        .await?
+        {
+            DecideOutcome::NotFound => "种子不存在",
+            DecideOutcome::SelfConflict => "不能审核自己发布的种子",
+            DecideOutcome::NotPending => "不在待审状态",
+            DecideOutcome::Done => {
+                handled += 1;
+                continue;
+            }
+        };
+        skipped.push(Skipped {
+            id: *id,
+            why: why.into(),
+        });
     }
     state
         .repo
