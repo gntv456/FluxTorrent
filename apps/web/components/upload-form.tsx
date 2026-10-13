@@ -33,12 +33,11 @@ export interface SectionDictRow {
 export function UploadForm() {
   const { dict, currency } = useI18n();
   // 分类/元数据源以 /site-profile 为准（类型包可切换）；字典仅兜底分类
+  // tmdb（0358）：档案缺省兜底数组同步纳入第五源，placeholder 自动生效
   const [profileCats, setProfileCats] = useState<ProfileCat[] | null>(null);
   const [metaSources, setMetaSources] = useState<string[]>([
-    "imdb",
-    "douban",
-    "bangumi",
-    "indienova", "mediainfo",
+    "imdb", "douban", "bangumi",
+    "indienova", "mediainfo", "tmdb",
   ]);
   useEffect(() => {
     api

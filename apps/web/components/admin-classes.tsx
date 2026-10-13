@@ -2,18 +2,16 @@
 
 import { BTN_SM_GHOST, INPUT_MD } from "@/lib/ui-classes";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
 /** P-19：等级规则管理页（一审 R4.2 落的读写口，此前只有 API 没有界面）。
- *
  *  worker `class_auto_adjust` 每分钟按这里的阈值升降级，并按
- *  `promo_sparks` 发放晋升奖励；奖励路径（0072）实现完整却因无界面而
- *  常年 0 值空转——本页就是把这条链接给站长的入口。
- *  档位全集来自 user_classes：只有成长档 1-12 在 class_rules 里有规则行，
- *  贵宾（20）与职务档（90+）没有规则，六列为 null，整行只读。 */
+ *  `promo_sparks` 发放晋升奖励（0072）；档位全集来自 user_classes：
+ *  只有成长档 1-12 在 class_rules 里有规则行，贵宾（20）与职务档
+ *  （90+）没有规则，六列为 null，整行只读。 */
 
 const GB = 1024 ** 3;
 /** 后端锁死的 staff 线（classes_admin.rs STAFF_CLASS_FLOOR） */
@@ -29,6 +27,15 @@ interface ClassRow {
   demotable: boolean | null;
   promo_sparks: number | null;
   users: number;
+}
+
+/** POST impact-preview 的返回（按草稿阈值预览升降集合） */
+interface ImpactPreview {
+  promote: number;
+  demote: number;
+  sample_promote: string[];
+  sample_demote: string[];
+  current_users: number;
 }
 
 /** 草稿只存被改动的档位；字节门槛在界面上按 GB 编辑。
@@ -51,6 +58,11 @@ export function AdminClasses() {
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
+  const [previewBusy, setPreviewBusy] = useState<number | null>(null);
+  /** 按档位暂存的预览结果（草稿一改即失效） */
+  const [preview, setPreview] = useState<Record<number, ImpactPreview | null>>(
+    {},
+  );
 
   const flash = (m: string) => {
     setMsg(m);
@@ -81,8 +93,38 @@ export function AdminClasses() {
     promo_sparks: r.promo_sparks ?? 0,
   };
 
-  const patch = (r: ClassRow, k: keyof Draft, v: number | string | boolean) =>
-    setDrafts((prev) => ({ ...prev, [r.class_id]: { ...draftOf(r), [k]: v } }));
+  const patch = (r: ClassRow, k: keyof Draft, v: number | string | boolean) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [r.class_id]: { ...draftOf(r), [k]: v },
+    }));
+    // 草稿一改，旧预览立即失效（计数对不上新阈值，留着只会误导）
+    setPreview((p) => ({ ...p, [r.class_id]: null }));
+  };
+
+  /** 预览影响（后端只读端点）：按当前草稿的四维 + demotable
+   *  假设值问 worker「改完会升降多少人」，名单最多回 10 个样例 */
+  async function runPreview(r: ClassRow) {
+    const d = drafts[r.class_id] ?? draftOf(r);
+    setPreviewBusy(r.class_id);
+    try {
+      const p = await api.post<ImpactPreview>(
+        `/api/v1/admin/classes/${r.class_id}/impact-preview`,
+        {
+          min_uploaded: d.min_uploaded,
+          min_download_count: d.min_download_count,
+          min_seed_hours: d.min_seed_hours,
+          min_account_age_days: d.min_account_age_days,
+          demotable: d.demotable,
+        },
+      );
+      setPreview((prev) => ({ ...prev, [r.class_id]: p }));
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : at.previewFail);
+    } finally {
+      setPreviewBusy(null);
+    }
+  }
 
   async function save(r: ClassRow) {
     const d = drafts[r.class_id];
@@ -147,11 +189,10 @@ export function AdminClasses() {
           <tbody>
             {rows.map((r) => {
               const d = draftOf(r);
+              const pv = preview[r.class_id];
               return (
-                <tr
-                  key={r.class_id}
-                  className="border-t border-line align-middle"
-                >
+                <Fragment key={r.class_id}>
+                <tr className="border-t border-line align-middle">
                   <td>{r.class_id}</td>
                   <td>
                     {locked(r) ? (
@@ -201,17 +242,52 @@ export function AdminClasses() {
                         {at.staffLocked}
                       </span>
                     ) : (
-                      <button
-                        type="button"
-                        className={BTN_SM_GHOST}
-                        disabled={busy === r.class_id || !drafts[r.class_id]}
-                        onClick={() => save(r)}
-                      >
-                        {at.save}
-                      </button>
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button" className={BTN_SM_GHOST}
+                          disabled={previewBusy === r.class_id}
+                          onClick={() => runPreview(r)}
+                        >
+                          {previewBusy === r.class_id
+                            ? at.previewBusy
+                            : at.preview}
+                        </button>
+                        <button
+                          type="button" className={BTN_SM_GHOST}
+                          disabled={busy === r.class_id || !drafts[r.class_id]}
+                          onClick={() => save(r)}
+                        >
+                          {at.save}
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
+                {pv && (
+                  <tr className="border-t border-line">
+                    <td colSpan={10}>
+                      <div
+                        className="rounded-[var(--r-md)] bg-sky-soft p-3
+                          text-xs text-ink"
+                      >
+                        <p>
+                          {fmt(at.pvPromote, { n: pv.promote })} ·{" "}
+                          {fmt(at.pvDemote, { n: pv.demote })} ·{" "}
+                          {fmt(at.pvCurrent, { n: pv.current_users })}
+                        </p>
+                        {pv.sample_promote.length > 0 && (
+                          <p className="mt-1">{at.pvSampleUp}: {
+                            pv.sample_promote.join(", ")}</p>
+                        )}
+                        {pv.sample_demote.length > 0 && (
+                          <p className="mt-1">{at.pvSampleDown}: {
+                            pv.sample_demote.join(", ")}</p>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>

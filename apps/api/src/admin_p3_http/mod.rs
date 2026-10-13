@@ -8,6 +8,8 @@ mod ban_ip;
 mod bulk_notify;
 mod bulk_traffic;
 mod classes_admin;
+// 等级门槛影响预览（classes_admin 的只读姊妹端点，300 行门禁拆出）
+mod classes_preview;
 mod exam_users;
 mod frames;
 mod grants;
@@ -49,6 +51,7 @@ mod users_batch;
 pub use attendance::*;
 pub use ban_ip::*;
 pub use classes_admin::*;
+pub use classes_preview::*;
 pub use exam_users::*;
 pub use frames::*;
 pub use grants::*;
