@@ -75,6 +75,7 @@ import atexit  # noqa: E402
 atexit.register(cleanup)
 
 T0 = psql("SELECT to_char(now(), 'YYYY-MM-DD HH24:MI:SS.US')")
+LG0 = int(psql("SELECT coalesce(max(id), 0) FROM torrent_operation_logs") or 0)
 RC0 = int(psql("SELECT count(*) FROM torrent_deny_reasons") or -1)
 ok("V0a 基线：拒绝理由 %d 条；可暂缓状态(0/2)的种子探针 id=%d" % (RC0, TID),
    RC0 >= 0 and TID > 0, "RC=%s TID=%s" % (RC0, TID))
@@ -171,8 +172,9 @@ s9, _ = call("POST", "/admin/reviews/resume", {"torrent_id": TID}, token=ROOT)
 back0 = psql("SELECT approval_status FROM torrents WHERE id = %d" % TID)
 ok("V4c 暂缓(4) → 待审(0) 恢复回常规审核流：http=%s 现在=%s" % (s9, back0),
    s9 == 200 and back0 == "0", "http=%s 现在=%s" % (s9, back0))
-lg = psql("SELECT action FROM torrent_operation_logs WHERE torrent_id = %d "
-          "AND action IN ('postpone','resume') ORDER BY id" % TID)
+lg = psql("SELECT action FROM torrent_operation_logs WHERE id > %d "
+          "AND torrent_id = %d AND action IN ('postpone','resume') "
+          "ORDER BY id" % (LG0, TID))
 ok("V4d 暂缓/恢复都要真进种子操作时间线（这是站长回看处置历史的唯一一处）："
    "logs=%s" % lg, lg == "postpone\nresume" or sorted(lg.split()) ==
    ["postpone", "resume"], "logs=%s" % lg.replace("\n", ","))
@@ -180,10 +182,19 @@ rv = io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
                           "apps", "api", "src", "v4_http.rs"),
              encoding="utf-8").read()
 def unguarded(text):
-    """留痕 INSERT 的条数 减去 配对了 warn 的条数，再加裸 let _ = 的处数"""
-    logs = text.count("INSERT INTO torrent_operation_logs")
-    warned = text.count("审核留痕写入失败")
-    return max(0, logs - warned) + text.count("let _ = sqlx::query(")
+    """逐处看：每一段「留痕 INSERT」前后 320 字符里如果还是 `let _ =` 而没有
+    if-let-Err + warn，就算一处未收口。文件里其它 `let _ =`（如作者统计更新）
+    不属这条判据——那是待拍板 #5，不是本判据的对象。"""
+    bad, at = 0, 0
+    key = "INSERT INTO torrent_operation_logs"
+    while True:
+        i = text.find(key, at)
+        if i < 0:
+            return bad
+        seg = text[max(0, i - 320):i + 240]
+        if "let _ = sqlx::query(" in seg and "if let Err(e)" not in seg:
+            bad += 1
+        at = i + 1
 
 
 swallow = unguarded(rv)
@@ -214,10 +225,11 @@ ok("V9b 探针种子已复原成备份里那一行（整行 IS DISTINCT FROM 比
         "(b.approval_status, coalesce(b.deny_note,'')))" % BK) == "1"
    and psql("DROP TABLE IF EXISTS %s; SELECT 1" % BK) == "1",
    "现值=%s 备份见 V0b" % st_now)
-ok("V9c 暂缓/恢复各留下一条真操作时间线（这两条是本轮真发生过的动作，不删）",
-   psql("SELECT count(*) FROM torrent_operation_logs WHERE torrent_id = %d "
-        "AND action IN ('postpone','resume')" % TID) == "2",
-   "留痕=%s 条" % psql("SELECT count(*) FROM torrent_operation_logs WHERE "
-                     "torrent_id = %d AND action IN ('postpone','resume')"
-                     % TID))
+ok("V9c 本轮新增的留痕恰好是 postpone + resume 两条（旧判据数的是历史累计，"
+   "跑几次就永远是 3 条——那是闸门的账不是产品的）",
+   psql("SELECT count(*) FROM torrent_operation_logs WHERE id > %d AND "
+        "torrent_id = %d AND action IN ('postpone','resume')"
+        % (LG0, TID)) == "2",
+   "本轮留痕=%s 条" % psql("SELECT count(*) FROM torrent_operation_logs "
+                         "WHERE id > %d AND torrent_id = %d" % (LG0, TID)))
 summary()
