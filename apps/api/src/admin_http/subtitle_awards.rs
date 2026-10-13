@@ -113,6 +113,13 @@ async fn awards_grant(
     body: web::Json<AwardGrantReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-236：授金一次可发出 5000/2000/1000 火花并挂勋章，过去只判 staff()
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SUBTITLES_GRANT,
+    )
+    .await?;
     if body.grants.is_empty() {
         return Err(DomainError::Validation("授金列表不能为空".into()));
     }
@@ -195,7 +202,9 @@ async fn awards_grant(
         }));
     }
     // 揭晓公告（shoutbox；系统口径挂在发起管理名下——user_id NOT NULL）
-    let _ =
+    // P-239：揭晓公告发不出去也得报出来（旧写法 `let _ =` 吞掉，站长以为
+    // 已通知，实际榜上无音——与 P-218 同族）
+    if let Err(e) =
         sqlx::query("INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)")
             .bind(auth.id)
             .bind(format!(
@@ -203,10 +212,21 @@ async fn awards_grant(
                 body.period
             ))
             .execute(&state.repo.db)
-            .await;
+            .await
+    {
+        tracing::warn!(%e, period = %body.period, "授金揭晓公告写入失败");
+    }
     state
         .repo
-        .audit(Some(auth.id), "subawards.grant", None)
+        .audit_detail(
+            Some(auth.id),
+            "subawards.grant",
+            None,
+            None,
+            Some(serde_json::json!({
+                "period": body.period, "granted": results.clone(),
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "granted": results })))
 }
