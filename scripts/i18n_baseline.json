@@ -27,8 +27,8 @@
  "lib/nav-menu.ts": [],
  "lib/pet-lines.ts": [],
  "lib/site-profile.ts": [
-  101,
-  112
+  104,
+  115
  ],
  "lib/site-url.ts": [],
  "lib/spark-kind-labels.ts": [
@@ -389,7 +389,6 @@
  "components/forum-vote.tsx": [],
  "components/frame-preview.tsx": [],
  "components/friends-actions.tsx": [
-  19,
   20,
   21,
   22,
@@ -398,7 +397,8 @@
   25,
   26,
   27,
-  28
+  28,
+  29
  ],
  "components/fun-box-history.tsx": [],
  "components/fun-box-publish.tsx": [],

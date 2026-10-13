@@ -11,6 +11,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
+import { toast } from "@/components/ui/toast";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type { Detail } from "./admin-user-detail-shared";
@@ -67,13 +68,12 @@ export function useAdminUserActions({
   const router = useRouter();
   const { dict } = useI18n();
   const t = dict.userDetail;
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tmpPass, setTmpPass] = useState<string | null>(null);
 
+  /** W-34 反馈收编：局部 flash 提示条 → toast 协议（A1） */
   const flash = useCallback((m: string) => {
-    setMsg(m);
-    setTimeout(() => setMsg(null), 3000);
+    toast.success(m);
   }, []);
 
   async function run(task: () => Promise<void>) {
@@ -81,7 +81,9 @@ export function useAdminUserActions({
     try {
       await task();
     } catch (e) {
-      flash(e instanceof ApiError ? e.message : t.actionFail);
+      toast.error(e instanceof ApiError ? e.message : t.actionFail, {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -129,14 +131,11 @@ export function useAdminUserActions({
     [d, uid, flash, load],
   );
 
+  /** W-34：禁言/封禁理由原走 window.prompt——由详情页 ConfirmDialog
+   *  收集后经 changeStatus(next, reason) 传入；next=0 恢复无需理由。 */
   const changeStatus = useCallback(
-    (next: number) =>
+    (next: number, reason = "") =>
       run(async () => {
-        const reason =
-          next > 0
-            ? (prompt(next === 2 ? t.muteReason : t.banReason) ??
-              "")
-            : "";
         if (next > 0 && !reason.trim()) return;
         await api.post("/api/v1/admin/users/status", {
           user_id: uid,
@@ -262,8 +261,6 @@ export function useAdminUserActions({
   });
 
   return {
-    msg,
-    setMsg,
     flash,
     busy,
     tmpPass,

@@ -3,7 +3,14 @@
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
-import { MarkdownRenderer } from "@/components/forum-markdown";
+import dynamic from "next/dynamic";
+
+// W-33 代码分割：markdown-lite 渲染器（含视频内嵌客户端件）只在
+// 展开消息正文时才需要，延迟加载 + 行内骨架。
+const MarkdownRenderer = dynamic(
+  () => import("@/components/forum-markdown").then((m) => m.MarkdownRenderer),
+  { loading: () => <span className="text-xs text-sub">…</span> },
+);
 
 /** 消息中心共享契约（从 components/message-center.tsx 按域拆出） */
 

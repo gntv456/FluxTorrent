@@ -1,7 +1,18 @@
+import nextDynamic from "next/dynamic";
 import { AdminPageShell } from "@/components/admin-page-shell";
-import { AdminUserDetailPage } from "@/components/admin-user-detail";
+import { SkeletonRows } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
+
+// W-33 代码分割：后台重表格族（actions/panels/hooks 十余文件）只在
+// 本路由出现，拆出首屏 chunk；loading 骨架防白屏。
+const AdminUserDetailPage = nextDynamic(
+  () =>
+    import("@/components/admin-user-detail").then(
+      (m) => m.AdminUserDetailPage,
+    ),
+  { loading: () => <SkeletonRows rows={8} /> },
+);
 
 /** 后台用户详情独立页（好学站 Filament user-profile 口径）：
  *  从管理面板「用户查询」的弹层升级，承载字段全景 + 管理动作 + 关联数据。
