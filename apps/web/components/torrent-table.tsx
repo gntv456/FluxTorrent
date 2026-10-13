@@ -14,6 +14,7 @@ import { TorrentActions } from "@/components/torrent-actions";
 import { TorrentNums } from "@/components/torrent-table-nums";
 import { BatchCheckbox } from "@/components/torrent-batch";
 import { Icon, ICON_NAMES } from "@/components/icons";
+import { PosterImage } from "@/components/poster-image";
 
 /** 已注册图标名（站长可手填 icon_key，未注册的名字不能当图标用） */
 const KNOWN_ICONS = new Set<string>(ICON_NAMES as readonly string[]);
@@ -52,14 +53,16 @@ function promoSemanticClass(
   }
 }
 
-/** 剩余时间（好学站「6天23时」口径；无截止则不显示） */
-function remaining(end: string | null | undefined, now: number): string | null {
+/** 剩余时间（好学站「6天23时」口径；无截止则不显示；文案走 i18n） */
+function remaining(
+  end: string | null | undefined,
+  now: number,
+  fmt: (d: number, h: number) => string,
+): string | null {
   if (!end) return null;
   const ms = new Date(end).getTime() - now;
   if (ms <= 0) return null;
-  const d = Math.floor(ms / 86400000);
-  const h = Math.floor((ms % 86400000) / 3600000);
-  return `${d}天${h}时`;
+  return fmt(Math.floor(ms / 86400000), Math.floor((ms % 86400000) / 3600000));
 }
 
 /**
@@ -105,7 +108,9 @@ async function TorrentTr({
         ? `${ageDays} ${dict.torrents.days}`
         : `${Math.floor(ageDays / 30)} ${dict.torrents.months}`;
   const isNew = age < 3 * 86400000; // 「新」标：3 天内（NP new 标同数量级）
-  const left = remaining(t.promotion_ends_at, now);
+  const left = remaining(t.promotion_ends_at, now, (d, h) =>
+    dict.torrent.timeLeftDH.replace("{d}", String(d)).replace("{h}", String(h)),
+  );
   const rowBg = promoRowBg(t.promotion);
   const subtitle = t.small_descr || "";
   // DOM 契约（NP 口径）：pro_* 促销态 + 断种/官种行级标记
@@ -149,25 +154,23 @@ async function TorrentTr({
           })()}
         </span>
       </td>}
-      {/* 封面（好学站 46px 外链图；无图回退类型色块底 + 🎬） */}
+      {/* 封面（好学站 46px 外链图；无图/挂图回退类型色块底 + 唱片图标） */}
       {!hd.has("cover") && <td className="torrents-td-cover">
         <Link href={`/torrent/${id}`} aria-hidden tabIndex={-1}>
-          {t.poster ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={t.poster}
-              alt=""
-              loading="lazy"
-              className="torrents-cover"
-            />
-          ) : (
-            <span
-              className="torrents-cover torrents-cover--fallback"
-              style={{ background: catColor(dicts.colors, t.category_id) }}
-            >
-              <Icon name="disc" size={20} />
-            </span>
-          )}
+          <PosterImage
+            src={t.poster}
+            alt=""
+            size="sm"
+            className="torrents-cover"
+            fallback={
+              <span
+                className="torrents-cover torrents-cover--fallback"
+                style={{ background: catColor(dicts.colors, t.category_id) }}
+              >
+                <Icon name="disc" size={20} />
+              </span>
+            }
+          />
         </Link>
       </td>}
       {/* 标题（好学站三行结构） */}

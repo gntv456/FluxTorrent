@@ -8,6 +8,7 @@ import { useSwipe } from "@/lib/hooks/use-swipe";
 import { promotionBadge } from "@/lib/format";
 import { catColor } from "@/lib/site-profile";
 import { formatBytes } from "@/lib/format";
+import { PosterImage } from "@/components/poster-image";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 
 /** 行卡片最小数据形状（M5.2 下沉共享）：torrents 列表的 TorrentListItem
@@ -92,12 +93,17 @@ export function TorrentRowCard({
     >
       {!hd.has("cover") && (
         <span className="trow-card__cover" aria-hidden>
-        {t.poster ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={t.poster} alt="" loading="lazy" />
-        ) : (
-          <span className="trow-card__cat">{t.sec_names?.[0] ?? ""}</span>
-        )}
+        <PosterImage
+          src={t.poster}
+          alt=""
+          size="lg"
+          className="h-full w-full"
+          fallback={
+            <span className="trow-card__cat">
+              {t.sec_names?.[0] ?? ""}
+            </span>
+          }
+        />
         {promo && (
           <span className={`trow-card__promo ${promo.className}`}>
             {dict.promotion[promo.key]}

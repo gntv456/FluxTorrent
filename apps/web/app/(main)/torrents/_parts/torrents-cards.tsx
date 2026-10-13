@@ -13,6 +13,7 @@ import { formatBytes, promotionBadge } from "@/lib/format";
 import { promoSemanticClass } from "@/components/torrent-table";
 import { catColor } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
+import { PosterImage } from "@/components/poster-image";
 import type { Dict } from "@/i18n/zh-CN";
 
 const clamp2: React.CSSProperties = {
@@ -44,7 +45,7 @@ const WALL_TITLE_CLS =
 const WALL_STATS_CLS =
   "num mt-0.5 flex items-center gap-2 text-[10.5px] text-white/80";
 
-/** 封面（外链 poster；无图回退分类色块 + 首字） */
+/** 封面（外链 poster；无图/挂图回退分类色块 + 唱片图标） */
 function Cover({
   t,
   className,
@@ -56,21 +57,7 @@ function Cover({
   sizes?: string;
   colors: Record<number, string>;
 }) {
-  if (t.poster) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={t.poster}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        className={`${className} object-cover`}
-        style={{ background: catColor(colors, t.category_id) }}
-        sizes={sizes}
-      />
-    );
-  }
-  return (
+  const fallback = (
     <span
       className={`${className} flex items-center justify-center text-white/85`}
       style={{ background: catColor(colors, t.category_id) }}
@@ -80,6 +67,16 @@ function Cover({
           （此前用种子名首字符，遇到「【官种】…」这类命名会只显示一个「【」） */}
       <Icon name="disc" size={22} />
     </span>
+  );
+  return (
+    <PosterImage
+      src={t.poster}
+      alt=""
+      size="lg"
+      className={`${className} object-cover`}
+      sizes={sizes}
+      fallback={fallback}
+    />
   );
 }
 
