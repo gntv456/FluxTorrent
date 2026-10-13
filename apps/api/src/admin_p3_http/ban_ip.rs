@@ -36,7 +36,18 @@ async fn admin_ban_delete_by_ip(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
         .rows_affected();
-    state.repo.audit(Some(auth.id), "ban.del_by_ip", None).await;
+    // P-225：真删 0 行（这个 IP 本来就没被封）不许写审计——旧写法每次都
+    // 留一条「有人做过封禁处置」的假账；真删了才记，且必须记是哪个 IP。
+    if n == 0 {
+        return Err(DomainError::Validation(format!(
+            "IP {ip} 当前没有封禁记录（未执行任何删除）"
+        )));
+    }
+    state
+        .repo
+        .audit_detail(Some(auth.id), "ban.del_by_ip", None, None,
+            Some(serde_json::json!({"ip": ip, "deleted": n})))
+        .await;
     // 解封需立即作用于请求入口与 tracker（ip_bans 强制校验 + 防护缓存）
     crate::http::bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "deleted": n })))

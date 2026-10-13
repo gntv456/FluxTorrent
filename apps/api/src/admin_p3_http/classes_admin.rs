@@ -129,6 +129,15 @@ pub async fn admin_class_put(
     }
     // 同步两张表：class_rules（升降级规则）与 user_classes（档案展示名）。
     // user_classes.id 有 users 外键，只 UPDATE 不 DELETE/INSERT（档位数固定）。
+    // 两张表必须同事务：旧写法逐条自动提交，class_rules 改完之后
+    // user_classes 那条失败就留下「规则表新名 / 档案表旧名」的分裂
+    //（面板读一张、成员侧读另一张）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query(
         "UPDATE class_rules SET name = $2, min_uploaded = $3, \
              min_download_count = $4, min_seed_hours = $5, \
@@ -143,22 +152,34 @@ pub async fn admin_class_put(
     .bind(body.min_account_age_days)
     .bind(body.demotable)
     .bind(body.promo_sparks)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if n == 0 {
         return Err(DomainError::Validation("档位不存在".into()));
     }
-    sqlx::query("UPDATE user_classes SET name = $2 WHERE id = $1")
-        .bind(id)
-        .bind(body.name.trim())
-        .execute(&state.repo.db)
+    let n2 = sqlx::query(
+        "UPDATE user_classes SET name = $2 WHERE id = $1",
+    )
+    .bind(id)
+    .bind(body.name.trim())
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if n2 == 0 {
+        return Err(DomainError::Validation(
+            "档位档案行缺失（user_classes），已回滚".into(),
+        ));
+    }
+    tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "admin_class_put", None)
+        .audit_detail(Some(auth.id), "admin_class_put", Some(id as i64),
+            None, Some(serde_json::json!({"name": body.name.trim()})))
         .await;
     Ok(ok(serde_json::json!({ "updated": id })))
 }

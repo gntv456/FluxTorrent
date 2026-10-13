@@ -239,8 +239,11 @@ pub(super) async fn promo_kind_delete(
     )
     .await?;
     let kind = path.into_inner();
-    let used: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM promo_purchases WHERE kind = $1",
+    // P-221：tiers 对本表 ON DELETE CASCADE，旧护栏只数 purchases
+    // ⇒ 价目档被静默带走（现网 sticky2 同形）。
+    let (used, tiers): (i64, i64) = sqlx::query_as(
+        "SELECT (SELECT count(*) FROM promo_purchases WHERE kind = $1), \
+         (SELECT count(*) FROM promo_kind_tiers WHERE kind = $1)",
     )
     .bind(&kind)
     .fetch_one(&state.repo.db)
@@ -269,6 +272,10 @@ pub(super) async fn promo_kind_delete(
             )
             .await;
         return Ok(ok(serde_json::json!({ "disabled": true })));
+    }
+    if tiers > 0 {
+        return Err(DomainError::Validation(
+            format!("该档位仍有 {tiers} 个价目档，删除会连带清空")));
     }
     let n = sqlx::query("DELETE FROM promo_kinds WHERE kind = $1")
         .bind(&kind)

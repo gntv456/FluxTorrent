@@ -4,6 +4,7 @@
 // ============ staffpanel 管理工具（hxpt faqmanage/modrules/catmanage/bans/massmail 口径） ============
 
 mod bans;
+mod categories_admin;
 mod content;
 mod custom_pages;
 mod custom_pages_public;
@@ -48,6 +49,7 @@ pub(crate) mod setup_bridge {
 }
 
 pub use bans::*;
+pub use categories_admin::*;
 pub use content::*;
 pub use custom_pages::*;
 pub use custom_pages_public::*;
