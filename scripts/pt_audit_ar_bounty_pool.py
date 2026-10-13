@@ -31,6 +31,7 @@ setting = E["setting"]
 mkuser = E["mkuser"]
 mkbackdated = E["mkbackdated"]
 probe_torrent = E["probe_torrent"]
+add_attachment = E["add_attachment"]
 run_job = E["run_job"]
 spark_of = E["spark_of"]
 grant_spark = E["grant_spark"]
@@ -125,8 +126,14 @@ ok("S1 反例：非发起人不能撤别人的单",
 
 print("== AR-S2 交付通道（workflow=0 fulfill）+ 双发反例 ==")
 s, rid2, _ = new_req(800, "AqGate ff")
+# 批四十五 P-177：fulfill 当场发钱、没有验收，收紧成「只认有文件本体的字幕」。
+# 原先这里拿 https 直链当本体，等于把「一条链接也能领赏」固化成预期；换成真附件
+# 后本组断言的意图一个字没动（他人交付 → 整池给交付人 / 双发被 CAS 挡）。
 sidV = (call("POST", "/subtitles", {"title": "AqSub ff", "lang": "zh",
-                                    "file_ref": "https://x/c.srt",
+                                    "file_sha": add_attachment(
+                                        uVet, b"ff\n00:00:01,000 --> "
+                                        b"00:00:02,000\nff\n",
+                                        "aqFf%d.srt" % TS),
                                     "torrent_id": TID},
              token=tVet)[1].get("data") or {}).get("id")
 bVet = spark_of(uVet)
