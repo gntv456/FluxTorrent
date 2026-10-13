@@ -199,7 +199,7 @@ s6, r6 = post("/admin/arcade/rewards", {
     "kind": "quest", "code": QC, "scope": "*", "target": 3,
     "reward_spark": BIG})
 ok("B2a 一行周常配 1e12 魔力必须 400（上限口径 = 管理端手工调整的 10 亿）",
-   s6 == 400 and "上限" in msg((s6, r6)),
+   s6 == 400 and "需在 0 ~" in msg((s6, r6)),
    "http=%s msg=%s 库里=%s 条" % (s6, msg((s6, r6))[:80],
                                  cnt("arcade_quests", "code = '%s'" % QC)))
 s7, r7 = post("/admin/arcade/rewards", {
