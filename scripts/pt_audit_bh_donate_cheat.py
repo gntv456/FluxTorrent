@@ -351,8 +351,8 @@ ok("H3e 正例：站长处置下级成功，且审计里同时有「为什么」
    and json.loads(AR).get("reason") == "复核 announce 日志，判定为误报"
    and str(json.loads(AR).get("target_user")) == str(S92),
    "http=%s ref=%s" % (s, AR[:120]))
-MLQ = "SELECT content FROM user_modify_logs WHERE uid = %d ORDER BY id DESC " \
-      "LIMIT 1"
+MLQ = "SELECT content FROM user_modify_logs WHERE uid=%d" \
+      " ORDER BY id DESC LIMIT 1"
 ML = psql(MLQ % S92)
 ok("H3f 被处置的人的台账里多一条可读摘要（含事件号与说明）",
    ("#%s" % E92) in ML and "复核 announce 日志" in ML, ML[:100])
@@ -375,24 +375,28 @@ MJ = psql(MLQ % S92)
 ok("H3j 不填说明仍可处置（本轮没把 note 做成必填，界面字段另列待拍板），"
    "但台账不得留白", s == 200 and "未附说明" in MJ,
    "http=%s 最新台账=%s" % (s, MJ[:80]))
-
 # ============ H4 后台商城订单检索（P-176） ============
+def tot(qs):
+    """取台账接口的 total。上一版写 `get("total") or -1`，把合法的 0 读成 -1
+    （数字判据不许用 `x or 默认值`），三条 H4 因此在修复后假红。"""
+    d = data(call("GET", "/admin/shop-orders" + qs, token=ROOT)) or {}
+    v = d.get("total")
+    return -999 if v is None else int(v)
+
+
+J = "shop_orders o JOIN users u ON u.id = o.user_id"
 TOT = cnt("shop_orders")
 BASE_ROW = data(call("GET", "/admin/shop-orders", token=ROOT)) or {}
 ok("H4a 基数就绪：库中商城订单 %s 条、接口不带筛选也回 %s 条"
    % (TOT, BASE_ROW.get("total")),
    int(TOT) > 0 and str(BASE_ROW.get("total")) == str(TOT), blob(BASE_ROW)[:90])
-DBP = cnt("shop_orders o JOIN users u ON u.id = o.user_id",
-          "u.username ILIKE '%\\%%'")
-t_pct = int((data(call("GET", "/admin/shop-orders?q=%25", token=ROOT))
-             or {}).get("total") or -1)
+DBP = cnt(J, "u.username ILIKE '%\\%%'")
+t_pct = tot("?q=%25")
 ok("H4b 搜索框里的百分号是字面量不是通配（接口命中 " + str(t_pct) +
    "，库里用户名真含百分号的订单 " + str(DBP) + "，全表基数 " + str(TOT) +
    "）", t_pct == int(DBP), "api=%s db=%s tot=%s" % (t_pct, DBP, TOT))
-DBU = cnt("shop_orders o JOIN users u ON u.id = o.user_id",
-          "u.username ILIKE '%\\_%'")
-t_us = int((data(call("GET", "/admin/shop-orders?q=%5F", token=ROOT))
-            or {}).get("total") or -1)
+DBU = cnt(J, "u.username ILIKE '%\\_%'")
+t_us = tot("?q=%5F")
 ok("H4c 下划线同理不得当单字符通配（接口命中 " + str(t_us) +
    "，库里真含下划线者 " + str(DBU) + "）", t_us == int(DBU),
    "api=%s db=%s tot=%s" % (t_us, DBU, TOT))
@@ -404,8 +408,7 @@ ok("H4e 每页条数封顶 50（回显 per_page=%s）" % pp.get("per_page"),
    1 <= int(pp.get("per_page") or 0) <= 50, "per_page=%s" % pp.get("per_page"))
 UN = psql("SELECT u.username FROM shop_orders o JOIN users u ON u.id = "
           "o.user_id ORDER BY o.id DESC LIMIT 1")
-DBH = cnt("shop_orders o JOIN users u ON u.id = o.user_id",
-          "u.username = '%s'" % UN)
+DBH = cnt(J, "u.username = '%s'" % UN)
 hit = data(call("GET", "/admin/shop-orders?q=%s" % urllib.parse.quote(UN),
                 token=ROOT)) or {}
 own = set(str(r.get("username")) for r in (hit.get("rows") or []))
@@ -413,15 +416,15 @@ ok("H4f 正例：按真实用户名（%s）精确搜，命中数与库里同名�
    "/ 库 %s）" % (UN, hit.get("total"), DBH),
    str(hit.get("total")) == DBH and int(DBH) >= 1
    and (not own or own == set([UN])), blob(hit)[:110])
-wid = int((data(call("GET", "/admin/shop-orders?q=%s%%25"
-                     % urllib.parse.quote(UN), token=ROOT)) or {})
-          .get("total") or -1)
-ok("H4g 真用户名后跟一个百分号：转义后是字面量匹配，命中 " + str(wid) +
-   " 必须为 0（通配不再能放大结果集）", wid == 0, "total=%s" % wid)
+wid = tot("?q=%s%%25" % urllib.parse.quote(UN))
+DBW = cnt(J, "u.username = '%s%%'" % UN)
+ok("H4g 真用户名后跟一个百分号：转义后是字面量匹配（接口命中 " + str(wid) +
+   "，库里「用户名正好是 " + UN + "%」的订单 " + str(DBW) + " 条，而单搜 "
+   + UN + " 有 " + str(DBH) + " 条）—— 通配不再能放大结果集",
+   wid == int(DBW), "api=%s db=%s plain=%s" % (wid, DBW, DBH))
 sh = call("GET", "/admin/shop-orders", token=MTV)
 ok("H4h 成员打不开后台订单台账（403）", sh[0] == 403,
    "http=%s %s" % (sh[0], blob(sh[1])[:60]))
-
 # ============ H5 审计链自检：只钉不承重的形状（P-174 在制品） ============
 s, r = call("GET", "/admin/audit/chain-verify", token=ROOT)
 cv = data((s, r)) or {}
@@ -438,7 +441,6 @@ print("   INFO 已知未修（待站长，P-174）：first_broken_id=%s，被多
       "prev_hash 有 %s 组 —— 触发器取链尾没加锁，并发写必分叉，自检因此"
       "在把正常并发判成断链。本轮不改 audit.rs（站长在制品），只报不判。"
       % (cv.get("first_broken_id"), DUP))
-
 # ============ H6 收尾：把本轮动过的账逐条复原 ============
 psql("DELETE FROM payment_orders WHERE order_no LIKE 'BH%d%%'" % TAG)
 psql("DELETE FROM donation_ledger WHERE id > %d AND user_id IN (%d, %d, %d)"
