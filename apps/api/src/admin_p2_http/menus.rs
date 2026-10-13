@@ -39,7 +39,14 @@ pub async fn menu_items_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-272: ledger read gated with settings.manage (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let rows: Vec<MenuItemRow> = sqlx::query_as(
         "SELECT id, location, label, url, parent_id, target, min_class, sort, enabled \
          FROM menu_items ORDER BY location, sort, id",

@@ -28,7 +28,14 @@ async fn admin_shop_items(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-274: ledger read gated with prop.manage (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::PROP_MANAGE,
+    )
+    .await?;
     let rows: Vec<ShopItemRow> = sqlx::query_as(
         "SELECT id, name, kind, price, config, \
          active, stock_quota, stock_used \
