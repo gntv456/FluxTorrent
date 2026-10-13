@@ -65,10 +65,13 @@ for (const g of groups) {
 // ⚠️ 必须 strip 行尾 \r：仓库 core.autocrlf=true，工作区是 CRLF。按 \n 切分后
 // 每行会多出一个 \r，恰好卡在 80 的行会被误判为超宽 —— 同一文件在 LF/CRLF
 // 工作区之间切换会凭空触发「超宽变多」。行尾回车不是可见列，不算宽度。
+// 末尾换行产生的空串同样不是行：带尾换行的 500 行文件 split 得 501 元素，
+// 恰好卡上限的文件会被误判超限（py 500 上限实测踩过）。
 const readLines = (rel) =>
   readFileSync(path.join(ROOT, rel), "utf-8")
     .split("\n")
-    .map((l) => l.replace(/\r$/, ""));
+    .map((l) => l.replace(/\r$/, ""))
+    .filter((l, i, arr) => !(l === "" && i === arr.length - 1));
 const wideLines = (lines) => lines.filter((l) => l.length > MAX_COLS).length;
 
 const baseline = existsSync(BASELINE)

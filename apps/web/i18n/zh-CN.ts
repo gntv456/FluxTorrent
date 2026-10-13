@@ -106,6 +106,7 @@ const zhCnBase = {
     fun: "娱乐",
     tabbarMessages: "消息",
     gachaDisclosure: "抽卡公示",
+    wiki: "Wiki",
   },
   setup: {
     title: "站点安装向导",
@@ -482,6 +483,12 @@ const zhCnBase = {
   page: {
     updatedAt: "最后更新",
   },
+  wiki: {
+    title: "Wiki",
+    empty: "Wiki 内容正在筹备中",
+    updatedAt: "最后更新",
+    backIndex: "返回目录",
+  },
   help: {
     title: "帮助中心",
     subtitle: "新手指南与常见问题，照着做就能上手",
@@ -619,7 +626,7 @@ const zhCnBase = {
     imdb: "IMDb 链接",
     imdbHint: "来自 IMDb 的条目链接；用于详情页展示与搜索区「IMDb」",
     ptgen: "PT-Gen",
-    ptgenPlaceholder: "粘贴 imdb / douban / bangumi / indienova 链接",
+    ptgenPlaceholder: "粘贴 imdb / douban / bangumi / indienova / tmdb 链接",
     ptgenBtn: "生成简介",
     ptgenBusy: "生成中…",
     ptgenHint: "自动拉取条目信息追加到下方简介（服务端代理，可重复追加）",
@@ -3942,6 +3949,24 @@ const zhCnBase = {
     saved: "页面已保存",
     deleted: "页面已删除",
   },
+  adminWiki: {
+    hint: "多页 Wiki 文档（BBCode 正文 + 版本史），访问地址为 /wiki/{slug}；前台入口由「模块开关 → Wiki」控制。",
+    add: "新建页面",
+    titleLabel: "标题",
+    bodyLabel: "正文（BBCode）",
+    visible: "可见",
+    visibleOn: "已发布",
+    visibleOff: "已隐藏",
+    sortLabel: "排序",
+    empty: "尚无 Wiki 页面",
+    saved: "页面已保存（旧版已存档）",
+    deleted: "页面已删除",
+    revisionsBtn: "版本历史",
+    revisionsTitle: "版本历史（最近 50 版，只读）",
+    noRevisions: "暂无历史版本（创建后的首次编辑才会产生存档）",
+    bodyPh: "[b]粗体[/b] [url=https://…]链接[/url]",
+    deleteConfirm: "删除 Wiki 页「{t}」？（版本历史一并删除）",
+  },
   adminRoles: {
     title: "职务管理",
     intro:
@@ -4022,6 +4047,41 @@ const zhCnBase = {
       "清除运行期缓存键（限流计数等）。不影响数据库数据，站点会自动重建缓存。",
     cacheCleared: "已清除 {n} 个缓存键",
     cacheBtn: "立即清除",
+  },
+  /** 促销 intent 审批队列（0356）：发布者申请 → 管理组审批/拒绝 */
+  adminPromoIntents: {
+    title: "促销申请队列",
+    intro:
+      "发布者为自己种子提交的促销申请。通过后写入促销表并留 sha3-256 快照；拒绝需填理由。",
+    statuses: {
+      pending: "待审",
+      approved: "已通过",
+      rejected: "已拒绝",
+      cancelled: "已撤回",
+      expired: "已过期",
+    } as Record<string, string>,
+    scopes: {
+      global: "全站",
+      official: "官方种",
+      non_official: "非官方种",
+      category: "指定分类",
+    } as Record<string, string>,
+    scopesTorrent: "种子",
+    colKind: "类型",
+    colScope: "范围",
+    colRequester: "申请人",
+    colStart: "开始",
+    colEnd: "结束",
+    colStatus: "状态",
+    colActions: "操作",
+    approveBtn: "通过",
+    rejectBtn: "拒绝",
+    notePh: "拒绝理由（必填）",
+    needNote: "请填写拒绝理由",
+    approved: "已通过并生效",
+    rejected: "已拒绝",
+    decidedAt: "裁决于 {t}",
+    empty: "没有符合条件的促销申请",
   },
   /** 促销档位注册表（0213）：用户自购推广档位的可视化配置 */
   adminPromoKinds: {
@@ -5017,6 +5077,14 @@ const zhCnBase = {
     sparksHint: "0 = 不发奖励；worker 每 60 秒按阈值判定升降级，跨档补发差额且幂等（同人同档不重复入账）",
     demoteHint: "关闭后该档成员不会再被降回低档",
     upHint: "GB",
+    preview: "预览影响",
+    previewBusy: "统计中…",
+    previewFail: "预览失败（重型统计，同参数 60 秒内重复点击可直接复用）",
+    pvPromote: "将升档 {n} 人",
+    pvDemote: "将降档 {n} 人",
+    pvCurrent: "该档现有人数 {n}",
+    pvSampleUp: "升档样例",
+    pvSampleDown: "降档样例",
   },
   adminHr: {
     statusLabels: {

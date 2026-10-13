@@ -129,6 +129,7 @@ const enBase: Omit<
     fun: "Fun",
     tabbarMessages: "Messages",
     gachaDisclosure: "Gacha Rates",
+    wiki: "Wiki",
   },
   setup: {
     title: "Site Setup Wizard",
@@ -512,6 +513,12 @@ const enBase: Omit<
   page: {
     updatedAt: "Last updated",
   },
+  wiki: {
+    title: "Wiki",
+    empty: "Wiki content is on the way",
+    updatedAt: "Last updated",
+    backIndex: "Back to index",
+  },
   help: {
     title: "Help Center",
     subtitle: "Guides and answers to get you started",
@@ -662,7 +669,7 @@ const enBase: Omit<
     imdbHint:
       "Item link from IMDb; shown on the detail page and searchable via the IMDb search area",
     ptgen: "PT-Gen",
-    ptgenPlaceholder: "Paste an imdb / douban / bangumi / indienova link",
+    ptgenPlaceholder: "Paste an imdb / douban / bangumi / indienova / tmdb link",
     ptgenBtn: "Generate",
     ptgenBusy: "Generating…",
     ptgenHint:
@@ -4073,6 +4080,24 @@ const enBase: Omit<
     saved: "Page saved",
     deleted: "Page deleted",
   },
+  adminWiki: {
+    hint: "Multi-page wiki docs (BBCode body + revision history) served at /wiki/{slug}; the front-end entry is gated by the Wiki module switch.",
+    add: "New page",
+    titleLabel: "Title",
+    bodyLabel: "Body (BBCode)",
+    visible: "Visible",
+    visibleOn: "Published",
+    visibleOff: "Hidden",
+    sortLabel: "Sort",
+    empty: "No wiki pages yet",
+    saved: "Page saved (previous version archived)",
+    deleted: "Page deleted",
+    revisionsBtn: "History",
+    revisionsTitle: "Revision history (latest 50, read-only)",
+    noRevisions: "No revisions yet (the first edit after creation creates one)",
+    bodyPh: "[b]bold[/b] [url=https://…]link[/url]",
+    deleteConfirm: 'Delete wiki page "{t}"? (revisions too)',
+  },
   adminRoles: {
     title: "Roles",
     intro:
@@ -4154,6 +4179,42 @@ const enBase: Omit<
       "Flush runtime cache keys (rate-limit counters etc.). Database data is untouched — the site rebuilds its caches.",
     cacheCleared: "Cleared {n} cache keys",
     cacheBtn: "Clear now",
+  },
+  /** Promo intent approval queue (0356): uploader requests → staff approve/reject */
+  adminPromoIntents: {
+    title: "Promo Requests",
+    intro:
+      "Promo intents submitted by uploaders for their own torrents. Approving " +
+      "writes the promotion with a sha3-256 snapshot; rejecting requires a note.",
+    statuses: {
+      pending: "Pending",
+      approved: "Approved",
+      rejected: "Rejected",
+      cancelled: "Cancelled",
+      expired: "Expired",
+    } as Record<string, string>,
+    scopes: {
+      global: "Whole site",
+      official: "Official only",
+      non_official: "Non-official",
+      category: "Category",
+    } as Record<string, string>,
+    scopesTorrent: "Torrent",
+    colKind: "Kind",
+    colScope: "Scope",
+    colRequester: "Requester",
+    colStart: "Starts",
+    colEnd: "Ends",
+    colStatus: "Status",
+    colActions: "Actions",
+    approveBtn: "Approve",
+    rejectBtn: "Reject",
+    notePh: "Rejection note (required)",
+    needNote: "A rejection note is required",
+    approved: "Approved and live",
+    rejected: "Rejected",
+    decidedAt: "Decided {t}",
+    empty: "No promo requests match this filter",
   },
   /** Promo kind registry (0213): configurable self-purchase promotion tiers */
   adminPromoKinds: {
@@ -5185,6 +5246,14 @@ medalDaysPh: "Days (empty = medal default)",
       + "60s, pays the difference across tiers and is idempotent per tier.",
     demoteHint: "When off, members in this tier are never demoted.",
     upHint: "GB",
+    preview: "Preview impact",
+    previewBusy: "Counting…",
+    previewFail: "Preview failed (heavy query; same params reuse cache for 60s)",
+    pvPromote: "{n} users would move up",
+    pvDemote: "{n} users would move down",
+    pvCurrent: "{n} users currently in this tier",
+    pvSampleUp: "Sample (promote)",
+    pvSampleDown: "Sample (demote)",
   },
   adminHr: {
     statusLabels: {

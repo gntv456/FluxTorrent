@@ -16,15 +16,12 @@ fn ts(s: &str) -> chrono::DateTime<chrono::Utc> {
 fn expected_absent_skips_check() {
     let empty: HashMap<String, String> = HashMap::new();
     assert!(
-        check_expected(&empty, "site_name", ts("2026-01-01T00:00:00Z"))
-            .is_ok()
+        check_expected(&empty, "site_name", ts("2026-01-01T00:00:00Z")).is_ok()
     );
     let mut m = HashMap::new();
     m.insert("other_key".to_string(), "2026-01-01T00:00:00Z".into());
-    assert!(
-        check_expected(&m, "site_name", ts("2026-01-01T00:00:00Z"))
-            .is_ok()
-    );
+    assert!(check_expected(&m, "site_name", ts("2026-01-01T00:00:00Z"))
+        .is_ok());
 }
 
 /// 并发模拟（单键口径）：expected 带旧时间戳（他人已先写、updated_at
@@ -32,10 +29,7 @@ fn expected_absent_skips_check() {
 #[test]
 fn expected_stale_stamp_conflicts() {
     let mut m = HashMap::new();
-    m.insert(
-        "site_name".to_string(),
-        "2026-01-01T00:00:00+00:00".into(),
-    );
+    m.insert("site_name".to_string(), "2026-01-01T00:00:00+00:00".into());
     // 库中现值已是 01-02（他人先保存过）→ 旧戳必须拒
     let err = check_expected(&m, "site_name", ts("2026-01-02T00:00:00Z"))
         .unwrap_err();
@@ -46,10 +40,8 @@ fn expected_stale_stamp_conflicts() {
         other => panic!("应为 VersionConflict，得到 {other:?}"),
     }
     // 时间戳一致 → 放行（正常保存路径）
-    assert!(
-        check_expected(&m, "site_name", ts("2026-01-01T00:00:00Z"))
-            .is_ok()
-    );
+    assert!(check_expected(&m, "site_name", ts("2026-01-01T00:00:00Z"))
+        .is_ok());
 }
 
 /// 非法时间串按冲突处理（客户端口径对不上时不静默放行）
@@ -58,8 +50,7 @@ fn expected_garbage_stamp_conflicts() {
     let mut m = HashMap::new();
     m.insert("site_name".to_string(), "not-a-timestamp".into());
     assert!(
-        check_expected(&m, "site_name", ts("2026-01-02T00:00:00Z"))
-            .is_err()
+        check_expected(&m, "site_name", ts("2026-01-02T00:00:00Z")).is_err()
     );
 }
 
