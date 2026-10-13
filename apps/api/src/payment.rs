@@ -18,7 +18,9 @@ mod tiers;
 #[allow(unused_imports)]
 pub use epay::{epay_sign, EpayProvider};
 #[allow(unused_imports)]
-pub use settle::{demo_topup, new_order_no, settle_notify, SettleOutcome};
+pub use settle::{
+    check_paid_amount, demo_topup, new_order_no, settle_notify, SettleOutcome,
+};
 pub use tiers::{cumulative_paid, grant_tier, load_tiers};
 
 use crate::state::AppState;

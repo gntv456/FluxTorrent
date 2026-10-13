@@ -50,9 +50,16 @@ async fn admin_shop_orders(
     q: web::Query<AdminOrdersQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = staff(&req, &state).await?;
-    let page = q.page.unwrap_or(1).max(1);
-    let per = q.per_page.unwrap_or(20).clamp(1, 50);
-    let like = q.q.as_deref().map(|s| format!("%{}%", s.trim()));
+    // 分页必须有上界（口径同 dto::page_window）：原先只 `max(1)` 不封顶，
+    // `?page=99999999` 会把 OFFSET 拼成 50 亿，库从第一行数完再整段丢掉。
+    // per 仍守本页的 50 上限（列多，不随 page_window 的 100 放宽）。
+    let per_in = q.per_page.unwrap_or(20).min(50);
+    let (off, per) = crate::dto::page_window(q.page.unwrap_or(1), per_in);
+    let page = off / per + 1;
+    // LIKE 必须转义（批四十四 P-176）：原先手拼 `%{q}%`，后台搜索框里打一个
+    // `%` 就变成全表通配、打 `_` 变成单字符通配 —— 站长按用户名找订单时拿到
+    // 的是「没报错但结果不对」的清单。口径同用户列表（`http::like_pattern`）
+    let like = q.q.as_deref().map(crate::http::like_pattern);
     let rows: Vec<AdminOrderRow> = sqlx::query_as(
         "SELECT o.id, o.user_id, u.username, o.item_id, si.name AS item_name, \
          si.kind, o.price, o.effect_applied, o.idempotency_key, o.created_at \
@@ -70,7 +77,7 @@ async fn admin_shop_orders(
     .bind(q.item_id)
     .bind(q.pending)
     .bind(per)
-    .bind((page - 1) * per)
+    .bind(off)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

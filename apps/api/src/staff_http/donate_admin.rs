@@ -123,41 +123,49 @@ pub async fn admin_payment_complete(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let claimed: Option<i64> = sqlx::query_scalar(
-        "UPDATE payment_orders SET status='paid', \
-         amount_paid = COALESCE($2, amount_usd), paid_at=now(), \
-         trade_no = COALESCE(trade_no, $3) \
-         WHERE order_no=$1 AND status='pending' RETURNING user_id",
+    // 先锁订单再动金额（P-173）：面额要参与校验；「不存在 / 已补过 / 状态不
+    // 对」三种情形分开报；行锁顺带把并发重复补单串成串行（第二个事务读到的
+    // 已经是 paid，走 duplicate 分支）。
+    let head: Option<(String, f64)> = sqlx::query_as(
+        "SELECT status, amount_usd::float8 FROM payment_orders \
+         WHERE order_no = $1 FOR UPDATE",
     )
     .bind(order_no)
-    .bind(body.amount_paid)
-    .bind(format!("manual:{})", auth.id))
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(user_id) = claimed else {
-        // 已 paid 的订单幂等返回；不存在/其它状态如实报
-        let st: Option<String> = sqlx::query_scalar(
-            "SELECT status FROM payment_orders WHERE order_no = $1",
-        )
-        .bind(order_no)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        return match st.as_deref() {
-            Some("paid") => Ok(ok(serde_json::json!({
-                "order_no": order_no, "result": "duplicate",
-            }))),
-            Some(s) => Err(DomainError::Validation(format!(
-                "订单状态为 {s}，仅 pending 可补单"
-            ))),
-            None => Err(DomainError::NotFound(0)),
-        };
+    let (status, amount_usd) = match head {
+        Some(v) => v,
+        None => return Err(DomainError::NotFound(0)),
     };
-    let amount: f64 = sqlx::query_scalar(
-        "SELECT amount_paid::float8 FROM payment_orders WHERE order_no = $1",
+    if status != "pending" {
+        if status == "paid" {
+            return Ok(ok(serde_json::json!({
+                "order_no": order_no, "result": "duplicate",
+            })));
+        }
+        return Err(DomainError::Validation(format!(
+            "订单状态为 {status}，仅 pending 可补单"
+        )));
+    }
+    // 金额：缺省按面额，给了就按给的 —— 但必须是正数、有上限，且不得高于
+    // 面额（多付应改面额或另建订单，不能让一次手滑铸出钱来）
+    let amount: f64 = body.amount_paid.unwrap_or(amount_usd);
+    crate::payment::check_paid_amount(amount)?;
+    if amount > amount_usd {
+        return Err(DomainError::Validation(format!(
+            "补单金额不得高于订单面额 {amount_usd:.2} 美元"
+        )));
+    }
+    let user_id: i64 = sqlx::query_scalar(
+        "UPDATE payment_orders SET status='paid', amount_paid=$2, \
+         paid_at=now(), trade_no = COALESCE(trade_no, $3) \
+         WHERE order_no=$1 AND status='pending' RETURNING user_id",
     )
     .bind(order_no)
+    .bind(amount)
+    // 原实现的格式串写成 "manual:{})"，把右括号一起存进了 trade_no（笔误）
+    .bind(format!("manual:{}", auth.id))
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

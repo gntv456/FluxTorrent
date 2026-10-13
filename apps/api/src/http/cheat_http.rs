@@ -90,6 +90,9 @@ struct CheatResolveReq {
     id: i64,
     /// true=标记已处置（恢复该用户做种收益结算）；false=撤销处置重新拉黑
     resolved: bool,
+    /// 处置说明（批四十四 P-175：原先这个动作连"为什么"都没地方写）
+    #[serde(default)]
+    note: Option<String>,
 }
 
 /// cheat_events 处置（staff）：置/清 resolved_at。
@@ -103,6 +106,23 @@ pub async fn cheat_events_resolve(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     require_staff(&auth)?;
+    // 护栏（P-175）：这是「恢复做种收益」的处分动作，原先只要求 staff 身份
+    // ⇒ class ≥ 90 的职员可以清掉**自己**名下的作弊事件（自己被 tracker 判定
+    // 的 ghost/speed/reset 一笔勾销），也能清上级/站长的。与赦免、改档同族：
+    // 操作者必须严格高于被处置的人，自己也在被排除之列（want_uid 缺失报 404）。
+    let target: Option<i64> =
+        sqlx::query_scalar("SELECT user_id FROM cheat_events WHERE id = $1")
+            .bind(body.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let target = target.ok_or(DomainError::NotFound(body.id))?;
+    crate::admin_http::guard::ensure_outranks(
+        &state.repo.db,
+        auth.class_id,
+        target,
+    )
+    .await?;
     // 状态卫语句与赋值分开绑定（$2 在两处语义不同：一个布尔一个时间戳，
     // 共用占位符会 boolean = timestamptz 类型错配——实测 500）
     let n = sqlx::query(
@@ -123,10 +143,35 @@ pub async fn cheat_events_resolve(
     if n == 0 {
         return Err(DomainError::Validation("事件不存在或状态未变化".into()));
     }
+    let note = body
+        .note
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     state
         .repo
-        .audit(Some(auth.id), "cheat_event.resolve", Some(body.id))
+        .audit_detail(
+            Some(auth.id),
+            "cheat_event.resolve",
+            Some(body.id),
+            note,
+            Some(serde_json::json!({
+                "target_user": target,
+                "resolved": body.resolved,
+            })),
+        )
         .await;
+    crate::admin_p3_http::modify_log(
+        &state.repo.db,
+        target,
+        Some(auth.id),
+        &format!(
+            "作弊事件 #{} 处置：{}",
+            body.id,
+            note.unwrap_or("（未附说明）")
+        ),
+    )
+    .await;
     Ok(ok(
         serde_json::json!({ "id": body.id, "resolved": body.resolved }),
     ))
