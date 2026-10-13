@@ -1,5 +1,6 @@
 //! 作弊检测（cheat_audit / multi_ip_check）+ Ratio Watch。
 
+use super::staff_alert::staff_alert;
 use sqlx::PgPool;
 
 /// 0228 运维 webhook 广播（worker 侧：直接查 site_settings + reqwest，
@@ -106,13 +107,7 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
                 "种子 #{torrent_id} 近 7 天上传总量比下载总量高出约 {gap} 字节（阈值 {threshold_gb} GiB），\
                  存在虚报上传（假流量）嫌疑。明细见后台「作弊探测」，请人工核对做种者列表。"
             );
-            let _: Result<_, _> = sqlx::query(
-                "INSERT INTO staffmessages (user_id, subject, body, permission) \
-                 SELECT MIN(id), '流量差额审计告警', $1, 'cheater' FROM users WHERE class_id >= 90",
-            )
-            .bind(body)
-            .execute(db)
-            .await;
+            staff_alert(db, "流量差额审计告警", &body, "cheater").await;
         }
     }
     if first_hits > 0 {

@@ -1,6 +1,7 @@
 //! 清扫类：过期 peer/登录事件/邀请/token/DLQ。
 //! 从 jobs.rs 按域拆出。
 
+use super::staff_alert::staff_alert;
 use sqlx::PgPool;
 
 /// 僵尸 peer 判定阈值（秒）= max(2h, 2×announce_interval)。
@@ -118,13 +119,7 @@ pub(crate) async fn dlq_watch(
              flux:agentblock:dlq {b_len} 条（仅告警记录）、交叉佐证流 \
              flux:xreport:dlq {x_len} 条（佐证未入账需人工补算）。请按队列排查。"
         );
-        let _: Result<_, _> = sqlx::query(
-            "INSERT INTO staffmessages (user_id, subject, body, permission) \
-             SELECT MIN(id), 'announce 死信队列积压告警', $1, 'cheater' FROM users WHERE class_id >= 90",
-        )
-        .bind(body)
-        .execute(db)
-        .await;
+        staff_alert(db, "announce 死信队列积压告警", &body, "cheater").await;
         let _: () = redis
             .set_ex("flux:announce:dlq:alerted", 1, 24 * 3600)
             .await

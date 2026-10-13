@@ -15,9 +15,12 @@
 //! 一事件不再重复告警）。员工（class_id ≥ 90）不自动发信，避免测试/运维
 //! 流量误伤。
 
+use super::staff_alert::{alerted_within_7d, staff_alert};
 use sqlx::PgPool;
 
-pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
+const L2_SUBJ: &str = "作弊事件累进告警";
+
+pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
     // 高危类：进 L1/L2 告警网的事件。
     // 五轮实测两处断口（2026-10-08）：
     //  ① 旧写法 `c.agent = 'torrent:%'` 是**等值**比较，字面量里带 %——
@@ -124,29 +127,20 @@ pub async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
         // ① 未处置事件每 10 分钟重刷管理组信箱；② 处置后 hits 再涨也永不
         // 告警。改按 staffmessages 侧 7 天窗口去重（body 前缀带 user+agent）。
         if hits >= l2_hits {
-            let n = sqlx::query(
-                "INSERT INTO staffmessages \
-                 (user_id, subject, body, permission) \
-                 SELECT MIN(id), '作弊事件累进告警', $1, 'cheater' \
-                 FROM users WHERE class_id >= 90 \
-                   AND NOT EXISTS ( \
-                     SELECT 1 FROM staffmessages sm \
-                     WHERE sm.permission = 'cheater' \
-                       AND sm.subject = '作弊事件累进告警' \
-                       AND sm.body LIKE $2 || '%' \
-                       AND sm.created_at > now() - interval '7 days')",
-            )
-            .bind(format!(
-                "[[cheat:{agent}]]用户 #{} 的作弊事件累计达 {hits} 次（{agent} / \
-                 {reason}），其做种收益已被自动暂停。\
-                 请在后台「作弊探测」核实并处置。",
-                uid
-            ))
-            .bind(format!("[[cheat:{agent}]]用户 #{uid} "))
-            .execute(db)
-            .await
-            .map(|r| r.rows_affected())
-            .unwrap_or(0);
+            // 去重要读出来判：旧写法把去重塞进 INSERT 的 NOT EXISTS，命中时
+            // 聚合返回一行 NULL 署名 ⇒ 撞 user_id NOT NULL，"不发"变成报错
+            let prefix = format!("[[cheat:{agent}]]用户 #{uid} ");
+            let body = format!(
+                "{prefix}的作弊事件累计达 {hits} 次（{agent} / {reason}），\
+                 其做种收益已被自动暂停。请在后台「作弊探测」核实并处置。"
+            );
+            let dup =
+                alerted_within_7d(db, "cheater", L2_SUBJ, &prefix).await;
+            let n = if dup {
+                0
+            } else {
+                staff_alert(db, L2_SUBJ, &body, "cheater").await
+            };
             if n > 0 {
                 tracing::warn!(
                     user = uid,
