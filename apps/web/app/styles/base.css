@@ -61,6 +61,35 @@
   --text-faint: #8493ad;
   --text-fainter: #a3b1c6;
   --text-on-accent: #fff;
+  /* ===== 状态（续）：内容语义色（W-36）=====
+     BBCode 色板 / 评级星标 / 画质档徽标：是「内容数据」而非 UI chrome，
+     不随主题换肤（简介里用户写的 [color=red] 在夜间也必须是红）。
+     命名前缀 content-* 与 --tone-*（UI chrome）划清边界；值与
+     tailwind 灰阶/豆瓣绿/PTP 画质三色一致，明暗同值（内容色不改）。 */
+  --content-rating-star: #f5c518;
+  --content-tier-uhd: #7c3aed;
+  --content-tier-hd: #2563eb;
+  --content-tier-sd: #64748b;
+  --content-cat-fallback: #93a1bc;
+  /* BBCode 色板（NP 口径 16 色）：发布表单色块 → 简介渲染的
+     「用户内容词汇」，明暗同值；var 写法进 [color=] 参数，
+     渲染器 style 直接吃 CSS 变量 */
+  --content-bb-ink: #111827;
+  --content-bb-gray: #6b7280;
+  --content-bb-white: #ffffff;
+  --content-bb-red: #e02020;
+  --content-bb-red-deep: #a61b29;
+  --content-bb-orange: #f59e0b;
+  --content-bb-yellow: #fadb14;
+  --content-bb-gold: #d4a017;
+  --content-bb-green: #16a34a;
+  --content-bb-teal: #0d9488;
+  --content-bb-blue: #2563eb;
+  --content-bb-indigo: #4f46e5;
+  --content-bb-purple: #9333ea;
+  --content-bb-pink: #eb2f96;
+  --content-bb-brown: #8b4513;
+  --content-bb-sky: #0ea5e9;
   /* ===== 边框 ===== */
   --border-soft: #e3edf7;
   --border-deep: #bcd7ef;
@@ -216,15 +245,17 @@
   --surface-cream: #1c2340;
   --head-a: #1e2a4d;
   --head-b: #1a2036;
-  /* 文本 */
+  /* 文本（W-40 暗色 AA 校准：faint 76849f→8b99b3 达 5.2、
+     fainter 5c6a84→76849f 达 4.3——原值在卡片底只有 4.27/2.95，
+     10px 辅助角标也需 ≥3（AA large 下限），校准后全配对达标） */
   --text-strong: #e8eef9;
   --text-heading: #f4f7fd;
   --text-body: #c6d1e6;
   --text-body-deep: #b4c1da;
   --text-brand: #6cc0ff;
   --text-muted: #93a2bf;
-  --text-faint: #76849f;
-  --text-fainter: #5c6a84;
+  --text-faint: #8b99b3;
+  --text-fainter: #76849f;
   --text-on-accent: #fff;
   /* 边框 */
   --border-soft: #262f4a;
@@ -244,6 +275,14 @@
   --info: #6cc0ff;
   --muted-soft: #232c4a;
   --accent-purple: #9aa8ff;
+  /* 内容语义色（W-36）：内容数据不随主题换肤，明暗同值（含 BBCode
+     16 色板——浅色块声明一次即够，夜间无需覆盖；这里显式列出
+     content-* 主五项作双主题对照文档，BB 色板跟随 :root 解析） */
+  --content-rating-star: #f5c518;
+  --content-tier-uhd: #7c3aed;
+  --content-tier-hd: #2563eb;
+  --content-tier-sd: #64748b;
+  --content-cat-fallback: #93a1bc;
   /* 阴影：暗色加深 */
   --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
@@ -668,7 +707,7 @@ a:hover {
 .nexus-table td {
   overflow-wrap: anywhere;
 }
-@media (max-width: 380px) {
+@media (max-width: 640px) {
   .nexus-table {
     font-size: 11px;
   }
@@ -952,7 +991,7 @@ a:hover {
   background: var(--danger-soft);
   color: var(--danger);
 }
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .td-head {
     grid-template-columns: 130px minmax(0, 1fr);
   }
@@ -968,7 +1007,7 @@ a:hover {
     flex: 1 1 100%;
   }
 }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .td-head {
     grid-template-columns: 96px minmax(0, 1fr);
     padding: 14px;
@@ -1086,7 +1125,7 @@ a:hover {
 .td-tags__manage {
   margin-left: auto;
 }
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .td-tags__manage {
     margin-left: 0;
   }
@@ -1286,7 +1325,7 @@ a:hover {
   font-size: 14px;
   white-space: pre-wrap;
 }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .td-comment {
     grid-template-columns: 1fr;
   }

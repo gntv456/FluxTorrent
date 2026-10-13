@@ -7,6 +7,7 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { MainMenu } from "@/components/main-menu";
+import { HeaderSearch } from "@/components/header-search";
 import { CustomMenu } from "@/components/custom-menu";
 import { Icon } from "@/components/icons";
 import { getMenuItems } from "@/lib/data";
@@ -94,6 +95,14 @@ export async function Header() {
               />
             </Suspense>
           </div>
+          {/* IA-1（W-30）：顶栏搜索直显框——/top 从一级让位给它。
+              <md 收进汉堡抽屉（右工具区在 375px 已超宽），桌面常驻。 */}
+          <div className="hidden w-44 shrink-0 md:block lg:w-56">
+            <HeaderSearch
+              placeholder={dict.common.globalSearchPh}
+              label={dict.common.globalSearchBtn}
+            />
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             {/* M2 移动汉堡（<md）：抽屉与桌面同源配置；摘要行回落游客 */}
             <div className="md:hidden">
@@ -111,6 +120,9 @@ export async function Header() {
                 tipTopics={dict.common.gsTopics}
                 tipEmpty={dict.common.gsEmpty}
                 tipMore={dict.common.gsMore}
+                tipSearching={dict.common.gsSearching}
+                tipError={dict.common.gsError}
+                retryLabel={dict.common.gsRetry}
               />
             </div>
             {/* 主题切换 <md 收进汉堡抽屉：280px 折叠屏外屏态右工具区

@@ -126,7 +126,8 @@ export function FrameShop({
 }
 
 function frameStyle(css: string): React.CSSProperties {
-  // css 形如 "border-color:#e14d4d" —— 仅放行 border-color/box-shadow 两个属性
+  // css 形如 "border-color:<hex>" —— 仅放行 border-color/box-shadow 两个属性
+  // design-cov-exempt: 上一行 hex 是「站长存库 CSS 字符串」的格式示例，非 UI 配色
   const style: Record<string, string> = {};
   for (const decl of css.split(";")) {
     const [k, v] = decl.split(":").map((s) => s?.trim());

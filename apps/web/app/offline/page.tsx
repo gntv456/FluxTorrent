@@ -6,7 +6,10 @@ import { Icon } from "@/components/icons";
 export default async function OfflinePage() {
   const { dict } = await getDict();
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center gap-4 py-16 text-center">
+    <main
+      id="main-content"
+      className="mx-auto flex max-w-sm flex-col items-center gap-4 py-16 text-center"
+    >
       <Icon name="seed" size={64} className="text-[var(--sky)]" />
       <h1 className="font-display text-2xl">{dict.offline.title}</h1>
       <p className="text-sm text-sub">{dict.offline.subtitle}</p>
@@ -16,6 +19,6 @@ export default async function OfflinePage() {
       >
         {dict.offline.home}
       </Link>
-    </div>
+    </main>
   );
 }

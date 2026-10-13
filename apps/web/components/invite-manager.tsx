@@ -8,6 +8,8 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
 import { clientUuid } from "@/lib/client-uuid";
+import { toast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export interface InviteItem {
   id: number;
@@ -65,23 +67,21 @@ export function InviteManager() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [invitees, setInvitees] = useState<Invitee[] | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  // W-19：撤销确认（ConfirmDialog；原 window.confirm + flash 行内提示
+  // 一并退役——反馈走 toast 协议）
+  const [askRevoke, setAskRevoke] = useState<InviteItem | null>(null);
   const [busy, setBusy] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [sendFor, setSendFor] = useState<InviteItem | null>(null);
   const [sendEmail, setSendEmail] = useState("");
 
+  // 反馈协议（DS-PLAN-01 W-10）：flash/flashErr 改走全局 toast
   const flash = useCallback((m: string) => {
-    setMsg(m);
-    setErr(null);
-    setTimeout(() => setMsg(null), 3500);
+    toast.success(m);
   }, []);
   const flashErr = useCallback((m: string) => {
-    setErr(m);
-    setMsg(null);
-    setTimeout(() => setErr(null), 5000);
+    toast.error(m);
   }, []);
 
   const refresh = useCallback(async (p = 1) => {
@@ -147,11 +147,11 @@ export function InviteManager() {
 
   /** 撤销未用邀请码（0204 P0）：status 0→3；不返还配额 */
   async function revoke(inv: InviteItem) {
-    if (!window.confirm(t.confirmRevoke)) return;
     setBusyId(inv.id);
     try {
       await api.del(`/api/v1/invites/${inv.id}`);
       flash(t.revoked);
+      setAskRevoke(null);
       await refresh(page);
     } catch (e) {
       flashErr(e instanceof ApiError ? e.message : dict.common.networkError);
@@ -250,22 +250,6 @@ export function InviteManager() {
         </p>
       )}
       {!levelOk && <p className="text-xs text-sub">{t.needClass}</p>}
-      {msg && (
-        <p
-          role="alert"
-          className="num break-all rounded-[var(--r-md)] bg-mint/30 p-3 text-sm text-ink"
-        >
-          {msg}
-        </p>
-      )}
-      {err && (
-        <p
-          role="alert"
-          className="rounded-[var(--r-md)] bg-sun/30 p-3 text-sm text-ink"
-        >
-          {err}
-        </p>
-      )}
 
       {/* 邀请码列表 */}
       {invites === null ? null : invites.length === 0 ? (
@@ -280,7 +264,7 @@ export function InviteManager() {
             setSendFor(inv);
             setSendEmail(inv.email ?? "");
           }}
-          onRevoke={(inv) => void revoke(inv)}
+          onRevoke={(inv) => setAskRevoke(inv)}
         />
       )}
       {/* 分页（0204：50/页） */}
@@ -362,6 +346,19 @@ export function InviteManager() {
           onSend={sendMail}
         />
       )}
+
+      {/* W-19：撤销确认（danger；不返还配额故需显式表态） */}
+      <ConfirmDialog
+        open={askRevoke !== null}
+        onClose={() => setAskRevoke(null)}
+        onConfirm={() => {
+          if (askRevoke) void revoke(askRevoke);
+        }}
+        tone="danger"
+        title={t.revoke}
+        message={t.confirmRevoke}
+        busy={askRevoke !== null && busyId === askRevoke.id}
+      />
     </div>
   );
 

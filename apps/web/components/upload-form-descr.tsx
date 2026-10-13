@@ -48,24 +48,27 @@ export function UploadDescrBlock({
     "min-h-10 min-w-[32px] rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1.5 text-xs font-bold text-ink hover:border-[var(--baozi-orange)]";
   const bbSelect =
     "min-h-10 rounded-[var(--r-sm)] border border-[var(--baozi-line)] bg-[var(--baozi-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--baozi-orange)]";
-  // 色板（NP 颜色面板口径）：色块按钮，点击包住选区
+  // 色板（NP 颜色面板口径）：色块按钮，点击包住选区。
+  // W-36：BBCode 色板是「用户内容词汇」——写进简介的 [color=red] 在
+  // 夜间主题也必须是红，不随主题换肤；色值以 CSS 变量集中在 base.css
+  // --content-bb-* 层（明暗同值，改色只动令牌层一处）。
   const BB_COLORS: [string, string][] = [
-    ["#111827", "黑"],
-    ["#6b7280", "灰"],
-    ["#ffffff", "白"],
-    ["#e02020", "红"],
-    ["#a61b29", "深红"],
-    ["#f59e0b", "橙"],
-    ["#fadb14", "黄"],
-    ["#d4a017", "金"],
-    ["#16a34a", "绿"],
-    ["#0d9488", "青绿"],
-    ["#2563eb", "蓝"],
-    ["#4f46e5", "靛"],
-    ["#9333ea", "紫"],
-    ["#eb2f96", "粉"],
-    ["#8b4513", "棕"],
-    ["#0ea5e9", "天蓝"],
+    ["var(--content-bb-ink)", "黑"],
+    ["var(--content-bb-gray)", "灰"],
+    ["var(--content-bb-white)", "白"],
+    ["var(--content-bb-red)", "红"],
+    ["var(--content-bb-red-deep)", "深红"],
+    ["var(--content-bb-orange)", "橙"],
+    ["var(--content-bb-yellow)", "黄"],
+    ["var(--content-bb-gold)", "金"],
+    ["var(--content-bb-green)", "绿"],
+    ["var(--content-bb-teal)", "青绿"],
+    ["var(--content-bb-blue)", "蓝"],
+    ["var(--content-bb-indigo)", "靛"],
+    ["var(--content-bb-purple)", "紫"],
+    ["var(--content-bb-pink)", "粉"],
+    ["var(--content-bb-brown)", "棕"],
+    ["var(--content-bb-sky)", "天蓝"],
   ];
   const BB_EMOJIS = [
     "😄",
@@ -109,12 +112,13 @@ export function UploadDescrBlock({
                   title={label}
                   className={bbSwatch}
                   style={
-                    hex === "#ffffff"
+                    // 白色块需要描边区分底色，其余色块白字可读
+                    hex === "var(--content-bb-white)"
                       ? { background: "#fff" }
                       : { background: hex, color: "#fff" }
                   }
                   onClick={() => {
-                    bbWrap(`[color=${hex}]`, "[/color]");
+                    bbWrap(`[color=${label}]`, "[/color]");
                     const d = document.activeElement?.closest("details");
                     if (d instanceof HTMLDetailsElement) d.open = false;
                   }}

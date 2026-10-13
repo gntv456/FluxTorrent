@@ -33,6 +33,9 @@ export interface SiteProfile {
   subtitle_label?: string;
   /** 语言切换器显隐（0209：locale_switcher_enabled=no 隐藏，单语站） */
   locale_switcher_enabled?: string;
+  /** 顶栏魔力 chip 显隐（W-31 / IA-2 ①）：site_settings.topbar_spark_chip
+   *  =no 时隐藏（后端归一为布尔下发，缺省 true）——站长按站型决定 */
+  topbar_spark_chip?: boolean;
   /** 默认语言（0216，site_settings.default_language）：NP 口径 en|chs|cht，
    *  getLocale 对无 cookie 新访客的回落源；换算走 config.siteLangToLocale */
   default_language?: string;
@@ -188,8 +191,10 @@ export function colorMap(
   );
 }
 
-/** 档案取不到颜色时的中性兜底（不再是「按 id 硬编码一张色表」） */
-export const CAT_FALLBACK_COLOR = "#93a1bc";
+/** 档案取不到颜色时的中性兜底（不再是「按 id 硬编码一张色表」）。
+ *  W-36：内容语义令牌——分类色是站长数据，缺省值不随主题换肤；
+ *  CSS 变量写法让未来想区分明暗时只需改 base.css 一处。 */
+export const CAT_FALLBACK_COLOR = "var(--content-cat-fallback)";
 
 export function catColor(
   colors: Record<number, string>,

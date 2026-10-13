@@ -51,6 +51,11 @@ const enBase: Omit<
     cancel: "Cancel",
     save: "Save",
     themeToggle: "Toggle theme",
+    // W-42 theme registry labels + cycle hint (theme-toggle.tsx)
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeAuto: "Follow system",
+    themeNext: "click to cycle",
     globalSearchPh: "Search torrents / posts…",
     globalSearchBtn: "Search",
     gsTorrents: "Torrents",
@@ -4952,7 +4957,9 @@ medalDaysPh: "Days (empty = medal default)",
     fCss: "CSS (border-color / box-shadow only)",
     fImage: "Frame image URL (optional, PNG/GIF; takes priority over CSS)",
     imgPh: "https://…/frame.png (clear to remove)",
-    cssHint:
+    // design-cov-exempt: 头像框 CSS 示例文案——教站长写什么格式的
+    // 色值（存库字段只收字面 hex/CSS，不接受 var()），非 UI 配色
+    cssHint: // design-cov-exempt
       "Sample CSS colors: spring #f4a7bb / summer #2fa878 / autumn #d99419 / winter #8fc3e8; frame images need a transparent circular source. Deleting a frame auto-unequips all wearers.",
     thId: "ID",
     thPreview: "Preview",

@@ -59,7 +59,11 @@ function PosterCard({
         <p className="line-clamp-2 text-[12px] font-bold leading-snug text-white">
           {item.name}
         </p>
-        <p className="mt-1 text-[12px] font-bold text-[#f5c518]">
+        {/* 豆瓣评级星标：内容品牌色（豆瓣绿字黄星口径），W-36 内容令牌 */}
+        <p
+          className="mt-1 text-[12px] font-bold
+            text-[var(--content-rating-star)]"
+        >
           {hasRating
             ? `★ ${doubanLabel} ${ratingNum.toFixed(1)}`
             : noRatingLabel}

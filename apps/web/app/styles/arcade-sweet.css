@@ -381,7 +381,7 @@
   padding-right: 18px;
 }
 /* 窄屏（≤680）：迎宾台标题单行 + 数字宝石缩小，样图①的横幅比例 */
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   [data-arcade="sweet"] .gc-hero {
     padding: 22px 18px;
   }
@@ -405,22 +405,22 @@
   gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-@media (max-width: 360px) {
+@media (max-width: 640px) {
   [data-arcade="sweet"] .gc-grid {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 }
-@media (min-width: 901px) {
+@media (min-width: 1024px) {
   [data-arcade="sweet"] .gc-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-@media (min-width: 1201px) {
+@media (min-width: 1280px) {
   [data-arcade="sweet"] .gc-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-@media (min-width: 1600px) {
+@media (min-width: 1280px) {
   [data-arcade="sweet"] .gc-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
@@ -1303,7 +1303,7 @@
    ⑭ 多端断点（样图断点柜）：680 起双栏（折叠屏窄右栏 180px）、
    768 平板 220px、1024 起正式右栏（game-kit lg 断点）1280 加宽
    ═══════════════════════════════════════════════════════════ */
-@media (min-width: 680px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   [data-arcade="sweet"] .gs-body {
     grid-template-columns: minmax(0, 1fr) 180px !important;
   }
@@ -2372,7 +2372,7 @@
 }
 
 /* 纹章预算环 280px 外屏态：1fr auto 1fr 三列塞不下 → 环缩列收窄 */
-@media (max-width: 400px) {
+@media (max-width: 640px) {
   [data-arcade="sweet"] .arc-crest {
     grid-template-columns: 1fr;
     justify-items: center;

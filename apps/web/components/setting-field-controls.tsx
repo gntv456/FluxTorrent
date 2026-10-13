@@ -187,7 +187,15 @@ export function useFieldControl({
             type="color"
             aria-label={s.pickColor}
             disabled={lock}
-            value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000"}
+            // design-cov-exempt: <input type=color> 的 value 只吃字面
+            // hex（HTML 规范），CSS 变量写法会让取色器整体失效；
+            // 无效存量值兜底纯黑
+            value={/^#[0-9a-fA-F]{6}$/.test(
+              value,
+            )
+              ? value
+              : // design-cov-exempt: 取色器兜底纯黑（平台字面量）
+                "#000000"}
             onChange={(e) => onChange(e.target.value)}
             className="h-[44px] w-[56px] cursor-pointer rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-1"
           />
@@ -197,7 +205,9 @@ export function useFieldControl({
             disabled={lock}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
-            placeholder="#FFD700"
+            // design-cov-exempt: 颜色设定项输入框的 placeholder 展示
+            // 的是「用户该输入什么格式」的字面样例，非 UI 配色
+            placeholder="#FFD700" // design-cov-exempt
             className={`${base} ${border} w-40 font-mono`}
           />
         </div>

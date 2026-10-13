@@ -102,7 +102,10 @@ export default function AppealsPage() {
   ];
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-4">
+    <main
+      id="main-content"
+      className="mx-auto flex max-w-lg flex-col gap-4"
+    >
       <h1 className="font-display text-2xl">{dict.appeals.title}</h1>
       <p className="-mt-2 text-sm text-sub">{dict.appeals.subtitle}</p>
 
@@ -258,6 +261,6 @@ export default function AppealsPage() {
           {dict.appeals.backToLogin}
         </Link>
       </p>
-    </div>
+    </main>
   );
 }

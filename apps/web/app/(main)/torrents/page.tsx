@@ -1,4 +1,5 @@
 import { EmptyTorrents } from "@/components/torrent";
+import { ErrorPanel } from "@/components/ui/error-panel";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { colorMap, catPath } from "@/lib/site-profile";
@@ -247,19 +248,17 @@ export default async function TorrentsPage({
       <TorrentHoverPreview />
 
       {/* 三种形态共享同一份数据：表格（信息密度）/ 卡片（浏览）/ 海报墙（视觉）。
-          M4：md-lg（含折叠展开一档）外层再包双栏排布（?selected= 存选中态） */}
+          M4：md-lg（含折叠展开一档）外层再包双栏排布（?selected= 存选中态）
+          四态（W-20）：失败 ErrorPanel（含重试链接）/ 空 EmptyTorrents
+          （原两态是手写段落，现收敛为原语） */}
       <TorrentSplitView items={page.items}>
       {page.items.length === 0 ? (
         loadFailed ? (
-          <p className="py-8 text-center text-sm text-sub" role="status">
-            {dict.common.loadFailed}
-            <a
-              href={withParam(sp, "cursor", undefined)}
-              className="ml-2 text-sky underline"
-            >
-              {dict.common.retry}
-            </a>
-          </p>
+          <ErrorPanel
+            error={{ message: dict.common.loadFailed }}
+            desc={dict.torrents.loadFailedHint}
+            retryHref={withParam(sp, "cursor", undefined)}
+          />
         ) : (
           <EmptyTorrents aliveFiltered={sp.alive !== "0" && sp.alive !== "2"} />
         )
