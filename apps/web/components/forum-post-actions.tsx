@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { Modal } from "@/components/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** 论坛回帖与帖子级管理操作（从 forum-composer.tsx 按域拆出）：
  *  ReplyBox 回帖、TopicModActions 主题管理（版主）、PostActions 帖子编辑/删除。
@@ -29,6 +30,8 @@ export function TopicModActions({
   const { dict } = useI18n();
   const [busy, setBusy] = useState(false);
   const [moveTo, setMoveTo] = useState("");
+  // W-24：删主题二次确认 window.confirm → ConfirmDialog（danger 口径）
+  const [askDel, setAskDel] = useState(false);
 
   async function manage(payload: Record<string, unknown>) {
     setBusy(true);
@@ -43,7 +46,6 @@ export function TopicModActions({
   }
 
   async function del() {
-    if (!window.confirm(dict.forums.delTopicConfirm)) return;
     setBusy(true);
     try {
       await api.del(`/api/v1/forums/topics/${topicId}`);
@@ -103,10 +105,22 @@ export function TopicModActions({
       <button
         className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-danger disabled:opacity-50"
         disabled={busy}
-        onClick={del}
+        onClick={() => setAskDel(true)}
       >
         {dict.forums.delTopic}
       </button>
+      <ConfirmDialog
+        open={askDel}
+        onClose={() => setAskDel(false)}
+        onConfirm={() => {
+          setAskDel(false);
+          void del();
+        }}
+        tone="danger"
+        title={dict.forums.delTopic}
+        message={dict.forums.delTopicConfirm}
+        busy={busy}
+      />
     </div>
   );
 }
@@ -129,6 +143,8 @@ export function PostActions({
   const [body, setBody] = useState(initialBody ?? "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // W-24：删帖二次确认 window.confirm → ConfirmDialog（danger 口径）
+  const [askDel, setAskDel] = useState(false);
 
   if (!canMod && !isSelf) return null;
 
@@ -150,7 +166,6 @@ export function PostActions({
   }
 
   async function del() {
-    if (!window.confirm(dict.forums.delPostConfirm)) return;
     setBusy(true);
     try {
       await api.del(`/api/v1/forums/posts/${postId}`);
@@ -172,11 +187,23 @@ export function PostActions({
         <button
           className="min-h-[30px] rounded-full border border-line px-3 text-xs font-bold text-danger disabled:opacity-50"
           disabled={busy}
-          onClick={del}
+          onClick={() => setAskDel(true)}
         >
           {dict.forums.del}
         </button>
       )}
+      <ConfirmDialog
+        open={askDel}
+        onClose={() => setAskDel(false)}
+        onConfirm={() => {
+          setAskDel(false);
+          void del();
+        }}
+        tone="danger"
+        title={dict.forums.del}
+        message={dict.forums.delPostConfirm}
+        busy={busy}
+      />
       {msg && <span className="text-xs text-danger">{msg}</span>}
       <Modal
         open={editing}

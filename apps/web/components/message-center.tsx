@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 import {
   MessageTable,
   type MessageRow,
@@ -10,19 +11,21 @@ import {
 } from "@/components/message-center-table";
 import { ComposeForm, BoxManager } from "@/components/message-center-compose";
 import { ToolbarSwitcher, BulkBar } from "@/components/message-center-toolbar";
+import { StatePanel } from "@/components/ui/state-panel";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // 站内消息中心（messages.php 全功能口径）：
 // 收件箱/发件箱/自建文件夹 · 搜索 · 未读筛选 · 批量已读/删除/移动 ·
 // 回复（Re: + 引用原文）/ 转发 · 文件夹管理（建/改名/删=清空名）。
-// 拆出：契约/列表表格 @/components/message-center-table、
-// 写信道/文件夹管理 @/components/message-center-compose、
-// 切换工具条/批量操作条 @/components/message-center-toolbar。
+// 拆出：表格 @/components/message-center-table、写信/文件夹
+// @/components/message-center-compose、工具条 @/…-toolbar。
+// 反馈协议（W-10）：写操作统一 toast；批量删除二次确认（W-23）
+// 走 ConfirmDialog danger，window.confirm 退役。
 
 export function MessageCenter() {
   const { dict } = useI18n();
-  // 深链参数一次读齐：userbar 的 ?box=sent、通知中心卡片的 ?unread=true
-  // （P-30：后者此前没有任何读取点——卡片说「有 56 封未读」，点过去筛的
-  // 却是全箱，数字与它自己的链接第二段打架。沿用本文件既有的 box 写法）
+  // 深链参数一次读齐：userbar 的 ?box=sent、通知中心的 ?unread=true
   const params = typeof window === "undefined"
     ? null
     : new URLSearchParams(window.location.search);
@@ -42,11 +45,12 @@ export function MessageCenter() {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
   const [boxManage, setBoxManage] = useState(false);
   const [newBoxName, setNewBoxName] = useState("");
+  // 批量删除二次确认（W-23：window.confirm → ConfirmDialog danger）
+  const [askBulkDelete, setAskBulkDelete] = useState(false);
   const t = dict.messages;
 
   const load = useCallback(() => {
@@ -61,13 +65,7 @@ export function MessageCenter() {
     api
       .get<MessageRow[]>(`/api/v1/messages/${box}${suffix}`)
       .then(setRows)
-      .catch((e) =>
-        setErr(
-          e instanceof ApiError
-            ? (dict.errors[e.code] ?? e.message)
-            : dict.common.loadFailed,
-        ),
-      );
+      .catch((e) => setErr(apiErrorMessage(dict, e) || dict.common.loadFailed));
     api
       .get<PmBox[]>("/api/v1/messages/boxes")
       .then(setBoxes)
@@ -78,36 +76,28 @@ export function MessageCenter() {
     load();
   }, [load]);
 
-  // 打开详情即置已读
+  // 打开详情即置已读（短路同条重复打开）
   function openMsg(m: MessageRow) {
-    if (openId === m.id) {
-      setOpenId(null);
-      return;
-    }
+    if (openId === m.id) return setOpenId(null);
     setOpenId(m.id);
-    if (box === "inbox" && m.unread) {
-      api
-        .post("/api/v1/messages/markread", { ids: [m.id] })
-        .then(() => load())
-        .catch(() => {});
-    }
+    if (box !== "inbox" || !m.unread) return;
+    api
+      .post("/api/v1/messages/markread", { ids: [m.id] })
+      .then(() => load())
+      .catch(() => {});
   }
 
-  function startReply(m: MessageRow) {
-    setReplyTo(m.id);
-    setForwardOf(null);
-    setTo(m.counterpart ?? "");
-    setSubject(/^re:/i.test(m.subject) ? m.subject : `Re: ${m.subject}`);
-    setBody("");
-    setComposing(true);
-    setOpenId(null);
-  }
-
-  function startForward(m: MessageRow) {
-    setForwardOf(m.id);
-    setReplyTo(null);
-    setTo("");
-    setSubject(/^fw:/i.test(m.subject) ? m.subject : `Fw: ${m.subject}`);
+  // 回复/转发共用落地（re:/fw: 前缀不重复叠加）
+  function startCompose(m: MessageRow, mode: "reply" | "forward") {
+    setReplyTo(mode === "reply" ? m.id : null);
+    setForwardOf(mode === "forward" ? m.id : null);
+    setTo(mode === "reply" ? (m.counterpart ?? "") : "");
+    const pfx = mode === "reply" ? "Re" : "Fw";
+    setSubject(
+      new RegExp(`^${pfx}:`, "i").test(m.subject)
+        ? m.subject
+        : `${pfx}: ${m.subject}`,
+    );
     setBody("");
     setComposing(true);
     setOpenId(null);
@@ -116,7 +106,6 @@ export function MessageCenter() {
   async function send(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setMsg(null);
     try {
       await api.post("/api/v1/messages", {
         to: to.trim(),
@@ -125,7 +114,7 @@ export function MessageCenter() {
         ...(replyTo ? { reply_to: replyTo } : {}),
         ...(forwardOf ? { forward_of: forwardOf } : {}),
       });
-      setMsg(t.sentOk);
+      toast.success(t.sentOk);
       setTo("");
       setSubject("");
       setBody("");
@@ -134,14 +123,19 @@ export function MessageCenter() {
       setComposing(false);
       setBox("sent");
     } catch (e2) {
-      setMsg(
-        e2 instanceof ApiError
-          ? (dict.errors[e2.code] ?? e2.message)
-          : dict.common.networkError,
-      );
+      toastError(e2);
     } finally {
       setBusy(false);
     }
+  }
+
+  /** 写操作失败统一出口：字典文案优先 + request_id 芯片 */
+  function toastError(e: unknown) {
+    const ae = e instanceof ApiError ? e : undefined;
+    toast.error(
+      ae ? (dict.errors[ae.code] ?? ae.message) : dict.common.networkError,
+      { requestId: ae?.requestId },
+    );
   }
 
   async function bulk(
@@ -149,28 +143,19 @@ export function MessageCenter() {
     target?: number | null,
   ) {
     if (selected.length === 0) return;
-    // ZT81（2026-10-02）：批量删除不可逆，此前直接发请求无二次确认
-    //（种子/评论/字幕/文件夹删除都有确认，唯此处漏了）。
-    if (action === "delete") {
-      const n = String(selected.length);
-      const ask = t.deleteSelConfirm.replace("{n}", n);
-      if (!window.confirm(ask)) return;
-    }
+    // ZT81：删除二次确认在渲染区 ConfirmDialog（W-23），此处只执行
     setBusy(true);
+    const path =
+      `/api/v1/messages/${action === "markread" ? "markread" : action}`;
     try {
-      if (action === "markread") {
-        await api.post("/api/v1/messages/markread", { ids: selected });
-      } else if (action === "delete") {
-        await api.post("/api/v1/messages/delete", { ids: selected });
-      } else {
-        await api.post("/api/v1/messages/move", {
-          ids: selected,
-          folder: target ?? null,
-        });
-      }
+      await api.post(path, {
+        ids: selected,
+        ...(action === "move" ? { folder: target ?? null } : {}),
+      });
       load();
+      toast.success(t.bulkDone.replace("{n}", String(selected.length)));
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toastError(e);
     } finally {
       setBusy(false);
     }
@@ -183,8 +168,9 @@ export function MessageCenter() {
       setNewBoxName("");
       setBoxManage(false);
       load();
+      toast.success(id ? t.boxRenamed : t.boxCreated);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      toastError(e);
     } finally {
       setBusy(false);
     }
@@ -251,7 +237,6 @@ export function MessageCenter() {
           body={body}
           setBody={setBody}
           busy={busy}
-          msg={msg}
           onSend={send}
           onCancel={() => setComposing(false)}
         />
@@ -269,31 +254,47 @@ export function MessageCenter() {
           busy={busy}
           onMarkRead={() => void bulk("markread")}
           onMove={(f) => void bulk("move", f)}
-          onDelete={() => void bulk("delete")}
+          onDelete={() => setAskBulkDelete(true)}
         />
       )}
 
-      {err && <p className="py-4 text-center text-sm text-sub">{err}</p>}
-      {!err && rows === null && (
-        <p className="py-4 text-center text-sm text-sub">{t.loading}</p>
-      )}
-      {rows && rows.length === 0 && (
-        <p className="py-4 text-center text-sm text-sub">{t.empty}</p>
-      )}
-      {rows && rows.length > 0 && (
-        <MessageTable
-          box={box}
-          rows={rows}
-          selected={selected}
-          onToggle={(id, on) =>
-            setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)))
-          }
-          openId={openId}
-          onOpen={openMsg}
-          onReply={startReply}
-          onForward={startForward}
-        />
-      )}
+      {/* 批量删除二次确认（W-16/W-23：danger 口径，遮罩不可点关） */}
+      <ConfirmDialog
+        open={askBulkDelete}
+        onClose={() => setAskBulkDelete(false)}
+        onConfirm={() => {
+          setAskBulkDelete(false);
+          void bulk("delete");
+        }}
+        tone="danger"
+        title={t.deleteSelTitle}
+        message={t.deleteSelConfirm.replace("{n}", String(selected.length))}
+        busy={busy}
+      />
+      {/* 四态路由（W-03 试点）：StatePanel 调度四态 */}
+      <StatePanel
+        loading={!err && rows === null}
+        error={err}
+        empty={!err && rows !== null && rows.length === 0}
+        emptyTitle={t.empty}
+        onRetry={load}
+        loadingFallback={<SkeletonRows rows={8} />}
+      >
+        {rows && rows.length > 0 && (
+          <MessageTable
+            box={box}
+            rows={rows}
+            selected={selected}
+            onToggle={(id, on) =>
+              setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)))
+            }
+            openId={openId}
+            onOpen={openMsg}
+            onReply={(m) => startCompose(m, "reply")}
+            onForward={(m) => startCompose(m, "forward")}
+          />
+        )}
+      </StatePanel>
     </section>
   );
 }

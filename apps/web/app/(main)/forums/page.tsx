@@ -4,6 +4,7 @@ import { getDict } from "@/i18n/server";
 import { ForumSearch } from "@/components/forum-search";
 import { TopicComposer } from "@/components/forum-composer";
 import { requireModule } from "@/components/module-gate";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -103,7 +104,14 @@ export default async function ForumsPage() {
               </span>
             </h2>
             {g.items.length === 0 ? (
-              <p className="pting-card__empty">{dict.forums2.emptyBoard}</p>
+              /* 空分区占位（W-24 四态化）：裸段落 → EmptyState compact，
+                 与全站空态同构（图标圆底 + 文案 + 引导） */
+              <EmptyState
+                compact
+                icon="folder"
+                title={dict.forums2.emptyBoard}
+                desc={dict.forums2.emptyBoardHint}
+              />
             ) : (
               <div className="pting-cards">
                 {g.items.map((f) => (
@@ -152,7 +160,13 @@ export default async function ForumsPage() {
           </section>
         ))}
         {groups.length === 0 && (
-          <p className="pting-card__empty">{dict.forums2.goBoard} →</p>
+          /* 整站无版块（W-24）：引导去管理端建版，而非一行裸文字 */
+          <EmptyState
+            icon="folder"
+            tone="warn"
+            title={dict.forums2.emptyAll}
+            desc={dict.forums2.emptyBoardHint}
+          />
         )}
       </div>
     </div>
