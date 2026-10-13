@@ -958,6 +958,20 @@
   color: var(--tone-danger);
   font-weight: 600;
   margin-right: 6px;
+  /* W-14：字段名可点聚焦对应控件（button 重置 + 键盘可达焦点环） */
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.ui-ferr__field:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 /* ---------- SubmitButton ---------- */

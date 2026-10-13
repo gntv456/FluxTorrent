@@ -9,6 +9,8 @@ import { FormRow } from "@/components/upload-form-parts";
 import { UploadFilesBlock } from "@/components/upload-form-files";
 import { UploadDescrBlock } from "@/components/upload-form-descr";
 import { UploadQualityBlock } from "@/components/upload-form-quality";
+import { FieldErrors, fieldsFrom } from "@/components/ui/form-field";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import type { SiteProfile } from "@/lib/site-profile";
 
@@ -32,8 +34,7 @@ export interface SectionDictRow {
  *  本文件保留数据源加载、状态与提交逻辑。 */
 export function UploadForm() {
   const { dict, currency } = useI18n();
-  // 分类/元数据源以 /site-profile 为准（类型包可切换）；字典仅兜底分类
-  // tmdb（0358）：档案缺省兜底数组同步纳入第五源，placeholder 自动生效
+  // 分类/元数据源以 /site-profile 为准；tmdb（0358）为档案缺省兜底第五源
   const [profileCats, setProfileCats] = useState<ProfileCat[] | null>(null);
   const [metaSources, setMetaSources] = useState<string[]>([
     "imdb", "douban", "bangumi",
@@ -59,9 +60,8 @@ export function UploadForm() {
   const [ptgenUrl, setPtgenUrl] = useState("");
   const [ptgenBusy, setPtgenBusy] = useState(false);
   const [categoryId, setCategoryId] = useState(0);
-  // 默认分类不硬编码 2（评审 P2-11）：电影排首位的通用包会默认落在「电视剧」，
-  // 且换包后 id=2 可能压根不存在（有的包只有 3 个分类），把非法 category_id
-  // 提交上去。统一取档案首个分类；初值 0 仅作档案到位前的占位。
+  // 默认分类不硬编码 2（P2-11）：换包后 id=2 可能不存在。统一取档案
+  // 首个分类；初值 0 仅作档案到位前的占位。
   useEffect(() => {
     if (!profileCats?.length) return;
     setCategoryId((cur) =>
@@ -76,24 +76,20 @@ export function UploadForm() {
   const [mediainfo, setMediainfo] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // W-18：字段级错误（后端 1002 信封；multipart 走裸 fetch 手工解）
+  const [fieldErrs, setFieldErrs] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   // 标签（NP upload tags 口径）：启用字典多选，官方标签仅 staff（后端同口径校验）
   // 0160 P2：groups 平行数组（与 dict 下标对齐）用于按组分区
-  const [tagDict, setTagDict] = useState<
-    { id: number; name: string; kind: string }[]
-  >([]);
+  type TagRow = { id: number; name: string; kind: string };
+  const [tagDict, setTagDict] = useState<TagRow[]>([]);
   const [tagGroups, setTagGroups] = useState<string[]>([]);
   const [tagSel, setTagSel] = useState<number[]>([]);
   useEffect(() => {
     api
       .get<
-        | {
-            tags:
-              | { id: number; name: string; kind: string }[]
-              | [number, string, string][];
-            groups?: string[];
-          }
-        | { id: number; name: string; kind: string }[]
+        | { tags: TagRow[] | [number, string, string][]; groups?: string[] }
+        | TagRow[]
         | [number, string, string][]
       >("/api/v1/tags-dict")
       .then((r) => {
@@ -125,8 +121,8 @@ export function UploadForm() {
   const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
   const [secVals, setSecVals] = useState<Record<string, string>>({});
   useEffect(() => {
-    // 归属模式决定「这个分类能填哪些维度」（categories.mode_id → show_*），
-    // 所以换分类必须重取维度清单，不能再拿首次加载的结果用到底
+    // 归属模式决定「这个分类能填哪些维度」（mode_id → show_*），
+    // 换分类必须重取维度清单，不能拿首次结果用到底
     api
       .get<Record<string, unknown>>(
         `/api/v1/section-dict?category_id=${categoryId}`,
@@ -139,7 +135,7 @@ export function UploadForm() {
           if (k !== "kinds" && k !== "modes") rest[k] = v as SectionDictRow[];
         }
         setSecDict(rest);
-        // 被模式隐藏的维度、或换批后不再存在的字典项：残留取值不能再被提交
+        // 被模式隐藏/换批后不存在的字典项：残留取值不能再被提交
         setSecVals((prev) => {
           const kept: Record<string, string> = {};
           for (const [k, v] of Object.entries(prev)) {
@@ -163,13 +159,14 @@ export function UploadForm() {
     // 媒介为 NOT NULL 外键（media.id），必须选一项，不能留空
     setBusy(true);
     setMsg(null);
+    setFieldErrs({});
     try {
       const form = new FormData();
       form.append("file", file);
       const nfoFile = nfoRef.current?.files?.[0];
       if (nfoFile) form.append("nfo", nfoFile);
       // 0288：元数据走 multipart 文本字段（服务端仍兼容 query string 老通道）。
-      // 塞进 URL 时简介的上限其实由 HTTP 请求行决定：实测 8192 汉字即 400 空响应体。
+      // 塞 URL 时简介上限由 HTTP 请求行决定：实测 8192 汉字即 400 空响应体。
       appendMeta(form, {
         category_id: categoryId,
         anonymous,
@@ -194,10 +191,19 @@ export function UploadForm() {
       });
       const body = await res.json();
       if (body.code !== 0) {
-        setMsg(dict.errors[body.code] ?? body.message ?? dict.upload.fail);
+        // W-18：1002 字段级信封 → FieldErrors 按字段渲染；其余按码走字典
+        const errs = fieldsFrom(body.data);
+        if (body.code === 1002 && Object.keys(errs).length > 0) {
+          const asArr = Object.entries(errs).map(([f, v]) => [
+            f,
+            Array.isArray(v) ? v : [v],
+          ]);
+          setFieldErrs(Object.fromEntries(asArr));
+        } else {
+          setMsg(dict.errors[body.code] ?? body.message ?? dict.upload.fail);
+        }
       } else {
-        // 发布成功直接进详情页预览（0159 用户反馈）：仅提示不跳转时用户
-        // 不知道去哪看；待审种对本人可见（get_torrent 口径）
+        // 发布成功直接进详情页预览（0159）：待审种对本人可见
         const newId = body.data.id;
         // 0284 P1-4：同源提示（group_suggest.same_source）优先于普通成功文案
         const gs = body.data.group_suggest;
@@ -229,9 +235,7 @@ export function UploadForm() {
       <table className="nexus-table nexus-form">
         <thead>
           <tr>
-            <td className="colhead" colSpan={2}>
-              {dict.upload.title}
-            </td>
+            <td className="colhead" colSpan={2}>{dict.upload.title}</td>
           </tr>
         </thead>
         <tbody>
@@ -297,18 +301,16 @@ export function UploadForm() {
           </FormRow>
           <tr>
             <td className="rowfollow" colSpan={2}>
+              {/* W-18：字段级错误汇总（1002 信封）+ SubmitButton 生命周期 */}
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="min-h-10 rounded-[10px] bg-[linear-gradient(135deg,var(--baozi-orange-bright),var(--baozi-orange))] px-5 text-sm font-bold text-white shadow-[var(--shadow-card)] hover:bg-[linear-gradient(135deg,var(--baozi-orange),var(--baozi-orange-dark))] active:scale-[0.97] disabled:opacity-50"
-                >
-                  {busy ? dict.upload.busy : dict.upload.submit}
-                </button>
+                <FieldErrors fields={fieldErrs} />
+                <SubmitButton
+                  busy={busy}
+                  label={dict.upload.submit}
+                  busyLabel={dict.upload.busy}
+                />
                 {msg && (
-                  <p role="status" className="text-sm text-ink">
-                    {msg}
-                  </p>
+                  <p role="status" className="text-sm text-ink">{msg}</p>
                 )}
               </div>
             </td>
@@ -317,8 +319,7 @@ export function UploadForm() {
       </table>
       </div>
       </form>
-      {/* M5.5：<md 固定提交条（长表单底部可达；≥md 不渲染）。
-          form 属性关联上方表单，busy 态与页内按钮同源 */}
+      {/* M5.5：<md 固定提交条（长表单底部可达；≥md 不渲染；同源 busy） */}
       <button
         type="submit"
         form="upload-form"

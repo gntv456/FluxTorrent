@@ -20,7 +20,7 @@
  *    />
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Icon } from "@/components/icons";
 import { useFocusTrap } from "@/lib/use-focus-trap";
@@ -38,6 +38,7 @@ export function ConfirmDialog({
   /** 删除类二次输入：用户需原样输入该文本才解禁确认 */
   requireText,
   busy,
+  children,
 }: {
   open: boolean;
   onClose: () => void;
@@ -50,6 +51,8 @@ export function ConfirmDialog({
   requireText?: string;
   /** 确认处理中：禁用两钮，防重复提交 */
   busy?: boolean;
+  /** 补充内容槽（数量选择/总价预判等，插在 message 与二次输入之间） */
+  children?: ReactNode;
 }) {
   const { dict } = useI18n();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -106,6 +109,7 @@ export function ConfirmDialog({
           <h2 className="ui-cfm__title">{title}</h2>
         </div>
         {message ? <p className="ui-cfm__msg">{message}</p> : null}
+        {children}
         {requireText ? (
           <label className="ui-cfm__type">
             <span>

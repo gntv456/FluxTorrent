@@ -67,8 +67,31 @@ export class ApiError extends Error {
     public readonly data?: unknown,
     /** HTTP 状态码：业务 code 分不出「不存在」与「暂时读不到」（P-35b） */
     public readonly status?: number,
+    /** 信封 request_id（DS-PLAN-01 §0.0 判据 5「失败可诊断」）：
+     *  与响应头/日志同源，ErrorPanel 展示 + 一键复制，用户报障自带线索 */
+    public readonly requestId?: string,
   ) {
     super(message);
+  }
+
+  /** 字段级校验错误（DS-PLAN-01 W-14 表单协议）：后端 1002 信封的
+   *  data 形如 [{field, error}]（settings 与 auth/upload 校验同口径）。
+   *  本 getter 把它解成 Record<field, msgs[]>；非该形态返回 undefined，
+   *  调用方据此决定走字段内联（FieldErrors/FormField）还是表单级提示。
+   *  与 form-field.tsx 的 fieldErrorsFrom() 共用口径，信封形态以
+   *  apps/api/src/errors.rs DomainError::FieldErrors 序列化为准。 */
+  get fields(): Record<string, string[]> | undefined {
+    if (!Array.isArray(this.data)) return undefined;
+    const out: Record<string, string[]> = {};
+    for (const item of this.data as { field?: unknown; error?: unknown }[]) {
+      if (
+        typeof item?.field !== "string" ||
+        typeof item?.error !== "string"
+      )
+        continue;
+      (out[item.field] ??= []).push(item.error);
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
   }
 }
 
@@ -100,10 +123,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
     ...(serverCache ? {} : { cache: "no-store" as const }),
   });
-  // 非 JSON 响应（网关错误页等）归一化为 ApiError
+  // 非 JSON 响应（网关错误页等）归一化为 ApiError；带响应头 request_id
   const ctype = res.headers.get("content-type") ?? "";
   if (!ctype.includes("application/json")) {
-    throw new ApiError(1000, `服务异常（HTTP ${res.status}）`, undefined, res.status);
+    throw new ApiError(
+      1000,
+      `服务异常（HTTP ${res.status}）`,
+      undefined,
+      res.status,
+      res.headers.get("x-request-id") ?? undefined,
+    );
   }
   const body = (await res.json()) as ApiEnvelope<T>;
   if (body.code !== 0) {
@@ -121,7 +150,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       );
       window.location.assign(`/login?next=${next}&expired=1`);
     }
-    throw new ApiError(body.code, body.message, body.data, res.status);
+    throw new ApiError(
+      body.code,
+      body.message,
+      body.data,
+      res.status,
+      body.request_id,
+    );
   }
   return body.data;
 }

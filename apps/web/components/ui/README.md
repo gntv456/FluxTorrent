@@ -58,8 +58,9 @@ busy=false 退化纯文本，同一调用点数据就绪后不换组件；也导
 按钮自身的提交态（用 SubmitButton）。
 
 **ConfirmDialog**（`confirm-dialog.tsx`）替代 window.confirm 的唯一形态：
-焦点陷阱 + Esc + danger 遮罩不可点关 + requireText 删除类二次输入。
-何时不该用：可撤销操作（直接执行 + toast.optimistic 回滚更好）。
+焦点陷阱 + Esc + danger 遮罩不可点关 + requireText 删除类二次输入 +
+children 补充槽（数量选择/总价等插在 message 下）。何时不该用：
+可撤销操作（直接执行 + toast.optimistic 回滚更好）。
 
 ### 数据四态（§3.2）
 
@@ -83,8 +84,13 @@ busy=false 退化纯文本，同一调用点数据就绪后不换组件；也导
 ### 表单协议（§3.3）
 
 **FormField**（`form-field.tsx`）label+控件+hint+error 四槽位，
-id/aria-describedby 自动织入子控件（单元素子节点约定）。
-**FieldErrors** + `fieldErrorsFrom(ApiError)` 直出后端 1002 信封。
+`name` prop 决定稳定 id（控件 `field-<name>`、错误节点
+`field-<name>-err`），id/aria-describedby/aria-required/aria-invalid
+自动织入子控件（单元素子节点约定）。
+**FieldErrors** `<FieldErrors fields={{field: [msgs]}}>` 表单级汇总
+（点字段名聚焦对应控件）+ `fieldsFrom(data)` / `fieldErrorsFrom(e)`
+直出后端 1002 信封；`ApiError.fields` getter（api-client.ts）把
+data=[{field,error}] 解成 Record<field, msgs[]>。
 **SubmitButton**（`submit-button.tsx`）`{ busy, ok, fail, label }` 四态
 与 ActionFeedback 联动、busy 防双击。何时不该用：非 submit 语义的
 动作钮（普通 button + BusyLabel）。
