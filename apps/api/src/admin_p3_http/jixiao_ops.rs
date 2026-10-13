@@ -1,7 +1,7 @@
 //! 0106 绩效考核管理端补齐：批量分配 / 全站总览 / 发薪记录
 //! 从 admin_p3_http.rs 按域拆出。
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse};
+use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -113,158 +113,42 @@ async fn jixiao_assign_batch(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    state
-        .repo
-        .audit(Some(auth.id), "jixiao.assign_batch", Some(body.type_id))
-        .await;
+    // P-244：旧写法 `audit(Some(auth.id), "jixiao.assign_batch",
+    // Some(body.type_id))` 把**岗位 id 记成审计对象**——发薪纠纷要问的三件事
+    // 「改了谁、哪一期、谁改的」一件都答不上（skipped 只在响应里，落不到账）。
+    // 批量口按「每个受影响成员一行」记：这样按成员反查（`ref->>'id'`）才走得通。
+    for uid in &assigned {
+        state
+            .repo
+            .audit_detail(
+                Some(auth.id),
+                "jixiao.assign_batch",
+                Some(*uid),
+                None,
+                Some(serde_json::json!({
+                    "type_id": body.type_id, "period": period.as_str(),
+                    "skipped": false,
+                })),
+            )
+            .await;
+    }
+    for uid in &skipped {
+        state
+            .repo
+            .audit_detail(
+                Some(auth.id),
+                "jixiao.assign_batch",
+                Some(*uid),
+                None,
+                Some(serde_json::json!({
+                    "type_id": body.type_id, "period": period.as_str(),
+                    "skipped": true,
+                })),
+            )
+            .await;
+    }
     Ok(ok(serde_json::json!({
         "period": period, "assigned": assigned, "skipped_dup": skipped,
     })))
 }
 
-/// 全站考核总览（管理端）：按岗位聚合本期登记/达标/发薪情况，附成员明细。
-/// 现状指标实时算（结算前），结算后读 metrics_at_settle 快照。
-#[get("/admin/jixiao/overview")]
-async fn jixiao_overview(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
-) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
-    let period = q.get("period").cloned().unwrap_or_else(|| {
-        (chrono::Utc::now() + chrono::Duration::hours(8))
-            .format("%Y-%m")
-            .to_string()
-    });
-
-    type Agg = (i64, String, i64, i64, i64, i64, i64, i64);
-    let rows: Vec<Agg> = sqlx::query_as(
-        "SELECT t.id, t.name, t.base_pay, count(c.id) FILTER (WHERE c.metrics_snapshot->>'source' = 'admin'), \
-                count(c.id) FILTER (WHERE c.status = 1), \
-                count(c.id) FILTER (WHERE c.status = 2), \
-                count(c.id) FILTER (WHERE c.status = 0 AND c.settled_at IS NULL), \
-                COALESCE(sum(c.amount) FILTER (WHERE c.status = 1), 0)::bigint \
-         FROM jixiao_types t \
-         LEFT JOIN jixiao_claims c ON c.type_id = t.id AND c.period = $1 \
-         GROUP BY t.id, t.name, t.base_pay ORDER BY t.id",
-    )
-    .bind(&period)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-
-    // 成员明细（仅本期 admin 登记行；每岗位至多 50 行，够管理端下钻）
-    type Member = (
-        i64,
-        i64,
-        String,
-        i16,
-        Option<i64>,
-        Option<i64>,
-        serde_json::Value,
-    );
-    let members: Vec<Member> = sqlx::query_as(
-        "SELECT c.type_id, c.user_id, u.username, c.status, c.amount, c.bonus_paid, \
-                COALESCE(c.metrics_at_settle, '{}'::jsonb) \
-         FROM jixiao_claims c JOIN users u ON u.id = c.user_id \
-         WHERE c.period = $1 AND c.metrics_snapshot->>'source' = 'admin' \
-         ORDER BY c.type_id, c.status, u.username LIMIT 500",
-    )
-    .bind(&period)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-
-    let types: Vec<serde_json::Value> = rows
-        .iter()
-        .map(
-            |(id, name, base_pay, assigned, ok, failed, pending, total)| {
-                serde_json::json!({
-                    "type_id": id, "name": name, "base_pay": base_pay,
-                    "assigned": assigned, "qualified": ok, "failed": failed,
-                    "pending": pending, "payroll_total": total,
-                })
-            },
-        )
-        .collect();
-    let members_json: Vec<serde_json::Value> = members
-        .iter()
-        .map(|(tid, uid, username, status, amount, bonus, snap)| {
-            serde_json::json!({
-                "type_id": tid, "user_id": uid, "username": username,
-                "status": status, "amount": amount, "bonus": bonus,
-                "metrics_at_settle": snap,
-            })
-        })
-        .collect();
-    Ok(ok(serde_json::json!({
-        "period": period, "types": types, "members": members_json,
-    })))
-}
-
-/// 发薪记录（管理端）：本期已发薪行（status=1），按发放时间倒序。
-#[get("/admin/jixiao/payroll")]
-async fn jixiao_payroll(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
-) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
-    let period = q.get("period").cloned().unwrap_or_else(|| {
-        (chrono::Utc::now() + chrono::Duration::hours(8))
-            .format("%Y-%m")
-            .to_string()
-    });
-
-    type Row = (
-        i64,
-        i64,
-        String,
-        String,
-        i64,
-        i64,
-        String,
-        // `settled_at` 可空：本函数自己的 SQL 就写着 `ORDER BY c.settled_at
-        // DESC NULLS LAST`，说明作者预期它为空，而元组按非 Option 读 ⇒ 一行
-        // NULL 让整页 500（批四十三 P-172，探针号手工造的那条 status=1 且
-        // settled_at IS NULL 的记录实测把发薪页打挂；生产写口都是两句同改，
-        // 属纵深缺口不是现网故障）
-        Option<chrono::DateTime<chrono::Utc>>,
-    );
-    let rows: Vec<Row> = sqlx::query_as(
-        "SELECT c.id, c.user_id, u.username, t.name, c.amount, c.bonus_paid, \
-                COALESCE(c.metrics_snapshot->>'settle_by', 'self') AS paid_by, c.settled_at \
-         FROM jixiao_claims c \
-         JOIN users u ON u.id = c.user_id JOIN jixiao_types t ON t.id = c.type_id \
-         WHERE c.period = $1 AND c.status = 1 \
-         ORDER BY c.settled_at DESC NULLS LAST LIMIT 200",
-    )
-    .bind(&period)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-
-    // 合计要整期算：`rows` 只是 LIMIT 200 之后的一页，本期发薪超过 200 行时
-    // 面板上的「本期合计」会静默偏小（批四十三 P-170：展示数取自分页后的行）
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(sum(amount), 0)::bigint FROM jixiao_claims \
-         WHERE period = $1 AND status = 1",
-    )
-    .bind(&period)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let list: Vec<serde_json::Value> = rows
-        .iter()
-        .map(|(id, uid, username, tname, amount, bonus, paid_by, at)| {
-            serde_json::json!({
-                "claim_id": id, "user_id": uid, "username": username,
-                "type_name": tname, "amount": amount, "bonus": bonus,
-                "paid_by": paid_by, "settled_at": at,
-            })
-        })
-        .collect();
-    Ok(ok(
-        serde_json::json!({ "period": period, "total": total, "list": list }),
-    ))
-}
