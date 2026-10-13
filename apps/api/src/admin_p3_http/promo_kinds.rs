@@ -101,7 +101,7 @@ fn validate_label_effect(
     effect: &str,
     required: bool,
 ) -> DomainResult<()> {
-    if required && (label.is_empty() || label.len() > 60) {
+    if required && (label.is_empty() || label.chars().count() > 60) {
         return Err(DomainError::Validation("显示名长度 1-60".into()));
     }
     if !effect.is_empty() && !EFFECTS.contains(&effect) {

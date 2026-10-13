@@ -27,7 +27,8 @@ pub async fn menu_items_add(
     let label = body.label.as_deref().unwrap_or("").trim().to_string();
     let url = body.url.as_deref().unwrap_or("").trim().to_string();
     let location = body.location.as_deref().unwrap_or("sidebar");
-    if label.is_empty() || label.len() > 50 || url.is_empty() || url.len() > 300
+    if label.is_empty() || label.chars().count() > 50 || url.is_empty()
+        || url.chars().count() > 300
     {
         return Err(DomainError::Validation("名称 1-50，链接 1-300".into()));
     }
