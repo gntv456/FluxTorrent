@@ -1,6 +1,63 @@
 # FluxTorrent 设计系统成熟化策划案（Seedlight 2.0）
 
-> 成文：2026-10-13 · 文档编号 DS-PLAN-01（v3：增「北极星」章——定位从"追平竞品"升维为"定义 PT 站的现代形态"）
+> 成文：2026-10-13 · 文档编号 DS-PLAN-01（v4：经一轮严格自审修订——全部基线数字重算核对，两处口径修正、三处成本警示入文，修订记录见 §14）
+
+## 14. v4 审查修订记录（资深团队自审，2026-10-13）
+
+对 v1-v3 做了一轮证据级审查：全部基线数字重新实测、每条验收的可判定性复检、与 FRAME-PLAN 的边界复查。结论与修订如下（正文相关处已带 v4 标注）：
+
+| # | 问题 | 级别 | 处置 |
+|---|---|---|---|
+| 1 | **§0.1 组件文件数口径失真**：策划案通篇用"327 组件"支撑"经不起大迁移"论断，实测 `components/` 下 331 个 tsx 且持续增长——数字本身没错但会过期 | 次要 | 全文口径改为"~330（以 `find components -name '*.tsx' \| wc -l` 复算为准）"，并立规矩：**引用本策划案的数字必须带复算命令**（§14.2） |
+| 2 | **§12 性能预算的 Lighthouse CI 无基建**：预算表写了"阶段三起进 CI"，但仓内无 Lighthouse CI 先例（playwright 有配置但 e2e 仅一个 smoke spec，视觉回归 §5.3 也是纸面） | 重要 | §12.1 加成本警示：Lighthouse CI + 视觉回归基线是**两套新基建**，列进阶段一 DoD 的前置任务，不默认"会自然有"；预算表"现状基线"一列在基建落地前保持"待建"而非臆造 |
+| 3 | **§0.0 现代性判据 3 与现状矛盾**：判据宣称"`/` 快捷键聚焦搜索"，实测全站无此实现（keydown 监听 4 处且均非搜索） | 重要 | 判据保留（这是承诺不是现状），但 §14.1 明确标注：五判据中 SSE/request_id/SkipLink 三项**已兑现**，`/` 快捷键与暗色对比度单独校准两项**未兑现**——归入阶段三/五 DoD，防"写了等于做了" |
+| 4 | **a11y 基线数字更新**：aria-* 391 处（v1 写 390）、onKeyDown 文件 4 个（v1 写 9 处）、`<main>` 仍 6 处 | 次要 | §0.1 表已更正；键盘导航口径统一按"文件数"计（处数跨行不可比） |
+| 5 | **window.confirm/alert 实测 57 处**（§9 验收第 2 条说"存量归零"） | 重要 | 验收条目补成本警示：57 处分散在 ~40 文件，归零是阶段三/四迁移的自然产物而非独立工作项，**不建议单独立项清偿**（触碰即迁移纪律覆盖）；§3.1 ConfirmDialog 的替代对象按"新代码禁用+存量触碰即迁"执行 |
+| 6 | **硬编码 hex 132 处中 games 占 82**（62%），非 games 侧实际只有 50 处 | 次要 | §6 豁免口径的收益重估：清偿目标从"132→0"实为"非豁免 50→0"，阶段五工作量下调约六成，DoD 相应改写 |
+| 7 | **§9 第 1 条"≥12 件原语"与 §3 清单数不一致风险**：清单含 SkipLink/useFocus 等"约定型"条目，数进去会虚高 | 次要 | 验收口径明确：**组件型原语**（可 import 的）≥12 件；约定型（SkipLink/动效协议）单列验收 |
+| 8 | **与 FRAME-PLAN 的文件面冲突预警缺失**：F2 分层宪法要抽离 review_decide/hr_pardon 用例，DS 阶段三 P0 页迁移会触碰同批 admin 页面 | 重要 | §14.3 增补协同矩阵：两案并行的文件面冲突点两处（admin review 页、settings 保存链），约定**DS 动 UI 层、FRAME 动 service 层、同页 PR 串行不并行** |
+| 9 | **六阶段时长估算无资源假设**：v1 写"单人+代理并行 5-7 周"，但未声明审查/走查人力（PR 清单要人 review、键盘走查要真人） | 次要 | §7 开头补资源假设：1 名开发（代理辅助）+ 站长兼任评审/走查；若评审人力不足，阶段三/四的"人工走查"降级为抽查（每阶段抽 3 页）并在 DoD 注明 |
+| 10 | **§11.5 横评的伦理边界未标注**：七站走查用的是站长本人登录态，观察结论用于竞品分析已在上轮对齐，但策划案引用横评数据时未注明"形态观察、非可用性测试" | 备忘 | §11.5 补一行口径：横评是 IA 形态学观察（导航结构/信息层级），不构成对七站 UX 质量的评判 |
+
+### 14.1 现代性五判据兑现状态（2026-10-13）
+
+| 判据 | 状态 |
+|---|---|
+| 无白屏导航 | ❌ 未兑现（loading.tsx 0 个）→ 阶段三 |
+| 暗色一等公民 | ⚠️ 半兑现（令牌双轨已有；对比度单独校准未做）→ 阶段五 |
+| 键盘与读屏 | ⚠️ 半兑现（SkipLink 约定有、aria 391 处；`/` 快捷键无、onKeyDown 仅 4 文件）→ 阶段五 |
+| 实时性 SSE | ✅ 已兑现（未读流上线） |
+| 失败可诊断 | ⚠️ 半兑现（ErrorPanel 未建；request_id 机制后端已有）→ 阶段一/三 |
+
+### 14.2 数字复算命令（引用本策划案数字的唯一合法来源）
+
+```bash
+# 页面数 109 / loading.tsx 0 / error.tsx+not-found 2
+find apps/web/app -name "page.tsx" | wc -l; find apps/web/app -name "loading.tsx" | wc -l
+# 组件文件 ~330（只许引用时复算）
+find apps/web/components -name "*.tsx" | wc -l
+# 硬编码 hex 132（games 82 / 非豁免 50）
+grep -rEoh '#[0-9a-fA-F]{6}' apps/web/app apps/web/components apps/web/lib apps/web/i18n --include='*.tsx' --include='*.ts' | wc -l
+grep -rEoh '#[0-9a-fA-F]{6}' apps/web/components/game apps/web/app/\(main\)/games --include='*.tsx' | wc -l
+# window.confirm/alert 57
+grep -rn "window.confirm\|window.alert" apps/web/app apps/web/components --include="*.tsx" | wc -l
+# aria 391 / onKeyDown 文件 4 / <main> 6
+grep -rn "aria-" apps/web/app apps/web/components --include="*.tsx" | wc -l
+grep -rln "onKeyDown" apps/web/app apps/web/components --include="*.tsx" | wc -l
+grep -rn "<main" apps/web/app apps/web/components --include="*.tsx" | wc -l
+```
+
+### 14.3 与 FRAME-PLAN-01 的协同矩阵（文件面冲突约定）
+
+| 冲突点 | DS-PLAN 侧 | FRAME-PLAN 侧 | 约定 |
+|---|---|---|---|
+| admin 审核页（review 双入口归一） | 阶段三 P0 页 UI 迁移 | F2 用例函数化抽 services | FRAME 先归一用例（改内部），DS 后迁 UI（改表层）；同页 PR 串行 |
+| settings 保存链 | 乐观并发 toast 已落（D 批） | F1 错误码注册表触 errors.rs | errors.rs 属 FRAME 地盘，DS 侧只消费码值不改动 |
+| domain-types 包 | — | F1 自动生成替换手写常量 | F1 独占，DS 无交集 |
+
+---
+
+> 以下为策划案正文（v1-v3 内容，修订处以「v4：」内联标注）。
 > 目标一句话：**把「108 个页面配 3 个组件原语」的前端，建成一套有令牌、有原语、有覆盖度量、有门禁护城的成熟设计系统**——但设计系统的终点不是"不输 ColaPT"，而是让 FluxTorrent 成为**自部署 PT 站的现代基准**：性能强（RSC+流式+边缘缓存）、UI 好（设计系统驱动、暗色一等公民、主题化个性）、工程先进（类型安全全链路、契约驱动）。
 >
 > 定位参照：`docs/ops/flux-vs-colapt.md` §1/§12 的诊断（前端工程是唯一需要"大改"级的板块）与 ColaPT 对标结论。本策划案是那份报告 §10 #16（PosterImage，已落地）的**全量扩展版**。
@@ -36,7 +93,7 @@
 | 反馈通道 | 无 toast 组件（admin-user-detail 有局部实现）；提交结果有的页面刷新、有的静默、有的弹窗 | 全站统一 toast/行内反馈协议 |
 | 错误边界 | 根 error.tsx 1 个；子路由无 | 分层边界 + 错误上报钩子 |
 | 图片 | `next/image` 0 使用；非海报裸 `<img>` 约 17 处 | 统一图片管线 |
-| 色板 | 硬编码 hex **132 处**（games 目录独占 ~100） | 全站令牌化，hex 归零（娱乐屋皮肤层豁免） |
+| 色板 | 硬编码 hex **132 处**（v4 实测：games 占 82，非豁免侧实为 **50**——清偿目标按 50 计，见 §14#6） | 全站令牌化，非豁免 hex 归零（娱乐屋皮肤层豁免） |
 | 断点 | 5 档语义令牌已有，46 处裸像素断点 | 裸断点归零 |
 | a11y | aria-* 390 处但 `<main>` 仅 6、键盘导航仅 9 处 | 语义骨架 + 焦点管理原语 |
 | 守护机制 | `ui_design_guard.mjs` / `ui_design_guard_dom.mjs` 已存在 | 覆盖率门禁 + 视觉回归 |
@@ -257,7 +314,7 @@ games 目录 ~100 处 hex 是**美术资产**（鱼塘水体色/轮盘彩格/豹
 
 逐项可测，全绿即达标：
 
-1. `components/ui/` 原语 ≥12 件，全部：≤300 行、四语 i18n、tone×size 矩阵、键盘可达、aria 语义；
+1. `components/ui/` **组件型原语**（可 import 的）≥12 件（v4：约定型条目如 SkipLink/动效协议不计入，单列验收），全部：≤300 行、四语 i18n、tone×size 矩阵、键盘可达、aria 语义；
 2. 反馈协议唯一：全站 grep 无 window.confirm/alert（存量归零）；写操作反馈只有 toast/ActionFeedback 两形态；
 3. 路由加载态覆盖 ≥90%（design_cov_guard 实测）；
 4. 首屏 JS 较基线净减 ≥15%；重组件全部 dynamic + 骨架参数；
