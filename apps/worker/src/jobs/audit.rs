@@ -210,26 +210,33 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
         }
         (expired.len() as u64, 0u64)
     } else {
-        let punished = sqlx::query(
-            r#"
-            WITH expired AS (
-                UPDATE users SET download_enabled = FALSE,
-                                 download_locked_by = 'ratio_watch'
-                WHERE status < 2 AND class_id < 90 AND download_enabled
-                  AND ratio_watch_until IS NOT NULL AND ratio_watch_until < now()
-                  AND downloaded > 0 AND uploaded::float8 / downloaded::float8 < $1
-                RETURNING id, username
-            )
-            INSERT INTO staffmessages (user_id, subject, body, permission)
-            SELECT id, 'Ratio Watch 到期处置', '用户 ' || username || '（#' || id || '）观察期结束仍未恢复分享率，已按规则暂停下载权限，请人工复核。', 'cheater'
-            FROM expired
-            "#,
+        // 暂停下载与「通知管理组」同批：数据修改型 CTE 一次取回被处置行，
+        // 告警逐行走 staff_alert 出口。旧写法把被处置用户当来信人 ⇒
+        // 工单列表把当事人显示成提交人，而职员答复这张单会把处置意图
+        // 原话 PM 给当事人（apps/api/src/community_http/staff_answer.rs:54）。
+        let expired: Vec<(i64, String)> = sqlx::query_as(
+            "WITH expired AS ( \
+               UPDATE users SET download_enabled = FALSE, \
+                                download_locked_by = 'ratio_watch' \
+               WHERE status < 2 AND class_id < 90 AND download_enabled \
+                 AND ratio_watch_until IS NOT NULL \
+                 AND ratio_watch_until < now() \
+                 AND downloaded > 0 \
+                 AND uploaded::float8 / downloaded::float8 < $1 \
+               RETURNING id, username) \
+             SELECT id, username FROM expired",
         )
         .bind(threshold_f)
-        .execute(db)
-        .await?
-        .rows_affected();
-        (punished, punished)
+        .fetch_all(db)
+        .await?;
+        for (uid, uname) in &expired {
+            let body = format!(
+                "用户 {uname}（#{uid}）观察期结束仍未恢复分享率，\
+                 已按规则暂停下载权限，请人工复核。"
+            );
+            staff_alert(db, "Ratio Watch 到期处置", &body, "cheater").await;
+        }
+        (expired.len() as u64, expired.len() as u64)
     };
     let _ = notified;
 
