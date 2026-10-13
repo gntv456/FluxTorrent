@@ -101,6 +101,7 @@ pub(super) async fn arcade_item_save(
             b.key
         )));
     }
+    super::helpers::ensure_grant_range("物品折算价", b.anchor)?;
 
     // 先读现值：所有「请求里没带」的字段都保持原样，校验也按生效后的值判
     let prev = sqlx::query_as::<
