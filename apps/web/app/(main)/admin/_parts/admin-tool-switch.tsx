@@ -35,6 +35,7 @@ import { AdminArcade } from "@/components/admin-arcade";
 import { HomeLayoutEditor } from "@/components/home-layout-editor";
 import { ViewHiddenEditor } from "@/components/view-hidden-editor";
 import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
+import { PromoIntentsPanel } from "./admin-promo-intents";
 import { AdminTrumps } from "@/components/admin-trumps";
 import { AdminPromoKinds } from "./admin-promo-kinds";
 import { AdminClasses } from "@/components/admin-classes";
@@ -53,6 +54,7 @@ export const STAFF_TOOL_TABS: ToolTab[] = [
   "agents", "polls", "dbstats", "syslog", "locations", "hrpardon", "plugins",
   "agentrules", "forums", "reports", "menu", "roles", "perm", "seedstats",
   "userfields", "pages", "terms", "donateorders", "fundings", "panelentries",
+  "wiki",
 ];
 
 /** renderTool 的简单直排分流（复杂 case 由 page.tsx 内联处理） */
@@ -79,10 +81,11 @@ export function renderSimpleTool(
         </section>
       );
     case "freeleech":
-      // 站方级促销 + 用户自购档位注册表（0213，同域两面板）
+      // 站方级促销 + intent 审批队列（0356）+ 用户自购档位注册表（0213）
       return (
         <>
           <FreeleechPanel />
+          <PromoIntentsPanel />
           <AdminPromoKinds />
         </>
       );

@@ -23,6 +23,9 @@ mod pack_terms;
 mod pack_types;
 mod profile_bits;
 mod promo;
+mod promo_intent;
+mod promo_intent_approve;
+mod promo_intent_list;
 mod promo_set;
 mod rules_cats;
 mod site;
@@ -32,6 +35,8 @@ mod stats;
 mod terms;
 mod users_ops;
 mod warned;
+mod wiki;
+mod wiki_public;
 
 /// setup 向导复用站型物化链路（pack_core）：跨 crate 边界的引用别名。
 /// setup_http 属 http 域，不在此 pub use 展开避免路由符号污染。
@@ -53,6 +58,9 @@ pub use massmail::*;
 pub use pack_applies::*;
 pub use pack_apply::*;
 pub use pack_save::*;
+pub use promo_intent::*;
+pub use promo_intent_approve::*;
+pub use promo_intent_list::*;
 pub use promo_set::*;
 pub use rules_cats::*;
 pub use site::*;
@@ -62,3 +70,5 @@ pub use stats::*;
 pub use terms::*;
 pub use users_ops::*;
 pub use warned::*;
+pub use wiki::*;
+pub use wiki_public::*;

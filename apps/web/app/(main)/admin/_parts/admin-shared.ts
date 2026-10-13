@@ -105,6 +105,27 @@ export interface PromoRow {
   ends_at: string;
 }
 
+/** 促销 intent 队列行（0356：/staff/promo-intents） */
+export interface PromoIntentRow {
+  id: number;
+  scope: string;
+  torrent_id: number | null;
+  torrent_name: string | null;
+  category_id: number | null;
+  category_name: string | null;
+  kind: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  requested_by: number;
+  requested_by_name: string | null;
+  decided_by: number | null;
+  decided_at: string | null;
+  decide_note: string | null;
+  snapshot_hash: string | null;
+  created_at: string;
+}
+
 /** 旧 URL 兼容：历史 ?tool= 值与现 tab_key 命名不一致，映射后旧书签不失效 */
 export const LEGACY_TOOL: Record<string, string> = {
   reset: "resetpass",
