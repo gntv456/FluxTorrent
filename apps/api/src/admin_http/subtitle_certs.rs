@@ -133,7 +133,11 @@ async fn certs_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-260：认证名单（username + tier + 授予理由 + 时间）；同文件盖章/撕章
+    // 要 `subtitles.grant`(95) ⇒ 同键。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SUBTITLES_GRANT)
+        .await?;
     let rows: Vec<CertRow> = sqlx::query_as(
         "SELECT c.user_id, u.username, c.tier, c.source, c.reason, \
          c.granted_at FROM user_subtitle_certs c LEFT JOIN users u ON u.id \
