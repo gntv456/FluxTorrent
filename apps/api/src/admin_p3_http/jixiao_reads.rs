@@ -34,10 +34,12 @@ async fn jixiao_overview(
 
     type Agg = (i64, String, i64, i64, i64, i64, i64, i64);
     let rows: Vec<Agg> = sqlx::query_as(
-        "SELECT t.id, t.name, t.base_pay, count(c.id) FILTER (WHERE c.metrics_snapshot->>'source' = 'admin'), \
+        "SELECT t.id, t.name, t.base_pay, count(c.id) FILTER (WHERE \
+    c.metrics_snapshot->>'source' = 'admin'), \
                 count(c.id) FILTER (WHERE c.status = 1), \
                 count(c.id) FILTER (WHERE c.status = 2), \
-                count(c.id) FILTER (WHERE c.status = 0 AND c.settled_at IS NULL), \
+                count(c.id) FILTER (WHERE c.status = 0 AND c.settled_at IS \
+    NULL), \
                 COALESCE(sum(c.amount) FILTER (WHERE c.status = 1), 0)::bigint \
          FROM jixiao_types t \
          LEFT JOIN jixiao_claims c ON c.type_id = t.id AND c.period = $1 \
@@ -59,7 +61,8 @@ async fn jixiao_overview(
         serde_json::Value,
     );
     let members: Vec<Member> = sqlx::query_as(
-        "SELECT c.type_id, c.user_id, u.username, c.status, c.amount, c.bonus_paid, \
+        "SELECT c.type_id, c.user_id, u.username, c.status, c.amount, \
+    c.bonus_paid, \
                 COALESCE(c.metrics_at_settle, '{}'::jsonb) \
          FROM jixiao_claims c JOIN users u ON u.id = c.user_id \
          WHERE c.period = $1 AND c.metrics_snapshot->>'source' = 'admin' \
@@ -138,9 +141,11 @@ async fn jixiao_payroll(
     );
     let rows: Vec<Row> = sqlx::query_as(
         "SELECT c.id, c.user_id, u.username, t.name, c.amount, c.bonus_paid, \
-                COALESCE(c.metrics_snapshot->>'settle_by', 'self') AS paid_by, c.settled_at \
+                COALESCE(c.metrics_snapshot->>'settle_by', 'self') AS paid_by, \
+    c.settled_at \
          FROM jixiao_claims c \
-         JOIN users u ON u.id = c.user_id JOIN jixiao_types t ON t.id = c.type_id \
+         JOIN users u ON u.id = c.user_id JOIN jixiao_types t ON t.id = \
+    c.type_id \
          WHERE c.period = $1 AND c.status = 1 \
          ORDER BY c.settled_at DESC NULLS LAST LIMIT 200",
     )
