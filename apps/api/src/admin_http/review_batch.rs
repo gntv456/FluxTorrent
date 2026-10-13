@@ -149,10 +149,13 @@ async fn review_batch(
             continue;
         }
         // 与 review_decide 同口径的连击/被拒计数（过审清零 deny_count，P2-1）
+        // 0355 发布信用分：过审 +1（上限 5）/ 被拒 -2（下限 0），独立累积
         let _ = sqlx::query(
             "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
              u.approve_streak + 1 ELSE 0 END, \
-             deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END \
+             deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END, \
+             publish_credits = GREATEST(0, LEAST(5, u.publish_credits \
+             + CASE WHEN $2 THEN 1 ELSE -2 END)) \
              FROM torrents t \
              WHERE t.id = $1 AND u.id = t.owner_id",
         )

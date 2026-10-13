@@ -1,6 +1,5 @@
 //! 发种（M04）：POST /torrents 主上传链路。
 //! 从 publish_http.rs 按域拆出；NFO 解码助手在 ptgen.rs。
-
 use actix_web::{post, web, HttpRequest, HttpResponse};
 
 use crate::dto::ok;
@@ -10,11 +9,13 @@ use crate::state::AppState;
 
 use super::descr_image::descr_images;
 use super::ptgen::{build_media_info, decode_nfo};
-use super::{upload_precheck as precheck, upload_revive};
+use super::{
+    upload_credits as credits, upload_precheck as precheck, upload_revive,
+};
 
-/// 发种结果。Token 化发种（`/open/torrents`）需要把「重复」当**成功**返回
-/// （幂等语义：工具重试同一 .torrent 不该报错），而网页发种必须继续报
-/// 3004 让用户看到「种子重复」—— 故核心层返回枚举，由两个入口各自翻译。
+/// 发种结果。Token 化发种（`/open/torrents`）要把「重复」当成功返回（幂等：
+/// 工具重试同一 .torrent 不该报错），网页发种必须报 3004 让用户看到——
+/// 故核心层返回枚举，由两个入口各自翻译。
 pub(crate) enum UploadOutcome {
     Created(serde_json::Value),
     Duplicate {
@@ -23,7 +24,6 @@ pub(crate) enum UploadOutcome {
         pieces_hash: String,
     },
 }
-
 #[post("/torrents")]
 pub async fn upload(
     req: HttpRequest,
@@ -37,11 +37,10 @@ pub async fn upload(
     }
 }
 
-/// Token 化发种入口（0267，`POST /open/torrents`）：与网页上传走**同一条**
+/// Token 化发种入口（0267，`POST /open/torrents`）：与网页上传走同一条
 /// 核心链路（同一套过审/扣费/权限/幂等规则），差别只有两处：
 /// ①鉴权来自 API Token（外部合成 AuthUser）；
-/// ②元数据来自原始 query string —— 这样无需把 UploadForm 及其 25 个字段
-/// 提升为 crate 可见，避免把 web 表单结构泄漏成对外契约。
+/// ②元数据来自原始 query string（无需把 UploadForm 提升为 crate 可见）。
 pub(crate) async fn upload_token(
     state: &web::Data<std::sync::Arc<AppState>>,
     auth: &AuthUser,
@@ -65,34 +64,31 @@ async fn upload_core(
     let body =
         super::upload_body::read_body(&state.repo.db, &mut payload).await?;
     // 更新链挂链（0323）：parent_torrent_id 是自由字段，不进 UploadForm
-    // 对外契约——发种成功前先抓出来（build_form 会消费 body.fields）。
-    // 对阵挂链（0330 sports）同范式：match_id → torrents.match_id
     let mp_artifact_parent: Option<String> = body
         .fields
         .iter()
         .find(|(k, _)| k == "parent_torrent_id")
         .map(|(_, v)| v.trim().to_string())
         .filter(|v| !v.is_empty());
+    // 对阵挂链（0330 sports）：match_id 自由字段
     let mp_match_id: Option<i64> = body
         .fields
         .iter()
         .find(|(k, _)| k == "match_id")
         .and_then(|(_, v)| v.trim().parse().ok());
     let form = super::upload_fields::build_form(query_string, body.fields)?;
-
     let parsed = crate::bencode::parse_torrent(&body.torrent)
         .map_err(DomainError::TorrentInvalid)?;
-    // 结构校验（P0-6 实测：无 `pieces`、`pieces` 非 20 倍数、`piece length=0`、
-    // 总大小 0、空标题、`..\..\` 路径穿越 六种畸形 .torrent 全部 200 入库；
-    // 这类种子在客户端必然校验失败，变成 0 做种死种，工单全回审核员面前）
+    // 结构校验（P0-6 实测：无 `pieces`、非 20 倍数、piece length=0、总大小 0、
+    // 空标题、`..\..\` 路径穿越等畸形 .torrent 全部 200 入库；这类种子在客户端
+    // 必然校验失败，变成 0 做种死种，工单全回审核员面前）
     crate::bencode::validate_for_upload(&parsed)
         .map_err(DomainError::TorrentInvalid)?;
     // 站外取源键（HTTP seed / DHT 提示）入库这一侧直接拒收；下载侧另有剥离
     crate::bencode::reject_off_tracker_sources(&body.torrent)
         .map_err(DomainError::TorrentInvalid)?;
-
-    // 重复检测（M04：info_hash 唯一）。**同一作者的墓碑（status=3）不算重复**——
-    // 走复活路径，否则「删了再发」这条路被唯一索引永久锁死（P0-4 实测）。
+    // 重复检测（M04：info_hash 唯一）。同一作者的墓碑（status=3）不算重复，
+    // 走复活路径——否则「删了再发」被唯一索引永久锁死（P0-4 实测）。
     let existing: Option<(i64, Option<i64>, i16)> = sqlx::query_as(
         "SELECT id, owner_id, approval_status FROM torrents \
          WHERE info_hash = $1 OR raw_info_hash = $2 ORDER BY id LIMIT 1",
@@ -106,8 +102,8 @@ async fn upload_core(
         Some((id, owner, status)) if status == 3 && owner == Some(auth.id) => {
             Some(id)
         }
+        // 幂等：把已存在那一枚的 id 一并回给调用方（Token 发种据此判重）
         Some((id, _, _)) => {
-            // 幂等：把已存在的那一枚的 id 一并回给调用方（Token 发种据此判重）
             return Ok(UploadOutcome::Duplicate {
                 id: Some(id),
                 info_hash: parsed.info_hash_hex.clone(),
@@ -116,10 +112,9 @@ async fn upload_core(
         }
         None => None,
     };
-    // 异主墓碑（P2-7）：内容仍被软删锁着，直接回「种子重复」等于死路——
-    // 上传者不知道该找谁。落一条 staff 待办（reports 队列），站务恢复后
-    // 上传者即可正常重发。同表已有 (ref_type, ref_id, reporter_id) 开件
-    // 唯一约束，重复撞同一墓碑不会刷屏。
+    // 异主墓碑（P2-7）：内容仍被软删锁着，回「种子重复」等于死路——落一条
+    // staff 待办（reports 队列），站务恢复后即可重发；(ref_type, ref_id,
+    // reporter_id) 开件唯一约束保证不刷屏。
     if let Some((id, owner, status)) = &existing {
         if *status == 3 && *owner != Some(auth.id) {
             let _ = sqlx::query(
@@ -136,7 +131,6 @@ async fn upload_core(
             .await;
         }
     }
-
     let name = form
         .name
         .clone()
@@ -144,8 +138,7 @@ async fn upload_core(
         .unwrap_or(parsed.name.clone());
     // 封面外链 + IMDb 链接 → media_info（JSONB 键合并；搜索区 4 按 imdb 键命中）
     let media_info: Option<serde_json::Value> = build_media_info(&form);
-    // 发布员职务 / 免审核权限 → 发布即通过（torrent.approval.auto）；
-    // 第八轮：命中「自动过审」分类同样免审（categories.auto_approve）
+    // 命中「自动过审」分类同样免审（categories.auto_approve）
     let cat_auto: bool = sqlx::query_scalar(
         "SELECT COALESCE(bool_or(auto_approve), FALSE) FROM categories \
          WHERE id = $1",
@@ -154,12 +147,12 @@ async fn upload_core(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(false);
-    // 0077 被拒禁发（NP upload_deny_approval_deny_count 口径）：累计被拒达阈值直接拦。
-    // 审计 2026-10-08 P1-2：旧代码读 `upload_deny_limit`，而设置页（0039 迁移）
-    // 种的是 `upload_deny_approval_deny_count` —— 两键互不相认，站长在设置页
-    // 改阈值恒不生效（实测改 5 后仍按缺省 2 拦）。统一读设置页的键。
-    let (deny_count, streak): (i32, i32) = sqlx::query_as(
-        "SELECT deny_count, approve_streak FROM users WHERE id = $1",
+    // 0077 被拒禁发：累计被拒达阈值直接拦（键统一读设置页的
+    // upload_deny_approval_deny_count——P1-2 前 old 键两不相认恒不生效）。
+    // 0355：顺带取信用分
+    let (deny_count, streak, credits): (i32, i32, i32) = sqlx::query_as(
+        "SELECT deny_count, approve_streak, publish_credits \
+         FROM users WHERE id = $1",
     )
     .bind(auth.id)
     .fetch_one(&state.repo.db)
@@ -177,17 +170,21 @@ async fn upload_core(
             "因多次发布被拒，上传资格已暂停；请先通过『联系我们』申诉".into(),
         ));
     }
-    // 0077 免审通道（NP offer_skip_approved_count 口径）：连续**人工过审** ≥5 的发布者免审。
-    // P1-8：连击只由审核员累加（review_decide）。原先免审通道自己也 +1，等于
-    // 「免审 → 连击涨 → 更免审」的自激，一旦过 5 就事实永久免审。
+    // 0077 免审（NP offer_skip_approved_count）：连续**人工过审** ≥5 免审。
+    // P1-8：连击只由审核员累加，免审通道不给自己加分（防自激）。
     let streak_skip = streak >= precheck::STREAK_SKIP_MIN;
     // 0170 等级免审：class ≥ upload_auto_approve_class（缺省 92 论坛版主）
-    // 发布即通过；阈值同步约束编辑回退（interact.rs），「版主以上免审核」全链一致
     let auto_class =
         crate::torrents::manage_perm::auto_approve_threshold(&state.repo.db)
             .await;
+    // 0355 信用分免审（第五条）：credits ≥ threshold（缺省 5，累积规则见
+    // 迁移 0355 注释），与连击并列独立——被拒打断连击后信用分仍有残留
+    let credit_threshold: i32 =
+        credits::credits_threshold(&state.repo.db).await;
+    let credits_skip = credits >= credit_threshold;
     let auto_approve = cat_auto
         || streak_skip
+        || credits_skip
         || auth.class_id >= i32::from(auto_class)
         || crate::authz::can(
             state,
@@ -195,6 +192,13 @@ async fn upload_core(
             crate::authz::perm::TORRENT_APPROVAL_AUTO,
         )
         .await;
+    // 免审判定审计（0355 顺手补）：命中维度随 info 日志留痕（可 grep 聚合）
+    if auto_approve {
+        let class_hit = auth.class_id >= i32::from(auto_class);
+        let dims =
+            credits::audit_dims(cat_auto, streak_skip, credits_skip, class_hit);
+        tracing::info!(user = auth.id, dims, credits, "发种免审命中");
+    }
     let approval_status: i16 = if auto_approve { 1 } else { 0 };
     // 聚合组（0069）：显式传入的 group_id 必须存在（防悬挂引用）
     if let Some(gid) = form.group_id {
@@ -208,8 +212,11 @@ async fn upload_core(
             return Err(DomainError::Validation("聚合组不存在".into()));
         }
     }
-    let nfo_dec = body.nfo.as_deref().map(decode_nfo);
-    let nfo_text: Option<String> = nfo_dec.filter(|s| !s.trim().is_empty());
+    let nfo_text: Option<String> = body
+        .nfo
+        .as_deref()
+        .map(decode_nfo)
+        .filter(|s| !s.trim().is_empty());
     // ---- 以下全部在 INSERT 之前（P0-4：过去 tags / 推荐位 / 价格越界都在入库后
     //      才报错，留下待审残种 + 同一 .torrent 永久「种子重复」）----
     precheck::check_lengths(&form)?;
@@ -217,10 +224,9 @@ async fn upload_core(
     precheck::check_tags(&state.repo.db, &form, auth).await?;
     let promo = precheck::check_promo(&form, auth)?;
     // 0148 C1：IMDb 编号落 `imdb_id` 列（详情页/编辑页/审核台/`?imdb=`
-    // 并集都以它为准）。三个来源按优先级取，同一条正则口径：①表单 imdb
-    // 栏（可能是 `tt0468569` 或整条链接）②正文引用 ③种子名。
-    // 此前只认 ②③，表单那一栏只进 `media_info.imdb` ⇒ 用户在发种页填了
-    // IMDb，详情页仍是一片空白，编辑回填也是空（2026-10-10 实测）。
+    // 并集都以它为准）。三个来源按优先级取，同一正则口径：①表单 imdb 栏
+    // （`tt0468569` 或整条链接）②正文引用 ③种子名。此前只认 ②③，用户在
+    // 发种页填了 IMDb 详情页仍空白（2026-10-10 实测）。
     let imdb_id: Option<String> = form
         .imdb
         .as_deref()
@@ -245,13 +251,15 @@ async fn upload_core(
     )
     .await?;
     // 重复发布策略（suggest/block/group）：pieces_hash 命中同内容时的处置
-    let dup_group: Option<i64> =
-        match precheck::dup_policy(&state.repo.db, &parsed.pieces_hash_hex)
-            .await?
-        {
-            precheck::DupVerdict::AutoGroup(gid) => Some(gid),
-            _ => None,
-        };
+    let dup_group: Option<i64> = match precheck::dup_policy(
+        &state.repo.db,
+        &parsed.pieces_hash_hex,
+    )
+    .await?
+    {
+        precheck::DupVerdict::AutoGroup(gid) => Some(gid),
+        _ => None,
+    };
     let group_id = form.group_id.or(dup_group);
     // 复活路径（同一作者删过的同内容）：复用原 id，内容整体覆盖，重回审核流
     let id: i64 = match revive_id {
@@ -310,8 +318,9 @@ async fn upload_core(
             match insert_res {
                 Ok(v) => v,
                 Err(e) => {
-                    // 并发上传同一 .torrent：判重与 INSERT 之间的窗口由唯一约束兜底，
-                    // 映射为语义化的重复结果而非裸 500（raw_info_hash 只有普通索引，见 0081）
+                    // 并发上传同一 .torrent：判重与 INSERT 之间的窗口由唯一约束
+                    // 兜底，映射为语义化重复结果而非裸 500（0081：raw_info_hash
+                    // 只有普通索引）
                     if e.to_string().contains("torrents_info_hash_key")
                         || e.to_string().contains("duplicate key")
                     {
@@ -329,7 +338,7 @@ async fn upload_core(
                             pieces_hash: parsed.pieces_hash_hex.clone(),
                         });
                     }
-                    // 分类/媒介/学段/版本不存在 → 外键违规，是输入问题不是服务器故障
+                    // 分类/媒介/学段/版本不存在 → 外键违规，输入问题非服务器故障
                     return Err(crate::errors::db_to_domain(
                         e,
                         "分类/媒介/学段/版本",
@@ -338,7 +347,6 @@ async fn upload_core(
             }
         }
     };
-
     // 多维属性（第八轮 Section）与标签：外提至 sections_store::store_sections_tags
     // （标签已在 INSERT 前按同一判据校验过，这里只会因写库失败而错）
     super::upload_sections::store_sections_tags(state, &form, auth, id).await?;
@@ -355,7 +363,6 @@ async fn upload_core(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-
     // 文件清单/自动促销/推荐位：外提至 upload_files_promo::store_files_promo
     // （推荐位的权限与取值已在 INSERT 前校验，这里只负责写）
     super::upload_files_promo::store_files_promo(
@@ -363,15 +370,12 @@ async fn upload_core(
     )
     .await?;
     super::upload_logcheck::store(&state.repo.db, id, &rip).await?;
-    // 判分维度回流（0314 补全）：log_score/haslog 从权威 torrent_logs
-    // 自动同步进筛选维度，不再依赖用户手填已算好的分。降级不阻断：
-    // 种子已入库，这里 500 会让重发撞「种子重复」（precheck 注释立的规矩；
-    // 与下方 match_id 挂链同款 let _ 口径），改判/编辑口的重算会补回
+    // 判分维度回流（0314 补全）：log_score/haslog 从权威 torrent_logs 自动
+    // 同步进筛选维度。降级不阻断：种子已入库，500 会让重发撞「种子重复」
     if let Err(e) = crate::torrents::sync_log_dims(&state.repo.db, id).await {
         tracing::warn!(error = ?e, torrent = id, "判分维度回流失败（不阻断发种）");
     }
-    // 对阵挂链（0330）：match_id 自由字段 → torrents.match_id；
-    // 悬空 id 静默降级为无链（与 artifact parent 同口径）
+    // 对阵挂链（0330）：match_id → torrents.match_id；悬空 id 静默降级
     if let Some(mid) = mp_match_id {
         let _ = sqlx::query(
             "UPDATE torrents SET match_id = $2 WHERE id = $1 AND EXISTS              (SELECT 1 FROM sport_matches WHERE id = $2)",
@@ -382,7 +386,7 @@ async fn upload_core(
         .await;
     }
     // 种子工件（0323）：校验和/更新日志落库；更新链 parent 走表单字段
-    // parent_torrent_id（文本通道自由字段，上面在 build_form 消费前抓出）
+    // parent_torrent_id（上面在 build_form 消费前抓出）
     let artifact_parent: Option<i64> =
         mp_artifact_parent.as_deref().and_then(|v| v.parse().ok());
     super::upload_artifacts::store(
@@ -394,7 +398,6 @@ async fn upload_core(
     .await?;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
     state.plugins.dispatch_upload(state.get_ref(), id, auth.id);
-
     // 聚合组推荐（同名候选 / 同源命中）：外提至 upload_suggest.rs
     let group_suggest = super::upload_suggest::group_suggest(
         &state.repo.db,
@@ -415,25 +418,20 @@ async fn upload_core(
 }
 
 /// descr/名称里的 IMDB id 提取（0148 C1）：tt1234567 / tt12345678，
-/// 大小写不敏感；统一大写存储（TT…）与 subtitles.imdb_id / ?imdb= 对齐。
-/// manage.rs 编辑 descr 后复用（crate 出口）。
+/// 大小写不敏感；统一大写存储（TT…）。manage.rs 编辑 descr 后复用。
 pub(crate) fn extract_imdb_pub(text: &str) -> Option<String> {
     extract_imdb(text)
 }
-
 /// IMDb 输入校验提示（发种与编辑两个入口共用同一句，防两处规则漂移）。
 pub(crate) const IMDB_HINT: &str =
     "IMDb 编号格式无效：需 tt 加 7~8 位数字，或直接贴 IMDb 链接";
-
 fn extract_imdb(text: &str) -> Option<String> {
     let re = regex::Regex::new(r"(?i)\b(tt[0-9]{7,8})\b").ok()?;
     re.captures(text)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str().to_ascii_uppercase())
 }
-
-/// 简介首图提取的 crate 出口（manage.rs 编辑 descr 后同步回落 poster 用，
-/// 与上传链 build_media_info 同一实现，防两处口径漂移）。
+/// 简介首图提取的 crate 出口（manage.rs 编辑 descr 后同步回落 poster 用）。
 pub(crate) fn first_descr_image_pub(descr: Option<&str>) -> Option<String> {
     super::descr_image::first_descr_image(descr)
 }

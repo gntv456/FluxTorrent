@@ -57,7 +57,6 @@ struct QueueQuery {
     #[serde(default)]
     owner_id: Option<i64>,
 }
-
 #[get("/admin/reviews")]
 async fn review_queue(
     req: HttpRequest,
@@ -261,14 +260,15 @@ async fn review_decide(
     if n == 0 {
         return Err(DomainError::Validation("种子不存在或不在待审状态".into()));
     }
-    // 0075 免审积分：过审连击 +1 / 被拒清零（阈值放行在 upload 的 auto_approve 判定）
-    // 0077 被拒禁发：累计 deny_count（阈值校验在 upload 前置）
-    // 审计 2026-10-08 P2-1：过审同时清零 deny_count——该计数此前只增不减，
-    // 叠加阈值后等于「累计被拒 N 次永久禁发」，改过自新没有出口。
+    // 0075 连击 +1/被拒清零；0077 deny_count 累计（P2-1 过审清零）；
+    // 0355 信用分独立累积：+1（上限 5）/ -2（下限 0）。
     let _ = sqlx::query(
-                "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
+        "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
          u.approve_streak + 1 ELSE 0 END, \
-         deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END FROM torrents t WHERE t.id = $1 AND u.id = t.owner_id",
+         deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END, \
+         publish_credits = GREATEST(0, LEAST(5, u.publish_credits \
+         + CASE WHEN $2 THEN 1 ELSE -2 END)) FROM torrents t \
+         WHERE t.id = $1 AND u.id = t.owner_id",
     )
     .bind(body.torrent_id)
     .bind(body.approve)

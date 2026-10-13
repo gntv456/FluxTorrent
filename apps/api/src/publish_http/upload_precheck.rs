@@ -272,3 +272,4 @@ pub(super) async fn dup_policy(
 /// 免审连击门槛：连击数只由**审核员过审**累加（`review_decide`），
 /// 发种侧的免审通道不再给自己加分（P1-8 自激根因：免审也 +1 ⇒ 一旦过 5 就事实永久免审）。
 pub(super) const STREAK_SKIP_MIN: i32 = 5;
+// 0355 信用分免审（第五条）：阈值读取/累积口径/单测在 upload_credits.rs
