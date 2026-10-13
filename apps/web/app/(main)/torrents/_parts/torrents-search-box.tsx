@@ -126,7 +126,9 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
       )}
 
       {/* ── 高级搜索面板（0147：触发入口只剩常驻行的齿轮按钮，原 summary
-            整行隐藏——details 仅作开合容器；有筛选条件时默认展开） ── */}
+            整行隐藏——details 仅作开合容器；有筛选条件时默认展开）。
+            IA-4（W-20）：面板头补「已选 N 项」计数徽标 + 一键收起钮——
+            展开多组筛选后不用再滚回顶部找齿轮。 */}
       <details
         className="tsb-adv tsb-adv--gear"
         id="tsb-adv"
@@ -138,11 +140,31 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           </span>
           <span>{t2.advanced}</span>
           {nonSearchChips > 0 && (
-            <span className="tsb-adv__badge">{nonSearchChips}</span>
+            <span
+              className="tsb-adv__badge"
+              aria-label={t2.advSelected.replace(
+                "{n}",
+                String(nonSearchChips),
+              )}
+            >
+              {nonSearchChips}
+            </span>
           )}
         </summary>
         <div className="tsb-adv__body">
-          <p className="tsb-adv__hint">{t2.advHint}</p>
+          <div className="tsb-adv__head">
+            <p className="tsb-adv__hint">{t2.advHint}</p>
+            <button
+              type="button"
+              className="tsb-adv__collapse"
+              onClick={() => {
+                const adv = document.getElementById("tsb-adv");
+                if (adv instanceof HTMLDetailsElement) adv.open = false;
+              }}
+            >
+              {t2.advCollapse}
+            </button>
+          </div>
 
           <TorrentsAdvGroups
             dict={dict}

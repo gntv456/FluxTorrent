@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** 帖子点赞条（0116）：乐观更新，失败回滚。颜色取主题 token，明暗自适应。 */
 export function PostVoteBar({
@@ -152,7 +154,8 @@ export function PostTipButton({
     if (!raw) return;
     const amt = Math.floor(Number(raw));
     if (!Number.isFinite(amt) || amt <= 0) {
-      window.alert(dict.forums.tipInvalid);
+      // W-24 反馈协议：裸 alert → toast.warn（不抢焦点，可继续输入）
+      toast.warn(dict.forums.tipInvalid);
       return;
     }
     setBusy(true);
@@ -161,8 +164,10 @@ export function PostTipButton({
       setTotal((t) => t + amt);
       setN((x) => x + 1);
     } catch (e) {
-      window.alert(
+      // W-24：失败 toast 带 request_id 芯片（可复制报障）
+      toast.error(
         e instanceof ApiError ? e.message : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
     } finally {
       setBusy(false);
@@ -203,13 +208,15 @@ export function BountyAcceptButton({
   const { dict } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  // W-24：悬赏采纳（不可逆转账）二次确认走 ConfirmDialog danger 口径
+  const [ask, setAsk] = useState(false);
 
   async function accept() {
     if (busy) return;
-    if (
-      !window.confirm(dict.forums.bountyConfirm.replace("{n}", String(spark)))
-    )
-      return;
+    setAsk(true);
+  }
+
+  async function award() {
     setBusy(true);
     try {
       await api.post("/api/v1/forums/bounty/award", {
@@ -223,18 +230,32 @@ export function BountyAcceptButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={accept}
-      disabled={busy}
-      title={dict.forums.bountyAccept}
-      className="inline-flex min-h-[30px] items-center gap-1 rounded-full border border-coral bg-transparent px-3 text-xs font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
-    >
-      <span aria-hidden="true">💰</span>
-      {dict.forums.bountyAccept}
-      <span className="num opacity-80">
-        +{spark} {currency}
-      </span>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={accept}
+        disabled={busy}
+        title={dict.forums.bountyAccept}
+        className="inline-flex min-h-[30px] items-center gap-1 rounded-full border border-coral bg-transparent px-3 text-xs font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
+      >
+        <span aria-hidden="true">💰</span>
+        {dict.forums.bountyAccept}
+        <span className="num opacity-80">
+          +{spark} {currency}
+        </span>
+      </button>
+      <ConfirmDialog
+        open={ask}
+        onClose={() => setAsk(false)}
+        onConfirm={() => {
+          setAsk(false);
+          void award();
+        }}
+        tone="danger"
+        title={dict.forums.bountyAccept}
+        message={dict.forums.bountyConfirm.replace("{n}", String(spark))}
+        busy={busy}
+      />
+    </>
   );
 }

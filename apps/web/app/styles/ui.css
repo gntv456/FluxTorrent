@@ -512,6 +512,27 @@
   box-shadow: none;
 }
 
+/* 全局搜索三态（W-25）：搜索中 BusyLabel / 失败 EmptyState warn + 重试 */
+.gsearch__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+}
+.gsearch__retry {
+  min-height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--brand-line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-brand);
+  font-size: 12px;
+  cursor: pointer;
+}
+.gsearch__retry:hover {
+  border-color: var(--brand-orange);
+}
+
 /* ============================================================
    设计系统原语层（DS-PLAN-01 W-01..W-05，2026-10-13 新建）
    范围：Toast / ActionFeedback+BusyLabel / ErrorPanel /
@@ -541,6 +562,30 @@
   transform: translateY(0);
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+/* ---------- 种子列表高级筛选面板头（W-20 / IA-4，页面级配套件：
+     提示语与「收起面板」同行；只读令牌，与 gsearch 系同源表面族） ---------- */
+.tsb-adv__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tsb-adv__collapse {
+  flex: none;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--brand-line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-sub, #8a7d6b);
+  font-size: 12px;
+  cursor: pointer;
+}
+.tsb-adv__collapse:hover {
+  border-color: var(--brand-orange);
+  color: var(--brand-orange);
 }
 
 /* ---------- Toast（W-01） ---------- */

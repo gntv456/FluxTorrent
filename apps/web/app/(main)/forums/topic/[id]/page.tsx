@@ -13,6 +13,7 @@ import { FollowButton } from "@/components/forum-follow";
 import { PostRow } from "./_parts/post-row";
 import { getDict } from "@/i18n/server";
 import { requireModule } from "@/components/module-gate";
+import { api, ApiError } from "@/lib/api-client";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,19 @@ export default async function TopicPage({
   const { dict, locale, currency } = await getDict();
   if (!Number.isFinite(topicId)) notFound();
   const detail = await getPosts(topicId, before ? Number(before) : undefined);
-  if (!detail || detail.posts.length === 0) notFound();
+  if (!detail || detail.posts.length === 0) {
+    // W-24 四态化：getPosts 把 404（主题不存在/无权）与后端故障一起吞成
+    // null→notFound。404 走全站 404 页没错；但后端 5xx 也被当成 404 就
+    // 误导用户「帖子没了」。二次探测区分：真 404 → notFound；后端故障
+    // → throw 交给 app/error.tsx（EmptyState + reset 重试），不再误报 404。
+    try {
+      await api.get(`/api/v1/forums/topics/${topicId}`);
+      notFound(); // 能读到主题但 posts 空 = 真 404
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) notFound();
+      throw e; // 5xx/网络故障：走全站错误页（含重试）
+    }
+  }
   // 版主「移动到」下拉用：仅 can_mod 时才需要
   const forums = detail.can_mod ? await getForums() : [];
   // 视频内嵌白名单规则（0189）：开关关闭/失败 → 空数组，视频语法降级链接
