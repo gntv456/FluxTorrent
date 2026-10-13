@@ -52,7 +52,14 @@ async fn tasks_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-268: ledger read gated with task.manage (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TASK_MANAGE,
+    )
+    .await?;
     let rows: Vec<TaskRow> = sqlx::query_as(
         "SELECT id, name, metric, starts_at, ends_at, target_class, reward, penalty, claim_limit, \
                 kind, auto_assign, period, \
@@ -112,8 +119,12 @@ async fn task_add(
     body: web::Json<TaskReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TASK_MANAGE,
+    )
+    .await?;
     if body.name.trim().is_empty() || body.ends_at <= body.starts_at {
         return Err(DomainError::Validation(
             "任务名必填且结束时间需晚于开始".into(),
@@ -160,8 +171,12 @@ async fn task_update(
     body: web::Json<TaskReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TASK_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     if body.ends_at <= body.starts_at {
         return Err(DomainError::Validation("结束时间需晚于开始".into()));
@@ -226,8 +241,12 @@ async fn task_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::TASK_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query("DELETE FROM tasks WHERE id = $1")
         .bind(id)

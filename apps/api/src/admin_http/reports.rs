@@ -31,7 +31,14 @@ async fn report_queue(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<ReportQueueQuery>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-262: ledger read gated with reports.handle (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::REPORTS_HANDLE,
+    )
+    .await?;
     let status_filter = q.status.as_deref().unwrap_or("pending");
     if !["pending", "handling", "handled", "all"].contains(&status_filter) {
         return Err(DomainError::Validation(

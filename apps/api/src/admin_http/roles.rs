@@ -22,7 +22,14 @@ async fn role_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-263: ledger read gated with roles.manage (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::ROLES_MANAGE,
+    )
+    .await?;
     let rows: Vec<RoleRow> =
         sqlx::query_as("SELECT key, name, descr FROM roles ORDER BY sort, key")
             .fetch_all(&state.repo.db)
@@ -56,8 +63,12 @@ async fn user_role_list(
     let auth = staff(&req, &state).await?;
     // P-251：任意用户的职务分配（谁挂在哪个管理组上）也是同一张地图，
     // 与上面 `user-permissions` 同档接 `user.view`(92)。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_VIEW)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_VIEW,
+    )
+    .await?;
     let rows: Vec<UserRoleRow> =
         match q.user_id {
             Some(uid) => sqlx::query_as(
@@ -97,8 +108,12 @@ async fn user_role_grant(
     let auth = staff(&req, &state).await?;
     // 职务授予需要 roles.manage（0285）：此前任何 staff 都能给低等级用户发职务，
     // 而 `uploader` 职务＝ torrent.approval.auto（发种免审）——等于版主可给熟人开免审后门。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::ROLES_MANAGE,
+    )
+    .await?;
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
     let exists: Option<String> =
         sqlx::query_scalar("SELECT key FROM roles WHERE key = $1")
@@ -157,8 +172,12 @@ async fn user_role_revoke(
     let (uid, role_key) = path.into_inner();
     // 三轮遗留：撤销与授予同权限口径——此前只要 staff 面即可摘任何下级的
     // 职务（授予侧要求 ROLES_MANAGE），挂/摘不对称
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::ROLES_MANAGE,
+    )
+    .await?;
     ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
     let n = crate::authz::revoke_role(&state.repo.db, uid, &role_key)
         .await

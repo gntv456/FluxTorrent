@@ -32,7 +32,14 @@ async fn section_dict_admin(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-266: ledger read gated with categories.manage (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
     let rows: Vec<SectionDictRow> =
         section_dict_rows(&state.repo.db, q.kind.as_deref()).await?;
     Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
