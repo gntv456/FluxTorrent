@@ -15,6 +15,38 @@ use super::agent_rule_check::{
 };
 use super::guard::staff;
 
+/// 备注长度上限（与 `audit_detail` 的 200 字口径一致）。**拒绝而不是静默
+/// 截断**——截掉的正是纠纷仲裁时要看的半句（同 P-156/157）。
+const NOTE_MAX: usize = 200;
+
+/// 单条规则的校验尺，`add` 与 `import` 共用（批五十一 P-195：原先 import
+/// 把同一把尺降级成「静默跳过」，导入 20 条只进 3 条也回 200，站长看不出
+/// 哪条没进去）。`Ok(归一化 pattern)` / `Err(原话)`。
+fn validate_rule(r: &AgentRuleReq) -> Result<String, String> {
+    if !["allow", "deny"].contains(&r.mode.as_str()) {
+        return Err("mode 取值 allow/deny".into());
+    }
+    let p = r.pattern.trim();
+    // 长度按**字符**判：原先用 `len()`（字节），一条三十几字的中文 UA 规则
+    // 会被「pattern 长度 1-100」自拒（同 P-137/P-23 那一族）
+    if p.is_empty() || p.chars().count() > 100 {
+        return Err("pattern 长度 1-100 字".into());
+    }
+    let note = r.note.clone().unwrap_or_default();
+    if p.contains('\u{0}') || note.contains('\u{0}') {
+        return Err("pattern / 备注不允许包含空字节".into());
+    }
+    if note.chars().count() > NOTE_MAX {
+        return Err(format!(
+            "备注不得超过 {NOTE_MAX} 字（收到 {} 字）",
+            note.chars().count()
+        ));
+    }
+    check_pattern(p).map_err(|e| e.to_string())?;
+    check_version_priority(r).map_err(|e| e.to_string())?;
+    Ok(p.to_string())
+}
+
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct AgentRuleRow {
     id: i64,
@@ -34,17 +66,23 @@ async fn agent_rules_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
+    // sqlx 的 `FromRow` 按**列名**取值，而 `COALESCE(...)` 的默认输出列名是
+    // `coalesce`（不是 `version_min`）——0351 加这三列时没起别名，于是这条
+    // SELECT 对任何人都 500「no column found for name: version_min」，
+    // 后台「客户端黑白名单」整页打不开（批五十一 P-193，编译器看不见串内形状）。
     let rows: Vec<AgentRuleRow> = sqlx::query_as(
         "SELECT r.id, r.mode, r.pattern, r.note, \
-             COALESCE(r.version_min, ''), COALESCE(r.version_max, ''), \
-             COALESCE(r.priority, 0), u.username AS created_by, r.created_at \
+             COALESCE(r.version_min, '') AS version_min, \
+             COALESCE(r.version_max, '') AS version_max, \
+             COALESCE(r.priority, 0) AS priority, \
+             u.username AS created_by, r.created_at \
          FROM agent_rules r LEFT JOIN users u ON u.id = r.created_by \
          ORDER BY r.mode, r.id DESC LIMIT 200",
     )
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    Ok(crate::openapi_http::no_store(ok(rows)))
 }
 
 #[post("/admin/agentrules")]
@@ -61,15 +99,7 @@ async fn agent_rules_add(
         crate::authz::perm::SETTINGS_MANAGE,
     )
     .await?;
-    if !["allow", "deny"].contains(&body.mode.as_str()) {
-        return Err(DomainError::Validation("mode 取值 allow/deny".into()));
-    }
-    let p = body.pattern.trim();
-    if p.is_empty() || p.len() > 100 {
-        return Err(DomainError::Validation("pattern 长度 1-100".into()));
-    }
-    check_pattern(p)?;
-    check_version_priority(&body)?;
+    let p = validate_rule(&body).map_err(DomainError::Validation)?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO agent_rules \
              (mode, pattern, note, version_min, version_max, priority, \
@@ -116,8 +146,9 @@ async fn agent_rules_export(
     .await?;
     let rows: Vec<AgentRuleRow> = sqlx::query_as(
         "SELECT id, mode, pattern, note, \
-             COALESCE(version_min, ''), COALESCE(version_max, ''), \
-             COALESCE(priority, 0), NULL AS created_by, \
+             COALESCE(version_min, '') AS version_min, \
+             COALESCE(version_max, '') AS version_max, \
+             COALESCE(priority, 0) AS priority, NULL AS created_by, \
              now() AS created_at \
          FROM agent_rules ORDER BY mode, id",
     )
@@ -137,11 +168,11 @@ async fn agent_rules_export(
             })
         })
         .collect();
-    Ok(ok(serde_json::json!({
+    Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "format": "fluxtorrent.agentrules.v1",
         "count": rules.len(),
         "rules": rules,
-    })))
+    }))))
 }
 
 /// 导入规则包：合并去重（mode+pattern 相同跳过），返回新增数
@@ -165,21 +196,27 @@ async fn agent_rules_import(
     if body.rules.len() > 500 {
         return Err(DomainError::Validation("单次导入上限 500 条".into()));
     }
+    // 整批一个事务（批五十一 P-194）：原先逐条 autocommit，中途一条撞库错
+    // （实测：备注里带 \\u0000 → Postgres `invalid byte sequence`）就回 500，
+    // 而**前面已插入的规则留在库里** —— 站长看到的是一次失败的导入留下了
+    // 半包规则，重放还会再叠一层。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let mut added = 0i64;
-    let mut invalid = 0i64;
-    for r in &body.rules {
-        if !["allow", "deny"].contains(&r.mode.as_str()) {
-            continue; // 跳过非法条目，不整体失败
-        }
-        let p = r.pattern.trim();
-        if p.is_empty() || p.len() > 100 {
-            invalid += 1;
-            continue; // 跳过非法条目，不整体失败
-        }
-        if check_pattern(p).is_err() || check_version_priority(r).is_err() {
-            invalid += 1;
-            continue;
-        }
+    let mut dups = 0i64;
+    let mut rejected: Vec<serde_json::Value> = Vec::new();
+    for (i, r) in body.rules.iter().enumerate() {
+        let p = match validate_rule(r) {
+            Ok(p) => p,
+            Err(w) => {
+                rejected.push(serde_json::json!({ "index": i, "reason": w }));
+                continue;
+            }
+        };
         let n = sqlx::query(
             "INSERT INTO agent_rules \
                  (mode, pattern, note, version_min, version_max, priority, \
@@ -190,18 +227,22 @@ async fn agent_rules_import(
                     WHERE mode = $1 AND pattern = $2)",
         )
         .bind(&r.mode)
-        .bind(p)
+        .bind(&p)
         .bind(&r.note)
         .bind(r.version_min.trim())
         .bind(r.version_max.trim())
         .bind(r.priority)
         .bind(auth.id)
-        .execute(&state.repo.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
         .rows_affected();
+        if n == 0 {
+            dups += 1;
+        }
         added += n as i64;
     }
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
     crate::http::bump_guard_ver(&state).await;
     state
         .repo
@@ -210,8 +251,11 @@ async fn agent_rules_import(
     Ok(ok(serde_json::json!({
         "added": added,
         "skipped": body.rules.len() as i64 - added,
-        // 单独报出来：正则非法的规则存进去也不会生效，别让它假成功
-        "invalid": invalid,
+        // 单独报出来：非法的规则存进去也不会生效，别让它假成功
+        "invalid": rejected.len() as i64,
+        // 批五十一 P-195：原先只给计数、连 mode 写错都不计，这里逐条点名
+        "rejected": rejected,
+        "duplicates": dups,
     })))
 }
 
