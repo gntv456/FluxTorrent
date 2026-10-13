@@ -46,6 +46,7 @@ pub async fn login(
     // 账户级失败锁定（P2 安全小补）：连续失败 5 次锁 15 分钟（Redis 计数，
     // 成功登录即清零）。与既有 IP/用户名限流叠加——限流拦高频，锁定拦低慢
     // 定向爆破。锁定期内连正确密码也拒（不给探测反馈）。
+    let mut pow_token_used: Option<String> = None;
     {
         let lock_key = format!("acctlock:{}", body.username.to_lowercase());
         // P-67：旧写法 `get(...).unwrap_or(0)` = 「Redis 挂了就当没锁」，
@@ -56,6 +57,21 @@ pub async fn login(
             return Err(DomainError::Validation(
                 "该账号因连续登录失败已被临时锁定，请 15 分钟后再试".into(),
             ));
+        }
+        // PoW 闸门（sha256-pow-v1）：fails >= 2（第 3 次尝试起）且未锁定时，
+        // 要求 body 带有效 pow_token/pow_solution——每次尝试先付一段 CPU，
+        // 把单账户定向爆破的成本从 0 抬到与合法用户同等算力。校验失败与
+        // 密码错同点 counter_bump（token 经 GETDEL 一次性消费，防重放）。
+        if (crate::gaps_http::POW_FAILS_FROM..5).contains(&fails) {
+            let token = body.pow_token.clone().unwrap_or_default();
+            let sol = body.pow_solution.clone().unwrap_or_default();
+            if let Err(e) =
+                crate::gaps_http::pow_verify(&state, &token, &sol).await
+            {
+                crate::http::counter_bump(&state, &lock_key, 900).await?;
+                return Err(e);
+            }
+            pow_token_used = Some(token);
         }
     }
     // 登录限流（§5.7：按用户名 5 次/分钟防爆破同一账户 + IP 维度双防）。
@@ -104,6 +120,8 @@ pub async fn login(
             // 「没超限」⇒ 永不锁定，改 fail-close（顺序不必调：Redis 挂时
             // 上方 throttle() 已经先拒，这段到不了）。
             crate::http::counter_bump(&state, &lock_key, 900).await?;
+            // PoW 闸门区段内 token 已在入口消费；此处无额外记账
+            crate::gaps_http::pow_noop();
         }
         let _ = sqlx::query(
                         "INSERT INTO login_events (user_id, ip, ok, \
@@ -132,6 +150,8 @@ pub async fn login(
             // 「没超限」⇒ 永不锁定，改 fail-close（顺序不必调：Redis 挂时
             // 上方 throttle() 已经先拒，这段到不了）。
             crate::http::counter_bump(&state, &lock_key, 900).await?;
+            // TOTP 失败同口径：PoW 记账在入口闸门已完成
+            crate::gaps_http::pow_noop();
         }
         let _ = sqlx::query(
                         "INSERT INTO login_events (user_id, ip, ok, \
@@ -204,6 +224,10 @@ pub async fn login(
         let lock_key = format!("acctlock:{}", body.username.to_lowercase());
         // 清不掉只记 warn：不能为清理动作把已成功的登录打成 5xx（键按 TTL 过期）。
         crate::http::counter_clear(&state, &lock_key).await;
+        // PoW 挑战键一并清理（用过即删；未携带时是 no-op）
+        if let Some(t) = &pow_token_used {
+            crate::gaps_http::pow_clear(&state, t).await;
+        }
     }
     let token = state
         .jwt

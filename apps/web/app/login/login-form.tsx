@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { usePasskeyLogin } from "@/lib/use-passkey-login";
+import { solvePow, powFromErrorData } from "@/lib/pow-client";
 import { fmt } from "@/i18n/config";
 
 /** 登录表单域（从 app/login/page.tsx 按域拆出，再从 login-view 细分）：
@@ -21,6 +22,7 @@ interface LoginResp {
   must_reset_password: boolean;
   user: { id: number; username: string; class_id: number };
 }
+
 
 /** SVG 图标（theme.css：stroke 1.8 / round，25×25 左侧嵌入输入框） */
 export function IconUser() {
@@ -67,8 +69,12 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<number>(0); // 连续失败次数（前端口径，5 次触发后端限流）
   const [busy, setBusy] = useState(false);
+  const [powWorking, setPowWorking] = useState(false); // 正在完成工作量证明
   const [showTotp, setShowTotp] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  // 上一轮解出的 PoW（token+solution）：后端 2012 或本地 attempts>=2 时求解，
+  // 随登录体重提；服务端 GETDEL 一次性消费，失败后置空重取挑战
+  const powRef = useRef<{ token: string; solution: string } | null>(null);
   const { runPasskeyLogin } = usePasskeyLogin({
     next,
     onError: (e: unknown) =>
@@ -92,10 +98,24 @@ export function LoginForm() {
     setBusy(true);
     setError(null);
     try {
+      // PoW 闸门（sha256-pow-v1）：后端 2012（连续失败≥2）或本地 attempts≥2
+      // 时先解一轮再提交——把第 3~5 次尝试的每次成本从 0 抬到一段 CPU。
+      if (!powRef.current && attempts >= 2) {
+        setPowWorking(true);
+        powRef.current = await solvePow(username.trim());
+        setPowWorking(false);
+        if (!powRef.current) {
+          setError(dict.login.powFailed);
+          return;
+        }
+      }
+      const pow = powRef.current;
       const resp = await api.post<LoginResp>("/api/v1/auth/login", {
         username,
         password,
         totp_code: totp.trim() ? Number(totp.trim()) : undefined,
+        pow_token: pow?.token,
+        pow_solution: pow?.solution,
       });
       setSessionCookie(true);
       // 临时密码（P1 修复）：后端只放行改密/登出三条路径，落在业务页只会
@@ -111,6 +131,18 @@ export function LoginForm() {
             fmt(dict.login.fail, { code: err.code }),
         );
         if (err.code === 2004) setAttempts((n) => n + 1);
+        // PoW（2012）：挑战已随 data 下发或需重新取题——解出后自动重提一次
+        if (err.code === 2012) {
+          setPowWorking(true);
+          powRef.current =
+            (await powFromErrorData(err.data)) ??
+            (await solvePow(username.trim()));
+          setPowWorking(false);
+          if (powRef.current) {
+            await resubmitWithPow();
+            return;
+          }
+        }
         // 2FA：密码已对但缺/错验证码 —— 展开验证码输入框并聚焦，让用户立刻知道下一步
         if (err.code === 2010 || err.code === 2011) {
           setShowTotp(true);
@@ -123,6 +155,33 @@ export function LoginForm() {
     }
   }
 
+  // 2012 自动重提：带解出的 PoW 再 POST 一次（失败走正常 catch 展示）
+  async function resubmitWithPow() {
+    try {
+      const pow = powRef.current;
+      const resp = await api.post<LoginResp>("/api/v1/auth/login", {
+        username,
+        password,
+        totp_code: totp.trim() ? Number(totp.trim()) : undefined,
+        pow_token: pow?.token,
+        pow_solution: pow?.solution,
+      });
+      setSessionCookie(true);
+      router.push(resp.must_reset_password ? "/my?tab=security" : next);
+    } catch (err) {
+      powRef.current = null; // token 已被服务端消费，下轮重新取题
+      if (err instanceof ApiError) {
+        setError(
+          dict.errors[err.code] ?? err.message ?? dict.login.fail,
+        );
+        if (err.code === 2004) setAttempts((n) => n + 1);
+        if (err.code === 2010 || err.code === 2011) setShowTotp(true);
+      } else {
+        setError(dict.common.networkError);
+      }
+    }
+  }
+
 
   return (
     <form onSubmit={submit} className="bz-form">
@@ -132,6 +191,12 @@ export function LoginForm() {
       {error && (
         <p role="alert" className="bz-form-error">
           {error}
+        </p>
+      )}
+      {/* 工作量证明进行中提示（PoW 闸门触发时按钮文案同步变化） */}
+      {powWorking && (
+        <p className="bz-form-error bz-form-error--soft">
+          {dict.login.powWorking}
         </p>
       )}
       {/* 剩余尝试提醒（后端 §5.7：5 次/分钟/用户名） */}
@@ -217,7 +282,11 @@ export function LoginForm() {
 
       <div className="bz-actions">
         <button type="submit" disabled={busy} className="bz-submit">
-          {busy ? dict.login.busy : dict.login.submit}
+          {powWorking
+            ? dict.login.powWorking
+            : busy
+              ? dict.login.busy
+              : dict.login.submit}
         </button>
         <button
           type="button"

@@ -122,14 +122,39 @@ async fn main() -> anyhow::Result<()> {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
     // fmt 层保留 stdout 输出；runtime_log 层把 WARN+ 也写进库（后台「运行日志」页）
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,sqlx=warn".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .with(runtime_log::layer("api"))
-        .init();
+    // FLUX_LOG_JSON=1/true（任务3）：fmt 层切 JSON 输出（容器/日志采集器友好，
+    // flatten_event 把事件字段提到顶层）；缺省保持人读格式不变。runtime_log
+    // 落库层是独立 Layer（只消费字段，与 fmt 格式无关），WARN+ 落库不受影响。
+    let log_json = matches!(
+        std::env::var("FLUX_LOG_JSON")
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+            .as_str(),
+        "1" | "true"
+    );
+    if log_json {
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "info,sqlx=warn".into()),
+            )
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .flatten_event(true),
+            )
+            .with(runtime_log::layer("api"))
+            .init();
+    } else {
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "info,sqlx=warn".into()),
+            )
+            .with(tracing_subscriber::fmt::layer())
+            .with(runtime_log::layer("api"))
+            .init();
+    }
 
     let cfg = config::AppConfig::from_env()?;
     let bind = cfg.bind.clone();
@@ -265,6 +290,8 @@ async fn main() -> anyhow::Result<()> {
                     )),
             )
             .wrap(actix_web::middleware::from_fn(request_id::request_id_mw)) // request_id 贯穿（信封/响应头/日志同源）
+            // Idempotency-Key 头 → task-local（幂等键「体优先，头兜底」的头侧来源）
+            .wrap(actix_web::middleware::from_fn(crate::http::idempotency::idempotency_mw))
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
             .wrap(actix_web::middleware::from_fn(setup_http::setup_gate_mw)) // U3 安装向导封锁（setup_done 未置位拦业务 API）
             // P2（2026-10-06 安全审计）：写方法跨站来源闸——SameSite=Lax 在
