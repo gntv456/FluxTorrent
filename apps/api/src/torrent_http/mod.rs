@@ -11,6 +11,8 @@ mod comments_like;
 mod detail;
 mod interact;
 mod list;
+// 列表入口的偏好折算与区间对调（P-275）
+mod list_prefs;
 mod magnet;
 mod manage;
 // 抓轨日志正文（0312）
