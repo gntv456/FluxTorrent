@@ -71,6 +71,9 @@ pub const SITEPACKS_MANAGE: &str = "sitepacks.manage";
 /// G2（0217）自建物细键：与 sitepacks.manage 拆分，缺省未授给任何档，
 /// 既有持有者由迁移原样继承（零漂移）
 pub const CUSTOMPAGES_MANAGE: &str = "custompages.manage";
+/// Wiki 管理（0359）：与 custompages.manage 同属自建内容域，授权经
+/// 0359 迁移按现有持有者继承
+pub const WIKI_MANAGE: &str = "wiki.manage";
 pub const USERFIELDS_MANAGE: &str = "userfields.manage";
 pub const TERMS_MANAGE: &str = "terms.manage";
 // 系统

@@ -191,6 +191,8 @@ export function defaultNav({
         // 无订阅时是空态，不算「假成熟」——与 /me/achievements 同类。
         { href: "/me/subscriptions", label: nav.subsCenter },
         { href: "/faq", label: nav.faq },
+        // Wiki（0359）：多页文档（BBCode + 版本史），module_wiki 开关控制显隐
+        ...(modules("wiki") ? [{ href: "/wiki", label: nav.wiki }] : []),
         ...(modules("magic_pool")
           ? [{ href: "/donate", label: nav.donate }]
           : []),

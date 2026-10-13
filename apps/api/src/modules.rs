@@ -40,6 +40,7 @@ pub mod key {
     pub const SUBTITLES: &str = "subtitles";
     pub const PRESERVE: &str = "preserve";
     pub const SHOUTBOX: &str = "shoutbox";
+    pub const WIKI: &str = "wiki";
     // 经济
     pub const PROMO_BUY: &str = "promo_buy";
     pub const BANK: &str = "bank";
@@ -78,6 +79,7 @@ pub mod key {
         SUBTITLES,
         PRESERVE,
         SHOUTBOX,
+        WIKI,
         INVITES,
         PROMO_BUY,
         BANK,
@@ -104,19 +106,23 @@ pub mod key {
 /// 注册表默认值（0178 翻转：= general 中立矩阵）。键集与 key::ALL 一致。
 /// settings 读不到时回落这里——裸库/漏键实例得到中立通用站形态，
 /// 不再呈现教育站全开（缺省形态站型中立纪律，二审 R1）。
+/// wiki（0359）新站缺省关：站长显式打开（site_settings.module_wiki）。
 pub fn default_on(k: &str) -> bool {
-    !matches!(
-        k,
-        "textbooks"
-            | "showcase"
-            | "social"
-            | "farm"
-            | "gomoku"
-            | "contests"
-            | "jixiao"
-            | "exams"
-    )
+    !DEFAULT_OFF.contains(&k)
 }
+
+/// 缺省关的键（default_on 与契约测试共用的单一清单；0359 起 wiki 同档）
+const DEFAULT_OFF: &[&str] = &[
+    "textbooks",
+    "showcase",
+    "social",
+    "farm",
+    "gomoku",
+    "contests",
+    "jixiao",
+    "exams",
+    "wiki",
+];
 
 /// 自建产物（自定义页面 / 用户自定义字段 / 菜单项）挂模块键时的校验：
 /// NULL = 不挂（恒可见）；非空必须存在于注册表，否则宁拒不悬——写错一个字母
@@ -270,29 +276,22 @@ mod tests {
         assert!(default_on(key::GAMES));
         assert!(default_on(key::SUBTITLES));
         assert!(default_on(key::FORUMS));
-        // 教育考核与重度娱乐缺省关（中立形态）
-        for k in [
-            "textbooks",
-            "jixiao",
-            "exams",
-            "farm",
-            "gomoku",
-            "contests",
-            "showcase",
-            "social",
-        ] {
+        // 教育考核与重度娱乐缺省关（中立形态）；wiki（0359）同档。
+        // 键集与 DEFAULT_OFF 完全对齐（互为全员断言缺省关）
+        for k in DEFAULT_OFF {
             assert!(!default_on(k), "default_on({k}) 应为 false");
         }
+        assert_eq!(DEFAULT_OFF.len(), 9);
     }
 
-    /// 契约：键数量与 TS ModuleKey 一致（31 键——4 历史 + 27 新增口径，
-    /// 见 0107 注释；+0197 invites、+0229 gacha）
+    /// 契约：键数量与 TS ModuleKey 一致（32 键——4 历史 + 27 新增口径，
+    /// 见 0107 注释；+0197 invites、+0229 gacha、+0359 wiki）
     #[test]
     fn key_count() {
         assert_eq!(
             key::ALL.len(),
-            31,
-            "module key set drifted（0107；+0197 invites、+0229 gacha）"
+            32,
+            "module key set drifted（0107；+0197 invites、+0229 gacha、+0359 wiki）"
         );
     }
 }

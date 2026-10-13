@@ -16,6 +16,7 @@ import { StaffPermPanel } from "@/components/staff-tools-perm";
 import { StaffSeedStatsPanel } from "@/components/staff-tools-seedstats";
 import { StaffUserFieldsPanel } from "@/components/staff-user-fields";
 import { StaffCustomPagesPanel } from "@/components/staff-custom-pages";
+import { StaffWikiPanel } from "@/components/staff-wiki";
 import {
   AdminDonateOrders,
   AdminPanelEntries,
@@ -79,6 +80,7 @@ export type ToolTab =
   | "seedstats"
   | "userfields"
   | "pages"
+  | "wiki"
   | "terms"
   | "donateorders"
   | "fundings"
@@ -109,6 +111,7 @@ const SITE_TABS: ToolTab[] = [
   "plugins",
   "userfields",
   "pages",
+  "wiki",
   "terms",
   "donateorders",
   "fundings",
@@ -172,6 +175,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       {tab === "seedstats" && <StaffSeedStatsPanel />}
       {tab === "userfields" && <StaffUserFieldsPanel flash={flash} />}
       {tab === "pages" && <StaffCustomPagesPanel flash={flash} />}
+      {/* Wiki 管理（0359）：独立于 custom_pages 的多页文档 + 版本史 */}
+      {tab === "wiki" && <StaffWikiPanel flash={flash} />}
       {tab === "donateorders" && <AdminDonateOrders />}
       {tab === "fundings" && <AdminFundings />}
       {tab === "panelentries" && <AdminPanelEntries />}
