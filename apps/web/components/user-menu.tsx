@@ -11,6 +11,7 @@ import {
 } from "@/lib/format";
 import { UserTools } from "@/components/user-tools";
 import { UserCheckin } from "@/components/user-checkin";
+import { SparkChip } from "@/components/spark-chip";
 import { MedalIcon } from "@/components/medal-icon";
 import { isStaffClass } from "@/lib/domain/user-class";
 
@@ -34,23 +35,34 @@ interface MeInfo {
 // SSE unread 事件帧体（/me/messages/stream data 段）
 type SseUnread = { count?: number };
 /**
- * 头像弹窗（同类站 同类站 口径，0147）：导航条右侧头像按钮弹出宽下拉：
- * 摘要区（大头像+用户名+勋章+等级+{magic}+退出）/ 数据条 / 快捷链接行 /
- * 信箱工具行（UserTools）。未登录回落登录链接；点外部/ESC 收起。
+ * 头像弹窗（同类站 同类站 口径，0147）：头像按钮弹宽下拉——摘要区
+ * （大头像+用户名+勋章+等级+{magic}+退出）/ 数据条 / 快捷链接 / 信箱
+ * 工具行（UserTools）。未登录回落登录链接；点外部/ESC 收起。
  */
 export function UserMenu({ loginLabel }: { loginLabel: string }) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
   // 模块开关（G2-7）：快捷链接按模块过滤（medals/tasks/jixiao）
   const [mods, setMods] = useState<Record<string, boolean>>({});
+  // 顶栏魔力 chip 开关（W-31 / IA-2 ①）：site_settings.topbar_spark_chip，
+  // 后端归一为布尔（缺省 true）；取档失败回落 true（非关键路径）
+  const [chipOn, setChipOn] = useState(true);
   useEffect(() => {
     fetch("/api/v1/site-profile")
       .then((r) => r.json())
-      .then((b: { data?: { modules?: Record<string, boolean> } }) =>
-        setMods(b?.data?.modules ?? {}))
+      .then(
+        (b: {
+          data?: {
+            modules?: Record<string, boolean>;
+            topbar_spark_chip?: boolean;
+          };
+        }) => {
+          setMods(b?.data?.modules ?? {});
+          setChipOn(b?.data?.topbar_spark_chip !== false);
+        },
+      )
       .catch(() => setMods({}));
-  }, []);
-  const mod = (k: string) => mods[k] !== false;
+  }, []);  const mod = (k: string) => mods[k] !== false;
   const [spark, setSpark] = useState<number | null>(null);
   const [sparkText, setSparkText] = useState<string>("…");
   const [open, setOpen] = useState(false);
@@ -72,8 +84,8 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
         setSessionCookie(false);
       });
   }, []);
-  // 未读数 SSE 流：连上即推 + 15s 轮询变化才推；onerror 静默（自动重连）；
-  // 会话失效时 close 防僵尸连接（SseUnread 谓词与 /me unread_messages 同源）
+  // 未读 SSE：连上即推+15s 轮询变化才推；onerror 静默重连；会话失效
+  // close 防僵尸连接（SseUnread 谓词与 /me unread_messages 同源）
   useEffect(() => {
     if (!hasSessionCookie()) return;
     const es = new EventSource("/api/v1/me/messages/stream");
@@ -94,12 +106,12 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
   useEffect(() => {
     if (spark !== null) setSparkText(Number(spark).toLocaleString());
   }, [spark]);
-  const refreshSpark = () => {
+  // 签到回调刷新（chip 与弹窗摘要共用同一份 sparkText）
+  const refreshSpark = () =>
     api
       .get<{ balance: number }>("/api/v1/me/spark")
       .then((b) => setSpark(b.balance))
       .catch(() => {});
-  };
 
   useEffect(() => {
     if (!open) return;
@@ -119,11 +131,8 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
   }, [open]);
 
   async function logout() {
-    try {
-      await api.post("/api/v1/auth/logout", {});
-    } catch {
-      /* 后端撤销失败也照常清理本地凭证 */
-    }
+    // 后端撤销失败也照常清理本地凭证
+    await api.post("/api/v1/auth/logout", {}).catch(() => {});
     localStorage.removeItem("flux.user");
     // 三轮遗留：登出清 SW 页面缓存（含登录态 RSC 快照，防共用设备离线回看）
     navigator.serviceWorker?.controller?.postMessage("CLEAR_PAGES");
@@ -131,18 +140,44 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
     location.href = "/login";
   }
 
-  if (!me) {
+  if (!me)
     return (
       <a href="/login" className="mainmenu-link usermenu-login">
         {loginLabel}
       </a>
     );
-  }
 
   const ratio = formatRatio(me.uploaded, me.downloaded);
   const t = dict.my;
+  // 头像两处渲染（触发钮/摘要区）共用：框图优先否则 CSS 描边；relative
+  // 供 FrameImageOverlay 定位。
+  const avatar = (cls: string) => (
+    <span
+      className={`relative ${cls}`}
+      style={
+        me.avatar_frame_image
+          ? undefined
+          : avatarFrameStyle(me.avatar_frame_css)
+      }
+    >
+      {me.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={me.avatar_url}
+          alt=""
+          className="h-full w-full rounded-full object-cover"
+        />
+      ) : (
+        me.username.slice(0, 1).toUpperCase()
+      )}
+      <FrameImageOverlay url={me.avatar_frame_image} />
+    </span>
+  );
   return (
     <div className="usermenu" ref={rootRef}>
+      {/* IA-2 ①（W-31）：头像旁魔力 chip 常显余额，点击进 /my-spark；
+          开关 site_settings.topbar_spark_chip（默认开） */}
+      {chipOn && <SparkChip balance={sparkText} />}
       <button
         type="button"
         className="usermenu__trigger"
@@ -151,26 +186,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
         aria-label={me.username}
         onClick={() => setOpen((v) => !v)}
       >
-        <span
-          className="usermenu__avatar relative"
-          style={
-            me.avatar_frame_image
-              ? undefined
-              : avatarFrameStyle(me.avatar_frame_css)
-          }
-        >
-          {me.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={me.avatar_url}
-              alt=""
-              className="h-full w-full rounded-full object-cover"
-            />
-          ) : (
-            me.username.slice(0, 1).toUpperCase()
-          )}
-          <FrameImageOverlay url={me.avatar_frame_image} />
-        </span>
+        {avatar("usermenu__avatar")}
         <span className="usermenu__caret" aria-hidden="true">
           ▾
         </span>
@@ -189,25 +205,10 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
               href={`/users/${me.id}`}
               aria-hidden
               tabIndex={-1}
-              className="usermenu__avatar-lg relative"
-              style={
-                me.avatar_frame_image
-                  ? undefined
-                  : avatarFrameStyle(me.avatar_frame_css)
-              }
+              className="usermenu__avatar-lg"
               title={me.username}
             >
-              {me.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={me.avatar_url}
-                  alt=""
-                  className="h-full w-full rounded-full object-cover"
-                />
-              ) : (
-                me.username.slice(0, 1).toUpperCase()
-              )}
-              <FrameImageOverlay url={me.avatar_frame_image} />
+              {avatar("usermenu__avatar-lg")}
             </a>
             <div className="usermenu__summary-main">
               <div className="usermenu__name-row">
@@ -241,34 +242,33 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
           </div>
 
           {/* ── 数据条：分享率 / 上传 / 下载 / 做种 / 下载中 ── */}
+          {/* 数据条五卡同构 → 数组驱动（渲染口径单一源） */}
           <div className="usermenu__stats">
-            <a href="/my" className="userstat">
-              <span>{t.ratio}</span>
-              <strong className="num">{ratio}</strong>
-            </a>
-            <a href="/my" className="userstat">
-              <span>{t.uploaded}</span>
-              <strong className="num seed-arrow">
-                {formatBytes(me.uploaded)}
-              </strong>
-            </a>
-            <a href="/my" className="userstat">
-              <span>{t.downloaded}</span>
-              <strong className="num leech-arrow">
-                {formatBytes(me.downloaded)}
-              </strong>
-            </a>
-            <a href="/my/torrentlist" className="userstat">
-              <span>{t.seedingCount}</span>
-              <strong className="num">{me.seeding}</strong>
-            </a>
-            <a href="/my/torrentlist" className="userstat">
-              <span>{t.leechingLabel}</span>
-              <strong className="num">{me.leeching}</strong>
-            </a>
+            {[
+              { href: "/my", k: t.ratio, v: ratio },
+              {
+                href: "/my",
+                k: t.uploaded,
+                v: formatBytes(me.uploaded),
+                cls: "seed-arrow",
+              },
+              {
+                href: "/my",
+                k: t.downloaded,
+                v: formatBytes(me.downloaded),
+                cls: "leech-arrow",
+              },
+              { href: "/my/torrentlist", k: t.seedingCount, v: me.seeding },
+              { href: "/my/torrentlist", k: t.leechingLabel, v: me.leeching },
+            ].map((s) => (
+              <a key={s.k} href={s.href} className="userstat">
+                <span>{s.k}</span>
+                <strong className={`num ${s.cls ?? ""}`}>{s.v}</strong>
+              </a>
+            ))}
           </div>
 
-          {/* ── 快捷链接行（同类站 同类站 口径：一行收纳高频入口） ── */}
+          {/* ── 快捷链接行（一行收纳高频入口） ── */}
           <nav className="usermenu__links" aria-label={t.center}>
             <a href="/notifications">{dict.notifications.title}</a>
             <a href="/my">{t.center}</a>
@@ -287,7 +287,6 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
               </Link>
             )}
           </nav>
-
           {/* ── 信箱工具行（收件箱未读角标/发件箱/作弊者/举报/管理组/社交/RSS） ── */}
           <div className="usermenu__tools">
             <UserTools unread={me.unread_messages ?? 0} mods={mods} />

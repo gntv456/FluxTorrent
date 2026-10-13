@@ -57,8 +57,12 @@ export function customNav(items: MenuItem[]): {
 }
 
 /** 默认导航（customNav 不生效时的全站口径）。
- *  分组顺序：发现 / 魔力经济 / 成长荣誉 / 娱乐 / 更多。
- *  条目按 module 开关过滤；forums 关闭一级入口消失（三审 C-3 与 footer 同口径）。 */
+ *  分组顺序：资源发现 / 字幕与保种 / 魔力经济 / 成长荣誉 / 娱乐 / 更多。
+ *  条目按 module 开关过滤；forums 关闭一级入口消失（三审 C-3 与 footer 同口径）。
+ *  IA-1（DS-PLAN-01 W-30，2026-10-13）：发现组 12 项拆为「资源发现 /
+ *  字幕与保种」两组降一层（五组杂烩在一层是「全都重要=全都不重要」的
+ *  病症，六站横评支持分层诚实）；/top 从一级让位给顶栏搜索直显框
+ *  （一级 5 项 → 4 项 + 搜索，同类站 同构），入口一个不删。 */
 export function defaultNav({
   nav,
   tabbar,
@@ -77,33 +81,18 @@ export function defaultNav({
     { href: "/", label: nav.home },
     { href: "/torrents", label: nav.library },
     ...(modules("forums") ? [{ href: "/forums", label: nav.forums }] : []),
-    { href: "/top", label: nav.top },
     { href: "/upload", label: nav.upload },
   ];
   const groups: NavGroup[] = [
     {
-      group: nav.discover,
+      group: nav.discoverRes,
       items: [
+        { href: "/top", label: nav.top },
         { href: "/torrents?official=1", label: nav.official },
         ...(modules("requests")
           ? [{ href: "/requests", label: nav.requests }]
           : []),
         ...(modules("offers") ? [{ href: "/offers", label: nav.offers }] : []),
-        ...(modules("subtitles")
-          ? [{ href: "/subtitles", label: nav.subtitles }]
-          : []),
-        ...(modules("preserve")
-          ? [{ href: "/preserve", label: nav.preserve }]
-          : []),
-        ...(socialOn
-          ? [
-              { href: "/endangered", label: nav.endangered },
-              { href: "/teams", label: nav.teams },
-            ]
-          : []),
-        ...(modules("textbooks")
-          ? [{ href: "/textbooks", label: nav.textbooks }]
-          : []),
         // 出品方聚合页（0330）：仅当站型挂了 network 维度（纪录片站）才出现
         ...(dimOn("network")
           ? [{ href: "/networks", label: nav.networks }]
@@ -116,9 +105,29 @@ export function defaultNav({
         ...(dimOn("air_season")
           ? [{ href: "/seasonal", label: nav.seasonal }]
           : []),
+      ],
+    },
+    {
+      group: nav.discoverSubs,
+      items: [
+        ...(modules("subtitles")
+          ? [{ href: "/subtitles", label: nav.subtitles }]
+          : []),
         // 字幕组聚合（0334 anime）：挂 subtitle_group 维度的站型出现
         ...(dimOn("subtitle_group")
           ? [{ href: "/subtitle-groups", label: nav.subtitleGroups }]
+          : []),
+        ...(modules("preserve")
+          ? [{ href: "/preserve", label: nav.preserve }]
+          : []),
+        ...(socialOn
+          ? [
+              { href: "/endangered", label: nav.endangered },
+              { href: "/teams", label: nav.teams },
+            ]
+          : []),
+        ...(modules("textbooks")
+          ? [{ href: "/textbooks", label: nav.textbooks }]
           : []),
       ],
     },
