@@ -37,6 +37,7 @@ mod terms;
 mod users_ops;
 mod warned;
 mod wiki;
+mod wiki_revisions;
 mod wiki_public;
 
 /// setup 向导复用站型物化链路（pack_core）：跨 crate 边界的引用别名。
@@ -73,4 +74,5 @@ pub use terms::*;
 pub use users_ops::*;
 pub use warned::*;
 pub use wiki::*;
+pub use wiki_revisions::*;
 pub use wiki_public::*;

@@ -115,7 +115,10 @@ async fn permission_matrix_update(
     if body.items.len() > 500 {
         return Err(DomainError::Validation("单次最多 500 项".into()));
     }
-    let mut changed = 0u64;
+    // 整批先校验再落库（批五十一 P-194 / 批十九 P-26 同族）：旧写法把两条校验
+    // 写在循环里、每条 autocommit ⇒ 第 N 条非法时前面 N-1 条已经生效。
+    // 授权矩阵上的半包不是「少配几项」，而是有人当场多权或丢权。
+    let mut seen_roles: Vec<(String, String)> = Vec::new();
     for it in &body.items {
         if !["class", "role"].contains(&it.role_type.as_str()) {
             return Err(DomainError::Validation(
@@ -134,6 +137,40 @@ async fn permission_matrix_update(
                 it.permission_key
             )));
         }
+        // role_key 也要对得上真实对象：class 侧必须是存在的等级档 id，
+        // role 侧必须是 roles 表里的职务键。旧写法不校验 ⇒ 配置写得进、
+        // 生效点找不到，而矩阵读侧会把这个假角色列成「可配角色」。
+        let pair = (it.role_type.clone(), it.role_key.clone());
+        if !seen_roles.contains(&pair) {
+            let ok_role: bool = sqlx::query_scalar(
+                "SELECT CASE WHEN $1 = 'class' THEN EXISTS( \
+                    SELECT 1 FROM user_classes uc \
+                     WHERE uc.id::text = $2) \
+                   ELSE EXISTS(SELECT 1 FROM roles r WHERE r.key = $2) END",
+            )
+            .bind(&it.role_type)
+            .bind(&it.role_key)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            if !ok_role {
+                let what = if it.role_type == "class" { "等级档" } else { "职务" };
+                return Err(DomainError::Validation(format!(
+                    "{}不存在：{}",
+                    what, it.role_key
+                )));
+            }
+            seen_roles.push(pair);
+        }
+    }
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut changed = 0u64;
+    for it in &body.items {
         let n = if it.granted {
             sqlx::query(
                 "INSERT INTO role_permissions (role_type, role_key, permission_key, granted)
@@ -142,7 +179,7 @@ async fn permission_matrix_update(
             .bind(&it.role_type)
             .bind(&it.role_key)
             .bind(&it.permission_key)
-            .execute(&state.repo.db)
+            .execute(&mut *tx)
             .await
         } else {
             sqlx::query(
@@ -152,13 +189,14 @@ async fn permission_matrix_update(
             .bind(&it.role_type)
             .bind(&it.role_key)
             .bind(&it.permission_key)
-            .execute(&state.repo.db)
+            .execute(&mut *tx)
             .await
         }
         .map_err(|e| DomainError::Internal(e.into()))?
         .rows_affected();
         changed += n;
     }
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
     // 三轮遗留：矩阵审计带明细——只记「改过」不记改了哪些项，回溯
     // 「谁给 90 档加了 user.adjust」要靠 binlog。items 快照进 extra。
     state
@@ -172,95 +210,4 @@ async fn permission_matrix_update(
         )
         .await;
     Ok(ok(serde_json::json!({ "changed": changed })))
-}
-
-#[derive(Deserialize)]
-struct UserPermQ {
-    user_id: i64,
-}
-
-/// 某用户的权限全貌：角色所得（effective）+ 用户级覆盖（overrides）
-#[get("/admin/user-permissions")]
-async fn user_permission_view(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UserPermQ>,
-) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
-    let class_id: Option<i32> =
-        sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
-            .bind(q.user_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(class_id) = class_id else {
-        return Err(DomainError::NotFound(q.user_id));
-    };
-    let effective =
-        crate::authz::user_perm_keys(&state.repo.db, class_id, q.user_id).await;
-    let overrides =
-        crate::authz::user_permission_overrides(&state.repo.db, q.user_id)
-            .await;
-    let roles = crate::authz::user_role_keys(&state.repo.db, q.user_id).await;
-    Ok(ok(serde_json::json!({
-        "user_id": q.user_id,
-        "class_id": class_id,
-        "roles": roles,
-        "effective": effective,
-        "overrides": overrides.into_iter()
-            .map(|(k, g)| serde_json::json!({ "permission_key": k, "granted": g }))
-            .collect::<Vec<_>>(),
-    })))
-}
-
-#[derive(Deserialize)]
-struct SetUserPermReq {
-    user_id: i64,
-    permission_key: String,
-    /// true=额外授予 / false=显式拒绝 / null=清除覆盖（继承角色）
-    #[serde(default)]
-    granted: Option<bool>,
-    #[serde(default)]
-    note: Option<String>,
-}
-
-/// 设置用户级权限覆盖（授予 / 拒绝 / 清除）
-#[put("/admin/user-permissions")]
-async fn user_permission_set(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<SetUserPermReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CLASS)
-        .await?;
-    ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
-    let exists: Option<String> =
-        sqlx::query_scalar("SELECT key FROM permissions WHERE key = $1")
-            .bind(&body.permission_key)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    if exists.is_none() {
-        return Err(DomainError::Validation("权限不存在".into()));
-    }
-    crate::authz::set_user_permission(
-        &state.repo.db,
-        body.user_id,
-        &body.permission_key,
-        body.granted,
-        auth.id,
-        body.note.as_deref(),
-    )
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    state
-        .repo
-        .audit(Some(auth.id), "user.permission_set", Some(body.user_id))
-        .await;
-    Ok(ok(serde_json::json!({
-        "user_id": body.user_id,
-        "permission_key": body.permission_key,
-        "granted": body.granted,
-    })))
 }
