@@ -153,8 +153,15 @@ async fn permission_matrix_update(
             .fetch_one(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-            if !ok_role {
-                let what = if it.role_type == "class" { "等级档" } else { "职务" };
+            if !ok_role && it.granted {
+                // 只挡「新授予」：库里已有指向不存在等级档的行（本库实测
+                // class 90 两条），撤销支必须放行，否则站长删不掉 junk 行——
+                // 校验把自己锁在门外就是另一种坏。
+                let what = if it.role_type == "class" {
+                    "等级档"
+                } else {
+                    "职务"
+                };
                 return Err(DomainError::Validation(format!(
                     "{}不存在：{}",
                     what, it.role_key
