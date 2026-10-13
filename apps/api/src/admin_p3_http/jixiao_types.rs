@@ -32,7 +32,14 @@ async fn jixiao_types_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-264: ledger read gated with exam.manage (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::EXAM_MANAGE,
+    )
+    .await?;
     let period = (chrono::Utc::now() + chrono::Duration::hours(8))
         .format("%Y-%m")
         .to_string();
@@ -93,8 +100,12 @@ async fn jixiao_type_add(
     body: web::Json<JixiaoTypeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::EXAM_MANAGE,
+    )
+    .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("岗位名不能为空".into()));
     }
@@ -127,8 +138,12 @@ async fn jixiao_type_update(
     body: web::Json<JixiaoTypeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::EXAM_MANAGE,
+    )
+    .await?;
     jixiao_reject_unknown_keys(&body)?;
     let id = path.into_inner();
     let n = sqlx::query(
@@ -164,8 +179,12 @@ async fn jixiao_type_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::EXAM_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::EXAM_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let used: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM jixiao_claims WHERE type_id = $1",

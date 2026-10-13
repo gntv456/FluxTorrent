@@ -35,7 +35,14 @@ async fn admin_medals(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-265: ledger read gated with medal.manage (as its writes).
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::MEDAL_MANAGE,
+    )
+    .await?;
     let rows: Vec<MedalAdminRow> = sqlx::query_as(
         r#"SELECT m.id, m.name, m.description, m.price, m.rarity, m.limited, m.get_type,
                   m.duration_days, m.bonus_addition_factor::float8, m.category_id, m.asset_ref, m.gift_fee_bp,
@@ -83,8 +90,12 @@ async fn admin_medal_add(
     body: web::Json<MedalReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::MEDAL_MANAGE,
+    )
+    .await?;
     if body.name.trim().is_empty() {
         return Err(DomainError::Validation("勋章名不能为空".into()));
     }
@@ -151,8 +162,12 @@ async fn admin_medal_update(
     body: web::Json<MedalReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::MEDAL_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query(
         "UPDATE medals SET name = $2, description = $3, price = $4, rarity = $5, limited = COALESCE($6, limited), \
@@ -192,8 +207,12 @@ async fn admin_medal_delete(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::MEDAL_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::MEDAL_MANAGE,
+    )
+    .await?;
     let id = path.into_inner();
     let n = sqlx::query("DELETE FROM medals WHERE id = $1")
         .bind(id)
