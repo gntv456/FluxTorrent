@@ -5,7 +5,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
-use super::guard::{ensure_outranks, staff};
+use super::guard::{ensure_class_exists, ensure_outranks, staff};
 
 /// 下载权限 / 挂起 开关（tracker announce 执行点生效）
 #[derive(Deserialize)]
@@ -267,15 +267,15 @@ async fn user_set_class(
     body: web::Json<SetClassReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    // 站长（99）才能调整等级；且禁止操作同级/更高级账户
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_CLASS)
         .await?;
+    // 档位号必须真实存在（实测 class_id=90 撞 FK ⇒ 500，批四十三 P-171）
+    ensure_class_exists(&state.repo.db, body.class_id).await?;
     // 不能把他人设为站长（与角色等级无关的结构性约束）
     if body.class_id >= 99 {
         return Err(DomainError::Forbidden);
     }
-    // 审计修复（P0 越权）：此前允许把下级提到高于操作者自己的等级（93 档可授 98 档），
-    // 改完后自己反被该用户压制。封顶 = 操作者等级 - 1，与 ensure_outranks 口径一致。
+    // 审计修复（P0 越权）：封顶 = 操作者等级 - 1（旧版 93 档可授 98 档，改完反被压制）
     if body.class_id >= auth.class_id {
         return Err(DomainError::Validation(format!(
             "不能把用户提升到不低于自己的等级（{} ≥ {}）",

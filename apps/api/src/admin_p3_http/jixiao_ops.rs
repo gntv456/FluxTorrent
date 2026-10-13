@@ -224,7 +224,12 @@ async fn jixiao_payroll(
         i64,
         i64,
         String,
-        chrono::DateTime<chrono::Utc>,
+        // `settled_at` 可空：本函数自己的 SQL 就写着 `ORDER BY c.settled_at
+        // DESC NULLS LAST`，说明作者预期它为空，而元组按非 Option 读 ⇒ 一行
+        // NULL 让整页 500（批四十三 P-172，探针号手工造的那条 status=1 且
+        // settled_at IS NULL 的记录实测把发薪页打挂；生产写口都是两句同改，
+        // 属纵深缺口不是现网故障）
+        Option<chrono::DateTime<chrono::Utc>>,
     );
     let rows: Vec<Row> = sqlx::query_as(
         "SELECT c.id, c.user_id, u.username, t.name, c.amount, c.bonus_paid, \
@@ -239,7 +244,16 @@ async fn jixiao_payroll(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    let total: i64 = rows.iter().map(|r| r.4).sum();
+    // 合计要整期算：`rows` 只是 LIMIT 200 之后的一页，本期发薪超过 200 行时
+    // 面板上的「本期合计」会静默偏小（批四十三 P-170：展示数取自分页后的行）
+    let total: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(sum(amount), 0)::bigint FROM jixiao_claims \
+         WHERE period = $1 AND status = 1",
+    )
+    .bind(&period)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let list: Vec<serde_json::Value> = rows
         .iter()
         .map(|(id, uid, username, tname, amount, bonus, paid_by, at)| {

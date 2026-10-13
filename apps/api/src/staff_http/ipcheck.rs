@@ -109,8 +109,7 @@ pub async fn admin_amount_upload(
             "上传量需在 ±10TB 内且非 0（bytes 或 gb 二选一）".into(),
         ));
     }
-    // 幂等占位（0286）：traffic_ledger 无独立幂等列，借 reason 字段
-    // 埋键（reason 是文本列，查询 LIKE 可检索）；同键已存在 → 拒绝
+    // 幂等键校验（0286）：8~120 字符，防网络重试双发
     let idem_tag = body
         .idempotency_key
         .as_deref()
@@ -123,20 +122,43 @@ pub async fn admin_amount_upload(
             ));
         }
     }
-    if let Some(k) = idem_tag {
-        let seen: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM traffic_ledger \
-             WHERE reason = 'amountupload:' || $1)",
+    // 目标须是操作者的严格下级（与 /admin/users/adjust 同判据）。这一口直接
+    // 写 `uploaded`，而它是分享率的分子与 H&R 义务的基线；同族改账口都有
+    // 护栏、只有它没有 ⇒ 批四十三 P-168（默认权限表下要 class≥99 才够得着，
+    // 属纵深缺口：`role_permissions` 可被后台改，键一旦下放就没人挡）。
+    if let Some(uid) = body.user_id {
+        crate::admin_http::guard::ensure_outranks(
+            &state.repo.db,
+            auth.class_id,
+            uid,
         )
-        .bind(k)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
-        if seen {
-            return Err(DomainError::Validation(
-                "该 idempotency_key 已发放过".into(),
-            ));
-        }
+        .await?;
+    }
+    // 幂等键改走 grant_batches 那把专职槽（同 `/admin/users/increment-bulk`）。
+    // 0286 的老写法是「借 traffic_ledger.reason 埋键 + 先 SELECT EXISTS 再
+    // INSERT」——两个同键并发请求能双双通过 EXISTS，实测同一把键加出两份量
+    // （1MiB ×2 都 200、锚点行 2 条）；UNIQUE(idempotency_key) 让数据库来判重。
+    let batch_id = uuid::Uuid::new_v4().simple().to_string();
+    if idem_tag.is_some() {
+        crate::admin_p3_http::batch_open(
+            &state.repo.db,
+            &crate::admin_p3_http::BatchSpec {
+                batch_id: &batch_id,
+                idem: idem_tag,
+                actor_id: auth.id,
+                kind: "amount_upload",
+                amount: bytes,
+                item_id: None,
+                medal_id: None,
+                days: None,
+                selector: serde_json::json!({
+                    "scope": if body.user_id.is_some() { "one" } else { "all" }
+                }),
+                targets: &body.user_id.into_iter().collect::<Vec<_>>(),
+                subject: None,
+            },
+        )
+        .await?;
     }
     // 审计修复（P0 错账）：uploaded 的权威在 traffic_ledger（worker reconcile 与
     // /admin/jobs/run:reconcile 会把 users.uploaded 重算为 sum(ledger)），此前裸
@@ -164,18 +186,15 @@ pub async fn admin_amount_upload(
     if body.user_id.is_some() && n == 0 {
         return Err(DomainError::NotFound(body.user_id.unwrap_or(0)));
     }
-    if let Some(k) = idem_tag {
-        // 幂等锚点行（delta=0 不影响账本）：把键写进 reason 供下次查重
-        let _ = sqlx::query(
-            "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
-             delta_up, delta_down, window_start, reason, operator_id) \
-             VALUES (nextval('traffic_ledger_id_seq'), $1, NULL, \
-             0, 0, now(), 'amountupload:' || $2, $3)",
+    if idem_tag.is_some() {
+        // 回写批次结果：grant_batches.status 是站长排查「重复提交有没有被挡」的入口
+        let _ = crate::admin_p3_http::batch_finish(
+            &state.repo.db,
+            &batch_id,
+            n as i64,
+            if n > 0 { "done" } else { "failed" },
+            None,
         )
-        .bind(body.user_id.unwrap_or(0))
-        .bind(k)
-        .bind(auth.id)
-        .execute(&state.repo.db)
         .await;
     }
     state

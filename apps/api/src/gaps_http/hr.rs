@@ -81,44 +81,21 @@ pub async fn hr_pardon(
     if body.note.trim().is_empty() {
         return Err(DomainError::Validation("赦免必须填理由".into()));
     }
-    let n = sqlx::query(
-        "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, updated_at = now() \
-         WHERE user_id = $2 AND torrent_id = $3 AND status = 'violated'",
+    // 判据（护栏 / 只赦 violated / 理由进审计与留痕）收在
+    // `admin_p3_http::hr::pardon_one`——这一段与另两口原先各写一份 SQL，
+    // 三天里漂了三处，批四十三 P-165~P-167 立案后合并。
+    let done = crate::admin_p3_http::hr::pardon_one(
+        &state,
+        &auth,
+        "hr.pardon",
+        body.user_id,
+        body.torrent_id,
+        &body.note,
     )
-    .bind(auth.id)
-    .bind(body.user_id)
-    .bind(body.torrent_id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if n == 0 {
+    .await?;
+    if !done {
         return Err(DomainError::Validation("无待赦免的 H&R 违规".into()));
     }
-    // 审计修复（P1）：赦免后 snatches.hr_flag 不回清（worker 只会置 TRUE，全库无 FALSE
-    // 路径），列表/详情的 H&R 角标在赦免后仍然残留。此处同步回清（与快照口径一致）。
-    let _ = sqlx::query(
-        "UPDATE snatches SET hr_flag = FALSE WHERE user_id \
-         = $1 AND torrent_id = $2",
-    )
-    .bind(body.user_id)
-    .bind(body.torrent_id)
-    .execute(&state.repo.db)
-    .await;
-    sqlx::query(
-        "UPDATE hr_violations SET resolved_at = now(), resolved_by = $1 \
-         WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
-    )
-    .bind(auth.id)
-    .bind(body.user_id)
-    .bind(body.torrent_id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    state
-        .repo
-        .audit(Some(auth.id), "hr.pardon", Some(body.torrent_id))
-        .await;
     Ok(ok(serde_json::json!({ "pardoned": true })))
 }
 
@@ -154,46 +131,30 @@ pub async fn hr_pardon_batch(
             "批量豁免条目须在 1~500 之间".into(),
         ));
     }
+    // 整批先过一遍护栏（任一目标赦不得就一个都不动），再逐条走共用判据
+    // `pardon_one`：只赦 violated、理由进审计与留痕、回清 hr_flag。
+    let ids: Vec<i64> = body.items.iter().map(|it| it.user_id).collect();
+    crate::admin_p3_http::hr::ensure_all_pardonable(&state, &auth, &ids)
+        .await?;
     let mut pardoned: Vec<serde_json::Value> = Vec::new();
     let mut skipped: Vec<serde_json::Value> = Vec::new();
     for it in &body.items {
-        let n = sqlx::query(
-                        "UPDATE hr_snapshots SET status = 'pardoned', \
-             pardoned_by = $1, \
-             updated_at = now() WHERE user_id = $2 AND torrent_id = $3 AND status = 'violated'",
+        let done = crate::admin_p3_http::hr::pardon_one(
+            &state,
+            &auth,
+            "hr.pardon_batch",
+            it.user_id,
+            it.torrent_id,
+            &body.note,
         )
-        .bind(auth.id)
-        .bind(it.user_id)
-        .bind(it.torrent_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
-        if n == 0 {
-            skipped.push(serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id }));
-            continue;
+        .await?;
+        let pair =
+            serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id });
+        if done {
+            pardoned.push(pair);
+        } else {
+            skipped.push(pair);
         }
-        sqlx::query(
-                        "UPDATE hr_violations SET resolved_at = now(), \
-             resolved_by = $1 WHERE user_id = $2 AND torrent_id = $3 AND resolved_at IS NULL",
-        )
-        .bind(auth.id)
-        .bind(it.user_id)
-        .bind(it.torrent_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        // 三轮遗留：批量赦免对齐单发的 hr_flag 回清——漏了这步时
-        // 用户侧 H&R 角标仍亮（展示层读 hr_flag）
-        sqlx::query(
-            "UPDATE snatches SET hr_flag = FALSE WHERE user_id = $1              AND torrent_id = $2",
-        )
-        .bind(it.user_id)
-        .bind(it.torrent_id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        pardoned.push(serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id }));
     }
     state
         .repo
