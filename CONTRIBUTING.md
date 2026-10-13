@@ -31,6 +31,63 @@ pnpm --filter @fluxtorrent/web exec next build     # 前端构建
 node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
 ```
 
+## 前端改动（设计系统纪律，DS-PLAN-01 §10）
+
+真源：`docs/design/design-system-plan.md`（策划案）+
+`docs/design/master-plan.md`（日常操作面）+ `docs/design-system.md`
+（对外速查：原语目录/新增页面 checklist/门禁跑法）。
+
+### 设计宪章六条（浓缩；评审逐条过，全文见 DS-PLAN §10.1）
+
+1. **令牌先行**——色/字/距/角/影/动效六项进令牌层（base.css），
+   页面代码出现 hex/裸断点即错（ui_design_guard 规则 2/3/9 拦）；
+2. **语义先于样式**——组件 API 用 tone/size/variant/state，禁止把
+   色值/像素宽当 props 透传；
+3. **原语无业务词汇**——components/ui 出现 torrent/bank/medal 即打回；
+4. **四态是默认配置**——承载数据的 UI 答不上「加载/空/错/成功各长
+   什么样」= 设计未完成（StatePanel/EmptyState/ErrorPanel/Skeleton）；
+5. **a11y 与 i18n 是验收项**——键盘不可达、文案未三语等同功能缺陷；
+6. **增量不欠新债**——存量按阶段清偿，新代码零豁免（「先赶进度」
+   不成立，design_cov_guard 只许向好会拦）。
+
+### 原语优先 / 触碰即迁
+
+- 新 UI 先查 `apps/web/components/ui/`（目录表见 docs/design-system.md
+  §2）；没有且 ≥3 处复用前景 → 先立原语工单再写页面；
+- 反馈只认协议形态：异步写操作 = toast、行内三态 = ActionFeedback、
+  确认 = ConfirmDialog——**禁新增 window.confirm/alert**（存量 P2 域
+  触碰即迁）；
+- 写反馈必须带 request_id（toast `opts.requestId` / ErrorPanel 一键复制）；
+- 页面迁移批次见 master-plan §4：P0/P1 未到期只修 bug 不做迁移，
+  P2 页被触碰时四态与原语迁移随改顺带完成。
+
+### UI 类 PR 清单模板（DS-PLAN §10.3 同源）
+
+```markdown
+- [ ] 新 UI 用了 components/ui 原语（或说明为何不适用）
+- [ ] 无新增硬编码 hex / 裸像素断点 / 散落 transition（games 豁免除外）
+- [ ] 数据 UI 四态齐全（loading/empty/error/success 各有交代）
+- [ ] 键盘可达（Tab 顺序/Esc/Enter）；焦点环可见
+- [ ] 文案三语齐（zh-CN/zh-TW/en，ja 走回落）；aria 语义到位
+- [ ] 错误路径带 request_id 展示（若涉及失败态）
+- [ ] 移动端断点抽查（4 档语义令牌之一，无新裸断点）
+- [ ] design_cov_guard 四数字无恶化
+```
+
+### 前端门禁本地跑法（一条命令一行）
+
+```bash
+node scripts/line_limit_guard.mjs     # 行数 ≤300 / 行宽 ≤80
+node scripts/i18n_guard.mjs           # 文案防新增硬编码中文
+node scripts/design_cov_guard.mjs     # 覆盖率四指标只许向好
+node scripts/ui_design_guard.mjs      # 令牌层退化六则+tsx hex 棘轮
+node scripts/check_dark_contrast.mjs  # 暗色 AA 回潮+明色债棘轮
+```
+
+（Rust 侧另有 route_manifest/check_type_drift/error_registry 三件
+契约门禁，见上节 CI 清单；修完一类问题后 `--update` 刷基线，确认是
+「有意放行」才刷。）
+
 ## 关键工程纪律（违反会被 review 拒绝）
 
 1. **迁移文件不可变**：`apps/api/migrations/` 中已合并的迁移禁止改名/改号/改内容——

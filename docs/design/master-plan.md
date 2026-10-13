@@ -148,11 +148,22 @@ P0 十页清单（固定，勿增删）：
 
 ### 阶段六：护城与移交（DS §7）+ FRAME F2-F5
 
-- ☐ **W-43** design_cov_guard 进 CI（四指标只许向好）
-- ☐ **W-44** ui_design_guard 扩 L4→L1 禁令（页面直用 hex/var(--) 即挂）
-- ☐ **W-45** `docs/design-system.md`（原语目录/API 速查/新增页面 checklist）
-- ☐ **W-46** CONTRIBUTING 前端节改写（宪章+六步流并入）
-- ☐ **W-47** 门禁红测（故意提交 hex 新页面被拦的演示记录）
+- ☑ **W-43** design_cov_guard 进 CI（四指标只许向好）——另挂
+  check_dark_contrast.mjs（暗色 AA 回潮拦 + 明色债棘轮，W-40 登记
+  项落地；明色 17 组 <AA 已入 scripts/dark_contrast_baseline.json
+  只测不调）；每步中文注释说明拦什么
+- ☑ **W-44** ui_design_guard 扩 L4→L1 禁令——规则 9（新模块
+  ui_design_guard_hex.mjs）：非豁免 tsx 六位 hex 棘轮，豁免域/
+  行级豁免照抄 design_cov；--update 登记存量=0（豁免域外归零态）；
+  红测验证有效（about 页加 #ff0000 被拦，记录见 docs/design-system.md §6）
+- ☑ **W-45** `docs/design-system.md` 对外正式文档（136 行：原语目录/
+  tone×size 矩阵/新增页面 checklist 引用 §5 坐标定位法/门禁跑法/
+  红测记录/已知债）；components/ui/README.md 头部已指向
+- ☑ **W-46** CONTRIBUTING.md 前端节——宪章六条浓缩+PR 清单模板
+  （§10.3 同源）+原语优先/触碰即迁纪律+门禁本地跑法；后端节未动
+- ☑ **W-47** 门禁红测三项真实执行记录进 docs/design-system.md §6：
+  ①tsx hex 被规则 9 拦 ②design_cov 指标调劣被拦 ③route_manifest
+  活捉批五十九拆文件漂移（HEAD 即红，移交 ROUTE 线刷新清单）
 - ☐ **W-48** **[FRAME F2]** 分层宪法门禁三件 + review_decide/hr_pardon 用例抽离示范
 - ☐ **W-49** **[FRAME F3]** compat 层 utoipa 化（手写 spec.rs 22 条归零）
 - ☐ **W-50** **[FRAME F4 起步]** 开放 API 域 utoipa 化（tokens/download_keys/rss_tokens ~15 条）
