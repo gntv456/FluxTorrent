@@ -71,10 +71,33 @@ P0 十页清单（固定，勿增删）：
 
 ### 阶段四：P1 页迁移 + 代码分割（DS §7）
 
-- ☐ **W-32** P1 约 20 页四态化（bank/games/gacha/medal-wall/offers/requests/subtitles/collections/friends/invites/myhr/tasks/…按此序）
-- ☐ **W-33** next/dynamic 分割四件：游戏画布/BBCode 渲染器/管理台重表格/markdown-lite（各带 loading 骨架）
-- ☐ **W-34** 两孤岛反馈收编（admin-user-detail/game-kit-feedback → toast 协议）
-- ☐ **W-35** 首屏 JS 基线报告（build 产物前后对比表，目标 -15%）
+- ☑ **W-32** P1 约 20 页四态化——20/20 完成（2026-10-13）：窗口弹窗族
+  （prompt/alert/confirm 23 处）换 ConfirmDialog+toast；裸「加载中」
+  文字换 Skeleton/StatePanel；局部 flash/msg 提示条换 toast。gacha/
+  medals/invites/bank 壳等已达标页仅迁移其组件层反馈
+- ☑ **W-33** next/dynamic 分割四件（2026-10-13）：①游戏画布——
+  games/fishing 的 FishingPond 与 games/wheel 的 LuckyWheel dynamic 化
+  （loading=SkeletonBlock）；②BBCode 渲染器 lib/bbcode.tsx——**server
+  组件库（无 "use client"），dynamic 不可用，跳过**；③管理台重表格
+  admin-user-detail——页面壳不变，AdminUserDetailPage dynamic 化
+  （loading=SkeletonRows）；④markdown-lite——消费方 message-center-table
+  的 MarkdownRenderer dynamic 化（wiki 页为 RSC，跳过）
+- ☑ **W-34** 两孤岛反馈收编（2026-10-13）：admin-user-detail——flash
+  提示条+window.confirm/prompt 六处全收口（toast 协议 + 新拆
+  admin-user-detail-dialogs.tsx 双 ConfirmDialog）；
+  game-kit-feedback（ResultFlash/GameToast/HistoryStrip）——**豁免保留**：
+  游戏内 HUD 反馈（结果飘字/全屏彩带/按局战绩点）与 toast 的
+  「异步写操作结果」语义不同（DS §3.1 何时不该用条款），且 GameToast
+  已带 role=status+aria-live，无 a11y 缺口；豁免期随 W-41 game-kit
+  三件套抽离一并复核
+- ◐ **W-35** 首屏 JS 基线报告（2026-10-13）：基线+分割后对比表已建
+  `docs/design/metrics-log.md`。**诚实结论：首屏 JS 未降反 +0.5%**——
+  四件分割 lazy chunk 均移出路由入口（证据见 metrics-log），但 W-32
+  六页（requests/offers/subtitles/myhr/my-spark/medal-wall）引入原语
+  各 +6kB 抵消。**-15% 目标偏离**（§7 偏离条款）：四态化与瘦身两批
+  目标在本批互相牵制；后续单独立批（vendor 分包分析/messages RSC 化/
+  admin 415kB 页 chunk 拆解）继续清偿，基线以 metrics-log 2026-10-13
+  分割前表为准
 
 ### 阶段五：令牌与 a11y 清偿（DS §7 + IA-3）
 
@@ -105,13 +128,13 @@ P0 十页清单（固定，勿增删）：
 | 指标 | 基线（2026-10-13） | 阶段三目标 | 终态目标 | 最近值（阶段/日期） |
 |---|---|---|---|---|
 | 组件型原语数 | 3 | ≥8 | ≥12 | 11（2026-10-13 阶段一/二：toast/action-feedback/busylabel/state-panel/error-panel/skip-link/form-field/field-errors/submit-button/confirm-dialog + 既有3） |
-| loading.tsx 覆盖（数据路由） | 0/约40 | ≥60% | ≥90% | 11%（2026-10-13；design_cov_guard 数据路由口径 8/74——基线列 0 为门禁落盘前手数，门禁基线文件见 `scripts/design_cov_baseline.json`） |
-| 非豁免硬编码 hex | 50 | ≤40 | 0 | 46（2026-10-13；design_cov_guard 实测 46，基线列 50 是「games 豁免」口径重估前的手数；`node scripts/design_cov_guard.mjs` 只认 46，差异 4 为平台字面量转 `design-cov-exempt` 行级豁免） |
+| loading.tsx 覆盖（数据路由） | 0/约40 | ≥60% | ≥90% | 19%（2026-10-13 阶段四；design_cov 数据路由口径 14/75，Skeleton/StatePanel 页内骨架已计入页面但 loading.tsx 文件数未变） |
+| 非豁免硬编码 hex | 50 | ≤40 | 0 | 46（2026-10-13；design_cov_guard 实测 46，基线列 50 是「games 豁免」口径重估前的手数；`node scripts/design_cov_guard.mjs` 只认 46，差异 4 为平台字面量转 `design-cov-exempt` 行级豁免；ui_design 口径另有 1180→1180 ratchet，阶段三批次带入 1 处 var 回落 hex 已于阶段四清偿为纯 var 引用） |
 | 裸像素断点 | 46 | ≤46 | 0 | 46（2026-10-13 未动） |
-| 原语采用率（tsx import ui/） | 1.4% | 只升不降 | — | 3.9%（2026-10-13；21/533，design_cov_guard 指标 2） |
-| window.confirm/alert | 57 | 触碰即迁 | 新增=0 | 58（2026-10-13 实测；含 prompt） |
+| 原语采用率（tsx import ui/） | 1.4% | 只升不降 | — | 10.8%（2026-10-13 阶段四；58/538，design_cov_guard 指标 2；W-32 二十页收编贡献 +6.7pp） |
+| window.confirm/alert | 57 | 触碰即迁 | 新增=0 | 50（2026-10-13 阶段四；git grep 口径 HEAD 67→50，净清 17 处：requests/subtitles/myhr/friends/tasks/offers/dressup/frames/gomoku/contests/bank/pool/messages 域 + admin-user-detail 全族；余量在 P2 触碰即迁域） |
 | 路由契约覆盖 | 27/725 (3.7%) | — | ≥80%（FRAME 线） | — |
-| 首屏 JS | 待 W-08 建基线 | 基线 | -15% | — |
+| 首屏 JS | 待 W-08 建基线 | 基线 | -15% | **基线已建**（2026-10-13 阶段四，`docs/design/metrics-log.md`）：共享 102 kB；69 条可比路由 First Load 均值 109.8 kB。W-33 分割后复测 +0.5%（原语引入抵消，偏离条款见 §7 与 metrics-log 结论段） |
 | LCP P0 十页 | 待建 | ≤2.5s | 全绿 | **基线已建（2026-10-13 登录态）**：forums 6870 / forums-topic 6926 / messages 6593 / notifications 4740 / top 7995 / torrent-detail 7545 / torrents 7245 / search 7245 / upload 6840 / users-1 ≈6500ms——全数超预算，阶段三/四清偿 |
 | CLS P0 十页 | 待建 | ≤0.1 | 全绿 | **基线已建**：0.27–0.34（内容页）/ 0.9（messages）——同超预算 |
 | TBT P0 十页 | 待建 | ≤300ms | 全绿 | **基线已建**：0–335ms（登录重定向页 182–335；内容页 0） |

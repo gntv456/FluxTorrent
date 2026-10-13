@@ -8,6 +8,7 @@ import { dateLocale, fmt } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { AdminActions } from "./admin-user-detail-actions";
 import { useAdminUserActions } from "./admin-user-detail-actions-hook";
+import { UserDetailDialogs, type AskAct } from "./admin-user-detail-dialogs";
 import { AdminUserFieldsPanel } from "./admin-user-fields-panel";
 import {
   useAdminPanelDicts,
@@ -42,6 +43,10 @@ const TAB_BTN_OFF = CELL_CARD_SUB;
 const TMP_PASS_CLS =
   "rounded-[var(--r-md)] bg-sky-soft p-3 font-mono text-sm text-ink";
 
+const ASK_INPUT =
+  "min-h-[36px] rounded-[var(--r-sm)] border border-line " +
+  "bg-[var(--surface-card)] px-3 text-sm text-ink";
+
 export function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -61,6 +66,10 @@ export function AdminUserDetailPage() {
   });
 
   const { d, msg, load } = useDetailLoad(uid);
+  const [askStatus, setAskStatus] = useState<0 | 1 | 2 | null>(null);
+  const [statusReason, setStatusReason] = useState("");
+  const [askAct, setAskAct] = useState<AskAct | null>(null);
+  const ud = dict.userDetail;
   const dicts = useAdminPanelDicts(uid);
   const tabs = useDetailTabs(uid);
 
@@ -100,17 +109,8 @@ export function AdminUserDetailPage() {
 
   const dt = (s: string | null) =>
     s ? new Date(s).toLocaleString(dateLocale(locale)) : "—";
-  // 动作提示条优先展示 hook 的 flash 文案，加载兜底用本地 msg
-  const toast = actions.msg ?? msg;
-
   return (
     <div className="flex flex-col gap-3">
-      {toast && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {toast}
-        </p>
-      )}
-
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-2">
           <h1 className="font-display text-2xl">{d.username}</h1>
@@ -245,11 +245,16 @@ export function AdminUserDetailPage() {
             onSubmitItem={actions.submitItem}
             onSubmitJixiao={actions.submitJixiao}
             onSubmitNewRole={actions.submitNewRole}
-            onSubmitRename={actions.submitRename}
-            onResetPass={actions.resetPass}
+            onSubmitRename={() => setAskAct("rename")}
+            onResetPass={() => setAskAct("resetPass")}
             onToggle={actions.toggle}
-            onChangeStatus={actions.changeStatus}
-            onDeleteUser={actions.deleteUser}
+            onChangeStatus={(next) => {
+              if (next > 0) {
+                setStatusReason("");
+                setAskStatus(next as 1 | 2);
+              } else actions.changeStatus(0);
+            }}
+            onDeleteUser={() => setAskAct("deleteUser")}
           />
         </>
       )}
@@ -273,6 +278,23 @@ export function AdminUserDetailPage() {
       )}
 
       {tabs.tab === "seeding" && <SeedingPanel seeds={tabs.seeds} />}
+      <UserDetailDialogs
+        askStatus={askStatus}
+        setAskStatus={setAskStatus}
+        statusReason={statusReason}
+        setStatusReason={setStatusReason}
+        askAct={askAct}
+        setAskAct={setAskAct}
+        username={d?.username ?? ""}
+        newName={dicts.newName}
+        uid={uid}
+        onStatus={(next, reason) => actions.changeStatus(next, reason)}
+        onAct={(act) => {
+          if (act === "rename") actions.submitRename();
+          else if (act === "resetPass") actions.resetPass();
+          else actions.deleteUser();
+        }}
+      />
     </div>
   );
 }

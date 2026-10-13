@@ -71,12 +71,6 @@ export function useAdminUserActions2({
         const rn = dict.adminrename;
         const name = values.newName.trim();
         if (!name || !d) return;
-        if (
-          !window.confirm(
-            rn.confirm.replace("{old}", d.username).replace("{new}", name),
-          )
-        )
-          return;
         await api.post(`/api/v1/admin/users/${uid}/rename`, { new_name: name });
         flash(rn.ok.replace("{name}", name));
         setRenameOpen(false);
@@ -98,12 +92,6 @@ export function useAdminUserActions2({
   const resetPass = useCallback(
     () =>
       run(async () => {
-        if (
-          !window.confirm(
-            fmt(t.resetPwdConfirm, { name: d?.username ?? "" }),
-          )
-        )
-          return;
         const r = await api.post<{ temp_password: string }>(
           "/api/v1/admin/resetpass",
           { user_id: uid },
@@ -116,12 +104,6 @@ export function useAdminUserActions2({
   const deleteUser = useCallback(
     () =>
       run(async () => {
-        if (
-          !window.confirm(
-            fmt(t.delUserConfirm, { name: d?.username ?? "", id: uid }),
-          )
-        )
-          return;
         await api.del(`/api/v1/admin/users/${uid}`);
         flash(t.userDeleted);
         setTimeout(() => router.push("/admin?tool=users"), 800);
