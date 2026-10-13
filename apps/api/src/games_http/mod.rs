@@ -45,6 +45,7 @@ mod pool_games;
 mod pool_table;
 mod prize_view;
 mod ranch;
+mod ranch_pens;
 
 use arcade_admin::*;
 use arcade_admin_write::*;
@@ -73,6 +74,7 @@ use pet_log::*;
 use pets::*;
 use pool_games::*;
 use ranch::*;
+use ranch_pens::*;
 
 pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
     scope
