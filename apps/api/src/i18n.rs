@@ -92,6 +92,13 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
         "兩步驗證碼不正確，請核對驗證器當前 6 位數字",
         "Incorrect 2FA code; check the current 6 digits",
     ),
+    // 登录 PoW 闸门（sha256-pow-v1）：连续失败后要求客户端算力证明
+    (
+        2012,
+        "登录尝试较多，需先完成工作量证明",
+        "登入嘗試較多，需先完成工作量證明",
+        "Too many attempts; solve the proof-of-work first",
+    ),
     (2004, "凭证无效", "憑證無效", "Invalid credentials"),
     (
         2005,

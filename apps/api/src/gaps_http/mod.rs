@@ -13,6 +13,7 @@ mod hr;
 mod login_aux;
 mod mail;
 mod misc;
+mod pow;
 mod reset;
 mod wishlist;
 
@@ -24,6 +25,7 @@ use hr::*;
 use login_aux::*;
 pub use mail::*;
 use misc::*;
+pub use pow::*;
 use reset::*;
 use wishlist::*;
 
@@ -35,6 +37,8 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         .service(password_reset)
         // 验证码（注册用）
         .service(captcha_issue)
+        // 登录 PoW 挑战（sha256-pow-v1，连续失败后触发）
+        .service(pow_challenge)
         // H&R
         .service(my_hr_status)
         .service(hr_pardon)

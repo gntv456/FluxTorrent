@@ -9,6 +9,12 @@ pub(super) struct LoginReq {
     pub(super) password: String,
     #[serde(default)]
     pub(super) totp_code: Option<u32>,
+    /// 工作量证明（sha256-pow-v1）：连续失败 ≥2 次起必带，
+    /// 由 GET /auth/pow-challenge 签发的 token + 求得的 nonce 解
+    #[serde(default)]
+    pub(super) pow_token: Option<String>,
+    #[serde(default)]
+    pub(super) pow_solution: Option<String>,
 }
 
 #[derive(Deserialize)]

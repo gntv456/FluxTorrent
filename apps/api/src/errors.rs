@@ -56,6 +56,11 @@ pub enum DomainError {
     /// 不出是配置状态（P-102）。语义是「服务当前不可用」，故 HTTP 503。
     #[error("站点未开通邮件服务，请联系管理组")]
     MailUnconfigured,
+    /// 乐观并发冲突（site_settings expected updated_at 校验，5003）：
+    /// 提交携带的版本戳与库中现值不一致 = 有人先改过，整批拒绝防静默覆盖；
+    /// fields 随信封 data 带冲突键列表，前端提示刷新后重试
+    #[error("配置已被其他人修改，请刷新后重试")]
+    VersionConflict(Vec<String>),
     #[error("内部错误")]
     Internal(#[from] anyhow::Error),
 }
@@ -84,6 +89,8 @@ impl DomainError {
             DomainError::ModuleDisabled(_) => 4101,
             DomainError::PoolGuard(_) => 4102,
             DomainError::MailUnconfigured => 4103,
+            // 5xxx 社区段：5003 = 设定乐观并发冲突（5001/5002 已占）
+            DomainError::VersionConflict(_) => 5003,
             DomainError::Internal(_) => 1000,
         }
     }
@@ -112,6 +119,8 @@ impl DomainError {
             DomainError::ModuleDisabled(_) => StatusCode::NOT_FOUND,
             // 经济守卫：409 语义是「资源当前状态冲突」，与 429 限频区分
             DomainError::PoolGuard(_) => StatusCode::CONFLICT,
+            // 设定乐观并发：携带的版本戳已过期（他人先改），409 让前端提示刷新
+            DomainError::VersionConflict(_) => StatusCode::CONFLICT,
             // 邮件链路依赖的外部配置缺失：503 比 500 诚实（不是我们的 bug）
             DomainError::MailUnconfigured => {
                 StatusCode::SERVICE_UNAVAILABLE
@@ -164,6 +173,10 @@ impl ResponseError for DomainError {
                     "error": crate::i18n::localized_detail(e, locale)
                 }))
                 .collect::<Vec<_>>()),
+            // 版本冲突：冲突键列表随信封回传（前端高亮哪些键被人改过）
+            DomainError::VersionConflict(keys) => {
+                serde_json::json!(keys)
+            }
             _ => serde_json::Value::Null,
         };
         let mut resp = HttpResponse::build(status).json(json!({
