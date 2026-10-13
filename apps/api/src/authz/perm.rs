@@ -89,6 +89,9 @@ pub const MAXLOGIN_VIEW: &str = "maxlogin.view";
 pub const PLUGINS_MANAGE: &str = "plugins.manage";
 pub const AGENTS_VIEW: &str = "agents.view";
 pub const NOTCONNECTABLE_VIEW: &str = "notconnectable.view";
+/// 作弊者探测名单（0361，批六十一 P-231）：名单含每人近 1 小时上传
+/// 增量与折算速度，属管理组调查材料，版主/发布员不该读得到
+pub const CHEATERS_VIEW: &str = "cheaters.view";
 // 第八轮 P3 管理套件（参考站后台逐页深挖落地）
 pub const TORRENT_MANAGE: &str = "torrent.manage";
 pub const HR_VIEW: &str = "hr.view";

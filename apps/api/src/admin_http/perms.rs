@@ -39,7 +39,15 @@ async fn permission_matrix(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-232：读口原先只判 staff()，而写口要 settings.manage（现网仅 class/99）
+    // => 读比写宽三档：任何职员能拿走「谁能干什么」的完整授权图。
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     // G3（0217）：权限矩阵随模块开关收敛——模块关掉的域（如商店 prop.manage）
     // 不再出现在清单里，避免「配了也不生效」的误导。口径与面板条目同源。
     let permissions: Vec<PermRow> = sqlx::query_as(&format!(
