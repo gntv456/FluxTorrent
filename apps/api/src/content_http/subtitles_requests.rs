@@ -63,6 +63,23 @@ pub(super) async fn subtitle_request_create(
     if body.bounty < 0 {
         return Err(DomainError::Validation("悬赏不能为负".into()));
     }
+    // 种子必须真实存在：`filter(|v| *v > 0)` 之后直接进 INSERT ⇒ 撞外键就是
+    // 500（与批四十三 P-171「改档不查字典」同族：值域是表里的集合时，判据
+    // 必须查表，不能靠外键替业务报错）。0/负数仍按「不挂种子」处理。
+    if let Some(tid) = body.torrent_id.filter(|v| *v > 0) {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)",
+        )
+        .bind(tid)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if !exists {
+            return Err(DomainError::Validation(format!(
+                "种子 #{tid} 不存在（求字幕可留空不挂种子）"
+            )));
+        }
+    }
     // B2：offer_free 是站方出资给种子挂免费（promotions 本是 staff 专属权限），
     // 不得让普通用户借求字幕动线下放——发起时非 staff 一律拒绝。
     if body.offer_free && auth.class_id < 90 {

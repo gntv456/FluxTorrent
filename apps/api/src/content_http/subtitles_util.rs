@@ -110,6 +110,64 @@ pub(super) async fn subtitle_setting(
         .unwrap_or_else(|| default.to_string()))
 }
 
+/// 交付相关性判据（批四十五 P-177）：两条交付路（旧直交付 `fulfill` 与工作流
+/// 交稿 `deliver`）共用的唯一一把尺 —— 交的东西必须与这一单要的是**同一件事**。
+///
+/// 原先两边都只查「字幕是你本人上传且已过审」，语言与种子一个都不比。而默认
+/// 站型 `subtitle_workflow=0` 时 `fulfill` 是唯一活着的结算口、连认领都不必
+/// ⇒ 任何人拿任意一条自己的字幕就能把别人凑出来的悬赏池整池领走。
+pub(super) async fn ensure_req_match(
+    db: &sqlx::PgPool,
+    rid: i64,
+    subtitle_id: i64,
+) -> DomainResult<()> {
+    // (请求语言, 请求种子, 字幕语言, 字幕字典语言 id, 字幕种子)
+    type Row = (String, Option<i64>, Option<String>, Option<i16>, Option<i64>);
+    let row: Option<Row> = sqlx::query_as(
+        "SELECT r.lang, r.torrent_id, s.lang, s.lang_id, s.torrent_id \
+         FROM subtitle_requests r JOIN subtitles s ON s.id = $2 \
+         WHERE r.id = $1",
+    )
+    .bind(rid)
+    .bind(subtitle_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 请求或字幕其中一条不在：由调用方原有的 NotFound/Validation 口径去报
+    let Some((rl, rtid, sl, slab, stid)) = row else { return Ok(()) };
+    if let Some(want_tid) = rtid {
+        if stid != Some(want_tid) {
+            return Err(DomainError::Validation(format!(
+                "交稿字幕挂在种子 {}，与本单指定的种子 {} 不是同一个",
+                stid.map(|v| v.to_string())
+                    .unwrap_or_else(|| "未关联种子".into()),
+                want_tid
+            )));
+        }
+    }
+    let want = rl.trim().to_lowercase();
+    let got = sl.unwrap_or_default().trim().to_lowercase();
+    if want.is_empty() || got == want {
+        return Ok(());
+    }
+    // 两侧都按字典 code 写（chs/eng/jpn…），但历史行可能只有 lang_id
+    let dict: Option<i16> = sqlx::query_scalar(
+        "SELECT id FROM subtitle_langs WHERE code = lower($1)",
+    )
+    .bind(&rl)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if dict.is_none() || slab != dict {
+        return Err(DomainError::Validation(format!(
+            "交稿字幕语言为 {}，与本单要求的 {} 不一致",
+            if got.is_empty() { "未标注" } else { &got },
+            rl
+        )));
+    }
+    Ok(())
+}
+
 /// 扩展名白名单：subtitle_ext_whitelist（kind 决定默认值，站长可改）
 pub(super) async fn subtitle_ext_whitelist(
     db: &sqlx::PgPool,

@@ -221,6 +221,14 @@ pub(super) async fn subtitle_request_deliver(
             "只能交付本人上传且已过审的字幕".into(),
         ));
     }
+    // 相关性判据（P-177 同族）：交稿同样必须与这一单要的是同一件事。
+    // 漏了它时，「逾期自动验收结算」会把错货也一并结掉（发起人不动就发钱）。
+    super::subtitles_util::ensure_req_match(
+        &state.repo.db,
+        rid,
+        body.subtitle_id,
+    )
+    .await?;
     let row: Option<(i64,)> = sqlx::query_as(
         "UPDATE subtitle_requests SET status = 4, fulfilled_subtitle_id \
          = $2, deliver_at = now() WHERE id = $1 AND status = 3 AND ($3 OR \
