@@ -121,12 +121,14 @@ async fn demand_deposit(
             bs.min_demand
         )));
     }
-    let idem = body
-        .idempotency_key
-        .clone()
-        .filter(|k| !k.trim().is_empty())
-        .map(|k| format!("demand_in:{}:{}", auth.id, k.trim()))
-        .unwrap_or_else(|| format!("demand_in:{}:{}", auth.id, Uuid::new_v4()));
+    // 体字段优先、Idempotency-Key 头兜底（缺省回退随机键链保持不变）
+    let idem = crate::http::idempotency::body_or_header(
+        &body.idempotency_key,
+    )
+    .map(|k| format!("demand_in:{}:{}", auth.id, k))
+    .unwrap_or_else(|| {
+        format!("demand_in:{}:{}", auth.id, Uuid::new_v4())
+    });
     // 单事务（P1 撕裂窗口收口）：扣款与活期入账同生共死——旧版扣款先提交、入账失败
     // 只能靠 spawn 退款补偿（随机幂等键），进程崩溃窗口内钱扣了活期没涨。
     // 同时幂等重放必须终止（P0）：重放时 spend 不扣款，若继续累加活期余额 = 无中生有。
@@ -198,14 +200,14 @@ async fn demand_withdraw(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let idem = body
-        .idempotency_key
-        .clone()
-        .filter(|k| !k.trim().is_empty())
-        .map(|k| format!("demand_out:{}:{}", auth.id, k.trim()))
-        .unwrap_or_else(|| {
-            format!("demand_out:{}:{}", auth.id, Uuid::new_v4())
-        });
+    // 体字段优先、Idempotency-Key 头兜底（缺省回退随机键链保持不变）
+    let idem = crate::http::idempotency::body_or_header(
+        &body.idempotency_key,
+    )
+    .map(|k| format!("demand_out:{}:{}", auth.id, k))
+    .unwrap_or_else(|| {
+        format!("demand_out:{}:{}", auth.id, Uuid::new_v4())
+    });
     // 幂等检查前置到扣减之前（同事务内）：重放请求直接拒绝
     let replayed: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",

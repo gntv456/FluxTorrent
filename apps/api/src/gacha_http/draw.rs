@@ -39,12 +39,21 @@ pub(super) async fn gacha_draw(
     if !(1..=10).contains(&count) {
         return Err(DomainError::Validation("count 需在 1~10".into()));
     }
-    let idem = body.idempotency_key.trim().to_string();
-    if idem.len() < 8 || idem.len() > 120 {
-        return Err(DomainError::Validation(
+    // 幂等键来源（体字段必填，头兜底）：体的 8..=120 校验对头来源同样适用
+    // ——头兜底值不满足长度视同未提供（缺键 400 由下方 ok_or 兜住）。
+    let body_key: Option<String> = {
+        let k = body.idempotency_key.trim().to_string();
+        if (8..=120).contains(&k.len()) {
+            Some(k)
+        } else {
+            None
+        }
+    };
+    let idem = crate::http::idempotency::body_or_header(&body_key)
+        .filter(|k| (8..=120).contains(&k.len()))
+        .ok_or(DomainError::Validation(
             "idempotency_key 需 8~120 字符".into(),
-        ));
-    }
+        ))?;
     let bundle = pool::load_pool(&state.repo.db, body.banner_id).await?;
     // 运行时经济守卫：含保底综合返还率 >100% 直接 409（直改库也拦）
     let ec = gacha_math::economics(&bundle.cfg, bundle.meta.ticket_cost as f64);

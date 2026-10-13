@@ -85,11 +85,12 @@ async fn loan_repay(
         Some(amount) if amount < payoff => {
             let to_interest = amount.min(accrued + today_interest);
             let to_principal = amount - to_interest;
-            let idem = body
-                .idempotency_key
-                .clone()
-                .filter(|k| !k.trim().is_empty())
-                .map(|k| format!("loan_repay_p:{}:{}", auth.id, k.trim()))
+            // 体字段优先、Idempotency-Key 头兜底（部分还款必填口径不变）
+            let idem =
+                crate::http::idempotency::body_or_header(
+                    &body.idempotency_key,
+                )
+                .map(|k| format!("loan_repay_p:{}:{}", auth.id, k))
                 .ok_or_else(|| {
                     DomainError::Validation("部分还款缺少幂等键".into())
                 })?;

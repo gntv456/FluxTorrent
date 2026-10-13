@@ -137,13 +137,12 @@ async fn shop_buy(
     // 服务端键必须带 uid 前缀：裸客户端键跨用户碰撞时，B 的消费会被误判为 A 的重放。
     // trim 后为空视同缺失（商城审计 P2）：空白键会落成 `shop:{uid}:` 这种
     // 全站可碰撞的键，不同请求互相误判重放。
-    let idem = body
-        .idempotency_key
-        .clone()
-        .map(|k| k.trim().to_string())
-        .filter(|k| !k.is_empty())
-        .map(|k| format!("shop:{}:{}", auth.id, k))
-        .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
+    // 体字段优先、Idempotency-Key 头兜底（http/idempotency.rs 统一口径）
+    let idem = crate::http::idempotency::body_or_header(
+        &body.idempotency_key,
+    )
+    .map(|k| format!("shop:{}:{}", auth.id, k))
+    .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
 
     // 库存配额（0287 P3）：quota 非空时 buy 前原子占位——越界即回滚报售罄，
     // 防超发。必须放在幂等判定**之后**（商城审计 P1-2）：重放请求不扣款
