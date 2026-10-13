@@ -45,7 +45,9 @@ async fn admin_medals(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+    serde_json::to_value(rows)
+        .map_err(|e| DomainError::Internal(e.into()))
+        .map(ok)
 }
 
 #[derive(Deserialize)]

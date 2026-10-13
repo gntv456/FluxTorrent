@@ -46,7 +46,9 @@ async fn jixiao_types_list(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+    serde_json::to_value(rows)
+        .map_err(|e| DomainError::Internal(e.into()))
+        .map(ok)
 }
 
 #[derive(Deserialize)]
@@ -171,7 +173,7 @@ async fn jixiao_type_delete(
     .bind(id)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if used > 0 {
         return Err(DomainError::Validation(
             "已有考核登记引用该岗位，不可删除".into(),

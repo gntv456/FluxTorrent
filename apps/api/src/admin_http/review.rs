@@ -292,8 +292,7 @@ async fn review_decide(
         &body.reason,
     )
     .await;
-    // 种子操作记录（torrent-operation-logs 口径）：留痕失败不许阻断裁决，
-    // 但必须报出来——时间线缺环比一次 500 更难发现（与 postpone/resume 同形）
+    // 种子操作记录：留痕失败不阻断裁决，但必须报出来（与 postpone/resume 同形）
     if let Err(e) = sqlx::query(
         "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
          VALUES ($1, $2, $3, $4::jsonb)",
@@ -302,11 +301,9 @@ async fn review_decide(
     .bind(auth.id)
     .bind(action)
     .bind(
-        serde_json::json!({
-            "reason": body.reason,
-            "deny_reason_id": body.deny_reason_id,
-        })
-        .to_string(),
+        serde_json::json!({"reason": body.reason,
+            "deny_reason_id": body.deny_reason_id})
+            .to_string(),
     )
     .execute(&state.repo.db)
     .await
