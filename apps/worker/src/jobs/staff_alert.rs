@@ -1,6 +1,7 @@
-//! 管理组站内信的唯一出口（批五十二 P-197/198）。
+//! 管理组站内信的唯一出口（批五十二 P-197/198/199）。
 //!
-//! 三处自动告警原先都写成
+//! 四处自动告警原先各写各的：三处（`cheat_enforce` / `audit` 的差额告警 /
+//! `sweep` 的积压告警）写成
 //! `INSERT INTO staffmessages … SELECT MIN(id), … FROM users
 //!  WHERE class_id>=90`。
 //! —— 这是**把聚合当 EXISTS 用**：`SELECT MIN(id)` 没有 GROUP BY，过滤命中
