@@ -19,7 +19,9 @@ use super::meta::{MetaRow, META_SELECT};
 // ============================================================================
 //
 // 导出：全量配置 JSON。密文字段默认掩码（值为空串并列入 masked_secrets），
-//       `plaintext=1` 时以明文导出（仅 sysop）。
+//       `plaintext=1` 时以明文导出（仅 sysop）。明文导出额外写一条
+//       `setting:export` 审计（批五十 P-191：只记「谁导过、是不是明文、几条」，
+//       绝不记值）；两种导出都带 `Cache-Control: no-store`（P-192）。
 // 导入：仅 sysop。首次调用（confirm 缺省）为空跑，只回字段级 diff；带
 //       `confirm=true` 才落库。逐字段复用同一套 validate_field。
 //       密文空值语义随 `plaintext` 开关而定：
@@ -82,7 +84,28 @@ pub(super) async fn settings_export(
         }
     }
     let count = settings.len();
-    Ok(ok(serde_json::json!({
+    // 明文导出＝把全站密钥交出接口，必须留痕（P-191）。只记「发生过」，
+    // 绝不记值——审计行是可读的，写值等于再开一条泄漏路。掩码导出不记，
+    // 免得打开一次抽屉就堆一行。
+    let n_masked = masked.len();
+    if plaintext {
+        state
+            .repo
+            .audit_detail(
+                Some(auth.id),
+                "setting:export",
+                None,
+                None,
+                Some(serde_json::json!({
+                    "plaintext": true,
+                    "count": count,
+                    "secret_keys": n_masked,
+                })),
+            )
+            .await;
+    }
+    // 导出体可能含明文密钥，禁止任何中间缓存（P-192，同 compat 层口径）
+    Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "format": "fluxtorrent.settings",
         "version": 1,
         "exported_at": chrono::Utc::now(),
@@ -90,7 +113,7 @@ pub(super) async fn settings_export(
         "count": count,
         "masked_secrets": masked,
         "settings": settings,
-    })))
+    }))))
 }
 
 #[derive(Deserialize)]
