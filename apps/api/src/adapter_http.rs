@@ -151,8 +151,8 @@ async fn adapter_list(
         String,
     )> = sqlx::query_as(
         "SELECT id, adapter_id, kind, name, version, http_allow, \
-         rate_limit_per_min, enabled, strikes, last_error, installed_at \
-         FROM adapters ORDER BY kind, adapter_id",
+         rate_limit_per_min, enabled, strikes, last_error, installed_at, \
+         checksum FROM adapters ORDER BY kind, adapter_id",
     )
     .fetch_all(&state.repo.db)
     .await

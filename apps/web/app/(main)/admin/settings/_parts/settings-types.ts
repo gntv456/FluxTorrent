@@ -148,6 +148,8 @@ export interface AdapterRow {
   strikes: number;
   last_error: string;
   installed_at: string;
+  /** 模块字节 sha256（批四十九 P-190：装完也要能核对指纹） */
+  checksum: string;
 }
 
 /** POST /admin/adapters/try 的结果 */
