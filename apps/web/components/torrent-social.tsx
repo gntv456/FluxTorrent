@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { toast } from "@/components/ui/toast";
 import {
   REPLY_EVENT,
   type ReplyTarget,
@@ -12,7 +13,9 @@ import {
 /** 感谢 / 收藏 / 评论表单（M07 社区互动，客户端叶子组件）
  *  魔力答谢按钮组对齐同类站详情页口径（+1/+10/+100/+500/+1000/+10000）
  *  0156 嵌套回复：监听回复按钮的 flux:comment-reply 事件设置目标，
- *  发表时随 body 带 parent_id 提交，提交/取消后自清 */
+ *  发表时随 body 带 parent_id 提交，提交/取消后自清
+ *  W-17 乐观更新：收藏按钮点击瞬间 UI 翻转（不等网络），失败时
+ *  翻回 + toast.optimistic 自动改口成错误提示（含 request_id） */
 export function TorrentSocial({ torrentId }: { torrentId: number }) {
   const { dict, currency } = useI18n();
   const t = dict.tdetail;
@@ -66,18 +69,19 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
   }
 
   async function toggleBookmark() {
+    // W-17 乐观更新：先翻转 UI + 成功态 toast，失败由 optimistic 改口
+    // （错误 toast 带 request_id），UI 翻回由返回值驱动
     const on = !bookmarked;
-    try {
-      await api.put(`/api/v1/torrents/${torrentId}/bookmark`, { on });
-      setBookmarked(on);
-      setMsg(on ? dict.torrent.bookmarkOk : dict.torrent.unbookmarkOk);
-    } catch (e) {
-      setMsg(
-        e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
-          : dict.common.networkError,
-      );
-    }
+    setBookmarked(on);
+    const ok = await toast.optimistic(
+      on ? dict.torrent.bookmarkOk : dict.torrent.unbookmarkOk,
+      {
+        run: () =>
+          api.put(`/api/v1/torrents/${torrentId}/bookmark`, { on }),
+        rollbackMessage: dict.ui.optimisticRollback,
+      },
+    );
+    if (!ok) setBookmarked(!on);
   }
 
   async function submitComment(e: React.FormEvent) {

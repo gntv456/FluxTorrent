@@ -1,7 +1,6 @@
 "use client";
 
-import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
-import { Icon } from "@/components/icons";
+import { INPUT_LG } from "@/lib/ui-classes";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -13,6 +12,12 @@ import {
   mountCaptchaWidget,
 } from "@/lib/captcha-widget";
 import { RegisterFields } from "@/components/register-fields";
+import {
+  FormField,
+  FieldErrors,
+  fieldErrorsFrom,
+} from "@/components/ui/form-field";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface Captcha {
   captcha_id: string;
@@ -27,7 +32,19 @@ interface ModeInfo {
   application_signup?: string;
 }
 
-/** 注册页（M01 邀请制）：邀请码 + 算术验证码 + 账号密码，对接 POST /auth/register */
+/** W-18 试点：错误码 → 字段级渲染的映射。后端注册接口多为单错误码
+ *  （2005 邀请码 / 2007 用户名占用 / 2011 验证码…），按码归到对应
+ *  字段让 FormField 内联红字；1002 多字段信封走 fieldErrorsFrom。 */
+const CODE_TO_FIELD: Record<number, string> = {
+  2005: "invite_code", // 邀请码无效或已过期
+  2006: "invite_code", // 邀请码已被使用
+  2007: "username", // 用户名已被占用
+  1002: "", // 多字段信封，fieldErrorsFrom 解析
+};
+
+/** 注册页（M01 邀请制）：邀请码 + 算术验证码 + 账号密码，对接 POST /auth/register。
+ *  W-18 表单协议试点：FormField 四槽位 + FieldErrors 汇总 + SubmitButton
+ *  生命周期（busy 防双击）；错误按码映射到字段内联渲染。 */
 export default function RegisterPage() {
   const { dict } = useI18n();
   const router = useRouter();
@@ -48,8 +65,8 @@ export default function RegisterPage() {
   >([]);
   const [fieldVals, setFieldVals] = useState<Record<string, unknown>>({});
   const [captcha, setCaptcha] = useState<Captcha | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
+  // W-18：字段级错误 map（字段名 → 消息）；表单级错误降级为 form 键
+  const [fieldErrs, setFieldErrs] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   // 注册模式（0204）：open 模式不强制邀请码；invite_only 需要
   // （0208：email_verify 选项已移除，仅 invite_only/open 两态）
@@ -92,11 +109,31 @@ export default function RegisterPage() {
       .catch(() => setOpenMode(false));
   }, []);
 
+  /** W-18 错误路径：后端错 → 字段级 map。优先 1002 多字段信封
+   *  （fieldErrorsFrom），单错误码按 CODE_TO_FIELD 归字段；归不了的
+   *  落 form 键由 FieldErrors 顶部汇总渲染。 */
+  function mapError(err: unknown): Record<string, string[]> {
+    const fromEnvelope = fieldErrorsFrom(err);
+    if (fromEnvelope) {
+      return Object.fromEntries(
+        Object.entries(fromEnvelope).map(([f, v]) => [
+          f,
+          Array.isArray(v) ? v : [v],
+        ]),
+      );
+    }
+    if (err instanceof ApiError) {
+      const msg = dict.errors[err.code] ?? err.message;
+      const field = CODE_TO_FIELD[err.code];
+      return field ? { [field]: [msg] } : { form: [msg] };
+    }
+    return { form: [dict.common.networkError] };
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setMsg(null);
-    setOkMsg(null);
+    setFieldErrs({});
     try {
       await api.post("/api/v1/auth/register", {
         username: username.trim(),
@@ -110,26 +147,21 @@ export default function RegisterPage() {
         fields: fieldVals,
       });
       // 注册成功直接走登录（后端注册不返回 token）
-      const resp = await api.post<{ token: string }>("/api/v1/auth/login", {
+      await api.post<{ token: string }>("/api/v1/auth/login", {
         username: username.trim(),
         password,
       });
       setSessionCookie(true);
       router.push("/torrents");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setMsg(dict.errors[err.code] ?? err.message);
-      } else {
-        setMsg(dict.common.networkError);
-      }
+      setFieldErrs(mapError(err));
       refreshCaptcha(); // 验证码一次性，失败即换新题
     } finally {
       setBusy(false);
     }
   }
 
-  const inputCls =
-    INPUT_LG;
+  const first = (f: string) => fieldErrs[f]?.[0];
 
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-8">
@@ -137,25 +169,29 @@ export default function RegisterPage() {
       <h1 className="font-display text-2xl">{dict.register.title}</h1>
       <p className="-mt-4 text-sm text-sub">{dict.register.subtitle}</p>
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">
-            {dict.register.inviteCode}
-            {openMode && (
-              <span className="ml-1 font-normal text-fainter">
-                {dict.register.inviteOptional}
-              </span>
-            )}
-          </span>
+        {/* W-18：表单级错误（含映射不出的码）走 FieldErrors 汇总 */}
+        <FieldErrors fields={fieldErrs} />
+        <FormField
+          name="invite_code"
+          label={dict.register.inviteCode}
+          required={!openMode}
+          error={first("invite_code")}
+          hint={openMode ? dict.register.inviteOptional : undefined}
+        >
           <input
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
             required={!openMode}
             maxLength={32}
-            className={inputCls}
+            className={INPUT_LG}
           />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.register.username}</span>
+        </FormField>
+        <FormField
+          name="username"
+          label={dict.register.username}
+          required
+          error={first("username")}
+        >
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -163,29 +199,32 @@ export default function RegisterPage() {
             required
             minLength={3}
             maxLength={24}
-            className={inputCls}
+            className={INPUT_LG}
           />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.register.email}</span>
-          {/* 定向邀请提示（2026-09-27）：邮件链接落地（?invite= 预填）时
-              后端校验注册邮箱须与收到邀请的邮箱一致 */}
-          {inviteCode && (
-            <span className="text-xs text-[var(--text-faint)]">
-              {dict.register.emailMustMatch}
-            </span>
-          )}
+        </FormField>
+        <FormField
+          name="email"
+          label={dict.register.email}
+          required
+          error={first("email")}
+          hint={inviteCode ? dict.register.emailMustMatch : undefined}
+        >
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            className={inputCls}
+            className={INPUT_LG}
           />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.register.password}</span>
+        </FormField>
+        <FormField
+          name="password"
+          label={dict.register.password}
+          required
+          error={first("password")}
+          hint={dict.register.passwordHint}
+        >
           <input
             type="password"
             value={password}
@@ -193,66 +232,57 @@ export default function RegisterPage() {
             autoComplete="new-password"
             required
             minLength={8}
-            className={inputCls}
+            className={INPUT_LG}
           />
-          <span className="text-xs text-sub">{dict.register.passwordHint}</span>
-        </label>
+        </FormField>
         {/* 验证码（0227）：none=自研算术题；第三方=对应组件（token 由回调写入） */}
         {driver !== "none" && siteKey ? (
           <div id={DRIVER_WIDGET_ID[driver]} className="min-h-[64px]" />
         ) : null}
         {/* 算术验证码（后端 /auth/captcha 出题，一次性） */}
         {driver === "none" && (
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.register.captcha}</span>
-          <div className="flex items-center gap-2">
-            <span
-              className="num min-h-[44px] flex items-center
-                rounded-[var(--r-sm)] border border-line bg-cloud px-3
-                font-bold"
-            >
-              {captcha?.question ?? "…"}
-            </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={captchaAnswer}
-              onChange={(e) =>
-                setCaptchaAnswer(e.target.value.replace(/\D/g, ""))
-              }
-              required
-              placeholder={dict.register.captchaAnswer}
-              className={`${inputCls} min-w-0 flex-1`}
-            />
-            <button
-              type="button"
-              onClick={refreshCaptcha}
-              aria-label={dict.register.captchaRefresh}
-              className="min-h-[44px] shrink-0 rounded-full border border-line
-                px-3 text-sm text-sub active:scale-[0.97]"
-            >
-              ↻
-            </button>
-          </div>
-        </label>
+          <FormField
+            name="captcha"
+            label={dict.register.captcha}
+            required
+            error={first("captcha")}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="num min-h-[44px] flex items-center
+                  rounded-[var(--r-sm)] border border-line bg-cloud px-3
+                  font-bold"
+              >
+                {captcha?.question ?? "…"}
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={captchaAnswer}
+                onChange={(e) =>
+                  setCaptchaAnswer(e.target.value.replace(/\D/g, ""))
+                }
+                required
+                placeholder={dict.register.captchaAnswer}
+                className={`${INPUT_LG} min-w-0 flex-1`}
+              />
+              <button
+                type="button"
+                onClick={refreshCaptcha}
+                aria-label={dict.register.captchaRefresh}
+                className="min-h-[44px] shrink-0 rounded-full border border-line
+                  px-3 text-sm text-sub active:scale-[0.97]"
+              >
+                ↻
+              </button>
+            </div>
+          </FormField>
         )}
-        {msg && (
-          <p role="alert" className="text-sm text-danger">
-            {msg}
-          </p>
-        )}
-        {okMsg && (
-          <p role="status" className="text-sm text-mint">
-            {okMsg}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={busy}
-          className={BTN_LG_SKY}
-        >
-          {busy ? dict.register.busy : dict.register.submit}
-        </button>
+        <SubmitButton
+          busy={busy}
+          label={dict.register.submit}
+          busyLabel={dict.register.busy}
+        />
         <RegisterFields
           fields={regFields}
           values={fieldVals}

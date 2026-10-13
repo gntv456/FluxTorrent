@@ -5,9 +5,9 @@
  "vitest.config.ts": [],
  "vitest.setup.ts": [],
  "lib/api-client.ts": [
-  106,
-  138,
-  141
+  131,
+  173,
+  176
  ],
  "lib/api-upstream.ts": [],
  "lib/captcha-widget.ts": [],
@@ -149,9 +149,9 @@
  ],
  "app/manifest.ts": [
   15,
-  45,
-  50,
-  55
+  47,
+  52,
+  57
  ],
  "app/robots.ts": [],
  "app/sitemap.ts": [],
@@ -1110,5 +1110,10 @@
  "app/(auth)/register/page.tsx": [],
  "app/(auth)/forgot/page.tsx": [],
  "app/(auth)/email-verify/page.tsx": [],
- "app/(auth)/apply/page.tsx": []
+ "app/(auth)/apply/page.tsx": [],
+ "e2e/visual-regression.spec.ts": [
+  32,
+  36,
+  47
+ ]
 }

@@ -51,7 +51,8 @@ const nav = {
   exams: "我的考核",
   achievements: "成就墙",
   resurrections: "复活任务",
-  discover: "发现",
+  discoverRes: "资源发现",
+  discoverSubs: "字幕与保种",
   spark: "{magic}经济",
   growth: "成长荣誉",
   fun: "娱乐",
@@ -61,7 +62,7 @@ const tabbar = { shop: "商店" };
 const allOn = () => true;
 
 describe("defaultNav", () => {
-  it("全模块开启时一级 5 项 + 5 分组，顺序稳定（快照）", () => {
+  it("全模块开启时一级 4 项 + 6 分组，顺序稳定（快照）", () => {
     const r = defaultNav({
       nav,
       tabbar,
@@ -69,27 +70,28 @@ describe("defaultNav", () => {
       modules: allOn,
       customItems: [],
     });
+    // IA-1（W-30）：/top 从一级让位给顶栏搜索，落「资源发现」组首项
     expect(r.primary.map((p) => p.href)).toEqual([
       "/",
       "/torrents",
       "/forums",
-      "/top",
       "/upload",
     ]);
     expect(r.groups.map((g) => g.group)).toEqual([
-      "发现",
+      "资源发现",
+      "字幕与保种",
       "魔力经济",
       "成长荣誉",
       "娱乐",
       "更多",
     ]);
     // {magic} 占位替换：分组名与条目名都生效
-    expect(r.groups[1].group).toBe("魔力经济");
+    expect(r.groups[2].group).toBe("魔力经济");
     // 魔力经济组末两项：魔力总览 / 魔力明细（0226 C5 新增）
-    expect(r.groups[1].items.at(-2)?.label).toBe("魔力经济");
-    expect(r.groups[1].items.at(-1)?.label).toBe("魔力明细");
+    expect(r.groups[2].items.at(-2)?.label).toBe("魔力经济");
+    expect(r.groups[2].items.at(-1)?.label).toBe("魔力明细");
     // 成长荣誉组首项：等级要求公开页（0226 P2 触点 #2）
-    expect(r.groups[2].items[0]?.href).toBe("/classes");
+    expect(r.groups[3].items[0]?.href).toBe("/classes");
   });
 
   it("模块开关过滤：forums 关闭一级消失，games 关闭娱乐组剔除", () => {
