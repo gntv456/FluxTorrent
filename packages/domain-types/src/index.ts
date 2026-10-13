@@ -251,6 +251,7 @@ export const MODULE_KEYS = [
   "subtitles",
   "preserve",
   "shoutbox",
+  "wiki",
   "invites",
   // 经济
   "promo_buy",

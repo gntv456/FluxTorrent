@@ -48,6 +48,8 @@ fn route_module(path: &str) -> Option<&'static str> {
         ("/api/v1/follows", key::FORUMS), // 论坛关注（0155）：与 /forums/feed 同域
         ("/api/v1/textbooks", key::TEXTBOOKS),
         ("/api/v1/shoutbox", key::SHOUTBOX),
+        // Wiki 公开读（0359）：/admin/wiki 管理端点免检（§5.5 站长要能进去开模块）
+        ("/api/v1/wiki", key::WIKI),
         // 运营
         ("/api/v1/attendance", key::ATTENDANCE),
         ("/api/v1/medals", key::MEDALS),
