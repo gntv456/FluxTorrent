@@ -56,15 +56,18 @@ TID = int(psql("SELECT min(id) FROM torrents WHERE approval_status IN (0, 2) "
 RID = [0]
 
 
+def bk_alive():
+    return psql("SELECT count(*) FROM information_schema.tables WHERE "
+                "table_name = '%s'" % BK.lower()) == "1"
+
+
 def cleanup():
-    if TID:
+    if TID and bk_alive():
         psql("UPDATE torrents t SET approval_status = b.approval_status, "
-             "deny_note = b.deny_note FROM %s b WHERE b.id = t.id AND t.id = %d"
-             % (BK, TID))
-    if RID[0]:
+             "deny_note = b.deny_note FROM %s b WHERE b.id = t.id "
+             "AND t.id = %d" % (BK, TID))
     psql("DELETE FROM torrent_deny_reasons WHERE id = %d "
-         "OR reason LIKE 'BV%%'" % RID[0])
-        % RID[0])
+         "OR reason LIKE 'BV%%'" % (RID[0] or 0))
 
 
 import atexit  # noqa: E402
@@ -176,9 +179,23 @@ ok("V4d 暂缓/恢复都要真进种子操作时间线（这是站长回看处�
 rv = io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
                           "apps", "api", "src", "v4_http.rs"),
              encoding="utf-8").read()
-swallow = rv.count("let _ = sqlx::query(")
-ok("V4e 静态：v4_http 里暂缓/恢复的留痕写入不许再静默吞错（let _ = …）",
-   swallow == 0, "残留 let _ = sqlx::query %d 处" % swallow)
+def unguarded(text):
+    """留痕 INSERT 的条数 减去 配对了 warn 的条数，再加裸 let _ = 的处数"""
+    logs = text.count("INSERT INTO torrent_operation_logs")
+    warned = text.count("审核留痕写入失败")
+    return max(0, logs - warned) + text.count("let _ = sqlx::query(")
+
+
+swallow = unguarded(rv)
+dec = io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                           "apps", "api", "src", "admin_http", "review.rs"),
+              encoding="utf-8").read()
+dec_sw = unguarded(dec)
+ok("V4e 静态：三处审核留痕（decide / postpone / resume）都不许再静默吞错"
+   "——判据是「有留痕 INSERT 却没配对 warn」的条数 + 裸 let _ = 的处数"
+   "（v4_http %d、review %d）" % (swallow, dec_sw),
+   swallow == 0 and dec_sw == 0,
+   "v4_http=%d review=%d" % (swallow, dec_sw))
 
 # ===== V9 收尾 =====
 cleanup()

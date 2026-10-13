@@ -127,16 +127,22 @@ async fn review_postpone(
             "种子不存在或不在可暂缓状态".into(),
         ));
     }
-    // 与 decide 同口径留痕（P2-4：旧版只写 audit_log，操作时间线缺这一环）
-    let _ = sqlx::query(
-        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
-         VALUES ($1, $2, 'postpone', $3)",
+    // 与 decide 同口径留痕（P2-4：旧版只写 audit_log，操作时间线缺这一环）。
+    // detail 是 jsonb：旧写法没写 `$3::jsonb`，绑进去的是 text ⇒ 这条 INSERT
+    // **每次都失败**，而外层 `let _ =` 把它吞掉 ⇒ 时间线里永远缺 postpone 一环
+    // （闸门 BV 的 V4d 实测）。留痕失败不许阻断裁决，但必须报出来。
+    if let Err(e) = sqlx::query(
+        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, \
+         detail) VALUES ($1, $2, 'postpone', $3::jsonb)",
     )
     .bind(body.torrent_id)
     .bind(auth.id)
     .bind(serde_json::json!({ "reason": body.reason.trim() }).to_string())
     .execute(&state.repo.db)
-    .await;
+    .await
+    {
+        tracing::warn!(%e, torrent = body.torrent_id, "审核留痕写入失败(postpone)");
+    }
     state
         .repo
         .audit(Some(auth.id), "review.postpone", Some(body.torrent_id))
@@ -173,15 +179,19 @@ async fn review_resume(
     if n == 0 {
         return Err(DomainError::Validation("种子不存在或不在暂缓状态".into()));
     }
-    // 与 decide 同口径留痕（P2-4）
-    let _ = sqlx::query(
-        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
-         VALUES ($1, $2, 'resume', '{}')",
+    // 与 decide 同口径留痕（P2-4）；同 postpone 一处：jsonb 列要显式 cast，
+    // 且失败要报出来
+    if let Err(e) = sqlx::query(
+        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, \
+         detail) VALUES ($1, $2, 'resume', '{}'::jsonb)",
     )
     .bind(body.torrent_id)
     .bind(auth.id)
     .execute(&state.repo.db)
-    .await;
+    .await
+    {
+        tracing::warn!(%e, torrent = body.torrent_id, "审核留痕写入失败(resume)");
+    }
     state
         .repo
         .audit(Some(auth.id), "review.resume", Some(body.torrent_id))
