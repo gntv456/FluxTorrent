@@ -3,11 +3,16 @@
 //! 职责与边界（冻结面 v1，R2：扩面需品类级评审）：
 //! - guest 只暴露一个导出 `fetch(url: str) -> str`（JSON 结果）；health 由
 //!   fetch("") 空参调用代替（M4 从简，v2 再拆 health_check）；
-//! - 宿主 API 四函数（wasm 侧绑定，线性内存边界由 wasmtime 保证）：
+//! - 宿主 API 在 `adapter_host.rs`（五个 wasm 侧导入）、沙箱件与内存边界在
+//!   `adapter_sandbox.rs`：
 //!     host_http_fetch(url, body_json) -> json  —— 出网白名单 + 20s 超时 + 限流
 //!     host_cache_get(key) / host_cache_set(key, val, ttl_s) —— 适配器命名空间 KV
 //!       （进程内 LRU，M4 不落 Redis：元数据 TTL 小、重启可接受）
 //!     host_log(level, msg) —— tracing 透传（前缀 adapter_id）
+//! - **KV 表与限流桶的生命周期在本类型（`AdapterRuntime`）：进程内共享、按
+//!   adapter_id 分桶**（批四十九 P-188/P-189）。原先两者都在 `call()` 里每次
+//!   新建，于是「每分钟」的限流只统计单次调用内 guest 出网几次（跨调用恒从零
+//!   起），缓存写完即随 Store 丢弃（命中率恒 0、容量清理分支永不可达）；
 //! - epoch 限额（死循环防线）：wasmtime epoch_interruption + tokio 定时 bump；
 //! - 熔断（A4）：调用方（adapter_http）按 Err 维护 adapters.strikes，≥3 自动停用；
 //!   本模块只负责「一次调用的成败与错误分类」。
@@ -19,44 +24,18 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use wasmtime::component::Component;
-use wasmtime::{Config, Engine, Linker, Store};
+use wasmtime::{Config, Engine};
 
+use crate::adapter_host::build_linker;
+use crate::adapter_sandbox::{new_store, KvTable, RateBucket};
 use crate::errors::{DomainError, DomainResult};
 
 /// 死循环防线：epoch 预算（调用开始到 bump 的时间窗）
-/// guest 线性内存 + 表上限（四轮审计 M2）：64MiB 足够元数据抓取类适配器
-const GUEST_MEM_LIMIT: usize = 64 * 1024 * 1024;
-
-/// wasmtime ResourceLimiter 的最小实现：只限总量，不追踪增长语义
-struct MemLimiter {
-    limit: usize,
-}
-
-impl wasmtime::ResourceLimiter for MemLimiter {
-    fn memory_growing(
-        &mut self,
-        _current: usize,
-        desired: usize,
-        _maximum: Option<usize>,
-    ) -> Result<bool, wasmtime::Error> {
-        Ok(desired <= self.limit)
-    }
-
-    fn table_growing(
-        &mut self,
-        _current: usize,
-        desired: usize,
-        _maximum: Option<usize>,
-    ) -> Result<bool, wasmtime::Error> {
-        Ok(desired <= self.limit)
-    }
-}
-
 const EPOCH_TIMEOUT: Duration = Duration::from_secs(10);
 /// 单次适配器调用的挂钟上限（含 http_fetch 在内的总时长）
 const CALL_TIMEOUT: Duration = Duration::from_secs(25);
-/// 适配器进程内缓存容量（条数）
-const CACHE_CAP: usize = 512;
+/// 限流桶条数上限（适配器总量个位数，越界清空兜底）
+const BUCKET_CAP: usize = 64;
 
 /// 适配器清单（行记录的内存形状；DB 行 + 运行态共用）
 pub(crate) struct AdapterManifest {
@@ -67,66 +46,16 @@ pub(crate) struct AdapterManifest {
     pub rate_limit_per_min: i32,
 }
 
-/// 一次调用的上下文（宿主状态）
-struct HostState {
-    manifest: AdapterManifest,
-    /// guest 内存/表上限（四轮审计 M2）——limiter 回调借 data_mut 用
-    mem_limiter: MemLimiter,
-    /// 进程内 KV（key 前缀 adapter_id 隔离）
-    cache: Arc<Mutex<HashMap<String, (String, Instant)>>>,
-    /// 限流：窗口起点 + 计数
-    rate: Arc<Mutex<(Instant, u64)>>,
-    /// 出网执行器（async 由 wrapper 线程承接，见 host_http_fetch 注释）
-    http: Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>,
-    /// manifest.secrets_read 预加载的键值（site_settings.adapter_secret_<名>）
-    secrets: std::collections::HashMap<String, String>,
-}
-
-impl HostState {
-    fn cache_get(&self, key: &str) -> Option<String> {
-        let map = self.cache.lock().ok()?;
-        let (v, exp) = map
-            .get(&format!("{}:{}", self.manifest.adapter_id, key))?
-            .clone();
-        (Instant::now() < exp).then_some(v)
-    }
-    fn cache_set(&self, key: &str, val: &str, ttl_s: u64) {
-        if let Ok(mut map) = self.cache.lock() {
-            if map.len() >= CACHE_CAP {
-                map.retain(|_, (_, exp)| Instant::now() < *exp);
-            }
-            map.insert(
-                format!("{}:{}", self.manifest.adapter_id, key),
-                (
-                    val.to_string(),
-                    Instant::now() + Duration::from_secs(ttl_s.max(1)),
-                ),
-            );
-        }
-    }
-    fn rate_take(&self) -> bool {
-        if let Ok(mut r) = self.rate.lock() {
-            let (at, n) = *r;
-            if at.elapsed() >= Duration::from_secs(60) {
-                *r = (Instant::now(), 1);
-                return true;
-            }
-            if n >= self.manifest.rate_limit_per_min as u64 {
-                return false;
-            }
-            *r = (at, n + 1);
-            return true;
-        }
-        false
-    }
-}
-
 /// 一次性引擎（每模块每调用实例化；元数据调用频率低，M4 不做实例池——
 /// wasmtime Engine 构造重，进程内以 OnceLock 共享）
 pub(crate) struct AdapterRuntime {
     pub engine: Engine,
     /// 编译产物缓存（四轮 M2）：Module 可跨 Store 复用（Send+Sync）
     module_cache: Mutex<HashMap<(String, String), wasmtime::Module>>,
+    /// 适配器命名空间 KV（跨调用共享，key 含 adapter_id 前缀）
+    kv: KvTable,
+    /// 每个适配器一只限流桶（P-188 的本体：桶必须在调用之间活着）
+    buckets: Mutex<HashMap<String, RateBucket>>,
 }
 
 impl AdapterRuntime {
@@ -142,8 +71,24 @@ impl AdapterRuntime {
             AdapterRuntime {
                 engine,
                 module_cache: Mutex::new(HashMap::new()),
+                kv: Arc::new(Mutex::new(HashMap::new())),
+                buckets: Mutex::new(HashMap::new()),
             }
         })
+    }
+
+    /// 取（或建）该适配器的限流桶；窗口 60s 由 `rate_take` 自己滚。
+    fn bucket_for(&self, adapter_id: &str) -> RateBucket {
+        let mut map = self.buckets.lock().unwrap();
+        if let Some(b) = map.get(adapter_id) {
+            return b.clone();
+        }
+        if map.len() >= BUCKET_CAP {
+            map.clear();
+        }
+        let b: RateBucket = Arc::new(Mutex::new((Instant::now(), 0)));
+        map.insert(adapter_id.to_string(), b.clone());
+        b
     }
 
     /// 四轮审计 M2（2026-10-07）：Module 按 (adapter_id, wasm 指纹) 缓存——
@@ -179,10 +124,6 @@ impl AdapterRuntime {
     }
 
     /// 出网白名单匹配（glob 近似：前缀 + `**` 尾通配）
-    /// 出网白名单匹配（glob 近似）：
-    /// `https://example.com/**` → 该 host 任意路径；
-    /// `https://*.douban.com/**` → 子域（含裸域）任意路径；
-    /// 无 `/**` 后缀 → 精确 URL。全部强制 https。
     pub(crate) fn url_allowed_for(
         manifest: &AdapterManifest,
         url: &str,
@@ -190,7 +131,8 @@ impl AdapterRuntime {
         Self::url_allowed(manifest, url)
     }
 
-    fn url_allowed(manifest: &AdapterManifest, url: &str) -> bool {
+    /// 白名单判据（`adapter_host` 的 http_fetch 与 /ptgen 试探共用这一份）
+    pub(crate) fn url_allowed(manifest: &AdapterManifest, url: &str) -> bool {
         let u = url.trim();
         let https = u.starts_with("https://");
         let host_path = u.strip_prefix("https://").unwrap_or("");
@@ -224,32 +166,19 @@ impl AdapterRuntime {
         wasm_bytes: &[u8],
         url: &str,
         http: Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>,
-        secrets: std::collections::HashMap<String, String>,
+        secrets: HashMap<String, String>,
     ) -> DomainResult<String> {
         let module = self.module_cached(manifest, wasm_bytes)?;
-        let mut store = Store::new(
-            &self.engine,
-            HostState {
-                mem_limiter: MemLimiter {
-                    limit: GUEST_MEM_LIMIT,
-                },
-                manifest: AdapterManifest {
-                    adapter_id: manifest.adapter_id.clone(),
-                    kind: manifest.kind.clone(),
-                    http_allow: manifest.http_allow.clone(),
-                    secrets_read: manifest.secrets_read.clone(),
-                    rate_limit_per_min: manifest.rate_limit_per_min,
-                },
-                cache: Arc::new(Mutex::new(HashMap::new())),
-                rate: Arc::new(Mutex::new((Instant::now(), 0))),
-                http,
-                secrets,
-            },
-        );
-        // 四轮审计 M2（2026-10-07）：guest 自行 memory.grow 无上限（wasmtime
-        // 实例可达 4GiB）——沙箱在 API 进程内，必须 limiter 硬限。
-        store.limiter(|state| &mut state.mem_limiter);
-        store.set_epoch_deadline(1);
+        let m = AdapterManifest {
+            adapter_id: manifest.adapter_id.clone(),
+            kind: manifest.kind.clone(),
+            http_allow: manifest.http_allow.clone(),
+            secrets_read: manifest.secrets_read.clone(),
+            rate_limit_per_min: manifest.rate_limit_per_min,
+        };
+        let rate = self.bucket_for(&m.adapter_id);
+        let mut store =
+            new_store(&self.engine, m, secrets, http, self.kv.clone(), rate);
         // epoch bump 线程：EPOCH_TIMEOUT 后触发 trap
         let engine = self.engine.clone();
         let bump = std::thread::spawn(move || {
@@ -257,126 +186,7 @@ impl AdapterRuntime {
             engine.increment_epoch();
         });
 
-        let mut linker = Linker::new(&self.engine);
-        linker
-            .func_wrap(
-                "host",
-                "http_fetch",
-                |mut caller: wasmtime::Caller<'_, HostState>,
-                 url_ptr: i32, url_len: i32,
-                 out_ptr: i32, out_cap: i32|
-                 -> i32 {
-                    let mem = match caller.get_export("memory").and_then(|e| e.into_memory()) {
-                        Some(m) => m,
-                        None => return -1,
-                    };
-                    let (data, store) = mem.data_and_store_mut(&mut caller);
-                    let url = match read_str(data, url_ptr, url_len) {
-                        Some(s) => s,
-                        None => return -1,
-                    };
-                    if !AdapterRuntime::url_allowed(&store.manifest, &url) {
-                        tracing::warn!(adapter = store.manifest.adapter_id.as_str(), %url, "出网越权拒绝");
-                        return -2;
-                    }
-                    if !store.rate_take() {
-                        return -3;
-                    }
-                    let body = match (store.http)(&url) {
-                        Ok(b) => b,
-                        Err(_) => return -4,
-                    };
-                    write_str(data, out_ptr, out_cap, &body)
-                },
-            )
-            .and_then(|l| l.func_wrap(
-                "host",
-                "cache_get",
-                |mut caller: wasmtime::Caller<'_, HostState>,
-                 key_ptr: i32, key_len: i32,
-                 out_ptr: i32, out_cap: i32|
-                 -> i32 {
-                    let mem = match caller.get_export("memory").and_then(|e| e.into_memory()) {
-                        Some(m) => m,
-                        None => return -1,
-                    };
-                    let (data, store) = mem.data_and_store_mut(&mut caller);
-                    let key = match read_str(data, key_ptr, key_len) {
-                        Some(s) => s,
-                        None => return -1,
-                    };
-                    match store.cache_get(&key) {
-                        Some(v) => write_str(data, out_ptr, out_cap, &v),
-                        None => 0,
-                    }
-                },
-            ))
-            .and_then(|l| l.func_wrap(
-                "host",
-                "cache_set",
-                |mut caller: wasmtime::Caller<'_, HostState>,
-                 key_ptr: i32, key_len: i32,
-                 val_ptr: i32, val_len: i32,
-                 ttl: i64| {
-                    let mem = match caller.get_export("memory").and_then(|e| e.into_memory()) {
-                        Some(m) => m,
-                        None => return,
-                    };
-                    let (data, store) = mem.data_and_store_mut(&mut caller);
-                    if let (Some(k), Some(v)) = (
-                        read_str(data, key_ptr, key_len),
-                        read_str(data, val_ptr, val_len),
-                    ) {
-                        store.cache_set(&k, &v, ttl.max(0) as u64);
-                    }
-                },
-            ))
-            .and_then(|l| l.func_wrap(
-                "host",
-                "host_log",
-                |mut caller: wasmtime::Caller<'_, HostState>,
-                 level: i32,
-                 msg_ptr: i32, msg_len: i32| {
-                    let mem = match caller.get_export("memory").and_then(|e| e.into_memory()) {
-                        Some(m) => m,
-                        None => return,
-                    };
-                    let (data, store) = mem.data_and_store_mut(&mut caller);
-                    if let Some(m) = read_str(data, msg_ptr, msg_len) {
-                        match level {
-                            2 => tracing::warn!(adapter = store.manifest.adapter_id.as_str(), "{m}"),
-                            _ => tracing::info!(adapter = store.manifest.adapter_id.as_str(), "{m}"),
-                        }
-                    }
-                },
-            ))
-            .and_then(|l| l.func_wrap(
-                "host",
-                "secret",
-                |mut caller: wasmtime::Caller<'_, HostState>,
-                 name_ptr: i32, name_len: i32,
-                 out_ptr: i32, out_cap: i32|
-                 -> i32 {
-                    let mem = match caller.get_export("memory").and_then(|e| e.into_memory()) {
-                        Some(m) => m,
-                        None => return -1,
-                    };
-                    let (data, store) = mem.data_and_store_mut(&mut caller);
-                    let name = match read_str(data, name_ptr, name_len) {
-                        Some(s) => s,
-                        None => return -1,
-                    };
-                    if !store.manifest.secrets_read.contains(&name) {
-                        // 白名单外请求：不留内容痕迹，长度 -5 区分
-                        return -5;
-                    }
-                    match store.secrets.get(&name) {
-                        Some(v) => write_str(data, out_ptr, out_cap, v),
-                        None => 0,
-                    }
-                },
-            ))
-            .map_err(|e| DomainError::Internal(e.into()))?;
+        let linker = build_linker(&self.engine)?;
 
         let instance =
             linker.instantiate(&mut store, &module).map_err(|e| {
@@ -433,24 +243,6 @@ impl AdapterRuntime {
 
 fn adapter_err(m: &AdapterManifest, msg: &str) -> DomainError {
     DomainError::Validation(format!("适配器 {}: {}", m.adapter_id, msg))
-}
-
-fn read_str(data: &[u8], ptr: i32, len: i32) -> Option<String> {
-    if ptr < 0 || len < 0 {
-        return None;
-    }
-    let s = data.get(ptr as usize..(ptr + len) as usize)?;
-    String::from_utf8(s.to_vec()).ok()
-}
-
-/// 返回写入长度（≥0）或 -1（容量不足）
-fn write_str(data: &mut [u8], ptr: i32, cap: i32, s: &str) -> i32 {
-    let b = s.as_bytes();
-    if b.len() > cap as usize || ptr < 0 {
-        return -1;
-    }
-    data[ptr as usize..ptr as usize + b.len()].copy_from_slice(b);
-    b.len() as i32
 }
 
 // Component 模型 v2 预留（M4 用核心 wasm + 手写 ABI）

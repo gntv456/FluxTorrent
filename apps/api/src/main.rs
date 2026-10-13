@@ -2,6 +2,9 @@
 //! 启动：迁移 schema → 连接池/Redis → HTTP 服务（信封 + CORS + tracing）。
 
 mod access_log;
+mod adapter_call;
+mod adapter_host;
+mod adapter_sandbox;
 mod adapter_http;
 mod adapter_runtime;
 mod adapter_seed;
