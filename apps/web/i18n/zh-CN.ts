@@ -1260,6 +1260,8 @@ const zhCnBase = {
     staffCard: "管理组信箱",
     hrCard: "H&R 考察中",
     hrUrgent: "{n} 个即将到期",
+    // 四态（W-28）：三路全挂（含未登录）时的 ErrorPanel 说明
+    errorDesc: "通知服务暂时不可用，请稍后重试。",
   },
   myhr: {
     title: "我的 H&R",
@@ -1617,6 +1619,8 @@ const zhCnBase = {
     uploaded: "上传量",
     downloaded: "下载量",
     ratio: "分享率",
+    // 顶栏魔力 chip（W-31 / IA-2 ①）无障碍名/title
+    sparkChipTitle: "当前{magic}余额，点击查看明细",
     classLabel: "等级",
     seedingLabel: "在做种",
     leechingLabel: "在下载",
@@ -2399,6 +2403,10 @@ const zhCnBase = {
     downloaded: "下载量",
     seedSize: "做种体积",
     empty: "榜单虚位以待",
+    // 四态（W-27）：接口失败说明（ErrorPanel desc）/ 六榜全空整页空态
+    errorDesc: "排行榜服务暂时不可用，请稍后重试。",
+    emptyAll: "榜单还没有数据",
+    emptyAllDesc: "站内产生做种与下载行为后，排行榜会自动生成。",
     // 榜头列名 / 做种时长拼段（page.tsx valueHeader + fmtDuration）
     colRank: "排名",
     colUser: "用户",

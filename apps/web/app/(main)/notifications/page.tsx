@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,11 @@ export const dynamic = "force-dynamic";
  * 通知中心（0283 P1-9）：把散落三处的「要看的消息」聚合到一页——
  * 未读私信 / 管理组信箱 / H&R 待办（到期前 7 天内算紧急）。
  * 各面板是入口卡（数字 + 直达链接），不在本页复刻列表。
+ *
+ * 四态（W-28）：三路全挂（含未登录 401）→ ErrorPanel 整页错误（原实现
+ * 恒显三张 0 卡，对着游客演「一切安好」）；任一路成功即正常渲染，
+ * 单路失败按原口径静默降级（staff 403 = 卡片不渲染）。加载态由
+ * loading.tsx 承担；「全部清零」是成功态文案（allClear），空态不适用。
  */
 
 interface OverviewResp {
@@ -29,11 +35,33 @@ interface StaffResp {
 
 export default async function NotificationsPage() {
   const { dict } = await getDict();
-  const [ov, hr, staff] = await Promise.all([
-    api.get<OverviewResp>("/api/v1/me/overview").catch(() => null),
-    api.get<HrResp>("/api/v1/me/hr").catch(() => null),
-    api.get<StaffResp>("/api/v1/messages/staff").catch(() => null),
+  const results = await Promise.allSettled([
+    api.get<OverviewResp>("/api/v1/me/overview"),
+    api.get<HrResp>("/api/v1/me/hr"),
+    api.get<StaffResp>("/api/v1/messages/staff"),
   ]);
+  const ov = results[0].status === "fulfilled" ? results[0].value : null;
+  const hr = results[1].status === "fulfilled" ? results[1].value : null;
+  const staff = results[2].status === "fulfilled" ? results[2].value : null;
+  const t = dict.notifications;
+
+  // 三路全挂 = 会话失效或 API 整体故障：数字全是演的，不如诚实报错
+  if (ov === null && hr === null && staff === null) {
+    const firstErr = results.find(
+      (r) => r.status === "rejected",
+    ) as PromiseRejectedResult | undefined;
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="font-display text-2xl">{t.title}</h1>
+        <ErrorPanel
+          error={firstErr?.reason ?? { message: dict.common.loadFailed }}
+          retryHref="/notifications"
+          desc={t.errorDesc}
+        />
+      </div>
+    );
+  }
+
   const unread = ov?.unread_messages ?? 0;
   const staffRows = Array.isArray(staff?.data)
     ? staff!.data!
@@ -44,7 +72,6 @@ export default async function NotificationsPage() {
   const hrUrgent = hrOpen.filter(
     (r) => new Date(r.deadline).getTime() < week,
   ).length;
-  const t = dict.notifications;
 
   const cards = [
     {

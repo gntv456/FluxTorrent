@@ -1271,6 +1271,8 @@ const zhTwBase: Omit<
     staffCard: "管理組信箱",
     hrCard: "H&R 考察中",
     hrUrgent: "{n} 個即將到期",
+    // 四態（W-28）：三路全掛（含未登入）時的 ErrorPanel 說明
+    errorDesc: "通知服務暫時不可用，請稍後重試。",
   },
   myhr: {
     title: "我的 H&R",
@@ -1627,6 +1629,8 @@ const zhTwBase: Omit<
     uploaded: "上傳量",
     downloaded: "下載量",
     ratio: "分享率",
+    // 頂欄魔力 chip（W-31 / IA-2 ①）無障礙名/title
+    sparkChipTitle: "目前{magic}餘額，點擊查看明細",
     classLabel: "等級",
     seedingLabel: "在做種",
     leechingLabel: "在下載",
@@ -2405,6 +2409,10 @@ const zhTwBase: Omit<
     downloaded: "下載量",
     seedSize: "做種體積",
     empty: "榜單虛位以待",
+    // 四態（W-27）：介面失敗說明（ErrorPanel desc）/ 六榜全空整頁空態
+    errorDesc: "排行榜服務暫時不可用，請稍後重試。",
+    emptyAll: "榜單還沒有資料",
+    emptyAllDesc: "站內產生做種與下載行為後，排行榜會自動生成。",
     colRank: "排名",
     colUser: "使用者",
     unitSize: "大小",

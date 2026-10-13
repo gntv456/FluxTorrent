@@ -3,10 +3,14 @@ import { formatBytes, avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { getDict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { Dict } from "@/i18n/zh-CN";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
-/** 排行榜（好学站 top.php 口径）：六榜卡片两行 —— 最多魔力/上传量/下载量/最长做种时间/后宫时魔/发种量 */
+/** 排行榜（好学站 top.php 口径）：六榜卡片两行 —— 最多魔力/上传量/下载量/最长做种时间/后宫时魔/发种量
+ *  四态（W-27）：失败 ErrorPanel（/top/boards 挂）/ 全空 EmptyState
+ *  （新站六榜全空是真实状态，不再是六张「暂无」卡片堆叠）。 */
 
 function medal(rank: number): string {
   if (rank === 1) return "🏆";
@@ -25,7 +29,8 @@ function fmtDuration(hours: number, t: Dict["top"]): string {
 }
 
 function Avatar({ u }: { u: TopRow }) {
-  // 框图优先，否则 CSS 描边；容器 relative 供叠层定位
+  // 框图优先，否则 CSS 描边；容器 relative 供叠层定位。
+  // E 批口径：头像（含框叠层）不走 PosterImage——那是海报专用件。
   const style = u.avatar_frame_image
     ? undefined
     : avatarFrameStyle(u.avatar_frame_css);
@@ -156,7 +161,20 @@ function Board({
 export default async function TopPage() {
   const { dict, locale, currency } = await getDict();
   const t = dict.top;
-  const b = await getTopBoards();
+  // 四态（W-27）：区分「接口挂」与「全空」——原实现 catch 后吞成空数组，
+  // 后端故障会被误报成六榜「暂无数据」。
+  let b: Awaited<ReturnType<typeof getTopBoards>> | null = null;
+  let err: unknown = null;
+  try {
+    b = await getTopBoards();
+  } catch (e) {
+    err = e;
+  }
+  const allEmpty =
+    b !== null &&
+    [b.bonus, b.uploaded, b.downloaded, b.seedtime, b.hourly, b.torrents].every(
+      (r) => r.length === 0,
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -166,68 +184,84 @@ export default async function TopPage() {
           <h1 className="font-display text-2xl">{t.title}</h1>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Board
-          currency={currency}
-          icon="💰"
-          title={t.boardBonus.replace("{magic}", currency)}
-          rows={b.bonus}
-          empty={t.empty}
-          unit="magic"
-          t={t}
-          fmt={(v) => Math.round(v).toLocaleString(dateLocale(locale))}
+      {err !== null ? (
+        <ErrorPanel
+          error={err}
+          retryHref="/top"
+          desc={t.errorDesc}
         />
-        <Board
-          currency={currency}
-          icon="⬆️"
-          title={t.boardUploaded}
-          rows={b.uploaded}
-          empty={t.empty}
-          unit="size"
-          t={t}
-          fmt={formatBytes}
+      ) : allEmpty ? (
+        <EmptyState
+          icon="trophy"
+          title={t.emptyAll}
+          desc={t.emptyAllDesc}
         />
-        <Board
-          currency={currency}
-          icon="⬇️"
-          title={t.boardDownloaded}
-          rows={b.downloaded}
-          empty={t.empty}
-          unit="size"
-          t={t}
-          fmt={formatBytes}
-        />
-        <Board
-          currency={currency}
-          icon="⏳"
-          title={t.boardSeedtime}
-          rows={b.seedtime}
-          empty={t.empty}
-          unit="hours"
-          fmt={(v) => fmtDuration(v, t)}
-          t={t}
-        />
-        <Board
-          currency={currency}
-          icon="💒"
-          title={t.boardHourly}
-          rows={b.hourly}
-          empty={t.empty}
-          unit="perHour"
-          t={t}
-          fmt={(v) => v.toFixed(2)}
-        />
-        <Board
-          currency={currency}
-          icon="🌱"
-          title={t.boardTorrents}
-          rows={b.torrents}
-          empty={t.empty}
-          unit="count"
-          t={t}
-          fmt={(v) => Math.round(v).toLocaleString(dateLocale(locale))}
-        />
-      </div>
+      ) : (
+        b && (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <Board
+              currency={currency}
+              icon="💰"
+              title={t.boardBonus.replace("{magic}", currency)}
+              rows={b.bonus}
+              empty={t.empty}
+              unit="magic"
+              t={t}
+              fmt={(v) => Math.round(v).toLocaleString(dateLocale(locale))}
+            />
+            <Board
+              currency={currency}
+              icon="⬆️"
+              title={t.boardUploaded}
+              rows={b.uploaded}
+              empty={t.empty}
+              unit="size"
+              t={t}
+              fmt={formatBytes}
+            />
+            <Board
+              currency={currency}
+              icon="⬇️"
+              title={t.boardDownloaded}
+              rows={b.downloaded}
+              empty={t.empty}
+              unit="size"
+              t={t}
+              fmt={formatBytes}
+            />
+            <Board
+              currency={currency}
+              icon="⏳"
+              title={t.boardSeedtime}
+              rows={b.seedtime}
+              empty={t.empty}
+              unit="hours"
+              fmt={(v) => fmtDuration(v, t)}
+              t={t}
+            />
+            <Board
+              currency={currency}
+              icon="💒"
+              title={t.boardHourly}
+              rows={b.hourly}
+              empty={t.empty}
+              unit="perHour"
+              t={t}
+              fmt={(v) => v.toFixed(2)}
+            />
+            <Board
+              currency={currency}
+              icon="🌱"
+              title={t.boardTorrents}
+              rows={b.torrents}
+              empty={t.empty}
+              unit="count"
+              t={t}
+              fmt={(v) => Math.round(v).toLocaleString(dateLocale(locale))}
+            />
+          </div>
+        )
+      )}
     </div>
   );
 }

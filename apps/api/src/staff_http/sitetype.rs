@@ -69,8 +69,7 @@ pub async fn site_profile(
     let media = dict_rows("media", true).await;
     let editions = dict_rows("editions", edu_like).await;
     let brand: String = sqlx::query_scalar(
-        // 键收敛（0214 P2-4.6）：site_name 是权威键（向导/后台主要写它）；
-        // SITENAME 是 NexusPHP 口径的旧键（RSS 频道名在用），仅作回落，不再各自为政
+        // 键收敛（0214）：site_name 权威；SITENAME 是 NP 旧键仅回落
         "SELECT COALESCE(NULLIF((SELECT value FROM site_settings WHERE name \
          = 'site_name'), ''), \
          (SELECT value FROM site_settings WHERE name = 'SITENAME'), '')",
@@ -86,11 +85,9 @@ pub async fn site_profile(
     let currency: String = profile_bits::setting_text(db, "currency_name")
         .await
         .unwrap_or_else(|| "魔力".to_string());
-    // 建站日期（页脚版权条 "(c) 站名 日期 Powered by FluxTorrent" 用）
-    let founded: Option<String> =
-        profile_bits::setting_text(db, "datefounded").await;
-    // 默认语言（0216 G1 真驱动）：NP 口径 en|chs|cht（与 users.site_language 同码制），
-    // 前端 getLocale 对「无语言 cookie 的新访客」回落到它，再映射到 BCP47 文案
+    // 建站日期（页脚版权条用）
+    let founded = profile_bits::setting_text(db, "datefounded").await;
+    // 默认语言（0216）：NP 口径 en|chs|cht；前端 getLocale 新访客回落源
     let default_language: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'default_language'",
     )
@@ -100,8 +97,7 @@ pub async fn site_profile(
     .flatten()
     .unwrap_or_else(|| "chs".into());
 
-    // 模块开关：site_type_packs.modules 只是站型的**初始快照**，运行时权威在
-    // site_settings.module_*（后台改了开关，导航要跟着变）。以前者打底、后者覆盖。
+    // 模块开关：pack.modules 是初始快照，运行时权威在 site_settings.module_*
     let mut modules = pack
         .as_ref()
         .map(|p| p.modules.clone())
@@ -184,10 +180,9 @@ pub async fn site_profile(
             .filter(|t| !t.is_empty())
     })
     .unwrap_or_default();
+    // logo / favicon（0214，空=内置 icon）/ 简介（0088，空=前端回落默认）
     let site_logo = profile_bits::setting_text(db, "site_logo").await;
-    // 站点图标（0214）：浏览器标签页 favicon；空 = 前端用内置 icon
     let site_favicon = profile_bits::setting_text(db, "site_favicon").await;
-    // 站点简介（0088）：页脚「站点信息」卡片文案，留空由前端回落字典默认
     let site_desc = profile_bits::setting_text(db, "site_desc").await;
     // SEO（0201）与主题令牌（0189）的判据在 profile_bits（空值/格式口径）
     let seo = profile_bits::seo_block(db).await;
@@ -197,6 +192,12 @@ pub async fn site_profile(
     let terms = profile_bits::terms(db).await;
     // 视图布局（E6）：列表列/详情段落的隐藏项（空 = 全默认显示）
     let view_hidden = crate::http::view_layout::view_hidden_raw(db).await;
+    // 顶栏魔力 chip（W-31 / IA-2 ①）：topbar_spark_chip，yes/缺省=开
+    // no=关（yes/no 口径与 locale_switcher_enabled 同族）
+    let spark_chip = profile_bits::setting_text(db, "topbar_spark_chip")
+        .await
+        .unwrap_or_else(|| "yes".into())
+        != "no";
     Ok(ok(serde_json::json!({
         "theme_tokens": theme_tokens,
         "terms": terms,
@@ -217,6 +218,8 @@ pub async fn site_profile(
         )
         .await
         .unwrap_or_else(|| "yes".into()),
+        // 顶栏魔力 chip 显隐（W-31 / IA-2 ①）：默认开，站长可按站型关
+        "topbar_spark_chip": spark_chip,
         "default_language": default_language,
         "subtitle_workflow": flag("subtitle_workflow", "0") == "1",
         "subtitle_award": flag("subtitle_award", "0") == "1",

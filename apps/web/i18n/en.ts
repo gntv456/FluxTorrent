@@ -1298,6 +1298,8 @@ const enBase: Omit<
     staffCard: "Staff inbox",
     hrCard: "H&R under review",
     hrUrgent: "{n} due soon",
+    // Four states (W-28): ErrorPanel hint when all three feeds fail
+    errorDesc: "The notification service is temporarily unavailable. Please retry later.",
   },
   myhr: {
     title: "My H&R",
@@ -1661,6 +1663,8 @@ const enBase: Omit<
     uploaded: "Uploaded",
     downloaded: "Downloaded",
     ratio: "Ratio",
+    // Topbar magic chip (W-31 / IA-2 #1) a11y name / title
+    sparkChipTitle: "Current {magic} balance — click for details",
     classLabel: "Class",
     seedingLabel: "Seeding",
     leechingLabel: "Leeching",
@@ -2462,6 +2466,10 @@ const enBase: Omit<
     downloaded: "Downloaded",
     seedSize: "Seed size",
     empty: "The podium awaits",
+    // Four states (W-27): fetch-failure hint (ErrorPanel desc) / all-empty page state
+    errorDesc: "The leaderboard service is temporarily unavailable. Please retry later.",
+    emptyAll: "No leaderboard data yet",
+    emptyAllDesc: "Boards fill in automatically once seeding and downloads pick up.",
     colRank: "Rank",
     colUser: "User",
     unitSize: "Size",
