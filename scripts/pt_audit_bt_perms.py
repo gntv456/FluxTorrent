@@ -102,7 +102,6 @@ def real_role(k):
         return True
     return psql("SELECT count(*) FROM user_classes WHERE "
                 "id::text = '%s'" % k) != "0"
-                       "id::text = '%s'" % k) != "0"
 
 
 RP0 = int(rp_cnt() or -1)
