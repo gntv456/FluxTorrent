@@ -43,6 +43,10 @@ pub(super) struct UploadForm {
     /// MediaInfo 文本（NP 详情页折叠块口径）：存 media_info.mediainfo，详情页原样展示
     #[serde(default)]
     pub(super) mediainfo: Option<String>,
+    // TMDB id（0358 第五源）：照 imdb 键形态存外链；title 年份由 PT-Gen
+    // 抓取时拼进 name（form.name），media_info 不另落 title 键
+    #[serde(default)]
+    pub(super) tmdb: Option<String>,
     /// 付费下载定价（0086）：0 = 免费，≤ 1,000,000；下载者支付，发布者得 (100-税)%
     #[serde(default)]
     pub(super) price: Option<i64>,
@@ -85,8 +89,9 @@ struct PtgenQ {
     url: String,
 }
 
-/// PT-Gen 代理（NP ptgen.php 口径）：服务端转发 imdb/douban/bangumi/indienova，
-/// 规避浏览器 CORS；返回 HTML 剥离为纯文本，匹配前端 markdown-lite 简介渲染
+/// PT-Gen 代理（NP ptgen.php 口径）：服务端转发 imdb/douban/bangumi/
+/// indienova/tmdb，规避浏览器 CORS；返回 HTML 剥离为纯文本，匹配前端
+/// markdown-lite 简介渲染
 #[get("/ptgen")]
 pub async fn ptgen(
     req: HttpRequest,
@@ -116,10 +121,16 @@ pub async fn ptgen(
         || enabled.contains("douban") && domain_ok(&host, "douban.com")
         || enabled.contains("bangumi")
             && (domain_ok(&host, "bgm.tv") || domain_ok(&host, "bangumi.tv"))
-        || enabled.contains("indienova") && domain_ok(&host, "indienova.com");
+        || enabled.contains("indienova") && domain_ok(&host, "indienova.com")
+        // 0358 TMDB 第五源：官方 API 直连（不走 PT-Gen 上游）
+        || enabled.contains("tmdb")
+            && (domain_ok(&host, "themoviedb.org")
+                || domain_ok(&host, "themoviedb.com"));
     if !allowed {
         return Err(DomainError::Validation(
-            "链接无效或该元数据源未在本站启用（imdb / douban / bangumi / indienova）".into(),
+            "链接无效或该元数据源未在本站启用（imdb / douban / bangumi \
+             / indienova / tmdb）"
+                .into(),
         ));
     }
     // 适配器优先（生态商店 M4 收尾）：启用的 metadata 适配器且 host 命中其
@@ -138,11 +149,21 @@ pub async fn ptgen(
 }
 
 /// PT-Gen 抓取内核（/ptgen 端点与发种自动补全共用，避免两套口径漂移）。
-/// 返回 `(name, descr, poster)`；poster 取自返回 HTML 的首张图（多数源把海报放首个 img）。
+/// 返回 `(name, descr, poster)`；poster 取自返回 HTML 的首张图。
+/// 0358：themoviedb.org 链接分流到 TMDB 官方 API 直连。
 pub(super) async fn fetch_meta(
     state: &AppState,
     url: &str,
 ) -> DomainResult<(String, String, Option<String>)> {
+    let parsed = url::Url::parse(url.trim())
+        .map_err(|_| DomainError::Validation("链接无效".into()))?;
+    let host = parsed.host_str().unwrap_or_default().to_lowercase();
+    let domain_ok =
+        |h: &str, base: &str| h == base || h.ends_with(&format!(".{base}"));
+    if domain_ok(&host, "themoviedb.org") || domain_ok(&host, "themoviedb.com")
+    {
+        return super::ptgen_tmdb::fetch_tmdb(state, url.trim()).await;
+    }
     // 上游可配（0284 P0-2）：site_settings.ptgen_upstream 优先（自托管可替换），
     // 缺省回落内置公共实例；空串 = 站长显式禁用——返回可操作文案而非 500
     let upstream: String = sqlx::query_scalar(
@@ -261,6 +282,17 @@ pub(super) fn build_media_info(form: &UploadForm) -> Option<serde_json::Value> {
         // 截断防滥用（MediaInfo 全文通常 < 64KB）
         let mi = &mi[..mi.len().min(60_000)];
         media_obj.insert("mediainfo".into(), serde_json::json!(mi));
+    }
+    // TMDB id（0358 第五源）：照 imdb 键形态存外链；title 年份由 PT-Gen
+    // 抓取时拼进 name（form.name），此处不重复落 title 键——media_info
+    // 已有 title 键的旧口径不存在，保持三键 + tmdb 即可
+    if let Some(t) = form
+        .tmdb
+        .as_deref()
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+    {
+        media_obj.insert("tmdb".into(), serde_json::json!(t));
     }
     if media_obj.is_empty() {
         None

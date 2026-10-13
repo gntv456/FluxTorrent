@@ -20,7 +20,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// staff 档保护线：90+ 是维护开发员/主管/sysop 档（0172 口径），不开放后台编辑
-const STAFF_CLASS_FLOOR: i32 = 90;
+pub(crate) const STAFF_CLASS_FLOOR: i32 = 90;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct AdminClassRow {

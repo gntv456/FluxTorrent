@@ -58,6 +58,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(section_mode_delete)
         .service(admin_classes_list)
         .service(admin_class_put)
+        .service(admin_class_impact_preview)
         .service(section_dict_admin)
         .service(section_dict_public)
         .service(tags_dict_public)

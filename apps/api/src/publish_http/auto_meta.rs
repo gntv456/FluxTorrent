@@ -11,6 +11,9 @@ use crate::state::AppState;
 
 /// 按 `imdb_id` 自动补全元数据（G7，对标 TMDB/IMDb 自动填充）。
 /// owner 或 staff 触发；**只在原值为空时写入**（不覆盖手填内容）。
+/// TMDB 口径（0358）：只认 URL 输入——本端点仍只喂 imdb 链接给
+/// fetch_meta；themoviedb.org 条目请直接在发布页 PT-Gen 栏贴链接
+/// （fetch_meta 已按 host 分流到 TMDB 直连，无需 imdb_id /find 反查）。
 #[post("/torrents/{id}/auto-meta")]
 pub async fn auto_meta(
     req: HttpRequest,
