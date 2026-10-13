@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
+import { PosterImage } from "@/components/poster-image";
 
 /** 海报卡片数据（首页最新种子投影） */
 export interface PosterItem {
@@ -47,13 +48,11 @@ function PosterCard({
       title={item.name}
       className="poster-card group relative block w-[150px] shrink-0 overflow-hidden rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] shadow-[var(--shadow-card)] sm:w-[168px]"
     >
-      {/* 海报图 */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {/* 海报图（无图回退生成式海报；挂图由 PosterImage onError 兜底） */}
+      <PosterImage
         src={item.poster || posterArt(item.id)}
         alt={item.name}
-        loading="lazy"
-        className="aspect-[5/7] w-full object-cover"
+        size="lg"
       />
       {/* 悬停信息浮层：影视名称 + 豆瓣评分 */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/30 to-transparent p-2.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
