@@ -107,6 +107,15 @@ pub(crate) async fn announce(
         return bencode_err("passkey 无效，请在站点重置");
     };
     let (user_id, class_id) = (pku.id, pku.class_id);
+    // 任务2（0351）：超频临时封禁检查——passkey 拿到 user_id 之后、权限检查
+    // 之前。ban 键由下方限流命中点写入（TTL = ANN_RATE_USER_BAN_SECS）。
+    if state.announce_user_banned(user_id).await {
+        state
+            .metrics
+            .announce_banned_user
+            .fetch_add(1, Ordering::Relaxed);
+        return bencode_err("temporarily banned, retry later");
+    }
     if pku.suspended {
         return bencode_err("账号已挂起，请联系管理组");
     }
@@ -177,6 +186,9 @@ pub(crate) async fn announce(
                 .metrics
                 .announce_limited_user
                 .fetch_add(1, Ordering::Relaxed);
+            // 任务2：超限即写临时封禁键（ban_secs=0 或 Redis 不可用时
+            // 内部跳过/降级，不影响原限流拒绝语义）
+            state.ban_announce_user(user_id).await;
             return bencode_err(msg);
         }
     }

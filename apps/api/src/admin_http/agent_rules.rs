@@ -1,3 +1,8 @@
+//! G-06 客户端黑白名单 admin API（NP AgentAllow/AgentDeny 口径）。
+//! 0351 起规则带版本区间（version_min/max，点分数字或空=不限）与
+//! priority（0..=1000，tracker 侧按 DESC 稳定排序先判）。
+//! 校验拆至 agent_rule_check.rs、单测拆至 agent_rules_tests.rs（门禁）。
+
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
@@ -5,9 +10,10 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
+use super::agent_rule_check::{
+    check_pattern, check_version_priority, AgentRuleReq,
+};
 use super::guard::staff;
-
-// ============ G-06 客户端黑白名单（NP AgentAllow/AgentDeny 口径） ============
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct AgentRuleRow {
@@ -15,21 +21,11 @@ struct AgentRuleRow {
     mode: String,
     pattern: String,
     note: Option<String>,
+    version_min: String,
+    version_max: String,
+    priority: i32,
     created_by: Option<String>,
     created_at: chrono::DateTime<chrono::Utc>,
-}
-
-/// pattern 会被 tracker 编译成正则（`guard_refresh.rs` 里 `Regex::new`），
-/// 编译失败就在加载阶段被跳过——站点侧看起来「已配置」，实际恒不生效。
-/// 所以在写入口就判掉：允许合法正则，拒绝非法语法与空模式。
-pub(crate) fn check_pattern(p: &str) -> DomainResult<()> {
-    // 详情（编译器报错）走日志，不进用户可见串：format! 拼的句子无法按原句查表
-    regex::Regex::new(p)
-        .map_err(|e| {
-            tracing::warn!(%e, %p, "agent_rules pattern 不是合法正则");
-            DomainError::Validation("pattern 需是合法正则表达式".into())
-        })
-        .map(|_| ())
 }
 
 #[get("/admin/agentrules")]
@@ -39,7 +35,9 @@ async fn agent_rules_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let rows: Vec<AgentRuleRow> = sqlx::query_as(
-        "SELECT r.id, r.mode, r.pattern, r.note, u.username AS created_by, r.created_at \
+        "SELECT r.id, r.mode, r.pattern, r.note, \
+             COALESCE(r.version_min, ''), COALESCE(r.version_max, ''), \
+             COALESCE(r.priority, 0), u.username AS created_by, r.created_at \
          FROM agent_rules r LEFT JOIN users u ON u.id = r.created_by \
          ORDER BY r.mode, r.id DESC LIMIT 200",
     )
@@ -49,14 +47,6 @@ async fn agent_rules_list(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize)]
-struct AgentRuleReq {
-    mode: String,
-    pattern: String,
-    #[serde(default)]
-    note: Option<String>,
-}
-
 #[post("/admin/agentrules")]
 async fn agent_rules_add(
     req: HttpRequest,
@@ -64,7 +54,7 @@ async fn agent_rules_add(
     body: web::Json<AgentRuleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    // 审计修复：客户端名单/拒绝原因是站点级配置，须 SETTINGS_MANAGE（与面板 min_class=99 一致）
+    // 审计修复：站点级配置须 SETTINGS_MANAGE（与面板 min_class=99 一致）
     crate::authz::require_perm(
         &state,
         &auth,
@@ -79,13 +69,19 @@ async fn agent_rules_add(
         return Err(DomainError::Validation("pattern 长度 1-100".into()));
     }
     check_pattern(p)?;
+    check_version_priority(&body)?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO agent_rules (mode, pattern, note, created_by) \
-         VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO agent_rules \
+             (mode, pattern, note, version_min, version_max, priority, \
+              created_by) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
     )
     .bind(&body.mode)
     .bind(p)
     .bind(&body.note)
+    .bind(body.version_min.trim())
+    .bind(body.version_max.trim())
+    .bind(body.priority)
     .bind(auth.id)
     .fetch_one(&state.repo.db)
     .await
@@ -118,16 +114,27 @@ async fn agent_rules_export(
         crate::authz::perm::SETTINGS_MANAGE,
     )
     .await?;
-    let rows: Vec<(String, String, Option<String>)> = sqlx::query_as(
-        "SELECT mode, pattern, note FROM agent_rules ORDER BY mode, id",
+    let rows: Vec<AgentRuleRow> = sqlx::query_as(
+        "SELECT id, mode, pattern, note, \
+             COALESCE(version_min, ''), COALESCE(version_max, ''), \
+             COALESCE(priority, 0), NULL AS created_by, \
+             now() AS created_at \
+         FROM agent_rules ORDER BY mode, id",
     )
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let rules: Vec<serde_json::Value> = rows
         .into_iter()
-        .map(|(mode, pattern, note)| {
-            serde_json::json!({"mode": mode, "pattern": pattern, "note": note})
+        .map(|r| {
+            serde_json::json!({
+                "mode": r.mode,
+                "pattern": r.pattern,
+                "note": r.note,
+                "version_min": r.version_min,
+                "version_max": r.version_max,
+                "priority": r.priority,
+            })
         })
         .collect();
     Ok(ok(serde_json::json!({
@@ -169,18 +176,25 @@ async fn agent_rules_import(
             invalid += 1;
             continue; // 跳过非法条目，不整体失败
         }
-        if check_pattern(p).is_err() {
+        if check_pattern(p).is_err() || check_version_priority(r).is_err() {
             invalid += 1;
             continue;
         }
         let n = sqlx::query(
-            "INSERT INTO agent_rules (mode, pattern, note, created_by) \
-             SELECT $1, $2, $3, $4 \
-             WHERE NOT EXISTS (SELECT 1 FROM agent_rules WHERE mode = $1 AND pattern = $2)",
+            "INSERT INTO agent_rules \
+                 (mode, pattern, note, version_min, version_max, priority, \
+                  created_by) \
+             SELECT $1, $2, $3, $4, $5, $6, $7 \
+             WHERE NOT EXISTS ( \
+                   SELECT 1 FROM agent_rules \
+                    WHERE mode = $1 AND pattern = $2)",
         )
         .bind(&r.mode)
         .bind(p)
         .bind(&r.note)
+        .bind(r.version_min.trim())
+        .bind(r.version_max.trim())
+        .bind(r.priority)
         .bind(auth.id)
         .execute(&state.repo.db)
         .await
@@ -208,7 +222,7 @@ async fn agent_rules_del(
     body: web::Json<AgentRuleDel>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    // 审计修复：客户端名单/拒绝原因是站点级配置，须 SETTINGS_MANAGE（与面板 min_class=99 一致）
+    // 审计修复：站点级配置须 SETTINGS_MANAGE（与面板 min_class=99 一致）
     crate::authz::require_perm(
         &state,
         &auth,
@@ -233,40 +247,5 @@ async fn agent_rules_del(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::check_pattern;
-
-    #[test]
-    fn literal_substring_still_compiles() {
-        // 0036 注释举的例子：子串写法本身就是合法正则
-        assert!(check_pattern("Transmission/3").is_ok());
-        assert!(check_pattern("^qBittorrent/4\\.6").is_ok());
-    }
-
-    #[test]
-    fn invalid_regex_is_rejected_at_the_write_door() {
-        for bad in ["(", "a{2,1}", "[z-a]", "*x", "(?P<n>x", "x)"] {
-            assert!(
-                check_pattern(bad).is_err(),
-                "{bad} 应在写入口就被拒，而不是加载时静默跳过"
-            );
-        }
-    }
-
-    /// 写入口只判语法，判不出**意图**——这条断言钉住这个边界，免得以后
-    /// 有人以为「存进去了就一定按字面生效」。`uTorrent/3.5.5 (build)` 是
-    /// 合法正则（括号成了捕获组），它匹配的是 `uTorrent/3.5.5 build`，
-    /// 而真实 UA 里那对括号是字面字符 ⇒ 规则永远不命中，却不报错。
-    /// 想按字面匹配必须自己转义：`uTorrent/3\.5\.5 \(build\)`。
-    #[test]
-    fn legal_but_literal_looking_parens_are_accepted_not_escaped() {
-        assert!(check_pattern("uTorrent/3.5.5 (build)").is_ok());
-        assert!(check_pattern(r"uTorrent/3\.5\.5 \(build\)").is_ok());
-        let loose = regex::Regex::new("uTorrent/3.5.5 (build)").unwrap();
-        let strict = regex::Regex::new(r"uTorrent/3\.5\.5 \(build\)").unwrap();
-        // 拿站长填的那串字面本身当 UA：未转义时连自己都匹配不到
-        let ua = "uTorrent/3.5.5 (build)";
-        assert!(!loose.is_match(ua), "未转义的括号组匹配不到字面 UA");
-        assert!(strict.is_match(ua), "转义后才按字面匹配");
-    }
-}
+#[path = "agent_rules_tests.rs"]
+mod tests;

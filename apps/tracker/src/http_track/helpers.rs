@@ -57,6 +57,8 @@ pub(crate) struct Metrics {
     pub(crate) ratio_gate_warn: AtomicU64,
     /// 低分享率被当场拒下载（`ratio_gate=block`）的次数
     pub(crate) ratio_gate_block: AtomicU64,
+    /// 超频临时封禁命中次数（`ban:ann:u:{user_id}`，ANN_RATE_USER_BAN_SECS）
+    pub(crate) announce_banned_user: AtomicU64,
 }
 
 /// 本地滑动窗口限流（Redis 故障降级用）：key → (计数, 窗口起点)
@@ -94,6 +96,9 @@ pub(crate) struct GuardCfg {
     pub(crate) global_per_min: i64,
     /// site_settings 缺失 announce_interval 时的兜底值（秒）
     pub(crate) default_interval: i64,
+    /// 超频临时封禁时长（秒）：用户级限流命中后写 `ban:ann:u:{id}`，
+    /// 期间 announce 直接拒。0 = 关闭封禁（只保留原限流拒绝）。
+    pub(crate) user_ban_secs: i64,
 }
 
 pub(crate) fn env_i64(key: &str, default: i64) -> i64 {
@@ -131,11 +136,16 @@ pub(crate) struct GuardInner {
 /// P0-7 客户端规则（NP `agent_allowed_family` 口径精简版）：
 /// User-Agent 与 peer_id 各一条正则；吸血客户端常 UA 报正常客户端而 peer_id 暴露 -XL/-XF 前缀，
 /// 单查 UA 会漏。规则正则无效时加载阶段即跳过（refresh 时 warn）。
+/// 0351 起可带版本区间（version_min/version_max，空=不限）与 priority
+/// （大者先判，同值保持加载序）——匹配工具在 agent_ver.rs。
 #[derive(Clone)]
 pub(crate) struct AgentRule {
     pub(crate) deny: bool,
     pub(crate) agent_re: Option<regex::Regex>,
     pub(crate) peer_re: Option<regex::Regex>,
+    pub(crate) version_min: String,
+    pub(crate) version_max: String,
+    pub(crate) priority: i64,
 }
 
 pub(crate) const GUARD_REFRESH: Duration = Duration::from_secs(60);

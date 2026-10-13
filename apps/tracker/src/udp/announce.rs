@@ -1,5 +1,4 @@
 //! UDP announce 处理（BEP15）：解析、防护链、peer 表更新、事件投递与响应编码。
-
 use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
 
@@ -116,6 +115,18 @@ pub(super) async fn announce(
         return UdpTracker::err_pkt(transaction_id, "passkey 无效");
     };
     let (user_id, class_id) = (pku.id, pku.class_id);
+    // 任务2（0351）：超频临时封禁检查——passkey 拿到 user_id 之后、权限
+    // 检查之前（与 HTTP announce 同口径，错误文案同为 bencode 语义串）
+    if t.state.announce_user_banned(user_id).await {
+        t.state
+            .metrics
+            .announce_banned_user
+            .fetch_add(1, Ordering::Relaxed);
+        return UdpTracker::err_pkt(
+            transaction_id,
+            "temporarily banned, retry later",
+        );
+    }
     if pku.suspended {
         return UdpTracker::err_pkt(transaction_id, "账号已被挂起");
     }
@@ -159,6 +170,9 @@ pub(super) async fn announce(
                 .metrics
                 .announce_limited_user
                 .fetch_add(1, Ordering::Relaxed);
+            // 任务2：超限即写临时封禁键（ban_secs=0/Redis 不可用时内部
+            // 跳过/降级，不影响原限流拒绝语义）
+            t.state.ban_announce_user(user_id).await;
             return UdpTracker::err_pkt(transaction_id, msg);
         }
     }

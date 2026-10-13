@@ -83,6 +83,9 @@ async fn run() -> anyhow::Result<()> {
         global_per_min: env_i64("ANN_RATE_GLOBAL_PER_MIN", 0),
         default_interval: env_i64("ANN_INTERVAL_DEFAULT", 1800)
             .clamp(60, 86400),
+        // 任务2（0351）：超频临时封禁时长，0 = 关闭（只保留原限流拒绝）
+        user_ban_secs: env_i64("ANN_RATE_USER_BAN_SECS", 300)
+            .clamp(0, 86400),
     };
     // peer 存活 TTL 基准（审计 10-06 第 4 条）：先按 env 兜底；guard 刷新拿到
     // site_settings.announce_interval 后随动。warm-restore 之前设定，恢复判定

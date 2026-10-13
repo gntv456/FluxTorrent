@@ -4,6 +4,8 @@
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
+use super::agent_ver::{ua_version, version_in_range};
+use super::ann_ban::{ban_enabled, ban_key};
 use super::guard_store;
 use super::helpers::{
     AgentRule, TrackerState, PASSKEY_CACHE_CAP, PASSKEY_MISS_TTL, PASSKEY_TTL,
@@ -102,20 +104,26 @@ impl TrackerState {
         pku
     }
 
-    /// agent_rules 黑白名单判定（P0-7 交叉验证版）：
-    /// deny 命中（UA 或 peer_id 任一命中 deny 规则）即拒；
-    /// allow 列表非空时须命中 allow 的 UA **或** peer_id 条件，未命中 allow 也拒。
-    /// 仅当规则从未成功加载（启动后 DB 一直不可达）才放行；一旦有快照，
-    /// 刷新失败时 refresh_guard 保留旧值，DB 抖动期间名单持续生效（不再 fail-open）。
+    /// agent_rules 黑白名单判定（P0-7 交叉验证版；0351 加版本区间+优先级）：
+    /// deny 命中即拒；allow 非空时须命中其一（UA 或 peer_id 任一）。
+    /// 0351：规则先按 priority DESC 稳定排序（同 priority 保持加载序）；
+    /// 带 version_min/version_max 的规则要求 UA 版本落在区间内（含边界），
+    /// 版本提取失败的 UA 对带区间的规则不命中。工具函数在 agent_ver.rs。
     /// peer_id 传可读形式（lossy）以匹配 -XL0014- 等前缀。
     pub fn agent_blocked(
         &self,
         agent: Option<&str>,
         peer_id: &str,
     ) -> Option<String> {
-        let rules = self.guard_read().agent_rules.clone()?;
+        let mut rules = self.guard_read().agent_rules.clone()?;
+        // priority DESC 稳定排序：sort_by 本身稳定，同 priority 保持原序
+        rules.sort_by(|a, b| b.priority.cmp(&a.priority));
         let a = agent.unwrap_or("");
+        let ua_ver = ua_version(a);
         let hit = |r: &&AgentRule| {
+            if !version_in_range(r, ua_ver) {
+                return false;
+            }
             let agent_ok = r.agent_re.as_ref().is_some_and(|re| re.is_match(a));
             let peer_ok =
                 r.peer_re.as_ref().is_some_and(|re| re.is_match(peer_id));
@@ -130,6 +138,45 @@ impl TrackerState {
             return Some("客户端不在允许列表，请联系管理组".into());
         }
         None
+    }
+
+    /// 超频临时封禁命中检查（任务2）：passkey 拿到 user_id 之后调用，命中
+    /// 返回 true。Redis 不可用时降级放行（与 rate_over 的降级纪律一致：
+    /// 封禁是限流的加强项，不能反过来把正常 announce 拒掉）。
+    pub async fn announce_user_banned(&self, user_id: i64) -> bool {
+        if !ban_enabled(self.cfg.user_ban_secs) {
+            return false;
+        }
+        let mut c = self.redis.clone();
+        use redis::AsyncCommands;
+        match c.exists::<_, i64>(&ban_key(user_id)).await {
+            Ok(v) => v != 0,
+            Err(_) => {
+                self.metrics.redis_fallback.fetch_add(1, Ordering::Relaxed);
+                false
+            }
+        }
+    }
+
+    /// 超频临时封禁写入（任务2）：用户级限流命中时调用，键 `ban:ann:u:{id}`
+    /// 值 1、TTL = ban_secs。Redis 不可用 / ban_secs=0（关闭）时跳过——
+    /// 保留原限流拒绝语义，封禁只是加重项，不是必需路径。
+    pub async fn ban_announce_user(&self, user_id: i64) {
+        if !ban_enabled(self.cfg.user_ban_secs) {
+            return;
+        }
+        let mut c = self.redis.clone();
+        let key = ban_key(user_id);
+        let r: Result<(), redis::RedisError> = redis::cmd("SET")
+            .arg(&key)
+            .arg("1")
+            .arg("EX")
+            .arg(self.cfg.user_ban_secs)
+            .query_async(&mut c)
+            .await;
+        if r.is_err() {
+            self.metrics.redis_fallback.fetch_add(1, Ordering::Relaxed);
+        }
     }
 
     /// 统一限流窗口：Redis INCR 优先；Redis 故障时降级到本地窗口（不再 fail-open 裸放）。
