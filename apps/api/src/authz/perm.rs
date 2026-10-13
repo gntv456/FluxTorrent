@@ -114,6 +114,9 @@ pub const ATTENDANCE_MANAGE: &str = "attendance.manage";
 pub const MEDAL_MANAGE: &str = "medal.manage";
 pub const PROP_MANAGE: &str = "prop.manage";
 pub const EXAM_MANAGE: &str = "exam.manage";
+/// 全站发薪明细（`/admin/jixiao/payroll`：每人领了多少钱、谁发的）。
+/// 读的是**别人的工资**，与批六十三的 `sparklog.view` 同档（95）。
+pub const JIXIAO_PAYROLL_VIEW: &str = "jixiao.payroll.view";
 pub const TASK_MANAGE: &str = "task.manage";
 pub const TRACKER_MANAGE: &str = "tracker.manage";
 pub const ROLES_MANAGE: &str = "roles.manage";
