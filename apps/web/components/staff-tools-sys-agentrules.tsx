@@ -40,6 +40,10 @@ export function AgentRulesPanel({
   const [arMode, setArMode] = useState("deny");
   const [arPattern, setArPattern] = useState("");
   const [arNote, setArNote] = useState("");
+  // 0351：版本区间与优先级（可空/0 = 不限，后端校验点分数字形状）
+  const [arVmin, setArVmin] = useState("");
+  const [arVmax, setArVmax] = useState("");
+  const [arPrio, setArPrio] = useState(0);
   const [busyLocal, setBusyLocal] = useState(false);
 
   async function guard(fn: () => Promise<void>, ok: string) {
@@ -79,6 +83,32 @@ export function AgentRulesPanel({
           {ar.note}
           <input value={arNote} onChange={(e) => setArNote(e.target.value)} />
         </label>
+        <label>
+          {ar.versionMin}
+          <input
+            value={arVmin}
+            onChange={(e) => setArVmin(e.target.value)}
+            placeholder="4.6"
+          />
+        </label>
+        <label>
+          {ar.versionMax}
+          <input
+            value={arVmax}
+            onChange={(e) => setArVmax(e.target.value)}
+            placeholder="5.0.1"
+          />
+        </label>
+        <label>
+          {ar.priority}
+          <input
+            type="number"
+            min={0}
+            max={1000}
+            value={arPrio}
+            onChange={(e) => setArPrio(Number(e.target.value) || 0)}
+          />
+        </label>
         <button
           className="brand-button self-start"
           disabled={busy2 || !arPattern.trim()}
@@ -88,9 +118,15 @@ export function AgentRulesPanel({
                 mode: arMode,
                 pattern: arPattern.trim(),
                 note: arNote.trim() || null,
+                version_min: arVmin.trim(),
+                version_max: arVmax.trim(),
+                priority: arPrio,
               });
               setArPattern("");
               setArNote("");
+              setArVmin("");
+              setArVmax("");
+              setArPrio(0);
             }, ar.add)
           }
         >
@@ -98,6 +134,8 @@ export function AgentRulesPanel({
         </button>
         <p className="text-xs text-sub">
           {arMode === "deny" ? ar.modeDenyNote : ar.modeAllowNote}
+          <br />
+          {ar.versionNote} · {ar.priorityNote}
         </p>
       </div>
       {agentRules === null ? (
@@ -120,6 +158,9 @@ export function AgentRulesPanel({
               <td className="colhead">{ar.mode}</td>
               <td className="colhead">{ar.pattern}</td>
               <td className="colhead">{ar.note}</td>
+              <td className="colhead">{ar.versionMin}</td>
+              <td className="colhead">{ar.versionMax}</td>
+              <td className="colhead">{ar.priority}</td>
               <td className="colhead" />
             </tr>
           </thead>
@@ -135,6 +176,9 @@ export function AgentRulesPanel({
                   <code>{r.pattern}</code>
                 </td>
                 <td className="text-sub">{r.note ?? "—"}</td>
+                <td>{r.version_min || "—"}</td>
+                <td>{r.version_max || "—"}</td>
+                <td>{r.priority}</td>
                 <td>
                   <button
                     className={DEL_BTN_CLS}
@@ -153,7 +197,7 @@ export function AgentRulesPanel({
             ))}
             {agentRules.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-4 text-center text-sub">
+                <td colSpan={7} className="py-4 text-center text-sub">
                   {ar.empty}
                 </td>
               </tr>

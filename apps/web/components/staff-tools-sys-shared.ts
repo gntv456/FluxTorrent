@@ -69,6 +69,10 @@ export interface AgentRule {
   mode: string;
   pattern: string;
   note: string | null;
+  /** 0351：版本区间（点分数字，空 = 不限）与优先级（0-1000，大者先判） */
+  version_min: string;
+  version_max: string;
+  priority: number;
   created_by: string | null;
   created_at: string;
 }

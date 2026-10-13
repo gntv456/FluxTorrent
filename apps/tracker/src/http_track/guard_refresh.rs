@@ -1,6 +1,5 @@
 //! 防护缓存刷新与种子白名单（审计 10-07 自 guard.rs 拆出，300 行门禁）。
-//! passkey 缓存与限流窗口在 guard.rs。
-
+//! passkey 缓存与限流窗口在 guard.rs。0351：agent_rules 增载三新列。
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
@@ -27,9 +26,9 @@ impl TrackerState {
         // 单飞（五轮 2026-10-08）：60s 一到，**所有**在途请求都看到 stale，
         // 旧写法让它们各自跑一遍全量重拉——白名单那条是一次 10 万行的 UNION
         // 加 20 MB 字符串集合，恰好在流量最高的时刻把 PG 变成放大器（惊群）。
-        // 抢不到这一格的请求直接吃旧快照返回：60s 的缓存语义本来就允许短暂陈旧。
-        // RAII 复位而不是手写 store(false)：actix 会在客户端断连时 drop 掉这个
-        // future，任何「返回前不复位」的路径都等于让防护缓存从此不再刷新。
+        // 抢不到的请求直接吃旧快照：60s 缓存语义本就允许短暂陈旧。
+        // RAII 复位而非手写 store(false)：actix 会在客户端断连时 drop 掉
+        // future，「返回前不复位」= 防护缓存从此不再刷新。
         struct Refreshing;
         impl Drop for Refreshing {
             fn drop(&mut self) {
@@ -48,58 +47,63 @@ impl TrackerState {
         .fetch_all(&self.db)
         .await
         .ok();
-        let rules: Option<Vec<AgentRule>> =
-            sqlx::query_as::<_, (String, String, String)>(
-                "SELECT mode, pattern, \
-             COALESCE(peer_id_pattern, '') FROM agent_rules",
-            )
-            .fetch_all(&self.db)
-            .await
-            .ok()
-            .map(|rows| {
-                rows.into_iter()
-                    .filter_map(|(mode, agent, peer)| {
-                        let agent_re = if agent.is_empty() {
-                            None
-                        } else {
-                            match regex::Regex::new(&agent) {
-                                Ok(r) => Some(r),
-                                Err(e) => {
-                                    tracing::warn!(
-                                        %agent, %e,
-                                        "agent_rules 正则无效，规则跳过"
-                                    );
-                                    return None;
-                                }
+        let rules: Option<Vec<AgentRule>> = sqlx::query_as::<
+            _,
+            (String, String, String, String, String, i32),
+        >(
+            "SELECT mode, pattern, COALESCE(peer_id_pattern, ''), \
+             COALESCE(version_min, ''), COALESCE(version_max, ''), \
+             COALESCE(priority, 0) FROM agent_rules",
+        )
+        .fetch_all(&self.db)
+        .await
+        .ok()
+        .map(|rows| {
+            rows.into_iter()
+                .filter_map(|(mode, agent, peer, vmin, vmax, prio)| {
+                    let agent_re = if agent.is_empty() {
+                        None
+                    } else {
+                        match regex::Regex::new(&agent) {
+                            Ok(r) => Some(r),
+                            Err(e) => {
+                                tracing::warn!(
+                                    %agent, %e,
+                                    "agent_rules 正则无效，规则跳过"
+                                );
+                                return None;
                             }
-                        };
-                        let peer_re = if peer.is_empty() {
-                            None
-                        } else {
-                            match regex::Regex::new(&peer) {
-                                Ok(r) => Some(r),
-                                Err(e) => {
-                                    tracing::warn!(
-                                        %peer, %e,
-                                        "agent_rules peer_id 正则无效，规则跳过"
-                                    );
-                                    return None;
-                                }
+                        }
+                    };
+                    let peer_re = if peer.is_empty() {
+                        None
+                    } else {
+                        match regex::Regex::new(&peer) {
+                            Ok(r) => Some(r),
+                            Err(e) => {
+                                tracing::warn!(
+                                    %peer, %e,
+                                    "agent_rules peer_id 正则无效，规则跳过"
+                                );
+                                return None;
                             }
-                        };
-                        Some(AgentRule {
-                            deny: mode == "deny",
-                            agent_re,
-                            peer_re,
-                        })
+                        }
+                    };
+                    Some(AgentRule {
+                        deny: mode == "deny",
+                        agent_re,
+                        peer_re,
+                        version_min: vmin,
+                        version_max: vmax,
+                        priority: prio as i64,
                     })
-                    .collect()
-            });
-        // 「查询失败保留旧值」是本函数自述的纪律，五轮实测发现两处把它违反了：
-        // interval 与 pending_policy 用 `.ok().flatten().unwrap_or(缺省)` 的写法，
+                })
+                .collect()
+        });
+        // 「查询失败保留旧值」是本函数自述的纪律，五轮实测发现两处违反：
+        // interval 与 pending_policy 用 `.ok().flatten().unwrap_or(缺省)`，
         // 让**瞬时 DB 抖动**与**设定本来就不存在**长得一模一样，都被当成
-        // 「按缺省值覆盖」。前者会把站长设定的 interval（连带 TTL / 合并窗长度）
-        // 与准入档位静默重置回默认——一次抖动一次改策略，且面板上看不出来。
+        // 「按缺省值覆盖」——一次抖动一次改策略，且面板上看不出来。
         // 口径：Ok(Some(v))=按值生效；Ok(None)=设定缺失，用缺省；Err=保留旧值 + 告警。
         let interval_res = sqlx::query_scalar::<_, String>(
             "SELECT value FROM site_settings WHERE name = 'announce_interval'",
@@ -117,7 +121,8 @@ impl TrackerState {
                 self.guard_read().announce_interval
             }
         };
-        // 待审种子准入策略（审计 10-07 P1-2）：缺失/非法一律按 self_seed_only(1)
+        // 待审种子准入策略（审计 10-07 P1-2）：缺失/非法一律按 self_seed_only(1)；
+        // Err（DB 抖动）保留旧档位，不覆盖
         let policy_res = sqlx::query_scalar::<_, String>(
             "SELECT value FROM site_settings WHERE name = $1",
         )
@@ -134,10 +139,7 @@ impl TrackerState {
             }
             // 设定行不存在（新装站/被删）：回到安全默认档
             Ok(None) => super::guard_store::set_pending_policy(1),
-            Err(e) => tracing::warn!(
-                %e,
-                "announce_pending_policy 读取失败，保留旧档位"
-            ),
+            Err(e) => tracing::warn!(%e, "准入策略读取失败，保留旧档位"),
         }
         // 即时分享率闸门的四个值（2026-10-08 站长拍板）。一次查全；
         // 纪律同上：Err 保留旧值，行不存在才用缺省（缺省本身安全：
@@ -195,8 +197,8 @@ impl TrackerState {
                 "分享率闸门设定读取失败，保留上一次的值与档位"
             ),
         }
-        // peer 存活 TTL 随 interval 伸缩（审计 10-06 第 4 条）：leecher 曾硬编码
-        // 90s，interval=1800s 下两次 announce 之间即被除名，在线数长期偏低。
+        // peer 存活 TTL 随 interval 伸缩（审计 10-06 第 4 条）：leecher 曾
+        // 硬编码 90s，interval=1800s 下两次 announce 之间即被除名。
         crate::peers::set_interval_secs(interval);
         self.refresh_probe_cfg().await;
         // 种子白名单（P0-2）：全量 info_hash 双口径（规范化 + 原始字节），
@@ -222,8 +224,8 @@ impl TrackerState {
 
         let mut g = self.guard_write();
         if let Some(b) = bans {
-            // 带掩码的进段表，精确项留在原表维持既有语义（含坏格式，避免
-            // 一次解析失败就让这条封禁整体失效）
+            // 带掩码的进段表，精确项留原表（含坏格式，避免一次解析失败
+            // 就让这条封禁整体失效）
             g.ip_bans = super::guard_store::load_bans(&b).into_iter().collect();
         }
         if let Some(r) = rules {
@@ -312,9 +314,7 @@ impl TrackerState {
             }
             super::probe_cfg::refresh(jitter, ratio, tcp_to, piece_to);
         } else {
-            tracing::warn!(
-                "探测调度设定读取失败，保留上一次的抖动/抽查比例/超时"
-            );
+            tracing::warn!("探测调度设定读取失败，保留上次的抖动/比例/超时");
         }
     }
 }

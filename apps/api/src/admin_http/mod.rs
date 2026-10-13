@@ -90,6 +90,8 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(certs_list)
 }
 
+// 0351：agent_rules 的请求体/校验（含版本区间+优先级），拆文件守 300 行门禁
+pub(crate) mod agent_rule_check;
 mod agent_rules;
 mod audit;
 mod deny;
@@ -112,6 +114,8 @@ mod review_notify;
 pub(crate) mod review_side_effects;
 mod roles;
 mod site;
+// PUT /admin/settings（旧版单项写，0354 加乐观并发）：从 site.rs 拆出
+mod site_put;
 mod subtitle_awards;
 mod subtitle_certs;
 mod torrent_ops;
@@ -144,6 +148,7 @@ pub use review::*;
 pub use review_batch::*;
 pub use roles::*;
 pub use site::*;
+pub use site_put::*;
 pub use subtitle_awards::*;
 pub use subtitle_certs::*;
 pub use torrent_ops::*;
