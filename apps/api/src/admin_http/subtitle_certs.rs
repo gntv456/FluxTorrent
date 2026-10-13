@@ -27,6 +27,13 @@ async fn certs_grant(
     body: web::Json<CertGrantReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-236：字幕组认证（certified/gold）是荣誉称号，过去只判 staff()
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SUBTITLES_GRANT,
+    )
+    .await?;
     if !["certified", "gold"].contains(&body.tier.as_str()) {
         return Err(DomainError::Validation("tier 需为 certified/gold".into()));
     }
@@ -53,7 +60,14 @@ async fn certs_grant(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "subcert.grant", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "subcert.grant",
+            Some(body.user_id),
+            None,
+            Some(serde_json::json!({"tier": body.tier,
+                "reason": body.reason.trim()})),
+        )
         .await;
     Ok(ok(serde_json::json!({
         "user_id": body.user_id, "tier": body.tier,
@@ -68,6 +82,13 @@ async fn certs_revoke(
     body: web::Json<CertGrantReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-236：字幕组认证（certified/gold）是荣誉称号，过去只判 staff()
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SUBTITLES_GRANT,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE user_subtitle_certs SET revoked_at = now() WHERE user_id = \
          $1 AND tier = $2 AND revoked_at IS NULL",
@@ -83,7 +104,13 @@ async fn certs_revoke(
     }
     state
         .repo
-        .audit(Some(auth.id), "subcert.revoke", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "subcert.revoke",
+            Some(body.user_id),
+            None,
+            Some(serde_json::json!({"tier": body.tier})),
+        )
         .await;
     Ok(ok(serde_json::json!({
         "user_id": body.user_id, "tier": body.tier, "revoked": true,
