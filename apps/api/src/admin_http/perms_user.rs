@@ -26,7 +26,13 @@ async fn user_permission_view(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<UserPermQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-250：这条给的是「某个用户有哪些能力」的清单（角色所得 + 用户级
+    // 覆盖），同文件的写口要管理级键，读口却只判 staff() ⇒ 低档职员能把
+    // 站长/主管的能力面整个枚举出来（找最弱目标、规划提权路径的现成地图）。
+    // 接已有的 `user.view`（批六十一给「读他人数据」定的档，class/92）。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_VIEW)
+        .await?;
     let class_id: Option<i32> =
         sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
             .bind(q.user_id)
