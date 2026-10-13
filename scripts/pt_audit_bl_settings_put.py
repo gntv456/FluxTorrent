@@ -2,8 +2,10 @@
 """闸门 BL：站点设定的写入口（单项 PUT / 批量 PUT / 预检 / 历史）。
 
 选题：`/admin/settings` 一族 8 条路径（9 个「方法+路径」），修前常驻闸门
-只打过两条只读口（`GET /admin/settings`、`GET /admin/settings/schema`，都在
-`pt_audit_g_logcheck.py`），写口与历史口零覆盖。这一族的要害是
+只打过 **1 条**只读口 `GET /admin/settings/schema`（`pt_audit_g_logcheck.py:446`），
+其余 8 个组合零覆盖。计数教训：拿 `grep "/admin/settings"` 数命中会把
+`/admin/settings/schema` 那一行也算成「裸口覆盖」（子串误匹配）——必须按
+「方法+完整路径」逐条比。这一族的要害是
 **同一个字段的规则被两处实现**：预检端点 `POST /admin/settings/validate`
 用 `settings_http::engine::validate_field`（number / 整数 / min / max /
 必填 / 正则 / 长度），批量写口 `PUT /admin/settings/groups` 也用它 ——
