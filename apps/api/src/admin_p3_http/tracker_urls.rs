@@ -30,7 +30,11 @@ async fn tracker_urls_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+        let auth = staff(&req, &state).await?;
+    // P-261：tracker 地址表（url / 是否带 passkey / 默认 / 优先级）只判 staff()，
+    // 同文件三条写口都要 `tracker.manage` ⇒ 台账与操作同键。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TRACKER_MANAGE)
+        .await?;
     let rows: Vec<TrackerUrlRow> = sqlx::query_as(
         "SELECT id, url, with_passkey, is_default, enabled, priority, \
          updated_at FROM tracker_urls ORDER BY priority, id",
