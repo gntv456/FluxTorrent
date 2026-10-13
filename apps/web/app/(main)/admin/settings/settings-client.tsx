@@ -43,22 +43,25 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
   const seeded = useMemo(() => {
     const flat: Record<string, string> = {};
     const owner: Record<string, string> = {};
+    const stamps: Record<string, string> = {};
     if (initialSchema) {
       for (const g of initialSchema.groups) {
         for (const c of g.cards) {
           for (const f of c.fields) {
             flat[f.name] = f.value;
             owner[f.name] = g.key;
+            if (f.updated_at) stamps[f.name] = f.updated_at;
           }
         }
       }
     }
-    return { flat, owner };
+    return { flat, owner, stamps };
   }, [initialSchema]);
 
   const [schema, setSchema] = useState<SettingsSchema | null>(initialSchema);
   const [original, setOriginal] = useState<Record<string, string>>(seeded.flat);
   const [fieldGroup, setFieldGroup] = useState<Record<string, string>>(seeded.owner);
+  const [fieldUpdatedAt, setFieldUpdatedAt] = useState<Record<string, string>>(seeded.stamps);
   const [edited, setEdited] = useState<Record<string, string>>({});
   const [active, setActive] = useState(initialSchema?.groups[0]?.key ?? "");
   const [q, setQ] = useState("");
@@ -69,17 +72,20 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
   const applySchema = useCallback((data: SettingsSchema) => {
     const flat: Record<string, string> = {};
     const owner: Record<string, string> = {};
+    const stamps: Record<string, string> = {};
     for (const g of data.groups) {
       for (const c of g.cards) {
         for (const f of c.fields) {
           flat[f.name] = f.value;
           owner[f.name] = g.key;
+          if (f.updated_at) stamps[f.name] = f.updated_at;
         }
       }
     }
     setSchema(data);
     setOriginal(flat);
     setFieldGroup(owner);
+    setFieldUpdatedAt(stamps);
     setEdited({});
     setActive((prev) => {
       if (prev && data.groups.some((g) => g.key === prev)) return prev;
@@ -125,9 +131,11 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
     edited,
     original,
     fieldGroup,
+    fieldUpdatedAt,
     editable,
     dict,
     invalidMsg: s.invalidField,
+    conflictMsg: s.versionConflict,
     savedMsg: s.savedToast,
     reload: load,
     onToast: setToast,

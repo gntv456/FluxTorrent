@@ -18,9 +18,11 @@ export function useSettingsSave({
   edited,
   original,
   fieldGroup,
+  fieldUpdatedAt,
   editable,
   dict,
   invalidMsg,
+  conflictMsg,
   savedMsg,
   reload,
   onToast,
@@ -28,9 +30,12 @@ export function useSettingsSave({
   edited: Record<string, string>;
   original: Record<string, string>;
   fieldGroup: Record<string, string>;
+  /** name -> 页面加载时的 updated_at（ISO），乐观并发随提交回传 */
+  fieldUpdatedAt: Record<string, string>;
   editable: boolean;
   dict: Parameters<typeof apiErrorMessage>[0];
   invalidMsg: string;
+  conflictMsg: string;
   savedMsg: string;
   reload: () => Promise<void>;
   onToast: (t: SettingsToast | null) => void;
@@ -78,23 +83,34 @@ export function useSettingsSave({
     if (dirty.length === 0 || saving || !editable) return;
     // 按分区归并（后端接口以分区为单位）
     const byGroup = new Map<string, Record<string, string>>();
+    // 乐观并发：被修改键的 updated_at（页面加载时带回）随组提交
+    const expectedByGroup = new Map<string, Record<string, string>>();
     for (const name of dirty) {
       const g = fieldGroup[name] ?? "misc";
       const bucket = byGroup.get(g) ?? {};
       bucket[name] = edited[name];
       byGroup.set(g, bucket);
+      const at = fieldUpdatedAt[name];
+      if (at) {
+        const eb = expectedByGroup.get(g) ?? {};
+        eb[name] = at;
+        expectedByGroup.set(g, eb);
+      }
     }
     setSaving(true);
     setErrors({});
     let saved = 0;
     const effects: string[] = [];
     const errs: Record<string, string> = {};
+    const conflictKeys: string[] = [];
     try {
       for (const [group, values] of byGroup) {
+        const expected = expectedByGroup.get(group);
         try {
           const r = await api.put<SaveResult>("/api/v1/admin/settings/groups", {
             group,
             values,
+            ...(expected ? { expected } : {}),
           });
           saved += r.saved;
           effects.push(...r.effects);
@@ -107,12 +123,26 @@ export function useSettingsSave({
             for (const item of e.data as { field: string; error: string }[]) {
               errs[item.field] = item.error;
             }
+          } else if (
+            e instanceof ApiError &&
+            e.code === 5003 &&
+            Array.isArray(e.data)
+          ) {
+            // 版本冲突（5003）：data 是冲突键列表，整批提示刷新
+            conflictKeys.push(
+              ...(e.data as string[]).filter((k) => k in values),
+            );
           } else {
             throw e;
           }
         }
       }
-      if (Object.keys(errs).length > 0) {
+      if (conflictKeys.length > 0) {
+        onToast({
+          ok: false,
+          text: fmt(conflictMsg, { names: conflictKeys.join("、") }),
+        });
+      } else if (Object.keys(errs).length > 0) {
         setErrors(errs);
         onToast({
           ok: false,
@@ -133,9 +163,11 @@ export function useSettingsSave({
     saving,
     editable,
     fieldGroup,
+    fieldUpdatedAt,
     edited,
     dict,
     invalidMsg,
+    conflictMsg,
     savedMsg,
     reload,
     onToast,

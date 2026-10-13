@@ -23,6 +23,7 @@ mod medal_gift;
 mod message;
 mod message_box;
 mod message_send;
+mod message_stream;
 mod network_subs;
 mod networks;
 mod notice;
@@ -64,6 +65,7 @@ pub use medal_gift::*;
 pub use message::*;
 pub use message_box::*;
 pub use message_send::*;
+pub use message_stream::*;
 pub use network_subs::*;
 pub use networks::*;
 pub use notice::*;
@@ -183,6 +185,8 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(message_inbox)
         .service(message_sent)
         .service(message_staff)
+        // 未读数 SSE 流（EventSource 走 Cookie 鉴权，首帧即推 + 15s 轮询）
+        .service(message_stream)
         .service(friend_add)
         .service(friend_list)
         .service(friend_action)

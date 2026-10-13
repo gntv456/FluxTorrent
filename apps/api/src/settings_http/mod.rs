@@ -7,8 +7,12 @@
 //! groups.rs，历史在 history.rs，导出/导入在 export.rs；挂载留在此。
 
 mod engine;
+// 乐观并发（expected updated_at）：groups 与 admin_http/site_put 共用
+pub(crate) mod expected;
 mod export;
-mod groups;
+pub(crate) mod groups; // admin_http/site_put.rs 旧端点复用保存域助手
+#[cfg(test)]
+mod groups_tests;
 mod history;
 mod meta;
 mod pack_assets;

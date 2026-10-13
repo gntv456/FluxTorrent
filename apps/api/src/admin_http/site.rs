@@ -24,10 +24,8 @@ struct StaffPanelEntry {
 }
 
 /// 管理组面板：职能分组（section）+ 细粒度等级过滤（min_class）
-/// 说明：旧的 panel 字段（sysop/admin/moderator）是权限等级，曾被当作分组维度，
-/// 导致同一职能被拆散；现改为按 section 分组、按 min_class 逐条过滤，无权条目直接不返回。
-/// 0209：perm_key 非空的条目再按 user_can 过滤——「给某人只开某个面板」
-/// 走用户级权限覆盖（显式授予/拒绝），导航不再整块按等级切。
+/// 说明：按 section 分组 + min_class 逐条过滤（旧 panel 字段是权限等级，
+/// 被当过分组维度致同职能拆散）。0209：perm_key 非空再按 user_can 过滤。
 #[get("/admin/staffpanel")]
 async fn staff_panel(
     req: HttpRequest,
@@ -323,52 +321,3 @@ async fn cheaters_scan(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize)]
-struct SettingPut {
-    name: String,
-    value: String,
-}
-
-/// 修改单项站点设定（仅 sysop）
-#[put("/admin/settings")]
-async fn site_settings_put(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<SettingPut>,
-) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::SETTINGS_MANAGE,
-    )
-    .await?;
-    if body.name.trim().is_empty() || body.value.len() > 4096 {
-        return Err(DomainError::Validation("非法的设定项".into()));
-    }
-    // 三审 B-4：site_type 是站型包 apply 的派生锚点——设置页直改只改字符串，
-    // 分类/模块/维度全不跟随，设置值与站点形态脱钩。拒绝并引导走站型切换。
-    if body.name == "site_type" {
-        return Err(DomainError::Validation(
-            "站点类型请在后台「分类管理 → 站点类型包」切换（会完整应用分类/模块/维度）".into(),
-        ));
-    }
-    let updated = sqlx::query(
-        "UPDATE site_settings SET value = $3, updated_at = now() \
-         WHERE name = $2 RETURNING name",
-    )
-    .bind(auth.id)
-    .bind(body.name.trim())
-    .bind(body.value.trim())
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if updated.is_none() {
-        return Err(DomainError::Validation("设定项不存在".into()));
-    }
-    state
-        .repo
-        .audit(Some(auth.id), "site_setting_update", None)
-        .await;
-    Ok(ok(serde_json::json!({ "ok": true })))
-}

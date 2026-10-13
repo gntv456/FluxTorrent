@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api, setSessionCookie, hasSessionCookie } from "@/lib/api-client";
@@ -32,24 +31,23 @@ interface MeInfo {
   worn_medals?: { name: string; asset_ref?: string | null }[];
 }
 
+// SSE unread 事件帧体（/me/messages/stream data 段）
+type SseUnread = { count?: number };
 /**
- * 头像弹窗（同类站 同类站 口径，0147）：导航条右侧头像按钮，点击弹出
- * 宽下拉——摘要区（大头像+用户名+勋章+等级+{magic}+退出）/ 数据条（分享率、
- * 上传、下载、做种、下载中）/ 快捷链接行（控制面板/收藏/种子清单/勋章/任务/
- * 邀请/签到）/ 信箱工具行（UserTools）。未登录回落登录链接。
- * 点外部/ESC 收起；替代原 userbar 常驻条。
+ * 头像弹窗（同类站 同类站 口径，0147）：导航条右侧头像按钮弹出宽下拉：
+ * 摘要区（大头像+用户名+勋章+等级+{magic}+退出）/ 数据条 / 快捷链接行 /
+ * 信箱工具行（UserTools）。未登录回落登录链接；点外部/ESC 收起。
  */
 export function UserMenu({ loginLabel }: { loginLabel: string }) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
-  // 模块开关（二审 G2-7 修复）：快捷链接按模块过滤（medals/tasks/jixiao）
+  // 模块开关（G2-7）：快捷链接按模块过滤（medals/tasks/jixiao）
   const [mods, setMods] = useState<Record<string, boolean>>({});
   useEffect(() => {
     fetch("/api/v1/site-profile")
       .then((r) => r.json())
       .then((b: { data?: { modules?: Record<string, boolean> } }) =>
-        setMods(b?.data?.modules ?? {}),
-      )
+        setMods(b?.data?.modules ?? {}))
       .catch(() => setMods({}));
   }, []);
   const mod = (k: string) => mods[k] !== false;
@@ -57,7 +55,6 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
   const [sparkText, setSparkText] = useState<string>("…");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!hasSessionCookie()) return;
     api
@@ -65,7 +62,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
       .then((r) => {
         setMe(r);
         setSpark(r.spark_balance ?? null);
-        return api
+        api
           .get<{ balance: number }>("/api/v1/me/spark")
           .then((b) => setSpark(b.balance))
           .catch(() => {});
@@ -75,11 +72,28 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
         setSessionCookie(false);
       });
   }, []);
-
+  // 未读数 SSE 流：连上即推 + 15s 轮询变化才推；onerror 静默（自动重连）；
+  // 会话失效时 close 防僵尸连接（SseUnread 谓词与 /me unread_messages 同源）
+  useEffect(() => {
+    if (!hasSessionCookie()) return;
+    const es = new EventSource("/api/v1/me/messages/stream");
+    es.addEventListener("unread", (ev) => {
+      try {
+        const n = (JSON.parse((ev as MessageEvent).data) as SseUnread)
+          .count;
+        if (n !== undefined && me) setMe({ ...me, unread_messages: n });
+      } catch {
+        /* 帧体异常：忽略本帧 */
+      }
+    });
+    es.onerror = () => {
+      if (!hasSessionCookie()) es.close();
+    };
+    return () => es.close();
+  }, []);
   useEffect(() => {
     if (spark !== null) setSparkText(Number(spark).toLocaleString());
   }, [spark]);
-
   const refreshSpark = () => {
     api
       .get<{ balance: number }>("/api/v1/me/spark")
@@ -108,7 +122,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
     try {
       await api.post("/api/v1/auth/logout", {});
     } catch {
-      // 后端撤销失败也照常清理本地凭证
+      /* 后端撤销失败也照常清理本地凭证 */
     }
     localStorage.removeItem("flux.user");
     // 三轮遗留：登出清 SW 页面缓存（含登录态 RSC 快照，防共用设备离线回看）
