@@ -53,7 +53,11 @@ async fn user_role_list(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<UserRoleQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-251：任意用户的职务分配（谁挂在哪个管理组上）也是同一张地图，
+    // 与上面 `user-permissions` 同档接 `user.view`(92)。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_VIEW)
+        .await?;
     let rows: Vec<UserRoleRow> =
         match q.user_id {
             Some(uid) => sqlx::query_as(
