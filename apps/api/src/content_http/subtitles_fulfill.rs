@@ -43,6 +43,32 @@ pub(super) async fn subtitle_request_fulfill(
             "只有该字幕的上传者可以认领交付".into(),
         ));
     }
+    // 相关性判据（P-177）：交的字幕必须与这一单要的是同一件事（种子 + 语言）
+    super::subtitles_util::ensure_req_match(
+        &state.repo.db,
+        rid,
+        body.subtitle_id,
+    )
+    .await?;
+    // 本通道当场结算整池，所以只认「有本体的字幕」：http 直链不参与悬赏结算
+    // （外链随手可填，等于用一条链接换走别人凑出来的魔力）
+    let file_ref: Option<String> = sqlx::query_scalar(
+        "SELECT file_ref FROM subtitles WHERE id = $1",
+    )
+    .bind(body.subtitle_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if !file_ref
+        .as_deref()
+        .unwrap_or_default()
+        .starts_with("attach://")
+    {
+        return Err(DomainError::Validation(
+            "外链字幕不参与悬赏结算：请上传字幕文件本体，或改走认领-交稿-验收"
+                .into(),
+        ));
+    }
     // CAS：0 → 1（并发双交付只成功一个）。
     // (赏金池, crew, offer_free, free_days, torrent_id)
     type FulfillRow = (i64, serde_json::Value, bool, i32, Option<i64>);
