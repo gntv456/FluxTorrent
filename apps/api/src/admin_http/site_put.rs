@@ -61,14 +61,27 @@ pub(crate) async fn site_settings_put(
     let Some((current_value, current_at)) = current else {
         return Err(DomainError::Validation("设定项不存在".into()));
     };
+    // 唯一一把尺（批四十八 P-186）：与 POST /admin/settings/validate 同一个函数。
+    // 原先写入口只判长度与 site_type，预检端点却在校验 number/整数/范围/必填/正则
+    // ⇒「面板预检说合法」和「实际写得进库」是两套规则；脏值进库后被读端的
+    // `.parse().unwrap_or(默认)` 静默吞掉，站长看到的就是「改了没生效」。
+    // 值没变时不校验（保持既有的幂等口径：重新提交旧值不该被新尺挡下）。
+    let (value, secret) = if current_value == body.value.trim() {
+        (current_value.clone(), false)
+    } else {
+        crate::settings_http::validate::validate_setting(
+            &state.repo.db,
+            name,
+            &body.value,
+        )
+        .await?
+    };
     if current_value != body.value.trim() {
         if let Some(got) = &body.expected {
             let mut map = std::collections::HashMap::new();
             map.insert(name.to_string(), got.clone());
             crate::settings_http::expected::check_expected(
-                &map,
-                name,
-                current_at,
+                &map, name, current_at,
             )?;
         }
     }
@@ -78,7 +91,7 @@ pub(crate) async fn site_settings_put(
     )
     .bind(auth.id)
     .bind(name)
-    .bind(body.value.trim())
+    .bind(&value)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -86,9 +99,36 @@ pub(crate) async fn site_settings_put(
     if updated.is_none() {
         return Ok(ok(serde_json::json!({ "ok": true })));
     }
+    // 留痕要对得上读侧（P-187）：/admin/settings/history 读的是
+    // `action='setting:update' AND ref->>'setting' = name`，而这里原先写的是
+    // `site_setting_update` 且 ref 为空 ⇒ 走单项编辑口的改动在历史面板里永远不见。
+    // secret 项与 groups 端点同口径：不落明文。
+    let (old_disp, new_disp) = if secret {
+        (
+            if current_value.is_empty() {
+                "(空)".to_string()
+            } else {
+                "已设置".to_string()
+            },
+            "已更新".to_string(),
+        )
+    } else {
+        (current_value.clone(), value.clone())
+    };
     state
         .repo
-        .audit(Some(auth.id), "site_setting_update", None)
+        .audit_detail(
+            Some(auth.id),
+            "setting:update",
+            None,
+            None,
+            Some(serde_json::json!({
+                "setting": name.to_string(),
+                "old": old_disp,
+                "new": new_disp,
+                "via": "single",
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }

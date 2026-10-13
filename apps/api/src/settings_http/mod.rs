@@ -27,7 +27,7 @@ mod pack_store;
 mod packs;
 mod schema;
 mod smtp_test;
-mod validate;
+pub(crate) mod validate;
 use export::*;
 use groups::*;
 use history::*;
