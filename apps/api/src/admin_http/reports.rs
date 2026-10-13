@@ -89,6 +89,13 @@ async fn report_claim(
     body: web::Json<ReportClaimReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-243：认领/放号是工单流转，版主及以上；发布员不该能占号
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::REPORTS_HANDLE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE reports SET status = 2, claimed_by = $1, claimed_at = now() \
          WHERE id = $2 AND status = 0",
@@ -119,6 +126,13 @@ async fn report_release(
     body: web::Json<ReportClaimReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-243：认领/放号是工单流转，版主及以上；发布员不该能占号
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::REPORTS_HANDLE,
+    )
+    .await?;
     let n = sqlx::query(
         "UPDATE reports SET status = 0, claimed_by = NULL, claimed_at = NULL \
          WHERE id = $1 AND status = 2 AND claimed_by = $2",

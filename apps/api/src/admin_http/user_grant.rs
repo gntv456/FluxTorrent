@@ -29,18 +29,36 @@ async fn user_assign_jixiao(
     body: web::Json<AssignJixiaoReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-240：登记的是**待发金额**（settled_at IS NULL 即未发放），过去只判 staff()
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::JIXIAO_ASSIGN,
+    )
+    .await?;
     let uid = path.into_inner();
     // 等级护栏（审计修复）：90+ 可给 94/99 登记考核属越权，须严格高于目标
     ensure_outranks(&state.repo.db, auth.class_id, uid).await?;
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM jixiao_types WHERE id = $1)",
+    // P-242：旧写法 `.unwrap_or(false)` 把「查不到/查失败」混为一谈，
+    // 这里改成错误传播；同时把该岗位的基准一并取出，用作金额上界
+    // （数据推导，不拍脑袋定数字）。
+    let base: Option<i64> = sqlx::query_scalar(
+        "SELECT base_pay FROM jixiao_types WHERE id = $1",
     )
     .bind(body.type_id)
-    .fetch_one(&state.repo.db)
+    .fetch_optional(&state.repo.db)
     .await
-    .unwrap_or(false);
-    if !exists {
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(base) = base else {
         return Err(DomainError::NotFound(body.type_id));
+    };
+    // P-240：登记的是待发金额——负数=凭空倒扣，无上限=手滑可写天量。
+    let amount = body.amount.unwrap_or(0);
+    if amount < 0 || amount > base * 3 {
+        return Err(DomainError::Validation(format!(
+            "金额需在 0-{} 之间（该岗位基准 {} 的 3 倍内）",
+            base * 3, base
+        )));
     }
     let period = body.period.clone().unwrap_or_else(|| {
         (chrono::Utc::now() + chrono::Duration::hours(8))
@@ -56,7 +74,9 @@ async fn user_assign_jixiao(
     .bind(&period)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(false);
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-242：dup 查询失败旧写法当「没登记过」放行 ⇒ 同人同期同岗可
+    // 登记两次 = 重复发钱
     if dup {
         return Err(DomainError::Validation(
             "该用户本期已登记此考核岗位".into(),
@@ -78,13 +98,20 @@ async fn user_assign_jixiao(
     .bind(uid)
     .bind(body.type_id)
     .bind(&period)
-    .bind(body.amount.unwrap_or(0))
+    .bind(amount)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "user.assign_jixiao", Some(uid))
+        .audit_detail(
+            Some(auth.id),
+            "user.assign_jixiao",
+            Some(uid),
+            None,
+            Some(serde_json::json!({"type_id": body.type_id,
+                "period": period.clone(), "amount": amount})),
+        )
         .await;
     Ok(ok(
         serde_json::json!({ "user_id": uid, "type_id": body.type_id, "period": period }),

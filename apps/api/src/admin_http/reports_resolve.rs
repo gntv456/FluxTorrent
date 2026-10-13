@@ -30,6 +30,13 @@ pub async fn report_resolve(
     body: web::Json<ResolveReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-243：结案/驳回会改他人工单状态并发私信
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::REPORTS_HANDLE,
+    )
+    .await?;
     let action = body.action.as_deref().unwrap_or("act");
     if !["act", "dismiss"].contains(&action) {
         return Err(DomainError::Validation("action 需为 act/dismiss".into()));
@@ -169,7 +176,13 @@ pub async fn report_resolve(
     }
     state
         .repo
-        .audit(Some(auth.id), "report.resolve", Some(body.report_id))
+        .audit_detail(
+            Some(auth.id),
+            "report.resolve",
+            Some(body.report_id),
+            Some(body.note.trim()),
+            Some(serde_json::json!({"action": action})),
+        )
         .await;
     Ok(ok(
         serde_json::json!({ "resolved": body.report_id, "action": action,
