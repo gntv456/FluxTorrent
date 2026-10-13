@@ -58,7 +58,9 @@ async fn admin_medal_rarities(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::to_value(rows).unwrap_or_default()))
+    serde_json::to_value(rows)
+        .map_err(|e| DomainError::Internal(e.into()))
+        .map(ok)
 }
 
 #[post("/admin/medal-rarities")]
@@ -86,7 +88,7 @@ async fn admin_medal_rarity_add(
     .bind(&value)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(false);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if dup {
         return Err(DomainError::Validation(format!("稀有度 {value} 已存在")));
     }
@@ -103,7 +105,15 @@ async fn admin_medal_rarity_add(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "medal_rarity.add", None)
+        .audit_detail(
+            Some(auth.id),
+            "medal_rarity.add",
+            None,
+            None,
+            Some(serde_json::json!({
+                "value": value, "label": label,
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "value": value })))
 }
@@ -129,7 +139,7 @@ async fn admin_medal_rarity_update(
     .bind(&old)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(false);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if !exists {
         return Err(DomainError::NotFound(0));
     }
@@ -147,7 +157,7 @@ async fn admin_medal_rarity_update(
             .bind(nv)
             .fetch_one(&state.repo.db)
             .await
-            .unwrap_or(false);
+            .map_err(|e| DomainError::Internal(e.into()))?;
             if taken {
                 return Err(DomainError::Validation(format!(
                     "稀有度 {nv} 已存在"
@@ -192,7 +202,15 @@ async fn admin_medal_rarity_update(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "medal_rarity.update", None)
+        .audit_detail(
+            Some(auth.id),
+            "medal_rarity.update",
+            None,
+            None,
+            Some(serde_json::json!({
+                "value": key, "label": label,
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "value": key })))
 }
@@ -213,12 +231,23 @@ async fn admin_medal_rarity_delete(
             .bind(&value)
             .fetch_one(&state.repo.db)
             .await
-            .unwrap_or(0);
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if used > 0 {
         return Err(DomainError::Validation(format!(
             "仍有 {used} 枚勋章使用该稀有度，请先把它们改成别的稀有度"
         )));
     }
+    let gone: Option<String> = sqlx::query_scalar(
+        "SELECT label FROM medal_rarities WHERE value = $1",
+    )
+    .bind(&value)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let gone = match gone {
+        Some(t) => t,
+        None => return Err(DomainError::NotFound(0)),
+    };
     let n = sqlx::query("DELETE FROM medal_rarities WHERE value = $1")
         .bind(&value)
         .execute(&state.repo.db)
@@ -230,7 +259,13 @@ async fn admin_medal_rarity_delete(
     }
     state
         .repo
-        .audit(Some(auth.id), "medal_rarity.del", None)
+        .audit_detail(
+            Some(auth.id),
+            "medal_rarity.del",
+            None,
+            None,
+            Some(serde_json::json!({ "value": value, "label": gone })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "deleted": value })))
 }

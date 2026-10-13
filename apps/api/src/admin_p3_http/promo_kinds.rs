@@ -157,7 +157,15 @@ pub(super) async fn promo_kind_add(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "promo_kind.add", None)
+        .audit_detail(
+            Some(auth.id),
+            "promo_kind.add",
+            None,
+            None,
+            Some(serde_json::json!({
+                "kind": body.kind.trim(), "label_zh": body.label_zh.trim(),
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "kind": kind })))
 }
@@ -204,7 +212,13 @@ pub(super) async fn promo_kind_update(
     }
     state
         .repo
-        .audit(Some(auth.id), "promo_kind.update", None)
+        .audit_detail(
+            Some(auth.id),
+            "promo_kind.update",
+            None,
+            None,
+            Some(serde_json::json!({ "kind": kind })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
@@ -231,7 +245,7 @@ pub(super) async fn promo_kind_delete(
     .bind(&kind)
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if used > 0 {
         let n = sqlx::query(
             "UPDATE promo_kinds SET enabled = FALSE WHERE kind = $1",
@@ -246,7 +260,13 @@ pub(super) async fn promo_kind_delete(
         }
         state
             .repo
-            .audit(Some(auth.id), "promo_kind.disable", None)
+            .audit_detail(
+                Some(auth.id),
+                "promo_kind.disable",
+                None,
+                None,
+                Some(serde_json::json!({ "kind": kind })),
+            )
             .await;
         return Ok(ok(serde_json::json!({ "disabled": true })));
     }
@@ -261,7 +281,13 @@ pub(super) async fn promo_kind_delete(
     }
     state
         .repo
-        .audit(Some(auth.id), "promo_kind.delete", None)
+        .audit_detail(
+            Some(auth.id),
+            "promo_kind.delete",
+            None,
+            None,
+            Some(serde_json::json!({ "kind": kind })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "deleted": kind })))
 }
