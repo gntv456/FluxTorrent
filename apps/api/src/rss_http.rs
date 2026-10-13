@@ -7,20 +7,24 @@
 //! B3（2026-09-25）起另认 `sec_{kind}` 六类型维度筛选——与前台列表、
 //! 后台管理列表共用同一解析与谓词实现，三处语义不漂移。
 
+mod authz;
 mod forum;
 mod query;
+mod tokens;
 mod util;
 
-use query::RssQuery;
 pub use util::{format_size, parse_ids, xml_escape};
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
 
+use query::RssQuery;
 use crate::state::AppState;
 
 pub fn mount_rss(scope: actix_web::Scope) -> actix_web::Scope {
-    scope.service(rss_feed).service(forum::forum_rss_feed)
+    tokens::mount_tokens(scope)
+        .service(rss_feed)
+        .service(forum::forum_rss_feed)
 }
 
 #[derive(sqlx::FromRow)]
@@ -47,9 +51,11 @@ async fn rss_feed(
     q: web::Query<RssQuery>,
 ) -> HttpResponse {
     let passkey = path.into_inner();
-    // 形状校验收紧（0267）：此前只查长度 32，现在与 passkey 生成口径一致
-    // （32 位小写字母数字）——非法字符不可能命中库，早拒省一次查询
-    if !crate::compat_http::valid_passkey(&passkey) {
+    // 形状校验（0267/0352）：passkey 或 fxr_ token 二选一——与两个生成器
+    // 口径一致（32 位小写字母数字 / fxr_ 前缀），非法形状早拒省一次查询
+    if !crate::compat_http::valid_passkey(&passkey)
+        && !tokens::valid_token_shape(&passkey)
+    {
         return HttpResponse::BadRequest().body("invalid passkey");
     }
     // 0267 安全补：RSS 此前**没有限流** —— 一枚泄露的 passkey 可无限拉订阅源
@@ -75,16 +81,12 @@ async fn rss_feed(
                 .body("rate limiter unavailable");
         }
     }
-    let user: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
-    )
-    .bind(&passkey)
-    .fetch_optional(&state.repo.db)
-    .await
-    .unwrap_or(None);
-    let Some(user_id) = user else {
+    // 0352：token 优先（sha3 哈希查 rss_tokens，命中顺手节流打 last_used_at），
+    // miss 回落 user_by_passkey——旧 passkey URL 永远兼容
+    let Some(ident) = authz::resolve_identity(&state, &passkey).await else {
         return HttpResponse::NotFound().body("unknown passkey");
     };
+    let user_id = ident.user_id;
 
     // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category
     let categories = match parse_ids(q.categories.as_deref()) {
@@ -215,9 +217,11 @@ async fn rss_feed(
         //   enclosure = 同一地址（标准 RSS 消费方走 enclosure）
         // linktype=page 时保留「link 指向详情页、标题仅名称」的旧行为
         // （注意：linktype 管的是**标题格式**，与下载链接无关，历史上被误读）。
+        // 0352：直链凭证跟随鉴权路径——token 消费时放 token（订阅 URL 与
+        // 下载直链同凭证，撤销一个 token 即整链失效），passkey 时维持原样。
         let dl = format!(
             "{}/api/v1/compat/nexusphp/download.php?id={}&passkey={}",
-            api_base, r.id, passkey
+            api_base, r.id, ident.credential
         );
         let link = if verbose {
             dl.clone()

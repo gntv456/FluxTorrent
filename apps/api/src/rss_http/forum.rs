@@ -29,7 +29,10 @@ async fn forum_rss_feed(
     // 四轮审计 M3（2026-10-07）：0267 限流补丁漏了论坛 RSS——主 RSS 有
     // valid_passkey+双维限流，这里只查长度，匿名换随机 passkey 即无限
     // 打 users 索引。对齐主 RSS 同款两闸。
-    if !crate::compat_http::valid_passkey(&passkey) {
+    // 0352：同款放行 fxr_ token（形状校验同主 RSS）。
+    if !crate::compat_http::valid_passkey(&passkey)
+        && !super::tokens::valid_token_shape(&passkey)
+    {
         return HttpResponse::BadRequest().body("invalid passkey");
     }
     // P-68：与主 RSS 同修——限流命中回 429，限流服务本身不可用回 503，
@@ -51,16 +54,25 @@ async fn forum_rss_feed(
                 .body("rate limiter unavailable");
         }
     }
-    let user: Option<(i64, i32)> = sqlx::query_as(
-        "SELECT id, class_id FROM user_by_passkey \
-         WHERE passkey = $1 AND status < 2",
-    )
-    .bind(&passkey)
-    .fetch_optional(&state.repo.db)
-    .await
-    .unwrap_or(None);
-    let Some((uid, class_id)) = user else {
+    // 0352：token 优先、miss 回落 passkey（与主 RSS 同一实现，口径不漂移）
+    let Some(ident) =
+        super::authz::resolve_identity(&state, &passkey).await
+    else {
         return HttpResponse::NotFound().body("unknown passkey");
+    };
+    let (uid, class_id) = (ident.user_id, ident.class_id);
+    // token 鉴权路径拿不到 class_id（rss_tokens 不存等级）——回查一次
+    // users 行。passkey 路径 user_by_passkey 已带回，不额外打表。
+    let class_id = match class_id {
+        Some(c) => c,
+        None => sqlx::query_scalar(
+            "SELECT class_id FROM users WHERE id = $1 AND status < 2",
+        )
+        .bind(uid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .unwrap_or(None)
+        .unwrap_or(0),
     };
     // forums 模块关闭 → 订阅源整体下线（二审 G8：RSS 出口不受网关覆盖，
     // 必须在 handler 内判定；404 语义与刷流工具的重试退避兼容）
