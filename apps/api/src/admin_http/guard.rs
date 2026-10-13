@@ -37,3 +37,26 @@ pub(crate) async fn ensure_outranks(
     }
     Ok(())
 }
+
+/// 改档口的字典校验：`users.class_id` 有 FK 指向 `user_classes`，而档位号
+/// 是**不连续**的（0..12、20、91..95、98、99 —— 没有 90/13..19/96/97）。
+/// 批四十三实测 `class_id=90` 直接撞外键 ⇒ 后台报 500「内部错误」，操作者
+/// 以为面板坏了；单人改档与批量改档两处同病，判据收在这一处。
+pub(crate) async fn ensure_class_exists(
+    db: &sqlx::PgPool,
+    class_id: i32,
+) -> DomainResult<()> {
+    let known: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM user_classes WHERE id = $1)",
+    )
+    .bind(class_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if !known {
+        return Err(DomainError::Validation(format!(
+            "等级 {class_id} 不在等级字典里（改档只能用 user_classes 里已有的档位）"
+        )));
+    }
+    Ok(())
+}

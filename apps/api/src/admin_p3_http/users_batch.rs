@@ -52,6 +52,15 @@ async fn admin_users_batch(
             body.value, auth.class_id
         )));
     }
+    // 档位号必须真实存在（与单人改档同判据）：`users.class_id` 有 FK 指向
+    // `user_classes`，而档位不连续（没有 90/13..19/96/97），旧版直接 500
+    if body.action == "class" {
+        crate::admin_http::guard::ensure_class_exists(
+            &state.repo.db,
+            body.value,
+        )
+        .await?;
+    }
     let db = &state.repo.db;
     let mut updated: u64 = 0;
     let mut skipped: Vec<i64> = Vec::new();

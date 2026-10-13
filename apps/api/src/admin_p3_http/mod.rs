@@ -11,7 +11,7 @@ mod classes_admin;
 mod exam_users;
 mod frames;
 mod grants;
-mod hr;
+pub(crate) mod hr;
 mod increment_bulk;
 mod increment_grant;
 mod increment_grant_item;
