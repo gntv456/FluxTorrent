@@ -88,20 +88,29 @@ import atexit  # noqa: E402
 
 atexit.register(cleanup)
 
-# 现网存量：role_permissions 里指向不存在等级档/职务的 role_key（P-209 的实例，
-# 数据修复待站长拍板，故 T2b 只拦「本轮新出现的」）
-JUNK0 = sorted({x for x in psql(
-    "SELECT DISTINCT role_key FROM role_permissions rp WHERE NOT EXISTS ("
-    "SELECT 1 FROM user_classes uc WHERE uc.id::text = rp.role_key) "
-    "AND NOT EXISTS (SELECT 1 FROM roles r WHERE r.key = rp.role_key)"
-    "").split() if x})
+# 现网存量：真正对不上任何人的 role_permissions 行（P-209 的实例，数据修复待
+# 站长拍板，故 T2b 只拦「本轮新出现的」）。
+# ⚠️ 判据在批六十二更正过一次：`authz.rs:96-98` 对 role_type='class' 用的是
+# `user_classes.id >= role_key` 的**阈值**语义，`class/90`（库里并无 id=90 的档）
+# 等于「91 发布员起的全部职员档」，是合法行；旧判据按等值比，把它误登记成 junk。
+JUNK_SQL = (
+    "SELECT DISTINCT rp.role_key FROM role_permissions rp WHERE "
+    "(rp.role_type = 'class' AND rp.role_key ~ '^[0-9]+$' AND NOT EXISTS ("
+    "  SELECT 1 FROM user_classes uc WHERE uc.id >= rp.role_key::integer)) "
+    "OR (rp.role_type = 'class' AND rp.role_key !~ '^[0-9]+$') "
+    "OR (rp.role_type = 'role' AND NOT EXISTS ("
+    "  SELECT 1 FROM roles r WHERE r.key = rp.role_key))")
+JUNK0 = sorted({x for x in psql(JUNK_SQL).split() if x})
 
 
 def real_role(k):
+    """该 role_key 是否还能命中至少一个等级档 / 职务（阈值语义）。"""
     if psql("SELECT count(*) FROM roles WHERE key = '%s'" % k) != "0":
         return True
-    return psql("SELECT count(*) FROM user_classes WHERE "
-                "id::text = '%s'" % k) != "0"
+    if not k.isdigit():
+        return False
+    return psql("SELECT count(*) FROM user_classes WHERE id >= %d"
+                % int(k)) != "0"
 
 
 RP0 = int(rp_cnt() or -1)
