@@ -313,12 +313,10 @@ pub async fn redeem_invite_handler(
         return Err(DomainError::Validation("商店未开放邀请兑换".into()));
     };
     // 幂等键必填（与 /shop/buy 同口径）：网络重试携带同一键防双扣款；
-    // 服务端键带 uid 前缀，防裸客户端键跨用户碰撞误判重放
-    let idem = body
-        .idempotency_key
-        .clone()
-        .filter(|k| !k.is_empty())
-        .map(|k| format!("invite_redeem:{}:{}", auth.id, k.trim()))
+    // 服务端键带 uid 前缀，防裸客户端键跨用户碰撞误判重放。
+    // 体字段优先、Idempotency-Key 头兜底（http/idempotency.rs 统一口径）
+    let idem = crate::http::idempotency::body_or_header(&body.idempotency_key)
+        .map(|k| format!("invite_redeem:{}:{}", auth.id, k))
         .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
     let outcome = spend_spark(
         &state.repo.db,
@@ -345,4 +343,52 @@ pub async fn redeem_invite_handler(
     Ok(ok(serde_json::json!({
         "id": id, "code": code, "expires_at": expires.to_rfc3339(), "price": price,
     })))
+}
+
+#[cfg(test)]
+mod idem_header_tests {
+    // 头兜底集成测试（任务2）：redeem_invite 的幂等键取用点在 DB/Redis 之外
+    // 唯一可独立验证的形态是「体空 + 合法头 → 键被采纳」。完整 HTTP 栈需要
+    // Postgres（require_auth/spend_spark 链路），仓内单测基建不支持起库，
+    // 故这里以 actix test 挂 idempotency_mw 验证「头注入 → current() 可读」
+    // 的贯穿契约，取键优先级另由 http/idempotency.rs 的单测锁定。
+    use actix_web::{test, web, App, HttpResponse};
+
+    #[actix_web::test]
+    async fn header_key_reaches_handler_task_local() {
+        let app = test::init_service(
+            App::new()
+                .wrap(actix_web::middleware::from_fn(
+                    crate::http::idempotency::idempotency_mw,
+                ))
+                .route(
+                    "/redeem-probe",
+                    web::to(|| async {
+                        // 模拟 redeem_invite_handler 的取键口径（体空 → 头）
+                        let k = crate::http::idempotency::body_or_header(
+                            &None,
+                        );
+                        HttpResponse::Ok()
+                            .json(serde_json::json!({ "idem": k }))
+                    }),
+                ),
+        )
+        .await;
+        let req = test::TestRequest::post()
+            .uri("/redeem-probe")
+            .insert_header((
+                crate::http::idempotency::IDEMPOTENCY_KEY_HEADER,
+                "retry-20261013-001",
+            ))
+            .to_request();
+        let res = test::call_service(&app, req).await;
+        let body: serde_json::Value =
+            serde_json::from_slice(&test::read_body(res).await)
+                .expect("json");
+        assert_eq!(
+            body["idem"].as_str(),
+            Some("retry-20261013-001"),
+            "体空时 Idempotency-Key 头必须兜底生效"
+        );
+    }
 }

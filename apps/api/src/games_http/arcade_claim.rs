@@ -85,7 +85,8 @@ async fn mark_claim(
     Ok(())
 }
 
-/// 客户端幂等键只允许有限长度，其余一律服务端定值（同一期同一人同一奖励）
+/// 客户端幂等键只允许有限长度，其余一律服务端定值（同一期同一人同一奖励）。
+/// 体字段优先、Idempotency-Key 头兜底（任务2统一口径）。
 fn idem(
     prefix: &str,
     code: &str,
@@ -93,8 +94,9 @@ fn idem(
     uid: i64,
     k: &Option<String>,
 ) -> String {
-    match k.as_deref().map(str::trim) {
-        Some(x) if !x.is_empty() && x.len() <= 128 => {
+    let key = crate::http::idempotency::body_or_header(k);
+    match key.as_deref() {
+        Some(x) if x.len() <= 128 => {
             format!("{prefix}:{code}:{period}:{uid}:{x}")
         }
         _ => format!("{prefix}:{code}:{period}:{uid}"),

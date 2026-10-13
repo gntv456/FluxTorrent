@@ -65,18 +65,18 @@ async fn medal_gift(
     .unwrap_or(500);
     let tax_bp = medal_fee_bp.unwrap_or(global_tax_bp);
     let tax = crate::economy::gift_tax(price, tax_bp);
-    let idem = body
-        .idempotency_key
-        .clone()
-        .filter(|k| !k.trim().is_empty())
-        .unwrap_or_else(|| {
-            format!(
-                "medal-gift:{}:{}:{}",
-                auth.id,
-                body.medal_id,
-                Uuid::new_v4()
-            )
-        });
+    // 体字段优先、Idempotency-Key 头兜底（缺省回退随机键链保持不变）
+    let idem = crate::http::idempotency::body_or_header(
+        &body.idempotency_key,
+    )
+    .unwrap_or_else(|| {
+        format!(
+            "medal-gift:{}:{}:{}",
+            auth.id,
+            body.medal_id,
+            Uuid::new_v4()
+        )
+    });
     // 赠送通道同样受「已拥有/售期/限量」约束（此前 gift 绕过三重检查可超卖限量勋章）
     let receiver_owned: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM user_medals WHERE user_id = $1 \
