@@ -53,6 +53,13 @@ async fn user_admin_detail(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
+    // P-233：详情含邮箱与隐藏邮箱，版主档才可读（passkey 早就是掩码）
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_VIEW,
+    )
+    .await?;
     let uid = path.into_inner();
     let row: Option<AdminUserDetail> = sqlx::query_as(
         r#"SELECT u.id, u.username, u.email,
@@ -109,7 +116,14 @@ async fn user_admin_snatches(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-233：下载流水（做种时长 / HR 标记）按会员数据收档
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_VIEW,
+    )
+    .await?;
     let rows: Vec<UserSnatchRow> = sqlx::query_as(
         "SELECT s.torrent_id, t.name, t.size, s.seeded_seconds, s.seeding, s.hr_flag \
          FROM snatches s JOIN torrents t ON t.id = s.torrent_id \

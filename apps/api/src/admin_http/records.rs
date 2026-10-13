@@ -39,7 +39,14 @@ async fn admin_spark_logs(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<RecordQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-235：魔力流水含 balance_after 余额，主管及以上
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SPARKLOG_VIEW,
+    )
+    .await?;
     let pattern = crate::http::like_pattern(&q.q);
     let rows: Vec<SparkLogRow> = sqlx::query_as(
         r#"SELECT l.id, u.username, l.amount, l.kind, l.balance_after, l.created_at
@@ -84,7 +91,14 @@ async fn admin_torrent_buys(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<RecordQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-235：种子/代币购买流水同为资金数据
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SPARKLOG_VIEW,
+    )
+    .await?;
     let pattern = crate::http::like_pattern(&q.q);
     let rows: Vec<TorrentBuyRow> = sqlx::query_as(
         r#"SELECT l.id, u.username, l.kind, l.ref_id, l.amount, l.created_at
@@ -118,7 +132,14 @@ async fn admin_login_logs(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<RecordQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-234：登录日志含来源 IP，总版主及以上
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::LOGINLOGS_VIEW,
+    )
+    .await?;
     let pattern = crate::http::like_pattern(&q.q);
     let rows: Vec<LoginLogRow> = sqlx::query_as(
         r#"SELECT l.id, u.username, host(l.ip) AS ip, l.ok, l.created_at
