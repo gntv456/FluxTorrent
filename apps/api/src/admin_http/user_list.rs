@@ -77,7 +77,14 @@ async fn user_admin_list(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<UserListQ>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-233：过去只判 staff()，而 staff.panel 由 class/90 发出（阈值=全部职员档）
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::USER_VIEW,
+    )
+    .await?;
     if !(1..=100).contains(&q.per_page) {
         return Err(DomainError::Validation("per_page 取值 1-100".into()));
     }

@@ -55,6 +55,13 @@ pub const USER_PASSKEY_REVEAL: &str = "user.passkey.reveal";
 pub const APPEAL_HANDLE: &str = "appeal.handle";
 pub const IP_CHECK: &str = "ip.check";
 pub const UPLOADERS_VIEW: &str = "uploaders.view";
+/// 会员名单/详情/下载流水（0363，批六十三 P-233）：版主及以上可查人，发布员
+/// 不该手里有一整本名册
+pub const USER_VIEW: &str = "user.view";
+/// 登录日志（P-234）：用户名 + 来源 IP + 成败，属安全事件数据
+pub const LOGINLOGS_VIEW: &str = "loginlogs.view";
+/// 魔力流水 / 种子购买流水（P-235）：含 balance_after 余额，与凭证同档
+pub const SPARKLOG_VIEW: &str = "sparklog.view";
 pub const HR_PARDON: &str = "hr.pardon";
 pub const STAFF_PANEL: &str = "staff.panel";
 pub const STAFF_MESSAGE: &str = "staff.message";
