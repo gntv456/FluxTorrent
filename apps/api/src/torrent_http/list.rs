@@ -88,6 +88,15 @@ async fn list(
         crate::authz::perm::TORRENT_SEE_BANNED,
     )
     .await;
+    // P-275：控制面板的 incl_dead / torrents_per_page 折进显式字段。优先级
+    // ?alive= > ?include_dead= > 个人偏好——偏好是「我的默认视图」，
+    // 不是「强制视图」，显式参数（含旧站工具口径）必须能压过它。
+    let (incl_dead, per_page) =
+        super::list_prefs::viewer_prefs(&state.repo.read_db, auth.id).await;
+    let alive_pref = q
+        .include_dead
+        .map(|d| if d { 0 } else { 1 })
+        .or_else(|| super::list_prefs::alive_from_pref(incl_dead));
     let filter = torrents::TorrentFilter {
         // 多选分类：重复参数或逗号串（category_id=1&category_id=3 / category_id=1,3）均解析。
         // 旧键名 category_id 单值也在此合并（category_id_alias 旁路收集）。
@@ -150,8 +159,8 @@ async fn list(
         // 标签多选（0159 P1）：旧单值 tag_id 并入 tag_ids；tag_mode 只认 any/all
         tag_ids,
         tag_all,
-        // 0102 高级搜索三态
-        alive: q.alive,
+        // 0102 高级搜索三态（URL 没给时用「显示断种/活种」偏好兜底）
+        alive: q.alive.or(alive_pref),
         status: q.status.clone().filter(|s| !s.is_empty()),
         approval: q.approval.filter(|_| {
             // `?approval=2` 会把被拒与软删（回收站）种子直接给出去，
@@ -195,41 +204,9 @@ async fn list(
             .filter(|v| *v > 0.0 && *v <= 10.0)
             .map(|v| (v * 10.0).round() / 10.0),
     };
-    // 上下界颠倒时自动对调（用户先填大后填小很常见，直接判空更友好）
+    // 上下界颠倒时自动对调（口径与逐条判据见 list_prefs::swap_bounds）
     let mut filter = filter;
-    if let (Some(a), Some(b)) = (filter.size_min, filter.size_max) {
-        if a > b {
-            filter.size_min = Some(b);
-            filter.size_max = Some(a);
-        }
-    }
-    if let (Some(a), Some(b)) = (filter.min_seeders, filter.max_seeders) {
-        if a > b {
-            filter.min_seeders = Some(b);
-            filter.max_seeders = Some(a);
-        }
-    }
-    if let (Some(a), Some(b)) =
-        (filter.date_from.clone(), filter.date_to.clone())
-    {
-        if a > b {
-            filter.date_from = Some(b);
-            filter.date_to = Some(a);
-        }
-    }
-    // 0118：下载数/完成数区间同样自动对调
-    if let (Some(a), Some(b)) = (filter.min_leechers, filter.max_leechers) {
-        if a > b {
-            filter.min_leechers = Some(b);
-            filter.max_leechers = Some(a);
-        }
-    }
-    if let (Some(a), Some(b)) = (filter.min_completed, filter.max_completed) {
-        if a > b {
-            filter.min_completed = Some(b);
-            filter.max_completed = Some(a);
-        }
-    }
+    super::list_prefs::swap_bounds(&mut filter);
     // 游标（方案批次二）：「排序键值 + id」的 keyset，与 ORDER BY 同序——
     // 修复此前只比 id 导致的「非默认排序翻页丢行」。旧格式（纯数字）兼容解析。
     let cursor = match q.cursor.as_deref() {
@@ -239,6 +216,9 @@ async fn list(
         ),
         _ => None,
     };
+    // P-275：每页条数——URL 优先，其次「每页 X 条」偏好，都没有才 20
+    let pref_limit = super::list_prefs::limit_from_pref(per_page);
+    let limit = q.limit.or(pref_limit).unwrap_or(20);
     // P1-4 读缓存（0071）：仅覆盖「首屏等价视图」——无筛选/无搜索/无游标/默认排序的第 1 页。
     // 该视图不含用户视角字段（owner 匿名化在 SQL 层完成），全部登录用户看到的字节一致，可共享缓存。
     // TTL 45s 兜底 + Redis 故障直查；带任何筛选条件时不走缓存（避免失效风暴复杂化）。
@@ -247,7 +227,7 @@ async fn list(
     let is_first_screen = crate::torrents::view_scope::shared_cache_safe(
         &filter,
         cursor.is_none(),
-        q.limit,
+        Some(limit),
     );
     let gen = list_cache_gen(&state).await;
     let cache_key = format!("cache:tlist:first:v1:{gen}");
@@ -267,7 +247,7 @@ async fn list(
             &state.repo.read_db,
             &filter,
             cursor,
-            q.limit.unwrap_or(20),
+            limit,
             auth.id,
         )
         .await?;
@@ -287,7 +267,7 @@ async fn list(
     // 0170：show_pending/show_rejected/reverse 均在 filter 内，序列化自动进 hash key。
     if !crate::torrents::view_scope::viewer_scoped(&filter) {
         if let Ok(canonical) =
-            serde_json::to_string(&(&filter, &cursor, q.limit.unwrap_or(20)))
+            serde_json::to_string(&(&filter, &cursor, limit))
         {
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             std::hash::Hash::hash(&canonical, &mut hasher);
@@ -311,7 +291,7 @@ async fn list(
                 &state.repo.read_db,
                 &filter,
                 cursor,
-                q.limit.unwrap_or(20),
+                limit,
                 auth.id,
             )
             .await?;
@@ -328,7 +308,7 @@ async fn list(
         &state.repo.read_db,
         &filter,
         cursor,
-        q.limit.unwrap_or(20),
+        limit,
         auth.id,
     )
     .await?;
