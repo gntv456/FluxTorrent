@@ -44,6 +44,7 @@ mod seeding;
 mod seeding_referral;
 mod settle;
 mod settle_periodic;
+mod staff_alert;
 mod subtitle_cert;
 mod subtitle_flow;
 mod sweep;
