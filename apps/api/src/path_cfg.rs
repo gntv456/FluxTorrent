@@ -105,6 +105,14 @@ pub(crate) fn humanize_parse_error(raw: &str) -> String {
         }
         return "缺少必填字段".to_string();
     }
+    if body.contains("unknown field") {
+        // `deny_unknown_fields` 被触发时的形状：
+        // unknown field `box_id`, expected `ids` or `folder` at line 1 column 9
+        if let Some(f) = quoted(body, "unknown field ") {
+            return format!("含未识别的字段：{f}（请核对字段名）");
+        }
+        return "含未识别的字段".to_string();
+    }
     if body.contains("invalid type") {
         let want = body
             .split("expected ")
@@ -172,6 +180,14 @@ mod tests {
                 "Query deserialize error: invalid digit found in string",
             ),
             "应为数字"
+        );
+        // deny_unknown_fields 触发时（`box_id` 误当成 move 的字段）
+        assert_eq!(
+            humanize_parse_error(
+                "Json deserialize error: unknown field `box_id`, expected \
+                 `ids` or `folder` at line 1 column 9",
+            ),
+            "含未识别的字段：box_id（请核对字段名）"
         );
         // 认不出的形状也必须给人话，而不是把原文留在 message 上
         assert_eq!(humanize_parse_error("wibbel wobble"), "请求参数格式不正确");
