@@ -9,8 +9,10 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents;
 
-use super::query::{norm_date, norm_text, parse_size, promo_or_err,
-                    ListQuery};
+use super::query::{
+    anonymous_or_err, date_or_err, norm_text, promo_or_err, size_or_err,
+    ListQuery,
+};
 
 /// 列表共享缓存的**代际号**键。写路径（发布/编辑/批量/审核/删除）INCR 它，
 /// 缓存 key 带上代际 → 旧条目立即不再命中，靠自身 TTL 自然过期。
@@ -179,10 +181,11 @@ async fn list(
         search_area: q.search_area,
         search_mode: q.search_mode,
         // 高级搜索增强（体积/时间/做种数/排除词/优惠/发布者/仅我发布）
-        size_min: parse_size(q.size_min.clone()),
-        size_max: parse_size(q.size_max.clone()),
-        date_from: norm_date(q.date_from.clone()),
-        date_to: norm_date(q.date_to.clone()),
+        // P-279：给了值却解析不出来 ⇒ 400（旧口径静默不筛 = 返回全站）
+        size_min: size_or_err(q.size_min.clone())?,
+        size_max: size_or_err(q.size_max.clone())?,
+        date_from: date_or_err(q.date_from.clone())?,
+        date_to: date_or_err(q.date_to.clone())?,
         min_seeders: q.min_seeders.filter(|v| *v >= 0),
         max_seeders: q.max_seeders.filter(|v| *v >= 0),
         exclude: norm_text(q.exclude.clone()),
@@ -195,7 +198,7 @@ async fn list(
         max_leechers: q.max_leechers.filter(|v| *v >= 0),
         min_completed: q.min_completed.filter(|v| *v >= 0),
         max_completed: q.max_completed.filter(|v| *v >= 0),
-        anonymous: q.anonymous.filter(|v| (0..=2).contains(v)),
+        anonymous: anonymous_or_err(q.anonymous)?,
         bookmarked: q.bookmarked.unwrap_or(false),
         sections,
         // 0267：前台列表没有「标题必须命中」入口，由对外端点（Torznab）使用

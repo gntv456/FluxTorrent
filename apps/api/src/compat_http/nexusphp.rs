@@ -186,12 +186,12 @@ async fn compat_np_torrents(
         // 对外缺省「全部」（含零做种）：新种必须立刻可被第三方搜到
         alive: Some(resolve_alive(q.alive, q.include_dead.as_deref())),
         promo: crate::torrent_http::promo_or_err(q.promo.clone())?,
-        size_min: crate::torrent_http::parse_size(q.size_min.clone()),
-        size_max: crate::torrent_http::parse_size(q.size_max.clone()),
+        size_min: crate::torrent_http::size_or_err(q.size_min.clone())?,
+        size_max: crate::torrent_http::size_or_err(q.size_max.clone())?,
         min_seeders: q.min_seeders.filter(|v| *v >= 0),
         max_seeders: q.max_seeders.filter(|v| *v >= 0),
-        date_from: crate::torrent_http::norm_date(q.date_from.clone()),
-        date_to: crate::torrent_http::norm_date(q.date_to.clone()),
+        date_from: crate::torrent_http::date_or_err(q.date_from.clone())?,
+        date_to: crate::torrent_http::date_or_err(q.date_to.clone())?,
         owner: crate::torrent_http::norm_text(q.owner.clone()),
         official: on(&q.official),
         sort: q

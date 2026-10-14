@@ -47,7 +47,8 @@ pub use manage::*;
 pub use peers::*;
 pub use preview::*;
 pub(crate) use query::{
-    norm_date, norm_promo, norm_tags, norm_text, parse_size, promo_or_err,
+    anonymous_or_err, date_or_err, norm_date, norm_promo,
+    norm_tags, norm_text, parse_size, promo_or_err, size_or_err,
 };
 pub use related::*;
 /// 多维筛选参数解析：后台管理列表也要用同一实现（B3）。
