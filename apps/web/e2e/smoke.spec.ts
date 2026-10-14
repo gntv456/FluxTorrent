@@ -14,13 +14,26 @@ async function login(page: import("@playwright/test").Page) {
     .locator('input[type="password"], [placeholder="密码"]')
     .first()
     .fill("password123");
-  await page.getByRole("button", { name: /^登录$/ }).first().click();
+  await page
+    .getByRole("button", { name: /^登录$/ })
+    .first()
+    .click();
   await page.waitForURL((u) => !u.pathname.includes("login"), {
     timeout: 15_000,
   });
 }
 
 test.describe("冒烟：登录与关键页", () => {
+  // 语言必须在**请求发出前**就已在 cookie 里：addInitScript 里的
+  // document.cookie 要等文档开载后才落，首个 /login 请求不带它，
+  // SSR 照样按英文渲染，`/^登录$/` 就永远等不到（2026-10-14 实测，
+  // 同 visual-regression.spec.ts 的修法）。
+  test.beforeEach(async ({ context }) => {
+    await context.addCookies([
+      { name: "flux.locale", value: "zh-CN", domain: "localhost", path: "/" },
+    ]);
+  });
+
   test("登录成功跳首页", async ({ page }) => {
     await login(page);
     expect(page.url()).not.toContain("/login");
