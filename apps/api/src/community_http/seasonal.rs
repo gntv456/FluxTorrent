@@ -32,7 +32,7 @@ struct SeasonalQuery {
 pub async fn seasonal_anime(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SeasonalQuery>,
+    q: crate::http::Q<SeasonalQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
 

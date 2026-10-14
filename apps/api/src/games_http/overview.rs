@@ -203,7 +203,7 @@ struct HistoryQuery {
 pub(super) async fn game_history(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<HistoryQuery>,
+    q: crate::http::Q<HistoryQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<GameHistoryRow> = sqlx::query_as(
@@ -240,7 +240,7 @@ struct GameRoundRow {
 pub(super) async fn game_rounds(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<HistoryQuery>,
+    q: crate::http::Q<HistoryQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<GameRoundRow> = sqlx::query_as(

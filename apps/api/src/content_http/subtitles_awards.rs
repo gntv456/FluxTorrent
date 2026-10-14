@@ -28,7 +28,7 @@ struct AwardRow {
 #[get("/subtitles/awards")]
 pub(super) async fn subtitle_awards_board(
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl actix_web::Responder> {
     let period = q.get("period").cloned();
     let rows: Vec<AwardRow> = sqlx::query_as(

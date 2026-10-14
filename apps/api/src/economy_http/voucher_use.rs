@@ -251,7 +251,7 @@ struct LedgerQuery {
 async fn my_ledger(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<LedgerQuery>,
+    q: crate::http::Q<LedgerQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows = sqlx::query_as::<_, LedgerRow>(

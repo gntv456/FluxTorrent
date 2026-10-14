@@ -19,7 +19,7 @@ pub struct SuggestQuery {
 pub async fn torrent_suggest(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SuggestQuery>,
+    q: crate::http::Q<SuggestQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let raw = q.q.as_deref().unwrap_or("").trim();

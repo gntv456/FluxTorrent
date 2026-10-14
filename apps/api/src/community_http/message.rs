@@ -36,7 +36,7 @@ struct MessageRow {
 async fn message_inbox(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<InboxQuery>,
+    q: crate::http::Q<InboxQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     // 关键词经 like_pattern 转义（%/_/\）后与原始串绑定：NULL 跳过、非 NULL 模糊匹配

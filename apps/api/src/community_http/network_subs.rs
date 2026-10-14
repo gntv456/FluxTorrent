@@ -81,7 +81,7 @@ pub async fn network_unsubscribe(
 pub async fn my_network_subscriptions(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SubQuery>,
+    q: crate::http::Q<SubQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let kind = q.kind.as_deref().unwrap_or("network");

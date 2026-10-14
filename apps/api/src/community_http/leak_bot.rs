@@ -136,7 +136,7 @@ async fn shoutbox_bot_help() -> impl Responder {
 async fn shoutbox_bot_exec(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let cmd = q.get("cmd").map(|s| s.trim()).unwrap_or("");

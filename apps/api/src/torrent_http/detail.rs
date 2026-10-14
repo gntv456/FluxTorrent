@@ -99,7 +99,7 @@ async fn comments(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    q: web::Query<ListQuery>,
+    q: crate::http::Q<ListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();

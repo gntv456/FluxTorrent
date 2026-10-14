@@ -32,7 +32,7 @@ struct FundingRow {
 #[get("/fundings")]
 async fn fundings_list(
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl Responder> {
     let status: Option<i16> = q
         .get("status")
@@ -154,7 +154,7 @@ struct AdminFundingRow {
 async fn admin_fundings_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::STAFF_PANEL)

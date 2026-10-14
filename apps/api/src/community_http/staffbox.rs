@@ -87,7 +87,7 @@ struct StaffMessageRow {
 async fn staff_messages(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<StaffMsgQuery>,
+    q: crate::http::Q<StaffMsgQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(

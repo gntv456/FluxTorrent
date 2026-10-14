@@ -35,7 +35,7 @@ struct FunItemRow {
 pub async fn fun_items(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let staff_view = q.get("status").map(|s| s.as_str()).unwrap_or("") == "all";

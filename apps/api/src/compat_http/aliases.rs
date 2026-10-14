@@ -152,7 +152,7 @@ async fn alias_takelogin(req: HttpRequest) -> DomainResult<HttpResponse> {
 async fn alias_userdetails(
     state: web::Data<std::sync::Arc<AppState>>,
     req: HttpRequest,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let passkey = q
         .get("passkey")
@@ -200,7 +200,7 @@ struct DetailsQuery {
 #[get("/compat/nexusphp/details.php")]
 async fn alias_details(
     req: HttpRequest,
-    q: web::Query<DetailsQuery>,
+    q: crate::http::Q<DetailsQuery>,
 ) -> DomainResult<HttpResponse> {
     Ok(HttpResponse::Found()
         .insert_header((

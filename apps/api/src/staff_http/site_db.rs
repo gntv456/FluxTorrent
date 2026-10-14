@@ -94,7 +94,7 @@ struct RuntimeLogQuery {
 pub async fn sys_log(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<RuntimeLogQuery>,
+    q: crate::http::Q<RuntimeLogQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::SYSLOG_VIEW)
@@ -185,7 +185,7 @@ struct LocationQuery {
 pub async fn locations(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<LocationQuery>,
+    q: crate::http::Q<LocationQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(

@@ -142,7 +142,7 @@ pub(super) async fn np_user_json(
 async fn compat_np_torrents(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<NpListQuery>,
+    q: crate::http::Q<NpListQuery>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     // ZT81：page 必须有上界——page*pagesize 直接进 SQL LIMIT（实测 page=1000000
@@ -391,7 +391,7 @@ struct NpDownloadQuery {
 async fn compat_np_download(
     state: web::Data<std::sync::Arc<AppState>>,
     req: HttpRequest,
-    q: web::Query<NpDownloadQuery>,
+    q: crate::http::Q<NpDownloadQuery>,
 ) -> Result<HttpResponse, actix_web::Error> {
     // passkey 限流（防枚举/暴力）：每 passkey 30 次/分钟 + IP 维 120/min。
     // P-67：这段原先自己写 Redis 且 `incr(...).unwrap_or(0)`——Redis 一抖动

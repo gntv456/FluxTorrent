@@ -34,7 +34,7 @@ struct BanLogRow {
 #[get("/auth/ban-log")]
 pub async fn ban_log(
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<BanLogQuery>,
+    q: crate::http::Q<BanLogQuery>,
 ) -> DomainResult<impl Responder> {
     // 限流：按用户名 5 次/分钟，防探测
     // P-73：旧写法 `unwrap_or(0)` 让 Redis 抖动时这道防探测闸不存在；

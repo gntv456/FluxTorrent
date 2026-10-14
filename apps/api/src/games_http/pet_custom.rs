@@ -101,7 +101,7 @@ pub(super) struct PetOfQuery {
 pub(super) async fn pet_of(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<PetOfQuery>,
+    q: crate::http::Q<PetOfQuery>,
 ) -> DomainResult<HttpResponse> {
     require_auth(&req, &state).await?;
     let row: Option<(String, String, i32, i64, i32, i64, i64, DateTime<Utc>)> =
