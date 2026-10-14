@@ -18,7 +18,7 @@ use super::staff;
 async fn jixiao_overview(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-245：这页返回**每个成员的姓名 + 登记金额**（members 明细），过去只判
@@ -105,7 +105,7 @@ async fn jixiao_overview(
 async fn jixiao_payroll(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-245：发薪明细是**别人的工资单**（username + amount + bonus + 结算时间），

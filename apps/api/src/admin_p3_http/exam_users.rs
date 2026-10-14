@@ -33,7 +33,7 @@ struct ExamUserRow {
 async fn exam_users(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)

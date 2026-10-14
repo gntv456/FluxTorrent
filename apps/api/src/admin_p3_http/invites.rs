@@ -51,7 +51,7 @@ struct InviteListQ {
 async fn admin_invites(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<InviteListQ>,
+    q: crate::http::Q<InviteListQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::INVITE_VIEW)

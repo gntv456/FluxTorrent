@@ -49,7 +49,7 @@ fn default_audit_limit() -> i64 {
 async fn audit_query(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<AuditQ>,
+    q: crate::http::Q<AuditQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::AUDIT_VIEW)

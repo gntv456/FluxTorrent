@@ -30,7 +30,7 @@ struct CandidateRow {
 async fn awards_candidates(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-258：候选池给的是 username + 字幕标题 + score + rating + downloads
@@ -65,7 +65,7 @@ async fn awards_candidates(
 async fn awards_build(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-259：这是**写口**（重建候选池 = 决定谁在池子里、谁能拿奖），过去只

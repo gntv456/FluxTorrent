@@ -141,7 +141,7 @@ async fn forum_admin_delete(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let force = q.get("force").map(|v| v == "true").unwrap_or(false);
     let auth = staff(&req, &state).await?;

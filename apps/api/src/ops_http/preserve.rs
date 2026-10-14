@@ -31,7 +31,7 @@ const VIEW_FILTER: &str = "(   ({m} = 'in' AND sp.exited_at IS NULL) \
 #[get("/preserve")]
 pub(super) async fn preserve_list(
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<PreserveQuery>,
+    q: crate::http::Q<PreserveQuery>,
 ) -> DomainResult<impl Responder> {
     // 分页与全站列表同口径（dto::page_window 是 1 基）。此前这里按 0 基算 offset，
     // 客户端照惯例传 page=1 时翻到的是第二页——保种区首页整页空白，

@@ -121,7 +121,7 @@ async fn dims_for(
 pub(super) async fn open_recent_torrents(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<OpenQuery>,
+    q: crate::http::Q<OpenQuery>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     require_scope(&tk, SCOPE_READ)?;
@@ -195,7 +195,7 @@ pub(super) async fn open_recent_torrents(
 pub(super) async fn open_announces(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<OpenQuery>,
+    q: crate::http::Q<OpenQuery>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     require_scope(&tk, SCOPE_READ)?;

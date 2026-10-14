@@ -75,7 +75,7 @@ pub fn default_per_page() -> i64 {
 async fn user_admin_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UserListQ>,
+    q: crate::http::Q<UserListQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-233：过去只判 staff()，而 staff.panel 由 class/90 发出（阈值=全部职员档）

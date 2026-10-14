@@ -38,7 +38,7 @@ struct UidPageQ {
 async fn admin_rename_logs(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UidPageQ>,
+    q: crate::http::Q<UidPageQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-256：`username_change_logs` 是**成员的身份变更史**（旧名→新名 + 操
@@ -94,7 +94,7 @@ struct ModifyLogRow {
 async fn admin_modify_logs(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UidPageQ>,
+    q: crate::http::Q<UidPageQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-257：`user_modify_logs` 记的是**管理组对成员改了什么**（uid+usernam

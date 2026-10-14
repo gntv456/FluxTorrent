@@ -30,7 +30,7 @@ struct SectionDictQ {
 async fn section_dict_admin(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SectionDictQ>,
+    q: crate::http::Q<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
         let auth = staff(&req, &state).await?;
     // P-266: ledger read gated with categories.manage (as its writes).
@@ -169,7 +169,7 @@ async fn section_dict_delete(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    q: web::Query<SectionDictQ>,
+    q: crate::http::Q<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(

@@ -46,7 +46,7 @@ struct VoucherListQ {
 pub(super) async fn admin_voucher_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<VoucherListQ>,
+    q: crate::http::Q<VoucherListQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)

@@ -70,7 +70,7 @@ pub(crate) async fn rss_feed(
     req: HttpRequest,
     path: web::Path<String>,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<RssQuery>,
+    q: crate::http::Q<RssQuery>,
 ) -> HttpResponse {
     let passkey = path.into_inner();
     // 形状校验（0267/0352）：passkey 或 fxr_ token 二选一——与两个生成器

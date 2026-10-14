@@ -62,7 +62,7 @@ struct QueueQuery {
 async fn review_queue(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<QueueQuery>,
+    q: crate::http::Q<QueueQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // 审计 2026-10-08 P2-3：队列下发 descr 摘要与发布者过审/被拒史，

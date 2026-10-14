@@ -171,7 +171,7 @@ fn default_per_page() -> i64 {
 async fn admin_claims(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ClaimsQ>,
+    q: crate::http::Q<ClaimsQ>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let mut where_parts: Vec<String> = Vec::new();

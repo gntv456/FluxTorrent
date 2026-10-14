@@ -40,7 +40,7 @@ struct UserPropQ {
 async fn admin_user_props(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UserPropQ>,
+    q: crate::http::Q<UserPropQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-252：同文件的 `DELETE /admin/user-props/{order_id}` 要 prop.manage(93)，

@@ -42,7 +42,7 @@ struct HistoryRow {
 pub(super) async fn settings_history(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<HistoryQ>,
+    q: crate::http::Q<HistoryQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(

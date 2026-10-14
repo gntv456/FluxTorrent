@@ -61,7 +61,7 @@ async fn difficulty(db: &sqlx::PgPool) -> i32 {
 pub async fn pow_challenge(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<PowQuery>,
+    q: crate::http::Q<PowQuery>,
 ) -> DomainResult<impl Responder> {
     // 防刷限流（同 captcha 口径）：挑战签发本身也要付 IP 维度成本
     let ip = crate::http::client_ip(&req);

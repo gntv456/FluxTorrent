@@ -108,7 +108,7 @@ fn project(
 pub(super) async fn me_seeding(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     require_scope(&tk, SCOPE_READ)?;
@@ -168,7 +168,7 @@ pub(super) async fn me_seeding(
 pub(super) async fn me_history(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     require_scope(&tk, SCOPE_READ)?;

@@ -150,7 +150,7 @@ pub async fn collection_add(
 pub async fn collections_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<CollectionListQuery>,
+    q: crate::http::Q<CollectionListQuery>,
 ) -> DomainResult<HttpResponse> {
     require_auth(&req, &state).await?;
     let kind = match q.kind.as_deref() {

@@ -103,7 +103,7 @@ struct RequestRow {
 pub(super) async fn request_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let finished = q.get("finished").map(|s| s.as_str()).unwrap_or("no");

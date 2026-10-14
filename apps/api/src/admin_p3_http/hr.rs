@@ -47,7 +47,7 @@ struct HrListQ {
 async fn hr_records(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<HrListQ>,
+    q: crate::http::Q<HrListQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::HR_VIEW)

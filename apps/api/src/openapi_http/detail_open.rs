@@ -38,7 +38,7 @@ pub(super) async fn open_torrent_detail(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     require_scope(&tk, SCOPE_READ)?;

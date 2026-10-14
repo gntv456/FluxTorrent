@@ -187,7 +187,7 @@ struct AdminAppealRow {
 pub async fn appeal_queue(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<AppealQueueQuery>,
+    q: crate::http::Q<AppealQueueQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(

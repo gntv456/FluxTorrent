@@ -47,7 +47,7 @@ struct AdminOrdersQuery {
 async fn admin_shop_orders(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<AdminOrdersQuery>,
+    q: crate::http::Q<AdminOrdersQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = staff(&req, &state).await?;
     // P-253：全站商店流水（买家用户名 + 道具 + 实付价格 + 时间）只判 staff()，

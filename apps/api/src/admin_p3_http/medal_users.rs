@@ -41,7 +41,7 @@ struct UserMedalQ {
 async fn admin_user_medals(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UserMedalQ>,
+    q: crate::http::Q<UserMedalQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-247：这一页给的是**每个人的勋章名、授予/到期时间与是否过期**，同页

@@ -14,7 +14,7 @@ use crate::state::AppState;
 pub async fn menu_items_public(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<MenuPublicQ>,
+    q: crate::http::Q<MenuPublicQ>,
 ) -> DomainResult<HttpResponse> {
     if !["sidebar", "footer", "topbar"].contains(&q.location.as_str()) {
         return Err(DomainError::Validation(

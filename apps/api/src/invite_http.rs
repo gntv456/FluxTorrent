@@ -128,7 +128,7 @@ struct ListQuery {
 pub async fn list_invites_handler(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ListQuery>,
+    q: crate::http::Q<ListQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     // 0204 分页：此前 LIMIT 50 截断重度用户历史；页大小 50。

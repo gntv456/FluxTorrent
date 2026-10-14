@@ -37,7 +37,7 @@ struct RecordQ {
 async fn admin_spark_logs(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<RecordQ>,
+    q: crate::http::Q<RecordQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-235：魔力流水含 balance_after 余额，主管及以上
@@ -89,7 +89,7 @@ struct TorrentBuyRow {
 async fn admin_torrent_buys(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<RecordQ>,
+    q: crate::http::Q<RecordQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-235：种子/代币购买流水同为资金数据
@@ -130,7 +130,7 @@ struct LoginLogRow {
 async fn admin_login_logs(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<RecordQ>,
+    q: crate::http::Q<RecordQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-234：登录日志含来源 IP，总版主及以上
