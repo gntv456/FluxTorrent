@@ -7,6 +7,8 @@
  * 文本字段，服务端两条通道都收（`/open/torrents` 等老客户端仍可走 query）。
  */
 
+import { apiErrorMessage } from "@/i18n/client";
+
 export interface SecKindDef {
   kind: string;
   field_type?: string;
@@ -101,30 +103,18 @@ export function appendMeta(fd: FormData, v: MetaValues) {
   for (const f of ripFiles) fd.append("log", f);
 }
 
-/** 发种拒单文案的取用顺序（P-303）。
+/** 发种拒单文案（P-303 → P-306 合并成一条口径）。
  *
- * 共用码在 i18n 字典里只有一句粗标签（3003「种子文件无效」、1002「参数
- * 校验失败」），而十几种具体原因只活在 envelope.message 里——后端已把粗
- * 标签拼在前面（「种子文件无效: 种子未标记私有…」）。字典优先会把原因
- * 截掉，成员照着什么都改不动；但 message 为空串/纯空白时又必须落回粗标签
- * 与通用兜底，否则点完提交什么都不播报（`??` 不把空串当缺失）。 */
+ * 规则本体在 `apiErrorMessage`：多原因共用码（3003 / 1002 / 5003…）取冒号后
+ * 的具体判据，尾巴不是人话（serde 原文那类英文内部诊断）就退回粗标签。
+ * 这里只保留发种屏自己的一条通用兜底，别再让同一条规则长第二份实现
+ * ——批九十三到九十五之间正因为两份实现，界面上出现过「一个屏露原因、
+ * 另一个屏只给粗标签」的不一致。 */
 export function rejectReason(
   body: { code?: number; message?: unknown },
-  dict: {
-    errors?: Record<number, string>;
+  dict: Parameters<typeof apiErrorMessage>[0] & {
     upload?: { fail?: string };
   },
 ): string {
-  const raw = typeof body.message === "string" ? body.message.trim() : "";
-  const keyed = dict.errors?.[Number(body.code)];
-  // 只有「人话原因」才给用户看。判据是把后端已经拼在前面的粗标签剥掉再看
-  // 剩下那段：1002 在缺字段时会退化成 serde 原始诊断（实测抽样：「参数校验
-  // 失败: Json deserialize error: missing field `email` at line 1 column
-  // 16」），那句里的中文只有标签本身，摊开就是内部实现细节。
-  const rest =
-    keyed && raw.startsWith(keyed)
-      ? raw.slice(keyed.length).replace(/^[:：]\s*/, "")
-      : raw;
-  if (rest !== "" && /[一-鿿]{3,}/.test(rest)) return raw;
-  return keyed ?? dict.upload?.fail ?? "";
+  return apiErrorMessage(dict, body) || dict.upload?.fail || "";
 }

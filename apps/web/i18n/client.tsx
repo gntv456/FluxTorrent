@@ -57,7 +57,9 @@ export function apiErrorMessage(dict: Dict, err: unknown): string {
         .slice(label.length)
         .replace(/^[:：]\s*/, "")
         .trim();
-      if (tail) return tail;
+      // 尾巴还得是人话：P-304 之前 1002 挂的是 serde 原文（英文内部诊断），
+      // 现在源头已修，但这条判据留着——以后再有链路漏原文也不会摊到界面上
+      if (tail && /[一-鿿]{3,}/.test(tail)) return tail;
     }
     return label ?? raw;
   }
