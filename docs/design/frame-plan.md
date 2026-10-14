@@ -184,6 +184,26 @@ review.rs 与 review_batch.rs 需要人工同步计数逻辑（0288 纪律）、
 翻倍导致 CI/装站闸门时长不可接受，再按本节三选项重新评审。
 
 
+### 7.11 终态判定（2026-10-14，v2）
+
+> 实测证据见 `docs/design/final-acceptance.md` §2；门禁家族 24 件**全绿**。
+
+| # | 条款 | 判定 |
+|---|---|---|
+| 1 | 路由清单 100% 机器可读且防漂移过 CI | ✅ 745 条一致（`route_manifest_guard`） |
+| 2 | 错误码注册表自动生成文档与 TS 常量 | ⚠️ guard+生成器在 CI；TS 手写 26 vs 生成 22、5 保留码未进生成物 |
+| 3 | compat+开放 API 域 100% utoipa，其余 ≥80% | ⚠️ 两域 28 条 **100%**、手写 spec 路径归零；其余域未推进（F4 持续） |
+| 4 | 分层宪法三条进门禁且红测有效 | ✅ 门禁在 CI 且**实证拦到 2 例**（jixiao_reads 已处置、list_prefs 已下沉 `repo/user_prefs.rs`）；`services/`+`domain/` 已有先例文件；存量 367 文件按棘轮只许降 |
+| 5 | review_decide / hr_pardon 双入口归零 | ⚠️ review_decide 已在 `services/`；hr_pardon 唯一入口但未下沉 |
+| 6 | 状态机迁移判定进 domain/ 纯函数 + 矩阵单测 | ✅ `domain/torrent_status.rs`（154 行 / 4 个 `#[test]`） |
+| 7 | 乐观并发覆盖「先读后写」配置域；写端点默认幂等头 | ⚠️ 设置域已落 + 0353 幂等头 13 端点；推广中 |
+| 8 | 前端接口类型按域从 OpenAPI 生成 | ✅ 首域 `generated/rss-tokens.ts`（4/4） |
+| 9 | 审计 action 命名规约统一且 lint 可查 | ✅ `audit_action_guard`（309 unique / 点分层 211 / 98=baseline） |
+| 10 | 冷启动课题立项有结论 | ✅ §7.10（结论 A 维持现状+文档化） |
+
+**结论：5 ✅ / 4 ⚠️ / 0 ❌（v1 的 1 🔴 已清）。** 契约/框架线无新增欠账；
+⚠️ 项均为「已起步、分域推进」形态，与 §6 阶段计划同向。
+
 ---
 
 ## 8. 与两份文档的闭环
