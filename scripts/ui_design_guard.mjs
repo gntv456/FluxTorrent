@@ -33,6 +33,7 @@ import path from "node:path";
 
 import { checkDomScopes } from "./ui_design_guard_dom.mjs";
 import { checkTsxHex } from "./ui_design_guard_hex.mjs";
+import { checkMotionDurations } from "./ui_design_guard_motion.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const BASELINE = path.resolve(
@@ -275,6 +276,9 @@ checkTsxHex({
   globSync,
   ROOT,
 });
+
+// ---------- 10. 动效令牌棘轮（独立模块，见 ui_design_guard_motion.mjs）----------
+checkMotionDurations({ section, failBox, warnBox, allCss, read, base, UPDATE });
 
 // ---------- 汇总 ----------
 const total = fails + failBox.n;
