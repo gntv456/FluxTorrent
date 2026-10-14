@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
-import { ErrorPanel, normalizeError } from "@/components/ui/error-panel";
+import { ErrorPanel } from "@/components/ui/error-panel";
 import { EmptyState } from "@/components/ui/empty-state";
+import { normalizeError } from "@/lib/render-error";
 import { SkeletonRows } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
