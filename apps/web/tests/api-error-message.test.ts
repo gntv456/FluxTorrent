@@ -53,6 +53,15 @@ describe("apiErrorMessage（P-305）", () => {
     expect(apiErrorMessage(dict, env)).toEqual("文件清单为空");
   });
 
+  it("尾巴是英文内部诊断时不摊出去（退回本码粗标签）", () => {
+    const e = new ApiError(
+      1002,
+      "参数校验失败: Json deserialize error: missing field `email`",
+      null,
+    );
+    expect(apiErrorMessage(dict, e)).toEqual(zhCN.errors[1002]);
+  });
+
   it("非 ApiError 的普通异常仍走原路径（没被信封分支吃掉）", () => {
     expect(apiErrorMessage(dict, new Error("网络断了"))).toEqual("网络断了");
   });
