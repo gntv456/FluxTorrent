@@ -24,6 +24,7 @@ FROM 校验（复原不依赖被验代码），最后 DROP 备份表。
 """
 import io
 import os
+import re
 import subprocess
 import sys
 
@@ -200,20 +201,37 @@ try:
     setprefs(incl_dead=1, per_page=0)
 
     # ===== CM8 静态对账：偏好字段必须真的被列表路径消费 =====
-    prefs = code("torrent_http/list_prefs.rs")
+    # 判据按**形状**扫全仓而不按文件名：批七十三我把 SELECT 放在
+    # torrent_http/list_prefs.rs，站方正在把它重构进 repo/user_prefs.rs——
+    # 按单文件名的话，他们那一版一改路径这条就红，红的是布局不是行为。
+    prefs_all = ""
+    for root, _d, fs in os.walk(os.path.join(REPO, "apps", "api", "src")):
+        for fn in fs:
+            if fn.endswith(".rs"):
+                prefs_all += code(
+                    os.path.relpath(os.path.join(root, fn),
+                                    os.path.join(REPO, "apps", "api",
+                                                 "src")).replace("\\", "/"))
     ent = code("torrent_http/list.rs")
-    sel_ok = ("incl_dead" in prefs) and ("torrents_per_page" in prefs)
-    ok("CM8a P-275 implemented 对账：list_prefs.rs 的 SQL 必须同时读两列 "
+    has_sel = re.search(r"SELECT[^\""]*incl_dead[^\""]*torrents_per_page",
+                        prefs_all) or re.search(
+                            r"SELECT[^\""]*torrents_per_page[^\""]*incl_dead",
+                            prefs_all)
+    ok("CM8a P-275 implemented 对账：全仓必须有一条 SQL 同时 SELECT 这两列"
        "（incl_dead=%s / torrents_per_page=%s），只读不 SELECT 就是假接线"
-       % ("incl_dead" in prefs, "torrents_per_page" in prefs), sel_ok)
+       % ("incl_dead" in prefs_all, "torrents_per_page" in prefs_all),
+       bool(has_sel))
     n_fold = ent.count("alive_from_pref") + ent.count("limit_from_pref")
     ok("CM8b 入口必须把两项折算接上：list.rs 里 alive_from_pref + "
        "limit_from_pref 共 %d 处（各 1 才算两条都接）" % n_fold,
        ent.count("alive_from_pref") == 1
        and ent.count("limit_from_pref") == 1, "合计=%d" % n_fold)
-    reg = code("torrent_http/mod.rs").count("mod list_prefs")
-    ok("CM8c 拆出的 `list_prefs.rs` 必须在 mod.rs 注册（注册了才编译得进来，"
-       "这条是给「拆完忘注册」留的红）：命中=%d" % reg, reg == 1,
+    reg = code("torrent_http/mod.rs").count("mod list_prefs") + \
+        (code("repo/mod.rs").count("mod user_prefs")
+         if os.path.exists(os.path.join(REPO, "apps", "api", "src", "repo",
+                                        "mod.rs")) else 0)
+    ok("CM8c 承载 `viewer_prefs` 的文件必须在 mod.rs 注册（注册了才编译得进来，"
+       "这条是给「拆完忘注册」留的红）：命中=%d" % reg, reg >= 1,
        "命中=%d" % reg)
     wired = ("q.alive.or(alive_pref)" in ent) and (
         "q.limit.or(pref_limit)" in ent)
