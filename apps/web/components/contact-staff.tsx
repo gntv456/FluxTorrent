@@ -25,9 +25,12 @@ export function ContactStaff() {
     try {
       setTickets(await api.get<MyTicket[]>("/api/v1/me/staffmessages"));
     } catch {
-      setTickets([]);
+      // P-314：子组件 contact-staff-tickets 本就分 null / 空 / 有 三态，
+      // 失败给 [] 是拿「没有工单」冒充「读不到」；正解是置 null + msg 提示
+      // （第 254 行 {msg && …} 已 grep 证明会渲染）。
+      setTickets(null); setMsg(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
 
   useEffect(() => {
     void loadTickets();
