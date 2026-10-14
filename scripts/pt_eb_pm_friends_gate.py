@@ -7,7 +7,8 @@
   `accept_pm` 这一列本身是有执行者的（`community_http/message_send.rs`
   会按 no/friends 拦），但 **friends 那一支查好友关系的 SQL 没带
   `friendships.list` 条件，还把两个方向都算**：
-      WHERE (f.user_id=$1 AND f.friend_id=$2) OR (f.user_id=$2 AND f.friend_id=$1)
+      WHERE (f.user_id=$1 AND f.friend_id=$2)
+             OR (f.user_id=$2 AND f.friend_id=$1)
   而 `friendships.list` 的真实取值是 friend / pending / black（本轮现网实测：
   friend 2 行、pending 3 行，且 **pending 行全部没有反向行** = 单向申请）。
   ⇒ 只要 A 给 B 发过一次好友申请（B 从未接受），A 就能给设了「仅好友」的 B
