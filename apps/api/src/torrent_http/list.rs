@@ -9,7 +9,8 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents;
 
-use super::query::{norm_date, norm_promo, norm_text, parse_size, ListQuery};
+use super::query::{norm_date, norm_text, parse_size, promo_or_err,
+                    ListQuery};
 
 /// 列表共享缓存的**代际号**键。写路径（发布/编辑/批量/审核/删除）INCR 它，
 /// 缓存 key 带上代际 → 旧条目立即不再命中，靠自身 TTL 自然过期。
@@ -185,7 +186,8 @@ async fn list(
         min_seeders: q.min_seeders.filter(|v| *v >= 0),
         max_seeders: q.max_seeders.filter(|v| *v >= 0),
         exclude: norm_text(q.exclude.clone()),
-        promo: norm_promo(q.promo.clone()),
+        // P-277：给了值却不认识 ⇒ 400（旧行为归一成 None = 不加谓词 = 全站）
+        promo: promo_or_err(q.promo.clone())?,
         owner: norm_text(q.owner.clone()),
         only_mine: q.mine.unwrap_or(false),
         // 0118 高级搜索补齐（下载数/完成数区间 + 匿名发布；负数丢弃 = 不筛）
