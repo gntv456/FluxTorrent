@@ -26,6 +26,7 @@ mod passkey_reg;
 mod passkey_util;
 mod profile;
 mod profile_helpers;
+mod profile_privacy;
 mod profile_types;
 mod register;
 mod register_mode;

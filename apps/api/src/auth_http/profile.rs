@@ -262,7 +262,7 @@ pub async fn user_public_profile(
     // 用户自定义字段（0186）：public 字段 + 有值才下发
     let user_fields =
         super::user_fields::public_fields_for(&state.repo.read_db, uid).await;
-    Ok(ok(serde_json::json!({
+    let mut body = serde_json::json!({
         "user_fields": user_fields,
         "profile": profile,
         "avatar_frame_css": profile.avatar_frame_css,
@@ -293,5 +293,8 @@ pub async fn user_public_profile(
         "subtitle_count": subtitle_count,
         "subtitle_downloads": subtitle_downloads,
         "subtitle_cert": cert_tier,
-    })))
+    });
+    // P-293：隐私等级=「强(个人信息全部隐藏)」时的按键遮蔽，见该模块注释
+    super::profile_privacy::mask_personal(&state, &auth, uid, &mut body).await;
+    Ok(ok(body))
 }
