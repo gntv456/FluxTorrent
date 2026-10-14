@@ -1,5 +1,6 @@
 import { EmptyTorrents } from "@/components/torrent";
-import { ErrorPanel, normalizeError } from "@/components/ui/error-panel";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { colorMap, catPath } from "@/lib/site-profile";
@@ -115,7 +116,6 @@ export default async function TorrentsPage({
   for (const [k, v] of Object.entries(sp)) {
     if (k.startsWith("sec_") && v) secParams[k] = v;
   }
-  // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用；
   // 但要把「失败」与「确实没有结果」区分开（方案 P0-6：此前两者都渲染成空态）
   let loadErr: unknown = null;

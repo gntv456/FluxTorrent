@@ -88,14 +88,19 @@ def page_once(qs, cookie=True, locale=None):
 
 
 def settled(v):
-    """SSR 是否已落定：Next 忙时先回 loading.tsx 骨架壳（「正在获取列表」），
-    那一版里既没有筛选区也没有错误面板，会被判成「没有面板」的假绿。"""
-    return "正在获取列表" not in v and "跳到主要内容" in v
+    """页面出了「真内容」没有。判据取**存在性**而非骨架词缺席：
+    实测正常渲染的列表页自己也带 `正在获取列表` 占位（海报墙子区），
+    用缺席判会把好页念成「没落定」。"""
+    return "基础筛选" in v or "用户登录" in v
 
 
-def page(qs, cookie=True, locale=None, tries=10):
-    """取「落定」的那一版；取不到就把最后一次交回去并在细节里点名没落定。"""
+def page(qs, cookie=True, locale=None, tries=10, settled_check=True):
+    """取「落定」的那一版。`settled_check=False` 用在**畸形参数**那几条上：
+    那种页面本来就停在失败分支，拿正常页的存在性判据卡它，
+    会把「缺陷本体」念成「读数不可信」。"""
     st, h = page_once(qs, cookie, locale)
+    if not settled_check:
+        return st, h
     for _ in range(tries):
         if settled(vis(h)):
             break
@@ -145,7 +150,7 @@ ok("CS0b 合法页无错误面板",
 
 print("== CS1..CS4 渲染层：后端那句中文必须出现在可见文本 ==")
 for i, (qs, want, why) in enumerate(BAD, start=1):
-    s, h = page("?" + qs)
+    s, h = page("?" + qs, settled_check=False)
     v = vis(h)
     hit_msg = want in v
     hit_code = "ui-err__code" in h and "1002" in v
@@ -185,15 +190,27 @@ ok("CS7a 反模式「硬编码 message 进 ErrorPanel」= 0 命中",
    len(hits) == 0, "命中 %d：%s" % (len(hits), hits[:2]))
 txt = src(PAGES[0])
 bare = chr(10).join(l.split("//")[0] for l in txt.splitlines())
-ok("CS7b 种列表页确实调了 normalizeError",
-   "normalizeError" in bare and "import { ErrorPanel, normalizeError }"
-   in bare, "normalizeError 出现 %d 次" % bare.count("normalizeError"))
+ok("CS7b 种列表页确实调了 normalizeError（且从 lib/render-error 取）",
+   bare.count("normalizeError") >= 2
+   and 'from "@/lib/render-error"' in txt
+   and "import { ErrorPanel, normalizeError }" not in txt,
+   "出现 %d 次" % bare.count("normalizeError"))
+# CS9：本批栽过一次——服务端组件 import "use client" 文件里的函数会抛
+# `Attempted to call normalizeError() from the server`，整棵子树变骨架屏
+# （dev 日志实测 digest 992692853；修前红在两个 page.tsx 上）。
+r9 = subprocess.run(
+    ["git", "grep", "-n", "--", 'from "@/components/ui/error-panel"',
+     "apps/web"], cwd=REPO, stdout=subprocess.PIPE,
+    universal_newlines=True, encoding="utf-8")
+bad9 = [x for x in (r9.stdout or "").splitlines() if "normalizeError" in x]
+ok("CS9 没有任何页面从 client 模块 import normalizeError（当前 %d 处）"
+   % len(bad9), not bad9, "命中=%s" % [b[:70] for b in bad9])
 ok("CS7c catch 里接住了错误对象（不再 .catch(() => )）",
    ".catch((e)" in bare or ".catch(e =" in bare,
    "形状=%s" % re.findall(r"\.catch\([^)]{0,6}\)", bare)[:3])
 
 print("== CS8 英文界面：记现网读数（细节仍为中文，不判红） ==")
-s, h = page("?date_from=2025-13-45", locale="en")
+s, h = page("?date_from=2025-13-45", locale="en", settled_check=False)
 v = vis(h)
 seg = v[v.find("日期") - 40 if "日期" in v else 0:][:120]
 print("   WARN en 界面片段：%s" % seg.replace(chr(10), " "))

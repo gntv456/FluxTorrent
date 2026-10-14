@@ -18,24 +18,10 @@
 import { useState } from "react";
 
 import { Icon } from "@/components/icons";
-import { ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { normalizeError, type PanelError } from "@/lib/render-error";
 
-export interface PanelError {
-  code?: number | string;
-  message: string;
-  requestId?: string;
-}
-
-/** 任意 unknown → 可渲染的普通错误对象（ApiError 保 request_id） */
-export function normalizeError(err: unknown): PanelError {
-  if (err instanceof ApiError) {
-    return { code: err.code, message: err.message, requestId: err.requestId };
-  }
-  if (err instanceof Error) return { message: err.message };
-  if (typeof err === "string") return { message: err };
-  return { message: String(err) };
-}
+export type { PanelError } from "@/lib/render-error";
 
 export function ErrorPanel({
   error,
