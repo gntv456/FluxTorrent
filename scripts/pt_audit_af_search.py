@@ -241,9 +241,10 @@ ok("G2 date_from 只回近三天发的三颗",
 ok("G2 date_to 含边界当天 → 更早的两颗",
    eqs(sel("date_to=%s" % dstr(3)), {A2, A3}), str(
        sel("date_to=%s" % dstr(3))))
-ok("G2 非法日期不筛（等于不加该参数，不是 500）",
-   eqs(sel("date_from=2025-13-45"), CORPUS), str(
-       sel("date_from=2025-13-45")))
+ok("G2 非法日期必须 400（批七十五 P-279；旧判据「不筛 = 返回全站」正是那个洞，"
+   "同时保证不打成 500）",
+   sel("date_from=2025-13-45") == frozenset()
+   and "http=400" in LAST_ERR[0], LAST_ERR[0])
 ok("G3 min_seeders=5 → {A1,A3}", eqs(sel("min_seeders=5"), {A1, A3}),
    str(sel("min_seeders=5")))
 ok("G3 max_seeders=1 含边界 → {A2,A4}", eqs(sel("max_seeders=1"), {A2, A4}),
