@@ -1,5 +1,5 @@
 import { EmptyTorrents } from "@/components/torrent";
-import { ErrorPanel } from "@/components/ui/error-panel";
+import { ErrorPanel, normalizeError } from "@/components/ui/error-panel";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { colorMap, catPath } from "@/lib/site-profile";
@@ -118,7 +118,7 @@ export default async function TorrentsPage({
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用；
   // 但要把「失败」与「确实没有结果」区分开（方案 P0-6：此前两者都渲染成空态）
-  let loadFailed = false;
+  let loadErr: unknown = null;
   const page = await paged<TorrentListItem>("/api/v1/torrents", {
     limit: pageSize,
     // 多选分类（0088）：后端 category_ids 兼容逗号串
@@ -159,8 +159,8 @@ export default async function TorrentsPage({
     max_completed: sp.max_completed || undefined,
     anonymous: sp.anonymous || undefined,
     ...secParams,
-  }).catch(() => {
-    loadFailed = true;
+  }).catch((e) => {
+    loadErr = e;
     return {
       items: [] as TorrentListItem[],
       next_cursor: null,
@@ -253,9 +253,9 @@ export default async function TorrentsPage({
           （原两态是手写段落，现收敛为原语） */}
       <TorrentSplitView items={page.items}>
       {page.items.length === 0 ? (
-        loadFailed ? (
+        loadErr !== null ? (
           <ErrorPanel
-            error={{ message: dict.common.loadFailed }}
+            error={normalizeError(loadErr)}
             desc={dict.torrents.loadFailedHint}
             retryHref={withParam(sp, "cursor", undefined)}
           />
