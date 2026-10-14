@@ -95,7 +95,7 @@ async fn list(
     // ?alive= > ?include_dead= > 个人偏好——偏好是「我的默认视图」，
     // 不是「强制视图」，显式参数（含旧站工具口径）必须能压过它。
     let (incl_dead, per_page) =
-        super::list_prefs::viewer_prefs(&state.repo.read_db, auth.id).await;
+        crate::repo::user_prefs::viewer_prefs(&state.repo, auth.id).await;
     let alive_pref = q
         .include_dead
         .map(|d| if d { 0 } else { 1 })

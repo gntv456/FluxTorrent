@@ -275,3 +275,4 @@ impl Repo {
 
 pub mod auth;
 pub mod passkey;
+pub mod user_prefs;
