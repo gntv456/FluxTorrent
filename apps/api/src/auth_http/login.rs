@@ -83,12 +83,8 @@ pub async fn login(
     // 的粗闸，20 次/分钟够用（= 每秒 1/3 次，脚本爆破仍被用户名档 + 锁定
     // 两条线拦住）。
     throttle(&state, format!("login:{}", body.username)).await?;
-    crate::http::throttle_limited(
-        &state,
-        format!("login-ip:{}", peer_ip),
-        20,
-    )
-    .await?;
+    crate::http::throttle_limited(&state, format!("login-ip:{}", peer_ip), 20)
+        .await?;
     let user = state
         .repo
         .find_user_by_name(body.username.trim())

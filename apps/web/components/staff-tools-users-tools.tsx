@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 用户域面板·工具区（从 components/staff-tools-users.tsx 按域拆出）：
  *  重置密码（resetpass）/ 删除被禁用户（deldisabled）/ H&R 赦免（hrpardon）。 */
@@ -73,6 +74,8 @@ export function DelDisabledSection({
   flash: (m: string) => void;
 }) {
   const t = useI18n().dict.stafftools;
+  // P2 清偿：批量清理二次确认（danger：删除全部禁用用户），confirm 退役
+  const ask = useConfirm();
 
   return (
     <section className="baozi-panel p-4">
@@ -81,18 +84,25 @@ export function DelDisabledSection({
       <button
         className={DD_BTN}
         disabled={busy}
-        onClick={() => {
-          if (!window.confirm(t.ddConfirm)) return;
-          void guard(async () => {
-            const r = await api.post<{ deleted: number }>(
-              "/api/v1/admin/deletedisabled",
-            );
-            flash(t.ddDone.replace("{n}", String(r.deleted)));
-          }, "");
-        }}
+        onClick={() =>
+          ask.open({
+            title: t.ddBtn,
+            message: t.ddConfirm,
+            tone: "danger",
+            busy,
+            run: () =>
+              guard(async () => {
+                const r = await api.post<{ deleted: number }>(
+                  "/api/v1/admin/deletedisabled",
+                );
+                flash(t.ddDone.replace("{n}", String(r.deleted)));
+              }, ""),
+          })
+        }
       >
         {t.ddBtn}
       </button>
+      <AskDialog {...ask} />
     </section>
   );
 }

@@ -140,6 +140,52 @@ for (const [method, p] of DOMAIN_ROUTES) {
   }
 }
 
+
+// ---------- 4. 生成物面：gen_ts_types 落盘且与注解域对得上 ----------
+// （FRAME §7 第 8 条分域起步：rss-tokens 域的 TS 类型来自 OpenAPI 生成，
+//   手写接口已在 rss-tokens.tsx 删除——本步锁「生成物在且含关键键」，
+//   防止 generated/ 被误删后前端悄悄回落到手写。）
+section("生成物：packages/domain-types/src/generated/rss-tokens.ts");
+try {
+  const gen = read(
+    "packages/domain-types/src/generated/rss-tokens.ts",
+  );
+  const need = [
+    "RssTokenMeta",
+    "RssTokenCreated",
+    "RssTokenCreateReq",
+    "RssTokenList",
+  ];
+  const miss = need.filter((k) => !gen.includes(`interface ${k}`));
+  if (miss.length) {
+    console.log(
+      `FAIL  生成物缺关键类型 ${miss.join(", ")}（重跑 node scripts/gen_ts_types.mjs）`,
+    );
+    fails++;
+  } else {
+    console.log("OK  rss-tokens 生成类型 4/4 在位");
+  }
+  // 注解侧对拍：rss/tokens 路径键必须在源注解里（防止生成物来自旧 spec）
+  const rssAnnotated = [
+    ...read("apps/api/src/rss_http/tokens.rs").matchAll(
+      /path\s*=\s*"\/api\/v1\/rss\/tokens[^"]*"/g,
+    ),
+  ].length;
+  if (rssAnnotated < 3) {
+    console.log(
+      `FAIL  rss_http/tokens.rs 注解路径数 ${rssAnnotated} < 3（注解丢失？）`,
+    );
+    fails++;
+  } else {
+    console.log(`OK  rss-tokens 注解路径 ${rssAnnotated} 条`);
+  }
+} catch {
+  console.log(
+    "FAIL  packages/domain-types/src/generated/rss-tokens.ts 不存在（node scripts/gen_ts_types.mjs）",
+  );
+  fails++;
+}
+
 // ---------- 汇总 ----------
 console.log(
   fails === 0

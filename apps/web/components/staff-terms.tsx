@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { applyTermsText, sortRules } from "@/i18n/apply-terms";
 
 interface TermRow {
@@ -47,16 +48,14 @@ const emptyDraft = (): Draft => ({
   sort: 100,
 });
 
-export function StaffTermsPanel({
-  flash,
-}: {
-  flash: (m: string) => void;
-}) {
+export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
   const t = dict.termsPanel;
   const [rows, setRows] = useState<TermRow[] | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：删词条二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   const [probe, setProbe] = useState("");
 
   const load = useCallback(() => {
@@ -115,7 +114,6 @@ export function StaffTermsPanel({
   }
 
   async function remove(r: TermRow) {
-    if (!window.confirm(fmt(t.delConfirm, { w: r.canonical }))) return;
     try {
       await api.post(
         `/api/v1/admin/terms/${encodeURIComponent(r.canonical)}/delete`,
@@ -208,63 +206,70 @@ export function StaffTermsPanel({
       </div>
       {editForm}
       <div className="baozi-wide-table-scroll">
-      <table className="nexus-table">
-        <thead>
-          <tr>
-            <th>{t.canonical}</th>
-            <th>{t.replacement}</th>
-            <th>{t.status}</th>
-            <th>{t.sort}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {(rows ?? []).map((r) => (
-            <tr key={r.canonical}>
-              <td>{r.canonical}</td>
-              <td>{r.replacement}</td>
-              <td className="text-xs">{r.enabled ? t.on : t.off}</td>
-              <td className="num text-xs">{r.sort}</td>
-              <td className="flex gap-2 text-xs">
-                <button
-                  type="button"
-                  className="underline"
-                  onClick={() =>
-                    setDraft({
-                      canonical: r.canonical,
-                      replacement: r.replacement,
-                      sort: r.sort,
-                    })
-                  }
-                >
-                  {dict.torrents.edit}
-                </button>
-                <button
-                  type="button"
-                  className="underline"
-                  onClick={() => toggle(r)}
-                >
-                  {r.enabled ? t.pause : t.resume}
-                </button>
-                <button
-                  type="button"
-                  className="underline text-coral"
-                  onClick={() => remove(r)}
-                >
-                  {dict.torrents.delete}
-                </button>
-              </td>
-            </tr>
-          ))}
-          {rows !== null && rows.length === 0 && (
+        <table className="nexus-table">
+          <thead>
             <tr>
-              <td colSpan={5} className="text-sub">
-                {t.empty}
-              </td>
+              <th>{t.canonical}</th>
+              <th>{t.replacement}</th>
+              <th>{t.status}</th>
+              <th>{t.sort}</th>
+              <th />
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(rows ?? []).map((r) => (
+              <tr key={r.canonical}>
+                <td>{r.canonical}</td>
+                <td>{r.replacement}</td>
+                <td className="text-xs">{r.enabled ? t.on : t.off}</td>
+                <td className="num text-xs">{r.sort}</td>
+                <td className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() =>
+                      setDraft({
+                        canonical: r.canonical,
+                        replacement: r.replacement,
+                        sort: r.sort,
+                      })
+                    }
+                  >
+                    {dict.torrents.edit}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => toggle(r)}
+                  >
+                    {r.enabled ? t.pause : t.resume}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline text-coral"
+                    onClick={() =>
+                      ask.open({
+                        title: dict.torrents.delete,
+                        message: fmt(t.delConfirm, { w: r.canonical }),
+                        tone: "danger",
+                        run: () => remove(r),
+                      })
+                    }
+                  >
+                    {dict.torrents.delete}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {rows !== null && rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="text-sub">
+                  {t.empty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
       <div className="grid gap-1 rounded-[var(--r-md)] border border-line p-3">
         <label className="text-xs text-sub">
@@ -290,6 +295,7 @@ export function StaffTermsPanel({
           </p>
         )}
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }

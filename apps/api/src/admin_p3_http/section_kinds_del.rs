@@ -51,13 +51,12 @@ async fn section_kinds_delete(
             "该维度仍有 {dicts} 个字典值（删除会连带清空），请先删字典值"
         )));
     }
-    let gone: Option<String> = sqlx::query_scalar(
-        "SELECT label FROM section_kinds WHERE kind = $1",
-    )
-    .bind(&kind)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let gone: Option<String> =
+        sqlx::query_scalar("SELECT label FROM section_kinds WHERE kind = $1")
+            .bind(&kind)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query("DELETE FROM section_kinds WHERE kind = $1")
         .bind(&kind)
         .execute(&state.repo.db)
@@ -69,8 +68,13 @@ async fn section_kinds_delete(
     }
     state
         .repo
-        .audit_detail(Some(auth.id), "section_kind.del", None, None,
-            Some(serde_json::json!({"kind": kind, "label": gone})))
+        .audit_detail(
+            Some(auth.id),
+            "section_kind.del",
+            None,
+            None,
+            Some(serde_json::json!({"kind": kind, "label": gone})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "deleted": kind })))
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 
 /** 追更中心行内退订（0075 组订阅）：POST /torrents/groups/{gid}/unsubscribe
  *  成功后 refresh() 让 RSC 重取列表，行自然消失。 */
@@ -20,7 +21,9 @@ export function UnsubscribeButton({ groupId }: { groupId: number }) {
       await api.post(`/api/v1/torrents/groups/${groupId}/unsubscribe`, {});
       router.refresh();
     } catch (e) {
-      if (e instanceof ApiError) window.alert(e.message);
+      // P2 清偿：错误反馈 alert → toast.error（request_id 芯片）
+      if (e instanceof ApiError)
+        toast.error(e.message, { requestId: e.requestId });
     } finally {
       setBusy(false);
     }

@@ -27,11 +27,18 @@ use utoipa::OpenApi;
         crate::economy_http::recon::torznab_caps,
         crate::economy_http::recon::torznab_search,
         crate::rss_http::rss_feed,
+        // rss-tokens 域（FRAME §7 第 8 条分域起步）：B 批 0352 端点，
+        // 前端 rss-tokens.tsx 的接口类型自此由本注解生成替换手写
+        crate::rss_http::tokens::rss_token_list,
+        crate::rss_http::tokens::rss_token_create,
+        crate::rss_http::tokens::rss_token_rotate,
+        crate::rss_http::tokens::rss_token_revoke,
     ),
     tags(
         (name = "兼容层(NP)", description = "NexusPHP 口径 JSON / 别名 / 下载凭证"),
         (name = "Torznab", description = "Torznab caps/search（XML）"),
         (name = "RSS", description = "个性化 RSS 订阅（passkey 路径鉴权）"),
+        (name = "RSS Token", description = "/rss/tokens：订阅凭证管理（会话鉴权）"),
     )
 )]
 pub(crate) struct OpenApiCompat;
@@ -65,6 +72,10 @@ mod tests {
             "/api/v1/torznab",
             "/api/v1/torznab/search",
             "/api/v1/rss/{passkey}",
+            // rss-tokens 域（FRAME §7 第 8 条分域起步，0352 端点注解化）
+            "/api/v1/rss/tokens",
+            "/api/v1/rss/tokens/{id}/rotate",
+            "/api/v1/rss/tokens/{id}",
         ];
         let mut miss = Vec::new();
         for p in expected {
@@ -77,12 +88,12 @@ mod tests {
             "compat 域注解缺路径: {miss:?}（实际键: {:?}）",
             obj.keys().collect::<Vec<_>>()
         );
-        // 全部单方法，15 键 = 15 操作（比 spec_np 手写多 /downloads/keys/revoke，
-        // 手写当年漏了它 —— 注解化后顺手补齐）
+        // 18 键 19 操作：原 15 单方法键 + rss-tokens 4 操作 3 键
+        // （/rss/tokens 双方法 get+post，rotate/revoke 各一键一方法）
         let ops: usize = obj
             .values()
             .map(|v| v.as_object().map(|o| o.len()).unwrap_or(0))
             .sum();
-        assert_eq!(ops, 15, "compat 域应有 15 个操作");
+        assert_eq!(ops, 19, "compat 域（含 rss-tokens）应有 19 个操作");
     }
 }

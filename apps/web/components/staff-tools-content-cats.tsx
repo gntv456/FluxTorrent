@@ -6,9 +6,11 @@
  * 数据与动作回调留在父组件注入。
  */
 
+import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StaffPackAppliesPanel } from "./staff-tools-pack-applies";
 import type {
   CatItem,
@@ -58,6 +60,14 @@ export function StaffCatsPanel({
 }: CatsPanelProps) {
   const { dict } = useI18n();
   const t = dict.stafftools;
+  // P2 清偿：切包确认 / 另存为自定义包共用一个 ConfirmDialog 状态机
+  //（旧 window.confirm/prompt 退役；diff 预览文本放 children 白名单换行）
+  const [ask, setAsk] = useState<
+    | { kind: "apply"; code: string; name: string; msg: string }
+    | { kind: "save" }
+    | null
+  >(null);
+  const [saveName, setSaveName] = useState("");
   return (
     <>
       <section className="baozi-panel p-4">
@@ -134,16 +144,12 @@ export function StaffCatsPanel({
                         "{name}",
                         pk.name,
                       )}\n\n${detail}`;
-                      if (!window.confirm(msg)) return;
-                      await guard(
-                        async () => {
-                          await api.post(
-                            "/api/v1/admin/site-type-packs/apply",
-                            { code: pk.code, mode: packMode },
-                          );
-                        },
-                        t.packApplied.replace("{name}", pk.name),
-                      );
+                      setAsk({
+                        kind: "apply",
+                        code: pk.code,
+                        name: pk.name,
+                        msg,
+                      });
                     })();
                   }}
                 >
@@ -156,18 +162,8 @@ export function StaffCatsPanel({
                   disabled={busy}
                   title={t.packSaveTip}
                   onClick={() => {
-                    const name = window.prompt(t.packSavePrompt);
-                    if (!name?.trim()) return;
-                    void guard(async () => {
-                      await api.post("/api/v1/admin/site-type-packs/save", {
-                        code: `custom_${name
-                          .trim()
-                          .toLowerCase()
-                          .replace(/[^a-z0-9_]+/g, "_")
-                          .slice(0, 32)}`,
-                        name: name.trim(),
-                      });
-                    }, t.packSaved);
+                    setSaveName("");
+                    setAsk({ kind: "save" });
                   }}
                 >
                   💾
@@ -177,6 +173,55 @@ export function StaffCatsPanel({
           })}
         </div>
       </section>
+      <ConfirmDialog
+        open={ask !== null}
+        onClose={() => setAsk(null)}
+        onConfirm={() => {
+          const cur = ask;
+          setAsk(null);
+          if (cur?.kind === "apply") {
+            void guard(
+              async () => {
+                await api.post("/api/v1/admin/site-type-packs/apply", {
+                  code: cur.code,
+                  mode: packMode,
+                });
+              },
+              t.packApplied.replace("{name}", cur.name),
+            );
+          } else if (cur?.kind === "save" && saveName.trim()) {
+            void guard(async () => {
+              await api.post("/api/v1/admin/site-type-packs/save", {
+                code: `custom_${saveName
+                  .trim()
+                  .toLowerCase()
+                  .replace(/[^a-z0-9_]+/g, "_")
+                  .slice(0, 32)}`,
+                name: saveName.trim(),
+              });
+            }, t.packSaved);
+          }
+        }}
+        tone={ask?.kind === "apply" ? "danger" : "neutral"}
+        title={ask?.kind === "save" ? t.packSavePrompt : t.packTitle}
+        busy={busy}
+      >
+        {ask?.kind === "apply" ? (
+          <p className="whitespace-pre-line text-sm text-muted">{ask.msg}</p>
+        ) : ask?.kind === "save" ? (
+          <label className="flex flex-col gap-1 text-sm">
+            <span>{t.packSavePrompt}</span>
+            <input
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              maxLength={32}
+              className="min-h-[40px] rounded-[var(--r-sm)] border
+                border-line bg-[var(--surface-card)] px-3 text-sm"
+              data-autofocus
+            />
+          </label>
+        ) : null}
+      </ConfirmDialog>
       <section className="baozi-panel p-4">
         <h2 className="mb-3 text-base font-bold text-ink">{t.tabCats}</h2>
         <div className="cmgmt-form">
@@ -192,7 +237,9 @@ export function StaffCatsPanel({
             <select
               value={catParent}
               onChange={(e) =>
-                setCatParent(e.target.value === "" ? "" : Number(e.target.value))
+                setCatParent(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
             >
               <option value="">{dict.cmgmt.parentTop}</option>
@@ -282,8 +329,7 @@ export function StaffCatsPanel({
                           bg_color: bg.trim(),
                           parent_id: Number(pp) || null,
                           sort: soT === "" ? undefined : Number(soT),
-                          newznab_id:
-                            nzT === "" ? undefined : Number(nzT),
+                          newznab_id: nzT === "" ? undefined : Number(nzT),
                         });
                       }, t.saved);
                     }}

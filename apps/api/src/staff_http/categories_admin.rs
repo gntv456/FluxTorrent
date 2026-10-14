@@ -70,7 +70,9 @@ pub async fn category_list(
          c.icon_key, c.sort, c.bg_color, c.newznab_id, \
          (SELECT count(*) FROM torrents t WHERE t.category_id = c.id)::bigint \
          AS torrents FROM categories c ORDER BY c.sort, c.id",
-    ).fetch_all(&state.repo.db).await
+    )
+    .fetch_all(&state.repo.db)
+    .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
@@ -207,4 +209,3 @@ pub async fn category_delete(
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
-

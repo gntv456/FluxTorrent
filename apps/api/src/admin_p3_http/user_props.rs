@@ -42,7 +42,7 @@ async fn admin_user_props(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<UserPropQ>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-252：同文件的 `DELETE /admin/user-props/{order_id}` 要 prop.manage(93)，
     // 而这张背包台账（user_id / username / 道具名 / 价格 / 是否已用）只判 staff()
     // ⇒ 低档职员能把「谁买了什么道具」整份读走。台账与操作同一把键。

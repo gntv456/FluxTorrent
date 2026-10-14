@@ -67,6 +67,18 @@ pub(crate) async fn decide_one(
     // 1=已过 2=被拒。过审写 approved_at（审计 2026-10-08 P1-1：该字段此前
     // 在审核链路从不落值，worker 的泄露检测与社交队小时窗都以
     // `approved_at IS NOT NULL` 为前提 ⇒ 全部常规过审种恒空转）。
+    // 状态机判定收 domain（FRAME §7 第 6 条）：0→1/2 合法性与下面 WHERE
+    // 谓词同源，先在此显式判定（非法组合此处不可能出现——from 恒为 0，
+    // 断言防未来有人改 from 时绕过矩阵）。
+    let to = if approve {
+        crate::domain::torrent_status::APPROVED
+    } else {
+        crate::domain::torrent_status::DENIED
+    };
+    debug_assert!(crate::domain::torrent_status::can_transition(
+        crate::domain::torrent_status::PENDING,
+        to,
+    ));
     let n = sqlx::query(
         "UPDATE torrents SET approval_status = $2, \
             approved_at = CASE WHEN $2::smallint = 1 THEN now() ELSE NULL END, \
@@ -74,7 +86,7 @@ pub(crate) async fn decide_one(
          WHERE id = $1 AND approval_status = 0",
     )
     .bind(torrent_id)
-    .bind(if approve { 1 } else { 2 })
+    .bind(to)
     .bind(if approve { None } else { deny_reason_id })
     .bind(if approve {
         None

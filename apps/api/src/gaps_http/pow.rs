@@ -67,23 +67,17 @@ pub async fn pow_challenge(
     let ip = crate::http::client_ip(&req);
     crate::http::rate_window(&state, &format!("pow:{ip}"), 30, 60).await?;
     let name = q.username.trim().to_lowercase();
-    let fails = crate::http::counter_peek(
-        &state,
-        &format!("acctlock:{name}"),
-    )
-    .await?;
+    let fails =
+        crate::http::counter_peek(&state, &format!("acctlock:{name}")).await?;
     if fails < POW_FAILS_FROM {
         // 未达触发线不发题：接口对「任意用户名」无探测价值
-        return Err(DomainError::Validation(
-            "当前无需工作量证明".into(),
-        ));
+        return Err(DomainError::Validation("当前无需工作量证明".into()));
     }
     // 32 字节 crypto 随机 → 64 hex（对外凭据口径同 new_passkey 的 OsRng）
     use rand::RngCore;
     let mut bytes = [0u8; 32];
     rand::rngs::OsRng.fill_bytes(&mut bytes);
-    let challenge: String =
-        bytes.iter().map(|b| format!("{b:02x}")).collect();
+    let challenge: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
     let token = uuid::Uuid::new_v4().to_string();
     let bits = difficulty(&state.repo.db).await;
     let mut c = state.redis.clone();
@@ -114,9 +108,12 @@ pub(crate) async fn pow_verify(
     state: &std::sync::Arc<AppState>,
     token: &str,
     solution: &str,
-) -> DomainResult<()> {    // token/solution 形状闸：防把任意串塞进 Redis 键名或哈希输入
+) -> DomainResult<()> {
+    // token/solution 形状闸：防把任意串塞进 Redis 键名或哈希输入
     if token.is_empty()
-        || !token.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        || !token
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-')
         || solution.len() > 128
         || !solution
             .bytes()
@@ -143,22 +140,14 @@ pub(crate) async fn pow_verify(
     let Ok(bits) = bits.parse::<u32>() else {
         return Err(DomainError::Validation("PoW 挑战损坏".into()));
     };
-    if !meets_difficulty(
-        &pow_hash(challenge, solution),
-        bits,
-    ) {
-        return Err(DomainError::Validation(
-            "PoW 解不满足难度要求".into(),
-        ));
+    if !meets_difficulty(&pow_hash(challenge, solution), bits) {
+        return Err(DomainError::Validation("PoW 解不满足难度要求".into()));
     }
     Ok(())
 }
 
 /// 删除该用户的全部挂起挑战（成功登录/锁定清零时；失败只记 warn 同 counter_clear）
-pub(crate) async fn pow_clear(
-    state: &std::sync::Arc<AppState>,
-    token: &str,
-) {
+pub(crate) async fn pow_clear(state: &std::sync::Arc<AppState>, token: &str) {
     if token.is_empty() {
         return;
     }
@@ -200,8 +189,7 @@ pub(super) fn meets_difficulty(hex: &str, bits: u32) -> bool {
     let mask = 0xFu8 >> rem;
     let next = hex.as_bytes()[full];
     next.is_ascii_digit() && (next - b'0') <= mask
-        || next.is_ascii_lowercase()
-            && (next - b'a' + 10) <= mask
+        || next.is_ascii_lowercase() && (next - b'a' + 10) <= mask
 }
 
 #[cfg(test)]

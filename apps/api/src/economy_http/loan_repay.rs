@@ -87,13 +87,11 @@ async fn loan_repay(
             let to_principal = amount - to_interest;
             // 体字段优先、Idempotency-Key 头兜底（部分还款必填口径不变）
             let idem =
-                crate::http::idempotency::body_or_header(
-                    &body.idempotency_key,
-                )
-                .map(|k| format!("loan_repay_p:{}:{}", auth.id, k))
-                .ok_or_else(|| {
-                    DomainError::Validation("部分还款缺少幂等键".into())
-                })?;
+                crate::http::idempotency::body_or_header(&body.idempotency_key)
+                    .map(|k| format!("loan_repay_p:{}:{}", auth.id, k))
+                    .ok_or_else(|| {
+                        DomainError::Validation("部分还款缺少幂等键".into())
+                    })?;
             if !matches!(
                 spend_spark_tx(
                     &mut tx,

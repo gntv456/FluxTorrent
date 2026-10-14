@@ -123,6 +123,54 @@ review.rs 与 review_batch.rs 需要人工同步计数逻辑（0288 纪律）、
 9. 审计 action 命名规约统一且 lint 可查；
 10. 冷启动课题立项有结论（迁移合并/基线快照二选一，允许结论是"维持现状+文档化"）。
 
+### 7.10 冷启动课题结论（2026-10-13 立项评审，结论：A 维持现状+文档化）
+
+实测数据（本地栈 flux-postgres / flux-api，359 个迁移全部应用）：
+
+- 迁移体积：`apps/api/migrations` 共 359 个 SQL 文件、约 1.8 MB；
+- `_sqlx_migrations.execution_time` 记录的**累计**执行时间约 10,696 s
+  （~2.97 小时）——但这是**有数据库上增量回放**的口径：top 5 慢迁移
+  （init 663 s、partitions 601 s、arcade fishing 208 s…）全是建表后
+  backfill/索引构建，慢在数据量不在 DDL 数量；
+- **空库冷启动**（新装场景）与此不同：本地栈 flux-api 容器健康重启的
+  观测日志显示，迁移表已就位时启动到 listening 仅 ~0.06 s（`relation
+  "_sqlx_migrations" already exists, skipping` → `listening on 0.0.0.0:8080`
+  同秒内完成）。空库首装 359 个迁移的 DDL 段（建表/约束/索引）按
+  install_e2e 装站闸门的既有实测为**数十秒量级**，且只发生在首次部署；
+- 执行模型（main.rs 迁移段）：`sqlx::migrate::Migrator::new(dir).run()`
+  一次性顺序跑全部未应用迁移，**非逐文件独立事务**——sqlx 的 run 对
+  非事务性迁移（本仓 `.sql` 文件无 `-- no-transaction` 标记的默认路径）
+  在单连接上按文件顺序执行并逐条记 checksum，失败即中止。
+  `FLUX_BOOT_MIGRATIONS=0` 已提供多副本滚动启停的跳过开关。
+
+三选项评估：
+
+- **A 维持现状 + 文档化（推荐）**：冷启动数十秒仅首次部署/空库装站
+  可感知，日常重启（迁移已应用）零成本；升级路径保持 sqlx 原生
+  （checksum 对账、advisory lock、失败中止语义全继承）；359 个文件
+  的 git 历史与 `audit_migration_checksums.py` 对账工具链无需任何
+  改动。风险仅在于「新环境首装慢」，由 install_e2e 装站闸门覆盖
+  验证。**本结论段即该选项的文档化部分。**
+- **B 迁移合并成基线快照**：把 359 个文件 squash 成一个
+  `0001_baseline.sql`。收益：首装 DDL 一次执行、文件数归一；
+  风险：sqlx 的 `_sqlx_migrations` checksum 对账机制需整体重写
+  （存量库的 359 行历史记录与单一 baseline 无法对上，要么清表重放
+  ——生产库不可接受，要么双轨记账——对账工具 `audit_migration_
+  checksums.py` 与 `align_migration_checksums*.sql` 三套脚本全部
+  重做）；迁移文件的 git blame/评审链断裂。收益（省数十秒首装）
+  远不抵风险。
+- **C squash 只读归档（折中）**：旧迁移移入 `migrations/archive/`
+  不再参与执行，新装走导出的 baseline 快照，存量库走原路径。
+  问题：同一 schema 两个真值来源，恰是 FRAME 全程在消灭的形态
+  （对照 §4 双入口、0159 标签双写）；且 baseline 快照需要一套
+  「从活库导出并对拍」的维护纪律，否则每月漂移。
+
+**结论：A。** 冷启动成本是首装一次性且被装站闸门覆盖的，B/C 的
+复杂度都会落在「对账机制重写/双真值维护」这两个本方案明确对抗的
+方向上。触发重评条件：若未来单次空库装站超过 5 分钟，或迁移数
+翻倍导致 CI/装站闸门时长不可接受，再按本节三选项重新评审。
+
+
 ---
 
 ## 8. 与两份文档的闭环

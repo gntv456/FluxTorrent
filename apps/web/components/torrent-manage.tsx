@@ -16,7 +16,10 @@ import {
   useAttachmentUpload,
   useEditSections,
 } from "@/components/torrent-manage-parts";
-import { ManageBasicFields, ManageMetaFields } from "@/components/torrent-manage-fields";
+import {
+  ManageBasicFields,
+  ManageMetaFields,
+} from "@/components/torrent-manage-fields";
 import {
   buildEditPayload,
   useTorrentActions,
@@ -63,10 +66,29 @@ export interface TorrentManageProps {
 
 export function TorrentManage(p: TorrentManageProps) {
   const {
-    torrentId, name, smallDescr, descr, anonymous, categoryId, price,
-    posterUrl, mediainfo, sections, secKinds, secDict, cats, seeders,
-    imdbId, tagDict, tagMine, posState, posStateUntil, pickType,
-    isStaff, metaSources, autoOpen,
+    torrentId,
+    name,
+    smallDescr,
+    descr,
+    anonymous,
+    categoryId,
+    price,
+    posterUrl,
+    mediainfo,
+    sections,
+    secKinds,
+    secDict,
+    cats,
+    seeders,
+    imdbId,
+    tagDict,
+    tagMine,
+    posState,
+    posStateUntil,
+    pickType,
+    isStaff,
+    metaSources,
+    autoOpen,
   } = p;
   const { dict, currency } = useI18n();
   const router = useRouter();
@@ -154,8 +176,22 @@ export function TorrentManage(p: TorrentManageProps) {
     setMsg(null);
     try {
       const body = buildEditPayload({
-        fName, fSub, fDescr, fAnon, fCat, fImdb, fPoster, fMediainfo,
-        fSec, catKinds, fTags, tagMine, dictRows, isStaff, fPos, fPosUntil,
+        fName,
+        fSub,
+        fDescr,
+        fAnon,
+        fCat,
+        fImdb,
+        fPoster,
+        fMediainfo,
+        fSec,
+        catKinds,
+        fTags,
+        tagMine,
+        dictRows,
+        isStaff,
+        fPos,
+        fPosUntil,
         fPick,
       });
       await api.put(`/api/v1/torrents/${torrentId}`, body);
@@ -174,7 +210,6 @@ export function TorrentManage(p: TorrentManageProps) {
       setBusy(false);
     }
   }
-
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -200,12 +235,13 @@ export function TorrentManage(p: TorrentManageProps) {
         <button
           type="button"
           disabled={busy}
-          onClick={actions.del}
+          onClick={actions.askDel}
           className={`${PILL} border border-tomato/60 text-tomato`}
         >
           🗑 {t.del}
         </button>
       </div>
+      {actions.delDialog}
 
       {/* 0173：编辑改覆盖式弹窗——不再内嵌展开挤动详情页布局 */}
       <Modal

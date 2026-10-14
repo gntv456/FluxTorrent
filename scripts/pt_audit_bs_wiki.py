@@ -185,7 +185,8 @@ mine5 = [r for r in rows if str(r.get("created_at") or "").replace(
 noref = [r.get("action") for r in mine5
          if not (r.get("detail") or "").strip()
          or r.get("detail") in ("null", "{}")]
-have_slug = all("slug" in str(r.get("detail")) for r in mine5) if mine5 else False
+have_slug = all("slug" in str(r.get("detail"))
+             for r in mine5) if mine5 else False
 ok("W5a 本轮新写的 wiki 审计行都要带 ref 与 slug（delete 那条尤其——版本史随"
    "CASCADE 一起没了，不留就成了无头账）：本轮 %d 条，空 ref %d 条"
    % (len(mine5), len(noref)), bool(mine5) and not noref and have_slug,

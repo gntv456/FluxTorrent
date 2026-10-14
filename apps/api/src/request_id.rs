@@ -80,8 +80,7 @@ pub async fn request_id_mw(
 fn log_safe_path(p: &str) -> String {
     p.split('/')
         .map(|seg| {
-            if seg.len() >= 32
-                && seg.bytes().all(|b| b.is_ascii_alphanumeric())
+            if seg.len() >= 32 && seg.bytes().all(|b| b.is_ascii_alphanumeric())
             {
                 "***"
             } else {

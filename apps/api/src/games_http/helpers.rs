@@ -216,10 +216,7 @@ pub(super) fn idem_key(
 /// 它入账）与物品目录的 `anchor`（既是所有引用它的池的 EV 分母，也是物品回落
 /// 成魔力的单价）。原状是只判负数不判上限，而这三条路都不经 EV 闸 —— 一位小数
 /// 点打错就是全站增发，且领取之前没有任何地方会报错。
-pub(super) fn ensure_grant_range(
-    what: &str,
-    value: i64,
-) -> DomainResult<()> {
+pub(super) fn ensure_grant_range(what: &str, value: i64) -> DomainResult<()> {
     if value < 0 || value > games::MAX_SPARK_GRANT {
         return Err(DomainError::Validation(format!(
             "{what} 需在 0 ~ {} 之间（收到 {value}）：这一行数字之后每次发放都按它入账",
@@ -235,9 +232,7 @@ pub(super) fn ensure_grant_range(
 ///
 /// 同族纪律在 items 写口早就实现了（`kind` / `anchor_src` / `use_kind` 三个枚举
 /// 都在保存前查域），这里只是把奖池这一口补齐。
-pub(super) fn ensure_pool_shapes(
-    entries: &[PoolEntryReq],
-) -> DomainResult<()> {
+pub(super) fn ensure_pool_shapes(entries: &[PoolEntryReq]) -> DomainResult<()> {
     const SIDES: [&str; 4] = ["any", "win", "triple", "lose"];
     for (i, e) in entries.iter().enumerate() {
         let at = format!("档位 {}「{}」", i + 1, e.label);

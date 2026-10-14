@@ -4,12 +4,15 @@
  * 站点设定导出/导入域（P2 §4.3，从 app/(main)/admin/settings/settings-client.tsx
  * 按域拆出）：明文导出二次确认、导出下载、导入解析 / 空跑 diff / 强制确认落库
  * 的状态与动作。提示与刷新通过回调交还主组件。
+ * 反馈协议（DS-PLAN-01 W-10/W-34）：原 SettingsToast 本地提示条整体收编为
+ * 全局 toast（本域曾是两孤岛之一；2026-10-13 起本域无自有反馈形态）。
  */
 
 import { useState } from "react";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { toast } from "@/components/ui/toast";
 import type {
   AdapterRow,
   AdapterTryResult,
@@ -24,22 +27,18 @@ import type {
   RuleTryResult,
 } from "./settings-types";
 
-/** 主组件的提示条状态形状（成功/失败文案 + 生效列表） */
-export interface SettingsToast {
-  ok: boolean;
-  text: string;
-  effects?: string[];
-}
-
 export function useSettingsTransfer({
   reload,
-  onToast,
 }: {
   reload: () => Promise<void>;
-  onToast: (t: SettingsToast | null) => void;
 }) {
   const { dict } = useI18n();
   const s = dict.settingsAdmin;
+  /** 失败统一出口：字典文案优先，附 request_id 供报障定位 */
+  const fail = (e: unknown) =>
+    toast.error(apiErrorMessage(dict, e), {
+      requestId: e instanceof ApiError ? e.requestId : undefined,
+    });
   // 导出 / 导入（P2 §4.3）
   const [exportPlain, setExportPlain] = useState(false);
   const [askPlain, setAskPlain] = useState(false);
@@ -67,9 +66,9 @@ export function useSettingsTransfer({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      onToast({ ok: true, text: fmt(s.exported, { n: r.count }), effects: [] });
+      toast.success(fmt(s.exported, { n: r.count }));
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     }
   }
 
@@ -100,7 +99,7 @@ export function useSettingsTransfer({
   async function importDryRun() {
     const parsed = parseImport(importText);
     if (!parsed) {
-      onToast({ ok: false, text: s.importBadJson });
+      toast.error(s.importBadJson);
       return;
     }
     setImportBusy(true);
@@ -114,7 +113,7 @@ export function useSettingsTransfer({
       setImportUnknown(r.unknown);
       setImportSkipped(r.skipped_readonly);
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     } finally {
       setImportBusy(false);
     }
@@ -130,10 +129,8 @@ export function useSettingsTransfer({
         plaintext: parsed.plaintext,
         confirm: true,
       });
-      onToast({
-        ok: true,
-        text: fmt(s.imported, { n: r.applied }),
-        effects: r.effects,
+      toast.success(fmt(s.imported, { n: r.applied }), {
+        desc: r.effects.join("；") || undefined,
       });
       setImportOpen(false);
       setImportText("");
@@ -143,7 +140,7 @@ export function useSettingsTransfer({
       setExportPlain(false);
       await reload();
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     } finally {
       setImportBusy(false);
     }
@@ -194,10 +191,10 @@ export function useSettingsTransfer({
         { pack_id: packId, confirm: true },
       );
       const n = r.applied?.categories ?? r.applied?.settings ?? 0;
-      onToast({ ok: true, text: fmt(s.packImported, { n }) });
+      toast.success(fmt(s.packImported, { n }));
       await Promise.all([reloadPacks(), reloadCatalog(), reload()]);
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     } finally {
       setInstallBusyId(null);
     }
@@ -217,7 +214,7 @@ export function useSettingsTransfer({
       );
       setRuleTryResult(r);
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     }
   }
 
@@ -239,13 +236,15 @@ export function useSettingsTransfer({
         adapter_id: adapterId,
         enabled,
       });
-      onToast({
-        ok: true,
-        text: fmt(s.adapterToggled, { id: adapterId, state: enabled ? s.adapterOn : s.adapterOff }),
-      });
+      toast.success(
+        fmt(s.adapterToggled, {
+          id: adapterId,
+          state: enabled ? s.adapterOn : s.adapterOff,
+        }),
+      );
       await reloadAdapters();
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     }
   }
 
@@ -254,33 +253,31 @@ export function useSettingsTransfer({
       await api.post("/api/v1/admin/adapters/delete", {
         adapter_id: adapterId,
       });
-      onToast({ ok: true, text: fmt(s.adapterDeleted, { id: adapterId }) });
+      toast.success(fmt(s.adapterDeleted, { id: adapterId }));
       await reloadAdapters();
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     }
   }
 
   async function tryAdapter(adapterId: string, url: string) {
-    setAdapterTryId(adapterId);
-    try {
-      const r = await api.post<AdapterTryResult>(
-        "/api/v1/admin/adapters/try",
-        { adapter_id: adapterId, url },
-      );
-      onToast({
-        ok: true,
-        text: fmt(s.adapterTryOk, { id: adapterId }),
-        effects: [JSON.stringify(r.result).slice(0, 200)],
-      });
-      await reloadAdapters();
-    } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
-      await reloadAdapters(); // 熔断可能已更新
-    } finally {
-      setAdapterTryId(null);
+      setAdapterTryId(adapterId);
+      try {
+        const r = await api.post<AdapterTryResult>(
+          "/api/v1/admin/adapters/try",
+          { adapter_id: adapterId, url },
+        );
+        toast.success(fmt(s.adapterTryOk, { id: adapterId }), {
+          desc: JSON.stringify(r.result).slice(0, 200),
+        });
+        await reloadAdapters();
+      } catch (e) {
+        fail(e);
+        await reloadAdapters(); // 熔断可能已更新
+      } finally {
+        setAdapterTryId(null);
+      }
     }
-  }
 
   // ---- 内容包（生态商店 M1）：本站导出 / 导入（空跑→确认）/ 清单 / 回滚 ----
   const [packOpen, setPackOpen] = useState(false);
@@ -324,9 +321,9 @@ export function useSettingsTransfer({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      onToast({ ok: true, text: fmt(s.packExported, { kind }), effects: [] });
+      toast.success(fmt(s.packExported, { kind }));
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     }
   }
 
@@ -335,7 +332,7 @@ export function useSettingsTransfer({
     try {
       pack = JSON.parse(packText);
     } catch {
-      onToast({ ok: false, text: s.importBadJson });
+      toast.error(s.importBadJson);
       return;
     }
     setPackBusy(true);
@@ -346,10 +343,10 @@ export function useSettingsTransfer({
       );
       setPackPreview(r);
       if ((r.errors?.length ?? 0) > 0) {
-        onToast({ ok: false, text: s.packHasErrors });
+        toast.error(s.packHasErrors);
       }
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     } finally {
       setPackBusy(false);
     }
@@ -369,12 +366,12 @@ export function useSettingsTransfer({
         { pack, confirm: true },
       );
       const n = r.applied?.categories ?? r.applied?.settings ?? 0;
-      onToast({ ok: true, text: fmt(s.packImported, { n }) });
+      toast.success(fmt(s.packImported, { n }));
       setPackText("");
       setPackPreview(null);
       await Promise.all([reloadPacks(), reload()]);
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     } finally {
       setPackBusy(false);
     }
@@ -387,10 +384,10 @@ export function useSettingsTransfer({
         "/api/v1/admin/content-packs/rollback",
         { id },
       );
-      onToast({ ok: true, text: fmt(s.packRolledBack, { id: r.rolled_back }) });
+      toast.success(fmt(s.packRolledBack, { id: r.rolled_back }));
       await Promise.all([reloadPacks(), reload()]);
     } catch (e) {
-      onToast({ ok: false, text: apiErrorMessage(dict, e) });
+      fail(e);
     } finally {
       setPackBusy(false);
     }

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { formatBytes } from "@/lib/format";
 
 /** 复活任务区（0073，U3D Graveyard 口径）：
@@ -31,6 +32,8 @@ export function ResurrectionPanel() {
   const [mine, setMine] = useState<MineRow[] | null>(null);
   const [mineOpen, setMineOpen] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
+  // P2 清偿：认领前确认（danger：认领即担 H&R 义务），confirm 退役
+  const ask = useConfirm();
   const [msg, setMsg] = useState<string | null>(null);
   const [claimed, setClaimed] = useState<Record<number, string>>({});
 
@@ -55,7 +58,6 @@ export function ResurrectionPanel() {
 
   async function claim(torrentId: number) {
     if (busy !== null) return;
-    if (!window.confirm(t.note.replaceAll("{magic}", currency))) return;
     setBusy(torrentId);
     setMsg(null);
     try {
@@ -113,9 +115,7 @@ export function ResurrectionPanel() {
             <tr>
               <th>{t.colTorrent}</th>
               <th className="w-24">{t.colSize}</th>
-              <td className="colhead w-24">
-                {dict.torrents.colActions}
-              </td>
+              <td className="colhead w-24">{dict.torrents.colActions}</td>
             </tr>
           </thead>
           <tbody>
@@ -142,7 +142,14 @@ export function ResurrectionPanel() {
                     <button
                       type="button"
                       disabled={busy !== null}
-                      onClick={() => claim(r.torrent_id)}
+                      onClick={() =>
+                        ask.open({
+                          title: t.claimBtn,
+                          message: t.note.replaceAll("{magic}", currency),
+                          tone: "danger",
+                          run: () => claim(r.torrent_id),
+                        })
+                      }
                       className="min-h-[32px] rounded-full border border-[var(--baozi-orange-dark)] px-3 text-xs font-bold text-[var(--baozi-orange-dark)] disabled:opacity-50"
                     >
                       {t.claimBtn}
@@ -201,6 +208,7 @@ export function ResurrectionPanel() {
           </table>
         </div>
       )}
+      <AskDialog {...ask} />
     </section>
   );
 }

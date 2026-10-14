@@ -19,6 +19,7 @@ import {
   SELECT_FIELD_CLS,
 } from "./admin-sections-shared";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 interface DictPanelProps {
   kind: string;
@@ -39,6 +40,8 @@ export function SectionDictPanel(props: DictPanelProps) {
     props;
   const { busy, act } = props;
   const at = useI18n().dict.adminSections;
+  // P2 清偿：字典改名走 ConfirmDialog 输入槽（window.prompt 退役）
+  const ask = useConfirm();
   return (
     <section className="baozi-panel p-4">
       <h2 className="mb-2 text-base font-bold">{at.dictTitle}</h2>
@@ -107,17 +110,24 @@ export function SectionDictPanel(props: DictPanelProps) {
                   className="cmgmt-act"
                   disabled={busy}
                   onClick={() => {
-                    const nn = window.prompt(at.renamePrompt, d.name);
-                    if (nn && nn !== d.name)
-                      act(
-                        () =>
-                          api.put(`/api/v1/admin/section-dict/${d.id}`, {
-                            kind,
-                            name: nn,
-                            sort: d.sort,
-                          }),
-                        at.saved,
-                      );
+                    ask.open({
+                      title: at.rename,
+                      label: at.renamePrompt,
+                      initial: d.name,
+                      busy,
+                      run: (nn) => {
+                        if (nn && nn !== d.name)
+                          act(
+                            () =>
+                              api.put(`/api/v1/admin/section-dict/${d.id}`, {
+                                kind,
+                                name: nn,
+                                sort: d.sort,
+                              }),
+                            at.saved,
+                          );
+                      },
+                    });
                   }}
                 >
                   {at.rename}
@@ -149,6 +159,7 @@ export function SectionDictPanel(props: DictPanelProps) {
           )}
         </tbody>
       </table>
+      <AskDialog {...ask} />
     </section>
   );
 }
@@ -163,6 +174,9 @@ interface CatsPanelProps {
 /** 分类归属模式 / 自动过审 */
 export function SectionCatsPanel({ cats, modes, busy, act }: CatsPanelProps) {
   const at = useI18n().dict.adminSections;
+  // 同面板族口径：本面板暂无 ask.open 调用点，仅挂 AskDialog 宿主（P2
+  // 批遗留的渲染点在此函数作用域内，声明齐备才能过 tsc）
+  const ask = useConfirm();
   return (
     <section className="baozi-panel p-4">
       <h2 className="mb-2 text-base font-bold">{at.catsTitle}</h2>

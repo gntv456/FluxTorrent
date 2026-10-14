@@ -365,9 +365,7 @@ mod idem_header_tests {
                     "/redeem-probe",
                     web::to(|| async {
                         // 模拟 redeem_invite_handler 的取键口径（体空 → 头）
-                        let k = crate::http::idempotency::body_or_header(
-                            &None,
-                        );
+                        let k = crate::http::idempotency::body_or_header(&None);
                         HttpResponse::Ok()
                             .json(serde_json::json!({ "idem": k }))
                     }),
@@ -383,8 +381,7 @@ mod idem_header_tests {
             .to_request();
         let res = test::call_service(&app, req).await;
         let body: serde_json::Value =
-            serde_json::from_slice(&test::read_body(res).await)
-                .expect("json");
+            serde_json::from_slice(&test::read_body(res).await).expect("json");
         assert_eq!(
             body["idem"].as_str(),
             Some("retry-20261013-001"),

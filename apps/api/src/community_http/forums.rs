@@ -100,8 +100,17 @@ async fn forum_search(
         first_of = first_of,
     );
     // 每主题取「标题命中优先，否则正文最早命中」的楼层做片段；t.id 去重保一主题一行
-    let rows: Vec<(i64, String, i64, String, Option<String>, chrono::DateTime<chrono::Utc>, i64, bool, Option<String>)> =
-        sqlx::query_as(&sql)
+    let rows: Vec<(
+        i64,
+        String,
+        i64,
+        String,
+        Option<String>,
+        chrono::DateTime<chrono::Utc>,
+        i64,
+        bool,
+        Option<String>,
+    )> = sqlx::query_as(&sql)
         .bind(&pattern)
         .bind(auth.class_id)
         .bind(auth.id)

@@ -49,7 +49,7 @@ async fn admin_shop_orders(
     state: web::Data<std::sync::Arc<AppState>>,
     q: web::Query<AdminOrdersQuery>,
 ) -> DomainResult<impl Responder> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-253：全站商店流水（买家用户名 + 道具 + 实付价格 + 时间）只判 staff()，
     // 而同域道具管理写口要 prop.manage(93) ⇒ 同一把键。
     crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)

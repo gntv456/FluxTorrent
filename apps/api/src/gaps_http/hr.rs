@@ -148,8 +148,7 @@ pub async fn hr_pardon_batch(
             &body.note,
         )
         .await?;
-        let pair =
-            serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id });
+        let pair = serde_json::json!({ "user_id": it.user_id, "torrent_id": it.torrent_id });
         if done {
             pardoned.push(pair);
         } else {

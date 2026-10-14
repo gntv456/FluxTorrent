@@ -779,3 +779,14 @@ export interface PollItem {
 // 生成物常量表（W-13 注册表）：按 errors.rs code() 映射生成，与上面手写
 // ErrorCode 并存对拍（drift 见 check_type_drift.mjs 第 4 维；F4 消费端替换）。
 export { ERROR_CODES } from "./error-codes.generated";
+// 生成物接口类型（FRAME §7 第 8 条分域起步）：rss-tokens 域从 OpenAPI
+// 注解生成（scripts/gen_ts_types.mjs），前端从包根 import——包内相对
+// 路径 "generated/rss-tokens" 的子路径导出对 tsconfig paths 消费方不可
+// 达（package.json 无 exports 映射），统一走包根 re-export。
+export type {
+  RssTokenCreateReq,
+  RssTokenCreated,
+  RssTokenList,
+  RssTokenMeta,
+} from "./generated/rss-tokens";
+

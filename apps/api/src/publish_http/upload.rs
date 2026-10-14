@@ -251,15 +251,13 @@ async fn upload_core(
     )
     .await?;
     // 重复发布策略（suggest/block/group）：pieces_hash 命中同内容时的处置
-    let dup_group: Option<i64> = match precheck::dup_policy(
-        &state.repo.db,
-        &parsed.pieces_hash_hex,
-    )
-    .await?
-    {
-        precheck::DupVerdict::AutoGroup(gid) => Some(gid),
-        _ => None,
-    };
+    let dup_group: Option<i64> =
+        match precheck::dup_policy(&state.repo.db, &parsed.pieces_hash_hex)
+            .await?
+        {
+            precheck::DupVerdict::AutoGroup(gid) => Some(gid),
+            _ => None,
+        };
     let group_id = form.group_id.or(dup_group);
     // 复活路径（同一作者删过的同内容）：复用原 id，内容整体覆盖，重回审核流
     let id: i64 = match revive_id {

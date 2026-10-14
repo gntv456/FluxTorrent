@@ -149,7 +149,8 @@ pub async fn resub_use(
         .map_err(|e| DomainError::Internal(e.into()))?;
         if held < 1 {
             return Err(DomainError::Validation(
-                "没有可用补签卡：商店购买、奖池抽取或管理发放后可在此使用".into(),
+                "没有可用补签卡：商店购买、奖池抽取或管理发放后可在此使用"
+                    .into(),
             ));
         }
         sqlx::query(

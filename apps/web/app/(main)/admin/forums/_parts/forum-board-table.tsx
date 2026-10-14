@@ -5,9 +5,12 @@ import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import {
-  BTN_LINE, INPUT_CLS,
-  type ForumAdminForum, type ModTuple,
+  BTN_LINE,
+  INPUT_CLS,
+  type ForumAdminForum,
+  type ModTuple,
 } from "./forum-structure-types";
 
 const MOD_TAG =
@@ -38,20 +41,33 @@ export function ForumBoardTable({
   const { dict } = useI18n();
   // 字典取名 t：下面的 map 变量 f 是「版块」，别撞名
   const t = dict.adminForums;
+  // P2 清偿：免版主/删版块二次确认共用一个状态机（删版块 danger）
+  const ask = useConfirm();
 
   function addMod(x: ForumAdminForum) {
     const username = (modDraft[x.id] ?? "").trim();
     if (!username) return;
-    run(async () => {
-      await api.post(`/api/v1/admin/forums/${x.id}/mods`, { username });
-      setModDraft((d) => ({ ...d, [x.id]: "" }));
-    }, fmt(t.modAdded, { name: username }));
+    run(
+      async () => {
+        await api.post(`/api/v1/admin/forums/${x.id}/mods`, { username });
+        setModDraft((d) => ({ ...d, [x.id]: "" }));
+      },
+      fmt(t.modAdded, { name: username }),
+    );
   }
 
   function removeMod(fid: number, uid: number, uname: string) {
-    run(async () => {
-      await api.del(`/api/v1/admin/forums/${fid}/mods/${uid}`);
-    }, fmt(t.modRemoved, { name: uname }));
+    ask.open({
+      title: t.modRemoveTip,
+      message: fmt(t.modRemoved, { name: uname }),
+      run: () =>
+        run(
+          async () => {
+            await api.del(`/api/v1/admin/forums/${fid}/mods/${uid}`);
+          },
+          fmt(t.modRemoved, { name: uname }),
+        ),
+    });
   }
 
   function removeForum(x: ForumAdminForum) {
@@ -60,11 +76,17 @@ export function ForumBoardTable({
       x.topics > 0
         ? fmt(t.boardDelNonEmpty, { name: x.name, n: x.topics })
         : fmt(t.boardDelEmpty, { name: x.name });
-    if (!window.confirm(msg)) return;
-    run(async () => {
-      const q = x.topics > 0 ? "?force=true" : "";
-      await api.del(`/api/v1/admin/forums/${x.id}${q}`);
-    }, t.boardDeleted);
+    ask.open({
+      title: t.delBtn,
+      message: msg,
+      tone: "danger",
+      busy,
+      run: () =>
+        run(async () => {
+          const q = x.topics > 0 ? "?force=true" : "";
+          await api.del(`/api/v1/admin/forums/${x.id}${q}`);
+        }, t.boardDeleted),
+    });
   }
 
   return (
@@ -101,10 +123,7 @@ export function ForumBoardTable({
             return (
               <tr key={f.id}>
                 <td>
-                  <Link
-                    href={`/forums/${f.id}`}
-                    className="font-bold text-sky"
-                  >
+                  <Link href={`/forums/${f.id}`} className="font-bold text-sky">
                     {f.name}
                   </Link>
                   {f.descr && <p className="text-sub">{f.descr}</p>}
@@ -116,10 +135,7 @@ export function ForumBoardTable({
                 <td className="num">{f.topics}</td>
                 <td>
                   {mine.map((m) => (
-                    <span
-                      key={m[1]}
-                      className={MOD_TAG}
-                    >
+                    <span key={m[1]} className={MOD_TAG}>
                       {m[2]}
                       <button
                         type="button"
@@ -189,6 +205,7 @@ export function ForumBoardTable({
       </table>
 
       <p className="mt-3 text-xs text-sub">{t.gateNote}</p>
+      <AskDialog {...ask} />
     </div>
   );
 }

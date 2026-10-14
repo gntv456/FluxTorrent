@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
 
 /** 捐赠订单后台管理（0209 P1-6）：列表/筛选/手工补单。
@@ -48,6 +49,8 @@ export function AdminDonateOrders() {
   const [page, setPage] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：手工补单二次确认（金额入账），window.confirm 退役
+  const askComplete = useConfirm();
 
   const load = useCallback(async () => {
     const p = new URLSearchParams({ page: String(page), per_page: "20" });
@@ -73,15 +76,6 @@ export function AdminDonateOrders() {
   }, [load]);
 
   async function complete(row: OrderRow) {
-    if (
-      !window.confirm(
-        t.confirmComplete.replace("{no}", row.order_no).replace(
-          "{usd}",
-          row.amount_usd.toFixed(2),
-        ),
-      )
-    )
-      return;
     setBusy(true);
     try {
       const r = await api.post<{ result: string }>(
@@ -155,10 +149,7 @@ export function AdminDonateOrders() {
               <tr key={r.id}>
                 <td className="font-mono">{r.order_no.slice(0, 16)}…</td>
                 <td>
-                  <a
-                    href={`/admin/users/${r.user_id}`}
-                    className="text-link"
-                  >
+                  <a href={`/admin/users/${r.user_id}`} className="text-link">
                     {r.username ?? `#${r.user_id}`}
                   </a>
                 </td>
@@ -186,7 +177,16 @@ export function AdminDonateOrders() {
                   {r.status === "pending" && (
                     <button
                       disabled={busy}
-                      onClick={() => void complete(r)}
+                      onClick={() =>
+                        askComplete.open({
+                          title: t.completeBtn,
+                          message: t.confirmComplete
+                            .replace("{no}", r.order_no)
+                            .replace("{usd}", r.amount_usd.toFixed(2)),
+                          busy,
+                          run: () => complete(r),
+                        })
+                      }
                       className="text-sky-deep hover:underline"
                     >
                       {t.completeBtn}
@@ -225,6 +225,7 @@ export function AdminDonateOrders() {
           </button>
         </div>
       </div>
+      <AskDialog {...askComplete} />
     </div>
   );
 }
@@ -238,10 +239,14 @@ export function AdminPanelEntries() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<Partial<PanelEntryRow> | null>(null);
+  // P2 清偿：删面板条目二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
 
   const load = useCallback(async () => {
     try {
-      setRows(await api.get<PanelEntryRow[]>("/api/v1/admin/staffpanel-entries"));
+      setRows(
+        await api.get<PanelEntryRow[]>("/api/v1/admin/staffpanel-entries"),
+      );
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : c.networkError);
       setRows([]);
@@ -284,7 +289,6 @@ export function AdminPanelEntries() {
   }
 
   async function del(id: number) {
-    if (!window.confirm(t.confirmDel)) return;
     setBusy(true);
     try {
       await api.post("/api/v1/admin/staffpanel-entries/delete", { id });
@@ -461,7 +465,15 @@ export function AdminPanelEntries() {
                     </button>
                     <button
                       disabled={busy}
-                      onClick={() => void del(r.id)}
+                      onClick={() =>
+                        ask.open({
+                          title: t.delBtn,
+                          message: t.confirmDel,
+                          tone: "danger",
+                          busy,
+                          run: () => del(r.id),
+                        })
+                      }
                       className="text-tomato hover:underline"
                     >
                       {t.delBtn}
@@ -481,6 +493,7 @@ export function AdminPanelEntries() {
         </table>
       </div>
       <p className="text-xs text-sub">{t.permHint}</p>
+      <AskDialog {...ask} />
     </div>
   );
 }

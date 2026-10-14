@@ -10,8 +10,7 @@ use crate::state::AppState;
 
 /// token 命中查询：按 sha3-256 哈希取有效 token 的 user_id。
 /// （tokens.rs 单测锁定 `revoked_at IS NULL` 谓词，防止撤销口径漂移。）
-pub(crate) const AUTH_BY_TOKEN_SQL: &str =
-    "SELECT user_id FROM rss_tokens \
+pub(crate) const AUTH_BY_TOKEN_SQL: &str = "SELECT user_id FROM rss_tokens \
      WHERE token_hash = $1 AND revoked_at IS NULL";
 
 /// last_used_at 节流写：仅当距上次打点超过 300s 才 UPDATE——订阅器

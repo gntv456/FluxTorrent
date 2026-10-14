@@ -4,10 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import {
-  UsersBatchBar,
-  UsersTable,
-} from "@/components/admin-users-list";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { UsersBatchBar, UsersTable } from "@/components/admin-users-list";
 import { UsersFilterBar } from "@/components/admin-users-filters";
 import { useUserFilters } from "@/components/admin-users-parts";
 import { UsersPager } from "@/components/admin-users-pager";
@@ -48,6 +46,8 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   const [data, setData] = useState<UsersPage | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：批量操作确认状态机（prompt 收理由 + danger 确认）
+  const ask = useConfirm();
   // 第八轮 P2-9：批量操作
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [batchClass, setBatchClass] = useState("");
@@ -93,22 +93,41 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
     ? Math.max(1, Math.ceil(data.total / data.per_page))
     : 1;
 
-  async function batch(action: "status" | "class", value: number) {
+  /** P2 清偿：批量操作确认状态机。封禁类（status>0）先收理由
+   *  （prompt 输入槽）再 danger 确认；其余直接 danger 确认。
+   *  旧 window.prompt/confirm 退役。 */
+  function askBatch(action: "status" | "class", value: number) {
     const ids = [...sel];
     if (ids.length === 0) {
       flash(at.pickFirstUser);
       return;
     }
-    const reason =
-      action === "status" && value > 0
-        ? (window.prompt(at.batchReason) ?? undefined)
-        : undefined;
+    const needReason = action === "status" && value > 0;
     const actLabel =
       action === "status"
         ? [at.stNormalAct, at.stMuteAct, at.stBanAct][value]
         : fmt(at.classTo, { n: value });
-    if (!window.confirm(fmt(at.batchConfirm, { n: ids.length, act: actLabel })))
+    ask.open({
+      title: actLabel,
+      message: fmt(at.batchConfirm, { n: ids.length, act: actLabel }),
+      tone: "danger",
+      label: needReason ? at.batchReason : undefined,
+      busy,
+      run: (reasonText) =>
+        batch(action, value, needReason ? reasonText.trim() : undefined),
+    });
+  }
+
+  async function batch(
+    action: "status" | "class",
+    value: number,
+    reason?: string,
+  ) {
+    const ids = [...sel];
+    if (ids.length === 0) {
+      flash(at.pickFirstUser);
       return;
+    }
     setBusy(true);
     try {
       const r = await api.post<{ updated: number; skipped: number[] }>(
@@ -160,11 +179,11 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
           load();
         }}
       />
-      {/* 批量操作（第八轮 P2-9） */}
+      {/* 批量操作（第八轮 P2-9）：onClick 走 askBatch 弹确认（P2 清偿） */}
       <UsersBatchBar
         sel={sel}
         busy={busy}
-        batch={batch}
+        batch={askBatch}
         classes={classes}
         batchClass={batchClass}
         setBatchClass={setBatchClass}
@@ -179,6 +198,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         totalPages={totalPages}
         setPage={setPage}
       />
+      <AskDialog {...ask} />
     </div>
   );
 }

@@ -139,14 +139,11 @@ pub(crate) fn new_store(
     store
 }
 
-
 /// 取 guest 线性内存与宿主状态（五个 host 导入同形，抽成一处）
 pub(crate) fn guest_mem<'a>(
     caller: &'a mut wasmtime::Caller<'_, HostState>,
 ) -> Option<(&'a mut [u8], &'a mut HostState)> {
-    let mem = caller
-        .get_export("memory")
-        .and_then(|e| e.into_memory())?;
+    let mem = caller.get_export("memory").and_then(|e| e.into_memory())?;
     Some(mem.data_and_store_mut(caller))
 }
 

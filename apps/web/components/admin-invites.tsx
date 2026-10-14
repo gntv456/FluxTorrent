@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 第八轮 P2-4：邀请管理（好学站 user/invites 口径）：全站邀请码浏览。
  *  0204：邮箱/被邀请人筛选 + 直发码 + 作废（管理端从只读升级为可操作）。 */
@@ -39,6 +40,8 @@ export function AdminInvites() {
   const [issueCount, setIssueCount] = useState("1");
   const [issueDays, setIssueDays] = useState("");
   const [busy, setBusy] = useState(false);
+  // P2 清偿：作废邀请码二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   const [issuedCodes, setIssuedCodes] = useState<string[] | null>(null);
 
   const load = useCallback(async () => {
@@ -54,9 +57,7 @@ export function AdminInvites() {
       setRows(r.rows);
       setTotal(r.total);
     } catch (e) {
-      setMsg(
-        e instanceof ApiError ? e.message : dict.adminInvites.loadFail,
-      );
+      setMsg(e instanceof ApiError ? e.message : dict.adminInvites.loadFail);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid, valid, email, usedByName, page]);
@@ -91,7 +92,6 @@ export function AdminInvites() {
   }
 
   async function revoke(row: InviteRow) {
-    if (!window.confirm(fmt(at.confirmRevoke, { code: row.code }))) return;
     setBusy(true);
     try {
       await api.post("/api/v1/admin/invites/revoke", { id: row.id });
@@ -257,7 +257,15 @@ export function AdminInvites() {
                 {r.status === 0 && (
                   <button
                     disabled={busy}
-                    onClick={() => void revoke(r)}
+                    onClick={() =>
+                      ask.open({
+                        title: at.revokeBtn,
+                        message: fmt(at.confirmRevoke, { code: r.code }),
+                        tone: "danger",
+                        busy,
+                        run: () => revoke(r),
+                      })
+                    }
                     className="text-tomato hover:underline"
                   >
                     {at.revokeBtn}
@@ -295,6 +303,7 @@ export function AdminInvites() {
           </button>
         </div>
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }

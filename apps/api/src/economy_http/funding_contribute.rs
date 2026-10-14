@@ -38,11 +38,9 @@ async fn funding_contribute(
     // 幂等键必须带 uid 前缀（P0）：裸客户端键会跨用户碰撞——A 占用键 X 后，B 用 X
     // 参与会被判为重放而不扣款，contribs 照记、到期按全额退款 = 提现通道。
     // 与 bank/donate/games 全部同口径。体字段优先、Idempotency-Key 头兜底。
-    let idem = crate::http::idempotency::body_or_header(
-        &body.idempotency_key,
-    )
-    .map(|k| format!("funding:{}:{}", auth.id, k))
-    .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
+    let idem = crate::http::idempotency::body_or_header(&body.idempotency_key)
+        .map(|k| format!("funding:{}:{}", auth.id, k))
+        .ok_or(DomainError::Validation("缺少 idempotency_key".into()))?;
     // 税：基点可调（site_settings gift_tax_bp，缺省 500=5%）；0=免税
     let tax_bp: i32 = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'gift_tax_bp'",

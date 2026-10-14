@@ -12,11 +12,12 @@ import {
 } from "./admin-sections-shared";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 编辑抽屉外壳（长 className 提常量，守 ≤80 行宽门禁） */
 const DRAWER_CLS =
-  "mt-3 rounded-[var(--r-md)] border border-line "
-  + "bg-[var(--surface-card)] p-3";
+  "mt-3 rounded-[var(--r-md)] border border-line " +
+  "bg-[var(--surface-card)] p-3";
 
 export function SectionKindsPanel(props: {
   kinds: SectionKindMeta[];
@@ -40,6 +41,8 @@ export function SectionKindsPanel(props: {
   } = props;
   const { dict } = useI18n();
   const at = dict.adminSections;
+  // P2 清偿：删维度二次确认（danger：连带字典/分类归属），confirm 退役
+  const ask = useConfirm();
   const ft = at.fieldTypes;
   const [edit, setEdit] = useState<SectionKindMeta | null>(null);
   // 新建时的类型选择（存量语义：缺省 select）
@@ -118,18 +121,12 @@ export function SectionKindsPanel(props: {
               <tr key={k.kind} className={on ? undefined : "opacity-50"}>
                 <td className="font-mono">{k.kind}</td>
                 <td>{k.label}</td>
-                <td className="text-sub">
-                  {typeLabel(k.field_type)}
-                </td>
+                <td className="text-sub">{typeLabel(k.field_type)}</td>
                 <td className="text-center">{k.required ? "✓" : ""}</td>
                 <td className="text-center">{k.multiple ? "✓" : ""}</td>
                 <td className="text-center">{on ? "✓" : ""}</td>
                 <td className="num">
-                  {n > 0 ? (
-                    n
-                  ) : (
-                    <span className="text-sub">{at.zeroHint}</span>
-                  )}
+                  {n > 0 ? n : <span className="text-sub">{at.zeroHint}</span>}
                 </td>
                 <td className="num">{k.sort}</td>
                 <td className="text-right">
@@ -143,18 +140,20 @@ export function SectionKindsPanel(props: {
                   <button
                     className="cmgmt-act cmgmt-act--danger"
                     disabled={busy}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          fmt(at.delKindConfirm, { name: k.label }),
-                        )
-                      )
-                        act(
-                          () =>
-                            api.del(`/api/v1/admin/section-kinds/${k.kind}`),
-                          at.deleted,
-                        );
-                    }}
+                    onClick={() =>
+                      ask.open({
+                        title: at.del,
+                        message: fmt(at.delKindConfirm, { name: k.label }),
+                        tone: "danger",
+                        busy,
+                        run: () =>
+                          act(
+                            () =>
+                              api.del(`/api/v1/admin/section-kinds/${k.kind}`),
+                            at.deleted,
+                          ),
+                      })
+                    }
                   >
                     {at.del}
                   </button>
@@ -181,9 +180,7 @@ export function SectionKindsPanel(props: {
               <span className="text-sub">{at.thKindLabel}</span>
               <input
                 value={edit.label}
-                onChange={(e) =>
-                  setEdit({ ...edit, label: e.target.value })
-                }
+                onChange={(e) => setEdit({ ...edit, label: e.target.value })}
                 className={`w-40 ${FIELD_INPUT_CLS}`}
               />
             </label>
@@ -230,19 +227,16 @@ export function SectionKindsPanel(props: {
               disabled={busy || !edit.label.trim()}
               onClick={() =>
                 act(async () => {
-                  await api.put(
-                    `/api/v1/admin/section-kinds/${edit.kind}`,
-                    {
-                      kind: edit.kind,
-                      label: edit.label.trim(),
-                      sort: edit.sort,
-                      // field_type 原样回传（后端同值放行、异值拒收）
-                      field_type: edit.field_type ?? "select",
-                      required: Boolean(edit.required),
-                      multiple: Boolean(edit.multiple),
-                      enabled: edit.enabled !== false,
-                    },
-                  );
+                  await api.put(`/api/v1/admin/section-kinds/${edit.kind}`, {
+                    kind: edit.kind,
+                    label: edit.label.trim(),
+                    sort: edit.sort,
+                    // field_type 原样回传（后端同值放行、异值拒收）
+                    field_type: edit.field_type ?? "select",
+                    required: Boolean(edit.required),
+                    multiple: Boolean(edit.multiple),
+                    enabled: edit.enabled !== false,
+                  });
                   setEdit(null);
                 }, at.saved)
               }
@@ -253,6 +247,7 @@ export function SectionKindsPanel(props: {
           <p className="mt-2 text-xs text-sub">{at.fieldTypeLocked}</p>
         </div>
       )}
+      <AskDialog {...ask} />
     </section>
   );
 }

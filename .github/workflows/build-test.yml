@@ -51,6 +51,12 @@ jobs:
       # 被改即红灯（产物侧另有 cargo 单测 openapi_json_covers_all_annotated_domains 双锁）。
       - name: OpenAPI coverage guard
         run: node scripts/openapi_cov_guard.mjs
+      # 审计 action 命名门禁（FRAME-PLAN-01 §7 第 9 条）：新 action 必须
+      # 点分层（域.动作[.对象]）；存量下划线/冒号形按 baseline 棘轮只许降。
+      # 不改存量值（已写进审计链），只防新增劣化。红测：临时加
+      # .audit(Some(u), "some_bad_name", None) 必须被拦。
+      - name: Audit action guard
+        run: node scripts/audit_action_guard.mjs
 
   web:
     if: github.actor != 'dependabot[bot]'

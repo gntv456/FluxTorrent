@@ -44,12 +44,8 @@ pub async fn report_create(
     // 版主队列能被一个人灌满。档按人计，8 次/分钟足够正常举报（一次事件一两条），
     // 挡住「用举报当刷屏工具」。放在存在性校验之前：洪水最贵的部分是每次
     // 一次的库查询，不是那行 INSERT。
-    crate::http::throttle_limited(
-        &state,
-        format!("rep:{}", auth.id),
-        8,
-    )
-    .await?;
+    crate::http::throttle_limited(&state, format!("rep:{}", auth.id), 8)
+        .await?;
     // 目标存在性校验（此前任意 ref_id 含不存在对象可无限提交）
     let target_table = match body.ref_type.as_str() {
         "torrent" => Some(("torrents", "approval_status = 1")),

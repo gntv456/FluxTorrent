@@ -6,7 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
-import { MineTable, statusLabel, CreateForm } from "@/components/funding-panel-parts";
+import {
+  MineTable,
+  statusLabel,
+  CreateForm,
+} from "@/components/funding-panel-parts";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 定向众筹免费（0078，HDBits Featured 口径）
  *  GET /fundings?status= 列表（0 进行中 / 1 已达成 / 2 已退款 / 3 已了结）
@@ -50,10 +55,17 @@ export function FundingPanel() {
   const [mine, setMine] = useState<MineRow[] | null>(null);
   const [mineOpen, setMineOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState<FundingFormState>({ torrent_id: "", goal: "1000", hours: "168", days: "14" });
+  const [form, setForm] = useState<FundingFormState>({
+    torrent_id: "",
+    goal: "1000",
+    hours: "168",
+    days: "14",
+  });
   const [amounts, setAmounts] = useState<Record<number, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：出资确认（金额即扣），window.confirm 退役
+  const ask = useConfirm();
 
   const load = useCallback(async () => {
     try {
@@ -102,7 +114,6 @@ export function FundingPanel() {
   async function contribute(f: FundingRow) {
     const amount = Number(amounts[f.id]);
     if (!amount || amount <= 0) return;
-    if (!window.confirm(`${t.contributeBtn} #${f.id} · ${amount} ${currency}？`)) return;
     setBusy(true);
     try {
       const r = await api.post<{ paid: number; raised: number; goal: number }>(
@@ -157,10 +168,15 @@ export function FundingPanel() {
           </button>
         </div>
       </div>
-      <p className="text-xs text-sub">{t.note.replaceAll("{magic}", currency)}</p>
+      <p className="text-xs text-sub">
+        {t.note.replaceAll("{magic}", currency)}
+      </p>
 
       {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink" role="status">
+        <p
+          className="rounded-[var(--r-md)] bg-sky-soft p-2 text-xs text-ink"
+          role="status"
+        >
           {msg}
         </p>
       )}
@@ -211,7 +227,10 @@ export function FundingPanel() {
           </thead>
           <tbody>
             {(rows ?? []).map((f) => {
-              const pct = Math.min(100, Math.round((f.raised / Math.max(1, f.goal)) * 100));
+              const pct = Math.min(
+                100,
+                Math.round((f.raised / Math.max(1, f.goal)) * 100),
+              );
               return (
                 <tr key={f.id}>
                   <td className="rowfollow num">{f.id}</td>
@@ -222,7 +241,9 @@ export function FundingPanel() {
                   </td>
                   <td className="rowfollow num">{f.goal.toLocaleString()}</td>
                   <td className="rowfollow num">
-                    <b className={pct >= 100 ? "text-mint" : undefined}>{f.raised.toLocaleString()}</b>
+                    <b className={pct >= 100 ? "text-mint" : undefined}>
+                      {f.raised.toLocaleString()}
+                    </b>
                     <span className="text-sub"> ({pct}%)</span>
                   </td>
                   <td className="rowfollow num">{f.backers}</td>
@@ -232,7 +253,11 @@ export function FundingPanel() {
                   <td className="rowfollow">
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        f.status === 0 ? "bg-sun/30" : f.status === 1 ? "bg-mint/30" : "bg-sky-soft"
+                        f.status === 0
+                          ? "bg-sun/30"
+                          : f.status === 1
+                            ? "bg-mint/30"
+                            : "bg-sky-soft"
                       }`}
                     >
                       {statusOf(f.status)}
@@ -244,16 +269,31 @@ export function FundingPanel() {
                         <input
                           type="number"
                           min={1}
-                          placeholder={t.amountPh.replaceAll("{magic}", currency)}
+                          placeholder={t.amountPh.replaceAll(
+                            "{magic}",
+                            currency,
+                          )}
                           value={amounts[f.id] ?? ""}
-                          onChange={(e) => setAmounts((a) => ({ ...a, [f.id]: e.target.value }))}
+                          onChange={(e) =>
+                            setAmounts((a) => ({
+                              ...a,
+                              [f.id]: e.target.value,
+                            }))
+                          }
                           className="min-h-[30px] w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-xs"
                           aria-label={t.contributeBtn}
                         />
                         <button
                           type="button"
                           disabled={busy || !Number(amounts[f.id])}
-                          onClick={() => contribute(f)}
+                          onClick={() =>
+                            ask.open({
+                              title: t.contributeBtn,
+                              message: `${t.contributeBtn} #${f.id} · ${Number(amounts[f.id])} ${currency}？`,
+                              busy,
+                              run: () => contribute(f),
+                            })
+                          }
                           className="min-h-[30px] rounded-full bg-sky px-3 text-[11px] font-bold text-white disabled:opacity-50"
                         >
                           {t.contributeBtn}
@@ -279,6 +319,7 @@ export function FundingPanel() {
 
       {/* 我的参与 */}
       {mineOpen && <MineTable mine={mine} statusOf={statusOf} />}
+      <AskDialog {...ask} />
     </section>
   );
 }

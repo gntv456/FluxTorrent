@@ -88,13 +88,8 @@ pub async fn appeal_create(
             // 存在，可无限灌申诉表。改 fail-close 的 rate_window（1 小时窗，
             // 键名与额度不变）。同分支的 captcha 校验本来就是 fail-close，
             // 这一道不该比它更松。
-            crate::http::rate_window(
-                &state,
-                &format!("appeal:{uid}"),
-                3,
-                3600,
-            )
-            .await?;
+            crate::http::rate_window(&state, &format!("appeal:{uid}"), 3, 3600)
+                .await?;
             uid
         }
     };

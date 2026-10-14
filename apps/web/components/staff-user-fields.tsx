@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ModuleKeySelect } from "@/components/module-key-select";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 用户自定义字段管理面板（0186 一审 R4.1 的「方向盘」，三审 B-1）：
  *  站长定义/启停/删除字段（六类型 + public/private + 注册页展示位）。
@@ -74,6 +75,8 @@ export function StaffUserFieldsPanel({
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editKey, setEditKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：删字段确认状态机（有值时 danger）
+  const ask = useConfirm();
 
   const load = useCallback(() => {
     api
@@ -140,14 +143,6 @@ export function StaffUserFieldsPanel({
 
   async function remove(d: FieldDef) {
     const need = d.filled > 0;
-    const confirm = need
-      ? window.confirm(
-          zh
-            ? `该字段已有 ${d.filled} 个用户填写，确认连带删除全部值？`
-            : `${d.filled} user(s) filled this field. Delete all values too?`,
-        )
-      : true;
-    if (!confirm) return;
     try {
       await api.post(`/api/v1/admin/user-fields/${d.key}/delete`, {
         confirm_drop_values: need,
@@ -157,6 +152,21 @@ export function StaffUserFieldsPanel({
     } catch (e) {
       flash(errText(e));
     }
+  }
+
+  /** P2 清偿：删字段二次确认（有值时 danger 提示连带删），confirm 退役 */
+  function askRemove(d: FieldDef) {
+    const need = d.filled > 0;
+    ask.open({
+      title: dict.torrents.delete,
+      tone: need ? "danger" : "neutral",
+      message: need
+        ? zh
+          ? `该字段已有 ${d.filled} 个用户填写，确认连带删除全部值？`
+          : `${d.filled} user(s) filled this field. Delete all values too?`
+        : undefined,
+      run: () => remove(d),
+    });
   }
 
   const editForm = draft && (
@@ -290,80 +300,81 @@ export function StaffUserFieldsPanel({
       </div>
       {editForm}
       <div className="baozi-wide-table-scroll">
-      <table className="nexus-table">
-        <thead>
-          <tr>
-            <th>key</th>
-            <th>{dict.adminUserFields.label}</th>
-            <th>{dict.adminUserFields.type}</th>
-            <th>{dict.adminUserFields.flags}</th>
-            <th>{dict.adminUserFields.filled}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {(rows ?? []).map((d) => (
-            <tr key={d.key}>
-              <td className="num text-xs">{d.key}</td>
-              <td>{d.label}</td>
-              <td className="text-xs">{d.type}</td>
-              <td className="text-xs text-sub">
-                {[
-                  d.required ? dict.adminUserFields.required : null,
-                  d.visibility === "public"
-                    ? dict.adminUserFields.publicVis
-                    : dict.adminUserFields.privateVis,
-                  d.show_on_register ? dict.adminUserFields.onRegister : null,
-                  d.enabled ? null : dict.adminUserFields.disabled,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </td>
-              <td className="num text-xs">{d.filled}</td>
-              <td className="flex gap-2 text-xs">
-                <button
-                  type="button"
-                  className="underline"
-                  onClick={() => {
-                    const { filled, ...def } = d;
-                    setEditKey(d.key);
-                    setDraft({
-                      ...def,
-                      options: d.options.map((o) => o.value).join(","),
-                    });
-                  }}
-                >
-                  {dict.torrents.edit}
-                </button>
-                <button
-                  type="button"
-                  className="underline"
-                  onClick={() => toggleEnabled(d)}
-                >
-                  {d.enabled
-                    ? dict.adminUserFields.disabled
-                    : dict.adminUserFields.enabled}
-                </button>
-                <button
-                  type="button"
-                  className="underline text-coral"
-                  onClick={() => remove(d)}
-                >
-                  {dict.torrents.delete}
-                </button>
-              </td>
-            </tr>
-          ))}
-          {rows !== null && rows.length === 0 && (
+        <table className="nexus-table">
+          <thead>
             <tr>
-              <td colSpan={6} className="text-sub">
-                {dict.adminUserFields.empty}
-              </td>
+              <th>key</th>
+              <th>{dict.adminUserFields.label}</th>
+              <th>{dict.adminUserFields.type}</th>
+              <th>{dict.adminUserFields.flags}</th>
+              <th>{dict.adminUserFields.filled}</th>
+              <th />
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(rows ?? []).map((d) => (
+              <tr key={d.key}>
+                <td className="num text-xs">{d.key}</td>
+                <td>{d.label}</td>
+                <td className="text-xs">{d.type}</td>
+                <td className="text-xs text-sub">
+                  {[
+                    d.required ? dict.adminUserFields.required : null,
+                    d.visibility === "public"
+                      ? dict.adminUserFields.publicVis
+                      : dict.adminUserFields.privateVis,
+                    d.show_on_register ? dict.adminUserFields.onRegister : null,
+                    d.enabled ? null : dict.adminUserFields.disabled,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </td>
+                <td className="num text-xs">{d.filled}</td>
+                <td className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      const { filled, ...def } = d;
+                      setEditKey(d.key);
+                      setDraft({
+                        ...def,
+                        options: d.options.map((o) => o.value).join(","),
+                      });
+                    }}
+                  >
+                    {dict.torrents.edit}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => toggleEnabled(d)}
+                  >
+                    {d.enabled
+                      ? dict.adminUserFields.disabled
+                      : dict.adminUserFields.enabled}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline text-coral"
+                    onClick={() => askRemove(d)}
+                  >
+                    {dict.torrents.delete}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {rows !== null && rows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-sub">
+                  {dict.adminUserFields.empty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }

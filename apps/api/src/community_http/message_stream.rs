@@ -94,33 +94,30 @@ fn unfold_stream(
         next_ping: now + PING,
         deadline: now + MAX_LIFE,
     };
-    futures_util::stream::unfold(
-        (st, poll),
-        |(mut st, mut poll)| async move {
-            loop {
-                if tokio::time::Instant::now() >= st.deadline {
-                    return None; // 10 分钟到点：正常结束，浏览器自动重连
-                }
-                tokio::select! {
-                    _ = poll.tick() => {}
-                    _ = tokio::time::sleep_until(st.next_ping) => {
-                        st.next_ping += PING;
-                        return Some((
-                            Ok(Bytes::from_static(b": ping\n\n")),
-                            (st, poll),
-                        ));
-                    }
-                }
-                let n = unread_inbox(&st.db, st.uid).await;
-                let m = staff_pending(&st.db, st.uid).await;
-                if st.last != Some((n, m)) {
-                    st.last = Some((n, m));
-                    return Some((Ok(unread_frame(n, m)), (st, poll)));
-                }
-                // 值未变：本轮不发帧，回到 select 等下一拍
+    futures_util::stream::unfold((st, poll), |(mut st, mut poll)| async move {
+        loop {
+            if tokio::time::Instant::now() >= st.deadline {
+                return None; // 10 分钟到点：正常结束，浏览器自动重连
             }
-        },
-    )
+            tokio::select! {
+                _ = poll.tick() => {}
+                _ = tokio::time::sleep_until(st.next_ping) => {
+                    st.next_ping += PING;
+                    return Some((
+                        Ok(Bytes::from_static(b": ping\n\n")),
+                        (st, poll),
+                    ));
+                }
+            }
+            let n = unread_inbox(&st.db, st.uid).await;
+            let m = staff_pending(&st.db, st.uid).await;
+            if st.last != Some((n, m)) {
+                st.last = Some((n, m));
+                return Some((Ok(unread_frame(n, m)), (st, poll)));
+            }
+            // 值未变：本轮不发帧，回到 select 等下一拍
+        }
+    })
 }
 
 #[cfg(test)]
@@ -149,10 +146,8 @@ mod tests {
     /// 心跳帧契约：SSE 注释行（冒号开头），不产生事件
     #[test]
     fn ping_frame_is_comment() {
-        let s = String::from_utf8(
-            Bytes::from_static(b": ping\n\n").to_vec(),
-        )
-        .unwrap();
+        let s = String::from_utf8(Bytes::from_static(b": ping\n\n").to_vec())
+            .unwrap();
         assert!(s.starts_with(":"));
         assert!(s.ends_with("\n\n"));
     }

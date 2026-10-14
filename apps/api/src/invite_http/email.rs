@@ -95,7 +95,8 @@ pub(super) async fn email_invite_handler(
              (FLUX_DEV=1 to bypass)"
         );
         return Err(DomainError::Validation(
-            "站点未配置对外访问地址（PUBLIC_SITE_URL），无法发送邀请邮件".into(),
+            "站点未配置对外访问地址（PUBLIC_SITE_URL），无法发送邀请邮件"
+                .into(),
         ));
     }
     let link = format!("{base}/register?invite={code}");

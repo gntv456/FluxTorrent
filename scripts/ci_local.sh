@@ -37,6 +37,7 @@ node scripts/gacha_pack_guard.mjs
 node scripts/terms_guard.mjs
 node scripts/check_type_drift.mjs
 node scripts/openapi_cov_guard.mjs
+node scripts/audit_action_guard.mjs
 python3 scripts/validation_i18n_guard.py
 python3 scripts/audit_migration_checksums.py
 

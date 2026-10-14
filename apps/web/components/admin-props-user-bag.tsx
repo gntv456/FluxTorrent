@@ -10,6 +10,7 @@ import type { UserPropRow } from "./admin-props-shared";
 import { kindLabelMap } from "./admin-props-shared";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** UID 过滤输入框样式 */
 const UID_FILTER_CLS =
@@ -36,6 +37,8 @@ export function PropsPanel({
 }: PropsPanelProps) {
   const { dict, locale } = useI18n();
   const at = dict.adminProps;
+  // P2 清偿：回收道具二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   const KIND_LABEL = kindLabelMap(at.kindLabel);
   return (
     <section className="baozi-panel p-4">
@@ -93,22 +96,27 @@ export function PropsPanel({
                   <button
                     className="cmgmt-act cmgmt-act--danger"
                     disabled={busy}
-                    onClick={async () => {
-                      if (!window.confirm(at.confirmRevoke)) return;
-                      try {
-                        await api.del(
-                          `/api/v1/admin/user-props/${p.order_id}`,
-                        );
-                        flash(at.revoked);
-                        await load();
-                      } catch (e) {
-                        flash(
-                          e instanceof ApiError
-                            ? e.message
-                            : at.revokeFail,
-                        );
-                      }
-                    }}
+                    onClick={() =>
+                      ask.open({
+                        title: at.revoke,
+                        message: at.confirmRevoke,
+                        tone: "danger",
+                        busy,
+                        run: async () => {
+                          try {
+                            await api.del(
+                              `/api/v1/admin/user-props/${p.order_id}`,
+                            );
+                            flash(at.revoked);
+                            await load();
+                          } catch (e) {
+                            flash(
+                              e instanceof ApiError ? e.message : at.revokeFail,
+                            );
+                          }
+                        },
+                      })
+                    }
                   >
                     {at.revoke}
                   </button>
@@ -125,6 +133,7 @@ export function PropsPanel({
           )}
         </tbody>
       </table>
+      <AskDialog {...ask} />
     </section>
   );
 }

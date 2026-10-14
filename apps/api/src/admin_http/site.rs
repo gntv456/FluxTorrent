@@ -23,9 +23,9 @@ struct StaffPanelEntry {
     perm_key: Option<String>,
 }
 
-/// 管理组面板：职能分组（section）+ 细粒度等级过滤（min_class）
-/// 说明：按 section 分组 + min_class 逐条过滤（旧 panel 字段是权限等级，
-/// 被当过分组维度致同职能拆散）。0209：perm_key 非空再按 user_can 过滤。
+/// 管理组面板：职能分组（section）+ 细粒度等级过滤（min_class）；
+/// 旧 panel 字段曾被当成分组维度致同职能拆散，故按 section 分组。0209：
+/// perm_key 非空再按 user_can 过滤。
 #[get("/admin/staffpanel")]
 async fn staff_panel(
     req: HttpRequest,
@@ -271,8 +271,8 @@ async fn site_settings_get(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    // 密文脱敏：旧版全量回值把 SMTP 密码等密文明文泄露给任何 90+。
-    // 口径与新协议 settings/schema 一致——secret 字段只回「已设置」状态。
+    // 密文脱敏（口径同 settings/schema）：旧版全量回值把 SMTP 密码等明文泄露给
+    // 任何 90+；secret 字段现在只回「已设置」状态。
     let rows: Vec<SiteSettingRow> = sqlx::query_as(
                 "SELECT s.name, \
          CASE WHEN COALESCE(m.secret, false) THEN '' ELSE s.value END AS value, \
@@ -308,8 +308,12 @@ async fn cheaters_scan(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::CHEATERS_VIEW)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::CHEATERS_VIEW,
+    )
+    .await?;
     let rows: Vec<CheaterRow> = sqlx::query_as(
                 "SELECT s.user_id, u.username, s.torrent_id, t.name, \
          (g.uploaded_delta / 3600)::bigint AS upspeed, \
@@ -321,4 +325,3 @@ async fn cheaters_scan(
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
-

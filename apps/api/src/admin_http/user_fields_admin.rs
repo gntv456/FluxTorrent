@@ -105,9 +105,7 @@ async fn admin_user_fields_put(
     }
     // P-139：与本人写入口同上限（每条 key 一次 defs 查询，无界即放大面）
     if body.values.len() > 64 {
-        return Err(DomainError::Validation(
-            "一次最多提交 64 个字段".into(),
-        ));
+        return Err(DomainError::Validation("一次最多提交 64 个字段".into()));
     }
     let mut tx = state.repo.db.begin().await.map_err(internal)?;
     for (key, val) in &body.values {

@@ -38,8 +38,8 @@ mod terms;
 mod users_ops;
 mod warned;
 mod wiki;
-mod wiki_revisions;
 mod wiki_public;
+mod wiki_revisions;
 
 /// setup 向导复用站型物化链路（pack_core）：跨 crate 边界的引用别名。
 /// setup_http 属 http 域，不在此 pub use 展开避免路由符号污染。
@@ -76,5 +76,5 @@ pub use terms::*;
 pub use users_ops::*;
 pub use warned::*;
 pub use wiki::*;
-pub use wiki_revisions::*;
 pub use wiki_public::*;
+pub use wiki_revisions::*;

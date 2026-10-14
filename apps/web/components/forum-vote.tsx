@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 帖子点赞条（0116）：乐观更新，失败回滚。颜色取主题 token，明暗自适应。 */
 export function PostVoteBar({
@@ -145,13 +146,11 @@ export function PostTipButton({
   const [total, setTotal] = useState(tips);
   const [n, setN] = useState(tipCount);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：打赏金额采集（window.prompt 退役 → ConfirmDialog 输入槽）
+  const ask = useConfirm();
 
-  async function tip() {
+  async function tip(raw: string) {
     if (busy) return;
-    const raw = window.prompt(
-      dict.forums.tipPrompt.replace("{magic}", currency),
-    );
-    if (!raw) return;
     const amt = Math.floor(Number(raw));
     if (!Number.isFinite(amt) || amt <= 0) {
       // W-24 反馈协议：裸 alert → toast.warn（不抢焦点，可继续输入）
@@ -175,21 +174,32 @@ export function PostTipButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={tip}
-      disabled={busy}
-      title={dict.forums.tipTitle}
-      className="inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 border-line text-sub hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange-dark)]"
-    >
-      <span aria-hidden="true">☕</span>
-      {dict.forums.tipTitle}
-      {n > 0 && (
-        <span className="num opacity-80">
-          {total} {currency} · {n}
-        </span>
-      )}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() =>
+          ask.open({
+            title: dict.forums.tipTitle,
+            label: dict.forums.tipPrompt.replace("{magic}", currency),
+            busy,
+            run: (raw) => tip(raw),
+          })
+        }
+        disabled={busy}
+        title={dict.forums.tipTitle}
+        className="inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 border-line text-sub hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange-dark)]"
+      >
+        <span aria-hidden="true">☕</span>
+        {dict.forums.tipTitle}
+        {n > 0 && (
+          <span className="num opacity-80">
+            {total} {currency} · {n}
+          </span>
+        )}
+      </button>
+      {/* P2 清偿：打赏金额采集（prompt → ConfirmDialog 输入槽） */}
+      <AskDialog {...ask} />
+    </>
   );
 }
 

@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * 站点设定顶部操作条 + 提示条（从 app/(main)/admin/settings/settings-client.tsx
+ * 站点设定顶部操作条（从 app/(main)/admin/settings/settings-client.tsx
  * 按域拆出）：标题/分区统计、导出/导入入口、未保存计数与保存按钮、
- * 明文导出二次确认、只读横幅与全局 toast。状态与动作由主组件注入。
+ * 明文导出二次确认、只读横幅。反馈统一走全局 toast（W-10 收编），
+ * 本组件不再渲染本地提示条。状态与动作由主组件注入。
  */
 
 import { useEffect, useRef } from "react";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { SettingsSchema } from "@/components/setting-field";
-import type { SettingsToast, useSettingsTransfer } from "./settings-io";
+import type { useSettingsTransfer } from "./settings-io";
 
 export function SettingsToolbar({
   schema,
@@ -18,7 +19,6 @@ export function SettingsToolbar({
   dirtyCount,
   saving,
   editable,
-  toast,
   io,
   onSave,
   onDiscard,
@@ -28,7 +28,6 @@ export function SettingsToolbar({
   dirtyCount: number;
   saving: boolean;
   editable: boolean;
-  toast: SettingsToast | null;
   io: ReturnType<typeof useSettingsTransfer>;
   onSave: () => void;
   onDiscard: () => void;
@@ -168,29 +167,6 @@ export function SettingsToolbar({
           >
             {s.cancel}
           </button>
-        </div>
-      )}
-
-      {toast && (
-        <div
-          className={`rounded-[var(--r-md)] border p-3 text-sm ${
-            toast.ok
-              ? "border-mint/40 bg-mint/10 text-ink"
-              : "border-danger/40 bg-danger/5 text-ink"
-          }`}
-          role="status"
-        >
-          <p className="font-bold">{toast.text}</p>
-          {toast.ok && (
-            <p className="mt-0.5 text-[11px] text-sub">{s.cacheHint}</p>
-          )}
-          {toast.effects && toast.effects.length > 0 && (
-            <ul className="mt-2 list-disc pl-5 text-[11px] text-sub">
-              {toast.effects.map((e) => (
-                <li key={e}>{e}</li>
-              ))}
-            </ul>
-          )}
         </div>
       )}
     </>

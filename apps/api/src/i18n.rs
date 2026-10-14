@@ -121,15 +121,26 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
     (3003, "种子文件无效", "種子檔案無效", "Invalid torrent file"),
     (3004, "种子重复", "種子重複", "Duplicate torrent"),
     (4001, "余额不足", "餘額不足", "Insufficient balance"),
-    (4002, "流水冲突，请重试", "流水衝突，請重試",
-     "Ledger conflict, please retry"),
-    (4101, "本站未开放此功能", "本站未開放此功能",
-     "This feature is not enabled on this site"),
+    (
+        4002,
+        "流水冲突，请重试",
+        "流水衝突，請重試",
+        "Ledger conflict, please retry",
+    ),
+    (
+        4101,
+        "本站未开放此功能",
+        "本站未開放此功能",
+        "This feature is not enabled on this site",
+    ),
     (5002, "已感谢过", "已感謝過", "Already thanked"),
     // 邮件链路的外部配置缺失（P-102）：不是系统故障，别甩「内部错误」
-    (4103, "站点未开通邮件服务，请联系管理组",
-     "站點未開通郵件服務，請聯繫管理組",
-     "Mail service is not configured; contact staff"),
+    (
+        4103,
+        "站点未开通邮件服务，请联系管理组",
+        "站點未開通郵件服務，請聯繫管理組",
+        "Mail service is not configured; contact staff",
+    ),
 ];
 
 /// 按错误码取本地化消息（未知码回内部错误文案）

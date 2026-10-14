@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",
   },
+  // C 批首屏 JS 清偿·实测结论（2026-10-14，勿重蹈）：
+  // 尝试过 cacheGroups 拆 vendor-react/vendor-next——Next 15 默认已有
+  // framework 分组（chunks 8127=next client+react / 20e8=react-dom），
+  // 强制改名重组会把两块 merge 进单 vendor 并**重复打入** react-dom，
+  // 共享 First Load 102→146 kB（+44）。故此处**不加**自定义 splitChunks：
+  // 框架层 ~102 kB gz 就是 App Router 地板，缓存边界已由默认分组给出。
+  // 本批真实清偿来自 admin 路由 dynamic 拆解（admin-tool-switch.tsx）。
   // 浏览器请求走同源 /api → 服务端转发（免 CORS、免暴露内部端口）。
   // 0225 G30-B4：app/api/[...path]/route.ts 的运行期代理优先级更高（本
   // rewrites 是它被移除时的兜底；且 rewrites 在构建期固化 API_SERVER_URL，

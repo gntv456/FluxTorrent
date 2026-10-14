@@ -8,6 +8,7 @@
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import type { PackApplyItem } from "./staff-tools-content-shared";
 
 const APPLIES_API = "/api/v1/admin/site-type-packs/applies";
@@ -21,6 +22,8 @@ interface PackAppliesProps {
 export function StaffPackAppliesPanel({ rows, busy, guard }: PackAppliesProps) {
   const { dict } = useI18n();
   const t = dict.stafftools;
+  // P2 清偿：回滚二次确认（danger：站点配置整体回退），confirm 退役
+  const ask = useConfirm();
   return (
     <section className="baozi-panel p-4">
       <h2 className="mb-3 text-base font-bold text-ink">
@@ -85,13 +88,21 @@ export function StaffPackAppliesPanel({ rows, busy, guard }: PackAppliesProps) {
                           const msg = `${fmt(t.packRollbackConfirm, {
                             name: r.pack_name,
                           })}\n\n${detail}`;
-                          if (!window.confirm(msg)) return;
-                          void guard(
-                            async () => {
-                              await api.post(`${APPLIES_API}/${r.id}/rollback`);
-                            },
-                            fmt(t.packRolledBack, { name: r.pack_name }),
-                          );
+                          ask.open({
+                            title: t.btnRollback,
+                            message: msg,
+                            tone: "danger",
+                            busy,
+                            run: () =>
+                              guard(
+                                async () => {
+                                  await api.post(
+                                    `${APPLIES_API}/${r.id}/rollback`,
+                                  );
+                                },
+                                fmt(t.packRolledBack, { name: r.pack_name }),
+                              ),
+                          });
                         }}
                       >
                         {t.btnRollback}
@@ -104,6 +115,7 @@ export function StaffPackAppliesPanel({ rows, busy, guard }: PackAppliesProps) {
           </tbody>
         </table>
       )}
+      <AskDialog {...ask} />
     </section>
   );
 }

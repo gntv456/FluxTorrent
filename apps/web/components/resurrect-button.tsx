@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 认领复活任务（0073，U3D Graveyard 口径）：POST /resurrections/claim {torrent_id}
  *  后端约束：不能领自己发的种；一种同时只能有一个进行中的复活任务。 */
@@ -18,10 +19,11 @@ export function ResurrectButton({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // P2 清偿：认领前确认走 ConfirmDialog（danger：认领即担 H&R 义务）
+  const ask = useConfirm();
 
   async function claim() {
     if (busy || done) return;
-    if (!window.confirm(t.deadNote)) return;
     setBusy(true);
     setMsg(null);
     try {
@@ -53,7 +55,15 @@ export function ResurrectButton({
     <span className="inline-flex flex-col items-start">
       <button
         type="button"
-        onClick={claim}
+        onClick={() =>
+          ask.open({
+            title: t.claimBtn,
+            message: t.deadNote,
+            tone: "danger",
+            busy,
+            run: claim,
+          })
+        }
         disabled={busy}
         title={t.note.replaceAll("{magic}", currency)}
         className="min-h-[36px] rounded-full border border-[var(--baozi-orange-dark)] px-4 text-xs font-bold text-[var(--baozi-orange-dark)] transition-transform active:scale-[0.97] disabled:opacity-50"
@@ -65,6 +75,7 @@ export function ResurrectButton({
           {msg}
         </span>
       )}
+      <AskDialog {...ask} />
     </span>
   );
 }

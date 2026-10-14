@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { matchEmbedRule } from "@/components/forum-video-embed";
+import { toast } from "@/components/ui/toast";
 import type { EmbedRule } from "@/lib/data-forum";
 
 const PILL_BTN =
@@ -54,10 +55,7 @@ async function probeVideo(file: File) {
     if (blob) {
       // FormData 直传（api.post 走 JSON.stringify，不适用于 multipart）
       const fd = new FormData();
-      fd.append(
-        "file",
-        new File([blob], "poster.jpg", { type: "image/jpeg" }),
-      );
+      fd.append("file", new File([blob], "poster.jpg", { type: "image/jpeg" }));
       const res = await fetch("/api/v1/attachments", {
         method: "POST",
         body: fd,
@@ -122,7 +120,8 @@ export function VideoInsertRow({
       }
       onInsert(`!video(${j.data.url})`);
     } catch (e) {
-      window.alert(
+      // P2 清偿：失败提示 alert → toast.error（不抢焦点）
+      toast.error(
         e instanceof Error && e.message ? e.message : dict.common.networkError,
       );
     } finally {

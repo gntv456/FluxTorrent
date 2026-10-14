@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 interface VoucherRow {
   id: number;
@@ -39,14 +40,15 @@ interface Props {
 
 const UID_CLS =
   "min-h-[32px] w-40 rounded-full border border-line px-3 text-xs";
-const N_CLS =
-  "min-h-[32px] w-16 rounded-full border border-line px-2 text-xs";
+const N_CLS = "min-h-[32px] w-16 rounded-full border border-line px-2 text-xs";
 
 export function VoucherPanel({ uid, setUid, flash }: Props) {
   const { dict, locale } = useI18n();
   const at = dict.adminProps;
   const [rows, setRows] = useState<VoucherRow[]>([]);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：作废券二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   const [count, setCount] = useState("1");
 
   const load = useCallback(async () => {
@@ -78,8 +80,7 @@ export function VoucherPanel({ uid, setUid, flash }: Props) {
   );
   const stateOf = (r: VoucherRow) =>
     r.used_at ? at.vUsed : r.expired ? at.vExpired : at.vUsable;
-  const fmtTime = (s: string) =>
-    new Date(s).toLocaleString(dateLocale(locale));
+  const fmtTime = (s: string) => new Date(s).toLocaleString(dateLocale(locale));
 
   return (
     <section className="baozi-panel p-4">
@@ -91,11 +92,7 @@ export function VoucherPanel({ uid, setUid, flash }: Props) {
           placeholder={at.qUid}
           className={UID_CLS}
         />
-        <button
-          className={UID_CLS}
-          disabled={busy}
-          onClick={() => void load()}
-        >
+        <button className={UID_CLS} disabled={busy} onClick={() => void load()}>
           {at.vRefresh}
         </button>
         <span className="ml-auto text-xs text-sub">
@@ -112,34 +109,35 @@ export function VoucherPanel({ uid, setUid, flash }: Props) {
           className="min-h-[32px] rounded-full border border-red-300
             px-3 text-xs font-bold text-red-600 disabled:opacity-40"
           disabled={busy || voidable.length === 0}
-          onClick={async () => {
+          onClick={() => {
             const n = Number(count);
             if (!Number.isInteger(n) || n < 1 || n > 50) {
               flash(at.vVoidBad);
               return;
             }
-            if (
-              !window.confirm(
-                at.vVoidConfirm
-                  .replace("{n}", String(n))
-                  .replace("{u}", uid.trim()),
-              )
-            ) {
-              return;
-            }
-            setBusy(true);
-            try {
-              const r = await api.post<{ voided: number }>(
-                "/api/v1/admin/user-vouchers/void",
-                { user_id: Number(uid.trim()), limit: n },
-              );
-              flash(at.vVoidDone.replace("{n}", String(r.voided)));
-              await load();
-            } catch (e) {
-              flash(e instanceof ApiError ? e.message : at.vVoidFail);
-            } finally {
-              setBusy(false);
-            }
+            ask.open({
+              title: at.vVoid,
+              message: at.vVoidConfirm
+                .replace("{n}", String(n))
+                .replace("{u}", uid.trim()),
+              tone: "danger",
+              busy,
+              run: async () => {
+                setBusy(true);
+                try {
+                  const r = await api.post<{ voided: number }>(
+                    "/api/v1/admin/user-vouchers/void",
+                    { user_id: Number(uid.trim()), limit: n },
+                  );
+                  flash(at.vVoidDone.replace("{n}", String(r.voided)));
+                  await load();
+                } catch (e) {
+                  flash(e instanceof ApiError ? e.message : at.vVoidFail);
+                } finally {
+                  setBusy(false);
+                }
+              },
+            });
           }}
         >
           {at.vVoid}
@@ -180,6 +178,7 @@ export function VoucherPanel({ uid, setUid, flash }: Props) {
           )}
         </tbody>
       </table>
+      <AskDialog {...ask} />
     </section>
   );
 }

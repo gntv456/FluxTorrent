@@ -11,24 +11,19 @@ use crate::state::AppState;
 
 use super::{check_ids, staff};
 
-// ============ P1-1 种子批量工作台（参考站 torrent/torrents 批量动作口径） ============
-
 #[derive(Deserialize)]
 struct TorrentBatchReq {
     action: String,
     ids: Vec<i64>,
-    /// sticky: 0 普通 / 1 置顶
-    #[serde(default)]
+    #[serde(default)] // sticky: 0 普通 / 1 置顶
     pos_state: Option<i16>,
     #[serde(default)]
     pos_state_until: Option<chrono::DateTime<chrono::Utc>>,
-    /// promo: free/x2/x2free/half/x2half/p30
-    #[serde(default)]
+    #[serde(default)] // promo: free/x2/x2free/half/x2half/p30
     promo_kind: Option<String>,
     #[serde(default)]
     promo_until: Option<chrono::DateTime<chrono::Utc>>,
-    /// recommend: 0 普通 / 1 推荐 / 2 经典
-    #[serde(default)]
+    #[serde(default)] // recommend: 0 普通 / 1 推荐 / 2 经典
     pick_type: Option<i16>,
     #[serde(default)]
     tag_ids: Vec<i32>,
@@ -40,15 +35,12 @@ struct TorrentBatchReq {
     grade_id: Option<i32>,
     #[serde(default)]
     edition_id: Option<i32>,
-    /// 维度取值：kind → 值（change_sections 动作）。
-    /// 值支持旧格式整数（枚举单选）与新格式对象（B2 六类型，详见
-    /// `publish_http::upload_sections`）。
+    /// 维度取值：kind → 值（change_sections）。旧格式整数/新格式对象
+    /// （B2 六类型，详见 `publish_http::upload_sections`）。
     #[serde(default)]
     sections: serde_json::Value,
-    /// 乐观并发（F2 / FRAME §5 推广，仅 hr/unhr 动作消费）：torrent_id →
-    /// 客户端读到的 mtime（RFC3339）。携带的种子 mtime 与库中不一致 →
-    /// 409 VersionConflict(5003)。缺省 / 键未携带 = 不校验（灰度兼容，
-    /// 与 settings_http/expected.rs 同三原则）。
+    /// 乐观并发（F2 / FRAME §5，仅 hr/unhr 消费）：torrent_id → 读到的
+    /// mtime 不一致 → 409(5003)；缺省/未携带不校验（灰度，同 expected.rs）。
     #[serde(default)]
     expected_mtime: Option<HashMap<i64, String>>,
 }
@@ -63,12 +55,8 @@ async fn torrent_batch(
     body: web::Json<TorrentBatchReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::TORRENT_MANAGE,
-    )
-    .await?;
+    let perm = crate::authz::perm::TORRENT_MANAGE;
+    crate::authz::require_perm(&state, &auth, perm).await?;
     let ids = &body.ids;
     check_ids(ids)?;
     let db = &state.repo.db;
@@ -82,7 +70,8 @@ async fn torrent_batch(
                 ));
             }
             sqlx::query(
-                "UPDATE torrents SET pos_state = $2, pos_state_until = $3, mtime = now() \
+                "UPDATE torrents SET pos_state = $2, \
+                 pos_state_until = $3, mtime = now() \
                  WHERE id = ANY($1)",
             )
             .bind(&id_arr)
@@ -95,8 +84,7 @@ async fn torrent_batch(
         }
         "promo" => {
             // 深测四轮（2026-10-03）：promo_kind 未给才缺省 free；给了但不在
-            // 白名单的值直接 400——旧版 unwrap_or 会把拼错的 kind（如 "x2free"
-            // 误传 "2xfree"）静默挂成 free，管理端无感知（本轮深测实测踩中）。
+            // 白名单直接 400——旧版把拼错的 kind 静默挂成 free，管理端无感知。
             let kind = match body.promo_kind.as_deref() {
                 None => "free",
                 Some(k) if PROMO_KINDS.contains(&k) => k,
@@ -106,9 +94,6 @@ async fn torrent_batch(
                     )));
                 }
             };
-            if !PROMO_KINDS.contains(&kind) {
-                return Err(DomainError::Validation("未知促销类型".into()));
-            }
             let until = body.promo_until.unwrap_or_else(|| {
                 chrono::Utc::now() + chrono::Duration::hours(48)
             });
@@ -121,8 +106,11 @@ async fn torrent_batch(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             sqlx::query(
-                "INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source, created_by) \
-                 SELECT 'torrent', id, $2::promotion_kind_enum, now(), $3, 'manual', $4 \
+                "INSERT INTO promotions (scope, torrent_id, \
+                 kind, starts_at, ends_at, source, \
+                 created_by) \
+                 SELECT 'torrent', id, $2::promotion_kind_enum, \
+                 now(), $3, 'manual', $4 \
                  FROM torrents WHERE id = ANY($1)",
             )
             .bind(&id_arr)
@@ -158,12 +146,13 @@ async fn torrent_batch(
             }
             // 0159：批量打标与发布/详情同口径（scope/enabled/official 校验，
             // official_tag 物化列联动）——此前直插绕过全部校验
+            let who = (auth.id, auth.class_id as i16);
             for tid in &id_arr {
                 crate::torrents::apply_torrent_tags(
                     db,
                     *tid,
                     &body.tag_ids,
-                    (auth.id, auth.class_id as i16),
+                    who,
                 )
                 .await?;
             }
@@ -185,12 +174,10 @@ async fn torrent_batch(
         .rows_affected(),
         "hr" | "unhr" => {
             let on = body.action == "hr";
-            // 乐观并发（F2 / FRAME §5 推广）：挂/摘 H&R 改写整份 hr_policy，
-            // 此前 last-write-wins——两个版主同时操作，后提交者把前者的
-            // 口径整条覆盖且无感知。携带 expected_mtime 时先 FOR UPDATE
-            // 行锁下比对，任一种子 mtime 不匹配 → 409（整批不动，与
-            // settings 域 check_expected 同形：非 RFC3339 也按冲突处理，
-            // 静默放行会在灰度期掩盖真并发）。缺省不校验：老客户端行为不变。
+            // 乐观并发（F2 / FRAME §5）：挂/摘 H&R 改写整份 hr_policy，此前
+            // last-write-wins——两版主并发，后者整条覆盖且无感知。携带
+            // expected_mtime 时先 FOR UPDATE 比对，任一种子不匹配 → 409
+            // （整批不动；非 RFC3339 也按冲突处理）。缺省不校验（灰度）。
             let expected = body.expected_mtime.clone().unwrap_or_default();
             if !expected.is_empty() {
                 let rows: Vec<(i64, chrono::DateTime<chrono::Utc>)> =
@@ -210,17 +197,16 @@ async fn torrent_batch(
                     let ok = chrono::DateTime::parse_from_rfc3339(got)
                         .map(|t| t.with_timezone(&chrono::Utc) == cur)
                         .unwrap_or(false);
-                    if !ok && !conflicts.iter().any(|x| x == &tid.to_string()) {
-                        conflicts.push(tid.to_string());
+                    if !ok {
+                        conflicts.push(tid.to_string()); // FOR UPDATE 行 id 唯一
                     }
                 }
                 if !conflicts.is_empty() {
                     return Err(DomainError::VersionConflict(conflicts));
                 }
             }
-            // 深测 2026-10-03：挂 H&R 时把站点缺省口径（hr_hours 设定；days 缺省 14）
-            // 落进种子 policy —— worker 快照与详情页展示都优先读种子 policy，
-            // 只写 {"on":true} 会让策略全靠 COALESCE 兜底，后台改 hr_hours 不生效。
+            // 深测 2026-10-03：挂 H&R 把站点缺省口径（hr_hours；days=14）落进
+            // 种子 policy——只写 {"on":true} 会全靠 COALESCE，改设定不生效。
             let policy: serde_json::Value = if on {
                 let hr_hours: i32 = sqlx::query_scalar(
                     "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
@@ -230,7 +216,8 @@ async fn torrent_batch(
                 .await
                 .unwrap_or(48)
                 .clamp(1, 24 * 365);
-                serde_json::json!({ "on": true, "seed_hours": hr_hours, "days": 14 })
+                serde_json::json!({ "on": true, "seed_hours": hr_hours,
+                    "days": 14 })
             } else {
                 serde_json::Value::Null
             };
@@ -246,20 +233,19 @@ async fn torrent_batch(
             .rows_affected()
         }
         "change_category" => {
-            // 四审 L3 P0：旧三列不是批量写入口。直改 medium/grade/edition 不会反写
-            // torrent_sections，改完详情页与按维度筛选仍显旧值——同一份数据两个真值。
-            // 维度取值一律走 change_sections，由 sync_legacy_columns 单向落列。
+            // 四审 L3 P0：直改 medium/grade/edition 不反写 torrent_sections，
+            // 详情页与筛选仍显旧值——维度一律走 change_sections 落列。
             if body.medium_id.is_some()
                 || body.grade_id.is_some()
                 || body.edition_id.is_some()
             {
                 return Err(DomainError::Validation(
-                    "媒介/学段/版本请用 change_sections 提交维度取值（旧三列不再单独可写）"
+                    "媒介/学段/版本请用 change_sections 提交（旧三列不再可写）"
                         .into(),
                 ));
             }
-            // 全 COALESCE 的旧写法在全 None 时仍会命中 N 行并回报「成功 N 条」，
-            // 一个字段都没改——这里要求显式给出目标分类。
+            // 全 COALESCE 旧写法在全 None 时仍命中 N 行回报「成功 N 条」，
+            // 一个字段没改——要求显式给出目标分类。
             let Some(category_id) = body.category_id else {
                 return Err(DomainError::Validation("缺少要改的分类".into()));
             };
@@ -275,9 +261,8 @@ async fn torrent_batch(
             .rows_affected()
         }
         "change_sections" => {
-            // 与单条编辑口同源（六类型 + 多值 + 字典归属），但用**部分更新**口径：
-            // 批量选择里各种子既有维度各不相同，编辑口的整组重建会把没勾的维度
-            // 全清掉；这里只动给定维度（批量 UI 一次改一维）。
+            // 与单条编辑口同源（六类型 + 多值 + 字典归属），但用部分更新：
+            // 整组重建会把没勾的维度全清掉；这里只动给定维度（一次一维）。
             let given = match body.sections.as_object() {
                 Some(o) if !o.is_empty() => o.clone(),
                 _ => {
@@ -293,7 +278,7 @@ async fn torrent_batch(
                     true,
                 )
                 .await?;
-            // 给了但解析为空（如 {"dict_ids":[]}）＝清空该维度
+            // 给了但解析为空（如 {"dict_ids":[]}）= 清空该维度
             let cleared: Vec<String> = given
                 .keys()
                 .filter(|k| !parsed.iter().any(|s| &s.kind == *k))
@@ -317,27 +302,42 @@ async fn torrent_batch(
                     .map_err(|e| DomainError::Internal(e.into()))?;
                 }
                 crate::torrents::sync_legacy_columns(db, *tid).await?;
-                // 批量改维度同样可能清到派生维度（log_score/haslog），
-                // 逐种子重算一遍（幂等；与 manage.rs 编辑口同口径）
+                // 批量改维度可能清到派生维度（log_score/haslog），逐种子
+                // 重算（幂等；与 manage.rs 编辑口同口径）
                 crate::torrents::sync_log_dims(db, *tid).await?;
                 n += 1;
             }
             n
         }
-        "delete" => sqlx::query(
-            "UPDATE torrents SET approval_status = 3, \
-             mtime = now() WHERE id = ANY($1)",
-        )
-        .bind(&id_arr)
-        .execute(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected(),
+        // 状态机判定收 domain（FRAME §7 第 6 条）：delete 源态谓词现状为
+        // 「无」（任意态可下架，含 3 幂等重放）——按矩阵生成合法源态集，
+        // 判定并入同一条语句：UPDATE 仅命中合法源态行并 RETURNING 计数，
+        // 少于批内 id 数即有非法态/不存在 → 整批 400 不半批静默（当前
+        // 矩阵全放行，见 torrent_status 单测注记）。
+        "delete" => {
+            use crate::domain::torrent_status::legal_delist_sources;
+            let ok_rows: Vec<i64> = sqlx::query(
+                "UPDATE torrents SET approval_status = 3, mtime = now()                  WHERE id = ANY($1) AND approval_status = ANY($2)                  RETURNING id",
+            )
+            .bind(&id_arr)
+            .bind(&legal_delist_sources())
+            .fetch_all(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            let n = ok_rows.len() as u64;
+            if n as usize != id_arr.len() {
+                return Err(DomainError::Validation(
+                    "批内存在迁移矩阵不允许下架（或不存在）的种子".into(),
+                ));
+            }
+            n
+        }
         _ => return Err(DomainError::Validation("未知批量动作".into())),
     };
     // 操作记录：每种动作写一条汇总（detail 带 ids），列表页可按种子过滤
     sqlx::query(
-        "INSERT INTO torrent_operation_logs (torrent_id, operator_id, action, detail) \
+        "INSERT INTO torrent_operation_logs \
+         (torrent_id, operator_id, action, detail) \
          SELECT id, $2, $3, $4 FROM torrents WHERE id = ANY($1)",
     )
     .bind(&id_arr)

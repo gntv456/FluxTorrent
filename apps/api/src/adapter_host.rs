@@ -12,9 +12,7 @@ use crate::errors::{DomainError, DomainResult};
 
 /// 注册四个 host 导入。返回码约定（`adapter_runtime.rs` 的负码→原话表依赖它）：
 /// -1 内存/UTF-8 不可读，-2 出网越权，-3 限流，-4 上游失败，-5 secret 越权。
-pub(crate) fn build_linker(
-    engine: &Engine,
-) -> DomainResult<Linker<HostState>> {
+pub(crate) fn build_linker(engine: &Engine) -> DomainResult<Linker<HostState>> {
     let mut linker = Linker::new(engine);
     linker
         .func_wrap(
@@ -59,91 +57,106 @@ pub(crate) fn build_linker(
                 write_str(data, out_ptr, out_cap, &body)
             },
         )
-        .and_then(|l| l.func_wrap(
-            "host",
-            "cache_get",
-            |mut caller: wasmtime::Caller<'_, HostState>,
-             key_ptr: i32, key_len: i32,
-             out_ptr: i32, out_cap: i32|
-             -> i32 {
-                let Some((data, store)) = guest_mem(&mut caller) else {
-                    return -1;
-                };
-                let key = match read_str(data, key_ptr, key_len) {
-                    Some(s) => s,
-                    None => return -1,
-                };
-                match store.cache_get(&key) {
-                    Some(v) => write_str(data, out_ptr, out_cap, &v),
-                    None => 0,
-                }
-            },
-        ))
-        .and_then(|l| l.func_wrap(
-            "host",
-            "cache_set",
-            |mut caller: wasmtime::Caller<'_, HostState>,
-             key_ptr: i32, key_len: i32,
-             val_ptr: i32, val_len: i32,
-             ttl: i64| {
-                let Some((data, store)) = guest_mem(&mut caller) else {
-                    return;
-                };
-                if let (Some(k), Some(v)) = (
-                    read_str(data, key_ptr, key_len),
-                    read_str(data, val_ptr, val_len),
-                ) {
-                    store.cache_set(&k, &v, ttl.max(0) as u64);
-                }
-            },
-        ))
-        .and_then(|l| l.func_wrap(
-            "host",
-            "host_log",
-            |mut caller: wasmtime::Caller<'_, HostState>,
-             level: i32,
-             msg_ptr: i32, msg_len: i32| {
-                let Some((data, store)) = guest_mem(&mut caller) else {
-                    return;
-                };
-                if let Some(m) = read_str(data, msg_ptr, msg_len) {
-                    match level {
-                        2 => tracing::warn!(
-                            adapter = store.manifest.adapter_id.as_str(),
-                            "{m}"
-                        ),
-                        _ => tracing::info!(
-                            adapter = store.manifest.adapter_id.as_str(),
-                            "{m}"
-                        ),
+        .and_then(|l| {
+            l.func_wrap(
+                "host",
+                "cache_get",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 key_ptr: i32,
+                 key_len: i32,
+                 out_ptr: i32,
+                 out_cap: i32|
+                 -> i32 {
+                    let Some((data, store)) = guest_mem(&mut caller) else {
+                        return -1;
+                    };
+                    let key = match read_str(data, key_ptr, key_len) {
+                        Some(s) => s,
+                        None => return -1,
+                    };
+                    match store.cache_get(&key) {
+                        Some(v) => write_str(data, out_ptr, out_cap, &v),
+                        None => 0,
                     }
-                }
-            },
-        ))
-        .and_then(|l| l.func_wrap(
-            "host",
-            "secret",
-            |mut caller: wasmtime::Caller<'_, HostState>,
-             name_ptr: i32, name_len: i32,
-             out_ptr: i32, out_cap: i32|
-             -> i32 {
-                let Some((data, store)) = guest_mem(&mut caller) else {
-                    return -1;
-                };
-                let name = match read_str(data, name_ptr, name_len) {
-                    Some(s) => s,
-                    None => return -1,
-                };
-                if !store.manifest.secrets_read.contains(&name) {
-                    // 白名单外请求：不留内容痕迹，长度 -5 区分
-                    return -5;
-                }
-                match store.secrets.get(&name) {
-                    Some(v) => write_str(data, out_ptr, out_cap, v),
-                    None => 0,
-                }
-            },
-        ))
+                },
+            )
+        })
+        .and_then(|l| {
+            l.func_wrap(
+                "host",
+                "cache_set",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 key_ptr: i32,
+                 key_len: i32,
+                 val_ptr: i32,
+                 val_len: i32,
+                 ttl: i64| {
+                    let Some((data, store)) = guest_mem(&mut caller) else {
+                        return;
+                    };
+                    if let (Some(k), Some(v)) = (
+                        read_str(data, key_ptr, key_len),
+                        read_str(data, val_ptr, val_len),
+                    ) {
+                        store.cache_set(&k, &v, ttl.max(0) as u64);
+                    }
+                },
+            )
+        })
+        .and_then(|l| {
+            l.func_wrap(
+                "host",
+                "host_log",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 level: i32,
+                 msg_ptr: i32,
+                 msg_len: i32| {
+                    let Some((data, store)) = guest_mem(&mut caller) else {
+                        return;
+                    };
+                    if let Some(m) = read_str(data, msg_ptr, msg_len) {
+                        match level {
+                            2 => tracing::warn!(
+                                adapter = store.manifest.adapter_id.as_str(),
+                                "{m}"
+                            ),
+                            _ => tracing::info!(
+                                adapter = store.manifest.adapter_id.as_str(),
+                                "{m}"
+                            ),
+                        }
+                    }
+                },
+            )
+        })
+        .and_then(|l| {
+            l.func_wrap(
+                "host",
+                "secret",
+                |mut caller: wasmtime::Caller<'_, HostState>,
+                 name_ptr: i32,
+                 name_len: i32,
+                 out_ptr: i32,
+                 out_cap: i32|
+                 -> i32 {
+                    let Some((data, store)) = guest_mem(&mut caller) else {
+                        return -1;
+                    };
+                    let name = match read_str(data, name_ptr, name_len) {
+                        Some(s) => s,
+                        None => return -1,
+                    };
+                    if !store.manifest.secrets_read.contains(&name) {
+                        // 白名单外请求：不留内容痕迹，长度 -5 区分
+                        return -5;
+                    }
+                    match store.secrets.get(&name) {
+                        Some(v) => write_str(data, out_ptr, out_cap, v),
+                        None => 0,
+                    }
+                },
+            )
+        })
         .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(linker)
 }

@@ -274,8 +274,9 @@ pub(super) async fn promo_kind_delete(
         return Ok(ok(serde_json::json!({ "disabled": true })));
     }
     if tiers > 0 {
-        return Err(DomainError::Validation(
-            format!("该档位仍有 {tiers} 个价目档，删除会连带清空")));
+        return Err(DomainError::Validation(format!(
+            "该档位仍有 {tiers} 个价目档，删除会连带清空"
+        )));
     }
     let n = sqlx::query("DELETE FROM promo_kinds WHERE kind = $1")
         .bind(&kind)

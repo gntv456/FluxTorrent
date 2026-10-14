@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 export interface PollData {
   options: string[];
@@ -33,6 +34,8 @@ export function PollWidget({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // P2 清偿：截止投票二次确认（danger：截止后不可再投），confirm 退役
+  const ask = useConfirm();
 
   const voted = poll.my_vote !== null && poll.my_vote !== undefined;
   const counts = new Map(poll.counts.map((c) => [c.index, c.votes]));
@@ -55,7 +58,7 @@ export function PollWidget({
   }
 
   async function close() {
-    if (busy || !window.confirm(dict.forums.pollCloseConfirm)) return;
+    if (busy) return;
     setBusy(true);
     try {
       await api.post("/api/v1/forums/poll/close", { topic_id: topicId });
@@ -129,13 +132,22 @@ export function PollWidget({
       {canClose && !poll.closed && (
         <button
           type="button"
-          onClick={close}
+          onClick={() =>
+            ask.open({
+              title: dict.forums.pollClose,
+              message: dict.forums.pollCloseConfirm,
+              tone: "danger",
+              busy,
+              run: close,
+            })
+          }
           disabled={busy}
           className="mt-2 rounded-full border border-line px-3 py-1 text-xs font-bold text-sub hover:border-coral hover:text-coral disabled:opacity-50"
         >
           {dict.forums.pollClose}
         </button>
       )}
+      <AskDialog {...ask} />
     </div>
   );
 }

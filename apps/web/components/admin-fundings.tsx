@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 定向众筹后台管理（闭环审查 C11）：列表 / 状态筛选 / 关闭（可退款）。
  *  此前站长无任何出口，网关掉单或需要干预时只能改库。 */
@@ -43,14 +44,14 @@ export function AdminFundings() {
   const [status, setStatus] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：关闭众筹二次确认状态机（danger）
+  const ask = useConfirm();
 
   const load = useCallback(async () => {
     const p = new URLSearchParams();
     if (status) p.set("status", status);
     try {
-      setRows(
-        await api.get<FundingRow[]>(`/api/v1/admin/fundings?${p}`),
-      );
+      setRows(await api.get<FundingRow[]>(`/api/v1/admin/fundings?${p}`));
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : c.networkError);
       setRows([]);
@@ -71,8 +72,6 @@ export function AdminFundings() {
     })[s] ?? String(s);
 
   async function cancel(row: FundingRow, refund: boolean) {
-    const key = refund ? t.confirmCancelRefund : t.confirmCancelNoRefund;
-    if (!window.confirm(fmt(key, { id: row.id }))) return;
     setBusy(true);
     try {
       const r = await api.post<{ refunded: number }>(
@@ -90,6 +89,18 @@ export function AdminFundings() {
     } finally {
       setBusy(false);
     }
+  }
+
+  /** P2 清偿：关闭众筹二次确认（danger），window.confirm 退役 */
+  function askCancel(row: FundingRow, refund: boolean) {
+    const key = refund ? t.confirmCancelRefund : t.confirmCancelNoRefund;
+    ask.open({
+      title: refund ? t.cancelRefund : t.cancelNoRefund,
+      message: fmt(key, { id: row.id }),
+      tone: "danger",
+      busy,
+      run: () => cancel(row, refund),
+    });
   }
 
   return (
@@ -163,14 +174,14 @@ export function AdminFundings() {
                     <div className="flex gap-2">
                       <button
                         disabled={busy}
-                        onClick={() => void cancel(r, true)}
+                        onClick={() => askCancel(r, true)}
                         className={ACT_REFUND}
                       >
                         {t.cancelRefund}
                       </button>
                       <button
                         disabled={busy}
-                        onClick={() => void cancel(r, false)}
+                        onClick={() => askCancel(r, false)}
                         className={ACT_CLOSE}
                       >
                         {t.cancelNoRefund}
@@ -190,6 +201,7 @@ export function AdminFundings() {
           </tbody>
         </table>
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }

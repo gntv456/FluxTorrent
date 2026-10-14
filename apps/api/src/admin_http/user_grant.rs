@@ -42,13 +42,12 @@ async fn user_assign_jixiao(
     // P-242：旧写法 `.unwrap_or(false)` 把「查不到/查失败」混为一谈，
     // 这里改成错误传播；同时把该岗位的基准一并取出，用作金额上界
     // （数据推导，不拍脑袋定数字）。
-    let base: Option<i64> = sqlx::query_scalar(
-        "SELECT base_pay FROM jixiao_types WHERE id = $1",
-    )
-    .bind(body.type_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let base: Option<i64> =
+        sqlx::query_scalar("SELECT base_pay FROM jixiao_types WHERE id = $1")
+            .bind(body.type_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(base) = base else {
         return Err(DomainError::NotFound(body.type_id));
     };
@@ -57,7 +56,8 @@ async fn user_assign_jixiao(
     if amount < 0 || amount > base * 3 {
         return Err(DomainError::Validation(format!(
             "金额需在 0-{} 之间（该岗位基准 {} 的 3 倍内）",
-            base * 3, base
+            base * 3,
+            base
         )));
     }
     let period = body.period.clone().unwrap_or_else(|| {

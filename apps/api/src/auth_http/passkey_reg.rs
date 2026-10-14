@@ -37,13 +37,8 @@ pub(super) async fn passkey_begin(
     let auth = require_auth(&req, &state).await?;
     // 复核本身也要有档：这里是全站唯一「拿一次会话就能试密码」的口，
     // 不设上限就等于给在线爆破开门（finish 早已有 10 次/分，begin 原本裸奔）。
-    crate::http::rate_window(
-        &state,
-        &format!("pkregbegin:{}", auth.id),
-        5,
-        60,
-    )
-    .await?;
+    crate::http::rate_window(&state, &format!("pkregbegin:{}", auth.id), 5, 60)
+        .await?;
     // P-107：challenge 只在复核通过后才发。攻击者手里只有一次被偷的会话时，
     // 既拿不到 challenge，也就走不完 finish —— 见 twofa_http/step_up.rs 的因果说明。
     crate::twofa_http::step_up(
@@ -87,13 +82,8 @@ pub(super) async fn passkey_finish(
     // P-75：这是**登录态**端点。它的威胁模型在 P-107 之后才闭合：challenge
     // 只由 begin 在凭证复核通过后发出（本口不认没有 challenge 的请求），
     // 单凭一次被偷的会话已绑不上；这里再保留每人的调用上限做兜底。
-    crate::http::rate_window(
-        &state,
-        &format!("pkreg:{}", auth.id),
-        10,
-        60,
-    )
-    .await?;
+    crate::http::rate_window(&state, &format!("pkreg:{}", auth.id), 10, 60)
+        .await?;
     let cred_id = body.cred_id.trim();
     if cred_id.is_empty() || cred_id.len() > 512 {
         return Err(DomainError::Validation("cred_id 长度不符".into()));
@@ -183,9 +173,9 @@ pub(super) async fn passkey_finish(
     } else if raw_pk.first() == Some(&0x30) {
         use p256::pkcs8::DecodePublicKey;
         let vk = p256::ecdsa::VerifyingKey::from_public_key_der(&raw_pk)
-            .map_err(|_| DomainError::Validation(
-                "公钥格式错误（SPKI 解析失败）".into(),
-            ))?;
+            .map_err(|_| {
+                DomainError::Validation("公钥格式错误（SPKI 解析失败）".into())
+            })?;
         vk.to_encoded_point(false).as_bytes().to_vec()
     } else {
         return Err(DomainError::Validation(

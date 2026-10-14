@@ -41,8 +41,8 @@ pub(crate) async fn validate_setting(
             .fetch_optional(db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let meta =
-        meta.ok_or_else(|| DomainError::Validation(format!("未知设定项 {name}")))?;
+    let meta = meta
+        .ok_or_else(|| DomainError::Validation(format!("未知设定项 {name}")))?;
     validate_field(&meta, raw)
         .map(|v| (v, meta.secret))
         .map_err(|e| DomainError::FieldErrors(vec![(name.to_string(), e)]))

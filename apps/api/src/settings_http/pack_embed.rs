@@ -58,12 +58,11 @@ pub(super) async fn check_rows(
     tx: &mut PgTransaction<'_>,
     rows: &[Value],
 ) -> DomainResult<Vec<(i64, EmbedRuleBody)>> {
-    let builtin: Vec<i64> = sqlx::query_scalar(
-        "SELECT id FROM video_embed_rules WHERE builtin",
-    )
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(internal)?;
+    let builtin: Vec<i64> =
+        sqlx::query_scalar("SELECT id FROM video_embed_rules WHERE builtin")
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(internal)?;
     let mut errs: Vec<(String, String)> = Vec::new();
     let mut out: Vec<(i64, EmbedRuleBody)> = Vec::new();
     for (i, r) in rows.iter().enumerate() {
@@ -183,14 +182,10 @@ fn snapshot_bodies(rows: &[Value]) -> DomainResult<Vec<(i64, EmbedRuleBody)>> {
     for r in rows {
         let id = r.get("id").and_then(Value::as_i64).unwrap_or(0);
         if id <= 0 {
-            return Err(DomainError::Validation(
-                "快照损坏（行缺 id）".into(),
-            ));
+            return Err(DomainError::Validation("快照损坏（行缺 id）".into()));
         }
         let body = serde_json::from_value::<EmbedRuleBody>(r.clone())
-            .map_err(|e| {
-                DomainError::Validation(format!("快照损坏（{e}）"))
-            })?;
+            .map_err(|e| DomainError::Validation(format!("快照损坏（{e}）")))?;
         out.push((id, body));
     }
     Ok(out)

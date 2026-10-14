@@ -144,13 +144,13 @@ pub async fn list_related(
         "#,
     );
     let rows = sqlx::query_as::<_, RelatedRow>(&sql)
-    .bind(id)
-    .bind(TAG_CAND)
-    .bind(TRGM_CAND)
-    .bind(CAT_CAND)
-    .bind(limit)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        .bind(id)
+        .bind(TAG_CAND)
+        .bind(TRGM_CAND)
+        .bind(CAT_CAND)
+        .bind(limit)
+        .fetch_all(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(rows)
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import {
   type WikiPage,
   type WikiRevision,
@@ -15,13 +16,14 @@ import {
  *  正文是 BBCode——公开页 renderBBCode 渲染 React 节点，天然免疫 XSS；
  *  与 custom_pages（HTML + ammonia）的关键差异，表单占位符亦按 BBCode 提示。 */
 
-
 export function StaffWikiPanel({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
   const [rows, setRows] = useState<WikiPage[] | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：删页二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   // 版本历史抽屉：正查看哪页的历史
   const [revFor, setRevFor] = useState<number | null>(null);
   const [revs, setRevs] = useState<WikiRevision[] | null>(null);
@@ -61,8 +63,6 @@ export function StaffWikiPanel({ flash }: { flash: (m: string) => void }) {
   }
 
   async function remove(p: WikiPage) {
-    if (!window.confirm(dict.adminWiki.deleteConfirm.replace("{t}", p.title)))
-      return;
     try {
       await api.post(`/api/v1/admin/wiki/${p.id}/delete`, {});
       flash(dict.adminWiki.deleted);
@@ -85,9 +85,7 @@ export function StaffWikiPanel({ flash }: { flash: (m: string) => void }) {
   }
 
   const editForm = draft && (
-    <div
-      className="mb-4 grid gap-2 rounded-[var(--r-md)] border border-line p-3"
-    >
+    <div className="mb-4 grid gap-2 rounded-[var(--r-md)] border border-line p-3">
       <div className="grid gap-2 md:grid-cols-3">
         <label className="text-xs text-sub">
           slug（/wiki/…）
@@ -277,7 +275,17 @@ py-1.5 text-sm font-bold"
                   <button
                     type="button"
                     className="underline text-coral"
-                    onClick={() => remove(p)}
+                    onClick={() =>
+                      ask.open({
+                        title: dict.torrents.delete,
+                        message: dict.adminWiki.deleteConfirm.replace(
+                          "{t}",
+                          p.title,
+                        ),
+                        tone: "danger",
+                        run: () => remove(p),
+                      })
+                    }
                   >
                     {dict.torrents.delete}
                   </button>
@@ -294,6 +302,7 @@ py-1.5 text-sm font-bold"
           </tbody>
         </table>
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }

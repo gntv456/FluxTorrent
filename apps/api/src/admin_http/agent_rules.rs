@@ -242,7 +242,9 @@ async fn agent_rules_import(
         }
         added += n as i64;
     }
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     crate::http::bump_guard_ver(&state).await;
     state
         .repo

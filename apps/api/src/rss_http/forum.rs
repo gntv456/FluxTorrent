@@ -55,8 +55,7 @@ async fn forum_rss_feed(
         }
     }
     // 0352：token 优先、miss 回落 passkey（与主 RSS 同一实现，口径不漂移）
-    let Some(ident) =
-        super::authz::resolve_identity(&state, &passkey).await
+    let Some(ident) = super::authz::resolve_identity(&state, &passkey).await
     else {
         return HttpResponse::NotFound().body("unknown passkey");
     };

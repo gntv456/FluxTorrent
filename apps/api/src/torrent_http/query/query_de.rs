@@ -50,9 +50,7 @@ where
 /// 而不是让整页变成 400 纯文本。用户在数值框里敲 `abc` 想看结果，
 /// 站点该回的是「按剩下的条件筛」，不是错误页；这也与 norm_date/norm_promo
 /// 「非法值直接丢弃」的既有口径一致。
-pub(super) fn de_opt_num_lenient<'de, D, T>(
-    d: D,
-) -> Result<Option<T>, D::Error>
+pub(super) fn de_opt_num_lenient<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
     T: std::str::FromStr,

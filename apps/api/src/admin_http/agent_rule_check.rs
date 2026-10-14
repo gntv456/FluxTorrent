@@ -42,9 +42,9 @@ fn check_version_shape(v: &str, field: &str) -> DomainResult<()> {
     }
     let parts: Vec<&str> = v.split('.').collect();
     let shape_ok = (1..=3).contains(&parts.len())
-        && parts.iter().all(|p| {
-            !p.is_empty() && p.chars().all(|c| c.is_ascii_digit())
-        });
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()));
     if shape_ok {
         Ok(())
     } else {

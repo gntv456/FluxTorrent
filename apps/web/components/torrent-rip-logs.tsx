@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { formatBytes } from "@/lib/format";
 import { Fold } from "@/components/torrent-detail-parts";
 
@@ -50,6 +51,8 @@ export function TorrentRipLogs({
   const [body, setBody] = useState<Record<number, string>>({});
   const [failed, setFailed] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // P2 清偿：人工改判输入状态机（prompt 退役）
+  const ask = useConfirm();
 
   const toggle = async (ordinal: number) => {
     if (open === ordinal) {
@@ -69,31 +72,37 @@ export function TorrentRipLogs({
     }
   };
 
-  /** 人工改判（0337）：空输入 = 撤销改判。 */
-  const adjust = async (l: RipLog) => {
+  /** 人工改判（0337）：空输入 = 撤销改判。
+   *  P2 清偿：window.prompt → ConfirmDialog 输入槽（回填当前分）。 */
+  const askAdjust = (l: RipLog) => {
     const cur = l.adjusted_score ?? l.log_score ?? "";
-    const raw = window.prompt(d.adjustHint, cur === "" ? "" : String(cur));
-    if (raw === null) return;
-    const trimmed = raw.trim();
-    let score: number | null = null;
-    if (trimmed !== "") {
-      const v = Number(trimmed);
-      if (!Number.isFinite(v) || v < 0 || v > 100) {
-        setMsg(d.adjustFail);
-        return;
-      }
-      score = Math.round(v);
-    }
-    try {
-      await api.post(
-        `/api/v1/admin/torrents/${torrentId}/logs/${l.ordinal}/adjust`,
-        { score },
-      );
-      setMsg(d.adjustDone);
-      router.refresh();
-    } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : d.adjustFail);
-    }
+    ask.open({
+      title: d.adjustLog,
+      label: d.adjustHint,
+      initial: cur === "" ? "" : String(cur),
+      run: async (raw) => {
+        const trimmed = raw.trim();
+        let score: number | null = null;
+        if (trimmed !== "") {
+          const v = Number(trimmed);
+          if (!Number.isFinite(v) || v < 0 || v > 100) {
+            setMsg(d.adjustFail);
+            return;
+          }
+          score = Math.round(v);
+        }
+        try {
+          await api.post(
+            `/api/v1/admin/torrents/${torrentId}/logs/${l.ordinal}/adjust`,
+            { score },
+          );
+          setMsg(d.adjustDone);
+          router.refresh();
+        } catch (e) {
+          setMsg(e instanceof ApiError ? e.message : d.adjustFail);
+        }
+      },
+    });
   };
 
   // 无日志行整段不渲染（与 mediainfo/nfo 同口径）；段落显隐门在调用方
@@ -113,9 +122,7 @@ export function TorrentRipLogs({
                   {d.ripDisc.replace("{n}", `${l.ordinal + 1}`)}
                 </span>
                 <span className={`sticker ${scoreTone(eff)}`}>
-                  {eff === null
-                    ? d.ripUnscored
-                    : `${eff}% · ${l.engine}`}
+                  {eff === null ? d.ripUnscored : `${eff}% · ${l.engine}`}
                 </span>
                 {adjusted && (
                   <span className="sticker bg-indigo text-white">
@@ -137,7 +144,7 @@ export function TorrentRipLogs({
                 <button
                   type="button"
                   className="td-riplogs__toggle"
-                  onClick={() => adjust(l)}
+                  onClick={() => askAdjust(l)}
                 >
                   {d.adjustLog}
                 </button>
@@ -161,6 +168,7 @@ export function TorrentRipLogs({
           );
         })}
       </ul>
+      <AskDialog {...ask} />
     </Fold>
   );
 }

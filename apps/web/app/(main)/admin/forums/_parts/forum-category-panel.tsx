@@ -4,9 +4,13 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import type { ForumCategory } from "@fluxtorrent/domain-types";
 import {
-  BTN_LINE, BTN_SKY, INPUT_CLS, NO_CATEGORY,
+  BTN_LINE,
+  BTN_SKY,
+  INPUT_CLS,
+  NO_CATEGORY,
   type ForumAdminForum,
 } from "./forum-structure-types";
 import { useCategoryDnd } from "./use-category-dnd";
@@ -43,6 +47,8 @@ export function ForumCategoryPanel({
   const [newName, setNewName] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  // P2 清偿：删分区二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   // 排序状态机（↑↓ 与拖拽共用，含乐观更新与失败回滚）
   const dnd = useCategoryDnd(categories, run);
 
@@ -64,13 +70,16 @@ export function ForumCategoryPanel({
   }
 
   function toggleVisible(c: ForumCategory) {
-    run(async () => {
-      await api.put(`/api/v1/admin/forum-categories/${c.id}`, {
-        name: c.name,
-        sort: c.sort,
-        visible: !c.visible,
-      });
-    }, c.visible ? f.catHidden : f.catShown);
+    run(
+      async () => {
+        await api.put(`/api/v1/admin/forum-categories/${c.id}`, {
+          name: c.name,
+          sort: c.sort,
+          visible: !c.visible,
+        });
+      },
+      c.visible ? f.catHidden : f.catShown,
+    );
   }
 
   function remove(c: ForumCategory) {
@@ -79,10 +88,16 @@ export function ForumCategoryPanel({
       n > 0
         ? `${fmt(f.catDelNonEmpty, { name: c.name, n })}\n\n${f.delConfirmTail}`
         : `${fmt(f.catDelEmpty, { name: c.name })}\n\n${f.delConfirmTail}`;
-    if (!window.confirm(hint)) return;
-    run(async () => {
-      await api.del(`/api/v1/admin/forum-categories/${c.id}`);
-    }, f.catDeleted);
+    ask.open({
+      title: f.delBtn,
+      message: hint,
+      tone: "danger",
+      busy,
+      run: () =>
+        run(async () => {
+          await api.del(`/api/v1/admin/forum-categories/${c.id}`);
+        }, f.catDeleted),
+    });
   }
 
   function create() {
@@ -225,11 +240,7 @@ export function ForumCategoryPanel({
         ))}
 
         {orphans > 0 && (
-          <li
-            className={
-              selected === NO_CATEGORY ? rowOn : rowOff
-            }
-          >
+          <li className={selected === NO_CATEGORY ? rowOn : rowOff}>
             <button
               type="button"
               className="min-w-0 flex-1 text-left text-sm text-sub"
@@ -273,6 +284,7 @@ export function ForumCategoryPanel({
           {f.previewBtn}
         </button>
       </p>
+      <AskDialog {...ask} />
     </aside>
   );
 }

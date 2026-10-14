@@ -64,9 +64,14 @@ pub(super) async fn promo_tier_upsert(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit_detail(Some(auth.id), "promo_tier.upsert", None, None,
+        .audit_detail(
+            Some(auth.id),
+            "promo_tier.upsert",
+            None,
+            None,
             Some(serde_json::json!({"kind": body.kind.trim(),
-                "hours": body.hours, "price": body.price})))
+                "hours": body.hours, "price": body.price})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }

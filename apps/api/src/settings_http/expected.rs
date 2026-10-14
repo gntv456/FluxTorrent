@@ -29,10 +29,7 @@ pub(crate) fn check_expected(
 
 /// 合并冲突键：单键校验返回的 VersionConflict 并入已收集列表
 /// （整批只报一次 409，data 里列出全部冲突键；重复键去重）
-pub(crate) fn merge_conflict(
-    acc: &mut Vec<String>,
-    e: DomainError,
-) {
+pub(crate) fn merge_conflict(acc: &mut Vec<String>, e: DomainError) {
     if let DomainError::VersionConflict(keys) = e {
         for k in keys {
             if !acc.iter().any(|x| x == &k) {

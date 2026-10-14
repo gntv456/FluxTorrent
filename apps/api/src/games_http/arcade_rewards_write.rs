@@ -94,7 +94,9 @@ pub(super) async fn arcade_reward_save(
     }
     // 上限（P-181）：判据本体在 helpers::ensure_grant_range
     super::helpers::ensure_grant_range(
-        &format!("奖励「{code}」的单笔魔力"), b.reward_spark)?;
+        &format!("奖励「{code}」的单笔魔力"),
+        b.reward_spark,
+    )?;
 
     if b.item_qty <= 0 {
         return Err(DomainError::Validation("物品件数必须为正".into()));
