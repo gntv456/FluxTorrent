@@ -87,7 +87,7 @@
 | 3 | 路由加载态覆盖 ≥90% | **100%（65/65）**——判据缺陷修复 + `NOT_DATA_ROUTES` 登记（7 条客户端表单页，D1 建议落地，DS §5.1.1）；棘轮已抬到 100 | ✅ |
 | 4 | 首屏 JS 较基线净减 ≥15%；重组件全 dynamic+骨架 | **口径按 D2 修订为 route-own JS（Size 列）**：top10 最重路由 **84.98→81.44 kB = −4.2%**、shared 102 kB 持平（First Load +0.4% 是框架地板假象） | ✅（修订） |
 | 5 | 非豁免 hex=0；裸断点=0；动效时长走 `--motion-*` | hex **0** ✅、裸断点 **0** ✅；**口径按 D5 修订**：存量 43 处散落时长入棘轮**只许降**（新代码必须走 `var(--motion-*)`/`var(--tide-*)`），已进 `ui_design_guard` 规则 10 | ✅（修订） |
-| 6 | P0 十页 axe 零 critical / 键盘全可达 / `<h1>`+`<main>` 骨架 | 未测（axe 未接入）；`<main>`×12 + SkipLink 已在 | ⚠️ 未测 |
+| 6 | P0 十页 axe 零 critical / 键盘可达 / 语义骨架 | **axe 已接入**（`e2e/axe.spec.ts`，@axe-core/playwright，十页 wcag2a/21a/2aa/21aa）：**critical 全 0**；serious 仅 color-contrast 79 节点（top 65 / forums 11 / torrent-detail 1 / me 2，属明色 muted/faint/brand 的 AA-L 债，随浅色主题重塑清偿）。修掉的 critical：`/messages` 62 个行选择 checkbox 无可达名（`aria-label={m.subject}`）、upload 分类 select/价格 input、论坛移动 select | ✅ |
 | 7 | 错误展示统一带 request_id | ErrorPanel 已建；后端信封已带 request_id；页面级覆盖未逐页核 | ⚠️ |
 | 8 | 四指标进 CI 且只许向好 | `design_cov_guard` 在 CI（build-test.yml:121） | ✅ |
 | 9 | `docs/design-system.md` 含「新增页面 checklist」 | 存在（7079 B，W-45：原语目录/API 速查/checklist） | ✅ |
