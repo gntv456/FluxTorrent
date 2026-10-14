@@ -50,6 +50,30 @@ function walk(node, section, p, bad) {
   }
 }
 
+/**
+ * 在载荷里挑出**抽卡包段**：形如含 rarities/cards/banners/rates 之一的对象。
+ *
+ * 2026-10-14（D8 口径域收敛）：真库侧原先对**整个** site_pack_applies 载荷
+ * 跑 walk()，于是站型包的 `modules/sections/categories` 全被抽卡规则审——实测
+ * 3300 条假红全部来自 `categories[*].bg_color`（内容分类配色是**站点数据**，
+ * 不是包 chrome）。守卫的本职是抽卡包载荷（见文件头与 packEconomics 的
+ * payload.banners/rates 口径），故只对抽卡形状的子树判。
+ */
+function gachaSections(node, out = []) {
+  if (Array.isArray(node)) {
+    for (const x of node) gachaSections(x, out);
+    return out;
+  }
+  if (node && typeof node === "object") {
+    if (["rarities", "cards", "banners", "rates"].some((k) => k in node)) {
+      out.push(node);
+      return out;
+    }
+    for (const v of Object.values(node)) gachaSections(v, out);
+  }
+  return out;
+}
+
 function packEconomics(math, payload) {
   const banners = Array.isArray(payload.banners) ? payload.banners : [];
   const rates = payload.rates && typeof payload.rates === "object"
@@ -162,9 +186,12 @@ console.log("守卫自检：干净载荷绿；颜色越界/卡键越界/经济�
 /* ── 真库（可选）：apply 台账表未建/连不上 → 跳过并说明 ───────────────── */
 const note = [];
 function dbQuery(sql) {
+  // ⚠️ 必须 timeout：Docker 引擎挂掉时 `docker exec` 会无限挂起，
+  // 把整个门禁卡死（2026-10-14 实测）。超时按「连不上」处理 → 走
+  // 下方 try/catch 的「DB 侧跳过，不算失败」路径。
   return execFileSync("docker",
     ["exec", "flux-postgres", "psql", "-U", "flux", "-d", "fluxtorrent",
-     "-tAc", sql], { encoding: "utf8" }).trim();
+     "-tAc", sql], { encoding: "utf8", timeout: 15_000 }).trim();
 }
 
 let packTables;
@@ -194,6 +221,7 @@ if (packTables && packTables.length === 0) {
         `SELECT COALESCE(changes::text, '{}'), COALESCE(snapshot::text, \
 '{}') FROM ${t} WHERE rolled_back_at IS NULL ORDER BY id DESC LIMIT 50`);
       let worst = null;
+      let secCount = 0;
       for (const line of raw.split("\n").filter(Boolean)) {
         const [changesTxt, snapTxt] = line.split("|");
         for (const txt of [changesTxt, snapTxt]) {
@@ -203,15 +231,20 @@ if (packTables && packTables.length === 0) {
           } catch {
             continue;
           }
-          const hits = [];
-          walk(payload, null, "", hits);
-          for (const h of hits) bad.push(`${t}: ${h}`);
-          for (const { key, ec } of packEconomics(math, payload)) {
-            if (ec.ratioWorst > 1) {
-              bad.push(`${t}.${key}: 综合返还率 ` +
-                `${(ec.ratioWorst * 100).toFixed(2)}% > 100%（倒灌）`);
+          const secs = gachaSections(payload);
+          if (!secs.length) continue;
+          secCount += secs.length;
+          for (const sec of secs) {
+            const hits = [];
+            walk(sec, null, "", hits);
+            for (const h of hits) bad.push(`${t}: ${h}`);
+            for (const { key, ec } of packEconomics(math, sec)) {
+              if (ec.ratioWorst > 1) {
+                bad.push(`${t}.${key}: 综合返还率 ` +
+                  `${(ec.ratioWorst * 100).toFixed(2)}% > 100%（倒灌）`);
+              }
+              if (!worst || ec.ratioWorst > worst) worst = ec.ratioWorst;
             }
-            if (!worst || ec.ratioWorst > worst) worst = ec.ratioWorst;
           }
         }
       }
@@ -219,6 +252,12 @@ if (packTables && packTables.length === 0) {
         console.error(`包载荷红 ${bad.length} 条：`);
         for (const b of bad.slice(0, 20)) console.error("  " + b);
         process.exit(1);
+      }
+      if (!secCount) {
+        note.push(
+          `真库 50 条载荷内无 gacha 包段（G31 包载荷未落，属预期）；` +
+            "站型包 modules/sections/categories 是站点数据，不属抽卡 chrome",
+        );
       }
       console.log(
         `真库包载荷：50 条内最差口径 ` +

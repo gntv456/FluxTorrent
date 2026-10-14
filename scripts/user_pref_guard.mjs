@@ -13,7 +13,12 @@
  *
  * 已知偏差（都往"少报"方向）：
  *  1. 动态拼出来的字段名读不到；
- *  2. 子串匹配，别处更长的同名串会被算成有引用。
+ *  2. 子串匹配，别处更长的同名串会被算成有引用；
+ *  3. **消费点落在被 SKIP_PARTS 屏蔽的文件里时看不见**——`usercp.tsx` 既是
+ *     设置界面又是语言偏好的消费点（读库里的 site_language 同步 locale
+ *     cookie），跳过它就把消费者一起跳过了。此类走
+ *     `CONSUMED_STATIC_INVISIBLE` 例外清单：每条**必须**带消费点 file:line，
+ *     且新增前须人工确认消费路径真实存在（清单是例外，不是漂白名单）。
  *
  * 用法：
  *   node scripts/user_pref_guard.mjs            # 校验（只拦新增假开关）
@@ -41,6 +46,15 @@ const SKIP_PARTS = [
   "me_settings_kv.rs",
   "usercp",
 ];
+
+/** 例外清单（见头部偏差 3）：偏好确有消费者，但消费点落在被 SKIP_PARTS
+ *  屏蔽的文件里。每条必须写清消费点 file:line 与消费方式。 */
+const CONSUMED_STATIC_INVISIBLE = {
+  site_language:
+    "apps/web/components/usercp.tsx:167,198 → 读 s.site_language 后经" +
+    " siteLangToLocale + syncLocaleCookie + router.refresh()（改偏好即" +
+    "切整站语言；另有反向一致：库里语言与 cookie 不符时以库为准）",
+};
 const EXT_OK = [".rs", ".ts", ".tsx"];
 const update = process.argv.includes("--update");
 
@@ -122,7 +136,9 @@ const files = SCAN_DIRS.flatMap((d) => walk(join(ROOT, d), []))
 
 const names = prefNames();
 const unwired = names.filter(
-  (nm) => !files.some(([, text]) => text.includes(nm)),
+  (nm) =>
+    !CONSUMED_STATIC_INVISIBLE[nm] &&
+    !files.some(([, text]) => text.includes(nm)),
 );
 const known = existsSync(BASELINE)
   ? JSON.parse(readFileSync(BASELINE, "utf8")).unwired || []
