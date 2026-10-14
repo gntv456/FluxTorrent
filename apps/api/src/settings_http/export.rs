@@ -42,7 +42,7 @@ struct ExportQ {
 pub(super) async fn settings_export(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ExportQ>,
+    q: crate::http::Q<ExportQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(

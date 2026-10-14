@@ -23,7 +23,7 @@ struct CaptchaVerify {
 pub async fn captcha_issue(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    _q: web::Query<CaptchaVerify>,
+    _q: crate::http::Q<CaptchaVerify>,
 ) -> DomainResult<impl Responder> {
     // 防刷限流（审计 P2）：20+20 算术题可脚本化批量取题，30 次/分钟/ISP 按来源 IP
     let ip = crate::http::client_ip(&req);

@@ -54,7 +54,7 @@ struct ForumSearchQuery {
 async fn forum_search(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ForumSearchQuery>,
+    q: crate::http::Q<ForumSearchQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let kw = q.q.trim();

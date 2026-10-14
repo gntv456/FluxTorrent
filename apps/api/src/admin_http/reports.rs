@@ -29,7 +29,7 @@ struct ReportQueueRow {
 async fn report_queue(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ReportQueueQuery>,
+    q: crate::http::Q<ReportQueueQuery>,
 ) -> DomainResult<HttpResponse> {
         let auth = staff(&req, &state).await?;
     // P-262: ledger read gated with reports.handle (as its writes).

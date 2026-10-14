@@ -148,7 +148,7 @@ struct VerifyQuery {
 #[get("/auth/email/verify")]
 pub(crate) async fn email_verify(
     state: Db,
-    q: web::Query<VerifyQuery>,
+    q: crate::http::Q<VerifyQuery>,
 ) -> DomainResult<HttpResponse> {
     let token = q.token.trim();
     if token.len() != 64 || !token.chars().all(|c| c.is_ascii_hexdigit()) {

@@ -45,7 +45,7 @@ struct SectionDictQ {
 async fn section_dict_public(
     _req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SectionDictQ>,
+    q: crate::http::Q<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
     let mode_id: Option<i32> = match q.category_id {
         Some(cid) => sqlx::query_scalar(

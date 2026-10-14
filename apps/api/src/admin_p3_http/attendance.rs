@@ -38,7 +38,7 @@ struct AttendanceQ {
 async fn admin_attendance(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<AttendanceQ>,
+    q: crate::http::Q<AttendanceQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(

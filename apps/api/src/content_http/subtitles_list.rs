@@ -42,7 +42,7 @@ struct SubtitleRow {
 pub(super) async fn subtitle_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl Responder> {
     // P-46/P-47（本批实测）：列表此前完全不看鉴权也不看种子审核态，于是
     // ① anon 行把 user_id 原样发给**未认证**访客（用户名脱了、id 没脱，

@@ -96,7 +96,7 @@ struct PtgenQ {
 pub async fn ptgen(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<PtgenQ>,
+    q: crate::http::Q<PtgenQ>,
 ) -> DomainResult<HttpResponse> {
     let _auth = require_auth(&req, &state).await?;
     let url = q.url.trim();

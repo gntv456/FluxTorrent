@@ -24,7 +24,7 @@ struct UserPermQ {
 async fn user_permission_view(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UserPermQ>,
+    q: crate::http::Q<UserPermQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-250：这条给的是「某个用户有哪些能力」的清单（角色所得 + 用户级

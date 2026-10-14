@@ -158,7 +158,7 @@ async fn can_view(
 async fn admin_grants(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<GrantQ>,
+    q: crate::http::Q<GrantQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     if !can_view(&state, &auth).await {

@@ -58,7 +58,7 @@ struct UserRoleQ {
 async fn user_role_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<UserRoleQ>,
+    q: crate::http::Q<UserRoleQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     // P-251：任意用户的职务分配（谁挂在哪个管理组上）也是同一张地图，

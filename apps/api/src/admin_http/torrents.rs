@@ -103,7 +103,7 @@ struct TorrentListQ {
 async fn admin_torrent_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<TorrentListQ>,
+    q: crate::http::Q<TorrentListQ>,
 ) -> DomainResult<HttpResponse> {
         let auth = staff(&req, &state).await?;
     // P-270: ledger read gated with torrent.manage (as its writes).

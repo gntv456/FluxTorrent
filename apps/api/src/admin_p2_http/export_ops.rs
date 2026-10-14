@@ -21,7 +21,7 @@ const PER: i64 = 1000;
 pub async fn admin_export_users(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ExportQ>,
+    q: crate::http::Q<ExportQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_ADJUST)
@@ -80,7 +80,7 @@ pub async fn admin_export_users(
 pub async fn admin_export_torrents(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ExportQ>,
+    q: crate::http::Q<ExportQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(

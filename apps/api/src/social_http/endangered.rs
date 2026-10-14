@@ -82,7 +82,7 @@ struct ListResp {
 async fn endangered_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ListQuery>,
+    q: crate::http::Q<ListQuery>,
 ) -> DomainResult<HttpResponse> {
     let _auth = require_auth(&req, &state).await?;
 

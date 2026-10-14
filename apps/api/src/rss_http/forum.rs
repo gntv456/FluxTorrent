@@ -23,7 +23,7 @@ async fn forum_rss_feed(
     req: HttpRequest,
     path: web::Path<String>,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ForumRssQuery>,
+    q: crate::http::Q<ForumRssQuery>,
 ) -> HttpResponse {
     let passkey = path.into_inner();
     // 四轮审计 M3（2026-10-07）：0267 限流补丁漏了论坛 RSS——主 RSS 有
