@@ -79,6 +79,23 @@ pub fn validate_for_upload(parsed: &ParsedTorrent) -> Result<(), String> {
             ));
         }
     }
+    // P-300（10-14 实测）：info 里没有 private=1 的种，客户端照常启用
+    // DHT/PEX/LSD，内容对非会员敞开，而本站的访问与计量全在 announce 上。
+    // 只在上传边界拦：改存量种的 info 会改 info_hash（swarm 断线），
+    // 那属站方拍板项，不在这里顺手做。
+    let root = super::parse::parse(&parsed.raw).ok().map(|(r, _)| r);
+    let priv_flag = root
+        .as_ref()
+        .and_then(|b| b.get(b"info"))
+        .and_then(|i| i.get(b"private"))
+        .and_then(|v| v.as_int())
+        .unwrap_or(0);
+    if priv_flag != 1 {
+        return Err("种子未标记私有：.torrent 的 info.private 必须为 1。\
+私有站的访问与计量都在 announce 上，非私有种会被客户端拿去走 DHT/PEX \
+分发。请用客户端另存为「私有种子」后重新发布"
+            .into());
+    }
     Ok(())
 }
 

@@ -18,6 +18,7 @@ fn valid_torrent(name: &[u8], length: i64, piece_len: i64) -> Vec<u8> {
         (b"length".to_vec(), Bencode::Int(length)),
         (b"name".to_vec(), Bencode::Bytes(name.to_vec())),
         (b"piece length".to_vec(), Bencode::Int(piece_len)),
+        (b"private".to_vec(), Bencode::Int(1)),
         (
             b"pieces".to_vec(),
             Bencode::Bytes(vec![3u8; (pieces * 20) as usize]),
@@ -36,6 +37,36 @@ fn valid_torrent(name: &[u8], length: i64, piece_len: i64) -> Vec<u8> {
 
 fn validate(bytes: &[u8]) -> Result<(), String> {
     parse_torrent(bytes).and_then(|p| validate_for_upload(&p))
+}
+
+/// P-300：只控制 info.private 这一枚键，其余字段与合法夹具一致
+fn torrent_private(priv_val: Option<i64>) -> Vec<u8> {
+    let mut pairs = vec![
+        (b"length".to_vec(), Bencode::Int(1_048_576)),
+        (b"name".to_vec(), Bencode::Bytes(b"priv.bin".to_vec())),
+        (b"piece length".to_vec(), Bencode::Int(16_384)),
+        (b"pieces".to_vec(), Bencode::Bytes(vec![3u8; 64 * 20])),
+    ];
+    if let Some(v) = priv_val {
+        pairs.push((b"private".to_vec(), Bencode::Int(v)));
+    }
+    let mut out = Vec::new();
+    encode(
+        &Bencode::Dict(vec![(b"info".to_vec(), Bencode::Dict(pairs))]),
+        &mut out,
+    );
+    out
+}
+
+#[test]
+fn validate_requires_private_one() {
+    // 红证本体：实测非私有种曾 200 入库（现网 id=47257），这里必须拒
+    for bad in [None, Some(0), Some(2)] {
+        let e = validate(&torrent_private(bad)).unwrap_err();
+        assert!(e.contains("私有"), "读起来不像中文拒单：{e}");
+        assert!(e.contains("info.private"), "文案要指出缺哪枚键：{e}");
+    }
+    assert!(validate(&torrent_private(Some(1))).is_ok(), "正控必须放行");
 }
 
 #[test]
