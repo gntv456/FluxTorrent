@@ -67,10 +67,17 @@ def read(path):
 
 
 print("== S1 判据自证（两个正控，缺一个这脚本就没资格报数）==")
-exams = strip(read(os.path.join(
-    WEB, "app", "(main)", "me", "exams", "page.tsx")))
-ok("ARROW1 未修的 me/exams 页（箭头式吞错）必须被认出来",
-   bool(bare(exams)), str(bare(exams)[:1]))
+# 正控用**钉住的历史内容**（6cdc3f1a 时该页仍是 setRows([])）：
+# 拿工作树当前文件当正控，会在这一只被修好后自己把正控跑没（本批就发生了）。
+pin = subprocess.run(
+    ["git", "show",
+     "6cdc3f1a:apps/web/app/(main)/me/exams/page.tsx"],
+    cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+    errors="replace")
+hits1 = bare(strip(pin.stdout)) if pin.returncode == 0 else []
+ok("ARROW1 历史内容（6cdc3f1a 的 me/exams：箭头式 setRows([])）必须被认出",
+   bool(hits1), str(hits1[:1]) if pin.returncode == 0
+   else "取不到钉住的历史内容 rc=%s" % pin.returncode)
 old = subprocess.run(
     ["git", "show", "872fafc1^:apps/web/components/staff-wiki.tsx"],
     cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
