@@ -97,10 +97,10 @@ export function InviteManager() {
       setPage(list.page);
       setInvitees(invs);
     } catch {
-      setStatus(null);
-      setInvites([]);
+      // P-314：置回 null（渲染侧 null 分支不宣称「暂无邀请码」）+ 走可见的 toast
+      setStatus(null); setInvites(null); flashErr(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict, flashErr]);
   useEffect(() => {
     refresh();
   }, [refresh]);

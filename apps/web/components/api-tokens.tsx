@@ -45,11 +45,16 @@ export function ApiTokens() {
   const [code, setCode] = useState("");
   const [twofa, setTwofa] = useState(false);
 
+  // P-314：本表没有任何空态文案，取数失败与「你没配过 Token」在界面上是同一个
+  // 空壳（凭证面）——补一条显式失败提示。
+  const [failed, setFailed] = useState(false);
   const load = useCallback(async () => {
+    setFailed(false);
     try {
       setRows(await api.get<TokenRow[]>("/api/v1/me/tokens"));
     } catch {
       setRows([]);
+      setFailed(true);
     }
   }, []);
 
@@ -98,6 +103,11 @@ export function ApiTokens() {
 
   return (
     <div className="flex flex-col gap-2 text-sm">
+      {failed && (
+        <p role="alert" className="text-xs text-sub">
+          {dict.common.loadFailed}
+        </p>
+      )}
       <p className="text-xs text-sub">{t.limit}</p>
       {t.stepUpHint && (
         <p className="text-xs text-sub">{t.stepUpHint}</p>

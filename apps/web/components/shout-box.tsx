@@ -42,11 +42,16 @@ export function ShoutBox() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const replySeq = useRef(0);
 
+  // P-314：拉取失败此前 setItems([]) ⇒ 留言板显示「暂无留言」，把故障演成空板；
+  // 会员会以为自己的留言被清了。failed 只用来换那一句文案。
+  const [failed, setFailed] = useState(false);
   const load = useCallback(async () => {
+    setFailed(false);
     try {
       setItems(await api.get<Shout[]>("/api/v1/shoutbox"));
     } catch {
       setItems([]);
+      setFailed(true);
     }
   }, []);
   useEffect(() => {
@@ -145,7 +150,9 @@ export function ShoutBox() {
           </li>
         ))}
         {items !== null && items.length === 0 && botReplies.length === 0 && (
-          <li className="shoutbox__empty">{t.empty}</li>
+          <li className="shoutbox__empty">
+            {failed ? dict.common.loadFailed : t.empty}
+          </li>
         )}
       </ul>
       {commands.length > 0 && (
