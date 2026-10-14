@@ -38,9 +38,9 @@ export function StickyPromos({ flash }: { flash: (m: string) => void }) {
     try {
       setRows(await api.get("/api/v1/admin/sticky-promos"));
     } catch {
-      setRows([]);
+      setRows([]); flash(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict, flash]);
   useEffect(() => {
     load();
   }, [load]);

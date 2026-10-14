@@ -35,7 +35,7 @@ from pt_audit_lib import ok, summary  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "apps", "web")
 
-# 已修的 18 只（回归钉：这些文件里不许再出现裸吞）
+# 已修的 30 只（回归钉：这些文件里不许再出现裸吞）
 FIXED = [
     "components/bank-actions.tsx", "components/resurrection-panel.tsx",
     "components/funding-panel.tsx", "components/forum-search.tsx",
@@ -48,25 +48,25 @@ FIXED = [
     "components/wishlist.tsx", "components/contact-staff.tsx",
     "components/torrent-hover-preview.tsx",
     "components/staff-wiki.tsx",
-]
-# 现网仍存在的裸吞（逐只吃掉后从这里删；新增了不在这里的就必须红）
-PENDING = [
-    "app/(main)/admin/page.tsx",
     "app/(main)/admin/_parts/admin-freeleech.tsx",
     "app/(main)/admin/_parts/admin-promo-intents.tsx",
-    "components/admin-applications.tsx",
-    "components/admin-arcade.tsx",
-    "components/admin-gacha.tsx",
+    "app/(main)/admin/page.tsx",
     "components/admin-p2-tools-claims.tsx",
     "components/admin-p2-tools-menus.tsx",
     "components/admin-p2-tools-promos.tsx",
     "components/admin-p2-tools-templates.tsx",
     "components/admin-subtitles-awards.tsx",
-    "components/admin-torrents-list.tsx",
     "components/admin-torrents-records.tsx",
-    "components/admin-user-fields-panel.tsx",
     "components/staff-tools-site.tsx",
     "components/staff-tools-sys-agentrules.tsx",
+]
+# 现网仍存在的裸吞（逐只吃掉后从这里删；新增了不在这里的就必须红）
+PENDING = [
+    "components/admin-applications.tsx",
+    "components/admin-arcade.tsx",
+    "components/admin-gacha.tsx",
+    "components/admin-torrents-list.tsx",
+    "components/admin-user-fields-panel.tsx",
     # staff-wiki 于批一百一十九撤桩（catch 里已置 null + flash 提示）
     # torrent-hover-preview / contact-staff 于批一百一十八撤桩
     # wishlist.tsx 于批一百一十六撤桩（EM5 先提醒，grep 过 {msg && 确认可见才改）
@@ -141,7 +141,7 @@ ok("EM1 同一判据跑修复后的 bank-actions ＝ 0 处裸吞（旧 3 处 →
 
 print("== S2 已修 15 只不许回退 ==")
 regress = {k: v for k, v in now.items() if k in FIXED}
-ok("EM2 已修 18 只里 0 处裸吞（回退即红）", not regress,
+ok("EM2 已修 30 只里 0 处裸吞（回退即红）", not regress,
    "; ".join("%s:%s" % (k, v[0]) for k, v in list(regress.items())[:3]))
 
 print("== S3 现网裸吞只能减不能增 ==")

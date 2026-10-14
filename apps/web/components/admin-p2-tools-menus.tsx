@@ -42,9 +42,9 @@ export function MenuItems({ flash }: { flash: (m: string) => void }) {
       );
       setRows(Array.isArray(r) ? r : (r.items ?? []));
     } catch {
-      setRows([]);
+      setRows([]); flash(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict, flash]);
   useEffect(() => {
     load();
   }, [load]);

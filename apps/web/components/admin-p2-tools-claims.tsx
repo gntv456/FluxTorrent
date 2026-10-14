@@ -55,9 +55,9 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
       setRows(r.rows);
       setTotal(r.total);
     } catch {
-      setRows([]);
+      setRows([]); flash(dict.common.loadFailed);
     }
-  }, [state, q, page]);
+  }, [state, q, page, dict, flash]);
   useEffect(() => {
     load();
   }, [load]);

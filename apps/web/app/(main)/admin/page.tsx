@@ -96,9 +96,9 @@ export default function AdminPage() {
     try {
       setCheaters(await api.get<CheaterRow[]>("/api/v1/admin/cheaters"));
     } catch {
-      setCheaters([]);
+      setCheaters([]); setMsg(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
 
   /** 核心四件：导航条目 + 徽章计数来源。
    *  徽章常驻左侧导航（reviews / reports / appeals），所以这四个任何工具页都需要。

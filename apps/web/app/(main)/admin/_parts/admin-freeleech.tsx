@@ -35,9 +35,9 @@ export function FreeleechPanel() {
     try {
       setRows(await api.get<PromoRow[]>("/api/v1/admin/freeleech"));
     } catch {
-      setRows([]);
+      setRows([]); setMsg(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
 
   useEffect(() => {
     load();

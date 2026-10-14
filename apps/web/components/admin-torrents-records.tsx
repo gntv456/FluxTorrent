@@ -32,9 +32,9 @@ export function DenyReasons({ flash }: { flash: (m: string) => void }) {
     try {
       setRows(await api.get("/api/v1/admin/deny-reasons"));
     } catch {
-      setRows([]);
+      setRows([]); flash(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict, flash]);
   useEffect(() => {
     load();
   }, [load]);
