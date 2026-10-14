@@ -33,6 +33,10 @@ export default function MyExamsPage() {
   const { dict, locale } = useI18n();
   const t = dict.exams;
   const [rows, setRows] = useState<ExamRow[] | null>(null);
+  // P-314：失败此前写 setRows([]) —— 本 state 有「未知」三态（null），
+  // 给 [] 等于把「读不到」冒充成「你没有进行中的考核」（考核是义务信息，
+  // 误判成本高）。置 null + 记 failed，空态文案与失败文案分开走。
+  const [failed, setFailed] = useState(false);
   // exams 模块守卫：缺键视为开（与网关/导航口径一致）
   const [gated, setGated] = useState(false);
 
@@ -40,7 +44,7 @@ export default function MyExamsPage() {
     api
       .get<ExamRow[]>("/api/v1/me/exams")
       .then(setRows)
-      .catch(() => setRows([]));
+      .catch(() => { setRows(null); setFailed(true); });
   }, []);
   useEffect(load, [load]);
   useEffect(() => {
@@ -156,10 +160,10 @@ export default function MyExamsPage() {
                 <td className="num font-bold">+{e.reward.toLocaleString()}</td>
               </tr>
             ))}
-            {rows?.length === 0 && (
+            {(failed || rows?.length === 0) && (
               <tr>
                 <td colSpan={6} className="py-6 text-center text-sub">
-                  {t.empty}
+                  {failed ? dict.common.loadFailed : t.empty}
                 </td>
               </tr>
             )}
