@@ -88,3 +88,50 @@ approval 取值无效：0 待审 / 1 过审 / 2 被拒 / 3 回收站	approval �
 档位名需 1-32 字符	檔位名需 1-32 字元	Tier name must be 1-32 characters
 该档位没有升降级规则（贵宾/职务档不开放后台编辑）	該档位沒有升降級規則（貴賓/職務檔不開放後台編輯）	This tier has no promotion rules (VIP and staff tiers are not editable here)
 阈值/奖励不能为负	閾值/獎勵不能為負	Thresholds and rewards cannot be negative
+# ── 2026-10-14 补译 46 条（各批新增校验串；zh-CN 原文为检索键）──
+PoW 令牌无效或已使用，请重新获取挑战	PoW 權杖無效或已使用，請重新取得挑戰	PoW token is invalid or already used; request a new challenge
+PoW 参数形状无效	PoW 參數形狀無效	Invalid PoW parameter shape
+PoW 挑战损坏	PoW 挑戰損毀	PoW challenge is corrupted
+PoW 解不满足难度要求	PoW 解不符合難度要求	PoW solution does not meet the difficulty requirement
+TMDB 上没有该条目（404），请核对链接	TMDB 上沒有該條目（404），請核對連結	No such entry on TMDB (404); please check the link
+TMDB 请求超时，请稍后重试	TMDB 請求逾時，請稍後重試	TMDB request timed out; please retry later
+TMDB 链接里没有条目 id	TMDB 連結中沒有條目 id	The TMDB link contains no entry id
+cred_id 长度不符	cred_id 長度不符	cred_id length mismatch
+intent 不存在	intent 不存在	Intent does not exist
+intent 不存在、已处理或非本人提交	intent 不存在、已處理或非本人提交	Intent does not exist, is already handled, or was not submitted by you
+intent 不存在或已处理	intent 不存在或已處理	Intent does not exist or is already handled
+note 需 ≤200 字符	note 需 ≤200 字元	Note must be ≤200 characters
+priority 取值 0-1000	priority 取值 0-1000	Priority must be between 0 and 1000
+token 名称长度需在 1..=40 字符之间	token 名稱長度需介於 1..=40 字元之間	Token name must be 1..=40 characters long
+version_min 不能大于 version_max	version_min 不能大於 version_max	version_min cannot be greater than version_max
+一次最多提交 64 个字段	一次最多提交 64 個欄位	At most 64 fields can be submitted at once
+仅开放 1-12 用户档预览（staff 档位不参与升降判定）	僅開放 1-12 使用者檔預覽（staff 檔位不參與升降判定）	Only user classes 1-12 are open for preview (staff classes are excluded from promotion/demotion)
+公钥格式错误（SPKI 解析失败）	公鑰格式錯誤（SPKI 解析失敗）	Invalid public key format (SPKI parse failed)
+分区名需 1-60 字符	分區名需 1-60 字元	Section name must be 1-60 characters
+单笔实付上限 100 万美元	單筆實付上限 100 萬美元	A single payment is capped at 1,000,000 USD
+备注最长 500 字（会原样发给举报人）	備註最長 500 字（會原樣發給檢舉人）	Note is limited to 500 characters (sent to the reporter verbatim)
+外链字幕不参与悬赏结算：请上传字幕文件本体，或改走认领-交稿-验收	外鏈字幕不參與懸賞結算：請上傳字幕檔本體，或改走認領-交稿-驗收	External-subtitle links are not eligible for bounty settlement: upload the subtitle file itself, or use the claim/submit/review flow
+媒介/学段/版本请用 change_sections 提交（旧三列不再可写）	媒介/學段/版本請用 change_sections 提交（舊三欄不再可寫）	Submit medium/stage/version via change_sections (the legacy three columns are no longer writable)
+实付金额必须为正数	實付金額必須為正數	The paid amount must be positive
+当前无需工作量证明	目前無需工作量證明	No proof of work is required at this time
+快照损坏（缺少 rules 节）	快照損毀（缺少 rules 節）	Corrupted snapshot (missing the rules section)
+快照损坏（行缺 id）	快照損毀（列缺 id）	Corrupted snapshot (a row is missing its id)
+批内存在迁移矩阵不允许下架（或不存在）的种子	批內存在遷移矩陣不允許下架（或不存在）的種子	The batch contains torrents the transition matrix does not allow to be delisted (or that do not exist)
+拒绝需填写理由	拒絕需填寫理由	A reason is required when rejecting
+档位档案行缺失（user_classes），已回滚	檔位檔案列缺失（user_classes），已回滾	Missing class-profile row (user_classes); rolled back
+每人最多绑定 5 把 passkey，请先解绑	每人最多綁定 5 把 passkey，請先解綁	At most 5 passkeys per account; please unbind one first
+版块不存在	版塊不存在	Forum does not exist
+状态过滤值无效	狀態過濾值無效	Invalid status filter value
+理由需 ≤200 字符	理由需 ≤200 字元	Reason must be ≤200 characters
+种子促销需指定 torrent_id	種子促銷需指定 torrent_id	Torrent promotion requires a torrent_id
+站点未配置对外访问地址（PUBLIC_SITE_URL），无法发送邀请邮件	站點未設定對外存取位址（PUBLIC_SITE_URL），無法寄送邀請郵件	The site has no public URL configured (PUBLIC_SITE_URL); the invitation email cannot be sent
+补签日期不能晚于今天	補簽日期不能晚於今天	The make-up date cannot be later than today
+该 intent 已处理（非待审状态）	該 intent 已處理（非待審狀態）	This intent is already handled (not pending)
+该 intent 已过结束时间，自动置 expired	該 intent 已過結束時間，自動設為 expired	This intent has passed its end time and was set to expired
+该促销类型不可走审批（不存在/未启用/置顶类）	該促銷類型不可走審批（不存在/未啟用/置頂類）	This promotion type cannot go through approval (missing, disabled, or pinned type)
+该档位没有升降级规则（贵宾/职务档不开放预览）	該檔位沒有升降級規則（貴賓/職務檔不開放預覽）	This class has no promotion/demotion rule (VIP/staff classes are not open for preview)
+该求字幕不存在、已认领或已处理（仅未被认领的单可撤销）	該求字幕不存在、已認領或已處理（僅未被認領的單可撤銷）	The subtitle request does not exist, is already claimed, or is already handled (only unclaimed requests can be withdrawn)
+该版块没有这名版主	該版塊沒有這名版主	This forum has no such moderator
+该账号已开两步验证，请一并提交当前验证码	該帳號已開啟兩步驗證，請一併提交目前驗證碼	Two-factor authentication is enabled for this account; please also submit the current code
+这一轮产出已结算，请勿重复提交	這一輪產出已結算，請勿重複提交	This round's output has been settled; do not submit again
+阈值不能为负	閾值不能為負	The threshold cannot be negative
