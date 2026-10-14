@@ -59,13 +59,13 @@ FIXED = [
     "components/admin-torrents-records.tsx",
     "components/staff-tools-site.tsx",
     "components/staff-tools-sys-agentrules.tsx",
+    "components/admin-torrents-list.tsx",
 ]
 # 现网仍存在的裸吞（逐只吃掉后从这里删；新增了不在这里的就必须红）
 PENDING = [
     "components/admin-applications.tsx",
     "components/admin-arcade.tsx",
     "components/admin-gacha.tsx",
-    "components/admin-torrents-list.tsx",
     "components/admin-user-fields-panel.tsx",
     # staff-wiki 于批一百一十九撤桩（catch 里已置 null + flash 提示）
     # torrent-hover-preview / contact-staff 于批一百一十八撤桩
