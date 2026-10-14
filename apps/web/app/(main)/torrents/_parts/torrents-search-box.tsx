@@ -16,6 +16,7 @@ import { TorrentsAdvGroups } from "./torrents-adv-groups";
 import { TorrentsAdvGroupsTail } from "./torrents-adv-groups-tail";
 import { AdvGear } from "./torrents-adv-gear";
 import { SearchSuggest } from "./search-suggest";
+import { AdvCollapseButton } from "./adv-collapse-button";
 
 export interface TorrentsSearchBoxProps {
   dict: Dict;
@@ -142,10 +143,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           {nonSearchChips > 0 && (
             <span
               className="tsb-adv__badge"
-              aria-label={t2.advSelected.replace(
-                "{n}",
-                String(nonSearchChips),
-              )}
+              aria-label={t2.advSelected.replace("{n}", String(nonSearchChips))}
             >
               {nonSearchChips}
             </span>
@@ -154,16 +152,9 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
         <div className="tsb-adv__body">
           <div className="tsb-adv__head">
             <p className="tsb-adv__hint">{t2.advHint}</p>
-            <button
-              type="button"
-              className="tsb-adv__collapse"
-              onClick={() => {
-                const adv = document.getElementById("tsb-adv");
-                if (adv instanceof HTMLDetailsElement) adv.open = false;
-              }}
-            >
-              {t2.advCollapse}
-            </button>
+            {/* onClick 抽到客户端组件 AdvCollapseButton：本文件是 server
+                component，内联事件会让整页 /torrents 落进 RSC 错误边界 */}
+            <AdvCollapseButton label={t2.advCollapse} />
           </div>
 
           <TorrentsAdvGroups
