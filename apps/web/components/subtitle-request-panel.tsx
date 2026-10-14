@@ -52,9 +52,9 @@ export function SubtitleRequestPanel({
         ),
       );
     } catch {
-      setReqs([]);
+      setReqs([]); toast.error(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
 
   useEffect(() => {
     loadReqs();

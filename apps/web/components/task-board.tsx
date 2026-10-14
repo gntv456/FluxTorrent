@@ -33,7 +33,9 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
       setTasks(tl);
       setOv(o);
     } catch {
-      setTasks([]);
+      // P-314：任务列表失败此前 setTasks([]) ⇒ 演成「今天没任务可做」（签到/日常
+      // 面板直接影响收益判断）。tasks 本就是 TaskRow[] | null，置 null + 全局 toast。
+      setTasks(null); toast.error(dict.common.loadFailed);
     }
   };
   useEffect(() => {

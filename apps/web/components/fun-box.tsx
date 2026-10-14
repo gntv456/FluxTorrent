@@ -53,9 +53,11 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
     try {
       setItems(await api.get<FunItem[]>("/api/v1/fun/items"));
     } catch {
-      setItems([]);
+      // P-314：段子列表失败此前 setItems([]) ⇒ 演成「没有段子可看」。
+      // 复用本面板写操作在用、且第 150 行确实渲染的 msg 通道（已 grep 证明）。
+      setItems(null); flash(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
   useEffect(() => {
     load();
   }, [load]);
