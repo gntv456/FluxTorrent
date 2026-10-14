@@ -63,6 +63,9 @@ FIXED = [
 ]
 # 现网仍存在的裸吞（逐只吃掉后从这里删；新增了不在这里的就必须红）
 PENDING = [
+    # 站方在途新文件（git 未跟踪，EM 上线当天抓到；只登记不代改，
+    # 同文件写路径已在用 flash，补一句即可）
+    "components/staff-tools-security-domains.tsx",
     "components/admin-applications.tsx",
     "components/admin-arcade.tsx",
     "components/admin-gacha.tsx",
