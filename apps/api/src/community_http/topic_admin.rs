@@ -104,7 +104,11 @@ async fn topic_manage(
 /// 与单主题口径一致：**逐个校验涉及版块的 `can_mod`，有一个无权就整体拒绝**——
 /// 不做「部分成功」，否则版主无法从响应判断哪些生效了、哪些没有。
 /// 单条 UPDATE 用 COALESCE 合并各行改动，避免 N 次往返。
-#[derive(Deserialize)]
+/// P-311 同族：面板 `run({sticky: true})` 之类键名拼错时 serde 静默吞掉
+/// ⇒ 五个 Option 全缺省、COALESCE 原值写回，界面照报「已处理 N 条」——
+/// 版主看到成功而一个帖没改。前端 7 处调用点实测只发已声明键。
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TopicManageBatchReq {
     ids: Vec<i64>,
     #[serde(default)]
