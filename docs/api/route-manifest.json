@@ -3475,25 +3475,25 @@
   {
    "method": "GET",
    "path": "/rss/tokens",
-   "handler": "list_tokens",
+   "handler": "rss_token_list",
    "file": "apps/api/src/rss_http/tokens.rs"
   },
   {
    "method": "POST",
    "path": "/rss/tokens",
-   "handler": "create_token",
+   "handler": "rss_token_create",
    "file": "apps/api/src/rss_http/tokens.rs"
   },
   {
    "method": "POST",
    "path": "/rss/tokens/{id}/rotate",
-   "handler": "rotate_token",
+   "handler": "rss_token_rotate",
    "file": "apps/api/src/rss_http/tokens.rs"
   },
   {
    "method": "DELETE",
    "path": "/rss/tokens/{id}",
-   "handler": "revoke_token",
+   "handler": "rss_token_revoke",
    "file": "apps/api/src/rss_http/tokens.rs"
   },
   {
