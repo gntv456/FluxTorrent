@@ -64,6 +64,9 @@ pub(crate) async fn run_named(
         "expire_invites" => n(expire_invites(db).await?),
         "purge_expired_tokens" => n(purge_expired_tokens(db).await?),
         "purge_runtime_logs" => n(purge_runtime_logs(db).await?),
+        // 0357 审计归档此前只在 run.rs 的 hour_tick 里：目录与手触两边都缺，
+        // 面板看不见、站长也无法手动补跑（同 0295 usage_stats 的形状）。
+        "audit_retain" => d(audit_retain_tick(db, redis).await?),
         "dlq_watch" => n(dlq_watch(db, redis).await?),
         "cheat_audit" => n(cheat_audit(db).await?),
         "cheat_enforce" => n(cheat_enforce(db).await?),
