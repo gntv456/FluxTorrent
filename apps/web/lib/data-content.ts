@@ -39,29 +39,16 @@ export async function getRequests(): Promise<SeedRequest[]> {
 export async function getPreserve(
   params?: Record<string, string | undefined>,
 ): Promise<PreserveEnvelope> {
-  try {
-    const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(params ?? {})) {
-      if (v) qs.set(k, v);
-    }
-    const suffix = qs.toString() ? `?${qs.toString()}` : "";
-    return await api.get<PreserveEnvelope>(`/api/v1/preserve${suffix}`);
-  } catch {
-    return {
-      items: [] as PreserveItem[],
-      total: 0,
-      stats: {
-        preserving: 0,
-        continued: 0,
-        official: 0,
-        general: 0,
-        today_in: 0,
-        today_out: 0,
-      } as PreserveStats,
-      page: 0,
-      per_page: 50,
-    };
+  // P-286（10-14 实测）：这里原来 catch 后返回「items 空 + stats 全 0」，
+  // 后端不可达时保种区照样渲染成「共 0 个结果 · 暂无保种需求」——
+  // 把失败读成「这里没有要救的种」，而这个板块正是催会员行动的。
+  // 改为直接抛出，由页面按四态渲染错误面板（同 collections/torrents）。
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params ?? {})) {
+    if (v) qs.set(k, v);
   }
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return await api.get<PreserveEnvelope>(`/api/v1/preserve${suffix}`);
 }
 
 export async function getPool(): Promise<Pool | null> {
