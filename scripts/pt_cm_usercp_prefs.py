@@ -15,7 +15,8 @@
 
 本批断言里 CM1/CM2/CM5/CM6/CM8 修前必红（缺陷本体），CM3/CM4/CM7/CM9
 是护栏：CM3 钉住「默认没被顺手翻转」，CM7 钉住「偏好切换不许串缓存视图」
-（0289 那轮的同族安全边界），CM9 把面板其余三项未接线偏好钉成在册欠账。
+（0289 那轮的同族安全边界），CM9 把面板仍未接线的偏好钉成在册欠账
+（批八十二已把 sp_state / incl_bookmarked 两项摘桩——它们改由 CZ 闸门管）。
 
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_cm_usercp_prefs.py
 破坏面：只动 root(uid=1) 的 incl_dead / torrents_per_page 两列，先
@@ -36,7 +37,12 @@ from pt_audit_lib import (  # noqa: E402
 ROOT = login()
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAK = "_tmp_cm_bak"
-KEYS = ("incl_bookmarked", "sp_state", "time_type")
+# 批八十二：sp_state / incl_bookmarked 两条已接进读路径，判据由
+# pt_cz_list_prefs_wired.py 接管——按「桩转红就删桩」的规矩把这两项从欠账
+# 清单里摘掉（留着就是把已修的账长期挂成欠账）。只剩 time_type（面板
+# 「时间显示类型」）：承载文件 torrent-table.tsx(298/300) 与
+# torrents/page.tsx(366 基线) 都在行数门禁存量上，接它得先拆文件。
+KEYS = ("time_type",)
 
 
 def psql(q):
@@ -66,7 +72,8 @@ def flush():
          "redis-cli --scan --pattern 'cache:tlist*' | xargs -r redis-cli DEL"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         universal_newlines=True, encoding="utf-8")
-    return len([x for x in (r.stdout or "").splitlines() if x.strip().isdigit()])
+    kept = [x for x in (r.stdout or "").splitlines() if x.strip().isdigit()]
+    return len(kept)
 
 
 def page(qs=""):
@@ -213,9 +220,9 @@ try:
                                     os.path.join(REPO, "apps", "api",
                                                  "src")).replace("\\", "/"))
     ent = code("torrent_http/list.rs")
-    has_sel = re.search(r"SELECT[^\""]*incl_dead[^\""]*torrents_per_page",
+    has_sel = re.search(r"SELECT[^\"]*incl_dead[^\"]*torrents_per_page",
                         prefs_all) or re.search(
-                            r"SELECT[^\""]*torrents_per_page[^\""]*incl_dead",
+                            r"SELECT[^\"]*torrents_per_page[^\"]*incl_dead",
                             prefs_all)
     ok("CM8a P-275 implemented 对账：全仓必须有一条 SQL 同时 SELECT 这两列"
        "（incl_dead=%s / torrents_per_page=%s），只读不 SELECT 就是假接线"
