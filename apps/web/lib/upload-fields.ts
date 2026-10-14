@@ -115,9 +115,16 @@ export function rejectReason(
     upload?: { fail?: string };
   },
 ): string {
-  const reason =
-    typeof body.message === "string" ? body.message.trim() : "";
-  if (reason !== "") return reason;
+  const raw = typeof body.message === "string" ? body.message.trim() : "";
   const keyed = dict.errors?.[Number(body.code)];
+  // 只有「人话原因」才给用户看。判据是把后端已经拼在前面的粗标签剥掉再看
+  // 剩下那段：1002 在缺字段时会退化成 serde 原始诊断（实测抽样：「参数校验
+  // 失败: Json deserialize error: missing field `email` at line 1 column
+  // 16」），那句里的中文只有标签本身，摊开就是内部实现细节。
+  const rest =
+    keyed && raw.startsWith(keyed)
+      ? raw.slice(keyed.length).replace(/^[:：]\s*/, "")
+      : raw;
+  if (rest !== "" && /[一-鿿]{3,}/.test(rest)) return raw;
   return keyed ?? dict.upload?.fail ?? "";
 }
