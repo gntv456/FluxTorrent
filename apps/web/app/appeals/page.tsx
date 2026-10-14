@@ -5,7 +5,7 @@ import { BTN_LG_SKY, PANEL_LG_COL } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 
 interface AppealRow {
@@ -83,7 +83,7 @@ export default function AppealsPage() {
     } catch (e2) {
       setMsg(
         e2 instanceof ApiError
-          ? (dict.errors[e2.code] ?? e2.message)
+          ? (apiErrorMessage(dict, e2))
           : dict.common.networkError,
       );
       if (guest) refreshCaptcha();

@@ -133,7 +133,7 @@ export function MessageCenter() {
   function toastError(e: unknown) {
     const ae = e instanceof ApiError ? e : undefined;
     toast.error(
-      ae ? (dict.errors[ae.code] ?? ae.message) : dict.common.networkError,
+      ae ? (apiErrorMessage(dict, ae)) : dict.common.networkError,
       { requestId: ae?.requestId },
     );
   }

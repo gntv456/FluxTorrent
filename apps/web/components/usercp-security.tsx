@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { Row } from "@/components/usercp-row";
 import { PushSettings } from "@/components/push-settings";
 import { TwoFactorSetup } from "@/components/twofa-setup";
@@ -61,7 +61,7 @@ export function SecurityTab({
     } catch (e) {
       setPwMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
     } finally {
@@ -82,7 +82,7 @@ export function SecurityTab({
     } catch (e) {
       setPkMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
     } finally {

@@ -5,7 +5,7 @@ import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
 import { useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 
 /** 忘记密码：邮箱申请重置（防账号枚举：无论命中与否返回相同提示） */
 export default function ForgotPage() {
@@ -28,7 +28,7 @@ export default function ForgotPage() {
       setMsg(r.message);
     } catch (err) {
       if (err instanceof ApiError) {
-        setMsg(dict.errors[err.code] ?? err.message);
+        setMsg(apiErrorMessage(dict, err));
       } else {
         setMsg(dict.common.networkError);
       }

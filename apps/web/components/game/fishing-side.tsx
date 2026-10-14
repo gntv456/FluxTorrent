@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PANEL_LG } from "@/lib/ui-classes";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { HistoryStrip } from "@/components/game/game-kit-feedback";
 
 export interface PrizeChip {
@@ -95,7 +95,7 @@ export function FishingSide({
         e instanceof ApiError
           ? e.code === 1002
             ? e.message
-            : (dict.errors[e.code] ?? e.message)
+            : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
     } finally {

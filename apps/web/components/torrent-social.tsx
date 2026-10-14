@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { toast } from "@/components/ui/toast";
 import {
@@ -60,7 +60,7 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
     } finally {
@@ -102,7 +102,7 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
     } finally {

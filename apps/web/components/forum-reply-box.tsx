@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 
 /** 长类名提常量（行宽门禁 ≤80） */
 /** 长类名提常量（行宽门禁 ≤80；原 forum-post-actions 基线债随迁） */
@@ -53,7 +53,7 @@ export function ReplyBox({
     } catch (err) {
       setMsg(
         err instanceof ApiError
-          ? (dict.errors[err.code] ?? err.message)
+          ? (apiErrorMessage(dict, err))
           : dict.common.networkError,
       );
     } finally {

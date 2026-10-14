@@ -4,7 +4,7 @@ import { PANEL_LG } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { FramePreview } from "@/components/frame-preview";
 import { clientUuid } from "@/lib/client-uuid";
@@ -76,7 +76,7 @@ export default function DressupPage() {
     } catch (e) {
       toast.error(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
         { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
@@ -104,7 +104,7 @@ export default function DressupPage() {
     } catch (e) {
       toast.error(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
         { requestId: e instanceof ApiError ? e.requestId : undefined },
       );

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { petLineOf, PET_SPECIES, PET_SPECIES_KEY } from "@/lib/pet-lines";
 import type { PetSpecies } from "@/lib/pet-lines";
 
@@ -157,7 +157,7 @@ export function PetCustom({
         e instanceof ApiError
           ? e.code === 1002
             ? e.message
-            : (dict.errors[e.code] ?? e.message)
+            : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
       setBusy(false);

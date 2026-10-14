@@ -10,7 +10,7 @@ import { BTN_MD_SKY, INPUT_CLOUD } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { PromoRow } from "./admin-shared";
 
@@ -57,7 +57,7 @@ export function FreeleechPanel() {
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : a.actionFailed,
       );
     } finally {
@@ -74,7 +74,7 @@ export function FreeleechPanel() {
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : a.actionFailed,
       );
     } finally {
@@ -225,7 +225,7 @@ export function ClearCachePanel() {
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : a.actionFailed,
       );
     } finally {

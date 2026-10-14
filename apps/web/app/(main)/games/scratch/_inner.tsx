@@ -4,7 +4,7 @@ import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { GameTabs } from "@/components/game/game-tabs";
@@ -152,7 +152,7 @@ export default function ScratchPage({
         e instanceof ApiError
           ? e.code === 1002
             ? e.message
-            : (dict.errors[e.code] ?? e.message)
+            : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
       setPhase("idle");

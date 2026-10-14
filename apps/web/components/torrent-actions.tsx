@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -85,7 +85,7 @@ export function TorrentActions({
     } catch (e) {
       toast.error(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
         { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
@@ -105,7 +105,7 @@ export function TorrentActions({
     } catch (e) {
       toast.error(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
         { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
@@ -137,7 +137,7 @@ export function TorrentActions({
         noauth
           ? dict.torrent.downloadNoauth
           : e instanceof ApiError
-            ? (dict.errors[e.code] ?? e.message)
+            ? (apiErrorMessage(dict, e))
             : dict.common.networkError,
         { requestId: e instanceof ApiError ? e.requestId : undefined },
       );

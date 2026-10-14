@@ -11,7 +11,7 @@ import {
   hasSessionCookie,
   ApiError,
 } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 
 /** 重置表单（useSearchParams 需 Suspense 包裹） */
 function ResetForm() {
@@ -49,7 +49,7 @@ function ResetForm() {
       setTimeout(() => router.push("/login"), 2000);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(dict.errors[err.code] ?? err.message);
+        setError(apiErrorMessage(dict, err));
       } else {
         setError(dict.common.networkError);
       }

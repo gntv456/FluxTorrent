@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 import { useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 
 interface BanLog {
@@ -36,7 +36,7 @@ export default function BanLogPage() {
     } catch (err) {
       setMsg(
         err instanceof ApiError
-          ? (dict.errors[err.code] ?? err.message)
+          ? (apiErrorMessage(dict, err))
           : dict.common.networkError,
       );
     } finally {
