@@ -4,16 +4,18 @@
 
 use super::Repo;
 
-/// `(incl_dead, torrents_per_page)` 主键点查，与同处 `site_settings` 点查同代价。
-/// 读失败按「无偏好」处理：偏好不该把列表主路径拖倒——`(1, 0)` 即
-/// 「活种 + 每页条数交后端缺省」。
-pub async fn viewer_prefs(repo: &Repo, viewer: i64) -> (i32, i32) {
-    sqlx::query_as::<_, (i32, i32)>(
-        "SELECT incl_dead, torrents_per_page FROM users WHERE id = $1",
+/// `(incl_dead, torrents_per_page, sp_state, incl_bookmarked)` 主键点查，
+/// 与同处 `site_settings` 点查同代价（同一行的四个已存在列，不多加往返）。
+/// 读失败按「无偏好」处理：偏好不该把列表主路径拖倒——
+/// `(1, 0, 0, 0)` 即「活种 + 条数交后端缺省 + 促销/收藏都看全部」。
+pub async fn viewer_prefs(repo: &Repo, viewer: i64) -> (i32, i32, i32, i32) {
+    sqlx::query_as::<_, (i32, i32, i32, i32)>(
+        "SELECT incl_dead, torrents_per_page, sp_state, incl_bookmarked \
+         FROM users WHERE id = $1",
     )
     .bind(viewer)
     .fetch_optional(&repo.read_db)
     .await
     .unwrap_or(None)
-    .unwrap_or((1, 0))
+    .unwrap_or((1, 0, 0, 0))
 }

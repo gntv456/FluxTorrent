@@ -94,7 +94,7 @@ async fn list(
     // P-275：控制面板的 incl_dead / torrents_per_page 折进显式字段。优先级
     // ?alive= > ?include_dead= > 个人偏好——偏好是「我的默认视图」，
     // 不是「强制视图」，显式参数（含旧站工具口径）必须能压过它。
-    let (incl_dead, per_page) =
+    let (incl_dead, per_page, sp_state, incl_bookmarked) =
         crate::repo::user_prefs::viewer_prefs(&state.repo, auth.id).await;
     let alive_pref = q
         .include_dead
@@ -190,7 +190,9 @@ async fn list(
         max_seeders: q.max_seeders.filter(|v| *v >= 0),
         exclude: norm_text(q.exclude.clone()),
         // P-277：给了值却不认识 ⇒ 400（旧行为归一成 None = 不加谓词 = 全站）
-        promo: promo_or_err(q.promo.clone())?,
+        promo: promo_or_err(q.promo.clone())?.or_else(|| {
+            super::list_prefs::promo_from_pref(sp_state).map(String::from)
+        }),
         owner: norm_text(q.owner.clone()),
         only_mine: q.mine.unwrap_or(false),
         // 0118 高级搜索补齐（下载数/完成数区间 + 匿名发布；负数丢弃 = 不筛）
@@ -199,7 +201,9 @@ async fn list(
         min_completed: q.min_completed.filter(|v| *v >= 0),
         max_completed: q.max_completed.filter(|v| *v >= 0),
         anonymous: anonymous_or_err(q.anonymous)?,
-        bookmarked: q.bookmarked.unwrap_or(false),
+        bookmarked: q.bookmarked.unwrap_or_else(|| {
+            super::list_prefs::bookmarked_from_pref(incl_bookmarked)
+        }),
         sections,
         // 0267：前台列表没有「标题必须命中」入口，由对外端点（Torznab）使用
         title_like: None,

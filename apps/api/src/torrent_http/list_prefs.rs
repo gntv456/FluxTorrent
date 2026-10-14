@@ -37,6 +37,35 @@ pub(super) fn limit_from_pref(per_page: i32) -> Option<i64> {
     }
 }
 
+/// `sp_state`（面板「显示促销」八档）→ `promo` 筛选串。
+/// 档位取值就是 `usercp-tracker.tsx` 里 `<option value>`：
+/// 0 全部 / 1 仅普通 / 2 免费 / 3 2X / 4 2X免 / 5 半折 / 6 2X半 / 7 30%。
+/// 串里的 token 与 `?promo=` 白名单同源（`torrent_http/query/promo_norm.rs`），
+/// 所以「先解析参数、没给才用偏好」两条走的是同一套匹配实现。
+pub(super) fn promo_from_pref(sp_state: i32) -> Option<&'static str> {
+    match sp_state {
+        1 => Some("none"),
+        2 => Some("free"),
+        3 => Some("x2"),
+        4 => Some("free,x2"),
+        5 => Some("half"),
+        6 => Some("half,x2"),
+        7 => Some("p30"),
+        _ => None,
+    }
+}
+
+/// `incl_bookmarked`（面板「显示收藏」三档）→ `bookmarked`。
+///
+/// **1（仅收藏）才接**：0=全部与后端缺省同口径；
+/// 2=「仅未收藏」需要一条**排除**维度，`TorrentFilter` 目前只有
+/// `bookmarked: bool`（是「只看我收藏的」），把 2 折成 `false` 会演成
+/// 「全部」＝给错数据，比不接更坏 ⇒ 刻意留缺省，由 CZ 闸门钉桩 + 现网
+/// WARN 记这一档仍未接线（与 `alive_from_pref` 里「1 刻意留 None」同性质）。
+pub(super) fn bookmarked_from_pref(incl_bookmarked: i32) -> bool {
+    incl_bookmarked == 1
+}
+
 /// 上下界颠倒时自动对调（用户先填大后填小很常见，直接判空更友好）。
 /// 从 `list.rs` 原样搬来：偏好接线要占行额度，而该文件已在门禁存量上。
 pub(super) fn swap_bounds(f: &mut TorrentFilter) {
