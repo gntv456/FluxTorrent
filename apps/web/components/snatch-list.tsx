@@ -39,6 +39,9 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
   };
   const [rows, setRows] = useState<SnatchRow[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // P-314：拉取失败此前也 setRows([]) ⇒ 表格回「暂无下载记录」，把服务故障
+  // 演成「这个人还没下载过」。failed 只换文案，不改数据形状。
+  const [failed, setFailed] = useState(false);
 
   if (rows === null) {
     return (
@@ -47,6 +50,7 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
         disabled={busy}
         onClick={async () => {
           setBusy(true);
+          setFailed(false);
           try {
             setRows(
               await api.get<SnatchRow[]>(
@@ -55,6 +59,7 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
             );
           } catch {
             setRows([]);
+            setFailed(true);
           } finally {
             setBusy(false);
           }
@@ -121,7 +126,7 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
         {rows.length === 0 && (
           <tr>
             <td colSpan={7} className="py-6 text-center text-sub">
-              {t.empty}
+              {failed ? dict.common.loadFailed : t.empty}
             </td>
           </tr>
         )}

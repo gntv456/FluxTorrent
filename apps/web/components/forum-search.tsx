@@ -49,10 +49,15 @@ export function ForumSearch({
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // P-314：搜索失败此前也走 hits=[] ⇒ 界面回「没有相关帖子」，把服务故障
+  // 演成零结果，用户只会换个词再搜一次。failed 只用来换文案，不改数据形状。
+  const [failed, setFailed] = useState(false);
+
   async function go(e: React.FormEvent) {
     e.preventDefault();
     if (q.trim().length < 2) return;
     setBusy(true);
+    setFailed(false);
     try {
       setHits(
         await api.get<Hit[]>(
@@ -61,6 +66,7 @@ export function ForumSearch({
       );
     } catch {
       setHits([]);
+      setFailed(true);
     } finally {
       setBusy(false);
     }
@@ -116,7 +122,7 @@ export function ForumSearch({
               {hits.length === 0 && (
                 <tr>
                   <td className="py-4 text-center text-sm text-sub">
-                    {dict.forums2.searchEmpty}
+                    {failed ? dict.common.loadFailed : dict.forums2.searchEmpty}
                   </td>
                 </tr>
               )}
