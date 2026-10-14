@@ -175,6 +175,11 @@ pub const JOBS: &[JobDef] = &[
         cadence: "1h",
     },
     JobDef {
+        // 0357 审计日志归档：run.rs hour_tick 调度，Redis 键日节流
+        name: "audit_retain",
+        cadence: "1h",
+    },
+    JobDef {
         name: "cheat_audit",
         cadence: "10m",
     },
