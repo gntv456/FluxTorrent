@@ -8,22 +8,10 @@
 //! 只折算「URL 参数没给」的那一路：显式 `?alive=` / `?limit=` 优先，
 //! 兼容层与 Torznab 不受影响（它们自己把 alive 填成显式值）。
 
-use sqlx::PgPool;
-
 use crate::torrents::TorrentFilter;
 
-/// 查看者的两项列表偏好（主键点查，与同处 `site_settings` 点查同代价）。
-/// 读失败按「无偏好」处理：偏好不该把列表主路径拖倒。
-pub(super) async fn viewer_prefs(db: &PgPool, viewer: i64) -> (i32, i32) {
-    sqlx::query_as::<_, (i32, i32)>(
-        "SELECT incl_dead, torrents_per_page FROM users WHERE id = $1",
-    )
-    .bind(viewer)
-    .fetch_optional(db)
-    .await
-    .unwrap_or(None)
-    .unwrap_or((1, 0))
-}
+// 查看者偏好的点查 SQL 已按 FRAME §2 下沉 `crate::repo::user_prefs`
+// （H 层不 import sqlx）：本文件只留「偏好 → 过滤器字段」的折算与口径。
 
 /// `incl_dead` → `alive` 三态。取值就是界面 `<option value>`。
 ///
