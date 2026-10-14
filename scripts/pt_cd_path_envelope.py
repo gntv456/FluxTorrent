@@ -185,16 +185,30 @@ print("   WARN 现网 message 原文：%s" % str(msg)[:110])
 ok("CD7 message 必须以中文前缀开头（细节原文保留是已知取舍）",
    str(msg).startswith("路径参数无效"), "message=%s" % str(msg)[:70])
 
-print("== CD8 **字符串**路径参数不许被误伤 ==")
-# /attachments/{sha} 的形参是 String：中央口径只接「解析失败」，
-# 合法十六进制串必须照原路走业务（不存在也应是 1004/业务码，而不是 400）。
-for p in ("/attachments/" + "0" * 40, "/games/collection/not_a_game"):
-    st, ct, body = raw_send("GET", p, token=ROOT)
-    isenv, j = shape(st, ct, body)
-    ok("CD8 `%s` 未被当成解析失败 http=%s code=%s"
-       % (p[:34], st, j.get("code")),
-       isenv and st != 400, "http=%s ctype=%s body=%s"
-       % (st, ct[:18], body[:80]))
+print("== CD8 字符串路径参数不被中央口径误伤（原判据写错了，已改对）==")
+# 第一版这里断言 `st != 400`，实测红了两条——红的是判据前提：
+# `/attachments/{sha}` 的形参是 `web::Path<String>`，任何串都解析得动；
+# 那条 400 来自**业务**校验「sha256 格式无效」（40 个 0 不是 64 位十六进制），
+# `/games/collection/not_a_game` 同理（GAMES 白名单）。中央口径不该管这些，
+# 所以正确的判据是：**message 不得带「路径参数无效」前缀**，
+# 且合法形状的值照常通过。
+PAIRS = [("/attachments/" + "0" * 40, "/attachments/" + "a" * 64),
+         ("/games/collection/not_a_game", "/games/collection/capsule")]
+for k, (p_bad, p_ok) in enumerate(PAIRS, start=1):
+    st, ct, body = raw_send("GET", p_bad, token=ROOT)
+    isenv, j2 = shape(st, ct, body)
+    msg = str(j2.get("message", ""))
+    ok("CD8a 非法形状 `%s` 走业务口径、不被念成解析失败 http=%s「%s」"
+       % (p_bad[:32], st, msg[:30]),
+       isenv and not msg.startswith("路径参数无效"),
+       "http=%s ctype=%s msg=%s" % (st, ct[:16], msg[:60]))
+    st2, ct2, body2 = raw_send("GET", p_ok, token=ROOT)
+    isenv2, j3 = shape(st2, ct2, body2)
+    msg2 = str(j3.get("message", ""))
+    ok("CD8b 合法形状 `%s` 不被中央口径误伤 http=%s「%s」"
+       % (p_ok[:32], st2, msg2[:30]),
+       not msg2.startswith("路径参数无效") and "text/plain" not in ct2,
+       "http=%s ctype=%s msg=%s" % (st2, ct2[:16], msg2[:60]))
 
 print("== CE 中文搜索联想（P-283，同族第二处：输入口径）==")
 # 现网实测（修前）：库里有名字含「种子」的过审种，但 /torrents/suggest?q=种子
