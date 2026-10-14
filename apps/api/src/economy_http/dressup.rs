@@ -158,7 +158,7 @@ async fn dressup_wear(
         match (kind.as_str(), slot.as_deref()) {
             ("avatar_frame", Some("avatar")) => {
                 // 框 id 三级来源：config.frame_id（0207 新 SKU）→ config.avatar_url
-                // 填数字（管理员旧写法）→ 价格最贵一帧兜底
+                // 填数字（管理员旧写法）→ 拿不到就拒单（P-307）
                 let fid: Option<i32> =
                     match frame_id_cfg.map(|v| v as i32).or_else(|| {
                         effect_url
@@ -166,14 +166,30 @@ async fn dressup_wear(
                             .and_then(|s| s.parse::<i32>().ok())
                     }) {
                         Some(x) => Some(x),
-                        None => sqlx::query_scalar(
-                            "SELECT id FROM avatar_frames \
-                         ORDER BY price DESC, id DESC LIMIT 1",
-                        )
-                        .fetch_optional(&state.repo.db)
-                        .await
-                        .map_err(|e| DomainError::Internal(e.into()))?
-                        .flatten(),
+                        None => {
+                            // P-307：旧写法在这里兜底发「全站最贵的一帧」。
+                            // 现网实测：SKU 15「头像框」的 config 既无
+                            // frame_id 也无数值 avatar_url，佩戴它 code=0，
+                            // users.avatar_frame_id 被写成 id=3（彩虹描边，
+                            // 标价 10000）——成员以为自己有贵框，管理组也查不
+                            // 到来源。静默给错数据比拒单更坏，故改为先把
+                            // wearing 标记回滚（避免面板显示「佩戴中」却无
+                            // 展示列）再如实拒绝。
+                            sqlx::query(
+                                "UPDATE user_dressups SET wearing = FALSE \
+                                 WHERE user_id = $1 AND item_id = $2",
+                            )
+                            .bind(auth.id)
+                            .bind(body.item_id)
+                            .execute(&state.repo.db)
+                            .await
+                            .map_err(|e| DomainError::Internal(e.into()))?;
+                            return Err(DomainError::Validation(
+                                "该装扮未配置头像框（商品 config 缺 \
+                                 frame_id），请联系管理组补齐后再佩戴"
+                                    .into(),
+                            ));
+                        }
                     };
                 sqlx::query(
                     "UPDATE users SET avatar_frame_id = $2 WHERE id = $1",
