@@ -100,3 +100,24 @@ export function appendMeta(fd: FormData, v: MetaValues) {
   // 正好在尾部（No errors occurred / End of status report）。
   for (const f of ripFiles) fd.append("log", f);
 }
+
+/** 发种拒单文案的取用顺序（P-303）。
+ *
+ * 共用码在 i18n 字典里只有一句粗标签（3003「种子文件无效」、1002「参数
+ * 校验失败」），而十几种具体原因只活在 envelope.message 里——后端已把粗
+ * 标签拼在前面（「种子文件无效: 种子未标记私有…」）。字典优先会把原因
+ * 截掉，成员照着什么都改不动；但 message 为空串/纯空白时又必须落回粗标签
+ * 与通用兜底，否则点完提交什么都不播报（`??` 不把空串当缺失）。 */
+export function rejectReason(
+  body: { code?: number; message?: unknown },
+  dict: {
+    errors?: Record<number, string>;
+    upload?: { fail?: string };
+  },
+): string {
+  const reason =
+    typeof body.message === "string" ? body.message.trim() : "";
+  if (reason !== "") return reason;
+  const keyed = dict.errors?.[Number(body.code)];
+  return keyed ?? dict.upload?.fail ?? "";
+}
