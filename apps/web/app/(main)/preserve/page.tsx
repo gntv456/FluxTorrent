@@ -1,4 +1,6 @@
 import { getPreserve } from "@/lib/data";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { getTorrentDicts, catPath } from "@/lib/site-profile";
@@ -34,12 +36,19 @@ export default async function PreservePage({
     const s = Array.isArray(v) ? v[0] : v;
     return s && s !== "all" && s !== "current" ? s : undefined;
   };
-  const { items, stats, total } = await getPreserve({
-    scope: pick("scope"),
-    status: pick("status"),
-    category: pick("category"),
-    keyword: pick("keyword"),
-  });
+  // P-286：取数失败必须显式报错，不能演成「暂无保种需求」
+  let data: Awaited<ReturnType<typeof getPreserve>>;
+  try {
+    data = await getPreserve({
+      scope: pick("scope"),
+      status: pick("status"),
+      category: pick("category"),
+      keyword: pick("keyword"),
+    });
+  } catch (e) {
+    return <ErrorPanel error={normalizeError(e)} retryHref="/preserve" />;
+  }
+  const { items, stats, total } = data;
   return (
     <div className="preserve-page">
       {/* Hero */}
