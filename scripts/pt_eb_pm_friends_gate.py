@@ -162,7 +162,8 @@ try:
                      {"username": A, "action": "accept"}, token=TB)
     shape4 = rows()
     ok("EB4a 关系成立：B 接受后库里必须至少有 1 行 list=friend（当前=%s）"
-       "——反向行齐不齐由 EB4c 单独钉，别在这儿重复计数" % shape4,
+       "——反向行齐不齐由 EB4c 单独钉"
+       "，别在这儿重复计数" % shape4,
        "friend" in shape4, "关系=%s" % shape4)
     flood_wait(T0)
     s4, b4 = send(TA, "EB4已好友")
