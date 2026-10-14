@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
+import { ErrorPanel } from "@/components/ui/error-panel";
 import { requireModule } from "@/components/module-gate";
 import { getDict } from "@/i18n/server";
 import { PANEL_BAOZI } from "@/lib/ui-classes";
@@ -30,20 +31,32 @@ interface WikiPage {
   updated_at: string;
 }
 
-const loadIndex = cache(async (): Promise<WikiIndexItem[] | null> => {
+/** W-27 四态口径（同 /top）：取数失败要能诊断，不许演成「页面不存在」。
+ *  旧写法两个 loader 都是裸 `catch { return null }` ⇒ 500/网络失败/4101 与
+ *  「slug 真不存在」全被 `notFound()` 合成同一个 404。 */
+type Load<T> = { data: T; err: null } | { data: null; err: unknown };
+
+/** 只有「确实不存在」才走 404；其余失败交给 ErrorPanel（P-35b：业务码分不出
+ *  不存在与暂时读不到，故一并看 HTTP status） */
+function isMissing(e: unknown): boolean {
+  return e instanceof ApiError && (e.code === 1004 || e.status === 404);
+}
+
+const loadIndex = cache(async (): Promise<Load<WikiIndexItem[]>> => {
   try {
-    return await api.get<WikiIndexItem[]>("/api/v1/wiki");
-  } catch {
-    return null;
+    return { data: await api.get<WikiIndexItem[]>("/api/v1/wiki"), err: null };
+  } catch (e) {
+    return { data: null, err: e };
   }
 });
 
 const loadPage = cache(
-  async (slug: string): Promise<WikiPage | null> => {
+  async (slug: string): Promise<Load<WikiPage>> => {
     try {
-      return await api.get<WikiPage>(`/api/v1/wiki/${slug}`);
-    } catch {
-      return null;
+      const url = `/api/v1/wiki/${slug}`;
+      return { data: await api.get<WikiPage>(url), err: null };
+    } catch (e) {
+      return { data: null, err: e };
     }
   },
 );
@@ -55,8 +68,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   if (!slug?.length) return {};
-  const page = await loadPage(slug[0]);
-  return page ? { title: page.title } : {};
+  const { data } = await loadPage(slug[0]);
+  return data ? { title: data.title } : {};
 }
 
 export default async function WikiView({
@@ -75,7 +88,9 @@ export default async function WikiView({
 
   // 目录页：visible 页清单（网关在 module_wiki=no 时 4101 → notFound）
   if (!slug) {
-    const items = await loadIndex();
+    const { data: items, err } = await loadIndex();
+    if (err !== null && isMissing(err)) notFound();
+    if (err !== null) return <ErrorPanel error={err} retryHref="/wiki" />;
     if (items === null) notFound();
     return (
       <div className="flex flex-col gap-4">
@@ -101,7 +116,9 @@ export default async function WikiView({
     );
   }
 
-  const page = await loadPage(slug);
+  const { data: page, err: pErr } = await loadPage(slug);
+  if (pErr !== null && isMissing(pErr)) notFound();
+  if (pErr !== null) return <ErrorPanel error={pErr} retryHref="/wiki" />;
   if (!page) notFound();
   return (
     <div className="flex flex-col gap-4">
