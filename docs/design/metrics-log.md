@@ -396,6 +396,27 @@ P-275）新增文件后复红：
   `ErrorPanel` 已建并被引用 4 处、SSE 在。⇒ **§9 第 12 条应判 ✅**（原 ❌）。
 - 余唯一红：`validation_i18n_guard` 的动态 `format!` 片段 **166→196**（D9 门控）。
 
+### D6 闭环：视觉回归基线入库 + 对比 **20/20 PASS**
+
+| 日期 | 指标 | 前 → 后 | 来源命令 |
+|---|---|---|---|
+| 2026-10-14 | 视觉基线 | **0 → 20 张**（`{baozi,baozi-night}-<page>-win32.png`） | `playwright test --update-snapshots` |
+| 2026-10-14 | 视觉对比门禁 | **20 failed → 20 passed（1.2 分钟）** | `playwright test e2e/visual-regression.spec.ts` |
+
+四层根因（全修）：①缺 `flux.locale`（批内已修）②`addInitScript` 的 `document.cookie`
+在文档开载后才生效、首个请求不带 ⇒ SSR 英文 → 改 `context.addCookies`；
+③lockfile 失同步（`package.json` 已提交 `@lhci/cli` 但 lockfile 没跟上 ⇒
+`--frozen-lockfile` 必挂、**谁都建不了 web 镜像**）→ `pnpm install
+--no-frozen-lockfile`（+2306 行）+ 镜像重建；④**快照名无主题维度**
+（明暗同写 `${p.name}.png` 互相覆盖 ⇒ 明色用例全拿暗色基线比、97-98% diff）→
+改 `{theme}-{page}.png`。
+
+**顺带修掉一个 RSC 产品 bug**：`torrents-search-box.tsx`（server component）
+内联 `onClick` ⇒ `/torrents` 整页落错误边界（web 日志 `Event handlers cannot be
+passed to Client Component props`）。`next build` 查不出，只有真开页面才炸。
+修法：抽客户端组件 `_parts/adv-collapse-button.tsx`。性能副产品：登录改走
+API + `context.addCookies`，全套 20 用例 **11.5 分钟 → 1.2 分钟**。
+
 ### D1 收编：加载态覆盖 **90% → 100%**（棘轮抬到 100）
 
 按 DS §5.1.1 待议项的建议 B 落地：`design_cov_guard.mjs` 新增
