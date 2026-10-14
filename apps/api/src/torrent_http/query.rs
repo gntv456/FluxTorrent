@@ -3,9 +3,12 @@
 
 use serde::Deserialize;
 
+mod promo_norm;
 mod query_de;
 
-// 仅供本模块的 `deserialize_with` 使用（外部无引用，故不重导出）
+// 档位归一搬到了 promo_norm.rs；入口与兼容层都按 `query::norm_promo` 引用，
+// 所以这里必须 pub(crate) 重导出。`de_*` 那几个只给本模块的 derive 用，不重导出。
+pub(crate) use promo_norm::{norm_promo, promo_or_err};
 use query_de::{
     de_bool_lenient, de_category_ids_lenient, de_opt_num_lenient,
     de_tag_ids_lenient,
@@ -134,35 +137,6 @@ pub(crate) fn norm_date(s: Option<String>) -> Option<String> {
     (shape_ok && real).then(|| s.to_string())
 }
 
-/// 优惠参数白名单（未知取值丢弃，避免静默返回空列表让用户以为「没数据」）。
-/// 阶段三起支持多选：`free,x2` 这类逗号串——逐项校验白名单（free/x2/half/any/none），
-/// 全非法丢弃；any/none 与具体档位语义互斥，归一时剔除（保序去重）。
-pub(crate) fn norm_promo(s: Option<String>) -> Option<String> {
-    let s = s?.trim().to_ascii_lowercase();
-    if !s.contains(',') {
-        return matches!(s.as_str(), "free" | "x2" | "half" | "any" | "none")
-            .then_some(s);
-    }
-    let mut seen: Vec<&str> = Vec::new();
-    let mut has_specific = false;
-    for part in s.split(',') {
-        let v = part.trim();
-        match v {
-            "free" | "x2" | "half" => {
-                has_specific = true;
-                if !seen.contains(&v) {
-                    seen.push(v);
-                }
-            }
-            _ => {}
-        }
-    }
-    (!seen.is_empty() && has_specific)
-        .then(|| seen.join(","))
-        .or(Some("any".into()))
-        .filter(|out| !out.is_empty())
-}
-
 /// 标签参数归一（0159 P1）：tag_id（旧单值）与 tag_ids（多选/重复参数）合并，
 /// 保序去重；tag_mode 只认 any/all，缺省 any。
 pub(crate) fn norm_tags(
@@ -228,7 +202,8 @@ pub(crate) fn parse_size(s: Option<String>) -> Option<i64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{norm_date, norm_promo};
+    // 档位归一的判据随函数搬到 query/promo_norm.rs（P-277 收紧）
+    use super::norm_date;
 
     /// 形状对但日历上不存在的日期必须丢弃：它们会在 PG 的 `$n::date`
     /// 处抛错，把列表高级搜索打成 500（2026-10-10 实测 date_from/date_to）。
@@ -243,54 +218,5 @@ mod tests {
         assert!(norm_date(Some("2024-02-29".into())).is_some(), "闰日要放行");
         assert!(norm_date(Some("2025-10-05".into())).is_some(), "正常日放行");
         assert!(norm_date(Some("2025-1-5".into())).is_none(), "必须零补齐");
-    }
-
-    /// 单值白名单口径不变（阶段三多选改造的回归护栏）
-    #[test]
-    fn promo_single_values_pass_through() {
-        for v in ["free", "x2", "half", "any", "none"] {
-            assert_eq!(
-                norm_promo(Some(v.into())).as_deref(),
-                Some(v),
-                "单值 {v} 应原样通过"
-            );
-        }
-    }
-
-    /// 未知单值仍被丢弃（不能静默变空列表之外的语义）
-    #[test]
-    fn promo_unknown_dropped() {
-        assert_eq!(norm_promo(Some("weird".into())), None);
-        assert_eq!(norm_promo(Some("".into())), None);
-        assert_eq!(norm_promo(None), None);
-    }
-
-    /// 多选：合法档位保序去重；any/none 与具体档互斥被剔除
-    #[test]
-    fn promo_multi_select_normalized() {
-        assert_eq!(
-            norm_promo(Some("free,x2".into())).as_deref(),
-            Some("free,x2")
-        );
-        // 乱序 + 重复 + 混入 any/none/垃圾
-        assert_eq!(
-            norm_promo(Some("x2, free, any, x2, junk, none".into())).as_deref(),
-            Some("x2,free")
-        );
-        // 大写与空格
-        assert_eq!(
-            norm_promo(Some(" FREE , Half ".into())).as_deref(),
-            Some("free,half")
-        );
-    }
-
-    /// 多选里没有任何具体档位（只剩 any/none/垃圾）→ 回落 any（= 任意优惠）
-    #[test]
-    fn promo_multi_only_any_falls_back() {
-        assert_eq!(norm_promo(Some("any,none".into())).as_deref(), Some("any"));
-        assert_eq!(
-            norm_promo(Some("junk,junk".into())).as_deref(),
-            Some("any")
-        );
     }
 }

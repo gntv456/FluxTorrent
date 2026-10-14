@@ -87,14 +87,15 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
         a = s.title_like
     ));
     let p = s.promo;
-    let (promo_free, promo_x2, promo_half, promo_any) = (
+    let (promo_free, promo_x2, promo_half, promo_p30, promo_any) = (
         promo::exists_clause(Some("'free','x2free'")),
         promo::exists_clause(Some("'x2','x2free','x2half'")),
         promo::exists_clause(Some("'half','x2half'")),
+        promo::exists_clause(Some("'p30'")),
         promo::exists_clause(None),
     );
-    // 阶段三筛选粒度：promo 支持多选（逗号串，query.rs norm_promo_multi 归一）。
-    // 单值口径不变（free/x2/half/any/none 五档任一）；多值时各档 OR（语义：
+    // 阶段三筛选粒度：promo 支持多选（逗号串，query/promo_norm.rs 归一）。
+    // 单值口径不变（free/x2/half/p30/any/none 六档任一）；多值各档 OR（语义：
     // 「免费或 2x」= 命中任一所选档位）。`$p` 绑定的是归一后的逗号串。
     out.push_str(&format!(
         " AND (${p}::text IS NULL \
@@ -105,7 +106,10 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
            OR (strpos(${p}, 'x2') > 0 AND (${p} LIKE 'x2,%' OR ${p} LIKE '%,x2' \
                OR ${p} LIKE '%,x2,%' OR ${p} = 'x2') AND {promo_x2}) \
            OR (strpos(${p}, 'half') > 0 AND (${p} LIKE 'half,%' OR ${p} LIKE '%,half' \
-               OR ${p} LIKE '%,half,%' OR ${p} = 'half') AND {promo_half}))"
+               OR ${p} LIKE '%,half,%' OR ${p} = 'half') AND {promo_half}) \
+           OR (strpos(${p}, 'p30') > 0 AND (${p} LIKE 'p30,%' \
+               OR ${p} LIKE '%,p30' OR ${p} LIKE '%,p30,%' \
+               OR ${p} = 'p30') AND {promo_p30}))"
     ));
     out.push_str(&format!(
         " AND (${a}::text IS NULL OR u.username ILIKE ${a} ESCAPE chr(92))",
