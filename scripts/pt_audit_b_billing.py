@@ -105,6 +105,8 @@ s, r = upload_torrent(tok, torB, category_id="1", name="AuditB.Free.%d" % suffix
 ok("免费种子发种", s == 200 and r.get("code") == 0, "%s %s" % (s, r.get("message")))
 tidB = (r.get("data") or {}).get("id")
 print("tidA=%s tidB=%s" % (tidA, tidB))
+if tidA and tidB:  # 上一轮崩在中途也会留生效促销，开局先自愈一次
+    DB("DELETE FROM promotions WHERE torrent_id IN (%d, %d)" % (tidA, tidB))
 
 # ---- 促销：给 tidB 挂 2xfree（x2 上传 + 免费），tidA 挂 30% 下载 p30 ----
 if tidA and tidB:
@@ -221,5 +223,21 @@ if tidA and tidB:
     print("tidB hr_policy:", hr[:80])
     snaps = db_i("SELECT count(*) FROM hr_snapshots WHERE torrent_id=%d" % tidB)
     print("tidB hr_snapshots:", snaps)
+
+    # ---- 收尾（P-294）：本闸门建的促销必须当场删干净 ----
+    # 原来这两枚探针促销（batch promo 接口或直插库两条路都可能建）留在
+    # **已过审的在售种**上生效 2 小时：真会员会看到假角标，而 CZ/CN/AF
+    # 三个同族闸门的「挂探针前库里没有生效促销」前置会一路顶红——
+    # 2026-10-14 现网实测就是这样：`promotions` id 322(x2free)/323(p30)。
+    # 注：这一段写在末尾（本脚本没有 try/finally），中途抛异常仍会留脏；
+    # 所以开局也先按同名探针种清一次，下一轮自愈。
+    if tidA and tidB:
+        DB("DELETE FROM promotions WHERE torrent_id IN (%d, %d)" % (tidA, tidB))
+        left = db_i("SELECT count(*) FROM promotions WHERE torrent_id IN "
+                    "(%d, %d)" % (tidA, tidB))
+        live = db_i("SELECT count(*) FROM promotions WHERE starts_at<=now() "
+                    "AND ends_at>now()")
+        ok("探针促销收尾删净（本轮两个探针种残留=%d，全站生效中=%d）"
+           % (left, live), left == 0, "残留=%d 生效=%d" % (left, live))
 
 summary()
