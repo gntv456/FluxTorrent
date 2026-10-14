@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PANEL_LG } from "@/lib/ui-classes";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 
 interface RanchAnimal {
   key: string;
@@ -78,7 +78,7 @@ export function RanchSection({
       } catch (e) {
         onErr(
           e instanceof ApiError
-            ? (dict.errors[e.code] ?? e.message)
+            ? (apiErrorMessage(dict, e))
             : dict.common.networkError,
         );
       } finally {
@@ -207,7 +207,7 @@ export function CraftSection({
       } catch (e) {
         onErr(
           e instanceof ApiError
-            ? (dict.errors[e.code] ?? e.message)
+            ? (apiErrorMessage(dict, e))
             : dict.common.networkError,
         );
       } finally {

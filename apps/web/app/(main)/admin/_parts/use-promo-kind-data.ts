@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { PromoKindResp } from "./admin-promo-shared";
 
 /** 促销档位/价目面板共用的取数与状态（0213）。
@@ -31,7 +31,7 @@ export function usePromoKindData() {
     (e: unknown) => {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : a.actionFailed,
       );
     },

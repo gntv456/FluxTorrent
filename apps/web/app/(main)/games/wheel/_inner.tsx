@@ -9,7 +9,7 @@ import { GameTabs } from "@/components/game/game-tabs";
 import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
@@ -138,7 +138,7 @@ export default function WheelFocusPage({
         e instanceof ApiError
           ? e.code === 1002
             ? e.message
-            : (dict.errors[e.code] ?? e.message)
+            : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
       setBusy(false);

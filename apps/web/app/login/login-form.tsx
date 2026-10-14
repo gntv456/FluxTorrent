@@ -9,7 +9,7 @@ import {
   hasSessionCookie,
   ApiError,
 } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { usePasskeyLogin } from "@/lib/use-passkey-login";
 import { solvePow, powFromErrorData } from "@/lib/pow-client";
 import { fmt } from "@/i18n/config";
@@ -80,7 +80,7 @@ export function LoginForm() {
     onError: (e: unknown) =>
       setError(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : String(e),
       ),
   });
@@ -172,7 +172,7 @@ export function LoginForm() {
       powRef.current = null; // token 已被服务端消费，下轮重新取题
       if (err instanceof ApiError) {
         setError(
-          dict.errors[err.code] ?? err.message ?? dict.login.fail,
+          apiErrorMessage(dict, err) ?? dict.login.fail,
         );
         if (err.code === 2004) setAttempts((n) => n + 1);
         if (err.code === 2010 || err.code === 2011) setShowTotp(true);

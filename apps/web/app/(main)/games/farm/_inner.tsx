@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { countdownText, eggText, type EggPrize } from "@/lib/games";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
@@ -180,7 +180,7 @@ export default function FarmPage({
         e instanceof ApiError
           ? e.code === 1002
             ? e.message
-            : (dict.errors[e.code] ?? e.message)
+            : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
     } finally {
@@ -255,7 +255,7 @@ export default function FarmPage({
     } catch (e) {
       setErr(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
     } finally {

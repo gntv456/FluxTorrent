@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PANEL_LG_COL } from "@/lib/ui-classes";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
 import { ChipSelect, GameShell, PlayHint } from "@/components/game/game-kit";
 import { GameTabs } from "@/components/game/game-tabs";
@@ -160,7 +160,7 @@ export default function FishingPage({
           e instanceof ApiError
             ? e.code === 1002
               ? e.message
-              : (dict.errors[e.code] ?? e.message)
+              : (apiErrorMessage(dict, e))
             : dict.common.networkError,
         );
         // 自动判负走这里：网络错误时 r0.bet 仍在闭包里，占位符照常替换
@@ -229,7 +229,7 @@ export default function FishingPage({
         e instanceof ApiError
           ? e.code === 1002
             ? e.message
-            : (dict.errors[e.code] ?? e.message)
+            : (apiErrorMessage(dict, e))
           : dict.common.networkError,
       );
       setPhase("idle");

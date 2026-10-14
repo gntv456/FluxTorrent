@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 // C 批：StaffTools 改从 admin-tool-switch 的 lazy 壳取（同文件 renderTool
@@ -38,7 +38,7 @@ function errText(
   dict: ReturnType<typeof useI18n>["dict"],
 ): string {
   return e instanceof ApiError
-    ? (dict.errors[e.code] ?? e.message)
+    ? (apiErrorMessage(dict, e))
     : a.actionFailed;
 }
 

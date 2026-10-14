@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { PromoIntentRow } from "./admin-shared";
 
@@ -56,7 +56,7 @@ export function PromoIntentsPanel() {
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : a.actionFailed,
       );
     } finally {
@@ -78,7 +78,7 @@ export function PromoIntentsPanel() {
     } catch (e) {
       setMsg(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : a.actionFailed,
       );
     } finally {

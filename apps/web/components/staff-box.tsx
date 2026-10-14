@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import {
   DeskTable,
   useTickets,
@@ -54,7 +54,7 @@ export function StaffBox() {
       .get<MessageRow[]>("/api/v1/messages/staff")
       .then(setRows)
       .catch((e) =>
-        setErr(e instanceof ApiError ? (dict.errors[e.code] ?? e.message) : dict.common.loadFailed),
+        setErr(e instanceof ApiError ? (apiErrorMessage(dict, e)) : dict.common.loadFailed),
       );
   };
 

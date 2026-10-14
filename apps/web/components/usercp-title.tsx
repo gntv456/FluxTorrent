@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { Row } from "@/components/usercp-row";
@@ -68,7 +68,7 @@ export function TitleRow() {
     } catch (e) {
       setErr(
         e instanceof ApiError
-          ? (dict.errors[e.code] ?? e.message)
+          ? (apiErrorMessage(dict, e))
           : t.titleFailed,
       );
     } finally {
