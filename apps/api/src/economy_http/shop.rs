@@ -9,14 +9,14 @@ use super::spend::spend_spark;
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+/// P-310：拼错键名必须报错，不许 serde 静默忽略后走头兜底长路径（qty 缺省=1 保留）。
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BuyReq {
     item_id: i64,
-    #[serde(default)]
-    idempotency_key: Option<String>,
+    #[serde(default)] idempotency_key: Option<String>,
     /// 购买数量（0207）：仅 stackable 类生效；装扮/头衔类强制 1
-    #[serde(default)]
-    qty: Option<i64>,
+    #[serde(default)] qty: Option<i64>,
 }
 
 use crate::dto::ok;
