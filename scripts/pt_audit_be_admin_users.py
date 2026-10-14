@@ -120,10 +120,20 @@ else:
             WHY = "注册/登录 http=%s %s" % (s, blob(r)[:120])
 ok("S0 探针成员已就绪（uid=%s）%s" % (PU, WHY), PU > 0 and PTOK is not None,
    WHY or "uid=%s" % PU)
+def a4w():
+    """四类写口的留痕数。断言一律用增量：audit_log 是累计表，
+    「总量 >= 4」开闸一轮之后恒真＝哑断言（P-301 的第二段）。"""
+    acts = ("user.adjust", "user.delete", "user.set_status",
+            "user.flags")
+    return dict((a, int(cnt("audit_log", "action = '" + a + "'")
+                            or -1)) for a in acts)
+
+
 BASE = {"users": cnt("users"), "invites": cnt("invites"),
         "root_class": psql("SELECT class_id FROM users WHERE id = 1"),
         "class": psql("SELECT class_id FROM users WHERE id = %d" % PU),
-        "announce": sval("announce_interval")}
+        "announce": sval("announce_interval"),
+        "audit4": a4w()}
 print("基线：%s" % BASE)
 CLEAN += ["DELETE FROM traffic_ledger WHERE user_id = %d" % PU,
           "DELETE FROM spark_ledger WHERE user_id = %d" % PU,
@@ -447,8 +457,17 @@ ok("S7a 邀请码与流水回到基线，探针号已墓碑",
    and cnt("spark_ledger", "user_id = %d" % PU) == "0", str(NOW))
 ok("S7b 共享设定一个字没动（announce_interval=%s）" % sval("announce_interval"),
    sval("announce_interval") == BASE["announce"])
-ok("S7c 留痕只增不删（本轮 audit_log 有 user.adjust / user.delete）",
-   cnt("audit_log", "action IN ('user.adjust','user.delete','user."
-       "set_status','user.flags')") >= "4",
-   cnt("audit_log", "action LIKE 'user.%'"))
+_s7c = int(cnt("audit_log", "action IN ('user.adjust','user.delete','user."
+                "set_status','user.flags')") or -1)
+_n4 = a4w()
+_g = dict((k, _n4[k] - BASE["audit4"][k]) for k in _n4)
+ok("S7c 留痕只增不删（增量口径）：四类写口各自都要留痕，增量 "
+   "%s（开闸时 %s）" % (_g, BASE["audit4"]),
+   all(v >= 1 for v in _g.values())
+   and sum(_g.values()) >= 4 and -1 not in _n4.values(),
+   "增量=%s 现值=%s" % (_g, _n4))
+ok("S7c2 累计量不许被删：四类总量 %s 不得低于开闸时的 %s"
+   % (sum(_n4.values()), sum(BASE["audit4"].values())),
+   sum(_n4.values()) >= sum(BASE["audit4"].values()),
+   "现值=%s" % sum(_n4.values()))
 summary()
