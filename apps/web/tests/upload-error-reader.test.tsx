@@ -110,4 +110,19 @@ describe("发种拒单的读者（P-303）", () => {
     const text = await submitTorrent();
     expect(text).toEqual(zhCN.errors?.[3003]);
   });
+
+  it("内部诊断形态的 message 不摊给用户（serde 原文只剩粗标签）", async () => {
+    // 实测抽样：1002 缺字段时后端把 serde 诊断原样放进 message
+    postReply = {
+      code: 1002,
+      message:
+        "参数校验失败: Json deserialize error: missing field `email` " +
+        "at line 1 column 16",
+      data: {},
+    };
+    const text = await submitTorrent();
+    expect(text).not.toContain("deserialize");
+    expect(text).not.toContain("column");
+    expect(text).toEqual(zhCN.errors?.[1002]);
+  });
 });
