@@ -72,9 +72,9 @@ export function FundingPanel() {
       const qs = statusFilter ? `?status=${statusFilter}` : "";
       setRows(await api.get<FundingRow[]>(`/api/v1/fundings${qs}`));
     } catch {
-      setRows([]);
+      setRows([]); flash(dict.common.loadFailed);
     }
-  }, [statusFilter]);
+  }, [statusFilter, dict]);
   useEffect(() => {
     load();
   }, [load]);
@@ -83,9 +83,9 @@ export function FundingPanel() {
     try {
       setMine(await api.get<MineRow[]>("/api/v1/fundings/mine"));
     } catch {
-      setMine([]);
+      setMine([]); flash(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
 
   function flash(m: string) {
     setMsg(m);

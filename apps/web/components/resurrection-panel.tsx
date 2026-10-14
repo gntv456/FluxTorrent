@@ -41,9 +41,10 @@ export function ResurrectionPanel() {
     try {
       setDead(await api.get<DeadRow[]>("/api/v1/resurrections"));
     } catch {
-      setDead([]);
+      // P-314：读失败不能再演成「没有待救的种」，走本面板已有的 msg 通道
+      setDead([]); setMsg(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
   useEffect(() => {
     load();
   }, [load]);
@@ -52,9 +53,9 @@ export function ResurrectionPanel() {
     try {
       setMine(await api.get<MineRow[]>("/api/v1/resurrections/mine"));
     } catch {
-      setMine([]);
+      setMine([]); setMsg(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
 
   async function claim(torrentId: number) {
     if (busy !== null) return;
