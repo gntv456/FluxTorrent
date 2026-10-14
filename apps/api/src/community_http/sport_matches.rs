@@ -171,7 +171,7 @@ fn match_row(m: &serde_json::Value, torrents: i64) -> serde_json::Value {
 pub async fn matches_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<MatchQuery>,
+    q: crate::http::Q<MatchQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);

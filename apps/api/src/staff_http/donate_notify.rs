@@ -17,7 +17,7 @@ use crate::state::AppState;
 pub async fn donate_notify(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> HttpResponse {
     let _ = req;
     match crate::payment::settle_notify(&state, &q.into_inner()).await {

@@ -45,7 +45,7 @@ struct FeedQuery {
 async fn forum_feed(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<FeedQuery>,
+    q: crate::http::Q<FeedQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);

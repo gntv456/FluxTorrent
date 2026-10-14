@@ -53,7 +53,7 @@ struct SnatchQuery {
 pub async fn my_torrentlist(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<SnatchQuery>,
+    q: crate::http::Q<SnatchQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
@@ -118,7 +118,7 @@ struct BookmarkRow {
 pub async fn my_bookmarks(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<BookmarksQuery>,
+    q: crate::http::Q<BookmarksQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);

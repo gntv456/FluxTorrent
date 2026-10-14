@@ -22,6 +22,7 @@ mod misc_handlers;
 mod news_fun;
 mod plugins;
 mod probes;
+mod qenv;
 mod reports_http;
 mod throttle;
 pub mod view_layout;
@@ -37,6 +38,7 @@ pub use misc_handlers::*;
 pub use news_fun::*;
 pub use plugins::*;
 pub use probes::*;
+pub use qenv::*;
 pub use throttle::*;
 pub use view_layout::*;
 

@@ -104,7 +104,7 @@ pub async fn promo_intent_submit(
 pub async fn promo_intent_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<PromoIntentQuery>,
+    q: crate::http::Q<PromoIntentQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(

@@ -36,7 +36,7 @@ struct MyOrdersQuery {
 async fn my_orders(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<MyOrdersQuery>,
+    q: crate::http::Q<MyOrdersQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let page = q.page.unwrap_or(1).max(1);

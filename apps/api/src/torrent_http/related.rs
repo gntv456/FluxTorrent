@@ -22,7 +22,7 @@ pub async fn torrent_related(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    q: web::Query<RelatedQuery>,
+    q: crate::http::Q<RelatedQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let id = path.into_inner();

@@ -162,7 +162,7 @@ struct FollowStatusQuery {
 async fn follow_status(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<FollowStatusQuery>,
+    q: crate::http::Q<FollowStatusQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let Some(ttype) = normalize_follow_type(&q.target_type) else {
@@ -206,7 +206,7 @@ struct FollowMineQuery {
 async fn follow_mine(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<FollowMineQuery>,
+    q: crate::http::Q<FollowMineQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let want =

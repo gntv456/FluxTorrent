@@ -51,7 +51,7 @@ struct ArtistQuery {
 pub async fn artists_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ArtistQuery>,
+    q: crate::http::Q<ArtistQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
@@ -142,7 +142,7 @@ pub async fn artist_detail(
 pub async fn artists_top(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<ArtistQuery>,
+    q: crate::http::Q<ArtistQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let kind = norm_kind(q.kind.as_deref());

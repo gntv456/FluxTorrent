@@ -151,7 +151,7 @@ pub async fn donate_topup(
 pub async fn donate_order_status(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let Some(order_no) = q.get("order_no") else {

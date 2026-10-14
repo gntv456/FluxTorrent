@@ -167,7 +167,7 @@ struct SubtitleReqRow {
 pub(super) async fn subtitle_request_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<impl actix_web::Responder> {
     let me = require_auth(&req, &state).await.ok();
     let status = q.get("status").map(String::as_str).unwrap_or("open");

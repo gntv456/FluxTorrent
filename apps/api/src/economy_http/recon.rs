@@ -69,7 +69,7 @@ async fn spark_flow_report(
 async fn torznab_caps(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     if q.get("t").is_some_and(|v| v != "caps") {
         return torznab_search_inner(req, state, q).await;
@@ -153,7 +153,7 @@ imdbid/tmdbid）与 cat=Newznab 分类号；item 带完整 torznab:attr（含免
 async fn torznab_search(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     torznab_search_inner(req, state, q).await
 }
@@ -164,7 +164,7 @@ async fn torznab_search(
 async fn torznab_search_inner(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<std::collections::HashMap<String, String>>,
+    q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
     // 审计修复（P2）：item link/enclosure 需绝对地址，Prowlarr 等才能直接请求。
     // PUBLIC_API_URL 未配置时按请求 Host 拼。

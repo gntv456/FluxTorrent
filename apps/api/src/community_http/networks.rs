@@ -47,7 +47,7 @@ struct NetworkQuery {
 pub async fn networks_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<NetworkQuery>,
+    q: crate::http::Q<NetworkQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
@@ -137,7 +137,7 @@ pub async fn network_detail(
 pub async fn networks_top(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<NetworkQuery>,
+    q: crate::http::Q<NetworkQuery>,
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let kind = q.kind.as_deref().unwrap_or("network");

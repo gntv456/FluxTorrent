@@ -55,7 +55,7 @@ async fn topic_list(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<TopicListQuery>,
+    q: crate::http::Q<TopicListQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let fid = path.into_inner();

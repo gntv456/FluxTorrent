@@ -113,7 +113,7 @@ struct TestIpQuery {
 pub async fn test_ip(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<TestIpQuery>,
+    q: crate::http::Q<TestIpQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::TESTIP)

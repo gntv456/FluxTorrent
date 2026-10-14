@@ -26,7 +26,7 @@ struct CheatEventsQuery {
 pub async fn cheat_events_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<CheatEventsQuery>,
+    q: crate::http::Q<CheatEventsQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     require_staff(&auth)?;

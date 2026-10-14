@@ -23,7 +23,7 @@ async fn topic_detail(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<TopicDetailQuery>,
+    q: crate::http::Q<TopicDetailQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();

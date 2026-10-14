@@ -15,7 +15,7 @@ pub async fn user_torrentlist(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    q: web::Query<UserTorrentlistQuery>,
+    q: crate::http::Q<UserTorrentlistQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let uid = path.into_inner();

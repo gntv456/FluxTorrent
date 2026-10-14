@@ -69,7 +69,7 @@ struct MedalWallEntryRich {
 #[get("/medal-wall")]
 pub async fn medal_wall(
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<MedalWallQuery>,
+    q: crate::http::Q<MedalWallQuery>,
 ) -> DomainResult<impl Responder> {
     // 搜索语义：q 命中用户名 → 该用户全部勋章都进墙；只命中勋章名 → 只进那几枚。
     // 一条 OR 谓词即两义齐备，无需先查用户再回表。

@@ -180,7 +180,7 @@ async fn download_key_fetch(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    q: web::Query<DlTokenQuery>,
+    q: crate::http::Q<DlTokenQuery>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let torrent_id = path.into_inner();
     let hash = sha3_hex(q.token.as_bytes());
