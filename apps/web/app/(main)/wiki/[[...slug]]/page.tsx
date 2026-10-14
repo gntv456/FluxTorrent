@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { api } from "@/lib/api-client";
+import { requireModule } from "@/components/module-gate";
 import { getDict } from "@/i18n/server";
 import { PANEL_BAOZI } from "@/lib/ui-classes";
 import { hasBBCode, renderBBCode } from "@/lib/bbcode";
@@ -66,6 +67,11 @@ export default async function WikiView({
   const { slug: seg } = await params;
   const { dict } = await getDict();
   const slug = seg?.[0];
+  // U1 模块页守卫（与其余 12+ 条路由同口径）：module_wiki=no 时给统一的
+  // 「本站未开放」空态。此前本路由靠 loadIndex 吞掉 4101 再 notFound()
+  // ⇒ 成员看到的是「页面不存在」，站长关掉 wiki 却没人知道是关掉了。
+  const gate = await requireModule("wiki");
+  if (gate) return gate;
 
   // 目录页：visible 页清单（网关在 module_wiki=no 时 4101 → notFound）
   if (!slug) {
