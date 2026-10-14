@@ -16,6 +16,7 @@
 import os
 import re
 import subprocess
+import time
 import sys
 import urllib.request
 import urllib.error
@@ -127,19 +128,29 @@ ok("EG3 回退名白名单不含引号/分号/反斜杠，且非白名单字节�
 # EG4 运行时三态（同 AL 的 KNOWN_P298 形状）：
 #   头在 → 必须是 attachment 且以 -{种号}.torrent 结尾；
 #   头缺 → 现网镜像还没带上本批改动的钉桩，PASS 但把读数写出来。
-KNOWN_PENDING_DEPLOY = True
+KNOWN_PENDING_DEPLOY = False   # 10-15 现网 latest 已回头名，撤桩
 hdr = ""
-try:
-    tok = login()
-    req = urllib.request.Request(
-        BASE.replace("/api/v1", "") + "/api/v1/torrents/%s/download" % tid)
-    req.add_header("Authorization", "Bearer " + tok)
-    r = urllib.request.urlopen(req, timeout=30)
-    hdr = dict(r.headers.items()).get("Content-Disposition", "")
-    r.read()
-except urllib.error.HTTPError as e:
-    hdr = dict(e.headers.items()).get("Content-Disposition", "")
-    print("   下载口 http=%s" % e.code)
+sts = []
+tok = login()
+for _try in range(4):          # 下载口 20 次/分限流会把这一枪挡成 429，
+    try:                        # 那不是「头缺失」——带退避重试并记下每次状态
+        req = urllib.request.Request(
+            BASE.replace("/api/v1", "")
+            + "/api/v1/torrents/%s/download" % tid)
+        req.add_header("Authorization", "Bearer " + tok)
+        r = urllib.request.urlopen(req, timeout=30)
+        sts.append(r.status)
+        hdr = {k.lower(): v for k, v in r.headers.items()}.get("content-disposition", "")
+        r.read()
+        if hdr:
+            break
+    except urllib.error.HTTPError as e:
+        sts.append(e.code)
+        hdr = {k.lower(): v for k, v in e.headers.items()}.get("content-disposition", "")
+        if hdr:
+            break
+    time.sleep(20)
+print("   下载口逐次 http=%s（429=限流窗口，不等于头缺失）" % sts)
 if hdr:
     ok("EG4 现网响应头合规：attachment 且以 -%s.torrent 结尾（读值=%s）"
        % (tid, hdr[:70]),
@@ -148,8 +159,8 @@ if hdr:
         print("   WARN 钉桩可撤：现网已回头名，KNOWN_PENDING_DEPLOY 改 "
               "False 后「缺头」分支就不再被认可")
 else:
-    ok("EG4 钉桩在册（现网镜像尚无 Content-Disposition，等 api 重建）"
-       "——头一旦出现就必须合规", KNOWN_PENDING_DEPLOY)
+    ok("EG4 现网响应头取到了吗（取不到时看上面逐次 http：429 属限流窗，"
+       "要复跑而不是当缺陷）", bool(hdr), "读数=空 逐次=%s" % sts)
 
 # EG5 P-300（修正版）：读码时我以为「private 只写根级 => 全站 DHT 未关」，
 # 实测推翻——存档里 72 个种子的 info.private 全是 1，缺标记的只有闸门/演示
