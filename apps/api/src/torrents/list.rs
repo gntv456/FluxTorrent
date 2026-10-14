@@ -94,9 +94,16 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
         promo::exists_clause(Some("'p30'")),
         promo::exists_clause(None),
     );
+    // 合成档＝两族交集（P-291）。用两个已有族谓词相乘，不新增表扫描形状，
+    // 也不引用 `pr.promotion`：那一列只有列表查询 JOIN 了 LATERAL，计数侧
+    // 没有，写了就会让 total 与行集两套口径（0289 同族）。
+    let promo_x2free = format!("({promo_free} AND {promo_x2})");
+    let promo_x2half = format!("({promo_half} AND {promo_x2})");
     // 阶段三筛选粒度：promo 支持多选（逗号串，query/promo_norm.rs 归一）。
-    // 单值口径不变（free/x2/half/p30/any/none 六档任一）；多值各档 OR（语义：
-    // 「免费或 2x」= 命中任一所选档位）。`$p` 绑定的是归一后的逗号串。
+    // 单值口径不变（free/x2/half/p30/x2free/x2half/any/none 任一）；
+    // 多值各档 OR（语义：「免费或 2x」= 命中任一所选档位）。
+    // `$p` 绑定的是归一后的逗号串；每个臂都要求 token **成词**命中
+    // （等值或逗号边界），所以 `x2free` 不会误触发 `free`/`x2` 两臂。
     out.push_str(&format!(
         " AND (${p}::text IS NULL \
            OR (${p} = 'any' AND {promo_any}) \
@@ -109,7 +116,13 @@ pub(super) fn extra_preds(s: ExtraSlots) -> String {
                OR ${p} LIKE '%,half,%' OR ${p} = 'half') AND {promo_half}) \
            OR (strpos(${p}, 'p30') > 0 AND (${p} LIKE 'p30,%' \
                OR ${p} LIKE '%,p30' OR ${p} LIKE '%,p30,%' \
-               OR ${p} = 'p30') AND {promo_p30}))"
+               OR ${p} = 'p30') AND {promo_p30}) \
+           OR (strpos(${p}, 'x2free') > 0 AND (${p} = 'x2free' \
+               OR ${p} LIKE 'x2free,%' OR ${p} LIKE '%,x2free' \
+               OR ${p} LIKE '%,x2free,%') AND {promo_x2free}) \
+           OR (strpos(${p}, 'x2half') > 0 AND (${p} = 'x2half' \
+               OR ${p} LIKE 'x2half,%' OR ${p} LIKE '%,x2half' \
+               OR ${p} LIKE '%,x2half,%') AND {promo_x2half}))"
     ));
     out.push_str(&format!(
         " AND (${a}::text IS NULL OR u.username ILIKE ${a} ESCAPE chr(92))",
