@@ -1,4 +1,6 @@
 import { getTextbooks } from "@/lib/data";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
@@ -13,7 +15,13 @@ export default async function TextbooksPage() {
   if (gate) return gate;
 
   const { dict } = await getDict();
-  const books = await getTextbooks();
+  // P-288 同族：失败不能演成「这里没有教材」
+  let books: Awaited<ReturnType<typeof getTextbooks>>;
+  try {
+    books = await getTextbooks();
+  } catch (e) {
+    return <ErrorPanel error={normalizeError(e)} retryHref="/textbooks" />;
+  }
   return (
     <div className="flex flex-col gap-4">
       <div className="pghd">

@@ -1,4 +1,6 @@
 import { getPool } from "@/lib/data";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import { PANEL_LG } from "@/lib/ui-classes";
 import { PoolDonate } from "@/components/pool-donate";
 import { getDict } from "@/i18n/server";
@@ -13,7 +15,13 @@ export default async function MagicPoolPage() {
   if (gate) return gate;
 
   const { dict, locale, currency } = await getDict();
-  const pool = await getPool();
+  // P-288 同族：站免池是经济面板，读不到不能显示成「进度 0」
+  let pool: Awaited<ReturnType<typeof getPool>>;
+  try {
+    pool = await getPool();
+  } catch (e) {
+    return <ErrorPanel error={normalizeError(e)} retryHref="/magic-pool" />;
+  }
   const pct = pool ? Math.min(100, Math.round(pool.progress * 100)) : 0;
   const t = dict.magicPool;
 
