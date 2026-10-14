@@ -113,6 +113,9 @@ APPR = int(psql("SELECT count(*) FROM torrents WHERE approval_status=1"))
 ALIVE = int(psql("SELECT count(*) FROM torrents WHERE approval_status=1 "
                  "AND seeders>0"))
 PROMO_BASE = int(psql("SELECT count(*) FROM promotions"))
+# 申领表：这张表不属于本批的写口，但**别人（站长/其它闸门）会正常用它**，
+# 所以收尾只能判「本批有没有动它」，取起点条数做差，不能写死 == 0。
+INTENTS_BASE = int(psql("SELECT count(*) FROM promo_intents"))
 LIVE_ANY = int(psql("SELECT count(*) FROM torrents t WHERE "
                     "t.approval_status=1 AND %s" % HAS_LIVE))
 NONE_ALL = APPR - LIVE_ANY
@@ -264,7 +267,10 @@ finally:
        after == PROMO_BASE and live_left == 0,
        "after=%d 生效残留=%d" % (after, live_left))
     ok("CN9a2 临时令牌清干净：按 name 残留=%d" % tk_ghost, tk_ghost == 0)
-    ok("CN9b 未牵动申领表：`promo_intents` 行数=%d（本批不写它）" % intents,
-       intents == 0)
+    ok("CN9b 未牵动申领表：`promo_intents` 本轮增删=%d（起点 %d → 终点 %d，"
+       "本批不写它；判据取**差值**而不是绝对零——这张表被别人正常用过之后，"
+       "== 0 的写法就永远不可能绿）" % (intents - INTENTS_BASE, INTENTS_BASE,
+                                        intents),
+       intents == INTENTS_BASE)
 
 summary()

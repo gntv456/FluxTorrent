@@ -51,6 +51,7 @@ mod modules;
 mod openapi_http;
 mod ops_http;
 mod ops_webhook;
+mod path_cfg;
 mod payment;
 mod plugins;
 mod publish_http;
@@ -257,23 +258,10 @@ async fn main() -> anyhow::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
-            // malformed JSON 等载荷解析错误统一走信封（原为 actix 原生 text/plain 400，
-            // 前端 api-client 按 content-type 判非 JSON 会误报"服务异常"）
-            .app_data(actix_web::web::JsonConfig::default().error_handler(|err, _req| {
-                let locale = i18n::current();
-                let body = serde_json::json!({
-                    "code": 1002,
-                    "message": format!("{}: {}", crate::i18n::localized_message(1002, locale), err),
-                    "data": null,
-                    "request_id": crate::request_id::current()
-                });
-                // error_handler 需返回 actix_web::Error；InternalError 是标准包裹方式
-                actix_web::error::InternalError::from_response(
-                    err.to_string(),
-                    actix_web::HttpResponse::BadRequest().json(body),
-                )
-                .into()
-            }))
+            // 载荷/路径两类「抽取失败」的中央口径集中在 path_cfg.rs：
+            // 查询侧走 Q<T>（P-280），路径侧原先回 404 text/plain 英文（P-282）
+            .app_data(crate::path_cfg::json_config())
+            .app_data(crate::path_cfg::path_config())
             // 访问日志与凭据脱敏（口径见 access_log.rs）
             .wrap(crate::access_log::build())
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
