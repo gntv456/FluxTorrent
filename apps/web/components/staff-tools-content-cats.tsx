@@ -11,6 +11,7 @@ import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { StaffCatEditDialog } from "./staff-tools-cat-edit";
 import { StaffPackAppliesPanel } from "./staff-tools-pack-applies";
 import type {
   CatItem,
@@ -68,6 +69,9 @@ export function StaffCatsPanel({
     | null
   >(null);
   const [saveName, setSaveName] = useState("");
+  // P2 清偿：分类编辑（旧 6 连 prompt + alert）收敛到
+  // StaffCatEditDialog 单对话框六字段草稿（discriminated: editing=行引用）
+  const [editing, setEditing] = useState<CatItem | null>(null);
   return (
     <>
       <section className="brand-panel p-4">
@@ -291,48 +295,7 @@ export function StaffCatsPanel({
                 <td className="text-right">
                   <button
                     className="cmgmt-act"
-                    onClick={() => {
-                      const nn = prompt(t.renamePrompt, c.name);
-                      if (nn === null || nn === c.name) return;
-                      // 图标键（0166）：默认套 film/tv/music/anime/game/app/
-                      // book/sport/doc/edu；留空回落分类名首字色块
-                      const ik = prompt(t.iconKeyPrompt, c.icon_key ?? "");
-                      if (ik === null) return;
-                      const bg = prompt(t.bgColorPrompt, c.bg_color ?? "");
-                      if (bg === null) return;
-                      const pp = prompt(
-                        dict.cmgmt.parentPrompt,
-                        c.parent_id ? String(c.parent_id) : "0",
-                      );
-                      if (pp === null) return;
-                      const so = prompt(t.sortPrompt, String(c.sort));
-                      if (so === null) return;
-                      const soT = so.trim();
-                      // newznab 分类号（0325）：Torznab 客户端按号过滤；
-                      // 空串=不改、0=清除映射
-                      const nz = prompt(
-                        t.newznabPrompt,
-                        c.newznab_id != null ? String(c.newznab_id) : "",
-                      );
-                      if (nz === null) return;
-                      const nzT = nz.trim();
-                      // 非法输入（非数字）必须拦下：Number(NaN) || 0 会把
-                      // 手滑打成 0 = 静默清除映射
-                      if (nzT !== "" && !/^\d+$/.test(nzT)) {
-                        alert(t.newznabInvalid);
-                        return;
-                      }
-                      void guard(async () => {
-                        await api.put(`/api/v1/admin/categories/${c.id}`, {
-                          name: nn,
-                          icon_key: ik.trim(),
-                          bg_color: bg.trim(),
-                          parent_id: Number(pp) || null,
-                          sort: soT === "" ? undefined : Number(soT),
-                          newznab_id: nzT === "" ? undefined : Number(nzT),
-                        });
-                      }, t.saved);
-                    }}
+                    onClick={() => setEditing(c)}
                   >
                     {dict.cmgmt.btnEdit}
                   </button>
@@ -353,6 +316,14 @@ export function StaffCatsPanel({
         </table>
       </section>
       <StaffPackAppliesPanel rows={applies} busy={busy} guard={guard} />
+      {editing && (
+        <StaffCatEditDialog
+          cat={editing}
+          onClose={() => setEditing(null)}
+          busy={busy}
+          guard={guard}
+        />
+      )}
     </>
   );
 }

@@ -5,6 +5,7 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 内容管理的趣味盒 / 友链两个 tab 面板（从 content-manage.tsx
  *  按域拆出，300 门禁）。 */
@@ -30,9 +31,7 @@ interface LinkItem {
   admin_name: string | null;
   email: string | null;
   reason: string | null;
-}
-
-/** 趣味盒：编辑器 + 列表（禁言站口径：有趣/无聊投票 + 封禁/恢复） */
+}/** 趣味盒：编辑器 + 列表（禁言站口径：有趣/无聊投票 + 封禁/恢复） */
 export function FunTab({
   fun,
   load,
@@ -51,20 +50,17 @@ export function FunTab({
     title: "",
     body: "",
   });
+  // P2 清偿：删除确认走 ConfirmDialog danger（window.confirm 退役）
+  const ask = useConfirm();
 
   async function saveFun() {
     if (!fEdit.title.trim()) return;
     try {
+      const payload = { title: fEdit.title, body: fEdit.body };
       if (fEdit.id === null) {
-        await api.post("/api/v1/fun/items", {
-          title: fEdit.title,
-          body: fEdit.body,
-        });
+        await api.post("/api/v1/fun/items", payload);
       } else {
-        await api.put(`/api/v1/fun/items/${fEdit.id}`, {
-          title: fEdit.title,
-          body: fEdit.body,
-        });
+        await api.put(`/api/v1/fun/items/${fEdit.id}`, payload);
       }
       setFEdit({ id: null, title: "", body: "" });
       load();
@@ -145,10 +141,10 @@ export function FunTab({
                   <button
                     className="cmgmt-act cmgmt-act--danger"
                     onClick={() =>
-                      api
-                        .call(
-                          `PUT /api/v1/fun/items/${f.id}/status {"status":"banned"}`,
-                        )
+                      void api
+                        .put(`/api/v1/fun/items/${f.id}/status`, {
+                          status: "banned",
+                        })
                         .then(load)
                         .catch(() => {})
                     }
@@ -159,10 +155,10 @@ export function FunTab({
                   <button
                     className="cmgmt-act cmgmt-act--ok"
                     onClick={() =>
-                      api
-                        .call(
-                          `PUT /api/v1/fun/items/${f.id}/status {"status":"normal"}`,
-                        )
+                      void api
+                        .put(`/api/v1/fun/items/${f.id}/status`, {
+                          status: "normal",
+                        })
                         .then(load)
                         .catch(() => {})
                     }
@@ -172,13 +168,17 @@ export function FunTab({
                 )}
                 <button
                   className="cmgmt-act cmgmt-act--danger"
-                  onClick={() => {
-                    if (!confirm(t.confirmDelete)) return;
-                    api
-                      .call(`DELETE /api/v1/fun/items/${f.id}`)
-                      .then(load)
-                      .catch(() => {});
-                  }}
+                  onClick={() =>
+                    ask.open({
+                      title: t.confirmDelete,
+                      tone: "danger",
+                      run: () =>
+                        void api
+                          .del(`/api/v1/fun/items/${f.id}`)
+                          .then(load)
+                          .catch(() => {}),
+                    })
+                  }
                 >
                   {t.btnDelete}
                 </button>
@@ -188,6 +188,7 @@ export function FunTab({
         </tbody>
       </table>
       </div>
+      <AskDialog {...ask} />
     </>
   );
 }
@@ -202,6 +203,8 @@ export function LinksTab({
   load: () => void;
   t: ReturnType<typeof useI18n>["dict"]["cmgmt"];
 }) {
+  // 同 FunTab 口径：删除确认走 ConfirmDialog danger
+  const ask = useConfirm();
   async function reviewLink(
     id: number,
     status: "active" | "hidden" | "pending",
@@ -214,82 +217,83 @@ export function LinksTab({
     }
   }
   return (
-    <div className="brand-wide-table-scroll">
-    <table className="nexus-table">
-      <tbody>
-        <tr>
-          <td className="colhead">{t.linkName}</td>
-          <td className="colhead">URL</td>
-          <td className="colhead">{t.linkAdmin}</td>
-          <td className="colhead">{t.linkEmail}</td>
-          <td className="colhead">{t.fldStatus}</td>
-          <td className="colhead text-right">{t.colActions}</td>
-        </tr>
-        {links.map((l) => (
-          <tr key={l.id}>
-            <td>
-              {l.name}
-              {l.title && <span className="text-sub"> ({l.title})</span>}
-            </td>
-            <td>
-              <a
-                href={l.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs"
-              >
-                {l.url}
-              </a>
-            </td>
-            <td className="text-sub">{l.admin_name ?? "—"}</td>
-            <td className="text-sub">{l.email ?? "—"}</td>
-            <td>
-              <span className={`link-status link-status--${l.status}`}>
-                {t.linkSt[l.status] ?? l.status}
-              </span>
-            </td>
-            <td className="text-right">
-              {l.status === "pending" && (
-                <button
-                  className="cmgmt-act cmgmt-act--ok"
-                  onClick={() => reviewLink(l.id, "active")}
-                >
-                  {t.btnApprove}
-                </button>
-              )}
-              {l.status === "active" && (
-                <button
-                  className="cmgmt-act"
-                  onClick={() => reviewLink(l.id, "hidden")}
-                >
-                  {t.btnHide}
-                </button>
-              )}
-              {l.status === "hidden" && (
-                <button
-                  className="cmgmt-act cmgmt-act--ok"
-                  onClick={() => reviewLink(l.id, "active")}
-                >
-                  {t.btnShow}
-                </button>
-              )}
-              <button
-                className="cmgmt-act cmgmt-act--danger"
-                onClick={() => {
-                  if (!confirm(t.confirmDelete)) return;
-                  api
-                    .del(`/api/v1/admin/links/${l.id}`)
-                    .then(load)
-                    .catch(() => {});
-                }}
-              >
-                {t.btnDelete}
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-    </div>
+    <>
+      <div className="brand-wide-table-scroll">
+        <table className="nexus-table">
+          <tbody>
+            <tr>
+              <td className="colhead">{t.linkName}</td>
+              <td className="colhead">URL</td>
+              <td className="colhead">{t.linkAdmin}</td>
+              <td className="colhead">{t.linkEmail}</td>
+              <td className="colhead">{t.fldStatus}</td>
+              <td className="colhead text-right">{t.colActions}</td>
+            </tr>
+            {links.map((l) => (
+              <tr key={l.id}>
+                <td>
+                  {l.name}
+                  {l.title && <span className="text-sub"> ({l.title})</span>}
+                </td>
+                <td>
+                  <a
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs"
+                  >
+                    {l.url}
+                  </a>
+                </td>
+                <td className="text-sub">{l.admin_name ?? "—"}</td>
+                <td className="text-sub">{l.email ?? "—"}</td>
+                <td>
+                  <span className={`link-status link-status--${l.status}`}>
+                    {t.linkSt[l.status] ?? l.status}
+                  </span>
+                </td>
+                <td className="text-right">
+                  {/* pending→通过 / active→隐藏 / hidden→恢复：按钮按态分流 */}
+                  <button
+                    className={`cmgmt-act ${
+                      l.status === "active" ? "" : "cmgmt-act--ok"
+                    }`}
+                    onClick={() =>
+                      reviewLink(
+                        l.id,
+                        l.status === "active" ? "hidden" : "active",
+                      )
+                    }
+                  >
+                    {l.status === "pending"
+                      ? t.btnApprove
+                      : l.status === "active"
+                        ? t.btnHide
+                        : t.btnShow}
+                  </button>
+                  <button
+                    className="cmgmt-act cmgmt-act--danger"
+                    onClick={() =>
+                      ask.open({
+                        title: t.confirmDelete,
+                        tone: "danger",
+                        run: () =>
+                          void api
+                            .del(`/api/v1/admin/links/${l.id}`)
+                            .then(load)
+                            .catch(() => {}),
+                      })
+                    }
+                  >
+                    {t.btnDelete}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <AskDialog {...ask} />
+    </>
   );
 }

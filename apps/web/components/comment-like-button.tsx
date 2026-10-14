@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 
 /** 评论点赞按钮（0155 评论增强）：toggle 端点回 {liked, likes}；
  *  自赞/未登录由后端拒（400/401），这里就地提示不弹窗 */
@@ -33,7 +34,8 @@ export function CommentLikeButton({
     } catch (e) {
       // 自赞（业务校验）就地提示；其余静默（网络异常下次点击重试）
       if (e instanceof ApiError && e.code === 1003) {
-        alert(e.message);
+        // W-24 反馈协议：alert → toast.error（request_id 可诊断）
+        toast.error(e.message, { requestId: e.requestId });
       }
     } finally {
       setBusy(false);

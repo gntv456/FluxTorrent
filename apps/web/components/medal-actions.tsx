@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { clientUuid } from "@/lib/client-uuid";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /**
  * 勋章购买/佩戴/赠送（客户端交互叶子组件 §8.3.2）。
@@ -43,6 +44,8 @@ export function MedalActions({
   const [msg, setMsg] = useState<string | null>(null);
   const [idem] = useState(() => `web-medal-${medalId}-${clientUuid()}`);
   const buyable = getType === 1 && price !== null;
+  // P2 清偿：赠送对象采集（window.prompt 退役 → 输入槽）
+  const ask = useConfirm();
 
   async function buy() {
     setMsg(null);
@@ -74,10 +77,17 @@ export function MedalActions({
     }
   }
 
-  async function gift() {
-    const to = prompt(dict.medals2.giftTo)?.trim();
+  function gift() {
+    ask.open({
+      title: dict.medals2.gift,
+      label: dict.medals2.giftTo,
+      run: (raw) => void doGift(raw),
+    });
+  }
+  async function doGift(input: string) {
+    const to = input.trim();
     if (!to) {
-      if (to !== null) setMsg(dict.medals2.giftInvalid);
+      setMsg(dict.medals2.giftInvalid);
       return;
     }
     setMsg(null);
@@ -170,6 +180,7 @@ export function MedalActions({
         )}
       </div>
       {msg && <p className="text-xs text-sub">{msg}</p>}
+      <AskDialog {...ask} />
     </div>
   );
 }
