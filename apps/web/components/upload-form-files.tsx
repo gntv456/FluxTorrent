@@ -87,11 +87,18 @@ export function UploadFilesBlock({
         ? `[img]${j.data.url}[/img]`
         : `[url=${j.data.url}]${file.name}[/url]`;
       setDescr(
-        (prev) => (prev.trim() ? `${prev.trim()}
+        (prev) =>
+          (prev.trim()
+            ? `${prev.trim()}
 
-` : "") + tag,
+`
+            : "") + tag,
       );
-      setAttachMsg(j.data.deduplicated ? "秒传成功（服务器已有同文件）" : "上传成功，已插入简介");
+      setAttachMsg(
+        j.data.deduplicated
+          ? "秒传成功（服务器已有同文件）"
+          : "上传成功，已插入简介",
+      );
     } catch (e) {
       setAttachMsg(e instanceof Error ? e.message : "上传失败");
     } finally {
@@ -115,9 +122,7 @@ export function UploadFilesBlock({
       const r = await api.get<{ name: string; descr: string }>(
         `/api/v1/ptgen?url=${encodeURIComponent(url)}`,
       );
-      setDescr((prev) =>
-        (prev.trim() ? `${prev.trim()}\n\n` : "") + r.descr,
-      );
+      setDescr((prev) => (prev.trim() ? `${prev.trim()}\n\n` : "") + r.descr);
     } catch (e) {
       setMsg(apiErrorMessage(dict, e));
     } finally {
@@ -139,9 +144,7 @@ export function UploadFilesBlock({
               className="sr-only"
               onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
             />
-            {fileName
-              ? `📎 ${fileName}`
-              : dict.upload.formFileHint}
+            {fileName ? `📎 ${fileName}` : dict.upload.formFileHint}
           </label>
         </div>
       </FormRow>
@@ -179,9 +182,7 @@ export function UploadFilesBlock({
               maxLength={300}
               className={fieldCls}
             />
-            <span className="text-xs text-sub">
-              {dict.upload.imdbHint}
-            </span>
+            <span className="text-xs text-sub">{dict.upload.imdbHint}</span>
           </div>
         </FormRow>
       )}
@@ -193,7 +194,10 @@ export function UploadFilesBlock({
                 type="url"
                 value={ptgenUrl}
                 onChange={(e) => setPtgenUrl(e.target.value)}
-                placeholder={dict.upload.ptgenPlaceholder ?? `粘贴 ${metaSources.join(" / ")} 链接`}
+                placeholder={
+                  dict.upload.ptgenPlaceholder ??
+                  `粘贴 ${metaSources.join(" / ")} 链接`
+                }
                 maxLength={300}
                 className="min-h-10 flex-1 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--brand-orange)]"
               />
@@ -203,12 +207,10 @@ export function UploadFilesBlock({
                 onClick={() => genDescr()}
                 className="min-h-10 rounded-[10px] border border-[var(--brand-line)] px-4 text-sm font-bold text-ink hover:border-[var(--brand-orange)] disabled:opacity-50"
               >
-                {ptgenBusy ? (dict.upload.ptgenBusy) : (dict.upload.ptgenBtn)}
+                {ptgenBusy ? dict.upload.ptgenBusy : dict.upload.ptgenBtn}
               </button>
             </div>
-            <span className="text-xs text-sub">
-              {dict.upload.ptgenHint}
-            </span>
+            <span className="text-xs text-sub">{dict.upload.ptgenHint}</span>
           </div>
         </FormRow>
       )}
@@ -222,7 +224,7 @@ export function UploadFilesBlock({
               className="sr-only"
               onChange={(e) => setNfoName(e.target.files?.[0]?.name ?? "")}
             />
-            {nfoName ? `📄 ${nfoName}` : (dict.upload.nfoHint)}
+            {nfoName ? `📄 ${nfoName}` : dict.upload.nfoHint}
           </label>
         </div>
       </FormRow>
@@ -242,9 +244,7 @@ export function UploadFilesBlock({
                 e.currentTarget.value = "";
               }}
             />
-            {attachBusy
-              ? "上传中…"
-              : (dict.upload.attachHint)}
+            {attachBusy ? "上传中…" : dict.upload.attachHint}
           </label>
           {attachMsg && <p className="text-xs text-sky-deep">{attachMsg}</p>}
         </div>
@@ -267,6 +267,7 @@ export function UploadFilesBlock({
           <div className="flex flex-wrap items-center gap-2">
             <input
               type="number"
+              aria-label={dict.upload.price}
               min={0}
               max={1000000}
               value={price}
@@ -277,9 +278,7 @@ export function UploadFilesBlock({
               {currency}（0 = 免费，最大 1000000）
             </span>
           </div>
-          <span className="text-xs text-sub">
-            {dict.upload.priceHint}
-          </span>
+          <span className="text-xs text-sub">{dict.upload.priceHint}</span>
         </div>
       </FormRow>
       <FormRow label={dict.upload.poster}>
@@ -292,9 +291,7 @@ export function UploadFilesBlock({
             maxLength={500}
             className={fieldCls}
           />
-          <span className="text-xs text-sub">
-            {dict.upload.posterHint}
-          </span>
+          <span className="text-xs text-sub">{dict.upload.posterHint}</span>
         </div>
       </FormRow>
     </>

@@ -75,9 +75,7 @@ export function UploadQualityBlock({
       .filter((n) => n > 0);
   const toggleMulti = (kind: string, id: number) => {
     const cur = multiVal(kind);
-    const next = cur.includes(id)
-      ? cur.filter((x) => x !== id)
-      : [...cur, id];
+    const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
     setKindVal(kind, next.join(","));
   };
   const kindDefs = secKinds
@@ -171,7 +169,9 @@ export function UploadQualityBlock({
   return (
     <>
       <FormRow label={dict.upload.category}>
+        {/* FormRow 的 rowhead td 不构成编程关联，可达名就地补（axe select-name） */}
         <select
+          aria-label={dict.upload.category}
           value={categoryId}
           onChange={(e) => setCategoryId(Number(e.target.value))}
           className={fieldCls}
@@ -187,10 +187,7 @@ export function UploadQualityBlock({
         <FormRow label={dict.upload.quality}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {kindDefs.map((k) => (
-              <label
-                key={k.kind}
-                className="flex items-center gap-1 text-sm"
-              >
+              <label key={k.kind} className="flex items-center gap-1 text-sm">
                 <span className="whitespace-nowrap text-sub">
                   {k.label}
                   {k.required && (
@@ -224,8 +221,8 @@ export function UploadQualityBlock({
                   {(tagGroups ?? []).some((x) => x === "content") && (
                     <span className="text-xs font-bold text-sub">
                       {g === "attribute"
-                        ? (dict.upload.tagGroupAttr)
-                        : (dict.upload.tagGroupContent)}
+                        ? dict.upload.tagGroupAttr
+                        : dict.upload.tagGroupContent}
                       ：
                     </span>
                   )}
@@ -260,9 +257,7 @@ export function UploadQualityBlock({
                     })}
                 </div>
               ))}
-            <span className="text-xs text-sub">
-              {dict.upload.tagsHint}
-            </span>
+            <span className="text-xs text-sub">{dict.upload.tagsHint}</span>
           </div>
         </FormRow>
       )}
@@ -306,18 +301,12 @@ export function UploadQualityBlock({
                 className={INPUT_BRAND}
               >
                 <option value="0">{dict.upload.recommendNone}</option>
-                <option value="1">
-                  {dict.upload.recommendNormal}
-                </option>
-                <option value="2">
-                  {dict.upload.recommendClassic}
-                </option>
+                <option value="1">{dict.upload.recommendNormal}</option>
+                <option value="2">{dict.upload.recommendClassic}</option>
               </select>
             </label>
           </div>
-          <span className="text-xs text-sub">
-            {dict.upload.recommendHint}
-          </span>
+          <span className="text-xs text-sub">{dict.upload.recommendHint}</span>
         </div>
       </FormRow>
     </>

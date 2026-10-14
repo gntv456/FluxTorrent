@@ -107,8 +107,11 @@ export function MessageTable({
           return (
             <tr key={m.id}>
               <td className="hidden sm:table-cell">
+                {/* 可达名用消息主题：62 个行选择框此前全部无可达名
+                    （axe label 规则 critical），读屏无法区分选中谁 */}
                 <input
                   type="checkbox"
+                  aria-label={m.subject || `${m.id}`}
                   checked={selected.includes(m.id)}
                   onChange={(e) => onToggle(m.id, e.target.checked)}
                 />
@@ -176,9 +179,9 @@ export function MessageTable({
               <td className="hidden text-[12px] text-sub md:table-cell">
                 {time}
               </td>
-                            <td
-                  className="hidden text-right sm:table-cell"
-                >   <button
+              <td className="hidden text-right sm:table-cell">
+                {" "}
+                <button
                   type="button"
                   onClick={() => onOpen(m)}
                   className="text-xs font-bold text-sky hover:text-[var(--brand-orange)]"

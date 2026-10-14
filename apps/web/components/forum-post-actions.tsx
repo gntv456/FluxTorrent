@@ -82,6 +82,7 @@ export function TopicModActions({
         {digest ? dict.forums.undigest : dict.forums.digest}
       </button>
       <select
+        aria-label={dict.forums.moveTo}
         value={moveTo}
         onChange={(e) => setMoveTo(e.target.value)}
         className="min-h-[36px] rounded-full border border-line bg-cloud px-3 text-xs outline-none focus:border-sky"

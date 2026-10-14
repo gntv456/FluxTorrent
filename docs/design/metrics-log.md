@@ -396,6 +396,20 @@ P-275）新增文件后复红：
   `ErrorPanel` 已建并被引用 4 处、SSE 在。⇒ **§9 第 12 条应判 ✅**（原 ❌）。
 - 余唯一红：`validation_i18n_guard` 的动态 `format!` 片段 **166→196**（D9 门控）。
 
+### §9-6 收口：axe 接入十页，**critical 全 0**（serious 79 节点出数据）
+
+| 日期 | 指标 | 数值 | 来源命令 |
+|---|---|---|---|
+| 2026-10-14 | axe critical（P0 十页） | **0**（首跑 4 条：messages 62 checkbox 无可达名、upload×2、forums/topic select-name） | `playwright test e2e/axe.spec.ts` |
+| 2026-10-14 | axe serious | **79 节点**，全部 color-contrast（top 65 / forums 11 / me 2 / torrent-detail 1）——即明色 muted/faint/brand 的 AA-L 债，随浅色主题重塑清偿 | 同上 |
+
+修掉的 critical（全部就地补可达名，无新增 i18n 键）：`message-center-table.tsx`
+62 个行选择 checkbox（`aria-label={m.subject}`）、`upload-form-quality.tsx` 分类
+select（FormRow 的 rowhead td 不构成编程关联）、`upload-form-files.tsx` 价格
+input、`forum-post-actions.tsx` 移动 select。spec 侧登录改 token 模块级缓存
+（登录端点限流 5 次/分/用户名，逐用例登录会在第 6-8 个用例被掐）；smoke.spec
+补 locale cookie（同视觉回归的英文渲染根因）。**全量 e2e 33/33 PASS（1.9 分钟）**。
+
 ### 终局：D2–D9 决议全部落地，门禁家族 **24 件全绿（0 红灯）**
 
 2026-10-14 用户批「按照建议」，四项一次性执行：
