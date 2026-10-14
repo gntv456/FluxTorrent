@@ -5,6 +5,7 @@ import { BTN_SM_BOLD, CELL_CARD_SUB } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { FunTab, LinksTab } from "@/components/content-manage-tabs";
 
 interface NewsItem {
@@ -51,6 +52,8 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：删除确认走 ConfirmDialog danger（window.confirm 退役）
+  const ask = useConfirm();
 
   // 公告编辑器
   const [nEdit, setNEdit] = useState<{
@@ -112,15 +115,24 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
       setBusy(false);
     }
   }
-  async function delNews(id: number) {
-    if (!confirm(t.confirmDelete)) return;
-    try {
-      await api.del(`/api/v1/admin/news/${id}`);
-      flash(t.newsDeleted);
-      load();
-    } catch (e) {
-      flash(e instanceof ApiError ? e.message : dict.common.networkError);
-    }
+  function delNews(id: number) {
+    ask.open({
+      title: t.confirmDelete,
+      tone: "danger",
+      run: () => {
+        void (async () => {
+          try {
+            await api.del(`/api/v1/admin/news/${id}`);
+            flash(t.newsDeleted);
+            load();
+          } catch (e) {
+            flash(
+              e instanceof ApiError ? e.message : dict.common.networkError,
+            );
+          }
+        })();
+      },
+    });
   }
 
   const TABS: [MgmtTab, string][] = [
@@ -258,6 +270,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
 
       {/* 友情链接管理 */}
       {tab === "links" && <LinksTab links={links} load={load} t={t} />}
+      <AskDialog {...ask} />
     </div>
   );
 }

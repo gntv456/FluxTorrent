@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { FunHistory } from "./fun-box-history";
 import { FunPublishForm } from "./fun-box-publish";
 
@@ -45,6 +46,8 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
   } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：删除确认走 ConfirmDialog danger（window.confirm 退役）
+  const ask = useConfirm();
 
   const load = useCallback(async () => {
     try {
@@ -106,11 +109,15 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
     });
   }
   async function remove(id: number) {
-    if (!confirm(t.confirmDelete)) return;
-    await guard(async () => {
-      await api.del(`/api/v1/fun/items/${id}`);
-      flash(t.deleted);
-      load();
+    ask.open({
+      title: t.confirmDelete,
+      tone: "danger",
+      run: () =>
+        guard(async () => {
+          await api.del(`/api/v1/fun/items/${id}`);
+          flash(t.deleted);
+          load();
+        }),
     });
   }
   async function setStatus(id: number, status: "banned" | "normal") {
@@ -276,6 +283,7 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
         setStatus={setStatus}
         remove={remove}
       />
+      <AskDialog {...ask} />
     </section>
   );
 }

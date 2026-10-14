@@ -12,8 +12,6 @@ function ok(data: unknown = {}) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  window.confirm = () => true;
-  window.prompt = () => "friend";
 });
 
 describe("MedalActions", () => {
@@ -50,7 +48,7 @@ describe("MedalActions", () => {
     );
   });
 
-  it("已拥有 → 赠送按钮调 /medals/gift 且 to_user 来自 prompt", async () => {
+  it("已拥有 → 赠送走输入槽对话框，to_user 取自输入", async () => {
     const { api } = await import("@/lib/api-client");
     const giftSpy = vi
       .spyOn(api, "post")
@@ -65,6 +63,12 @@ describe("MedalActions", () => {
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /赠送/ }));
+    // P2 清偿：window.prompt 退役 → ConfirmDialog 输入槽
+    const input = await screen.findByLabelText(/赠送给/, {
+      selector: "input",
+    });
+    await userEvent.type(input, "friend");
+    await userEvent.click(screen.getByRole("button", { name: /^确认$|^OK$/ }));
     await waitFor(() =>
       expect(giftSpy).toHaveBeenCalledWith("/api/v1/medals/gift", {
         medal_id: 5,

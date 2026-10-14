@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 
 /** 下载按钮：携带 Bearer token 以 blob 触发保存（后端 require_auth）
  *  付费种子（0086）：显示价格角标；扣费/已购由后端 download 原子处理，余额不足会弹错
@@ -43,12 +44,14 @@ export function DownloadButton({
     } catch (e) {
       const noauth = e instanceof ApiError && e.code === 2001;
       setState(noauth ? "noauth" : "idle");
-      alert(
+      // W-24 反馈协议：alert → toast.error（request_id 可诊断）
+      toast.error(
         noauth
           ? dict.torrent.downloadNoauth
           : e instanceof Error
             ? e.message
             : dict.torrent.downloadFailed,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
     }
   }
@@ -62,9 +65,12 @@ export function DownloadButton({
       await navigator.clipboard.writeText(r.magnet);
       setMagnetState("copied");
       setTimeout(() => setMagnetState("idle"), 1500);
-    } catch {
+    } catch (e) {
       setMagnetState("idle");
-      alert(dict.torrent.magnetFailed);
+      // W-24：失败 toast 带 request_id 芯片（可复制报障）
+      toast.error(dict.torrent.magnetFailed, {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     }
   }
 

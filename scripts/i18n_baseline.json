@@ -357,9 +357,9 @@
  "components/contact-staff.tsx": [],
  "components/content-manage-tabs.tsx": [],
  "components/content-manage.tsx": [
-  65,
-  107,
-  204
+  68,
+  110,
+  216
  ],
  "components/custom-menu.tsx": [],
  "components/download-button.tsx": [],
@@ -405,9 +405,9 @@
  "components/fun-box.tsx": [],
  "components/funding-panel-parts.tsx": [],
  "components/funding-panel.tsx": [
-  44,
-  45,
-  181
+  49,
+  50,
+  197
  ],
  "components/gacha-album.tsx": [],
  "components/gacha-rates.tsx": [
@@ -555,14 +555,14 @@
  "components/staff-box.tsx": [],
  "components/staff-custom-pages-help.tsx": [],
  "components/staff-custom-pages.tsx": [
-  115
+  298
  ],
  "components/staff-terms.tsx": [],
  "components/staff-tools-content-cats.tsx": [
-  115,
-  118,
-  121,
-  123
+  129,
+  132,
+  135,
+  137
  ],
  "components/staff-tools-content-rules.tsx": [],
  "components/staff-tools-content.tsx": [],
@@ -570,10 +570,10 @@
  "components/staff-tools-ops-forms.tsx": [],
  "components/staff-tools-ops.tsx": [],
  "components/staff-tools-pack-applies.tsx": [
-  49,
   52,
   55,
-  57
+  58,
+  60
  ],
  "components/staff-tools-perm-matrix.tsx": [],
  "components/staff-tools-perm.tsx": [],
@@ -600,14 +600,14 @@
  "components/staff-tools-users.tsx": [],
  "components/staff-tools.tsx": [],
  "components/staff-user-fields.tsx": [
-  29,
   30,
   31,
   32,
   33,
   34,
-  146,
-  205
+  35,
+  165,
+  215
  ],
  "components/subscribe-network-button.tsx": [],
  "components/subtitle-awards-board.tsx": [],
@@ -630,10 +630,10 @@
  "components/task-board.tsx": [],
  "components/team-panel.tsx": [],
  "components/textbook-link-button.tsx": [
-  11,
-  12,
   13,
-  14
+  14,
+  15,
+  16
  ],
  "components/theme-toggle.tsx": [],
  "components/torrent-actionbar-mount.tsx": [],
@@ -686,9 +686,6 @@
  ],
  "components/unsubscribe-button.tsx": [],
  "components/upload-form-descr.tsx": [
-  56,
-  57,
-  58,
   59,
   60,
   61,
@@ -702,10 +699,13 @@
   69,
   70,
   71,
-  140,
-  141,
-  142,
-  144
+  72,
+  73,
+  74,
+  143,
+  144,
+  145,
+  147
  ],
  "components/upload-form-files.tsx": [
   85,
@@ -1114,6 +1114,6 @@
  "e2e/visual-regression.spec.ts": [
   32,
   36,
-  47
+  50
  ]
 }

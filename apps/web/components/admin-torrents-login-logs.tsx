@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import type { LoginRow } from "./admin-torrents-shared";
 
 // ============ 登录记录（含一键封/解封 IP，好学站 login-logs 口径） ============
@@ -29,6 +30,8 @@ export function LoginLogs() {
   } | null>(null);
   const [banned, setBanned] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<string | null>(null);
+  // P2 清偿：封禁理由采集（window.prompt 退役 → 输入槽）
+  const ask = useConfirm();
 
   const flash = (m: string) => {
     setMsg(m);
@@ -66,9 +69,18 @@ export function LoginLogs() {
     });
   }, [data]);
 
-  async function banIp(ip: string) {
-    const reason = prompt(fmt(at.banPrompt, { ip }));
-    if (!reason) return;
+  function banIp(ip: string) {
+    // 理由走输入槽；空理由（确认但未填）沿用旧口径拦截
+    ask.open({
+      title: at.banIp,
+      label: fmt(at.banPrompt, { ip }),
+      run: (reason) => {
+        if (!reason.trim()) return;
+        void doBan(ip, reason);
+      },
+    });
+  }
+  async function doBan(ip: string, reason: string) {
     try {
       await api.post("/api/v1/admin/bans", { ip, reason });
       flash(fmt(at.bannedMsg, { ip }));
@@ -183,6 +195,7 @@ export function LoginLogs() {
           {c.nextPage}
         </button>
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }
