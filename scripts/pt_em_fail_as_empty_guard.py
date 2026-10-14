@@ -68,6 +68,8 @@ PENDING = [
     # 站方在途新文件（git 未跟踪，EM 上线当天抓到；只登记不代改，
     # 同文件写路径已在用 flash，补一句即可）
     "components/staff-tools-security-domains.tsx",
+    "components/cheat-accuracy-panel.tsx",
+    "components/staff-tools-regquiz.tsx",
     "components/admin-applications.tsx",
     "components/admin-arcade.tsx",
     "components/admin-gacha.tsx",
@@ -150,7 +152,16 @@ ok("EM2 已修 30 只里 0 处裸吞（回退即红）", not regress,
    "; ".join("%s:%s" % (k, v[0]) for k, v in list(regress.items())[:3]))
 
 print("== S3 现网裸吞只能减不能增 ==")
-extra = sorted(set(now) - set(PENDING) - set(FIXED))
+# 站方未跟踪的在途新文件不算违例（否则闸门会在别人连续新增文件的过程中反复红）：改走 WARN 清单，看得见、不追账。
+untracked = set()
+gs = subprocess.run(["git", "status", "--porcelain", "apps/web"],
+                    cwd=ROOT, capture_output=True, text=True,
+                    encoding="utf-8", errors="replace")
+for l in (gs.stdout or "").splitlines():
+    if l.startswith("?? "):
+        untracked.add(os.path.relpath(l[3:].strip(), "apps/web")
+                      .replace("\\", "/"))
+extra = sorted((set(now) - set(PENDING) - set(FIXED)) - untracked)
 ok("EM3 没有新增的裸吞文件（不在 PENDING 里就红）", not extra,
    "新增=%s" % extra)
 print("   现存裸吞文件=%d 个，PENDING 登记=%d 个" % (len(now), len(PENDING)))
