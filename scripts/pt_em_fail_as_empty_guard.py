@@ -47,6 +47,7 @@ FIXED = [
     "components/subtitle-request-panel.tsx",
     "components/wishlist.tsx", "components/contact-staff.tsx",
     "components/torrent-hover-preview.tsx",
+    "components/staff-wiki.tsx",
 ]
 # 现网仍存在的裸吞（逐只吃掉后从这里删；新增了不在这里的就必须红）
 PENDING = [
@@ -66,7 +67,7 @@ PENDING = [
     "components/admin-user-fields-panel.tsx",
     "components/staff-tools-site.tsx",
     "components/staff-tools-sys-agentrules.tsx",
-    "components/staff-wiki.tsx",
+    # staff-wiki 于批一百一十九撤桩（catch 里已置 null + flash 提示）
     # torrent-hover-preview / contact-staff 于批一百一十八撤桩
     # wishlist.tsx 于批一百一十六撤桩（EM5 先提醒，grep 过 {msg && 确认可见才改）
     "app/(auth)/register/page.tsx",
@@ -78,6 +79,8 @@ BODY = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{([^{}]*)\}", re.S)
 # 判成裸吞（本闸门首跑的两条假红就是这个成因）。
 SIGNAL = re.compile(
     r"toast|flash|setErr|setMsg|set\w*Failed|set\w*Error|throw|console", re.I)
+# 口径：只把 [] 换成 null（不谎报了但仍无提示）**不算**有信号——
+# 闸门要的是可诊断。admin-applications.tsx 就因此仍留在 PENDING。
 EMPTYSET = re.compile(r"set\w+\(\s*(?:\[\]|null|\{\})\s*\)")
 
 

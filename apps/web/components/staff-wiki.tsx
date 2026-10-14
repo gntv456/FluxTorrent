@@ -32,8 +32,8 @@ export function StaffWikiPanel({ flash }: { flash: (m: string) => void }) {
     api
       .get<WikiPage[]>("/api/v1/admin/wiki")
       .then(setRows)
-      .catch(() => setRows([]));
-  }, []);
+      .catch(() => { setRows(null); flash(dict.common.loadFailed); });
+  }, [dict, flash]);
   useEffect(() => {
     load();
   }, [load]);
@@ -80,7 +80,7 @@ export function StaffWikiPanel({ flash }: { flash: (m: string) => void }) {
         await api.get<WikiRevision[]>(`/api/v1/admin/wiki/${id}/revisions`),
       );
     } catch {
-      setRevs([]);
+      setRevs(null); flash(dict.common.loadFailed);
     }
   }
 

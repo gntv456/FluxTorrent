@@ -34,7 +34,7 @@ export function AdminApplications() {
       );
       setRows(r.items ?? []);
     } catch {
-      setRows([]);
+      setRows(null);
     }
   }, []);
   useEffect(() => {
@@ -68,7 +68,7 @@ export function AdminApplications() {
     <section className="space-y-3">
       <h2 className="font-display text-lg">入站申请审核</h2>
       {msg && <p className="text-sm">{msg}</p>}
-      {rows.length === 0 && (
+      {rows !== null && rows.length === 0 && (
         <p className="py-6 text-center text-sub">暂无申请</p>
       )}
       {rows.map((a) => (
