@@ -61,6 +61,19 @@
 宪法条款（进 CONTRIBUTING + cargo 层面用 workspace 成员隔离 + 门禁 grep 强制）：
 1. H 不 import sqlx（除 repo）；2. S 不 import actix；3. D 不 import 两者；4. 所有新端点先在契约层登记（schema+错误码+分页口径）再写 handler——"契约先行"从纪律变成流程顺序。
 
+**H 禁 SQL 存量棘轮的登记与收缩（2026-10-14 补记）**
+
+`scripts/layer_baseline.json` 现登记 **367 个 H 层文件 / 2279 处 sqlx 引用**——
+这是 §0.1「分层宪法对存量是方向不是现状」的量化底数。本次处置一例：
+
+| 文件 | 变更 | 理由 |
+|---|---|---|
+| `admin_p3_http/jixiao_reads.rs` | 登记 **=4** | 批六十六按 300 行门禁从 `jixiao_ops.rs` 拆出的**读口**；4 处 `sqlx::query_as/query_scalar` 属**存量搬迁**（非新增），该文件头注释已自述拆分缘由 |
+| `admin_p3_http/jixiao_ops.rs` | **8 → 4** | 母文件被拆走 4 处，计数按实收缩 |
+
+一条 sqlx 引用都没变多（8 = 4 + 4），拆分时**漏跑 `--update`** 才让门禁报
+「新文件零容忍」。**新增 H 层文件仍零容忍**——不在基线者直接拦，不进基线。
+
 ---
 
 ## 3. 契约工程五步（分域推进，每域独立 PR 线）
