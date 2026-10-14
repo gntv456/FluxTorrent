@@ -114,9 +114,12 @@ export function WishlistPanel() {
       setRows(readItems(d));
       setHits(Array.isArray(d) ? [] : d.hits ?? []);
     } catch {
-      setRows([]);
+      // P-314：心愿单拉取失败此前 setRows([]) ⇒ 第 217 行的空态分支会宣称
+      // 「你还没有收藏」。置回 null（本 state 类型本就是 WishRow[] | null）
+      // 让那条宣称不成立，再用面板已有的 msg 通道给一句可诊断提示。
+      setRows(null); setMsg(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict]);
   useEffect(() => {
     load();
   }, [load]);

@@ -67,7 +67,7 @@ PENDING = [
     "components/staff-tools-sys-agentrules.tsx",
     "components/staff-wiki.tsx",
     "components/torrent-hover-preview.tsx",
-    "components/wishlist.tsx",
+    # wishlist.tsx 于批一百一十六撤桩（EM5 先提醒，grep 过 {msg && 确认可见才改）
     "app/(auth)/register/page.tsx",
 ]
 
