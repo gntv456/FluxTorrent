@@ -85,8 +85,16 @@ struct TopRow {
 /// 基础10 + 做种数×2 + 做种体积TB，捐赠者×2）
 #[get("/top/boards")]
 pub(super) async fn top_boards(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    // P-308：六榜都是会员数据（用户名 / 等级名 / 绝对上传下载量 / 做种时长 /
+    // 发种量 / 头像框样式），此前匿名可直拉。路由侧 `/top` 不在 middleware 的
+    // 匿名白名单（匿名访问被 307 到 /login），API 必须同一口径，否则「同一策略
+    // 两处实现、弱的那处说了算」。前台是 RSC，取数走 lib/api-client.ts 的显式
+    // 会话转发（第 101-120 行：跨源直连时 cookie 不随行，改带 Bearer/cookie），
+    // 所以会员侧不受影响。
+    let _auth = require_auth(&req, &state).await?;
     let sel = "row_number() OVER (ORDER BY val DESC) AS rank, x.uid AS id, \
         u.username, c.name AS class_name, \
         u.title, u.avatar_url, f.css AS avatar_frame_css, f.image_url AS avatar_frame_image, x.val::float8 AS val";

@@ -151,17 +151,9 @@ export async function getForumTags(): Promise<TagChipData[]> {
 }
 
 export async function getTopBoards(): Promise<TopBoards> {
-  const empty: TopBoards = {
-    bonus: [],
-    uploaded: [],
-    downloaded: [],
-    seedtime: [],
-    hourly: [],
-    torrents: [],
-  };
-  try {
-    return await api.get<TopBoards>("/api/v1/top/boards");
-  } catch {
-    return empty;
-  }
+  // P-309：这一层不再 catch 成「六榜全空」。页面 app/(main)/top/page.tsx 按
+  // W-27 自己 try/catch 来区分「接口挂」与「真的全空」，但异常在这里就被吞掉，
+  // 页面的 ErrorPanel 永远走不到——后端故障会被演成六榜「暂无数据」，而那正是
+  // 页面注释声称已经修掉的形状。修法只能落在吞异常的这一层。
+  return await api.get<TopBoards>("/api/v1/top/boards");
 }
