@@ -12,12 +12,16 @@ export function PollBox({ empty }: { empty: string }) {
   const { dict } = useI18n();
   const [polls, setPolls] = useState<PollItem[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // P-314：首页投票区取数失败此前演成「暂无投票」，与真没开投票分不开
+  const [failed, setFailed] = useState(false);
 
   async function refresh() {
+    setFailed(false);
     try {
       setPolls(await api.get<PollItem[]>("/api/v1/fun/polls"));
     } catch {
       setPolls([]);
+      setFailed(true);
     }
   }
   useEffect(() => {
@@ -39,7 +43,11 @@ export function PollBox({ empty }: { empty: string }) {
 
   if (polls === null) return null;
   if (polls.length === 0)
-    return <p className="py-4 text-center text-sub">{empty}</p>;
+    return (
+      <p className="py-4 text-center text-sub">
+        {failed ? dict.common.loadFailed : empty}
+      </p>
+    );
   return (
     <div className="flex flex-col gap-3">
       {msg && <p className="text-sm text-sky-deep">{msg}</p>}

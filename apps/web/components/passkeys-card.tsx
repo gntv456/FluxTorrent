@@ -37,12 +37,17 @@ export function PasskeysCard() {
   const [code, setCode] = useState("");
   const [twofa, setTwofa] = useState(false);
 
+  // P-314：passkey 列表拉取失败此前也 setRows([]) ⇒ 界面回「你还没有 Passkey」，
+  // 在凭证面上把服务故障演成「我的钥匙没了」，用户会去重注册或误以为被清。
+  const [failed, setFailed] = useState(false);
   const load = useCallback(async () => {
+    setFailed(false);
     try {
       const r = await api.get<{ items: PasskeyRow[] }>("/api/v1/me/passkeys");
       setRows(r.items ?? []);
     } catch {
       setRows([]);
+      setFailed(true);
     }
   }, []);
   useEffect(() => {
@@ -213,6 +218,11 @@ export function PasskeysCard() {
             {dict.usercp.security.webauthnStepUpBtn}
           </button>
         </div>
+      )}
+      {failed && (
+        <p role="alert" className="text-xs text-sub">
+          {dict.common.loadFailed}
+        </p>
       )}
       {(rows ?? []).length === 0 && (
         <p className="text-xs text-sub">
