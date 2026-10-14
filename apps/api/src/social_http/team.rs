@@ -27,7 +27,12 @@ use super::endangered::social_disabled;
 // 结算时算增量，与 seed_preserve 的 seed_time_begin / uploaded_begin 同款口径，
 // 精度到单资源，天然杜绝"挂一堆无关种子刷契约贡献"。
 
-#[derive(Deserialize)]
+/// P-311 同族（会员面唯一一只高危）：`team_size_max` 拼成 `size_max`/`team_size`
+/// 时 serde 静默吞掉 ⇒ 走 `unwrap_or(5)`，用户要的队伍人数被改成 5 而建队成功、
+/// 界面不回显该值。前端 `endangered-panel.tsx` 只发 `{torrent_id}`（合法省略），
+/// 故收紧不影响现网调用点。
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct CreateTeamReq {
     torrent_id: i64,
     team_size_max: Option<i32>,
