@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { appendMeta, packSections } from "@/lib/upload-fields";
+import { appendMeta, packSections, rejectReason } from "@/lib/upload-fields";
 import { fmt } from "@/i18n/config";
 import { FormRow } from "@/components/upload-form-parts";
 import { UploadFilesBlock } from "@/components/upload-form-files";
@@ -200,7 +200,7 @@ export function UploadForm() {
           ]);
           setFieldErrs(Object.fromEntries(asArr));
         } else {
-          setMsg(dict.errors[body.code] ?? body.message ?? dict.upload.fail);
+          setMsg(rejectReason(body, dict));
         }
       } else {
         // 发布成功直接进详情页预览（0159）：待审种对本人可见
