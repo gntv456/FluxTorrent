@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { PANEL_BAOZI } from "@/lib/ui-classes";
 
@@ -18,12 +18,20 @@ interface CustomPage {
   updated_at: string;
 }
 
-/** 一次请求内 metadata 与正文共用同一次取数（React cache 去重） */
+/** 一次请求内 metadata 与正文共用同一次取数（React cache 去重）。
+ *  P-313：旧写法裸 `catch { return null }` 把 500/网络失败与「slug 真不存在」
+ *  合成同一个 404——而 /p/{slug} 在 sitemap 里，接口抖一下就把真页面从爬虫
+ *  索引里摘掉。只有确实 404/1004 才返回 null（→ notFound），其余失败照抛，
+ *  交给路由错误边界，不再伪装成「页面不存在」。 */
 const loadPage = cache(async (slug: string): Promise<CustomPage | null> => {
+  const url = `/api/v1/pages/${slug}`;
   try {
-    return await api.get<CustomPage>(`/api/v1/pages/${slug}`);
-  } catch {
-    return null;
+    return await api.get<CustomPage>(url);
+  } catch (e) {
+    if (e instanceof ApiError && (e.code === 1004 || e.status === 404)) {
+      return null;
+    }
+    throw e;
   }
 });
 
