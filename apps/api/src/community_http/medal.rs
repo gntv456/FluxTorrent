@@ -101,7 +101,12 @@ async fn medal_list(
     ))
 }
 
-#[derive(Deserialize)]
+/// P-310 同族收紧：拼错键名（`id`/`on`/`wear_it`）必须报错。此前 serde 忽略
+/// 未知键 ⇒ `medal_id=None` 与 `wear=None` 会各自落到「取消全部佩戴」与
+/// `unwrap_or(!currently)` 的 toggle 分支——客户端一个笔误就能把勋章**摘下来**
+/// 而接口回 200。省略字段本身的既有语义不变（`wear` 缺省仍按 toggle）。
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WearReq {
     medal_id: Option<i64>,
     /// 0204 多佩戴：true=戴上（校验上限），false=摘下。
