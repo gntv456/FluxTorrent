@@ -20,13 +20,11 @@ interface HelpDoc {
   sort: number;
 }
 
-const loadDocs = cache(async (): Promise<HelpDoc[]> => {
-  try {
-    return await api.get<HelpDoc[]>("/api/v1/help-docs");
-  } catch {
-    return [];
-  }
-});
+/** P-313 同族：`/api/v1/help-docs` 失败旧写法返回 []，界面就长成「本站暂无帮助
+ *  文档」——取数失败被演成空库，成员与管理组都看不出区别。列表本身没有
+ *  「不存在」这一态，故非空失败照抛给路由错误边界。 */
+const loadDocs = cache(async (): Promise<HelpDoc[]> =>
+  api.get<HelpDoc[]>("/api/v1/help-docs"));
 
 export async function generateMetadata(): Promise<Metadata> {
   const { dict } = await getDict();
