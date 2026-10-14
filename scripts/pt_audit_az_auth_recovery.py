@@ -132,13 +132,13 @@ def cleanup():
         if PIN[k] == "__ABSENT__":
             ex("DELETE FROM site_settings WHERE name = '%s'" % k)
         else:
-          "ex("UPDATE site_settings SET value = '%s' WHERE name = '%s'"
+            ex("UPDATE site_settings SET value = '%s' WHERE name = '%s'"
                % (PIN[k], k))
     bad = [k for k in PIN if setting(k) != PIN[k]]
     for uid in UIDS:
         for t in ("email_verifications", "password_resets", "spark_ledger",
                   "messages"):
-          "col = "receiver_id" if t == "messages" else "user_id"
+            col = "receiver_id" if t == "messages" else "user_id"
             ex("DELETE FROM %s WHERE %s = %d" % (t, col, uid))
         ex("UPDATE users SET totp_secret = NULL, totp_enabled = FALSE "
            "WHERE id = %d" % uid)
@@ -207,7 +207,7 @@ def web_probe(path):
     op = urllib.request.build_opener(NoRedirect)
     try:
         with op.open(WEB_ORIGIN + path, timeout=10) as r:
-          "return r.status, r.headers.get("location") or ""
+            return r.status, r.headers.get("location") or ""
     except urllib.error.HTTPError as e:
         return e.code, e.headers.get("location") or ""
     except Exception:  # noqa: BLE001
@@ -261,16 +261,6 @@ ok("api 容器到诱捕 SMTP 网络可达（红线：连不上就全是假红）
 cond_st, detail_st = selftest()
 ok("信箱通电正控：自己发一封必须能原样读回（缺它则「0 封」不可信）",
    cond_st, detail_st)
-
-# P-302：信箱起不来时早退。S1/S2 的 11 条断言全以「读回邮件」为唯一证据，
-# 前置失败还照跑就会产出 14 条红账——把根因埋在噪音里。本机现在拉不到
-# python:3.12-alpine（docker.io 不可达）就会走这条路：红只留前置那 3 条。
-if __import__('pt_audit_lib').FAILURES:
-    print("\n[BLOCKED] 诱捕 SMTP 信箱不可用，S1/S2 依赖它的断言全部跳过"
-          "（不是产品红）。根因＝上面 3 条前置；本机拉不到诱捕容器镜像时"
-          属环境账，环境恢复后本闸门自然复跑。")
-    summary()
-    raise SystemExit(1)               # atexit 的 cleanup 仍会跑
 
 print("== S1 找回密码全链（P-100 基址 / P-102 错误语义）==")
 n0 = len(mails())
