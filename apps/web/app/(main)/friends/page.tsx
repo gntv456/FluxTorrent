@@ -1,4 +1,6 @@
 import { getFriends, getPolls, getOffers } from "@/lib/data";
+import { ErrorPanel } from "@/components/ui/error-panel";
+import { normalizeError } from "@/lib/render-error";
 import { PANEL_MD } from "@/lib/ui-classes";
 import { getDict } from "@/i18n/server";
 import { PollBox, OfferList } from "@/components/community-extra";
@@ -14,7 +16,15 @@ export default async function FriendsPage() {
   if (gate) return gate;
 
   const { dict } = await getDict();
-  const friends = await getFriends();
+  // P-288（10-14 实测）：上游不可达时这一页一次演三个假空——「暂无好友」
+  // 「黑名单为空」「暂无候选」，而加友/拉黑表单照常可点。改为显式报错。
+  let friends: Awaited<ReturnType<typeof getFriends>>;
+  let offers: Awaited<ReturnType<typeof getOffers>>;
+  try {
+    [friends, offers] = await Promise.all([getFriends(), getOffers()]);
+  } catch (e) {
+    return <ErrorPanel error={normalizeError(e)} retryHref="/friends" />;
+  }
   const friendRows = friends.filter((f) => f.list === "friend");
   const blackRows = friends.filter((f) => f.list === "black");
   return (
@@ -76,7 +86,7 @@ export default async function FriendsPage() {
 
       <div className="flex flex-col gap-4">
         <h2 className="font-display text-xl">{dict.offers.title}</h2>
-        <OfferList empty={dict.offers.empty} offers={await getOffers()} />
+        <OfferList empty={dict.offers.empty} offers={offers} />
       </div>
     </div>
   );

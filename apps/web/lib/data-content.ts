@@ -21,11 +21,7 @@ import type {
 } from "@fluxtorrent/domain-types";
 
 export async function getTextbooks(): Promise<Textbook[]> {
-  try {
-    return await api.get<Textbook[]>("/api/v1/textbooks");
-  } catch {
-    return [];
-  }
+  return await api.get<Textbook[]>("/api/v1/textbooks");
 }
 
 export async function getRequests(): Promise<SeedRequest[]> {
@@ -52,11 +48,7 @@ export async function getPreserve(
 }
 
 export async function getPool(): Promise<Pool | null> {
-  try {
-    return await api.get<Pool>("/api/v1/magic-pool");
-  } catch {
-    return null;
-  }
+  return await api.get<Pool>("/api/v1/magic-pool");
 }
 
 export async function getTorrents(
@@ -105,19 +97,11 @@ export async function getSubtitles(): Promise<SubtitleItem[]> {
 }
 
 export async function getFriends(): Promise<FriendItem[]> {
-  try {
-    return await api.get<FriendItem[]>("/api/v1/friends");
-  } catch {
-    return [];
-  }
+  return await api.get<FriendItem[]>("/api/v1/friends");
 }
 
 export async function getOffers(): Promise<OfferItem[]> {
-  try {
-    return await api.get<OfferItem[]>("/api/v1/offers");
-  } catch {
-    return [];
-  }
+  return await api.get<OfferItem[]>("/api/v1/offers");
 }
 
 export async function getPolls(): Promise<PollItem[]> {
