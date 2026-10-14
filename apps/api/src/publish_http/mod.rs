@@ -4,6 +4,7 @@
 //! 路由注册沿用 http.rs 的 crate::publish_http::fn 引用（glob re-export）。
 
 mod auto_meta;
+pub(crate) mod attachment;
 mod collections;
 mod descr_image;
 mod download;
