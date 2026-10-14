@@ -32,6 +32,19 @@ pub async fn download(
     // 付费下载（0086）：免费/发布者/已购直接放行，否则扣费（余额不足拦截）
     torrents::charge_for_download(&state.repo.db, auth.id, torrent_id).await?;
     let body = build_torrent_bytes(&state, auth.id, torrent_id).await?;
+    // P-299：存盘名。批量口早就是 `{种名}-{id}.torrent`，单击口此前
+    // 只带 Content-Type，浏览器按 URL 末段落盘成 `download`。
+    let name: Option<String> = sqlx::query_scalar(
+        "SELECT name FROM torrents WHERE id = $1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .unwrap_or(None);
+    let label = format!(
+        "{}-{torrent_id}.torrent",
+        crate::archive::safe_name(name.as_deref().unwrap_or("torrent"))
+    );
     let mut resp = HttpResponse::with_body(
         actix_web::http::StatusCode::OK,
         BoxBody::new(body),
@@ -42,6 +55,12 @@ pub async fn download(
             "application/x-bittorrent",
         ),
     );
+    if let Ok(v) = actix_web::http::header::HeaderValue::from_str(
+        &super::attachment::content_disposition(&label),
+    ) {
+        resp.headers_mut()
+            .insert(actix_web::http::header::CONTENT_DISPOSITION, v);
+    }
     // 响应体内嵌本人 announce（含 passkey）：与 download.php / 凭证下载
     // 同一口径禁缓存（P-163 —— 同一份字节，另两路口都带，唯独网页口漏了）
     Ok(crate::openapi_http::no_store(resp))
