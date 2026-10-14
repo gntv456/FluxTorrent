@@ -1,21 +1,26 @@
 # -*- coding: utf-8 -*-
-"""CR 闸门（批七十六）：查询参数畸形必须回站内信封，不能回 text/plain 英文（P-280）。
+"""CR 闸门（批七十六）：查询参数畸形必须回站内信封，
+不能回 text/plain 英文（P-280）。
 
 现网（修前，镜像 `api:aa1024a`，2026-10-14 实测）：
     GET /admin/user-roles?user_id=abc  -> 400 text/plain
         "Query deserialize error: invalid digit found in string"
     GET /rss/{passkey}?showrows=abc    -> 同上（且这条在鉴权之前就炸）
 ⇒ 破坏「所有 HTTP 响应都是 {code, message, request_id}」这条契约：
-  · 前端（`/torrents` 那套 paged/api-client）读的是 code+message，拿到 text/plain
-    只能显示「未知错误」——2026-10-10 批九在 /torrents 上已实测并逐口改过；
+  · 前端（`/torrents` 那套 paged/api-client）读的是 code+message，
+    拿到 text/plain 只能显示「未知错误」——2026-10-10 批九在 /torrents
+    上已实测并逐口改过；
   · 对外脚本（RSS / Torznab / NexusPHP 兼容层）按 JSON 解析直接崩，
     而 RSS 是**passkey 端点**：参数错误抢在 passkey 校验之前返回，
     等于让未鉴权请求探到内部解析细节。
 
 修法：`http/qenv.rs` 的 `Q<T>`（用法与 `web::Query<T>` 一致，失败交回
-`DomainError::Validation`）。本批把**会员侧与对外侧** 39 个文件 50 处形参换掉；
-后台 `admin_http` 一族与站方在途的 15 个文件不在本批范围内，由 CR4/CR5 钉桩记数，
-将来谁换完就是换完，没换完也不会被当成「已处理」。
+`DomainError::Validation`）。本批**收全**：会员侧/对外侧 39 文件 50 处起步，
+续批 `d08a9b22` 扫完余量，HEAD 上 `: crate::http::Q<` 形参 108 处 + 简写 1 处
+共 109 处分布在 87 个文件，`: web::Query<` 形参余量 **0**
+（CR5 断言余量必须为 0，
+CR7 断言 `qenv.rs` 与 `mod qenv;` 确实在 HEAD 里——上一批就栽在「新文件没提交，
+构建树里没功能」）。
 
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_cq_query_envelope.py
 只读：探针只发 GET；令牌临时签、收尾删。
@@ -96,17 +101,27 @@ MEMBER = [
 ]
 # 本批续：全仓收口后，后台/开放接口家族也要有接口级证据（root 是职员档）
 ADMIN = [
-    ("/admin/records?limit=abc", "后台记录台账"),
-    ("/admin/reports/queue?page=abc", "举报队列"),
-    ("/admin/torrents?page=abc", "后台种子管理列表"),
     ("/admin/user-roles?user_id=abc", "后台职务读口（本批最初那条红）"),
+    ("/admin/torrents?page=abc", "后台种子管理列表"),
+    ("/admin/users?page=abc", "后台成员名册"),
+    ("/admin/shop-orders?page=abc", "后台商店订单台账"),
 ]
+# 记账不判红：这两个口查过——`/admin/records`、`/admin/messages`、
+# `/admin/audit-logs` 在现网根本不存在（404 code=1004），而
+# `/admin/reports?page=abc` 的查询结构里没有 page 字段 ⇒ 未知参数被忽略回 200。
+# 上一版闸门把不存在的 routes 当探针，红的是脚本自己（已改真路由）。
+IGNORED_ADMIN = ["/admin/reports?page=abc"]
 for path, what in MEMBER + ADMIN:
     st, ct, body = raw_get(path, token=ROOT)
     good, detail = envelope(st, ct, body)
     ok("CR1 %s `%s` 必须回站内信封（修前：400 text/plain 英文）：http=%s"
        % (what, path, st), st == 400 and "text/plain" not in ct and good,
        detail)
+
+for p_ig in IGNORED_ADMIN:
+    st_ig, ct_ig, b_ig = raw_get(p_ig, token=ROOT)
+    print("   WARN CR1 读数：`%s` → http=%s（该口查询结构里没有这个字段，"
+          "未知参数被忽略；不是 Q<T> 收口证据，只记账）" % (p_ig, st_ig))
 
 # ===== CR2 对外侧：passkey / Token 端点更要紧（脚本按 JSON 解析）=====
 PK = psql("SELECT passkey FROM users WHERE id=1")
@@ -128,10 +143,20 @@ dd = (b_mk or {}).get("data") or {}
 PLAIN = dd.get("token") or dd.get("plaintext") or ""
 st_tz, ct_tz, body_tz = raw_get("/torznab?t=tvsearch&cat=5000&limit=abc",
                                 auth_header="Token " + PLAIN)
-good4, d4 = envelope(st_tz, ct_tz, body_tz)
-ok("CR2c Torznab（API Token）畸形 limit 必须回信封（http=%s ctype=%s）；"
-   "签名令牌 http=%s" % (st_tz, ct_tz, s_mk),
-   "text/plain" not in ct_tz and good4, d4)
+# Torznab 是给 Jackett/RSS 客户端读的**对外 XML 协议**，判据与 JSON 口不同：
+# 契约是「必须是 XML、不得 text/plain、不得 5xx、不得把内部解析细节写给
+# 客户端」。实测 http=200 + application/xml ⇒ 该口对畸形 limit 取「忽略」
+# （按缺省行数返回），这是对外协议的有意口径，不当成收口证据，只记读数。
+leak = b"Query deserialize" in body_tz or b"invalid digit" in body_tz
+print("   WARN CR2c 现网读数：/torznab?limit=abc → http=%s ctype=%s "
+      "（畸形 limit 被忽略而非拒绝；本批只保证不回 text/plain/5xx/内部细节）"
+      % (st_tz, ct_tz[:34]))
+ok("CR2c Torznab（API Token）畸形 limit 必须仍是 XML、不回 text/plain、"
+   "不 5xx、不泄漏解析细节（http=%s ctype=%s）；签名令牌 http=%s"
+   % (st_tz, ct_tz, s_mk),
+   "text/plain" not in ct_tz and "xml" in ct_tz and st_tz < 500 and not leak,
+   "http=%s ctype=%s 泄漏=%s 头=%s"
+   % (st_tz, ct_tz, leak, body_tz[:60]))
 
 # ===== CR3 中文可执行文案：message 必须带「查询参数格式无效」前缀 =====
 st, ct, body = raw_get("/forums/feed?limit=abc", token=ROOT)
@@ -143,22 +168,25 @@ except Exception:
 ok("CR3 message 必须是中文可读（含「查询参数格式无效」）：实测「%s」" % msg,
    "查询参数格式无效" in msg)
 
-# ===== CR4 形状对账：改过的入口不许留一半（Deref 用法编译期已保证，这里数形状）=====
-sq = subprocess.run(
-    ["git", "diff", "HEAD~1", "HEAD", "--name-only"], cwd=REPO,
-    stdout=subprocess.PIPE, universal_newlines=True, encoding="utf-8").stdout
-files = [f.strip() for f in sq.splitlines() if f.strip().endswith(".rs")]
-half = [f for f in files
-        if ": crate::http::Q<" in io.open(os.path.join(REPO, f),
-                                          encoding="utf-8").read()
-        and "web::Query" in io.open(os.path.join(REPO, f),
-                                    encoding="utf-8").read().replace(
-                                        "web::Query<", "", 0)
-        and "from_query" not in io.open(os.path.join(REPO, f),
-                                         encoding="utf-8").read()]
-ok("CR4 本批改过的 %d 个文件里不能有「换了一半」的（同文件既留 web::Query<T> "
-   "形参又不用 from_query）：%s" % (len(files), half), not half,
-   "半换=%s" % half)
+# ===== CR4 形状对账：凡用了 Q<T> 的文件都不许留一半 =====
+# 旧写法取 `git diff HEAD~1 HEAD`，在「闸门自己也是一笔提交」时清单恒空 ⇒
+# 断言永远空转（批七十六实测：CR4 报「本批改过的 0 个文件」）。改为直接扫
+# 引用面本身，并把「引用面必须 ≥80 个文件」写进判据，空清单不再算过。
+qfiles = []
+for root, _d, fs in os.walk(os.path.join(REPO, "apps", "api", "src")):
+    for fn in fs:
+        if not fn.endswith(".rs"):
+            continue
+        p = os.path.join(root, fn)
+        t = io.open(p, encoding="utf-8", errors="replace").read()
+        if ": crate::http::Q<" in t or ": Q<" in t:
+            qfiles.append((p.replace(REPO + os.sep, "").replace("\\", "/"),
+                           t))
+half = [f for f, t in qfiles
+        if ": web::Query<" in t and "from_query" not in t]
+ok("CR4 用了 Q<T> 的 %d 个文件里不能有「换了一半」的（同文件既留 web::Query<T> "
+   "形参又不用 from_query），且引用面不得为空：%s" % (len(qfiles), half),
+   len(qfiles) >= 80 and not half, "引用面=%d 半换=%s" % (len(qfiles), half))
 
 # ===== CR5 欠账清零：类型位 web::Query<T> 形参必须为 0 =====
 # （P-280 已在批七十六续里全仓收口；`from_query` 的写法不算余量——
