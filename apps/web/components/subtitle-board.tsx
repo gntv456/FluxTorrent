@@ -44,6 +44,7 @@ export function SubtitleBoard({
   const [perPage, setPerPage] = useState(50);
   // 上传表单
   const [msg, setMsg] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export function SubtitleBoard({
   }, []);
 
   const load = useCallback(async () => {
+    setFailed(false);
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.set("search", search.trim());
@@ -81,6 +83,9 @@ export function SubtitleBoard({
     } catch {
       setRows([]);
       setTotal(0);
+      // P-314：读列表失败不能再演成「暂无字幕 / 共 0 条」。本文件的 msg state
+      // 从来没被渲染（只有声明与写入），故用真的会渲染到屏幕的 failed 状态。
+      setFailed(true);
     }
   }, [search, langCode, letter, aiFilter, page, perPage, fixedTorrentId]);
 
@@ -123,6 +128,12 @@ export function SubtitleBoard({
           {t.uploadTitle} - {t.totalUploaded} {fmtKB(totalSize)}
         </small>
       </header>
+
+      {failed && (
+        <p role="alert" className="px-4 text-xs text-sub">
+          {dict.common.loadFailed}
+        </p>
+      )}
 
       {/* 规则卡（kind 两套） */}
       <section className="subtitles-rules">
