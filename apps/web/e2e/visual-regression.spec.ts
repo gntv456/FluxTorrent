@@ -34,18 +34,22 @@ const PAGES = [
  *  凭证同 smoke.spec.ts：root / password123。
  */
 async function sessionToken(base: string): Promise<string> {
+  if (cachedToken) return cachedToken;
   const res = await fetch(`${base}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: "root", password: "password123" }),
   });
-  const j = (await res.json().catch(() => null)) as
-    | { code?: number; data?: { token?: string }; message?: string }
-    | null;
+  const j = (await res.json().catch(() => null)) as {
+    code?: number;
+    data?: { token?: string };
+    message?: string;
+  } | null;
   if (!j || j.code !== 0 || !j.data?.token) {
     throw new Error(`login failed: ${j?.message ?? res.status}`);
   }
-  return j.data.token;
+  cachedToken = j.data.token;
+  return cachedToken;
 }
 
 // 主题经 localStorage 预置（ThemeNoFlash 首屏前读），双主题各拍一张。
