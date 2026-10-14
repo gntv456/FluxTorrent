@@ -121,16 +121,29 @@ def value_keys(names):
     return {consts.get(n, n).lower() if n.isupper() else n for n in names}
 
 
+CALLS = [
+    r'module_disabled\(\s*[^;]*?,\s*"%s"\s*\)',
+    r'\.enabled\(\s*[^;]*?,\s*"%s"\s*\)',
+    r'enabled\(\s*"%s"\s*\)',
+    r'module_on_sql\(\s*"%s"\s*\)',
+]
+
+
 def enforced(name):
-    """四通道任一命中即算有读者（值集现算：consts 在文件后半段才解析好）"""
-    return (name in value_keys(gkeys)
-            or 'module_disabled(' in allsrc and (
-                '"%s")' % name in allsrc)
-            or 'enabled(' in allsrc and ('"%s"' % name in allsrc)
-            or 'module_on_sql("%s")' % name in allsrc
-            or 'modules("%s")' % name in wsrc
-            or 'modules?.%s' % name in wsrc
-            or 'modules?.["%s"]' % name in wsrc)
+    """窄匹配：键名必须出现在**执法调用的实参位**上。
+    负控自证：宽匹配（全文找 "funbox"）会被 home_sections 的板块键
+    `key: "funbox"` 蒙绿——那不是执法，清掉 KNOWN_INERT 也不会红。"""
+    if name in value_keys(gkeys):
+        return True
+    for pat in CALLS:
+        if re.search(pat % re.escape(name), allsrc, re.S):
+            return True
+    for pat in (r'module_on\(\s*"%s"', r'modules\(\s*"%s"',
+                r'modules\?\.\s*%s\b', r'modules\?\[\s*"%s"',
+                r'modules\?\.\["%s"\]', r'modules\[%s\]'):
+        if re.search(pat % re.escape(name), wsrc):
+            return True
+    return False
 
 
 GV = value_keys(gkeys)
@@ -147,8 +160,7 @@ if extra:
 
 print("== S2 键集互相兜住 ==")
 no_enf = sorted(k for k in ALL if k not in GV
-                and ('"%s")' % k) not in allsrc
-                and k not in KNOWN_FRONTEND_ONLY)
+                and not enforced(k) and k not in KNOWN_FRONTEND_ONLY)
 ok("EK2 key::ALL 的键要么有后端执法、要么登记为纯前端板块键（%s）"
    % sorted(KNOWN_FRONTEND_ONLY), not no_enf, "未兜住=%s" % no_enf)
 ghost = sorted(GV - ALL)
