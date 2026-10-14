@@ -14,11 +14,20 @@
 
 use crate::errors::{DomainError, DomainResult};
 
-/// 可选档位：`free`/`x2`/`half`/`p30` 是具体档（可多选），
+/// 可选档位：`free`/`x2`/`half`/`p30` 是「族」档（可多选），
 /// `any`=任意优惠、`none`=无优惠（与具体档互斥，混给时以具体档为准）。
-const KINDS: [&str; 6] = ["free", "x2", "half", "p30", "any", "none"];
-/// 可并列多选的具体档
-const SPECIFICS: [&str; 4] = ["free", "x2", "half", "p30"];
+/// `x2free`/`x2half` 是**合成档**＝两族交集（批八十二 P-291）：显示侧
+/// `torrents/promo.rs` 的 `EFFECTIVE_LABEL`/`label()` 认 `x2free`/`x2half`
+/// 两个角标（「2xFree」「2x50%」），筛选侧原先只有四个族档 ⇒ 角标看得见
+/// 却按「既是 2X 又免费」筛不出来，正是 `torrents/promo.rs` 开头声明
+/// 要防的那类漂移；
+/// 用户控制面板第 4/6 档也只有在这一天才可能折对（折成 `free,x2` 并集
+/// 会把「只免费」「只 2X」的种一起端出来＝给错数据）。
+const KINDS: [&str; 8] = ["free", "x2", "half", "p30", "x2free", "x2half",
+                          "any", "none"];
+/// 可并列多选的具体档（含两个合成档）
+const SPECIFICS: [&str; 6] = ["free", "x2", "half", "p30", "x2free",
+                              "x2half"];
 
 /// 归一 `?promo=`：空=不筛（`Ok(None)`）；任一不认识的值=报错（`Err`）。
 ///
@@ -121,6 +130,27 @@ mod tests {
             Some("any"),
             "只给 any/none 时取第一个"
         );
+    }
+
+    /// 合成档（P-291）：面板第 4/6 档与「2xFree」角标都靠这两个 token，
+    /// 缺任一侧就是「角标看得见、按它筛不出来」的漂移。
+    #[test]
+    fn composite_tiers_are_selectable() {
+        for v in ["x2free", "x2half"] {
+            assert_eq!(
+                norm_promo(Some(v.into())).unwrap().as_deref(),
+                Some(v),
+                "合成档 {v} 必须原样通过"
+            );
+        }
+        assert_eq!(
+            norm_promo(Some("half,x2free".into())).unwrap().as_deref(),
+            Some("half,x2free"),
+            "合成档可参与多选"
+        );
+        for v in ["x2freee", "2xfree", "x2half2"] {
+            assert!(norm_promo(Some(v.into())).is_err(), "{v} 仍须报错");
+        }
     }
 
     /// 多选里混一个非法值也要整体报错（旧行为是丢掉那一项、少筛一档还不说）
