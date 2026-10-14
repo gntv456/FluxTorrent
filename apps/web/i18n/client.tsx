@@ -45,23 +45,33 @@ export function useI18n(): { dict: Dict; locale: Locale; currency: string } {
 /** 错误消息：优先按 code 查字典（与后端 Accept-Language 协商互为兜底） */
 export function apiErrorMessage(dict: Dict, err: unknown): string {
   if (err instanceof ApiError) {
-    // P-117：1002（Validation）的报文带着**具体判据**——「签发 API Token
-    // 未执行：凭证无效」「还款金额必须为正」这类。旧写法一律拿字典里
-    // 「参数校验失败」盖掉它，用户只知道「失败了」，看不出是自己密码错、
-    // 还是要输验证码。取第一个分隔符之后的正文；正文为空时退回原映射。
-    // 其余码（1004/2001/4103…）的字典文案更完整，保持原样。
-    if (err.code === 1002) {
-      const raw = err.message ?? "";
-      const at = [":", "："]
-        .map((c) => raw.indexOf(c))
-        .filter((i) => i >= 0)
-        .sort((a, b) => a - b)[0];
-      if (at !== undefined) {
-        const tail = raw.slice(at + 1).trim();
-        if (tail) return tail;
-      }
+    // P-117 → P-305：不止 1002。后端把字典标签拼在前面再挂具体判据
+    // （「参数校验失败: 还款金额必须为正」「种子文件无效: 未标记私有…」），
+    // 旧写法拿字典那句盖掉它，用户只知道「失败了」。判据改成通用形状：
+    // message 以本码的字典标签开头且冒号后还有正文 ⇒ 展示正文。
+    const code = err.code;
+    const label = dict.errors?.[code];
+    const raw = err.message ?? "";
+    if (label && raw.startsWith(label)) {
+      const tail = raw
+        .slice(label.length)
+        .replace(/^[:：]\s*/, "")
+        .trim();
+      if (tail) return tail;
     }
-    return dict.errors[err.code] ?? err.message;
+    return label ?? raw;
+  }
+  if (err && typeof err === "object" && "code" in err) {
+    // 手搓 fetch 的站点（上传、部分管理面板）拿到的是裸信封而不是 ApiError，
+    // 同一套规则也要管用（P-303 的 rejectReason 与此合并成一条口径）
+    return apiErrorMessage(
+      dict,
+      new ApiError(
+        Number((err as { code?: unknown }).code),
+        String((err as { message?: unknown }).message ?? ""),
+        (err as { data?: unknown }).data,
+      ),
+    );
   }
   return err instanceof Error ? err.message : dict.common.networkError;
 }
