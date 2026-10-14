@@ -5,6 +5,9 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
 use crate::dto::ok;
+mod preserve_choice;
+use self::preserve_choice::{norm_choice, SCOPES, STATUSES};
+
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -47,14 +50,17 @@ pub(super) async fn preserve_list(
     // 审计修复（P1）：scope/status 筛选此前声明即弃（#[allow(dead_code)]），前端表单
     // 提交被静默忽略。接线：scope=official/general 过滤官种位；status 按认领/延续
     // 状态过滤（current=全部在保、active=已被认领延续、grace=移出宽限中、expired=已移出）。
-    let scope_ok =
-        matches!(q.scope.as_deref(), Some("official") | Some("general"));
-    let official_only = q.scope.as_deref() == Some("official");
-    let general_only = q.scope.as_deref() == Some("general");
-    let _ = scope_ok;
+    // P-287（10-14 实测）：`?status=not_a_status`、`?scope=9` 原先静默当没筛——
+    // 正是种列表 P-279 那条病形在保种口的复现（会员打错值看到的是全量板面，
+    // 以为筛选生效了）。改成白名单校验：空/未填=不筛，不认识=400 并说清可用值。
+    let scope = norm_choice(q.scope.as_deref(), &SCOPES, "保种类型")?;
+    let status = norm_choice(q.status.as_deref(), &STATUSES, "保种状态")?;
+    let sc = scope.as_deref();
+    let official_only = sc == Some("official");
+    let general_only = sc == Some("general");
     // 视图档位（此前 grace 选中即被忽略、expired 走独立分支只回三列裸数组，
     // 前端按 {items,total,stats} 解构 → 选「已移出」整页 500）
-    let mode = match q.status.as_deref() {
+    let mode = match status.as_deref() {
         Some("active") => "active",
         Some("grace") => "grace",
         Some("expired") => "out",
