@@ -262,6 +262,15 @@ cond_st, detail_st = selftest()
 ok("信箱通电正控：自己发一封必须能原样读回（缺它则「0 封」不可信）",
    cond_st, detail_st)
 
+# P-302：信箱不可用时早退。S1/S2 共 11 条断言以「读回邮件」为唯一证据，
+# 前置红掉还照跑就会产出 14 行红账，把根因埋进噪音里（本机拉不到
+# python:3.12-alpine 时属环境账）。红只留上面 3 条，未验收仍回非零码。
+if __import__("pt_audit_lib").FAILURES:
+    print("\n[BLOCKED] 诱捕 SMTP 信箱不可用：S1/S2 的邮件断言全部跳过。")
+    print("   这不是产品红——根因＝上面三条前置（环境恢复后自然复跑）。")
+    summary()
+    raise SystemExit(1)     # atexit 注册的 cleanup() 照常复原五键设定
+
 print("== S1 找回密码全链（P-100 基址 / P-102 错误语义）==")
 n0 = len(mails())
 s, r = call("POST", "/auth/password/forgot", {"email": AEMAIL}, token=None)
