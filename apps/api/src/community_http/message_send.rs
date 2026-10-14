@@ -75,10 +75,23 @@ async fn message_send(
                 ))
             }
             "friends" => {
+                // P-295：这道屏障必须读 `friendships.list`（旧写法两向都算、
+                // 又不带 list ⇒ ①单向 pending 申请也算好友，「仅接收好友私信」
+                // 形同虚设（EB3 修前实测 200 且真落一行）；②A 拉黑 B 后 A 自己
+                // 还能发）。方向仍留双向：friend.rs 有一条隐性路径只翻转申请方
+                // 那一行（注释却写「双向转正」，已按 P-296 入档待站方修），只按
+                // 接收方判会把真好友误伤——EB4 正控专门盯这一条。
+                // 两个方向都算、又不带 list 条件 ⇒ ①单向 pending 申请（A 申请
+                // B、B 从未接受）也算好友，选了「仅接收好友私信」的 B 照样被 A
+                // 私信，这道屏障形同虚设；②A 把 B 拉黑后 A 自己仍能发
+                // （(A,B,'black') 也命中那个 OR）。friend.rs 的注释写明
+                // 「好友关系必须是双向两行」正是为了守这道屏障，而屏障自己的
+                // 判定没读那个列。
                 let is_friend: bool = sqlx::query_scalar(
-                    "SELECT EXISTS(SELECT 1 FROM \
-                     friendships f WHERE (f.user_id=$1 AND f.friend_id=$2) OR \
-                     (f.user_id=$2 AND f.friend_id=$1))",
+                    "SELECT EXISTS(SELECT 1 FROM friendships f \
+                     WHERE ((f.user_id = $1 AND f.friend_id = $2) \
+                            OR (f.user_id = $2 AND f.friend_id = $1)) \
+                       AND f.list = 'friend')",
                 )
                 .bind(auth.id)
                 .bind(to_id)
