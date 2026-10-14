@@ -3,11 +3,13 @@
 
 use serde::Deserialize;
 
+mod param_strict;
 mod promo_norm;
 mod query_de;
 
 // 档位归一搬到了 promo_norm.rs；入口与兼容层都按 `query::norm_promo` 引用，
 // 所以这里必须 pub(crate) 重导出。`de_*` 那几个只给本模块的 derive 用，不重导出。
+pub(crate) use param_strict::{anonymous_or_err, date_or_err, size_or_err};
 pub(crate) use promo_norm::{norm_promo, promo_or_err};
 use query_de::{
     de_bool_lenient, de_category_ids_lenient, de_opt_num_lenient,
