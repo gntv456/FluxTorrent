@@ -224,15 +224,14 @@ async fn persist(
         let d = h.finalize();
         d.iter().map(|b| format!("{b:02x}")).collect::<String>()
     };
-    let exists: Option<i64> =
-        sqlx::query_scalar(
-            "SELECT id FROM attachments WHERE sha256 = $1 \
+    let exists: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM attachments WHERE sha256 = $1 \
              ORDER BY id LIMIT 1",
-        )
-            .bind(&sha)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(internal)?;
+    )
+    .bind(&sha)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(internal)?;
     if exists.is_none() {
         crate::storage::put(&state.repo.db, &sha, bytes, mime)
             .await

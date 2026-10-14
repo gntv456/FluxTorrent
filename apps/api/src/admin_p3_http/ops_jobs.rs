@@ -146,4 +146,3 @@ async fn admin_job_run(
         serde_json::json!({ "id": id, "job": job, "coalesced": false }),
     ))
 }
-

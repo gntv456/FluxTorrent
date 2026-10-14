@@ -1,16 +1,15 @@
 //! M08 RSS 订阅：getrss 等价 —— 按 passkey 鉴权的个性化 RSS 2.0 输出。
-//!
-//! NexusPHP 口径：用户专属 token（我们复用 passkey）+ 可选过滤参数；
-//! 刷流工具（RSS 阅读器/下载器）凭 URL 自动拉新种。
-//! 参数对齐参考站 getrss.php 的常用子集：分类多选/媒介多选/官种/关键字/条数/标题格式/付费。
-//! NP 惯用名 `cat`/`slot_number` 经 serde alias 同时受理（见 rss_http/query.rs）。
+//! NexusPHP 口径：用户专属 token（复用 passkey）+ 可选过滤参数；刷流工具凭 URL 自动拉新种。
+//! 参数对齐 getrss.php 常用子集：分类/媒介/官种/关键字/条数/标题格式/付费。
+//! NP 惯用名 `cat`/`slot_number` 经 serde alias 同时受理（见 query.rs）。
 //! B3（2026-09-25）起另认 `sec_{kind}` 六类型维度筛选——与前台列表、
 //! 后台管理列表共用同一解析与谓词实现，三处语义不漂移。
 
 mod authz;
 mod forum;
 mod query;
-mod tokens;
+// utoipa::path 宏的 __path_* 辅助类型需对 compat_api 聚合可见
+pub(crate) mod tokens;
 mod util;
 
 pub use util::{format_size, parse_ids, xml_escape};
@@ -41,7 +40,7 @@ struct RssRow {
     owner_name: Option<String>,
 }
 
-/// GET /rss/{passkey}?categories=1,2&mediums=3&official=&search=&showrows=&linktype=&paid=
+/// GET /rss/{passkey}?categories=1,2&mediums=3&official=&search=...
 /// passkey 即用户身份（BEP3 同源凭证，泄露可自助 rotate —— 与 tracker 一致的暴露面）
 #[utoipa::path(
     get,
@@ -50,7 +49,8 @@ struct RssRow {
     description = "个性化 RSS 订阅：item 含 <enclosure> 下载直链（qB RSS/\
 autobrr/Flexget 直接用）；passkey 在路径里，30 次/分钟。",
     params(
-        ("passkey" = String, Path, description = "32 位 passkey（或 fxr_ RSS token）"),
+        ("passkey" = String, Path,
+         description = "32 位 passkey（或 fxr_ RSS token）"),
         ("categories" = String, Query, description = "分类 id 逗号多选"),
         ("mediums" = String, Query, description = "媒介 id 逗号多选"),
         ("search" = String, Query, description = "关键字"),
@@ -74,7 +74,7 @@ pub(crate) async fn rss_feed(
 ) -> HttpResponse {
     let passkey = path.into_inner();
     // 形状校验（0267/0352）：passkey 或 fxr_ token 二选一——与两个生成器
-    // 口径一致（32 位小写字母数字 / fxr_ 前缀），非法形状早拒省一次查询
+    // 口径一致，非法形状早拒省一次查询
     if !crate::compat_http::valid_passkey(&passkey)
         && !tokens::valid_token_shape(&passkey)
     {
@@ -82,10 +82,8 @@ pub(crate) async fn rss_feed(
     }
     // 0267 安全补：RSS 此前**没有限流** —— 一枚泄露的 passkey 可无限拉订阅源
     // （打库 + 放大信息面）。30 次/分钟对分钟级轮询的订阅器绰绰有余。
-    //
-    // P-68：旧写法 `if ... .is_err()` 把「限流服务不可用」也回成
-    // 429 + retry-after: 60 —— 订阅端据此退避，而真实故障在后端 Redis：
-    // 症状被伪装成「你拉太快了」，排障方向从第一天就是错的。分开回。
+    // P-68：旧写法把「限流服务不可用」也回成 429 + retry-after —— 订阅端
+    // 据此退避而真实故障在 Redis，症状被伪装成「你拉太快了」。分开回。
     match crate::compat_http::limit_passkey(&state, &req, "rss", &passkey, 30)
         .await
     {
@@ -135,13 +133,12 @@ pub(crate) async fn rss_feed(
     .await;
     let sec_sql =
         crate::torrents::section_where(&state.repo.db, &sections).await;
-    // 深测 2026-10-03：付费种子无差别推给订阅器 —— 未购用户下载时才被
-    // charge_for_download 拦下（402），刷流器每轮重试同一批失败项形成噪音。
-    // 默认排除「付费且该用户未购」的种子；paid=0 显式要求全量时才放行。
+    // 深测 2026-10-03：付费种子无差别推给订阅器——未购用户下载时才被
+    // charge_for_download 拦下（402）。默认排除「付费且未购」；paid=0 全量。
     let exclude_paid = q.paid != Some(0);
     let sql = format!(
-        "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, t.official_tag, \
-                pr.promotion, \
+        "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, \
+                t.official_tag, pr.promotion, \
             CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name \
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          {promo_lateral} \
@@ -199,9 +196,8 @@ pub(crate) async fn rss_feed(
                 .unwrap_or_else(|| "http://localhost:3000".into());
             host
         });
-    // 促销标记（刷流时效性关键，NP 官方插件口径）：用户自购/站方挂的 Free 与 2xFree
-    // 必须在 RSS 标题第一时间可见——刷流器按标题关键词过滤，标记缺失 = 免费信息传不到
-    // （NP 二改站的常见缺陷）。标记格式与列表角标一致：Free / 2xFree / 50% / 2x / 2x50%。
+    // 促销标记（刷流时效性关键，NP 官方插件口径）：Free/2xFree 必须在 RSS
+    // 标题第一时间可见——刷流器按标题关键词过滤，标记缺失 = 免费信息传不到。
     // 0267：六档标签收进 promo::label 单一来源（此前 RSS/Torznab 各写一份）。
     let promo_tag = |p: &Option<String>| -> String {
         match p.as_deref().map(crate::torrents::promo::label) {
@@ -232,15 +228,12 @@ pub(crate) async fn rss_feed(
         } else {
             format!("{}{}", promo_tag(&r.promotion), r.name)
         };
-        // 0267 修复：此前 item 既无 <enclosure>、<link> 又指向网页，
-        // 刷流器（qBittorrent RSS 自动下载 / autobrr / Flexget / cross-seed）
-        // 拿到的是 HTML 页面 → 整条刷流链路不可用。现在：
-        //   link      = NP 口径的下载直链（刷流器直接取 link 即可）
-        //   enclosure = 同一地址（标准 RSS 消费方走 enclosure）
-        // linktype=page 时保留「link 指向详情页、标题仅名称」的旧行为
-        // （注意：linktype 管的是**标题格式**，与下载链接无关，历史上被误读）。
+        // 0267 修复：此前 item 既无 <enclosure>、<link> 又指向网页，刷流器
+        // （qBittorrent RSS / autobrr / Flexget）拿到 HTML → 刷流链路不可用。
+        // 现在：link = NP 口径下载直链；enclosure = 同一地址。linktype=page
+        // 时保留旧行为（注意：linktype 管**标题格式**，与下载链接无关）。
         // 0352：直链凭证跟随鉴权路径——token 消费时放 token（订阅 URL 与
-        // 下载直链同凭证，撤销一个 token 即整链失效），passkey 时维持原样。
+        // 下载直链同凭证，撤销一个 token 即整链失效），passkey 时原样。
         let dl = format!(
             "{}/api/v1/compat/nexusphp/download.php?id={}&passkey={}",
             api_base, r.id, ident.credential
@@ -268,18 +261,22 @@ pub(crate) async fn rss_feed(
         ));
     }
     // 频道名/描述跟随站点设定，不再硬编码品牌（通用 PT 建站系统，站点身份由站长在「站点设定」配置）。
-    // SITENAME（NexusPHP 口径=全站标题/RSS 频道名）→ site_name → FluxTorrent；site_desc → metadescription → 通用。
+    // SITENAME（NP 口径=全站标题/RSS 频道名）→ site_name → FluxTorrent。
     let channel_title: String = sqlx::query_scalar(
-        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings WHERE name = 'SITENAME'), ''), \
-                         NULLIF((SELECT value FROM site_settings WHERE name = 'site_name'), ''), \
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+                                 WHERE name = 'SITENAME'), ''), \
+                         NULLIF((SELECT value FROM site_settings \
+                                 WHERE name = 'site_name'), ''), \
                          'FluxTorrent')",
     )
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or_else(|_| "FluxTorrent".into());
     let channel_desc: String = sqlx::query_scalar(
-        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings WHERE name = 'site_desc'), ''), \
-                         NULLIF((SELECT value FROM site_settings WHERE name = 'metadescription'), ''), \
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+                                 WHERE name = 'site_desc'), ''), \
+                         NULLIF((SELECT value FROM site_settings \
+                                 WHERE name = 'metadescription'), ''), \
                          '私有种子社区')",
     )
     .fetch_one(&state.repo.db)

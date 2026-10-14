@@ -17,6 +17,7 @@ import { PANEL_CENTER } from "@/lib/ui-classes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 import {
   SettingField,
   type SettingFieldMeta,
@@ -29,7 +30,7 @@ import {
   SettingsGroupNav,
   SettingsSearchResults,
 } from "./_parts/settings-panels";
-import { useSettingsTransfer, type SettingsToast } from "./_parts/settings-io";
+import { useSettingsTransfer } from "./_parts/settings-io";
 import { useSettingsSave } from "./_parts/settings-save";
 import { SettingsToolbar } from "./_parts/settings-toolbar";
 import type { HistoryRow } from "./_parts/settings-types";
@@ -65,7 +66,6 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
   const [edited, setEdited] = useState<Record<string, string>>({});
   const [active, setActive] = useState(initialSchema?.groups[0]?.key ?? "");
   const [q, setQ] = useState("");
-  const [toast, setToast] = useState<SettingsToast | null>(null);
   const [drawer, setDrawer] = useState<{ name: string; rows: HistoryRow[] } | null>(null);
 
   /** 应用一份 schema：服务端预取（首屏）与客户端兜底重试共用同一条落地逻辑 */
@@ -107,7 +107,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
       const data = await api.get<SettingsSchema>("/api/v1/admin/settings/schema");
       applySchema(data);
     } catch (e) {
-      setToast({ ok: false, text: apiErrorMessage(dict, e) || s.loadFailed });
+      toast.error(apiErrorMessage(dict, e) || s.loadFailed);
     }
   }, [applySchema, dict, s.loadFailed]);
 
@@ -137,8 +137,8 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
     invalidMsg: s.invalidField,
     conflictMsg: s.versionConflict,
     savedMsg: s.savedToast,
+    savedDesc: s.cacheHint,
     reload: load,
-    onToast: setToast,
   });
   const { errors, setErrors } = save;
 
@@ -149,11 +149,11 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
       );
       setDrawer({ name, rows: r.rows });
     } catch (e) {
-      setToast({ ok: false, text: apiErrorMessage(dict, e) });
+      toast.error(apiErrorMessage(dict, e));
     }
   }
 
-  const io = useSettingsTransfer({ reload: load, onToast: setToast });
+  const io = useSettingsTransfer({ reload: load });
 
   function setValue(name: string, v: string) {
     setEdited((prev) => ({ ...prev, [name]: v }));
@@ -210,15 +210,12 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
   const [smtpTesting, setSmtpTesting] = useState(false);
   const testSmtp = async () => {
     setSmtpTesting(true);
-    setToast({ ok: false, text: s.smtpTesting });
+    toast.info(s.smtpTesting);
     try {
       await api.post("/api/v1/admin/settings/smtp-test", {});
-      setToast({
-        ok: true,
-        text: s.smtpTestOk,
-      });
+      toast.success(s.smtpTestOk);
     } catch (e) {
-      setToast({ ok: false, text: apiErrorMessage(dict, e) });
+      toast.error(apiErrorMessage(dict, e));
     } finally {
       setSmtpTesting(false);
     }
@@ -232,7 +229,6 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
         dirtyCount={save.dirty.length}
         saving={save.saving}
         editable={editable}
-        toast={toast}
         io={io}
         onSave={save.saveAll}
         onDiscard={() => setEdited({})}

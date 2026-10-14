@@ -9,9 +9,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::adapter_call::{
-    adapter_call, adapter_http_exec, row_to_manifest,
-};
+use crate::adapter_call::{adapter_call, adapter_http_exec, row_to_manifest};
 use crate::adapter_runtime::{AdapterManifest, AdapterRuntime};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -23,7 +21,6 @@ const MAX_WASM_BYTES: usize = 2 * 1024 * 1024;
 fn internal<E: Into<anyhow::Error>>(e: E) -> DomainError {
     DomainError::Internal(e.into())
 }
-
 
 // ============ 管理端点（sysop） ============
 
@@ -296,7 +293,6 @@ async fn adapter_try(
     .await?;
     adapter_call(&state, body.adapter_id.trim(), &body.url).await
 }
-
 
 /// PT-Gen 路径的适配器优先钩子：启用的 metadata 适配器且 URL 命中其
 /// http_allow → 沙箱执行；guest JSON（{success,name,poster,descr}）折成

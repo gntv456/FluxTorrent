@@ -5,6 +5,7 @@ import type { BoardBrief } from "@fluxtorrent/domain-types";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 版块页「版主模式」批量工具栏。
  *
@@ -56,6 +57,8 @@ export function ForumModBar({
   const { dict } = useI18n();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // P2 清偿：批量挪帖确认状态机（danger）
+  const ask = useConfirm();
   const empty = ids.length === 0;
   const allPicked = pageIds.length > 0 && ids.length === pageIds.length;
 
@@ -86,14 +89,17 @@ export function ForumModBar({
     if (empty) return;
     const hit = forums.find((f) => f.id === target);
     const name = hit ? boardLabel(hit) : target;
-    if (
-      !window.confirm(
-        fmt(dict.forums.modMoveConfirm, { n: ids.length, name: String(name) }),
-      )
-    ) {
-      return;
-    }
-    run({ move_to_forum_id: target }, dict.forums.modMovedLabel);
+    // P2 清偿：移动版块确认（批量挪帖影响面大），window.confirm 退役
+    ask.open({
+      title: dict.forums.modMoveLabel,
+      message: fmt(dict.forums.modMoveConfirm, {
+        n: ids.length,
+        name: String(name),
+      }),
+      tone: "danger",
+      busy,
+      run: () => run({ move_to_forum_id: target }, dict.forums.modMovedLabel),
+    });
   }
 
   return (
@@ -205,6 +211,7 @@ export function ForumModBar({
           {msg}
         </p>
       )}
+      <AskDialog {...ask} />
     </div>
   );
 }

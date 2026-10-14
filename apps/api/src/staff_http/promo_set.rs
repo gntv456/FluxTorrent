@@ -16,7 +16,9 @@ async fn commit_set(
     state: &web::Data<std::sync::Arc<AppState>>,
     auth_id: i64,
 ) -> DomainResult<()> {
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state.repo.audit(Some(auth_id), "promo_set", None).await;
     Ok(())
 }
@@ -80,8 +82,15 @@ pub async fn freeleech_set(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         log_direct_intent(
-            &mut tx, "category", None, Some(cid), kind, &starts_at,
-            &ends_at, &now, auth.id,
+            &mut tx,
+            "category",
+            None,
+            Some(cid),
+            kind,
+            &starts_at,
+            &ends_at,
+            &now,
+            auth.id,
         )
         .await;
         commit_set(tx, &state, auth.id).await?;
@@ -135,7 +144,10 @@ pub async fn freeleech_clear(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
-    state.repo.audit(Some(auth.id), "freeleech_clear", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "freeleech_clear", None)
+        .await;
     Ok(ok(serde_json::json!({ "cleared": n })))
 }
 
@@ -237,7 +249,10 @@ pub async fn freeleech_delete(
     if n == 0 {
         return Err(DomainError::Validation("促销不存在或非手动创建".into()));
     }
-    state.repo.audit(Some(auth.id), "promo_delete", Some(pid)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "promo_delete", Some(pid))
+        .await;
     Ok(ok(serde_json::json!({ "deleted": pid })))
 }
 

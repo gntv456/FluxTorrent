@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 export interface LotteryData {
   winners: number;
@@ -42,6 +43,8 @@ export function LotteryWidget({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // P2 清偿：开奖二次确认（danger：开奖即结算不可撤），confirm 退役
+  const ask = useConfirm();
   // 时间格式化放到挂载后（SSR 与容器的 ICU/时区可能不同，直接渲染会 418 水合不匹配）
   const [drawAtText, setDrawAtText] = useState("");
   useEffect(() => {
@@ -62,7 +65,7 @@ export function LotteryWidget({
   }
 
   async function draw() {
-    if (busy || !window.confirm(dict.forums.lotDrawConfirm)) return;
+    if (busy) return;
     setBusy(true);
     try {
       await api.post("/api/v1/forums/lottery/draw", { topic_id: topicId });
@@ -125,7 +128,15 @@ export function LotteryWidget({
       {open && canDraw && (
         <button
           type="button"
-          onClick={draw}
+          onClick={() =>
+            ask.open({
+              title: dict.forums.lotDrawNow,
+              message: dict.forums.lotDrawConfirm,
+              tone: "danger",
+              busy,
+              run: draw,
+            })
+          }
           disabled={busy}
           className="ml-2 mt-2 min-h-[38px] rounded-full border border-coral px-4 text-sm font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
         >
@@ -161,6 +172,7 @@ export function LotteryWidget({
           {err}
         </p>
       )}
+      <AskDialog {...ask} />
     </div>
   );
 }

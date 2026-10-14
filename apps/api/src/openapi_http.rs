@@ -8,10 +8,9 @@ mod detail_open;
 mod me;
 mod me_torrents;
 mod open;
+mod open_api;
 mod spec;
-mod spec_np;
 mod spec_schemas;
-mod spec_util;
 mod tokens;
 mod upload;
 
@@ -181,13 +180,9 @@ pub async fn require_token(
     // 一枚正常轮询的 Token 累计到 rpm 后会被永久 429。限流必须用
     // 窗口写进键名的固定窗口 `rate_window`，顺带用它的返回值填 used。
     let bucket_key = format!("openapi:{bucket}");
-    let n: i64 = crate::http::rate_window(
-        &state,
-        &bucket_key,
-        i64::from(rpm),
-        60,
-    )
-    .await?;
+    let n: i64 =
+        crate::http::rate_window(&state, &bucket_key, i64::from(rpm), 60)
+            .await?;
     // 异步刷新 last_used_at（失败不影响请求）
     // 0267 修：此前只绑了 $1、漏绑 $2，sqlx 报参数不足被 `let _ =` 吞掉
     // → last_used_at 永远不更新（工具面板看不出 Token 何时被用过）。

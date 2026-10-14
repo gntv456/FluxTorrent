@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 消息模板面板（从 admin-p2-tools.tsx 按域拆出，300 门禁）：
  *  场景键模板的增删改 + 变量占位预览（第八轮 P2-11 支持新增）。 */
@@ -33,6 +34,8 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
     body: string;
   } | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：删模板二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   // 第八轮 P2-11：新增模板
   const [creating, setCreating] = useState<{
     scene_key: string;
@@ -177,10 +180,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             >
               {at.create}
             </button>
-            <button
-              className={BTN_SM_BOLD}
-              onClick={() => setCreating(null)}
-            >
+            <button className={BTN_SM_BOLD} onClick={() => setCreating(null)}>
               {at.cancel}
             </button>
           </div>
@@ -212,10 +212,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             <button className="brand-button" disabled={busy} onClick={save}>
               {at.save}
             </button>
-            <button
-              className={BTN_SM_BOLD}
-              onClick={() => setEditing(null)}
-            >
+            <button className={BTN_SM_BOLD} onClick={() => setEditing(null)}>
               {at.cancel}
             </button>
           </div>
@@ -271,21 +268,25 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
                 <button
                   className="cmgmt-act cmgmt-act--danger"
                   disabled={busy}
-                  onClick={async () => {
-                    if (
-                      !window.confirm(
-                        fmt(at.delConfirm, { key: r.scene_key }),
-                      )
-                    )
-                      return;
-                    try {
-                      await api.del(`/api/v1/admin/message-templates/${r.id}`);
-                      flash(at.deleted);
-                      await load();
-                    } catch (e) {
-                      flash(e instanceof ApiError ? e.message : at.delFail);
-                    }
-                  }}
+                  onClick={() =>
+                    ask.open({
+                      title: at.del,
+                      message: fmt(at.delConfirm, { key: r.scene_key }),
+                      tone: "danger",
+                      busy,
+                      run: async () => {
+                        try {
+                          await api.del(
+                            `/api/v1/admin/message-templates/${r.id}`,
+                          );
+                          flash(at.deleted);
+                          await load();
+                        } catch (e) {
+                          flash(e instanceof ApiError ? e.message : at.delFail);
+                        }
+                      },
+                    })
+                  }
                 >
                   {at.del}
                 </button>
@@ -294,6 +295,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
           ))}
         </tbody>
       </table>
+      <AskDialog {...ask} />
     </div>
   );
 }

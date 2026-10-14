@@ -67,13 +67,11 @@ async fn pool_donate(
     }
     let month = economy::pool_month(chrono::Utc::now());
     // 体字段优先、Idempotency-Key 头兜底（缺省回退随机键链保持不变）
-    let idem = crate::http::idempotency::body_or_header(
-        &body.idempotency_key,
-    )
-    .map(|k| format!("donate:{}:{}:{}", auth.id, month, k))
-    .unwrap_or_else(|| {
-        format!("donate:{}:{}:{}", auth.id, month, Uuid::new_v4())
-    });
+    let idem = crate::http::idempotency::body_or_header(&body.idempotency_key)
+        .map(|k| format!("donate:{}:{}:{}", auth.id, month, k))
+        .unwrap_or_else(|| {
+            format!("donate:{}:{}:{}", auth.id, month, Uuid::new_v4())
+        });
     // 审计修复（P1 非原子）：旧版 spend_spark 成功后 magic_pool / pool_donations 两段
     // INSERT 独立执行，失败即「钱扣了、池账与荣誉榜丢失」。改为单事务：扣款经
     // spend_spark_tx 与入池、流水三写同生共死，失败整体回滚（对照 funding_contribute）。

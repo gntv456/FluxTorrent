@@ -5,6 +5,7 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 import type { RoleDef } from "./staff-tools-roles";
 
@@ -36,8 +37,7 @@ const ROLE_INPUT =
   "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
   "bg-cloud px-2 text-sm";
 // 次级描边按钮（新增/编辑表单的取消 / 新增职务虚线按钮共用）
-const BTN_OUTLINE_S =
-  BTN_SM_BOLD;
+const BTN_OUTLINE_S = BTN_SM_BOLD;
 
 export function RoleDictSection({
   roleDefs,
@@ -56,6 +56,8 @@ export function RoleDictSection({
 }) {
   const { dict } = useI18n();
   const t = dict.adminRoles;
+  // P2 清偿：删职务二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   return (
     <div className="mb-4 flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
@@ -84,14 +86,19 @@ export function RoleDictSection({
                   className={ROLE_CARD_BTN_DEL}
                   title={t.delTip}
                   onClick={() =>
-                    guard(async () => {
-                      if (!window.confirm(fmt(t.delConfirm, { name: r.name })))
-                        return;
-                      await api.del(`/api/v1/admin/roles/${r.key}`);
-                      setRoleDefs(
-                        await api.get<RoleDef[]>("/api/v1/admin/roles"),
-                      );
-                    }, t.deleted)
+                    ask.open({
+                      title: t.delBtn,
+                      message: fmt(t.delConfirm, { name: r.name }),
+                      tone: "danger",
+                      busy,
+                      run: () =>
+                        guard(async () => {
+                          await api.del(`/api/v1/admin/roles/${r.key}`);
+                          setRoleDefs(
+                            await api.get<RoleDef[]>("/api/v1/admin/roles"),
+                          );
+                        }, t.deleted),
+                    })
                   }
                 >
                   {t.delBtn}
@@ -196,6 +203,7 @@ export function RoleDictSection({
           {t.newBtn}
         </button>
       )}
+      <AskDialog {...ask} />
     </div>
   );
 }

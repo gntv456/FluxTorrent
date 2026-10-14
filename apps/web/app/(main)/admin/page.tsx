@@ -4,13 +4,21 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import { StaffTools, type ToolTab } from "@/components/staff-tools";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+// C 批：StaffTools 改从 admin-tool-switch 的 lazy 壳取（同文件 renderTool
+// 的 STAFF_TOOL_TABS 分支与这里共用一份分割件），避免 35+ 工具面板全量
+// 进 admin 路由入口（W-33 同法）。
 import { AdminShell, type PanelEntry } from "@/components/admin-shell";
+import type { ToolTab } from "@/components/staff-tools";
 import { useReviewQueue } from "./_parts/use-review-queue";
 import { AdminOverviewPanel } from "./_parts/admin-overview-panel";
 import { AppealsPanel, ReviewsPanel } from "./_parts/admin-queue-panels";
 import { AuditListPanel, CheatersPanel } from "./_parts/admin-tool-panels";
-import { renderSimpleTool, STAFF_TOOL_TABS } from "./_parts/admin-tool-switch";
+import {
+  renderSimpleTool,
+  STAFF_TOOL_TABS,
+  StaffToolsLazy as StaffTools,
+} from "./_parts/admin-tool-switch";
 import {
   LEGACY_TOOL,
   type AppealRow,
@@ -52,6 +60,9 @@ export default function AdminPage() {
   const [ov, setOv] = useState<Overview | null>(null);
   // 0288：审核队列（分页 + 拒因字典）状态在 ./_parts/use-review-queue.ts
   const rq = useReviewQueue();
+  // P2 清偿：审核/申诉的 prompt+confirm 全部收编到这一个状态机——
+  // prompt 语义走输入槽（label），confirm 语义直接挂 run；danger 按场景给。
+  const ask = useConfirm();
   const [appeals, setAppeals] = useState<AppealRow[]>([]);
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -162,8 +173,22 @@ export default function AdminPage() {
   async function decide(torrentId: number, approve: boolean) {
     // 0286：选了字典拒因就不再手打自由文本——结构化拒因才能统计、才能三语下发
     const useDict = !approve && rq.reasonId !== null;
-    const reason = approve || useDict ? "" : (prompt(a.rejectReason) ?? "");
-    if (!approve && !useDict && !reason) return;
+    // P2 清偿：拒因采集（prompt → ConfirmDialog 输入槽；通过/字典拒因免输入）
+    if (approve || useDict) {
+      await doDecide(torrentId, approve, "");
+      return;
+    }
+    ask.open({
+      title: a.reject,
+      label: a.rejectReason,
+      run: (reason) => {
+        if (reason.trim()) void doDecide(torrentId, approve, reason.trim());
+      },
+    });
+  }
+
+  async function doDecide(torrentId: number, approve: boolean, reason: string) {
+    const useDict = !approve && rq.reasonId !== null;
     try {
       await api.post("/api/v1/admin/reviews/decide", {
         torrent_id: torrentId,
@@ -183,9 +208,17 @@ export default function AdminPage() {
     }
   }
 
-  /** 0306：暂缓（证据不足挂起）——后端 /admin/reviews/postpone 早已就绪，此前无 UI 入口 */
-  async function postpone(torrentId: number) {
-    const reason = prompt(a.postponeReason ?? "postpone-reason") ?? "";
+  /** 0306：暂缓（证据不足挂起）——后端 /admin/reviews/postpone 早已就绪，此前无 UI 入口。
+   *  P2 清偿：暂缓理由采集走 ConfirmDialog 输入槽（prompt 退役）。 */
+  function postpone(torrentId: number) {
+    ask.open({
+      title: a.postpone ?? a.reject,
+      label: a.postponeReason ?? "postpone-reason",
+      run: (reason) => void doPostpone(torrentId, reason),
+    });
+  }
+
+  async function doPostpone(torrentId: number, reason: string) {
     try {
       await api.post("/api/v1/admin/reviews/postpone", {
         torrent_id: torrentId,
@@ -199,15 +232,38 @@ export default function AdminPage() {
     }
   }
 
-  /** 0306：批量裁决本页待审（自审条目后端逐条跳过并在回执里说明原因） */
-  async function batchDecide(ids: number[], approve: boolean) {
+  /** 0306：批量裁决本页待审（自审条目后端逐条跳过并在回执里说明原因）。
+   *  P2 清偿：拒因 prompt + 批量 confirm 收编为一个状态机。 */
+  function batchDecide(ids: number[], approve: boolean) {
     const useDict = !approve && rq.reasonId !== null;
-    const reason = approve || useDict ? "" : (prompt(a.rejectReason) ?? "");
-    if (!approve && !useDict && !reason) return;
-    const okay = window.confirm(
-      fmt(a.batchConfirm, { n: ids.length, verdict: approve ? a.approve : a.reject }),
-    );
-    if (!okay) return;
+    if (approve || useDict) {
+      ask.open({
+        title: approve ? a.approve : a.reject,
+        message: fmt(a.batchConfirm, {
+          n: ids.length,
+          verdict: approve ? a.approve : a.reject,
+        }),
+        tone: "danger",
+        run: () => void doBatch(ids, approve, ""),
+      });
+      return;
+    }
+    ask.open({
+      title: a.reject,
+      message: fmt(a.batchConfirm, {
+        n: ids.length,
+        verdict: approve ? a.approve : a.reject,
+      }),
+      tone: "danger",
+      label: a.rejectReason,
+      run: (reason) => {
+        if (reason.trim()) void doBatch(ids, approve, reason.trim());
+      },
+    });
+  }
+
+  async function doBatch(ids: number[], approve: boolean, reason: string) {
+    const useDict = !approve && rq.reasonId !== null;
     try {
       const r = await api.post<{
         handled: number;
@@ -232,17 +288,39 @@ export default function AdminPage() {
     }
   }
 
-  async function handleAppeal(id: number, accept: boolean) {
-    const note =
-      prompt(
-        accept
-          ? (a.appealAcceptNote ?? "accept-note")
-          : (a.appealRejectNote ?? "reject-reason"),
-      ) ?? "";
-    if (!accept && !note.trim()) return;
-    // 0209 P1-8：受理封禁申诉时联动解封（后端缺省 true，这里显式传并消费回执）
-    const unban =
-      accept && window.confirm(a.appealUnbanConfirm ?? "unban-confirm");
+  /** 申诉处理（P2 清偿）：批注 prompt → 输入槽；受理后的联动解封
+   *  confirm（danger：解封即恢复账号）也走同一状态机，串成两步。 */
+  function handleAppeal(id: number, accept: boolean) {
+    const label = accept
+      ? (a.appealAcceptNote ?? "accept-note")
+      : (a.appealRejectNote ?? "reject-reason");
+    ask.open({
+      title: accept ? a.appealAccept : a.appealReject,
+      label,
+      run: (note) => {
+        if (!accept && !note.trim()) return;
+        if (!accept) {
+          void doAppeal(id, false, note.trim(), false);
+          return;
+        }
+        // 受理：先问是否联动解封（danger）
+        ask.open({
+          title: a.appealUnbanConfirm ?? "unban-confirm",
+          message: a.appealUnbanConfirm ?? "unban-confirm",
+          tone: "danger",
+          run: () => void doAppeal(id, true, note.trim(), true),
+        });
+        void doAppeal(id, true, note.trim(), false);
+      },
+    });
+  }
+
+  async function doAppeal(
+    id: number,
+    accept: boolean,
+    note: string,
+    unban: boolean,
+  ) {
     try {
       const r = await api.post<{ handled: number; unbanned: boolean }>(
         "/api/v1/admin/appeals/handle",
@@ -333,6 +411,7 @@ export default function AdminPage() {
       <h1 className="sr-only">{a.panelTitle}</h1>
       {msg && <p className={MSG_CLS}>{msg}</p>}
       {renderTool()}
+      <AskDialog {...ask} />
     </AdminShell>
   );
 }

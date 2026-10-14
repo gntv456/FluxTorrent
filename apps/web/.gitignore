@@ -1,3 +1,10 @@
 coverage/
 test-results/
 playwright-report/
+
+# Lighthouse CI 采集产物（报告/manifest/flags，跑完即弃，不入库）
+.lighthouseci/
+
+# Playwright 视觉回归运行产物（失败 diff 截图；基线截图
+# e2e/__screenshots__ 有意入库，不在此列——见 visual-regression.spec.ts 头注）
+e2e/__screenshots__/**/failed/

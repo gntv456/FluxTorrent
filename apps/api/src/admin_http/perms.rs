@@ -211,7 +211,9 @@ async fn permission_matrix_update(
         .rows_affected();
         changed += n;
     }
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 三轮遗留：矩阵审计带明细——只记「改过」不记改了哪些项，回溯
     // 「谁给 90 档加了 user.adjust」要靠 binlog。items 快照进 extra。
     state

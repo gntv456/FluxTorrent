@@ -15,11 +15,15 @@ pub async fn msg_templates_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-255：站内信模板正文（会原样发给成员的文案）只判 staff()，同域 PUT 要
     // settings.manage(99) ⇒ 同键。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let rows: Vec<MessageTemplateRow> = sqlx::query_as(
         "SELECT id, scene_key, subject, body, note, \
          updated_at FROM message_templates ORDER BY id",
@@ -94,10 +98,14 @@ pub async fn msg_templates_preview(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<TemplatePreviewReq>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-255：预览口会渲染模板正文，档位必须与列表/编辑一致。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let row: Option<MessageTemplateRow> = sqlx::query_as(
         "SELECT id, scene_key, subject, body, note, \
          updated_at FROM message_templates WHERE scene_key = $1",

@@ -1,6 +1,9 @@
 //! 领域层：用户与认证（M01）。
 //! 业务规则唯一事实源（§8.1）：邀请码校验、密码策略、passkey 生成。
 
+// 种子审核状态机（FRAME §7 第 6 条）：approval_status 迁移矩阵唯一事实源
+pub mod torrent_status;
+
 use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
 use argon2::Argon2;
 use chrono::{Duration, Utc};

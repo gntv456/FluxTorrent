@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 保种协作（/teams，0102 社交层）。
  *
@@ -56,6 +57,8 @@ export function TeamPanel() {
   const [mine, setMine] = useState<MineResp | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // P2 清偿：退队二次确认（danger：贡献期增量不返还）
+  const ask = useConfirm();
 
   const load = useCallback(async () => {
     try {
@@ -91,7 +94,6 @@ export function TeamPanel() {
 
   async function leave(teamId: number) {
     if (busy !== null) return;
-    if (!window.confirm(t.leaveConfirm)) return;
     setBusy(teamId);
     setMsg(null);
     try {
@@ -268,7 +270,14 @@ export function TeamPanel() {
                 <button
                   type="button"
                   disabled={busy !== null}
-                  onClick={() => leave(team.team_id)}
+                  onClick={() =>
+                    ask.open({
+                      title: t.leaveBtn,
+                      message: t.leaveConfirm,
+                      tone: "danger",
+                      run: () => leave(team.team_id),
+                    })
+                  }
                   className="mt-2 min-h-[30px] rounded-full border border-line px-3 text-xs text-sub disabled:opacity-50"
                 >
                   {t.leaveBtn}
@@ -283,6 +292,7 @@ export function TeamPanel() {
           </p>
         )}
       </section>
+      <AskDialog {...ask} />
     </div>
   );
 }

@@ -31,8 +31,7 @@ pub async fn captcha_issue(
     // `unwrap_or(0)` 让 Redis 抖动时批量取题不设限；`if n == 1 { expire }`
     // 一失败就留下无 TTL 的计数键，而运营商 CGNAT 后成千用户共用一个出口 IP
     // ⇒ 那个 IP 从此拿不到验证码，连带注册/登录全部走不下去。
-    crate::http::rate_window(&state, &format!("captcha:{ip}"), 30, 60)
-        .await?;
+    crate::http::rate_window(&state, &format!("captcha:{ip}"), 30, 60).await?;
     use rand::Rng;
     let a: i32 = rand::thread_rng().gen_range(1..=20);
     let b: i32 = rand::thread_rng().gen_range(1..=20);

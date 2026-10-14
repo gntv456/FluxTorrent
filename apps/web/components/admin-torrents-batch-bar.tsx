@@ -11,6 +11,7 @@ import { promoLabels } from "./admin-torrents-shared";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { catPath } from "@/lib/site-profile";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 interface BatchBarProps {
   busy: boolean;
@@ -70,6 +71,8 @@ export function BatchBar(props: BatchBarProps) {
   } = props;
   const { dict } = useI18n();
   const at = dict.adminTorrents;
+  // P2 清偿：批量删除确认状态机（danger）
+  const ask = useConfirm();
   const PROMO_LABEL = promoLabels(at.promo);
   return (
     <section className="brand-panel flex flex-wrap items-end gap-3 p-3">
@@ -235,13 +238,20 @@ export function BatchBar(props: BatchBarProps) {
       <button
         disabled={busy}
         onClick={() => {
-          if (window.confirm(fmt(at.delConfirm, { n: selCount })))
-            batch("delete");
+          // P2 清偿：批量删除二次确认（danger），window.confirm 退役
+          ask.open({
+            title: at.delSelected,
+            message: fmt(at.delConfirm, { n: selCount }),
+            tone: "danger",
+            busy,
+            run: () => batch("delete"),
+          });
         }}
         className={CORAL_BTN}
       >
         {at.delSelected}
       </button>
+      <AskDialog {...ask} />
     </section>
   );
 }

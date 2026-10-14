@@ -225,7 +225,9 @@ async fn friend_action(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             if !they_pending {
-                return Err(DomainError::Validation("没有待处理的好友申请".into()));
+                return Err(DomainError::Validation(
+                    "没有待处理的好友申请".into(),
+                ));
             }
             sqlx::query(
                 "UPDATE friendships SET list = 'friend' WHERE \

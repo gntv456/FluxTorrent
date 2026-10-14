@@ -93,8 +93,13 @@ async fn roles_dict_add(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit_detail(Some(auth.id), "roles.add", None, None,
-            Some(serde_json::json!({"key": key})))
+        .audit_detail(
+            Some(auth.id),
+            "roles.add",
+            None,
+            None,
+            Some(serde_json::json!({"key": key})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "key": key })))
 }
@@ -132,8 +137,13 @@ async fn roles_dict_update(
     crate::http::bump_guard_ver(&state).await;
     state
         .repo
-        .audit_detail(Some(auth.id), "roles.update", None, None,
-            Some(serde_json::json!({"key": key})))
+        .audit_detail(
+            Some(auth.id),
+            "roles.update",
+            None,
+            None,
+            Some(serde_json::json!({"key": key})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
@@ -161,13 +171,12 @@ async fn roles_dict_delete(
         )));
     }
     // 先读后删：行没了以后 extra 里的 name 是它存在过的唯一出处
-    let gone: Option<String> = sqlx::query_scalar(
-        "SELECT name FROM roles WHERE key = $1",
-    )
-    .bind(&key)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let gone: Option<String> =
+        sqlx::query_scalar("SELECT name FROM roles WHERE key = $1")
+            .bind(&key)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query("DELETE FROM roles WHERE key = $1")
         .bind(&key)
         .execute(&state.repo.db)
@@ -180,8 +189,13 @@ async fn roles_dict_delete(
     crate::http::bump_guard_ver(&state).await;
     state
         .repo
-        .audit_detail(Some(auth.id), "roles.del", None, None,
-            Some(serde_json::json!({"key": key, "name": gone})))
+        .audit_detail(
+            Some(auth.id),
+            "roles.del",
+            None,
+            None,
+            Some(serde_json::json!({"key": key, "name": gone})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "deleted": key })))
 }

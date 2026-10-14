@@ -33,7 +33,6 @@ struct EmbedRuleRow {
     sort: i32,
 }
 
-
 #[get("/admin/embed-rules")]
 pub async fn embed_rules_list(
     req: HttpRequest,

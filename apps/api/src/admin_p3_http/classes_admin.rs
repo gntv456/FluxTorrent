@@ -159,15 +159,13 @@ pub async fn admin_class_put(
     if n == 0 {
         return Err(DomainError::Validation("档位不存在".into()));
     }
-    let n2 = sqlx::query(
-        "UPDATE user_classes SET name = $2 WHERE id = $1",
-    )
-    .bind(id)
-    .bind(body.name.trim())
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
+    let n2 = sqlx::query("UPDATE user_classes SET name = $2 WHERE id = $1")
+        .bind(id)
+        .bind(body.name.trim())
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
     if n2 == 0 {
         return Err(DomainError::Validation(
             "档位档案行缺失（user_classes），已回滚".into(),
@@ -178,8 +176,13 @@ pub async fn admin_class_put(
         .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit_detail(Some(auth.id), "admin_class_put", Some(id as i64),
-            None, Some(serde_json::json!({"name": body.name.trim()})))
+        .audit_detail(
+            Some(auth.id),
+            "admin_class_put",
+            Some(id as i64),
+            None,
+            Some(serde_json::json!({"name": body.name.trim()})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "updated": id })))
 }

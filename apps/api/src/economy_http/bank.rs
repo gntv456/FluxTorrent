@@ -59,11 +59,9 @@ async fn bank_deposit(
         )));
     }
     // 体字段优先、Idempotency-Key 头兜底（缺省回退随机键链保持不变）
-    let idem = crate::http::idempotency::body_or_header(
-        &body.idempotency_key,
-    )
-    .map(|k| format!("deposit:{}:{}", auth.id, k))
-    .unwrap_or_else(|| format!("deposit:{}:{}", auth.id, Uuid::new_v4()));
+    let idem = crate::http::idempotency::body_or_header(&body.idempotency_key)
+        .map(|k| format!("deposit:{}:{}", auth.id, k))
+        .unwrap_or_else(|| format!("deposit:{}:{}", auth.id, Uuid::new_v4()));
     let interest = maturity_interest_with_rules(
         &state.repo.db,
         body.amount,

@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import type {
   AdapterRow,
   CatalogItem,
@@ -53,7 +54,9 @@ function RuleTrySection({
   const { dict } = useI18n();
   const s = dict.settingsAdmin;
   const [key, setKey] = useState("rule_bank_term_rate");
-  const [expr, setExpr] = useState("min(0.18, max(0.005, term_days / 30 * 0.02))");
+  const [expr, setExpr] = useState(
+    "min(0.18, max(0.005, term_days / 30 * 0.02))",
+  );
   const [days, setDays] = useState(90);
   return (
     <div className="mb-4 rounded-[var(--r-md)] border border-line p-3">
@@ -95,8 +98,8 @@ function RuleTrySection({
         </button>
         {ruleTryResult && (
           <span className="font-mono text-[11px] text-sub">
-            = {ruleTryResult.value ?? "—"}{" "}
-            ({s.ruleDomain} [{ruleTryResult.domain[0]}, {ruleTryResult.domain[1]}])
+            = {ruleTryResult.value ?? "—"} ({s.ruleDomain} [
+            {ruleTryResult.domain[0]}, {ruleTryResult.domain[1]}])
           </span>
         )}
       </div>
@@ -124,7 +127,11 @@ function AdapterSection({
 }) {
   const { dict } = useI18n();
   const s = dict.settingsAdmin;
-  const [tryUrl, setTryUrl] = useState("https://movie.douban.com/subject/1292052/");
+  const [tryUrl, setTryUrl] = useState(
+    "https://movie.douban.com/subject/1292052/",
+  );
+  // P2 清偿：删适配器二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   return (
     <div className="mb-4">
       <h3 className="mb-2 text-xs font-bold text-ink">{s.adapterTitle}</h3>
@@ -145,7 +152,10 @@ function AdapterSection({
           />
           <ul className="flex flex-col divide-y divide-line">
             {adapters.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-2 py-2 text-xs">
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center gap-2 py-2 text-xs"
+              >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold text-ink">
                     {a.name}{" "}
@@ -188,12 +198,16 @@ function AdapterSection({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const msg = fmt(s.adapterDeleteConfirm, {
-                      id: a.adapter_id,
-                    });
-                    if (window.confirm(msg)) onDeleteAdapter(a.adapter_id);
-                  }}
+                  onClick={() =>
+                    ask.open({
+                      title: s.adapterDelete,
+                      message: fmt(s.adapterDeleteConfirm, {
+                        id: a.adapter_id,
+                      }),
+                      tone: "danger",
+                      run: () => onDeleteAdapter(a.adapter_id),
+                    })
+                  }
                   className={ADAPTER_DEL_CLS}
                 >
                   {s.adapterDelete}
@@ -202,6 +216,7 @@ function AdapterSection({
             ))}
           </ul>
           <p className="mt-1.5 text-[10px] text-sub">{s.adapterHint}</p>
+          <AskDialog {...ask} />
         </>
       )}
     </div>
@@ -369,7 +384,9 @@ export function ContentPackDialog({
                   )}
                   <span className="flex-1" />
                   <span className="shrink-0 rounded-full bg-sky-soft px-2 py-0.5 text-[10px] font-bold text-sub">
-                    {it.source === "builtin" ? s.packSourceBuiltin : s.packSourceRemote}
+                    {it.source === "builtin"
+                      ? s.packSourceBuiltin
+                      : s.packSourceRemote}
                   </span>
                 </div>
                 <p className="mt-1 line-clamp-2 text-[11px] text-sub">
@@ -440,9 +457,7 @@ export function ContentPackDialog({
                   </p>
                   <p className="text-sub">
                     {r.kind} ·{" "}
-                    {new Date(r.applied_at).toLocaleString(
-                      dateLocale(locale),
-                    )}
+                    {new Date(r.applied_at).toLocaleString(dateLocale(locale))}
                   </p>
                 </div>
                 <button

@@ -245,8 +245,15 @@ pub(super) async fn settings_groups_put(
         .map_err(|e| DomainError::Internal(e.into()))?;
         let meta = &by_name[name];
         let (audit_old, audit_new) = if meta.secret {
-            (if cur_value.is_empty() { "(空)" } else { "已设置" }.to_string(),
-                "已更新".to_string())
+            (
+                if cur_value.is_empty() {
+                    "(空)"
+                } else {
+                    "已设置"
+                }
+                .to_string(),
+                "已更新".to_string(),
+            )
         } else {
             (truncate(&cur_value), truncate(new))
         };

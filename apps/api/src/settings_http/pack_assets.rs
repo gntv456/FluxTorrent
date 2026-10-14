@@ -63,10 +63,8 @@ pub(super) fn check_input(
             .iter()
             .map(|r| {
                 let mut o = r.as_object().cloned().unwrap_or_default();
-                let css = o
-                    .get("css")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
+                let css =
+                    o.get("css").and_then(Value::as_str).unwrap_or_default();
                 o.insert(
                     "css".into(),
                     Value::String(crate::admin_p3_http::sanitize_frame_css(
@@ -77,11 +75,9 @@ pub(super) fn check_input(
                     .get("image_url")
                     .and_then(Value::as_str)
                     .map(str::to_string);
-                let kept = img
-                    .as_deref()
-                    .and_then(|v| {
-                        crate::admin_p3_http::normalize_frame_image(Some(v))
-                    });
+                let kept = img.as_deref().and_then(|v| {
+                    crate::admin_p3_http::normalize_frame_image(Some(v))
+                });
                 o.insert(
                     "image_url".into(),
                     kept.map(Value::String).unwrap_or(Value::Null),
@@ -234,7 +230,11 @@ pub(super) async fn apply_assets(
         )
         .bind(r.get("category_id").and_then(Value::as_i64).unwrap_or(0) as i32)
         .bind(r.get("limited").and_then(Value::as_bool).unwrap_or(false))
-        .bind(r.get("gift_fee_bp").and_then(Value::as_i64).map(|v| v as i32))
+        .bind(
+            r.get("gift_fee_bp")
+                .and_then(Value::as_i64)
+                .map(|v| v as i32),
+        )
         .bind(dt("created_at"))
         .execute(&mut **tx)
         .await

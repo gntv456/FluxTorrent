@@ -1,11 +1,9 @@
 //! RSS token 管理（0352）：可命名/可轮换/可撤销的订阅凭证。
-//!
-//! 动机：passkey 烤进每个 .torrent 的 announce 与既有订阅 URL，rotate 等于
-//! 全量换种；命名 token 泄露只需单独撤销，与主 passkey 解耦。
-//! 口径：明文 `fxr_` + 32 位随机（同 new_passkey 的 OsRng 源），落库仅
-//! sha3-256 哈希（先例：0069 download_keys），明文只在创建/轮换响应出现一次。
-//! 兼容：`/rss/{passkey}` 旧 URL 永远有效——消费点先查本表再回落 passkey。
-//! 上限 5 个有效 token 用应用层校验（产品策略不锁进 schema）。
+//! 动机：passkey 烤进每个 .torrent 的 announce 与订阅 URL，rotate 等于全量
+//! 换种；命名 token 泄露只需单独撤销，与主 passkey 解耦。
+//! 口径：明文 `fxr_` + 32 位随机（OsRng），落库仅 sha3-256 哈希，明文只在
+//! 创建/轮换响应出现一次。`/rss/{passkey}` 旧 URL 永远兼容（先查本表再
+//! 回落）。上限 5 个有效 token 走应用层校验（产品策略不锁进 schema）。
 
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};
@@ -28,8 +26,7 @@ fn sha3_hex(bytes: &[u8]) -> String {
     h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// 生成 `fxr_` + 32 位小写字母数字（随机源与 domain::new_passkey 同口径：
-/// 对外凭据用 crypto RNG，不用 thread_rng）。
+/// 生成 `fxr_` + 32 位小写字母数字（对外凭据用 crypto RNG）。
 fn new_token_plain() -> String {
     const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
     let mut rng = rand::rngs::OsRng;
@@ -39,19 +36,16 @@ fn new_token_plain() -> String {
     format!("fxr_{body}")
 }
 
-/// URL 路径形状：fxr_ + 32 位小写字母数字（消费点早拒非法形状省一次查询）。
-/// 独立于 valid_passkey（passkey 是 32 位无前缀，两者形状不同）。
+/// URL 路径形状：fxr_ + 32 位小写字母数字（passkey 是无前缀 32 位）。
 pub(crate) fn valid_token_shape(t: &str) -> bool {
-    let Some(body) = t.strip_prefix("fxr_") else {
-        return false;
-    };
+    let body = t.strip_prefix("fxr_").unwrap_or_default();
     body.len() == 32
         && body
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
 }
 
-/// 写操作限流（创建/轮换共用一桶，每用户 10 次/分钟）：防脚本刷表。
+/// 写限流（创建/轮换共用一桶，每用户 10 次/分钟）。
 async fn limit_write(
     state: &web::Data<std::sync::Arc<AppState>>,
     uid: i64,
@@ -65,7 +59,6 @@ async fn limit_write(
 struct CreateReq {
     name: String,
 }
-
 #[derive(sqlx::FromRow)]
 struct TokenRow {
     id: i64,
@@ -74,8 +67,7 @@ struct TokenRow {
     last_used_at: Option<DateTime<Utc>>,
 }
 
-/// 创建（校验 + 计数上限 + 落库），返回 (行, 明文)。单事务保证
-/// 「COUNT 后 INSERT」之间不会挤进并发请求突破 5 个上限。
+/// 创建（计数上限 + 落库）返回 (行, 明文)：INSERT 自带 COUNT 谓词防并发超限。
 async fn insert_token(
     state: &web::Data<std::sync::Arc<AppState>>,
     uid: i64,
@@ -98,15 +90,24 @@ async fn insert_token(
     .map_err(|e| DomainError::Internal(e.into()))?
     .ok_or_else(|| {
         DomainError::Validation(format!(
-            "有效 RSS token 已达上限 {RSS_TOKEN_MAX} 个，请先撤销不用的"
+            "有效 RSS token 已达上限 {RSS_TOKEN_MAX} 个，请先撤销"
         ))
     })?;
     Ok((row, plain))
 }
 
-/// GET /rss/tokens：列当前用户有效 token（不回明文——库里也没有）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/rss/tokens",
+    tag = "RSS Token",
+    description = "列出我的有效 RSS token 元数据（不回明文，库里只有哈希）。",
+    responses(
+        (status = 200, description = "RssTokenList：tokens[] + limit"),
+        (status = 401, description = "会话未登录（code 2001）"),
+    )
+)]
 #[get("/rss/tokens")]
-async fn list_tokens(
+pub(crate) async fn rss_token_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
@@ -123,23 +124,43 @@ async fn list_tokens(
     let items: Vec<serde_json::Value> = rows
         .iter()
         .map(|r| {
-            serde_json::json!({
-                "id": r.id,
-                "name": r.name,
+            serde_json::json!({ "id": r.id, "name": r.name,
                 "created_at": r.created_at,
-                "last_used_at": r.last_used_at,
-            })
+                "last_used_at": r.last_used_at })
         })
         .collect();
-    Ok(ok(serde_json::json!({
-        "tokens": items,
-        "limit": RSS_TOKEN_MAX,
-    })))
+    Ok(ok(serde_json::json!(
+        { "tokens": items, "limit": RSS_TOKEN_MAX }
+    )))
+}
+
+/// utoipa request_body 引用的 schema（生成器按名取 components）。
+/// 与 CreateReq 双名并存：避免 serde 结构体同时当文档 schema 的可见性扩散。
+#[derive(utoipa::ToSchema)]
+#[schema(as = RssTokenCreateReq)]
+pub(crate) struct RssTokenCreateReq {
+    /// Token 名称（1-40 字符，文档字段）
+    #[allow(dead_code)]
+    pub(crate) name: String,
 }
 
 /// POST /rss/tokens：创建命名 token；明文仅本次响应可见（no_store）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/rss/tokens",
+    tag = "RSS Token",
+    description = "创建命名 token（明文仅本次响应可见）；每人有效上限 5 个，\
+10 次/分钟限流。",
+    request_body = crate::rss_http::tokens::RssTokenCreateReq,
+    responses(
+        (status = 200, description = "RssTokenCreated：元数据 + 一次性明文 token"),
+        (status = 400, description = "名称长度 1-40 / 超上限（code 1002）"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 429, description = "写限流 10 次/分钟（code 1015）"),
+    )
+)]
 #[post("/rss/tokens")]
-async fn create_token(
+pub(crate) async fn rss_token_create(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<CreateReq>,
@@ -154,20 +175,30 @@ async fn create_token(
     limit_write(&state, auth.id).await?;
     let (row, plain) = insert_token(&state, auth.id, name).await?;
     // 响应里含一次性明文：禁止中间层缓存
-    Ok(no_store(ok(serde_json::json!({
-        "id": row.id,
-        "name": row.name,
-        "created_at": row.created_at,
-        "token": plain,
-        "hint": "明文仅显示一次，请立即复制保存",
-    }))))
+    Ok(no_store(ok(
+        serde_json::json!({ "id": row.id, "token": plain,
+        "name": row.name, "created_at": row.created_at,
+        "hint": "明文仅显示一次，请立即复制保存" }),
+    )))
 }
 
-/// POST /rss/tokens/{id}/rotate：吊销旧 token + 新建同名 token。
-/// 拆两步而非 UPDATE token_hash：哈希唯一约束下原地换哈希与插入无差别，
-/// 且「旧吊销 + 新建」的审计轨迹更清晰（revoked_at 保留历史行）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/rss/tokens/{id}/rotate",
+    tag = "RSS Token",
+    description = "轮换：吊销旧 token + 新建同名 token（明文仅本次响应可见）。",
+    params(
+        ("id" = i64, Path, description = "token id"),
+    ),
+    responses(
+        (status = 200, description = "RssTokenCreated：新元数据 + 一次性明文 token"),
+        (status = 404, description = "token 不存在/非本人/已吊销（code 1004）"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 429, description = "写限流 10 次/分钟（code 1015）"),
+    )
+)]
 #[post("/rss/tokens/{id}/rotate")]
-async fn rotate_token(
+pub(crate) async fn rss_token_rotate(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -185,24 +216,34 @@ async fn rotate_token(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 非 404 语义的越权口径：id 存在但不属于本人/已吊销 → NotFound，
-    // 不泄露他人 token id 的存在性
+    // 越权口径：id 存在但不属于本人/已吊销 → NotFound（不泄露存在性）
     let Some(name) = name else {
         return Err(DomainError::NotFound(id));
     };
     let (row, plain) = insert_token(&state, auth.id, &name).await?;
-    Ok(no_store(ok(serde_json::json!({
-        "id": row.id,
-        "name": row.name,
-        "created_at": row.created_at,
-        "token": plain,
-        "hint": "旧 token 已失效；新明文仅显示一次，请立即复制保存",
-    }))))
+    Ok(no_store(ok(
+        serde_json::json!({ "id": row.id, "token": plain,
+        "name": row.name, "created_at": row.created_at,
+        "hint": "旧 token 已失效；新明文仅显示一次，请立即保存" }),
+    )))
 }
 
-/// DELETE /rss/tokens/{id}：软删（revoked_at=now()），历史行留审计。
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rss/tokens/{id}",
+    tag = "RSS Token",
+    description = "软删 token（revoked_at=now()，历史行留审计）。",
+    params(
+        ("id" = i64, Path, description = "token id"),
+    ),
+    responses(
+        (status = 200, description = "revoked: 1"),
+        (status = 404, description = "token 不存在/非本人/已吊销（code 1004）"),
+        (status = 401, description = "会话未登录（code 2001）"),
+    )
+)]
 #[delete("/rss/tokens/{id}")]
-async fn revoke_token(
+pub(crate) async fn rss_token_revoke(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -228,10 +269,10 @@ async fn revoke_token(
 /// 挂载 token 管理端点（mount_rss 调用；消费点改造见 rss_feed/forum）。
 pub fn mount_tokens(scope: actix_web::Scope) -> actix_web::Scope {
     scope
-        .service(list_tokens)
-        .service(create_token)
-        .service(rotate_token)
-        .service(revoke_token)
+        .service(rss_token_list)
+        .service(rss_token_create)
+        .service(rss_token_rotate)
+        .service(rss_token_revoke)
 }
 
 #[cfg(test)]
@@ -250,8 +291,7 @@ mod tests {
         assert!(!valid_token_shape(""));
     }
 
-    /// 消费点鉴权 SQL 与吊销/过期谓词的形状锁定（同 download_keys 口径）：
-    /// revoked_at IS NULL 必须存在，否则撤销不生效。
+    /// 鉴权 SQL 谓词形状锁定（同 download_keys 口径）：撤销必须生效。
     #[test]
     fn auth_predicate_excludes_revoked() {
         let sql = super::super::authz::AUTH_BY_TOKEN_SQL;

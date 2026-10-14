@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { EmbedRuleEditor } from "@/components/admin-embed-rule-editor";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 export interface EmbedRuleAdmin {
   id: number;
@@ -35,6 +36,8 @@ export function AdminEmbedRules() {
   const [rows, setRows] = useState<EmbedRuleAdmin[] | null>(null);
   const [editing, setEditing] = useState<Partial<EmbedRuleAdmin> | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // P2 清偿：删除二次确认走 ConfirmDialog（danger），window.confirm 退役
+  const ask = useConfirm();
 
   const load = useCallback(async () => {
     try {
@@ -70,7 +73,6 @@ export function AdminEmbedRules() {
   }
 
   async function del(r: EmbedRuleAdmin) {
-    if (!window.confirm(t.delConfirm.replace("{name}", r.name_zh))) return;
     try {
       await api.post(`/api/v1/admin/embed-rules/${r.id}/delete`);
       load();
@@ -165,7 +167,14 @@ export function AdminEmbedRules() {
                     {!r.builtin && (
                       <button
                         type="button"
-                        onClick={() => del(r)}
+                        onClick={() =>
+                          ask.open({
+                            title: t.del,
+                            message: t.delConfirm.replace("{name}", r.name_zh),
+                            tone: "danger",
+                            run: () => del(r),
+                          })
+                        }
                         className={BTN}
                       >
                         {t.del}
@@ -185,6 +194,7 @@ export function AdminEmbedRules() {
           </tbody>
         </table>
       </div>
+      <AskDialog {...ask} />
     </section>
   );
 }

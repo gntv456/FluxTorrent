@@ -79,17 +79,15 @@ async fn medal_buy(
         }
     }
     // 体字段优先、Idempotency-Key 头兜底（缺省回退随机键链保持不变）
-    let idem = crate::http::idempotency::body_or_header(
-        &body.idempotency_key,
-    )
-    .unwrap_or_else(|| {
-        format!(
-            "medal-buy:{}:{}:{}",
-            auth.id,
-            body.medal_id,
-            Uuid::new_v4()
-        )
-    });
+    let idem = crate::http::idempotency::body_or_header(&body.idempotency_key)
+        .unwrap_or_else(|| {
+            format!(
+                "medal-buy:{}:{}:{}",
+                auth.id,
+                body.medal_id,
+                Uuid::new_v4()
+            )
+        });
     // 幂等重放闸门（#[must_use] 连审）：重放时 spend 不再扣款，继续执行会绕过
     // 上方的拥有/售期/限量三重检查直接走授予分支
     if !matches!(

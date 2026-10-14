@@ -237,13 +237,12 @@ async fn admin_medal_rarity_delete(
             "仍有 {used} 枚勋章使用该稀有度，请先把它们改成别的稀有度"
         )));
     }
-    let gone: Option<String> = sqlx::query_scalar(
-        "SELECT label FROM medal_rarities WHERE value = $1",
-    )
-    .bind(&value)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let gone: Option<String> =
+        sqlx::query_scalar("SELECT label FROM medal_rarities WHERE value = $1")
+            .bind(&value)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let gone = match gone {
         Some(t) => t,
         None => return Err(DomainError::NotFound(0)),

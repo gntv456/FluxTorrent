@@ -1,12 +1,19 @@
 "use client";
 
-import { BTN_MD_SKY, BTN_SM_GHOST, INPUT_CARD, INPUT_MD, INPUT_W32 } from "@/lib/ui-classes";
+import {
+  BTN_MD_SKY,
+  BTN_SM_GHOST,
+  INPUT_CARD,
+  INPUT_MD,
+  INPUT_W32,
+} from "@/lib/ui-classes";
 
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 第八轮 P2-5：签到记录与手工补签（同类站 user/attendance-logs 口径） */
 
@@ -32,6 +39,8 @@ export function AdminAttendance() {
   const [mkDate, setMkDate] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：撤销补签二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
 
   // 站点时区（UTC+8）的今天：与后端补签上界（P-96）同口径。直接切 UTC 日期
   // 会在北京 0-8 点窗口错一天（P-92 同族）。
@@ -87,8 +96,6 @@ export function AdminAttendance() {
   /** 撤销补签：该口是 DELETE + JSON body（与 torrents/previews 同形），
    *  api-client 的 del() 不带 body，沿用组件内 fetch 写法。 */
   async function revoke(r: AttendanceRow) {
-    const tip = fmt(at.delConfirm, { user: r.username, date: r.date });
-    if (!window.confirm(tip)) return;
     setBusy(true);
     try {
       const res = await fetch("/api/v1/admin/attendance/makeup", {
@@ -168,11 +175,7 @@ export function AdminAttendance() {
             className={INPUT_MD}
           />
         </label>
-        <button
-          disabled={busy}
-          onClick={makeupSubmit}
-          className={BTN_MD_SKY}
-        >
+        <button disabled={busy} onClick={makeupSubmit} className={BTN_MD_SKY}>
           {at.mkBtn}
         </button>
         <p className="text-xs text-sub">{at.mkHint}</p>
@@ -215,7 +218,18 @@ export function AdminAttendance() {
                 {r.makeup ? (
                   <button
                     disabled={busy}
-                    onClick={() => revoke(r)}
+                    onClick={() =>
+                      ask.open({
+                        title: at.delBtn,
+                        message: fmt(at.delConfirm, {
+                          user: r.username,
+                          date: r.date,
+                        }),
+                        tone: "danger",
+                        busy,
+                        run: () => revoke(r),
+                      })
+                    }
                     className={BTN_SM_GHOST}
                   >
                     {at.delBtn}
@@ -255,6 +269,7 @@ export function AdminAttendance() {
           </button>
         </div>
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }

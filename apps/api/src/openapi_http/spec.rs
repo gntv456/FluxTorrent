@@ -50,8 +50,8 @@ pub(super) fn build() -> Value {
 mod tests {
     use super::build;
 
-    /// F3/W-49 验收锁：最终 openapi.json 必须含两域全部 28 个操作
-    /// （开放 14 + compat 15，含补上的 /downloads/keys/revoke），
+    /// F3/W-49 验收锁：最终 openapi.json 必须含两域全部操作（开放 14 +
+    /// compat 15 + rss-tokens 4，FRAME §7 第 8 条分域起步），
     /// 且不再有手写路径段可漂移。删任一条 #[utoipa::path] 此测先红。
     #[test]
     fn openapi_json_covers_all_annotated_domains() {
@@ -65,8 +65,8 @@ mod tests {
             .map(|v| v.as_object().map(|o| o.len()).unwrap_or(0))
             .sum();
         assert!(
-            ops >= 28,
-            "openapi.json 操作数 {ops} < 28（注解丢失？实际键: {:?}）",
+            ops >= 32,
+            "openapi.json 操作数 {ops} < 32（注解丢失？实际键: {:?}）",
             paths.keys().collect::<Vec<_>>()
         );
         // 抽查每域首尾锚点（路径在则方法由 utoipa 生成保证）
@@ -85,5 +85,38 @@ mod tests {
             spec.pointer("/components/schemas/Envelope").is_some(),
             "spec_schemas 的 Envelope 组件不应被注解化删掉"
         );
+    }
+}
+
+#[cfg(test)]
+mod dump {
+    use super::build;
+
+    /// 离线 dump（gen_ts_types.mjs --file 的稳定数据源）：cargo test
+    /// dump_openapi 把 spec 落到 workspace 根 target/openapi_dump.json，
+    /// 生成器不依赖运行中的本地栈。
+    #[test]
+    fn dump_openapi() {
+        use std::io::Write as _;
+        let spec = build();
+        let root = std::env::var("CARGO_MANIFEST_DIR")
+            .map(std::path::PathBuf::from)
+            .ok();
+        let target = root
+            .as_deref()
+            .and_then(|r| r.parent().and_then(|p| p.parent()))
+            .map(|ws| ws.join("target").join("openapi_dump.json"))
+            .unwrap_or_else(|| {
+                std::path::PathBuf::from("target/openapi_dump.json")
+            });
+        // parent 不存在也不许红：dump 是给生成器的便利，不是断言
+        if let Ok(mut f) = std::fs::File::create(&target) {
+            let _ = writeln!(
+                std::io::stderr(),
+                "openapi dump -> {}",
+                target.display()
+            );
+            let _ = f.write_all(spec.to_string().as_bytes());
+        }
     }
 }

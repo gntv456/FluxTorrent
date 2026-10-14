@@ -124,11 +124,9 @@ pub fn next_streak(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn checkin_first_ever() {
@@ -170,7 +168,10 @@ mod tests {
     fn checkin_milestones_come_from_settings() {
         let rows = vec![
             ("attendance_continuous_day".to_string(), "2,5".to_string()),
-            ("attendance_continuous_value".to_string(), "50,150".to_string()),
+            (
+                "attendance_continuous_value".to_string(),
+                "50,150".to_string(),
+            ),
         ];
         let p = CheckInParams::from_settings(&rows);
         // 第 2 天命中配置里的里程碑（默认 streak=5 + 50）

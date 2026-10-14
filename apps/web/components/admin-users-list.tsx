@@ -30,7 +30,6 @@ interface AdminUserRow {
   last_seen_at: string | null;
 }
 
-
 export function UsersBatchBar({
   sel,
   busy,
@@ -41,7 +40,7 @@ export function UsersBatchBar({
 }: {
   sel: Set<number>;
   busy: boolean;
-  batch: (action: "status" | "class", value: number) => Promise<void>;
+  batch: (action: "status" | "class", value: number) => void;
   classes: [number, string][];
   batchClass: string;
   setBatchClass: React.Dispatch<React.SetStateAction<string>>;
@@ -146,18 +145,12 @@ export function UsersTable({
           <td className="colhead">{au.thUsername}</td>
           <td className="colhead">{au.thEmail}</td>
           <td className="colhead">{sortBtn("class", au.fClass)}</td>
-          <td className="colhead">
-            {sortBtn("uploaded", ud.uploaded)}
-          </td>
-          <td className="colhead">
-            {sortBtn("downloaded", ud.downloaded)}
-          </td>
+          <td className="colhead">{sortBtn("uploaded", ud.uploaded)}</td>
+          <td className="colhead">{sortBtn("downloaded", ud.downloaded)}</td>
           <td className="colhead">{au.thStatus}</td>
           <td className="colhead">{au.thDownload}</td>
           <td className="colhead">{au.thSuspended}</td>
-          <td className="colhead">
-            {sortBtn("created", ud.createdAt)}
-          </td>
+          <td className="colhead">{sortBtn("created", ud.createdAt)}</td>
           <td className="colhead">{au.thAction}</td>
         </tr>
       </thead>

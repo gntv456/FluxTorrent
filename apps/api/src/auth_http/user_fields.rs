@@ -82,9 +82,7 @@ pub async fn my_fields_put(
     // 300 个乱码 key 就是一次 300 查的打库请求（同族 P-130：写口不设档）。
     // 64 足够整表提交（全站字段数由站长自己控），又掐掉放大面。
     if body.values.len() > 64 {
-        return Err(DomainError::Validation(
-            "一次最多提交 64 个字段".into(),
-        ));
+        return Err(DomainError::Validation("一次最多提交 64 个字段".into()));
     }
     let mut tx = state.repo.db.begin().await.map_err(internal)?;
     let mut saved = 0i64;

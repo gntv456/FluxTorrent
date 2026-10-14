@@ -154,8 +154,13 @@ async fn section_kinds_add(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit_detail(Some(auth.id), "section_kind.add", None, None,
-            Some(serde_json::json!({"kind": kind})))
+        .audit_detail(
+            Some(auth.id),
+            "section_kind.add",
+            None,
+            None,
+            Some(serde_json::json!({"kind": kind})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "kind": kind })))
 }
@@ -236,8 +241,13 @@ async fn section_kinds_update(
     }
     state
         .repo
-        .audit_detail(Some(auth.id), "section_kind.update", None, None,
-            Some(serde_json::json!({"kind": kind})))
+        .audit_detail(
+            Some(auth.id),
+            "section_kind.update",
+            None,
+            None,
+            Some(serde_json::json!({"kind": kind})),
+        )
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }

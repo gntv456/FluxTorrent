@@ -122,7 +122,13 @@ pub(super) async fn ensure_req_match(
     subtitle_id: i64,
 ) -> DomainResult<()> {
     // (请求语言, 请求种子, 字幕语言, 字幕字典语言 id, 字幕种子)
-    type Row = (String, Option<i64>, Option<String>, Option<i16>, Option<i64>);
+    type Row = (
+        String,
+        Option<i64>,
+        Option<String>,
+        Option<i16>,
+        Option<i64>,
+    );
     let row: Option<Row> = sqlx::query_as(
         "SELECT r.lang, r.torrent_id, s.lang, s.lang_id, s.torrent_id \
          FROM subtitle_requests r JOIN subtitles s ON s.id = $2 \
@@ -134,7 +140,9 @@ pub(super) async fn ensure_req_match(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 请求或字幕其中一条不在：由调用方原有的 NotFound/Validation 口径去报
-    let Some((rl, rtid, sl, slab, stid)) = row else { return Ok(()) };
+    let Some((rl, rtid, sl, slab, stid)) = row else {
+        return Ok(());
+    };
     if let Some(want_tid) = rtid {
         if stid != Some(want_tid) {
             return Err(DomainError::Validation(format!(

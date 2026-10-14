@@ -51,13 +51,12 @@ pub async fn ensure_forum_exists(
     db: &PgPool,
     forum_id: i64,
 ) -> DomainResult<()> {
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM forums WHERE id = $1)",
-    )
-    .bind(forum_id)
-    .fetch_one(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM forums WHERE id = $1)")
+            .bind(forum_id)
+            .fetch_one(db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if !exists {
         return Err(DomainError::Validation("版块不存在".into()));
     }

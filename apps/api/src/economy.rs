@@ -191,12 +191,6 @@ mod tests {
         assert_eq!(gift_tax(-100, 500), 0);
     }
 
-
-
-
-
-
-
     #[test]
     fn interest_math() {
         // 10000 火花存 365 天 @18%：10000*0.18 = 1800

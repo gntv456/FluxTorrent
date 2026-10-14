@@ -36,7 +36,6 @@ const ATTACH_MIME_ALLOW: [&str; 14] = [
     "application/vnd.rar",
 ];
 
-
 /// 上传附件（multipart 字段 file，可选字段 visibility）。
 /// 存本地 savedirectory（缺省 ./attachments），sha256 全站去重（同文件只存
 /// 一份物理文件）；受 attach_quota_mib 配额约束。visibility 缺省 shared
@@ -292,8 +291,6 @@ pub async fn upload_attachment(
 
 /// 文本类嗅探：UTF-8 可解码且不含 NUL 即视为字幕文本（srt/ass/ssa/cue/idx
 /// 均为纯文本；只查前 8KiB 防 8MiB 大文件全量扫描）。
-
-
 use crate::attachment_util::{attach_enabled, ext_of, is_textlike};
 
 /// 附件读取（图床）：按 sha256 寻址（内容寻址不可猜测），mime 回放。

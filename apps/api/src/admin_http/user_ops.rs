@@ -59,8 +59,16 @@ async fn user_adjust(
     const MAX_TRAFFIC: i64 = 1_i64 << 40;
     const MAX_SPARK: i64 = 1_000_000_000;
     for (k, v, lim) in [
-        ("uploaded_delta", body.uploaded_delta.unwrap_or(0), MAX_TRAFFIC),
-        ("downloaded_delta", body.downloaded_delta.unwrap_or(0), MAX_TRAFFIC),
+        (
+            "uploaded_delta",
+            body.uploaded_delta.unwrap_or(0),
+            MAX_TRAFFIC,
+        ),
+        (
+            "downloaded_delta",
+            body.downloaded_delta.unwrap_or(0),
+            MAX_TRAFFIC,
+        ),
         ("spark_delta", body.spark_delta.unwrap_or(0), MAX_SPARK),
     ] {
         if v.abs() > lim {

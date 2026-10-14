@@ -223,8 +223,7 @@ pub(crate) async fn email_resend(
     // （见 send_verification_inner），所以档必须是界面承诺的 1 次/60s，
     // 而不是通用 throttle() 的登录档 5 次/分（throttle.rs:18）——按 5 次
     // 算，1 分钟内可以连杀 5 枚链接，用户自己把自己的入口关掉。
-    throttle_limited(&state, format!("ev:resend:{email}:{ip}"), 1)
-        .await?;
+    throttle_limited(&state, format!("ev:resend:{email}:{ip}"), 1).await?;
     // P-109 能力前置（与 P-102 forgot、P-104 register 同一口径）：站点根本发
     // 不出邮件时，旧写法照样「作废旧链接 → 铸新链接 → 回 200 sent:true」，
     // 前端如实显示「激活邮件已发出」。用户按登录页指引来自救，结果把手里

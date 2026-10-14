@@ -52,17 +52,12 @@ pub(super) async fn subtitle_list(
     // 这里取「可选登录态」：匿名访客照常看公开行，只是拿到更少的字段。
     let viewer = crate::http::require_auth(&req, &state).await.ok();
     let viewer_id = viewer.as_ref().map(|a| a.id).unwrap_or(-1);
-    let is_staff = viewer
-        .as_ref()
-        .map(|a| a.class_id >= 90)
-        .unwrap_or(false);
+    let is_staff = viewer.as_ref().map(|a| a.class_id >= 90).unwrap_or(false);
     let see_banned = match &viewer {
-        Some(a) => crate::authz::can(
-            &state,
-            a,
-            crate::authz::perm::TORRENT_SEE_BANNED,
-        )
-        .await,
+        Some(a) => {
+            crate::authz::can(&state, a, crate::authz::perm::TORRENT_SEE_BANNED)
+                .await
+        }
         None => false,
     };
     let search = q

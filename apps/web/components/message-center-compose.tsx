@@ -1,14 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useI18n } from "@/i18n/client";
 
 /** 消息中心写信道与文件夹管理（从 components/message-center.tsx 按域拆出）：
  *  ComposeForm 回复/转发/新写三态表单；BoxManager 建/改名/删除（=清空名）。
  *  状态与发送逻辑留在 MessageCenter，动作回调注入。
  *  反馈协议（W-10）：发送/批量/文件夹操作的结果统一走 toast（见
- *  MessageCenter），本组件不再渲染行内 msg 文字。 */
+ *  MessageCenter），本组件不再渲染行内 msg 文字。
+ *  改名/删除二次交互（P2 清偿）：window.prompt/confirm → ConfirmDialog
+ *  （改名用 children 输入槽，删除走 danger）。 */
 
 import { BusyLabel } from "@/components/ui/busy-label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { inputCls } from "@/components/message-center-table";
 
 export function ComposeForm({
@@ -123,6 +127,14 @@ export function BoxManager({
   busy: boolean;
   onUpsert: (id: number | null, name: string) => void;
 }) {
+  // 共用一个对话框状态机：rename=输入槽改名，delete=danger 删除确认
+  const [ask, setAsk] = useState<
+    | { kind: "rename"; id: number; name: string }
+    | { kind: "delete"; id: number; name: string }
+    | null
+  >(null);
+  const [renameTo, setRenameTo] = useState("");
+
   return (
     <div className="brand-panel flex flex-wrap items-center gap-2 p-3">
       <input
@@ -145,8 +157,8 @@ export function BoxManager({
           <button
             type="button"
             onClick={() => {
-              const n = window.prompt(t.renameBoxPh, b.name);
-              if (n !== null && n.trim()) onUpsert(b.id, n.trim());
+              setRenameTo(b.name);
+              setAsk({ kind: "rename", id: b.id, name: b.name });
             }}
             className="min-h-[36px] rounded-full border border-[var(--brand-line)] px-3 text-xs"
           >
@@ -154,15 +166,42 @@ export function BoxManager({
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm(t.deleteBoxConfirm)) onUpsert(b.id, "");
-            }}
+            onClick={() => setAsk({ kind: "delete", id: b.id, name: b.name })}
             className="min-h-[36px] rounded-full px-2 text-xs text-danger"
           >
             ✕
           </button>
         </span>
       ))}
+      <ConfirmDialog
+        open={ask !== null}
+        onClose={() => setAsk(null)}
+        onConfirm={() => {
+          if (ask?.kind === "rename" && renameTo.trim()) {
+            onUpsert(ask.id, renameTo.trim());
+          } else if (ask?.kind === "delete") {
+            onUpsert(ask.id, "");
+          }
+          setAsk(null);
+        }}
+        tone={ask?.kind === "delete" ? "danger" : "neutral"}
+        title={ask?.kind === "delete" ? t.deleteBoxConfirm : t.renameBoxPh}
+        busy={busy}
+      >
+        {ask?.kind === "rename" ? (
+          <label className="flex flex-col gap-1 text-sm">
+            <span>{t.renameBoxPh}</span>
+            <input
+              value={renameTo}
+              onChange={(e) => setRenameTo(e.target.value)}
+              maxLength={14}
+              className="min-h-[40px] rounded-[var(--r-sm)] border
+                border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm"
+              data-autofocus
+            />
+          </label>
+        ) : null}
+      </ConfirmDialog>
     </div>
   );
 }

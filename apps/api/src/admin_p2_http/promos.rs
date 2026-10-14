@@ -15,12 +15,16 @@ pub async fn sticky_promos_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-254：置顶促销位的**内容**（标题/链接/角标/生效区间/排序）只判 staff()，
     // 而同文件 POST/PUT/DELETE 三条全要 settings.manage(99) ⇒ 台账与操作同键。
     // 前台公开口 `/sticky-promos` 是另一个 handler，本批不动（CI5 专门验它仍 200）。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let rows: Vec<StickyPromoRow> = sqlx::query_as(
         "SELECT id, title, url, badge, starts_at, ends_at, enabled, sort \
          FROM sticky_promotions ORDER BY sort, id",

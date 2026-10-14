@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ModuleKeySelect } from "@/components/module-key-select";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import {
   HelpFieldsEditor,
   HelpGroupBadge,
@@ -60,6 +61,8 @@ export function StaffCustomPagesPanel({
 }) {
   const { dict, locale } = useI18n();
   const zh = locale !== "en";
+  // P2 清偿：删页二次确认（danger），window.confirm 退役
+  const ask = useConfirm();
   const [rows, setRows] = useState<CustomPage[] | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
@@ -112,8 +115,6 @@ export function StaffCustomPagesPanel({
   }
 
   async function remove(p: CustomPage) {
-    if (!window.confirm(zh ? `删除页面「${p.title}」？` : `Delete "${p.title}"?`))
-      return;
     try {
       await api.post(`/api/v1/admin/custom-pages/${p.id}/delete`, {});
       flash(dict.adminPages.deleted);
@@ -175,11 +176,15 @@ export function StaffCustomPagesPanel({
             type="number"
             className={`${FLD} w-24`}
             value={draft.sort}
-            onChange={(e) => setDraft({ ...draft, sort: Number(e.target.value) })}
+            onChange={(e) =>
+              setDraft({ ...draft, sort: Number(e.target.value) })
+            }
           />
         </label>
-        <HelpFieldsEditor value={draft}
-          onChange={(v) => setDraft({ ...draft, ...v })} />
+        <HelpFieldsEditor
+          value={draft}
+          onChange={(v) => setDraft({ ...draft, ...v })}
+        />
         <div className="flex gap-2">
           <button
             type="button"
@@ -188,7 +193,8 @@ export function StaffCustomPagesPanel({
             disabled={busy || !draft.slug.trim() || !draft.title.trim()}
           >
             {dict.usercp.saveBtn}
-          </button>          <button
+          </button>{" "}
+          <button
             type="button"
             className="rounded-full border border-line px-4 py-1.5 text-sm"
             onClick={() => {
@@ -208,13 +214,16 @@ export function StaffCustomPagesPanel({
       <div className="flex items-center justify-between">
         <p className="text-xs text-sub">{dict.adminPages.hint}</p>
         {!draft && (
-          <button type="button"
+          <button
+            type="button"
             className="rounded-full border border-line px-4 py-1.5 text-sm font-bold"
-            onClick={() => setDraft(emptyDraft())}>
+            onClick={() => setDraft(emptyDraft())}
+          >
             + {dict.adminPages.add}
           </button>
         )}
-      </div>      {editForm}
+      </div>{" "}
+      {editForm}
       <div className="brand-wide-table-scroll">
         <table className="nexus-table">
           <thead>
@@ -227,71 +236,88 @@ export function StaffCustomPagesPanel({
               <th />
             </tr>
           </thead>
-        <tbody>
-          {(rows ?? []).map((p) => (
-            <tr key={p.id}>
-              <td>
-                <a href={`/p/${p.slug}`} className="underline" target="_blank" rel="noreferrer">
-                  /p/{p.slug}
-                </a>
-              </td>
-              <td>{p.title}</td>
-              <td className="text-xs">
-                {p.visible
-                  ? dict.adminPages.visibleOn
-                  : dict.adminPages.visibleOff}
-              </td>
-              <td className="num text-xs">{p.sort}</td>
-              <td className="text-xs">
-                <HelpGroupBadge group={p.doc_group} sort={p.doc_sort} />
-              </td>              <td className="flex gap-2 text-xs">
-                <button
-                  type="button"                  className="underline"
-                  onClick={() => {
-                    setEditId(p.id);
-                    setDraft({
-                      slug: p.slug,
-                      title: p.title,
-                      body: p.body,
-                      visible: p.visible,
-                      sort: p.sort,
-                      module_key: p.module_key,
-                      doc_group: p.doc_group,
-                      doc_sort: p.doc_sort,
-                    });
-                  }}
-                >
-                  {dict.torrents.edit}
-                </button>
-                <button
-                  type="button"
-                  className="underline"
-                  onClick={() => toggleVisible(p)}
-                >
+          <tbody>
+            {(rows ?? []).map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <a
+                    href={`/p/${p.slug}`}
+                    className="underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    /p/{p.slug}
+                  </a>
+                </td>
+                <td>{p.title}</td>
+                <td className="text-xs">
                   {p.visible
-                    ? dict.adminPages.hideAction
-                    : dict.adminPages.showAction}
-                </button>
-                <button
-                  type="button"
-                  className="underline text-coral"
-                  onClick={() => remove(p)}
-                >
-                  {dict.torrents.delete}
-                </button>
-              </td>
-            </tr>
-          ))}
-          {rows !== null && rows.length === 0 && (
-            <tr>
-              <td colSpan={6} className="text-sub">
-                {dict.adminPages.empty}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                    ? dict.adminPages.visibleOn
+                    : dict.adminPages.visibleOff}
+                </td>
+                <td className="num text-xs">{p.sort}</td>
+                <td className="text-xs">
+                  <HelpGroupBadge group={p.doc_group} sort={p.doc_sort} />
+                </td>{" "}
+                <td className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      setEditId(p.id);
+                      setDraft({
+                        slug: p.slug,
+                        title: p.title,
+                        body: p.body,
+                        visible: p.visible,
+                        sort: p.sort,
+                        module_key: p.module_key,
+                        doc_group: p.doc_group,
+                        doc_sort: p.doc_sort,
+                      });
+                    }}
+                  >
+                    {dict.torrents.edit}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => toggleVisible(p)}
+                  >
+                    {p.visible
+                      ? dict.adminPages.hideAction
+                      : dict.adminPages.showAction}
+                  </button>
+                  <button
+                    type="button"
+                    className="underline text-coral"
+                    onClick={() =>
+                      ask.open({
+                        title: dict.torrents.delete,
+                        message: zh
+                          ? `删除页面「${p.title}」？`
+                          : `Delete "${p.title}"?`,
+                        tone: "danger",
+                        run: () => remove(p),
+                      })
+                    }
+                  >
+                    {dict.torrents.delete}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {rows !== null && rows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-sub">
+                  {dict.adminPages.empty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
+      <AskDialog {...ask} />
     </div>
   );
 }

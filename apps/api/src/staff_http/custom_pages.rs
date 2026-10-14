@@ -250,13 +250,12 @@ pub async fn custom_pages_delete(
     require_cp_manage(&state, &auth).await?;
     let pid = path.into_inner();
     // 删之前把对象读回来：删完再想知道「删的是哪个 slug/页名」就没有出处了
-    let gone: Option<(String, String)> = sqlx::query_as(
-        "SELECT slug, title FROM custom_pages WHERE id = $1",
-    )
-    .bind(pid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(internal)?;
+    let gone: Option<(String, String)> =
+        sqlx::query_as("SELECT slug, title FROM custom_pages WHERE id = $1")
+            .bind(pid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(internal)?;
     let (slug, title) = match gone {
         Some(t) => t,
         None => return Err(DomainError::Validation("页面不存在".into())),

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /**
  * 活跃会话面板（0284 P1-3）：近 24h 成功登录按 (IP, UA) 分组的近似视图 +
@@ -23,6 +24,8 @@ export function SessionsCard() {
   const [rows, setRows] = useState<SessionRow[] | null>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  // P2 清偿：踢出其它会话二次确认（danger：其它设备立即失效）
+  const ask = useConfirm();
 
   useEffect(() => {
     api
@@ -32,7 +35,6 @@ export function SessionsCard() {
   }, []);
 
   const revokeOthers = async () => {
-    if (!window.confirm(s.revokeConfirm)) return;
     setBusy(true);
     try {
       await api.post("/api/v1/me/sessions/revoke-others");
@@ -58,15 +60,23 @@ export function SessionsCard() {
             {r.user_agent || "—"}
           </span>
           <span className="text-xs text-sub">
-            {s.lastAt} {new Date(r.last_at).toLocaleString()} ·{" "}
-            {s.logins} {r.logins}
+            {s.lastAt} {new Date(r.last_at).toLocaleString()} · {s.logins}{" "}
+            {r.logins}
           </span>
         </div>
       ))}
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={revokeOthers}
+          onClick={() =>
+            ask.open({
+              title: s.revokeBtn,
+              message: s.revokeConfirm,
+              tone: "danger",
+              busy,
+              run: revokeOthers,
+            })
+          }
           disabled={busy || rows.length === 0}
           className="min-h-[32px] rounded-full border border-coral px-3
             text-xs font-bold text-coral disabled:opacity-50"
@@ -76,6 +86,7 @@ export function SessionsCard() {
         {msg && <span className="text-xs text-mint">{msg}</span>}
       </div>
       <p className="text-[11px] text-sub">{s.hint}</p>
+      <AskDialog {...ask} />
     </div>
   );
 }

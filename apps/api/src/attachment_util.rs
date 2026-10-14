@@ -66,4 +66,3 @@ pub(crate) fn ext_of(mime: &str) -> &'static str {
         _ => "txt",
     }
 }
-

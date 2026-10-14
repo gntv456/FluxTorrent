@@ -45,8 +45,13 @@ async fn admin_ban_delete_by_ip(
     }
     state
         .repo
-        .audit_detail(Some(auth.id), "ban.del_by_ip", None, None,
-            Some(serde_json::json!({"ip": ip, "deleted": n})))
+        .audit_detail(
+            Some(auth.id),
+            "ban.del_by_ip",
+            None,
+            None,
+            Some(serde_json::json!({"ip": ip, "deleted": n})),
+        )
         .await;
     // 解封需立即作用于请求入口与 tracker（ip_bans 强制校验 + 防护缓存）
     crate::http::bump_guard_ver(&state).await;

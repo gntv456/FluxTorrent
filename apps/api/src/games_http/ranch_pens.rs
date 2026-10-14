@@ -60,13 +60,12 @@ pub(super) async fn ranch_buy(
     let idem = format!("ranch-buy:{}:{}", auth.id, body.animal);
     // 扣费与落栏同一事务（P-184）：任何一步失败整笔回滚，钱不会先走
     let mut tx = db.begin().await.map_err(dberr)?;
-    match spend_spark_tx(&mut tx, auth.id, price, "game", &idem,
-                         "ranch_buy", 0)
+    match spend_spark_tx(&mut tx, auth.id, price, "game", &idem, "ranch_buy", 0)
         .await?
     {
         SpendOutcome::Replayed => {
             let _ = tx.rollback().await;
-            return Err(DomainError::Validation("请勿重复提交".into()))
+            return Err(DomainError::Validation("请勿重复提交".into()));
         }
         SpendOutcome::Spent => {}
     }

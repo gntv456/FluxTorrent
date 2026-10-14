@@ -150,8 +150,7 @@ mod tests {
     /// 而是逐维合并——片段少一档就等于那一档被当成 1×1 计费）
     #[test]
     fn factor_tables_cover_six_tiers() {
-        for k in ["'free'", "'x2'", "'x2free'", "'half'", "'x2half'", "'p30'"]
-        {
+        for k in ["'free'", "'x2'", "'x2free'", "'half'", "'x2half'", "'p30'"] {
             assert!(
                 UP_FACTOR.contains(k) || DOWN_FACTOR.contains(k),
                 "倍率片段缺档 {k}"

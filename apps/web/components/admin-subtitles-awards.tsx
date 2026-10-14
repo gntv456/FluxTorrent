@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 金字幕评选管理（0150 缺口4）：候选列表（双赛道）+ 生成/授金。
  *  API：GET/POST /admin/subtitles/awards/{candidates,build,grant}。 */
@@ -29,6 +30,8 @@ export function AdminSubtitlesAwards() {
   const [rows, setRows] = useState<Candidate[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：授金确认状态机（danger）
+  const ask = useConfirm();
 
   const load = useCallback(async () => {
     try {
@@ -65,14 +68,6 @@ export function AdminSubtitlesAwards() {
   }
 
   async function grant(row: Candidate, rank: number) {
-    if (
-      !window.confirm(
-        (t.grantConfirm ?? "grant rank {r} to {u}?")
-          .replace("{r}", String(rank))
-          .replace("{u}", row.username ?? `#${row.user_id}`),
-      )
-    )
-      return;
     setBusy(true);
     try {
       await api.post("/api/v1/admin/subtitles/awards/grant", {
@@ -86,6 +81,19 @@ export function AdminSubtitlesAwards() {
     } finally {
       setBusy(false);
     }
+  }
+
+  /** P2 清偿：授金二次确认（授予后不可撤），window.confirm 退役 */
+  function askGrant(row: Candidate, rk: number) {
+    ask.open({
+      title: t.title,
+      message: (t.grantConfirm ?? "grant rank {r} to {u}?")
+        .replace("{r}", String(rk))
+        .replace("{u}", row.username ?? `#${row.user_id}`),
+      tone: "danger",
+      busy,
+      run: () => grant(row, rk),
+    });
   }
 
   const tiers: [string, Candidate[]][] = [
@@ -153,7 +161,7 @@ export function AdminSubtitlesAwards() {
                               type="button"
                               className="btn2"
                               disabled={busy}
-                              onClick={() => void grant(r, rk)}
+                              onClick={() => askGrant(r, rk)}
                             >
                               {["🥇", "🥈", "🥉"][rk - 1]}
                             </button>
@@ -177,6 +185,7 @@ export function AdminSubtitlesAwards() {
           </div>
         ))
       )}
+      <AskDialog {...ask} />
     </section>
   );
 }

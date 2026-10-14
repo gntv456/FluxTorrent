@@ -31,9 +31,7 @@ tokio::task_local! {
 
 /// 读取当前请求头幂等键；无中间件上下文（测试/后台任务）返回 None。
 pub fn current() -> Option<String> {
-    IDEMPOTENCY_KEY
-        .try_with(|k| k.clone())
-        .unwrap_or(None)
+    IDEMPOTENCY_KEY.try_with(|k| k.clone()).unwrap_or(None)
 }
 
 /// 头形状校验：8..=128 位可见 ASCII（0x21..=0x7E，无空白无控制字符）。
@@ -74,15 +72,12 @@ mod tests {
     async fn injects_valid_header_key() {
         let app = test::init_service(
             App::new()
-                .wrap(actix_web::middleware::from_fn(
-                    super::idempotency_mw,
-                ))
+                .wrap(actix_web::middleware::from_fn(super::idempotency_mw))
                 .route(
                     "/ping",
                     web::to(|| async {
                         let k = super::current();
-                        HttpResponse::Ok()
-                            .json(serde_json::json!({ "key": k }))
+                        HttpResponse::Ok().json(serde_json::json!({ "key": k }))
                     }),
                 ),
         )
@@ -93,8 +88,7 @@ mod tests {
             .to_request();
         let res = test::call_service(&app, req).await;
         let body: serde_json::Value =
-            serde_json::from_slice(&test::read_body(res).await)
-                .expect("json");
+            serde_json::from_slice(&test::read_body(res).await).expect("json");
         assert_eq!(
             body["key"].as_str(),
             Some("abc12345-6789"),
@@ -106,15 +100,12 @@ mod tests {
     async fn ignores_invalid_header_key() {
         let app = test::init_service(
             App::new()
-                .wrap(actix_web::middleware::from_fn(
-                    super::idempotency_mw,
-                ))
+                .wrap(actix_web::middleware::from_fn(super::idempotency_mw))
                 .route(
                     "/ping",
                     web::to(|| async {
                         let k = super::current();
-                        HttpResponse::Ok()
-                            .json(serde_json::json!({ "key": k }))
+                        HttpResponse::Ok().json(serde_json::json!({ "key": k }))
                     }),
                 ),
         )

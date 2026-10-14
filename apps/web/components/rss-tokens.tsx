@@ -3,18 +3,16 @@
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+// 接口类型自 OpenAPI 注解生成（FRAME §7 第 8 条分域起步）：
+// scripts/gen_ts_types.mjs ← /api/v1/openapi.json ← #[utoipa::path]
+import type {
+  RssTokenCreateReq,
+  RssTokenCreated,
+  RssTokenList,
+  RssTokenMeta,
+} from "@fluxtorrent/domain-types";
 
-/** /rss-info 返回的 token 元数据（无明文——明文只在创建/轮换响应里） */
-export interface RssTokenMeta {
-  id: number;
-  name: string;
-  created_at: string;
-}
-
-/** 创建/轮换响应：一次性携带明文 token */
-interface TokenCreated extends RssTokenMeta {
-  token: string;
-}
+export type { RssTokenMeta };
 
 /** 暂存明文的行 = 元数据 + 本次会话暂存的明文（刷新后不可再取） */
 interface TokenRow extends RssTokenMeta {
@@ -74,9 +72,7 @@ export function RssTokenPanel({
   const [err, setErr] = useState("");
 
   async function refresh() {
-    const d = await api.get<{ tokens: RssTokenMeta[] }>(
-      "/api/v1/rss/tokens",
-    );
+    const d = await api.get<RssTokenList>("/api/v1/rss/tokens");
     // 保留本地暂存的明文（列表刷新不丢「本次会话可复制」状态）
     setRows((old) =>
       d.tokens.map((m) => ({
@@ -90,9 +86,8 @@ export function RssTokenPanel({
     setBusy(true);
     setErr("");
     try {
-      const r = await api.post<TokenCreated>("/api/v1/rss/tokens", {
-        name: name.trim(),
-      });
+      const body: RssTokenCreateReq = { name: name.trim() };
+      const r = await api.post<RssTokenCreated>("/api/v1/rss/tokens", body);
       setRows((old) => [{ ...r }, ...old]);
       setName("");
     } catch (e) {
@@ -106,7 +101,7 @@ export function RssTokenPanel({
     setBusy(true);
     setErr("");
     try {
-      const r = await api.post<TokenCreated>(
+      const r = await api.post<RssTokenCreated>(
         `/api/v1/rss/tokens/${id}/rotate`,
       );
       await refresh();

@@ -23,6 +23,8 @@ mod authz;
 mod bencode;
 mod cfgver;
 mod community_http;
+// F3/W-49：compat 域 utoipa 聚合（路径表由 handler 注解生成，手写 spec_np 已删）
+mod compat_api;
 mod compat_http;
 mod config;
 mod content_http;

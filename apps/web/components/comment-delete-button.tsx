@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 评论删除（staff / 作者本人）：DELETE /torrents/{id}/comments/{cid}
  *  按钮常显，无权限时靠后端 403 兜底提示（详情页 RSC 拿不到 class，不做前端判断） */
@@ -18,10 +19,11 @@ export function CommentDeleteButton({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
+  // P2 清偿：删除二次确认走 ConfirmDialog（danger），window.confirm 退役
+  const ask = useConfirm();
 
   async function del() {
     if (busy) return;
-    if (!window.confirm(t.confirm)) return;
     setBusy(true);
     setMsg(null);
     try {
@@ -39,7 +41,15 @@ export function CommentDeleteButton({
     <span className="inline-flex flex-col items-start gap-0.5">
       <button
         type="button"
-        onClick={del}
+        onClick={() =>
+          ask.open({
+            title: t.btn,
+            message: t.confirm,
+            tone: "danger",
+            busy,
+            run: del,
+          })
+        }
         disabled={busy}
         className="min-h-[26px] rounded-full border border-[var(--danger-border)] px-2 text-[11px] font-bold text-danger disabled:opacity-50"
       >
@@ -50,6 +60,7 @@ export function CommentDeleteButton({
           {msg}
         </span>
       )}
+      <AskDialog {...ask} />
     </span>
   );
 }

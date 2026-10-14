@@ -81,8 +81,10 @@ pub(super) fn rp_id(req: &HttpRequest) -> String {
     }
     let hdr = req.headers();
     for name in ["origin", "host"] {
-        if let Some(h) =
-            hdr.get(name).and_then(|v| v.to_str().ok()).and_then(host_of)
+        if let Some(h) = hdr
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .and_then(host_of)
         {
             return h;
         }

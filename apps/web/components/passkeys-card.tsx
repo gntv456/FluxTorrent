@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** Passkey（WebAuthn）绑定卡（0227，P2）：
  *  usercp 安全设置内嵌——列出已绑凭证、浏览器注册新凭证（ES256）、解绑。
@@ -27,6 +28,9 @@ export function PasskeysCard() {
   const [rows, setRows] = useState<PasskeyRow[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // P2 清偿：设备命名（prompt 输入槽）/ 解绑（danger）共用一个确认状态机
+  const ask = useConfirm();
+  const [bindLabel, setBindLabel] = useState("");
   // P-107：begin 现在要复核凭证（密码，开了 2FA 还要当前码）才发 challenge
   const [step, setStep] = useState(false);
   const [pw, setPw] = useState("");
@@ -35,9 +39,7 @@ export function PasskeysCard() {
 
   const load = useCallback(async () => {
     try {
-      const r = await api.get<{ items: PasskeyRow[] }>(
-        "/api/v1/me/passkeys",
-      );
+      const r = await api.get<{ items: PasskeyRow[] }>("/api/v1/me/passkeys");
       setRows(r.items ?? []);
     } catch {
       setRows([]);
@@ -60,10 +62,8 @@ export function PasskeysCard() {
       // P-112：设备名要在 begin **之前**问——begin 把 label 与 challenge 一起
       // 存下，finish 再从库里取回；旧流程先 begin 后 prompt，用户填的名字
       // 只进了 finish 的 body（该结构体根本没有 label 字段），于是所有凭证
-      // 一律叫「passkey」。
-      const label =
-        window.prompt(dict.usercp.security.webauthnNamePrompt, "") ||
-        dict.usercp.security.webauthnNameFallback;
+      // 一律叫「passkey」。P2 清偿：prompt → ConfirmDialog 输入槽。
+      const label = bindLabel || dict.usercp.security.webauthnNameFallback;
       const begin = await api.post<{
         challenge: string;
         rp_id: string;
@@ -121,8 +121,7 @@ export function PasskeysCard() {
       // P-115：WebAuthn 抛的是 DOMException，`name` 才是可分类的信息，
       // message 是写给开发者看的英文（含 w3.org 链接）。面板原先把它原文
       // 甩在界面上，用户既看不懂也不知道下一步该做什么。
-      const nm =
-        e instanceof DOMException || e instanceof Error ? e.name : "";
+      const nm = e instanceof DOMException || e instanceof Error ? e.name : "";
       const sec = dict.usercp.security;
       const hint =
         nm === "NotAllowedError"
@@ -195,7 +194,19 @@ export function PasskeysCard() {
           <button
             type="button"
             disabled={busy || !pw || (twofa && code.length < 6)}
-            onClick={() => void register()}
+            onClick={() => {
+              setBindLabel("");
+              ask.open({
+                title: dict.usercp.security.webauthnBind,
+                label: dict.usercp.security.webauthnNamePrompt,
+                initial: "",
+                busy,
+                run: (name) => {
+                  setBindLabel(name);
+                  void register();
+                },
+              });
+            }}
             className="self-start rounded-full bg-sky-deep px-3 py-1 text-xs
               font-bold text-white disabled:opacity-50"
           >
@@ -241,6 +252,7 @@ export function PasskeysCard() {
         </div>
       ))}
       {msg && <p className="text-xs text-sub">{msg}</p>}
+      <AskDialog {...ask} />
     </section>
   );
 }

@@ -52,13 +52,12 @@ pub(super) async fn subtitle_request_fulfill(
     .await?;
     // 本通道当场结算整池，所以只认「有本体的字幕」：http 直链不参与悬赏结算
     // （外链随手可填，等于用一条链接换走别人凑出来的魔力）
-    let file_ref: Option<String> = sqlx::query_scalar(
-        "SELECT file_ref FROM subtitles WHERE id = $1",
-    )
-    .bind(body.subtitle_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let file_ref: Option<String> =
+        sqlx::query_scalar("SELECT file_ref FROM subtitles WHERE id = $1")
+            .bind(body.subtitle_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if !file_ref
         .as_deref()
         .unwrap_or_default()

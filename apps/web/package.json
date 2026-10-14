@@ -7,7 +7,13 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lhci": "lhci autorun",
+    "lhci:collect": "lhci collect",
+    "test:visual": "playwright test e2e/visual-regression.spec.ts",
+    "test:visual:update": "playwright test e2e/visual-regression.spec.ts --update-snapshots",
+    "vr": "playwright test e2e/visual-regression.spec.ts --reporter=line",
+    "vr:update": "playwright test e2e/visual-regression.spec.ts --reporter=line --update-snapshots"
   },
   "dependencies": {
     "@fluxtorrent/domain-types": "workspace:*",
@@ -16,6 +22,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@lhci/cli": "0.14.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
@@ -28,6 +35,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "^5.0.2",
     "jsdom": "^30.0.1",
+    "puppeteer-core": "^25.13.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.2",
     "vitest": "^5.0.0"

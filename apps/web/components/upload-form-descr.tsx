@@ -2,6 +2,7 @@
 
 import type { RefObject } from "react";
 import { useI18n } from "@/i18n/client";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
 
 /** 发布表单·简介与 BBCode 工具条（从 upload-form.tsx 按域拆出，300 行门禁）：
@@ -18,6 +19,8 @@ export function UploadDescrBlock({
   descrRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const { dict } = useI18n();
+  // P2 清偿：图片 URL 采集（window.prompt 退役 → ConfirmDialog 输入槽）
+  const ask = useConfirm();
 
   // BBCode 工具条（NP bbcode 口径）：包住选区 / 插入
   function bbWrap(open: string, close: string, ph = "") {
@@ -202,10 +205,15 @@ export function UploadDescrBlock({
             type="button"
             className={bbBtn}
             title={dict.upload.bbImg}
-            onClick={() => {
-              const u = window.prompt(dict.upload.bbImg);
-              if (u && u.trim()) bbInsert(`[img]${u.trim()}[/img]`);
-            }}
+            onClick={() =>
+              ask.open({
+                title: dict.upload.bbImg,
+                label: dict.upload.bbImg,
+                run: (u) => {
+                  if (u.trim()) bbInsert(`[img]${u.trim()}[/img]`);
+                },
+              })
+            }
           >
             🖼️
           </button>
@@ -270,6 +278,7 @@ export function UploadDescrBlock({
           <code>[b][i][color=][size=][url][img][quote][code]</code> 均受支持）
         </span>
       </div>
+      <AskDialog {...ask} />
     </FormRow>
   );
 }

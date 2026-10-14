@@ -58,8 +58,7 @@ pub async fn attendance_json(
             )
         }
         .unwrap_or(today);
-        (next_month.pred_opt().unwrap_or(today) - month_start).num_days()
-            as u32
+        (next_month.pred_opt().unwrap_or(today) - month_start).num_days() as u32
             + 1
     };
     let calendar: Vec<serde_json::Value> = (0..days_in_month)

@@ -4,41 +4,21 @@
  * 管理后台 renderTool 简单页签分流（从 app/(main)/admin/page.tsx
  * 按域拆出，295 行门禁）：一个工具名 → 一个面板组件的直排 case，
  * 以及 staff-tools 承载页签的兜底。纯搬移，无逻辑改动。
+ *
+ * C 批首屏 JS 清偿（参照 W-33 games/_inner 模式）：直排面板全部改
+ * next/dynamic 懒加载——admin 路由 chunk 曾 416kB（35+ 面板聚合），
+ * 任一面板只有被 `?tool=` 命中时才拉对应 chunk（实测入口 chunk
+ * 416→37kB）。面板清单本体按域拆至 ./admin-tool-map.tsx（300 行
+ * 门禁），本文件只留分发与共享 flash。
  */
 
+import type { ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
-import { ContentManage } from "@/components/content-manage";
-import { StaffTools, type ToolTab } from "@/components/staff-tools";
-import { AdminUsers } from "@/components/admin-users";
-import { AdminTorrents } from "@/components/admin-torrents";
-import { AdminP2Tools } from "@/components/admin-p2-tools";
-import { AdminHr } from "@/components/admin-hr";
-import { AdminInvites } from "@/components/admin-invites";
-import { AdminUserLogs } from "@/components/admin-userlogs";
-import { AdminAttendance } from "@/components/admin-attendance";
-import { AdminTagDict } from "@/components/admin-tagdict";
-import { AdminSections } from "@/components/admin-sections";
-import { AdminMedals } from "@/components/admin-medals";
-import { AdminSubtitlesAwards } from "@/components/admin-subtitles-awards";
-import { AdminProps } from "@/components/admin-props";
-import { AdminExams } from "@/components/admin-exams";
-import { AdminJixiao } from "@/components/admin-jixiao";
-import { AdminTasks } from "@/components/admin-tasks";
-import { AdminTrackers } from "@/components/admin-trackers";
-import { AdminOpsPanel } from "@/components/admin-ops";
-import { AdminEmbedRules } from "@/components/admin-embed-rules";
-import { AdminOnboarding } from "@/components/admin-onboarding";
-import { AdminEconomyDashboard } from "@/components/admin-economy-dashboard";
-import { AdminApplications } from "@/components/admin-applications";
-import { AdminGacha } from "@/components/admin-gacha";
-import { AdminArcade } from "@/components/admin-arcade";
-import { HomeLayoutEditor } from "@/components/home-layout-editor";
-import { ViewHiddenEditor } from "@/components/view-hidden-editor";
-import { FreeleechPanel, ClearCachePanel } from "./admin-freeleech";
-import { PromoIntentsPanel } from "./admin-promo-intents";
-import { AdminTrumps } from "@/components/admin-trumps";
-import { AdminPromoKinds } from "./admin-promo-kinds";
-import { AdminClasses } from "@/components/admin-classes";
+import type { ToolTab } from "@/components/staff-tools";
+import { LAZY_PANELS } from "./admin-tool-map";
+
+/** page.tsx 的 STAFF_TOOL_TABS 分支用的 staff-tools 懒壳（同源防重） */
+export const StaffToolsLazy = LAZY_PANELS.StaffTools;
 
 /** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名）
  *
@@ -62,71 +42,72 @@ export function renderSimpleTool(
   tool: string,
   a: Record<string, string>,
   dict: ReturnType<typeof useI18n>["dict"],
-) {
+): ReactNode {
+  const P = LAZY_PANELS;
   switch (tool) {
     case "users":
-      return <AdminUsers classes={dict.admin.classList} />;
+      return <P.AdminUsers classes={dict.admin.classList} />;
     case "torrents":
-      return <AdminTorrents />;
+      return <P.AdminTorrents />;
     // 举报处理（0336 trumping 的版主入口；导航项见迁移 0339）
     case "trumps":
-      return <AdminTrumps />;
+      return <P.AdminTrumps />;
     case "content":
       return (
         <section className="nexus-detail">
           <h2 className="mb-3 text-base font-bold text-ink">
             {a.sectionContent ?? "content"}
           </h2>
-          <ContentManage />
+          <P.ContentManage />
         </section>
       );
     case "freeleech":
       // 站方级促销 + intent 审批队列（0356）+ 用户自购档位注册表（0213）
       return (
         <>
-          <FreeleechPanel />
-          <PromoIntentsPanel />
-          <AdminPromoKinds />
+          <P.FreeleechPanel />
+          <P.PromoIntentsPanel />
+          <P.AdminPromoKinds />
         </>
       );
     case "clearcache":
-      return <ClearCachePanel />;
+      return <P.ClearCachePanel />;
     case "p2tools":
-      return <AdminP2Tools />;
+      return <P.AdminP2Tools />;
     // 第八轮 P3 套件（同类站后台逐页深挖落地）
     case "hr":
-      return <AdminHr />;
+      return <P.AdminHr />;
     // P-19：等级规则（class_rules + user_classes 的后台编辑面）
     case "classes":
-      return <AdminClasses />;
+      return <P.AdminClasses />;
     case "invites":
-      return <AdminInvites />;
+      return <P.AdminInvites />;
     case "userlogs":
-      return <AdminUserLogs />;
+      return <P.AdminUserLogs />;
     case "attendance":
-      return <AdminAttendance />;
+      return <P.AdminAttendance />;
     case "tagdict":
-      return <AdminTagDict />;
+      return <P.AdminTagDict />;
     case "sections":
-      return <AdminSections />;
+      return <P.AdminSections />;
     case "medals":
-      return <AdminMedals />;
+      return <P.AdminMedals />;
     // 金字幕评选管理（0150）：候选/授金
     case "subawards":
-      return <AdminSubtitlesAwards />;
+      return <P.AdminSubtitlesAwards />;
     case "props":
-      return <AdminProps />;
+      return <P.AdminProps />;
     case "exams":
-      return <AdminExams />;
+      return <P.AdminExams />;
     case "jixiao":
-      return <AdminJixiao />;
+      return <P.AdminJixiao />;
     case "tasks":
-      return <AdminTasks />;
+      return <P.AdminTasks />;
     case "trackers":
-      return <AdminTrackers />;
+      return <P.AdminTrackers />;
     // 运维三件套（0078）：版本信息 / 备份面板 / 任务手动触发
     case "ops":
-      return <AdminOpsPanel />;
+      return <P.AdminOpsPanel />;
     // 首页排版（0089）：板块顺序/宽度/显隐可视化编辑
     case "homelayout":
       return (
@@ -134,27 +115,27 @@ export function renderSimpleTool(
           <h2 className="mb-3 font-display text-lg">
             {dict.homeLayout.title}
           </h2>
-          <HomeLayoutEditor />
+          <P.HomeLayoutEditor />
         </section>
       );
     // 视频内嵌规则管理（0189）
     case "embedrules":
-      return <AdminEmbedRules />;
+      return <P.AdminEmbedRules />;
     // C4 新手运营模板（0226）
     case "onboarding":
-      return <AdminOnboarding />;
+      return <P.AdminOnboarding />;
     // C5 经济反通胀运营面板（0226）
     case "economy":
-      return <AdminEconomyDashboard />;
+      return <P.AdminEconomyDashboard />;
     // 申请制入站审核（0227）
     case "applications":
-      return <AdminApplications />;
+      return <P.AdminApplications />;
     // 抽卡运营（G31-C 后台入口：发放+巡检）
     case "gacha":
-      return <AdminGacha />;
+      return <P.AdminGacha />;
     // 娱乐屋运营（P3 后台入口：EV 三口径 / 门禁 / 参数 / 定义）
     case "arcade":
-      return <AdminArcade />;
+      return <P.AdminArcade />;
     // 视图布局（E6）：列表列/详情段落显隐
     case "viewlayout":
       return (
@@ -162,7 +143,7 @@ export function renderSimpleTool(
           <h2 className="mb-3 font-display text-lg">
             {dict.viewLayout.title}
           </h2>
-          <ViewHiddenEditor />
+          <P.ViewHiddenEditor />
         </section>
       );
     default:

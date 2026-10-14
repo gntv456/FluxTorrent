@@ -44,7 +44,8 @@ pub(super) async fn import(
     // 拉 16MiB 后直接进这里，所以闸必须建在两条路共用的入口上。
     if head.payload.to_string().len() > 1024 * 1024 {
         return Err(bad("包体 payload 超过 1MiB 上限"));
-    }    match head.kind.as_str() {
+    }
+    match head.kind.as_str() {
         "taxonomy" => import_taxonomy(state, actor, &head, confirm).await,
         "rules" => import_rules(state, actor, &head, confirm).await,
         "assets" => import_assets(state, actor, &head, confirm).await,
@@ -64,11 +65,7 @@ async fn import_embed(
     head: &PackHead,
     confirm: bool,
 ) -> DomainResult<HttpResponse> {
-    let Some(rows) = head
-        .payload
-        .get("rules")
-        .and_then(Value::as_array)
-    else {
+    let Some(rows) = head.payload.get("rules").and_then(Value::as_array) else {
         return Err(bad("embed 包缺少 payload.rules"));
     };
     let rows = rows.clone();
@@ -130,9 +127,11 @@ async fn import_taxonomy(
         )));
     }
     if !confirm {
-        let cur_cats: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM categories")
-            .fetch_one(&mut *tx).await.unwrap_or(0);
+        let cur_cats: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM categories")
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap_or(0);
         tx.rollback().await.ok();
         return Ok(ok(serde_json::json!({
             "dry_run": true,
@@ -235,10 +234,8 @@ async fn import_rules(
         snap.insert(k.clone(), Value::String(v.clone()));
     }
     let snapshot = serde_json::json!({ "rules": Value::Object(snap) });
-    let before: std::collections::HashMap<&str, &str> = cur
-        .iter()
-        .map(|(k, v)| (k.as_str(), v.as_str()))
-        .collect();
+    let before: std::collections::HashMap<&str, &str> =
+        cur.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
     let mut changed = Vec::new();
     for (key, expr_v) in rules {
         let expr = expr_v.as_str().unwrap_or_default();
@@ -507,19 +504,15 @@ pub(super) async fn rollback(
     let mut tx = state.repo.db.begin().await.map_err(internal)?;
     // FOR UPDATE：连点两次「回滚」时第二条必须等第一条删掉登记行，否则
     // 各自重放一次快照，下面的按序判据也一起失效
-    let row: Option<(
-        String,
-        String,
-        String,
-        chrono::DateTime<chrono::Utc>,
-    )> = sqlx::query_as(
-        "SELECT pack_id, kind, snapshot::text, applied_at \
+    let row: Option<(String, String, String, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT pack_id, kind, snapshot::text, applied_at \
          FROM content_packs WHERE id = $1 FOR UPDATE",
-    )
-    .bind(id)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(internal)?;
+        )
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(internal)?;
     let Some((pack_id, kind, snapshot, applied_at)) = row else {
         return Err(DomainError::Validation("内容包记录不存在".into()));
     };

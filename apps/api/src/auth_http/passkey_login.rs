@@ -32,8 +32,7 @@ pub(super) async fn passkey_login_begin(
     // 有 5 次/分（按用户名）+ IP 档 + 账号锁定，这里原本一条限流都没有
     // ——既是用户名枚举的放大器，也是免费的算力放大口。
     let ip = crate::http::client_ip(&req);
-    crate::http::rate_window(&state, &format!("pkloginb:{ip}"), 20, 60)
-        .await?;
+    crate::http::rate_window(&state, &format!("pkloginb:{ip}"), 20, 60).await?;
     crate::http::rate_window(
         &state,
         &format!("pkloginb-u:{}", body.username.trim().to_lowercase()),
@@ -105,8 +104,7 @@ pub(super) async fn passkey_login_finish(
 ) -> DomainResult<HttpResponse> {
     // P-79：认证端点 + 每次一把 ECDSA 验签，此前无任何上限。
     let ip = crate::http::client_ip(&req);
-    crate::http::rate_window(&state, &format!("pkloginf:{ip}"), 10, 60)
-        .await?;
+    crate::http::rate_window(&state, &format!("pkloginf:{ip}"), 10, 60).await?;
     let cd = serde_json::from_slice::<serde_json::Value>(&b64url(
         &body.client_data_json,
     ))
