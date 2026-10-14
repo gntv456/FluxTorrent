@@ -95,14 +95,17 @@
   --border-deep: #bcd7ef;
   --border-strong: #7fb0d9;
   /* ===== 状态 ===== */
-  --success: #2fbf9b;
+  /* D4 决议（2026-10-14，按建议 A）：三族语义色在浅色块加深至
+     白底/软底双双 ≥4.5（原 2.07-2.78，债主见 metrics-log）；同色相
+     加深、暗色块不受影响。 */
+  --success: #167c63;
   --success-bright: #3dd2ab;
   --success-soft: #dff7f0;
   --success-border: #a9e5d4;
-  --warning: #e8a80c;
+  --warning: #936800;
   --warning-soft: #fff4d6;
   --warning-border: #f0dca0;
-  --danger: #ff6b6b;
+  --danger: #d60000;
   --danger-soft: #ffe9e2;
   --danger-border: #ffc7ba;
   --info: #1e8ae8;
