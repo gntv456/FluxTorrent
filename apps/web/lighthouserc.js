@@ -136,10 +136,16 @@ module.exports = {
       },
     },
     assert: {
+      // D3 决议（2026-10-14，按建议 A）：三条绝对线**只对生产域/真链路
+      // 断言**。本机/CI 打的是 localhost + Lighthouse 模拟节流，实测对
+      // 同一组页面过罚 3.6-8.4×（P0 十页 LCP 4065-7650ms 全超、
+      // metrics-log §12.4），拿它当 error 会把「页面没问题」也拦死。
+      // 本机采集降为 warn：数值进 metrics-log §12.4 基线做回归方向跟踪
+      // （只许变差不许变好由人工审 diff），上线后对真链路恢复 error。
       assertions: {
-        "largest-contentful-paint": ["error", { maxNumericValue: 2500 }],
-        "cumulative-layout-shift": ["error", { maxNumericValue: 0.1 }],
-        "total-blocking-time": ["error", { maxNumericValue: 300 }],
+        "largest-contentful-paint": ["warn", { maxNumericValue: 2500 }],
+        "cumulative-layout-shift": ["warn", { maxNumericValue: 0.1 }],
+        "total-blocking-time": ["warn", { maxNumericValue: 300 }],
       },
     },
     upload: {
