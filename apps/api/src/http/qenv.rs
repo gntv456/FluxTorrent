@@ -66,10 +66,17 @@ impl<T: DeserializeOwned> FromRequest for Q<T> {
     fn from_request(req: &HttpRequest, _pl: &mut Payload) -> Self::Future {
         ready(match web::Query::<T>::from_query(req.query_string()) {
             Ok(q) => Ok(Q(q.into_inner())),
-            Err(e) => Err(QError(DomainError::Validation(format!(
-                "查询参数格式无效：{}",
-                e
-            )))),
+            Err(e) => {
+                let raw = e.to_string();
+                // P-304：查询侧与 JSON 体/路径侧同一口径——serde 原文不进
+                // message（这里还多亏包了一层中文前缀，原文照抄等于把
+                // 「invalid digit found in string」摊给成员）
+                tracing::warn!("查询参数解析失败：{raw}");
+                Err(QError(DomainError::Validation(format!(
+                    "查询参数格式无效：{}",
+                    crate::path_cfg::humanize_parse_error(&raw)
+                ))))
+            }
         })
     }
 }
