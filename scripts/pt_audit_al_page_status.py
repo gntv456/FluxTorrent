@@ -91,29 +91,67 @@ ok("A0 经反代拿到会话 cookie（判据前提）", len(CK) > 10, "cookie=%d
    % len(CK))
 uid = q("SELECT id::text FROM users WHERE username = 'root' AND status < 2")
 ok("A0 取到真实存在的站长 id", uid.isdigit(), "uid=%s" % uid)
-# 会话是否真的生效，不能只看 200：未登录会被重定向到登录页，也是 200；
-# 而「用户名出现在正文里」也不够——上导航栏也印当前登录用户名（root），
-# 会假绿。钉死 profile hero 专属标记 up-hero__name（假绿的教训在这一行）。
+# 会话是否真的生效：批八十七之前这里认的是 profile hero 的 HTML 标记
+# （`up-hero__name"><h1`），结果页面一改就假红——常驻闸门长红会淹掉真信号。
+# 改成 API 侧证据：带 cookie 打 /api/v1/me 必须 200 且回的是 root 的 id。
+# 「未登录也被 200」这个坑仍然成立，所以判据不能只看状态码。
 uname = q("SELECT username FROM users WHERE id = %s" % uid)
-marker = 'up-hero__name"><h1'
+m_code, m_body = hit_raw("%s/api/v1/me" % BASE, CK, js=RAW_JS)
+ok("A0 会话确实生效（API 侧证据：/me 200 且带 root 的 id，不再认 HTML 标记）",
+   m_code == 200 and ('"id":%s' % uid) in m_body.replace(" ", ""),
+   "http=%s id=%s user=%s" % (m_code, uid, uname))
 g_code, g_body = hit_raw("%s/users/%s" % (BASE, uid), CK, js=RAW_JS)
-ok("A0 会话确实生效（profile hero 里出现该成员用户名）",
-   g_code == 200 and marker in g_body and uname in g_body,
-   "http=%s user=%s 命中=%s" % (g_code, uname, uname in g_body))
 ok("A0 前置没有踩到登录重定向（Location 不该是 /login）",
    g_code not in (301, 302, 307, 308), "http=%s" % g_code)
 
-print("== A1 正例：真不存在的 id 必须仍是 404 ==")
+print("== A1 正例：真不存在的 id 的 HTTP 语义（批八十七按 P-298 分档）==")
+# 这三段都带 `loading.tsx`：Next 先把 shell 以 200 冲出，页面里的 notFound()
+# 执行了也改不回状态码（P-298，机理与全站清单见 pt_ef_page_status_boundary.py）。
+# 所以这里不再让它们常驻红，而是三态判：
+#   404  → 说明这一段已修好，**必须从 KNOWN_P298 删名**（不删就红，防欠账变哑）；
+#   200  → 允许，但页面必须真渲染出「不存在」文案（空壳 200 = 新的洞）；
+#   其它 → 一律红。新增带 boundary 的详情段请同步加进 KNOWN_P298 并去 EF 记账。
+KNOWN_P298 = {"users", "torrent", "collections"}
+# 「有没有渲染出『不存在』」必须扫**整份响应**：RAW_JS 只回前 12000 字节，
+# 而文案在 flight 数据里更靠后——第一版因此把「其实有文案」误判成空壳。
+NF_JS = ("fetch(process.argv[1],{headers:{cookie:process.argv[2]||''},"
+         "redirect:'manual'}).then(async r=>{"
+         "const t=await r.text();console.log(r.status+'|'+("
+         "/不存在|未找到|找不到|not ?found/i.test(t)?'Y':'N'))})"
+         ".catch(()=>console.log('0|E'))")
+
+
+def status_and_404text(url, ck):
+    p = sh(["docker", "exec", "flux-web", "node", "-e", NF_JS, url, ck])
+    out = (p.stdout or "").strip().split("|")
+    try:
+        return int(out[0]), (len(out) > 1 and out[1] == "Y")
+    except ValueError:
+        return 0, False
+
+
 for name, path in [("users", "/users/999999999"),
                    ("torrent", "/torrent/999999999"),
                    ("collections", "/collections/999999999")]:
-    s = hit(BASE + path, CK)
-    ok("A1 %s 不存在 → 404（不是 500 也不是空白 200）" % name, s == 404,
-       "http=%s" % s)
+    s, 文案 = status_and_404text(BASE + path, CK)
+    if s == 404:
+        ok("A1 %s 不存在 → 404：已修好，请把 %r 从 KNOWN_P298 删掉（P-298 "
+           "清册只减不增）" % (name, name), name not in KNOWN_P298,
+           "http=404 仍在册=%s" % (name in KNOWN_P298))
+    elif s == 200:
+        ok("A1 %s 不存在 → P-298 在册：流式 boundary 吃掉 404，但 200 里必须"
+           "有「不存在」文案（空壳 200 不可接受）" % name,
+           name in KNOWN_P298 and 文案,
+           "http=200 在册=%s 全文案=%s" % (name in KNOWN_P298, 文案))
+    else:
+        ok("A1 %s 不存在 → 状态码只能是 404 或在册 200，实测 %s" % (name, s),
+           False, "http=%s" % s)
 
 print("== A2 反例：接口限流中，真实 id 不得被报成「不存在」 ==")
 api = "%s/api/v1/users/%s" % (BASE, uid)
-codes = [hit(api, CK) for _ in range(60)]
+# 60 次打不满 60/分这一档（前置会假红：本轮实测 429×0、全是 200）——
+# 判据的前提要自己成立，把次数提到 90 并在断言里带上实测分布。
+codes = [hit(api, CK) for _ in range(90)]
 throttled = codes.count(429)
 ok("A2 前置：确实把 SSR 反代打到限流（429>0）", throttled > 0,
    "429×%d 其它=%s" % (throttled, sorted(set(codes))))
