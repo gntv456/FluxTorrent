@@ -92,9 +92,10 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
       setTotal(r.total ?? 0);
       setSel(new Set());
     } catch {
-      setData(null);
+      // P-314：主列表读不到时此前只 setData(null) ——表格停在空壳，版主会当成「没有符合条件的种」。
+      setData(null); flash(dict.common.loadFailed);
     }
-  }, [q, status, owner, pos, promo, pick, hr, page, dims.values]);
+  }, [q, status, owner, pos, promo, pick, hr, page, dims.values, dict, flash]);
 
   useEffect(() => {
     load();
