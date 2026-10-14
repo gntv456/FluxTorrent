@@ -63,6 +63,20 @@ async fn message_delete(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-297：先数「本次真的会动到的行」。此前响应回的是 body.ids.len()
+    // （请求条数）——不存在的 id、别人的 id、已被对方删掉的 id 全都算成
+    // 「已删除」：现网实测拿 3 个不存在的 id 打过来回 {"deleted": 3}，
+    // 而同口的 markread / move 对同一个 id 都老实回 0。用户按这个数字
+    // 判断「删掉了没有」，而未读数照旧 ⇒ 「返回值当事实」那一族的又一次。
+    let owned: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM messages WHERE id = ANY($1) AND \
+         (receiver_id = $2 OR sender_id = $2)",
+    )
+    .bind(&body.ids)
+    .bind(auth.id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
         "UPDATE messages SET location = 0 WHERE receiver_id = $1 AND \
          id = ANY($2) AND location = 1",
@@ -92,7 +106,7 @@ async fn message_delete(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "deleted": body.ids.len() })))
+    Ok(ok(serde_json::json!({ "deleted": owned })))
 }
 
 #[derive(Deserialize)]
