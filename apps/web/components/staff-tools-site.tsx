@@ -261,7 +261,7 @@ export function StaffSitePanel({
                   );
                   setPluginList(r.plugins);
                 } catch {
-                  setPluginList([]);
+                  setPluginList([]); flash(dict.common.loadFailed);
                 }
               }}
             >

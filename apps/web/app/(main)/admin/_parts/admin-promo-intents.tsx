@@ -39,9 +39,9 @@ export function PromoIntentsPanel() {
         ),
       );
     } catch {
-      setRows([]);
+      setRows([]); setMsg(dict.common.loadFailed);
     }
-  }, [status]);
+  }, [status, dict]);
 
   useEffect(() => {
     load();

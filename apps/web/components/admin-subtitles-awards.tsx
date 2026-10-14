@@ -41,9 +41,9 @@ export function AdminSubtitlesAwards() {
       );
       setRows(r.items ?? []);
     } catch {
-      setRows([]);
+      setRows([]); setMsg(dict.common.loadFailed);
     }
-  }, [period]);
+  }, [period, dict]);
 
   useEffect(() => {
     void load();

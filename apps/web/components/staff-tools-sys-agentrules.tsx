@@ -145,7 +145,7 @@ export function AgentRulesPanel({
             try {
               setAgentRules(await api.get("/api/v1/admin/agentrules"));
             } catch {
-              setAgentRules([]);
+              setAgentRules([]); flash(dict.common.loadFailed);
             }
           }}
         >

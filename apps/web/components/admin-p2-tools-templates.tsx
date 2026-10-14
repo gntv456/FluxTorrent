@@ -48,9 +48,9 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
     try {
       setRows(await api.get("/api/v1/admin/message-templates"));
     } catch {
-      setRows([]);
+      setRows([]); flash(dict.common.loadFailed);
     }
-  }, []);
+  }, [dict, flash]);
   useEffect(() => {
     load();
   }, [load]);
