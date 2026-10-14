@@ -89,12 +89,19 @@ ok("CR0a 合法查询参数必须照常 200：forums/feed=%s、me/orders=%s、"
 
 # ===== CR1 会员侧：畸形值必须回信封（修前是 text/plain 英文）=====
 MEMBER = [
-    ("/forums/feed?limit=abc", "会员首页订阅流（feed.rs:35 limit: Option<i64>）"),
-    ("/me/orders?page=abc", "我的订单（my_orders.rs:31 page: Option<i64>）"),
-    ("/torrents/40079/related?limit=abc", "详情页相关推荐（related.rs:17）"),
-    ("/games/history?limit=abc", "娱乐屋历史（overview.rs:199）"),
+    ("/forums/feed?limit=abc", "会员首页订阅流"),
+    ("/me/orders?page=abc", "我的订单"),
+    ("/torrents/40079/related?limit=abc", "详情页相关推荐"),
+    ("/games/history?limit=abc", "娱乐屋历史"),
 ]
-for path, what in MEMBER:
+# 本批续：全仓收口后，后台/开放接口家族也要有接口级证据（root 是职员档）
+ADMIN = [
+    ("/admin/records?limit=abc", "后台记录台账"),
+    ("/admin/reports/queue?page=abc", "举报队列"),
+    ("/admin/torrents?page=abc", "后台种子管理列表"),
+    ("/admin/user-roles?user_id=abc", "后台职务读口（本批最初那条红）"),
+]
+for path, what in MEMBER + ADMIN:
     st, ct, body = raw_get(path, token=ROOT)
     good, detail = envelope(st, ct, body)
     ok("CR1 %s `%s` 必须回站内信封（修前：400 text/plain 英文）：http=%s"
@@ -153,26 +160,24 @@ ok("CR4 本批改过的 %d 个文件里不能有「换了一半」的（同文�
    "形参又不用 from_query）：%s" % (len(files), half), not half,
    "半换=%s" % half)
 
-# ===== CR5 钉桩：余量必须在册（后台一族 + 站方在途），别把没做完记成做完了 =====
+# ===== CR5 欠账清零：类型位 web::Query<T> 形参必须为 0 =====
+# （P-280 已在批七十六续里全仓收口；`from_query` 的写法不算余量——
+#  那是批九起的正确姿势，抽取错误同样交回业务侧。）
 n_left = 0
-left_files = []
+where = []
 for root, _d, fs in os.walk(os.path.join(REPO, "apps", "api", "src")):
     for fn in fs:
         if not fn.endswith(".rs"):
             continue
         p = os.path.join(root, fn)
-        t = io.open(p, encoding="utf-8").read()
-        c = t.count("web::Query<")
+        c = io.open(p, encoding="utf-8").read().count(": web::Query<")
         if c:
             n_left += c
-            left_files.append((p.replace(REPO + os.sep, "").replace("\\", "/"),
-                               c))
-ok("CR5 钉桩：全仓仍有 %d 处 web::Query<T> 形参未接信封（后台 admin_http 一族 + "
-   "站方在途 15 个文件 + rss_http.rs/invite_http.rs 等顶层文件）—— 必须 > 0 且"
-   "逐批下降；清零时删掉本桩（当前 %d 个文件）" % (n_left, len(left_files)),
-   n_left > 0, "余量=%d" % n_left)
-print("   INFO  CR5 余量前 6 名：%s" % sorted(left_files,
-                                          key=lambda x: -x[1])[:6])
+            where.append((p.replace(REPO + os.sep, "").replace("\\", "/"),
+                          c))
+ok("CR5 全仓「: web::Query<T>」形参余量必须为 0（当前 %d，位置 %s）—— "
+   "将来谁新写一个 web::Query 形参入口，这条就红" % (n_left, where),
+   n_left == 0, "余量=%d %s" % (n_left, where))
 
 # ===== CR7 提交自洽：被引用的新文件必须在 HEAD 里（本批真栽过一次）=====
 head_files = subprocess.run(
