@@ -47,26 +47,26 @@ export function BankCard() {
       setOv(null);
       setOvFailed(true);
     }
-    try {
-      setDeposits(await api.get<BankDeposit[]>("/api/v1/bank/deposits"));
-    } catch {
-      setDeposits([]);
-    }
-    try {
-      setLoanHistory(
-        await api.get<BankLoanHistoryItem[]>("/api/v1/bank/loans"),
-      );
-    } catch {
-      setLoanHistory([]);
-    }
-    try {
-      setInterest(
-        await api.get<BankInterestRecord[]>("/api/v1/bank/interest/records"),
-      );
-    } catch {
-      setInterest([]);
-    }
-  }, []);
+    // P-314：三张表此前失败只 setX([])，而渲染侧是 `length > 0 && …`——取数挂了
+    // 整节消失，成员看到的就是「你没存过钱、没贷过款、没结过息」，与真没记录分不开。
+    // grab 内部吞错并弹一次 toast（不外抛，故 Promise.all 不会被一条失败带走整批）。
+    const grab = async <T,>(
+      url: string,
+      set: (v: T[]) => void,
+    ): Promise<void> => {
+      try {
+        set(await api.get<T[]>(url));
+      } catch {
+        set([]);
+        toast.error(dict.common.loadFailed);
+      }
+    };
+    await Promise.all([
+      grab<BankDeposit>("/api/v1/bank/deposits", setDeposits),
+      grab<BankLoanHistoryItem>("/api/v1/bank/loans", setLoanHistory),
+      grab<BankInterestRecord>("/api/v1/bank/interest/records", setInterest),
+    ]);
+  }, [dict]);
   useEffect(() => {
     refresh();
   }, [refresh]);
