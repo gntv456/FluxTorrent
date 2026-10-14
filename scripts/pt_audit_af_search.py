@@ -266,8 +266,10 @@ ok("G4 promo=any 同样命中（促销存在即算）", eqs(sel("promo=any"), {A
    str(sel("promo=any")))
 ok("G4 promo=none 是补集", eqs(sel("promo=none"), {A1, A2, A4, A5}),
    str(sel("promo=none")))
-ok("G4 未知 promo 值不筛（容错口径，配 promo=free 对照）",
-   eqs(sel("promo=zzz"), CORPUS), str(sel("promo=zzz")))
+ok("G4 未知 promo 值必须 400（批七十四 P-277 收紧；此处旧判据「不筛 = 返回"
+   "全站」正是那个洞，2026-10-14 随实现改判据）",
+   sel("promo=zzz") == frozenset() and "http=400" in LAST_ERR[0],
+   LAST_ERR[0])
 
 print("== G5 标签与维度 ==")
 ok("G5 tag_ids 多选 any → {A1,A2,A3}",
