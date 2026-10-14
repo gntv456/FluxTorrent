@@ -35,6 +35,7 @@ export function TorrentHoverPreview({ dict: _d }: { dict?: unknown }) {
     y: number;
     id: number;
     data: PreviewData | null;
+    err?: boolean;
   } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [touch, setTouch] = useState(false);
@@ -68,7 +69,9 @@ export function TorrentHoverPreview({ dict: _d }: { dict?: unknown }) {
           cache.set(id, data);
           setCard((c) => (c && c.id === id ? { ...c, data } : c));
         } catch {
-          setCard(null);
+          // P-314：旧写法 setCard(null) 让卡片在失败时直接消失——用户只看到
+          // 「悬浮没反应」，会反复重试。保留卡片、标 err，渲染侧给一句失败提示。
+          setCard((c) => (c && c.id === id ? { ...c, err: true } : c));
         }
       }
     };
@@ -118,7 +121,10 @@ export function TorrentHoverPreview({ dict: _d }: { dict?: unknown }) {
       data-torrent-preview={card.id}
       onMouseLeave={() => setCard(null)}
     >
-      {!d && <p className="thov__loading">{t.hoverLoading}</p>}
+      {!d && !card.err && <p className="thov__loading">{t.hoverLoading}</p>}
+      {card.err && (
+        <p className="thov__loading">{dict.common.loadFailed}</p>
+      )}
       {d && (
         <>
           {promo && (

@@ -19,7 +19,7 @@
      就是这么来的：判据的否定分支比肯定分支更需要列举齐全。
 现网裸吞清单（PENDING）是要**逐只吃掉**的队列，主要在职员/管理面：那些面板的
 空态文案与列表语义要先逐个对着前端核，不一刀切。闸门的作用只是：
-  - 已修的 15 只不许回退（EM2）；
+  - 已修 18 只不许回退（EM2）；
   - 不许**新长出**裸吞（EM3）；
   - PENDING 里被修掉却不撤桩的，EM5 会点名提醒清账（防清单只增不减）。
 """
@@ -35,7 +35,7 @@ from pt_audit_lib import ok, summary  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "apps", "web")
 
-# 已修的 15 只（回归钉：这些文件里不许再出现裸吞）
+# 已修的 18 只（回归钉：这些文件里不许再出现裸吞）
 FIXED = [
     "components/bank-actions.tsx", "components/resurrection-panel.tsx",
     "components/funding-panel.tsx", "components/forum-search.tsx",
@@ -45,6 +45,8 @@ FIXED = [
     "components/community-extra.tsx", "components/friends-actions.tsx",
     "components/task-board.tsx", "components/fun-box.tsx",
     "components/subtitle-request-panel.tsx",
+    "components/wishlist.tsx", "components/contact-staff.tsx",
+    "components/torrent-hover-preview.tsx",
 ]
 # 现网仍存在的裸吞（逐只吃掉后从这里删；新增了不在这里的就必须红）
 PENDING = [
@@ -62,11 +64,10 @@ PENDING = [
     "components/admin-torrents-list.tsx",
     "components/admin-torrents-records.tsx",
     "components/admin-user-fields-panel.tsx",
-    "components/contact-staff.tsx",
     "components/staff-tools-site.tsx",
     "components/staff-tools-sys-agentrules.tsx",
     "components/staff-wiki.tsx",
-    "components/torrent-hover-preview.tsx",
+    # torrent-hover-preview / contact-staff 于批一百一十八撤桩
     # wishlist.tsx 于批一百一十六撤桩（EM5 先提醒，grep 过 {msg && 确认可见才改）
     "app/(auth)/register/page.tsx",
 ]
@@ -137,7 +138,7 @@ ok("EM1 同一判据跑修复后的 bank-actions ＝ 0 处裸吞（旧 3 处 →
 
 print("== S2 已修 15 只不许回退 ==")
 regress = {k: v for k, v in now.items() if k in FIXED}
-ok("EM2 已修的 15 只面板里 0 处裸吞（回退即红）", not regress,
+ok("EM2 已修 18 只里 0 处裸吞（回退即红）", not regress,
    "; ".join("%s:%s" % (k, v[0]) for k, v in list(regress.items())[:3]))
 
 print("== S3 现网裸吞只能减不能增 ==")
