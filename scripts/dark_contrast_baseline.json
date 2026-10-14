@@ -3,20 +3,14 @@
   "lightDebt": [
     "信息 info/卡片",
     "信息 sky/卡片",
-    "危险 danger/卡片",
-    "危险 danger/软底",
     "品牌文本 brand/卡片",
     "品牌文本 brand/页面",
     "微弱 faint/卡片",
-    "成功 success/卡片",
-    "成功 success/软底",
     "更微弱 fainter/卡片",
     "次要 muted/卡片",
     "次要 muted/沉降面",
     "次要 muted/页面",
     "禁用态 muted/柔和底",
-    "表头 brand/表头底",
-    "警告 warning/卡片",
-    "警告 warning/软底"
+    "表头 brand/表头底"
   ]
 }
