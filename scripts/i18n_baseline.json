@@ -1112,8 +1112,6 @@
  "app/(auth)/email-verify/page.tsx": [],
  "app/(auth)/apply/page.tsx": [],
  "e2e/visual-regression.spec.ts": [
-  32,
-  36,
-  50
+  61
  ]
 }
