@@ -109,7 +109,13 @@ async fn message_delete(
     Ok(ok(serde_json::json!({ "deleted": owned })))
 }
 
-#[derive(Deserialize)]
+/// `deny_unknown_fields` 是必需的：读口的查询参数叫 `box_id`，写口这个字段叫
+/// `folder`——两个名字指同一件事。拼错键名时 serde 默认忽略未知键并把
+/// `folder` 当 `None`，而 `folder=NULL` 的语义是「移回主收件箱」：请求会
+/// **反向改数据并回 200 moved=1**（2026-10-15 实测：`{ids, box_id}` 发出去，
+/// 角标与主夹未读列表一动不动，接口却报成功）。
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct MoveReq {
     ids: Vec<i64>,
     folder: Option<i32>,
@@ -256,5 +262,28 @@ async fn message_box_upsert(
             }
             Ok(ok(serde_json::json!({ "renamed": true })))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MoveReq;
+
+    /// P-310：读口参数叫 `box_id`、写口字段叫 `folder`，拼错键名必须被拒——
+    /// 否则 serde 忽略未知键、`folder` 落 None，等于把信静默移回主收件箱还回
+    /// 200（2026-10-15 实测过的那一刻：badge 与列表一动不动，moved=1）。
+    #[test]
+    fn move_rejects_mistyped_field_names() {
+        let bad: Result<MoveReq, _> =
+            serde_json::from_str(r#"{"ids":[1],"box_id":2}"#);
+        assert!(bad.is_err(), "未知键 box_id 必须被拒");
+        let e = bad.unwrap_err().to_string();
+        assert!(e.contains("unknown field"), "报错要指出是哪个键：{e}");
+        let good: Result<MoveReq, _> =
+            serde_json::from_str(r#"{"ids":[1],"folder":2}"#);
+        assert!(good.is_ok(), "正控：正确字段名必须收");
+        let back: Result<MoveReq, _> =
+            serde_json::from_str(r#"{"ids":[1],"folder":null}"#);
+        assert!(back.is_ok(), "移回主收件箱（folder=null）仍要收");
     }
 }

@@ -140,13 +140,15 @@ for _try in range(4):          # 下载口 20 次/分限流会把这一枪挡成
         req.add_header("Authorization", "Bearer " + tok)
         r = urllib.request.urlopen(req, timeout=30)
         sts.append(r.status)
-        hdr = {k.lower(): v for k, v in r.headers.items()}.get("content-disposition", "")
+        hh = {k.lower(): v for k, v in r.headers.items()}
+        hdr = hh.get("content-disposition", "")
         r.read()
         if hdr:
             break
     except urllib.error.HTTPError as e:
         sts.append(e.code)
-        hdr = {k.lower(): v for k, v in e.headers.items()}.get("content-disposition", "")
+        hh = {k.lower(): v for k, v in e.headers.items()}
+        hdr = hh.get("content-disposition", "")
         if hdr:
             break
     time.sleep(20)
