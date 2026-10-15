@@ -394,6 +394,7 @@ const enBase: Omit<
     months: "months",
     title: "Library",
     total: "{n} torrents",
+    hiddenDead: "{n} dead torrents hidden — click to include",
     searchPlaceholder: "Search titles, descriptions, filenames…",
     searchAction: "Search",
     clearSearch: "Clear search",

@@ -386,6 +386,7 @@ const zhTwBase: Omit<
     months: "個月",
     title: "資源庫",
     total: "共 {n} 個種子",
+    hiddenDead: "另有 {n} 條斷種未顯示，點擊檢視全部",
     searchPlaceholder: "搜尋標題、簡介、檔案名…",
     searchAction: "搜尋",
     clearSearch: "清除搜尋",

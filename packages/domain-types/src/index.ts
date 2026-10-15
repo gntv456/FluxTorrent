@@ -71,6 +71,14 @@ export interface Page<T> {
   total_estimate: number;
 }
 
+/** 种子列表页（后端 TorrentPage 的前端形状）：在通用 Page 之上补
+ *  hidden_dead——默认视图只给活种，被藏起来的断种数要让用户看得见，
+ *  否则新会员会把「列表只有 4 条」当成「本站只有 4 个种」。 */
+export interface TorrentPage<T> extends Page<T> {
+  /** 被存活谓词藏起来的断种数；alive=0/2 时恒为 0 */
+  hidden_dead?: number;
+}
+
 // ============ 业务枚举（与 PG 枚举/后端 serde 对齐） ============
 
 /** 促销类型（M06，旧站 spstate 全集） */

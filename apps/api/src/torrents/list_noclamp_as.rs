@@ -207,11 +207,11 @@ pub async fn list_torrents_noclamp_as(
         LEFT JOIN users u ON u.id = t.owner_id
         {promo_lateral}
         WHERE {approval_gate}
-          AND ($1::int[] IS NULL OR t.category_id = ANY($1))
+             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
           AND {medium_pred}
           AND {grade_pred}
           AND {edition_pred}
-          AND ($5::bool IS NULL OR t.official_tag = $5)
+             AND ($5::bool IS NULL OR t.official_tag = $5) \
           {alive_pred}
           {approval_pred}
           {status_pred}
@@ -289,9 +289,9 @@ pub async fn list_torrents_noclamp_as(
     let count_sql = format!(
         "SELECT count(*) FROM (SELECT 1 FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          WHERE {approval_gate_count} \
-         AND ($1::int[] IS NULL OR t.category_id = ANY($1)) AND {medium_pred} \
+             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
          AND {grade_pred} AND {edition_pred} \
-         AND ($5::bool IS NULL OR t.official_tag = $5) {alive_pred} {approval_pred} {status_pred} \
+             AND ($5::bool IS NULL OR t.official_tag = $5) \
          {bookmark_pred} {search_pred} \
          {tag_pred_count} \
          {sec_sql} {extra_count_sql} LIMIT 10001) sub",
@@ -332,6 +332,65 @@ pub async fn list_torrents_noclamp_as(
             0
         });
 
+    // hidden_dead（0102 三态的可见性补齐）：同筛选条件下去掉存活谓词的计数。
+    // 差值就是「被藏起来的断种数」，让界面能说清「另有 N 条未显示」，
+    // 而不必翻转缺省（翻转会破坏「默认视图=活种」这个刻意的口径）。
+    //
+    // 只在**默认视图**（alive_pred 非空）时才有意义：用户显式要全部
+    // (alive=0) 或只要断种 (alive=2) 时隐藏数为 0，不做多余的查询。
+    let hidden_dead: i64 = if alive_pred.is_empty() {
+        0
+    } else {
+        let all_sql = format!(
+            "SELECT count(*) FROM (SELECT 1 FROM torrents t \\
+             LEFT JOIN users u ON u.id = t.owner_id \\
+             WHERE {approval_gate_count} \\
+             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
+             AND {medium_pred} AND {grade_pred} AND {edition_pred} \\
+             AND ($5::bool IS NULL OR t.official_tag = $5) \
+             {approval_pred} {status_pred} {bookmark_pred} {search_pred} \\
+             {tag_pred_count} {sec_sql} {extra_count_sql} LIMIT 10001) sub",
+        );
+        let all_total: i64 = sqlx::query_scalar(&all_sql)
+            .bind(filter.category_id.clone())
+            .bind(filter.medium_id)
+            .bind(filter.grade_id)
+            .bind(filter.edition_id)
+            .bind(filter.official)
+            .bind(filter.include_unapproved)
+            .bind(filter.tag_ids.clone())
+            .bind(filter.size_min)
+            .bind(filter.size_max)
+            .bind(filter.date_from.as_deref())
+            .bind(filter.date_to.as_deref())
+            .bind(filter.min_seeders)
+            .bind(filter.max_seeders)
+            .bind(&exclude_pat)
+            .bind(filter.promo.as_deref())
+            .bind(&owner_pat)
+            .bind(filter.only_mine.then_some(viewer))
+            .bind(filter.min_leechers)
+            .bind(filter.max_leechers)
+            .bind(filter.min_completed)
+            .bind(filter.max_completed)
+            .bind(filter.anonymous)
+            .bind(&title_pat)
+            .bind(filter.rating_min)
+            .fetch_one(db)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, "hidden_dead 计数失败，降级 0");
+                0
+            });
+        // 采样封顶 10001 时差值不再精确，宁可给 0 也不给一个
+        // 「看起来精确其实被截断」的数字。
+        if all_total > 10000 {
+            0
+        } else {
+            (all_total - total).max(0)
+        }
+    };
+
     let has_more = rows.len() as i64 > limit;
     let mut items: Vec<TorrentRow> =
         rows.into_iter().take(limit as usize).collect();
@@ -354,5 +413,6 @@ pub async fn list_torrents_noclamp_as(
         items,
         next_cursor,
         total_estimate: total,
+        hidden_dead,
     })
 }

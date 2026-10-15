@@ -240,10 +240,10 @@ export const api = {
 };
 
 /** 游标分页列表 */
-export async function paged<T>(
+export async function paged<T, P extends Page<T> = Page<T>>(
   resource: string,
   params: PageParams & Record<string, string | number | boolean | undefined>,
-): Promise<Page<T>> {
+): Promise<P> {
   const qs = new URLSearchParams();
   if (params.cursor) qs.set("cursor", params.cursor);
   if (params.limit) qs.set("limit", String(params.limit));
@@ -251,5 +251,5 @@ export async function paged<T>(
     if (["cursor", "limit"].includes(k) || v === undefined) continue;
     qs.set(k, String(v));
   }
-  return request<Page<T>>(`${resource}?${qs.toString()}`);
+  return request<P>(`${resource}?${qs.toString()}`);
 }

@@ -5,7 +5,10 @@ import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { colorMap, catPath } from "@/lib/site-profile";
 import { fmt } from "@/i18n/config";
-import type { TorrentListItem } from "@fluxtorrent/domain-types";
+import type {
+  TorrentListItem,
+  TorrentPage,
+} from "@fluxtorrent/domain-types";
 import { TorrentsSearchBox } from "./_parts/torrents-search-box";
 import { FilterFab } from "./_parts/filter-fab";
 import { TorrentsPullRefresh } from "./_parts/refresh-mount";
@@ -38,6 +41,22 @@ const PILL_CLS =
  *  常驻搜索行（范围/关键字/匹配/搜索）+ 折叠高级面板按语义分组（基础筛选 / 数值与时间 /
  *  发布者与状态 / 标签与排序 / 多维筛选），每组内卡片网格；已选条件摘要条置顶可逐个移除。
  *  搜索盒 / 表格 / chips 拼装 / URL 工具拆至 ./_parts/（300 行门禁）。 */
+/** 「看全部（含断种）」的链接：保留其余筛选，只把 alive 切到 0。
+ *  RSC 页面用链接而不是 router.replace——本页没有 "use client"，
+ *  引 useRouter 会把整个页面拖成客户端组件。 */
+function hiddenDeadHref(
+  sp: Record<string, string | undefined>,
+): string | null {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v === undefined || v === "" || k === "alive") continue;
+    u.set(k, v);
+  }
+  u.set("alive", "0");
+  const qs = u.toString();
+  return qs ? "?" + qs : "?alive=0";
+}
+
 export default async function TorrentsPage({
   searchParams,
 }: {
@@ -119,7 +138,9 @@ export default async function TorrentsPage({
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用；
   // 但要把「失败」与「确实没有结果」区分开（方案 P0-6：此前两者都渲染成空态）
   let loadErr: unknown = null;
-  const page = await paged<TorrentListItem>("/api/v1/torrents", {
+  const page = await paged<TorrentListItem, TorrentPage<TorrentListItem>>(
+    "/api/v1/torrents",
+    {
     limit: pageSize,
     // 多选分类（0088）：后端 category_ids 兼容逗号串
     category_id: sp.category_id,
@@ -165,6 +186,7 @@ export default async function TorrentsPage({
       items: [] as TorrentListItem[],
       next_cursor: null,
       total_estimate: 0,
+      hidden_dead: 0,
     };
   });
 
@@ -226,6 +248,23 @@ export default async function TorrentsPage({
         <span className="num text-xs text-sub">
           {fmt(dict.torrents.total, { n: page.total_estimate })}
         </span>
+        {/* 0102 存活三态的可见性补齐：默认视图只给活种，不说清楚的话
+            新会员会把「列表只有 N 条」当成「本站只有 N 个种」。提示只在
+            服务端真的藏了断种时出现，点了直接切到「全部」。RSC 里用链接
+            不用 useRouter（本页是服务端组件）。 */}
+        {(() => {
+          // RSC：局部算一次 href（不能内联调两次，也不能用 useRouter——
+          // 本页是服务端组件，引 useRouter 会把整页拖成客户端组件）
+          const n = page.hidden_dead ?? 0;
+          if (n <= 0) return null;
+          const href = hiddenDeadHref(sp);
+          if (!href) return null;
+          return (
+            <a href={href} className="text-xs text-brand hover:underline">
+              {fmt(dict.torrents.hiddenDead, { n })}
+            </a>
+          );
+        })()}
         <div className="flex items-center gap-3">
           {/* 用户级列设置（0316）：仅表格视图有列可调 */}
           {view === "table" && (
