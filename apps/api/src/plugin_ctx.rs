@@ -53,6 +53,10 @@ pub struct PluginCtx<'a> {
     pool: &'a PgPool,
     caps: &'a [DbCapability],
     name: &'static str,
+    /// DB 层隔离态（0378）。`role: None` = 降级到纯 sql_guard，
+    /// 与 0367 同级别。构造时由调用方 `ensure_isolation` 预先备好——
+    /// hook 是同步的（`block_on`），不能在里面 await 建角色。
+    iso: &'a crate::plugin_sql::Isolation,
 }
 
 impl<'a> PluginCtx<'a> {
@@ -60,8 +64,9 @@ impl<'a> PluginCtx<'a> {
         pool: &'a PgPool,
         caps: &'a [DbCapability],
         name: &'static str,
+        iso: &'a crate::plugin_sql::Isolation,
     ) -> Self {
-        Self { pool, caps, name }
+        Self { pool, caps, name, iso }
     }
 
     /// 执行写/读语句（无行返回）。先过 sql_guard，再参数化执行。
@@ -71,11 +76,10 @@ impl<'a> PluginCtx<'a> {
         binds: &[Bind],
     ) -> DomainResult<PgQueryResult> {
         self.guard(sql)?;
-        let mut q = sqlx::query(sql);
-        for b in binds {
-            q = q.bind_val(b);
-        }
-        self.block(async move { q.execute(self.pool).await })
+        let (pool, iso, sql, binds) = (self.pool, self.iso, sql, binds);
+        self.block(async move {
+            crate::plugin_sql::exec_isolated(pool, iso, sql, binds).await
+        })
     }
 
     /// 查询多行（行读取用 `sqlx::Row::get`，列名即声明内的列）。
@@ -85,11 +89,10 @@ impl<'a> PluginCtx<'a> {
         binds: &[Bind],
     ) -> DomainResult<Vec<PgRow>> {
         self.guard(sql)?;
-        let mut q = sqlx::query(sql);
-        for b in binds {
-            q = q.bind_val(b);
-        }
-        self.block(async move { q.fetch_all(self.pool).await })
+        let (pool, iso, sql, binds) = (self.pool, self.iso, sql, binds);
+        self.block(async move {
+            crate::plugin_sql::fetch_all_isolated(pool, iso, sql, binds).await
+        })
     }
 
     /// 单值 i64 查询便捷方法（EXISTS/count 场景）。
@@ -99,11 +102,11 @@ impl<'a> PluginCtx<'a> {
         binds: &[Bind],
     ) -> DomainResult<Option<i64>> {
         self.guard(sql)?;
-        let mut q = sqlx::query_scalar::<_, i64>(sql);
-        for b in binds {
-            q = q.bind_val(b);
-        }
-        self.block(async move { q.fetch_optional(self.pool).await })
+        let (pool, iso, sql, binds) = (self.pool, self.iso, sql, binds);
+        self.block(async move {
+            crate::plugin_sql::fetch_scalar_i64_isolated(pool, iso, sql, binds)
+                .await
+        })
     }
 
     fn guard(&self, sql: &str) -> DomainResult<()> {
@@ -114,9 +117,14 @@ impl<'a> PluginCtx<'a> {
         Ok(())
     }
 
+    /// 在 hook 的同步上下文里驱动一个 future 到完成。
+    ///
+    /// 泛型覆盖两种 Output：`Result<T, sqlx::Error>`（裸 pool 路径）与
+    /// `DomainResult<T>`（隔离执行路径，内部已把错误映射成 DomainError）。
+    /// 两者都归一到 `DomainResult<T>` 返回。
     fn block<F, T>(&self, fut: F) -> DomainResult<T>
     where
-        F: std::future::Future<Output = Result<T, sqlx::Error>>,
+        F: std::future::Future<Output = DomainResult<T>>,
     {
         tokio::runtime::Handle::current()
             .block_on(fut)
@@ -146,6 +154,7 @@ impl<'a> PluginCtx<'a> {
             .bind(serde_json::json!({ "reason": reason }).to_string())
             .execute(pool)
             .await
+            .map_err(|e| DomainError::Internal(e.into()))
         });
     }
 }
