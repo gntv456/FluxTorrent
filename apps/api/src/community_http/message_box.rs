@@ -113,11 +113,20 @@ pub(crate) async fn message_delete(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 归属条件不能省（P-340）。前面两条 UPDATE 都带 receiver_id /
+    // sender_id，而这条物理删除只按 `id = ANY($1) AND location = 0 AND
+    // saved = 0`。它本意是“把本人删完后剩下的回收站行一并清掉”，
+    // 但只要那行**不属于本人**（修正前产品里存在这种态：别人的信被删过
+    // 一次、location 落到 0，saved=0），任何人对着那个 id 调本口都能把它物理删掉。
+    // 实测：造一封 receiver=6311 且已在回收站的信，root 调 POST /messages/delete
+    // → 回应 {deleted: 0}（声称一检未删），而那行**已经没了**。
+    // 归属条件与前两条同口径。
     sqlx::query(
         "DELETE FROM messages WHERE id = ANY($1) AND location = 0 \
-     AND saved = 0",
+     AND saved = 0 AND (receiver_id = $2 OR sender_id = $2)",
     )
     .bind(&body.ids)
+    .bind(auth.id)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
