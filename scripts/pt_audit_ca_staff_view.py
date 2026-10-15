@@ -97,7 +97,7 @@ ok("CA0b 前提：现网 class/90 是「≥90 全部档」的阈值语义（91 �
 # ===== CA1 探针职员：用户级授予 staff.panel（不动任何真实档位） =====
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
+              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
 cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
 nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
 if codes and len(nums) >= 2:

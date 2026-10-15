@@ -145,7 +145,7 @@ ok("CJ0 前提：授权表 %d 行，%s 三把键都在目录里" % (RP0, "/".joi
 
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
+              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
 cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
 nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
 if codes and len(nums) >= 2:

@@ -320,7 +320,7 @@ if mk:
     # 2) 持有数出现在签到状态
     r = call("GET", "/attendance", token=tok)
     check("P2·签到状态含持有数", r["code"] == 0 and (r["data"].get(
-        "makeup_cards") or 0) >= 1, str(r.get("data", {}).get("makeup_cards")))
+        "makeup_cards") or 0) >= 1, str(r.get("data") or {}.get("makeup_cards")))
     # 3) 使用补签卡补过去 7 天中第一个未签日（昨天可能已签，倒序找空位）
     import datetime
     target = None
