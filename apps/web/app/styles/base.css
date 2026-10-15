@@ -1080,6 +1080,14 @@ a:hover {
     padding: 3px 8px;
   }
 }
+/* M5.11：头部操作区整体让位吸底操作条（td-actionbar <768 显示），
+   头部只留信息；主操作/互动/管理全在吸底栏与「更多操作」面板。
+   断点对齐 actionbar 的 max-width:767px，避免中间区间两头落空 */
+@media (max-width: 767px) {
+  .td-head__actions {
+    display: none;
+  }
+}
 
 /* 规格网格（阳光口径：数值 + 灰字说明） */
 .td-specs {
@@ -1336,22 +1344,10 @@ a:hover {
   border-top: 1px solid var(--line);
 }
 
-/* M5.10 头部「更多操作」底部面板（HeadActionsMore，仅移动端渲染）：
-   遮罩 + 底部弹起面板；层级用 --z-modal（toast 120 在上、nav 40 在下） */
-.more-sheet__trigger {
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-body-deep);
-  background: var(--surface-card);
-  transition: transform 0.12s ease;
-}
-.more-sheet__trigger:active {
-  transform: scale(0.97);
-}
+/* M5.11 头部「更多操作」底部面板（HeadActionsMore，仅移动端渲染）：
+   触发钮 portal 进吸底操作条（复用 td-actionbar__btn），面板恒挂载
+   inert 隐藏式（评论回复聚焦依赖 children 常驻 DOM）；
+   层级用 --z-modal（toast 120 在上、nav 40 在下） */
 .more-sheet-mask {
   position: fixed;
   inset: 0;
@@ -1359,6 +1355,13 @@ a:hover {
   display: flex;
   align-items: flex-end;
   background: rgba(15, 23, 42, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.more-sheet-mask.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 .more-sheet {
   position: relative;
@@ -1369,13 +1372,11 @@ a:hover {
   background: var(--surface-card);
   padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
   box-shadow: var(--shadow-hover);
-  animation: more-sheet-up 0.18s ease;
+  transform: translateY(100%);
+  transition: transform 0.18s ease;
 }
-@keyframes more-sheet-up {
-  from {
-    transform: translateY(24px);
-    opacity: 0;
-  }
+.more-sheet-mask.is-open .more-sheet {
+  transform: translateY(0);
 }
 .more-sheet__title {
   margin-bottom: 10px;
