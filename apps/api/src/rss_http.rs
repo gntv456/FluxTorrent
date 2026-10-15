@@ -136,6 +136,19 @@ pub(crate) async fn rss_feed(
     // 深测 2026-10-03：付费种子无差别推给订阅器——未购用户下载时才被
     // charge_for_download 拦下（402）。默认排除「付费且未购」；paid=0 全量。
     let exclude_paid = q.paid != Some(0);
+    // 0375：RSS 存活口径开关。默认 no = 保持「全部」（刷流器既有订阅
+    // 按「全部」在跑，直接翻转会让它们突然少掉源种）。改 yes 时接的是
+    // **同一份** seeders > 0 谓词，不在 RSS 里另写一份（另写会与主
+    // 列表口径漂移，正是审计里反复出现的病根）。
+    let alive_only: bool = sqlx::query_scalar(
+        "SELECT COALESCE((value = $1), false) FROM site_settings WHERE name = $2"
+    )
+    .bind("yes")
+    .bind("rss_alive_only")
+    .fetch_optional(&state.repo.db)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(false);
     let sql = format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, \
                 t.official_tag, pr.promotion, \
@@ -158,6 +171,7 @@ pub(crate) async fn rss_feed(
            AND (NOT $7::bool OR t.price <= 0 OR t.owner_id = $8 \
                 OR EXISTS (SELECT 1 FROM torrent_purchases tp \
                            WHERE tp.user_id = $8 AND tp.torrent_id = t.id)) \
+           AND (NOT $9::bool OR t.seeders > 0) \
          ORDER BY t.id DESC LIMIT $5"
     );
     let rows: Vec<RssRow> = sqlx::query_as(&sql)
@@ -176,6 +190,7 @@ pub(crate) async fn rss_feed(
         .bind(free_only)
         .bind(exclude_paid)
         .bind(user_id)
+        .bind(alive_only)
         .fetch_all(&state.repo.db)
         .await
         .unwrap_or_default();
