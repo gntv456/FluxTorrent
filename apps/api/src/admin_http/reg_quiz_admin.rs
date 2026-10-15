@@ -11,22 +11,11 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::repo::reg_quiz as quiz_repo;
 use crate::state::AppState;
 
 use super::guard::staff;
 use super::reg_quiz_bank::{validate_quiz, QuizReq};
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct QuizRow {
-    id: i64,
-    category: String,
-    question: String,
-    options: serde_json::Value,
-    answer_index: i32,
-    explanation: Option<String>,
-    enabled: bool,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
 
 #[derive(Deserialize)]
 struct QuizQuery {
@@ -42,38 +31,20 @@ async fn reg_quiz_list(
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
     let limit = q.limit.unwrap_or(200).clamp(1, 1000);
-    let rows: Vec<QuizRow> = sqlx::query_as(
-        "SELECT id, category, question, options, answer_index, \
-                explanation, enabled, created_at \
-         FROM reg_quiz_questions ORDER BY enabled DESC, category, id \
-         LIMIT $1",
-    )
-    .bind(limit)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let days: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
-         WHERE name = 'cheat_accuracy_days'), 90)",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(90)
-    .clamp(1, 3650);
-    let (attempts, passed): (i64, i64) = sqlx::query_as(
-        "SELECT count(*), count(*) FILTER (WHERE passed) \
-         FROM reg_quiz_attempts \
-         WHERE created_at > now() - ($1::bigint * interval '1 day')",
-    )
-    .bind(days)
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or((0, 0));
-    let total: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM reg_quiz_questions")
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let rows = quiz_repo::list_questions(&state.repo, limit)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let days = quiz_repo::read_setting(&state.repo, "cheat_accuracy_days")
+        .await
+        .and_then(|v| v.trim().parse::<i64>().ok())
+        .unwrap_or(90)
+        .clamp(1, 3650);
+    let (attempts, passed) = quiz_repo::attempt_stats(&state.repo, days)
+        .await
+        .unwrap_or((0, 0));
+    let total: i64 = quiz_repo::count_questions(&state.repo)
+        .await
+        .unwrap_or(0);
     Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "items": rows,
         "total": total,
@@ -104,20 +75,18 @@ async fn reg_quiz_add(
     .await?;
     let (cat, question, opts, ans, expl) =
         validate_quiz(&body).map_err(DomainError::Validation)?;
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO reg_quiz_questions \
-           (category, question, options, answer_index, explanation, \
-            enabled, created_by) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+    let id = quiz_repo::add_question(
+        &state.repo,
+        quiz_repo::NewQuestion {
+            category: cat,
+            question,
+            options: serde_json::Value::from(opts),
+            answer_index: ans,
+            explanation: expl,
+            enabled: body.enabled.unwrap_or(true),
+        },
+        auth.id,
     )
-    .bind(&cat)
-    .bind(&question)
-    .bind(serde_json::Value::from(opts))
-    .bind(ans)
-    .bind(&expl)
-    .bind(body.enabled.unwrap_or(true))
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
@@ -175,37 +144,30 @@ async fn reg_quiz_update(
         };
         let (cat, question, opts, ans, expl) =
             validate_quiz(&req_q).map_err(DomainError::Validation)?;
-        sqlx::query(
-            "UPDATE reg_quiz_questions SET category = $1, question = $2, \
-               options = $3, answer_index = $4, explanation = $5, \
-               enabled = COALESCE($6, enabled) WHERE id = $7",
+        quiz_repo::update_full(
+            &state.repo,
+            quiz_repo::NewQuestion {
+                category: cat,
+                question,
+                options: serde_json::Value::from(opts),
+                answer_index: ans,
+                explanation: expl,
+                enabled: body.enabled.unwrap_or(true),
+            },
+            body.enabled,
+            body.id,
         )
-        .bind(&cat)
-        .bind(&question)
-        .bind(serde_json::Value::from(opts))
-        .bind(ans)
-        .bind(&expl)
-        .bind(body.enabled)
-        .bind(body.id)
-        .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected()
     } else {
         let Some(en) = body.enabled else {
             return Err(DomainError::Validation(
                 "请给 enabled 或完整题目".into(),
             ));
         };
-        sqlx::query(
-            "UPDATE reg_quiz_questions SET enabled = $1 WHERE id = $2",
-        )
-        .bind(en)
-        .bind(body.id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected()
+        quiz_repo::update_enabled(&state.repo, en, body.id)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
     };
     if n == 0 {
         return Err(DomainError::NotFound(body.id));

@@ -1,5 +1,6 @@
-//! 申诉推翻后的反向解除（0369 M3）：从 cheat_appeal_review.rs 拆出
-//! （300 行门禁）。与 sanction.rs 的下达动作一一对应、方向相反。
+//! 申诉推翻后的反向解除（0369 M3）的 SQL 唯一居所（FRAME §2 下沉）：
+//! 自 gaps_http/cheat_appeal_reverse.rs 整体并入（该文件是事务编排体，
+//! SQL 与编排不可分割）。与 sanction.rs 的下达动作一一对应、方向相反。
 //!
 //! 反向项（按该案 `sanction` JSON 的 kind 派发）：
 //!   ban/full_ban → 清 cheat_banned_until（full_ban 另恢复 status 2→0）
@@ -12,8 +13,9 @@ use sqlx::{Postgres, Transaction};
 
 use crate::errors::{DomainError, DomainResult};
 
-/// 执行反向解除；返回已执行项的说明（供通知正文与响应体）。
-pub(crate) async fn reverse_sanction(
+/// 执行反向解除（调用方持有事务与 commit）；返回已执行项的说明
+/// （供通知正文与响应体）。
+pub async fn reverse_sanction(
     tx: &mut Transaction<'_, Postgres>,
     uid: i64,
     sanction: Option<&serde_json::Value>,
@@ -112,23 +114,17 @@ pub(crate) async fn reverse_sanction(
         .execute(&mut **tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        sqlx::query(
-            "INSERT INTO case_notes (case_id, author_id, body) \
-             VALUES ($1, $2, $3)",
-        )
-        .bind(cid)
-        .bind(actor_id)
-        .bind(format!(
+        let body = format!(
             "申诉 #{appeal_id} 复核结论：推翻（overturned）。{}。说明：{note}",
             if reversed.is_empty() {
                 "无自动反向项".to_string()
             } else {
                 reversed.join("；")
             }
-        ))
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        );
+        super::cheat_appeals::insert_case_note(tx, cid, actor_id, body)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     }
     Ok(reversed)
 }

@@ -274,5 +274,11 @@ impl Repo {
 }
 
 pub mod auth;
+pub mod cheat_accuracy;
+pub mod cheat_appeals;
+pub mod cheat_reverse;
+pub mod email_domains;
 pub mod passkey;
+pub mod reg_quiz;
+pub mod register_gates;
 pub mod user_prefs;

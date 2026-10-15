@@ -16,6 +16,7 @@ use serde::Deserialize;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::cheat_appeals as appeal_repo;
 use crate::state::AppState;
 
 /// 令牌摘要（sha3-256 十六进制）：库里只存摘要，明文只在通知里出现一次。
@@ -60,67 +61,37 @@ pub async fn cheat_appeal_by_token(
         .map_err(|_| DomainError::Validation("令牌格式无效".into()))?;
     let hash = token_hash(token);
     // 摘要匹配 + 未过期（一次性：消费后置 NULL，旧值立即失效）
-    let uid: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE appeal_token_hash = $1 \
-           AND appeal_token_expires_at > now()",
-    )
-    .bind(&hash)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let uid = uid.ok_or_else(|| {
-        DomainError::Validation("令牌无效或已过期（可能已被使用）".into())
-    })?;
+    let uid = appeal_repo::user_id_by_token_hash(&state.repo, &hash)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .ok_or_else(|| {
+            DomainError::Validation("令牌无效或已过期（可能已被使用）".into())
+        })?;
     // 案件必须属于该用户（防令牌跨用户使用）
-    let owns: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM reports \
-         WHERE id = $1 AND ref_type = 'cheat' AND ref_id = $2)",
-    )
-    .bind(case_id)
-    .bind(uid)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if !owns {
+    if !appeal_repo::case_owned_by_user(&state.repo, case_id, uid)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+    {
         return Err(DomainError::Validation("令牌与案件不匹配".into()));
     }
-    let open: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM appeals WHERE user_id = $1 AND status = 'open'",
-    )
-    .bind(uid)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let open = appeal_repo::open_appeal_count(&state.repo, uid)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if open >= MAX_OPEN {
         return Err(DomainError::Validation(
             "未结申诉已达上限，请等待处理".into(),
         ));
     }
-    // 建申诉（token_hash 留痕：哪枚令牌提交的）+ 用后即焚
-    let mut tx = state.repo.db.begin().await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO appeals (user_id, kind, case_id, body, token_hash) \
-         VALUES ($1, 'cheat', $2, $3, $4) RETURNING id",
+    // 建申诉（token_hash 留痕：哪枚令牌提交的）+ 用后即焚（repo 内单事务）
+    let id = appeal_repo::create_token_appeal(
+        &state.repo,
+        uid,
+        case_id,
+        content,
+        &hash,
     )
-    .bind(uid)
-    .bind(case_id)
-    .bind(content)
-    .bind(&hash)
-    .fetch_one(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query(
-        "UPDATE users SET appeal_token_hash = NULL, \
-         appeal_token_expires_at = NULL WHERE id = $1",
-    )
-    .bind(uid)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    tx.commit()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
     notify_staff(&state, id, uid, case_id, true).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
@@ -145,53 +116,30 @@ pub async fn cheat_appeal_submit(
             "申诉内容 10-4000 字符".into(),
         ));
     }
-    let owns: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM reports \
-         WHERE id = $1 AND ref_type = 'cheat' AND ref_id = $2)",
-    )
-    .bind(body.case_id)
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let owns = appeal_repo::case_owned_by_user(&state.repo, body.case_id, auth.id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if !owns {
         return Err(DomainError::Validation("案件不存在或不属于你".into()));
     }
-    let open: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM appeals WHERE user_id = $1 AND status = 'open'",
-    )
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let open = appeal_repo::open_appeal_count(&state.repo, auth.id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if open >= MAX_OPEN {
         return Err(DomainError::Validation(
             "未结申诉已达上限，请等待处理".into(),
         ));
     }
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO appeals (user_id, kind, case_id, body) \
-         VALUES ($1, 'cheat', $2, $3) RETURNING id",
+    let id = appeal_repo::create_appeal(
+        &state.repo,
+        auth.id,
+        body.case_id,
+        content,
     )
-    .bind(auth.id)
-    .bind(body.case_id)
-    .bind(content)
-    .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     notify_staff(&state, id, auth.id, body.case_id, false).await;
     Ok(ok(serde_json::json!({ "id": id })))
-}
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct MyCheatAppeal {
-    id: i64,
-    case_id: Option<i64>,
-    body: String,
-    status: String,
-    outcome: Option<String>,
-    result_note: Option<String>,
-    created_at: chrono::DateTime<chrono::Utc>,
 }
 
 /// GET /my/cheat-appeals：我的作弊申诉（含结论与案件处置状态）。
@@ -201,16 +149,9 @@ pub async fn cheat_appeal_my(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let rows: Vec<MyCheatAppeal> = sqlx::query_as(
-        "SELECT a.id, a.case_id, a.body, a.status, a.outcome, \
-                a.result_note, a.created_at \
-         FROM appeals a WHERE a.user_id = $1 AND a.kind = 'cheat' \
-         ORDER BY a.id DESC LIMIT 50",
-    )
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows = appeal_repo::my_appeals(&state.repo, auth.id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
@@ -222,27 +163,19 @@ async fn notify_staff(
     case_id: i64,
     by_token: bool,
 ) {
-    let uname: Option<String> =
-        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
-            .bind(uid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten();
-    let _ = sqlx::query(
-        "INSERT INTO staffmessages (user_id, subject, body, permission) \
-         VALUES ($1, $2, $3, 'cheater')",
+    let uname = appeal_repo::username_of(&state.repo, uid).await;
+    let _ = appeal_repo::insert_staffmessage(
+        &state.repo,
+        uid,
+        format!(
+            "作弊申诉待复核（案件 #{case_id}，用户 {}）",
+            uname.unwrap_or_else(|| format!("#{uid}"))
+        ),
+        format!(
+            "申诉 #{appeal_id}（{}）指向案件 #{case_id}，请到「反作弊申诉」\
+             队列复核（结论三选一：维持/减轻/推翻；推翻将反向解除该案处置）。",
+            if by_token { "一次性令牌提交" } else { "登录提交" }
+        ),
     )
-    .bind(uid)
-    .bind(format!(
-        "作弊申诉待复核（案件 #{case_id}，用户 {}）",
-        uname.unwrap_or_else(|| format!("#{uid}"))
-    ))
-    .bind(format!(
-        "申诉 #{appeal_id}（{}）指向案件 #{case_id}，请到「反作弊申诉」\
-         队列复核（结论三选一：维持/减轻/推翻；推翻将反向解除该案处置）。",
-        if by_token { "一次性令牌提交" } else { "登录提交" }
-    ))
-    .execute(&state.repo.db)
     .await;
 }

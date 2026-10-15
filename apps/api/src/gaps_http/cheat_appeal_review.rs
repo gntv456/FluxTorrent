@@ -13,28 +13,14 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
-use super::cheat_appeal_reverse::reverse_sanction;
 use crate::authz::perm::{CHEAT_CASES_MODERATE, CHEAT_SANCTIONS};
 use crate::authz::require_perm;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::cheat_appeals as appeal_repo;
+use crate::repo::cheat_reverse::reverse_sanction;
 use crate::state::AppState;
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct CheatAppealRow {
-    id: i64,
-    user_id: i64,
-    username: String,
-    case_id: Option<i64>,
-    body: String,
-    status: String,
-    outcome: Option<String>,
-    result_note: Option<String>,
-    by_token: bool,
-    created_at: chrono::DateTime<chrono::Utc>,
-    sanction: Option<serde_json::Value>,
-}
 
 /// GET /admin/cheat-appeals：作弊申诉队列（open 优先，可状态过滤）。
 #[get("/admin/cheat-appeals")]
@@ -46,21 +32,9 @@ pub async fn cheat_appeal_queue(
     let auth = require_auth(&req, &state).await?;
     require_perm(&state, &auth, CHEAT_CASES_MODERATE).await?;
     let status = q.status.as_deref().unwrap_or("");
-    let rows: Vec<CheatAppealRow> = sqlx::query_as(
-        "SELECT a.id, a.user_id, u.username, a.case_id, a.body, a.status, \
-                a.outcome, a.result_note, \
-                (a.token_hash IS NOT NULL) AS by_token, a.created_at, \
-                r.sanction \
-         FROM appeals a \
-         JOIN users u ON u.id = a.user_id \
-         LEFT JOIN reports r ON r.id = a.case_id \
-         WHERE a.kind = 'cheat' AND ($1 = '' OR a.status = $1) \
-         ORDER BY (a.status = 'open') DESC, a.id DESC LIMIT 100",
-    )
-    .bind(status)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows = appeal_repo::appeal_queue(&state.repo, status)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
@@ -97,14 +71,7 @@ pub async fn cheat_appeal_resolve(
         return Err(DomainError::Validation("复核说明 1-4000 字符".into()));
     }
     let id = path.into_inner();
-    let row: Option<(i64, Option<i64>, Option<serde_json::Value>)> =
-        sqlx::query_as(
-            "SELECT a.user_id, a.case_id, r.sanction \
-             FROM appeals a LEFT JOIN reports r ON r.id = a.case_id \
-             WHERE a.id = $1 AND a.kind = 'cheat' AND a.status = 'open'",
-        )
-        .bind(id)
-        .fetch_optional(&state.repo.db)
+    let row = appeal_repo::resolve_target(&state.repo, id)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((uid, case_id, sanction)) = row else {
@@ -139,16 +106,9 @@ pub async fn cheat_appeal_resolve(
 
     let mut tx = state.repo.db.begin().await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query(
-        "UPDATE appeals SET status = $1, outcome = $2, handled_by = $3, \
-         handled_at = now(), result_note = $4 WHERE id = $5",
+    appeal_repo::resolve_appeal(
+        &mut tx, id, status, &body.outcome, auth.id, note,
     )
-    .bind(status)
-    .bind(&body.outcome)
-    .bind(auth.id)
-    .bind(note)
-    .bind(id)
-    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let mut reversed: Vec<String> = Vec::new();
@@ -164,17 +124,15 @@ pub async fn cheat_appeal_resolve(
         )
         .await?;
     } else if let Some(cid) = case_id {
-        sqlx::query(
-            "INSERT INTO case_notes (case_id, author_id, body) \
-             VALUES ($1, $2, $3)",
+        appeal_repo::insert_case_note(
+            &mut tx,
+            cid,
+            auth.id,
+            format!(
+                "申诉 #{id} 复核结论：{}。说明：{note}",
+                if body.outcome == "mitigated" { "减轻" } else { "维持" }
+            ),
         )
-        .bind(cid)
-        .bind(auth.id)
-        .bind(format!(
-            "申诉 #{id} 复核结论：{}。说明：{note}",
-            if body.outcome == "mitigated" { "减轻" } else { "维持" }
-        ))
-        .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
@@ -211,23 +169,11 @@ async fn notify_appellant(
     note: &str,
     reversed: &[String],
 ) {
-    let target: Option<(String, Option<String>)> =
-        sqlx::query_as("SELECT username, email FROM users WHERE id = $1")
-            .bind(uid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .ok()
-            .flatten();
+    let target = appeal_repo::username_email_of(&state.repo, uid).await;
     let Some((username, email)) = target else {
         return;
     };
-    let site: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings \
-         WHERE name = 'site_name'), 'FluxTorrent')",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or_else(|_| "FluxTorrent".into());
+    let site: String = appeal_repo::site_name(&state.repo).await;
     let verdict = match outcome {
         "overturned" => "推翻（处置已解除）",
         "mitigated" => "减轻",
