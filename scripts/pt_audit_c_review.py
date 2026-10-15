@@ -8,7 +8,8 @@
 """
 import sys, json, time, random
 sys.stdout.reconfigure(encoding="utf-8")
-from pt_audit_lib import call, login, ok, summary
+from pt_audit_lib import call, clear_register_rl, login, ok, summary
+clear_register_rl()   # #75：开工前清掉探针号占用的 24h 同 IP 额度
 from pt_audit_a_publish import make_torrent, upload_torrent
 import subprocess
 
