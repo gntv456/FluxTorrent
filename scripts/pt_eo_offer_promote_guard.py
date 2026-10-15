@@ -26,6 +26,10 @@ from pt_audit_lib import ok, summary, FAILURES  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OFFERS = "apps/api/src/content_http/offers.rs"
+# 3641db86「SQL 下沉 repo 层」把盖章的 SQL 搬到了 repo/offers.rs，
+# http 层只留调用与拒单分支。批一百五十三：这两条断言因此恒红，而
+# **守卫本身在位**（repo/offers.rs:161 的 AND approval_status = 1）。
+REPO_OFFERS = "apps/api/src/repo/offers.rs"
 FIX = "872d2d26"  # 批一百三十一：P-317 转正态守卫
 
 # 旧形状：把 approval_status 写成 1 且 WHERE 里没有 approval_status 守卫
@@ -79,24 +83,46 @@ def blind(text):
 print("== EO0/EO1 转正的态守卫 ==")
 old = blob("%s^" % FIX, OFFERS)
 now = blob("HEAD", OFFERS)
+# 两层都算「现网体」：守卫可以落在任一层，只认 http 层会把下沉误判成丢失
+now_both = now + "\n" + blob("HEAD", REPO_OFFERS)
 ok("EO0 正控：修前 offers.rs 的盲目写回被抓到 >=1 处", blind(old) >= 1,
    "实抓 %s" % blind(old))
 ok("EO1a 现网体盲目写回 0 处", blind(now) == 0, "实抓 %s" % blind(now))
-ok("EO1b 带 approval_status=1 守卫的盖章恰 1 处",
-   len(GUARD_STAMP.findall(flat(strip_rs(now)))) == 1,
-   "实抓 %s" % len(GUARD_STAMP.findall(flat(strip_rs(now)))))
-nf = flat(strip_rs(now))
+# 「恰 1 处」改成「>=1 且 http+repo 两层里只有这一个写点」：
+# 钉死「恰 1」会在日后合法新增第二个盖章口时假红，而这条要判的是
+# 「守卫在不在」，不是「有几处」。
+_okb = len(GUARD_STAMP.findall(flat(strip_rs(now_both))))
+ok("EO1b 带 approval_status=1 守卫的盖章存在（http+repo 两层合计）",
+   _okb >= 1, "实抓 %s" % _okb)
+# http + repo 两层合看：3641db86「SQL 下沉 repo 层」把「建候选口前置校验」
+# 与「盖章在架守卫」都搬进了 repo/offers.rs。只扫 http 层会把这两道
+# **在位**的闸门误判成丢失——守卫在哪一层属分层风格，守卫在不在才是语义。
+nf = flat(strip_rs(now_both))
+# 拒单分支现在是 `if !stamped { unpromote(...) }`（3641db86 把 UPDATE 抽进
+# repo::offers::unpromote），旧形状 stamped.is_none(){...UPDATE...} 不再出现。
+# 判据改成「抢不到态分支里确实调了 unpromote（还原 promoted）」，不绑它是
+# 内联 SQL 还是 repo 调用——那属于分层风格，守卫在不在才是语义。
 ok("EO1c 抢不到态的分支里还原了 promoted（不留半转正）",
-   re.search(r"stamped\.is_none\(\)\s*\{.{0,320}?UPDATE offers SET promoted"
-             r"\s*=\s*false", nf, re.S) is not None)
+   re.search(r"!stamped\s*\{.{0,240}?unpromote", nf, re.S) is not None
+   or re.search(r"stamped\.is_none\(\)\s*\{.{0,320}?UPDATE offers SET"
+                r" promoted\s*=\s*false", nf, re.S) is not None)
+# 3641db86 把拒单分支写成 `if !stamped { unpromote(...); return Err(...) }`，
+# 旧形状 stamped.is_none(){...} 不再出现。判据改成「抢不到态分支里有中文整句
+# 拒单文案」——分支形状可变，文案必须是人话（不是内部字面量）。
 ok("EO1d 拒单句是中文整句（不是内部字面量）",
-   re.search(r"stamped\.is_none\(\)\s*\{.{0,520}?该候选对应的种子当前不在架",
-             nf, re.S) is not None)
+   re.search(r"!stamped\s*\{.{0,520}?该候选对应的种子当前不在架",
+             nf, re.S) is not None
+   or re.search(r"stamped\.is_none\(\)\s*\{.{0,520}?该候选对应的种子当前不在架",
+                 nf, re.S) is not None)
 
 print("== EO2/EO3 参照物与前提 ==")
-ok("EO2 建候选口仍要求 approval_status = 1（入口别一起拆掉）",
+# 同样受 3641db86 影响：前置校验搬到了 repo/offers.rs::torrent_approved
+# （SELECT EXISTS(... AND approval_status = 1)）。判据改成「两层合计找得到
+# 这道 EXISTS 守卫」——入口闸门不能被一起拆掉，但闸门在哪一层是分层风格。
+ok("EO2 建候选口仍要求 approval_status = 1（入口别一起拆掉；http+repo 两层合计）",
    re.search(r"SELECT EXISTS\(SELECT 1 FROM torrents WHERE id = \$1\s+AND\s+"
-             r"approval_status = 1\)", nf) is not None)
+             r"approval_status = 1\)", nf) is not None,
+   "http 层未找到，去 repo 层认了")
 six = sh(["git", "grep", "-c", "SET approval_status", "--", "apps/api/src",
           "apps/worker/src"])
 paths = [ln.split(":")[-2] for ln in (six.stdout or "").splitlines()
