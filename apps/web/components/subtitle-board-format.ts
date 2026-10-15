@@ -1,7 +1,8 @@
 /** 字幕区展示工具（从 subtitle-board-table.tsx 拆出，300 行门禁）：
- *  语言字典缓存、旗帜/KB/相对时间格式化、规则文本加粗。 */
+ *  语言字典缓存、旗帜/KB/相对时间格式化、规则文本加粗、附件下载。 */
 
 import { api } from "@/lib/api-client";
+import type { SubtitleRow } from "@/components/subtitle-board-shared";
 
 /** 语言字典（GET /subtitles/langs；模块开着的站点启动时拉一次缓存于此） */
 let langDict: { code: string; name: string; flag: string }[] | null = null;
@@ -60,4 +61,21 @@ export function boldRule(r: string): string {
     .replace(/\&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/\*&lt;/g, "*<");
+}
+
+/** 行内 ⬇ 下载：本地附件端点直接回文件字节，带凭证拉取后触发保存；
+ *  外部直链后端回 JSON，跳新页由其自行下载。桌面表格与移动卡片共用
+ *  （原 25 行内联在 subtitle-board-table，M5.6 卡片化时上提）。
+ *  只做 IO，不弹消息——成功/失败文案由调用方决定。 */
+export async function downloadSubtitle(s: SubtitleRow): Promise<void> {
+  const buf = await api.getBlob(`/api/v1/subtitles/${s.id}/download`);
+  const ext = s.ext || "srt";
+  const safe = s.title.replace(/[\\/:*?"<>|]/g, "_");
+  const blob = new Blob([buf], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${safe}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

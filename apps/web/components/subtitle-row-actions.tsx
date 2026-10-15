@@ -10,7 +10,10 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 /** 字幕行操作列（从 subtitle-board-table.tsx 拆出，300 行门禁）：
  *  举报 ⚑ + 本人/管理可见的 ✎ 编辑（0150 起弹全元数据表单）/ ✕ 删除。 */
 
-export function SubtitleRowActions({
+/** 行操作内容（⚑ 举报 + 本人/管理可见的 ✎ 编辑 / ✕ 删除 + 各对话框）。
+ *  M5.6 拆出：桌面表格包 <td> 用 SubtitleRowActions；移动卡片直接内联
+ *  Inner——逻辑单源，不因视图分叉。 */
+export function SubtitleRowActionsInner({
   s,
   canModify,
   onMsg,
@@ -47,7 +50,7 @@ export function SubtitleRowActions({
   }
 
   return (
-    <td className="text-center">
+    <>
       <button
         type="button"
         className="subtitles-report"
@@ -118,6 +121,32 @@ export function SubtitleRowActions({
           )}
         </>
       )}
+    </>
+  );
+}
+
+export function SubtitleRowActions({
+  s,
+  canModify,
+  onMsg,
+  onReload,
+  langs,
+}: {
+  s: SubtitleRow;
+  canModify: boolean;
+  onMsg: (m: string) => void;
+  onReload: () => void;
+  langs?: { code: string; name: string; flag: string }[];
+}) {
+  return (
+    <td className="text-center">
+      <SubtitleRowActionsInner
+        s={s}
+        canModify={canModify}
+        onMsg={onMsg}
+        onReload={onReload}
+        langs={langs}
+      />
     </td>
   );
 }

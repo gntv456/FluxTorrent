@@ -9,13 +9,16 @@ import {
   SubtitleRowActions,
   SubtitleVoteSelect,
 } from "@/components/subtitle-row-actions";
+import { SubtitleCardList } from "@/components/subtitle-card-list";
 import {
+  downloadSubtitle,
   flagText,
   fmtKB,
   langLabelOf,
   loadLangDict,
   timeAgo,
 } from "@/components/subtitle-board-format";
+import { useIsCompact } from "@/lib/hooks/use-media";
 import { isStaffClass } from "@/lib/domain/user-class";
 
 export {
@@ -35,7 +38,9 @@ export {
  *  0146：语言读字典接口、大小真实值、评分列、分页条、坏字幕标记。 */
 
 /** 字幕列表（七列）：本地附件走 BLOB 下载，外部直链跳新页；举报走 prompt。
- *  0147 行内治理：评分（1-10 下拉）、本人/管理编辑（标题/语言/匿名）、删除。 */
+ *  0147 行内治理：评分（1-10 下拉）、本人/管理编辑（标题/语言/匿名）、删除。
+ *  M5.6 窄屏 <640 整表降级为 SubtitleCardList 卡片（下载逻辑共用
+ *  downloadSubtitle，操作按钮共用 Inner，逻辑单源）。 */
 export function SubtitleListTable({
   rows,
   onMsg,
@@ -61,6 +66,20 @@ export function SubtitleListTable({
   }, []);
   const canModify = (s: SubtitleRow) =>
     !!me && (me.id === s.user_id || isStaffClass(me.class_id));
+  // M5.6 §13.6 窄屏（<640）整表降级为卡片列表；hooks 全部无条件执行后再分支
+  const compact = useIsCompact();
+  if (compact) {
+    return (
+      <SubtitleCardList
+        rows={rows}
+        me={me}
+        canModify={canModify}
+        onMsg={onMsg}
+        onReload={onReload}
+        langs={langs}
+      />
+    );
+  }
   return (
     <div
       className="brand-wide-table-scroll subtitles-table-scroll"
@@ -106,22 +125,7 @@ export function SubtitleListTable({
                     // 外部直链后端回 JSON，跳新页由其自行下载
                     e.preventDefault();
                     try {
-                      const buf = await api.getBlob(
-                        `/api/v1/subtitles/${s.id}/download`,
-                      );
-                      const ext = s.ext || "srt";
-                      const safe =
-                        s.title.replace(/[\\/:*?"<>|]/g, "_");
-                      const name = `${safe}.${ext}`;
-                      const blob = new Blob([buf], {
-                        type: "application/octet-stream",
-                      });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = name;
-                      a.click();
-                      URL.revokeObjectURL(url);
+                      await downloadSubtitle(s);
                       onMsg(t.downloadOk?.replace("{title}", s.title));
                       onReload();
                     } catch (err) {
