@@ -207,11 +207,11 @@ pub async fn list_torrents_noclamp_as(
         LEFT JOIN users u ON u.id = t.owner_id
         {promo_lateral}
         WHERE {approval_gate}
-             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
+             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) 
           AND {medium_pred}
           AND {grade_pred}
           AND {edition_pred}
-             AND ($5::bool IS NULL OR t.official_tag = $5) \
+             AND ($5::bool IS NULL OR t.official_tag = $5) 
           {alive_pred}
           {approval_pred}
           {status_pred}
@@ -282,49 +282,28 @@ pub async fn list_torrents_noclamp_as(
         title_like: 24,
         rating_min: 25,
     });
-    // 计数降级（方案 P0-3）：此前每次列表请求都对「筛选后全量集合」做精确 count(*)，
-    // 搜索/深筛选下是一次无上界聚合。现在封顶采样：内层 LIMIT 10001，
-    // 筛选后 ≤10000 条时仍为精确值，超过则计到 10000（前端展示「约」口径）——
-    // 把 count 的代价上界从 O(筛选集) 压到 O(10001 行扫描)。
+    // 计数降级（方案 P0-3）：此前每次列表请求都对「筛选后全量集合」做精确
+    // count(*)，搜索/深筛选下是一次无上界聚合。现在封顶采样：内层 LIMIT
+    // 10001，筛选后 ≤10000 条时仍为精确值，超过则计到 10000（前端展示
+    //「约」口径）——把 count 的代价上界从 O(筛选集) 压到 O(10001 行扫描)。
+    //
+    // 谓词集必须与列表侧同口径（medium/alive/approval/status 都在内——
+    // a5359d31 的续行重排曾误删其中四个，让 total 虚高、hidden_dead 恒 0）。
     let count_sql = format!(
-        "SELECT count(*) FROM (SELECT 1 FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
+        "SELECT count(*) FROM (SELECT 1 FROM torrents t \
+         LEFT JOIN users u ON u.id = t.owner_id \
          WHERE {approval_gate_count} \
-             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
-         AND {grade_pred} AND {edition_pred} \
-             AND ($5::bool IS NULL OR t.official_tag = $5) \
+         AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
+         AND {medium_pred} AND {grade_pred} AND {edition_pred} \
+         AND ($5::bool IS NULL OR t.official_tag = $5) \
+         {alive_pred} {approval_pred} {status_pred} \
          {bookmark_pred} {search_pred} \
          {tag_pred_count} \
          {sec_sql} {extra_count_sql} LIMIT 10001) sub",
     );
-    let total: i64 = sqlx::query_scalar(&count_sql)
-        .bind(filter.category_id.clone())
-        .bind(filter.medium_id)
-        .bind(filter.grade_id)
-        .bind(filter.edition_id)
-        .bind(filter.official)
-        .bind(&pattern)
-        .bind(filter.include_unapproved)
-        .bind(filter.tag_ids.clone())
-        .bind(filter.size_min)
-        .bind(filter.size_max)
-        .bind(filter.date_from.as_deref())
-        .bind(filter.date_to.as_deref())
-        .bind(filter.min_seeders)
-        .bind(filter.max_seeders)
-        .bind(&exclude_pat)
-        .bind(filter.promo.as_deref())
-        .bind(&owner_pat)
-        .bind(filter.only_mine.then_some(viewer))
-        .bind(filter.min_leechers)
-        .bind(filter.max_leechers)
-        .bind(filter.min_completed)
-        .bind(filter.max_completed)
-        .bind(filter.anonymous)
-        // $24：标题谓词（与 extra_count_sql 的 title_like 槽位对应）
-        .bind(&title_pat)
-        // $25：评分下界（0283 P1-5，计数侧）
-        .bind(filter.rating_min)
-        .fetch_one(db)
+    let count_args =
+        super::count_bind::CountArgs::new(filter, pattern.as_deref(), viewer);
+    let total: i64 = super::count_bind::fetch_count(&count_sql, &count_args, db)
         .await
         .unwrap_or_else(|e| {
             // 计数失败此前静默成 0（页面「共 0 个」却有行）；给日志留痕
@@ -342,50 +321,22 @@ pub async fn list_torrents_noclamp_as(
         0
     } else {
         let all_sql = format!(
-            "SELECT count(*) FROM (SELECT 1 FROM torrents t \\
-             LEFT JOIN users u ON u.id = t.owner_id \\
-             WHERE {approval_gate_count} \\
+            "SELECT count(*) FROM (SELECT 1 FROM torrents t \
+             LEFT JOIN users u ON u.id = t.owner_id \
+             WHERE {approval_gate_count} \
              AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
-             AND {medium_pred} AND {grade_pred} AND {edition_pred} \\
+             AND {medium_pred} AND {grade_pred} AND {edition_pred} \
              AND ($5::bool IS NULL OR t.official_tag = $5) \
-             {approval_pred} {status_pred} {bookmark_pred} {search_pred} \\
+             {approval_pred} {status_pred} {bookmark_pred} {search_pred} \
              {tag_pred_count} {sec_sql} {extra_count_sql} LIMIT 10001) sub",
         );
-        let all_total: i64 = sqlx::query_scalar(&all_sql)
-            .bind(filter.category_id.clone())
-            .bind(filter.medium_id)
-            .bind(filter.grade_id)
-            .bind(filter.edition_id)
-            .bind(filter.official)
-            // $6：标题 LIKE 的 pattern。**不能漏**——approval_gate_count
-            // 用的是 $7 槽位；少绑一个会让 $7 拿到 category 数组，PG 直接
-            // 报 syntax error。现网 500（列表打不开）就是这条。
-            .bind(&pattern)
-            .bind(filter.include_unapproved)
-            .bind(filter.tag_ids.clone())
-            .bind(filter.size_min)
-            .bind(filter.size_max)
-            .bind(filter.date_from.as_deref())
-            .bind(filter.date_to.as_deref())
-            .bind(filter.min_seeders)
-            .bind(filter.max_seeders)
-            .bind(&exclude_pat)
-            .bind(filter.promo.as_deref())
-            .bind(&owner_pat)
-            .bind(filter.only_mine.then_some(viewer))
-            .bind(filter.min_leechers)
-            .bind(filter.max_leechers)
-            .bind(filter.min_completed)
-            .bind(filter.max_completed)
-            .bind(filter.anonymous)
-            .bind(&title_pat)
-            .bind(filter.rating_min)
-            .fetch_one(db)
-            .await
-            .unwrap_or_else(|e| {
-                tracing::warn!(error = %e, "hidden_dead 计数失败，降级 0");
-                0
-            });
+        let all_total: i64 =
+            super::count_bind::fetch_count(&all_sql, &count_args, db)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(error = %e, "hidden_dead 计数失败，降级 0");
+                    0
+                });
         // 采样封顶 10001 时差值不再精确，宁可给 0 也不给一个
         // 「看起来精确其实被截断」的数字。
         if all_total > 10000 {

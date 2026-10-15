@@ -96,6 +96,13 @@ pub(crate) fn jitter_duration(seed: &mut u64) -> std::time::Duration {
     std::time::Duration::from_secs(r)
 }
 
+/// 恢复出厂缺省（与 `cfg_statics` 的初值一致）。
+/// 供测试在改过进程级配置后复位，避免用例之间互相污染。
+#[cfg(test)]
+pub(crate) fn restore_defaults() {
+    refresh(90, 0.25, 3, 8);
+}
+
 /// 按 `ratio` 从候选索引里随机抽 k 个（k = floor(len*ratio)，至少保 1 个
 /// 当 ratio>0）。返回被抽中的索引集合——与位置无关，前段后段等概率。
 pub(crate) fn pick_piece_indices(
@@ -129,22 +136,42 @@ pub(crate) fn pick_piece_indices(
 mod tests {
     use super::*;
 
+    /// cfg_statics 是**进程级**单例，测试并行执行时互相污染：
+    /// `refresh_clamps_out_of_range` 把 jitter_secs 设成 600，
+    /// `jitter_respects_zero_upper_bound` 设成 0 —— 谁最后跑谁说了算。
+    /// 症状是 `jitter_stays_within_bound` 偶发红（断言 <=90 却拿到 600）。
+    ///
+    /// 这里给每个会改配置的用例套一把进程内互斥锁，并统一在退出时
+    /// `restore_defaults()`：用例之间只影响「先后」，不影响「结果」。
+    static CFG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// 跑一个需要独占配置的用例，结束后无条件恢复出厂缺省。
+    fn with_cfg<R>(f: impl FnOnce() -> R) -> R {
+        let _g = CFG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let r = f();
+        restore_defaults();
+        r
+    }
+
     #[test]
     fn jitter_respects_zero_upper_bound() {
-        refresh(0, 0.25, 3, 8);
-        let mut seed = 42u64;
-        assert_eq!(jitter_duration(&mut seed).as_secs(), 0);
+        with_cfg(|| {
+            refresh(0, 0.25, 3, 8);
+            let mut seed = 42u64;
+            assert_eq!(jitter_duration(&mut seed).as_secs(), 0);
+        });
     }
 
     #[test]
     fn jitter_stays_within_bound() {
-        refresh(90, 0.25, 3, 8);
-        let mut seed = 7u64;
-        for _ in 0..64 {
-            assert!(jitter_duration(&mut seed).as_secs() <= 90);
-        }
-        // 恢复出厂，避免影响其它用例（statics 是进程级）
-        refresh(90, 0.25, 3, 8);
+        with_cfg(|| {
+            refresh(90, 0.25, 3, 8);
+            let mut seed = 7u64;
+            for _ in 0..64 {
+                // % jitter_secs ⇒ 结果恒 < 90；写 <= 是留一格余量。
+                assert!(jitter_duration(&mut seed).as_secs() <= 90);
+            }
+        });
     }
 
     #[test]
@@ -177,14 +204,16 @@ mod tests {
 
     #[test]
     fn refresh_clamps_out_of_range() {
-        refresh(99_999, 5.0, 99, 99);
-        let c = current();
-        assert_eq!(c.jitter_secs, 600);
-        assert_eq!(c.tcp_bt_timeout_secs, 30, "超时应被钳到 30");
-        assert_eq!(c.piece_timeout_secs, 60, "piece 超时应被钳到 60");
-        assert!((c.piece_ratio - 1.0).abs() < f64::EPSILON);
-        // NaN 比例回落 0.25
-        refresh(90, f64::NAN, 3, 8);
-        assert!((current().piece_ratio - 0.25).abs() < f64::EPSILON);
+        with_cfg(|| {
+            refresh(99_999, 5.0, 99, 99);
+            let c = current();
+            assert_eq!(c.jitter_secs, 600);
+            assert_eq!(c.tcp_bt_timeout_secs, 30, "超时应被钳到 30");
+            assert_eq!(c.piece_timeout_secs, 60, "piece 超时应被钳到 60");
+            assert!((c.piece_ratio - 1.0).abs() < f64::EPSILON);
+            // NaN 比例回落 0.25
+            refresh(90, f64::NAN, 3, 8);
+            assert!((current().piece_ratio - 0.25).abs() < f64::EPSILON);
+        });
     }
 }
