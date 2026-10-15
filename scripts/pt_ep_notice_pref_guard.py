@@ -34,10 +34,11 @@ PROBE_USER = 69
 PSQL = ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
         "-d", "fluxtorrent"]
 
-# 界面有开关、后端从不判的档（接线一批少一批；这里按当前真实差集钉）
+# 界面有开关、后端两条通道（SQL 谓词 + mailer::notify_kind）都不判的档。
+# donate_tier 曾经被误列在这里：它走 notify_kind 执法，只扫 SQL 会漏。
 FAKE_TOGGLES = [
-    "comment_reply", "donate_tier", "gift", "hr_prewarn", "resurrection",
-    "system", "wishlist",
+    "comment_reply", "gift", "hr_prewarn", "resurrection", "system",
+    "wishlist",
 ]
 
 
@@ -164,6 +165,10 @@ for dp, dirs, fs in os.walk(os.path.join(ROOT, "apps")):
                 m2 = re.search(r"['\"]([a-z0-9_]+)['\"]", call)
                 if m2:
                     B.add(m2.group(1))
+        # 第二条执法通道：mailer::notify_kind(db, to_user, "kind", ...) ——
+        # 只扫 SQL 的 u_notice_enabled 会把 donate_tier 这类误记成假开关
+        B |= set(re.findall(
+            r"notify_kind\(\s*[^,]+,\s*[^,]+,\s*\"([a-z0-9_]+)\"", t))
 ok("EP3a 界面档位抽到 13 档（不是 0，否则判据打空）", len(A) == 13,
    "实抽 %d" % len(A))
 ok("EP3b 后端真判的档位里含 hr_violation（本批接的那一档）",
