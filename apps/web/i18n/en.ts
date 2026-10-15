@@ -459,6 +459,7 @@ const enBase: Omit<
     filesTitle: "File list",
     filesAll: "View all {n} files",
     metaTitle: "Resource info",
+    anchorNav: "Page navigation",
     fileUnit: "files",
     thankersTitle: "Thanked by",
     thanksCount: "Thanks",

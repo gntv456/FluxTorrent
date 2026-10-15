@@ -21,6 +21,7 @@ import { TorrentHead } from "@/components/torrent-detail-head";
 import type { RipLog } from "@/components/torrent-rip-logs";
 import { TorrentRipLogs } from "@/components/torrent-rip-logs";
 import { TorrentPreviews } from "@/components/torrent-previews";
+import { TorrentAnchorBar } from "@/components/torrent-anchor";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
 import { FoldMobile } from "@/components/fold-mobile";
@@ -194,6 +195,8 @@ export default async function TorrentDetailPage({
   const sectOn = (k: string) =>
     !(profile?.view_hidden?.sections ?? []).includes(k);
   const isStaff = isStaffClass(me?.class_id);
+  // 字幕面板显隐（0146 模块开关 + view_hidden 双门，锚点条同源）
+  const subOn = sectOn("subtitles") && profile?.modules?.subtitles !== false;
   // 分类/学段/媒介/版本词表全部取自站点档案（后端为唯一真值源）；
   // 档案不可用时 editCats 为空——下拉只剩「请选择」、名称回落 #id，
   // 不再拿另一套硬编码词表顶替（那正是分类显示 bug 的源头）
@@ -273,29 +276,16 @@ export default async function TorrentDetailPage({
           <>
             <PromoBuyButton torrentId={t.id} />
             <TorrentManage
-              torrentId={t.id}
-              name={t.name}
-              smallDescr={t.small_descr}
-              descr={ext?.descr ?? null}
-              anonymous={t.anonymous}
-              categoryId={t.category_id}
-              price={ext?.price ?? 0}
-              posterUrl={t.poster}
-              mediainfo={ext?.mediainfo ?? null}
-              sections={editSecVals}
-              secKinds={editKinds}
-              secDict={editDict}
-              cats={editCats}
-              seeders={t.seeders}
-              imdbId={t.imdb_id ?? null}
-              tagDict={agg.tags.dict}
-              tagMine={agg.tags.mine}
-              posState={ext?.pos_state ?? 0}
-              posStateUntil={ext?.pos_state_until ?? null}
-              pickType={ext?.pick_type ?? 0}
-              isStaff={isStaff}
-              metaSources={profile?.metadata_sources}
-              autoOpen={sp.edit === "1"}
+              torrentId={t.id} name={t.name} smallDescr={t.small_descr}
+              descr={ext?.descr ?? null} anonymous={t.anonymous}
+              categoryId={t.category_id} price={ext?.price ?? 0}
+              posterUrl={t.poster} mediainfo={ext?.mediainfo ?? null}
+              sections={editSecVals} secKinds={editKinds} secDict={editDict}
+              cats={editCats} seeders={t.seeders} imdbId={t.imdb_id ?? null}
+              tagDict={agg.tags.dict} tagMine={agg.tags.mine}
+              posState={ext?.pos_state ?? 0} pickType={ext?.pick_type ?? 0}
+              posStateUntil={ext?.pos_state_until ?? null} isStaff={isStaff}
+              metaSources={profile?.metadata_sources} autoOpen={sp.edit === "1"}
             />
           </>
         }
@@ -305,10 +295,18 @@ export default async function TorrentDetailPage({
       <div className="td-main">
         <TorrentSpecs t={t} ext={ext} category={category} dict={dict} />
 
+        {/* ===== 移动端锚点条（设计稿 §5：sticky Tab 跳转折叠卡） ===== */}
+        <TorrentAnchorBar
+          descr={sectOn("descr") && !!ext?.descr}
+          files={sectOn("files") && files.length > 0 ? files.length : null}
+          subtitles={subOn}
+          comments={sectOn("comments") ? comments.length : null} dict={dict}
+        />
+
       {/* 标签（0173 移入头部） */}
       {/* ===== 简介（桌面展开；移动端 M5.8 收进折叠条降噪） ===== */}
       {sectOn("descr") && ext?.descr && (
-        <FoldMobile title={dict.torrent.descrTitle}>
+        <FoldMobile title={dict.torrent.descrTitle} id="td-sec-descr">
           <div className="td-descr__body">
             <Descr text={ext.descr} />
           </div>
@@ -387,8 +385,8 @@ export default async function TorrentDetailPage({
       )}
 
       {/* 字幕面板（0146 P0-6 + 0148 C1 同片合并；M5.8 移动端收折叠） */}
-      {sectOn("subtitles") && profile?.modules?.subtitles !== false && (
-        <FoldMobile title={dict.subtitles.panelTitle ?? "Subtitles"}>
+      {subOn && (
+        <FoldMobile title={dict.subtitles.panelTitle} id="td-sec-subtitles">
           <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} bare />
         </FoldMobile>
       )}

@@ -450,6 +450,7 @@ const zhTwBase: Omit<
     filesTitle: "檔案列表",
     filesAll: "查看全部 {n} 個檔案",
     metaTitle: "資源資訊",
+    anchorNav: "頁面導覽",
     fileUnit: "個文件",
     thankersTitle: "感謝者",
     thanksCount: "感謝",

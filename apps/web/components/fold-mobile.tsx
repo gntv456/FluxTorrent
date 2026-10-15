@@ -11,14 +11,17 @@ export function FoldMobile({
   title,
   count,
   children,
+  id,
 }: {
   title: string;
   count?: number;
   children: React.ReactNode;
+  /** 锚点 id（移动端锚点条跳转目标，scroll-margin-top 见 base.css） */
+  id?: string;
 }) {
   const compact = useIsCompact();
   return (
-    <Fold title={title} count={count} open={!compact}>
+    <Fold title={title} count={count} open={!compact} id={id}>
       {children}
     </Fold>
   );

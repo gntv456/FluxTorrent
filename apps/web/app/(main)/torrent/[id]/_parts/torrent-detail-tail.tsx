@@ -32,6 +32,7 @@ export function TorrentDetailTail({
   relTime: (ts: string) => string;
   sectOn: (k: string) => boolean;
 }) {
+  const cmtN = String(comments.length);
   return (
     <>
       {sectOn("thankers") && thanks.length > 0 && (
@@ -52,10 +53,8 @@ export function TorrentDetailTail({
 
       {sectOn("comments") && (
         <FoldMobile
-          title={dict.torrent.commentsTitle.replace(
-            "{n}",
-            String(comments.length),
-          )}
+          title={dict.torrent.commentsTitle.replace("{n}", cmtN)}
+          id="td-sec-comments"
         >
           <Comments
             comments={comments}
