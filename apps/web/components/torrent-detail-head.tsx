@@ -1,6 +1,6 @@
-import { DownloadButton } from "@/components/download-button";
+import { DownloadButton, MagnetButton } from "@/components/download-button";
 import { HeadActionsMore } from "@/components/torrent-head-more";
-import { TorrentSocial } from "@/components/torrent-social";
+import { ThankButton, TorrentSocial } from "@/components/torrent-social";
 import { ResurrectButton } from "@/components/resurrect-button";
 import { TrumpButton } from "@/components/torrent-trump-button";
 import { WishlistButton } from "@/components/wishlist";
@@ -166,7 +166,9 @@ export function TorrentHead({
           </span>
         </div>
 
-        {/* 操作区（0173 语义分行）：主操作 → 互动与打赏 → 管理 */}
+        {/* 操作区（本地完善版样图：行 1 = 下载种子 + 心愿单；行 2 =
+            感谢发布者 + 更多操作。磁力/收藏/评论/打赏/抢种/复活/管理
+            全部收进「更多操作」面板——桌面不再内联铺开） */}
         <div className="td-head__actions">
           <div className="td-head__actions-row">
             <DownloadButton
@@ -175,21 +177,29 @@ export function TorrentHead({
               price={ext?.price}
               purchased={ext?.purchased}
               isOwner={ext?.is_owner}
+              showMagnet={false}
             />
             <WishlistButton keyword={t.name} />
           </div>
-          {/* M5.10：次要操作（互动/抢种/复活/管理）移动端收进「更多操作」
-           *  面板，桌面原样渲染；下载主按钮 + 心愿单留头部常驻 */}
-          <HeadActionsMore label={dict.torrents.moreActions}>
-            <TorrentSocial torrentId={t.id} />
-            <div className="td-head__actions-row">
-              {t.seeders === 0 && (
-                <ResurrectButton torrentId={t.id} name={t.name} />
-              )}
-              <TrumpButton torrentId={t.id} />
-              {manage}
-            </div>
-          </HeadActionsMore>
+          <div className="td-head__actions-row">
+            <ThankButton torrentId={t.id} />
+            <HeadActionsMore label={dict.torrents.moreActions}>
+              <MagnetButton torrentId={t.id} />
+              {/* 「感谢发布者」第二位置：<768 头部整块隐藏，面板内补一枚
+                  （两个实例按断点互斥显示，见 base.css .td-thank--sheet） */}
+              <span className="td-thank--sheet">
+                <ThankButton torrentId={t.id} />
+              </span>
+              <TorrentSocial torrentId={t.id} />
+              <div className="td-head__actions-row">
+                {t.seeders === 0 && (
+                  <ResurrectButton torrentId={t.id} name={t.name} />
+                )}
+                <TrumpButton torrentId={t.id} />
+                {manage}
+              </div>
+            </HeadActionsMore>
+          </div>
         </div>
       </div>
     </section>

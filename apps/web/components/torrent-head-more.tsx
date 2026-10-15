@@ -5,12 +5,14 @@ import { createPortal } from "react-dom";
 import { useIsCompact } from "@/lib/hooks/use-media";
 import { REPLY_EVENT } from "@/components/comment-reply-button";
 
-/** 头部「更多操作」收纳（M5.10/M5.11）：桌面原样渲染 children（零
- *  变化）；移动端头部不留任何操作区——触发钮经 portal 渲染进底部
- *  吸底操作条（#td-actionbar）作第四钮，点击弹出底部操作面板。
+/** 头部「更多操作」收纳（M5.10/M5.11；M6.5 改全断点面板）：
+ *  桌面与移动端都是「trigger + 面板」——桌面 trigger 内联渲染在头部行 2
+ *  （ghost 钮，本地完善版样图头部只留 下载/心愿单/感谢/更多 四钮），
+ *  移动端 trigger 经 portal 进底部吸底操作条作第四钮；面板两端共用
+ *  （桌面居中窄条、移动端贴底，样式见 base.css .more-sheet 两档）。
  *  面板恒挂载（inert 隐藏式）：评论「回复」按钮依赖 REPLY_EVENT
  *  聚焦 #td-comment-input，children 必须常在 DOM；收到回复事件时
- *  自动弹出面板让输入框可见。 */
+ *  自动弹出面板让输入框可见（全断点——评论框已不在头部常驻）。 */
 export function HeadActionsMore({
   label,
   children,
@@ -24,6 +26,7 @@ export function HeadActionsMore({
   const [bar, setBar] = useState<HTMLElement | null>(null);
 
   // 吸底栏与本组件按各自断点翻转，挂载时序不定——轮询等容器就绪
+  // （仅移动端需要：桌面 trigger 内联渲染，不进吸底条）
   useEffect(() => {
     if (!compact) return;
     let tries = 0;
@@ -40,13 +43,18 @@ export function HeadActionsMore({
     return () => clearTimeout(timer);
   }, [compact]);
 
-  // 评论「回复」→ 自动弹出面板（评论输入框在其中，聚焦才能命中）
+  // 评论「回复」→ 自动弹出面板（全断点：评论框在面板内）并补一次聚焦——
+  // 回复钮自身的 focus() 会撞上面板尚未摘 inert 的时刻，故延后一拍重试。
   useEffect(() => {
-    if (!compact) return;
-    const onReply = () => setOpen(true);
+    const onReply = () => {
+      setOpen(true);
+      setTimeout(() => {
+        document.getElementById("td-comment-input")?.focus();
+      }, 80);
+    };
     window.addEventListener(REPLY_EVENT, onReply);
     return () => window.removeEventListener(REPLY_EVENT, onReply);
-  }, [compact]);
+  }, []);
 
   // 打开时锁页面滚动 + Esc 关闭
   useEffect(() => {
@@ -62,52 +70,60 @@ export function HeadActionsMore({
     };
   }, [open]);
 
-  if (!compact) return <>{children}</>;
+  const trigger = (
+    <button
+      type="button"
+      className={`js-td-more ${compact ? "td-actionbar__btn" : "td-more-btn"}`}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      onClick={() => setOpen(true)}
+    >
+      {label}
+    </button>
+  );
+
+  const sheet = createPortal(
+    <div
+      className={`more-sheet-mask${open ? " is-open" : " is-closed"}`}
+      onClick={() => setOpen(false)}
+      aria-hidden={!open}
+      inert={!open}
+    >
+      <div
+        className="more-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="more-sheet__title">{label}</p>
+        <button
+          type="button"
+          className="more-sheet__close"
+          aria-label={label}
+          onClick={() => setOpen(false)}
+        >
+          ×
+        </button>
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+
+  // 移动端头部操作区整块 display:none，trigger 只能挂吸底条
+  if (compact) {
+    return (
+      <>
+        {bar && createPortal(trigger, bar)}
+        {sheet}
+      </>
+    );
+  }
   return (
     <>
-      {bar &&
-        createPortal(
-          <button
-            type="button"
-            className="td-actionbar__btn js-td-more"
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            onClick={() => setOpen(true)}
-          >
-            {label}
-          </button>,
-          bar,
-        )}
-      {/* 面板 portal 到 body：本组件宿主在 .td-head__actions 内，
-          该容器 <768 被 display:none——不 portal 面板会跟着陪葬 */}
-      {createPortal(
-        <div
-          className={`more-sheet-mask${open ? " is-open" : " is-closed"}`}
-          onClick={() => setOpen(false)}
-          aria-hidden={!open}
-          inert={!open}
-        >
-          <div
-            className="more-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label={label}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="more-sheet__title">{label}</p>
-            <button
-              type="button"
-              className="more-sheet__close"
-              aria-label={label}
-              onClick={() => setOpen(false)}
-            >
-              ×
-            </button>
-            {children}
-          </div>
-        </div>,
-        document.body,
-      )}
+      {trigger}
+      {sheet}
     </>
   );
 }

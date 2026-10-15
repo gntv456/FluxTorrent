@@ -1237,43 +1237,6 @@ a:hover {
   text-decoration: underline;
 }
 
-/* 侧栏「更多」入口卡（设计稿 §6 .entry：当前在线/字幕/下载记录，
-   点击锚点跳转主栏对应折叠卡；<768 隐藏——锚点条已承担导航） */
-.td-side-entries {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.td-entry {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 13px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface-card);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-strong);
-  text-decoration: none;
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease;
-}
-.td-entry:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-hover);
-}
-.td-entry__cnt {
-  margin-left: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--sky-soft);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--sky-deep);
-}
-
 /* 规格徽章条（本地完善版样图 .td-specs：主栏首张独立卡，数值 chip
    横排折行；卡片视觉与 .td-fold 同口径） */
 .td-specs {
@@ -1374,8 +1337,7 @@ a:hover {
     flex: 1 1 100%;
   }
   .td-side .td-files-mini,
-  .td-side .td-meta,
-  .td-side .td-side-entries {
+  .td-side .td-meta {
     display: none;
   }
   .td-side-rel {
@@ -1705,10 +1667,33 @@ a:hover {
   border-top: 1px solid var(--line);
 }
 
-/* M5.11 头部「更多操作」底部面板（HeadActionsMore，仅移动端渲染）：
-   触发钮 portal 进吸底操作条（复用 td-actionbar__btn），面板恒挂载
+/* 头部「更多操作」面板（HeadActionsMore；M6.5 全断点面板）：
+   trigger 桌面内联（.td-more-btn，与「感谢发布者」同款 ghost 胶囊），
+   移动端 portal 进吸底操作条（复用 td-actionbar__btn）；面板恒挂载
    inert 隐藏式（评论回复聚焦依赖 children 常驻 DOM）；
    层级用 --z-modal（toast 120 在上、nav 40 在下） */
+.td-more-btn {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 20px;
+  background: var(--surface-card);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-body);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.08s ease;
+}
+.td-more-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+.td-more-btn:active {
+  transform: scale(0.97);
+}
 .more-sheet-mask {
   position: fixed;
   inset: 0;
@@ -1767,6 +1752,29 @@ a:hover {
 /* 面板内的管理/抢种行与互动区保持呼吸感 */
 .more-sheet .td-head__actions-row {
   margin-top: 10px;
+}
+/* 「感谢发布者」两位置互斥：桌面在头部行 2（该容器 <768 已 display:none），
+   移动端头部整块消失，故面板内补一枚——桌面把面板那枚隐藏掉 */
+.td-thank--sheet {
+  display: none;
+}
+@media (max-width: 767px) {
+  .td-thank--sheet {
+    display: block;
+    margin-bottom: 10px;
+  }
+}
+/* 桌面端同一面板：居中窄条 + 四圆角（移动端仍贴底全宽，见上） */
+@media (min-width: 769px) {
+  .more-sheet-mask {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .more-sheet {
+    max-width: 520px;
+    border-radius: var(--r-lg);
+  }
 }
 
 /* 感谢者（同类站口径：头像 + 用户名 chip） */

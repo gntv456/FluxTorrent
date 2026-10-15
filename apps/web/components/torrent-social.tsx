@@ -10,16 +10,72 @@ import {
   type ReplyTarget,
 } from "@/components/comment-reply-button";
 
-/** 感谢 / 收藏 / 评论表单（M07 社区互动，客户端叶子组件）
- *  魔力答谢按钮组对齐同类站详情页口径（+1/+10/+100/+500/+1000/+10000）
+/** 种子详情页互动区（M07 社区互动；M6.5 按本地完善版样图拆两件）：
+ *  - ThankButton：「感谢发布者」单钮，常驻头部行 2（样图头部四钮之一）
+ *  - TorrentSocial：收藏 + 评论表单 + 魔力答谢组，收进「更多操作」
+ *    面板（全断点同一面板——桌面不再内联铺开，样图头部只有
+ *    下载/心愿单/感谢/更多 四钮）
  *  0156 嵌套回复：监听回复按钮的 flux:comment-reply 事件设置目标，
  *  发表时随 body 带 parent_id 提交，提交/取消后自清
  *  W-17 乐观更新：收藏按钮点击瞬间 UI 翻转（不等网络），失败时
  *  翻回 + toast.optimistic 自动改口成错误提示（含 request_id） */
-export function TorrentSocial({ torrentId }: { torrentId: number }) {
+
+/** 「感谢发布者」单钮（plain thank；带金额的打赏组在面板内 TorrentSocial） */
+export function ThankButton({ torrentId }: { torrentId: number }) {
   const { dict, currency } = useI18n();
   const t = dict.tdetail;
   const [thanked, setThanked] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function thank() {
+    setBusy(true);
+    try {
+      const r = await api.post<{ spark_given: number }>(
+        `/api/v1/torrents/${torrentId}/thanks`,
+        { amount: 0 },
+      );
+      setThanked(true);
+      setMsg(
+        r.spark_given > 0
+          ? t.thankSparkOk
+              .replace("{n}", String(r.spark_given))
+              .replace("{magic}", currency)
+          : dict.torrent.thanksOk,
+      );
+    } catch (e) {
+      setMsg(
+        e instanceof ApiError
+          ? (apiErrorMessage(dict, e))
+          : dict.common.networkError,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="inline-flex flex-col items-start">
+      <button
+        onClick={thank}
+        disabled={thanked || busy}
+        className="min-h-[44px] rounded-full border border-line px-5 text-sm font-bold text-ink transition-transform active:scale-[0.97] disabled:opacity-60"
+      >
+        {thanked ? dict.torrent.thanked : dict.torrent.thanks}
+      </button>
+      {msg && (
+        <span className="mt-1 text-xs text-sub" role="status">
+          {msg}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** 收藏 + 评论表单 + 魔力答谢（进「更多操作」面板；感谢单钮在头部） */
+export function TorrentSocial({ torrentId }: { torrentId: number }) {
+  const { dict, currency } = useI18n();
+  const t = dict.tdetail;
   const [bookmarked, setBookmarked] = useState(false);
   const [comment, setComment] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -42,14 +98,14 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
     setReplyTo(null);
   }
 
-  async function thank(amount = 0) {
+  /** 魔力答谢（同类站口径按钮组 +1..+10000）；plain thank 在头部 ThankButton */
+  async function tip(amount: number) {
     setBusy(true);
     try {
       const r = await api.post<{ spark_given: number }>(
         `/api/v1/torrents/${torrentId}/thanks`,
         { amount },
       );
-      setThanked(true);
       setMsg(
         r.spark_given > 0
           ? t.thankSparkOk
@@ -118,13 +174,6 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
     <div className="flex w-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={() => thank(0)}
-          disabled={thanked || busy}
-          className="min-h-[44px] rounded-full border border-line px-5 text-sm font-bold text-ink transition-transform active:scale-[0.97] disabled:opacity-60"
-        >
-          {thanked ? dict.torrent.thanked : dict.torrent.thanks}
-        </button>
-        <button
           onClick={toggleBookmark}
           className="min-h-[44px] rounded-full border border-line px-5 text-sm font-bold text-ink transition-transform active:scale-[0.97]"
         >
@@ -176,7 +225,7 @@ export function TorrentSocial({ torrentId }: { torrentId: number }) {
           {[1, 10, 100, 500, 1000, 10000].map((v) => (
             <button
               key={v}
-              onClick={() => thank(v)}
+              onClick={() => tip(v)}
               disabled={busy}
               className="min-h-[32px] rounded-full border border-[var(--brand-orange)] px-3 text-xs font-bold text-[var(--brand-orange-dark)] active:scale-[0.97] disabled:opacity-50"
             >
