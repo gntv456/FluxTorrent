@@ -27,8 +27,15 @@ def run(args, timeout=900):
                           encoding="utf-8", errors="replace", timeout=timeout)
 
 
+def run_in(args, stdin, timeout=180):
+    """SQL 走 stdin：部分迁移文本超过 Windows 命令行长度上限（WinError 206）。"""
+    return subprocess.run(args, input=stdin, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", timeout=timeout)
+
+
 subprocess.run(["docker", "start", "flux-postgres"],
-               capture_output=True, text=True)
+               capture_output=True, text=True, encoding="utf-8",
+               errors="replace")
 run(admin + ["-c", 'DROP DATABASE IF EXISTS "%s"' % DB])
 r = run(admin + ["-c", 'CREATE DATABASE "%s"' % DB])
 if r.returncode != 0:
@@ -42,11 +49,8 @@ failed, applied = None, 0
 for fn in files:
     sql = io.open(os.path.join(mig_dir, fn), encoding="utf-8").read()
     # SQL 走 stdin：部分迁移文本超过 Windows 命令行长度上限（WinError 206）。
-    import subprocess as _sp
-    r = _sp.run(["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
-                 "-q", "-d", DB, "-v", "ON_ERROR_STOP=1", "-f", "-"],
-                input=sql, capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=180)
+    r = run_in(["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
+                "-q", "-d", DB, "-v", "ON_ERROR_STOP=1", "-f", "-"], sql)
     if r.returncode != 0:
         failed = (fn, (r.stderr or "").strip().splitlines()[:2])
         break
