@@ -34,13 +34,11 @@ pub async fn download(
     let body = build_torrent_bytes(&state, auth.id, torrent_id).await?;
     // P-299：存盘名。批量口早就是 `{种名}-{id}.torrent`，单击口此前
     // 只带 Content-Type，浏览器按 URL 末段落盘成 `download`。
-    let name: Option<String> = sqlx::query_scalar(
-        "SELECT name FROM torrents WHERE id = $1",
+    let name = crate::repo::torrent_download::torrent_name(
+        &state.repo,
+        torrent_id,
     )
-    .bind(torrent_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .unwrap_or(None);
+    .await;
     let label = format!(
         "{}-{torrent_id}.torrent",
         crate::archive::safe_name(name.as_deref().unwrap_or("torrent"))
@@ -75,26 +73,22 @@ pub async fn build_torrent_bytes(
     user_id: i64,
     torrent_id: i64,
 ) -> DomainResult<Vec<u8>> {
-    let raw: Option<Vec<u8>> = sqlx::query_scalar(
-        "SELECT f.raw FROM torrent_files f \
-         JOIN torrents t ON t.id = f.torrent_id \
-         WHERE f.torrent_id = $1 AND t.approval_status = 1",
+    let raw = crate::repo::torrent_download::raw_torrent_file(
+        &state.repo,
+        torrent_id,
     )
-    .bind(torrent_id)
-    .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(raw) = raw else {
         // 区分两种 404（评审 P1-4）：种子行不在 = 真不存在；行在但 torrent_files
         // 原文丢失 = 站点数据异常——统一报「资源不存在」会让用户误以为被封权，
         // 详情页一切正常却下载 404 的场景必须给出可行动的提示。
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)",
-        )
-        .bind(torrent_id)
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
+        let exists =
+            crate::repo::torrent_download::torrent_exists(
+                &state.repo,
+                torrent_id,
+            )
+            .await;
         if exists {
             return Err(DomainError::Validation(
                 "种子文件缺失（原始 .torrent 未存档），请联系管理组补档".into(),
@@ -112,18 +106,6 @@ pub async fn build_torrent_bytes(
     // 调它，这里再兜一次：将来若有新调用方漏判，最坏是拒单变晚，不是放行。
     crate::torrents::ensure_downloadable(&state.repo.db, user_id).await?;
     // info dict 不动 → info_hash 与上传时一致（M05）
-    async fn setting(db: &sqlx::PgPool, name: &str) -> Option<String> {
-        sqlx::query_scalar::<_, String>(
-            "SELECT value FROM site_settings WHERE name = $1",
-        )
-        .bind(name)
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .map(|v| v.trim().trim_end_matches('/').to_string())
-        .filter(|v| !v.is_empty())
-    }
     let env_host = std::env::var("PUBLIC_TRACKER_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:7070".into())
         .trim_end_matches('/')
@@ -139,11 +121,16 @@ pub async fn build_torrent_bytes(
         }
     };
     let base_http = strip_announce(
-        setting(&state.repo.db, "announce_url")
+        crate::repo::settings::read_base(&state.repo, "announce_url")
             .await
             .unwrap_or(env_host),
     );
-    let announce = match setting(&state.repo.db, "https_announce_url").await {
+    let announce = match crate::repo::settings::read_base(
+        &state.repo,
+        "https_announce_url",
+    )
+    .await
+    {
         Some(https) if https != base_http => {
             format!("{}/announce/{}", strip_announce(https), user.passkey)
         }
@@ -179,13 +166,9 @@ pub async fn build_torrent_bytes(
     // 地址须带 scheme（http(s):// 或 udp://），站长填裸域名时拒绝入库
     // 由管理端校验承担，这里只兜底跳过。
     {
-        let extra: Vec<(String, bool)> = sqlx::query_as(
-            "SELECT url, with_passkey FROM tracker_urls WHERE enabled \
-             ORDER BY priority, id",
-        )
-        .fetch_all(&state.repo.db)
-        .await
-        .unwrap_or_default();
+        let extra =
+            crate::repo::torrent_download::extra_trackers(&state.repo)
+                .await;
         let mut known_roots: Vec<String> = vec![
             announce.clone(),
             fallbacks.iter().cloned().collect::<Vec<_>>().join("§"),
