@@ -19,13 +19,25 @@ pub(super) async fn build_snapshots(
         INSERT INTO hr_snapshots
             (user_id, torrent_id, required_seconds, deadline)
         SELECT s.user_id, s.torrent_id,
-               COALESCE((t.hr_policy->>'seed_hours')::int, $2::int)
-                   * 3600,
+               hr_reduced_seed_hours(
+                   COALESCE((t.hr_policy->>'seed_hours')::int, $2::int),
+                   u.class_id,
+                   usr.seed_hours
+               )::bigint * 3600,
                s.completed_at + make_interval(
-                   days => COALESCE(
-                       (t.hr_policy->>'days')::int, $3::int))
+                   days => hr_reduced_days(
+                       COALESCE((t.hr_policy->>'days')::int, $3::int),
+                       u.class_id))
         FROM snatches s
         JOIN torrents t ON t.id = s.torrent_id
+        JOIN users u ON u.id = s.user_id
+        JOIN LATERAL (
+            SELECT COALESCE(sum(seeded_seconds), 0)::bigint / 3600
+                   AS seed_hours
+            FROM snatches sx
+            WHERE sx.user_id = s.user_id
+              AND sx.completed_at >= s.completed_at
+        ) usr ON TRUE
         WHERE s.completed_at
           > now() - make_interval(hours => $1::int)
           -- 0286：只对「当前对外可见」的种子建义务。此前无此判定，
