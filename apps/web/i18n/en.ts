@@ -6553,7 +6553,6 @@ medalDaysPh: "Days (empty = medal default)",
     reasonWrongContent: "Wrong content",
     reasonDuplicate: "Duplicate",
     reasonOther: "Other",
-    interactTitle: "Interactions",
   },
   offers2: {
     title: "Offers",

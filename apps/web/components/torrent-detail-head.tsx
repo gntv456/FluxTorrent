@@ -1,5 +1,5 @@
 import { DownloadButton } from "@/components/download-button";
-import { FoldMobileBare } from "@/components/fold-mobile";
+import { HeadActionsMore } from "@/components/torrent-head-more";
 import { TorrentSocial } from "@/components/torrent-social";
 import { ResurrectButton } from "@/components/resurrect-button";
 import { TrumpButton } from "@/components/torrent-trump-button";
@@ -178,16 +178,18 @@ export function TorrentHead({
             />
             <WishlistButton keyword={t.name} />
           </div>
-          <FoldMobileBare title={d?.interactTitle ?? dict.torrent.thanks}>
+          {/* M5.10：次要操作（互动/抢种/复活/管理）移动端收进「更多操作」
+           *  面板，桌面原样渲染；下载主按钮 + 心愿单留头部常驻 */}
+          <HeadActionsMore label={dict.torrents.moreActions}>
             <TorrentSocial torrentId={t.id} />
-          </FoldMobileBare>
-          <div className="td-head__actions-row">
-            {t.seeders === 0 && (
-              <ResurrectButton torrentId={t.id} name={t.name} />
-            )}
-            <TrumpButton torrentId={t.id} />
-            {manage}
-          </div>
+            <div className="td-head__actions-row">
+              {t.seeders === 0 && (
+                <ResurrectButton torrentId={t.id} name={t.name} />
+              )}
+              <TrumpButton torrentId={t.id} />
+              {manage}
+            </div>
+          </HeadActionsMore>
         </div>
       </div>
 
