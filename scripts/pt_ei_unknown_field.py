@@ -94,9 +94,16 @@ ok("EI5 /forums/topics/manage-batch 拒未知字段（P-311 同族：面板发 "
    str(denies(src("community_http/topic_admin.rs"), "TopicManageBatchReq")))
 
 print("== S2 活体：笔误键必须被拒且不留副作用 ==")
-ok("S0 root 只操作自己的探针勋章行（开跑前不拥有任何勋章）",
-   psql("SELECT count(*) FROM user_medals WHERE user_id = "
-        "(SELECT id FROM users WHERE username = 'root')") == "0")
+# 前置的口径改了。原写法要求 root「开跑前不拥有任何勋章」，以便收尾时
+# 能用「数量回到 0」验证清干净。但批一百五十四修了 P-342（medals.active 不存在，
+# 自动成就 job 从未成功运行过）之后，**root 正确地自动获得了勋章**（「初次播种」
+# 与「勤悟园丁」，与它实际 10+ 个种子一致）。那是产品正确行为，不能删掉去让
+# 前置过（也不应该让闸门驱逐真人的勋章）。
+# 改成按探针标记判：只计本闸门自己造的那几行。
+_root = psql("SELECT id FROM users WHERE username = 'root'")
+before_all = psql("SELECT count(*) FROM user_medals WHERE user_id = %s" % _root)
+ok("S0 前置：记下 root 开跑前的勋章行数（本闸只动自己的那几行）",
+   before_all.isdigit(), "before=%s" % before_all)
 MID = psql("SELECT id FROM medals ORDER BY id LIMIT 1")
 ok("S1 取到探针勋章", MID.isdigit(), "medal_id=%s" % MID)
 tok = login()
