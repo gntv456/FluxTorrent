@@ -38,7 +38,7 @@ import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import (  # noqa: E402
+from pt_audit_lib import (dig,   # noqa: E402
     call, clear_register_rl, login, ok, summary)
 
 ROOT = login()
@@ -105,8 +105,8 @@ ok("CG0 前提：基线已取（user_medals %d 行、授权表 %d 行），勋�
    "UM=%d RP=%d 章=%s" % (UM0, RP0, MEDAL[0]))
 
 clear_register_rl()
-codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 2},
-              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
+codes = dig(call("POST", "/admin/invites", {"user_id": 1, "count": 2},
+              token=ROOT)[1], "data", "codes") or []
 
 
 def reg(name, idx):

@@ -69,6 +69,24 @@ def ok(name, cond, detail=""):
 
 FAILURES = []
 
+def dig(resp, *keys):
+    """Dig a nested key out of an API envelope without exploding on null.
+
+    `X.get("data", {}).get(K)` only defaults when the KEY IS MISSING: a
+    response of {"data": null} (rejected registrations do that) makes it return
+    None and the NEXT .get raises AttributeError -- the gate dies before its main
+    assertions while the finally-block cleanup still prints PASS, i.e. a run that
+    looks green but measured nothing (batch 143, gates EB/EC). Callers write
+    `dig(...) or []`.
+    """
+    cur = resp
+    for k in keys:
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(k)
+    return cur
+
+
 def summary():
     print()
     if FAILURES:

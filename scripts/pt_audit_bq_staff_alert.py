@@ -45,7 +45,7 @@ import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import (  # noqa: E402
+from pt_audit_lib import (dig,   # noqa: E402
     call, clear_register_rl, login, ok, summary)
 
 ROOT = login()
@@ -102,8 +102,8 @@ atexit.register(finalize)
 
 def mkmember():
     import json  # noqa: F401
-    codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-                  token=ROOT)[1] or {}).get("data", {}).get("codes") or []
+    codes = dig(call("POST", "/admin/invites", {"user_id": 1, "count": 1},
+                  token=ROOT)[1], "data", "codes") or []
     cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
     nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
     if not codes or len(nums) < 2:

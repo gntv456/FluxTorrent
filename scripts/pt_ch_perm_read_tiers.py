@@ -40,7 +40,7 @@ import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import (  # noqa: E402
+from pt_audit_lib import (dig,   # noqa: E402
     call, clear_register_rl, login, ok, summary)
 
 ROOT = login()
@@ -149,8 +149,8 @@ ok("CH0 前提：授权表 %d 行；`settings.view`/`user.view` 都在目录里"
                     "('settings.view','user.view')") == "2", "RP=%d" % RP0)
 
 clear_register_rl()
-codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
+codes = dig(call("POST", "/admin/invites", {"user_id": 1, "count": 1},
+              token=ROOT)[1], "data", "codes") or []
 cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
 nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
 if codes and len(nums) >= 2:
