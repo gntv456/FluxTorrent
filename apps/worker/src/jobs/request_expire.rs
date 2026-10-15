@@ -80,14 +80,14 @@ pub(crate) async fn request_expire(db: &PgPool) -> anyhow::Result<u64> {
                 .bind(bounty)
                 .bind(id)
                 .bind(&idem)
-                .bind(balance + bounty)
+                .bind(crate::balance_guard::checked_balance(balance, *bounty)?)
                 .execute(&mut *tx)
                 .await?;
                 sqlx::query(
                     "UPDATE users SET spark_balance = $2 WHERE id = $1",
                 )
                 .bind(requester)
-                .bind(balance + bounty)
+                .bind(crate::balance_guard::checked_balance(balance, *bounty)?)
                 .execute(&mut *tx)
                 .await?;
             }

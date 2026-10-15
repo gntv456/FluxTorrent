@@ -45,7 +45,7 @@ pub(crate) async fn settle_complete(
             .bind(c.reward)
             .bind(c.task_id)
             .bind(&idem)
-            .bind(balance + c.reward)
+            .bind(crate::balance_guard::checked_balance(balance, c.reward)?)
             .execute(&mut *tx)
             .await?;
             sqlx::query(

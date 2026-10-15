@@ -312,6 +312,12 @@ async fn main() -> anyhow::Result<()> {
             .wrap(actix_web::middleware::from_fn(csrf::csrf_mw))
             .wrap(actix_web::middleware::from_fn(modules::module_gate_mw)) // U1 模块网关：可选域 fail-close（4101）
             .wrap(actix_web::middleware::from_fn(v4_http::metrics_mw)) // G3：请求/5xx 计数（/metrics 出口）
+            // 全站 /api/v1 路由树的**唯一**挂载点（700+ 条路由都在
+            // http::v1_scope 里，由 community_http::configure 组装）。
+            // **不要**在 App 上另开一个 /api/v1 scope：actix 的 scope 是
+            // 前缀独占匹配，先匹配到它的那批请求不会再往后走这个 scope，
+            // 于是全站路由会集体 404（踩过两次，见批一百五十一与本次）。
+            .configure(community_http::configure)
             .default_service(web::to(|req: actix_web::HttpRequest| async move {
                 let locale = req
                     .headers()
