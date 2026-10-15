@@ -134,6 +134,16 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
         "This feature is not enabled on this site",
     ),
     (5002, "已感谢过", "已感謝過", "Already thanked"),
+    // 乐观并发冲突（5003）：此前漏登记，`localized_message(5003)` 回落到
+    // 1000「内部错误」——409 响应对用户说「内部错误」，把「别人刚改过、
+    // 请刷新重试」这件可自行处理的事说成了服务端故障（命中所有用
+    // VersionConflict 的端点：站点设定、版块配置、挂/摘 H&R）。
+    (
+        5003,
+        "配置已被其他人修改，请刷新后重试",
+        "配置已被其他人修改，請重新整理後重試",
+        "This configuration was changed by someone else; please reload and retry",
+    ),
     // 邮件链路的外部配置缺失（P-102）：不是系统故障，别甩「内部错误」
     (
         4103,

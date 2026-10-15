@@ -29,6 +29,12 @@ pub(crate) struct ForumUpsertReq {
     /// 分区内排序（0154）
     #[serde(default)]
     pub(crate) sort: Option<i32>,
+    /// 乐观并发版本戳（FRAME §5 推广项之二 / 0376）：编辑页回填
+    /// 版块当前 `mtime`，保存时带上。不匹配即 409，避免两名版主
+    /// 并发编辑互相整条覆盖（此前 last-write-wins，三档门槛被静默
+    /// 清成 0/0/0 就是这类覆盖的典型后果）。缺省不校验（灰度）。
+    #[serde(default)]
+    pub(crate) expected_mtime: Option<String>,
 }
 
 #[post("/admin/forums")]
@@ -107,10 +113,31 @@ async fn forum_admin_update(
                 .await;
         }
     }
+    // 乐观并发（0376）：带 expected_mtime 时把它写进 WHERE 的比对条件，
+    // 命中 0 行 = 期间被别人改过 → 409 而不是静默覆盖。非 RFC3339 一律
+    // 按冲突处理（宁可让版主重看一次，也不要拿一个坏戳名正言顺地覆盖）。
+    // 缺省则退回修前行为（last-write-wins），灰度期前端不改也能上。
+    let expected = body.expected_mtime.as_deref().unwrap_or("").trim();
+    if !expected.is_empty() {
+        let cur: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+            "SELECT mtime FROM forums WHERE id = $1 FOR UPDATE",
+        )
+        .bind(fid)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let hit = chrono::DateTime::parse_from_rfc3339(expected)
+            .map(|t| cur == Some(t.with_timezone(&chrono::Utc)))
+            .unwrap_or(false);
+        if !hit {
+            return Err(DomainError::VersionConflict(vec![fid.to_string()]));
+        }
+    }
     let n = sqlx::query(
         "UPDATE forums SET name = $1, descr = $2, \
             minclassread = $3, minclasswrite = $4, minclasscreate = $5, \
-            min_class = $3, protected = $6, category_id = $7, sort = $8 \
+            min_class = $3, protected = $6, category_id = $7, sort = $8, \
+            mtime = now() \
          WHERE id = $9",
     )
     .bind(&name)
