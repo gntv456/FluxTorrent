@@ -43,6 +43,7 @@ pub fn mount_openapi(scope: actix_web::Scope) -> actix_web::Scope {
         .service(crossseed::xseed_lookup)
         .service(crossseed::xseed_dl)
         .service(crossseed::xseed_iyuu)
+        .service(crossseed::xseed_iyuu_site)
 }
 
 pub(super) fn hash_token(token: &str) -> String {
