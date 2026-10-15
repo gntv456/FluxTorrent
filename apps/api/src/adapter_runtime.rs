@@ -47,6 +47,10 @@ pub(crate) struct AdapterManifest {
     pub http_allow: Vec<String>,
     pub secrets_read: Vec<String>,
     pub rate_limit_per_min: i32,
+    /// 允许调用的 LLM 路由白名单（2026-10-15）。空 = 不给 LLM 能力；
+    /// \host.llm_chat\ 按此闸门校验，越权返回 -2。缺省 vec![] ——
+    /// 「没声明就没有」，与 net_egress / secrets_read 同一纪律。
+    pub llm_routes: Vec<String>,
 }
 impl AdapterManifest {
     /// 统一扩展契约的清单投影（设计稿 P1：`AdapterManifest` 转换自
@@ -64,6 +68,7 @@ impl AdapterManifest {
             capabilities: Capabilities {
                 net_egress: self.http_allow.clone(),
                 secret_read: self.secrets_read.clone(),
+                llm_routes: self.llm_routes.clone(),
                 ..Default::default()
             },
             triggers: Vec::new(),
@@ -206,6 +211,7 @@ impl AdapterRuntime {
             http_allow: manifest.http_allow.clone(),
             secrets_read: manifest.secrets_read.clone(),
             rate_limit_per_min: manifest.rate_limit_per_min,
+            llm_routes: manifest.llm_routes.clone(),
         };
         let rate = self.bucket_for(&m.adapter_id);
         let mut store =
