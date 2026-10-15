@@ -23,6 +23,7 @@ import {
 } from "@/components/admin-donate-orders";
 import { AdminFundings } from "@/components/admin-fundings";
 import { StaffTermsPanel } from "@/components/staff-terms";
+import { StaffRegQuizPanel } from "@/components/staff-tools-regquiz";
 
 /** staffpanel 管理工具落地页：FAQ 管理/规则管理/分类管理/封禁系统/批量邮件等
  *  工具面板的**分发器**（同类站 faqmanage/modrules/catmanage/bans/massmail 口径）。
@@ -59,6 +60,8 @@ export type ToolTab =
   | "deldisabled"
   | "emailbans"
   | "testip"
+  | "emaildomains"
+  | "regquiz"
   | "stats"
   | "cleanup"
   | "ads"
@@ -90,7 +93,13 @@ export type ToolTab =
  *  新增工具时在这里归位，并同步 STAFF_TOOL_TABS（admin-tool-switch.tsx）
  *  与 staff_panel_entries.tab_key。 */
 const CONTENT_TABS: ToolTab[] = ["faq", "rules", "cats"];
-const SECURITY_TABS: ToolTab[] = ["bans", "mail", "emailbans", "testip"];
+const SECURITY_TABS: ToolTab[] = [
+  "bans",
+  "mail",
+  "emailbans",
+  "testip",
+  "emaildomains",
+];
 const OPS_TABS: ToolTab[] = ["staffmess", "adduser"];
 const USERS_TABS: ToolTab[] = [
   "warned",
@@ -181,6 +190,8 @@ export function StaffTools({ initialTab }: { initialTab?: ToolTab }) {
       {tab === "fundings" && <AdminFundings />}
       {tab === "panelentries" && <AdminPanelEntries />}
       {tab === "terms" && <StaffTermsPanel flash={flash} />}
+      {/* 注册答题题库（0372 M5）：注册准入前置答题闸的内容面 */}
+      {tab === "regquiz" && <StaffRegQuizPanel flash={flash} />}
     </div>
   );
 }

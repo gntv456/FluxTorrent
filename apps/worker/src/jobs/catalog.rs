@@ -188,6 +188,21 @@ pub const JOBS: &[JobDef] = &[
         cadence: "10m",
     },
     JobDef {
+        // 0368 M2 风险评分：增量轮（脏用户：新证据/新处置/1h 未重算）
+        name: "risk_score",
+        cadence: "10m",
+    },
+    JobDef {
+        // 0368 M2 风险评分：每日全量（权重调参后的安全网）
+        name: "risk_score_daily",
+        cadence: "24h",
+    },
+    JobDef {
+        // 0370 M4 注册治理：过期同 IP 注册摘要清理（仅存 sha3）
+        name: "reg_cleanup",
+        cadence: "24h",
+    },
+    JobDef {
         name: "collusion_check",
         cadence: "10m",
     },

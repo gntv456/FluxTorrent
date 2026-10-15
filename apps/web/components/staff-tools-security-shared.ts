@@ -35,3 +35,10 @@ export interface TestIpResult {
   by: string | null;
   seen_users: string[];
 }
+
+/** 一次性邮箱域名库行（0370 M4 第 ④ 道闸） */
+export interface EmailDomainRow {
+  domain: string;
+  source: string;
+  created_at: string;
+}

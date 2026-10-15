@@ -191,6 +191,24 @@ node scripts/check_dark_contrast.mjs  # 暗色 AA 回潮+明色债棘轮
    之后本地 `next start` 需先重建（`next dev` 与 flux-web 容器不受影响——
    容器无挂载、用镜像内产物）。
 
+11. **冒烟脚本调 psql 必须经 stdin，别用 `-c`**（2026-10-15 实测）：
+   `psql -c "…"` 的 SQL 会被 shell 拆词，值里含 JSON（如 `reg_window`）时
+   报 `unterminated quoted string`。统一
+   `subprocess.run(["docker","exec","-i",c,"psql",...], input=sql)`。
+12. **测试数据清理不能硬删 users**：注册即写 `audit_log(actor_id=自己)`，
+   而 0266 触发器禁 UPDATE/DELETE `audit_log`、`audit_log.actor_id` FK
+   无 ON DELETE ⇒ 硬删撞 FK。清理必须走**产品同款墓碑化**：
+   `UPDATE users SET username='zzdel_'||id, email='zzdel'||id||'@x.invalid',
+   status=2`。
+13. **Playwright 本机跑法**（2026-10-15）：仓内只装 `@playwright/test`
+   （`import { chromium } from "@playwright/test"`，无独立 `playwright`
+   包）；ms-playwright 浏览器版本常与 @playwright/test 错位 ⇒ 加
+   `channel: "msedge"` 用系统 Edge；注入会话 cookie 必须
+   `ctx.addCookies([{name, value, url: BASE}])`——`newContext({cookies})`
+   与 `domain: 'localhost'` 均不生效。**校验导航别用 curl grep**：
+   `?tool=X` 懒加载面板不产出 `tool=` 链接（SSR 只渲染当前页导航），
+   易误判成「导航只有一项」，用 Playwright 实测。
+
 ## 提交规范
 
 - 格式：`type(scope): 摘要`（中文摘要可），type ∈ feat/fix/docs/refactor/test/chore/ci，

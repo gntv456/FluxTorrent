@@ -29,10 +29,18 @@ pub async fn register_mode_endpoint(
     let provider = setting(&state.repo.db, "captcha_provider", "none").await;
     let site_key = setting(&state.repo.db, "captcha_site_key", "").await;
     let app_open = setting(&state.repo.db, "application_signup", "off").await;
+    // 0372 M5：答题闸的公开开关——前端据此决定是否渲染答题块
+    // （`reg_quiz_category` 不下发：抽题时由 quiz-challenge 自己按站点
+    //  分类过滤，前端无需知道分类名）。
+    let quiz_on = setting(&state.repo.db, "reg_quiz_enabled", "no").await;
+    let quiz_need =
+        setting(&state.repo.db, "reg_quiz_pass_required", "yes").await;
     Ok(ok(serde_json::json!({
         "mode": mode,
         "captcha_provider": provider,
         "captcha_site_key": site_key,
         "application_signup": app_open,
+        "reg_quiz_enabled": quiz_on == "yes",
+        "reg_quiz_pass_required": quiz_need == "yes",
     })))
 }

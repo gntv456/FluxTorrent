@@ -23,10 +23,16 @@ const LANG_LABELS: Record<Locale, string> = {
 /** 语言下拉（登录画布右上角，与站内切换器共用 cookie 语义） */
 function LoginLangSwitcher({ current }: { current: Locale }) {
   const router = useRouter();
+  // useI18n() 只回 { dict, locale, currency }（无 t() 工厂函数）——
+  // 语言下拉的可访问名取 common.language。
+  const { dict } = useI18n();
   return (
     <label className="bz-lang">
+      {/* a11y：隐式 label 关联在 axe 的 select-name 下不可靠（Lighthouse
+       * a11y 实测拦过）——select 自带显式 aria-label 双保险。 */}
       <select
         value={current}
+        aria-label={dict.common.language}
         onChange={(e) => {
           const l = e.target.value;
           if (!LOCALES.includes(l as Locale)) return;

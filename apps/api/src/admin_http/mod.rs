@@ -56,6 +56,19 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(agent_rules_del)
         .service(agent_rules_export)
         .service(agent_rules_import)
+        // 0370 M4：一次性邮箱域名库（注册治理第 ④ 道闸）
+        .service(email_domains_list)
+        .service(email_domains_export)
+        .service(email_domains_import)
+        .service(email_domains_delete)
+        // 0372 M5：注册答题题库
+        .service(reg_quiz_list)
+        .service(reg_quiz_add)
+        .service(reg_quiz_update)
+        .service(reg_quiz_delete)
+        .service(reg_quiz_import)
+        // 0372 M5：反作弊规则准确率
+        .service(cheat_accuracy)
         .service(deny_reasons_list)
         .service(deny_reasons_add)
         .service(deny_reasons_update)
@@ -94,7 +107,9 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
 pub(crate) mod agent_rule_check;
 mod agent_rules;
 mod audit;
+mod cheat_accuracy;
 mod deny;
+mod email_domains;
 pub(crate) mod embed_rule_check;
 mod embed_rules;
 mod forum;
@@ -105,6 +120,8 @@ mod overview;
 mod perms;
 mod perms_user;
 mod records;
+mod reg_quiz_admin;
+mod reg_quiz_bank;
 mod reports;
 mod reports_resolve;
 mod review;
@@ -137,7 +154,9 @@ mod user_vouchers;
 
 pub use agent_rules::*;
 pub use audit::*;
+pub use cheat_accuracy::*;
 pub use deny::*;
+pub use email_domains::*;
 pub use embed_rules::*;
 pub use forum::*;
 pub use forum_mods::*;
@@ -145,6 +164,8 @@ pub use overview::*;
 pub use perms::*;
 pub use perms_user::*;
 pub use records::*;
+pub use reg_quiz_admin::*;
+pub use reg_quiz_bank::{reg_quiz_delete, reg_quiz_import};
 pub use reports::*;
 pub use reports_resolve::*;
 pub use review::*;

@@ -34,4 +34,14 @@ pub(super) struct RegisterReq {
     /// 注册页自定义字段值（0186）：key → 值；required 字段缺省时注册拒绝
     #[serde(default)]
     pub(super) fields: std::collections::HashMap<String, serde_json::Value>,
+    /// 注册答题票据（0372 M5）：reg_quiz_enabled=yes 时必填，一次性
+    #[serde(default)]
+    pub(super) quiz_ticket: String,
+    #[serde(default)]
+    pub(super) quiz_answer: i32,
+    /// 注册 PoW（0372）：captcha_provider=pow 时必填（sha256-pow-v1）
+    #[serde(default)]
+    pub(super) pow_token: String,
+    #[serde(default)]
+    pub(super) pow_solution: String,
 }

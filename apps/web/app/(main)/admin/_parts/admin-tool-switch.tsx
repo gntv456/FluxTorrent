@@ -30,7 +30,8 @@ export const StaffToolsLazy = LAZY_PANELS.StaffTools;
 export const STAFF_TOOL_TABS: ToolTab[] = [
   "faq", "rules", "cats", "bans", "mail", "staffmess", "adduser",
   "incrementbulk", "warned", "ipcheck", "maxlogin", "resetpass", "deldisabled",
-  "emailbans", "testip", "stats", "cleanup", "ads", "notconnect", "uploaders",
+  "emailbans", "testip", "emaildomains", "regquiz", "stats", "cleanup",
+  "ads", "notconnect", "uploaders",
   "agents", "polls", "dbstats", "syslog", "locations", "hrpardon", "plugins",
   "agentrules", "forums", "reports", "menu", "roles", "perm", "seedstats",
   "userfields", "pages", "terms", "donateorders", "fundings", "panelentries",

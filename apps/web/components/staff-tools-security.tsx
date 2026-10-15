@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { ToolTab } from "@/components/staff-tools";
 import { StaffSecPanels } from "./staff-tools-security-panels";
+import { StaffEmailDomainsPanel } from "./staff-tools-security-domains";
 import type {
   BanItem,
   EmailBan,
@@ -13,8 +14,10 @@ import type {
 } from "./staff-tools-security-shared";
 
 /** 安全域面板（从 staff-tools.tsx 按域拆出，300 行门禁）：
- *  封禁系统（bans）/ 批量邮件（mail）/ 邮箱黑白名单（emailbans）/ IP 测试（testip）。
+ *  封禁系统（bans）/ 批量邮件（mail）/ 邮箱黑白名单（emailbans）/ IP 测试（testip）
+ *  / 一次性邮箱域名库（emaildomains，0370 M4）。
  *  黑白名单与 IP 测试拆至 ./staff-tools-security-panels.tsx；
+ *  域名库拆至 ./staff-tools-security-domains.tsx；
  *  类型拆至 ./staff-tools-security-shared.ts。 */
 
 export function StaffSecurityPanel({
@@ -36,20 +39,26 @@ export function StaffSecurityPanel({
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
 
+  // 只拉当前 tab 需要的数据——本组件对全部 SECURITY_TABS 挂载，
+  // 无条件三连拉会让「IP 测试」「域名库」这类无列表页白付 2-3 个请求。
   const load = useCallback(async () => {
-    api
-      .get<BanItem[]>("/api/v1/admin/bans")
-      .then(setBans)
-      .catch(() => setBans([]));
-    api
-      .get<MailItem[]>("/api/v1/admin/massmail")
-      .then(setMails)
-      .catch(() => setMails([]));
-    api
-      .get<EmailBan[]>("/api/v1/admin/emailbans")
-      .then(setEmailBans)
-      .catch(() => setEmailBans([]));
-  }, []);
+    if (tab === "bans") {
+      api
+        .get<BanItem[]>("/api/v1/admin/bans")
+        .then(setBans)
+        .catch(() => setBans([]));
+    } else if (tab === "mail") {
+      api
+        .get<MailItem[]>("/api/v1/admin/massmail")
+        .then(setMails)
+        .catch(() => setMails([]));
+    } else if (tab === "emailbans") {
+      api
+        .get<EmailBan[]>("/api/v1/admin/emailbans")
+        .then(setEmailBans)
+        .catch(() => setEmailBans([]));
+    }
+  }, [tab]);
   useEffect(() => {
     load();
   }, [load]);
@@ -226,6 +235,9 @@ export function StaffSecurityPanel({
           flash={flash}
         />
       )}
+
+      {/* 一次性邮箱域名库（0370 M4 注册治理第 ④ 道闸） */}
+      {tab === "emaildomains" && <StaffEmailDomainsPanel flash={flash} />}
     </>
   );
 }
