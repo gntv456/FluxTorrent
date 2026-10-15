@@ -47,6 +47,7 @@ pub(crate) fn row_to_manifest(
             })
             .unwrap_or_default(),
         rate_limit_per_min,
+    llm_routes: vec![],
     }
 }
 
@@ -115,6 +116,7 @@ pub(crate) async fn adapter_call(
             http_allow: manifest.http_allow.clone(),
             secrets_read: manifest.secrets_read.clone(),
             rate_limit_per_min: manifest.rate_limit_per_min,
+            llm_routes: vec![],
         };
         let wasm2 = wasm.clone();
         let url = url.to_string();

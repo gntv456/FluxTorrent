@@ -345,6 +345,7 @@ pub(crate) async fn try_adapter_metadata(
             http_allow: manifest.http_allow.clone(),
             secrets_read: manifest.secrets_read.clone(),
             rate_limit_per_min: manifest.rate_limit_per_min,
+            llm_routes: manifest.llm_routes.clone(),
         };
         let url2 = url.to_string();
         let out = tokio::task::spawn_blocking(move || {

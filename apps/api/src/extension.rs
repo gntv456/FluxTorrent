@@ -59,6 +59,11 @@ pub struct Capabilities {
     /// `secret:read` —— 可读的站点密钥名（wasm 专用）
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub secret_read: Vec<String>,
+    /// `llm:route` —— 允许调用的 LLM 路由白名单（wasm 专用，2026-10-15）。
+    /// 空 = 不给 LLM 能力；宿主 `host.llm_chat` 按此闸门校验。
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub llm_routes: Vec<String>,
+
     /// `db` —— 数据库能力（native 专用；公式为空）
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub db: Vec<DbCapability>,
@@ -275,6 +280,34 @@ mod tests {
         assert!(m.capabilities.db.is_empty());
         assert!(m.capabilities.net_egress.is_empty());
         assert!(m.capabilities.secret_read.is_empty());
+    }
+
+    #[test]
+    fn llm_routes_default_to_no_capability() {
+        // 「没声明就没有」——与 net_egress / secret_read / db 同一纪律。
+        // 能力最小化的第一课：默认关闭，不是默认开放。
+        let c = Capabilities::default();
+        assert!(c.llm_routes.is_empty());
+        assert!(c.net_egress.is_empty());
+        assert!(c.db.is_empty());
+    }
+
+    #[test]
+    fn wasm_manifest_maps_llm_routes() {
+        // 契约层要能看到 wasm 侧的 LLM 能力声明（registry/后台总览读它）
+        let m = crate::adapter_runtime::AdapterManifest {
+            adapter_id: "llm-demo".into(),
+            kind: "metadata".into(),
+            http_allow: vec![],
+            secrets_read: vec![],
+            rate_limit_per_min: 10,
+            llm_routes: vec!["anthropic/claude-sonnet".into()],
+        };
+        let em = m.to_extension_manifest();
+        assert_eq!(
+            em.capabilities.llm_routes,
+            vec!["anthropic/claude-sonnet".to_string()]
+        );
     }
 
     #[test]
