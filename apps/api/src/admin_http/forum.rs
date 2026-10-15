@@ -28,6 +28,10 @@ struct ForumAdminRow {
     category_id: Option<i64>,
     #[sqlx(default)]
     category_name: Option<String>,
+    /// 乐观并发版本戳（0376）：编辑页回填到 expected_mtime，保存时
+    /// 不匹配即 409，避免两名版主并发编辑互相整条覆盖
+    #[sqlx(default)]
+    mtime: chrono::DateTime<chrono::Utc>,
 }
 
 /// 分区行（具名结构体）。
@@ -60,7 +64,7 @@ async fn forum_admin_list(
         "SELECT f.id, f.name, f.descr, f.minclassread, f.minclasswrite, \
             f.minclasscreate, f.protected, f.sort, \
             (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
-            f.category_id, c.name AS category_name \
+            f.category_id, c.name AS category_name, f.mtime \
          FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id \
          ORDER BY c.sort NULLS LAST, c.id, f.sort, f.id",
     )
