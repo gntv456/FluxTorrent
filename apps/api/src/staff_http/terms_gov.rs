@@ -197,3 +197,49 @@ pub(crate) async fn run_audit(
         "retired_refs": refs,
     })))
 }
+
+/// 回灌某一版快照：把 site_terms 整表恢复到该版形态。
+///
+/// 与 `push_version` 成对：回滚前先把**当前**态也记一版，于是
+/// 「改错 → 回滚 → 改错 → 回滚」不会变成单向操作（这正是版本功能
+/// 要消灭的东西）。dangerous 操作：整表替换，快照里的规则会覆盖
+/// 当前全部规则（含快照之后新增的）。
+#[post("/admin/terms/versions/{version}/restore")]
+pub(crate) async fn version_restore(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, perm::TERMS_MANAGE).await?;
+    let v = path.into_inner();
+    if v <= 0 {
+        return Err(DomainError::Validation("版本号必须是正整数".into()));
+    }
+    let snap = repo_tg::version_snapshot(&state.repo, v)
+        .await?
+        .ok_or_else(|| DomainError::NotFound(v))?;
+    // 先给现态留一份（source=rollback 让日后一眼看出这是回滚留下的）。
+    let cur = repo_tg::push_version(
+        &state.repo,
+        "rollback",
+        &format!("restore -> v{v}"),
+        0,
+        Some(auth.id),
+    )
+    .await?;
+    let n = repo_tg::restore_terms(&state.repo, &snap).await?;
+    // 恢复后必须热加载，否则进程还在用旧快照（改了却「不生效」）。
+    let live = crate::terms::reload(&state.repo.db).await;
+    crate::cfgver::bump(state.get_ref(), "terms").await;
+    state
+        .repo
+        .audit(Some(auth.id), "terms.version_restore", None)
+        .await;
+    Ok(ok(serde_json::json!({
+        "restored_from": v,
+        "saved_current_as": cur,
+        "rows": n,
+        "enabled_rules": live,
+    })))
+}
