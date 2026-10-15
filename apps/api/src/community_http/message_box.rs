@@ -11,14 +11,23 @@ use crate::state::AppState;
 
 // ============ 信箱操作（messages.php 口径：已读/逻辑删/移动/文件夹） ============
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct MarkReadReq {
     ids: Vec<i64>,
 }
 
 /// 标记已读（单条打开或列表批量 markread）
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/markread",
+    tag = "社区/消息",
+    description = "标记已读（可按 id 列表或整信箱）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/messages/markread")]
-async fn message_markread(
+pub(crate) async fn message_markread(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<MarkReadReq>,
@@ -40,15 +49,24 @@ async fn message_markread(
     Ok(ok(serde_json::json!({ "updated": n })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct DeleteReq {
     ids: Vec<i64>,
 }
 
 /// 逻辑删除（NexusPHP 双删语义）：收件方删 → location=0；发件方删 → saved=0；
 /// 两边都删才物理 DELETE。
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/delete",
+    tag = "社区/消息",
+    description = "删站内信（移到回收站；location 字段区分）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/messages/delete")]
-async fn message_delete(
+pub(crate) async fn message_delete(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<DeleteReq>,
@@ -114,7 +132,7 @@ async fn message_delete(
 /// `folder` 当 `None`，而 `folder=NULL` 的语义是「移回主收件箱」：请求会
 /// **反向改数据并回 200 moved=1**（2026-10-15 实测：`{ids, box_id}` 发出去，
 /// 角标与主夹未读列表一动不动，接口却报成功）。
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 struct MoveReq {
     ids: Vec<i64>,
@@ -122,8 +140,17 @@ struct MoveReq {
 }
 
 /// 移动到自建文件夹（folder=NULL 即移回主收件箱）
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/move",
+    tag = "社区/消息",
+    description = "移动站内信到自定义文件夹。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/messages/move")]
-async fn message_move(
+pub(crate) async fn message_move(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<MoveReq>,

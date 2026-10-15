@@ -11,7 +11,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct PostTipReq {
     post_id: i64,
     spark: i64,
@@ -25,8 +25,17 @@ struct PostTipReq {
 /// · 打赏人余额不足自然被 spend_spark 拒（409）；
 /// · 幂等键 `forum-tip:{from}:{post}:{uuid}`——打赏是主动行为可重复（同一个人可以多次打赏同一楼），
 ///   幂等只防网络重试，不防故意多次。
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/tip",
+    tag = "社区/论坛",
+    description = "打赏（论坛感谢 + 魔力奖励）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/tip")]
-async fn post_tip(
+pub(crate) async fn post_tip(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<PostTipReq>,

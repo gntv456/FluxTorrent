@@ -19,6 +19,14 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// 我的订阅列表（带追更进度）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/subscriptions/groups",
+    tag = "社区/订阅",
+    description = "我订阅的字幕组（含更新数）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/subscriptions/groups")]
 pub async fn my_group_subscriptions(
     req: HttpRequest,
@@ -63,6 +71,14 @@ pub async fn my_group_subscriptions(
 }
 
 /// 追更日历：近 14 天内我订阅的组的新种过审事件，按天分组。
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/subscriptions/calendar",
+    tag = "社区/订阅",
+    description = "订阅日历（按日期列出当天更新）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/subscriptions/calendar")]
 pub async fn my_subscription_calendar(
     req: HttpRequest,

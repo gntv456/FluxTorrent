@@ -10,7 +10,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct MedalGiftReq {
     medal_id: i64,
     to_user: String,
@@ -18,8 +18,17 @@ struct MedalGiftReq {
     idempotency_key: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/medals/gift",
+    tag = "社区/勋章",
+    description = "赠送勋章给他人。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/medals/gift")]
-async fn medal_gift(
+pub(crate) async fn medal_gift(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<MedalGiftReq>,

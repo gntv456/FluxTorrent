@@ -25,8 +25,16 @@ struct TicketRow {
 }
 
 /// 工单列表（staff）：按状态过滤，优先级降序 + 新单在前
+#[utoipa::path(
+    get,
+    path = "/api/v1/stafftickets",
+    tag = "社区/联络",
+    description = "我的工单列表（含状态流转）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/stafftickets")]
-async fn ticket_list(
+pub(crate) async fn ticket_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<std::collections::HashMap<String, String>>,
@@ -58,7 +66,7 @@ async fn ticket_list(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct TicketUpdateReq {
     id: i64,
     /// 0低 1中 2高 3紧急
@@ -73,8 +81,17 @@ struct TicketUpdateReq {
 }
 
 /// 工单流转：改优先级/状态/指派（任意子集）。答复仍走既有 staff_answer（其顺带置 3）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/stafftickets/update",
+    tag = "社区/联络",
+    description = "追加工单回复。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/stafftickets/update")]
-async fn ticket_update(
+pub(crate) async fn ticket_update(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<TicketUpdateReq>,

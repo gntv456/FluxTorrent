@@ -47,6 +47,14 @@ struct ArtistQuery {
     limit: Option<i64>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/artists",
+    tag = "社区/艺人",
+    description = "艺人列表（分页 + 搜索）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/artists")]
 pub async fn artists_list(
     req: HttpRequest,
@@ -97,6 +105,17 @@ pub async fn artists_list(
 }
 
 /// 实体页：该实体名下全部过审种（时间倒序）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/artists/{id}",
+    tag = "社区/艺人",
+    description = "艺人详情（含作品列表）。",
+    params(
+        ("id" = i64, description = "艺人 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/artists/{id}")]
 pub async fn artist_detail(
     req: HttpRequest,
@@ -138,6 +157,14 @@ pub async fn artist_detail(
 }
 
 /// 榜单（按该实体名下总做种数）：Gazelle top artists 口径的最小实现。
+#[utoipa::path(
+    get,
+    path = "/api/v1/artists/top",
+    tag = "社区/艺人",
+    description = "热门艺人榜。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/artists/top")]
 pub async fn artists_top(
     req: HttpRequest,

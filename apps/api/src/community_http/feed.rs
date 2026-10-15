@@ -41,8 +41,16 @@ struct FeedQuery {
 /// 关注流：我关注的版块/用户的新主题 + 我关注主题的最新回复，按最后活动时间倒序。
 /// 权限：逐行复刻 forum_access 的 can_read（`class_id>=90` 放行 / 版主放行 / `class_id>=minclassread`），
 /// 否则用户降级后会在流里看到已无权限版块的标题（越权泄露）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/forums/feed",
+    tag = "社区/论坛",
+    description = "论坛 RSS/Atom 输出（最新主题）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/forums/feed")]
-async fn forum_feed(
+pub(crate) async fn forum_feed(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<FeedQuery>,

@@ -10,7 +10,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct MedalBuyReq {
     medal_id: i64,
     /// 前端生成的幂等键（同一键重试不双扣）；缺省时回退随机键（兼容旧客户端）
@@ -18,8 +18,17 @@ struct MedalBuyReq {
     idempotency_key: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/medals/buy",
+    tag = "社区/勋章",
+    description = "用魔力购买勋章。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/medals/buy")]
-async fn medal_buy(
+pub(crate) async fn medal_buy(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<MedalBuyReq>,

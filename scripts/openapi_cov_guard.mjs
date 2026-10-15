@@ -26,42 +26,15 @@ import path from "node:path";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(path.join(root, p), "utf8");
+import {
+  ANNOTATED_FILES,
+  checkCommunityCoverage,
+} from "./openapi_cov_domain.mjs";
+
 let fails = 0;
 const section = (t) => console.log(`\n== ${t} ==`);
 
 // 两域注解所在的源文件（W-49 清单；新增域文件时在这里加行）
-const ANNOTATED_FILES = [
-  "apps/api/src/openapi_http/open.rs",
-  "apps/api/src/openapi_http/detail_open.rs",
-  "apps/api/src/openapi_http/me.rs",
-  "apps/api/src/openapi_http/me_torrents.rs",
-  "apps/api/src/openapi_http/upload.rs",
-  "apps/api/src/openapi_http/tokens.rs",
-  "apps/api/src/compat_http/nexusphp.rs",
-  "apps/api/src/compat_http/aliases.rs",
-  "apps/api/src/compat_http/ptpp.rs",
-  "apps/api/src/compat_http/download_keys.rs",
-  "apps/api/src/economy_http/recon.rs",
-  "apps/api/src/rss_http.rs",
-  // 种子域（F4 2026-10-16：38 条路由注解化，脚本生成）
-  "apps/api/src/torrent_http/list.rs",
-  "apps/api/src/torrent_http/detail.rs",
-  "apps/api/src/torrent_http/interact.rs",
-  "apps/api/src/torrent_http/manage.rs",
-  "apps/api/src/torrent_http/magnet.rs",
-  "apps/api/src/torrent_http/peers.rs",
-  "apps/api/src/torrent_http/preview.rs",
-  "apps/api/src/torrent_http/trump.rs",
-  "apps/api/src/torrent_http/trump_admin.rs",
-  "apps/api/src/torrent_http/aggregate.rs",
-  "apps/api/src/torrent_http/batch.rs",
-  "apps/api/src/torrent_http/cue.rs",
-  "apps/api/src/torrent_http/file_conflict.rs",
-  "apps/api/src/torrent_http/logs.rs",
-  "apps/api/src/torrent_http/related.rs",
-  "apps/api/src/torrent_http/suggest.rs",
-];
-
 // 手写域全集（W-49 迁移时的 27 条 + 注解化后补齐的 /downloads/keys/revoke）
 // —— route-manifest 口径：scope 相对路径（不带 /api/v1 前缀）
 const DOMAIN_ROUTES = [
@@ -157,6 +130,10 @@ for (const [method, p] of DOMAIN_ROUTES) {
   }
 }
 
+
+// ---------- 3.5 社区域对拍（F4：社区 85 条必须全部注解化） ----------
+section("社区域 85 条路由 ↔ 注解对拍");
+fails += checkCommunityCoverage(read, manifest);
 
 // ---------- 4. 生成物面：gen_ts_types 落盘且与注解域对得上 ----------
 // （FRAME §7 第 8 条分域起步：rss-tokens 域的 TS 类型来自 OpenAPI 生成，

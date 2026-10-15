@@ -9,15 +9,24 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct AnswerReq {
     id: i64,
     answer: String,
 }
 
 /// 答复（takeanswer 口径）：给来信人发一条私信 + 答复原文回写 staffmessages + 置已答复
+#[utoipa::path(
+    post,
+    path = "/api/v1/staffmessages/answer",
+    tag = "社区/联络",
+    description = "管理组回信（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/staffmessages/answer")]
-async fn staff_answer(
+pub(crate) async fn staff_answer(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<AnswerReq>,
@@ -85,14 +94,24 @@ async fn staff_answer(
     Ok(ok(serde_json::json!({ "answered": true })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct StaffMsgActionReq {
     ids: Vec<i64>,
 }
 
 /// 批量标记已答复
+#[utoipa::path(
+    post,
+    path = "/api/v1/staffmessages/mark",
+    tag = "社区/联络",
+    description = "标记管理组消息状态（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/staffmessages/mark")]
-async fn staff_mark(
+pub(crate) async fn staff_mark(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<StaffMsgActionReq>,
@@ -128,8 +147,18 @@ async fn staff_mark(
 }
 
 /// 删除来信（单条/批量）
+#[utoipa::path(
+    post,
+    path = "/api/v1/staffmessages/delete",
+    tag = "社区/联络",
+    description = "删除管理组消息（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/staffmessages/delete")]
-async fn staff_delete(
+pub(crate) async fn staff_delete(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<StaffMsgActionReq>,

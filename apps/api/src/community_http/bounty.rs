@@ -11,7 +11,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct BountyAwardReq {
     topic_id: i64,
     post_id: i64,
@@ -22,8 +22,18 @@ struct BountyAwardReq {
 /// · 仅楼主本人（版主代采会引发「谁的钱谁做主」纠纷，不做）；
 /// · 不能采楼主首帖（自己给自己发钱）；
 /// · 发放幂等键锚定 topic：`forum-bounty-pay:{topic_id}`（一个悬赏只发一次）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/bounty/award",
+    tag = "社区/论坛",
+    description = "悬赏发奖（把赏金打给指定回帖者）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非悬赏发起人（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/bounty/award")]
-async fn bounty_award(
+pub(crate) async fn bounty_award(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<BountyAwardReq>,

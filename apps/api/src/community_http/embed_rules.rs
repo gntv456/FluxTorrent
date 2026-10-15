@@ -28,8 +28,16 @@ pub struct EmbedRulePublic {
 
 /// GET /forums/embed-rules：启用规则（总开关 forum_video_embed=no 时返回空，
 /// 前端据此把全部视频语法降级为链接）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/forums/embed-rules",
+    tag = "社区/论坛",
+    description = "外链嵌入规则（哪些站点允许 oEmbed/iframe）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/forums/embed-rules")]
-async fn forum_embed_rules(
+pub(crate) async fn forum_embed_rules(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {

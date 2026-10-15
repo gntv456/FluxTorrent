@@ -11,7 +11,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// 主题管理：置顶/锁定/移动版块（版主限本版块）
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct TopicManageReq {
     #[serde(default)]
     sticky: Option<bool>,
@@ -24,8 +24,21 @@ struct TopicManageReq {
     move_to_forum_id: Option<i64>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/topics/{id}/manage",
+    tag = "社区/论坛",
+    description = "版主管理单个主题（置顶/锁帖/移动/高亮）。",
+    params(
+        ("id" = i64, description = "主题 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非版主（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/topics/{id}/manage")]
-async fn topic_manage(
+pub(crate) async fn topic_manage(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
@@ -107,7 +120,7 @@ async fn topic_manage(
 /// P-311 同族：面板 `run({sticky: true})` 之类键名拼错时 serde 静默吞掉
 /// ⇒ 五个 Option 全缺省、COALESCE 原值写回，界面照报「已处理 N 条」——
 /// 版主看到成功而一个帖没改。前端 7 处调用点实测只发已声明键。
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 struct TopicManageBatchReq {
     ids: Vec<i64>,
@@ -124,8 +137,18 @@ struct TopicManageBatchReq {
 /// 一次最多处理多少条（防误全选整站 + 防超长 SQL 参数）
 const BATCH_MAX: usize = 200;
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/topics/manage-batch",
+    tag = "社区/论坛",
+    description = "版主批量管理主题。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非版主（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/topics/manage-batch")]
-async fn topic_manage_batch(
+pub(crate) async fn topic_manage_batch(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<TopicManageBatchReq>,

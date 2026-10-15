@@ -10,7 +10,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct PollVoteReq {
     topic_id: i64,
     option_index: i32,
@@ -18,8 +18,17 @@ struct PollVoteReq {
 
 /// 投一票：登录即可投（版块 can_read 再验一次 forum_access）。
 /// 免费（趣味盒扣 1 魔力是游戏口径，论坛投票是表达渠道）。校验全部前置再落占位（对齐 fun_vote 的竞态修复）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/poll/vote",
+    tag = "社区/论坛",
+    description = "投票（单选/多选；改票需在截止前）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/poll/vote")]
-async fn poll_vote(
+pub(crate) async fn poll_vote(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<PollVoteReq>,
@@ -71,14 +80,24 @@ async fn poll_vote(
     ))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct PollCloseReq {
     topic_id: i64,
 }
 
 /// 楼主提前截止投票（截止后只读结果；与 fun_polls.closed 同语义）。版主亦可截止（治理口径）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/poll/close",
+    tag = "社区/论坛",
+    description = "关闭投票并结算（作者或版主）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非作者且无版主权（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/poll/close")]
-async fn poll_close(
+pub(crate) async fn poll_close(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<PollCloseReq>,

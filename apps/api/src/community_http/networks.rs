@@ -43,6 +43,14 @@ struct NetworkQuery {
 }
 
 /// 厂牌列表（登录可读；搜索 + 分页；按名下过审种数降序）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/networks",
+    tag = "社区/网络",
+    description = "制作组/厂牌列表。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/networks")]
 pub async fn networks_list(
     req: HttpRequest,
@@ -89,6 +97,17 @@ pub async fn networks_list(
 }
 
 /// 厂牌页：该厂牌名下全部过审种（时间倒序）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/networks/{id}",
+    tag = "社区/网络",
+    description = "网络详情（含成员与作品数）。",
+    params(
+        ("id" = i64, description = "网络 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/networks/{id}")]
 pub async fn network_detail(
     req: HttpRequest,
@@ -133,6 +152,14 @@ pub async fn network_detail(
 }
 
 /// 厂牌榜（按名下总做种数降序）——Gazelle top labels 范式的最小实现。
+#[utoipa::path(
+    get,
+    path = "/api/v1/networks/top",
+    tag = "社区/网络",
+    description = "热门网络（按作品/订阅数）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/networks/top")]
 pub async fn networks_top(
     req: HttpRequest,

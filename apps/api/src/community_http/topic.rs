@@ -50,8 +50,20 @@ struct TopicListQuery {
     tag: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/forums/{id}/topics",
+    tag = "社区/论坛",
+    description = "某版块的主题列表（分页 + 置顶置序）。",
+    params(
+        ("id" = i64, description = "版块 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "无该版块阅读权（code 2003）")))]
 #[get("/forums/{id}/topics")]
-async fn topic_list(
+pub(crate) async fn topic_list(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,

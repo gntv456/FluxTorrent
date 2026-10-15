@@ -11,7 +11,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(super) struct TopicCreateReq {
     pub(super) forum_id: i64,
     pub(super) title: String,
@@ -57,8 +57,18 @@ pub(super) fn normalize_topic_type(raw: Option<&str>) -> &'static str {
 // 因此统一落 `messages`：`sender_id IS NULL` 即系统通知（区别于真人私信）。
 // 好处：顶栏红点、收件箱、未读筛选、文件夹归类全部零改动生效。
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/topics",
+    tag = "社区/论坛",
+    description = "发主题（版块须可发；触发注册天数/做种量门槛）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "版块禁发或权限不足（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/topics")]
-async fn topic_create(
+pub(crate) async fn topic_create(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<TopicCreateReq>,

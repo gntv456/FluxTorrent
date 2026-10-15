@@ -49,8 +49,16 @@ fn unread_frame(n: i64, m: i64) -> Bytes {
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/messages/stream",
+    tag = "社区/消息",
+    description = "站内信 SSE 长连接（有新信时推事件）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/messages/stream")]
-async fn message_stream(
+pub(crate) async fn message_stream(
     req: HttpRequest,
     state: web::Data<Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {

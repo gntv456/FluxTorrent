@@ -130,8 +130,20 @@ async fn set_post_like(
     })))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/posts/{id}/like",
+    tag = "社区/论坛",
+    description = "回帖点赞（切换）。",
+    params(
+        ("id" = i64, description = "回帖 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/posts/{id}/like")]
-async fn post_like(
+pub(crate) async fn post_like(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
@@ -141,8 +153,20 @@ async fn post_like(
     set_post_like(&state, &auth, pid, true).await
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/forums/posts/{id}/like",
+    tag = "社区/论坛",
+    description = "取消回帖点赞。",
+    params(
+        ("id" = i64, description = "回帖 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[delete("/forums/posts/{id}/like")]
-async fn post_unlike(
+pub(crate) async fn post_unlike(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
@@ -207,8 +231,20 @@ async fn set_topic_favorite(
     })))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/topics/{id}/favorite",
+    tag = "社区/论坛",
+    description = "收藏主题（切换）。",
+    params(
+        ("id" = i64, description = "主题 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/topics/{id}/favorite")]
-async fn topic_favorite(
+pub(crate) async fn topic_favorite(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
@@ -218,8 +254,20 @@ async fn topic_favorite(
     set_topic_favorite(&state, &auth, tid, true).await
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/forums/topics/{id}/favorite",
+    tag = "社区/论坛",
+    description = "取消收藏主题。",
+    params(
+        ("id" = i64, description = "主题 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[delete("/forums/topics/{id}/favorite")]
-async fn topic_unfavorite(
+pub(crate) async fn topic_unfavorite(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,

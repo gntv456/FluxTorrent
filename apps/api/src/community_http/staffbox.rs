@@ -11,15 +11,24 @@ use crate::state::AppState;
 
 // ============ 咨询工作台（contactstaff → staffbox.php 口径） ============
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct ContactReq {
     subject: String,
     body: String,
 }
 
 /// 用户提交咨询（takecontact.php 口径：写 staffmessages；普通用户 60s 防刷）
+#[utoipa::path(
+    post,
+    path = "/api/v1/contactstaff",
+    tag = "社区/联络",
+    description = "发起工单（联络管理组）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/contactstaff")]
-async fn contact_staff(
+pub(crate) async fn contact_staff(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<ContactReq>,
@@ -83,8 +92,16 @@ struct StaffMessageRow {
 /// 咨询列表（staffbox.php）：全量给 staff（≥90）；permission 标签按标签名分流——
 /// 与 NP 的权限位映射不同，这里简化为「全员可见普通咨询 + 带 permission 标签的定向分流
 /// 也全员可见」，保留字段供未来按权限位过滤。
+#[utoipa::path(
+    get,
+    path = "/api/v1/staffmessages",
+    tag = "社区/联络",
+    description = "管理组信箱（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/staffmessages")]
-async fn staff_messages(
+pub(crate) async fn staff_messages(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<StaffMsgQuery>,
@@ -140,8 +157,16 @@ struct MyTicketRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/staffmessages",
+    tag = "社区/联络",
+    description = "我发给管理组的消息。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/staffmessages")]
-async fn my_staff_messages(
+pub(crate) async fn my_staff_messages(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
@@ -158,13 +183,22 @@ async fn my_staff_messages(
 }
 
 /// 用户确认关闭工单（2 已答复待确认 → 3 关闭，闭环补全）：仅来信人本人可关。
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct TicketConfirmReq {
     id: i64,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/me/staffmessages/confirm",
+    tag = "社区/联络",
+    description = "确认管理组消息已读。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/me/staffmessages/confirm")]
-async fn my_ticket_confirm(
+pub(crate) async fn my_ticket_confirm(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<TicketConfirmReq>,
