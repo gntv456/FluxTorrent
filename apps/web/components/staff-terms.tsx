@@ -17,6 +17,9 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { applyTermsText, sortRules } from "@/i18n/apply-terms";
+import { TermsGovernance } from "@/components/admin-terms-governance";
+import { TERMS_BTN_GHOST, TERMS_BTN_PRIMARY, TERMS_FLD }
+  from "@/lib/ui-classes";
 
 interface TermRow {
   canonical: string;
@@ -31,16 +34,6 @@ interface Draft {
   replacement: string;
   sort: number;
 }
-
-const FLD =
-  "min-h-[38px] w-full rounded-[var(--r-sm)] border border-line bg-cloud " +
-  "px-2 text-sm outline-none focus:border-sky";
-
-const BTN_PRIMARY =
-  "rounded-full bg-sky px-4 py-1.5 text-sm font-bold text-white " +
-  "disabled:opacity-50";
-const BTN_GHOST =
-  "rounded-full border border-line px-4 py-1.5 text-sm font-bold";
 
 const emptyDraft = (): Draft => ({
   canonical: "",
@@ -132,7 +125,7 @@ export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
         <label className="text-xs text-sub">
           {t.canonical}
           <input
-            className={FLD}
+            className={TERMS_FLD}
             value={draft.canonical}
             onChange={(e) => setDraft({ ...draft, canonical: e.target.value })}
           />
@@ -140,7 +133,7 @@ export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
         <label className="text-xs text-sub">
           {t.replacement}
           <input
-            className={FLD}
+            className={TERMS_FLD}
             value={draft.replacement}
             onChange={(e) =>
               setDraft({ ...draft, replacement: e.target.value })
@@ -151,7 +144,7 @@ export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
           {t.sort}
           <input
             type="number"
-            className={FLD}
+            className={TERMS_FLD}
             value={draft.sort}
             onChange={(e) =>
               setDraft({ ...draft, sort: Number(e.target.value) })
@@ -162,7 +155,7 @@ export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
       <div className="flex gap-2">
         <button
           type="button"
-          className={BTN_PRIMARY}
+          className={TERMS_BTN_PRIMARY}
           onClick={save}
           disabled={
             busy ||
@@ -197,7 +190,7 @@ export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
         {!draft && (
           <button
             type="button"
-            className={BTN_GHOST}
+            className={TERMS_BTN_GHOST}
             onClick={() => setDraft(emptyDraft())}
           >
             + {t.add}
@@ -275,7 +268,7 @@ export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
         <label className="text-xs text-sub">
           {t.tryIt}
           <input
-            className={FLD}
+            className={TERMS_FLD}
             value={probe}
             onChange={(e) => setProbe(e.target.value)}
             placeholder={t.tryHint}
@@ -296,6 +289,10 @@ export function StaffTermsPanel({ flash }: { flash: (m: string) => void }) {
         )}
       </div>
       <AskDialog {...ask} />
+      {/* 0386 术语治理：键登记/状态迁移/版本/覆盖率巡检。
+          放在替换表之下——站长先管「有哪些键」，再管「怎么替换」，
+          顺序反过来就看不出哪些键还欠着。 */}
+      <TermsGovernance />
     </div>
   );
 }
