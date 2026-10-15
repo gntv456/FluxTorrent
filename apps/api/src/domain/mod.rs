@@ -10,6 +10,9 @@ pub mod shop;
 // 抽奖可验证公平（commit-reveal）：判定与哈希派生进 domain 纯函数层
 pub mod lottery_fair;
 
+// H&R 分档要求 + 做种减免（护肝核心）
+pub mod hr;
+
 // seedbox 盒子：CIDR 校验与标志位语义（只放宽不加重）
 pub mod seedbox;
 
