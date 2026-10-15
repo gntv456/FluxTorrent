@@ -153,7 +153,11 @@ pub enum Progress {
 }
 
 /// 由单阶段判定推出整体推进。
-pub fn progress(v: &StageVerdict, seq: i32, is_last: bool) -> Progress {
+///
+/// 不收 `is_last`——`judge_stage` 已把「是否最后一段」编码进
+/// `StagePassed.exam_passed` 了，再传一遍只会诱使人写出「两处各判一次」
+/// 的分叉。
+pub fn progress(v: &StageVerdict, seq: i32) -> Progress {
     match v {
         StageVerdict::InProgress { .. } | StageVerdict::InRemedy { .. } => {
             Progress::None

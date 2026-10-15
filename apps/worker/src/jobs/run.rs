@@ -227,6 +227,12 @@ pub async fn run_all(
                 crate::jobs::medal_achv::threshold_sweep(&db), &shard);
             shard_lock!(&db, "job:medal_backfill",
                 medal_backfill_job(&db), &shard);
+            // 0383 商城履约自愈：把卡在 frozen 且过了宽限的订单推进到终态
+            // 「钱不会被无限期占着」这条不变量的
+            // 唯一保证——没有它，三段式只是把「扣款后崩掉」换成了
+            // 「冻结后崩掉」。
+            shard_lock!(&db, "job:shop_fulfill_recover",
+                crate::jobs::shop_fulfill::recover(&db), &shard);
             // 绩效月末结算挂 hourly（0106）：daily 首轮被跳过、重启后要等 24h
             shard_lock!(&db, "job:jixiao_settle",
                 jixiao_settle(&db), &shard);

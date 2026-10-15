@@ -60,7 +60,7 @@ fn no_remedy_fails_directly() {
 fn mid_stage_advances() {
     let v = judge_stage(&inp(2, false, 7, 0, FailAction::None, 3, true));
     assert_eq!(
-        progress(&v, 2, false),
+        progress(&v, 2),
         Progress::Advance { next_seq: 3, next_is_last: false }
     );
 }
@@ -69,14 +69,14 @@ fn mid_stage_advances() {
 #[test]
 fn last_stage_passes_exam() {
     let v = judge_stage(&inp(3, true, 7, 0, FailAction::None, 1, true));
-    assert_eq!(progress(&v, 3, true), Progress::ExamPassed);
+    assert_eq!(progress(&v, 3), Progress::ExamPassed);
 }
 
 /// 补救期本身不产出推进动作（worker 无需写库，只等下一轮）。
 #[test]
 fn remedy_yields_no_progress_action() {
     let v = judge_stage(&inp(1, false, 7, 3, FailAction::None, 8, false));
-    assert_eq!(progress(&v, 1, false), Progress::None);
+    assert_eq!(progress(&v, 1), Progress::None);
 }
 
 /// FailAction 解析：未知值回落 None（不处置），永不意外封人。
