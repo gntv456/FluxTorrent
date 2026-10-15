@@ -82,14 +82,17 @@ export function Fold({
   count,
   children,
   open,
+  id,
 }: {
   title: string;
   count?: number;
   children: React.ReactNode;
   open?: boolean;
+  /** 锚点 id（侧栏「查看全部」定位目标，scroll-margin-top 见 base.css） */
+  id?: string;
 }) {
   return (
-    <details className="td-fold" open={open}>
+    <details className="td-fold" open={open} id={id}>
       <summary>
         <h2>{title}</h2>
         {count !== undefined && (

@@ -845,10 +845,10 @@ a:hover {
   letter-spacing: 0.02em;
 }
 
-/* 海报头：左海报 + 中主信息/操作 + 右状态卡；窄屏纵向堆叠 */
+/* 海报头：左海报 + 右主信息（双栏化后状态卡移右信息栏 td-vitals） */
 .td-head {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) auto;
+  grid-template-columns: 200px minmax(0, 1fr);
   gap: 20px;
   padding: 20px;
   position: relative;
@@ -953,83 +953,6 @@ a:hover {
   align-items: center;
   gap: 10px;
 }
-/* 状态卡（阳光口径：三色统计列） */
-.td-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 128px;
-  align-self: stretch;
-  justify-content: center;
-}
-.td-stats__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  padding: 7px 12px;
-  border-radius: var(--r-sm);
-  background: var(--surface-sunken);
-  font-size: 13px;
-  color: var(--text-muted);
-  transition: transform 0.12s ease;
-}
-.td-stats__row:hover {
-  transform: translateX(-2px);
-}
-.td-stats__row b {
-  font-size: 16px;
-}
-.td-stats__row--seed {
-  background: var(--success-soft);
-}
-.td-stats__row--seed b {
-  color: var(--success);
-}
-.td-stats__row--leech {
-  background: var(--coral-soft);
-}
-.td-stats__row--leech b {
-  color: var(--coral);
-}
-.td-stats__row--done {
-  background: var(--sky-soft);
-}
-.td-stats__row--done b {
-  color: var(--sky-deep);
-}
-.td-stats__health {
-  margin-top: 2px;
-  padding: 6px 12px;
-  border-radius: var(--r-sm);
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-}
-.td-stats__health--alive {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.td-stats__health--dead {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-@media (max-width: 1024px) {
-  .td-head {
-    grid-template-columns: 130px minmax(0, 1fr);
-  }
-  .td-stats {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .td-stats__row {
-    flex: 1 1 100px;
-  }
-  .td-stats__health {
-    flex: 1 1 100%;
-  }
-}
 @media (max-width: 640px) {
   .td-head {
     grid-template-columns: 80px minmax(0, 1fr);
@@ -1049,8 +972,8 @@ a:hover {
     column-gap: 10px;
     row-gap: 2px;
   }
-  /* M5.9 头部紧凑化：操作三行语义分排在窄屏并为流式换行，
-     砍掉两行纯间隙；统计卡由 6 行大卡压成 chips 流 */
+  /* M5.9 头部紧凑化：操作区语义行在窄屏并为流式（M5.11 已整块
+     让位吸底栏，此处保留给 640~767 的窄桌面兜底） */
   .td-head__actions {
     flex-direction: row;
     flex-wrap: wrap;
@@ -1061,47 +984,241 @@ a:hover {
   .td-head__actions-row {
     gap: 6px;
   }
-  .td-stats__row {
-    flex: 1 1 auto;
-    justify-content: center;
-    gap: 6px;
-    padding: 3px 8px;
-    font-size: 12px;
-  }
-  .td-stats__row b {
-    font-size: 13px;
-  }
-  .td-stats__row:hover {
-    transform: none;
-  }
-  .td-stats__health {
-    flex: 1 1 auto;
-    margin: 0;
-    padding: 3px 8px;
-  }
 }
-/* M5.11：头部操作区整体让位吸底操作条（td-actionbar <768 显示），
-   头部只留信息；主操作/互动/管理全在吸底栏与「更多操作」面板。
-   断点对齐 actionbar 的 max-width:767px，避免中间区间两头落空 */
-@media (max-width: 767px) {
-  .td-head__actions {
+/* 头部操作区让位吸底栏的单栏化规则见本文件后段 @767 块（M5.11/M6.1） */
+
+/* ===== 双栏骨架（设计稿 §4：head 通栏 / 主栏 / 右信息栏） ===== */
+.td-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-areas:
+    "head side"
+    "main side"
+    "main rel";
+  gap: 0 20px;
+  align-items: start;
+}
+.td-head {
+  grid-area: head;
+}
+.td-main {
+  grid-area: main;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.td-side {
+  grid-area: side;
+  align-self: start;
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.td-side-rel {
+  grid-area: rel;
+  min-width: 0;
+  margin-top: 14px;
+}
+/* 锚点跳转（侧栏「查看全部」）避让 sticky 顶栏 */
+.td-fold {
+  scroll-margin-top: 88px;
+}
+/* 桌面：头部 meta 行收敛进侧栏 td-meta 卡（设计稿 §6） */
+@media (min-width: 768px) {
+  .td-head__meta {
     display: none;
   }
 }
 
-/* 规格网格（阳光口径：数值 + 灰字说明） */
-.td-specs {
+/* ===== 右信息栏卡片（设计稿 §6） ===== */
+.td-side-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  padding: 12px 14px;
+}
+.td-side-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.td-side-card__head h3 {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.td-side-card__head .num {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+/* td-vitals：2×2 大数字 + 健康度横幅 + 查看行 */
+.td-vitals__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 2px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.td-vitals__cell {
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+}
+.td-vitals__cell b {
+  display: block;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+.td-vitals__cell span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.td-vitals__cell--seed b {
+  color: var(--success);
+}
+.td-vitals__cell--leech b {
+  color: var(--coral);
+}
+.td-vitals__cell--done b {
+  color: var(--sky-deep);
+}
+.td-vitals__cell--thanks b {
+  color: var(--warning);
+}
+.td-vitals__health {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.td-vitals__health.is-alive {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.td-vitals__health.is-dead {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.td-vitals__views {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.td-vitals__views b {
+  color: var(--text-muted);
+}
+/* td-files-mini：前 5 行斑马纹 + 查看全部锚点 */
+.td-files-mini__list {
+  display: flex;
+  flex-direction: column;
+}
+.td-files-mini__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+.td-files-mini__row:nth-child(odd) {
+  background: var(--surface-sunken);
+}
+.td-files-mini__ext {
+  flex: none;
+  width: 34px;
+  padding: 1px 0;
+  border-radius: 4px;
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+  font-size: 9px;
+  font-weight: 900;
+  text-align: center;
+}
+.td-files-mini__name {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.td-files-mini__size {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.td-files-mini__more {
+  display: block;
+  margin-top: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sky-deep);
+}
+.td-files-mini__more:hover {
+  text-decoration: underline;
+}
+/* td-meta：元信息聚合卡（label 左 / value 右，虚线分隔） */
+.td-meta__rows {
+  display: flex;
+  flex-direction: column;
+}
+.td-meta__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 12px;
+  border-bottom: 1px dashed var(--line);
+}
+.td-meta__row:last-child {
+  border-bottom: none;
+}
+.td-meta__row span {
+  flex: none;
+  color: var(--text-muted);
+}
+.td-meta__row b {
+  color: var(--text-strong);
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.td-meta__link {
+  color: var(--text-brand);
+  font-weight: 700;
+}
+.td-meta__link:hover {
+  text-decoration: underline;
+}
+
+/* 规格徽章条（设计稿 §6：网格 → 横排 chip，一屏装下决策规格） */
+.td-specs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
   padding: 14px 16px;
 }
 .td-spec {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 10px;
   border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-sunken);
   min-width: 0;
   transition: background 0.12s ease;
 }
@@ -1109,13 +1226,75 @@ a:hover {
   background: var(--surface-hover);
 }
 .td-spec b {
-  font-size: 15px;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-strong);
   overflow-wrap: anywhere;
 }
 .td-spec span {
   font-size: 11px;
   color: var(--text-faint);
+}
+
+/* 平板档（768-1024）：双栏收窄右栏 260px + head 紧凑（设计稿 §7；
+   M4 平板细侧栏会再吃约 76px，主栏偏窄故海报 100px、操作流式）。
+   须后置——同特异性下媒体查询不敌后定义的基础规则 */
+@media (max-width: 1024px) {
+  .td-layout {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+  .td-head {
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+  }
+  .td-head__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .td-head__actions-row {
+    gap: 6px;
+  }
+  /* 平板文件卡只显前 3 行（设计稿 §7） */
+  .td-files-mini__row:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+/* M5.11 + M6.1 单栏化（<768，对齐 actionbar 断点）：头部操作区让位
+   吸底操作条；layout 单列 head→side(vitals)→main→related，文件 mini
+   卡与 meta 卡让位给主栏折叠块与头部 meta 行。
+   ⚠️ 必须置于 .td-layout 基础规则之后：同特异性下后定义者胜。 */
+@media (max-width: 767px) {
+  .td-head__actions {
+    display: none;
+  }
+  .td-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "side"
+      "main"
+      "rel";
+  }
+  .td-side {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .td-side .td-vitals {
+    flex: 1 1 100%;
+  }
+  .td-side .td-files-mini,
+  .td-side .td-meta {
+    display: none;
+  }
+  .td-side-rel {
+    margin-top: 4px;
+  }
 }
 
 /* 区块标题 */

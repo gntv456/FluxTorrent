@@ -192,40 +192,6 @@ export function TorrentHead({
           </HeadActionsMore>
         </div>
       </div>
-
-      {/* 状态卡（阳光站口径：做种/下载/完成三色统计） */}
-      <aside className="td-stats">
-        <div className="td-stats__row td-stats__row--seed">
-          <span>{dict.torrent.seeding}</span>
-          <b className="num">{t.seeders}</b>
-        </div>
-        <div className="td-stats__row td-stats__row--leech">
-          <span>{dict.torrent.leeching}</span>
-          <b className="num">{t.leechers}</b>
-        </div>
-        <div className="td-stats__row td-stats__row--done">
-          <span>{dict.torrent.completed}</span>
-          <b className="num">{t.times_completed}</b>
-        </div>
-        <div className="td-stats__row">
-          <span>{d?.thanksCountLabel ?? dict.torrent.thanksCount}</span>
-          <b className="num">{ext?.thanks_count ?? 0}</b>
-        </div>
-        <div className="td-stats__row">
-          <span>{d?.heatViews}</span>
-          <b className="num">{ext?.views ?? "—"}</b>
-        </div>
-        {/* 健康度（NP 口径：做种=0 视为死种） */}
-        <p
-          className={`td-stats__health ${
-            t.seeders === 0
-              ? "td-stats__health--dead"
-              : "td-stats__health--alive"
-          }`}
-        >
-          {t.seeders === 0 ? d?.healthDead : d?.healthAlive}
-        </p>
-      </aside>
     </section>
   );
 }

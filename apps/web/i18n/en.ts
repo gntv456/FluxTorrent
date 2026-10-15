@@ -457,6 +457,8 @@ const enBase: Omit<
     viewAll: "View all →",
     descrTitle: "Description",
     filesTitle: "File list",
+    filesAll: "View all {n} files",
+    metaTitle: "Resource info",
     fileUnit: "files",
     thankersTitle: "Thanked by",
     thanksCount: "Thanks",

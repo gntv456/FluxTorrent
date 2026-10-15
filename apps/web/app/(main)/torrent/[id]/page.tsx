@@ -35,6 +35,8 @@ import {
   type TorrentDetailExt,
 } from "@/components/torrent-detail-blocks";
 import { TorrentDetailTail } from "./_parts/torrent-detail-tail";
+import { TorrentDetailSide } from "./_parts/torrent-detail-side";
+import { TorrentSpecs } from "./_parts/torrent-detail-specs";
 import { getDict } from "@/i18n/server";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import type {
@@ -250,21 +252,18 @@ export default async function TorrentDetailPage({
         <span className="td-crumbs__id">#{t.id}</span>
       </nav>
 
-      {/* ===== 海报头（馒头/阳光口径：左海报 + 右主信息 + 操作行） ===== */}
+      {/* ===== 双栏骨架（设计稿 §4：head 通栏 + 左主栏 + 右信息栏） ===== */}
+      <div className="td-layout">
+
+        {/* ===== 海报头（馒头/阳光口径：左海报 + 右主信息 + 操作行） ===== */}
       <TorrentHead
-        t={t}
-        ext={ext}
-        dict={dict}
-        locale={locale}
-        left={left}
+        t={t} ext={ext} dict={dict} locale={locale} left={left}
         category={category}
         categoryColor={catColor(
           colorMap(profile?.categories ?? []),
           t.category_id,
         )}
-        subtitleChain={subtitleChain}
-        relTime={relTime}
-        ripLogs={agg.logs}
+        subtitleChain={subtitleChain} relTime={relTime} ripLogs={agg.logs}
         tags={
           agg.tags.dict.length + agg.tags.mine.length > 0 ? (
             <TorrentTags torrentId={t.id} initial={agg.tags} />
@@ -302,18 +301,9 @@ export default async function TorrentDetailPage({
         }
       />
 
-      {/* ===== 规格网格（阳光站口径：数值 + 灰字说明，紧凑三列） ===== */}
-      <section className="td-specs nexus-detail">
-        <Spec value={formatBytes(t.size)} label={dict.torrent.size} num />
-        <Spec value={ext?.numfiles ?? "—"} label={dict.torrent.numFiles} num />
-        <Spec value={category} label={dict.torrent.category} />
-        {/* 规格网格单源化（R3）：维度走 sections（0185 迁移；label 由
-            section_kinds 下发） */}
-        {secEntries.map((v) => (
-          <Spec key={v.kind} value={v.name} label={v.label} />
-        ))}
-        {t.rating && <Spec value={t.rating} label={d?.ratingLabel} num />}
-      </section>
+      {/* ===== 规格徽章条（设计稿 §6 chip-row；R3 维度 sections 单源） ===== */}
+      <div className="td-main">
+        <TorrentSpecs t={t} ext={ext} category={category} dict={dict} />
 
       {/* 标签（0173 移入头部） */}
       {/* ===== 简介（桌面展开；移动端 M5.8 收进折叠条降噪） ===== */}
@@ -387,7 +377,11 @@ export default async function TorrentDetailPage({
 
 
       {sectOn("files") && files.length > 0 && (
-        <Fold title={dict.torrent.filesTitle} count={files.length}>
+        <Fold
+          title={dict.torrent.filesTitle}
+          count={files.length}
+          id="td-files"
+        >
           <FileTree files={files} />
         </Fold>
       )}
@@ -407,24 +401,29 @@ export default async function TorrentDetailPage({
 
 
       <TorrentDetailTail
-        t={t}
-        thanks={thanks}
+        t={t} thanks={thanks}
         thanksCount={ext?.thanks_count ?? thanks.length}
-        comments={comments}
-        dict={dict}
-        locale={locale}
+        comments={comments} dict={dict} locale={locale}
+        relTime={relTime} sectOn={sectOn}
+      />
+      </div>
+
+      {/* ===== 右信息栏上段（sticky：状态/文件/元信息） ===== */}
+      <TorrentDetailSide
+        t={t} ext={ext} files={files} category={category}
+        inCollections={inCollections} dict={dict} locale={locale}
         relTime={relTime}
-        sectOn={sectOn}
       />
 
-      {/* 相关种子（2026-10-08 P1 相似推荐）：懒加载，无数据自隐 */}
-      {sectOn("related") && <TorrentRelated torrentId={t.id} />}
+      {/* ===== 右信息栏下段：相关种子（移动端回落到页面底部） ===== */}
+      <div className="td-side-rel">
+        {sectOn("related") && <TorrentRelated torrentId={t.id} />}
+      </div>
+      </div>
 
-      {/* M3：<md 底部固定操作条（收藏/复制/下载，键盘弹出自动让位） */}
+      {/* M3：<md 底部固定操作条（收藏/复制/下载/更多，键盘弹出自动让位） */}
       <TorrentActionBarMount
-        torrentId={t.id}
-        name={t.name}
-        price={ext?.price}
+        torrentId={t.id} name={t.name} price={ext?.price}
         labels={{ fav: "☆", copy: "⧉", download: "⬇" }}
       />
     </article>
