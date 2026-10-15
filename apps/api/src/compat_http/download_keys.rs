@@ -36,31 +36,25 @@ struct DownloadKeyReq {
         (status = 429, description = "签发限流 10 次/分钟（code 1015）"),
     )
 )]
-#[post("/downloads/keys")]
-async fn download_key_issue(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<DownloadKeyReq>,
-) -> DomainResult<HttpResponse> {
-    let tk = require_token(&req, &state).await?;
-    let uid = tk.uid;
+/// 审核检查 + 签发临时下载凭证（审核存在性、INSERT、明文生成）。
+/// `download_key_issue` 与 crossseed dl（302 复用下载链路）共用——
+/// 辅种工具拿长期 Token 现场换一枚 30 分钟凭证，不放大泄露窗口。
+pub(crate) async fn issue_download_key(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    uid: i64,
+    torrent_id: i64,
+) -> DomainResult<(String, chrono::DateTime<chrono::Utc>)> {
     let approved: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM torrents \
          WHERE id = $1 AND approval_status = 1)",
     )
-    .bind(body.torrent_id)
+    .bind(torrent_id)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if !approved {
-        return Err(DomainError::NotFound(body.torrent_id));
+        return Err(DomainError::NotFound(torrent_id));
     }
-    // 签发限流：每用户 10 次/分钟（防刷表）
-    // P-67：旧写法 `incr(...).unwrap_or(0)` 在 Redis 故障时记不上数
-    // ⇒ 永不触发限流（可无限量签发凭证）。统一走 rate_window（fail-close，
-    // 窗口写在键名里，不会因续期失败留下无 TTL 的键）。
-    crate::http::rate_window(&state, &format!("dlkey:issue:{uid}"), 10, 60)
-        .await?;
     let plain = format!("fxk_{}", uuid::Uuid::new_v4().simple());
     let expires: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
         "INSERT INTO download_keys (token_hash, user_id, torrent_id, \
@@ -70,11 +64,44 @@ async fn download_key_issue(
     )
     .bind(sha3_hex(plain.as_bytes()))
     .bind(uid)
-    .bind(body.torrent_id)
+    .bind(torrent_id)
     .bind(DOWNLOAD_KEY_TTL_MINUTES)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok((plain, expires))
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/downloads/keys",
+    tag = "兼容层(NP)",
+    description = "签发 30 分钟临时下载凭证：把「下载」从长期 Token/passkey \
+里解耦，泄露窗口 30 分钟；每用户 10 次/分钟。body：{torrent_id}（JSON）。",
+    request_body = DownloadKeyReq,
+    responses(
+        (status = 200, description = "DownloadKey：key + download_url"),
+        (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
+        (status = 404, description = "种子不存在或未过审（code 1004）"),
+        (status = 429, description = "签发限流 10 次/分钟（code 1015）"),
+    )
+)]
+#[post("/downloads/keys")]
+async fn download_key_issue(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<DownloadKeyReq>,
+) -> DomainResult<HttpResponse> {
+    let tk = require_token(&req, &state).await?;
+    let uid = tk.uid;
+    // 签发限流：每用户 10 次/分钟（防刷表）
+    // P-67：旧写法 `incr(...).unwrap_or(0)` 在 Redis 故障时记不上数
+    // ⇒ 永不触发限流（可无限量签发凭证）。统一走 rate_window（fail-close，
+    // 窗口写在键名里，不会因续期失败留下无 TTL 的键）。
+    crate::http::rate_window(&state, &format!("dlkey:issue:{uid}"), 10, 60)
+        .await?;
+    let (plain, expires) =
+        issue_download_key(&state, uid, body.torrent_id).await?;
     // 响应里含一次性凭证明文：禁止中间层缓存
     Ok(no_store(with_rl(
         ok(serde_json::json!({

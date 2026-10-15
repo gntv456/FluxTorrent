@@ -56,7 +56,7 @@ pub fn spawn_poll(state: std::sync::Arc<crate::state::AppState>) {
                         }
                         "modules" => {
                             state.module_flags.invalidate().await;
-                            crate::plugins::invalidate_plugin_cache();
+                            crate::plugin_ctx::invalidate_plugin_cache();
                         }
                         "home" => {
                             // 站型 apply 改 home_layout/site_profile 后

@@ -125,6 +125,27 @@ pub(super) fn components() -> Value {
                 "auto_approved": { "type": "boolean" },
                 "info_hash": { "type": "string" },
                 "pieces_hash": { "type": "string" } } },
+            "XseedLookupReq": { "type": "object", "properties": {
+                "info_hash_v1": { "type": "array",
+                    "items": { "type": "string" },
+                    "description": "v1 btih（hex40），与 pieces_sha1 合计 ≤500" },
+                "pieces_sha1": { "type": "array",
+                    "items": { "type": "string" },
+                    "description": "pieces 层 SHA1（hex40，跨站重打包不变）" } } },
+            "XseedMatch": { "type": "object", "properties": {
+                "match": { "type": "string", "enum": ["info_hash_v1",
+                    "pieces_sha1"] },
+                "query": { "type": "string",
+                    "description": "命中的入参指纹（小写 hex40）" },
+                "torrent_id": { "type": "integer", "format": "int64" },
+                "name": { "type": "string" },
+                "size": { "type": "integer", "format": "int64" },
+                "download_url": { "type": "string",
+                    "description": "/api/v1/crossseed/dl/{torrent_id}" } } },
+            "XseedLookupResp": { "type": "object", "properties": {
+                "results": { "type": "array",
+                    "items": { "$ref": "#/components/schemas/XseedMatch" },
+                    "description": "仅命中项；未命中的 query 不出现" } } },
             "TorrentDetail": { "type": "object", "properties": {
                 "id": { "type": "integer" }, "name": { "type": "string" },
                 "descr": { "type": "string", "nullable": true },

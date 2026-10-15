@@ -4,6 +4,7 @@
 //! 可独立撤销、独立限流（按 token 维度，默认 60 req/min）。
 //! 鉴权头：`Authorization: Token <fxo_...>`（与会话 Bearer 区分）。
 
+mod crossseed;
 mod detail_open;
 mod me;
 mod me_torrents;
@@ -39,6 +40,9 @@ pub fn mount_openapi(scope: actix_web::Scope) -> actix_web::Scope {
         .service(me_torrents::me_seeding)
         .service(me_torrents::me_history)
         .service(upload::open_upload)
+        .service(crossseed::xseed_lookup)
+        .service(crossseed::xseed_dl)
+        .service(crossseed::xseed_iyuu)
 }
 
 pub(super) fn hash_token(token: &str) -> String {
@@ -74,6 +78,9 @@ pub const API_TOKEN_TTL_DAYS: i64 = 180;
 
 pub const SCOPE_READ: &str = "read";
 pub const SCOPE_UPLOAD: &str = "upload";
+/// 辅种（cross-seed）专用 scope：只放行 lookup / dl 两个端点，
+/// 与发种（upload）解耦 —— 刷流工具不需要发种能力。
+pub const SCOPE_CROSSSEED: &str = "crossseed";
 
 impl TokenCtx {
     pub fn remaining(&self) -> i64 {
