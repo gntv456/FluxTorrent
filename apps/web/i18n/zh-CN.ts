@@ -432,6 +432,8 @@ const zhCnBase = {
     viewAll: "查看全部 →",
     descrTitle: "内容简介",
     filesTitle: "文件列表",
+    filesAll: "查看全部 {n} 个文件",
+    metaTitle: "资源信息",
     fileUnit: "个文件",
     thankersTitle: "感谢者",
     thanksCount: "感谢",
