@@ -155,21 +155,21 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         ),
         pm AS (
             -- 审计修复（P1）：violated 此前只落表+日志零成本躺平。补 PM 告知违规与免罪途径
-            INSERT INTO messages (sender_id, receiver_id, subject, body)
+            INSERT INTO messages (sender_id, receiver_id, subject, body, kind)
             SELECT NULL, ins.user_id, 'H&R 违规确认',
                    '种子 #' || ins.torrent_id || ' 的 H&R 考察期已结束且未达标（做种 '
                    || round(ins.seeded_seconds / 3600.0, 1) || ' 小时 / 要求 '
                    || round(ins.required_seconds / 3600.0, 1) || ' 小时），已记违规一次。
-                   持续做种可自行恢复；也可在「我的 H&R」用 20000 魔力自助免罪。累计多次违规将影响下载权限。'
-            FROM ins
+                   持续做种可自行恢复；也可在「我的 H&R」用 20000 魔力自助免罪。累计多次违规将影响下载权限。',
+                   'hr_violation'
+            FROM ins WHERE u_notice_enabled(ins.user_id, 'hr_violation')
             RETURNING 1
         )
         -- Web Push outbox（0283 P0-1）：违规即推
         INSERT INTO push_outbox (user_id, topic, title, body, dedupe_key)
         SELECT ins.user_id, 'hr', 'H&R 违规确认',
                format('种子 #%s H&R 未达标（做种 %s/%s 小时），已记违规一次。',
-                      ins.torrent_id,
-                      round(ins.seeded_seconds / 3600.0, 1),
+                      ins.torrent_id, round(ins.seeded_seconds / 3600.0, 1),
                       round(ins.required_seconds / 3600.0, 1)),
                'hr_violation:' || ins.torrent_id || ':' || ins.user_id
         FROM ins
