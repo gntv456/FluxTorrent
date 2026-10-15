@@ -221,6 +221,19 @@ jobs:
           sleep 3
           echo "tracker/worker booted"
 
+      # M4/M5 注册治理变更型端到端（改 settings/题库/账号，结束全部还原/
+      # 墓碑化）。排在 Boot tracker & worker 之后：M4 的 reg_cleanup cron
+      # 要 worker 在跑才能触发；redis-cli 供清理限流键（CI 无密码直连）。
+      # sqlx 是运行时查询——四道闸/判分/票据一次性这类「改了才会炸」的
+      # SQL 只有真库 + 真注册链路能抓。
+      - name: M4 注册治理四道闸 e2e
+        run: |
+          sudo apt-get install -y -qq redis-tools > /dev/null 2>&1 || true
+          python3 scripts/ci_reg_gates_e2e.py
+
+      - name: M5 答题/PoW/准确率 e2e
+        run: python3 scripts/ci_reg_quiz_e2e.py
+
       - name: Announce→计费 链路冒烟
         run: |
           sudo apt-get install -y -qq redis-tools > /dev/null 2>&1 || sudo apt-get install -y -qq redis > /dev/null
