@@ -116,9 +116,10 @@ pub async fn cheat_appeal_submit(
             "申诉内容 10-4000 字符".into(),
         ));
     }
-    let owns = appeal_repo::case_owned_by_user(&state.repo, body.case_id, auth.id)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let owns =
+        appeal_repo::case_owned_by_user(&state.repo, body.case_id, auth.id)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if !owns {
         return Err(DomainError::Validation("案件不存在或不属于你".into()));
     }
