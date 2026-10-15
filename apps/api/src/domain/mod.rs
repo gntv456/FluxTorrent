@@ -15,6 +15,7 @@ pub mod lottery_fair;
 
 // H&R 分档要求 + 做种减免（护肝核心）
 pub mod hr;
+pub mod hr_warn;
 
 // seedbox 盒子：CIDR 校验与标志位语义（只放宽不加重）
 pub mod seedbox;
