@@ -52,6 +52,7 @@ export const ANNOTATED_FILES = [
   "apps/api/src/community_http/like.rs",
   "apps/api/src/community_http/list_prefs.rs",
   "apps/api/src/community_http/lottery.rs",
+  "apps/api/src/community_http/lottery_verify.rs",
   "apps/api/src/community_http/medal.rs",
   "apps/api/src/community_http/medal_buy.rs",
   "apps/api/src/community_http/medal_gift.rs",
@@ -99,9 +100,9 @@ export function checkCommunityCoverage(read, manifest) {
     r.file.startsWith("apps/api/src/community_http/"),
   );
   let fails = 0;
-  if (expected.length !== 86) {
+  if (expected.length !== 87) {
     console.log(
-      `FAIL  route-manifest 社区路由数为 ${expected.length}，预期 86` +
+      `FAIL  route-manifest 社区路由数为 ${expected.length}，预期 87` +
         `（新增社区路由请同步 open_api.rs 聚合并更新本判据）`,
     );
     fails++;
