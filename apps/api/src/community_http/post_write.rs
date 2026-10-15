@@ -106,6 +106,7 @@ async fn post_reply(
         notify_user(
             &state.repo.db,
             author,
+            "comment_reply",
             "主题收到回复",
             &format!(
                 "用户 #{} 回复了你的主题：[{}](/forums/topic/{})",
@@ -122,6 +123,7 @@ async fn post_reply(
             notify_user(
                 &state.repo.db,
                 pa,
+                "comment_reply",
                 "你的楼层收到回复",
                 &format!(
                     "用户 #{} 回复了你在[{}](/forums/topic/{})的楼层",
@@ -146,6 +148,7 @@ async fn post_reply(
         &state.repo.db,
         "topic",
         tid,
+        "comment_reply",
         "关注的主题有新回复",
         &format!("[{}](/forums/topic/{}) · 来自用户 #{}", title, tid, auth.id),
         &[author, auth.id],

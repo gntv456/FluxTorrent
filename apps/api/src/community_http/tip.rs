@@ -126,6 +126,7 @@ async fn post_tip(
     notify_user(
         &state.repo.db,
         author_id,
+        "comment_reply",
         "收到打赏",
         &format!(
             "用户 #{} 打赏了您在 [/forums/topic/{}] 的回复：{} 魔力{}",

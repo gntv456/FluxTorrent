@@ -4,7 +4,12 @@ use sqlx::PgPool;
 
 use crate::errors::{DomainError, DomainResult};
 
-/// 单批通知：站内信必达；email=true 时查邮箱走 mailer 双通道（尽力而为）。
+/// 单批通知：站内信 + 可选邮件双通道，两条通道同走 `system` 档偏好。
+///
+/// 口径（P-322 站方裁）：管理群发属**可关**的公告类——用户在面板关掉
+/// 「系统通知」后不再收。但**必达类不走这条路**：封禁/停权、账号安全、
+/// 管理裁决结果必须送达，走 `mailer::notify()`（不过偏好），
+/// 由 `mailer` 那侧「notify=必达 / notify_kind=可关」的分界保证。
 pub(super) async fn pm_chunk(
     db: &PgPool,
     chunk: &[i64],
@@ -18,7 +23,6 @@ pub(super) async fn pm_chunk(
     }
     for uid in chunk {
         if email {
-            // 双通道：站内信必达 + 邮件尽力（mailer 内部降级）
             let em: Option<String> =
                 sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
                     .bind(uid)
@@ -26,12 +30,20 @@ pub(super) async fn pm_chunk(
                     .await
                     .ok()
                     .flatten();
-            crate::mailer::notify(db, *uid, em, subject.trim(), text.trim())
-                .await;
+            crate::mailer::notify_kind(
+                db,
+                *uid,
+                "system",
+                em,
+                subject.trim(),
+                text.trim(),
+            )
+            .await;
         } else {
             let sql = "INSERT INTO messages \
-                       (sender_id, receiver_id, subject, body) \
-                       VALUES ($1, $2, $3, $4)";
+                       (sender_id, receiver_id, subject, body, kind) \
+                       SELECT $1, $2, $3, $4, 'system' \
+                       WHERE u_notice_enabled($2, 'system')";
             sqlx::query(sql)
                 .bind(sender_id)
                 .bind(uid)

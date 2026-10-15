@@ -105,6 +105,7 @@ async fn set_post_like(
             notify_user(
                 &state.repo.db,
                 author,
+                "comment_reply",
                 "帖子被点赞",
                 &format!(
                     "用户 #{} 赞了你在主题「{}」里的回复：[查看](/forums/topic/{})",
