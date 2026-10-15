@@ -219,6 +219,14 @@ pub async fn run_all(
             // 失败判定必须排在成功结算之后：恰好在期限内达标的队伍应算成功
             shard_lock!(&db, "job:social_team_expire",
                 social_team_expire(&db), &shard);
+            // 0382 勋章自动成就：threshold 周期重算 + 回填推进。
+            // 两条都幂等可重跑（已授予即跳过、回填靠「扫到哪」续跑），
+            // 故挂 hourly 而非 daily——threshold 的周期口径含日/周，
+            // 一小时一轮才不会出现「周期内最后一天才达标的要等 24h」。
+            shard_lock!(&db, "job:medal_threshold",
+                crate::jobs::medal_achv::threshold_sweep(&db), &shard);
+            shard_lock!(&db, "job:medal_backfill",
+                medal_backfill_job(&db), &shard);
             // 绩效月末结算挂 hourly（0106）：daily 首轮被跳过、重启后要等 24h
             shard_lock!(&db, "job:jixiao_settle",
                 jixiao_settle(&db), &shard);
@@ -320,4 +328,11 @@ pub async fn run_all(
     manual_tasks.drain().await;
     tracing::info!("flux-worker 已排空，退出");
     Ok(())
+}
+
+/// 回填作业的返回口径包装：`backfill` 返回
+/// `(已完成成就数, 授予人数)`，而 `shard_lock!` 要的是 `u64` 计数。
+/// 取「授予人数」——那才是本轮实际产生的效果；「成就数」只是内部游标。
+async fn medal_backfill_job(db: &sqlx::PgPool) -> anyhow::Result<u64> {
+    Ok(crate::jobs::medal_achv::backfill(db).await?.1)
 }
