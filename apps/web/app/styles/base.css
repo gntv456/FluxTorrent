@@ -1336,31 +1336,70 @@ a:hover {
   border-top: 1px solid var(--line);
 }
 
-/* 头部内嵌轻量折叠条（FoldMobileBare，仅移动端渲染）：
-   无卡片 chrome，融进头部主列的行距里 */
-.td-fold-inline > summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 0;
-  cursor: pointer;
-  user-select: none;
-  list-style: none;
-  font-size: 12px;
+/* M5.10 头部「更多操作」底部面板（HeadActionsMore，仅移动端渲染）：
+   遮罩 + 底部弹起面板；层级用 --z-modal（toast 120 在上、nav 40 在下） */
+.more-sheet__trigger {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--text-body-deep);
+  background: var(--surface-card);
+  transition: transform 0.12s ease;
 }
-.td-fold-inline > summary::-webkit-details-marker {
-  display: none;
+.more-sheet__trigger:active {
+  transform: scale(0.97);
 }
-.td-fold-inline[open] > summary {
+.more-sheet-mask {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-end;
+  background: rgba(15, 23, 42, 0.45);
+}
+.more-sheet {
+  position: relative;
+  width: 100%;
+  max-height: 72vh;
+  overflow-y: auto;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--surface-card);
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  box-shadow: var(--shadow-hover);
+  animation: more-sheet-up 0.18s ease;
+}
+@keyframes more-sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+.more-sheet__title {
+  margin-bottom: 10px;
+  padding-right: 40px;
+  font-size: 14px;
+  font-weight: 800;
   color: var(--text-strong);
 }
-.td-fold-inline[open] > summary .td-fold__chev {
-  transform: rotate(225deg);
+.more-sheet__close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
 }
-.td-fold-inline__body {
-  padding: 8px 0 2px;
+/* 面板内的管理/抢种行与互动区保持呼吸感 */
+.more-sheet .td-head__actions-row {
+  margin-top: 10px;
 }
 
 /* 感谢者（馒头口径：头像 + 用户名 chip） */

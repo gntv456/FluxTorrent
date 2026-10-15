@@ -23,27 +23,3 @@ export function FoldMobile({
     </Fold>
   );
 }
-
-/** 头部内嵌轻量折叠（M5.9 社交/答谢收纳）：与 FoldMobile 的差别是
- *  桌面直接原样渲染 children（不加 summary 行、无卡片 chrome），
- *  仅移动端包 <details> 收起——用于头部里没有既有标题行的小区块，
- *  避免桌面凭空多出一条折叠标题破坏既有排版。 */
-export function FoldMobileBare({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  const compact = useIsCompact();
-  if (!compact) return <>{children}</>;
-  return (
-    <details className="td-fold-inline">
-      <summary>
-        <span>{title}</span>
-        <span className="td-fold__chev" aria-hidden />
-      </summary>
-      <div className="td-fold-inline__body">{children}</div>
-    </details>
-  );
-}

@@ -6368,7 +6368,6 @@ const zhCnBase = {
     reasonWrongContent: "内容不符",
     reasonDuplicate: "重复发布",
     reasonOther: "其他",
-    interactTitle: "互动与答谢",
   },
   offers2: {
     title: "候选",
