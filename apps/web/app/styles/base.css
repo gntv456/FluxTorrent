@@ -1268,7 +1268,7 @@ a:hover {
    吸底操作条；layout 单列 head→side(vitals)→main→related，文件 mini
    卡与 meta 卡让位给主栏折叠块与头部 meta 行。
    ⚠️ 必须置于 .td-layout 基础规则之后：同特异性下后定义者胜。 */
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .td-head__actions {
     display: none;
   }
@@ -1533,10 +1533,14 @@ a:hover {
   z-index: var(--z-modal);
   display: flex;
   align-items: flex-end;
-  background: rgba(15, 23, 42, 0.45);
+  /* 令牌化：遮罩底色走 --overlay-scrim（明暗双主题已定义，
+     暗色下更重，正是吸底面板需要的压暗强度） */
+  background: var(--overlay-scrim);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.18s ease;
+  /* 令牌化（D5 动效棘轮）：语义档 --motion-normal，
+     reduced-motion 下由 base.css 末尾全局归零 */
+  transition: opacity var(--motion-normal) var(--motion-ease);
 }
 .more-sheet-mask.is-open {
   opacity: 1;
@@ -1552,7 +1556,8 @@ a:hover {
   padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
   box-shadow: var(--shadow-hover);
   transform: translateY(100%);
-  transition: transform 0.18s ease;
+  /* 同上：与遮罩同档，两段动画节奏必须一致 */
+  transition: transform var(--motion-normal) var(--motion-ease);
 }
 .more-sheet-mask.is-open .more-sheet {
   transform: translateY(0);
