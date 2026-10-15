@@ -23,6 +23,10 @@ pub(super) struct PublicProfile {
     pub(super) username: String,
     pub(super) title: Option<String>,
     pub(super) avatar_url: Option<String>,
+    /// P-339：签名档。之前读路径不返回它，用户中心的「显示签名」
+    /// 开关因此无处可施；现按**观看者**的 view_signatures 决定。
+    #[sqlx(default)]
+    pub(super) signature: Option<String>,
     pub(super) class_id: i32,
     pub(super) class_name: Option<String>,
     pub(super) uploaded: i64,
