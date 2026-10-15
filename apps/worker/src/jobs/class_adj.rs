@@ -168,9 +168,18 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         .fetch_one(db)
         .await?;
         let dedup: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(sum(promo_sparks),0)::bigint FROM class_rules              WHERE class_id = ANY($1)",
+            // P-326：去重必须只算 (old, new] 区间内的已领档位。旧版把**全部**
+            // 历史档位都扣，于是「爬到过高档 → 被降级 → 再爬回来」的人会负数，
+            // 而 `reward <= 0` 直接 continue ⇒ 连从未领过的中间档也不发，
+            // 且流水不留痕 ⇒ 之后每次晋升都重复同一个减法，奖励永久发不出去。
+            // 实测（promo_sparks 临时按 class_id*10、old=3 new=5 claimed={5,8}）：
+            // gross=90、旧 dedup=130 ⇒ reward=-40（不发）；带区间界 dedup=50 ⇒ 40。
+            "SELECT COALESCE(sum(promo_sparks),0)::bigint FROM class_rules \
+             WHERE class_id = ANY($1) AND class_id > $2 AND class_id <= $3",
         )
         .bind(&claimed)
+        .bind(old_class)
+        .bind(new_class)
         .fetch_one(db)
         .await
         .unwrap_or(0);
