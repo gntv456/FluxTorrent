@@ -283,6 +283,7 @@ pub mod reg_quiz;
 pub mod register_gates;
 pub mod offers;
 pub mod pmboxes;
+pub mod forum;
 pub mod magnet;
 pub mod rss;
 pub mod settings;

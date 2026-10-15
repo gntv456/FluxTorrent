@@ -119,13 +119,8 @@ async fn forum_admin_update(
     // 缺省则退回修前行为（last-write-wins），灰度期前端不改也能上。
     let expected = body.expected_mtime.as_deref().unwrap_or("").trim();
     if !expected.is_empty() {
-        let cur: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
-            "SELECT mtime FROM forums WHERE id = $1 FOR UPDATE",
-        )
-        .bind(fid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        // 版本戳读下沉 repo/forum.rs（含 FOR UPDATE，理由见那侧注释）
+        let cur = crate::repo::forum::mtime(&state.repo, fid).await;
         let hit = chrono::DateTime::parse_from_rfc3339(expected)
             .map(|t| cur == Some(t.with_timezone(&chrono::Utc)))
             .unwrap_or(false);
