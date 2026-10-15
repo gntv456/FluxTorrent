@@ -119,7 +119,8 @@ exec_sql("INSERT INTO snatches (user_id, torrent_id, downloaded, "
          % (uid, tid))
 CLEAN.append("DELETE FROM snatches WHERE user_id = %d AND torrent_id = %d"
              % (uid, tid))
-BAL0 = q("SELECT spark_balance::text FROM users WHERE id = %d" % uid)
+_b = q("SELECT spark_balance::text || '|' || now()::text FROM users WHERE id = %d" % uid).split("|")
+BAL0, TS0 = _b[0], _b[1]   # 余额与读取时刻同次取（一个快照）
 ok("S0 素材就绪（在册用户=%d，探针种=%d）" % (uid, tid), tid > 0)
 
 print("== AP-S1 负控面：module_resurrections=no 时既有契约仍收尾 ==")
@@ -168,12 +169,21 @@ BAL1 = q("SELECT spark_balance::text FROM users WHERE id = %d" % uid)
 # 正确口径：**先排除干扰再看差值**——取「本闸门自己那笔 5000」的痕迹（流水
 # amount=5000 已经单独验过），再用「同一事务窗口内、除了这笔没有别的入账」
 # 来保证差值可信：判 uid 在 [BAL0, BAL1] 之间没有任何**其它** spark_ledger 行。
+# 口径再收窄：原来用「近 5 分钟」做窗口，但 worker 的周期作业
+# 可能恰好落在这 5 分钟内给同一账号发钱 —— 批一百五十三
+# 并跑时实测 before=18751 after=23751（差 5000 正好）而「他笔入账」=3，
+# 既有偏红、又把真问题埋在红账里。
+# 改成按**本闸门自己那笔流水的时间戳**切开：只统计落在
+# [BAL0 读到的时刻, 本笔入账时刻] 之间的其它入账，才是真正的干扰。
+OWN_TS = q("SELECT created_at::text FROM spark_ledger WHERE "
+           "idempotency_key = 'resurrection:%d'" % RID)
 OTHER = q("SELECT count(*) FROM spark_ledger WHERE user_id = %d "
           "AND idempotency_key <> 'resurrection:%d' "
-          "AND created_at > now() - interval '5 minutes'" % (uid, RID))
-ok("S1 模块关：余额增量=奖励（且这 5 分钟内该号无其它入账干扰）",
+          "AND created_at > '%s' AND created_at <= '%s'"
+          % (uid, RID, TS0, OWN_TS))
+ok("S1 模块关：余额增量=奖励（且本笔入账前后无其它入账干扰）",
    int(BAL1) - int(BAL0) == 5000 and OTHER == "0",
-   "before=%s after=%s 他笔入账=%s" % (BAL0, BAL1, OTHER))
+   "before=%s after=%s 区间内他笔入账=%s" % (BAL0, BAL1, OTHER))
 vch = q("SELECT count(*) FROM user_vouchers WHERE user_id = %d AND "
         "source = 'resurrection'" % uid)
 ok("S1 模块关：免费券 x1", vch == "1", vch)
