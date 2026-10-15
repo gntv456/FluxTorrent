@@ -4,6 +4,9 @@
 // 种子审核状态机（FRAME §7 第 6 条）：approval_status 迁移矩阵唯一事实源
 pub mod torrent_status;
 
+// 商城三段式履约（冻结 → 履约 → 扣款）
+pub mod shop;
+
 // 抽奖可验证公平（commit-reveal）：判定与哈希派生进 domain 纯函数层
 pub mod lottery_fair;
 
