@@ -50,7 +50,7 @@ function VerifyInner() {
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
         <input
-          className="min-h-[38px] flex-1 rounded border border-line
+          className="min-h-11 flex-1 rounded border border-line
             bg-cloud px-3 text-sm"
           placeholder={dict.emailVerify.emailPh}
           value={email}
@@ -58,7 +58,7 @@ function VerifyInner() {
           inputMode="email"
         />
         <button
-          className="btn text-sm"
+          className="btn min-h-11 text-sm"
           disabled={!email.includes("@")}
           onClick={() => void resend()}
         >
@@ -87,7 +87,7 @@ function VerifyInner() {
                   {fmt(dict.emailVerify.intro, { hours: 48 })}
                 </p>
                 <button
-                  className="btn btn-primary"
+                  className="btn btn-primary min-h-11"
                   onClick={() => void verify()}
                 >
                   {dict.emailVerify.verifyBtn}

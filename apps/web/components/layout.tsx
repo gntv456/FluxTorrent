@@ -63,11 +63,15 @@ export async function Header() {
         {/* 单行导航条：品牌（logo）居左 + 一级/更多菜单 + 主题/语言/头像弹窗居右 */}
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1536px] items-center gap-3 px-4 py-2 md:gap-5 md:px-6">
           {/* M1：品牌长站名在 375px 会把右侧工具区推出视口（brand + 工具 + 头像
-              总宽 >375）。窄屏截断品牌字，min-w-0 允许收缩；完整名留在 logo title。 */}
+              总宽 >375）。窄屏截断品牌字，min-w-0 允许收缩；完整名留在 logo title。
+              ⚠️ min-w-0 必须挂在 Link 上：truncate 的 span 是 nowrap 文本，
+              flex 自动最小尺寸=min-content（整段站名），Link overflow 可见时
+              min-w:auto 顶住不缩——实测 390px 溢出 13px（M5.1 复核 2026-10-15）。 */}
           <Link
             href="/"
             title={brand}
-            className="flex max-w-[46%] shrink items-center gap-2 md:max-w-none"
+            className="flex min-w-0 max-w-[46%] shrink items-center
+              gap-2 md:max-w-none"
           >
             {/* 品牌标记：内置 FluxTorrent 站标（白字深底，浅色/夜间均可见）；
                 站点自定义 logo 走 site_settings.site_logo（登录页品牌图） */}
