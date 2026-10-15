@@ -345,9 +345,9 @@ pub async fn list_torrents_noclamp_as(
             "SELECT count(*) FROM (SELECT 1 FROM torrents t \\
              LEFT JOIN users u ON u.id = t.owner_id \\
              WHERE {approval_gate_count} \\
-             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \\
+             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
              AND {medium_pred} AND {grade_pred} AND {edition_pred} \\
-             AND ($5::bool IS NULL OR t.official_tag = $5) \\
+             AND ($5::bool IS NULL OR t.official_tag = $5) \
              {approval_pred} {status_pred} {bookmark_pred} {search_pred} \\
              {tag_pred_count} {sec_sql} {extra_count_sql} LIMIT 10001) sub",
         );
