@@ -32,6 +32,8 @@ mod like;
 mod list_prefs;
 mod lottery;
 mod lottery_draw;
+mod lottery_verify;
+pub(crate) use lottery_verify::*;
 pub(crate) use lottery_draw::*;
 pub mod medal;
 mod medal_buy;
@@ -181,6 +183,8 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         // M15 论坛抽奖（0126：发帖冻结奖金池 → 付费/免费参与 → 到点或手动开奖，jgg 经济范式）
         .service(lottery_join)
         .service(lottery_draw)
+        // 0382 抽奖公平性验证页（不需登录——验证必须对所有人开放）
+        .service(lottery_fairness)
         // M15 论坛打赏（0127：楼层打赏 = spend/earn 同额对冲，不抽税）
         .service(post_tip)
         // M16 短讯与好友
