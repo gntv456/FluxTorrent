@@ -117,9 +117,19 @@ try:
         summary()
         sys.exit(1)
     sa, ba = register(A, codes[0]["code"])
-    AID = (ba or {}).get("data", {}).get("user_id")
+    # P-329：`.get("data", {})` 只在键缺失时兜底——接口回 {"data": null}
+    # （限流/PoW/注册被拒都会这样）时它返回 None，下一句 None.get 直接
+    # AttributeError：整支闸门 EB1~EB8 一条没跑，而 finally 的清理照常打
+    # PASS ⇒ 终端是 rc=1 / FAIL=0 的「假跑完」。改成 must-have 前置断言。
+    AID = ((ba or {}).get("data") or {}).get("user_id")
     sb, bb = register(B, codes[1]["code"])
-    BID = (bb or {}).get("data", {}).get("user_id")
+    BID = ((bb or {}).get("data") or {}).get("user_id")
+    if AID is None or BID is None:
+        ok("EB0 前置：两个探针账号都注册成功（拿得到 user_id）", False,
+           "A=%s/%s B=%s/%s" % (sa, (ba or {}).get("message"),
+                                sb, (bb or {}).get("message")))
+        summary()
+        sys.exit(1)
     TA = login_as(A)
     TB = login_as(B)
     ok("EB0 两个探针成员就绪（A=%s B=%s，都能登录=%s/%s）——没有这两个身份"
