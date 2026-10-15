@@ -259,6 +259,16 @@ pub struct TorrentPage {
     pub items: Vec<TorrentRow>,
     pub next_cursor: Option<String>,
     pub total_estimate: i64,
+    /// 被存活谓词藏起来的断种数（0102 三态的可见性补齐）。
+    ///
+    /// 默认视图只给活种（`seeders > 0`），但界面上没有任何提示——新会员
+    /// 会把「列表只有 4 条」当成「本站只有 4 个种」。这个数字让前端能
+    /// 说清「另有 N 条断种未显示，可在筛选里包含」，而不用翻转缺省。
+    ///
+    /// 口径：同筛选条件下「全部」的计数减去「当前视图」的计数。
+    /// `alive=0`（用户已显式要全部）或 `alive=2`（只要断种）时恒为 0。
+    #[serde(default)]
+    pub hidden_dead: i64,
 }
 
 /// 单页上限（方案阶段二：列表支持 20/50/100 每页可选，故上限从 50 提到 100；

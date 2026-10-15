@@ -370,6 +370,7 @@ const zhCnBase = {
     months: "个月",
     title: "资源库",
     total: "共 {n} 个种子",
+    hiddenDead: "另有 {n} 条断种未显示，点击查看全部",
     searchPlaceholder: "搜索标题、简介、文件名…",
     searchAction: "搜索",
     clearSearch: "清除搜索",
