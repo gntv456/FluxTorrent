@@ -4,8 +4,10 @@
 //! exam（考核自动派发）。
 
 mod exam;
+pub(crate) mod exam_fair;
 mod reward;
 mod settle;
+mod stages;
 
 pub use exam::exam_assign;
 pub use settle::task_settle;
