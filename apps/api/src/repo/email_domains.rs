@@ -39,9 +39,11 @@ pub async fn count_domains(repo: &Repo) -> Result<i64, sqlx::Error> {
 pub async fn export_domains(
     repo: &Repo,
 ) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar("SELECT domain FROM disposable_email_domains ORDER BY domain")
-        .fetch_all(&repo.db)
-        .await
+    sqlx::query_scalar(
+        "SELECT domain FROM disposable_email_domains ORDER BY domain",
+    )
+    .fetch_all(&repo.db)
+    .await
 }
 
 /// 幂等导入（ON CONFLICT DO NOTHING）：整批一事务，返回实际新增数。
