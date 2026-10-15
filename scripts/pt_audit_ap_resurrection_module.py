@@ -161,10 +161,19 @@ BAL1 = q("SELECT spark_balance::text FROM users WHERE id = %d" % uid)
 # 改口径：**以流水为准**。resurrection:<RID> 这笔 5000 已经单独验过，
 # 这里只验「流水金额确实体现在余额上」：读该 idem 的 balance_after，
 # 与流水 amount 相符即成立，不再受并发写入干扰。
-BA = q("SELECT balance_after::text FROM spark_ledger WHERE "
-       "idempotency_key = 'resurrection:%d'" % RID)
-ok("S1 模块关：余额增量=奖励（以流水 balance_after 为准，不吃并发干扰）",
-   BA == "5000", "before=%s after=%s ledger_balance_after=%s" % (BAL0, BAL1, BA))
+# resurrection 这条链的 spark_ledger **不写 balance_after**（SI 判据白名单里
+# 明列：先 INSERT 幂等行、再 UPDATE 余额，写入那一刻新余额还算不出来）。
+# 我上一版把判据改成「读 balance_after」是取了个不存在的值——第一版取的是
+# 「前后余额相减」，被 worker 并发发钱干扰；改一版改过头，又落进「空值恒不等」。
+# 正确口径：**先排除干扰再看差值**——取「本闸门自己那笔 5000」的痕迹（流水
+# amount=5000 已经单独验过），再用「同一事务窗口内、除了这笔没有别的入账」
+# 来保证差值可信：判 uid 在 [BAL0, BAL1] 之间没有任何**其它** spark_ledger 行。
+OTHER = q("SELECT count(*) FROM spark_ledger WHERE user_id = %d "
+          "AND idempotency_key <> 'resurrection:%d' "
+          "AND created_at > now() - interval '5 minutes'" % (uid, RID))
+ok("S1 模块关：余额增量=奖励（且这 5 分钟内该号无其它入账干扰）",
+   int(BAL1) - int(BAL0) == 5000 and OTHER == "0",
+   "before=%s after=%s 他笔入账=%s" % (BAL0, BAL1, OTHER))
 vch = q("SELECT count(*) FROM user_vouchers WHERE user_id = %d AND "
         "source = 'resurrection'" % uid)
 ok("S1 模块关：免费券 x1", vch == "1", vch)
