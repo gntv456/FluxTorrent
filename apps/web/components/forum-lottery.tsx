@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { LotteryFairness } from "@/components/lottery-fairness";
 
 export interface LotteryData {
   winners: number;
@@ -166,6 +167,14 @@ export function LotteryWidget({
             .replace("{p}", String(lottery.prize))
             .replace("{magic}", currency)}
         </p>
+      )}
+      {/* 0382 公平性验证：已开奖才挂。commit-reveal 的意义在于
+          「用户能自己验」——只在结果出来后展示承诺与证明，
+          进行中只露 commit（seed 未揭晓，符合协议）。 */}
+      {lottery.status === "drawn" && (
+        <div className="mt-3">
+          <LotteryFairness topicId={topicId} />
+        </div>
       )}
       {err && (
         <p role="alert" className="mt-2 text-xs text-danger">
