@@ -246,6 +246,11 @@ pub const JOBS: &[JobDef] = &[
         name: "shop_fulfill_recover",
         cadence: "1h",
     },
+    // 0382 做种事件桥（hourly 而非 announce 热路径）
+    JobDef {
+        name: "medal_seeding_bridge",
+        cadence: "1h",
+    },
 ];
 
 /// 目录同步：幂等 upsert 节奏；代码里已下线的 job 从目录里删掉（避免面板留死按钮）。

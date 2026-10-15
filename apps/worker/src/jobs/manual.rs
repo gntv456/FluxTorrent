@@ -26,6 +26,8 @@ pub(crate) async fn run_named(
         "preserve_seed" => n(preserve_seed(db).await?),
         "task_settle" => n(crate::task_jobs::task_settle(db).await?),
         "exam_assign" => n(crate::task_jobs::exam_assign(db).await?),
+        "medal_seeding_bridge" =>
+            n(crate::jobs::medal_achv::record_seeding_hours(db).await?),
         "medal_threshold" =>
             n(crate::jobs::medal_achv::threshold_sweep(db).await?),
         "medal_backfill" => n(crate::jobs::medal_achv::medal_backfill(db).await?),

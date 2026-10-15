@@ -223,6 +223,11 @@ pub async fn run_all(
             // 两条都幂等可重跑（已授予即跳过、回填靠「扫到哪」续跑），
             // 故挂 hourly 而非 daily——threshold 的周期口径含日/周，
             // 一小时一轮才不会出现「周期内最后一天才达标的要等 24h」。
+            // 0382 做种事件桥：把「本小时新增做种时长」记成可计数事件。
+            // 放在 hourly 而非 announce 热路径——announce 每秒数千次，
+            // 在那里插 INSERT 是拿全站最热的写表换一个低频事件源。
+            shard_lock!(&db, "job:medal_seeding_bridge",
+                crate::jobs::medal_achv::record_seeding_hours(&db), &shard);
             shard_lock!(&db, "job:medal_threshold",
                 crate::jobs::medal_achv::threshold_sweep(&db), &shard);
             shard_lock!(&db, "job:medal_backfill",
