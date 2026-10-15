@@ -208,6 +208,7 @@ async fn torznab_search_inner(
         .and_then(|v| v.parse().ok())
         .unwrap_or(0)
         .max(0);
+    let hide_paid = get("paid").map_or(true, |v| v != "0"); // ?paid=0 要全量
 
     // 对外层存活口径：**全部**（含零做种）。新种在有人做种前也必须能被
     // Sonarr/Radarr 搜到，否则冷启动期工具侧永远「零结果」。
@@ -291,11 +292,10 @@ async fn torznab_search_inner(
             "offset+limit 不得超过 1000".into(),
         ));
     }
-    let page = crate::torrents::list_torrents_noclamp(
+    let page = crate::torrents::list_torrents_noclamp_for_sub(
         &state.repo.db,
         &filter,
-        None,
-        fetch_n,
+        None, fetch_n, tk.uid, hide_paid,
     )
     .await?;
     let items: Vec<String> = page
