@@ -20,18 +20,11 @@ use redis::AsyncCommands;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::repo::reg_quiz as quiz_repo;
 use crate::state::AppState;
 
 /// Redis 键前缀（票据一次性，GETDEL 消费）
 const QUIZ_KEY: &str = "sha3/quiz:";
-
-#[derive(sqlx::FromRow)]
-struct QuizQuestion {
-    id: i64,
-    question: String,
-    options: serde_json::Value,
-    answer_index: i32,
-}
 
 fn setting_default(v: Option<String>, d: i64) -> i64 {
     v.and_then(|s| s.trim().parse::<i64>().ok())
@@ -48,17 +41,10 @@ pub async fn quiz_challenge(
     // 与 captcha 同口径的 IP 限流：抽题接口本身也要付成本
     let ip = crate::http::client_ip(&req);
     crate::http::rate_window(&state, &format!("quiz:{ip}"), 30, 60).await?;
-    let row: Option<QuizQuestion> = sqlx::query_as(
-        "SELECT id, question, options, answer_index \
-         FROM reg_quiz_questions \
-         WHERE enabled \
-           AND ($1 = '' OR category = $1) \
-         ORDER BY random() LIMIT 1",
-    )
-    .bind(quiz_category(&state).await)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let category = quiz_category(&state).await;
+    let row = quiz_repo::random_question(&state.repo, &category)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(q) = row else {
         return Err(DomainError::Validation(
             "题库为空，请联系管理组".into(),
@@ -94,12 +80,7 @@ pub async fn quiz_challenge(
 }
 
 async fn read_setting(state: &AppState, name: &str) -> Option<String> {
-    sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
-        .bind(name)
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten()
+    quiz_repo::read_setting(&state.repo, name).await
 }
 
 pub(crate) async fn quiz_category(state: &AppState) -> String {
@@ -159,16 +140,13 @@ pub(crate) async fn quiz_verify(
         .map_err(|_| DomainError::Validation("答题票据损坏".into()))?;
     let passed = answer == right;
     // 留痕（失败只告警不阻断注册主流程）
-    let _ = sqlx::query(
-        "INSERT INTO reg_quiz_attempts \
-           (ip_hash, question_id, passed, answer_index) \
-         VALUES ($1, $2, $3, $4)",
+    let _ = quiz_repo::record_attempt(
+        &state.repo,
+        &crate::auth_http::register_gates::ip_hash(ip),
+        question_id,
+        passed,
+        answer,
     )
-    .bind(crate::auth_http::register_gates::ip_hash(ip))
-    .bind(question_id)
-    .bind(passed)
-    .bind(answer)
-    .execute(&state.repo.db)
     .await
     .map_err(|e| tracing::warn!(%e, "reg_quiz_attempts 留痕失败"));
     Ok(QuizOutcome { passed, question_id })

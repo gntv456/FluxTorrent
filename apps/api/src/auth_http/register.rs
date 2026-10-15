@@ -116,12 +116,12 @@ pub async fn register(
     }
     // 注册答题闸（0372 M5）：reg_quiz_enabled=yes 时须带一次性票据；
     // reg_quiz_pass_required=yes 时答错即拒（no 只记录不拦截）。
-    let quiz_on: bool = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings \
-         WHERE name = 'reg_quiz_enabled'), 'no') = 'yes'",
+    let quiz_on = crate::repo::reg_quiz::read_setting(
+        &state.repo,
+        "reg_quiz_enabled",
     )
-    .fetch_one(&state.repo.db)
     .await
+    .map(|v| v == "yes")
     .unwrap_or(false);
     if quiz_on {
         if body.quiz_ticket.trim().is_empty() {
@@ -138,12 +138,12 @@ pub async fn register(
         )
         .await?;
         if !out.passed {
-            let must: bool = sqlx::query_scalar(
-                "SELECT COALESCE((SELECT value FROM site_settings \
-                 WHERE name = 'reg_quiz_pass_required'), 'yes') = 'yes'",
+            let must = crate::repo::reg_quiz::read_setting(
+                &state.repo,
+                "reg_quiz_pass_required",
             )
-            .fetch_one(&state.repo.db)
             .await
+            .map(|v| v == "yes")
             .unwrap_or(true);
             if must {
                 return Err(DomainError::Validation(
@@ -202,7 +202,7 @@ pub async fn register(
         )
         .await?;
     // 同 IP 注册留痕（0370 M4）：只存 sha3-256 摘要，失败只告警不阻断
-    super::register_gates::record_ip_signup(&state.repo.db, &ip, user_id).await;
+    super::register_gates::record_ip_signup(&state.repo, &ip, user_id).await;
     // 字段值落库（required 已在前置校验；失败不回滚账号——附属数据）
     {
         // 与上面的 required 校验、与 `/register-fields` 三处同一口径

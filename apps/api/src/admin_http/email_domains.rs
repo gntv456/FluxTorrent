@@ -15,6 +15,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::repo::email_domains as domain_repo;
 use crate::state::AppState;
 
 use super::guard::staff;
@@ -58,13 +59,6 @@ fn normalize(raw: &str) -> Result<String, String> {
     Ok(s)
 }
 
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct DomainRow {
-    domain: String,
-    source: String,
-    created_at: chrono::DateTime<chrono::Utc>,
-}
-
 #[derive(Deserialize)]
 struct ListQuery {
     q: Option<String>,
@@ -81,20 +75,12 @@ async fn email_domains_list(
     let _auth = staff(&req, &state).await?;
     let needle = format!("%{}%", q.q.as_deref().unwrap_or("").trim());
     let limit = q.limit.unwrap_or(200).clamp(1, 1000);
-    let rows: Vec<DomainRow> = sqlx::query_as(
-        "SELECT domain, source, created_at FROM disposable_email_domains \
-         WHERE domain LIKE $1 ORDER BY source, domain LIMIT $2",
-    )
-    .bind(&needle)
-    .bind(limit)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let total: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM disposable_email_domains")
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+    let rows = domain_repo::list_domains(&state.repo, &needle, limit)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let total = domain_repo::count_domains(&state.repo)
+        .await
+        .unwrap_or(0);
     Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "items": rows,
         "total": total,
@@ -114,12 +100,9 @@ async fn email_domains_export(
         crate::authz::perm::SETTINGS_MANAGE,
     )
     .await?;
-    let domains: Vec<String> = sqlx::query_scalar(
-        "SELECT domain FROM disposable_email_domains ORDER BY domain",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let domains = domain_repo::export_domains(&state.repo)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "format": "fluxtorrent.emaildomains.v1",
         "count": domains.len(),
@@ -181,27 +164,8 @@ async fn email_domains_import(
                 .push(serde_json::json!({ "index": i, "reason": w })),
         }
     }
-    // 整批一事务：ON CONFLICT 幂等；已存在计入 skipped
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let mut added = 0i64;
-    for d in &valid {
-        let n = sqlx::query(
-            "INSERT INTO disposable_email_domains (domain, source) \
-             VALUES ($1, 'import') ON CONFLICT (domain) DO NOTHING",
-        )
-        .bind(d)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
-        added += n as i64;
-    }
-    tx.commit()
+    // 整批一事务（ON CONFLICT 幂等）在 repo 内完成；已存在计入 skipped
+    let added = domain_repo::import_domains(&state.repo, &valid)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     state
@@ -244,14 +208,9 @@ async fn email_domains_delete(
     if list.is_empty() {
         return Err(DomainError::Validation("没有可删除的域名".into()));
     }
-    let n = sqlx::query(
-        "DELETE FROM disposable_email_domains WHERE domain = ANY($1)",
-    )
-    .bind(&list)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
+    let n = domain_repo::delete_domains(&state.repo, &list)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "emaildomain.delete", Some(n as i64))

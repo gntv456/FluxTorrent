@@ -6,6 +6,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::repo::reg_quiz as quiz_repo;
 use crate::state::AppState;
 
 use super::guard::staff;
@@ -92,12 +93,9 @@ async fn reg_quiz_delete(
     if body.ids.is_empty() {
         return Err(DomainError::Validation("没有可删除的题目".into()));
     }
-    let n = sqlx::query("DELETE FROM reg_quiz_questions WHERE id = ANY($1)")
-        .bind(&body.ids)
-        .execute(&state.repo.db)
+    let n = quiz_repo::delete_questions(&state.repo, &body.ids)
         .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "reg_quiz.delete", Some(n as i64))
@@ -133,13 +131,8 @@ async fn reg_quiz_import(
             body.questions.len()
         )));
     }
-    let mut tx = state
-        .repo
-        .db
-        .begin()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let mut added = 0i64;
+    // 校验在 H 层逐条收集（非法项点名）；干净行整批交给 repo 单事务落库
+    let mut items: Vec<quiz_repo::NewQuestion> = Vec::new();
     let mut rejected: Vec<serde_json::Value> = Vec::new();
     for (i, q) in body.questions.iter().enumerate() {
         let (cat, question, opts, ans, expl) = match validate_quiz(q) {
@@ -149,28 +142,16 @@ async fn reg_quiz_import(
                 continue;
             }
         };
-        let n = sqlx::query(
-            "INSERT INTO reg_quiz_questions \
-               (category, question, options, answer_index, explanation, \
-                enabled, created_by) \
-             SELECT $1, $2, $3, $4, $5, $6, $7 \
-             WHERE NOT EXISTS ( \
-                   SELECT 1 FROM reg_quiz_questions WHERE question = $2)",
-        )
-        .bind(&cat)
-        .bind(&question)
-        .bind(serde_json::Value::from(opts))
-        .bind(ans)
-        .bind(&expl)
-        .bind(q.enabled.unwrap_or(true))
-        .bind(auth.id)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
-        added += n as i64;
+        items.push(quiz_repo::NewQuestion {
+            category: cat,
+            question,
+            options: serde_json::Value::from(opts),
+            answer_index: ans,
+            explanation: expl,
+            enabled: q.enabled.unwrap_or(true),
+        });
     }
-    tx.commit()
+    let added = quiz_repo::import_questions(&state.repo, items, auth.id)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     state

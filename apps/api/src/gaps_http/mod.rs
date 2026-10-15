@@ -9,7 +9,6 @@ mod applications;
 mod captcha;
 pub mod captcha_drivers;
 mod cheat_appeal_review;
-pub(crate) mod cheat_appeal_reverse;
 mod cheat_appeals;
 mod classes_public;
 mod hr;
