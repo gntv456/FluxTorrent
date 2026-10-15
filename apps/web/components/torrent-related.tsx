@@ -42,6 +42,16 @@ function promoBadge(p: string): { label: string; cls: string } {
   return map[p] ?? { label: p, cls: "bg-ink text-white" };
 }
 
+/** 海报缩渐变色（无海报图时的兜底，设计稿样图 mint/candy/indigo 循环） */
+function posterBg(id: number): string {
+  const grads = [
+    "linear-gradient(160deg,var(--mint),#1f9a7e)",
+    "linear-gradient(160deg,var(--candy),#ff5fa8)",
+    "linear-gradient(160deg,var(--indigo),#3f4fd8)",
+  ];
+  return grads[id % grads.length];
+}
+
 export function TorrentRelated({ torrentId }: { torrentId: number }) {
   const { dict } = useI18n();
   const [items, setItems] = useState<RelatedItem[] | null>(null);
@@ -68,48 +78,42 @@ export function TorrentRelated({ torrentId }: { torrentId: number }) {
   // 加载中 / 无数据 / 失败：整段隐藏（推荐位不该占位）
   if (!items || items.length === 0) return null;
 
-  const list = (
-    <ul className="td-related__list">
-        {items.map((r) => (
-          <li key={r.id} className="td-related__item">
-            <a href={`/torrent/${r.id}`} className="td-related__link">
-              {r.promotion && (
-                <span
-                  className={`sticker ${promoBadge(r.promotion).cls}`}
-                >
-                  {promoBadge(r.promotion).label}
-                </span>
-              )}
-              <span className="td-related__name" title={r.name}>
-                {r.name}
-              </span>
-              <span className="td-related__meta num">
-                <span className="td-related__size">
-                  {formatBytes(r.size)}
-                </span>
-                <span className="td-related__seed">
-                  🌱 {r.seeders}
-                </span>
-                <span className="td-related__leech">
-                  ⬇️ {r.leechers}
-                </span>
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-  );
+  const rows = items.map((r) => (
+    <li key={r.id} className="td-related__item">
+      <a href={`/torrent/${r.id}`} className="td-related__link">
+        <span
+          className="td-related__poster"
+          style={{ background: posterBg(r.id) }}
+        >
+          {r.poster && <img src={r.poster} alt="" loading="lazy" />}
+        </span>
+        <span className="td-related__body">
+          <span className="td-related__name" title={r.name}>
+            {r.name}
+          </span>
+          <span className="td-related__meta num">
+            <span className="td-related__size">
+              {formatBytes(r.size)}
+            </span>
+            <span className="td-related__seed">🌱 {r.seeders}</span>
+          </span>
+        </span>
+        {r.promotion && (
+          <span className={`sticker ${promoBadge(r.promotion).cls}`}>
+            {promoBadge(r.promotion).label}
+          </span>
+        )}
+      </a>
+    </li>
+  ));
+  const list = <ul className="td-related__list">{rows}</ul>;
   if (compact) {
-    // 窄屏：标题进折叠条（native details，收起默认）
+    // 窄屏（设计稿样图④）：卡片化 + 46% 宽横滑，不再收折叠条
     return (
-      <details className="td-fold">
-        <summary>
-          <h2>{dict.tdetail.relatedTitle}</h2>
-          <span className="td-fold__count num">{items.length}</span>
-          <span className="td-fold__chev" aria-hidden />
-        </summary>
-        <div className="td-fold__body">{list}</div>
-      </details>
+      <section className="td-related td-related--mob">
+        <h3 className="td-related__title">{dict.tdetail.relatedTitle}</h3>
+        <ul className="td-related__list td-related__list--scroll">{rows}</ul>
+      </section>
     );
   }
   return (

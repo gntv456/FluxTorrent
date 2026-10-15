@@ -3371,27 +3371,26 @@ input.batch-all {
   color: var(--coral);
 }
 
-/* ============ 详情页底部操作条（M3，方案 §4） ============ */
+/* 详情页底部操作条（M3；M6.3 对齐样图④：ghost 环 + primary 投影） */
 .td-actionbar {
   position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: auto 0 0 0;
   z-index: 50;
   display: flex;
-  gap: 8px;
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  gap: 9px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
-  background: var(--baozi-paper, #fff);
+  background: var(--chip-veil);
+  backdrop-filter: blur(10px);
   transition: transform 0.2s var(--ease-out, ease-out);
 }
 .td-actionbar__btn {
   min-height: 44px;
   flex: 1;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   border-radius: var(--r-md);
-  background: transparent;
-  color: var(--ink);
+  background: var(--surface-card);
+  color: var(--text-brand);
   font-size: 15px;
   font-weight: 700;
 }
@@ -3400,6 +3399,7 @@ input.batch-all {
   border-color: var(--sky-deep, #0a3d6b);
   background: var(--sky-deep, #0a3d6b);
   color: #fff;
+  box-shadow: 0 5px 14px -4px rgba(30, 138, 232, 0.5);
 }
 @media (min-width: 768px) {
   .td-actionbar {

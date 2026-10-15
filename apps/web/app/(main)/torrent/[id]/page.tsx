@@ -215,6 +215,7 @@ export default async function TorrentDetailPage({
   );
   const d = dict.tdetail;
   const category = dictName(byId(editCats), t.category_id);
+  const catC = catColor(colorMap(profile?.categories ?? []), t.category_id);
   // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格。
   // R3-三步：旧三列翻译移除——0185 已迁数据，sections 是唯一展示源。
   const secEntries = Object.entries(ext?.sections ?? {})
@@ -247,6 +248,15 @@ export default async function TorrentDetailPage({
 
   return (
     <article className="td-page">
+      {/* ===== 移动端锚点条（设计稿 §5 样图④：站点导航之下、面包屑之上，
+         常驻吸顶；桌面返回 null 由右信息栏承担导航） ===== */}
+      <TorrentAnchorBar
+        descr={sectOn("descr") && !!ext?.descr}
+        files={sectOn("files") && files.length > 0 ? files.length : null}
+        subtitles={subOn}
+        comments={sectOn("comments") ? comments.length : null} dict={dict}
+      />
+
       {/* ===== 面包屑（阳光口径：资源库 / 分类 · ID） ===== */}
       <nav className="td-crumbs" aria-label="breadcrumb">
         <a href="/torrents">{dict.nav.library}</a>
@@ -262,11 +272,11 @@ export default async function TorrentDetailPage({
       <TorrentHead
         t={t} ext={ext} dict={dict} locale={locale} left={left}
         category={category}
-        categoryColor={catColor(
-          colorMap(profile?.categories ?? []),
-          t.category_id,
-        )}
+        categoryColor={catC}
         subtitleChain={subtitleChain} relTime={relTime} ripLogs={agg.logs}
+        specs={
+          <TorrentSpecs t={t} ext={ext} category={category} dict={dict} />
+        }
         tags={
           agg.tags.dict.length + agg.tags.mine.length > 0 ? (
             <TorrentTags torrentId={t.id} initial={agg.tags} />
@@ -291,17 +301,7 @@ export default async function TorrentDetailPage({
         }
       />
 
-      {/* ===== 规格徽章条（设计稿 §6 chip-row；R3 维度 sections 单源） ===== */}
       <div className="td-main">
-        <TorrentSpecs t={t} ext={ext} category={category} dict={dict} />
-
-        {/* ===== 移动端锚点条（设计稿 §5：sticky Tab 跳转折叠卡） ===== */}
-        <TorrentAnchorBar
-          descr={sectOn("descr") && !!ext?.descr}
-          files={sectOn("files") && files.length > 0 ? files.length : null}
-          subtitles={subOn}
-          comments={sectOn("comments") ? comments.length : null} dict={dict}
-        />
 
       {/* 标签（0173 移入头部） */}
       {/* ===== 简介（桌面展开；移动端 M5.8 收进折叠条降噪） ===== */}
@@ -335,7 +335,7 @@ export default async function TorrentDetailPage({
 
       {/* ===== 当前在线（tracker swarm 快照：做种/下载者明细，非 staff IP 已脱敏） ===== */}
       {sectOn("peers") && (
-        <Fold title={dict.torrents.peersTitle}>
+        <Fold title={dict.torrents.peersTitle} id="td-sec-peers">
           <TorrentPeers torrentId={t.id} />
         </Fold>
       )}
@@ -392,7 +392,7 @@ export default async function TorrentDetailPage({
       )}
 
       {sectOn("snatches") && (
-        <FoldMobile title={dict.snatches2.title}>
+        <FoldMobile title={dict.snatches2.title} id="td-sec-snatches">
           <SnatchList torrentId={t.id} />
         </FoldMobile>
       )}

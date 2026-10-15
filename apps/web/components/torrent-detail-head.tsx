@@ -28,6 +28,7 @@ export function TorrentHead({
   subtitleChain,
   relTime,
   tags,
+  specs,
   ripLogs,
   manage,
 }: {
@@ -48,6 +49,8 @@ export function TorrentHead({
   relTime: (iso: string) => string;
   /** 标签行（0173：副标题与发布人之间；undefined = 不渲染） */
   tags?: React.ReactNode;
+  /** 规格徽章条（M6.3 设计稿 §6：并入头部卡底部，border-top 分隔） */
+  specs?: React.ReactNode;
   /** 抓轨日志行（0312）：徽标取多碟**最低**分；无日志行不出徽标 */
   ripLogs?: RipLog[];
   /** 管理操作（编辑/补种/删除/促销购）：渲染进头部管理行 */
@@ -62,13 +65,14 @@ export function TorrentHead({
   const ripScore = ripScores.length > 0 ? Math.min(...ripScores) : null;
   return (
     <section className="td-head nexus-detail">
-      <PosterBlock
-        category={category}
-        color={categoryColor}
-        poster={t.poster}
-      />
+      <div className="td-head__hero">
+        <PosterBlock
+          category={category}
+          color={categoryColor}
+          poster={t.poster}
+        />
 
-      <div className="td-head__main">
+        <div className="td-head__main">
         <h1 className="td-head__name font-display">{t.name}</h1>
         {(t.small_descr || subtitleChain) && (
           <p className="td-head__sub">
@@ -191,7 +195,9 @@ export function TorrentHead({
             </div>
           </HeadActionsMore>
         </div>
+        </div>
       </div>
+      {specs && <div className="td-head__specs">{specs}</div>}
     </section>
   );
 }
