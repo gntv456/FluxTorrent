@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useIsCompact } from "@/lib/hooks/use-media";
+import { useMediaQuery } from "@/lib/hooks/use-media";
 import type { Dict } from "@/i18n/zh-CN";
 
 /** 移动端锚点条（设计稿 §5/§6 td-anchor）：sticky 吸顶横向 Tab——
  *  简介 / 文件 / 字幕 / 评论，点击平滑滚动至对应折叠卡并自动展开；
  *  滚动时 IntersectionObserver 高亮当前区块（可见集取文档序最靠前）。
- *  仅 <768 渲染（桌面导航角色由右信息栏承担）；SSR 首帧桌面态返回
- *  null，与 FoldMobile 同 hydration 纪律（宁可首帧少渲染一版，不冒
- *  服务端/客户端 markup 不一致的风险）。 */
+ *  仅 ≤768 渲染（本地完善版样图 MD 帧含锚点条；桌面导航角色由右信息栏
+ *  承担）；SSR 首帧桌面态返回 null，与 FoldMobile 同 hydration 纪律
+ *  （宁可首帧少渲染一版，不冒服务端/客户端 markup 不一致的风险）。
+ *  断点与共享 useIsCompact（<767，喂底 Tab/吸底条一大票组件）解耦：
+ *  M6.3 定过 768 整档保留头部操作区，锚点是附加导航不重回该死区。 */
 export function TorrentAnchorBar({
   descr,
   files,
@@ -27,7 +29,8 @@ export function TorrentAnchorBar({
   comments: number | null;
   dict: Dict;
 }) {
-  const compact = useIsCompact();
+  // 本地完善版口径 ≤768（样图 MD 帧）：不借共享 useIsCompact（<767）
+  const compact = useMediaQuery("(max-width: 768px)", false);
   // items 组装在组件内（page.tsx 只传标志位）：不动详情页行数基线
   const items = useMemo(() => {
     const { descrTitle, filesTitle, commentsTitle } = dict.torrent;

@@ -214,7 +214,10 @@ export default async function TorrentDetailPage({
     ]),
   );
   const d = dict.tdetail;
-  const category = dictName(byId(editCats), t.category_id);
+  // 分类名映射（可序列化，供 Client 组件 TorrentRelated 用；函数 prop 过不了
+  // RSC 边界——「Functions cannot be passed directly to Client Components」）
+  const catMap = byId(editCats);
+  const category = dictName(catMap, t.category_id);
   const catC = catColor(colorMap(profile?.categories ?? []), t.category_id);
   // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格。
   // R3-三步：旧三列翻译移除——0185 已迁数据，sections 是唯一展示源。
@@ -248,15 +251,6 @@ export default async function TorrentDetailPage({
 
   return (
     <article className="td-page">
-      {/* ===== 移动端锚点条（设计稿 §5 样图④：站点导航之下、面包屑之上，
-         常驻吸顶；桌面返回 null 由右信息栏承担导航） ===== */}
-      <TorrentAnchorBar
-        descr={sectOn("descr") && !!ext?.descr}
-        files={sectOn("files") && files.length > 0 ? files.length : null}
-        subtitles={subOn}
-        comments={sectOn("comments") ? comments.length : null} dict={dict}
-      />
-
       {/* ===== 面包屑（阳光口径：资源库 / 分类 · ID） ===== */}
       <nav className="td-crumbs" aria-label="breadcrumb">
         <a href="/torrents">{dict.nav.library}</a>
@@ -274,9 +268,6 @@ export default async function TorrentDetailPage({
         category={category}
         categoryColor={catC}
         subtitleChain={subtitleChain} relTime={relTime} ripLogs={agg.logs}
-        specs={
-          <TorrentSpecs t={t} ext={ext} category={category} dict={dict} />
-        }
         tags={
           agg.tags.dict.length + agg.tags.mine.length > 0 ? (
             <TorrentTags torrentId={t.id} initial={agg.tags} />
@@ -301,7 +292,17 @@ export default async function TorrentDetailPage({
         }
       />
 
+      {/* ===== 移动端锚点条（本地完善版样图：head 与 side 之间的网格行，
+          常驻吸顶；桌面返回 null 由右信息栏承担导航） ===== */}
+      <TorrentAnchorBar
+        descr={sectOn("descr") && !!ext?.descr}
+        files={sectOn("files") && files.length > 0 ? files.length : null}
+        subtitles={subOn}
+        comments={sectOn("comments") ? comments.length : null} dict={dict}
+      />
       <div className="td-main">
+      {/* ===== 规格徽章条（本地完善版：独立卡片，置主栏首位） ===== */}
+      <TorrentSpecs t={t} ext={ext} category={category} dict={dict} />
 
       {/* 标签（0173 移入头部） */}
       {/* ===== 简介（桌面展开；移动端 M5.8 收进折叠条降噪） ===== */}
@@ -316,7 +317,7 @@ export default async function TorrentDetailPage({
       {/* ===== MediaInfo（NP 详情页折叠块口径；0184 同发布页按站型 metaSources 显隐） ===== */}
       {sectOn("mediainfo") && ext?.mediainfo &&
         (profile?.metadata_sources ?? []).includes("mediainfo") && (
-          <Fold title="MediaInfo">
+          <Fold title="MediaInfo" id="td-sec-media">
             <pre className="td-nfo">{ext.mediainfo}</pre>
           </Fold>
         )}
@@ -415,7 +416,9 @@ export default async function TorrentDetailPage({
 
       {/* ===== 右信息栏下段：相关种子（移动端回落到页面底部） ===== */}
       <div className="td-side-rel">
-        {sectOn("related") && <TorrentRelated torrentId={t.id} />}
+        {sectOn("related") && (
+          <TorrentRelated torrentId={t.id} catMap={catMap} />
+        )}
       </div>
       </div>
 

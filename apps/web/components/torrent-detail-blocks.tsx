@@ -148,11 +148,15 @@ export function Thankers({
   count,
   dict,
   locale,
+  footer,
 }: {
   thanks: ThankItem[];
   count: number;
   dict: Dict;
   locale: Locale;
+  /** 本地完善版：InfoHash 尾行挂折叠卡底部（细线分隔，见 base.css
+   *  .td-infohash）；无感谢者时由调用侧独立成段，保证 InfoHash 不丢 */
+  footer?: React.ReactNode;
 }) {
   return (
     <Fold title={dict.torrent.thankersTitle} count={count}>
@@ -170,6 +174,7 @@ export function Thankers({
           </span>
         ))}
       </p>
+      {footer}
     </Fold>
   );
 }
