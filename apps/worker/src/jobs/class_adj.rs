@@ -252,11 +252,17 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
             WHERE u.class_id < 90 AND cr.demotable
         ),
         target AS (
-            -- 仍满足的最高级；一条都不满足 → 1（保底不降为 0）
+            -- P-325：降级地板。字典里 LV0 门槛全零 ⇒「恒被满足」，旧版的
+            -- INNER JOIN 让 COALESCE(…, 1) 永远走不到，失责的 LV5 成员会被
+            -- 一路降到 class 0（Peasant）——而站内地板是 1：achv_dormant
+            --  dormant 降级写 1、subtitles_govern 判 class_id >= 1、
+            -- onboarding 的 demotable 开关挂的也是 class 1。
+            -- 改 LEFT JOIN 后「只剩 0 档」= 空组 → NULL → 保底落到 1。
             SELECT s.id, COALESCE(max(r.class_id), 1) AS new_class
-            FROM stats s JOIN class_rules r ON
+            FROM stats s LEFT JOIN class_rules r ON
                 s.uploaded >= r.min_uploaded AND s.dl >= r.min_download_count AND
-                s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days
+                s.sh >= r.min_seed_hours AND s.age >= r.min_account_age_days AND
+                r.class_id >= 1
             GROUP BY s.id
         )
         UPDATE users u SET class_id = t.new_class
