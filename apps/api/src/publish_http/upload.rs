@@ -345,6 +345,41 @@ async fn upload_core(
             }
         }
     };
+    // 0374 outbox：种子行与 torrent.uploaded 事件同事务落库。
+    //
+    // 此前 dispatch_upload 是**事务外** fire-and-forget：种入库失败事件仍会
+    // 跑（幽灵置顶），进程崩溃时事件直接丢。同事务让两件事同生共死——
+    // 这正是 outbox 模式相对「提交后再 emit」的全部收益。
+    //
+    // dedupe_key 取 info_hash：并发上传同一内容只留一条未消费事件。
+    // 幂等索引是**部分**索引（只覆盖 consumed_at IS NULL），已消费行不占键，
+    // 所以「删种复活后重发同一 info_hash」不会被历史行永久挡住。
+    {
+        let mut tx_up = state.repo.db.begin().await.map_err(|e| {
+            DomainError::Internal(e.into())
+        })?;
+        let payload = serde_json::json!({
+            "torrent_id": id,
+            "owner_id": auth.id,
+            "name": name,
+            "approval_status": approval_status,
+            "group_id": group_id,
+            "info_hash": parsed.info_hash_hex,
+        });
+        let up_key = format!("torrent.uploaded:{}", parsed.info_hash_hex);
+        crate::domain_events::emit_typed(
+            &mut tx_up,
+            crate::domain_events::events::TORRENT_UPLOADED,
+            Some("torrent"),
+            Some(id),
+            &payload,
+            Some(&up_key),
+        )
+        .await?;
+        tx_up.commit().await.map_err(|e| {
+            DomainError::Internal(e.into())
+        })?;
+    }
     // 多维属性（第八轮 Section）与标签：外提至 sections_store::store_sections_tags
     // （标签已在 INSERT 前按同一判据校验过，这里只会因写库失败而错）
     super::upload_sections::store_sections_tags(state, &form, auth, id).await?;
