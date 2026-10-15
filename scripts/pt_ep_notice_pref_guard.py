@@ -34,12 +34,17 @@ PROBE_USER = 69
 PSQL = ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
         "-d", "fluxtorrent"]
 
-# 界面有开关、后端两条通道（SQL 谓词 + mailer::notify_kind）都不判的档。
-# donate_tier 曾经被误列在这里：它走 notify_kind 执法，只扫 SQL 会漏。
+# 界面有开关、后端三条执法通道（SQL 的 u_notice_enabled、
+# mailer::notify_kind、内联 notice_prefs->>'key'）都不判的档。
+# donate_tier 曾被误列：它走 notify_kind；hr_prewarn 也曾被误列：
+# 它在 hr_mail.rs / push_notify.rs 里是函数体的内联复刻。
+# 接线一档就从这里删一档（EP3c 会顶红，逼撤桩对账）。
 FAKE_TOGGLES = [
-    "comment_reply", "gift", "hr_prewarn", "resurrection", "system",
-    "wishlist",
+    "comment_reply", "gift", "resurrection", "system", "wishlist",
 ]
+# 内联复刻的基线（文件,键）对数：语义等价但函数被 CREATE OR REPLACE
+# 改语义时不会跟着走 ⇒ EP5 只许减不许增，别再新增第三份副本。
+INLINE_BASELINE = 2
 
 
 def sh(args, stdin=None):
@@ -136,7 +141,7 @@ ui = open(os.path.join(ROOT, UI), encoding="utf-8", errors="replace").read()
 m = re.search(r"noticePrefs.*?keys\s*:\s*\{(.*?)\}\s*as Record", ui, re.S)
 A = sorted(set(re.findall(r"(?m)^\s*([a-z][a-z0-9_]{2,})\s*:",
                           m.group(1)))) if m else []
-B = set()
+B, INLINED = set(), set()
 for dp, dirs, fs in os.walk(os.path.join(ROOT, "apps")):
     dirs[:] = [d for d in dirs if d not in ("target", "node_modules", ".next")]
     for fn in fs:
@@ -169,6 +174,14 @@ for dp, dirs, fs in os.walk(os.path.join(ROOT, "apps")):
         # 只扫 SQL 的 u_notice_enabled 会把 donate_tier 这类误记成假开关
         B |= set(re.findall(
             r"notify_kind\(\s*[^,]+,\s*[^,]+,\s*\"([a-z0-9_]+)\"", t))
+        # 第三条执法通道：内联复刻函数体的 notice_prefs->>'key'。
+        # 认它算执法（否则 hr_prewarn 会被误记成假开关），但把复刻处计数
+        # 钉进 EP5 棘轮——函数被 CREATE OR REPLACE 改语义时副本不跟着走。
+        inl = set(re.findall(r"notice_prefs\s*->>\s*'([a-z0-9_]+)'", t))
+        B |= inl
+        for k in inl:
+            INLINED.add((os.path.relpath(os.path.join(dp, fn), ROOT)
+                         .replace("\\", "/"), k))
 ok("EP3a 界面档位抽到 13 档（不是 0，否则判据打空）", len(A) == 13,
    "实抽 %d" % len(A))
 ok("EP3b 后端真判的档位里含 hr_violation（本批接的那一档）",
@@ -178,6 +191,9 @@ ok("EP3c 假开关台账对账（多一档少一档都红）：现缺 %s 档" % 
    gap == sorted(FAKE_TOGGLES), "台账=%s 实差=%s" % (sorted(FAKE_TOGGLES), gap))
 print("   界面 %d 档｜后端真判 %d 档：%s" % (len(A), len(B), sorted(B)))
 print("   在册待接线 %d 档：%s" % (len(gap), gap))
+ok("EP5 内联复刻偏好判定的处数 <= 基线 %d（该走 u_notice_enabled）"
+   % INLINE_BASELINE, len(INLINED) <= INLINE_BASELINE,
+   "实读 %d：%s" % (len(INLINED), sorted(INLINED)))
 
 print("== EP4 写入点带 kind 的基线（形状计数，只当漂移哨兵）==")
 writes = 0
