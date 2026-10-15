@@ -54,7 +54,7 @@ ALTER TABLE task_claims
     ADD COLUMN IF NOT EXISTS exam_stage_started_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS exam_remedy_until TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS exam_extensions INT NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS exam_last_stage TINYINT NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS exam_last_stage INT NOT NULL DEFAULT 0;
 
 COMMENT ON COLUMN task_claims.exam_stage_seq IS
     '当前所处阶段 seq（从 1 起）。多阶段达标后递增，单段考核恒为 1。';
