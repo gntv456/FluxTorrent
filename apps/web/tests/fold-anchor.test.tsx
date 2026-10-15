@@ -13,7 +13,8 @@ function stubMedia(compact: boolean) {
     writable: true,
     configurable: true,
     value: (q: string) => ({
-      matches: compact ? q.includes("767") : false,
+      // 紧凑类查询（useIsCompact 的 767 / 锚点条 M6.4 的 768）均算紧凑态
+      matches: compact ? /7(6[78])/.test(q) : false,
       addEventListener: () => undefined,
       removeEventListener: () => undefined,
       addListener: () => undefined,

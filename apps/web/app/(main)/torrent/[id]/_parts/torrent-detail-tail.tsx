@@ -33,23 +33,26 @@ export function TorrentDetailTail({
   sectOn: (k: string) => boolean;
 }) {
   const cmtN = String(comments.length);
+  const thankersOn = sectOn("thankers") && thanks.length > 0;
+  // 本地完善版：InfoHash 并入感谢者折叠卡底部；无感谢者时独立成段
+  const infoHash = sectOn("infohash") ? (
+    <p className="td-infohash">
+      <b>{dict.torrent.infoHash}</b> · {t.info_hash.trim()}
+    </p>
+  ) : null;
   return (
     <>
-      {sectOn("thankers") && thanks.length > 0 && (
+      {thankersOn && (
         <Thankers
           thanks={thanks}
           count={thanksCount}
           dict={dict}
           locale={locale}
+          footer={infoHash}
         />
       )}
 
-      {sectOn("infohash") && (
-        <p className="break-all border-t border-line pt-2 text-[11px] text-sub">
-          <span className="font-bold">{dict.torrent.infoHash}</span> ·{" "}
-          {t.info_hash.trim()}
-        </p>
-      )}
+      {!thankersOn && infoHash}
 
       {sectOn("comments") && (
         <FoldMobile

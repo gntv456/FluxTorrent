@@ -6330,6 +6330,7 @@ const zhCnBase = {
     justNow: "刚刚",
     healthAlive: "🌱 可下载",
     relatedTitle: "相关种子",
+    relSeed: "做种",
     hrOn: "H&R：下载完成后 {days} 天内需做种 {hours} 小时",
     hrOff: "本种免 H&R",
     healthDead: "💀 无种，等待抢救",

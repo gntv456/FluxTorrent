@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { useIsCompact } from "@/lib/hooks/use-media";
 import { formatBytes } from "@/lib/format";
 
 /**
@@ -13,7 +12,9 @@ import { formatBytes } from "@/lib/format";
  * 同分类 + 标题 trgm 相似」三档打分（见 torrents/related.rs）。客户端懒加载，
  * 失败静默隐藏（推荐位属增益，不该阻断详情页）。
  *
- * 促销徽标复用 NexusPHP 语义色（free/x2 等），与列表页口径一致。
+ * M6.4 对齐本地完善版样图 .td-rel__*：右栏卡片内竖排，46×62 缩略位
+ * （有海报显示图，无海报渐变底 + 分类文字），名称两行截断 + 做种数；
+ * 全断点同构（弃 M6.3 的移动端横滑与促销徽标）。
  */
 
 interface RelatedItem {
@@ -29,34 +30,17 @@ interface RelatedItem {
   times_completed: number;
 }
 
-/** 促销徽标文案与配色（与列表页 pro_free/pro_2up 同名同义） */
-function promoBadge(p: string): { label: string; cls: string } {
-  const map: Record<string, { label: string; cls: string }> = {
-    free: { label: "Free", cls: "bg-sun text-ink" },
-    half: { label: "50%", cls: "bg-lime text-ink" },
-    x2: { label: "×2", cls: "bg-rose text-white" },
-    x2free: { label: "2×Free", cls: "bg-rose text-white" },
-    x2half: { label: "2×50%", cls: "bg-rose text-white" },
-    p30: { label: "-30%", cls: "bg-indigo text-white" },
-  };
-  return map[p] ?? { label: p, cls: "bg-ink text-white" };
-}
-
-/** 海报缩渐变色（无海报图时的兜底，设计稿样图 mint/candy/indigo 循环） */
-function posterBg(id: number): string {
-  const grads = [
-    "linear-gradient(160deg,var(--mint),#1f9a7e)",
-    "linear-gradient(160deg,var(--candy),#ff5fa8)",
-    "linear-gradient(160deg,var(--indigo),#3f4fd8)",
-  ];
-  return grads[id % grads.length];
-}
-
-export function TorrentRelated({ torrentId }: { torrentId: number }) {
+export function TorrentRelated({
+  torrentId,
+  catMap,
+}: {
+  torrentId: number;
+  /** 分类显示名映射（page 侧按站点档案 categories 传入；可序列化 prop，
+   *  函数过不了 RSC 边界）——组件不持站型词表 */
+  catMap: Record<number, string>;
+}) {
   const { dict } = useI18n();
   const [items, setItems] = useState<RelatedItem[] | null>(null);
-  // M5.8：窄屏折叠（有数据才出折叠条；桌面保持平铺）
-  const compact = useIsCompact();
 
   useEffect(() => {
     let alive = true;
@@ -78,48 +62,32 @@ export function TorrentRelated({ torrentId }: { torrentId: number }) {
   // 加载中 / 无数据 / 失败：整段隐藏（推荐位不该占位）
   if (!items || items.length === 0) return null;
 
-  const rows = items.map((r) => (
-    <li key={r.id} className="td-related__item">
-      <a href={`/torrent/${r.id}`} className="td-related__link">
-        <span
-          className="td-related__poster"
-          style={{ background: posterBg(r.id) }}
-        >
-          {r.poster && <img src={r.poster} alt="" loading="lazy" />}
-        </span>
-        <span className="td-related__body">
-          <span className="td-related__name" title={r.name}>
-            {r.name}
-          </span>
-          <span className="td-related__meta num">
-            <span className="td-related__size">
-              {formatBytes(r.size)}
-            </span>
-            <span className="td-related__seed">🌱 {r.seeders}</span>
-          </span>
-        </span>
-        {r.promotion && (
-          <span className={`sticker ${promoBadge(r.promotion).cls}`}>
-            {promoBadge(r.promotion).label}
-          </span>
-        )}
-      </a>
-    </li>
-  ));
-  const list = <ul className="td-related__list">{rows}</ul>;
-  if (compact) {
-    // 窄屏（设计稿样图④）：卡片化 + 46% 宽横滑，不再收折叠条
-    return (
-      <section className="td-related td-related--mob">
-        <h3 className="td-related__title">{dict.tdetail.relatedTitle}</h3>
-        <ul className="td-related__list td-related__list--scroll">{rows}</ul>
-      </section>
-    );
-  }
+  const d = dict.tdetail;
   return (
-    <section className="td-related">
-      <h3 className="td-related__title">{dict.tdetail.relatedTitle}</h3>
-      {list}
-    </section>
+    <div className="td-side-card">
+      <h3 className="td-rel__title">{d.relatedTitle}</h3>
+      {items.map((r) => (
+        <a key={r.id} className="td-rel__item" href={`/torrent/${r.id}`}>
+          <span className="td-rel__thumb">
+            {r.poster ? (
+              <img src={r.poster} alt="" loading="lazy" />
+            ) : (
+              catMap[r.category_id] ?? `#${r.category_id}`
+            )}
+          </span>
+          <span className="td-rel__body">
+            <span className="td-rel__name" title={r.name}>
+              {r.name}
+            </span>
+            <span className="td-rel__meta num">
+              {formatBytes(r.size)} ·{" "}
+              <span className="td-rel__seed">
+                {d.relSeed} {r.seeders}
+              </span>
+            </span>
+          </span>
+        </a>
+      ))}
+    </div>
   );
 }

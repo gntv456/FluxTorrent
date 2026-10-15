@@ -845,28 +845,20 @@ a:hover {
   letter-spacing: 0.02em;
 }
 
-/* 海报头卡（M6.3 设计稿 §4：hero + 规格条合并为一张卡，规格条以
-   border-top 分隔；卡片视觉与 .td-fold 同口径——r-lg 圆角 + surface-card
-   底 + shadow-card，overflow:hidden 让规格条 border-top 收敛进圆角）。
-   ⚠️ 卡片本体不再承担网格：hero 网格下沉 .td-head__hero */
+/* 海报头卡（本地完善版样图：hero 网格直接在 .td-head 上，规格条是主栏
+   首张独立卡不再并入头卡；卡片视觉与 .td-fold 同口径——r-lg 圆角 +
+   surface-card 底 + shadow-card，overflow:hidden 收敛圆角） */
 .td-head {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
   position: relative;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface-card);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-}
-/* hero：左海报 + 右主信息（双栏化后状态卡移右信息栏 td-vitals） */
-.td-head__hero {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: 20px;
-  padding: 20px;
-}
-/* 规格条：头部卡内底栏，border-top 与 hero 分隔（设计稿 §6 chip-row） */
-.td-head__specs {
-  border-top: 1px solid var(--line);
 }
 .td-head__poster {
   position: relative;
@@ -896,8 +888,11 @@ a:hover {
   aspect-ratio: 2 / 3;
   border-radius: var(--r-md);
   object-fit: cover;
-  border: 1px solid var(--baozi-line-soft);
-  background: var(--surface-sunken);
+  /* 本地完善版样图：sky→indigo 渐变海 posters 底 + 蓝投影 +
+     border-strong 边（无海报时的兜底观感） */
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(160deg, var(--sky-deep), var(--indigo));
+  box-shadow: 0 8px 20px -6px rgba(30, 138, 232, 0.4);
   transition: box-shadow 0.18s ease, transform 0.18s ease;
 }
 .td-head__poster:hover .td-head__img {
@@ -921,6 +916,11 @@ a:hover {
 .td-head__sub {
   color: var(--text-muted);
   font-size: 13px;
+  /* 本地完善版样图 .td-head__sub：flex + gap（链与描述之间以 ·
+     分隔符作 flex item，间距由 gap 统一承担） */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .td-head__chain {
   color: var(--text-brand);
@@ -1134,7 +1134,8 @@ a:hover {
   color: var(--success);
 }
 .td-vitals__health.is-dead {
-  background: var(--danger-soft);
+  /* 本地完善版样图：dead 用 coral-soft（与 --leech 数字同色系） */
+  background: var(--coral-soft);
   color: var(--danger);
 }
 .td-vitals__health.is-dead::before {
@@ -1273,14 +1274,18 @@ a:hover {
   color: var(--sky-deep);
 }
 
-/* 规格徽章条（设计稿 §6：网格 → 横排 chip，一屏装下决策规格；
-   M6.3 起并入头部卡底栏，padding 与 hero 的 20px 收成 18px 同视觉边距） */
+/* 规格徽章条（本地完善版样图 .td-specs：主栏首张独立卡，数值 chip
+   横排折行；卡片视觉与 .td-fold 同口径） */
 .td-specs {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  padding: 14px 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
 }
 .td-spec {
   display: flex;
@@ -1314,7 +1319,7 @@ a:hover {
   .td-layout {
     grid-template-columns: minmax(0, 1fr) 260px;
   }
-  .td-head__hero {
+  .td-head {
     grid-template-columns: 100px minmax(0, 1fr);
     gap: 14px;
     padding: 14px;
@@ -1339,7 +1344,7 @@ a:hover {
    媒体查询按源序决胜，若放回文件前段的 @640 主块，会被 @1024 的 100px
    规则反向覆盖成死代码（M6.3 发现 M5.9 写的 80px 从未生效过） */
 @media (max-width: 640px) {
-  .td-head__hero {
+  .td-head {
     grid-template-columns: 80px minmax(0, 1fr);
     gap: 12px;
     padding: 12px;
@@ -1347,14 +1352,15 @@ a:hover {
 }
 
 /* M5.11 + M6.1 单栏化（≤768，对齐 actionbar 断点）：layout 单列
-   head→side(vitals)→main→related，文件 mini 卡与 meta 卡让位给主栏
-   折叠块与头部 meta 行。
+   head→anchor→side(vitals)→main→related，文件 mini 卡与 meta 卡让位给
+   主栏折叠块与头部 meta 行；锚点条为网格独立行（本地完善版样图）。
    ⚠️ 必须置于 .td-layout 基础规则之后：同特异性下后定义者胜。 */
 @media (max-width: 768px) {
   .td-layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "head"
+      "anchor"
       "side"
       "main"
       "rel";
@@ -1375,20 +1381,21 @@ a:hover {
   .td-side-rel {
     margin-top: 4px;
   }
-  /* 移动端锚点条（设计稿 §5/§6 + 样图④ .anchor-bar）：sticky 吸顶横向
-     Tab，置于 72px 顶栏之下；毛玻璃半透明底；横滑隐滚轮；当前区块
-     蓝实底高亮，非激活透明底灰字 */
+  /* 移动端锚点条（本地完善版样图：head 与 side 之间的网格行，sticky
+     吸顶于 72px 顶栏之下；sky-soft 胶囊 Tab、当前区块 sky-deep 实底；
+     横滑隐滚轮。top 用 72 而非样图的 0——样图框架的站点导航不吸顶，
+     本站导航常驻需避让） */
   .td-anchor {
+    grid-area: anchor;
     display: flex;
     position: sticky;
     top: 72px;
     z-index: var(--z-sticky);
-    gap: 5px;
+    gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
-    padding: 8px 14px;
-    background: var(--chip-veil, rgba(255, 255, 255, 0.94));
-    backdrop-filter: blur(8px);
+    padding: 6px 0;
+    background: var(--surface-card);
     border-bottom: 1px solid var(--line);
   }
   .td-anchor::-webkit-scrollbar {
@@ -1398,25 +1405,24 @@ a:hover {
     flex: none;
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    padding: 6px 13px;
-    border: none;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
     border-radius: 999px;
-    background: transparent;
+    background: var(--sky-soft);
     font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
+    font-weight: 700;
+    color: var(--sky-deep);
     cursor: pointer;
   }
   .td-anchor__tab.is-on {
     background: var(--sky-deep);
+    border-color: var(--sky-deep);
     color: var(--text-on-accent);
   }
   .td-anchor__num {
-    font-size: 10px;
-    font-weight: 700;
-    margin-left: 3px;
-    opacity: 0.75;
+    font-size: 11px;
+    opacity: 0.72;
   }
   /* 锚点落点避让吸顶条：72 顶栏 + ~42 条高 + 间距 */
   .td-fold {
@@ -1483,15 +1489,14 @@ a:hover {
 }
 /* M5.9 规格网格窄屏瘦身：须放在 .td-specs 基础规则之后，
    否则同特异性下会被后面的基础定义覆盖回去。
-   M6.3 横滑化（设计稿 §5 样图④ chip-row nowrap）：规格多时不折行，
-   单行横滑一屏看完 */
+   M6.3 横滑化（规格多时不折行，单行横滑）；M6.4 本地完善版：
+   padding 回到 8px 12px、gap 不覆盖（走基础 8px） */
 @media (max-width: 640px) {
   .td-specs {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
-    gap: 6px;
-    padding: 11px 14px;
+    padding: 8px 12px;
   }
   .td-specs::-webkit-scrollbar {
     display: none;
@@ -1504,7 +1509,18 @@ a:hover {
     font-size: 14px;
   }
   .td-crumbs {
-    font-size: 11.5px;
+    font-size: 11px;
+  }
+  /* 本地完善版：窄屏折叠卡收紧 + 简介不限高全展 */
+  .td-fold > summary {
+    padding: 12px 14px;
+  }
+  .td-fold__body {
+    padding: 12px 14px;
+  }
+  .td-descr__body {
+    padding: 12px 14px;
+    max-height: none;
   }
 }
 .td-tagcloud {
@@ -1549,16 +1565,16 @@ a:hover {
   }
 }
 
-/* 简介区 */
+/* 简介区（本地完善版：桌面限高 320px 内滚，<640 全展） */
 .td-descr__body {
   padding: 14px 16px;
-  max-height: 420px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
-/* NFO */
+/* NFO（本地完善版：限高 260px） */
 .td-nfo {
-  max-height: 320px;
+  max-height: 260px;
   overflow: auto;
   border-radius: var(--r-sm);
   background: var(--ink);
@@ -1607,7 +1623,7 @@ a:hover {
   list-style: disc;
 }
 
-/* 文件列表 */
+/* 文件列表（本地完善版：行 padding 5px，大小列 90px 右对齐截断） */
 .td-files {
   width: 100%;
   table-layout: fixed;
@@ -1617,7 +1633,19 @@ a:hover {
   font-size: 13px;
 }
 .td-files td {
-  padding: 4px 12px;
+  padding: 5px 12px;
+}
+.td-files td.num,
+.td-files td:last-child {
+  width: 90px;
+  text-align: right;
+  color: var(--text-muted);
+}
+.td-files td:first-child {
+  width: calc(100% - 90px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .td-files tr:hover td {
   background: var(--surface-hover);
@@ -1768,6 +1796,21 @@ a:hover {
   color: #fff;
   font-size: 12px;
   font-weight: 800;
+}
+
+/* InfoHash 尾行（本地完善版 .td-infohash：细线分隔 + 等宽可断行；
+   有感谢者时并入感谢者折叠卡底部，无感谢者时独立成段） */
+.td-infohash {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  font-size: 11px;
+  color: var(--text-faint);
+  word-break: break-all;
+  line-height: 1.7;
+}
+.td-infohash b {
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
 /* 评论区（阳光口径：左作者侧栏 + 右正文） */
