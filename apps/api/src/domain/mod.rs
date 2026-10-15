@@ -7,6 +7,9 @@ pub mod torrent_status;
 // 抽奖可验证公平（commit-reveal）：判定与哈希派生进 domain 纯函数层
 pub mod lottery_fair;
 
+// seedbox 盒子：CIDR 校验与标志位语义（只放宽不加重）
+pub mod seedbox;
+
 use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
 use argon2::Argon2;
 use chrono::{Duration, Utc};
