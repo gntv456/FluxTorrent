@@ -53,7 +53,7 @@ pub async fn my_progress(
            ON p.medal_id = m.id AND p.user_id = $1 \
          LEFT JOIN user_medals um \
            ON um.medal_id = m.id AND um.user_id = $1 \
-         WHERE m.active = TRUE AND m.auto_mode IS NOT NULL \
+         WHERE m.auto_mode IS NOT NULL \
          ORDER BY m.sort_order, m.id",
     )
     .bind(user_id)
