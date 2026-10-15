@@ -29,6 +29,10 @@ pub(crate) struct PostRow {
     /// 楼层作者公开信息（2026-09-23）：头像/等级/入站时间/佩戴勋章（匿名楼为 NULL）
     #[sqlx(default)]
     pub(crate) avatar_url: Option<String>,
+    /// 楼层作者的签名档（P-339）：此前读路径压根不返回这个字段，于是界面上的
+    /// 「显示签名」两档开关无处可施；现按**观看者**的 view_signatures 决定。
+    #[sqlx(default)]
+    pub(crate) signature: Option<String>,
     #[sqlx(default)]
     pub(crate) class_name: Option<String>,
     #[sqlx(default)]

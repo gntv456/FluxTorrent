@@ -22,9 +22,24 @@ pub async fn user_public_profile(
     crate::http::throttle_limited(&state, format!("profile:{}", auth.id), 60)
         .await?;
     let uid = path.into_inner();
+    // P-339：观看者的「看头像 / 看签名」两档偏好。读口过去从未引用（两个
+    // 字段全仓只出现在 me_settings_kv 的写侧），因此用户勾掉后就是个无效开关。
+    let (view_avatars, view_signatures): (bool, bool) = sqlx::query_as(
+        "SELECT view_avatars, view_signatures FROM users WHERE id = $1",
+    )
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or((true, true));
     let profile: Option<PublicProfile> = sqlx::query_as(
         r#"
-        SELECT $1::bigint AS id, u.username, u.title, u.avatar_url, u.class_id, c.name AS class_name,
+        -- P-339：头像与签名按**观看者**的两档偏好返回。之前直接
+        -- `u.avatar_url`，而两个字段全仓只有写侧（me_settings_kv 的 UPDATE/bind）——
+        -- 用户勾掉一树接一树，读路径照旧照常。
+        SELECT $1::bigint AS id, u.username, u.title,
+               CASE WHEN $2 THEN u.avatar_url ELSE NULL END AS avatar_url,
+               CASE WHEN $3 THEN u.signature ELSE NULL END AS signature,
+               u.class_id, c.name AS class_name,
                u.uploaded, u.downloaded, u.donor, u.created_at, u.last_seen_at,
                f.css AS avatar_frame_css, f.image_url AS avatar_frame_image,
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
@@ -38,6 +53,8 @@ pub async fn user_public_profile(
         "#,
     )
     .bind(uid)
+    .bind(view_avatars)
+    .bind(view_signatures)
     .fetch_optional(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -58,9 +75,13 @@ pub async fn user_public_profile(
         Option<String>,
         bool,
     )> = sqlx::query_as(
-        "SELECT gender, country, isp, upload_speed, download_speed, info, signature, \
-                    COALESCE(last_seen_at > now() - interval '15 minutes', FALSE) AS online \
-             FROM users WHERE id = $1",
+        // P-339：签名不再从这里二次取原值。之前本语句直接
+        // SELECT signature，返回后用它覆盖了 profile 里按开关算出的值 —— 用户
+        // 勾掉「不看签名」后顶层仍然泄露签名档（实测定证）。
+        "SELECT gender, country, isp, upload_speed, download_speed, info, \
+               NULL::text AS signature, \
+               COALESCE(last_seen_at > now() - interval '15 minutes', FALSE) AS online \
+         FROM users WHERE id = $1",
     )
     .bind(uid)
     .fetch_optional(&state.repo.read_db)
@@ -73,7 +94,7 @@ pub async fn user_public_profile(
         up_speed,
         down_speed,
         info,
-        signature,
+        _signature,   // P-339: 常量 NULL（见上方注释），顶层改用 profile 里那份
         online,
     ) = extra
         .map(|(g, c, i, u, d, inf, s, o)| (g, c, i, u, d, inf, s, o))
@@ -269,7 +290,9 @@ pub async fn user_public_profile(
         "avatar_frame_image": profile.avatar_frame_image,
         "gender": gender, "country": null, "isp": null,
         "upload_speed": up_speed, "download_speed": down_speed,
-        "info": info, "signature": signature, "online": online,
+        // P-339：顶层 signature 取 profile 已过开关的值，不再用 extra 里那份
+        // 未经开关的原值（extra 的 signature 已改成常量 NULL）。
+        "info": info, "signature": profile.signature.clone(), "online": online,
         "real_uploaded": real_up, "real_downloaded": real_down,
         "seed_seconds": seed_seconds, "hr_unresolved": hr_unresolved,
         "hr_limit": hr_limit, "seeding_size": seeding_size,

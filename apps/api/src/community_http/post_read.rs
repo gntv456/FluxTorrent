@@ -4,6 +4,7 @@
 use actix_web::{get, web, HttpRequest, Responder};
 use serde::Deserialize;
 
+use super::forum_util::viewer_privacy;
 use super::post_group::{group_by_root, PostRow};
 use super::*;
 use crate::dto::ok;
@@ -91,9 +92,17 @@ pub(crate) async fn topic_detail(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-339：观看者的「看头像/看签名」两档（写口在 me_settings，
+    // 读口过去从未引用 —— 两个字段全仓只有 UPDATE/bind）。
+    let (view_avatars, view_signatures) =
+        viewer_privacy(&state.repo.db, auth.id).await;
     let mut posts = sqlx::query_as::<_, PostRow>(
+        // P-339：头像/签名按**观看者**的两档偏好返回（$4/$5）。
+        // 之前直接 `u.avatar_url`，用户勾掉「不看头像」也照旧显示。
         "SELECT p.id, u.username, p.user_id, p.body, p.created_at, p.edited_at, p.edited_by, FALSE AS hidden, \
-            u.avatar_url, c.name AS class_name, \
+            CASE WHEN $4 THEN u.avatar_url ELSE NULL END AS avatar_url, \
+            CASE WHEN $5 THEN u.signature ELSE NULL END AS signature, \
+            c.name AS class_name, \
             u.created_at AS author_joined_at, \
             COALESCE(wm.j, '[]'::jsonb) AS worn_medals, \
             p.root_id, p.parent_id, rt.name AS reply_to_name, \
@@ -126,6 +135,8 @@ pub(crate) async fn topic_detail(
     .bind(tid)
     .bind(q.before)
     .bind(auth.id)
+    .bind(view_avatars)
+    .bind(view_signatures)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

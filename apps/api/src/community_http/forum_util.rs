@@ -289,3 +289,25 @@ pub(crate) async fn attach_topic_tags(
     }
     Ok(())
 }
+
+/// 观看者的“看头像 / 看签名”两档偏好（P-339）。
+///
+/// 两个字段原本只在 `me_settings_kv` 的**写**side 出现（UPDATE 与
+/// 绑定），全仓没有任何读取点 —— 用户在用户中心勾掉
+/// 「不看头像」/「不看签名」，存下去了，读路径照旧返回头像（实测：
+/// `view_avatars=false` 时 `GET /forums/topics/{id}` 仍带 avatar_url）。根因是读 SQL 直接
+/// `u.avatar_url`，没有把观看者的偏好带进来。
+///
+/// 返回 (view_avatars, view_signatures)，供读 SQL 里的 CASE 使用。
+pub(crate) async fn viewer_privacy(
+    db: &sqlx::PgPool,
+    viewer_id: i64,
+) -> (bool, bool) {
+    sqlx::query_as::<_, (bool, bool)>(
+        "SELECT view_avatars, view_signatures FROM users WHERE id = $1",
+    )
+    .bind(viewer_id)
+    .fetch_one(db)
+    .await
+    .unwrap_or((true, true))
+}
