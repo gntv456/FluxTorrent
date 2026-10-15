@@ -37,6 +37,22 @@ impl Mode {
     }
 }
 
+/// 配置校验失败。
+///
+/// 本模块被 api 与 worker 双 crate 以 `#[path]` include! 复用，故不能
+/// 引用某一侧的 `DomainError`——改为自带一个最小错误类型，由调用方包成
+/// 各自域的错误（同 exam_fair 的处理）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InvalidConfig(pub String);
+
+impl std::fmt::Display for InvalidConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for InvalidConfig {}
+
 /// 统计周期（threshold 模式）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Period {
@@ -154,18 +170,17 @@ pub fn validate_rule(
     mode: Mode,
     target: i64,
     period: Option<Period>,
-) -> crate::errors::DomainResult<()> {
-    use crate::errors::DomainError;
+) -> Result<(), InvalidConfig> {
     if mode == Mode::Manual {
         return Ok(());
     }
     if target <= 0 {
-        return Err(DomainError::Validation(
+        return Err(InvalidConfig(
             "自动成就的阈值必须为正数（否则人人立刻达成或永不可达）".into(),
         ));
     }
     if mode == Mode::Threshold && period.is_none() {
-        return Err(DomainError::Validation(
+        return Err(InvalidConfig(
             "统计阈值模式必须指定统计周期".into(),
         ));
     }

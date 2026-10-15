@@ -33,6 +33,7 @@ mod lottery;
 pub(crate) mod mail_out;
 mod maintain;
 mod manual;
+mod medal_achv;
 mod preserve;
 mod process_event;
 mod promo_audit;
@@ -66,6 +67,7 @@ pub(crate) use announce::*;
 pub(crate) use catalog::*;
 pub(crate) use locks::*;
 pub(crate) use lottery::*;
+pub(crate) use medal_achv::*;
 pub(crate) use manual::*;
 pub(crate) use request_expire::*;
 
