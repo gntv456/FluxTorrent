@@ -118,9 +118,9 @@ export function HomeSections({
         return (
           <section className="brand-panel home-news">
             <header className="brand-panel__head brand-panel__head--ribbon">
-              <h1>
+              <h2>
                 <span aria-hidden="true">📣</span> {t.newsTitle}
-              </h1>
+              </h2>
             </header>
             <div className="home-news__body">
               <HomeNewsPoster

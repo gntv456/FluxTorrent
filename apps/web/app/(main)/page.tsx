@@ -123,7 +123,10 @@ export default async function HomePage() {
       )}
       {/* 板块顺序/占宽由 HomeSections 按排版清单统一决定；海报墙内容在这里
           服务端取好（首屏不退化成客户端取数），只把节点交出去占位。 */}
-            {/* M3：<md 问候条 + 个人数据条 */}
+      {/* S1 语义修复：首页模块化布局无自然主标题——补唯一 sr-only h1
+          （各区块头已由 h1 降为 h2），供 SEO 与读屏器锚定页面主题。 */}
+      <h1 className="sr-only">{brandName}</h1>
+      {/* M3：<md 问候条 + 个人数据条 */}
       <MobileHomeHeader brand={brandName} me={meSummary} />
       <HomeSections
         initialData={homeData}

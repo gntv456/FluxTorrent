@@ -1408,7 +1408,8 @@ table.preserve-list-table {
   flex-direction: column;
   gap: 12px;
 }
-.contactstaff-head h1 {
+.contactstaff-head h1,
+.contactstaff-head h2 {
   margin: 0;
   color: var(--text-strong);
   font-size: 22px;
@@ -1541,7 +1542,8 @@ textarea.bbcode {
   opacity: 0.85;
   font-weight: 700;
 }
-.task-hero h1 {
+.task-hero h1,
+.task-hero h2 {
   margin: 2px 0;
   font-size: 24px;
   font-weight: 900;
@@ -2363,7 +2365,8 @@ textarea.bbcode {
   box-shadow: var(--shadow-card);
   color: var(--text-on-accent);
 }
-.pting-board__head h1 {
+.pting-board__head h1,
+.pting-board__title {
   margin: 0;
   font-size: 22px;
   font-weight: 900;

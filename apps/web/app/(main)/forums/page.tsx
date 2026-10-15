@@ -67,7 +67,7 @@ export default async function ForumsPage() {
             button={dict.forums2.searchBtn}
           />
           <div>
-            <h1>{dict.forums.title}</h1>
+            <h1 className="pting-board__title">{dict.forums.title}</h1>
             <p>
               {dict.forums2.totalPrefix}
               {totalTopics}

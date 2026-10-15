@@ -211,10 +211,10 @@ export function UsercpPanel({
     <div className="usercp-wrap">
       {/* 侧边导航：⚙ 控制面板 + 五项 */}
       <aside className="usercp-nav">
-        <h1>
-          <span aria-hidden="true">⚙</span>
+        <h2>
+          <span aria-hidden="true"><Icon name="settings" size={16} /></span>
           {t.navTitle}
-        </h1>
+        </h2>
         {(nav ?? USERCP_NAV).map((n) => (
           <Link
             key={n.key}

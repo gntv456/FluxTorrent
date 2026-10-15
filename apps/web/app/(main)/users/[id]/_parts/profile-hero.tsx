@@ -90,12 +90,12 @@ export function ProfileHero({
         </div>
         <div className="up-hero__meta">
           <span>
-            <i aria-hidden>◷</i>
+            <i aria-hidden><Icon name="clock" size={14} /></i>
             {`${t.joined}：${new Date(p.created_at).toLocaleDateString(dateLocale(locale))}`}
           </span>
           {p.last_seen_at && (
             <span>
-              <i aria-hidden>◷</i>
+              <i aria-hidden><Icon name="clock" size={14} /></i>
               {`${t.lastSeen}：${new Date(p.last_seen_at).toLocaleString(dateLocale(locale))}`}
             </span>
           )}
