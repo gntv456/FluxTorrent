@@ -114,7 +114,7 @@ pub async fn bank_fixed_daily_settle(db: &PgPool) -> anyhow::Result<u64> {
                 .bind(interest)
                 .bind(id)
                 .bind(&idem)
-                .bind(balance + interest)
+                .bind(crate::balance_guard::checked_balance(balance, interest)?)
                 .execute(&mut *tx)
                 .await?;
                 sqlx::query(
@@ -191,7 +191,7 @@ pub async fn bank_fixed_mature(db: &PgPool) -> anyhow::Result<u64> {
             .bind(user_id)
             .bind(payable)
             .bind(&idem)
-            .bind(balance + payable)
+            .bind(crate::balance_guard::checked_balance(balance, payable)?)
             .execute(&mut *tx)
             .await?;
             sqlx::query(

@@ -9,7 +9,7 @@ pub(crate) async fn prewarn_mails(db: &PgPool, prewarn_hours: i32) {
     let mails: Vec<(String, String)> = sqlx::query_as(
         r#"
         SELECT u.email, format(
-            '种子 #%s 距 H&R 截止不到 %s 小时（做种 %s/%s 小时），\
+            '种子 #%s 距 H&R 截止不到 %s 小时（做种 %s/%s 小时），
 请恢复做种或用魔力免罪。详情见站内信。',
             h.torrent_id, $1::int,
             round(h.seeded_seconds / 3600.0, 1),

@@ -4,6 +4,37 @@
 use crate::errors::{DomainError, DomainResult};
 use sqlx::PgPool;
 
+/// 余额累加的溢出护栏（批一百五十三）。
+///
+/// `balance_after` 这类「先在 Rust 里算出新余额、再当参数绑给 SQL」的写法，
+/// 在 release（无 `overflow-checks`）下**静默回绕**：`i64::MAX + 300` 变成
+/// 一个大负数，于是账本里写着「余额 -9223372036854775309」，而 PG 侧的
+/// `spark_balance + $2` 随后报 `bigint out of range` 整笔回滚；debug 下则
+/// 直接 `attempt to add with overflow` panic，把 actix worker 线程打掉
+/// （实测 `spend.rs:109`，pt_audit_aj_requests 的 R3 边界用例复现）。
+///
+/// PG 自己是有防护的（bigint 溢出会报错），问题在于**我们提前在 Rust 侧
+/// 就算完了**，把一个该由数据库拒绝的业务错误变成了进程级 panic 或静默
+/// 回绕。此处统一改成 checked_add：越界时返回既有的 1004 语义错误，
+/// 不改任何余额、也不惊动线程。
+pub(crate) fn checked_balance(
+    balance: i64,
+    delta: i64,
+) -> DomainResult<i64> {
+    balance.checked_add(delta).ok_or_else(|| {
+        tracing::error!(
+            balance,
+            delta, "余额累加溢出 bigint：拒绝入账（不静默回绕、不 panic）"
+        );
+        DomainError::Internal(anyhow::anyhow!(
+            "spark 余额越界：{} + {} 超出 int64 范围",
+            balance,
+            delta
+        ))
+    })
+}
+
+
 pub async fn spend_spark(
     db: &PgPool,
     user_id: i64,
@@ -106,7 +137,7 @@ pub async fn earn_spark_tx(
     .bind(amount)
     .bind(kind)
     .bind(idem)
-    .bind(balance + amount)
+    .bind(checked_balance(balance, amount)?)
     .execute(&mut **tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -160,7 +191,7 @@ pub async fn earn_spark(
     .bind(amount)
     .bind(kind)
     .bind(idem)
-    .bind(balance + amount)
+    .bind(checked_balance(balance, amount)?)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

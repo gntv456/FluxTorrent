@@ -15,7 +15,7 @@ pub async fn register_mode_endpoint(
 ) -> DomainResult<HttpResponse> {
     async fn setting(db: &sqlx::PgPool, name: &str, dflt: &str) -> String {
         sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value FROM site_settings \\
+            "SELECT COALESCE((SELECT value FROM site_settings \
              WHERE name = $1), $2)",
         )
         .bind(name)

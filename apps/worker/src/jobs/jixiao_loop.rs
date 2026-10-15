@@ -188,7 +188,7 @@ pub(crate) async fn jixiao_settle_loop(
                     .bind(p.user_id)
                     .bind(total)
                     .bind(&idem)
-                    .bind(balance + total)
+                    .bind(crate::balance_guard::checked_balance(balance, total)?)
                     .execute(&mut *tx)
                     .await?;
                     sqlx::query(
