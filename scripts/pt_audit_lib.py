@@ -95,18 +95,51 @@ def summary():
     print("== ALL PASS")
 
 def clear_register_rl():
-    """闸门侧清掉注册限流键（rl:register-ip:<IP>，Redis 计数 + 60s TTL）。
+    """闸门侧清掉**自己造出来的**注册额度占用。
 
-    几套闸门连着跑时各自要注册 1~4 个成员，额度（5/分钟/IP）会互相吃光，
-    表现是 `new_member` 返回无 token、下游一片「未认证」。与其每人睡 60 秒，
-    不如清掉自己造的计数——只碰 register-ip 这一个面，登录/发信限流照旧生效。
+    批一百五十三实测：这里原来只清 Redis 的 `rl:register-ip:*`，可 24 小时
+    同 IP 限额根本不查 Redis——`register_gates::check_ip_limit` 数的是
+    `reg_ip_signups` 表（sha3(ip) 摘要，窗口默认 24h，默认上限 2）。
+    于是清 Redis 对它毫无作用：只要当天注册过 2 个探针号，第三支闸门
+    建号必得 `同一网络环境 24 小时内最多注册 2 个账号`，`new_member`
+    返回 None，下游全红在一片「未认证」上——红在前置而不是被测口径，
+    极易误读成产品回归（#75 记的就是这件事，但当时归因成 Redis 频控）。
+
+    所以要清两个面：Redis 的分钟级计数 + reg_ip_signups 的窗口计数。
+    **只删自己造的探针号**（用户名/邮箱后缀匹配），不动 root 与真人账号，
+    也不会削弱产品侧的防刷阈值——24h/2 是正当口径，产品侧一行不改。
     """
     import subprocess
+
+    def psql(sql):
+        return subprocess.run(
+            ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+             "-d", "fluxtorrent", "-tAc", sql],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace")
+
+    # ① 分钟级 Redis 计数（登录/发信限流**不动**）
     cmd = ('redis-cli -a "$REDIS_PASSWORD" --no-auth-warning --scan '
-           ' --pattern "rl:register-ip:*" '
+           '--pattern "rl:register-ip:*" '
            '| xargs -r redis-cli -a "$REDIS_PASSWORD" --no-auth-warning del')
     subprocess.run(["docker", "exec", "flux-redis", "sh", "-c", cmd],
                    capture_output=True, text=True, encoding="utf-8")
+    # ② 24h 窗口计数：只回收探针号留下的痕迹
+    # 邮箱后缀各闸门不统一（aj/fc/as/bb/...），所以按「本地保留域」兜住：
+    # *.local 不是可路由域，只可能是探针号；真人账号不会落在这里。
+    # 探针邮箱域名实测有四类：<gate>.local（本仓闸门主流）、@localhost、
+    # @audit.invalid（b_billing）、@example.com（若干闸门）。前两类靠保留域
+    # 判定，后两类**不是**保留域，只能按「本仓闸门造号前缀」认——
+    # 实测漏掉 audit.invalid 时 clear_register_rl() 静默空转（判据删除 0 行
+    # 却不报错），b_billing 于是仍红在「两个测试号可用」。
+    probe = (
+        "SELECT id FROM users WHERE "
+        "email LIKE '%%@%%.local' OR email LIKE '%%@localhost' "
+        "OR email LIKE '%%@audit.invalid' OR email LIKE '%%@example.com' "
+        "OR username LIKE 'deleted-%%'")
+    out = psql("SELECT count(*) FROM reg_ip_signups WHERE user_id IN (%s)" % probe)
+    if (out.stdout or "").strip() not in ("", "0"):
+        psql("DELETE FROM reg_ip_signups WHERE user_id IN (%s)" % probe)
 
 
 def totp_now(secret_b32, skew=0):

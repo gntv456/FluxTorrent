@@ -51,8 +51,21 @@ def rglob(paths, pattern):
     return "\n".join(out)
 
 
+def rs_files():
+    out = []
+    for base in ("apps", "worker"):
+        root_dir = os.path.join(REPO, base)
+        for dp, _dn, fn in os.walk(root_dir):
+            if "target" in dp:
+                continue
+            for f in fn:
+                if f.endswith(".rs"):
+                    out.append(os.path.join(dp, f))
+    return out
+
+
 def consumers():
-    """权限键的消费点：perm::NAME 与 SQL 里的 user_can(…, 'key')。"""
+    """权限键的消费点：三种写法都要认（见下面三段注释）。"""
     perm = io.open(os.path.join(REPO, "apps", "api", "src", "authz",
                                 "perm.rs"), encoding="utf-8").read()
     name2val = dict(re.findall(
@@ -60,19 +73,54 @@ def consumers():
     trees = rglob([os.path.join("apps", "api", "src"),
                    os.path.join("apps", "worker", "src")], None)
     used = set()
+    # 形态一：路径限定引用 perm::NAME
     for m in re.finditer(r"perm::([A-Z0-9_]+)", trees):
         if m.group(1) in name2val:
             used.add(name2val[m.group(1)])
+    # 形态二：`use crate::authz::perm::{A, B, C}` 之后**裸用**常量名。
+    # 批一百五十三实测踩坑：cheat_appeal_review.rs 走的就是这一形态，
+    # 只认形态一会把它误判成「implemented=true 却零消费点」——而它第 33 行
+    # 明明 require_perm(CHEAT_CASES_MODERATE)，站长勾了是生效的。
+    # 这个误报方向最坏：界面只在 implemented=false 时挂「未实装」徽章，
+    # 于是判据一红就可能被当成真洞去「修」，把已经在用的权限拆了。
+    imported = set()
+    for m in re.finditer(
+            r"use\s+[\w:]*authz::perm::\{([^}]*)\}", trees):
+        for tok in m.group(1).split(","):
+            tok = tok.strip().split(" as ")[-1].strip()
+            if tok:
+                imported.add(tok)
+    for m in re.finditer(r"use\s+[\w:]*authz::perm::([A-Z0-9_]+)", trees):
+        imported.add(m.group(1))
+    for name in imported:
+        if name not in name2val:
+            continue
+        # 裸用：常量名后面跟着 ( 或 , 之一出现（排除定义处与 import 行本身）
+        want = re.escape(name)
+        for f in rs_files():
+            t = io.open(f, encoding="utf-8", errors="replace").read()
+            # 先把那几行 use ... authz::perm:: 整行抹掉，再找裸用——
+            # 否则 import 行本身就会把「裸用」判定命中（第一版栽在这里，
+            # 于是形态二永远不生效、正控红着而我以为判据已经加上去了）。
+            stripped = re.sub(r"use\s+[\w:]*authz::perm::[^;\n]*;?", "", t)
+            if re.search(r"\b" + want + r"\b\s*[,)]", stripped):
+                used.add(name2val[name])
+                break
+    # 形态三：SQL 里的 user_can(…, 'key')
     for m in re.finditer(r"user_can\([^)]*?'([a-z_.]+)'", trees):
         used.add(m.group(1))
     return used
 
 
 USED = consumers()
-ok("Z0 前提：消费点扫描认全两种写法（perm::X 与 SQL user_can('k')）",
-   "hr.exempt" in USED and len(USED) > 20,
-   "已识别消费点 %d 个；hr.exempt 命中=%s" % (len(USED),
-                                             "hr.exempt" in USED))
+# 三种消费写法各钉一个正控：任一形态退化成「扫不到」，这里立刻红。
+# 批一百五十三只认两种时漏了第三种（直接 use 常量再裸用），
+# 把已在用的 cheat.cases.moderate 误报成「勾了不生效」。
+for _k, _why in [("cheat.cases.moderate", "use perm::{..} 后裸用常量"),
+                 ("ads.manage", "路径限定 perm::X"),
+                 ("hr.exempt", "SQL user_can('k')")]:
+    ok("Z0 前提：认得消费形态（%s）" % _why, _k in USED, "%s 命中=%s" % (_k, _k in USED))
+ok("Z0b 消费点规模不退化（>20）", len(USED) > 20, "已识别 %d 个" % len(USED))
 
 s, b = call("GET", "/admin/permission-matrix", None, token=ROOT)
 d = (b or {}).get("data") or {}

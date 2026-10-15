@@ -7,7 +7,7 @@
 """
 import sys, json, hashlib, urllib.request, urllib.parse, time, random
 sys.stdout.reconfigure(encoding="utf-8")
-from pt_audit_lib import call, login, ok, summary
+from pt_audit_lib import call, login, ok, summary, clear_register_rl
 from pt_audit_a_publish import make_torrent, multipart, upload_torrent
 
 DB = lambda sql: __import__("subprocess").run(
@@ -40,6 +40,11 @@ def wait_credit(sql, target, timeout=150, step=5):
 # 注：POST /admin/users/adjust 的 invite_grant 对 root 调整自身会撞
 # ensure_outranks(99 vs 99) 护栏（by design），故借普通用户 e2ecap* 做 inviter。
 tok = login()
+# 24h 同 IP 限额是**库表**计数（reg_ip_signups），不是 Redis：本闸门要连建
+# 两个号，正好撞在默认上限 2 上——上一支闸门留下的痕迹会让本次直接 0 号，
+# 红在「两个测试号可用」而不是被测口径。开工前先清自己造的那部分。
+# （批一百五十三：clear_register_rl 原先只清 Redis，对这个闸完全不生效。）
+clear_register_rl()
 suffix = random.randint(10000, 99999)
 DB("INSERT INTO invites (inviter_id, code, expires_at) VALUES (76, 'audit%s', now() + interval '1 day')" % ("a%d" % suffix))
 DB("INSERT INTO invites (inviter_id, code, expires_at) VALUES (76, 'audit%s', now() + interval '1 day')" % ("b%d" % suffix))
