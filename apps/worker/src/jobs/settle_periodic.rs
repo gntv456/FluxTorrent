@@ -121,7 +121,8 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         .await?;
         let _ = sqlx::query(
                         "INSERT INTO messages (sender_id, receiver_id, \
-             subject, body) VALUES (NULL, $1, $2, $3)",
+             subject, body, kind) SELECT NULL, $1, $2, $3, 'resurrection' \
+             WHERE u_notice_enabled($1, 'resurrection')",
         )
         .bind(uid)
         .bind("复活任务完成")
