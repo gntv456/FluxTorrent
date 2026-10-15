@@ -21,6 +21,7 @@ pub(crate) async fn run_named(
         "sweep_stale_peers" => n(sweep_stale_peers(db).await?),
         "collect_milestones" => n(collect_milestones(db).await?),
         "hr_enforce" => d(hr_enforce(db).await?),
+        "hr_warn_ladder" => n(hr_warn_ladder::run(db).await?),
         "hr_punish" => d(hr_punish(db).await?),
         "class_auto_adjust" => d(class_auto_adjust(db).await?),
         "preserve_seed" => n(preserve_seed(db).await?),

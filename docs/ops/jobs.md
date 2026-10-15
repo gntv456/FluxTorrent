@@ -10,7 +10,7 @@
 | :--- | :--- |
 | consume_announce | announce → 计费（Redis Stream 消费，死信进 DLQ） |
 | expire_promotions | 促销到期回退 |
-| hr_enforce / hr_punish | H&R 达标判定与惩罚 |
+| hr_enforce / hr_warn_ladder / hr_punish | H&R 达标判定、警告阶梯（0388：警告→限下→禁传→禁邀，带 Gazelle 式顺延与到期自动恢复）与超阈值惩罚 |
 | class_auto_adjust | 等级自动升降（升降均发站内信） |
 | exam_assign / task_settle | 考核派发与结算 |
 | seeding_reward / bank_daily | 做种收益、银行结息 |

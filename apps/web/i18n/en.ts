@@ -6703,6 +6703,19 @@ medalDaysPh: "Days (empty = medal default)",
     youWin: "You win! 🎉",
     youLose: "You lose",
   },
+  lotteryFair: {
+    drawn: "Drawn",
+    ongoing: "Ongoing",
+    serverOk: "✓ Server recompute passed",
+    serverFail: "Server recompute failed",
+    browserOk: "✓ Your browser recompute passed",
+    browserFail: "Browser recompute did not match",
+  },
+  termsGov: {
+    healthy: "Healthy",
+    needsWork: "Needs work",
+    statLine: "In use {active} · with rules {withRule} · retired refs {retired}",
+  },
 };
 
 const apitokensEn: Dict["apitokens"] = {

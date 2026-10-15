@@ -113,7 +113,21 @@ pub(crate) async fn process_event(
     }
 
     // 超上限留痕：agent 沿用 cheat_audit 的 torrent:{id} 约定、speed: 前缀区分来源
-    if had_baseline && (held_up > 0 || held_down > 0) {
+    //
+    // 0380 盒子 speed_relax：经人工审核的盒子在加密/CGNAT 环境下速度波动
+    // 本就大，走速规则误判率高。这里的口径是**放宽阈值，不是关闭检测**——
+    // 扣量照扣（traffic 口径不变），只是不再把这次超速记成作弊线索。
+    // 换句话说：放宽的是「要不要告警」，不是「要不要计费」。
+    // 幽灵做种与流量虚报完全不受此标志影响（那是另一类问题）。
+    let speed_relax: bool = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT speed_relax FROM seedbox_effective \
+         WHERE user_id = $1), false)",
+    )
+    .bind(ev.user)
+    .fetch_optional(&mut *tx)
+    .await?
+    .unwrap_or(false);
+    if had_baseline && (held_up > 0 || held_down > 0) && !speed_relax {
         audit_hold::note_speed(&mut *tx, ev, torrent_id, held_up, held_down)
             .await;
     }

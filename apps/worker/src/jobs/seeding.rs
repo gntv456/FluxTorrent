@@ -63,9 +63,13 @@ pub async fn seeding_reward(
                            t.times_completed,
                            (GREATEST(s.seeded_seconds, 0) / 3600.0)::double precision,
                            p.vol_base, p.rarity_k, p.rarity_exp, p.scale
-                       ) AS b
+                       ) * COALESCE(sb.bonus_factor, 1.0) AS b
                 FROM users u
                 JOIN snatches s ON s.user_id = u.id AND s.seeding
+                -- 0380 盒子倍率：经人工审核的盒子用户保种额外加成。
+                -- LEFT JOIN + COALESCE(...,1.0)——没登记盒子的人就是 1.0，
+                -- 绝不能让「没这条记录」变成 0 收益（那是全站性事故）。
+                LEFT JOIN seedbox_effective sb ON sb.user_id = u.id
                 JOIN torrents t ON t.id = s.torrent_id
                   AND s.last_port > 0
                   -- 口径（0310）：只有 0(DEAD，实锤不可信) 阻断；

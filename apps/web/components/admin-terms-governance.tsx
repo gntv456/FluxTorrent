@@ -151,12 +151,14 @@ export function TermsGovernance() {
                         : "text-xs text-[var(--text-faint)]"
                     }
                   >
-                    {audit.healthy ? "真绿" : "需处理"}
+                    {audit.healthy ? dict.termsGov.healthy : dict.termsGov.needsWork}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-[var(--text-muted)]">
-                  在用 {audit.active_keys} · 有规则 {audit.with_rule}{" "}
-                  · 退役引用 {audit.retired_refs.length}
+                  {dict.termsGov.statLine
+                    .replace("{active}", String(audit.active_keys))
+                    .replace("{withRule}", String(audit.with_rule))
+                    .replace("{retired}", String(audit.retired_refs.length))}
                 </p>
                 {audit.retired_refs.length > 0 && (
                   <ul

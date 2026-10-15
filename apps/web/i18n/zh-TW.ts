@@ -6503,6 +6503,19 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     youWin: "你贏了！🎉",
     youLose: "你輸了",
   },
+  lotteryFair: {
+    drawn: "已開獎",
+    ongoing: "進行中",
+    serverOk: "✓ 服務端複算通過",
+    serverFail: "服務端複算未過",
+    browserOk: "✓ 你的瀏覽器複算通過",
+    browserFail: "瀏覽器複算未對上",
+  },
+  termsGov: {
+    healthy: "真綠",
+    needsWork: "需處理",
+    statLine: "在用 {active} · 有規則 {withRule} · 退役引用 {retired}",
+  },
 };
 
 const apitokensTw: Dict["apitokens"] = {

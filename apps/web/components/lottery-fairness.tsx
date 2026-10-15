@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api-client";
+import { useI18n } from "@/i18n/client";
 import { StatePanel } from "@/components/ui/state-panel";
 
 interface Fairness {
@@ -71,6 +72,7 @@ async function hmacHex(
 }
 
 export function LotteryFairness({ topicId }: { topicId: number }) {
+  const { dict } = useI18n();
   const [data, setData] = useState<Fairness | null>(null);
   const [err, setErr] = useState<string | null>(null);
   /** 浏览器本地复算结论；null = 还没算 / 算不了 */
@@ -124,7 +126,7 @@ export function LotteryFairness({ topicId }: { topicId: number }) {
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-medium
                              text-[var(--text-strong)]">
-              {data.stage === "drawn" ? "已开奖" : "进行中"}
+              {data.stage === "drawn" ? dict.lotteryFair.drawn : dict.lotteryFair.ongoing}
             </span>
             {data.verified !== undefined && (
               <span
@@ -134,7 +136,7 @@ export function LotteryFairness({ topicId }: { topicId: number }) {
                     : "text-xs text-[var(--text-faint)]"
                 }
               >
-                {data.verified ? "✓ 服务端复算通过" : "服务端复算未过"}
+                {data.verified ? dict.lotteryFair.serverOk : dict.lotteryFair.serverFail}
               </span>
             )}
           </div>
@@ -158,8 +160,8 @@ export function LotteryFairness({ topicId }: { topicId: number }) {
                     }
                   >
                     {local
-                      ? "✓ 你的浏览器复算通过"
-                      : "浏览器复算未对上"}
+                      ? dict.lotteryFair.browserOk
+                      : dict.lotteryFair.browserFail}
                   </span>
                 </p>
               )}
