@@ -55,6 +55,42 @@ pub(crate) async fn issue_download_key(
     if !approved {
         return Err(DomainError::NotFound(torrent_id));
     }
+    // P-344：可执行凭证不能绕过下载闸门。本函数先后被三个口已经共用（
+    // `POST /downloads/keys`、`GET /crossseed/dl/{id}`、NP 兼容层），而它原来只判了
+    // approval_status。实测（批一百五十四）：root 未购任何付费种，
+    // `POST /downloads/keys` 签出 **fxk_ 凭证** 并真落了一行 download_keys
+    // （同一种子 `/torrents/{id}/magnet` 是回 400 并带明确文案的）。
+    // 即使不重复扣费，也不能给未购的人发凭证——否则「点一下下载」
+    // 就是一条绕过扣费的下载通道。
+    // 与 magnet 同口径三道闸：① 下载资格（被停下载/挂起账号照拿）；
+    // ② 付费种必须已购（本人发布者免费）；③ 归属不可达。
+    crate::torrents::ensure_downloadable(&state.repo.db, uid).await?;
+    let paid: Option<(i64, Option<i64>)> = sqlx::query_as(
+        "SELECT price, owner_id FROM torrents WHERE id = $1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some((price, owner)) = paid {
+        if price > 0 && owner != Some(uid) {
+            let owned: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM torrent_purchases \
+                 WHERE user_id = $1 AND torrent_id = $2)",
+            )
+            .bind(uid)
+            .bind(torrent_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            if !owned {
+                return Err(DomainError::Validation(format!(
+                    "该种子为付费种子（{} 魔力）：请先在详情页点「下载」取得后再用",
+                    price
+                )));
+            }
+        }
+    }
     let plain = format!("fxk_{}", uuid::Uuid::new_v4().simple());
     let expires: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
         "INSERT INTO download_keys (token_hash, user_id, torrent_id, \
