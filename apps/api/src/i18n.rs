@@ -133,6 +133,15 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
         "本站未開放此功能",
         "This feature is not enabled on this site",
     ),
+    // 4102 PoolGuard：抽卡池含保底后的综合返还率 >100%，被运行时拒绝
+    // （G31-B）。此前只在 errors.rs 的 code() 里，回落成 1000「内部错误」，
+    // 让「池子配错了」这件运营侧该修的事说成了服务端故障。
+    (
+        4102,
+        "奖池保底后的返还率超过 100%，已拒绝",
+        "獎池保底後的返還率超過 100%，已拒絕",
+        "Pool return rate exceeds 100% after the guarantee; rejected",
+    ),
     (5002, "已感谢过", "已感謝過", "Already thanked"),
     // 乐观并发冲突（5003）：此前漏登记，`localized_message(5003)` 回落到
     // 1000「内部错误」——409 响应对用户说「内部错误」，把「别人刚改过、

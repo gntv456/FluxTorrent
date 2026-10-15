@@ -6,10 +6,16 @@
 
 // ============ 错误码（方案 §8.2 分段） ============
 
+// 错误码真源是 apps/api/src/errors.rs 的 code() 映射（生成物见
+// error-codes.generated.ts）。本表**只保留后端真会返回的码**：
+// 2026-10-16 清掉 5 个从未在 errors.rs 出现过的声明
+// （1001 BAD_REQUEST / 2008 MUST_RESET_PASSWORD / 3001 TORRENT_NOT_FOUND
+// / 3002 TORRENT_NOT_APPROVED / 5001 COMMENT_NOT_FOUND）——它们零消费点，
+// 却让「前端声明的码集合」比后端实际返回的多 5 个，任何按这张表写的
+// 分支都是死代码。加码时先在 errors.rs 落变体，再回填这里。
 export const ErrorCode = {
   // 1xxx 通用
   INTERNAL: 1000,
-  BAD_REQUEST: 1001,
   VALIDATION: 1002,
   NOT_FOUND: 1004,
   RATE_LIMITED: 1015,
@@ -20,12 +26,9 @@ export const ErrorCode = {
   INVITE_INVALID: 2005,
   INVITE_USED: 2006,
   USERNAME_TAKEN: 2007,
-  MUST_RESET_PASSWORD: 2008,
   TWO_FACTOR_REQUIRED: 2010,
   TWO_FACTOR_INVALID: 2011,
   // 3xxx 种子
-  TORRENT_NOT_FOUND: 3001,
-  TORRENT_NOT_APPROVED: 3002,
   TORRENT_INVALID_FILE: 3003,
   TORRENT_DUPLICATE: 3004,
   // 4xxx 经济
@@ -40,7 +43,6 @@ export const ErrorCode = {
   // 「必须发信」的链路应给这一码，而不是 1000 内部错误（HTTP 503）
   MAIL_UNCONFIGURED: 4103,
   // 5xxx 社区
-  COMMENT_NOT_FOUND: 5001,
   ALREADY_THANKED: 5002,
   // 站点设定乐观并发冲突（expected updated_at 不匹配，HTTP 409）：
   // 他人先保存过同一键，前端应提示刷新后重试而不是静默覆盖
