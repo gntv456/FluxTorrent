@@ -108,7 +108,7 @@ async fn advance_one(db: &PgPool, o: &Stuck) -> anyhow::Result<bool> {
     }
     // 否则重试履约：成功则扣款，失败再失败则退款（单次重试是刻意的——
     // 同一个必然失败的履约无限重试只是刷日志）。
-    let ok = apply_effect(db, o).await;
+    let ok = apply_effect(db, o).await?;
     if ok {
         settle_charge(db, o).await
     } else {
@@ -116,34 +116,56 @@ async fn advance_one(db: &PgPool, o: &Stuck) -> anyhow::Result<bool> {
     }
 }
 
-/// 履约（发效果）能否由本任务补发。
+/// 履约（发效果）。
 ///
-/// **诚实地说：不能。** `apply_item_effect` 在 api 侧（economy_http），
-/// 依赖 `crate::economy` 与 `crate::errors`，worker 这边引用不到。
-/// 把它 include! 过来要拖上一整条依赖链，而收益只是「省一次退款」——
-/// 不值得为省一次退款把两个 crate 耦在一起。
+/// **现在能补发了。** 生效链已抽到 `crates/flux-shared`，api 与 worker
+/// 引用同一份源码——此前这里只能退款，因为 `apply_item_effect` 在 api
+/// 侧（economy_http），worker 引用不到。当时的取舍是「为省一次退款
+/// 把两个 crate 耦在一起不值得」；现在既不用耦，也不用退款。
 ///
-/// 所以分工是：
-///   * worker 负责**兜底退款**——确认这单不可能自己好了，把钱还回去；
-///   * api 侧的用户重试路径负责**补发效果**（`effect_applied` 的 CAS
-///     保证同一效果不重复发，那条路径本来就在 `shop_buy` 里）。
-///
-/// 换句话说：崩溃后用户要么自己重试拿到东西，要么钱自动回来。
-/// **绝不会出现「钱既没花出去，东西也没拿到，且无人过问」**——那才是
-/// 三段式要消灭的状态。
-const fn effect_can_be_reapplied_here() -> bool {
-    false
-}
-
-/// 履约（发效果）。返回是否成功。
-async fn apply_effect(db: &PgPool, o: &Stuck) -> bool {
-    if effect_can_be_reapplied_here() {
-        return false; // 保留分支：将来补齐依赖后可填实
+/// 【为什么共用源码是必须的而不是可选的】若两边各写一份生效链，
+/// 漂移的后果是「api 发了券、worker 判定失败退款」——用户既没拿到东西
+/// 也丢了钱，且两边日志各自自洽、事后对不上。
+async fn apply_effect(db: &PgPool, o: &Stuck) -> anyhow::Result<bool> {
+    let mut cfg = o.config.clone();
+    cfg["item_id"] = serde_json::json!(o.item_id);
+    // dressup_source 用 "recover"：与用户主动购买（'buy'）、娱乐屋奖品
+    // （'prize'）区分开。事后从 user_dressups.source 能看出这枚装扮
+    // 是恢复任务补发的，而不是用户自己买的。
+    match flux_shared::apply_item_effect(
+        db, o.user_id, &o.kind, &cfg, "recover",
+    )
+    .await
+    {
+        Ok(()) => {
+            // 效果真的发出去了才置位。顺序反了就是「标记已发但没发」，
+            // 那一单从此再也无法补发——比不发更糟。
+            let n = sqlx::query(
+                "UPDATE shop_orders SET effect_applied = TRUE \
+                 WHERE id = $1 AND NOT effect_applied",
+            )
+            .bind(o.id)
+            .execute(db)
+            .await?
+            .rows_affected();
+            if n == 0 {
+                // 并发窗口：另一条路径已置位但效果尚未落地。此时返回
+                // false 让本轮退款是错的，保守起见交给下一轮重试。
+                tracing::warn!(
+                    order_id = o.id, "商城恢复：effect_applied 已被他方置位"
+                );
+                return Ok(false);
+            }
+            Ok(true)
+        }
+        Err(e) => {
+            tracing::warn!(
+                order_id = o.id, user_id = o.user_id,
+                kind = %o.kind, error = %e, "商城恢复：履约失败"
+            );
+            Ok(false)
+        }
     }
-    // 卡在 frozen 且 effect 未发 → 只能是进程在「冻结 → 发效果」之间崩了。
-    // worker 补不了效果，故走退款：让用户重买一次，而不是钱卡在冻结态。
-    let _ = (db, o);
-    false
 }
 
 /// 成交：把冻结转成实扣状态。

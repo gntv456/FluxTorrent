@@ -1,6 +1,7 @@
 ﻿[workspace]
 resolver = "2"
 members = [
+    "crates/flux-shared",
     "apps/api",
     "apps/worker",
     "apps/tracker",

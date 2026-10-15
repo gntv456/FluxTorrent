@@ -4,6 +4,8 @@ version = "0.3.2"
 edition.workspace = true
 
 [dependencies]
+# 商城生效链的唯一实现（api 与 worker 共用，避免两处漂移）
+flux-shared = { path = "../../crates/flux-shared" }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio.workspace = true
 serde.workspace = true
