@@ -141,7 +141,8 @@ pub(crate) async fn rss_feed(
     // **同一份** seeders > 0 谓词，不在 RSS 里另写一份（另写会与主
     // 列表口径漂移，正是审计里反复出现的病根）。
     let alive_only: bool = sqlx::query_scalar(
-        "SELECT COALESCE((value = $1), false) FROM site_settings WHERE name = $2"
+        "SELECT COALESCE((value = $1), false) \
+         FROM site_settings WHERE name = $2"
     )
     .bind("yes")
     .bind("rss_alive_only")
