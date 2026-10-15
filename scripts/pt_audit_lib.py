@@ -3,6 +3,17 @@
 import os
 import urllib.request, urllib.error, json, sys, time
 
+# Windows 控制台默认 GBK：凡是打印到 GBK 编不出的字符（⇒ × ≥ → 之外的
+# 那类）都会抛 UnicodeEncodeError 并**当场中断**整个闸门——后面所有判据
+# 一条都不执行，FAIL 计数自然少报，看上去像「跑过了」。
+# 批一百四十一实测：EP 跑到 EP2a 就断在 ⇒ 上，EP3~EP9 六段判据根本没跑。
+# 统一把输出重配成 UTF-8（真编不出的字符用 replace 兜底），保证「红」能打完。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:  # 老版本 Python / 已被包装过的流：能跑就好
+        pass
+
 # FLUX_API_BASE：打侧容器（宿主 :8080 常被别的进程占着，直连会拿到
 # 别人的响应，判成败全错）。不设则沿用主栈。
 BASE = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")

@@ -371,4 +371,29 @@ live = one("SELECT count(*) FROM messages")
 print("   WARN 现网读数：messages 共 %s 行，kind IS NULL %s 行"
       % (live, null_kind))
 
+# EP11（批一百四十一 P-327）：闸门自身的编码防线。Windows 控制台默认 GBK，
+# 判据名里凡有 ⇒/× 这类编不出的字符就当场 UnicodeEncodeError ——后面的判据
+# 一条都不执行，看上去像「跑过了」。实测本文件曾崩在 EP2a 的 ⇒ 上，
+# EP3~EP10 共十二段判据根本没跑。全仓普查：126 支闸门里 21 支有这种打印行。
+LIBF = os.path.join(ROOT, "scripts", "pt_audit_lib.py")
+LIBPREV = "3c6ae7d9"  # 修前参照提交（lib 尚无 reconfigure），别写 HEAD
+
+
+def _lib_src(rev=None):
+    if rev:
+        p = sh(["git", "show", "%s:scripts/pt_audit_lib.py" % rev])
+        return p.stdout if p.returncode == 0 else ""
+    fp = LIBF if os.path.exists(LIBF) else os.path.join(
+        os.path.dirname(LIBF), "pt_audit_lib.py")
+    return open(fp, encoding="utf-8", errors="replace").read() if (
+        os.path.exists(fp)) else ""
+
+
+lib_now, lib_prev = _lib_src(), _lib_src(LIBPREV)
+ok("EP11a 公共层把 stdout/stderr 重配成 UTF-8（errors=replace 兜底）",
+   "reconfigure" in lib_now and 'errors="replace"' in lib_now,
+   "取到 %d 字符" % len(lib_now))
+ok("EP11b 正控：修前的公共层没有这条（否则断言恒真）",
+   "reconfigure" not in lib_prev, "旧文本 %d 字符" % len(lib_prev))
+
 summary()
