@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 745,
+ "total": 773,
  "routes": [
   {
    "method": "POST",
@@ -78,6 +78,12 @@
   },
   {
    "method": "GET",
+   "path": "/admin/cheat-accuracy",
+   "handler": "cheat_accuracy",
+   "file": "apps/api/src/admin_http/cheat_accuracy.rs"
+  },
+  {
+   "method": "GET",
    "path": "/admin/deny-reasons",
    "handler": "deny_reasons_list",
    "file": "apps/api/src/admin_http/deny.rs"
@@ -99,6 +105,30 @@
    "path": "/admin/deny-reasons/{id}",
    "handler": "deny_reasons_delete",
    "file": "apps/api/src/admin_http/deny.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/email-domains",
+   "handler": "email_domains_list",
+   "file": "apps/api/src/admin_http/email_domains.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/email-domains/export",
+   "handler": "email_domains_export",
+   "file": "apps/api/src/admin_http/email_domains.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/email-domains/import",
+   "handler": "email_domains_import",
+   "file": "apps/api/src/admin_http/email_domains.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/email-domains/delete",
+   "handler": "email_domains_delete",
+   "file": "apps/api/src/admin_http/email_domains.rs"
   },
   {
    "method": "GET",
@@ -231,6 +261,36 @@
    "path": "/admin/login-logs",
    "handler": "admin_login_logs",
    "file": "apps/api/src/admin_http/records.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/reg-quiz",
+   "handler": "reg_quiz_list",
+   "file": "apps/api/src/admin_http/reg_quiz_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reg-quiz",
+   "handler": "reg_quiz_add",
+   "file": "apps/api/src/admin_http/reg_quiz_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reg-quiz/update",
+   "handler": "reg_quiz_update",
+   "file": "apps/api/src/admin_http/reg_quiz_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reg-quiz/delete",
+   "handler": "reg_quiz_delete",
+   "file": "apps/api/src/admin_http/reg_quiz_bank.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reg-quiz/import",
+   "handler": "reg_quiz_import",
+   "file": "apps/api/src/admin_http/reg_quiz_bank.rs"
   },
   {
    "method": "GET",
@@ -1670,13 +1730,13 @@
    "method": "GET",
    "path": "/messages/boxes",
    "handler": "message_boxes",
-   "file": "apps/api/src/community_http/message_box.rs"
+   "file": "apps/api/src/community_http/message_folders.rs"
   },
   {
    "method": "POST",
    "path": "/messages/boxes",
    "handler": "message_box_upsert",
-   "file": "apps/api/src/community_http/message_box.rs"
+   "file": "apps/api/src/community_http/message_folders.rs"
   },
   {
    "method": "POST",
@@ -2820,6 +2880,36 @@
   },
   {
    "method": "GET",
+   "path": "/admin/cheat-appeals",
+   "handler": "cheat_appeal_queue",
+   "file": "apps/api/src/gaps_http/cheat_appeal_review.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/cheat-appeals/{id}/resolve",
+   "handler": "cheat_appeal_resolve",
+   "file": "apps/api/src/gaps_http/cheat_appeal_review.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/appeals/token",
+   "handler": "cheat_appeal_by_token",
+   "file": "apps/api/src/gaps_http/cheat_appeals.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/cheat-appeals",
+   "handler": "cheat_appeal_submit",
+   "file": "apps/api/src/gaps_http/cheat_appeals.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/my/cheat-appeals",
+   "handler": "cheat_appeal_my",
+   "file": "apps/api/src/gaps_http/cheat_appeals.rs"
+  },
+  {
+   "method": "GET",
    "path": "/classes",
    "handler": "classes_public",
    "file": "apps/api/src/gaps_http/classes_public.rs"
@@ -2885,6 +2975,12 @@
    "file": "apps/api/src/gaps_http/pow.rs"
   },
   {
+   "method": "GET",
+   "path": "/auth/quiz-challenge",
+   "handler": "quiz_challenge",
+   "file": "apps/api/src/gaps_http/reg_quiz.rs"
+  },
+  {
    "method": "POST",
    "path": "/auth/password/forgot",
    "handler": "password_forgot",
@@ -2913,6 +3009,48 @@
    "path": "/wishlist/remove",
    "handler": "wishlist_remove",
    "file": "apps/api/src/gaps_http/wishlist.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/cheat-cases/{id}/approve",
+   "handler": "cheat_case_approve",
+   "file": "apps/api/src/http/cheat_case/approve.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/cheat-cases/{id}",
+   "handler": "cheat_case_detail",
+   "file": "apps/api/src/http/cheat_case/detail.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/cheat-cases",
+   "handler": "cheat_case_list",
+   "file": "apps/api/src/http/cheat_case/list.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/cheat-cases/open",
+   "handler": "cheat_case_open",
+   "file": "apps/api/src/http/cheat_case/mod.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/cheat-cases/{id}/claim",
+   "handler": "cheat_case_claim",
+   "file": "apps/api/src/http/cheat_case/mod.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/cheat-cases/{id}/note",
+   "handler": "cheat_case_note",
+   "file": "apps/api/src/http/cheat_case/mod.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/cheat-cases/{id}/resolve",
+   "handler": "cheat_case_resolve",
+   "file": "apps/api/src/http/cheat_case/sanction.rs"
   },
   {
    "method": "GET",
@@ -3120,6 +3258,18 @@
   },
   {
    "method": "GET",
+   "path": "/admin/risk-scores",
+   "handler": "risk_score_list",
+   "file": "apps/api/src/http/risk.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/users/{id}/risk",
+   "handler": "user_risk_detail",
+   "file": "apps/api/src/http/risk.rs"
+  },
+  {
+   "method": "GET",
    "path": "/view-layout",
    "handler": "view_layout_keys",
    "file": "apps/api/src/http/view_layout.rs"
@@ -3171,6 +3321,24 @@
    "path": "/invites/email",
    "handler": "email_invite_handler",
    "file": "apps/api/src/invite_http/email.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/crossseed/lookup",
+   "handler": "xseed_lookup",
+   "file": "apps/api/src/openapi_http/crossseed/mod.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/crossseed/dl/{torrent_id}",
+   "handler": "xseed_dl",
+   "file": "apps/api/src/openapi_http/crossseed/mod.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/crossseed/iyuu",
+   "handler": "xseed_iyuu",
+   "file": "apps/api/src/openapi_http/crossseed/mod.rs"
   },
   {
    "method": "GET",
