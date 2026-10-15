@@ -180,6 +180,33 @@ export function TorrentSideMeta({
   );
 }
 
+/** 侧栏「更多」入口卡（设计稿 §6 .entry：当前在线/字幕/下载记录，
+ *  点击锚点跳转主栏对应折叠卡；字幕数为客户端懒加载无 SSR 数据，
+ *  不显示计数徽标）。<768 整卡隐藏（CSS @767）——锚点条承担导航 */
+export function TorrentSideEntries({
+  t,
+  dict,
+}: Pick<SideProps, "t" | "dict">) {
+  return (
+    <div className="td-side-card td-side-entries">
+      <div className="td-side-card__head">
+        <h3>{dict.torrents.moreActions}</h3>
+      </div>
+      <a className="td-entry" href="#td-sec-peers">
+        {dict.torrents.peersTitle}
+        <span className="td-entry__cnt num">{t.seeders + t.leechers}</span>
+      </a>
+      <a className="td-entry" href="#td-sec-subtitles">
+        {dict.subtitles.panelTitle}
+      </a>
+      <a className="td-entry" href="#td-sec-snatches">
+        {dict.snatches2.title}
+        <span className="td-entry__cnt num">{t.times_completed}</span>
+      </a>
+    </div>
+  );
+}
+
 /** 右侧信息栏组合（桌面上段 sticky；related 由 page 放进下段） */
 export function TorrentDetailSide(props: SideProps) {
   return (
@@ -189,6 +216,7 @@ export function TorrentDetailSide(props: SideProps) {
         <TorrentSideFiles files={props.files} dict={props.dict} />
       )}
       <TorrentSideMeta {...props} />
+      <TorrentSideEntries t={props.t} dict={props.dict} />
     </aside>
   );
 }
