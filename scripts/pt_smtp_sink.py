@@ -219,7 +219,7 @@ def selftest():
             "print(c.data('Subject: AZ-SELFCTEST-BODY')[0])" % SINK_NAME)
     r = subprocess.run(["docker", "run", "--rm", "--network", net_name(),
                         "python:3.12-alpine", "python", "-c", code],
-                       capture_output=True, text=True, timeout=120)
+                       capture_output=True, text=True, timeout=120, encoding="utf-8", errors="replace")
     ok_send = "250" in (r.stdout or "")
     # 标记只在头部（自测那封没有正文，正文分隔空行都没有），所以查整块
     seen = wait_mails(prev) and any("AZ-SELFCTEST-BODY" in m["raw"]

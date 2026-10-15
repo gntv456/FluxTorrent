@@ -49,8 +49,7 @@ def psql(sql):
     p = subprocess.run(
         ["docker", "exec", "flux-postgres", "sh", "-c",
          f"psql -U $POSTGRES_USER -d $POSTGRES_DB -t -A -c \"{sql}\""],
-        capture_output=True, text=True,
-    )
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     return p.stdout.strip()
 
 
@@ -92,7 +91,7 @@ def run_worker_job(job):
         time.sleep(2)
         out = subprocess.run(
             ["docker", "logs", "flux-worker", "--since", "90s"],
-            capture_output=True, text=True).stdout
+            capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
         if job.replace("_sweep", "").replace("subawards_build",
             "subawards") in out or "subtitle" in out:
             time.sleep(1)

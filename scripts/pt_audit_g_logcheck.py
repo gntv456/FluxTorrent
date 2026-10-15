@@ -271,8 +271,7 @@ def main():
                     ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
                      "-d", "fluxtorrent", "-c",
                      "DELETE FROM torrents WHERE id = %s" % tid],
-                    capture_output=True, text=True,
-                )
+                    capture_output=True, text=True, encoding="utf-8", errors="replace")
         except BaseException as e:  # noqa: BLE001
             print("!! 收尾异常（请手工核对 site_settings 与种子残留）: %r" % e)
     print("== 收尾已核对 ==")

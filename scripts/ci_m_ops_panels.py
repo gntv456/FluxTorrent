@@ -49,7 +49,7 @@ def _sql(query):
                "-U", "flux", "-d", "fluxtorrent", "-t", "-A", "-c", query]
     try:
         out = subprocess.run(cmd, capture_output=True, text=True,
-                             timeout=20)
+                             timeout=20, encoding="utf-8", errors="replace")
     except Exception as e:                      # noqa: BLE001
         return None, str(e)[:120]
     if out.returncode != 0:
@@ -76,7 +76,7 @@ def jwt(uid, cls=99, ttl=1800):
     if not secret:
         r = subprocess.run(
             ["docker", "exec", "flux-api", "printenv", "JWT_SECRET"],
-            capture_output=True, text=True)
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
         secret = r.stdout.strip()
     now = int(time.time())
     head = b64url(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())

@@ -31,7 +31,7 @@ FAILED = []
 
 def sh(*args: str) -> str:
     try:
-        r = subprocess.run(args, capture_output=True, text=True)
+        r = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
     except OSError:                 # 工具缺失（如 redis-cli 未装）→ 视为空
         return ""
     return r.stdout.strip()
@@ -44,7 +44,7 @@ def psql(sql: str) -> str:
         cmd = ["docker", "exec", "-i", "flux-postgres", "psql",
                "-U", "flux", "-d", "fluxtorrent", "-t", "-A", "-q"]
     try:
-        r = subprocess.run(cmd, input=sql, capture_output=True, text=True)
+        r = subprocess.run(cmd, input=sql, capture_output=True, text=True, encoding="utf-8", errors="replace")
     except OSError as e:
         print(f"    ! psql 不可用：{e}")
         return ""

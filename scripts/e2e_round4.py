@@ -48,8 +48,7 @@ def psql(sql):
     p = subprocess.run(
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
             "fluxtorrent", "-t", "-A", "-c", sql],
-        capture_output=True, text=True,
-    )
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     return p.stdout.strip()
 
 

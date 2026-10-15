@@ -66,7 +66,7 @@ q = subprocess.run(
     ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
         "fluxtorrent",
      "-tAc", "SELECT count(*) FROM user_achievements"],
-    capture_output=True, text=True)
+    capture_output=True, text=True, encoding="utf-8", errors="replace")
 n = int(q.stdout.strip() or 0)
 check("achievements granted (worker ran)", n >= 0, f"granted={n}")
 
@@ -86,7 +86,7 @@ q = subprocess.run(
      "-tAc",
          "SELECT id FROM torrents WHERE approval_status = 0 ORDER BY id DESC"
              "LIMIT 1"],
-    capture_output=True, text=True)
+    capture_output=True, text=True, encoding="utf-8", errors="replace")
 tid = (q.stdout.strip() or "").split("\n")[0].strip()
 if not tid:
     # 把已过审种临时置回待审（测试后恢复）
@@ -96,7 +96,7 @@ if not tid:
          "-tAc", "UPDATE torrents SET approval_status = 0 WHERE id = "
                  "(SELECT id FROM torrents WHERE approval_status = 1 ORDER BY"
                      "id LIMIT 1) RETURNING id"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     tid = (q2.stdout.strip() or "").split("\n")[0].strip()
 if tid:
     tid = int(tid)
@@ -119,7 +119,7 @@ if tid:
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
             "fluxtorrent",
          "-tAc", f"UPDATE torrents SET approval_status = 1 WHERE id = {tid}"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
 else:
     check("postpone (no torrent)", False, "库中无种子可测")
 
@@ -158,7 +158,7 @@ q = subprocess.run(
      "-tAc",
          "UPDATE users SET vip_until = now() + interval '10 days' WHERE"
              "username='gaozhong' RETURNING vip_until"],
-    capture_output=True, text=True)
+    capture_output=True, text=True, encoding="utf-8", errors="replace")
 check("vip_until writable", bool(q.stdout.strip()), q.stdout[:60])
 
 print(f"\n===== 0079 E2E: {PASS} PASS / {FAIL} FAIL =====")

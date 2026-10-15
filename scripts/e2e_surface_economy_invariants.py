@@ -54,7 +54,7 @@ def redis_get(pat):
     r = subprocess.run(
         ["docker", "exec", "flux-redis", "redis-cli", "-a", pw,
          "--no-auth-warning", "--scan", "--pattern", pat],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     return [x for x in r.stdout.split("\n") if x.strip()]
 
 

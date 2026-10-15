@@ -144,7 +144,7 @@ def logs_since(sec="25s"):
     except Exception:  # noqa: BLE001
         port = 8080
     pub = subprocess.run(["docker", "port", "flux-api"],
-                         capture_output=True, text=True).stdout or ""
+                         capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
     if str(port) in {ln.strip().rsplit(":", 1)[-1]
                       for ln in pub.splitlines() if ln.strip()}:
         raw = subprocess.run(
