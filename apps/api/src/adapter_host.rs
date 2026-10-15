@@ -158,7 +158,8 @@ pub(crate) fn build_linker(engine: &Engine) -> DomainResult<Linker<HostState>> {
             )
         })
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // LLM 宿主能力（2026-10-15）：按 manifest.llm_routes 白名单，默认空 = 不给能力。一与前五个导入同一套返回码约定。
+    // LLM 宿主能力（2026-10-15）：按 manifest.llm_routes 白名单，
+    // 默认空 = 不给能力；与前五个导入同一套返回码约定。
     register_llm(&mut linker)?;
     Ok(linker)
 }
@@ -217,6 +218,9 @@ fn llm_chat(route: &str, prompt: &str, max_tokens: i32) -> Result<String, i32> {
     .to_string();
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
+        // 出网纪律与 adapter_call.rs 的 P2 审计同一条：禁跟随重定向，
+        // 既防白名单域 302 跳内网，也不让 bearer key 跟着跳到别的 host。
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|_| -4)?;
     let text = client
