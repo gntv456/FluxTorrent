@@ -24,8 +24,16 @@ struct ShoutRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/shoutbox",
+    tag = "社区/喊话",
+    description = "喊话列表（滚动播报）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/shoutbox")]
-async fn shoutbox_list(
+pub(crate) async fn shoutbox_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
@@ -41,13 +49,22 @@ async fn shoutbox_list(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct ShoutReq {
     message: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/shoutbox",
+    tag = "社区/喊话",
+    description = "发喊话（扣魔力；限频）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/shoutbox")]
-async fn shoutbox_send(
+pub(crate) async fn shoutbox_send(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<ShoutReq>,
@@ -87,13 +104,22 @@ async fn shoutbox_send(
 
 /// 删除聊天发言（staff：审计修复 P1——此前全后端无 DELETE FROM shoutbox，
 /// 违规发言只能等禁言、无法清除已发内容）。发言本人 2 分钟内也可撤回。
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct ShoutDeleteReq {
     id: i64,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/shoutbox/delete",
+    tag = "社区/喊话",
+    description = "删自己的喊话。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/shoutbox/delete")]
-async fn shoutbox_delete(
+pub(crate) async fn shoutbox_delete(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<ShoutDeleteReq>,

@@ -25,8 +25,17 @@ struct LeakRow {
 }
 
 /// 待复核泄露事件列表（staff）
+#[utoipa::path(
+    get,
+    path = "/api/v1/staff/leaks",
+    tag = "社区/站务",
+    description = "数据泄露举报列表（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）")))]
 #[get("/staff/leaks")]
-async fn leak_list(
+pub(crate) async fn leak_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
@@ -44,7 +53,7 @@ async fn leak_list(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct LeakResolveReq {
     id: i64,
     /// 1=确认泄露 2=误报
@@ -52,8 +61,18 @@ struct LeakResolveReq {
 }
 
 /// 泄露事件裁决：确认泄露时通知全部 staff（走 staffmessages 分流），误报仅归档
+#[utoipa::path(
+    post,
+    path = "/api/v1/staff/leaks/resolve",
+    tag = "社区/站务",
+    description = "处理泄露举报（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/staff/leaks/resolve")]
-async fn leak_resolve(
+pub(crate) async fn leak_resolve(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<LeakResolveReq>,
@@ -119,8 +138,17 @@ async fn leak_resolve(
 // shoutbox 里发 /命令 即触发系统账号回话（当前会话内直接返回，不落库系统消息——
 // 避免机器人刷屏；统计命令只读、零风险）。
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/shoutbox/bot",
+    tag = "社区/喊话",
+    description = "喊话机器人配置读取（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）")))]
 #[get("/shoutbox/bot")]
-async fn shoutbox_bot_help() -> impl Responder {
+pub(crate) async fn shoutbox_bot_help() -> impl Responder {
     ok(serde_json::json!({
         "commands": [
             { "cmd": "/free",  "desc": "当前生效的免费/双倍促销种子" },
@@ -132,8 +160,17 @@ async fn shoutbox_bot_help() -> impl Responder {
 }
 
 /// 命令分发（GET 供前端在发送 /命令 时调用并展示回话）
+#[utoipa::path(
+    get,
+    path = "/api/v1/shoutbox/bot/exec",
+    tag = "社区/喊话",
+    description = "执行喊话机器人指令（需 staff 权；高危操作有审计）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）")))]
 #[get("/shoutbox/bot/exec")]
-async fn shoutbox_bot_exec(
+pub(crate) async fn shoutbox_bot_exec(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<std::collections::HashMap<String, String>>,

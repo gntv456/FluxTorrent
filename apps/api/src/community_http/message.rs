@@ -32,8 +32,16 @@ struct MessageRow {
 }
 
 /// 收件箱（messages.php location=1 口径）：支持 box=folderid、关键词搜索（主题/正文/两者）与未读筛选
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/inbox",
+    tag = "社区/消息",
+    description = "收件箱（分页；未读数随信封返回）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/messages/inbox")]
-async fn message_inbox(
+pub(crate) async fn message_inbox(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<InboxQuery>,
@@ -71,8 +79,16 @@ struct InboxQuery {
 }
 
 /// 发件箱（saved=1 口径）
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/sent",
+    tag = "社区/消息",
+    description = "发件箱。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/messages/sent")]
-async fn message_sent(
+pub(crate) async fn message_sent(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
@@ -90,8 +106,16 @@ async fn message_sent(
 }
 
 /// 管理组信箱（staffbox.php 口径）：与管理组成员（class_id >= 90）互发的短讯
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/staff",
+    tag = "社区/消息",
+    description = "站内信-管理组信箱（发往管理组的消息）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/messages/staff")]
-async fn message_staff(
+pub(crate) async fn message_staff(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {

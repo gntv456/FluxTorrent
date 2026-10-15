@@ -9,7 +9,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct SendMsgReq {
     to: String,
     subject: String,
@@ -25,8 +25,17 @@ struct SendMsgReq {
 /// - 接收限制：普通用户须过对方 accept_pm（yes/friends/no）+ 非黑名单；管理组（staff≥90）一律放行
 /// - 防刷：普通用户 60s 一条（message_flood 表）；staff 不限
 /// - 回复：subject 加 Re:/Re(n): 并引用原文；转发：原封带文给第三人
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages",
+    tag = "社区/消息",
+    description = "发站内信（可带 passkey 索取链接）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/messages")]
-async fn message_send(
+pub(crate) async fn message_send(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<SendMsgReq>,

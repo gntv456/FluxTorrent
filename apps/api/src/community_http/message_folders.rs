@@ -11,8 +11,16 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// 文件夹列表 + 夹内未删信件数
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/boxes",
+    tag = "社区/消息",
+    description = "自定义文件夹列表（含每夹未删信件数）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/messages/boxes")]
-async fn message_boxes(
+pub(crate) async fn message_boxes(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
@@ -27,7 +35,7 @@ async fn message_boxes(
 /// 「新建一个同名文件夹」并回 200（2026-10-15 现网实测：发
 /// `{box_id:999, name:'EP322改名测试'}` 得到 `{id:33}`，999 那个夹子
 /// 根本没被碰，却凭空多出一个文件夹）。
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 struct BoxReq {
     /// 缺省 = 新建；有值 = 改名/删除该 id
@@ -37,8 +45,17 @@ struct BoxReq {
 
 /// 新建/改名/删除（editmailboxes 口径：一人最多 3 个、名 ≤14 字；
 /// 清空名 = 删除并连带清信）
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/boxes",
+    tag = "社区/消息",
+    description = "新建/改名/删除文件夹（改名传 id；清空 name 即删除并连带清信）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/messages/boxes")]
-async fn message_box_upsert(
+pub(crate) async fn message_box_upsert(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<BoxReq>,

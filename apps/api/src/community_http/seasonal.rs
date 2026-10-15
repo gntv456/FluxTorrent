@@ -28,6 +28,14 @@ struct SeasonalQuery {
 }
 
 /// 当季新番：默认当季，可指定；附有内容的季列表供前台切换。
+#[utoipa::path(
+    get,
+    path = "/api/v1/seasonal",
+    tag = "社区/其它",
+    description = "当季内容（限定/seasonal 板块的当季清单）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/seasonal")]
 pub async fn seasonal_anime(
     req: HttpRequest,

@@ -50,8 +50,20 @@ struct ForumSearchQuery {
 ///    搜索却照样命中并把主题递出去。
 /// 现在：非特权读者在 protected 版块只匹配/只出「一楼」（一楼本就是公开
 /// 正文）；隐藏分区的内容只对 staff（class≥90）可见。
+#[utoipa::path(
+    get,
+    path = "/api/v1/forums/search",
+    tag = "社区/论坛",
+    description = "论坛全文搜索（主题/回帖两段，结果带命中片段）。",
+    params(
+        ("q" = String, description = "搜索词"),
+        ("scope" = Option<String>, description = "搜索范围"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/forums/search")]
-async fn forum_search(
+pub(crate) async fn forum_search(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<ForumSearchQuery>,
@@ -147,14 +159,22 @@ struct ForumCatRow {
 
 /// 版块精简行（移动主题下拉用）
 #[derive(sqlx::FromRow, serde::Serialize)]
-struct BoardBrief {
+pub(crate) struct BoardBrief {
     id: i64,
     name: String,
     category_name: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/forums",
+    tag = "社区/论坛",
+    description = "版块列表（分区 + 每版块统计；含空分区，前台据此渲染左栏）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/forums")]
-async fn forum_list(
+pub(crate) async fn forum_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
@@ -263,31 +283,4 @@ async fn forum_list(
         });
     }
     Ok(ok(serde_json::json!({ "categories": cats, "forums": out })))
-}
-
-/// 全站版块精简列表（「移动主题到…」下拉的数据源）。
-/// 口径与 forum_list 的版块过滤一致：只回当前用户可读的版块，不泄漏隐藏版块名。
-#[get("/forums/boards")]
-async fn forum_boards(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let is_staff = auth.class_id >= 93;
-    let rows: Vec<BoardBrief> = sqlx::query_as(
-        "SELECT f.id, f.name, c.name AS category_name \
-         FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id \
-         WHERE (f.minclassread <= $1 OR EXISTS ( \
-                 SELECT 1 FROM forum_mods fm \
-                  WHERE fm.forum_id = f.id AND fm.user_id = $2)) \
-           AND (c.id IS NULL OR c.visible = TRUE OR $3) \
-         ORDER BY c.sort NULLS LAST, c.id NULLS LAST, f.sort, f.id",
-    )
-    .bind(auth.class_id)
-    .bind(auth.id)
-    .bind(is_staff)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
 }

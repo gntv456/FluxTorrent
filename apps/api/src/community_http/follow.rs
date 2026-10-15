@@ -10,7 +10,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-fn normalize_follow_type(raw: &str) -> Option<&'static str> {
+pub(crate) fn normalize_follow_type(raw: &str) -> Option<&'static str> {
     match raw.trim().to_ascii_lowercase().as_str() {
         "user" => Some("user"),
         "forum" => Some("forum"),
@@ -19,7 +19,7 @@ fn normalize_follow_type(raw: &str) -> Option<&'static str> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct FollowReq {
     target_type: String,
     target_id: i64,
@@ -76,8 +76,17 @@ async fn validate_follow_target(
     Ok(())
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/follows",
+    tag = "社区/关注",
+    description = "关注对象（type 区分种子/主题/用户）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/follows")]
-async fn follow_create(
+pub(crate) async fn follow_create(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<FollowReq>,
@@ -113,9 +122,21 @@ async fn follow_create(
         "followers": followers,
     })))
 }
-
+#[utoipa::path(
+    delete,
+    path = "/api/v1/follows/{ttype}/{tid}",
+    tag = "社区/关注",
+    description = "取消关注。",
+    params(
+        ("ttype" = String, description = "关注类型"),
+        ("tid" = i64, description = "目标 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[delete("/follows/{ttype}/{tid}")]
-async fn follow_delete(
+pub(crate) async fn follow_delete(
     req: HttpRequest,
     path: web::Path<(String, i64)>,
     state: web::Data<std::sync::Arc<AppState>>,
@@ -148,121 +169,5 @@ async fn follow_delete(
         "target_id": tid,
         "following": false,
         "followers": followers,
-    })))
-}
-
-#[derive(Deserialize)]
-struct FollowStatusQuery {
-    target_type: String,
-    target_id: i64,
-}
-
-/// 关注状态。用户页无当前登录者信息，故 `is_self` 也在这里回给前端，由组件决定隐藏按钮。
-#[get("/follows/status")]
-async fn follow_status(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: crate::http::Q<FollowStatusQuery>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let Some(ttype) = normalize_follow_type(&q.target_type) else {
-        return Err(DomainError::Validation("非法的关注对象".into()));
-    };
-    let following: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM follows WHERE user_id = $1 AND \
-         target_type = $2 AND target_id = $3)",
-    )
-    .bind(auth.id)
-    .bind(ttype)
-    .bind(q.target_id)
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(false);
-    let followers: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM follows WHERE target_type = $1 AND \
-         target_id = $2",
-    )
-    .bind(ttype)
-    .bind(q.target_id)
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(0);
-    Ok(ok(serde_json::json!({
-        "following": following,
-        "followers": followers,
-        "is_self": ttype == "user" && q.target_id == auth.id,
-    })))
-}
-
-#[derive(Deserialize)]
-struct FollowMineQuery {
-    #[serde(default)]
-    target_type: Option<String>,
-}
-
-/// 我的关注列表。只关注用户时返回 username，关注版块返回 name，关注主题返回 title——
-/// 一次 JOIN 三张表反而更绕，改成按 type 分别取再合并（数量级很小）。
-#[get("/follows/mine")]
-async fn follow_mine(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: crate::http::Q<FollowMineQuery>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let want =
-        match q.target_type.as_deref() {
-            Some(s) => Some(normalize_follow_type(s).ok_or_else(|| {
-                DomainError::Validation("非法的关注对象".into())
-            })?),
-            None => None,
-        };
-    let mut users: Vec<serde_json::Value> = Vec::new();
-    let mut forums: Vec<serde_json::Value> = Vec::new();
-    let mut topics: Vec<serde_json::Value> = Vec::new();
-
-    if want.is_none() || want == Some("user") {
-        let rows: Vec<(i64, String)> = sqlx::query_as(
-            "SELECT u.id, u.username FROM follows f JOIN users u ON u.id = f.target_id \
-             WHERE f.user_id = $1 AND f.target_type = 'user' ORDER BY f.created_at DESC LIMIT 200",
-        )
-        .bind(auth.id)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        users = rows
-            .into_iter()
-            .map(|(id, username)| serde_json::json!({ "id": id, "name": username }))
-            .collect();
-    }
-    if want.is_none() || want == Some("forum") {
-        let rows: Vec<(i64, String)> = sqlx::query_as(
-            "SELECT fc.id, fc.name FROM follows f JOIN forums fc ON fc.id = f.target_id \
-             WHERE f.user_id = $1 AND f.target_type = 'forum' ORDER BY f.created_at DESC LIMIT 200",
-        )
-        .bind(auth.id)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        forums = rows
-            .into_iter()
-            .map(|(id, name)| serde_json::json!({ "id": id, "name": name }))
-            .collect();
-    }
-    if want.is_none() || want == Some("topic") {
-        let rows: Vec<(i64, String, i64)> = sqlx::query_as(
-            "SELECT t.id, t.title, t.forum_id FROM follows f JOIN topics t ON t.id = f.target_id \
-             WHERE f.user_id = $1 AND f.target_type = 'topic' ORDER BY f.created_at DESC LIMIT 200",
-        )
-        .bind(auth.id)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        topics = rows
-            .into_iter()
-            .map(|(id, title, forum_id)| serde_json::json!({ "id": id, "name": title, "forum_id": forum_id }))
-            .collect();
-    }
-    Ok(ok(serde_json::json!({
-        "users": users, "forums": forums, "topics": topics,
     })))
 }

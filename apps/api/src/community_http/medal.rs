@@ -46,8 +46,16 @@ struct MedalRarityRow {
 
 /// 勋章稀有度词表（0143）：前台角标与后台下拉共用；词表主体在后台维护。
 /// 免鉴权——纯展示元数据，且 /medals 页面本身就可能以未登录态渲染。
+#[utoipa::path(
+    get,
+    path = "/api/v1/medal-rarities",
+    tag = "社区/勋章",
+    description = "勋章稀有度字典（供前端渲染边框样式）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/medal-rarities")]
-async fn medal_rarities(
+pub(crate) async fn medal_rarities(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let rows: Vec<MedalRarityRow> = sqlx::query_as(
@@ -75,8 +83,16 @@ pub async fn medals_max_worn(db: &sqlx::PgPool) -> i64 {
     .unwrap_or(3)
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/medals",
+    tag = "社区/勋章",
+    description = "勋章目录（含获取条件与佩戴态）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/medals")]
-async fn medal_list(
+pub(crate) async fn medal_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
@@ -105,7 +121,7 @@ async fn medal_list(
 /// 未知键 ⇒ `medal_id=None` 与 `wear=None` 会各自落到「取消全部佩戴」与
 /// `unwrap_or(!currently)` 的 toggle 分支——客户端一个笔误就能把勋章**摘下来**
 /// 而接口回 200。省略字段本身的既有语义不变（`wear` 缺省仍按 toggle）。
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 struct WearReq {
     medal_id: Option<i64>,
@@ -115,8 +131,17 @@ struct WearReq {
     wear: Option<bool>,
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/medals/wear",
+    tag = "社区/勋章",
+    description = "佩戴/卸下勋章（同部位互斥）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[put("/medals/wear")]
-async fn medal_wear(
+pub(crate) async fn medal_wear(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<WearReq>,
@@ -194,8 +219,16 @@ async fn medal_wear(
     Ok(ok(serde_json::json!({ "medal_id": mid, "wearing": wear })))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/medals",
+    tag = "社区/勋章",
+    description = "我的勋章（已获得/佩戴中）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/medals")]
-async fn my_medals(
+pub(crate) async fn my_medals(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {

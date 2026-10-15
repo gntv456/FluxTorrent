@@ -233,6 +233,14 @@ pub(crate) struct TagChipRow {
 
 /// 论坛标签字典（发帖选择器 + TagChip 渲染样式源）：只出启用中的论坛域标签（0138 scope=forum）。
 /// 公开读——种子页/版块页 SSR 要在登录前渲染标签筛选，与 /tags-dict（种子口径）同级的公开词表。
+#[utoipa::path(
+    get,
+    path = "/api/v1/forums/tags",
+    tag = "社区/论坛",
+    description = "论坛标签字典（供发帖时选标）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/forums/tags")]
 pub(crate) async fn forum_tags_dict(
     _req: HttpRequest,

@@ -1520,13 +1520,13 @@
    "method": "GET",
    "path": "/follows/status",
    "handler": "follow_status",
-   "file": "apps/api/src/community_http/follow.rs"
+   "file": "apps/api/src/community_http/follow_read.rs"
   },
   {
    "method": "GET",
    "path": "/follows/mine",
    "handler": "follow_mine",
-   "file": "apps/api/src/community_http/follow.rs"
+   "file": "apps/api/src/community_http/follow_read.rs"
   },
   {
    "method": "GET",
@@ -1550,7 +1550,7 @@
    "method": "GET",
    "path": "/forums/boards",
    "handler": "forum_boards",
-   "file": "apps/api/src/community_http/forums.rs"
+   "file": "apps/api/src/community_http/forums_boards.rs"
   },
   {
    "method": "POST",
@@ -1568,7 +1568,7 @@
    "method": "POST",
    "path": "/friends/action",
    "handler": "friend_action",
-   "file": "apps/api/src/community_http/friend.rs"
+   "file": "apps/api/src/community_http/friend_action.rs"
   },
   {
    "method": "POST",
@@ -1817,16 +1817,16 @@
    "file": "apps/api/src/community_http/post_edit.rs"
   },
   {
-   "method": "DELETE",
-   "path": "/forums/topics/{id}",
-   "handler": "topic_delete",
-   "file": "apps/api/src/community_http/post_edit.rs"
-  },
-  {
    "method": "GET",
    "path": "/forums/topics/{id}",
    "handler": "topic_detail",
    "file": "apps/api/src/community_http/post_read.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/topics/{id}",
+   "handler": "topic_delete",
+   "file": "apps/api/src/community_http/post_topic_delete.rs"
   },
   {
    "method": "POST",
@@ -1859,6 +1859,12 @@
    "file": "apps/api/src/community_http/shoutbox.rs"
   },
   {
+   "method": "GET",
+   "path": "/matches/{id}",
+   "handler": "match_detail",
+   "file": "apps/api/src/community_http/sport_match_detail.rs"
+  },
+  {
    "method": "POST",
    "path": "/admin/matches",
    "handler": "admin_match_create",
@@ -1874,12 +1880,6 @@
    "method": "GET",
    "path": "/matches",
    "handler": "matches_list",
-   "file": "apps/api/src/community_http/sport_matches.rs"
-  },
-  {
-   "method": "GET",
-   "path": "/matches/{id}",
-   "handler": "match_detail",
    "file": "apps/api/src/community_http/sport_matches.rs"
   },
   {

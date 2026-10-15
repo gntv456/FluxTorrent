@@ -11,13 +11,22 @@ use crate::state::AppState;
 
 // ============ 好友（M16） ============
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct FriendReq {
     username: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/friends",
+    tag = "社区/好友",
+    description = "加好友申请。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/friends")]
-async fn friend_add(
+pub(crate) async fn friend_add(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<FriendReq>,
@@ -118,8 +127,16 @@ struct FriendRow {
     list: String,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/friends",
+    tag = "社区/好友",
+    description = "好友列表（互关状态）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/friends")]
-async fn friend_list(
+pub(crate) async fn friend_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
@@ -143,150 +160,9 @@ async fn friend_list(
     Ok(ok(rows))
 }
 
-#[derive(Deserialize)]
-struct FriendActionReq {
-    username: String,
+#[derive(Deserialize, utoipa::ToSchema)]
+pub(crate) struct FriendActionReq {
+    pub(crate) username: String,
     /// black = 拉黑；unblack = 取消拉黑
-    action: String,
-}
-
-/// 好友操作：拉黑/取消拉黑入口（此前黑名单只有消费端没有生产端，PM 拦截成死代码）。
-/// 拉黑语义：upsert 我为 user_id 的行 list='black'；并撤回我对对方的 pending 申请。
-#[post("/friends/action")]
-async fn friend_action(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<FriendActionReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let fid: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE username = $1 AND status < 2",
-    )
-    .bind(&body.username)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .flatten();
-    let Some(fid) = fid else {
-        return Err(DomainError::NotFound(0));
-    };
-    if fid == auth.id {
-        return Err(DomainError::Validation("不能对自己操作".into()));
-    }
-    match body.action.as_str() {
-        "black" => {
-            sqlx::query(
-                "INSERT INTO friendships (user_id, friend_id, list) VALUES ($1, $2, 'black') \
-                 ON CONFLICT (user_id, friend_id) DO UPDATE SET list = 'black'",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            sqlx::query(
-                "DELETE FROM friendships WHERE user_id = $1 \
-                 AND friend_id = $2 AND list = 'pending'",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            Ok(ok(
-                serde_json::json!({ "user": body.username, "state": "black" }),
-            ))
-        }
-        "unblack" => {
-            let n = sqlx::query(
-                "DELETE FROM friendships WHERE user_id = $1 \
-                 AND friend_id = $2 AND list = 'black'",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
-            Ok(ok(
-                serde_json::json!({ "user": body.username, "removed": n }),
-            ))
-        }
-        // 接受收到的申请（对方→我的 pending）。界面「接受」按钮走这条，
-        // 与 friend_create 的互转正路径同口径（含给对方的系统信）。
-        "accept" => {
-            let they_pending: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = $2 \
-                 AND friend_id = $1 AND list = 'pending')",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            if !they_pending {
-                return Err(DomainError::Validation(
-                    "没有待处理的好友申请".into(),
-                ));
-            }
-            sqlx::query(
-                "UPDATE friendships SET list = 'friend' WHERE \
-                 (user_id = $1 AND friend_id = $2) \
-                 OR (user_id = $2 AND friend_id = $1)",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            // 单向接受时我这一侧还没有行，光 UPDATE 只会翻转对方那一行——
-            // 好友关系必须是双向两行（accept_pm='friends' 之外，
-            // 好友列表/黑名单两侧都按 user_id=我 读）。
-            sqlx::query(
-                "INSERT INTO friendships (user_id, friend_id, list) \
-                 VALUES ($1, $2, 'friend') \
-                 ON CONFLICT (user_id, friend_id) \
-                 DO UPDATE SET list = 'friend'",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            let _ = sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-                 VALUES (NULL, $1, $2, $3)",
-            )
-            .bind(fid)
-            .bind("好友申请已通过")
-            .bind(format!(
-                "用户 #{} 接受了你的好友申请，你们现在是好友了。",
-                auth.id
-            ))
-            .execute(&state.repo.db)
-            .await;
-            Ok(ok(
-                serde_json::json!({ "user": body.username, "state": "friend" }),
-            ))
-        }
-        // 拒绝 = 只撤掉对方发来的那条申请，不通知（NP 同口径）
-        "reject" => {
-            let n = sqlx::query(
-                "DELETE FROM friendships WHERE user_id = $2 \
-                 AND friend_id = $1 AND list = 'pending'",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
-            Ok(ok(serde_json::json!({
-                "user": body.username, "rejected": n as i64,
-            })))
-        }
-        _ => Err(DomainError::Validation(
-            "action 需为 black / unblack / accept / reject".into(),
-        )),
-    }
+    pub(crate) action: String,
 }

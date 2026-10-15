@@ -192,7 +192,7 @@ review.rs 与 review_batch.rs 需要人工同步计数逻辑（0288 纪律）、
 |---|---|---|
 | 1 | 路由清单 100% 机器可读且防漂移过 CI | ✅ 745 条一致（`route_manifest_guard`） |
 | 2 | 错误码注册表自动生成文档与 TS 常量 | ✅ 三方对拍闸门 `pt_err_code_parity_guard.py`（2026-10-16）：TS ≡ Rust ≡ 21 码、Rust ⊆ i18n 24 码（3 个预留给非 code() 直调）、生成物同步；期间清掉 5 个 Rust 侧从无此变体的幽灵码（1001/2008/3001/3002/5001，零消费点）与 1 处 i18n 漏文案（4102 回落「内部错误」）；两个方向红测均验证判据承重 |
-| 3 | compat+开放 API 域 100% utoipa，其余 ≥80% | ⚠️ 前半达标：两域 28 条 **100%**、手写 spec 路径归零（`openapi_cov_guard` 全绿）。后半是量级问题：现网 spec 34 条 / 全站 774 条 = **4.4%**，到 80% 需再注解约 590 条，属 F4 「分域推进、持续」的长期工作量，非一次性收口项 |
+| 3 | compat+开放 API 域 100% utoipa，其余 ≥80% | ⚠️ 前半达标：两域 28 条 **100%**、手写 spec 路径归零（`openapi_cov_guard` 全绿）。后半已分两批推进：种子域 38 条 + 社区域 85 条注解化并入 `OpenApiOpen` 聚合（17 开放 + 38 种子 + 85 社区 = **140 操作 / 141 路径键**），现网 spec 159 操作 / 全站 774 条 = **20.5%**（上一轮 9.6%，本轮 +10.9pt）。剩余约 79.5% 仍是 F4 「分域推进、持续」的长期量，非一次性收口项。判据：`openapi_cov_guard` 新增社区域 85 条逐条对拍（route-manifest 为事实源，新增社区路由忘注解即红） |
 | 4 | 分层宪法三条进门禁且红测有效 | ✅ 门禁在 CI 且**实证拦到 2 例**（jixiao_reads 已处置、list_prefs 已下沉 `repo/user_prefs.rs`）；`services/`+`domain/` 已有先例文件；存量 367 文件按棘轮只许降 |
 | 5 | review_decide / hr_pardon 双入口归零 | ✅ 两例都在 `services/`：`review_decide.rs`（裁决副作用唯一居所）与 `hr_pardon.rs`（2026-10-15 抽离，签名为纯数据不再收 `web::Data`/`&AuthUser`；三处调用方 gaps 单发 / gaps 批量 / admin_p3 批量共用同一判据） |
 | 6 | 状态机迁移判定进 domain/ 纯函数 + 矩阵单测 | ✅ `domain/torrent_status.rs`（154 行 / 4 个 `#[test]`） |

@@ -1,0 +1,1427 @@
+{
+ "torrent_http": [
+  {
+   "method": "GET",
+   "path": "/torrents/{id}",
+   "tag": "种子",
+   "desc": "种子详情（会话鉴权）。持 view_anonymous 权限者可见匿名种子的真实发布者；staff 对暂缓/待审种也可见。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/admin/torrents/{id}/logs/{ordinal}/adjust",
+   "tag": "种子",
+   "desc": "抓轨日志人工修正（staff；补记/更正漏抓的 announce 事件）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ],
+    [
+     "ordinal",
+     "i64",
+     "日志序号"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/admin/trumps",
+   "tag": "种子",
+   "desc": "撤种裁决总览（staff；按状态/时间分页）。",
+   "params": [
+    [
+     "status",
+     "Option<String>",
+     "裁决状态筛选"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/admin/trumps/{id}/resolve",
+   "tag": "种子",
+   "desc": "裁决撤种申请（staff；维持/推翻/封禁三选一，写操作留痕）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "裁决 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents",
+   "tag": "种子",
+   "desc": "种子列表（0102 存活三态 + 多维筛选 + 二元 keyset 游标分页）。\\n默认视图只给活种；响应 hidden_dead 告知被存活谓词藏起的断种数。",
+   "params": [
+    [
+     "category_id",
+     "Option<Vec<i32>>",
+     "分类多选（ANY 命中）"
+    ],
+    [
+     "search",
+     "Option<String>",
+     "关键字（AND 模糊，%/_ 已转义）"
+    ],
+    [
+     "alive",
+     "Option<i16>",
+     "存活三态：缺省=仅活种 0=全部 1=仅活种 2=仅断种"
+    ],
+    [
+     "sort",
+     "Option<String>",
+     "排序键 +_asc 后缀反转；asc 前缀反转方向"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/detail",
+   "tag": "种子",
+   "desc": "详情页扩展数据（简介/文件数/感谢数），与详情合并渲染。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/files",
+   "tag": "种子",
+   "desc": "文件树（按目录层级返回，付费种需已购或为发布者本人）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/thanks",
+   "tag": "种子",
+   "desc": "感谢者列表（分页）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/comments",
+   "tag": "种子",
+   "desc": "评论列表（分页，含点赞数与楼中楼计数）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/snatches",
+   "tag": "种子",
+   "desc": "抓取列表（做种/下载两种视角，按 viewer 过滤）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/nfo",
+   "tag": "种子",
+   "desc": "NFO 原文（text/plain）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/magnet",
+   "tag": "种子",
+   "desc": "磁力链接。响应体内嵌本人 passkey 的 announce——\\n与 .torrent 下载同闸门（ES36）：被停下载/挂起账号拒发，\\n付费种必须已有购买记录。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/peers",
+   "tag": "种子",
+   "desc": "当前 peer 列表（tracker 汇报口径，按 IP 聚合并做隐私截断）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/tags",
+   "tag": "种子",
+   "desc": "种子标签列表（0159 标签体系）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/related",
+   "tag": "种子",
+   "desc": "相关种子（同分类/同发布者的邻近推荐）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/file-conflicts",
+   "tag": "种子",
+   "desc": "文件冲突检查（辅种前的同种不同文件比对）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/suggest",
+   "tag": "种子",
+   "desc": "发种建议（按分类给出尚未发布的热门内容提示）。",
+   "params": []
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/logs/{ordinal}",
+   "tag": "种子",
+   "desc": "抓轨日志正文（0312；ordinal 为该种日志序号）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ],
+    [
+     "ordinal",
+     "i64",
+     "日志序号"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/comments",
+   "tag": "种子",
+   "desc": "发评论。触发门槛：注册满 N 天、魔力/做种量达标（见站规）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "DELETE",
+   "path": "/torrents/{id}/comments/{cid}",
+   "tag": "种子",
+   "desc": "删评论（作者本人或持 forum 删帖权）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ],
+    [
+     "cid",
+     "i64",
+     "评论 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/comments/{cid}/like",
+   "tag": "种子",
+   "desc": "评论点赞切换（返回切换后的点赞数与当前状态）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ],
+    [
+     "cid",
+     "i64",
+     "评论 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/thanks",
+   "tag": "种子",
+   "desc": "感谢（已感谢过返回 code 5002）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/reseed",
+   "tag": "种子",
+   "desc": "求种（挂出求种位；过期天数 <=0 走 30 天兜底，避免悬赏永久冻结）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}/tags",
+   "tag": "种子",
+   "desc": "覆盖写标签（0159；any/all 两种匹配口径由 tag_all 决定）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}/bookmark",
+   "tag": "种子",
+   "desc": "收藏切换。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}",
+   "tag": "种子",
+   "desc": "编辑种子（发布者本人或持编辑权；改 info dict 会动 info_hash，\\n故被同种判为重复——这是刻意口径）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/torrents/{id}/price",
+   "tag": "种子",
+   "desc": "设置付费价格（发布者本人）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/restore",
+   "tag": "种子",
+   "desc": "回收站恢复（软删种置回通过态）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/resubmit",
+   "tag": "种子",
+   "desc": "重新提交审核（下架/驳回种走这条路回到审核台）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "DELETE",
+   "path": "/torrents/{id}",
+   "tag": "种子",
+   "desc": "软删种子（进回收站，管理员口可硬删）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/previews",
+   "tag": "种子",
+   "desc": "预览图列表。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/previews",
+   "tag": "种子",
+   "desc": "上传预览图（发布者本人；多图按 sort 排序）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "DELETE",
+   "path": "/torrents/{id}/previews",
+   "tag": "种子",
+   "desc": "删预览图（发布者本人）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/cue-check",
+   "tag": "种子",
+   "desc": "分卷一致性检查（比对同种各卷的 cue/文件树是否吻合）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/aggregate",
+   "tag": "种子",
+   "desc": "详情聚合口（一次返回详情+文件树+扩展，减少客户端往返）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/batch-download",
+   "tag": "种子",
+   "desc": "批量下载（一次下发多个 .torrent；仍逐条过下载闸门与扣费）。",
+   "params": []
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/trump",
+   "tag": "种子",
+   "desc": "申请撤种裁决（Trump：认为被误判/需复核）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/trumps",
+   "tag": "种子",
+   "desc": "该种的撤种裁决历史。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "种子 id"
+    ]
+   ]
+  }
+ ],
+ "community_http": [
+  {
+   "method": "DELETE",
+   "path": "/follows/{ttype}/{tid}",
+   "tag": "社区/关注",
+   "desc": "取消关注。",
+   "params": [
+    [
+     "ttype",
+     "String",
+     "关注类型"
+    ],
+    [
+     "tid",
+     "i64",
+     "目标 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/posts/{id}",
+   "tag": "社区/社区",
+   "desc": "删回帖（作者本人；删主题走 /forums/topics/{id}）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "回帖 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "非作者且无删帖权（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/posts/{id}/like",
+   "tag": "社区/论坛",
+   "desc": "取消回帖点赞。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "回帖 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/topics/{id}",
+   "tag": "社区/论坛",
+   "desc": "删主题（作者或版主；级联删回帖）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "主题 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "非作者且无删帖权（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "DELETE",
+   "path": "/forums/topics/{id}/favorite",
+   "tag": "社区/论坛",
+   "desc": "取消收藏主题。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "主题 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/artists",
+   "tag": "社区/艺人",
+   "desc": "艺人列表（分页 + 搜索）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/artists/top",
+   "tag": "社区/艺人",
+   "desc": "热门艺人榜。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/artists/{id}",
+   "tag": "社区/艺人",
+   "desc": "艺人详情（含作品列表）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "艺人 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/follows/mine",
+   "tag": "社区/关注",
+   "desc": "我的关注列表（按类型分组）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/follows/status",
+   "tag": "社区/关注",
+   "desc": "关注状态批量查询（供列表页标星）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/forums",
+   "tag": "社区/论坛",
+   "desc": "版块列表（分区 + 每版块统计；含空分区，前台据此渲染左栏）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/forums/boards",
+   "tag": "社区/论坛",
+   "desc": "版块看板口径（活跃度排序的简化列表，供首页用）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/forums/embed-rules",
+   "tag": "社区/论坛",
+   "desc": "外链嵌入规则（哪些站点允许 oEmbed/iframe）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/forums/feed",
+   "tag": "社区/论坛",
+   "desc": "论坛 RSS/Atom 输出（最新主题）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/forums/search",
+   "tag": "社区/论坛",
+   "desc": "论坛全文搜索（主题/回帖两段，结果带命中片段）。",
+   "params": [
+    [
+     "q",
+     "String",
+     "搜索词"
+    ],
+    [
+     "scope",
+     "Option<String>",
+     "搜索范围"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/forums/tags",
+   "tag": "社区/论坛",
+   "desc": "论坛标签字典（供发帖时选标）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/forums/topics/{id}",
+   "tag": "社区/论坛",
+   "desc": "主题详情（含全部回帖、点赞数、投票状态）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "主题 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "私密版块或无阅读权（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/forums/{id}/topics",
+   "tag": "社区/论坛",
+   "desc": "某版块的主题列表（分页 + 置顶置序）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "版块 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "无该版块阅读权（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/friends",
+   "tag": "社区/好友",
+   "desc": "好友列表（互关状态）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/matches",
+   "tag": "社区/赛事",
+   "desc": "赛事列表（进行中/已结束）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/matches/{id}",
+   "tag": "社区/赛事",
+   "desc": "赛事详情（含对阵与比分）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "赛事 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/list-prefs",
+   "tag": "社区/其它",
+   "desc": "列表偏好（每页条数/含断种/促销筛选等）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/medals",
+   "tag": "社区/勋章",
+   "desc": "我的勋章（已获得/佩戴中）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/messages/stream",
+   "tag": "社区/消息",
+   "desc": "站内信 SSE 长连接（有新信时推事件）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/notice-prefs",
+   "tag": "社区/通知",
+   "desc": "我的通知偏好（13 档逐项开关）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/staffmessages",
+   "tag": "社区/联络",
+   "desc": "我发给管理组的消息。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/subscriptions/calendar",
+   "tag": "社区/订阅",
+   "desc": "订阅日历（按日期列出当天更新）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/subscriptions/groups",
+   "tag": "社区/订阅",
+   "desc": "我订阅的字幕组（含更新数）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/me/subscriptions/networks",
+   "tag": "社区/订阅",
+   "desc": "我订阅的制作组/厂牌。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/medal-rarities",
+   "tag": "社区/勋章",
+   "desc": "勋章稀有度字典（供前端渲染边框样式）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/medals",
+   "tag": "社区/勋章",
+   "desc": "勋章目录（含获取条件与佩戴态）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/messages/boxes",
+   "tag": "社区/消息",
+   "desc": "自定义文件夹列表（含每夹未删信件数）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/messages/inbox",
+   "tag": "社区/消息",
+   "desc": "收件箱（分页；未读数随信封返回）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/messages/sent",
+   "tag": "社区/消息",
+   "desc": "发件箱。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/messages/staff",
+   "tag": "社区/消息",
+   "desc": "站内信-管理组信箱（发往管理组的消息）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/networks",
+   "tag": "社区/网络",
+   "desc": "制作组/厂牌列表。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/networks/top",
+   "tag": "社区/网络",
+   "desc": "热门网络（按作品/订阅数）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/networks/{id}",
+   "tag": "社区/网络",
+   "desc": "网络详情（含成员与作品数）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "网络 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/pool/honor",
+   "tag": "社区/其它",
+   "desc": "奖池荣誉榜（池子返还率受 PoolGuard 约束）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/seasonal",
+   "tag": "社区/其它",
+   "desc": "当季内容（限定/seasonal 板块的当季清单）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/shoutbox",
+   "tag": "社区/喊话",
+   "desc": "喊话列表（滚动播报）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/shoutbox/bot",
+   "tag": "社区/喊话",
+   "desc": "喊话机器人配置读取（需 staff 权）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/shoutbox/bot/exec",
+   "tag": "社区/喊话",
+   "desc": "执行喊话机器人指令（需 staff 权；高危操作有审计）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/staff/leaks",
+   "tag": "社区/站务",
+   "desc": "数据泄露举报列表（需 staff 权）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/staffmessages",
+   "tag": "社区/联络",
+   "desc": "管理组信箱（需 staff 权）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "GET",
+   "path": "/stafftickets",
+   "tag": "社区/联络",
+   "desc": "我的工单列表（含状态流转）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/admin/matches",
+   "tag": "社区/赛事",
+   "desc": "新建赛事（需 staff 权）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/contactstaff",
+   "tag": "社区/联络",
+   "desc": "发起工单（联络管理组）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/follows",
+   "tag": "社区/关注",
+   "desc": "关注对象（type 区分种子/主题/用户）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/forums/bounty/award",
+   "tag": "社区/论坛",
+   "desc": "悬赏发奖（把赏金打给指定回帖者）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非悬赏发起人（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/forums/lottery/draw",
+   "tag": "社区/论坛",
+   "desc": "开奖（发起人；事务内防重放）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非发起人（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/forums/lottery/join",
+   "tag": "社区/论坛",
+   "desc": "参与论坛抽奖（先占位再扣费，失败回滚占位）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/forums/poll/close",
+   "tag": "社区/论坛",
+   "desc": "关闭投票并结算（作者或版主）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非作者且无版主权（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/forums/poll/vote",
+   "tag": "社区/论坛",
+   "desc": "投票（单选/多选；改票需在截止前）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/forums/posts/{id}/like",
+   "tag": "社区/论坛",
+   "desc": "回帖点赞（切换）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "回帖 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/forums/tip",
+   "tag": "社区/论坛",
+   "desc": "打赏（论坛感谢 + 魔力奖励）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics",
+   "tag": "社区/论坛",
+   "desc": "发主题（版块须可发；触发注册天数/做种量门槛）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "版块禁发或权限不足（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/manage-batch",
+   "tag": "社区/论坛",
+   "desc": "版主批量管理主题。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非版主（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/{id}/favorite",
+   "tag": "社区/论坛",
+   "desc": "收藏主题（切换）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "主题 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/{id}/manage",
+   "tag": "社区/论坛",
+   "desc": "版主管理单个主题（置顶/锁帖/移动/高亮）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "主题 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "非版主（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/forums/topics/{id}/reply",
+   "tag": "社区/论坛",
+   "desc": "回帖（论坛三档门槛 minclasswrite 判定）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "主题 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "无回帖权（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/friends",
+   "tag": "社区/好友",
+   "desc": "加好友申请。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/friends/action",
+   "tag": "社区/好友",
+   "desc": "好友操作（同意/拒绝/删除）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/me/list-prefs",
+   "tag": "社区/其它",
+   "desc": "改列表偏好。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/me/notice-prefs",
+   "tag": "社区/通知",
+   "desc": "改通知偏好（逐项；必达类档位不可关）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/me/staffmessages/confirm",
+   "tag": "社区/联络",
+   "desc": "确认管理组消息已读。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/medals/buy",
+   "tag": "社区/勋章",
+   "desc": "用魔力购买勋章。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/medals/gift",
+   "tag": "社区/勋章",
+   "desc": "赠送勋章给他人。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/messages",
+   "tag": "社区/消息",
+   "desc": "发站内信（可带 passkey 索取链接）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/messages/boxes",
+   "tag": "社区/消息",
+   "desc": "新建/改名/删除文件夹（改名传 id；清空 name 即删除并连带清信）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/messages/delete",
+   "tag": "社区/消息",
+   "desc": "删站内信（移到回收站；location 字段区分）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/messages/markread",
+   "tag": "社区/消息",
+   "desc": "标记已读（可按 id 列表或整信箱）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/messages/move",
+   "tag": "社区/消息",
+   "desc": "移动站内信到自定义文件夹。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/networks/{id}/subscribe",
+   "tag": "社区/订阅",
+   "desc": "订阅制作组/厂牌。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "网络 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/networks/{id}/unsubscribe",
+   "tag": "社区/订阅",
+   "desc": "取消订阅制作组/厂牌。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "网络 id"
+    ]
+   ],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/shoutbox",
+   "tag": "社区/喊话",
+   "desc": "发喊话（扣魔力；限频）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/shoutbox/delete",
+   "tag": "社区/喊话",
+   "desc": "删自己的喊话。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/staff/leaks/resolve",
+   "tag": "社区/站务",
+   "desc": "处理泄露举报（需 staff 权）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/staffmessages/answer",
+   "tag": "社区/联络",
+   "desc": "管理组回信（需 staff 权）。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "POST",
+   "path": "/staffmessages/delete",
+   "tag": "社区/联络",
+   "desc": "删除管理组消息（需 staff 权）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/staffmessages/mark",
+   "tag": "社区/联络",
+   "desc": "标记管理组消息状态（需 staff 权）。",
+   "params": [],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/stafftickets/update",
+   "tag": "社区/联络",
+   "desc": "追加工单回复。",
+   "params": [],
+   "errors": []
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/matches/{id}/score",
+   "tag": "社区/赛事",
+   "desc": "录入比分（需 staff 权；写操作留痕）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "赛事 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "非 staff（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/forums/posts/{id}",
+   "tag": "社区/论坛",
+   "desc": "改自己的回帖（作者或版主）。",
+   "params": [
+    [
+     "id",
+     "i64",
+     "回帖 id"
+    ]
+   ],
+   "errors": [
+    [
+     403,
+     "非作者且无编辑权（code 2003）"
+    ]
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/medals/wear",
+   "tag": "社区/勋章",
+   "desc": "佩戴/卸下勋章（同部位互斥）。",
+   "params": [],
+   "errors": []
+  }
+ ]
+}

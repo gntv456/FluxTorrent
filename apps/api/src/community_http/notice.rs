@@ -12,8 +12,16 @@ use crate::state::AppState;
 // ============ 通知偏好 + 站免池荣誉榜（0075） ============
 
 /// 我的通知偏好（缺省键 = 开）。已知事件类见 0075 迁移注释。
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/notice-prefs",
+    tag = "社区/通知",
+    description = "我的通知偏好（13 档逐项开关）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/notice-prefs")]
-async fn notice_prefs_get(
+pub(crate) async fn notice_prefs_get(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
@@ -27,15 +35,24 @@ async fn notice_prefs_get(
     Ok(ok(prefs))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct NoticePrefsSetReq {
     key: String,
     enabled: bool,
 }
 
 /// 设置单项通知偏好（白名单键，防塞任意 JSON）
+#[utoipa::path(
+    post,
+    path = "/api/v1/me/notice-prefs",
+    tag = "社区/通知",
+    description = "改通知偏好（逐项；必达类档位不可关）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/me/notice-prefs")]
-async fn notice_prefs_set(
+pub(crate) async fn notice_prefs_set(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<NoticePrefsSetReq>,
@@ -83,8 +100,16 @@ async fn notice_prefs_set(
 }
 
 /// 站免池贡献荣誉榜（0075，AB 池页口径：本月 + 累计，公开可见）
+#[utoipa::path(
+    get,
+    path = "/api/v1/pool/honor",
+    tag = "社区/其它",
+    description = "奖池荣誉榜（池子返还率受 PoolGuard 约束）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/pool/honor")]
-async fn pool_honor(
+pub(crate) async fn pool_honor(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     // SUM() 出来是 NUMERIC：query_as 元组按 i64 解码会 22P02 类 500，显式 cast

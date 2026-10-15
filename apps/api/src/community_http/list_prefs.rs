@@ -30,8 +30,16 @@ const VIEW_KEYS: [&str; 3] = ["table", "card", "poster"];
 const PER_PAGE: [i64; 3] = [20, 50, 100];
 
 /// 我的列表偏好（缺省 = 空对象，前端回落站点默认）
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/list-prefs",
+    tag = "社区/其它",
+    description = "列表偏好（每页条数/含断种/促销筛选等）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/list-prefs")]
-async fn list_prefs_get(
+pub(crate) async fn list_prefs_get(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
@@ -45,7 +53,7 @@ async fn list_prefs_get(
     Ok(ok(prefs))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct ListPrefsSetReq {
     /// 'view' | 'per_page' | 'hidden_cols'
     key: String,
@@ -54,8 +62,17 @@ struct ListPrefsSetReq {
 }
 
 /// 设置单项列表偏好（白名单键 + 值域校验）
+#[utoipa::path(
+    post,
+    path = "/api/v1/me/list-prefs",
+    tag = "社区/其它",
+    description = "改列表偏好。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/me/list-prefs")]
-async fn list_prefs_set(
+pub(crate) async fn list_prefs_set(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<ListPrefsSetReq>,

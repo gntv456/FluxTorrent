@@ -11,13 +11,26 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct PostEditReq {
     body: String,
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/forums/posts/{id}",
+    tag = "社区/论坛",
+    description = "改自己的回帖（作者或版主）。",
+    params(
+        ("id" = i64, description = "回帖 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非作者且无编辑权（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[put("/forums/posts/{id}")]
-async fn post_edit(
+pub(crate) async fn post_edit(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
@@ -75,8 +88,21 @@ async fn post_edit(
 }
 
 /// 删帖：仅版主/postmanage —— 普通用户（含作者本人）删不掉自己的帖，想删找版主
+#[utoipa::path(
+    delete,
+    path = "/api/v1/forums/posts/{id}",
+    tag = "社区/社区",
+    description = "删回帖（作者本人；删主题走 /forums/topics/{id}）。",
+    params(
+        ("id" = i64, description = "回帖 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非作者且无删帖权（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[delete("/forums/posts/{id}")]
-async fn post_delete(
+pub(crate) async fn post_delete(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,
@@ -142,141 +168,4 @@ async fn post_delete(
         .audit(Some(auth.id), "forum.post_delete", Some(pid))
         .await;
     Ok(ok(serde_json::json!({ "deleted": pid })))
-}
-
-/// 删主题：仅版主/postmanage；收回发帖 +2 火花（KPS("-", starttopic_bonus) 口径）
-#[delete("/forums/topics/{id}")]
-async fn topic_delete(
-    req: HttpRequest,
-    path: web::Path<i64>,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let tid = path.into_inner();
-    let fid: Option<i64> =
-        sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(fid) = fid else {
-        return Err(DomainError::NotFound(tid));
-    };
-    let perm =
-        forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
-    if !perm.can_mod {
-        return Err(DomainError::Forbidden);
-    }
-    let op: Option<i64> =
-        sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
-            .bind(tid)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    // 悬赏未决退回（0124）：open 状态的悬赏在删主题时退还楼主（已 awarded 的不动——钱已归答主）。
-    // 幂等键与发放错开：`-refund` 后缀，退回与发放都各只发生一次。
-    if let Some(op_id) = op {
-        let bounty_open: Option<i64> = sqlx::query_scalar(
-            "SELECT bounty_spark FROM topics WHERE id = $1 AND topic_type = 'bounty' \
-             AND bounty_status = 'open' AND bounty_spark > 0",
-        )
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        if let Some(refund) = bounty_open {
-            let _ = earn_spark(
-                &state.repo.db,
-                op_id,
-                refund,
-                "forum_bounty_refund",
-                &format!("forum-bounty-refund:{tid}"),
-            )
-            .await;
-            let _ = sqlx::query(
-                "UPDATE topics SET bounty_status = 'refunded' \
-                 WHERE id = $1 AND bounty_status = 'open'",
-            )
-            .bind(tid)
-            .execute(&state.repo.db)
-            .await;
-        }
-        // 抽奖未决退回（0126）：open 状态的抽奖在删主题时奖金池退还楼主（drawn 的不动——钱已归中奖人）。
-        // 票价不退（参与者享受了参与过程；与删悬赏帖不追回已发赏金同一不对称口径）。
-        let lot_open: Option<i64> = sqlx::query_scalar(
-            "SELECT winners::bigint * prize_per_winner FROM topic_lotteries \
-             WHERE topic_id = $1 AND status = 'open' AND prize_per_winner > 0",
-        )
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        if let Some(refund) = lot_open {
-            let _ = earn_spark(
-                &state.repo.db,
-                op_id,
-                refund,
-                "forum_lottery_refund",
-                &format!("forum-lottery-refund:{tid}"),
-            )
-            .await;
-            let _ = sqlx::query(
-                "UPDATE topic_lotteries SET status = \
-                 'cancelled' WHERE topic_id = $1 AND status = 'open'",
-            )
-            .bind(tid)
-            .execute(&state.repo.db)
-            .await;
-        }
-    }
-    if let Some(op_id) = op {
-        let _ = earn_spark(
-            &state.repo.db,
-            op_id,
-            -2,
-            "forum-topic-del",
-            &format!("forum-topic-del:{tid}"),
-        )
-        .await;
-    }
-    // 级联回收回帖 +1：主题删除会把全部回帖 CASCADE 掉，逐笔回收回帖奖励保持对称。
-    // 审计修复（P1 双重扣分）：楼主首帖也存于 posts（topic_create 落 posts 行），
-    // 旧版把它计为「回帖」再 -1，楼主实扣 -3（发帖 -2 + 首帖按回帖 -1）。
-    // 排除楼主首帖，楼主只按发帖口径 -2。
-    let replies: Vec<(i64, i64)> = sqlx::query_as(
-        "SELECT DISTINCT user_id, count(*) OVER (PARTITION BY user_id) FROM posts \
-         WHERE topic_id = $1 AND NOT (user_id = $2 AND id = (SELECT min(id) FROM posts WHERE topic_id = $1))",
-    )
-    .bind(tid)
-    .bind(op.unwrap_or(0))
-    .fetch_all(&state.repo.db)
-    .await
-    .unwrap_or_default();
-    for (uid, n) in replies {
-        let _ = earn_spark(
-            &state.repo.db,
-            uid,
-            -(n as i64),
-            "forum-topic-del-reply",
-            &format!("forum-topic-del-reply:{tid}:{uid}"),
-        )
-        .await;
-    }
-    sqlx::query("DELETE FROM topics WHERE id = $1")
-        .bind(tid)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    // 关注本主题的行：target_id 无外键（指向 3 张表），必须应用层清理，否则留下悬空关注
-    let _ = sqlx::query(
-        "DELETE FROM follows WHERE target_type = 'topic' AND target_id = $1",
-    )
-    .bind(tid)
-    .execute(&state.repo.db)
-    .await;
-    state
-        .repo
-        .audit(Some(auth.id), "forum.topic_delete", Some(tid))
-        .await;
-    Ok(ok(serde_json::json!({ "deleted": tid })))
 }

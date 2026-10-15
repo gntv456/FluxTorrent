@@ -11,7 +11,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct LotteryJoinReq {
     topic_id: i64,
 }
@@ -20,8 +20,17 @@ struct LotteryJoinReq {
 /// · 仅 open 且未到 draw_at（到点等 worker 开奖，不接受「补票」）；
 /// · 楼主不能参与自己的抽奖（既当庄又下注必起纠纷）；
 /// · 一人一次（PK 幂等）；票价与占位原子（对齐 fun_vote/jgg 的 spend-then-insert 回滚纪律，此处反过来 insert-then-spend 失败删占位）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/lottery/join",
+    tag = "社区/论坛",
+    description = "参与论坛抽奖（先占位再扣费，失败回滚占位）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/lottery/join")]
-async fn lottery_join(
+pub(crate) async fn lottery_join(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<LotteryJoinReq>,
@@ -201,14 +210,24 @@ pub async fn lottery_draw_core(
     )
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct LotteryDrawReq {
     topic_id: i64,
 }
 
 /// 楼主手动开奖（提前开或到点 worker 没来得及时的兜底）。版主亦可（治理口径，同 poll_close）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/lottery/draw",
+    tag = "社区/论坛",
+    description = "开奖（发起人；事务内防重放）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非发起人（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/lottery/draw")]
-async fn lottery_draw(
+pub(crate) async fn lottery_draw(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<LotteryDrawReq>,

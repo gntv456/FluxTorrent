@@ -11,15 +11,28 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct ReplyReq {
     body: String,
     /// 楼中楼（0163）：回复的目标楼层 id；空 = 回主题（顶层楼）
     reply_to: Option<i64>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/forums/topics/{id}/reply",
+    tag = "社区/论坛",
+    description = "回帖（论坛三档门槛 minclasswrite 判定）。",
+    params(
+        ("id" = i64, description = "主题 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "无回帖权（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/forums/topics/{id}/reply")]
-async fn post_reply(
+pub(crate) async fn post_reply(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,

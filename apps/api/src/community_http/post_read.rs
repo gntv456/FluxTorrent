@@ -18,8 +18,20 @@ struct TopicDetailQuery {
     before: Option<i64>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/forums/topics/{id}",
+    tag = "社区/论坛",
+    description = "主题详情（含全部回帖、点赞数、投票状态）。",
+    params(
+        ("id" = i64, description = "主题 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "私密版块或无阅读权（code 2003）")))]
 #[get("/forums/topics/{id}")]
-async fn topic_detail(
+pub(crate) async fn topic_detail(
     req: HttpRequest,
     path: web::Path<i64>,
     state: web::Data<std::sync::Arc<AppState>>,

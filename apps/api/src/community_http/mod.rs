@@ -2,16 +2,30 @@
 //! 按域拆分（300 行门禁）：见各子模块头注释。
 
 use actix_web::web;
+
+// 拆分出来的 5 个子域（F4 加 utoipa 注解后贴线，按域拆出）
+pub(crate) use follow_read::*;
+pub(crate) use forums_boards::*;
+pub(crate) use friend_action::*;
+pub(crate) use post_topic_delete::*;
+pub(crate) use sport_match_detail::*;
+// 名字与模块同名/与既有导出歧义时用别名
+pub(crate) use friend_action::friend_action as friend_action_op;
+pub(crate) use follow_read::follow_status as follow_status_op;
+
 mod artists;
 mod bounty;
 mod embed_rules;
 mod embed_video;
 mod feed;
 mod follow;
+mod follow_read;
 mod forum_perm;
 mod forum_util;
 mod forums;
+mod forums_boards;
 mod friend;
+mod friend_action;
 mod interact;
 mod leak_bot;
 mod like;
@@ -30,12 +44,14 @@ mod networks;
 mod notice;
 mod post_ctx;
 mod post_edit;
+mod post_topic_delete;
 mod post_group;
 mod post_read;
 mod post_write;
 mod seasonal;
 mod shoutbox;
 mod sport_matches;
+mod sport_match_detail;
 mod staff_answer;
 mod staffbox;
 mod subs_calendar;
@@ -144,7 +160,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         // M15 论坛关注订阅（0121 用户/版块/主题 + 关注流）
         .service(follow_create)
         .service(follow_delete)
-        .service(follow_status)
+        .service(follow_status_op)
         .service(follow_mine)
         .service(forum_feed)
         // M15 论坛标签（0123：词表复用 tag_dict，只建 topic_tags 关联）
@@ -191,7 +207,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(message_stream)
         .service(friend_add)
         .service(friend_list)
-        .service(friend_action)
+        .service(friend_action_op)
 }
 
 /// 主配置：主 scope + 安装向导 + 经济路由 + 社区路由（单一 /api/v1 scope）

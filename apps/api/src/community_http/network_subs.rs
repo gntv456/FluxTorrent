@@ -25,6 +25,18 @@ struct SubQuery {
 }
 
 /// 订阅厂牌（幂等：重复订阅不报错，与组订阅 ON CONFLICT DO NOTHING 同口径）
+#[utoipa::path(
+    post,
+    path = "/api/v1/networks/{id}/subscribe",
+    tag = "社区/订阅",
+    description = "订阅制作组/厂牌。",
+    params(
+        ("id" = i64, description = "网络 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/networks/{id}/subscribe")]
 pub async fn network_subscribe(
     req: HttpRequest,
@@ -56,6 +68,18 @@ pub async fn network_subscribe(
 }
 
 /// 退订厂牌
+#[utoipa::path(
+    post,
+    path = "/api/v1/networks/{id}/unsubscribe",
+    tag = "社区/订阅",
+    description = "取消订阅制作组/厂牌。",
+    params(
+        ("id" = i64, description = "网络 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/networks/{id}/unsubscribe")]
 pub async fn network_unsubscribe(
     req: HttpRequest,
@@ -77,6 +101,14 @@ pub async fn network_unsubscribe(
 }
 
 /// 我的厂牌订阅（带该厂牌在档过审种数，对齐 /artists 列表口径）
+#[utoipa::path(
+    get,
+    path = "/api/v1/me/subscriptions/networks",
+    tag = "社区/订阅",
+    description = "我订阅的制作组/厂牌。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/me/subscriptions/networks")]
 pub async fn my_network_subscriptions(
     req: HttpRequest,

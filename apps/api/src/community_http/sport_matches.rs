@@ -15,7 +15,7 @@ use crate::state::AppState;
 
 // ============ admin 维护面 ============
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct MatchBody {
     league: String,
     #[serde(default)]
@@ -52,6 +52,16 @@ fn parse_ts(
 }
 
 /// 建赛（staff，TORRENT_REVIEW 权限口径——比分是站点公信数据）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/matches",
+    tag = "社区/赛事",
+    description = "新建赛事（需 staff 权）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[post("/admin/matches")]
 pub async fn admin_match_create(
     req: HttpRequest,
@@ -102,6 +112,19 @@ pub async fn admin_match_create(
 }
 
 /// 比分补录（赛后改分）。
+#[utoipa::path(
+    put,
+    path = "/api/v1/admin/matches/{id}/score",
+    tag = "社区/赛事",
+    description = "录入比分（需 staff 权；写操作留痕）。",
+    params(
+        ("id" = i64, description = "赛事 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "非 staff（code 2003）"),
+        (status = 422, description = "参数校验失败（code 1002）")))]
 #[put("/admin/matches/{id}/score")]
 pub async fn admin_match_score(
     req: HttpRequest,
@@ -167,6 +190,14 @@ fn match_row(m: &serde_json::Value, torrents: i64) -> serde_json::Value {
 }
 
 /// 对阵列表（登录可读）：按联赛/赛季/轮次/队筛，近赛在前。
+#[utoipa::path(
+    get,
+    path = "/api/v1/matches",
+    tag = "社区/赛事",
+    description = "赛事列表（进行中/已结束）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/matches")]
 pub async fn matches_list(
     req: HttpRequest,
@@ -219,43 +250,4 @@ pub async fn matches_list(
         })
         .collect();
     Ok(ok(items))
-}
-
-/// 对阵页：该场全部过审种（全场/集锦/回放并列）。
-#[get("/matches/{id}")]
-pub async fn match_detail(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<impl Responder> {
-    let _auth = require_auth(&req, &state).await?;
-    let id = path.into_inner();
-    let m: Option<(serde_json::Value,)> = sqlx::query_as(
-        "SELECT to_jsonb(m) FROM sport_matches m WHERE m.id = $1",
-    )
-    .bind(id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((m,)) = m else {
-        return Err(DomainError::NotFound(id));
-    };
-    let items: Vec<(i64, String, i64, i32, i32)> = sqlx::query_as(
-        "SELECT id, name, size, seeders, times_completed FROM torrents \
-         WHERE match_id = $1 AND approval_status = 1 \
-         ORDER BY id DESC LIMIT 100",
-    )
-    .bind(id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({
-        "match": m,
-        "items": items.iter().map(|(tid, n, sz, sd, tc)| {
-            serde_json::json!({
-                "id": tid, "name": n, "size": sz,
-                "seeders": sd, "times_completed": tc,
-            })
-        }).collect::<Vec<_>>(),
-    })))
 }
