@@ -1,5 +1,11 @@
 //! 过审副作用（0288 从 review.rs 拆出，300 行门禁）。
 //!
+//!
+//! 三条 SQL 都是 best-effort：失败**必须出声**（P-323）。此前写成
+//! `let _ = …`，`auto_promo_rules.kind` 是 text、要 cast 成枚举，规则
+//! 配错一个值就整条失败而零日志——现网实测：真口转正触发副作用后，
+//! promotions 里 0 行、容器日志里 0 行 WARN/ERROR，站长只看到「审核通过」。
+//! 写法照抄 community_http/requests.rs 的应求通知（if let Err(e) → warn）。
 //! 单条裁决 `review_decide` 与批量裁决 `review_batch` 共用这一份实现——
 //! 两处各写一遍 SQL 迟早漂移（本项目已多次踩「N 个入口各写各的」）。
 
@@ -12,7 +18,7 @@ pub(crate) async fn apply_approval_side_effects(
     operator_id: i64,
 ) {
     // 0077 自动促销（U3D 口径）：过审时按 position 取第一条命中规则挂促销
-    let _ = sqlx::query(
+    let side = sqlx::query(
         r#"
         INSERT INTO promotions
                (scope, torrent_id, kind, starts_at, ends_at, source, created_by)
@@ -33,9 +39,12 @@ pub(crate) async fn apply_approval_side_effects(
     .bind(operator_id)
     .execute(db)
     .await;
+    if let Err(e) = side {
+        tracing::warn!(?e, torrent_id, "自动促销未挂上（审核已过）");
+    }
     // 0075 组级订阅推送：入组种子过审 → 通知组订阅者（每人一信，含通知偏好过滤）
     // 0286：附带 kind/params（P1-9 的第一步——文案不再只以成品中文落库，切语言才翻得动）
-    let _ = sqlx::query(
+    let side = sqlx::query(
         r#"
         INSERT INTO messages
                (sender_id, receiver_id, subject, body, kind, params)
@@ -54,12 +63,15 @@ pub(crate) async fn apply_approval_side_effects(
     .bind(torrent_id)
     .execute(db)
     .await;
+    if let Err(e) = side {
+        tracing::warn!(?e, torrent_id, "组订阅推送未写入（审核已过）");
+    }
     // 0332 厂牌订阅 / 0334 字幕组订阅推送：种子带 network / subtitle_group
     // 维度且该实体有人订阅 → 通知订阅者。与组订阅同口径（每人一信 + 通知
     // 偏好过滤）；实体值经 section_dict 反查 content_networks（枚举维度的
     // 标准关联路径）。两种 kind 共用一张 content_networks + 一张订阅表，
     // 这里的 VALUES 列表即「可订阅维度的白名单」——加新可订阅维度只改此处。
-    let _ = sqlx::query(
+    let side = sqlx::query(
         r#"
         INSERT INTO messages
                (sender_id, receiver_id, subject, body, kind, params)
@@ -90,4 +102,7 @@ pub(crate) async fn apply_approval_side_effects(
     .bind(torrent_id)
     .execute(db)
     .await;
+    if let Err(e) = side {
+        tracing::warn!(?e, torrent_id, "厂牌/字幕组订阅推送未写入");
+    }
 }
