@@ -104,6 +104,38 @@ async fn torrent_magnet(
             .fetch_one(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    // ES36 闸门对齐：magnet 里带的是**本人 passkey 的 announce**，拿到它
+    // 就能进私有 swarm，所以「.torrent 下载要过的闸门」这里一条都不能少。
+    // ① 下载资格（被停下载/挂起账号此前照拿磁力）；
+    // ② 付费种必须有购买记录 —— 磁力口不重复扣费，但也不给没买过的人发
+    //    凭证，否则「点一下磁力」就是绕过扣费的下载通道。
+    crate::torrents::ensure_downloadable(&state.repo.db, auth.id).await?;
+    let paid: Option<(i64, Option<i64>)> = sqlx::query_as(
+        "SELECT price, owner_id FROM torrents WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if let Some((price, owner)) = paid {
+        if price > 0 && owner != Some(auth.id) {
+            let owned: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM torrent_purchases WHERE \
+                 user_id = $1 AND torrent_id = $2)",
+            )
+            .bind(auth.id)
+            .bind(id)
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(false);
+            if !owned {
+                return Err(DomainError::Validation(format!(
+                    "该种子为付费种子（{price} 魔力）：请先在详情页点\
+                     「下载」取得后再取磁力链接"
+                )));
+            }
+        }
+    }
     let announce = format!(
         "{}/announce/{}",
         announce_base(&state.repo.db).await,
