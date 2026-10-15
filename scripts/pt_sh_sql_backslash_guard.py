@@ -190,11 +190,17 @@ def walk_rs():
 
 
 def blob(rev, rel):
+    # 显式 encoding="utf-8" + errors="replace"：Windows 下 text=True 会走
+    # GBK 解码，历史 blob 里的中文/符号（本次撞到 0x80）直接抛
+    # UnicodeDecodeError，连带 communicate 的读线程崩成 IndexError——
+    # 闸门自己先挂，正反控都跑不到。这是要修的真实缺陷，不是绕路。
     p = subprocess.run(
         ["git", "show", "%s:%s" % (rev, os.path.relpath(rel, ROOT).replace(os.sep, "/"))],
-        capture_output=True, text=True, cwd=ROOT,
+        capture_output=True, cwd=ROOT,
     )
-    return (p.stdout or "") if p.returncode == 0 else ""
+    if p.returncode != 0:
+        return ""
+    return p.stdout.decode("utf-8", errors="replace")
 
 
 print("== SH 拼进 SQL 的字面反斜杠必须为 0 ==")

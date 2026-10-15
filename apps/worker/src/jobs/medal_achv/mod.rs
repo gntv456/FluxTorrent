@@ -9,6 +9,7 @@
 
 mod backfill;
 mod eval;
+mod seeding_bridge;
 mod event;
 
 pub(super) use backfill::backfill;
@@ -19,6 +20,7 @@ pub(crate) use eval::prog;
 // 接线——接线时直接 `use crate::jobs::medal_achv::record_event`。
 #[allow(unused_imports)]
 pub(super) use event::record_event;
+pub(crate) use seeding_bridge::record_seeding_hours;
 
 /// 判定矩阵的真身在 api（`api/src/domain/medal`），worker 用 include!
 /// 复用同一份源文件——两 crate 各写一份迟早漂移，而漂移的后果是
