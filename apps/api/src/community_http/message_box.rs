@@ -1,7 +1,7 @@
 //! M16 信箱操作（已读/删除/移动/文件夹）。
 //! 从 community_http.rs 按域拆出。
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse};
+use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -161,110 +161,6 @@ async fn message_move(
 }
 
 /// 文件夹列表 + 新建/改名（editmailboxes 口径：一人最多 3 个、名 ≤14 字；清空名=删除并连带清信）
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct PmBoxRow {
-    id: i64,
-    name: String,
-    count: i64,
-}
-
-#[get("/messages/boxes")]
-async fn message_boxes(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let rows = sqlx::query_as::<_, PmBoxRow>(
-        "SELECT b.id, b.name, (SELECT count(*) FROM messages m WHERE m.folder = b.id AND m.receiver_id = $1 AND m.location = 1) AS count \
-         FROM pmboxes b WHERE b.user_id = $1 ORDER BY b.id",
-    )
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
-}
-
-#[derive(Deserialize)]
-struct BoxReq {
-    /// 缺省 = 新建；有值 = 改名/删除该 id
-    id: Option<i64>,
-    name: String,
-}
-
-#[post("/messages/boxes")]
-async fn message_box_upsert(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<BoxReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let name = body.name.trim();
-    // 清空名 = 删除文件夹（连带清掉夹内信件，NexusPHP 口径）
-    if name.is_empty() {
-        if let Some(bid) = body.id {
-            sqlx::query(
-                "DELETE FROM messages WHERE folder = $2 AND receiver_id = $1",
-            )
-            .bind(auth.id)
-            .bind(bid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            sqlx::query("DELETE FROM pmboxes WHERE id = $2 AND user_id = $1")
-                .bind(auth.id)
-                .bind(bid)
-                .execute(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-        }
-        return Ok(ok(serde_json::json!({ "deleted": true })));
-    }
-    if name.chars().count() > 14 {
-        return Err(DomainError::Validation("文件夹名最多 14 字".into()));
-    }
-    match body.id {
-        None => {
-            let n: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM pmboxes WHERE user_id = $1",
-            )
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
-            if n >= 3 {
-                return Err(DomainError::Validation("最多 3 个文件夹".into()));
-            }
-            let id: i64 = sqlx::query_scalar(
-                "INSERT INTO pmboxes (user_id, name) VALUES ($1, $2) \
-                 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
-            )
-            .bind(auth.id)
-            .bind(name)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            Ok(ok(serde_json::json!({ "id": id })))
-        }
-        Some(bid) => {
-            let n = sqlx::query(
-                "UPDATE pmboxes SET name = $3 WHERE id = $2 AND user_id = $1",
-            )
-            .bind(auth.id)
-            .bind(bid)
-            .bind(name)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
-            if n == 0 {
-                return Err(DomainError::NotFound(0));
-            }
-            Ok(ok(serde_json::json!({ "renamed": true })))
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::MoveReq;
