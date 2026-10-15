@@ -98,4 +98,40 @@ else:
     ok("EV4 class_id = 0 的人数为 0（一旦长出 Peasant 就是这条洞放行过）",
        n == "0", "实读 %s 人" % n)
 
+print("== EV5 批一百四十 P-326：晋升奖励的去重只在 (old, new] 区间内 ==")
+# 旧版把「全部历史已领档位」都从 gross 里扣：爬到过高档→被降级→再爬回来
+# 的人会算出负数，而 reward<=0 直接 continue ⇒ 连从未领过的中间档也不发，
+# 且不留流水 ⇒ 以后每次晋升重复同一个减法，奖励永久发不出去。
+PREV2 = "d15ff29f"  # P-325 提交（仍含 P-326 的旧去重），正控参照物
+
+
+def seg(src, start, stop):
+    """按语句边界切一段（start 处必须出现，否则返回空串让断言红）。"""
+    i = src.find(start)
+    if i < 0:
+        return ""
+    j = src.find(stop, i)
+    return src[i:j] if j > i else src[i:]
+
+
+PREV2 = "d15ff29f"  # P-325 提交（仍含 P-326 的旧去重），正控参照物
+GROSS = ("let gross", "let dedup")
+DEDUP = ("let dedup", "let reward")
+prev_src, now_src = blob(PREV2), cur()
+pd = seg(prev_src, *DEDUP)
+nd = seg(now_src, *DEDUP)
+ng = seg(now_src, *GROSS)
+ok("EV5a 正控能取到修前 dedup 语句（空串=参照物失效）",
+   "class_id = ANY" in pd, "取到 %d 字符" % len(pd))
+ok("EV5b 修前的 dedup 没有区间界（把高档历史整个扣进低档区间）",
+   "class_id >" not in pd and "class_id <=" not in pd)
+ok("EV5c 现网 dedup 带区间两端（> old 且 <= new）",
+   "class_id > $2" in nd and "class_id <= $3" in nd, "取到 %d 字符" % len(nd))
+ok("EV5d dedup 的两个新绑定按序补上（old_class / new_class）",
+   ".bind(&claimed)" in nd and nd.count(".bind(old_class)") == 1
+   and nd.count(".bind(new_class)") == 1)
+ok("EV5e gross 语句仍是 (old, new] 口径（两处必须同界）",
+   "class_id > $1" in ng and "class_id <= $2" in ng,
+   "取到 %d 字符" % len(ng))
+
 summary()
