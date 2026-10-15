@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS hr_seed_relief (
     id           BIGSERIAL PRIMARY KEY,
     -- 超过该额外做种小时数即享此档减免（小时，递增）
     extra_hours  INT    NOT NULL,
-    -- 减免百分��（seed_hours_pct 的进一步下调，如 80 = 再降 20%）
+    -- 减免百分比（seed_hours_pct 的进一步下调，如 80 = 再降 20%）
     relief_pct   INT    NOT NULL CHECK (relief_pct BETWEEN 0 AND 100),
     UNIQUE (extra_hours)
 );
