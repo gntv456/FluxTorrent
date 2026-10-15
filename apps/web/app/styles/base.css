@@ -1032,11 +1032,52 @@ a:hover {
 }
 @media (max-width: 640px) {
   .td-head {
-    grid-template-columns: 96px minmax(0, 1fr);
-    padding: 14px;
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
   }
   .td-head__name {
-    font-size: 17px;
+    font-size: 16px;
+  }
+  .td-head__main {
+    gap: 6px;
+  }
+  .td-head__badges {
+    gap: 4px;
+  }
+  .td-head__meta {
+    column-gap: 10px;
+    row-gap: 2px;
+  }
+  /* M5.9 头部紧凑化：操作三行语义分排在窄屏并为流式换行，
+     砍掉两行纯间隙；统计卡由 6 行大卡压成 chips 流 */
+  .td-head__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .td-head__actions-row {
+    gap: 6px;
+  }
+  .td-stats__row {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: 6px;
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+  .td-stats__row b {
+    font-size: 13px;
+  }
+  .td-stats__row:hover {
+    transform: none;
+  }
+  .td-stats__health {
+    flex: 1 1 auto;
+    margin: 0;
+    padding: 3px 8px;
   }
 }
 
@@ -1111,6 +1152,19 @@ a:hover {
 }
 .td-tags-inline:empty {
   display: none;
+}
+/* M5.9 规格网格窄屏瘦身：须放在 .td-specs 基础规则之后，
+   否则同特异性下会被后面的基础定义覆盖回去 */
+@media (max-width: 640px) {
+  .td-specs {
+    padding: 8px 12px;
+  }
+  .td-spec {
+    padding: 6px 8px;
+  }
+  .td-spec b {
+    font-size: 14px;
+  }
 }
 .td-tagcloud {
   display: flex;
@@ -1280,6 +1334,33 @@ a:hover {
 .td-fold__body {
   padding: 12px 16px 14px;
   border-top: 1px solid var(--line);
+}
+
+/* 头部内嵌轻量折叠条（FoldMobileBare，仅移动端渲染）：
+   无卡片 chrome，融进头部主列的行距里 */
+.td-fold-inline > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.td-fold-inline > summary::-webkit-details-marker {
+  display: none;
+}
+.td-fold-inline[open] > summary {
+  color: var(--text-strong);
+}
+.td-fold-inline[open] > summary .td-fold__chev {
+  transform: rotate(225deg);
+}
+.td-fold-inline__body {
+  padding: 8px 0 2px;
 }
 
 /* 感谢者（馒头口径：头像 + 用户名 chip） */
