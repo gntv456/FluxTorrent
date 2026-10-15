@@ -154,7 +154,8 @@ jobs:
           }
           probe GET  /health
           # 鉴权矩阵（匿名列）：受保护资源匿名一律 401/403——任何 200 = 守卫缺失
-          for path in /torrents /me /me/overview /invites /bank/overview /friends /forums /admin/overview /admin/users; do
+          # M1~M5 新增端点必须在列（漏挂 staff() 的表现是匿名也能读案件/题库）
+          for path in /torrents /me /me/overview /invites /bank/overview /friends /forums /admin/overview /admin/users /admin/cheat-cases /admin/risk-scores /admin/cheat-appeals /admin/cheat-accuracy /admin/email-domains /admin/reg-quiz /my/cheat-appeals; do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$B$path")
             echo "anon GET $path → $code"
             case "$code" in
@@ -166,6 +167,14 @@ jobs:
           probe GET  /compat/meta              # 公开端点
           probe GET  /auth/captcha             # 验证码签发（Redis 依赖）
           probe POST /auth/login '{"username":"root","password":"wrong"}'   # 登录路径可达（非 500）
+          # 注册治理/申诉/抽题（M3~M5）：公开端点——可达且不 500 即通过；
+          # 强度断言（结构/防泄题）在下一条独立门禁里，这里只保证路由与信封活着。
+          probe GET  /register-mode         # 注册模式四开关（公开）
+          probe GET  /auth/quiz-challenge   # M5 抽题（Redis 票据；不含答案）
+          probe GET  '/auth/pow-challenge?scope=register'   # M5 PoW 挑战
+          probe GET  /auth/pow-challenge    # 缺 scope → 400 校验失败
+          probe POST /appeals/token '{}'    # M3 一次性申诉令牌（缺 token → 400）
+          probe POST /cheat-appeals '{}'    # M3 提交申诉（缺字段 → 400）
           # 关键回归锁：促销计费 SQL（历史 P0——冗余 bind 在无数据时同样报错，真库必抓）。
           # torrents.info_hash 是 CHAR(40) NOT NULL UNIQUE——'aa' 只有 2 字符，
           # bpchar 比较会静默补白导致 UNIQUE 恒撞（首版入库成功是运气），且
@@ -187,6 +196,13 @@ jobs:
           printf "SELECT kind::text FROM promotions WHERE torrent_id = :tid AND starts_at <= now() AND ends_at > now()\nORDER BY CASE kind::text WHEN 'x2free' THEN 6 WHEN 'free' THEN 3 ELSE 0 END DESC, id DESC LIMIT 1;\n" \
             | psql "$DATABASE_URL" -t -A -v tid="$TID" > /dev/null && echo "promotion SQL ok"
           echo "SMOKE DONE"
+
+      # M1~M5 端点门禁（反作弊运营层 + 注册治理）：匿名守卫矩阵 + staff 面板
+      # 可达（持自签 JWT 探 6 个 admin 面板，断言响应结构就位）+ 抽题防泄题。
+      # 为什么单独一条：sqlx 是运行时查询，编译绿不代表能跑——「路由活着但
+      # 查询炸了（缺列/类型不符）」只有真库能抓；防泄题是 M5 的红线断言。
+      - name: M-ops endpoints guard（反作弊/注册治理）
+        run: python3 scripts/ci_m_ops_panels.py
 
       # PT 生命线：announce → Redis Stream → worker 计费。此前只测 api，这条链路在 CI 裸奔
       # （依赖根目录手工 py 脚本）。tracker/worker 与 api 同机起，复用同一 PG/Redis。
