@@ -23,6 +23,7 @@ import { TorrentRipLogs } from "@/components/torrent-rip-logs";
 import { TorrentPreviews } from "@/components/torrent-previews";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
+import { FoldMobile } from "@/components/fold-mobile";
 import { TorrentPeers } from "@/components/torrent-peers";
 import { TorrentRelated } from "@/components/torrent-related";
 import {
@@ -163,7 +164,6 @@ export default async function TorrentDetailPage({
   const files = agg.files;
   const thanks = agg.thanks;
   const comments = agg.comments;
-  const nfo = { nfo: agg.nfo };
   // 聚合组（0069）：无组/接口失败时静默降级
   const group = await api
     .get<GroupInfo>(`/api/v1/torrents/${enc}/group`)
@@ -315,16 +315,14 @@ export default async function TorrentDetailPage({
         {t.rating && <Spec value={t.rating} label={d?.ratingLabel} num />}
       </section>
 
-      {/* ===== 标签（0173：移入头部，副标题与发布人之间） ===== */}
-
-      {/* ===== 简介（默认展开；其余折叠分区默认收起） ===== */}
+      {/* 标签（0173 移入头部） */}
+      {/* ===== 简介（桌面展开；移动端 M5.8 收进折叠条降噪） ===== */}
       {sectOn("descr") && ext?.descr && (
-        <section className="td-descr nexus-detail">
-          <h2 className="td-sec-title">{dict.torrent.descrTitle}</h2>
+        <FoldMobile title={dict.torrent.descrTitle}>
           <div className="td-descr__body">
             <Descr text={ext.descr} />
           </div>
-        </section>
+        </FoldMobile>
       )}
 
       {/* ===== MediaInfo（NP 详情页折叠块口径；0184 同发布页按站型 metaSources 显隐） ===== */}
@@ -336,9 +334,9 @@ export default async function TorrentDetailPage({
         )}
 
 
-      {sectOn("nfo") && nfo.nfo && (
+      {sectOn("nfo") && agg.nfo && (
         <Fold title="NFO">
-          <pre className="td-nfo">{nfo.nfo}</pre>
+          <pre className="td-nfo">{agg.nfo}</pre>
         </Fold>
       )}
 
@@ -394,15 +392,17 @@ export default async function TorrentDetailPage({
         </Fold>
       )}
 
-      {/* ===== 字幕面板（0146 P0-6 + 0148 C1 同片 IMDB 合并；模块关闭不渲染） ===== */}
+      {/* 字幕面板（0146 P0-6 + 0148 C1 同片合并；M5.8 移动端收折叠） */}
       {sectOn("subtitles") && profile?.modules?.subtitles !== false && (
-        <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} />
+        <FoldMobile title={dict.subtitles.panelTitle ?? "Subtitles"}>
+          <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} bare />
+        </FoldMobile>
       )}
 
       {sectOn("snatches") && (
-        <Fold title={dict.snatches2.title} open>
+        <FoldMobile title={dict.snatches2.title}>
           <SnatchList torrentId={t.id} />
-        </Fold>
+        </FoldMobile>
       )}
 
 

@@ -4,6 +4,7 @@
  */
 
 import { Comments, Thankers } from "@/components/torrent-detail-blocks";
+import { FoldMobile } from "@/components/fold-mobile";
 import type { Dict } from "@/i18n/zh-CN";
 import type { Locale } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
@@ -50,13 +51,21 @@ export function TorrentDetailTail({
       )}
 
       {sectOn("comments") && (
-        <Comments
-          comments={comments}
-          torrentId={t.id}
-          dict={dict}
-          locale={locale}
-          relTime={relTime}
-        />
+        <FoldMobile
+          title={dict.torrent.commentsTitle.replace(
+            "{n}",
+            String(comments.length),
+          )}
+        >
+          <Comments
+            comments={comments}
+            torrentId={t.id}
+            dict={dict}
+            locale={locale}
+            relTime={relTime}
+            embedded
+          />
+        </FoldMobile>
       )}
     </>
   );
