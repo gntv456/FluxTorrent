@@ -99,6 +99,7 @@ async fn bounty_award(
     notify_user(
         &state.repo.db,
         answerer,
+        "comment_reply",
         "悬赏已发放",
         &format!(
             "您的回复被采纳，获得 {} 魔力悬赏：[/forums/topic/{}]",

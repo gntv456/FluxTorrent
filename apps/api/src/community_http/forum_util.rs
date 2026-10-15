@@ -52,9 +52,14 @@ pub(crate) async fn check_banned_words(
     Ok(())
 }
 
+/// 论坛域站内信。`kind` 对应 notice-prefs 白名单键（0286 形状）：列清单带
+/// `kind`、VALUES 换成 SELECT + `u_notice_enabled` 谓词——用户关掉该类后
+/// 「界面上的开关」才真正执法（此前本助手不判偏好，comment_reply 是假开关）。
+/// 必达类（封禁/安全/管理裁决）不走本助手。
 pub(crate) async fn notify_user(
     db: &sqlx::PgPool,
     to: i64,
+    kind: &str,
     subject: &str,
     body: &str,
 ) {
@@ -62,12 +67,15 @@ pub(crate) async fn notify_user(
         return;
     }
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES (NULL, $1, $2, $3)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         SELECT NULL, $1, $2, $3, $4 \
+         WHERE u_notice_enabled($1, $5)",
     )
     .bind(to)
     .bind(subject)
     .bind(body)
+    .bind(kind)
+    .bind(kind)
     .execute(db)
     .await;
 }
@@ -119,6 +127,7 @@ pub(crate) async fn notify_followers(
     db: &sqlx::PgPool,
     target_type: &str,
     target_id: i64,
+    kind: &str,
     subject: &str,
     body: &str,
     exclude: &[i64],
@@ -136,7 +145,7 @@ pub(crate) async fn notify_followers(
         if exclude.contains(&uid) {
             continue;
         }
-        notify_user(db, uid, subject, body).await;
+        notify_user(db, uid, kind, subject, body).await;
     }
 }
 
@@ -185,6 +194,7 @@ pub(crate) async fn notify_mentions(
         notify_user(
             db,
             uid,
+            "comment_reply",
             "论坛提及",
             &format!(
                 "用户 #{} 在{}提到了你：[{}](/forums/topic/{})",

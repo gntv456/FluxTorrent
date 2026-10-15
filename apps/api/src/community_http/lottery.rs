@@ -189,6 +189,7 @@ pub async fn lottery_draw_core(
             notify_user(
                 db,
                 *uid,
+                "comment_reply",
                 "抽奖中奖",
                 &format!("您在 [/forums/topic/{topic_id}] 的抽奖中中奖，获得 {prize} 魔力！"),
             )

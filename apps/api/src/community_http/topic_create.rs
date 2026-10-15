@@ -245,6 +245,7 @@ async fn topic_create(
         &state.repo.db,
         "user",
         auth.id,
+        "comment_reply",
         "关注的人发了新主题",
         &format!(
             "[{}](/forums/topic/{}) · 来自用户 #{}",

@@ -33,15 +33,14 @@ FIX = "bc680d7d"          # 本闸门与修复同批入库
 PROBE_USER = 69
 PSQL = ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
         "-d", "fluxtorrent"]
-
 # 界面有开关、后端三条执法通道（SQL 的 u_notice_enabled、
 # mailer::notify_kind、内联 notice_prefs->>'key'）都不判的档。
+# comment_reply/system 曾在册：forum_util::notify_user（带 kind + u_notice_enabled）
+# 与 bulk_notify::pm_chunk（两条通道都过 system 档）已各自接线，故此表清空。
 # donate_tier 曾被误列：它走 notify_kind；hr_prewarn 也曾被误列：
 # 它在 hr_mail.rs / push_notify.rs 里是函数体的内联复刻。
 # 接线一档就从这里删一档（EP3c 会顶红，逼撤桩对账）。
-FAKE_TOGGLES = [
-    "comment_reply", "system",
-]
+FAKE_TOGGLES = []
 # 内联复刻的基线（文件,键）对数：语义等价但函数被 CREATE OR REPLACE
 # 改语义时不会跟着走 ⇒ EP5 只许减不许增，别再新增第三份副本。
 INLINE_BASELINE = 2
@@ -130,8 +129,7 @@ def one(sql):
 
 residue = one("SELECT count(*) FROM messages WHERE subject ="
               " 'H&R 违规确认' AND body = 'probe'")
-pref_now = one("SELECT notice_prefs::text FROM users WHERE id = %d"
-               % PROBE_USER)
+pref_now = one("SELECT notice_prefs::text FROM users WHERE id = %d" % PROBE_USER)
 ok("EP2c 回滚干净：无取证残留、探针会员偏好未被改写",
    residue == "0" and "hr_violation" not in (pref_now or ""),
    "残留=%s 偏好=%s" % (residue, (pref_now or "")[:60]))
@@ -177,6 +175,15 @@ for dp, dirs, fs in os.walk(os.path.join(ROOT, "apps")):
         # 第三条执法通道：内联复刻函数体的 notice_prefs->>'key'。
         # 认它算执法（否则 hr_prewarn 会被误记成假开关），但把复刻处计数
         # 钉进 EP5 棘轮——函数被 CREATE OR REPLACE 改语义时副本不跟着走。
+        # 第四条执法通道：参数化的 kind 助手（forum_util::notify_user 把
+        # kind 作为入参，SQL 侧 u_notice_enabled($1, $5) 拿的是绑定参数
+        # 而不是字面量）⇒ 其 kind 集合要显式登记，否则会把 comment_reply
+        # 误记成假开关（EP3 台账曾两次栽在「只认字面量」上）。
+        if "fn notify_user(" in t and "u_notice_enabled" in t:
+            for km in re.findall(r"notify_user\((?:[^()]|\([^()]*\))*?\"([a-z0-9_]+)\"",
+                                t, re.S):
+                B.add(km)
+
         inl = set(re.findall(r"notice_prefs\s*->>\s*'([a-z0-9_]+)'", t))
         B |= inl
         for k in inl:
@@ -250,6 +257,84 @@ ok("EP8a 认到愿望单命中的写入点（>0）", len(wl) > 0,
    "实读 %d 处：%s" % (len(wl), sorted(set(p for p, _ in wl))))
 ok("EP8b 愿望单写入点过 wishlist 偏好", all(on for _, on in wl),
    "未执法：%s" % sorted(set(p for p, on in wl if not on)))
+print("== EP9 论坛域通知（comment_reply）与管理群发（system）接偏好 ==")
+fu = open(os.path.join(ROOT, "apps", "api", "src", "community_http",
+          "forum_util.rs"), encoding="utf-8", errors="replace").read()
+flat_fu = " ".join(fu.split())
+ok("EP9a notify_user 的 INSERT 带 kind 列",
+   re.search(r"INSERT INTO messages\s*\([^)]*kind", flat_fu) is not None)
+ok("EP9b notify_user 过 u_notice_enabled 谓词（comment_reply 可关）",
+   "u_notice_enabled" in flat_fu)
+ok("EP9c notify_user 有 kind 入参（调用方传键，不是硬写一个）",
+   re.search(r"fn notify_user\([^)]*kind:\s*&str", fu, re.S) is not None)
+bn = open(os.path.join(ROOT, "apps", "api", "src", "admin_p3_http",
+          "bulk_notify.rs"), encoding="utf-8", errors="replace").read()
+flat_bn = " ".join(bn.split())
+ok("EP9d 管理群发的 INSERT 带 kind=system 且过偏好",
+   re.search(r"INSERT INTO messages[^;]*kind", flat_bn) is not None
+   and "\u0027system\u0027" in flat_bn
+   and "u_notice_enabled" in flat_bn)
+ok("EP9e 群发邮件通道也过 system 档（两通道同口径）",
+   re.search(r"notify_kind\([^;]*[\x27\x22]system[\x27\x22]", flat_bn) is not None)
+ok("EP9f 必达类仍走 mailer::notify（强制通道没被一起关掉）",
+   "pub async fn notify(" not in bn)
+
+print("== EP10 活体 A/B：两档都要真能关掉（文件原句，ROLLBACK 收尾）==")
+def _take(rel, pat):
+    _t = open(os.path.join(ROOT, rel), encoding="utf-8",
+              errors="replace").read()
+    _m = re.search(pat, _t, re.S)
+    if not _m:
+        return None
+    _s = _m.group(0).split(chr(34) + ",")[0].strip().strip(chr(34))
+    return re.sub(r"\s+", " ", _s.replace(chr(92), "").replace(chr(92) + chr(34), chr(34))).strip()
+
+def _live(label, stmt, key, params, probe):
+    if not stmt:
+        ok("EP10 %s 取到原句" % label, False, "判据打空")
+        return
+    _q = chr(39)
+    _res = {}
+    for _pref in ("false", "true"):
+        _setp = ("UPDATE users SET notice_prefs = jsonb_set(notice_prefs, "
+                 "ARRAY[" + _q + key + _q + "], to_jsonb(" + _pref +
+                 "::boolean)) WHERE id = %d;" % PROBE_USER)
+        _call = stmt
+        for _ph, _v in params:
+            _call = _call.replace(_ph, _v)
+        _body = ("BEGIN; " + _setp + " " + _call + "; SELECT count(*) FROM "
+                 "messages WHERE kind = " + _q + key + _q + " AND body LIKE "
+                 + _q + probe + "%" + _q + "; ROLLBACK;")
+        _r = sh(PSQL + ["-tAq"], _body)
+        if _r.returncode != 0:
+            FAILURES.append("EP10 %s 偏好=%s 取证失败：%s"
+                            % (label, _pref, (_r.stderr or "")[:140]))
+            _res[_pref] = "?"
+            continue
+        _ls = [x for x in (_r.stdout or "").strip().split("\n") if x.strip() and x.strip() != "ROLLBACK"]
+        _res[_pref] = _ls[-1] if _ls else "?"
+    ok("EP10 %s 偏好关 ⇒ 写 0 行（面板开关真的执法）" % label,
+       _res.get("false") == "0", "实读 %s" % _res.get("false"))
+    ok("EP10 %s 偏好开 ⇒ 写 1 行（不是无脑不写）" % label,
+       _res.get("true") == "1", "实读 %s" % _res.get("true"))
+    _chk = sh(PSQL + ["-tAq"], "SELECT notice_prefs::text FROM users WHERE id = %d;" % PROBE_USER)
+    ok("EP10 %s 收尾：ROLLBACK 后探针偏好未被改写" % label,
+       _chk.returncode == 0, ( _chk.stdout or "").strip())
+
+_qa = chr(39)
+_fu = _take("apps/api/src/community_http/forum_util.rs",
+            r"INSERT INTO messages \(sender_id, receiver_id, subject, "
+            r"body, kind\) \\[^;]*?u_notice_enabled\(\$1, \$5\)")
+_live("comment_reply", _fu, "comment_reply",
+      [("$1", str(PROBE_USER)), ("$2", _qa + "ep9A" + _qa),
+       ("$3", _qa + "ep9A" + _qa), ("$4", _qa + "comment_reply" + _qa),
+       ("$5", _qa + "comment_reply" + _qa)], "ep9A")
+_bn = _take("apps/api/src/admin_p3_http/bulk_notify.rs",
+            r"INSERT INTO messages \\[^;]*?u_notice_enabled\(\$2, .system.\)")
+_live("system", _bn, "system",
+      [("$1", "NULL"), ("$2", str(PROBE_USER)), ("$3", _qa + "ep9B" + _qa),
+       ("$4", _qa + "ep9B" + _qa)], "ep9B")
+
 print("== EP4 写入点带 kind 的基线（形状计数，只当漂移哨兵）==")
 writes = 0
 with_kind = 0
