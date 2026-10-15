@@ -26,7 +26,7 @@ mod jixiao_types;
 mod medal_rarities;
 mod medal_users;
 mod medals;
-mod meta;
+pub(crate) mod meta;
 mod mount;
 mod ops;
 mod ops_jobs;
