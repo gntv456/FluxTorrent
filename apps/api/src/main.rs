@@ -30,6 +30,7 @@ mod config;
 mod content_http;
 mod domain;
 mod domain_events;
+mod csrf;
 mod dto;
 mod economy;
 mod economy_checkin;
@@ -304,8 +305,15 @@ async fn main() -> anyhow::Result<()> {
             // 项目声明兼容的旧内核浏览器上会被忽略，此层把「Origin/Referer
             // 同源或白名单」作为 CSRF 纵深第二道防线（非浏览器客户端无该头，放行）
             .wrap(actix_web::middleware::from_fn(crate::http::write_origin_mw))
+            // CSRF token 契约（双提交）：仅对「cookie 鉴权 + 写方法」要求
+            // cookie 值与 X-CSRF-Token 逐字相等。Bearer 调用免疫（无 cookie
+            // 自动携带，CSRF 本就无从发生）。与上面 Origin 闸并存不替换。
+            .wrap(actix_web::middleware::from_fn(csrf::csrf_mw))
             .wrap(actix_web::middleware::from_fn(modules::module_gate_mw)) // U1 模块网关：可选域 fail-close（4101）
             .wrap(actix_web::middleware::from_fn(v4_http::metrics_mw)) // G3：请求/5xx 计数（/metrics 出口）
+            // CSRF token 签发口（独立于登录，供前端按需续期/轮换）
+
+            .service(web::scope("/api/v1").configure(csrf::configure))
             .configure(community_http::configure)
             .default_service(web::to(|req: actix_web::HttpRequest| async move {
                 let locale = req

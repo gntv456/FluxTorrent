@@ -15,6 +15,34 @@ import { apiServerBase } from "@/lib/api-upstream";
  *  require_auth 已接受 Cookie 凭证，见 token_from_request）。 */
 export const SESSION_COOKIE = "flux.session";
 
+/** CSRF 双提交 cookie 名（后端 csrf.rs 的契约，后端改这里要同步）。 */
+export const CSRF_COOKIE = "flux_csrf";
+/** CSRF 请求头名（与后端 CSRF_HEADER 同源）。 */
+export const CSRF_HEADER = "x-csrf-token";
+
+/** 浏览器侧：读 flux_csrf cookie（双提交模式要求它**非** HttpOnly——
+ *  前端要能读出来放进请求头，服务端比对 cookie 与 header 是否逐字相等）。 */
+export function csrfToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(
+    new RegExp("(?:^|;\\s*)" + CSRF_COOKIE + "=([^;]+)"),
+  );
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/** 写方法时回填 X-CSRF-Token；安全方法不带（少一处无谓的头）。 */
+function csrfHeader(method: string | undefined): Record<string, string> {
+  if (
+    !method ||
+    method.toUpperCase() === "GET" ||
+    method.toUpperCase() === "HEAD"
+  ) {
+    return {};
+  }
+  const t = csrfToken();
+  return t ? { [CSRF_HEADER]: t } : {};
+}
+
 /** 登录态判定（P1 收敛）：token 已 HttpOnly 化（flux_token，根路径 /），
  *  JS 不可读；浏览器侧以 flux.session 标记 cookie 判断。 */
 export function hasSessionCookie(): boolean {
@@ -119,6 +147,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       "Content-Type": "application/json",
       ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       ...(lang ? { "Accept-Language": lang } : {}),
+      // CSRF 双提交：写方法回填 token（服务端 csrf_mw 比对 cookie/header）
+      ...csrfHeader(init?.method),
       ...init?.headers,
     },
     ...(serverCache ? {} : { cache: "no-store" as const }),
