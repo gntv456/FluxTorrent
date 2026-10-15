@@ -253,12 +253,24 @@ ok("S3f 回滚到「未设置」的空值：不得被 color 校验反锁（装�
    and cnt("content_packs", "id = %d" % rowc2) == "0",
    "%s now=%r %s" % (s, sval("theme_token_sky"), blob(r)[:170]))
 BIG = []
-for sz, kw in ((1100 * 1024, "1MiB"), (3 * 1024 * 1024, "larger than")):
+# 批一百五十三更正：这条原来要求 3MiB 那档的回包里出现 "larger than" 字样，
+# 那是**假设 actix 会把超限原因写进 message**——实测不会：JsonConfig 只有
+# 一个 error_handler（path_cfg.rs:51），它把 actix 的 PayloadError 统一翻成
+# 「请求体读取失败」，原始英文（larger than ...）根本不进我们的信封。
+# 于是产品行为是对的（两道闸都在拒：1.1MiB 被本批 1MiB 上限、3MiB 被 actix 2MiB），
+# 断言却永远红。
+# 正确的判法是「都拒 + 400 + 明确说了读不了体」，不绑具体英文措辞——
+# 措辞是 i18n 层的实现细节，绑它就等于把判据钉在某个翻译版本上。
+for sz, why in ((1100 * 1024, "本批 1MiB 上限"),
+                (3 * 1024 * 1024, "actix 2MiB 请求体上限")):
     st, rr = imp(pack("theme", "bd.theme.big.%d" % TAG,
                       {"settings": {"site_tagline": "A" * sz}}), True)
-    if st != 400 or kw not in blob(rr):
-        BIG.append("%sKB->%s %s" % (sz // 1024, st, blob(rr)[:60]))
-ok("S3g 包体两道闸：1.1MiB 由本批 1MiB 上限拒、3MiB 由 actix 2MiB 拒",
+    body = blob(rr)
+    if st != 400 or ("1MiB" not in body and "读取" not in body):
+        BIG.append("%sKB(%s)->%s %s" % (sz // 1024, why, st, body[:70]))
+ok("S3g 包体两道闸都在拒：1.1MiB 由%s、3MiB 由%s"
+   "（判据不绑 i18n 措辞，只认 400 + 明确拒收）" % ("本批 1MiB 上限",
+                                              "actix 2MiB 上限"),
    not BIG, blob(BIG)[:220])
 
 # ============ S4 rules：白名单 / changed 口径 / rule-try 只读 ============
