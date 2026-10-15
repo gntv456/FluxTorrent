@@ -7,6 +7,7 @@
 mod cat_map;
 mod charge;
 mod comments;
+mod count_bind;
 mod cursor;
 mod detail;
 mod interact;
