@@ -116,10 +116,17 @@ pub(super) async fn subtitle_report(
     if alive.is_none() {
         return Err(DomainError::NotFound(sid));
     }
+    // ON CONFLICT 的推断谓词必须与 uq_reports_open_per_reporter 的**部分索引谓词**
+    // 逐字一致，否则 PG 报 `there is no unique or exclusion constraint matching
+    // the ON CONFLICT specification` → 这里 500。0367 把该索引谓词加了
+    // `AND ref_type <> 'cheat'`（案件去重语义与举报不同），并同步改了
+    // reports_http.rs，**漏了这个文件**——字幕举报因此整条 500（P-337）。
+    // 改索引谓词时，两处 ON CONFLICT 要一起改（ST 常驻判据盯这条）。
     let fresh: Option<i64> = sqlx::query_scalar(
         "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) VALUES \
          ($1, 'subtitle', $2, '坏字幕标记（自动）') \
-         ON CONFLICT (ref_type, ref_id, reporter_id) WHERE status IN (0, 2) \
+         ON CONFLICT (ref_type, ref_id, reporter_id) \
+         WHERE status IN (0, 2) AND ref_type <> 'cheat' \
          DO NOTHING RETURNING id",
     )
     .bind(auth.id)
