@@ -31,7 +31,7 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import login, call, ok, summary, BASE  # noqa: E402
+from pt_audit_lib import dig, login, call, ok, summary, BASE  # noqa: E402
 
 TRK = os.environ.get("FLUX_TRK_BASE", "http://127.0.0.1:7070")
 PROTO = b"BitTorrent protocol"
@@ -58,7 +58,7 @@ def find_probe_target():
     """取一个站内种子与发布者 passkey（探针号没有种子，借 root 看）"""
     tok = login()
     s, r = call("GET", "/admin/torrents?page=1&page_size=5", token=tok)
-    rows = r.get("data", {}).get("items") or r.get("data") or []
+    rows = dig(r, "data", "items") or r.get("data") or []
     if isinstance(rows, dict):
         rows = rows.get("items", [])
     for t in rows[:5]:
