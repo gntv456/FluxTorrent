@@ -177,7 +177,7 @@ pub fn response_header(token: &str) -> (header::HeaderName, String) {
 ///
 /// 独立端点而不是只在登录时下发：页面可能开着很久（token 7 天过期），
 /// 也可能多标签页各自持有旧 token——这个口让前端随时按需续期。
-/// 路由注册（main.rs 挂载）。
+/// 路由注册（community_http::configure 链尾调用）。
 pub fn configure(cfg: &mut actix_web::web::ServiceConfig) {
     cfg.route("/me/csrf", actix_web::web::get().to(issue));
 }

@@ -202,7 +202,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     // CSRF token 签发口（独立于登录，供前端按需续期/轮换）。
     // 挂在这里而不是在 App 上另开一个 /api/v1 scope：actix 的 scope
     // 是前缀独占匹配，另开一个会把原有 700+ 路由全打成 404。
-    let scope = scope.configure(crate::csrf::configure);
+
     let scope = mount_community(scope);
     let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),
@@ -221,5 +221,46 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::twofa_http::mount_twofa(scope);
     let scope = crate::compat_http::mount_compat(scope);
     let scope = crate::v4_http::mount_v4(scope);
-    cfg.service(crate::openapi_http::mount_openapi(scope));
+    let scope = crate::openapi_http::mount_openapi(scope);
+    // CSRF token 签发口挂在同一个 /api/v1 scope（链尾）。
+    // 位置有讲究：**不要**在 App 上另开 /api/v1 scope（actix 的 scope
+    // 是前缀独占匹配，另开会把原有 700+ 路由全打成 404——本批踩过）；
+    // 也不要插在链中间（同样会让先注册的服务整批失效，只有最后
+    // 配的那个能通）。链尾是最稳的位置：后续 mount_* 都接在它后面。
+    let scope = scope.configure(crate::csrf::configure);
+    cfg.service(scope);
+}
+
+#[cfg(test)]
+mod scope_tree_tests {
+    use actix_web::{test, web, App};
+
+    /// 真实装配链的冒烟：configure 插在链尾之后，
+    /// 链上其它域的路由是否还活着。
+    ///
+    /// 本批踩过的坑就是「只有 csrf 通、其余全 404」——
+    /// 编译、单测、路由清单三样都绿，只有真打一次才看得见。
+    #[actix_web::test]
+    async fn csrf_scope_does_not_eat_the_chain() {
+        let app = test::init_service(App::new().configure(super::configure))
+            .await;
+        for p in [
+            "/api/v1/ready",
+            "/api/v1/health",
+            "/api/v1/setup/status",
+            "/api/v1/me/csrf",
+        ] {
+            let r = test::call_service(
+                &app,
+                test::TestRequest::get().uri(p).to_request(),
+            )
+            .await;
+            assert_ne!(
+                r.status().as_u16(),
+                404,
+                "{} 404 —— csrf 的 configure 把整条链吃掉了",
+                p
+            );
+        }
+    }
 }
