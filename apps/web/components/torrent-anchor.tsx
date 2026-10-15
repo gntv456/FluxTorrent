@@ -39,7 +39,7 @@ export function TorrentAnchorBar({
     if (comments !== null) {
       out.push({
         id: "td-sec-comments",
-        label: commentsTitle.replace(/\s*\{n\}/, ""),
+        label: commentsTitle.replace(/\s*\(?\{n\}\)?/, ""),
         count: comments,
       });
     }
