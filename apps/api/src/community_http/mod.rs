@@ -249,6 +249,9 @@ mod scope_tree_tests {
             "/api/v1/health",
             "/api/v1/setup/status",
             "/api/v1/me/csrf",
+            // 辅种三端点（lookup/dl/iyuu）：路由注册漏一条就是 404，
+            // 而 route_manifest_guard 只数条数、不验可达。
+            "/api/v1/crossseed/iyuu/site",
         ] {
             let r = test::call_service(
                 &app,
