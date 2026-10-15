@@ -37,6 +37,7 @@ import os
 import re
 import subprocess
 import sys
+from urllib.parse import quote  # noqa: E402
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -90,13 +91,35 @@ def page(qs=""):
 def ids(qs="", full=False):
     """返回 (http, 集合, total_estimate)。集合取行内 id 与库里期望集合比对。
 
-    `full=True` 给 URL 侧补 `limit=100`（`MAX_LIMIT`=100 > 现网 69 个过审种）：
-    不补的话一页只回 20 行，把「期望 69 个」拿来比就是闸门自己的错。
+    `full=True` 时**按游标翻完所有页**再比。批一百五十三实测踩坑：这段原来只补
+    `limit=100` 就拿单页与库里全集比，注释还写着「MAX_LIMIT=100 > 现网 69 个过审种」——
+    可 69 是**当时**的数，种一多就破：库里过审种涨到 137，单页最多 100，于是
+    CZ2a「裸 /torrents 必须=全部过审种」必红。红的不是产品（MAX_LIMIT=100 是
+    刻意的单页上限 + 游标翻页设计），是**闸门拿单页当全集**。
+
+    于是改成翻页取并集；翻页读到的并集与 total 少于全集时如实报出来。
     """
-    if full and qs and "limit=" not in qs:
-        qs += "&limit=100"
-    s, t, rows, _b = page(qs)
-    return s, set(str(x.get("id")) for x in rows), t
+    if not full:
+        s, t, rows, _b = page(qs)
+        return s, set(str(x.get("id")) for x in rows), t
+    # 裸 URL（qs 为空）也要翻页——它恰恰是最容易破的那几个断言
+    # （CZ2a/CZ2x/CZ4b 比的都是「全部」）。第一版这里写 `if not (full and qs)`，
+    # 于是 full=True 且 qs 空时直接回单页，翻页形同虚设（实测仍 100）。
+    base = qs
+    if "limit=" not in base:
+        base = base + "&limit=100" if base else "?limit=100"
+    acc = set()
+    cur = base
+    s = t = None
+    for _hop in range(20):            # 20 页 × 100 = 2000，够任何测试库
+        s, t, rows, b = page(cur)
+        acc |= set(str(x.get("id")) for x in rows)
+        nxt = (b.get("data") or {}).get("next_cursor") if isinstance(b, dict) else None
+        if not nxt:
+            break
+        sep = "&" if "?" in cur else "?"
+        cur = cur + sep + "cursor=" + quote(str(nxt), safe="")
+    return s, acc, t
 
 
 def db_ids(pred):
@@ -248,7 +271,7 @@ try:
     # （同样已接线，`MAX_LIMIT`=100 > 69），一页才装得下整份期望集合，
     # 否则裸 URL 只回 20 行，比对必红——那是闸门自己的错不是产品的错。
     setprefs(incl_dead=0, per_page=100, sp=0)
-    s2, bare_all, _ = ids()
+    s2, bare_all, _ = ids(full=True)
     ok("CZ2a 护栏：sp_state=0（全部）时裸 /torrents 必须=全部过审种 %d 个，"
        "实测 http=%s %d 个" % (len(E_ALL), s2, len(bare_all)),
        bare_all == E_ALL, "实测=%d 期望=%d" % (len(bare_all), len(E_ALL)))
@@ -258,7 +281,7 @@ try:
     for st in sorted(FOLD):
         tok, exp = FOLD[st]
         setprefs(sp=st)
-        s3, got, tot = ids()
+        s3, got, tot = ids(full=True)
         set3, got_u, _ = ids("?alive=0&promo=" + tok, full=True)
         ok("CZ2%d P-289：面板第 %d 档（=%s）折进读路径后，裸 /torrents 必须"
            "与显式 `?promo=%s` 同一批行（期望 %d 个=%s，实测偏好侧 http=%s "
@@ -277,7 +300,7 @@ try:
                len(got) == 0 and tot is not None and int(tot) == 0,
                "rows=%d total=%s" % (len(got), tot))
     setprefs(sp=99)
-    s4, dirty, _ = ids()
+    s4, dirty, _ = ids(full=True)
     ok("CZ2x 脏值口径：sp_state=99（面板给不出这值，写口界是 -1..200）必须"
        "按「无偏好=全部」处理，实测 http=%s %d 个（全站 %d）——脏值不该"
        "把列表打空，也不该报错" % (s4, len(dirty), len(E_ALL)),
@@ -311,17 +334,17 @@ try:
     E_BM = set([PS[0], PS[2]])
     flush()
     setprefs(sp=0, bm=1)
-    s6, got4, _ = ids()
+    s6, got4, _ = ids(full=True)
     ok("CZ4a P-290：incl_bookmarked=1（面板「仅收藏」）时裸 /torrents 必须"
        "=root 的收藏 %s，实测 http=%s %s（修前=全站 %d 个）"
        % (sorted(E_BM), s6, sorted(got4), len(E_ALL)), got4 == E_BM,
        "实测=%s" % sorted(got4))
     setprefs(bm=0)
-    _, got4b, _ = ids()
+    _, got4b, _ = ids(full=True)
     ok("CZ4b 护栏：bm=0（全部）必须=全站 %d 个，实测 %d 个"
        % (len(E_ALL), len(got4b)), got4b == E_ALL, "实测=%d" % len(got4b))
     setprefs(bm=2)
-    s7, got4c, _ = ids()
+    s7, got4c, _ = ids(full=True)
     ok("CZ4c 钉桩：bm=2（面板「仅未收藏」）**刻意未接**——TorrentFilter 只有"
        "「只看收藏」一维，折成 false 会演成「全部」＝给错数据。此档必须是"
        "欠账而不是假收口：实测 http=%s %d 个（=全部 %d，符合「未接」）"
@@ -339,7 +362,7 @@ try:
     rb = psql("SELECT incl_dead || '/' || sp_state || '/' || "
               "incl_bookmarked FROM users WHERE id=1")
     flush()
-    s9, got5, _ = ids()
+    s9, got5, _ = ids(full=True)
     ok("CZ5 链路闭环：PUT /me/settings{sp_state:4,incl_bookmarked:1} → "
        "http=%s、库内回读=%s、裸 /torrents 必须=「2X免 ∩ 我的收藏」=%s "
        "实测 http=%s %s"
@@ -349,9 +372,9 @@ try:
 
     # ===== CZ6 偏好切换不许串共享缓存（0289/CM7 同族安全边界）=====
     setprefs(incl_dead=0, per_page=100, sp=0, bm=0)
-    _, warm_all, _ = ids()          # 先以「全部」写进首屏共享键
+    _, warm_all, _ = ids(full=True)          # 先以「全部」写进首屏共享键
     psql("UPDATE users SET sp_state=2 WHERE id=1")   # 故意不 flush
-    s10, crossed, tot10 = ids()
+    s10, crossed, tot10 = ids(full=True)
     ok("CZ6 护栏：偏好 0 的请求先写共享键，同一裸 URL 立刻切成偏好 2 —— "
        "后者必须按自己的口径重算（应=免费族 %d 个），不能吃到上一轮的 "
        "%d 个（实测 http=%s %d 个，写手=%d 读手=%d）"
