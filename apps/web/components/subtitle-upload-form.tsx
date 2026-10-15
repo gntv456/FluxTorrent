@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { uploadAttachment } from "@/components/subtitle-request-panel";
+import { uploadAttachment } from "@/components/subtitle-attachment";
 
 /** 字幕上传表单（rowhead/rowfollow 经典表格；kind 决定 FPS 显隐/来源/accept）。
  *  从 subtitle-board.tsx 按域拆出（300 行门禁）。 */
