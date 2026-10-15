@@ -34,6 +34,7 @@ mod economy;
 mod economy_checkin;
 mod economy_http;
 mod errors;
+mod extension;
 mod fields;
 mod gacha_http;
 mod gacha_math;

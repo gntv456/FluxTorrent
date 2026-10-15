@@ -15,6 +15,9 @@
 
 use std::sync::Arc;
 
+use crate::extension::{
+    ExtensionManifest, EXTENSION_CONTRACT_VERSION,
+};
 use crate::plugin_ctx::{DbCapability, PluginCtx};
 use crate::state::AppState;
 
@@ -47,6 +50,18 @@ pub trait Plugin: Send + Sync {
     fn enabled(&self) -> bool {
         true
     }
+    /// 统一扩展契约的清单投影（`fx:extension@0.1.0`）。
+    ///
+    /// 默认实现走 `extension::native_manifest` 自由函数而不是在这里
+    /// 展开结构体——覆写者想复用默认值时，同名 trait 方法会解析到
+    /// **自身**（无限递归，现场踩过：测试线程 STACK_OVERFLOW），
+    /// 自由函数没有这个歧义。
+    ///
+    /// 这里只回答「有哪些扩展、各自要什么」；能力校验仍发生在
+    /// `PluginCtx`/`sql_guard` 边界，不在这层。
+    fn manifest(&self, caps: &[DbCapability]) -> ExtensionManifest {
+        crate::extension::native_manifest(self.name(), caps)
+    }
     /// 登录后 Hook
     fn on_user_login(&self, _: &PluginCtx, _: i64) {}
     /// 种子发布后 Hook
@@ -76,6 +91,23 @@ impl PluginManager {
 
     pub fn list(&self) -> Vec<&'static str> {
         self.plugins.iter().map(|(p, _)| p.name()).collect()
+    }
+
+    /// 全部内置扩展的统一清单（后台「扩展总览」与 P3 事件总线的登记源）。
+    /// 版本不符的条目被剔除并记日志——清单契约变了却静默跑旧语义，
+    /// 是只有出事才看得见的偏差。
+    pub fn manifests(&self) -> Vec<ExtensionManifest> {
+        self.plugins
+            .iter()
+            .filter_map(|(p, caps)| {
+                let m = p.manifest(caps);
+                if let Err(e) = m.validate_version() {
+                    tracing::warn!(plugin = %m.id, "{e}");
+                    return None;
+                }
+                Some(m)
+            })
+            .collect()
     }
 
     /// 统一分发：单插件 panic 不拖垮核心链路（M28 验收：启停不影响核心）。

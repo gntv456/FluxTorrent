@@ -11,6 +11,9 @@
 //! 首个品类：银行利率公式（term_days → 年化利率 / 万分比日利率）。
 
 use crate::errors::{DomainError, DomainResult};
+use crate::extension::{
+    ExtensionKind, ExtensionManifest, EXTENSION_CONTRACT_VERSION,
+};
 
 /// 单条规则的静态描述：表达式 + 变量白名单 + 默认值 + 数值域
 pub(crate) struct RuleSpec {
@@ -41,6 +44,32 @@ pub(crate) const LOAN_RATE: RuleSpec = RuleSpec {
     min: 0.0,
     max: 0.01,
 };
+
+impl RuleSpec {
+    /// 统一扩展契约的清单投影（设计稿 P1）。公式类**天然安全**——
+    /// 白名单 AST + 变量白名单 + 数值域，不碰 DB/网络/密钥，所以
+    /// capabilities 全空；「要什么」落在 triggers 与 rules 描述里。
+    pub(crate) fn to_extension_manifest(&self) -> ExtensionManifest {
+        ExtensionManifest {
+            id: self.key.to_string(),
+            kind: ExtensionKind::Formula,
+            version: EXTENSION_CONTRACT_VERSION.to_string(),
+            display: self.key.to_string(),
+            capabilities: Default::default(),
+            triggers: Vec::new(),
+            limits: Default::default(),
+            signature: None,
+        }
+    }
+}
+
+
+/// 全部内置规则（扩展总览的公式侧登记源）。新增规则记得加进来，
+/// 否则它存在于求值路径却不在清单里——那种「跑得起来但没人看见」
+/// 的扩展比没有更难查。
+pub(crate) fn all_rule_specs() -> Vec<RuleSpec> {
+    vec![TERM_RATE, LOAN_RATE]
+}
 
 /// lint：解析 + 节点白名单 + 变量白名单。返回人类可读错误（空 = 通过）。
 pub(crate) fn lint(expr: &str, spec: &RuleSpec) -> DomainResult<()> {

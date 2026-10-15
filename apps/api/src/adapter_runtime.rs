@@ -26,6 +26,9 @@ use std::time::{Duration, Instant};
 use wasmtime::component::Component;
 use wasmtime::{Config, Engine};
 
+use crate::extension::{
+    Capabilities, ExtensionKind, ExtensionManifest, EXTENSION_CONTRACT_VERSION, Limits,
+};
 use crate::adapter_host::build_linker;
 use crate::adapter_sandbox::{new_store, KvTable, RateBucket};
 use crate::errors::{DomainError, DomainResult};
@@ -45,6 +48,34 @@ pub(crate) struct AdapterManifest {
     pub secrets_read: Vec<String>,
     pub rate_limit_per_min: i32,
 }
+impl AdapterManifest {
+    /// 统一扩展契约的清单投影（设计稿 P1：`AdapterManifest` 转换自
+    /// `ExtensionManifest`，执行路径零变化）。
+    ///
+    /// 能力面只映射 `net:egress`/`secret:read`/`rate_per_min`——
+    /// 适配器**没有** DB 能力（沙箱里根本没有 PG 连接），这是它安全
+    /// 水位最高的体现，别为了「形式统一」给它硬塞一个空 db 声明。
+    pub(crate) fn to_extension_manifest(&self) -> ExtensionManifest {
+        ExtensionManifest {
+            id: self.adapter_id.clone(),
+            kind: ExtensionKind::Wasm,
+            version: EXTENSION_CONTRACT_VERSION.to_string(),
+            display: self.adapter_id.clone(),
+            capabilities: Capabilities {
+                net_egress: self.http_allow.clone(),
+                secret_read: self.secrets_read.clone(),
+                ..Default::default()
+            },
+            triggers: Vec::new(),
+            limits: Limits {
+                rate_per_min: self.rate_limit_per_min,
+                timeout_s: 0,
+            },
+            signature: None,
+        }
+    }
+}
+
 
 /// 一次性引擎（每模块每调用实例化；元数据调用频率低，M4 不做实例池——
 /// wasmtime Engine 构造重，进程内以 OnceLock 共享）

@@ -18,14 +18,14 @@ use sqlx::PgPool;
 use crate::errors::{DomainError, DomainResult};
 
 /// 数据库能力模式。
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize)]
 pub enum DbMode {
     Read,
     Write,
 }
 
 /// 插件的数据库能力声明：允许碰某表的哪些列、读还是写、能否无界写。
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct DbCapability {
     pub table: String,
     pub columns: Vec<String>,
