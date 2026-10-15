@@ -82,11 +82,12 @@ pub async fn hr_pardon(
         return Err(DomainError::Validation("赦免必须填理由".into()));
     }
     // 判据（护栏 / 只赦 violated / 理由进审计与留痕）收在
-    // `admin_p3_http::hr::pardon_one`——这一段与另两口原先各写一份 SQL，
-    // 三天里漂了三处，批四十三 P-165~P-167 立案后合并。
-    let done = crate::admin_p3_http::hr::pardon_one(
+    // `services::hr_pardon::pardon_one`（FRAME F2 示范抽离）——这一段与
+    // 另两口原先各写一份 SQL，三天里漂了三处，批四十三 P-165~P-167 立案后合并。
+    let done = crate::services::hr_pardon::pardon_one(
         &state,
-        &auth,
+    auth.id,
+    auth.class_id,
         "hr.pardon",
         body.user_id,
         body.torrent_id,
@@ -132,16 +133,21 @@ pub async fn hr_pardon_batch(
         ));
     }
     // 整批先过一遍护栏（任一目标赦不得就一个都不动），再逐条走共用判据
-    // `pardon_one`：只赦 violated、理由进审计与留痕、回清 hr_flag。
+    // `services::hr_pardon`：只赦 violated、理由进审计与留痕、回清 hr_flag。
     let ids: Vec<i64> = body.items.iter().map(|it| it.user_id).collect();
-    crate::admin_p3_http::hr::ensure_all_pardonable(&state, &auth, &ids)
+    crate::services::hr_pardon::ensure_all_pardonable(
+        &state,
+        auth.class_id,
+        &ids,
+    )
         .await?;
     let mut pardoned: Vec<serde_json::Value> = Vec::new();
     let mut skipped: Vec<serde_json::Value> = Vec::new();
     for it in &body.items {
-        let done = crate::admin_p3_http::hr::pardon_one(
+        let done = crate::services::hr_pardon::pardon_one(
             &state,
-            &auth,
+        auth.id,
+        auth.class_id,
             "hr.pardon_batch",
             it.user_id,
             it.torrent_id,

@@ -3,4 +3,5 @@
 //! 分层宪法（门禁 `scripts/layer_guard.mjs` 强制）：本目录禁 `actix_web`——
 //! HTTP 词汇（请求/响应/路由）不得漏进用例层。
 
+pub(crate) mod hr_pardon;
 pub(crate) mod review_decide;
