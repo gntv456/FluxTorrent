@@ -128,7 +128,7 @@ ok("CE0 前提：基线已取（jixiao_claims %d 行、审计水位 %d、授权�
 # ===== 探针职员 =====
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 2},
-              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
+              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
 cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
 nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
 if codes and len(nums) >= 2:

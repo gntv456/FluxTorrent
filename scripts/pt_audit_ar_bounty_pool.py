@@ -304,7 +304,7 @@ ok("S6 反例：重复授金不双发（幂等键 + rank=0 卫语句）",
    call("POST", "/admin/subtitles/awards/grant",
         {"period": PERIOD, "grants": [{"id": int(aid or 0),
                                        "rank": 1}]},
-        token=login())[1].get("data") or {}.get("granted", [{}])[0].get(
+        token=login())[1].get("data", {}).get("granted", [{}])[0].get(
             "skipped") is True)
 GSQL = ("SELECT tier FROM user_subtitle_certs WHERE user_id = %d "
         "AND revoked_at IS NULL AND tier = 'gold'" % uVet)

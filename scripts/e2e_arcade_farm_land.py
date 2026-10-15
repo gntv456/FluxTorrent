@@ -213,7 +213,7 @@ def main():
           st == 200 and d6.get("minutes") == want_min, (st, base_min, d6))
 
     # 价值侧复算：同一窗口内升级地与未升级地收同一株，市场价必须一致
-    win0 = land_of(pt)[1].get("data") or {}.get("window_start")
+    win0 = land_of(pt)[1].get("data", {}).get("window_start")
     psql("DELETE FROM farm_plots WHERE user_id = %d AND slot = 3" % uid)
     paid = {}
     for lvl, slot in ((3, 3), (1, 4)):
@@ -226,7 +226,7 @@ def main():
              % (uid, slot, cid, cid))
         st, r = call("POST", "/farm/harvest", {"slot": slot}, pt)
         paid[lvl] = (r.get("data") or {}).get("market_price")
-    win1 = land_of(pt)[1].get("data") or {}.get("window_start")
+    win1 = land_of(pt)[1].get("data", {}).get("window_start")
     check("两次收获落在同一个价格窗口（否则价值比较不成立）",
           win0 == win1, (win0, win1))
     # 价值侧只由 base_yield × 请求内随机因子决定（P1-1 安全审计 2026-10-06 把

@@ -79,7 +79,7 @@ def main():
     s, r = call("POST", "/admin/site-type-packs/diff",
                 {"code": target}, token=token)
     ok("H2 diff 200", s == 200 and r.get("code") == 0, r)
-    changes = r.get("data") or {}.get("changes", [])
+    changes = r.get("data", {}).get("changes", [])
     kinds = {c["key"] for c in changes}
     ok("H2 diff 含 category_new 段",
        "category_new" in kinds, sorted(kinds)[:8])
@@ -141,7 +141,7 @@ def main():
     ok("H4 覆盖位模块键不被 apply 复位", cur_val1 == cur_val, (cur_val, cur_val1))
 
     # H5：台账 changes 含分类段
-    apply_id = r.get("data") or {}.get("apply_id")
+    apply_id = r.get("data", {}).get("apply_id")
     ch = psql("SELECT changes FROM site_pack_applies WHERE id=%s" % apply_id)
     ok("H5 台账 changes 含 category_new",
        "category_new" in ch or "category_inactive" in ch)

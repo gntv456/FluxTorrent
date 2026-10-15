@@ -103,7 +103,7 @@ atexit.register(finalize)
 def mkmember():
     import json  # noqa: F401
     codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-                  token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
+                  token=ROOT)[1] or {}).get("data", {}).get("codes") or []
     cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
     nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
     if not codes or len(nums) < 2:

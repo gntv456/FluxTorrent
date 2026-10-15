@@ -106,7 +106,7 @@ ok("CG0 前提：基线已取（user_medals %d 行、授权表 %d 行），勋�
 
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 2},
-              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
+              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
 
 
 def reg(name, idx):

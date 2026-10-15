@@ -40,7 +40,7 @@ def check(name, cond, detail=""):
 # --- 前置 ---
 st, r = call("POST", "/auth/login", {"username": "root",
     "password": "password123"})
-check("前置·root登录", st == 200 and r.get("data") or {}.get("token"))
+check("前置·root登录", st == 200 and r.get("data", {}).get("token"))
 root_tok = r["data"]["token"]
 
 SEC_USER, SEC_PW = "qasec7", "Qasec7Pass123!"

@@ -330,7 +330,7 @@ s, r = call("POST", "/admin/reports/resolve", {"report_id": target,
             token=ROOT)
 ok("S4 处置成功（200 + resolved + pm_sent=true）",
    s == 200 and (r or {}).get("code") == 0
-   and (r or {}).get("data") or {}.get("pm_sent") is True,
+   and (r or {}).get("data", {}).get("pm_sent") is True,
    "%s %s" % (s, str(r)[:80]))
 items = inbox(T1)
 got = [m for m in items if "举报" in (m.get("subject") or "")
@@ -397,7 +397,7 @@ s, r = call("POST", "/admin/reports/resolve", {"report_id": dm,
 b2 = int(psql("SELECT spark_balance FROM users WHERE id = %s" % UID1))
 ok("S5 dismiss 不动账（%d→%d）但仍回信" % (b1, b2),
    b1 == b2 and s == 200 and (r or {}).get("code") == 0
-   and (r or {}).get("data") or {}.get("pm_sent") is True,
+   and (r or {}).get("data", {}).get("pm_sent") is True,
    "%s %s" % (s, str(r)[:70]))
 items2 = inbox(T1)
 got2m = [m for m in items2 if "举报" in (m.get("subject") or "")
