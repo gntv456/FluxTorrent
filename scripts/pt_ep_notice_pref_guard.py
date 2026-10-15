@@ -40,7 +40,7 @@ PSQL = ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
 # 它在 hr_mail.rs / push_notify.rs 里是函数体的内联复刻。
 # 接线一档就从这里删一档（EP3c 会顶红，逼撤桩对账）。
 FAKE_TOGGLES = [
-    "comment_reply", "system", "wishlist",
+    "comment_reply", "system",
 ]
 # 内联复刻的基线（文件,键）对数：语义等价但函数被 CREATE OR REPLACE
 # 改语义时不会跟着走 ⇒ EP5 只许减不许增，别再新增第三份副本。
@@ -229,6 +229,27 @@ ok("EP7a 认到复活写入点（>0，否则判据打空）", len(rev) > 0,
    "实读 %d 处：%s" % (len(rev), sorted(set(p for p, _ in rev))))
 ok("EP7b 每个复活写入点都过偏好执法", all(on for _, on in rev),
    "未执法：%s" % sorted(set(p for p, on in rev if not on)))
+
+# 同一手法核对愿望单命中（P-321 接线的那一档）
+wl = []
+for dp, dirs, fs in os.walk(os.path.join(ROOT, "apps")):
+    dirs[:] = [d for d in dirs if d not in ("target", "node_modules",
+                                            ".next")]
+    for fn in fs:
+        if not fn.endswith(".rs"):
+            continue
+        rel = os.path.relpath(os.path.join(dp, fn), ROOT).replace("\\", "/")
+        f = " ".join(open(os.path.join(dp, fn), encoding="utf-8",
+                          errors="replace").read().replace("\\\n",
+                                                            " ").split())
+        for mm in re.finditer(r"INSERT INTO messages.{0,400}", f):
+            seg = mm.group(0)
+            if (u"愿望单命中" in seg) or ("'wishlist'" in seg):
+                wl.append((rel, "u_notice_enabled" in seg))
+ok("EP8a 认到愿望单命中的写入点（>0）", len(wl) > 0,
+   "实读 %d 处：%s" % (len(wl), sorted(set(p for p, _ in wl))))
+ok("EP8b 愿望单写入点过 wishlist 偏好", all(on for _, on in wl),
+   "未执法：%s" % sorted(set(p for p, on in wl if not on)))
 print("== EP4 写入点带 kind 的基线（形状计数，只当漂移哨兵）==")
 writes = 0
 with_kind = 0
@@ -254,9 +275,9 @@ ok("EP4a 认到 messages 写入点（>0 才算这条在跑）", writes > 0,
    "写入点 %d 处" % writes)
 # 基线取批一百三十三实测：52 处写入里带 kind 5 处。棘轮两个方向：
 # 带 kind 的只许增（>=5），不带的只许减（<=47）——新增裸写入口会顶红。
-ok("EP4b 带 kind 的写入点 >= 基线 7 处", with_kind >= 7,
+ok("EP4b 带 kind 的写入点 >= 基线 8 处", with_kind >= 8,
    "实读 %d/%d" % (with_kind, writes))
-ok("EP4c 不带 kind 的写入点 <= 基线 45 处", writes - with_kind <= 45,
+ok("EP4c 不带 kind 的写入点 <= 基线 44 处", writes - with_kind <= 44,
    "实读 %d/%d" % (writes - with_kind, writes))
 print("   现网形状：写入点 %d 处，其中带 kind %d 处（无 kind %d 处）"
       % (writes, with_kind, writes - with_kind))
