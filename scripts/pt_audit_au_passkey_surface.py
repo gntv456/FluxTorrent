@@ -126,6 +126,17 @@ def pk16(raw):
     return sha3(raw.encode())[:16]
 
 
+def _decode_log(blob):
+    """日志字节 → 文本。要能识别 UTF-16LE（PowerShell 默认）。"""
+    if blob[:2] == b"\xff\xfe":
+        return blob.decode("utf-16-le", "replace")[1:]
+    if blob[:3] == b"\xef\xbb\xbf":
+        return blob[3:].decode("utf-8", "replace")
+    if b"\x00" in blob[:64]:
+        return blob.decode("utf-16-le", "replace")
+    return blob.decode("utf-8", "replace")
+
+
 def logs_since(sec="25s"):
     """取 access log。日志源必须**跟着 API 所在位置**走。
 
@@ -151,11 +162,63 @@ def logs_since(sec="25s"):
             ["docker", "logs", "--since", sec, "flux-api"],
             capture_output=True, text=True, encoding="utf-8").stdout
         return re.sub(r"\x1b\[[0-9;]*m", "", raw)
-    # 侧进程：日志由启动脚本重定向到文件
-    for cand in (os.environ.get("FLUX_SIDE_LOG"),):
-        if cand and os.path.exists(cand):
-            with open(cand, "r", encoding="utf-8", errors="replace") as fh:
-                return re.sub(r"\x1b\[[0-9;]*m", "", fh.read()[-200000:])
+    # 侧进程：日志由启动脚本重定向到文件。先看环境变量，
+    # 再自动探工作区里的默认名字（本仓验证脚本 side8101.ps1 统一
+    # 写到 _tmp_v2/side_access.log）——不要让每个跑 sweep 的人手动配环境变量，
+    # 不配就是三条「日志里有没有」的假红（实测 sweep8 就是这么红的）。
+    cands = [os.environ.get("FLUX_SIDE_LOG")]
+    # 仓库根：__file__ 是 scripts/pt_audit_au_passkey_surface.py，
+    # 所以 dirname 一次是 scripts、二次才是仓库根。
+    # 第一版只去了一层·得到 D:\，进而找不到 _tmp_v2/side_access.log，
+    # 表现为三条「日志里没有相关行」的假红（日志里实际有）。
+    # 仓库根：先从 cwd 猜（仓内所有闸门都是从仓库根跑的），
+    # 再回退 __file__。不把它当唯一依赖：被其他模块 exec 引用时
+    # __file__ 可能不存在（NameError），会让整个日志取数抹结果为空。
+    roots = [os.getcwd()]
+    try:
+        roots.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    except NameError:
+        pass
+    for r in roots:
+        cands.append(os.path.join(r, "_tmp_v2", "side_access.log"))
+    for cand in cands:
+        if not cand or not os.path.exists(cand) or os.path.getsize(cand) == 0:
+            continue
+        # 只取本次之后的行（按 mtime + 尾部读的字节数），
+        # 不要固定取尾 200KB：日志文件会一直增长（实测 668KB），
+        # 本轮刚写的行很快就被挤出尾部窗口 → 又变成「日志里没有」的假红。
+        # 取最后 4MB 并再按行过滤本次进程启动之后的时间戳。
+        try:
+            size = os.path.getsize(cand)
+            with open(cand, "rb") as fh:
+                fh.seek(max(0, size - 4 * 1024 * 1024))
+                blob = fh.read()
+        except OSError:
+            continue
+        # 编码探测：本仓验证脚本用 PowerShell 的 Tee-Object 写日志，
+        # 它在 Windows 上默认写 **UTF-16LE**（字节间隔一个 0x00），而不是
+        # UTF-8。按 UTF-8 解码得到的是一大片乱码，里面连 "path=/api/v1/rss/"
+        # 这个形式都找不到 —— 三条「日志里有没有」的判据全红，
+        # 而日志里实际一行不少。因此先看首字节否有 BOM/零字节来判库。
+        tail = _decode_log(blob)
+        tail = re.sub(r"\x1b\[[0-9;]*m", "", tail)
+        # PowerShell 的 Tee-Object 有缓冲：刚写进去的请求行可能还在缓冲里，
+        # 所以「读到文件尾部」不等于「读到本轮请求」。等一下：
+        # 刷新到能看见本次触发的 RSS 路径为止（最多等 6 秒）。
+        needle = "path=/api/v1/rss/"
+        for _ in range(12):
+            if needle in tail:
+                break
+            time.sleep(0.5)
+            try:
+                with open(cand, "rb") as fh:
+                    size2 = os.path.getsize(cand)
+                    fh.seek(max(0, size2 - 4 * 1024 * 1024))
+                    blob = fh.read()
+                tail = re.sub(r"\x1b\[[0-9;]*m", "", _decode_log(blob))
+            except OSError:
+                break
+        return tail
     return ""
     # tracing 会给字段名/分隔符上 ANSI 颜色，`path=<值>` 在原始流里并不连续
     # ——不断码就会把「脱敏正控」误判成不存在（本闸门第一版就红在这里）。
