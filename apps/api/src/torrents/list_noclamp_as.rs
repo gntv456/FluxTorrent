@@ -357,6 +357,10 @@ pub async fn list_torrents_noclamp_as(
             .bind(filter.grade_id)
             .bind(filter.edition_id)
             .bind(filter.official)
+            // $6：标题 LIKE 的 pattern。**不能漏**——approval_gate_count
+            // 用的是 $7 槽位；少绑一个会让 $7 拿到 category 数组，PG 直接
+            // 报 syntax error。现网 500（列表打不开）就是这条。
+            .bind(&pattern)
             .bind(filter.include_unapproved)
             .bind(filter.tag_ids.clone())
             .bind(filter.size_min)
