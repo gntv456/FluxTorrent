@@ -69,7 +69,7 @@ export function MessageCenter() {
     api
       .get<PmBox[]>("/api/v1/messages/boxes")
       .then(setBoxes)
-      .catch(() => setBoxes([]));
+      .catch(() => { setBoxes([]); toast.error(dict.common.loadFailed); });
   }, [box, folder, search, onlyUnread, dict]);
 
   useEffect(() => {
