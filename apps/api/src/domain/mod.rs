@@ -10,6 +10,9 @@ pub mod lottery_fair;
 // seedbox 盒子：CIDR 校验与标志位语义（只放宽不加重）
 pub mod seedbox;
 
+// 勋章自动成就（双模式 + 回填 + 进度）
+pub mod medal;
+
 // 考核多阶段推进 + 补救期（状态机判定进 domain）
 pub mod exam;
 
