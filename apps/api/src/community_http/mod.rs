@@ -199,6 +199,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     let scope = crate::setup_http::mount_setup(
         crate::economy_http::mount_economy(crate::http::v1_scope()),
     );
+    // CSRF token 签发口（独立于登录，供前端按需续期/轮换）。
+    // 挂在这里而不是在 App 上另开一个 /api/v1 scope：actix 的 scope
+    // 是前缀独占匹配，另开一个会把原有 700+ 路由全打成 404。
+    let scope = scope.configure(crate::csrf::configure);
     let scope = mount_community(scope);
     let scope = crate::games_http::mount_games(crate::ops_http::mount_ops(
         crate::content_http::mount_content(scope),
