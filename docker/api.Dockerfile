@@ -17,6 +17,11 @@ FROM chef AS planner
 # 而它落在 **/target/（被 .dockerignore 排除、也没入库）——不在这里构建，
 # 干净克隆的 api 镜像必然编不过（四审 A 批复验空库首启时踩实）。
 # 放在 `COPY apps` 之前，业务代码改动不再连带重付这 29 分钟的 wasm 编译。
+# rustup 走 rsproxy 国内镜像（与下方 cargo 的 rsproxy 同源）：
+# static.rust-lang.org 直连被 GFW 限速掐断过——rustup 内部重试 80 分钟后
+# stream error 回滚整次构建（2026-10-14 实测），容器无代理改走镜像。
+ARG RUSTUP_DIST_SERVER=https://rsproxy.cn
+ARG RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 COPY apps/api/adapters ./apps/api/adapters
 RUN rustup target add wasm32-unknown-unknown \
     && cd apps/api/adapters/douban \

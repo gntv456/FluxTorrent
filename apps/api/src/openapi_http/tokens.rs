@@ -7,6 +7,7 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
+use super::SCOPE_CROSSSEED;
 use super::{hash_token, API_TOKEN_TTL_DAYS, SCOPE_READ, SCOPE_UPLOAD};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -120,9 +121,9 @@ pub(super) async fn token_issue(
     // 拼错的 scope 必须报错 —— 静默接受会变成「用户以为给了权限、实际没有」
     // 或更糟的反面（未来扩了白名单就悄悄多授权）。
     for s in &body.scopes {
-        if s != SCOPE_READ && s != SCOPE_UPLOAD {
+        if s != SCOPE_READ && s != SCOPE_UPLOAD && s != SCOPE_CROSSSEED {
             return Err(DomainError::Validation(format!(
-                "未知 scope：{s}（可用：read / upload）"
+                "未知 scope：{s}（可用：read / upload / crossseed）"
             )));
         }
     }

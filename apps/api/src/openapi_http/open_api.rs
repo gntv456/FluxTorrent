@@ -6,8 +6,8 @@
 //! spec.rs::build() 合并进最终 openapi.json（双轨期：路径来自注解，
 //! schema 来自手写，路径段的手写 spec 已归零）。
 //!
-//! 聚合的 14 条 = mount_openapi 挂载的全部端点（openapi.json 自身除外，
-//! 它是文档端点不是数据契约）。
+//! 聚合的 17 条 = mount_openapi 挂载的全部端点（openapi.json 自身除外，
+//! 它是文档端点不是数据契约；M36 起含 crossseed 三端点）。
 
 use utoipa::OpenApi;
 
@@ -30,12 +30,17 @@ use utoipa::OpenApi;
         crate::openapi_http::tokens::token_issue,
         crate::openapi_http::tokens::token_revoke,
         crate::openapi_http::tokens::token_refresh,
+        crate::openapi_http::crossseed::xseed_lookup,
+        crate::openapi_http::crossseed::xseed_dl,
+        crate::openapi_http::crossseed::xseed_iyuu,
     ),
     tags(
         (name = "开放数据", description = "/open/*：过审种子的只读开放契约"),
         (name = "发种", description = "Token 化发种（需 upload scope）"),
         (name = "我的数据", description = "/open/me/*：Token 主人自己的数据"),
         (name = "凭据", description = "/me/tokens：API Token 管理面（会话鉴权）"),
+        (name = "辅种(crossseed)",
+            description = "/crossseed/*：辅种指纹查询与下载（需 crossseed scope）"),
     )
 )]
 pub(super) struct OpenApiOpen;
@@ -49,8 +54,9 @@ pub(super) fn paths() -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     /// 路径集合锁定：注解被误删/改路径时此处先红（openapi_cov_guard 再兜底）。
+    /// M36：crossseed 三端点（lookup / dl / iyuu）入列。
     #[test]
-    fn open_api_domain_covers_14_paths() {
+    fn open_api_domain_covers_17_paths() {
         let paths = super::paths();
         let obj = paths.as_object().expect("utoipa 聚合产物应为 paths 对象");
         let expected = [
@@ -67,6 +73,9 @@ mod tests {
             "/api/v1/me/tokens",
             "/api/v1/me/tokens/revoke",
             "/api/v1/me/tokens/refresh",
+            "/api/v1/crossseed/lookup",
+            "/api/v1/crossseed/dl/{torrent_id}",
+            "/api/v1/crossseed/iyuu",
         ];
         let mut miss = Vec::new();
         for p in expected {
@@ -74,7 +83,7 @@ mod tests {
                 miss.push(p);
             }
         }
-        // /me/tokens 上有两个 method（get+post），14 条路径项 = 13 个 path 键
+        // /me/tokens 上有两个 method（get+post），16 个 path 键 = 17 个操作
         assert!(
             miss.is_empty(),
             "开放 API 域注解缺路径: {miss:?}（实际键: {:?}）",
@@ -85,8 +94,8 @@ mod tests {
             .map(|v| v.as_object().map(|o| o.len()).unwrap_or(0))
             .sum();
         assert_eq!(
-            ops, 14,
-            "开放 API 域应有 14 个操作（13 键 + /me/tokens 双方法）"
+            ops, 17,
+            "开放 API 域应有 17 个操作（16 键 + /me/tokens 双方法）"
         );
     }
 }
