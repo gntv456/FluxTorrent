@@ -27,6 +27,36 @@ impl AuthRepo {
             .begin()
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+        // 用户总量闸（0370 M4）：maxusers（复用既有键，0 = 不限）。
+        // 必须**在本事务内**校验并持 advisory 锁——NexusPHP 的
+        // check-then-insert 竞态会让并发注册各自通过检查、一起建号突破上限。
+        // xact 级锁在 commit/rollback 时自动释放，只串行化「计数→插入」段。
+        const REG_CAP_LOCK: i64 = 0x7265_675f_6361_7001;
+        sqlx::query("SELECT pg_advisory_xact_lock($1)")
+            .bind(REG_CAP_LOCK)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        let max_users: i64 = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+             WHERE name = 'maxusers'), 0)",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+        if max_users > 0 {
+            let used: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM users WHERE status < 2",
+            )
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap_or(0);
+            if used >= max_users {
+                return Err(DomainError::Validation(
+                    "本站注册人数已达上限，请联系管理组".into(),
+                ));
+            }
+        }
         // passkey 列是 CHAR(32)：gen_random_bytes(20)→hex 是 40 位必溢出。
         // 与 update_passkey 的 new_passkey()（32 位小写字母数字）对齐。
         let passkey = crate::domain::new_passkey();

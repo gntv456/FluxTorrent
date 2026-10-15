@@ -29,6 +29,7 @@ mod profile_helpers;
 mod profile_privacy;
 mod profile_types;
 mod register;
+pub(crate) mod register_gates;
 mod register_mode;
 mod user_fields;
 mod user_fields_crud;

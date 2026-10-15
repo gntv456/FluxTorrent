@@ -106,6 +106,10 @@ pub const NOTCONNECTABLE_VIEW: &str = "notconnectable.view";
 /// 作弊者探测名单（0361，批六十一 P-231）：名单含每人近 1 小时上传
 /// 增量与折算速度，属管理组调查材料，版主/发布员不该读得到
 pub const CHEATERS_VIEW: &str = "cheaters.view";
+/// 反作弊案件办理（0369 M3）：认领/备注/关案——class>=90
+pub const CHEAT_CASES_MODERATE: &str = "cheat.cases.moderate";
+/// 作弊处置下达（0369 M3）：警告/停权/封禁/回收流量——class>=93（高危分离）
+pub const CHEAT_SANCTIONS: &str = "cheat.sanctions.manage";
 // 第八轮 P3 管理套件（参考站后台逐页深挖落地）
 pub const TORRENT_MANAGE: &str = "torrent.manage";
 pub const HR_VIEW: &str = "hr.view";

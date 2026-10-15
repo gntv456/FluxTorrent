@@ -74,6 +74,9 @@ pub async fn seeding_reward(
                   AND NOT COALESCE(s.connectable = 0, false)
                 CROSS JOIN p
                 WHERE u.status < 2
+                  -- 0369 M3：作弊停权期间同挂起口径停发做种收益（到期由
+                  -- cheat_enforce 清扫 cheat_banned_until 后自动恢复）。
+                  AND NOT COALESCE(u.cheat_banned_until > now(), false)
                   AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
                   AND NOT EXISTS (
                       SELECT 1 FROM cheat_events c

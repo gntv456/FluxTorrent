@@ -1,14 +1,14 @@
 //! HTTP 接口层：路由 + handlers + 鉴权提取器 + 限流。
 //! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
-//! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
-//! 按域拆分（300 行门禁）：鉴权/限流设施在 auth_infra.rs，me 杂项与统计/
-//! 举报/RSS 在 misc_handlers.rs，插件四件套（勋章墙/大赛/挂件/五子棋）在
-//! plugins.rs，公告/趣味盒/友链在 news_fun.rs，首页板块在 home.rs；
-//! v1_scope 路由注册留在此（引用 crate::xxx_http 与子模块）。
+//! 按域拆分（300 行门禁）：鉴权/限流设施在 auth_infra.rs，me 杂项/统计/
+//! 举报/RSS 在 misc_handlers.rs，插件四件套在 plugins.rs，公告/趣味盒/
+//! 友链在 news_fun.rs，首页板块在 home.rs；v1_scope 路由注册留在此，
+//! auth 经 state.jwt 使用（0071 RS256 化后本层不再直接调用）。
 
 pub(crate) mod write_origin;
 pub(crate) use write_origin::write_origin_mw;
 mod auth_infra;
+mod cheat_case;
 mod cheat_http;
 mod frames_gomoku;
 mod fun_links;
@@ -24,10 +24,12 @@ mod plugins;
 mod probes;
 mod qenv;
 mod reports_http;
+mod risk;
 mod throttle;
 pub mod view_layout;
 
 pub use auth_infra::*;
+pub use cheat_case::*;
 pub use cheat_http::*;
 pub use frames_gomoku::*;
 pub use fun_links::*;
@@ -39,14 +41,12 @@ pub use news_fun::*;
 pub use plugins::*;
 pub use probes::*;
 pub use qenv::*;
+pub use risk::*;
 pub use throttle::*;
 pub use view_layout::*;
 
-// auth 模块经 state.jwt 使用（0071 RS256 化后 http 层不再直接调用）
-
-/// 出网抓取统一超时：GitHub 更新检查 / 商店远程索引 / 远程包 / PT-Gen /
-/// 适配器 http_allow 拉取共用。原 8s（更新检查、商店索引）与 20s 两档并存，
-/// 统一为 20（P2 收敛）——向上统一只影响失败得更慢，不影响正确性。
+/// 出网抓取统一超时（更新检查/商店索引/远程包/PT-Gen/适配器拉取共用）：
+/// 原 8s 与 20s 两档并存，统一为 20（P2 收敛）——只影响失败得更慢。
 pub(crate) const OUTBOUND_FETCH_TIMEOUT_SECS: u64 = 20;
 
 use crate::social_http::{
@@ -55,7 +55,7 @@ use crate::social_http::{
 use actix_web::web;
 
 pub fn v1_scope() -> actix_web::Scope {
-    web::scope("/api/v1")
+    let scope = web::scope("/api/v1")
         .service(health)
         .service(ready)
         .service(about)
@@ -174,7 +174,10 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::torrent_http::torrent_tag_put)
         .service(stats)
         .service(cheat_events_list)
-        .service(cheat_events_resolve)
+        .service(cheat_events_resolve);
+    let scope = cheat_case::mount_cheat_cases(scope);
+    let scope = risk::mount_risk(scope);
+    scope
         .service(reports_http::report_create)
         .service(rss_info)
         .service(news_create)

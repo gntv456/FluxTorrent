@@ -8,24 +8,31 @@ mod appeals;
 mod applications;
 mod captcha;
 pub mod captcha_drivers;
+mod cheat_appeal_review;
+pub(crate) mod cheat_appeal_reverse;
+mod cheat_appeals;
 mod classes_public;
 mod hr;
 mod login_aux;
 mod mail;
 mod misc;
 mod pow;
+mod reg_quiz;
 mod reset;
 mod wishlist;
 
 use appeals::*;
 use applications::*;
 pub use captcha::*;
+use cheat_appeal_review::*;
+use cheat_appeals::*;
 use classes_public::*;
 use hr::*;
 use login_aux::*;
 pub use mail::*;
 use misc::*;
 pub use pow::*;
+pub use reg_quiz::*;
 use reset::*;
 use wishlist::*;
 
@@ -39,6 +46,8 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         .service(captcha_issue)
         // 登录 PoW 挑战（sha256-pow-v1，连续失败后触发）
         .service(pow_challenge)
+        // 注册答题抽题（0372 M5，票据一次性）
+        .service(quiz_challenge)
         // H&R
         .service(my_hr_status)
         .service(hr_pardon)
@@ -49,6 +58,12 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         .service(appeal_my)
         .service(appeal_queue)
         .service(appeal_handle)
+        // 作弊处置申诉（M3）：令牌入口 + 用户自助 + 员工复核
+        .service(cheat_appeal_by_token)
+        .service(cheat_appeal_submit)
+        .service(cheat_appeal_my)
+        .service(cheat_appeal_queue)
+        .service(cheat_appeal_resolve)
         // 补签卡使用
         .service(resub_use)
         // 等级

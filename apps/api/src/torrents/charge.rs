@@ -16,19 +16,28 @@ use crate::errors::{DomainError, DomainResult};
 /// 扣费段（钱回不来，文件照样拿不到）。
 /// `build_torrent_bytes` 内部也走本函数：漏调不会放行，只会把拒单时机
 /// 推迟到扣费之后。
+///
+/// 0369 M3：叠加「作弊停权」闸门（`users.cheat_banned_until`）——停权期间
+/// 同挂起口径拒绝下载，到期由 worker `cheat_enforce` 每 10m 清扫自动恢复。
 pub async fn ensure_downloadable(
     db: &PgPool,
     user_id: i64,
 ) -> DomainResult<()> {
-    let (download_enabled, suspended): (bool, bool) = sqlx::query_as(
-        "SELECT download_enabled, suspended FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .ok_or(DomainError::Unauthorized)?;
+    let (download_enabled, suspended, cheat_banned): (bool, bool, bool) =
+        sqlx::query_as(
+            "SELECT download_enabled, suspended, \
+             COALESCE(cheat_banned_until > now(), false) \
+             FROM users WHERE id = $1",
+        )
+        .bind(user_id)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .ok_or(DomainError::Unauthorized)?;
     if suspended {
+        return Err(DomainError::Forbidden);
+    }
+    if cheat_banned {
         return Err(DomainError::Forbidden);
     }
     if !download_enabled {

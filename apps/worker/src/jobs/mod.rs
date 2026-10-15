@@ -37,8 +37,11 @@ mod process_event;
 mod promo_audit;
 mod promos;
 mod reconcile;
+mod reg_cleanup;
 mod request_expire;
+mod risk_score;
 mod run;
+mod sanction_sweep;
 mod seeding;
 // 0354 邀请分润：seeding.rs 主结算后直接 super:: 调用，不对外 re-export
 mod seeding_referral;
@@ -66,6 +69,8 @@ pub(crate) use manual::*;
 pub(crate) use request_expire::*;
 
 pub(crate) use reconcile::*;
+pub(crate) use reg_cleanup::*;
+pub(crate) use risk_score::*;
 pub(crate) use social_team::*;
 pub(crate) use social_team_expire::*;
 

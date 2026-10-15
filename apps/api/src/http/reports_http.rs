@@ -73,10 +73,13 @@ pub async fn report_create(
     // 去重（0285）：部分唯一索引 uq_reports_open_per_reporter 挡住「同一举报人
     // 对同一目标的多条在处理中」。此前无条件 INSERT，50 次连点＝队列 50 行，
     // 版主被迫逐条处置同一件事。
+    // 0367：索引谓词排除 cheat 类型（案件走自己的去重键 uq_cheat_case_open），
+    // ON CONFLICT 推断谓词必须与索引定义逐字匹配，故此处同步加 ref_type <> 'cheat'。
     let id: Option<i64> = sqlx::query_scalar(
         "INSERT INTO reports (reporter_id, ref_type, ref_id, reason) \
          VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (ref_type, ref_id, reporter_id) WHERE status IN (0, 2) \
+         ON CONFLICT (ref_type, ref_id, reporter_id) \
+         WHERE status IN (0, 2) AND ref_type <> 'cheat' \
          DO NOTHING RETURNING id",
     )
     .bind(auth.id)

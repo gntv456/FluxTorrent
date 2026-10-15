@@ -67,6 +67,20 @@ macro_rules! spawn_lock {
 fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
     shard.as_ref().map_or(true, |l| l.iter().any(|s| s == n))
 }
+
+/// 消费者组任务统一入口（0225 G30-B2）：组内投递唯一，多实例并发消费是
+/// 真分摊而非双计——不走 advisory 锁；mark_start/end 保留登记，面板
+/// executed_by 可见分实例。错误只记不中断（下一轮自然补消费）。
+async fn run_consumer<Fut>(db: &PgPool, name: &str, fut: Fut)
+where
+    Fut: std::future::Future<Output = anyhow::Result<u64>>,
+{
+    crate::jobs::locks::mark_start(db, name).await;
+    if let Err(e) = fut.await {
+        tracing::error!(?e, name, "消费失败");
+    }
+    crate::jobs::locks::mark_end(db, name, None).await;
+}
 /// 统一 Skip 语义的 interval：tick 体耗时超周期时**跳过**积压轮次，而不是默认的
 /// Burst（立刻补跑）——后者会把慢任务退化成永不停歇的忙碌循环（ZT81 实测：
 /// hr_enforce 38.6s/轮 + 60s 周期 → 实际周期缩到 45~58s，worker 全程扫表）。
@@ -149,38 +163,17 @@ pub async fn run_all(
             // consume_* 已改消费者组（0225 G30-B2）：组内投递唯一，多实例
             // 并发消费是真分摊而非双计——不再需要 advisory 锁互斥（保留
             // mark_start 登记则由面板覆盖写口径承担，executed_by 可见分实例）。
-            {
-                let (db2, mut r) = (db.clone(), redis.clone());
-                crate::jobs::locks::mark_start(&db,
-                    "consume_announce").await;
-                if let Err(e) = consume_announce(&db2, &mut r).await {
-                    tracing::error!(?e, "consume_announce 失败");
-                }
-                crate::jobs::locks::mark_end(&db, "consume_announce",
-                    None).await;
-            }
-            {
-                let (db2, mut r) = (db.clone(), redis.clone());
-                crate::jobs::locks::mark_start(&db,
-                    "consume_agent_blocks").await;
-                if let Err(e) = consume_agent_blocks(&db2, &mut r).await {
-                    tracing::error!(?e, "consume_agent_blocks 失败");
-                }
-                crate::jobs::locks::mark_end(&db, "consume_agent_blocks",
-                    None).await;
-            }
+            let (db2, mut r) = (db.clone(), redis.clone());
+            run_consumer(&db, "consume_announce",
+                consume_announce(&db2, &mut r)).await;
+            let (db2, mut r) = (db.clone(), redis.clone());
+            run_consumer(&db, "consume_agent_blocks",
+                consume_agent_blocks(&db2, &mut r)).await;
             // 交叉上报消费（2026-10-07 P0-2 治本）：把 leecher 佐证的上传量
             // 累加进 upload_corroborated，作为计费侧上传量的可信上界。
-            {
-                let (db2, mut r) = (db.clone(), redis.clone());
-                crate::jobs::locks::mark_start(&db,
-                    "consume_xreport").await;
-                if let Err(e) = consume_xreport(&db2, &mut r).await {
-                    tracing::error!(?e, "consume_xreport 失败");
-                }
-                crate::jobs::locks::mark_end(&db, "consume_xreport",
-                    None).await;
-            }
+            let (db2, mut r) = (db.clone(), redis.clone());
+            run_consumer(&db, "consume_xreport",
+                consume_xreport(&db2, &mut r)).await;
             // ZT81：分离到后台执行，不再 join/await——原实现会把整个 select 循环
             // 卡到任务跑完，全表任务一慢，同分支的计费消费就跟着停摆。
             {
@@ -288,6 +281,9 @@ pub async fn run_all(
                 spawn_lock!(js, db2, "job:cheat_audit", cheat_audit, shard2);
                 spawn_lock!(js, db2, "job:cheat_enforce",
                             cheat_enforce, shard2);
+                // 0368 M2 风险评分增量轮（含 decay 漂移兜底，见 risk_score.rs）
+                spawn_lock!(js, db2, "job:risk_score",
+                            risk_score_tick, shard2);
                 spawn_lock!(js, db2, "job:collusion_check",
                             collusion_check, shard2);
             });
@@ -313,6 +309,10 @@ pub async fn run_all(
             if first_tick1d { first_tick1d = false; continue; }
             shard_lock!(&db, "job:ensure_partitions",
                 ensure_partitions(&db), &shard);
+            // 0368 M2 风险评分全量轮（权重调参安全网；增量轮 1h 内也自愈）
+            shard_lock!(&db, "job:risk_score_daily",
+                risk_score_daily(&db), &shard);
+            shard_lock!(&db, "job:reg_cleanup", reg_cleanup(&db), &shard);
             // 匿名统计（0276）：体内自查开关，未开即返回
             shard_lock!(&db, "job:usage_stats",
                 usage_stats_report(&db), &shard); }        }

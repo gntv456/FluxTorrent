@@ -7,6 +7,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { CheatAppealBox } from "@/components/cheat-appeal-box";
 
 interface AppealRow {
   id: number;
@@ -210,6 +211,9 @@ export default function AppealsPage() {
           {busy ? dict.appeals.busy : dict.appeals.submit}
         </button>
       </form>
+
+      {/* 作弊处置申诉（0369 M3）：一次性令牌 + 我的作弊申诉 */}
+      <CheatAppealBox />
 
       {!guest ? (
         <section className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">

@@ -85,6 +85,16 @@ pub async fn register(
     let ip_early = client_ip(&req);
     let provider =
         crate::gaps_http::captcha_drivers::provider(&state.repo.db).await;
+    // PoW 验证码（0372 M5）：captcha_provider=pow 时用自托管工作量证明
+    // 替代算术题/第三方组件——注册链路的挑战用 scope=register 签发。
+    if provider == "pow" {
+        crate::gaps_http::pow_verify(
+            &state,
+            body.pow_token.trim(),
+            body.pow_solution.trim(),
+        )
+        .await?;
+    }
     let handled_by_driver = crate::gaps_http::captcha_drivers::verify(
         &state,
         &provider,
@@ -92,7 +102,8 @@ pub async fn register(
         &ip_early,
     )
     .await?;
-    if !handled_by_driver
+    if provider != "pow"
+        && !handled_by_driver
         && (body.captcha_id.is_empty()
             || !crate::gaps_http::captcha_verify(
                 &state,
@@ -102,6 +113,44 @@ pub async fn register(
             .await)
     {
         return Err(DomainError::Validation("验证码错误或已过期".into()));
+    }
+    // 注册答题闸（0372 M5）：reg_quiz_enabled=yes 时须带一次性票据；
+    // reg_quiz_pass_required=yes 时答错即拒（no 只记录不拦截）。
+    let quiz_on: bool = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'reg_quiz_enabled'), 'no') = 'yes'",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(false);
+    if quiz_on {
+        if body.quiz_ticket.trim().is_empty() {
+            return Err(DomainError::Validation(
+                "请先完成注册答题后提交".into(),
+            ));
+        }
+        let quiz_ip = client_ip(&req);
+        let out = crate::gaps_http::quiz_verify(
+            &state,
+            &body.quiz_ticket,
+            body.quiz_answer,
+            &quiz_ip,
+        )
+        .await?;
+        if !out.passed {
+            let must: bool = sqlx::query_scalar(
+                "SELECT COALESCE((SELECT value FROM site_settings \
+                 WHERE name = 'reg_quiz_pass_required'), 'yes') = 'yes'",
+            )
+            .fetch_one(&state.repo.db)
+            .await
+            .unwrap_or(true);
+            if must {
+                return Err(DomainError::Validation(
+                    "站规测验答错了，请重新抽题作答".into(),
+                ));
+            }
+        }
     }
     // 注册限流（§5.7）：按来源 IP 每分钟 5 次，防邀请码爆破
     let ip = client_ip(&req);
@@ -133,6 +182,10 @@ pub async fn register(
         ));
     }
     throttle(&state, format!("register-ip:{ip}")).await?;
+    // 注册治理四道闸（0370 M4）：注册窗口 / 同 IP 限额 / 一次性邮箱；
+    // 用户总量（maxusers）在 register_user 事务内校验 + advisory 锁防超发。
+    super::register_gates::check_reg_gates(&state, &ip, &new_user.email)
+        .await?;
     let pass_hash = domain::hash_password(&new_user.password)?;
     // 单事务注册（repo 分层收编）：事务体在 repo/auth.rs register_user——
     // 建用户+消费邀请码+绑邀请人原子完成（审计修复口径不变），
@@ -148,6 +201,8 @@ pub async fn register(
             reg_mode == "invite_only",
         )
         .await?;
+    // 同 IP 注册留痕（0370 M4）：只存 sha3-256 摘要，失败只告警不阻断
+    super::register_gates::record_ip_signup(&state.repo.db, &ip, user_id).await;
     // 字段值落库（required 已在前置校验；失败不回滚账号——附属数据）
     {
         // 与上面的 required 校验、与 `/register-fields` 三处同一口径

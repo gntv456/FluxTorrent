@@ -38,7 +38,11 @@ const POW_DIFFICULTY_DEFAULT: i32 = 18;
 
 #[derive(Deserialize)]
 struct PowQuery {
+    #[serde(default)]
     username: String,
+    /// "register" = 注册链路按需签发（0372 M5），不受 acctlock 触发线约束
+    #[serde(default)]
+    scope: String,
 }
 
 /// 难度读站点设定：pow_difficulty_bits，缺省 18，钳 12..=24
@@ -67,11 +71,17 @@ pub async fn pow_challenge(
     let ip = crate::http::client_ip(&req);
     crate::http::rate_window(&state, &format!("pow:{ip}"), 30, 60).await?;
     let name = q.username.trim().to_lowercase();
-    let fails =
-        crate::http::counter_peek(&state, &format!("acctlock:{name}")).await?;
-    if fails < POW_FAILS_FROM {
-        // 未达触发线不发题：接口对「任意用户名」无探测价值
-        return Err(DomainError::Validation("当前无需工作量证明".into()));
+    // scope=register（0372）：注册链路主动求解，不依赖登录失败计数
+    if q.scope.trim() != "register" {
+        let fails =
+            crate::http::counter_peek(&state, &format!("acctlock:{name}"))
+                .await?;
+        if fails < POW_FAILS_FROM {
+            // 未达触发线不发题：接口对「任意用户名」无探测价值
+            return Err(DomainError::Validation(
+                "当前无需工作量证明".into(),
+            ));
+        }
     }
     // 32 字节 crypto 随机 → 64 hex（对外凭据口径同 new_passkey 的 OsRng）
     use rand::RngCore;

@@ -2,16 +2,21 @@
 
 import { INPUT_LG } from "@/lib/ui-classes";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { mountCaptchaWidget } from "@/lib/captcha-widget";
 import {
-  DRIVER_WIDGET_ID,
-  mountCaptchaWidget,
-} from "@/lib/captcha-widget";
-import { RegisterFields } from "@/components/register-fields";
+  RegisterFields,
+  type RegField,
+} from "@/components/register-fields";
+import {
+  RegisterCaptcha,
+  RegisterPow,
+  RegisterQuiz,
+} from "@/components/register-gates";
 import {
   FormField,
   FieldErrors,
@@ -24,17 +29,17 @@ interface Captcha {
   question: string;
 }
 
-/// register-mode 下发的公开配置（0227）：验证码驱动 + 申请通道
+/// register-mode 下发的公开配置（0227）：验证码驱动 + 申请通道 + 答题闸
 interface ModeInfo {
   mode?: string;
   captcha_provider?: string;
   captcha_site_key?: string;
   application_signup?: string;
+  reg_quiz_enabled?: boolean;
+  reg_quiz_pass_required?: boolean;
 }
 
-/** W-18 试点：错误码 → 字段级渲染的映射。后端注册接口多为单错误码
- *  （2005 邀请码 / 2007 用户名占用 / 2011 验证码…），按码归到对应
- *  字段让 FormField 内联红字；1002 多字段信封走 fieldErrorsFrom。 */
+/** W-18：错误码→字段映射（2005 邀请码 / 2007 用户名；1002 走信封）。 */
 const CODE_TO_FIELD: Record<number, string> = {
   2005: "invite_code", // 邀请码无效或已过期
   2006: "invite_code", // 邀请码已被使用
@@ -54,15 +59,7 @@ export default function RegisterPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   // 自定义字段（0186）：站长标记 show_on_register 的字段动态渲染
-  const [regFields, setRegFields] = useState<
-    {
-      key: string;
-      label: string;
-      type: string;
-      required: boolean;
-      options: { value: string; label?: string }[];
-    }[]
-  >([]);
+  const [regFields, setRegFields] = useState<RegField[]>([]);
   const [fieldVals, setFieldVals] = useState<Record<string, unknown>>({});
   const [captcha, setCaptcha] = useState<Captcha | null>(null);
   // W-18：字段级错误 map（字段名 → 消息）；表单级错误降级为 form 键
@@ -75,6 +72,22 @@ export default function RegisterPage() {
   const [driver, setDriver] = useState("none");
   const [siteKey, setSiteKey] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
+  // 0372 M5：答题闸（reg_quiz_enabled）+ PoW 凭据（captcha_provider=pow）
+  const [quizOn, setQuizOn] = useState(false);
+  const [quizHard, setQuizHard] = useState(true);
+  const [quizTicket, setQuizTicket] = useState("");
+  const [quizAnswer, setQuizAnswer] = useState(-1);
+  const [pow, setPow] = useState({ token: "", solution: "" });
+  /** 一次性凭据失效后重抽（验证码/答题票据/PoW 解都是 GETDEL 语义） */
+  const [gateNonce, setGateNonce] = useState(0);
+
+  const onQuizPick = useCallback((ticket: string, answer: number) => {
+    setQuizTicket(ticket);
+    setQuizAnswer(answer);
+  }, []);
+  const onPowSolved = useCallback((token: string, solution: string) => {
+    setPow({ token, solution });
+  }, []);
 
   async function refreshCaptcha() {
     try {
@@ -104,6 +117,8 @@ export default function RegisterPage() {
         const prov = r.captcha_provider ?? "none";
         setDriver(prov);
         setSiteKey(r.captcha_site_key ?? "");
+        setQuizOn(r.reg_quiz_enabled === true);
+        setQuizHard(r.reg_quiz_pass_required !== false);
         mountCaptchaWidget(prov, r.captcha_site_key ?? "", setCaptchaToken);
       })
       .catch(() => setOpenMode(false));
@@ -144,6 +159,10 @@ export default function RegisterPage() {
         captcha_answer:
           driver === "none" && captchaAnswer ? Number(captchaAnswer) : 0,
         captcha_token: captchaToken,
+        pow_token: pow.token,
+        pow_solution: pow.solution,
+        quiz_ticket: quizTicket,
+        quiz_answer: quizAnswer,
         fields: fieldVals,
       });
       // 注册成功直接走登录（后端注册不返回 token）
@@ -155,7 +174,7 @@ export default function RegisterPage() {
       router.push("/torrents");
     } catch (err) {
       setFieldErrs(mapError(err));
-      refreshCaptcha(); // 验证码一次性，失败即换新题
+      refreshCaptcha(); setGateNonce((n) => n + 1);
     } finally {
       setBusy(false);
     }
@@ -235,48 +254,28 @@ export default function RegisterPage() {
             className={INPUT_LG}
           />
         </FormField>
-        {/* 验证码（0227）：none=自研算术题；第三方=对应组件（token 由回调写入） */}
-        {driver !== "none" && siteKey ? (
-          <div id={DRIVER_WIDGET_ID[driver]} className="min-h-[64px]" />
-        ) : null}
-        {/* 算术验证码（后端 /auth/captcha 出题，一次性） */}
-        {driver === "none" && (
-          <FormField
-            name="captcha"
-            label={dict.register.captcha}
-            required
+        {/* 验证码（0227）：none=自研算术题；pow=自托管 PoW；其他=第三方组件 */}
+        {driver === "pow" ? (
+          <RegisterPow key={gateNonce} onSolved={onPowSolved}
+            error={first("pow")} />
+        ) : (
+          <RegisterCaptcha
+            driver={driver}
+            siteKey={siteKey}
+            captcha={captcha}
+            answer={captchaAnswer}
+            onAnswer={setCaptchaAnswer}
+            onRefresh={refreshCaptcha}
             error={first("captcha")}
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="num min-h-[44px] flex items-center
-                  rounded-[var(--r-sm)] border border-line bg-cloud px-3
-                  font-bold"
-              >
-                {captcha?.question ?? "…"}
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={captchaAnswer}
-                onChange={(e) =>
-                  setCaptchaAnswer(e.target.value.replace(/\D/g, ""))
-                }
-                required
-                placeholder={dict.register.captchaAnswer}
-                className={`${INPUT_LG} min-w-0 flex-1`}
-              />
-              <button
-                type="button"
-                onClick={refreshCaptcha}
-                aria-label={dict.register.captchaRefresh}
-                className="min-h-[44px] shrink-0 rounded-full border border-line
-                  px-3 text-sm text-sub active:scale-[0.97]"
-              >
-                ↻
-              </button>
-            </div>
-          </FormField>
+          />
+        )}
+        {/* 站规答题（0372 M5）：reg_quiz_enabled=yes 才出现 */}
+        {quizOn && (
+          <RegisterQuiz
+            hard={quizHard} key={gateNonce}
+            onChange={onQuizPick}
+            error={first("quiz")}
+          />
         )}
         <SubmitButton
           busy={busy}

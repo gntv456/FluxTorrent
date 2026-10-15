@@ -70,6 +70,10 @@ pub(crate) async fn run_named(
         "dlq_watch" => n(dlq_watch(db, redis).await?),
         "cheat_audit" => n(cheat_audit(db).await?),
         "cheat_enforce" => n(cheat_enforce(db).await?),
+        // 0368 M2：增量/全量两个口径分手触，面板可分别补跑
+        "risk_score" => n(risk_score_tick(db).await?),
+        "risk_score_daily" => n(risk_score_daily(db).await?),
+        "reg_cleanup" => n(reg_cleanup(db).await?),
         "collusion_check" => n(collusion_check(db).await?),
         "multi_ip_check" => n(multi_ip_check(db).await?),
         "leak_scan" => n(leak_scan(db).await?),
