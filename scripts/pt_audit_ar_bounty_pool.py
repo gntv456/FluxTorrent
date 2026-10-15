@@ -300,12 +300,20 @@ ok("S6 授金 rank1：火花 5000 + rank 落库",
 ok("S6 揭晓信 x1",
    q("SELECT count(*) FROM messages WHERE receiver_id = %d AND subject = "
      "'金字幕评选揭晓'" % uVet) == "1")
+# 注：这条原写是
+#   [1].get("data", {}).get("granted", [{}])[0].get("skipped")
+# data 为 null 时 `.get("data", {})` 返回 None（默认只在**键缺失**时生效），
+# 下一个 .get 直接抛 AttributeError ——闸门死在主判据之前，finally
+# 照常清理并打 PASS，看着像「跑过了。改走安全取值（批一百四十三的教训），
+# 还多了一层：granted[0] 不存在时返回 None 而不是 IndexError。
+_grant_resp = call("POST", "/admin/subtitles/awards/grant",
+                   {"period": PERIOD, "grants": [{"id": int(aid or 0),
+                                                  "rank": 1}]},
+                   token=login())[1]
+_granted0 = (_grant_resp.get("data") or {}).get("granted") or [{}]
 ok("S6 反例：重复授金不双发（幂等键 + rank=0 卫语句）",
-   call("POST", "/admin/subtitles/awards/grant",
-        {"period": PERIOD, "grants": [{"id": int(aid or 0),
-                                       "rank": 1}]},
-        token=login())[1].get("data", {}).get("granted", [{}])[0].get(
-            "skipped") is True)
+   bool(_granted0 and _granted0[0].get("skipped") is True),
+   "granted=%s" % str(_granted0)[:120])
 GSQL = ("SELECT tier FROM user_subtitle_certs WHERE user_id = %d "
         "AND revoked_at IS NULL AND tier = 'gold'" % uVet)
 jok, jinfo = run_job("subcert_sweep")
