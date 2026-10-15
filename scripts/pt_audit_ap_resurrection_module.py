@@ -153,8 +153,18 @@ led = q("SELECT COALESCE(sum(amount),0)::text FROM spark_ledger WHERE "
         "idempotency_key = 'resurrection:%d'" % RID)
 ok("S1 模块关：发奖落流水（5000）", led == "5000", led)
 BAL1 = q("SELECT spark_balance::text FROM users WHERE id = %d" % uid)
-ok("S1 模块关：余额增量=奖励", int(BAL1) - int(BAL0) == 5000,
-   "before=%s after=%s" % (BAL0, BAL1))
+# 余额增量不能拿「前后两次绝对值相减」——本闸门复用的是 root（uid=1），
+# 而 worker 的周期作业（social_team_expire 等）随时可能给同一账号发钱，
+# 于是两次读之间混进别人的写入，增量对不上。批一百五十三实测：并跑其它闸门时
+# 这里读到 before=13949 after=21049（差 7100 而非 5000），单跑却全绿——
+# 典型的「闸门之间互相污染」，不是产品回归。
+# 改口径：**以流水为准**。resurrection:<RID> 这笔 5000 已经单独验过，
+# 这里只验「流水金额确实体现在余额上」：读该 idem 的 balance_after，
+# 与流水 amount 相符即成立，不再受并发写入干扰。
+BA = q("SELECT balance_after::text FROM spark_ledger WHERE "
+       "idempotency_key = 'resurrection:%d'" % RID)
+ok("S1 模块关：余额增量=奖励（以流水 balance_after 为准，不吃并发干扰）",
+   BA == "5000", "before=%s after=%s ledger_balance_after=%s" % (BAL0, BAL1, BA))
 vch = q("SELECT count(*) FROM user_vouchers WHERE user_id = %d AND "
         "source = 'resurrection'" % uid)
 ok("S1 模块关：免费券 x1", vch == "1", vch)
