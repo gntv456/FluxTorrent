@@ -63,7 +63,7 @@ from pt_audit_lib import (  # noqa: E402
     call, clear_register_rl, login, ok, summary)
 from pt_smtp_sink import (  # noqa: E402
     SINK_NAME, find_link, link_note, mails, reachable, selftest,
-    start_sink, stop_sink, wait_mails)
+    sink_addr, start_sink, stop_sink, wait_mails)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
@@ -241,8 +241,12 @@ for k in ("registration_mode", "smtp_host", "smtp_port", "smtp_from",
           "encryption"):
     PIN[k] = setting(k)
 ok("诱捕 SMTP 容器可用（信箱是判据的唯一来源）", start_sink())
-setv("smtp_host", SINK_NAME)
-setv("smtp_port", "2525")
+# 地址跟 API 所在选：容器内用容器名，宿主侧进程用发布端口。
+# 批一百五十三：硬写容器名跟宿主侧进程登录失败，
+# 表现为 forgot 返回 200 但信箱零封——冒充产品红。
+SINK_HOST, SINK_PORT = sink_addr()
+setv("smtp_host", SINK_HOST)
+setv("smtp_port", str(SINK_PORT))
 setv("smtp_from", "audit@site.local")
 setv("encryption", "none")
 setv("registration_mode", "invite_only")
