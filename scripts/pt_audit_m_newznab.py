@@ -94,7 +94,22 @@ def main():
         back = psql("SELECT value FROM site_settings "
                     "WHERE name='site_type'")
     ok("站型还原", back == orig_type, (orig_type, back))
-    # 物化行号已由 apply 链维护，无需回滚（站长号是显式意图）
+    # 上面那条「站长改号不被 apply 复位」**故意**把 music_single 的号改成 7020
+    # 来验证 merge 守旧值——所以本闸门有责任复原。原注释写「无需回滚（站长号是
+    # 显式意图）」是错的：那不是站长的号，是本闸门的探针值。
+    # 后果实测（批一百五十四）：跑完这闸门后全表 declared≠actual 恒为 1 行
+    # （music_single 7020），P-335 的修复被自己的守卫判据悄悄推翻——迁移 0377
+    # 修好的值又变回去，且下一个人只会看到「怎么又坏了」。
+    nz_before = psql("SELECT newznab_id FROM categories WHERE key='music_single'")
+    psql("UPDATE categories c SET newznab_id=(p.cat->>'newznab_id')::int "
+         "FROM site_type_packs pk, jsonb_array_elements(pk.categories) p(cat) "
+         "WHERE c.key=p.cat->>'key' AND c.key='music_single' "
+         "AND p.cat ? 'newznab_id' AND c.newznab_id IS DISTINCT FROM "
+         "(p.cat->>'newznab_id')::int")
+    nz_after = psql("SELECT newznab_id FROM categories WHERE key='music_single'")
+    ok("探针号已复原（红线：本闸门的守卫判据不许把自己的 7020 留在库里）",
+       nz_after == "3030" and nz_before == "7020",
+       "跑前=%s 跑后=%s" % (nz_before, nz_after))
 
 
 if __name__ == "__main__":
