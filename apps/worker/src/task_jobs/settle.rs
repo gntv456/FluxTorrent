@@ -9,10 +9,11 @@
 //!     此类任务 base 记 0 且用 users 现值直接比对（tier 非空视为累计口径）。
 
 use super::reward::{settle_complete, settle_fail};
+use super::stages::{stage_advance, stage_deadline};
 use sqlx::PgPool;
 
 #[derive(serde::Deserialize, Default)]
-pub(crate) struct TaskMetric {
+pub(super) struct TaskMetric {
     #[serde(default)]
     pub(crate) upload_delta: Option<i64>,
     #[serde(default)]
@@ -30,24 +31,32 @@ pub(crate) struct TaskMetric {
 }
 
 #[derive(sqlx::FromRow)]
-pub(crate) struct OpenClaim {
-    pub(crate) id: i64,
-    pub(crate) task_id: i64,
-    pub(crate) user_id: i64,
-    pub(crate) reward: i64,
-    pub(crate) penalty: i64,
-    pub(crate) duration_days: i32,
+pub(super) struct OpenClaim {
+    pub(super) id: i64,
+    pub(super) task_id: i64,
+    pub(super) user_id: i64,
+    pub(super) reward: i64,
+    pub(super) penalty: i64,
+    pub(super) duration_days: i32,
     pub(crate) tier: Option<String>,
     /// 0093：任务类型（task/onboard/periodic），用于完成通知区分转正考核文案
-    #[sqlx(default)]
     pub(crate) kind: String,
-    #[sqlx(default)]
     pub(crate) task_name: String,
     pub(crate) metric: serde_json::Value,
-    pub(crate) claimed_at: chrono::DateTime<chrono::Utc>,
-    pub(crate) base_uploaded: i64,
-    pub(crate) base_seed_seconds: i64,
-    pub(crate) base_uploads: i64,
+    pub(super) claimed_at: chrono::DateTime<chrono::Utc>,
+    pub(super) base_uploaded: i64,
+    pub(super) base_seed_seconds: i64,
+    pub(super) base_uploads: i64,
+    // 0381 多阶段：当前阶段（无阶段配置时恒 1，行为与迁移前一致）。
+    // 四列在 0381 里都是 NOT NULL / DEFAULT，值永不为 NULL，故不需要
+    // #[sqlx(default)]（FromRow derive 也不支持 default = "fn" 写法）。
+    pub(super) exam_stage_seq: i32,
+    /// 本阶段开始时刻（NULL = 用认领时刻兜底）
+    pub(super) exam_stage_started_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 补救期截止（NULL = 未进补救）
+    pub(super) exam_remedy_until: Option<chrono::DateTime<chrono::Utc>>,
+    /// 已用延期次数
+    pub(super) exam_extensions: i32,
 }
 
 /// 结算一次所有进行中的认领。worker 分钟级调用（幂等：状态推进用条件更新 + 发奖幂等键）。
@@ -55,7 +64,9 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
     let claims: Vec<OpenClaim> = sqlx::query_as(
         "SELECT c.id, c.task_id, c.user_id, t.reward, t.penalty, t.duration_days, t.tier, \
                 t.kind, t.name AS task_name, t.metric, c.claimed_at, \
-                c.base_uploaded, c.base_seed_seconds, c.base_uploads \
+                c.base_uploaded, c.base_seed_seconds, c.base_uploads, \
+                c.exam_stage_seq, c.exam_stage_started_at, \
+                c.exam_remedy_until, c.exam_extensions \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          WHERE c.status = 0 AND c.exempted_at IS NULL LIMIT $1",
     )
@@ -153,15 +164,25 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
             met &= subtitles_now >= v;
         }
 
-        let deadline = c.claimed_at
-            + chrono::Duration::days(c.duration_days.max(1) as i64);
+        // 0381：多阶段考核走状态机判定（domain::exam），单段/未配置阶段
+        // 的 task 行为与迁移前逐位一致（remedy_days=0 + seq=1）。
+        if let Some(adv) = stage_advance(db, &c, met && has_target)
+            .await?
+        {
+            done += adv;
+            continue;
+        }
         if met && has_target {
             if settle_complete(db, &c).await? {
                 done += 1;
             }
-        } else if now > deadline || now > task_end(db, c.task_id).await {
-            settle_fail(db, &c).await?;
-            done += 1;
+        } else {
+            let deadline = stage_deadline(&c);
+            let ended = now > deadline || now > task_end(db, c.task_id).await;
+            if ended {
+                settle_fail(db, &c).await?;
+                done += 1;
+            }
         }
     }
     Ok(done)
