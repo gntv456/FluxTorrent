@@ -103,7 +103,7 @@ ok("CB0 前提：root 读这四口都能进（%s），且库里确有内容可�
 # ===== CB1 探针职员（只有 staff.panel）：六条口今天全部敞开 =====
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
+              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
 cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
 nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
 if codes and len(nums) >= 2:

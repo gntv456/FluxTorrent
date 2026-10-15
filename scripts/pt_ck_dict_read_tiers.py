@@ -152,7 +152,7 @@ ok("CK0 前提：授权表 %d 行，本批七把键都在目录里（=%s）" % (
 
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
+              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
 cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
 nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
 if codes and len(nums) >= 2:

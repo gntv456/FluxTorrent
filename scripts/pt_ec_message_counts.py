@@ -86,7 +86,7 @@ try:
         summary()
         sys.exit(1)
     _sa, ba = register(A, codes[0]["code"])
-    # P-329：`.get("data") or {}` 只在键缺失时兜底——接口回 {"data": null}
+    # P-329：`.get("data", {})` 只在键缺失时兜底——接口回 {"data": null}
     # （限流/PoW/注册被拒都会这样）时它返回 None，下一句 None.get 直接
     # AttributeError：整支闸门 EC1~EC6 一条没跑，而 finally 的清理照常打
     # PASS ⇒ 终端是 rc=1 / FAIL=0 的「假跑完」。改成 must-have 前置断言。
