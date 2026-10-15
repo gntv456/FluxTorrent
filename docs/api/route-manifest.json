@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 774,
+ "total": 780,
  "routes": [
   {
    "method": "POST",
@@ -357,6 +357,24 @@
    "path": "/admin/user-roles/{user_id}/{role_key}",
    "handler": "user_role_revoke",
    "file": "apps/api/src/admin_http/roles.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/seedbox/claims",
+   "handler": "seedbox_review_queue",
+   "file": "apps/api/src/admin_http/seedbox_review.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/seedbox/review",
+   "handler": "seedbox_review",
+   "file": "apps/api/src/admin_http/seedbox_review.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/seedbox/revoke",
+   "handler": "seedbox_revoke",
+   "file": "apps/api/src/admin_http/seedbox_review.rs"
   },
   {
    "method": "GET",
@@ -2991,6 +3009,24 @@
    "path": "/auth/password/reset",
    "handler": "password_reset",
    "file": "apps/api/src/gaps_http/reset.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/me/seedbox/claim",
+   "handler": "seedbox_claim",
+   "file": "apps/api/src/gaps_http/seedbox_claim.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/seedbox/claims",
+   "handler": "seedbox_my_claims",
+   "file": "apps/api/src/gaps_http/seedbox_claim.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/seedbox/status",
+   "handler": "seedbox_my_status",
+   "file": "apps/api/src/gaps_http/seedbox_claim.rs"
   },
   {
    "method": "GET",

@@ -281,6 +281,7 @@ pub mod cheat_reverse;
 pub mod email_domains;
 pub mod passkey;
 pub mod reg_quiz;
+pub mod seedbox;
 pub mod register_gates;
 pub mod offers;
 pub mod pmboxes;

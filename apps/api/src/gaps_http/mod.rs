@@ -7,6 +7,8 @@ mod appeal_unban;
 mod appeals;
 mod applications;
 mod captcha;
+mod seedbox_claim;
+pub(crate) use seedbox_claim::*;
 pub mod captcha_drivers;
 mod cheat_appeal_review;
 mod cheat_appeals;
@@ -48,6 +50,10 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         // 注册答题抽题（0372 M5，票据一次性）
         .service(quiz_challenge)
         // H&R
+        // seedbox 盒子申报（0380）
+        .service(seedbox_claim)
+        .service(seedbox_my_claims)
+        .service(seedbox_my_status)
         .service(my_hr_status)
         .service(hr_pardon)
         .service(hr_pardon_batch)

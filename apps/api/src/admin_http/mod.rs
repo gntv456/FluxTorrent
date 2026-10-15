@@ -7,6 +7,10 @@
 pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         .service(admin_overview)
+        // seedbox 审核（0380）
+        .service(seedbox_review_queue)
+        .service(seedbox_review)
+        .service(seedbox_revoke)
         .service(review_queue)
         .service(review_decide)
         .service(review_batch)
@@ -121,6 +125,8 @@ mod perms;
 mod perms_user;
 mod records;
 mod reg_quiz_admin;
+mod seedbox_review;
+pub(crate) use seedbox_review::*;
 mod reg_quiz_bank;
 mod reports;
 mod reports_resolve;
