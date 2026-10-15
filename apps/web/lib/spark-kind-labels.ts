@@ -74,11 +74,11 @@ export const SPARK_KIND_LABELS: Record<string, string> = {
   request_bounty: "求种悬赏",
   request_refund: "求种过期退还",
   // 买/卖种（torrents/charge.rs 现网各 11 条）、账号清理（user_del.rs，
-  // 86 条）、论坛删帖退积分（post_edit.rs）——此前直出英文键
+  // 86 条）、删回复退积分（post_edit.rs）——此前直出英文键。
+  // 注：forum-topic-del 上方第 44 行已有名，别再补一条重复键
   torrent_buy: "买种支出",
   torrent_sell: "卖种收入",
   user_purge: "账号清理回收",
-  "forum-topic-del": "删除主题退还",
   "forum-topic-del-reply": "删除回复退还",
 
   // 众筹 / 池
