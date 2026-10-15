@@ -20,79 +20,11 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         tracing::debug!("H&R 已由站点设定关闭，本轮跳过");
         return Ok(());
     }
-    // ZT81（2026-10-02）增量窗口：原实现每轮全表扫 snatches（42 万行实测单轮
-    // 38.6s、≈7GB 缓冲访问、279,852 次索引探测），而每轮真正要处理的只是新到的
-    // 「完成」。completed_at 在事件消费时写为 now()，故按「近 N 小时」过滤即可
-    // 覆盖全部新增完成；回看窗可配（site_settings.hr_scan_lookback_hours，
-    // 默认 6h），用于 worker 停机后的事件积压补跑。
-    let lookback_h: i64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings \
-         WHERE name = 'hr_scan_lookback_hours')::bigint, 6)",
-    )
-    .fetch_one(db)
-    .await
-    .unwrap_or(6)
-    .clamp(1, 720);
-    // 站点级缺省口径（深测 2026-10-03 修复）：种子未带 hr_policy.seed_hours 时，
-    // 此前硬编码 48 与站点设定 hr_hours（后台可改、现值 120）/ myhr 页文案三方
-    // 矛盾。统一为「种子 policy > 站点设定 hr_hours > 48 兜底」三级 COALESCE。
-    let default_hr_hours: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
-         WHERE name = 'hr_hours'), '')::bigint, 48)",
-    )
-    .fetch_one(db)
-    .await
-    .unwrap_or(48)
-    .clamp(1, 24 * 365);
-    // 考察天数缺省（0311 site_settings 化）：与 seed_hours 同为三级 COALESCE
-    // （种子 hr_policy->days > 站点 hr_days > 14 兜底）。
-    let default_hr_days: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
-         WHERE name = 'hr_days'), '')::bigint, 14)",
-    )
-    .fetch_one(db)
-    .await
-    .unwrap_or(14)
-    .clamp(1, 365);
-    // 1) 为新完成的下载建快照（幂等）；免费窗口内完成的不建快照（豁免）
-    sqlx::query(
-        r#"
-        INSERT INTO hr_snapshots (user_id, torrent_id, required_seconds, deadline)
-        SELECT s.user_id, s.torrent_id,
-               COALESCE((t.hr_policy->>'seed_hours')::int, $2::int) * 3600,
-               s.completed_at + make_interval(days => COALESCE((t.hr_policy->>'days')::int, $3::int))
-        FROM snatches s
-        JOIN torrents t ON t.id = s.torrent_id
-        WHERE s.completed_at > now() - make_interval(hours => $1::int)
-          -- 0286：只对「当前对外可见」的种子建义务。此前无此判定，
-          -- 待审/被拒/回收站里的种子同样给会员记 H&R 责任（且删种会连带
-          -- 级联掉证据，等于一边误判一边免单）。
-          AND t.approval_status = 1
-          AND NOT EXISTS (SELECT 1 FROM hr_snapshots h WHERE h.user_id = s.user_id AND h.torrent_id = s.torrent_id)
-          AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
-          -- 0072 buffer 豁免（U3D hitrun.buffer 口径）：下载量不足种子 10% 视为误触/秒删，不计 H&R
-          AND s.downloaded > t.size * 104 / 1000   -- 与券核销同阈值（≈10.4%）：10%~10.4% 区间不再误判
-          AND NOT EXISTS (
-              SELECT 1 FROM promotions p
-              WHERE (p.torrent_id = s.torrent_id
-                     OR (p.torrent_id IS NULL AND (
-                         p.scope = 'global'
-                         OR (p.scope = 'official' AND t.official_tag)
-                         OR (p.scope = 'non_official' AND NOT t.official_tag)
-                         OR (p.scope = 'category' AND t.category_id = p.category_id))))
-                AND p.starts_at <= s.completed_at AND p.ends_at > s.completed_at
-                AND p.kind IN ('free', 'x2free')
-          )
-          -- 保种员 / VIP 持 hr.exempt 权限 → 免除 H&R，不建快照
-          AND NOT user_can(s.user_id, 'hr.exempt')
-        ON CONFLICT DO NOTHING
-        "#,
-    )
-    .bind(lookback_h as i32)
-    .bind(default_hr_hours as i32)
-    .bind(default_hr_days as i32)
-    .execute(db)
-    .await?;
+    let d = site_defaults(db).await;
+    let lookback_h = d.lookback_h;
+    let default_hr_hours = d.seed_hours;
+    let default_hr_days = d.days;
+    let _built = super::hr_snapshot::build_snapshots(db, &d).await?;
 
     // 2) 刷新累计做种秒数（快照口径：snatches.seeded_seconds）。
     //    0286：新鲜度窗口改用站点统一口径 `max(2h, 2×announce_interval)`
@@ -297,4 +229,44 @@ async fn on_violations(db: &PgPool, n: u64) {
     )
     .execute(db)
     .await;
+}
+
+/// 站点级 H&R 缺省口径（三处 site_settings 查询收拢一处）。
+///
+/// ZT81 增量窗口：按「近 N 小时」过滤新完成的下载，替代全表扫 snatches
+/// （42 万行实测单轮 38.6s、≈7GB 缓冲访问）；回看窗可配，用于停机补跑。
+/// 缺省口径统一为「种子 policy > 站点设定 > 兜底」三级 COALESCE
+/// （深测 2026-10-03：此前硬编码 48 与 hr_hours=120、myhr 文案三方矛盾）。
+pub(super) struct SiteDefaults {
+    pub(super) lookback_h: i64,
+    pub(super) seed_hours: i64,
+    pub(super) days: i64,
+}
+
+async fn site_defaults(db: &PgPool) -> SiteDefaults {
+    let lookback_h: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'hr_scan_lookback_hours')::bigint, 6)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(6)
+    .clamp(1, 720);
+    let seed_hours: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'hr_hours'), '')::bigint, 48)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(48)
+    .clamp(1, 24 * 365);
+    let days: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'hr_days'), '')::bigint, 14)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(14)
+    .clamp(1, 365);
+    SiteDefaults { lookback_h, seed_hours, days }
 }

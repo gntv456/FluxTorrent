@@ -23,6 +23,7 @@ mod group_parse;
 mod hr;
 mod hr_mail;
 mod hr_resolve;
+mod hr_snapshot;
 mod jixiao;
 mod jixiao_loop;
 mod jixiao_snap;
