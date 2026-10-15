@@ -193,7 +193,12 @@ MONTH = psql("SELECT to_char((now() at time zone 'utc+8'), 'YYYY-MM')")
 B0 = {"users": cnt("users"), "live": cnt("users", "status < 2"),
       "keys": cnt("download_keys"), "ledger": cnt("spark_ledger"),
       "buy": cnt("torrent_purchases"),
-      "traffic": cnt("traffic_ledger"), "snatch": cnt("snatches"),
+      # traffic 不再用全表计数：worker 每 60s 就在写 traffic_ledger（与同文件
+      # S7e 对 spark_ledger 的判据同一个根因），收尾时全表计数必然比基线多
+      # ——实测并跑时凭空多出 171/172 两行 2026-10-06 的历史流水，被算成残留。
+      # 改成「本闸门探针号自己的行数」，别人的写入一概不算。
+      "traffic": cnt("traffic_ledger", "user_id = %d" % PU),
+      "snatch": cnt("snatches"),
       "root_spark": psql("SELECT spark_balance FROM users WHERE id = 1"),
       "pool": psql("SELECT donated_total FROM magic_pool WHERE month = "
                    "'%s'" % MONTH),
@@ -395,7 +400,8 @@ psql("DELETE FROM spark_ledger WHERE user_id = %d OR idempotency_key IN "
      "('%s','%s')" % (PU, IDEM_B, IDEM_S))
 NOW = {"users": cnt("users"), "live": cnt("users", "status < 2"),
        "keys": cnt("download_keys"),
-       "buy": cnt("torrent_purchases"), "traffic": cnt("traffic_ledger"),
+       "buy": cnt("torrent_purchases"),
+       "traffic": cnt("traffic_ledger", "user_id = %d" % PU),
        "snatch": cnt("snatches"),
        "root_spark": psql("SELECT spark_balance FROM users WHERE id = 1"),
        "pool": psql("SELECT donated_total FROM magic_pool WHERE month = "
