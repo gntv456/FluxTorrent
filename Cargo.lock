@@ -1338,6 +1338,7 @@ dependencies = [
  "encoding_rs",
  "envy",
  "evalexpr",
+ "flux-shared",
  "futures-util",
  "hkdf",
  "hmac",
@@ -1369,6 +1370,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "flux-shared"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rand 0.8.8",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "flux-tracker"
 version = "0.3.2"
 dependencies = [
@@ -1396,6 +1408,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "dotenvy",
+ "flux-shared",
  "futures-util",
  "lettre",
  "redis",

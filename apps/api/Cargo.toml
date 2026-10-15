@@ -4,6 +4,8 @@ version = "0.3.2"
 edition.workspace = true
 
 [dependencies]
+# 商城生效链的唯一实现（api 与 worker 共用，避免两处漂移）
+flux-shared = { path = "../../crates/flux-shared" }
 tokio.workspace = true
 actix-web.workspace = true
 actix-cors.workspace = true
