@@ -24,6 +24,7 @@ mod hr;
 mod hr_mail;
 mod hr_resolve;
 mod hr_snapshot;
+mod hr_warn_ladder;
 mod jixiao;
 mod jixiao_loop;
 mod jixiao_snap;

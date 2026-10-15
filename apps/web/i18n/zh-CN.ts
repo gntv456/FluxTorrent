@@ -6516,6 +6516,20 @@ const zhCnBase = {
     youWin: "你赢了！🎉",
     youLose: "你输了",
   },
+
+  lotteryFair: {
+    drawn: "已开奖",
+    ongoing: "进行中",
+    serverOk: "✓ 服务端复算通过",
+    serverFail: "服务端复算未过",
+    browserOk: "✓ 你的浏览器复算通过",
+    browserFail: "浏览器复算未对上",
+  },
+  termsGov: {
+    healthy: "真绿",
+    needsWork: "需处理",
+    statLine: "在用 {active} · 有规则 {withRule} · 退役引用 {retired}",
+  },
 };
 
 export interface Security2faDict {

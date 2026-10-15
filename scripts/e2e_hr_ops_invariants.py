@@ -114,12 +114,17 @@ def run_job(tok, job, timeout=200):
 
 
 def run_hr_chain(tok):
-    """H&R 的两个作业：建快照/判定在 hr_enforce，处罚与自动恢复在 hr_punish。"""
+    """H&R 的三个作业：建快照/判定 hr_enforce，警告阶梯 hr_warn_ladder，
+    超阈值惩罚与自动恢复 hr_punish。阶梯必须排在 punish 之前——它给的是
+    「更轻但有恢复承诺」的处置，punish 是最后一档。"""
     a, ia = run_job(tok, "hr_enforce")
     if not a:
         return False, "hr_enforce=" + ia
+    w, iw = run_job(tok, "hr_warn_ladder")
+    if not w:
+        return False, "hr_warn_ladder=" + iw
     b, ib = run_job(tok, "hr_punish")
-    return b, "enforce=%s punish=%s" % (ia, ib)
+    return b, "enforce=%s warn=%s punish=%s" % (ia, iw, ib)
 
 
 def check(name, ok, detail=""):

@@ -292,6 +292,7 @@ pub mod lottery_fair;
 pub mod lottery_draw;
 pub mod rss;
 pub mod settings;
+pub mod shop;
 pub mod torrent_download;
 pub mod terms_gov;
 pub mod user_privacy;

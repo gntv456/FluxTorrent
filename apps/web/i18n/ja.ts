@@ -122,6 +122,20 @@ export const ja: DeepPartial<Dict> = {
     iosHint: "iOS：共有 → ホーム画面に追加",
     dismiss: "閉じる",
   },
+
+  lotteryFair: {
+    drawn: "抽選済み",
+    ongoing: "進行中",
+    serverOk: "✓ サーバー側再計算に合格",
+    serverFail: "サーバー側再計算に不一致",
+    browserOk: "✓ ブラウザ側再計算に合格",
+    browserFail: "ブラウザ側再計算が一致しません",
+  },
+  termsGov: {
+    healthy: "健全",
+    needsWork: "要対応",
+    statLine: "使用中 {active} · ルールあり {withRule} · 廃止参照 {retired}",
+  },
 };
 
 /** 深い部分型（段レベルのフォールバックに必要な最小定義） */

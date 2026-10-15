@@ -281,6 +281,8 @@ pub async fn run_all(
             tokio::spawn(async move {
                 let mut js = tokio::task::JoinSet::new();
                 spawn_lock!(js, &db2, "job:hr_enforce", hr_enforce, &shard2);
+                spawn_lock!(js, &db2, "job:hr_warn_ladder",
+                            hr_warn_ladder::run, &shard2);
                 spawn_lock!(js, &db2, "job:hr_punish", hr_punish, &shard2);
                 spawn_lock!(js, &db2, "job:collect_milestones",
                             collect_milestones, &shard2);

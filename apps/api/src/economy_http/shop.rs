@@ -22,6 +22,7 @@ struct BuyReq {
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::shop::ItemRow as RepoItem;
 use crate::state::AppState;
 
 /// 经济路由（挂载进主 /api/v1 scope，单 scope 避免遮蔽）
@@ -48,18 +49,18 @@ async fn shop_buy(
     body: web::Json<BuyReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let item: Option<(String, String, i64, serde_json::Value)> =
-        sqlx::query_as(
-            "SELECT name, kind, price, \
-         config FROM shop_items WHERE id = $1 AND active = true",
-        )
-        .bind(body.item_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((name, kind, unit_price, config)) = item else {
+    // 0383 递增价格：price_step/price_max/price_anchor_qty 一并读出，
+    // 单价在下方按**已售量**现算——限量商品卖得越多越贵。
+    // `domain::shop::price_with_step` 此前**无任何调用方**，即
+    // 「配了 price_step 也不涨」；档位列建了半年没人读。
+    let item: Option<RepoItem> =
+        crate::repo::shop::item_for_buy(&state.repo, body.item_id).await?;
+    let Some(item) = item else {
         return Err(DomainError::NotFound(body.item_id));
     };
+    let name = item.name;
+    let kind = item.kind;
+    let config = item.config;
 
     // 数量口径（0207）：stackable 类可 1..=100；其余一律 1。
     // 唯一性道具（装扮/头衔类）叠加购买 = 花钱买空气，由 stackable 缺省挡住。
@@ -76,6 +77,15 @@ async fn shop_buy(
             "该商品不可叠加购买，数量固定为 1".into(),
         ));
     }
+    // 递增单价：配置漏填（开了 step 没填 max）在 domain 层就报错，
+    // 不偷偷兜底——「配了递增却卖不动」是查不出原因的现场。
+    let unit_price = crate::domain::shop::price_with_step(
+        item.price,
+        item.sold,
+        item.price_step,
+        item.price_max,
+        item.price_anchor_qty,
+    )?;
     let total = unit_price
         .checked_mul(qty)
         .ok_or(DomainError::Validation("数量超出可计算范围".into()))?;
@@ -309,34 +319,22 @@ async fn shop_buy(
             } else {
                 format!("{}:{}", idem, k)
             };
-            sqlx::query(
-                "INSERT INTO shop_orders (user_id, item_id, price, \
-                 idempotency_key, config_snapshot) VALUES ($1, $2, $3, $4, $5) \
-                 ON CONFLICT (idempotency_key) DO NOTHING",
+            // 冻结额按**单价**记，而不是整单总额：卡牌类一个订单
+            // 拆成 N 行（每行一张卡），每行只对应一次履约。
+            // 记 total 会让 N 行台账合计 N×total，对账时凭空多出
+            // 一笔钱——而 worker 的退款兜底正是按 frozen_amount 退的。
+            crate::repo::shop::freeze_order(
+                &state.repo, auth.id, body.item_id, unit_price, &key,
+                &config, unit_price,
             )
-            .bind(auth.id)
-            .bind(body.item_id)
-            .bind(unit_price)
-            .bind(&key)
-            .bind(config.clone())
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            .await?;
         }
     } else {
-        sqlx::query(
-            "INSERT INTO shop_orders (user_id, item_id, price, \
-             idempotency_key, config_snapshot) VALUES ($1, $2, $3, $4, $5) \
-             ON CONFLICT (idempotency_key) DO NOTHING",
+        crate::repo::shop::freeze_order(
+            &state.repo, auth.id, body.item_id, total, &idem,
+            &config, total,
         )
-        .bind(auth.id)
-        .bind(body.item_id)
-        .bind(total)
-        .bind(&idem)
-        .bind(config.clone())
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        .await?;
     }
 
     // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发（此前 Replayed 直接跳过
@@ -389,6 +387,12 @@ async fn shop_buy(
                 .await?;
         }
     }
+
+    // 三段式收尾：效果全部发完 → 冻结转 consumed、订单转 done。
+    // 放在这里而不是 apply 之前：apply 是「先 CAS 置位再执行」，中途
+    // 崩溃时订单停在 frozen 且 effect_applied=true，worker 的兜底任务
+    // 正好能认出「效果已发、只差记账」并安全收敛。
+    crate::repo::shop::settle_freeze(&state.repo, auth.id, &idem).await?;
 
     state
         .repo
