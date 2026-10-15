@@ -9,12 +9,16 @@ import type {
   SubtitleRow,
 } from "@/components/subtitle-board-shared";
 import {
+  downloadSubtitle,
   flagText,
   fmtKB,
   langLabelOf,
   timeAgo,
-} from "@/components/subtitle-board-table";
-import { uploadAttachment } from "@/components/subtitle-request-panel";
+} from "@/components/subtitle-board-format";
+import { uploadAttachment } from "@/components/subtitle-attachment";
+import { LangSelect } from "@/components/subtitle-lang-select";
+import { TorrentSubtitleCards } from "@/components/torrent-subtitle-cards";
+import { useIsCompact } from "@/lib/hooks/use-media";
 
 /** 种子详情页字幕面板（0146 P0-6 → 0148 C1 IMDB 合并）。
  *  两组：「本种子字幕」（torrent_id 命中）+「本片字幕」（同 imdb_id 的
@@ -40,6 +44,8 @@ export function TorrentSubtitles({
   const [busy, setBusy] = useState(false);
   /** 拉取失败（与「确实没有字幕」区分开，见 load 内注释） */
   const [err, setErr] = useState(false);
+  // M5.6 §13.6：窄屏（<640）字幕表降级为卡片列表（见 torrent-subtitle-cards）
+  const compact = useIsCompact();
 
   const load = useCallback(async () => {
     // 三态（方案 P0-6）：此前失败与「确实没有字幕」都落到空表，用户无法区分是接口挂了还是本来没有
@@ -105,6 +111,12 @@ export function TorrentSubtitles({
         </p>
       ) : rows === null ? (
         <p className="py-4 text-center text-sub">…</p>
+      ) : compact ? (
+        <TorrentSubtitleCards
+          rows={rows}
+          torrentId={torrentId}
+          onMsg={setMsg}
+        />
       ) : (
         <div className="baozi-wide-table-scroll">
         <table className="nexus-table subtitles-list-table">
@@ -122,21 +134,7 @@ export function TorrentSubtitles({
                     onClick={async (e) => {
                       e.preventDefault();
                       try {
-                        const buf = await api.getBlob(
-                          `/api/v1/subtitles/${s.id}/download`,
-                        );
-                        const ext = s.ext || "srt";
-                        const blob = new Blob([buf], {
-                          type: "application/octet-stream",
-                        });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        const safe =
-                          s.title.replace(/[\\/:*?"<>|]/g, "_");
-                        a.download = `${safe}.${ext}`;
-                        a.click();
-                        URL.revokeObjectURL(url);
+                        await downloadSubtitle(s);
                       } catch (err) {
                         setMsg(
                           err instanceof Error ? err.message : "failed",
@@ -253,48 +251,4 @@ export function TorrentSubtitles({
       </div>
     </section>
   );
-}
-
-/** 面板内语言选择（读字典；失败回落常见六语） */
-function LangSelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const { dict: langDict } = useI18n();
-  const t = langDict.subtitles;
-  const s = dict_safe(t);
-  const [langs, setLangs] = useState<
-    { code: string; name: string; flag: string }[]
-  >([
-    { code: "chs", name: t.langChs, flag: "🇨🇳" },
-    { code: "cht", name: t.langCht, flag: "🇹🇼" },
-    { code: "eng", name: t.langEng, flag: "🇬🇧" },
-    { code: "jpn", name: t.langJpn, flag: "🇯🇵" },
-    { code: "kor", name: t.langKor, flag: "🇰🇷" },
-    { code: "other", name: t.langOther, flag: "🌐" },
-  ]);
-  useEffect(() => {
-    import("@/components/subtitle-board-table")
-      .then((m) => m.loadLangDict())
-      .then((d) => {
-        if (d.length) setLangs(d);
-      })
-      .catch(() => {});
-  }, []);
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{s}</option>
-      {langs.map((l) => (
-        <option key={l.code} value={l.code}>
-          {l.flag} {l.name}
-        </option>
-      ))}
-    </select>
-  );
-}
-function dict_safe(t: { langSelect?: string }): string {
-  return t.langSelect ?? "(select)";
 }

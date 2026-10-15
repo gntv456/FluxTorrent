@@ -3,13 +3,16 @@
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRequestRow } from "@/components/subtitle-board-shared";
 
-/** 求字幕行操作列（从 subtitle-request-panel.tsx 拆出，300 行门禁）：
+/** 求字幕行操作（从 subtitle-request-panel.tsx 拆出，300 行门禁）：
  *  凑赏 / 认领 / 撤销（P-43）/ 交稿 / 弃单 / 验收。
  *
  *  归属口径（P-45）：验收按钮此前写成 `r.status === 4 && r.username`，
  *  即**任何登录者都看得见**、点下去被服务端 403——按钮的可见性应当说真话。
  *  现统一按 `r.username === me.username` 判发起人（列表只回 username，
- *  没有 user_id），管理侧兜底走接口不走这个按钮。 */
+ *  没有 user_id），管理侧兜底走接口不走这个按钮。
+ *
+ *  M5.6：Inner 返回 fragment（无 td），桌面表格 td 包装与移动卡片共用
+ *  同一份按钮逻辑。 */
 
 export type SubReqAct =
   | "claim"
@@ -18,7 +21,7 @@ export type SubReqAct =
   | "accept"
   | "cancel";
 
-export function SubtitleRequestActions({
+export function SubtitleRequestActionsInner({
   r,
   meId,
   meName,
@@ -37,7 +40,7 @@ export function SubtitleRequestActions({
   const t = dict.subtitles;
   const mine = !!r.username && r.username === meName;
   return (
-    <td>
+    <>
       <button type="button" className="btn2" onClick={() => onContribute(r.id)}>
         {t.contributeBtn}
       </button>
@@ -86,6 +89,36 @@ export function SubtitleRequestActions({
           {t.acceptBtn}
         </button>
       )}
+    </>
+  );
+}
+
+/** 表格行操作列（td 包装）；卡片视图直接用 Inner（逻辑单源） */
+export function SubtitleRequestActions({
+  r,
+  meId,
+  meName,
+  wfOn,
+  onAct,
+  onContribute,
+}: {
+  r: SubtitleRequestRow;
+  meId: number;
+  meName: string;
+  wfOn: boolean;
+  onAct: (a: SubReqAct, r: SubtitleRequestRow) => void;
+  onContribute: (id: number) => void;
+}) {
+  return (
+    <td>
+      <SubtitleRequestActionsInner
+        r={r}
+        meId={meId}
+        meName={meName}
+        wfOn={wfOn}
+        onAct={onAct}
+        onContribute={onContribute}
+      />
     </td>
   );
 }

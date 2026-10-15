@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SubtitleRequestRow } from "@/components/subtitle-board-shared";
 import { SubtitleRequestActions } from "@/components/subtitle-request-actions";
 import type { SubReqAct } from "@/components/subtitle-request-actions";
+import { SubtitleRequestCards } from "@/components/subtitle-request-cards";
+import { useIsCompact } from "@/lib/hooks/use-media";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
 
@@ -69,6 +71,8 @@ export function SubtitleRequestPanel({
       )
       .catch(() => {});
   }, [loadReqs, reloadKey]);
+  // M5.6 §13.6：窄屏（<640）悬赏表降级为卡片列表（见 subtitle-request-cards）
+  const compact = useIsCompact();
 
   async function createReq() {
     if (!rLang) return;
@@ -210,7 +214,19 @@ export function SubtitleRequestPanel({
           {t.reqBtn}
         </button>
       </form>
-      <div className="baozi-wide-table-scroll">
+      {compact ? (
+        <SubtitleRequestCards
+          reqs={reqs}
+          langs={langs}
+          currency={currency}
+          meId={me?.id ?? 0}
+          meName={me?.username ?? ""}
+          wfOn={wfOn}
+          onAct={openAsk}
+          onContribute={(r) => openAsk("contribute", r)}
+        />
+      ) : (
+        <div className="baozi-wide-table-scroll">
         <table className="nexus-table subtitles-list-table">
           <tbody>
             {reqs.map((r) => {
@@ -249,6 +265,7 @@ export function SubtitleRequestPanel({
           </tbody>
         </table>
       </div>
+      )}
 
       {/* 工作流/悬赏确认对话框（替代 window.prompt/confirm 家族） */}
       <ConfirmDialog
@@ -274,27 +291,4 @@ export function SubtitleRequestPanel({
       </ConfirmDialog>
     </section>
   );
-}
-
-/** 附件上传共用：multipart 到 attachments 拿 sha256（board 与种子面板复用） */
-export async function uploadAttachment(file: File): Promise<string> {
-  const form = new FormData();
-  form.append("file", file);
-  const lang = rawFetchHelpers.lang();
-  const upRes = await fetch(rawFetchHelpers.base() + "/api/v1/attachments", {
-    method: "POST",
-    headers: {
-      ...(lang ? { "Accept-Language": lang } : {}),
-    },
-    body: form,
-  });
-  const upBody = (await upRes.json()) as {
-    code: number;
-    message?: string;
-    data?: { sha256: string };
-  };
-  if (upBody.code !== 0 || !upBody.data?.sha256) {
-    throw new ApiError(upBody.code, upBody.message ?? "upload failed");
-  }
-  return upBody.data.sha256;
 }
