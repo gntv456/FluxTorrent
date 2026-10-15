@@ -286,6 +286,8 @@ pub mod offers;
 pub mod pmboxes;
 pub mod forum;
 pub mod magnet;
+pub mod lottery_fair;
+pub mod lottery_draw;
 pub mod rss;
 pub mod settings;
 pub mod torrent_download;

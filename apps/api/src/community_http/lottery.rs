@@ -9,6 +9,9 @@ use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::domain::lottery_fair as fair;
+use crate::repo::lottery_fair as repo_fair;
+use crate::repo::Repo;
 use crate::state::AppState;
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -61,6 +64,13 @@ pub(crate) async fn lottery_join(
     if op == auth.id {
         return Err(DomainError::Validation("楼主不能参与自己的抽奖".into()));
     }
+    // commit-reveal（0379）：公平路径要先给这张票编号并链上哈希，
+    // 插入失败/重复参与时 issue_ticket 走 ON CONFLICT DO NOTHING 取回旧票。
+    let fair_seed = if repo_fair::is_fair(&state.repo, body.topic_id).await? {
+        repo_fair::seed_of(&state.repo, body.topic_id).await?
+    } else {
+        None
+    };
     let entered = sqlx::query(
         "INSERT INTO lottery_entries (topic_id, user_id) VALUES ($1, \
          $2) ON CONFLICT DO NOTHING",
@@ -74,6 +84,18 @@ pub(crate) async fn lottery_join(
     if entered == 0 {
         return Err(DomainError::Validation("已经参与过了".into()));
     }
+    let ticket_hash = match fair_seed {
+        Some(sd) => {
+            Some(repo_fair::issue_ticket(
+                &state.repo,
+                body.topic_id,
+                auth.id,
+                &sd,
+            )
+            .await?)
+        }
+        None => None,
+    };
     // 票价（免费则跳过）：扣费失败回滚占位（对齐 fun_vote 纪律）
     if ticket > 0 {
         let idem =
@@ -104,111 +126,13 @@ pub(crate) async fn lottery_join(
         .repo
         .audit(Some(auth.id), "forum.lottery_join", Some(body.topic_id))
         .await;
-    Ok(ok(
-        serde_json::json!({ "topic_id": body.topic_id, "ticket": ticket }),
-    ))
+    Ok(ok(serde_json::json!({
+        "topic_id": body.topic_id,
+        "ticket": ticket,
+        "ticket_hash": ticket_hash,
+    })))
 }
 
-/// 开奖核心（手动入口与 worker 共用）：CAS open→drawn 后随机抽 winners 名，
-/// 每人发 prize_per_winner（幂等键 `forum-lottery-win:{tid}:{uid}`）。
-/// 参与人数不足名额时全中奖（钱不留在池里）；零参与则奖金池退回楼主。
-pub async fn lottery_draw_core(
-    db: &sqlx::PgPool,
-    topic_id: i64,
-) -> DomainResult<serde_json::Value> {
-    let l: Option<(i32, i64, i64, String)> = sqlx::query_as(
-        "SELECT winners, prize_per_winner, ticket_spark::bigint, \
-         status FROM topic_lotteries WHERE topic_id = $1",
-    )
-    .bind(topic_id)
-    .fetch_optional(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((winners, prize, _ticket, status)) = l else {
-        return Err(DomainError::NotFound(topic_id));
-    };
-    if status != "open" {
-        return Err(DomainError::Validation("抽奖不在进行中".into()));
-    }
-    let n = sqlx::query(
-        "UPDATE topic_lotteries SET status = 'drawn' WHERE topic_id = \
-         $1 AND status = 'open'",
-    )
-    .bind(topic_id)
-    .execute(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if n == 0 {
-        return Err(DomainError::LedgerConflict);
-    }
-    // 参与者全表捞出来在应用层抽（数量级 ≤ 数百，RANDOM() 洗牌即可）
-    let mut entries: Vec<i64> = sqlx::query_scalar(
-        "SELECT user_id FROM lottery_entries WHERE topic_id = $1",
-    )
-    .bind(topic_id)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if entries.is_empty() {
-        // 无人参与：奖金池退回楼主
-        let op: i64 =
-            sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
-                .bind(topic_id)
-                .fetch_one(db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
-        let refund = winners as i64 * prize;
-        if refund > 0 {
-            let _ = earn_spark(
-                db,
-                op,
-                refund,
-                "forum_lottery_refund",
-                &format!("forum-lottery-refund:{topic_id}"),
-            )
-            .await;
-        }
-        return Ok(
-            serde_json::json!({ "topic_id": topic_id, "winners": [], "refunded": refund }),
-        );
-    }
-    use rand::seq::SliceRandom;
-    entries.shuffle(&mut rand::thread_rng());
-    let take = (winners as usize).min(entries.len());
-    let picked: Vec<i64> = entries.into_iter().take(take).collect();
-    for uid in &picked {
-        let _ = sqlx::query(
-            "UPDATE lottery_entries SET won = TRUE WHERE topic_id \
-             = $1 AND user_id = $2",
-        )
-        .bind(topic_id)
-        .bind(uid)
-        .execute(db)
-        .await;
-        if prize > 0 {
-            let _ = earn_spark(
-                db,
-                *uid,
-                prize,
-                "forum_lottery",
-                &format!("forum-lottery-win:{topic_id}:{uid}"),
-            )
-            .await;
-            notify_user(
-                db,
-                *uid,
-                "comment_reply",
-                "抽奖中奖",
-                &format!("您在 [/forums/topic/{topic_id}] 的抽奖中中奖，获得 {prize} 魔力！"),
-            )
-            .await;
-        }
-    }
-    Ok(
-        serde_json::json!({ "topic_id": topic_id, "winners": picked, "prize": prize }),
-    )
-}
 
 #[derive(Deserialize, utoipa::ToSchema)]
 struct LotteryDrawReq {
@@ -249,7 +173,7 @@ pub(crate) async fn lottery_draw(
     if auth.id != op && !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
-    let out = lottery_draw_core(&state.repo.db, body.topic_id).await?;
+    let out = lottery_draw_core(&state.repo, body.topic_id).await?;
     state
         .repo
         .audit(Some(auth.id), "forum.lottery_draw", Some(body.topic_id))

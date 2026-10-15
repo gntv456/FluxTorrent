@@ -31,6 +31,8 @@ mod leak_bot;
 mod like;
 mod list_prefs;
 mod lottery;
+mod lottery_draw;
+pub(crate) use lottery_draw::*;
 pub mod medal;
 mod medal_buy;
 mod medal_gift;
