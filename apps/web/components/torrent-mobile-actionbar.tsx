@@ -53,6 +53,7 @@ export function TorrentMobileActionBar({
   if (!compact) return null;
   return (
     <div
+      id="td-actionbar"
       className="td-actionbar"
       style={hidden ? { transform: "translateY(120%)" } : undefined}
       data-tid={torrentId}
