@@ -25,7 +25,8 @@ from urllib.parse import quote
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import call, login, ok, summary  # noqa: E402
+from pt_audit_lib import (call, clear_register_rl, login, ok,  # noqa: E402
+                         summary)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
@@ -92,7 +93,13 @@ def login_backoff(user, tries=10):
 
 
 def new_member(tag, gap=14):
-    """注册限流 5/分钟：按节拍建号，拿不到就整条闸门判红。"""
+    """注册限流：按节拍建号，拿不到就整条闸门判红。
+
+    清额度这步是 #75 的正解（批一百五十三）：24h 同 IP 限额数的是
+    reg_ip_signups 表，清 Redis 不顶用；不清就是「上一支留下的两个号」
+    把本支直接顶到上限，红在「两个探针成员可准备」而非被测口径。
+    """
+    clear_register_rl()
     time.sleep(gap)
     s, r = call("POST", "/admin/invites", {"user_id": 1, "count": 1},
                 token=ROOT)
