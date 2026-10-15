@@ -12,7 +12,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(crate) struct CueCheckReq {
     /// 直接传 CUE 正文；缺省则读该种 `kind='cue'` 的工件正文
     #[serde(default)]
@@ -20,6 +20,22 @@ pub(crate) struct CueCheckReq {
 }
 
 /// 判定该种的 CUE 表是否合规（HasCue 的合规性，非「有没有文件」）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/cue-check",
+    tag = "种子",
+    description = "分卷一致性检查（比对同种各卷的 cue/文件树是否吻合）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/cue-check")]
 pub async fn cue_check(
     req: HttpRequest,

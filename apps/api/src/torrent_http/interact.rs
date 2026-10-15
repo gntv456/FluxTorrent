@@ -14,8 +14,24 @@ use crate::torrents;
 
 use super::detail::CommentReq;
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/comments",
+    tag = "种子",
+    description = "发评论。触发门槛：注册满 N 天、魔力/做种量达标（见站规）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/comments")]
-async fn create_comment(
+pub(crate) async fn create_comment(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -39,8 +55,25 @@ async fn create_comment(
 
 /// 审计修复（P1）：评论此前只有创建+列表，作者本人与版主都无法删除（无任何删除端点）。
 /// 作者本人或持 torrent.manage 的 staff 可删；挂审计日志。
+#[utoipa::path(
+    delete,
+    path = "/api/v1/torrents/{id}/comments/{cid}",
+    tag = "种子",
+    description = "删评论（作者本人或持 forum 删帖权）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+        ("cid" = i64, description = "评论 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[delete("/torrents/{id}/comments/{cid}")]
-async fn delete_comment(
+pub(crate) async fn delete_comment(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<(i64, i64)>,
@@ -90,8 +123,25 @@ async fn delete_comment(
 
 /// 评论点赞切换（0155 评论增强）：已赞 → 取消；未赞 → 点赞。
 /// 不许赞自己的评论（错误信息友好，竞品通行口径）；并发幂等由 PK 兜底。
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/comments/{cid}/like",
+    tag = "种子",
+    description = "评论点赞切换（返回切换后的点赞数与当前状态）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+        ("cid" = i64, description = "评论 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/comments/{cid}/like")]
-async fn toggle_comment_like(
+pub(crate) async fn toggle_comment_like(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<(i64, i64)>,
@@ -128,15 +178,31 @@ async fn toggle_comment_like(
     Ok(ok(serde_json::json!({ "liked": liked, "likes": likes })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct ThankBody {
     /// 魔力答谢数额（馒头口径：+1/+10/+100/+500/+1000/+10000；缺省 0 = 免费感谢）
     #[serde(default)]
     amount: Option<i64>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/thanks",
+    tag = "种子",
+    description = "感谢（已感谢过返回 code 5002）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/thanks")]
-async fn do_thank(
+pub(crate) async fn do_thank(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -186,13 +252,13 @@ async fn do_thank(
     ))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct BookmarkReq {
     on: bool,
 }
 
 /// 编辑种子（NP edit/takeedit 作者口径；修改后回退待审）
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(super) struct TorrentEditReq {
     #[serde(default)]
     pub(super) name: Option<String>,
@@ -241,8 +307,24 @@ pub(super) struct TorrentEditReq {
 }
 
 /// 请求补种（NP takereseed.php：死种 → PM 全体完成者，900s 限频）
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/reseed",
+    tag = "种子",
+    description = "求种（挂出求种位；过期天数 <=0 走 30 天兜底，避免悬赏永久冻结）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/reseed")]
-async fn request_reseed(
+pub(crate) async fn request_reseed(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -265,8 +347,22 @@ async fn request_reseed(
 }
 
 /// 种子标签（T-04）：字典 + 已打
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/tags",
+    tag = "种子",
+    description = "种子标签列表（0159 标签体系）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/tags")]
-async fn torrent_tags(
+pub(crate) async fn torrent_tags(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -277,14 +373,30 @@ async fn torrent_tags(
     Ok(ok(torrents::list_tags(&state.repo.db, id, viewer).await?))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 struct TagReq {
     tag_id: i32,
     on: bool,
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/torrents/{id}/tags",
+    tag = "种子",
+    description = "覆盖写标签（0159；any/all 两种匹配口径由 tag_all 决定）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[put("/torrents/{id}/tags")]
-async fn torrent_tag_put(
+pub(crate) async fn torrent_tag_put(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -310,8 +422,24 @@ async fn torrent_tag_put(
     Ok(ok(serde_json::json!({ "tag": body.tag_id, "on": body.on })))
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/torrents/{id}/bookmark",
+    tag = "种子",
+    description = "收藏切换。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[put("/torrents/{id}/bookmark")]
-async fn do_bookmark(
+pub(crate) async fn do_bookmark(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,

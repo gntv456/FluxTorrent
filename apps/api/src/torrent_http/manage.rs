@@ -11,8 +11,25 @@ use crate::torrents;
 
 use super::interact::TorrentEditReq;
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/torrents/{id}",
+    tag = "种子",
+    description = "编辑种子（发布者本人或持编辑权；改 info dict 会动 info_hash，\
+            故被同种判为重复——这是刻意口径）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[put("/torrents/{id}")]
-async fn edit_torrent(
+pub(crate) async fn edit_torrent(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -214,13 +231,29 @@ async fn edit_torrent(
 }
 
 /// 修改付费定价（0086）：发布者或 staff；改价不影响已购（以 torrent_purchases 已扣为准）
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, utoipa::ToSchema)]
 struct PriceReq {
     price: i64,
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/torrents/{id}/price",
+    tag = "种子",
+    description = "设置付费价格（发布者本人）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[put("/torrents/{id}/price")]
-async fn set_torrent_price(
+pub(crate) async fn set_torrent_price(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -256,8 +289,24 @@ async fn set_torrent_price(
 }
 
 /// 恢复软删种子（approval_status 3 → 0 待审）：此前误删后只能直连数据库手工修数
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/restore",
+    tag = "种子",
+    description = "回收站恢复（软删种置回通过态）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/restore")]
-async fn restore_torrent(
+pub(crate) async fn restore_torrent(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -283,8 +332,24 @@ async fn restore_torrent(
 
 /// 被拒种子修改后重提（U4 §12.5 审核闭环：rejected → pending，保留原 id 与评论区）。
 /// 仅作者本人；清拒绝标记（deny_reason/note），重进审核队列。
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/resubmit",
+    tag = "种子",
+    description = "重新提交审核（下架/驳回种走这条路回到审核台）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/resubmit")]
-async fn resubmit_torrent(
+pub(crate) async fn resubmit_torrent(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -349,8 +414,24 @@ async fn resubmit_torrent(
 }
 
 /// 删除种子（软删 approval_status=3；staff 任意删，作者仅限未过审）
+#[utoipa::path(
+    delete,
+    path = "/api/v1/torrents/{id}",
+    tag = "种子",
+    description = "软删种子（进回收站，管理员口可硬删）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[delete("/torrents/{id}")]
-async fn delete_torrent(
+pub(crate) async fn delete_torrent(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,

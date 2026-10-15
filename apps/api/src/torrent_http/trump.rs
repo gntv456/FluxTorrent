@@ -30,7 +30,7 @@ pub(crate) async fn feature_on(state: &AppState, key: &str) -> bool {
     v.as_deref() == Some("true")
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(crate) struct TrumpReq {
     #[serde(default)]
     reason: Option<String>,
@@ -41,6 +41,22 @@ pub(crate) struct TrumpReq {
 }
 
 /// 举报一个种子（可指名更优替代）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/trump",
+    tag = "种子",
+    description = "申请撤种裁决（Trump：认为被误判/需复核）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/trump")]
 pub async fn torrent_trump(
     req: HttpRequest,
@@ -125,6 +141,20 @@ pub async fn torrent_trump(
 
 /// 某颗种子的举报汇总（详情页徽标数据源）。
 /// 普通用户只见计数，版主（class_id ≥ 90）另见明细。
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/trumps",
+    tag = "种子",
+    description = "该种的撤种裁决历史。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/trumps")]
 pub async fn torrent_trumps(
     req: HttpRequest,

@@ -16,6 +16,20 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// 该种与同组其他过审种的文件路径冲突清单。
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/file-conflicts",
+    tag = "种子",
+    description = "文件冲突检查（辅种前的同种不同文件比对）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/file-conflicts")]
 pub async fn file_conflicts(
     req: HttpRequest,

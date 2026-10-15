@@ -19,13 +19,24 @@ use crate::torrents;
 /// 单次打包上限（zip 在内存里拼，50 个 .torrent ≈ 几 MB，安全）
 const MAX_BATCH: usize = 50;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(super) struct BatchReq {
     ids: Vec<i64>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/batch-download",
+    tag = "种子",
+    description = "批量下载（一次下发多个 .torrent；仍逐条过下载闸门与扣费）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+    )
+)]
 #[post("/torrents/batch-download")]
-async fn batch_download(
+pub(crate) async fn batch_download(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<BatchReq>,

@@ -35,8 +35,25 @@ pub async fn bump_list_cache_gen(state: &AppState) {
         redis::AsyncCommands::incr(&mut c, TLIST_GEN_KEY, 1i64).await;
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents",
+    tag = "种子",
+    description = "种子列表（0102 存活三态 + 多维筛选 + 二元 keyset 游标分页）。\
+            默认视图只给活种；响应 hidden_dead 告知被存活谓词藏起的断种数。",
+    params(
+        ("category_id" = Option<Vec<i32>>, description = "分类多选（ANY 命中）"),
+        ("search" = Option<String>, description = "关键字（AND 模糊，%/_ 已转义）"),
+        ("alive" = Option<i16>, description = "存活三态：缺省=仅活种 0=全部 1=仅活种 2=仅断种"),
+        ("sort" = Option<String>, description = "排序键 +_asc 后缀反转；asc 前缀反转方向"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+    )
+)]
 #[get("/torrents")]
-async fn list(
+pub(crate) async fn list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
