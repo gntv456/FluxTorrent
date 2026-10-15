@@ -103,9 +103,10 @@ pub(crate) async fn social_team_settle(db: &PgPool) -> anyhow::Result<u64> {
                 // 可见，UPDATE 再带同款 NOT EXISTS 恒 0 行 → 整体回滚 →
                 // 分账静默丢失（链路缺陷 #10 同款）。
                 let inserted = sqlx::query(
-                    "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key) \
-                     SELECT nextval('spark_ledger_id_seq'), $1, $2, 'social_team_reward', $3 \
-                     WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
+                    "INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after) \
+                     SELECT nextval('spark_ledger_id_seq'), $1, $2, 'social_team_reward', $3,\
+                      u.spark_balance + $2 FROM users u WHERE u.id = $1 \
+                     AND NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)",
                 )
                 .bind(*uid)
                 .bind(amount)

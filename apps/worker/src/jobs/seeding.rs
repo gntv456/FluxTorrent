@@ -38,8 +38,8 @@ pub async fn seeding_reward(
     let hour = chrono::Utc::now().format("%Y%m%d%H").to_string();
     let res = sqlx::query(
         r#"
-        INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
-        SELECT nextval('spark_ledger_id_seq'), d.id, d.amount, 'seeding_reward', d.idem
+        INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key, balance_after)
+        SELECT nextval('spark_ledger_id_seq'), d.id, d.amount, 'seeding_reward', d.idem, u.spark_balance + d.amount
         FROM (
             -- MATERIALIZED：参数行必须只求值一次。若不显式物化，优化器可能把
             -- seeding_params() 内联进 nestloop 内层 → 每颗种子读 8 次 site_settings。
@@ -95,7 +95,7 @@ pub async fn seeding_reward(
                    seeding_hourly(pu.bonus_raw, p.base, p.cap, p.curve_k, p.donor_mult, pu.donor) AS amount,
                    'seeding:' || pu.user_id || ':' || $1 AS idem
             FROM per_user pu CROSS JOIN p
-        ) d
+        ) d JOIN users u ON u.id = d.id
         WHERE NOT EXISTS (
             SELECT 1 FROM spark_ledger l WHERE l.idempotency_key = d.idem
         )

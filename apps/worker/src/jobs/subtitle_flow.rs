@@ -24,9 +24,10 @@ async fn spark_award(
     };
     let inserted = sqlx::query(
         "INSERT INTO spark_ledger \
-         (id, user_id, amount, kind, idempotency_key) \
-         SELECT nextval('spark_ledger_id_seq'), $1, $2, $3, $4 \
-         WHERE NOT EXISTS (SELECT 1 FROM spark_ledger \
+         (id, user_id, amount, kind, idempotency_key, balance_after) \
+         SELECT nextval('spark_ledger_id_seq'), $1, $2, $3, $4,\
+           u.spark_balance + $2 FROM users u WHERE u.id = $1 \
+         AND NOT EXISTS (SELECT 1 FROM spark_ledger \
          WHERE idempotency_key = $4)",
     )
     .bind(uid)
