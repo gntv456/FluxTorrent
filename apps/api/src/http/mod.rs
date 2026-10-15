@@ -80,6 +80,12 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::versions_list)
         .service(crate::staff_http::version_restore)
         .service(crate::staff_http::run_audit)
+        // 运维 webhook 管理面（0389）：出网白名单 / 出口健康度 / 投递台账。
+        .service(crate::admin_http::list)
+        .service(crate::admin_http::add_cidr)
+        .service(crate::admin_http::del_cidr)
+        .service(crate::admin_http::reset)
+        .service(crate::admin_http::deliveries)
         .service(crate::staff_http::custom_pages_list)
         .service(crate::staff_http::custom_pages_add)
         .service(crate::staff_http::custom_pages_update)
