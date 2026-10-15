@@ -70,6 +70,16 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::terms_upsert)
         .service(crate::staff_http::terms_toggle)
         .service(crate::staff_http::terms_delete)
+        // 术语治理后台面（0386）：键登记 / 状态迁移 / 版本 /
+        // 巡检五条端点。此前只写了处理函数（模块也已 export），但
+        // **从未注册到路由表**——实测三条读口全回 `1004 接口不存在`，
+        // 写口同样。产品上线了、迁移 0386 也入库了，却没有一条可调用的接口。
+        .service(crate::staff_http::keys_list)
+        .service(crate::staff_http::key_upsert)
+        .service(crate::staff_http::key_set_status)
+        .service(crate::staff_http::versions_list)
+        .service(crate::staff_http::version_restore)
+        .service(crate::staff_http::run_audit)
         .service(crate::staff_http::custom_pages_list)
         .service(crate::staff_http::custom_pages_add)
         .service(crate::staff_http::custom_pages_update)

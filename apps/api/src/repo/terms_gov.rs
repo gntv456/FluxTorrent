@@ -252,3 +252,171 @@ pub async fn push_audit(
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(id)
 }
+
+/// 写入一条规则（upsert）。返回是否真的改变了内容（供版本快照的 changed 计）。
+///
+/// 与 HTTP 层的旧口径一致：`site_terms` 单表、无版本。0386 补的
+/// `term_versions` 要能真正回滚，前提是**每次改动都留快照**——所以
+/// 改动口的唯一入口在本文件，handler 只做校验与编排。
+pub async fn upsert_term(
+    repo: &Repo,
+    canonical: &str,
+    replacement: &str,
+    enabled: bool,
+    descr: &str,
+    sort: i32,
+) -> DomainResult<()> {
+    sqlx::query(
+        "INSERT INTO site_terms \
+         (canonical, replacement, enabled, descr, sort) \
+         VALUES ($1, $2, $3, $4, $5) \
+         ON CONFLICT (canonical) DO UPDATE SET \
+         replacement = EXCLUDED.replacement, \
+         enabled = EXCLUDED.enabled, \
+         descr = EXCLUDED.descr, sort = EXCLUDED.sort, \
+         updated_at = now()",
+    )
+    .bind(canonical)
+    .bind(replacement)
+    .bind(enabled)
+    .bind(descr)
+    .bind(sort)
+    .execute(&repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(())
+}
+
+/// 切换一条规则的启用位（保留词条）。
+pub async fn toggle_term(
+    repo: &Repo,
+    canonical: &str,
+) -> DomainResult<Option<bool>> {
+    Ok(sqlx::query_scalar(
+        "UPDATE site_terms SET enabled = NOT enabled, updated_at = now() \
+         WHERE canonical = $1 RETURNING enabled",
+    )
+    .bind(canonical)
+    .fetch_optional(&repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?)
+}
+
+/// 删一条规则，返回删除行数。
+pub async fn delete_term(
+    repo: &Repo,
+    canonical: &str,
+) -> DomainResult<u64> {
+    Ok(sqlx::query("DELETE FROM site_terms WHERE canonical = $1")
+        .bind(canonical)
+        .execute(&repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected())
+}
+
+/// 当前生效规则条数（版本快照的 changed 计数用）。
+pub async fn active_term_count(repo: &Repo) -> DomainResult<i64> {
+    Ok(sqlx::query_scalar(
+        "SELECT count(*) FROM site_terms WHERE enabled",
+    )
+    .fetch_one(&repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?)
+}
+
+/// 某条规则是否已登记（给上限判定用）。
+pub async fn term_exists(
+    repo: &Repo,
+    canonical: &str,
+) -> DomainResult<bool> {
+    Ok(sqlx::query_scalar::<_, i64>(
+        "SELECT count(*) FROM site_terms WHERE canonical = $1",
+    )
+    .bind(canonical)
+    .fetch_one(&repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+        > 0)
+}
+
+/// 回灌某一版快照（把 site_terms 整表恢复到该版的形态）。
+///
+/// 先记一份当前态再覆盖——回滚本身也是一次改动，不留快照的话
+/// 「回滚 → 再回滚」就变成了单向操作，这正是版本功能要消灭的东西。
+pub async fn restore_terms(
+    repo: &Repo,
+    snapshot: &serde_json::Value,
+) -> DomainResult<u64> {
+    let rows = snapshot
+        .get("terms")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| {
+            DomainError::Validation("版本快照格式不正确".into())
+        })?;
+    let mut tx = repo.db.begin().await.map_err(|e| {
+        DomainError::Internal(e.into())
+    })?;
+    // 全表替换：快照语义就是「那一刻的完整形态」，只补差会漏掉
+    // 「快照里有、现在没有」的规则。
+    sqlx::query("DELETE FROM site_terms")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut n = 0u64;
+    for row in rows {
+        let c = row
+            .get("canonical")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let r = row
+            .get("replacement")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let en = row
+            .get("enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        if c.is_empty() || r.is_empty() {
+            continue;
+        }
+        sqlx::query(
+            "INSERT INTO site_terms \
+             (canonical, replacement, enabled, descr, sort) \
+             VALUES ($1, $2, $3, '', 100)",
+        )
+        .bind(c)
+        .bind(r)
+        .bind(en)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        n += 1;
+    }
+    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(n)
+}
+
+/// 列全部规则（后台首屏）。
+///
+/// 排序沿用热加载侧的口径：长词优先（先替短的再替长的，避免「新词里
+/// 含有旧词」时被截断），再按 sort / canonical。
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
+pub struct TermRow {
+    pub canonical: String,
+    pub replacement: String,
+    pub enabled: bool,
+    pub descr: String,
+    pub sort: i32,
+}
+
+pub async fn list_terms(repo: &Repo) -> DomainResult<Vec<TermRow>> {
+    Ok(sqlx::query_as(
+        "SELECT canonical, replacement, enabled, descr, sort \
+         FROM site_terms \
+         ORDER BY length(canonical) DESC, sort, canonical",
+    )
+    .fetch_all(&repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?)
+}
