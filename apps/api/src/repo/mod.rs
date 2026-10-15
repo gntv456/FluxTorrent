@@ -295,6 +295,7 @@ pub mod settings;
 pub mod shop;
 pub mod torrent_download;
 pub mod terms_gov;
+pub mod webhook;
 pub mod user_privacy;
 pub mod user_prefs;
 pub mod xseed;
