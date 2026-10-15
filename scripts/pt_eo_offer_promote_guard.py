@@ -68,8 +68,8 @@ def blind(text):
     """approval_status = 1 的写入点里，有几处不带同句的 approval_status 守卫"""
     f = flat(strip_rs(text))
     hits = 0
-    for m in re.finditer(r"UPDATE torrents SET[^;]*approval_status\s*=\s*1[^;]*;",
-                         f):
+    for m in re.finditer(r"UPDATE torrents SET[^;]*approval_status\s*=\s*1"
+                         r"[^;]*;", f):
         if "approval_status = 1" in m.group(0)[m.group(0).find("WHERE"):]:
             continue
         hits += 1
@@ -102,7 +102,8 @@ six = sh(["git", "grep", "-c", "SET approval_status", "--", "apps/api/src",
 paths = [ln.split(":")[-2] for ln in (six.stdout or "").splitlines()
          if ln.count(":") >= 1]
 ok("EO3 六条以上「过审后改态」的路径仍在（守卫前提没被删空）",
-   len(set(paths)) >= 5, "认到 %s 处：%s" % (len(set(paths)), sorted(set(paths))))
+   len(set(paths)) >= 5,
+   "认到 %s 处：%s" % (len(set(paths)), sorted(set(paths))))
 
 print("== EO4/EO5 现网只读 ==")
 
@@ -121,7 +122,8 @@ else:
                " = o.torrent_id WHERE o.promoted AND t.approval_status <> 1")
     ok("EO4 已转正的候选对应种必须在架（0 条）", bad == "0", "实读 %s" % bad)
     drift = psql("SELECT count(*) FROM offers o WHERE o.votes <>"
-                 " (SELECT count(*) FROM offer_votes v WHERE v.offer_id = o.id)")
+                 " (SELECT count(*) FROM offer_votes v"
+                 " WHERE v.offer_id = o.id)")
     if base == "0":
         print("   WARN offers 表现网 0 行：EO5 本轮是空集，只记数不承重")
     ok("EO5 offers.votes 与 offer_votes 逐单一致（0 单漂移）", drift == "0",
