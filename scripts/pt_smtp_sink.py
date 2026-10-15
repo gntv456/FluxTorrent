@@ -8,7 +8,11 @@
 两个坑（都是踩过才知道的）：
   1. 诱捕容器必须跑进 compose 网络。宿主上开端口对容器是 SYN 黑洞（Docker
      Desktop 防火墙），表现为「发信失败」的假红。
-  2. 捕获内容走容器 stdout，由 `docker logs` 读回；**不要**写 bind mount 里
+  2. 宿主侧的测试进程解析不了 Docker 网里的容器名（批一百五十三实测：侧进程连
+     flux-audit-smtp-sink:2525 一直 timeout，容器内一切正常）。对宿主侧进程
+     必须走发布端口。两种地址同时有效：容器内走 SINK_NAME，宿主走
+     127.0.0.1；sink_addr() 按 API 实际所在位置选。
+  3. 捕获内容走容器 stdout，由 `docker logs` 读回；**不要**写 bind mount 里
      的文件——宿主是 Windows 时容器内没有那条宿主路径，写盘异常被 sink 的
      `except: pass` 静静吞掉，表现为「一封都没抓到」。同理，`docker logs` 不
      能用 text=True：通用换行会把邮件里的 CRLF 折成 LF，而「头部与正文之间
@@ -28,6 +32,8 @@ import time
 SINK_NAME = "flux-audit-smtp-sink"
 SINK_DIR = os.path.join(os.environ.get("TEMP", "/tmp"), "flux_audit_smtp")
 _started = False
+# 宿主发布端口：容器内部仍是 2525，宿主走这个。
+HOST_PORT = int(os.environ.get("AZ_SMTP_HOST_PORT", "2525") or 2525)
 
 SINK_SRC = """import socket, sys, threading
 lock = threading.Lock()
@@ -94,22 +100,69 @@ def net_name(api_container="flux-api"):
     return (r.stdout or "").strip() or "docker_default"
 
 
+def _host_port_candidates():
+    yield HOST_PORT
+    for p in range(HOST_PORT + 1, HOST_PORT + 20):
+        yield p
+
+
+def api_in_container(api_container="flux-api"):
+    """问一次：本次验证打的 API 是不是 compose 里那个容器。
+
+    批一百五十三的教训：有的闸门把 API 打到宿主上起的侧进程，它不在 Docker
+    网里，解析不了容器名。判法看默认基址的端口是不是主容器的发布端口；另设了
+    就必然是侧进程。
+    """
+    base = os.environ.get("FLUX_API_BASE",
+                          "http://127.0.0.1:8080/api/v1")
+    try:
+        port = int(base.rsplit(":", 1)[1].split("/")[0])
+    except Exception:  # noqa: BLE001
+        return True
+    pub = _run(["docker", "port", api_container]).stdout or ""
+    ports = {ln.strip().rsplit(":", 1)[-1]
+             for ln in pub.splitlines() if ln.strip()}
+    return str(port) in ports
+
+
+def sink_addr(api_container="flux-api"):
+    """API 进程真正连得上的那个地址。"""
+    if os.environ.get("AZ_SMTP_HOST"):
+        return os.environ["AZ_SMTP_HOST"], HOST_PORT
+    if api_in_container(api_container):
+        return SINK_NAME, 2525
+    return "127.0.0.1", HOST_PORT
+
+
 def start_sink(api_container="flux-api"):
-    """拉起诱捕容器，返回是否成功（失败时调用方应当整体判红，别往下蒙）。"""
-    global _started
+    """拉起诱捕容器，返回是否成功（失败时调用方应当整体判红，别往下蒙）。
+
+    同时在 compose 网内和宿主上各给一个地址：容器里的 API 用容器名，宿主侧
+    的测试进程用发布端口。宿主端口被占用就顺延一个，免得整批闸门假红。
+    """
+    global _started, HOST_PORT
     os.makedirs(SINK_DIR, exist_ok=True)
     with open(os.path.join(SINK_DIR, "sink.py"), "w", encoding="utf-8") as f:
         f.write(SINK_SRC)
     chk = _run(["docker", "ps", "-a", "--format", "{{.Names}}"])
     if SINK_NAME in (chk.stdout or "").split():
         _run(["docker", "rm", "-f", SINK_NAME])
-    r = _run(["docker", "run", "-d", "--name", SINK_NAME, "--network",
-              net_name(api_container), "-v", "%s:/sink" % SINK_DIR,
-              "python:3.12-alpine", "python", "/sink/sink.py"])
-    _started = r.returncode == 0
-    print("   [sink] 启动 %s（网=%s）" % (
-        "OK" if _started else "FAIL " + (r.stderr or "")[:150],
-        net_name(api_container)))
+    net = net_name(api_container)
+    r = None
+    for port in _host_port_candidates():
+        # 两个地址同时有效：容器内走 SINK_NAME，宿主走 127.0.0.1:端口。
+        r = _run(["docker", "run", "-d", "--name", SINK_NAME, "--network", net,
+                  "-p", "127.0.0.1:%d:2525" % port, "-v",
+                  "%s:/sink" % SINK_DIR,
+                  "python:3.12-alpine", "python", "/sink/sink.py"])
+        if r.returncode == 0:
+            HOST_PORT = port
+            break
+        _run(["docker", "rm", "-f", SINK_NAME])
+    _started = r is not None and r.returncode == 0
+    print("   [sink] 启动 %s（网=%s 宿主端口=%s）" % (
+        "OK" if _started else "FAIL " + ((r.stderr or "") if r else "no try")[:150],
+        net, HOST_PORT if _started else "-"))
     time.sleep(3)
     return _started
 
@@ -122,15 +175,28 @@ def stop_sink():
 
 
 def reachable(api_container="flux-api"):
-    """基础设施正控：api 容器到诱捕容器的 2525 必须真通，否则后面全是假红。"""
+    """基础设施正控：API 所在位置到诱捕容器的 2525 必须真通，否则后面全是假红。
+
+    测法跟着 API 走：容器内用 docker exec，宿主侧进程用本机 socket——后者
+    对容器名是黑洞，硬测只会得到一条与产品无关的红。
+    """
     if not _started:
         return False, "sink 未启动"
-    r = _run(["docker", "exec", api_container, "sh", "-c",
-              "wget -T 3 -O /dev/null http://%s:2525/ 2>&1 | head -1"
-              % SINK_NAME])
-    txt = (r.stdout or "") + (r.stderr or "")
-    return ("Connection refused" not in txt
-            and "bad address" not in txt), txt[:120]
+    host, port = sink_addr(api_container)
+    if host == SINK_NAME:
+        r = _run(["docker", "exec", api_container, "sh", "-c",
+                  "wget -T 3 -O /dev/null http://%s:%d/ 2>&1 | head -1"
+                  % (SINK_NAME, port)])
+        txt = (r.stdout or "") + (r.stderr or "")
+        okc = ("Connection refused" not in txt and "bad address" not in txt)
+        return okc, txt[:120]
+    import socket as _s
+    try:
+        sk = _s.create_connection((host, port), timeout=5)
+        sk.close()
+        return True, "%s:%d 宿主可达" % (host, port)
+    except Exception as e:  # noqa: BLE001
+        return False, "%s:%d %s" % (host, port, str(e)[:90])
 
 
 def sink_raw():
