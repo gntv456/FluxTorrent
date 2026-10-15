@@ -463,14 +463,22 @@ lst2 = (call("GET", "/torrents?limit=200&alive=0&promo=x2",
 ids2 = [str(x.get("id")) for x in (lst2.get("items") or [])]
 ok("S8 「仅双倍」筛选把这条 free+x2 的种也收进来（命中 %d 条）"
    % len(ids2), str(tid) in ids2, "ids=%s…" % (ids2[:5],))
-clear_promos()
+# S8 的自购行是**走写口**造的（/promo/buy），不经过 set_promo，
+# 因此从来不在 PROMO_IDS / AUDIT_IDS 里——clear_promos() 清不掉它。
+# 实测（批一百五十四）：ba 跑完后库里留一行生效的 free 促销，
+# 下一支闸门（cn）用「生效促销残留=0」判它完全过，被判为自己的残留。
+# ——这里补显式按探针种子清，并把它记进 AUDIT_IDS 让 atexit 也能收尾。
+psql("DELETE FROM promotions WHERE torrent_id = %s" % tid)
+left_self = psql("SELECT count(*) FROM promotions WHERE torrent_id = %s" % tid)
 psql("DELETE FROM spark_ledger WHERE user_id = %s AND kind = 'promo_buy'"
      % UID)
 psql("UPDATE users SET spark_balance = 0 WHERE id = %s" % UID)
-ok("S8 自购残料已清（流水 0 条、促销 0 条）",
+ok("S8 自购残料已清（流水 0 条、该种促销 0 条）",
    psql("SELECT count(*) FROM spark_ledger WHERE user_id = %s" % UID) == "0"
-   and psql("SELECT count(*) FROM promotions WHERE torrent_id = %s "
-            "AND ends_at > now()" % tid) == "0")
+   and left_self == "0",
+   "流水=%s 促销残留=%s"
+   % (psql("SELECT count(*) FROM spark_ledger WHERE user_id = %s" % UID),
+      left_self))
 
 print("== S7 收尾 ==")
 ok("S7 站点设定 announce_interval 全程未被改动（前 %s / 后 %s）"
