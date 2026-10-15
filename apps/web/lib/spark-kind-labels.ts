@@ -80,6 +80,11 @@ export const SPARK_KIND_LABELS: Record<string, string> = {
   torrent_sell: "卖种收入",
   user_purge: "账号清理回收",
   "forum-topic-del-reply": "删除回复退还",
+  // 后台发道具（user_grant_item.rs）与银行两条 job kind
+  // （bank_jobs：定存结息 / 自动扣款）此前也没名字
+  admin_grant_item: "管理发放道具",
+  bank_fixed_interest: "定期存款结息",
+  bank_auto_deduct: "银行账户代扣",
 
   // 众筹 / 池
   funding: "众筹参与",
