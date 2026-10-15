@@ -293,6 +293,7 @@ pub mod lottery_draw;
 pub mod rss;
 pub mod settings;
 pub mod torrent_download;
+pub mod terms_gov;
 pub mod user_privacy;
 pub mod user_prefs;
 pub mod xseed;
