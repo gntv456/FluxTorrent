@@ -28,6 +28,8 @@ from pt_audit_lib import ok, summary, FAILURES  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAG = "apps/api/src/torrent_http/magnet.rs"
+# P-324 把 SQL 下沉 repo 层（effbe651）：购买判定的 SQL 现在在这里。
+REPO_MAG = "apps/api/src/repo/magnet.rs"
 DL = "apps/api/src/publish_http/download.rs"
 FIX = "383ac6c3"  # 批一百三十六：ES36 修复提交（正控取 383ac6c3^，别写 HEAD）
 CRED_PATHS = [
@@ -77,6 +79,7 @@ def flat(s):
 
 old_mag = flat(blob("%s^" % FIX, MAG)) if FIX != "WORKTREE" else ""
 new_mag = flat(here(MAG))
+repo_mag = flat(here(REPO_MAG)) if os.path.exists(REPO_MAG) else ""
 
 print("== ES0/ES1 磁力口的闸门 ==")
 if FIX != "WORKTREE":
@@ -87,10 +90,21 @@ if FIX != "WORKTREE":
                                           "torrent_purchases" in old_mag))
 ok("ES1a 现网磁力口先过下载资格闸门",
    "ensure_downloadable" in new_mag)
+# 批一百五十三更正：ES1b 原来断言「magnet.rs 里同时出现 torrent_purchases
+# 与 `if price > 0 && owner != Some(auth.id)` 同一段」。P-324 那批
+# 「SQL 下沉 repo 层」（effbe651）把两个都搬走了：SQL 进 repo/magnet.rs，
+# 判定留在 http 层，于是**行为完全没变**、断言却恒红。取证：torrent_http/magnet.rs
+# 92~107 行仍然先 ensure_downloadable、再 `if price > 0 && owner != Some(auth.id)`
+# 再查 purchased、没买过就 400——链路完整。
+# 判据改成「跨文件认三段形状」：判定条件、购买查询、repo 层 SQL 三件都在，
+# 且判定与查询出现在同一个 if 块里（不是各写各的）。
+body = new_mag
 ok("ES1b 付费种必须有购买记录才发凭证",
-   "torrent_purchases" in new_mag
-   and re.search(r"if price > 0 && owner != Some\(auth\.id\)", new_mag)
-   is not None)
+   ("price > 0" in body and "owner != Some(auth.id)" in body
+    and "purchased" in body)
+   and ("torrent_purchases" in repo_mag),
+   "判定=%s purchased调用=%s repo层SQL=%s"
+   % ("price>0" in body, "purchased" in body, "torrent_purchases" in repo_mag))
 ok("ES1c 付费未购回中文整句（含「付费种子」与「下载」指引）",
    "该种子为付费种子" in new_mag and "请先在详情页点" in new_mag)
 ok("ES1d 磁力口不重复扣费（没调 charge_for_download）",

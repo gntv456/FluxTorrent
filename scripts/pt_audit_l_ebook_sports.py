@@ -186,11 +186,19 @@ def main():
         (l.split("=")[0], l.split("=")[1])
         for l in psql(
             "SELECT kind || '=' || field_type FROM section_kinds "
-            "WHERE kind IN ('league','season','round')"
+            "WHERE kind IN ('league','season','season_label','round')"
         ).splitlines() if "=" in l
     )
     ok("league=select", kinds.get("league") == "select", kinds)
-    ok("season=text", kinds.get("season") == "text", kinds)
+    # season=text 这条判据是**过期的**（批一百五十三更正）：0320 把 season
+    # 全局升成 select（anime 语义：第X季 词表），sports 于是挂不上自由赛季；
+    # 0340 已按语义拆开——anime/movie/documentary 用 season(select)，
+    # sports 改走独立 kind season_label(text)。也就是说「season 是 text」这条
+    # 在 0340 之后**不可能再成立**，拿它当判据只会恒红，且红的方向会误导人
+    # 去把 anime 的 select 改回 text（那是真的会把 0320 的词表打掉）。
+    # 正确的断言：sports 的赛季位必须叫 season_label 且是 text。
+    ok("season_label=text（sports 自由赛季位，0340 拆分后）",
+       kinds.get("season_label") == "text", kinds)
     ok("round=text", kinds.get("round") == "text", kinds)
     lg = psql("SELECT id FROM section_dict WHERE kind='league' "
               "AND name='足球' LIMIT 1")
@@ -202,15 +210,27 @@ def main():
         lg = psql("SELECT id FROM section_dict WHERE kind='league' "
                   "AND name='足球' LIMIT 1")
     ok("league 词表含足球（gate 自补）", lg != "", lg)
+    # sports 的赛季位叫 season_label（0340 拆分，season 归 anime 的 select 词表）。
+    # 这里原来仍写 "season"：section_where 找不到该 kind 的字典/声明就整段丢弃，
+    # 上传虽 200 但 season 维度根本没落库，后面那条 % t3 于是拿到 None 拼进
+    # SQL → `column "none" does not exist` → 闸门 SystemExit 崩在半路。
+    # 症状是「末段一条判据都没跑」，看着像产品挂了，其实是闸门自己传错维度名。
     s, r = upload(tok, make_torrent(name="Audit.Sports.M"),
                   {"league": {"dict_ids": [int(lg)]},
-                   "season": {"text": "2025-26"},
+                   "season_label": {"text": "2025-26"},
                    "round": {"text": "10"}}, "Audit.Sports.M")
     t3 = (r.get("data") or {}).get("id")
     made.append(t3)
     ok("对阵维度落库",
+       bool(t3) and psql(
+           "SELECT count(*) FROM torrent_sections WHERE torrent_id=%s "
+           "AND kind IN ('league','season_label','round')" % t3) == "3",
+       "t3=%s" % t3)
+    # 还要证明「season=（anime 词表）对 sports 不生效」——拆分是真的隔离了，
+    # 而不是 sports 那边也悄悄长出了 season 维度。
+    ok("sports 不再挂 anime 的 season 维度（0340 隔离）",
        psql("SELECT count(*) FROM torrent_sections WHERE torrent_id=%s "
-            "AND kind IN ('league','season','round')" % t3) == "3")
+            "AND kind='season'" % t3) == "0")
     live(t3)
     s, r = call("GET", "/torrents?sec_league=%s&sec_round=10" % lg,
                 token=tok)
