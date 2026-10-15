@@ -111,7 +111,7 @@ ok("CF0 前提：基线已取（jixiao_claims %d 行、授权表 %d 行），考
 # ===== 两支探针 =====
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 2},
-              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
+              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
 
 
 def reg(name, idx):

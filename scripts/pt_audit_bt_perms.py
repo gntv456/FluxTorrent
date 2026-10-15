@@ -197,7 +197,7 @@ ok("T3b 矩阵审计带 items 快照（同文件既有口径，留作回归正�
 # ===== T4 用户级三处审计要带对象（P-208） =====
 clear_register_rl()
 codes = (call("POST", "/admin/invites", {"user_id": 1, "count": 1},
-              token=ROOT)[1] or {}).get("data", {}).get("codes") or []
+              token=ROOT)[1] or {}).get("data") or {}.get("codes") or []
 cap = (call("GET", "/auth/captcha", token=ROOT)[1] or {}).get("data") or {}
 nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
 NAME = "btm%d" % TAG

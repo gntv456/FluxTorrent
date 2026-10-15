@@ -99,7 +99,7 @@ ok("S1 正控：另一文件照常发钱",
                                "file_sha": add_attachment(
                                    uVet, b"2\nx\n", "aqB%d.srt" % TS),
                                "torrent_id": TID},
-        token=tVet)[1].get("data", {}).get("reward") == 5
+        token=tVet)[1].get("data") or {}.get("reward") == 5
    and ledger_rows(uVet, "subtitle") == 2,
    "ledger=%s" % ledger_rows(uVet, "subtitle"))
 ok("S1 反例：非 http(s) 直链被拒",
