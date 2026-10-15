@@ -32,19 +32,7 @@ fn urlencode(s: &str) -> String {
 }
 
 /// 解析 announce 基址：与 build_torrent_bytes 完全同口径（含剥 /announce 尾）。
-async fn announce_base(db: &sqlx::PgPool) -> String {
-    async fn setting(db: &sqlx::PgPool, name: &str) -> Option<String> {
-        sqlx::query_scalar::<_, String>(
-            "SELECT value FROM site_settings WHERE name = $1",
-        )
-        .bind(name)
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten()
-        .map(|v| v.trim().trim_end_matches('/').to_string())
-        .filter(|v| !v.is_empty())
-    }
+async fn announce_base(repo: &crate::repo::Repo) -> String {
     let strip_announce = |v: String| -> String {
         match v.strip_suffix("/announce") {
             Some(s) => s.to_string(),
@@ -55,9 +43,12 @@ async fn announce_base(db: &sqlx::PgPool) -> String {
         .unwrap_or_else(|_| "http://127.0.0.1:7070".into())
         .trim_end_matches('/')
         .to_string();
-    let base_http =
-        strip_announce(setting(db, "announce_url").await.unwrap_or(env_host));
-    match setting(db, "https_announce_url").await {
+    let base_http = strip_announce(
+        crate::repo::settings::read_base(repo, "announce_url")
+            .await
+            .unwrap_or(env_host),
+    );
+    match crate::repo::settings::read_base(repo, "https_announce_url").await {
         Some(https) if https != base_http => strip_announce(https),
         _ => base_http,
     }
@@ -74,59 +65,37 @@ async fn torrent_magnet(
     let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
     // 只取拼 magnet 所需的最小列；approval_status 同时充当存在性检查
-    let row: Option<(String, String, i16)> = sqlx::query_as(
-        "SELECT info_hash, name, approval_status FROM torrents \
-         WHERE id = $1 AND (approval_status = 1 OR approval_status = 0 \
-            OR approval_status = 4)",
-    )
-    .bind(id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let row = crate::repo::magnet::magnet_row(&state.repo, id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((info_hash, name, status)) = row else {
         return Err(DomainError::NotFound(id));
     };
     // 与 detail 同口径：暂缓/待审仅本人 + staff 可拿磁力
     if status != 1 {
-        let owner: i64 =
-            sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-                .bind(id)
-                .fetch_one(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+        let owner = crate::repo::magnet::owner_id(&state.repo, id)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         if owner != auth.id && auth.class_id < 90 {
             return Err(DomainError::NotFound(id));
         }
     }
-    let passkey: String =
-        sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let passkey = crate::repo::magnet::passkey(&state.repo, auth.id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // ES36 闸门对齐：magnet 里带的是**本人 passkey 的 announce**，拿到它
     // 就能进私有 swarm，所以「.torrent 下载要过的闸门」这里一条都不能少。
     // ① 下载资格（被停下载/挂起账号此前照拿磁力）；
     // ② 付费种必须有购买记录 —— 磁力口不重复扣费，但也不给没买过的人发
     //    凭证，否则「点一下磁力」就是绕过扣费的下载通道。
     crate::torrents::ensure_downloadable(&state.repo.db, auth.id).await?;
-    let paid: Option<(i64, Option<i64>)> = sqlx::query_as(
-        "SELECT price, owner_id FROM torrents WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let paid = crate::repo::magnet::price_owner(&state.repo, id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some((price, owner)) = paid {
         if price > 0 && owner != Some(auth.id) {
-            let owned: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM torrent_purchases WHERE \
-                 user_id = $1 AND torrent_id = $2)",
-            )
-            .bind(auth.id)
-            .bind(id)
-            .fetch_one(&state.repo.db)
-            .await
+            let owned = crate::repo::magnet::purchased(&state.repo, auth.id, id)
+                .await
             .unwrap_or(false);
             if !owned {
                 return Err(DomainError::Validation(format!(
@@ -138,7 +107,7 @@ async fn torrent_magnet(
     }
     let announce = format!(
         "{}/announce/{}",
-        announce_base(&state.repo.db).await,
+        announce_base(&state.repo).await,
         passkey
     );
     let magnet = format!(
