@@ -127,9 +127,36 @@ def pk16(raw):
 
 
 def logs_since(sec="25s"):
-    raw = subprocess.run(
-        ["docker", "logs", "--since", sec, "flux-api"],
-        capture_output=True, text=True, encoding="utf-8").stdout
+    """取 access log。日志源必须**跟着 API 所在位置**走。
+
+    批一百五十四实测：sweep 打的是宿主上起的侧进程（:8100），它的 access log
+    在自己的 stdout 里，`docker logs flux-api` 读的是主容器那份——两者根本不是
+    同一个进程的输出。于是「日志里必须带 HTTP 方法」这类判据在侧进程下拿到的
+    是主容器的历史行，正控必然红（实测 S1/P-74 正控 429×0 之外的另一条红：
+    `"GET /api/v1/forums"` 一行都没有，samp 为空 ⇒ any(...) 恒 False）。
+
+    判法：FLUX_API_BASE 的端口若是主容器发布端口就读容器日志，否则读侧进程
+    自己的日志文件。找不到时如实返回空串并由判据红，不静默拿别的进程的日志充数。
+    """
+    base = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")
+    try:
+        port = int(base.rsplit(":", 1)[1].split("/")[0])
+    except Exception:  # noqa: BLE001
+        port = 8080
+    pub = subprocess.run(["docker", "port", "flux-api"],
+                         capture_output=True, text=True).stdout or ""
+    if str(port) in {ln.strip().rsplit(":", 1)[-1]
+                      for ln in pub.splitlines() if ln.strip()}:
+        raw = subprocess.run(
+            ["docker", "logs", "--since", sec, "flux-api"],
+            capture_output=True, text=True, encoding="utf-8").stdout
+        return re.sub(r"\x1b\[[0-9;]*m", "", raw)
+    # 侧进程：日志由启动脚本重定向到文件
+    for cand in (os.environ.get("FLUX_SIDE_LOG"),):
+        if cand and os.path.exists(cand):
+            with open(cand, "r", encoding="utf-8", errors="replace") as fh:
+                return re.sub(r"\x1b\[[0-9;]*m", "", fh.read()[-200000:])
+    return ""
     # tracing 会给字段名/分隔符上 ANSI 颜色，`path=<值>` 在原始流里并不连续
     # ——不断码就会把「脱敏正控」误判成不存在（本闸门第一版就红在这里）。
     return re.sub(r"\x1b\[[0-9;]*m", "", raw)
