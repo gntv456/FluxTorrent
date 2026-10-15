@@ -179,6 +179,43 @@ impl PluginManager {
         }
     }
 
+    /// pool 版上传分发（0374 事件总线的消费面）。
+    ///
+    /// 与 `dispatch_upload` 的差别只有一个：不要 `&AppState`。
+    /// 消费循环只需要 DB 与插件表，造 AppState 会把 Redis/JWT 一起拖
+    /// 进来（后台任务不该依赖 Redis 可达）。
+    pub fn dispatch_upload_pool(
+        &self,
+        pool: &sqlx::PgPool,
+        torrent_id: i64,
+        owner_id: i64,
+    ) {
+        for (p, caps) in &self.plugins {
+            if !p.enabled() {
+                continue;
+            }
+            let p = p.clone();
+            let caps = caps.clone();
+            let pool = pool.clone();
+            tokio::task::spawn(async move {
+                let name = p.name();
+                if !crate::plugin_ctx::plugin_enabled(&pool, name).await {
+                    return;
+                }
+                let r = tokio::task::spawn_blocking(move || {
+                    let ctx = PluginCtx::new(&pool, &caps, name);
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                        || p.on_torrent_upload(&ctx, torrent_id, owner_id),
+                    ))
+                })
+                .await;
+                if matches!(r, Ok(Err(_)) | Err(_)) {
+                    tracing::error!(plugin = name, "upload hook panicked (suppressed)");
+                }
+            });
+        }
+    }
+
     pub fn dispatch_milestone(
         &self,
         state: &Arc<AppState>,

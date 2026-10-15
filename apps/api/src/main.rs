@@ -29,6 +29,7 @@ mod compat_http;
 mod config;
 mod content_http;
 mod domain;
+mod domain_events;
 mod dto;
 mod economy;
 mod economy_checkin;
@@ -255,6 +256,16 @@ async fn main() -> anyhow::Result<()> {
         let db = state.repo.db.clone();
         actix_web::rt::spawn(async move {
             push_notify::spawn_outbox_consumer(db).await;
+        });
+    }
+
+    // 0374 全域事件 outbox 消费循环：业务事务写入的 domain_events
+    // 在本进程消费（advisory lock 保证多实例只有一个真消费）。
+    // 与上面 push_outbox 那条链是两把独立的锁、两条独立的队列。
+    {
+        let db = state.repo.db.clone();
+        actix_web::rt::spawn(async move {
+            domain_events::spawn_consumer(db).await;
         });
     }
 
