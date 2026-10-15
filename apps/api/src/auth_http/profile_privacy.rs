@@ -32,13 +32,8 @@ pub(super) async fn hides_personal(
     if authz::can(state, auth, authz::perm::USER_VIEW).await {
         return false;
     }
-    let privacy: Option<String> = sqlx::query_scalar(
-        "SELECT privacy FROM users WHERE id = $1",
-    )
-    .bind(target)
-    .fetch_optional(&state.repo.read_db)
-    .await
-    .unwrap_or(None);
+    let privacy =
+        crate::repo::user_privacy::privacy_level(&state.repo, target).await;
     personal_hidden(privacy.as_deref())
 }
 
