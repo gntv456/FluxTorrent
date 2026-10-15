@@ -36,6 +36,8 @@ pub(crate) use lottery_draw::*;
 pub mod medal;
 mod medal_buy;
 mod medal_gift;
+mod medal_progress;
+pub(crate) use medal_progress::*;
 mod message;
 mod message_box;
 mod message_folders;
@@ -136,6 +138,8 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(medal_gift)
         .service(medal_wear)
         .service(my_medals)
+        // 0382 自动成就进度（我的「还差多少」）
+        .service(my_medal_progress)
         .service(notice_prefs_get)
         .service(notice_prefs_set)
         .service(list_prefs_get)
