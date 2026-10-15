@@ -12,8 +12,23 @@ use crate::torrents;
 
 use super::query::ListQuery;
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}",
+    tag = "种子",
+    description = "种子详情（会话鉴权）。持 view_anonymous 权限者可见匿名种子的真实发布者；staff\
+            对暂缓/待审种也可见。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}")]
-async fn detail(
+pub(crate) async fn detail(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -39,8 +54,22 @@ async fn detail(
 }
 
 /// 详情页扩展数据（简介/文件数/感谢数），与 detail 合并渲染
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/detail",
+    tag = "种子",
+    description = "详情页扩展数据（简介/文件数/感谢数），与详情合并渲染。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/detail")]
-async fn torrent_detail_ext(
+pub(crate) async fn torrent_detail_ext(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -58,8 +87,22 @@ async fn torrent_detail_ext(
     Ok(ok(t))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/files",
+    tag = "种子",
+    description = "文件树（按目录层级返回，付费种需已购或为发布者本人）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/files")]
-async fn torrent_files(
+pub(crate) async fn torrent_files(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -76,8 +119,22 @@ async fn torrent_files(
     Ok(ok(torrents::list_files(&state.repo.read_db, id).await?))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/thanks",
+    tag = "种子",
+    description = "感谢者列表（分页）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/thanks")]
-async fn torrent_thanks(
+pub(crate) async fn torrent_thanks(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -94,8 +151,22 @@ async fn torrent_thanks(
     Ok(ok(torrents::list_thanks(&state.repo.read_db, id).await?))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/comments",
+    tag = "种子",
+    description = "评论列表（分页，含点赞数与楼中楼计数）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/comments")]
-async fn comments(
+pub(crate) async fn comments(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -119,7 +190,7 @@ async fn comments(
     Ok(ok(items))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(super) struct CommentReq {
     pub(super) body: String,
     /// 嵌套回复（0156）：被回复的评论 id；缺省 = 顶层评论
@@ -128,8 +199,22 @@ pub(super) struct CommentReq {
 }
 
 /// 下载/做种记录（NP viewsnatches.php）
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/snatches",
+    tag = "种子",
+    description = "抓取列表（做种/下载两种视角，按 viewer 过滤）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/snatches")]
-async fn torrent_snatches(
+pub(crate) async fn torrent_snatches(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
@@ -147,8 +232,22 @@ async fn torrent_snatches(
 }
 
 /// NFO（NP viewnfo.php）
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/nfo",
+    tag = "种子",
+    description = "NFO 原文（text/plain）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/nfo")]
-async fn torrent_nfo(
+pub(crate) async fn torrent_nfo(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,

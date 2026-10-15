@@ -17,6 +17,16 @@ pub struct SuggestQuery {
     q: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/suggest",
+    tag = "种子",
+    description = "发种建议（按分类给出尚未发布的热门内容提示）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+    )
+)]
 #[get("/torrents/suggest")]
 pub async fn torrent_suggest(
     req: HttpRequest,

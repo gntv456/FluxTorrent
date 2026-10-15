@@ -109,8 +109,22 @@ fn progress_of(seeder: bool, downloaded: i64, left: i64) -> f64 {
     ((downloaded as f64 / total as f64) * 1000.0).round() / 10.0
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/peers",
+    tag = "种子",
+    description = "当前 peer 列表（tracker 汇报口径，按 IP 聚合并做隐私截断）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/peers")]
-async fn torrent_peers(
+pub(crate) async fn torrent_peers(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,

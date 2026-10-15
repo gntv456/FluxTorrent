@@ -43,6 +43,23 @@ const ANNOTATED_FILES = [
   "apps/api/src/compat_http/download_keys.rs",
   "apps/api/src/economy_http/recon.rs",
   "apps/api/src/rss_http.rs",
+  // 种子域（F4 2026-10-16：38 条路由注解化，脚本生成）
+  "apps/api/src/torrent_http/list.rs",
+  "apps/api/src/torrent_http/detail.rs",
+  "apps/api/src/torrent_http/interact.rs",
+  "apps/api/src/torrent_http/manage.rs",
+  "apps/api/src/torrent_http/magnet.rs",
+  "apps/api/src/torrent_http/peers.rs",
+  "apps/api/src/torrent_http/preview.rs",
+  "apps/api/src/torrent_http/trump.rs",
+  "apps/api/src/torrent_http/trump_admin.rs",
+  "apps/api/src/torrent_http/aggregate.rs",
+  "apps/api/src/torrent_http/batch.rs",
+  "apps/api/src/torrent_http/cue.rs",
+  "apps/api/src/torrent_http/file_conflict.rs",
+  "apps/api/src/torrent_http/logs.rs",
+  "apps/api/src/torrent_http/related.rs",
+  "apps/api/src/torrent_http/suggest.rs",
 ];
 
 // 手写域全集（W-49 迁移时的 27 条 + 注解化后补齐的 /downloads/keys/revoke）

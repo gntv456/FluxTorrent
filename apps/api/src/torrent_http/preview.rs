@@ -19,7 +19,7 @@ use crate::torrent_http::trump::feature_on;
 
 const KINDS: [&str; 2] = ["preview", "audio"];
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(crate) struct AddPreviewReq {
     sha256: String,
     #[serde(default)]
@@ -29,6 +29,22 @@ pub(crate) struct AddPreviewReq {
 }
 
 /// 关联一个预览片段（作者或 staff）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/previews",
+    tag = "种子",
+    description = "上传预览图（发布者本人；多图按 sort 排序）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/torrents/{id}/previews")]
 pub async fn preview_add(
     req: HttpRequest,
@@ -102,6 +118,20 @@ pub async fn preview_add(
 }
 
 /// 某颗种子的预览清单（详情页「试读/试听」入口数据源）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/previews",
+    tag = "种子",
+    description = "预览图列表。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/previews")]
 pub async fn preview_list(
     req: HttpRequest,
@@ -139,12 +169,28 @@ pub async fn preview_list(
     Ok(ok(serde_json::json!({ "items": items })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(crate) struct DelPreviewReq {
     sha256: String,
 }
 
 /// 解除关联（作者或 staff）。物理文件仍归附件体系，不在此删除。
+#[utoipa::path(
+    delete,
+    path = "/api/v1/torrents/{id}/previews",
+    tag = "种子",
+    description = "删预览图（发布者本人）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[delete("/torrents/{id}/previews")]
 pub async fn preview_remove(
     req: HttpRequest,

@@ -17,6 +17,20 @@ pub struct RelatedQuery {
     limit: Option<i64>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/related",
+    tag = "种子",
+    description = "相关种子（同分类/同发布者的邻近推荐）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/related")]
 pub async fn torrent_related(
     req: HttpRequest,

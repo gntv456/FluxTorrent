@@ -56,3 +56,43 @@ pub(crate) use sec_params::parse_section_params;
 pub use suggest::*;
 pub use trump::*;
 pub use trump_admin::*;
+// ===== F4 utoipa 聚合出口（种子域 38 条路由的 #[utoipa::path] 入口）====
+// openapi_http 的 OpenApi 聚合要从 crate 外部引用这些 handler，
+// 而子模块是私有 `mod`。这里做一层显式重导出，而不是把 20 个子模块
+// 全改成 pub —— 后者会把内部结构一并暴露出去。
+pub(crate) use aggregate::torrent_aggregate;
+pub(crate) use batch::batch_download;
+pub(crate) use cue::cue_check;
+pub(crate) use detail::torrent_detail_ext;
+pub(crate) use detail::torrent_files;
+pub(crate) use detail::torrent_thanks;
+pub(crate) use detail::comments;
+pub(crate) use detail::torrent_snatches;
+pub(crate) use detail::torrent_nfo;
+pub(crate) use file_conflict::file_conflicts;
+pub(crate) use interact::create_comment;
+pub(crate) use interact::delete_comment;
+pub(crate) use interact::toggle_comment_like;
+pub(crate) use interact::do_thank;
+pub(crate) use interact::request_reseed;
+pub(crate) use interact::torrent_tags;
+pub(crate) use interact::torrent_tag_put;
+pub(crate) use interact::do_bookmark;
+pub(crate) use logs::torrent_log_body;
+pub(crate) use logs::log_adjust;
+pub(crate) use magnet::torrent_magnet;
+pub(crate) use manage::edit_torrent;
+pub(crate) use manage::set_torrent_price;
+pub(crate) use manage::restore_torrent;
+pub(crate) use manage::resubmit_torrent;
+pub(crate) use manage::delete_torrent;
+pub(crate) use peers::torrent_peers;
+pub(crate) use preview::preview_add;
+pub(crate) use preview::preview_list;
+pub(crate) use preview::preview_remove;
+pub(crate) use related::torrent_related;
+pub(crate) use suggest::torrent_suggest;
+pub(crate) use trump::torrent_trump;
+pub(crate) use trump::torrent_trumps;
+pub(crate) use trump_admin::trump_list;
+pub(crate) use trump_admin::trump_resolve;

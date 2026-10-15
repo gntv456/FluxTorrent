@@ -55,8 +55,22 @@ pub async fn invalidate_tdetail_cache(state: &AppState, id: i64) {
     super::list::bump_list_cache_gen(state).await;
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/aggregate",
+    tag = "种子",
+    description = "详情聚合口（一次返回详情+文件树+扩展，减少客户端往返）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/aggregate")]
-async fn torrent_aggregate(
+pub(crate) async fn torrent_aggregate(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,

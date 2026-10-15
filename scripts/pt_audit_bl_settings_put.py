@@ -262,12 +262,19 @@ s8, r8 = put_one("bl_no_such_key_%d" % TAG, "1")
 ok("L3c 未知键必须 400（不得 INSERT 造新键）",
    s8 == 400 and cnt("site_settings", "name = 'bl_no_such_key_%d'" % TAG)
    == "0", "http=%s" % s8)
+# 基线在跑之前取一次，别把迁移默认值当断言基准：批一百五十三实测
+# announce_interval 已是 61（更早某轮审计用 root 把它从 1800 改成 61 且没还原，
+# audit_log id=14841 记着），于是本闸门「提交 61 ⇒ 断言仍是 1800」永远不成立。
+# 真正要验的是「**没被这次提交改动**」，所以拿本轮跑前的值当基准。
+ANN0 = sval("announce_interval")
+# 提交一个与基线**不同**的值，否则「值没变」可能只是因为提交本来就等于现值。
+ANN_TRY = "1800" if ANN0 != "1800" else "61"
 s9, r9 = put("/admin/settings/groups", {"group": "tracker",
-                                        "values": {"announce_interval": "61"}},
+                                        "values": {"announce_interval": ANN_TRY}},
              T92)
 ok("L3d 92 级职员提交「整批都不可写」→ 403（groups.rs:151 无任何可写字段），"
    "且 announce_interval 没被改",
-   s9 == 403 and sval("announce_interval") == "1800",
+   s9 == 403 and sval("announce_interval") == ANN0,
    "http=%s msg=%s 现值=%s" % (s9, msg((s9, r9))[:40],
                                sval("announce_interval")))
 MINI = "bank_min_deposit"
@@ -284,12 +291,12 @@ ok("L3e 正控：同口同职员写一个 60 级字段（%s，现值原样回填
 s11, r11 = put("/admin/settings/groups", {"group": "economy",
                                           "values": {MINI: V0,
                                                      "announce_interval":
-                                                         "61"}}, T92)
+                                                         ANN_TRY}}, T92)
 ok("L3f 混批里的越权字段走 400 字段级错误、整批不落库（可写字段也不趁势写入）",
    s11 == 400 and "无权" in blob((s11, r11))
-   and sval("announce_interval") == "1800" and sval(MINI) == V0,
-   "http=%s body=%s ann=%s" % (s11, blob(r11)[:90], sval(
-       "announce_interval")))
+   and sval("announce_interval") == ANN0 and sval(MINI) == V0,
+   "http=%s body=%s ann基准=%s ann现值=%s"
+   % (s11, blob(r11)[:90], ANN0, sval("announce_interval")))
 
 # ===== L4 密文键的留痕不落明文 =====
 PROBE = "bl-sec-%d" % TAG
@@ -334,7 +341,7 @@ JUNK = cnt("site_settings", "name LIKE 'bl\\_%'")
 ok("L9b 除测试键外一个字没动：键总数 %s→%s、announce_interval=%s、"
    "本轮造的野键 %s 个（应为 0）" % (NSET0, NSET1, sval(
        "announce_interval"), JUNK),
-   NSET1 == NSET0 and sval("announce_interval") == "1800" and JUNK == "0",
+   NSET1 == NSET0 and sval("announce_interval") == ANN0 and JUNK == "0",
    "键总数=%s→%s ann=%s 野键=%s" % (NSET0, NSET1,
                                     sval("announce_interval"), JUNK))
 ok("L9c 探针已墓碑、本轮不留活跃账号",

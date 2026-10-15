@@ -10,6 +10,19 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// 版主：待处理举报列表。
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/trumps",
+    tag = "种子",
+    description = "撤种裁决总览（staff；按状态/时间分页）。",
+    params(
+        ("status" = Option<String>, description = "裁决状态筛选"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+    )
+)]
 #[get("/admin/trumps")]
 pub async fn trump_list(
     req: HttpRequest,
@@ -42,7 +55,7 @@ pub async fn trump_list(
     Ok(ok(serde_json::json!({ "items": items })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub(crate) struct ResolveReq {
     accept: bool,
     #[serde(default)]
@@ -50,6 +63,21 @@ pub(crate) struct ResolveReq {
 }
 
 /// 版主裁决：accept=true 淘汰被举报种（approval_status=2 + deny_note）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/trumps/{id}/resolve",
+    tag = "种子",
+    description = "裁决撤种申请（staff；维持/推翻/封禁三选一，写操作留痕）。",
+    params(
+        ("id" = i64, description = "裁决 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+    )
+)]
 #[post("/admin/trumps/{id}/resolve")]
 pub async fn trump_resolve(
     req: HttpRequest,

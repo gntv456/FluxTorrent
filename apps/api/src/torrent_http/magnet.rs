@@ -56,8 +56,24 @@ async fn announce_base(repo: &crate::repo::Repo) -> String {
 
 /// GET /torrents/{id}/magnet：返回可直接进客户端的磁力链接。
 /// 鉴权与可见性口径同 detail 端点（staff/本人放宽到暂缓/待审）。
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/magnet",
+    tag = "种子",
+    description = "磁力链接。响应体内嵌本人 passkey 的 announce——\
+            与 .torrent 下载同闸门（ES36）：被停下载/挂起账号拒发，\
+            付费种必须已有购买记录。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/magnet")]
-async fn torrent_magnet(
+pub(crate) async fn torrent_magnet(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,

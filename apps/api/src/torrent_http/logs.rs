@@ -11,8 +11,23 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents;
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/torrents/{id}/logs/{ordinal}",
+    tag = "种子",
+    description = "抓轨日志正文（0312；ordinal 为该种日志序号）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+        ("ordinal" = i64, description = "日志序号"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+    )
+)]
 #[get("/torrents/{id}/logs/{ordinal}")]
-async fn torrent_log_body(
+pub(crate) async fn torrent_log_body(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<(i64, i32)>,
@@ -37,7 +52,7 @@ async fn torrent_log_body(
     })))
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, utoipa::ToSchema)]
 pub(crate) struct AdjustLogReq {
     /// 空 = 撤销改判，回到引擎判分
     #[serde(default)]
@@ -48,6 +63,23 @@ pub(crate) struct AdjustLogReq {
 
 /// 版主人工改判日志分（0337，Gazelle `AdjustedScore` 口径）。
 /// 原始 `log_score` 不动，改判写 `adjusted_*` 四列（可审计）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/torrents/{id}/logs/{ordinal}/adjust",
+    tag = "种子",
+    description = "抓轨日志人工修正（staff；补记/更正漏抓的 announce 事件）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+        ("ordinal" = i64, description = "日志序号"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在或不可见（code 1004）"),
+        (status = 422, description = "参数校验失败（code 1002）"),
+        (status = 403, description = "权限不足（code 2003）"),
+    )
+)]
 #[post("/admin/torrents/{id}/logs/{ordinal}/adjust")]
 pub async fn log_adjust(
     req: HttpRequest,
