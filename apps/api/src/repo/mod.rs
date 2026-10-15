@@ -282,3 +282,4 @@ pub mod passkey;
 pub mod reg_quiz;
 pub mod register_gates;
 pub mod user_prefs;
+pub mod xseed;

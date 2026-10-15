@@ -65,7 +65,11 @@ fn ct_eq(a: &[u8], b: &[u8]) -> bool {
 ///
 /// **豁免**：登录/登出本身。登录是「还没有 cookie」的起点，要求 token
 /// 会让首屏表单无法提交；登出后 cookie 已清，token 无从校验。
-fn needs_token(path: &str, method: &actix_web::http::Method, req: &ServiceRequest) -> bool {
+fn needs_token(
+    path: &str,
+    method: &actix_web::http::Method,
+    req: &ServiceRequest,
+) -> bool {
     if matches!(
         *method,
         actix_web::http::Method::GET
@@ -137,7 +141,10 @@ pub fn new_token() -> String {
 /// 下发 CSRF cookie（非 HttpOnly：前端要读它）。
 ///
 /// `secure` 由调用方按部署形态决定（本地 http 调试关、TLS 后开）。
-pub fn set_cookie(token: &str, secure: bool) -> actix_web::cookie::Cookie<'static> {
+pub fn set_cookie(
+    token: &str,
+    secure: bool,
+) -> actix_web::cookie::Cookie<'static> {
     actix_web::cookie::Cookie::build(CSRF_COOKIE, token.to_string())
         .http_only(false) // 双提交模式的定义：前端要能读
         .same_site(actix_web::cookie::SameSite::Lax)

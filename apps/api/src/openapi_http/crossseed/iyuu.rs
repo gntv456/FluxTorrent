@@ -121,18 +121,13 @@ pub async fn xseed_iyuu(
     daily_quota(&state, tk.uid, (v1.len() + ph.len()) as i64).await?;
     let v1v: Vec<String> = v1.iter().cloned().collect();
     let phv: Vec<String> = ph.iter().cloned().collect();
-    let rows: Vec<(i64, String, i64, String, Option<String>)> =
-        sqlx::query_as(
-            "SELECT id, name, size, info_hash, pieces_hash FROM torrents \
-             WHERE approval_status = 1 \
-               AND (info_hash = ANY($1::char(40)[]) \
-                    OR pieces_hash = ANY($2::char(40)[]))",
-        )
-        .bind(&v1v)
-        .bind(&phv)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows = crate::repo::xseed::find_by_fingerprints(
+        &state.repo,
+        &v1v,
+        &phv,
+    )
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 折成 IYUU 形状：payload = 下载链接（metadata 恒 false）。
     // 与 lookup 一致：info_hash 命中优先归类，只影响附带信息不影响链接。
     let hits: Vec<IyuuHit> = rows
@@ -181,14 +176,18 @@ pub async fn xseed_iyuu_site(
     // 拿着错的域名去爬。
     let base = std::env::var("PUBLIC_SITE_URL")
         .unwrap_or_else(|_| "{PUBLIC_SITE_URL}".into());
+    let root = base.trim_end_matches('/').to_string();
+    // NexusPHP 兼容路由：详情与下载同入口，下载走 action=download
+    let detail_tpl = format!("{root}/torrents.php?id={{torrent_id}}");
+    let download_tpl = format!(
+        "{root}/torrents.php?id={{torrent_id}}&action=download"
+    );
     actix_web::HttpResponse::Ok().json(serde_json::json!({
         "site": "fluxtorrent",
         "name": "FluxTorrent",
         "base_url": base,
-        // NexusPHP 兼容路由：详情与下载同入口，下载走 action=download
-        "detail_url": base.trim_end_matches('/').to_string() + "/torrents.php?id={torrent_id}",
-        "download_url": base.trim_end_matches('/').to_string()
-            + "/torrents.php?id={torrent_id}&action=download",
+        "detail_url": detail_tpl,
+        "download_url": download_tpl,
         // passkey 参数名（NexusPHP 生态通行口径）
         "passkey_field": "passkey",
         "auth": "passkey",

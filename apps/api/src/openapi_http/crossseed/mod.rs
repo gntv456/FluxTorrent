@@ -137,18 +137,13 @@ async fn xseed_lookup(
     // 单条 SQL：两列各一次 ANY（都有索引），可见性口径 = 详情（已审核）
     let v1v: Vec<String> = v1.iter().cloned().collect();
     let phv: Vec<String> = ph.iter().cloned().collect();
-    let rows: Vec<(i64, String, i64, String, Option<String>)> =
-        sqlx::query_as(
-            "SELECT id, name, size, info_hash, pieces_hash FROM torrents \
-             WHERE approval_status = 1 \
-               AND (info_hash = ANY($1::char(40)[]) \
-                    OR pieces_hash = ANY($2::char(40)[]))",
-        )
-        .bind(&v1v)
-        .bind(&phv)
-        .fetch_all(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows = crate::repo::xseed::find_by_fingerprints(
+        &state.repo,
+        &v1v,
+        &phv,
+    )
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 回标 match/query：v1 优先（主指纹），其次 pieces
     let results: Vec<_> = rows
         .iter()

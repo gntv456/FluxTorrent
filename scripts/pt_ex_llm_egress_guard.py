@@ -17,8 +17,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import ok, summary, FAILURES  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HOST = "apps/api/src/adapter_host.rs"
+# LLM 那一个导入已从 adapter_host.rs 拆到 adapter_host_llm.rs（守 300 行
+# 门禁）；判据跟着走，否则 EX2/EX3 会在空窗口上判红——那是「判据打空」
+# 不是产品红。EX4 普查两个文件都扫。
+HOST = "apps/api/src/adapter_host_llm.rs"
 CALL = "apps/api/src/adapter_call.rs"
+PREV_FILE = "apps/api/src/adapter_host.rs"
 PREV = "b624b5e8"  # 新能力落地的那次提交（正控取它，别写 HEAD）
 
 
@@ -55,7 +59,7 @@ def llm_chat_body(src):
     return src[i:min(ends)] if ends else src[i:]
 
 
-old = llm_chat_body(blob(PREV, HOST))
+old = llm_chat_body(blob(PREV, PREV_FILE))
 print("== EX1 正控：新能力落地那天，出网客户端没有禁跟随重定向 ==")
 ok("EX1a 正控能取到修前 llm_chat 体（空串=参照物失效）",
    "reqwest::blocking" in old, "取到 %d 字符" % len(old))

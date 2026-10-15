@@ -66,10 +66,11 @@ fn lookup_sql_shape_matches_detail_visibility() {
 fn iyuu_req_accepts_iyuu_field_names() {
     // 协议来源：ledccn/iyuuplus-dev composer/reseed-client/src/Client.php
     // 的 /reseed/index/index 入参就是 hash + sha1（不是 info_hash_v1/pieces_sha1）
-    let r: IyuuReq = serde_json::from_str(
-        r#"{"hash":["DB6AAB38B13A6AE52542471A4A9FEF2507973831"],"sha1":[],"sid_sha1":"abc"}"#,
-    )
-    .unwrap();
+    let json = concat!(
+        r#"{"hash":["DB6AAB38B13A6AE52542471A4A9FEF2507973831"],"#,
+        r#""sha1":[],"sid_sha1":"abc"}"#
+    );
+    let r: IyuuReq = serde_json::from_str(json).unwrap();
     assert_eq!(r.hash.len(), 1);
     assert!(r.sha1.is_empty());
     assert_eq!(r.sid_sha1.as_deref(), Some("abc"));
