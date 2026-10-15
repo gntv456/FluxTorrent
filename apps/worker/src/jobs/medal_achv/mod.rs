@@ -55,7 +55,7 @@ pub(super) async fn rules_of(
 ) -> anyhow::Result<Vec<RuleRow>> {
     let sql = "SELECT id, name, auto_rule, auto_mode, auto_target, \
                auto_period FROM medals \
-               WHERE active = TRUE AND auto_mode IS NOT NULL \
+               WHERE auto_mode IS NOT NULL \
                  AND ($1::text IS NULL OR auto_mode = $1)";
     Ok(sqlx::query_as(sql)
         .bind(mode)

@@ -45,7 +45,7 @@ async fn backfill_one(
 pub(crate) async fn backfill(db: &PgPool) -> anyhow::Result<(u64, u64)> {
     let rules: Vec<RuleRow> = sqlx::query_as(
         "SELECT id, name, auto_rule, auto_mode, auto_target, auto_period \
-         FROM medals WHERE active = TRUE AND auto_mode IS NOT NULL \
+         FROM medals WHERE auto_mode IS NOT NULL \
          AND NOT backfill_done ORDER BY id",
     )
     .fetch_all(db)
