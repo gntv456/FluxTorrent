@@ -49,7 +49,15 @@ pub(super) async fn promo_kinds_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let _auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
+    // P-338（批一百五十四）：本读口此前只过粗闸 staff()，而同文件的写口与
+    // 兄弟端点都要「SETTINGS_MANAGE」（class 99 起）。后果：class 91「发布员」能读
+    // 促销档位读口全表，写却被 403——**读比写松**，属权限倒挂。
+    // 取证：user_can(uid, "settings.manage") 对 class 91 返回 false，
+    // 而 GET 这条仍回 200（实测 91 档拿到 email-domains 200 行、
+    // roles-dict 5 行、agentrules 12 条）。
+    // 修法：读口与写口对齐同一把权限键；语义上「读配置」与「改配置」同档。
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
     let kinds: Vec<KindAdminRow> = sqlx::query_as(KIND_SELECT)
         .fetch_all(&state.repo.db)
         .await
