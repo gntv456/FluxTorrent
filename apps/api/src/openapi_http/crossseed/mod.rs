@@ -11,8 +11,8 @@
 //! - `GET /crossseed/dl/{id}`：现场签发 30 分钟临时凭证并 302 到现有
 //!   下载端点（限流/资格/扣费全走 compat 既有链路，不造第二套）；
 //! - `POST /crossseed/iyuu`：IYUU 协议适配**未定型**（请求/响应格式需对照
-//!   其公开文档核实，PT Studio 同样列为部署前核实项）——返回 501，
-//!   好过返回错格式。
+//!   `ledccn/iyuuplus-dev` 的真实协议实现，见 `iyuu.rs` 文件头）；
+//! - `GET /crossseed/iyuu/site`：站点自描述（IYUU sites/index 形状）。
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -24,6 +24,8 @@ use super::{
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
+
+mod iyuu;
 
 /// 单次请求指纹总数上限（两数组合计；PT Studio 同值）。
 const MAX_FINGERPRINTS: usize = 500;
@@ -226,44 +228,10 @@ async fn xseed_dl(
     ))
 }
 
-/// POST /crossseed/iyuu —— IYUU 协议适配（未定型，501）。
-/// 设计稿纪律：请求/响应格式未对照 IYUU 公开文档核实前不写转换层，
-/// 返回 501 好过返回错格式；定型后只包一层「协议适配 → lookup 内核」。
-#[utoipa::path(
-    post,
-    path = "/api/v1/crossseed/iyuu",
-    tag = "辅种(crossseed)",
-    description = "IYUU 协议适配（未定型）：暂返回 501。字段格式需对照 IYUU \
-公开对接文档 + IYUUPlus 客户端实际请求核实后再启用（PT Studio 同列为部署前核实项）。",
-    responses(
-        (status = 501, description = "协议适配未定型"),
-        (status = 401, description = "Token 无效/未传（code 2001）"),
-        (status = 403, description = "Token 无 crossseed scope（code 2003）"),
-    )
-)]
-#[post("/crossseed/iyuu")]
-async fn xseed_iyuu(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let tk = require_token(&req, &state).await?;
-    require_scope(&tk, SCOPE_CROSSSEED)?;
-    Ok(with_rl(
-        HttpResponse::NotImplemented()
-            .content_type("application/json")
-            .body(
-                serde_json::json!({
-                    "code": 0,
-                    "message": "IYUU 协议适配未定型：字段格式待对照其公开\
-对接文档核实后启用（lookup 内核已就绪，适配层不会重复实现业务）",
-                    "data": null,
-                })
-                .to_string(),
-            ),
-        &tk,
-    ))
-}
-
+pub use iyuu::{xseed_iyuu, xseed_iyuu_site};
+#[allow(unused_imports)]
+pub use iyuu::{__path_xseed_iyuu, __path_xseed_iyuu_site};
+pub use iyuu::{IyuuHit, IyuuReq};
 
 #[cfg(test)]
 mod tests;
