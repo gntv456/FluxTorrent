@@ -1,5 +1,6 @@
 import { getMedals, getMedalRarities } from "@/lib/data";
 import { MedalHall } from "@/components/medal-hall";
+import { MedalProgress } from "@/components/medal-progress";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
@@ -52,6 +53,14 @@ export default async function MedalsPage() {
         </div>
       </div>
       <MedalHall medals={medals} rarities={rarities} maxWorn={maxWorn} />
+      {/* 0382 自动成就进度：放在殿堂之下，让「已有啥」与「还差啥」
+          连着看——两者割裂会让用户以为勋章只能买。 */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-[var(--text-body)]">
+          {dict.medals.title}
+        </h2>
+        <MedalProgress />
+      </section>
     </div>
   );
 }
