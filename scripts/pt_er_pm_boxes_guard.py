@@ -23,7 +23,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OLD = "apps/api/src/community_http/message_box.rs"
 NEW = "apps/api/src/community_http/message_folders.rs"
 MOD = "apps/api/src/community_http/mod.rs"
-FIX = "HEAD"          # 与修复同批入库
+FIX = "9743c607"      # 批一百三十四：P-322 修复提交（别写 HEAD——
+                      # 本闸门一入库 HEAD 就变成它自己，正控会集体假红）
 PSQL = ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
         "-d", "fluxtorrent", "-tAc"]
 
