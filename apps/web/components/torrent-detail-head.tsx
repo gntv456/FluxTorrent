@@ -1,4 +1,5 @@
 import { DownloadButton } from "@/components/download-button";
+import { FoldMobileBare } from "@/components/fold-mobile";
 import { TorrentSocial } from "@/components/torrent-social";
 import { ResurrectButton } from "@/components/resurrect-button";
 import { TrumpButton } from "@/components/torrent-trump-button";
@@ -177,7 +178,9 @@ export function TorrentHead({
             />
             <WishlistButton keyword={t.name} />
           </div>
-          <TorrentSocial torrentId={t.id} />
+          <FoldMobileBare title={d?.interactTitle ?? dict.torrent.thanks}>
+            <TorrentSocial torrentId={t.id} />
+          </FoldMobileBare>
           <div className="td-head__actions-row">
             {t.seeders === 0 && (
               <ResurrectButton torrentId={t.id} name={t.name} />

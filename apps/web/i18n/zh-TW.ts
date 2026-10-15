@@ -6355,6 +6355,7 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     reasonWrongContent: "內容不符",
     reasonDuplicate: "重複發布",
     reasonOther: "其他",
+    interactTitle: "互動與答謝",
   },
   offers2: {
     title: "候選",
