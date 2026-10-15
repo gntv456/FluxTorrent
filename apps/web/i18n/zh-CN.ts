@@ -434,6 +434,7 @@ const zhCnBase = {
     filesTitle: "文件列表",
     filesAll: "查看全部 {n} 个文件",
     metaTitle: "资源信息",
+    anchorNav: "页面导航",
     fileUnit: "个文件",
     thankersTitle: "感谢者",
     thanksCount: "感谢",

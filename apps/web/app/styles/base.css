@@ -1027,6 +1027,11 @@ a:hover {
 .td-fold {
   scroll-margin-top: 88px;
 }
+/* 移动端锚点条（设计稿 §6 td-anchor）：桌面导航由右信息栏承担，
+   故默认不渲染；<768 的吸顶样式见本文件后段 @768 块 */
+.td-anchor {
+  display: none;
+}
 /* 桌面：头部 meta 行收敛进侧栏 td-meta 卡（设计稿 §6） */
 @media (min-width: 768px) {
   .td-head__meta {
@@ -1294,6 +1299,50 @@ a:hover {
   }
   .td-side-rel {
     margin-top: 4px;
+  }
+  /* 移动端锚点条（设计稿 §5/§6）：sticky 吸顶横向 Tab，置于 72px
+     顶栏之下；横滑隐滚轮；当前区块蓝实底高亮 */
+  .td-anchor {
+    display: flex;
+    position: sticky;
+    top: 72px;
+    z-index: var(--z-sticky);
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 6px 0;
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--line);
+  }
+  .td-anchor::-webkit-scrollbar {
+    display: none;
+  }
+  .td-anchor__tab {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--sky-soft);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sky-deep);
+    cursor: pointer;
+  }
+  .td-anchor__tab.is-on {
+    background: var(--sky-deep);
+    border-color: var(--sky-deep);
+    color: var(--text-on-accent);
+  }
+  .td-anchor__num {
+    font-size: 11px;
+    opacity: 0.72;
+  }
+  /* 锚点落点避让吸顶条：72 顶栏 + ~42 条高 + 间距 */
+  .td-fold {
+    scroll-margin-top: 124px;
   }
 }
 
