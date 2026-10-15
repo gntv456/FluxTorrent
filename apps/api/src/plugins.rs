@@ -210,7 +210,10 @@ impl PluginManager {
                 })
                 .await;
                 if matches!(r, Ok(Err(_)) | Err(_)) {
-                    tracing::error!(plugin = name, "upload hook panicked (suppressed)");
+                    tracing::error!(
+                        plugin = name,
+                        "upload hook panicked (suppressed)"
+                    );
                 }
             });
         }

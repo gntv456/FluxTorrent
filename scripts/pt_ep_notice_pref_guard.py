@@ -129,7 +129,9 @@ def one(sql):
 
 residue = one("SELECT count(*) FROM messages WHERE subject ="
               " 'H&R 违规确认' AND body = 'probe'")
-pref_now = one("SELECT notice_prefs::text FROM users WHERE id = %d" % PROBE_USER)
+pref_now = one(
+    "SELECT notice_prefs::text FROM users WHERE id = %d"
+    % PROBE_USER)
 ok("EP2c 回滚干净：无取证残留、探针会员偏好未被改写",
    residue == "0" and "hr_violation" not in (pref_now or ""),
    "残留=%s 偏好=%s" % (residue, (pref_now or "")[:60]))
@@ -180,8 +182,8 @@ for dp, dirs, fs in os.walk(os.path.join(ROOT, "apps")):
         # 而不是字面量）⇒ 其 kind 集合要显式登记，否则会把 comment_reply
         # 误记成假开关（EP3 台账曾两次栽在「只认字面量」上）。
         if "fn notify_user(" in t and "u_notice_enabled" in t:
-            for km in re.findall(r"notify_user\((?:[^()]|\([^()]*\))*?\"([a-z0-9_]+)\"",
-                                t, re.S):
+            pat = r"notify_user\((?:[^()]|\([^()]*\))*?\"([a-z0-9_]+)\""
+            for km in re.findall(pat, t, re.S):
                 B.add(km)
 
         inl = set(re.findall(r"notice_prefs\s*->>\s*'([a-z0-9_]+)'", t))
@@ -275,7 +277,8 @@ ok("EP9d 管理群发的 INSERT 带 kind=system 且过偏好",
    and "\u0027system\u0027" in flat_bn
    and "u_notice_enabled" in flat_bn)
 ok("EP9e 群发邮件通道也过 system 档（两通道同口径）",
-   re.search(r"notify_kind\([^;]*[\x27\x22]system[\x27\x22]", flat_bn) is not None)
+   re.search(r"notify_kind\([^;]*[\x27\x22]system[\x27\x22]",
+              flat_bn) is not None)
 ok("EP9f 必达类仍走 mailer::notify（强制通道没被一起关掉）",
    "pub async fn notify(" not in bn)
 
@@ -287,7 +290,8 @@ def _take(rel, pat):
     if not _m:
         return None
     _s = _m.group(0).split(chr(34) + ",")[0].strip().strip(chr(34))
-    return re.sub(r"\s+", " ", _s.replace(chr(92), "").replace(chr(92) + chr(34), chr(34))).strip()
+    return re.sub(r"\s+", " ", _s.replace(chr(92), "").replace(
+        chr(92) + chr(34), chr(34)).strip())
 
 def _live(label, stmt, key, params, probe):
     if not stmt:
@@ -311,13 +315,17 @@ def _live(label, stmt, key, params, probe):
                             % (label, _pref, (_r.stderr or "")[:140]))
             _res[_pref] = "?"
             continue
-        _ls = [x for x in (_r.stdout or "").strip().split("\n") if x.strip() and x.strip() != "ROLLBACK"]
+        _ls = [x for x in (_r.stdout or "").strip()
+              .split(chr(10))
+              if x.strip() and x.strip() != "ROLLBACK"]
         _res[_pref] = _ls[-1] if _ls else "?"
     ok("EP10 %s 偏好关 ⇒ 写 0 行（面板开关真的执法）" % label,
        _res.get("false") == "0", "实读 %s" % _res.get("false"))
     ok("EP10 %s 偏好开 ⇒ 写 1 行（不是无脑不写）" % label,
        _res.get("true") == "1", "实读 %s" % _res.get("true"))
-    _chk = sh(PSQL + ["-tAq"], "SELECT notice_prefs::text FROM users WHERE id = %d;" % PROBE_USER)
+    _chk = sh(PSQL + ["-tAq"],
+        "SELECT notice_prefs::text FROM users WHERE id = %d;"
+        % PROBE_USER)
     ok("EP10 %s 收尾：ROLLBACK 后探针偏好未被改写" % label,
        _chk.returncode == 0, ( _chk.stdout or "").strip())
 

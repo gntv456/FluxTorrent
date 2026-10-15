@@ -2249,12 +2249,6 @@
    "file": "apps/api/src/content_http/subtitles_requests.rs"
   },
   {
-   "method": "GET",
-   "path": "/me/csrf",
-   "handler": "issue",
-   "file": "apps/api/src/csrf.rs"
-  },
-  {
    "method": "POST",
    "path": "/bank/deposit",
    "handler": "bank_deposit",
@@ -3330,6 +3324,18 @@
   },
   {
    "method": "POST",
+   "path": "/crossseed/iyuu",
+   "handler": "xseed_iyuu",
+   "file": "apps/api/src/openapi_http/crossseed/iyuu.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/crossseed/iyuu/site",
+   "handler": "xseed_iyuu_site",
+   "file": "apps/api/src/openapi_http/crossseed/iyuu.rs"
+  },
+  {
+   "method": "POST",
    "path": "/crossseed/lookup",
    "handler": "xseed_lookup",
    "file": "apps/api/src/openapi_http/crossseed/mod.rs"
@@ -3338,12 +3344,6 @@
    "method": "GET",
    "path": "/crossseed/dl/{torrent_id}",
    "handler": "xseed_dl",
-   "file": "apps/api/src/openapi_http/crossseed/mod.rs"
-  },
-  {
-   "method": "POST",
-   "path": "/crossseed/iyuu",
-   "handler": "xseed_iyuu",
    "file": "apps/api/src/openapi_http/crossseed/mod.rs"
   },
   {

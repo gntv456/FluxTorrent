@@ -27,7 +27,8 @@ use wasmtime::component::Component;
 use wasmtime::{Config, Engine};
 
 use crate::extension::{
-    Capabilities, ExtensionKind, ExtensionManifest, EXTENSION_CONTRACT_VERSION, Limits,
+    Capabilities, ExtensionKind, ExtensionManifest, Limits,
+    EXTENSION_CONTRACT_VERSION,
 };
 use crate::adapter_host::build_linker;
 use crate::adapter_sandbox::{new_store, KvTable, RateBucket};

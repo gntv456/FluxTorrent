@@ -30,6 +30,7 @@ mod config;
 mod content_http;
 mod domain;
 mod domain_events;
+mod domain_events_consumer;
 mod csrf;
 mod dto;
 mod economy;
@@ -266,7 +267,7 @@ async fn main() -> anyhow::Result<()> {
     {
         let db = state.repo.db.clone();
         actix_web::rt::spawn(async move {
-            domain_events::spawn_consumer(db).await;
+            domain_events_consumer::spawn_consumer(db).await;
         });
     }
 
