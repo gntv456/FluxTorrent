@@ -72,6 +72,7 @@ export const SPARK_KIND_LABELS: Record<string, string> = {
   hr_pardon: "H&R 赦免",
   hr_pardon_refund: "H&R 赦免退还",
   request_bounty: "求种悬赏",
+  request_refund: "求种过期退还",
 
   // 众筹 / 池
   funding: "众筹参与",
