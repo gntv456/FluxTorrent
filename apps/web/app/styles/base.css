@@ -762,6 +762,26 @@ a:hover {
 .nexus-form tbody tr:hover td.rowfollow {
   background: var(--surface-hover);
 }
+/* 窄屏表单堆叠（M5.7）：<sm 时 rowhead/rowfollow 两列结构整体转纵向，
+   消灭 /upload 402px、/subtitles 上传表 451px 这类容器内横滚（表单
+   拖动看全比换行更难用）。:has() 选「含 rowhead 单元格的表格」，一份
+   规则同时覆盖 nexus-form（上传/控制面板/联系管理）与未挂类的历史
+   表单（staff-tools、工单列表、subtitles-upload-table），不动组件
+   标记；数据表（无 rowhead）不受影响。thead 是单格标题栏
+   （colSpan=2），块化后即全宽标题条。 */
+@media (max-width: 640px) {
+  .nexus-table:has(td.rowhead),
+  .nexus-table:has(td.rowhead) thead,
+  .nexus-table:has(td.rowhead) tbody,
+  .nexus-table:has(td.rowhead) tr,
+  .nexus-table:has(td.rowhead) td {
+    display: block;
+    width: auto;
+  }
+  .nexus-table:has(td.rowhead) td.rowhead {
+    white-space: normal;
+  }
+}
 
 /* ============ 种子详情页（NexusPHP 详情块：colhead 表头 + label/value 行） ============ */
 .nexus-detail {
