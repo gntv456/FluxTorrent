@@ -12,8 +12,12 @@ mod eval;
 mod event;
 
 pub(super) use backfill::backfill;
+pub(crate) use backfill::medal_backfill;
 pub(super) use eval::threshold_sweep;
 pub(crate) use eval::prog;
+// `record_event` 是给业务侧（发种/评论等处）调的入口，当前站内尚未
+// 接线——接线时直接 `use crate::jobs::medal_achv::record_event`。
+#[allow(unused_imports)]
 pub(super) use event::record_event;
 
 /// 判定矩阵的真身在 api（`api/src/domain/medal`），worker 用 include!
@@ -21,6 +25,9 @@ pub(super) use event::record_event;
 /// 「api 算达标、worker 不发」或反过来。
 #[path = "../../../../api/src/domain/medal/mod.rs"]
 mod api_domain;
+// 判定矩阵（真身在 api/src/domain/medal）整包转出：本模块的三个子文件
+// 统一用 `super::api_domain as md` 引用，避免各自写 #[path]。
+#[allow(unused_imports)]
 pub(crate) use api_domain::*;
 
 /// 一轮扫描的批大小（够小则单轮秒级，够大则减少轮次）。

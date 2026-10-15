@@ -226,7 +226,7 @@ pub async fn run_all(
             shard_lock!(&db, "job:medal_threshold",
                 crate::jobs::medal_achv::threshold_sweep(&db), &shard);
             shard_lock!(&db, "job:medal_backfill",
-                medal_backfill_job(&db), &shard);
+                crate::jobs::medal_achv::medal_backfill(&db), &shard);
             // 0383 商城履约自愈：把卡在 frozen 且过了宽限的订单推进到终态
             // 「钱不会被无限期占着」这条不变量的
             // 唯一保证——没有它，三段式只是把「扣款后崩掉」换成了
@@ -334,11 +334,4 @@ pub async fn run_all(
     manual_tasks.drain().await;
     tracing::info!("flux-worker 已排空，退出");
     Ok(())
-}
-
-/// 回填作业的返回口径包装：`backfill` 返回
-/// `(已完成成就数, 授予人数)`，而 `shard_lock!` 要的是 `u64` 计数。
-/// 取「授予人数」——那才是本轮实际产生的效果；「成就数」只是内部游标。
-async fn medal_backfill_job(db: &sqlx::PgPool) -> anyhow::Result<u64> {
-    Ok(crate::jobs::medal_achv::backfill(db).await?.1)
 }

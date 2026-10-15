@@ -139,7 +139,7 @@ pub(super) async fn apply_fail_action(
         FailAction::None => Ok(()),
         FailAction::Restrict => {
             sqlx::query(
-                "UPDATE users SET download_enabled = FALSE \\
+                "UPDATE users SET download_enabled = FALSE
                  WHERE id = $1 AND download_enabled = TRUE",
             )
             .bind(c.user_id)

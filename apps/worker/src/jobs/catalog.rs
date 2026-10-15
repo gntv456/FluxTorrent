@@ -230,6 +230,22 @@ pub const JOBS: &[JobDef] = &[
         name: "usage_stats",
         cadence: "24h",
     },
+    // 0382 勋章自动成就：threshold 周期重算（hourly 而非 daily——周期口径
+    // 含日/周，daily 会让「周期最后一天达标的用户」白等 24h）
+    JobDef {
+        name: "medal_threshold",
+        cadence: "1h",
+    },
+    // 0382 存量回填：分批续跑，靠「已授予即跳过」续档
+    JobDef {
+        name: "medal_backfill",
+        cadence: "1h",
+    },
+    // 0383 商城履约自愈：把卡在 frozen 且过了宽限的订单推到终态
+    JobDef {
+        name: "shop_fulfill_recover",
+        cadence: "1h",
+    },
 ];
 
 /// 目录同步：幂等 upsert 节奏；代码里已下线的 job 从目录里删掉（避免面板留死按钮）。

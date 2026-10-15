@@ -26,6 +26,11 @@ pub(crate) async fn run_named(
         "preserve_seed" => n(preserve_seed(db).await?),
         "task_settle" => n(crate::task_jobs::task_settle(db).await?),
         "exam_assign" => n(crate::task_jobs::exam_assign(db).await?),
+        "medal_threshold" =>
+            n(crate::jobs::medal_achv::threshold_sweep(db).await?),
+        "medal_backfill" => n(crate::jobs::medal_achv::medal_backfill(db).await?),
+        "shop_fulfill_recover" =>
+            n(crate::jobs::shop_fulfill::recover(db).await?),
         "lottery_settle" => n(lottery_settle_due(db).await?),
         "bank_daily" => {
             crate::bank_jobs::bank_daily(db).await;

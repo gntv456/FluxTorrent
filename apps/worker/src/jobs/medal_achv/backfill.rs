@@ -85,3 +85,12 @@ pub(crate) async fn backfill(db: &PgPool) -> anyhow::Result<(u64, u64)> {
     }
     Ok((done_rules, granted))
 }
+
+/// 回填作业的返回口径包装。
+///
+/// `backfill` 返回 `(已完成成就数, 授予人数)`，而 `spawn_lock!` /
+/// `manual` 要的是单个 `u64` 计数。取「授予人数」——那才是本轮实际
+/// 产生的效果；「成就数」只是内部游标，登记进 job_status 没有运营含义。
+pub(crate) async fn medal_backfill(db: &PgPool) -> anyhow::Result<u64> {
+    Ok(backfill(db).await?.1)
+}
