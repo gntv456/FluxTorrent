@@ -15,7 +15,7 @@ mod util;
 pub use util::{format_size, parse_ids, xml_escape};
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 
 use crate::state::AppState;
 use query::RssQuery;
@@ -24,20 +24,6 @@ pub fn mount_rss(scope: actix_web::Scope) -> actix_web::Scope {
     tokens::mount_tokens(scope)
         .service(rss_feed)
         .service(forum::forum_rss_feed)
-}
-
-#[derive(sqlx::FromRow)]
-struct RssRow {
-    id: i64,
-    name: String,
-    small_descr: Option<String>,
-    size: i64,
-    created_at: DateTime<Utc>,
-    official_tag: bool,
-    /// 当前生效促销（rss 刷流标记用）：free/x2free/…，NULL = 无
-    promotion: Option<String>,
-    #[sqlx(default)]
-    owner_name: Option<String>,
 }
 
 /// GET /rss/{passkey}?categories=1,2&mediums=3&official=&search=...
@@ -140,16 +126,7 @@ pub(crate) async fn rss_feed(
     // 按「全部」在跑，直接翻转会让它们突然少掉源种）。改 yes 时接的是
     // **同一份** seeders > 0 谓词，不在 RSS 里另写一份（另写会与主
     // 列表口径漂移，正是审计里反复出现的病根）。
-    let alive_only: bool = sqlx::query_scalar(
-        "SELECT COALESCE((value = $1), false) \
-         FROM site_settings WHERE name = $2"
-    )
-    .bind("yes")
-    .bind("rss_alive_only")
-    .fetch_optional(&state.repo.db)
-    .await
-    .unwrap_or(None)
-    .unwrap_or(false);
+    let alive_only = crate::repo::rss::alive_only(&state.repo).await;
     let sql = format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, \
                 t.official_tag, pr.promotion, \
@@ -175,26 +152,28 @@ pub(crate) async fn rss_feed(
            AND (NOT $9::bool OR t.seeders > 0) \
          ORDER BY t.id DESC LIMIT $5"
     );
-    let rows: Vec<RssRow> = sqlx::query_as(&sql)
-        .bind(categories.as_deref())
-        .bind(mediums.as_deref())
-        .bind(q.official)
-        // LIKE 通配转义（2026-10-10 批十）：与主列表 esc_like 同口径——裸 %/_ 当
-        // 通配会让 search=% 退化成「不过滤」，RSS 与列表两个出口语义漂移
-        .bind(
-            q.search
-                .as_deref()
-                .filter(|s| !s.is_empty())
-                .map(crate::torrents::esc_like),
-        )
-        .bind(q.showrows.unwrap_or(50).clamp(1, 200))
-        .bind(free_only)
-        .bind(exclude_paid)
-        .bind(user_id)
-        .bind(alive_only)
-        .fetch_all(&state.repo.db)
-        .await
-        .unwrap_or_default();
+    let search_pat = q
+        .search
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        // LIKE 通配转义（2026-10-10 批十）：与主列表 esc_like 同口径——
+        // 裸 %/_ 当通配会让 search=% 退化成「不过滤」，RSS 与列表两个
+        // 出口语义漂移
+        .map(crate::torrents::esc_like);
+    let rows = crate::repo::rss::feed_rows(
+        &state.repo,
+        &sql,
+        categories.as_deref(),
+        mediums.as_deref(),
+        q.official,
+        search_pat.as_deref(),
+        q.showrows.unwrap_or(50).clamp(1, 200),
+        free_only,
+        exclude_paid,
+        user_id,
+    )
+    .await
+    .unwrap_or_default();
 
     // 审计修复（P2）：PUBLIC_SITE_URL 未配置时退请求 Host 拼绝对地址，
     // RSS 阅读器才能跳转（此前 channel link 为空、item link 为相对路径）
@@ -278,26 +257,8 @@ pub(crate) async fn rss_feed(
     }
     // 频道名/描述跟随站点设定，不再硬编码品牌（通用 PT 建站系统，站点身份由站长在「站点设定」配置）。
     // SITENAME（NP 口径=全站标题/RSS 频道名）→ site_name → FluxTorrent。
-    let channel_title: String = sqlx::query_scalar(
-        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
-                                 WHERE name = 'SITENAME'), ''), \
-                         NULLIF((SELECT value FROM site_settings \
-                                 WHERE name = 'site_name'), ''), \
-                         'FluxTorrent')",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or_else(|_| "FluxTorrent".into());
-    let channel_desc: String = sqlx::query_scalar(
-        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
-                                 WHERE name = 'site_desc'), ''), \
-                         NULLIF((SELECT value FROM site_settings \
-                                 WHERE name = 'metadescription'), ''), \
-                         '私有种子社区')",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or_else(|_| "私有种子社区".into());
+    let channel_title = crate::repo::rss::channel_title(&state.repo).await;
+    let channel_desc = crate::repo::rss::channel_desc(&state.repo).await;
     let xml = format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
          <rss version=\"2.0\"><channel>\
