@@ -281,5 +281,7 @@ pub mod email_domains;
 pub mod passkey;
 pub mod reg_quiz;
 pub mod register_gates;
+pub mod pmboxes;
+pub mod user_privacy;
 pub mod user_prefs;
 pub mod xseed;

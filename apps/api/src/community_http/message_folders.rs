@@ -10,13 +10,6 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct PmBoxRow {
-    id: i64,
-    name: String,
-    count: i64,
-}
-
 /// 文件夹列表 + 夹内未删信件数
 #[get("/messages/boxes")]
 async fn message_boxes(
@@ -24,15 +17,7 @@ async fn message_boxes(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let rows = sqlx::query_as::<_, PmBoxRow>(
-        "SELECT b.id, b.name, (SELECT count(*) FROM messages m WHERE \
-         m.folder = b.id AND m.receiver_id = $1 AND m.location = 1) AS count \
-         FROM pmboxes b WHERE b.user_id = $1 ORDER BY b.id",
-    )
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows = crate::repo::pmboxes::list_boxes(&state.repo, auth.id).await;
     Ok(ok(rows))
 }
 
@@ -71,21 +56,8 @@ async fn message_box_upsert(
                 "删除文件夹要给出它的 id（清空名称即表示删除）".into(),
             ));
         };
-        sqlx::query("DELETE FROM messages WHERE folder = $2 AND \
-                     receiver_id = $1")
-            .bind(auth.id)
-            .bind(bid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        let gone = sqlx::query("DELETE FROM pmboxes WHERE id = $2 AND \
-                                user_id = $1")
-            .bind(auth.id)
-            .bind(bid)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+        let gone = crate::repo::pmboxes::delete_box(&state.repo, auth.id, bid)
+            .await;
         if gone == 0 {
             return Err(DomainError::NotFound(bid));
         }
@@ -96,40 +68,28 @@ async fn message_box_upsert(
     }
     match body.id {
         None => {
-            let n: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM pmboxes WHERE user_id = $1",
-            )
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(0);
+            let n = crate::repo::pmboxes::count_boxes(&state.repo, auth.id)
+                .await;
             if n >= 3 {
                 return Err(DomainError::Validation("最多 3 个文件夹".into()));
             }
-            let id: i64 = sqlx::query_scalar(
-                "INSERT INTO pmboxes (user_id, name) VALUES ($1, $2) \
-                 ON CONFLICT (user_id, name) DO UPDATE SET \
-                 name = EXCLUDED.name RETURNING id",
+            let id = crate::repo::pmboxes::upsert_box(
+                &state.repo,
+                auth.id,
+                name,
             )
-            .bind(auth.id)
-            .bind(name)
-            .fetch_one(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
             Ok(ok(serde_json::json!({ "id": id })))
         }
         Some(bid) => {
-            let n = sqlx::query(
-                "UPDATE pmboxes SET name = $3 WHERE id = $2 AND \
-                 user_id = $1",
+            let n = crate::repo::pmboxes::rename_box(
+                &state.repo,
+                auth.id,
+                bid,
+                name,
             )
-            .bind(auth.id)
-            .bind(bid)
-            .bind(name)
-            .execute(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+            .await;
             if n == 0 {
                 return Err(DomainError::NotFound(0));
             }
