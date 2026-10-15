@@ -127,6 +127,7 @@ use utoipa::OpenApi;
         crate::community_http::medal_rarities,
         crate::community_http::medal_list,
         crate::community_http::medal_buy,
+        crate::community_http::my_medal_progress,
         crate::community_http::medal_gift,
         crate::community_http::medal_wear,
         crate::community_http::message_send,
@@ -197,9 +198,9 @@ mod tests {
     /// 路径集合锁定：注解被误删/改路径时此处先红（openapi_cov_guard 再兜底）。
     /// M36：crossseed 三端点（lookup / dl / iyuu）入列。
     /// F4（2026-10-16）：种子域 38 条 + 社区域 85 条路由注解化后并入本聚合，
-    /// 合计 17 + 38 + 85 = **140 个操作**。
+    /// 合计 17 + 38 + 86 = **141 个操作**。
     #[test]
-    fn open_api_domain_covers_140_paths() {
+    fn open_api_domain_covers_141_paths() {
         let paths = super::paths();
         let obj = paths.as_object().expect("utoipa 聚合产物应为 paths 对象");
         let expected = [
@@ -246,6 +247,7 @@ mod tests {
             "/api/v1/messages/boxes",
             "/api/v1/me/messages/stream",
             "/api/v1/medals",
+            "/api/v1/medals/progress",
             "/api/v1/me/medals",
             "/api/v1/networks",
             "/api/v1/artists",
@@ -279,8 +281,8 @@ mod tests {
         // 有 get/put、/torrents/{id}/comments 有 get/post、
         // /torrents/{id}/previews 有 get/post/delete，故键数少于操作数）
         assert_eq!(
-            ops, 140,
-            "聚合应有 140 个操作（开放 17 + 种子 38 + 社区 85）"
+            ops, 141,
+            "聚合应有 141 个操作（开放 17 + 种子 38 + 社区 86）"
         );
     }
 }
