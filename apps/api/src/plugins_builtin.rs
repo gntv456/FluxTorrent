@@ -27,6 +27,18 @@ impl Plugin for AutoPinOfficial {
         "auto_pin_official"
     }
 
+    /// 只订阅「种子发布」这一个事件（契约 `triggers` 字段首次被
+    /// 真实扩展用过——设计稿的冻结纪律是「不在纸面上冻结」）。
+    fn manifest(
+        &self,
+        caps: &[DbCapability],
+    ) -> crate::extension::ExtensionManifest {
+        let mut m = crate::extension::native_manifest(self.name(), caps);
+        m.display = "发布自动置顶官种".into();
+        m.triggers = vec!["TorrentUploaded".into()];
+        m
+    }
+
     fn on_torrent_upload(
         &self,
         ctx: &PluginCtx,
