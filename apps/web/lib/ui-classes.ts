@@ -105,3 +105,17 @@ export const INPUT_BRAND =
 export const PANEL_BRAND =
   "rounded-[var(--r-md)] border border-[var(--brand-line-soft)]" +
   " bg-[var(--brand-paper)] p-4 shadow-[var(--shadow-card)]";
+
+// ---- 术语后台（0386 自 staff-terms.tsx 抽出：那个文件被治理面板顶到
+// 300 行门禁，样式常量按既有惯例集中到本文件而不是各写一份）----
+
+export const TERMS_FLD =
+  "min-h-[38px] w-full rounded-[var(--r-sm)] border border-line " +
+  "bg-cloud px-2 text-sm outline-none focus:border-sky";
+
+export const TERMS_BTN_PRIMARY =
+  "rounded-full bg-sky px-4 py-1.5 text-sm font-bold text-white " +
+  "disabled:opacity-50";
+
+export const TERMS_BTN_GHOST =
+  "rounded-full border border-line px-4 py-1.5 text-sm font-bold";
