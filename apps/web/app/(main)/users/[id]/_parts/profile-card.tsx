@@ -5,6 +5,8 @@
  */
 
 import type { ReactNode } from "react";
+import { Icon } from "@/components/icons";
+import { SYMBOL_ICON } from "@/components/symbol-icon";
 
 /** 个人中心首屏的网格定席（见 globals.css .up-card--slot-*）：
  *  tl = 左列第一行，bl = 左列第二行，r2 = 右列横跨两行 */
@@ -38,7 +40,15 @@ export function Card({
   return (
     <section className={cls}>
       <h2 className="up-card__title">
-        {icon ? <i aria-hidden>{icon}</i> : null}
+        {icon ? (
+          <i aria-hidden>
+            {SYMBOL_ICON[icon] ? (
+              <Icon name={SYMBOL_ICON[icon]} size={14} />
+            ) : (
+              icon
+            )}
+          </i>
+        ) : null}
         <span>{title}</span>
       </h2>
       <div className="up-card__body">{children}</div>
@@ -59,7 +69,15 @@ export function Row({
   return (
     <div className="up-row">
       <div className="up-row__label">
-        {icon ? <i aria-hidden>{icon}</i> : null}
+        {icon ? (
+          <i aria-hidden>
+            {SYMBOL_ICON[icon] ? (
+              <Icon name={SYMBOL_ICON[icon]} size={14} />
+            ) : (
+              icon
+            )}
+          </i>
+        ) : null}
         <span>{label}</span>
       </div>
       <div className="up-row__value">{children}</div>

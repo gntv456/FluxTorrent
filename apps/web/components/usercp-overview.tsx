@@ -6,6 +6,7 @@ import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, type Locale } from "@/i18n/config";
 import { MedalIcon } from "@/components/medal-icon";
+import { Icon } from "@/components/icons";
 import type { Overview } from "@/components/usercp";
 import {
   MoreInfoTable,
@@ -237,7 +238,7 @@ function RatioCard({
           </div>
           <div className="uc-metric uc-metric--bonus">
             <dt>
-              <span aria-hidden="true">★</span>
+              <span aria-hidden="true"><Icon name="star" size={15} /></span>
               {dict.my.balance.replace("{magic}", currency)}
             </dt>
             <dd className="num">{ov.spark_balance}</dd>

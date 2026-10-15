@@ -69,7 +69,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
       <section className="task-hero">
         <div>
           <span className="task-eyebrow">{t.heroEyebrow}</span>
-          <h1>{t.title}</h1>
+          <h2>{t.title}</h2>
           <p>{t.subtitle}</p>
         </div>
         <div className="task-hero-meta">

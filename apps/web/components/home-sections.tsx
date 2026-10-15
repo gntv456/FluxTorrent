@@ -118,9 +118,9 @@ export function HomeSections({
         return (
           <section className="baozi-panel home-news">
             <header className="baozi-panel__head baozi-panel__head--ribbon">
-              <h1>
+              <h2>
                 <span aria-hidden="true">📣</span> {t.newsTitle}
-              </h1>
+              </h2>
             </header>
             <div className="home-news__body">
               <HomeNewsPoster

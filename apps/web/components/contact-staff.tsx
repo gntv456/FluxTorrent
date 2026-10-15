@@ -81,7 +81,7 @@ export function ContactStaff() {
   return (
     <div className="contactstaff-wrap">
       <header className="contactstaff-head">
-        <h1>{t.title}</h1>
+        <h2>{t.title}</h2>
         <p>{t.subtitle}</p>
       </header>
 
