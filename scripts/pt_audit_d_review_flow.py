@@ -112,7 +112,10 @@ def login_retry(user, pw):
 def tor(name, length=1_048_576, piece_len=16384, pieces=None, files=None,
          root_extra=None):
     """按 BEP3 造 .torrent；pieces/files/root_extra 可刻造畸形输入。"""
-    info = {b"piece length": piece_len, b"name": name.encode()}
+    info = {b"piece length": piece_len, b"name": name.encode(),
+            # 上传侧现在要求 info.private=1（缺了就 400「种子未标记私有」，
+            # 夹具不带这枚键 ⇒ A0 之后 62 条断言整轮不跑，账面看着像 1 红）。
+            b"private": 1}
     if pieces is None:
         n = max(1, (length + piece_len - 1) // piece_len)
         n = n if piece_len > 0 else 1
