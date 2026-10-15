@@ -171,8 +171,8 @@ async fn medal_gift(
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 收件人通知（审计补齐：收礼物却无感知，只能自己去勋章页发现）
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES ($1, $2, $3, $4)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         SELECT $1, $2, $3, $4, 'gift' WHERE u_notice_enabled($2, 'gift')",
     )
     .bind(auth.id)
     .bind(to_id)
