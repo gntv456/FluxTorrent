@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { useIsCompact } from "@/lib/hooks/use-media";
 import { formatBytes } from "@/lib/format";
 
 /**
@@ -44,6 +45,8 @@ function promoBadge(p: string): { label: string; cls: string } {
 export function TorrentRelated({ torrentId }: { torrentId: number }) {
   const { dict } = useI18n();
   const [items, setItems] = useState<RelatedItem[] | null>(null);
+  // M5.8：窄屏折叠（有数据才出折叠条；桌面保持平铺）
+  const compact = useIsCompact();
 
   useEffect(() => {
     let alive = true;
@@ -65,10 +68,8 @@ export function TorrentRelated({ torrentId }: { torrentId: number }) {
   // 加载中 / 无数据 / 失败：整段隐藏（推荐位不该占位）
   if (!items || items.length === 0) return null;
 
-  return (
-    <section className="td-related">
-      <h3 className="td-related__title">{dict.tdetail.relatedTitle}</h3>
-      <ul className="td-related__list">
+  const list = (
+    <ul className="td-related__list">
         {items.map((r) => (
           <li key={r.id} className="td-related__item">
             <a href={`/torrent/${r.id}`} className="td-related__link">
@@ -97,6 +98,24 @@ export function TorrentRelated({ torrentId }: { torrentId: number }) {
           </li>
         ))}
       </ul>
+  );
+  if (compact) {
+    // 窄屏：标题进折叠条（native details，收起默认）
+    return (
+      <details className="td-fold">
+        <summary>
+          <h2>{dict.tdetail.relatedTitle}</h2>
+          <span className="td-fold__count num">{items.length}</span>
+          <span className="td-fold__chev" aria-hidden />
+        </summary>
+        <div className="td-fold__body">{list}</div>
+      </details>
+    );
+  }
+  return (
+    <section className="td-related">
+      <h3 className="td-related__title">{dict.tdetail.relatedTitle}</h3>
+      {list}
     </section>
   );
 }

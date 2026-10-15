@@ -28,9 +28,12 @@ import { useIsCompact } from "@/lib/hooks/use-media";
 export function TorrentSubtitles({
   torrentId,
   imdbId,
+  bare,
 }: {
   torrentId: number;
   imdbId?: string | null;
+  /** M5.8 移动端折叠内嵌：去掉 section/h2 外壳（标题由折叠条承担） */
+  bare?: boolean;
 }) {
   const { dict, locale } = useI18n();
   const t = dict.subtitles;
@@ -96,12 +99,8 @@ export function TorrentSubtitles({
     }
   }
 
-  return (
-    <section className="nexus-detail td-subtitles">
-      <h2 className="td-sec-title">
-        {t.panelTitle ?? "Subtitles"}
-        {rows !== null && rows.length > 0 ? ` (${rows.length})` : ""}
-      </h2>
+  const body = (
+    <>
       {err ? (
         <p className="py-4 text-center text-sub" role="status">
           {dict.common.loadFailed}
@@ -249,6 +248,16 @@ export function TorrentSubtitles({
         )}
         {msg && <p className="mt-1 text-sm">{msg}</p>}
       </div>
+    </>
+  );
+  if (bare) return body;
+  return (
+    <section className="nexus-detail td-subtitles">
+      <h2 className="td-sec-title">
+        {t.panelTitle ?? "Subtitles"}
+        {rows !== null && rows.length > 0 ? ` (${rows.length})` : ""}
+      </h2>
+      {body}
     </section>
   );
 }

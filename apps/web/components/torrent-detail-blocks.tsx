@@ -182,18 +182,18 @@ export function Comments({
   dict,
   locale,
   relTime,
+  embedded,
 }: {
   comments: TorrentComment[];
   torrentId: number;
   dict: Dict;
   locale: Locale;
   relTime: (iso: string) => string;
+  /** M5.8 移动端折叠内嵌：去掉 section/h2 外壳（标题由折叠条承担） */
+  embedded?: boolean;
 }) {
-  return (
-    <section className="td-comments nexus-detail">
-      <h2 className="td-sec-title">
-        {dict.torrent.commentsTitle.replace("{n}", String(comments.length))}
-      </h2>
+  const inner = (
+    <>
       {comments.map((c) => (
         <div
           key={c.id}
@@ -249,6 +249,15 @@ export function Comments({
           compact
         />
       )}
+    </>
+  );
+  if (embedded) return inner;
+  return (
+    <section className="td-comments nexus-detail">
+      <h2 className="td-sec-title">
+        {dict.torrent.commentsTitle.replace("{n}", String(comments.length))}
+      </h2>
+      {inner}
     </section>
   );
 }
