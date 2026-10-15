@@ -256,16 +256,23 @@ finally:
                 if x.strip().isdigit()])
     psql("DELETE FROM api_tokens WHERE name='%s'" % TOKEN_NAME)
     flush()
+    # 判据不能用全表绝对计数（PROMO_BASE）：并跑时别的闸门也在造
+    # 促销行（实测：bf2/cn 并跑后 CN9a 报 after=1，那一行是别人的），
+    # ——合格时又要求全表回到跑前的数字，属于闸门之间互相污染，
+    # 不是产品回归。改成按**本闸门的唯一签名**（SIG）判残留。
     after = int(psql("SELECT count(*) FROM promotions"))
     live_left = int(psql("SELECT count(*) FROM promotions WHERE "
                          "starts_at<=now() AND ends_at>now()"))
+    mine_left = int(psql("SELECT count(*) FROM promotions WHERE scope='torrent' "
+                         "AND ends_at - starts_at = %s" % SIG))
     tk_ghost = int(psql("SELECT count(*) FROM api_tokens WHERE name='%s'"
                         % TOKEN_NAME))
     intents = int(psql("SELECT count(*) FROM promo_intents"))
-    ok("CN9a 探针促销删净：`promotions` %d → %d（签名行再清=%d，"
-       "生效促销残留=%d）" % (PROMO_BASE, after, gone, live_left),
-       after == PROMO_BASE and live_left == 0,
-       "after=%d 生效残留=%d" % (after, live_left))
+    ok("CN9a 探针促销删净：本闸门签名行残留=%d（全表 %d → %d）"
+       "——判据身份而非全表计数，不被并跑污染"
+       % (mine_left, PROMO_BASE, after),
+       mine_left == 0,
+       "本闸门残留=%d after=%d 生效残留=%d" % (mine_left, after, live_left))
     ok("CN9a2 临时令牌清干净：按 name 残留=%d" % tk_ghost, tk_ghost == 0)
     ok("CN9b 未牵动申领表：`promo_intents` 本轮增删=%d（起点 %d → 终点 %d，"
        "本批不写它；判据取**差值**而不是绝对零——这张表被别人正常用过之后，"
