@@ -55,6 +55,7 @@ mod subtitle_flow;
 mod sweep;
 mod xreport;
 
+mod shop_fulfill;
 mod social_team;
 mod social_team_expire;
 mod usage_stats;
@@ -67,7 +68,9 @@ pub(crate) use announce::*;
 pub(crate) use catalog::*;
 pub(crate) use locks::*;
 pub(crate) use lottery::*;
-pub(crate) use medal_achv::*;
+// medal_achv / shop_fulfill 是 0382 / 0383 的新域，其入口经 run.rs
+// 的 spawn_lock! 路径直接引用，无需在此再导出。
+
 pub(crate) use manual::*;
 pub(crate) use request_expire::*;
 

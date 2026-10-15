@@ -50,16 +50,12 @@ pub(super) async fn stage_advance(
     .fetch_one(db)
     .await?;
 
+    // 补救期不需要在这里特判：`judge_stage` 收的是「本阶段已过天数」，
+    // 内部按 duration_days + remedy_days 一次算完逾期与宽限余量。
+    // 早先这里另起了一段「用补救截止重算逾期」的分支，结果是恒等变换
+    // ——写的时候以为要换基准，其实状态机已经处理了。
     let started = c.exam_stage_started_at.unwrap_or(c.claimed_at);
     let elapsed_days = (now_minus(started)).num_days().max(0) as i32;
-    // 补救期在宽限中的，用补救截止当基准重算逾期
-    let (elapsed, remedy_anchor) = match c.exam_remedy_until {
-        Some(until) if now_minus(started).num_days() > dur as i64 => {
-            (elapsed_days, true)
-        }
-        _ => (elapsed_days, false),
-    };
-    let _ = remedy_anchor;
 
     let verdict = super::exam_fair::judge_stage(
         &super::exam_fair::StageInput {
@@ -68,11 +64,11 @@ pub(super) async fn stage_advance(
             duration_days: dur,
             remedy_days: remedy,
             fail_action: super::exam_fair::FailAction::parse(&action_s),
-            elapsed_days: elapsed,
+            elapsed_days,
             met,
         },
     );
-    let prog = super::exam_fair::progress(&verdict, seq, is_last);
+    let prog = super::exam_fair::progress(&verdict, seq);
     match prog {
         super::exam_fair::Progress::None => Ok(None),
         super::exam_fair::Progress::Advance { next_seq, .. } => {

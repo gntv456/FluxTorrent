@@ -21,7 +21,6 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         return Ok(());
     }
     let d = site_defaults(db).await;
-    let lookback_h = d.lookback_h;
     let default_hr_hours = d.seed_hours;
     let default_hr_days = d.days;
     let _built = super::hr_snapshot::build_snapshots(db, &d).await?;
