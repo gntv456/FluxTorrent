@@ -39,6 +39,29 @@ def call(method, path, body=None, token=None, raw=False):
         except Exception:
             return e.code, {"raw": payload[:300].decode("utf-8", "replace")}
 
+def call_h(method, path, body=None, token=None):
+    """和 call() 同源，但把响应头也带回来。
+
+    分页类判据要看 `X-Total-Count` / `X-Has-More`——那些信息刻意不进 body
+    （消息中心三处前端把 data 当数组消费），所以判据只能从响应头取。
+    返回 (status, payload_dict, headers_dict)。
+    """
+    req = urllib.request.Request(BASE + path, method=method)
+    req.add_header("Content-Type", "application/json")
+    if token:
+        req.add_header("Authorization", "Bearer " + token)
+    data = json.dumps(body).encode() if body is not None else None
+    try:
+        r = urllib.request.urlopen(req, data, timeout=30)
+        status, payload, hdrs = r.status, r.read(), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        status, payload, hdrs = e.code, e.read(), dict(e.headers)
+    try:
+        return status, json.loads(payload), hdrs
+    except Exception:  # noqa: BLE001
+        return status, {"raw": payload[:300].decode("utf-8", "replace")}, hdrs
+
+
 def login(username="root", pw="password123", tries=8):
     """带退避的登录。
 
