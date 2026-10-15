@@ -93,6 +93,10 @@ INV = []
 
 
 def mkprobe(prefix):
+    # #75（批一百五十三）：24h 同 IP 上限是 2，数的是 reg_ip_signups 表。
+    # 本闸门要连建多个探针号，所以**每个号建之前**清一次额度——
+    # 只在开头清一次只够前两个，后两个必撞上限，红在「探针就绪」。
+    clear_register_rl()
     codes = data(post("/admin/invites", {"user_id": 1, "count": 1})
                  ).get("codes") or []
     cap = data(call("GET", "/auth/captcha", token=ROOT))
