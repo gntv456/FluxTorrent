@@ -188,14 +188,32 @@ pub(super) async fn offer_promote(
             "不能把自己的候选转正（利益冲突）".into(),
         ));
     }
-    sqlx::query(
-        "UPDATE torrents SET approval_status = 1, \
-     approved_at = now() WHERE id = $1",
+    // P-317：转正没有权力把种「放回架上」。建候选时校验的是当时的
+    // approval_status，过审之后还有六条路径会把种置成下架/驳回/待复审
+    // （interact.rs:177/197、manage.rs:331、trump_admin.rs:103、
+    // v4_http.rs:116、torrent_batch.rs:320）。旧写法无条件写回 1，
+    // 等于用一条过期候选撤销审核台的裁决，还顺手升成官种。
+    // 守卫写进 UPDATE 本身：查询与写入之间被下架也认（抢不到即拒）。
+    // 守卫写进 UPDATE 本身：查询与写入之间被下架也认（抢不到即拒）。
+    let stamped: Option<i64> = sqlx::query_scalar(
+        "UPDATE torrents SET approved_at = now() WHERE id = $1 \
+         AND approval_status = 1 RETURNING id",
     )
     .bind(tid)
-    .execute(&state.repo.db)
+    .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    if stamped.is_none() {
+        let _ = sqlx::query("UPDATE offers SET promoted = false WHERE id = $1")
+            .bind(body.offer_id)
+            .execute(&state.repo.db)
+            .await;
+        return Err(DomainError::Validation(
+            "该候选对应的种子当前不在架（已下架或未过审），\
+             请先在审核台重新过审后再转正"
+                .into(),
+        ));
+    }
     // 0159：官种口径收口——转正不再裸写 official_tag 列，改打 official-kind
     // 标签（当前字典=「官种」），列由 sync_official_tag 派生，两种筛选口径恒一致
     let official_tag_ids: Vec<i32> = sqlx::query_scalar(
