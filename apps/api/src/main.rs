@@ -312,9 +312,10 @@ async fn main() -> anyhow::Result<()> {
             .wrap(actix_web::middleware::from_fn(csrf::csrf_mw))
             .wrap(actix_web::middleware::from_fn(modules::module_gate_mw)) // U1 模块网关：可选域 fail-close（4101）
             .wrap(actix_web::middleware::from_fn(v4_http::metrics_mw)) // G3：请求/5xx 计数（/metrics 出口）
-            // CSRF token 签发口（独立于登录，供前端按需续期/轮换）
-
-            .service(web::scope("/api/v1").configure(csrf::configure))
+            // CSRF token 签发口挂在 community 的 /api/v1 scope 里，
+            // **不要**在 App 上再开一个 /api/v1 scope：actix 的 scope 是前缀
+            // 独占匹配，先匹配到它的那批请求不会再往后走 community 的
+            // scope，于是原有 700+ 路由会集体 404（踩过一次）。
             .configure(community_http::configure)
             .default_service(web::to(|req: actix_web::HttpRequest| async move {
                 let locale = req
