@@ -156,14 +156,14 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
             FROM hits GROUP BY user_id
         ),
         pm AS (
-            INSERT INTO messages (sender_id, receiver_id, subject, body)
+            INSERT INTO messages (sender_id, receiver_id, subject, body, kind)
             SELECT NULL, user_id, '愿望单命中：你关注的新资源已上架', '你订阅的关键词有新种子过审：
 
 ' || body || '
 
-（每条愿望 24 小时内只提醒一次；可在「我的 → 愿望单」管理订阅）'
+（每条愿望 24 小时内只提醒一次；可在「我的 → 愿望单」管理订阅）', 'wishlist'
             FROM agg
-            WHERE dummy
+            WHERE dummy AND u_notice_enabled(user_id, 'wishlist')
             RETURNING 1
         ),
         -- 命中历史（0284 P2-10）：通知之外可回溯（/wishlist 接口带 hits）
