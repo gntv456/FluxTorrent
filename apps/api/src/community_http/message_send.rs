@@ -43,7 +43,14 @@ async fn message_send(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((to_id, accept, _to_class)) = target else {
-        return Err(DomainError::NotFound(0));
+        // 收件人打错是这条链上最常见的失误，回「资源不存在」会员看不懂
+        // （同函数另两条护栏都是中文整句：不能给自己发 / 主题不能为空）。
+        // 状态 >=2（已注销/封禁）与「查无此人」在这里合并成一句，
+        // 不额外区分，免得给枚举用户名留口子。
+        return Err(DomainError::Validation(format!(
+            "收件人不存在或已注销：{}",
+            body.to.trim()
+        )));
     };
     // 审计修复（P1）：不能给自己发私信（对照 medal_gift 的同款护栏）
     if to_id == auth.id {
