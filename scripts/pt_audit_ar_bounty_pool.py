@@ -340,7 +340,8 @@ ok("S8 探针求单/字幕/池额清零",
    q("SELECT (SELECT count(*) FROM subtitle_requests WHERE descr LIKE "
      "'AqGate %%')::text||'|'||(SELECT count(*) FROM subtitles WHERE title "
      "LIKE 'Aq%%')::text||'|'||COALESCE((SELECT sum(bounty) FROM "
-     "subtitle_requests),0)::text") == "0|0|0")
+     "subtitle_requests WHERE descr LIKE 'AqGate %%'),0)::text")
+     == "0|0|0")
 ok("S8 探针账号全部停用",
    int(q("SELECT count(*) FROM users WHERE username LIKE 'aq%%' AND "
          "status < 2")) == 0)
