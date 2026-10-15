@@ -50,8 +50,7 @@ def psql(sql):
     p = subprocess.run(
         ["docker", "exec", "flux-postgres", "sh", "-c",
          f"psql -U $POSTGRES_USER -d $POSTGRES_DB -t -A -c \"{sql}\""],
-        capture_output=True, text=True,
-    )
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     return p.stdout.strip()
 
 
@@ -204,7 +203,7 @@ psql(f"UPDATE subtitle_requests SET status=4 WHERE id={rid_b}")
 p = subprocess.run(["docker", "exec", "flux-worker", "sh", "-c",
                     "psql -h flux-postgres -U $POSTGRES_USER -d "
                     "$POSTGRES_DB -t -A -c \"SELECT 1\" 2>/dev/null || echo "
-                    "nopsql"], capture_output=True, text=True)
+                    "nopsql"], capture_output=True, text=True, encoding="utf-8", errors="replace")
 # worker 容器无 psql：改由 API 容器核对幂等键唯一性
 led = psql("SELECT count(*) FROM spark_ledger WHERE idempotency_key LIKE "
            f"'subtitle-bounty-pay:{rid_b}:%'")

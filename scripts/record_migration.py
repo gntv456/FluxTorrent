@@ -29,7 +29,7 @@ sql = ("INSERT INTO _sqlx_migrations "
 r = subprocess.run(
     ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
      "fluxtorrent", "-t", "-A", "-c", sql],
-    capture_output=True, text=True)
+    capture_output=True, text=True, encoding="utf-8", errors="replace")
 if r.returncode != 0:
     raise SystemExit("psql failed: " + r.stderr[:300])
 print("recorded:", r.stdout.strip(), "sha384:", digest[:16] + "…")

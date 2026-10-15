@@ -192,7 +192,7 @@ def walk_rs():
 def blob(rev, rel):
     p = subprocess.run(
         ["git", "show", "%s:%s" % (rev, os.path.relpath(rel, ROOT).replace(os.sep, "/"))],
-        capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT,
+        capture_output=True, text=True, cwd=ROOT,
     )
     return (p.stdout or "") if p.returncode == 0 else ""
 

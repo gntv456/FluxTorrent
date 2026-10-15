@@ -58,7 +58,7 @@ def ensure_user(name, email, password):
             ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
                 "fluxtorrent",
              "-tAc", f"SELECT id FROM users WHERE username='{name}'"],
-            capture_output=True, text=True)
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
         uid = (q.stdout.strip() or "").split("\n")[0]
         if not uid:
             return None

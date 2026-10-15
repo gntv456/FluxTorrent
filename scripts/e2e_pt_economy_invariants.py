@@ -50,7 +50,7 @@ def psql(q):
     r = subprocess.run(
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
          "-d", "fluxtorrent", "-tAc", q],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode:
         raise RuntimeError("psql 失败：" + r.stderr.strip())
     return r.stdout.strip()

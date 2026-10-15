@@ -23,7 +23,7 @@ FINDINGS = []
 
 
 def psql(sql):
-    r = subprocess.run(PG + [sql], capture_output=True, text=True)
+    r = subprocess.run(PG + [sql], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         return "ERR:" + r.stderr[:120]
     return r.stdout.strip()

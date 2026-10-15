@@ -20,7 +20,7 @@ KEY_TABLES = ["users", "torrents", "traffic_ledger", "spark_ledger", "snatches"]
 
 def run(cmd, env=None, check=True, input=None):
     r = subprocess.run(cmd, env=env, input=input, capture_output=True,
-        text=True)
+        text=True, encoding="utf-8", errors="replace")
     if check and r.returncode != 0:
         print(f"!! 命令失败：{' '.join(cmd)}\n{r.stderr}", file=sys.stderr)
         sys.exit(1)

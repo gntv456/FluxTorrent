@@ -64,8 +64,7 @@ def redis_cmd(*args):
     import subprocess
     out = subprocess.run(
         ["redis-cli", "-h", "127.0.0.1", *args],
-        capture_output=True, text=True, timeout=10,
-    )
+        capture_output=True, text=True, timeout=10, encoding="utf-8", errors="replace")
     return out.stdout.strip()
 
 

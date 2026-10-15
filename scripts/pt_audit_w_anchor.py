@@ -35,7 +35,7 @@ AUTHOR = "AuditAnchorAuthor"
 
 
 def psql(sql):
-    r = subprocess.run(PG + [sql], capture_output=True, text=True)
+    r = subprocess.run(PG + [sql], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise SystemExit("psql failed: " + r.stderr[:200])
     return r.stdout.strip()

@@ -35,7 +35,13 @@ SUB = "Audit字幕组S"
 
 
 def psql(sql):
-    r = subprocess.run(PG + [sql], capture_output=True, text=True)
+    # Windows 控制台默认 GBK：PG 返回的中文（季节名、分类名）在
+    # text=True 且不给 encoding 时会在接收箢房线程里抛
+    # UnicodeDecodeError，主线程拿到空 stdout 后再报 IndexError ——
+    # 闸门死在地基前两行，后面的判据一条也没跑，而去看输出只见
+    # 两条 PASS，像「跑过了」（批一百二十七 P-327 同族）。
+    r = subprocess.run(PG + [sql], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise SystemExit("psql failed: " + r.stderr[:200])
     return r.stdout.strip()

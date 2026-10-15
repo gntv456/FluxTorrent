@@ -30,7 +30,7 @@ PG = ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
 
 
 def psql(sql, check=True):
-    r = subprocess.run(PG + [sql], capture_output=True, text=True)
+    r = subprocess.run(PG + [sql], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if check and r.returncode != 0:
         print(f"!! psql 失败: {sql}\n{r.stderr}", file=sys.stderr)
         sys.exit(1)
@@ -39,7 +39,7 @@ def psql(sql, check=True):
 
 def sh(cmd, check=True):
     r = subprocess.run(cmd, capture_output=True, text=True,
-                       shell=isinstance(cmd, str))
+                       shell=isinstance(cmd, str), encoding="utf-8", errors="replace")
     if check and r.returncode != 0:
         print(f"!! 命令失败: {cmd}\n{r.stderr}", file=sys.stderr)
         sys.exit(1)
@@ -119,7 +119,7 @@ def main():
         r = subprocess.run(
             ["docker", "exec", "-e", f"DATABASE_URL={drill_url}", "flux-api",
              "sqlx-migrate", "run"],
-            capture_output=True, text=True, check=False)
+            capture_output=True, text=True, check=False, encoding="utf-8", errors="replace")
         # 容器里没有 sqlx CLI（生产镜像不带）——回落到本地 cargo（开发机口径）
         if r.returncode != 0:
             print("  容器内无 sqlx CLI（正常，生产镜像不带），回落本地 cargo：")
@@ -127,12 +127,12 @@ def main():
             r = subprocess.run(
                 ["cargo", "sqlx", "migrate", "run",
                  "--source", "apps/api/migrations"],
-                capture_output=True, text=True, env=env, check=False)
+                capture_output=True, text=True, env=env, check=False, encoding="utf-8", errors="replace")
         print(f"  migrate exit={r.returncode}: {r.stdout.strip()[:200]}")
         ver = subprocess.run(
             PG[:-1] + [drill_db] + ["-t", "-A", "-c",
                                      "SELECT count(*) FROM _sqlx_migrations"],
-            capture_output=True, text=True).stdout.strip()
+            capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
         same = ver == base_n
         print(f"  演练库迁移水位: {ver} 条（源库 {base_n}）"
               f"{'一致' if same else '不一致！'}")
@@ -143,7 +143,7 @@ def main():
         q = subprocess.run(
             PG[:-1] + [drill_db] + ["-t", "-A", "-c",
                 "SELECT count(*) FROM users WHERE username = 'root'"],
-            capture_output=True, text=True).stdout.strip()
+            capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.strip()
         ok = q == "1"
         print(f"  root 账号存在: {q}（{'PASS' if ok else 'FAIL'}）")
         results.append(("演练库 root 断言", "PASS" if ok else "FAIL"))

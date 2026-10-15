@@ -47,8 +47,7 @@ def bench_passkey():
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-d",
             "fluxtorrent", "-t", "-c",
          "SELECT passkey FROM users WHERE username='uploader';"],
-        capture_output=True, text=True,
-    )
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
     return (p.stdout.strip() or "invalid").splitlines()[0].strip()
 
 
