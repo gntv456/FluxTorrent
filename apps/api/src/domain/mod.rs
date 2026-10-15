@@ -7,6 +7,9 @@ pub mod torrent_status;
 // 商城三段式履约（冻结 → 履约 → 扣款）
 pub mod shop;
 
+// 术语键生命周期 + 覆盖率巡检（治理机制，非功能）
+pub mod terms;
+
 // 抽奖可验证公平（commit-reveal）：判定与哈希派生进 domain 纯函数层
 pub mod lottery_fair;
 
