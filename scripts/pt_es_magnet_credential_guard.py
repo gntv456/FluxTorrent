@@ -14,6 +14,8 @@
   ES3  兜底仍在：build_torrent_bytes 本体里那道 ensure_downloadable 兜底
        不许被删（download.rs:113 的注释解释了为什么留两处）
   ES4  现网只读：本批取证不留下痕迹（价格复原、无探针购买行、无备份表）
+  ES5  订阅出口（Torznab）与 RSS 同口径：付费未购默认回收 + ?paid=0 逃生口
+       （批一百三十八 P-324；compat torrents.json 同族待站方拍板，只记读数）
 pt_audit_lib.ok 的签名是 ok(name, cond, detail)；正控钉字面提交号，别写 HEAD。
 """
 import os
@@ -130,5 +132,40 @@ else:
     paid = psql("SELECT count(*) FROM torrents WHERE approval_status = 1 "
                 "AND price > 0")
     print("   现网口径参考：过审且付费的种 %s 枚" % paid)
+
+print("== ES5 批一百三十八 P-324：订阅出口的付费回收对等 ==")
+# Torznab 的 item 直接带 download.php?id&passkey，客户端会自动抓 enclosure，
+# 而 charge_for_download 是「首次下载即扣魔力」——列出来等于替用户花钱。
+# RSS 早在深测 2026-10-03 定了默认排除（exclude_paid），Torznab 当时漏接。
+SUB_FIX = "9b00d2a0"  # 修复提交；正控取 9b00d2a0^，别写 HEAD
+REC = "apps/api/src/economy_http/recon.rs"
+NCL = "apps/api/src/torrents/list_noclamp.rs"
+RSF = "apps/api/src/rss_http.rs"
+old_rec = flat(blob("%s^" % SUB_FIX, REC))
+ok("ES5a 正控：修前 recon.rs 既无订阅入口也不判购买",
+   "list_torrents_noclamp_for_sub" not in old_rec
+   and "torrent_purchases" not in old_rec)
+rec = flat(here(REC))
+ok("ES5b 现网 recon.rs 走 list_torrents_noclamp_for_sub",
+   "list_torrents_noclamp_for_sub" in rec)
+ok("ES5c recon.rs 把 Token 主人的 uid 当 viewer 传下去（不再恒 0）",
+   re.search(r"list_torrents_noclamp_for_sub\([^)]*tk\.uid", rec) is not None)
+ok("ES5d recon.rs 认 ?paid=0 逃生口（与 RSS 同名参数）",
+   'get("paid")' in rec and '"0"' in rec)
+ncl = flat(here(NCL))
+ok("ES5e 订阅入口内部三段放行谓词齐（price/owner/已购）",
+   "t.price > 0" in ncl and "owner_id IS DISTINCT FROM" in ncl
+   and "torrent_purchases" in ncl)
+ok("ES5f 订阅入口把 viewer 透传给 noclamp_as（谓词才有「本人」可判）",
+   re.search(r"list_torrents_noclamp_as\([^)]*viewer", ncl) is not None)
+ok("ES5g RSS 那条 exclude_paid 仍在（别把两边一起拆掉）",
+   "exclude_paid" in here(RSF))
+# 同族未收口：compat torrents.json 也回显本人 passkey 供工具拼 download.php，
+# 但它是「站内列表镜像」口径，是否该一起排除付费种要站方拍板 —— 记读数不判红。
+nx = here("apps/api/src/compat_http/nexusphp.rs")
+bare = nx.count("list_torrents_noclamp(") - nx.count(
+    "list_torrents_noclamp_for_sub(")
+print("   WARN 同族待裁：compat/nexusphp.rs 仍走 bare noclamp %s 处"
+      "（回显 passkey，付费种默认可见）" % bare)
 
 summary()
