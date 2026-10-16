@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 
 /** 案件详情（GET /admin/cheat-cases/{id}，0367 M1） */
 interface CaseDetail {
@@ -66,8 +67,9 @@ export function CheatCaseDetail({
       await api.post(`/api/v1/admin/cheat-cases/${caseId}/note`, { body });
       setNoteText("");
       await fetchDetail();
-    } catch {
-      /* 备注失败保留原文，稍后重试 */
+    } catch (e) {
+      // 备注失败保留原文，稍后重试
+      toast.error(apiErrorMessage(dict, e));
     } finally {
       setBusy(null);
     }

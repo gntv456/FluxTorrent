@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
@@ -234,8 +234,9 @@ export function BountyAcceptButton({
         post_id: postId,
       });
       router.refresh();
-    } catch {
+    } catch (e) {
       setBusy(false);
+      toast.error(apiErrorMessage(dict, e));
     }
   }
 

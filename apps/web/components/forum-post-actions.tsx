@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 import { Modal } from "@/components/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -38,8 +39,8 @@ export function TopicModActions({
     try {
       await api.post(`/api/v1/forums/topics/${topicId}/manage`, payload);
       router.refresh();
-    } catch {
-      // 权限或网络错误静默（按钮本就只对 can_mod 渲染）
+    } catch (e) {
+      toast.error(apiErrorMessage(dict, e));
     } finally {
       setBusy(false);
     }
@@ -50,8 +51,9 @@ export function TopicModActions({
     try {
       await api.del(`/api/v1/forums/topics/${topicId}`);
       router.push("/forums");
-    } catch {
+    } catch (e) {
       setBusy(false);
+      toast.error(apiErrorMessage(dict, e));
     }
   }
 
