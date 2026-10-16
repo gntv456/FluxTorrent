@@ -20,7 +20,6 @@ export function TorrentDetailTail({
   comments,
   dict,
   locale,
-  relTime,
   sectOn,
 }: {
   t: TorrentListItem;
@@ -29,7 +28,6 @@ export function TorrentDetailTail({
   comments: TorrentComment[];
   dict: Dict;
   locale: Locale;
-  relTime: (ts: string) => string;
   sectOn: (k: string) => boolean;
 }) {
   // 评论计数用 t.comments（真实总数，聚合口固定带 20 条；P2-3 口径修正）
@@ -66,7 +64,6 @@ export function TorrentDetailTail({
             torrentId={t.id}
             dict={dict}
             locale={locale}
-            relTime={relTime}
             embedded
           />
         </FoldMobile>
