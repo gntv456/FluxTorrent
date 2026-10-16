@@ -30,6 +30,13 @@ export const BTN_LG_SKY =
   "min-h-[44px] rounded-full bg-sky font-bold text-white" +
   " active:scale-[0.97] disabled:opacity-50";
 
+/** 次级按钮：44px 胶囊描边，hover 转橙（邀请「魔力兑换」等并列主按钮的次选）。
+ *  2026-10-16 从 invite-manager.tsx 的 199 字符 Tailwind 串抽成常量。 */
+export const BTN_MD_GHOST_SKY =
+  "min-h-[44px] rounded-full border border-[var(--brand-line)]" +
+  " px-5 text-sm text-sky-deep hover:border-[var(--brand-orange)]" +
+  " hover:text-[var(--brand-orange)] disabled:opacity-50";
+
 /** 迷你按钮：32px 胶囊描边 */
 export const BTN_XS_GHOST =
   "min-h-[32px] rounded-full border border-line px-3 text-xs font-bold";

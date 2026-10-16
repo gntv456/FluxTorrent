@@ -2348,6 +2348,8 @@ const enBase: Omit<
     prevPage: "Previous",
     nextPage: "Next",
     inviteesTitle: "My invitees",
+    inviteeShowAll: "Show all",
+    inviteeCollapse: "Show latest 20 only",
     invUser: "User",
     invLevel: "Class",
     invUploaded: "Uploaded",
