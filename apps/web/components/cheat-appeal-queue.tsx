@@ -41,14 +41,16 @@ export function CheatAppealQueue() {
 
   const load = useCallback(() => {
     setRows(null);
+    setErr(null);
     api
       .get<AppealRow[]>("/api/v1/admin/cheat-appeals")
       .then(setRows)
       .catch((e) => {
         if (e instanceof ApiError && e.code === 403) setNoPerm(true);
+        else setErr(apiErrorMessage(dict, e));
         setRows([]);
       });
-  }, []);
+  }, [dict]);
 
   useEffect(() => {
     load();
@@ -137,7 +139,7 @@ export function CheatAppealQueue() {
 
       {rows === null ? (
         <p className="funbox__empty">…</p>
-      ) : items.length === 0 ? (
+      ) : err === null && items.length === 0 ? (
         <p className="funbox__empty">{t.appealEmpty}</p>
       ) : (
         <div className="overflow-x-auto">

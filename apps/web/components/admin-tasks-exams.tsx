@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ErrorPanel } from "@/components/ui/error-panel";
 import { kindList } from "./admin-tasks-shared";
 
 /** 考核记录面板（从 admin-tasks.tsx 按域拆出，300 门禁）：
@@ -35,10 +36,12 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
     status: "",
   });
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<unknown>(null);
   const inp =
     "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
 
   const loadExams = useCallback(async () => {
+    setErr(null);
     const q = new URLSearchParams();
     if (examFilter.user_id) q.set("user_id", examFilter.user_id);
     if (examFilter.task_id) q.set("task_id", examFilter.task_id);
@@ -49,8 +52,9 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
           `/api/v1/admin/exam-users${q.size ? `?${q}` : ""}`,
         ),
       );
-    } catch {
-      /* 无考核记录 */
+    } catch (e) {
+      setErr(e);
+      setExams([]);
     }
   }, [examFilter]);
 
@@ -188,7 +192,11 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
             {exams.length === 0 && (
               <tr>
                 <td colSpan={9} className="py-6 text-center text-sub">
-                  {t.examsEmpty}
+                  {err === null ? (
+                    t.examsEmpty
+                  ) : (
+                    <ErrorPanel error={err} onRetry={loadExams} />
+                  )}
                 </td>
               </tr>
             )}

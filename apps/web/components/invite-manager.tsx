@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Pager } from "@/components/ui/pager";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 export interface InviteItem {
   id: number;
@@ -62,6 +63,7 @@ export function InviteManager() {
   const [invitees, setInvitees] = useState<Invitee[] | null>(null);
   const [inviteeTotal, setInviteeTotal] = useState(0);
   const [inviteePage, setInviteePage] = useState(1);
+  const [inviteeErr, setInviteeErr] = useState<unknown>(null);
 
   /** 被邀请人分页信封（2026-10-16 后端补分页，与邀请记录同口径 per=50） */
   interface InviteeEnvelope {
@@ -72,6 +74,7 @@ export function InviteManager() {
   }
 
   const refreshInvitees = useCallback(async (p = 1) => {
+    setInviteeErr(null);
     try {
       const r = await api.get<InviteeEnvelope>(
         `/api/v1/invites/invitees?page=${p}`,
@@ -79,7 +82,8 @@ export function InviteManager() {
       setInvitees(r.items);
       setInviteeTotal(r.total);
       setInviteePage(r.page);
-    } catch {
+    } catch (e) {
+      setInviteeErr(e);
       setInvitees([]);
     }
   }, []);
@@ -243,7 +247,13 @@ export function InviteManager() {
       )}
 
       {/* 被邀请人列表（0204 P0；默认只显示最近 20 条，见组件注释） */}
-      {invitees !== null && invitees.length > 0 && (
+      {inviteeErr !== null && (
+        <ErrorPanel
+          error={inviteeErr}
+          onRetry={() => void refreshInvitees(inviteePage)}
+        />
+      )}
+      {inviteeErr === null && invitees !== null && invitees.length > 0 && (
         <InviteeList
           invitees={invitees}
           t={t}

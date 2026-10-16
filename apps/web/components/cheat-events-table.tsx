@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 /** cheat_events 行（/admin/cheat-events，2026-10-07 保种组审计处置待办） */
 export interface CheatEventRow {
@@ -39,16 +40,18 @@ export function CheatEventsTable() {
   const [events, setEvents] = useState<CheatEventRow[] | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [acting, setActing] = useState<number | null>(null);
+  const [err, setErr] = useState<unknown>(null);
 
   const loadEvents = (done: boolean) => {
     setEvents(null);
+    setErr(null);
     const status = done ? "done" : "pending";
     api
       .get<{ items: CheatEventRow[] }>(
         `/api/v1/admin/cheat-events?status=${status}&limit=50`,
       )
       .then((r) => setEvents(r.items))
-      .catch(() => setEvents([]));
+      .catch((e) => setErr(e));
   };
 
   useEffect(() => {
@@ -96,7 +99,9 @@ export function CheatEventsTable() {
         </button>
       </div>
       <p className="mb-2 text-xs text-sub">{t.eventsNote}</p>
-      {events === null ? (
+      {err !== null ? (
+        <ErrorPanel error={err} onRetry={() => loadEvents(showDone)} />
+      ) : events === null ? (
         <p className="funbox__empty">…</p>
       ) : events.length === 0 ? (
         <p className="funbox__empty">{t.eventsEmpty}</p>

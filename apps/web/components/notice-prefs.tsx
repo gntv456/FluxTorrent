@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 /** 通知偏好开关（0075：GET/POST /me/notice-prefs，9 个白名单键，缺省 = 开） */
 export function NoticePrefsCard() {
@@ -12,8 +13,10 @@ export function NoticePrefsCard() {
   const [prefs, setPrefs] = useState<Record<string, boolean> | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<unknown>(null);
 
   const load = useCallback(async () => {
+    setErr(null);
     try {
       const p = await api.get<Record<string, unknown>>(
         "/api/v1/me/notice-prefs",
@@ -22,8 +25,9 @@ export function NoticePrefsCard() {
       const norm: Record<string, boolean> = {};
       for (const k of keys) norm[k] = p?.[k] !== false;
       setPrefs(norm);
-    } catch {
-      setPrefs(Object.fromEntries(keys.map((k) => [k, true])));
+    } catch (e) {
+      setErr(e);
+      setPrefs(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -49,7 +53,11 @@ export function NoticePrefsCard() {
   return (
     <section className="brand-panel flex flex-col gap-2 p-4">
       <h3 className="text-base font-bold">{t.title}</h3>
+      {err !== null && (
+        <ErrorPanel error={err} onRetry={load} />
+      )}
       <p className="text-xs text-sub">{t.note}</p>
+      {err === null && (
       <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
         {keys.map((k) => (
           <li
@@ -78,6 +86,7 @@ export function NoticePrefsCard() {
           </li>
         ))}
       </ul>
+      )}
       {msg && (
         <p className="text-xs text-sub" role="status">
           {msg}

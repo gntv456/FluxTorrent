@@ -11,6 +11,7 @@ import {
 } from "@/components/staff-box-desk";
 import { TicketPanel } from "@/components/staff-box-tickets";
 import { PmList, PmReplyForm } from "@/components/staff-box-pm";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 // 管理组信箱（同类站 staffbox.php 口径）：与管理组成员的往来短讯，支持回复
 // 0078 工单化：新增「工单」视图（stafftickets 四态流转 + 指派 + 优先级）。
@@ -29,12 +30,14 @@ export function StaffBox() {
   const [answerText, setAnswerText] = useState("");
   // 工单视图
   const [ticketStatus, setTicketStatus] = useState<string>(""); // ""=全部
-  const { ticketRows, loadTickets } = useTickets(ticketStatus);
+  const { ticketRows, ticketErr, loadTickets } =
+    useTickets(ticketStatus);
   const [ticketMsg, setTicketMsg] = useState<string | null>(null);
   const [ticketBusy, setTicketBusy] = useState(false);
   const [ticketEdit, setTicketEdit] = useState<number | null>(null);
   const [ticketForm, setTicketForm] = useState({ priority: "", ticket_status: "", assign: "" });
   const [rows, setRows] = useState<MessageRow[] | null>(null);
+  const [deskErr, setDeskErr] = useState<unknown>(null);
   const [err, setErr] = useState<string | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
   const [replyTo, setReplyTo] = useState<MessageRow | null>(null);
@@ -43,13 +46,17 @@ export function StaffBox() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = () => {
+    setDeskErr(null);
     api
       .get<StaffMsg[]>(`/api/v1/staffmessages?answered=${deskTab}`)
       .then((r) => {
         setDeskRows(r);
         setDeskSel([]);
       })
-      .catch(() => setDeskRows([]));
+      .catch((e) => {
+        setDeskErr(e);
+        setDeskRows([]);
+      });
     api
       .get<MessageRow[]>("/api/v1/messages/staff")
       .then(setRows)
@@ -217,7 +224,10 @@ export function StaffBox() {
       </div>
 
       {/* ① 咨询工作台（staffmessages） */}
-      {view === "desk" && (
+      {view === "desk" && deskErr !== null && (
+        <ErrorPanel error={deskErr} onRetry={load} />
+      )}
+      {view === "desk" && deskErr === null && (
         <DeskTable
           deskRows={deskRows}
           deskTab={deskTab}
@@ -235,7 +245,10 @@ export function StaffBox() {
       )}
 
       {/* ③ 工单（stafftickets 四态流转） */}
-      {view === "ticket" && (
+      {view === "ticket" && ticketErr !== null && (
+        <ErrorPanel error={ticketErr} onRetry={loadTickets} />
+      )}
+      {view === "ticket" && ticketErr === null && (
         <TicketPanel
           tk={tk}
           ticketStatus={ticketStatus}

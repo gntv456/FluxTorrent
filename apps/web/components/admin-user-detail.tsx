@@ -15,12 +15,8 @@ import {
   useDetailLoad,
   useDetailTabs,
 } from "./admin-user-detail-hooks";
-import {
-  LoginsPanel,
-  ProfilePanels,
-  SeedingPanel,
-  SparkPanel,
-} from "./admin-user-detail-panels";
+import { ProfilePanels } from "./admin-user-detail-panels";
+import { DetailTabsBody } from "./admin-user-detail-tabs";
 import { statusLabels } from "./admin-user-detail-shared";
 
 /** 后台用户详情（同类站 Filament UserResource 的 user-profile 口径）：
@@ -259,25 +255,7 @@ export function AdminUserDetailPage() {
         </>
       )}
 
-      {tabs.tab === "spark" && (
-        <SparkPanel
-          spark={tabs.spark}
-          page={tabs.sparkPage}
-          setPage={tabs.setSparkPage}
-          dt={dt}
-        />
-      )}
-
-      {tabs.tab === "logins" && (
-        <LoginsPanel
-          logins={tabs.logins}
-          page={tabs.loginsPage}
-          setPage={tabs.setLoginsPage}
-          dt={dt}
-        />
-      )}
-
-      {tabs.tab === "seeding" && <SeedingPanel seeds={tabs.seeds} />}
+      <DetailTabsBody tabs={tabs} dt={dt} />
       <UserDetailDialogs
         askStatus={askStatus}
         setAskStatus={setAskStatus}

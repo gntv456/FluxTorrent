@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, Fragment } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 /** 观察名单行（GET /admin/risk-scores，0368 M2） */
 interface RiskRow {
@@ -41,13 +42,15 @@ export function RiskWatchlist() {
   const [watchOnly, setWatchOnly] = useState(true);
   const [rows, setRows] = useState<RiskRow[] | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [err, setErr] = useState<unknown>(null);
 
   const load = useCallback(() => {
     setRows(null);
+    setErr(null);
     api
       .get<{ items: RiskRow[] }>("/api/v1/admin/risk-scores?limit=200")
       .then((r) => setRows(r.items))
-      .catch(() => setRows([]));
+      .catch((e) => setErr(e));
   }, []);
 
   useEffect(() => {
@@ -110,7 +113,9 @@ export function RiskWatchlist() {
         ))}
       </div>
 
-      {rows === null ? (
+      {err !== null ? (
+        <ErrorPanel error={err} onRetry={load} />
+      ) : rows === null ? (
         <p className="funbox__empty">…</p>
       ) : items.length === 0 ? (
         <p className="funbox__empty">{t.riskEmpty}</p>

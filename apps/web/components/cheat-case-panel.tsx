@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, Fragment } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { ErrorPanel } from "@/components/ui/error-panel";
 import { CheatCaseDetail } from "./cheat-case-detail";
 
 /** 案件行（GET /admin/cheat-cases，0367 M1） */
@@ -34,15 +35,17 @@ export function CheatCasePanel() {
   const [rows, setRows] = useState<CaseRow[] | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [err, setErr] = useState<unknown>(null);
 
   const load = useCallback((status: TabKey) => {
     setRows(null);
+    setErr(null);
     api
       .get<{ items: CaseRow[] }>(
         `/api/v1/admin/cheat-cases?status=${status}&limit=100`,
       )
       .then((r) => setRows(r.items))
-      .catch(() => setRows([]));
+      .catch((e) => setErr(e));
   }, []);
 
   useEffect(() => {
@@ -100,7 +103,9 @@ export function CheatCasePanel() {
         ))}
       </div>
 
-      {rows === null ? (
+      {err !== null ? (
+        <ErrorPanel error={err} onRetry={() => load(tab)} />
+      ) : rows === null ? (
         <p className="funbox__empty">…</p>
       ) : rows.length === 0 ? (
         <p className="funbox__empty">{t.casesEmpty}</p>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
@@ -63,13 +63,13 @@ export function TeamPanel() {
   const load = useCallback(async () => {
     try {
       setData(await api.get<ListResp>("/api/v1/social/team/list"));
-    } catch {
-      setData({ enabled: false, list: [] });
+    } catch (e) {
+      setMsg(apiErrorMessage(dict, e));
     }
     try {
       setMine(await api.get<MineResp>("/api/v1/social/team/mine"));
-    } catch {
-      setMine({ enabled: false, list: [] });
+    } catch (e) {
+      setMsg(apiErrorMessage(dict, e));
     }
   }, []);
 

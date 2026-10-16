@@ -14,6 +14,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { INPUT_MD } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 interface FieldRow {
   key: string;
@@ -43,14 +44,18 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<unknown>(null);
 
   const load = useCallback(async () => {
+    setErr(null);
     try {
       setRows(
         await api.get<FieldRow[]>(`/api/v1/admin/users/${userId}/fields`),
       );
       setDraft({});
-    } catch {
+      setErr(null);
+    } catch (e) {
+      setErr(e);
       setRows([]);
     }
   }, [userId]);
@@ -58,6 +63,9 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
     load();
   }, [load]);
 
+  if (err !== null) {
+    return <ErrorPanel error={err} onRetry={load} />;
+  }
   if (!rows || rows.length === 0) return null;
   const dirty = Object.keys(draft);
   const value = (r: FieldRow) => (r.key in draft ? draft[r.key] : r.value);

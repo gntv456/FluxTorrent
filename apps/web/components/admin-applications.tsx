@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 /** 申请制入站后台队列（0227）：待审优先排序，通过/拒绝可附备注。
  *  通过后端自动生成绑定邮箱的邀请码并邮件通知申请人。 */
@@ -26,14 +27,17 @@ export function AdminApplications() {
   const [msg, setMsg] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<number | null>(null);
+  const [err, setErr] = useState<unknown>(null);
 
   const load = useCallback(async () => {
+    setErr(null);
     try {
       const r = await api.get<{ items: ApplicationRow[] }>(
         "/api/v1/admin/applications",
       );
       setRows(r.items ?? []);
-    } catch {
+    } catch (e) {
+      setErr(e);
       setRows(null);
     }
   }, []);
@@ -62,7 +66,10 @@ export function AdminApplications() {
     }
   }
 
-  if (!rows) return <p className="py-8 text-center text-sub">…</p>;
+  if (!rows) {
+    if (err !== null) return <ErrorPanel error={err} onRetry={load} />;
+    return <p className="py-8 text-center text-sub">…</p>;
+  }
 
   return (
     <section className="space-y-3">

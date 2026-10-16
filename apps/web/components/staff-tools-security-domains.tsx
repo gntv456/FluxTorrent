@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { ErrorPanel } from "@/components/ui/error-panel";
 import type { EmailDomainRow } from "./staff-tools-security-shared";
 
 interface ListResp {
@@ -40,9 +41,11 @@ export function StaffEmailDomainsPanel({
   const [needle, setNeedle] = useState("");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<unknown>(null);
 
   const load = useCallback(async () => {
     setRows(null);
+    setErr(null);
     const qs = needle
       ? `?limit=500&q=${encodeURIComponent(needle)}`
       : "?limit=500";
@@ -50,7 +53,8 @@ export function StaffEmailDomainsPanel({
       const r = await api.get<ListResp>(`/api/v1/admin/email-domains${qs}`);
       setRows(r.items);
       setTotal(r.total);
-    } catch {
+    } catch (e) {
+      setErr(e);
       setRows([]);
     }
   }, [needle]);
@@ -243,7 +247,11 @@ export function StaffEmailDomainsPanel({
             {rows !== null && rows.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-6 text-center text-sub">
-                  {t.edEmpty}
+                  {err === null ? (
+                    t.edEmpty
+                  ) : (
+                    <ErrorPanel error={err} onRetry={load} />
+                  )}
                 </td>
               </tr>
             )}
