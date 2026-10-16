@@ -170,7 +170,9 @@ export function MoreInfoTable({
           <tr>
             <td className="rowhead">{t.tokenRow}</td>
             <td className="rowfollow">
-              <Link href="/my?tab=security" className="sticker">
+              {/* #tokens 锚点：安全面板平铺十余项，直跳 API 令牌那一行
+                  （见 usercp-security.tsx 的 hash 滚动） */}
+              <Link href="/my?tab=security#tokens" className="sticker">
                 {t.create}
               </Link>
             </td>

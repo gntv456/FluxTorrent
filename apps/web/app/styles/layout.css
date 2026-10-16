@@ -1440,6 +1440,30 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .uc-note b {
   color: var(--brand-orange-dark);
 }
+/* 锚点直达高亮（2026-10-16）：从账户概览「访问令牌 → 创建」带 #tokens
+   跳进安全面板时，目标行短暂描边，让用户在平铺的十余项里一眼看到它。
+   动画只改 outline/background，不动布局，避免触发重排。 */
+.uc-anchor-flash {
+  animation: uc-anchor-flash 2s ease-out 1;
+}
+@keyframes uc-anchor-flash {
+  0%,
+  60% {
+    background: var(--sun-soft, #fff4d6);
+    outline: 2px solid var(--sun, #f5a623);
+    outline-offset: -2px;
+  }
+  100% {
+    background: transparent;
+    outline-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uc-anchor-flash {
+    animation: none;
+    background: var(--sun-soft, #fff4d6);
+  }
+}
 .uc-input-wide {
   width: 400px;
   max-width: 100%;

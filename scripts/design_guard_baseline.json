@@ -2,7 +2,8 @@
  "app/error.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/layout.tsx": {
   "h1": [],
@@ -10,76 +11,90 @@
   "color": [
    24,
    26
-  ]
+  ],
+  "h1First": null
  },
  "app/not-found.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/setup/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 105
  },
  "app/setup/_parts/admin-credential.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/setup/_parts/setup-boot-status.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/setup/_parts/step-finish.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/setup/_parts/step-site.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/rules/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/rules/page.tsx": {
   "h1": [],
   "palette": [
    33
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/offline/page.tsx": {
   "h1": [],
   "palette": [
    18
   ],
-  "color": []
+  "color": [],
+  "h1First": 14
  },
  "app/login/login-form.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/login/login-view.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/login/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/ban-log/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/ban-log/page.tsx": {
   "h1": [],
@@ -88,12 +103,14 @@
    112,
    121
   ],
-  "color": []
+  "color": [],
+  "h1First": 60
  },
  "app/appeals/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/appeals/page.tsx": {
   "h1": [],
@@ -106,17 +123,20 @@
    203,
    262
   ],
-  "color": []
+  "color": [],
+  "h1First": 111
  },
  "app/(main)/layout.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/page.tsx": {
   "h1": [],
@@ -126,46 +146,54 @@
    186,
    194
   ],
-  "color": []
+  "color": [],
+  "h1First": 127
  },
  "app/(main)/wiki/[[...slug]]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/wiki/[[...slug]]/page.tsx": {
   "h1": [
    126
   ],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 98
  },
  "app/(main)/users/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/page.tsx": {
   "h1": [],
   "palette": [
    199
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/_parts/profile-card.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/_parts/profile-center.tsx": {
   "h1": [],
@@ -175,21 +203,24 @@
    150,
    171
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/_parts/profile-hero.tsx": {
   "h1": [],
   "palette": [
    73
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/_parts/profile-moreinfo.tsx": {
   "h1": [],
   "palette": [
    70
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/_parts/profile-tabs.tsx": {
   "h1": [],
@@ -198,27 +229,32 @@
    98,
    143
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/users/[id]/torrentlist/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/upload/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/upload/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/page.tsx": {
   "h1": [],
@@ -226,52 +262,62 @@
    38,
    343
   ],
-  "color": []
+  "color": [],
+  "h1First": 228
  },
  "app/(main)/torrents/_parts/adv-collapse-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/filter-fab.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/filter-sheet.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/refresh-mount.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/search-suggest.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrent-split.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-adv-gear.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-adv-groups-tail.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-adv-groups.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-cards.tsx": {
   "h1": [],
@@ -279,32 +325,38 @@
    28,
    30
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-col-settings.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-hotkeys.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-search-box.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-table-view.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-table.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrents/_parts/torrents-view-switch.tsx": {
   "h1": [],
@@ -312,295 +364,350 @@
    63,
    82
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrent/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrent/[id]/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrent/[id]/_parts/torrent-detail-collections.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrent/[id]/_parts/torrent-detail-side.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrent/[id]/_parts/torrent-detail-specs.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/torrent/[id]/_parts/torrent-detail-tail.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/top/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/top/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/textbooks/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/textbooks/page.tsx": {
   "h1": [],
   "palette": [
    60
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/teams/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/teams/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 15
  },
  "app/(main)/tasks/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/tasks/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 22
  },
  "app/(main)/subtitles/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/subtitles/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 16
  },
  "app/(main)/subtitles/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/subtitles/[id]/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 22
  },
  "app/(main)/subtitle-groups/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/subtitle-groups/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 39
  },
  "app/(main)/subtitle-groups/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/subtitle-groups/[id]/page.tsx": {
   "h1": [],
   "palette": [
    12
   ],
-  "color": []
+  "color": [],
+  "h1First": 59
  },
  "app/(main)/staffbox/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/staffbox/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 14
  },
  "app/(main)/shop/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/shop/page.tsx": {
   "h1": [],
   "palette": [
    50
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/seasonal/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/seasonal/page.tsx": {
   "h1": [],
   "palette": [
    10
   ],
-  "color": []
+  "color": [],
+  "h1First": 56
  },
  "app/(main)/resurrections/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/resurrections/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 16
  },
  "app/(main)/requests/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/requests/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 21
  },
  "app/(main)/reports/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/reports/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 11
  },
  "app/(main)/preserve/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/preserve/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/p/[slug]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/p/[slug]/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 62
  },
  "app/(main)/offers/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/offers/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/offers/_inner.tsx": {
   "h1": [],
   "palette": [
    123
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/notifications/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/notifications/page.tsx": {
   "h1": [
    108
   ],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 55
  },
  "app/(main)/networks/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/networks/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 39
  },
  "app/(main)/networks/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/networks/[id]/page.tsx": {
   "h1": [],
   "palette": [
    11
   ],
-  "color": []
+  "color": [],
+  "h1First": 56
  },
  "app/(main)/myhr/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/myhr/page.tsx": {
   "h1": [],
   "palette": [
    43
   ],
-  "color": []
+  "color": [],
+  "h1First": 42
  },
  "app/(main)/my-spark/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/my-spark/page.tsx": {
   "h1": [
    75
   ],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 63
  },
  "app/(main)/my/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/my/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 40
  },
  "app/(main)/my/torrentlist/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/my/torrentlist/page.tsx": {
   "h1": [],
@@ -608,81 +715,96 @@
    47,
    48
   ],
-  "color": []
+  "color": [],
+  "h1First": 36
  },
  "app/(main)/my/orders/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/my/orders/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/messages/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/messages/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 16
  },
  "app/(main)/medals/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/medals/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/medal-wall/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/medal-wall/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/me/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/me/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/me/subscriptions/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/me/subscriptions/page.tsx": {
   "h1": [],
   "palette": [
    112
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/me/sparks/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 33
  },
  "app/(main)/me/exams/page.tsx": {
   "h1": [
    109
   ],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 66
  },
  "app/(main)/me/achievements/page.tsx": {
   "h1": [],
@@ -691,12 +813,14 @@
    73,
    79
   ],
-  "color": []
+  "color": [],
+  "h1First": 45
  },
  "app/(main)/magic-pool/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/magic-pool/page.tsx": {
   "h1": [],
@@ -704,30 +828,36 @@
    40,
    53
   ],
-  "color": []
+  "color": [],
+  "h1First": 31
  },
  "app/(main)/links/apply/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/links/apply/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 11
  },
  "app/(main)/jixiao/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/jixiao/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/jixiao/_inner.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
    109,
    111,
@@ -740,69 +870,82 @@
  "app/(main)/invites/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/invites/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 17
  },
  "app/(main)/help/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/help/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 51
  },
  "app/(main)/gomoku/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/gomoku/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/gomoku/_inner.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/getrss/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/getrss/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 12
  },
  "app/(main)/games/layout.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/page.tsx": {
   "h1": [],
   "palette": [
    244
   ],
-  "color": []
+  "color": [],
+  "h1First": 136
  },
  "app/(main)/games/wheel/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/wheel/_inner.tsx": {
   "h1": [],
@@ -812,68 +955,80 @@
   ],
   "color": [
    220
-  ]
+  ],
+  "h1First": null
  },
  "app/(main)/games/wheel/records/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/scratch/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/scratch/_inner.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/scratch/records/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/pet/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/pet/_inner.tsx": {
   "h1": [],
   "palette": [],
   "color": [
    168
-  ]
+  ],
+  "h1First": null
  },
  "app/(main)/games/pet/log/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/odds/page.tsx": {
   "h1": [],
   "palette": [
    198
   ],
-  "color": []
+  "color": [],
+  "h1First": 191
  },
  "app/(main)/games/leaderboard/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/leaderboard/_inner.tsx": {
   "h1": [],
   "palette": [
    66
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/jgg/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/jgg/_inner.tsx": {
   "h1": [],
@@ -881,42 +1036,50 @@
    305,
    307
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/jgg/records/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/fun/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 19
  },
  "app/(main)/games/fishing/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/fishing/_inner.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/fishing/records/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/farm/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/farm/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/farm/_inner-ranch.tsx": {
   "h1": [],
@@ -931,7 +1094,8 @@
    370,
    385
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/farm/_inner-sections.tsx": {
   "h1": [],
@@ -941,19 +1105,22 @@
    243,
    262
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/farm/_inner.tsx": {
   "h1": [],
   "palette": [
    374
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/capsule/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/capsule/_inner.tsx": {
   "h1": [],
@@ -963,64 +1130,76 @@
   ],
   "color": [
    291
-  ]
+  ],
+  "h1First": null
  },
  "app/(main)/games/capsule/records/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/bigsmall/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/bigsmall/_inner.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/games/bigsmall/road/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/gacha/layout.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/gacha/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/gacha/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/gacha/_inner.tsx": {
   "h1": [],
   "palette": [
    162
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/friends/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/friends/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/forums/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/forums/page.tsx": {
   "h1": [],
@@ -1028,12 +1207,14 @@
    77,
    93
   ],
-  "color": []
+  "color": [],
+  "h1First": 70
  },
  "app/(main)/forums/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/forums/[id]/page.tsx": {
   "h1": [],
@@ -1046,12 +1227,14 @@
    105,
    106
   ],
-  "color": []
+  "color": [],
+  "h1First": 61
  },
  "app/(main)/forums/topic/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/forums/topic/[id]/page.tsx": {
   "h1": [],
@@ -1066,7 +1249,8 @@
    213,
    226
   ],
-  "color": []
+  "color": [],
+  "h1First": 77
  },
  "app/(main)/forums/topic/[id]/_parts/post-row.tsx": {
   "h1": [],
@@ -1077,17 +1261,20 @@
    135,
    226
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/forums/new/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/forums/feed/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/forums/feed/page.tsx": {
   "h1": [],
@@ -1100,47 +1287,56 @@
    150,
    159
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/farm/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/farm/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/faq/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/faq/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/endangered/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/endangered/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 15
  },
  "app/(main)/dressup/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/dressup/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/dressup/_inner.tsx": {
   "h1": [],
@@ -1148,22 +1344,26 @@
    151,
    171
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/donate/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/donate/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/donate/_inner-ledger.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/donate/_inner.tsx": {
   "h1": [],
@@ -1171,153 +1371,182 @@
    152,
    250
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/donate/_parts/donate-tiers.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/contests/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/contests/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 16
  },
  "app/(main)/contactstaff/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/contactstaff/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 14
  },
  "app/(main)/collections/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/collections/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 41
  },
  "app/(main)/collections/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/collections/[id]/page.tsx": {
   "h1": [],
   "palette": [
    12
   ],
-  "color": []
+  "color": [],
+  "h1First": 59
  },
  "app/(main)/clients/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/clients/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 20
  },
  "app/(main)/classes/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/classes/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 176
  },
  "app/(main)/cheaterbox/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/cheaterbox/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 11
  },
  "app/(main)/bank/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/bank/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/avatar-frames/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/avatar-frames/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/avatar-frames/_inner.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/artists/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/artists/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 45
  },
  "app/(main)/artists/[id]/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/artists/[id]/page.tsx": {
   "h1": [],
   "palette": [
    11
   ],
-  "color": []
+  "color": [],
+  "h1First": 53
  },
  "app/(main)/api-docs/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/api-docs/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 52
  },
  "app/(main)/admin/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/page.tsx": {
   "h1": [],
   "palette": [
    32
   ],
-  "color": []
+  "color": [],
+  "h1First": 411
  },
  "app/(main)/admin/_parts/admin-freeleech.tsx": {
   "h1": [],
@@ -1325,7 +1554,8 @@
    93,
    241
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-overview-panel.tsx": {
   "h1": [],
@@ -1339,7 +1569,8 @@
    183,
    185
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-promo-intents.tsx": {
   "h1": [],
@@ -1348,17 +1579,20 @@
    117,
    190
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-promo-kinds.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-promo-tiers.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-queue-panels.tsx": {
   "h1": [],
@@ -1372,12 +1606,14 @@
    239,
    259
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-tool-map.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-tool-panels.tsx": {
   "h1": [],
@@ -1387,39 +1623,46 @@
    153,
    199
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/_parts/admin-tool-switch.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/[...slug]/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/users/[id]/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/settings/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/settings/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/settings/settings-client.tsx": {
   "h1": [],
   "palette": [
    269
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/settings/_parts/settings-dialogs.tsx": {
   "h1": [],
@@ -1432,7 +1675,8 @@
    191,
    215
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/settings/_parts/settings-pack-dialog.tsx": {
   "h1": [],
@@ -1444,14 +1688,16 @@
    386,
    405
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/settings/_parts/settings-panels.tsx": {
   "h1": [],
   "palette": [
    72
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/settings/_parts/settings-toolbar.tsx": {
   "h1": [],
@@ -1461,12 +1707,14 @@
    128,
    140
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/forums/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/forums/page.tsx": {
   "h1": [],
@@ -1474,12 +1722,14 @@
    17,
    90
   ],
-  "color": []
+  "color": [],
+  "h1First": 107
  },
  "app/(main)/admin/forums/_parts/forum-board-drawer.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/forums/_parts/forum-board-table.tsx": {
   "h1": [],
@@ -1488,7 +1738,8 @@
    169,
    180
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/admin/forums/_parts/forum-category-panel.tsx": {
   "h1": [],
@@ -1500,29 +1751,34 @@
    202,
    220
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/about/loading.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/about/page.tsx": {
   "h1": [],
   "palette": [
    33
   ],
-  "color": []
+  "color": [],
+  "h1First": 40
  },
  "app/(auth)/layout.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(auth)/self-unban/page.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": 33
  },
  "app/(auth)/reset/page.tsx": {
   "h1": [],
@@ -1532,21 +1788,24 @@
    118,
    145
   ],
-  "color": []
+  "color": [],
+  "h1First": 138
  },
  "app/(auth)/register/page.tsx": {
   "h1": [],
   "palette": [
    293
   ],
-  "color": []
+  "color": [],
+  "h1First": 188
  },
  "app/(auth)/forgot/page.tsx": {
   "h1": [],
   "palette": [
    72
   ],
-  "color": []
+  "color": [],
+  "h1First": 42
  },
  "app/(auth)/email-verify/page.tsx": {
   "h1": [],
@@ -1555,7 +1814,8 @@
    111,
    120
   ],
-  "color": []
+  "color": [],
+  "h1First": 81
  },
  "app/(auth)/apply/page.tsx": {
   "h1": [],
@@ -1563,7 +1823,8 @@
    58,
    112
   ],
-  "color": []
+  "color": [],
+  "h1First": 54
  },
  "components/admin-applications.tsx": {
   "h1": [],
@@ -1572,7 +1833,8 @@
    111,
    120
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-arcade-crops.tsx": {
   "h1": [],
@@ -1580,12 +1842,14 @@
    258,
    259
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-arcade-items-new.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-arcade-items.tsx": {
   "h1": [],
@@ -1593,12 +1857,14 @@
    277,
    278
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-arcade-pool-rows.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-arcade-pool.tsx": {
   "h1": [],
@@ -1606,17 +1872,20 @@
    201,
    235
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-arcade-rewards.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-arcade.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-attendance.tsx": {
   "h1": [],
@@ -1624,7 +1893,8 @@
    124,
    210
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-classes.tsx": {
   "h1": [],
@@ -1632,7 +1902,8 @@
    169,
    270
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-donate-orders.tsx": {
   "h1": [],
@@ -1648,12 +1919,14 @@
    447,
    462
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-economy-dashboard.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-embed-rule-editor.tsx": {
   "h1": [],
@@ -1663,7 +1936,8 @@
    17,
    19
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-embed-rules.tsx": {
   "h1": [],
@@ -1671,17 +1945,20 @@
    31,
    94
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-exams-form.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-exams-table.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-exams.tsx": {
   "h1": [],
@@ -1690,7 +1967,8 @@
    103,
    110
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-fundings.tsx": {
   "h1": [],
@@ -1700,12 +1978,14 @@
    44,
    116
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-gacha.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-hr.tsx": {
   "h1": [],
@@ -1714,7 +1994,8 @@
    160,
    183
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-invites.tsx": {
   "h1": [],
@@ -1724,14 +2005,16 @@
    154,
    269
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-jixiao-payroll.tsx": {
   "h1": [],
   "palette": [
    55
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-jixiao.tsx": {
   "h1": [],
@@ -1741,7 +2024,8 @@
    132,
    198
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-medals-asset.tsx": {
   "h1": [],
@@ -1749,17 +2033,20 @@
    11,
    12
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-medals-form.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-medals-held.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-medals-rarity.tsx": {
   "h1": [],
@@ -1768,7 +2055,8 @@
    23,
    247
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-medals.tsx": {
   "h1": [],
@@ -1778,7 +2066,8 @@
    116,
    137
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-nav-groups.tsx": {
   "h1": [],
@@ -1787,19 +2076,22 @@
    93,
    104
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-onboarding.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-ops-jobs.tsx": {
   "h1": [],
   "palette": [
    134
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-ops.tsx": {
   "h1": [],
@@ -1807,34 +2099,40 @@
    129,
    260
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-orders-panel.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-p2-tools-claims.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-p2-tools-menus.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-p2-tools-promos.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-p2-tools-templates.tsx": {
   "h1": [],
   "palette": [
    121
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-p2-tools.tsx": {
   "h1": [],
@@ -1842,17 +2140,20 @@
    24,
    53
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-page-shell.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-props-form.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-props-frames.tsx": {
   "h1": [],
@@ -1862,22 +2163,26 @@
   ],
   "color": [
    40
-  ]
+  ],
+  "h1First": null
  },
  "components/admin-props-table.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-props-user-bag.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-props-vouchers.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-props.tsx": {
   "h1": [],
@@ -1886,24 +2191,28 @@
    136,
    168
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-sections-dict.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-sections-kinds.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-sections.tsx": {
   "h1": [],
   "palette": [
    102
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-shell.tsx": {
   "h1": [],
@@ -1911,12 +2220,14 @@
    187,
    191
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-subtitles-awards.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-tagdict-form.tsx": {
   "h1": [],
@@ -1926,7 +2237,8 @@
   "color": [
    125,
    224
-  ]
+  ],
+  "h1First": null
  },
  "components/admin-tagdict.tsx": {
   "h1": [],
@@ -1935,24 +2247,28 @@
   ],
   "color": [
    112
-  ]
+  ],
+  "h1First": null
  },
  "components/admin-tasks-exams.tsx": {
   "h1": [],
   "palette": [
    39
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-tasks-form.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-tasks-table.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-tasks.tsx": {
   "h1": [],
@@ -1961,12 +2277,14 @@
    97,
    105
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-terms-governance.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-batch-bar.tsx": {
   "h1": [],
@@ -1974,7 +2292,8 @@
    46,
    49
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-dim-set.tsx": {
   "h1": [],
@@ -1983,7 +2302,8 @@
    19,
    134
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-dims.tsx": {
   "h1": [],
@@ -1992,14 +2312,16 @@
    47,
    214
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-list.tsx": {
   "h1": [],
   "palette": [
    30
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-login-logs.tsx": {
   "h1": [],
@@ -2007,17 +2329,20 @@
    110,
    145
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-record-query.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-records.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents-table.tsx": {
   "h1": [],
@@ -2027,7 +2352,8 @@
    143,
    157
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-torrents.tsx": {
   "h1": [],
@@ -2035,7 +2361,8 @@
    49,
    56
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-trackers.tsx": {
   "h1": [],
@@ -2043,22 +2370,26 @@
    79,
    84
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-trumps.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-detail-actions-forms-more.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-detail-actions-forms.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-detail-actions.tsx": {
   "h1": [],
@@ -2068,17 +2399,20 @@
    36,
    38
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-detail-dialogs.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-detail-item-select.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-detail-panels.tsx": {
   "h1": [],
@@ -2087,7 +2421,8 @@
    244,
    290
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-detail.tsx": {
   "h1": [],
@@ -2099,7 +2434,8 @@
    144,
    173
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-user-fields-panel.tsx": {
   "h1": [],
@@ -2108,7 +2444,8 @@
    108,
    200
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-userlogs.tsx": {
   "h1": [],
@@ -2116,14 +2453,16 @@
    73,
    91
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-users-filters.tsx": {
   "h1": [],
   "palette": [
    16
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-users-list.tsx": {
   "h1": [],
@@ -2131,26 +2470,30 @@
    57,
    180
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-users-pager.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/admin-users.tsx": {
   "h1": [],
   "palette": [
    167
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/api-tokens.tsx": {
   "h1": [],
   "palette": [
    157
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/bank-actions-deposit.tsx": {
   "h1": [],
@@ -2159,7 +2502,8 @@
    111,
    119
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/bank-actions-loan.tsx": {
   "h1": [],
@@ -2168,36 +2512,42 @@
    92,
    131
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/bank-actions-parts.tsx": {
   "h1": [],
   "palette": [
    63
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/bank-actions.tsx": {
   "h1": [],
   "palette": [
    183
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/bottom-sheet.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/buy-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/cheat-accuracy-panel.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/cheat-appeal-box.tsx": {
   "h1": [],
@@ -2208,7 +2558,8 @@
    116,
    123
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/cheat-appeal-queue.tsx": {
   "h1": [],
@@ -2219,49 +2570,58 @@
    205,
    260
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/cheat-case-detail.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/cheat-case-panel.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/cheat-events-table.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/cheater-box.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/claim-button.tsx": {
   "h1": [],
   "palette": [
    47
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/comment-delete-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/comment-like-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/comment-reply-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/community-extra.tsx": {
   "h1": [],
@@ -2270,22 +2630,26 @@
    76,
    78
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/contact-staff-tickets.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/contact-staff.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/content-manage-tabs.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/content-manage.tsx": {
   "h1": [],
@@ -2293,17 +2657,20 @@
    155,
    164
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/custom-menu.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/download-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/endangered-panel.tsx": {
   "h1": [],
@@ -2311,19 +2678,22 @@
    115,
    153
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/file-tree.tsx": {
   "h1": [],
   "palette": [
    87
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/fold-mobile.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/footer.tsx": {
   "h1": [],
@@ -2335,12 +2705,14 @@
    115,
    163
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-bits.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-composer.tsx": {
   "h1": [],
@@ -2358,7 +2730,8 @@
    351,
    368
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-follow.tsx": {
   "h1": [],
@@ -2366,7 +2739,8 @@
    103,
    104
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-lottery.tsx": {
   "h1": [],
@@ -2377,7 +2751,8 @@
    155,
    164
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-markdown.tsx": {
   "h1": [],
@@ -2385,7 +2760,8 @@
    60,
    73
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-mod-bar.tsx": {
   "h1": [],
@@ -2393,7 +2769,8 @@
    25,
    26
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-poll.tsx": {
   "h1": [],
@@ -2402,7 +2779,8 @@
    115,
    145
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-post-actions.tsx": {
   "h1": [],
@@ -2411,7 +2789,8 @@
    221,
    230
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-reply-box.tsx": {
   "h1": [],
@@ -2422,7 +2801,8 @@
    22,
    77
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-report.tsx": {
   "h1": [],
@@ -2432,7 +2812,8 @@
    77,
    87
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-search.tsx": {
   "h1": [],
@@ -2441,7 +2822,8 @@
    87,
    101
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-topic-list.tsx": {
   "h1": [],
@@ -2449,14 +2831,16 @@
    124,
    156
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-video-embed.tsx": {
   "h1": [],
   "palette": [
    143
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-video-insert.tsx": {
   "h1": [],
@@ -2464,7 +2848,8 @@
    19,
    22
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/forum-vote.tsx": {
   "h1": [],
@@ -2475,14 +2860,16 @@
    122,
    249
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/frame-preview.tsx": {
   "h1": [],
   "palette": [
    51
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/friends-actions.tsx": {
   "h1": [],
@@ -2494,27 +2881,32 @@
    147,
    155
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/fun-box-history.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/fun-box-publish.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/fun-box.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/funding-panel-parts.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/funding-panel.tsx": {
   "h1": [],
@@ -2529,69 +2921,82 @@
    283,
    297
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/gacha-album.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/gacha-rates.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/gacha-tabbed.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/global-search-dialog.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/global-search.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/group-subscribe-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/header-search.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-attendance.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-layout-editor.tsx": {
   "h1": [],
   "palette": [
    120
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-layout.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-news-poster.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-resource-stats.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-resub-button.tsx": {
   "h1": [],
@@ -2602,32 +3007,38 @@
    91,
    99
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-sections.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/home-site-data.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/icons.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/increment-bulk-ledger.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/increment-bulk-notify.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/increment-bulk.tsx": {
   "h1": [],
@@ -2637,7 +3048,8 @@
    399,
    400
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/invite-manager-parts.tsx": {
   "h1": [],
@@ -2645,7 +3057,8 @@
    56,
    208
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/invite-manager.tsx": {
   "h1": [],
@@ -2654,7 +3067,8 @@
    242,
    302
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/latest-posters.tsx": {
   "h1": [],
@@ -2664,88 +3078,104 @@
    26,
    27,
    28
-  ]
+  ],
+  "h1First": null
  },
  "components/layout.tsx": {
   "h1": [],
   "palette": [
    222
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/link-apply.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/locale-switcher.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/login-history.tsx": {
   "h1": [],
   "palette": [
    62
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/lottery-fairness.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/main-menu.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-actions.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-badge.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-hall.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-icon.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-progress.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-rarity-chip.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-wall-parts.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/medal-wall.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/message-center-compose.tsx": {
   "h1": [],
   "palette": [
    151
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/message-center-table.tsx": {
   "h1": [],
@@ -2753,71 +3183,84 @@
    178,
    187
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/message-center-toolbar.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/message-center.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/mobile-home-header.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/mobile-nav-shell.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/modal.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/module-gate.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/module-key-select.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/motion.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/my-hr.tsx": {
   "h1": [],
   "palette": [
    168
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/my-orders-table.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/nav-drawer.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/notice-prefs.tsx": {
   "h1": [],
   "palette": [
    68
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/passkeys-card.tsx": {
   "h1": [],
@@ -2827,38 +3270,44 @@
    189,
    215
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/plugins-frames.tsx": {
   "h1": [],
   "palette": [
    29
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/plugins-gomoku.tsx": {
   "h1": [],
   "palette": [
    25
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/plugins.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/pool-donate.tsx": {
   "h1": [],
   "palette": [
    64
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/poster-image.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/promo-buy-button.tsx": {
   "h1": [],
@@ -2869,41 +3318,48 @@
    168,
    182
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/pull-to-refresh.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/push-settings.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/pwa-install-bar.tsx": {
   "h1": [],
   "palette": [
    58
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/register-fields.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/register-gates.tsx": {
   "h1": [],
   "palette": [
    63
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/report-box.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/request-board-form.tsx": {
   "h1": [],
@@ -2912,7 +3368,8 @@
    75,
    85
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/request-board.tsx": {
   "h1": [],
@@ -2920,21 +3377,24 @@
    28,
    291
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/request-card-list.tsx": {
   "h1": [],
   "palette": [
    16
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/resurrect-button.tsx": {
   "h1": [],
   "palette": [
    49
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/resurrection-panel.tsx": {
   "h1": [],
@@ -2942,27 +3402,32 @@
    106,
    139
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/risk-watchlist.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/rss-builder.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/rss-tokens.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/scroll-buttons.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/section-kind-bool.tsx": {
   "h1": [],
@@ -2970,14 +3435,16 @@
    13,
    14
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/seed-stats-card.tsx": {
   "h1": [],
   "palette": [
    98
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/sessions-card.tsx": {
   "h1": [],
@@ -2986,7 +3453,8 @@
    82,
    86
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/setting-field-controls.tsx": {
   "h1": [],
@@ -2997,7 +3465,8 @@
   "color": [
    198,
    210
-  ]
+  ],
+  "h1First": null
  },
  "components/setting-field.tsx": {
   "h1": [],
@@ -3008,12 +3477,14 @@
    154,
    163
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/shop-catalog.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/shout-box.tsx": {
   "h1": [],
@@ -3021,17 +3492,20 @@
    147,
    166
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/snatch-list.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/spark-chip.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-box-desk.tsx": {
   "h1": [],
@@ -3039,12 +3513,14 @@
    129,
    137
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-box-pm.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-box-tickets.tsx": {
   "h1": [],
@@ -3058,19 +3534,22 @@
    166,
    183
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-box.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-custom-pages-help.tsx": {
   "h1": [],
   "palette": [
    21
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-custom-pages.tsx": {
   "h1": [],
@@ -3079,34 +3558,40 @@
    191,
    293
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-terms.tsx": {
   "h1": [],
   "palette": [
    242
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-cat-edit.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-content-cats.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-content-rules.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-content.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-menu.tsx": {
   "h1": [],
@@ -3117,22 +3602,26 @@
    156,
    161
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-ops-forms.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-ops.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-pack-applies.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-perm-matrix.tsx": {
   "h1": [],
@@ -3140,7 +3629,8 @@
    16,
    78
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-perm.tsx": {
   "h1": [],
@@ -3150,17 +3640,20 @@
    57,
    185
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-regquiz-parts.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-regquiz.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-reports.tsx": {
   "h1": [],
@@ -3173,7 +3666,8 @@
    159,
    172
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-roles-dict.tsx": {
   "h1": [],
@@ -3182,7 +3676,8 @@
    38,
    198
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-roles.tsx": {
   "h1": [],
@@ -3190,29 +3685,34 @@
    30,
    35
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-runtime.tsx": {
   "h1": [],
   "palette": [
    31
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-security-domains.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-security-panels.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-security.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-seedstats.tsx": {
   "h1": [],
@@ -3220,51 +3720,60 @@
    75,
    110
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-site-ads.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-site-lists.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-site.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-sys-agentrules.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-sys.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-users-tools.tsx": {
   "h1": [],
   "palette": [
    13
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools-users.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-tools.tsx": {
   "h1": [],
   "palette": [
    160
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-user-fields.tsx": {
   "h1": [],
@@ -3273,7 +3782,8 @@
    267,
    359
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/staff-wiki.tsx": {
   "h1": [],
@@ -3281,17 +3791,20 @@
    138,
    277
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subscribe-network-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-awards-board.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-board-table.tsx": {
   "h1": [],
@@ -3299,12 +3812,14 @@
    140,
    198
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-board.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-card-list.tsx": {
   "h1": [],
@@ -3312,7 +3827,8 @@
    64,
    145
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-detail-view.tsx": {
   "h1": [],
@@ -3321,68 +3837,80 @@
    111,
    118
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-edit-dialog.tsx": {
   "h1": [],
   "palette": [
    182
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-lang-select.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-request-actions.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-request-cards.tsx": {
   "h1": [],
   "palette": [
    53
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-request-panel.tsx": {
   "h1": [],
   "palette": [
    242
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-row-actions.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/subtitle-upload-form.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/tab-link.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/tablet-sidebar.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/task-board-parts.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/task-board.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/team-panel.tsx": {
   "h1": [],
@@ -3391,71 +3919,84 @@
    177,
    250
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/textbook-link-button.tsx": {
   "h1": [],
   "palette": [
    51
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/theme-toggle.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-actionbar-mount.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-actions.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-anchor.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-batch.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-detail-blocks.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-detail-head.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-detail-parts.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-head-more.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-hover-preview.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-list-client.tsx": {
   "h1": [],
   "palette": [
    103
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-manage-fields.tsx": {
   "h1": [],
@@ -3463,19 +4004,22 @@
    248,
    273
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-manage-parts.tsx": {
   "h1": [],
   "palette": [],
   "color": [
    81
-  ]
+  ],
+  "h1First": null
  },
  "components/torrent-manage-submit.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-manage.tsx": {
   "h1": [],
@@ -3485,37 +4029,44 @@
    239,
    320
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-mobile-actionbar.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-peers.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-previews.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-related.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-rip-logs.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-row-card.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-social.tsx": {
   "h1": [],
@@ -3523,41 +4074,48 @@
    206,
    211
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-subtitle-cards.tsx": {
   "h1": [],
   "palette": [
    113
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-subtitles.tsx": {
   "h1": [],
   "palette": [
    172
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-table-nums.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-table.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-tags.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent-trump-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/torrent.tsx": {
   "h1": [],
@@ -3567,7 +4125,8 @@
    109,
    116
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/twofa-setup.tsx": {
   "h1": [],
@@ -3576,7 +4135,8 @@
    126,
    147
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/unsubscribe-button.tsx": {
   "h1": [],
@@ -3584,7 +4144,8 @@
    38,
    39
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/upload-form-descr.tsx": {
   "h1": [],
@@ -3592,109 +4153,129 @@
   "color": [
    120,
    121
-  ]
+  ],
+  "h1First": null
  },
  "components/upload-form-files.tsx": {
   "h1": [],
   "palette": [
    249
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/upload-form-parts.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/upload-form-quality.tsx": {
   "h1": [],
   "palette": [],
   "color": [
    194
-  ]
+  ],
+  "h1First": null
  },
  "components/upload-form-riplogs.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/upload-form.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/user-checkin.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/user-menu.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/user-tools.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-fields.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-forum.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-overview-panels.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-overview.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-personal.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-row.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-security.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   110,
-   213
+   135,
+   241
   ],
   "color": []
  },
  "components/usercp-title.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-tracker-browse.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp-tracker.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/usercp.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/view-hidden-editor.tsx": {
   "h1": [],
@@ -3703,109 +4284,130 @@
    21,
    22
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/voucher-panel.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/wishlist.tsx": {
   "h1": [],
   "palette": [
    174
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/action-feedback.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/badge.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/busy-label.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/confirm-dialog.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/empty-state.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/error-panel.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/form-field.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/page-header.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/pager.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/skeleton.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/skip-link.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/state-panel.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/submit-button.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/toast-card.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/toast-provider.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/toast.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/ui/use-confirm.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/bigsmall-props.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/bigsmall-road.tsx": {
   "h1": [],
@@ -3813,7 +4415,8 @@
    126,
    149
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/capsule-machine.tsx": {
   "h1": [],
@@ -3835,7 +4438,8 @@
    105,
    133,
    146
-  ]
+  ],
+  "h1First": null
  },
  "components/game/die-face.tsx": {
   "h1": [],
@@ -3844,7 +4448,8 @@
    66,
    67,
    71
-  ]
+  ],
+  "h1First": null
  },
  "components/game/farm-art.tsx": {
   "h1": [],
@@ -3854,7 +4459,8 @@
   ],
   "color": [
    115
-  ]
+  ],
+  "h1First": null
  },
  "components/game/farm-field.tsx": {
   "h1": [],
@@ -3865,7 +4471,8 @@
    212,
    229
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/farm-land.tsx": {
   "h1": [],
@@ -3873,7 +4480,8 @@
    50,
    133
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/fishing-pond.tsx": {
   "h1": [],
@@ -3914,7 +4522,8 @@
    266,
    275,
    276
-  ]
+  ],
+  "h1First": null
  },
  "components/game/fishing-side.tsx": {
   "h1": [],
@@ -3922,7 +4531,8 @@
    131,
    133
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/game-kit-feedback.tsx": {
   "h1": [],
@@ -3933,7 +4543,8 @@
    117,
    119
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/game-kit.tsx": {
   "h1": [],
@@ -3942,7 +4553,8 @@
    148,
    204
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/game-records.tsx": {
   "h1": [],
@@ -3951,29 +4563,34 @@
    36,
    156
   ],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/game-stage.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/game-tabs.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/jackpot-burst.tsx": {
   "h1": [],
   "palette": [],
   "color": [
    13
-  ]
+  ],
+  "h1First": null
  },
  "components/game/jgg-grid.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/lucky-wheel.tsx": {
   "h1": [],
@@ -3999,37 +4616,44 @@
    208,
    209,
    210
-  ]
+  ],
+  "h1First": null
  },
  "components/game/pet-log.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/pet-pen.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/runway.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/scratch-coat.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/streak-pill.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/subpage-link.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/game/sw-enrich.tsx": {
   "h1": [],
@@ -4039,51 +4663,61 @@
    21,
    22,
    23
-  ]
+  ],
+  "h1First": null
  },
  "components/game/sw-panels.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/arcade/arcade-album.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/arcade/arcade-backpack.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/arcade/arcade-board.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/arcade/arcade-feed.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/arcade/arcade-glyph.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "components/arcade/arcade-meta.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "lib/format.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  },
  "app/(main)/jixiao/_parts/jixiao-post-card.tsx": {
   "h1": [],
   "palette": [],
-  "color": []
+  "color": [],
+  "h1First": null
  }
 }
