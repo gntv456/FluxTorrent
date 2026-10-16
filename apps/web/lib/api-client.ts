@@ -30,17 +30,35 @@ export function csrfToken(): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-/** 写方法时回填 X-CSRF-Token；安全方法不带（少一处无谓的头）。 */
-function csrfHeader(method: string | undefined): Record<string, string> {
-  if (
-    !method ||
-    method.toUpperCase() === "GET" ||
-    method.toUpperCase() === "HEAD"
-  ) {
-    return {};
-  }
+/** 浏览器侧 CSRF 按需续期（缺 cookie 时去后端要一份）。
+ *
+ *  后端 `csrf_mw` 的判据是「非安全方法 + /api/v1 + 带了非空会话 cookie」就必须
+ *  cookie 与 `X-CSRF-Token` 逐字相等；而全站唯一下发 `flux_csrf` 的口是
+ *  `GET /api/v1/me/csrf`（`csrf::set_cookie` 在后端零调用点，登录响应也不带），
+ *  前端此前从不打这个口 ⇒ 浏览器里所有写操作回 403「无权限」（2026-10-16 实测：
+ *  真表单登录后 cookie 只有 flux.locale/flux_token/flux.session）。这里在首次写之前
+ *  续期一次，界面写口才可用；续期失败仍照原样发出，让后端那句出声。 */
+async function csrfHeaderAsync(
+  method: string | undefined,
+  bearer: string | null,
+): Promise<Record<string, string>> {
+  const m = (method ?? "").toUpperCase();
+  if (m === "" || m === "GET" || m === "HEAD" || m === "OPTIONS") return {};
   const t = csrfToken();
-  return t ? { [CSRF_HEADER]: t } : {};
+  if (t) return { [CSRF_HEADER]: t };
+  // 服务端 RSC 走 Bearer 直连、不带会话 cookie，闸本身不会触发
+  if (typeof window === "undefined") return {};
+  try {
+    await fetch(`${baseUrl()}/api/v1/me/csrf`, {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
+    });
+  } catch {
+    /* 不吞出声：拿不到 cookie 就照原样发，由后端回 403 给界面显示 */
+  }
+  const fresh = csrfToken();
+  return fresh ? { [CSRF_HEADER]: fresh } : {};
 }
 
 /** 登录态判定（P1 收敛）：token 已 HttpOnly 化（flux_token，根路径 /），
@@ -148,7 +166,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       ...(lang ? { "Accept-Language": lang } : {}),
       // CSRF 双提交：写方法回填 token（服务端 csrf_mw 比对 cookie/header）
-      ...csrfHeader(init?.method),
+      ...(await csrfHeaderAsync(init?.method, bearer)),
       ...init?.headers,
     },
     ...(serverCache ? {} : { cache: "no-store" as const }),
