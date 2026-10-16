@@ -9,6 +9,7 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_overview)
         // seedbox 审核（0380）
         .service(seedbox_review_queue)
+        .service(mediainfo_mismatches)
         .service(seedbox_review)
         .service(seedbox_revoke)
         .service(review_queue)
@@ -115,6 +116,7 @@ mod cheat_accuracy;
 mod deny;
 mod email_domains;
 mod webhook_ops;
+mod cheat_ruleset_admin;
 pub(crate) mod embed_rule_check;
 mod embed_rules;
 mod forum;
@@ -126,6 +128,8 @@ mod perms;
 mod perms_user;
 mod records;
 mod reg_quiz_admin;
+mod mediainfo_audit;
+pub(crate) use mediainfo_audit::*;
 mod seedbox_review;
 pub(crate) use seedbox_review::*;
 mod reg_quiz_bank;
@@ -165,6 +169,7 @@ pub use cheat_accuracy::*;
 pub use deny::*;
 pub use email_domains::*;
 pub use webhook_ops::*;
+pub use cheat_ruleset_admin::*;
 pub use embed_rules::*;
 pub use forum::*;
 pub use forum_mods::*;

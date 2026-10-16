@@ -49,6 +49,10 @@ pub const JOBS: &[JobDef] = &[
         cadence: "60s",
     },
     JobDef {
+        name: "risk_backtest",
+        cadence: "24h",
+    },
+    JobDef {
         name: "hr_warn_ladder",
         cadence: "60s",
     },
