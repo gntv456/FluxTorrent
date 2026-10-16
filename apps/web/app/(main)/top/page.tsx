@@ -5,6 +5,7 @@ import { dateLocale, fmt } from "@/i18n/config";
 import type { Dict } from "@/i18n/zh-CN";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -178,12 +179,7 @@ export default async function TopPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Top Charts</div>
-          <h1 className="font-display text-2xl">{t.title}</h1>
-        </div>
-      </div>
+      <PageHeader eyebrow="Top Charts" title={t.title} />
       {err !== null ? (
         <ErrorPanel
           error={err}

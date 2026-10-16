@@ -1,4 +1,5 @@
 import { getTextbooks } from "@/lib/data";
+import { PageHeader } from "@/components/ui/page-header";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { normalizeError } from "@/lib/render-error";
 import Link from "next/link";
@@ -24,13 +25,11 @@ export default async function TextbooksPage() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Textbooks</div>
-          <h1 className="font-display text-2xl">{dict.textbooks.title}</h1>
-        </div>
-        <span className="sub">{dict.textbooks.subtitle}</span>
-      </div>
+      <PageHeader
+        eyebrow="Textbooks"
+        title={dict.textbooks.title}
+        sub={dict.textbooks.subtitle}
+      />
       {books.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center">
           <span aria-hidden className="text-[80px] leading-none">

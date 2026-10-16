@@ -2,6 +2,7 @@ import { getMyOrders } from "@/lib/data";
 import { getDict } from "@/i18n/server";
 import { requireModule } from "@/components/module-gate";
 import { MyOrdersTable } from "@/components/my-orders-table";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +22,11 @@ export default async function MyOrdersPage({
   const data = await getMyOrders(pageNum);
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Orders</div>
-          <h1 className="font-display text-2xl">{dict.myOrders.title}</h1>
-        </div>
-        <span className="sub">{dict.myOrders.subtitle}</span>
-      </div>
+      <PageHeader
+        eyebrow="Orders"
+        title={dict.myOrders.title}
+        sub={dict.myOrders.subtitle}
+      />
       <MyOrdersTable
         rows={data?.rows ?? []}
         total={data?.total ?? 0}

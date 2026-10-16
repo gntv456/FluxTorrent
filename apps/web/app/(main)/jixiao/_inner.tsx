@@ -6,6 +6,7 @@ import { PANEL_MD } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { PageHeader } from "@/components/ui/page-header";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { useIsCompact } from "@/lib/hooks/use-media";
@@ -124,13 +125,11 @@ export default function JixiaoPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Performance</div>
-          <h1 className="font-display text-2xl">{t.title}</h1>
-        </div>
-        <span className="sub">{t.subtitle}</span>
-      </div>
+      <PageHeader
+        eyebrow="Performance"
+        title={t.title}
+        sub={t.subtitle}
+      />
       {msg && (
         <p className="rounded-[var(--r-md)] bg-mint/30 p-3 text-sm text-ink">{msg}</p>
       )}

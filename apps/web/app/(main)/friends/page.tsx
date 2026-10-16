@@ -1,4 +1,5 @@
 import { getFriends, getPolls, getOffers } from "@/lib/data";
+import { PageHeader } from "@/components/ui/page-header";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { normalizeError } from "@/lib/render-error";
 import { PANEL_MD } from "@/lib/ui-classes";
@@ -30,13 +31,11 @@ export default async function FriendsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <div className="pghd">
-          <div>
-            <div className="pg-eyebrow">Friends</div>
-            <h1 className="font-display text-2xl">{dict.friends.title}</h1>
-          </div>
-          <span className="sub">{dict.friends.subtitle}</span>
-        </div>
+        <PageHeader
+          eyebrow="Friends"
+          title={dict.friends.title}
+          sub={dict.friends.subtitle}
+        />
         {/* 操作面板：加好友 / 接受申请 / 拉黑（此前只读列表，后端能力无入口） */}
         <section className={PANEL_MD}>
           <FriendsActions />

@@ -1,4 +1,5 @@
 import { getDict } from "@/i18n/server";
+import { PageHeader } from "@/components/ui/page-header";
 import { getMedalRarities, getMedals } from "@/lib/data";
 import { MedalWall } from "@/components/medal-wall";
 import { requireModule } from "@/components/module-gate";
@@ -20,13 +21,11 @@ export default async function MedalWallPage() {
   ]);
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Medal Wall</div>
-          <h1 className="font-display text-2xl">{dict.medalwall.title}</h1>
-        </div>
-        <span className="sub">{dict.medalwall.subtitle}</span>
-      </div>
+      <PageHeader
+        eyebrow="Medal Wall"
+        title={dict.medalwall.title}
+        sub={dict.medalwall.subtitle}
+      />
       <MedalWall rarities={rarities} medalKinds={medals.length} />
     </div>
   );

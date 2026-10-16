@@ -4,6 +4,7 @@ import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { PANEL_MD } from "@/lib/ui-classes";
 import { UnsubscribeButton } from "@/components/unsubscribe-button";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -54,13 +55,11 @@ export default async function SubscriptionsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Subscriptions</div>
-          <h1 className="font-display text-2xl">{t.title}</h1>
-        </div>
-        <span className="sub">{t.subtitle}</span>
-      </div>
+      <PageHeader
+        eyebrow="Subscriptions"
+        title={t.title}
+        sub={t.subtitle}
+      />
 
       <section className={PANEL_MD} data-sub-list>
         <h2 className="font-bold">{t.title}</h2>

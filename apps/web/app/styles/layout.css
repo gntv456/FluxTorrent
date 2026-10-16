@@ -1325,8 +1325,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   overflow-x: auto;
   position: static;
 }
-.usercp-nav h1,
-.usercp-nav h2 {
+.usercp-nav h1, .usercp-nav h2 {
   white-space: nowrap;
 }
 .usercp-nav a {
@@ -1348,8 +1347,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     overflow-x: auto;
     position: static;
   }
-  .usercp-nav h1,
-  .usercp-nav h2 {
+  .usercp-nav h1, .usercp-nav h2 {
     padding: 10px;
     font-size: 13px;
   }
@@ -1369,8 +1367,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
-.usercp-nav h1,
-.usercp-nav h2 {
+.usercp-nav h1, .usercp-nav h2 {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1383,8 +1380,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     var(--baozi-orange),
     var(--baozi-orange-dark));
 }
-.usercp-nav h1 span,
-.usercp-nav h2 span {
+.usercp-nav h1 span, .usercp-nav h2 span {
   font-size: 16px;
 }
 .usercp-nav a {
@@ -1855,8 +1851,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     flex-direction: row;
     overflow-x: auto;
   }
-  .usercp-nav h1,
-  .usercp-nav h2 {
+  .usercp-nav h1, .usercp-nav h2 {
     white-space: nowrap;
   }
   .usercp-nav a {
