@@ -161,7 +161,7 @@ fn default_limit() -> i64 {
 pub(crate) async fn deliveries(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<LedgerQuery>,
+    q: crate::http::Q<LedgerQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, perm::SETTINGS_MANAGE).await?;
