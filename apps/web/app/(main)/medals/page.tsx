@@ -4,6 +4,7 @@ import { MedalProgress } from "@/components/medal-progress";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -28,30 +29,30 @@ export default async function MedalsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Medal Hall</div>
-          <h1 className="font-display text-2xl">{dict.medals.title}</h1>
-        </div>
-        <span className="sub">{dict.medals.subtitle}</span>
-        <div className="aside">
-          <span className="pill">
-            {fmt(dict.medals.mineOwned, {
-              n: owned.length,
-              total: medals.length,
-            })}
-          </span>
-          <span className="pill">
-            {fmt(dict.medals.wornCount, {
-              n: wearing.length,
-              max: maxWorn,
-            })}
-          </span>
-          <span className="pill">
-            {dict.medals.mineBonus.replace("{n}", bonus.toFixed(2))}
-          </span>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Medal Hall"
+        title={dict.medals.title}
+        sub={dict.medals.subtitle}
+        aside={
+          <>
+            <span className="pill">
+              {fmt(dict.medals.mineOwned, {
+                n: owned.length,
+                total: medals.length,
+              })}
+            </span>
+            <span className="pill">
+              {fmt(dict.medals.wornCount, {
+                n: wearing.length,
+                max: maxWorn,
+              })}
+            </span>
+            <span className="pill">
+              {dict.medals.mineBonus.replace("{n}", bonus.toFixed(2))}
+            </span>
+          </>
+        }
+      />
       <MedalHall medals={medals} rarities={rarities} maxWorn={maxWorn} />
       {/* 0382 自动成就进度：放在殿堂之下，让「已有啥」与「还差啥」
           连着看——两者割裂会让用户以为勋章只能买。 */}

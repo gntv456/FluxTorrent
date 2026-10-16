@@ -1,4 +1,5 @@
 import { getDict } from "@/i18n/server";
+import { PageHeader } from "@/components/ui/page-header";
 import { BankCard } from "@/components/bank-actions";
 import { requireModule } from "@/components/module-gate";
 
@@ -13,13 +14,11 @@ export default async function BankPage() {
   const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Bank</div>
-          <h1 className="font-display text-2xl">{dict.bank.title}</h1>
-        </div>
-        <span className="sub">{dict.bank.subtitle}</span>
-      </div>
+      <PageHeader
+        eyebrow="Bank"
+        title={dict.bank.title}
+        sub={dict.bank.subtitle}
+      />
       <BankCard />
     </div>
   );

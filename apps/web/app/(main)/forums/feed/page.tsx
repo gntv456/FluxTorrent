@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { getDict } from "@/i18n/server";
 import { requireModule } from "@/components/module-gate";
 import { dateLocale } from "@/i18n/config";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -34,17 +35,15 @@ export default async function FeedPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Following</div>
-          <h1 className="font-display text-2xl">{t.feedTitle}</h1>
-        </div>
-        <div className="aside">
+      <PageHeader
+        eyebrow="Following"
+        title={t.feedTitle}
+        aside={
           <Link href="/forums" className="text-sky hover:underline">
             {t.backToForums}
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* 我的关注概况：告诉用户流是从哪来的，也给出取消入口（取消在各自页面上的关注按钮） */}
       {viaCount > 0 && (

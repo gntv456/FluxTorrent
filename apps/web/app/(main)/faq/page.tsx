@@ -1,5 +1,6 @@
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +29,7 @@ export default async function FaqPage() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">FAQ</div>
-          <h1 className="font-display text-2xl">{dict.faq.title}</h1>
-        </div>
-      </div>
+      <PageHeader eyebrow="FAQ" title={dict.faq.title} />
       {[...groups.entries()].map(([cat, list]) => (
         <section key={cat} className="brand-panel">
           <div className="brand-panel__head">

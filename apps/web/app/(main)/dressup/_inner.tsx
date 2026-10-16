@@ -4,6 +4,7 @@ import { PANEL_LG } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { PageHeader } from "@/components/ui/page-header";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { FramePreview } from "@/components/frame-preview";
@@ -117,13 +118,11 @@ export default function DressupPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Dress Up</div>
-          <h1 className="font-display text-2xl">{dict.dressup.title}</h1>
-        </div>
-        <span className="sub">{dict.dressup.subtitle}</span>
-      </div>
+      <PageHeader
+        eyebrow="Dress Up"
+        title={dict.dressup.title}
+        sub={dict.dressup.subtitle}
+      />
 
       <StatePanel
         loading={!loaded}

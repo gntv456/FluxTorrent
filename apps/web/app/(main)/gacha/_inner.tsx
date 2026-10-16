@@ -4,6 +4,7 @@ import { GachaRates } from "@/components/gacha-rates";
 import { GachaAlbum } from "@/components/gacha-album";
 import { GachaTabbed } from "@/components/gacha-tabbed";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -139,12 +140,7 @@ export default async function GachaDisclosurePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Gacha</div>
-          <h1 className="font-display text-2xl">{dict.nav.gachaDisclosure}</h1>
-        </div>
-      </div>
+      <PageHeader eyebrow="Gacha" title={dict.nav.gachaDisclosure} />
       {/* 样图⑧三 Tab：卡池 / 概率 / 我的卡册（RSC 预渲染，客户端只做显隐） */}
       <GachaTabbed
         labels={{

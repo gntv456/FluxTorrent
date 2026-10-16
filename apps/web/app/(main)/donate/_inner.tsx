@@ -7,6 +7,7 @@ import { dateLocale, fmt } from "@/i18n/config";
 import { FundingPanel } from "@/components/funding-panel";
 import { LedgerTable, type LedgerRow } from "./_inner-ledger";
 import { DonateTiers, type DonationTier } from "./_parts/donate-tiers";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface DonatePlan {
   id: number;
@@ -129,14 +130,12 @@ export default function DonatePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Donation</div>
-          <h1 className="font-display text-2xl">{t.title}</h1>
-        </div>
-        <span className="sub">{t.subtitle}</span>
-        <div className="aside">
-          {vipActive && (
+      <PageHeader
+        eyebrow="Donation"
+        title={t.title}
+        sub={t.subtitle}
+        aside={
+          vipActive ? (
             <div className="donate-vip-badge">
               VIP ·{" "}
               {t.vipUntil.replace(
@@ -146,9 +145,9 @@ export default function DonatePage() {
                 ),
               )}
             </div>
-          )}
-        </div>
-      </div>
+          ) : null
+        }
+      />
       {msg && (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
           {msg}

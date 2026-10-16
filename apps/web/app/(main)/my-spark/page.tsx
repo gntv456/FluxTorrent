@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { StatePanel } from "@/components/ui/state-panel";
 import { SkeletonRows } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface SparkInfo {
   balance: number;
@@ -90,23 +91,21 @@ export default function MySparkPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">My Spark</div>
-          <h1 className="font-display text-2xl">
-            {t.title.replace("{magic}", currency)}
-          </h1>
-        </div>
-        <span className="sub">{t.subtitle}</span>
-        <div className="aside">
-          <span className="pill">
-            {t.seedingCount} {info ? info.seeding_count : "—"}
-          </span>
-          <span className="pill">
-            {t.hourly} {info ? `+${info.hourly_estimate}` : "—"}
-          </span>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="My Spark"
+        title={t.title.replace("{magic}", currency)}
+        sub={t.subtitle}
+        aside={
+          <>
+            <span className="pill">
+              {t.seedingCount} {info ? info.seeding_count : "—"}
+            </span>
+            <span className="pill">
+              {t.hourly} {info ? `+${info.hourly_estimate}` : "—"}
+            </span>
+          </>
+        }
+      />
 
       <div className="pgstats">
         <div>

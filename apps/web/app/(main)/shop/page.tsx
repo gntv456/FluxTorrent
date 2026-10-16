@@ -4,6 +4,7 @@ import { VoucherPanel } from "@/components/voucher-panel";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { requireModule } from "@/components/module-gate";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -20,15 +21,11 @@ export default async function ShopPage() {
   const magic = (s: string) => s.replaceAll("{magic}", currency);
   return (
     <div className="flex flex-col gap-4">
-      <div className="pghd">
-        <div>
-          <div className="pg-eyebrow">Magic Shop</div>
-          <h1 className="font-display text-2xl">
-            {magic(dict.shop.title)}
-          </h1>
-        </div>
-        <span className="sub">{magic(dict.shop.subtitle)}</span>
-      </div>
+      <PageHeader
+        eyebrow="Magic Shop"
+        title={magic(dict.shop.title)}
+        sub={magic(dict.shop.subtitle)}
+      />
 
       <div className="shop-bal">
         <div className="flex flex-wrap items-baseline gap-2">
