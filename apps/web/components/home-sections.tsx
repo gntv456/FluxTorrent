@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { HomeNewsModal } from "@/components/home-news-modal";
 import { HomeNewsPoster } from "@/components/home-news-poster";
 import { ShoutBox } from "@/components/shout-box";
 import { FunBox } from "@/components/fun-box";
@@ -259,40 +260,14 @@ export function HomeSections({
         );
       })}
 
-      {/* ==== 公告弹窗 ==== */}
+      {/* ==== 公告弹窗（原生 dialog + showModal 收在子组件里）==== */}
       {modal !== null && (
-        <dialog
-          className="home-news-modal"
-          open
-          onClick={(e) => e.target === e.currentTarget && setModal(null)}
-        >
-          <section className="home-news-modal__panel">
-            <header className="home-news-modal__head">
-              <div>
-                <span>{t.newsBadge}</span>
-                <h2>{data.news.find((n) => n.id === modal)?.title}</h2>
-              </div>
-              <button
-                type="button"
-                aria-label={t.closeModal}
-                title={t.closeModal}
-                onClick={() => setModal(null)}
-              >
-                ×
-              </button>
-            </header>
-            {/* 视频内嵌（0190）：iframe/video 全宽 16:9 响应式（任意子代选择器） */}
-            <div
-              className={"home-news-modal__body " +
-                "[&_iframe]:block [&_iframe]:aspect-video " +
-                "[&_iframe]:w-full [&_iframe]:max-w-full " +
-                "[&_iframe]:border-0 [&_video]:w-full [&_video]:max-w-full"}
-              dangerouslySetInnerHTML={{
-                __html: data.news.find((n) => n.id === modal)?.body ?? "",
-              }}
-            />
-          </section>
-        </dialog>
+        <HomeNewsModal
+          item={
+            data.news.find((n) => n.id === modal) ?? { title: "", body: "" }
+          }
+          onClose={() => setModal(null)}
+        />
       )}
     </div>
   );

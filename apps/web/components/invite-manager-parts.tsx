@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { Modal } from "@/components/modal";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
@@ -170,14 +171,8 @@ export function SendEmailDialog({
       : t.suffixBanned
     : null;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="dialog"
-      aria-modal="true"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="w-full max-w-md rounded-[var(--r-lg)] border border-line bg-[var(--baozi-paper)] p-5 shadow-[var(--shadow-card)]">
-        <h2 className="font-display text-lg">{t.sendEmailTitle}</h2>
+    <Modal open onClose={onClose} title={t.sendEmailTitle}>
+      <div className="w-full max-w-md">
         <p className="mt-1 break-all text-xs text-sub">
           {t.sendEmailNote}
           <br />
@@ -213,6 +208,6 @@ export function SendEmailDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

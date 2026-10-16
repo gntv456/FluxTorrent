@@ -3386,6 +3386,7 @@ const zhCnBase = {
     prompt: "补签日期（YYYY-MM-DD，限过去 7 天）",
     note: "消耗补签卡（商店购买），补过去 7 天内漏签",
     ok: "补签成功",
+    holdSuffix: "（持有 {n} 张）",
   },
   reseed2: {
     btn: "请求补种",

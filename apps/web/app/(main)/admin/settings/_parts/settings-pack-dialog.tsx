@@ -7,6 +7,7 @@
  */
 
 import { useState } from "react";
+import { Modal } from "@/components/modal";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
@@ -249,26 +250,7 @@ export function ContentPackDialog({
   const { dict, locale } = useI18n();
   const s = dict.settingsAdmin;
   return (
-    <div
-      className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-3"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--r-md)] bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center gap-2">
-          <h2 className="flex-1 text-sm font-bold text-ink">{s.packTitle}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] rounded-full border border-line px-3 text-xs font-bold"
-          >
-            {s.close}
-          </button>
-        </div>
+    <Modal open onClose={onClose} title={s.packTitle}>
 
         {/* 本站导出：把当前分类学 / 外观打成包文件 */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -472,7 +454,6 @@ export function ContentPackDialog({
             ))}
           </ul>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

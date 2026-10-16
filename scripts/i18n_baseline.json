@@ -284,7 +284,7 @@
  "components/admin-sections-kinds.tsx": [],
  "components/admin-sections.tsx": [],
  "components/admin-shell.tsx": [
-  246
+  234
  ],
  "components/admin-subtitles-awards.tsx": [],
  "components/admin-tagdict-form.tsx": [],
@@ -440,9 +440,9 @@
  "components/home-news-poster.tsx": [],
  "components/home-resource-stats.tsx": [],
  "components/home-resub-button.tsx": [
-  14,
-  37,
-  40
+  16,
+  39,
+  42
  ],
  "components/home-sections.tsx": [],
  "components/home-site-data.tsx": [],

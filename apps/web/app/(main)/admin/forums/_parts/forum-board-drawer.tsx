@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Modal } from "@/components/modal";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
@@ -13,10 +14,6 @@ import {
   type ClassTuple,
   type ForumAdminForum,
 } from "./forum-structure-types";
-
-const DRAWER_CLS =
-  "relative h-full w-[368px] overflow-y-auto border-l " +
-  "border-line bg-cream p-5 shadow-2xl";
 
 interface Form {
   name: string;
@@ -143,18 +140,13 @@ export function ForumBoardDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button
-        type="button"
-        aria-label={t.close}
-        className="absolute inset-0 bg-ink/30"
-        onClick={onClose}
-      />
-      <section className={DRAWER_CLS}>
-        <h3 className="font-display text-base font-bold text-ink">
-          {forum ? t.editTitle : t.newTitle}
-        </h3>
-        <p className="mb-4 text-xs text-sub">
+    <Modal
+      open
+      onClose={onClose}
+      title={forum ? t.editTitle : t.newTitle}
+      align="right"
+    >
+      <p className="mb-4 text-xs text-sub">
           {forum
             ? fmt(t.editSub, {
                 name: forum.name,
@@ -284,7 +276,6 @@ export function ForumBoardDrawer({
             {forum ? t.saveBtn : t.boardCreateBtn}
           </button>
         </div>
-      </section>
-    </div>
+    </Modal>
   );
 }

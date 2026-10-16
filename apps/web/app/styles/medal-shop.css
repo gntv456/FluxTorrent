@@ -209,7 +209,11 @@
   border-radius: var(--r-lg);
   background: var(--surface-card);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  /* 徽章槽位的 hover 说明（.slot-tip）在 .slot 里 absolute 向上溢出，
+     首/末列的气泡横向越出卡片 ~6px（1440 视口实测 tipL=98 vs cardL=104），
+     被这层裁剪切掉。卡片自身圆角会裁自己的背景，子元素没有贴边的底色，
+     所以这里放开裁剪、只留圆角。 */
+  overflow: visible;
 }
 .honor:hover {
   box-shadow: var(--shadow-hover);

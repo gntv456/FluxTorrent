@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Modal } from "@/components/modal";
 import { api } from "@/lib/api-client";
+import { fmt } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { clientUuid } from "@/lib/client-uuid";
 
@@ -58,21 +60,12 @@ export function ResubButton({ cards }: { cards: number }) {
           ×{cards}
         </span>
       </button>
-      {open && (
-        <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-3"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-1 text-sm font-bold">
-              {t.btn}（持有 {cards} 张）
-            </h3>
-            <p className="mb-3 text-xs text-sub">{dict.attResub2.note}</p>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t.btn + fmt(t.holdSuffix, { n: cards })}
+      >
+        <div className="flex flex-col">
             {cards === 0 ? (
               <p className="rounded-[var(--r-md)] bg-sun/20 p-3 text-xs text-ink">
                 暂无可用补签卡：可到
@@ -100,15 +93,8 @@ export function ResubButton({ cards }: { cards: number }) {
                 {msg}
               </p>
             )}
-            <button
-              className="mt-3 min-h-[32px] rounded-full border border-line px-3 text-xs"
-              onClick={() => setOpen(false)}
-            >
-              关闭
-            </button>
-          </div>
         </div>
-      )}
+      </Modal>
     </>
   );
 }
