@@ -184,14 +184,14 @@
  "lib/bbcode.tsx": [],
  "lib/format.tsx": [],
  "components/admin-applications.tsx": [
-  19,
   20,
   21,
-  54,
-  55,
-  69,
-  72,
-  103
+  22,
+  58,
+  59,
+  76,
+  79,
+  110
  ],
  "components/admin-arcade-crops.tsx": [],
  "components/admin-arcade-items-new.tsx": [],

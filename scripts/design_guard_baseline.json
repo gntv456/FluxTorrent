@@ -1828,13 +1828,13 @@
  },
  "components/admin-applications.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   84,
-   111,
-   120
+   91,
+   118,
+   127
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-arcade-crops.tsx": {
   "h1": [],
@@ -2252,11 +2252,11 @@
  },
  "components/admin-tasks-exams.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   39
+   41
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-tasks-form.tsx": {
   "h1": [],
@@ -2426,26 +2426,26 @@
  },
  "components/admin-user-detail.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   36,
-   44,
-   121,
-   139,
-   144,
-   173
+   32,
+   40,
+   117,
+   135,
+   140,
+   169
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-user-fields-panel.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   30,
-   108,
-   200
+   31,
+   116,
+   208
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-userlogs.tsx": {
   "h1": [],
@@ -2563,15 +2563,15 @@
  },
  "components/cheat-appeal-queue.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   94,
-   95,
-   119,
-   205,
-   260
+   96,
+   97,
+   121,
+   207,
+   262
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/cheat-case-detail.tsx": {
   "h1": [],
@@ -2581,15 +2581,15 @@
  },
  "components/cheat-case-panel.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/cheat-events-table.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/cheater-box.tsx": {
   "h1": [],
@@ -3062,13 +3062,9 @@
  },
  "components/invite-manager.tsx": {
   "h1": [],
-  "palette": [
-   233,
-   242,
-   302
-  ],
-  "color": [],
-  "h1First": null
+  "h1First": null,
+  "palette": [],
+  "color": []
  },
  "components/latest-posters.tsx": {
   "h1": [],
@@ -3256,11 +3252,11 @@
  },
  "components/notice-prefs.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   68
+   76
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/passkeys-card.tsx": {
   "h1": [],
@@ -3407,9 +3403,9 @@
  },
  "components/risk-watchlist.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/rss-builder.tsx": {
   "h1": [],
@@ -3509,12 +3505,12 @@
  },
  "components/staff-box-desk.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   129,
-   137
+   130,
+   138
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/staff-box-pm.tsx": {
   "h1": [],
@@ -3539,9 +3535,9 @@
  },
  "components/staff-box.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/staff-custom-pages-help.tsx": {
   "h1": [],
@@ -3698,9 +3694,9 @@
  },
  "components/staff-tools-security-domains.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/staff-tools-security-panels.tsx": {
   "h1": [],
@@ -3914,13 +3910,13 @@
  },
  "components/team-panel.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
    129,
    177,
    250
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/textbook-link-button.tsx": {
   "h1": [],

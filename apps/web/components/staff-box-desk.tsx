@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { ErrorPanel } from "@/components/ui/error-panel";
 
 /** 管理组信箱共享契约（从 components/staff-box.tsx 按域拆出） */
 
@@ -159,18 +160,22 @@ export function DeskTable({
 /** 工单视图状态装载（从 components/staff-box.tsx 按域拆出）：
  *  按状态拉取 stafftickets，四态标签映射 tk.stNew/stProgress/…。 */
 export function useTickets(status: string) {
-  const [ticketRows, setTicketRows] = useState<TicketRow[] | null>(null);
+  const [ticketRows, setTicketRows] = useState<TicketRow[] | null>(
+    null,
+  );
+  const [ticketErr, setTicketErr] = useState<unknown>(null);
   const loadTickets = useCallback(() => {
     const qs = status ? `?status=${status}` : "";
+    setTicketErr(null);
     api
       .get<TicketRow[]>(`/api/v1/stafftickets${qs}`)
       .then(setTicketRows)
-      .catch(() => setTicketRows([]));
+      .catch((e) => setTicketErr(e));
   }, [status]);
   useEffect(() => {
     loadTickets();
   }, [loadTickets]);
-  return { ticketRows, loadTickets };
+  return { ticketRows, ticketErr, loadTickets };
 }
 
 export function ticketStatusLabel(

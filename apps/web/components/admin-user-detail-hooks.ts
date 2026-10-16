@@ -199,8 +199,11 @@ export function useDetailTabs(uid: number) {
   } | null>(null);
   const [loginsPage, setLoginsPage] = useState(1);
   const [seeds, setSeeds] = useState<SeedRow[] | null>(null);
+  const [tabErr, setTabErr] = useState<unknown>(null);
+  const [tabTick, setTabTick] = useState(0);
 
   useEffect(() => {
+    setTabErr(null);
     if (tab === "spark") {
       api
         .get<{ rows: SparkRow[]; total: number }>(
@@ -208,7 +211,7 @@ export function useDetailTabs(uid: number) {
             `?user_id=${uid}&page=${sparkPage}&per_page=${PER_PAGE}`,
         )
         .then(setSpark)
-        .catch(() => setSpark(null));
+        .catch((e) => setTabErr(e));
     } else if (tab === "logins") {
       api
         .get<{ rows: LoginRow[]; total: number }>(
@@ -216,14 +219,14 @@ export function useDetailTabs(uid: number) {
             `?user_id=${uid}&page=${loginsPage}&per_page=${PER_PAGE}`,
         )
         .then(setLogins)
-        .catch(() => setLogins(null));
+        .catch((e) => setTabErr(e));
     } else if (tab === "seeding" && seeds === null) {
       api
         .get<SeedRow[]>(`/api/v1/admin/users/${uid}/snatches`)
         .then(setSeeds)
-        .catch(() => setSeeds([]));
+        .catch((e) => setTabErr(e));
     }
-  }, [tab, uid, sparkPage, loginsPage, seeds]);
+  }, [tab, uid, sparkPage, loginsPage, seeds, tabTick]);
 
   return {
     tab,
@@ -235,5 +238,7 @@ export function useDetailTabs(uid: number) {
     loginsPage,
     setLoginsPage,
     seeds,
+    tabErr,
+    reloadTab: () => setTabTick((v) => v + 1),
   };
 }
