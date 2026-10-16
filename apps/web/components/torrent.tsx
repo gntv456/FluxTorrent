@@ -8,6 +8,7 @@ import {
 } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
+import { Badge } from "@/components/ui/badge";
 
 /**
  * 种子行卡片（设计稿 B3 桌面 .tor-card / C2 移动 .m-tor 的统一组件）。
@@ -32,9 +33,9 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           {t.sticky && (
-            <span className="sticker bg-sun text-ink">
+            <Badge tone="warn">
               {dict.torrent.sticky}
-            </span>
+            </Badge>
           )}
           <span className="truncate font-bold text-ink">{t.name}</span>
           {promo && (
@@ -43,9 +44,9 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
             </span>
           )}
           {t.official && (
-            <span className="sticker bg-indigo text-white">
+            <Badge tone="brand" variant="solid">
               {dict.torrent.official}
-            </span>
+            </Badge>
           )}
         </div>
         {t.small_descr && (

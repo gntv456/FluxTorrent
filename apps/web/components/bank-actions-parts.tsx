@@ -2,6 +2,7 @@
 
 import type { BankDeposit } from "@/lib/data";
 import { useI18n } from "@/i18n/client";
+import { Badge } from "@/components/ui/badge";
 
 /** 银行辅助件（从 components/bank-actions.tsx 按域拆出）：
  *  资产概览 Stat 格子 + 定期存款行 DepositRow（含未到期支取提示）。
@@ -51,11 +52,9 @@ export function DepositRow({
           ? ` · ${dict.bank.daysLeft.replace("{n}", String(days))}`
           : ""}
       </span>
-      <span
-        className={`sticker num ${d.status === 0 ? "bg-sun text-ink" : "bg-mint/30 text-ink"}`}
-      >
+      <Badge tone={d.status === 0 ? "warn" : "success"} className="num">
         {d.status === 0 ? dict.bank.locked : dict.bank.matured}
-      </span>
+      </Badge>
       {d.status === 0 && (
         <button
           type="button"

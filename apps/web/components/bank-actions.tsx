@@ -14,6 +14,7 @@ import { BankDepositPanel } from "@/components/bank-actions-deposit";
 import { BankLoanPanel, LoanHistoryRow } from "@/components/bank-actions-loan";
 import { clientUuid } from "@/lib/client-uuid";
 import { toast } from "@/components/ui/toast";
+import { Badge } from "@/components/ui/badge";
 
 // 银行系统（火花银行对齐）：活期复利 + 定期 + 贷款 + 资产概览。
 // 拆出：资产格/存款行 @/components/bank-actions-parts、
@@ -226,13 +227,11 @@ export function BankCard() {
         <span>
           {dict.bank.siteTodayRecords}: {fmt(ov.site.today_interest_records)}
         </span>
-        <span
-          className={`ml-auto sticker ${ov.site.settle_healthy ? "bg-mint/40 text-ink" : "bg-sun/70 text-ink"}`}
-        >
-          {ov.site.settle_healthy
-            ? dict.bank.settleOk
-            : dict.bank.settlePending}
-        </span>
+        <Badge
+          tone={ov.site.settle_healthy ? "success" : "warn"}
+          className="ml-auto">
+          {ov.site.settle_healthy ? dict.bank.settleOk : dict.bank.settlePending}
+        </Badge>
       </div>
 
       {/* 资产概览 */}
@@ -312,13 +311,13 @@ export function BankCard() {
                 key={r.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 py-2 text-xs"
               >
-                <span className="sticker num bg-mint/30 text-ink">
+                <Badge tone="success" className="num">
                   {r.kind === "demand"
                     ? dict.bank.kindDemand
                     : r.kind === "fixed"
                       ? dict.bank.kindFixed
                       : dict.bank.kindLoan}
-                </span>
+                </Badge>
                 <span className="num font-bold">
                   +{fmt(r.amount)} {currency}
                 </span>

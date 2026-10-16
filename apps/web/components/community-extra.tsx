@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { OfferItem, PollItem } from "@/lib/data";
+import { Badge } from "@/components/ui/badge";
 
 /** 趣味投票（参考站 funvote 口径：一人一票，投票 +1 火花） */
 export function PollBox({ empty }: { empty: string }) {
@@ -125,7 +126,7 @@ export function OfferList({
             </p>
             <p className="text-xs text-sub">{o.username ?? "—"}</p>
           </div>
-          <span className="sticker bg-sun text-ink num">▲ {o.votes}</span>
+          <Badge tone="warn" className="num">▲ {o.votes}</Badge>
         </li>
       ))}
     </ul>

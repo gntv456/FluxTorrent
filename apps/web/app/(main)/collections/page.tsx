@@ -5,6 +5,7 @@ import { ErrorPanel } from "@/components/ui/error-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { normalizeError } from "@/lib/render-error";
 import { SkeletonRows } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -57,15 +58,12 @@ export default async function CollectionsPage() {
             >
               <div className="flex items-center justify-between">
                 <b className="clamp2">{c.name}</b>
-                <span
-                  className={`sticker ${
-                    c.kind === "series"
-                      ? "bg-indigo text-white"
-                      : "bg-sun text-ink"
-                  }`}
+                <Badge
+                  tone={c.kind === "series" ? "brand" : "warn"}
+                  variant={c.kind === "series" ? "solid" : "soft"}
                 >
                   {c.kind === "series" ? t.seriesTag : t.collectionTag}
-                </span>
+                </Badge>
               </div>
               {c.descr && (
                 <p className="mt-1 line-clamp-2 text-xs text-sub">{c.descr}</p>

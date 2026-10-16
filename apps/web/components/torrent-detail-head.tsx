@@ -11,6 +11,7 @@ import type { Dict } from "@/i18n/server";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { TorrentDetailExt } from "@/components/torrent-detail-blocks";
 import type { RipLog } from "@/components/torrent-rip-logs";
+import { Badge } from "@/components/ui/badge";
 
 /** 种子详情页海报头（馒头/阳光口径：左海报 + 右主信息 + 操作行 + 状态卡）。
  *  从 app/(main)/torrent/[id]/page.tsx 按域拆出；数据装载与派生值留在 page.tsx。
@@ -108,9 +109,9 @@ export function TorrentHead({
 
         <div className="td-head__badges">
           {t.sticky && (
-            <span className="sticker bg-sun text-ink">
+            <Badge tone="warn">
               {dict.torrent.sticky}
-            </span>
+            </Badge>
           )}
           {promo && (
             <span className={`sticker ${promo.className}`}>
@@ -123,19 +124,17 @@ export function TorrentHead({
             </span>
           )}
           {t.official && (
-            <span className="sticker bg-indigo text-white">
+            <Badge tone="brand" variant="solid">
               {dict.torrent.official}
-            </span>
+            </Badge>
           )}
           {ripScore !== null && (
-            <span
-              className={`sticker ${
-                ripScore >= 100 ? "bg-sun text-ink" : "bg-indigo text-ink"
-              }`}
+            <Badge
+              tone={ripScore >= 100 ? "warn" : "brand"}
               title={d.ripLogs}
             >
               {d.ripBadge.replace("{n}", `${ripScore}`)}
-            </span>
+            </Badge>
           )}
           {t.anonymous && (
             <span className="sticker td-anon-sticker">

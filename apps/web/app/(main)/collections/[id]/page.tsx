@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { formatBytes } from "@/lib/format";
 import { getDict } from "@/i18n/server";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -56,13 +57,12 @@ export default async function CollectionDetailPage({
       </nav>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-2xl">{c.name}</h1>
-        <span
-          className={`sticker ${
-            c.kind === "series" ? "bg-indigo text-white" : "bg-sun text-ink"
-          }`}
+        <Badge
+          tone={c.kind === "series" ? "brand" : "warn"}
+          variant={c.kind === "series" ? "solid" : "soft"}
         >
           {c.kind === "series" ? t.seriesTag : t.collectionTag}
-        </span>
+        </Badge>
       </div>
       {c.descr && <p className="text-sm text-sub">{c.descr}</p>}
       <ul className="flex list-none flex-col gap-2 p-0">

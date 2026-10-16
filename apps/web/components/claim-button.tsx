@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { Badge } from "@/components/ui/badge";
 
 /** 保种认领按钮（旧站 claim 口径：无人认领的保种可一键认领） */
 export function ClaimButton({
@@ -22,7 +23,7 @@ export function ClaimButton({
   const [busy, setBusy] = useState(false);
 
   if (done) {
-    return <span className="sticker bg-mint/30 text-ink">{claimedLabel}</span>;
+    return <Badge tone="success">{claimedLabel}</Badge>;
   }
   return (
     <span className="flex flex-col items-end gap-1">

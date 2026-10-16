@@ -8,6 +8,7 @@ import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { FollowButton } from "@/components/forum-follow";
 import { MedalIcon } from "@/components/medal-icon";
 import { Icon } from "@/components/icons";
+import { Badge } from "@/components/ui/badge";
 import type { Locale } from "@/i18n/config";
 import { dateLocale } from "@/i18n/config";
 import type { ProfileData } from "./profile-types";
@@ -77,9 +78,7 @@ export function ProfileHero({
             {/* 单表达式拼好整段文本：SSR 与水合的文本节点划分一致，避免 418 */}
             {`● ${data.online ? t.online : t.offline}`}
           </span>
-          {p.donor && (
-            <span className="sticker bg-sun text-ink">{`♥ ${t.donor}`}</span>
-          )}
+          {p.donor && <Badge tone="warn">{`♥ ${t.donor}`}</Badge>}
         </div>
         {/* 等级/头衔 + 关注（0121）：FollowButton 自拉状态，is_self 时自行隐藏 */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-sub">

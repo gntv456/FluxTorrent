@@ -10,6 +10,7 @@ import { useIsCompact } from "@/lib/hooks/use-media";
 import { TorrentRowList } from "@/components/torrent-row-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonRows } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 interface SnatchRow {
   torrent_id: number;
@@ -105,31 +106,32 @@ export function TorrentListClient({
                   {r.name}
                 </Link>
                 {r.seeding && (
-                  <span className="sticker ml-1 bg-mint/30">
+                  <Badge tone="success" className="ml-1">
                     {dict.mytl.badgeSeeding}
-                  </span>
+                  </Badge>
                 )}
                 {r.leeching && (
-                  <span className="sticker ml-1 bg-sun">
+                  <Badge tone="warn" className="ml-1">
                     {dict.mytl.badgeLeeching}
-                  </span>
+                  </Badge>
                 )}
                 {/* 0284 P0-1：自己发布的三态徽标 + 被拒原因（title 悬停全文） */}
                 {kind === "uploads" &&
                   r.approval_status === 0 && (
-                    <span className="sticker ml-1 bg-sky/30">
+                    <Badge tone="brand" className="ml-1">
                       {dict.mytl.badgePending}
-                    </span>
+                    </Badge>
                   )}
                 {kind === "uploads" && r.approval_status === 2 && (
                   <>
-                    <span
-                      className="sticker ml-1 bg-coral/40"
+                    <Badge
+                      tone="danger"
+                      className="ml-1"
                       title={r.deny_reason ?? ""}
                     >
                       {dict.mytl.badgeRejected}
                       {r.deny_reason ? `：${r.deny_reason}` : ""}
-                    </span>
+                    </Badge>
                     <button
                       onClick={() => resubmit(r.torrent_id)}
                       disabled={busyId === r.torrent_id}

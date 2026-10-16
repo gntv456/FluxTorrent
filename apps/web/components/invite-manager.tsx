@@ -10,6 +10,7 @@ import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
 import { clientUuid } from "@/lib/client-uuid";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
 
 export interface InviteItem {
   id: number;
@@ -316,9 +317,8 @@ export function InviteManager() {
                         {u.username}
                       </a>
                       {u.status >= 2 && (
-                        <span className="ml-2 sticker bg-cloud text-sub">
-                          {t.invBanned}
-                        </span>
+                        <Badge tone="neutral" className="ml-2">
+                          {t.invBanned}</Badge>
                       )}
                     </td>
                     <td className="text-xs text-sub">{u.class_name ?? "—"}</td>
