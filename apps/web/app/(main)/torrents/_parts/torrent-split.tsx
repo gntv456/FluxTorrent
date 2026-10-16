@@ -8,7 +8,7 @@ import { useI18n } from "@/i18n/client";
 /** 种子页双栏排布（M4，方案 §6/§4.4）：md–lg1（含折叠展开一档）启用
  *  「列表-详情」双栏：左栏列表（本页 items 由父级传入渲染）+ 右栏详情
  *  内联预览。选中态存 URL ?selected=（形态切换/分享/刷新不丢）。
- *  合拢回 <md 自动退化为标准导航（本组件不渲染）。
+ *  合拢回 <md、以及 ≥lg（桌面顶栏接管）退化为标准导航（本组件不渲染）。
  *  右栏内容按需拉取 aggregate（仅选中时）。
  *  折叠态（folded）经 .hinge-safe 避让铰链：双栏不跨折痕。 */
 
@@ -24,7 +24,14 @@ export function TorrentSplitView({
   const tr = dict.tsplit;
   const sp = useSearchParams();
   const router = useRouter();
-  const medium = useMediaQuery("(min-width: 768px)", false);
+  // 双栏区间必须和 pages.css「种子页双栏」一致（md–lg，≥lg 右栏 display:none
+  // 由桌面顶栏接管，同 tablet-sidebar 口径）。少一个上界，≥1024 的点击就会
+  // 被 preventDefault 改写 ?selected=，而预览栏并不在页面上——用户看到的
+  // 就是「点种子没反应」。
+  const dual = useMediaQuery(
+    "(min-width: 768px) and (max-width: 1023px)",
+    false,
+  );
   const posture = usePosture();
   const selected = sp.get("selected");
   const [detail, setDetail] = useState<{
@@ -37,7 +44,7 @@ export function TorrentSplitView({
 
   // 选中项按需拉取（仅双栏态）
   useEffect(() => {
-    if (!medium || !selected) {
+    if (!dual || !selected) {
       setDetail(null);
       return;
     }
@@ -80,9 +87,9 @@ export function TorrentSplitView({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [medium, selected]);
+  }, [dual, selected]);
 
-  if (!medium) return <>{renderList}</>;
+  if (!dual) return <>{renderList}</>;
 
   const select = (id: number | null) => {
     const next = new URLSearchParams(sp.toString());
