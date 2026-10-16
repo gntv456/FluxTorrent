@@ -35,8 +35,38 @@ use std::collections::HashMap;
 /// 证据窗口：decay(90d, 半衰期 14d) ≈ 0.0116，满配家族（12.5 分）此时
 /// 仅贡献 ≈0.14 分——更早的证据对分数已无实际影响，截窗省全表扫描。
 const RECENT_DAYS: i32 = 90;
-/// 规则集版本：公式/权重换代时 +1（面板与 breakdown 可核对口径）。
-const RULESET_VER: i32 = 1;
+/// 规则集版本（0391）。
+///
+/// 此前是**硬编码常量**：改公式或调权后，存量分数行的版本号还是 1，
+/// 面板上「这批分数是哪版权重算的」无从判断。现改为读
+/// `cheat_rulesets.active`——分数行指向一张真实存在的版本，
+/// 任何时候都能查回当时的权重快照。
+///
+/// 查不到（例如 0391 迁移尚未落库）时退回 1，保持旧行为。
+async fn active_ruleset_ver(db: &PgPool) -> i32 {
+    sqlx::query_scalar::<_, i32>(
+        "SELECT COALESCE(max(version), 1) FROM cheat_rulesets WHERE active",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or(1)
+}
+
+/// 影子模式：1 = 新版本只算分不开案（运营对比无回归后再关）。
+async fn shadow_mode(db: &PgPool) -> bool {
+    sqlx::query_scalar::<_, String>(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'risk_shadow_mode'), '1')",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v != "0" && v != "no")
+    .unwrap_or(true)
+}
 /// 档位广播去重窗（同 staff_alert 的 7 天口径）。
 const BAND_SUBJ: &str = "风险评分档位变化";
 
@@ -105,6 +135,8 @@ pub async fn risk_score_daily(db: &PgPool) -> anyhow::Result<u64> {
 /// → high/critical 自动开案。返回本轮实际改写（分数/档位变化）的行数。
 pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
     let cfg = risk_cfg(db).await?;
+    let ruleset_ver = active_ruleset_ver(db).await;
+    let shadow = shadow_mode(db).await;
     let norm = cfg.f("risk_norm", 8.0).max(0.5);
     let half = cfg.f("risk_decay_days", 14.0).clamp(0.5, 3650.0);
 
@@ -214,7 +246,7 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
             "families": parts,
             "norm": norm,
             "half_life_days": half,
-            "ruleset_ver": RULESET_VER,
+            "ruleset_ver": ruleset_ver,
         });
         let n = sqlx::query(
             "INSERT INTO user_risk_scores \
@@ -233,7 +265,7 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
         .bind(score)
         .bind(band)
         .bind(&breakdown)
-        .bind(RULESET_VER)
+        .bind(ruleset_ver)
         .execute(db)
         .await?
         .rows_affected();
@@ -260,7 +292,35 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
         // high/critical 且无进行中案件 → 自动开案（priority 2/1）。
         // 每轮重算都尝试：ON CONFLICT 挡进行中案件（幂等）；案件被 done
         // 关闭后新证据/新衰减触发重算时会开新案（同 M1 语义）。
-        if band == "high" || band == "critical" {
+        //
+        // 【0391 影子模式】risk_shadow_mode=1 时**只记不判**：
+        // 把「会开案」这件事写进 cheat_shadow_scores.would_open，
+        // 但不真的开案。理由：改一个权重就可能给一批人开案，
+        // 没有「先看看会多判多少人」这一步，改参数等于闭眼按扳机。
+        let would_open = band == "high" || band == "critical";
+        if would_open {
+            if shadow {
+                sqlx::query(
+                    "INSERT INTO cheat_shadow_scores \
+                     (user_id, ruleset_ver, score, band, delta_vs_live, \
+                      would_open, breakdown, updated_at) \
+                     VALUES ($1, $2, $3, $4, 0, true, $5, now()) \
+                     ON CONFLICT (user_id) DO UPDATE SET \
+                       ruleset_ver = EXCLUDED.ruleset_ver, \
+                       score = EXCLUDED.score, band = EXCLUDED.band, \
+                       would_open = true, breakdown = EXCLUDED.breakdown, \
+                       updated_at = now()",
+                )
+                .bind(uid)
+                .bind(ruleset_ver)
+                .bind(score)
+                .bind(band)
+                .bind(&breakdown)
+                .execute(db)
+                .await?;
+                // 影子模式下一律不真正开案。
+                continue;
+            }
             let prio: i16 = if band == "critical" { 2 } else { 1 };
             if let Some(cid) = auto_open_case(
                 db,
@@ -274,7 +334,173 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
                 tracing::warn!(user = uid, case = cid, score, band,
                     "risk_score: 自动开案");
             }
+        } else if shadow {
+            // 掉出 high/critical 也要清影子行，否则 would_open 会永远
+            // 停在一个已经过时的 true 上。
+            sqlx::query(
+                "INSERT INTO cheat_shadow_scores \
+                 (user_id, ruleset_ver, score, band, delta_vs_live, \
+                  would_open, breakdown, updated_at) \
+                 VALUES ($1, $2, $3, $4, 0, false, $5, now()) \
+                 ON CONFLICT (user_id) DO UPDATE SET \
+                   ruleset_ver = EXCLUDED.ruleset_ver, \
+                   score = EXCLUDED.score, band = EXCLUDED.band, \
+                   would_open = false, breakdown = EXCLUDED.breakdown, \
+                   updated_at = now()",
+            )
+            .bind(uid)
+            .bind(ruleset_ver)
+            .bind(score)
+            .bind(band)
+            .bind(&breakdown)
+            .execute(db)
+            .await?;
         }
     }
     Ok(written)
+}
+
+/// 规则集回测：回答「换成 to_ver 这版权重，过去 N 天会多判/少判谁」。
+///
+/// 做法：把窗口内每个用户当前家族的 hits/decay 算一遍，分别用
+/// from_ver 与 to_ver 的参数打分，比档位。**只记会开案或会掉档的行**——
+/// 全量差异既无意义又占空间。
+///
+/// 这是「敢改反作弊权重」的前置：改完先回测，看看会不会把一批
+/// 正常用户送进案件队列，再决定是否切版本。
+pub async fn backtest(
+    db: &PgPool,
+    from_ver: i32,
+    to_ver: i32,
+    window_days: i32,
+) -> anyhow::Result<i64> {
+    let from_params = ruleset_params(db, from_ver).await?;
+    let to_params = ruleset_params(db, to_ver).await?;
+    let (Some(from_cfg), Some(to_cfg)) = (from_params, to_params) else {
+        anyhow::bail!("规则集版本不存在：{from_ver} / {to_ver}");
+    };
+
+    // 窗口内每个用户按家族的 hits 与最近一次证据时间
+    let rows: Vec<(i64, String, i64, f64)> = sqlx::query_as(
+        "SELECT user_id, \
+                CASE WHEN agent LIKE 'deal:%' THEN 'self_deal' \
+                     WHEN agent IN ('down_under','bitthief') THEN agent \
+                     ELSE split_part(agent, ':', 1) END AS fam, \
+                count(*) AS hits, \
+                EXTRACT(EPOCH FROM (now() - max(last_seen))) / 86400.0 AS days \
+         FROM cheat_events \
+         WHERE resolved_at IS NULL AND status < 2 \
+           AND last_seen > now() - make_interval(days => $1::int) \
+         GROUP BY 1, 2",
+    )
+    .bind(window_days)
+    .fetch_all(db)
+    .await?;
+
+    let mut agg: HashMap<i64, Vec<Fam>> = HashMap::new();
+    for (uid, fam, hits, days) in rows {
+        agg.entry(uid)
+            .or_default()
+            .push(Fam { family: fam, hits, days });
+    }
+
+    let mut diffs: Vec<serde_json::Value> = vec![];
+    let (mut would_open, mut band_up, mut band_down) = (0i64, 0i64, 0i64);
+    for (uid, fams) in &agg {
+        let (s_from, b_from) = score_with(&from_cfg, fams);
+        let (s_to, b_to) = score_with(&to_cfg, fams);
+        if s_from == s_to && b_from == b_to {
+            continue;
+        }
+        let opens_to = matches!(b_to.as_str(), "high" | "critical");
+        let opened_from = matches!(b_from.as_str(), "high" | "critical");
+        if opens_to && !opened_from {
+            would_open += 1;
+        }
+        let rank = |b: &str| match b { "critical" => 4, "high" => 3, "watch" => 2, "low" => 1, _ => 0 };
+        if rank(&b_to) > rank(&b_from) {
+            band_up += 1;
+        } else if rank(&b_to) < rank(&b_from) {
+            band_down += 1;
+        }
+        // 只留会开案或会掉档的：其余差异对运营无意义
+        if (opens_to && !opened_from)
+            || (opened_from && !opens_to)
+            || rank(&b_to) != rank(&b_from)
+        {
+            diffs.push(serde_json::json!({
+                "user_id": uid,
+                "from": {"score": s_from, "band": b_from},
+                "to":   {"score": s_to,   "band": b_to},
+            }));
+        }
+    }
+
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO cheat_backtest_runs \
+         (from_ver, to_ver, window_days, total_users, would_open, \
+          band_up, band_down, diffs) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) RETURNING id",
+    )
+    .bind(from_ver)
+    .bind(to_ver)
+    .bind(window_days)
+    .bind(agg.len() as i64)
+    .bind(would_open)
+    .bind(band_up)
+    .bind(band_down)
+    .bind(serde_json::Value::Array(diffs).to_string())
+    .fetch_one(db)
+    .await?;
+
+    tracing::info!(
+        id, from_ver, to_ver, window_days,
+        users = agg.len(), would_open, band_up, band_down,
+        "反作弊规则集回测完成"
+    );
+    Ok(id)
+}
+
+/// 读某个版本的参数快照并解析成 cfg。
+async fn ruleset_params(
+    db: &PgPool,
+    ver: i32,
+) -> anyhow::Result<Option<RiskCfg>> {
+    let params: Option<serde_json::Value> = sqlx::query_scalar(
+        "SELECT params FROM cheat_rulesets WHERE version = $1",
+    )
+    .bind(ver)
+    .fetch_optional(db)
+    .await?;
+    let Some(p) = params else { return Ok(None) };
+    let kv = p
+        .as_object()
+        .map(|m| {
+            m.iter()
+                .filter_map(|(k, v)| {
+                    v.as_str()
+                        .and_then(|s| s.trim().parse::<f64>().ok())
+                        .map(|n| (k.clone(), n))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(Some(RiskCfg { kv }))
+}
+
+/// 用给定参数对某用户的家族集合打分。
+fn score_with(cfg: &RiskCfg, fams: &[Fam]) -> (i32, String) {
+    let norm = cfg.f("risk_norm", 8.0).max(0.5);
+    let half = cfg.f("risk_decay_days", 14.0).clamp(0.5, 3650.0);
+    let total: f64 = fams
+        .iter()
+        .map(|f| {
+            let w = cfg.weight(&f.family);
+            let fh = 1.0 + ((f.hits.clamp(1, 16) as f64).log2());
+            let decay = 2f64.powf(-f.days.max(0.0) / half);
+            w * fh * decay * 100.0 / norm
+        })
+        .sum();
+    let score = (total.round() as i32).clamp(0, 100);
+    (score, cfg.band(score).to_string())
 }

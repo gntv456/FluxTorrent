@@ -86,6 +86,15 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::admin_http::del_cidr)
         .service(crate::admin_http::reset)
         .service(crate::admin_http::deliveries)
+        // 反作弊规则集版本化 + 影子 + 回测（0391）：
+        // 改权重前先存草稿 → 影子跑一轮看会多判谁 → 回测历史 → 才切换。
+        .service(crate::admin_http::list_rulesets)
+        .service(crate::admin_http::create_ruleset)
+        .service(crate::admin_http::activate)
+        .service(crate::admin_http::set_shadow)
+        .service(crate::admin_http::shadow_diff)
+        .service(crate::admin_http::run_backtest)
+        .service(crate::admin_http::backtests)
         .service(crate::staff_http::custom_pages_list)
         .service(crate::staff_http::custom_pages_add)
         .service(crate::staff_http::custom_pages_update)

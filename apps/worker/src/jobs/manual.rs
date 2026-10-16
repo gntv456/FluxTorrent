@@ -22,6 +22,14 @@ pub(crate) async fn run_named(
         "collect_milestones" => n(collect_milestones(db).await?),
         "hr_enforce" => d(hr_enforce(db).await?),
         "hr_warn_ladder" => n(hr_warn_ladder::run(db).await?),
+        // backtest 返回 run id（i64），而 n() 要 u64 —— 取 max(0) 兜住
+        // 「未来版本号」这类负值，避免面板上显示一个无意义的巨数。
+        "risk_backtest" => n(risk_score::backtest(
+            db,
+            env_i("BACKTEST_FROM", 1),
+            env_i("BACKTEST_TO", 2),
+            env_i("BACKTEST_DAYS", 90),
+        ).await?.max(0) as u64),
         "hr_punish" => d(hr_punish(db).await?),
         "class_auto_adjust" => d(class_auto_adjust(db).await?),
         "preserve_seed" => n(preserve_seed(db).await?),
@@ -180,4 +188,9 @@ async fn run_guarded(
             "未执行：锁未抢到（另一实例在跑同任务，或连接池繁忙——见 worker 日志）"
         ),
     }
+}
+
+/// 从环境读一个整数（手动触发口用；面板走 api 侧的专用端点）。
+fn env_i(k: &str, default: i32) -> i32 {
+    std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
 }
