@@ -7,6 +7,7 @@ import { dateLocale } from "@/i18n/config";
 import { StatePanel } from "@/components/ui/state-panel";
 import { SkeletonRows } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pager } from "@/components/ui/pager";
 
 interface SparkInfo {
   balance: number;
@@ -14,6 +15,16 @@ interface SparkInfo {
   hourly_estimate: number;
   /** 收益构成：[规则名, 颗数]（worker 同源口径） */
   reward_rules?: [string, number][];
+}
+
+/** 与后端 /me/spark/ledger 的 per 固定值一致（50/页） */
+const LEDGER_PER = 50;
+
+interface LedgerEnvelope {
+  items: LedgerRow[];
+  total: number;
+  page: number;
+  per: number;
 }
 
 interface LedgerRow {
@@ -31,7 +42,10 @@ export default function MySparkPage() {
   const t = dict.myspark;
   const [info, setInfo] = useState<SparkInfo | null>(null);
   const [rows, setRows] = useState<LedgerRow[]>([]);
-  const [limit, setLimit] = useState(20);
+  // 2026-10-16 改真分页：此前是 limit 20..50 的「加载更多」，封顶 50 条后
+  // 再也看不到更早的流水，且界面没有任何「还有更多」的提示。后端补 page/total。
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   // 挂载门控：hasSessionCookie() 在**渲染期**读 document.cookie，SSR 环境下
   // document 不存在 → 恒返回 false → 服务端渲染「请先登录」而客户端渲染完整
@@ -47,13 +61,16 @@ export default function MySparkPage() {
       .then(setInfo)
       .catch(() => setInfo(null));
     api
-      .get<LedgerRow[]>(`/api/v1/me/spark/ledger?limit=${limit}`)
-      .then(setRows)
+      .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?page=${page}`)
+      .then((d) => {
+        setRows(d.items);
+        setTotal(d.total);
+      })
       .catch((e) => {
         setErr(e instanceof ApiError ? e.message : dict.common.loadFailed);
         setRows([]);
       });
-  }, [limit, dict]);
+  }, [page, dict]);
   useEffect(load, [load]);
 
   if (!mounted) {
@@ -221,13 +238,14 @@ export default function MySparkPage() {
         </StatePanel>
       </div>
 
-      {rows.length >= limit && (
-        <button
-          className="btn btn-sm self-center"
-          onClick={() => setLimit((n) => Math.min(n + 20, 50))}
-        >
-          {t.loadMore}
-        </button>
+      {total > LEDGER_PER && (
+        <Pager
+          layout="compact"
+          page={page}
+          pages={Math.ceil(total / LEDGER_PER)}
+          posLabel={`${page} / ${Math.ceil(total / LEDGER_PER)}`}
+          onStep={setPage}
+        />
       )}
     </div>
   );

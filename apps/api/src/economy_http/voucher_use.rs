@@ -244,7 +244,9 @@ struct LedgerRow {
 
 #[derive(Deserialize)]
 struct LedgerQuery {
-    limit: Option<i64>,
+    /// 2026-10-16 起只认 page（per 固定 50）。旧的 `limit` 参数已移除——
+    /// serde 默认忽略未知字段，老客户端继续传 limit 也不会 422，只是被忽略。
+    page: Option<i32>,
 }
 
 #[get("/me/spark/ledger")]
@@ -254,21 +256,38 @@ async fn my_ledger(
     q: crate::http::Q<LedgerQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    // 2026-10-16 补分页：此前只有 limit（clamp 1..50）且无 total/OFFSET，
+    // 两个消费页都写死最近 50 条，重度用户的账变流水再往前就看不见。
+    let page = q.page.unwrap_or(1).clamp(1, 10_000) as i64;
+    let per = 50i64;
     let rows = sqlx::query_as::<_, LedgerRow>(
         "SELECT l.amount, l.kind, l.balance_after, l.created_at, \
-         si.name AS item_name \
+                si.name AS item_name \
          FROM spark_ledger l \
          LEFT JOIN shop_orders o \
            ON o.user_id = l.user_id AND o.idempotency_key = l.idempotency_key \
          LEFT JOIN shop_items si ON si.id = o.item_id \
-         WHERE l.user_id = $1 ORDER BY l.id DESC LIMIT $2",
+         WHERE l.user_id = $1 ORDER BY l.id DESC LIMIT $2 OFFSET $3",
     )
     .bind(auth.id)
-    .bind(q.limit.unwrap_or(20).clamp(1, 50))
+    .bind(per)
+    .bind((page - 1) * per)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    let total: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM spark_ledger WHERE user_id = $1",
+    )
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "items": rows,
+        "total": total,
+        "page": page,
+        "per": per,
+    })))
 }
 
 #[derive(Deserialize)]
