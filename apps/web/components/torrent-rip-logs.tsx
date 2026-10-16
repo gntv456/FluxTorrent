@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { Badge } from "@/components/ui/badge";
 import { formatBytes } from "@/lib/format";
 import { Fold } from "@/components/torrent-detail-parts";
 
@@ -121,13 +122,13 @@ export function TorrentRipLogs({
                 <span className="td-riplogs__disc">
                   {d.ripDisc.replace("{n}", `${l.ordinal + 1}`)}
                 </span>
-                <span className={`sticker ${scoreTone(eff)}`}>
+                <Badge {...scoreTone(eff)}>
                   {eff === null ? d.ripUnscored : `${eff}% · ${l.engine}`}
-                </span>
+                </Badge>
                 {adjusted && (
-                  <span className="sticker bg-indigo text-white">
+                  <Badge tone="brand" variant="solid">
                     {d.adjustLog}
-                  </span>
+                  </Badge>
                 )}
                 <span className="td-riplogs__file">{l.filename}</span>
                 <span className="td-riplogs__meta">
@@ -174,8 +175,14 @@ export function TorrentRipLogs({
 }
 
 /** 分数→色档：满分最常见、未定分要看得出、低分必须显眼 */
-function scoreTone(score: number | null): string {
-  if (score === null) return "bg-indigo text-white";
-  if (score >= 100) return "bg-sun text-ink";
-  return "bg-indigo text-ink";
+/** 有效性评分徽章三态（2026-10-16 S2 归 Badge：未评分=brand 实底、
+ *  ≥100%=warn 浅底、<100%=brand 浅底）。原实现直接返回 Tailwind 色类
+ *  串（bg-indigo text-white 等），把配色写死在计算里。 */
+function scoreTone(score: number | null): {
+  tone: "brand" | "warn";
+  variant: "soft" | "solid";
+} {
+  if (score === null) return { tone: "brand", variant: "solid" };
+  if (score >= 100) return { tone: "warn", variant: "soft" };
+  return { tone: "brand", variant: "soft" };
 }

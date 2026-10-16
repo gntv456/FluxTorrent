@@ -20,25 +20,35 @@ export function formatRatio(up: number, down: number): string {
   return r >= 100 ? "INF" : r.toFixed(2);
 }
 
-/** 促销徽章（§7.3：免费=薄荷绿 / 2x=珊瑚橙）。label 由调用方按 dict.promotion[key] 本地化 */
+/** 促销徽章（§7.3：免费=薄荷绿 / 2x=珊瑚橙）。label 由调用方按
+ *  dict.promotion[key] 本地化。
+ *  2026-10-16（S2 Badge）：返回 **tone/variant** 而非 Tailwind 色类串——
+ *  配色从「写死在 switch 里」改为交给 Badge 原语，明暗主题自动适配。
+ *  映射：free=success 实底；x2/x2free=danger 实底；half/x2half/p30=warn 浅底。 */
 export type PromotionKey = "free" | "x2" | "x2free" | "half" | "x2half" | "p30";
+
+/** Badge 的语义档（与 components/ui/badge.tsx 的 props 同形） */
+export type PromotionTone = {
+  tone: "success" | "danger" | "warn";
+  variant: "soft" | "solid";
+};
 
 export function promotionBadge(
   promotion: TorrentListItem["promotion"],
-): { key: PromotionKey; className: string } | null {
+): ({ key: PromotionKey } & PromotionTone) | null {
   switch (promotion) {
     case "free":
-      return { key: "free", className: "bg-mint text-white" };
+      return { key: "free", tone: "success", variant: "solid" };
     case "x2":
-      return { key: "x2", className: "bg-coral text-white" };
+      return { key: "x2", tone: "danger", variant: "solid" };
     case "x2free":
-      return { key: "x2free", className: "bg-coral text-white" };
+      return { key: "x2free", tone: "danger", variant: "solid" };
     case "half":
-      return { key: "half", className: "bg-sun text-ink" };
+      return { key: "half", tone: "warn", variant: "soft" };
     case "x2half":
-      return { key: "x2half", className: "bg-sun text-ink" };
+      return { key: "x2half", tone: "warn", variant: "soft" };
     case "p30":
-      return { key: "p30", className: "bg-sun text-ink" };
+      return { key: "p30", tone: "warn", variant: "soft" };
     default:
       return null;
   }

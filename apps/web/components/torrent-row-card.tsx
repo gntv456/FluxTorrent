@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/client";
 import { useIsCompact } from "@/lib/hooks/use-media";
 import { useSwipe } from "@/lib/hooks/use-swipe";
 import { promotionBadge } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
 import { catColor } from "@/lib/site-profile";
 import { formatBytes } from "@/lib/format";
 import { PosterImage } from "@/components/poster-image";
@@ -105,9 +106,13 @@ export function TorrentRowCard({
           }
         />
         {promo && (
-          <span className={`trow-card__promo ${promo.className}`}>
+          <Badge
+            className="trow-card__promo"
+            tone={promo.tone}
+            variant={promo.variant}
+          >
             {dict.promotion[promo.key]}
-          </span>
+          </Badge>
         )}
         </span>
       )}

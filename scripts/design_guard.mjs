@@ -9,8 +9,17 @@
 //   2. palette  禁项目语义色类直写（bg-sky / text-mint / bg-sun …）——
 //               语义应交给 Badge 的 tone 或 var(--tone-*)，让明暗主题自动适配。
 //               这是 S2 Badge 收敛（20 处）的护栏。
-//   3. color    hex/rgb 字面量。**只报告不 fail**：管理端配色数据（头像框
-//               预置 css、勋章色板）与样式字面量暂时无法区分，v2 先切边界。
+//   3. color    hex/rgb 字面量。**只报告不 fail**——命中的绝大多数是正当
+//               用法而非待收敛的样式，设成 fail 会大面积误伤：
+//                 · 内联 SVG 占位图（<circle fill='rgba(…)'>）4 处
+//                 · theme-color meta（浏览器 UI 色只能用字面量）2 处
+//                 · 设置项默认值 / 占位色（#FFD700 之类）2 处
+//                 · var(--danger,#d33) 这类 fallback 2 处
+//                 · 动态色的 || "#fff" 兜底 2 处
+//                 · 游戏区（站型包刻意差异，用户已定本轮不动）82 处
+//               真·样式硬编码经本轮排查只剩 1 处（论坛楼层作者栏
+//               bg-[rgba(255,232,197,0.45)]），已换成 var(--sun-soft)。
+//               本项的作用是「让色值保持可见」，不是卡人。
 //
 // 基线制：存量记 scripts/design_guard_baseline.json，只对**新增**违规 exit 1。
 // 用法：node scripts/design_guard.mjs（CI 中作为 web job 一步）
