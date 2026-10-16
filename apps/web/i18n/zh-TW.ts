@@ -1122,6 +1122,7 @@ const zhTwBase: Omit<
     riskNote:
       "風險分（0-100）= 各證據家族的 權重 × 次數 × 時間衰減 歸一化累加；watch 及以上進名單，high/critical 且無進行中案件自動開案。",
     riskEmpty: "暫無入冊使用者",
+    riskTruncated: "僅顯示前 {n} 條（依風險分排序）。",
     colRiskScore: "評分",
     colRiskBand: "檔位",
     colRiskEvidence: "存活證據",
@@ -1743,6 +1744,7 @@ const zhTwBase: Omit<
     tabCompleted: "已完成",
     tabUploads: "我的發佈",
     empty: "暫無記錄",
+    truncated: "僅顯示最近 {n} 條。",
     colName: "標題",
     colSize: "大小",
     colSeeders: "做種",

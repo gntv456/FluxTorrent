@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useState, Fragment } from "react";
 import { api } from "@/lib/api-client";
+import { fmt } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { ErrorPanel } from "@/components/ui/error-panel";
+
+/** 接口一次给到上限（无 cursor）：取满就得在界面说明「只到这儿」 */
+const CAP = 200;
 
 /** 观察名单行（GET /admin/risk-scores，0368 M2） */
 interface RiskRow {
@@ -48,7 +52,7 @@ export function RiskWatchlist() {
     setRows(null);
     setErr(null);
     api
-      .get<{ items: RiskRow[] }>("/api/v1/admin/risk-scores?limit=200")
+      .get<{ items: RiskRow[] }>(`/api/v1/admin/risk-scores?limit=${CAP}`)
       .then((r) => setRows(r.items))
       .catch((e) => setErr(e));
   }, []);
@@ -112,6 +116,12 @@ export function RiskWatchlist() {
           </button>
         ))}
       </div>
+
+      {rows !== null && rows.length >= CAP && (
+        <p className="mb-2 text-xs text-sub">
+          {fmt(t.riskTruncated, { n: CAP })}
+        </p>
+      )}
 
       {err !== null ? (
         <ErrorPanel error={err} onRetry={load} />

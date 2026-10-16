@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { toast } from "@/components/ui/toast";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
-import { dateLocale } from "@/i18n/config";
+import { dateLocale, fmt } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
 import { useIsCompact } from "@/lib/hooks/use-media";
 import { TorrentRowList } from "@/components/torrent-row-card";
@@ -28,6 +28,10 @@ interface SnatchRow {
   deny_reason?: string | null;
 }
 
+/** 后端按 limit 截断且没有 cursor：取满就要说清「后面还有」，
+ *  别让人以为这一屏就是全部做种记录（与 CAP 同一处取值）。 */
+const CAP = 100;
+
 /** 我的种子列表（NP getusertorrentlist 口径）：做种中 / 已完成 / 我的发布 */
 export function TorrentListClient({
   kind,
@@ -48,7 +52,7 @@ export function TorrentListClient({
       await api.post(`/api/v1/torrents/${id}/resubmit`, {});
       setRows(
         await api.get<SnatchRow[]>(
-          `/api/v1/me/torrentlist?kind=${kind}&limit=100`,
+          `/api/v1/me/torrentlist?kind=${kind}&limit=${CAP}`,
         ),
       );
     } catch (e) {
@@ -61,7 +65,9 @@ export function TorrentListClient({
   useEffect(() => {
     setRows(null);
     api
-      .get<SnatchRow[]>(`/api/v1/me/torrentlist?kind=${kind}&limit=100`)
+      .get<SnatchRow[]>(
+        `/api/v1/me/torrentlist?kind=${kind}&limit=${CAP}`,
+      )
       .then(setRows)
       .catch(() => setRows([]));
   }, [kind]);
@@ -72,6 +78,12 @@ export function TorrentListClient({
   if (rows.length === 0) {
     return <EmptyState icon="seed" title={emptyText} />;
   }
+  const hint =
+    rows.length >= CAP ? (
+      <p className="mt-2 text-xs text-sub">
+        {fmt(dict.mytl.truncated, { n: CAP })}
+      </p>
+    ) : null;
   // M5.2：<640 行卡片化（与 /torrents 同一组件，消除分裂）；
   // ≥md 保留表格（列降级沿用现状）
   if (compact) {
@@ -80,6 +92,7 @@ export function TorrentListClient({
         <TorrentRowList
           items={rows.map((r) => ({ ...r, id: r.torrent_id }))}
         />
+        {hint}
       </div>
     );
   }
@@ -162,6 +175,7 @@ export function TorrentListClient({
           ))}
         </tbody>
       </table>
+      {hint}
     </div>
   );
 }
