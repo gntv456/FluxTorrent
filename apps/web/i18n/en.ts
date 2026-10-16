@@ -1152,6 +1152,7 @@ const enBase: Omit<
     riskNote:
       "Risk score (0-100) = normalized sum of per-family weight x hits x time decay; watch and above enter the watchlist, high/critical auto-open a case when none is in progress.",
     riskEmpty: "No users on record",
+    riskTruncated: "Showing the top {n} rows by risk score.",
     colRiskScore: "Score",
     colRiskBand: "Band",
     colRiskEvidence: "Live evidence",
@@ -1784,6 +1785,7 @@ const enBase: Omit<
     tabCompleted: "Completed",
     tabUploads: "Uploads",
     empty: "No records yet",
+    truncated: "Showing the most recent {n} rows.",
     colName: "Title",
     colSize: "Size",
     colSeeders: "Seeders",

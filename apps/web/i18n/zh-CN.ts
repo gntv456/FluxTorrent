@@ -1112,6 +1112,7 @@ const zhCnBase = {
     riskNote:
       "风险分（0-100）= 各证据家族的 权重 × 次数 × 时间衰减 归一化累加；watch 及以上进名单，high/critical 且无进行中案件自动开案。",
     riskEmpty: "暂无入册用户",
+    riskTruncated: "仅显示前 {n} 条（按风险分排序）。",
     colRiskScore: "评分",
     colRiskBand: "档位",
     colRiskEvidence: "存活证据",
@@ -1734,6 +1735,7 @@ const zhCnBase = {
     tabCompleted: "已完成",
     tabUploads: "我的发布",
     empty: "暂无记录",
+    truncated: "仅显示最近 {n} 条。",
     colName: "标题",
     colSize: "大小",
     colSeeders: "做种",
