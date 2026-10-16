@@ -2621,46 +2621,9 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-family: inherit;
   font-size: 12.5px;
 }
-.pg-eyebrow {
-  margin-bottom: 2px;
-  /* 2026-10-07 模拟器真机联调修：10.5px 在 412px 手机上低于可读下限
-     （DAILY BONUS / Top Charts 等眉标变虚影），提到 11.5px。 */
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--sky);
-}
-/* 页头信息药丸（已拥有 x/y、佩戴中、当前加成） */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--tide-haze);
-  color: var(--text-brand);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-.pghd {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.pghd .sub {
-  padding-bottom: 5px;
-  font-size: 12.5px;
-  color: var(--text-faint);
-}
-.pghd .aside {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-bottom: 4px;
-}
+/* 页头信息药丸与 .pghd 三层结构已于 2026-10-16 迁入 ui.css
+   （见 ui.css「页面模板：PageHeader」段），随 components/ui/page-header.tsx
+   一起归位到原语层；类名保持不变，故此处无残留规则。 */
 
 
 

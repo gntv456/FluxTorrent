@@ -8,8 +8,8 @@ import type { ReactNode } from "react";
  *  本轮迁移 17 页；games/fun、games/odds（裸 Link 右槽）与 help（内联 p
  *  副标题）结构特殊，暂留原样。
  *
- *  样式复用 layout.css 既有 `.pghd` / `.pg-eyebrow` / `.sub` / `.aside` 族
- *  （类名与视觉零变化；待 S3 收敛阶段迁入 ui.css）。
+ *  样式见 app/styles/ui.css「页面模板：PageHeader」段（.pghd /
+ *  .pg-eyebrow / .sub / .aside，2026-10-16 自 layout.css 迁入，类名不变）。
  *
  *  纯展示组件（无 hook），刻意不加 "use client"：RSC 与 Client 组件里都能
  *  直接用（同 Badge / Icon 口径）。
