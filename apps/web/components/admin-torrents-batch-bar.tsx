@@ -244,6 +244,9 @@ export function BatchBar(props: BatchBarProps) {
             message: fmt(at.delConfirm, { n: selCount }),
             tone: "danger",
             busy,
+            // 一次最多 500 条且跨页选择会残留：要数量原样打一遍才解禁，
+            // 「选了几个」从「我以为几个」变成键盘确认过几个。
+            requireText: String(selCount),
             run: () => batch("delete"),
           });
         }}

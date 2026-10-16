@@ -90,6 +90,9 @@ export function UserDetailDialogs({
               ? fmt(ud.resetPwdConfirm, { name: username })
               : fmt(ud.delUserConfirm, { name: username, id: uid })
         }
+        // 删号是约 50 张表的物理清理，且名字撞车时 uid 才是唯一身份——
+        // 要求把用户名原样打一遍，确认钮才解禁。
+        requireText={askAct === "deleteUser" ? username : undefined}
       />
     </>
   );

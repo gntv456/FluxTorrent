@@ -1733,13 +1733,13 @@
  },
  "app/(main)/admin/forums/_parts/forum-board-table.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   126,
-   169,
-   180
+   129,
+   172,
+   183
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/forums/_parts/forum-category-panel.tsx": {
   "h1": [],

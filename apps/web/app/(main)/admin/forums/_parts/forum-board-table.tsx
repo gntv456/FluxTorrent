@@ -81,6 +81,9 @@ export function ForumBoardTable({
       message: msg,
       tone: "danger",
       busy,
+      // 非空版块：force=true 由这里自动补上，等于「确认框」替版主点了那个
+      // 显式知悉——改成把版块名原样打一遍才解禁，打名字这个动作本身就是知悉。
+      requireText: x.topics > 0 ? x.name : undefined,
       run: () =>
         run(async () => {
           const q = x.topics > 0 ? "?force=true" : "";
