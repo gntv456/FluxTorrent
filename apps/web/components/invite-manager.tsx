@@ -1,11 +1,12 @@
 "use client";
 
-import { PANEL_MD_FLAT } from "@/lib/ui-classes";
 import { formatBytes as fmtBytes } from "@/lib/format";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { InviteQuotaPanel } from "@/components/invite-quota-panel";
+import { InviteeList, type Invitee } from "@/components/invite-invitees";
 import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
 import { clientUuid } from "@/lib/client-uuid";
 import { toast } from "@/components/ui/toast";
@@ -32,18 +33,8 @@ interface InvitesEnvelope {
 }
 
 /** GET /invites/invitees：被邀请人（0204 P0，NP invitee 口径） */
-interface Invitee {
-  id: number;
-  username: string;
-  status: number;
-  class_name: string | null;
-  uploaded: number;
-  downloaded: number;
-  created_at: string;
-}
-
 /** GET /invites/status：配额 + 兑换价 + 计数（用于禁用态与顶部概览） */
-interface InviteStatus {
+export interface InviteStatus {
   class_id: number;
   quota_limit: number;
   quota_used: number;
@@ -188,70 +179,18 @@ export function InviteManager() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 配额概览卡 */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <div className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-4 md:col-span-2">
-          <p className="text-xs text-sub">{t.quotaTitle}</p>
-          <p className="mt-1 text-lg">
-            <b className="num">{status?.quota_used ?? "—"}</b>
-            <span className="text-sub"> / {status?.quota_limit ?? "—"} </span>
-            <span className="text-xs text-sub">
-              {t.quotaWeek}
-              {status && status.quota_extra > 0 && (
-                <span className="ml-2">
-                  （{t.quotaExtra} <b className="num">{status.quota_extra}</b>）
-                </span>
-              )}
-            </span>
-          </p>
-        </div>
-        {[
-          { label: t.statUnused, value: status?.unused },
-          { label: t.statUsed, value: status?.used },
-          { label: t.statExpired, value: status?.expired },
-        ].map((s) => (
-          <div key={s.label} className={PANEL_MD_FLAT}>
-            <p className="text-xs text-sub">{s.label}</p>
-            <p className="mt-1 num text-lg font-bold">{s.value ?? "—"}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* 操作区 */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={busy || !canIssue}
-          onClick={issue}
-          title={
-            !levelOk
-              ? t.needClass
-              : quotaLeft === 0
-                ? t.issueDisabledQuota
-                : undefined
-          }
-          className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {issueLabelWith(t.issue, levelOk, quotaLeft)}
-        </button>
-        {status?.redeem_price != null && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={redeem}
-            className="min-h-[44px] rounded-full border border-[var(--baozi-line)] px-5 text-sm text-sky-deep hover:border-[var(--baozi-orange)] hover:text-[var(--baozi-orange)] disabled:opacity-50"
-          >
-            {t.redeem.replace("{magic}", currency)}（
-            {status.redeem_price.toLocaleString()}）
-          </button>
-        )}
-      </div>
-      {status?.redeem_price != null && (
-        <p className="text-xs text-sub">
-          {t.redeemNote.replace("{magic}", currency)}
-        </p>
-      )}
-      {!levelOk && <p className="text-xs text-sub">{t.needClass}</p>}
+      {/* 配额概览 + 操作区（2026-10-16 外移到 invite-quota-panel.tsx） */}
+      <InviteQuotaPanel
+        status={status}
+        t={t}
+        currency={currency}
+        levelOk={levelOk}
+        quotaLeft={quotaLeft}
+        canIssue={canIssue}
+        busy={busy}
+        onIssue={issue}
+        onRedeem={redeem}
+      />
 
       {/* 邀请码列表 */}
       {invites === null ? null : invites.length === 0 ? (
@@ -280,46 +219,9 @@ export function InviteManager() {
         />
       )}
 
-      {/* 被邀请人列表（0204 P0，NP invitee 口径） */}
+      {/* 被邀请人列表（0204 P0；默认只显示最近 20 条，见组件注释） */}
       {invitees !== null && invitees.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-base font-bold">{t.inviteesTitle}</h2>
-          <div className="baozi-wide-table-scroll">
-            <table className="nexus-table">
-              <tbody>
-                <tr>
-                  <td className="colhead">{t.invUser}</td>
-                  <td className="colhead">{t.invLevel}</td>
-                  <td className="colhead">{t.invUploaded}</td>
-                  <td className="colhead">{t.invDownloaded}</td>
-                  <td className="colhead">{t.invJoined}</td>
-                </tr>
-                {invitees.map((u) => (
-                  <tr key={u.id}>
-                    <td>
-                      <a
-                        href={`/users/${u.id}`}
-                        className="text-sky-deep hover:underline"
-                      >
-                        {u.username}
-                      </a>
-                      {u.status >= 2 && (
-                        <Badge tone="neutral" className="ml-2">
-                          {t.invBanned}</Badge>
-                      )}
-                    </td>
-                    <td className="text-xs text-sub">{u.class_name ?? "—"}</td>
-                    <td className="num text-xs">{fmtBytes(u.uploaded)}</td>
-                    <td className="num text-xs">{fmtBytes(u.downloaded)}</td>
-                    <td className="num text-xs text-sub">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <InviteeList invitees={invitees} t={t} />
       )}
 
       {/* 发送邀请邮件弹层 */}
@@ -348,12 +250,4 @@ export function InviteManager() {
       />
     </div>
   );
-
-  /** 生成按钮文案：等级不足/配额用尽时给禁用态提示，而非报错 */
-  function issueLabelWith(base: string, lvOk: boolean, left: number): string {
-    if (!lvOk) return t.issueDisabledLevel;
-    if (left === 0 && (status?.quota_extra ?? 0) === 0)
-      return t.issueDisabledQuota;
-    return base;
-  }
 }

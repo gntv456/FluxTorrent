@@ -2328,6 +2328,8 @@ const zhCnBase = {
     prevPage: "上一页",
     nextPage: "下一页",
     inviteesTitle: "我的被邀请人",
+    inviteeShowAll: "显示全部",
+    inviteeCollapse: "只看最近 20 条",
     invUser: "用户",
     invLevel: "等级",
     invUploaded: "上传量",
