@@ -166,9 +166,12 @@ pub async fn trump_resolve(
             })),
         )
         .await;
-    // 被淘汰种可能出现在首屏缓存里，失效列表代际
+    // 被淘汰种可能出现在首屏缓存里，失效列表代际；详情缓存同样要清——
+    // trump accept 把已过审种翻成 2，旧详情缓存（status=1）会让全员直达
+    // 详情最长 30 秒仍读得到全量内容
     if body.accept {
         super::list::bump_list_cache_gen(&state).await;
+        super::aggregate::invalidate_tdetail_cache(&state, torrent_id).await;
     }
     Ok(ok(serde_json::json!({
         "id": tid, "status": new_status, "torrent_id": torrent_id,

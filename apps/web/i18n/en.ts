@@ -454,6 +454,8 @@ const enBase: Omit<
     bookmarkOk: "Bookmarked",
     unbookmarkOk: "Bookmark removed",
     noComments: "No comments yet — take the first seat",
+    commentsMore: "Load more comments ({n} more)",
+    commentsEnd: "All comments shown",
     viewAll: "View all →",
     descrTitle: "Description",
     filesTitle: "File list",

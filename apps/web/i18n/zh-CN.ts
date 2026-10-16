@@ -429,6 +429,8 @@ const zhCnBase = {
     bookmarkOk: "已收藏",
     unbookmarkOk: "已取消收藏",
     noComments: "还没有评论，来抢沙发吧",
+    commentsMore: "加载更多评论（还有 {n} 条）",
+    commentsEnd: "已显示全部评论",
     viewAll: "查看全部 →",
     descrTitle: "内容简介",
     filesTitle: "文件列表",

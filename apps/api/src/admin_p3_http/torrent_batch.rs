@@ -316,7 +316,7 @@ async fn torrent_batch(
         // 矩阵全放行，见 torrent_status 单测注记）。
         "delete" => {
             use crate::domain::torrent_status::legal_delist_sources;
-            let ok_rows: Vec<i64> = sqlx::query(
+            let ok_rows = sqlx::query(
                 "UPDATE torrents SET approval_status = 3, mtime = now()                  WHERE id = ANY($1) AND approval_status = ANY($2)                  RETURNING id",
             )
             .bind(&id_arr)
@@ -355,9 +355,15 @@ async fn torrent_batch(
             None,
         )
         .await;
-    // 批量动作改的是列表可见内容（分类/状态/统计/置顶位）：推进列表缓存代际
+    // 批量动作改的是列表可见内容（分类/状态/统计/置顶位）：推进列表缓存代际；
+    // 详情对象缓存逐种子清——set_tags/change_category/change_sections 改的
+    // tags/sections/artifacts 段就在 aggregate 共享段里，delete 更是直接改
+    // 可见性，不清会让详情页端最长 30 秒旧快照
     if n > 0 {
         crate::torrent_http::bump_list_cache_gen(&state).await;
+        for tid in &id_arr {
+            crate::torrent_http::invalidate_tdetail_cache(&state, *tid).await;
+        }
     }
     Ok(ok(serde_json::json!({ "affected": n as i64 })))
 }

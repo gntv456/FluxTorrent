@@ -100,6 +100,11 @@ pub(crate) async fn decide_one(
     if n == 0 {
         return Ok(DecideOutcome::NotPending);
     }
+    // 详情对象缓存：审核态翻转必须立即失效——过审种此前不进共享缓存
+    // （aggregate.rs 只缓存 approval_status=1），但被拒那一刻是「从 1 的
+    // 世界里消失」，列表/tracker 白名单都在刷新，详情缓存不跟着清就会
+    // 出现「列表已不见、直达详情仍全量可读」最长 30 秒的劈叉。
+    crate::torrent_http::invalidate_tdetail_cache(state, torrent_id).await;
     // 0075 连击 +1/被拒清零；0077 deny_count 累计（P2-1 过审清零）；
     // 0355 信用分独立累积：+1（上限 5）/ -2（下限 0）。
     let _ = sqlx::query(
