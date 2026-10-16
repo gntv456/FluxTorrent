@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
 /** 覆盖式弹窗（0173）：fixed 遮罩 + 居中卡片，ESC / 点遮罩关闭，锁 body 滚动。
- *  详情页编辑（TorrentManage）、购买置顶免费（PromoBuyButton）共用。 */
+ *  详情页编辑（TorrentManage）、购买置顶免费（PromoBuyButton）共用。
+ *
+ *  必须 portal 到 body（2026-10-16 实测）：从「更多操作」面板里再打开时，
+ *  卡片是 `.more-sheet` 的后代，而该面板开着时带 `transform` 且
+ *  `max-height:72vh; overflow-y:auto` —— `position:fixed` 会改成相对该面板
+ *  定位并被裁切（实测 1440×900 视口下遮罩只有 520×338），层级也压回面板下。 */
 const WIDTH = { md: "max-w-2xl", lg: "max-w-4xl" } as const;
 
 export function Modal({
@@ -23,6 +29,11 @@ export function Modal({
   children: React.ReactNode;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  // SSR 期没有 document，渲染期直接 createPortal 会抛 ReferenceError
+  // （同 torrent-head-more 的 mounted 闸，不用 typeof document 判——
+  //  那会让服务端与客户端首帧输出不一致）。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   // 焦点圈定：Tab 不穿透到遮罩后的页面（ZT81）
   useFocusTrap(open, cardRef);
 
@@ -40,10 +51,10 @@ export function Modal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
-  return (
+  if (!open || !mounted) return null;
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/55 p-4 sm:p-8"
+      className="fixed inset-0 z-[var(--z-modal-nested)] flex items-start justify-center overflow-y-auto bg-black/55 p-4 sm:p-8"
       onClick={onClose}
       role="presentation"
     >
@@ -68,6 +79,7 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
