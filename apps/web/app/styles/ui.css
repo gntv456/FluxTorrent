@@ -1296,9 +1296,17 @@
  */
 .pghd {
   display: flex;
-  align-items: flex-end;
-  gap: 14px;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
+  /* 卡片外壳（2026-10-17，对齐样图集 § pg-head）：原先只有 flex 排版、
+     直接浮在页面底色上，与下方各卡片层级不分明；样图里页头是独立白卡，
+     是全站唯一的「页面身份」落点。17 个已迁移页共用本段。 */
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
 }
 .pghd .sub {
   padding-bottom: 5px;
@@ -1333,4 +1341,218 @@
   color: var(--text-brand);
   font-size: 11.5px;
   font-weight: 600;
+}
+
+/* ---------- 用户主页：Hero 身份卡（2026-10-17 自 pages.css 迁入）----------
+ * 与 .pghd 的归位同一理由：这是组件级样式，不该躺在页面级 pages.css
+ * 里（该文件已 3900+ 行，远超 3000 门禁）。类名一律不变；globals.css
+ * 中 ui.css 晚于 pages.css 加载，本段在 pages.css 无同特异性定义，
+ * 搬家不产生覆盖。
+ */
+/* ============ 用户详情页：个人中心卡片化布局（Hero 身份卡 + 指标磁贴 + 双列卡片网格） ============
+   结构参考 NexusPHP 定制站 userdetails 的 .ud-* 版式：首屏只给身份 + 5 个核心指标，
+   明细按域切进卡片，资料行用虚线分隔取代整块两列表格。配色全部走 Aurora token，随主题换肤。 */
+.up-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  /* 深蓝渐变身份卡（设计样图 § up-hero）。2026-10-17 自浅色渐变
+     （card→cloud）改回：浅色卡与下方白色磁贴/卡片融为一体，身份卡失去
+     视觉锚点；样图里它是全页唯一的深色块，用来把人「钉」在页面顶部。
+     用既有 --grad-aurora（深海军→主蓝→亮蓝），与样图的三段渐变同构，
+     不另造硬编码色值。 */
+  background: var(--grad-aurora);
+  color: var(--on-dark);
+  box-shadow: var(--shadow-card);
+}
+/* 深色卡上的文字统一提亮：组件里写死的 text-sub / var(--text-strong) 等
+   浅色主题令牌在这里必须被覆盖，否则黑字落在深蓝上读不清。 */
+.up-hero h1 {
+  color: var(--on-dark);
+}
+.up-hero .text-sub,
+.up-hero__meta,
+.up-hero__meta i,
+.up-hero__class {
+  color: var(--on-dark-muted);
+}
+/* 等级/头衔 pill：浅蓝底换成半透明白底，白字 */
+.up-hero__class {
+  background: var(--on-dark-line);
+  color: var(--on-dark);
+}
+.up-hero__avatar {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--on-dark-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.up-hero__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.up-hero__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.up-hero__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.up-hero__class {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--sky-soft);
+  color: var(--text-brand);
+  font-size: 13px;
+  font-weight: 700;
+}
+.up-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+.up-hero__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.up-hero__meta i {
+  /* 深色卡上必须提亮（2026-10-17）：原来继承 --text-brand 的深蓝
+     在这里与背景同色，图标等于消失。 */
+  color: var(--on-dark-muted);
+  font-style: normal;
+}
+
+/* ---------- 控制面板：侧边导航（2026-10-17 自 layout.css 迁入）----------
+ * 与 .pghd / .up-hero 的归位同一理由：组件级样式不该躺在壳布局文件里
+ * （layout.css 已 3000+ 行、硬超门禁）。类名一律不变；globals.css 中
+ * ui.css 晚于 layout.css 加载，本段在 layout.css 无同特异性定义，
+ * 搬家不产生覆盖。
+ */
+/* ============ 控制面板（像素级复刻 NexusPHP usercp：侧边导航 + 设定表单） ============ */
+.usercp-wrap {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.usercp-nav {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  /* 卡片外壳（2026-10-17，对齐样图集 § ucp-side）：原先侧栏直接浮在页面
+     底色上，与本页的主区卡片不成一体；样图里它是白卡，选中项蓝底白字。 */
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  padding: 8px;
+  box-shadow: var(--shadow-card);
+  /* M5.6：<md 侧栏六导航转横向滚动 chips（不占首屏高度） */
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  position: static;
+}
+.usercp-nav h1, .usercp-nav h2 {
+  white-space: nowrap;
+}
+.usercp-nav a {
+  white-space: nowrap;
+}
+@media (min-width: 768px) {
+  .usercp-nav {
+    position: sticky;
+    top: 12px;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+@media not all and (min-width: 768px) {
+  .usercp-nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    position: static;
+  }
+  .usercp-nav h1, .usercp-nav h2 {
+    padding: 10px;
+    font-size: 13px;
+  }
+  .usercp-nav a {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+/* 桌面原态（legacy 兜底，上方 media 已覆盖） */
+.usercp-nav--col {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--brand-line);
+  border-radius: var(--r-md);
+  background: var(--brand-paper);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.usercp-nav h1, .usercp-nav h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  /* 分组小标题（样图 § ucp-side .grp）：原先是橙底白字的「面板头」，
+     视觉上会被误读成当前选中项；样图里它只是灰字分组标签。 */
+  padding: 8px 9px 3px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: none;
+}
+.usercp-nav h1 span, .usercp-nav h2 span {
+  font-size: 14px;
+}
+.usercp-nav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 触控目标 ≥44px（2026-10-03：此前 10px+10px+13.5px 行高≈40px） */
+  min-height: 44px;
+  padding: 10px 9px;
+  color: var(--brand-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  border-radius: 7px;
+}
+.usercp-nav a:last-child {
+  border-bottom: 0;
+}
+.usercp-nav a:hover {
+  background: var(--sky-soft);
+  color: var(--sky);
+}
+.usercp-nav a[data-active="true"] {
+  /* 蓝底白字（样图 § ucp-side a.on）：原先是灰底 + 橙色左边条，与全站
+     主交互蓝不同源。 */
+  background: var(--sky);
+  color: var(--on-dark);
+  box-shadow: none;
 }

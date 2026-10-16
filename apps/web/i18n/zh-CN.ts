@@ -1748,7 +1748,13 @@ const zhCnBase = {
   },
   my: {
     title: "我的",
-    center: "控制面板",
+    center: "个人中心",
+    /** 页面头面包屑首段（样图 § pg-head「首页 / 个人中心」） */
+    homeCrumb: "首页",
+    /** 页面头右侧徽章：有邮箱即显示 */
+    emailBound: "已绑定邮箱",
+    /** 站龄后缀（描述行「U2 · 8 年站龄」） */
+    yearsSuffix: "年站龄",
     welcomeBack: "欢迎回来",
     loginToView: "登录后查看你的{magic}与签到",
     loading: "加载中…",
