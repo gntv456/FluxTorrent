@@ -345,6 +345,23 @@ async fn upload_core(
             }
         }
     };
+    // P-346：发布带 MediaInfo 就跑一次一致性判定。
+    // 与编辑口同一口径：判定是提示不是闸门，
+    // 解析失败不拦发布回包（与站方“不拦截发布”同口径）。
+    if let Some(t) = form
+        .mediainfo
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let _ = crate::mediainfo_service::check_and_store(
+            &state,
+            id,
+            &name,
+            Some(t),
+        )
+        .await;
+    }
     // 0374 outbox：种子行与 torrent.uploaded 事件同事务落库。
     //
     // 此前 dispatch_upload 是**事务外** fire-and-forget：种入库失败事件仍会
