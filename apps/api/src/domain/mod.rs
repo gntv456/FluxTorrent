@@ -13,6 +13,7 @@ pub mod webhook;
 
 // 抽奖可验证公平（commit-reveal）：判定与哈希派生进 domain 纯函数层
 pub mod lottery_fair;
+pub mod mediainfo;
 
 // H&R 分档要求 + 做种减免（护肝核心）
 pub mod hr;

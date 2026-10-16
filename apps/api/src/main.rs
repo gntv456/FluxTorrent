@@ -78,6 +78,7 @@ mod sql_guard;
 mod staff_http;
 mod state;
 mod storage;
+mod mediainfo_service;
 mod terms;
 mod torrent_http;
 mod torrents;
