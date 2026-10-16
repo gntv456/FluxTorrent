@@ -27,6 +27,10 @@
 //       node scripts/design_guard.mjs --touch <文件…>  # 定向重算（迁移后用）
 // ⚠️ 基线按**行号**记录，文件行增删会让存量被判成新增——迁移某文件后用
 // --touch 定向重算，别用 --update（会把并行会话的新违规一并洗白）。
+//
+// ⚠️ 只扫 .tsx，不扫 .ts：lib/ui-classes.ts 里确有 bg-sky / bg-cloud /
+// focus:border-sky 等色类，但那是**按钮原语的样式真源**（BTN_SM_GHOST 等
+// 类串的定义处），属合法用法；若哪天改扫 .ts，须先把 ui-classes.ts 加白。
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { globCompat as globSync } from "./lib/glob_compat.mjs";
 import path from "node:path";
@@ -58,10 +62,10 @@ const files = ["app/**/*.tsx", "components/**/*.tsx"]
       !f.startsWith("components/_"),
   );
 
-/** 文件级命中行号：{h1, palette, color}，忽略注释行（与 i18n_guard 同口径） */
+/** 文件级命中：{h1, h1First, palette, color}，忽略注释行（同 i18n_guard） */
 function hitsOf(file) {
   const lines = readFileSync(path.join(ROOT, file), "utf-8").split("\n");
-  const out = { h1: [], palette: [], color: [] };
+  const out = { h1: [], h1First: null, palette: [], color: [] };
   const isPage = file.endsWith("/page.tsx");
   const h1s = [];
   lines.forEach((l, i) => {
@@ -77,12 +81,16 @@ function hitsOf(file) {
   // 标题级唯一：只记第 2 个及以后的 <h1>——每页 1 个是合法的，
   // 多出来的才是违规（基线制下，新加第二个 → 出现新行号 → 拦下）。
   out.h1 = h1s.slice(1);
+  // 但「从有到无」也是回退（原本每页至少一个 h1，被改没了）——
+  // slice(1) 会让 1 个和 0 个都得到 []，必须另记第一个的行号才分得开。
+  out.h1First = h1s.length ? h1s[0] : null;
   return out;
 }
 
 const KEYS = ["h1", "palette", "color"];
 const LABEL = {
-  h1: "页面 <h1> 字面量 >1（改用 PageHeader；互斥分支请 --touch 登记）",
+  h1: "页面 <h1> 异常：多出第 2 个，或原本有的 h1 被改没了" +
+    "（改用 PageHeader；互斥分支请 --touch 登记）",
   palette: "语义色类直写（改用 Badge tone / var(--tone-*)）",
   color: "色值字面量（v2 转 fail，先报告）",
 };
@@ -94,8 +102,12 @@ const args = process.argv.slice(2);
 const touchAt = args.indexOf("--touch");
 if (touchAt >= 0) {
   let n = 0;
-  for (const f of args.slice(touchAt + 1)) {
-    const key = f.replace(/\\/g, "/");
+  for (const raw of args.slice(touchAt + 1)) {
+    const key = raw.replace(/\\/g, "/");
+    if (!existsSync(path.join(ROOT, key))) {
+      console.error(`--touch 目标不存在（路径相对 apps/web）: ${key}`);
+      process.exit(1);
+    }
     baseline[key] = hitsOf(key);
     n++;
   }
@@ -121,6 +133,13 @@ for (const f of files) {
     stored[k] += old.length;
     const add = cur[k].filter((n) => !old.includes(n));
     if (add.length) fresh[k].push({ file: f, lines: add });
+  }
+  // h1「从有到无」：原本至少一个 h1、现在一个都没有。与「多出第二个」
+  // 同样是标题层级的回退，但方向相反，必须单独查。
+  const wasHasH1 = (was.h1 ?? []).length > 0 || was.h1First != null;
+  const curHasH1 = cur.h1.length > 0 || cur.h1First != null;
+  if (wasHasH1 && !curHasH1) {
+    fresh.h1.push({ file: f, lines: ["h1 消失（原至少一个）"] });
   }
 }
 
