@@ -1,7 +1,8 @@
 /**
- * 详情页右侧信息栏三件套（设计稿 §4/§8：桌面 sticky 侧栏，移动端流式/隐藏）：
+ * 详情页右侧信息栏三件套（设计稿 §4/§8：桌面右栏，移动端流式/隐藏）：
  *  td-vitals 状态 2×2 大数字 + 健康度横幅；td-files-mini 前 5 行文件卡
  *  （「查看全部」锚到主栏完整文件折叠块）；td-meta 元信息聚合卡。
+ * 三卡随页面正常滚动（不做 sticky：sticky 会盖住同列下段「相关种子」）。
  * 数据装载与显隐门（sectOn）留在 page.tsx，部件只做呈现。
  */
 
@@ -180,7 +181,7 @@ export function TorrentSideMeta({
   );
 }
 
-/** 右侧信息栏组合（桌面上段 sticky；related 由 page 放进下段）。
+/** 右侧信息栏组合（桌面上段随页面滚动；related 由 page 放进下段）。
  *  M6.5 样图收口：删「更多操作」入口卡——本地完善版样图右栏只有
  *  状态/文件/元信息三卡（导航由 <768 锚点条与折叠块自身承担）。 */
 export function TorrentDetailSide(props: SideProps) {

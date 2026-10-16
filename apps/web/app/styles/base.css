@@ -1021,8 +1021,10 @@ a:hover {
 .td-side {
   grid-area: side;
   align-self: start;
-  position: sticky;
-  top: 80px;
+  /* 原设计（设计方案 §「右栏 sticky」）为 position:sticky;top:80px，
+     实测会把下段的「相关种子」压在卡组后面：grid 里 sticky 项绘制层级
+     高于同列普通项，主栏滚到 700px 时 rel 顶边已进 side 的 80..599 区间。
+     三卡随页面正常滚动，右列口径与 rel 一致。 */
   display: flex;
   flex-direction: column;
   gap: 12px;

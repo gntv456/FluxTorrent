@@ -91,6 +91,23 @@ test.describe("资源库行点击：双栏区间", () => {
     // 换页要看到内容，不只是 URL 变了
     await expect(page.locator("body")).toContainText(name, { timeout: 15_000 });
 
+    // ①b 详情页右栏三卡要随页面滚动，不能吸附后把「相关种子」压在背后
+    const side0 = await page.locator(".td-side").boundingBox();
+    // behavior:instant —— 本站 `scroll-behavior: smooth`，默认滚动是动画，
+    // 立刻读 scrollY 会拿到 0（假红，2026-10-16 实录）
+    const scrolled = await page.evaluate(() => {
+      window.scrollTo({ top: 300, behavior: "instant" });
+      return window.scrollY;
+    });
+    await page.waitForTimeout(300);
+    const side1 = await page.locator(".td-side").boundingBox();
+    const rel1 = await page.locator(".td-side-rel").boundingBox();
+    // 前置条件本身也钉住：这页至少要能滚 200px，否则「位移=滚动量」是假绿
+    expect(scrolled).toBeGreaterThanOrEqual(200);
+    expect(Math.round(side0!.y - side1!.y)).toBe(Math.round(scrolled));
+    // 同栏上下两段不许重叠（sticky 时 rel 会从卡组底下穿上来）
+    expect(rel1!.y).toBeGreaterThanOrEqual(side1!.y + side1!.height);
+
     // ② md–lg（768–1023）：双栏预览照旧，点「打开详情」才换页
     await page.setViewportSize({ width: 900, height: 800 });
     await page.goto("/torrents");

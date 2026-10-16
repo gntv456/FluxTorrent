@@ -407,7 +407,7 @@ export default async function TorrentDetailPage({
       />
       </div>
 
-      {/* ===== 右信息栏上段（sticky：状态/文件/元信息） ===== */}
+      {/* ===== 右信息栏上段（状态/文件/元信息，随页面滚动） ===== */}
       <TorrentDetailSide
         t={t} ext={ext} files={files} category={category}
         inCollections={inCollections} dict={dict} locale={locale}
