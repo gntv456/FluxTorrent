@@ -11,6 +11,7 @@ import { clientUuid } from "@/lib/client-uuid";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Pager } from "@/components/ui/pager";
 
 export interface InviteItem {
   id: number;
@@ -270,27 +271,13 @@ export function InviteManager() {
       )}
       {/* 分页（0204：50/页） */}
       {total > 50 && (
-        <div className="flex items-center justify-center gap-3 text-sm">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => void refresh(page - 1)}
-            className="min-h-[36px] rounded-full border border-line px-4 disabled:opacity-40"
-          >
-            {t.prevPage}
-          </button>
-          <span className="num text-sub">
-            {page} / {Math.ceil(total / 50)}
-          </span>
-          <button
-            type="button"
-            disabled={page >= Math.ceil(total / 50)}
-            onClick={() => void refresh(page + 1)}
-            className="min-h-[36px] rounded-full border border-line px-4 disabled:opacity-40"
-          >
-            {t.nextPage}
-          </button>
-        </div>
+        <Pager
+          layout="compact"
+          page={page}
+          pages={Math.ceil(total / 50)}
+          posLabel={`${page} / ${Math.ceil(total / 50)}`}
+          onStep={(p) => void refresh(p)}
+        />
       )}
 
       {/* 被邀请人列表（0204 P0，NP invitee 口径） */}

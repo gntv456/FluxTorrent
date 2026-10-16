@@ -1,6 +1,6 @@
 "use client";
 
-import { BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
+import { INPUT_GROW } from "@/lib/ui-classes";
 
 /**
  * 后台种子管理·通用记录查询（从 components/admin-torrents.tsx 按域拆出）：
@@ -12,6 +12,7 @@ import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type { RecordRow } from "./admin-torrents-shared";
+import { Pager } from "@/components/ui/pager";
 
 // ============ 通用记录查询（火花/购买，既有） ============
 
@@ -86,23 +87,13 @@ export function RecordQuery({
           ))}
         </tbody>
       </table>
-      <div className="flex items-center justify-end gap-2 text-sm text-sub">
-        <button
-          disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
-          className={BTN_SM_GHOST}
-        >
-          {c.prevPage}
-        </button>
-        <span>{fmt(at.pageNum, { n: data?.page ?? 1 })}</span>
-        <button
-          disabled={!data || data.rows.length < 20}
-          onClick={() => setPage(page + 1)}
-          className={BTN_SM_GHOST}
-        >
-          {c.nextPage}
-        </button>
-      </div>
+      <Pager
+        layout="compact"
+        page={page}
+        pages={page + (data && data.rows.length >= 20 ? 1 : 0)}
+        posLabel={fmt(at.pageNum, { n: data?.page ?? 1 })}
+        onStep={setPage}
+      />
     </div>
   );
 }

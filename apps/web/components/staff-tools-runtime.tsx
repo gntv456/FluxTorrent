@@ -8,6 +8,7 @@ import {
   PAGE_BTN_CLS,
   type RuntimeLogPage,
 } from "./staff-tools-sys-shared";
+import { Pager } from "@/components/ui/pager";
 
 /** 运行日志面板（0218 G6）：api/worker 的 WARN+ tracing 事件（runtime_logs）。
  *  本页此前读 audit_log —— 那是「谁做了什么」的操作审计（视图在 ?tool=audit），
@@ -172,25 +173,13 @@ export function RuntimeLogPanel() {
         </table>
       </div>
       {data && data.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <button
-            className={PAGE_BTN_CLS}
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            {dict.common.prevPage}
-          </button>
-          <span className="text-xs text-sub">
-            {data.page} / {data.pages}（{data.total}）
-          </span>
-          <button
-            className={PAGE_BTN_CLS}
-            disabled={page >= data.pages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            {dict.common.nextPage}
-          </button>
-        </div>
+        <Pager
+          layout="compact"
+          page={page}
+          pages={data.pages}
+          posLabel={`${data.page} / ${data.pages}（${data.total}）`}
+          onStep={setPage}
+        />
       )}
     </>
   );
