@@ -2,8 +2,10 @@
 
 /**
  * 后台种子管理·复核对话 + 多维筛选状态（从 admin-torrents-list.tsx 拆出，
- * 守 300 行门禁）。两件事都是「自带 IO 的逻辑」而非渲染：
- *   · `useDecide`：通过/拒绝种子（拒绝时拉拒绝原因列表走 prompt）
+ * 守 300 行门禁）。两件事都自带 IO；useDecide 另持有拒绝弹窗的状态，调用方
+ * 把返回的 denyDialog 渲染进 JSX——此前它能保持纯逻辑，是因为拒绝走的是浏览
+ * 器原生 prompt，而那条路被 DS §3.1 判退了。
+ *   · `useDecide`：通过/拒绝种子（拒绝走理由弹窗，不再用原生 prompt）
  *   · `useDims`：自建维度筛选的取值集合 + 维度元数据/字典抓取
  */
 
@@ -11,38 +13,31 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import type { DenyReason } from "./admin-torrents-shared";
+import { AdminDenyDialog } from "./admin-deny-dialog";
 import type {
   SectionDictRow,
   SectionKindMeta,
   ValueMap,
 } from "./admin-torrents-dims";
 
-/** 审核裁决：approve=true 直接通过；false 时先选/填拒绝原因 */
+/** 审核裁决：approve=true 直接通过；false 打开理由弹窗（AdminDenyDialog）。
+ *  弹窗状态挂在这，调用方把返回的 denyDialog 渲染进 JSX。 */
 export function useDecide(flash: (m: string) => void, reload: () => void) {
   const { dict } = useI18n();
   const at = dict.adminTorrents;
-  return useCallback(
+  const [denyFor, setDenyFor] = useState<number | null>(null);
+  const decide = useCallback(
     async (id: number, approve: boolean) => {
-      let deny_reason_id: number | undefined;
-      let reason = "";
       if (!approve) {
-        const rs: DenyReason[] = await api.get("/api/v1/admin/deny-reasons");
-        const list = rs.map((r) => `${r.id}. ${r.reason}`).join("\n");
-        const choice = prompt(fmt(at.denyPrompt, { list }));
-        if (!choice) return;
-        const n = Number(choice);
-        if (n > 0 && rs.some((r) => r.id === n)) deny_reason_id = n;
-        else reason = choice;
+        setDenyFor(id);
+        return;
       }
       try {
         await api.post("/api/v1/admin/reviews/decide", {
           torrent_id: id,
-          approve,
-          reason,
-          deny_reason_id,
+          approve: true,
         });
-        flash(fmt(approve ? at.approvedMsg : at.rejectedMsg, { id }));
+        flash(fmt(at.approvedMsg, { id }));
         reload();
       } catch (e) {
         flash(e instanceof ApiError ? e.message : at.opFail);
@@ -50,6 +45,19 @@ export function useDecide(flash: (m: string) => void, reload: () => void) {
     },
     [at, flash, reload],
   );
+  const denyDialog = (
+    <AdminDenyDialog
+      open={denyFor !== null}
+      torrentId={denyFor ?? 0}
+      onClose={() => setDenyFor(null)}
+      onDone={(msg) => {
+        setDenyFor(null);
+        flash(msg);
+        reload();
+      }}
+    />
+  );
+  return { decide, denyDialog };
 }
 
 /**
