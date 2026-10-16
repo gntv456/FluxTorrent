@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { BTN_SM_GHOST } from "@/lib/ui-classes";
@@ -19,27 +20,43 @@ import { BTN_SM_GHOST } from "@/lib/ui-classes";
  *
  *  用法：
  *    <Pager page={page} pages={pages} total={total} onStep={setPage} />
+ *    <Pager layout="compact" posLabel={`${page} / ${pages}`} … />
  */
 export function Pager({
   page,
   pages,
   total,
   onStep,
+  layout = "split",
+  posLabel,
 }: {
   /** 当前页（1 起） */
   page: number;
   /** 总页数；page >= pages 时「下一页」禁用 */
   pages: number;
-  /** 总条数（左上角「共 N 条」）；不传则留空 */
+  /** 总条数（split 档左上角「共 N 条」）；不传则留空 */
   total?: number;
   onStep: (page: number) => void;
+  /** split=左「共 N 条」右导航（后台表格默认）；compact=整体右对齐、不显总数 */
+  layout?: "split" | "compact";
+  /** 页码文案覆盖（默认 dict.common.pageX「第 N 页」）。各 admin 段若有
+   *  自有口径（pageInfo「第 N 页 / 共 M 条」、`N / M`、`N / M（T）`）
+   *  从自己的 dict 传入，不必为迁就原语改 i18n。 */
+  posLabel?: ReactNode;
 }) {
   const c = useI18n().dict.common;
   return (
-    <div className="ui-pager flex items-center justify-between text-xs text-sub">
-      <span>
-        {total === undefined ? "" : fmt(c.totalItems, { n: total })}
-      </span>
+    <div
+      className={
+        "ui-pager flex items-center text-xs text-sub " +
+        (layout === "compact" ? "justify-end" : "justify-between")
+      }
+    >
+      {layout === "split" && (
+        <span>
+          {total === undefined ? "" : fmt(c.totalItems, { n: total })}
+        </span>
+      )}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -49,7 +66,7 @@ export function Pager({
         >
           {c.prevPage}
         </button>
-        <span>{fmt(c.pageX, { n: page })}</span>
+        <span>{posLabel ?? fmt(c.pageX, { n: page })}</span>
         <button
           type="button"
           disabled={page >= pages}

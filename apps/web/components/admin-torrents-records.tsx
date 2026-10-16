@@ -1,6 +1,6 @@
 "use client";
 
-import { BTN_SM_BOLD, BTN_SM_GHOST, INPUT_GROW } from "@/lib/ui-classes";
+import { BTN_SM_BOLD, INPUT_GROW } from "@/lib/ui-classes";
 
 /**
  * 后台种子管理·记录类子表（从 components/admin-torrents.tsx 按域拆出）：
@@ -14,6 +14,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type { DenyReason, TorrentOpRow } from "./admin-torrents-shared";
+import { Pager } from "@/components/ui/pager";
 
 // ============ 拒绝原因（既有） ============
 
@@ -252,28 +253,16 @@ export function OpLogs() {
           ))}
         </tbody>
       </table>
-      <div className="flex items-center justify-end gap-2 text-sm text-sub">
-        <button
-          disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
-          className={BTN_SM_GHOST}
-        >
-          {c.prevPage}
-        </button>
-        <span>
-          {fmt(at.pageInfo, {
-            page: data?.page ?? 1,
-            total: data?.total ?? 0,
-          })}
-        </span>
-        <button
-          disabled={!data || data.rows.length < 20}
-          onClick={() => setPage(page + 1)}
-          className={BTN_SM_GHOST}
-        >
-          {c.nextPage}
-        </button>
-      </div>
+      <Pager
+        layout="compact"
+        page={page}
+        pages={Math.max(1, Math.ceil((data?.total ?? 0) / 20))}
+        posLabel={fmt(at.pageInfo, {
+          page: data?.page ?? 1,
+          total: data?.total ?? 0,
+        })}
+        onStep={setPage}
+      />
     </div>
   );
 }

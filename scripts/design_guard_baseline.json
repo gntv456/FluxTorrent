@@ -2019,8 +2019,8 @@
  "components/admin-torrents-login-logs.tsx": {
   "h1": [],
   "palette": [
-   109,
-   144
+   110,
+   145
   ],
   "color": []
  },
@@ -2668,9 +2668,9 @@
  "components/invite-manager.tsx": {
   "h1": [],
   "palette": [
-   232,
-   241,
-   315
+   233,
+   242,
+   302
   ],
   "color": []
  },
@@ -3213,7 +3213,7 @@
  "components/staff-tools-runtime.tsx": {
   "h1": [],
   "palette": [
-   30
+   31
   ],
   "color": []
  },
