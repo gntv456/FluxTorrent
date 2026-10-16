@@ -1,4 +1,7 @@
+"use client";
+
 import { formatBytes } from "@/lib/format";
+import { useState } from "react";
 import { Fold } from "@/components/torrent-detail-parts";
 import { GroupSubscribeButton } from "@/components/group-subscribe-button";
 import { CommentDeleteButton } from "@/components/comment-delete-button";
@@ -9,6 +12,7 @@ import { dateLocale, type Locale } from "@/i18n/config";
 import type { Dict } from "@/i18n/server";
 import type { TorrentComment } from "@fluxtorrent/domain-types";
 import { Badge } from "@/components/ui/badge";
+import { CommentsLoadMore } from "@/components/torrent-comments-more";
 
 /** 种子详情页交互区块（从 app/(main)/torrent/[id]/page.tsx 按域拆出）：
  *  详情扩展数据类型、同组版本表、感谢者名单、评论区。数据装载留在 page.tsx。 */
@@ -181,14 +185,17 @@ export function Thankers({
 }
 
 /** 评论区（staff 删评按钮常显，无权限由后端 403 兜底；
- *  0156 嵌套回复：回复挂根楼层、组内缩进一层平铺 + 「回复 @xxx」标注） */
+ *  0156 嵌套回复：回复挂根楼层、组内缩进一层平铺 + 「回复 @xxx」标注）。
+ *  聚合审计 P2-3：聚合口首屏只带 20 条，计数用调用侧传入的真实总数
+ *  （torrent.comments）；更早楼层由 CommentsLoadMore 分页拉取。 */
 export function Comments({
-  comments,
+  comments: initial,
   torrentId,
   dict,
   locale,
   relTime,
   embedded,
+  total,
 }: {
   comments: TorrentComment[];
   torrentId: number;
@@ -197,7 +204,11 @@ export function Comments({
   relTime: (iso: string) => string;
   /** M5.8 移动端折叠内嵌：去掉 section/h2 外壳（标题由折叠条承担） */
   embedded?: boolean;
+  /** 评论总数（torrent.comments 口径）；缺省回落 initial.length */
+  total?: number;
 }) {
+  const [comments, setComments] = useState(initial);
+  const totalCount = total ?? comments.length;
   const inner = (
     <>
       {comments.map((c) => (
@@ -255,13 +266,23 @@ export function Comments({
           compact
         />
       )}
+      {/* 余量>0 出按钮；全部载入后（total>20）出「已显示全部」尾巴 */}
+      {(totalCount > comments.length || totalCount > 20) && (
+        <CommentsLoadMore
+          comments={comments}
+          setComments={setComments}
+          torrentId={torrentId}
+          total={totalCount}
+          dict={dict}
+        />
+      )}
     </>
   );
   if (embedded) return inner;
   return (
     <section className="td-comments nexus-detail">
       <h2 className="td-sec-title">
-        {dict.torrent.commentsTitle.replace("{n}", String(comments.length))}
+        {dict.torrent.commentsTitle.replace("{n}", String(totalCount))}
       </h2>
       {inner}
     </section>

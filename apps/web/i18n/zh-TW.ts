@@ -445,6 +445,8 @@ const zhTwBase: Omit<
     bookmarkOk: "已收藏",
     unbookmarkOk: "已取消收藏",
     noComments: "還沒有評論，來搶沙發吧",
+    commentsMore: "載入更多評論（還有 {n} 條）",
+    commentsEnd: "已顯示全部評論",
     viewAll: "查看全部 →",
     descrTitle: "內容簡介",
     filesTitle: "檔案列表",

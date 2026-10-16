@@ -147,6 +147,10 @@ async fn review_postpone(
         .repo
         .audit(Some(auth.id), "review.postpone", Some(body.torrent_id))
         .await;
+    // 暂缓把审核态从 0 翻成 4：详情缓存跟着清（与 decide_one 同口径，
+    // 否则列表已刷新、直达详情最长 30 秒旧态）
+    crate::torrent_http::invalidate_tdetail_cache(&state, body.torrent_id)
+        .await;
     Ok(ok(
         serde_json::json!({ "id": body.torrent_id, "status": 4 }),
     ))
@@ -195,6 +199,9 @@ async fn review_resume(
     state
         .repo
         .audit(Some(auth.id), "review.resume", Some(body.torrent_id))
+        .await;
+    // 暂缓 → 待审同样翻审核态：详情缓存清（与 postpone 对称）
+    crate::torrent_http::invalidate_tdetail_cache(&state, body.torrent_id)
         .await;
     Ok(ok(
         serde_json::json!({ "id": body.torrent_id, "status": 0 }),

@@ -64,11 +64,14 @@ pub(super) async fn store(
     if parts.is_empty() {
         return Ok(0);
     }
-    // 本体必须存在且不是自己（防自引用环）
+    // 本体必须存在且不是自己（防自引用环），且必须已过审——挂链是把自己
+    // 露在本体详情页「更新」段里的公开承诺，本体过审 ≠ 子种过审，未过审
+    // 内容不该借这条链提前出标题（聚合审计 P2-2）
     let parent = match parent {
         Some(p) if p != torrent_id => {
             let ok: bool = sqlx::query_scalar(
-                "SELECT EXISTS (SELECT 1 FROM torrents WHERE id = $1)",
+                "SELECT EXISTS(SELECT 1 FROM torrents \
+                 WHERE id = $1 AND approval_status = 1)",
             )
             .bind(p)
             .fetch_one(db)
@@ -129,15 +132,18 @@ pub(crate) async fn list_for_detail(
 }
 
 /// 更新链导航：挂在「本体」下的更新包列表（详情页「更新」段）。
+/// 只列过审子种（聚合审计 P2-2）：本体过审 ≠ 子种过审，待审/被拒/软删的
+/// 子种标题/日期/大小不借这条链外泄，也不进本体的共享缓存。
 pub(crate) async fn children_of(
-    db: &PgPool,
+    db: &sqlx::PgPool,
     parent_id: i64,
 ) -> Vec<serde_json::Value> {
     let rows: Vec<(i64, i64, String, Option<String>, i64)> = sqlx::query_as(
         "SELECT a.torrent_id, t.id, t.name, \
          to_char(t.created_at, 'YYYY-MM-DD HH24:MI'), t.size \
          FROM torrent_artifacts a JOIN torrents t ON t.id = a.torrent_id \
-         WHERE a.parent_torrent_id = $1 ORDER BY t.created_at DESC LIMIT 20",
+         WHERE a.parent_torrent_id = $1 AND t.approval_status = 1 \
+         ORDER BY t.created_at DESC LIMIT 20",
     )
     .bind(parent_id)
     .fetch_all(db)

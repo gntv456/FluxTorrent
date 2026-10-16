@@ -26,6 +26,8 @@ struct TorrentAggregate {
     detail: torrents::TorrentDetailRow,
     files: Vec<torrents::FileRow>,
     thanks: Vec<torrents::ThankRow>,
+    /// 首屏评论（20 条；聚合审计 P2-3：总数看 `torrent.comments`，
+    /// 更早楼层走 /torrents/{id}/comments?limit= 翻页）
     comments: Vec<torrents::CommentRow>,
     nfo: Option<String>,
     tags: serde_json::Value,
@@ -234,8 +236,12 @@ async fn assemble(
     );
     // detail 里的 is_owner / purchased 是 viewer 态，而共享缓存存的是「第一个访问者」
     // 的答案——必须按当前用户重算（0285 修过一次，被并行批次覆盖回 `let _ = uid;`，
-    // 症状：B 打开付费种看到「已购买/我发布」，付费墙被隐藏）。
+    // 症状：B 打开付费种看到「已购买/我发布」，付费墙被隐藏）。重算失败宁可
+    // 回落保守值（非本人/未购买），也不能端出缓存里别人的答案——那正是
+    // 0285 的症状会在 DB 抖动时复现的路径。
     let mut detail = shared.detail;
+    detail.is_owner = false;
+    detail.purchased = false;
     let own: Option<(bool, bool)> = sqlx::query_as(
         "SELECT (t.owner_id = $2) AS is_owner, \
                 EXISTS(SELECT 1 FROM torrent_purchases p \

@@ -2000,6 +2000,30 @@ a:hover {
   font-size: 14px;
   white-space: pre-wrap;
 }
+/* 加载更多/到底提示（聚合审计 P2-3：聚合口首屏只带 20 条） */
+.td-comments__more {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: var(--surface-sunken);
+  color: var(--accent, inherit);
+  font-size: 13px;
+  cursor: pointer;
+}
+.td-comments__more:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.td-comments__end {
+  padding: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
 @media (max-width: 640px) {
   .td-comment {
     grid-template-columns: 1fr;
