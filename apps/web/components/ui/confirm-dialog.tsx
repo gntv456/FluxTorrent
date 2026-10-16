@@ -18,9 +18,16 @@
  *      message="删除后不可恢复，做种记录同时清除。"
  *      requireText={torrentName}
  *    />
+ *
+ *  - portal 到 body（2026-10-16）：确认框多数从「更多操作」面板或别的弹窗里
+ *    再打开（三级层）。留在原处时，`.more-sheet` 开着带 `transform` 且
+ *    `max-height:72vh; overflow:auto`，`position:fixed` 会被改成相对该面板
+ *    定位并裁切（实测 1440×900 下遮罩只剩 520×338），层级也压回面板里；
+ *    层级走 `--z-modal-nested`（见 ui.css .ui-cfm__scrim）。
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { Icon } from "@/components/icons";
 import { useFocusTrap } from "@/lib/use-focus-trap";
@@ -57,6 +64,8 @@ export function ConfirmDialog({
   const { dict } = useI18n();
   const cardRef = useRef<HTMLDivElement>(null);
   const [typed, setTyped] = useState("");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   useFocusTrap(open, cardRef);
 
   // Esc 关闭（焦点陷阱已管 Tab；Esc 是对话框通用退出语义）
@@ -79,13 +88,13 @@ export function ConfirmDialog({
     if (open) setTyped("");
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
   const okLabel =
     confirmLabel ??
     (tone === "danger" ? dict.ui.confirmDelete : dict.ui.confirmOk);
   const textOk = !requireText || typed.trim() === requireText;
 
-  return (
+  return createPortal(
     <div
       className="ui-cfm__scrim"
       role="presentation"
@@ -142,6 +151,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

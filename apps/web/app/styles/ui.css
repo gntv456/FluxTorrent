@@ -1064,7 +1064,9 @@
 .ui-cfm__scrim {
   position: fixed;
   inset: 0;
-  z-index: var(--z-modal);
+  /* 确认框常从「更多操作」面板/其它弹窗里再打开（三级层），必须高于
+     --z-modal；面板内联渲染时还会被 transform 收容，故组件同时 portal */
+  z-index: var(--z-modal-nested);
   display: grid;
   place-items: center;
   padding: 16px;
