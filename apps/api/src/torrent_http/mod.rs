@@ -3,7 +3,8 @@
 //! 从 http.rs 机械外移（审查路线图第 4 周「拆上帝文件」第六段）。
 
 //! 按域拆分（300 行门禁）：列表与只读详情在 list.rs，评论区写操作与
-//! 感谢/收藏/求续种在 interact.rs，编辑/定价/恢复/删除/标签管理在 manage.rs。
+//! 感谢/收藏/求续种在 interact.rs，编辑/定价/恢复/标签管理在 manage.rs，
+//! 删除与附带处置在 torrent_delete.rs。
 
 mod aggregate;
 mod batch;
@@ -28,6 +29,8 @@ mod file_conflict;
 mod preview;
 mod sec_params;
 mod suggest;
+// 删除与站方处置（理由/火花回收/禁发种/台账）
+mod torrent_delete;
 // 举报/替换（0336 trumping；裁决侧面在 trump_admin）
 mod trump;
 mod trump_admin;
@@ -54,6 +57,7 @@ pub use related::*;
 /// 多维筛选参数解析：后台管理列表也要用同一实现（B3）。
 pub(crate) use sec_params::parse_section_params;
 pub use suggest::*;
+pub use torrent_delete::*;
 pub use trump::*;
 pub use trump_admin::*;
 // ===== F4 utoipa 聚合出口（种子域 38 条路由的 #[utoipa::path] 入口）====
@@ -85,7 +89,6 @@ pub(crate) use manage::edit_torrent;
 pub(crate) use manage::set_torrent_price;
 pub(crate) use manage::restore_torrent;
 pub(crate) use manage::resubmit_torrent;
-pub(crate) use manage::delete_torrent;
 pub(crate) use peers::torrent_peers;
 pub(crate) use preview::preview_add;
 pub(crate) use preview::preview_list;

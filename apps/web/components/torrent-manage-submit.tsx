@@ -1,8 +1,10 @@
 "use client";
 
-import { useI18n } from "@/i18n/client";
+import { useState } from "react";
+
+import { TorrentDeleteDialog } from "@/components/torrent-delete-dialog";
 import { api, ApiError } from "@/lib/api-client";
-import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { useI18n } from "@/i18n/client";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 
 /** 编辑提交载荷 + 补种/删除动作（0184 从 torrent-manage.tsx 拆出，
@@ -10,9 +12,9 @@ import type { SectionKindMeta } from "@/components/admin-sections-shared";
  *  staff 分支）；useTorrentActions 封装 reseed/del 的 API 调用与提示。 */
 
 /** 补种/删除动作（0184 从 torrent-manage.tsx 拆出，300 行门禁）：
- *  reseed = PM 全体完成者（900s 限频后端校验）；del = 软删 + 跳列表。
- *  P2 清偿：del 的二次确认上移到调用方 ConfirmDialog（danger），
- *  本 hook 只保留纯执行。 */
+ *  reseed = PM 全体完成者（900s 限频后端校验）；删除 = 站方删除表单
+ *  （理由 + 火花回收 + 禁发种）落库后跳列表，表单本身在
+ *  torrent-delete-dialog.tsx，本 hook 只管开关与提示。 */
 export function useTorrentActions(opts: {
   torrentId: number;
   setMsg: (m: string | null) => void;
@@ -20,8 +22,6 @@ export function useTorrentActions(opts: {
   onDeleted: () => void;
 }) {
   const { dict } = useI18n();
-  // P2 清偿：删除确认状态机（window.confirm 退役）
-  const ask = useConfirm();
   async function reseed() {
     opts.setBusy(true);
     opts.setMsg(null);
@@ -37,30 +37,24 @@ export function useTorrentActions(opts: {
       opts.setBusy(false);
     }
   }
-  async function del() {
-    opts.setBusy(true);
-    opts.setMsg(null);
-    try {
-      await api.del(`/api/v1/torrents/${opts.torrentId}`);
-      opts.setMsg(dict.torrentManage2.deleted);
-      opts.onDeleted();
-    } catch (e) {
-      opts.setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      opts.setBusy(false);
-    }
-  }
-  /** 删除按钮 onClick：弹 danger 确认，确认后才执行 del */
+  const [delOpen, setDelOpen] = useState(false);
+  /** 删除按钮 onClick：开站方删除表单（不再是纯 danger 二次确认） */
   function askDel() {
-    ask.open({
-      title: dict.torrentManage2.del,
-      message: dict.torrentManage2.delConfirm,
-      tone: "danger",
-      run: del,
-    });
+    setDelOpen(true);
   }
-  const delDialog = <AskDialog {...ask} />;
-  return { reseed, del, askDel, delDialog };
+  const delDialog = (
+    <TorrentDeleteDialog
+      open={delOpen}
+      torrentId={opts.torrentId}
+      onClose={() => setDelOpen(false)}
+      onDeleted={() => {
+        setDelOpen(false);
+        opts.setMsg(dict.torrentManage2.deleted);
+        opts.onDeleted();
+      }}
+    />
+  );
+  return { reseed, askDel, delDialog };
 }
 
 /** 编辑提交载荷（0184 从 torrent-manage.tsx 拆出）：PUT /torrents/{id} body */

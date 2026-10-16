@@ -13,8 +13,13 @@
 # 第一批覆盖面：apps/api/src/auth_http/*（登录/注册/改密/自身设定/自定义字段）
 # + 术语表面板的四条提示。
 IP 已被封禁，请联系管理组	IP 已被封禁，請聯繫管理組	This IP address is blocked; please contact the staff team
+删除理由不合法	刪除理由不合法	Invalid delete reason
+删除请求体格式不正确	刪除請求體格式不正確	Malformed delete request body
+执行处置必须先选择删除理由	執行處置必須先選擇刪除理由	Select a delete reason before applying sanctions
 账号因长期未登录已被停用，请通过『联系我们』附上用户名申请恢复	帳號因長期未登錄已被停用，請透過『聯繫我們』附上用戶名申請恢復	This account was disabled after a long period of inactivity. Use "Contact us" and include your username to request restoration.
 该邮箱地址已被禁用，请联系管理组	該電子郵件地址已被禁用，請聯繫管理組	This email address is blocked; please contact the staff team
+违规与其它理由必须填写说明	違規與其他理由必須填寫說明	A note is required for the violation and other reasons
+追加处置仅管理人员对他人种子可用	追加處置僅管理人員對他人種子可用	Sanctions apply to staff acting on others' torrents only
 验证码错误或已过期	驗證碼錯誤或已過期	Verification code is invalid or expired
 新密码不能与旧密码相同	新密碼不能與舊密碼相同	The new password must differ from the current one
 新密码至少 8 位	新密碼至少 8 位	The new password must be at least 8 characters

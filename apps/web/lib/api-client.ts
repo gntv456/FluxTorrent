@@ -271,7 +271,8 @@ export const api = {
     request<T>(path, { method: "PUT", body: JSON.stringify(data ?? {}) }),
   patch: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(data ?? {}) }),
-  del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  del: <T>(path: string, data?: unknown) =>
+    request<T>(path, { method: "DELETE", body: JSON.stringify(data) }),
   /** "PUT /api/v1/xxx {json}" 快捷调用（content-manage 内部用） */
   call: <T>(spec: string): Promise<T> => {
     const m = spec.match(/^(GET|POST|PUT|DELETE) (\S+)(?: (\{.*\}))?$/);
