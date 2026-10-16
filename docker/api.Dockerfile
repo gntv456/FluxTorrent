@@ -26,9 +26,10 @@ COPY apps/api/adapters ./apps/api/adapters
 RUN rustup target add wasm32-unknown-unknown \
     && cd apps/api/adapters/douban \
     && cargo build --release --target wasm32-unknown-unknown
-# Cargo workspace 需要全部成员 manifest —— 拷贝整个 apps + 根清单
+# Cargo workspace 需要全部成员 manifest —— 拷贝整个 apps + 共享 crate + 根清单
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
+COPY crates ./crates
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -37,6 +38,7 @@ COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
+COPY crates ./crates
 COPY --from=planner /build/apps/api/adapters/douban/target/wasm32-unknown-unknown/release/adapter_douban.wasm \
     /build/apps/api/adapters/douban/target/wasm32-unknown-unknown/release/adapter_douban.wasm
 RUN cargo build --release -p flux-api \
