@@ -130,7 +130,7 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
     }
   }
 
-  const decide = useDecide(flash, load);
+  const dv = useDecide(flash, load);
 
   return (
     <div className="flex flex-col gap-3">
@@ -266,7 +266,8 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
       />
 
       {/* 列表（表格拆至 ./admin-torrents-table.tsx） */}
-      <TorrentTable data={data} sel={sel} setSel={setSel} decide={decide} />
+      <TorrentTable data={data} sel={sel} setSel={setSel} decide={dv.decide} />
+      {dv.denyDialog}
       <Pager
         page={page}
         pages={Math.max(1, Math.ceil(total / 20))}
