@@ -24,6 +24,12 @@ export function HeadActionsMore({
   const compact = useIsCompact();
   const [open, setOpen] = useState(false);
   const [bar, setBar] = useState<HTMLElement | null>(null);
+  // 面板 portal 挂 document.body：SSR 期 document 不存在，直接在渲染期
+  // 求值 createPortal 会抛 `document is not defined`（同 global-search-dialog
+  // 的处理）。用 mounted 闸而不是 `typeof document` 判断——后者会让服务端
+  // 与客户端首次 render 输出不一致（hydration mismatch）。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // 吸底栏与本组件按各自断点翻转，挂载时序不定——轮询等容器就绪
   // （仅移动端需要：桌面 trigger 内联渲染，不进吸底条）
@@ -82,7 +88,7 @@ export function HeadActionsMore({
     </button>
   );
 
-  const sheet = createPortal(
+  const sheetEl = (
     <div
       className={`more-sheet-mask${open ? " is-open" : " is-closed"}`}
       onClick={() => setOpen(false)}
@@ -107,9 +113,9 @@ export function HeadActionsMore({
         </button>
         {children}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+  const sheet = mounted ? createPortal(sheetEl, document.body) : null;
 
   // 移动端头部操作区整块 display:none，trigger 只能挂吸底条
   if (compact) {
