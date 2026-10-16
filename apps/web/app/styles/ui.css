@@ -1213,3 +1213,73 @@
 .ui-hsearch__input::placeholder {
   color: var(--text-faint);
 }
+
+/* ---------- Badge（S2：统一状态/属性标签） ----------
+   替代 `.sticker` + Tailwind 色直写（bg-mint/30 等）：调用方只给 tone，
+   颜色由 --tone-* 令牌决定，明暗主题自动适配。 */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.ui-badge--sm {
+  padding: 1px 7px;
+  font-size: 10px;
+}
+.ui-badge--lg {
+  padding: 3px 12px;
+  font-size: 12px;
+}
+/* soft：浅底深字（默认；状态标签） */
+.ui-badge--soft.ui-badge--neutral {
+  background: var(--tone-neutral-soft);
+  color: var(--text-sub);
+}
+.ui-badge--soft.ui-badge--brand {
+  background: var(--tone-brand-soft);
+  border-color: var(--tone-brand-border);
+  color: var(--tone-brand);
+}
+.ui-badge--soft.ui-badge--success {
+  background: var(--tone-success-soft);
+  border-color: var(--tone-success-border);
+  color: var(--tone-success);
+}
+.ui-badge--soft.ui-badge--warn {
+  background: var(--tone-warn-soft);
+  border-color: var(--tone-warn-border);
+  color: var(--tone-warn);
+}
+.ui-badge--soft.ui-badge--danger {
+  background: var(--tone-danger-soft);
+  border-color: var(--tone-danger-border);
+  color: var(--tone-danger);
+}
+/* solid：实底反白（醒目标记，如「官方」「免费」） */
+.ui-badge--solid {
+  border-color: transparent;
+  color: var(--tone-on-accent);
+}
+.ui-badge--solid.ui-badge--neutral {
+  background: var(--tone-neutral-strong);
+}
+.ui-badge--solid.ui-badge--brand {
+  background: var(--tone-brand-strong);
+}
+.ui-badge--solid.ui-badge--success {
+  background: var(--tone-success);
+}
+.ui-badge--solid.ui-badge--warn {
+  background: var(--tone-warn);
+}
+.ui-badge--solid.ui-badge--danger {
+  background: var(--tone-danger);
+}

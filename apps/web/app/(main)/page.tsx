@@ -9,6 +9,7 @@ import { MobileHomeHeader } from "@/components/mobile-home-header";
 import type { HomeData } from "@/components/home-data";
 import { LatestPosters } from "@/components/latest-posters";
 import { Icon } from "@/components/icons";
+import { Badge } from "@/components/ui/badge";
 import {
   parseHomeLayout,
   type HomeSectionMeta,
@@ -102,9 +103,7 @@ export default async function HomePage() {
         <ul className="flex flex-col gap-1 rounded-[var(--r-md)] border border-sun/40 bg-sun/10 px-3 py-2">
           {promos.map((p) => (
             <li key={p.id} className="flex items-center gap-2 text-sm">
-              {p.badge && (
-                <span className="sticker bg-sun text-ink">{p.badge}</span>
-              )}
+              {p.badge && <Badge tone="warn">{p.badge}</Badge>}
               {p.url ? (
                 <a
                   href={p.url}

@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/i18n/client";
 import type { BankLoanHistoryItem, BankOverview } from "@/lib/data";
+import { Badge } from "@/components/ui/badge";
 
 /** 贷款服务面板（从 components/bank-actions.tsx 按域拆出）：
  *  有贷（本息合计/到期/部分还款/一次结清）与无贷（金额/档期日息/申请）两态；
@@ -164,15 +165,22 @@ export function LoanHistoryRow({ l }: { l: BankLoanHistoryItem }) {
           ? `${dict.bank.maturity}: ${new Date(l.due_at).toLocaleDateString()}`
           : `${dict.bank.loanPaidAt}: ${l.paid_at ? new Date(l.paid_at).toLocaleDateString() : "—"}`}
       </span>
-      <span
-        className={`sticker num ${l.status === "paid" ? "bg-mint/30 text-ink" : l.status === "defaulted" ? "bg-tomato/40 text-ink" : "bg-sun/70 text-ink"}`}
+      <Badge
+        tone={
+          l.status === "paid"
+            ? "success"
+            : l.status === "defaulted"
+              ? "danger"
+              : "warn"
+        }
+        className="num"
       >
         {l.status === "paid"
           ? dict.bank.loanStatusPaid
           : l.status === "defaulted"
             ? dict.bank.loanStatusDefaulted
             : dict.bank.loanStatusActive}
-      </span>
+      </Badge>
     </li>
   );
 }

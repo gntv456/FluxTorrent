@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { dateLocale, type Locale } from "@/i18n/config";
 import type { Dict } from "@/i18n/server";
 import type { TorrentComment } from "@fluxtorrent/domain-types";
+import { Badge } from "@/components/ui/badge";
 
 /** 种子详情页交互区块（从 app/(main)/torrent/[id]/page.tsx 按域拆出）：
  *  详情扩展数据类型、同组版本表、感谢者名单、评论区。数据装载留在 page.tsx。 */
@@ -99,9 +100,9 @@ export function GroupVersions({
                   </a>
                 )}
                 {g.official && (
-                  <span className="sticker bg-indigo text-white">
+                  <Badge tone="brand" variant="solid">
                     {dict.torrent.official}
-                  </span>
+                  </Badge>
                 )}
                 {tierBadge(g.tier)}
               </td>
