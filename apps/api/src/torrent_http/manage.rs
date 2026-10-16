@@ -74,6 +74,7 @@ pub(crate) async fn edit_torrent(
             poster: body.poster.as_deref().map(str::trim),
             // 0173：MediaInfo 全文（同三态语义）
             mediainfo: body.mediainfo.as_deref().map(str::trim),
+            nfo: body.nfo.as_deref().map(str::trim),
         },
     )
     .await?;

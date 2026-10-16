@@ -11,6 +11,7 @@ import type { Dict } from "@/i18n/zh-CN";
 import type { Locale } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { TorrentDetailExt } from "@/components/torrent-detail-blocks";
+import { TorrentCurate } from "@/components/torrent-curate";
 
 interface FileItem {
   file_index: number;
@@ -27,6 +28,8 @@ interface SideProps {
   dict: Dict;
   locale: Locale;
   relTime: (iso: string) => string;
+  /** 批 C 策展口：职员档才给建合集；种主本人由 ext.is_owner 判 */
+  staff?: boolean;
 }
 
 /** 文件大小（侧栏卡内联格式化） */
@@ -185,6 +188,8 @@ export function TorrentSideMeta({
  *  M6.5 样图收口：删「更多操作」入口卡——本地完善版样图右栏只有
  *  状态/文件/元信息三卡（导航由 <768 锚点条与折叠块自身承担）。 */
 export function TorrentDetailSide(props: SideProps) {
+  const can = props.staff === true || props.ext?.is_owner === true;
+  const tid = props.t.id;
   return (
     <aside className="td-side">
       <TorrentVitals t={props.t} ext={props.ext} dict={props.dict} />
@@ -192,6 +197,7 @@ export function TorrentDetailSide(props: SideProps) {
         <TorrentSideFiles files={props.files} dict={props.dict} />
       )}
       <TorrentSideMeta {...props} />
+      {can && <TorrentCurate torrentId={tid} can={can} />}
     </aside>
   );
 }

@@ -73,6 +73,7 @@ export function buildEditPayload(x: {
   fImdb: string;
   fPoster: string;
   fMediainfo: string;
+  fNfo: string;
   fSec: Record<string, string>;
   /** B2：维度定义（编码 sections 时按 field_type 分派） */
   catKinds: SectionKindMeta[];
@@ -96,6 +97,9 @@ export function buildEditPayload(x: {
     // 媒介/学段/版本三个 legacy 列不再提交：维度归属统一走下面的 sections。
     poster: x.fPoster.trim(),
     mediainfo: x.fMediainfo.trim(),
+    // NFO（批 B）：表单不预填（聚合口不下发 nfo 全文给编辑面板），
+    // 所以留空必须是「不动」而不是「清空」——与上面 mediainfo 刻意不同。
+    nfo: x.fNfo.trim() || undefined,
     // 多维属性（B2 六类型）：按 field_type 编码 —— 枚举发整数（旧格式，
     // 后端零改动兼容）、多选发 {"dict_ids":[…]}、自由值发 {"text":…} 等；
     // 后端按**值的 JSON 类型**分派。

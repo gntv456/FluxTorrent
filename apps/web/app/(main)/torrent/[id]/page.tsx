@@ -16,7 +16,9 @@ import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
 import { FileTree } from "@/components/file-tree";
 import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
-import { Descr, Spec, Fold } from "@/components/torrent-detail-parts";
+import {
+  Descr, Spec, Fold, MiWarn, TorrentArtifacts,
+} from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
 import type { RipLog } from "@/components/torrent-rip-logs";
 import { TorrentRipLogs } from "@/components/torrent-rip-logs";
@@ -319,6 +321,7 @@ export default async function TorrentDetailPage({
       {sectOn("mediainfo") && ext?.mediainfo &&
         (profile?.metadata_sources ?? []).includes("mediainfo") && (
           <Fold title="MediaInfo" id="td-sec-media">
+            <MiWarn agg={agg} d={d} />
             <pre className="td-nfo">{ext.mediainfo}</pre>
           </Fold>
         )}
@@ -370,7 +373,6 @@ export default async function TorrentDetailPage({
         </section>
       )}
 
-
       {sectOn("files") && files.length > 0 && (
         <Fold
           title={dict.torrent.filesTitle}
@@ -380,6 +382,8 @@ export default async function TorrentDetailPage({
           <FileTree files={files} />
         </Fold>
       )}
+
+      <TorrentArtifacts agg={agg} d={d} />
 
       {/* 字幕面板（0146 P0-6 + 0148 C1 同片合并；M5.8 移动端收折叠） */}
       {subOn && (
@@ -405,7 +409,7 @@ export default async function TorrentDetailPage({
 
       {/* ===== 右信息栏上段（状态/文件/元信息，随页面滚动） ===== */}
       <TorrentDetailSide
-        t={t} ext={ext} files={files} category={category}
+        t={t} ext={ext} files={files} category={category} staff={isStaff}
         inCollections={inCollections} dict={dict} locale={locale}
         relTime={relTime}
       />

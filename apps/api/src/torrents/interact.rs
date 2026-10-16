@@ -25,6 +25,9 @@ pub struct TorrentEdit<'a> {
     pub poster: Option<&'a str>,
     /// MediaInfo 全文（0173 编辑同步发布能力）：None=不动，Some("")=清除，Some(text)=写入
     pub mediainfo: Option<&'a str>,
+    /// NFO 全文：此前只有发布口能写（nfo 列），传错只能删重发。
+    /// 三态同 poster/mediainfo：None=不动，Some("")=清除，Some(text)=写入
+    pub nfo: Option<&'a str>,
 }
 
 pub async fn edit_torrent(
@@ -99,6 +102,8 @@ pub async fn edit_torrent(
                                  THEN jsonb_build_object('mediainfo', NULL)
                              ELSE jsonb_build_object('mediainfo', $13::text) END
             END,
+            -- $14 = NFO 三态（NULL 不动 / '' 清空 / 其余写入）
+            nfo = COALESCE($14, nfo),
             mtime = now()
         WHERE id = $1
         "#,
@@ -116,6 +121,7 @@ pub async fn edit_torrent(
     .bind(keep_status)
     .bind(e.poster)
     .bind(e.mediainfo)
+    .bind(e.nfo)
     .execute(db)
     .await
     .map_err(|err| crate::errors::db_to_domain(err, "分类/媒介/学段/版本"))?

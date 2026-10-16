@@ -1451,6 +1451,138 @@ a:hover {
   background: var(--success-soft);
   color: var(--success);
 }
+/* MediaInfo 一致性提示（0390：标题声明的规格与实解析不符）。判定只提示
+   不拦截，故沿用 H&R 义务行的 warning 三件套，位置在折叠块正文之前。 */
+.td-mi-warn {
+  margin: 0 0 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--r-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.td-mi-warn__head {
+  margin: 0;
+  font-weight: 700;
+}
+.td-mi-warn__list {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+.td-mi-warn__note {
+  margin: 4px 0 0;
+}
+/* 策展口（批 C：收录进合集 / 归入版本组）：右栏卡底部一行控件，
+   只对种主与职员渲染；后端拒绝时它回的中文原样显示在 msg 行 */
+.td-curate {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.td-curate__head {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.td-curate__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.td-curate__btn {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--sky-deep, var(--text-brand));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.td-curate__btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.td-curate__msg {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--warning);
+}
+.td-curate__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+/* 工件清单与更新链（0323 UI 段）：行式清单，kind 走徽标底，
+   sha256 只显前 12 位（全长在 title 里，核对时可复制） */
+.td-art__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.td-art__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12.5px;
+}
+.td-art__row:last-child {
+  border-bottom: 0;
+}
+.td-art__kind {
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  color: var(--text-sub);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.td-art__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-body);
+}
+.td-art__link {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-brand);
+}
+.td-art__sha {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.td-art__size,
+.td-art__date {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.td-art__chain {
+  margin-top: 8px;
+}
+.td-art__chain-head {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
 .td-tags-inline:empty {
   display: none;
 }

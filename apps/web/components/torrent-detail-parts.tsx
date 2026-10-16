@@ -1,6 +1,8 @@
 import { hasBBCode, renderBBCode } from "@/lib/bbcode";
+import { formatBytes } from "@/lib/format";
 import { Icon } from "@/components/icons";
 import { PosterImage } from "@/components/poster-image";
+import type { Dict } from "@/i18n/zh-CN";
 
 /** 种子详情页展示件（从 app/(main)/torrent/[id]/page.tsx 按域拆出）：
  *  Descr 简介渲染、Spec 规格网格单元、Fold 折叠分区。数据装载留在 page.tsx。 */
@@ -139,5 +141,121 @@ export function PosterBlock({
         }
       />
     </div>
+  );
+}
+
+/** MediaInfo 一致性提示（0390：判定是提示不是闸门）。
+ *  结论由聚合口的 `mi_check` 下发（只含 mismatches/unverifiable/checked_at），
+ *  why 文案由服务端生成（`domain::mediainfo`），这里不翻译、不改写。
+ *  `agg: object` + 内部收口：page.tsx 的 Aggregate 契约未收进 domain-types，
+ *  而它的行数基线已到顶（432），加不动字段，调用方必须一行写完。 */
+export function MiWarn({ agg, d }: { agg: object; d: Dict["tdetail"] }) {
+  const c = (agg as { mi_check?: Record<string, unknown> }).mi_check;
+  const bad = (c?.mismatches ?? []) as { field: string; why: string }[];
+  const unver = (c?.unverifiable ?? []) as string[];
+  if (bad.length === 0 && unver.length === 0) return null;
+  const fill = (s: string, n: number) => s.replace("{n}", String(n));
+  return (
+    <div className="td-mi-warn">
+      {bad.length > 0 && (
+        <>
+          <p className="td-mi-warn__head">{fill(d.miMismatch, bad.length)}</p>
+          <ul className="td-mi-warn__list">
+            {bad.map((m) => (
+              <li key={m.field}>{m.why}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {unver.length > 0 && (
+        <p className="td-mi-warn__note">
+          {fill(d.miUnverifiable, unver.length)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** 工件行（0323 torrent_artifacts）与更新链行（子种）——aggregate 已下发，
+ *  此前前端零消费；正文 body 不在聚合里（聚合刻意不带），故本段只给清单。 */
+export type ArtifactRow = {
+  id: number;
+  kind: string;
+  filename: string;
+  sha256: string | null;
+  size: number;
+};
+export type ArtifactChildRow = {
+  torrent_id: number;
+  name: string;
+  created_at: string;
+  size: number;
+};
+
+/** 工件清单 + 更新包导航（0323 成文「UI 徽标随后」的那一段）。
+ *  两叠都空时整块不渲染（与文件/字幕块同口径：无数据不占位）。
+ *  props 收成 `agg` 一个：page.tsx 的行数基线已到顶（432），调用方一行写完。 */
+export function TorrentArtifacts({
+  agg,
+  d,
+}: {
+  // `object` 而非结构形状：page.tsx 的 Aggregate 契约还没收进 domain-types
+  // （文件头注明「待后续批次」），而它的行数基线已顶到 432，加不动字段。
+  // 全弱类型（属性全可选）会被 TS 的 weak-type 检查拒掉，这里自己收口。
+  agg: object;
+  d: Dict["tdetail"];
+}) {
+  const a = agg as {
+    artifacts?: ArtifactRow[];
+    artifact_children?: ArtifactChildRow[];
+  };
+  const items = a.artifacts ?? [];
+  const children = a.artifact_children ?? [];
+  if (items.length === 0 && children.length === 0) return null;
+  const kindLabel = (k: string): string =>
+    k === "checksums"
+      ? d.artKindChecksums
+      : k === "changelog"
+        ? d.artKindChangelog
+        : k === "license"
+          ? d.artKindLicense
+          : d.artKindOther;
+  return (
+    <Fold title={d.artifactsTitle} id="td-sec-artifacts">
+      {items.length > 0 && (
+        <ul className="td-art__list">
+          {items.map((a) => (
+            <li key={a.id} className="td-art__row">
+              <span className="td-art__kind">{kindLabel(a.kind)}</span>
+              <span className="td-art__name" title={a.filename}>
+                {a.filename}
+              </span>
+              {a.sha256 && (
+                <code className="td-art__sha" title={a.sha256}>
+                  {a.sha256.slice(0, 12)}
+                </code>
+              )}
+              <span className="td-art__size num">{formatBytes(a.size)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {children.length > 0 && (
+        <div className="td-art__chain">
+          <p className="td-art__chain-head">{d.artifactChildTitle}</p>
+          <ul className="td-art__list">
+            {children.map((c) => (
+              <li key={c.torrent_id} className="td-art__row">
+                <a href={`/torrent/${c.torrent_id}`} className="td-art__link">
+                  {c.name}
+                </a>
+                <span className="td-art__date num">{c.created_at}</span>
+                <span className="td-art__size num">{formatBytes(c.size)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Fold>
   );
 }

@@ -35,6 +35,10 @@ struct TorrentAggregate {
     artifacts: Vec<serde_json::Value>,
     /// 更新链（0323）：挂在本种下的更新包（GGn GameDOX 语义）
     artifact_children: Vec<serde_json::Value>,
+    /// MediaInfo 一致性结论（0390）：只带 `mismatches` / `unverifiable` /
+    /// `checked_at`。结论里还存着 sanitize 后的全文与解析摘要，正文另有
+    /// `detail.mediainfo` 出口，这里不重复下发。
+    mi_check: Option<serde_json::Value>,
 }
 
 /// 共享段缓存键：reveal 影响 owner_name 口径，必须分桶。
@@ -114,6 +118,19 @@ pub(crate) async fn torrent_aggregate(
         crate::publish_http::list_artifacts_for_detail(&state.repo.db, id);
     let arts_children_f =
         crate::publish_http::list_artifact_children(&state.repo.db, id);
+    // 0390 一致性结论：结论由写路径（发种/编辑）重算，读失败按「无结论」降级
+    let mi_check_f = async {
+        sqlx::query_scalar::<_, serde_json::Value>(
+            "SELECT mediainfo_check - 'mediainfo_sanitized' \
+                    - 'summary' \
+             FROM torrents \
+             WHERE id = $1 AND mediainfo_check IS NOT NULL",
+        )
+        .bind(id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .unwrap_or(None)
+    };
 
     // torrent/detail 失败才整体短路（种子不存在 → 404）；files/nfo/tags
     // 为纯静态块降级为空。detail/thanks 带 viewer 态，留在个人段实时算。
@@ -137,6 +154,7 @@ pub(crate) async fn torrent_aggregate(
         },
         async { arts_f.await },
         async { arts_children_f.await },
+        mi_check_f,
     );
     let (
         torrent_r,
@@ -147,6 +165,7 @@ pub(crate) async fn torrent_aggregate(
         (logs, logs_degraded),
         artifacts,
         artifact_children,
+        mi_check,
     ) = joined;
     // 只有对外可见的种子才允许进共享缓存（见上方命中判定）；
     // logs 段降级时也不进——一次瞬时 DB 抖动的空段不该被放大成
@@ -166,6 +185,7 @@ pub(crate) async fn torrent_aggregate(
         logs,
         artifacts,
         artifact_children,
+        mi_check,
     };
     if cacheable {
         if let Ok(json) = serde_json::to_string(&shared) {
@@ -194,6 +214,10 @@ struct TorrentAggregateShared {
     logs: Vec<torrents::LogRow>,
     artifacts: Vec<serde_json::Value>,
     artifact_children: Vec<serde_json::Value>,
+    /// 旧缓存条目没这个键：`default` 让它按「无结论」反序列化，
+    /// 而不是整段缓存作废（写路径 manage.rs 重算后会主动清缓存）
+    #[serde(default)]
+    mi_check: Option<serde_json::Value>,
 }
 
 /// 个人段：thanks（是否已感谢带 viewer 态）+ comments（点赞 viewer 态，0155）
@@ -239,6 +263,7 @@ async fn assemble(
             Err(e) => return Err(e),
         },
         nfo: shared.nfo,
+        mi_check: shared.mi_check,
         tags: shared.tags,
         logs: shared.logs,
         artifacts: shared.artifacts,
