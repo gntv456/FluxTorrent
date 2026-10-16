@@ -59,3 +59,49 @@ test.describe("冒烟：登录与关键页", () => {
     });
   });
 });
+
+/** 资源库行点击的区间口径（M4 双栏）。
+ *
+ *  `.tsplit` 的可见性由 CSS 判（pages.css：≥lg `display:none`），
+ *  拦截点击改 URL `?selected=` 由 JS 判（torrent-split.tsx）。两边一旦
+ *  不一致，宽屏上就是「点了没反应」——所以两条都在真浏览器里钉，
+ *  而且要连 CSS 一起验（单测 mock 不到那条样式）。
+ *
+ *  两段共用一次登录：login 限流 5 次/分/用户名，本文件已有三次 UI 登录，
+ *  再加一次就会把「操作太频繁啦」演成 waitForURL 超时（假红，2026-10-16）。
+ */
+test.describe("资源库行点击：双栏区间", () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addCookies([
+      { name: "flux.locale", value: "zh-CN", domain: "localhost", path: "/" },
+    ]);
+  });
+
+  test("≥lg 直接进详情；md–lg 走内联预览", async ({ page }) => {
+    await login(page);
+
+    // ① 桌面（≥lg）：右栏不渲染，点击必须换页
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/torrents");
+    const deskLink = page.locator("a.torrents-name").first();
+    await expect(deskLink).toBeVisible({ timeout: 20_000 });
+    const name = (await deskLink.innerText()).trim();
+    await deskLink.click();
+    await expect(page).toHaveURL(/\/torrent\/\d+/);
+    // 换页要看到内容，不只是 URL 变了
+    await expect(page.locator("body")).toContainText(name, { timeout: 15_000 });
+
+    // ② md–lg（768–1023）：双栏预览照旧，点「打开详情」才换页
+    await page.setViewportSize({ width: 900, height: 800 });
+    await page.goto("/torrents");
+    const mdLink = page.locator("a.torrents-name").first();
+    await expect(mdLink).toBeVisible({ timeout: 20_000 });
+    await mdLink.click();
+    await expect(page).toHaveURL(/[?&]selected=\d+/);
+    await expect(page.locator(".tsplit__card")).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.locator(".tsplit__open").click();
+    await expect(page).toHaveURL(/\/torrent\/\d+/);
+  });
+});
