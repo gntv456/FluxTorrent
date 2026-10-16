@@ -6373,6 +6373,8 @@ const zhCnBase = {
     ripLoading: "读取中…",
     ripLoadFailed: "日志读取失败",
     reportButton: "举报",
+    reportReasonLabel: "举报理由",
+    reportNoteLabel: "补充说明",
     reportTitle: "举报此种子",
     reportSubmit: "提交",
     reportCancel: "取消",
