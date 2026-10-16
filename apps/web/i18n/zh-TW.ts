@@ -754,6 +754,8 @@ const zhTwBase: Omit<
     groupCandidates: "發布成功；偵測到同名聚合組，可到種子頁將其歸組",
     fail: "發布失敗",
     networkError: "網路異常，請先登入後再發布",
+    noPermission: "發布失敗：沒有發布權限（403）。請確認帳號具備發布資格，或稍後重試",
+    submitFailStatus: "發布失敗：服務端回傳 {status}，請稍後重試或聯絡管理員",
   },
   home2: {
     newsTitle: "社區新鮮事",

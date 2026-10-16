@@ -743,6 +743,8 @@ const zhCnBase = {
     groupCandidates: "发布成功；检测到同名聚合组，可到种子页将其归组",
     fail: "发布失败",
     networkError: "网络异常，请先登录后再发布",
+    noPermission: "发布失败：没有发布权限（403）。请确认账号具备发布资格，或稍后重试",
+    submitFailStatus: "发布失败：服务端返回 {status}，请稍后重试或联系管理员",
   },
   home2: {
     newsTitle: "社区新鲜事",

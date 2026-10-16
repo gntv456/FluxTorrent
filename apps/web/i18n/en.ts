@@ -786,6 +786,10 @@ const enBase: Omit<
     groupCandidates: "Published; a matching group was detected, attach it on the torrent page",
     fail: "Publish fail",
     networkError: "Network error — please sign in before publishing",
+    noPermission:
+      "Publish failed: no permission (403). Check that your account may publish, or retry later",
+    submitFailStatus:
+      "Publish failed: server returned {status}. Retry later or contact an admin",
   },
   home2: {
     newsTitle: "Community News",

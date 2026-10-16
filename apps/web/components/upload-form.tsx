@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api, rawFetchHelpers } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
+import { postTorrent } from "@/components/upload-submit";
 import { useI18n } from "@/i18n/client";
 import { appendMeta, packSections, rejectReason } from "@/lib/upload-fields";
 import { fmt } from "@/i18n/config";
@@ -183,13 +184,12 @@ export function UploadForm() {
         pos_state_until: posUntil ? new Date(posUntil).toISOString() : "",
         pick_type: pickType,
       });
-      // 同源相对路径走 Next rewrites 转发（与 api-client 同口径），避免依赖发布端口
-      const base = rawFetchHelpers.base();
-      const res = await fetch(`${base}/api/v1/torrents`, {
-        method: "POST",
-        body: form,
+      const posted = await postTorrent(form, {
+        noPermission: dict.upload.noPermission,
+        failStatus: (s) => fmt(dict.upload.submitFailStatus, { status: s }),
       });
-      const body = await res.json();
+      if (!posted.ok) return void setMsg(posted.msg);
+      const body = posted.body;
       if (body.code !== 0) {
         // W-18：1002 字段级信封 → FieldErrors 按字段渲染；其余按码走字典
         const errs = fieldsFrom(body.data);
@@ -204,13 +204,13 @@ export function UploadForm() {
         }
       } else {
         // 发布成功直接进详情页预览（0159）：待审种对本人可见
-        const newId = body.data.id;
+        const gs = body.data?.group_suggest;
+        const newId = body.data?.id ?? 0;
         // 0284 P1-4：同源提示（group_suggest.same_source）优先于普通成功文案
-        const gs = body.data.group_suggest;
         if (gs?.same_source) {
           setMsg(
             fmt(dict.upload.sameSource, {
-              id: gs.torrent_id,
+              id: gs.torrent_id ?? 0,
               name: gs.name ?? "",
             }),
           );
