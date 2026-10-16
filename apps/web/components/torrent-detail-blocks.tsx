@@ -1,6 +1,7 @@
 "use client";
 
 import { formatBytes } from "@/lib/format";
+import { relTime } from "@/lib/rel-time";
 import { useState } from "react";
 import { Fold } from "@/components/torrent-detail-parts";
 import { GroupSubscribeButton } from "@/components/group-subscribe-button";
@@ -193,7 +194,6 @@ export function Comments({
   torrentId,
   dict,
   locale,
-  relTime,
   embedded,
   total,
 }: {
@@ -201,7 +201,6 @@ export function Comments({
   torrentId: number;
   dict: Dict;
   locale: Locale;
-  relTime: (iso: string) => string;
   /** M5.8 移动端折叠内嵌：去掉 section/h2 外壳（标题由折叠条承担） */
   embedded?: boolean;
   /** 评论总数（torrent.comments 口径）；缺省回落 initial.length */
@@ -227,7 +226,7 @@ export function Comments({
               className="mt-1 text-[11px] text-sub"
               title={new Date(c.created_at).toLocaleString(dateLocale(locale))}
             >
-              {relTime(c.created_at)}
+              {relTime(c.created_at, dict.tdetail)}
             </p>
             {/* staff 删评：按钮常显，无权限由后端 403 兜底 */}
             <CommentDeleteButton torrentId={torrentId} commentId={c.id} />

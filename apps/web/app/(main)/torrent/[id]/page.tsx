@@ -37,6 +37,7 @@ import {
   type ThankItem,
   type TorrentDetailExt,
 } from "@/components/torrent-detail-blocks";
+import { relTime as rel } from "@/lib/rel-time";
 import { TorrentDetailTail } from "./_parts/torrent-detail-tail";
 import { TorrentDetailSide } from "./_parts/torrent-detail-side";
 import { TorrentSpecs } from "./_parts/torrent-detail-specs";
@@ -242,15 +243,8 @@ export default async function TorrentDetailPage({
     .slice(0, 3)
     .map((v) => v.name)
     .join(" · ");
-  // 相对时间（馒头口径：发布于 x 天前；完整时间放 title）
-  const relTime = (iso: string) => {
-    const ms = Date.now() - new Date(iso).getTime();
-    if (ms < 3600000) return d?.justNow;
-    const h = Math.floor(ms / 3600000);
-    const dd = Math.floor(ms / 86400000);
-    if (ms < 86400000) return `${h} ${d?.hourUnit}${d?.agoUnit}`;
-    return `${dd} ${d?.dayUnit}${d?.agoUnit}`;
-  };
+  // 相对时间（馒头口径）：走 lib 的纯函数，别把闭包传过客户端边界
+  const relTime = (iso: string) => rel(iso, d);
 
   return (
     <article className="td-page">
@@ -403,7 +397,7 @@ export default async function TorrentDetailPage({
         t={t} thanks={thanks}
         thanksCount={ext?.thanks_count ?? thanks.length}
         comments={comments} dict={dict} locale={locale}
-        relTime={relTime} sectOn={sectOn}
+        sectOn={sectOn}
       />
       </div>
 
