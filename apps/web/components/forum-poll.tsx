@@ -5,7 +5,7 @@ import { PANEL_MD_FLAT } from "@/lib/ui-classes";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 export interface PollData {
@@ -63,8 +63,9 @@ export function PollWidget({
     try {
       await api.post("/api/v1/forums/poll/close", { topic_id: topicId });
       router.refresh();
-    } catch {
+    } catch (e) {
       setBusy(false);
+      setErr(apiErrorMessage(dict, e));
     }
   }
 

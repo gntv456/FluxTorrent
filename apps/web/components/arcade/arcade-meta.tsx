@@ -8,9 +8,10 @@
 
 import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { api } from "@/lib/api-client";
+import { toast } from "@/components/ui/toast";
 import { ArcadeFeed, type ArcadeFeedItem } from "./arcade-feed";
 import { ArcadeAlbum } from "./arcade-album";
 import { ArcadeBackpack, type ArcadePackData } from "./arcade-backpack";
@@ -110,8 +111,8 @@ export function ArcadeMeta({ initial }: { initial: ArcadeMeta }) {
         {},
       );
       router.refresh();
-    } catch {
-      // 失败静默：下一轮 refresh 会回读真实态
+    } catch (e) {
+      toast.error(apiErrorMessage(dict, e));
     } finally {
       setBusy(null);
     }

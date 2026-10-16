@@ -5,7 +5,7 @@ import { PANEL_MD_FLAT } from "@/lib/ui-classes";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { LotteryFairness } from "@/components/lottery-fairness";
@@ -71,8 +71,9 @@ export function LotteryWidget({
     try {
       await api.post("/api/v1/forums/lottery/draw", { topic_id: topicId });
       router.refresh();
-    } catch {
+    } catch (e) {
       setBusy(false);
+      setErr(apiErrorMessage(dict, e));
     }
   }
 

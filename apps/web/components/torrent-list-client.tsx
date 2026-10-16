@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
 import { useIsCompact } from "@/lib/hooks/use-media";
@@ -50,8 +51,9 @@ export function TorrentListClient({
           `/api/v1/me/torrentlist?kind=${kind}&limit=100`,
         ),
       );
-    } catch {
+    } catch (e) {
       // 状态可能已被审核员改动，保持列表原样并允许再点
+      toast.error(apiErrorMessage(dict, e));
     }
     setBusyId(null);
   }

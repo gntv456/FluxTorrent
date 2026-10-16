@@ -84,7 +84,7 @@ export function MessageCenter() {
     api
       .post("/api/v1/messages/markread", { ids: [m.id] })
       .then(() => load())
-      .catch(() => {});
+      .catch((e) => toast.error(apiErrorMessage(dict, e)));
   }
 
   // 回复/转发共用落地（re:/fw: 前缀不重复叠加）

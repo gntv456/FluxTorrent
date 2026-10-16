@@ -1727,9 +1727,9 @@
  },
  "app/(main)/admin/forums/_parts/forum-board-drawer.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/forums/_parts/forum-board-table.tsx": {
   "h1": [],
@@ -2744,15 +2744,15 @@
  },
  "components/forum-lottery.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   118,
    119,
-   142,
-   155,
-   164
+   120,
+   143,
+   156,
+   165
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/forum-markdown.tsx": {
   "h1": [],
@@ -2774,23 +2774,23 @@
  },
  "components/forum-poll.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   98,
-   115,
-   145
+   99,
+   116,
+   146
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/forum-post-actions.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   88,
-   221,
-   230
+   90,
+   223,
+   232
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/forum-reply-box.tsx": {
   "h1": [],
@@ -2853,15 +2853,15 @@
  },
  "components/forum-vote.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
    61,
    62,
    121,
    122,
-   249
+   250
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/frame-preview.tsx": {
   "h1": [],
@@ -3012,9 +3012,9 @@
  },
  "components/home-sections.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/home-site-data.tsx": {
   "h1": [],
@@ -3212,9 +3212,9 @@
  },
  "components/modal.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/module-gate.tsx": {
   "h1": [],
@@ -3250,9 +3250,9 @@
  },
  "components/nav-drawer.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/notice-prefs.tsx": {
   "h1": [],
@@ -3980,9 +3980,9 @@
  },
  "components/torrent-head-more.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/torrent-hover-preview.tsx": {
   "h1": [],
@@ -3992,11 +3992,11 @@
  },
  "components/torrent-list-client.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   103
+   105
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/torrent-manage-fields.tsx": {
   "h1": [],

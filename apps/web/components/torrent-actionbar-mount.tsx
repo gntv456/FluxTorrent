@@ -2,7 +2,7 @@
 
 import { TorrentMobileActionBar } from "@/components/torrent-mobile-actionbar";
 import { toast } from "@/components/ui/toast";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 
 /** 详情页移动操作条客户端壳（M3）：把桌面 DownloadButton 的下载逻辑
  *  （blob 保存，含付费扣费提示）与收藏/复制链接触到 44px 底条上。
@@ -66,7 +66,7 @@ export function TorrentActionBarMount({
       api
         .post("/api/v1/wishlist", { keyword: name })
         .then(() => toast.success(dict.wishlist.addedOk))
-        .catch(() => undefined);
+        .catch((e) => toast.error(apiErrorMessage(dict, e)));
     });
   };
   return (

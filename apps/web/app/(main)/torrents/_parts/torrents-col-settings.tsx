@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 
 /**
  * 用户级列设置（0316）：勾选要隐藏的列，写进 users.list_prefs。
@@ -69,8 +70,9 @@ export function TorrentsColSettings({
         value: [...hidden],
       });
       window.location.reload();
-    } catch {
+    } catch (e) {
       setSaving(false);
+      toast.error(apiErrorMessage(dict, e));
     }
   };
 

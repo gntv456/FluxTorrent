@@ -4,7 +4,8 @@ import { BTN_SM_BOLD } from "@/lib/ui-classes";
 
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { toast } from "@/components/ui/toast";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 内容管理的趣味盒 / 友链两个 tab 面板（从 content-manage.tsx
@@ -45,12 +46,9 @@ export function FunTab({
     id: number | null;
     title: string;
     body: string;
-  }>({
-    id: null,
-    title: "",
-    body: "",
-  });
+  }>({ id: null, title: "", body: "" });
   // P2 清偿：删除确认走 ConfirmDialog danger（window.confirm 退役）
+  const { dict } = useI18n();
   const ask = useConfirm();
 
   async function saveFun() {
@@ -64,8 +62,8 @@ export function FunTab({
       }
       setFEdit({ id: null, title: "", body: "" });
       load();
-    } catch {
-      /* flash 由父级统一处理 */
+    } catch (e) {
+      toast.error(apiErrorMessage(dict, e));
     }
   }
 
@@ -146,7 +144,7 @@ export function FunTab({
                           status: "banned",
                         })
                         .then(load)
-                        .catch(() => {})
+                        .catch((e) => toast.error(apiErrorMessage(dict, e)))
                     }
                   >
                     {t.btnBan}
@@ -160,7 +158,7 @@ export function FunTab({
                           status: "normal",
                         })
                         .then(load)
-                        .catch(() => {})
+                        .catch((e) => toast.error(apiErrorMessage(dict, e)))
                     }
                   >
                     {t.btnUnban}
@@ -176,7 +174,7 @@ export function FunTab({
                         void api
                           .del(`/api/v1/fun/items/${f.id}`)
                           .then(load)
-                          .catch(() => {}),
+                          .catch((e) => toast.error(apiErrorMessage(dict, e))),
                     })
                   }
                 >
@@ -204,6 +202,8 @@ export function LinksTab({
   t: ReturnType<typeof useI18n>["dict"]["cmgmt"];
 }) {
   // 同 FunTab 口径：删除确认走 ConfirmDialog danger
+  const { dict } = useI18n();
+  const fail = (e: unknown) => toast.error(apiErrorMessage(dict, e));
   const ask = useConfirm();
   async function reviewLink(
     id: number,
@@ -212,8 +212,8 @@ export function LinksTab({
     try {
       await api.put(`/api/v1/admin/links/${id}`, { status });
       load();
-    } catch {
-      /* 略 */
+    } catch (e) {
+      fail(e);
     }
   }
   return (
@@ -281,7 +281,7 @@ export function LinksTab({
                           void api
                             .del(`/api/v1/admin/links/${l.id}`)
                             .then(load)
-                            .catch(() => {}),
+                            .catch(fail),
                       })
                     }
                   >
