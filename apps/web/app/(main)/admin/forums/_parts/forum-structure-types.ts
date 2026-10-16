@@ -16,6 +16,8 @@ export interface ForumAdminForum {
   sort: number;
   category_id?: number | null;
   category_name?: string | null;
+  /** 乐观并发版本戳（0376）：编辑页回填 expected_mtime，保存时校验 */
+  mtime?: string;
 }
 
 /** 版主元组 [forum_id, user_id, username]。

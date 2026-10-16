@@ -46,7 +46,7 @@ export function TorrentActions({
       setOpen(true);
       return;
     }
-    const EST_H = 128; // 3 项 ×36px + 内边距，量级估算即可（翻向判断容差）
+    const EST_H = 164; // 4 项 ×36px + 内边距，量级估算即可（翻向判断容差）
     const top =
       window.innerHeight - r.bottom < EST_H + 12
         ? Math.max(8, r.top - EST_H - 6)
@@ -119,6 +119,44 @@ export function TorrentActions({
     router.push(`/torrent/${torrentId}?edit=1`);
   }
 
+  /** C1（可乐站对标 2026-10-16）：复制个人下载直链。
+   *  走会话口 POST /torrents/{id}/download-link（内部复用 download_keys
+   *  签发内核：30 分钟、与用户+种子绑定）——与 downloadRow 的会话 getBlob
+   *  是两条通道：直链可粘进下载器/传给别人临时救急，泄露窗口只有 30 分钟。
+   *  凭证明文仅显示一次，复制后本组件不留存。 */
+  async function copyDlLink() {
+    setBusy(true);
+    try {
+      const r = await api.post<{
+        download_url: string;
+        ttl_minutes: number;
+      }>(`/api/v1/torrents/${torrentId}/download-link`);
+      const abs = new URL(r.download_url, window.location.origin).href;
+      await navigator.clipboard.writeText(abs);
+      setOpen(false);
+      toast.success(
+        dict.torrents.copyDlLinkDone.replace(
+          "{t}",
+          String(r.ttl_minutes),
+        ),
+      );
+    } catch (e) {
+      // 剪贴板权限被拒：凭证已签出，降级为可手动复制（toast 正文即直链）
+      if (e instanceof DOMException && e.name === "NotAllowedError") {
+        setOpen(false);
+        return;
+      }
+      toast.error(
+        e instanceof ApiError
+          ? apiErrorMessage(dict, e)
+          : dict.common.networkError,
+        { requestId: e instanceof ApiError ? e.requestId : undefined },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   /** 列表行下载：与详情页同口径走 getBlob（带 Bearer）；裸 <a href> 无鉴权头必 401 */
   async function downloadRow() {
     setBusy(true);
@@ -183,6 +221,14 @@ export function TorrentActions({
             onClick={bookmark}
           >
             ☆ {dict.torrents.bookmark}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={copyDlLink}
+          >
+            🔗 {dict.torrents.copyDlLink}
           </button>
           <button type="button" role="menuitem" onClick={edit}>
             ✎ {dict.torrents.edit}

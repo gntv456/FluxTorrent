@@ -72,6 +72,8 @@ use utoipa::OpenApi;
         crate::torrent_http::torrent_trumps,
         crate::torrent_http::trump_list,
         crate::torrent_http::trump_resolve,
+        // C1（可乐站对标 2026-10-16）：会话口下载直链签发
+        crate::publish_http::download_link,
         // F4（2026-10-16）社区域 85 条路由注解化，
         // 聚合合计 17 开放 + 38 种子 + 85 社区 = 140 个操作。
         crate::community_http::admin_match_create,
@@ -200,7 +202,8 @@ mod tests {
     /// 路径集合锁定：注解被误删/改路径时此处先红（openapi_cov_guard 再兜底）。
     /// M36：crossseed 三端点（lookup / dl / iyuu）入列。
     /// F4（2026-10-16）：种子域 38 条 + 社区域 85 条路由注解化后并入本聚合，
-    /// 合计 17 + 38 + 87 = **142 个操作**。
+    /// 合计 17 + 38 + 87 = **142 个操作**；C1（2026-10-16）+1
+    /// download-link = **143**。
     #[test]
     fn open_api_domain_covers_142_paths() {
         let paths = super::paths();
@@ -239,6 +242,7 @@ mod tests {
             "/api/v1/torrents/{id}/aggregate",
             "/api/v1/torrents/batch-download",
             "/api/v1/torrents/suggest",
+            "/api/v1/torrents/{id}/download-link",
             "/api/v1/admin/trumps",
             // 社区域（F4 新增 85 条的路径键，抽锚点）
             "/api/v1/forums",
@@ -283,9 +287,10 @@ mod tests {
         // （/torrents/{id} 上有 get/put/delete 三方法、/torrents/{id}/tags
         // 有 get/put、/torrents/{id}/comments 有 get/post、
         // /torrents/{id}/previews 有 get/post/delete，故键数少于操作数）
+        // C1（2026-10-16）：+1 download-link = 144
         assert_eq!(
-            ops, 142,
-            "聚合应有 142 个操作（开放 17 + 种子 38 + 社区 87）"
+            ops, 144,
+            "聚合应有 144 个操作（开放 17 + 种子 40 + 社区 87）"
         );
     }
 }

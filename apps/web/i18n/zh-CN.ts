@@ -359,6 +359,10 @@ const zhCnBase = {
     delete: "删除",
     moreActions: "更多操作",
     deleteConfirm: "确认删除该种子？此操作不可恢复。",
+    // C1（可乐站对标 2026-10-16）：⋮ 菜单「复制下载直链」——复用 fxo_ Token 的
+    // 30 分钟 download_keys 凭证（POST /downloads/keys），凭证语义与列表下载钮不同
+    copyDlLink: "复制下载直链",
+    copyDlLinkDone: "直链已复制，{t} 分钟内有效，请勿公开分享",
     // W-20：列表拉取失败的重试引导（ErrorPanel desc）
     loadFailedHint: "可能是网络波动或后端暂时无响应，可重试；反复出现请到「联系管理组」反馈。",
     // W-19：删除成功反馈（toast 协议）

@@ -87,6 +87,9 @@ export const ja: DeepPartial<Dict> = {
     total: "合計 {n} 件",
     statusPending: "審査中",
     statusRejected: "却下",
+    // C1（ColaPT 対標 2026-10-16）：⋮ メニュー「ダウンロード直リンクをコピー」
+    copyDlLink: "ダウンロード直リンクをコピー",
+    copyDlLinkDone: "リンクをコピーしました（{t} 分間有効）。公開しないでください",
   },
   torrents2: {
     ratingLegend: "評価",
