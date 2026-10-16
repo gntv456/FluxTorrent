@@ -74,28 +74,51 @@ export function DelDisabledSection({
   flash: (m: string) => void;
 }) {
   const t = useI18n().dict.stafftools;
-  // P2 清偿：批量清理二次确认（danger：删除全部禁用用户），confirm 退役
+  // P2 清偿：批量清理二次确认（danger），confirm 退役
   const ask = useConfirm();
+  // 旧形状：按钮写「删除全部被禁用户」、后端 `LIMIT 500`（ipcheck.rs:275）且响应
+  // 只回 deleted —— 现网 1497 个被禁账号要连点三次，界面一次也看不出还剩多少。
+  // 现在把口里报出的 remaining 挂在按钮下面，剩多少、清空没有，一眼看得到。
+  const [left, setLeft] = useState<number | null>(null);
 
   return (
     <section className="brand-panel p-4">
       <h2 className="mb-3 text-base font-bold text-ink">{t.ddTitle}</h2>
       <p className="mb-3 text-xs text-sub">{t.ddNote}</p>
+      {left !== null && (
+        <p className="mb-3 text-xs font-bold text-ink">
+          {left === 0 ? t.ddCleared : t.ddLeft.replace("{r}", String(left))}
+        </p>
+      )}
       <button
         className={DD_BTN}
-        disabled={busy}
+        disabled={busy || left === 0}
         onClick={() =>
           ask.open({
             title: t.ddBtn,
             message: t.ddConfirm,
             tone: "danger",
             busy,
+            requireText: t.ddBtn,
             run: () =>
               guard(async () => {
-                const r = await api.post<{ deleted: number }>(
-                  "/api/v1/admin/deletedisabled",
+                const r = await api.post<{
+                  deleted: number;
+                  failed?: [number, string][];
+                  remaining?: number;
+                }>("/api/v1/admin/deletedisabled");
+                setLeft(r.remaining ?? null);
+                const bad = r.failed?.length ?? 0;
+                flash(
+                  t.ddRemain
+                    .replace("{d}", String(r.deleted))
+                    .replace("{r}", String(r.remaining ?? "?")) +
+                    (bad
+                      ? ` ${t.ddPartial
+                          .replace("{f}", String(bad))
+                          .replace("{e}", r.failed?.[0]?.[1] ?? "")}`
+                      : ""),
                 );
-                flash(t.ddDone.replace("{n}", String(r.deleted)));
               }, ""),
           })
         }

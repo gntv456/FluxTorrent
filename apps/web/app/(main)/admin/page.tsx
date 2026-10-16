@@ -288,29 +288,28 @@ export default function AdminPage() {
     }
   }
 
-  /** 申诉处理（P2 清偿）：批注 prompt → 输入槽；受理后的联动解封
-   *  confirm（danger：解封即恢复账号）也走同一状态机，串成两步。 */
+  /** 申诉处理（P2 清偿）：批注走输入槽，受理时的「是否联动解封」同框问清、一次
+   *  提交。旧写法先提交 accept(unban=false) 再弹第二个框，而后端 CAS 是
+   *  `WHERE status='open'`（appeals.rs:231）⇒ 第二次必被拒「已处理」，解封做不成。 */
   function handleAppeal(id: number, accept: boolean) {
-    const label = accept
-      ? (a.appealAcceptNote ?? "accept-note")
-      : (a.appealRejectNote ?? "reject-reason");
+    if (accept) {
+      ask.open({
+        title: a.appealAccept,
+        label: a.appealAcceptNote ?? "accept-note",
+        tone: "danger",
+        check: {
+          label: a.appealUnbanConfirm ?? "unban-confirm",
+          initial: true,
+        },
+        run: (note, unban) => void doAppeal(id, true, note.trim(), unban),
+      });
+      return;
+    }
     ask.open({
-      title: accept ? a.appealAccept : a.appealReject,
-      label,
+      title: a.appealReject,
+      label: a.appealRejectNote ?? "reject-reason",
       run: (note) => {
-        if (!accept && !note.trim()) return;
-        if (!accept) {
-          void doAppeal(id, false, note.trim(), false);
-          return;
-        }
-        // 受理：先问是否联动解封（danger）
-        ask.open({
-          title: a.appealUnbanConfirm ?? "unban-confirm",
-          message: a.appealUnbanConfirm ?? "unban-confirm",
-          tone: "danger",
-          run: () => void doAppeal(id, true, note.trim(), true),
-        });
-        void doAppeal(id, true, note.trim(), false);
+        if (note.trim()) void doAppeal(id, false, note.trim(), false);
       },
     });
   }
