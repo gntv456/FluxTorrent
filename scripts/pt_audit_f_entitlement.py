@@ -237,11 +237,16 @@ def sec_e_jobs():
 def sec_f_source_wired():
     print("\n--- F 判定点接线（防「写面有、读面零」复发）---")
     hits = 0
+    # 第五个消费点：前四个是业务侧，第五个是商城效果。
+    # 批一百五十四：站方把商城生效链抽到了 crates/flux-shared，
+    # shop_effects.rs 只剩重导出，donor_privileged/has_usable_voucher 的判定已经迁到
+    # shop.rs（仍在这五个名单里）。保留这个名单而不强放宽：
+    # 判据的本意是「这五处业务侧都得走判定函数」，而不是「某个文件里必须有」。
     for rel in ["apps/worker/src/jobs/seeding.rs",
                 "apps/api/src/economy_http/voucher_use.rs",
                 "apps/api/src/content_http/misc.rs",
                 "apps/api/src/economy_http/shop.rs",
-                "apps/api/src/economy_http/shop_effects.rs"]:
+                "crates/flux-shared/src/lib.rs"]:
         p = os.path.join(ROOT, rel)
         try:
             with open(p, encoding="utf-8") as f:
