@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { Pager } from "@/components/ui/pager";
 
 /** 第八轮 P2-4：邀请管理（好学站 user/invites 口径）：全站邀请码浏览。
  *  0204：邮箱/被邀请人筛选 + 直发码 + 作废（管理端从只读升级为可操作）。 */
@@ -26,7 +27,6 @@ interface InviteRow {
 export function AdminInvites() {
   const { dict, locale } = useI18n();
   const at = dict.adminInvites;
-  const c = dict.common;
   const [rows, setRows] = useState<InviteRow[]>([]);
   const [total, setTotal] = useState(0);
   const [uid, setUid] = useState("");
@@ -283,26 +283,12 @@ export function AdminInvites() {
           )}
         </tbody>
       </table>
-      <div className="flex items-center justify-between text-sm text-sub">
-        <span>{fmt(c.totalItems, { n: total })}</span>
-        <div className="flex gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className={BTN_SM_GHOST}
-          >
-            {c.prevPage}
-          </button>
-          <span>{fmt(c.pageX, { n: page })}</span>
-          <button
-            disabled={rows.length < 20}
-            onClick={() => setPage(page + 1)}
-            className={BTN_SM_GHOST}
-          >
-            {c.nextPage}
-          </button>
-        </div>
-      </div>
+      <Pager
+        page={page}
+        pages={Math.max(1, Math.ceil(total / 20))}
+        total={total}
+        onStep={setPage}
+      />
       <AskDialog {...ask} />
     </div>
   );

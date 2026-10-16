@@ -1,11 +1,12 @@
 "use client";
 
-import { BTN_SM_GHOST, CELL_CARD_SUB, INPUT_W32 } from "@/lib/ui-classes";
+import { CELL_CARD_SUB, INPUT_W32 } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale, fmt } from "@/i18n/config";
+import { dateLocale } from "@/i18n/config";
+import { Pager } from "@/components/ui/pager";
 
 /** 第八轮 P2-6：用户记录（好学站 UsernameChangeLog / UserModifyLog 口径）
  *  改名记录 + 资料修改记录两个子页签 */
@@ -32,7 +33,6 @@ interface ModifyRow {
 export function AdminUserLogs() {
   const { dict, locale } = useI18n();
   const at = dict.adminUserlogs;
-  const c = dict.common;
   const [sub, setSub] = useState<"rename" | "modify">("rename");
   const [uid, setUid] = useState("");
   const [page, setPage] = useState(1);
@@ -189,26 +189,12 @@ export function AdminUserLogs() {
           </tbody>
         </table>
       )}
-      <div className="flex items-center justify-between text-sm text-sub">
-        <span>{fmt(c.totalItems, { n: total })}</span>
-        <div className="flex gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className={BTN_SM_GHOST}
-          >
-            {c.prevPage}
-          </button>
-          <span>{fmt(c.pageX, { n: page })}</span>
-          <button
-            disabled={false}
-            onClick={() => setPage(page + 1)}
-            className="min-h-[36px] rounded-full border border-line px-3"
-          >
-            {c.nextPage}
-          </button>
-        </div>
-      </div>
+      <Pager
+        page={page}
+        pages={Math.max(1, Math.ceil(total / 20))}
+        total={total}
+        onStep={setPage}
+      />
     </div>
   );
 }

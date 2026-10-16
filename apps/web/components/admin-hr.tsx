@@ -1,11 +1,12 @@
 "use client";
 
-import { BTN_SM_GHOST, INPUT_CARD, INPUT_MD, INPUT_W32 } from "@/lib/ui-classes";
+import { INPUT_CARD, INPUT_MD, INPUT_W32 } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
+import { Pager } from "@/components/ui/pager";
 
 /** 第八轮 P1-3：H&R 后台总览（好学站 user/hit-and-runs 口径）
  *  hr_snapshots 全量浏览 + 批量豁免（violated/open → pardoned） */
@@ -35,7 +36,6 @@ function fmtHours(sec: number): string {
 export function AdminHr() {
   const { dict, locale } = useI18n();
   const at = dict.adminHr;
-  const c = dict.common;
   const [rows, setRows] = useState<HrRow[]>([]);
   const [total, setTotal] = useState(0);
   const [uid, setUid] = useState("");
@@ -252,26 +252,12 @@ export function AdminHr() {
           )}
         </tbody>
       </table>
-      <div className="flex items-center justify-between text-sm text-sub">
-        <span>{fmt(c.totalItems, { n: total })}</span>
-        <div className="flex gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className={BTN_SM_GHOST}
-          >
-            {c.prevPage}
-          </button>
-          <span>{fmt(c.pageX, { n: page })}</span>
-          <button
-            disabled={rows.length < 20}
-            onClick={() => setPage(page + 1)}
-            className={BTN_SM_GHOST}
-          >
-            {c.nextPage}
-          </button>
-        </div>
-      </div>
+      <Pager
+        page={page}
+        pages={Math.max(1, Math.ceil(total / 20))}
+        total={total}
+        onStep={setPage}
+      />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { fmtBytes, fmtHours, PER_PAGE } from "./admin-user-detail-shared";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { SPARK_KIND_LABELS } from "@/lib/spark-kind-labels";
+import { Pager } from "@/components/ui/pager";
 
 export function PagedBar({
   total,
@@ -26,30 +27,13 @@ export function PagedBar({
   cur: number;
   onPage: (v: number) => void;
 }) {
-  const c = useI18n().dict.common;
   return (
-    <div className="flex items-center justify-between text-xs text-sub">
-      <span>{fmt(c.totalItems, { n: total })}</span>
-      <div className="flex items-center gap-2">
-        <button
-          disabled={cur <= 1}
-          onClick={() => onPage(cur - 1)}
-          className="min-h-[32px] rounded-full border border-line px-3 disabled:opacity-40"
-        >
-          {c.prevPage}
-        </button>
-        <span>
-          {cur} / {Math.max(1, Math.ceil(total / PER_PAGE))}
-        </span>
-        <button
-          disabled={cur >= Math.ceil(total / PER_PAGE)}
-          onClick={() => onPage(cur + 1)}
-          className="min-h-[32px] rounded-full border border-line px-3 disabled:opacity-40"
-        >
-          {c.nextPage}
-        </button>
-      </div>
-    </div>
+    <Pager
+      page={cur}
+      pages={Math.max(1, Math.ceil(total / PER_PAGE))}
+      total={total}
+      onStep={onPage}
+    />
   );
 }
 

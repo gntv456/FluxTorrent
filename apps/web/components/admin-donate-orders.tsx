@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
+import { Pager } from "@/components/ui/pager";
 
 /** 捐赠订单后台管理（0209 P1-6）：列表/筛选/手工补单。
  *  网关掉单时站长此前只能进数据库——这里是运营侧出口。 */
@@ -205,26 +206,12 @@ export function AdminDonateOrders() {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between text-sm text-sub">
-        <span>{c.totalItems.replace("{n}", String(total))}</span>
-        <div className="flex gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className="min-h-[32px] rounded-full border border-line px-3 text-xs disabled:opacity-40"
-          >
-            {c.prevPage}
-          </button>
-          <span>{c.pageX.replace("{n}", String(page))}</span>
-          <button
-            disabled={rows.length < 20}
-            onClick={() => setPage(page + 1)}
-            className="min-h-[32px] rounded-full border border-line px-3 text-xs disabled:opacity-40"
-          >
-            {c.nextPage}
-          </button>
-        </div>
-      </div>
+      <Pager
+        page={page}
+        pages={Math.max(1, Math.ceil(total / 20))}
+        total={total}
+        onStep={setPage}
+      />
       <AskDialog {...askComplete} />
     </div>
   );
