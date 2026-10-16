@@ -1,7 +1,7 @@
 //! 下载（M05）：GET /torrents/{id}/download 动态生成 .torrent。
 //! 从 publish_http.rs 按域拆出。
 
-use actix_web::{get, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, web, HttpRequest, HttpResponse};
 
 use crate::errors::{DomainError, DomainResult};
 use crate::http::{require_auth, throttle_limited};
@@ -62,6 +62,64 @@ pub async fn download(
     // 响应体内嵌本人 announce（含 passkey）：与 download.php / 凭证下载
     // 同一口径禁缓存（P-163 —— 同一份字节，另两路口都带，唯独网页口漏了）
     Ok(crate::openapi_http::no_store(resp))
+}
+
+/// C1（同类站对标 2026-10-16）：会话口签发临时下载直链——网页列表
+/// 「复制下载直链」入口。compat 层 `POST /downloads/keys` 只认
+/// `Authorization: Token fxo_…`（第三方开放 API），浏览器会话（Bearer JWT +
+/// HttpOnly cookie）调不通；这里按 `require_auth` 会话口径复用同一签发内核
+/// （`issue_download_key`：过审存在性 + 资格/付费三道闸），限流也与 compat
+/// 签发口共键同档（10 次/分钟，fail-close）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/torrents/{id}/download-link",
+    tag = "种子",
+    description = "会话口签发 30 分钟临时下载直链（列表「复制下载直链」用；\
+与开放 API 的 POST /downloads/keys 同一签发内核与闸门）。",
+    params(("id" = i64, Path, description = "种子 id")),
+    responses(
+        (status = 200, description = "DownloadKey：key + download_url"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "下载闸门拒绝（停下载/挂起/付费未购）"),
+        (status = 404, description = "种子不存在或未过审（code 1004）"),
+        (status = 429, description = "签发限流 10 次/分钟（code 1015）"),
+    )
+)]
+#[post("/torrents/{id}/download-link")]
+pub async fn download_link(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    const TTL: i64 =
+        crate::compat_http::download_keys::DOWNLOAD_KEY_TTL_MINUTES;
+    let auth = require_auth(&req, &state).await?;
+    crate::http::rate_window(
+        &state,
+        &format!("dlkey:issue:{}", auth.id),
+        10,
+        60,
+    )
+    .await?;
+    let torrent_id = path.into_inner();
+    let (plain, expires) =
+        crate::compat_http::download_keys::issue_download_key(
+            &state,
+            auth.id,
+            torrent_id,
+        )
+        .await?;
+    // 响应含一次性凭证明文：禁缓存（与 compat 层同口径）
+    Ok(crate::openapi_http::no_store(crate::dto::ok(
+        serde_json::json!({
+            "key": plain,
+            "expires_at": expires,
+            "ttl_minutes": TTL,
+            "download_url":
+                format!("/api/v1/downloads/{torrent_id}?token={plain}"),
+            "hint": "凭证与用户+种子绑定；明文仅显示一次",
+        }),
+    )))
 }
 
 /// 构建给指定用户的 .torrent 字节（注入本站 announce + passkey + private=1）。

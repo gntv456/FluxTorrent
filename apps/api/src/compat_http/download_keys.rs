@@ -12,8 +12,8 @@ use crate::state::AppState;
 use crate::torrents::charge_for_download;
 
 /// 临时下载凭证有效期（0069，同类站 generateDownloadKey 口径）：
-/// SQL 过期窗口与响应 `ttl_minutes` 字段共用同一来源。
-const DOWNLOAD_KEY_TTL_MINUTES: i64 = 30;
+/// SQL 过期窗口与响应 `ttl_minutes` 共源；C1 会话口 `/torrents/{id}/download-link` 同引用。
+pub(crate) const DOWNLOAD_KEY_TTL_MINUTES: i64 = 30;
 
 /// 第三方不能拿长期 API Token 直接下载：先为单个种子签发 30 分钟临时凭证，
 /// 再用凭证换 .torrent。Token 泄露的损失窗口从"永久"收敛到"30 分钟"。

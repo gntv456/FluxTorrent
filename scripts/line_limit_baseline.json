@@ -359,7 +359,7 @@
  "apps/api/src/http/home.rs::wide": 1,
  "apps/api/src/http/links.rs::wide": 2,
  "apps/api/src/http/misc_handlers.rs::wide": 5,
- "apps/api/src/http/mod.rs": 326,
+ "apps/api/src/http/mod.rs": 327,
  "apps/api/src/http/plugins.rs::wide": 11,
  "apps/api/src/gaps_http/appeals.rs": 315,
  "apps/api/src/gaps_http/appeals.rs::wide": 3,
@@ -563,5 +563,6 @@
  "scripts/mobile/_mdiag2.js::wide": 4,
  "scripts/mobile/_mdiag3.js::wide": 4,
  "scripts/mobile/_mdiag4.js::wide": 4,
- "scripts/mobile/_mdiag5.js::wide": 1
+ "scripts/mobile/_mdiag5.js::wide": 1,
+ "apps/api/src/publish_http/download.rs": 328
 }

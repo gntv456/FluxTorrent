@@ -13,11 +13,18 @@ import { dateLocale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
 import { TorrentNums } from "@/components/torrent-table-nums";
 import { BatchCheckbox } from "@/components/torrent-batch";
-import { Icon, ICON_NAMES } from "@/components/icons";
+import { Icon } from "@/components/icons";
 import { PosterImage } from "@/components/poster-image";
-
-/** 已注册图标名（站长可手填 icon_key，未注册的名字不能当图标用） */
-const KNOWN_ICONS = new Set<string>(ICON_NAMES as readonly string[]);
+import {
+  aliveText,
+  approvalCls,
+  CatBlock,
+  CoverFallback,
+  promoCls,
+  promoTitle,
+  remaining,
+  tagStyle,
+} from "@/components/torrent-table-badges";
 
 /** 保种区行（/preserve 下发的同构行：id 键为 torrent_id） */
 type PreserveRowAlias = PreserveItem;
@@ -51,18 +58,6 @@ function promoSemanticClass(
     default:
       return undefined;
   }
-}
-
-/** 剩余时间（同类站「6天23时」口径；无截止则不显示；文案走 i18n） */
-function remaining(
-  end: string | null | undefined,
-  now: number,
-  fmt: (d: number, h: number) => string,
-): string | null {
-  if (!end) return null;
-  const ms = new Date(end).getTime() - now;
-  if (ms <= 0) return null;
-  return fmt(Math.floor(ms / 86400000), Math.floor((ms % 86400000) / 3600000));
 }
 
 /**
@@ -101,16 +96,15 @@ async function TorrentTr({
   const now = Date.now();
   const age = now - new Date(t.created_at).getTime();
   const ageDays = Math.floor(age / 86400000);
-  const alive =
-    ageDays < 1
-      ? dict.torrents.today
-      : ageDays < 30
-        ? `${ageDays} ${dict.torrents.days}`
-        : `${Math.floor(ageDays / 30)} ${dict.torrents.months}`;
+  const alive = aliveText(ageDays, dict.torrents);
   const isNew = age < 3 * 86400000; // 「新」标：3 天内（NP new 标同数量级）
   const left = remaining(t.promotion_ends_at, now, (d, h) =>
     dict.torrent.timeLeftDH.replace("{d}", String(d)).replace("{h}", String(h)),
   );
+  // C2：绝对结束时刻（本地时区直显；无截止为 null）——与 left 合成徽标 tooltip
+  const endsAt = t.promotion_ends_at
+    ? new Date(t.promotion_ends_at).toLocaleString(dateLocale(locale))
+    : null;
   const rowBg = promoRowBg(t.promotion);
   const subtitle = t.small_descr || "";
   // DOM 契约（NP 口径）：pro_* 促销态 + 断种/官种行级标记
@@ -136,23 +130,11 @@ async function TorrentTr({
       )}
       {/* 类型（0166：分类图标默认套，站长后台 icon_key 可替换；空键回落首字色块） */}
       {!hd.has("cat") && <td className="torrents-td-cat">
-        <span
-          aria-hidden
-          className="torrents-cat-block"
-          style={{ background: catColor(dicts.colors, t.category_id) }}
-          title={catNames[t.category_id] ?? ""}
-        >
-          {(() => {
-            // 图标键是站长手填的：未注册的名字 Icon 会渲染 null，
-            // 那样色块就空了——必须自己判存在，缺失时回落分类名首字
-            const ico = icons[t.category_id];
-            return ico && KNOWN_ICONS.has(ico) ? (
-              <Icon name={ico} size={22} className="torrents-cat-ico" />
-            ) : (
-              (catNames[t.category_id] ?? "?").slice(0, 1)
-            );
-          })()}
-        </span>
+        <CatBlock
+          ico={icons[t.category_id]}
+          name={catNames[t.category_id]}
+          color={catColor(dicts.colors, t.category_id)}
+        />
       </td>}
       {/* 封面（同类站 46px 外链图；无图/挂图回退类型色块底 + 唱片图标） */}
       {!hd.has("cover") && <td className="torrents-td-cover">
@@ -163,12 +145,7 @@ async function TorrentTr({
             size="sm"
             className="torrents-cover"
             fallback={
-              <span
-                className="torrents-cover torrents-cover--fallback"
-                style={{ background: catColor(dicts.colors, t.category_id) }}
-              >
-                <Icon name="disc" size={20} />
-              </span>
+              <CoverFallback color={catColor(dicts.colors, t.category_id)} />
             }
           />
         </Link>
@@ -195,23 +172,19 @@ async function TorrentTr({
               保种区等复用方行类型无此字段，in 收窄容错） */}
           {"approval_status" in t &&
             (t.approval_status === 0 || t.approval_status === 2) && (
-              <span
-                className={`torrents-approval${t.approval_status === 2 ? " torrents-approval--rejected" : ""}`}
-              >
+              <span className={approvalCls(t.approval_status)}>
                 {t.approval_status === 0
                   ? dict.torrents.statusPending
                   : dict.torrents.statusRejected}
               </span>
             )}
-          {/* 促销状态 + 剩余时间：紧跟种子名（同类站口径） */}
+          {/* 促销状态 + 剩余时间：紧跟种子名（同类站口径）。
+              C2（同类站对标 2026-10-16）：tooltip 附绝对结束时刻——
+              「Free 77D」只答剩余，悬停补「到什么时候」 */}
           {promo && (
             <span
-              className={`torrents-promo${promo.key === "free" ? " torrents-promo--free" : ""}`}
-              title={
-                left
-                  ? `${dict.promotion[promo.key]} · ${left}`
-                  : dict.promotion[promo.key]
-              }
+              className={promoCls(promo.key)}
+              title={promoTitle(dict.promotion[promo.key], left, endsAt)}
             >
               {dict.promotion[promo.key]}
             </span>
@@ -246,14 +219,7 @@ async function TorrentTr({
               <span
                 key={b.id}
                 className="torrents-tag torrents-tag--user"
-                style={
-                  b.bg_color
-                    ? {
-                        background: b.bg_color,
-                        color: b.color || undefined,
-                      }
-                    : undefined
-                }
+                style={tagStyle(b)}
               >
                 {b.name}
               </span>

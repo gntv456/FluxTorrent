@@ -375,6 +375,9 @@ const zhTwBase: Omit<
     delete: "刪除",
     moreActions: "更多操作",
     deleteConfirm: "確認刪除該種子？此操作不可恢復。",
+    // C1（可樂站對標 2026-10-16）：⋮ 選單「複製下載直鏈」——重用 30 分鐘憑證
+    copyDlLink: "複製下載直鏈",
+    copyDlLinkDone: "直鏈已複製，{t} 分鐘內有效，請勿公開分享",
     // W-20：列表拉取失敗的重試引導（ErrorPanel desc）
     loadFailedHint: "可能是網路波動或後端暫時無回應，可重試；反覆出現請到「聯繫管理組」回報。",
     // W-19：刪除成功回饋（toast 協定）

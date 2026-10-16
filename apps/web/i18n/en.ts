@@ -383,6 +383,10 @@ const enBase: Omit<
     delete: "Delete",
     moreActions: "More actions",
     deleteConfirm: "Delete this torrent? This cannot be undone.",
+    // C1 (同类站 parity 2026-10-16): "Copy download link" in the ⋮ menu —
+    // reuses the 30-minute download_keys credential (POST /downloads/keys)
+    copyDlLink: "Copy download link",
+    copyDlLinkDone: "Link copied — valid for {t} minutes. Do not share publicly",
     // W-20: retry hint for failed list loads (ErrorPanel desc)
     loadFailedHint: "Possibly a network hiccup or a temporarily unresponsive backend. Try again; if it keeps failing, report it via Contact Staff.",
     // W-19: delete success feedback (toast protocol)
