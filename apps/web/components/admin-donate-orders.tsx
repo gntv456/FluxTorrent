@@ -7,6 +7,7 @@ import { dateLocale } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
 import { Pager } from "@/components/ui/pager";
+import { Badge } from "@/components/ui/badge";
 
 /** 捐赠订单后台管理（0209 P1-6）：列表/筛选/手工补单。
  *  网关掉单时站长此前只能进数据库——这里是运营侧出口。 */
@@ -158,15 +159,12 @@ export function AdminDonateOrders() {
                   ${(r.amount_paid ?? r.amount_usd).toFixed(2)}
                 </td>
                 <td>
-                  <span
-                    className={`sticker ${
-                      r.status === "paid"
-                        ? "bg-mint/30 text-ink"
-                        : "bg-sun text-ink"
-                    }`}
+                  <Badge
+                    tone={r.status === "paid" ? "success" : "warn"}
+                    variant="soft"
                   >
                     {r.status === "paid" ? t.stPaid : t.stPending}
-                  </span>
+                  </Badge>
                 </td>
                 <td className="text-sub">{r.trade_no ?? "—"}</td>
                 <td className="text-sub">
