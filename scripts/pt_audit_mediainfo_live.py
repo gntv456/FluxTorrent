@@ -121,6 +121,16 @@ if ROOT:
     # 找一个本进程能编辑的种子作为承载
     tid = psql("SELECT id FROM torrents WHERE id=40049") or "40049"
 
+    # 收尾回滚：先抄下原值。本闸门要改名字与 MediaInfo，
+    # 若不回滚就会把探针名留在正式种子上（本批自己进后手手勒了，
+    # 数据库里留着不可考的探针名）。记谱：每个写测试的闸门都要
+    # 自己拉帖。
+    snap_name = psql("SELECT name FROM torrents WHERE id=%s" % tid)
+    snap_mi = psql("SELECT COALESCE(media_info->'mediainfo', 'null'::jsonb)::text "
+                   "FROM torrents WHERE id=%s" % tid)
+    snap_check = psql("SELECT COALESCE(mediainfo_check::text, 'NULL') "
+                      "FROM torrents WHERE id=%s" % tid)
+
     # S1a 真「假 4K」：标题写 2160p，内容是 1080p
     st, _b = call("PUT", "/torrents/%s" % tid,
                   {"name": "P346.Probe.2160p.WEB-DL.x265-GRP",
@@ -171,5 +181,36 @@ if ROOT:
        st == 200 and isinstance(rows, list)
        and "提示" in str(dd.get("note", "")),
        "note=%s" % str(dd.get("note", ""))[:40])
+
+    # ===== 收尾回滚：不留探针痕迹 =====
+    # 先 SELECT 确认范围（只回滚本闸门改过的那一行），再写。
+    def q2(v):
+        return v.replace("'", "''")
+
+    if snap_name:
+        psql("UPDATE torrents SET name = '%s' WHERE id = %s"
+             % (q2(snap_name), tid))
+        psql("UPDATE torrents SET mediainfo_check = %s WHERE id = %s"
+             % ("NULL::jsonb" if snap_check == "NULL"
+                else "'%s'::jsonb" % q2(snap_check), tid))
+        # MediaInfo 原值为 NULL 时就删掉键，否则原样写回（不用
+        # NULL 覆盖整个 media_info，那会一并抹掉 poster 等其他键）。
+        if snap_mi and snap_mi != "null":
+            psql("UPDATE torrents SET media_info = "
+                 "COALESCE(media_info, '{}'::jsonb) "
+                 "|| jsonb_build_object('mediainfo', %s::jsonb) WHERE id = %s"
+                 % ("'%s'" % q2(snap_mi), tid))
+        else:
+            psql("UPDATE torrents SET media_info = "
+                 "COALESCE(media_info, '{}'::jsonb) - 'mediainfo' WHERE id = %s"
+                 % tid)
+    now_name = psql("SELECT name FROM torrents WHERE id=%s" % tid)
+    now_check = psql("SELECT COALESCE(mediainfo_check::text,'NULL') "
+                     "FROM torrents WHERE id=%s" % tid)
+    ok("S1d 收尾回滚：探针种不得留判定与探针名"
+       "（名字已回 %s，判定已回 %s）"
+       % (now_name == snap_name, now_check == snap_check),
+       now_name == snap_name and now_check == snap_check,
+       "名=%s 判定=%s" % (now_name[:30], now_check[:20]))
 
 summary()
