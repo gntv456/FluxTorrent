@@ -3424,6 +3424,7 @@ const enBase: Omit<
     prompt: "Date to make up (YYYY-MM-DD, last 7 days)",
     note: "Uses a makeup card (shop item); covers missed days in the last 7 days",
     ok: "Made up",
+    holdSuffix: " (holding {n})",
   },
   reseed2: {
     btn: "Request reseed",

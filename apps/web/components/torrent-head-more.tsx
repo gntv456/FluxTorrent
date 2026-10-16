@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useIsCompact } from "@/lib/hooks/use-media";
 import { REPLY_EVENT } from "@/components/comment-reply-button";
 
@@ -30,6 +31,10 @@ export function HeadActionsMore({
   // 与客户端首次 render 输出不一致（hydration mismatch）。
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // 面板有 role/aria-modal/Esc/inert，但没有焦点陷阱：Tab 会走出去落到页面
+  // 里（弹窗普查 A4 的同族缺件）。面板常挂载，故只在 open 时圈定。
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, sheetRef);
 
   // 吸底栏与本组件按各自断点翻转，挂载时序不定——轮询等容器就绪
   // （仅移动端需要：桌面 trigger 内联渲染，不进吸底条）
@@ -96,6 +101,7 @@ export function HeadActionsMore({
       inert={!open}
     >
       <div
+        ref={sheetRef}
         className="more-sheet"
         role="dialog"
         aria-modal="true"

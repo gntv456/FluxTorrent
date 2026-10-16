@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
+import { Modal } from "@/components/modal";
 import { AdminNavGroups } from "./admin-nav-groups";
 import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
 /** 管理面板条目（后端 /admin/staffpanel 返回，已按 min_class 过滤） */
@@ -218,30 +219,17 @@ export function AdminShell({
         {/* M2：移动端管理导航从「内联展开顶出内容」改左侧滑入抽屉
             （复用 navdrawer 骨架；条目是 onTool button 而非路由 link） */}
         {navOpen && (
-          <div
-            className="navdrawer-root lg:hidden"
-            role="dialog"
-            aria-modal="true"
+          /* 手写 fixed 抽屉缺 Esc / 焦点陷阱 / portal（2026-10-16 普查）；
+             与移动导航抽屉同形态，统一收进 Modal 的右侧抽屉档 */
+          <Modal
+            open
+            onClose={() => setNavOpen(false)}
+            title={a.navAriaLabel}
+            align="right"
+            size="sm"
           >
-            <div className="navdrawer-mask" onClick={() => setNavOpen(false)} />
-            <nav
-              aria-label={a.navAriaLabel}
-              className="navdrawer admin-navdrawer"
-            >
-              <div className="navdrawer__head">
-                <p className="navdrawer__name">{a.navAriaLabel}</p>
-                <button
-                  type="button"
-                  className="navdrawer__close"
-                  aria-label={a.navToggle}
-                  onClick={() => setNavOpen(false)}
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="navdrawer__body">{navBody}</div>
-            </nav>
-          </div>
+            <div className="lg:hidden">{navBody}</div>
+          </Modal>
         )}
         {/* M1 裸表兜底：管理面板内容区的裸 <table> 在 <lg 直接撑破容器。
             CSS 侧（pages.css .admin-panel-content table）统一转块级横滚，

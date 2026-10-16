@@ -6,6 +6,7 @@
  * 数据装载与状态留在 settings-client.tsx。
  */
 
+import { Modal } from "@/components/modal";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { DiffRow, HistoryRow } from "./settings-types";
@@ -23,29 +24,13 @@ export function SettingsHistoryDrawer({
   const { dict, locale } = useI18n();
   const s = dict.settingsAdmin;
   return (
-    <div
-      className="fixed inset-0 z-30 flex justify-end bg-black/30"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      title={fmt(s.historyTitle, { name })}
+      align="right"
     >
-      <div
-        className="h-full w-full max-w-md overflow-y-auto bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center gap-2">
-          <h2 className="flex-1 text-sm font-bold text-ink">
-            {fmt(s.historyTitle, { name })}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] rounded-full border border-line px-3 text-xs font-bold"
-          >
-            {s.close}
-          </button>
-        </div>
-        {rows.length === 0 && (
+      {rows.length === 0 && (
           <p className="py-6 text-center text-sm text-sub">{s.historyEmpty}</p>
         )}
         <ul className="flex flex-col divide-y divide-line">
@@ -81,9 +66,8 @@ export function SettingsHistoryDrawer({
               </div>
             </li>
           ))}
-        </ul>
-      </div>
-    </div>
+      </ul>
+    </Modal>
   );
 }
 
@@ -117,27 +101,8 @@ export function SettingsImportDialog({
   const { dict, currency } = useI18n();
   const s = dict.settingsAdmin;
   return (
-    <div
-      className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 p-3"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[var(--r-md)] bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center gap-2">
-          <h2 className="flex-1 text-sm font-bold text-ink">{s.importTitle}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] rounded-full border border-line px-3 text-xs font-bold"
-          >
-            {s.close}
-          </button>
-        </div>
-        <p className="mb-2 text-[11px] leading-snug text-sub">{s.importHint}</p>
+    <Modal open onClose={onClose} title={s.importTitle}>
+      <p className="mb-2 text-[11px] leading-snug text-sub">{s.importHint}</p>
         <input
           type="file"
           accept="application/json,.json"
@@ -216,8 +181,7 @@ export function SettingsImportDialog({
           >
             {busy ? s.saving : s.importConfirm}
           </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Modal } from "@/components/modal";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
@@ -86,19 +87,8 @@ export function SubtitleEditDialog({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center
-        justify-center bg-black/50"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[85vh] w-[min(640px,92vw)]
-          overflow-auto rounded border border-line
-          bg-[var(--surface)] p-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="mb-3 text-base font-bold">{t.editLabel}</h2>
-        <div className="brand-wide-table-scroll">
+    <Modal open onClose={onClose} title={t.editLabel}>
+      <div className="brand-wide-table-scroll">
         <table className="nexus-table nexus-form">
           <tbody>
             {row(
@@ -193,7 +183,6 @@ export function SubtitleEditDialog({
             {t.saveLabel ?? "Save"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

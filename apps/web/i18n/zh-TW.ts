@@ -3347,6 +3347,7 @@ const zhTwBase: Omit<
     prompt: "補簽日期（YYYY-MM-DD，限過去 7 天）",
     note: "消耗補簽卡（商店購買），補過去 7 天內漏簽",
     ok: "補簽成功",
+    holdSuffix: "（持有 {n} 張）",
   },
   reseed2: {
     btn: "請求補種",

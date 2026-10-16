@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/client";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import type { NavItem, NavGroup } from "@/lib/nav-menu";
 
 /** 移动导航抽屉（M2）：与桌面 MainMenu 同源（lib/nav-menu.ts 构建的
@@ -36,6 +38,14 @@ export function NavDrawer({
   const { dict } = useI18n();
   const drawerRef = useRef<HTMLDivElement>(null);
   const t = dict.navDrawer;
+  // 必须 portal 到 body：本组件由 MobileNavShell 渲染在顶栏 <header
+  // className="tide-header"> 里，而头栏带 backdrop-filter（theme-tide.css:468）
+  // ——它成了 fixed 后代的包含块，`.navdrawer-root{inset:0}` 于是贴着 72px 高的
+  // 头栏求解，抽屉被关进头栏条带（2026-10-16 弹窗普查 A5）。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Tab 不再穿透到抽屉背后的页面（此前只有 Esc 与滚动锁两项）
+  useFocusTrap(open, drawerRef);
 
   // 路由变化自动收起
   useEffect(() => {
@@ -80,7 +90,8 @@ export function NavDrawer({
     </Link>
   );
 
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <div
       className="navdrawer-root"
       role="dialog"
@@ -140,7 +151,8 @@ export function NavDrawer({
           <ThemeToggle label={dict.common.themeToggle} />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

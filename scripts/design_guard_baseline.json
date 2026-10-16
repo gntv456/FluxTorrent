@@ -1666,30 +1666,30 @@
  },
  "app/(main)/admin/settings/_parts/settings-dialogs.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   69,
-   77,
-   155,
-   161,
-   180,
-   191,
-   215
+   54,
+   62,
+   120,
+   126,
+   145,
+   156,
+   180
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/settings/_parts/settings-pack-dialog.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   166,
-   194,
-   309,
-   381,
-   386,
-   405
+   167,
+   195,
+   291,
+   363,
+   368,
+   387
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/settings/_parts/settings-panels.tsx": {
   "h1": [],
@@ -2216,12 +2216,12 @@
  },
  "components/admin-shell.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   187,
-   191
+   188,
+   192
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-subtitles-awards.tsx": {
   "h1": [],
@@ -3000,15 +3000,15 @@
  },
  "components/home-resub-button.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   56,
-   77,
-   79,
-   91,
-   99
+   58,
+   70,
+   72,
+   84,
+   92
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/home-sections.tsx": {
   "h1": [],
@@ -3053,12 +3053,12 @@
  },
  "components/invite-manager-parts.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   56,
-   208
+   57,
+   203
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/invite-manager.tsx": {
   "h1": [],
@@ -3842,11 +3842,11 @@
  },
  "components/subtitle-edit-dialog.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   182
+   172
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/subtitle-lang-select.tsx": {
   "h1": [],
