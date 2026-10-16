@@ -1452,6 +1452,7 @@ const zhTwBase: Omit<
   },
   usercp: {
     navTitle: "控制面板",
+    logout: "登出",
     days: "天",
     days2: "天前",
     note: "注意：",
@@ -1467,6 +1468,7 @@ const zhTwBase: Omit<
       tracker: "網站設定",
       forum: "論壇設定",
       security: "安全設定",
+      fields: "自訂欄位",   // 2026-10-17 补：样图侧栏第 3 项
       wishlist: "願望單",
     } as Record<string, string>,
     overview: {

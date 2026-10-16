@@ -1550,8 +1550,11 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   gap: 12px;
 }
 .usercp-dashboard > .uc-profile-card,
-.usercp-dashboard > .uc-summary-row,
+.usercp-dashboard > .uc-recent-topics,
 .usercp-dashboard > .uc-more {
+  /* 2026-10-17 对齐样图集：原先摘要行的容器也在这里跨整行，5 张卡被
+     挤成一排；现在它们各自进 2 列网格，只有资料卡与「更多账户信息」
+     仍占整行。 */
   grid-column: 1 / -1;
 }
 @media (max-width: 1024px) {
@@ -1714,34 +1717,32 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border-radius: 2px 2px 0 0;
   background: linear-gradient(180deg, var(--baozi-orange), var(--brand-soft));
 }
-.uc-summary-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 10px;
-}
-.uc-summary-row section {
+.uc-summary-card {
   padding: 12px 14px;
   border: 1px solid var(--baozi-line);
   border-radius: var(--r-md);
   background: var(--baozi-paper);
 }
-.uc-summary-row h3 {
-  margin: 0 0 6px;
+.uc-summary-card h3 {
+  /* 对齐样图 § panel__head：标题带一条浅分隔线，卡片内部层次更清楚 */
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-soft);
   color: var(--text-muted);
   font-size: 12.5px;
   font-weight: 700;
 }
-.uc-summary-row strong {
+.uc-summary-card strong {
   display: block;
   font-size: 18px;
   color: var(--text-strong);
 }
-.uc-summary-row section p {
+.uc-summary-card p {
   margin: 4px 0 6px;
   color: var(--text-muted);
   font-size: 12px;
 }
-.uc-summary-row section > a {
+.uc-summary-card > a {
   font-size: 12.5px;
   font-weight: 700;
 }

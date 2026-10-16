@@ -1486,6 +1486,7 @@ const enBase: Omit<
   },
   usercp: {
     navTitle: "Control Panel",
+    logout: "Log out",
     days: "days",
     days2: "days ago",
     note: "Note: ",
@@ -1501,6 +1502,7 @@ const enBase: Omit<
       tracker: "Site",
       forum: "Forum",
       security: "Security",
+      fields: "Custom fields",   // 2026-10-17 补：样图侧栏第 3 项
       wishlist: "Wishlist",
     } as Record<string, string>,
     overview: {

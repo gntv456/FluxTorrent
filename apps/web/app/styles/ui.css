@@ -1456,7 +1456,7 @@
 }
 .usercp-nav {
   position: sticky;
-  top: 12px;
+  top: 85px;
   display: flex;
   /* 卡片外壳（2026-10-17，对齐样图集 § ucp-side）：原先侧栏直接浮在页面
      底色上，与本页的主区卡片不成一体；样图里它是白卡，选中项蓝底白字。 */
@@ -1480,7 +1480,7 @@
 @media (min-width: 768px) {
   .usercp-nav {
     position: sticky;
-    top: 12px;
+    top: 85px;
     flex-direction: column;
     overflow: hidden;
   }
@@ -1555,4 +1555,25 @@
   background: var(--sky);
   color: var(--on-dark);
   box-shadow: none;
+}
+
+/* 退出登录（样图 § ucp-side 末尾项）：与普通项同尺寸，文字用危险色。
+   这里是 <button>，需要把 <a> 的那套重置掉。 */
+.usercp-nav__logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 9px;
+  border-radius: 7px;
+  background: none;
+  color: var(--coral);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.usercp-nav__logout:hover {
+  background: var(--coral-soft);
 }

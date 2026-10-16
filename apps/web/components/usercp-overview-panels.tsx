@@ -46,8 +46,12 @@ export function SummaryRow({
     return `${val >= 100 ? val.toFixed(0) : val.toFixed(1)}${units[i]}`;
   };
   return (
-    <div className="uc-summary-row">
-      <section className="uc-level-card">
+    // 2026-10-17 对齐样图集 § overview-grid：原先这 5 张摘要卡被一个
+    // `.uc-summary-row` 容器（auto-fit minmax(190px)）包着，宽屏下挤成
+    // 一整排 5 列，与样图的规整 2 列网格不符。去掉容器、加
+    // `uc-summary-card`，让它们成为 .usercp-dashboard 的直接子项。
+    <>
+      <section className="uc-summary-card uc-level-card">
         <h3>{t.levelTitle}</h3>
         <strong>{ov.class_name ?? "—"}</strong>
         <div>
@@ -60,7 +64,7 @@ export function SummaryRow({
           {fmtPts(ov.next_class.required - ov.seed_points)}
         </p>
       </section>
-      <section>
+      <section className="uc-summary-card">
         <h3>{t.lastLoginTitle}</h3>
         <strong>
           {ov.last_login
@@ -70,7 +74,7 @@ export function SummaryRow({
         <p>Web</p>
         <Link href="/my?tab=security">{t.checkSecurity} ›</Link>
       </section>
-      <section>
+      <section className="uc-summary-card">
         <h3>{t.inviteTitle}</h3>
         <strong>
           {ov.invites_pending} {t.inviteUnit}
@@ -82,13 +86,13 @@ export function SummaryRow({
         </p>
         <Link href="/invites">{t.manageInvites} ›</Link>
       </section>
-      <section>
+      <section className="uc-summary-card">
         <h3>{t.medalTitle}</h3>
         <strong>{ov.medals} {t.medalUnit}</strong>
         <p>{ov.medals > 0 ? "" : t.noMedal}</p>
         <Link href="/medals">{t.viewMedals} ›</Link>
       </section>
-      <section>
+      <section className="uc-summary-card">
         <h3>{t.loginActivityTitle}</h3>
         <strong>{ov.login_total_30d} {t.times}</strong>
         <p>
@@ -97,7 +101,7 @@ export function SummaryRow({
         </p>
         <Link href="/my?tab=security">{t.accountSecurity} ›</Link>
       </section>
-    </div>
+    </>
   );
 }
 
