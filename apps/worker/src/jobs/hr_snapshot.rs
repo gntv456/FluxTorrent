@@ -22,7 +22,9 @@ pub(super) async fn build_snapshots(
                hr_reduced_seed_hours(
                    COALESCE((t.hr_policy->>'seed_hours')::int, $2::int),
                    u.class_id,
-                   usr.seed_hours
+                   -- 0385 函数第三参是 int4；sum(bigint) 传 int8 会按
+                   -- hr_reduced_seed_hours(int,int,bigint) 找不到函数
+                   usr.seed_hours::int
                )::bigint * 3600,
                s.completed_at + make_interval(
                    days => hr_reduced_days(

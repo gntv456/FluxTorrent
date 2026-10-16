@@ -29,9 +29,12 @@ pub(crate) async fn request_expire(db: &PgPool) -> anyhow::Result<u64> {
     let days = if days <= 0 { FALLBACK_EXPIRE_DAYS } else { days };
     // 过期集合：status=0 且发布超 N 天。逐行「先抢坑再退钱」——幂等键
     // req-refund:{id} 防重复回收。
+    // make_interval 的 days 参数是 int4，i64 绑成 int8 无隐式转换
+    // （同 cheat_enforce.rs 的 make_interval 坑，须显式 ::int）。
     let expired: Vec<(i64, i64, i64)> = sqlx::query_as(
         "SELECT id, user_id, bounty FROM requests \
-         WHERE status = 0 AND created_at < now() - make_interval(days => $1)",
+         WHERE status = 0 \
+           AND created_at < now() - make_interval(days => $1::int)",
     )
     .bind(days)
     .fetch_all(db)

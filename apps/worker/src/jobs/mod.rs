@@ -42,6 +42,7 @@ mod promos;
 mod reconcile;
 mod reg_cleanup;
 mod request_expire;
+mod risk_backtest;
 mod risk_score;
 mod run;
 mod sanction_sweep;
@@ -77,6 +78,8 @@ pub(crate) use request_expire::*;
 
 pub(crate) use reconcile::*;
 pub(crate) use reg_cleanup::*;
+// risk_backtest 不全量 re-export：backtest 由 manual.rs 显式路径分派，
+// drain_pending_backtests 只被 risk_score_tick 内部调用。
 pub(crate) use risk_score::*;
 pub(crate) use social_team::*;
 pub(crate) use social_team_expire::*;
