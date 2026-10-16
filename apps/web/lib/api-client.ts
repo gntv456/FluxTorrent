@@ -123,10 +123,10 @@ function acceptLanguage(): string | undefined {
   return m ? decodeURIComponent(m[1]) : undefined;
 }
 
-/** 公开内部 helper：组件内需要裸 fetch（multipart 上传等）时复用同一 baseUrl/语言口径 */
 export const rawFetchHelpers = {
   base: baseUrl,
   lang: acceptLanguage,
+  csrf: (method?: string) => csrfHeaderAsync(method, null),
 };
 
 export class ApiError extends Error {
