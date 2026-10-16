@@ -12,6 +12,7 @@ RUN sed "s|sparse+https://rsproxy.cn/index/|${CARGO_REGISTRY}|" /tmp/cargo-confi
 FROM chef AS planner
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
+COPY crates ./crates
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -19,6 +20,7 @@ COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY Cargo.toml Cargo.lock ./
 COPY apps ./apps
+COPY crates ./crates
 RUN cargo build --release -p flux-tracker \
     && cp target/release/flux-tracker /usr/local/bin/flux-tracker
 
