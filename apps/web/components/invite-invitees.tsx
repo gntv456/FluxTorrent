@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { formatBytes as fmtBytes } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { Pager } from "@/components/ui/pager";
 
 /** GET /invites/invitees 的一条被邀请人（0204 P0，NP invitee 口径） */
 export interface Invitee {
@@ -17,22 +17,26 @@ export interface Invitee {
 
 /** 被邀请人列表（2026-10-16 自 invite-manager.tsx 按域外移，300 行门禁）。
  *
- *  ⚠️ 默认只显示最近 20 条：后端 `/invites/invitees` 是硬编码 `LIMIT 200`
- *  且**没有分页参数**（同文件的邀请记录倒是有分页的），重度用户会把整页
- *  顶爆——实测单账号 201 行、页高 10269px。这里先在前端收起来，
- *  后端补分页是后续项（>200 的历史目前会被静默截断）。
+ *  ⚠️ 这张表曾经两度出问题：
+ *  1. 后端是硬编码 `LIMIT 200` 且无分页参数——邀请超 200 人的账号看不到
+ *     更早的记录（静默截断）；现已补分页，per 固定 50，与邀请记录同口径。
+ *  2. 前端无条件全渲染——单账号 201 行、页高 10269px，把整页顶爆。
+ *     现在改由 Pager 分页，一页 50 行；两张表的页码各自独立，不联动。
  */
-const PREVIEW = 20;
-
 export function InviteeList({
   invitees,
   t,
+  total,
+  page,
+  onPage,
 }: {
   invitees: Invitee[];
   t: Record<string, string>;
+  total: number;
+  page: number;
+  onPage: (p: number) => void;
 }) {
-  const [all, setAll] = useState(false);
-  const shown = all ? invitees : invitees.slice(0, PREVIEW);
+  const pages = Math.ceil(total / 50);
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-base font-bold">{t.inviteesTitle}</h2>
@@ -46,7 +50,7 @@ export function InviteeList({
               <td className="colhead">{t.invDownloaded}</td>
               <td className="colhead">{t.invJoined}</td>
             </tr>
-            {shown.map((u) => (
+            {invitees.map((u) => (
               <tr key={u.id}>
                 <td>
                   <a
@@ -72,16 +76,14 @@ export function InviteeList({
           </tbody>
         </table>
       </div>
-      {invitees.length > PREVIEW && (
-        <button
-          type="button"
-          onClick={() => setAll(!all)}
-          className="self-start text-xs text-sky-deep hover:underline"
-        >
-          {all
-            ? t.inviteeCollapse
-            : `${t.inviteeShowAll}（${invitees.length}）`}
-        </button>
+      {pages > 1 && (
+        <Pager
+          layout="compact"
+          page={page}
+          pages={pages}
+          posLabel={`${page} / ${pages}`}
+          onStep={(p) => void onPage(p)}
+        />
       )}
     </section>
   );

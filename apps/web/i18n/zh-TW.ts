@@ -2293,8 +2293,6 @@ const zhTwBase: Omit<
     prevPage: "上一頁",
     nextPage: "下一頁",
     inviteesTitle: "我的被邀請人",
-    inviteeShowAll: "顯示全部",
-    inviteeCollapse: "只看最近 20 條",
     invUser: "使用者",
     invLevel: "等級",
     invUploaded: "上傳量",
