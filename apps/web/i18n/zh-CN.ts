@@ -1657,6 +1657,10 @@ const zhCnBase = {
       pushNotify: "推送通知",
       title: "安全设定",
       subtitle: "管理密码、邮箱、双重验证、通行密钥与账户隐私",
+      grpCredential: "凭证与密码",
+      grpDevice: "登录与设备",
+      grpNotify: "通知",
+      grpApi: "开放 API 与隐私",
       resetPasskey: "重置 passkey",
       resetPasskeyWant: "我想重置 passkey。",
       resetPasskeyNote:
@@ -3117,7 +3121,29 @@ const zhCnBase = {
     edit: "编辑",
     del: "删除",
     delConfirm: "确认删除该种子？（作者仅可删除未过审种子）",
-    nfoTitle: "NFO",
+    delTitle: "删除种子",
+    delReason: "原因",
+    delReasonDead: "断种",
+    delReasonDuplicate: "重复",
+    delReasonLowQuality: "劣质",
+    delReasonViolation: "违规",
+    delReasonOther: "其他",
+    delRequired: "（必填）",
+    delNote: "说明",
+    delPeers: "{seed} 做种者 + {leech} 下载者 = {peers} 总同伴",
+    delSpark: "扣除发种人{magic}",
+    delSparkNote: "扣除发种人发布这个种子获得的{magic}：{n}点",
+    delDouble: "双倍扣除{magic}",
+    delDoubleNote: "双倍扣除：{n}点",
+    delBan: "封禁发种权限",
+    delBanNote: "禁止该用户发布种子",
+    delBanOn: "该用户已在禁发中",
+    delNoDispose: "本次删除不带处置（仅管理人员处置他人种子时可勾选）",
+    delLoadFail: "取数失败，处置项已禁用，仍可执行删除",
+    delFail: "删除失败",
+    delPartial: "种子已删除，但下列处置未成功（可稍后补做）：",
+    delGotIt: "知道了",
+    delOk: "确认删除",    nfoTitle: "NFO",
     nfoKeepHint: "留空＝保持原值；填入即整段覆盖原 NFO",
     fieldName: "名称",
     fieldSub: "副标题",
@@ -6649,6 +6675,8 @@ export interface ApiTokensDict {
   issue: string;
   revoke: string;
   revoked: string;
+  /** 已吊销令牌的折叠入口（{n} = 枚数） */
+  revokedHistory: string;
   neverUsed: string;
   plainOnce: string;
   limit: string;
@@ -6679,6 +6707,7 @@ export const zhCN = {
     issue: "签发令牌",
     revoke: "吊销",
     revoked: "已吊销",
+    revokedHistory: "已吊销的令牌（{n} 枚，点击展开）",
     neverUsed: "未使用",
     plainOnce: "令牌明文仅此一次显示，请立即保存：",
     limit: "每人最多 3 枚有效令牌；用法 Authorization: Token fxo_…",

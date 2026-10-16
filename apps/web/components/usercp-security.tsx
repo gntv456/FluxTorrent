@@ -119,6 +119,10 @@ export function SecurityTab({
     <div className="brand-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <tbody>
+          {/* 分组标题（2026-10-16）：本面板原先是十余项平铺一长表，从账户
+              概览点「访问令牌 → 创建」进来根本找不到目标。按主题分四组，
+              组标题走 colhead 跨列行，不改动任何一行的既有结构。 */}
+          <tr><td className="colhead" colSpan={2}>{t.grpCredential}</td></tr>
           <Row head={t.resetPasskey}>
             <button
               type="button"
@@ -154,49 +158,11 @@ export function SecurityTab({
             <br />
             {t.twoStepHint}
           </Row>
-          <tr>
-            <td className="rowhead">{t.pushNotify}</td>
-            <td className="rowfollow p-0">
-              <PushSettings />
-            </td>
-          </tr>
-          {/* 登录历史（NP 口径）：最近 20 条只读，异常登录一眼可见 */}
-          <tr>
-            <td className="rowhead nowrap">{t.loginHistory}</td>
-            <td className="rowfollow p-0">
-              <LoginHistory />
-            </td>
-          </tr>
-          {/* 活跃会话 + 踢出其它会话（0284 P1-3） */}
-          <tr>
-            <td className="rowhead nowrap">{dict.sessions.title}</td>
-            <td className="rowfollow p-0">
-              <SessionsCard />
-            </td>
-          </tr>
           {/* Passkey（WebAuthn）绑定（0227） */}
           <tr>
             <td className="rowhead nowrap">Passkey</td>
             <td className="rowfollow p-0">
               <PasskeysCard />
-            </td>
-          </tr>
-          {/* 通知偏好（0075）：站内通知事件类开关 */}
-          <tr>
-            <td className="rowhead nowrap">{dict.noticePrefs.title}</td>
-            <td className="rowfollow p-0">
-              <NoticePrefsCard />
-            </td>
-          </tr>
-          <Row head={t.passkeyLabel}>{t.passkeyHint}</Row>
-          <Row head={t.tgBind}>{t.tgBindHint}</Row>
-          <tr
-            id="tokens"
-            className={`scroll-mt-16${anchorFlash ? " uc-anchor-flash" : ""}`}
-          >
-            <td className="rowhead">{dict.apitokens.title}</td>
-            <td className="rowfollow p-0">
-              <ApiTokens />
             </td>
           </tr>
           <tr>
@@ -243,6 +209,50 @@ export function SecurityTab({
                 {pwBusy ? "…" : t.changeBtn}
               </button>
               {pwMsg && <p className="mt-1 text-xs text-sub">{pwMsg}</p>}
+            </td>
+          </tr>
+          <Row head={t.passkeyLabel}>{t.passkeyHint}</Row>
+
+          <tr><td className="colhead" colSpan={2}>{t.grpDevice}</td></tr>
+          {/* 登录历史（NP 口径）：最近 20 条只读，异常登录一眼可见 */}
+          <tr>
+            <td className="rowhead nowrap">{t.loginHistory}</td>
+            <td className="rowfollow p-0">
+              <LoginHistory />
+            </td>
+          </tr>
+          {/* 活跃会话 + 踢出其它会话（0284 P1-3） */}
+          <tr>
+            <td className="rowhead nowrap">{dict.sessions.title}</td>
+            <td className="rowfollow p-0">
+              <SessionsCard />
+            </td>
+          </tr>
+
+          <tr><td className="colhead" colSpan={2}>{t.grpNotify}</td></tr>
+          <tr>
+            <td className="rowhead">{t.pushNotify}</td>
+            <td className="rowfollow p-0">
+              <PushSettings />
+            </td>
+          </tr>
+          {/* 通知偏好（0075）：站内通知事件类开关 */}
+          <tr>
+            <td className="rowhead nowrap">{dict.noticePrefs.title}</td>
+            <td className="rowfollow p-0">
+              <NoticePrefsCard />
+            </td>
+          </tr>
+          <Row head={t.tgBind}>{t.tgBindHint}</Row>
+
+          <tr><td className="colhead" colSpan={2}>{t.grpApi}</td></tr>
+          <tr
+            id="tokens"
+            className={`scroll-mt-16${anchorFlash ? " uc-anchor-flash" : ""}`}
+          >
+            <td className="rowhead">{dict.apitokens.title}</td>
+            <td className="rowfollow p-0">
+              <ApiTokens />
             </td>
           </tr>
           <Row head={t.privacy}>
