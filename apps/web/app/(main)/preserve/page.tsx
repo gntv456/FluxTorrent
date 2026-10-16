@@ -171,7 +171,10 @@ export default async function PreservePage({
             <thead>
               <tr>
                 <th className="w-12">{dict.torrents.colType}</th>
-                <th className="w-16" aria-label="封面" />
+                <th
+                  className="w-16"
+                  aria-label={dict.torrents.colNames.cover}
+                />
                 <th>{dict.torrents.colTitle}</th>
                 <th className="w-16" title={dict.torrents.colComments}>
                   <Icon

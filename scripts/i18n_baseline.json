@@ -106,11 +106,13 @@
  "e2e/smoke.spec.ts": [
   10,
   14,
-  23,
-  24,
-  31,
-  39,
-  43
+  26,
+  37,
+  44,
+  52,
+  56,
+  73,
+  80
  ],
  "components/admin-exams-shared.ts": [],
  "components/admin-medals-shared.ts": [],
@@ -1112,6 +1114,18 @@
  "app/(auth)/email-verify/page.tsx": [],
  "app/(auth)/apply/page.tsx": [],
  "e2e/visual-regression.spec.ts": [
-  61
+  65
+ ],
+ "e2e/axe.spec.ts": [
+  51,
+  82,
+  84,
+  93
+ ],
+ "e2e/responsive.spec.ts": [
+  76,
+  93,
+  95,
+  96
  ]
 }

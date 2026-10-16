@@ -266,7 +266,7 @@ export function ManageMetaFields({
               e.currentTarget.value = "";
             }}
           />
-          {attach.busy ? "上传中…" : u.attachHint}
+          {attach.busy ? dict.upload.attachUploading : u.attachHint}
         </label>
         {attach.msg && (
           <p className="text-[11px] text-sky-deep">{attach.msg}</p>

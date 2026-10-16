@@ -7,96 +7,12 @@
  * 统一「银行」类——用户看的是来源大类，不必区分内部动作细节。
  *
  * 使用：me/sparks 用户流水页与后台用户详情 SparkPanel 共用。
- * 未收录 kind 回落原始 key，不静默。
+ * i18n 收口批：文案改由 zh-CN 源字典 me.kinds 提供（en/zh-TW/ja 随
+ * getDict 深合并各自覆盖），本文件只保留键序与回落逻辑；未收录 kind
+ * 回落原始 key，不静默。
  */
 
-export const SPARK_KIND_LABELS: Record<string, string> = {
-  // 签到与奖励
-  attendance: "签到",
-  seeding_reward: "做种收益",
-  task_reward: "任务奖励",
-  achievement: "成就奖励",
-  jixiao_reward: "考核奖励",
-  initial_grant: "初始发放",
-  levelup: "升级奖励",
-  week: "周常奖励",
-  month: "月度奖励",
+import { zhCN } from "@/i18n/zh-CN";
 
-  // 商店与消费
-  shop: "商店消费",
-  shop_buy: "商店消费",
-  promo_buy: "促销购买",
-  donation_tier: "捐赠档位",
-  voucher: "券核销",
-
-  // 游戏 / 娱乐屋 / 抽卡
-  game: "游戏娱乐",
-  games: "游戏娱乐",
-  arcade: "娱乐屋",
-  gacha: "抽卡",
-  fishing: "钓鱼",
-  farm: "农场",
-
-  // 论坛
-  forum: "论坛奖励",
-  "forum-like": "点赞",
-  "forum-post-del": "删帖扣除",
-  "forum-topic-del": "删主题扣除",
-  forum_bounty: "发布悬赏",
-  forum_bounty_refund: "悬赏退还",
-  forum_lottery: "论坛抽奖",
-  forum_lottery_refund: "抽奖退还",
-  forum_tip: "打赏",
-  vote: "投票",
-
-  // 字幕区
-  subtitle: "字幕奖励",
-  subtitle_award: "字幕评选奖励",
-  subtitle_bounty: "字幕悬赏",
-  subtitle_report: "字幕上报",
-  subtitle_request: "发起求字幕",
-  subtitle_request_refund: "求字幕退还",
-  subtitle_violation: "字幕违规扣除",
-
-  // 银行
-  bank: "银行",
-  bank_deposit: "银行存款",
-  bank_withdraw: "银行取款",
-  bank_demand_in: "活期转入",
-  bank_demand_out: "活期转出",
-  bank_loan_payout: "贷款放款",
-  bank_loan_repay: "贷款偿还",
-  bank_loan_repay_partial: "贷款部分偿还",
-
-  // H&R / 求种
-  hr_pardon: "H&R 赦免",
-  hr_pardon_refund: "H&R 赦免退还",
-  request_bounty: "求种悬赏",
-  request_refund: "求种过期退还",
-  // 买/卖种（torrents/charge.rs 现网各 11 条）、账号清理（user_del.rs，
-  // 86 条）、删回复退积分（post_edit.rs）——此前直出英文键。
-  // 注：forum-topic-del 上方第 44 行已有名，别再补一条重复键
-  torrent_buy: "买种支出",
-  torrent_sell: "卖种收入",
-  user_purge: "账号清理回收",
-  "forum-topic-del-reply": "删除回复退还",
-  // 后台发道具（user_grant_item.rs）与银行两条 job kind
-  // （bank_jobs：定存结息 / 自动扣款）此前也没名字
-  admin_grant_item: "管理发放道具",
-  bank_fixed_interest: "定期存款结息",
-  bank_auto_deduct: "银行账户代扣",
-
-  // 众筹 / 池
-  funding: "众筹参与",
-  funding_refund: "众筹退还",
-  pool_donate: "魔力池捐赠",
-
-  // 管理
-  admin: "管理调整",
-  adjust: "管理调整",
-  increment_bulk: "批量发放",
-  bonus: "奖励发放",
-  amountbonus: "魔力奖励",
-  refund: "退款",
-  gift: "赠送",
-};
+export const SPARK_KIND_LABELS: Record<string, string> =
+  zhCN.my.kinds as Record<string, string>;

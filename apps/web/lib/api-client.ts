@@ -1,11 +1,34 @@
 import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
 import { apiServerBase } from "@/lib/api-upstream";
+import { zhCN } from "@/i18n/zh-CN";
 
 /**
  * 统一 API 客户端（方案 §8.3.2：组件内禁止裸 fetch）。
  * 双地址：服务端 RSC 用内网直连（API_SERVER_URL），浏览器用公开地址（NEXT_PUBLIC_API_URL）。
  */
+
+/** 网络层兜底文案（i18n 收口批）：api-client 不在 React 树内拿不到
+ *  LocaleProvider 字典，这里按 locale cookie 取对应字典的网络段；
+ *  取不到（SSR 无 cookie 等）回落 zh-CN 源字典。en/zh-TW 字典整本
+ *  数千键，顶层静态 import 会把它拖进每个页面的 bundle——按需
+ *  require（webpack 分包）只在此分支命中时加载。 */
+const NET_DICTS: Record<string, () => { errors?: Record<string, string> }> = {
+  en: () => require("@/i18n/en").en as { errors?: Record<string, string> },
+  "zh-TW": () =>
+    require("@/i18n/zh-TW").zhTW as { errors?: Record<string, string> },
+};
+function netMsg(
+  locale: string | undefined,
+  key: "httpServerError" | "httpDownloadFail" | "httpPleaseLogin",
+): string {
+  const load = locale ? NET_DICTS[locale] : undefined;
+  if (load) {
+    const v = load().errors?.[key];
+    if (v) return v;
+  }
+  return (zhCN.errors as unknown as Record<string, string>)?.[key] ?? "";
+}
 
 /** 浏览器侧：登录/登出时同步会话标记 cookie（12h，与 JWT 24h 保守对齐）。
  *  安全收敛（P1）：token 已不再进 localStorage/JS 可读 cookie——登录接口经
@@ -75,7 +98,8 @@ export function hasSessionCookie(): boolean {
 export function setSessionCookie(loggedIn: boolean): void {
   if (typeof document === "undefined") return;
   if (loggedIn) {
-    document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=43200; samesite=lax`;
+    document.cookie =
+      `${SESSION_COOKIE}=1; path=/; max-age=43200; samesite=lax`;
   } else {
     document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
   }
@@ -176,7 +200,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!ctype.includes("application/json")) {
     throw new ApiError(
       1000,
-      `服务异常（HTTP ${res.status}）`,
+      netMsg(lang, "httpServerError").replace("{status}", String(res.status)),
       undefined,
       res.status,
       res.headers.get("x-request-id") ?? undefined,
@@ -218,10 +242,13 @@ async function requestBlob(path: string): Promise<ArrayBuffer> {
     },
   });
   if (res.status === 401) {
-    throw new ApiError(2001, "请先登录");
+    throw new ApiError(2001, netMsg(lang, "httpPleaseLogin"));
   }
   if (!res.ok) {
-    throw new ApiError(1000, `下载失败（HTTP ${res.status}）`);
+    throw new ApiError(
+      1000,
+      netMsg(lang, "httpDownloadFail").replace("{status}", String(res.status)),
+    );
   }
   return res.arrayBuffer();
 }

@@ -4,6 +4,8 @@ import type { RefObject } from "react";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { attachUpload } from "@/components/upload-attach-io";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
 import { UploadRipLogs } from "@/components/upload-form-riplogs";
 
@@ -66,41 +68,17 @@ export function UploadFilesBlock({
   const [attachBusy, setAttachBusy] = useState(false);
   const [attachMsg, setAttachMsg] = useState<string | null>(null);
 
-  /** 图床上传（0100）：POST /attachments，成功后把 [img]URL[/img] 追加进简介 */
+  /** 图床上传（0100）：成功把 [img]URL[/img] 追加进简介；文案 dict.upload */
   async function uploadAttachment(file: File) {
     setAttachBusy(true);
     setAttachMsg(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      // 凭证由 HttpOnly flux_token cookie 自动携带（P1 收敛，token 不进 JS）
-      const res = await fetch("/api/v1/attachments", {
-        method: "POST",
-        body: fd,
-      });
-      const j = (await res.json()) as {
-        data?: { url?: string; deduplicated?: boolean };
-        message?: string;
-      };
-      if (!res.ok || !j.data?.url) throw new Error(j.message ?? "上传失败");
-      const tag = file.type.startsWith("image/")
-        ? `[img]${j.data.url}[/img]`
-        : `[url=${j.data.url}]${file.name}[/url]`;
-      setDescr(
-        (prev) =>
-          (prev.trim()
-            ? `${prev.trim()}
-
-`
-            : "") + tag,
-      );
-      setAttachMsg(
-        j.data.deduplicated
-          ? "秒传成功（服务器已有同文件）"
-          : "上传成功，已插入简介",
-      );
+      const r = await attachUpload(file, dict, setDescr);
+      setAttachMsg(r.msg);
     } catch (e) {
-      setAttachMsg(e instanceof Error ? e.message : "上传失败");
+      setAttachMsg(
+        e instanceof Error && e.message ? e.message : dict.upload.attachFail,
+      );
     } finally {
       setAttachBusy(false);
     }
@@ -196,7 +174,9 @@ export function UploadFilesBlock({
                 onChange={(e) => setPtgenUrl(e.target.value)}
                 placeholder={
                   dict.upload.ptgenPlaceholder ??
-                  `粘贴 ${metaSources.join(" / ")} 链接`
+                  fmt(dict.upload.attachPtgenPh, {
+                    sources: metaSources.join(" / "),
+                  })
                 }
                 maxLength={300}
                 className="min-h-10 flex-1 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--brand-orange)]"
@@ -244,7 +224,7 @@ export function UploadFilesBlock({
                 e.currentTarget.value = "";
               }}
             />
-            {attachBusy ? "上传中…" : dict.upload.attachHint}
+            {attachBusy ? dict.upload.attachUploading : dict.upload.attachHint}
           </label>
           {attachMsg && <p className="text-xs text-sky-deep">{attachMsg}</p>}
         </div>

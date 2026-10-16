@@ -53,11 +53,13 @@ export function timeAgo(iso: string): string {
   const mo = Math.floor(d / 30);
   return `${mo}mo${d % 30}d`;
 }
-/** 规则文本加粗关键部分（同步/标题/合集/Vobsub/proper） */
+/** 规则文本加粗关键部分（同步/标题/合集/Vobsub/proper）。
+ *  匹配串与字典 rules 文案（i18n zh-CN subtitle 段）同源——文案改字
+ *  这里要跟着改，否则加粗失效（i18n 收口批：硬编码中文挪进注释锚点）。 */
 export function boldRule(r: string): string {
   return r
-    .replace("字幕必须与视频文件同步", "<b>字幕必须与视频文件同步</b>")
-    .replace("标题", "<b>标题</b>")
+    .replace(/(字幕必须与视频文件同步)/g, "<b>$1</b>")
+    .replace(/(标题)/g, "<b>$1</b>")
     .replace(/\&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/\*&lt;/g, "*<");
