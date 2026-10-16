@@ -5,6 +5,7 @@ import { BTN_SM_SKY } from "@/lib/ui-classes";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 /** 开放 API 令牌自助管理（M27）：签发（明文一次性显示）/ 列表 / 吊销 */
 interface TokenRow {
@@ -34,6 +35,10 @@ export function ApiTokens() {
   // 「两步验证码」），免得同一句话在三语字典里各写两份。
   const sec = dict.usercp.security;
   const [rows, setRows] = useState<TokenRow[]>([]);
+  // 有效/已吊销分开渲染：后端只限「最多 3 枚有效令牌」，历史吊销会无限
+  // 累积，早年全部平铺时实测单账号 139 行、5275px 高，把整个安全面板顶爆。
+  const activeRows = rows.filter((r) => !r.revoked_at);
+  const revokedRows = rows.filter((r) => r.revoked_at);
   const [name, setName] = useState("");
   const [plain, setPlain] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -165,7 +170,7 @@ export function ApiTokens() {
         </p>
       )}
 
-      {rows.length > 0 && (
+      {activeRows.length > 0 && (
         <div className="baozi-wide-table-scroll">
         <table className="nexus-table text-xs">
           <thead>
@@ -176,36 +181,57 @@ export function ApiTokens() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {activeRows.map((r) => (
               <tr key={r.id}>
                 <td className="rowfollow">
                   <b>{r.name}</b>
                   <span className="ml-1 text-sub">
-                    {r.revoked_at
-                      ? `（${t.revoked}）`
-                      : r.last_used_at
-                        ? ""
-                        : `（${t.neverUsed}）`}
+                    {r.last_used_at ? "" : `（${t.neverUsed}）`}
                   </span>
                 </td>
                 <td className="rowfollow num">{r.rate_per_min}</td>
                 <td className="rowfollow">
-                  {!r.revoked_at && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => revoke(r.id)}
-                      className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-danger disabled:opacity-50"
-                    >
-                      {t.revoke}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => revoke(r.id)}
+                    className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-danger disabled:opacity-50"
+                  >
+                    {t.revoke}
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         </div>
+      )}
+
+      {/* 已吊销令牌默认收起：后端只限「最多 3 枚有效」，历史吊销会无限累积，
+          早年无脑平铺时实测单账号 139 行、5275px 高，把整个安全面板顶爆。
+          需要追溯时再展开。 */}
+      {revokedRows.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer select-none text-sub">
+            {fmt(t.revokedHistory, { n: revokedRows.length })}
+          </summary>
+          <div className="baozi-wide-table-scroll mt-1">
+            <table className="nexus-table text-xs">
+              <tbody>
+                {revokedRows.map((r) => (
+                  <tr key={r.id}>
+                    <td className="rowfollow">
+                      <s className="text-sub">{r.name}</s>
+                      <span className="ml-1 text-sub">（{t.revoked}）</span>
+                    </td>
+                    <td className="rowfollow num">{r.rate_per_min}</td>
+                    <td className="rowfollow" />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
     </div>
   );
