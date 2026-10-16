@@ -29,6 +29,7 @@ node scripts/line_limit_guard.mjs    # 行数（≤300）与行宽（≤80）门
 pnpm --filter @fluxtorrent/web exec tsc --noEmit   # 前端类型
 pnpm --filter @fluxtorrent/web exec next build     # 前端构建
 node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
+node scripts/design_guard.mjs # 设计模板：标题级唯一 + 禁语义色类直写
 ```
 
 ## 前端改动（设计系统纪律，DS-PLAN-01 §10）
@@ -79,6 +80,7 @@ node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
 ```bash
 node scripts/line_limit_guard.mjs     # 行数 ≤300 / 行宽 ≤80
 node scripts/i18n_guard.mjs           # 文案防新增硬编码中文
+node scripts/design_guard.mjs         # 页面 <h1> 唯一 + 禁语义色类直写
 node scripts/design_cov_guard.mjs     # 覆盖率四指标只许向好
 node scripts/ui_design_guard.mjs      # 令牌层退化六则+tsx hex 棘轮
 node scripts/check_dark_contrast.mjs  # 暗色 AA 回潮+明色债棘轮
@@ -87,6 +89,15 @@ node scripts/check_dark_contrast.mjs  # 暗色 AA 回潮+明色债棘轮
 （Rust 侧另有 route_manifest/check_type_drift/error_registry 三件
 契约门禁，见上节 CI 清单；修完一类问题后 `--update` 刷基线，确认是
 「有意放行」才刷。）
+
+**design_guard 的基线纪律**：`scripts/design_guard_baseline.json` 按**行号**
+记录存量（h1 第 2 个及以后、语义色类直写、hex/rgba 广谱色值）。迁移某个
+文件后**不要**跑 `--update`（会把并行会话的新违规一并洗白），改用
+`node scripts/design_guard.mjs --touch <相对 apps/web 的路径>` 定向重算。
+其中 `h1` 只记每页**第 2 个及以后**的（互斥早返回分支如 `if (!x) return
+<h1/>` 静态看不穿，确认无害后 `--touch` 登记）；`color` 项（hex/rgba 广谱）
+**只报告不 fail**——管理端配色数据（头像框预置 css、勋章色板）与样式字面量
+暂无法区分，6 位 hex 已由 `ui_design_guard` 第 9 条 fail 管辖，别重复设卡。
 
 **口径修订与棘轮同步（2026-10-14 D1–D9 决议的沉淀）**：验收口径
 （如加载态分母、首屏 JS 口径、对比度判线）经站长批准修订后，**必须
