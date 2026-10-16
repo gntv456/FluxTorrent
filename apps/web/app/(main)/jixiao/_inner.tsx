@@ -1,40 +1,15 @@
 "use client";
 
-import { PANEL_MD } from "@/lib/ui-classes";
-
-;
-
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { useIsCompact } from "@/lib/hooks/use-media";
-
-interface MetricCheck {
-  key: string;
-  required: number;
-  current: number;
-  ok: boolean;
-}
-
-interface AssignedPost {
-  type_id: number;
-  name: string;
-  /** 该岗位行所属考核期（本期或可补领的上期） */
-  period?: string;
-  /** 上期补领行（0106）：claim 时需带 period */
-  claimable_prev?: boolean;
-  base_pay: number;
-  checks: MetricCheck[];
-  all_ok: boolean;
-  qualified_months: number;
-  bonus: number;
-  total: number;
-  claimed: boolean;
-  /** 0106：0=进行中 1=已发薪 2=未达标 3=撤销 */
-  status?: number;
-}
+import {
+  JixiaoPostCard,
+  type AssignedPost,
+} from "./_parts/jixiao-post-card";
 
 interface JixiaoMe {
   period: string;
@@ -139,72 +114,16 @@ export default function JixiaoPage() {
       {me && me.assigned.length > 0 ? (
         <div className="grid gap-3 md:grid-cols-2">
           {me.assigned.map((p) => (
-            <article
+            <JixiaoPostCard
               key={p.type_id}
-              className={PANEL_MD}
-            >
-              <header className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-display text-lg">
-                  {p.name}
-                  {p.claimable_prev && p.period && (
-                    <span className="ml-2 align-middle text-xs font-normal text-sub">（{p.period} 补领）</span>
-                  )}
-                </h2>
-                <span className={`sticker ${p.status === 1 ? "bg-sky-soft" : p.all_ok ? "bg-mint/40" : "bg-sun/50"}`}>
-                  {p.status === 1
-                    ? t.stPaid
-                    : p.status === 2
-                      ? t.stFailedPeriod
-                      : p.all_ok
-                        ? t.stQualified
-                        : t.stNotQualified}
-                </span>
-              </header>
-              <dl className="mt-3 flex flex-col gap-2">
-                <div className="flex justify-between">
-                  <dt className="text-xs text-sub">{t.colBasePay}</dt>
-                  <dd className="num text-sm font-bold">
-                    {currency} {p.base_pay.toLocaleString()}
-                  </dd>
-                </div>
-                {p.checks.map((c) => (
-                  <div key={c.key} className="flex items-center justify-between gap-2">
-                    <dt className="text-xs text-sub">{reqLabel[c.key] ?? c.key}</dt>
-                    <dd className={`num text-sm ${c.ok ? "text-emerald-600" : "text-sub"}`}>
-                      {fmtVal(c.key, c.current)} / {fmtVal(c.key, c.required)}
-                      <span className="ml-1">{c.ok ? "✓" : "✗"}</span>
-                    </dd>
-                  </div>
-                ))}
-                {p.qualified_months > 0 && (
-                  <div className="flex justify-between">
-                    <dt className="text-xs text-sub">{t.qualifiedMonths}</dt>
-                    <dd className="num text-sm">
-                      {p.qualified_months}（+{currency} {p.bonus.toLocaleString()}）
-                    </dd>
-                  </div>
-                )}
-                <div className="flex justify-between border-t border-line pt-2">
-                  <dt className="text-xs text-sub">{t.stTotal}</dt>
-                  <dd className="num text-sm font-bold">
-                    {currency} {p.total.toLocaleString()}
-                  </dd>
-                </div>
-              </dl>
-              <button
-                className="cmgmt-act cmgmt-act--ok mt-3 w-full"
-                disabled={p.claimed || p.status === 1 || !p.all_ok || busyId === p.type_id}
-                onClick={() => claim(p)}
-              >
-                {p.claimed || p.status === 1
-                  ? t.stClaimed
-                  : p.all_ok
-                    ? p.claimable_prev
-                      ? (t.btnClaimPrev)
-                      : t.btnClaim
-                    : t.stNotQualified}
-              </button>
-            </article>
+              post={p}
+              dict={dict}
+              currency={currency}
+              reqLabel={reqLabel}
+              fmtVal={fmtVal}
+              busyId={busyId}
+              onClaim={claim}
+            />
           ))}
         </div>
       ) : (
