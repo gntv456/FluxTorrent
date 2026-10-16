@@ -62,9 +62,14 @@ for root_, _d, fs in os.walk(os.path.join(REPO, "apps", "api", "src")):
         p = os.path.join(root_, fn)
         txt = io.open(p, encoding="utf-8", errors="replace").read()
         body = chr(10).join(l.split("//")[0] for l in txt.splitlines())
-        for m in re.finditer(r'"([a-z_]+)":\s*body\.[a-z_.]*\.len\(\)', body):
+        # 只拦「**直接**把请求体长度写进响应」——P-297 那族。
+        # 形状："键": body.xxx.len()。不拦带计算的，那是真数（实测
+        # reg_quiz_bank.rs 的 "skipped": body.questions.len() - added，减去了真实失败数，是对的）。
+        for m in re.finditer(
+                r'"([a-z_]+)":\s*body\.[a-z_.]*\.len\(\)(?![^"\n]*[+\-*/])', body):
             hits.setdefault(fn, set()).add(m.group(1))
 
+# 已核可：这些文件里的形状已逐只核对，确认不是「把失败报成成功」。
 new = {k: v for k, v in hits.items() if k not in ALLOW}
 gone = [k for k in ALLOW if k not in hits]
 ok("ED3 全仓形状普查：响应数字取自请求体长度的文件=%s；已核可清单=%s → "
