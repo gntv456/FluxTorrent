@@ -30,6 +30,8 @@ pnpm --filter @fluxtorrent/web exec tsc --noEmit   # 前端类型
 pnpm --filter @fluxtorrent/web exec next build     # 前端构建
 node scripts/i18n_guard.mjs # i18n 防新增硬编码中文
 node scripts/design_guard.mjs # 设计模板：标题级唯一 + 禁语义色类直写
+cd apps/web && npx playwright test e2e/responsive.spec.ts
+                              # 响应式：四断点无横向溢出 + h1 存在
 ```
 
 ## 前端改动（设计系统纪律，DS-PLAN-01 §10）
@@ -84,6 +86,10 @@ node scripts/design_guard.mjs         # 页面 <h1> 唯一 + 禁语义色类直�
 node scripts/design_cov_guard.mjs     # 覆盖率四指标只许向好
 node scripts/ui_design_guard.mjs      # 令牌层退化六则+tsx hex 棘轮
 node scripts/check_dark_contrast.mjs  # 暗色 AA 回潮+明色债棘轮
+cd apps/web && npx playwright test e2e/responsive.spec.ts
+                                     # 四断点（1440/1024/768/390）× 8 页
+                                     # 无横向溢出 + h1 存在 + 零未捕获错误
+                                     # （新增页面或改响应式样式必跑）
 ```
 
 （Rust 侧另有 route_manifest/check_type_drift/error_registry 三件
