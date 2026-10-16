@@ -14,6 +14,7 @@ import { fmt } from "@/i18n/config";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { Pager } from "@/components/ui/pager";
 
 /** 第八轮 P2-5：签到记录与手工补签（同类站 user/attendance-logs 口径） */
 
@@ -29,7 +30,6 @@ interface AttendanceRow {
 export function AdminAttendance() {
   const { dict, currency } = useI18n();
   const at = dict.adminAttendance;
-  const c = dict.common;
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [total, setTotal] = useState(0);
   const [uid, setUid] = useState("");
@@ -249,26 +249,12 @@ export function AdminAttendance() {
           )}
         </tbody>
       </table>
-      <div className="flex items-center justify-between text-sm text-sub">
-        <span>{fmt(c.totalItems, { n: total })}</span>
-        <div className="flex gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className={BTN_SM_GHOST}
-          >
-            {c.prevPage}
-          </button>
-          <span>{fmt(c.pageX, { n: page })}</span>
-          <button
-            disabled={rows.length < 20}
-            onClick={() => setPage(page + 1)}
-            className={BTN_SM_GHOST}
-          >
-            {c.nextPage}
-          </button>
-        </div>
-      </div>
+      <Pager
+        page={page}
+        pages={Math.max(1, Math.ceil(total / 20))}
+        total={total}
+        onStep={setPage}
+      />
       <AskDialog {...ask} />
     </div>
   );

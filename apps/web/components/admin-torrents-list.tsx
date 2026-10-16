@@ -1,6 +1,6 @@
 "use client";
 
-import { BTN_SM_GHOST } from "@/lib/ui-classes";
+import { Pager } from "@/components/ui/pager";
 
 /**
  * 后台种子管理·批量工作台（从 components/admin-torrents.tsx 按域拆出）：
@@ -28,8 +28,6 @@ import { appendDims, useDecide, useDims } from "./admin-torrents-list-parts";
 /** 搜索按钮（实底天蓝） */
 const SKY_BTN_CLS =
   "min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white";
-/** 分页描边小按钮 */
-const PAGE_BTN_CLS = BTN_SM_GHOST;
 /** 种子名搜索输入框 */
 const Q_INPUT_CLS =
   "min-h-[36px] w-40 rounded-[var(--r-sm)] border border-line px-2";
@@ -40,7 +38,6 @@ const sel_input =
 export function TorrentList({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
   const at = dict.adminTorrents;
-  const c = dict.common;
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [owner, setOwner] = useState("");
@@ -270,26 +267,12 @@ export function TorrentList({ flash }: { flash: (m: string) => void }) {
 
       {/* 列表（表格拆至 ./admin-torrents-table.tsx） */}
       <TorrentTable data={data} sel={sel} setSel={setSel} decide={decide} />
-      <div className="flex items-center justify-between text-sm text-sub">
-        <span>{fmt(c.totalItems, { n: total })}</span>
-        <div className="flex gap-2">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className={PAGE_BTN_CLS}
-          >
-            {c.prevPage}
-          </button>
-          <span>{fmt(c.pageX, { n: data?.page ?? 1 })}</span>
-          <button
-            disabled={!data || data.rows.length < 20}
-            onClick={() => setPage(page + 1)}
-            className={PAGE_BTN_CLS}
-          >
-            {c.nextPage}
-          </button>
-        </div>
-      </div>
+      <Pager
+        page={page}
+        pages={Math.max(1, Math.ceil(total / 20))}
+        total={total}
+        onStep={setPage}
+      />
     </div>
   );
 }
