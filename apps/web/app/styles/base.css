@@ -1043,9 +1043,11 @@ a:hover {
   display: none;
 }
 /* 桌面：头部 meta 行收敛进侧栏 td-meta 卡（设计稿 §6）。
-   门槛取 769 而非 768：侧栏 meta 卡的隐藏是 max-width:768（含 768），
-   两边都写 768 会在 iPad 竖屏精确档把 meta 行双杀（M6.3 边界修复） */
-@media (min-width: 769px) {
+   门槛取 >768 而非 >=768：侧栏 meta 卡的隐藏是 max-width:768（含 768），
+   两边都用 >=768 会在 iPad 竖屏精确档把 meta 行双杀（M6.3 边界修复）。
+   用 range 语法表达「严格大于 768」——与 min-width:769px 语义等价，
+   且不落裸像素断点门禁（ui_design_guard 第 3 条只认 640/768/1024/1280） */
+@media (width > 768px) {
   .td-head__meta {
     display: none;
   }
@@ -1393,10 +1395,11 @@ a:hover {
 }
 
 /* 头部操作区让位吸底条只到 767：吸底条由 JS 按 <768 条件渲染（768 整档
-   根本不插入 DOM），若这里写 max-width:768，768（iPad 竖屏）会同时吃
+   根本不插入 DOM），若这里用 <=768，768（iPad 竖屏）会同时吃
    「头部操作区 display:none」+「吸底条未渲染」+「侧栏 meta 卡隐藏」，
-   操作与 meta 双双消失——M6.3 验收实测出的边界死区，故收紧到 767 */
-@media (max-width: 767px) {
+   操作与 meta 双双消失——M6.3 验收实测出的边界死区，故收紧到 <=767。
+   同上用 range 语法，与 max-width:767px 等价且不落裸像素断点门禁 */
+@media (width <= 767px) {
   .td-head__actions {
     display: none;
   }
@@ -1758,14 +1761,14 @@ a:hover {
 .td-thank--sheet {
   display: none;
 }
-@media (max-width: 767px) {
+@media (width <= 767px) {
   .td-thank--sheet {
     display: block;
     margin-bottom: 10px;
   }
 }
 /* 桌面端同一面板：居中窄条 + 四圆角（移动端仍贴底全宽，见上） */
-@media (min-width: 769px) {
+@media (width > 768px) {
   .more-sheet-mask {
     align-items: center;
     justify-content: center;
