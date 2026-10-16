@@ -285,6 +285,9 @@ pub(super) struct TorrentEditReq {
     /// MediaInfo 全文（0173 编辑同步发布能力）：None=不动，Some("")=清除，Some(text)=写入
     #[serde(default)]
     pub(super) mediainfo: Option<String>,
+    /// NFO 全文（同上三态）：此前 nfo 只有发布口能写，传错无法改
+    #[serde(default)]
+    pub(super) nfo: Option<String>,
     /// 标签（0159 P1）：编辑表单整组提交；Some([]) = 清空全部标签，
     /// None = 不动（编辑入口与详情页 toggle / 发布同走 apply_torrent_tags）
     #[serde(default)]

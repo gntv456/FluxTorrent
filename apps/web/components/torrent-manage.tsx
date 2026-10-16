@@ -115,6 +115,8 @@ export function TorrentManage(p: TorrentManageProps) {
   const [fPrice, setFPrice] = useState(price);
   const [fPoster, setFPoster] = useState(posterUrl ?? "");
   const [fMediainfo, setFMediainfo] = useState(mediainfo ?? "");
+  // NFO 不预填（聚合口不下发 nfo 全文）：留空=保持原值，见 MetaNfoFields 头注
+  const [fNfo, setFNfo] = useState("");
   const [fPtgenUrl, setFPtgenUrl] = useState("");
   const [ptgenBusy, setPtgenBusy] = useState(false);
   // 标签整组编辑（0159 P1）：与发布表单同交互——普通标签 checkbox；
@@ -183,7 +185,7 @@ export function TorrentManage(p: TorrentManageProps) {
         fCat,
         fImdb,
         fPoster,
-        fMediainfo,
+        fMediainfo, fNfo,
         fSec,
         catKinds,
         fTags,
@@ -273,14 +275,12 @@ export function TorrentManage(p: TorrentManageProps) {
           <ManageMetaFields
             dict={dict}
             metaSrc={metaSrc}
-            fPtgenUrl={fPtgenUrl}
-            setFPtgenUrl={setFPtgenUrl}
+            fPtgenUrl={fPtgenUrl} setFPtgenUrl={setFPtgenUrl}
             ptgenBusy={ptgenBusy}
             onGen={() => void gen()}
-            fMediainfo={fMediainfo}
-            setFMediainfo={setFMediainfo}
-            fImdb={fImdb}
-            setFImdb={setFImdb}
+            fMediainfo={fMediainfo} setFMediainfo={setFMediainfo}
+            fNfo={fNfo} setFNfo={setFNfo}
+            fImdb={fImdb} setFImdb={setFImdb}
             attach={attach}
           />
           {/* 简介与 BBCode 工具条（0173 复用发布页组件） */}

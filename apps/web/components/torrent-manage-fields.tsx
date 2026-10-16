@@ -3,6 +3,7 @@
 import { useI18n } from "@/i18n/client";
 import { api, ApiError } from "@/lib/api-client";
 import { ATTACH_ACCEPT, FLD, PILL } from "@/components/torrent-manage-parts";
+import { MetaNfoFields } from "@/components/torrent-manage-meta-nfo";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import { SectionKindBool } from "@/components/section-kind-bool";
 import { catPath } from "@/lib/site-profile";
@@ -14,8 +15,6 @@ const ATTACH_DROP =
   + "rounded-[var(--r-sm)] border border-dashed border-line "
   + "bg-[var(--head-b)] px-3 text-sm text-sub "
   + "hover:border-[var(--baozi-orange)]";
-const MONO_AREA =
-  "rounded-[var(--r-sm)] border border-line px-2 py-1 font-mono text-xs";
 const IMDB_INPUT =
   "w-40 rounded-[var(--r-sm)] border border-line px-2 py-1 text-sm";
 
@@ -210,8 +209,8 @@ export function ManageMetaFields({
   setFPtgenUrl,
   ptgenBusy,
   onGen,
-  fMediainfo,
-  setFMediainfo,
+  fMediainfo, setFMediainfo,
+  fNfo, setFNfo,
   fImdb,
   setFImdb,
   attach,
@@ -222,8 +221,8 @@ export function ManageMetaFields({
   setFPtgenUrl: (v: string) => void;
   ptgenBusy: boolean;
   onGen: () => void;
-  fMediainfo: string;
-  setFMediainfo: (v: string) => void;
+  fMediainfo: string; setFMediainfo: (v: string) => void;
+  fNfo: string; setFNfo: (v: string) => void;
   fImdb: string;
   setFImdb: (v: string) => void;
   attach: { busy: boolean; msg: string | null; upload: (f: File) => void };
@@ -273,18 +272,12 @@ export function ManageMetaFields({
           <p className="text-[11px] text-sky-deep">{attach.msg}</p>
         )}
       </div>
-      {/* MediaInfo（0209 P2-14）：与发布页同口径，mediainfo 源关掉即隐藏 */}
-      {metaSrc.includes("mediainfo") && (
-        <label className="flex flex-col gap-1 text-xs">
-          MediaInfo
-          <textarea
-            value={fMediainfo}
-            rows={4}
-            onChange={(e) => setFMediainfo(e.target.value)}
-            className={MONO_AREA}
-          />
-        </label>
-      )}
+      {/* MediaInfo + NFO 两域（批 B 拆出，见新文件头注释的行数缘由） */}
+      <MetaNfoFields
+        dict={dict} metaSrc={metaSrc}
+        fMediainfo={fMediainfo} setFMediainfo={setFMediainfo}
+        fNfo={fNfo} setFNfo={setFNfo}
+      />
       {/* 条目输入按站型显隐（0184 对齐发布页 metaSources 口径） */}
       {metaSrc.includes("imdb") && (
         <label className="flex flex-col gap-1 text-xs">
