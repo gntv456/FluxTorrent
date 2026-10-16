@@ -77,6 +77,38 @@ pub(crate) async fn edit_torrent(
         },
     )
     .await?;
+    // P-346：MediaInfo 一变就重跑一致性判定（站方 93f741b5 的机器抓标题党）。
+    // 此前判定器全仓零调用点——MediaInfo 原样存下就没人判过，`mediainfo_check`
+    // 恒为 NULL（2026-10-16 实测：编辑口写入 392 字符后该列仍是 NULL）。
+    //
+    // 两个口径：
+    // · 名字跟着标题走——编辑同时改了 name 时，声明值按库里的现标题重算，
+    //   否则「改完标题就不再算标题党」会被当成漏洞。
+    // · 判定是提示不是闸门——解析失败/库写失败都不许打断编辑回包，
+    //   与站方「不拦截发布」的判断同口径，故此处刻意吞掉错误。
+    if let Some(t) = body
+        .mediainfo
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let cur_name: Option<String> =
+            sqlx::query_scalar("SELECT name FROM torrents WHERE id = $1")
+                .bind(tid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .ok()
+                .flatten();
+        if let Some(nm) = cur_name {
+            let _ = crate::mediainfo_service::check_and_store(
+                &state,
+                tid,
+                &nm,
+                Some(t),
+            )
+            .await;
+        }
+    }
     // 标签整组编辑（0159 P1）：Some([...]) = 同步为该组（先清后打），
     // Some([]) = 清空，None = 不动。校验/官种联动与发布、详情页同源。
     if let Some(tag_ids) = &body.tag_ids {

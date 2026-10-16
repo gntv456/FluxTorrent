@@ -97,7 +97,7 @@ pub async fn list_mismatches(
         sqlx::query_as(
             "SELECT id, name, owner_id, approval_status::text, \
                     COALESCE(mediainfo_check->'mismatches', '[]'::jsonb), \
-                    COALESCE(jsonb_array_length(mediainfo_check->'mismatches'), 0) \
+                    COALESCE(jsonb_array_length(mediainfo_check->'mismatches'), 0)::bigint \
              FROM torrents \
              WHERE mediainfo_check IS NOT NULL \
                AND jsonb_array_length(COALESCE(mediainfo_check->'mismatches', '[]'::jsonb)) > 0 \

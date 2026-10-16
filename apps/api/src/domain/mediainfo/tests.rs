@@ -286,3 +286,78 @@ fn dolby_vision_is_recognized() {
     assert!(s.hdr);
     assert_eq!(s.hdr_format.as_deref(), Some("dolby_vision"));
 }
+
+/// P-347：现代 MediaInfo 输出采用独立段落。
+///
+/// 原扫描器只认 `Stream #0:0: Video: ...` 这一套流头，遇到
+/// 新版输出的 `Video` / `ID : Video 1` 格式时 `in_stream` 永远为 false，
+/// 分辨率与编码被抽空——「假 4K」这类最典型标题党
+/// 恰好从缏稍地漏过。同一份内容换成旧格式可正常解析，
+/// 说明张本本身没错，错在扫描器不认第二套输出。
+#[test]
+fn modern_section_style_output_is_parsed() {
+    let text = "General\n\
+        Complete name                            : /home/admin/secret/user_x264_show\n\n\
+        Video\n\
+        ID                                       : Video 1\n\
+        Format                                   : AVC\n\
+        Width                                    : 1 920 pixels\n\
+        Height                                   : 1 080 pixels\n\n\
+        Audio\n\
+        ID                                       : Audio 1\n\
+        Format                                   : DTS\n\
+        Channel layout                           : 5.1\n";
+    let s = parse(text);
+    assert_eq!(s.resolution, Some((1920, 1080)), "千分位空格 + 单位后缀必须能解出");
+    // AVC 经 normalize_video_codec 映射为 h264（与旧格式路径同一口径）。
+    assert_eq!(s.video_codec.as_deref(), Some("h264"));
+}
+
+/// 同一份内容换成旧格式：两套输出必须结果一致。
+#[test]
+fn both_output_styles_agree() {
+    let modern = "Video\n\
+        ID                                       : Video 1\n\
+        Format                                   : AVC\n\
+        Width                                    : 1 920 pixels\n\
+        Height                                   : 1 080 pixels\n";
+    let legacy = "Stream #0:0: Video: AVC\n\
+        Format                                   : AVC\n\
+        Width                                    : 1 920 pixels\n\
+        Height                                   : 1 080 pixels\n";
+    assert_eq!(parse(modern).resolution, parse(legacy).resolution);
+    assert_eq!(parse(modern).video_codec, parse(legacy).video_codec);
+}
+
+/// 真实格式下的「假 4K」必须被拦住——
+/// 修前这个用例不会红（分辨率抽空 → 落入 unverifiable）。
+#[test]
+fn fake_4k_is_caught_in_modern_output() {
+    let text = "Video\n\
+        ID                                       : Video 1\n\
+        Format                                   : AVC\n\
+        Width                                    : 1 920 pixels\n\
+        Height                                   : 1 080 pixels\n";
+    let s = parse(text);
+    let d = Declared {
+        resolution: Some("2160p".into()),
+        video_codec: None,
+        hdr: None,
+    };
+    let r = compare(&d, &s);
+    assert!(
+        r.mismatches.iter().any(|m| m.field == "resolution"),
+        "必须拦住假 4K，实际拿到的 mismatches={:?} unverifiable={:?}",
+        r.mismatches, r.unverifiable
+    );
+}
+
+/// 千分位数字的格式合理性：不得因为带空格就拿不到数字。
+#[test]
+fn thousand_separator_numbers_parse() {
+    assert_eq!(parse_num("1 920 pixels"), Some(1920));
+    assert_eq!(parse_num("1920 pixels"), Some(1920));
+    assert_eq!(parse_num("23.976 FPS"), Some(23976));
+    assert_eq!(parse_num(""), None);
+    assert_eq!(parse_num("abc"), None);
+}

@@ -138,23 +138,75 @@ pub fn parse(text: &str) -> Summary {
 }
 
 /// 在目标流内取某个数值字段。
+/// 一行是否开始一个流记录块，并判定它是什么类型。
+///
+/// MediaInfo 有两套常见输出，原扫描器只认第一套，
+/// 第二套整个地漏判（P-347 实测：现代版输出的 `Video` /
+/// `ID : Video 1` 格式下分辨率与编码全部抽空，
+/// “假 4K”这类最典型标题党恰好从缏程地漏过）：
+///
+/// 1. 旧格式：`Stream #0:0(eng): Video: AVC`
+/// 2. 现代格式：独立的 `Video` / `Audio` 段落，段内用 `ID : Video 1` 标识
+///
+/// 返回 `Some(kind)` 表示该行开始了一个 `kind` 类型的流
+/// （`"video"` / `"audio"`），调用方应 `continue` 跳过该行。
+fn stream_kind_of(l: &str) -> Option<&'static str> {
+    let head = l.to_ascii_lowercase();
+    // 旧格式：`Stream #0:0: Video: AVC`
+    if head.starts_with("stream ") {
+        return if head.contains("video") {
+            Some("video")
+        } else if head.contains("audio") {
+            Some("audio")
+        } else {
+            Some("")
+        };
+    }
+    let bare = head.trim();
+    if bare == "video" {
+        return Some("video");
+    }
+    if bare == "audio" {
+        return Some("audio");
+    }
+    // 现代格式的流标识行：`ID : Video 1`
+    if bare.starts_with("id") {
+        if let Some((_k, v)) = l.split_once(':') {
+            let v = v.trim().to_ascii_lowercase();
+            if v.starts_with("video") {
+                return Some("video");
+            }
+            if v.starts_with("audio") {
+                return Some("audio");
+            }
+        }
+    }
+    None
+}
+
+/// MediaInfo 的数字常带千分位空格（`1 920 pixels`）或单位
+/// 后缀（`1920 pixels`、`23.976 FPS`）。直接 `parse()` 会全部失败，
+/// 也是 P-347 的漏判之一。先取出数字部分再解析。
+fn parse_num(v: &str) -> Option<u32> {
+    let digits: String = v.chars().filter(|c| c.is_ascii_digit()).collect();
+    if digits.is_empty() {
+        return None;
+    }
+    digits.parse::<u32>().ok()
+}
+
 fn scan_stream_u32(low: &str, kind: &str, key: &str) -> Option<u32> {
     let mut in_stream = false;
     for line in low.lines() {
         let l = line.trim();
-        if l.len() >= 7 && l[..7].eq_ignore_ascii_case("stream ") {
-            let after = l[7..].to_ascii_lowercase();
-            in_stream = match kind {
-                "video" => after.contains("video"),
-                "audio" => after.contains("audio"),
-                _ => false,
-            };
+        if let Some(sk) = stream_kind_of(l) {
+            in_stream = sk == kind;
             continue;
         }
         if in_stream {
             if let Some((k, v)) = l.split_once(':') {
                 if k.trim() == key {
-                    return v.trim().parse().ok();
+                    return parse_num(v.trim());
                 }
             }
         }
@@ -167,8 +219,8 @@ fn scan_stream_channel_layout(low: &str) -> Option<u32> {
     let mut in_stream = false;
     for line in low.lines() {
         let l = line.trim();
-        if l.len() >= 7 && l[..7].eq_ignore_ascii_case("stream ") {
-            in_stream = l[7..].to_ascii_lowercase().contains("audio");
+        if let Some(sk) = stream_kind_of(l) {
+            in_stream = sk == "audio";
             continue;
         }
         if in_stream {
@@ -199,13 +251,8 @@ fn scan_stream_kv(low: &str, kind: &str, key: &str) -> Option<String> {
     let mut in_stream = false;
     for line in low.lines() {
         let l = line.trim();
-        if l.len() >= 7 && l[..7].eq_ignore_ascii_case("stream ") {
-            let after = l[7..].to_ascii_lowercase();
-            in_stream = match kind {
-                "video" => after.contains("video"),
-                "audio" => after.contains("audio"),
-                _ => false,
-            };
+        if let Some(sk) = stream_kind_of(l) {
+            in_stream = sk == kind;
             continue;
         }
         if in_stream {
@@ -266,17 +313,8 @@ fn scan_stream_format(low: &str, kind: &str) -> Option<String> {
     let mut in_stream = false;
     for line in low.lines() {
         let l = line.trim();
-        if l.len() >= 7 && l[..7].eq_ignore_ascii_case("stream ") {
-            // 流头行形如 `Stream #0:0(eng): Video: AVC`。
-            // 判定「这一流是视频还是音频」要看 Video/Audio 标记，
-            // 不能只看 kind 出现在哪——`Stream #0` 之后的第一个 Format
-            // 未必属于目标流。
-            let after = l[7..].to_ascii_lowercase();
-            in_stream = match kind {
-                "video" => after.contains("video"),
-                "audio" => after.contains("audio"),
-                _ => false,
-            };
+        if let Some(sk) = stream_kind_of(l) {
+            in_stream = sk == kind;
             continue;
         }
         if in_stream {
