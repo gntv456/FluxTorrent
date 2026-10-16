@@ -83,10 +83,17 @@ describe("api client envelope", () => {
     ).toBeUndefined();
   });
 
+  /** 按 URL 取那次调用的 init：写请求之前现在可能先打一次 /api/v1/me/csrf
+   *  续期，位置断言（calls[0]）会把续期当成业务请求（2026-10-16 三条假红）。 */
+  function initFor(f: ReturnType<typeof mockFetch>, url: string) {
+    const hit = f.mock.calls.find((c) => String(c[0]).endsWith(url));
+    return (hit?.[1] ?? {}) as RequestInit;
+  }
+
   it("post 序列化 body 且 method 正确", async () => {
     const f = mockFetch();
     await api.post("/api/v1/appeals", { kind: "hr", body: "x" });
-    const init = f.mock.calls[0][1] as RequestInit;
+    const init = initFor(f, "/api/v1/appeals");
     expect(init.method).toBe("POST");
     expect(init.body).toBe(JSON.stringify({ kind: "hr", body: "x" }));
   });
@@ -94,15 +101,41 @@ describe("api client envelope", () => {
   it("del 走 DELETE 方法", async () => {
     const f = mockFetch();
     await api.del("/api/v1/torrents/1");
-    expect((f.mock.calls[0][1] as RequestInit).method).toBe("DELETE");
+    expect(initFor(f, "/api/v1/torrents/1").method).toBe("DELETE");
   });
 
   it("call spec: PUT 带对象体", async () => {
     const f = mockFetch();
     await api.call<{ n: number }>('PUT /api/v1/torrents/9 {"small_descr":"x"}');
-    const init = f.mock.calls[0][1] as RequestInit;
+    const init = initFor(f, "/api/v1/torrents/9");
     expect(init.method).toBe("PUT");
     expect(init.body).toBe('{"small_descr":"x"}');
+  });
+
+  it("缺 flux_csrf cookie 时，写请求前先续期一次（否则全站写都是 403）", async () => {
+    const f = mockFetch();
+    document.cookie = CSRF_COOKIE + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    await api.post("/api/v1/appeals", { kind: "hr", body: "x" });
+    // 续期口只该在缺 cookie 时打一次，且它自己不带 CSRF 头（否则鸡生蛋）
+    const renew = f.mock.calls.filter((c) =>
+      String(c[0]).endsWith("/api/v1/me/csrf"),
+    );
+    expect(renew.length).toBe(1);
+    const hdrs = (renew[0][1] as RequestInit).headers as Record<string, string>;
+    expect(hdrs[CSRF_HEADER]).toBeUndefined();
+    // 业务写请求仍照常发出（续期失败也不静默改写调用方语义）
+    expect(initFor(f, "/api/v1/appeals").method).toBe("POST");
+  });
+
+  it("已有 flux_csrf cookie 时不再续期", async () => {
+    document.cookie = CSRF_COOKIE + "=abc123; path=/";
+    const f = mockFetch();
+    await api.post("/api/v1/appeals", { kind: "hr" });
+    expect(
+      f.mock.calls.some((c) => String(c[0]).endsWith("/api/v1/me/csrf")),
+    ).toBe(false);
+    const init = initFor(f, "/api/v1/appeals");
+    expect((init.headers as Record<string, string>)[CSRF_HEADER]).toBe("abc123");
   });
 
   it("call spec 非法格式同步抛 1002", () => {
