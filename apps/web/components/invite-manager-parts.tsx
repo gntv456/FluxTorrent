@@ -6,6 +6,7 @@ import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { InviteItem } from "@/components/invite-manager";
+import { Badge } from "@/components/ui/badge";
 
 /** 邀请管理展示件（从 invite-manager.tsx 按域拆出）：
  *  邀请码列表表格 + 发送邀请邮件弹层（数据装载与动作留在原文件）。 */
@@ -59,14 +60,15 @@ export function InviteList({
                 </button>
               </td>
               <td>
-                <span
-                  className={`sticker ${
+                <Badge
+                  tone={
                     i.status === 0
-                      ? "bg-sun text-ink"
+                      ? "warn"
                       : i.status === 1
-                        ? "bg-mint/30 text-ink"
-                        : "bg-cloud text-sub"
-                  }`}
+                        ? "success"
+                        : "neutral"
+                  }
+                  variant="soft"
                 >
                   {i.status === 0
                     ? t.unused
@@ -75,7 +77,7 @@ export function InviteList({
                       : i.status === 3
                         ? t.revokedTag
                         : t.expired}
-                </span>
+                </Badge>
                 {i.status === 1 && i.used_by && (
                   <span className="ml-1 text-xs text-sub">→ {i.used_by}</span>
                 )}

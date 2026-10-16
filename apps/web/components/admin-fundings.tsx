@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { Badge } from "@/components/ui/badge";
 
 /** 定向众筹后台管理（闭环审查 C11）：列表 / 状态筛选 / 关闭（可退款）。
  *  此前站长无任何出口，网关掉单或需要干预时只能改库。 */
@@ -24,11 +25,17 @@ interface FundingRow {
   created_at: string;
 }
 
-const ST_CLASS: Record<number, string> = {
-  0: "bg-sun text-ink",
-  1: "bg-mint/30 text-ink",
-  2: "bg-line text-sub",
-  3: "bg-line text-sub",
+/** 众筹状态徽章（2026-10-16 S2）：原为色类串表，现映射 Badge 的
+ *  tone/variant——warn 浅底=进行中、success 浅底=已达标、
+ *  neutral 浅底=已结束/流拍（中性灰）。 */
+const ST_TONE: Record<
+  number,
+  { tone: "warn" | "success" | "neutral"; variant: "soft" }
+> = {
+  0: { tone: "warn", variant: "soft" },
+  1: { tone: "success", variant: "soft" },
+  2: { tone: "neutral", variant: "soft" },
+  3: { tone: "neutral", variant: "soft" },
 };
 
 const SEL_CLS =
@@ -162,9 +169,12 @@ export function AdminFundings() {
                 </td>
                 <td className="num">{r.backers}</td>
                 <td>
-                  <span className={`sticker ${ST_CLASS[r.status] ?? ""}`}>
+                  <Badge
+                    tone={ST_TONE[r.status]?.tone ?? "neutral"}
+                    variant={ST_TONE[r.status]?.variant ?? "soft"}
+                  >
                     {stLabel(r.status)}
-                  </span>
+                  </Badge>
                 </td>
                 <td className="text-sub">
                   {new Date(r.ends_at).toLocaleDateString(dateLocale(locale))}

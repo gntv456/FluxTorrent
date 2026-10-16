@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { CheatAppealBox } from "@/components/cheat-appeal-box";
+import { Badge } from "@/components/ui/badge";
 
 interface AppealRow {
   id: number;
@@ -232,17 +233,14 @@ export default function AppealsPage() {
                     <span className="text-sm font-bold">
                       {kinds.find(([k]) => k === r.kind)?.[1] ?? r.kind}
                     </span>
-                    <span
-                      className={`sticker ${
-                        r.status === "open"
-                          ? "bg-sun text-ink"
-                          : "bg-mint text-white"
-                      }`}
+                    <Badge
+                      tone={r.status === "open" ? "warn" : "success"}
+                      variant={r.status === "open" ? "soft" : "solid"}
                     >
                       {r.status === "open"
                         ? dict.appeals.statusOpen
                         : dict.appeals.statusDone}
-                    </span>
+                    </Badge>
                   </div>
                   <p className="mt-1 text-sm whitespace-pre-wrap">{r.body}</p>
                   {r.result_note && (
