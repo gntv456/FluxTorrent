@@ -3,8 +3,10 @@
 //! 0204：配置化（周配额/TTL 迁 site_settings）+ 撤销 + 被邀请人列表 + 分页。
 
 mod email;
+mod invitees;
 
 pub use email::email_invite_handler;
+pub use invitees::list_invitees_handler;
 
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -256,45 +258,12 @@ pub async fn revoke_invite_handler(
     Ok(ok(serde_json::json!({ "revoked": id })))
 }
 
-/// 被邀请人列表（0204 P0，NP invitee 口径）：上传/下载/分享率/状态。
-/// 邮箱脱敏口径同个人主页（不回传 email）。
-#[get("/invites/invitees")]
-pub async fn list_invitees_handler(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let rows: Vec<serde_json::Value> =
-        sqlx::query_as::<_, (i64, String, i16, Option<String>, i64, i64, chrono::DateTime<chrono::Utc>)>(
-        "SELECT u.id, u.username, u.status, c.name AS class_name, u.uploaded, u.downloaded, u.created_at \
-         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id \
-         WHERE u.invited_by = $1 ORDER BY u.id DESC LIMIT 200",
-    )
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .into_iter()
-    .map(|(id, username, status, class_name, up, down, created_at)| {
-        serde_json::json!({
-            "id": id, "username": username, "status": status,
-            "class_name": class_name,
-            "uploaded": up, "downloaded": down,
-            "created_at": created_at.to_rfc3339(),
-        })
-    })
-    .collect();
-    Ok(ok(rows))
-}
-
 #[derive(Deserialize)]
 struct RedeemInviteReq {
     #[serde(default)]
     idempotency_key: Option<String>,
 }
 
-/// 魔力兑换邀请：按魔力商店「邀请名额」（kind=invite）现价扣火花，直接发一枚 72h 邀请码。
-/// 无等级限制（商店购买口径），与 /shop/buy 走同一条扣款管线（幂等键防双扣）。
 #[post("/invites/redeem")]
 pub async fn redeem_invite_handler(
     req: HttpRequest,

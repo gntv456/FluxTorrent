@@ -60,6 +60,29 @@ export function InviteManager() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [invitees, setInvitees] = useState<Invitee[] | null>(null);
+  const [inviteeTotal, setInviteeTotal] = useState(0);
+  const [inviteePage, setInviteePage] = useState(1);
+
+  /** 被邀请人分页信封（2026-10-16 后端补分页，与邀请记录同口径 per=50） */
+  interface InviteeEnvelope {
+    items: Invitee[];
+    total: number;
+    page: number;
+    per: number;
+  }
+
+  const refreshInvitees = useCallback(async (p = 1) => {
+    try {
+      const r = await api.get<InviteeEnvelope>(
+        `/api/v1/invites/invitees?page=${p}`,
+      );
+      setInvitees(r.items);
+      setInviteeTotal(r.total);
+      setInviteePage(r.page);
+    } catch {
+      setInvitees([]);
+    }
+  }, []);
   // W-19：撤销确认（ConfirmDialog；原 window.confirm + flash 行内提示
   // 一并退役——反馈走 toast 协议）
   const [askRevoke, setAskRevoke] = useState<InviteItem | null>(null);
@@ -79,21 +102,21 @@ export function InviteManager() {
 
   const refresh = useCallback(async (p = 1) => {
     try {
-      const [st, list, invs] = await Promise.all([
+      const [st, list] = await Promise.all([
         api.get<InviteStatus>("/api/v1/invites/status"),
         api.get<InvitesEnvelope>(`/api/v1/invites?page=${p}`),
-        api.get<Invitee[]>("/api/v1/invites/invitees").catch(() => []),
       ]);
       setStatus(st);
       setInvites(list.items);
       setTotal(list.total);
       setPage(list.page);
-      setInvitees(invs);
     } catch {
       // P-314：置回 null（渲染侧 null 分支不宣称「暂无邀请码」）+ 走可见的 toast
       setStatus(null); setInvites(null); flashErr(dict.common.loadFailed);
     }
-  }, [dict, flashErr]);
+    // 被邀请人独立分页：不跟邀请记录的 page 联动，两张表各翻各的
+    void refreshInvitees();
+  }, [dict, flashErr, refreshInvitees]);
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -221,7 +244,13 @@ export function InviteManager() {
 
       {/* 被邀请人列表（0204 P0；默认只显示最近 20 条，见组件注释） */}
       {invitees !== null && invitees.length > 0 && (
-        <InviteeList invitees={invitees} t={t} />
+        <InviteeList
+          invitees={invitees}
+          t={t}
+          total={inviteeTotal}
+          page={inviteePage}
+          onPage={refreshInvitees}
+        />
       )}
 
       {/* 发送邀请邮件弹层 */}
