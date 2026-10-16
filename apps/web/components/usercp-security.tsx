@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { Row } from "@/components/usercp-row";
@@ -37,6 +37,31 @@ export function SecurityTab({
   const [pkMsg, setPkMsg] = useState<string | null>(null);
   // P2 清偿：重置 passkey 二次确认（danger：旧 RSS/下载链接全部失效）
   const ask = useConfirm();
+
+  // 锚点直达：账户概览的「访问令牌 → 创建」带 #tokens 跳进来。本面板是
+  // 客户端 tab，浏览器不会自动滚到 tab 内的元素——挂载后手动定位并短暂
+  // 高亮，让用户在平铺的十余项里一眼看到目标行。
+  // ⚠️ 两处坑：① 必须分多拍补滚——面板内登录历史/活跃会话等子组件都异步
+  //   取数，行高会随后续内容撑开，只滚一次会把目标行甩出视口（实测差
+  //   348px）；② 高亮走 state 而非 classList.add——后者会被 React 的
+  //   className 重渲染冲掉（实测 computed animationName 恒为 none）。
+  const [anchorFlash, setAnchorFlash] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#tokens") return;
+    const go = () =>
+      document
+        .getElementById("tokens")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    go();
+    setAnchorFlash(true);
+    const timers = [300, 900, 1800].map((ms) => setTimeout(go, ms));
+    const off = setTimeout(() => setAnchorFlash(false), 2600);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(off);
+    };
+  }, []);
 
   async function changePasswordNow() {
     setPwMsg(null);
@@ -165,7 +190,10 @@ export function SecurityTab({
           </tr>
           <Row head={t.passkeyLabel}>{t.passkeyHint}</Row>
           <Row head={t.tgBind}>{t.tgBindHint}</Row>
-          <tr>
+          <tr
+            id="tokens"
+            className={`scroll-mt-16${anchorFlash ? " uc-anchor-flash" : ""}`}
+          >
             <td className="rowhead">{dict.apitokens.title}</td>
             <td className="rowfollow p-0">
               <ApiTokens />
