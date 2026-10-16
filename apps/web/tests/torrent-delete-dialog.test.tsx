@@ -41,6 +41,16 @@ function env(data: unknown) {
   return { code: 0, message: "ok", data, request_id: "t" };
 }
 
+/** fetch 替身的最小响应体（只给 api-client 真正读的那几项） */
+function res(body: unknown): Response {
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => "application/json" },
+    json: async () => body,
+  } as unknown as Response;
+}
+
 function mount() {
   return render(
     <LocaleProvider dict={zhCN} locale="zh-CN">
@@ -81,12 +91,7 @@ beforeEach(() => {
       const url = String(input);
       if (init?.method === "DELETE") sent = String(init.body ?? "");
       const body = url.includes("delete-preview") ? env(preview) : delReply;
-      return {
-        ok: true,
-        status: 200,
-        headers: { get: () => "application/json" },
-        json: async () => body,
-      } as Response;
+      return res(body);
     }),
   );
 });
@@ -275,12 +280,7 @@ describe("站方删除表单（渲染层）", () => {
         const url = String(input);
         if (url.includes("delete-preview")) throw new Error("network down");
         if (init?.method === "DELETE") sent = String(init.body ?? "");
-        return {
-          ok: true,
-          status: 200,
-          headers: { get: () => "application/json" },
-          json: async () => delReply,
-        } as Response;
+        return res(delReply);
       }),
     );
     mount();
