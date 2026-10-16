@@ -1,7 +1,15 @@
 import Link from "next/link";
-import { USERCP_NAV, UsercpPanel, type UsercpTab } from "@/components/usercp";
+import {
+  USERCP_NAV,
+  UsercpPanel,
+  type UsercpTab,
+  type Overview,
+} from "@/components/usercp";
+import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
+import { api } from "@/lib/api-client";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +30,9 @@ export default async function MyPage({
 }) {
   const { dict } = await getDict();
   const profile = await getSiteProfile().catch(() => null);
+  // 页面头所需的身份信息（样图 § pg-head：面包屑 + 标题 + 描述 + 右侧徽章）。
+  // 取不到就降级为无描述，绝不因此挡住控制面板本身。
+  const ov = await api.get<Overview>("/api/v1/me/overview").catch(() => null);
   // 心愿单 tab 受模块开关（0209 P2-15：此前关模块后 tab 仍在，点了看空面板）
   const wishlistOn = profile?.modules?.wishlist !== false;
   const valid = wishlistOn
@@ -35,9 +46,36 @@ export default async function MyPage({
   const nav = wishlistOn
     ? USERCP_NAV
     : USERCP_NAV.filter((n) => n.key !== "wishlist");
+  // 站龄（整年）：描述行「用户名 · 等级 · N 年站龄」（样图措辞）
+  const years = ov?.created_at
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - new Date(ov.created_at).getTime()) / 31557600000,
+        ),
+      )
+    : null;
+  const sub = ov
+    ? [
+        ov.username,
+        ov.class_name ?? null,
+        years === null ? null : `${years} ${dict.my.yearsSuffix}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{dict.my.center}</h1>
+      <PageHeader
+        eyebrow={`${dict.my.homeCrumb} / ${dict.my.center}`}
+        title={dict.my.center}
+        sub={sub}
+        aside={
+          ov?.email ? (
+            <Badge tone="brand">{dict.my.emailBound}</Badge>
+          ) : undefined
+        }
+      />
       <UsercpPanel initialTab={tab} nav={nav} />
       <p className="text-xs text-sub">
         <Link href="/faq" className="faqlink">

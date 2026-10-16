@@ -15,6 +15,16 @@
   --sky: #2fa8ff;
   --sky-deep: #1e8ae8;
   --sky-soft: #e8f4ff;
+
+  /* ===== 深色表面上的前景色（Hero 身份卡等）=====
+   * 与主题无关：那个表面恒为深蓝，亮暗主题下都是它。
+   * 2026-10-17 自 ui.css/.layout.css 的 .up-hero、.usercp-nav 处抽上来，
+   * 替掉 11 处散落的 rgba(255,255,255,…) 字面量。
+   */
+  --on-dark: #fff;
+  --on-dark-muted: rgba(255, 255, 255, 0.75);
+  --on-dark-soft: rgba(255, 255, 255, 0.14);
+  --on-dark-line: rgba(255, 255, 255, 0.16);
   --sun: #ffc93c;
   --sun-soft: #fff4d6;
   --coral: #ff7a59;

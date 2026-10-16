@@ -1798,7 +1798,13 @@ const enBase: Omit<
   },
   my: {
     title: "Me",
-    center: "Control Panel",
+    center: "My Account",
+    /** 页面头面包屑首段（样图 § pg-head「首页 / 个人中心」） */
+    homeCrumb: "Home",
+    /** 页面头右侧徽章：有邮箱即显示 */
+    emailBound: "Email verified",
+    /** 站龄后缀（描述行「U2 · 8 年站龄」） */
+    yearsSuffix: "yrs",
     welcomeBack: "Welcome back",
     loginToView: "Sign in to view your {magic} and check-in",
     loading: "Loading…",
