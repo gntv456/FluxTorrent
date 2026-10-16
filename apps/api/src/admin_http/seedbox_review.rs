@@ -58,7 +58,7 @@ fn yes() -> bool {
 pub(crate) async fn seedbox_review_queue(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    q: web::Query<QueueQ>,
+    q: crate::http::Q<QueueQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = staff(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, perm::USER_STATUS).await?;

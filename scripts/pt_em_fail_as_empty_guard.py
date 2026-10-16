@@ -64,7 +64,11 @@ FIXED = [
 # 现网仍存在的裸吞（逐只吃掉后从这里删；新增了不在这里的就必须红）
 PENDING = [
     # 站方在途改动新长出的裸吞（EM 自动抓到，非本批引入；只登记不代改）
-    "components/cheat-accuracy-panel.tsx'",
+    # lottery-fairness.tsx：站方 d3e3cc11 的浏览器端公平性复算。L105 的
+    # catch 有 setErr（正常错误态）；L100 是「非安全上下文 ⇒ 主动置 null，
+    # 落到材料+后端结论的降级展示」，属有意降级而非失败兜底，但仍是裸吞
+    # 形状，按闸门纪律只登记、不代改业务。
+    "components/lottery-fairness.tsx",
     # 站方在途新文件（git 未跟踪，EM 上线当天抓到；只登记不代改，
     # 同文件写路径已在用 flash，补一句即可）
     "components/staff-tools-security-domains.tsx",
