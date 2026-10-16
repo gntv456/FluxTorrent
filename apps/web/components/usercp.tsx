@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, setSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { LOCALE_COOKIE, siteLangToLocale, type Locale } from "@/i18n/config";
 import { WishlistPanel } from "@/components/wishlist";
@@ -187,6 +187,17 @@ export function UsercpPanel({
     setSaved(false);
   };
 
+  /** 退出登录（2026-10-17 对齐样图集 § ucp-side 末尾的红字项）。
+   *  与 user-menu 的登出同口径：后端撤销失败也照常清本地凭证，并让 SW
+   *  丢掉含登录态 RSC 快照的页面缓存（防共用设备离线回看）。 */
+  async function logout() {
+    await api.post("/api/v1/auth/logout", {}).catch(() => {});
+    localStorage.removeItem("flux.user");
+    navigator.serviceWorker?.controller?.postMessage("CLEAR_PAGES");
+    setSessionCookie(false);
+    location.href = "/login";
+  }
+
   const save = async () => {
     if (!settings) return;
     setSaving(true);
@@ -209,12 +220,11 @@ export function UsercpPanel({
 
   return (
     <div className="usercp-wrap">
-      {/* 侧边导航：⚙ 控制面板 + 五项 */}
+      {/* 侧边导航（对齐样图集 § ucp-side）：样图的侧栏**没有分组标题**，
+          直接从「账户概览」开始，末尾以红字「退出登录」收尾。原先的
+          ⚙「控制面板」橙色渐变小标题既是装饰也占一行，且容易被误读成
+          当前选中项，按样图去掉。 */}
       <aside className="usercp-nav">
-        <h2>
-          <span aria-hidden="true"><Icon name="settings" size={16} /></span>
-          {t.navTitle}
-        </h2>
         {(nav ?? USERCP_NAV).map((n) => (
           <Link
             key={n.key}
@@ -232,6 +242,10 @@ export function UsercpPanel({
             {t.tabs[n.key]}
           </Link>
         ))}
+        <button type="button" className="usercp-nav__logout" onClick={logout}>
+          <Icon name="logout" size={17} className="shrink-0" />
+          {dict.usercp.logout}
+        </button>
       </aside>
 
       <div className="usercp-content">

@@ -1442,6 +1442,7 @@ const zhCnBase = {
   },
   usercp: {
     navTitle: "控制面板",
+    logout: "退出登录",
     days: "天",
     days2: "天前",
     note: "注意：",
@@ -1457,6 +1458,7 @@ const zhCnBase = {
       tracker: "网站设定",
       forum: "论坛设定",
       security: "安全设定",
+      fields: "自定义字段",   // 2026-10-17 补：样图侧栏第 3 项
       wishlist: "心愿单",
     } as Record<string, string>,
     overview: {
