@@ -729,12 +729,11 @@
  "app/(main)/jixiao/_inner.tsx": {
   "h1": [],
   "palette": [
-   134,
-   136,
-   153,
-   211,
-   218,
-   307
+   109,
+   111,
+   130,
+   137,
+   226
   ],
   "color": []
  },
@@ -4078,6 +4077,11 @@
   "color": []
  },
  "lib/format.tsx": {
+  "h1": [],
+  "palette": [],
+  "color": []
+ },
+ "app/(main)/jixiao/_parts/jixiao-post-card.tsx": {
   "h1": [],
   "palette": [],
   "color": []
