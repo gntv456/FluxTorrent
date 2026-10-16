@@ -23,7 +23,8 @@ pub async fn shadow_mode(repo: &Repo) -> DomainResult<bool> {
 
 pub async fn set_shadow_mode(repo: &Repo, on: bool) -> DomainResult<()> {
     sqlx::query(
-        "INSERT INTO site_settings (name, value) VALUES ('risk_shadow_mode', $1) \
+        "INSERT INTO site_settings (name, value) \
+         VALUES ('risk_shadow_mode', $1) \
          ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value",
     )
     .bind(if on { "1" } else { "0" })
@@ -34,7 +35,9 @@ pub async fn set_shadow_mode(repo: &Repo, on: bool) -> DomainResult<()> {
 }
 
 /// 版本列表（新到旧）。params 原样回显：这是站长要对比的东西。
-pub async fn list_rulesets(repo: &Repo) -> DomainResult<Vec<serde_json::Value>> {
+pub async fn list_rulesets(
+    repo: &Repo,
+) -> DomainResult<Vec<serde_json::Value>> {
     let rows: Vec<(i32, serde_json::Value, String, bool, Option<String>)> =
         sqlx::query_as(
             "SELECT version, params, note, active, \
@@ -184,8 +187,9 @@ pub async fn shadow_top(
 
 /// 登记一次回测请求（worker 稍后算并回填）。
 ///
-/// 用 `diffs` 为 NULL 表示「已排队未完成」——回测要扫窗口内全部证据，
-/// 比评分重得多，不能在请求里同步算。
+/// 用 `total_users = -1` 表示「已排队未完成」——回测要扫窗口内全部证据，
+/// 比评分重得多，不能在请求里同步算。不能用 diffs=NULL 做「未完成」标记：
+/// 列是 NOT NULL（0391 建表即如此），写 NULL 直接 500。
 pub async fn enqueue_backtest(
     repo: &Repo,
     from_ver: i32,
@@ -194,8 +198,8 @@ pub async fn enqueue_backtest(
 ) -> DomainResult<i64> {
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO cheat_backtest_runs \
-         (from_ver, to_ver, window_days, diffs) \
-         VALUES ($1, $2, $3, NULL) RETURNING id",
+         (from_ver, to_ver, window_days, total_users) \
+         VALUES ($1, $2, $3, -1) RETURNING id",
     )
     .bind(from_ver)
     .bind(to_ver)
@@ -217,7 +221,9 @@ pub async fn list_backtests(
         sqlx::query_as(
             "SELECT id, from_ver, to_ver, window_days, total_users, \
                     would_open, band_up, band_down, \
-                    jsonb_array_length(diffs)::bigint, created_at::text \
+                    CASE WHEN total_users < 0 THEN NULL \
+                         ELSE jsonb_array_length(diffs)::bigint END, \
+                    created_at::text \
              FROM cheat_backtest_runs ORDER BY created_at DESC LIMIT $1",
         )
         .bind(limit)
@@ -233,7 +239,8 @@ pub async fn list_backtests(
                     "window_days": days, "total_users": total,
                     "would_open": open, "band_up": up, "band_down": down,
                     "diff_count": diff_n, "created_at": at,
-                    "done": diff_n.is_some(),
+                    // -1 = 排队占位（enqueue 写入，等 worker 回填）
+                    "done": total >= 0,
                 })
             },
         )

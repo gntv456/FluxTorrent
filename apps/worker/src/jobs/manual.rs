@@ -24,7 +24,7 @@ pub(crate) async fn run_named(
         "hr_warn_ladder" => n(hr_warn_ladder::run(db).await?),
         // backtest 返回 run id（i64），而 n() 要 u64 —— 取 max(0) 兜住
         // 「未来版本号」这类负值，避免面板上显示一个无意义的巨数。
-        "risk_backtest" => n(risk_score::backtest(
+        "risk_backtest" => n(risk_backtest::backtest(
             db,
             env_i("BACKTEST_FROM", 1),
             env_i("BACKTEST_TO", 2),

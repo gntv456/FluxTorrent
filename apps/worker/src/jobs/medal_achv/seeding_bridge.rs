@@ -34,7 +34,7 @@ pub(crate) async fn record_seeding_hours(db: &PgPool) -> anyhow::Result<u64> {
                          LEAST(COALESCE(s.last_seen_at, now()), now()) \
                          - GREATEST(s.completed_at, \
                              date_trunc('hour', now()) \
-                           )), 0)) / 3600))::bigint), \
+                           ))), 0)) / 3600))::bigint, \
                 now() \
          FROM snatches s \
          WHERE s.seeding \

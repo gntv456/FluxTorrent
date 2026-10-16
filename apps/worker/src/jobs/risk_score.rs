@@ -28,6 +28,7 @@
 //! 分数冻结。shadow_breakdown 随分数变化时刷新（含各家族 hits/权重/贡献分）。
 
 use super::cheat_enforce::auto_open_case;
+use super::risk_backtest::drain_pending_backtests;
 use super::staff_alert::{alerted_within_7d, staff_alert};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -71,20 +72,20 @@ async fn shadow_mode(db: &PgPool) -> bool {
 const BAND_SUBJ: &str = "风险评分档位变化";
 
 /// 公式参数容器：0368 种子的 risk_* 键一网打尽，缺行回落出厂值。
-struct RiskCfg {
-    kv: HashMap<String, f64>,
+pub(super) struct RiskCfg {
+    pub(super) kv: HashMap<String, f64>,
 }
 
 impl RiskCfg {
-    fn f(&self, key: &str, default: f64) -> f64 {
+    pub(super) fn f(&self, key: &str, default: f64) -> f64 {
         self.kv.get(key).copied().unwrap_or(default)
     }
     /// 家族权重：未列名家族落 risk_weight_default；负权当 0（防呆）。
-    fn weight(&self, family: &str) -> f64 {
+    pub(super) fn weight(&self, family: &str) -> f64 {
         let dflt = self.f("risk_weight_default", 0.5).max(0.0);
         self.f(&format!("risk_weight_{family}"), dflt).max(0.0)
     }
-    fn band(&self, score: i32) -> &'static str {
+    pub(super) fn band(&self, score: i32) -> &'static str {
         let s = score as f64;
         if s >= self.f("risk_band_critical", 80.0) {
             "critical"
@@ -101,10 +102,10 @@ impl RiskCfg {
 }
 
 /// 一次聚合行：某用户某家族的存活证据画像。
-struct Fam {
-    family: String,
-    hits: i64,
-    days: f64,
+pub(super) struct Fam {
+    pub(super) family: String,
+    pub(super) hits: i64,
+    pub(super) days: f64,
 }
 
 /// 读全部 risk_* 设置（一查询；解析失败的键当缺省）。
@@ -122,8 +123,11 @@ async fn risk_cfg(db: &PgPool) -> anyhow::Result<RiskCfg> {
 }
 
 /// 10m tick 增量轮（run.rs spawn_lock 只传单参，包一层）。
+/// 顺带消费已排队的回测占位（见 risk_backtest.rs）。
 pub async fn risk_score_tick(db: &PgPool) -> anyhow::Result<u64> {
-    risk_score(db, false).await
+    let mut written = risk_score(db, false).await?;
+    written += drain_pending_backtests(db).await;
+    Ok(written)
 }
 
 /// 24h tick 全量轮。
@@ -360,109 +364,8 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
     Ok(written)
 }
 
-/// 规则集回测：回答「换成 to_ver 这版权重，过去 N 天会多判/少判谁」。
-///
-/// 做法：把窗口内每个用户当前家族的 hits/decay 算一遍，分别用
-/// from_ver 与 to_ver 的参数打分，比档位。**只记会开案或会掉档的行**——
-/// 全量差异既无意义又占空间。
-///
-/// 这是「敢改反作弊权重」的前置：改完先回测，看看会不会把一批
-/// 正常用户送进案件队列，再决定是否切版本。
-pub async fn backtest(
-    db: &PgPool,
-    from_ver: i32,
-    to_ver: i32,
-    window_days: i32,
-) -> anyhow::Result<i64> {
-    let from_params = ruleset_params(db, from_ver).await?;
-    let to_params = ruleset_params(db, to_ver).await?;
-    let (Some(from_cfg), Some(to_cfg)) = (from_params, to_params) else {
-        anyhow::bail!("规则集版本不存在：{from_ver} / {to_ver}");
-    };
-
-    // 窗口内每个用户按家族的 hits 与最近一次证据时间
-    let rows: Vec<(i64, String, i64, f64)> = sqlx::query_as(
-        "SELECT user_id, \
-                CASE WHEN agent LIKE 'deal:%' THEN 'self_deal' \
-                     WHEN agent IN ('down_under','bitthief') THEN agent \
-                     ELSE split_part(agent, ':', 1) END AS fam, \
-                count(*) AS hits, \
-                EXTRACT(EPOCH FROM (now() - max(last_seen))) / 86400.0 AS days \
-         FROM cheat_events \
-         WHERE resolved_at IS NULL AND status < 2 \
-           AND last_seen > now() - make_interval(days => $1::int) \
-         GROUP BY 1, 2",
-    )
-    .bind(window_days)
-    .fetch_all(db)
-    .await?;
-
-    let mut agg: HashMap<i64, Vec<Fam>> = HashMap::new();
-    for (uid, fam, hits, days) in rows {
-        agg.entry(uid)
-            .or_default()
-            .push(Fam { family: fam, hits, days });
-    }
-
-    let mut diffs: Vec<serde_json::Value> = vec![];
-    let (mut would_open, mut band_up, mut band_down) = (0i64, 0i64, 0i64);
-    for (uid, fams) in &agg {
-        let (s_from, b_from) = score_with(&from_cfg, fams);
-        let (s_to, b_to) = score_with(&to_cfg, fams);
-        if s_from == s_to && b_from == b_to {
-            continue;
-        }
-        let opens_to = matches!(b_to.as_str(), "high" | "critical");
-        let opened_from = matches!(b_from.as_str(), "high" | "critical");
-        if opens_to && !opened_from {
-            would_open += 1;
-        }
-        let rank = |b: &str| match b { "critical" => 4, "high" => 3, "watch" => 2, "low" => 1, _ => 0 };
-        if rank(&b_to) > rank(&b_from) {
-            band_up += 1;
-        } else if rank(&b_to) < rank(&b_from) {
-            band_down += 1;
-        }
-        // 只留会开案或会掉档的：其余差异对运营无意义
-        if (opens_to && !opened_from)
-            || (opened_from && !opens_to)
-            || rank(&b_to) != rank(&b_from)
-        {
-            diffs.push(serde_json::json!({
-                "user_id": uid,
-                "from": {"score": s_from, "band": b_from},
-                "to":   {"score": s_to,   "band": b_to},
-            }));
-        }
-    }
-
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO cheat_backtest_runs \
-         (from_ver, to_ver, window_days, total_users, would_open, \
-          band_up, band_down, diffs) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) RETURNING id",
-    )
-    .bind(from_ver)
-    .bind(to_ver)
-    .bind(window_days)
-    .bind(agg.len() as i64)
-    .bind(would_open)
-    .bind(band_up)
-    .bind(band_down)
-    .bind(serde_json::Value::Array(diffs).to_string())
-    .fetch_one(db)
-    .await?;
-
-    tracing::info!(
-        id, from_ver, to_ver, window_days,
-        users = agg.len(), would_open, band_up, band_down,
-        "反作弊规则集回测完成"
-    );
-    Ok(id)
-}
-
 /// 读某个版本的参数快照并解析成 cfg。
-async fn ruleset_params(
+pub(super) async fn ruleset_params(
     db: &PgPool,
     ver: i32,
 ) -> anyhow::Result<Option<RiskCfg>> {
@@ -489,7 +392,7 @@ async fn ruleset_params(
 }
 
 /// 用给定参数对某用户的家族集合打分。
-fn score_with(cfg: &RiskCfg, fams: &[Fam]) -> (i32, String) {
+pub(super) fn score_with(cfg: &RiskCfg, fams: &[Fam]) -> (i32, String) {
     let norm = cfg.f("risk_norm", 8.0).max(0.5);
     let half = cfg.f("risk_decay_days", 14.0).clamp(0.5, 3650.0);
     let total: f64 = fams
