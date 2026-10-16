@@ -323,18 +323,12 @@
  },
  "app/(main)/torrent/[id]/page.tsx": {
   "h1": [],
-  "palette": [
-   366,
-   367
-  ],
+  "palette": [],
   "color": []
  },
  "app/(main)/torrent/[id]/_parts/torrent-detail-collections.tsx": {
   "h1": [],
-  "palette": [
-   24,
-   25
-  ],
+  "palette": [],
   "color": []
  },
  "app/(main)/torrent/[id]/_parts/torrent-detail-side.tsx": {
@@ -1086,9 +1080,7 @@
    135,
    226
   ],
-  "color": [
-   61
-  ]
+  "color": []
  },
  "app/(main)/forums/new/page.tsx": {
   "h1": [],
@@ -3527,12 +3519,7 @@
  },
  "components/torrent-rip-logs.tsx": {
   "h1": [],
-  "palette": [
-   128,
-   178,
-   179,
-   180
-  ],
+  "palette": [],
   "color": []
  },
  "components/torrent-row-card.tsx": {
@@ -4095,6 +4082,11 @@
   "color": []
  },
  "components/arcade/arcade-meta.tsx": {
+  "h1": [],
+  "palette": [],
+  "color": []
+ },
+ "lib/format.tsx": {
   "h1": [],
   "palette": [],
   "color": []

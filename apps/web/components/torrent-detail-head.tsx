@@ -114,9 +114,9 @@ export function TorrentHead({
             </Badge>
           )}
           {promo && (
-            <span className={`sticker ${promo.className}`}>
+            <Badge tone={promo.tone} variant={promo.variant}>
               {dict.promotion[promo.key]}
-            </span>
+            </Badge>
           )}
           {left && (
             <span className="td-head__left">

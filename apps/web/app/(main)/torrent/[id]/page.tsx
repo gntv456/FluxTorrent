@@ -45,6 +45,7 @@ import type {
   TorrentListItem,
 } from "@fluxtorrent/domain-types";
 import { isStaffClass } from "@/lib/domain/user-class";
+import { CollectionTagLink } from "@/components/collection-tag-link";
 
 export const dynamic = "force-dynamic";
 
@@ -358,17 +359,12 @@ export default async function TorrentDetailPage({
           <h2 className="td-sec-title">{dict.collections.inTitle}</h2>
           <div className="td-collections__list">
             {inCollections.map((c) => (
-              <a
+              <CollectionTagLink
                 key={c.id}
                 href={`/collections/${c.id}`}
-                className={`sticker ${
-                  c.kind === "series"
-                    ? "bg-indigo text-white"
-                    : "bg-sun text-ink"
-                }`}
-              >
-                {c.name}
-              </a>
+                name={c.name}
+                series={c.kind === "series"}
+              />
             ))}
           </div>
         </section>

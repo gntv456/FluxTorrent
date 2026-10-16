@@ -39,9 +39,9 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
           )}
           <span className="truncate font-bold text-ink">{t.name}</span>
           {promo && (
-            <span className={`sticker ${promo.className}`}>
+            <Badge tone={promo.tone} variant={promo.variant}>
               {dict.promotion[promo.key]}
-            </span>
+            </Badge>
           )}
           {t.official && (
             <Badge tone="brand" variant="solid">

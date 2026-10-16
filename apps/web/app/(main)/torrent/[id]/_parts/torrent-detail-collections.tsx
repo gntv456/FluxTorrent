@@ -1,4 +1,5 @@
 import type { Dict } from "@/i18n/server";
+import { CollectionTagLink } from "@/components/collection-tag-link";
 
 /** 所属合集（0157：一种可入多个合集/系列）。
  *  从 page.tsx 按域外移（详情页基线只许瘦不许胖）；显隐门仍由调用方
@@ -16,17 +17,12 @@ export function TorrentCollections({
       <h2 className="td-sec-title">{dict.collections.inTitle}</h2>
       <div className="td-collections__list">
         {items.map((c) => (
-          <a
+          <CollectionTagLink
             key={c.id}
             href={`/collections/${c.id}`}
-            className={`sticker ${
-              c.kind === "series"
-                ? "bg-indigo text-white"
-                : "bg-sun text-ink"
-            }`}
-          >
-            {c.name}
-          </a>
+            name={c.name}
+            series={c.kind === "series"}
+          />
         ))}
       </div>
     </section>
