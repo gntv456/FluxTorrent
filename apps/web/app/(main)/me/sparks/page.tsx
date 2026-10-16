@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { SPARK_KIND_LABELS } from "@/lib/spark-kind-labels";
+import { Pager } from "@/components/ui/pager";
 
 /** C5 用户侧「我的魔力明细」页（0226，触点 #11）：
- *  消费既有 GET /me/spark/ledger（最近 50 条收支流水）。
+ *  消费 GET /me/spark/ledger 分页信封（2026-10-16 起：此前只有 limit 且
+ *  写死 50 条，重度用户看不到更早的流水）。
  *  kind 人话映射与后台用户详情 SparkPanel 共享（lib/spark-kind-labels）。 */
+
+/** 与后端 per 固定值一致（50/页） */
+const PER = 50;
+
+interface LedgerEnvelope {
+  items: LedgerRow[];
+  total: number;
+  page: number;
+  per: number;
+}
 
 interface LedgerRow {
   amount: number;
@@ -20,19 +32,26 @@ export default function MySparksPage() {
   const { dict } = useI18n();
   void dict;
   const [rows, setRows] = useState<LedgerRow[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api
-      .get<LedgerRow[]>("/api/v1/me/spark/ledger?limit=50")
-      .then(setRows)
+      .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?page=${page}`)
+      .then((d) => {
+        setRows(d.items);
+        setTotal(d.total);
+      })
       .catch(() => setRows([]));
-  }, []);
+  }, [page]);
+  useEffect(load, [load]);
 
+  const pages = Math.ceil(total / PER);
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="font-display text-xl">我的魔力明细</h1>
       <p className="mt-1 text-xs text-sub">
-        最近 50 条收支（数据同账本流水，结算口径以各系统为准）。
+        共 {total} 条收支（数据同账本流水，结算口径以各系统为准）。
       </p>
       <div className="brand-panel mt-4 overflow-x-auto">
         <table className="w-full text-sm">
@@ -76,6 +95,15 @@ export default function MySparksPage() {
           </tbody>
         </table>
       </div>
+      {pages > 1 && (
+        <Pager
+          layout="compact"
+          page={page}
+          pages={pages}
+          posLabel={`${page} / ${pages}`}
+          onStep={setPage}
+        />
+      )}
     </div>
   );
 }

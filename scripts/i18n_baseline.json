@@ -976,12 +976,12 @@
  "app/(main)/me/page.tsx": [],
  "app/(main)/me/subscriptions/page.tsx": [],
  "app/(main)/me/sparks/page.tsx": [
-  33,
-  41,
-  42,
-  43,
-  44,
-  51
+  52,
+  60,
+  61,
+  62,
+  63,
+  70
  ],
  "app/(main)/me/exams/page.tsx": [],
  "app/(main)/me/achievements/page.tsx": [],
