@@ -60,6 +60,7 @@ use utoipa::OpenApi;
         crate::torrent_http::set_torrent_price,
         crate::torrent_http::restore_torrent,
         crate::torrent_http::resubmit_torrent,
+        crate::torrent_http::delete_preview,
         crate::torrent_http::delete_torrent,
         crate::torrent_http::torrent_peers,
         crate::torrent_http::preview_add,

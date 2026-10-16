@@ -3101,7 +3101,7 @@ const zhTwBase: Omit<
     delBan: "封禁發種權限",
     delBanNote: "禁止該用戶發佈種子",
     delBanOn: "該用戶已在禁發中",
-    delNoDispose: "本次刪除不带處置（僅管理人員處置他人種子時可勾選）",
+    delNoDispose: "本次刪除不帶處置（僅管理人員處置他人種子時可勾選）",
     delLoadFail: "取數失敗，處置項已禁用，仍可執行刪除",
     delFail: "刪除失敗",
     delPartial: "種子已刪除，但下列處置未成功（可稍後補做）：",

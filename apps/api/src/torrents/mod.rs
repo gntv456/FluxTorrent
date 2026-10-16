@@ -1,7 +1,8 @@
 //! 种子域仓储与查询（M02/M03）：游标分页 + 覆盖索引（§6.2）。
 //! 按域拆分（300 行门禁）：行类型与过滤器在 types.rs，列表查询构造在
 //! list.rs，详情/文件/感谢在 detail.rs，评论/点赞/收藏在 interact.rs，
-//! 编辑/删除/恢复/抓取/NFO/求续种/标签在 manage.rs，下载计费与站点统计在
+//! 编辑/删除/恢复/抓取/NFO/求续种/标签在 manage.rs，删除表单取数与站方处置
+//! 在 delete_dispose.rs，下载计费与站点统计在
 //! charge.rs；全部 pub use re-export，crate::torrents::xxx 路径不变。
 
 mod cat_map;
@@ -9,6 +10,8 @@ mod charge;
 mod comments;
 mod count_bind;
 mod cursor;
+// 删除表单取数与站方处置（火花回收/禁发种/台账）
+pub(crate) mod delete_dispose;
 mod detail;
 mod interact;
 mod list;
@@ -31,6 +34,7 @@ pub use cat_map::{newznab_name, CatMap, MediaMap, NEWZNAB_OTHER};
 pub use charge::*;
 // LIKE 通配转义（批九 RSS 出口对齐主列表口径）
 pub use comments::*;
+pub use delete_dispose::*;
 pub use detail::*;
 pub use interact::*;
 pub(crate) use list::esc_like;

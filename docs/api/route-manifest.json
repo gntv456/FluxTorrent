@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 800,
+ "total": 802,
  "routes": [
   {
    "method": "POST",
@@ -255,6 +255,12 @@
    "path": "/admin/forums/{id}/mods/{user_id}",
    "handler": "forum_mod_remove",
    "file": "apps/api/src/admin_http/forum_mods.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/mediainfo/mismatches",
+   "handler": "mediainfo_mismatches",
+   "file": "apps/api/src/admin_http/mediainfo_audit.rs"
   },
   {
    "method": "GET",
@@ -4667,12 +4673,6 @@
    "file": "apps/api/src/torrent_http/manage.rs"
   },
   {
-   "method": "DELETE",
-   "path": "/torrents/{id}",
-   "handler": "delete_torrent",
-   "file": "apps/api/src/torrent_http/manage.rs"
-  },
-  {
    "method": "GET",
    "path": "/torrents/{id}/peers",
    "handler": "torrent_peers",
@@ -4707,6 +4707,18 @@
    "path": "/torrents/suggest",
    "handler": "torrent_suggest",
    "file": "apps/api/src/torrent_http/suggest.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/torrents/{id}/delete-preview",
+   "handler": "delete_preview",
+   "file": "apps/api/src/torrent_http/torrent_delete.rs"
+  },
+  {
+   "method": "DELETE",
+   "path": "/torrents/{id}",
+   "handler": "delete_torrent",
+   "file": "apps/api/src/torrent_http/torrent_delete.rs"
   },
   {
    "method": "POST",

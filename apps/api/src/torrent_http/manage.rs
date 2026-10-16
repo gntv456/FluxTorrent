@@ -1,7 +1,7 @@
-//! 种子管理（M02/M03）：编辑/定价/恢复/重提/删除。
+//! 种子管理（M02/M03）：编辑/定价/恢复/重提。
 //! 从 torrent_http.rs 按域拆出。
 
-use actix_web::{delete, post, put, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{post, put, web, HttpRequest, HttpResponse, Responder};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -444,46 +444,4 @@ pub(crate) async fn resubmit_torrent(
         .await;
     super::aggregate::invalidate_tdetail_cache(&state, id).await;
     Ok(ok(serde_json::json!({ "resubmitted": id })))
-}
-
-/// 删除种子（软删 approval_status=3；staff 任意删，作者仅限未过审）
-#[utoipa::path(
-    delete,
-    path = "/api/v1/torrents/{id}",
-    tag = "种子",
-    description = "软删种子（进回收站，管理员口可硬删）。",
-    params(
-        ("id" = i64, description = "种子 id"),
-    ),
-    responses(
-        (status = 200, description = "ok"),
-        (status = 401, description = "会话未登录（code 2001）"),
-        (status = 404, description = "种子不存在或不可见（code 1004）"),
-        (status = 422, description = "参数校验失败（code 1002）"),
-        (status = 403, description = "权限不足（code 2003）"),
-    )
-)]
-#[delete("/torrents/{id}")]
-pub(crate) async fn delete_torrent(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let id = path.into_inner();
-    torrents::delete_torrent(
-        &state.repo.db,
-        id,
-        (auth.id, auth.class_id as i16),
-    )
-    .await?;
-    state
-        .repo
-        .audit(Some(auth.id), "torrent.delete", Some(id))
-        .await;
-    // 软删把审核态翻成 3，tracker 白名单（只载 0/1）须立即刷新，
-    // 否则一个 guard 周期内被删种仍可 announce（P2-2）
-    crate::http::bump_guard_ver(&state).await;
-    super::aggregate::invalidate_tdetail_cache(&state, id).await;
-    Ok(ok(serde_json::json!({ "deleted": id })))
 }
