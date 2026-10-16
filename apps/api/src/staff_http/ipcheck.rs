@@ -265,21 +265,20 @@ pub async fn admin_delete_disabled(
         crate::authz::perm::USER_DELETE_DISABLED,
     )
     .await?;
-    // 审计修复：旧版裸 `DELETE FROM users WHERE status = 2` 单条 SQL——任何被
-    // NO ACTION 引用（如 invites.inviter_id / audit_log.actor_id）的用户会让整条
-    // 语句外键失败 500；部分 CASCADE 则静默丢数据。改为复用权威路径 admin/users/{id}
-    // 的口径：强制走 `DELETE /api/v1/admin/users/{id}` 同一实现（逐个、事务化、83 列清理）。
-    // 这里直接构造内部请求等价物：调用 admin_http 的清理清单不跨模块，故改为
-    // 逐个转发 HTTP 会引入自调用复杂度——最简正确实现：拒绝批量、提示走单删。
-    let ids: Vec<i64> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE status = 2 ORDER BY id LIMIT 500",
+    // 审计修复：旧版裸 `DELETE ... WHERE status = 2` 里凡被 NO ACTION 引用（invites.
+    // inviter_id / audit_log.actor_id）的账号都把整句顶成 500，部分 CASCADE 又静默丢
+    // 数据 ⇒ 逐个走 admin_http::delete_user_cascade（同单删口）。`count(*) OVER()` 在
+    // LIMIT 前求值：一次查询同时给出本批与存量，界面才报得出「还剩几个」。
+    let ids: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT id, count(*) OVER() AS total FROM users          WHERE status = 2 ORDER BY id LIMIT 500",
     )
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    let total = ids.first().map(|r| r.1).unwrap_or(0);
     let mut deleted: Vec<i64> = Vec::new();
     let mut failed: Vec<(i64, String)> = Vec::new();
-    for uid in ids {
+    for (uid, _) in ids {
         // 与 user_admin_delete 同款清单式单事务删除（简化为直接执行权威清理序列）
         match crate::admin_http::delete_user_cascade(&state.repo.db, uid).await
         {
@@ -292,7 +291,8 @@ pub async fn admin_delete_disabled(
         .audit(Some(auth.id), "delete_disabled_users", None)
         .await;
     Ok(ok(
-        serde_json::json!({ "deleted": deleted.len(), "ids": deleted, "failed": failed }),
+        serde_json::json!({ "deleted": deleted.len(), "ids": deleted,
+            "failed": failed, "remaining": total - deleted.len() as i64 }),
     ))
 }
 
