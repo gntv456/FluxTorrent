@@ -1,7 +1,5 @@
 "use client";
 
-import { formatBytes as fmtBytes } from "@/lib/format";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
@@ -11,7 +9,6 @@ import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
 import { clientUuid } from "@/lib/client-uuid";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Pager } from "@/components/ui/pager";
 import { ErrorPanel } from "@/components/ui/error-panel";
 
@@ -33,7 +30,6 @@ interface InvitesEnvelope {
   per: number;
 }
 
-/** GET /invites/invitees：被邀请人（0204 P0，NP invitee 口径） */
 /** GET /invites/status：配额 + 兑换价 + 计数（用于禁用态与顶部概览） */
 export interface InviteStatus {
   class_id: number;
@@ -219,10 +215,8 @@ export function InviteManager() {
         onRedeem={redeem}
       />
 
-      {/* 邀请码列表 */}
-      {invites === null ? null : invites.length === 0 ? (
-        <p className="py-6 text-center text-sub">{t.empty}</p>
-      ) : (
+      {/* 邀请码列表（空态与加载态由 InviteList 内部处理，面板外壳始终在） */}
+      {invites === null ? null : (
         <InviteList
           invites={invites}
           copiedId={copiedId}
@@ -246,7 +240,7 @@ export function InviteManager() {
         />
       )}
 
-      {/* 被邀请人列表（0204 P0；默认只显示最近 20 条，见组件注释） */}
+      {/* 被邀请人列表（0204 P0；per=50 独立分页，见组件注释） */}
       {inviteeErr !== null && (
         <ErrorPanel
           error={inviteeErr}

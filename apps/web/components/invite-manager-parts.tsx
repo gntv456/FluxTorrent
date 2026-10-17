@@ -8,6 +8,7 @@ import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { InviteItem } from "@/components/invite-manager";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
 /** 邀请管理展示件（从 invite-manager.tsx 按域拆出）：
  *  邀请码列表表格 + 发送邀请邮件弹层（数据装载与动作留在原文件）。 */
@@ -37,9 +38,23 @@ export function InviteList({
       hour: "2-digit",
       minute: "2-digit",
     });
+  // 2026-10-17 对齐样图集 § tplInvite（panelFlat）：原先表格裸挂在页面上，
+  // 与全站「面板 + 标题栏」的观感断层。用既有 .baozi-panel 原语包一层，
+  // 标题走 t.listTitle（「我的邀请码」），不新增体系。
   return (
-    <div className="baozi-wide-table-scroll">
-      <table className="nexus-table">
+    <section className="baozi-panel">
+      <div className="baozi-panel__head">
+        <h2>{t.listTitle}</h2>
+      </div>
+      {invites.length === 0 ? (
+        // 空态走统一件（设计系统决策 § 加载/空/错误：空态统一组件）；
+        // 原先由上层渲染一行裸 <p>，连面板外壳一起消失。
+        <div className="p-4">
+          <EmptyState icon="mail" title={t.empty} compact />
+        </div>
+      ) : (
+      <div className="baozi-wide-table-scroll">
+        <table className="nexus-table">
         <tbody>
           <tr>
             <td className="colhead">{t.colCode}</td>
@@ -119,9 +134,11 @@ export function InviteList({
               </td>
             </tr>
           ))}
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
+      )}
+    </section>
   );
 }
 

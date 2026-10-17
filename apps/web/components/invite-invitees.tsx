@@ -38,8 +38,13 @@ export function InviteeList({
 }) {
   const pages = Math.ceil(total / 50);
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-base font-bold">{t.inviteesTitle}</h2>
+    // 2026-10-17 对齐样图集 § tplInvite（panelFlat）：与邀请码表同样包一层
+    // 既有 .baozi-panel 原语（原来是裸 section + h2），标题走
+    // t.inviteesTitle。Pager 留在面板内底部。
+    <section className="baozi-panel">
+      <div className="baozi-panel__head">
+        <h2>{t.inviteesTitle}</h2>
+      </div>
       <div className="baozi-wide-table-scroll">
         <table className="nexus-table">
           <tbody>
@@ -75,16 +80,18 @@ export function InviteeList({
             ))}
           </tbody>
         </table>
-      </div>
-      {pages > 1 && (
-        <Pager
-          layout="compact"
-          page={page}
-          pages={pages}
-          posLabel={`${page} / ${pages}`}
-          onStep={(p) => void onPage(p)}
-        />
-      )}
+        </div>
+        {pages > 1 && (
+          <div className="p-3 pt-0">
+            <Pager
+              layout="compact"
+              page={page}
+              pages={pages}
+              posLabel={`${page} / ${pages}`}
+              onStep={(p) => void onPage(p)}
+            />
+          </div>
+        )}
     </section>
   );
 }
