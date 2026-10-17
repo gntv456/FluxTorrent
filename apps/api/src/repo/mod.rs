@@ -224,7 +224,6 @@ impl Repo {
         self.audit_detail(actor_id, action, ref_id, None, None)
             .await;
     }
-
     /// 带理由与附加现场的审计（0285）。
     /// 旧版 `ref` 只存 `{"id": 目标}`，叠加读模型根本不选 ref，
     /// 于是「谁把这名用户的余额改成多少、为什么」无法回答——版主交接与纠纷仲裁
@@ -272,7 +271,6 @@ impl Repo {
         }
     }
 }
-
 pub mod auth;
 pub mod community;
 pub mod cheat_accuracy;
@@ -287,6 +285,7 @@ pub mod register_gates;
 pub mod offers;
 pub mod pmboxes;
 pub mod forum;
+pub mod hr;
 pub mod magnet;
 pub mod medal_auto;
 pub mod lottery_fair;
@@ -294,6 +293,7 @@ pub mod lottery_draw;
 pub mod rss;
 pub mod settings;
 pub mod shop;
+pub mod spark_ledger;
 pub mod torrent_download;
 pub mod terms_gov;
 pub mod webhook;

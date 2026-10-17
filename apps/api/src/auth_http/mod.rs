@@ -35,6 +35,7 @@ mod user_fields;
 mod user_fields_crud;
 mod user_fields_def;
 mod user_torrentlist;
+mod users_list;
 
 pub use email_policy::*;
 pub use email_verify::*;
@@ -56,3 +57,4 @@ pub use register_mode::*;
 pub use user_fields::*;
 pub use user_fields_crud::*;
 pub use user_torrentlist::*;
+pub use users_list::*;

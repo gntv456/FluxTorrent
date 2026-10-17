@@ -6,8 +6,12 @@
 //!
 //! 分文件是因为单文件装不下四个域的 SQL；每个文件对应一组路由。
 
+pub mod ban_log;
 pub mod boards;
+pub mod forum_mine;
+pub mod forum_side;
 pub mod follows;
 pub mod friends;
 pub mod matches;
 pub mod topic_delete;
+pub mod user_directory;

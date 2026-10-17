@@ -48,7 +48,6 @@ pub use view_layout::*;
 /// 出网抓取统一超时（更新检查/商店索引/远程包/PT-Gen/适配器拉取共用）：
 /// 原 8s 与 20s 两档并存，统一为 20（P2 收敛）——只影响失败得更慢。
 pub(crate) const OUTBOUND_FETCH_TIMEOUT_SECS: u64 = 20;
-
 use crate::social_http::{
     endangered_list, team_create, team_join, team_leave, team_list, team_mine,
 };
@@ -127,6 +126,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::me_settings_put)
         .service(my_torrentlist)
         .service(crate::auth_http::user_torrentlist)
+        .service(crate::auth_http::users_list)
         .service(my_bookmarks)
         .service(crate::auth_http::rotate_passkey)
         .service(crate::auth_http::my_login_history)
@@ -215,10 +215,10 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(fun_item_update)
         .service(fun_item_set_status)
         .service(fun_item_delete)
+        .service(link_public_list)
         .service(link_apply)
         .service(link_admin_list)
-        .service(link_update)
-        .service(link_delete)
+        .service(link_update).service(link_delete)
         .service(crate::staff_http::faq_list)
         .service(crate::staff_http::faq_create)
         .service(crate::staff_http::faq_update)

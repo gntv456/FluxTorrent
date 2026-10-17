@@ -6,6 +6,7 @@
 mod appeal_unban;
 mod appeals;
 mod applications;
+mod ban_log_list;
 mod captcha;
 mod seedbox_claim;
 pub(crate) use seedbox_claim::*;
@@ -14,6 +15,7 @@ mod cheat_appeal_review;
 mod cheat_appeals;
 mod classes_public;
 mod hr;
+mod hr_mine;
 mod login_aux;
 mod mail;
 mod misc;
@@ -24,11 +26,13 @@ mod wishlist;
 
 use appeals::*;
 use applications::*;
+use ban_log_list::*;
 pub use captcha::*;
 use cheat_appeal_review::*;
 use cheat_appeals::*;
 use classes_public::*;
 use hr::*;
+use hr_mine::*;
 use login_aux::*;
 pub use mail::*;
 use misc::*;
@@ -40,6 +44,8 @@ use wishlist::*;
 pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         .service(ban_log)
+        // 封禁公示名单（登录可读，用户名已打码）
+        .service(ban_log_list)
         // 找回密码
         .service(password_forgot)
         .service(password_reset)
