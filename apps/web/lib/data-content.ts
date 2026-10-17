@@ -111,3 +111,84 @@ export async function getPolls(): Promise<PollItem[]> {
     return [];
   }
 }
+
+/** GET /me/bookmarks 的行（misc_handlers.rs）：后端按 limit 截断且没有
+ *  cursor，默认 50、上限 100 —— 取满要说「仅显示最近 100 条」。 */
+export interface BookmarkRow {
+  torrent_id: number;
+  name: string;
+  small_descr: string | null;
+  size: number;
+  seeders: number;
+  leechers: number;
+  created_at: string;
+}
+
+/** 我的收藏。返回 null = 读失败（不能演成「还没收藏任何种子」）。 */
+export async function getMyBookmarks(
+  limit = 100,
+): Promise<BookmarkRow[] | null> {
+  try {
+    const per = Math.min(100, Math.max(1, limit));
+    return await api.get<BookmarkRow[]>(
+      `/api/v1/me/bookmarks?limit=${per}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** 封禁公示的一行（GET /ban-log）。`name_masked` 是后端打码后的名字——
+ *  接口本身就不返回原名，前端拿不到、也就无从漏出去。 */
+export interface BanLogRow {
+  uid: number;
+  name_masked: string;
+  /** 1=禁言 2=封号 */
+  status: number;
+  reason: string;
+  acted_at: string | null;
+  warned_until: string | null;
+  cheat_banned_until: string | null;
+}
+
+export interface BanLogPage {
+  rows: BanLogRow[];
+  total: number;
+  page: number;
+  per: number;
+}
+
+/** 封禁公示名单。失败回 null——「没取到」和「本站没有封禁记录」是两句话。 */
+export async function getBanLog(o: {
+  q?: string;
+  kind?: string;
+  page: number;
+  per?: number;
+}): Promise<BanLogPage | null> {
+  try {
+    const sp = new URLSearchParams();
+    if (o.q) sp.set("q", o.q);
+    if (o.kind) sp.set("kind", o.kind);
+    sp.set("page", String(o.page));
+    if (o.per) sp.set("per", String(o.per));
+    return await api.get<BanLogPage>(`/api/v1/ban-log?${sp.toString()}`);
+  } catch {
+    return null;
+  }
+}
+
+/** 已收录的友情链接（GET /links，只出审核通过的）。 */
+export interface PublicLink {
+  name: string;
+  url: string;
+  title: string | null;
+}
+
+export async function getPublicLinks(): Promise<PublicLink[] | null> {
+  try {
+    return await api.get<PublicLink[]>("/api/v1/links");
+  } catch {
+    return null;
+  }
+}
+

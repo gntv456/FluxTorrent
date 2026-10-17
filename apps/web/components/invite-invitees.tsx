@@ -29,12 +29,16 @@ export function InviteeList({
   total,
   page,
   onPage,
+  emptyTitle,
 }: {
   invitees: Invitee[];
   t: Record<string, string>;
   total: number;
   page: number;
   onPage: (p: number) => void;
+  /** 空列表时面板仍在，只把表体换成这句话 */
+  emptyTitle?: string;
+  emptyDesc?: string;
 }) {
   const pages = Math.ceil(total / 50);
   return (
@@ -45,53 +49,58 @@ export function InviteeList({
       <div className="brand-panel__head">
         <h2>{t.inviteesTitle}</h2>
       </div>
-      <div className="brand-wide-table-scroll">
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">{t.invUser}</td>
-              <td className="colhead">{t.invLevel}</td>
-              <td className="colhead">{t.invUploaded}</td>
-              <td className="colhead">{t.invDownloaded}</td>
-              <td className="colhead">{t.invJoined}</td>
-            </tr>
-            {invitees.map((u) => (
-              <tr key={u.id}>
-                <td>
-                  <a
-                    href={`/users/${u.id}`}
-                    className="text-sky-deep hover:underline"
-                  >
-                    {u.username}
-                  </a>
-                  {u.status >= 2 && (
-                    <Badge tone="neutral" className="ml-2">
-                      {t.invBanned}
-                    </Badge>
-                  )}
-                </td>
-                <td className="text-xs text-sub">{u.class_name ?? "—"}</td>
-                <td className="num text-xs">{fmtBytes(u.uploaded)}</td>
-                <td className="num text-xs">{fmtBytes(u.downloaded)}</td>
-                <td className="num text-xs text-sub">
-                  {new Date(u.created_at).toLocaleDateString()}
-                </td>
+      {invitees.length === 0 && (
+        <p className="p-4 text-center text-sm text-sub">{emptyTitle ?? "—"}</p>
+      )}
+      {invitees.length > 0 && (
+        <div className="brand-wide-table-scroll">
+          <table className="nexus-table">
+            <tbody>
+              <tr>
+                <td className="colhead">{t.invUser}</td>
+                <td className="colhead">{t.invLevel}</td>
+                <td className="colhead">{t.invUploaded}</td>
+                <td className="colhead">{t.invDownloaded}</td>
+                <td className="colhead">{t.invJoined}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+              {invitees.map((u) => (
+                <tr key={u.id}>
+                  <td>
+                    <a
+                      href={`/users/${u.id}`}
+                      className="text-sky-deep hover:underline"
+                    >
+                      {u.username}
+                    </a>
+                    {u.status >= 2 && (
+                      <Badge tone="neutral" className="ml-2">
+                        {t.invBanned}
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="text-xs text-sub">{u.class_name ?? "—"}</td>
+                  <td className="num text-xs">{fmtBytes(u.uploaded)}</td>
+                  <td className="num text-xs">{fmtBytes(u.downloaded)}</td>
+                  <td className="num text-xs text-sub">
+                    {new Date(u.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {pages > 1 && (
-          <div className="p-3 pt-0">
-            <Pager
-              layout="compact"
-              page={page}
-              pages={pages}
-              posLabel={`${page} / ${pages}`}
-              onStep={(p) => void onPage(p)}
-            />
-          </div>
-        )}
+      )}
+      {pages > 1 && (
+        <div className="p-3 pt-0">
+          <Pager
+            layout="compact"
+            page={page}
+            pages={pages}
+            posLabel={`${page} / ${pages}`}
+            onStep={(p) => void onPage(p)}
+          />
+        </div>
+      )}
     </section>
   );
 }

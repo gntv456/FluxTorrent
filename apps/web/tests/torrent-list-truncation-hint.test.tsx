@@ -6,15 +6,17 @@ import { LocaleProvider } from "@/i18n/client";
 import { zhCN } from "@/i18n/zh-CN";
 
 /**
- * 列表被截断时必须自己说出口（批六 D1 之一）。
+ * 「我的种子」列表的三态与翻页（批六 D1 的延续）。
  *
- * `/me/torrentlist` 后端按 limit=100 截断且没有 cursor。取满 100 条时，
- * 页面看着就像「我只有这些做种记录」——上传过几百种的老用户据此以为自己
- * 丢了一堆种子。这里钉住：取满才提示、没取满不许提示（否则每个不满一页的
- * 用户都看到一句无意义的话）。
+ * 2026-10-17：后端从「裸数组 + limit=100 截断」改成带 total 的分页信封，
+ * 于是「取满要说清后面还有」这条判据换了形态——现在它等价于
+ * 「还有下一页才提示，最后一页不许提示」。同时补上失败档：
+ * 取档失败必须说「没取到」，不能演成「你还没有做种记录」。
  */
 
 vi.mock("@/lib/hooks/use-media", () => ({ useIsCompact: () => false }));
+
+const PER = 50;
 
 function rows(n: number) {
   return Array.from({ length: n }, (_, i) => ({
@@ -30,7 +32,11 @@ function rows(n: number) {
   }));
 }
 
-function stubRows(data: unknown) {
+function envelope(n: number, total: number, page = 1) {
+  return { rows: rows(n), total, page, per: PER };
+}
+
+function stub(data: unknown) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
@@ -39,6 +45,20 @@ function stubRows(data: unknown) {
         status: 200,
         headers: { get: () => "application/json" },
         json: async () => ({ code: 0, message: "ok", data, request_id: "t" }),
+      }) as unknown as Response,
+    ),
+  );
+}
+
+function stubFailing() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      ({
+        ok: false,
+        status: 500,
+        headers: { get: () => "application/json" },
+        json: async () => ({ code: 1000, message: "boom", data: null }),
       }) as unknown as Response,
     ),
   );
@@ -54,23 +74,39 @@ function mount() {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("截断提示", () => {
-  it("取满 100 条：说明只到这儿", async () => {
-    stubRows(rows(100));
+describe("翻页与截断提示", () => {
+  it("还有下一页：说清只到第几页，并画出翻页条", async () => {
+    stub(envelope(PER, PER * 3));
     mount();
     await waitFor(() =>
       expect(document.body.textContent).toContain(
-        zhCN.mytl.truncated.replace("{n}", "100"),
+        zhCN.mytl.truncated.replace("{n}", String(PER)),
       ),
     );
+    expect(screen.getByText(zhCN.common.nextPage)).toBeInTheDocument();
   });
 
-  it("没取满：不许出现这句", async () => {
-    stubRows(rows(3));
+  it("最后一页：不许出现那句提示", async () => {
+    stub(envelope(3, PER * 2 + 3, 3));
+    mount();
+    await waitFor(() => expect(document.body.textContent).toContain("种 0"));
+    expect(document.body.textContent).not.toContain("仅显示最近");
+  });
+
+  it("不满一页：既不提示截断，也不画翻页条", async () => {
+    stub(envelope(3, 3));
+    mount();
+    await waitFor(() => expect(document.body.textContent).toContain("种 0"));
+    expect(document.body.textContent).not.toContain("仅显示最近");
+    expect(screen.queryByText(zhCN.common.nextPage)).toBeNull();
+  });
+
+  it("取档失败：说「没取到」，不演成「暂无记录」", async () => {
+    stubFailing();
     mount();
     await waitFor(() =>
-      expect(document.body.textContent).toContain("种 0"),
+      expect(document.body.textContent).toContain(zhCN.readState.failTitle),
     );
-    expect(document.body.textContent).not.toContain("仅显示最近");
+    expect(document.body.textContent).not.toContain("暂无");
   });
 });

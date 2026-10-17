@@ -19,12 +19,17 @@ export function TorrentListTable({
   t,
   gb,
   publicOnly = false,
+  withMeta = false,
+  locale,
 }: {
+  locale: Locale;
   rows: TorrentHistRow[];
   emptyText: string;
   t: Record<string, string>;
   gb: (n: number) => string;
   publicOnly?: boolean;
+  /** 「我的发布」这一路才带分类与发布时间（后端只对 uploads 投影） */
+  withMeta?: boolean;
 }) {
   const label = `${t.torrentName}${publicOnly ? `（${t.histPublicOnly}）` : ""}`;
   return (
@@ -35,6 +40,8 @@ export function TorrentListTable({
             <td className="colhead">{label}</td>
             <td className="colhead w-28 text-right">{t.colSize}</td>
             <td className="colhead w-20 text-right">{t.colSL}</td>
+            {withMeta && <td className="colhead w-20">{t.colCategory}</td>}
+            {withMeta && <td className="colhead w-24">{t.colTime}</td>}
           </tr>
         </thead>
         <tbody>
@@ -57,11 +64,30 @@ export function TorrentListTable({
                 <span className="profilet__label">{t.colSL}</span>
                 {u.seeders} / {u.leechers}
               </td>
+              {withMeta && (
+                <td className="shrink-0 text-xs text-sub">
+                  <span className="profilet__label">{t.colCategory}</span>
+                  {u.category ?? "—"}
+                </td>
+              )}
+              {withMeta && (
+                <td className="shrink-0 text-xs text-sub">
+                  <span className="profilet__label">{t.colTime}</span>
+                  {u.published_at
+                    ? new Date(u.published_at).toLocaleDateString(
+                        dateLocale(locale),
+                      )
+                    : "—"}
+                </td>
+              )}
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={3} className="py-6 text-center text-sub">
+              <td
+                colSpan={withMeta ? 5 : 3}
+                className="py-6 text-center text-sub"
+              >
                 {emptyText}
               </td>
             </tr>
@@ -90,18 +116,26 @@ export function PostsTab({
           </tr>
         </thead>
         <tbody>
-          {data.recent_posts.map(([pid, topicId, body, at]) => (
-            <tr key={pid}>
+          {data.recent_posts.map((r) => (
+            <tr key={r.id}>
               <td>
                 <Link
-                  href={`/forums/topic/${topicId}`}
-                  className="text-xs font-bold text-sky"
+                  href={`/forums/topic/${r.topic_id}`}
+                  className="text-sm font-bold text-sky-deep"
                 >
-                  #{topicId}
+                  {r.topic_title}
                 </Link>
-                <p className="text-sm">{body}</p>
                 <p className="text-[11px] text-sub">
-                  {new Date(at).toLocaleString(dateLocale(locale))}
+                  <Link
+                    href={`/forums/${r.forum_id}`}
+                    className="hover:underline"
+                  >
+                    {r.forum_name}
+                  </Link>
+                  {" · "}
+                  {new Date(r.created_at).toLocaleString(dateLocale(locale))}
+                  {" · "}
+                  {t.colReplies} {r.replies}
                 </p>
               </td>
             </tr>

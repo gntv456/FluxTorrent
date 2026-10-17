@@ -246,9 +246,9 @@ pub async fn user_public_profile(
             }));
         }
     }
-    // 近期论坛回帖（社区动态板块；匿名帖不暴露归属；helper 见文件尾）
-    let recent_posts =
-        super::profile_helpers::recent_posts_of(&state.repo.read_db, uid).await;
+    let recent_posts = super::profile_helpers::recent_posts_of(
+        &state.repo.read_db, uid, auth.class_id,
+    ).await;
     let uploads: Vec<RecentUpload> = sqlx::query_as(
                 "SELECT id, name, small_descr, size, \
          created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",

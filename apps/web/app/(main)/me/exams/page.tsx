@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { formatBytes } from "@/lib/format";
+import { PageHeader } from "@/components/ui/page-header";
+import { TabPanel, Tabs } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface ExamRow {
   task_id: number;
@@ -27,11 +33,33 @@ interface ExamRow {
   };
 }
 
-/** 我的考核（0093）：进行中/已完成/失败的考核 + 当前值 vs 目标进度。
- *  客户端页无法直接用 RSC 版 requireModule——开关关闭时渲染统一空态（二审 G2-2）。 */
-export default function MyExamsPage() {
+const TABS = ["new", "monthly", "records"] as const;
+type TabKey = (typeof TABS)[number];
+
+/** 样图 § exams 三档：新手考核 / 月度考核按 `kind` 分，
+ *  第三档「考核记录」是已收尾那批（`status` 非进行中或已有 settled_at），
+ *  与前两档交叉——它看的是结论，不是任务来源。
+ *  无 `?tab=` 时按已有行挑一档（数据没回来前先落第一档，避免闪一下）。 */
+function pickTab(raw: string | null, rows: ExamRow[] | null): TabKey {
+  if (raw === "new" || raw === "monthly" || raw === "records") return raw;
+  const list = rows ?? [];
+  if (rows === null || list.some((e) => e.kind === "onboard")) return "new";
+  if (list.some((e) => e.kind === "periodic")) return "monthly";
+  return "records";
+}
+
+function inTab(e: ExamRow, tab: TabKey): boolean {
+  if (tab === "new") return e.kind === "onboard";
+  if (tab === "monthly") return e.kind === "periodic";
+  return e.status !== 0 || e.settled_at !== null;
+}
+
+/** useSearchParams 必须在 Suspense 边界内（预渲染路由要求），
+ *  所以本组件由页面壳包一层再渲染。 */
+function ExamsPanel() {
   const { dict, locale } = useI18n();
   const t = dict.exams;
+  const sp = useSearchParams();
   const [rows, setRows] = useState<ExamRow[] | null>(null);
   // P-314：失败此前写 setRows([]) —— 本 state 有「未知」三态（null），
   // 给 [] 等于把「读不到」冒充成「你没有进行中的考核」（考核是义务信息，
@@ -44,7 +72,10 @@ export default function MyExamsPage() {
     api
       .get<ExamRow[]>("/api/v1/me/exams")
       .then(setRows)
-      .catch(() => { setRows(null); setFailed(true); });
+      .catch(() => {
+        setRows(null);
+        setFailed(true);
+      });
   }, []);
   useEffect(load, [load]);
   useEffect(() => {
@@ -103,73 +134,164 @@ export default function MyExamsPage() {
     return v.toLocaleString();
   };
 
+  const all = rows ?? [];
+  const tab = pickTab(sp.get("tab"), rows);
+  const shown = all.filter((e) => inTab(e, tab));
+  const href = (k: TabKey) => `/me/exams?tab=${k}`;
+  const at = (s: string) => new Date(s).toLocaleString(dateLocale(locale));
+  const isNewcomer = shown.some((e) => e.kind === "onboard");
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{t.title}</h1>
-        <span className="text-sm text-sub">{t.subtitle}</span>
+      <PageHeader
+        eyebrow={`${dict.my.title} / ${t.title}`}
+        title={t.title}
+        sub={t.subtitle}
+        aside={
+          isNewcomer ? (
+            <span className="sticker">{t.badgeNewcomer}</span>
+          ) : null
+        }
+      />
+
+      <div className="pgstats">
+        <div>
+          <div className="k">{t.kpiTotal}</div>
+          <div className="v">{all.length.toLocaleString()}</div>
+        </div>
+        <div>
+          <div className="k">{t.kpiPassed}</div>
+          <div className="v">
+            {all.filter((e) => e.status === 1).length.toLocaleString()}
+          </div>
+        </div>
+        <div>
+          <div className="k">{t.kpiPending}</div>
+          <div className="v">
+            {all.filter((e) => e.status === 0).length.toLocaleString()}
+          </div>
+        </div>
       </div>
-      <div className="brand-wide-table-scroll">
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">{t.colName}</td>
-              <td className="colhead">{t.colStatus}</td>
-              <td className="colhead">{t.colProgress}</td>
-              <td className="colhead">{t.colClaimedAt}</td>
-              <td className="colhead">{t.colDeadline}</td>
-              <td className="colhead">{t.colReward}</td>
-            </tr>
-            {(rows ?? []).map((e) => (
-              <tr key={e.task_id}>
-                <td>
-                  <span className="font-bold">{e.name}</span>
-                  <div className="text-xs text-sub">
-                    {e.kind === "onboard" ? t.kindOnboard : t.kindPeriodic}
-                    {e.period === "monthly"
-                      ? ` · ${t.periodMonthly}`
-                      : e.period === "quarterly"
-                        ? ` · ${t.periodQuarterly}`
-                        : ""}
-                    {e.subtitle ? ` · ${e.subtitle}` : ""}
-                  </div>
-                </td>
-                <td>
-                  {e.status === 0
-                    ? t.stOngoing
-                    : e.status === 1
-                      ? t.stDone
-                      : t.stFailed}
-                </td>
-                <td className="text-xs">
-                  {Object.entries(e.metric).map(([k, v]) => (
-                    <div key={k}>
-                      {metricLabel[k] ?? k}：{renderCurrent(k, e.current)} /{" "}
-                      {renderTarget(k, v)}
-                    </div>
+
+      <Tabs
+        idPrefix="exam"
+        label={t.title}
+        value={tab}
+        hrefs={[href("new"), href("monthly"), href("records")]}
+        items={[
+          { key: "new", label: t.tabNew },
+          { key: "monthly", label: t.tabMonthly },
+          { key: "records", label: t.tabRecords },
+        ]}
+      />
+
+      <TabPanel idPrefix="exam" tabKey={tab}>
+        {failed ? (
+          <EmptyState
+            icon="exam"
+            tone="warn"
+            title={dict.readState.failTitle}
+            desc={dict.readState.failDesc}
+          />
+        ) : rows === null ? (
+          <SkeletonRows />
+        ) : all.length === 0 ? (
+          <EmptyState icon="exam" title={t.empty} />
+        ) : shown.length === 0 ? (
+          <EmptyState icon="exam" title={t.emptyFiltered} desc={t.subtitle} />
+        ) : (
+          <div className="brand-panel">
+            <div className="brand-wide-table-scroll">
+              <table className="nexus-table">
+                <thead>
+                  <tr>
+                    <td className="colhead">{t.colName}</td>
+                    <td className="colhead">{t.colStatus}</td>
+                    <td className="colhead">{t.colProgress}</td>
+                    <td className="colhead">{t.colClaimedAt}</td>
+                    <td className="colhead">{t.colSettled}</td>
+                    <td className="colhead">{t.colDeadline}</td>
+                    <td className="colhead">{t.colReward}</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((e) => (
+                    <tr key={e.task_id}>
+                      <td>
+                        <span className="font-bold">{e.name}</span>
+                        <div className="text-xs text-sub">
+                          {e.kind === "onboard"
+                            ? t.kindOnboard
+                            : t.kindPeriodic}
+                          {e.period === "monthly"
+                            ? ` · ${t.periodMonthly}`
+                            : e.period === "quarterly"
+                              ? ` · ${t.periodQuarterly}`
+                              : ""}
+                          {e.subtitle ? ` · ${e.subtitle}` : ""}
+                        </div>
+                      </td>
+                      <td>
+                        <Badge
+                          tone={
+                            e.status === 1
+                              ? "success"
+                              : e.status === 0
+                                ? "warn"
+                                : "danger"
+                          }
+                        >
+                          {e.status === 0
+                            ? t.stOngoing
+                            : e.status === 1
+                              ? t.stDone
+                              : t.stFailed}
+                        </Badge>
+                      </td>
+                      <td className="text-xs">
+                        {Object.entries(e.metric).map(([k, v]) => (
+                          <div key={k}>
+                            {metricLabel[k] ?? k}：
+                            {renderCurrent(k, e.current)} /{" "}
+                            {renderTarget(k, v)}
+                          </div>
+                        ))}
+                      </td>
+                      <td className="num text-xs text-sub">
+                        {at(e.claimed_at)}
+                      </td>
+                      <td className="num text-xs text-sub">
+                        {e.settled_at ? at(e.settled_at) : "—"}
+                      </td>
+                      <td className="num text-xs text-sub">
+                        {e.deadline ? at(e.deadline) : "—"}
+                      </td>
+                      <td className="num font-bold">
+                        +{e.reward.toLocaleString()}
+                      </td>
+                    </tr>
                   ))}
-                </td>
-                <td className="text-xs text-sub">
-                  {new Date(e.claimed_at).toLocaleString(dateLocale(locale))}
-                </td>
-                <td className="text-xs text-sub">
-                  {e.deadline
-                    ? new Date(e.deadline).toLocaleString(dateLocale(locale))
-                    : "—"}
-                </td>
-                <td className="num font-bold">+{e.reward.toLocaleString()}</td>
-              </tr>
-            ))}
-            {(failed || rows?.length === 0) && (
-              <tr>
-                <td colSpan={6} className="py-6 text-center text-sub">
-                  {failed ? dict.common.loadFailed : t.empty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </TabPanel>
+
+      <div className="brand-panel">
+        <div className="brand-panel__head">
+          <h2>{t.ruleTitle}</h2>
+        </div>
+        <p className="p-4 text-xs leading-relaxed text-sub">{t.ruleBody}</p>
       </div>
     </div>
+  );
+}
+
+export default function MyExamsPage() {
+  return (
+    <Suspense fallback={<SkeletonRows />}>
+      <ExamsPanel />
+    </Suspense>
   );
 }

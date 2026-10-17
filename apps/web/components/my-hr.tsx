@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { hrRemain } from "@/lib/hr-remain";
 import { useIsCompact } from "@/lib/hooks/use-media";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/toast";
@@ -16,10 +18,36 @@ interface HrRow {
   seeded_seconds: number;
   deadline: string;
   status: string;
+  /** 下载完成时刻（/me/hr 新口径带的列；历史数据可能为 null） */
+  downloaded_at?: string | null;
 }
 
-/** 我的 H&R 表（/me/hr 口径：种子/要求/已做种/截止/状态 + 自助免罪） */
-export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
+/** 剩余期限文案：`hrRemain` 算天数，这里只管插进 dict 模板。
+ *  deadline 解析不出来 → 「—」，不猜。 */
+function remainLabel(
+  t: { daysLeft: string; overdue: string },
+  deadline: string,
+  now: number,
+): string {
+  const r = hrRemain(deadline, now);
+  if (r === null) return "—";
+  return fmt(r.overdue ? t.overdue : t.daysLeft, { n: r.days });
+}
+
+/** 我的 H&R 表（/me/hr 口径：种子/要求/已做种/截止/状态 + 自助免罪）。
+ *  分页与状态筛选由 RSC 用 URL 驱动，本页只渲染当页 rows；`status`
+ *  用来把空态分成「暂无记录」与「这一类没有记录」两句话。 */
+export function MyHrTable({
+  rows,
+  locale,
+  status,
+  now,
+}: {
+  rows: HrRow[];
+  locale: string;
+  status: string;
+  now: number;
+}) {
   const { dict, currency } = useI18n();
   const router = useRouter();
   const t = dict.myhr;
@@ -28,6 +56,9 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
   const compact = useIsCompact();
   // A1 反馈协议：window.confirm → ConfirmDialog；结果行内 msg → toast
   const [askTid, setAskTid] = useState<number | null>(null);
+  // 空态两句话：没筛选时「暂无记录」，筛了却零行是「这一类没有记录」
+  const emptyText = status ? t.emptyFiltered : t.empty;
+  const hours = (secs: number) => `${(secs / 3600).toFixed(1)} h`;
 
   async function selfPardon(tid: number) {
     setBusyId(tid);
@@ -51,7 +82,6 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
       {compact && rows.length > 0 && (
         <div className="trow-list">
           {rows.map((r) => {
-            const hours = (secs: number) => `${(secs / 3600).toFixed(1)} h`;
             return (
               <div className="hrcard" key={r.torrent_id}>
                 <Link
@@ -70,6 +100,15 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                   <span>
                     {t.colDeadline}{" "}
                     {new Date(r.deadline).toLocaleString(dl)}
+                  </span>
+                  <span>
+                    {t.colDownloaded}{" "}
+                    {r.downloaded_at
+                      ? new Date(r.downloaded_at).toLocaleDateString(dl)
+                      : "—"}
+                  </span>
+                  <span>
+                    {t.colRemaining} {remainLabel(t, r.deadline, now)}
                   </span>
                 </p>
                 <p className="hrcard__ft">
@@ -104,6 +143,11 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                       {dict.myhr2.pardonBtn.replace("{magic}", currency)}
                     </button>
                   )}
+                  {/* 申诉走 /appeals（POST /appeals 收 kind='hr'）：那一页
+                      读不到 query，所以只递入口、不带 ref_id。 */}
+                  <Link href="/appeals" className="hrcard__btn">
+                    {t.appeal}
+                  </Link>
                 </p>
               </div>
             );
@@ -119,12 +163,12 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                 <td className="colhead">{t.colRequired}</td>
                 <td className="colhead">{t.colSeeded}</td>
                 <td className="colhead">{t.colDeadline}</td>
+                <td className="colhead">{t.colDownloaded}</td>
+                <td className="colhead">{t.colRemaining}</td>
                 <td className="colhead">{t.colStatus}</td>
                 <td className="colhead" />
               </tr>
               {rows.map((r) => {
-                const hours = (secs: number) =>
-                  `${(secs / 3600).toFixed(1)} h`;
                 return (
                   <tr key={r.torrent_id}>
                     <td>
@@ -139,6 +183,14 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                     <td className="num">{hours(r.seeded_seconds)}</td>
                     <td className="nowrap">
                       {new Date(r.deadline).toLocaleString(dl)}
+                    </td>
+                    <td className="nowrap num text-xs text-sub">
+                      {r.downloaded_at
+                        ? new Date(r.downloaded_at).toLocaleDateString(dl)
+                        : "—"}
+                    </td>
+                    <td className="nowrap num text-xs">
+                      {remainLabel(t, r.deadline, now)}
                     </td>
                     <td>
                       {r.status === "violated" ? (
@@ -165,7 +217,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                           type="button"
                           disabled={busyId === r.torrent_id}
                           onClick={() => setAskTid(r.torrent_id)}
-                          className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-sky-deep disabled:opacity-50"
+                          className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-[var(--sky-deep)] disabled:opacity-50"
                           title={dict.myhr2.pardonNote.replace(
                             "{magic}",
                             currency,
@@ -177,14 +229,20 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
                           )}
                         </button>
                       )}
+                      <Link
+                        href="/appeals"
+                        className="ml-2 text-xs font-bold"
+                      >
+                        {t.appeal}
+                      </Link>
                     </td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-sub">
-                    {t.empty}
+                  <td colSpan={8} className="py-8 text-center text-sub">
+                    {emptyText}
                   </td>
                 </tr>
               )}
@@ -197,7 +255,7 @@ export function MyHrTable({ rows, locale }: { rows: HrRow[]; locale: string }) {
           且 .nexus-table 的 width:100% 覆盖 sr-only 的 1px、绝对定位表格
           把 body 滚动区撑宽 15px（390px 实测横滚，M5.6 扫描 2026-10-15）。 */}
       {compact && rows.length === 0 && (
-        <p className="py-8 text-center text-sub">{t.empty}</p>
+        <p className="py-8 text-center text-sub">{emptyText}</p>
       )}
       {/* 自助免罪确认（花费魔力，二次确认防误触） */}
       <ConfirmDialog

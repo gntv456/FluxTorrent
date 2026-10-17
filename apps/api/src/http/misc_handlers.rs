@@ -40,13 +40,37 @@ pub struct SnatchRow {
     #[sqlx(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     deny_reason: Option<String>,
+    /// 分类名（样图「我的发布」的分类列；仅 uploads 投影，其余臂为 None）
+    #[sqlx(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    category: Option<String>,
+    /// 发布时刻（uploads 用 `torrents.created_at`；`completed_at` 是
+    /// 下载侧字段，发布者自己没有 snatch 行，旧查询因此一直回 NULL，
+    /// 前端时间列恒显「—」）
+    #[sqlx(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    published_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// 一个 kind 的总数与（仅 uploads 有意义的）三档审核态计数。
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct ListStats {
+    total: i64,
+    pending: i64,
+    approved: i64,
+    denied: i64,
 }
 
 #[derive(Deserialize)]
 struct SnatchQuery {
     /// seeding / leeching / completed / uploads
     kind: Option<String>,
+    /// 旧参数：等价于 per（保留一版，避免老客户端突然少看数据）
     limit: Option<i64>,
+    #[serde(default)]
+    per: Option<i64>,
+    #[serde(default)]
+    page: Option<i64>,
 }
 
 #[get("/me/torrentlist")]
@@ -56,29 +80,33 @@ pub async fn my_torrentlist(
     q: crate::http::Q<SnatchQuery>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let limit = q.limit.unwrap_or(50).clamp(1, 100);
-    let rows: Vec<SnatchRow> = match q.kind.as_deref() {
+    let per = q.per.or(q.limit).unwrap_or(50).clamp(1, 100);
+    let page = q.page.unwrap_or(1).clamp(1, 10_000);
+    let kind = q.kind.as_deref().unwrap_or("seeding");
+    let rows: Vec<SnatchRow> = match kind {
         // 自己的 uploads 放开全部审核态（0284 P0-1）：发种者要能跟踪「待审/被拒
         // + 拒因」，此前硬编码 =1 让待审种从「我的发布」消失。别人视角的
         // users/{id}/torrentlist 维持只看过审（user_torrentlist.rs）。
-        Some("uploads") => sqlx::query_as(
+        "uploads" => sqlx::query_as(
             "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, \
              t.leechers, false AS seeding, false AS leeching, \
              NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here, \
-             t.approval_status, \
+             t.approval_status, t.created_at AS published_at, \
+             c.name AS category, \
              NULLIF(CONCAT_WS('：', dr.reason, \
                NULLIF(t.deny_note, '')), '') AS deny_reason \
              FROM torrents t \
              LEFT JOIN torrent_deny_reasons dr ON dr.id = t.deny_reason_id \
+             LEFT JOIN categories c ON c.id = t.category_id \
              WHERE t.owner_id = $1 \
-             ORDER BY t.approval_status = 1 DESC, t.id DESC LIMIT $2",
+             ORDER BY t.approval_status = 1 DESC, t.id DESC LIMIT $2 OFFSET $3",
         ),
-        Some("completed") => sqlx::query_as(
+        "completed" => sqlx::query_as(
             "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
              WHERE s.user_id = $1 AND s.completed_at IS NOT NULL \
-             ORDER BY s.completed_at DESC LIMIT $2",
+             ORDER BY s.completed_at DESC LIMIT $2 OFFSET $3",
         ),
         // 默认做种中
         _ => sqlx::query_as(
@@ -86,15 +114,43 @@ pub async fn my_torrentlist(
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
              WHERE s.user_id = $1 AND s.seeding \
-             ORDER BY s.torrent_id DESC LIMIT $2",
+             ORDER BY s.torrent_id DESC LIMIT $2 OFFSET $3",
         ),
     }
     .bind(auth.id)
-    .bind(limit)
+    .bind(per)
+    .bind((page - 1) * per)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    // 计数与列表同一套 FROM/WHERE，否则前端按 total 画的页码里有空页。
+    // uploads 顺手带三档审核态（样图的四格统计条），其余 kind 该三格为 0，
+    // 由前端决定不渲染。
+    let stats_sql: &str = if kind == "uploads" {
+        "SELECT count(*) AS total, \
+            count(*) FILTER (WHERE t.approval_status = 0) AS pending, \
+            count(*) FILTER (WHERE t.approval_status = 1) AS approved, \
+            count(*) FILTER (WHERE t.approval_status = 2) AS denied \
+         FROM torrents t WHERE t.owner_id = $1"
+    } else if kind == "completed" {
+        "SELECT count(*) AS total, 0 AS pending, 0 AS approved, 0 AS denied \
+         FROM snatches s WHERE s.user_id = $1 AND s.completed_at IS NOT NULL"
+    } else {
+        "SELECT count(*) AS total, 0 AS pending, 0 AS approved, 0 AS denied \
+         FROM snatches s WHERE s.user_id = $1 AND s.seeding"
+    };
+    let lst: ListStats = sqlx::query_as::<_, ListStats>(stats_sql)
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!({
+        "rows": rows,
+        "total": lst.total,
+        "page": page,
+        "per": per,
+        "stats": lst,
+    })))
 }
 
 /// 我的收藏列表（usercp 收藏夹口径）：bookmark 时间倒序

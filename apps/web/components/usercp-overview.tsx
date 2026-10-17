@@ -9,10 +9,13 @@ import { MedalIcon } from "@/components/medal-icon";
 import { Icon } from "@/components/icons";
 import type { Overview } from "@/components/usercp";
 import {
-  MoreInfoTable,
-  RecentTopics,
+  ActivityPanel,
   SummaryRow,
 } from "@/components/usercp-overview-panels";
+import {
+  MoreInfoTable,
+  RecentTopics,
+} from "@/components/usercp-overview-details";
 
 /** 账户概览面板（从 usercp.tsx 按域拆出，295 行门禁）：
  *  资料卡 / 分享率 / 30 天登录趋势 / 摘要行 / 更多账户信息 / 最近阅读。 */
@@ -87,6 +90,9 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
         currency={currency}
       />
 
+      {/* 当前活动（样图 § overview-grid 第二张：做种 / 下载 / 累计发布） */}
+      <ActivityPanel ov={ov} dict={dict} />
+
       {/* 登录活跃趋势（30 天柱状图） */}
       <section className="uc-trend-card">
         <header>
@@ -123,7 +129,12 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
       />
 
       {/* 最近阅读主题 */}
-      <RecentTopics t={t} />
+      <RecentTopics
+        rows={ov.recent_topics}
+        t={t}
+        dict={dict}
+        locale={locale}
+      />
     </div>
   );
 }

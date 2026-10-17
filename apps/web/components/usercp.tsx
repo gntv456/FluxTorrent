@@ -131,6 +131,11 @@ export interface Overview {
   last_login: string | null;
   seed_points: number;
   next_class: { name: string; required: number };
+  /** GET /me/overview 的最近阅读主题（样图 § ucp 概览那张表） */
+  recent_topics?: {
+    topic_id: number; title: string; forum_id: number;
+    forum_name: string; replies: number; read_at: string;
+  }[];
 }
 
 // ============ 主组件 ============

@@ -44,6 +44,20 @@ export interface TorrentHistRow {
   seeders: number;
   leechers: number;
   seeding: boolean;
+  /** 仅「我的发布」这一路投影（样图 § user 的种子表要分类与时间列） */
+  category?: string | null;
+  published_at?: string | null;
+}
+
+/** 近期回帖：2026-10-17 起是带字段名的对象（旧版是位置元组，加一列就得改所有消费方） */
+export interface RecentPostRow {
+  id: number;
+  topic_id: number;
+  topic_title: string;
+  forum_id: number;
+  forum_name: string;
+  replies: number;
+  created_at: string;
 }
 
 export interface UserField {
@@ -99,7 +113,7 @@ export interface ProfileData {
     account_age_days: number;
     account_age_days_need: number;
   } | null;
-  recent_posts: [number, number, string, string][];
+  recent_posts: RecentPostRow[];
   recent_uploads: RecentUpload[];
   recent_comments: RecentComment[];
   /** 字幕作品摘要（0146 P2-2：公开归属的过审字幕；匿名上传不计入） */

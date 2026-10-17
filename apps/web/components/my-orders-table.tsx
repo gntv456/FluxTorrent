@@ -1,105 +1,151 @@
-import type { MyOrdersEnvelope } from "@/lib/data";
+import { fmt } from "@/i18n/config";
 import type { Dict } from "@/i18n/zh-CN";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 
-/** 我的订单表（商城订单中心 P2-1）。服务端取数 + 纯展示，
- *  分页先用「第 N / 共 M 页」链接翻页（?page=），够用不过度设计。 */
+/** GET /me/orders 单行（2026-10-18 契约：0383 履约态三件套随行走，
+ *  kind 改可空——SKU 被删时 LEFT JOIN 给 NULL）。
+ *  本类型与 `@/lib/data` 的旧信封并行存在：那份还没带上 fulfill 参数，
+ *  这一页要按履约态筛选，先把契约写在自己的取数点上，避免跨页改共享层。 */
+export interface OrderRow {
+  id: number;
+  item_id: number;
+  item_name: string | null;
+  kind: string | null;
+  price: number;
+  effect_applied: boolean;
+  fulfill_state: string | null;
+  fulfilled_at: string | null;
+  fail_reason: string | null;
+  created_at: string;
+}
+
+/** 履约态筛选令牌（后端认这三个，其余含缺省 = 全部） */
+export type FulfillKey = "" | "pending" | "done" | "failed";
+
+export interface OrdersEnvelope {
+  rows: OrderRow[];
+  total: number;
+  page: number;
+  per_page: number;
+  fulfill: string | null;
+}
+
+/** 钱到哪一步（fulfill_state）→ 徽章档位。
+ *  与效果有没有落地（effect_applied）是两个正交判据：
+ *  前者说明扣款/退款，后者说明道具发没发到账号上，各占一行不合并。 */
+function fulfillBadge(state: string | null, t: Dict["myOrders"]) {
+  switch (state) {
+    case "done":
+      return { tone: "success" as const, label: t.stateDone };
+    case "reserving":
+    case "frozen":
+      return { tone: "warn" as const, label: t.statePending };
+    case "failed":
+      return { tone: "danger" as const, label: t.stateFailed };
+    case "refunded":
+      return { tone: "danger" as const, label: t.stateRefunded };
+    default:
+      return null;
+  }
+}
+
+/** 我的订单表（商城订单中心 P2-1 + 履约态对齐样图）。
+ *  纯展示：翻页条归页面（Pager 链接档），这里只出表。 */
 export function MyOrdersTable({
   rows,
   total,
-  page,
-  perPage,
+  fulfill,
   dict,
   currency,
 }: {
-  rows: MyOrdersEnvelope["rows"];
+  rows: OrderRow[];
   total: number;
-  page: number;
-  perPage: number;
+  fulfill: FulfillKey;
   dict: Dict["myOrders"];
   currency: string;
 }) {
-  const pages = Math.max(1, Math.ceil(total / perPage));
+  const t = dict;
+  if (rows.length === 0) {
+    return (
+      <div className="brand-panel">
+        <div className="brand-panel__head">
+          <h2>{t.panelTitle}</h2>
+        </div>
+        <EmptyState
+          icon="shop"
+          title={fulfill ? t.emptyFiltered : t.empty}
+          desc={fulfill ? t.empty : undefined}
+        />
+      </div>
+    );
+  }
   return (
     <div className="brand-panel">
       <div className="brand-panel__head">
-        <h2>{dict.title}</h2>
+        <h2>{t.panelTitle}</h2>
         <span className="text-xs text-sub">
-          {dict.total.replace("{n}", total.toLocaleString())}
+          {fmt(t.total, { n: total.toLocaleString() })}
         </span>
       </div>
       <div className="brand-wide-table-scroll">
         <table className="nexus-table profilet">
           <tbody>
             <tr>
-              <td className="colhead">{dict.colItem}</td>
-              <td className="colhead">{dict.colKind}</td>
-              <td className="colhead">{dict.colPrice}</td>
-              <td className="colhead">{dict.colStatus}</td>
-              <td className="colhead">{dict.colAt}</td>
+              <td className="colhead">{t.colNo}</td>
+              <td className="colhead">{t.colItem}</td>
+              <td className="colhead">{t.colKind}</td>
+              <td className="colhead">{t.colPrice}</td>
+              <td className="colhead">{t.colStatus}</td>
+              <td className="colhead">{t.colAt}</td>
             </tr>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <span className="profilet__label">{dict.colItem}</span>
-                  {r.item_name ?? `#${r.item_id}`}
-                </td>
-                <td>
-                  <span className="profilet__label">{dict.colKind}</span>
-                  <span className="pill">{r.kind}</span>
-                </td>
-                <td className="num">
-                  <span className="profilet__label">{dict.colPrice}</span>
-                  {r.price.toLocaleString()} {currency}
-                </td>
-                <td>
-                  <span className="profilet__label">{dict.colStatus}</span>
-                  <span
-                    className={
-                      r.effect_applied ? "text-success" : "text-danger"
-                    }
-                  >
-                    {r.effect_applied ? dict.applied : dict.pending}
-                  </span>
-                </td>
-                <td className="text-xs text-sub">
-                  <span className="profilet__label">{dict.colAt}</span>
-                  {r.created_at.slice(0, 19).replace("T", " ")}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-6 text-center text-sub">
-                  {dict.empty}
-                </td>
-              </tr>
-            )}
+            {rows.map((r) => {
+              const badge = fulfillBadge(r.fulfill_state, t);
+              return (
+                <tr key={r.id}>
+                  <td className="num">
+                    <span className="profilet__label">{t.colNo}</span>#
+                    {r.id}
+                  </td>
+                  <td>
+                    <span className="profilet__label">{t.colItem}</span>
+                    {r.item_name ?? `#${r.item_id}`}
+                  </td>
+                  <td>
+                    <span className="profilet__label">{t.colKind}</span>
+                    {r.kind ? <span className="pill">{r.kind}</span> : "—"}
+                  </td>
+                  <td className="num">
+                    <span className="profilet__label">{t.colPrice}</span>
+                    {r.price.toLocaleString()} {currency}
+                  </td>
+                  <td>
+                    <span className="profilet__label">{t.colStatus}</span>
+                    <div className="flex flex-col items-start gap-1">
+                      {badge ? (
+                        <Badge tone={badge.tone}>{badge.label}</Badge>
+                      ) : null}
+                      <span
+                        className={
+                          r.effect_applied
+                            ? "text-xs text-success"
+                            : "text-xs text-danger"
+                        }
+                      >
+                        {r.effect_applied ? t.applied : t.pending}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="text-xs text-sub">
+                    <span className="profilet__label">{t.colAt}</span>
+                    {r.created_at.slice(0, 19).replace("T", " ")}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      {pages > 1 && (
-        <div className="flex items-center justify-center gap-3 p-3 text-sm">
-          {page > 1 && (
-            <a
-              className="btn btn-sm btn-ghost"
-              href={`/my/orders?page=${page - 1}`}
-            >
-              ‹ {dict.prev}
-            </a>
-          )}
-          <span className="text-xs text-sub">
-            {page} / {pages}
-          </span>
-          {page < pages && (
-            <a
-              className="btn btn-sm btn-ghost"
-              href={`/my/orders?page=${page + 1}`}
-            >
-              {dict.next} ›
-            </a>
-          )}
-        </div>
-      )}
     </div>
   );
 }

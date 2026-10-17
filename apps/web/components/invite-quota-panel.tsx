@@ -49,7 +49,9 @@ export function InviteQuotaPanel({
         >          <p className="text-xs text-sub">{t.quotaTitle}</p>
           <p className="mt-1 text-lg">
             <b className="num">{status?.quota_used ?? "—"}</b>
-            <span className="text-sub"> / {status?.quota_limit ?? "—"} </span>
+            <span className="text-sub">
+              {" / "}{status?.quota_limit ?? "—"} {t.quotaUnit}
+            </span>
             <span className="text-xs text-sub">
               {t.quotaWeek}
               {status && status.quota_extra > 0 && (

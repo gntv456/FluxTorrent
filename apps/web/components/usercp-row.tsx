@@ -7,12 +7,17 @@
 export function Row({
   head,
   children,
+  id,
+  className,
 }: {
   head: string;
   children: React.ReactNode;
+  /** 锚点直达用（账户概览的「密钥 → 重置」带 #passkey 跳进来） */
+  id?: string;
+  className?: string;
 }) {
   return (
-    <tr>
+    <tr id={id} className={className}>
       <td className="rowhead nowrap">{head}</td>
       <td className="rowfollow">{children}</td>
     </tr>

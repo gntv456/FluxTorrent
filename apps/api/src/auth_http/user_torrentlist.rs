@@ -26,8 +26,11 @@ pub async fn user_torrentlist(
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
     let uploads: Vec<SnatchRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
-         false AS seeding, false AS leeching, NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here \
-         FROM torrents t WHERE t.owner_id = $1 AND t.approval_status = 1 AND NOT t.anonymous \
+         false AS seeding, false AS leeching, NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here, \
+         c.name AS category, t.created_at AS published_at \
+         FROM torrents t \
+         LEFT JOIN categories c ON c.id = t.category_id \
+         WHERE t.owner_id = $1 AND t.approval_status = 1 AND NOT t.anonymous \
          ORDER BY t.id DESC LIMIT $2",
     )
     .bind(uid)
