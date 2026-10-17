@@ -4,7 +4,9 @@ import { fmt } from "@/i18n/config";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReadState } from "@/components/ui/read-state";
 import {
+  codesLine,
   groupEndpoints,
+  paramsLine,
   unwrapSpec,
   type Endpoint,
 } from "@/lib/openapi-groups";
@@ -93,6 +95,12 @@ export default async function ApiDocsPage() {
         </a>
       </div>
 
+      {/* 样图 § api-docs 顶部那条灰底说明：讲清这页的数据从哪来、
+          徽章按方法分、展开里有什么 */}
+      <p className="baozi-panel px-4 py-3 text-xs leading-relaxed text-sub">
+        {t.howTo}
+      </p>
+
       <ReadState
         failed={spec.failed}
         empty={spec.total === 0}
@@ -117,6 +125,7 @@ export default async function ApiDocsPage() {
                       <th>{t.colMethod}</th>
                       <th>{t.colPath}</th>
                       <th>{t.colSummary}</th>
+                      <th className="w-[10%] text-right">{t.colDetail}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -127,6 +136,25 @@ export default async function ApiDocsPage() {
                         </td>
                         <td className="apidocs-path">{e.path}</td>
                         <td>{e.summary || "—"}</td>
+                        <td className="text-right">
+                          {/* details 而非按钮 + state：本页是 RSC，没有水合
+                              也照样能点开（样图那格「展开」的用意就在这） */}
+                          <details className="apidocs-detail">
+                            <summary>{t.expand}</summary>
+                            <div className="px-1 py-2 text-left text-xs">
+                              <p className="text-sub">
+                                {paramsLine(e.detail.params, t.noParams)}
+                              </p>
+                              <p className="mt-1 text-sub">
+                                {codesLine(
+                                  e.detail.codes,
+                                  t.noResponses,
+                                  t.responsesLabel,
+                                )}
+                              </p>
+                            </div>
+                          </details>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

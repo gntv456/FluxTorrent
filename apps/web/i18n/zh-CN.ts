@@ -1376,7 +1376,13 @@ const zhCnBase = {
     colMethod: "方法",
     colPath: "路径",
     colSummary: "说明",
-    unavailable: "API 暂不可达，稍后再试。",
+    colDetail: "详情",
+    howTo:
+      "本页直挂 OpenAPI 规范文件（openapi.json），按模块分组展示端点；方法徽章区分 GET / POST / PATCH / DELETE，点「展开」查看该端点的参数与已声明的响应码。",
+    expand: "展开",
+    noParams: "无参数",
+    noResponses: "规范未声明响应码",
+    responsesLabel: "响应码",
   },
   clients: {
     eyebrow: "首页 / BT 客户端指南",
@@ -6312,6 +6318,7 @@ const zhCnBase = {
     asideTitle: "站点信息",
     founded: "建站时间",
     selfLink: "本站榜单位置",
+    poweredBy: "Powered by {product}（Rust + Next.js）",
   },
   faq: {
     eyebrow: "首页 / 常见问题",

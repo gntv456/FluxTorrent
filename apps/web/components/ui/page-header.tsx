@@ -3,10 +3,12 @@ import type { ReactNode } from "react";
 /** 页面头原语（S2 模板化 · 2026-10-16）
  *
  *  统一各页面手写的 `.pghd` 三层结构
- *  （眉标 eyebrow + 主标题 h1 + 可选副标题 / 右侧槽）。调用方只提供内容，
+ *  （眉标 eyebrow + 主标题 h1 + 副标题 / 右侧槽）。调用方只提供内容，
  *  结构与排版由原语决定，新增页面不再逐页复制这段 JSX。
- *  本轮迁移 17 页；games/fun、games/odds（裸 Link 右槽）与 help（内联 p
- *  副标题）结构特殊，暂留原样。
+ *  副标题与 h1 同列堆叠（样图 § pg-head：`.desc` 在 `<h1>` 之下）——
+ *  2026-10-18 收口：此前它是 flex 的第三栏，画在标题右侧，35 个页头一起
+ *  与样图错位。本轮迁移 17 页；games/fun、games/odds（裸 Link 右槽）与
+ *  help（内联 p 副标题）结构特殊，暂留原样。
  *
  *  样式见 app/styles/ui.css「页面模板：PageHeader」段（.pghd /
  *  .pg-eyebrow / .sub / .aside，2026-10-16 自 layout.css 迁入，类名不变）。
@@ -40,8 +42,8 @@ export function PageHeader({
       <div>
         {eyebrow ? <div className="pg-eyebrow">{eyebrow}</div> : null}
         <h1 className="font-display text-2xl">{title}</h1>
+        {sub ? <span className="sub">{sub}</span> : null}
       </div>
-      {sub ? <span className="sub">{sub}</span> : null}
       {aside ? <div className="aside">{aside}</div> : null}
     </div>
   );

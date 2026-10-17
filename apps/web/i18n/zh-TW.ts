@@ -1386,7 +1386,13 @@ const zhTwBase: Omit<
     colMethod: "方法",
     colPath: "路徑",
     colSummary: "說明",
-    unavailable: "API 暫不可達，稍後再試。",
+    colDetail: "詳情",
+    howTo:
+      "本頁直掛 OpenAPI 規範檔案（openapi.json），依模組分組展示端點；方法徽章區分 GET / POST / PATCH / DELETE，點「展開」檢視該端點的參數與已宣告的回應碼。",
+    expand: "展開",
+    noParams: "無參數",
+    noResponses: "規範未宣告回應碼",
+    responsesLabel: "回應碼",
   },
   clients: {
     eyebrow: "首頁 / BT 客戶端指南",
@@ -6249,6 +6255,7 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     asideTitle: "站點資訊",
     founded: "建站時間",
     selfLink: "本站榜單位置",
+    poweredBy: "Powered by {product}（Rust + Next.js）",
   },
 
   faq: {
