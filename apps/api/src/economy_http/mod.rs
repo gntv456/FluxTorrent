@@ -63,6 +63,7 @@ pub(crate) mod recon;
 mod shop;
 mod shop_effects;
 mod shop_list;
+mod spark_ledger_http;
 mod spend;
 mod torznab_fmt;
 mod voucher_use;
@@ -90,6 +91,7 @@ pub(crate) use shop_effects::{
     apply_item_effect, credit_gb, has_effect, spark_amount, voucher_kind,
 };
 pub use shop_list::*;
+pub use spark_ledger_http::*;
 pub use spend::*;
 pub use voucher_use::*;
 pub use vouchers::*;

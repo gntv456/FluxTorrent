@@ -58,19 +58,15 @@
  },
  "app/rules/page.tsx": {
   "h1": [],
-  "palette": [
-   33
-  ],
-  "color": [],
-  "h1First": null
+  "h1First": null,
+  "palette": [],
+  "color": []
  },
  "app/offline/page.tsx": {
   "h1": [],
-  "palette": [
-   18
-  ],
-  "color": [],
-  "h1First": 14
+  "h1First": 23,
+  "palette": [],
+  "color": []
  },
  "app/login/login-form.tsx": {
   "h1": [],
@@ -98,13 +94,12 @@
  },
  "app/ban-log/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   95,
-   112,
-   121
+   103,
+   122
   ],
-  "color": [],
-  "h1First": 60
+  "color": []
  },
  "app/appeals/loading.tsx": {
   "h1": [],
@@ -114,17 +109,17 @@
  },
  "app/appeals/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   98,
+   92,
    119,
    168,
    175,
    181,
    203,
-   262
+   222
   ],
-  "color": [],
-  "h1First": 111
+  "color": []
  },
  "app/(main)/layout.tsx": {
   "h1": [],
@@ -171,9 +166,9 @@
  },
  "app/(main)/users/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/users/[id]/loading.tsx": {
   "h1": [],
@@ -224,13 +219,13 @@
  },
  "app/(main)/users/[id]/_parts/profile-tabs.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   47,
-   98,
-   143
+   54,
+   124,
+   177
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/users/[id]/torrentlist/page.tsx": {
   "h1": [],
@@ -599,9 +594,9 @@
  },
  "app/(main)/p/[slug]/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": 62
+  "color": []
  },
  "app/(main)/offers/loading.tsx": {
   "h1": [],
@@ -671,11 +666,9 @@
  },
  "app/(main)/myhr/page.tsx": {
   "h1": [],
-  "palette": [
-   43
-  ],
-  "color": [],
-  "h1First": 42
+  "h1First": null,
+  "palette": [],
+  "color": []
  },
  "app/(main)/my-spark/loading.tsx": {
   "h1": [],
@@ -685,11 +678,11 @@
  },
  "app/(main)/my-spark/page.tsx": {
   "h1": [
-   75
+   94
   ],
+  "h1First": 82,
   "palette": [],
-  "color": [],
-  "h1First": 63
+  "color": []
  },
  "app/(main)/my/loading.tsx": {
   "h1": [],
@@ -711,12 +704,9 @@
  },
  "app/(main)/my/torrentlist/page.tsx": {
   "h1": [],
-  "palette": [
-   47,
-   48
-  ],
-  "color": [],
-  "h1First": 36
+  "h1First": null,
+  "palette": [],
+  "color": []
  },
  "app/(main)/my/orders/loading.tsx": {
   "h1": [],
@@ -794,9 +784,9 @@
  },
  "app/(main)/me/sparks/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": 33
+  "color": []
  },
  "app/(main)/me/exams/page.tsx": {
   "h1": [
@@ -808,13 +798,13 @@
  },
  "app/(main)/me/achievements/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   72,
-   73,
-   79
+   160,
+   161,
+   168
   ],
-  "color": [],
-  "h1First": 45
+  "color": []
  },
  "app/(main)/magic-pool/loading.tsx": {
   "h1": [],
@@ -839,9 +829,9 @@
  },
  "app/(main)/links/apply/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": 11
+  "color": []
  },
  "app/(main)/jixiao/loading.tsx": {
   "h1": [],
@@ -875,9 +865,9 @@
  },
  "app/(main)/invites/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": 17
+  "color": []
  },
  "app/(main)/help/loading.tsx": {
   "h1": [],
@@ -1203,12 +1193,12 @@
  },
  "app/(main)/forums/page.tsx": {
   "h1": [],
+  "h1First": 96,
   "palette": [
-   77,
-   93
+   103,
+   119
   ],
-  "color": [],
-  "h1First": 70
+  "color": []
  },
  "app/(main)/forums/[id]/loading.tsx": {
   "h1": [],
@@ -1218,17 +1208,19 @@
  },
  "app/(main)/forums/[id]/page.tsx": {
   "h1": [],
+  "h1First": 93,
   "palette": [
-   56,
-   75,
-   76,
-   86,
-   87,
-   105,
-   106
+   88,
+   107,
+   108,
+   118,
+   119,
+   146,
+   147,
+   174,
+   175
   ],
-  "color": [],
-  "h1First": 61
+  "color": []
  },
  "app/(main)/forums/topic/[id]/loading.tsx": {
   "h1": [],
@@ -1278,17 +1270,11 @@
  },
  "app/(main)/forums/feed/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   42,
-   71,
-   92,
-   115,
-   122,
-   150,
-   159
+   64
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/farm/loading.tsx": {
   "h1": [],
@@ -1310,9 +1296,9 @@
  },
  "app/(main)/faq/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/endangered/loading.tsx": {
   "h1": [],
@@ -1438,9 +1424,9 @@
  },
  "app/(main)/clients/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": 20
+  "color": []
  },
  "app/(main)/classes/loading.tsx": {
   "h1": [],
@@ -1530,9 +1516,9 @@
  },
  "app/(main)/api-docs/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": 52
+  "color": []
  },
  "app/(main)/admin/loading.tsx": {
   "h1": [],
@@ -1762,11 +1748,9 @@
  },
  "app/(main)/about/page.tsx": {
   "h1": [],
-  "palette": [
-   33
-  ],
-  "color": [],
-  "h1First": 40
+  "h1First": null,
+  "palette": [],
+  "color": []
  },
  "app/(auth)/layout.tsx": {
   "h1": [],
@@ -2735,12 +2719,12 @@
  },
  "components/forum-follow.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   103,
-   104
+   109,
+   110
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/forum-lottery.tsx": {
   "h1": [],
@@ -4244,8 +4228,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   135,
-   241
+   147,
+   215
   ],
   "color": []
  },
@@ -4715,5 +4699,68 @@
   "palette": [],
   "color": [],
   "h1First": null
+ },
+ "app/(main)/forums/feed/_parts/latest-panel.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   40,
+   62,
+   85,
+   92,
+   120,
+   132,
+   133
+  ],
+  "color": []
+ },
+ "app/(main)/forums/feed/_parts/mine-panels.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   85,
+   98,
+   163,
+   169
+  ],
+  "color": []
+ },
+ "components/bookmark-remove-button.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/my-bookmarks.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/invite-invitees.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   71
+  ],
+  "color": []
+ },
+ "components/ban-log-list.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/appeal-records.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/offline-retry.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
  }
 }

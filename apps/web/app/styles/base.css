@@ -102,6 +102,9 @@
   --content-bb-sky: #0ea5e9;
   /* ===== 边框 ===== */
   --border-soft: #e3edf7;
+  /* 更浅一档的发丝分隔线（面板头 / 数据条格线）：闸门 rule 1 此前报
+     「被引用但无定义」，补进令牌层而不是改引用 */
+  --line-soft: #eef2f6;
   --border-deep: #bcd7ef;
   --border-strong: #7fb0d9;
   /* ===== 状态 ===== */
@@ -272,6 +275,7 @@
   --text-on-accent: #fff;
   /* 边框 */
   --border-soft: #262f4a;
+  --line-soft: #222c44;
   --border-deep: #3a4670;
   --border-strong: #5b6ca0;
   /* 状态 */

@@ -266,7 +266,8 @@
   .ui-empty__icon,
   .ui-card,
   .ui-skeleton__row,
-  .ui-skeleton__block {
+  .ui-skeleton__block,
+  .seg-item {
     transition: none !important;
     animation: none !important;
   }
@@ -1576,4 +1577,57 @@
 }
 .usercp-nav__logout:hover {
   background: var(--coral-soft);
+}
+
+/* ============ 侧栏卡面（论坛首页右列四块 / 关注流侧栏共用） ============
+   只放「卡」本身：页面专属的排布与列宽留在 forums-home.css、
+   forums-feed.css，免得同一选择器在两个文件里互相覆盖。 */
+.side-card {
+  padding: 12px 14px;
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+}
+.side-card__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.side-empty {
+  margin: 0;
+  padding: 4px 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* ============ 分段筛选药丸（components/ui/filter-links.tsx） ============
+   版块页排序/类型那两组药丸的外观抽出来共用；新页面的筛选一律用它，
+   不再各写一份 rounded-full + 内联色。 */
+.seg-row {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.seg-item {
+  padding: 4px 12px;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 700;
+  transition: color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+.seg-item:hover {
+  color: var(--sky);
+}
+.seg-item--on {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
 }
