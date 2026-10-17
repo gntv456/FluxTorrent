@@ -63,7 +63,10 @@ pub(crate) async fn forum_feed(
         "SELECT * FROM ( \
            SELECT t.id AS topic_id, t.title, t.forum_id, fc.name AS forum_name, u.username, \
                   t.topic_type, t.last_post_at, t.created_at, t.sticky, t.locked, \
-                  (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, \
+                  greatest( \
+                    (SELECT count(*) FROM posts p WHERE p.topic_id = t.id) - 1, \
+                    0 \
+                  ) AS replies, \
                   'forum' AS via \
              FROM follows fl \
              JOIN topics t ON t.forum_id = fl.target_id \
@@ -73,7 +76,8 @@ pub(crate) async fn forum_feed(
            UNION ALL \
            SELECT t.id, t.title, t.forum_id, fc.name, u.username, \
                   t.topic_type, t.last_post_at, t.created_at, t.sticky, t.locked, \
-                  (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id), \
+                  greatest((SELECT count(*) FROM posts p \
+                            WHERE p.topic_id = t.id) - 1, 0), \
                   'user' \
              FROM follows fl \
              JOIN topics t ON t.user_id = fl.target_id \
@@ -83,7 +87,8 @@ pub(crate) async fn forum_feed(
            UNION ALL \
            SELECT t.id, t.title, t.forum_id, fc.name, u.username, \
                   t.topic_type, t.last_post_at, t.created_at, t.sticky, t.locked, \
-                  (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id), \
+                  greatest((SELECT count(*) FROM posts p \
+                            WHERE p.topic_id = t.id) - 1, 0), \
                   'topic' \
              FROM follows fl \
              JOIN topics t ON t.id = fl.target_id \

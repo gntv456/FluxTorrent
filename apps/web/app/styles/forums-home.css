@@ -1,0 +1,291 @@
+/* ============ 论坛首页两翼（样图集 § forum：左列用户卡 / 右列四块） ============
+ *
+ * 三列列宽与断点的唯一居所——pages.css 里旧的 `.pting-forums`
+ * 两列口径已删除。同一选择器跨两个文件设值会踩「后到者赢」的层叠坑
+ * （usermenu.css 从 layout.css 拆出来那次是同一个教训）。
+ *
+ * minmax(0, 1fr)：grid 的隐式 min-width:auto 会让内部不可断元素
+ * （搜索框/长标题）把列撑出视口——总验收 375 横滚的根因，别改回 1fr。
+ */
+.pting-forums {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 250px;
+}
+.fh-left,
+.fh-side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.fh-side {
+  position: sticky;
+  top: 12px;
+}
+
+/* ---------- 左列第一块：用户卡 ---------- */
+.fh-user {
+  padding: 14px;
+  border: 1px solid var(--baozi-line-soft);
+  border-radius: var(--r-md);
+  background: var(--baozi-paper);
+  box-shadow: var(--shadow-card);
+}
+.fh-user__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.fh-user__av {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sky), var(--indigo));
+  color: var(--text-on-accent);
+  font-size: 16px;
+  font-weight: 800;
+}
+.fh-user__av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.fh-user__id {
+  min-width: 0;
+}
+.fh-user__name {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-user__meta {
+  margin-top: 2px;
+  color: var(--sub);
+  font-size: 11.5px;
+}
+.fh-user__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  text-align: center;
+}
+.fh-user__stat b {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+}
+.fh-user__stat span {
+  color: var(--sub);
+  font-size: 10.5px;
+}
+/* 左列「我的」三条链接（关注流三标签的入口） */
+.fh-mine {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fh-mine__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.fh-mine__row:last-child {
+  border-bottom: none;
+}
+.fh-mine__a {
+  color: var(--sky-deep);
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+.fh-mine__a:hover {
+  color: var(--sky);
+}
+.fh-mine__caret {
+  color: var(--text-faint);
+  font-weight: 900;
+}
+/* 游客档：一张只有引导链接的薄卡，不摆 0 值假数据 */
+.fh-user--anon {
+  padding: 12px 14px;
+}
+.fh-user__anon {
+  color: var(--sky-deep);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* ---------- 右列三块数据卡（卡面本身在 ui.css 的 .side-card，两页共用） ---------- */
+.fh-kv {
+  margin: 0;
+}
+.fh-kv__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12.5px;
+}
+.fh-kv__row dt {
+  color: var(--sub);
+}
+.fh-kv__row dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.fh-hot,
+.fh-lr {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fh-hot__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.fh-hot__row:last-child,
+.fh-lr__row:last-child {
+  border-bottom: none;
+}
+.fh-hot__rk {
+  width: 16px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 800;
+}
+.fh-hot__tt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+.fh-hot__tt:hover {
+  color: var(--sky);
+}
+.fh-hot__rc {
+  flex-shrink: 0;
+  color: var(--sub);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.fh-lr__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.fh-lr__who {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+.fh-lr__what {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sub);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-lr__time {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+/* ---------- 右列第四块：新手必读（静态引导，样图里这段本就不走接口） ---------- */
+.fh-guide {
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, var(--sky), var(--indigo));
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-card);
+}
+.fh-guide__t {
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+}
+.fh-guide__d {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  opacity: 0.9;
+}
+.fh-guide__cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--baozi-paper);
+  color: var(--sky-deep);
+  font-size: 12px;
+  font-weight: 800;
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.fh-guide__cta:hover {
+  transform: translateY(-1px);
+}
+
+/* ---------- 断点：右列先落到底部整行，再与左列一起收成一列 ---------- */
+@media (max-width: 1024px) {
+  .pting-forums {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .fh-side {
+    grid-column: 1 / -1;
+    position: static;
+  }
+}
+@media (max-width: 768px) {
+  .pting-forums {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fh-side {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fh-mine__a,
+  .fh-hot__tt,
+  .fh-guide__cta {
+    transition: none;
+  }
+  .fh-guide__cta:hover {
+    transform: none;
+  }
+}

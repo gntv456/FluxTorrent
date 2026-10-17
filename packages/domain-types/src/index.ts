@@ -406,6 +406,21 @@ export interface Topic {
   tags?: TagChipData[];
 }
 
+/** 论坛首页右栏（GET /forums/side）：统计 + 今日热帖 + 最新回复。
+ *  三块都已在后端按 minclassread 过滤，前端不必再判权限。 */
+export interface ForumSide {
+  stats: { topics: number; posts: number; today_topics: number };
+  hot: { id: number; title: string; forum_name: string; replies: number }[];
+  latest_replies: {
+    id: number;
+    topic_id: number;
+    topic_title: string;
+    forum_name: string;
+    username: string | null;
+    created_at: string;
+  }[];
+}
+
 export interface ForumTopics {
   forum_id: number;
   /** 版块名（随列表返回，避免为拿标题再打一次 /forums） */
@@ -417,7 +432,49 @@ export interface ForumTopics {
   sort?: string;
   /** 当前标签筛选（0123）：tag_dict id */
   tag?: number | null;
+  /** 分页信封（2026-10-17）：此前出口写死 LIMIT 50 且无翻页参数，
+   *  超 50 帖的版块第 51 帖起永远打不开。page 1 起、per 与后端常量同源。 */
+  page?: number;
+  per?: number;
+  total?: number;
+  /** 版块规则正文（0392）：NULL/空 = 未设置 ⇒ 版块页不渲染规则条 */
+  forum_rules?: string | null;
   topics: Topic[];
+}
+
+/** 我发的主题（GET /forums/mine?type=topics 的行） */
+export interface MyTopicRow {
+  id: number;
+  title: string;
+  forum_id: number;
+  forum_name: string;
+  created_at: string;
+  last_post_at: string | null;
+  /** 总回复数（楼主帖不计，零帖主题为 0） */
+  replies: number;
+  /** 其中我回的条数 */
+  my_replies: number;
+}
+
+/** 我的回复（GET /forums/mine?type=replies 的行） */
+export interface MyReplyRow {
+  id: number;
+  topic_id: number;
+  topic_title: string;
+  forum_id: number;
+  forum_name: string;
+  created_at: string;
+  /** 正文摘要（80 字，够认是哪一条） */
+  excerpt: string;
+}
+
+/** GET /forums/mine 的信封：items 按 type 是 MyTopicRow 或 MyReplyRow */
+export interface ForumMine {
+  type: "topics" | "replies";
+  page: number;
+  per: number;
+  total: number;
+  items: MyTopicRow[] | MyReplyRow[];
 }
 
 /** 站点运行统计（/stats 需登录；页脚展示用，未登录返回 null） */

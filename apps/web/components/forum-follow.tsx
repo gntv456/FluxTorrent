@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
@@ -29,19 +29,25 @@ export function FollowButton({
   targetId,
   showCount = false,
   className = "",
+  initial,
 }: {
   targetType: TargetType;
   targetId: number;
   showCount?: boolean;
   className?: string;
+  /** 已知态（关注流侧栏：列表本身就来自 /follows/mine，再打一次
+   *  status 是白问——一屏十几行就是十几次往返）。给了就跳过探测。 */
+  initial?: StatusResp;
 }) {
   const { dict } = useI18n();
   const t = dict.forums;
   // null = 未知（未登录 / 请求中），此时不渲染，避免闪一下再消失
-  const [st, setSt] = useState<StatusResp | null>(null);
+  const [st, setSt] = useState<StatusResp | null>(initial ?? null);
   const [busy, setBusy] = useState(false);
+  const seeded = useRef(!!initial);
 
   useEffect(() => {
+    if (seeded.current) return;
     let alive = true;
     api
       .get<StatusResp>(

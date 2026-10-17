@@ -9,12 +9,16 @@ use super::forum_check::{
     current_gates, ensure_category_exists, forum_upsert_check,
 };
 use super::guard::staff;
+use crate::repo::forum as repo_forum;
 
 #[derive(Deserialize)]
 pub(crate) struct ForumUpsertReq {
     pub(crate) name: String,
     #[serde(default)]
     pub(crate) descr: Option<String>,
+    /// 版块规则正文（0392）：缺省=不改，空串=清空（见 repo::forum）
+    #[serde(default)]
+    pub(crate) rules: Option<String>,
     #[serde(default)]
     pub(crate) minclassread: Option<i32>,
     #[serde(default)]
@@ -52,22 +56,21 @@ async fn forum_admin_create(
     .await?;
     let name = forum_upsert_check(&body)?;
     ensure_category_exists(&state.repo.db, body.category_id).await?;
-    let id: i64 = sqlx::query_scalar(
-        "INSERT INTO forums (name, descr, minclassread, minclasswrite, \
-            minclasscreate, min_class, protected, category_id, sort) \
-         VALUES ($1, $2, $3, $4, $5, $3, $6, $7, $8) RETURNING id",
+    let id = repo_forum::create_forum(
+        &state.repo,
+        repo_forum::ForumCreate {
+            name: &name,
+            descr: body.descr.as_deref(),
+            rules: body.rules.as_deref().map(str::trim),
+            mr: body.minclassread.unwrap_or(0),
+            mw: body.minclasswrite.unwrap_or(0),
+            mc: body.minclasscreate.unwrap_or(0),
+            protected: body.protected.unwrap_or(false),
+            category_id: body.category_id,
+            sort: body.sort.unwrap_or(0),
+        },
     )
-    .bind(&name)
-    .bind(&body.descr)
-    .bind(body.minclassread.unwrap_or(0))
-    .bind(body.minclasswrite.unwrap_or(0))
-    .bind(body.minclasscreate.unwrap_or(0))
-    .bind(body.protected.unwrap_or(false))
-    .bind(body.category_id)
-    .bind(body.sort.unwrap_or(0))
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .await?;
     state
         .repo
         .audit(Some(auth.id), "forum.create", Some(id))
@@ -128,26 +131,23 @@ async fn forum_admin_update(
             return Err(DomainError::VersionConflict(vec![fid.to_string()]));
         }
     }
-    let n = sqlx::query(
-        "UPDATE forums SET name = $1, descr = $2, \
-            minclassread = $3, minclasswrite = $4, minclasscreate = $5, \
-            min_class = $3, protected = $6, category_id = $7, sort = $8, \
-            mtime = now() \
-         WHERE id = $9",
+    let n = repo_forum::update_forum(
+        &state.repo,
+        repo_forum::ForumUpdate {
+            name: &name,
+            descr: body.descr.as_deref(),
+            // 缺省 = 不动这一列；空串 = 版主清空（repo 里分别走 NULL 与 ""）
+            rules: body.rules.as_deref().map(str::trim),
+            mr,
+            mw,
+            mc,
+            protected: body.protected.unwrap_or(false),
+            category_id: body.category_id,
+            sort: body.sort.unwrap_or(0),
+            fid,
+        },
     )
-    .bind(&name)
-    .bind(&body.descr)
-    .bind(mr)
-    .bind(mw)
-    .bind(mc)
-    .bind(body.protected.unwrap_or(false))
-    .bind(body.category_id)
-    .bind(body.sort.unwrap_or(0))
-    .bind(fid)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
+    .await?;
     if n == 0 {
         return Err(DomainError::NotFound(fid));
     }

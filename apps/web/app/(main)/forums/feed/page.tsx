@@ -1,43 +1,65 @@
 import Link from "next/link";
 import { getFeed, getMyFollows } from "@/lib/data";
-import { TypeBadge } from "@/components/forum-bits";
-import { Icon } from "@/components/icons";
+import { getMyForumActivity } from "@/lib/data-forum";
 import { getDict } from "@/i18n/server";
 import { requireModule } from "@/components/module-gate";
-import { dateLocale } from "@/i18n/config";
 import { PageHeader } from "@/components/ui/page-header";
+import { TabPanel, Tabs } from "@/components/ui/tabs";
+import { FeedLatestPanel } from "./_parts/latest-panel";
+import { FollowSide } from "./_parts/follow-side";
+import { MyRepliesPanel, MyTopicsPanel } from "./_parts/mine-panels";
+import "@/app/styles/forums.css";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 关注流（0121）：我关注的版块/作者的新主题 + 我关注主题的最新回复，
- * 按最后活动时间倒序。`via` 标出这条是靠哪种关注命中的，便于用户理解流里为什么有它。
- * 分页（0123）：before 游标（末行 last_post_at），SSR 链接翻页与主题页同范式。
+ * 关注流（0121）+ 我参与的（2026-10-17 补齐样图 § forum-feed）。
+ *
+ * 三个标签都是 SSR 链接（`?tab=`），不引入客户端状态：
+ *   latest  = 我关注的版块/作者的新主题 + 我关注主题的最新回复（游标翻页）
+ *   mine    = 我发的主题（页码翻页）
+ *   replies = 我发的回复（页码翻页）
+ * 侧栏是「我关注的版块 / 作者」两张可取关的列表——原来只有一行计数，
+ * 想取消关注得先自己猜去哪一页上点。
  */
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ before?: string }>;
+  searchParams: Promise<{
+    before?: string;
+    tab?: string;
+    page?: string;
+  }>;
 }) {
-  const { before } = await searchParams;
+  const { before, tab: tabRaw, page: pageRaw } = await searchParams;
   const gate = await requireModule("forums");
   if (gate) return gate;
   const { dict, locale } = await getDict();
   const t = dict.forums;
-  const [feed, mine] = await Promise.all([
-    getFeed(50, before || undefined),
+  const t3 = dict.forums3;
+  // 标签白名单：爬虫乱造的值回落「关注动态」，不拿 404 打断浏览
+  const tab = tabRaw === "mine" || tabRaw === "replies" ? tabRaw : "latest";
+  const pageNum = Number(pageRaw);
+  const page =
+    Number.isFinite(pageNum) && pageNum > 1 ? Math.floor(pageNum) : 1;
+  // 三条腿各自失败各自出声（Promise.all 不带崩整页）：
+  // getFeed / getMyForumActivity 失败回 null，getMyFollows 内部已回落空
+  const [feed, mine, activity] = await Promise.all([
+    tab === "latest"
+      ? getFeed(50, before || undefined)
+      : Promise.resolve(null),
     getMyFollows(),
+    tab === "latest"
+      ? Promise.resolve(null)
+      : getMyForumActivity(tab === "mine" ? "topics" : "replies", page),
   ]);
-  const items = feed.items;
-  const viaLabel = (v: string) =>
-    v === "forum" ? t.viaForum : v === "user" ? t.viaUser : t.viaTopic;
-  const viaCount = mine.forums.length + mine.users.length + mine.topics.length;
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         eyebrow="Following"
         title={t.feedTitle}
+        sub={t3.feedDesc}
         aside={
           <Link href="/forums" className="text-sky hover:underline">
             {t.backToForums}
@@ -45,123 +67,47 @@ export default async function FeedPage({
         }
       />
 
-      {/* 我的关注概况：告诉用户流是从哪来的，也给出取消入口（取消在各自页面上的关注按钮） */}
-      {viaCount > 0 && (
-        <div className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3 text-xs text-sub">
-          <span className="font-bold text-ink">{t.myFollows}</span>
-          {mine.forums.length > 0 && (
-            <span className="ml-2">
-              {t.viaForum} ×{mine.forums.length}
-            </span>
+      <div className="ff-grid">
+        <div className="ff-main">
+          <Tabs
+            idPrefix="feed"
+            label={t3.tabAria}
+            value={tab}
+            items={[
+              { key: "latest", label: t3.tabFeed },
+              { key: "mine", label: t3.tabMyTopics },
+              { key: "replies", label: t3.tabMyReplies },
+            ]}
+            hrefs={[
+              "/forums/feed",
+              "/forums/feed?tab=mine",
+              "/forums/feed?tab=replies",
+            ]}
+          />
+          {tab === "latest" && (
+            <TabPanel idPrefix="feed" tabKey="latest">
+              <FeedLatestPanel
+                feed={feed}
+                before={before}
+                dict={dict}
+                locale={locale}
+              />
+            </TabPanel>
           )}
-          {mine.users.length > 0 && (
-            <span className="ml-2">
-              {t.viaUser} ×{mine.users.length}
-            </span>
+          {tab === "mine" && (
+            <TabPanel idPrefix="feed" tabKey="mine">
+              <MyTopicsPanel data={activity} dict={dict} locale={locale} />
+            </TabPanel>
           )}
-          {mine.topics.length > 0 && (
-            <span className="ml-2">
-              {t.viaTopic} ×{mine.topics.length}
-            </span>
+          {tab === "replies" && (
+            <TabPanel idPrefix="feed" tabKey="replies">
+              <MyRepliesPanel data={activity} dict={dict} locale={locale} />
+            </TabPanel>
           )}
         </div>
-      )}
 
-      {items.length === 0 ? (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-6 text-center text-sm text-sub">
-          {t.feedEmpty}
-        </p>
-      ) : (
-        <table className="nexus-table">
-          <thead>
-            <tr>
-              <td className="colhead">{t.topicTitleFallback}</td>
-              <td className="colhead hidden w-28 sm:table-cell">{t.via}</td>
-              <td className="colhead w-28">{t.author}</td>
-              <td className="colhead w-28 text-right">{t.lastPost}</td>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it) => (
-              <tr key={it.topic_id}>
-                <td>
-                  {it.sticky && (
-                    <Icon
-                      name="pin"
-                      size={13}
-                      className="mr-1 inline align-[-2px] text-coral"
-                    />
-                  )}
-                  {it.locked && (
-                    <Icon
-                      name="lock"
-                      size={13}
-                      className="mr-1 inline align-[-2px]"
-                    />
-                  )}
-                  <TypeBadge
-                    type={it.topic_type}
-                    label={
-                      it.topic_type
-                        ? (dict.forums.types as Record<string, string>)[
-                            it.topic_type
-                          ]
-                        : undefined
-                    }
-                    className="mr-1 align-middle"
-                  />
-                  <Link
-                    href={`/forums/topic/${it.topic_id}`}
-                    className="font-bold text-ink hover:text-sky"
-                  >
-                    {it.title}
-                  </Link>
-                  {it.forum_name && (
-                    <Link
-                      href={`/forums/${it.forum_id}`}
-                      className="ml-2 text-xs text-sub hover:text-sky"
-                    >
-                      » {it.forum_name}
-                    </Link>
-                  )}
-                </td>
-                <td className="hidden text-xs text-sub sm:table-cell">
-                  {viaLabel(it.via)}
-                </td>
-                <td className="text-sub">{it.username ?? "—"}</td>
-                <td className="num text-right text-sub">
-                  {it.last_post_at
-                    ? new Date(it.last_post_at).toLocaleDateString(
-                        dateLocale(locale),
-                      )
-                    : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {/* 游标翻页（0123）：有下一页才渲染；返回链接在翻页后出现 */}
-      {feed.next_before && (
-        <div className="flex items-center justify-between">
-          {before ? (
-            <Link
-              href="/forums/feed"
-              className="text-sm text-sub hover:text-sky"
-            >
-              ← {t.feedFirst}
-            </Link>
-          ) : (
-            <span />
-          )}
-          <Link
-            href={`/forums/feed?before=${encodeURIComponent(feed.next_before)}`}
-            className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-sm text-sky hover:border-sky"
-          >
-            {t.feedMore} →
-          </Link>
-        </div>
-      )}
+        <FollowSide mine={mine} dict={dict} />
+      </div>
     </div>
   );
 }

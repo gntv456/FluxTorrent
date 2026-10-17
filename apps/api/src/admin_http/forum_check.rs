@@ -40,6 +40,16 @@ pub fn forum_upsert_check(body: &ForumUpsertReq) -> DomainResult<String> {
             "三档门槛需满足 读 ≤ 回 ≤ 发".into(),
         ));
     }
+    // 版块规则（0392）：多行正文，刻意**不做** norm_name 的空白折叠——
+    // 换行就是规则条的排版本体。只判上限：它会整段渲染在版块页顶部，
+    // 无限长能把那一屏撑成一篇帖。
+    if let Some(r) = &body.rules {
+        if r.chars().count() > 1000 {
+            return Err(DomainError::Validation(
+                "版块规则最长 1000 字".into(),
+            ));
+        }
+    }
     Ok(name)
 }
 

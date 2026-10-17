@@ -1,15 +1,29 @@
 import Link from "next/link";
-import { getForumIndex } from "@/lib/data";
+import {
+  getForumIndex,
+  getForumSide,
+  getForumUserCard,
+} from "@/lib/data";
+import { hasSessionToken } from "@/lib/session-token";
 import { getDict } from "@/i18n/server";
 import { ForumSearch } from "@/components/forum-search";
 import { TopicComposer } from "@/components/forum-composer";
+import {
+  ForumMineLinks,
+  ForumSideColumn,
+  ForumUserCardBlock,
+} from "@/components/forum-home-aside";
 import { requireModule } from "@/components/module-gate";
 import { EmptyState } from "@/components/ui/empty-state";
+/* 页面专属样式走路由级 import（globals.css 尾注的纪律）：只有论坛首页
+   需要三列与两翼的表面，不往全站 @import 链里堆。 */
+import "@/app/styles/forums-home.css";
 
 export const dynamic = "force-dynamic";
 
-/** 论坛首页：按分区分组（分区是独立实体，**含空分区**）。
- *  每张卡片：版块名/描述/话题数/帖子数 + 最新话题标题预览。
+/** 论坛首页：三列（样图集 § forum）——左列用户卡 + 分区导航、中列版块
+ *  卡片流、右列统计/热帖/最新回复/新手必读。
+ *  每张版块卡片：版块名/描述/话题数/帖子数 + 最新话题标题预览。
  *  空分区渲染占位卡而非整段消失——旧版分组由版块列表反推，
  *  新建的分区（还没有版块）在前台会直接不见。 */
 export default async function ForumsPage() {
@@ -17,8 +31,16 @@ export default async function ForumsPage() {
   const gate = await requireModule("forums");
   if (gate) return gate;
 
-  const { dict } = await getDict();
-  const { categories, forums } = await getForumIndex();
+  const { dict, currency } = await getDict();
+  // 会话先判、后取数：/forums/side 与 /me 都要凭证，游客打了只会被
+  // 包成 null，于是「接口挂了」和「你还没登录」在界面上长得一样。
+  const signed = await hasSessionToken();
+  const [{ categories, forums }, me, side] = await Promise.all([
+    getForumIndex(),
+    signed ? getForumUserCard() : Promise.resolve(null),
+    signed ? getForumSide() : Promise.resolve(null),
+  ]);
+  const sideState = !signed ? "guest" : side ? "ok" : "fail";
 
   // 分区是分组骨架：没有版块的分区照样成组（下面渲染空态占位）
   const groups = categories.map((c) => ({
@@ -44,20 +66,24 @@ export default async function ForumsPage() {
 
   return (
     <div className="pting-forums">
-      {/* 左侧分区栏（按分区导航，锚点跳转） */}
-      <aside className="pting-sidenav">
-        <h2>{dict.forums2.allNodes}</h2>
-        <nav aria-label={dict.forums.title}>
-          {groups.map((g) => (
-            <a key={g.key} href={`#${g.key}`}>
-              <span className="pting-sidenav__dot" aria-hidden="true">
-                {g.name.slice(0, 1)}
-              </span>
-              {g.name}
-            </a>
-          ))}
-        </nav>
-      </aside>
+      {/* 左列：用户卡（样图第一块）+ 分区导航（锚点跳转） */}
+      <div className="fh-left">
+        <ForumUserCardBlock me={me} dict={dict} currency={currency} />
+        <aside className="pting-sidenav">
+          <h2>{dict.forums2.allNodes}</h2>
+          <nav aria-label={dict.forums.title}>
+            {groups.map((g) => (
+              <a key={g.key} href={`#${g.key}`}>
+                <span className="pting-sidenav__dot" aria-hidden="true">
+                  {g.name.slice(0, 1)}
+                </span>
+                {g.name}
+              </a>
+            ))}
+          </nav>
+        </aside>
+        <ForumMineLinks dict={dict} />
+      </div>
 
       {/* 版块卡片流（按分区分组） */}
       <div className="pting-board">
@@ -169,6 +195,10 @@ export default async function ForumsPage() {
           />
         )}
       </div>
+
+      {/* 右列：论坛统计 / 今日热帖 / 最新回复 / 新手必读。
+          游客与取档失败各自出声，不拿空列表冒充「今天没人发帖」。 */}
+      <ForumSideColumn side={side} state={sideState} dict={dict} />
     </div>
   );
 }

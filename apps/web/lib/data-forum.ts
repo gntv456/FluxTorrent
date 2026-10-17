@@ -7,6 +7,8 @@ import type { TagChipData } from "@/components/forum-bits";
 import type {
   Forum,
   ForumCategory,
+  ForumMine,
+  ForumSide,
   ForumTopics,
   SiteStats,
   TopicDetail,
@@ -50,6 +52,77 @@ export async function getBoards(): Promise<BoardBrief[]> {
   }
 }
 
+/** 论坛首页右栏聚合：统计 / 今日热帖 / 最新回复。
+ *  取档失败回 null——右栏整列不渲染，不拿空数组演成「今天没人发帖」。 */
+export async function getForumSide(): Promise<ForumSide | null> {
+  try {
+    return await api.get<ForumSide>("/api/v1/forums/side");
+  } catch {
+    return null;
+  }
+}
+
+/** 论坛首页左列用户卡（样图集 § forum 左列第一块）的视图模型。 */
+export interface ForumUserCard {
+  username: string;
+  class_name: string | null;
+  avatar_url: string | null;
+  uploaded: number;
+  downloaded: number;
+  seeding: number;
+  /** null = 余额取档失败（界面显 "—"，不演成 0） */
+  spark: number | null;
+}
+
+/** 用户卡取数：`/me` 不回魔力（余额在 `/me/spark`，与商店余额条同口径），
+ *  故两趟；魔力那条失败只降级为 `spark: null`，不带崩整张卡。
+ *  未登录 / `/me` 失败回 null——用户卡整块不渲染，而不是演成
+ *  「0.00 分享率 · 0 做种」的游客假数据。 */
+export async function getForumUserCard(): Promise<ForumUserCard | null> {
+  try {
+    const [me, sparkRow] = await Promise.all([
+      api.get<{
+        username: string;
+        class_name?: string | null;
+        avatar_url?: string | null;
+        uploaded: number;
+        downloaded: number;
+        seeding: number;
+      }>("/api/v1/me"),
+      api
+        .get<{ balance?: number }>("/api/v1/me/spark")
+        .catch(() => ({ balance: undefined })),
+    ]);
+    return {
+      username: me.username,
+      class_name: me.class_name ?? null,
+      avatar_url: me.avatar_url ?? null,
+      uploaded: me.uploaded,
+      downloaded: me.downloaded,
+      seeding: me.seeding,
+      spark:
+        typeof sparkRow?.balance === "number" ? sparkRow.balance : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 我参与的论坛活动（关注流「我参与的 / 我的回复」两个标签的数据源）。
+ *  取档失败回 null——界面按「没取到」说，不演成「你还没发过帖」。 */
+export async function getMyForumActivity(
+  type: "topics" | "replies",
+  page: number,
+): Promise<ForumMine | null> {
+  try {
+    return await api.get<ForumMine>(
+      `/api/v1/forums/mine?type=${type}&page=${page}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function getSiteStats(): Promise<SiteStats | null> {
   try {
     return await api.get<SiteStats>("/api/v1/stats");
@@ -62,11 +135,15 @@ export async function getTopics(
   forumId: number,
   sort?: string,
   tag?: number,
+  page?: number,
+  type?: string,
 ): Promise<ForumTopics | null> {
   try {
     const qs = new URLSearchParams();
     if (sort) qs.set("sort", sort);
     if (tag) qs.set("tag", String(tag));
+    if (type) qs.set("type", type);
+    if (page && page > 1) qs.set("page", String(page));
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return await api.get<ForumTopics>(
       `/api/v1/forums/${forumId}/topics${suffix}`,
@@ -94,7 +171,7 @@ export async function getPosts(
 export async function getFeed(
   limit = 50,
   before?: string,
-): Promise<{ items: FeedItem[]; next_before: string | null }> {
+): Promise<{ items: FeedItem[]; next_before: string | null } | null> {
   try {
     const qs = before
       ? `?limit=${limit}&before=${encodeURIComponent(before)}`
@@ -105,7 +182,8 @@ export async function getFeed(
     }>(`/api/v1/forums/feed${qs}`);
     return { items: r?.items ?? [], next_before: r?.next_before ?? null };
   } catch {
-    return { items: [], next_before: null };
+    // 回 null 而不是空数组：关注流取档失败时，「你关注的没动静」是句假话
+    return null;
   }
 }
 
