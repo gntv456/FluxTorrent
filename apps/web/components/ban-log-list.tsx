@@ -24,10 +24,11 @@ import { INPUT_GROW, BTN_SM_BOLD } from "@/lib/ui-classes";
  *  用户名由后端打码后下发，这一层拿不到原名。 */
 
 interface Row {
-  uid: number;
   name_masked: string;
+  /** 1=禁言 2=封号 */
   status: number;
-  reason: string;
+  /** 处置类别码：cheat | mute | admin（管理组备注原文不公示，见仓储层口径） */
+  cause: string;
   acted_at: string | null;
   warned_until: string | null;
   cheat_banned_until: string | null;
@@ -184,13 +185,13 @@ export function BanLogList() {
               <tr>
                 <td className="colhead">{t.colUser}</td>
                 <td className="colhead w-20">{t.colKind}</td>
-                <td className="colhead">{t.colReason}</td>
+                <td className="colhead w-28">{t.colCause}</td>
                 <td className="colhead w-36">{t.colDate}</td>
                 <td className="colhead w-24">{t.colTerm}</td>
                 <td className="colhead w-16 text-right">{t.colAction}</td>
               </tr>
-              {rows.map((r) => (
-                <tr key={r.uid}>
+              {rows.map((r, i) => (
+                <tr key={`${r.name_masked}-${i}`}>
                   <td className="max-w-[200px] truncate font-bold">
                     {/* 打码名字不给链接：/users/{uid} 会把原名带回去 */}
                     <span title={t.whyMasked}>{r.name_masked}</span>
@@ -198,8 +199,8 @@ export function BanLogList() {
                   <td className="text-xs">
                     {r.status === 2 ? t.banned : t.muted}
                   </td>
-                  <td className="max-w-[300px] text-sm">
-                    {r.reason || <span className="text-sub">{t.noReason}</span>}
+                  <td className="text-sm">
+                    {causeLabel(t, r.cause)}
                   </td>
                   <td className="text-xs text-sub">
                     {r.acted_at
@@ -237,4 +238,16 @@ export function BanLogList() {
       )}
     </section>
   );
+}
+
+/** 类别码 → 人话。未知码原样显示（后端加了新码时这里会立刻看见，
+ *  而不是静默画成「管理组处置」把新种类糊掉）。 */
+function causeLabel(
+  t: Record<string, string>,
+  cause: string,
+): string {
+  if (cause === "cheat") return t.causeCheat;
+  if (cause === "mute") return t.causeMute;
+  if (cause === "admin") return t.causeAdmin;
+  return cause;
 }
