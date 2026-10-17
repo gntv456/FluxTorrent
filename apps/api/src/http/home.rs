@@ -188,9 +188,14 @@ async fn home_shared_fresh(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 友情链接
+    // 友情链接：只公示**已通过审核**的那批。friend_links.status 有三态
+    // （pending/active/hidden，0028 迁移带的 CHECK），而这条 SQL 原先不带
+    // WHERE —— 会员刚提交的申请（POST /links/apply 写死 status='pending'）
+    // 会在管理组看过之前就出现在首页对外展示，等于替站方把没审过的站点
+    // 挂了出去。
     let links: Vec<(String, String, Option<String>)> = sqlx::query_as(
-        "SELECT name, url, title FROM friend_links ORDER BY sort",
+        "SELECT name, url, title FROM friend_links \
+         WHERE status = 'active' ORDER BY sort",
     )
     .fetch_all(db)
     .await

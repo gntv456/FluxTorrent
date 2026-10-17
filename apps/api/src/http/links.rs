@@ -169,3 +169,33 @@ pub async fn link_admin_list(
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
+
+/// 已收录站点（成员可见的公示面，样图 § links 右栏「已收录站点」）。
+///
+/// 三条口径：
+/// 1. 只出 `status='active'` —— 申请（pending）与下架（hidden）都不外泄；
+/// 2. 列名**只取 name/url/title**：`LinkRow` 那套带 admin_name/email/reason，
+///    那是提交给管理组的联系方式，不能跟着公示面一起出去；
+/// 3. 免鉴权（首页那块聚合同样是匿名可见的），但仍给登录态用得到——
+///    与 GET /home 内嵌版同源，避免两处口径漂移。
+#[derive(sqlx::FromRow, serde::Serialize)]
+struct PublicLink {
+    name: String,
+    url: String,
+    #[sqlx(default)]
+    title: Option<String>,
+}
+
+#[get("/links")]
+pub async fn link_public_list(
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<impl Responder> {
+    let rows: Vec<PublicLink> = sqlx::query_as(
+        "SELECT name, url, title FROM friend_links \
+         WHERE status = 'active' ORDER BY sort, id",
+    )
+    .fetch_all(&state.repo.read_db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(rows))
+}

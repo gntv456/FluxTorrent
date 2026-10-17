@@ -179,7 +179,14 @@ export default async function TopPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader eyebrow="Top Charts" title={t.title} />
+      <PageHeader
+        eyebrow="Top Charts"
+        title={t.title}
+        sub={t.sub}
+        aside={
+          b ? <span className="sticker">{t.badgeSix}</span> : undefined
+        }
+      />
       {err !== null ? (
         <ErrorPanel
           error={err}

@@ -4,6 +4,7 @@ import { cache } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { PANEL_BRAND } from "@/lib/ui-classes";
+import { PageHeader } from "@/components/ui/page-header";
 
 /**
  * 自定义页面（0187 一审 R4.4）：站长在后台造的任意内容页。
@@ -58,15 +59,24 @@ export default async function CustomPageView({
   if (!page) notFound();
   return (
     <div className="flex flex-col gap-4">
+      {/* 页头走 PageHeader：样图这页是「自定义页面 / <标题>」+ 右侧
+          最后更新徽章。正文面板里不再重复标题（同一层只留一个 h1，
+          评审 §「区块标题层级唯一」）。 */}
+      <PageHeader
+        eyebrow={dict.page.eyebrow}
+        title={page.title}
+        sub={dict.page.origin}
+        aside={
+          <span className="sticker">
+            {dict.page.updatedAt} {page.updated_at.slice(0, 10)}
+          </span>
+        }
+      />
       <div className={PANEL_BRAND}>
-        <h1 className="font-display text-2xl">{page.title}</h1>
-        <div className="mt-1 text-xs text-sub">
-          {dict.page.updatedAt}: {page.updated_at.slice(0, 10)}
-        </div>
         {/* 后端已 ammonia 消毒（剥 script/事件属性/js 协议），管理富文本注水；
          *  M6.3：长文排版——38em 行宽 + table/pre/img 移动兜底（.longform） */}
         <div
-          className="home-news-modal__body longform mt-4"
+          className="home-news-modal__body longform"
           dangerouslySetInnerHTML={{ __html: page.body }}
         />
       </div>

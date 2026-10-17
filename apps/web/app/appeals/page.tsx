@@ -6,19 +6,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
-import { dateLocale } from "@/i18n/config";
 import { CheatAppealBox } from "@/components/cheat-appeal-box";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  AppealRows,
+  type AppealRow,
+} from "@/components/appeal-records";
 
-interface AppealRow {
-  id: number;
-  ref_id: number | null;
-  kind: string;
-  body: string;
-  status: string;
-  result_note: string | null;
-  created_at: string;
-}
 
 interface Captcha {
   captcha_id: string;
@@ -106,10 +100,16 @@ export default function AppealsPage() {
   return (
     <main
       id="main-content"
-      className="mx-auto flex max-w-lg flex-col gap-4"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4"
     >
-      <h1 className="font-display text-2xl">{dict.appeals.title}</h1>
-      <p className="-mt-2 text-sm text-sub">{dict.appeals.subtitle}</p>
+      <PageHeader
+        eyebrow={dict.appeals.eyebrow}
+        title={dict.appeals.title}
+        sub={dict.appeals.subtitle}
+        aside={
+          <span className="sticker">{dict.appeals.sla}</span>
+        }
+      />
 
       <form
         onSubmit={submit}
@@ -216,47 +216,7 @@ export default function AppealsPage() {
       {/* 作弊处置申诉（0369 M3）：一次性令牌 + 我的作弊申诉 */}
       <CheatAppealBox />
 
-      {!guest ? (
-        <section className="flex flex-col gap-2 rounded-[var(--r-lg)] border border-line bg-[var(--surface-card)] p-4 shadow-[var(--shadow-card)]">
-          <h2 className="font-display text-lg">{dict.appeals.myRecords}</h2>
-          {rows === null && (
-            <p className="py-2 text-sm text-sub">{dict.appeals.loading}</p>
-          )}
-          {rows?.length === 0 && (
-            <p className="py-2 text-sm text-sub">{dict.appeals.empty}</p>
-          )}
-          {rows && rows.length > 0 && (
-            <ul className="flex flex-col divide-y divide-line">
-              {rows.map((r) => (
-                <li key={r.id} className="py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-bold">
-                      {kinds.find(([k]) => k === r.kind)?.[1] ?? r.kind}
-                    </span>
-                    <Badge
-                      tone={r.status === "open" ? "warn" : "success"}
-                      variant={r.status === "open" ? "soft" : "solid"}
-                    >
-                      {r.status === "open"
-                        ? dict.appeals.statusOpen
-                        : dict.appeals.statusDone}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm whitespace-pre-wrap">{r.body}</p>
-                  {r.result_note && (
-                    <p className="mt-1 text-sm text-sub">
-                      {dict.appeals.resultNote}: {r.result_note}
-                    </p>
-                  )}
-                  <p className="mt-1 text-[11px] text-sub">
-                    {new Date(r.created_at).toLocaleString(dateLocale(locale))}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ) : null}
+      {!guest && <AppealRows rows={rows} kinds={kinds} />}
 
       <p className="text-sm text-sub">
         <Link href="/login" className="font-bold text-sky">
