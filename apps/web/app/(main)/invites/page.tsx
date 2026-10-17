@@ -2,6 +2,7 @@ import { getDict } from "@/i18n/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { InviteManager } from "@/components/invite-manager";
 import { requireModule } from "@/components/module-gate";
+import { getSiteProfile } from "@/lib/site-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function InvitesPage() {
   if (gate) return gate;
 
   const { dict } = await getDict();
+  const profile = await getSiteProfile();
   return (
     <div className="flex flex-col gap-4">
       {/* 2026-10-17 对齐样图集 § tplInvite：原先这里是裸 h1 + span，改成
@@ -23,6 +25,7 @@ export default async function InvitesPage() {
         eyebrow="Invites"
         title={dict.invites.title}
         sub={dict.invites.subtitle}
+        aside={<span className="sticker">{profile.brand}</span>}
       />
       <InviteManager />
     </div>

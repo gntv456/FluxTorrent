@@ -27,6 +27,7 @@ export function Pager({
   pages,
   total,
   onStep,
+  hrefs,
   layout = "split",
   posLabel,
 }: {
@@ -36,7 +37,12 @@ export function Pager({
   pages: number;
   /** 总条数（split 档左上角「共 N 条」）；不传则留空 */
   total?: number;
-  onStep: (page: number) => void;
+  /** 交互档：客户端组件里翻页用回调 */
+  onStep?: (page: number) => void;
+  /** 链接档（2026-10-17 补）：RSC 页面传不了函数，改传每页的 URL
+   *  （下标 = 页码-1）。给了 hrefs 就渲染 <a>，否则渲染 <button>。
+   *  一个原语同时服务两种页面，避免服务端页各写一份翻页条。 */
+  hrefs?: string[];
   /** split=左「共 N 条」右导航（后台表格默认）；compact=整体右对齐、不显总数 */
   layout?: "split" | "compact";
   /** 页码文案覆盖（默认 dict.common.pageX「第 N 页」）。各 admin 段若有
@@ -58,23 +64,49 @@ export function Pager({
         </span>
       )}
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={() => onStep(page - 1)}
-          className={BTN_SM_GHOST}
-        >
-          {c.prevPage}
-        </button>
+        {hrefs ? (
+          <a
+            href={page <= 1 ? undefined : hrefs[page - 2]}
+            aria-disabled={page <= 1 || undefined}
+            className={
+              BTN_SM_GHOST +
+              (page <= 1 ? " pointer-events-none opacity-50" : "")
+            }
+          >
+            {c.prevPage}
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => onStep?.(page - 1)}
+            className={BTN_SM_GHOST}
+          >
+            {c.prevPage}
+          </button>
+        )}
         <span>{posLabel ?? fmt(c.pageX, { n: page })}</span>
-        <button
-          type="button"
-          disabled={page >= pages}
-          onClick={() => onStep(page + 1)}
-          className={BTN_SM_GHOST}
-        >
-          {c.nextPage}
-        </button>
+        {hrefs ? (
+          <a
+            href={page >= pages ? undefined : hrefs[page]}
+            aria-disabled={page >= pages || undefined}
+            className={
+              BTN_SM_GHOST +
+              (page >= pages ? " pointer-events-none opacity-50" : "")
+            }
+          >
+            {c.nextPage}
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled={page >= pages}
+            onClick={() => onStep?.(page + 1)}
+            className={BTN_SM_GHOST}
+          >
+            {c.nextPage}
+          </button>
+        )}
       </div>
     </div>
   );

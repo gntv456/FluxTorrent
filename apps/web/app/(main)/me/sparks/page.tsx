@@ -3,16 +3,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { SPARK_KIND_LABELS } from "@/lib/spark-kind-labels";
+import { PageHeader } from "@/components/ui/page-header";
+import { FilterLinks } from "@/components/ui/filter-links";
 import { Pager } from "@/components/ui/pager";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { INPUT_CARD } from "@/lib/ui-classes";
 
-/** C5 用户侧「我的魔力明细」页（0226，触点 #11）：
- *  消费 GET /me/spark/ledger 分页信封（2026-10-16 起：此前只有 limit 且
- *  写死 50 条，重度用户看不到更早的流水）。
- *  kind 人话映射与后台用户详情 SparkPanel 共享（lib/spark-kind-labels）。 */
-
-/** 与后端 per 固定值一致（50/页） */
-const PER = 50;
+/** C5 用户侧「火花流水」页（0226，触点 #11）：
+ *  消费 GET /me/spark/ledger 的分页信封（2026-10-17 起带 kind/dir 筛选）。
+ *  kind 的人话映射与后台 SparkPanel 共享（lib/spark-kind-labels）。
+ *
+ *  2026-10-17 一并做的三件事：整页文案从硬编码中文收进 `dict.ledger`
+ *  （此前 `void dict;` 把字典取来又丢掉）；补上样图那三档筛选与摘要列；
+ *  取档失败不再演成「暂无流水」。 */
 
 interface LedgerEnvelope {
   items: LedgerRow[];
@@ -24,86 +30,178 @@ interface LedgerEnvelope {
 interface LedgerRow {
   amount: number;
   kind: string;
-  balance_after: number;
+  balance_after: number | null;
   created_at: string;
+  item_name?: string | null;
+  ref_type?: string | null;
+  ref_id?: number | null;
 }
 
 export default function MySparksPage() {
-  const { dict } = useI18n();
-  void dict;
-  const [rows, setRows] = useState<LedgerRow[] | null>(null);
-  const [total, setTotal] = useState(0);
+  const { dict, locale, currency } = useI18n();
+  const t = dict.ledger;
+  const [data, setData] = useState<LedgerEnvelope | null>(null);
+  const [failed, setFailed] = useState(false);
   const [page, setPage] = useState(1);
+  const [dir, setDir] = useState("");
+  const [kind, setKind] = useState("");
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    api
+      .get<{ balance: number }>("/api/v1/me/spark")
+      .then((d) => setBalance(d.balance))
+      .catch(() => setBalance(null));
+  }, []);
 
   const load = useCallback(() => {
+    const sp = new URLSearchParams({ page: String(page) });
+    if (dir) sp.set("dir", dir);
+    if (kind) sp.set("kind", kind);
+    setData(null);
     api
-      .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?page=${page}`)
+      .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?${sp.toString()}`)
       .then((d) => {
-        setRows(d.items);
-        setTotal(d.total);
+        setData(d);
+        setFailed(false);
       })
-      .catch(() => setRows([]));
-  }, [page]);
+      .catch(() => setFailed(true));
+  }, [page, dir, kind]);
   useEffect(load, [load]);
 
-  const pages = Math.ceil(total / PER);
+  const per = data?.per ?? 50;
+  const pages = Math.max(1, Math.ceil((data?.total ?? 0) / per));
+  const rows = data?.items ?? [];
+  const kindOptions = Object.entries(SPARK_KIND_LABELS).sort((a, b) =>
+    a[1].localeCompare(b[1], dateLocale(locale)),
+  );
+  const summary = (r: LedgerRow) =>
+    r.item_name ??
+    (r.ref_type ? `${r.ref_type}#${r.ref_id ?? 0}` : t.noSummary);
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="font-display text-xl">我的魔力明细</h1>
-      <p className="mt-1 text-xs text-sub">
-        共 {total} 条收支（数据同账本流水，结算口径以各系统为准）。
-      </p>
-      <div className="baozi-panel mt-4 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs text-sub">
-              <th className="px-3 py-2">时间</th>
-              <th className="px-3 py-2">类型</th>
-              <th className="px-3 py-2 text-right">变动</th>
-              <th className="px-3 py-2 text-right">余额</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(rows ?? []).length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-sub">
-                  {rows === null ? "…" : "暂无流水"}
-                </td>
-              </tr>
-            )}
-            {(rows ?? []).map((r, i) => (
-              <tr key={i} className="border-b border-line/50">
-                <td className="px-3 py-2 font-mono text-xs">
-                  {new Date(r.created_at).toLocaleString()}
-                </td>
-                <td className="px-3 py-2">
-                  {SPARK_KIND_LABELS[r.kind] ?? r.kind}
-                </td>
-                <td
-                  className={`px-3 py-2 text-right font-mono ${
-                    r.amount > 0 ? "text-up" : "text-down"
-                  }`}
-                >
-                  {r.amount > 0 ? "+" : ""}
-                  {r.amount.toLocaleString()}
-                </td>
-                <td className="px-3 py-2 text-right font-mono">
-                  {r.balance_after.toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        eyebrow={`${dict.my.title} / ${t.title}`}
+        title={fmtCur(t.title, {}, currency)}
+        sub={fmtCur(t.sub, {}, currency)}
+        aside={
+          <span className="sticker">
+            {fmt(t.balanceBadge, {
+              n: balance === null ? "…" : balance.toLocaleString(),
+            })}
+          </span>
+        }
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterLinks
+          label={t.colDelta}
+          value={dir}
+          onChange={(v) => {
+            setDir(v ?? "");
+            setPage(1);
+          }}
+          options={[
+            { label: t.tabAll },
+            { label: t.tabIn, value: "in" },
+            { label: t.tabOut, value: "out" },
+          ]}
+        />
+        <select
+          aria-label={t.colKind}
+          value={kind}
+          onChange={(e) => {
+            setKind(e.target.value);
+            setPage(1);
+          }}
+          className={`${INPUT_CARD} px-2 text-xs text-ink`}
+        >
+          <option value="">{t.tabAll}</option>
+          {kindOptions.map(([v, label]) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
-      {pages > 1 && (
+
+      {failed ? (
+        <EmptyState
+          icon="info"
+          tone="warn"
+          title={dict.readState.failTitle}
+          desc={dict.readState.failDesc}
+        />
+      ) : data === null ? (
+        <SkeletonRows />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          icon="info"
+          title={t.empty}
+          desc={t.emptyHint}
+        />
+      ) : (
+        <div className="baozi-panel overflow-x-auto">
+          <table className="nexus-table">
+            <thead>
+              <tr>
+                <td className="colhead w-32">{t.colTime}</td>
+                <td className="colhead w-28">{t.colKind}</td>
+                <td className="colhead">{t.colSummary}</td>
+                <td className="colhead w-24 text-right">{t.colDelta}</td>
+                <td className="colhead w-24 text-right">{t.colBalance}</td>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={`${r.created_at}-${i}`}>
+                  <td className="num text-xs text-sub">
+                    {new Date(r.created_at).toLocaleString(
+                      dateLocale(locale),
+                    )}
+                  </td>
+                  <td className="text-xs">
+                    {SPARK_KIND_LABELS[r.kind] ?? r.kind}
+                  </td>
+                  <td className="text-xs text-body">{summary(r)}</td>
+                  <td
+                    className={`num text-right ${
+                      r.amount > 0 ? "text-up" : "text-down"
+                    }`}
+                  >
+                    {r.amount > 0 ? "+" : ""}
+                    {r.amount.toLocaleString()}
+                  </td>
+                  <td className="num text-right">
+                    {r.balance_after === null
+                      ? "—"
+                      : r.balance_after.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!failed && pages > 1 && (
         <Pager
           layout="compact"
           page={page}
           pages={pages}
-          posLabel={`${page} / ${pages}`}
+          posLabel={`${fmt(dict.common.pageX, { n: page })} / ${pages}`}
+          total={data?.total ?? 0}
           onStep={setPage}
         />
       )}
+
+      <div className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.noteTitle}</h2>
+        </div>
+        <p className="p-4 text-xs leading-relaxed text-sub">{t.noteBody}</p>
+      </div>
     </div>
   );
 }

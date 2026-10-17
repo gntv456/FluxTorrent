@@ -1,7 +1,7 @@
-//! H&R 追责（0020）：我的 H&R / 赦免（单发+批量+自救）。
+//! H&R 赦免三端点（0020）：单发 / 批量 / 自救。
 //! 从 gaps_http.rs 按域拆出。
 
-use actix_web::{get, post, web, HttpRequest, HttpResponse};
+use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -9,57 +9,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-// ============ H&R 追责 ============
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct HrRow {
-    torrent_id: i64,
-    torrent_name: String,
-    required_seconds: i32,
-    seeded_seconds: i32,
-    deadline: chrono::DateTime<chrono::Utc>,
-    status: String,
-}
-
-#[derive(serde::Serialize)]
-struct MyHrResp {
-    rows: Vec<HrRow>,
-    /// 站点缺省口径（深测 2026-10-03）：与 worker 建快照同源的 hr_hours 设定，
-    /// 供前端动态渲染规则文案（此前写死 120h 与实际执行 48h 矛盾）
-    default_seed_hours: i32,
-    default_days: i32,
-}
-
-#[get("/me/hr")]
-pub async fn my_hr_status(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let rows: Vec<HrRow> = sqlx::query_as(
-        "SELECT h.torrent_id, t.name AS torrent_name, h.required_seconds, \
-                h.seeded_seconds, h.deadline, h.status \
-         FROM hr_snapshots h JOIN torrents t ON t.id = h.torrent_id \
-         WHERE h.user_id = $1 ORDER BY h.deadline LIMIT 100",
-    )
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let default_seed_hours: i32 = sqlx::query_scalar(
-        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
-         WHERE name = 'hr_hours'), '')::int, 48)",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(48)
-    .clamp(1, 24 * 365);
-    Ok(ok(MyHrResp {
-        rows,
-        default_seed_hours,
-        default_days: 14,
-    }))
-}
+// 读侧（GET /me/hr）在 hr_mine.rs，SQL 在 repo/hr.rs。
 
 #[derive(Deserialize)]
 struct PardonReq {

@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale } from "@/i18n/config";
+import { dateLocale, fmtCur } from "@/i18n/config";
+import { BTN_SM_BOLD, BTN_SM_GHOST } from "@/lib/ui-classes";
 import { StatePanel } from "@/components/ui/state-panel";
 import { SkeletonRows } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
@@ -109,7 +111,7 @@ export default function MySparkPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        eyebrow="My Spark"
+        eyebrow={`${dict.my.title} / ${t.title}`}
         title={t.title.replace("{magic}", currency)}
         sub={t.subtitle}
         aside={
@@ -147,6 +149,23 @@ export default function MySparkPage() {
         </div>
       </div>
 
+      {/* 四个去向都是站内真路由：/donate 充值、/invites 兑换邀请名额、
+          /shop 道具、/magic-pool 魔力池。样图 § my-spark 有这一排，
+          此前整块缺失，用户看完余额不知道能干什么。 */}
+      <div className="flex flex-wrap gap-2">
+        <Link href="/donate" className={BTN_SM_BOLD}>
+          {fmtCur(t.ctaRecharge, {}, currency)}
+        </Link>
+        <Link href="/invites" className={BTN_SM_GHOST}>
+          {t.ctaRedeem}
+        </Link>
+        <Link href="/shop" className={BTN_SM_GHOST}>
+          {t.ctaShop}
+        </Link>
+        <Link href="/magic-pool" className={BTN_SM_GHOST}>
+          {t.ctaPool}
+        </Link>
+      </div>
       <div className="baozi-panel">
         <div className="baozi-panel__head">
           <h2>{t.ruleTitle}</h2>

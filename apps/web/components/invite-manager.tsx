@@ -247,13 +247,15 @@ export function InviteManager() {
           onRetry={() => void refreshInvitees(inviteePage)}
         />
       )}
-      {inviteeErr === null && invitees !== null && invitees.length > 0 && (
+      {inviteeErr === null && invitees !== null && (
         <InviteeList
           invitees={invitees}
           t={t}
           total={inviteeTotal}
           page={inviteePage}
           onPage={refreshInvitees}
+          emptyTitle={dict.ui.emptyTitle}
+          emptyDesc={dict.ui.emptyDesc}
         />
       )}
 

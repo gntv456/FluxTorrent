@@ -170,4 +170,65 @@ export async function getMenuItems(
   }
 }
 
+/** 会员列表的一行（GET /users；字段与后端 MemberRow 一一对应）。
+ *  ⚠️ 这里没有 email/passkey——公开目录刻意不投影敏感列。 */
+export interface MemberRow {
+  id: number;
+  username: string;
+  title: string | null;
+  avatar_url: string | null;
+  class_id: number;
+  class_name: string | null;
+  uploaded: number;
+  downloaded: number;
+  seeding: number;
+  spark_balance: number;
+  created_at: string;
+  last_seen_at: string | null;
+}
+
+export interface MemberPage {
+  rows: MemberRow[];
+  total: number;
+  page: number;
+  per: number;
+}
+
+/** 会员列表取数。失败回 null（界面按「没取到」说，不演成「没有会员」）。 */
+export async function getMembers(o: {
+  q?: string;
+  classId?: number;
+  sort?: string;
+  page: number;
+  per?: number;
+}): Promise<MemberPage | null> {
+  try {
+    const sp = new URLSearchParams();
+    if (o.q) sp.set("q", o.q);
+    if (o.classId) sp.set("class_id", String(o.classId));
+    if (o.sort) sp.set("sort", o.sort);
+    sp.set("page", String(o.page));
+    if (o.per) sp.set("per", String(o.per));
+    return await api.get<MemberPage>(
+      `/api/v1/users?${sp.toString()}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** 等级档（成长线 0-89，职务级不列）——会员列表的等级筛选用。 */
+export async function getClassOptions(): Promise<
+  { id: number; name: string }[]
+> {
+  try {
+    const d = await api.get<{ classes: { id: number; name: string }[] }>(
+      "/api/v1/classes",
+    );
+    return d?.classes ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export type { TorrentListItem, UserPublic };

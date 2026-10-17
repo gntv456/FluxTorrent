@@ -38,30 +38,34 @@ export function SecurityTab({
   // P2 清偿：重置 passkey 二次确认（danger：旧 RSS/下载链接全部失效）
   const ask = useConfirm();
 
-  // 锚点直达：账户概览的「访问令牌 → 创建」带 #tokens 跳进来。本面板是
+  // 锚点直达：账户概览的「访问令牌 → 创建」带 #tokens、「密钥 → 重置」带
+  // #passkey 跳进来。本面板是
   // 客户端 tab，浏览器不会自动滚到 tab 内的元素——挂载后手动定位并短暂
   // 高亮，让用户在平铺的十余项里一眼看到目标行。
   // ⚠️ 两处坑：① 必须分多拍补滚——面板内登录历史/活跃会话等子组件都异步
   //   取数，行高会随后续内容撑开，只滚一次会把目标行甩出视口（实测差
   //   348px）；② 高亮走 state 而非 classList.add——后者会被 React 的
   //   className 重渲染冲掉（实测 computed animationName 恒为 none）。
-  const [anchorFlash, setAnchorFlash] = useState(false);
+  const [anchor, setAnchor] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.hash !== "#tokens") return;
+    const id = window.location.hash.slice(1);
+    if (id !== "tokens" && id !== "passkey") return;
     const go = () =>
       document
-        .getElementById("tokens")
+        .getElementById(id)
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     go();
-    setAnchorFlash(true);
+    setAnchor(id);
     const timers = [300, 900, 1800].map((ms) => setTimeout(go, ms));
-    const off = setTimeout(() => setAnchorFlash(false), 2600);
+    const off = setTimeout(() => setAnchor(null), 2600);
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(off);
     };
   }, []);
+  const flash = (k: string) =>
+    `scroll-mt-16${anchor === k ? " uc-anchor-flash" : ""}`;
 
   async function changePasswordNow() {
     setPwMsg(null);
@@ -123,7 +127,11 @@ export function SecurityTab({
               概览点「访问令牌 → 创建」进来根本找不到目标。按主题分四组，
               组标题走 colhead 跨列行，不改动任何一行的既有结构。 */}
           <tr><td className="colhead" colSpan={2}>{t.grpCredential}</td></tr>
-          <Row head={t.resetPasskey}>
+          <Row
+            head={t.resetPasskey}
+            id="passkey"
+            className={flash("passkey")}
+          >
             <button
               type="button"
               disabled={pkBusy}
@@ -246,10 +254,7 @@ export function SecurityTab({
           <Row head={t.tgBind}>{t.tgBindHint}</Row>
 
           <tr><td className="colhead" colSpan={2}>{t.grpApi}</td></tr>
-          <tr
-            id="tokens"
-            className={`scroll-mt-16${anchorFlash ? " uc-anchor-flash" : ""}`}
-          >
+          <tr id="tokens" className={flash("tokens")}>
             <td className="rowhead">{dict.apitokens.title}</td>
             <td className="rowfollow p-0">
               <ApiTokens />

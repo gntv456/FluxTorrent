@@ -225,6 +225,8 @@ export default async function UserProfilePage({
           emptyText={t.noUploads}
           t={t as unknown as Record<string, string>}
           gb={gb}
+          locale={locale}
+          withMeta
           publicOnly
         />
       )}
@@ -234,6 +236,7 @@ export default async function UserProfilePage({
           emptyText={t.noUploads}
           t={t as unknown as Record<string, string>}
           gb={gb}
+          locale={locale}
         />
       )}
       {active === "leeching" && (
@@ -242,6 +245,7 @@ export default async function UserProfilePage({
           emptyText={t.noLeeching}
           t={t as unknown as Record<string, string>}
           gb={gb}
+          locale={locale}
         />
       )}
       {active === "completed" && (
@@ -250,6 +254,7 @@ export default async function UserProfilePage({
           emptyText={t.noCompleted}
           t={t as unknown as Record<string, string>}
           gb={gb}
+          locale={locale}
         />
       )}
       {active === "incomplete" && (
@@ -258,6 +263,7 @@ export default async function UserProfilePage({
           emptyText={t.noIncomplete}
           t={t as unknown as Record<string, string>}
           gb={gb}
+          locale={locale}
         />
       )}
       {active === "preserved" && (
@@ -266,6 +272,7 @@ export default async function UserProfilePage({
           emptyText={t.noPreserved}
           t={t as unknown as Record<string, string>}
           gb={gb}
+          locale={locale}
         />
       )}
 
