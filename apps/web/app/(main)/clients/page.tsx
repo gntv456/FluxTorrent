@@ -1,5 +1,6 @@
 import { getSiteProfile } from "@/lib/site-profile";
 import { getDict } from "@/i18n/server";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,9 @@ export default async function ClientsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl">{t.title}</h1>
+      {/* 页头收进 PageHeader：原先是裸 h1 + 一句正文，缺眉题与副标题，
+          与样图 § clients（以及同组的 rules/faq/help）不齐 */}
+      <PageHeader eyebrow={t.eyebrow} title={t.title} sub={t.sub} />
       <p className="text-sm text-muted">{t.intro.replace("{brand}", brand)}</p>
 
       <section className="flex flex-col gap-3">
@@ -49,9 +52,11 @@ export default async function ClientsPage() {
         ))}
       </section>
 
-      <section className="client-rules">
-        <h2 className="font-semibold">{t.rulesTitle}</h2>
-        <ul className="list-disc pl-5 text-sm">
+      <section className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{t.rulesTitle}</h2>
+        </div>
+        <ul className="list-disc pl-10 text-sm leading-relaxed">
           {t.rules.map((r) => (
             <li key={r}>{r}</li>
           ))}

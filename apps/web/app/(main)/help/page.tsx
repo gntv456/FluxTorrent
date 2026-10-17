@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cache } from "react";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { fmt } from "@/i18n/config";
 import { PANEL_BAOZI } from "@/lib/ui-classes";
 
 /** 帮助中心目录（0274）：读 GET /api/v1/help-docs（doc_group 非空的可见页）。
@@ -47,10 +48,13 @@ export default async function HelpPage() {
     <div className="flex flex-col gap-4">
       <div className="pghd">
         <div>
-          <div className="pg-eyebrow">{dict.help.groupGuide}</div>
+          <div className="pg-eyebrow">{dict.help.eyebrow}</div>
           <h1 className="font-display text-2xl">{dict.help.title}</h1>
           <p className="mt-1 text-xs text-sub">{dict.help.subtitle}</p>
         </div>
+        <span className="sticker">
+          {fmt(dict.help.docCount, { n: docs.length })}
+        </span>
       </div>
 
       {docs.length === 0 ? (
@@ -61,7 +65,17 @@ export default async function HelpPage() {
         [...groups.entries()].map(([group, list]) => (
           <section key={group} className="baozi-panel">
             <div className="baozi-panel__head">
-              <h2>{dict.help.groupGuide}</h2>
+              {/* 组名用的是文档自己的 doc_group（站长在后台填的那个值），
+                  认识的两个码走字典；此前每个分组都渲染同一个
+                  `dict.help.groupGuide`，五组点进去长得一模一样，
+                  目录等于没分。 */}
+              <h2>
+                {(dict.help.groups as Record<string, string>)?.[group] ??
+                  group}
+              </h2>
+              <span className="text-xs text-sub">
+                {fmt(dict.help.groupCount, { n: list.length })}
+              </span>
             </div>
             <ul className="flex flex-col gap-2">
               {list.map((d) => (
@@ -82,6 +96,42 @@ rounded-lg px-3 py-2 hover:bg-soft"
           </section>
         ))
       )}
+
+      {/* 「帮助与接口」汇总：样图把这一组（FAQ/站规/封禁公示/API 文档/友链/
+          客户端/排行榜）并列在同一组里，站内此前却没有把它们互相连起来——
+          其中 /api-docs 尤其离谱：导航、页脚、任何页面都没有一条链接指向它，
+          只能靠手敲 URL 到达。这里补一个出口，且不动页头页尾（禁区）。 */}
+      <section className="baozi-panel">
+        <div className="baozi-panel__head">
+          <h2>{dict.help.moreTitle}</h2>
+        </div>
+        <ul className="flex flex-col divide-y divide-line">
+          {[
+            { href: "/faq", label: dict.faq.title },
+            { href: "/rules", label: dict.rules.title },
+            { href: "/ban-log", label: dict.banlog.title },
+            { href: "/clients", label: dict.clients.title },
+            { href: "/top", label: dict.top.title },
+            { href: "/api-docs", label: dict.apidocs.title },
+            { href: "/links/apply", label: dict.linkapply.title },
+          ].map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                className={HUB_ROW}
+              >
+                <span>{l.label}</span>
+                <span aria-hidden="true" className="text-xs text-sub">
+                  ›
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
+
+const HUB_ROW =
+  "flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-soft";
