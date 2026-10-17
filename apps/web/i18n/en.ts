@@ -1420,7 +1420,13 @@ const enBase: Omit<
     colMethod: "Method",
     colPath: "Path",
     colSummary: "Summary",
-    unavailable: "API unreachable, try again later.",
+    colDetail: "Detail",
+    howTo:
+      "This page renders the OpenAPI document (openapi.json) directly, grouped by module; the badges separate GET / POST / PATCH / DELETE, and \"Expand\" shows that endpoint's parameters and declared response codes.",
+    expand: "Expand",
+    noParams: "No parameters",
+    noResponses: "No response codes declared",
+    responsesLabel: "Responses",
   },
   clients: {
     eyebrow: "Home / BT client guide",
@@ -6454,6 +6460,7 @@ medalDaysPh: "Days (empty = medal default)",
     asideTitle: "Site info",
     founded: "Founded",
     selfLink: "Where we rank",
+    poweredBy: "Powered by {product} (Rust + Next.js)",
   },
 
   faq: {

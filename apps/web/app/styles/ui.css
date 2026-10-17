@@ -1310,7 +1310,11 @@
   box-shadow: var(--shadow-card);
 }
 .pghd .sub {
-  padding-bottom: 5px;
+  /* 副标题在左栏 h1 之下（样图 § pg-head：.desc 与 h1 同列），
+     不是与标题块并排的第三栏——原先的 padding-bottom 是给并排版
+     对齐基线用的，堆叠后改留一点上间距。 */
+  display: block;
+  margin-top: 3px;
   font-size: 12.5px;
   color: var(--text-faint);
 }

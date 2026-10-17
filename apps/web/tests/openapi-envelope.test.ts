@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
 
-import { groupEndpoints, unwrapSpec, VERBS } from "@/lib/openapi-groups";
+import {
+  codesLine,
+  groupEndpoints,
+  opDetail,
+  paramsLine,
+  unwrapSpec,
+  VERBS,
+  type RawOp,
+  type RawParam,
+} from "@/lib/openapi-groups";
 
 /**
  * openapi.json 的「信封漏剥」钉桩。
@@ -88,5 +97,89 @@ describe("openapi 取数与分组", () => {
     const spec = unwrapSpec({ paths: { "/z": { delete: { tags: ["种子"] } } } });
     const { groups } = groupEndpoints(spec, "未分组");
     expect(groups[0].items[0].method).toBe("DELETE");
+  });
+});
+
+/** 「展开」那一栏（样图 § api-docs 第四列）。这三条钉的是同一族风险：
+ *  规范里没写的东西，界面不能假装写了——尤其不能拿 200 兜底成「有响应声明」。 */
+describe("openapi 端点详情", () => {
+  const P = (
+    name: string,
+    loc: string,
+    extra: Partial<RawParam> = {},
+  ): RawParam => ({ name, in: loc, ...extra });
+
+  it("path 级参数并进该 path 下每个方法（写在 path item 上的 limit 不会消失）", () => {
+    const spec = unwrapSpec({
+      paths: {
+        "/torrents": {
+          parameters: [P("limit", "query")],
+          get: { tags: ["种子"], parameters: [P("q", "query")] },
+          post: { tags: ["种子"] },
+        },
+      },
+    });
+    const { groups } = groupEndpoints(spec, "未分组");
+    const get = groups[0].items.find((e) => e.method === "GET");
+    const post = groups[0].items.find((e) => e.method === "POST");
+    expect(get?.detail.params.map((p) => p.name)).toEqual(["limit", "q"]);
+    expect(post?.detail.params.map((p) => p.name)).toEqual(["limit"]);
+  });
+
+  it("同名同位置只留一条，required / type 按规范原样带出", () => {
+    const d = opDetail([P("limit", "query", { schema: { type: "integer" } })], {
+      parameters: [
+        P("limit", "query"),
+        P("id", "path", { required: true, schema: { type: "string" } }),
+      ],
+    });
+    expect(d.params).toEqual([
+      { name: "limit", loc: "query", required: false, type: "integer" },
+      { name: "id", loc: "path", required: true, type: "string" },
+    ]);
+  });
+
+  it("没有 responses 就回空数组，界面那句「未声明」才有依据（不兜底成 200）", () => {
+    expect(opDetail(undefined, { tags: ["x"] }).codes).toEqual([]);
+    expect(opDetail(undefined, { responses: { "200": {}, "404": {} } }).codes)
+      .toEqual(["200", "404"]);
+  });
+
+  it("responses 里混进的动词键不算状态码", () => {
+    const d = opDetail(undefined, { responses: { get: {}, "201": {} } });
+    expect(d.codes).toEqual(["201"]);
+  });
+
+  it("name 缺失的脏参数条目被跳过，不输出「undefined（query）」", () => {
+    const d = opDetail([{ in: "query" } as RawParam], {
+      parameters: [P("", "query"), P("ok", "query")],
+    });
+    expect(d.params.map((p) => p.name)).toEqual(["ok"]);
+  });
+});
+
+describe("openapi 详情文案", () => {
+  const p = (
+    name: string,
+    loc = "query",
+    required = false,
+    type = "",
+  ) => ({ name, loc, required, type });
+
+  it("空参数回占位句，有参数逐条拼「name（in, required, type）」", () => {
+    expect(paramsLine([], "无参数")).toBe("无参数");
+    expect(
+      paramsLine([p("q"), p("id", "path", true, "integer")], "无参数"),
+    ).toBe("q（query）、id（path, required, integer）");
+    expect(paramsLine([p("k", "header", false, "string")], "无参数")).toBe(
+      "k（header, string）",
+    );
+  });
+
+  it("空状态码回占位句；非空带标签前缀", () => {
+    expect(codesLine([], "规范未声明响应码", "响应码")).toBe("规范未声明响应码");
+    expect(codesLine(["200", "404"], "规范未声明响应码", "响应码")).toBe(
+      "响应码: 200, 404",
+    );
   });
 });

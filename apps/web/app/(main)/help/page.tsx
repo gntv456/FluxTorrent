@@ -46,15 +46,20 @@ export default async function HelpPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* 页头刻意留手写 .pghd（结构与 PageHeader 原语一致：眉题 / h1 /
+          副标题同列堆叠 + 右侧槽）。迁进原语要重算 design_guard 的 h1 台账，
+          而那份基线此刻正被另一路改动编辑，不替它记账。 */}
       <div className="pghd">
         <div>
           <div className="pg-eyebrow">{dict.help.eyebrow}</div>
           <h1 className="font-display text-2xl">{dict.help.title}</h1>
           <p className="mt-1 text-xs text-sub">{dict.help.subtitle}</p>
         </div>
-        <span className="sticker">
-          {fmt(dict.help.docCount, { n: docs.length })}
-        </span>
+        <div className="aside">
+          <span className="sticker">
+            {fmt(dict.help.docCount, { n: docs.length })}
+          </span>
+        </div>
       </div>
 
       {docs.length === 0 ? (
