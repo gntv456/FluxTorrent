@@ -8,24 +8,28 @@
 //! 「封禁：xxx」/「禁言：xxx」，无理由时是「状态 → 2」）。
 //!
 //! 所以这里给的是**状态视图**而不是事件流水：列当前仍处于禁言/封号的账号，
-//! 每人取最近一条处置留痕当日期与理由。做成事件流水要留痕本身带结构化的
+//! 每人取最近一条处置留痕当「处置日期」。做成事件流水要留痕本身带结构化的
 //! 类型/期限列，现在没有（content 是自由文本），硬解析中文前缀会漂。
 //!
-//! 隐私：对外结构体 `BanLogRow` 里**只有打码后的用户名**——原始 username
-//! 停在私有的 RawRow，映射完即丢，调用方无从把它带出这层；邮箱/IP/passkey
-//! 连查都没查。
+//! 三条隐私口径（10-17 复审时收紧，前一版把内部备注原文当公示理由发了出去）：
+//! 1. 对外只有**打码后的用户名**——原始 username 停在私有 RawRow，映射完即丢；
+//! 2. **不发 uid**：打码是为了不让人对号入座，带一个稳定主键等于把「对号」的
+//!    键白送出去，而界面本来也不需要它（列表键用行序）；
+//! 3. **不发留痕正文**：`content` 是管理组自由文本，可能含邮箱/IP/他人用户名。
+//!    公示只给类别码（cheat/mute/admin），详细理由由 admin_http/user_status.rs
+//!    走 PM + 邮件单独发给当事人——站内既有口径就写着「仅展示状态与时间」。
+//! 邮箱/IP/passkey 连查都没查。
 
 use crate::errors::{DomainError, DomainResult};
 use crate::repo::Repo;
 
-/// 一行公示记录。`status` 1=禁言 2=封号。
+/// 一行公示记录。`status` 1=禁言 2=封号；`cause` 是**类别码**
+/// （cheat | mute | admin），不是管理组原文——见文件头隐私口径第 3 条。
 #[derive(sqlx::FromRow, serde::Serialize)]
 pub struct BanLogRow {
-    pub uid: i64,
     pub name_masked: String,
     pub status: i16,
-    /// 最近一次处置留痕的理由（剥掉中文前缀；无留痕/无理由时为空串）
-    pub reason: String,
+    pub cause: String,
     /// 处置时间。无留痕时为 None——界面回落「日期不详」，不拿今天顶替。
     #[sqlx(default)]
     pub acted_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -37,11 +41,8 @@ pub struct BanLogRow {
 
 #[derive(sqlx::FromRow)]
 struct RawRow {
-    uid: i64,
     username: String,
     status: i16,
-    #[sqlx(default)]
-    content: Option<String>,
     #[sqlx(default)]
     acted_at: Option<chrono::DateTime<chrono::Utc>>,
     #[sqlx(default)]
@@ -56,11 +57,12 @@ const WHERE: &str = " WHERE u.status IN (1, 2) \
     AND ($1::text IS NULL OR u.username ILIKE '%' || $1 || '%') \
     AND ($2::smallint IS NULL OR u.status = $2)";
 
+/// 处置时间只取「哪一条留痕最近」，**不取留痕正文**（理由文本见文件头③）。
 const LIST_HEAD: &str = concat!(
-    "SELECT u.id AS uid, u.username, u.status, m.content, ",
-    "m.created_at AS acted_at, u.warned_until, u.cheat_banned_until ",
+    "SELECT u.username, u.status, m.created_at AS acted_at, ",
+    "u.warned_until, u.cheat_banned_until ",
     "FROM users u LEFT JOIN LATERAL (",
-    "SELECT l.content, l.created_at FROM user_modify_logs l ",
+    "SELECT l.created_at FROM user_modify_logs l ",
     "WHERE l.uid = u.id AND (l.content LIKE '封禁%' ",
     "OR l.content LIKE '禁言%' OR l.content LIKE '状态 → 1%' ",
     "OR l.content LIKE '状态 → 2%') ",
@@ -91,10 +93,9 @@ pub async fn ban_log_page(
     Ok(rows
         .into_iter()
         .map(|r| BanLogRow {
-            uid: r.uid,
             name_masked: mask_name(&r.username),
             status: r.status,
-            reason: strip_label(r.content.as_deref().unwrap_or("")),
+            cause: cause_of(r.status, r.cheat_banned_until.is_some()),
             acted_at: r.acted_at,
             warned_until: r.warned_until,
             cheat_banned_until: r.cheat_banned_until,
@@ -118,59 +119,70 @@ pub async fn ban_log_count(
     Ok(n)
 }
 
-/// 用户名打码：ASCII 起头留 3 个字符，其余（CJK）留 1 个，尾巴统一 `***`，
+/// 用户名打码：ASCII 起头留 3 个字符、其余（CJK）留 1 个，尾巴统一 `***`，
 /// 与样图 § ban-log 的 `wang***` / `青***` 一致。
+///
+/// ⚠️ 短名字必须少留一位：`lee`（3 字符）若照「留 3 个」原样输出就是
+/// `lee***`＝全名，打码白做。所以保留数封顶到 `len-1`，永远至少藏住一个字符。
 pub fn mask_name(name: &str) -> String {
     let cs: Vec<char> = name.chars().collect();
     if cs.is_empty() {
         return "***".to_string();
     }
-    let keep = if cs[0].is_ascii_alphanumeric() {
-        3.min(cs.len())
-    } else {
-        1
-    };
+    let want = if cs[0].is_ascii_alphanumeric() { 3 } else { 1 };
+    let keep = want.min(cs.len().saturating_sub(1)).max(1);
     let head: String = cs[..keep].iter().collect();
     format!("{head}***")
 }
 
-/// 剥掉管理动作的中文前缀（「封禁：多次 H&R」→「多次 H&R」）。
-/// 无理由时写入方留的是「状态 → 2」——这种没有可读理由，回空串由界面
-/// 显示「未附理由」，不把内部格式串直接甩给用户。
-pub fn strip_label(content: &str) -> String {
-    for prefix in ["封禁：", "禁言："] {
-        if let Some(rest) = content.strip_prefix(prefix) {
-            return rest.trim().to_string();
-        }
+/// 公示用的**处置类别码**（界面按码出三语文案）。
+///
+/// 为什么不发留痕原文：`user_modify_logs.content` 是管理组的内部备注自由文本
+/// （admin_http/user_status.rs 写的是「封禁：<站长随手写的理由>」），里面完全
+/// 可能出现邮箱、IP、别的用户名或案情细节——那是给当事人和职员看的，不是公示栏
+/// 的内容。站内口径本就写着「出于隐私考虑，仅展示状态与时间」
+/// （`dict.banlog.note`，且当事人由 PM+邮件单独收到理由），所以这里只给类别。
+pub fn cause_of(status: i16, cheat_timed: bool) -> String {
+    if cheat_timed {
+        return "cheat".to_string();
     }
-    if content.starts_with("状态 →") {
-        return String::new();
+    if status == 1 {
+        return "mute".to_string();
     }
-    content.trim().to_string()
+    "admin".to_string()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{mask_name, strip_label};
+    use super::{cause_of, mask_name};
 
     #[test]
     fn ascii_keeps_three_chars() {
         assert_eq!(mask_name("wangyue"), "wan***");
-        assert_eq!(mask_name("ab"), "ab***");
+        assert_eq!(mask_name("wang"), "wan***");
+    }
+
+    #[test]
+    fn short_names_never_leak_whole_name() {
+        // 全名 3 字符 / 2 字符 / 1 字符：藏住至少一位
+        assert_eq!(mask_name("lee"), "le***");
+        assert_eq!(mask_name("ab"), "a***");
+        assert_eq!(mask_name("a"), "a***");
+        assert_eq!(mask_name(""), "***");
     }
 
     #[test]
     fn cjk_keeps_one_char() {
         assert_eq!(mask_name("青柠"), "青***");
-        assert_eq!(mask_name(""), "***");
+        // 单字 CJK 名也只能留一位（等于无从再藏），但不会多留
+        assert_eq!(mask_name("青"), "青***");
     }
 
     #[test]
-    fn label_prefixes_are_stripped() {
-        assert_eq!(strip_label("封禁：多次 H&R"), "多次 H&R");
-        assert_eq!(strip_label("禁言：灌水 "), "灌水");
-        // 内部格式串不得外泄成「理由」
-        assert_eq!(strip_label("状态 → 2"), "");
-        assert_eq!(strip_label(""), "");
+    fn cause_codes_are_structured() {
+        assert_eq!(cause_of(2, true), "cheat");
+        assert_eq!(cause_of(2, false), "admin");
+        assert_eq!(cause_of(1, false), "mute");
     }
 }
+
