@@ -18,6 +18,8 @@ import {
 interface Form {
   name: string;
   descr: string;
+  /** 版块规则正文（0392）：空串 = 清空（后端把缺省与空串分开处理） */
+  rules: string;
   mr: number;
   mw: number;
   mc: number;
@@ -31,6 +33,7 @@ function blank(defaultCatId: number | ""): Form {
   return {
     name: "",
     descr: "",
+    rules: "",
     mr: 0,
     mw: 0,
     mc: 0,
@@ -45,6 +48,7 @@ function fromForum(f: ForumAdminForum): Form {
   return {
     name: f.name,
     descr: f.descr ?? "",
+    rules: f.rules ?? "",
     mr: f.minclassread,
     mw: f.minclasswrite,
     mc: f.minclasscreate,
@@ -119,6 +123,7 @@ export function ForumBoardDrawer({
     const payload = {
       name: form.name.trim(),
       descr: form.descr.trim() || null,
+      rules: form.rules.trim(),
       minclassread: form.mr,
       minclasswrite: form.mw,
       minclasscreate: form.mc,
@@ -170,6 +175,19 @@ export function ForumBoardDrawer({
           <input
             value={form.descr}
             onChange={(e) => set("descr", e.target.value)}
+            className={INPUT_CLS}
+          />
+        </label>
+
+        {/* 版块规则（0392）：换行按 pre-line 原样渲染；maxLength 只是
+            提前拦一下，真上限 1000 字由后端 forum_upsert_check 判。 */}
+        <label className="mb-3 block">
+          <span className="mb-1 block text-xs text-sub">{t.fldRules}</span>
+          <textarea
+            value={form.rules}
+            onChange={(e) => set("rules", e.target.value)}
+            rows={4}
+            maxLength={1000}
             className={INPUT_CLS}
           />
         </label>

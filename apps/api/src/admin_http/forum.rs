@@ -15,6 +15,9 @@ struct ForumAdminRow {
     id: i64,
     name: String,
     descr: Option<String>,
+    /// 版块规则正文（0392）：编辑抽屉回填它，前台版块页顶部规则条读它
+    #[sqlx(default)]
+    rules: Option<String>,
     minclassread: i32,
     minclasswrite: i32,
     minclasscreate: i32,
@@ -61,7 +64,8 @@ async fn forum_admin_list(
     )
     .await?;
     let rows: Vec<ForumAdminRow> = sqlx::query_as(
-        "SELECT f.id, f.name, f.descr, f.minclassread, f.minclasswrite, \
+        "SELECT f.id, f.name, f.descr, f.rules, f.minclassread, \
+            f.minclasswrite, \
             f.minclasscreate, f.protected, f.sort, \
             (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
             f.category_id, c.name AS category_name, f.mtime \

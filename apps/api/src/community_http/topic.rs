@@ -8,6 +8,7 @@ use super::*;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::forum_side as repo_side;
 use crate::state::AppState;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -48,7 +49,22 @@ struct TopicListQuery {
     /// 非数字（爬虫乱造的 URL）静默回落全量，不拿 400 打断正常浏览。
     #[serde(default)]
     tag: Option<String>,
+    /// 页码（1 起）。此前本出口写死 `LIMIT 50` 且无任何翻页参数：
+    /// 超 50 帖的版块第 51 帖起永远打不开，界面也长得像「就这么多了」。
+    /// 与 /invites 同口径：page 走信封回显，前端 Pager 据此画页码。
+    #[serde(default)]
+    page: Option<i64>,
+    /// 类型筛选（2026-10-17，对齐样图 § tplForumBoard 的筛选行）：
+    /// sticky=只看置顶 / digest=只看精华。白名单常量拼接，非法值回落全量。
+    /// 样图还有「只看公告」一档——本站 topics.topic_type 只有
+    /// bounty/poll/lottery，没有公告这一类型，故不做（不为一枚装饰徽章
+    /// 凭空加字段）。
+    #[serde(default)]
+    r#type: Option<String>,
 }
+
+/// 每页主题数：前端 Pager 与提示语共用这一个数，不许各写一份。
+pub(crate) const TOPIC_PAGE_SIZE: i64 = 50;
 
 #[utoipa::path(
     get,
@@ -57,6 +73,9 @@ struct TopicListQuery {
     description = "某版块的主题列表（分页 + 置顶置序）。",
     params(
         ("id" = i64, description = "版块 id"),
+        ("page" = Option<i64>, description = "页码，1 起，每页 50 条"),
+        ("sort" = Option<String>, description = "hot=热度，缺省 new"),
+        ("tag" = Option<String>, description = "标签 tag_dict id"),
     ),
     responses(
         (status = 200, description = "ok"),
@@ -101,9 +120,20 @@ pub(crate) async fn topic_list(
     let tag_filter = tag_id
         .map(|tg| format!(" AND EXISTS(SELECT 1 FROM topic_tags tt WHERE tt.topic_id = t.id AND tt.tag_id = {tg})"))
         .unwrap_or_default();
+    // 类型筛选：白名单常量，且**列表与计数共用同一段**（否则 total 会
+    // 数出一批空页）。
+    let type_filter = match q.r#type.as_deref() {
+        Some("sticky") => " AND t.sticky",
+        Some("digest") => " AND t.digest",
+        _ => "",
+    };
+    let where_sql =
+        format!("t.forum_id = $1{tag_filter}{type_filter}");
     let sql = format!(
         "SELECT t.id, t.forum_id, t.title, u.username, \
-            (SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) AS replies, t.views, t.last_post_at, \
+            greatest( \
+              (SELECT count(*) FROM posts p WHERE p.topic_id = t.id) - 1, 0 \
+            ) AS replies, t.views, t.last_post_at, \
             t.sticky, t.locked, t.digest, t.topic_type, \
             (SELECT r.last_post_id FROM topic_reads r WHERE r.user_id = $2 AND r.topic_id = t.id) AS read_last_post_id, \
             EXISTS(SELECT 1 FROM posts p2 WHERE p2.topic_id = t.id \
@@ -117,29 +147,48 @@ pub(crate) async fn topic_list(
                         WHERE tt2.topic_id = t.id AND td.scope = 'forum' ORDER BY td.sort, td.id) d), \
               '[]'::json) AS tags \
          FROM topics t LEFT JOIN users u ON u.id = t.user_id \
-         WHERE t.forum_id = $1{tag_filter} ORDER BY {order} LIMIT 50"
+         WHERE {where_sql} ORDER BY {order} \
+         LIMIT $3 OFFSET $4"
     );
+    let per = TOPIC_PAGE_SIZE;
+    let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let rows = sqlx::query_as::<_, TopicRow>(&sql)
         .bind(fid)
         .bind(auth.id)
+        .bind(per)
+        .bind((page - 1) * per)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // 版块名随列表一起回（避免前端再打一次 /forums 只为拿标题）
-    let forum_name: Option<String> =
-        sqlx::query_scalar("SELECT name FROM forums WHERE id = $1")
-            .bind(fid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    // 总数必须与列表同一套 WHERE（含标签与类型谓词），否则前端按 total
+    // 画出的页码里会有一批空页。SQL 住在 repo 层。
+    let total =
+        repo_side::count_board_topics(&state.repo, fid, &where_sql).await?;
+    // 版块名与版块规则（0392）随列表一起回：避免前端只为拿标题/规则条
+    // 再打一次 /forums。规则为 NULL 时前台整条规则条不渲染。
+    let board: Option<(String, Option<String>)> = sqlx::query_as(
+        "SELECT name, rules FROM forums WHERE id = $1",
+    )
+    .bind(fid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let (forum_name, forum_rules) = match board {
+        Some((n, r)) => (Some(n), r),
+        None => (None, None),
+    };
     Ok(ok(serde_json::json!({
         "forum_id": fid,
         "forum_name": forum_name,
+        "forum_rules": forum_rules,
         "can_write": perm.can_write,
         "can_create": perm.can_create,
         "can_mod": perm.can_mod,
         "sort": sort,
         "tag": tag_id,
+        "page": page,
+        "per": per,
+        "total": total,
         "topics": rows,
     })))
 }

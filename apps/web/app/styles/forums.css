@@ -1,0 +1,101 @@
+/* ============ 论坛域新增表面（关注流两列 / 侧栏列表 / 版块规则条） ============
+ *
+ * 首页两翼另放 forums-home.css（那套只服务论坛首页）。这里的选择器
+ * 由关注流页与版块页共同 import，卡面本身用 ui.css 的 .side-card。
+ */
+
+/* ---------- 关注流：主面板 + 右列侧栏 ---------- */
+.ff-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 14px;
+  align-items: start;
+}
+.ff-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.ff-side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 12px;
+}
+.ff-side__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ff-side__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ff-side__row:last-child {
+  border-bottom: none;
+}
+.ff-side__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+.ff-side__name:hover {
+  color: var(--sky);
+}
+/* 标题右侧的计数徽标（"我关注的版块 4"） */
+.ff-side__n {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+/* ---------- 版块页顶部规则条（0392） ----------
+   只有版块设了规则才渲染；正文是多行文本，故保留换行（white-space）。 */
+.fb-rules {
+  padding: 12px 14px;
+  border: 1px solid var(--brand-line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  color: var(--sub);
+  font-size: 12.5px;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+.fb-rules__t {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+@media (max-width: 1024px) {
+  .ff-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ff-side {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-side__name {
+    transition: none;
+  }
+}

@@ -7,6 +7,8 @@ export interface ForumAdminForum {
   id: number;
   name: string;
   descr: string | null;
+  /** 版块规则正文（0392）：null/空 = 未设置，前台不渲染规则条 */
+  rules?: string | null;
   minclassread: number;
   minclasswrite: number;
   minclasscreate: number;

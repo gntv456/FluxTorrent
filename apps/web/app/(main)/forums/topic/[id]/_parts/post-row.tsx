@@ -58,7 +58,7 @@ export function PostRow({
 }) {
   return (
     <tr id={`p${p.id}`} className="align-top">
-      <td className="w-36 border-r border-line bg-[rgba(255,232,197,0.45)] p-3">
+      <td className="w-36 border-r border-line bg-[var(--sun-soft)] p-3">
         {/* 楼层作者栏（2026-09-23）：头像 + 用户名 + 等级 + 佩戴勋章 + 入站时间 */}
         <div className={AVATAR_BOX}>
           {p.avatar_url ? (

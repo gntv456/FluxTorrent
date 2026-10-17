@@ -79,7 +79,7 @@ export function ForumSearch({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={placeholder}
-          className="min-h-[36px] flex-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-3 text-sm"
+          className="min-h-[36px] flex-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-3 text-sm text-ink placeholder:text-sub"
         />
         <button
           type="submit"
