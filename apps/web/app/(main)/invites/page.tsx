@@ -1,4 +1,5 @@
 import { getDict } from "@/i18n/server";
+import { PageHeader } from "@/components/ui/page-header";
 import { InviteManager } from "@/components/invite-manager";
 import { requireModule } from "@/components/module-gate";
 
@@ -13,10 +14,16 @@ export default async function InvitesPage() {
   const { dict } = await getDict();
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="font-display text-2xl">{dict.invites.title}</h1>
-        <span className="text-sm text-sub">{dict.invites.subtitle}</span>
-      </div>
+      {/* 2026-10-17 对齐样图集 § tplInvite：原先这里是裸 h1 + span，改成
+          全站统一的 PageHeader（白卡外壳 + 眉标 + 副标题）。眉标沿用项目
+          既有惯例的西文短词（同 Bank/Donate/Dressup），不照搬样图的中文
+          面包屑——.pg-eyebrow 是 uppercase + 0.16em 字距的西文样式，
+          塞中文会散开，而那属于「新增体系」。 */}
+      <PageHeader
+        eyebrow="Invites"
+        title={dict.invites.title}
+        sub={dict.invites.subtitle}
+      />
       <InviteManager />
     </div>
   );
