@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FluxTorrent 深度分析报告 — 身份定位 / 技术架构 / 安全设计 / 准入体系 / 产品功能面 / 视觉语言</title>
+<style>
+  :root{
+    --sea:#0F62C4; --deep:#0A3D6B; --abyss:#062A47;
+    --surf:#2E86E0; --foam:#7FB6F0; --mist:#D7E6F7; --haze:#EEF4FB;
+    --signal:#0091A8; --ok:#147D5F; --warn:#B4790A; --err:#C0392B;
+    --up:#C8322C; --down:#12805C;
+    --page:#F6F8FC; --card:#FFFFFF; --sunken:#EDF2F9; --hover:#F1F6FC;
+    --line:#E1E8F2; --line-deep:#C3D2E4;
+    --ink:#0E1B2A; --heading:#08131F; --body:#33445C; --muted:#5A6B85; --faint:#7C8AA0;
+    --r-lg:14px; --r-md:10px; --r-sm:6px;
+    --shadow:0 1px 2px rgba(14,27,42,.04), 0 10px 24px -12px rgba(14,27,42,.10);
+    --serif:"Noto Serif SC","Songti SC",serif;
+    --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    --mono:"IBM Plex Mono","Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--page); color:var(--body); font-family:var(--sans); font-size:15px; line-height:1.75}
+  .wrap{max-width:980px; margin:0 auto; padding:56px 40px 96px}
+  a{color:var(--sea); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---------- 封面头 ---------- */
+  .masthead{border-bottom:2px solid var(--ink); padding-bottom:28px; margin-bottom:12px}
+  .kicker{font-size:12px; letter-spacing:.18em; color:var(--sea); font-weight:600; text-transform:uppercase; margin-bottom:14px}
+  h1{font-family:var(--serif); color:var(--heading); font-size:34px; line-height:1.3; font-weight:700; letter-spacing:.01em}
+  .subtitle{margin-top:12px; color:var(--muted); font-size:14px; max-width:760px}
+  .meta-row{display:flex; flex-wrap:wrap; gap:8px 28px; margin-top:20px; font-size:12.5px; color:var(--faint); font-variant-numeric:tabular-nums}
+  .meta-row b{color:var(--body); font-weight:600}
+
+  /* ---------- 章节 ---------- */
+  section{margin-top:64px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; border-bottom:1px solid var(--line-deep); padding-bottom:10px; margin-bottom:8px}
+  .sec-no{font-family:var(--mono); font-size:13px; color:var(--sea); font-weight:600}
+  h2{font-family:var(--serif); color:var(--heading); font-size:23px; font-weight:700}
+  .sec-note{font-size:13px; color:var(--faint); margin:6px 0 22px}
+  h3{font-family:var(--serif); color:var(--heading); font-size:16.5px; font-weight:700; margin:30px 0 10px}
+  h3 .tag{font-family:var(--mono); font-size:11px; color:var(--sea); font-weight:600; letter-spacing:.06em; margin-right:8px; vertical-align:1px}
+  p{margin:10px 0}
+  .lead{font-size:15.5px; color:var(--body)}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono); font-size:12.5px; background:var(--sunken); border:1px solid var(--line); border-radius:var(--r-sm); padding:1px 5px; color:var(--deep); word-break:break-all}
+  .ev{font-family:var(--mono); font-size:11.5px; color:var(--faint); white-space:nowrap}
+
+  /* ---------- 表格 ---------- */
+  table{width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:13px; background:var(--card)}
+  th{font-family:var(--sans); text-align:left; font-size:11.5px; letter-spacing:.08em; color:var(--muted); font-weight:600; border-bottom:1.5px solid var(--line-deep); padding:8px 12px; background:var(--haze)}
+  td{border-bottom:1px solid var(--line); padding:8px 12px; vertical-align:top; font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--hover)}
+  td.k{color:var(--heading); font-weight:600; white-space:nowrap}
+  td.num{font-family:var(--mono); font-size:12.5px; white-space:nowrap}
+
+  /* ---------- 速览卡 ---------- */
+  .glance{display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line-deep); border:1px solid var(--line-deep); border-radius:var(--r-lg); overflow:hidden; margin:22px 0 8px}
+  .glance div{background:var(--card); padding:16px 18px}
+  .glance .g-k{font-size:11px; letter-spacing:.1em; color:var(--sea); font-weight:700; margin-bottom:4px}
+  .glance .g-v{font-family:var(--serif); color:var(--heading); font-size:15px; font-weight:700; line-height:1.5}
+  .glance .g-s{font-size:12px; color:var(--muted); margin-top:3px; font-variant-numeric:tabular-nums}
+
+  /* ---------- 结论条 / 提示块 ---------- */
+  .callout{border-left:3px solid var(--sea); background:var(--haze); border-radius:0 var(--r-md) var(--r-md) 0; padding:14px 18px; margin:18px 0; font-size:13.5px}
+  .callout.warn{border-left-color:var(--warn); background:#FBF6EA}
+  .callout.err{border-left-color:var(--err); background:#FBEFED}
+  .callout.ok{border-left-color:var(--ok); background:#EDF6F2}
+  .callout .c-t{font-weight:700; color:var(--heading); margin-bottom:4px; font-size:13px}
+  .callout p{margin:5px 0}
+
+  .pill{display:inline-block; font-family:var(--mono); font-size:11px; font-weight:600; padding:1px 8px; border-radius:99px; border:1px solid; vertical-align:1px; margin-left:6px; white-space:nowrap}
+  .pill.p-ok{color:var(--ok); border-color:var(--ok)}
+  .pill.p-warn{color:var(--warn); border-color:var(--warn)}
+  .pill.p-err{color:var(--err); border-color:var(--err}
+  .pill.p-info{color:var(--sea); border-color:var(--sea)}
+
+  .cols2{display:grid; grid-template-columns:1fr 1fr; gap:28px}
+  @media (max-width:760px){ .cols2{grid-template-columns:1fr} .glance{grid-template-columns:1fr} .wrap{padding:32px 18px 64px} h1{font-size:26px} }
+
+  .foot{margin-top:72px; border-top:1px solid var(--line-deep); padding-top:18px; font-size:12px; color:var(--faint)}
+  .toc{background:var(--card); border:1px solid var(--line-deep); border-radius:var(--r-lg); padding:18px 22px; margin-top:28px; font-size:13px}
+  .toc b{color:var(--heading); font-size:12px; letter-spacing:.1em}
+  .toc ol{margin:8px 0 0 20px; columns:2; column-gap:36px}
+  .toc li{margin:3px 0}
+  @media (max-width:760px){ .toc ol{columns:1} }
+  @media print{ body{background:#fff} .wrap{max-width:100%} section{page-break-inside:avoid} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= 封面 ================= -->
+<header class="masthead">
+  <div class="kicker">FluxTorrent · 全仓深度分析 · 2026-10-12</div>
+  <h1>FluxTorrent 项目深度分析报告</h1>
+  <p class="subtitle">基于全仓只读核查的六维分析：身份定位、技术架构、安全设计、准入体系、产品功能面、视觉语言。全部结论附代码证据（文件:行号或迁移编号），强度分级标注，不含推测性表述。</p>
+  <div class="meta-row">
+    <span><b>分析日期</b> 2026-10-12</span>
+    <span><b>证据基础</b> apps/api · apps/worker · apps/tracker · apps/web · migrations · docker · design-system</span>
+    <span><b>代码规模</b> Rust ≈602 文件 / 108,161 行 · TS/TSX 610 文件 / 110,185 行 · SQL 迁移 342 个</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <b>目录</b>
+  <ol>
+    <li><a href="#s0">〇 · 一页速览</a></li>
+    <li><a href="#s1">一 · 身份定位</a></li>
+    <li><a href="#s2">二 · 技术架构</a></li>
+    <li><a href="#s3">三 · 安全设计</a></li>
+    <li><a href="#s4">四 · 准入体系</a></li>
+    <li><a href="#s5">五 · 产品功能面</a></li>
+    <li><a href="#s6">六 · 视觉语言</a></li>
+    <li><a href="#s7">七 · 横向评估与勘误</a></li>
+  </ol>
+</nav>
+
+<!-- ================= 〇 速览 ================= -->
+<section id="s0">
+  <div class="sec-head"><span class="sec-no">00</span><h2>一页速览</h2></div>
+  <p class="sec-note">六个维度各一句话结论 + 关键数字。详版见对应章节。</p>
+  <div class="glance">
+    <div><div class="g-k">身份定位</div><div class="g-v">中立通用 PT 建站系统，白纸自研</div><div class="g-s">11 种预置站型 + custom 克隆；领域模型参考 NexusPHP，无代码血缘；「零魔改升级」承诺（git pull &amp;&amp; up -d）</div></div>
+    <div><div class="g-k">技术架构</div><div class="g-v">Rust 三 crate + Next.js 15 单体组装</div><div class="g-s">单一 /api/v1 scope 挂 21 个模块；342 个迁移 0001–0348；worker ≈60 个 job 六档周期；六容器部署</div></div>
+    <div><div class="g-k">安全设计</div><div class="g-v">纵深防御，反作弊是全场最深的一层</div><div class="g-s">JWT 双算法 fail-fast + 撤销线；写跨站闸；tracker 拒未注册 info_hash；ledger_guard 三闸 + BT 三阶段哈希实证</div></div>
+    <div><div class="g-k">准入体系</div><div class="g-v">邀请制为默认闸，考核是指标型不是答题型</div><div class="g-s">invite_only 默认；申请制（applications）人审队列；等级四维自动升降 + 可降级；权限 = 等级累进 ∪ 职务 ∪ 用户覆盖</div></div>
+    <div><div class="g-k">产品功能面</div><div class="g-v">全链路 PT 社区，字幕与娱乐屋是差异化长板</div><div class="g-s">54 个一级路由；字幕工作流（认领→交稿→验收→金字）；9 玩法 EV&lt;1 硬关闸；四通道开放接口</div></div>
+    <div><div class="g-k">视觉语言</div><div class="g-v">TIDE 设计系统 + CSS-first 令牌治理</div><div class="g-s">Tailwind v4 无配置文件；92 枚自绘 SVG 图标；114 个自托管 woff2；设计门禁 PASS（基线 1180 持平）</div></div>
+  </div>
+</section>
+
+<!-- ================= 一 身份定位 ================= -->
+<section id="s1">
+  <div class="sec-head"><span class="sec-no">01</span><h2>身份定位</h2></div>
+  <p class="sec-note">证据：README.md、Cargo.toml、apps/api/src/modules.rs、migrations/0315 等站型迁移、docs/。</p>
+
+  <h3><span class="tag">1.1</span>一句话定位</h3>
+  <p class="lead">FluxTorrent 是一个<strong>不偏向任何 PT 类型的中立通用建站系统</strong>：「站长自由搭建、轻松自定义功能和字段」（<code>README.md:3</code>）。它是 Rust workspace（api / worker / tracker）+ PostgreSQL + Next.js 的<strong>全新自研系统</strong>，不是 NexusPHP 的 fork 或二开——「NexusPHP 体系」仅指领域模型与功能参考，不存在代码血缘。</p>
+
+  <h3><span class="tag">1.2</span>站型参数化：一套引擎，十一个起点</h3>
+  <table>
+    <thead><tr><th style="width:170px">事实</th><th>证据与说明</th></tr></thead>
+    <tbody>
+      <tr><td class="k">11 种预置站型</td><td>综合/教育/影视/音乐/动漫/电子书/体育/游戏/软件/纪录片/无损 + custom 克隆（<code>README.md:5</code>）；站型差异经 <code>site_type</code> 参数化，考核&amp;任务走 NP 的 exam+task 合并式（<code>0093_exam_engine.sql</code>）</td></tr>
+      <tr><td class="k">六类型字段引擎</td><td>用户字段与内容维度共用同一套字段类型系统（<code>apps/api/src/fields.rs:1</code>；<code>user_field_defs</code> 表 0186；<code>section_kinds</code> 注册表 + <code>section_dict</code> 词表）</td></tr>
+      <tr><td class="k">内容维度锚点表</td><td><code>content_networks</code> 为通用锚点表（已含 19 种 kind：network / subtitle_group / league / subject…），枚举值→content_networks、artist 自由值→artists，同事务增量同步（<code>publish_http/upload_sections.rs::write_sections</code> → <code>sync_content_anchors</code>）</td></tr>
+      <tr><td class="k">30 个模块开关</td><td>四端联动（api 模块网关 fail-close + web requireModule + worker module_on + 管理端可见性），注册表 <code>modules</code> 表（<code>apps/api/src/modules.rs:1</code>）</td></tr>
+      <tr><td class="k">术语覆盖层</td><td>站长可改「种子」类固有词；后端 <code>terms.rs::apply</code> 与前端 <code>i18n/apply-terms.ts</code> 逐条对齐（长词优先、单次正向扫描）</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">1.3</span>「零魔改升级」的架构承诺</h3>
+  <p>全部变更走 sqlx 迁移（0001 起，api 启动自动执行，<code>main.rs:140-155</code>），不碰代码即可 <code>git pull &amp;&amp; up -d</code>（<code>README.md:7,64</code>）。这条承诺的代价是迁移纪律：仓库内沉淀了完整的撞号/checksum 处置规程（<code>CONTRIBUTING.md</code> 第 1/1a/1b/1c 条），本报告 §7.3 记录了并行会话撞号的三次实证。</p>
+
+  <div class="callout">
+    <div class="c-t">定位推论（强度：强，基于代码事实）</div>
+    <p>「解耦白纸架构」带来一个结构性优势：没有 PHPSESSID、没有内联脚本 CSP 死结、没有 15 年 accreted schema——API 端 <code>default-src 'none'</code> 的最严 CSP（<code>main.rs:251-265</code>）在 NP 衍生产物上几乎不可能落地。代价是全部领域逻辑（ratio / 做种奖励 / HnR / freeleech）从零写对，项目用 PostgreSQL 函数 + Rust worker 把最易错的做种奖励拆成可测单测的纯函数（0133/0136）。</p>
+  </div>
+
+  <h3><span class="tag">1.4</span>同类对标</h3>
+  <table>
+    <thead><tr><th>维度</th><th>FluxTorrent</th><th>NexusPHP</th><th>UNIT3D</th></tr></thead>
+    <tbody>
+      <tr><td class="k">定位</td><td>中立通用建站系统</td><td>中文 PT 事实标准</td><td>英文圈通用引擎</td></tr>
+      <tr><td class="k">代码关系</td><td>全新自研（Rust）</td><td>—</td><td>—</td></tr>
+      <tr><td class="k">升级方式</td><td>迁移驱动，零魔改</td><td>补丁式改代码</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12.5px;color:var(--faint)">来源：<code>README.md:76-81</code>（节选）。</p>
+</section>
+
+<!-- ================= 二 技术架构 ================= -->
+<section id="s2">
+  <div class="sec-head"><span class="sec-no">02</span><h2>技术架构</h2></div>
+  <p class="sec-note">证据：Cargo.toml、apps/api/src/main.rs、apps/worker/src/jobs/run.rs、docker/docker-compose.yml、apps/web/next.config.ts。</p>
+
+  <h3><span class="tag">2.1</span>总体形态</h3>
+  <table>
+    <thead><tr><th style="width:150px">组件</th><th>规模</th><th>职责</th></tr></thead>
+    <tbody>
+      <tr><td class="k">flux-api</td><td class="num">497 .rs / 90,279 行</td><td>Actix-web 4 HTTP API；src 内 30+ 个 <code>*_http</code> 子域（admin 三批共 86 文件）</td></tr>
+      <tr><td class="k">flux-worker</td><td class="num">61 .rs / 10,398 行</td><td>异步任务组；49 个 jobs 子模块 + task_jobs；附 np_import 导入器 bin</td></tr>
+      <tr><td class="k">flux-tracker</td><td class="num">44 .rs / 7,484 行</td><td>自研 BitTorrent tracker：HTTP announce + BEP15 UDP + BEP7 IPv6 + scrape</td></tr>
+      <tr><td class="k">web（Next.js 15）</td><td class="num">610 文件 / 110,185 行</td><td>RSC + PWA + 四语 i18n；standalone 输出，非 root 运行</td></tr>
+      <tr><td class="k">PostgreSQL 16</td><td class="num">342 个迁移</td><td>唯一事实源；seeding 公式下沉为 SQL 函数（0133/0136）</td></tr>
+      <tr><td class="k">Redis 7</td><td class="num">—</td><td>计费事件 Stream + 消费组 + DLQ + 限流 + swarm 表；noeviction + AOF everysec</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">2.2</span>API：单一 scope 的模块化组装</h3>
+  <p>全站路由经唯一 <code>.configure(community_http::configure)</code>（<code>main.rs:275</code>）挂到单一 <code>/api/v1</code> scope，21 个 mount 链依次组装（<code>community_http/mod.rs:193-214</code>）：setup → economy → v1_scope → community → ops → content → games → gacha → admin(p3→p2→admin) → settings → adapters → push → gaps → rss → twofa → compat → v4 → openapi。<code>http/mod.rs:53-280</code> 注册约 230 个 service。</p>
+  <p>全局中间件链（<code>main.rs:249-287</code>）：access_log 脱敏 → CORS → 安全头/CSP → request_id → i18n locale → setup_gate → <strong>写方法跨站来源闸</strong> → module_gate → metrics 计数 → 404 信封兜底。</p>
+  <div class="callout"><div class="c-t">结构判断（强度：强）</div><p>「单一 scope + 域目录拆分 + 300 行文件门禁」是一种克制的单体组织：没有微服务拆分成本，靠目录边界和迁移纪律控复杂度。管理端三代并存（admin_http 36 文件 / admin_p2 7 / admin_p3 43）是演进痕迹，模块间以 mount 链显式排序，未见循环依赖。</p></div>
+
+  <h3><span class="tag">2.3</span>Worker：六档周期 +  advisory lock 分片</h3>
+  <table>
+    <thead><tr><th style="width:110px">周期</th><th>代表任务</th></tr></thead>
+    <tbody>
+      <tr><td class="k">60s</td><td>consume_announce / consume_agent_blocks / consume_xreport（计费主链）/ sweep_stale_peers / task_settle / exam_assign / lottery_settle / backfill_pieces_hash</td></tr>
+      <tr><td class="k">300s</td><td>hr_enforce / hr_punish / class_auto_adjust / preserve_seed</td></tr>
+      <tr><td class="k">600s</td><td>cheat_audit / cheat_enforce / collusion_check</td></tr>
+      <tr><td class="k">1800s</td><td>multi_ip_check / leak_scan</td></tr>
+      <tr><td class="k">3600s</td><td>seeding_reward / ratio_watch / achievement_grant / 字幕三件套 / 邀请过期清理 等 20+</td></tr>
+      <tr><td class="k">6h / 24h</td><td>reconcile_diff_alert / ensure_partitions / usage_stats_report</td></tr>
+    </tbody>
+  </table>
+  <p>调度骨架：<code>run.rs:111-318</code>；<code>MissedTickBehavior::Skip</code> 防积压雪崩（<code>run.rs:73-77</code>）；<code>JOB_BATCH=500</code> 行级上限；advisory lock + <code>SKIP LOCKED</code> 支持多机分片（<code>FLUX_WORKER_JOBS</code> 逗号分隔角色）；<code>poll_manual_triggers</code> 每 60s 认领手动触发（后台 45 个 job 可观测可手触发）。</p>
+
+  <h3><span class="tag">2.4</span>数据流：announce → Redis Stream → 异步计费</h3>
+  <p>tracker announce 即 XADD <code>flux:announce</code>（<code>apps/tracker/src/http_track/emit.rs:64</code>），worker 以消费组 <code>fluxcg-announce</code> 组内唯一投递消费，失败进 DLQ <code>flux:announce:dlq</code>，<code>dlq_watch</code> 每 60s 巡检 + 24h 去重告警。同类流：<code>flux:agent_block</code>（客户端黑名单命中）、<code>flux:xreport</code>（交叉上报佐证）。</p>
+  <div class="callout warn"><div class="c-t">一个有据可查的架构决策（强度：强）</div><p>Redis 从 allkeys-lru 改为 <strong>noeviction</strong>（<code>docker-compose.yml</code> redis 段注释，ZT81 2026-10-02）：它承载计费事件流与死信，不是纯缓存——「宁可写失败也不静默驱逐未计费 stream 条目」。这是把 Redis 当队列用时最容易被忽视的一刀，此处显式写了改因。</p></div>
+
+  <h3><span class="tag">2.5</span>部署形态</h3>
+  <table>
+    <thead><tr><th style="width:110px">服务</th><th>要点</th></tr></thead>
+    <tbody>
+      <tr><td class="k">postgres</td><td>16-alpine；pg_stat_statements + log_min_duration_statement=300ms；仅绑 127.0.0.1:5432</td></tr>
+      <tr><td class="k">redis</td><td>requirepass + 512mb + noeviction + AOF everysec；命名卷</td></tr>
+      <tr><td class="k">api</td><td>healthcheck <code>/api/v1/ready</code>；stop_grace 45s；不挂宿主 migrations（镜像 COPY，<code>docker/api.Dockerfile:50</code>）</td></tr>
+      <tr><td class="k">worker</td><td>depends_on api(service_healthy)；优雅停机 ≤60s 排空</td></tr>
+      <tr><td class="k">tracker</td><td>HTTP 7070 + UDP 6969；DashMap 内存 peer 表 90s 超时淘汰</td></tr>
+      <tr><td class="k">web</td><td>Next standalone；rewrites /api/* → api:8080（构建期固化）；非 root uid 1000</td></tr>
+      <tr><td class="k">monitoring*</td><td>Prometheus + Grafana（profile 可选），五条告警预置</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">2.6</span>前端与 i18n</h3>
+  <p>Next.js 15 + React 19 + Tailwind v4（CSS-first，<strong>无 tailwind.config</strong>）；<code>output:"standalone"</code>。i18n 四语（zh-CN/zh-TW/en/ja）走 cookie <code>flux.locale</code> 无 URL 前缀（<code>i18n/config.ts:3-7</code>），客户端整本字典注入 + <code>useI18n()</code>；后端 Accept-Language → task-local 本地化（<code>i18n.rs</code>）。</p>
+</section>
+
+<!-- ================= 三 安全设计 ================= -->
+<section id="s3">
+  <div class="sec-head"><span class="sec-no">03</span><h2>安全设计</h2></div>
+  <p class="sec-note">证据：apps/api/src/auth.rs、http/auth_infra.rs、auth_http/login*.rs、openapi_http.rs、apps/tracker/src/、apps/worker/src/jobs/ledger_guard.rs 等。</p>
+
+  <h3><span class="tag">3.1</span>认证链路</h3>
+  <table>
+    <thead><tr><th style="width:150px">环节</th><th>设计与证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">JWT 双算法</td><td>HS256 要求 secret ≥32 字节否则启动报错（<code>auth.rs:49-53</code>）；RS256 私钥只在 api 进程，缺失 <strong>fail-fast 拒绝启动</strong>（<code>auth.rs:29-32,126-135</code>）；RS 校验锁死 RS256 防算法混淆，单测锚定「HS 签的 token 不能被 RS 校验」（<code>auth.rs:200-205</code>）</td></tr>
+      <tr><td class="k">凭证提取</td><td>Authorization: Bearer 优先，回落 HttpOnly cookie <code>flux_token</code>，多值逐个候选（<code>http/auth_infra.rs:155-188</code>）</td></tr>
+      <tr><td class="k">撤销线</td><td>DB <code>token_revocations</code> 与 Redis <code>logout_nbf:</code> 取大者，<code>iat ≤ nbf</code> 拒（<code>auth_infra.rs:191-227</code>）；用户状态以库为准（status≥2 封禁即 Forbidden），5s TTL 缓存 + 管理端主动 invalidate</td></tr>
+      <tr><td class="k">Cookie 形态</td><td><code>path=/</code> + http_only + same_site=Lax，<code>secure</code> 仅 x-forwarded-proto=https 时置位（<code>auth_http/login.rs:232-248</code>）</td></tr>
+      <tr><td class="k">页面闸门</td><td><code>flux.session</code> 是浏览器可写的非凭证标记（12h），middleware 只做页面准入；真凭证永不经 JS（<code>apps/web/middleware.ts:50</code>、<code>lib/api-client.ts:10-16</code>）；RSC 服务端读 cookie 显式转 Bearer 直连 API（<code>api-client.ts:80-97</code>）</td></tr>
+      <tr><td class="k">密码哈希</td><td>Argon2id 默认参数（m=19456,t=2,p=1），OsRng 盐，非法哈希判失败不 panic（<code>domain/mod.rs:31-51</code>）</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">3.2</span>限流与跨站闸</h3>
+  <table>
+    <thead><tr><th style="width:150px">机制</th><th>参数与证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">登录双限流</td><td>用户名 5/min + IP 20/min（独立宽阈防 NAT 误伤）（<code>login.rs:69-75</code>）；账户级 5 连败锁 15 分钟，fail-close 读计数（<code>login.rs:46-60,129-135</code>）；TOTP 失败同样计锁</td></tr>
+      <tr><td class="k">登录 Origin 闸</td><td>表单路径无 Origin 放行（非浏览器）、<code>Origin: null</code> 拒、白名单放行（<code>login_origin.rs:21-57</code>）</td></tr>
+      <tr><td class="k">写跨站闸</td><td>/api/v1 非 GET：Origin 优先、Referer 兜底（<code>http/write_origin.rs:21-105</code>，挂载 <code>main.rs:269-272</code>）</td></tr>
+      <tr><td class="k">发种/下载</td><td>Token 发种 20/min（<code>openapi_http/upload.rs:59-69</code>）；网页下载 20/min（<code>publish_http/download.rs:26</code>）</td></tr>
+      <tr><td class="k">tracker 限流</td><td>每用户 1800/min、每 IP 3600/min、全局熔断默认关；stopped 事件 4 倍宽阈独立桶（<code>http_track/guard.rs:158-204</code>）</td></tr>
+      <tr><td class="k">限流原语</td><td>固定窗口写进键名；Redis 故障 <strong>fail-close</strong>（读失败即错误，不当 0）（<code>http/throttle.rs:20-24,67</code>）</td></tr>
+      <tr><td class="k">metrics 门禁</td><td>x-metrics-token 或 Bearer 双头；未配置或失败一律 404 不暴露；tracker 侧用<strong>定长时间比较</strong>防侧信道（<code>v4_http/metrics.rs:55-88</code>、<code>tracker/http_track/metrics.rs:17-59</code>）</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">3.3</span>CSP 与头</h3>
+  <p>API 端最严形态：<code>default-src 'none'; frame-ancestors 'none'</code> + nosniff + DENY + Referrer-Policy（<code>main.rs:251-265</code>）。Web 端 Next headers 全站 CSP（<code>next.config.ts:18-74</code>）：default-src 'self'、object-src 'none'、form-action 'self'、frame-ancestors 'none'；登录/注册/找回页 no-store。CORS 白名单未配置且非开发态 <strong>panic 拒绝启动</strong>（<code>main.rs:83</code>）。</p>
+
+  <h3><span class="tag">3.4</span>Tracker 边界安全</h3>
+  <ul>
+    <li><strong>未注册 info_hash 拒绝</strong>：白名单快照 O(1) → 60s 负缓存 → DB 兜底（approval_status IN (0,1)）；DB 抖动 fail-open 且不写负缓存（<code>http_track/guard_whitelist.rs:22-71</code>；拒绝点 <code>announce.rs:147-156</code>）——防幽灵种子。</li>
+    <li><strong>字节层 percent-decode</strong>：%00–%FF 全字节手工解码，绕开 UTF-8 反序列化损坏（<code>peers/bencode.rs:107-126</code>）；info_hash 必须 20 字节、port 0..65535、数值超 i64 报错不静默当 0（<code>http_track/params.rs:41-71</code>）。</li>
+    <li><strong>passkey → 用户快照</strong>（60s 缓存）：挂起/禁下载即时拦；分享率闸只拦下载（left&gt;0）不拦做种（<code>announce.rs:101-145</code>）。</li>
+    <li><strong>客户端黑名单</strong>：UA 头 + peer_id 双正则交叉，命中经 Redis 去重投 cheat_events（<code>announce.rs:184-206</code>）。</li>
+  </ul>
+
+  <h3><span class="tag">3.5</span>反作弊五层（全场最深的设计）</h3>
+  <table>
+    <thead><tr><th style="width:140px">层</th><th>机制与证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">① 计费守卫</td><td><code>ledger_guard.rs</code>：速率钳（增量 ≤ 秒窗 × credit_ceiling，缺省 128 MiB/s clamp[1MiB/s,1TiB/s]，<code>:96-102,220-227,295-318</code>）；终身上限单种 ≤ size×1000（<code>:109-111</code>）；基线重置三情形（单调跟随 / 双侧 ≤16MiB 才认可重启 / 下降钉死 + refused，<code>:49-91</code>）；24h 内二次近零重置钉死（<code>:163-185</code>）；返回具名 <code>GuardOutcome</code></td></tr>
+      <tr><td class="k">② 幽灵做种判定</td><td>纯函数 + 单测：<code>seeding = left==0 &amp;&amp; port&gt;0 &amp;&amp; reachable &amp;&amp; proven &amp;&amp; covered</code>（<code>process_event/seeding_gate.rs:83</code>）；covered = phys_down ≥ size×10.4% 或佐证达标（<code>:75-80</code>）</td></tr>
+      <tr><td class="k">③ BT 三阶段探测</td><td><code>peers/bt_probe.rs</code>：握手 68B 校验 → interested 诱 bitfield → request 随机 piece → <strong>SHA-1 比对</strong>；哈希不符 = 实锤伪造判 DEAD，拿不到数据返回 None <strong>不判作弊</strong>（<code>:193-197,312-315</code>）；探针 peer_id 每次随机防指纹；piece 上界 8 MiB 防畸形分配；预算 clamp(len/8, 50,400)，5min 一轮 + 抖动（<code>probe_loop.rs:17-48</code>）</td></tr>
+      <tr><td class="k">④ 交叉上报封顶</td><td>xreport：leecher 为他人背书上传量，物理上界 = 本人 credited 下载 − 已背书（<code>seeding_gate.rs:95-116</code>）；荒谬线默认 10 GiB；超额留痕；入账按 <code>corroborated − 已入账</code> 封顶（<code>process_event.rs:76-113</code>、<code>xreport.rs</code>）</td></tr>
+      <tr><td class="k">⑤ connectable 四档</td><td>-1 未测 / -2 SUSPECT（加密客户端、白名单、CGNAT——<strong>不误伤</strong>）/ 0 DEAD / 1 OK；仅 DEAD 阻断收益（<code>peers/model.rs:11-31</code>）；<code>connectable_gate</code> 缺省 off，hard 才一票否决（0308、<code>seeding_gate.rs:133-168</code>）</td></tr>
+    </tbody>
+  </table>
+  <div class="callout ok"><div class="c-t">设计判断（强度：强）</div><p>反作弊体系最难的不是「抓」，而是「不误伤」：三阶段探测把「验不了」与「造假」严格分开（None ≠ DEAD）；SUSPECT 单列一档不惩罚；freeleech 下 credited down 恒 0 时改用 raw 读数（10.4% 不变量须用原始 raw 而非 credited）。这套口径在通用站场景下是必要的克制。</p></div>
+
+  <h3><span class="tag">3.6</span>RBAC</h3>
+  <p>权限 = <strong>用户级覆盖（可显式拒绝）&gt; 角色权限（class 累进 ∪ 职务）</strong>（0055/0056 语义，实现 <code>authz.rs:28-44</code> 下沉 SQL 函数 <code>user_can(uid, perm)</code>）。管理端守卫 = require_auth + require_perm(STAFF_PANEL)（<code>admin_http/guard.rs:9-17</code>）；<code>ensure_outranks</code> 要求操作者等级<strong>严格大于</strong>目标（<code>guard.rs:19-39</code>，修复过 93 档可封 94/95/99 的缺陷）。</p>
+</section>
+
+<!-- ================= 四 准入体系 ================= -->
+<section id="s4">
+  <div class="sec-head"><span class="sec-no">04</span><h2>准入体系</h2></div>
+  <p class="sec-note">证据：invite_http.rs、repo/auth.rs、gaps_http/applications.rs、task_jobs/、class_adj.rs、authz.rs、migrations 0093/0095/0227 等。</p>
+
+  <h3><span class="tag">4.1</span>总闸：注册模式</h3>
+  <table>
+    <thead><tr><th style="width:150px">模式</th><th>行为</th></tr></thead>
+    <tbody>
+      <tr><td class="k">invite_only（默认）</td><td><code>registration_mode</code> 缺省 invite_only（<code>register.rs:30-36</code>）；无邀请码 → InviteInvalid</td></tr>
+      <tr><td class="k">application_signup（申请制）</td><td><code>POST /apply</code>：理由 ≥20 字 + <strong>至少一条佐证链接</strong> + 同邮箱待审去重（<code>gaps_http/applications.rs:35-109</code>）；后台决断行锁 + approve 即生成绑定该邮箱的 72h 邀请码（<code>:146-268</code>）</td></tr>
+      <tr><td class="k">captcha 四驱动</td><td>none（自研算术题）/ turnstile / recaptcha / hcaptcha（<code>register.rs:64-87</code>，0227）</td></tr>
+      <tr><td class="k">邮箱两层准入</td><td>后缀策略（none/allow_list/deny_list，0282）+ email_bans 个案封禁（0032，含一次性邮箱预置 0226）</td></tr>
+      <tr><td class="k">装机封锁</td><td>setup 未完成前所有业务 API 封锁（设计行为）；完成时自动给管理员发首枚 72h 码防注册死锁（<code>setup_http.rs:208-226</code>）</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">4.2</span>邀请体系</h3>
+  <ul>
+    <li><strong>邀请链</strong>：<code>users.invited_by</code> + <code>invites</code> 表（0001:43-50）；注册单事务完成「建号 + 耗码 + 绑邀请人」，耗码 SQL 带三重条件（未用 + 未过期 + <strong>邀请人未被封</strong>）（<code>repo/auth.rs:101-137</code>）。</li>
+    <li><strong>周配额原子占位</strong>：<code>invite_quota</code> 表（0010）INSERT ON CONFLICT + <code>UPDATE ... WHERE used &lt; quota</code>，防 count+insert 并发穿透；class≥3 默认 2/周，持 invites.bonus 权限 4/周（<code>invite_http.rs:58-71,192-215</code>）。</li>
+    <li><strong>定向邮件邀请</strong>：码绑目标邮箱防转发滥用；邮箱策略 + email_bans + SMTP/PUBLIC_WEB_URL 缺失拒发（<code>invite_http/email.rs:19-153</code>）。</li>
+    <li><strong>封禁联动</strong>：status=2 封禁时该用户名下未用未过期码全部作废——「信任链在封禁动作上不能断开」（<code>admin_http/user_status.rs:132-148</code>）。</li>
+    <li><strong>商品化</strong>：商店 invite 商品定价 50000 火花（0281，注释说明恢复高定价的准入属性理由）；撤销不返还配额；管理端可直发 1–50 枚（默认 30 天）。</li>
+  </ul>
+
+  <h3><span class="tag">4.3</span>考核：exam+task 合并式，指标型而非答题型</h3>
+  <div class="callout"><div class="c-t">关键事实澄清（强度：强，来自 0093 与全仓 grep）</div><p>考核没有题库、没有问题选项表、没有答题交互。0093 起考核与普通任务合并为 <code>tasks</code> 单表（kind = task / onboard / periodic，auto_assign，period = once/monthly/quarterly），进度指标是 JSONB 六键（upload_delta / download_delta / seed_points_delta / seed_seconds_delta / uploads / subtitles）。<strong>「考核通过即升级」不成立</strong>：reward.rs:61-62 明确转正只确认 + 发奖，不动 class_id；target_class 是领取门槛而非晋升目标（<code>task_overview.rs:192-196</code>）。</p></div>
+  <table>
+    <thead><tr><th style="width:150px">环节</th><th>机制</th></tr></thead>
+    <tbody>
+      <tr><td class="k">派发</td><td>worker <code>exam_assign</code> 60s：onboard 面向注册 ≤30 天新人（0093:24-26）；periodic 面向等级达标全体，上轮已结算可重派；派发即发 PM，pm_sent 防重</td></tr>
+      <tr><td class="k">认领</td><td><code>POST /tasks/claim</code>：等级门槛拒绝 + 名额与插入同语句原子占位 + 报名费先占位后扣（幂等键，失败回滚）（<code>task_overview.rs:154-271</code>）</td></tr>
+      <tr><td class="k">结算</td><td>worker <code>task_settle</code>：tier 非空用现值否则 base+delta（0051 基线快照防历史存量误判）；metric 全满足 → 完成，到期 → 失败（罚金扣到 0 不造负余额）</td></tr>
+      <tr><td class="k">管理面</td><td>任务 CRUD + 考核用户豁免/恢复（不改 status 枚举，0105）；导航 min_class 93</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">4.4</span>等级与权限</h3>
+  <table>
+    <thead><tr><th style="width:150px">机制</th><th>事实</th></tr></thead>
+    <tbody>
+      <tr><td class="k">等级档位</td><td>用户层 0–12（0277 对齐 NP 口径 Peasant→Immortal）+ 贵宾 20 + 职级 90/91/92/93/94/95/98/99；10–12 为扩展位，门槛拉满 1PB 级防误晋升</td></tr>
+      <tr><td class="k">四维自动升降</td><td>worker <code>class_auto_adjust</code> 60s：uploaded / 完成下载数 / 做种小时 / 账龄 全达标取 max；demotable 为真可降级（保底 1，不降 0）；晋升奖 promo_sparks 区间求和、幂等键 <code>class_promo:{user}:{class}</code>（<code>class_adj.rs:99-272</code>）</td></tr>
+      <tr><td class="k">初始态</td><td><code>initial_class</code> 缺省 1；<code>initial_upload_gb</code> 缓冲；onboarding_preset strict/lenient 一键参数簇（复用于 setup 向导）</td></tr>
+      <tr><td class="k">权限种子</td><td>0054 class 累进五档（1 / 20 / 90 / 93 / 99）+ 5 个职务（uploader/reposter/seeder/liaison/forum_mod）；判定：用户覆盖 &gt; class 累进 ∪ 职务</td></tr>
+      <tr><td class="k">staff 导航</td><td><code>staff_panel_entries</code> 注册表：SQL 层 min_class + 模块开关，应用层逐条 user_can(perm_key)；tab_key 唯一索引（修过两个「职务管理」重复）；三级角色 sysop≥99 / administrator≥93 / moderator</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">4.5</span>惩处与救济</h3>
+  <p>status 四态（0 正常 / 1 禁言 / 2 封号 / 3 软删匿名化）；禁言同步 <code>forumpost</code> 闸（修过旧版禁言不生效的缺陷）；status≥1 即 bump_guard_ver 使 tracker 即时失效；封禁联动作废邀请码 + PM/邮件/webhook 通知。救济三通道：申诉（appeals，受理即联动解封）、自助解封（每人一次，cooldown 可配）、封禁公示（ban-log 防枚举）。</p>
+  <div class="callout"><div class="c-t">准入判断（强度：强）</div><p>这是一条「窄入口 + 宽救济」的准入设计：入口侧邀请配额、周配额原子占位、邮件定向、申请佐证、邮箱两层、封禁联动六重收窄；出口侧申诉、自助解封、公示三路救济。与纯开放注册相比运维成本高，但信任链完整——每一级都有对应的防滥用证据。</p></div>
+</section>
+
+<!-- ================= 五 产品功能面 ================= -->
+<section id="s5">
+  <div class="sec-head"><span class="sec-no">05</span><h2>产品功能面</h2></div>
+  <p class="sec-note">证据：apps/web/app/(main)/ 54 个一级路由、content_http/、community_http/、games/、gacha_math/、compat_http/。</p>
+
+  <h3><span class="tag">5.1</span>功能地图（按域）</h3>
+  <table>
+    <thead><tr><th style="width:120px">域</th><th>能力</th></tr></thead>
+    <tbody>
+      <tr><td class="k">PT 核心</td><td>发布审核流 / 多维筛选 + pg_trgm 全文搜索（中文友好）+ 同义词扩展 / 聚合组同组版本 / pieces_hash 跨站辅种指纹 / 促销引擎（六档 kind，后台可配 + 预排 + 到期回退）/ .torrent 注入本站 announce+passkey+private / 30 分钟临时下载凭证 / H&amp;R 全链（快照/预警告/惩罚/赦免）/ 评论区树 / 感谢收藏 / 举报（五类目标白名单）</td></tr>
+      <tr><td class="k">字幕区</td><td>上传 / 列表七列 / 下载 / 评分 / 修订版链（parent_id）/ 求字幕悬赏 / <strong>认领→交稿→验收→协作确认→撤销</strong> 工作流 / 金字评选 / 认证字幕人 / 三档成就；交付成功自动挂 free 促销；worker 超时自动化（subreq_sweep / subawards_build / subcert_sweep）</td></tr>
+      <tr><td class="k">娱乐屋</td><td>9 玩法：猜大小 / 刮刮乐 / 九宫格 / 扭蛋 / 大转盘 / 农场 / 抽卡 / 宠物 / 钓鱼；instant 与 session 两类；战绩/路单/赔率公示/周榜；全部走火花管线</td></tr>
+      <tr><td class="k">论坛</td><td>分区 + 主题 + 回复 + 投票 / 悬赏 / 抽奖 / 打赏 / 点赞 / 收藏 / 关注流 / @提及 / 视频内嵌白名单（bilibili 等，正则规则后台可配）/ 版主任免</td></tr>
+      <tr><td class="k">经济</td><td>spark_ledger 唯一事实源（一切动账经流水，幂等触发器 0080）/ 商店 / 银行五档（活期复利+定期+贷款）/ 签到 / 站免池 / 券（免费/中性）/ 复活券 / 捐赠 / 反通胀阀门（购买上限）</td></tr>
+      <tr><td class="k">社交成就</td><td>勋章（多佩戴位 + 赠送手续费 + 稀有度）/ 任务五档卡 / 考核 / 好友（三态双向申请）/ 成就墙 / 濒危预警雷达 / 组队契约 / 赛季 / 信誉</td></tr>
+      <tr><td class="k">排行观测</td><td>六榜（魔力/上传/下载/做种时长/时魔/发种量，hourly 含 donor 双倍）/ 管理端经济对账视图 / 连接分布 / seed-stats</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">5.2</span>娱乐屋：EV&lt;1 是硬关闸不是口号</h3>
+  <p>总纲 <code>games.rs:1-19</code>：「全部玩法期望回报必须 &lt; 1（庄家优势 &gt; 0），不允许 EV=1」。落地证据：</p>
+  <ul>
+    <li>九宫格/扭蛋/大转盘同构 → <strong>pool_round 单源实现</strong>，三个 handler 是薄壳（<code>games_http/pool_games.rs:1-6</code>）；</li>
+    <li>奖池行表化 + 读表即关闸：<code>validate_pool()</code> 用<strong>整数精确比较</strong> <code>ev_strictly_below</code>（防浮点把中性池放过），EV≥1 直接错误 variant <code>ExpectedValueNotBelowOne</code>（<code>games/jgg.rs:91,154-200</code>）；</li>
+    <li>数值锚点：刮刮乐 0.66、九宫格 0.725、猜大小赔率 1.9（EV≈0.92–0.95）、农场 0.90、彩蛋池只能吃剩下的 0.10；</li>
+    <li>测试锁定 EV（<code>games/tests.rs:82-91,111-112,150,237</code>）；物品发不出去按回落价折魔力，回落已被 EV 计入。</li>
+  </ul>
+
+  <h3><span class="tag">5.3</span>开放接口四通道</h3>
+  <table>
+    <thead><tr><th style="width:150px">通道</th><th>要点</th></tr></thead>
+    <tbody>
+      <tr><td class="k">compat 层</td><td><code>/api/v1/compat/nexusphp/*</code> 六方言（nexusphp/gazellepw/unit3d/tnode/discuz/mtorrent）；NP 别名薄壳（getrss/takelogin/userdetails/details）；<code>/compat/meta</code> 架构自描述无需鉴权</td></tr>
+      <tr><td class="k">开放 API</td><td><code>fxo_</code> Token（sha3-256 落库、180 天、上限 3 枚、默认 60/min）；<code>require_scope(upload)</code> 真强制；增量新种流 <code>/open/announces?since_id=</code>；Token 化发种（info_hash 幂等）</td></tr>
+      <tr><td class="k">Torznab</td><td><code>/torznab</code> caps + search（tvsearch/movie），0267 按规范补 caps 根节点/torznab:attr；Prowlarr/Jackett/Sonarr/Radarr 可接</td></tr>
+      <tr><td class="k">RSS</td><td><code>/rss/{passkey}</code>（item 带 enclosure 直链）+ 论坛版 RSS；passkey 30/min；未知 passkey 404</td></tr>
+      <tr><td class="k">其他</td><td>PT-Plugin-Plus <code>/plugins/ptppUserInfo</code>；<code>/downloads/keys</code> 30 分钟凭证；NexusPHP 数据导入器 np_import</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">5.4</span>管理端</h3>
+  <p>三批共 86 个 Rust 文件（admin 36 + p2 7 + p3 43）：审核台（单条+批量+自动促销副作用）、举报队列、用户全家桶、角色权限矩阵、审计（链校验）、45 个后台工具签。前端 <code>/admin</code> SPA（?tool=）+ settings/forums/users 三个静态子路由 + catch-all 兜底；<strong>导航唯一源</strong> = staff_panel_entries → AdminShell（组件注释明确记载删除了面板内 35 个药丸按钮的历史）。</p>
+  <div class="callout"><div class="c-t">产品判断（强度：中强）</div><p>功能面的差异化不在「PT 该有的都有」，而在三处别人通常没有的完整实现：字幕工作流（认领/验收/金字/认证的全生命周期）、EV&lt;1 被测试与整数比较锁死的娱乐经济、以及把反作弊做进计费管线而非事后审计。风险面在管理端三代并存（admin/p2/p3）的认知成本，以及 54 个一级路由的信息架构压力——后者靠模块开关（30 个）和导航维度门（kinds 注册表）缓解。</p></div>
+</section>
+
+<!-- ================= 六 视觉语言 ================= -->
+<section id="s6">
+  <div class="sec-head"><span class="sec-no">06</span><h2>视觉语言</h2></div>
+  <p class="sec-note">证据：design-system/FluxTorrent-Tide主题设计方案.html、apps/web/app/styles/、components/icons.tsx、scripts/ui_design_guard.mjs。</p>
+
+  <h3><span class="tag">6.1</span>TIDE 设计系统</h3>
+  <p>当前生效体系为 <strong>TIDE（潮汐）</strong>，蓝色主阶七档（abyss #062A47 → mist #D7E6F7）+ 单信号青；表面六阶 + 文本七阶；圆角 18/14/10/6（注释：由 24/20/14/10 收紧「去童趣」）；双层低扩散阴影「靠 hairline 而非阴影分层」；渐变仅单色蓝三层。</p>
+  <table>
+    <thead><tr><th style="width:200px">「去 AI 模板感」三条硬规矩</th><th>落地证据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">不用紫蓝渐变、不用大圆角浅灰卡</td><td>渐变改单色蓝（<code>theme-tide.css:50-58</code>）；紫位 indigo 归位为深蓝 #0A3D6B（<code>:39</code>「全站去紫」）；圆角 24→18</td></tr>
+      <tr><td class="k">不用三栏 icon+title+desc 堆砌</td><td>信息密度用表格与列表承载（站点天然高密度）</td></tr>
+      <tr><td class="k">层级靠字重/字号/字距，不靠颜色数量</td><td>全站只允许一个主蓝 + 一个信号青；语义位重映射（sky→品牌蓝、candy→信号青、sun→琥珀、coral→砖红、mint→深松绿，<code>theme-tide.css:16-18</code>）</td></tr>
+    </tbody>
+  </table>
+  <p>语义色遵守中文金融惯例：<code>--up:#C8322C</code> 红涨 / <code>--down:#12805C</code> 绿跌（TIDE token）。</p>
+
+  <h3><span class="tag">6.2</span>实现形态</h3>
+  <table>
+    <thead><tr><th style="width:150px">层</th><th>事实</th></tr></thead>
+    <tbody>
+      <tr><td class="k">样式架构</td><td>Tailwind v4 CSS-first，<strong>无 tailwind.config</strong>；globals.css 固定 @import 链（tailwind → fonts-tide → base → layout → pages → comments → hover-card → <strong>theme-tide → motion-tide</strong> → medal-shop → ui）</td></tr>
+      <tr><td class="k">主题机制</td><td><code>&lt;html data-theme="baozi｜baozi-night"&gt;</code>；ThemeNoFlash 内联脚本首绘前定主题；320ms 切换过渡；浅色 = TIDE 值生效（theme-tide 62 处覆盖），夜间 = base.css Aurora Night 原值</td></tr>
+      <tr><td class="k">令牌体系</td><td>语义层 --surface(7)/--text(9)/--border(3)/品牌六色(+soft)/--success…；尺度层 --sp/--r/--fs/--z/--bp/--tap-min；@theme inline 桥 30 个 Tailwind 变量；旧名别名单一真源化（2026-10-03）</td></tr>
+      <tr><td class="k">图标</td><td>自绘 SVG（<strong>非 lucide</strong>）：<code>icons.tsx</code> 92 枚，24×24 viewBox、安全区 2px、stroke=currentColor 1.5、round 帽、不内置颜色（主题切换自动生效）、RSC 可用（无 use client）；23 个文件 54 处调用；emooji 残留仅存于产品文案（明确豁免）</td></tr>
+      <tr><td class="k">字体</td><td>三家族自托管：Bricolage Grotesque（display 3 片）+ Noto Serif SC（101 片子集）+ IBM Plex Mono（10 片），114 个 woff2 落 public/fonts，font-display:swap，「不再依赖外网」；标题走 display 栈、数据走 mono 栈 + tabular-nums</td></tr>
+      <tr><td class="k">动效</td><td>motion-tide.css 350 行：0–0.6s 板块 staggered rise（9 档）/ 表格行错峰 40ms / IntersectionObserver 进场 / hover 0.16s 微抬 / 主按钮 0.6s 水纹 / loop 仅进度流光、骨架 shimmer、在线呼吸点；唯一 JS = motion.tsx</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">6.3</span>治理与门禁</h3>
+  <p>P1–P6（令牌→结构→图标→动效→字体→回归）已全部完结（<code>_doc/TIDE主题回归验收报告.md</code>：46 路由 Playwright 遍历，P1–P5 零业务回归）。后续治理轮（2026-10-03）建立 <code>scripts/ui_design_guard.mjs</code>（6+2 条规则，接入 CI，全部做过负向测试）：悬挂变量 0、硬编码色 baseline 1180 持平（只减不增）、野断点 30、野 z-index 34、焦点环兜底 54 处。实测 <strong>PASS 0 违规</strong>。</p>
+  <div class="callout warn"><div class="c-t">视觉层唯一明显的短板（强度：强）</div><p>组件库薄：<code>components/ui/</code> 仅 2 个组件（empty-state、skeleton）；事实上的通用原语是 <code>.baozi-panel</code>（90 个文件使用但无变体体系）与 P2 补的 <code>.btn</code>。硬编码色 1180 处的基线中 45% 集中在游戏域 CSS（arcade-sweet 242 + arcade 155）。门禁保证了「不恶化」，但没有原语变体体系，「新页面手感一致」仍依赖评审而非机制。</p></div>
+</section>
+
+<!-- ================= 七 横向评估 ================= -->
+<section id="s7">
+  <div class="sec-head"><span class="sec-no">07</span><h2>横向评估与勘误</h2></div>
+
+  <h3><span class="tag">7.1</span>六维评分卡</h3>
+  <table>
+    <thead><tr><th style="width:110px">维度</th><th style="width:70px">成熟度</th><th>最强的一点</th><th style="width:260px">最大短板</th></tr></thead>
+    <tbody>
+      <tr><td class="k">身份定位</td><td class="num">A</td><td>中立通用 + 零魔改升级承诺自洽</td><td>「通用」的认知成本：11 站型 ×30 模块的组合面需要文档持续投入</td></tr>
+      <tr><td class="k">技术架构</td><td class="num">A−</td><td>迁移纪律 + 计费流 DLQ + noeviction 决策留痕</td><td>管理端三代并存；api 单 crate 90k 行的导航成本</td></tr>
+      <tr><td class="k">安全设计</td><td class="num">A</td><td>反作弊五层且「不误伤」口径严谨</td><td>BT 探测预算 clamp(50,400) 对大 swarm 覆盖有限（已知取舍）</td></tr>
+      <tr><td class="k">准入体系</td><td class="num">A−</td><td>邀请链封禁联动 + 周配额原子占位</td><td>invite_only 默认对冷启动不友好（有申请制作对冲）</td></tr>
+      <tr><td class="k">产品功能面</td><td class="num">A</td><td>字幕工作流 + EV&lt;1 锁死 + 四通道开放接口</td><td>54 路由 IA 压力；管理端工具签 45 个的上手曲线</td></tr>
+      <tr><td class="k">视觉语言</td><td class="num">B+</td><td>TIDE 令牌 + 三条硬规矩 + 门禁闭环</td><td>组件原语层薄（ui/ 仅 2 个），一致性靠评审兜底</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">7.2</span>跨维度观察</h3>
+  <ul>
+    <li><strong>安全与产品的耦合点设计得好</strong>：计费守卫不是外挂审计而是计费管线的一段（process_event → ledger_guard → 入账），cross-report 封顶、BT 实证都长在同一路径上。这意味着作弊防御的收益随经济系统自动生效，不需要运营手工触发。</li>
+    <li><strong>「单一真相源」是贯穿全仓的工程审美</strong>：seeding 公式在 DB 函数（worker 与 API 预估共用）、promo 匹配口径唯一来源 <code>torrents/promo.rs</code>、pool_round 单源、staffpanel 导航唯一源、术语前后端逐条对齐。同类项目里这通常是文档承诺，这里是被引用链强制执行的。</li>
+    <li><strong>文档化决策密度罕见</strong>：改因注释（noeviction 改因、紫位归位、圆角收紧理由、迁移纪律三条、禁言缺陷披露）说明这个仓库把「为什么」当作一等公民。</li>
+  </ul>
+
+  <h3><span class="tag">7.3</span>与既有工作记忆的勘误（本轮核查实证）</h3>
+  <table>
+    <thead><tr><th style="width:190px">既有表述</th><th>核查结论</th></tr></thead>
+    <tbody>
+      <tr><td class="k">「passkey 端点限流 30/min」</td><td>实际：passkey-login begin = IP 20/min + 用户名 10/min；finish = IP 10/min。30/min 属于 RSS 与 NP download.php 的 passkey 限流（<code>rss_http.rs:61</code>、<code>nexusphp.rs:402</code>）</td></tr>
+      <tr><td class="k">「幽灵做种四条件」</td><td>现行判据是 <code>left==0 &amp;&amp; port&gt;0 &amp;&amp; reachable &amp;&amp; proven &amp;&amp; covered</code>（<code>seeding_gate.rs:83</code>）；conn≠0 仅在 connectable_gate=hard 时生效（默认 off）；10.4% 是 covered 的一条路径，可被佐证替代；verdict 内无 last_seen 条件（新鲜度体现在 seed_cap 累计窗）</td></tr>
+      <tr><td class="k">「_mint_jwt.py 签 fxo_」</td><td>该脚本已删除（<code>_doc/全站安全与反作弊审计二轮-2026-10-07.md:56</code>）；JWT 实现在 <code>apps/api/src/auth.rs</code>；fxo_ Token 由 <code>openapi_http.rs</code> 签发</td></tr>
+      <tr><td class="k">迁移编号连续</td><td>实为 342 个文件 / 编号 0001–0348，缺号 6 个：0129、0130、0202、0268、0269、0288</td></tr>
+      <tr><td class="k">考核 = 答题考试</td><td>无题库无答题；tasks 单表合并式，指标型 JSONB 六键；通过不发 class（见 §4.3）</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="tag">7.4</span>优先改进建议（按投入产出排序）</h3>
+  <ol>
+    <li><strong>组件原语变体体系</strong>：把 <code>.baozi-panel</code>（90 处使用）与 P2 的 <code>.btn</code> 收敛为 ui/ 下的变体组件（size × tone × density 三轴），这是视觉层从「门禁不恶化」到「新页面天然一致」的唯一缺口。</li>
+    <li><strong>管理端三代合并的导航审计</strong>：admin/p2/p3 三批 mount 顺序即加载顺序，建议做一次「工具签 → 实现文件」映射表并入库（0344 已示范 module_key 归一的做法）。</li>
+    <li><strong>游戏域硬编码色清偿</strong>：arcade 两个 CSS 占基线 45%，但游戏域视觉本就张扬，建议走「域级豁免 + 域内令牌化」而非全站一刀切。</li>
+    <li><strong>探测覆盖率可观测化</strong>：BT 三阶段探测预算 clamp(50,400) 对大 swarm 覆盖有限，建议把「已实证做种者占比」纳入 /admin/conn/dist 同页观测，让这个已知取舍变得可量化。</li>
+  </ol>
+</section>
+
+<footer class="foot">
+  <p><strong>证据方法与范围边界</strong>：本报告全部结论来自对工作区的只读核查（Rust/TS/SQL 源码、迁移文件、docker-compose、design-system 设计稿、_doc 既有审计报告），关键论断附文件:行号。未做任何代码修改。评测性表述（§7.1 评分卡、§7.4 建议）为基于上述事实的分析师判断，已单独标注；其余为代码事实。行数为 find+wc 统计口径，排除 target/ 与 node_modules/。</p>
+  <p style="margin-top:8px">FluxTorrent 深度分析 · 2026-10-12 · 生成于 D:/FluxTorrent 工作区</p>
+</footer>
+
+</div>
+</body>
+</html>

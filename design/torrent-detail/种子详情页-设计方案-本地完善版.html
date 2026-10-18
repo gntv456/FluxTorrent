@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>种子详情页 · 设计方案（本地完善版）</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232fa8ff'/><path d='M7 12l3 3 7-7' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@600;700;900&display=swap">
+<style>
+/* ===== Aurora 令牌（与站点 base.css 同源；取自 apps/web/app/styles/base.css） ===== */
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff;
+  --sun:#ffc93c; --sun-soft:#fff4d6;
+  --coral:#ff7a59; --coral-soft:#ffe9e2;
+  --mint:#2fbf9b; --mint-soft:#dff7f0;
+  --candy:#ff8fc7; --candy-soft:#ffe9f4;
+  --indigo:#5b6bf5; --indigo-soft:#eaebff;
+  --grad-aurora:linear-gradient(135deg,#2fa8ff 0%,#5b6bf5 48%,#ff8fc7 100%);
+  --grad-rainbow:linear-gradient(90deg,#ffc93c,#ff7a59,#ff8fc7,#5b6bf5,#2fa8ff);
+  --page:#f5faff; --card:#fff; --cloud:#eef5fd; --raised:#fbfdff;
+  --text-strong:#1f2a44; --text-heading:#141d33; --text-body:#40506e;
+  --text-brand:#1e8ae8; --text-muted:#6b7a99; --text-faint:#8493ad; --text-fainter:#a3b1c6;
+  --line:#e3edf7; --line-deep:#bcd7ef;
+  --success:#167c63; --warning:#936800; --danger:#d60000;
+  --r-s:6px; --r-m:10px; --r-l:16px;
+  --sh-sm:0 1px 2px rgba(31,42,68,.05);
+  --sh-md:0 4px 14px rgba(31,42,68,.07);
+  --sh-lg:0 12px 32px rgba(31,42,68,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans SC',system-ui,-apple-system,'Segoe UI',sans-serif;background:#e9eff7;color:var(--text-body);font-size:14px;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ===== 页面外壳 ===== */
+.topbar{position:sticky;top:0;z-index:100;background:#0f1b33;color:#fff;display:flex;align-items:center;gap:10px;padding:11px 24px}
+.topbar .tb-title{font-family:'Noto Serif SC',serif;font-weight:700;font-size:14px;white-space:nowrap}
+.topbar .tb-sub{font-size:11px;color:#8fa8c7;white-space:nowrap}
+.topbar .tb-tag{margin-left:auto;font-size:11px;font-weight:800;color:#fff;background:var(--sky-deep);padding:4px 12px;border-radius:99px;white-space:nowrap}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* ===== 封面 ===== */
+.cover{background:linear-gradient(150deg,#10203f 0%,#16294f 55%,#1c3a6e 100%);color:#fff;padding:64px 0 56px;border-radius:0 0 26px 26px;overflow:hidden;position:relative}
+.cover::before{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(47,168,255,.35),transparent 70%)}
+.cover::after{content:"";position:absolute;left:-80px;bottom:-160px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(91,107,245,.28),transparent 70%)}
+.cover-inner{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:0 20px}
+.cover-kicker{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.14em;color:#8fd0ff;background:rgba(47,168,255,.14);border:1px solid rgba(47,168,255,.35);padding:5px 14px;border-radius:99px;margin-bottom:18px}
+.cover h1{font-family:'Noto Serif SC',serif;font-size:34px;font-weight:900;line-height:1.3;margin-bottom:14px}
+.cover h1 em{font-style:normal;background:linear-gradient(100deg,#6ec2ff,#a79aff,#ff9fd8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cover p{font-size:14px;color:#b9cae8;max-width:760px;line-height:1.9}
+.cover .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.cover .chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#dfeaff;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);padding:7px 15px;border-radius:99px}
+.cover .chip svg{width:14px;height:14px;fill:none;stroke:#8fd0ff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cover .ver{position:absolute;right:26px;bottom:20px;font-family:'Noto Serif SC',serif;font-weight:900;font-size:96px;color:rgba(255,255,255,.07);line-height:1;z-index:1}
+
+/* ===== 章节通用 ===== */
+.sec{padding:44px 0 8px}
+.sec-no{font-size:11px;font-weight:900;letter-spacing:.16em;color:var(--sky-deep);background:var(--sky-soft);display:inline-block;padding:4px 12px;border-radius:6px;margin-bottom:12px}
+.sec-title{font-family:'Noto Serif SC',serif;font-size:23px;font-weight:900;color:var(--text-heading);margin-bottom:8px}
+.sec-sub{font-size:13px;color:var(--text-muted);margin-bottom:24px;line-height:1.8;max-width:880px}
+.sec-sub b{color:var(--text-strong)}
+h4.block-title{font-size:14px;font-weight:800;color:var(--text-heading);margin:26px 0 12px;display:flex;align-items:center;gap:8px}
+h4.block-title::before{content:"";width:4px;height:15px;border-radius:2px;background:var(--grad-aurora)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* ===== 卡片 ===== */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh-sm);padding:20px}
+.card+.card{margin-top:14px}
+.callout{display:flex;gap:12px;padding:14px 18px;border-radius:12px;font-size:13px;line-height:1.8;margin:14px 0}
+.callout--sky{background:var(--sky-soft);color:#1c5d8e;border:1px solid #c3e2fb}
+.callout--sun{background:var(--sun-soft);color:#7a5a00;border:1px solid #f0dca0}
+.callout--mint{background:var(--mint-soft);color:#126a53;border:1px solid #a9e5d4}
+.callout--coral{background:var(--coral-soft);color:#a33a1d;border:1px solid #f3c6b8}
+.callout b{font-weight:800}
+.callout svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+
+/* ===== 表格 ===== */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm)}
+.tbl th{background:var(--cloud);color:var(--text-heading);font-weight:800;text-align:left;padding:10px 14px;font-size:12px;border-bottom:1px solid var(--line-deep);white-space:nowrap}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--text-body);vertical-align:top;line-height:1.7}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--raised)}
+.tbl .num{font-variant-numeric:tabular-nums;color:var(--text-strong);font-weight:700;white-space:nowrap}
+.tbl code{font-family:ui-monospace,'Cascadia Mono',Consolas,monospace;font-size:11px;background:var(--cloud);color:var(--sky-deep);padding:2px 6px;border-radius:5px;white-space:nowrap}
+.tbl .file{font-family:ui-monospace,'Cascadia Mono',Consolas,monospace;font-size:11px;color:var(--text-muted)}
+.badge{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.badge--done{background:var(--mint-soft);color:var(--success)}
+.badge--part{background:var(--sun-soft);color:var(--warning)}
+.badge--todo{background:var(--coral-soft);color:var(--coral)}
+.badge--l0{background:var(--sky-deep);color:#fff}
+.badge--l1{background:var(--indigo);color:#fff}
+.badge--l2{background:var(--cloud);color:var(--text-muted)}
+
+/* ===== 结构示意（ASCII 盒） ===== */
+.fig{background:#0f1b33;color:#cfe3ff;border-radius:14px;padding:20px;font-family:ui-monospace,'Cascadia Mono',Consolas,monospace;font-size:12px;line-height:1.75;overflow-x:auto;box-shadow:var(--sh-md)}
+.fig .c{color:#6ec2ff}.fig .k{color:#ffd479}.fig .g{color:#7fe0c0}.fig .d{color:#a7a7c9}
+.fig b{color:#fff;font-weight:700}
+.fig .dim{color:#5a6d94}
+
+/* ===== 步骤 / 列表 ===== */
+.ul{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.ul li{display:flex;gap:10px;font-size:13px;line-height:1.8;color:var(--text-body)}
+.ul li::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--grad-aurora);margin-top:9px}
+.ul li b{color:var(--text-strong)}
+
+/* ===== 状态色板 ===== */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.sw{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm)}
+.sw .swc{height:44px}
+.sw .swt{padding:8px 12px}
+.sw .swt b{display:block;font-size:12px;color:var(--text-heading)}
+.sw .swt span{font-size:10.5px;color:var(--text-faint);font-family:ui-monospace,Consolas,monospace}
+
+footer.foot{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);text-align:center;font-size:12px;color:var(--text-faint)}
+
+/* 移动端：topbar 副题隐藏 + 表格横向滚动（修复 horizontalOverflow / fixedWidth） */
+@media(max-width:640px){
+  .topbar{flex-wrap:wrap;row-gap:4px}
+  .topbar .tb-sub{display:none}
+  .topbar .tb-tag{margin-left:0}
+  .tbl{display:block;overflow-x:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="tb-title">FluxTorrent · 种子详情页设计方案</span>
+  <span class="tb-sub">本地完善版 — 对齐 apps/web 真实实现</span>
+  <span class="tb-tag">v2 · 基于本地代码完善</span>
+</div>
+
+<!-- ===== 封面 ===== -->
+<header class="cover">
+  <div class="cover-inner">
+    <span class="cover-kicker">FLUXTORRENT DESIGN SYSTEM · TORRENT DETAIL</span>
+    <h1>种子详情页设计方案<br>从「17 模块平铺」到「决策一屏可见 · 信息双栏分层」<em>（本地完善版）</em></h1>
+    <p>本版基于 <b>D:\FluxTorrent\apps\web</b> 真实代码完善：组件类名、数据字段、显隐门、断点全部对齐
+    <b>app/(main)/torrent/[id]/page.tsx</b> 与 <b>app/styles/base.css</b> 的落地实现。FluxTorrent 为
+    <b>通用 PT 建站系统</b>——<b>默认支持 11 种站型包</b>（教育/影视/音乐/动漫/电子书/综合/体育/游戏/软件/纪录片/无损音乐，
+    见 <b>site_type_packs</b>），分类、sections 维度、品牌、H&amp;R、促销均可配；
+    配套样图提供<b>11 站型切换演示</b>，可直接作为开发验收参照。</p>
+    <div class="chips">
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>真实组件映射</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 11h8M8 15h4"/></svg>4 档断点</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>显隐门 sectOn</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>决策五要素</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/><circle cx="18" cy="8" r="2.4"/><circle cx="18" cy="14" r="2.4"/><circle cx="18" cy="20" r="2.4"/></svg>通用站型</span>
+    </div>
+  </div>
+  <div class="ver">v2</div>
+</header>
+
+<div class="wrap">
+
+<!-- ===== 第一章 现状 ===== -->
+<section class="sec" id="s1">
+  <div class="sec-no">第一章</div>
+  <h2 class="sec-title">现状基线：真实实现已落地什么</h2>
+  <p class="sec-sub">以 <code>page.tsx</code>（<b>426 行</b>）+ <code>base.css</code>（td-* 约 <b>900 行</b>）为基线盘点：
+  详情页已实现 <b>td-layout 双栏骨架</b>、<b>td-head 海报头</b>、<b>td-specs 规格条</b>、<b>td-anchor 移动锚点</b>、
+  <b>td-side 右栏三卡</b>、<b>td-actionbar 底部操作条</b>，数据经 <b>GET /api/v1/torrents/{id}/aggregate</b> 一次带回七块
+  （torrent / detail / files / logs / thanks / comments / nfo / tags），RTT 6→1。</p>
+
+  <h4 class="block-title">已落地组件清单（含真实类名与文件）</h4>
+  <table class="tbl">
+    <tr><th style="width:190px">真实组件</th><th style="width:250px">真实类名 / DOM</th><th>职责</th><th style="width:110px">层级</th></tr>
+    <tr><td><b>TorrentHead</b> <span class="file">components/torrent-detail-head.tsx</span></td><td><code>.td-head</code> <code>.td-head__poster/main/name/sub/badges/meta/actions</code></td><td>通栏海报头：左海报 2:3 + 右主信息（名称/副题链/标签行/H&amp;R 义务/徽章行/操作区）</td><td><span class="badge badge--l0">L0</span></td></tr>
+    <tr><td><b>TorrentSpecs</b> <span class="file">_parts/torrent-detail-specs.tsx</span></td><td><code>.td-specs</code> <code>.td-spec</code></td><td>规格徽章条：大小/文件数/分类/动态维度（sections 单源）</td><td><span class="badge badge--l0">L0</span></td></tr>
+    <tr><td><b>TorrentAnchorBar</b> <span class="file">components/torrent-anchor.tsx</span></td><td><code>.td-anchor</code> <code>.td-anchor__tab</code></td><td>移动锚点条（&lt;768 sticky）：简介/文件/字幕/评论 + 计数</td><td><span class="badge badge--l0">L0</span></td></tr>
+    <tr><td><b>Fold / FoldMobile</b> <span class="file">components/torrent-detail-parts.tsx / fold-mobile.tsx</span></td><td><code>.td-fold</code> <code>.td-fold__body</code></td><td>折叠分区（简介/MediaInfo/NFO/文件/字幕/断种/评论）</td><td><span class="badge badge--l1">L1</span></td></tr>
+    <tr><td><b>TorrentDetailSide</b> <span class="file">_parts/torrent-detail-side.tsx</span></td><td><code>.td-side</code> <code>.td-vitals/.td-files-mini/.td-meta</code></td><td>右栏三卡（随页面滚动）：2×2 状态 / 前 5 文件 / 资源信息</td><td><span class="badge badge--l0">L0</span></td></tr>
+    <tr><td><b>TorrentDetailTail</b> <span class="file">_parts/torrent-detail-tail.tsx</span></td><td><code>.td-thanker</code> <code>.td-comment</code></td><td>尾部三段：感谢者 / InfoHash / 评论区（嵌套回复）</td><td><span class="badge badge--l2">L2</span></td></tr>
+    <tr><td><b>TorrentActionBarMount</b> <span class="file">components/torrent-actionbar-mount.tsx</span></td><td><code>.td-actionbar</code> <code>.td-actionbar__btn</code></td><td>底部固定操作条（&lt;767）：☆收藏 / ⧉复制 / ⬇下载</td><td><span class="badge badge--l0">L0</span></td></tr>
+    <tr><td><b>TorrentRelated</b> <span class="file">components/torrent-related.tsx</span></td><td><code>.td-side-rel</code></td><td>相关种子（桌面右下；移动端回落页面底部）</td><td><span class="badge badge--l2">L2</span></td></tr>
+  </table>
+
+  <div class="callout callout--sky">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+    <div><b>结论：</b>双栏骨架、状态卡、锚点、折叠、底部操作条均已落地。本版「完善」的重点不是重新发明布局，
+    而是把设计文档与样图<b>对齐到真实代码的口径</b>（类名 / 字段 / 显隐门 / 断点），并补齐设计层缺失的
+    <b>层级规范</b>（L0/L1/L2）与<b>组件状态机</b>（hover/focus/active/disabled），供开发验收对照。</div>
+  </div>
+
+  <h4 class="block-title">通用站型：FluxTorrent 是通用 PT 建站系统</h4>
+  <div class="callout callout--mint">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/><circle cx="18" cy="8" r="2.4"/><circle cx="18" cy="14" r="2.4"/><circle cx="18" cy="20" r="2.4"/></svg>
+    <div><b>系统定位：</b>FluxTorrent 不是单一教育站，而是可搭建任意 PT 站的<b>通用建站系统</b>。
+    <b>默认支持 11 种站型包</b>（<code>migrations/0037_site_type_packs.sql</code>），每个站型的分类树、sections 维度集、
+    默认站名（brand）、模块开关、H&amp;R 义务、促销徽章与分类色（colorMap）全部可配置。本详情页的所有数据均来自
+    <b>站型包可配置项</b>，页面组件与 L0/L1/L2 架构<b>完全一致</b>，仅数据口径随站型变化。</div>
+  </div>
+
+  <h4 class="block-title">11 种内置站型包（真实定义，0037_site_type_packs.sql）</h4>
+  <table class="tbl">
+    <tr><th style="width:70px">code</th><th style="width:100px">站名</th><th style="width:210px">描述</th><th style="width:90px">默认站名</th><th style="width:230px">分类样例（前 4）</th><th>sections 维度（真实预置）</th></tr>
+    <tr><td><code>education</code></td><td><b>教育站</b></td><td>K12 / 高教资源</td><td>包子PT</td><td>学前教育 · 小学 · 初中 · 职高</td><td>媒介 · 学段 · 版本 · 来源</td></tr>
+    <tr><td><code>movie</code></td><td><b>影视站</b></td><td>电影 / 剧集 / 综艺（馒头口径）</td><td>影站</td><td>电影/BluRay · Remux · WEB-DL · x264</td><td>媒介 · 编码 · 规格 · 来源 · 制作组</td></tr>
+    <tr><td><code>music</code></td><td><b>音乐站</b></td><td>流行 / 单曲 / MV</td><td>乐站</td><td>华语音乐 · 欧美音乐 · 日韩音乐 · 单曲</td><td>格式 · 音质 · 来源</td></tr>
+    <tr><td><code>anime</code></td><td><b>动漫站</b></td><td>动画 / 漫画 / 生肉 / 熟肉</td><td>漫站</td><td>动画 · 季度番剧 · 剧场版 · 漫画</td><td>媒介 · 编码 · 来源 · 制作组</td></tr>
+    <tr><td><code>ebook</code></td><td><b>电子书站</b></td><td>图书 / 杂志 / 漫画 / 有声书</td><td>书站</td><td>文学 · 社科 · 科技 · 杂志</td><td>格式 · 来源</td></tr>
+    <tr><td><code>general</code></td><td><b>综合站</b></td><td>全品类（NexusPHP 默认）</td><td>综合站</td><td>电影 · 电视剧 · 音乐 · 游戏</td><td>媒介 · 编码 · 来源 · 制作组</td></tr>
+    <tr><td><code>sports</code></td><td><b>体育站</b></td><td>足球 / 篮球 / 赛事</td><td>体站</td><td>足球 · 篮球 · 网球 · 格斗</td><td>媒介 · 编码 · 来源 · 制作组</td></tr>
+    <tr><td><code>game</code></td><td><b>游戏站</b></td><td>PC / 主机 / 掌机资源</td><td>游站</td><td>PC游戏 · 主机游戏 · 掌机游戏 · 游戏汉化</td><td>平台 · 游戏类型 · 版本 · 制作组</td></tr>
+    <tr><td><code>software</code></td><td><b>软件站</b></td><td>软件 / 系统 / 教程</td><td>软站</td><td>Windows · macOS · Linux · Android</td><td>媒介 · 来源 · 制作组</td></tr>
+    <tr><td><code>documentary</code></td><td><b>纪录片站</b></td><td>纪录片 / 自然 / 历史 / 科技</td><td>纪录站</td><td>自然 · 历史 · 科技 · 军事</td><td>媒介 · 编码 · 来源 · 制作组</td></tr>
+    <tr><td><code>lossless</code></td><td><b>无损音乐站</b></td><td>无损 / Hi-Res / 采样（Gazelle 口径）</td><td>无损站</td><td>无损专辑 · Hi-Res · 黑胶转制 · SACD</td><td>媒介 · 编码 · 音频编码 · 来源 · 制作组</td></tr>
+  </table>
+  <div class="callout callout--mint">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/><circle cx="18" cy="8" r="2.4"/><circle cx="18" cy="14" r="2.4"/><circle cx="18" cy="20" r="2.4"/></svg>
+    <div><b>配套样图：</b>高保真样图顶部「站型包」切换提供全部 <b>11 种站型</b>，同一详情页一键切换即可看到
+    分类、维度 chip、H&amp;R 文案、促销剩余、文件类型、相关推荐随站型变化——演示的是<b>组件通用性</b>，而非某个站的内容。</div>
+  </div>
+</section>
+
+<!-- ===== 第二章 目标 ===== -->
+<section class="sec" id="s2">
+  <div class="sec-no">第二章</div>
+  <h2 class="sec-title">设计目标与信息架构</h2>
+  <p class="sec-sub">目标不变：让「值不值得下、怎么下、下完怎么续」三问在<b>一屏内可答</b>。
+  信息组织为 <b>L0（首屏决策）/ L1（按需展开）/ L2（社交与相关）</b> 三级，与真实 DOM 顺序一一对应。</p>
+
+  <h4 class="block-title">L0 / L1 / L2 三级映射（对齐真实渲染顺序）</h4>
+  <table class="tbl">
+    <tr><th style="width:90px">层级</th><th style="width:210px">真实模块</th><th>内容与口径</th><th style="width:130px">显隐门</th></tr>
+    <tr><td><span class="badge badge--l0">L0</span></td><td>td-crumbs 面包屑</td><td>资源库 › 分类 · #ID（阳光口径）</td><td>—</td></tr>
+    <tr><td><span class="badge badge--l0">L0</span></td><td>TorrentHead 海报头</td><td>名称 / 副题链（sections 前 3 维）/ 标签 / H&amp;R 义务 / 徽章 / 操作区</td><td>tags 有值才渲染</td></tr>
+    <tr><td><span class="badge badge--l0">L0</span></td><td>TorrentSpecs 规格条</td><td>大小 · 文件数 · 分类 · 动态维度 chip（sections 单源）</td><td>—</td></tr>
+    <tr><td><span class="badge badge--l0">L0</span></td><td>TorrentDetailSide（右栏）</td><td>td-vitals 2×2 状态 + 健康度 + td-files-mini 前 5 文件 + td-meta 资源信息</td><td>files 空不渲染 mini</td></tr>
+    <tr><td><span class="badge badge--l1">L1</span></td><td>简介 / MediaInfo / NFO</td><td>descr（markdown-lite / BBCode）/ mediainfo / nfo 折叠块</td><td><code>sectOn('descr'|'mediainfo'|'nfo')</code></td></tr>
+    <tr><td><span class="badge badge--l1">L1</span></td><td>抓轨日志 / 当前在线 / 组版本 / 试读试听</td><td>RipLogs 按碟懒加载 / Peers 明细 / GroupVersions 同组 / Previews</td><td><code>sectOn('logs'|'peers'|'group')</code></td></tr>
+    <tr><td><span class="badge badge--l1">L1</span></td><td>合集 / 文件列表 / 字幕</td><td>所属合集 sticker / FileTree / Subtitles（模块开关 <code>modules.subtitles</code>）</td><td><code>sectOn('collections'|'files')</code></td></tr>
+    <tr><td><span class="badge badge--l2">L2</span></td><td>断种列表 / 感谢者 / 评论 / 相关</td><td>SnatchList / Thankers / Comments（嵌套）/ TorrentRelated</td><td><code>sectOn('snatches'|'thankers'|'comments'|'related')</code></td></tr>
+  </table>
+
+  <div class="callout callout--mint">
+    <svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
+    <div><b>显隐门口径（与 page.tsx 一致）：</b>段落显隐走 <code>sectOn(k) = !view_hidden.sections.includes(k)</code>，
+    空集 = 全显示；模块开关（如 <code>modules.subtitles !== false</code>）优先；数据为空仍不渲染。
+    设计样图只需呈现「全开」基线形态，其余形态由显隐门保证一致性。</div>
+  </div>
+</section>
+
+<!-- ===== 第三章 决策五要素 ===== -->
+<section class="sec" id="s3">
+  <div class="sec-no">第三章</div>
+  <h2 class="sec-title">决策五要素：L0 首屏的信息分级</h2>
+  <p class="sec-sub">把首屏信息归为五个要素，按「先判断后行动」排序。五要素全部由 <b>已有字段</b> 驱动，
+  <b>零新增数据接口</b>：</p>
+  <table class="tbl">
+    <tr><th style="width:110px">要素</th><th style="width:230px">真实字段 / 来源</th><th>展示形态</th></tr>
+    <tr><td><b>① 是什么</b></td><td><code>t.name</code> + <code>t.small_descr</code> + <code>subtitleChain</code></td><td>标题（h1）+ 副题链（sections 前 3 维度名拼接）+ 简介首行</td></tr>
+    <tr><td><b>② 值不值得</b></td><td><code>t.size</code> <code>t.seeders</code> <code>t.leechers</code> <code>t.times_completed</code> <code>ext.views</code> <code>t.rating</code></td><td>右栏 td-vitals 2×2（做种/下载/完成/感谢）+ 健康度横幅 + 规格条大小/评分</td></tr>
+    <tr><td><b>③ 什么规格</b></td><td><code>ext.sections</code>（media/grades/editions/codec/audio_codec/standard/source/processing/team）</td><td>td-specs 动态维度 chip（label + name，按 sort 排序）</td></tr>
+    <tr><td><b>④ 什么义务</b></td><td><code>t.hr_policy</code>（默认 days=14 / seed_hours=48）</td><td>td-head__hr 横幅：sun 底明示 H&amp;R 义务；关闭态 mint 底</td></tr>
+    <tr><td><b>⑤ 怎么行动</b></td><td><code>ext.price / purchased / is_owner</code> + <code>t.promotion / promotion_ends_at</code></td><td>主操作「下载种子」+ 心愿单；促销徽章 + 剩余时间「x天x时」</td></tr>
+  </table>
+  <div class="callout callout--sun">
+    <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+    <div><b>层级守卫规则：</b>H&amp;R 义务横幅必须出现在下载按钮<b>上方</b>（评审 P1-5 义务明示）；
+    促销剩余时间使用「x天x时」口径（dayUnit/hourUnit）；健康度横幅做种为 0 时态变红（is-dead）。</div>
+  </div>
+</section>
+
+<!-- ===== 第四章 桌面双栏 ===== -->
+<section class="sec" id="s4">
+  <div class="sec-no">第四章</div>
+  <h2 class="sec-title">桌面端 · 双栏骨架（≥768px）</h2>
+  <p class="sec-sub">对齐 <code>base.css</code> 的 <code>.td-layout</code> 网格：head 通栏 + 左主栏 + 右信息栏（随页面滚动）。
+  右栏宽度 <b>320px</b>（≥1024）/<b>260px</b>（768–1023）。</p>
+  <div class="fig">
+<b>td-page</b> <span class="dim">article · max-width 1200 · gap 14</span><br>
+├─ <b class="c">td-crumbs</b> <span class="dim">资源库 › 高中 · #1201</span><br>
+└─ <b>td-layout</b> <span class="k">grid: minmax(0,1fr) 320px</span> <span class="dim">areas: "head side" "main side" "main rel"</span><br>
+&nbsp;&nbsp;├─ <b class="c">td-head</b> <span class="dim">grid-area:head · 200px 2:3 海报 + 主信息 + 操作区</span><br>
+&nbsp;&nbsp;├─ <b class="g">td-main</b> <span class="dim">grid-area:main · flex column gap 14</span><br>
+&nbsp;&nbsp;│&nbsp;&nbsp;├─ <b>td-specs</b> <span class="dim">规格 chip 条（折行）</span><br>
+&nbsp;&nbsp;│&nbsp;&nbsp;├─ <b>td-fold</b> × n <span class="dim">简介/MediaInfo/NFO/日志/在线/组版本/合集/文件/字幕/断种</span><br>
+&nbsp;&nbsp;│&nbsp;&nbsp;└─ <b>tail</b> <span class="dim">感谢者 / InfoHash / 评论</span><br>
+&nbsp;&nbsp;├─ <b class="k">td-side</b> <span class="dim">grid-area:side · 随页面滚动（不 sticky）</span><br>
+&nbsp;&nbsp;│&nbsp;&nbsp;├─ <b>td-vitals</b> <span class="dim">2×2 大数字 + 健康度 + 查看</span><br>
+&nbsp;&nbsp;│&nbsp;&nbsp;├─ <b>td-files-mini</b> <span class="dim">前 5 行文件 + 查看全部 →#td-files</span><br>
+&nbsp;&nbsp;│&nbsp;&nbsp;└─ <b>td-meta</b> <span class="dim">资源信息聚合卡</span><br>
+&nbsp;&nbsp;└─ <b class="d">td-side-rel</b> <span class="dim">grid-area:rel · 相关种子</span>
+  </div>
+  <h4 class="block-title">桌面规则</h4>
+  <ul class="ul">
+    <li><b>右栏随滚动：</b><code>.td-side</code> 不吸附，三卡（状态/文件/元信息）与下段「相关种子」同口径随页面滚动。<span class="dim">2026-10-16 撤销原 <code>position:sticky; top:80px</code> 实测依据：三卡与 <code>td-side-rel</code> 同处一个 grid 列，sticky 项绘制层级高于同列普通项，主栏滚到 ~700px 时 rel 顶边 218 已进卡组 80..599 区间，相关种子被压在卡背后。</span></li>
+    <li><b>头部 meta 行收敛：</b>桌面 <code>.td-head__meta { display:none }</code>（信息在右栏 td-meta 卡展示），&lt;768 时重新显示。</li>
+    <li><b>规格条折行：</b>chip 数不定时自动换行；&lt;640 转单行横滑（nowrap + overflow-x:auto，隐藏滚动条）。</li>
+    <li><b>平板档（≤1024）：</b>右栏 260px、海报 100px、文件 mini 只显前 3 行（M4 细侧栏口径）。</li>
+  </ul>
+</section>
+
+<!-- ===== 第五章 移动 ===== -->
+<section class="sec" id="s5">
+  <div class="sec-no">第五章</div>
+  <h2 class="sec-title">移动端 · 单栏 + 锚点 + 底部操作条（&lt;768px）</h2>
+  <p class="sec-sub">不删模块，靠三层手段收敛：<b>锚点条吸顶跳转</b>、<b>折叠卡按需展开</b>、<b>操作让位吸底条</b>。</p>
+  <div class="fig">
+<b>td-layout</b> <span class="k">单列 grid-template-columns: 1fr</span> <span class="dim">areas: "head" "side" "main" "rel"</span><br>
+├─ <b class="c">td-head</b> <span class="dim">80px 海报 + 信息（操作区隐藏）</span><br>
+├─ <b class="k">td-anchor</b> <span class="dim">sticky top:72 · 简介/文件/字幕/评论 + 计数 · 横向滚动</span><br>
+├─ <b>td-vitals</b> <span class="dim">2×2 状态卡（文件 mini 与 meta 卡隐藏——头部 meta 行承载）</span><br>
+├─ <b>td-main</b> <span class="dim">折叠块默认收起，锚点点击展开 + 平滑滚动（scroll-margin-top:124）</span><br>
+└─ <b>td-side-rel</b> <span class="dim">相关种子回落页面底部</span><br>
+<hr class="dim">
+<b class="g">td-actionbar</b> <span class="dim">fixed 底部 · 44px 高 · ☆收藏 / ⧉复制 / ⬇下载（flex:2 主按钮）</span>
+  </div>
+  <h4 class="block-title">移动规则</h4>
+  <ul class="ul">
+    <li><b>锚点条：</b>仅 &lt;768 渲染（<code>useIsCompact</code>），sticky top 72px（顶栏下方）；IntersectionObserver 高亮当前区块；点击先展开折叠卡再平滑滚动。</li>
+    <li><b>底部操作条：</b>&lt;767 显示，评论输入聚焦 / 键盘弹出（visualViewport 收缩 &gt;25%）时自动隐藏让位。</li>
+    <li><b>操作让位：</b><code>.td-head__actions { display:none }</code>（&lt;768），下载/收藏/复制全部收进吸底条。</li>
+    <li><b>规格横滑：</b>&lt;640 时 td-specs 单行横滑，chip 不折行（M6.3 一屏看完）。</li>
+    <li><b>评论单栏：</b>&lt;640 评论左作者侧栏折叠为顶行（avatar + 用户名横排）。</li>
+  </ul>
+</section>
+
+<!-- ===== 第六章 组件规范 ===== -->
+<section class="sec" id="s6">
+  <div class="sec-no">第六章</div>
+  <h2 class="sec-title">组件规范（8 个核心组件 + 状态机）</h2>
+  <p class="sec-sub">全部沿用站点 Aurora 令牌（<code>base.css :root</code>），不新增色值；状态机补齐
+  hover / focus-visible / active / disabled / loading 五态。</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h4 class="block-title">① td-head 海报头</h4>
+      <ul class="ul">
+        <li><b>结构：</b><code>grid: 200px 1fr</code>；海报 2:3 + 分类角标（bg_color 左上悬出）+ 主信息列。</li>
+        <li><b>名称：</b>h1 22px font-display，<code>word-break: break-all</code>。</li>
+        <li><b>副题链：</b><code>.td-head__chain</code> 品牌蓝加粗 + small_descr 灰字。</li>
+        <li><b>徽章行：</b>置顶(sun) / 促销 / 剩余(red) / 官种(indigo) / 抓轨分 / 匿名(muted) 混合排布。</li>
+        <li><b>H&amp;R 横幅：</b>sun 底 warning 字，14 天 / 48 小时默认；关闭态 mint 底。</li>
+        <li><b>操作区：</b>主操作「下载」+ 心愿单 → 更多操作（互动/抢种/复活/管理）。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="block-title">② td-specs 规格徽章条</h4>
+      <ul class="ul">
+        <li><b>结构：</b><code>flex wrap gap 8</code>；chip = 值 + 灰字标签。</li>
+        <li><b>内容：</b>大小 / 文件数 / 分类 / sections 各维度（label + name）→ 评分。</li>
+        <li><b>状态：</b>hover 背景 <code>--surface-hover</code>；&lt;640 横滑。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="block-title">③ td-anchor 移动锚点</h4>
+      <ul class="ul">
+        <li><b>结构：</b>sticky 横排 Tab（sky-soft 底），当前项 sky-deep 实底白字。</li>
+        <li><b>计数：</b>文件数 / 评论数 小数字徽标。</li>
+        <li><b>交互：</b>点击 → 展开折叠卡 → 平滑滚动（scroll-margin 124px 避让）。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="block-title">④ td-fold 折叠分区</h4>
+      <ul class="ul">
+        <li><b>结构：</b><code>&lt;details&gt;</code> + summary（h2 + 计数 + chev 箭头）。</li>
+        <li><b>视觉：</b>16px 圆角白卡，summary 渐变底（--head-a → card）。</li>
+        <li><b>打开态：</b>shadow-hover；chev 旋转 225°。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="block-title">⑤ td-vitals 状态卡</h4>
+      <ul class="ul">
+        <li><b>结构：</b>2×2 大数字：做种(success) / 下载(coral) / 完成(sky-deep) / 感谢(warning)。</li>
+        <li><b>健康度横幅：</b>is-alive 绿点光环（success-soft 底）/ is-dead 红点（danger-soft 底）。</li>
+        <li><b>查看行：</b>views 数值 + 「查看」标签。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="block-title">⑥ td-files-mini / td-meta</h4>
+      <ul class="ul">
+        <li><b>files-mini：</b>前 5 行斑马纹 + 扩展名徽标（sky-soft 34px）+ 大小 + 「查看全部 n」锚点。</li>
+        <li><b>meta：</b>发布人 / 发布时间 / 最近活动 / 分类 / 合集；label 左 value 右虚线分隔。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="block-title">⑦ td-actionbar 底部操作条</h4>
+      <ul class="ul">
+        <li><b>结构：</b>fixed bottom；三按钮 ☆ / ⧉ / ⬇（主按钮 flex:2 sky-deep 实底）。</li>
+        <li><b>隐藏：</b>键盘弹出（visualViewport 收缩）translateY(120%) 让位。</li>
+        <li><b>安全区：</b>padding-bottom 加 <code>env(safe-area-inset-bottom)</code>。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="block-title">⑧ td-comment 评论区</h4>
+      <ul class="ul">
+        <li><b>结构：</b>桌面左作者侧栏 170px + 右正文；&lt;640 单栏。</li>
+        <li><b>嵌套回复：</b>回复挂根楼层、组内缩进一层平铺 + 「回复 @xxx」标注。</li>
+        <li><b>动作：</b>点赞 / 回复 /（staff）删除，无权限后端 403 兜底。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 第七章 视觉令牌 ===== -->
+<section class="sec" id="s7">
+  <div class="sec-no">第七章</div>
+  <h2 class="sec-title">视觉令牌（对齐 base.css 真实取值）</h2>
+  <p class="sec-sub">以下色值 / 圆角 / 阴影直接取自 <code>apps/web/app/styles/base.css</code> 与
+  <code>pages.css</code> 的 <code>:root</code>，样图与实现零偏差。</p>
+  <div class="swatches">
+    <div class="sw"><div class="swc" style="background:#2fa8ff"></div><div class="swt"><b>--sky 主品牌</b><span>#2fa8ff</span></div></div>
+    <div class="sw"><div class="swc" style="background:#1e8ae8"></div><div class="swt"><b>--sky-deep 深蓝</b><span>#1e8ae8</span></div></div>
+    <div class="sw"><div class="swc" style="background:#e8f4ff"></div><div class="swt"><b>--sky-soft 浅蓝底</b><span>#e8f4ff</span></div></div>
+    <div class="sw"><div class="swc" style="background:#ffc93c"></div><div class="swt"><b>--sun 促销金</b><span>#ffc93c</span></div></div>
+    <div class="sw"><div class="swc" style="background:#fff4d6"></div><div class="swt"><b>--sun-soft 金浅底</b><span>#fff4d6</span></div></div>
+    <div class="sw"><div class="swc" style="background:#ff7a59"></div><div class="swt"><b>--coral 下载</b><span>#ff7a59</span></div></div>
+    <div class="sw"><div class="swc" style="background:#5b6bf5"></div><div class="swt"><b>--indigo 官种</b><span>#5b6bf5</span></div></div>
+    <div class="sw"><div class="swc" style="background:#2fbf9b"></div><div class="swt"><b>--mint 健康</b><span>#2fbf9b</span></div></div>
+    <div class="sw"><div class="swc" style="background:#167c63"></div><div class="swt"><b>--success 做种</b><span>#167c63</span></div></div>
+    <div class="sw"><div class="swc" style="background:#936800"></div><div class="swt"><b>--warning 感谢</b><span>#936800</span></div></div>
+    <div class="sw"><div class="swc" style="background:#d60000"></div><div class="swt"><b>--danger 死种</b><span>#d60000</span></div></div>
+    <div class="sw"><div class="swc" style="background:#1f2a44"></div><div class="swt"><b>--text-strong</b><span>#1f2a44</span></div></div>
+  </div>
+  <h4 class="block-title">断点体系（对齐 base.css 媒体查询）</h4>
+  <table class="tbl">
+    <tr><th style="width:100px">断点</th><th style="width:230px">媒体查询（base.css）</th><th>布局变化</th></tr>
+    <tr><td><b>桌面 ≥1024</b></td><td><code>@media (min-width:1024px)</code> 默认</td><td>右栏 320px；海报 200px；头部 meta 隐藏；文件 mini 前 5 行</td></tr>
+    <tr><td><b>平板 768–1023</b></td><td><code>@media (max-width:1024px)</code></td><td>右栏 260px；海报 100px；操作流式；文件 mini 前 3 行</td></tr>
+    <tr><td><b>移动 &lt;768</b></td><td><code>@media (max-width:768px)</code></td><td>单栏 head→side(vitals)→main→rel；头部操作隐藏；锚点条吸顶；文件 mini/meta 卡隐藏</td></tr>
+    <tr><td><b>窄屏 &lt;640</b></td><td><code>@media (max-width:640px)</code></td><td>规格横滑；评论单栏；头部 80px 海报紧凑</td></tr>
+    <tr><td><b>底部操作条 &lt;767</b></td><td><code>@media (max-width:767px)</code>（组件内）</td><td>td-actionbar 显示；键盘弹出让位</td></tr>
+  </table>
+</section>
+
+<!-- ===== 第八章 落地 ===== -->
+<section class="sec" id="s8">
+  <div class="sec-no">第八章</div>
+  <h2 class="sec-title">开发落地映射（文件级）</h2>
+  <p class="sec-sub">本设计<b>零新增接口、零新增组件文件</b>——全部复用现有实现，改动仅为样式层细化与缺口补齐。</p>
+  <table class="tbl">
+    <tr><th style="width:230px">设计章节</th><th>落地文件 / 组件</th><th style="width:130px">状态</th></tr>
+    <tr><td>L0/L1/L2 层级</td><td><code>app/(main)/torrent/[id]/page.tsx</code>（渲染顺序即层级）</td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>海报头</td><td><code>components/torrent-detail-head.tsx</code> + <code>torrent-detail-parts.tsx</code>（PosterBlock）</td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>规格条</td><td><code>app/(main)/torrent/[id]/_parts/torrent-detail-specs.tsx</code></td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>右栏三卡</td><td><code>app/(main)/torrent/[id]/_parts/torrent-detail-side.tsx</code></td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>锚点条</td><td><code>components/torrent-anchor.tsx</code>（&lt;768 渲染）</td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>底部操作条</td><td><code>components/torrent-actionbar-mount.tsx</code> + <code>torrent-mobile-actionbar.tsx</code></td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>折叠分区</td><td><code>components/torrent-detail-parts.tsx</code>（Fold）+ <code>fold-mobile.tsx</code>（FoldMobile）</td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>尾部三段</td><td><code>app/(main)/torrent/[id]/_parts/torrent-detail-tail.tsx</code> + <code>torrent-detail-blocks.tsx</code></td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>相关种子</td><td><code>components/torrent-related.tsx</code>（<code>.td-side-rel</code>）</td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>组件状态机（hover/focus/disabled）</td><td><code>app/styles/base.css</code> td-* 区块补齐</td><td><span class="badge badge--part">部分</span></td></tr>
+    <tr><td>键盘可达 / 无障碍标注</td><td>锚点 Tab aria-current、折叠 summary 语义、操作条 aria-label</td><td><span class="badge badge--done">已落地</span></td></tr>
+    <tr><td>动画减速（reduced-motion）</td><td><code>base.css</code> 末尾全局归零 + <code>--motion-normal/ease</code> 令牌</td><td><span class="badge badge--done">已落地</span></td></tr>
+  </table>
+  <div class="callout callout--coral">
+    <svg viewBox="0 0 24 24"><path d="M12 8v8M8 12h8"/><circle cx="12" cy="12" r="9"/></svg>
+    <div><b>验收建议：</b>按 <b>四断点截图比对</b>（1440 / 1024 / 768 / 390）逐项核对本章映射表；
+    折叠块计数、锚点高亮、H&amp;R 文案、促销剩余「x天x时」四类口径各验一处即可推及全站；
+    <b>多站型验收</b>在样图中切换 <b>11 种站型包</b>，确认分类、维度 chip、H&amp;R、促销、文件、相关推荐
+    随站型包更新而页面结构与交互不变。</div>
+  </div>
+</section>
+
+</div>
+
+<footer class="foot">FluxTorrent · 种子详情页设计方案 · 本地完善版 v2 · 对齐 apps/web 真实实现（page.tsx + base.css）· 配套交付：高保真样图（本地完善版）</footer>
+
+</body>
+</html>

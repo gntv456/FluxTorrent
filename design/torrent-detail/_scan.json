@@ -1,0 +1,243 @@
+{
+ "css_media": {
+  "arcade-gacha.css": 0,
+  "arcade-sweet.css": 14,
+  "arcade.css": 7,
+  "base.css": 17,
+  "comments.css": 1,
+  "fonts-tide.css": 0,
+  "hover-card.css": 1,
+  "layout.css": 22,
+  "medal-shop.css": 1,
+  "motion-tide.css": 1,
+  "pages.css": 14,
+  "theme-tide.css": 1,
+  "ui.css": 5
+ },
+ "tsx_count": 627,
+ "breakpoint": {
+  "files_with_bp": 77,
+  "total_bp_uses": 192
+ },
+ "h1": {
+  "total": 151,
+  "bare": 5,
+  "examples": [
+   "app\\(main)\\forums\\page.tsx :: ",
+   "components\\contact-staff.tsx :: ",
+   "components\\home-sections.tsx :: ",
+   "components\\task-board.tsx :: ",
+   "components\\usercp.tsx :: "
+  ]
+ },
+ "symbol_icons": {
+  "app\\(main)\\page.tsx": [
+   "·",
+   "→"
+  ],
+  "app\\(main)\\about\\page.tsx": [
+   "·",
+   "»"
+  ],
+  "app\\(main)\\admin\\page.tsx": [
+   "·",
+   "→",
+   "⚠",
+   "️"
+  ],
+  "app\\(main)\\admin\\forums\\_parts\\forum-board-drawer.tsx": [
+   "·",
+   "⚠",
+   "️"
+  ],
+  "app\\(main)\\admin\\forums\\_parts\\forum-structure-types.ts": [
+   "→",
+   "⚠",
+   "️"
+  ],
+  "app\\(main)\\admin\\forums\\_parts\\use-category-dnd.ts": [
+   "→"
+  ],
+  "app\\(main)\\admin\\settings\\page.tsx": [
+   "→"
+  ],
+  "app\\(main)\\admin\\settings\\_parts\\settings-dialogs.tsx": [
+   "·",
+   "→"
+  ],
+  "app\\(main)\\admin\\settings\\_parts\\settings-io.ts": [
+   "→"
+  ],
+  "app\\(main)\\admin\\settings\\_parts\\settings-pack-dialog.tsx": [
+   "·",
+   "→"
+  ],
+  "app\\(main)\\admin\\settings\\_parts\\settings-toolbar.tsx": [
+   "·"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-freeleech.tsx": [
+   "·"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-overview-panel.tsx": [
+   "·"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-promo-intents.tsx": [
+   "·",
+   "→"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-promo-kinds.tsx": [
+   "→"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-promo-tiers.tsx": [
+   "→"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-queue-panels.tsx": [
+   "·"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-shared.ts": [
+   "→"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-tool-map.tsx": [
+   "→"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-tool-panels.tsx": [
+   "·"
+  ],
+  "app\\(main)\\admin\\_parts\\admin-tool-switch.tsx": [
+   "→",
+   "⚠",
+   "️"
+  ],
+  "app\\(main)\\artists\\[id]\\page.tsx": [
+   "·",
+   "›"
+  ],
+  "app\\(main)\\classes\\page.tsx": [
+   "→",
+   "✓"
+  ],
+  "app\\(main)\\clients\\page.tsx": [
+   "·"
+  ],
+  "app\\(main)\\collections\\page.tsx": [
+   "→"
+  ],
+  "app\\(main)\\collections\\[id]\\page.tsx": [
+   "·",
+   "›",
+   "⬇",
+   "️"
+  ],
+  "app\\(main)\\donate\\_inner-ledger.tsx": [
+   "·"
+  ],
+  "app\\(main)\\donate\\_inner.tsx": [
+   "·",
+   "→"
+  ],
+  "app\\(main)\\donate\\_parts\\donate-tiers.tsx": [
+   "·"
+  ],
+  "app\\(main)\\dressup\\_inner.tsx": [
+   "·",
+   "️"
+  ]
+ },
+ "symbol_files_total": 313,
+ "rounded_full": {
+  "files": 173,
+  "total": 370
+ },
+ "hardcode_hex": {
+  "files": 23,
+  "total": 114,
+  "top": [
+   [
+    "components\\game\\fishing-pond.tsx",
+    33
+   ],
+   [
+    "components\\game\\lucky-wheel.tsx",
+    24
+   ],
+   [
+    "components\\game\\capsule-machine.tsx",
+    16
+   ],
+   [
+    "components\\game\\sw-enrich.tsx",
+    8
+   ],
+   [
+    "components\\game\\jackpot-burst.tsx",
+    5
+   ],
+   [
+    "components\\torrent-related.tsx",
+    3
+   ],
+   [
+    "components\\game\\die-face.tsx",
+    3
+   ],
+   [
+    "app\\(main)\\games\\capsule\\_inner.tsx",
+    2
+   ],
+   [
+    "app\\(main)\\games\\pet\\_inner.tsx",
+    2
+   ],
+   [
+    "app\\(main)\\games\\wheel\\_inner.tsx",
+    2
+   ],
+   [
+    "components\\admin-tagdict-form.tsx",
+    2
+   ],
+   [
+    "components\\setting-field-controls.tsx",
+    2
+   ],
+   [
+    "components\\upload-form-descr.tsx",
+    2
+   ],
+   [
+    "app\\(main)\\donate\\_inner.tsx",
+    1
+   ],
+   [
+    "app\\(main)\\games\\farm\\_inner.tsx",
+    1
+   ]
+  ]
+ },
+ "inline_style": {
+  "files": 44,
+  "total": 70
+ },
+ "routes": {
+  "total": 57,
+  "no_loading": [
+   "avatar-frames",
+   "classes",
+   "collections",
+   "donate",
+   "dressup",
+   "farm",
+   "gacha",
+   "gomoku",
+   "jixiao",
+   "links",
+   "me",
+   "my-spark",
+   "offers",
+   "p",
+   "torrent",
+   "users",
+   "wiki"
+  ]
+ }
+}

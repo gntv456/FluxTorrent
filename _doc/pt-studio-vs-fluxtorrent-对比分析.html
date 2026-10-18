@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PT Studio × FluxTorrent 深度对比分析</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1f29; --muted:#5b6472; --line:#e4e8 ef; --line:#e4e8ef;
+    --accent:#1d4ed8; --accent-soft:#eef3ff; --warn:#b45309; --warn-soft:#fff5e6;
+    --bad:#b91c1c; --bad-soft:#fdeaea; --good:#047857; --good-soft:#e7f6ef;
+    --chip:#eef1f6; --code:#0f172a;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:48px 40px 96px}
+  header.doc{border-bottom:3px solid var(--accent);padding-bottom:22px;margin-bottom:8px}
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;letter-spacing:-.4px}
+  .sub{color:var(--muted);font-size:14px}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+  .pill{font-size:12px;background:var(--chip);color:#334155;padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .pill.acc{background:var(--accent-soft);color:var(--accent)}
+  nav.toc{margin:26px 0 8px;padding:16px 18px;background:#fafbfc;border:1px solid var(--line);border-radius:8px}
+  nav.toc b{font-size:13px;color:var(--muted);display:block;margin-bottom:8px;letter-spacing:.5px}
+  nav.toc a{color:var(--accent);text-decoration:none;font-size:13.5px;display:inline-block;width:48%;padding:2px 0}
+  nav.toc a:hover{text-decoration:underline}
+  h2{font-size:22px;margin:46px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
+  h2 .n{color:var(--accent);font-weight:700;margin-right:10px}
+  h3{font-size:17px;margin:26px 0 6px;color:#0f172a}
+  h4{font-size:14.5px;margin:18px 0 4px;color:var(--accent)}
+  p{margin:10px 0}
+  a{color:var(--accent)}
+  code{background:#f1f5f9;color:var(--code);padding:1px 5px;border-radius:4px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+  /* tables */
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.6px}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top;text-align:left}
+  th{background:#f5f7fa;font-weight:600;color:#0f172a}
+  tr:nth-child(even) td{background:#fbfcfe}
+  td .y{color:var(--good);font-weight:600}
+  td .n{color:var(--bad);font-weight:600}
+  td .p{color:var(--warn);font-weight:600}
+  .sm{font-size:12.5px;color:var(--muted)}
+  /* callouts */
+  .call{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0}
+  .call.warn{border-color:var(--warn);background:var(--warn-soft)}
+  .call.bad{border-color:var(--bad);background:var(--bad-soft)}
+  .call.good{border-color:var(--good);background:var(--good-soft)}
+  .call b{display:block;margin-bottom:4px}
+  /* evidence chips */
+  .ev{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;margin-left:6px;vertical-align:middle}
+  .ev.s{background:var(--good-soft);color:var(--good)}
+  .ev.m{background:var(--warn-soft);color:var(--warn)}
+  .ev.d{background:var(--bad-soft);color:var(--bad)}
+  .legend{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+  .legend span{margin-right:14px;white-space:nowrap}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  .dot.s{background:var(--good)} .dot.m{background:var(--warn)} .dot.d{background:var(--bad)}
+  /* two-col verdict */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
+  .box{border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .box h4{margin-top:0}
+  ul.tight{margin:8px 0;padding-left:20px}
+  ul.tight li{margin:5px 0}
+  .kv{display:flex;gap:10px;border-bottom:1px dashed var(--line);padding:6px 0;font-size:13.5px}
+  .kv b{width:160px;flex:none;color:var(--muted);font-weight:600}
+  .tag{font-size:11px;background:var(--chip);padding:1px 7px;border-radius:4px;color:#334;margin-right:4px}
+  footer{margin-top:50px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:12.5px}
+  .print-hint{display:none}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr}nav.toc a{width:100%}.wrap{padding:28px 18px}}
+  @media print{body{font-size:12px}.wrap{max-width:none}.call,.box,.toc{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <h1>PT Studio × FluxTorrent：深度对比分析与方向性研判</h1>
+  <div class="sub">两个同为「Rust + PostgreSQL + Redis + React」技术栈的开源 PT 站点实现，在架构哲学、功能完备度与战略方向上的一次证据化对照。</div>
+  <div class="meta">
+    <span class="pill acc">分析日期 2026-10-14</span>
+    <span class="pill">证据来源：双方仓库源码 + 设计文档（已实地克隆/核查）</span>
+    <span class="pill">PT Studio @ imythu/main（克隆于 2026-10-14）</span>
+    <span class="pill">FluxTorrent（本地工作区 D:/FluxTorrent）</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <b>目录</b>
+  <a href="#s0">0. 执行摘要（方向性结论）</a>
+  <a href="#s1">1. 双项目定位与体量</a>
+  <a href="#s2">2. 架构哲学对比（核心分歧）</a>
+  <a href="#s3">3. 功能实现矩阵</a>
+  <a href="#s4">4. 关键子系统深度对比</a>
+  <a href="#s5">5. 优劣分析（含证据强度）</a>
+  <a href="#s6">6. FluxTorrent 可借鉴点</a>
+  <a href="#s7">7. 方向性判断：要不要改？</a>
+  <a href="#s8">8. 建议演进路线</a>
+  <a href="#s9">9. 证据来源与核查清单</a>
+</nav>
+
+<div class="legend">
+  <span><span class="dot s"></span><b>🟢 强</b> 代码/文档已落地，已读源码或实测</span>
+  <span><span class="dot m"></span><b>🟡 中</b> 设计完整但仅部分落地 / 仅基准子集</span>
+  <span><span class="dot d"></span><b>🔴 设计未实现</b> 仅设计文档，无运行代码</span>
+</div>
+
+<!-- ===================== 0 ===================== -->
+<h2 id="s0"><span class="n">0</span>执行摘要（方向性结论）</h2>
+<div class="call good">
+  <b>一句话结论</b>
+  两个项目不是「谁落后」的关系，而是<b>同一北极星（可定制、内容无关的 PT 建站系统，零魔改升级）下的两条不同路径</b>。FluxTorrent 在 <b>PT 刚需功能完备度</b>上明显领先且已真实落地；PT Studio 在 <b>架构可扩展性、文档完备度、AI/MCP 前瞻</b>上领先。双方方向并非相反——FluxTorrent 实际已自发走上「wasmtime 适配器 + Rust Trait 钩子 + 受限表达式引擎」的扩展路径。
+</div>
+<div class="call">
+  <b>对「是否要修改方向」的回答</b>
+  <b>不需要整体掉头</b>。不要为了追平 PT Studio 的「全量 WASM 插件平台」而推倒 FluxTorrent 的单体架构——那是 PT Studio 自己都尚未在生产环境验证的多年级赌注，且会危及 FluxTorrent 真正稀缺的护城河（已落地的反作弊、字幕、论坛、娱乐屋、自带 UDP+HTTP tracker）。
+  <b>需要做的是「定向收敛」</b>：把已有的、零散的扩展点（adapter / plugin trait / rules_engine）收敛成一套<b>一等公民、版本化的扩展契约</b>；把<b>内容维度</b>从「字段引擎参数化」升级为「可插拔」；并认真评估<b>AI/MCP 这道 PT Studio 已领先数年的战略性缺口</b>。
+</div>
+<div class="grid2">
+  <div class="box">
+    <h4>FluxTorrent（我们的项目）</h4>
+    <ul class="tight">
+      <li>🟢 <b>更大、更全</b>：Rust 11.6 万行 / 前端 8.6 万行 / 迁移 366 个</li>
+      <li>🟢 <b>PT 刚需已落地</b>：反作弊（含多号关联 collusion）、字幕全量、论坛/社交、娱乐屋/抽卡/彩票、绩效考核、自有 UDP+HTTP tracker（带 tracker 端反作弊）</li>
+      <li>🟢 <b>内容无关已产品化</b>：六类型字段引擎 + 11 预置站型 + 30 模块开关 + 三语 i18n + PWA</li>
+      <li>🟢 <b>已自发扩展</b>：wasmtime 49 适配器沙箱（douban 内置）、Rust Trait 插件钩子（M28）、受限表达式引擎</li>
+      <li>🔴 <b>短板</b>：无 AI/LLM/MCP；扩展契约零散未统一；366 迁移累积的 schema 债务与撞号风险</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h4>PT Studio（imythu）</h4>
+    <ul class="tight">
+      <li>🟢 <b>架构最超前</b>：微内核 + WASM/Native 双插件、WIT 冻结契约 pt:plugin@1.0.0、每插件独立 schema/角色/Redis 前缀</li>
+      <li>🟢 <b>安全模型最严谨</b>：SQL 三层加固（INHERIT FALSE+撤销 set_config/plpgsql+pg_query）、敏感数据默认封闭</li>
+      <li>🟢 <b>AI/MCP 已成型</b>：llm-claude + ai-upload-review + ai-assistant + MCP OAuth 网关</li>
+      <li>🟢 <b>内容类型插件化</b>：movie/tv/anime/music/generic 全套，含 MusicBrainz 抓轨日志评分</li>
+      <li>🔴 <b>致命缺口</b>：反作弊判定 / 注册策略 / 分享率考核三大 PT 刚需仅设计未实现；生产签名未做；tracker/Meilisearch 未压测；单作者、零生产先例</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===================== 1 ===================== -->
+<h2 id="s1"><span class="n">1</span>双项目定位与体量</h2>
+<p>两者都明确对标「下一代可定制 PT 建站系统」，且都不依赖 NexusPHP 代码血缘（都是 greenfield Rust）。但表述与现状差异明显。</p>
+<table>
+  <thead><tr><th style="width:22%">维度</th><th>PT Studio</th><th>FluxTorrent</th></tr></thead>
+  <tbody>
+    <tr><td>一句话定位</td><td>私有 BT 站点开源实现：Rust 微内核 + 一切皆插件（WASM+Native）</td><td>通用 PT 建站系统——不偏向任何类型，站长自由搭建、轻松自定义</td></tr>
+    <tr><td>北极星</td><td>「核心提供机制，插件决定策略」；核心可平滑升级，规则全进插件 <span class="ev s">强</span></td><td>「零魔改升级」：全部变更走 sqlx 迁移，<code>git pull &amp;&amp; up -d</code> 即升级 <span class="ev s">强</span></td></tr>
+    <tr><td>架构范式</td><td>微内核 + 双插件（Native 编译期选入 / WASM 运行时加载）</td><td>单体 Rust 四服务（api/worker/tracker/web）+ 配置驱动灵活 + 萌芽态扩展层</td></tr>
+    <tr><td>Rust 代码量</td><td>约 65,917 行（167 文件）</td><td>约 116,397 行（657 文件）<span class="ev s">强</span></td></tr>
+    <tr><td>前端代码量</td><td>约 8,899 行 TS/TSX（React+Vite，插槽机制）</td><td>约 85,859 行 TS/TSX（Next.js 15 RSC + 三语 i18n + PWA + 移动端全适配）<span class="ev s">强</span></td></tr>
+    <tr><td>数据库迁移</td><td>约 40 个 .sql（按插件分散到各自 schema）</td><td>366 个 .sql（单一大 schema，自 0001 连续编号）<span class="ev s">强</span></td></tr>
+    <tr><td>文档量</td><td>约 19,630 行 Markdown，每个插件四件套（需求/概要/详细/测试）</td><td>有 <code>docs/</code> 四册手册 + <code>_doc/</code> 策划方案（体量未精确统计）</td></tr>
+    <tr><td>许可证</td><td>内核/插件/SDK MIT OR Apache-2.0；pt-tracker 单独 AGPL-3.0-only</td><td>见仓库 LICENSE（单体，单一许可证）</td></tr>
+    <tr><td>成熟度阶段</td><td>P0–P8 全完成（2026-10-12），端到端跑通；但关键 PT 插件未实现</td><td>已发布 0.3.2（2026-10-04），含 29 模块 PRD、成体系手册</td></tr>
+    <tr><td>Tracker</td><td>自建 pt-tracker（仅 HTTP，**刻意无 UDP**）</td><td>自带 tracker（HTTP + UDP BEP15 + IPv6 BEP7 + scrape）<span class="ev s">强</span></td></tr>
+    <tr><td>维护者</td><td>单作者 imythu</td><td>单作者（本工作区）</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================== 2 ===================== -->
+<h2 id="s2"><span class="n">2</span>架构哲学对比（核心分歧）</h2>
+<p>这是两份项目最根本的差异，也决定了后续所有功能/安全的实现方式。</p>
+
+<h3>2.1 PT Studio：微内核 + 一切皆插件</h3>
+<p>设计原则开宗明义（<code>docs/design/01-architecture.md §1</code>）：「换一个站点规则，它会不会变？会变的就做成插件」。连身份系统、种子管理都是可替换插件。插件只经四种机制交互：</p>
+<ul class="tight">
+  <li><b>业务服务</b> <code>ctx.&lt;name&gt;</code>（JSON 分派，如 <code>ctx.ledger</code>/<code>ctx.accounting</code>）</li>
+  <li><b>事件</b> outbox → Redis Streams（至少一次投递，插件自幂等）</li>
+  <li><b>钩子</b> 同步拦截器（<code>&lt;domain&gt;.before_&lt;verb&gt;</code>）</li>
+  <li><b>只读视图</b> 跨插件读数据</li>
+</ul>
+<p>每个插件拥有<b>独立 PostgreSQL schema + 独立数据库角色 + Redis 键前缀 <code>p:&lt;id&gt;:</code></b>（<code>02-plugin-system.md §6</code>）。热路径（announce）绕过 WASM，直接打独立 <code>pt-tracker</code> 进程。插件 API 冻结为 <code>pt:plugin@1.0.0</code>（WIT 1.0.0，618 行契约原文）。</p>
+
+<h3>2.2 FluxTorrent：单体 + 配置驱动灵活 + 萌芽态扩展层</h3>
+<p>README 表述：「六类型字段引擎（用户字段与内容维度共用）+ 11 预置站型 + 30 模块开关四端联动 + 自定义页面/菜单/术语/主题令牌」。其「内容无关」靠<b>配置而非代码插件</b>实现。但扩展层已自发出现三种形态：</p>
+<table>
+  <thead><tr><th style="width:26%">扩展机制</th><th>形态</th><th>证据</th><th>强度</th></tr></thead>
+  <tbody>
+    <tr><td>Rust Trait 插件钩子</td><td><code>Plugin</code> trait + <code>DomainEvent</code>（UserLogin/TorrentUploaded/SeedingMilestone），编译期静态注册，运行期 <code>enabled()</code> 启停；catch_unwind 降级</td><td><code>apps/api/src/plugins.rs</code>（M28）</td><td><span class="ev s">强</span></td></tr>
+    <tr><td>wasmtime 适配器沙箱</td><td>进程内 wasmtime 49 沙箱；guest 导出 <code>fetch(url)</code>；host 提供 <code>http_fetch/cache_get/cache_set/host_log/secret</code> 五导入；用于「生态商店」第三方元数据适配器（douban 内置）</td><td><code>apps/api/src/adapter_runtime.rs</code> / <code>adapter_host.rs</code> / <code>adapter_sandbox.rs</code></td><td><span class="ev s">强</span></td></tr>
+    <tr><td>受限表达式引擎</td><td>白名单字符/记号、安全内建函数 <code>min/max</code>、变量显式绑定、规模上限、运行期错误回落默认值（沙箱能力悖论窄品类解）</td><td><code>apps/api/src/rules_engine.rs</code>（生态商店 M3）</td><td><span class="ev s">强</span></td></tr>
+  </tbody>
+</table>
+
+<div class="call warn">
+  <b>关键洞察</b>
+  FluxTorrent 与 PT Studio 在「可扩展性」上<b>方向一致</b>，只是阶段不同：PT Studio 把它做成了<b>平台级一等契约</b>（服务/事件/钩子/内容类型/MCP/隔离 SQL 全打通）；FluxTorrent 目前是<b>三个各自为战的萌芽</b>（元数据适配器沙箱、领域钩子、规则表达式），尚未统一成一套扩展模型。这是最值得收敛的地方，而非推倒重来。
+</div>
+
+<!-- ===================== 3 ===================== -->
+<h2 id="s3"><span class="n">3</span>功能实现矩阵</h2>
+<p>下表逐功能对比「谁做没做、做到什么程度」。注意 PT Studio 的 <code>docs/plugins/</code> 有 40+ 目录，但多数<b>只有文档、无代码</b>。</p>
+<table>
+  <thead><tr><th style="width:24%">功能域</th><th style="width:38%">PT Studio</th><th style="width:38%">FluxTorrent</th></tr></thead>
+  <tbody>
+    <tr><td>身份 / 鉴权</td><td>identity 插件：注册/登录/会话/RBAC/2FA/WebAuthn/Tracker passkey <span class="ev m">中</span>（2FA/WebAuthn 路线图列为待做）</td><td>auth + authz + twofa + 等级体系对齐 NP（0277） <span class="ev s">强</span></td></tr>
+    <tr><td>种子 / 内容类型</td><td>type-movie/tv/anime/music/generic 全套 WASM 插件，含抓轨日志评分 <span class="ev m">中</span></td><td>六类型字段引擎 + 11 站型 + 聚合锚点表 content_networks/artists <span class="ev s">强</span></td></tr>
+    <tr><td>记账 / 经济</td><td>accounting（窗口聚合）+ ledger（多币种账本） <span class="ev s">强</span></td><td>billing + billing_mults + economy + payment（商城）+ economy_checkin（签到） <span class="ev s">强</span></td></tr>
+    <tr><td>做种激励 / 魔力值</td><td>bonus（WASM，表达式语言 + 小时结算） <span class="ev m">中</span></td><td>seeding.rs + PG 函数（0133/0134/0136/0354）+ seeding_referral <span class="ev s">强</span></td></tr>
+    <tr><td><b>反作弊</b></td><td>accounting 仅输出「基础信号」；判定插件 anticheat <span class="ev d">设计未实现</span></td><td>cheat_enforce + collusion（多号关联）+ ledger_guard + process_event（幽灵做种）+ xreport（交叉上报）+ tracker 端 ratio_gate/guard/ip_trust <span class="ev s">强</span></td></tr>
+    <tr><td>H&amp;R / 分享率考核</td><td>hnr（WASM）已实现；通用 ratio-policy <span class="ev d">设计未实现</span></td><td>hr + hr_mail + hr_resolve + jixiao（绩效考核） <span class="ev s">强</span></td></tr>
+    <tr><td>促销</td><td>promotion（WASM，倍率规则下发给 accounting） <span class="ev m">中</span></td><td>promos + promo_audit + billing_mults <span class="ev s">强</span></td></tr>
+    <tr><td><b>字幕</b></td><td>subtitles 仅设计文档 <span class="ev d">设计未实现</span></td><td>subtitles（含 cert/flow/fulfill/govern/awards/requests 等 14 个模块）+ 后台审核 <span class="ev s">强</span></td></tr>
+    <tr><td>论坛 / 社区 / 社交</td><td>forum 仅设计文档 <span class="ev d">设计未实现</span></td><td>community_http（forums/friend/follow/feed/team/bounty/artists/endangered）+ social_team <span class="ev s">强</span></td></tr>
+    <tr><td>娱乐屋 / 游戏 / 彩票</td><td>lottery 仅设计文档 <span class="ev d">设计未实现</span></td><td>games + gacha + lottery + game_coupons（九宫格/猜大小/抽卡） <span class="ev s">强</span></td></tr>
+    <tr><td>邀请 / 勋章 / 好友</td><td>invite（WASM）已实现；medals <span class="ev d">设计未实现</span></td><td>invite + friend + social_team + 勋章（achv_dormant 等） <span class="ev s">强</span></td></tr>
+    <tr><td>通知 / 站内信</td><td>notify + messages（WASM） <span class="ev m">中</span></td><td>push + push_notify + push_http <span class="ev s">强</span></td></tr>
+    <tr><td>求种 / 审核 / 举报</td><td>requests + reports + moderation + ai-moderation <span class="ev m">中</span></td><td>requests + admin reports/review + subtitle 审核 <span class="ev s">强</span></td></tr>
+    <tr><td>RSS / Torznab</td><td>rss（Native）+ 邮件渠道 <span class="ev m">中</span></td><td>rss_http + compat（NP 兼容层） <span class="ev s">强</span></td></tr>
+    <tr><td>元数据 / 元数据源</td><td>metadata-tmdb（WASM）已实现；douban/imdb/musicbrainz/bangumi/igdb <span class="ev d">设计未实现</span></td><td>adapter 沙箱内置 douban；PT-Gen 接线 <span class="ev s">强</span></td></tr>
+    <tr><td>搜索</td><td>search-meilisearch（Native） <span class="ev m">中</span></td><td>content_http + 聚合锚点 + 索引（具体引擎未深查）</td></tr>
+    <tr><td><b>AI / LLM / MCP</b></td><td>llm-claude + ai-upload-review + ai-assistant + MCP OAuth 网关 <span class="ev s">强</span></td><td><span class="ev d">完全缺失</span>（全仓无 llm/openai/claude/mcp 实现）</td></tr>
+    <tr><td>Tracker</td><td>pt-tracker（仅 HTTP，无 UDP；torrust 4 包收窄组装） <span class="ev m">中</span></td><td>自带 HTTP+UDP+IPv6+scrape，tracker 端反作弊 <span class="ev s">强</span></td></tr>
+  </tbody>
+</table>
+<div class="call bad">
+  <b>矩阵结论</b>
+  在 19 个功能域中，FluxTorrent 在 <b>14 个</b>已真实落地且多为「强」证据；PT Studio 在 <b>11 个</b>有代码（多数为「中」的基准子集），且在 <b>反作弊判定 / 注册策略 / 分享率考核 / 字幕 / 论坛 / 娱乐屋 / 彩票 / 勋章 / 多元数据源</b> 等 PT 刚需上仍是空白文档。唯一 FluxTorrent 全面落后的域是 <b>AI / LLM / MCP</b>。
+</div>
+
+<!-- ===================== 4 ===================== -->
+<h2 id="s4"><span class="n">4</span>关键子系统深度对比</h2>
+
+<h3>4.1 Tracker 与记账链路</h3>
+<table>
+  <thead><tr><th style="width:24%">点</th><th>PT Studio</th><th>FluxTorrent</th></tr></thead>
+  <tbody>
+    <tr><td>announce 热路径</td><td>独立 pt-tracker 进程，按 info_hash 一致性哈希分片；绝不进插件 <span class="ev s">强</span></td><td>自带 tracker（http_track/udp），peer 会话 + 实时计数 <span class="ev s">强</span></td></tr>
+    <tr><td>UDP 支持</td><td><span class="n">无</span>（刻意，torrust 私有模式无 BEP41）</td><td><span class="y">有</span>（UDP BEP15 + IPv6 BEP7 + scrape）</td></tr>
+    <tr><td>记账落库</td><td>Redis Streams + 窗口聚合 + COPY/ON CONFLICT + stream ID 同事务（恰好一次） <span class="ev s">强</span></td><td>worker announce/settle/settle_periodic + reconcile <span class="ev s">强</span></td></tr>
+    <tr><td>tracker 端反作弊</td><td>客户端白名单 + passkey 鉴权（较薄）</td><td>ratio_gate + guard + guard_miss/refresh/store/whitelist + ip_trust + probe_cfg <span class="ev s">强</span></td></tr>
+    <tr><td>压测验证</td><td><span class="n">未达目标</span>：开发机约 1.05 万次/秒（目标 1.7 万）；真实 Redis/分片未验证 <span class="ev m">中</span></td><td>未公开压测数据（本仓无）</td></tr>
+  </tbody>
+</table>
+
+<h3>4.2 安全与隔离模型</h3>
+<table>
+  <thead><tr><th style="width:24%">点</th><th>PT Studio</th><th>FluxTorrent</th></tr></thead>
+  <tbody>
+    <tr><td>SQL 注入防护</td><td>sqlx 参数化 + 插件 SQL 走数据库角色沙箱 + pg_query 语句检查（三层加固） <span class="ev s">强</span></td><td>sqlx 参数化；PG 函数承载领域逻辑（seeding_* 等） <span class="ev s">强</span></td></tr>
+    <tr><td>插件隔离</td><td>每插件独立 schema/角色/Redis 前缀；<code>INHERIT FALSE, SET TRUE</code> + 撤销 set_config/plpgsql PUBLIC 权限 <span class="ev s">强</span></td><td>单体共享 schema；无按插件隔离（靠代码审查） <span class="ev m">中</span></td></tr>
+    <tr><td>敏感数据</td><td>passkey/email/IP/WebAuthn 默认封闭，<code>site.toml [grants]</code> 显式授权，永不出事件/搜索/MCP/日志 <span class="ev s">强</span></td><td>敏感视图迁移（0363_sensitive_views）存在；具体授权粒度未深查 <span class="ev m">中</span></td></tr>
+    <tr><td>密码 / 2FA</td><td>Argon2id（OWASP 最低参数）+ TOTP + WebAuthn + 近期重验证 <span class="ev s">强</span></td><td>twofa_http 存在（具体算法未深查）</td></tr>
+    <tr><td>CSP / XSS</td><td>禁内联脚本与 eval，富文本服务端转受限 HTML + DOMPurify 二次净化 <span class="ev s">强</span></td><td>Next.js 默认转义；CSP 策略未深查</td></tr>
+    <tr><td>第三方沙箱</td><td>WASM 插件：无文件系统/无网络（除白名单）/无环境变量/CPU 内存受限 <span class="ev s">强</span></td><td>adapter 沙箱：wasmtime + 出网白名单 + 20s 超时 + 限流 + 内存上限 <span class="ev s">强</span></td></tr>
+  </tbody>
+</table>
+
+<h3>4.3 内容无关性：两种不同的「零魔改」</h3>
+<div class="grid2">
+  <div class="box">
+    <h4>PT Studio：内容类型插件</h4>
+    <p>把 movie/tv/anime/music/generic 做成导出 <code>content-type</code> 接口的 WASM 插件；上传表单由类型 Schema 动态生成。极致灵活但需要写代码，运营者门槛高。 <span class="ev m">中</span></p>
+  </div>
+  <div class="box">
+    <h4>FluxTorrent：字段引擎 + 预置站型</h4>
+    <p>「六类型字段引擎」让用户字段与内容维度共用同一套配置；11 预置站型一键克隆；30 模块开关四端联动。运营者零代码即可定制，但深度定制不如代码插件自由。 <span class="ev s">强（已产品化）</span></p>
+  </div>
+</div>
+<div class="call">
+  <b>互补判断</b>
+  两者是同一目标的两种解：PT Studio 偏「开发者友好」，FluxTorrent 偏「运营者友好」。FluxTorrent 的字段引擎是更务实的「内容无关」实现（且已产品化），应<b>保留并强化</b>；但可参考 PT Studio 为「深度内容类型」提供代码级插件出口，形成「无代码字段引擎 + 有代码内容插件」双层。
+</div>
+
+<h3>4.4 AI / MCP（唯一战略性代差）</h3>
+<p>PT Studio 已实现完整闭环：<code>llm-claude</code>（Native，含系统提示缓存/工具循环/配额）、<code>ai-upload-review</code>（上传预审，确定性规则 + 模型预审）、<code>ai-assistant</code>（站内助手，BM25 检索 + MCP 工具调用）、<code>mcp</code>（OAuth 授权 + 个人 token + 写操作站内确认 + 提示注入防护）。其安全要求（用户内容不拼进系统提示、写操作默认人工确认）也写得很成熟（<code>security.md §8</code>）。 <span class="ev s">强</span></p>
+<p>FluxTorrent <b>全仓无 AI/LLM/MCP 任何实现</b>。 <span class="ev d">设计未实现</span></p>
+<div class="call warn">
+  <b>这是唯一需要认真对待的「方向性」差距</b>。它不影响核心 PT 业务能否跑通，但决定了未来产品叙事是否包含「AI 原生 PT 站」。是否投入取决于产品战略，而非技术必需——建议作为「可选战略方向」评估，而非当下必须。
+</div>
+
+<!-- ===================== 5 ===================== -->
+<h2 id="s5"><span class="n">5</span>优劣分析（含证据强度）</h2>
+
+<h3>5.1 PT Studio 的优势与风险</h3>
+<table>
+  <thead><tr><th style="width:14%">性质</th><th>项</th><th>证据</th><th>强度</th></tr></thead>
+  <tbody>
+    <tr><td class="y">优势</td><td>架构最前瞻：微内核 + WASM/Native 双插件，核心可平滑升级</td><td>docs/design/01,02</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>插件契约冻结且严谨：WIT 1.0.0 + 能力最小化 + 敏感数据默认封闭</td><td>plugin.wit / security.md</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>SQL 三层加固，直面「插件 SQL 提权逃逸」这一最难的隔离问题</td><td>02-plugin-system.md §6.1</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>AI/MCP 已成型且安全范式完整</td><td>llm-claude / ai-* / mcp</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>文档极其完备：每插件四件套 + 平台契约 + 经验教训</td><td>docs/ 19.6k 行</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="n">风险</td><td>PT 刚需插件未实现：反作弊判定 / 注册策略 / 分享率考核</td><td>09-roadmap.md §4.1</td><td><span class="ev d">设计未实现</span></td></tr>
+    <tr><td class="n">风险</td><td>生产签名（minisign）未做，<code>kernel.mode="prod"</code> 不可用</td><td>09-roadmap.md §4.2</td><td><span class="ev d">设计未实现</span></td></tr>
+    <tr><td class="n">风险</td><td>SQL 隔离逃逸测试（TC-KRN-051/053 的 RESET/SET ROLE/plpgsql 用例）未补</td><td>09-roadmap.md §2</td><td><span class="ev m">中</span></td></tr>
+    <tr><td class="n">风险</td><td>tracker / Meilisearch 未压测到目标规模；无 UDP</td><td>09-roadmap.md §2/§3</td><td><span class="ev m">中</span></td></tr>
+    <tr><td class="n">风险</td><td>单作者、零生产先例，首年即 P0–P8 全量，未经社区淬炼</td><td>元数据 / commits</td><td><span class="ev m">中</span></td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 FluxTorrent 的优势与风险</h3>
+<table>
+  <thead><tr><th style="width:14%">性质</th><th>项</th><th>证据</th><th>强度</th></tr></thead>
+  <tbody>
+    <tr><td class="y">优势</td><td>PT 刚需功能大面积真实落地（反作弊含多号关联、字幕、论坛、娱乐屋、绩效考核）</td><td>worker/jobs、api/src</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>自带 HTTP+UDP+IPv6 tracker 且含 tracker 端反作弊（ratio_gate/guard/ip_trust）</td><td>apps/tracker</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>内容无关已产品化：字段引擎 + 11 站型 + 模块开关 + 三语 + PWA</td><td>README / content_http</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>已自发扩展：wasmtime 适配器 + Rust Trait 钩子 + 表达式引擎</td><td>adapter_*/plugins.rs/rules_engine.rs</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="y">优势</td><td>前端体量远超对方（8.6 万行，移动端全适配）</td><td>apps/web</td><td><span class="ev s">强</span></td></tr>
+    <tr><td class="n">风险</td><td>AI/LLM/MCP 完全缺失（唯一战略代差）</td><td>全仓 grep 无命中</td><td><span class="ev d">设计未实现</span></td></tr>
+    <tr><td class="n">风险</td><td>扩展契约零散未统一（adapter/plugin trait/rules_engine 三套各自为战）</td><td>代码核查</td><td><span class="ev m">中</span></td></tr>
+    <tr><td class="n">风险</td><td>366 个迁移累积的 schema 债务：撞号、循环依赖、巨型表（CONTRIBUTING 已立规）</td><td>migrations/ + CONTRIBUTING</td><td><span class="ev m">中</span></td></tr>
+    <tr><td class="n">风险</td><td>单体共享 schema，无按插件隔离，第三方扩展信任边界弱于 PT Studio</td><td>架构核查</td><td><span class="ev m">中</span></td></tr>
+    <tr><td class="n">风险</td><td>单作者、Actix-web（非 axum）、无 UDP 之外 tracker 细节未公开压测</td><td>README</td><td><span class="ev m">中</span></td></tr>
+  </tbody>
+</table>
+
+<!-- ===================== 6 ===================== -->
+<h2 id="s6"><span class="n">6</span>FluxTorrent 可借鉴点（具体、按优先级）</h2>
+
+<h4>🔝 P0 — 立即值得借鉴（低风险、高收益）</h4>
+<ul class="tight">
+  <li><b>把零散扩展层收敛成统一契约。</b> PT Studio 的「服务/事件/钩子/只读视图」四机制是清晰模板。FluxTorrent 已有 adapter（wasmtime）+ plugin trait（Rust hooks）+ rules_engine，应把它们<b>收敛为一套一等公民、版本化的扩展模型</b>，而不是三个互不认识的系统。这是「借思路、不借代码」的最优先项。</li>
+  <li><b>内容维度可插拔化。</b> 保留字段引擎（运营者友好），同时为深度内容类型（如音乐抓轨评分、动漫字幕组风格）提供代码级插件出口——对齐 PT Studio 的 <code>content-type</code> 导出接口思路。FluxTorrent 的 <code>content_networks</code>/<code>artists</code> 聚合锚点表已是很好的底座。</li>
+</ul>
+
+<h4>⏳ P1 — 中期值得借鉴</h4>
+<ul class="tight">
+  <li><b>SQL 隔离加固。</b> 若未来开放第三方 WASM 插件，PT Studio 的 <code>INHERIT FALSE, SET TRUE</code> + 撤销 <code>set_config</code>/<code>plpgsql</code> PUBLIC 权限 + <code>pg_query</code> 语句检查三层方案，是防「插件 SQL 提权逃逸」的现成范本；即便不开放第三方，也可用于收紧现有 PG 函数的 <code>SECURITY</code> 设置。</li>
+  <li><b>记账链路的恰好一次。</b> PT Studio 的「Redis Streams + 窗口聚合 + COPY/ON CONFLICT + stream ID 同事务」比全表轮询更抗规模化；可对照 FluxTorrent 的 <code>settle_periodic</code>/<code>reconcile</code> 评估分区 worker 改造。</li>
+  <li><b>敏感数据能力模型。</b> 把「哪些端点能读 IP/passkey/email」固化成目录式契约（PT Studio 的 <code>site.toml [grants]</code> + 清单 <code>sensitive</code> 字段），比散落代码更可审计。FluxTorrent 已有 <code>0363_sensitive_views</code>，可在此之上加授权清单层。</li>
+</ul>
+
+<h4>🔭 P2 — 战略评估（非必需）</h4>
+<ul class="tight">
+  <li><b>AI / MCP。</b> 这是唯一战略代差。PT Studio 的「用户内容不拼进系统提示、写操作站内确认、OAuth 签发个人 token」是成熟安全范式。是否投入取决于产品是否要做「AI 原生」叙事——建议设为<b>可选战略方向</b>，而非当下必做。</li>
+  <li><b>Tracker 组装思路。</b> 若未来替换/重构 tracker，PT Studio「只拼 torrust 4 个底层包而非 fork」是低风险的已验证路径。FluxTorrent 自带 tracker 已很强，此条仅为备选参照。</li>
+</ul>
+
+<!-- ===================== 7 ===================== -->
+<h2 id="s7"><span class="n">7</span>方向性判断：要不要改？</h2>
+<div class="call bad">
+  <b>结论：不要整体掉头，但要定向收敛。</b>
+</div>
+<p>把「是否要修改方向」拆成四个子问题：</p>
+<table>
+  <thead><tr><th style="width:40%">问题</th><th>判断</th></tr></thead>
+  <tbody>
+    <tr><td>要不要放弃单体、重写成全量 WASM 插件平台？</td><td><span class="n">否。</span> 那是 PT Studio 自己都未在生产验证的多年级赌注；会危及 FluxTorrent 真正稀缺的护城河（已落地的反作弊/字幕/论坛/娱乐屋/自带 tracker）。</td></tr>
+    <tr><td>架构哲学是否走错了？</td><td><span class="y">否，方向一致。</span> FluxTorrent 已自发出现 wasmtime/插件钩子/表达式引擎，与 PT Studio 的「可扩展」北极星同路，只是更早期、更零散。</td></tr>
+    <tr><td>功能优先级是否错配？</td><td><span class="y">否。</span> FluxTorrent 优先做了 PT 刚需（反作弊/字幕/论坛/娱乐屋），而 PT Studio 恰在这些上空白。说明 FluxTorrent 的需求判断更贴近真实运营。</td></tr>
+    <tr><td>有没有被对方甩开的必改项？</td><td><span class="p">有，但仅一处：AI/MCP。</span> 它不影响核心业务跑通，但是未来产品叙事的潜在代差，应作为战略选项评估。</td></tr>
+  </tbody>
+</table>
+<div class="call">
+  <b>因此，「方向性修正」的正确表述是：</b>维持「单体 + 配置驱动灵活 + PT 刚需优先」的主航向；把已有的三个扩展萌芽<b>收敛成统一契约</b>（这是最接近 PT Studio 精髓、且风险最低的改进）；把内容维度升级为「无代码字段引擎 + 有代码插件」双层；把 366 迁移的 schema 债务列入技术债治理；把 AI/MCP 作为可选战略方向单列评估。
+</div>
+
+<!-- ===================== 8 ===================== -->
+<h2 id="s8"><span class="n">8</span>建议演进路线（保守、可回溯）</h2>
+<table>
+  <thead><tr><th style="width:12%">阶段</th><th style="width:26%">动作</th><th style="width:62%">说明 / 对标</th></tr></thead>
+  <tbody>
+    <tr><td>近期</td><td>统一扩展契约（收口 adapter/plugin/rules_engine）</td><td>定义一套「扩展点注册表」：钩子、服务调用、事件、表达式规则共用同一版本化契约。对标 PT Studio 的四种交互机制，但不必一步到位做 WASM 全插件。</td></tr>
+    <tr><td>近期</td><td>迁移债务治理</td><td>参考 PT Studio 的「每插件/每功能独立 schema」思路，至少对新增功能做模块化迁移命名空间，遏制 366 号之后的撞号与循环依赖（CONTRIBUTING 已立规，需工具化校验）。</td></tr>
+    <tr><td>中期</td><td>内容维度双层化</td><td>保留六类型字段引擎；为深度内容类型（音乐/动漫）提供代码插件出口，复用现有 content_networks/artists 锚点表。</td></tr>
+    <tr><td>中期</td><td>敏感能力清单化</td><td>在 0363_sensitive_views 之上，加 <code>site.toml [grants]</code> 式授权清单，固化「谁能读 IP/passkey/email」。</td></tr>
+    <tr><td>可选</td><td>AI/MCP 战略评估</td><td>仅当产品定位包含「AI 原生」时启动；直接复用 PT Studio 的安全范式（用户内容隔离、写操作确认、OAuth token）。否则不投入。</td></tr>
+    <tr><td>持续</td><td>把 PT Studio 作为架构参照系</td><td>重点跟踪其 SQL 隔离逃逸测试、tracker/Meilisearch 压测、生产签名三件事的进展——它们决定了「全插件平台」路线是否真的可行。</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================== 9 ===================== -->
+<h2 id="s9"><span class="n">9</span>证据来源与核查清单</h2>
+<p class="sm">以下为本次分析的事实底座，均来自仓库实地核查（PT Studio 已克隆至本地，FluxTorrent 为工作区源码）。</p>
+<h4>PT Studio（克隆于 2026-10-14，commit main）</h4>
+<ul class="tight sm">
+  <li>架构/插件/Tracker/安全/数据库：<code>docs/design/01-architecture.md</code> §1–5、<code>02-plugin-system.md</code> §5/§6.1、<code>03-tracker-and-accounting.md</code>、<code>10-torrust-integration.md</code>、<code>docs/platform/conventions/security.md</code>、<code>docs/platform/conventions/database.md</code></li>
+  <li>WIT 契约原文：<code>crates/plugin-api/wit/plugin.wit</code>（618 行，pt:plugin@1.0.0）</li>
+  <li>实现进度与缺口：<code>docs/dev/README.md</code> §4、<code>docs/design/09-roadmap.md</code> §2/§4</li>
+  <li>代码规模：<code>find . -name '*.rs' | wc -l</code> = 167 文件 / 65,917 行；TS/TSX 8,899 行；SQL 2,180 行；WIT 2,053 行；MD 19,630 行</li>
+  <li>插件清单：<code>plugins/native/</code>（11 项）、<code>plugins/wasm/</code>（25 项）、<code>docs/plugins/</code>（40+ 设计目录）</li>
+</ul>
+<h4>FluxTorrent（工作区 D:/FluxTorrent，核查于 2026-10-14）</h4>
+<ul class="tight sm">
+  <li>结构/定位：<code>README.md</code>、<code>apps/{api,worker,tracker,web}</code></li>
+  <li>扩展层：<code>apps/api/src/plugins.rs</code>（M28 Rust Trait 钩子）、<code>apps/api/src/adapter_runtime.rs</code>/<code>adapter_host.rs</code>/<code>adapter_sandbox.rs</code>（wasmtime 49 沙箱）、<code>apps/api/src/rules_engine.rs</code></li>
+  <li>tracker：<code>apps/tracker/src/{udp,http_track,ratio_gate,guard,ip_trust,probe_cfg,xreport_in}</code></li>
+  <li>功能落地：<code>apps/worker/src/jobs/</code>（49 个 job：cheat_enforce/collusion/ledger_guard/process_event/subtitle_*/seeding/hr/promos/jixiao/games/lottery/...）</li>
+  <li>字幕：<code>apps/api/src/content_http/subtitles*.rs</code>（14 模块）+ <code>apps/api/src/admin_http/subtitle_*</code></li>
+  <li>代码规模：Rust 116,397 行 / 前端 TS 85,859 行 / 迁移 SQL 16,933 行（366 个 .sql，最新 0366）</li>
+  <li>AI 核查：<code>grep -rli "llm|openai|claude|mcp|anthropic" apps/</code> 仅命中无关项（geoip mmdb / push crypto / lighthouse / 迁移文件名），确认无 AI/MCP 实现</li>
+</ul>
+
+<footer>
+  本文档为内部对比分析，结论基于 2026-10-14 时点的双方仓库状态。PT Studio 仍快速演进，建议在其 SQL 隔离逃逸测试、tracker/Meilisearch 压测、生产签名三件关键验证完成后再次复核。FluxTorrent 侧的「AI/MCP 缺失」「扩展契约未统一」「迁移债务」三项判断，建议结合后续迭代计划更新。
+</footer>
+
+</div>
+</body>
+</html>

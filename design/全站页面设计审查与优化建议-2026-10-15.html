@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent 全站页面设计审查与优化建议</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231e8ae8'/%3E%3Cpath d='M7 12l3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --sky:#1e8ae8; --sky-deep:#0f5bb5; --sky-soft:#e8f2fc;
+  --mint:#2fbf9b; --mint-soft:#e6f7f2;
+  --coral:#d6453d; --coral-soft:#fdeceb;
+  --indigo:#5b6bf5; --indigo-soft:#eceefd;
+  --sun:#f2b01e; --sun-soft:#fdf3dd;
+  --ink:#1a2332; --sub:#64748b; --faint:#94a3b8;
+  --line:#e2e8f0; --card:#ffffff; --page:#f5f7fa;
+  --r-sm:8px; --r-md:12px; --r-lg:16px;
+  --shadow:0 1px 3px rgba(15,23,42,.06),0 4px 14px rgba(15,23,42,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;background:var(--page);color:var(--ink);line-height:1.6;font-size:15px}
+.wrap{max-width:1060px;margin:0 auto;padding:32px 20px 80px}
+h1,h2,h3,h4{line-height:1.3}
+.hero{background:linear-gradient(135deg,#0f2a4a 0%,#1e3a5f 45%,#1e8ae8 130%);color:#fff;border-radius:var(--r-lg);padding:36px 32px;margin-bottom:28px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(94,184,255,.35),transparent 70%)}
+.hero h1{font-size:28px;font-weight:800;letter-spacing:.5px;margin-bottom:10px}
+.hero .sub{color:#c9dcef;font-size:14px;max-width:640px}
+.hero .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.hero .meta span{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:3px 12px;border-radius:999px;font-size:12.5px;color:#eaf3fc}
+.verdict{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--sky);border-radius:var(--r-md);padding:18px 20px;margin-bottom:28px;box-shadow:var(--shadow)}
+.verdict b{color:var(--sky-deep)}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px 26px 10px;margin-bottom:24px;box-shadow:var(--shadow)}
+.sec-no{font-size:12px;font-weight:800;letter-spacing:2px;color:var(--sky);text-transform:uppercase;margin-bottom:6px}
+.sec h2{font-size:21px;font-weight:800;margin-bottom:6px}
+.sec-sub{color:var(--sub);font-size:13.5px;margin-bottom:18px}
+.block-title{font-size:15px;font-weight:700;margin:22px 0 10px;display:flex;align-items:center;gap:8px}
+.block-title::before{content:"";width:4px;height:16px;border-radius:2px;background:var(--sky);display:inline-block}
+table{width:100%;border-collapse:collapse;margin:10px 0 18px;font-size:13.5px;table-layout:fixed}
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0 18px}
+.tbl-scroll table{margin:0}
+@media (max-width:768px){
+  .tbl-scroll table{min-width:720px}
+}
+th{background:#f1f5f9;color:#334155;font-weight:700;text-align:left;padding:9px 10px;border:1px solid var(--line);font-size:12.5px}
+td{padding:9px 10px;border:1px solid var(--line);vertical-align:top}
+tr:nth-child(even) td{background:#fafbfd}
+code{background:#eef2f7;border:1px solid #dde5ee;border-radius:5px;padding:1px 6px;font-size:12.5px;font-family:"Cascadia Code",Consolas,monospace;color:#0f4c81}
+.tag{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.tag-p1{background:#fdeceb;color:#b91c1c}
+.tag-p2{background:#fdf3dd;color:#92400e}
+.tag-p3{background:#e6f7f2;color:#0f766e}
+.tag-p4{background:#eef2f7;color:#475569}
+.tag-ok{background:#e8f2fc;color:#1e40af}
+.tag-warn{background:#fdf3dd;color:#92400e}
+.pill{display:inline-block;background:#eef2f7;border:1px solid #dde5ee;border-radius:999px;padding:2px 10px;font-size:12.5px;margin:0 4px 6px 0;color:#334155}
+.callout{border-radius:var(--r-md);padding:14px 16px;margin:12px 0 18px;font-size:13.5px;border:1px solid var(--line)}
+.callout b{color:var(--ink)}
+.callout--sky{background:var(--sky-soft);border-color:#c4e0f7}
+.callout--mint{background:var(--mint-soft);border-color:#c2e9dd}
+.callout--coral{background:var(--coral-soft);border-color:#f6d3d0}
+.callout--sun{background:var(--sun-soft);border-color:#f2dfae}
+.big-num{font-size:34px;font-weight:800;color:var(--sky-deep);line-height:1}
+.num-label{font-size:12px;color:var(--sub);margin-top:2px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:14px 0 6px}
+.stat-box{background:#f8fafc;border:1px solid var(--line);border-radius:var(--r-md);padding:16px 14px;text-align:center}
+ul.tight{margin:8px 0 14px;padding-left:22px}
+ul.tight li{margin-bottom:6px}
+.bar-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.bar-row .lbl{width:96px;text-align:right;color:var(--sub);font-size:12.5px;flex-shrink:0}
+.bar-row .track{flex:1;height:14px;background:#eef2f7;border-radius:8px;overflow:hidden}
+.bar-row .fill{height:100%;border-radius:8px}
+.bar-row .val{width:64px;font-weight:700;font-size:12.5px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--sub);margin:8px 0 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.foot{margin-top:34px;text-align:center;color:var(--faint);font-size:12.5px}
+@media (max-width:768px){
+  .wrap{padding:16px 12px 60px}
+  .hero{padding:26px 20px}
+  .hero h1{font-size:22px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .sec{padding:20px 16px 8px}
+  .bar-row .lbl{width:74px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hero">
+  <h1>FluxTorrent 全站页面设计审查与优化建议</h1>
+  <p class="sub">以「种子详情页」确立的设计标准为锚，对全站前台页面做设计级体检：布局体系、视觉一致性、响应式覆盖、语义与可访问性。结论基于本地真实代码量化扫描，非主观观感。</p>
+  <div class="meta">
+    <span>审查范围：60 前台路由</span>
+    <span>627 组件/页面文件</span>
+    <span>13 个样式文件 · 约 420KB CSS</span>
+    <span>2026-10-15</span>
+  </div>
+</div>
+
+<div class="verdict">
+  <b>总体结论：底子好，问题在「多体系并存」。</b>
+  全站已具备完善的设计令牌（112 个 CSS 变量）、统一布局壳（完整断点体系）、通用页面头（pghd ×19 页）、统一空态/错误组件与模块开关；
+  核心页面（首页 / 列表 / 详情 / 用户主页 / 论坛）均有体系化设计与响应式。真正需要动的是「收敛」——
+  当前至少 <b>7 套独立视觉体系</b>并存（td / up / pting / tsb / request-center / ntf / task + baozi 面板 + Tailwind 直写），
+  同类元素（页面头、表格、卡片、徽章）在不同页面形态不一；另有语义（一页多 h1）、图标双体系、游戏模块硬编码色等问题。
+  <b>建议以详情页 L0/L1/L2 与 8 组件规范为锚，抽象「页面模板」逐体系收敛，而非逐页返工。</b>
+</div>
+
+<!-- ===== 一、审查方法与量化画像 ===== -->
+<section class="sec">
+  <div class="sec-no">第一章</div>
+  <h2>审查范围与方法</h2>
+  <p class="sec-sub">直接扫描 <code>apps/web</code> 真实源码：13 个样式文件、627 个 tsx、60 个前台路由；从 7 个维度量化取证。</p>
+
+  <div class="stat-grid">
+    <div class="stat-box"><div class="big-num">60</div><div class="num-label">前台路由（(main)）</div></div>
+    <div class="stat-box"><div class="big-num">627</div><div class="num-label">tsx 文件（页面+组件）</div></div>
+    <div class="stat-box"><div class="big-num">112</div><div class="num-label">设计令牌变量（theme-tide）</div></div>
+    <div class="stat-box"><div class="big-num">592</div><div class="num-label">pages.css 中 var() 引用</div></div>
+  </div>
+
+  <h4 class="block-title">量化扫描维度（Python 下沉全量统计）</h4>
+  <ul class="tight">
+    <li><b>令牌覆盖率</b>：theme-tide.css 变量清单、pages.css / layout.css / ui.css 的 var() 引用与硬编码色残留</li>
+    <li><b>体系归属</b>：td- / up- / pting- / tsb- / baozi- / ntf- / task- / pghd 等前缀在各路由的分布</li>
+    <li><b>响应式</b>：CSS 体系内 @media 覆盖、页面级 Tailwind 断点前缀（sm/md/lg/xl）、缺 loading.tsx 的路由</li>
+    <li><b>语义</b>：h1 总量 / 裸 h1 / 一页多 h1（区块与导航误用标题级）</li>
+    <li><b>图标体系</b>：SVG <code>Icon</code> 组件 vs 字符符号（· → ⚠️ 📣 ♥ ● ⬇）分布</li>
+    <li><b>emoji</b>：界面 emoji 使用面（152 文件）</li>
+    <li><b>硬编码样式</b>：tsx 内联 style、hex 颜色残留（集中度）</li>
+  </ul>
+
+  <div class="callout callout--sky">
+    <b>口径说明：</b>「响应式盲区」指页面文件无 Tailwind 断点前缀——需与体系内 @media 合看（如求种页 request-board 用
+    <code>md:block</code> 桌面表格 + 移动卡片，实际有响应式）；真正的盲区是「体系无 @media 且页面无断点」的双缺失页。
+  </div>
+</section>
+
+<!-- ===== 二、体系地图 ===== -->
+<section class="sec">
+  <div class="sec-no">第二章</div>
+  <h2>视觉体系地图：7+ 套语言并存</h2>
+  <p class="sec-sub">每个前缀是一套独立的组件语言（容器 / 头部 / 卡片 / 表格 / 徽章各成体系）。全部引用统一令牌（好），但形态互不相同（断层）。</p>
+
+  <div class="tbl-scroll"><table>
+    <tr><th style="width:13%">体系</th><th style="width:18%">CSS 规模</th><th style="width:48%">覆盖页面（真实）</th><th style="width:10%">体系内 @media</th><th style="width:11%">状态</th></tr>
+    <tr><td><code>baozi-*</code> 包子面板</td><td>layout.css 主体</td><td>17 页：about / admin / classes / donate / faq / forums / gomoku / help / jixiao / me / my-spark / offers / preserve / seasonal / top / torrents / users</td><td><span class="tag tag-ok">有</span></td><td><span class="tag tag-ok">良好</span></td></tr>
+    <tr><td><code>pghd</code> 通用页头</td><td>pages.css</td><td>19 页：bank / donate / dressup / faq / forums / friends / gacha / games / help / jixiao / me / medal-wall / medals / my / my-spark / shop / textbooks / top / upload</td><td><span class="tag tag-warn">缺</span></td><td><span class="tag tag-ok">复用好</span></td></tr>
+    <tr><td><code>td-*</code> 详情页</td><td>base.css + pages.css</td><td>torrent（详情页，已立标准）</td><td><span class="tag tag-ok">有</span></td><td><span class="tag tag-ok">已规范化</span></td></tr>
+    <tr><td><code>tsb-*</code> 列表表格</td><td>pages.css ×91 类</td><td>torrents（种子列表）</td><td><span class="tag tag-ok">有</span></td><td><span class="tag tag-ok">良好</span></td></tr>
+    <tr><td><code>up-*</code> 用户主页</td><td>pages.css ×45 类</td><td>users / me / dressup / games / subtitle-groups</td><td><span class="tag tag-ok">有（×7）</span></td><td><span class="tag tag-ok">良好</span></td></tr>
+    <tr><td><code>pting-*</code> 论坛</td><td>pages.css</td><td>forums（论坛首页 + 版块 + 帖子）</td><td><span class="tag tag-ok">有</span></td><td><span class="tag tag-warn">自成一体</span></td></tr>
+    <tr><td><code>request-center-*</code> 求种</td><td>pages.css</td><td>requests（求种区）</td><td><span class="tag tag-warn">弱</span></td><td><span class="tag tag-warn">待统一</span></td></tr>
+    <tr><td><code>ntf-*</code> 通知</td><td>pages.css ×13 类</td><td>notifications</td><td><span class="tag tag-ok">有（×14）</span></td><td><span class="tag tag-ok">良好</span></td></tr>
+    <tr><td><code>task-*</code> 任务</td><td>pages.css</td><td>tasks（任务板）</td><td><span class="tag tag-ok">有</span></td><td><span class="tag tag-warn">待统一</span></td></tr>
+    <tr><td><code>arcade-*</code> 游戏</td><td>arcade.css 58KB + sweet 72KB + gacha + medal-shop</td><td>games / farm / pet / capsule / wheel / gacha / shop / medal</td><td><span class="tag tag-warn">部分</span></td><td><span class="tag tag-warn">自成视觉</span></td></tr>
+    <tr><td>Tailwind 直写</td><td>—</td><td>upload-form / forum-composer / 新组件</td><td><span class="tag tag-ok">有</span></td><td><span class="tag tag-ok">新代码主路</span></td></tr>
+  </table></div>
+
+  <div class="callout callout--mint">
+    <b>解读：</b>项目走在「令牌统一 → 组件体系分裂」的中间态——颜色/圆角/阴影/字体已全量令牌化（好评），但「页面级组件语言」未收敛：
+    同一性质的元素存在 4+ 种实现（页面头 4 种、表格 4+ 种、徽章 5+ 种）。这正是通用建站系统最需要先解决的一致性问题——
+    站型可以不同，但组件语言必须同构，否则每个站型包切出来都是「另一个站」的观感。
+  </div>
+</section>
+
+<!-- ===== 三、问题清单 ===== -->
+<section class="sec">
+  <div class="sec-no">第三章</div>
+  <h2>问题清单（按优先级）</h2>
+  <p class="sec-sub">P1 影响全站一致性 · P2 影响移动体验与加载观感 · P3 影响语义与可维护性 · P4 局部细节。</p>
+
+  <h4 class="block-title"><span class="tag tag-p1">P1</span> 页面头 / 表格 / 徽章三类元素存在 4+ 种实现</h4>
+  <div class="tbl-scroll"><table>
+    <tr><th style="width:16%">元素</th><th style="width:56%">现存实现</th><th style="width:28%">建议</th></tr>
+    <tr><td>页面头</td><td>① <code>pghd</code>（19 页）② <code>pting-board__head</code>（论坛）③ <code>up-hero</code>（用户主页）④ 列表页搜索盒内建头</td><td>升级 pghd 为规范组件，其余逐步迁移</td></tr>
+    <tr><td>表格</td><td>① <code>tsb-*</code>（torrents）② <code>nexus-table</code>（requests）③ <code>td-files</code>（详情）④ profile-tabs 内表格</td><td>抽「数据表格」组件（列设置/排序/翻页内建）</td></tr>
+    <tr><td>徽章 / 状态</td><td>① <code>sticker</code> ② <code>request-status</code> ③ <code>pting-card__count</code> ④ <code>up-stats</code> ⑤ <code>task-*</code> 状态块</td><td>统一 <code>Badge</code> 组件（tone: sky/mint/coral/sun/ink）</td></tr>
+  </table></div>
+
+  <h4 class="block-title"><span class="tag tag-p1">P1</span> 一页多 h1 与裸 h1（语义断层）</h4>
+  <ul class="tight">
+    <li><code>components/home-sections.tsx</code>：首页<b>每个区块头都是 h1</b>（新闻/数据/资源墙……一页最多 6+ 个 h1），应改 <code>h2</code></li>
+    <li><code>components/usercp.tsx</code>：侧边导航标题用 <code>h1</code>，应改 <code>h2</code> 或 <code>span</code></li>
+    <li><code>components/task-board.tsx</code> / <code>components/contact-staff.tsx</code>：区块头 <code>h1</code> 依赖父级 CSS</li>
+    <li><code>forums/page.tsx</code>：页面主 <code>h1</code> 无样式类，全靠 <code>pting-board__head</code> 撑</li>
+  </ul>
+  <div class="callout callout--coral">影响：SEO 标题结构与读屏器导航错乱；后续做「页面模板」时标题级将作为硬校验。</div>
+
+  <h4 class="block-title"><span class="tag tag-p2">P2</span> 响应式覆盖不均衡：14 路由缺 loading，部分体系移动端薄弱</h4>
+  <ul class="tight">
+    <li><b>缺 loading.tsx 的路由（14 个，均有真实数据页）</b>：avatar-frames / classes / collections / donate / dressup / farm / gacha / gomoku / jixiao / me / my-spark / offers / users（用户列表）</li>
+    <li><b>体系内 @media 缺失</b>：<code>upx-*</code>（上传）、<code>rssx-*</code>（RSS）、<code>funx-*</code>、<code>pghd</code> 头部——移动端布局依赖页面级断点，参差</li>
+    <li><b>双缺失高风险页</b>（体系无 @media 且页面无断点前缀）：donate / dressup / gacha / jixiao / farm / collections / avatar-frames 等，需逐个实测 390px</li>
+  </ul>
+
+  <h4 class="block-title"><span class="tag tag-p3">P3</span> 图标双体系：SVG Icon 组件 vs 字符符号（313 文件）</h4>
+  <ul class="tight">
+    <li>项目已有 <code>components/icons.tsx</code>（SVG 图标库），但 <b>313 个文件</b>直接用字符符号（<code>·</code> <code>→</code> <code>⚠️</code> <code>📣</code> <code>♥</code> <code>●</code> <code>◷</code> <code>⬇</code> <code>★</code> <code>✦</code> <code>✎</code> <code>☰</code>）</li>
+    <li>同一页面混用：<code>profile-center.tsx</code> 用 <code>★☰✎✦</code>，其他处用 Icon；<code>usercp.tsx</code> 用 <code>⚙☆♧</code></li>
+    <li>字符符号在不同平台渲染差异大（Windows 缺字形会变豆腐块），无法着色、无法适配主题</li>
+  </ul>
+  <div class="callout callout--sun">建议：新建「符号→Icon」映射表，分两批把高频符号（→ · ✓ ★ ✎ ⚙ ◷ ⬇）替换为 <code>Icon</code> 组件；界面 emoji（152 文件，如上传说明 21 个、商店 18 个、排行 🏆🥈🥉）属品牌资产可保留，但建议统一样式封装。</div>
+
+  <h4 class="block-title"><span class="tag tag-p3">P3</span> 硬编码色集中在游戏模块（114 处 / 23 文件）</h4>
+  <ul class="tight">
+    <li><code>fishing-pond.tsx</code> ×33、<code>lucky-wheel.tsx</code> ×24、<code>capsule-machine.tsx</code> ×16、<code>sw-enrich.tsx</code> ×8——游戏组件用 hex 直写（含渐变/发光色），未走令牌</li>
+    <li>主站核心页面硬编码色极少（torrent-related ×3、upload-form-descr ×2）——健康</li>
+    <li>建议：游戏模块若保持「街机风」视觉，将专用色收进 <code>arcade.css</code> 的局部令牌（<code>--arcade-*</code>），至少不再散落 tsx</li>
+  </ul>
+
+  <h4 class="block-title"><span class="tag tag-p4">P4</span> 局部细节</h4>
+  <ul class="tight">
+    <li><code>rounded-full</code> 370 处 / 173 文件：多数是正常的 chip/头像/胶囊按钮（新体系标配），无需全量动；仅需确认「旧式 pill 按钮」场景已随 tsb- 表格换代完成</li>
+    <li>内联 <code>style={{...}}</code> 70 处 / 44 文件：可接受，多为动态值（分类色、进度条）</li>
+    <li>游戏体系（arcade.css + arcade-sweet.css ≈ 130KB）与主站视觉差异大：功能上自成模块合理，但「进入游戏区」的过渡观感可加统一入口壳</li>
+  </ul>
+</section>
+
+<!-- ===== 四、核心页面建议 ===== -->
+<section class="sec">
+  <div class="sec-no">第四章</div>
+  <h2>核心页面优化建议（按优先级排）</h2>
+  <p class="sec-sub">只列「值得动」的调整，避免为改而改；每项给出验收口径。</p>
+
+  <div class="tbl-scroll"><table>
+    <tr><th style="width:13%">页面</th><th style="width:23%">现状</th><th style="width:51%">建议调整</th><th style="width:13%">优先级</th></tr>
+    <tr><td><b>首页</b> <span class="file">(main)/page.tsx</span></td><td>模块化 HomeSections + 海报墙 + 移动头，设计现代</td><td>区块头 h1→h2；顶部促销条与公告区分层（主/次）；移动端首屏信息密度核对</td><td><span class="tag tag-p2">P2</span></td></tr>
+    <tr><td><b>种子列表</b> <span class="file">torrents</span></td><td>tsb- 表格/卡片双视图 + 高级搜索，全站最佳之一</td><td>作为「列表页模板」基准，把 requests / users 列表 / 收藏等收敛到同模板</td><td><span class="tag tag-p1">P1</span></td></tr>
+    <tr><td><b>发布页</b> <span class="file">upload</span></td><td>pghd + UploadForm（Tailwind 直写），响应式弱</td><td>表单分区标题层级统一；上传说明 emoji 规范化为组件化提示条；移动端两栏字段堆叠核对</td><td><span class="tag tag-p2">P2</span></td></tr>
+    <tr><td><b>用户主页</b> <span class="file">users/[id]</span></td><td>up-hero + 磁贴 + 标签页，设计完整</td><td>作为「详情/主页模板」参考；磁贴与 tab 表格字体层级统一；h1 保留唯一</td><td><span class="tag tag-p3">P3</span></td></tr>
+    <tr><td><b>论坛</b> <span class="file">forums</span></td><td>pting- 独立体系，侧栏+卡片流完整</td><td>收敛 pting- 到统一页面壳（面包屑/页头）；卡片 hover/active 状态对齐全站规范</td><td><span class="tag tag-p2">P2</span></td></tr>
+    <tr><td><b>求种</b> <span class="file">requests</span></td><td>request-center- 独立 + 移动卡片已具备</td><td>表格样式迁移到统一数据表格；reward/bounty 数字强调层级</td><td><span class="tag tag-p3">P3</span></td></tr>
+    <tr><td><b>消息 / 私信</b> <span class="file">messages</span></td><td>独立实现</td><td>补 loading；会话列表与详情页移动端核对</td><td><span class="tag tag-p2">P2</span></td></tr>
+    <tr><td><b>商店 / 勋章</b> <span class="file">shop / medal-wall</span></td><td>pghd + 卡片</td><td>商品卡 hover 态与价格强调统一；emoji 图标规范为组件</td><td><span class="tag tag-p3">P3</span></td></tr>
+    <tr><td><b>游戏模块</b> <span class="file">games/*</span></td><td>arcade 街机风自成一体</td><td>硬编码色收进 arcade 局部令牌；入口过渡壳统一；移动端按钮热区 ≥44px 核对</td><td><span class="tag tag-p3">P3</span></td></tr>
+    <tr><td><b>14 个缺 loading 路由</b></td><td>—</td><td>补 loading.tsx（复用各体系 skeleton 或通用 spinner 壳）</td><td><span class="tag tag-p2">P2</span></td></tr>
+  </table></div>
+</section>
+
+<!-- ===== 五、统一化路线图 ===== -->
+<section class="sec">
+  <div class="sec-no">第五章</div>
+  <h2>统一化路线图：三层推进，不逐页返工</h2>
+  <p class="sec-sub">以详情页已确立的「L0/L1/L2 层级 + 8 组件状态机 + 4 断点规范 + 开发落地映射」为全站标准。</p>
+
+  <h4 class="block-title">S1 快速修（低风险，2-3 天）</h4>
+  <ul class="tight">
+    <li>语义修复：home-sections / usercp / task-board / contact-staff 的 h1 → h2/span，forums 页 h1 补类</li>
+    <li>补 14 个路由 loading.tsx</li>
+    <li>新建「符号→Icon」映射表，替换 10 个高频字符符号</li>
+  </ul>
+
+  <h4 class="block-title">S2 模板化（中工作量，核心收益）</h4>
+  <ul class="tight">
+    <li>抽象 4 个页面模板：<b>列表页模板</b>（以 tsb- 为准）→ requests/users 列表/收藏收敛；<b>详情页模板</b>（td 已立）→ collections / subtitles / wiki 详情收敛；<b>表单页模板</b>（upx 立标）→ upload / offers / reports 收敛；<b>主页模板</b>（pghd + up 合并）→ 19 页页头统一</li>
+    <li>统一数据表格组件（列设置 / 排序 / 翻页 / 空态内建），替换 nexus-table / profile-tabs 表格</li>
+    <li>统一 Badge 组件（sticker 升级为 tone 体系），替换 request-status / pting-card__count 等</li>
+  </ul>
+
+  <h4 class="block-title">S3 收敛与治理（长期）</h4>
+  <ul class="tight">
+    <li>游戏模块硬编码色 → <code>--arcade-*</code> 局部令牌；emoji 视觉资产统一封装</li>
+    <li>「页面模板」加机器校验：标题级唯一、体系前缀白名单、硬编码色门禁（可并入现有 lint）</li>
+    <li>响应式门禁：新页面必须过 4 断点（1440/1024/768/390）截图比对（沿用详情页验收口径）</li>
+  </ul>
+
+  <div class="callout callout--mint">
+    <b>路线图原则：</b>站型包可以不同，组件语言必须同构。先统一「页面模板」与「三类通用组件」（页头/表格/徽章），
+    收益覆盖 80% 页面的观感断层；之后再处理游戏/街机这类刻意差异化的模块。
+  </div>
+</section>
+
+<!-- ===== 六、与详情页对齐检查清单 ===== -->
+<section class="sec">
+  <div class="sec-no">第六章</div>
+  <h2>与详情页标准对齐的检查清单</h2>
+  <p class="sec-sub">把详情页已立的标准固化为全站验收项（供后续设计评审与开发门禁用）。</p>
+  <div class="tbl-scroll"><table>
+    <tr><th style="width:22%">标准项</th><th style="width:39%">详情页现状</th><th style="width:39%">全站推广口径</th></tr>
+    <tr><td><b>层级规范</b></td><td>L0 首屏决策 / L1 按需展开 / L2 社交相关</td><td>每个页面明确 L0（首屏可决策项），区块标题层级唯一</td></tr>
+    <tr><td><b>组件状态机</b></td><td>hover / focus / active / disabled 全覆盖</td><td>按钮/输入/卡片类组件统一状态，含键盘焦点可见</td></tr>
+    <tr><td><b>断点规范</b></td><td>1440 / 1024 / 768 / 390 四断点</td><td>页面级验收必须四断点截图比对</td></tr>
+    <tr><td><b>加载/空/错误</b></td><td>loading + EmptyState + ErrorPanel</td><td>14 缺 loading 路由补齐；空态统一组件</td></tr>
+    <tr><td><b>数据落地映射</b></td><td>零新增接口，全部复用现有组件</td><td>新页面优先复用模板与组件，不新增体系</td></tr>
+    <tr><td><b>站型包通用</b></td><td>11 站型切换演示，数据驱动</td><td>模板与组件不得硬编码站型口径</td></tr>
+  </table></div>
+</section>
+
+<div class="foot">FluxTorrent · 全站页面设计审查 · 基于 apps/web 真实代码量化扫描 · 2026-10-15</div>
+</div>
+</body>
+</html>
