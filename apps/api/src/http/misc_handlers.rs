@@ -119,7 +119,7 @@ pub async fn my_torrentlist(
     }
     .bind(auth.id)
     .bind(per)
-    .bind((page - 1) * per)
+    .bind(crate::dto::page_offset(page, per))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -133,10 +133,12 @@ pub async fn my_torrentlist(
             count(*) FILTER (WHERE t.approval_status = 2) AS denied \
          FROM torrents t WHERE t.owner_id = $1"
     } else if kind == "completed" {
-        "SELECT count(*) AS total, 0 AS pending, 0 AS approved, 0 AS denied \
+        "SELECT count(*) AS total, 0::bigint AS pending, \
+             0::bigint AS approved, 0::bigint AS denied \
          FROM snatches s WHERE s.user_id = $1 AND s.completed_at IS NOT NULL"
     } else {
-        "SELECT count(*) AS total, 0 AS pending, 0 AS approved, 0 AS denied \
+        "SELECT count(*) AS total, 0::bigint AS pending, \
+             0::bigint AS approved, 0::bigint AS denied \
          FROM snatches s WHERE s.user_id = $1 AND s.seeding"
     };
     let lst: ListStats = sqlx::query_as::<_, ListStats>(stats_sql)

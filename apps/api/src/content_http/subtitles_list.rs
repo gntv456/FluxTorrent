@@ -209,7 +209,7 @@ pub(super) async fn subtitle_list(
     .bind(threshold)
     .bind(torrent_id)
     .bind(&imdb)
-    .bind((page - 1) * per_page)
+    .bind(crate::dto::page_offset(page, per_page))
     .bind(per_page)
     .fetch_all(&state.repo.db)
     .await

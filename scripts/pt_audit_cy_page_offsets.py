@@ -55,11 +55,18 @@ ALLOW = {
 }
 # 活体只读探针用的口
 PAGin = "9223372036854775807"
-LIST_EPS = ["/users", "/artists", "/forums/mine", "/forums/1/topics",
-            "/subtitles", "/me/orders", "/me/spark/ledger", "/ban-log",
-            "/me/hr", "/me/torrentlist", "/me/bookmarks", "/invites/invitees",
-            "/invites", "/preserve", "/admin/syslog", "/admin/locations",
-            "/admin/settings/history?name=site_type"]
+# 活体只读探针用的口：(路由, 这支是否真的有 page 参数)
+# /me/bookmarks 只有 limit（后端截 100，data-content.ts:115 的注释自己写着
+# 「后端按 limit 截断且没有分页」）⇒ 对它断言「换页要变空页」是判据写错，
+# 该口另列为「上限无翻页」的待裁项，不进 C 类账。
+LIST_EPS = [("/users", True), ("/artists", True), ("/forums/mine", True),
+            ("/forums/1/topics", True), ("/subtitles", True),
+            ("/me/orders", True), ("/me/spark/ledger", True),
+            ("/ban-log", True), ("/me/hr", True), ("/me/torrentlist", True),
+            ("/me/bookmarks", False), ("/invites/invitees", True),
+            ("/invites", True), ("/preserve", True), ("/admin/syslog", True),
+            ("/admin/locations", True),
+            ("/admin/settings/history?name=site_type", True)]
 
 
 def sh(args):
@@ -159,7 +166,7 @@ def rows_of(r):
 tok = login()
 five00 = []
 badtotal = []
-for ep in LIST_EPS:
+for ep, paged in LIST_EPS:
     sep = "&" if "?" in ep else "?"
     s0, r0 = call("GET", ep, None, tok)
     s1, r1 = call("GET", ep + sep + "page=" + PAGin, None, tok)
@@ -176,6 +183,9 @@ for ep in LIST_EPS:
     # B 类：列表有行而 total 报 0 ⇒ 那句总数是谎话
     if s0 == 200 and len(rows0) > 0 and isinstance(total0, int) and total0 == 0:
         badtotal.append(tag)
+    if not paged:
+        print("        ↑ 这支没有 page 参数（只有 limit），换页判据不适用")
+        continue
     if s1 == 200:
         ok("CY6 %s 极端页码必须回空页而不是丢行" % ep, len(rows1) == 0,
            "回了 %d 条" % len(rows1))

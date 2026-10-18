@@ -61,7 +61,7 @@ pub(crate) async fn ban_log_list(
         needle.as_deref(),
         kind,
         per,
-        (page - 1) * per,
+        crate::dto::page_offset(page, per),
     )
     .await?;
     let total =

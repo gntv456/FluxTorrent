@@ -25,6 +25,16 @@ pub fn ok<T: Serialize>(data: T) -> HttpResponse {
 /// 分页参数统一钳制（审计 P1）：per_page 1..=100、page 1..=100_000；
 /// offset 用 checked_mul 防溢出——旧式 `(page.max(1) - 1) * per_page` 在极端参数下
 /// debug 构建 panic（500 面）、release 构建得到负 OFFSET。返回 (offset, limit)。
+/// 单算 offset 的版本（P-333）：per 由调用方各自夹过（有的口上限是 200/500，
+/// 不能套进 page_window 的 1..=100），这里只保证 page 合法且乘积不绕负。
+/// 极端页码 ⇒ 一个很大的正 offset ⇒ 空列表，而不是 PG 报「OFFSET must not be
+/// negative」打成 500。
+pub fn page_offset(page: i64, per: i64) -> i64 {
+    let page = page.clamp(1, 1_000_000);
+    let per = per.clamp(0, 100_000);
+    page.saturating_sub(1).saturating_mul(per)
+}
+
 pub fn page_window(page: i64, per_page: i64) -> (i64, i64) {
     let limit = per_page.clamp(1, 100);
     let page = page.clamp(1, 100_000);

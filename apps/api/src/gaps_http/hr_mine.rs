@@ -50,9 +50,8 @@ pub async fn my_hr_status(
     let per = q.per.unwrap_or(20).clamp(1, 100);
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let status = repo_hr::status_filter(q.status.as_deref());
-    let rows =
-        repo_hr::my_rows(&state.repo, auth.id, status, per, (page - 1) * per)
-            .await?;
+    let off = crate::dto::page_offset(page, per);
+    let rows = repo_hr::my_rows(&state.repo, auth.id, status, per, off).await?;
     // 空结果集拿不到窗口计数与标量计数，退回全 0（前端据此画
     // 「没有记录」而不是一个空页码）
     let first = rows.first();
