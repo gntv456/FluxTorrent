@@ -97,9 +97,8 @@ pub async fn charge_for_download(
     let net = price * (100 - tax as i64) / 100;
     let tax_amount = price - net;
     // 三轮遗留：月度计费帽与绩效结算同一月键口径（站点时区 UTC+8）
-    let month = (chrono::Utc::now() + chrono::Duration::hours(8))
-        .format("%Y-%m")
-        .to_string();
+    // 月键一律走 economy::pool_month——自己抄一份 `%Y-%m` 就是第二把尺
+    let month = crate::economy::pool_month(chrono::Utc::now());
 
     let mut tx = db
         .begin()
