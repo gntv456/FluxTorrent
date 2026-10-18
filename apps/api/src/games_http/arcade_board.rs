@@ -42,7 +42,8 @@ async fn stub_board(db: &PgPool) -> DomainResult<Vec<Value>> {
         .collect())
 }
 
-/// 本周活跃榜：自然周（Postgres 的 date_trunc('week') 以周一为界）玩法局数。
+/// 本周活跃榜：北京自然周（P-338：原先用 UTC 截周，北京周一 00:00-
+/// 08:00 之间算的还是上一周）玩法局数。
 async fn play_board(db: &PgPool) -> DomainResult<Vec<Value>> {
     let rows = sqlx::query(
         r#"
@@ -50,7 +51,8 @@ async fn play_board(db: &PgPool) -> DomainResult<Vec<Value>> {
           FROM spark_ledger l
           JOIN users u ON u.id = l.user_id
          WHERE l.kind = 'game' AND u.status < 2
-           AND l.created_at >= date_trunc('week', now())
+           AND l.created_at >= (date_trunc('week', now()
+                 AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')
          GROUP BY u.id, u.username
          ORDER BY plays DESC, max(l.created_at) ASC
          LIMIT 8

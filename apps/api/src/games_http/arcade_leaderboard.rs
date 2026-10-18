@@ -14,8 +14,9 @@ use crate::state::AppState;
 
 use super::pool::dberr;
 
-const WEEK: &str = "l.created_at >= date_trunc('week', \
-                    now() AT TIME ZONE 'UTC') + interval '8 hours'";
+const WEEK: &str = "l.created_at >= (date_trunc('week', \
+                    now() AT TIME ZONE 'Asia/Shanghai') \
+                    AT TIME ZONE 'Asia/Shanghai')";
 
 /// 跑一张榜：内层按用户聚合，外层连用户名、剔除封禁、取前 10。
 async fn board(
@@ -93,8 +94,8 @@ pub(super) async fn arcade_leaderboard(
     .await
     .map_err(dberr)?;
     let week: String = sqlx::query_scalar(
-        "SELECT to_char(date_trunc('week', now() AT TIME ZONE 'UTC') \
-              + interval '8 hours', 'IYYY\"W\"IW')",
+        "SELECT to_char(date_trunc('week', \
+              now() AT TIME ZONE 'Asia/Shanghai'), 'IYYY\"W\"IW')",
     )
     .fetch_one(db)
     .await

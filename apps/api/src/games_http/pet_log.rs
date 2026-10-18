@@ -31,7 +31,9 @@ pub(super) async fn pet_log(
     let today: Vec<(String, i64)> = sqlx::query_as(
         "SELECT action, count(*)::bigint FROM audit_log \
           WHERE actor_id = $1 AND action LIKE 'game.pet.%' \
-            AND created_at >= date_trunc('day', now()) \
+            AND created_at >= (date_trunc('day', now() \
+                  AT TIME ZONE 'Asia/Shanghai') \
+                  AT TIME ZONE 'Asia/Shanghai') \
           GROUP BY 1",
     )
     .bind(auth.id)
