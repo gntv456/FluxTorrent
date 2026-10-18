@@ -142,11 +142,8 @@ pub(crate) async fn leak_resolve(
     get,
     path = "/api/v1/shoutbox/bot",
     tag = "社区/喊话",
-    description = "喊话机器人配置读取（需 staff 权）。",
-    responses(
-        (status = 200, description = "ok"),
-        (status = 401, description = "会话未登录（code 2001）"),
-        (status = 403, description = "非 staff（code 2003）")))]
+    description = "喊话机器人命令清单（公开只读，喊话界面输 / 时可发现）。",
+    responses((status = 200, description = "ok")))]
 #[get("/shoutbox/bot")]
 pub(crate) async fn shoutbox_bot_help() -> impl Responder {
     ok(serde_json::json!({
@@ -164,11 +161,10 @@ pub(crate) async fn shoutbox_bot_help() -> impl Responder {
     get,
     path = "/api/v1/shoutbox/bot/exec",
     tag = "社区/喊话",
-    description = "执行喊话机器人指令（需 staff 权；高危操作有审计）。",
+    description = "执行喊话机器人指令：三条只读回话，任何登录用户可用。",
     responses(
         (status = 200, description = "ok"),
-        (status = 401, description = "会话未登录（code 2001）"),
-        (status = 403, description = "非 staff（code 2003）")))]
+        (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/shoutbox/bot/exec")]
 pub(crate) async fn shoutbox_bot_exec(
     req: HttpRequest,
