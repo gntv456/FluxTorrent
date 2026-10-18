@@ -90,6 +90,10 @@ for (const theme of ["baozi", "baozi-night"] as const) {
         await page.addInitScript((t) => {
           localStorage.setItem("flux-theme", t);
         }, theme);
+        // 主题钉死的第二只手：themes.ts 的 auto 档跟随系统 prefers-
+        // color-scheme——不钉 colorScheme 时宿主深色偏好会把亮色档
+        // 首绘解析成 night（历史 97-98% 像素全翻的另一半根因）。
+        await page.emulateMedia({ colorScheme: "light" });
         await page.goto(p.path);
         await page.waitForLoadState("networkidle");
         // 等一拍让 RSC 流式内容落定，避免拍到骨架中间态

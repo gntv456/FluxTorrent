@@ -56,6 +56,7 @@ export function TorrentDetailTail({
       {sectOn("comments") && (
         <FoldMobile
           title={dict.torrent.commentsTitle.replace("{n}", cmtN)}
+          count={t.comments}
           id="td-sec-comments"
         >
           <Comments
