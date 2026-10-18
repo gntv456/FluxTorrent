@@ -1518,6 +1518,18 @@ textarea.bbcode {
   flex-direction: column;
   gap: 14px;
 }
+/* 标签组外壳：条与面板收 10px，组与组之间仍由 .task-page 的 gap 管 */
+.task-tabblock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* 名额说明：原先挂在区块标题右侧的 <p>，标题收进标签后独立成一行 */
+.task-quota-note {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
 .task-hero {
   display: flex;
   flex-wrap: wrap;
@@ -1553,7 +1565,16 @@ textarea.bbcode {
 }
 .task-hero-meta {
   display: flex;
-  gap: 18px;
+  gap: 10px;
+}
+/* 指标胶囊：样图 § .task-hero-meta>div 的玻璃底。此前这里完全没有规则，
+   两个数值裸贴在渐变上，读不出是「一组卡片」 */
+.task-hero-meta > div {
+  padding: 10px 16px;
+  border: 1px solid var(--on-accent-glass);
+  border-radius: var(--r-md);
+  background: var(--on-accent-glass);
+  text-align: center;
 }
 .task-hero-meta span {
   display: block;
@@ -1620,12 +1641,12 @@ textarea.bbcode {
   gap: 10px;
   padding: 14px 16px;
   border: 1px solid var(--border-soft);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--surface-card);
 }
 .task-tier-card--master {
   border-color: var(--warning);
-  box-shadow: 0 2px 10px rgba(212, 160, 23, 0.18);
+  box-shadow: var(--shadow-card);
 }
 .task-tier-card--ultimate {
   border-color: var(--accent-purple);
@@ -1685,9 +1706,45 @@ textarea.bbcode {
   font-size: 13px;
   font-weight: 800;
 }
+/* 商店卡与任务卡此前共用同一套外壳，两种性质完全不同的卡（可领 vs 兑换）
+   在页面上分不出来。对齐样图 § .task-shop-card：虚线描边 + 浅蓝底 + 品牌蓝标题 */
+.task-shop-card {
+  border: 1px dashed var(--border-deep);
+  background: var(--sky-soft);
+}
+.task-shop-card h3 {
+  color: var(--text-brand);
+}
 .task-tier-card .brand-button,
 .task-shop-card .brand-button {
   align-self: stretch;
+}
+/* 我的任务记录：三种结局原先同色同重，扫一眼分不出成败。
+   样图 § tplTask 的 history 面板给状态上了语义色，这里用站点的
+   --sky/--success/--coral 三档（明暗各自有值），不写死色值。
+   ⚠️ 必须写成 `.task-history td.task-history__st--x`：共享表原语
+   .nexus-table tbody td 是 (0,1,2)，单类 (0,1,0) 会被它整片吃掉
+   （实测三档全回落成 --text-body-deep）。 */
+.task-history td {
+  vertical-align: middle;
+}
+.task-history td.task-history__st {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.task-history td.task-history__st--ongoing {
+  color: var(--sky);
+}
+.task-history td.task-history__st--done {
+  color: var(--success);
+}
+.task-history td.task-history__st--failed {
+  color: var(--coral);
+}
+/* 末两列是领取/结算时间戳：不折行 + 等宽数字，否则换行把行高撑乱 */
+.task-history td:nth-last-child(-n + 2) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .task-dashboard-grid {
   display: grid;
@@ -1804,22 +1861,20 @@ textarea.bbcode {
   gap: 8px;
   padding: 6px 14px;
 }
-/* 图标工具阵列：4 列两行（4+3），对齐右侧 */
+/* 图标工具阵列：4 列两行（4+3），对齐右侧（对齐样图集） */
 .usertools--grid {
   display: grid;
-  grid-template-columns: repeat(4, auto);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   justify-content: end;
-  justify-items: end;
   gap: 6px;
 }
 .userbar-tool--icon {
-  padding: 6px 7px;
-  gap: 0;
+  padding: 0;
 }
 .userbar-tool__icon {
   width: 18px;
   height: 18px;
-  color: var(--brand-orange);
+  color: #2fa8ff;
 }
 /* 收件箱未读角标：图标右上角红点数字（NP userbar 同款） */
 .userbar-tool__badge {
@@ -1840,25 +1895,36 @@ textarea.bbcode {
 .userbar-tool {
   position: relative;
   display: inline-flex;
+  width: 34px;
+  height: 34px;
   align-items: center;
-  gap: 5px;
-  min-height: 36px;
-  padding: 4px 12px;
-  border: 1px solid var(--brand-line);
-  border-radius: 10px;
-  background: var(--surface-raised);
-  color: var(--text-body);
-  font-size: 12.5px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid #dce9f8;
+  border-radius: 9px;
+  background: #fff;
+  color: #1e3a5f;
   cursor: pointer;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease,
+    border-color 0.14s ease;
 }
 .userbar-tool:hover {
-  border-color: var(--brand-orange);
-  color: var(--brand-orange);
+  border-color: #2fa8ff;
+  color: #fff;
+  background: #2fa8ff;
 }
 .userbar-tool > span:first-child {
   font-size: 15px;
-  color: var(--brand-orange);
+  color: #2fa8ff;
+}
+.userbar-tool:hover > span:first-child {
+  color: #fff;
+}
+.userbar-tool:hover .userbar-tool__icon {
+  color: #fff;
 }
 .userbar-tool b {
   min-width: 16px;
@@ -2268,9 +2334,9 @@ textarea.bbcode {
 }
 
 /* ============ 论坛（pting.club 布局：左侧节点栏 + 版块卡片流） ============ */
+/* 栅格本体（display/columns）在 styles/forums-home.css：三列改造后列宽与
+   断点集中一处，同一选择器跨文件设值会踩「后到者赢」的层叠坑。 */
 .pting-forums {
-  display: grid;
-  grid-template-columns: 220px 1fr;
   gap: 16px;
   align-items: start;
 }
@@ -2448,11 +2514,6 @@ textarea.bbcode {
   text-align: center;
 }
 @media (max-width: 768px) {
-  .pting-forums {
-    /* minmax(0,1fr)：grid 隐式 min-width:auto 会让内部不可断元素
-       （搜索框/长标题）把列撑出视口——总验收 375 横滚的根因 */
-    grid-template-columns: minmax(0, 1fr);
-  }
   .pting-sidenav {
     min-width: 0;
   }

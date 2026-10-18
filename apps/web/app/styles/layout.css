@@ -220,367 +220,6 @@
   font-weight: 900;
 }
 
-/* ============ 头像弹窗（usermenu，0147 同类站 同类站 口径） ============ */
-.usermenu {
-  position: relative;
-  /* IA-2 ①：chip 与头像同排常显 */
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.usermenu-login {
-  /* 未登录态：登录链接沿用主菜单链接样式 */
-}
-/* 顶栏魔力 chip（W-31 / IA-2 ①）：单一货币常态直显，点击进 /my-spark。
-   对齐样图集：金色胶囊（浅金底 + 金描边 + 深金字） */
-.usermenu-spark {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 108px;
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 214, 130, 0.4);
-  border-radius: 999px;
-  background: rgba(255, 214, 130, 0.16);
-  font-size: 12px;
-  font-weight: 700;
-  color: #b8860b;
-  transition: border-color var(--motion-fast) var(--motion-ease);
-}
-.usermenu-spark:hover {
-  border-color: #f2b01e;
-  color: #a06a00;
-}
-.usermenu-spark b {
-  overflow: hidden;
-  max-width: 68px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.usermenu-spark__dot {
-  flex: none; width: 6px; height: 6px; border-radius: 50%;
-  background: #f2b01e;
-}
-.usermenu__trigger {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 6px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  cursor: pointer;
-}
-.usermenu__trigger:hover {
-  border-color: var(--brand-line);
-  background: var(--surface-raised);
-}
-.usermenu__avatar {
-  display: flex;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-on-accent);
-  font-size: 16px;
-  font-weight: 800;
-  border-radius: 50%;
-  background: linear-gradient(145deg,
-    #f2b01e,
-    #f2711e);
-  box-shadow: inset 0 0 0 3px var(--hairline-strong);
-  overflow: hidden;
-}
-.usermenu__avatar[style] {
-  box-shadow: none;
-}
-.usermenu__caret {
-  color: var(--text-sub, #8a7d6b);
-  font-size: 11px;
-}
-.usermenu__dot {
-  position: absolute;
-  top: -4px;
-  right: -6px;
-  min-width: 17px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #e5484d;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
-}
-.usermenu__drop {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  z-index: 70;
-  display: flex;
-  width: min(352px, calc(100vw - 32px));
-  flex-direction: column;
-  overflow: hidden;
-  padding: 0;
-  border: 1px solid rgba(77, 149, 255, 0.3);
-  border-radius: 14px;
-  background: #fbfdff;
-  box-shadow:
-    0 18px 50px rgba(8, 25, 52, 0.45),
-    0 4px 14px rgba(8, 25, 52, 0.22),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-/* 摘要区：深蓝渐变头 + 大头像（金橙）+ 名字行 + 勋章圆点 + 等级金黄 +
-   {magic} 金胶囊 + 签到浅蓝胶囊 + 退出（右上角） */
-.usermenu__summary {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 14px 12px;
-  background:
-    radial-gradient(circle at 88% -10%, rgba(95, 107, 245, 0.38), transparent 46%),
-    linear-gradient(160deg, #16345c 0%, #0f2a4a 100%);
-}
-.usermenu__avatar-lg {
-  display: flex;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
-  border-radius: 50%;
-  background: linear-gradient(145deg,
-    #f2b01e,
-    #f2711e);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28);
-  overflow: hidden;
-}
-/* W-31 头像抽 avatar() 后样式在 inner span 上：框描边存在时
-   压掉默认 inset 发丝环（原 [style] 判定随嵌套迁到 :has） */
-.usermenu__avatar-lg:has([style]) {
-  box-shadow: none;
-}
-.usermenu__summary-main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.usermenu__name-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-}
-.usermenu__name {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
-}
-.usermenu__name:hover {
-  color: #bfe0ff;
-  text-decoration: none;
-}
-/* 弹窗内佩戴勋章：圆点化（MedalIcon 无文字） */
-.usermenu__summary .medal-chip {
-  width: 14px;
-  height: 14px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
-}
-/* 弹窗内等级 sticker：金黄胶囊 */
-.usermenu__summary .sticker {
-  padding: 2px 8px;
-  border: 1px solid rgba(255, 214, 130, 0.45);
-  border-radius: 999px;
-  background: rgba(255, 214, 130, 0.16);
-  color: #ffd98a;
-  font-size: 10.5px;
-  font-weight: 800;
-  line-height: 1.3;
-}
-.usermenu__subline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 5px;
-}
-/* 弹窗内魔力胶囊：金色系 */
-.usermenu__summary .bonus-pill {
-  padding: 2px 9px;
-  border: 1px solid rgba(255, 214, 130, 0.35);
-  border-radius: 999px;
-  background: rgba(255, 214, 130, 0.14);
-  color: #ffd98a;
-  font-size: 11px;
-  font-weight: 700;
-}
-.usermenu__summary .bonus-pill b {
-  color: #ffd98a;
-  font-size: 12px;
-}
-.usermenu__checkin {
-  padding: 2px 9px;
-  border: 1px solid rgba(127, 196, 255, 0.4);
-  border-radius: 999px;
-  background: rgba(47, 168, 255, 0.16);
-  color: #a8d4ff;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.usermenu__checkin:hover:not(:disabled) {
-  color: #fff;
-  border-color: #2fa8ff;
-  background: #2fa8ff;
-}
-.usermenu__checkin:disabled {
-  cursor: default;
-  color: #7fe3c9;
-  background: rgba(127, 227, 201, 0.14);
-  border-color: rgba(127, 227, 201, 0.4);
-}
-.usermenu__checkmsg {
-  margin: 2px 0 0;
-  color: #7fe3c9;
-  font-size: 11.5px;
-  font-weight: 700;
-}
-.usermenu__logout {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 2px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.usermenu__logout:hover {
-  color: #ff8f8f;
-  border-color: rgba(255, 143, 143, 0.6);
-}
-/* 数据条：五卡票券格（弹窗内重绘：白底浅蓝、细分隔、hover 提亮） */
-.usermenu__stats {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0;
-  background: #fbfdff;
-}
-.usermenu__stats .userstat {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  padding: 9px 2px 10px;
-  border: 0;
-  border-radius: 0;
-  border-right: 1px solid #e4eefb;
-  background: #fbfdff;
-  text-decoration: none;
-  transition: background 0.16s ease;
-}
-.usermenu__stats .userstat:last-child {
-  border-right: 0;
-}
-.usermenu__stats .userstat:hover {
-  background: #e8f4ff;
-}
-.usermenu__stats .userstat span {
-  display: block;
-  color: #8aa5c0;
-  font-size: 10px;
-  font-weight: 700;
-}
-.usermenu__stats .userstat strong {
-  display: block;
-  overflow: hidden;
-  color: #1e3a5f;
-  font-size: 13px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-.usermenu__stats .userstat strong em {
-  font-style: normal;
-  font-weight: 900;
-}
-.usermenu__stats .userstat .seed-arrow {
-  color: #1fa06a;
-}
-.usermenu__stats .userstat .leech-arrow {
-  margin-left: 0.2em;
-  color: #f2711e;
-}
-/* 快捷链接行：浅蓝底 pill 网格（对齐样图集，hover 蓝底白字） */
-.usermenu__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 4px;
-  padding: 10px;
-  background: #f0f7ff;
-}
-.usermenu__links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 0 9px;
-  border-radius: 999px;
-  color: #1e3a5f;
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background 0.14s ease, color 0.14s ease;
-}
-.usermenu__links a:hover {
-  color: #fff;
-  background: #2fa8ff;
-}
-/* 管理组「管理后台」：橙色 pill（对齐样图集 staff 高亮） */
-.usermenu__links a.usermenu__staff {
-  color: #e07a1f;
-  background: rgba(242, 113, 30, 0.12);
-}
-.usermenu__links a.usermenu__staff:hover {
-  color: #fff;
-  background: #f2711e;
-}
-/* 信箱工具行：图标网格（对齐样图集 4+3 阵列，白底浅蓝） */
-.usermenu__tools {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 10px;
-  border-top: 1px solid #e4eefb;
-  background: #fbfdff;
-}
-.usermenu__tools .usertools {
-  padding: 0;
-}
-/* 移动端：弹窗全宽贴右缘（对齐样图集移动端弹层） */
-@media not all and (min-width: 768px) {
-  .usermenu__drop {
-    right: 10px;
-    left: 10px;
-    width: auto;
-    min-width: 0;
-  }
-}
-
 /* ============ 用户信息条（userbar：欢迎 + 魔力 + 票券统计） ============ */
 .userbar {
   display: flex;
@@ -801,7 +440,9 @@
     inset 0 0 0 1px var(--hairline-strong);
 }
 
-/* 左栏：品牌插画 */
+/* 左栏：品牌插画（对齐样图 § 账户与认证：左栏是浅色渐变 + 深色文字，
+ * 不是深色块 —— 此前按深色改过一版，并排比对后确认样本是白→浅奶油）。
+ * 背景沿用站内 sunken 底 + 两团品牌光晕，与样图的奶油渐变同构。 */
 .bz-login-intro {
   display: flex;
   grid-column: 1;
@@ -811,11 +452,11 @@
   border-right: 1px solid var(--line);
   background:
     radial-gradient(circle at 78% 18%, rgba(77, 149, 255, 0.14),
-    transparent 46%), 
+    transparent 46%),
     radial-gradient(circle at 20% 86%, rgba(43, 125, 233, 0.12),
-    transparent 52%), 
+    transparent 52%),
     linear-gradient(168deg, var(--surface-sunken) 0%, var(--surface-sunken) 54%,
-    var(--surface-sunken) 100%);
+    var(--surface-cream) 100%);
 }
 
 .bz-login-intro-inner {
@@ -835,26 +476,39 @@
   filter: drop-shadow(0 10px 18px rgba(26, 95, 208, 0.18));
 }
 
-/* 站点 logo 图片模式（0143）：与 emoji 吉祥物同视觉位，尺寸受控 + 圆角 */
+/* 站点 logo 图片模式（0143）：与 emoji 吉祥物同视觉位，尺寸受控 + 圆角。
+ * 浅色左栏上给白色托盘（--surface-card）：样图里 logo 也是这样一块圆角白底。 */
 img.bz-login-intro-mascot.bz-login-intro-logo {
   width: 112px;
   height: 112px;
   object-fit: contain;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-card);
   padding: 8px;
   box-sizing: border-box;
 }
 
-.bz-login-intro-tagline {
+/* 品牌名（样图 § auth 左栏：站名大字，与标语同列） */
+.bz-login-intro-brand {
   font-family: var(--font-display);
   color: var(--text-heading);
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 900;
-  letter-spacing: 3px;
+  letter-spacing: 1px;
+  line-height: 1.2;
+}
+
+/* 标语（样图是蓝色的一句话，如「欢迎回来 · 继续你的分享之旅」） */
+.bz-login-intro-tagline {
+  font-family: var(--font-display);
+  color: var(--text-brand);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
 .bz-login-intro-desc {
+  max-width: 34ch;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.7;
@@ -2854,65 +2508,94 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   opacity: 0.92;
 }
 
-/* ============ 认证组壳（M5.1，概念稿 §13） ============
- * register/forgot/reset：品牌头 + 居中卡片 + 底部快捷入口。
- * 手机单列满宽、≥md 卡片化；safe-area 兼容全面屏。 */
-.auth-shell {
+/* ============ 认证卡片（M5.2，2026-10-18 对齐样图 § 账户与认证） ============
+ * 登录/注册/找回/重置/验证/解封/申请七页共用右卡版式：
+ * 品牌行 + 标题 + 说明 + 状态徽章 + 提示条 + 表单 + 页脚。
+ * 卡片本体复用登录画布的 .bz-login-card（栅格、吸顶语言行、滚动与响应式
+ * 规则全部同源），这里只补卡片内部排版。 */
+.auth-card__brand {
   display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: 0 16px calc(16px + env(safe-area-inset-bottom));
-}
-.auth-shell__head {
-  display: flex;
-  align-items: center;
-  padding: 14px 0 8px;
-}
-.auth-shell__brand {
-  display: flex;
-  min-width: 0;
   align-items: center;
   gap: 8px;
+  margin-bottom: 10px;
 }
-.auth-shell__body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+.auth-card__brand b {
+  font-family: var(--font-display);
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 900;
+}
+.auth-card__title {
+  margin: 0;
+  color: var(--text-heading);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+.auth-card__desc {
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+/* 状态徽章（邀请制注册 / 待验证 / 一次性机会 / 人工审核） */
+.auth-card__badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-}
-.auth-shell__body > * {
-  width: 100%;
-  max-width: 28rem;
-}
-@media (min-width: 768px) {
-  .auth-shell__body > * {
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    background: var(--surface-card);
-    padding: 28px;
-  }
-}
-.auth-shell__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding-top: 14px;
-}
-.auth-shell__home {
-  color: var(--sky-deep, #0a3d6b);
-  font-size: 14px;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 3px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+  font-size: 11.5px;
   font-weight: 700;
 }
-.auth-shell__minor {
-  color: var(--sub);
+/* 提示条（安全说明 / 时效告知） */
+.auth-card__notice {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
   font-size: 12px;
+  line-height: 1.65;
 }
-.auth-shell__sep {
-  color: var(--line);
+.auth-card__foot {
+  margin-top: 14px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  text-align: center;
+}
+/* 卡内辅助链接（返回登录 / 申请邀请码 等） */
+.auth-card__links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.auth-card__links a {
+  color: var(--sky-deep);
+  font-weight: 700;
+}
+/* 「或」分隔（邮箱验证页：一键验证 / 重发激活） */
+.auth-card__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 10px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.auth-card__or::before,
+.auth-card__or::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--line);
 }
 
 /* ============ M6.5 统计条 compact 两列（pgstats，/my-spark /donate 共用） ============
