@@ -22,7 +22,6 @@
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_dc_pool_month.py
 """
 import io
-import json
 import os
 import re
 import subprocess
@@ -162,7 +161,4 @@ else:
     print("   （设 FLUX_GATE_CARGO=1 可让本闸门顺带跑一次 cargo 单测）")
 
 print("   本闸门全程只读：未写库、未改设置")
-json.dump({"api_month": api_month, "site_month": site_month},
-          open(os.path.join(ROOTDIR, "_tmp_dc_last.json"), "w"),
-          ensure_ascii=False)
 summary()
