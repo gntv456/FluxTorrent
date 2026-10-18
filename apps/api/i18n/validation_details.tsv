@@ -140,3 +140,66 @@ version_min 不能大于 version_max	version_min 不能大於 version_max	versio
 该账号已开两步验证，请一并提交当前验证码	該帳號已開啟兩步驗證，請一併提交目前驗證碼	Two-factor authentication is enabled for this account; please also submit the current code
 这一轮产出已结算，请勿重复提交	這一輪產出已結算，請勿重複提交	This round's output has been settled; do not submit again
 阈值不能为负	閾值不能為負	The threshold cannot be negative
+驳回必须写明理由（用户据此修改后重新申报）	駁回必須寫明理由（用戶據此修改後重新申報）	A rejection reason is required (the user will revise and resubmit based on it)
+递增步长不能为负（负数等于降价）	遞增步長不能為負（負數等於降價）	The increment step cannot be negative (negative means a price cut)
+阶梯起点不能为负	階梯起點不能為負	The ladder start cannot be negative
+题库为空，请联系管理组	題庫為空，請聯繫管理組	The question bank is empty; please contact the staff
+CIDR 为空	CIDR 為空	CIDR is empty
+UPDATE/DELETE 必须带 WHERE（无界写需该表 allow_unbounded）	UPDATE/DELETE 必須帶 WHERE（無界寫需該表 allow_unbounded）	UPDATE/DELETE must have a WHERE clause (unbounded writes require allow_unbounded on the table)
+承诺被伪造	承諾被偽造	The commitment has been forged
+event_id 与 user_id 至少给一个	event_id 與 user_id 至少給一個	Provide at least one of event_id or user_id
+hash 与 sha1 不能都为空	hash 與 sha1 不能都為空	hash and sha1 cannot both be empty
+info_hash_v1 与 pieces_sha1 不能都为空	info_hash_v1 與 pieces_sha1 不能都為空	info_hash_v1 and pieces_sha1 cannot both be empty
+outcome 只认 upheld/mitigated/overturned	outcome 只認 upheld/mitigated/overturned	outcome only accepts upheld/mitigated/overturned
+rand 与 (seed, round_id, tickets_root) 不符	rand 與 (seed, round_id, tickets_root) 不符	rand does not match (seed, round_id, tickets_root)
+sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sanction only accepts none/warn/ban/full_ban
+名单被改动	名單被改動	The list has been tampered with
+一次只能申报一段 CIDR	一次只能申報一段 CIDR	Only one CIDR can be declared at a time
+中奖名单与 seed 派生的次序不符	中獎名單與 seed 派生的次序不符	The winning list does not match the order derived from the seed
+令牌与案件不匹配	令牌與案件不匹配	The token does not match the case
+令牌无效或已过期（可能已被使用）	令牌無效或已過期（可能已被使用）	The token is invalid or expired (it may have been used)
+令牌格式无效	令牌格式無效	Invalid token format
+价格上限不能为负	價格上限不能為負	The price cap cannot be negative
+保种倍率须在 0 ~ 10 之间	保種倍率須在 0 ~ 10 之間	The seeding multiplier must be between 0 and 10
+决定人不能复核针对自己处置的申诉（四眼原则）	決定人不能覆核針對自己處置的申訴（四眼原則）	The decider cannot review an appeal against their own sanction (four-eyes principle)
+决定人与批准人不能相同（四眼原则）	決定人與批准人不能相同（四眼原則）	The decider and the approver cannot be the same person (four-eyes principle)
+删除文件夹要给出它的 id（清空名称即表示删除）	刪除資料夾要給出它的 id（清空名稱即表示刪除）	Deleting a folder requires its id (clearing the name means delete)
+单价与已售量不能为负	單價與已售量不能為負	Unit price and sold quantity cannot be negative
+启用递增价格必须设上限 price_max——否则单价会无限膨胀	啟用遞增價格必須設上限 price_max——否則單價會無限膨脹	Enabling incremental pricing requires a price_max cap — otherwise the unit price inflates without bound
+启用递增价格必须设上限 price_max（否则单价会无限膨胀）	啟用遞增價格必須設上限 price_max（否則單價會無限膨脹）	Enabling incremental pricing requires a price_max cap (otherwise the unit price inflates without bound)
+回测需要两个不同的正整数版本号	回測需要兩個不同的正整數版本號	Backtesting requires two distinct positive integer version numbers
+处置说明 1-4000 字符	處置說明 1-4000 字符	Sanction note must be 1-4000 characters
+备注 1-4000 字符	備註 1-4000 字符	Remark must be 1-4000 characters
+复核说明 1-4000 字符	覆核說明 1-4000 字符	Review note must be 1-4000 characters
+指纹须为 40 位十六进制（hex40）	指紋須為 40 位十六進制（hex40）	The fingerprint must be 40 hexadecimal characters (hex40)
+插件 SQL 不允许 SELECT *（显式列列名）	插件 SQL 不允許 SELECT *（顯式列列名）	Plugin SQL does not allow SELECT * (list columns explicitly)
+插件 SQL 只允许单语句（拒绝多语句注入）	插件 SQL 只允許單語句（拒絕多語句注入）	Plugin SQL allows only a single statement (multi-statement injection rejected)
+未知出口	未知出口	Unknown outcome
+未结申诉已达上限，请等待处理	未結申訴已達上限，請等待處理	The open-appeal limit has been reached; please wait for processing
+本站不接受一次性/临时邮箱，请使用常用邮箱注册	本站不接受一次性/臨時郵箱，請使用常用郵箱註冊	Disposable/temporary email addresses are not accepted; register with a regular mailbox
+本站注册人数已达上限，请联系管理组	本站註冊人數已達上限，請聯繫管理組	Registration is at its cap; please contact the staff
+案件不存在或不属于你	案件不存在或不屬於你	The case does not exist or is not yours
+案件已处理，不能重复处置	案件已處理，不能重複處置	The case is already handled and cannot be sanctioned again
+案件已被他人认领或状态不允许（并发互斥）	案件已被他人認領或狀態不允許（並發互斥）	The case was claimed by someone else or its state disallows this (mutual exclusion)
+没有可删除的域名	沒有可刪除的域名	No domains to delete
+没有可删除的题目	沒有可刪除的題目	No questions to delete
+没有可导入的域名	沒有可導入的域名	No domains to import
+没有可导入的题目	沒有可導入的題目	No questions to import
+版块规则最长 1000 字	版塊規則最長 1000 字	Board rules are limited to 1000 characters
+版本号必须是正整数	版本號必須是正整數	The version number must be a positive integer
+版本快照格式不正确	版本快照格式不正確	Malformed version snapshot
+申诉内容 10-4000 字符	申訴內容 10-4000 字符	Appeal content must be 10-4000 characters
+站规测验答错了，请重新抽题作答	站規測驗答錯了，請重新抽題作答	You answered the rules quiz incorrectly; please draw new questions and try again
+答题票据形状无效	答題票據形狀無效	Malformed quiz ticket
+答题票据损坏	答題票據損壞	The quiz ticket is corrupted
+答题票据无效或已过期，请重新抽题	答題票據無效或已過期，請重新抽題	The quiz ticket is invalid or expired; please draw questions again
+缺少前缀长度（应形如 1.2.3.0/24）	缺少前綴長度（應形如 1.2.3.0/24）	Missing prefix length (expected form like 1.2.3.0/24)
+网段不能为空	網段不能為空	The network range cannot be empty
+至少申报一段 CIDR	至少申報一段 CIDR	Declare at least one CIDR
+至少覆盖一个参数，否则这版与当前版本无差别	至少覆蓋一個參數，否則這版與當前版本無差別	Cover at least one parameter, otherwise this version is identical to the current one
+该案件没有待批准的处置	該案件沒有待批准的處置	The case has no sanction pending approval
+该案件没有待批准的高危处置（ban/full_ban）	該案件沒有待批准的高危處置（ban/full_ban）	The case has no high-risk sanction pending approval (ban/full_ban)
+请先完成注册答题后提交	請先完成註冊答題後提交	Complete the registration quiz before submitting
+请填 CIDR（含前缀长度），例如 192.168.10.0/24	請填 CIDR（含前綴長度），例如 192.168.10.0/24	Provide a CIDR with prefix length, e.g. 192.168.10.0/24
+请给 enabled 或完整题目	請給 enabled 或完整題目	Provide either enabled or the full question
+递增价格超出可计算范围	遞增價格超出可計算範圍	The incremental price exceeds the computable range
