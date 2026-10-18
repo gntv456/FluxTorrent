@@ -97,7 +97,8 @@ const zhTwBase: Omit<
     emptyTitle: "暫無內容",
     emptyDesc: "這裡還沒有任何資料。",
     errorTitle: "載入失敗",
-    errorDesc: "資料載入時發生異常，可重試一次；若反覆出現，請回報並附上 request_id。",
+    errorDesc:
+      "資料載入時發生異常，可重試一次；若反覆出現，請回報並附上 request_id。",
     errorCode: "錯誤碼",
     showDetails: "技術細節",
     hideDetails: "收起細節",
@@ -206,8 +207,7 @@ const zhTwBase: Omit<
     credAdminUser: "管理員帳號",
     credCurrentPw: "目前密碼",
     credFilledAuto: "已自動填入，無需修改",
-    credCurrentPwHint:
-      "即重置密碼時顯示給你的那串臨時密碼——它將被新密碼取代。",
+    credCurrentPwHint: "即重置密碼時顯示給你的那串臨時密碼——它將被新密碼取代。",
     credNewPwHint:
       "這就是你之後登入本站用的密碼，請立即牢記——忘記後只能走資料庫重置。",
     credResetFoot:
@@ -379,7 +379,8 @@ const zhTwBase: Omit<
     copyDlLink: "複製下載直鏈",
     copyDlLinkDone: "直鏈已複製，{t} 分鐘內有效，請勿公開分享",
     // W-20：列表拉取失敗的重試引導（ErrorPanel desc）
-    loadFailedHint: "可能是網路波動或後端暫時無回應，可重試；反覆出現請到「聯繫管理組」回報。",
+    loadFailedHint:
+      "可能是網路波動或後端暫時無回應，可重試；反覆出現請到「聯繫管理組」回報。",
     // W-19：刪除成功回饋（toast 協定）
     deleted: "種子已刪除",
     bookmarked: "已收藏，可在我的-收藏中查看",
@@ -511,8 +512,10 @@ const zhTwBase: Omit<
     kindReviewRejected: "種子被拒：{name}",
     kindGroupNewVersion: "訂閱的聚合組有新版本",
     bodyReviewApproved: "你發布的種子已通過審核：#{id} {name}。",
-    bodyReviewRejected: "你發布的種子未通過審核：#{id} {name}\n原因：{reason}\n可修改後重新發布。",
-    bodyGroupNewVersion: "你訂閱的資源組「{group}」有種子過審：#{id} {name}。同類資源聚合頁見種子詳情。",
+    bodyReviewRejected:
+      "你發布的種子未通過審核：#{id} {name}\n原因：{reason}\n可修改後重新發布。",
+    bodyGroupNewVersion:
+      "你訂閱的資源組「{group}」有種子過審：#{id} {name}。同類資源聚合頁見種子詳情。",
     subject: "主題",
     body: "正文",
     send: "傳送",
@@ -622,7 +625,8 @@ const zhTwBase: Omit<
     heroTag: "申請邀請碼，通過審核入站",
     heroDesc: "提交申請與舉證，管理組審核通過後將自動寄送邀請碼到你的信箱。",
     badge: "申請通道開放 · 人工審核",
-    notice: "申請制入站：填寫下方資訊並提交舉證。請如實填寫，虛假資訊將直接拒絕。",
+    notice:
+      "申請制入站：填寫下方資訊並提交舉證。請如實填寫，虛假資訊將直接拒絕。",
     usernameHint: "審核通過後將成為你的註冊帳號",
     emailHint: "請使用常用信箱",
     proofHint: "建議提供 2-3 個有效連結",
@@ -631,8 +635,7 @@ const zhTwBase: Omit<
     backToLogin: "返回登入",
     usernameLabel: "期望的使用者名稱",
     emailLabel: "信箱（通過後邀請碼發往此處）",
-    proofLabel:
-      "佐證連結（至少一條：其他站點個人主頁 / 證書記錄，每行一條）",
+    proofLabel: "佐證連結（至少一條：其他站點個人主頁 / 證書記錄，每行一條）",
     reasonLabel: "申請理由（至少 20 字：你如何了解本站、能帶來什麼）",
     submit: "提交申請",
     busy: "提交中…",
@@ -662,13 +665,15 @@ const zhTwBase: Omit<
   selfUnban: {
     title: "自助解封（首次寬恕）",
     heroTag: "自助解封 · 首次寬恕機會",
-    heroDesc: "被封帳號可在不聯繫管理組的情況下解封一次，用掉後只能走申訴通道。",
+    heroDesc:
+      "被封帳號可在不聯繫管理組的情況下解封一次，用掉後只能走申訴通道。",
     badge: "首次解封 · 一次性機會",
     note: "每個帳號有一次自助解封機會：適用於首次誤封/輕微違規。使用後再次被封只能透過申訴通道聯繫管理組。",
     done: "已解封。請重新整理後進入站點；再次違規將只能走申訴通道。",
     btn: "立即解封我的帳號",
     busy: "處理中…",
-    closedHint: "若提示未開放自助解封，說明本站未啟用該功能，請透過「聯繫我們」申訴。",
+    closedHint:
+      "若提示未開放自助解封，說明本站未啟用該功能，請透過「聯繫我們」申訴。",
   },
   forgot: {
     title: "找回密碼",
@@ -791,11 +796,13 @@ const zhTwBase: Omit<
     bbCode: "程式碼 / MediaInfo",
     bbEmoji: "表情",
     success: "發布成功（#{id}），等待管理員審核",
-    sameSource: "發布成功，但偵測到同源種子已存在（#{name} #{id}）——若為重複發布請撤回",
+    sameSource:
+      "發布成功，但偵測到同源種子已存在（#{name} #{id}）——若為重複發布請撤回",
     groupCandidates: "發布成功；偵測到同名聚合組，可到種子頁將其歸組",
     fail: "發布失敗",
     networkError: "網路異常，請先登入後再發布",
-    noPermission: "發布失敗：沒有發布權限（403）。請確認帳號具備發布資格，或稍後重試",
+    noPermission:
+      "發布失敗：沒有發布權限（403）。請確認帳號具備發布資格，或稍後重試",
     submitFailStatus: "發布失敗：服務端回傳 {status}，請稍後重試或聯絡管理員",
   },
   home2: {
@@ -1374,7 +1381,8 @@ const zhTwBase: Omit<
     subtitle: "linksmanage 口徑：提交互換連結",
     headCount: "已收錄 {n} 站",
     scopeTitle: "友情链接說明",
-    scopeBody: "僅接受資源站 / 社區站 / 開源專案互換連結；不收錄影視聚合、廣告與成人站點。審核約 3 個工作日。",
+    scopeBody:
+      "僅接受資源站 / 社區站 / 開源專案互換連結；不收錄影視聚合、廣告與成人站點。審核約 3 個工作日。",
     listTitle: "已收錄站點",
     listEmpty: "還沒有公示的友鏈",
     listEmptyHint: "管理組通過審核後會顯示在這裡。",
@@ -1429,7 +1437,8 @@ const zhTwBase: Omit<
     eyebrow: "首頁 / BT 客戶端指南",
     sub: "推薦客戶端 + 關鍵設定 + 私站紀律",
     title: "下載用戶端指南",
-    intro: "在 {brand} 下載請使用下方推薦用戶端。私有種子（private）場景下 DHT / PEX / 本地使用者發現必須關閉——開著它們輕則數據不計，重則觸發作弊判定。",
+    intro:
+      "在 {brand} 下載請使用下方推薦用戶端。私有種子（private）場景下 DHT / PEX / 本地使用者發現必須關閉——開著它們輕則數據不計，重則觸發作弊判定。",
     recommended: "推薦",
     banned: "禁用",
     rulesTitle: "私站做種紀律",
@@ -1440,11 +1449,51 @@ const zhTwBase: Omit<
       "更換用戶端前先正常停止做種再遷移（異常退出會丟做種時長）",
     ],
     items: [
-      { name: "qBittorrent", ver: "4.6+ / 5.x", os: "Win / macOS / Linux", rec: true, banned: false, keys: ["工具 → 選項 → BitTorrent：工作階段關「啟用 DHT」「啟用 PEX」「本機使用者探索」", "做種限制：佇列上限按自身頻寬設定，避免「滿下不種」"] },
-      { name: "Transmission", ver: "4.x", os: "macOS / Linux", rec: true, banned: false, keys: ["設定 → 隱私：加密「偏好」；私有種子自動停用 DHT/PEX（無需手動）"] },
-      { name: "Deluge", ver: "2.x", os: "Win / Linux", rec: false, banned: false, keys: ["偏好設定 → Network：取消「DHT」「LSD」「PEX」三勾"] },
-      { name: "aria2", ver: "1.36+", os: "全平台（CLI）", rec: false, banned: false, keys: ["啟動參數確認 --enable-dht=false；私站建議 GUI 用戶端為主"] },
-      { name: "迅雷 Thunder", ver: "—", os: "—", rec: false, banned: true, keys: ["本站禁用：吸血用戶端會被 Tracker 直接拒絕回報"] },
+      {
+        name: "qBittorrent",
+        ver: "4.6+ / 5.x",
+        os: "Win / macOS / Linux",
+        rec: true,
+        banned: false,
+        keys: [
+          "工具 → 選項 → BitTorrent：工作階段關「啟用 DHT」「啟用 PEX」「本機使用者探索」",
+          "做種限制：佇列上限按自身頻寬設定，避免「滿下不種」",
+        ],
+      },
+      {
+        name: "Transmission",
+        ver: "4.x",
+        os: "macOS / Linux",
+        rec: true,
+        banned: false,
+        keys: [
+          "設定 → 隱私：加密「偏好」；私有種子自動停用 DHT/PEX（無需手動）",
+        ],
+      },
+      {
+        name: "Deluge",
+        ver: "2.x",
+        os: "Win / Linux",
+        rec: false,
+        banned: false,
+        keys: ["偏好設定 → Network：取消「DHT」「LSD」「PEX」三勾"],
+      },
+      {
+        name: "aria2",
+        ver: "1.36+",
+        os: "全平台（CLI）",
+        rec: false,
+        banned: false,
+        keys: ["啟動參數確認 --enable-dht=false；私站建議 GUI 用戶端為主"],
+      },
+      {
+        name: "迅雷 Thunder",
+        ver: "—",
+        os: "—",
+        rec: false,
+        banned: true,
+        keys: ["本站禁用：吸血用戶端會被 Tracker 直接拒絕回報"],
+      },
     ],
   },
   sessions: {
@@ -1487,7 +1536,8 @@ const zhTwBase: Omit<
     empty: "還沒有流水",
     emptyHint: "簽到、做種結算、任務獎勵都會記在這裡。",
     noteTitle: "流水說明",
-    noteBody: "「類型」是系統記帳口徑；「摘要」盡量帶出對象名，取不到時顯示關聯編號。同一筆動作可能出現多條（如懸賞的凍結與退還）。",
+    noteBody:
+      "「類型」是系統記帳口徑；「摘要」盡量帶出對象名，取不到時顯示關聯編號。同一筆動作可能出現多條（如懸賞的凍結與退還）。",
     total: "共 {n} 條",
     noSummary: "—",
     dateFrom: "從",
@@ -1591,7 +1641,7 @@ const zhTwBase: Omit<
     latestTitle: "最新回覆",
     guideTitle: "新手必讀",
     guideDesc: "讀一讀發帖禮儀與版塊門檻，快速融入社區。",
-    guideCta: "查看站規",
+    guideCta: "發新主題",
     statTopics: "主題總數",
     statPosts: "回覆總數",
     statToday: "今日新帖",
@@ -1651,7 +1701,7 @@ const zhTwBase: Omit<
       tracker: "網站設定",
       forum: "論壇設定",
       security: "安全設定",
-      fields: "自訂欄位",   // 2026-10-17 补：样图侧栏第 3 项
+      fields: "自訂欄位", // 2026-10-17 补：样图侧栏第 3 项
       wishlist: "願望單",
     } as Record<string, string>,
     overview: {
@@ -1759,7 +1809,8 @@ const zhTwBase: Omit<
       titleVoucherNone: "當前沒有可用解鎖券",
       titleVoucherValid: "可用 {n} 張，最近一張 {date} 到期",
       titleSave: "保存頭銜",
-      titleCost: "每次保存核銷一張券（清空頭銜同樣消耗）；" +
+      titleCost:
+        "每次保存核銷一張券（清空頭銜同樣消耗）；" +
         "已核銷或已過期的券不能使用",
       titleBuy: "去商店購買",
       titleFailed: "保存失敗，請重試",
@@ -1910,8 +1961,8 @@ const zhTwBase: Omit<
       webauthnCancelErr: "瀏覽器取消了註冊",
       webauthnNoPkErr: "瀏覽器不支援 getPublicKey()，請升級",
       webauthnErrNotAllowed:
-        "這個裝置或瀏覽器沒有可用的通行密鑰（也可能是驗證被取消）。"
-        + "可改用密碼 + 兩步驗證。",
+        "這個裝置或瀏覽器沒有可用的通行密鑰（也可能是驗證被取消）。" +
+        "可改用密碼 + 兩步驗證。",
       webauthnErrSecurity:
         "本站存取位址與 passkey 註冊域不一致，請改用站點對外的域名再綁定。",
       webauthnErrTimeout: "等待安全鑰匙回應逾時，請重試或換一台裝置。",
@@ -2158,12 +2209,15 @@ const zhTwBase: Omit<
     favorited: "已收藏",
     sortHot: "熱門",
     sortNew: "最新",
-    filterAll: "全部",
+    filterAll: "全部話題",
     filterSticky: "只看置頂",
     filterDigest: "只看精華",
     hot: "熱",
     markPin: "置頂",
     markEss: "精華",
+    colTopic: "話題",
+    colLast: "最後回覆",
+    authorMeta: "作者：",
     report: "檢舉",
     follow: "關注",
     following: "已關注",
@@ -3323,7 +3377,8 @@ const zhTwBase: Omit<
     delFail: "刪除失敗",
     delPartial: "種子已刪除，但下列處置未成功（可稍後補做）：",
     delGotIt: "知道了",
-    delOk: "確認刪除",    nfoTitle: "NFO",
+    delOk: "確認刪除",
+    nfoTitle: "NFO",
     nfoKeepHint: "留空＝保持原值；填入即整段覆蓋原 NFO",
     fieldName: "名稱",
     fieldSub: "副標題",
@@ -3837,7 +3892,8 @@ const zhTwBase: Omit<
     amountHint: "正數增加 / 負數減少（下限 0）",
     kindSpark: "正加負減，單次 ±1,000,000",
     kindUploaded: "上傳量 (GB)——正加負減，單次 ±10TB",
-    kindInvite: "邀請——正數增發 / 負數回收配額，單次 ±50；可填臨時邀請天數直發 N 天碼",
+    kindInvite:
+      "邀請——正數增發 / 負數回收配額，單次 ±50；可填臨時邀請天數直發 N 天碼",
     kindResub: "補簽卡——入背包待用戶使用，單次 1-50",
     kindMedal: "勳章——每人發 1 枚（source=admin，已擁有自動跳過）",
     kindItem: "道具——按道具類型生效：即時類直接到賬，背包類入包；單次 1-50",
@@ -4296,6 +4352,13 @@ const zhTwBase: Omit<
     boardCreateBtn: "建立版塊",
     boardSaved: "版塊已儲存",
     boardCreated: "版塊已建立",
+    countSuffix: "{n} 個",
+    previewBtn: "預覽前台論壇",
+    boardCount: "{n} 個版塊",
+    colGates: "門檻 讀/回/發",
+    colProtect: "保護",
+    colTopics: "主題數",
+    colMods: "版主",
   },
   adminMenu: {
     title: "導覽選單",
@@ -5098,7 +5161,7 @@ const zhTwBase: Omit<
     grantAllow: "授予（額外允許）",
     grantDeny: "拒絕（顯式禁止）",
     medalHint: "管理發放（source=admin），已擁有 {n} 枚。",
-medalDaysPh: "天數（留空=隨勳章定義）",
+    medalDaysPh: "天數（留空=隨勳章定義）",
     pickMedal: "選擇勳章",
     medalGrant: "授予",
     submit: "提交",
@@ -5215,7 +5278,8 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     imgPh: "https://…/frame.png（清空則移除）",
     // design-cov-exempt: 头像框 CSS 示例文案——教站长写什么格式的
     // 色值（存库字段只收字面 hex/CSS，不接受 var()），非 UI 配色
-    cssHint: // design-cov-exempt
+    // design-cov-exempt
+    cssHint:
       "CSS 款示例色：春 #f4a7bb / 夏 #2fa878 / 秋 #d99419 / 冬 #8fc3e8；框圖需透明底圓形素材。刪除框會先自動摘下所有佩戴者。",
     thId: "ID",
     thPreview: "預覽",
@@ -5270,8 +5334,7 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     vVoidNHint: "作廢張數（1-50）",
     vVoid: "作廢",
     vVoidBad: "作廢張數需為 1-50 的整數",
-    vVoidConfirm:
-      "確認作廢用戶 {u} 的 {n} 張管理發放券？已核銷的券不會被動。",
+    vVoidConfirm: "確認作廢用戶 {u} 的 {n} 張管理發放券？已核銷的券不會被動。",
     vVoidDone: "已作廢 {n} 張",
     vVoidFail: "作廢失敗",
     vThKind: "券種",
@@ -5564,7 +5627,8 @@ medalDaysPh: "天數（留空=隨勳章定義）",
   /** H&R 後台總覽（admin-hr） */
   adminClasses: {
     title: "等級規則",
-    intro: "成長檔（1-12）在此設升降級閾值與晉升獎勵；貴賓（20）與職務檔（90+）沒有規則行，唯讀列出。",
+    intro:
+      "成長檔（1-12）在此設升降級閾值與晉升獎勵；貴賓（20）與職務檔（90+）沒有規則行，唯讀列出。",
     loadFail: "載入失敗",
     saveFail: "儲存失敗",
     savedMsg: "檔位 {n} 已儲存",
@@ -5579,7 +5643,8 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     thUsers: "目前人數",
     save: "儲存",
     staffLocked: "唯讀（無升降級規則）",
-    sparksHint: "0 = 不發獎勵；worker 每 60 秒依閾值判定升降級，跨檔補發差額且冪等（同人同檔不重複入帳）",
+    sparksHint:
+      "0 = 不發獎勵；worker 每 60 秒依閾值判定升降級，跨檔補發差額且冪等（同人同檔不重複入帳）",
     demoteHint: "關閉後該檔成員不會被降回低檔",
     upHint: "GB",
     preview: "預覽影響",
@@ -6227,7 +6292,8 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     dateUnknown: "日期不詳",
     appeal: "申訴",
     whyMasked: "公示只打碼展示，避免二次傷害",
-    listNote: "名單反映目前狀態：解除限制後即移出；期限欄取處置時登記的到期時間。詳細理由只發出當事人（站內信 + 郵件），公示只到類別。",
+    listNote:
+      "名單反映目前狀態：解除限制後即移出；期限欄取處置時登記的到期時間。詳細理由只發出當事人（站內信 + 郵件），公示只到類別。",
     listEmpty: "目前沒有處於限制中的帳號",
     listEmptyHint: "這不等於本站從未封禁過——解封的帳號不在名單裡。",
     needLogin: "名單需登入後檢視；未登入可先用上方的用戶名查詢。",
@@ -6235,18 +6301,36 @@ medalDaysPh: "天數（留空=隨勳章定義）",
   rules: {
     eyebrow: "首頁 / 站規",
     sub: "總則 + 帳號/發布/做種規範 + 禁止行為 + 處罰分級",
-    loadFailed: "規則介面暫時不可達，下面是內建的預設站規文字；管理組後台改過的内容可能沒同步。",
+    loadFailed:
+      "規則介面暫時不可達，下面是內建的預設站規文字；管理組後台改過的内容可能沒同步。",
     penTitle: "處罰分級",
     penColLevel: "級別",
     penColAction: "措施",
     penColScope: "適用情形",
     penalties: [
-      { level: "警告", action: "提醒違規行為，記一次警告，3 個月內累計 3 次升為限速", scope: "輕微違規 / 首次 H&R" },
-      { level: "限速 7 天", action: "下載與上傳速度受限，期間不可兌換邀請碼", scope: "多次 H&R / 未達標分享率" },
-      { level: "封禁 7–30 天", action: "帳號凍結，解封需提交申訴並保證不再犯", scope: "較嚴重違規 / 重複違規" },
-      { level: "永久封禁", action: "帳號作廢", scope: "作弊、多帳號、攻擊站點、公開邀請碼" },
+      {
+        level: "警告",
+        action: "提醒違規行為，記一次警告，3 個月內累計 3 次升為限速",
+        scope: "輕微違規 / 首次 H&R",
+      },
+      {
+        level: "限速 7 天",
+        action: "下載與上傳速度受限，期間不可兌換邀請碼",
+        scope: "多次 H&R / 未達標分享率",
+      },
+      {
+        level: "封禁 7–30 天",
+        action: "帳號凍結，解封需提交申訴並保證不再犯",
+        scope: "較嚴重違規 / 重複違規",
+      },
+      {
+        level: "永久封禁",
+        action: "帳號作廢",
+        scope: "作弊、多帳號、攻擊站點、公開邀請碼",
+      },
     ],
-    appealHint: "對站規有疑問或被處罰，請提交申訴說明，管理組會在 72 小時內回覆。",
+    appealHint:
+      "對站規有疑問或被處罰，請提交申訴說明，管理組會在 72 小時內回覆。",
     appealLink: "違規申訴",
     banlogLink: "封禁公示名單",
     title: "站點規則",
@@ -6507,7 +6591,8 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     ddNote:
       "一次性刪除全部 status=被禁 的賬號（連同其業務數據）。操作不可恢復。",
     ddBtn: "刪除被禁帳號",
-    ddConfirm: "將按 id 從早到晚刪除被禁帳號，單次有上限，刪完可再點；該操作不可恢復！",
+    ddConfirm:
+      "將按 id 從早到晚刪除被禁帳號，單次有上限，刪完可再點；該操作不可恢復！",
     ddDone: "已刪除 {n} 個被禁帳號",
     ddLeft: "上次執行後剩餘 {r} 個待刪",
     ddRemain: "已刪除 {d} 個，剩餘 {r} 個仍為被禁（可再次執行）",
@@ -6562,8 +6647,7 @@ medalDaysPh: "天數（留空=隨勳章定義）",
     rqCancel: "取消",
     rqImport: "批次匯入",
     rqImportLabel: "題目 JSON 陣列",
-    rqImportPh:
-      '[{"question":"…","options":["A","B"],"answer_index":0}]',
+    rqImportPh: '[{"question":"…","options":["A","B"],"answer_index":0}]',
     rqImportBtn: "匯入",
     rqImported: "已匯入 {added} 筆（略過 {skipped} · 非法 {invalid}）",
     rqBadJson: "JSON 格式不合法",
@@ -6990,8 +7074,7 @@ const apitokensTw: Dict["apitokens"] = {
   neverUsed: "未使用",
   plainOnce: "權杖明文僅此一次顯示，請立即保存：",
   limit: "每人最多 3 枚有效權杖；用法 Authorization: Token fxo_…",
-  stepUpHint:
-    "簽發需先複核本人憑證：密碼必填，已開兩步驗證還要目前驗證碼。",
+  stepUpHint: "簽發需先複核本人憑證：密碼必填，已開兩步驗證還要目前驗證碼。",
 };
 
 const noticePrefsTw: Dict["noticePrefs"] = {
@@ -7311,7 +7394,8 @@ export const zhTW: Dict = {
     colSettled: "達標時間",
     badgeNewcomer: "新手考核",
     ruleTitle: "考核說明",
-    ruleBody: "考核期內按四維指標（下載量 / 上傳量 / 做種數 / 考核分）判定，全部達標即通過；逾期未達標會影響發布與下載權限。",
+    ruleBody:
+      "考核期內按四維指標（下載量 / 上傳量 / 做種數 / 考核分）判定，全部達標即通過；逾期未達標會影響發布與下載權限。",
     statePassed: "已達標",
     stateProgress: "進行中",
     statePending: "未開始",

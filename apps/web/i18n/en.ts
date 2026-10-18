@@ -97,7 +97,8 @@ const enBase: Omit<
     emptyTitle: "Nothing here yet",
     emptyDesc: "There is no data to show right now.",
     errorTitle: "Failed to load",
-    errorDesc: "Something went wrong while loading. Try again; if it keeps failing, report it with the request_id attached.",
+    errorDesc:
+      "Something went wrong while loading. Try again; if it keeps failing, report it with the request_id attached.",
     errorCode: "Error code",
     showDetails: "Technical details",
     hideDetails: "Hide details",
@@ -107,7 +108,7 @@ const enBase: Omit<
     fieldErrorsTitle: "Please fix the following",
     confirmOk: "Confirm",
     confirmDelete: "Delete",
-    confirmTypeTo: "Type \"{text}\" to confirm",
+    confirmTypeTo: 'Type "{text}" to confirm',
     optimisticRollback: "The action did not go through; changes were reverted",
   },
   navDrawer: {
@@ -358,7 +359,8 @@ const enBase: Omit<
     colOwner: "Uploader",
     colActions: "Actions",
     colSettings: "Columns",
-    colSettingsHint: "Uncheck columns to hide (only affects you; site-level hidden columns cannot be changed)",
+    colSettingsHint:
+      "Uncheck columns to hide (only affects you; site-level hidden columns cannot be changed)",
     colSave: "Save",
     colSaving: "Saving…",
     colNames: {
@@ -386,9 +388,11 @@ const enBase: Omit<
     // C1 (ColaPT parity 2026-10-16): "Copy download link" in the ⋮ menu —
     // reuses the 30-minute download_keys credential (POST /downloads/keys)
     copyDlLink: "Copy download link",
-    copyDlLinkDone: "Link copied — valid for {t} minutes. Do not share publicly",
+    copyDlLinkDone:
+      "Link copied — valid for {t} minutes. Do not share publicly",
     // W-20: retry hint for failed list loads (ErrorPanel desc)
-    loadFailedHint: "Possibly a network hiccup or a temporarily unresponsive backend. Try again; if it keeps failing, report it via Contact Staff.",
+    loadFailedHint:
+      "Possibly a network hiccup or a temporarily unresponsive backend. Try again; if it keeps failing, report it via Contact Staff.",
     // W-19: delete success feedback (toast protocol)
     deleted: "Torrent deleted",
     bookmarked: "Bookmarked — see My → Bookmarks",
@@ -522,8 +526,10 @@ const enBase: Omit<
     kindReviewRejected: "Torrent rejected: {name}",
     kindGroupNewVersion: "New torrent in a group you follow",
     bodyReviewApproved: "Your upload passed review: #{id} {name}.",
-    bodyReviewRejected: "Your upload was rejected: #{id} {name}\nReason: {reason}\nEdit and resubmit any time.",
-    bodyGroupNewVersion: "Group “{group}” has a new approved torrent: #{id} {name}. See the group page for related releases.",
+    bodyReviewRejected:
+      "Your upload was rejected: #{id} {name}\nReason: {reason}\nEdit and resubmit any time.",
+    bodyGroupNewVersion:
+      "Group “{group}” has a new approved torrent: #{id} {name}. See the group page for related releases.",
     subject: "Subject",
     body: "Body",
     send: "Send",
@@ -787,7 +793,8 @@ const enBase: Omit<
     imdbHint:
       "Item link from IMDb; shown on the detail page and searchable via the IMDb search area",
     ptgen: "PT-Gen",
-    ptgenPlaceholder: "Paste an imdb / douban / bangumi / indienova / tmdb link",
+    ptgenPlaceholder:
+      "Paste an imdb / douban / bangumi / indienova / tmdb link",
     ptgenBtn: "Generate",
     ptgenBusy: "Generating…",
     ptgenHint:
@@ -832,8 +839,10 @@ const enBase: Omit<
     bbCode: "Code / MediaInfo",
     bbEmoji: "Emoji",
     success: "Published (#{id}), awaiting review",
-    sameSource: "Published, but a same-source torrent already exists (#{name} #{id}) — withdraw it if this is a duplicate",
-    groupCandidates: "Published; a matching group was detected, attach it on the torrent page",
+    sameSource:
+      "Published, but a same-source torrent already exists (#{name} #{id}) — withdraw it if this is a duplicate",
+    groupCandidates:
+      "Published; a matching group was detected, attach it on the torrent page",
     fail: "Publish fail",
     networkError: "Network error — please sign in before publishing",
     noPermission:
@@ -1022,7 +1031,8 @@ const enBase: Omit<
     leechersLegend: "Leechers",
     completedLegend: "Completed",
     ratingLegend: "Rating",
-    ratingHint: "Only show torrents rated at or above this value (Douban/IMDb, e.g. 7.5)",
+    ratingHint:
+      "Only show torrents rated at or above this value (Douban/IMDb, e.g. 7.5)",
     anonAny: "Any uploader",
     anonOnly: "Anonymous only",
     anonNamed: "Named only",
@@ -1416,7 +1426,8 @@ const enBase: Omit<
     subtitle: "Link exchange request (linksmanage)",
     headCount: "{n} sites listed",
     scopeTitle: "Link policy",
-    scopeBody: "Only resource / community / open-source projects are exchanged; aggregated video, ad and adult sites are not. Review takes about 3 business days.",
+    scopeBody:
+      "Only resource / community / open-source projects are exchanged; aggregated video, ad and adult sites are not. Review takes about 3 business days.",
     listTitle: "Listed sites",
     listEmpty: "No approved links yet",
     listEmptyHint: "Approved links show up here.",
@@ -1455,13 +1466,14 @@ const enBase: Omit<
     emptyTitle: "No endpoints listed",
     emptyDesc: "This build annotates no public endpoints.",
     title: "API docs",
-    intro: "Endpoint list for third-party tools/scripts (request a token in Security settings):",
+    intro:
+      "Endpoint list for third-party tools/scripts (request a token in Security settings):",
     colMethod: "Method",
     colPath: "Path",
     colSummary: "Summary",
     colDetail: "Detail",
     howTo:
-      "This page renders the OpenAPI document (openapi.json) directly, grouped by module; the badges separate GET / POST / PATCH / DELETE, and \"Expand\" shows that endpoint's parameters and declared response codes.",
+      'This page renders the OpenAPI document (openapi.json) directly, grouped by module; the badges separate GET / POST / PATCH / DELETE, and "Expand" shows that endpoint\'s parameters and declared response codes.',
     expand: "Expand",
     noParams: "No parameters",
     noResponses: "No response codes declared",
@@ -1471,7 +1483,8 @@ const enBase: Omit<
     eyebrow: "Home / BT client guide",
     sub: "Recommended clients + key settings + private-site rules",
     title: "BT Client Guide",
-    intro: "Use the clients below on {brand}. For private torrents, DHT / PEX / Local Peer Discovery must be disabled — leaving them on may lose your stats or trigger cheat detection.",
+    intro:
+      "Use the clients below on {brand}. For private torrents, DHT / PEX / Local Peer Discovery must be disabled — leaving them on may lose your stats or trigger cheat detection.",
     recommended: "Recommended",
     banned: "Banned",
     rulesTitle: "Private tracker etiquette",
@@ -1482,11 +1495,55 @@ const enBase: Omit<
       "Stop seeding cleanly before migrating to another client (abnormal exits lose seed time)",
     ],
     items: [
-      { name: "qBittorrent", ver: "4.6+ / 5.x", os: "Win / macOS / Linux", rec: true, banned: false, keys: ["Tools → Options → BitTorrent: disable DHT, PEX and Local Peer Discovery for the session", "Seeding limits: set queue caps to your real bandwidth"] },
-      { name: "Transmission", ver: "4.x", os: "macOS / Linux", rec: true, banned: false, keys: ["Preferences → Privacy: encryption \"prefer\"; DHT/PEX auto-disabled for private torrents"] },
-      { name: "Deluge", ver: "2.x", os: "Win / Linux", rec: false, banned: false, keys: ["Preferences → Network: untick DHT, LSD and PEX"] },
-      { name: "aria2", ver: "1.36+", os: "All platforms (CLI)", rec: false, banned: false, keys: ["Confirm --enable-dht=false; a GUI client is recommended for private trackers"] },
-      { name: "thunder", ver: "—", os: "—", rec: false, banned: true, keys: ["Banned on this site: leeching clients are rejected by the tracker"] },
+      {
+        name: "qBittorrent",
+        ver: "4.6+ / 5.x",
+        os: "Win / macOS / Linux",
+        rec: true,
+        banned: false,
+        keys: [
+          "Tools → Options → BitTorrent: disable DHT, PEX and Local Peer Discovery for the session",
+          "Seeding limits: set queue caps to your real bandwidth",
+        ],
+      },
+      {
+        name: "Transmission",
+        ver: "4.x",
+        os: "macOS / Linux",
+        rec: true,
+        banned: false,
+        keys: [
+          'Preferences → Privacy: encryption "prefer"; DHT/PEX auto-disabled for private torrents',
+        ],
+      },
+      {
+        name: "Deluge",
+        ver: "2.x",
+        os: "Win / Linux",
+        rec: false,
+        banned: false,
+        keys: ["Preferences → Network: untick DHT, LSD and PEX"],
+      },
+      {
+        name: "aria2",
+        ver: "1.36+",
+        os: "All platforms (CLI)",
+        rec: false,
+        banned: false,
+        keys: [
+          "Confirm --enable-dht=false; a GUI client is recommended for private trackers",
+        ],
+      },
+      {
+        name: "thunder",
+        ver: "—",
+        os: "—",
+        rec: false,
+        banned: true,
+        keys: [
+          "Banned on this site: leeching clients are rejected by the tracker",
+        ],
+      },
     ],
   },
   sessions: {
@@ -1495,7 +1552,8 @@ const enBase: Omit<
     lastAt: "Last",
     logins: "logins",
     revokeBtn: "Revoke other sessions",
-    revokeConfirm: "This immediately signs out all other devices (this one stays). Continue?",
+    revokeConfirm:
+      "This immediately signs out all other devices (this one stays). Continue?",
     revokedOk: "Other sessions revoked",
     hint: "Sessions are approximated by IP + client over successful logins in 24h; other devices must sign in again",
   },
@@ -1508,7 +1566,8 @@ const enBase: Omit<
     hrCard: "H&R under review",
     hrUrgent: "{n} due soon",
     // Four states (W-28): ErrorPanel hint when all three feeds fail
-    errorDesc: "The notification service is temporarily unavailable. Please retry later.",
+    errorDesc:
+      "The notification service is temporarily unavailable. Please retry later.",
   },
   readState: {
     failTitle: "This list could not be loaded",
@@ -1529,7 +1588,8 @@ const enBase: Omit<
     empty: "No entries yet",
     emptyHint: "Check-ins, seeding payouts and task rewards all land here.",
     noteTitle: "About this ledger",
-    noteBody: "Type is the system's accounting category; Summary shows the object name when known, otherwise the reference id. One action may produce several rows (e.g. bounty freeze and refund).",
+    noteBody:
+      "Type is the system's accounting category; Summary shows the object name when known, otherwise the reference id. One action may produce several rows (e.g. bounty freeze and refund).",
     total: "{n} entries",
     noSummary: "—",
     dateFrom: "From",
@@ -1634,7 +1694,7 @@ const enBase: Omit<
     guideTitle: "Newcomer guide",
     guideDesc:
       "Read the posting etiquette and board thresholds to get started.",
-    guideCta: "Site rules",
+    guideCta: "New topic",
     statTopics: "Topics",
     statPosts: "Replies",
     statToday: "New today",
@@ -1699,7 +1759,7 @@ const enBase: Omit<
       tracker: "Site",
       forum: "Forum",
       security: "Security",
-      fields: "Custom fields",   // 2026-10-17 补：样图侧栏第 3 项
+      fields: "Custom fields", // 2026-10-17 补：样图侧栏第 3 项
       wishlist: "Wishlist",
     } as Record<string, string>,
     overview: {
@@ -1807,7 +1867,8 @@ const enBase: Omit<
       titleVoucherNone: "No usable voucher right now",
       titleVoucherValid: "{n} usable, next one expires {date}",
       titleSave: "Save title",
-      titleCost: "Saving redeems one voucher (clearing the title costs one " +
+      titleCost:
+        "Saving redeems one voucher (clearing the title costs one " +
         "too); used or expired vouchers cannot be reused",
       titleBuy: "Buy in shop",
       titleFailed: "Save failed, please retry",
@@ -1961,13 +2022,14 @@ const enBase: Omit<
       webauthnNamePrompt: "Name this credential (e.g. laptop)",
       webauthnNameFallback: "passkey",
       webauthnCancelErr: "Registration cancelled by the browser",
-      webauthnNoPkErr: "Browser does not support getPublicKey(); please upgrade",
+      webauthnNoPkErr:
+        "Browser does not support getPublicKey(); please upgrade",
       webauthnErrNotAllowed:
-        "No passkey is available on this device or browser (or the "
-        + "verification was cancelled). Password + 2FA still works.",
+        "No passkey is available on this device or browser (or the " +
+        "verification was cancelled). Password + 2FA still works.",
       webauthnErrSecurity:
-        "This site's address does not match the passkey relying-party "
-        + "domain; open the site through its public domain and retry.",
+        "This site's address does not match the passkey relying-party " +
+        "domain; open the site through its public domain and retry.",
       webauthnErrTimeout:
         "The security key timed out. Try again or use another device.",
       webauthnBindOk: "Bound",
@@ -2215,12 +2277,15 @@ const enBase: Omit<
     favorited: "Favorited",
     sortHot: "Hot",
     sortNew: "Newest",
-    filterAll: "All",
+    filterAll: "All topics",
     filterSticky: "Sticky only",
     filterDigest: "Digest only",
     hot: "Hot",
     markPin: "Pinned",
     markEss: "Digest",
+    colTopic: "Topic",
+    colLast: "Last reply",
+    authorMeta: "By ",
     report: "Report",
     follow: "Follow",
     following: "Following",
@@ -2524,7 +2589,8 @@ const enBase: Omit<
     tokenCreate: "Create token",
     tokenEmpty:
       "No tokens yet — create one per device so a leak only kills that one.",
-    tokenPlainGone: "Plaintext no longer available (shown only at create/rotate)",
+    tokenPlainGone:
+      "Plaintext no longer available (shown only at create/rotate)",
     tokenRotate: "Rotate",
     tokenRevoke: "Revoke",
   },
@@ -2837,9 +2903,11 @@ const enBase: Omit<
     seedSize: "Seed size",
     empty: "The podium awaits",
     // Four states (W-27): fetch-failure hint (ErrorPanel desc) / all-empty page state
-    errorDesc: "The leaderboard service is temporarily unavailable. Please retry later.",
+    errorDesc:
+      "The leaderboard service is temporarily unavailable. Please retry later.",
     emptyAll: "No leaderboard data yet",
-    emptyAllDesc: "Boards fill in automatically once seeding and downloads pick up.",
+    emptyAllDesc:
+      "Boards fill in automatically once seeding and downloads pick up.",
     colRank: "Rank",
     colUser: "User",
     unitSize: "Size",
@@ -3400,8 +3468,7 @@ const enBase: Omit<
     delNote: "Note",
     delPeers: "{seed} seeders + {leech} leechers = {peers} peers",
     delSpark: "Deduct uploader's {magic}",
-    delSparkNote:
-      "Reclaim the {magic} earned by publishing this torrent: {n}",
+    delSparkNote: "Reclaim the {magic} earned by publishing this torrent: {n}",
     delDouble: "Double deduction",
     delDoubleNote: "Double deduction: {n}",
     delBan: "Ban uploading",
@@ -3413,7 +3480,8 @@ const enBase: Omit<
     delFail: "Delete failed",
     delPartial: "Deleted, but these sanctions failed (retry later):",
     delGotIt: "Got it",
-    delOk: "Delete",    nfoTitle: "NFO",
+    delOk: "Delete",
+    nfoTitle: "NFO",
     nfoKeepHint: "Leave empty to keep the current NFO; typing replaces it",
     fieldName: "Name",
     fieldSub: "Subtitle",
@@ -3930,10 +3998,12 @@ const enBase: Omit<
     amountHint: "Positive adds / negative subtracts (floor 0)",
     kindSpark: "Add or subtract, ±1,000,000 per run",
     kindUploaded: "Upload (GB) — add or subtract, ±10TB per run",
-    kindInvite: "Invites — positive grants / negative reclaims quota, ±50 per run; temp-invite days sends N-day codes directly",
+    kindInvite:
+      "Invites — positive grants / negative reclaims quota, ±50 per run; temp-invite days sends N-day codes directly",
     kindResub: "Resub cards — go to backpack for later use, 1-50 per run",
     kindMedal: "Medals — 1 per user (source=admin, owners auto-skipped)",
-    kindItem: "Items — instant kinds apply at once, backpack kinds go to inventory; 1-50 per run",
+    kindItem:
+      "Items — instant kinds apply at once, backpack kinds go to inventory; 1-50 per run",
     labelUploaded: "Upload (GB)",
     labelInvite: "Invites",
     labelResub: "Resub cards",
@@ -3988,7 +4058,8 @@ const enBase: Omit<
     done: "Granted: {kind} {amount} → {n} users ({m} row(s) applied{pm})",
     donePm: ", PM sent",
     fail: "Operation failed",
-    confirmRun: "Run bulk grant? This affects selected users and cannot be undone.",
+    confirmRun:
+      "Run bulk grant? This affects selected users and cannot be undone.",
     selected: "Selected: {c} class(es) · {r} role(s) · {u} user(s)",
   },
   /**
@@ -4450,6 +4521,13 @@ const enBase: Omit<
     boardCreateBtn: "Create board",
     boardSaved: "Board saved",
     boardCreated: "Board created",
+    countSuffix: "{n} total",
+    previewBtn: "Preview forum front end",
+    boardCount: "{n} boards",
+    colGates: "Gates read/reply/post",
+    colProtect: "Protected",
+    colTopics: "Topics",
+    colMods: "Moderators",
   },
   adminMenu: {
     title: "Nav Menu",
@@ -5279,7 +5357,7 @@ const enBase: Omit<
     grantAllow: "Grant (extra allow)",
     grantDeny: "Deny (explicit forbid)",
     medalHint: "Admin grant (source=admin); user owns {n}.",
-medalDaysPh: "Days (empty = medal default)",
+    medalDaysPh: "Days (empty = medal default)",
     pickMedal: "Pick medal",
     medalGrant: "Grant",
     submit: "Submit",
@@ -5407,7 +5485,8 @@ medalDaysPh: "Days (empty = medal default)",
     imgPh: "https://…/frame.png (clear to remove)",
     // design-cov-exempt: 头像框 CSS 示例文案——教站长写什么格式的
     // 色值（存库字段只收字面 hex/CSS，不接受 var()），非 UI 配色
-    cssHint: // design-cov-exempt
+    // design-cov-exempt
+    cssHint:
       "Sample CSS colors: spring #f4a7bb / summer #2fa878 / autumn #d99419 / winter #8fc3e8; frame images need a transparent circular source. Deleting a frame auto-unequips all wearers.",
     thId: "ID",
     thPreview: "Preview",
@@ -5760,9 +5839,10 @@ medalDaysPh: "Days (empty = medal default)",
   /** H&R admin overview (admin-hr) */
   adminClasses: {
     title: "Class rules",
-    intro: "Member tiers (1-12) carry the promotion thresholds and "
-      + "rewards. VIP (20) and staff tiers (90+) have no rule row, so "
-      + "they are listed read-only.",
+    intro:
+      "Member tiers (1-12) carry the promotion thresholds and " +
+      "rewards. VIP (20) and staff tiers (90+) have no rule row, so " +
+      "they are listed read-only.",
     loadFail: "Load failed",
     saveFail: "Save failed",
     savedMsg: "Tier {n} saved",
@@ -5777,13 +5857,15 @@ medalDaysPh: "Days (empty = medal default)",
     thUsers: "Users now",
     save: "Save",
     staffLocked: "Read-only (no rules)",
-    sparksHint: "0 disables the reward. The worker re-checks tiers every "
-      + "60s, pays the difference across tiers and is idempotent per tier.",
+    sparksHint:
+      "0 disables the reward. The worker re-checks tiers every " +
+      "60s, pays the difference across tiers and is idempotent per tier.",
     demoteHint: "When off, members in this tier are never demoted.",
     upHint: "GB",
     preview: "Preview impact",
     previewBusy: "Counting…",
-    previewFail: "Preview failed (heavy query; same params reuse cache for 60s)",
+    previewFail:
+      "Preview failed (heavy query; same params reuse cache for 60s)",
     pvPromote: "{n} users would move up",
     pvDemote: "{n} users would move down",
     pvCurrent: "{n} users currently in this tier",
@@ -6440,26 +6522,47 @@ medalDaysPh: "Days (empty = medal default)",
     dateUnknown: "Unknown date",
     appeal: "Appeal",
     whyMasked: "Names are masked to avoid further harm",
-    listNote: "The list is current state: lifting a restriction removes the row. The term column is the recorded expiry. Details go to the account owner only (PM + email); the public list shows the class.",
+    listNote:
+      "The list is current state: lifting a restriction removes the row. The term column is the recorded expiry. Details go to the account owner only (PM + email); the public list shows the class.",
     listEmpty: "No account is restricted right now",
-    listEmptyHint: "That does not mean nobody was ever banned — unbanned accounts are not listed.",
+    listEmptyHint:
+      "That does not mean nobody was ever banned — unbanned accounts are not listed.",
     needLogin: "Sign in to browse the list, or look up one username above.",
   },
   rules: {
     eyebrow: "Home / Site rules",
     sub: "General terms + account/publish/seeding rules + penalties",
-    loadFailed: "Rules endpoint is unreachable; the built-in default rules are shown, staff edits may not be reflected.",
+    loadFailed:
+      "Rules endpoint is unreachable; the built-in default rules are shown, staff edits may not be reflected.",
     penTitle: "Penalty tiers",
     penColLevel: "Level",
     penColAction: "Measure",
     penColScope: "Applies to",
     penalties: [
-      { level: "Warning", action: "Notified and logged; three warnings within 3 months escalate to throttling", scope: "Minor violation / first H&R" },
-      { level: "Throttled 7 days", action: "Upload/download speed limited; invite redemption disabled", scope: "Repeated H&R / ratio below target" },
-      { level: "Banned 7–30 days", action: "Account frozen; unban requires an appeal and a pledge", scope: "Serious or repeated violation" },
-      { level: "Permanent ban", action: "Account voided", scope: "Cheating, multi-account, attacks, leaked invites" },
+      {
+        level: "Warning",
+        action:
+          "Notified and logged; three warnings within 3 months escalate to throttling",
+        scope: "Minor violation / first H&R",
+      },
+      {
+        level: "Throttled 7 days",
+        action: "Upload/download speed limited; invite redemption disabled",
+        scope: "Repeated H&R / ratio below target",
+      },
+      {
+        level: "Banned 7–30 days",
+        action: "Account frozen; unban requires an appeal and a pledge",
+        scope: "Serious or repeated violation",
+      },
+      {
+        level: "Permanent ban",
+        action: "Account voided",
+        scope: "Cheating, multi-account, attacks, leaked invites",
+      },
     ],
-    appealHint: "Questions or penalties? File an appeal — staff replies within 72 hours.",
+    appealHint:
+      "Questions or penalties? File an appeal — staff replies within 72 hours.",
     appealLink: "Appeals",
     banlogLink: "Ban log",
     title: "Site rules",
@@ -6540,7 +6643,8 @@ medalDaysPh: "Days (empty = medal default)",
     docs: "Documentation",
     eyebrow: "Home / About",
     subtitle: "Program version and site information of this site",
-    loadFailed: "Version endpoint is unreachable; the fields below show — instead of guessing.",
+    loadFailed:
+      "Version endpoint is unreachable; the fields below show — instead of guessing.",
     typeTitle: "Site type",
     asideTitle: "Site info",
     founded: "Founded",
@@ -6722,7 +6826,8 @@ medalDaysPh: "Days (empty = medal default)",
     ddNote:
       "Permanently delete all disabled accounts with their data. Irreversible.",
     ddBtn: "Delete disabled users",
-    ddConfirm: "Disabled accounts are deleted oldest-id first, with a per-call cap; retry to clear the rest. This cannot be undone!",
+    ddConfirm:
+      "Disabled accounts are deleted oldest-id first, with a per-call cap; retry to clear the rest. This cannot be undone!",
     ddDone: "Deleted {n} disabled accounts",
     ddLeft: "{r} disabled accounts still to delete",
     ddRemain: "Deleted {d}; {r} still disabled (run again)",
@@ -6779,8 +6884,7 @@ medalDaysPh: "Days (empty = medal default)",
     rqCancel: "Cancel",
     rqImport: "Bulk import",
     rqImportLabel: "JSON array of questions",
-    rqImportPh:
-      '[{"question":"…","options":["A","B"],"answer_index":0}]',
+    rqImportPh: '[{"question":"…","options":["A","B"],"answer_index":0}]',
     rqImportBtn: "Import",
     rqImported: "Imported {added} (skipped {skipped} · invalid {invalid})",
     rqBadJson: "Invalid JSON",
@@ -7195,7 +7299,8 @@ medalDaysPh: "Days (empty = medal default)",
   termsGov: {
     healthy: "Healthy",
     needsWork: "Needs work",
-    statLine: "In use {active} · with rules {withRule} · retired refs {retired}",
+    statLine:
+      "In use {active} · with rules {withRule} · retired refs {retired}",
   },
 };
 
@@ -7285,7 +7390,8 @@ const fundingEn: Dict["funding"] = {
 };
 
 const resurrectEn: Dict["resurrect"] = {
-  contract: "Contract: seed {h} h → {sparks} {magic} + free coupon + 7-day freeleech",
+  contract:
+    "Contract: seed {h} h → {sparks} {magic} + free coupon + 7-day freeleech",
   title: "Resurrections",
   note: "Claim a dead torrent and keep seeding; meeting the hours earns 5000 {magic} + 1 free voucher + 7 days free on that torrent.",
   claimBtn: "Claim resurrection",
@@ -7532,7 +7638,8 @@ export const en: Dict = {
     colSettled: "Passed at",
     badgeNewcomer: "Newcomer exam",
     ruleTitle: "How exams work",
-    ruleBody: "Each exam is judged on four metrics (downloaded / uploaded / seeding count / exam score). Passing all clears the exam; missing the deadline affects upload and download rights.",
+    ruleBody:
+      "Each exam is judged on four metrics (downloaded / uploaded / seeding count / exam score). Passing all clears the exam; missing the deadline affects upload and download rights.",
     statePassed: "Passed",
     stateProgress: "In progress",
     statePending: "Not started",
