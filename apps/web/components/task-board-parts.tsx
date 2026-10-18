@@ -118,7 +118,7 @@ export function tierLabel(tier: string | null | undefined): string {
   return TIER_LABELS[tier.toLowerCase()] ?? tier;
 }
 
-/** 06 最新动态 + 07 任务统计子面板（数据由 TaskBoard 的 ov 传入） */
+/** 01 最新动态 + 02 任务统计子面板（数据由 TaskBoard 的 ov 传入） */
 export function TaskDashboard({ ov }: { ov: TaskOverview | null }) {
   const { dict, locale } = useI18n();
   const t = dict.tasks2;
@@ -127,7 +127,7 @@ export function TaskDashboard({ ov }: { ov: TaskOverview | null }) {
       <section className="task-panel">
         <div className="task-section-heading">
           <div>
-            <span>06</span>
+            <span>01</span>
             <h2>{t.feedTitle}</h2>
           </div>
         </div>
@@ -157,7 +157,7 @@ export function TaskDashboard({ ov }: { ov: TaskOverview | null }) {
       <section className="task-panel">
         <div className="task-section-heading">
           <div>
-            <span>07</span>
+            <span>02</span>
             <h2>{t.statsTitle}</h2>
           </div>
         </div>
@@ -189,18 +189,14 @@ export function TaskDashboard({ ov }: { ov: TaskOverview | null }) {
   );
 }
 
-/** 08 我的任务记录子面板：领取/结算时间 + 进度列（数据由 TaskBoard 的 ov 传入） */
+/** 我的任务记录面板（标签组一的第二个面板）：领取/结算时间 + 进度列。
+ *  ⚠️ 不自带区块标题——标题层级由 Tabs 的标签承担（评审文档
+ *  「区块标题层级唯一」），样图 § tplTask 的 history 面板同样只有表。 */
 export function TaskHistory({ ov }: { ov: TaskOverview | null }) {
   const { dict, locale } = useI18n();
   const t = dict.tasks2;
   return (
     <section className="task-panel task-history">
-      <div className="task-section-heading">
-        <div>
-          <span>08</span>
-          <h2>{t.historyTitle}</h2>
-        </div>
-      </div>
       <div className="brand-wide-table-scroll">
         <table className="nexus-table">
           <tbody>
@@ -214,7 +210,15 @@ export function TaskHistory({ ov }: { ov: TaskOverview | null }) {
             {(ov?.my_records ?? []).map((r, i) => (
               <tr key={i}>
                 <td>{r.name}</td>
-                <td>
+                <td
+                  className={`task-history__st task-history__st--${
+                    r.status === 0
+                      ? "ongoing"
+                      : r.status === 1
+                        ? "done"
+                        : "failed"
+                  }`}
+                >
                   {r.status === 0
                     ? t.stOngoing
                     : r.status === 1

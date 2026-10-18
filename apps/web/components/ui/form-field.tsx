@@ -60,13 +60,24 @@ export function FormField({
     className ? ` ${className}` : ""
   }`;
   // 把 id / aria-describedby / aria-required 织进调用方的控件（单元素
-  // 子节点约定）——label 关联与错误播报都不需要调用方手写 id
+  // 子节点约定）——label 关联与错误播报都不需要调用方手写 id。
+  // aria-* 只给可聚焦控件（input/select/textarea/button…）：包一层
+  // 布局 div 的调用形态（验证码题面+输入框）会把 aria-required 落到
+  // div 上，axe 的 aria-allowed-attr 直接拦（Lighthouse a11y 实测过）。
+  const isControl = (el: ReactElement<Record<string, unknown>>): boolean => {
+    const t = String(el.props?.role ?? el.type);
+    return t === "input" || t === "select" || t === "textarea" || t === "button";
+  };
   const ctl = isValidElement(children)
     ? cloneElement(children as ReactElement<Record<string, unknown>>, {
         id: ctlId,
         "aria-describedby": error || hint ? msgId : undefined,
         "aria-invalid": error ? true : undefined,
-        "aria-required": required ? true : undefined,
+        "aria-required":
+          required &&
+          isControl(children as ReactElement<Record<string, unknown>>)
+            ? true
+            : undefined,
       })
     : children;
   return (

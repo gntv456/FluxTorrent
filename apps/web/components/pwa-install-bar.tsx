@@ -55,7 +55,7 @@ export function PwaInstallBar() {
       {deferred && (
         <button
           type="button"
-          className="rounded-[var(--r-sm)] bg-sky px-3 py-1 font-bold"
+          className="rounded-[var(--r-sm)] bg-sky-deep px-3 py-1 font-bold"
           onClick={async () => {
             await deferred.prompt();
             setHidden(true);
