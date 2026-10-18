@@ -45,6 +45,8 @@ export const ANNOTATED_FILES = [
   "apps/api/src/community_http/forum_util.rs",
   "apps/api/src/community_http/forums.rs",
   "apps/api/src/community_http/forums_boards.rs",
+  "apps/api/src/community_http/forums_mine.rs",
+  "apps/api/src/community_http/forums_side.rs",
   "apps/api/src/community_http/friend.rs",
   "apps/api/src/community_http/friend_action.rs",
   "apps/api/src/community_http/interact.rs",
