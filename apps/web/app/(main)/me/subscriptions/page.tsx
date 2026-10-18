@@ -5,11 +5,10 @@ import { getMyFollows, getMyBookmarks } from "@/lib/data";
 import { getDict } from "@/i18n/server";
 import { BTN_SM_BOLD, PANEL_MD } from "@/lib/ui-classes";
 import { UnsubscribeButton } from "@/components/unsubscribe-button";
-import { FollowButton } from "@/components/forum-follow";
+import { FollowTable } from "./_parts/follow-table";
 import { MyBookmarks } from "@/components/my-bookmarks";
 import { PageHeader } from "@/components/ui/page-header";
 import { TabPanel, Tabs } from "@/components/ui/tabs";
-import { EmptyState } from "@/components/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +34,10 @@ interface CalendarDay {
   }[];
 }
 
-/** 标签白名单。 */
-const TABS = ["groups", "authors", "bookmarks"] as const;
+/** 标签白名单。`forums` 是样图 § subscriptions 的第一块「我订阅的版块」——
+ *  `/follows/mine` 一直回 `forums` 数组（domain-types MyFollows），
+ *  此前这页只读了 `users`，版块关注在站内没有任何出口。 */
+const TABS = ["groups", "forums", "authors", "bookmarks"] as const;
 
 /** 追更中心（0328 剧集批补齐前端）。
  *  后端两读口此前无入口：/me/subscriptions/groups（进度）、
@@ -73,10 +74,13 @@ export default async function SubscriptionsPage({
     failed = true;
   }
   if (failed) redirect("/login?next=/me/subscriptions");
-  // 关注名单只在作者标签下才取：`getMyFollows` 自己回落空数组，
-  // 不 throw，所以不会把上面那条 redirect 的语义搅浑。
-  const follows = tab === "authors" ? await getMyFollows() : null;
+  // 关注名单在「作者」与「版块」两档都要取（同一次 /follows/mine 回两类）：
+  // `getMyFollows` 自己回落空数组，不 throw，所以不会把上面那条 redirect
+  // 的语义搅浑。
+  const follows =
+    tab === "authors" || tab === "forums" ? await getMyFollows() : null;
   const authors = follows?.users ?? [];
+  const boards = follows?.forums ?? [];
   // 收藏清单同理只在第三档取；helper 回 null = 读失败（≠「还没收藏」）
   const bookmarks = tab === "bookmarks" ? await getMyBookmarks() : null;
 
@@ -99,11 +103,13 @@ export default async function SubscriptionsPage({
         value={tab}
         items={[
           { key: "groups", label: t.tabGroups },
+          { key: "forums", label: t.tabForums },
           { key: "authors", label: t.tabAuthors },
           { key: "bookmarks", label: t.tabBookmarks },
         ]}
         hrefs={[
           "/me/subscriptions",
+          "/me/subscriptions?tab=forums",
           "/me/subscriptions?tab=authors",
           "/me/subscriptions?tab=bookmarks",
         ]}
@@ -190,53 +196,35 @@ export default async function SubscriptionsPage({
         </TabPanel>
       )}
 
+      {tab === "forums" && (
+        <TabPanel idPrefix="subs" tabKey="forums">
+          <FollowTable
+            rows={boards}
+            hrefPrefix="/forums/"
+            colLabel={t.colForum}
+            actionLabel={t.colAction}
+            targetType="forum"
+            emptyIcon="forum"
+            emptyTitle={t.forumsEmpty}
+            emptyDesc={t.forumsEmptyHint}
+          />
+          {/* 样图这页还有一列「新帖动态」（今日 N 帖）：per-版块的当日
+              新帖数没有读口（只有全站计数），先不画空列 */}
+        </TabPanel>
+      )}
+
       {tab === "authors" && (
         <TabPanel idPrefix="subs" tabKey="authors">
-          {authors.length === 0 ? (
-            <EmptyState
-              icon="users"
-              title={t.authorsEmpty}
-              desc={t.authorsEmptyHint}
-            />
-          ) : (
-            <div className="brand-panel overflow-x-auto">
-              <table className="nexus-table">
-                <thead>
-                  <tr>
-                    <td className="colhead">{t.colAuthor}</td>
-                    <td className="colhead w-32 text-right">{t.colAction}</td>
-                  </tr>
-                </thead>
-                <tbody>
-                  {authors.map((u) => (
-                    <tr key={u.id}>
-                      <td>
-                        <Link
-                          href={`/users/${u.id}`}
-                          className="font-bold text-ink"
-                        >
-                          {u.name}
-                        </Link>
-                      </td>
-                      <td className="text-right">
-                        {/* initial 直接告知「已关注」：名单本身就来自
-                            /follows/mine，再逐行打一次 status 是白问 */}
-                        <FollowButton
-                          targetType="user"
-                          targetId={u.id}
-                          initial={{
-                            following: true,
-                            followers: 0,
-                            is_self: false,
-                          }}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <FollowTable
+            rows={authors}
+            hrefPrefix="/users/"
+            colLabel={t.colAuthor}
+            actionLabel={t.colAction}
+            targetType="user"
+            emptyIcon="users"
+            emptyTitle={t.authorsEmpty}
+            emptyDesc={t.authorsEmptyHint}
+          />
         </TabPanel>
       )}
 

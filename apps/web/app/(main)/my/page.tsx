@@ -16,6 +16,9 @@ export const dynamic = "force-dynamic";
 const VALID_TABS: UsercpTab[] = [
   "overview",
   "personal",
+  // 「自定义字段」此前只在 USERCP_NAV 与 UsercpPanel 里存在，这一份白名单漏了它
+  // ⇒ 侧栏点得动、`/my?tab=fields` 却静默回落概览（样图 § ucp 的七档之一）。
+  "fields",
   "tracker",
   "forum",
   "security",

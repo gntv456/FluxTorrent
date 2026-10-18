@@ -49,6 +49,9 @@ export default function MySparkPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  // 样图 § my-spark 的「兑换邀请（15,000）」：价格取 /invites/status 的
+  // redeem_price 真值（invite_http.rs:119），取不到就只显示按钮名
+  const [redeemPrice, setRedeemPrice] = useState<number | null>(null);
   // 挂载门控：hasSessionCookie() 在**渲染期**读 document.cookie，SSR 环境下
   // document 不存在 → 恒返回 false → 服务端渲染「请先登录」而客户端渲染完整
   // 页面，两棵树不同 → React #418（hydration mismatch）。
@@ -62,6 +65,12 @@ export default function MySparkPage() {
       .get<SparkInfo>("/api/v1/me/spark")
       .then(setInfo)
       .catch(() => setInfo(null));
+    api
+      .get<{ redeem_price?: number | null }>(
+        "/api/v1/invites/status",
+      )
+      .then((d) => setRedeemPrice(d.redeem_price ?? null))
+      .catch(() => setRedeemPrice(null));
     api
       .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?page=${page}`)
       .then((d) => {
@@ -158,6 +167,9 @@ export default function MySparkPage() {
         </Link>
         <Link href="/invites" className={BTN_SM_GHOST}>
           {t.ctaRedeem}
+          {redeemPrice !== null
+            ? `（${redeemPrice.toLocaleString()}）`
+            : ""}
         </Link>
         <Link href="/shop" className={BTN_SM_GHOST}>
           {t.ctaShop}

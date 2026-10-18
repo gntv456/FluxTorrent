@@ -38,7 +38,7 @@ function num(n: number): string {
   return n.toLocaleString();
 }
 
-/** KPI 四格：总数 + 三个状态各一格。
+/** KPI 五格：总数 + 四个状态各一格。
  *  counts 是后端跨状态的全量计数，不能拿当页行数冒充。 */
 export function HrKpiStrip({
   t,
@@ -47,7 +47,7 @@ export function HrKpiStrip({
 }: {
   t: HrDict;
   total: number;
-  /** 后端给的四状态全量计数（本页只展示前三 + 总数） */
+  /** 后端给的四状态全量计数，逐格展示（不拿当页行数算） */
   counts: {
     open: number;
     satisfied: number;
@@ -60,6 +60,10 @@ export function HrKpiStrip({
     [t.kpiOpen, counts.open],
     [t.kpiOk, counts.satisfied],
     [t.kpiBad, counts.violated],
+    // 样图 § myhr 的第四格「历史豁免」。counts.pardoned 后端一直有
+    // （hr_mine.rs:63），此前只喂给筛选器、KPI 条上不报数 ⇒ 成员自助
+    // 免罪成功后页面数字毫无变化，像操作没生效。
+    [t.tabPardoned, counts.pardoned],
   ];
   return (
     <div className="pgstats">
