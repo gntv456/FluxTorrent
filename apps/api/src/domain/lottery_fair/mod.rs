@@ -54,7 +54,7 @@ pub struct Commitment {
 }
 
 /// 一场抽奖的完整可验证材料（结算后公开）。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DrawProof {
     /// 轮次唯一标识（取 topic_id，保证同一场抽奖的证明可追溯）。
     pub round_id: String,
