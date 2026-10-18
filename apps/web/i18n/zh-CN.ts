@@ -77,7 +77,8 @@ const zhCnBase = {
     emptyTitle: "暂无内容",
     emptyDesc: "这里还没有任何数据。",
     errorTitle: "加载失败",
-    errorDesc: "数据加载时发生异常，可重试一次；若反复出现，请反馈并附上 request_id。",
+    errorDesc:
+      "数据加载时发生异常，可重试一次；若反复出现，请反馈并附上 request_id。",
     errorCode: "错误码",
     showDetails: "技术细节",
     hideDetails: "收起细节",
@@ -188,8 +189,7 @@ const zhCnBase = {
     credAdminUser: "管理员账号",
     credCurrentPw: "当前密码",
     credFilledAuto: "已自动填入，无需修改",
-    credCurrentPwHint:
-      "即重置密码时显示给你的那串临时密码——它将被新密码替换。",
+    credCurrentPwHint: "即重置密码时显示给你的那串临时密码——它将被新密码替换。",
     credNewPwHint:
       "这就是你之后登录本站用的密码，请立即牢记——忘记后只能走数据库重置。",
     credResetFoot:
@@ -364,7 +364,8 @@ const zhCnBase = {
     copyDlLink: "复制下载直链",
     copyDlLinkDone: "直链已复制，{t} 分钟内有效，请勿公开分享",
     // W-20：列表拉取失败的重试引导（ErrorPanel desc）
-    loadFailedHint: "可能是网络波动或后端暂时无响应，可重试；反复出现请到「联系管理组」反馈。",
+    loadFailedHint:
+      "可能是网络波动或后端暂时无响应，可重试；反复出现请到「联系管理组」反馈。",
     // W-19：删除成功反馈（toast 协议）
     deleted: "种子已删除",
     bookmarked: "已收藏，可在我的-收藏中查看",
@@ -497,8 +498,10 @@ const zhCnBase = {
     kindReviewRejected: "种子被拒：{name}",
     kindGroupNewVersion: "订阅的聚合组有新版本",
     bodyReviewApproved: "你发布的种子已通过审核：#{id} {name}。",
-    bodyReviewRejected: "你发布的种子未通过审核：#{id} {name}\n原因：{reason}\n可修改后重新发布。",
-    bodyGroupNewVersion: "你订阅的资源组「{group}」有新种子过审：#{id} {name}。同类资源聚合页见种子详情。",
+    bodyReviewRejected:
+      "你发布的种子未通过审核：#{id} {name}\n原因：{reason}\n可修改后重新发布。",
+    bodyGroupNewVersion:
+      "你订阅的资源组「{group}」有新种子过审：#{id} {name}。同类资源聚合页见种子详情。",
     subject: "主题",
     body: "正文",
     send: "发送",
@@ -622,8 +625,7 @@ const zhCnBase = {
     backToLogin: "返回登录",
     usernameLabel: "期望的用户名",
     emailLabel: "邮箱（通过后邀请码发往此处）",
-    proofLabel:
-      "佐证链接（至少一条：其他站点个人主页 / 证书记录，每行一条）",
+    proofLabel: "佐证链接（至少一条：其他站点个人主页 / 证书记录，每行一条）",
     reasonLabel: "申请理由（至少 20 字：你如何了解本站、能带来什么）",
     submit: "提交申请",
     busy: "提交中…",
@@ -662,7 +664,8 @@ const zhCnBase = {
     done: "已解封。请刷新后进入站点；再次违规将只能走申诉通道。",
     btn: "立即解封我的账号",
     busy: "处理中…",
-    closedHint: "若提示未开放自助解封，说明本站未启用该功能，请通过「联系我们」申诉。",
+    closedHint:
+      "若提示未开放自助解封，说明本站未启用该功能，请通过「联系我们」申诉。",
   },
   forgot: {
     title: "找回密码",
@@ -683,8 +686,7 @@ const zhCnBase = {
     subtitle: "通过邮件重置链接设置新密码",
     heroTag: "设置新密码，重获账号访问",
     heroDesc: "重置链接有效期内可设置新密码，成功后即可用新密码登录。",
-    notice:
-      "重置链接通过邮件发送，30 分钟内有效；设置新密码后旧密码立即失效。",
+    notice: "重置链接通过邮件发送，30 分钟内有效；设置新密码后旧密码立即失效。",
     confirmHint: "两次输入需保持一致",
     token: "重置令牌",
     newPassword: "新密码",
@@ -786,11 +788,13 @@ const zhCnBase = {
     bbCode: "代码 / MediaInfo",
     bbEmoji: "表情",
     success: "发布成功（#{id}），等待管理员审核",
-    sameSource: "发布成功，但检测到同源种子已存在（#{name} #{id}）——若为重复发布请撤回",
+    sameSource:
+      "发布成功，但检测到同源种子已存在（#{name} #{id}）——若为重复发布请撤回",
     groupCandidates: "发布成功；检测到同名聚合组，可到种子页将其归组",
     fail: "发布失败",
     networkError: "网络异常，请先登录后再发布",
-    noPermission: "发布失败：没有发布权限（403）。请确认账号具备发布资格，或稍后重试",
+    noPermission:
+      "发布失败：没有发布权限（403）。请确认账号具备发布资格，或稍后重试",
     submitFailStatus: "发布失败：服务端返回 {status}，请稍后重试或联系管理员",
   },
   home2: {
@@ -1369,7 +1373,8 @@ const zhCnBase = {
     subtitle: "linksmanage 口径：提交互换链接",
     headCount: "已收录 {n} 站",
     scopeTitle: "友情链接说明",
-    scopeBody: "仅接受资源站 / 社区站 / 开源项目互换链接；不收录影视聚合、广告与成人站点。审核周期约 3 个工作日。",
+    scopeBody:
+      "仅接受资源站 / 社区站 / 开源项目互换链接；不收录影视聚合、广告与成人站点。审核周期约 3 个工作日。",
     listTitle: "已收录站点",
     listEmpty: "还没有公示的友链",
     listEmptyHint: "管理组通过审核后会显示在这里。",
@@ -1424,7 +1429,8 @@ const zhCnBase = {
     eyebrow: "首页 / BT 客户端指南",
     sub: "推荐客户端 + 关键配置 + 私站纪律",
     title: "下载客户端指南",
-    intro: "在 {brand} 下载请使用下方推荐客户端。私有种子（private）场景下 DHT / PEX / 本地用户发现必须关闭——开着它们轻则数据不计，重则触发作弊判定。",
+    intro:
+      "在 {brand} 下载请使用下方推荐客户端。私有种子（private）场景下 DHT / PEX / 本地用户发现必须关闭——开着它们轻则数据不计，重则触发作弊判定。",
     recommended: "推荐",
     banned: "禁用",
     rulesTitle: "私站做种纪律",
@@ -1435,11 +1441,51 @@ const zhCnBase = {
       "更换客户端前先正常停止做种再迁移（异常退出会丢做种时长）",
     ],
     items: [
-      { name: "qBittorrent", ver: "4.6+ / 5.x", os: "Win / macOS / Linux", rec: true, banned: false, keys: ["工具 → 选项 → BitTorrent：会话关「启用 DHT」「启用 PEX」「本地用户发现」", "做种限制：队列上限按自身带宽设置，避免「满下不种」"] },
-      { name: "Transmission", ver: "4.x", os: "macOS / Linux", rec: true, banned: false, keys: ["设置 → 隐私：加密「首选」；私有种子自动禁用 DHT/PEX（无需手动）"] },
-      { name: "Deluge", ver: "2.x", os: "Win / Linux", rec: false, banned: false, keys: ["首选项 → Network：取消「DHT」「LSD」「PEX」三勾"] },
-      { name: "aria2", ver: "1.36+", os: "全平台（CLI）", rec: false, banned: false, keys: ["启动参数确认 --enable-dht=false；私站建议 GUI 客户端为主"] },
-      { name: "迅雷 Thunder", ver: "—", os: "—", rec: false, banned: true, keys: ["本站禁用：吸血客户端会被 Tracker 直接拒绝汇报"] },
+      {
+        name: "qBittorrent",
+        ver: "4.6+ / 5.x",
+        os: "Win / macOS / Linux",
+        rec: true,
+        banned: false,
+        keys: [
+          "工具 → 选项 → BitTorrent：会话关「启用 DHT」「启用 PEX」「本地用户发现」",
+          "做种限制：队列上限按自身带宽设置，避免「满下不种」",
+        ],
+      },
+      {
+        name: "Transmission",
+        ver: "4.x",
+        os: "macOS / Linux",
+        rec: true,
+        banned: false,
+        keys: [
+          "设置 → 隐私：加密「首选」；私有种子自动禁用 DHT/PEX（无需手动）",
+        ],
+      },
+      {
+        name: "Deluge",
+        ver: "2.x",
+        os: "Win / Linux",
+        rec: false,
+        banned: false,
+        keys: ["首选项 → Network：取消「DHT」「LSD」「PEX」三勾"],
+      },
+      {
+        name: "aria2",
+        ver: "1.36+",
+        os: "全平台（CLI）",
+        rec: false,
+        banned: false,
+        keys: ["启动参数确认 --enable-dht=false；私站建议 GUI 客户端为主"],
+      },
+      {
+        name: "迅雷 Thunder",
+        ver: "—",
+        os: "—",
+        rec: false,
+        banned: true,
+        keys: ["本站禁用：吸血客户端会被 Tracker 直接拒绝汇报"],
+      },
     ],
   },
   sessions: {
@@ -1482,7 +1528,8 @@ const zhCnBase = {
     empty: "还没有流水",
     emptyHint: "签到、做种结算、任务奖励都会记在这里。",
     noteTitle: "流水说明",
-    noteBody: "「类型」是系统记账口径；「摘要」尽量带出对象名，取不到时显示关联编号。同一笔动作可能出现多条（如悬赏的冻结与退还）。",
+    noteBody:
+      "「类型」是系统记账口径；「摘要」尽量带出对象名，取不到时显示关联编号。同一笔动作可能出现多条（如悬赏的冻结与退还）。",
     total: "共 {n} 条",
     noSummary: "—",
     dateFrom: "从",
@@ -1587,7 +1634,7 @@ const zhCnBase = {
     latestTitle: "最新回复",
     guideTitle: "新手必读",
     guideDesc: "读一读发帖礼仪与版块门槛，快速融入社区。",
-    guideCta: "查看站规",
+    guideCta: "发新主题",
     statTopics: "主题总数",
     statPosts: "回复总数",
     statToday: "今日新帖",
@@ -1651,7 +1698,7 @@ const zhCnBase = {
       tracker: "网站设定",
       forum: "论坛设定",
       security: "安全设定",
-      fields: "自定义字段",   // 2026-10-17 补：样图侧栏第 3 项
+      fields: "自定义字段", // 2026-10-17 补：样图侧栏第 3 项
       wishlist: "心愿单",
     } as Record<string, string>,
     overview: {
@@ -1759,7 +1806,8 @@ const zhCnBase = {
       titleVoucherNone: "当前没有可用解锁券",
       titleVoucherValid: "可用 {n} 张，最近一张 {date} 到期",
       titleSave: "保存头衔",
-      titleCost: "每次保存核销一张券（清空头衔同样消耗）；" +
+      titleCost:
+        "每次保存核销一张券（清空头衔同样消耗）；" +
         "已核销或已过期的券不能使用",
       titleBuy: "去商店购买",
       titleFailed: "保存失败，请重试",
@@ -1911,8 +1959,8 @@ const zhCnBase = {
       webauthnCancelErr: "浏览器取消了注册",
       webauthnNoPkErr: "浏览器不支持 getPublicKey()，请升级",
       webauthnErrNotAllowed:
-        "这台设备或浏览器没有可用的通行密钥（也可能验证被取消）。"
-        + "可以改用密码 + 两步验证。",
+        "这台设备或浏览器没有可用的通行密钥（也可能验证被取消）。" +
+        "可以改用密码 + 两步验证。",
       webauthnErrSecurity:
         "本站访问地址与 passkey 注册域不一致，请改用站点对外的域名再绑定。",
       webauthnErrTimeout: "等待安全钥匙响应超时，请重试或换一台设备。",
@@ -2201,12 +2249,15 @@ const zhCnBase = {
     favorited: "已收藏",
     sortHot: "热门",
     sortNew: "最新",
-    filterAll: "全部",
+    filterAll: "全部话题",
     filterSticky: "只看置顶",
     filterDigest: "只看精华",
     hot: "热",
     markPin: "置顶",
     markEss: "精华",
+    colTopic: "话题",
+    colLast: "最后回复",
+    authorMeta: "作者：",
     report: "举报",
     follow: "关注",
     following: "已关注",
@@ -3371,7 +3422,8 @@ const zhCnBase = {
     delFail: "删除失败",
     delPartial: "种子已删除，但下列处置未成功（可稍后补做）：",
     delGotIt: "知道了",
-    delOk: "确认删除",    nfoTitle: "NFO",
+    delOk: "确认删除",
+    nfoTitle: "NFO",
     nfoKeepHint: "留空＝保持原值；填入即整段覆盖原 NFO",
     fieldName: "名称",
     fieldSub: "副标题",
@@ -3893,7 +3945,8 @@ const zhCnBase = {
     amountHint: "正数增加 / 负数减少（下限 0）",
     kindSpark: "正加负减，单次 ±1,000,000",
     kindUploaded: "上传量 (GB)——正加负减，单次 ±10TB",
-    kindInvite: "邀请——正数增发 / 负数回收配额，单次 ±50；可填临时邀请天数直发 N 天码",
+    kindInvite:
+      "邀请——正数增发 / 负数回收配额，单次 ±50；可填临时邀请天数直发 N 天码",
     kindResub: "补签卡——入背包待用户使用，单次 1-50",
     kindMedal: "勋章——每人发 1 枚（source=admin，已拥有自动跳过）",
     kindItem: "道具——按道具类型生效：即时类直接到账，背包类入包；单次 1-50",
@@ -4273,14 +4326,10 @@ const zhCnBase = {
     title: "论坛管理",
     hint: "论坛结构：分区决定前台分组与顺序",
     noCategory: "未分组",
-    loadFailed:
-      "无法加载论坛结构数据：可能是缺少「论坛管理」权限（需 forums.manage），或接口暂时不可用。",
     reload: "重新加载",
     actionFailed: "操作失败，请重试",
-
-    // ---- 左栏：分区树 ----
     secLabel: "论坛分区",
-    catSub: "{b} 个版块 · {t} 主题",
+    countSuffix: "{n} 个",
     dragTip: "拖动可调整分区顺序",
     moveUp: "上移",
     moveDown: "下移",
@@ -4288,47 +4337,36 @@ const zhCnBase = {
     hiddenTip: "前台隐藏，点击显示",
     renameTip: "改名",
     delTip: "删除分区",
-    catNewBtn: "＋ 新建分区",
     newNamePh: "新分区名",
     createBtn: "新建",
+    previewBtn: "预览前台论坛",
     catRenamed: "分区已改名",
     catHidden: "分区已隐藏",
     catShown: "分区已显示",
     catDeleted: "分区已删除",
     catCreated: "分区已创建",
     orderSaved: "分区顺序已保存",
-    catDelNonEmpty:
-      "分区「{name}」下有 {n} 个版块，删除后这些版块会变为「未分组」（版块内容不受影响）。",
     catDelEmpty: "确定删除空分区「{name}」？",
     delConfirmTail: "继续删除该分区？",
-
-    // ---- 右栏：版块表 ----
-    catPanelTitle: "{name} 分区",
+    boardCount: "{n} 个版块",
     newBoardBtn: "＋ 在此分区新建版块",
     colBoard: "版块",
-    colDescr: "说明",
-    colStats: "主题 / 回复",
-    colStatus: "状态",
-    colOps: "操作",
-    statusOpen: "开放",
-    statusLimited: "限制",
-    sortBtn: "排序",
-    sortTip: "与下一个版块交换顺序",
-    boardSorted: "版块顺序已保存",
-    editBtn: "编辑",
-    delBtn: "删除",
-    boardEmpty:
-      "此分区还没有版块 —— 点右上「在此分区新建版块」添加，新建时归属会自动填成本分区。",
+    colGates: "门槛 读/回/发",
+    colProtect: "保护",
+    colTopics: "主题",
+    colMods: "版主",
     modRemoveTip: "移除版主",
     usernamePh: "用户名",
+    editBtn: "编辑",
+    delBtn: "删除",
     modAdded: "已任命 {name}",
     modRemoved: "已移除版主 {name}",
     boardDeleted: "版块已删除",
-    boardDelNonEmpty:
-      "版块「{name}」下有 {n} 个主题，删除会级联清空这些主题及其全部帖子，不可恢复。\n\n若只是想让前台不再显示，请改把所属分区设为隐藏。\n\n确认永久删除？",
     boardDelEmpty: "确定删除空版块「{name}」？",
-
-    // ---- 版块抽屉（新建/编辑）----
+    boardDelNonEmpty: "版块「{name}」还有 {n} 个主题，删除不可恢复，确定？",
+    boardEmpty: "该分区下还没有版块",
+    catDelNonEmpty: "分区下还有版块，先删空版块再删分区",
+    loadFailed: "加载失败，请刷新重试",
     close: "关闭",
     editTitle: "编辑版块",
     newTitle: "新建版块",
@@ -4347,16 +4385,28 @@ const zhCnBase = {
     fldSort: "分区内排序（越小越靠前）",
     fldProtect: "受保护版块",
     protectNote: "开启后，2 楼起的正文对普通用户隐藏（版主与管理可见）。",
-    fldMods: "版主",
-    modsNone: "暂无版主",
-    modAddBtn: "任命",
-    delBoardBtn: "删除版块",
     cancel: "取消",
     untouched: "尚未修改任何字段",
     saveBtn: "保存修改",
     boardCreateBtn: "创建版块",
     boardSaved: "版块已保存",
     boardCreated: "版块已创建",
+    catSub: "{b} 个版块 · {t} 主题",
+    catNewBtn: "＋ 新建分区",
+    catPanelTitle: "{name} 分区",
+    colDescr: "说明",
+    colStats: "主题 / 回复",
+    colStatus: "状态",
+    colOps: "操作",
+    statusOpen: "开放",
+    statusLimited: "限制",
+    sortBtn: "排序",
+    sortTip: "与下一个版块交换顺序",
+    boardSorted: "版块顺序已保存",
+    fldMods: "版主",
+    modsNone: "暂无版主",
+    modAddBtn: "任命",
+    delBoardBtn: "删除版块",
   },
   /** 导航菜单管理（nexusphp-menu 口径：全局开关 + 位置/树形/等级/排序 CRUD） */
   adminMenu: {
@@ -5285,7 +5335,8 @@ const zhCnBase = {
     imgPh: "https://…/frame.png（清空则移除）",
     // design-cov-exempt: 头像框 CSS 示例文案——教站长写什么格式的色值
     // （存库字段只收字面 hex/CSS，不接受 var()），非 UI 配色
-    cssHint: // design-cov-exempt
+    // design-cov-exempt
+    cssHint:
       "CSS 款示例色：春 #f4a7bb / 夏 #2fa878 / 秋 #d99419 / 冬 #8fc3e8；框图需透明底圆形素材。删除框会先自动摘下所有佩戴者。",
     thId: "ID",
     thPreview: "预览",
@@ -5340,8 +5391,7 @@ const zhCnBase = {
     vVoidNHint: "作废张数（1-50）",
     vVoid: "作废",
     vVoidBad: "作废张数需为 1-50 的整数",
-    vVoidConfirm:
-      "确认作废用户 {u} 的 {n} 张管理发放券？已核销的券不会被动。",
+    vVoidConfirm: "确认作废用户 {u} 的 {n} 张管理发放券？已核销的券不会被动。",
     vVoidDone: "已作废 {n} 张",
     vVoidFail: "作废失败",
     vThKind: "券种",
@@ -5635,7 +5685,8 @@ const zhCnBase = {
   /** H&R 后台总览（admin-hr） */
   adminClasses: {
     title: "等级规则",
-    intro: "成长档（1-12）在此设升降级阈值与晋升奖励；贵宾（20）与职务档（90+）没有规则行，只读列出。",
+    intro:
+      "成长档（1-12）在此设升降级阈值与晋升奖励；贵宾（20）与职务档（90+）没有规则行，只读列出。",
     loadFail: "加载失败",
     saveFail: "保存失败",
     savedMsg: "档位 {n} 已保存",
@@ -5650,7 +5701,8 @@ const zhCnBase = {
     thUsers: "当前人数",
     save: "保存",
     staffLocked: "只读（无升降级规则）",
-    sparksHint: "0 = 不发奖励；worker 每 60 秒按阈值判定升降级，跨档补发差额且幂等（同人同档不重复入账）",
+    sparksHint:
+      "0 = 不发奖励；worker 每 60 秒按阈值判定升降级，跨档补发差额且幂等（同人同档不重复入账）",
     demoteHint: "关闭后该档成员不会再被降回低档",
     upHint: "GB",
     preview: "预览影响",
@@ -6304,7 +6356,8 @@ const zhCnBase = {
     dateUnknown: "日期不详",
     appeal: "申诉",
     whyMasked: "公示只打码展示，避免二次伤害",
-    listNote: "名单反映当前状态：解除限制后即移出；期限栏取处置时登记的到期时间。详细理由只发给当事人（站内信 + 邮件），公示只到类别。",
+    listNote:
+      "名单反映当前状态：解除限制后即移出；期限栏取处置时登记的到期时间。详细理由只发给当事人（站内信 + 邮件），公示只到类别。",
     listEmpty: "当前没有处于限制中的账号",
     listEmptyHint: "这不等于本站从未封禁过——解封的账号不在名单里。",
     needLogin: "名单需登录后查看；未登录可先用上面的用户名查询。",
@@ -6312,18 +6365,36 @@ const zhCnBase = {
   rules: {
     eyebrow: "首页 / 站规",
     sub: "总则 + 账号/发布/做种规范 + 禁止行为 + 处罚分级",
-    loadFailed: "规则接口暂时不可达，下面是内置的默认站规文本；管理组后台改过的内容可能没同步。",
+    loadFailed:
+      "规则接口暂时不可达，下面是内置的默认站规文本；管理组后台改过的内容可能没同步。",
     penTitle: "处罚分级",
     penColLevel: "级别",
     penColAction: "措施",
     penColScope: "适用情形",
     penalties: [
-      { level: "警告", action: "提醒违规行为，记一次警告，3 个月内累计 3 次升为限速", scope: "轻微违规 / 首次 H&R" },
-      { level: "限速 7 天", action: "下载与上传速度受限，期间不可兑换邀请码", scope: "多次 H&R / 未达标分享率" },
-      { level: "封禁 7–30 天", action: "账号冻结，解封需提交申诉并保证不再犯", scope: "较严重违规 / 重复违规" },
-      { level: "永久封禁", action: "账号作废", scope: "作弊、多账号、攻击站点、公开邀请码" },
+      {
+        level: "警告",
+        action: "提醒违规行为，记一次警告，3 个月内累计 3 次升为限速",
+        scope: "轻微违规 / 首次 H&R",
+      },
+      {
+        level: "限速 7 天",
+        action: "下载与上传速度受限，期间不可兑换邀请码",
+        scope: "多次 H&R / 未达标分享率",
+      },
+      {
+        level: "封禁 7–30 天",
+        action: "账号冻结，解封需提交申诉并保证不再犯",
+        scope: "较严重违规 / 重复违规",
+      },
+      {
+        level: "永久封禁",
+        action: "账号作废",
+        scope: "作弊、多账号、攻击站点、公开邀请码",
+      },
     ],
-    appealHint: "对站规有疑问或被处罚，请提交申诉说明，管理组会在 72 小时内答复。",
+    appealHint:
+      "对站规有疑问或被处罚，请提交申诉说明，管理组会在 72 小时内答复。",
     appealLink: "违规申诉",
     banlogLink: "封禁公示名单",
     title: "站点规则",
@@ -6583,7 +6654,8 @@ const zhCnBase = {
     ddNote:
       "一次性删除全部 status=被禁 的账号（连同其业务数据）。操作不可恢复。",
     ddBtn: "删除被禁账号",
-    ddConfirm: "将按 id 从早到晚删除被禁账号，单次有上限，删完可再点；该操作不可恢复！",
+    ddConfirm:
+      "将按 id 从早到晚删除被禁账号，单次有上限，删完可再点；该操作不可恢复！",
     ddDone: "已删除 {n} 个被禁账号",
     ddLeft: "上次执行后剩余 {r} 个待删",
     ddRemain: "已删除 {d} 个，剩余 {r} 个仍为被禁（可再次执行）",
@@ -6638,8 +6710,7 @@ const zhCnBase = {
     rqCancel: "取消",
     rqImport: "批量导入",
     rqImportLabel: "题目 JSON 数组",
-    rqImportPh:
-      '[{"question":"…","options":["A","B"],"answer_index":0}]',
+    rqImportPh: '[{"question":"…","options":["A","B"],"answer_index":0}]',
     rqImportBtn: "导入",
     rqImported: "已导入 {added} 条（跳过 {skipped} · 非法 {invalid}）",
     rqBadJson: "JSON 格式不合法",
@@ -7112,8 +7183,7 @@ export const zhCN = {
     neverUsed: "未使用",
     plainOnce: "令牌明文仅此一次显示，请立即保存：",
     limit: "每人最多 3 枚有效令牌；用法 Authorization: Token fxo_…",
-    stepUpHint:
-      "签发需先复核本人凭证：密码必填，已开两步验证还要当前验证码。",
+    stepUpHint: "签发需先复核本人凭证：密码必填，已开两步验证还要当前验证码。",
   } as ApiTokensDict,
 
   /** 通知偏好（/me/notice-prefs，键与后端 0075 白名单一一对应） */
@@ -7417,7 +7487,8 @@ export const zhCN = {
     colSettled: "达标时间",
     badgeNewcomer: "新手考核",
     ruleTitle: "考核说明",
-    ruleBody: "考核期内按四维指标（下载量 / 上传量 / 做种数 / 考核分）判定，全部达标即通过；逾期未达标会影响发布与下载权限。",
+    ruleBody:
+      "考核期内按四维指标（下载量 / 上传量 / 做种数 / 考核分）判定，全部达标即通过；逾期未达标会影响发布与下载权限。",
     statePassed: "已达标",
     stateProgress: "进行中",
     statePending: "未开始",
