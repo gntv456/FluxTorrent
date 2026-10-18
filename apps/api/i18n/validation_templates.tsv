@@ -1,0 +1,15 @@
+﻿# 参数化校验模板表（D9 机制，2026-10-14 立项落地）。
+#
+# 三列 TAB 分隔：key → zh-CN 模板 → zh-TW → en；占位符 `{name}` 在响应期
+# 由 render_validation_key() 用 args 插值。与 validation_details.tsv 的
+# 分工：那表按「整句原句」查（静态字面量零改动直查），本表按 key 查
+# （带参句子无法整句查表——validation_i18n_guard 棘轮锁的就是这类）。
+#
+# 纪律：
+#   - Rust 侧 `DomainError::validation_key("key", &[("name", v)])` 的 key
+#     必须在本表（scripts/validation_i18n_guard.py 拦未知 key）；
+#   - 模板改动即改文案，无需动调用点；删 key 前先删调用点；
+#   - 迁移节奏：迁一处 `Validation(format!…)` 收缩一处棘轮（196 只降不升）。
+#
+# ── 已迁移（机制落地首批；后续按此模式渐进）──
+torrent.buy.insufficient	魔力不足：该种子为付费种子（{price} 魔力），请先充值或签到攒魔力	魔力不足：該種子為付費種子（{price} 魔力），請先儲值或簽到攢魔力	Insufficient spark: this torrent is paid ({price} spark); top up or earn via sign-in
