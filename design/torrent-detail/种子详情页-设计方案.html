@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>种子详情页 · 设计方案</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232fa8ff'/><path d='M7 12l3 3 7-7' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@600;700;900&display=swap">
+<style>
+/* ===== FluxTorrent Aurora 设计令牌（与站点 base.css 同源） ===== */
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff;
+  --sun:#ffc93c; --sun-soft:#fff4d6;
+  --coral:#ff7a59; --coral-soft:#ffe9e2;
+  --mint:#2fbf9b; --mint-soft:#dff7f0;
+  --candy:#ff8fc7; --candy-soft:#ffe9f4;
+  --indigo:#5b6bf5; --indigo-soft:#eaebff;
+  --grad-aurora:linear-gradient(135deg,#2fa8ff 0%,#5b6bf5 48%,#ff8fc7 100%);
+  --grad-rainbow:linear-gradient(90deg,#ffc93c,#ff7a59,#ff8fc7,#5b6bf5,#2fa8ff);
+  --page:#f5faff; --card:#fff; --cloud:#eef5fd; --raised:#fbfdff;
+  --text-strong:#1f2a44; --text-heading:#141d33; --text-body:#40506e;
+  --text-brand:#1e8ae8; --text-muted:#6b7a99; --text-faint:#8493ad; --text-fainter:#a3b1c6;
+  --line:#e3edf7; --line-deep:#bcd7ef;
+  --success:#167c63; --warning:#936800; --danger:#d60000;
+  --r-s:6px; --r-m:10px; --r-l:16px; --r-xl:22px;
+  --sh-sm:0 1px 2px rgba(31,42,68,.05);
+  --sh-md:0 4px 14px rgba(31,42,68,.07);
+  --sh-lg:0 12px 32px rgba(31,42,68,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Noto Sans SC',system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:var(--page);color:var(--text-body);line-height:1.65;
+  -webkit-font-smoothing:antialiased;font-size:14px;
+}
+.font-display{font-family:'Noto Serif SC',Georgia,serif}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ===== 版式容器 ===== */
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+.sec{padding:64px 0 72px;border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:none}
+.sec-head{margin-bottom:34px}
+.sec-no{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'Noto Serif SC',serif;font-size:13px;font-weight:700;color:var(--sky-deep);
+  letter-spacing:.18em;margin-bottom:12px;
+}
+.sec-no::before{content:"";width:26px;height:3px;border-radius:99px;background:var(--grad-aurora)}
+.sec-title{font-family:'Noto Serif SC',serif;font-size:28px;font-weight:900;color:var(--text-heading);line-height:1.3}
+.sec-sub{margin-top:10px;font-size:14px;color:var(--text-muted);max-width:720px}
+
+/* ===== 封面头 ===== */
+.cover{
+  background:var(--grad-aurora);color:#fff;
+  padding:72px 0 64px;position:relative;overflow:hidden;
+}
+.cover::after{
+  content:"";position:absolute;right:-80px;top:-80px;width:340px;height:340px;
+  border-radius:50%;background:rgba(255,255,255,.12);
+}
+.cover::before{
+  content:"";position:absolute;right:120px;bottom:-110px;width:220px;height:220px;
+  border-radius:50%;background:rgba(255,255,255,.08);
+}
+.cover .wrap{position:relative;z-index:1}
+.cover-kicker{font-size:12px;letter-spacing:.3em;opacity:.85;font-weight:500}
+.cover-title{font-family:'Noto Serif SC',serif;font-size:40px;font-weight:900;margin:14px 0 10px;line-height:1.25}
+.cover-sub{font-size:15px;opacity:.92;max-width:640px}
+.cover-meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+  padding:5px 14px;border-radius:999px;font-size:12px;font-weight:500;
+}
+.chip svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== 表格 ===== */
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;margin:20px 0 6px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;font-size:13px}
+.tbl th,.tbl td{padding:11px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.tbl th{background:var(--cloud);color:var(--text-heading);font-weight:700;font-size:12px;letter-spacing:.05em}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td b{color:var(--text-strong)}
+.tbl td.w30{width:30%}.tbl td.w40{width:40%}
+.tbl td.c{text-align:center}.tbl th.c{text-align:center}
+.tag-r{display:inline-block;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700}
+.tag-r0{background:var(--sky-soft);color:var(--sky-deep)}
+.tag-r1{background:var(--mint-soft);color:var(--success)}
+.tag-r2{background:var(--indigo-soft);color:var(--indigo)}
+.tag-r3{background:var(--sun-soft);color:var(--warning)}
+.tag-now{background:var(--coral-soft);color:var(--coral)}
+.tag-new{background:var(--candy-soft);color:var(--candy)}
+
+/* ===== 问题卡片 ===== */
+.issue-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:26px}
+.issue{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);
+  padding:20px 18px;box-shadow:var(--sh-sm);
+}
+.issue-ic{
+  width:38px;height:38px;border-radius:var(--r-m);display:grid;place-items:center;margin-bottom:12px;
+}
+.issue-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.issue h4{font-size:15px;font-weight:700;color:var(--text-heading);margin-bottom:6px}
+.issue p{font-size:12.5px;color:var(--text-muted)}
+
+/* ===== 分级 ===== */
+.level-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:26px}
+.level{
+  border-radius:var(--r-l);padding:22px 20px;border:1px solid var(--line);position:relative;
+}
+.level--l0{background:linear-gradient(170deg,var(--sky-soft),#fff)}
+.level--l1{background:var(--card)}
+.level--l2{background:var(--raised);box-shadow:var(--sh-sm)}
+.level-badge{
+  display:inline-block;font-family:'Noto Serif SC',serif;font-weight:900;font-size:11px;
+  padding:3px 10px;border-radius:6px;letter-spacing:.1em;margin-bottom:12px;
+}
+.level--l0 .level-badge{background:var(--sky-deep);color:#fff}
+.level--l1 .level-badge{background:var(--mint);color:#fff}
+.level--l2 .level-badge{background:var(--indigo);color:#fff}
+.level h4{font-size:15px;font-weight:700;color:var(--text-heading);margin-bottom:4px}
+.level .lv-desc{font-size:12px;color:var(--text-muted);margin-bottom:12px}
+.level ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.level li{font-size:12.5px;color:var(--text-body);display:flex;gap:8px;align-items:baseline}
+.level li::before{content:"—";color:var(--text-fainter);flex:none}
+
+/* ===== 线框 ===== */
+.frame{
+  background:#0f1b33;border-radius:var(--r-l);padding:26px;margin-top:26px;
+  color:#c9d6ec;font-size:12px;line-height:1.5;
+}
+.frame .f-title{font-family:'Noto Serif SC',serif;color:#fff;font-weight:700;font-size:13px;margin-bottom:16px;letter-spacing:.05em}
+.frame-grid{display:grid;grid-template-columns:1.9fr 1fr;gap:14px}
+.frame-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.frame .col,.frame .block{
+  border:1px dashed rgba(255,255,255,.25);border-radius:10px;padding:12px;
+  background:rgba(255,255,255,.04);
+}
+.frame .col-h{color:#9fb8d8;font-size:11px;letter-spacing:.15em;margin-bottom:10px;font-weight:500}
+.frame .bk{border-radius:7px;padding:8px 10px;margin-bottom:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+.frame .bk:last-child{margin-bottom:0}
+.frame .bk b{color:#fff;font-weight:600;display:block;margin-bottom:2px}
+.frame .bk span{color:#93a7c4;font-size:11px}
+.frame .bk--hot{border-color:var(--sun);background:rgba(255,201,60,.08)}
+.frame .bk--sky{border-color:var(--sky);background:rgba(47,168,255,.08)}
+.frame .bk--fold{border-color:var(--mint);background:rgba(47,191,155,.06)}
+.frame .bk--side{border-color:var(--indigo);background:rgba(91,107,245,.08)}
+.frame .bktag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:5px;margin-left:6px;letter-spacing:.08em;vertical-align:1px}
+.frame .bktag--l0{background:var(--sky-deep);color:#fff}
+.frame .bktag--l1{background:var(--mint);color:#fff}
+.frame .bktag--l2{background:var(--indigo);color:#fff}
+
+/* ===== 组件卡片 ===== */
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:26px}
+.comp{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);
+  overflow:hidden;box-shadow:var(--sh-sm);display:flex;flex-direction:column;
+}
+.comp-preview{padding:22px 20px;background:var(--cloud);border-bottom:1px solid var(--line);flex:none}
+.comp-body{padding:18px 20px;flex:1}
+.comp-body h4{font-size:15px;font-weight:700;color:var(--text-heading);margin-bottom:6px}
+.comp-body .cp-desc{font-size:12.5px;color:var(--text-muted);margin-bottom:12px}
+.comp-body ul{list-style:none;display:flex;flex-direction:column;gap:5px}
+.comp-body li{font-size:12px;color:var(--text-body);display:flex;gap:8px;align-items:baseline}
+.comp-body li::before{content:"·";color:var(--sky);font-weight:900;flex:none}
+
+/* ===== 组件预览 ===== */
+.hero-demo{display:flex;gap:16px;background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh-md)}
+.poster{width:74px;border-radius:10px;flex:none;background:linear-gradient(160deg,var(--sky),var(--indigo));position:relative;overflow:hidden}
+.poster::after{content:"课本";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+.hero-main{flex:1;min-width:0}
+.hero-name{font-size:14px;font-weight:700;color:var(--text-heading);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero-sub{font-size:11px;color:var(--text-muted);margin-top:3px}
+.hero-badges{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.hb{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px}
+.hb-sun{background:var(--sun-soft);color:var(--warning)}
+.hb-sky{background:var(--sky-soft);color:var(--sky-deep)}
+.hb-indigo{background:var(--indigo-soft);color:var(--indigo)}
+.hb-mint{background:var(--mint-soft);color:var(--success)}
+.hero-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn-demo{
+  display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  padding:7px 14px;border-radius:8px;cursor:default;
+}
+.btn-demo svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.btn-primary{background:var(--sky-deep);color:#fff;box-shadow:0 4px 10px rgba(30,138,232,.3)}
+.btn-gold{background:linear-gradient(135deg,var(--sun),#f0a832);color:#6b4a00;box-shadow:0 4px 10px rgba(255,201,60,.35)}
+.btn-ghost{background:#fff;color:var(--text-brand);box-shadow:inset 0 0 0 1px var(--line-deep)}
+
+.vitals-demo{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh-md)}
+.vitals-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.vit{text-align:center;padding:8px 4px;border-radius:10px;background:var(--cloud)}
+.vit b{font-size:18px;font-weight:900;color:var(--text-heading);display:block;line-height:1.2}
+.vit span{font-size:10px;color:var(--text-muted)}
+.vit--seed b{color:var(--success)}
+.vit--leech b{color:var(--coral)}
+.vit--done b{color:var(--indigo)}
+.vit--thanks b{color:var(--warning)}
+.health{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;border-radius:10px;background:var(--mint-soft);font-size:11px;font-weight:700;color:var(--success)}
+.health::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px rgba(22,124,99,.15)}
+.health--dead{background:var(--coral-soft);color:var(--coral)}
+.health--dead::before{background:var(--coral)}
+
+.chips-demo{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh-md);display:flex;flex-wrap:wrap;gap:8px}
+.cd{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:var(--cloud);color:var(--text-strong);border:1px solid var(--line)}
+.cd svg{width:13px;height:13px;fill:none;stroke:var(--sky-deep);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cd--hot{background:linear-gradient(135deg,var(--sun-soft),#fff);border-color:var(--sun);color:var(--warning)}
+.cd--hot svg{stroke:var(--warning)}
+
+.files-demo{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh-md)}
+.file-row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-radius:8px;font-size:12px}
+.file-row:nth-child(odd){background:var(--raised)}
+.file-row .f-ic{width:16px;height:16px;border-radius:4px;background:var(--sky-soft);display:grid;place-items:center;color:var(--sky-deep);flex:none;font-size:9px;font-weight:900}
+.file-row .f-nm{flex:1;min-width:0;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.file-row .f-sz{color:var(--text-faint);font-size:11px}
+.files-more{margin-top:8px;text-align:center;font-size:11px;font-weight:700;color:var(--sky-deep)}
+
+.meta-demo{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh-md)}
+.meta-row{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed var(--line)}
+.meta-row:last-child{border-bottom:none}
+.meta-row span{color:var(--text-muted)}
+.meta-row b{color:var(--text-strong);font-weight:600}
+
+.anchor-demo{background:#fff;border-radius:14px;padding:6px;box-shadow:var(--sh-md);display:flex;gap:4px;flex-wrap:wrap}
+.an{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;color:var(--text-muted)}
+.an--on{background:var(--sky-deep);color:#fff}
+.an--on2{background:var(--sky-soft);color:var(--sky-deep)}
+
+/* ===== 断点 ===== */
+.bp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:26px}
+.bp{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:20px;box-shadow:var(--sh-sm)}
+.bp-screen{
+  border:2px solid var(--line-deep);border-radius:8px;margin:0 auto 12px;position:relative;
+  background:var(--cloud);display:block;
+}
+.bp-screen--desk{width:100%;height:90px}
+.bp-screen--tab{width:74%;height:84px;border-radius:10px}
+.bp-screen--fold{width:62%;height:80px}
+.bp-screen--mob{width:42%;height:92px;border-radius:14px}
+.bp-screen .mini-title{position:absolute;top:10px;left:10px;right:10px;height:10px;border-radius:4px;background:var(--sky-deep);opacity:.5}
+.bp-screen .mini-line{position:absolute;left:10px;right:10px;height:6px;border-radius:3px;background:var(--line-deep)}
+.bp-screen .mini-main{position:absolute;top:30px;bottom:10px;left:10px;width:56%;border-radius:5px;background:#fff;border:1px solid var(--line)}
+.bp-screen .mini-side{position:absolute;top:30px;bottom:10px;right:10px;width:32%;border-radius:5px;background:var(--indigo-soft);border:1px solid var(--indigo);opacity:.55}
+.bp-screen .mini-dl{position:absolute;top:26px;bottom:10px;left:10px;right:10px;border-radius:5px;background:#fff;border:1px dashed var(--line-deep)}
+.bp h4{font-size:14px;font-weight:700;color:var(--text-heading);margin-bottom:4px}
+.bp .bp-px{font-size:11px;color:var(--sky-deep);font-weight:700;margin-bottom:8px}
+.bp ul{list-style:none;display:flex;flex-direction:column;gap:4px}
+.bp li{font-size:11.5px;color:var(--text-muted);display:flex;gap:6px}
+.bp li::before{content:"·";color:var(--sky);font-weight:900}
+
+/* ===== 映射表 ===== */
+.map-arrow{color:var(--sky-deep);font-weight:900}
+.note{
+  margin-top:18px;padding:12px 16px;border-radius:var(--r-m);
+  background:var(--sun-soft);border:1px solid #f0dca0;font-size:12.5px;color:var(--warning);
+}
+.note--sky{background:var(--sky-soft);border-color:var(--line-deep);color:var(--sky-deep)}
+.note b{font-weight:700}
+
+/* ===== 步骤 ===== */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:18px;box-shadow:var(--sh-sm);position:relative}
+.step-no{
+  width:28px;height:28px;border-radius:50%;background:var(--grad-aurora);color:#fff;
+  display:grid;place-items:center;font-weight:900;font-size:13px;margin-bottom:10px;
+}
+.step h4{font-size:13.5px;font-weight:700;color:var(--text-heading);margin-bottom:4px}
+.step p{font-size:11.5px;color:var(--text-muted)}
+
+/* ===== 页脚 ===== */
+.foot{padding:34px 0;text-align:center;color:var(--text-fainter);font-size:12px}
+
+/* ===== 响应式 ===== */
+@media(max-width:900px){
+  .issue-grid{grid-template-columns:1fr 1fr}
+  .level-row,.frame-grid{grid-template-columns:1fr}
+  .comp-grid{grid-template-columns:1fr}
+  .bp-grid{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:1fr 1fr}
+  .sec-title{font-size:23px}
+  .cover-title{font-size:31px}
+}
+@media(max-width:560px){
+  .issue-grid,.bp-grid,.steps{grid-template-columns:1fr}
+  .wrap{padding:0 18px}
+  .sec{padding:46px 0 52px}
+  .tbl{font-size:12px}
+  .tbl th,.tbl td{padding:9px 10px}
+  .frame{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 封面 ===== -->
+<header class="cover">
+  <div class="wrap">
+    <div class="cover-kicker">FLUXTORRENT · SEEDLIGHT 界面重塑系列</div>
+    <h1 class="cover-title">种子详情页 · 设计方案</h1>
+    <p class="cover-sub">从「17 个模块纵向平铺」到「决策一屏可见 · 信息双栏分层」——为教育垂直 PT 站重构资源详情页的信息架构与视觉呈现。</p>
+    <div class="cover-meta">
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>信息架构重组</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>桌面双栏 + 移动锚点</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 11h8M8 15h4"/></svg>多端断点适配</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg>开发落地映射</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== 1 现状诊断 ===== -->
+<section class="sec" id="s1">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第一章</div>
+      <h2 class="sec-title">现状诊断：为什么「太散」</h2>
+      <p class="sec-sub">详情页目前由 17 个模块按页面顺序纵向堆叠，每个模块信息完整但彼此孤立。散，不是内容缺，而是没有给信息分级、没有把导航性信息提到该在的位置。</p>
+    </div>
+
+    <table class="tbl">
+      <colgroup><col style="width:22%"><col style="width:48%"><col style="width:30%"></colgroup>
+      <tr><th>模块</th><th>承载内容</th><th>当前问题</th></tr>
+      <tr><td><b>1 面包屑</b></td><td>资源库 / 分类 / #ID</td><td>正常，但样式弱、无分类色</td></tr>
+      <tr><td><b>2 海报头</b></td><td>海报 + 名称 + 副题 + 徽章 + 标签 + 发布元信息</td><td>徽章与规格信息挤在头部，层级靠字号硬撑</td></tr>
+      <tr><td><b>3 状态卡</b></td><td>做种 / 下载 / 完成 / 感谢 / 健康度</td><td>位于头部右侧，窄屏被折叠成一行，数据被弱化</td></tr>
+      <tr><td><b>4 规格网格</b></td><td>大小 / 文件数 / 分类 / 维度 / 评分</td><td>紧贴头部之后，挤占「决策动线」位置</td></tr>
+      <tr><td><b>5-7 折叠块</b></td><td>简介 / MediaInfo / NFO</td><td>默认收起，用户不知道里面有什么</td></tr>
+      <tr><td><b>8 抓轨日志</b></td><td>碟片抓轨分数与问题</td><td>有则渲染，位置在简介之后，无固定语义位</td></tr>
+      <tr><td><b>9 当前在线</b></td><td>做种/下载者明细（脱敏）</td><td>埋在页面中段，需滚动多次才能看到</td></tr>
+      <tr><td><b>10 分组版本</b></td><td>同资源多版本切换</td><td>与头部割裂，用户可能没发现存在</td></tr>
+      <tr><td><b>11 试读试听</b></td><td>试读 / 试听预览</td><td>内容层的核心，但被折叠块淹没</td></tr>
+      <tr><td><b>12 合集</b></td><td>所属合集 / 系列</td><td>仅文字 sticker，无卡片聚合</td></tr>
+      <tr><td><b>13 文件列表</b></td><td>文件树（数量最多模块）</td><td><b>PT 用户最高频信息，被埋在页面 60% 位置</b></td></tr>
+      <tr><td><b>14 字幕</b></td><td>字幕面板</td><td>折叠块，入口弱</td></tr>
+      <tr><td><b>15 下载记录</b></td><td>SnatchList 下载用户</td><td>折叠块，社交佐证信息被弱化</td></tr>
+      <tr><td><b>16 感谢 / 评论</b></td><td>感谢者 + 评论区</td><td>交互核心，但在最底部</td></tr>
+      <tr><td><b>17 相关种子</b></td><td>相似资源推荐</td><td>页面最底，几乎无曝光</td></tr>
+    </table>
+
+    <div class="issue-grid">
+      <div class="issue">
+        <div class="issue-ic" style="background:var(--coral-soft);color:var(--coral)"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg></div>
+        <h4>信息没有分级</h4>
+        <p>做种人数、健康度、文件结构、相关种子……全部同权平铺。用户为「要不要下」做的每项决策，都要在长页面里重新找一遍。</p>
+      </div>
+      <div class="issue">
+        <div class="issue-ic" style="background:var(--sun-soft);color:var(--warning)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <h4>关键决策难找</h4>
+        <p>健康度、H&amp;R 义务、价格、文件格式这些「决策数据」散在头部、折叠块和页面中部，第一屏看不到完整决策信息。</p>
+      </div>
+      <div class="issue">
+        <div class="issue-ic" style="background:var(--indigo-soft);color:var(--indigo)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg></div>
+        <h4>文件结构太深</h4>
+        <p>PT 用户最高频查看的「里面有什么文件」，被放在第 13 位、需要滚过一半页面才看到，与决策动线割裂。</p>
+      </div>
+      <div class="issue">
+        <div class="issue-ic" style="background:var(--sky-soft);color:var(--sky-deep)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></div>
+        <h4>桌面宽屏浪费</h4>
+        <p>全文单栏约 900px，左右留白；评论、相关种子、文件列表等天然适合侧栏的信息被纵向拉长。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2 设计目标 ===== -->
+<section class="sec" id="s2">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第二章</div>
+      <h2 class="sec-title">设计目标与原则</h2>
+    </div>
+
+    <div class="level-row">
+      <div class="level level--l0">
+        <span class="level-badge">L0 · 决策层</span>
+        <h4>一屏完成决策</h4>
+        <p class="lv-desc">用户进入详情页后，不滚动即可判断「值不值得下」</p>
+        <ul>
+          <li>海报 + 标题 + 副题 + 关键徽章</li>
+          <li>做种 / 下载 / 健康度大数字</li>
+          <li>核心规格（大小 / 文件数 / 格式）</li>
+          <li>下载 / 收藏 / 分享操作常驻</li>
+        </ul>
+      </div>
+      <div class="level level--l1">
+        <span class="level-badge">L1 · 内容层</span>
+        <h4>阅读与了解</h4>
+        <p class="lv-desc">想深入了解资源的用户，在这里读完内容</p>
+        <ul>
+          <li>简介（课程大纲 / 适用对象）</li>
+          <li>试读 / 试听预览</li>
+          <li>MediaInfo / NFO / 抓轨日志（折叠）</li>
+          <li>感谢者与评论区</li>
+        </ul>
+      </div>
+      <div class="level level--l2">
+        <span class="level-badge">L2 · 导航层</span>
+        <h4>延伸与佐证</h4>
+        <p class="lv-desc">横向跳转：看文件、看相关、看同系列</p>
+        <ul>
+          <li>文件结构（桌面常驻侧栏）</li>
+          <li>合集 / 字幕 / 下载记录入口</li>
+          <li>相关种子推荐</li>
+          <li>分组版本切换</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:26px">设计原则：<b>决策先于阅读、导航跟随内容、窄屏折叠不丢弃</b>——移动端不删模块，只改变呈现层级（折叠 / 锚点 / 常驻）。</div>
+  </div>
+</section>
+
+<!-- ===== 3 信息架构重组 ===== -->
+<section class="sec" id="s3">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第三章</div>
+      <h2 class="sec-title">信息架构重组</h2>
+      <p class="sec-sub">把 17 个模块按「决策 → 内容 → 导航」三级重新归位。桌面端拆成主栏 + 常驻侧栏，移动端拆成头部 + 折叠卡 + 锚点条，任何端都不丢模块。</p>
+    </div>
+
+    <table class="tbl">
+      <colgroup><col style="width:26%"><col style="width:44%"><col style="width:30%"></colgroup>
+      <tr><th>模块</th><th>重组后位置</th><th>归属层级</th></tr>
+      <tr>
+        <td><b>海报头</b>（海报 / 标题 / 副题 / 徽章 / 标签 / 发布信息）</td>
+        <td>桌面：主栏头部卡 td-hero；移动：顶部精简卡</td>
+        <td><span class="tag-r tag-r0">L0 决策</span></td>
+      </tr>
+      <tr>
+        <td><b>状态卡</b>（做种 / 下载 / 完成 / 感谢 / 健康度）</td>
+        <td>桌面：右侧栏顶部 td-vitals（大数字 + 健康度）；移动：头部下方横滑卡</td>
+        <td><span class="tag-r tag-r0">L0 决策</span></td>
+      </tr>
+      <tr>
+        <td><b>操作区</b>（下载 / 收藏 / 分享 / 补种 / 管理）</td>
+        <td>桌面：hero 内主操作 + 侧栏副操作；移动：底部固定操作条</td>
+        <td><span class="tag-r tag-r0">L0 决策</span></td>
+      </tr>
+      <tr>
+        <td><b>规格网格</b>（大小 / 文件数 / 分类 / 维度 / 评分）</td>
+        <td>桌面：hero 下方规格徽章条（td-chip-row）；移动：横向滚动徽章</td>
+        <td><span class="tag-r tag-r0">L0 决策</span></td>
+      </tr>
+      <tr>
+        <td><b>简介</b></td>
+        <td>桌面 / 移动：主栏第一位内容块，默认展开</td>
+        <td><span class="tag-r tag-r1">L1 内容</span></td>
+      </tr>
+      <tr>
+        <td><b>试读 / 试听</b></td>
+        <td>主栏第二位，有预览则显示预览条</td>
+        <td><span class="tag-r tag-r1">L1 内容</span></td>
+      </tr>
+      <tr>
+        <td><b>MediaInfo / NFO / 抓轨日志</b></td>
+        <td>主栏折叠组，带「有无内容」角标</td>
+        <td><span class="tag-r tag-r1">L1 内容</span></td>
+      </tr>
+      <tr>
+        <td><b>感谢者 / 评论</b></td>
+        <td>主栏底部，感谢条 + 评论区</td>
+        <td><span class="tag-r tag-r1">L1 内容</span></td>
+      </tr>
+      <tr>
+        <td><b>文件列表</b></td>
+        <td>桌面：右侧栏中段 td-files 卡（前 5 行 + 展开）；移动：锚点跳转的折叠卡</td>
+        <td><span class="tag-r tag-r2">L2 导航</span></td>
+      </tr>
+      <tr>
+        <td><b>元信息</b>（发布者 / 时间 / 分类 / 合集 / 分组版本）</td>
+        <td>桌面：右侧栏 td-meta 卡聚合；移动：头部徽章 + 折叠卡</td>
+        <td><span class="tag-r tag-r2">L2 导航</span></td>
+      </tr>
+      <tr>
+        <td><b>当前在线</b></td>
+        <td>桌面：侧栏折叠卡；移动：锚点折叠卡</td>
+        <td><span class="tag-r tag-r2">L2 导航</span></td>
+      </tr>
+      <tr>
+        <td><b>字幕 / 下载记录</b></td>
+        <td>侧栏入口卡（含计数徽标）；移动：锚点折叠卡</td>
+        <td><span class="tag-r tag-r2">L2 导航</span></td>
+      </tr>
+      <tr>
+        <td><b>相关种子</b></td>
+        <td>桌面：侧栏底部卡；移动：页面底部横滑卡</td>
+        <td><span class="tag-r tag-r2">L2 导航</span></td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 4 桌面双栏布局 ===== -->
+<section class="sec" id="s4">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第四章</div>
+      <h2 class="sec-title">桌面端 · 双栏布局（≥1024px）</h2>
+      <p class="sec-sub">左主栏承载决策 + 内容，右侧 320px 信息栏 sticky 常驻：状态、文件、元信息、相关种子一屏可达。这是「散」的直接解法——把导航性信息从长页面里提出来钉在侧栏。</p>
+    </div>
+
+    <div class="frame">
+      <div class="f-title">桌面 1440px 线框 · 左主栏 1.9 : 右信息栏 1</div>
+      <div class="frame-grid">
+        <div>
+          <div class="bk bk--hot"><b>td-hero 头部卡 <span class="bktag bktag--l0">L0</span></b><span>海报 · 标题 · 副题 · 徽章 · 标签 · 发布信息 · 主操作（下载/收藏/分享）</span></div>
+          <div class="bk bk--hot"><b>td-chip-row 规格徽章条 <span class="bktag bktag--l0">L0</span></b><span>大小 · 文件数 · 格式 · 分辨率 · 时长 · 评分（横向徽章）</span></div>
+          <div class="bk bk--fold"><b>td-descr 简介（默认展开）<span class="bktag bktag--l1">L1</span></b><span>课程大纲 · 适用对象 · 更新说明</span></div>
+          <div class="bk bk--fold"><b>td-previews 试读 / 试听 <span class="bktag bktag--l1">L1</span></b><span>有预览则显示试读条</span></div>
+          <div class="bk bk--fold"><b>折叠组：MediaInfo / NFO / 抓轨日志 <span class="bktag bktag--l1">L1</span></b><span>统一折叠样式 · 带内容角标</span></div>
+          <div class="bk"><b>td-thanks / td-comments 感谢与评论 <span class="bktag bktag--l1">L1</span></b><span>感谢者条 + 评论区</span></div>
+        </div>
+        <div>
+          <div class="col">
+            <div class="col-h">右侧 320px · sticky 信息栏</div>
+            <div class="bk bk--side"><b>td-vitals 状态卡 <span class="bktag bktag--l0">L0</span></b><span>做种 · 下载 · 完成 · 感谢 · 健康度</span></div>
+            <div class="bk bk--side"><b>td-files 文件结构 <span class="bktag bktag--l2">L2</span></b><span>前 5 行 + 查看全部 N 个文件</span></div>
+            <div class="bk bk--side"><b>td-meta 元信息卡 <span class="bktag bktag--l2">L2</span></b><span>发布者 · 时间 · 分类 · 合集 · 分组</span></div>
+            <div class="bk bk--side"><b>在线 / 字幕 / 下载记录入口 <span class="bktag bktag--l2">L2</span></b><span>带计数徽标</span></div>
+            <div class="bk bk--side"><b>td-related 相关种子 <span class="bktag bktag--l2">L2</span></b><span>同分类 / 同系列推荐</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="tbl" style="margin-top:26px">
+      <colgroup><col style="width:34%"><col style="width:66%"></colgroup>
+      <tr><th>布局决策</th><th>理由</th></tr>
+      <tr><td><b>右栏 sticky（top: 72px）</b></td><td>状态 / 文件 / 相关种子在滚动全程可达，决策信息不再「滚丢」</td></tr>
+      <tr><td><b>文件列表提升到侧栏</b></td><td>PT 用户「看文件 → 决定下」是主决策路径，从第 13 位提前到第一屏</td></tr>
+      <tr><td><b>规格从网格改为徽章条</b></td><td>网格 6-8 格占满一整行太占地；徽章条可横向折行，一屏装下全部决策规格</td></tr>
+      <tr><td><b>折叠块统一样式 + 内容角标</b></td><td>用户未点开也知道「这里有 MediaInfo / 有 NFO」，减少盲猜</td></tr>
+      <tr><td><b>主操作在 hero、副操作在侧栏</b></td><td>下载 / 收藏常驻视觉层；补种 / 分享 / 管理下沉侧栏不抢主操作</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 5 移动端 ===== -->
+<section class="sec" id="s5">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第五章</div>
+      <h2 class="sec-title">移动端 · 锚点 + 折叠（&lt;768px）</h2>
+      <p class="sec-sub">窄屏不删模块，靠三层手段收敛：头部精简为「信息 + 操作」；规格变横滑徽章；内容块变锚点跳转的折叠卡。</p>
+    </div>
+
+    <div class="frame">
+      <div class="f-title">移动 390px 线框 · 纵向：头部 → 锚点条 → 折叠内容卡</div>
+      <div class="frame-grid cols3">
+        <div>
+          <div class="bk bk--hot"><b>td-hero 精简头</b><span>海报小卡 · 标题 · 副题 · 徽章</span></div>
+          <div class="bk bk--hot"><b>td-chip-row 横滑</b><span>规格徽章横向滚动</span></div>
+          <div class="bk bk--side"><b>td-vitals 横滑卡</b><span>做种/下载/完成/健康度 2×2</span></div>
+        </div>
+        <div>
+          <div class="bk bk--sky"><b>td-anchor 锚点条（sticky）</b><span>简介 · 文件 · 字幕 · 评论 横向 Tab</span></div>
+          <div class="bk bk--fold"><b>折叠内容卡 1</b><span>简介（默认展开）</span></div>
+          <div class="bk bk--fold"><b>折叠内容卡 2</b><span>试读试听</span></div>
+          <div class="bk bk--fold"><b>折叠内容卡 3</b><span>MediaInfo / NFO / 日志</span></div>
+        </div>
+        <div>
+          <div class="bk bk--fold"><b>折叠内容卡 4</b><span>文件列表</span></div>
+          <div class="bk bk--fold"><b>折叠内容卡 5</b><span>字幕 / 下载记录 / 在线</span></div>
+          <div class="bk bk--fold"><b>折叠内容卡 6</b><span>感谢 / 评论</span></div>
+          <div class="bk bk--side"><b>td-related 横滑</b><span>相关种子卡片横滑</span></div>
+          <div class="bk bk--hot"><b>底部固定操作条</b><span>收藏 · 复制链接 · 下载</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:26px">移动端关键差异：<b>锚点条 sticky 吸顶</b>（滚动时始终可达简介/文件/字幕/评论），替代桌面侧栏的角色；<b>底部操作条已有现成组件</b>（TorrentActionBarMount），保留并视觉升级。</div>
+  </div>
+</section>
+
+<!-- ===== 6 组件规范 ===== -->
+<section class="sec" id="s6">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第六章</div>
+      <h2 class="sec-title">组件规范</h2>
+      <p class="sec-sub">八个核心组件，全部沿用站点 Aurora 设计令牌（不新增色值），在 base.css 的 td-* 基础上做视觉升级与布局重组。</p>
+    </div>
+
+    <div class="comp-grid">
+      <div class="comp">
+        <div class="comp-preview">
+          <div class="hero-demo">
+            <div class="poster"></div>
+            <div class="hero-main">
+              <div class="hero-name">2026 高考数学一轮复习 · 导数与函数专题</div>
+              <div class="hero-sub">高中 · 数学 · 人教版 · 42 讲</div>
+              <div class="hero-badges">
+                <span class="hb hb-sun">热榜</span>
+                <span class="hb hb-sky">2× 促销</span>
+                <span class="hb hb-indigo">官方</span>
+                <span class="hb hb-mint">免费</span>
+              </div>
+              <div class="hero-actions">
+                <span class="btn-demo btn-primary"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>免费下载</span>
+                <span class="btn-demo btn-gold"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>已收藏</span>
+                <span class="btn-demo btn-ghost"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>分享</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-hero 头部卡</h4>
+          <p class="cp-desc">桌面横排：左海报（2:3）→ 右信息。徽章统一 6px 圆角小标；主操作（下载/收藏）常驻首行。</p>
+          <ul><li>海报 hover 放大 + 分类色描边</li><li>标签行沿用 TorrentTags 原组件</li><li>H&amp;R 义务明示保留，改彩色提示条</li></ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-preview">
+          <div class="vitals-demo">
+            <div class="vitals-grid">
+              <div class="vit vit--seed"><b class="num">128</b><span>做种</span></div>
+              <div class="vit vit--leech"><b class="num">35</b><span>下载</span></div>
+              <div class="vit vit--done"><b class="num">2,431</b><span>完成</span></div>
+              <div class="vit vit--thanks"><b class="num">86</b><span>感谢</span></div>
+            </div>
+            <div class="health">种子健康 · 做种充足</div>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-vitals 状态卡</h4>
+          <p class="cp-desc">桌面侧栏 2×2 大数字网格 + 健康度横幅；移动端横滑。</p>
+          <ul><li>做种=0 时健康度变「死种 · 求补」红色态</li><li>数字用 tabular-nums 防跳动</li><li>点击做种数跳转 td-peers 明细</li></ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-preview">
+          <div class="chips-demo">
+            <span class="cd"><svg viewBox="0 0 24 24"><path d="M4 7l4-4 4 4-4 4-4-4z"/><path d="M4 7h12"/></svg>8.4 GB</span>
+            <span class="cd"><svg viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg>47 文件</span>
+            <span class="cd cd--hot"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 11h8M8 15h4"/></svg>1080P</span>
+            <span class="cd"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="3"/></svg>MP4+PDF</span>
+            <span class="cd"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>42 讲</span>
+            <span class="cd"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.9-5 4.8 1.2 6.8-6-3.4-6 3.4 1.2-6.8-5-4.8 6.9-.9L12 2z"/></svg>9.4 分</span>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-chip-row 规格徽章条</h4>
+          <p class="cp-desc">替代旧三列规格网格：图标 + 文本徽章，flex 折行或横滑。</p>
+          <ul><li>促销类徽章（免费/2×）用金色强调</li><li>维度规格（学段/科目/版本）并入此条</li><li>保留原生 &lt;Spec&gt; 组件，仅换容器样式</li></ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-preview">
+          <div class="files-demo">
+            <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">01_导数的概念与几何意义.mp4</span><span class="f-sz">482 MB</span></div>
+            <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">02_导数的运算法则（上）.mp4</span><span class="f-sz">518 MB</span></div>
+            <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">03_导数的运算法则（下）.mp4</span><span class="f-sz">495 MB</span></div>
+            <div class="file-row"><span class="f-ic">PDF</span><span class="f-nm">配套讲义 · 导数专题.pdf</span><span class="f-sz">24 MB</span></div>
+            <div class="file-row"><span class="f-ic">PDF</span><span class="f-nm">课后练习 · 含答案解析.pdf</span><span class="f-sz">18 MB</span></div>
+            <div class="files-more">查看全部 47 个文件 ›</div>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-files 文件结构卡</h4>
+          <p class="cp-desc">侧栏常驻：前 5 行（斑马纹）+「查看全部 N 个文件」跳转折叠块。</p>
+          <ul><li>文件类型小图标（MP4/PDF/EPUB）用色块</li><li>行 hover 高亮；点击定位到完整文件树</li><li>文件名截断省略，大小右对齐</li></ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-preview">
+          <div class="meta-demo">
+            <div class="meta-row"><span>发布者</span><b>教研组 · 李明</b></div>
+            <div class="meta-row"><span>发布于</span><b>3 天前 · 2026-10-12</b></div>
+            <div class="meta-row"><span>分类</span><b>高中 / 数学</b></div>
+            <div class="meta-row"><span>最后活动</span><b>2 小时前</b></div>
+            <div class="meta-row"><span>所属合集</span><b>2026 高考一轮系列 · 3 个</b></div>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-meta 元信息卡</h4>
+          <p class="cp-desc">聚合发布者/时间/分类/最后活动/合集，桌面侧栏常驻，替代头部散落的 meta 行。</p>
+          <ul><li>合集以彩色 sticker 内嵌，跳转合集页</li><li>发布者链接个人页（尊重匿名设置）</li><li>完整时间放 title 悬浮提示</li></ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-preview">
+          <div class="anchor-demo">
+            <span class="an an--on">简介</span>
+            <span class="an an--on2">试读</span>
+            <span class="an an--on2">文件 · 47</span>
+            <span class="an an--on2">字幕</span>
+            <span class="an an--on2">评论 · 12</span>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-anchor 锚点导航</h4>
+          <p class="cp-desc">移动端 sticky 吸顶的横向 Tab，滚动时始终可达关键区块；带内容计数徽标。</p>
+          <ul><li>仅移动端显示（&lt;768px）</li><li>当前区块高亮为蓝色实底</li><li>点击平滑滚动至对应折叠卡</li></ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-preview">
+          <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh-md)">
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <span style="font-size:12px;font-weight:700;color:var(--text-heading)">相关种子</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--sky-deep);font-weight:600">同分类 ›</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;gap:8px;align-items:center">
+                <div style="width:34px;height:46px;border-radius:6px;background:linear-gradient(160deg,var(--mint),#1f9a7e);flex:none"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:11.5px;font-weight:600;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">2026 高考数学 · 圆锥曲线专题</div>
+                  <div style="font-size:10px;color:var(--text-muted)">5.1 GB · 128 做种</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <div style="width:34px;height:46px;border-radius:6px;background:linear-gradient(160deg,var(--candy),#ff5fa8);flex:none"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:11.5px;font-weight:600;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">2026 高考数学 · 数列与不等式专题</div>
+                  <div style="font-size:10px;color:var(--text-muted)">6.2 GB · 96 做种</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-related 相关种子卡</h4>
+          <p class="cp-desc">侧栏竖排迷你卡（海报缩略 + 标题 + 大小/做种数）；移动端横滑。</p>
+          <ul><li>复用现有 TorrentRelated 数据接口</li><li>同系列种子优先排序</li><li>移动端卡片 3:4 缩略图横滑</li></ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-preview">
+          <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh-md)">
+            <div style="font-size:12px;font-weight:700;color:var(--text-heading);margin-bottom:10px">评论区 <span style="color:var(--text-fainter);font-weight:500">· 12 条</span></div>
+            <div style="display:flex;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--indigo-soft);color:var(--indigo);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none">王</div>
+              <div style="flex:1">
+                <div style="font-size:11px;font-weight:600;color:var(--text-strong)">数学课代表 · 2 小时前</div>
+                <div style="font-size:11.5px;color:var(--text-body);margin-top:2px">导数专题讲得很细，第 12 讲构造函数法推荐搭配讲义一起看。</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--mint-soft);color:var(--success);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none">L</div>
+              <div style="flex:1">
+                <div style="font-size:11px;font-weight:600;color:var(--text-strong)">Lyra · 昨天</div>
+                <div style="font-size:11.5px;color:var(--text-body);margin-top:2px">已下载，字幕和讲义都在，感谢分享！</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comp-body">
+          <h4>td-comments 评论区</h4>
+          <p class="cp-desc">沿用现有评论区逻辑，桌面主栏底部两栏；头像首字圆形色块。</p>
+          <ul><li>感谢者条独立成「已感谢 x 人」小条</li><li>评论区支持点赞/回复（沿用现状）</li><li>主栏底部 + 侧栏相关种子，双收尾</li></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7 视觉与断点 ===== -->
+<section class="sec" id="s7">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第七章</div>
+      <h2 class="sec-title">视觉规范与多端断点</h2>
+      <p class="sec-sub">全部沿用站点 Aurora 令牌：品牌主色 sky 蓝、阳光金促销强调、多彩分类色。详情页新增的仅是「布局容器」与「组件形态」，零新增色值。</p>
+    </div>
+
+    <table class="tbl">
+      <colgroup><col style="width:22%"><col style="width:38%"><col style="width:40%"></colgroup>
+      <tr><th>令牌</th><th>用途</th><th>取值（与站点一致）</th></tr>
+      <tr><td><b>--sky / --sky-deep</b></td><td>品牌主色：主操作、锚点高亮、激活态</td><td><span style="color:var(--sky-deep);font-weight:700">#2fa8ff / #1e8ae8</span></td></tr>
+      <tr><td><b>--sun</b></td><td>促销 / 免费 / 热榜徽章</td><td><span style="color:#c47f00;font-weight:700">#ffc93c</span></td></tr>
+      <tr><td><b>--mint / --indigo / --coral / --candy</b></td><td>状态数字、分类色、健康度、评论头像</td><td>多彩语义色（复用现有）</td></tr>
+      <tr><td><b>--surface-page / --card</b></td><td>页面底 / 卡片面</td><td>#f5faff / #ffffff</td></tr>
+      <tr><td><b>--grad-aurora</b></td><td>hero 分类色渐变底、进度条、按钮</td><td>135° #2fa8ff → #5b6bf5 → #ff8fc7</td></tr>
+      <tr><td><b>--r-s/m/l</b></td><td>圆角体系：徽章 6px / 卡片 10-16px</td><td>6 / 10 / 16 px</td></tr>
+      <tr><td><b>--sh-md</b></td><td>卡片投影：0 4px 14px rgba(31,42,68,.07)</td><td>柔和蓝灰投影</td></tr>
+    </table>
+
+    <div class="bp-grid">
+      <div class="bp">
+        <span class="bp-screen bp-screen--desk"><span class="mini-title"></span><span class="mini-main"></span><span class="mini-side"></span></span>
+        <h4>桌面 ≥1024px</h4>
+        <div class="bp-px">双栏 1.9 : 1 · 右栏 320px sticky</div>
+        <ul>
+          <li>主栏：hero + 规格条 + 内容 + 评论</li>
+          <li>侧栏：状态 / 文件 / 元信息 / 相关</li>
+          <li>折叠块带内容角标</li>
+        </ul>
+      </div>
+      <div class="bp">
+        <span class="bp-screen bp-screen--tab"><span class="mini-title"></span><span class="mini-main"></span><span class="mini-side"></span></span>
+        <h4>平板 768-1024px</h4>
+        <div class="bp-px">双栏压缩 1.6 : 1 · 侧栏 260px</div>
+        <ul>
+          <li>保持双栏但侧栏收窄</li>
+          <li>文件卡只显前 3 行</li>
+          <li>规格徽章条自动折行</li>
+        </ul>
+      </div>
+      <div class="bp">
+        <span class="bp-screen bp-screen--fold"><span class="mini-title"></span><span class="mini-main"></span><span class="mini-side"></span></span>
+        <h4>折叠屏 680-880px</h4>
+        <div class="bp-px">双栏临界态 · 可折叠为单栏</div>
+        <ul>
+          <li>外屏 680px：锚点条启用</li>
+          <li>展开 880px：侧栏回归</li>
+          <li>sticky 侧栏计算折痕高度</li>
+        </ul>
+      </div>
+      <div class="bp">
+        <span class="bp-screen bp-screen--mob"><span class="mini-title"></span><span class="mini-dl"></span></span>
+        <h4>手机 &lt;680px</h4>
+        <div class="bp-px">单栏 · 锚点吸顶 · 底部操作条</div>
+        <ul>
+          <li>hero 精简卡 + 横滑规格</li>
+          <li>锚点条：简介/文件/字幕/评论</li>
+          <li>折叠卡 + 底部固定操作条</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 8 开发落地映射 ===== -->
+<section class="sec" id="s8">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第八章</div>
+      <h2 class="sec-title">开发落地映射</h2>
+      <p class="sec-sub">在不重写数据层的前提下，通过「样式覆盖 + 少量布局重排」落地。现有组件与 API 全部复用，只动结构。</p>
+    </div>
+
+    <table class="tbl">
+      <colgroup><col style="width:34%"><col style="width:30%"><col style="width:36%"></colgroup>
+      <tr><th>现有模块</th><th>新结构</th><th>落地方式</th></tr>
+      <tr><td>page.tsx 纵向渲染 17 块</td><td class="map-arrow">→ 主栏 + 侧栏两个容器</td><td>page.tsx 局部重排：右栏块移入 &lt;aside&gt;；CSS Grid 双栏</td></tr>
+      <tr><td>.td-head（海报头）</td><td class="map-arrow">→ td-hero</td><td>保留结构，样式升级：卡片化 + 主操作突出</td></tr>
+      <tr><td>.td-stats（状态卡）</td><td class="map-arrow">→ td-vitals</td><td>改为 2×2 大数字网格 + 健康度横幅</td></tr>
+      <tr><td>.td-specs（规格网格）</td><td class="map-arrow">→ td-chip-row</td><td>网格 → 徽章条，保留 &lt;Spec&gt; 组件换容器</td></tr>
+      <tr><td>.td-fold / FoldMobile（折叠块）</td><td class="map-arrow">→ 统一样式折叠组</td><td>加内容角标（有无 MediaInfo/NFO）；统一 chevron</td></tr>
+      <tr><td>文件列表 Fold（页面中部）</td><td class="map-arrow">→ td-files 侧栏卡 + 完整折叠</td><td>侧栏卡渲染前 5 行；点「全部」展开页面内折叠块</td></tr>
+      <tr><td>头部 meta 行 / 合集 sticker</td><td class="map-arrow">→ td-meta 侧栏卡</td><td>聚合到侧栏；合集 sticker 内嵌卡片</td></tr>
+      <tr><td>相关种子（页面底）</td><td class="map-arrow">→ td-related 侧栏卡</td><td>移动到侧栏底部；移动端横滑</td></tr>
+      <tr><td>TorrentActionBarMount</td><td class="map-arrow">→ 保留（移动端）</td><td>视觉升级：蓝金渐变 + 图标</td></tr>
+    </table>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-no">1</div>
+        <h4>布局容器</h4>
+        <p>page.tsx 增加 .td-layout 双栏 Grid；右栏 aside 聚合状态/文件/元信息/相关</p>
+      </div>
+      <div class="step">
+        <div class="step-no">2</div>
+        <h4>视觉升级</h4>
+        <p>base.css 追加 td-* 新样式（chip 条 / vitals 网格 / meta 卡 / anchor 条）</p>
+      </div>
+      <div class="step">
+        <div class="step-no">3</div>
+        <h4>移动锚点</h4>
+        <p>新增 td-anchor 组件（&lt;768px 渲染），scroll-margin-top 对齐 sticky 条</p>
+      </div>
+      <div class="step">
+        <div class="step-no">4</div>
+        <h4>回归验证</h4>
+        <p>TypeScript 检查 + 四断点截图比对；折叠块角标逻辑单测</p>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:26px"><b>风险与边界</b>：① 侧栏 sticky 需给右侧容器独立滚动上下文（建议 top: 72px 固定）；② 文件列表「前 5 行」取数仍走现有 /aggregate 全量，无新增接口；③ 折叠屏 680px 双栏临界态需实测折痕；④ H&amp;R 提示与下载按钮必须保持首屏可见，不得收进折叠。</div>
+  </div>
+</section>
+
+<footer class="foot">FluxTorrent · 种子详情页设计方案 · Aurora 令牌体系 · 配套交付：高保真界面样图 HTML</footer>
+</body>
+</html>

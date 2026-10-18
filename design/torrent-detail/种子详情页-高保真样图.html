@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>种子详情页 · 高保真样图</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232fa8ff'/><path d='M7 12l3 3 7-7' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@600;700;900&display=swap">
+<style>
+/* ===== Aurora 令牌（与站点 base.css 同源） ===== */
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff;
+  --sun:#ffc93c; --sun-soft:#fff4d6;
+  --coral:#ff7a59; --coral-soft:#ffe9e2;
+  --mint:#2fbf9b; --mint-soft:#dff7f0;
+  --candy:#ff8fc7; --candy-soft:#ffe9f4;
+  --indigo:#5b6bf5; --indigo-soft:#eaebff;
+  --grad-aurora:linear-gradient(135deg,#2fa8ff 0%,#5b6bf5 48%,#ff8fc7 100%);
+  --grad-rainbow:linear-gradient(90deg,#ffc93c,#ff7a59,#ff8fc7,#5b6bf5,#2fa8ff);
+  --page:#f5faff; --card:#fff; --cloud:#eef5fd; --raised:#fbfdff;
+  --text-strong:#1f2a44; --text-heading:#141d33; --text-body:#40506e;
+  --text-brand:#1e8ae8; --text-muted:#6b7a99; --text-faint:#8493ad; --text-fainter:#a3b1c6;
+  --line:#e3edf7; --line-deep:#bcd7ef;
+  --success:#167c63; --warning:#936800; --danger:#d60000;
+  --r-s:6px; --r-m:10px; --r-l:16px;
+  --sh-sm:0 1px 2px rgba(31,42,68,.05);
+  --sh-md:0 4px 14px rgba(31,42,68,.07);
+  --sh-lg:0 12px 32px rgba(31,42,68,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans SC',system-ui,-apple-system,'Segoe UI',sans-serif;background:#e9eff7;color:var(--text-body);font-size:14px;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ===== 页面外壳：断点导航 ===== */
+.bp-nav{
+  position:sticky;top:0;z-index:100;background:#0f1b33;color:#fff;
+  display:flex;align-items:center;gap:8px;padding:10px 20px;overflow-x:auto;
+}
+.bp-nav .bn-title{font-family:'Noto Serif SC',serif;font-weight:700;font-size:13px;margin-right:8px;white-space:nowrap}
+.bp-nav a{
+  color:#bcd7ef;text-decoration:none;font-size:12px;padding:5px 12px;border-radius:8px;white-space:nowrap;
+}
+.bp-nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+.bp-nav a.on{background:var(--sky-deep);color:#fff;font-weight:600}
+.bp-sec{padding:34px 20px 44px;border-bottom:1px solid var(--line)}
+.bp-sec-head{max-width:1200px;margin:0 auto 18px;display:flex;align-items:baseline;gap:12px}
+.bp-tag{font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--sky-deep);background:var(--sky-soft);padding:3px 10px;border-radius:6px}
+.bp-title{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:900;color:var(--text-heading)}
+.bp-desc{font-size:12px;color:var(--text-muted)}
+
+/* ===== 浏览器视口框 ===== */
+.viewport-wrap{max-width:1200px;margin:0 auto}
+.browser{
+  background:var(--card);border-radius:14px;box-shadow:var(--sh-lg);
+  overflow:hidden;border:1px solid var(--line-deep);
+}
+.browser-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--cloud);border-bottom:1px solid var(--line)}
+.browser-dots{display:flex;gap:6px}
+.browser-dots i{width:10px;height:10px;border-radius:50%;display:block}
+.browser-url{
+  flex:1;max-width:420px;background:#fff;border:1px solid var(--line);border-radius:8px;
+  padding:5px 14px;font-size:11.5px;color:var(--text-muted);
+  display:flex;align-items:center;gap:6px;
+}
+.browser-url svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--mint);stroke-width:2.4;stroke-linecap:round}
+.browser-device{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;color:var(--text-faint)}
+.browser-device svg{width:13px;height:13px;fill:none;stroke:var(--text-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== 站点壳（导航+页脚，样图装饰） ===== */
+.site-nav{
+  display:flex;align-items:center;gap:18px;padding:0 24px;height:54px;
+  background:var(--card);border-bottom:1px solid var(--line);
+}
+.site-logo{font-family:'Noto Serif SC',serif;font-weight:900;font-size:16px;color:var(--text-heading);display:flex;align-items:center;gap:7px}
+.site-logo svg{width:20px;height:20px;fill:none;stroke:var(--sky);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.site-logo em{font-style:normal;background:var(--grad-aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+.site-link{font-size:13px;color:var(--text-muted);text-decoration:none}
+.site-link.on{color:var(--sky-deep);font-weight:700}
+.site-user{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text-muted)}
+.site-avatar{width:26px;height:26px;border-radius:50%;background:var(--indigo-soft);color:var(--indigo);display:grid;place-items:center;font-size:12px;font-weight:700}
+
+/* ===== 详情页核心布局（新） ===== */
+.td-page{max-width:1200px;margin:0 auto;padding:18px 24px 40px}
+.td-crumbs{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-muted);margin-bottom:14px}
+.td-crumbs a{color:var(--sky-deep);text-decoration:none}
+.td-crumbs .sep{color:var(--text-fainter)}
+.td-crumbs .id{margin-left:auto;font-weight:700;color:var(--text-fainter)}
+
+.td-layout{display:grid;grid-template-columns:1.9fr 320px;gap:18px;align-items:start}
+.td-main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.td-side{position:sticky;top:20px;display:flex;flex-direction:column;gap:16px}
+
+/* ===== 通用卡片 ===== */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh-sm);overflow:hidden}
+.card-pad{padding:18px}
+.card-title{font-size:13px;font-weight:700;color:var(--text-heading);display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.card-title .ct-more{margin-left:auto;font-size:11px;color:var(--sky-deep);font-weight:600;text-decoration:none}
+.card-title svg{width:15px;height:15px;fill:none;stroke:var(--sky-deep);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== td-hero 头部卡 ===== */
+.hero{display:flex;gap:20px;padding:20px}
+.hero-poster{
+  width:128px;flex:none;border-radius:12px;overflow:hidden;position:relative;
+  background:linear-gradient(160deg,var(--sky),var(--indigo));
+  box-shadow:0 8px 20px -6px rgba(30,138,232,.4);
+}
+.hero-poster::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(20,29,51,.5))}
+.hero-poster .hp-cat{
+  position:absolute;top:8px;left:8px;z-index:2;background:rgba(255,255,255,.92);
+  color:var(--sky-deep);font-size:10px;font-weight:900;padding:2px 8px;border-radius:5px;
+}
+.hero-poster .hp-txt{
+  position:absolute;bottom:8px;left:0;right:0;z-index:2;text-align:center;color:#fff;
+  font-size:11px;font-weight:700;letter-spacing:.06em;
+}
+.hero-main{flex:1;min-width:0}
+.hero-name{font-size:20px;font-weight:900;color:var(--text-heading);line-height:1.35;font-family:'Noto Serif SC',serif}
+.hero-sub{font-size:13px;color:var(--text-muted);margin-top:5px}
+.hero-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px}
+.tag svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.tag-sun{background:var(--sun-soft);color:var(--warning)}
+.tag-sky{background:var(--sky-soft);color:var(--sky-deep)}
+.tag-indigo{background:var(--indigo-soft);color:var(--indigo)}
+.tag-mint{background:var(--mint-soft);color:var(--success)}
+.tag-coral{background:var(--coral-soft);color:var(--coral)}
+.hero-meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:11px;font-size:12.5px;color:var(--text-muted)}
+.hero-meta b{color:var(--text-strong);font-weight:700}
+.hero-hr{
+  margin-top:11px;font-size:11.5px;padding:7px 12px;border-radius:8px;
+  background:var(--sun-soft);color:var(--warning);border:1px solid #f0dca0;
+}
+.hero-hr--off{background:var(--mint-soft);color:var(--success);border-color:#a9e5d4}
+.hero-actions{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
+  padding:9px 18px;border-radius:10px;text-decoration:none;cursor:default;
+}
+.btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.btn-primary{background:var(--sky-deep);color:#fff;box-shadow:0 5px 14px -4px rgba(30,138,232,.5)}
+.btn-primary:hover{background:#1678c8}
+.btn-gold{background:linear-gradient(135deg,var(--sun),#f0a832);color:#6b4a00;box-shadow:0 5px 14px -4px rgba(255,201,60,.55)}
+.btn-ghost{background:var(--card);color:var(--text-brand);box-shadow:inset 0 0 0 1.5px var(--line-deep)}
+.btn-ghost:hover{background:var(--sky-soft)}
+.btn-sm{padding:7px 12px;font-size:12px;border-radius:8px}
+
+/* ===== td-chip-row 规格徽章条 ===== */
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;border-top:1px solid var(--line)}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+  padding:6px 12px;border-radius:8px;background:var(--cloud);color:var(--text-strong);
+  border:1px solid var(--line);
+}
+.chip svg{width:13px;height:13px;fill:none;stroke:var(--sky-deep);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chip--hot{background:linear-gradient(135deg,var(--sun-soft),#fff);border-color:#f0dca0;color:var(--warning)}
+.chip--hot svg{stroke:var(--warning)}
+.chip--big{font-size:13px;padding:8px 14px}
+
+/* ===== td-vitals 状态卡 ===== */
+.vitals{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vit{text-align:center;padding:12px 6px;border-radius:var(--r-m);background:var(--cloud)}
+.vit b{font-size:21px;font-weight:900;color:var(--text-heading);display:block;line-height:1.25}
+.vit span{font-size:11px;color:var(--text-muted)}
+.vit--seed b{color:var(--success)}
+.vit--leech b{color:var(--coral)}
+.vit--done b{color:var(--indigo)}
+.vit--thanks b{color:var(--warning)}
+.health{display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 12px;border-radius:var(--r-m);background:var(--mint-soft);font-size:12px;font-weight:700;color:var(--success)}
+.health::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px rgba(22,124,99,.16);flex:none}
+.health--dead{background:var(--coral-soft);color:var(--coral)}
+.health--dead::before{background:var(--coral);box-shadow:0 0 0 3px rgba(255,122,89,.16)}
+
+/* ===== td-files 文件卡 ===== */
+.file-row{display:flex;align-items:center;gap:9px;padding:8px 7px;border-radius:8px;font-size:12px}
+.file-row:nth-child(odd){background:var(--raised)}
+.file-row:hover{background:var(--sky-soft)}
+.f-ic{width:34px;height:20px;border-radius:5px;background:var(--sky-soft);color:var(--sky-deep);display:grid;place-items:center;font-size:8.5px;font-weight:900;flex:none;letter-spacing:.03em}
+.f-ic--pdf{background:var(--coral-soft);color:var(--coral)}
+.f-ic--epub{background:var(--mint-soft);color:var(--success)}
+.f-nm{flex:1;min-width:0;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.f-sz{color:var(--text-faint);font-size:11px;flex:none}
+.files-more{display:block;margin-top:10px;text-align:center;font-size:12px;font-weight:700;color:var(--sky-deep);text-decoration:none;padding:7px;border-radius:8px;background:var(--sky-soft)}
+.files-more:hover{background:var(--line)}
+
+/* ===== td-meta 元信息卡 ===== */
+.meta-row{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;font-size:12.5px;border-bottom:1px dashed var(--line)}
+.meta-row:last-child{border-bottom:none}
+.meta-row span{color:var(--text-muted)}
+.meta-row b{color:var(--text-strong);font-weight:600;text-align:right}
+.meta-row a{color:var(--sky-deep);text-decoration:none;font-weight:600}
+.sticker{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10.5px;font-weight:700;margin:1px 2px}
+.sticker--series{background:var(--indigo);color:#fff}
+.sticker--cat{background:var(--sun-soft);color:var(--warning)}
+
+/* ===== 侧栏入口 ===== */
+.entry{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:10px;border:1px solid var(--line);text-decoration:none;margin-bottom:8px;background:var(--card)}
+.entry:hover{border-color:var(--line-deep);background:var(--raised)}
+.entry svg{width:17px;height:17px;fill:none;stroke:var(--sky-deep);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.entry .e-nm{flex:1;font-size:12.5px;font-weight:600;color:var(--text-strong)}
+.entry .e-cnt{font-size:11px;font-weight:700;color:var(--sky-deep);background:var(--sky-soft);padding:2px 8px;border-radius:999px}
+.entry:last-child{margin-bottom:0}
+
+/* ===== td-related 相关种子 ===== */
+.rel-row{display:flex;gap:10px;padding:8px;border-radius:10px;text-decoration:none;align-items:center}
+.rel-row:hover{background:var(--raised)}
+.rel-poster{width:36px;height:48px;border-radius:7px;flex:none;position:relative;overflow:hidden}
+.rel-poster::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(20,29,51,.45))}
+.rel-poster .rp-txt{position:absolute;bottom:2px;left:0;right:0;text-align:center;color:#fff;font-size:7.5px;font-weight:700}
+.rel-main{flex:1;min-width:0}
+.rel-nm{font-size:12px;font-weight:600;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rel-meta{font-size:10.5px;color:var(--text-muted);margin-top:2px}
+.rel-meta b{color:var(--success);font-weight:700}
+
+/* ===== 简介 / 内容块 ===== */
+.descr p{font-size:13.5px;color:var(--text-body);margin-bottom:10px;line-height:1.8}
+.descr h5{font-size:13px;font-weight:700;color:var(--text-heading);margin:14px 0 6px}
+.descr ul{list-style:none;display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.descr li{font-size:13px;color:var(--text-body);display:flex;gap:8px}
+.descr li::before{content:"·";color:var(--sky);font-weight:900}
+.descr .toc{
+  margin-top:14px;background:var(--raised);border:1px solid var(--line);border-radius:var(--r-m);
+  padding:12px 16px;font-size:12.5px;color:var(--text-muted);
+}
+.descr .toc b{color:var(--text-heading)}
+.descr .toc i{font-style:normal;color:var(--text-fainter);margin:0 6px}
+
+/* ===== 试读试听 ===== */
+.preview-bar{display:flex;align-items:center;gap:12px;padding:13px 16px;border:1px dashed var(--line-deep);border-radius:var(--r-m);background:var(--cloud)}
+.preview-bar svg{width:22px;height:22px;fill:none;stroke:var(--sky-deep);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.preview-bar .pv-nm{font-size:12.5px;font-weight:600;color:var(--text-strong)}
+.preview-bar .pv-meta{font-size:11px;color:var(--text-muted)}
+.preview-bar .pv-btn{margin-left:auto;font-size:12px;font-weight:700;color:var(--sky-deep)}
+
+/* ===== 折叠块（新统一样式） ===== */
+.fold{border:1px solid var(--line);border-radius:var(--r-l);background:var(--card);overflow:hidden;margin-bottom:0}
+.fold summary{list-style:none;display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;user-select:none}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary:hover{background:var(--raised)}
+.fold summary h3{font-size:13px;font-weight:700;color:var(--text-heading)}
+.fold summary .f-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--sky-soft);color:var(--sky-deep)}
+.fold summary .f-count{margin-left:auto;font-size:11px;color:var(--text-faint)}
+.fold summary .chev{color:var(--text-fainter);transition:transform .2s;font-size:12px}
+.fold[open] summary .chev{transform:rotate(90deg)}
+.fold-body{padding:16px 18px;border-top:1px solid var(--line);background:var(--card)}
+.nfo-pre{
+  background:#141d33;color:#cfe3ff;border-radius:10px;padding:14px;font-size:12px;
+  font-family:ui-monospace,'Cascadia Code',Consolas,monospace;line-height:1.6;white-space:pre-wrap;
+}
+.log-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:12px}
+.log-row:last-child{border-bottom:none}
+.log-row .lr-disc{width:44px;font-weight:700;color:var(--text-heading)}
+.log-score{display:inline-flex;gap:5px;font-weight:700}
+.log-score svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:3px}
+.log-score .ok{color:var(--success)}
+.log-score .bad{color:var(--coral)}
+
+/* ===== 感谢与评论 ===== */
+.thanks-line{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-muted);margin-bottom:14px}
+.thanks-avatars{display:flex}
+.tk{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;margin-left:-6px;border:2px solid var(--card)}
+.tk:first-child{margin-left:0}
+.comment{display:flex;gap:11px;padding:13px 0;border-top:1px solid var(--line)}
+.comment:first-child{border-top:none}
+.c-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;flex:none}
+.c-body{flex:1;min-width:0}
+.c-head{display:flex;align-items:baseline;gap:8px;font-size:12px}
+.c-head b{color:var(--text-strong);font-weight:700}
+.c-head span{color:var(--text-fainter)}
+.c-text{font-size:13px;color:var(--text-body);margin-top:4px;line-height:1.7}
+.c-actions{margin-top:6px;display:flex;gap:14px;font-size:11.5px;color:var(--text-faint)}
+.comment-form{display:flex;gap:10px;margin-top:14px}
+.cf-input{flex:1;background:var(--cloud);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:12.5px;color:var(--text-fainter)}
+
+/* ===== 移动端专属 ===== */
+.anchor-bar{
+  position:sticky;top:0;z-index:60;display:flex;gap:5px;padding:8px 14px;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);overflow-x:auto;
+}
+.anchor-bar a{
+  flex:none;padding:6px 13px;border-radius:999px;font-size:12px;font-weight:600;
+  color:var(--text-muted);text-decoration:none;
+}
+.anchor-bar a.on{background:var(--sky-deep);color:#fff}
+.anchor-bar a span{font-size:10px;font-weight:700;margin-left:3px;opacity:.75}
+.mob-actionbar{
+  position:sticky;bottom:0;z-index:60;display:flex;gap:9px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);
+}
+.mob-actionbar .btn{flex:1;justify-content:center;padding:10px 8px}
+.mob-actionbar .btn-icon{flex:none;padding:10px 14px}
+
+/* ===== 断点切换（真实响应式演示） ===== */
+.td-layout.responsive{grid-template-columns:1fr}
+.td-layout.responsive .td-side{position:static}
+@media(min-width:768px){.td-layout.responsive{grid-template-columns:1.9fr 320px}.td-layout.responsive .td-side{position:sticky}}
+
+/* 固定宽度视口容器（非响应式展示） */
+.fixed-1440 .browser{width:1440px;max-width:calc(100% - 4px);margin:0 auto}
+.fixed-1024 .browser{width:1024px;margin:0 auto}
+.fixed-768 .browser{width:768px;margin:0 auto}
+.fixed-390 .browser{width:390px;margin:0 auto}
+
+/* ===== 演示 toast ===== */
+.toast{
+  position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(20px);
+  background:#141d33;color:#fff;font-size:12.5px;padding:9px 18px;border-radius:999px;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:999;
+  box-shadow:0 8px 24px rgba(15,27,51,.35);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:760px){
+  .bp-sec{padding:24px 12px 32px}
+  .fixed-1440 .browser,.fixed-1024 .browser,.fixed-768 .browser{width:100%}
+  .fixed-390 .browser{width:100%}
+  .hero{flex-direction:row;padding:14px}
+  .hero-poster{width:88px}
+  .hero-name{font-size:16px}
+  .td-page{padding:14px 12px 30px}
+  .browser-bar{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 断点导航 ===== -->
+<nav class="bp-nav">
+  <span class="bn-title">种子详情页 · 样图</span>
+  <a href="#desk1440" class="on" onclick="return demo(this,event)">桌面 1440px</a>
+  <a href="#desk1024" onclick="return demo(this,event)">桌面 1024px</a>
+  <a href="#tab768" onclick="return demo(this,event)">平板 768px</a>
+  <a href="#mob390" onclick="return demo(this,event)">手机 390px</a>
+</nav>
+
+<!-- ============================================================
+     ① 桌面 1440px 双栏完整样图
+============================================================ -->
+<section class="bp-sec" id="desk1440">
+  <div class="bp-sec-head">
+    <span class="bp-tag">样图 ①</span>
+    <span class="bp-title">桌面 1440px · 双栏</span>
+    <span class="bp-desc">左主栏（hero + 规格条 + 内容 + 评论）· 右 sticky 信息栏（状态/文件/元信息/相关）</span>
+  </div>
+  <div class="viewport-wrap fixed-1440">
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#ffbd2e"></i><i style="background:#28c840"></i></div>
+        <div class="browser-url"><svg viewBox="0 0 24 24"><path d="M4 12l4 4 8-8"/></svg>fluxtorrent.edu / torrent / 4021</div>
+        <div class="browser-device"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg>桌面 1440px</div>
+      </div>
+
+      <!-- 站点壳 -->
+      <div class="site-nav">
+        <a href="#" class="site-logo" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></a>
+        <a href="#" class="site-link" onclick="return demo(this,event)">资源库</a>
+        <a href="#" class="site-link on" onclick="return demo(this,event)">种子</a>
+        <a href="#" class="site-link" onclick="return demo(this,event)">上传</a>
+        <a href="#" class="site-link" onclick="return demo(this,event)">论坛</a>
+        <a href="#" class="site-link" onclick="return demo(this,event)">我的</a>
+        <div class="site-user"><span>数学课代表</span><span class="site-avatar">数</span></div>
+      </div>
+
+      <!-- 详情页主体 -->
+      <div class="td-page">
+        <nav class="td-crumbs">
+          <a href="#" onclick="return demo(this,event)">资源库</a><span class="sep">›</span><span>高中 · 数学</span><span class="sep">›</span><span>详情</span>
+          <span class="id">#4021</span>
+        </nav>
+
+        <div class="td-layout">
+          <!-- ===== 左主栏 ===== -->
+          <div class="td-main">
+
+            <!-- hero 头部卡 -->
+            <div class="card">
+              <div class="hero">
+                <div class="hero-poster">
+                  <span class="hp-cat">数学</span>
+                  <span class="hp-txt">导数专题</span>
+                </div>
+                <div class="hero-main">
+                  <h1 class="hero-name">2026 高考数学一轮复习 · 导数与函数专题</h1>
+                  <div class="hero-sub">高中 · 数学 · 人教版 · 42 讲 · 覆盖近五年真题题型</div>
+                  <div class="hero-tags">
+                    <span class="tag tag-sun"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.9-5 4.8 1.2 6.8-6-3.4-6 3.4 1.2-6.8-5-4.8 6.9-.9L12 2z"/></svg>热榜</span>
+                    <span class="tag tag-sky">2× 促销</span>
+                    <span class="tag tag-indigo">官方</span>
+                    <span class="tag tag-mint"><svg viewBox="0 0 24 24"><path d="M4 7l4-4 4 4-4 4-4-4z"/><path d="M4 7h12"/></svg>免费下载</span>
+                  </div>
+                  <div class="hero-meta">
+                    <span>发布者：<b>教研组 · 李明</b></span>
+                    <span>发布于：<b>3 天前</b></span>
+                    <span>最后活动：<b>2 小时前</b></span>
+                  </div>
+                  <div class="hero-hr">下载需遵守 H&amp;R 规则：14 天内做种满 48 小时，达标率 &lt;80% 计入 H&amp;R 记录</div>
+                  <div class="hero-actions">
+                    <a href="#" class="btn btn-primary" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>免费下载</a>
+                    <a href="#" class="btn btn-gold" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>已收藏</a>
+                    <a href="#" class="btn btn-ghost" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>分享</a>
+                    <a href="#" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>编辑</a>
+                  </div>
+                </div>
+              </div>
+              <!-- 规格徽章条 -->
+              <div class="chip-row">
+                <span class="chip"><svg viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>8.4 GB</span>
+                <span class="chip"><svg viewBox="0 0 24 24"><path d="M4 7l4-4 4 4-4 4-4-4z"/><path d="M4 7h12"/></svg>47 文件</span>
+                <span class="chip chip--hot"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 11h8M8 15h4"/></svg>1080P</span>
+                <span class="chip"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="3"/></svg>MP4 + PDF</span>
+                <span class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>42 讲</span>
+                <span class="chip"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.9-5 4.8 1.2 6.8-6-3.4-6 3.4 1.2-6.8-5-4.8 6.9-.9L12 2z"/></svg>9.4 分</span>
+                <span class="chip"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>学段：高中</span>
+                <span class="chip"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/></svg>版本：人教版</span>
+              </div>
+            </div>
+
+            <!-- 简介（默认展开） -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>简介</div>
+                <div class="descr">
+                  <p>本专题为 <b>2026 高考数学一轮复习</b> 系列的核心章节，覆盖导数概念、运算法则、单调性与极值、构造函数法四大板块，共 42 讲。每讲包含 30 分钟精讲视频 + 配套讲义 PDF + 课后练习（含答案解析）。</p>
+                  <h5>适用对象</h5>
+                  <ul>
+                    <li>新高考地区高三学生（人教版同步）</li>
+                    <li>一轮复习阶段想突破导数的中等偏上学生</li>
+                    <li>需要系统讲义+真题训练的备考小组</li>
+                  </ul>
+                  <div class="toc"><b>章节结构：</b><i>第 1-8 讲 导数概念</i><i>第 9-16 讲 运算法则</i><i>第 17-30 讲 单调性与极值</i><i>第 31-42 讲 构造函数与综合</i></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 试读试听 -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5v-7z"/></svg>试读 / 试听</div>
+                <div class="preview-bar">
+                  <svg viewBox="0 0 24 24"><path d="M9 12l5-3 5 3-5 3-5-3z"/></svg>
+                  <div>
+                    <div class="pv-nm">第 12 讲 · 构造函数法（试听）</div>
+                    <div class="pv-meta">3 分钟 · 240P 预览 · 登录即可试听</div>
+                  </div>
+                  <a href="#" class="pv-btn" onclick="return demo(this,event)">开始试听 ›</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- 折叠组：MediaInfo / NFO / 抓轨日志 -->
+            <details class="fold" open>
+              <summary><h3>MediaInfo</h3><span class="f-badge">有</span><span class="f-count">1 条</span><span class="chev">›</span></summary>
+              <div class="fold-body">
+                <div class="nfo-pre">Video: AVC High@L4.1 · 1920×1080 · 23.976fps · ~3.8 Mbps
+Audio: AAC 2.0 · 48kHz · 192 kbps
+Container: MP4 (ISO Base Media v1)
+Duration: 42 × 28-35 min
+Completeness: 100% · Chapters: per lecture</div>
+              </div>
+            </details>
+
+            <details class="fold">
+              <summary><h3>抓轨日志</h3><span class="f-badge">日志</span><span class="f-count">42 碟</span><span class="chev">›</span></summary>
+              <div class="fold-body">
+                <div class="log-row"><span class="lr-disc">第 1-10 讲</span><span class="log-score"><span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>100</span></span><span style="font-size:11px;color:var(--text-faint)">无损直录 · 无截断</span></div>
+                <div class="log-row"><span class="lr-disc">第 11-20 讲</span><span class="log-score"><span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>100</span></span><span style="font-size:11px;color:var(--text-faint)">无损直录 · 无截断</span></div>
+                <div class="log-row"><span class="lr-disc">第 31-42 讲</span><span class="log-score"><span class="bad"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>98</span></span><span style="font-size:11px;color:var(--text-faint)">末 3 分钟音量偏低（已知问题）</span></div>
+              </div>
+            </details>
+
+            <!-- 感谢与评论 -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="thanks-line">
+                  <span class="thanks-avatars">
+                    <span class="tk" style="background:var(--indigo-soft);color:var(--indigo)">王</span>
+                    <span class="tk" style="background:var(--mint-soft);color:var(--success)">L</span>
+                    <span class="tk" style="background:var(--candy-soft);color:var(--candy)">陈</span>
+                    <span class="tk" style="background:var(--sun-soft);color:var(--warning)">+3</span>
+                  </span>
+                  <span>86 人感谢了这份资源</span>
+                </div>
+                <div class="card-title" style="margin-bottom:2px"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H4l3-3a8 8 0 118-8z"/></svg>评论 <span style="font-weight:500;color:var(--text-fainter)">· 12 条</span></div>
+                <div class="comment">
+                  <div class="c-avatar" style="background:var(--indigo-soft);color:var(--indigo)">王</div>
+                  <div class="c-body">
+                    <div class="c-head"><b>数学课代表</b><span>2 小时前</span><span style="color:var(--mint)">已下载</span></div>
+                    <div class="c-text">导数专题讲得很细，第 12 讲构造函数法推荐搭配讲义一起看，真题题型覆盖到位。</div>
+                    <div class="c-actions"><span><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:var(--text-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:3px"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.3a2 2 0 002-1.7l1.4-7a2 2 0 00-2-2.3H13"/></svg>24</span><span>回复</span></div>
+                  </div>
+                </div>
+                <div class="comment">
+                  <div class="c-avatar" style="background:var(--mint-soft);color:var(--success)">L</div>
+                  <div class="c-body">
+                    <div class="c-head"><b>Lyra</b><span>昨天</span></div>
+                    <div class="c-text">已下载，字幕和讲义都在，感谢分享！一轮复习就用这套了。</div>
+                    <div class="c-actions"><span><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:var(--text-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:3px"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.3a2 2 0 002-1.7l1.4-7a2 2 0 00-2-2.3H13"/></svg>9</span><span>回复</span></div>
+                  </div>
+                </div>
+                <div class="comment">
+                  <div class="c-avatar" style="background:var(--candy-soft);color:var(--candy)">陈</div>
+                  <div class="c-body">
+                    <div class="c-head"><b>陈老师</b><span>2 天前</span></div>
+                    <div class="c-text">作为高三数学老师，建议学生配合第 17-30 讲做变式训练，效果最好。</div>
+                    <div class="c-actions"><span><svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:var(--text-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:3px"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.3a2 2 0 002-1.7l1.4-7a2 2 0 00-2-2.3H13"/></svg>31</span><span>回复</span></div>
+                  </div>
+                </div>
+                <div class="comment-form"><div class="cf-input">写一条友善的评论…</div><a href="#" class="btn btn-primary btn-sm" style="flex:none" onclick="return demo(this,event)">发表</a></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 右信息栏 ===== -->
+          <aside class="td-side">
+
+            <!-- 状态卡 -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/></svg>种子状态</div>
+                <div class="vitals">
+                  <div class="vit vit--seed"><b class="num">128</b><span>做种</span></div>
+                  <div class="vit vit--leech"><b class="num">35</b><span>下载</span></div>
+                  <div class="vit vit--done"><b class="num">2,431</b><span>完成</span></div>
+                  <div class="vit vit--thanks"><b class="num">86</b><span>感谢</span></div>
+                </div>
+                <div class="health">种子健康 · 做种充足</div>
+              </div>
+            </div>
+
+            <!-- 文件结构卡 -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>文件结构 <a class="ct-more" href="#" onclick="return demo(this,event)">全部 47 ›</a></div>
+                <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">01_导数的概念与几何意义.mp4</span><span class="f-sz">482 MB</span></div>
+                <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">02_导数的运算法则（上）.mp4</span><span class="f-sz">518 MB</span></div>
+                <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">03_导数的运算法则（下）.mp4</span><span class="f-sz">495 MB</span></div>
+                <div class="file-row"><span class="f-ic f-ic--pdf">PDF</span><span class="f-nm">配套讲义 · 导数专题.pdf</span><span class="f-sz">24 MB</span></div>
+                <div class="file-row"><span class="f-ic f-ic--pdf">PDF</span><span class="f-nm">课后练习 · 含答案解析.pdf</span><span class="f-sz">18 MB</span></div>
+                <a class="files-more" href="#" onclick="return demo(this,event)">查看全部 47 个文件</a>
+              </div>
+            </div>
+
+            <!-- 元信息卡 -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>资源信息</div>
+                <div class="meta-row"><span>发布者</span><b><a href="#" onclick="return demo(this,event)">教研组 · 李明</a></b></div>
+                <div class="meta-row"><span>发布于</span><b class="num">2026-10-12</b></div>
+                <div class="meta-row"><span>最后活动</span><b class="num">2 小时前</b></div>
+                <div class="meta-row"><span>分类</span><b>高中 / 数学</b></div>
+                <div class="meta-row"><span>所属合集</span><b><span class="sticker sticker--series">2026 高考一轮系列</span><span class="sticker sticker--cat">同系列 3 个</span></b></div>
+              </div>
+            </div>
+
+            <!-- 入口卡 -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>更多</div>
+                <a class="entry" href="#" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/></svg><span class="e-nm">当前在线</span><span class="e-cnt">163</span></a>
+                <a class="entry" href="#" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 11h8M8 15h4"/></svg><span class="e-nm">字幕</span><span class="e-cnt">2</span></a>
+                <a class="entry" href="#" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg><span class="e-nm">下载记录</span><span class="e-cnt">2,431</span></a>
+              </div>
+            </div>
+
+            <!-- 相关种子 -->
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H4l3-3a8 8 0 118-8z"/></svg>相关种子 <a class="ct-more" href="#" onclick="return demo(this,event)">同分类 ›</a></div>
+                <a class="rel-row" href="#" onclick="return demo(this,event)">
+                  <div class="rel-poster" style="background:linear-gradient(160deg,var(--mint),#1f9a7e)"><span class="rp-txt">圆锥曲线</span></div>
+                  <div class="rel-main"><div class="rel-nm">2026 高考数学 · 圆锥曲线专题</div><div class="rel-meta">5.1 GB · <b>128</b> 做种</div></div>
+                </a>
+                <a class="rel-row" href="#" onclick="return demo(this,event)">
+                  <div class="rel-poster" style="background:linear-gradient(160deg,var(--candy),#ff5fa8)"><span class="rp-txt">数列不等式</span></div>
+                  <div class="rel-main"><div class="rel-nm">2026 高考数学 · 数列与不等式专题</div><div class="rel-meta">6.2 GB · <b>96</b> 做种</div></div>
+                </a>
+                <a class="rel-row" href="#" onclick="return demo(this,event)">
+                  <div class="rel-poster" style="background:linear-gradient(160deg,var(--indigo),#3f4fd8)"><span class="rp-txt">函数图像</span></div>
+                  <div class="rel-main"><div class="rel-nm">2026 高考数学 · 函数图像与性质专题</div><div class="rel-meta">4.8 GB · <b>142</b> 做种</div></div>
+                </a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ② 桌面 1024px 窄版
+============================================================ -->
+<section class="bp-sec" id="desk1024">
+  <div class="bp-sec-head">
+    <span class="bp-tag">样图 ②</span>
+    <span class="bp-title">桌面 1024px · 双栏压缩</span>
+    <span class="bp-desc">侧栏收窄至 280px · 规格徽章自动折行 · 主栏内容两栏评论</span>
+  </div>
+  <div class="viewport-wrap fixed-1024">
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#ffbd2e"></i><i style="background:#28c840"></i></div>
+        <div class="browser-url"><svg viewBox="0 0 24 24"><path d="M4 12l4 4 8-8"/></svg>fluxtorrent.edu / torrent / 4021</div>
+        <div class="browser-device"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg>桌面 1024px</div>
+      </div>
+      <div class="site-nav">
+        <a href="#" class="site-logo" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></a>
+        <a href="#" class="site-link" onclick="return demo(this,event)">资源库</a><a href="#" class="site-link on" onclick="return demo(this,event)">种子</a><a href="#" class="site-link" onclick="return demo(this,event)">上传</a><a href="#" class="site-link" onclick="return demo(this,event)">论坛</a>
+        <div class="site-user"><span>数学课代表</span><span class="site-avatar">数</span></div>
+      </div>
+      <div class="td-page">
+        <nav class="td-crumbs">
+          <a href="#" onclick="return demo(this,event)">资源库</a><span class="sep">›</span><span>高中 · 数学</span><span class="sep">›</span><span>详情</span>
+          <span class="id">#4021</span>
+        </nav>
+        <div class="td-layout" style="grid-template-columns:1.8fr 280px">
+          <div class="td-main">
+            <div class="card">
+              <div class="hero" style="padding:16px">
+                <div class="hero-poster" style="width:104px"></div>
+                <div class="hero-main">
+                  <h1 class="hero-name" style="font-size:17px">2026 高考数学一轮复习 · 导数与函数专题</h1>
+                  <div class="hero-sub">高中 · 数学 · 人教版 · 42 讲</div>
+                  <div class="hero-tags">
+                    <span class="tag tag-sun">热榜</span><span class="tag tag-sky">2× 促销</span><span class="tag tag-indigo">官方</span><span class="tag tag-mint">免费</span>
+                  </div>
+                  <div class="hero-actions">
+                    <a href="#" class="btn btn-primary" style="padding:8px 14px" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>免费下载</a>
+                    <a href="#" class="btn btn-gold" style="padding:8px 14px" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>收藏</a>
+                  </div>
+                </div>
+              </div>
+              <div class="chip-row" style="padding:12px 16px">
+                <span class="chip">8.4 GB</span><span class="chip">47 文件</span><span class="chip chip--hot">1080P</span><span class="chip">MP4 + PDF</span><span class="chip">42 讲</span><span class="chip">9.4 分</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>简介</div>
+                <div class="descr">
+                  <p>本专题为 <b>2026 高考数学一轮复习</b> 系列的核心章节，覆盖导数概念、运算法则、单调性与极值、构造函数法四大板块，共 42 讲。</p>
+                  <h5>适用对象</h5>
+                  <ul>
+                    <li>新高考地区高三学生（人教版同步）</li>
+                    <li>一轮复习阶段想突破导数的中等偏上学生</li>
+                    <li>需要系统讲义+真题训练的备考小组</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <details class="fold"><summary><h3>MediaInfo</h3><span class="f-badge">有</span><span class="chev">›</span></summary><div class="fold-body"><div class="nfo-pre">Video: AVC High@L4.1 · 1920×1080 · 23.976fps
+Audio: AAC 2.0 · 48kHz · 192 kbps
+Container: MP4 · 42 × 28-35 min</div></div></details>
+            <details class="fold"><summary><h3>抓轨日志</h3><span class="f-badge">日志</span><span class="f-count">42 碟</span><span class="chev">›</span></summary><div class="fold-body">
+              <div class="log-row"><span class="lr-disc">第 1-10 讲</span><span class="log-score"><span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>100</span></span></div>
+              <div class="log-row"><span class="lr-disc">第 31-42 讲</span><span class="log-score"><span class="bad"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>98</span></span></div>
+            </div></details>
+            <div class="card">
+              <div class="card-pad">
+                <div class="card-title"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H4l3-3a8 8 0 118-8z"/></svg>评论 <span style="font-weight:500;color:var(--text-fainter)">· 12 条</span></div>
+                <div class="comment">
+                  <div class="c-avatar" style="background:var(--indigo-soft);color:var(--indigo)">王</div>
+                  <div class="c-body"><div class="c-head"><b>数学课代表</b><span>2 小时前</span></div><div class="c-text">导数专题讲得很细，第 12 讲构造函数法推荐搭配讲义一起看。</div></div>
+                </div>
+                <div class="comment-form"><div class="cf-input">写一条友善的评论…</div><a href="#" class="btn btn-primary btn-sm" style="flex:none" onclick="return demo(this,event)">发表</a></div>
+              </div>
+            </div>
+          </div>
+          <aside class="td-side">
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/></svg>种子状态</div>
+              <div class="vitals">
+                <div class="vit vit--seed"><b class="num">128</b><span>做种</span></div>
+                <div class="vit vit--leech"><b class="num">35</b><span>下载</span></div>
+                <div class="vit vit--done"><b class="num">2,431</b><span>完成</span></div>
+                <div class="vit vit--thanks"><b class="num">86</b><span>感谢</span></div>
+              </div>
+              <div class="health">种子健康 · 做种充足</div>
+            </div></div>
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>文件结构 <a class="ct-more" href="#" onclick="return demo(this,event)">全部 ›</a></div>
+              <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">01_导数的概念与几何意义.mp4</span><span class="f-sz">482 MB</span></div>
+              <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">02_导数的运算法则（上）.mp4</span><span class="f-sz">518 MB</span></div>
+              <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">03_导数的运算法则（下）.mp4</span><span class="f-sz">495 MB</span></div>
+              <a class="files-more" href="#" onclick="return demo(this,event)">查看全部 47 个文件</a>
+            </div></div>
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>资源信息</div>
+              <div class="meta-row"><span>发布者</span><b><a href="#" onclick="return demo(this,event)">教研组 · 李明</a></b></div>
+              <div class="meta-row"><span>发布于</span><b class="num">3 天前</b></div>
+              <div class="meta-row"><span>所属合集</span><b><span class="sticker sticker--series">2026 高考一轮系列</span></b></div>
+            </div></div>
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H4l3-3a8 8 0 118-8z"/></svg>相关种子 <a class="ct-more" href="#" onclick="return demo(this,event)">同分类 ›</a></div>
+              <a class="rel-row" href="#" onclick="return demo(this,event)"><div class="rel-poster" style="background:linear-gradient(160deg,var(--mint),#1f9a7e)"><span class="rp-txt">圆锥曲线</span></div><div class="rel-main"><div class="rel-nm">2026 高考数学 · 圆锥曲线专题</div><div class="rel-meta">5.1 GB · <b>128</b> 做种</div></div></a>
+              <a class="rel-row" href="#" onclick="return demo(this,event)"><div class="rel-poster" style="background:linear-gradient(160deg,var(--candy),#ff5fa8)"><span class="rp-txt">数列不等式</span></div><div class="rel-main"><div class="rel-nm">2026 高考数学 · 数列与不等式专题</div><div class="rel-meta">6.2 GB · <b>96</b> 做种</div></div></a>
+            </div></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ③ 平板 768px
+============================================================ -->
+<section class="bp-sec" id="tab768">
+  <div class="bp-sec-head">
+    <span class="bp-tag">样图 ③</span>
+    <span class="bp-title">平板 768px · 单栏临界</span>
+    <span class="bp-desc">双栏折叠为单栏：侧栏卡按序下沉到主栏下方，规格徽章折行</span>
+  </div>
+  <div class="viewport-wrap fixed-768">
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#ffbd2e"></i><i style="background:#28c840"></i></div>
+        <div class="browser-url"><svg viewBox="0 0 24 24"><path d="M4 12l4 4 8-8"/></svg>fluxtorrent.edu / torrent / 4021</div>
+        <div class="browser-device"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg>平板 768px</div>
+      </div>
+      <div class="site-nav" style="padding:0 16px">
+        <a href="#" class="site-logo" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></a>
+        <a href="#" class="site-link" onclick="return demo(this,event)">资源库</a><a href="#" class="site-link on" onclick="return demo(this,event)">种子</a><a href="#" class="site-link" onclick="return demo(this,event)">上传</a>
+        <div class="site-user"><span class="site-avatar">数</span></div>
+      </div>
+      <div class="td-page">
+        <nav class="td-crumbs">
+          <a href="#" onclick="return demo(this,event)">资源库</a><span class="sep">›</span><span>高中 · 数学</span>
+          <span class="id">#4021</span>
+        </nav>
+        <div class="td-layout responsive">
+          <div class="td-main">
+            <div class="card">
+              <div class="hero">
+                <div class="hero-poster" style="width:96px"></div>
+                <div class="hero-main">
+                  <h1 class="hero-name" style="font-size:16px">2026 高考数学一轮复习 · 导数与函数专题</h1>
+                  <div class="hero-sub">高中 · 数学 · 人教版 · 42 讲</div>
+                  <div class="hero-tags"><span class="tag tag-sun">热榜</span><span class="tag tag-sky">2× 促销</span><span class="tag tag-indigo">官方</span><span class="tag tag-mint">免费</span></div>
+                  <div class="hero-actions">
+                    <a href="#" class="btn btn-primary" style="padding:8px 14px" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>免费下载</a>
+                    <a href="#" class="btn btn-gold" style="padding:8px 14px" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>收藏</a>
+                  </div>
+                </div>
+              </div>
+              <div class="chip-row">
+                <span class="chip">8.4 GB</span><span class="chip">47 文件</span><span class="chip chip--hot">1080P</span><span class="chip">MP4+PDF</span><span class="chip">42 讲</span><span class="chip">9.4 分</span>
+              </div>
+            </div>
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>简介</div>
+              <div class="descr"><p>本专题为 <b>2026 高考数学一轮复习</b> 系列的核心章节，覆盖导数概念、运算法则、单调性与极值、构造函数法四大板块，共 42 讲。</p></div>
+            </div></div>
+            <details class="fold"><summary><h3>MediaInfo</h3><span class="f-badge">有</span><span class="chev">›</span></summary><div class="fold-body"><div class="nfo-pre">Video: AVC High@L4.1 · 1920×1080 · 23.976fps
+Audio: AAC 2.0 · 48kHz · 192 kbps</div></div></details>
+            <details class="fold"><summary><h3>抓轨日志</h3><span class="f-badge">日志</span><span class="f-count">42 碟</span><span class="chev">›</span></summary><div class="fold-body"><div class="log-row"><span class="lr-disc">第 1-10 讲</span><span class="log-score"><span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>100</span></span></div></div></details>
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H4l3-3a8 8 0 118-8z"/></svg>评论 <span style="font-weight:500;color:var(--text-fainter)">· 12 条</span></div>
+              <div class="comment">
+                <div class="c-avatar" style="background:var(--indigo-soft);color:var(--indigo)">王</div>
+                <div class="c-body"><div class="c-head"><b>数学课代表</b><span>2 小时前</span></div><div class="c-text">导数专题讲得很细，第 12 讲构造函数法推荐搭配讲义一起看。</div></div>
+              </div>
+              <div class="comment-form"><div class="cf-input">写一条友善的评论…</div><a href="#" class="btn btn-primary btn-sm" style="flex:none" onclick="return demo(this,event)">发表</a></div>
+            </div></div>
+          </div>
+          <div class="td-side">
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/></svg>种子状态</div>
+              <div class="vitals">
+                <div class="vit vit--seed"><b class="num">128</b><span>做种</span></div>
+                <div class="vit vit--leech"><b class="num">35</b><span>下载</span></div>
+                <div class="vit vit--done"><b class="num">2,431</b><span>完成</span></div>
+                <div class="vit vit--thanks"><b class="num">86</b><span>感谢</span></div>
+              </div>
+              <div class="health">种子健康 · 做种充足</div>
+            </div></div>
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>文件结构 <a class="ct-more" href="#" onclick="return demo(this,event)">全部 47 ›</a></div>
+              <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">01_导数的概念与几何意义.mp4</span><span class="f-sz">482 MB</span></div>
+              <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">02_导数的运算法则（上）.mp4</span><span class="f-sz">518 MB</span></div>
+              <div class="file-row"><span class="f-ic f-ic--pdf">PDF</span><span class="f-nm">配套讲义 · 导数专题.pdf</span><span class="f-sz">24 MB</span></div>
+              <div class="file-row"><span class="f-ic f-ic--pdf">PDF</span><span class="f-nm">课后练习 · 含答案解析.pdf</span><span class="f-sz">18 MB</span></div>
+              <a class="files-more" href="#" onclick="return demo(this,event)">查看全部 47 个文件</a>
+            </div></div>
+            <div class="card"><div class="card-pad">
+              <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>资源信息</div>
+              <div class="meta-row"><span>发布者</span><b><a href="#" onclick="return demo(this,event)">教研组 · 李明</a></b></div>
+              <div class="meta-row"><span>发布于</span><b class="num">3 天前</b></div>
+              <div class="meta-row"><span>所属合集</span><b><span class="sticker sticker--series">2026 高考一轮系列</span></b></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ④ 手机 390px
+============================================================ -->
+<section class="bp-sec" id="mob390">
+  <div class="bp-sec-head">
+    <span class="bp-tag">样图 ④</span>
+    <span class="bp-title">手机 390px · 锚点 + 折叠</span>
+    <span class="bp-desc">精简 hero + 横滑规格 + sticky 锚点条 + 折叠卡 + 底部固定操作条</span>
+  </div>
+  <div class="viewport-wrap fixed-390">
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#ffbd2e"></i><i style="background:#28c840"></i></div>
+        <div class="browser-url"><svg viewBox="0 0 24 24"><path d="M4 12l4 4 8-8"/></svg>fluxtorrent.edu / torrent/4021</div>
+        <div class="browser-device"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/></svg>手机 390px</div>
+      </div>
+      <div class="site-nav" style="padding:0 12px;height:48px">
+        <a href="#" class="site-logo" style="font-size:14px" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></a>
+        <div class="site-user"><span class="site-avatar" style="width:22px;height:22px;font-size:10px">数</span></div>
+      </div>
+
+      <!-- 锚点条（sticky） -->
+      <div class="anchor-bar">
+        <a href="#" class="on" onclick="return demo(this,event)">简介</a>
+        <a href="#" onclick="return demo(this,event)">试读</a>
+        <a href="#" onclick="return demo(this,event)">文件 <span>47</span></a>
+        <a href="#" onclick="return demo(this,event)">字幕 <span>2</span></a>
+        <a href="#" onclick="return demo(this,event)">评论 <span>12</span></a>
+      </div>
+
+      <div class="td-page" style="padding-top:12px">
+        <nav class="td-crumbs" style="font-size:11.5px;margin-bottom:10px">
+          <a href="#" onclick="return demo(this,event)">资源库</a><span class="sep">›</span><span>高中 · 数学</span>
+          <span class="id">#4021</span>
+        </nav>
+
+        <div class="card">
+          <div class="hero" style="padding:14px;gap:12px">
+            <div class="hero-poster" style="width:76px;border-radius:9px">
+              <span class="hp-cat" style="font-size:9px">数学</span>
+              <span class="hp-txt" style="font-size:9px">导数专题</span>
+            </div>
+            <div class="hero-main">
+              <h1 class="hero-name" style="font-size:14.5px;line-height:1.4">2026 高考数学一轮复习 · 导数与函数专题</h1>
+              <div class="hero-sub" style="font-size:11px;margin-top:4px">人教版 · 42 讲 · 1080P</div>
+              <div class="hero-tags" style="margin-top:6px">
+                <span class="tag tag-sun" style="font-size:10px">热榜</span>
+                <span class="tag tag-sky" style="font-size:10px">2× 促销</span>
+                <span class="tag tag-mint" style="font-size:10px">免费</span>
+              </div>
+              <div class="hero-meta" style="font-size:11px;margin-top:7px;gap:10px">
+                <span>发布者：<b>教研组</b></span>
+                <span>3 天前</span>
+              </div>
+              <div class="hero-actions" style="margin-top:10px;gap:7px">
+                <a href="#" class="btn btn-primary" style="font-size:12px;padding:8px 14px" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>免费下载</a>
+                <a href="#" class="btn btn-gold" style="font-size:12px;padding:8px 12px" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>收藏</a>
+              </div>
+            </div>
+          </div>
+          <!-- 规格横滑 -->
+          <div class="chip-row" style="padding:11px 14px;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none">
+            <span class="chip" style="flex:none">8.4 GB</span>
+            <span class="chip" style="flex:none">47 文件</span>
+            <span class="chip chip--hot" style="flex:none">1080P</span>
+            <span class="chip" style="flex:none">MP4+PDF</span>
+            <span class="chip" style="flex:none">42 讲</span>
+            <span class="chip" style="flex:none">9.4 分</span>
+          </div>
+        </div>
+
+        <!-- 状态卡 2×2 -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-pad" style="padding:14px">
+            <div class="card-title" style="font-size:12.5px;margin-bottom:10px"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/></svg>种子状态</div>
+            <div class="vitals">
+              <div class="vit vit--seed"><b class="num">128</b><span>做种</span></div>
+              <div class="vit vit--leech"><b class="num">35</b><span>下载</span></div>
+              <div class="vit vit--done"><b class="num">2,431</b><span>完成</span></div>
+              <div class="vit vit--thanks"><b class="num">86</b><span>感谢</span></div>
+            </div>
+            <div class="health" style="font-size:11px">种子健康 · 做种充足</div>
+          </div>
+        </div>
+
+        <!-- 简介 -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-pad" style="padding:14px">
+            <div class="card-title" style="font-size:12.5px;margin-bottom:8px"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>简介</div>
+            <div class="descr"><p style="font-size:12.5px">覆盖导数概念、运算法则、单调性与极值、构造函数法四大板块，共 42 讲，每讲含精讲视频 + 讲义 + 课后练习。</p></div>
+          </div>
+        </div>
+
+        <!-- 文件折叠 -->
+        <details class="fold" style="margin-top:12px">
+          <summary><h3 style="font-size:12.5px">文件结构</h3><span class="f-count">47 个</span><span class="chev">›</span></summary>
+          <div class="fold-body" style="padding:12px 14px">
+            <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">01_导数的概念与几何意义.mp4</span><span class="f-sz">482 MB</span></div>
+            <div class="file-row"><span class="f-ic">MP4</span><span class="f-nm">02_导数的运算法则（上）.mp4</span><span class="f-sz">518 MB</span></div>
+            <div class="file-row"><span class="f-ic f-ic--pdf">PDF</span><span class="f-nm">配套讲义 · 导数专题.pdf</span><span class="f-sz">24 MB</span></div>
+            <div class="file-row"><span class="f-ic f-ic--pdf">PDF</span><span class="f-nm">课后练习 · 含答案解析.pdf</span><span class="f-sz">18 MB</span></div>
+            <a class="files-more" href="#" onclick="return demo(this,event)">查看全部 47 个文件</a>
+          </div>
+        </details>
+
+        <!-- 评论 -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-pad" style="padding:14px">
+            <div class="card-title" style="font-size:12.5px;margin-bottom:6px"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H4l3-3a8 8 0 118-8z"/></svg>评论 <span style="font-weight:500;color:var(--text-fainter)">· 12 条</span></div>
+            <div class="comment" style="padding:10px 0">
+              <div class="c-avatar" style="width:32px;height:32px;font-size:12px;background:var(--indigo-soft);color:var(--indigo)">王</div>
+              <div class="c-body"><div class="c-head"><b style="font-size:11px">数学课代表</b><span style="font-size:10.5px">2 小时前</span></div><div class="c-text" style="font-size:12px">第 12 讲构造函数法推荐搭配讲义一起看。</div></div>
+            </div>
+            <div class="comment" style="padding:10px 0">
+              <div class="c-avatar" style="width:32px;height:32px;font-size:12px;background:var(--mint-soft);color:var(--success)">L</div>
+              <div class="c-body"><div class="c-head"><b style="font-size:11px">Lyra</b><span style="font-size:10.5px">昨天</span></div><div class="c-text" style="font-size:12px">已下载，字幕和讲义都在，感谢分享！</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 相关种子横滑 -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-pad" style="padding:14px">
+            <div class="card-title" style="font-size:12.5px;margin-bottom:8px"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-8 8H4l3-3a8 8 0 118-8z"/></svg>相关种子 <a class="ct-more" href="#" onclick="return demo(this,event)">同分类 ›</a></div>
+            <div style="display:flex;gap:10px;overflow-x:auto;scrollbar-width:none">
+              <a class="rel-row" href="#" style="flex:none;width:46%" onclick="return demo(this,event)">
+                <div class="rel-poster" style="background:linear-gradient(160deg,var(--mint),#1f9a7e)"><span class="rp-txt">圆锥曲线</span></div>
+                <div class="rel-main"><div class="rel-nm">圆锥曲线专题</div><div class="rel-meta">5.1 GB · <b>128</b></div></div>
+              </a>
+              <a class="rel-row" href="#" style="flex:none;width:46%" onclick="return demo(this,event)">
+                <div class="rel-poster" style="background:linear-gradient(160deg,var(--candy),#ff5fa8)"><span class="rp-txt">数列不等式</span></div>
+                <div class="rel-main"><div class="rel-nm">数列与不等式专题</div><div class="rel-meta">6.2 GB · <b>96</b></div></div>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部固定操作条 -->
+        <div class="mob-actionbar">
+          <a class="btn btn-ghost btn-icon" href="#" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></a>
+          <a class="btn btn-ghost btn-icon" href="#" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></a>
+          <a class="btn btn-primary" href="#" onclick="return demo(this,event)"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>下载</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast">样图演示 · 静态设计稿</div>
+
+<script>
+// 样图为静态设计稿：演示链接统一走 demo() 占位反馈；
+// href 指向页面内真实存在的锚点时（如断点导航）放行默认跳转
+window.demo = function (el, ev) {
+  var h = el && el.getAttribute("href");
+  if (h && h.length > 1 && document.querySelector(h)) return true;
+  if (ev && ev.preventDefault) ev.preventDefault();
+  var t = document.getElementById("toast");
+  t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function () { t.classList.remove("show"); }, 1400);
+  return false;
+};
+</script>
+
+</body>
+</html>

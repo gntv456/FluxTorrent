@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>种子详情页 · 高保真样图（本地完善版）</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232fa8ff'/><path d='M7 12l3 3 7-7' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@600;700;900&display=swap">
+<style>
+/* ===== Aurora 令牌（与站点 base.css 同源） ===== */
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff;
+  --sun:#ffc93c; --sun-soft:#fff4d6;
+  --coral:#ff7a59; --coral-soft:#ffe9e2;
+  --mint:#2fbf9b; --mint-soft:#dff7f0;
+  --candy:#ff8fc7; --candy-soft:#ffe9f4;
+  --indigo:#5b6bf5; --indigo-soft:#eaebff;
+  --grad-aurora:linear-gradient(135deg,#2fa8ff 0%,#5b6bf5 48%,#ff8fc7 100%);
+  --grad-rainbow:linear-gradient(90deg,#ffc93c,#ff7a59,#ff8fc7,#5b6bf5,#2fa8ff);
+  --page:#f5faff; --card:#fff; --cloud:#eef5fd; --raised:#fbfdff;
+  --text-strong:#1f2a44; --text-heading:#141d33; --text-body:#40506e;
+  --text-brand:#1e8ae8; --text-muted:#6b7a99; --text-faint:#8493ad; --text-fainter:#a3b1c6;
+  --line:#e3edf7; --line-deep:#bcd7ef;
+  --success:#167c63; --warning:#936800; --danger:#d60000;
+  --surface-card:#fff; --surface-sunken:#f2f7fd; --surface-hover:#eaf4fe;
+  --r-s:6px; --r-m:10px; --r-l:16px;
+  --sh-sm:0 1px 2px rgba(31,42,68,.05);
+  --sh-md:0 4px 14px rgba(31,42,68,.07);
+  --sh-lg:0 12px 32px rgba(31,42,68,.1);
+  --z-sticky:30; --z-modal:90; --z-toast:120;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans SC',system-ui,-apple-system,'Segoe UI',sans-serif;background:#e9eff7;color:var(--text-body);font-size:14px;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ===== 页面外壳：断点导航 ===== */
+.bp-nav{
+  position:sticky;top:0;z-index:200;background:#0f1b33;color:#fff;
+  display:flex;align-items:center;gap:8px;padding:10px 20px;overflow-x:auto;
+}
+.bp-nav .bn-title{font-family:'Noto Serif SC',serif;font-weight:700;font-size:13px;margin-right:8px;white-space:nowrap}
+.bp-nav .bn-meta{font-size:11px;color:#8fa8c7;margin-right:8px;white-space:nowrap}
+.bp-nav button{
+  color:#bcd7ef;background:none;border:1px solid transparent;cursor:pointer;font-family:inherit;
+  font-size:12px;padding:5px 12px;border-radius:8px;white-space:nowrap;
+}
+.bp-nav button:hover{background:rgba(255,255,255,.1);color:#fff}
+.bp-nav button.on{background:var(--sky-deep);color:#fff;font-weight:600;border-color:var(--sky-deep)}
+
+/* ===== 舞台：每个断点一个 frame ===== */
+.stage{padding:26px 16px 60px}
+.frame{display:none;margin:0 auto;transition:opacity .2s}
+.frame.on{display:block}
+/* 断点视口宽度（模拟真实视口） */
+.frame[data-frame="xl"]{max-width:1440px}
+.frame[data-frame="lg"]{max-width:1024px}
+.frame[data-frame="md"]{max-width:768px}
+.frame[data-frame="xs"]{max-width:390px}
+
+.browser{background:var(--card);border-radius:14px;box-shadow:var(--sh-lg);overflow:hidden;border:1px solid var(--line-deep)}
+.browser-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--cloud);border-bottom:1px solid var(--line)}
+.browser-dots{display:flex;gap:6px}
+.browser-dots i{width:10px;height:10px;border-radius:50%;display:block}
+.browser-url{
+  flex:1;max-width:430px;background:#fff;border:1px solid var(--line);border-radius:8px;
+  padding:5px 14px;font-size:11.5px;color:var(--text-muted);
+  display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap;
+}
+.browser-url svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--mint);stroke-width:2.4;stroke-linecap:round}
+.browser-device{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;color:var(--text-faint)}
+.browser-device svg{width:13px;height:13px;fill:none;stroke:var(--text-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.browser-hint{font-size:11px;color:var(--text-faint);padding:8px 14px;border-top:1px solid var(--line);background:var(--raised)}
+
+/* ===== 站点壳（样图装饰） ===== */
+.site-nav{display:flex;align-items:center;gap:16px;padding:0 20px;height:54px;background:var(--card);border-bottom:1px solid var(--line)}
+.site-logo{font-family:'Noto Serif SC',serif;font-weight:900;font-size:15px;color:var(--text-heading);display:flex;align-items:center;gap:7px}
+.site-logo svg{width:19px;height:19px;fill:none;stroke:var(--sky);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.site-logo em{font-style:normal;background:var(--grad-aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+.site-link{font-size:12.5px;color:var(--text-muted);text-decoration:none}
+.site-link.on{color:var(--sky-deep);font-weight:700}
+.site-search{flex:1;max-width:220px;margin-left:8px;display:flex;align-items:center;gap:6px;background:var(--surface-sunken);border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:11.5px;color:var(--text-faint)}
+.site-user{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-muted)}
+.site-avatar{width:26px;height:26px;border-radius:50%;background:var(--indigo-soft);color:var(--indigo);display:grid;place-items:center;font-size:12px;font-weight:700}
+@media(max-width:767px){.site-link,.site-search{display:none}.site-nav{padding:0 12px}}
+
+/* ===== 详情页核心（真实类名，对齐 base.css） ===== */
+.td-page{max-width:1200px;margin:0 auto;padding:16px 20px 90px;display:flex;flex-direction:column;gap:14px}
+.td-crumbs{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-faint)}
+.td-crumbs a{color:var(--text-muted);text-decoration:none}
+.td-crumbs a:hover{color:var(--text-brand);text-decoration:underline}
+.td-crumbs__id{margin-left:auto;font-family:ui-monospace,Consolas,monospace;letter-spacing:.02em}
+
+/* ===== 双栏骨架 ===== */
+.td-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;grid-template-areas:"head side" "main side" "main rel";gap:0 20px;align-items:start}
+.td-head{grid-area:head}
+.td-main{grid-area:main;min-width:0;display:flex;flex-direction:column;gap:14px}
+.td-side{grid-area:side;align-self:start;position:sticky;top:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.td-side-rel{grid-area:rel;min-width:0;margin-top:14px}
+.td-fold{scroll-margin-top:88px}
+
+/* ===== 海报头 ===== */
+.td-head{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh-sm);position:relative}
+.td-head__poster{position:relative}
+.td-head__cat{position:absolute;z-index:2;left:-6px;top:10px;padding:2px 10px;border-radius:0 999px 999px 0;color:#fff;font-size:12px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.25);max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 6px rgba(31,42,68,.18)}
+.td-head__img{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:2/3;border-radius:var(--r-m);object-fit:cover;border:1px solid var(--line-deep);background:linear-gradient(160deg,var(--sky),var(--indigo));color:#fff;box-shadow:0 8px 20px -6px rgba(30,138,232,.4)}
+.td-head__img svg{width:40px;height:40px;fill:none;stroke:rgba(255,255,255,.9);stroke-width:1.6}
+.td-head__main{min-width:0;display:flex;flex-direction:column;gap:10px}
+.td-head__name{font-family:'Noto Serif SC',serif;font-size:22px;line-height:1.35;word-break:break-all;color:var(--text-heading);font-weight:900}
+.td-head__sub{color:var(--text-muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px}
+.td-head__chain{color:var(--text-brand);font-weight:600}
+.td-head__tags{display:flex;flex-wrap:wrap;gap:6px}
+.td-head__tags:empty{display:none}
+.td-head__hr{margin:0;padding:7px 12px;border:1px solid #f0dca0;border-radius:var(--r-s);background:var(--sun-soft);font-size:12px;line-height:1.4;color:var(--warning)}
+.td-head__hr--off{border-color:#a9e5d4;background:var(--mint-soft);color:var(--success)}
+.td-head__badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.td-head__left{font-size:12px;font-weight:700;color:var(--danger)}
+.td-head__meta{display:flex;flex-wrap:wrap;column-gap:18px;row-gap:4px;font-size:12px;color:var(--text-muted)}
+.td-head__meta b{color:var(--text-body-deep,#1f2a44)}
+.td-head__actions{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-top:4px}
+.td-head__actions-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+
+/* ===== 徽章 ===== */
+.sticker{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;white-space:nowrap}
+.bg-sun{background:var(--sun-soft);color:var(--warning)}
+.bg-indigo{background:var(--indigo-soft);color:var(--indigo)}
+.text-ink{color:var(--text-strong)}
+.text-white{color:#fff}
+.bg-indigo{background:var(--indigo);color:#fff}
+.td-anon-sticker{background:var(--cloud);color:var(--text-muted)}
+
+/* ===== 按钮 ===== */
+.btn{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;padding:9px 18px;border-radius:var(--r-m);text-decoration:none;border:1.5px solid transparent;cursor:pointer;font-family:inherit;transition:background .12s ease,box-shadow .12s ease,transform .12s ease}
+.btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--sky-deep);color:#fff;box-shadow:0 5px 14px -4px rgba(30,138,232,.5)}
+.btn-primary:hover{background:#1678c8}
+.btn-ghost{background:var(--card);color:var(--text-brand);border-color:var(--line-deep)}
+.btn-ghost:hover{background:var(--sky-soft)}
+.btn-soft{background:var(--sky-soft);color:var(--sky-deep)}
+.btn-soft:hover{background:#d8ecff}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ===== 规格徽章条 ===== */
+.td-specs{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh-sm)}
+.td-spec{display:flex;align-items:baseline;gap:4px;padding:4px 10px;border-radius:var(--r-s);border:1px solid var(--line);background:var(--surface-sunken);min-width:0;transition:background .12s ease}
+.td-spec:hover{background:var(--surface-hover)}
+.td-spec b{font-size:13px;font-weight:700;color:var(--text-strong);overflow-wrap:anywhere}
+.td-spec span{font-size:11px;color:var(--text-faint)}
+
+/* ===== 折叠分区 ===== */
+.td-fold{border:1px solid var(--line);border-radius:var(--r-l,16px);background:var(--card);box-shadow:var(--sh-sm);overflow:hidden}
+.td-fold[open]{box-shadow:var(--sh-md)}
+.td-fold>summary{display:flex;align-items:center;gap:8px;padding:14px 18px;cursor:pointer;user-select:none;list-style:none;background:linear-gradient(100deg,var(--sky-soft),var(--card) 72%)}
+.td-fold>summary:hover{background:linear-gradient(100deg,var(--sky-soft),var(--surface-hover) 72%)}
+.td-fold>summary::-webkit-details-marker{display:none}
+.td-fold>summary h2{font-size:14px;font-weight:800;color:var(--text-strong)}
+.td-fold__count{font-size:12px;color:var(--text-brand);font-weight:700}
+.td-fold__chev{margin-left:auto;width:8px;height:8px;border-right:2px solid var(--text-faint);border-bottom:2px solid var(--text-faint);transform:rotate(45deg);transition:transform .15s ease}
+.td-fold[open]>summary .td-fold__chev{transform:rotate(225deg)}
+.td-fold__body{padding:16px 18px;border-top:1px solid var(--line)}
+.td-sec-title{font-size:14px;font-weight:800;color:var(--text-strong)}
+
+/* ===== 简介 ===== */
+.td-descr__body{padding:16px 18px;max-height:320px;overflow-y:auto}
+.td-descr__body h3{font-size:15px;font-weight:800;color:var(--text-heading);margin:12px 0 6px;font-family:'Noto Serif SC',serif}
+.td-descr__body p{margin:6px 0;line-height:1.8;font-size:13.5px}
+.td-descr__body ul{margin:6px 0 6px 20px;line-height:1.8;font-size:13.5px}
+
+/* ===== NFO / MediaInfo ===== */
+.td-nfo{max-height:260px;overflow:auto;border-radius:var(--r-s);background:#0f1b33;color:#cfe3ff;padding:12px;font-size:11px;line-height:1.5;font-family:ui-monospace,'Cascadia Mono',Consolas,monospace}
+
+/* ===== 抓轨日志 ===== */
+.td-riplogs{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.td-riplogs__head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.td-riplogs__disc{font-size:12px;font-weight:700;color:var(--text-strong)}
+.td-riplogs__file{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-muted)}
+.td-riplogs__meta,.td-riplogs__toggle{font-size:11px;color:var(--text-faint)}
+.td-riplogs__issues{margin:4px 0 0;padding-left:16px;font-size:11px;color:var(--warning)}
+
+/* ===== 文件列表 ===== */
+.td-files{width:100%;table-layout:fixed;font-size:13px}
+.td-files td{padding:5px 12px;border-bottom:1px solid var(--line)}
+.td-files tr:last-child td{border-bottom:none}
+.td-files tr:hover td{background:var(--surface-hover)}
+.td-files td.num{text-align:right;color:var(--text-muted);width:90px}
+
+/* ===== 右栏卡片 ===== */
+.td-side-card{border:1px solid var(--line);border-radius:var(--r-m);background:var(--card);box-shadow:var(--sh-sm);padding:12px 14px}
+.td-side-card__head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.td-side-card__head h3{font-size:13px;font-weight:800;color:var(--text-strong)}
+.td-side-card__head .num{font-size:12px;color:var(--text-faint)}
+.td-vitals__grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.td-vitals__cell{text-align:center;padding:8px 4px;border-radius:var(--r-s);background:var(--surface-sunken)}
+.td-vitals__cell b{display:block;font-size:21px;font-weight:900;line-height:1.2}
+.td-vitals__cell span{font-size:11px;color:var(--text-muted)}
+.td-vitals__cell--seed b{color:var(--success)}
+.td-vitals__cell--leech b{color:var(--coral)}
+.td-vitals__cell--done b{color:var(--sky-deep)}
+.td-vitals__cell--thanks b{color:var(--warning)}
+.td-vitals__health{margin-top:8px;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r-s);font-size:12px;font-weight:700}
+.td-vitals__health::before{content:"";width:8px;height:8px;border-radius:50%;flex:none}
+.td-vitals__health.is-alive{background:var(--mint-soft);color:var(--success)}
+.td-vitals__health.is-alive::before{background:var(--success);box-shadow:0 0 0 3px rgba(22,124,99,.16)}
+.td-vitals__health.is-dead{background:var(--coral-soft);color:var(--danger)}
+.td-vitals__health.is-dead::before{background:var(--danger);box-shadow:0 0 0 3px rgba(214,0,0,.14)}
+.td-vitals__views{margin-top:6px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint)}
+.td-vitals__views b{color:var(--text-muted)}
+.td-files-mini__list{display:flex;flex-direction:column}
+.td-files-mini__row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:var(--r-s);font-size:12px}
+.td-files-mini__row:nth-child(odd){background:var(--surface-sunken)}
+.td-files-mini__ext{flex:none;width:34px;padding:1px 0;border-radius:4px;background:var(--sky-soft);color:var(--sky-deep);font-size:9px;font-weight:900;text-align:center}
+.td-files-mini__name{flex:1;min-width:0;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.td-files-mini__size{flex:none;font-size:11px;color:var(--text-faint)}
+.td-files-mini__more{display:block;margin-top:8px;text-align:center;font-size:12px;font-weight:700;color:var(--sky-deep);text-decoration:none}
+.td-files-mini__more:hover{text-decoration:underline}
+.td-meta__rows{display:flex;flex-direction:column}
+.td-meta__row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12px;border-bottom:1px dashed var(--line)}
+.td-meta__row:last-child{border-bottom:none}
+.td-meta__row span{flex:none;color:var(--text-muted)}
+.td-meta__row b{color:var(--text-strong);font-weight:600;text-align:right;overflow-wrap:anywhere}
+.td-meta__link{color:var(--text-brand);font-weight:700;text-decoration:none}
+.td-meta__link:hover{text-decoration:underline}
+
+/* ===== 锚点条（移动） ===== */
+.td-anchor{display:none}
+
+/* ===== 感谢者 ===== */
+.td-thanker{display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border-radius:999px;background:var(--surface-sunken);font-size:13px;font-weight:700;color:var(--text-body,#40506e);transition:background .12s ease}
+.td-thanker:hover{background:var(--surface-hover)}
+.td-thanker__avatar{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--grad-aurora);color:#fff;font-size:12px;font-weight:800}
+.td-thanker__wrap{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ===== 评论 ===== */
+.td-comments{padding-bottom:6px}
+.td-comment{display:grid;grid-template-columns:170px minmax(0,1fr);border-top:1px solid var(--line)}
+.td-comment:first-of-type{border-top:none}
+.td-comment--reply{background:var(--raised)}
+.td-comment__side{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px 14px;background:var(--surface-sunken)}
+.td-comment__avatar{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--grad-aurora);color:#fff;font-size:14px;font-weight:800}
+.td-comment__name{font-size:12.5px;font-weight:700;color:var(--text-strong)}
+.td-comment__time{font-size:11px;color:var(--text-faint)}
+.td-comment__body{padding:12px 16px;font-size:14px;white-space:pre-wrap;line-height:1.75}
+.td-comment__actions{display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-faint)}
+.td-comment__actions button{background:none;border:none;color:var(--text-faint);font-size:12px;cursor:pointer;padding:0;font-family:inherit}
+.td-comment__actions button:hover{color:var(--sky-deep)}
+
+/* ===== InfoHash 尾部 ===== */
+.td-infohash{border-top:1px solid var(--line);padding-top:10px;font-size:11px;color:var(--text-faint);word-break:break-all;line-height:1.7}
+.td-infohash b{font-weight:700;color:var(--text-muted)}
+
+/* ===== 相关种子 ===== */
+.td-rel__title{font-size:13px;font-weight:800;color:var(--text-strong);margin-bottom:10px}
+.td-rel__item{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);text-decoration:none;color:inherit}
+.td-rel__item:last-child{border-bottom:none}
+.td-rel__thumb{width:46px;height:62px;flex:none;border-radius:6px;background:linear-gradient(160deg,var(--sky-soft),var(--indigo-soft));display:grid;place-items:center;color:var(--sky-deep);font-size:10px;font-weight:900;overflow:hidden}
+.td-rel__name{font-size:12.5px;font-weight:700;color:var(--text-strong);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.td-rel__meta{font-size:11px;color:var(--text-faint);margin-top:3px}
+.td-rel__seed{color:var(--success);font-weight:700}
+
+/* ===== 底部操作条 ===== */
+.td-actionbar{display:none}
+
+/* ===== Toast ===== */
+#toast{position:fixed;left:50%;bottom:64px;transform:translateX(-50%) translateY(20px);background:#141d33;color:#fff;font-size:13px;padding:10px 20px;border-radius:99px;box-shadow:0 8px 24px rgba(20,29,51,.35);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:var(--z-toast);max-width:86vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============ 断点覆盖（模拟真实媒体查询） ============ */
+/* LG 1024：右栏 260、海报 100、操作流式、文件前3行 */
+.frame[data-frame="lg"] .td-layout{grid-template-columns:minmax(0,1fr) 260px}
+.frame[data-frame="lg"] .td-head{grid-template-columns:100px minmax(0,1fr);gap:14px;padding:14px}
+.frame[data-frame="lg"] .td-head__actions{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;margin-top:2px}
+.frame[data-frame="lg"] .td-head__actions-row{gap:6px}
+.frame[data-frame="lg"] .td-files-mini__row:nth-child(n+4){display:none}
+
+/* MD 768 临界：单栏 head→side→main→rel；头部操作隐藏；锚点吸顶；files-mini/meta 隐藏 */
+.frame[data-frame="md"] .td-layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "anchor" "side" "main" "rel"}
+.frame[data-frame="md"] .td-head{grid-template-columns:80px minmax(0,1fr);gap:12px;padding:12px}
+.frame[data-frame="md"] .td-head__name{font-size:16px}
+.frame[data-frame="md"] .td-head__actions{display:none}
+.frame[data-frame="md"] .td-side{position:static;flex-direction:row;flex-wrap:wrap}
+.frame[data-frame="md"] .td-side .td-vitals{flex:1 1 100%}
+.frame[data-frame="md"] .td-side .td-files-mini,.frame[data-frame="md"] .td-side .td-meta{display:none}
+.frame[data-frame="md"] .td-side-rel{margin-top:4px}
+.frame[data-frame="md"] .td-anchor{display:flex;position:sticky;top:0;z-index:var(--z-sticky);gap:6px;overflow-x:auto;scrollbar-width:none;padding:6px 0;background:var(--card);border-bottom:1px solid var(--line)}
+.frame[data-frame="md"] .td-anchor::-webkit-scrollbar{display:none}
+.frame[data-frame="md"] .td-anchor__tab{flex:none;display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid transparent;border-radius:999px;background:var(--sky-soft);font-size:12px;font-weight:700;color:var(--sky-deep);cursor:pointer;font-family:inherit}
+.frame[data-frame="md"] .td-anchor__tab.is-on{background:var(--sky-deep);border-color:var(--sky-deep);color:#fff}
+.frame[data-frame="md"] .td-anchor__num{font-size:11px;opacity:.72}
+.frame[data-frame="md"] .td-head__meta{display:flex}
+.frame[data-frame="md"] .td-fold{scroll-margin-top:56px}
+
+/* XS 390：规格横滑、评论单栏、底部操作条、锚点常驻 */
+.frame[data-frame="xs"] .td-layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "anchor" "side" "main" "rel"}
+.frame[data-frame="xs"] .td-head{grid-template-columns:80px minmax(0,1fr);gap:12px;padding:12px}
+.frame[data-frame="xs"] .td-head__name{font-size:16px}
+.frame[data-frame="xs"] .td-head__sub{font-size:12px}
+.frame[data-frame="xs"] .td-head__meta{column-gap:10px;row-gap:2px;display:flex}
+.frame[data-frame="xs"] .td-head__actions{display:none}
+.frame[data-frame="xs"] .td-specs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:8px 12px}
+.frame[data-frame="xs"] .td-specs::-webkit-scrollbar{display:none}
+.frame[data-frame="xs"] .td-spec{flex:none;padding:6px 8px}
+.frame[data-frame="xs"] .td-spec b{font-size:14px}
+.frame[data-frame="xs"] .td-side{position:static;flex-direction:row;flex-wrap:wrap}
+.frame[data-frame="xs"] .td-side .td-vitals{flex:1 1 100%}
+.frame[data-frame="xs"] .td-side .td-files-mini,.frame[data-frame="xs"] .td-side .td-meta{display:none}
+.frame[data-frame="xs"] .td-anchor{display:flex;position:sticky;top:0;z-index:var(--z-sticky);gap:6px;overflow-x:auto;scrollbar-width:none;padding:6px 0;background:var(--card);border-bottom:1px solid var(--line)}
+.frame[data-frame="xs"] .td-anchor__tab{flex:none;display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid transparent;border-radius:999px;background:var(--sky-soft);font-size:12px;font-weight:700;color:var(--sky-deep);cursor:pointer;font-family:inherit}
+.frame[data-frame="xs"] .td-anchor__tab.is-on{background:var(--sky-deep);border-color:var(--sky-deep);color:#fff}
+.frame[data-frame="xs"] .td-anchor__num{font-size:11px;opacity:.72}
+.frame[data-frame="xs"] .td-comment{grid-template-columns:1fr}
+.frame[data-frame="xs"] .td-comment__side{flex-direction:row;align-items:center;gap:10px;padding-bottom:4px}
+.frame[data-frame="xs"] .td-actionbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;gap:9px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+.frame[data-frame="xs"] .td-actionbar__btn{min-height:44px;flex:1;border:1.5px solid var(--line);border-radius:var(--r-m);background:var(--card);color:var(--text-brand);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.frame[data-frame="xs"] .td-actionbar__btn.is-primary{flex:2;border-color:var(--sky-deep);background:var(--sky-deep);color:#fff;box-shadow:0 5px 14px -4px rgba(30,138,232,.5)}
+.frame[data-frame="xs"] .td-page{padding:12px 10px 96px}
+.frame[data-frame="xs"] .td-crumbs{font-size:11px}
+.frame[data-frame="xs"] .td-fold>summary{padding:12px 14px}
+.frame[data-frame="xs"] .td-fold__body{padding:12px 14px}
+.frame[data-frame="xs"] .td-descr__body{padding:12px 14px;max-height:none}
+
+/* 站型包切换条（通用建站系统演示） */
+.site-switch{position:sticky;top:40px;z-index:190;background:#132244;color:#fff;display:flex;align-items:center;gap:8px;padding:8px 20px;border-top:1px solid rgba(255,255,255,.08);overflow-x:auto}
+.site-switch .sw-title{font-size:11px;color:#8fa8c7;letter-spacing:.06em;white-space:nowrap}
+.site-switch button{appearance:none;border:1px solid rgba(255,255,255,.16);background:transparent;color:#cfe0f5;font-size:12px;font-weight:700;padding:4px 14px;border-radius:999px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.site-switch button:hover{background:rgba(255,255,255,.08)}
+.site-switch button.on{background:var(--sky-deep);border-color:var(--sky-deep);color:#fff}
+.site-switch .sw-note{margin-left:auto;font-size:11px;color:#8fa8c7;white-space:nowrap}
+
+/* 移动端顶部锚点 tab 事件区 */
+@media(max-width:767px){.frame[data-frame="md"] .td-head__meta,.frame[data-frame="xs"] .td-head__meta{display:flex}}
+
+/* 修复：td-files 第一列显式宽度（squeezedTableColumns） */
+.td-files td:first-child{width:calc(100% - 90px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-files td:last-child{width:90px}
+</style>
+</head>
+<body>
+
+<div class="bp-nav">
+  <span class="bn-title">种子详情页 · 高保真样图</span>
+  <span class="bn-meta" id="frameMeta">XL · 桌面满配</span>
+  <button type="button" class="on" data-bp="xl">XL 1440</button>
+  <button type="button" data-bp="lg">LG 1024</button>
+  <button type="button" data-bp="md">MD 768</button>
+  <button type="button" data-bp="xs">XS 390</button>
+</div>
+
+<div class="site-switch" id="siteSwitch" aria-label="站型包切换">
+  <span class="sw-title">站型包</span>
+  <button type="button" class="on" data-site="education">教育</button>
+  <button type="button" data-site="movie">影视</button>
+  <button type="button" data-site="music">音乐</button>
+  <button type="button" data-site="anime">动漫</button>
+  <button type="button" data-site="ebook">电子书</button>
+  <button type="button" data-site="general">综合</button>
+  <button type="button" data-site="sports">体育</button>
+  <button type="button" data-site="game">游戏</button>
+  <button type="button" data-site="software">软件</button>
+  <button type="button" data-site="documentary">纪录片</button>
+  <button type="button" data-site="lossless">无损音乐</button>
+  <span class="sw-note">11 种内置站型包 · 分类/维度/品牌/H&amp;R/促销可配置</span>
+</div>
+
+<div class="stage">
+
+<!-- ===== XL 1440：双栏满配（右栏 320px sticky · 五段全显） ===== -->
+<div class="frame on" data-frame="xl">
+<div class="browser">
+  <div class="browser-bar">
+    <span class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span>
+    <span class="browser-url"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>fluxtorrent.local/torrent/1201</span>
+    <span class="browser-device"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>桌面 1440px</span>
+  </div>
+
+  <div class="site-nav">
+    <span class="site-logo"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></span>
+    <a class="site-link on" href="#" data-act="跳转演示（样图占位）">资源库</a>
+    <a class="site-link" href="#" data-act="跳转演示（样图占位）">求种</a>
+    <a class="site-link" href="#" data-act="跳转演示（样图占位）">论坛</a>
+    <a class="site-link" href="#" data-act="跳转演示（样图占位）">我的</a>
+    <span class="site-user"><span>@xuehai</span><span class="site-avatar">学</span></span>
+  </div>
+
+  <article class="td-page">
+    <nav class="td-crumbs" aria-label="breadcrumb">
+      <a href="#" data-act="跳转演示（样图占位）">资源库</a><span aria-hidden>›</span><span>高中</span><span class="td-crumbs__id">#1201</span>
+    </nav>
+
+    <div class="td-layout">
+
+      <!-- 海报头 -->
+      <section class="td-head">
+        <div class="td-head__poster">
+          <span class="td-head__cat" style="background:#1e8ae8">高中</span>
+          <div class="td-head__img" style="background:linear-gradient(160deg,#2fa8ff,#5b6bf5)">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+          </div>
+        </div>
+        <div class="td-head__main">
+          <h1 class="td-head__name">【官种】2025 人教版高中数学必修一 全套精讲视频 1080P</h1>
+          <p class="td-head__sub"><span class="td-head__chain">高中数学 · 人教版 · 1080P</span><span aria-hidden> · </span>必修一全册 · 42 讲 · 含讲义 PDF</p>
+          <div class="td-head__tags">
+            <span class="sticker bg-sun text-ink">置顶</span>
+            <span class="sticker bg-indigo text-white">官种</span>
+          </div>
+          <p class="td-head__hr">本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种</p>
+          <div class="td-head__badges">
+            <span class="sticker bg-sun text-ink">2x 免费</span>
+            <span class="td-head__left">距促销结束 2 天 5 时</span>
+            <span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 100</span>
+          </div>
+          <div class="td-head__meta">
+            <span>发布人：<b>清风数学组</b></span>
+            <span title="2025-09-18 14:32">发布时间：<b>27 天前</b></span>
+            <span title="2025-10-15 10:04">最近活动：<b>2 小时前</b></span>
+          </div>
+          <div class="td-head__actions">
+            <div class="td-head__actions-row">
+              <button class="btn btn-primary" type="button" data-act="下载种子 · 4.5 GB（演示）">下载种子 · 4.5 GB</button>
+              <button class="btn btn-ghost" type="button" data-act="已加入心愿单（演示）">☆ 加心愿单</button>
+            </div>
+            <div class="td-head__actions-row">
+              <button class="btn btn-soft btn-sm" type="button" data-act="已送出感谢（演示）">感谢发布者</button>
+              <button class="btn btn-ghost btn-sm" type="button" data-act="更多操作（演示）">更多操作</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 主栏 -->
+      <div class="td-main">
+        <section class="td-specs">
+          <div class="td-spec"><b>4.5 GB</b><span>大小</span></div>
+          <div class="td-spec"><b>42</b><span>文件数</span></div>
+          <div class="td-spec"><b>高中</b><span>分类</span></div>
+          <div class="td-spec"><b>高中数学</b><span>学段</span></div>
+          <div class="td-spec"><b>人教版</b><span>版本</span></div>
+          <div class="td-spec"><b>1080P</b><span>规格</span></div>
+          <div class="td-spec"><b>H.264</b><span>编码</span></div>
+          <div class="td-spec"><b>9.2</b><span>评分</span></div>
+        </section>
+
+        <!-- 简介 -->
+        <details class="td-fold" open id="td-sec-descr">
+          <summary><h2>内容简介</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-descr__body">
+            <h3>高中数学必修一精讲</h3>
+            <p>同步人教版教材章节，每讲 25 分钟，配套讲义可打印。王老师（特级教师）主讲，覆盖集合与常用逻辑用语、函数概念与性质、指数函数与对数函数、三角函数四大板块。</p>
+            <ul>
+              <li>分辨率：1920×1080，H.264 编码</li>
+              <li>讲师：王老师（特级教师），板书 + 投屏双视角</li>
+              <li>含单元测试卷与答案解析，讲义 PDF 随附</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- MediaInfo -->
+        <details class="td-fold" id="td-sec-media">
+          <summary><h2>MediaInfo</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body"><pre class="td-nfo">Video: AVC 1920x1080 (16:9) 29.970 fps ~8200 kb/s
+Audio: AAC LC 48.0 kHz 2 ch ~192 kb/s
+Text: 简体中文 (UTF-8)</pre></div>
+        </details>
+
+        <!-- 文件列表 -->
+        <details class="td-fold" id="td-files">
+          <summary><h2>文件列表</h2><span class="td-fold__count num">42</span><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body">
+            <table class="td-files">
+              <tr><td>01-集合与常用逻辑用语.mp4</td><td class="num">412 MB</td></tr>
+              <tr><td>02-函数的概念与性质.mp4</td><td class="num">388 MB</td></tr>
+              <tr><td>03-基本初等函数（指数·对数）.mp4</td><td class="num">426 MB</td></tr>
+              <tr><td>04-三角函数（上）.mp4</td><td class="num">401 MB</td></tr>
+              <tr><td>05-三角函数（下）.mp4</td><td class="num">397 MB</td></tr>
+              <tr><td>讲义PDF-必修一全册.pdf</td><td class="num">12.4 MB</td></tr>
+            </table>
+          </div>
+        </details>
+
+        <!-- 字幕 -->
+        <details class="td-fold" id="td-sec-subtitles">
+          <summary><h2>字幕</h2><span class="td-fold__count num">2</span><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body">
+            <p style="font-size:13px;line-height:1.9">中文（简）· 同步课本术语 · 英文（机翻参考）</p>
+          </div>
+        </details>
+
+        <!-- 断种记录 -->
+        <details class="td-fold" id="td-sec-snatches">
+          <summary><h2>断种记录</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body">
+            <p style="font-size:13px;line-height:1.9">共 412 次完成 · 最近 24 小时完成 6 次（演示数据）</p>
+          </div>
+        </details>
+
+        <!-- 感谢者 + InfoHash -->
+        <details class="td-fold" id="td-sec-thankers">
+          <summary><h2>感谢者</h2><span class="td-fold__count num">23</span><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body">
+            <div class="td-thanker__wrap">
+              <span class="td-thanker"><span class="td-thanker__avatar">林</span>林老师</span>
+              <span class="td-thanker"><span class="td-thanker__avatar">陈</span>陈同学</span>
+              <span class="td-thanker"><span class="td-thanker__avatar">周</span>周老师</span>
+              <span class="td-thanker"><span class="td-thanker__avatar">吴</span>吴同学</span>
+            </div>
+            <p class="td-infohash"><b>Info Hash</b> · 9F3A7C2E5B1D4A6F8E0C3B5D7A9F1E2C4B6D8A0F</p>
+          </div>
+        </details>
+
+        <!-- 评论区 -->
+        <details class="td-fold" id="td-sec-comments">
+          <summary><h2>评论 (12)</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-comments td-fold__body">
+            <div class="td-comment">
+              <div class="td-comment__side"><span class="td-comment__avatar">林</span><span class="td-comment__name">林老师</span><span class="td-comment__time">3 天前</span></div>
+              <div class="td-comment__body">王老师的课讲得特别细，课本上没讲透的点都掰开了讲，孩子终于开窍了！<div class="td-comment__actions"><button type="button" data-act="已点赞（演示）">赞 6</button><button type="button" data-act="回复面板（演示）">回复</button></div></div>
+            </div>
+            <div class="td-comment td-comment--reply">
+              <div class="td-comment__side"><span class="td-comment__avatar">陈</span><span class="td-comment__name">陈同学</span><span class="td-comment__time">2 天前</span></div>
+              <div class="td-comment__body">回复 @林老师：讲义 PDF 打印出来很清楚，感谢分享！<div class="td-comment__actions"><button type="button" data-act="已点赞（演示）">赞 3</button><button type="button" data-act="回复面板（演示）">回复</button></div></div>
+            </div>
+            <div class="td-comment">
+              <div class="td-comment__side"><span class="td-comment__avatar">吴</span><span class="td-comment__name">吴同学</span><span class="td-comment__time">1 天前</span></div>
+              <div class="td-comment__body">画质很好，就是文件有点大，慢慢下。求种成功，感谢！<div class="td-comment__actions"><button type="button" data-act="已点赞（演示）">赞 2</button><button type="button" data-act="回复面板（演示）">回复</button></div></div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- 右栏 -->
+      <aside class="td-side">
+        <div class="td-side-card td-vitals">
+          <div class="td-vitals__grid">
+            <div class="td-vitals__cell td-vitals__cell--seed"><b class="num">89</b><span>做种</span></div>
+            <div class="td-vitals__cell td-vitals__cell--leech"><b class="num">12</b><span>下载</span></div>
+            <div class="td-vitals__cell td-vitals__cell--done"><b class="num">412</b><span>完成</span></div>
+            <div class="td-vitals__cell td-vitals__cell--thanks"><b class="num">23</b><span>感谢</span></div>
+          </div>
+          <p class="td-vitals__health is-alive">健康 · 做种在线中</p>
+          <p class="td-vitals__views">查看 <b class="num">1,204</b></p>
+        </div>
+
+        <div class="td-side-card td-files-mini">
+          <div class="td-side-card__head"><h3>文件列表</h3><span class="num">42 项</span></div>
+          <div class="td-files-mini__list">
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">MP4</span><span class="td-files-mini__name" title="01-集合与常用逻辑用语.mp4">01-集合与常用逻辑用语.mp4</span><span class="td-files-mini__size num">412 MB</span></div>
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">MP4</span><span class="td-files-mini__name" title="02-函数的概念与性质.mp4">02-函数的概念与性质.mp4</span><span class="td-files-mini__size num">388 MB</span></div>
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">MP4</span><span class="td-files-mini__name" title="03-基本初等函数.mp4">03-基本初等函数.mp4</span><span class="td-files-mini__size num">426 MB</span></div>
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">MP4</span><span class="td-files-mini__name" title="04-三角函数（上）.mp4">04-三角函数（上）.mp4</span><span class="td-files-mini__size num">401 MB</span></div>
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">PDF</span><span class="td-files-mini__name" title="讲义PDF-必修一全册.pdf">讲义PDF-必修一全册.pdf</span><span class="td-files-mini__size num">12.4 MB</span></div>
+          </div>
+          <a class="td-files-mini__more" href="#td-files">查看全部 42 个文件 →</a>
+        </div>
+
+        <div class="td-side-card td-meta">
+          <div class="td-side-card__head"><h3>资源信息</h3></div>
+          <div class="td-meta__rows">
+            <div class="td-meta__row"><span>发布人</span><b>清风数学组</b></div>
+            <div class="td-meta__row"><span>发布时间</span><b>27 天前</b></div>
+            <div class="td-meta__row"><span>最近活动</span><b>2 小时前</b></div>
+            <div class="td-meta__row"><span>分类</span><b>高中</b></div>
+            <div class="td-meta__row"><span>所属合集</span><a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">高中数学同步</a></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 相关 -->
+      <div class="td-side-rel">
+        <div class="td-side-card">
+          <h3 class="td-rel__title">相关推荐</h3>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）">
+            <span class="td-rel__thumb">物理</span>
+            <span><span class="td-rel__name">2025 人教版高中物理必修一 实验专题 4K</span><span class="td-rel__meta">18 讲 · 9.0 GB · <span class="td-rel__seed">做种 21</span></span></span>
+          </a>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）">
+            <span class="td-rel__thumb">英语</span>
+            <span><span class="td-rel__name">高中英语语法全突破 芳芳老师 2025 全</span><span class="td-rel__meta">60 讲 · 2.0 GB · <span class="td-rel__seed">做种 55</span></span></span>
+          </a>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）">
+            <span class="td-rel__thumb">化学</span>
+            <span><span class="td-rel__name">高中化学实验安全操作规范 教学版</span><span class="td-rel__meta">8 讲 · 1.0 GB · <span class="td-rel__seed">做种 19</span></span></span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </article>
+</div>
+<div class="browser-hint">XL ≥1024 · 双栏满配：td-head 通栏 + 左主栏 + 右栏 320px sticky（td-vitals / td-files-mini / td-meta）· 相关推荐置右下</div>
+</div>
+
+<!-- ===== LG 1024：双栏收窄（右栏 260 · 海报 100 · 操作流式） ===== -->
+<div class="frame" data-frame="lg">
+<div class="browser">
+  <div class="browser-bar">
+    <span class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span>
+    <span class="browser-url"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>fluxtorrent.local/torrent/1201</span>
+    <span class="browser-device"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>桌面 1024px</span>
+  </div>
+  <div class="site-nav">
+    <span class="site-logo"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></span>
+    <a class="site-link on" href="#" data-act="跳转演示（样图占位）">资源库</a>
+    <a class="site-link" href="#" data-act="跳转演示（样图占位）">求种</a>
+    <a class="site-link" href="#" data-act="跳转演示（样图占位）">论坛</a>
+    <span class="site-user"><span>@xuehai</span><span class="site-avatar">学</span></span>
+  </div>
+  <article class="td-page">
+    <nav class="td-crumbs" aria-label="breadcrumb"><a href="#" data-act="跳转演示（样图占位）">资源库</a><span aria-hidden>›</span><span>高中</span><span class="td-crumbs__id">#1201</span></nav>
+    <div class="td-layout">
+      <section class="td-head">
+        <div class="td-head__poster">
+          <span class="td-head__cat" style="background:#1e8ae8">高中</span>
+          <div class="td-head__img" style="background:linear-gradient(160deg,#2fa8ff,#5b6bf5)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
+        </div>
+        <div class="td-head__main">
+          <h1 class="td-head__name">【官种】2025 人教版高中数学必修一 全套精讲视频 1080P</h1>
+          <p class="td-head__sub"><span class="td-head__chain">高中数学 · 人教版 · 1080P</span><span aria-hidden> · </span>必修一全册 · 42 讲 · 含讲义 PDF</p>
+          <div class="td-head__tags"><span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span></div>
+          <p class="td-head__hr">本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种</p>
+          <div class="td-head__badges">
+            <span class="sticker bg-sun text-ink">2x 免费</span>
+            <span class="td-head__left">距促销结束 2 天 5 时</span>
+            <span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 100</span>
+          </div>
+          <div class="td-head__actions">
+            <div class="td-head__actions-row">
+              <button class="btn btn-primary" type="button" data-act="下载种子 · 4.5 GB（演示）">下载种子 · 4.5 GB</button>
+              <button class="btn btn-ghost" type="button" data-act="已加入心愿单（演示）">☆ 加心愿单</button>
+              <button class="btn btn-soft btn-sm" type="button" data-act="已送出感谢（演示）">感谢</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="td-main">
+        <section class="td-specs">
+          <div class="td-spec"><b>4.5 GB</b><span>大小</span></div>
+          <div class="td-spec"><b>42</b><span>文件数</span></div>
+          <div class="td-spec"><b>高中</b><span>分类</span></div>
+          <div class="td-spec"><b>高中数学</b><span>学段</span></div>
+          <div class="td-spec"><b>人教版</b><span>版本</span></div>
+          <div class="td-spec"><b>1080P</b><span>规格</span></div>
+          <div class="td-spec"><b>9.2</b><span>评分</span></div>
+        </section>
+        <details class="td-fold" open id="lg-sec-descr">
+          <summary><h2>内容简介</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-descr__body"><p>同步人教版教材章节，每讲 25 分钟，配套讲义可打印。王老师（特级教师）主讲，覆盖集合与常用逻辑用语、函数概念与性质、指数函数与对数函数、三角函数四大板块。</p><ul><li>分辨率：1920×1080，H.264 编码</li><li>含单元测试卷与答案解析，讲义 PDF 随附</li></ul></div>
+        </details>
+        <details class="td-fold" id="lg-files">
+          <summary><h2>文件列表</h2><span class="td-fold__count num">42</span><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body"><table class="td-files"><tr><td>01-集合与常用逻辑用语.mp4</td><td class="num">412 MB</td></tr><tr><td>02-函数的概念与性质.mp4</td><td class="num">388 MB</td></tr><tr><td>03-基本初等函数（指数·对数）.mp4</td><td class="num">426 MB</td></tr><tr><td>04-三角函数（上）.mp4</td><td class="num">401 MB</td></tr><tr><td>讲义PDF-必修一全册.pdf</td><td class="num">12.4 MB</td></tr></table></div>
+        </details>
+        <details class="td-fold" id="lg-sec-comments">
+          <summary><h2>评论 (12)</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-comments td-fold__body">
+            <div class="td-comment"><div class="td-comment__side"><span class="td-comment__avatar">林</span><span class="td-comment__name">林老师</span><span class="td-comment__time">3 天前</span></div><div class="td-comment__body">王老师的课讲得特别细，课本上没讲透的点都掰开了讲，孩子终于开窍了！</div></div>
+            <div class="td-comment td-comment--reply"><div class="td-comment__side"><span class="td-comment__avatar">陈</span><span class="td-comment__name">陈同学</span><span class="td-comment__time">2 天前</span></div><div class="td-comment__body">回复 @林老师：讲义 PDF 打印出来很清楚，感谢分享！</div></div>
+          </div>
+        </details>
+      </div>
+      <aside class="td-side">
+        <div class="td-side-card td-vitals">
+          <div class="td-vitals__grid">
+            <div class="td-vitals__cell td-vitals__cell--seed"><b class="num">89</b><span>做种</span></div>
+            <div class="td-vitals__cell td-vitals__cell--leech"><b class="num">12</b><span>下载</span></div>
+            <div class="td-vitals__cell td-vitals__cell--done"><b class="num">412</b><span>完成</span></div>
+            <div class="td-vitals__cell td-vitals__cell--thanks"><b class="num">23</b><span>感谢</span></div>
+          </div>
+          <p class="td-vitals__health is-alive">健康 · 做种在线中</p>
+          <p class="td-vitals__views">查看 <b class="num">1,204</b></p>
+        </div>
+        <div class="td-side-card td-files-mini">
+          <div class="td-side-card__head"><h3>文件列表</h3><span class="num">42 项</span></div>
+          <div class="td-files-mini__list">
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">MP4</span><span class="td-files-mini__name" title="01-集合与常用逻辑用语.mp4">01-集合与常用逻辑用语.mp4</span><span class="td-files-mini__size num">412 MB</span></div>
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">MP4</span><span class="td-files-mini__name" title="02-函数的概念与性质.mp4">02-函数的概念与性质.mp4</span><span class="td-files-mini__size num">388 MB</span></div>
+            <div class="td-files-mini__row"><span class="td-files-mini__ext">MP4</span><span class="td-files-mini__name" title="03-基本初等函数.mp4">03-基本初等函数.mp4</span><span class="td-files-mini__size num">426 MB</span></div>
+          </div>
+          <a class="td-files-mini__more" href="#lg-files">查看全部 42 个文件 →</a>
+        </div>
+        <div class="td-side-card td-meta">
+          <div class="td-side-card__head"><h3>资源信息</h3></div>
+          <div class="td-meta__rows">
+            <div class="td-meta__row"><span>发布人</span><b>清风数学组</b></div>
+            <div class="td-meta__row"><span>发布时间</span><b>27 天前</b></div>
+            <div class="td-meta__row"><span>最近活动</span><b>2 小时前</b></div>
+            <div class="td-meta__row"><span>分类</span><b>高中</b></div>
+          </div>
+        </div>
+      </aside>
+      <div class="td-side-rel">
+        <div class="td-side-card">
+          <h3 class="td-rel__title">相关推荐</h3>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）"><span class="td-rel__thumb">物理</span><span><span class="td-rel__name">2025 人教版高中物理必修一 实验专题 4K</span><span class="td-rel__meta">18 讲 · 9.0 GB · <span class="td-rel__seed">做种 21</span></span></span></a>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）"><span class="td-rel__thumb">英语</span><span><span class="td-rel__name">高中英语语法全突破 芳芳老师 2025 全</span><span class="td-rel__meta">60 讲 · 2.0 GB · <span class="td-rel__seed">做种 55</span></span></span></a>
+        </div>
+      </div>
+    </div>
+  </article>
+</div>
+<div class="browser-hint">LG 1024 · 双栏收窄：右栏 260px、海报 100px、操作流式、文件 mini 前 3 行（base.css @1024）</div>
+</div>
+
+<!-- ===== MD 768：单栏临界（锚点吸顶 · 操作让位 · vitals 前置） ===== -->
+<div class="frame" data-frame="md">
+<div class="browser">
+  <div class="browser-bar">
+    <span class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span>
+    <span class="browser-url"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>fluxtorrent.local/torrent/1201</span>
+    <span class="browser-device"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>平板 768px</span>
+  </div>
+  <div class="site-nav">
+    <span class="site-logo"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></span>
+    <a class="site-link on" href="#" data-act="跳转演示（样图占位）">资源库</a>
+    <span class="site-user"><span>@xuehai</span><span class="site-avatar">学</span></span>
+  </div>
+  <article class="td-page">
+    <nav class="td-crumbs" aria-label="breadcrumb"><a href="#" data-act="跳转演示（样图占位）">资源库</a><span aria-hidden>›</span><span>高中</span><span class="td-crumbs__id">#1201</span></nav>
+    <div class="td-layout">
+      <section class="td-head">
+        <div class="td-head__poster">
+          <span class="td-head__cat" style="background:#1e8ae8">高中</span>
+          <div class="td-head__img" style="background:linear-gradient(160deg,#2fa8ff,#5b6bf5)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
+        </div>
+        <div class="td-head__main">
+          <h1 class="td-head__name">【官种】2025 人教版高中数学必修一 全套精讲视频 1080P</h1>
+          <p class="td-head__sub"><span class="td-head__chain">高中数学 · 人教版 · 1080P</span></p>
+          <div class="td-head__tags"><span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span></div>
+          <p class="td-head__hr">本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种</p>
+          <div class="td-head__badges">
+            <span class="sticker bg-sun text-ink">2x 免费</span>
+            <span class="td-head__left">距促销结束 2 天 5 时</span>
+            <span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 100</span>
+          </div>
+          <div class="td-head__meta">
+            <span>发布人：<b>清风数学组</b></span>
+            <span>发布时间：<b>27 天前</b></span>
+            <span>最近活动：<b>2 小时前</b></span>
+          </div>
+        </div>
+      </section>
+      <!-- 锚点条（<768 sticky） -->
+      <nav class="td-anchor" aria-label="页面导航">
+        <button type="button" class="td-anchor__tab is-on">简介</button>
+        <button type="button" class="td-anchor__tab">文件 <span class="td-anchor__num num">42</span></button>
+        <button type="button" class="td-anchor__tab">字幕 <span class="td-anchor__num num">2</span></button>
+        <button type="button" class="td-anchor__tab">评论 <span class="td-anchor__num num">12</span></button>
+      </nav>
+      <!-- 右栏前置（单栏：vitals 随流） -->
+      <aside class="td-side">
+        <div class="td-side-card td-vitals">
+          <div class="td-vitals__grid">
+            <div class="td-vitals__cell td-vitals__cell--seed"><b class="num">89</b><span>做种</span></div>
+            <div class="td-vitals__cell td-vitals__cell--leech"><b class="num">12</b><span>下载</span></div>
+            <div class="td-vitals__cell td-vitals__cell--done"><b class="num">412</b><span>完成</span></div>
+            <div class="td-vitals__cell td-vitals__cell--thanks"><b class="num">23</b><span>感谢</span></div>
+          </div>
+          <p class="td-vitals__health is-alive">健康 · 做种在线中</p>
+          <p class="td-vitals__views">查看 <b class="num">1,204</b></p>
+        </div>
+      </aside>
+      <div class="td-main">
+        <section class="td-specs">
+          <div class="td-spec"><b>4.5 GB</b><span>大小</span></div>
+          <div class="td-spec"><b>42</b><span>文件数</span></div>
+          <div class="td-spec"><b>高中</b><span>分类</span></div>
+          <div class="td-spec"><b>高中数学</b><span>学段</span></div>
+          <div class="td-spec"><b>人教版</b><span>版本</span></div>
+          <div class="td-spec"><b>1080P</b><span>规格</span></div>
+          <div class="td-spec"><b>9.2</b><span>评分</span></div>
+        </section>
+        <details class="td-fold" open id="md-sec-descr">
+          <summary><h2>内容简介</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-descr__body"><p>同步人教版教材章节，每讲 25 分钟，配套讲义可打印。王老师（特级教师）主讲，覆盖集合与常用逻辑用语、函数概念与性质、指数函数与对数函数、三角函数四大板块。</p></div>
+        </details>
+        <details class="td-fold" id="md-files">
+          <summary><h2>文件列表</h2><span class="td-fold__count num">42</span><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body"><table class="td-files"><tr><td>01-集合与常用逻辑用语.mp4</td><td class="num">412 MB</td></tr><tr><td>02-函数的概念与性质.mp4</td><td class="num">388 MB</td></tr><tr><td>03-基本初等函数（指数·对数）.mp4</td><td class="num">426 MB</td></tr></table></div>
+        </details>
+        <details class="td-fold" id="md-sec-comments">
+          <summary><h2>评论 (12)</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-comments td-fold__body">
+            <div class="td-comment"><div class="td-comment__side"><span class="td-comment__avatar">林</span><span class="td-comment__name">林老师</span><span class="td-comment__time">3 天前</span></div><div class="td-comment__body">王老师的课讲得特别细，课本上没讲透的点都掰开了讲。</div></div>
+            <div class="td-comment td-comment--reply"><div class="td-comment__side"><span class="td-comment__avatar">陈</span><span class="td-comment__name">陈同学</span><span class="td-comment__time">2 天前</span></div><div class="td-comment__body">回复 @林老师：讲义 PDF 打印出来很清楚，感谢分享！</div></div>
+          </div>
+        </details>
+      </div>
+      <div class="td-side-rel">
+        <div class="td-side-card">
+          <h3 class="td-rel__title">相关推荐</h3>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）"><span class="td-rel__thumb">物理</span><span><span class="td-rel__name">2025 人教版高中物理必修一 实验专题 4K</span><span class="td-rel__meta">18 讲 · 9.0 GB · <span class="td-rel__seed">做种 21</span></span></span></a>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）"><span class="td-rel__thumb">英语</span><span><span class="td-rel__name">高中英语语法全突破 芳芳老师 2025 全</span><span class="td-rel__meta">60 讲 · 2.0 GB · <span class="td-rel__seed">做种 55</span></span></span></a>
+        </div>
+      </div>
+    </div>
+  </article>
+</div>
+<div class="browser-hint">MD 768 · 单栏临界：head → 锚点吸顶 → vitals → 折叠块 → 相关回落底部；头部操作隐藏（base.css @768）</div>
+</div>
+
+<!-- ===== XS 390：单栏 + 底部操作条（规格横滑 · 评论单栏） ===== -->
+<div class="frame" data-frame="xs">
+<div class="browser">
+  <div class="browser-bar">
+    <span class="browser-dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span>
+    <span class="browser-url"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>fluxtorrent.local/torrent/1201</span>
+    <span class="browser-device"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>手机 390px</span>
+  </div>
+  <div class="site-nav">
+    <span class="site-logo"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg><em>FluxTorrent</em></span>
+    <span class="site-user"><span class="site-avatar">学</span></span>
+  </div>
+  <article class="td-page">
+    <nav class="td-crumbs" aria-label="breadcrumb"><a href="#" data-act="跳转演示（样图占位）">资源库</a><span aria-hidden>›</span><span>高中</span><span class="td-crumbs__id">#1201</span></nav>
+    <div class="td-layout">
+      <section class="td-head">
+        <div class="td-head__poster">
+          <span class="td-head__cat" style="background:#1e8ae8">高中</span>
+          <div class="td-head__img" style="background:linear-gradient(160deg,#2fa8ff,#5b6bf5)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
+        </div>
+        <div class="td-head__main">
+          <h1 class="td-head__name">【官种】2025 人教版高中数学必修一 全套精讲视频 1080P</h1>
+          <p class="td-head__sub"><span class="td-head__chain">高中数学 · 人教版 · 1080P</span></p>
+          <div class="td-head__tags"><span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span></div>
+          <div class="td-head__badges">
+            <span class="sticker bg-sun text-ink">2x 免费</span>
+            <span class="td-head__left">剩 2 天 5 时</span>
+            <span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 100</span>
+          </div>
+          <div class="td-head__meta">
+            <span>清风数学组</span><span>27 天前</span><span>2 小时前活跃</span>
+          </div>
+        </div>
+      </section>
+      <!-- 锚点条 -->
+      <nav class="td-anchor" aria-label="页面导航">
+        <button type="button" class="td-anchor__tab is-on">简介</button>
+        <button type="button" class="td-anchor__tab">文件 <span class="td-anchor__num num">42</span></button>
+        <button type="button" class="td-anchor__tab">字幕 <span class="td-anchor__num num">2</span></button>
+        <button type="button" class="td-anchor__tab">评论 <span class="td-anchor__num num">12</span></button>
+      </nav>
+      <aside class="td-side">
+        <div class="td-side-card td-vitals">
+          <div class="td-vitals__grid">
+            <div class="td-vitals__cell td-vitals__cell--seed"><b class="num">89</b><span>做种</span></div>
+            <div class="td-vitals__cell td-vitals__cell--leech"><b class="num">12</b><span>下载</span></div>
+            <div class="td-vitals__cell td-vitals__cell--done"><b class="num">412</b><span>完成</span></div>
+            <div class="td-vitals__cell td-vitals__cell--thanks"><b class="num">23</b><span>感谢</span></div>
+          </div>
+          <p class="td-vitals__health is-alive">健康 · 做种在线中</p>
+        </div>
+      </aside>
+      <div class="td-main">
+        <section class="td-specs">
+          <div class="td-spec"><b>4.5 GB</b><span>大小</span></div>
+          <div class="td-spec"><b>42</b><span>文件数</span></div>
+          <div class="td-spec"><b>高中</b><span>分类</span></div>
+          <div class="td-spec"><b>高中数学</b><span>学段</span></div>
+          <div class="td-spec"><b>人教版</b><span>版本</span></div>
+          <div class="td-spec"><b>1080P</b><span>规格</span></div>
+          <div class="td-spec"><b>9.2</b><span>评分</span></div>
+        </section>
+        <details class="td-fold" open id="xs-sec-descr">
+          <summary><h2>内容简介</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-descr__body"><p>同步人教版教材章节，每讲 25 分钟，配套讲义可打印。王老师（特级教师）主讲。</p></div>
+        </details>
+        <details class="td-fold" id="xs-files">
+          <summary><h2>文件列表</h2><span class="td-fold__count num">42</span><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-fold__body"><table class="td-files"><tr><td>01-集合与常用逻辑用语.mp4</td><td class="num">412 MB</td></tr><tr><td>02-函数的概念与性质.mp4</td><td class="num">388 MB</td></tr><tr><td>03-基本初等函数（指数·对数）.mp4</td><td class="num">426 MB</td></tr></table></div>
+        </details>
+        <details class="td-fold" id="xs-sec-comments">
+          <summary><h2>评论 (12)</h2><span class="td-fold__chev" aria-hidden></span></summary>
+          <div class="td-comments td-fold__body">
+            <div class="td-comment"><div class="td-comment__side"><span class="td-comment__avatar">林</span><span class="td-comment__name">林老师</span><span class="td-comment__time">3 天前</span></div><div class="td-comment__body">王老师的课讲得特别细，课本上没讲透的点都掰开了讲。</div></div>
+            <div class="td-comment td-comment--reply"><div class="td-comment__side"><span class="td-comment__avatar">陈</span><span class="td-comment__name">陈同学</span><span class="td-comment__time">2 天前</span></div><div class="td-comment__body">回复 @林老师：讲义 PDF 打印出来很清楚，感谢分享！</div></div>
+          </div>
+        </details>
+      </div>
+      <div class="td-side-rel">
+        <div class="td-side-card">
+          <h3 class="td-rel__title">相关推荐</h3>
+          <a class="td-rel__item" href="#" data-act="跳转演示（样图占位）"><span class="td-rel__thumb">物理</span><span><span class="td-rel__name">2025 人教版高中物理必修一 实验专题 4K</span><span class="td-rel__meta">18 讲 · 9.0 GB · <span class="td-rel__seed">做种 21</span></span></span></a>
+        </div>
+      </div>
+    </div>
+  </article>
+  <!-- 底部操作条 -->
+  <div class="td-actionbar" id="td-actionbar">
+    <button type="button" class="td-actionbar__btn" aria-label="收藏" data-act="已加入心愿单（演示）">☆</button>
+    <button type="button" class="td-actionbar__btn" aria-label="复制链接" data-act="链接已复制（演示）">⧉</button>
+    <button type="button" class="td-actionbar__btn is-primary" aria-label="下载" data-act="开始下载种子（演示）">⬇ 下载</button>
+  </div>
+</div>
+<div class="browser-hint">XS 390 · 单栏：头部精简 + 规格横滑 + 锚点吸顶 + 底部操作条（safe-area）；评论单栏（base.css @640 / @767）</div>
+</div>
+
+</div>
+
+<div id="toast" role="status"></div>
+
+<script>
+var BP = { xl:"XL ≥1024 · 双栏满配（右栏 320px sticky）", lg:"LG 1024 · 双栏收窄（右栏 260px · 海报 100px）", md:"MD 768 · 单栏过渡（锚点吸顶 · 操作让位）", xs:"XS <640 · 单栏 + 底部操作条（☆收藏 / ⧉复制 / ⬇下载）" };
+var meta = document.getElementById("frameMeta");
+var btns = document.querySelectorAll(".bp-nav button[data-bp]");
+var frames = document.querySelectorAll(".frame");
+
+function switchBP(bp, silent){
+  btns.forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-bp") === bp); });
+  frames.forEach(function(f){ f.classList.toggle("on", f.getAttribute("data-frame") === bp); });
+  meta.innerHTML = BP[bp] || bp.toUpperCase();
+  if (!silent){
+    var active = document.querySelector('.frame.on');
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+btns.forEach(function(b){ b.addEventListener("click", function(){ switchBP(b.getAttribute("data-bp")); }); });
+
+/* autoBP：加载与缩放时按视口自动匹配断点 */
+function autoBP(){
+  var w = window.innerWidth;
+  var bp = w >= 1200 ? 'xl' : (w >= 1024 ? 'lg' : (w >= 768 ? 'md' : 'xs'));
+  switchBP(bp, true);
+}
+autoBP();
+var resizeTimer = null;
+window.addEventListener("resize", function(){
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(autoBP, 120);
+});
+
+/* 锚点 tab：滚动到当前帧对应折叠块 */
+var anchorTabs = document.querySelectorAll(".td-anchor__tab");
+var anchorMap = { "简介":"sec-descr", "文件":"files", "字幕":"sec-subtitles", "评论":"sec-comments" };
+anchorTabs.forEach(function(tab){
+  tab.addEventListener("click", function(){
+    var label = tab.textContent.replace(/\s*\d+\s*$/, "").trim();
+    var bp = document.querySelector(".frame.on").getAttribute("data-frame");
+    var key = anchorMap[label] || "";
+    var el = document.getElementById(bp + "-" + key);
+    if (el){
+      el.open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      toast("锚点跳转演示：" + label);
+    }
+  });
+});
+
+var toastTimer = null;
+function toast(msg){
+  var el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 1600);
+}
+
+/* ===== 站型包数据（通用建站系统：教育 / 影视 / 音乐） ===== */
+var SITES = {
+  education: {
+    siteName: "教育站", cat: "高中", catStyle: "background:#1e8ae8", crumbCat: "高中", id: "#1201",
+    title: "【官种】2025 人教版高中数学必修一 全套精讲视频 1080P",
+    chain: "高中数学 · 人教版 · 1080P", sub: "必修一全册 · 42 讲 · 含讲义 PDF",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">2x 免费</span><span class="td-head__left">距促销结束 2 天 5 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 100</span>',
+    meta: '<span>发布人：<b>清风数学组</b></span><span title="2025-09-18 14:32">发布时间：<b>27 天前</b></span><span title="2025-10-15 10:04">最近活动：<b>2 小时前</b></span>',
+    btnSize: "4.5 GB",
+    specsXL: [["4.5 GB","大小"],["42","文件数"],["高中","分类"],["高中数学","学段"],["人教版","版本"],["1080P","规格"],["H.264","编码"],["9.2","评分"]],
+    specs: [["4.5 GB","大小"],["42","文件数"],["高中","分类"],["高中数学","学段"],["人教版","版本"],["1080P","规格"],["9.2","评分"]],
+    descrTitle: "高中数学必修一精讲",
+    descr: "同步人教版教材章节，每讲 25 分钟，配套讲义可打印。王老师（特级教师）主讲，覆盖集合与常用逻辑用语、函数概念与性质、指数函数与对数函数、三角函数四大板块。<ul><li>分辨率：1920×1080，H.264 编码</li><li>讲师：王老师（特级教师），板书 + 投屏双视角</li><li>含单元测试卷与答案解析，讲义 PDF 随附</li></ul>",
+    descrShort: "同步人教版教材章节，每讲 25 分钟，配套讲义可打印。王老师（特级教师）主讲。",
+    nfo: "Video: AVC 1920x1080 (16:9) 29.970 fps ~8200 kb/s\nAudio: AAC LC 48.0 kHz 2 ch ~192 kb/s\nText: 简体中文 (UTF-8)",
+    filesCount: "42", subCount: "2",
+    extraSub: "中文（简）· 同步课本术语 · 英文（机翻参考）",
+    extraSnatch: "共 412 次完成 · 最近 24 小时完成 6 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">林</span>林老师</span><span class="td-thanker"><span class="td-thanker__avatar">陈</span>陈同学</span><span class="td-thanker"><span class="td-thanker__avatar">周</span>周老师</span><span class="td-thanker"><span class="td-thanker__avatar">吴</span>吴同学</span>',
+    infohash: "9F3A7C2E5B1D4A6F8E0C3B5D7A9F1E2C4B6D8A0F",
+    filesXL: [["01-集合与常用逻辑用语.mp4","412 MB"],["02-函数的概念与性质.mp4","388 MB"],["03-基本初等函数（指数·对数）.mp4","426 MB"],["04-三角函数（上）.mp4","401 MB"],["05-三角函数（下）.mp4","397 MB"],["讲义PDF-必修一全册.pdf","12.4 MB"]],
+    filesLG: [["01-集合与常用逻辑用语.mp4","412 MB"],["02-函数的概念与性质.mp4","388 MB"],["03-基本初等函数（指数·对数）.mp4","426 MB"],["04-三角函数（上）.mp4","401 MB"],["讲义PDF-必修一全册.pdf","12.4 MB"]],
+    files: [["01-集合与常用逻辑用语.mp4","412 MB"],["02-函数的概念与性质.mp4","388 MB"],["03-基本初等函数（指数·对数）.mp4","426 MB"]],
+    filesMini: [["MP4","01-集合与常用逻辑用语.mp4","412 MB"],["MP4","02-函数的概念与性质.mp4","388 MB"],["MP4","03-基本初等函数.mp4","426 MB"],["MP4","04-三角函数（上）.mp4","401 MB"],["PDF","讲义PDF-必修一全册.pdf","12.4 MB"]],
+    vitals: [["89","做种","seed"],["12","下载","leech"],["412","完成","done"],["23","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "1,204",
+    metaRows: [["发布人","清风数学组"],["发布时间","27 天前"],["最近活动","2 小时前"],["分类","高中"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">高中数学同步</a>']],
+    related: [["物理","2025 人教版高中物理必修一 实验专题 4K","18 讲 · 9.0 GB · <span class=\"td-rel__seed\">做种 21</span>"],["英语","高中英语语法全突破 芳芳老师 2025 全","60 讲 · 2.0 GB · <span class=\"td-rel__seed\">做种 55</span>"],["化学","高中化学实验安全操作规范 教学版","8 讲 · 1.0 GB · <span class=\"td-rel__seed\">做种 19</span>"]],
+    comments: [
+      ["林","林老师","3 天前","王老师的课讲得特别细，课本上没讲透的点都掰开了讲，孩子终于开窍了！","6","回复"],
+      ["陈","陈同学","2 天前","回复 @林老师：讲义 PDF 打印出来很清楚，感谢分享！","3","回复"],
+      ["吴","吴同学","1 天前","画质很好，就是文件有点大，慢慢下。求种成功，感谢！","2","回复"]
+    ]
+  },
+  movie: {
+    siteName: "影视站", cat: "电影", catStyle: "background:#d6453d", crumbCat: "电影", id: "#2048",
+    title: "4K 蓝光原盘 星际穿越 Interstellar 2014 2160p UHD BluRay REMUX",
+    chain: "Blu-ray · 2160P · HEVC HDR10 · DTS-HD MA 5.1", sub: "双版本 · 中英双语字幕 · 含花絮",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">2x 免费</span><span class="td-head__left">距促销结束 1 天 12 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 100</span>',
+    meta: '<span>发布人：<b>R1SE 压制组</b></span><span title="2025-10-10 21:18">发布时间：<b>5 天前</b></span><span title="2025-10-15 11:06">最近活动：<b>38 分钟前</b></span>',
+    btnSize: "42.8 GB",
+    specsXL: [["42.8 GB","大小"],["4","文件数"],["电影","分类"],["2160P","规格"],["HEVC","编码"],["DTS-HD MA 5.1","音轨"],["中英字幕","字幕"],["9.8","评分"]],
+    specs: [["42.8 GB","大小"],["4","文件数"],["电影","分类"],["2160P","规格"],["HEVC","编码"],["DTS-HD MA 5.1","音轨"],["9.8","评分"]],
+    descrTitle: "星际穿越（Interstellar）",
+    descr: "2014 年诺兰执导科幻史诗。4K HDR10 蓝光原盘 REMUX，保留原盘音轨，含中英双语字幕。<ul><li>视频：2160p HEVC HDR10，主片 + 花絮</li><li>音频：DTS-HD Master Audio 5.1 原盘音轨</li><li>字幕：中英双语 PGS 内嵌</li></ul>",
+    descrShort: "2014 年诺兰执导科幻史诗。4K HDR10 蓝光原盘 REMUX，保留原盘音轨，含中英双语字幕。",
+    nfo: "Video: HEVC 3840x2160 (16:9) 23.976 fps ~35 Mb/s HDR10\nAudio: DTS-HD Master Audio 5.1 ~3.5 Mb/s\nText: 中英双语 PGS",
+    filesCount: "4", subCount: "2",
+    extraSub: "中文（简）· 英文（原盘 PGS）",
+    extraSnatch: "共 8,946 次完成 · 最近 24 小时完成 38 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">影</span>影迷甲</span><span class="td-thanker"><span class="td-thanker__avatar">观</span>观影人</span><span class="td-thanker"><span class="td-thanker__avatar">蓝</span>蓝光控</span><span class="td-thanker"><span class="td-thanker__avatar">诺</span>诺兰粉</span>',
+    infohash: "C41D8E2F7A9B3C5E6D1F0A8B9C2E4F6A8B0D1C3E5",
+    filesXL: [["Interstellar.2014.2160p.BluRay.REMUX.mkv","41.6 GB"],["BehindTheScenes.花絮.2160p.mkv","1.2 GB"],["Interstellar.poster.jpg","2.1 MB"],["Interstellar.cht.srt","98 KB"]],
+    filesLG: [["Interstellar.2014.2160p.BluRay.REMUX.mkv","41.6 GB"],["BehindTheScenes.花絮.2160p.mkv","1.2 GB"],["Interstellar.poster.jpg","2.1 MB"]],
+    files: [["Interstellar.2014.2160p.BluRay.REMUX.mkv","41.6 GB"],["BehindTheScenes.花絮.2160p.mkv","1.2 GB"],["Interstellar.poster.jpg","2.1 MB"]],
+    filesMini: [["MKV","Interstellar.2014.2160p.BluRay.REMUX.mkv","41.6 GB"],["MKV","BehindTheScenes.花絮.2160p.mkv","1.2 GB"],["JPG","Interstellar.poster.jpg","2.1 MB"],["SRT","Interstellar.cht.srt","98 KB"]],
+    vitals: [["123","做种","seed"],["45","下载","leech"],["8946","完成","done"],["156","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "12,384",
+    metaRows: [["发布人","R1SE 压制组"],["发布时间","5 天前"],["最近活动","38 分钟前"],["分类","电影"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">蓝光原盘精选</a>']],
+    related: [["盗","盗梦空间 Inception 2010 4K REMUX","2160P · 38.2 GB · <span class=\"td-rel__seed\">做种 87</span>"],["奥","奥本海默 Oppenheimer 2023 4K 原盘","2160P · 52.1 GB · <span class=\"td-rel__seed\">做种 63</span>"],["沙","沙丘 2 Dune Part Two 4K REMUX","2160P · 44.5 GB · <span class=\"td-rel__seed\">做种 51</span>"]],
+    comments: [
+      ["影","影迷甲","2 天前","画质顶级，HDR10 效果惊艳，飞船场景暗部细节全出来了！","12","回复"],
+      ["观","观影人","1 天前","回复 @影迷甲：音轨 DTS-HD MA 保留得很好，影院感十足。","8","回复"],
+      ["蓝","蓝光控","4 小时前","REMUX 干净利落，感谢压制组，这片子值得收藏。","5","回复"]
+    ]
+  },
+  music: {
+    siteName: "音乐站", cat: "华语音乐", catStyle: "background:#e04f9f", crumbCat: "华语音乐", id: "#3315",
+    title: "【官种】周杰伦《最伟大的作品》2022 专辑 AAC 320kbps",
+    chain: "MP3/AAC · 320kbps · 网络发行", sub: "15 首全收录 · 含歌词与封面",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 24 小时 · 保种 7 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">免费</span><span class="td-head__left">距促销结束 3 天 6 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 92</span>',
+    meta: '<span>发布人：<b>乐库整理组</b></span><span title="2025-10-02 15:40">发布时间：<b>13 天前</b></span><span title="2025-10-15 09:12">最近活动：<b>2 小时前</b></span>',
+    btnSize: "128 MB",
+    specsXL: [["128 MB","大小"],["15","文件数"],["华语音乐","分类"],["MP3/AAC","格式"],["320kbps","音质"],["网络发行","来源"],["华语","语种"],["8.8","评分"]],
+    specs: [["128 MB","大小"],["15","文件数"],["华语音乐","分类"],["MP3/AAC","格式"],["320kbps","音质"],["网络发行","来源"],["8.8","评分"]],
+    descrTitle: "最伟大的作品（2022 数字专辑）",
+    descr: "2022 年发行的周杰伦第十五张录音室专辑，数字版 AAC 320kbps，含全部 15 首曲目与歌词。<ul><li>格式：AAC 320kbps（.m4a）</li><li>来源：官方数字发行</li><li>附歌词 LRC 与封面</li></ul>",
+    descrShort: "2022 年发行的周杰伦第十五张录音室专辑，数字版 AAC 320kbps，含全部 15 首曲目与歌词。",
+    nfo: "Audio: AAC LC 320 kbps 44.1 kHz 2 ch\nTracks: 15\nSource: 官方数字发行",
+    filesCount: "15", subCount: "1",
+    extraSub: "中文（简）歌词 · 附封面",
+    extraSnatch: "共 3,610 次完成 · 最近 24 小时完成 9 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">杰</span>杰迷一号</span><span class="td-thanker"><span class="td-thanker__avatar">伦</span>伦哥铁粉</span><span class="td-thanker"><span class="td-thanker__avatar">歌</span>歌迷小周</span><span class="td-thanker"><span class="td-thanker__avatar">粉</span>粉色海洋</span>',
+    infohash: "7B1E3F5A9C2D4E6F8A0B1C3D5E7F9A0B2C4D6E8F0",
+    filesXL: [["01-最伟大的作品.m4a","9.2 MB"],["02-还在流浪.m4a","8.6 MB"],["03-说好不哭.m4a","8.9 MB"],["04-红颜如霜.m4a","8.4 MB"],["05-错过的烟火.m4a","8.1 MB"],["专辑-封面与歌词.zip","2.4 MB"]],
+    filesLG: [["01-最伟大的作品.m4a","9.2 MB"],["02-还在流浪.m4a","8.6 MB"],["03-说好不哭.m4a","8.9 MB"],["04-红颜如霜.m4a","8.4 MB"],["05-错过的烟火.m4a","8.1 MB"]],
+    files: [["01-最伟大的作品.m4a","9.2 MB"],["02-还在流浪.m4a","8.6 MB"],["03-说好不哭.m4a","8.9 MB"]],
+    filesMini: [["M4A","01-最伟大的作品.m4a","9.2 MB"],["M4A","02-还在流浪.m4a","8.6 MB"],["M4A","03-说好不哭.m4a","8.9 MB"],["M4A","04-红颜如霜.m4a","8.4 MB"],["ZIP","专辑-封面与歌词.zip","2.4 MB"]],
+    vitals: [["52","做种","seed"],["6","下载","leech"],["3610","完成","done"],["28","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "4,528",
+    metaRows: [["发布人","乐库整理组"],["发布时间","13 天前"],["最近活动","2 小时前"],["分类","华语音乐"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">周杰伦全辑</a>']],
+    related: [["范","范特西 2001 专辑 MP3 320kbps","15 首 · 96 MB · <span class=\"td-rel__seed\">做种 38</span>"],["七","七里香 2004 专辑 AAC 320kbps","10 首 · 78 MB · <span class=\"td-rel__seed\">做种 29</span>"],["八","八度空间 2002 专辑 MP3 320kbps","11 首 · 84 MB · <span class=\"td-rel__seed\">做种 22</span>"]],
+    comments: [
+      ["杰","杰迷一号","5 天前","数字版音质干净，歌词 LRC 都齐了，收藏！","9","回复"],
+      ["伦","伦哥铁粉","3 天前","回复 @杰迷一号：红颜如霜越听越上头。","4","回复"],
+      ["粉","粉色海洋","1 天前","封面高清，感谢整理组。","3","回复"]
+    ]
+  },
+  anime: {
+    siteName: "动漫站", cat: "动画", catStyle: "background:#ff8fc7", crumbCat: "动画", id: "#4017",
+    title: "【官种】葬送的芙莉莲 2023 全 28 话 1080P BDRIP x265 简繁",
+    chain: "番剧 · x265 · BDRIP", sub: "全 28 话 · 含 OP/ED 特典",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">2x 免费</span><span class="td-head__left">距促销结束 1 天 8 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 98</span>',
+    meta: '<span>发布人：<b>澄空字幕组</b></span><span title="2025-10-06 20:15">发布时间：<b>9 天前</b></span><span title="2025-10-15 08:41">最近活动：<b>3 小时前</b></span>',
+    btnSize: "12.6 GB",
+    specsXL: [["12.6 GB","大小"],["32","文件数"],["动画","分类"],["番剧","媒介"],["x265","编码"],["BDRIP","来源"],["1080P","规格"],["9.4","评分"]],
+    specs: [["12.6 GB","大小"],["32","文件数"],["动画","分类"],["番剧","媒介"],["x265","编码"],["BDRIP","来源"],["9.4","评分"]],
+    descrTitle: "葬送的芙莉莲（2023 秋）",
+    descr: "魔法使芙莉莲与勇者一行结束冒险后的旅程。澄空字幕组 BDRIP 全 28 话，简繁双字幕。<ul><li>视频：1080P x265 10bit，BDRIP 原盘</li><li>字幕：简体 + 繁体可选</li><li>特典：OP/ED 无字幕版 + 原声精选</li></ul>",
+    descrShort: "魔法使芙莉莲与勇者一行结束冒险后的旅程。澄空字幕组 BDRIP 全 28 话，简繁双字幕。",
+    nfo: "Video: HEVC 1920x1080 (16:9) 23.976 fps ~8.5 Mb/s 10bit\nAudio: AAC 2.0 + FLAC 5.1\nText: 简繁 ASS",
+    filesCount: "32", subCount: "2",
+    extraSub: "简体 · 繁体（ASS 特效字幕）",
+    extraSnatch: "共 5,230 次完成 · 最近 24 小时完成 21 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">芙</span>芙莉莲厨</span><span class="td-thanker"><span class="td-thanker__avatar">辛</span>辛美尔</span><span class="td-thanker"><span class="td-thanker__avatar">葬</span>葬送的粉</span><span class="td-thanker"><span class="td-thanker__avatar">澄</span>澄空常客</span>',
+    infohash: "A1B2C3D4E5F60718293A4B5C6D7E8F9012345678",
+    filesXL: [["01-旅立ちの朝.mkv","486 MB"],["02-法师的幻想.mkv","472 MB"],["03-葬送的芙莉莲.mkv","468 MB"],["04-铁锈的半岛.mkv","465 MB"],["28-结束之旅.mkv","491 MB"],["特典-OP无字幕.mkv","88 MB"]],
+    filesLG: [["01-旅立ちの朝.mkv","486 MB"],["02-法师的幻想.mkv","472 MB"],["03-葬送的芙莉莲.mkv","468 MB"],["04-铁锈的半岛.mkv","465 MB"],["28-结束之旅.mkv","491 MB"]],
+    files: [["01-旅立ちの朝.mkv","486 MB"],["02-法师的幻想.mkv","472 MB"],["03-葬送的芙莉莲.mkv","468 MB"]],
+    filesMini: [["MKV","01-旅立ちの朝.mkv","486 MB"],["MKV","02-法师的幻想.mkv","472 MB"],["MKV","03-葬送的芙莉莲.mkv","468 MB"],["MKV","04-铁锈的半岛.mkv","465 MB"],["MKV","特典-OP无字幕.mkv","88 MB"]],
+    vitals: [["156","做种","seed"],["23","下载","leech"],["5230","完成","done"],["88","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "8,431",
+    metaRows: [["发布人","澄空字幕组"],["发布时间","9 天前"],["最近活动","3 小时前"],["分类","动画"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">2023 十月番</a>']],
+    related: [["咒","咒术回战 第二季 全 23 话 BDRIP","x265 · 11.8 GB · <span class=\"td-rel__seed\">做种 102</span>"],["间","间谍过家家 第二季 全 12 话","x265 · 5.4 GB · <span class=\"td-rel__seed\">做种 74</span>"],["我","我推的孩子 第二季 全 13 话","x265 · 6.1 GB · <span class=\"td-rel__seed\">做种 58</span>"]],
+    comments: [
+      ["芙","芙莉莲厨","4 天前","澄空的字幕质量没得说，特效字幕太用心了！","18","回复"],
+      ["辛","辛美尔","2 天前","回复 @芙莉莲厨：28 话完结，可以一口气补完。","7","回复"],
+      ["澄","澄空常客","6 小时前","特典 OP 无字幕版太良心了。","4","回复"]
+    ]
+  },
+  ebook: {
+    siteName: "电子书站", cat: "文学", catStyle: "background:#2fbf9b", crumbCat: "文学", id: "#5055",
+    title: "【官种】三体（全三册）刘慈欣 EPUB 精校版",
+    chain: "EPUB · 文字版 · 出版社正版", sub: "精校无错字 · 含注释与后记",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站资源无 H&amp;R 义务 · 感谢做种分享",
+    badges: '<span class="sticker bg-sun text-ink">免费</span><span class="td-head__left">距促销结束 5 天 2 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">精校 100</span>',
+    meta: '<span>发布人：<b>书库校对组</b></span><span title="2025-09-28 11:20">发布时间：<b>17 天前</b></span><span title="2025-10-15 07:33">最近活动：<b>4 小时前</b></span>',
+    btnSize: "8.2 MB",
+    specsXL: [["8.2 MB","大小"],["3","文件数"],["文学","分类"],["EPUB","格式"],["文字版","媒介"],["出版社正版","来源"],["中文","语种"],["9.6","评分"]],
+    specs: [["8.2 MB","大小"],["3","文件数"],["文学","分类"],["EPUB","格式"],["文字版","媒介"],["出版社正版","来源"],["9.6","评分"]],
+    descrTitle: "三体（地球往事三部曲）",
+    descr: "刘慈欣代表作，中国科幻里程碑。精校 EPUB 版，无错字无乱码，适配主流阅读器。<ul><li>格式：EPUB 3.0，重排优化</li><li>校对：三遍通校，术语统一</li><li>附作者后记与编年表</li></ul>",
+    descrShort: "刘慈欣代表作，中国科幻里程碑。精校 EPUB 版，无错字无乱码，适配主流阅读器。",
+    nfo: "Format: EPUB 3.0\nCharset: UTF-8\nSource: 出版社正版扫描校对",
+    filesCount: "3", subCount: "0",
+    extraSub: "—（本资源无字幕章节）",
+    extraSnatch: "共 1,840 次完成 · 最近 24 小时完成 5 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">刘</span>刘慈欣粉</span><span class="td-thanker"><span class="td-thanker__avatar">书</span>书虫一枚</span><span class="td-thanker"><span class="td-thanker__avatar">宇</span>宇宙社会学</span><span class="td-thanker"><span class="td-thanker__avatar">面</span>面壁者</span>',
+    infohash: "5E4D3C2B1A0F9E8D7C6B5A4F3E2D1C0B9A8F7E6D5",
+    filesXL: [["三体-1-地球往事.epub","2.7 MB"],["三体-2-黑暗森林.epub","2.9 MB"],["三体-3-死神永生.epub","2.6 MB"]],
+    filesLG: [["三体-1-地球往事.epub","2.7 MB"],["三体-2-黑暗森林.epub","2.9 MB"],["三体-3-死神永生.epub","2.6 MB"]],
+    files: [["三体-1-地球往事.epub","2.7 MB"],["三体-2-黑暗森林.epub","2.9 MB"],["三体-3-死神永生.epub","2.6 MB"]],
+    filesMini: [["EPUB","三体-1-地球往事.epub","2.7 MB"],["EPUB","三体-2-黑暗森林.epub","2.9 MB"],["EPUB","三体-3-死神永生.epub","2.6 MB"]],
+    vitals: [["34","做种","seed"],["5","下载","leech"],["1840","完成","done"],["12","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "2,376",
+    metaRows: [["发布人","书库校对组"],["发布时间","17 天前"],["最近活动","4 小时前"],["分类","文学"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">科幻三巨头</a>']],
+    related: [["球","球状闪电 刘慈欣 EPUB 精校","文字版 · 1.1 MB · <span class=\"td-rel__seed\">做种 26</span>"],["流","流浪地球 短篇小说集 EPUB","文字版 · 0.9 MB · <span class=\"td-rel__seed\">做种 31</span>"],["超","超新星纪元 EPUB 精校","文字版 · 1.3 MB · <span class=\"td-rel__seed\">做种 14</span>"]],
+    comments: [
+      ["刘","刘慈欣粉","6 天前","精校版阅读体验极好，Kindle 上排版完美。","11","回复"],
+      ["宇","宇宙社会学","3 天前","回复 @刘慈欣粉：三部一口气读完，意犹未尽。","5","回复"],
+      ["面","面壁者","1 天前","注释很全，感谢校对组。","3","回复"]
+    ]
+  },
+  general: {
+    siteName: "综合站", cat: "电影", catStyle: "background:#5b6bf5", crumbCat: "电影", id: "#6021",
+    title: "【官种】流浪地球 2 2023 1080P WEB-DL x264 国粤双语",
+    chain: "视频 · H.264 · WEB-DL", sub: "电影 · 国语中字 · 3.4 GB",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">2x 免费</span><span class="td-head__left">距促销结束 2 天 9 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 95</span>',
+    meta: '<span>发布人：<b>综合资源组</b></span><span title="2025-10-11 19:02">发布时间：<b>4 天前</b></span><span title="2025-10-15 10:18">最近活动：<b>1 小时前</b></span>',
+    btnSize: "6.8 GB",
+    specsXL: [["6.8 GB","大小"],["3","文件数"],["电影","分类"],["视频","媒介"],["H.264","编码"],["WEB-DL","来源"],["1080P","规格"],["8.9","评分"]],
+    specs: [["6.8 GB","大小"],["3","文件数"],["电影","分类"],["视频","媒介"],["H.264","编码"],["WEB-DL","来源"],["8.9","评分"]],
+    descrTitle: "流浪地球 2（2023）",
+    descr: "郭帆执导中国科幻大片前传。WEB-DL 1080P，国粤双语双音轨，中文字幕。<ul><li>视频：1080P H.264</li><li>音频：国语 + 粤语双轨</li><li>字幕：简中</li></ul>",
+    descrShort: "郭帆执导中国科幻大片前传。WEB-DL 1080P，国粤双语双音轨，中文字幕。",
+    nfo: "Video: AVC 1920x800 ~9.5 Mb/s\nAudio: AAC 2.0 国语 + 粤语\nText: 简体中文",
+    filesCount: "3", subCount: "1",
+    extraSub: "简体中文（内嵌）",
+    extraSnatch: "共 12,650 次完成 · 最近 24 小时完成 61 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">流</span>流浪地球粉</span><span class="td-thanker"><span class="td-thanker__avatar">郭</span>郭帆影迷</span><span class="td-thanker"><span class="td-thanker__avatar">地</span>地球人</span><span class="td-thanker"><span class="td-thanker__avatar">综</span>综合老用户</span>',
+    infohash: "3F2E1D0C9B8A7F6E5D4C3B2A1F0E9D8C7B6A5F4E3",
+    filesXL: [["流浪地球2.2023.1080p.WEB-DL.x264.mkv","6.5 GB"],["流浪地球2.2023.国语版.srt","156 KB"],["流浪地球2.2023.poster.jpg","1.8 MB"]],
+    filesLG: [["流浪地球2.2023.1080p.WEB-DL.x264.mkv","6.5 GB"],["流浪地球2.2023.国语版.srt","156 KB"],["流浪地球2.2023.poster.jpg","1.8 MB"]],
+    files: [["流浪地球2.2023.1080p.WEB-DL.x264.mkv","6.5 GB"],["流浪地球2.2023.国语版.srt","156 KB"],["流浪地球2.2023.poster.jpg","1.8 MB"]],
+    filesMini: [["MKV","流浪地球2.2023.1080p.WEB-DL.x264.mkv","6.5 GB"],["SRT","流浪地球2.2023.国语版.srt","156 KB"],["JPG","流浪地球2.2023.poster.jpg","1.8 MB"]],
+    vitals: [["210","做种","seed"],["38","下载","leech"],["12650","完成","done"],["190","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "21,933",
+    metaRows: [["发布人","综合资源组"],["发布时间","4 天前"],["最近活动","1 小时前"],["分类","电影"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">国产科幻</a>']],
+    related: [["满","满江红 2023 1080P WEB-DL","x264 · 5.1 GB · <span class=\"td-rel__seed\">做种 96</span>"],["阿","阿凡达 2 水之道 1080P REMUX","x265 · 18.4 GB · <span class=\"td-rel__seed\">做种 143</span>"],["奥","奥本海默 2023 1080P WEB-DL","x264 · 4.8 GB · <span class=\"td-rel__seed\">做种 77</span>"]],
+    comments: [
+      ["流","流浪地球粉","3 天前","国粤双轨好评，家里老人听粤语版毫无压力。","14","回复"],
+      ["地","地球人","1 天前","回复 @流浪地球粉：特效场面在 1080P 下也很震撼。","6","回复"],
+      ["综","综合老用户","5 小时前","综合站什么都有，方便。","3","回复"]
+    ]
+  },
+  sports: {
+    siteName: "体育站", cat: "足球", catStyle: "background:#2e9e5b", crumbCat: "足球", id: "#7044",
+    title: "【官种】2025-26 英超 第 12 轮 曼城 vs 阿森纳 全场 1080P 英文解说",
+    chain: "全场 · H.265 · 电视台", sub: "全场比赛 · 含半场集锦",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">2x 免费</span><span class="td-head__left">距促销结束 1 天 4 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 97</span>',
+    meta: '<span>发布人：<b>赛事录制组</b></span><span title="2025-10-14 22:45">发布时间：<b>16 小时前</b></span><span title="2025-10-15 10:21">最近活动：<b>30 分钟前</b></span>',
+    btnSize: "8.4 GB",
+    specsXL: [["8.4 GB","大小"],["2","文件数"],["足球","分类"],["全场","媒介"],["H.265","编码"],["电视台","来源"],["1080P","规格"],["9.1","评分"]],
+    specs: [["8.4 GB","大小"],["2","文件数"],["足球","分类"],["全场","媒介"],["H.265","编码"],["电视台","来源"],["9.1","评分"]],
+    descrTitle: "英超第 12 轮 曼城 vs 阿森纳",
+    descr: "2025-26 赛季英超焦点战。电视台信号录制，1080P H.265，英文解说。<ul><li>视频：1080P H.265，全程录制</li><li>解说：Sky Sports 英文</li><li>附半场集锦（5 分钟）</li></ul>",
+    descrShort: "2025-26 赛季英超焦点战。电视台信号录制，1080P H.265，英文解说。",
+    nfo: "Video: HEVC 1920x1080 50fps ~10 Mb/s\nAudio: AAC 2.0 英文解说\nSource: 电视台录制",
+    filesCount: "2", subCount: "1",
+    extraSub: "—（体育资源无字幕）",
+    extraSnatch: "共 2,310 次完成 · 最近 24 小时完成 41 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">城</span>曼城死忠</span><span class="td-thanker"><span class="td-thanker__avatar">枪</span>枪手球迷</span><span class="td-thanker"><span class="td-thanker__avatar">赛</span>赛事集邮</span><span class="td-thanker"><span class="td-thanker__avatar">体</span>体育频道</span>',
+    infohash: "D4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0C1D2E3F4",
+    filesXL: [["MCI_vs_ARS.2025.1080p.H265.mkv","8.1 GB"],["MCI_vs_ARS.2025.集锦-5min.mkv","318 MB"]],
+    filesLG: [["MCI_vs_ARS.2025.1080p.H265.mkv","8.1 GB"],["MCI_vs_ARS.2025.集锦-5min.mkv","318 MB"]],
+    files: [["MCI_vs_ARS.2025.1080p.H265.mkv","8.1 GB"],["MCI_vs_ARS.2025.集锦-5min.mkv","318 MB"]],
+    filesMini: [["MKV","MCI_vs_ARS.2025.1080p.H265.mkv","8.1 GB"],["MKV","MCI_vs_ARS.2025.集锦-5min.mkv","318 MB"]],
+    vitals: [["45","做种","seed"],["12","下载","leech"],["2310","完成","done"],["30","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "3,915",
+    metaRows: [["发布人","赛事录制组"],["发布时间","16 小时前"],["最近活动","30 分钟前"],["分类","足球"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">2025-26 英超</a>']],
+    related: [["皇","皇马 vs 巴萨 西甲 国家德比 全场","H.265 · 7.9 GB · <span class=\"td-rel__seed\">做种 68</span>"],["欧","欧冠 第 4 轮 精选集锦 1080P","H.265 · 2.1 GB · <span class=\"td-rel__seed\">做种 44</span>"],["篮","NBA 常规赛 湖人 vs 勇士 全场","H.264 · 6.3 GB · <span class=\"td-rel__seed\">做种 39</span>"]],
+    comments: [
+      ["城","曼城死忠","12 小时前","这轮焦点战值得收藏，录制清晰。","8","回复"],
+      ["枪","枪手球迷","9 小时前","回复 @曼城死忠：下半场剧本太刺激了。","5","回复"],
+      ["体","体育频道","2 小时前","集锦很贴心，上班族友好。","3","回复"]
+    ]
+  },
+  game: {
+    siteName: "游戏站", cat: "PC游戏", catStyle: "background:#e8731e", crumbCat: "PC游戏", id: "#8012",
+    title: "【官种】艾尔登法环 黄金树幽影 PC 免安装硬盘版 v1.12 中文",
+    chain: "PC · 角色扮演 · 官方中文", sub: "集成 DLC · 免安装解压即玩",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">2x 免费</span><span class="td-head__left">距促销结束 3 天 1 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 99</span>',
+    meta: '<span>发布人：<b>整合安装组</b></span><span title="2025-09-30 17:30">发布时间：<b>15 天前</b></span><span title="2025-10-15 09:55">最近活动：<b>1 小时前</b></span>',
+    btnSize: "62.5 GB",
+    specsXL: [["62.5 GB","大小"],["15","文件数"],["PC游戏","分类"],["PC","平台"],["角色扮演","类型"],["官方中文","版本"],["官方","制作组"],["9.7","评分"]],
+    specs: [["62.5 GB","大小"],["15","文件数"],["PC游戏","分类"],["PC","平台"],["角色扮演","类型"],["官方中文","版本"],["9.7","评分"]],
+    descrTitle: "艾尔登法环 黄金树幽影（v1.12）",
+    descr: "FromSoftware 开放世界 ARPG，含「黄金树幽影」全部 DLC。免安装硬盘版，解压即玩。<ul><li>版本：v1.12 集成全部 DLC</li><li>语言：官方中文（简/繁）</li><li>运行：解压后运行 exe，含运行库说明</li></ul>",
+    descrShort: "FromSoftware 开放世界 ARPG，含「黄金树幽影」全部 DLC。免安装硬盘版，解压即玩。",
+    nfo: "Platform: PC (Windows 10/11 x64)\nVersion: 1.12 + DLC\nLang: 官方中文",
+    filesCount: "15", subCount: "0",
+    extraSub: "—（游戏资源无字幕）",
+    extraSnatch: "共 21,300 次完成 · 最近 24 小时完成 88 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">褪</span>褪色者</span><span class="td-thanker"><span class="td-thanker__avatar">环</span>交界地旅人</span><span class="td-thanker"><span class="td-thanker__avatar">游</span>游戏收藏家</span><span class="td-thanker"><span class="td-thanker__avatar">整</span>整合组粉丝</span>',
+    infohash: "6F5E4D3C2B1A0F9E8D7C6B5A4F3E2D1C0B9A8F7E6D5",
+    filesXL: [["eldenring-game.exe","58.2 GB"],["eldenring-dlc.rar","3.1 GB"],["运行库-DirectX.rar","812 MB"],["汉化与说明.txt","12 KB"]],
+    filesLG: [["eldenring-game.exe","58.2 GB"],["eldenring-dlc.rar","3.1 GB"],["运行库-DirectX.rar","812 MB"],["汉化与说明.txt","12 KB"]],
+    files: [["eldenring-game.exe","58.2 GB"],["eldenring-dlc.rar","3.1 GB"],["运行库-DirectX.rar","812 MB"]],
+    filesMini: [["EXE","eldenring-game.exe","58.2 GB"],["RAR","eldenring-dlc.rar","3.1 GB"],["RAR","运行库-DirectX.rar","812 MB"],["TXT","汉化与说明.txt","12 KB"]],
+    vitals: [["320","做种","seed"],["55","下载","leech"],["21300","完成","done"],["410","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "32,760",
+    metaRows: [["发布人","整合安装组"],["发布时间","15 天前"],["最近活动","1 小时前"],["分类","PC游戏"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">魂系全家桶</a>']],
+    related: [["黑","黑神话 悟空 PC 免安装 v1.0.8","动作 · 118 GB · <span class=\"td-rel__seed\">做种 410</span>"],["只","只狼 影逝二度 PC 免安装 中文","动作 · 12.6 GB · <span class=\"td-rel__seed\">做种 96</span>"],["魂","黑暗之魂 3 完全版 PC 免安装","动作 · 24.8 GB · <span class=\"td-rel__seed\">做种 61</span>"]],
+    comments: [
+      ["褪","褪色者","5 天前","DLC 全集成好评，解压即玩，赞！","26","回复"],
+      ["环","交界地旅人","3 天前","回复 @褪色者：v1.12 兼容性很好，没遇到崩溃。","9","回复"],
+      ["游","游戏收藏家","1 天前","运行库都打包好了，对小白太友好了。","6","回复"]
+    ]
+  },
+  software: {
+    siteName: "软件站", cat: "Windows", catStyle: "background:#1e9ec8", crumbCat: "Windows", id: "#9018",
+    title: "【官种】Adobe Photoshop 2026 v26.0 中文直装版 x64",
+    chain: "应用 · 官方 · 直装", sub: "含 AI 生成功能 · 免激活",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 24 小时 · 保种 7 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">免费</span><span class="td-head__left">距促销结束 4 天 3 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">纯净 100</span>',
+    meta: '<span>发布人：<b>软站官方组</b></span><span title="2025-10-08 14:10">发布时间：<b>7 天前</b></span><span title="2025-10-15 08:02">最近活动：<b>3 小时前</b></span>',
+    btnSize: "3.6 GB",
+    specsXL: [["3.6 GB","大小"],["8","文件数"],["Windows","分类"],["应用","媒介"],["官方","来源"],["直装版","版本"],["x64","平台"],["9.3","评分"]],
+    specs: [["3.6 GB","大小"],["8","文件数"],["Windows","分类"],["应用","媒介"],["官方","来源"],["直装版","版本"],["9.3","评分"]],
+    descrTitle: "Adobe Photoshop 2026 v26.0",
+    descr: "Adobe 官方版直装，中文界面，含 2026 新增 AI 生成功能。<ul><li>版本：v26.0 官方直装</li><li>语言：简体中文</li><li>激活：内置授权，免激活</li></ul>",
+    descrShort: "Adobe 官方版直装，中文界面，含 2026 新增 AI 生成功能。",
+    nfo: "Platform: Windows 10/11 x64\nVersion: 26.0.0\nLang: 简体中文",
+    filesCount: "8", subCount: "0",
+    extraSub: "—（软件资源无字幕）",
+    extraSnatch: "共 8,230 次完成 · 最近 24 小时完成 34 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">设</span>设计师小王</span><span class="td-thanker"><span class="td-thanker__avatar">软</span>软件收集控</span><span class="td-thanker"><span class="td-thanker__avatar">摄</span>摄影师阿凯</span><span class="td-thanker"><span class="td-thanker__avatar">直</span>直装版用户</span>',
+    infohash: "8A9B0C1D2E3F4A5B6C7D8E9F0A1B2C3D4E5F6A7B8",
+    filesXL: [["Photoshop_2026_v26.0.exe","2.8 GB"],["Adobe_Common.rar","712 MB"],["安装说明.txt","8 KB"],["激活补丁.rar","46 MB"]],
+    filesLG: [["Photoshop_2026_v26.0.exe","2.8 GB"],["Adobe_Common.rar","712 MB"],["安装说明.txt","8 KB"],["激活补丁.rar","46 MB"]],
+    files: [["Photoshop_2026_v26.0.exe","2.8 GB"],["Adobe_Common.rar","712 MB"],["安装说明.txt","8 KB"]],
+    filesMini: [["EXE","Photoshop_2026_v26.0.exe","2.8 GB"],["RAR","Adobe_Common.rar","712 MB"],["TXT","安装说明.txt","8 KB"],["RAR","激活补丁.rar","46 MB"]],
+    vitals: [["89","做种","seed"],["14","下载","leech"],["8230","完成","done"],["66","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "11,204",
+    metaRows: [["发布人","软站官方组"],["发布时间","7 天前"],["最近活动","3 小时前"],["分类","Windows"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">Adobe 全家桶</a>']],
+    related: [["Pr","Adobe Premiere Pro 2026 v26.0","直装 · 2.1 GB · <span class=\"td-rel__seed\">做种 54</span>"],["Ae","Adobe After Effects 2026 v26.0","直装 · 1.9 GB · <span class=\"td-rel__seed\">做种 41</span>"],["Lr","Adobe Lightroom Classic 2026","直装 · 1.4 GB · <span class=\"td-rel__seed\">做种 33</span>"]],
+    comments: [
+      ["设","设计师小王","4 天前","直装版省心，AI 填充真的快。","15","回复"],
+      ["摄","摄影师阿凯","2 天前","回复 @设计师小王：2026 版本占内存比 2025 小，好评。","6","回复"],
+      ["软","软件收集控","8 小时前","纯净无捆绑，必须支持。","4","回复"]
+    ]
+  },
+  documentary: {
+    siteName: "纪录片站", cat: "自然", catStyle: "background:#c89b3c", crumbCat: "自然", id: "#10023",
+    title: "【官种】蓝色星球 2 Blue Planet II 4K 纪录片 中英双语",
+    chain: "纪录片 · H.265 · 流媒体", sub: "BBC 出品 · 7 集全",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 48 小时 · 保种 14 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">2x 免费</span><span class="td-head__left">距促销结束 2 天 7 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 100</span>',
+    meta: '<span>发布人：<b>BBC 纪录组</b></span><span title="2025-10-05 16:25">发布时间：<b>10 天前</b></span><span title="2025-10-15 06:40">最近活动：<b>4 小时前</b></span>',
+    btnSize: "38.6 GB",
+    specsXL: [["38.6 GB","大小"],["8","文件数"],["自然","分类"],["纪录片","媒介"],["H.265","编码"],["流媒体","来源"],["4K","规格"],["9.9","评分"]],
+    specs: [["38.6 GB","大小"],["8","文件数"],["自然","分类"],["纪录片","媒介"],["H.265","编码"],["流媒体","来源"],["9.9","评分"]],
+    descrTitle: "蓝色星球 2（BBC 2017）",
+    descr: "BBC 自然纪录片里程碑，大卫·爱登堡解说。4K HDR，中英双语字幕。<ul><li>视频：4K HDR10，H.265</li><li>解说：爱登堡爵士（英文）</li><li>字幕：中英双语</li></ul>",
+    descrShort: "BBC 自然纪录片里程碑，大卫·爱登堡解说。4K HDR，中英双语字幕。",
+    nfo: "Video: HEVC 3840x2160 HDR10 ~28 Mb/s\nAudio: EAC3 5.1 英文解说\nText: 中英双语",
+    filesCount: "8", subCount: "2",
+    extraSub: "中文（简）· 英文（原声）",
+    extraSnatch: "共 5,420 次完成 · 最近 24 小时完成 13 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">蓝</span>蓝色星球粉</span><span class="td-thanker"><span class="td-thanker__avatar">纪</span>纪录片迷</span><span class="td-thanker"><span class="td-thanker__avatar">登</span>爱登堡粉丝</span><span class="td-thanker"><span class="td-thanker__avatar">海</span>海洋观察者</span>',
+    infohash: "2C3D4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0C1D2E3",
+    filesXL: [["E01-同一片海洋.2160p.mkv","5.6 GB"],["E02-深海.2160p.mkv","5.4 GB"],["E03-珊瑚礁.2160p.mkv","5.5 GB"],["E04-蔚蓝大海.2160p.mkv","5.3 GB"],["E05-绿色海洋.2160p.mkv","5.5 GB"],["E06-海岸.2160p.mkv","5.2 GB"],["E07-我们的蓝色星球.2160p.mkv","5.8 GB"],["中英双语字幕.srt","412 KB"]],
+    filesLG: [["E01-同一片海洋.2160p.mkv","5.6 GB"],["E02-深海.2160p.mkv","5.4 GB"],["E03-珊瑚礁.2160p.mkv","5.5 GB"],["E04-蔚蓝大海.2160p.mkv","5.3 GB"],["E05-绿色海洋.2160p.mkv","5.5 GB"]],
+    files: [["E01-同一片海洋.2160p.mkv","5.6 GB"],["E02-深海.2160p.mkv","5.4 GB"],["E03-珊瑚礁.2160p.mkv","5.5 GB"]],
+    filesMini: [["MKV","E01-同一片海洋.2160p.mkv","5.6 GB"],["MKV","E02-深海.2160p.mkv","5.4 GB"],["MKV","E03-珊瑚礁.2160p.mkv","5.5 GB"],["MKV","E04-蔚蓝大海.2160p.mkv","5.3 GB"],["SRT","中英双语字幕.srt","412 KB"]],
+    vitals: [["76","做种","seed"],["9","下载","leech"],["5420","完成","done"],["120","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "9,108",
+    metaRows: [["发布人","BBC 纪录组"],["发布时间","10 天前"],["最近活动","4 小时前"],["分类","自然"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">BBC 自然系列</a>']],
+    related: [["地","地球脉动 3 Planet Earth III 4K","7 集 · 42.3 GB · <span class=\"td-rel__seed\">做种 88</span>"],["史","史前星球 2 Prehistoric Planet 4K","7 集 · 36.1 GB · <span class=\"td-rel__seed\">做种 52</span>"],["猎","猎捕 The Hunt 4K 纪录片","7 集 · 33.8 GB · <span class=\"td-rel__seed\">做种 37</span>"]],
+    comments: [
+      ["蓝","蓝色星球粉","5 天前","4K HDR 的画面太震撼了，深海那集看了三遍。","21","回复"],
+      ["登","爱登堡粉丝","3 天前","回复 @蓝色星球粉：解说词就是艺术品。","9","回复"],
+      ["海","海洋观察者","1 天前","中英双语字幕很贴心，给娃看也合适。","7","回复"]
+    ]
+  },
+  lossless: {
+    siteName: "无损音乐站", cat: "无损专辑", catStyle: "background:#8a63d2", crumbCat: "无损专辑", id: "#11037",
+    title: "无损 FLAC 周杰伦《叶惠美》2003 台版首版 WAV+CUE",
+    chain: "专辑 · Lossless · CD抓轨", sub: "整轨 WAV + CUE · 附扫描图",
+    tags: '<span class="sticker bg-sun text-ink">置顶</span><span class="sticker bg-indigo text-white">官种</span>',
+    hr: "本站 H&amp;R 义务：下载后请做种 24 小时 · 保种 7 天，完成前请勿删种",
+    badges: '<span class="sticker bg-sun text-ink">免费</span><span class="td-head__left">距促销结束 3 天 6 时</span><span class="sticker" style="background:var(--sun-soft);color:var(--warning)">抓轨 96</span>',
+    meta: '<span>发布人：<b>CD 抓轨组</b></span><span title="2025-10-03 09:12">发布时间：<b>12 天前</b></span><span title="2025-10-15 10:47">最近活动：<b>1 小时前</b></span>',
+    btnSize: "1.2 GB",
+    specsXL: [["1.2 GB","大小"],["12","文件数"],["无损专辑","分类"],["专辑","媒介"],["Lossless","编码"],["FLAC","音频编码"],["CD抓轨","来源"],["9.5","评分"]],
+    specs: [["1.2 GB","大小"],["12","文件数"],["无损专辑","分类"],["专辑","媒介"],["Lossless","编码"],["FLAC","音频编码"],["9.5","评分"]],
+    descrTitle: "叶惠美（台版首版）",
+    descr: "2003 年发行的周杰伦第四张录音室专辑。EAC 精确抓轨，整轨 WAV + CUE，附完整扫描图。<ul><li>格式：WAV 整轨 + CUE + 扫描图</li><li>抓轨：EAC Secure Mode，日志可查</li><li>版本：台版首版，台湾索尼发行</li></ul>",
+    descrShort: "2003 年发行的周杰伦第四张录音室专辑。EAC 精确抓轨，整轨 WAV + CUE，附完整扫描图。",
+    nfo: "Audio: PCM 1411 kbps 44.1 kHz 16 bit 2 ch\nCue: 12 tracks\nLog: EAC Secure Mode 96%",
+    filesCount: "12", subCount: "1",
+    extraSub: "中文（简）歌词 · 附扫描图",
+    extraSnatch: "共 2,140 次完成 · 最近 24 小时完成 3 次（演示数据）",
+    thanks: '<span class="td-thanker"><span class="td-thanker__avatar">杰</span>杰迷一号</span><span class="td-thanker"><span class="td-thanker__avatar">伦</span>伦哥铁粉</span><span class="td-thanker"><span class="td-thanker__avatar">歌</span>歌迷小周</span><span class="td-thanker"><span class="td-thanker__avatar">叶</span>叶惠美</span>',
+    infohash: "7B1E3F5A9C2D4E6F8A0B1C3D5E7F9A0B2C4D6E8F0",
+    filesXL: [["01-以父之名.wav","48.2 MB"],["02-懦夫.wav","42.1 MB"],["03-晴天.wav","45.8 MB"],["04-三年二班.wav","43.5 MB"],["05-东风破.wav","47.0 MB"],["叶惠美-台版首版.cue","2 KB"]],
+    filesLG: [["01-以父之名.wav","48.2 MB"],["02-懦夫.wav","42.1 MB"],["03-晴天.wav","45.8 MB"],["04-三年二班.wav","43.5 MB"],["05-东风破.wav","47.0 MB"]],
+    files: [["01-以父之名.wav","48.2 MB"],["02-懦夫.wav","42.1 MB"],["03-晴天.wav","45.8 MB"]],
+    filesMini: [["WAV","01-以父之名.wav","48.2 MB"],["WAV","02-懦夫.wav","42.1 MB"],["WAV","03-晴天.wav","45.8 MB"],["WAV","04-三年二班.wav","43.5 MB"],["CUE","叶惠美-台版首版.cue","2 KB"]],
+    vitals: [["67","做种","seed"],["9","下载","leech"],["2140","完成","done"],["45","感谢","thanks"]],
+    health: ["健康 · 做种在线中", "is-alive"], views: "3,652",
+    metaRows: [["发布人","CD 抓轨组"],["发布时间","12 天前"],["最近活动","1 小时前"],["分类","无损专辑"],["所属合集",'<a class="td-meta__link" href="#" data-act="跳转演示（样图占位）">华语无损精选</a>']],
+    related: [["范","范特西 2001 台版 WAV+CUE","整轨 · 1.1 GB · <span class=\"td-rel__seed\">做种 41</span>"],["七","七里香 2004 台版 WAV+CUE","整轨 · 1.3 GB · <span class=\"td-rel__seed\">做种 33</span>"],["八","八度空间 2002 台版 WAV+CUE","整轨 · 1.2 GB · <span class=\"td-rel__seed\">做种 28</span>"]],
+    comments: [
+      ["杰","杰迷一号","5 天前","台版首版抓轨，EAC 日志齐全，音质非常干净，收藏了！","9","回复"],
+      ["伦","伦哥铁粉","3 天前","回复 @杰迷一号：同求，这张专辑是周董的巅峰之一。","4","回复"],
+      ["叶","叶惠美","1 天前","扫描图很完整，封面内页都在，感谢抓轨组。","3","回复"]
+    ]
+  }
+};
+
+/* 站型包切换：数据驱动重绘当前断点帧 */
+function renderSite(site){
+  var d = SITES[site];
+  document.querySelectorAll(".frame").forEach(function(f){
+    var bp = f.getAttribute("data-frame");
+    var crumb = f.querySelector(".td-crumbs");
+    if (crumb) crumb.innerHTML = '<a href="#" data-act="跳转演示（样图占位）">资源库</a><span aria-hidden>›</span><span>' + d.crumbCat + '</span><span class="td-crumbs__id">' + d.id + '</span>';
+    var cat = f.querySelector(".td-head__cat");
+    if (cat){ cat.textContent = d.cat; cat.setAttribute("style", d.catStyle); }
+    var name = f.querySelector(".td-head__name");
+    if (name) name.textContent = d.title;
+    var sub = f.querySelector(".td-head__sub");
+    if (sub) sub.innerHTML = '<span class="td-head__chain">' + d.chain + '</span>' + ((d.sub && (bp === "xl" || bp === "lg")) ? '<span aria-hidden> · </span>' + d.sub : '');
+    var tags = f.querySelector(".td-head__tags");
+    if (tags) tags.innerHTML = d.tags;
+    var hr = f.querySelector(".td-head__hr");
+    if (hr) hr.innerHTML = d.hr;
+    var badges = f.querySelector(".td-head__badges");
+    if (badges) badges.innerHTML = d.badges;
+    var meta = f.querySelector(".td-head__meta");
+    if (meta) meta.innerHTML = d.meta;
+    f.querySelectorAll(".btn-primary").forEach(function(b){ b.textContent = "下载种子 · " + d.btnSize; });
+    var specs = f.querySelector(".td-specs");
+    if (specs){
+      var list = bp === "xl" ? d.specsXL : d.specs;
+      specs.innerHTML = list.map(function(s){ return '<div class="td-spec"><b>' + s[0] + '</b><span>' + s[1] + '</span></div>'; }).join("");
+    }
+    var descrBody = f.querySelector(".td-descr__body");
+    if (descrBody){
+      if (bp === "xl") descrBody.innerHTML = '<h3>' + d.descrTitle + '</h3><p>' + d.descr + '</p>';
+      else if (bp === "lg") descrBody.innerHTML = '<p>' + d.descr + '</p>';
+      else descrBody.innerHTML = '<p>' + d.descrShort + '</p>';
+    }
+    var files = f.querySelector(".td-files");
+    if (files){
+      var rows = bp === "xl" ? d.filesXL : (bp === "lg" ? d.filesLG : d.files);
+      files.innerHTML = rows.map(function(r){ return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join("");
+    }
+    f.querySelectorAll(".td-fold__count").forEach(function(c){ c.textContent = d.filesCount; });
+    var subBody = f.querySelector("#td-sec-subtitles .td-fold__body p");
+    if (subBody) subBody.textContent = d.extraSub;
+    var subCnt = f.querySelector("#td-sec-subtitles .td-fold__count");
+    if (subCnt) subCnt.textContent = d.subCount;
+    var snatchBody = f.querySelector("#td-sec-snatches .td-fold__body p");
+    if (snatchBody) snatchBody.textContent = d.extraSnatch;
+    var nfo = f.querySelector(".td-nfo");
+    if (nfo) nfo.textContent = d.nfo;
+    var thanks = f.querySelector(".td-thanker__wrap");
+    if (thanks) thanks.innerHTML = d.thanks;
+    var infohash = f.querySelector(".td-infohash");
+    if (infohash) infohash.innerHTML = '<b>Info Hash</b> · ' + d.infohash;
+    var vitals = f.querySelector(".td-vitals__grid");
+    if (vitals) vitals.innerHTML = d.vitals.map(function(v){ return '<div class="td-vitals__cell td-vitals__cell--' + v[2] + '"><b class="num">' + v[0] + '</b><span>' + v[1] + '</span></div>'; }).join("");
+    var health = f.querySelector(".td-vitals__health");
+    if (health){ health.textContent = d.health[0]; health.className = "td-vitals__health " + d.health[1]; }
+    var views = f.querySelector(".td-vitals__views");
+    if (views) views.innerHTML = '查看 <b class="num">' + d.views + '</b>';
+    var mini = f.querySelector(".td-files-mini__list");
+    if (mini){
+      var mrows = bp === "xl" ? d.filesMini : d.filesMini.slice(0, 3);
+      mini.innerHTML = mrows.map(function(r){ return '<div class="td-files-mini__row"><span class="td-files-mini__ext">' + r[0] + '</span><span class="td-files-mini__name" title="' + r[1] + '">' + r[1] + '</span><span class="td-files-mini__size num">' + r[2] + '</span></div>'; }).join("");
+    }
+    var miniMore = f.querySelector(".td-files-mini__more");
+    if (miniMore) miniMore.setAttribute("href", "#" + (bp === "xl" ? "td-files" : bp + "-files"));
+    var miniCount = f.querySelector(".td-side-card__head .num");
+    if (miniCount) miniCount.textContent = d.filesCount + " 项";
+    var metaRows = f.querySelector(".td-meta__rows");
+    if (metaRows){
+      var mrs = bp === "xl" ? d.metaRows : d.metaRows.slice(0, 4);
+      metaRows.innerHTML = mrs.map(function(r){ return '<div class="td-meta__row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("");
+    }
+    var rel = f.querySelector(".td-side-rel .td-side-card");
+    if (rel){
+      var items = bp === "xl" ? d.related : (bp === "lg" || bp === "md" ? d.related.slice(0, 2) : d.related.slice(0, 1));
+      rel.innerHTML = '<h3 class="td-rel__title">相关推荐</h3>' + items.map(function(r){ return '<a class="td-rel__item" href="#" data-act="跳转演示（样图占位）"><span class="td-rel__thumb">' + r[0] + '</span><span><span class="td-rel__name">' + r[1] + '</span><span class="td-rel__meta">' + r[2] + '</span></span></a>'; }).join("");
+    }
+    var comments = f.querySelector(".td-comments");
+    if (comments){
+      var cs = bp === "xl" ? d.comments : d.comments.slice(0, 2);
+      comments.innerHTML = cs.map(function(c, i){
+        var cls = i === 1 ? ' td-comment--reply' : '';
+        return '<div class="td-comment' + cls + '"><div class="td-comment__side"><span class="td-comment__avatar">' + c[0] + '</span><span class="td-comment__name">' + c[1] + '</span><span class="td-comment__time">' + c[2] + '</span></div><div class="td-comment__body">' + c[3] + '<div class="td-comment__actions"><button type="button" data-act="已点赞（演示）">赞 ' + c[4] + '</button><button type="button" data-act="回复面板（演示）">' + c[5] + '</button></div></div></div>';
+      }).join("");
+    }
+  });
+  var swNote = document.querySelector(".site-switch .sw-note");
+  if (swNote) swNote.textContent = "当前站型包：" + d.siteName + " · 分类 / 维度 / 品牌 / H&R / 促销均可配置";
+}
+
+var siteBtns = document.querySelectorAll(".site-switch button[data-site]");
+function setSite(site){
+  siteBtns.forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-site") === site); });
+  renderSite(site);
+  toast("已切换站型包：" + SITES[site].siteName);
+}
+siteBtns.forEach(function(b){ b.addEventListener("click", function(){ setSite(b.getAttribute("data-site")); }); });
+renderSite("education");
+
+document.addEventListener("click", function(e){
+  var t = e.target.closest("[data-act]");
+  if (t) { e.preventDefault(); toast(t.getAttribute("data-act")); return; }
+  var a = e.target.closest("a[href='#']");
+  if (a) { e.preventDefault(); toast("跳转演示：" + (a.textContent || "").trim().slice(0, 14)); }
+});
+</script>
+</body>
+</html>

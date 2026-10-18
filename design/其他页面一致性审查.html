@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>其他页面 · 一致性审查报告</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232fa8ff'/><path d='M7 12l3 3 7-7' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@600;700;900&display=swap">
+<style>
+/* ===== FluxTorrent Aurora 设计令牌（与站点 base.css 同源） ===== */
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff;
+  --sun:#ffc93c; --sun-soft:#fff4d6;
+  --coral:#ff7a59; --coral-soft:#ffe9e2;
+  --mint:#2fbf9b; --mint-soft:#dff7f0;
+  --candy:#ff8fc7; --candy-soft:#ffe9f4;
+  --indigo:#5b6bf5; --indigo-soft:#eaebff;
+  --grad-aurora:linear-gradient(135deg,#2fa8ff 0%,#5b6bf5 48%,#ff8fc7 100%);
+  --grad-rainbow:linear-gradient(90deg,#ffc93c,#ff7a59,#ff8fc7,#5b6bf5,#2fa8ff);
+  --page:#f5faff; --card:#fff; --cloud:#eef5fd; --raised:#fbfdff;
+  --text-strong:#1f2a44; --text-heading:#141d33; --text-body:#40506e;
+  --text-brand:#1e8ae8; --text-muted:#6b7a99; --text-faint:#8493ad; --text-fainter:#a3b1c6;
+  --line:#e3edf7; --line-deep:#bcd7ef;
+  --success:#167c63; --warning:#936800; --danger:#d60000;
+  --r-s:6px; --r-m:10px; --r-l:16px; --r-xl:22px;
+  --sh-sm:0 1px 2px rgba(31,42,68,.05);
+  --sh-md:0 4px 14px rgba(31,42,68,.07);
+  --sh-lg:0 12px 32px rgba(31,42,68,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans SC',system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--page);color:var(--text-body);line-height:1.65;-webkit-font-smoothing:antialiased;font-size:14px}
+.font-display{font-family:'Noto Serif SC',Georgia,serif}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+.wrap{max-width:1100px;margin:0 auto;padding:0 28px}
+.sec{padding:60px 0 68px;border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:none}
+.sec-head{margin-bottom:32px}
+.sec-no{display:inline-flex;align-items:center;gap:8px;font-family:'Noto Serif SC',serif;font-size:13px;font-weight:700;color:var(--sky-deep);letter-spacing:.18em;margin-bottom:12px}
+.sec-no::before{content:"";width:26px;height:3px;border-radius:99px;background:var(--grad-aurora)}
+.sec-title{font-family:'Noto Serif SC',serif;font-size:27px;font-weight:900;color:var(--text-heading);line-height:1.3}
+.sec-sub{margin-top:10px;font-size:14px;color:var(--text-muted);max-width:760px}
+
+.cover{background:var(--grad-aurora);color:#fff;padding:72px 0 64px;position:relative;overflow:hidden}
+.cover::after{content:"";position:absolute;right:-80px;top:-80px;width:340px;height:340px;border-radius:50%;background:rgba(255,255,255,.12)}
+.cover::before{content:"";position:absolute;right:120px;bottom:-110px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08)}
+.cover .wrap{position:relative;z-index:1}
+.cover-kicker{font-size:12px;letter-spacing:.3em;opacity:.85;font-weight:500}
+.cover-title{font-family:'Noto Serif SC',serif;font-size:39px;font-weight:900;margin:14px 0 10px;line-height:1.25}
+.cover-sub{font-size:15px;opacity:.92;max-width:680px}
+.cover-meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);padding:5px 14px;border-radius:999px;font-size:12px;font-weight:500}
+.chip svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;margin:20px 0 6px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;font-size:13px}
+.tbl th,.tbl td{padding:11px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.tbl th{background:var(--cloud);color:var(--text-heading);font-weight:700;font-size:12px;letter-spacing:.05em}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td b{color:var(--text-strong)}
+.tbl td.c{text-align:center}.tbl th.c{text-align:center}
+.tag-r{display:inline-block;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700}
+.tag-r0{background:var(--coral-soft);color:var(--coral)}
+.tag-r1{background:var(--sun-soft);color:var(--warning)}
+.tag-r2{background:var(--sky-soft);color:var(--sky-deep)}
+.tag-ok{background:var(--mint-soft);color:var(--success)}
+
+.issue-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:26px}
+.issue{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:20px 18px;box-shadow:var(--sh-sm)}
+.issue-ic{width:38px;height:38px;border-radius:var(--r-m);display:grid;place-items:center;margin-bottom:12px}
+.issue-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.issue h4{font-size:15px;font-weight:700;color:var(--text-heading);margin-bottom:6px}
+.issue p{font-size:12.5px;color:var(--text-muted)}
+
+.chart-box{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:20px;box-shadow:var(--sh-sm);margin-top:26px}
+.chart-box h4{font-size:14px;font-weight:700;color:var(--text-heading);margin-bottom:4px}
+.chart-box .cap{font-size:12px;color:var(--text-muted);margin-bottom:12px}
+.chart{width:100%;height:320px}
+.chart--sm{height:260px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+/* ===== 纯 CSS 图表（零依赖，替代 ECharts） ===== */
+.cv-chart{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.cv-row{display:flex;align-items:center;gap:10px;font-size:12px}
+.cv-label{width:118px;flex:none;color:var(--text-muted);text-align:right}
+.cv-track{flex:1;background:var(--cloud);border-radius:99px;height:22px;overflow:hidden;display:flex}
+.cv-fill{height:100%;border-radius:99px;min-width:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#fff;font-size:11px;font-weight:700}
+.cv-num{width:52px;flex:none;color:var(--text-faint);font-size:11px;text-align:left}
+.cv-donut{display:flex;align-items:center;gap:18px;margin-top:6px}
+.cv-ring{width:150px;height:150px;flex:none;border-radius:50%;position:relative;background:conic-gradient(var(--sky-deep) 0 25%,var(--sun) 25% 60%,var(--mint) 60% 66.7%,var(--cloud) 66.7% 100%)}
+.cv-ring::after{content:"";position:absolute;inset:26px;background:var(--card);border-radius:50%}
+.cv-ring-core{position:absolute;inset:0;display:grid;place-items:center;font-size:20px;font-weight:900;color:var(--text-heading);z-index:1}
+.cv-legend{display:flex;flex-direction:column;gap:7px;font-size:12px}
+.cv-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.cv-stack{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.cv-stack-row{display:flex;align-items:center;gap:10px;font-size:12px}
+.cv-stack-label{width:118px;flex:none;color:var(--text-muted);text-align:right}
+.cv-stack-track{flex:1;display:flex;border-radius:8px;overflow:hidden;height:26px}
+.cv-stack-a{background:var(--mint);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;min-width:26px}
+.cv-stack-b{background:var(--coral);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;min-width:26px}
+
+.note{margin-top:18px;padding:12px 16px;border-radius:var(--r-m);background:var(--sun-soft);border:1px solid #f0dca0;font-size:12.5px;color:var(--warning)}
+.note--sky{background:var(--sky-soft);border-color:var(--line-deep);color:var(--sky-deep)}
+.note--mint{background:var(--mint-soft);border-color:#a9e5d4;color:var(--success)}
+.note b{font-weight:700}
+
+.map-arrow{color:var(--sky-deep);font-weight:900}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:18px;box-shadow:var(--sh-sm);position:relative}
+.step-no{width:28px;height:28px;border-radius:50%;background:var(--grad-aurora);color:#fff;display:grid;place-items:center;font-weight:900;font-size:13px;margin-bottom:10px}
+.step h4{font-size:13.5px;font-weight:700;color:var(--text-heading);margin-bottom:4px}
+.step p{font-size:11.5px;color:var(--text-muted)}
+
+.foot{padding:34px 0;text-align:center;color:var(--text-fainter);font-size:12px}
+
+@media(max-width:900px){
+  .issue-grid{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr 1fr}
+  .sec-title{font-size:23px}
+  .cover-title{font-size:31px}
+}
+@media(max-width:560px){
+  .issue-grid,.steps{grid-template-columns:1fr}
+  .wrap{padding:0 18px}
+  .sec{padding:46px 0 52px}
+  .tbl{font-size:12px}
+  .tbl th,.tbl td{padding:9px 10px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 封面 ===== -->
+<header class="cover">
+  <div class="wrap">
+    <div class="cover-kicker">FLUXTORRENT · SEEDLIGHT 界面重塑系列</div>
+    <h1 class="cover-title">其他页面 · 一致性审查报告</h1>
+    <p class="cover-sub">种子详情页新方案落地后，对全站前台其余页面做一次可复现的一致性审查：页头规范、按钮体系、老形态残留、数据口径——哪些已达标、哪些需要调整，全部给出文件级证据与优先级。</p>
+    <div class="cover-meta">
+      <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>全站静态信号扫描</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>60 页前台页面</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg>文件级证据</span>
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>P0 / P1 / P2 分级</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== 1 结论摘要 ===== -->
+<section class="sec" id="s1">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第一章</div>
+      <h2 class="sec-title">结论摘要</h2>
+      <p class="sec-sub">审查覆盖 <b>60 个前台页面 / 48 目录 + 全局 393 个组件</b>，判据全部取自 TIDE 收口规范与种子详情页新方案。一句话结论：<b>结构层已达标，细节层有 3 类可收编项</b>——旧胶囊按钮、裸 h1 页头、以及个别数据口径兜底。</p>
+    </div>
+
+    <table class="tbl">
+      <colgroup><col style="width:22%"><col style="width:12%"><col style="width:48%"><col style="width:18%"></colgroup>
+      <tr><th>检查项</th><th class="c">结果</th><th>证据</th><th class="c">优先级</th></tr>
+      <tr>
+        <td><b>colhead + h1/h2 老形态分区标题</b></td>
+        <td class="c"><span class="tag-r tag-ok">0 处</span></td>
+        <td>此前策划案判定的 7 处（donate/jixiao/faq/my-spark）已全部修复，全站无飘条式分区标题</td>
+        <td class="c"><span class="tag-r tag-ok">已达标</span></td>
+      </tr>
+      <tr>
+        <td><b>页头规范 pghd</b>（eyebrow + 大标题 + 副题）</td>
+        <td class="c"><span class="tag-r tag-r2">15 页合规</span></td>
+        <td>upload/shop/top/my-spark/friends/textbooks/faq/medals/medal-wall/bank/help + donate/dressup/gacha/jixiao 已用 pghd；<b>约 21 个信息页仍是裸 h1</b>（无 eyebrow/副题）</td>
+        <td class="c"><span class="tag-r tag-r1">P1</span></td>
+      </tr>
+      <tr>
+        <td><b>按钮体系</b>（.btn 8px 圆角 vs 旧胶囊）</td>
+        <td class="c"><span class="tag-r tag-r0">58 处残留</span></td>
+        <td><code>rounded-full bg-sky/coral</code> 实心胶囊按钮 <b>58 处 / 38 文件</b>（另 15 处软色徽章属规范允许形态）。前台 31 处，管理端 + staff 27 处</td>
+        <td class="c"><span class="tag-r tag-r0">P0</span></td>
+      </tr>
+      <tr>
+        <td><b>数据口径外露</b>（服务端标识符兜底）</td>
+        <td class="c"><span class="tag-r tag-ok">基本合规</span></td>
+        <td>21 处 <code>?? r.kind</code> 兜底：12 处为管理端审计界面（B6 例外保留原码合规）；前台 5 处均有映射表，需核覆盖完整度</td>
+        <td class="c"><span class="tag-r tag-r2">P2</span></td>
+      </tr>
+      <tr>
+        <td><b>种子详情页新方案落地</b></td>
+        <td class="c"><span class="tag-r tag-ok">已落地</span></td>
+        <td>page.tsx 已实现 td-layout 双栏 + TorrentSpecs（chip-row）+ 锚点条 + 侧栏状态/文件/元信息卡 + 底部操作条，base.css 已有 35 处 td-* 样式</td>
+        <td class="c"><span class="tag-r tag-ok">已达标</span></td>
+      </tr>
+    </table>
+
+    <div class="note"><b>总体判断</b>：不存在需要「重做」的页面。结构层（信息架构、响应式、Aurora 令牌）已全部达标；需要调整的是<b>细节收编</b>——把旧胶囊按钮换进 .btn 体系、给裸 h1 信息页补页头层级、核验 5 处前台映射表。按 P0 → P1 → P2 分批即可，无风险项。</div>
+  </div>
+</section>
+
+<!-- ===== 2 审查方法与判据 ===== -->
+<section class="sec" id="s2">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第二章</div>
+      <h2 class="sec-title">审查方法与判据</h2>
+      <p class="sec-sub">判据全部复用此前「前台页面优化策划案」的可复现口径，并叠加种子详情页新方案（L0/L1/L2、双栏、td-* 组件）作为新增基准。本次以静态信号扫描为主、关键页目视复核为辅。</p>
+    </div>
+
+    <table class="tbl">
+      <colgroup><col style="width:28%"><col style="width:38%"><col style="width:34%"></colgroup>
+      <tr><th>判据</th><th>扫描信号</th><th>判定规则</th></tr>
+      <tr><td><b>老形态分区标题</b></td><td><code>colhead</code> 行后 3 行内出现 <code>h1/h2</code></td><td>命中 = 结构性问题（飘条式标题）</td></tr>
+      <tr><td><b>旧胶囊按钮</b></td><td><code>rounded-full bg-sky/bg-sky-deep/bg-coral</code> 实色</td><td>命中 = 应收编 .btn 体系；<code>bg-sky-soft</code>/<code>coral/20</code> 为软色徽章，<b>不算问题</b></td></tr>
+      <tr><td><b>页头规范</b></td><td>页面或 <code>_inner</code> 是否含 <code>pghd</code> + <code>pg-eyebrow</code></td><td>缺 = 裸 h1 老页头；论坛 pting-*、用户主页 up-* 为专属设计语言，<b>豁免</b></td></tr>
+      <tr><td><b>数据口径</b></td><td><code>?? r.kind / r.ref_type / r.scope</code> 末级兜底</td><td>面向用户界面必须过映射表，无映射回落「其他」；管理端审计界面保留原码（B6 例外）</td></tr>
+      <tr><td><b>详情页方案落地</b></td><td><code>td-layout / td-side / td-anchor / td-vitals</code> 等 td-* 类</td><td>页面与 base.css 双端核验，确认方案已实现</td></tr>
+    </table>
+
+    <div class="note note--sky"><b>范围说明</b>：本次聚焦<b>前台核心页面</b>（首页 / 种子列表 / 论坛 / 商店 / 个人中心 / 排行榜 / 魔力 / 捐赠 / 求种 / 任务 / 消息 / 用户主页等 60 页），管理端按钮残留一并列出（B6 判定管理端结构无需改动，但按钮收编建议同步）。games 娱乐屋系列为沉浸式独立布局，多数页面无 h1 属设计使然，不作问题。</div>
+  </div>
+</section>
+
+<!-- ===== 3 全局信号量化 ===== -->
+<section class="sec" id="s3">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第三章</div>
+      <h2 class="sec-title">全局信号量化</h2>
+      <p class="sec-sub">三项核心信号的可复核分布：旧胶囊按钮的前台/管理端分布、前台页面页头合规状态、以及四类判据的汇总对比。</p>
+    </div>
+
+    <div class="grid2">
+      <div class="chart-box">
+        <h4>旧胶囊按钮分布（58 处）</h4>
+        <p class="cap">按模块聚类 · 前台 31 处 vs 管理端 + staff 27 处</p>
+        <div class="cv-chart">
+          <div class="cv-row"><span class="cv-label">论坛系</span><span class="cv-track"><span class="cv-fill" style="width:30%;background:var(--coral)">6</span></span><span class="cv-num">6 处</span></div>
+          <div class="cv-row"><span class="cv-label">银行 / 财务</span><span class="cv-track"><span class="cv-fill" style="width:30%;background:var(--coral)">6</span></span><span class="cv-num">6 处</span></div>
+          <div class="cv-row"><span class="cv-label">商店 / 求种 / 邀请</span><span class="cv-track"><span class="cv-fill" style="width:30%;background:var(--coral)">6</span></span><span class="cv-num">6 处</span></div>
+          <div class="cv-row"><span class="cv-label">设置 / 安全</span><span class="cv-track"><span class="cv-fill" style="width:30%;background:var(--coral)">6</span></span><span class="cv-num">6 处</span></div>
+          <div class="cv-row"><span class="cv-label">页面级</span><span class="cv-track"><span class="cv-fill" style="width:25%;background:var(--sun);color:var(--warning)">5</span></span><span class="cv-num">5 处</span></div>
+          <div class="cv-row"><span class="cv-label">消息 / 好友</span><span class="cv-track"><span class="cv-fill" style="width:10%;background:var(--sky-deep)">2</span></span><span class="cv-num">2 处</span></div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h4>前台页面页头合规状态</h4>
+        <p class="cap">60 个前台页面路由 · pghd 合规 / 裸 h1 需补 / 专属语言豁免</p>
+        <div class="cv-donut">
+          <div class="cv-ring"><span class="cv-ring-core num">60</span></div>
+          <div class="cv-legend">
+            <span><i style="background:var(--sky-deep)"></i>pghd 合规 <b class="num">15</b> 页</span>
+            <span><i style="background:var(--sun)"></i>裸 h1 需补 <b class="num">21</b> 页</span>
+            <span><i style="background:var(--mint)"></i>专属语言豁免 <b class="num">4</b> 页</span>
+            <span><i style="background:var(--cloud)"></i>无页头 / 无需 <b class="num">20</b> 页</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h4>四类判据汇总</h4>
+      <p class="cap">老形态 / 按钮 / 页头 / 数据口径 · 达标与待处理对比（已达标按规范视为 100%）</p>
+      <div class="cv-stack">
+        <div class="cv-stack-row"><span class="cv-stack-label">老形态分区标题</span><span class="cv-stack-track"><span class="cv-stack-a" style="width:100%">60 达标</span></span></div>
+        <div class="cv-stack-row"><span class="cv-stack-label">旧胶囊按钮</span><span class="cv-stack-track"><span class="cv-stack-b" style="width:100%">58 需处理</span></span></div>
+        <div class="cv-stack-row"><span class="cv-stack-label">页头规范</span><span class="cv-stack-track"><span class="cv-stack-a" style="width:65%">39 达标</span><span class="cv-stack-b" style="width:35%">21 需补</span></span></div>
+        <div class="cv-stack-row"><span class="cv-stack-label">数据口径</span><span class="cv-stack-track"><span class="cv-stack-a" style="width:92%">55 达标</span><span class="cv-stack-b" style="width:8%">5 核验</span></span></div>
+      </div>
+    </div>
+
+    <table class="tbl" style="margin-top:26px">
+      <colgroup><col style="width:22%"><col style="width:16%"><col style="width:62%"></colgroup>
+      <tr><th>聚类</th><th class="c">处数</th><th>涉及文件（前台）</th></tr>
+      <tr><td><b>论坛系</b></td><td class="c">6</td><td>forum-composer×2 · forum-post-actions · forum-reply-box · forum-report · forum-search</td></tr>
+      <tr><td><b>银行 / 财务</b></td><td class="c">6</td><td>bank-actions×3 · funding-panel · pool-donate · promo-buy-button</td></tr>
+      <tr><td><b>商店 / 求种 / 邀请</b></td><td class="c">6</td><td>request-board · invite-manager×2 · claim-button · torrent-social · increment-bulk</td></tr>
+      <tr><td><b>消息 / 好友</b></td><td class="c">2</td><td>message-center-compose · friends-actions</td></tr>
+      <tr><td><b>设置 / 安全</b></td><td class="c">6</td><td>setting-field · twofa-setup · usercp-security×2 · passkeys-card×2</td></tr>
+      <tr><td><b>页面级</b></td><td class="c">5</td><td>app/(main)/page（首页空态）×1 · offline×1 · torrent.tsx×1 · plugins-frames · plugins-gomoku</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 4 逐页审查 ===== -->
+<section class="sec" id="s4">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第四章</div>
+      <h2 class="sec-title">前台核心页面 · 逐页结论</h2>
+      <p class="sec-sub">按用户主路径排序：首页 → 列表 → 详情 → 内容操作 → 个人中心。每页给出页头 / 按钮 / 数据口径三态结论与需要调整的点。</p>
+    </div>
+
+    <table class="tbl">
+      <colgroup><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:47%"></colgroup>
+      <tr><th>页面</th><th class="c">页头</th><th class="c">按钮</th><th class="c">数据口径</th><th>结论</th></tr>
+      <tr><td><b>首页 /</b></td><td class="c"><span class="tag-r tag-ok">正常</span></td><td class="c"><span class="tag-r tag-r0">1 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>HomeSections 排版体系正常；空态引导按钮（bg-coral rounded-full）收编 .btn</td></tr>
+      <tr><td><b>种子列表 /torrents</b></td><td class="c"><span class="tag-r tag-ok">正常</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>搜索盒主导布局，sr-only h1 属设计使然；三视图（表格/卡片/海报）均为 .btn 体系</td></tr>
+      <tr><td><b>种子详情 /torrent/[id]</b></td><td class="c"><span class="tag-r tag-ok">正常</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td><b>新方案已落地</b>：td-layout 双栏 + chip-row + 锚点条 + 侧栏 vitals/files/meta + 底部操作条，与设计方案 §3-§8 一致</td></tr>
+      <tr><td><b>上传 /upload</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>页头与表单均已达标，无需改动</td></tr>
+      <tr><td><b>论坛 /forums 三页</b></td><td class="c"><span class="tag-r tag-ok">豁免</span></td><td class="c"><span class="tag-r tag-r0">6 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>pting-* 专属设计语言（侧栏 + 卡片流）正常；发帖/回复/举报/搜索按钮 6 处旧胶囊应收编 .btn</td></tr>
+      <tr><td><b>商店 /shop</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>余额条 + 目录 + 券面板均达标；购买按钮已用 .btn</td></tr>
+      <tr><td><b>个人中心 /me /my</b></td><td class="c"><span class="tag-r tag-r1">裸 h1</span></td><td class="c"><span class="tag-r tag-r0">2 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>/my 裸 h1 需补 pghd（eyebrow + 副题）；usercp-security 2 处旧胶囊</td></tr>
+      <tr><td><b>用户主页 /users/[id]</b></td><td class="c"><span class="tag-r tag-ok">豁免</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>up-* 体系（hero + 磁贴 + 药丸 tab）独立达标，无需改动</td></tr>
+      <tr><td><b>排行榜 /top</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>已按 P1 优化过，达标</td></tr>
+      <tr><td><b>魔力 /my-spark</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-r2">核验</span></td><td>P0 修复已生效（页头/流水类型映射）；SPARK_KIND_LABELS 映射表建议补一次完整覆盖核验</td></tr>
+      <tr><td><b>捐赠 /donate</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>页头已修复，达标</td></tr>
+      <tr><td><b>求种 /requests</b></td><td class="c"><span class="tag-r tag-r1">裸 h1</span></td><td class="c"><span class="tag-r tag-r0">1 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>补 pghd；request-board 求种按钮收编 .btn</td></tr>
+      <tr><td><b>任务 /tasks · 消息 /messages</b></td><td class="c"><span class="tag-r tag-r1">裸 h1</span></td><td class="c"><span class="tag-r tag-r0">2 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>补 pghd；message-center-compose 发送按钮收编 .btn</td></tr>
+      <tr><td><b>好友 /friends</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-r0">1 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>页头已达标；friends-actions 操作按钮收编 .btn</td></tr>
+      <tr><td><b>教材 /textbooks</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>达标</td></tr>
+      <tr><td><b>勋章 /medals · medal-wall</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>达标</td></tr>
+      <tr><td><b>银行 /bank</b></td><td class="c"><span class="tag-r tag-ok">pghd</span></td><td class="c"><span class="tag-r tag-r0">3 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>页头达标；存取贷三个操作按钮收编 .btn</td></tr>
+      <tr><td><b>邀请 /invites</b></td><td class="c"><span class="tag-r tag-r1">裸 h1</span></td><td class="c"><span class="tag-r tag-r0">2 处</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>补 pghd；invite-manager 生成/复制按钮收编 .btn</td></tr>
+      <tr><td><b>通知 /notifications</b></td><td class="c"><span class="tag-r tag-r1">裸 h1</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>补 pghd（当前 2 个 h1 无层级）</td></tr>
+      <tr><td><b>合集 / 艺术家 / 客户端 / 保护 / 竞赛</b></td><td class="c"><span class="tag-r tag-r1">裸 h1</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>collections / artists / clients / endangered / contests 统一补 pghd</td></tr>
+      <tr><td><b>魔力池 / RSS / 我的HR / 成就 / 考核</b></td><td class="c"><span class="tag-r tag-r1">裸 h1</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td class="c"><span class="tag-r tag-ok">合规</span></td><td>magic-pool / getrss / myhr / me/achievements / me/exams 统一补 pghd</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 5 调整清单 ===== -->
+<section class="sec" id="s5">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第五章</div>
+      <h2 class="sec-title">需要调整的清单</h2>
+      <p class="sec-sub">全部为「样式收编 + 结构补全」，零新增接口、零数据层改动。按优先级分批，每批可独立验收。</p>
+    </div>
+
+    <div class="note note--sky" style="margin-top:0"><b>P0 · 按钮收编（前台 31 处）</b>——把 <code>rounded-full bg-sky/coral</code> 实心胶囊统一换成 <code>.btn .btn-primary</code> / <code>.btn-danger</code>（8px 圆角、Aurora 令牌色）。涉及文件：</div>
+    <table class="tbl">
+      <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
+      <tr><th>文件</th><th>处理</th></tr>
+      <tr><td>forum-composer · forum-post-actions · forum-reply-box · forum-report · forum-search</td><td>发帖 / 回复 / 举报 / 搜索按钮 → <code>.btn</code> 体系</td></tr>
+      <tr><td>bank-actions · bank-actions-deposit · bank-actions-loan</td><td>存取贷主操作 → <code>.btn-primary</code></td></tr>
+      <tr><td>request-board · invite-manager · invite-manager-parts · claim-button · torrent-social · increment-bulk</td><td>求种 / 邀请 / 认领 / 社交操作 → <code>.btn</code> 体系</td></tr>
+      <tr><td>message-center-compose · friends-actions</td><td>发送 / 好友操作 → <code>.btn</code> 体系</td></tr>
+      <tr><td>setting-field · twofa-setup · usercp-security×2 · passkeys-card×2</td><td>设置 / 安全操作 → <code>.btn</code> 体系</td></tr>
+      <tr><td>app/(main)/page · offline/page · torrent.tsx · plugins-frames · plugins-gomoku</td><td>首页空态 / 离线重试 / 种子操作 / 插件按钮 → <code>.btn</code> 体系</td></tr>
+    </table>
+
+    <div class="note"><b>P1 · 页头补全（约 21 个信息页）</b>——裸 <code>h1 font-display text-2xl</code> 统一换 <code>.pghd</code>（eyebrow + 大标题 + sub 副题），与 upload/shop 同构。涉及：my · requests · tasks · messages · invites · notifications · collections · artists · clients · endangered · contests · magic-pool · getrss · myhr · me/achievements · me/exams · my/torrentlist · api-docs · cheaterbox · links/apply · offers。工作量每页约 5 行，无逻辑改动。</div>
+
+    <div class="note note--mint"><b>P2 · 数据口径核验（5 处）</b>——前台映射表完整度核验：my-spark（SPARK_KIND_LABELS）· dressup（dict.dressup.kinds）· me/sparks · shop-catalog（itemKindLabels）· promo-buy-button（i18n_key）。规则：无映射回落「其他」而非原值。若全部覆盖则零改动。</div>
+
+    <div class="note"><b>附 · 管理端按钮收编（27 处，可并入后台批次）</b>——admin-* 18 处 + settings-* 4 处 + staff-* 5 处。结构无需改动（B6 复核），建议与后台后续改版批次合并执行，不单独排期。</div>
+  </div>
+</section>
+
+<!-- ===== 6 落地建议 ===== -->
+<section class="sec" id="s6">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">第六章</div>
+      <h2 class="sec-title">落地建议</h2>
+      <p class="sec-sub">三个批次可并行，每批独立验收（TypeScript 检查 + 关键页截图比对）。</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-no">1</div>
+        <h4>P0 按钮收编</h4>
+        <p>31 处前台按钮换 .btn 体系；视觉回归核对 6 个模块页</p>
+      </div>
+      <div class="step">
+        <div class="step-no">2</div>
+        <h4>P1 页头补全</h4>
+        <p>21 个信息页补 .pghd；eyebrow 取 i18n 英文键或页面 slug</p>
+      </div>
+      <div class="step">
+        <div class="step-no">3</div>
+        <h4>P2 口径核验</h4>
+        <p>5 处前台映射表完整度检查；未覆盖值回落「其他」</p>
+      </div>
+      <div class="step">
+        <div class="step-no">4</div>
+        <h4>回归验证</h4>
+        <p>lint + 构建 + 桌面/移动截图；与设计文档同口径验收</p>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:26px"><b>与种子详情页方案的衔接</b>：详情页新方案（L0/L1/L2 + 双栏 + td-* 组件）已在代码中落地，其余页面<b>无需对齐重构</b>——它们本就共用同一套 Aurora 令牌与组件原语。本报告 P0/P1 是让「细节层」追上「结构层」，收完后全站即与详情页同一视觉基线。</div>
+  </div>
+</section>
+
+<footer class="foot">FluxTorrent · 其他页面一致性审查报告 · 判据同源 TIDE 收口规范 + 种子详情页方案 · 静态信号扫描 + 关键页目视复核</footer>
+
+</body>
+</html>
