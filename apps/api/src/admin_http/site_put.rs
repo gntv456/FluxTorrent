@@ -130,5 +130,9 @@ pub(crate) async fn site_settings_put(
             })),
         )
         .await;
+    // 站点档案缓存写失效：site_profile 把 20+ 条 settings/词表查询整包缓存
+    // （300s），单项保存命中其中任何键都要立刻失效，否则站长改了站名/分类
+    // 色要等 5 分钟才见效（2026-10-18 加缓存时的对价）。
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }

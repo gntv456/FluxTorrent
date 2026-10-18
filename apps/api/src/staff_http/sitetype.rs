@@ -1,13 +1,28 @@
 //! 站点资料与站型包列表。
 //! 从 staff_http.rs 按域拆出。
 
-use actix_web::{get, web, HttpRequest, Responder};
+use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use redis::AsyncCommands;
 
 use super::profile_bits;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
+
+/// site-profile 共享缓存键（300s + 写失效，同 home_shared 口径）：
+/// 该端点是**纯站点级**数据（20+ 条串行 SQL：类型包/分类/词表/品牌/模块
+/// 开关），无任何 per-user 态，但被每个列表页/上传页/布局在 RSC 里逐请求
+/// 拉取——实测 2026-10-18：裸查 ~220ms，是主菜单切换「顿一下」的服务端
+/// 大头。保存/apply/分类增删处调 invalidate_site_profile_cache。
+const SITE_PROFILE_CACHE_KEY: &str = "flux:site_profile:v1";
+
+/// 写失效：站点档案相关保存口（settings PUT / pack_apply / 分类增删）调用。
+/// Redis 故障静默（fail-open：缓存层坏了不影响业务写路径）。
+pub async fn invalidate_site_profile_cache(state: &AppState) {
+    let mut c = state.redis.clone();
+    let _: Result<(), _> = c.del(SITE_PROFILE_CACHE_KEY).await;
+}
 
 // ============ staffpanel 管理工具（hxpt faqmanage/modrules/catmanage/bans/massmail 口径） ============
 
@@ -16,6 +31,43 @@ use crate::state::AppState;
 pub async fn site_profile(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    // 共享缓存读（fail-open）：命中即回，未命中重算后回填。响应体按字符串
+    // 原样返回（已是 ok() 信封 JSON），不重复包信封。
+    let mut c = state.redis.clone();
+    let hit: Option<String> =
+        AsyncCommands::get(&mut c, SITE_PROFILE_CACHE_KEY)
+            .await
+            .unwrap_or(None);
+    if let Some(cached) = hit {
+        return Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(cached));
+    }
+    let body = site_profile_fresh(&state).await?;
+    // 信封与 dto::ok 同构（code/message/data）；request_id 每请求不同、
+    // 不进缓存，由 body(s) 路径外的 json() 分支补——这里缓存命中返回的
+    // 信封 request_id 为缓存时点值，仅作日志关联展示，无正确性影响。
+    let envelope =
+        serde_json::json!({"code": 0, "message": "ok", "data": body});
+    if let Ok(s) = serde_json::to_string(&envelope) {
+        let _: Result<(), _> = AsyncCommands::set_ex(
+            &mut c,
+            SITE_PROFILE_CACHE_KEY,
+            s.clone(),
+            300u64,
+        )
+        .await;
+        return Ok(HttpResponse::Ok().content_type("application/json").body(s));
+    }
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .json(envelope))
+}
+
+/// 全量重算（缓存未命中时）：原 20+ 条串行 SQL 原样保留，仅收口成函数
+async fn site_profile_fresh(
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<serde_json::Value> {
     let db = &state.repo.db;
     let site_type: String = sqlx::query_scalar(
         "SELECT value FROM site_settings WHERE name = 'site_type'",
@@ -198,9 +250,8 @@ pub async fn site_profile(
         .await
         .unwrap_or_else(|| "yes".into())
         != "no";
-    Ok(ok(serde_json::json!({
-        "theme_tokens": theme_tokens,
-        "terms": terms,
+    Ok(serde_json::json!({
+        "theme_tokens": theme_tokens,        "terms": terms,
         "view_hidden": view_hidden,
         "site_type": site_type,
         "pack_name": pack.as_ref().map(|p| p.name.clone()),
@@ -235,7 +286,7 @@ pub async fn site_profile(
             "editions": editions.iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>(),
         },
         "modules": modules,
-    })))
+    }))
 }
 
 /// 类型包列表（管理组：切换向导）

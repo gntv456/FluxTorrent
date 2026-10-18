@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   getForumIndex,
+  getForumRecent,
   getForumSide,
   getForumUserCard,
 } from "@/lib/data";
@@ -9,40 +10,67 @@ import { getDict } from "@/i18n/server";
 import { ForumSearch } from "@/components/forum-search";
 import { TopicComposer } from "@/components/forum-composer";
 import {
+  ForumHomeStream,
+  type StreamType,
+} from "@/components/forum-home-stream";
+import {
   ForumMineLinks,
   ForumSideColumn,
   ForumUserCardBlock,
 } from "@/components/forum-home-aside";
 import { requireModule } from "@/components/module-gate";
-import { EmptyState } from "@/components/ui/empty-state";
 /* 页面专属样式走路由级 import（globals.css 尾注的纪律）：只有论坛首页
    需要三列与两翼的表面，不往全站 @import 链里堆。 */
 import "@/app/styles/forums-home.css";
 
 export const dynamic = "force-dynamic";
 
-/** 论坛首页：三列（样图集 § forum）——左列用户卡 + 分区导航、中列版块
- *  卡片流、右列统计/热帖/最新回复/新手必读。
- *  每张版块卡片：版块名/描述/话题数/帖子数 + 最新话题标题预览。
- *  空分区渲染占位卡而非整段消失——旧版分组由版块列表反推，
- *  新建的分区（还没有版块）在前台会直接不见。 */
-export default async function ForumsPage() {
-  // U1 模块页守卫：关闭时渲染统一空态
-  const gate = await requireModule("forums");
-  if (gate) return gate;
+/** 左栏版块导航的圆点色板（样图 f3b-nav__item i 的六色，按版块 id 取） */
+const NAV_DOTS = [
+  "#2fa8ff",
+  "#2fbf9b",
+  "#ffc93c",
+  "#5b6bf5",
+  "#ff8fc7",
+  "#ff7a59",
+];
 
-  const { dict, currency } = await getDict();
-  // 会话先判、后取数：/forums/side 与 /me 都要凭证，游客打了只会被
-  // 包成 null，于是「接口挂了」和「你还没登录」在界面上长得一样。
-  const signed = await hasSessionToken();
-  const [{ categories, forums }, me, side] = await Promise.all([
+/** 论坛首页：三列（样图集 § tplForum）——左列用户卡 + 版块导航、
+ * 中栏全站话题流、右列统计/热帖/最新回复/新手必读。
+ *
+ * 中栏从「分区→版块卡片目录」换成**话题流**是本次对齐样图的核心：
+ * 样图中列就是跨版块的最新主题列表（头像 + 标题 + 版块徽章 + 回复 /
+ * 最后回复），版块目录的职能改由左栏导航承担（全部版块 + 分组 +
+ * 各版块带计数），与样图的信息架构一致。 */
+export default async function ForumsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  // U1 模块页守卫 + 字典 + 会话三连并发（2026-10-18 主菜单切换提速：
+  // 此前三者串行各一跳 API，RSC 数据段被拉长 ~2 个 RTT；守卫仅在
+  // 模块关闭时才消费 dict，把 dict 取数挪到守卫命中分支之后不再阻塞）。
+  const gateP = requireModule("forums");
+  const dictP = getDict();
+  const signedP = hasSessionToken();
+  const { type: typeRaw } = await searchParams;
+  const type: StreamType =
+    typeRaw === "sticky" || typeRaw === "digest" ? typeRaw : undefined;
+  const gate = await gateP;
+  if (gate) return gate;
+  const { dict, currency } = await dictP;
+  // 会话先判、后取数：/forums/recent 与 /me 都要凭证，游客打了只会
+  // 被包成 null，于是「接口挂了」和「你还没登录」在界面上长得一样。
+  const signed = await signedP;
+  const [{ categories, forums }, me, side, recent] = await Promise.all([
     getForumIndex(),
     signed ? getForumUserCard() : Promise.resolve(null),
     signed ? getForumSide() : Promise.resolve(null),
+    signed ? getForumRecent(type) : Promise.resolve(null),
   ]);
   const sideState = !signed ? "guest" : side ? "ok" : "fail";
 
-  // 分区是分组骨架：没有版块的分区照样成组（下面渲染空态占位）
+  // 分区是分组骨架：没有版块的分区照样成组（左栏渲染空态占位）
   const groups = categories.map((c) => ({
     key: `cat-${c.id}`,
     name: c.name,
@@ -63,29 +91,62 @@ export default async function ForumsPage() {
     });
   }
   const totalTopics = forums.reduce((a, f) => a + f.topics, 0);
+  // 中栏三态：游客 / 取档失败 / 有数据（含真的空）——不拿空列表
+  // 冒充「今天没人发帖」，也不拿取档失败冒充空。
+  const stream = signed ? recent : null;
 
   return (
     <div className="pting-forums">
-      {/* 左列：用户卡（样图第一块）+ 分区导航（锚点跳转） */}
+      {/* 左列：用户卡（样图第一块）+ 版块导航（全部版块 + 分组 + 各版块计数） */}
       <div className="fh-left">
         <ForumUserCardBlock me={me} dict={dict} currency={currency} />
         <aside className="pting-sidenav">
           <h2>{dict.forums2.allNodes}</h2>
           <nav aria-label={dict.forums.title}>
+            <Link href="/forums" className="on">
+              <span
+                className="pting-sidenav__dot"
+                style={{ background: "var(--sky)" }}
+                aria-hidden="true"
+              />
+              {dict.forums2.navAll}
+              <span className="fh-nav__cnt num">{totalTopics}</span>
+            </Link>
             {groups.map((g) => (
-              <a key={g.key} href={`#${g.key}`}>
-                <span className="pting-sidenav__dot" aria-hidden="true">
-                  {g.name.slice(0, 1)}
-                </span>
-                {g.name}
-              </a>
+              <div key={g.key}>
+                <div className="fh-nav__group">
+                  {g.name}
+                  {g.hidden && (
+                    <span className="pting-card__count">
+                      {dict.forums2.hiddenTag}
+                    </span>
+                  )}
+                </div>
+                {g.items.map((f) => (
+                  <Link
+                    key={f.id}
+                    href={`/forums/${f.id}`}
+                    className={g.hidden ? "fh-nav__hidden" : undefined}
+                  >
+                    <span
+                      className="pting-sidenav__dot"
+                      style={{
+                        background: NAV_DOTS[f.id % NAV_DOTS.length],
+                      }}
+                      aria-hidden="true"
+                    />
+                    {f.name}
+                    <span className="fh-nav__cnt num">{f.topics}</span>
+                  </Link>
+                ))}
+              </div>
             ))}
           </nav>
         </aside>
         <ForumMineLinks dict={dict} />
       </div>
 
-      {/* 版块卡片流（按分区分组） */}
+      {/* 中栏：页头（搜索/标题/收录数/关注流/发帖）+ 全站话题流 */}
       <div className="pting-board">
         <header className="pting-board__head">
           <ForumSearch
@@ -100,98 +161,32 @@ export default async function ForumsPage() {
               {dict.forums2.totalSuffix}
             </p>
           </div>
-          {/* M1 桌面快修 #1：深蓝渐变横幅上 text-sky 近乎不可见（实截只剩空框）。
-              改 on-accent 口径：白描边 + 白字，悬停提亮。 */}
-          <Link
-            href="/forums/feed"
-            className="pting-feed-pill"
-          >
+          <Link href="/forums/feed" className="pting-feed-pill">
             {dict.forums.feedTitle}
           </Link>
-          {/* 全局发帖入口：弹窗内先选版块再填表单（can_create 版块懒拉） */}
           <TopicComposer />
         </header>
 
-        {groups.map((g) => (
-          <section key={g.key} id={g.key} className="mt-6">
-            <h2 className="mb-3 flex items-center gap-2 font-display text-lg text-ink">
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full bg-sky"
-                aria-hidden="true"
-              />
-              {g.name}
-              {g.hidden && (
-                <span className="pting-card__count">
-                  {dict.forums2.hiddenTag}
-                </span>
-              )}
-              <span className="text-xs font-normal text-sub">
-                {g.items.length} {dict.forums2.topicsUnit}
-              </span>
-            </h2>
-            {g.items.length === 0 ? (
-              /* 空分区占位（W-24 四态化）：裸段落 → EmptyState compact，
-                 与全站空态同构（图标圆底 + 文案 + 引导） */
-              <EmptyState
-                compact
-                icon="folder"
-                title={dict.forums2.emptyBoard}
-                desc={dict.forums2.emptyBoardHint}
-              />
-            ) : (
-              <div className="pting-cards">
-                {g.items.map((f) => (
-                  /* 2026-10-03：空版块（0 话题）此前与有内容版块视觉同构，
-                     用户无法一眼分辨哪个版块有货。给 0 话题版块加 muted
-                     降饱和 + data-empty 钩子（CSS 据此压低对比）。 */
-                  <article
-                    key={f.id}
-                    className="pting-card"
-                    data-empty={f.topics === 0 ? "true" : undefined}
-                  >
-                    <header>
-                      <Link
-                        href={`/forums/${f.id}`}
-                        className="pting-card__title"
-                      >
-                        {f.name}
-                      </Link>
-                      <span className="pting-card__count num">
-                        {f.topics} {dict.forums2.topicsUnit} · {f.posts}{" "}
-                        {dict.forums2.postsUnit}
-                      </span>
-                    </header>
-                    {f.descr && <p className="pting-card__descr">{f.descr}</p>}
-                    <footer className="pting-card__latest">
-                      <span className="pting-card__latest-label">
-                        {dict.forums2.latest}
-                      </span>
-                      <Link
-                        href={`/forums/${f.id}`}
-                        className="pting-card__latest-title"
-                      >
-                        {f.latest_topic ?? `${dict.forums2.goBoard} →`}
-                      </Link>
-                      {f.latest_author && (
-                        <span className="pting-card__count">
-                          {dict.forums2.by}
-                          {f.latest_author}
-                        </span>
-                      )}
-                    </footer>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
-        {groups.length === 0 && (
-          /* 整站无版块（W-24）：引导去管理端建版，而非一行裸文字 */
-          <EmptyState
-            icon="folder"
-            tone="warn"
-            title={dict.forums2.emptyAll}
-            desc={dict.forums2.emptyBoardHint}
+        {!signed ? (
+          /* 游客：话题流与右栏热帖一样要登录——说清楚，别摆空列表 */
+          <div className="fh-stream__guest">
+            <b>{dict.forums3.guestTitle}</b>
+            <p>{dict.forums3.guestDesc}</p>
+            <Link href="/login" className="fh-guide__cta">
+              {dict.common.login}
+            </Link>
+          </div>
+        ) : recent === null ? (
+          /* 取档失败：与「真的空」分开说 */
+          <div className="fh-stream__guest">
+            <b>{dict.forums3.failTitle}</b>
+            <p>{dict.forums3.failDesc}</p>
+          </div>
+        ) : (
+          <ForumHomeStream
+            topics={recent.topics ?? []}
+            type={type}
+            dict={dict}
           />
         )}
       </div>

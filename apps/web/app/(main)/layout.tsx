@@ -15,11 +15,15 @@ import { getDict } from "@/i18n/server";
 export default async function MainLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { dict, currency } = await getDict(); // 布局语言与页面同源
-  // M4 平板细侧栏：与顶栏同源配置（lib/nav-menu.ts）
-  const profile = await getSiteProfile().catch(() => null);
-  const dims = await getSiteDims();
-  const customItems = await getMenuItems("topbar").catch(() => []);
+  // 布局四路并发（2026-10-18 主菜单切换提速）：此前 dict→profile→dims→menu
+  // 四连串行，每个导航 RSC 都白等 3 个 API RTT。getSiteProfile/getSiteDims
+  // 是 React cache 同请求去重，页面侧同名调用不产生第二次请求。
+  const [{ dict, currency }, profile, dims, customItems] = await Promise.all([
+    getDict(),
+    getSiteProfile().catch(() => null),
+    getSiteDims(),
+    getMenuItems("topbar").catch(() => []),
+  ]);
   const { primary: navPrimary } = buildNav({
     nav: dict.nav,
     tabbar: dict.tabbar,

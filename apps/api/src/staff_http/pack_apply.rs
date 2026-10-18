@@ -100,6 +100,8 @@ pub async fn site_type_pack_apply(
     // 首页共享段含 home_layout/site_profile（TTL 300s 写失效式）：apply
     // 可能改了排版与站点档案，与保存端点同口径立即失效，不等 5 分钟
     crate::http::invalidate_home_cache(&state).await;
+    // site-profile 同批失效：apply 换站型会改 site_type/分类/模块开关
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     crate::cfgver::bump(state.get_ref(), "home").await;
     state
         .repo
