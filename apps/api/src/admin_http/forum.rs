@@ -26,6 +26,10 @@ struct ForumAdminRow {
     #[sqlx(default)]
     sort: i32,
     topics: i64,
+    /// 回复数（帖子总数；topics 表只存主题，帖子在分区表 posts 里，
+    /// 经 topic_id 关联。后台版块表「主题 / 回复」列用它）
+    #[sqlx(default)]
+    posts: i64,
     /// 分区/节点（0115）
     #[sqlx(default)]
     category_id: Option<i64>,
@@ -68,6 +72,8 @@ async fn forum_admin_list(
             f.minclasswrite, \
             f.minclasscreate, f.protected, f.sort, \
             (SELECT count(*) FROM topics t WHERE t.forum_id = f.id) AS topics, \
+            (SELECT count(*) FROM posts p JOIN topics tp ON tp.id = p.topic_id \
+             WHERE tp.forum_id = f.id) AS posts, \
             f.category_id, c.name AS category_name, f.mtime \
          FROM forums f LEFT JOIN forum_categories c ON c.id = f.category_id \
          ORDER BY c.sort NULLS LAST, c.id, f.sort, f.id",
