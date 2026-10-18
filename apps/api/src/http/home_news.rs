@@ -183,9 +183,6 @@ mod tests {
             "<iframe src=\"https://player.bilibili.com/p\"></iframe>",
             &Vec::new(),
         );
-        assert!(
-            !out.contains("src"),
-            "空规则集下不许留下 src：{out}"
-        );
+        assert!(!out.contains("src"), "空规则集下不许留下 src：{out}");
     }
 }

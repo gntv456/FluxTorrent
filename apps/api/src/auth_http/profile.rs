@@ -147,7 +147,8 @@ pub async fn user_public_profile(
             .fetch_one(&state.repo.read_db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-    let month_earn: i64 = sqlx::query_scalar("SELECT sum(amount)::bigint \
+    let month_earn: i64 = sqlx::query_scalar(
+        "SELECT sum(amount)::bigint \
         FROM spark_ledger WHERE user_id = $1 AND amount > 0 AND \
         kind = 'seeding_reward' AND created_at >= (date_trunc('month', \
         now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')",

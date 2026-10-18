@@ -80,8 +80,7 @@ pub(super) async fn task_overview(
 
     // 我的任务记录：含进行中任务的实时进度（取数与折算拆到
     // task_records.rs，与 worker 结算同尺）
-    let mine_json = super::task_records::records(&state, uid)
-        .await?;
+    let mine_json = super::task_records::records(&state, uid).await?;
 
     Ok(ok(serde_json::json!({
         "shop": shop_json,
@@ -111,10 +110,10 @@ pub(super) async fn task_claim(
              target_class, metric \
              FROM tasks WHERE id = $1",
         )
-    .bind(body.task_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        .bind(body.task_id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((in_window, claim_limit, fee, target_class, metric_json)) = task
     else {
         return Err(DomainError::NotFound(body.task_id));
