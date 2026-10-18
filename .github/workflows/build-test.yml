@@ -80,8 +80,9 @@ jobs:
       # （存量 warning 7 处，与 clippy 同策略：先可视化，逐步收紧为 -W error）
       - name: Lint
         run: pnpm lint
-      # 行数门禁：新文件超限挂；存量超限文件只许瘦不许胖（baseline 见
-      # scripts/line_limit_baseline.json；拆分后跑 --update 收缩基线）
+      # 行数门禁：新文件超限挂；存量超限文件只许瘦不许胖，且基线棘轮只降
+      # 不升——文件瘦了/超宽行少了，必须跑 --update 把基线同步收紧并提交，
+      # 否则红灯（防「拆完又被 --update 兜底松回去」）；基线清零即达标。
       - name: Line limit guard
         run: node ../../scripts/line_limit_guard.mjs
       - name: tsc 类型检查（0 错误基线）

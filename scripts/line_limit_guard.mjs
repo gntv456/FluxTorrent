@@ -9,6 +9,9 @@
 //   4) 行宽 ≤80 字符（含 UTF-8 中文字符按 1 计）：超标算文件违规行数，
 //      新文件/基线内文件不许超标；基线文件以「超宽行数不增」为准——
 //      老文件可以改，但不许把超宽行改得更多。
+//   5) 棘轮（逐步收紧到标准门禁）：基线只许降不许升。文件比登记的更瘦/
+//      超宽行更少时，登记值必须跟着降下来（跑 --update 收缩），否则挂——
+//      防止「辛辛苦苦拆完，一次 --update 兜底又松回去」。基线清零即达标。
 // 用法：node scripts/line_limit_guard.mjs [--update]（CI 一步；exit 1 = 违规）。
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { globCompat as globSync } from "./lib/glob_compat.mjs";
@@ -86,18 +89,24 @@ for (const rel of files) {
   const limit = LIMITS[path.extname(rel)];
   const was = baseline[rel];
 
-  // 行数：超限进 next 基线；比旧基线更长即挂（新文件=不在基线且超限）
+  // 行数：超限进 next 基线；比旧基线更长即挂（新文件=不在基线且超限）。
+  // 棘轮：比登记值更瘦不算过关——登记值必须同步降（--update），否则挂。
   if (n > limit) {
     nextBaseline[rel] = n;
     if (was === undefined) {
       offenders.push({ file: rel, lines: n, limit, kind: "new" });
     } else if (n > was) {
       offenders.push({ file: rel, lines: n, limit, was, kind: "grew" });
+    } else if (n < was) {
+      offenders.push({
+        file: rel, lines: n, was, kind: "ratchet",
+      });
     }
   }
 
   // 行宽：与行数同款「只许瘦不许胖」——基线登记超宽行数，比登记多即挂；
   // 没登记的文件（新建 / 原本干净）出现任何超宽行直接挂。
+  // 棘轮同上：超宽行变少了必须 --update 落账，否则挂。
   const wide = wideLines(lines);
   if (wide > 0) {
     const wasWide = baseline[rel + "::wide"];
@@ -105,16 +114,35 @@ for (const rel of files) {
       offenders.push({ file: rel, wide, kind: "new-wide" });
     } else if (wide > wasWide) {
       offenders.push({ file: rel, wide, wasWide, kind: "grew-wide" });
+    } else if (wide < wasWide) {
+      offenders.push({ file: rel, wide, wasWide, kind: "ratchet-wide" });
     }
     nextBaseline[rel + "::wide"] = wide;
   }
 }
 
 if (process.argv.includes("--update")) {
-  writeFileSync(BASELINE, JSON.stringify(nextBaseline, null, 1) + "\n");
   const filesOver = Object.keys(nextBaseline).filter(
     (k) => !k.endsWith("::wide"),
   ).length;
+  const ratcheted = offenders.filter((o) => o.kind.startsWith("ratchet"));
+  if (ratcheted.length) {
+    console.error(
+      `棘轮收紧 ${ratcheted.length} 处（详见上方），须连 ` +
+        `${path.basename(BASELINE)} 一起提交后门禁才恢复绿：`,
+    );
+    for (const o of ratcheted) {
+      if (o.kind === "ratchet")
+        console.error(
+          `  [待收缩] ${o.file} ${o.was} → ${o.lines} 行`,
+        );
+      else
+        console.error(
+          `  [待收缩] ${o.file} 超宽 ${o.wasWide} → ${o.wide} 行`,
+        );
+    }
+  }
+  writeFileSync(BASELINE, JSON.stringify(nextBaseline, null, 1) + "\n");
   console.log(
     `baseline updated: ${filesOver} files over limit, ` +
       `${Object.keys(nextBaseline).length - filesOver} files with wide lines`,
@@ -124,7 +152,8 @@ if (process.argv.includes("--update")) {
 
 if (offenders.length) {
   console.error(
-    "行数/行宽门禁违规（新文件超限 / 存量超限只许瘦不许胖 / 行宽≤80）：",
+    "行数/行宽门禁违规（新文件超限 / 存量超限只许瘦不许胖 / 行宽≤80 / " +
+      "基线棘轮只降不升）：",
   );
   for (const o of offenders) {
     if (o.kind === "new")
@@ -139,10 +168,20 @@ if (offenders.length) {
       console.error(
         `  [新文件超宽] ${o.file} ${o.wide} 行 > ${MAX_COLS} 字符`,
       );
-    else
+    else if (o.kind === "grew-wide")
       console.error(
         `  [超宽变多] ${o.file} ${o.wide} 行 > 基线 ${o.wasWide} 行` +
           `（> ${MAX_COLS} 字符）`,
+      );
+    else if (o.kind === "ratchet")
+      console.error(
+        `  [棘轮] ${o.file} 已瘦到 ${o.lines} 行 < 基线 ${o.was} 行，` +
+          `跑 node scripts/line_limit_guard.mjs --update 收缩基线并提交`,
+      );
+    else
+      console.error(
+        `  [棘轮] ${o.file} 超宽剩 ${o.wide} 行 < 基线 ${o.wasWide} 行，` +
+          `跑 node scripts/line_limit_guard.mjs --update 收缩基线并提交`,
       );
   }
   process.exit(1);
