@@ -1,0 +1,7 @@
+BEGIN;
+UPDATE _sqlx_migrations SET checksum = '\x11bfb2605b49c45ccf288056ba2d291f937dc1529b617d0450b4f107ffdd94c275885254a38c13c3b24d9fdf05113660' WHERE version = 376 AND checksum = '\x0737f8a5b2d646d1f838080767b7c8713eadf8c86c2b9b82b89fa8b3ddffeb7f5043be9c0721fa297397fd36367fa4d2';
+UPDATE _sqlx_migrations SET checksum = '\x9e0e89edb3f5713adf803df2ae0ffb5d7d057bb830a7b76cab493a4419061488c7c919448cf2eaed2a0fd4ba10926a47' WHERE version = 388 AND checksum = '\xb3d7f527b5a55023b8d4bb2c9576bfd4e86a86e40a14925ebcb6cf2eed8c67ca124a8c4a1ec35387354bbf9f24dd6c88';
+UPDATE _sqlx_migrations SET checksum = '\x06ecd1d754616ca4bcb2d9650f20e874d3ebe125e91f04489a4d8961efe1442280b75707b749ef1b8b3af7f5af185e99' WHERE version = 389 AND checksum = '\xa86e4d8f04247fedddb2899fea032127e06631a7e443a1a107be8e1d4d7753dc9ead54bfd0e6fc2f653d74289836aea8';
+UPDATE _sqlx_migrations SET checksum = '\xf859296bf292877b62b7cac1185c11d0c8afb2436b5a2a013cd6a2ad91b6ca12020b346bcdebe950e1200a769e8b1fb1' WHERE version = 390 AND checksum = '\xc234fa76aa2fb43144e6334c5483cbc46cf305177cde1d4c04332c61b918dd208852e5dd36b1f6ee4102c8f8774ce74a';
+UPDATE _sqlx_migrations SET checksum = '\x76723dc5142e294b1c49a644937beaf189923a18438b053c0afeab4e52316e4937976d8f3d8b9f4f5d1a89a6d486498f' WHERE version = 391 AND checksum = '\x09ee941cef0fed010c478cc21f1d14ddb33502f810c2e57e7a6a45236f0113a2754e38fcbb49d1275faac446fc4b4b8c';
+COMMIT;
