@@ -1322,7 +1322,7 @@ dependencies = [
 
 [[package]]
 name = "flux-api"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "actix-cors",
  "actix-multipart",
@@ -1383,7 +1383,7 @@ dependencies = [
 
 [[package]]
 name = "flux-tracker"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -1404,7 +1404,7 @@ dependencies = [
 
 [[package]]
 name = "flux-worker"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
