@@ -9,6 +9,13 @@
 //!    利用——这是这套机制最容易被攻破的一点，故钉在单测里。
 //! 2. **阶梯取最靠后一档、不叠加**：多条 relief 命中时取 extra_hours 最大
 //!    的那条。叠加会让「做种多」变成指数级收益，与设计意图相反。
+//!
+//! ⚠️ 运行期**不走这里**：建快照是 `worker/src/jobs/hr_snapshot.rs` 的一条
+//! INSERT…SELECT，按行调 Rust 不现实，所以它调 SQL 侧镜像函数
+//! `hr_reduced_seed_hours` / `hr_reduced_days`（0385 落、0394 修）。本模块只剩
+//! 单测在用 —— 于是「两侧同式」这件事没有任何运行时约束：P-335 就是 SQL 侧
+//! 少除一次 100，把成员义务放大 100 倍，而两侧单测各自全绿。改这里的公式必须
+//! 同步改 SQL 函数，并跑 `scripts/pt_audit_cz_hr_tier_math.py`（矩阵逐格比对两侧）。
 
 /// 分档定义（倍率而非绝对值：种子的 hr_policy 仍是基线）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

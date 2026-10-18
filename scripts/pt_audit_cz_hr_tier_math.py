@@ -128,14 +128,28 @@ else:
                 "hr_reduced_seed_hours(1, 1, 0);").strip()
     lb, lc = (live.split("/") + ["?", "?"])[:2]
     deployed = lb.isdigit() and int(lb) <= 96 and int(lc) <= 2
-    print("   现网函数读数 hr_reduced_seed_hours(48,2,0)=%s、(1,1,0)=%s ⇒ "
-          "%s" % (lb, lc, "已是修复后口径" if deployed else "仍是 100 倍膨胀，"
-                  "等站方启动跑 0394 后转硬断言"))
-    if not deployed:
+    # 量级读数：库里未结义务的最大小时数 vs 站点设定小时数。
+    # 这个页面级矛盾就是本 bug 的成员可见症状：/me/hr 的规则文案读
+    # default_seed_hours（站点设定），列表行读 hr_snapshots.required_seconds
+    # ——同一屏一边写「1 小时」、一边写「还差 150 小时」。
+    mag = psql(
+        "SELECT coalesce(max(h.required_seconds)/3600, 0)::text || '/' || "
+        "coalesce(nullif((SELECT value FROM site_settings "
+        "WHERE name='hr_hours'),''),'?') "
+        "FROM hr_snapshots h WHERE h.status IN ('open','violated')").strip()
+    hrs, base_h = (mag.split("/") + ["?", "?"])[:2]
+    over = hrs.isdigit() and base_h.isdigit() and int(hrs) > int(base_h) * 3
+    print("   现网函数读数 hr_reduced_seed_hours(48,2,0)=%s、(1,1,0)=%s ⇒ %s"
+          % (lb, lc, "已是修复后口径" if deployed else "仍是 100 倍膨胀，"
+             "等站方启动跑 0394 后转硬断言"))
+    print("   成员可见症状量级：未结义务最大 %s 小时 / 站点设定 %s 小时%s"
+          % (hrs, base_h, "（>3 倍即膨胀未清）" if over else ""))
+    if not deployed or over:
         print("   [WARN] P-335 修复在 master（迁移 0394），现网镜像未部署；"
-              "部署后请把 CZ5 打开")
+              "部署并回填后把 CZ5 转成硬断言")
     else:
-        ok("CZ5 现网函数已是修复后口径（部署后本条应当绿）", True, "")
+        ok("CZ5 现网函数与未结义务量级都已是修复后口径", not over,
+           "最大义务 %s 小时 vs 设定 %s 小时" % (hrs, base_h))
 
 print()
 print("红账：%s" % (FAILURES or "无"))
