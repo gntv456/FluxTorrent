@@ -316,6 +316,9 @@ services:
 
   # ============ 监控栈（可选 profile：docker compose --profile monitoring up -d） ============
   # .env 配好 ANN_METRICS_TOKEN 后 api/tracker 的 /metrics 才可用（留空 = 404）。
+  # 注意 prometheus.yml 里的 ${ANN_METRICS_TOKEN} 由 **Prometheus 进程自己**展开，
+  # 不经 compose 插值 ⇒ 同一枚 token 必须注入本容器（见下面 environment），
+  # 否则两个 job 都带空凭证抓、api/tracker 一律 404，面板只有空图。
   # Grafana 首次启动自动导入数据源 + 预置仪表盘（provisioning 目录）；
   # 告警规则在 monitoring/alerts.yml（DLQ 积压 / 5xx 率 / tracker Redis 降级 /
   # Stream 积压 / 连接池打满五条最低告警，审查报告 go-live 清单第 7 项）。
@@ -326,6 +329,8 @@ services:
     image: prom/prometheus:latest
     container_name: ${FLUX_PROM_CONTAINER:-flux-prometheus}
     profiles: ["monitoring"]
+    environment:
+      - ANN_METRICS_TOKEN=${ANN_METRICS_TOKEN:-}
     logging: *default-logging
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
