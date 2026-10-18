@@ -406,8 +406,8 @@ export default function AdminPage() {
       role={role}
       classId={classId}
     >
-      {/* 顶栏标题降为 p 后，工具页的唯一 h1 在此（对读屏可见即可） */}
-      <h1 className="sr-only">{a.panelTitle}</h1>
+      {/* 页头 h1 由 AdminShell 的 PageHeader 自持（= 当前工具名），
+          此处不再挂 sr-only 标题，避免同一页两个 h1。 */}
       {msg && <p className={MSG_CLS}>{msg}</p>}
       {renderTool()}
       <AskDialog {...ask} />

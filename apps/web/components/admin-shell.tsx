@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { Modal } from "@/components/modal";
-import { AdminNavGroups } from "./admin-nav-groups";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  AdminNavGroups,
+  splitSubGroups,
+  type NavGroup,
+} from "./admin-nav-groups";
 import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
 /** 管理面板条目（后端 /admin/staffpanel 返回，已按 min_class 过滤） */
 export interface PanelEntry {
@@ -26,13 +31,17 @@ export const SECTION_ORDER = [
 ] as const;
 
 /**
- * 管理后台外壳：左侧常驻职能导航 + 右侧内容区 + 顶部全局搜索。
+ * 管理后台外壳：页头卡片 + 左侧常驻职能导航 + 右侧内容区。
  *
- * - 分组维度是职能（section），权限只作过滤（min_class），无权条目后端已剔除
- * - 待办数字常驻导航，切到任何页面都可见
- * - Ctrl/⌘ + K 聚焦搜索，实时过滤导航
- * - **导航是管理端唯一入口**：面板内部曾另有一行 35 个药丸按钮，二者同屏重复
- *   （药丸行占 184px），已删除。
+ * 对齐样图 § 管理后台（2026-10-17）：
+ *  - 页头 = PageHeader 卡片（眉标「后台 / 当前工具」+ 标题 + 副标题
+ *    「分组 · 条目说明」+ 右侧身份药丸），与全站已对齐页面同一原语；
+ *  - 侧栏 = 白卡片（标题「后台职能导航」+ 全局搜索 Ctrl/⌘+K + 分组导航），
+ *    搜索从顶栏挪进侧栏——顶栏位置让给页头卡片；
+ *  - 大组内按 NAV_SUBGROUPS 再分二级子分类（admin-nav-groups.tsx）。
+ *
+ * 导航是管理端唯一入口：面板内部曾另有一行 35 个药丸按钮，二者同屏重复
+ * （药丸行占 184px），已删除。
  *
  * 导航文案：`name` / `info` 存在 DB（`staff_panel_entries`），DB 值即
  * **zh-CN 的权威文案**；`en` / `zh-TW` 由 i18n 的 `adminNav[tab_key]` 覆盖，
@@ -47,6 +56,9 @@ export function AdminShell({
   role,
   classId,
   children,
+  headTitle,
+  headSub,
+  headAside,
 }: {
   entries: PanelEntry[];
   tool: string;
@@ -55,6 +67,12 @@ export function AdminShell({
   role: string;
   classId?: number;
   children: React.ReactNode;
+  /** 覆盖页头标题（默认=当前工具名）；独立页传自己的页面名 */
+  headTitle?: React.ReactNode;
+  /** 覆盖页头副标题（默认=「分组 · 条目说明」） */
+  headSub?: React.ReactNode;
+  /** 页头右侧追加槽（如「返回后台」按钮） */
+  headAside?: React.ReactNode;
 }) {
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
@@ -144,16 +162,29 @@ export function AdminShell({
   // 59 条过滤，成本可忽略；不用 useMemo —— 它的依赖（labelOf/tipOf/LABEL
   // 都随渲染重建）只会带来 useEffect 依赖陈旧的风险，换不来实际收益。
   const kw = q.trim().toLowerCase();
-  const grouped = SECTION_ORDER.map((key) => ({
-    key,
-    label: LABEL[key] ?? key,
-    items: allEntries.filter(
+  const grouped: NavGroup[] = SECTION_ORDER.map((key) => {
+    const items = allEntries.filter(
       (e) =>
         e.section === key &&
         (!kw ||
           `${labelOf(e)}${tipOf(e)}${e.tab_key}`.toLowerCase().includes(kw)),
-    ),
-  })).filter((g) => g.items.length > 0);
+    );
+    return {
+      key,
+      label: LABEL[key] ?? key,
+      items,
+      ...splitSubGroups(key, items, labelOf),
+    };
+  }).filter((g) => g.items.length > 0);
+
+  // 页头：当前工具条目（overview 等也有 DB 条目）；条目缺失（加载失败/
+  // 直接深链到未登记工具）时回落面板总标题，不留空白页头。
+  const cur = allEntries.find((e) => e.tab_key === tool);
+  const headLabel = cur ? labelOf(cur) : a.panelTitle;
+  const headTip = cur
+    ? `${LABEL[cur.section] ?? cur.section} · ${tipOf(cur)}`
+    : undefined;
+  const subLabels = a.navSubs as unknown as Record<string, string>;
 
   const navBody = (
     <AdminNavGroups
@@ -168,53 +199,75 @@ export function AdminShell({
       labelOf={labelOf}
       tipOf={tipOf}
       navEmpty={a.navEmpty}
+      subLabels={subLabels}
     />
   );
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 页面 h1 由各页自持（工具页 sr-only / 设定·论坛·用户详情可见标题），
-          这里只承担顶栏视觉 + 全局搜索。搜索框 max-w 封顶：flex-1 在放宽到
-          1600 的内容区会被拉到 1340px，输入框过宽失衡。 */}
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="font-display text-2xl">{a.panelTitle}</p>
-        <div className="min-w-[180px] max-w-[560px] flex-1">
-          <input
-            ref={inputRef}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={a.navSearchPlaceholder}
-            aria-label={a.navSearchLabel}
-            className="min-h-[38px] w-full rounded-[var(--r-md)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
-          />
-        </div>
-        <span
-          className="ml-auto shrink-0 rounded-full bg-sky-soft px-3 py-1 text-xs font-bold text-sky"
-          title={
-            ROLE_LABEL[role]
-              ? a.roleTitle.replace("{role}", ROLE_LABEL[role]!)
-              : undefined
-          }
-        >
-          {classLabel ? `${classId} ${classLabel}` : (ROLE_LABEL[role] ?? role)}
-        </span>
-        <button
-          onClick={() => setNavOpen(!navOpen)}
-          aria-expanded={navOpen}
-          className="min-h-[38px] rounded-[var(--r-md)] border border-line px-3 text-sm font-bold lg:hidden"
-        >
-          {a.navToggle}
-        </button>
-      </div>
+      {/* 页头卡片（对齐全站 PageHeader；h1=当前工具名，对读屏即页面身份）。
+          独立页（设定/论坛/用户详情）可用 headTitle/headSub/headAside 覆盖。 */}
+      <PageHeader
+        eyebrow={`${a.crumbAdmin} / ${headLabel}`}
+        title={headTitle ?? headLabel}
+        sub={headSub ?? headTip}
+        aside={
+          <>
+            {headAside}
+            <span
+              className="shrink-0 rounded-full bg-sky-soft px-3 py-1 text-xs
+                font-bold text-sky"
+              title={
+                ROLE_LABEL[role]
+                  ? a.roleTitle.replace("{role}", ROLE_LABEL[role]!)
+                  : undefined
+              }
+            >
+              {classLabel
+                ? `${classId} ${classLabel}`
+                : (ROLE_LABEL[role] ?? role)}
+            </span>
+            <button
+              onClick={() => setNavOpen(!navOpen)}
+              aria-expanded={navOpen}
+              className="min-h-[38px] shrink-0 rounded-[var(--r-md)] border
+                border-line px-3 text-sm font-bold lg:hidden"
+            >
+              {a.navToggle}
+            </button>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <nav
           aria-label={a.navAriaLabel}
-          className="hidden w-[200px] shrink-0 lg:block lg:sticky
+          className="hidden w-[250px] shrink-0 lg:block lg:sticky
             lg:top-[84px] lg:max-h-[calc(100vh-108px)] lg:self-start
             lg:overflow-y-auto lg:pr-1"
         >
-          {navBody}
+          {/* 侧栏白卡片（样图 § ucp-side）：标题 + 全局搜索 + 分组导航 */}
+          <div
+            className="rounded-[var(--r-md)] border border-line
+              bg-[var(--surface-card)] p-2 shadow-[var(--shadow-card)]"
+          >
+            <p className="px-2 py-1 text-xs font-bold text-ink">
+              {a.navTitle}
+            </p>
+            <div className="px-1 pb-2">
+              <input
+                ref={inputRef}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={a.navSearchPlaceholder}
+                aria-label={a.navSearchLabel}
+                className="min-h-[34px] w-full rounded-[var(--r-sm)] border
+                  border-line bg-cloud px-2 text-xs outline-none
+                  focus:border-sky"
+              />
+            </div>
+            {navBody}
+          </div>
         </nav>
         {/* M2：移动端管理导航从「内联展开顶出内容」改左侧滑入抽屉
             （复用 navdrawer 骨架；条目是 onTool button 而非路由 link） */}
