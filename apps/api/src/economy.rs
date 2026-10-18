@@ -141,8 +141,14 @@ pub fn early_penalty(principal: i64, penalty_bp: i32) -> i64 {
 
 pub const MAGIC_POOL_GOAL: i64 = 2_000_000;
 
+/// 站免池的月桶标签。**必须按站点日界（北京自然月）**切：
+/// 界面写的是「当月累计捐赠…下月 1-3 号开启」与「本月捐赠榜」，worker 的
+/// 「上月达标」判定也是 `Utc::now() + 8h` 的北京日。原先这里直接取 UTC 的
+/// 年/月 ⇒ 每月 1 号 00:00-08:00（北京）入的税落进**上一个自然月**的桶：
+/// 上月被虚增（可能提前触发全局双免），本月进度与捐赠榜同时少账。
 pub fn pool_month(t: chrono::DateTime<Utc>) -> String {
-    format!("{:04}-{:02}", t.year(), t.month())
+    let site = t + chrono::Duration::hours(8);
+    format!("{:04}-{:02}", site.year(), site.month())
 }
 
 /// 上月达标 → 本月 1-3 号开启全局双免
@@ -175,6 +181,28 @@ pub fn gift_tax(amount: i64, tax_bp: i32) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pool_month_follows_site_boundary() {
+        use chrono::Datelike;
+        let at = |s: &str| {
+            chrono::DateTime::parse_from_rfc3339(s)
+                .unwrap()
+                .with_timezone(&chrono::Utc)
+        };
+        // 北京 2026-11-01 07:59（= UTC 10-31 23:59）：按 UTC 还算 10 月，
+        // 按站点日界已是 11 月 —— 池子必须落 2026-11。落错桶的后果是把这
+        // 8 小时的税虚增到上月，可能提前触发全局双免，而本月进度同时少账。
+        assert_eq!(pool_month(at("2026-10-31T23:59:00Z")), "2026-11");
+        // 北京 2026-10-31 23:59（= UTC 15:59）仍属 10 月。
+        assert_eq!(pool_month(at("2026-10-31T15:59:00Z")), "2026-10");
+        // 与 worker 的上月判定同界（promos.rs 用 `Utc::now() + 8h` 取月）。
+        let shifted = at("2026-10-31T23:59:00Z") + chrono::Duration::hours(8);
+        assert_eq!(
+            pool_month(at("2026-10-31T23:59:00Z")),
+            format!("{:04}-{:02}", shifted.year(), shifted.month())
+        );
+    }
 
     #[test]
     fn gift_tax_rates() {
