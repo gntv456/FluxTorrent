@@ -100,6 +100,13 @@ function passedAttrs(name) {
     // 标签体非空（去掉纯空白/自闭合）视为 children 已传
     const selfClosing = src.slice(start, i).trimEnd().endsWith("/");
     if (!selfClosing && body.trim() !== "") out.add("children");
+    // 裸 prop（`embedded` / `bare` 这类无值写法）也算已传：没有 `=`，
+    // 下面的属性正则抓不到——实测漏抓把真传了的 Comments.embedded、
+    // TorrentSubtitles.bare 误报成断裂。要求裸名是真标识符且不吃前缀
+    // （排除 `...spread`），尾部可带换行。
+    for (const m of body.matchAll(/(?:^|[\s>])([a-zA-Z_$][\w$]*)(?=[\s/>}]|$)/g)) {
+      out.add(m[1]);
+    }
     const depthAt = [0];
     let k2 = 0;
     for (let k = 0; k < body.length; k++) {

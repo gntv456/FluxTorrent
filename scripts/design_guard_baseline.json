@@ -70,21 +70,21 @@
  },
  "app/login/login-form.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/login/login-view.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/login/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/ban-log/loading.tsx": {
   "h1": [],
@@ -678,9 +678,9 @@
  },
  "app/(main)/my-spark/page.tsx": {
   "h1": [
-   94
+   103
   ],
-  "h1First": 82,
+  "h1First": 91,
   "palette": [],
   "color": []
  },
@@ -692,9 +692,9 @@
  },
  "app/(main)/my/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": 40
+  "color": []
  },
  "app/(main)/my/torrentlist/loading.tsx": {
   "h1": [],
@@ -1528,11 +1528,11 @@
  },
  "app/(main)/admin/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
    32
   ],
-  "color": [],
-  "h1First": 411
+  "color": []
  },
  "app/(main)/admin/_parts/admin-freeleech.tsx": {
   "h1": [],
@@ -1626,9 +1626,9 @@
  },
  "app/(main)/admin/users/[id]/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/settings/loading.tsx": {
   "h1": [],
@@ -1638,17 +1638,17 @@
  },
  "app/(main)/admin/settings/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/settings/settings-client.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   269
+   253
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/settings/_parts/settings-dialogs.tsx": {
   "h1": [],
@@ -1679,22 +1679,22 @@
  },
  "app/(main)/admin/settings/_parts/settings-panels.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   72
+   77
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/settings/_parts/settings-toolbar.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   101,
-   110,
-   128,
-   140
+   103,
+   112,
+   130,
+   142
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "app/(main)/admin/forums/loading.tsx": {
   "h1": [],
@@ -1704,12 +1704,12 @@
  },
  "app/(main)/admin/forums/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   17,
-   90
+   18,
+   104
   ],
-  "color": [],
-  "h1First": 107
+  "color": []
  },
  "app/(main)/admin/forums/_parts/forum-board-drawer.tsx": {
   "h1": [],
@@ -1760,55 +1760,50 @@
  },
  "app/(auth)/self-unban/page.tsx": {
   "h1": [],
-  "palette": [],
-  "color": [],
-  "h1First": 33
+  "h1First": null,
+  "palette": [
+   53
+  ],
+  "color": []
  },
  "app/(auth)/reset/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   70,
-   84,
-   118,
-   145
+   71,
+   85,
+   120
   ],
-  "color": [],
-  "h1First": 138
+  "color": []
  },
  "app/(auth)/register/page.tsx": {
   "h1": [],
-  "palette": [
-   293
-  ],
-  "color": [],
-  "h1First": 188
+  "h1First": null,
+  "palette": [],
+  "color": []
  },
  "app/(auth)/forgot/page.tsx": {
   "h1": [],
-  "palette": [
-   72
-  ],
-  "color": [],
-  "h1First": 42
+  "h1First": null,
+  "palette": [],
+  "color": []
  },
  "app/(auth)/email-verify/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   54,
-   111,
-   120
+   119,
+   128
   ],
-  "color": [],
-  "h1First": 81
+  "color": []
  },
  "app/(auth)/apply/page.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   58,
-   112
+   123
   ],
-  "color": [],
-  "h1First": 54
+  "color": []
  },
  "components/admin-applications.tsx": {
   "h1": [],
@@ -2055,13 +2050,13 @@
  },
  "components/admin-nav-groups.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   70,
-   93,
-   104
+   137,
+   148,
+   183
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-onboarding.tsx": {
   "h1": [],
@@ -2129,9 +2124,9 @@
  },
  "components/admin-page-shell.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-props-form.tsx": {
   "h1": [],
@@ -2202,8 +2197,10 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   188,
-   192
+   218,
+   219,
+   265,
+   266
   ],
   "color": []
  },
@@ -2400,24 +2397,20 @@
  },
  "components/admin-user-detail-panels.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   192,
-   244,
-   290
+   157,
+   209,
+   255
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/admin-user-detail.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [
-   32,
-   40,
-   117,
-   135,
-   140,
-   169
+   36,
+   120
   ],
   "color": []
  },
@@ -2473,11 +2466,11 @@
  },
  "components/api-tokens.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   157
+   162
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/bank-actions-deposit.tsx": {
   "h1": [],
@@ -3039,8 +3032,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   57,
-   203
+   72,
+   220
   ],
   "color": []
  },
@@ -3980,12 +3973,12 @@
  },
  "components/torrent-manage-fields.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   248,
-   273
+   247,
+   272
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/torrent-manage-parts.tsx": {
   "h1": [],
@@ -4003,14 +3996,14 @@
  },
  "components/torrent-manage.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   220,
-   229,
-   239,
+   222,
+   231,
+   241,
    320
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/torrent-mobile-actionbar.tsx": {
   "h1": [],
@@ -4138,11 +4131,11 @@
  },
  "components/upload-form-files.tsx": {
   "h1": [],
+  "h1First": null,
   "palette": [
-   249
+   229
   ],
-  "color": [],
-  "h1First": null
+  "color": []
  },
  "components/upload-form-parts.tsx": {
   "h1": [],
@@ -4758,6 +4751,41 @@
   "color": []
  },
  "components/offline-retry.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/admin-user-detail-hero.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   24,
+   61,
+   75,
+   80
+  ],
+  "color": []
+ },
+ "components/admin-user-detail-pager.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/admin-user-detail-shared.ts": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "app/login/login-assist-links.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/auth-canvas.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
