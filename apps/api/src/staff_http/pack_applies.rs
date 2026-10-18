@@ -211,6 +211,9 @@ pub async fn site_pack_rollback(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.module_flags.invalidate().await;
     crate::cfgver::bump(state.get_ref(), "modules").await;
+    // 回滚重放了 site_tagline 并整表重建分类，而正向 apply 早已挂上档案缓存
+    // 失效（552da295）——回滚这一半漏了，回滚后前台仍是 apply 后的站名/分类。
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     state
         .repo
         .audit(Some(auth.id), "site_type_pack_rollback", Some(id))
