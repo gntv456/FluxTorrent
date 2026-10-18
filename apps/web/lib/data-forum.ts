@@ -8,6 +8,7 @@ import type {
   Forum,
   ForumCategory,
   ForumMine,
+  ForumRecent,
   ForumSide,
   ForumTopics,
   SiteStats,
@@ -118,6 +119,20 @@ export async function getMyForumActivity(
     return await api.get<ForumMine>(
       `/api/v1/forums/mine?type=${type}&page=${page}`,
     );
+  } catch {
+    return null;
+  }
+}
+
+/** 论坛首页中栏话题流（样图集 § tplForum）：全站可读版块的最新主题。
+ *  取档失败回 null——中栏按「没取到」说，不演成「今天没人发帖」。
+ *  type：sticky=只看置顶 / digest=只看精华；缺省全量。 */
+export async function getForumRecent(
+  type?: string,
+): Promise<ForumRecent | null> {
+  try {
+    const qs = type ? `?type=${encodeURIComponent(type)}` : "";
+    return await api.get<ForumRecent>(`/api/v1/forums/recent${qs}`);
   } catch {
     return null;
   }

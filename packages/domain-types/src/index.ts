@@ -442,6 +442,18 @@ export interface ForumTopics {
   topics: Topic[];
 }
 
+/** 论坛首页中栏话题流（GET /forums/recent，样图集 § tplForum）：
+ *  全站可读版块的最新主题窗口（无翻页）。比 Topic 多两列——
+ *  版块名（徽章）与最后回复者（零回帖时为 null，前端回落主题作者）。 */
+export interface ForumRecentTopic extends Topic {
+  forum_name: string;
+  last_replier: string | null;
+}
+
+export interface ForumRecent {
+  topics: ForumRecentTopic[];
+}
+
 /** 我发的主题（GET /forums/mine?type=topics 的行） */
 export interface MyTopicRow {
   id: number;
