@@ -342,7 +342,8 @@ for p, st, b in MINE:
         continue
     field = m.group(1) or m.group(2)
     needles.append((p, field))
-broken = [(p, f) for p, f in needles if p not in EXTERNAL and not web_sends(p, f)]
+broken = [(p, f) for p, f in needles
+          if p not in EXTERNAL and not web_sends(p, f)]
 outs = [(p, f) for p, f in needles if p in EXTERNAL]
 print("   活体要求必填参数的口 %d 条；外部读者 %d 条；前端契约检查 %d 条"
       % (len(needles), len(outs), len(needles) - len(outs)))
