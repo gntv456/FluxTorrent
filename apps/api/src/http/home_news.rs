@@ -11,7 +11,7 @@ use crate::errors::{DomainError, DomainResult};
 use std::borrow::Cow;
 
 /// enabled 规则的 embed_origin 集合（含站内相对前缀 /api/v1/attachments/）。
-async fn video_embed_origins(db: &sqlx::PgPool) -> Vec<String> {
+pub(crate) async fn video_embed_origins(db: &sqlx::PgPool) -> Vec<String> {
     sqlx::query_as::<_, (String,)>(
         "SELECT embed_origin FROM video_embed_rules WHERE enabled",
     )
@@ -23,7 +23,7 @@ async fn video_embed_origins(db: &sqlx::PgPool) -> Vec<String> {
 
 /// src/poster 域校验：绝对 URL 比对 authority（整段 host，防子域/伪装前缀
 /// 逃逸），站内相对路径比对以 / 开头的 origin 前缀。
-pub(super) fn embed_src_allowed(src: &str, origins: &[String]) -> bool {
+pub(crate) fn embed_src_allowed(src: &str, origins: &[String]) -> bool {
     let s = src.trim();
     if s.is_empty() {
         return false;
@@ -56,8 +56,11 @@ pub(super) fn embed_src_allowed(src: &str, origins: &[String]) -> bool {
     })
 }
 
-/// 公告消毒：默认白名单 + iframe/video/source，src/poster 过 embed_origin。
-pub(super) fn announcement_clean(body: &str, origins: &[String]) -> String {
+/// HTML 出站消毒——**公告与自定义页共用这一把尺**：默认白名单 +
+/// iframe/video/source，src/poster 过 embed_origin。
+/// 自定义页原先只跑 ammonia 默认集，iframe/video 整块被吞 ⇒ 站长贴进
+/// 「帮助页/规则页」的视频在前台静默消失（P-341，后台预览有、访客端没有）。
+pub(crate) fn html_clean(body: &str, origins: &[String]) -> String {
     let mut b = ammonia::Builder::default();
     b.add_tags(["iframe", "video", "source"]);
     b.add_tag_attributes(
@@ -128,11 +131,61 @@ pub(super) async fn home_news_json(
         .map(|(id, title, body, badge, ts)| {
             serde_json::json!({
                 "id": id, "title": title,
-                "body": announcement_clean(body, &origins),
+                "body": html_clean(body, &origins),
                 "badge": badge,
                 "date": ts.format("%m-%d").to_string(),
             })
         })
         .collect();
     Ok((news_json, latest))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn origins() -> Vec<String> {
+        vec![
+            "https://player.bilibili.com/".to_string(),
+            "/api/v1/attachments/".to_string(),
+        ]
+    }
+
+    /// 公告与自定义页共用的这把尺：正文排版不能被子标签白名单误伤。
+    #[test]
+    fn html_clean_keeps_layout_tags_and_allowlisted_embeds() {
+        let body = "<h2>标题</h2><table><tr><td>值</td></tr></table>\
+             <iframe src=\"https://player.bilibili.com/player.py?bvid=BV1\">\
+             </iframe>\
+             <video src=\"/api/v1/attachments/a.mp4\" controls></video>";
+        let out = html_clean(body, &origins());
+        for keep in ["<h2", "<table", "<td", "<iframe", "<video"] {
+            assert!(out.contains(keep), "白名单该留下 {keep}，实际输出：{out}");
+        }
+    }
+
+    /// 该杀的三件（脚本、事件属性、伪协议）与白名单外的内嵌源都要归零。
+    #[test]
+    fn html_clean_strips_scripts_and_unlisted_embed_origins() {
+        let body = "<script>alert(1)</script><img src=x onerror=alert(2)>\
+             <a href=\"javascript:alert(3)\">js</a>\
+             <iframe src=\"https://evil.example/e\"></iframe>";
+        let out = html_clean(body, &origins());
+        for banned in ["<script", "onerror", "javascript:", "evil.example"] {
+            assert!(!out.contains(banned), "{banned} 不该出现在输出里：{out}");
+        }
+    }
+
+    /// fail-closed：站长没启用任何内嵌源时，src 一律剥掉（标签壳留不下内容）。
+    #[test]
+    fn html_clean_fails_closed_when_no_origins() {
+        let out = html_clean(
+            "<iframe src=\"https://player.bilibili.com/p\"></iframe>",
+            &Vec::new(),
+        );
+        assert!(
+            !out.contains("src"),
+            "空规则集下不许留下 src：{out}"
+        );
+    }
 }

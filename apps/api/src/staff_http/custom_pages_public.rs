@@ -60,8 +60,14 @@ pub async fn custom_page_public(
     let Some((title, body, updated)) = row else {
         return Err(DomainError::NotFound(0));
     };
-    // 出站消毒（与公告 home.rs 同防线）：剥 script/事件属性/javascript: 协议
-    let safe = ammonia::Builder::default().clean(&body).to_string();
+    // 出站消毒：与公告**同一把尺**（http::home_news::html_clean）——剥
+    // script/事件属性/javascript:，并放行 iframe/video/source 且 src 过
+    // video_embed_rules 的 enabled 集合（规则空时一律剥 src，fail-closed）。
+    // 原先这里只跑 ammonia 默认集，iframe/video 整块被吞：站长贴进页面的
+    // 视频在后台预览看得到、访客端静默消失（P-341）。
+    let origins =
+        crate::http::home_news::video_embed_origins(&state.repo.db).await;
+    let safe = crate::http::home_news::html_clean(&body, &origins);
     Ok(ok(serde_json::json!({
         "slug": slug, "title": title,
         "body": safe, "updated_at": updated,
