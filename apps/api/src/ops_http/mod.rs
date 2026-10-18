@@ -10,6 +10,7 @@ mod onboarding;
 mod preserve;
 mod resurrections;
 mod task_overview;
+mod task_records;
 mod tasks;
 
 use exams::*;

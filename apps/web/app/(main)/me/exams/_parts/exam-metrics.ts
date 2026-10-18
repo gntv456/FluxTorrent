@@ -14,7 +14,8 @@ export interface ExamCurrent {
 }
 
 /** 指标现值。字节键走 formatBytes，秒键折算小时；
- *  `download_delta` 是累计口径（结算时才判定），一律不展示增量。 */
+ *  `download_delta` 后端只在结算时判定，本屏没有下载快照可对照，
+ *  一律回「—」（0395 起非 tier 任务也按认领后增量判定）。 */
 export function examCurrent(
   key: string,
   cur: ExamCurrent,

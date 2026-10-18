@@ -1,7 +1,8 @@
 //! 任务结算（0051）：认领结算主循环与达标/失败结算。
 //! 口径（对齐参考站 UserTaskRecord 的 base + delta）：
 //!   upload_delta      = users.uploaded - base_uploaded
-//!   download_delta    = users.downloaded - base_downloaded（仅用于 Master 系列等级任务的总流量口径）
+//!   download_delta    = users.downloaded - base_downloaded（0395 补基线；
+//!                       此前无基线列，非 tier 任务配总下载量＝认领即达标）
 //!   seed_seconds_delta= sum(snatches.seeded_seconds) - base_seed_seconds（做种时长）
 //!   uploads           = 发布种子数 - base_uploads（领取后新发布）
 //! metric JSON 里出现的键参与判定：全部达标 → 完成；任务到期/超时限 → 失败。
@@ -45,6 +46,8 @@ pub(super) struct OpenClaim {
     pub(crate) metric: serde_json::Value,
     pub(super) claimed_at: chrono::DateTime<chrono::Utc>,
     pub(super) base_uploaded: i64,
+    /// 0395：download_delta 的认领时基线（非 tier 任务用）
+    pub(super) base_downloaded: i64,
     pub(super) base_seed_seconds: i64,
     pub(super) base_uploads: i64,
     // 0381 多阶段：当前阶段（无阶段配置时恒 1，行为与迁移前一致）。
@@ -64,7 +67,8 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
     let claims: Vec<OpenClaim> = sqlx::query_as(
         "SELECT c.id, c.task_id, c.user_id, t.reward, t.penalty, t.duration_days, t.tier, \
                 t.kind, t.name AS task_name, t.metric, c.claimed_at, \
-                c.base_uploaded, c.base_seed_seconds, c.base_uploads, \
+                c.base_uploaded, c.base_downloaded, c.base_seed_seconds, \
+                c.base_uploads, \
                 c.exam_stage_seq, c.exam_stage_started_at, \
                 c.exam_remedy_until, c.exam_extensions \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
@@ -112,21 +116,39 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
         .fetch_one(db)
         .await
         .unwrap_or(0);
-        let subtitles_now: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM subtitles WHERE user_id = $1",
+        // P-343：字幕指标原先拿**累计总数**判增量任务——认领前就已发过 3 条
+        // 字幕的成员可以领 task 3「字幕翻译志愿行」(reward 1500)，在下一个结算
+        // tick 直接达标白拿奖励（其余增量指标都减了认领时基线，只它没有）。
+        // 现在与 uploads 同口径：非 tier 任务只数认领之后新增的字幕。
+        let subtitles_d: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM subtitles WHERE user_id = $1 AND \
+             deleted_at IS NULL AND created_at >= $2",
         )
         .bind(c.user_id)
+        .bind(c.claimed_at)
         .fetch_one(db)
         .await
         .unwrap_or(0);
-
         // 累计口径（tier 任务）：base 视为 0，用现值直接比
         let cumulative = c.tier.is_some();
-        let (up_d, seed_d, uploads_d) = if cumulative {
-            (uploaded, seed_seconds, uploads_now)
+        let subtitles_now: i64 = if cumulative {
+            sqlx::query_scalar(
+                "SELECT count(*) FROM subtitles WHERE user_id = $1 \
+                 AND deleted_at IS NULL",
+            )
+            .bind(c.user_id)
+            .fetch_one(db)
+            .await
+            .unwrap_or(0)
+        } else {
+            subtitles_d
+        };
+        let (up_d, dl_d, seed_d, uploads_d) = if cumulative {
+            (uploaded, downloaded, seed_seconds, uploads_now)
         } else {
             (
                 uploaded - c.base_uploaded,
+                downloaded - c.base_downloaded,
                 seed_seconds - c.base_seed_seconds,
                 uploads_now - c.base_uploads,
             )
@@ -141,7 +163,7 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
         }
         if let Some(v) = metric.download_delta {
             has_target = true;
-            met &= downloaded >= v;
+            met &= dl_d >= v; // P-344：非 tier 用认领时基线，tier 仍累计
         }
         if let Some(v) = metric.seed_points_delta {
             has_target = true;

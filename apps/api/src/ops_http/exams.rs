@@ -21,7 +21,11 @@ pub(super) async fn my_exams(
                 c.status, c.claimed_at, c.settled_at, \
                 (c.claimed_at + (t.duration_days || ' days')::interval) AS deadline, \
                 t.reward, t.penalty, \
-                c.base_uploaded, c.base_seed_seconds, c.base_uploads, t.tier \
+                c.base_uploaded, c.base_seed_seconds, c.base_uploads, \
+                t.tier, \
+                (SELECT count(*) FROM subtitles sub WHERE sub.user_id = \
+                 c.user_id AND sub.deleted_at IS NULL \
+                 AND sub.created_at >= c.claimed_at) AS sub_since \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          WHERE c.user_id = $1 AND t.kind IN ('onboard','periodic') \
          ORDER BY c.claimed_at DESC LIMIT 100",
@@ -36,7 +40,8 @@ pub(super) async fn my_exams(
         "SELECT u.uploaded, \
                 COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0)::bigint, \
                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), \
-                (SELECT count(*) FROM subtitles sub WHERE sub.user_id = u.id) \
+                (SELECT count(*) FROM subtitles sub WHERE sub.user_id = u.id \
+                 AND sub.deleted_at IS NULL) \
          FROM users u WHERE u.id = $1",
     )
     .bind(auth.id)
@@ -59,11 +64,17 @@ pub(super) async fn my_exams(
                             uploads - r.base_uploads,
                         )
                     };
+                    let subs = if r.tier.is_some() {
+                        subtitles
+                    } else {
+                        // P-343：非 tier 只报认领后新增，与结算同窗
+                        r.sub_since
+                    };
                     serde_json::json!({
                         "uploaded": up,
                         "seed_seconds": seed,
                         "uploads": ups,
-                        "subtitles": subtitles,
+                        "subtitles": subs,
                     })
                 });
             serde_json::json!({
@@ -106,5 +117,7 @@ struct MyExamRow {
     base_uploaded: i64,
     base_seed_seconds: i64,
     base_uploads: i64,
+    /// 认领后新增的字幕数（非 tier 任务的展示口径）
+    sub_since: i64,
     tier: Option<String>,
 }
