@@ -12,6 +12,7 @@ import {
   ApiError,
 } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
+import { AuthCanvas } from "@/components/auth-canvas";
 
 /** 重置表单（useSearchParams 需 Suspense 包裹） */
 function ResetForm() {
@@ -108,6 +109,7 @@ function ResetForm() {
           minLength={8}
           className={inputCls}
         />
+        <span className="text-xs text-sub">{dict.reset.confirmHint}</span>
       </label>
       {error && (
         <p role="alert" className="text-sm text-danger">
@@ -134,18 +136,22 @@ function ResetForm() {
 export default function ResetPage() {
   const { dict } = useI18n();
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-8">
-      <h1 className="font-display text-2xl">{dict.reset.title}</h1>
-      <p className="-mt-4 text-sm text-sub">{dict.reset.subtitle}</p>
+    <AuthCanvas
+      title={dict.reset.title}
+      desc={dict.reset.subtitle}
+      heroTag={dict.reset.heroTag}
+      heroDesc={dict.reset.heroDesc}
+      notice={dict.reset.notice}
+    >
       <Suspense fallback={<div className="h-[280px]" aria-hidden />}>
         <ResetForm />
       </Suspense>
-      <p className="text-sm text-sub">
-        {dict.reset.remembered}{" "}
-        <Link href="/login" className="font-bold text-sky">
-          {dict.reset.backToLogin}
-        </Link>
-      </p>
-    </div>
+      <div className="auth-card__links">
+        <span>
+          {dict.reset.remembered}{" "}
+          <Link href="/login">{dict.reset.backToLogin}</Link>
+        </span>
+      </div>
+    </AuthCanvas>
   );
 }

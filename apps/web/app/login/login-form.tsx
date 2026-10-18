@@ -13,6 +13,7 @@ import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { usePasskeyLogin } from "@/lib/use-passkey-login";
 import { solvePow, powFromErrorData } from "@/lib/pow-client";
 import { fmt } from "@/i18n/config";
+import { LoginAssistLinks } from "./login-assist-links";
 
 /** 登录表单域（从 app/login/page.tsx 按域拆出，再从 login-view 细分）：
  *  SVG 图标 + 登录表单本体（错误展示/剩余尝试/2FA 展开/辅助链接卡）。 */
@@ -300,34 +301,7 @@ export function LoginForm() {
         </button>
       </div>
 
-      {/* 账号辅助链接卡（NexusPHP login.php 全口径：菱形符号 + 虚线分隔） */}
-      <div className="bz-account-links">
-        <div className="bz-assistance">
-          <p>
-            {dict.login.noAccount}
-            <Link href="/register">{dict.login.signup}</Link>
-          </p>
-          <p>
-            {dict.login.forgotPassword}
-            <Link href="/forgot">{dict.login.forgotLink}</Link>
-          </p>
-          {/* P-103：未激活用户的自救出口。后端拦截文案让用户「在登录页重发
-              激活邮件」，而这张卡里此前没有该入口（resend 表单只在
-              /email-verify 页，而那页过去只能由邮件抵达）。 */}
-          <p>
-            {dict.login.activateIntro}
-            <Link href="/email-verify">{dict.login.activateLink}</Link>
-          </p>
-          <p>
-            {dict.login.bannedIntro}
-            <Link href="/ban-log">{dict.login.bannedLog}</Link>
-          </p>
-          <p>
-            {dict.login.appealIntro}
-            <Link href="/appeals">{dict.login.appealLink}</Link>
-          </p>
-        </div>
-      </div>
+      <LoginAssistLinks />
     </form>
   );
 }

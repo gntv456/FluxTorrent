@@ -1,55 +1,17 @@
-import Link from "next/link";
 import { getDict } from "@/i18n/server";
-import { getSiteProfile } from "@/lib/site-profile";
 
-/** 认证组布局（M5.1）：register/forgot/reset 共用（login 保留自己的
- *  双栏画布 bz-login-canvas，不进本组——见概念稿 §13 认证页补设计）。
- *  设计口径：认证页不进 (main) 组（未登录点底 Tab 只会弹回登录），
- *  但也不再是裸 div——统一「品牌头 + 居中卡片 + 返回首页」极简壳；
- *  手机单列居中，≥md 卡片化，三档自适应。 */
+/**
+ * 认证组布局（M5.2，2026-10-18 对齐样图 § 账户与认证）。
+ *
+ * 版式由每页的 AuthCanvas 自持（左深色 Hero + 右上语言/主题 + 右白卡）：
+ * 画布的标题/标语/提示条是逐页内容，放在 layout 里拿不到，故这里只透传
+ * children。旧的「品牌头 + 居中窄表 + 底部快捷入口」壳（.auth-shell）已退役，
+ * 与 /login 的双栏画布合并成同一套版式。 */
 export default async function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { dict } = await getDict();
-  const profile = await getSiteProfile().catch(() => null);
-  const brand = profile?.brand || dict.common.brand;
-  return (
-    <div className="auth-shell">
-      <header className="auth-shell__head">
-        <Link href="/" className="auth-shell__brand" title={brand}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/logo-mark.png"
-            alt=""
-            width={26}
-            height={26}
-            className="shrink-0"
-          />
-          <span className="truncate font-display text-xl text-ink">
-            {brand}
-          </span>
-        </Link>
-      </header>
-      <main id="main-content" className="auth-shell__body">
-        {children}
-      </main>
-      <footer className="auth-shell__foot">
-        <Link href="/" className="auth-shell__home">
-          ← {dict.nav.home}
-        </Link>
-        <span className="auth-shell__sep" aria-hidden>
-          ·
-        </span>
-        <Link href="/ban-log" className="auth-shell__minor">
-          {dict.login.bannedLog}
-        </Link>
-        <span className="auth-shell__sep" aria-hidden>
-          ·
-        </span>
-        <Link href="/appeals" className="auth-shell__minor">
-          {dict.login.appealLink}
-        </Link>
-      </footer>
-    </div>
-  );
+  // getDict 预热字典缓存：子页（client）首帧即拿到当前语言，无闪烁
+  await getDict();
+  // main 锚点在此（每路由组恰一个）：AuthCanvas 只负责画布与卡片。
+  return <main id="main-content">{children}</main>;
 }

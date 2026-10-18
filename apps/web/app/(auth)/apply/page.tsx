@@ -6,10 +6,15 @@ import { useI18n } from "@/i18n/client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
+import { AuthCanvas } from "@/components/auth-canvas";
 
 /** 申请制入站页（0227，P2 触点 #3，UNIT3D application 口径）：
  *  站长开启 application_signup=open 后生效；匿名提交举证，staff 人审，
- *  通过自动发绑定邮箱的邀请码（邮件通知）。通道关闭时整页降级提示。 */
+ *  通过自动发绑定邮箱的邀请码（邮件通知）。通道关闭时整页降级提示。
+ *
+ *  2026-10-18 对齐样图 § 账户与认证：改用认证画布（本页此前匿名根本
+ *  到不了——middleware 只放行登录/注册/找回/重置/邮箱验证，/apply 被
+ *  弹回登录；已在 PUBLIC_PATHS 补上）。字段补样图的四处提示。 */
 
 export default function ApplyPage() {
   const { dict } = useI18n();
@@ -50,15 +55,17 @@ export default function ApplyPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-5 py-8">
-      <h1 className="font-display text-2xl">{dict.apply.title}</h1>
+    <AuthCanvas
+      title={dict.apply.title}
+      heroTag={dict.apply.heroTag}
+      heroDesc={dict.apply.heroDesc}
+      badge={open === false ? undefined : dict.apply.badge}
+      notice={open === false ? undefined : dict.apply.notice}
+    >
       {open === false ? (
-        <>
+        <div className="flex flex-col gap-3">
           <p className="text-sm text-sub">{dict.apply.closedNote}</p>
-          <Link href="/login" className="text-sm font-bold text-sky">
-            {dict.apply.backToLogin}
-          </Link>
-        </>
+        </div>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1">
@@ -71,6 +78,7 @@ export default function ApplyPage() {
               maxLength={24}
               className={INPUT_LG}
             />
+            <span className="text-xs text-sub">{dict.apply.usernameHint}</span>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-sub">{dict.apply.emailLabel}</span>
@@ -81,6 +89,7 @@ export default function ApplyPage() {
               required
               className={INPUT_LG}
             />
+            <span className="text-xs text-sub">{dict.apply.emailHint}</span>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-sub">{dict.apply.proofLabel}</span>
@@ -91,6 +100,7 @@ export default function ApplyPage() {
               rows={3}
               className={INPUT_LG}
             />
+            <span className="text-xs text-sub">{dict.apply.proofHint}</span>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-sub">{dict.apply.reasonLabel}</span>
@@ -102,6 +112,7 @@ export default function ApplyPage() {
               rows={4}
               className={INPUT_LG}
             />
+            <span className="text-xs text-sub">{dict.apply.reasonHint}</span>
           </label>
           {msg && (
             <p role="alert" className="text-sm text-danger">
@@ -116,9 +127,11 @@ export default function ApplyPage() {
           <button type="submit" disabled={busy} className={BTN_LG_SKY}>
             {busy ? dict.apply.busy : dict.apply.submit}
           </button>
-          <p className="text-xs text-sub">{dict.apply.termsNote}</p>
         </form>
       )}
-    </div>
+      <div className="auth-card__links">
+        <Link href="/login">{dict.apply.backToLogin}</Link>
+      </div>
+    </AuthCanvas>
   );
 }
