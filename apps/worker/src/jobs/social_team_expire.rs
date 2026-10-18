@@ -144,7 +144,8 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
         hits AS (
             SELECT w.id AS wish_id, w.user_id, r.id AS torrent_id, r.name AS torrent_name
             FROM wishlist w
-            JOIN recent r ON r.name ILIKE '%' || w.keyword || '%'
+            JOIN recent r ON r.name ILIKE '%' || replace(replace(replace(
+                w.keyword, '\', ''), '%', '\%'), '_', '\_') || '%'
             WHERE (w.category_id IS NULL OR w.category_id = (SELECT category_id FROM torrents t WHERE t.id = r.id))
               AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
         ),
@@ -202,7 +203,8 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
         hits AS (
             SELECT w.id AS wish_id, w.user_id
             FROM wishlist w
-            JOIN recent r ON r.name ILIKE '%' || w.keyword || '%'
+            JOIN recent r ON r.name ILIKE '%' || replace(replace(replace(
+                w.keyword, '\', ''), '%', '\%'), '_', '\_') || '%'
             WHERE (w.category_id IS NULL OR w.category_id = (SELECT category_id FROM torrents t WHERE t.id = r.id))
               AND (w.notified_at IS NULL OR w.notified_at < now() - interval '24 hours')
         )

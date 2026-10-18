@@ -119,7 +119,7 @@ pub async fn sys_log(
          ORDER BY id DESC LIMIT $3 OFFSET $4",
     ))
     .bind(lv)
-    .bind(kw)
+    .bind(kw.map(crate::torrents::esc_like))
     .bind(per)
     .bind((page - 1) * per)
     .bind(inst)
@@ -130,7 +130,7 @@ pub async fn sys_log(
         "SELECT count(*) FROM runtime_logs WHERE {where_sql}",
     ))
     .bind(lv)
-    .bind(kw)
+    .bind(kw.map(crate::torrents::esc_like))
     .bind(inst)
     .bind((page - 1) * per)
     .fetch_one(&state.repo.db)

@@ -71,7 +71,7 @@ pub async fn networks_list(
     );
     let rows: Vec<(i64, String, i64)> = sqlx::query_as(&sql)
         .bind(kind)
-        .bind(kw)
+        .bind(kw.map(crate::torrents::esc_like))
         .bind(limit)
         .bind(offset)
         .fetch_all(&state.repo.db)
@@ -83,7 +83,7 @@ pub async fn networks_list(
            AND ($2::text IS NULL OR name ILIKE '%' || $2 || '%')",
     )
     .bind(kind)
-    .bind(&kw)
+    .bind(kw.map(crate::torrents::esc_like))
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(rows.len() as i64);

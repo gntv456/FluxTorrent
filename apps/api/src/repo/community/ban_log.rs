@@ -83,7 +83,8 @@ pub async fn ban_log_page(
 ) -> DomainResult<Vec<BanLogRow>> {
     let sql = format!("{LIST_HEAD}{WHERE}{TAIL}");
     let rows: Vec<RawRow> = sqlx::query_as(&sql)
-        .bind(q)
+        // 关键词按 esc_like 口径转义（P-332）：裸 %/_ 进 ILIKE 会变成通配
+        .bind(q.map(crate::torrents::esc_like))
         .bind(kind)
         .bind(limit)
         .bind(offset)
@@ -110,7 +111,8 @@ pub async fn ban_log_count(
 ) -> DomainResult<i64> {
     let n: i64 =
         sqlx::query_scalar(&format!("SELECT count(*) FROM users u{WHERE}"))
-            .bind(q)
+            // 与列表同一谓词同一转义（P-332）
+            .bind(q.map(crate::torrents::esc_like))
             .bind(kind)
             .fetch_one(&repo.read_db)
             .await

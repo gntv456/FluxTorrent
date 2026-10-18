@@ -97,6 +97,8 @@ pub async fn members(
              LIMIT {lim} OFFSET {off}"
         )
     };
+    // 关键词按 esc_like 口径转义（P-332）：裸 %/_ 进 ILIKE 会变成通配
+    let q = q.map(crate::torrents::esc_like);
     let mut query = sqlx::query_as::<_, MemberRow>(&sql).bind(q);
     if let Some(cid) = class_id {
         query = query.bind(cid);
@@ -122,6 +124,8 @@ pub async fn count_members(
     };
     let sql =
         format!("SELECT count(*) FROM users u WHERE {VISIBLE}{class_filter}");
+    // 列表与计数同一谓词，转义也必须同一处（P-332）
+    let q = q.map(crate::torrents::esc_like);
     let mut query = sqlx::query_scalar::<_, i64>(&sql).bind(q);
     if let Some(cid) = class_id {
         query = query.bind(cid);
