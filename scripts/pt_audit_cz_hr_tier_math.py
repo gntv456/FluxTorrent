@@ -78,7 +78,8 @@ if not body:
     tested = 0
     live_note = True
 else:
-    fn_fixed = ("CREATE OR REPLACE FUNCTION hr_reduced_seed_hours(p_base_hours INT,"
+    fn_fixed = ("CREATE OR REPLACE FUNCTION"
+                " hr_reduced_seed_hours(p_base_hours INT,"
                 " p_class_id INT, p_user_hours INT) RETURNS INT LANGUAGE sql"
                 " STABLE AS $$" + body + "$$;")
     cells = " UNION ALL ".join(
