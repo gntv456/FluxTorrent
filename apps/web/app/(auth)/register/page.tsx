@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { AuthCanvas } from "@/components/auth-canvas";
 import { mountCaptchaWidget } from "@/lib/captcha-widget";
 import {
   RegisterFields,
@@ -23,6 +24,7 @@ import {
   fieldErrorsFrom,
 } from "@/components/ui/form-field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { RegisterBasicFields } from "./register-basic-fields";
 
 interface Captcha {
   captcha_id: string;
@@ -183,77 +185,37 @@ export default function RegisterPage() {
   const first = (f: string) => fieldErrs[f]?.[0];
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-8">
-      {/* M5.1：品牌头由 (auth) 壳统一渲染，页内只留标题 */}
-      <h1 className="font-display text-2xl">{dict.register.title}</h1>
-      <p className="-mt-4 text-sm text-sub">{dict.register.subtitle}</p>
+    <AuthCanvas
+      title={dict.register.title}
+      desc={dict.register.subtitle}
+      heroTag={dict.register.heroTag}
+      heroDesc={dict.register.heroDesc}
+      badge={
+        openMode ? undefined : (
+          <>
+            {dict.register.inviteBadge} ·{" "}
+            <Link href="/apply" className="underline">
+              {dict.register.applyForCode}
+            </Link>
+          </>
+        )
+      }
+      foot={dict.register.termsNote}
+    >
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         {/* W-18：表单级错误（含映射不出的码）走 FieldErrors 汇总 */}
         <FieldErrors fields={fieldErrs} />
-        <FormField
-          name="invite_code"
-          label={dict.register.inviteCode}
-          required={!openMode}
-          error={first("invite_code")}
-          hint={openMode ? dict.register.inviteOptional : undefined}
-        >
-          <input
-            value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
-            required={!openMode}
-            maxLength={32}
-            className={INPUT_LG}
-          />
-        </FormField>
-        <FormField
-          name="username"
-          label={dict.register.username}
-          required
-          error={first("username")}
-        >
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            required
-            minLength={3}
-            maxLength={24}
-            className={INPUT_LG}
-          />
-        </FormField>
-        <FormField
-          name="email"
-          label={dict.register.email}
-          required
-          error={first("email")}
-          hint={inviteCode ? dict.register.emailMustMatch : undefined}
-        >
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-            className={INPUT_LG}
-          />
-        </FormField>
-        <FormField
-          name="password"
-          label={dict.register.password}
-          required
-          error={first("password")}
-          hint={dict.register.passwordHint}
-        >
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            required
-            minLength={8}
-            className={INPUT_LG}
-          />
-        </FormField>
+        <RegisterBasicFields
+          values={{ inviteCode, username, email, password }}
+          onChange={(patch) => {
+            if (patch.inviteCode !== undefined) setInviteCode(patch.inviteCode);
+            if (patch.username !== undefined) setUsername(patch.username);
+            if (patch.email !== undefined) setEmail(patch.email);
+            if (patch.password !== undefined) setPassword(patch.password);
+          }}
+          first={first}
+          openMode={openMode}
+        />
         {/* 验证码（0227）：none=自研算术题；pow=自托管 PoW；其他=第三方组件 */}
         {driver === "pow" ? (
           <RegisterPow key={gateNonce} onSolved={onPowSolved}
@@ -288,12 +250,12 @@ export default function RegisterPage() {
           onChange={setFieldVals}
         />
       </form>
-      <p className="text-sm text-sub">
-        {dict.register.hasAccount}{" "}
-        <Link href="/login" className="font-bold text-sky">
-          {dict.register.toLogin}
-        </Link>
-      </p>
-    </div>
+      <div className="auth-card__links">
+        <span>
+          {dict.register.hasAccount}{" "}
+          <Link href="/login">{dict.register.toLogin}</Link>
+        </span>
+      </div>
+    </AuthCanvas>
   );
 }

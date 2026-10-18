@@ -6,8 +6,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
+import { AuthCanvas } from "@/components/auth-canvas";
 
-/** 忘记密码：邮箱申请重置（防账号枚举：无论命中与否返回相同提示） */
+/** 忘记密码：邮箱申请重置（防账号枚举：无论命中与否返回相同提示）。
+ *  2026-10-18 对齐样图 § 账户与认证：改用认证画布（左深色 Hero + 右白卡），
+ *  安全说明升级为卡内提示条。 */
 export default function ForgotPage() {
   const { dict } = useI18n();
   const [email, setEmail] = useState("");
@@ -38,9 +41,13 @@ export default function ForgotPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col items-center gap-6 py-8">
-      <h1 className="font-display text-2xl">{dict.forgot.title}</h1>
-      <p className="-mt-4 text-sm text-sub">{dict.forgot.subtitle}</p>
+    <AuthCanvas
+      title={dict.forgot.title}
+      desc={dict.forgot.subtitle}
+      heroTag={dict.forgot.heroTag}
+      heroDesc={dict.forgot.heroDesc}
+      notice={dict.forgot.note}
+    >
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-sm text-sub">{dict.forgot.email}</span>
@@ -52,27 +59,23 @@ export default function ForgotPage() {
             required
             className={INPUT_LG}
           />
+          <span className="text-xs text-sub">{dict.forgot.emailHint}</span>
         </label>
         {msg && (
           <p role="status" className="text-sm text-sub">
             {msg}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={busy}
-          className={BTN_LG_SKY}
-        >
+        <button type="submit" disabled={busy} className={BTN_LG_SKY}>
           {busy ? dict.forgot.busy : dict.forgot.submit}
         </button>
       </form>
-      <p className="text-xs text-sub">{dict.forgot.note}</p>
-      <p className="text-sm text-sub">
-        {dict.forgot.remembered}{" "}
-        <Link href="/login" className="font-bold text-sky">
-          {dict.forgot.backToLogin}
-        </Link>
-      </p>
-    </div>
+      <div className="auth-card__links">
+        <span>
+          {dict.forgot.remembered}{" "}
+          <Link href="/login">{dict.forgot.backToLogin}</Link>
+        </span>
+      </div>
+    </AuthCanvas>
   );
 }
