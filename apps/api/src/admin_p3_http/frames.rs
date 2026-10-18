@@ -53,14 +53,10 @@ async fn admin_avatar_frames(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-273: ledger read gated with prop.manage (as its writes).
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::PROP_MANAGE,
-    )
-    .await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
+        .await?;
     let rows: Vec<AvatarFrameRow> = sqlx::query_as(
         "SELECT f.id, f.name, f.css, f.image_url, f.price, f.sort, \
                 (SELECT count(*) FROM users u WHERE u.avatar_frame_id = f.id)::bigint AS worn_count \

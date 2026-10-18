@@ -123,11 +123,7 @@ pub fn judge_event(rule: &Rule, current: i64, amount: i64) -> Verdict {
 }
 
 /// threshold 模式判定：整体重算，无增量。
-pub fn judge_threshold(
-    rule: &Rule,
-    current: i64,
-    awarded: bool,
-) -> Verdict {
+pub fn judge_threshold(rule: &Rule, current: i64, awarded: bool) -> Verdict {
     if rule.mode != Mode::Threshold {
         return Verdict::Pending;
     }
@@ -180,9 +176,7 @@ pub fn validate_rule(
         ));
     }
     if mode == Mode::Threshold && period.is_none() {
-        return Err(InvalidConfig(
-            "统计阈值模式必须指定统计周期".into(),
-        ));
+        return Err(InvalidConfig("统计阈值模式必须指定统计周期".into()));
     }
     Ok(())
 }

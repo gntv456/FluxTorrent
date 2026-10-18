@@ -45,17 +45,17 @@ pub fn normalize_cidr(raw: &str) -> DomainResult<(IpAddr, u8)> {
     let ip: IpAddr = ip_part
         .parse()
         .map_err(|_| DomainError::Validation(format!("IP 非法：{ip_part}")))?;
-    let prefix: u8 = prefix_part
-        .parse()
-        .map_err(|_| DomainError::Validation(format!("前缀长度非法：{prefix_part}")))?;
+    let prefix: u8 = prefix_part.parse().map_err(|_| {
+        DomainError::Validation(format!("前缀长度非法：{prefix_part}"))
+    })?;
     let max = match ip {
         IpAddr::V4(_) => 32,
         IpAddr::V6(_) => 128,
     };
     if prefix > max {
-        return Err(DomainError::Validation(
-            format!("前缀长度超界：/{prefix}（最大 /{max}）"),
-        ));
+        return Err(DomainError::Validation(format!(
+            "前缀长度超界：/{prefix}（最大 /{max}）"
+        )));
     }
     let floor = match ip {
         IpAddr::V4(_) => MIN_PREFIX_V4,
@@ -182,11 +182,7 @@ impl Flags {
             is_seedbox: true,
             user_declared: approved,
             hnr_exempt: approved && hnr_exempt,
-            bonus_factor: if approved {
-                bonus_factor.max(1.0)
-            } else {
-                1.0
-            },
+            bonus_factor: if approved { bonus_factor.max(1.0) } else { 1.0 },
             speed_relax: speed_relax || detected,
         }
     }

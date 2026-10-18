@@ -3,7 +3,11 @@
 use super::*;
 
 fn ev(target: i64) -> Rule {
-    Rule { mode: Mode::Event, period: Period::Total, target }
+    Rule {
+        mode: Mode::Event,
+        period: Period::Total,
+        target,
+    }
 }
 fn th(target: i64) -> Rule {
     Rule {
@@ -81,10 +85,7 @@ fn threshold_is_absolute_not_incremental() {
 /// 已授予不再重复发（threshold 模式）。
 #[test]
 fn threshold_already_awarded_is_noop() {
-    assert_eq!(
-        judge_threshold(&th(50), 99, true),
-        Verdict::AlreadyAwarded
-    );
+    assert_eq!(judge_threshold(&th(50), 99, true), Verdict::AlreadyAwarded);
 }
 
 /// 进度比例封顶 1.0——超额不该让进度条画出界。
@@ -112,9 +113,7 @@ fn validate_rule_rejects_bad_config() {
     assert!(validate_rule(Mode::Event, 0, None).is_err());
     assert!(validate_rule(Mode::Event, -1, None).is_err());
     assert!(validate_rule(Mode::Threshold, 100, None).is_err());
-    assert!(
-        validate_rule(Mode::Threshold, 100, Some(Period::Total)).is_ok()
-    );
+    assert!(validate_rule(Mode::Threshold, 100, Some(Period::Total)).is_ok());
 }
 
 /// 周期窗口天数：Week/Month 取「本周期已过天数」。

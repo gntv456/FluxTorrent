@@ -9,8 +9,8 @@
 
 use std::sync::Arc;
 
-use crate::plugins::{Plugin, PluginManager};
 use crate::plugin_ctx::PluginCtx;
+use crate::plugins::{Plugin, PluginManager};
 use crate::state::AppState;
 
 impl PluginManager {
@@ -29,20 +29,20 @@ impl PluginManager {
             tokio::task::spawn(async move {
                 let name = p.name();
                 let on =
-                    crate::plugin_ctx::plugin_enabled(&st.repo.db, name)
-                        .await;
+                    crate::plugin_ctx::plugin_enabled(&st.repo.db, name).await;
                 if !on {
                     return;
                 }
                 // DB 层隔离（0378）：hook 同步，故在此 await 备好角色，
                 // 再带进 blocking 闭包。无 CREATEROLE 时自动降级。
                 let iso = crate::plugin_sql::ensure_isolation(
-                    &st.repo.db, name, &caps,
+                    &st.repo.db,
+                    name,
+                    &caps,
                 )
                 .await;
                 let r = tokio::task::spawn_blocking(move || {
-                    let ctx =
-                        PluginCtx::new(&st.repo.db, &caps, name, &iso);
+                    let ctx = PluginCtx::new(&st.repo.db, &caps, name, &iso);
                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(
                         || p.on_user_login(&ctx, user_id),
                     ))
@@ -77,12 +77,13 @@ impl PluginManager {
                     return;
                 }
                 let iso = crate::plugin_sql::ensure_isolation(
-                    &st.repo.db, name, &caps,
+                    &st.repo.db,
+                    name,
+                    &caps,
                 )
                 .await;
                 let r = tokio::task::spawn_blocking(move || {
-                    let ctx =
-                        PluginCtx::new(&st.repo.db, &caps, name, &iso);
+                    let ctx = PluginCtx::new(&st.repo.db, &caps, name, &iso);
                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(
                         || p.on_torrent_upload(&ctx, torrent_id, owner_id),
                     ))
@@ -118,15 +119,13 @@ impl PluginManager {
             let pool = pool.clone();
             tokio::task::spawn(async move {
                 let name = p.name();
-                let on =
-                    crate::plugin_ctx::plugin_enabled(&pool, name).await;
+                let on = crate::plugin_ctx::plugin_enabled(&pool, name).await;
                 if !on {
                     return;
                 }
-                let iso = crate::plugin_sql::ensure_isolation(
-                    &pool, name, &caps,
-                )
-                .await;
+                let iso =
+                    crate::plugin_sql::ensure_isolation(&pool, name, &caps)
+                        .await;
                 let r = tokio::task::spawn_blocking(move || {
                     let ctx = PluginCtx::new(&pool, &caps, name, &iso);
                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(
@@ -163,12 +162,13 @@ impl PluginManager {
                     return;
                 }
                 let iso = crate::plugin_sql::ensure_isolation(
-                    &st.repo.db, name, &caps,
+                    &st.repo.db,
+                    name,
+                    &caps,
                 )
                 .await;
                 let r = tokio::task::spawn_blocking(move || {
-                    let ctx =
-                        PluginCtx::new(&st.repo.db, &caps, name, &iso);
+                    let ctx = PluginCtx::new(&st.repo.db, &caps, name, &iso);
                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(
                         || p.on_seeding_milestone(&ctx, user_id, hours),
                     ))

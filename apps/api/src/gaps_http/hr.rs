@@ -36,8 +36,8 @@ pub async fn hr_pardon(
     // 另两口原先各写一份 SQL，三天里漂了三处，批四十三 P-165~P-167 立案后合并。
     let done = crate::services::hr_pardon::pardon_one(
         &state,
-    auth.id,
-    auth.class_id,
+        auth.id,
+        auth.class_id,
         "hr.pardon",
         body.user_id,
         body.torrent_id,
@@ -90,14 +90,14 @@ pub async fn hr_pardon_batch(
         auth.class_id,
         &ids,
     )
-        .await?;
+    .await?;
     let mut pardoned: Vec<serde_json::Value> = Vec::new();
     let mut skipped: Vec<serde_json::Value> = Vec::new();
     for it in &body.items {
         let done = crate::services::hr_pardon::pardon_one(
             &state,
-        auth.id,
-        auth.class_id,
+            auth.id,
+            auth.class_id,
             "hr.pardon_batch",
             it.user_id,
             it.torrent_id,

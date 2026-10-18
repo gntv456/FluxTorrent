@@ -39,7 +39,7 @@ pub async fn menu_items_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-272: ledger read gated with settings.manage (as its writes).
     crate::authz::require_perm(
         &state,

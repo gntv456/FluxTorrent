@@ -26,13 +26,13 @@ use std::time::{Duration, Instant};
 use wasmtime::component::Component;
 use wasmtime::{Config, Engine};
 
+use crate::adapter_host::build_linker;
+use crate::adapter_sandbox::{new_store, KvTable, RateBucket};
+use crate::errors::{DomainError, DomainResult};
 use crate::extension::{
     Capabilities, ExtensionKind, ExtensionManifest, Limits,
     EXTENSION_CONTRACT_VERSION,
 };
-use crate::adapter_host::build_linker;
-use crate::adapter_sandbox::{new_store, KvTable, RateBucket};
-use crate::errors::{DomainError, DomainResult};
 
 /// 死循环防线：epoch 预算（调用开始到 bump 的时间窗）
 const EPOCH_TIMEOUT: Duration = Duration::from_secs(10);
@@ -81,7 +81,6 @@ impl AdapterManifest {
         }
     }
 }
-
 
 /// 一次性引擎（每模块每调用实例化；元数据调用频率低，M4 不做实例池——
 /// wasmtime Engine 构造重，进程内以 OnceLock 共享）

@@ -57,11 +57,13 @@ pub(crate) async fn create_ruleset(
             "至少覆盖一个参数，否则这版与当前版本无差别".into(),
         ));
     }
-    let v = repo_cr::create_ruleset(
-        &state.repo, &body.overrides, body.note.trim(),
-    )
-    .await?;
-    state.repo.audit(Some(auth.id), "cheat.ruleset_create", None).await;
+    let v =
+        repo_cr::create_ruleset(&state.repo, &body.overrides, body.note.trim())
+            .await?;
+    state
+        .repo
+        .audit(Some(auth.id), "cheat.ruleset_create", None)
+        .await;
     Ok(ok(serde_json::json!({ "version": v })))
 }
 
@@ -88,7 +90,10 @@ pub(crate) async fn activate(
     if n == 0 {
         return Err(DomainError::NotFound(body.version as i64));
     }
-    state.repo.audit(Some(auth.id), "cheat.ruleset_activate", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "cheat.ruleset_activate", None)
+        .await;
     Ok(ok(serde_json::json!({
         "activated": body.version,
         "shadow_mode": repo_cr::shadow_mode(&state.repo).await?,
@@ -117,7 +122,10 @@ pub(crate) async fn set_shadow(
     crate::authz::require_perm(&state, &auth, perm::CHEAT_CASES_MODERATE)
         .await?;
     repo_cr::set_shadow_mode(&state.repo, body.on).await?;
-    state.repo.audit(Some(auth.id), "cheat.shadow_set", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "cheat.shadow_set", None)
+        .await;
     Ok(ok(serde_json::json!({ "shadow_mode": body.on })))
 }
 
@@ -175,7 +183,10 @@ pub(crate) async fn run_backtest(
         body.window_days.clamp(1, 365),
     )
     .await?;
-    state.repo.audit(Some(auth.id), "cheat.backtest_run", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "cheat.backtest_run", None)
+        .await;
     Ok(ok(serde_json::json!({ "run_id": id })))
 }
 

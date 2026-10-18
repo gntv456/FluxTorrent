@@ -48,23 +48,21 @@ pub async fn add_egress_cidr(
     .bind(note)
     .execute(&repo.db)
     .await
-    .map_err(|e| {
-        DomainError::Validation(format!("网段格式不合法：{e}"))
-    })?
+    .map_err(|e| DomainError::Validation(format!("网段格式不合法：{e}")))?
     .rows_affected();
     Ok(n > 0)
 }
 
 /// 删一条白名单网段。
 pub async fn del_egress_cidr(repo: &Repo, cidr: &str) -> DomainResult<u64> {
-    Ok(sqlx::query(
-        "DELETE FROM webhook_egress_rules WHERE cidr = $1::cidr",
+    Ok(
+        sqlx::query("DELETE FROM webhook_egress_rules WHERE cidr = $1::cidr")
+            .bind(cidr)
+            .execute(&repo.db)
+            .await
+            .map_err(internal)?
+            .rows_affected(),
     )
-    .bind(cidr)
-    .execute(&repo.db)
-    .await
-    .map_err(internal)?
-    .rows_affected())
 }
 
 /// 记一次投递结果。

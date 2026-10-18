@@ -178,14 +178,13 @@ pub async fn update_enabled(
     enabled: bool,
     id: i64,
 ) -> Result<u64, sqlx::Error> {
-    let n = sqlx::query(
-        "UPDATE reg_quiz_questions SET enabled = $1 WHERE id = $2",
-    )
-    .bind(enabled)
-    .bind(id)
-    .execute(&repo.db)
-    .await?
-    .rows_affected();
+    let n =
+        sqlx::query("UPDATE reg_quiz_questions SET enabled = $1 WHERE id = $2")
+            .bind(enabled)
+            .bind(id)
+            .execute(&repo.db)
+            .await?
+            .rows_affected();
     Ok(n)
 }
 

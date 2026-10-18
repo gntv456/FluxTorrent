@@ -13,8 +13,8 @@ use serde::Deserialize;
 
 use super::guard::staff;
 use crate::authz::perm;
-use crate::dto::ok;
 use crate::domain::seedbox as sb;
+use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::repo::seedbox as repo_sb;
 use crate::state::AppState;
@@ -89,9 +89,7 @@ pub(crate) async fn seedbox_review(
     }
     // 倍率下限由 domain 层兜底；此处只拦明显荒唐的上界
     if !(0.0..=10.0).contains(&body.bonus_factor) {
-        return Err(DomainError::Validation(
-            "保种倍率须在 0 ~ 10 之间".into(),
-        ));
+        return Err(DomainError::Validation("保种倍率须在 0 ~ 10 之间".into()));
     }
     let uid = repo_sb::review(
         &state.repo,

@@ -53,15 +53,15 @@ pub async fn delete_view(
 ) -> DomainResult<DeleteView> {
     let row: Option<(Option<i64>, Option<String>, i32, i32, i16)> =
         sqlx::query_as(
-        "SELECT t.owner_id, u.username, t.seeders, t.leechers, \
+            "SELECT t.owner_id, u.username, t.seeders, t.leechers, \
                 t.approval_status \
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          WHERE t.id = $1",
-    )
-    .bind(torrent_id)
-    .fetch_optional(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        )
+        .bind(torrent_id)
+        .fetch_optional(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((owner_id, owner_name, seeders, leechers, approval_status)) = row
     else {
         return Err(DomainError::NotFound(torrent_id));
@@ -199,13 +199,7 @@ pub async fn apply_disposal(
                     if d.double_spark { "x2" } else { "x1" }
                 );
                 let r = economy_http::spend_spark(
-                    db,
-                    owner,
-                    a,
-                    "admin",
-                    &idem,
-                    "torrent",
-                    torrent_id,
+                    db, owner, a, "admin", &idem, "torrent", torrent_id,
                 )
                 .await;
                 use economy_http::SpendOutcome as SO;

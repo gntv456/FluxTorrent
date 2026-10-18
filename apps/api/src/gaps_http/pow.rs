@@ -78,9 +78,7 @@ pub async fn pow_challenge(
                 .await?;
         if fails < POW_FAILS_FROM {
             // 未达触发线不发题：接口对「任意用户名」无探测价值
-            return Err(DomainError::Validation(
-                "当前无需工作量证明".into(),
-            ));
+            return Err(DomainError::Validation("当前无需工作量证明".into()));
         }
     }
     // 32 字节 crypto 随机 → 64 hex（对外凭据口径同 new_passkey 的 OsRng）

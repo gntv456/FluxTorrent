@@ -372,9 +372,12 @@ async fn upload_core(
     // 幂等索引是**部分**索引（只覆盖 consumed_at IS NULL），已消费行不占键，
     // 所以「删种复活后重发同一 info_hash」不会被历史行永久挡住。
     {
-        let mut tx_up = state.repo.db.begin().await.map_err(|e| {
-            DomainError::Internal(e.into())
-        })?;
+        let mut tx_up = state
+            .repo
+            .db
+            .begin()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
         let payload = serde_json::json!({
             "torrent_id": id,
             "owner_id": auth.id,
@@ -393,9 +396,10 @@ async fn upload_core(
             Some(&up_key),
         )
         .await?;
-        tx_up.commit().await.map_err(|e| {
-            DomainError::Internal(e.into())
-        })?;
+        tx_up
+            .commit()
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     }
     // 多维属性（第八轮 Section）与标签：外提至 sections_store::store_sections_tags
     // （标签已在 INSERT 前按同一判据校验过，这里只会因写库失败而错）

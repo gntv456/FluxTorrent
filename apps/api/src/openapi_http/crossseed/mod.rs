@@ -18,9 +18,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use std::collections::BTreeSet;
 
-use super::{
-    no_store, require_scope, require_token, with_rl, SCOPE_CROSSSEED,
-};
+use super::{no_store, require_scope, require_token, with_rl, SCOPE_CROSSSEED};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
@@ -74,8 +72,10 @@ async fn daily_quota(
     let day = chrono::Utc::now().format("%Y%m%d");
     let k = format!("xseed:day:{uid}:{day}");
     let mut c = state.redis.clone();
-    let used: i64 =
-        c.incr(&k, n).await.map_err(|e| DomainError::Internal(e.into()))?;
+    let used: i64 = c
+        .incr(&k, n)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 键此前不存在时 INCR 返回值即 n —— 此刻补 TTL（48h 跨日余量）
     if used <= n {
         let _: redis::RedisResult<()> = c.expire(&k, DAILY_TTL_SECS).await;
@@ -137,13 +137,10 @@ async fn xseed_lookup(
     // 单条 SQL：两列各一次 ANY（都有索引），可见性口径 = 详情（已审核）
     let v1v: Vec<String> = v1.iter().cloned().collect();
     let phv: Vec<String> = ph.iter().cloned().collect();
-    let rows = crate::repo::xseed::find_by_fingerprints(
-        &state.repo,
-        &v1v,
-        &phv,
-    )
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows =
+        crate::repo::xseed::find_by_fingerprints(&state.repo, &v1v, &phv)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     // 回标 match/query：v1 优先（主指纹），其次 pieces
     let results: Vec<_> = rows
         .iter()
@@ -163,10 +160,7 @@ async fn xseed_lookup(
             })
         })
         .collect();
-    Ok(with_rl(
-        ok(serde_json::json!({ "results": results })),
-        &tk,
-    ))
+    Ok(with_rl(ok(serde_json::json!({ "results": results })), &tk))
 }
 
 /// GET /crossseed/dl/{torrent_id} —— 现场签发 30 分钟临时凭证，
@@ -207,9 +201,7 @@ async fn xseed_dl(
     let torrent_id = path.into_inner();
     let (plain, _expires) =
         crate::compat_http::download_keys::issue_download_key(
-            &state,
-            tk.uid,
-            torrent_id,
+            &state, tk.uid, torrent_id,
         )
         .await?;
     // 一次性凭据在 Location query 里：禁中间层缓存
@@ -223,9 +215,9 @@ async fn xseed_dl(
     ))
 }
 
-pub use iyuu::{xseed_iyuu, xseed_iyuu_site};
 #[allow(unused_imports)]
 pub use iyuu::{__path_xseed_iyuu, __path_xseed_iyuu_site};
+pub use iyuu::{xseed_iyuu, xseed_iyuu_site};
 pub use iyuu::{IyuuHit, IyuuReq};
 
 #[cfg(test)]

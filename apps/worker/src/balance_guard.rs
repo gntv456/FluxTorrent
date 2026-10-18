@@ -8,14 +8,12 @@
 //! PG 自己有防护（bigint 溢出会报错并回滚），问题是我们在 Rust 侧提前
 //! 就把和算完了——把一个该由数据库拒绝的业务错误变成了静默错账或 panic。
 //! 统一改成 checked_add：越界即返回错误，本轮作业回滚、余额不动。
-pub(crate) fn checked_balance(
-    balance: i64,
-    delta: i64,
-) -> anyhow::Result<i64> {
+pub(crate) fn checked_balance(balance: i64, delta: i64) -> anyhow::Result<i64> {
     balance.checked_add(delta).ok_or_else(|| {
         tracing::error!(
             balance,
-            delta, "余额累加溢出 bigint：拒绝入账（不静默回绕、不 panic）"
+            delta,
+            "余额累加溢出 bigint：拒绝入账（不静默回绕、不 panic）"
         );
         anyhow::anyhow!(
             "spark 余额越界：{} + {} 超出 int64 范围",

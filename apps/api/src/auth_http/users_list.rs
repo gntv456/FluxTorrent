@@ -64,12 +64,11 @@ pub(crate) async fn users_list(
     require_auth(&req, &state).await?;
     let per = q.per.unwrap_or(PER_DEFAULT).clamp(1, PER_MAX);
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
-    let search = q
-        .q
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.chars().take(64).collect::<String>());
+    let search =
+        q.q.as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.chars().take(64).collect::<String>());
     let order = repo_dir::order_col(q.sort.as_deref());
     let desc = q.desc.unwrap_or(true);
     let rows = repo_dir::members(

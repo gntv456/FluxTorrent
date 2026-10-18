@@ -303,13 +303,14 @@ pub async fn list_torrents_noclamp_as(
     );
     let count_args =
         super::count_bind::CountArgs::new(filter, pattern.as_deref(), viewer);
-    let total: i64 = super::count_bind::fetch_count(&count_sql, &count_args, db)
-        .await
-        .unwrap_or_else(|e| {
-            // 计数失败此前静默成 0（页面「共 0 个」却有行）；给日志留痕
-            tracing::error!(error = %e, "列表计数查询失败，降级 total=0");
-            0
-        });
+    let total: i64 =
+        super::count_bind::fetch_count(&count_sql, &count_args, db)
+            .await
+            .unwrap_or_else(|e| {
+                // 计数失败此前静默成 0（页面「共 0 个」却有行）；给日志留痕
+                tracing::error!(error = %e, "列表计数查询失败，降级 total=0");
+                0
+            });
 
     // hidden_dead（0102 三态的可见性补齐）：同筛选条件下去掉存活谓词的计数。
     // 差值就是「被藏起来的断种数」，让界面能说清「另有 N 条未显示」，

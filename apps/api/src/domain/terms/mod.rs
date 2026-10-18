@@ -145,9 +145,7 @@ pub fn validate_key(key: &str) -> Result<(), InvalidKey> {
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
     {
-        return Err(InvalidKey(
-            "术语键只允许字母数字、下划线与点".into(),
-        ));
+        return Err(InvalidKey("术语键只允许字母数字、下划线与点".into()));
     }
     Ok(())
 }

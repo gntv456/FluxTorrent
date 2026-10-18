@@ -27,8 +27,8 @@ pub(super) async fn offer_create(
         auth.id,
         body.torrent_id,
     )
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -62,13 +62,10 @@ pub(super) async fn offer_vote(
         return Err(DomainError::NotFound(body.offer_id));
     }
     // 先占位投票记录（原子判重，防重放刷票）
-    let voted = crate::repo::offers::place_vote(
-        &state.repo,
-        body.offer_id,
-        auth.id,
-    )
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let voted =
+        crate::repo::offers::place_vote(&state.repo, body.offer_id, auth.id)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if !voted {
         return Err(DomainError::Validation("已投过票啦".into()));
     }

@@ -122,8 +122,7 @@ pub fn decide(i: &WarnInput) -> WarnDecision {
     if let Some(base_t) = i.earliest_expiry {
         let natural = base_t + chrono::Duration::days(days as i64);
         expires = natural.max(fresh);
-        shifted_days =
-            (expires - fresh).num_days() as i32;
+        shifted_days = (expires - fresh).num_days() as i32;
         if i.max_shift_days > 0 && shifted_days > i.max_shift_days {
             shifted_days = i.max_shift_days;
             expires = fresh + chrono::Duration::days(shifted_days as i64);
@@ -178,9 +177,7 @@ impl std::error::Error for InvalidWarn {}
 /// 校验顺延上限配置。
 pub fn validate_max_shift(max_shift_days: i32) -> Result<(), InvalidWarn> {
     if max_shift_days < 0 {
-        return Err(InvalidWarn(
-            "顺延上限不能为负（负数等于禁罚）".into(),
-        ));
+        return Err(InvalidWarn("顺延上限不能为负（负数等于禁罚）".into()));
     }
     if max_shift_days > 3650 {
         return Err(InvalidWarn(

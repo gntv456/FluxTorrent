@@ -107,14 +107,10 @@ pub fn requirement(
 /// 校验分档配置（配错会让人被莫名严苛要求或莫名豁免）。
 pub fn validate_tier(pct: i32, days_pct: i32) -> Result<(), InvalidConfig> {
     if !(0..=400).contains(&pct) {
-        return Err(InvalidConfig(
-            "分档做种倍率须在 0-400% 之间".into(),
-        ));
+        return Err(InvalidConfig("分档做种倍率须在 0-400% 之间".into()));
     }
     if !(10..=400).contains(&days_pct) {
-        return Err(InvalidConfig(
-            "分档天数倍率须在 10-400% 之间".into(),
-        ));
+        return Err(InvalidConfig("分档天数倍率须在 10-400% 之间".into()));
     }
     Ok(())
 }

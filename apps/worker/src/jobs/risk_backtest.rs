@@ -11,9 +11,7 @@
 //!     由 risk_score 10m tick 顺带消费——此前没有任何消费者，面板
 //!     「排一次回测」永远停在排队中。
 
-use super::risk_score::{
-    ruleset_params, Fam, RiskCfg,
-};
+use super::risk_score::{ruleset_params, Fam, RiskCfg};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
@@ -61,9 +59,14 @@ pub async fn backtest(
     .await?;
 
     tracing::info!(
-        id, from_ver, to_ver, window_days,
-        users = out.total_users, would_open = out.would_open,
-        band_up = out.band_up, band_down = out.band_down,
+        id,
+        from_ver,
+        to_ver,
+        window_days,
+        users = out.total_users,
+        would_open = out.would_open,
+        band_up = out.band_up,
+        band_down = out.band_down,
         "反作弊规则集回测完成"
     );
     Ok(id)
@@ -147,8 +150,12 @@ async fn run_backtest_row(
     .execute(db)
     .await?;
     tracing::info!(
-        id, from_ver, to_ver, window_days,
-        users = d.total_users, would_open = d.would_open,
+        id,
+        from_ver,
+        to_ver,
+        window_days,
+        users = d.total_users,
+        would_open = d.would_open,
         "排队回测完成"
     );
     Ok(())
@@ -183,9 +190,11 @@ async fn compute_backtest(
 
     let mut agg: HashMap<i64, Vec<Fam>> = HashMap::new();
     for (uid, fam, hits, days) in rows {
-        agg.entry(uid)
-            .or_default()
-            .push(Fam { family: fam, hits, days });
+        agg.entry(uid).or_default().push(Fam {
+            family: fam,
+            hits,
+            days,
+        });
     }
 
     let mut diffs: Vec<serde_json::Value> = vec![];
@@ -201,11 +210,12 @@ async fn compute_backtest(
         if opens_to && !opened_from {
             would_open += 1;
         }
-        let rank = |b: &str| {
-            match b {
-                "critical" => 4, "high" => 3, "watch" => 2, "low" => 1,
-                _ => 0,
-            }
+        let rank = |b: &str| match b {
+            "critical" => 4,
+            "high" => 3,
+            "watch" => 2,
+            "low" => 1,
+            _ => 0,
         };
         if rank(&b_to) > rank(&b_from) {
             band_up += 1;

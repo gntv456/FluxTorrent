@@ -54,8 +54,7 @@ fn order_is_permuted_not_input_order() {
         .map(|i| ticket_hash(&seed, &genesis_root(), i))
         .collect();
     let order = draw_order(&seed, &ts, 20);
-    let seq: Vec<String> =
-        order.iter().map(|(h, _)| (*h).clone()).collect();
+    let seq: Vec<String> = order.iter().map(|(h, _)| (*h).clone()).collect();
     assert_ne!(seq, ts, "排序不应等于入参顺序");
     // 但必须是一个排列（不丢不重）
     let mut a = seq.clone();
@@ -63,4 +62,4 @@ fn order_is_permuted_not_input_order() {
     a.sort();
     b.sort();
     assert_eq!(a, b);
-}
+}

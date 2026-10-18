@@ -46,9 +46,7 @@ pub async fn cheat_appeal_by_token(
     let token = body.token.trim();
     let content = body.body.trim();
     if content.len() < 10 || content.len() > 4000 {
-        return Err(DomainError::Validation(
-            "申诉内容 10-4000 字符".into(),
-        ));
+        return Err(DomainError::Validation("申诉内容 10-4000 字符".into()));
     }
     let (cid, tail) = token
         .split_once('.')
@@ -112,9 +110,7 @@ pub async fn cheat_appeal_submit(
     let auth = require_auth(&req, &state).await?;
     let content = body.body.trim();
     if content.len() < 10 || content.len() > 4000 {
-        return Err(DomainError::Validation(
-            "申诉内容 10-4000 字符".into(),
-        ));
+        return Err(DomainError::Validation("申诉内容 10-4000 字符".into()));
     }
     let owns =
         appeal_repo::case_owned_by_user(&state.repo, body.case_id, auth.id)
@@ -131,14 +127,10 @@ pub async fn cheat_appeal_submit(
             "未结申诉已达上限，请等待处理".into(),
         ));
     }
-    let id = appeal_repo::create_appeal(
-        &state.repo,
-        auth.id,
-        body.case_id,
-        content,
-    )
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let id =
+        appeal_repo::create_appeal(&state.repo, auth.id, body.case_id, content)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     notify_staff(&state, id, auth.id, body.case_id, false).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
@@ -165,18 +157,19 @@ async fn notify_staff(
     by_token: bool,
 ) {
     let uname = appeal_repo::username_of(&state.repo, uid).await;
-    let _ = appeal_repo::insert_staffmessage(
-        &state.repo,
-        uid,
-        format!(
-            "作弊申诉待复核（案件 #{case_id}，用户 {}）",
-            uname.unwrap_or_else(|| format!("#{uid}"))
-        ),
-        format!(
+    let _ =
+        appeal_repo::insert_staffmessage(
+            &state.repo,
+            uid,
+            format!(
+                "作弊申诉待复核（案件 #{case_id}，用户 {}）",
+                uname.unwrap_or_else(|| format!("#{uid}"))
+            ),
+            format!(
             "申诉 #{appeal_id}（{}）指向案件 #{case_id}，请到「反作弊申诉」\
              队列复核（结论三选一：维持/减轻/推翻；推翻将反向解除该案处置）。",
             if by_token { "一次性令牌提交" } else { "登录提交" }
         ),
-    )
-    .await;
+        )
+        .await;
 }

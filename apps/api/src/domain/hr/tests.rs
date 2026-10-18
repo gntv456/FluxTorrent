@@ -7,10 +7,22 @@ use super::*;
 
 fn ladder() -> Vec<Relief> {
     vec![
-        Relief { extra_hours: 100, relief_pct: 90 },
-        Relief { extra_hours: 500, relief_pct: 80 },
-        Relief { extra_hours: 2000, relief_pct: 70 },
-        Relief { extra_hours: 5000, relief_pct: 60 },
+        Relief {
+            extra_hours: 100,
+            relief_pct: 90,
+        },
+        Relief {
+            extra_hours: 500,
+            relief_pct: 80,
+        },
+        Relief {
+            extra_hours: 2000,
+            relief_pct: 70,
+        },
+        Relief {
+            extra_hours: 5000,
+            relief_pct: 60,
+        },
     ]
 }
 
@@ -26,7 +38,10 @@ fn no_tier_means_no_change() {
 /// 严苛档（150%）让门槛更高。
 #[test]
 fn strict_tier_raises_requirement() {
-    let t = Tier { seed_hours_pct: 150, days_pct: 80 };
+    let t = Tier {
+        seed_hours_pct: 150,
+        days_pct: 80,
+    };
     let r = requirement(100, 14, Some(t), &[], 0, 1);
     assert_eq!(r.seed_hours, 150);
     assert_eq!(r.days, 11);
@@ -35,7 +50,10 @@ fn strict_tier_raises_requirement() {
 /// 减免档（60%）降低门槛。
 #[test]
 fn reduced_tier_lowers_requirement() {
-    let t = Tier { seed_hours_pct: 60, days_pct: 100 };
+    let t = Tier {
+        seed_hours_pct: 60,
+        days_pct: 100,
+    };
     let r = requirement(100, 14, Some(t), &[], 0, 1);
     assert_eq!(r.seed_hours, 60);
 }
@@ -61,7 +79,10 @@ fn relief_picks_farthest_tier_not_stacked() {
 /// 【安全边界】减免永不归零：即使 relief_pct=100 也只降到地板。
 #[test]
 fn relief_never_zeroes_requirement() {
-    let full = vec![Relief { extra_hours: 0, relief_pct: 100 }];
+    let full = vec![Relief {
+        extra_hours: 0,
+        relief_pct: 100,
+    }];
     let r = requirement(100, 14, None, &full, 99999, 1);
     assert_eq!(r.seed_hours, 1, "必须有地板，不能减到 0");
     // 地板为 0 时按 0 走（站长显式关掉地板是允许的，但要能配出来）
@@ -72,7 +93,10 @@ fn relief_never_zeroes_requirement() {
 /// 【安全边界】分档 0% 也只降到地板。
 #[test]
 fn zero_tier_still_has_floor() {
-    let t = Tier { seed_hours_pct: 0, days_pct: 100 };
+    let t = Tier {
+        seed_hours_pct: 0,
+        days_pct: 100,
+    };
     let r = requirement(100, 14, Some(t), &[], 0, 1);
     assert_eq!(r.seed_hours, 1);
 }
@@ -88,7 +112,10 @@ fn negative_extra_means_no_relief() {
 /// 天数倍率最低 1 天（不会算出 0 天义务）。
 #[test]
 fn days_never_zero() {
-    let t = Tier { seed_hours_pct: 100, days_pct: 10 };
+    let t = Tier {
+        seed_hours_pct: 100,
+        days_pct: 10,
+    };
     let r = requirement(100, 1, Some(t), &[], 0, 1);
     assert!(r.days >= 1, "0 天义务没有意义");
 }
@@ -97,8 +124,20 @@ fn days_never_zero() {
 #[test]
 fn tier_of_found() {
     let tiers = [
-        ("strict", Tier { seed_hours_pct: 150, days_pct: 80 }),
-        ("default", Tier { seed_hours_pct: 100, days_pct: 100 }),
+        (
+            "strict",
+            Tier {
+                seed_hours_pct: 150,
+                days_pct: 80,
+            },
+        ),
+        (
+            "default",
+            Tier {
+                seed_hours_pct: 100,
+                days_pct: 100,
+            },
+        ),
     ];
     let map = vec![(1, "strict".to_string())];
     assert_eq!(tier_of(1, &map, &tiers).unwrap().seed_hours_pct, 150);
@@ -107,7 +146,13 @@ fn tier_of_found() {
 /// 取档：未映射的等级返回 None（**不减免**，不是「用最松的档」）。
 #[test]
 fn tier_of_unmapped_is_none() {
-    let tiers = [("reduced", Tier { seed_hours_pct: 60, days_pct: 100 })];
+    let tiers = [(
+        "reduced",
+        Tier {
+            seed_hours_pct: 60,
+            days_pct: 100,
+        },
+    )];
     let map = vec![(1, "strict".to_string())];
     assert!(tier_of(9, &map, &tiers).is_none());
 }
@@ -115,7 +160,13 @@ fn tier_of_unmapped_is_none() {
 /// 取档：映射到不存在的档名也返回 None（配置不一致不豁免）。
 #[test]
 fn tier_of_unknown_tier_name_is_none() {
-    let tiers = [("strict", Tier { seed_hours_pct: 150, days_pct: 80 })];
+    let tiers = [(
+        "strict",
+        Tier {
+            seed_hours_pct: 150,
+            days_pct: 80,
+        },
+    )];
     let map = vec![(1, "typo_here".to_string())];
     assert!(tier_of(1, &map, &tiers).is_none());
 }

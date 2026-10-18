@@ -2,8 +2,8 @@
 
 use sqlx::PgPool;
 
-use super::{award, awarded, prog, rules_of, save_progress};
 use super::api_domain as md;
+use super::{award, awarded, prog, rules_of, save_progress};
 
 /// 记一条可计数事件（业务侧调用；event 模式成就的输入）。
 ///

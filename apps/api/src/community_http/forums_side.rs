@@ -7,12 +7,12 @@
 //! 接口）；「公告」这一档本站没有数据模型（topics.topic_type 只有
 //! bounty/poll/lottery），故不在此伪造。
 
-use actix_web::{get, web, HttpRequest, Responder};
 use crate::dto::ok;
 use crate::errors::DomainResult;
 use crate::http::require_auth;
 use crate::repo::community::forum_side as repo_side;
 use crate::state::AppState;
+use actix_web::{get, web, HttpRequest, Responder};
 
 #[utoipa::path(
     get,
@@ -31,8 +31,7 @@ pub(crate) async fn forum_side(
     let (topics, posts, today) =
         repo_side::side_stats(&state.repo, auth.class_id).await?;
     let hot = repo_side::hot_topics(&state.repo, auth.class_id).await?;
-    let latest =
-        repo_side::latest_replies(&state.repo, auth.class_id).await?;
+    let latest = repo_side::latest_replies(&state.repo, auth.class_id).await?;
     Ok(ok(serde_json::json!({
         "stats": { "topics": topics, "posts": posts, "today_topics": today },
         "hot": hot,

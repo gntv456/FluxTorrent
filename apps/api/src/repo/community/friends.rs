@@ -55,11 +55,7 @@ pub async fn drop_my_pending(
 }
 
 /// 取消拉黑，返回受影响行数。
-pub async fn unset_black(
-    repo: &Repo,
-    me: i64,
-    them: i64,
-) -> DomainResult<u64> {
+pub async fn unset_black(repo: &Repo, me: i64, them: i64) -> DomainResult<u64> {
     Ok(sqlx::query(
         "DELETE FROM friendships WHERE user_id = $1 \
          AND friend_id = $2 AND list = 'black'",

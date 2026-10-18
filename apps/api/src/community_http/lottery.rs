@@ -5,11 +5,11 @@ use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use super::*;
+use crate::domain::lottery_fair as fair;
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
-use crate::domain::lottery_fair as fair;
 use crate::repo::lottery_fair as repo_fair;
 use crate::repo::Repo;
 use crate::state::AppState;
@@ -85,15 +85,10 @@ pub(crate) async fn lottery_join(
         return Err(DomainError::Validation("已经参与过了".into()));
     }
     let ticket_hash = match fair_seed {
-        Some(sd) => {
-            Some(repo_fair::issue_ticket(
-                &state.repo,
-                body.topic_id,
-                auth.id,
-                &sd,
-            )
-            .await?)
-        }
+        Some(sd) => Some(
+            repo_fair::issue_ticket(&state.repo, body.topic_id, auth.id, &sd)
+                .await?,
+        ),
         None => None,
     };
     // 票价（免费则跳过）：扣费失败回滚占位（对齐 fun_vote 纪律）
@@ -132,7 +127,6 @@ pub(crate) async fn lottery_join(
         "ticket_hash": ticket_hash,
     })))
 }
-
 
 #[derive(Deserialize, utoipa::ToSchema)]
 struct LotteryDrawReq {

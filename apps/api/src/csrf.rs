@@ -103,14 +103,11 @@ pub async fn csrf_mw(
     }
     // 取出即转成 owned String：cookies() 的返回值借用 req，闭包里
     // 直接返回 &str 会让返回值借用函数参数（E0515）。
-    let cookie = req
-        .cookies()
-        .ok()
-        .and_then(|cs| {
-            cs.iter()
-                .find(|c| c.name() == CSRF_COOKIE)
-                .map(|c| c.value().to_string())
-        });
+    let cookie = req.cookies().ok().and_then(|cs| {
+        cs.iter()
+            .find(|c| c.name() == CSRF_COOKIE)
+            .map(|c| c.value().to_string())
+    });
     let header_tok = req
         .headers()
         .get(CSRF_HEADER)
@@ -121,9 +118,7 @@ pub async fn csrf_mw(
         _ => false,
     };
     if !ok {
-        return Err(actix_web::Error::from(
-            DomainError::Forbidden,
-        ));
+        return Err(actix_web::Error::from(DomainError::Forbidden));
     }
     next.call(req).await
 }
@@ -182,9 +177,7 @@ pub fn configure(cfg: &mut actix_web::web::ServiceConfig) {
     cfg.route("/me/csrf", actix_web::web::get().to(issue));
 }
 
-pub async fn issue(
-    req: actix_web::HttpRequest,
-) -> impl actix_web::Responder {
+pub async fn issue(req: actix_web::HttpRequest) -> impl actix_web::Responder {
     let token = new_token();
     let secure = req
         .headers()
@@ -203,10 +196,7 @@ pub async fn issue(
 }
 
 /// 登出时与 flux_token 同步清除（否则浏览器留一个无用的 csrf cookie）。
-pub fn clear_on_logout(
-    resp: &mut actix_web::HttpResponse,
-    secure: bool,
-) {
+pub fn clear_on_logout(resp: &mut actix_web::HttpResponse, secure: bool) {
     let _ = clear_cookie(secure);
     resp.headers_mut().append(
         HeaderName::from_static("set-cookie"),

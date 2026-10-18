@@ -47,7 +47,7 @@ pub(crate) fn row_to_manifest(
             })
             .unwrap_or_default(),
         rate_limit_per_min,
-    llm_routes: vec![],
+        llm_routes: vec![],
     }
 }
 

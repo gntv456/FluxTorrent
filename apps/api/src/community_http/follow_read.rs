@@ -40,13 +40,9 @@ pub(crate) async fn follow_status(
     let Some(ttype) = normalize_follow_type(&q.target_type) else {
         return Err(DomainError::Validation("非法的关注对象".into()));
     };
-    let following = repo_follows::is_following(
-        &state.repo,
-        auth.id,
-        ttype,
-        q.target_id,
-    )
-    .await;
+    let following =
+        repo_follows::is_following(&state.repo, auth.id, ttype, q.target_id)
+            .await;
     let followers =
         repo_follows::follower_count(&state.repo, ttype, q.target_id).await;
     Ok(ok(serde_json::json!({

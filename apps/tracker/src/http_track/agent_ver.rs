@@ -98,10 +98,7 @@ mod tests {
 
     #[test]
     fn ua_version_extracts_first_dotted_number() {
-        assert_eq!(
-            ua_version("Transmission/3.00 (macOS)"),
-            Some((3, 0, 0))
-        );
+        assert_eq!(ua_version("Transmission/3.00 (macOS)"), Some((3, 0, 0)));
         assert_eq!(ua_version("qBittorrent/4.6.2"), Some((4, 6, 2)));
         assert_eq!(ua_version("qBittorrent/4.6"), Some((4, 6, 0)));
         // 收满 3 段即停：`2.0.5-1` 后面的 `-1` 不并入

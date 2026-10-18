@@ -47,59 +47,57 @@ impl TrackerState {
         .fetch_all(&self.db)
         .await
         .ok();
-        let rules: Option<Vec<AgentRule>> = sqlx::query_as::<
-            _,
-            (String, String, String, String, String, i32),
-        >(
-            "SELECT mode, pattern, COALESCE(peer_id_pattern, ''), \
+        let rules: Option<Vec<AgentRule>> =
+            sqlx::query_as::<_, (String, String, String, String, String, i32)>(
+                "SELECT mode, pattern, COALESCE(peer_id_pattern, ''), \
              COALESCE(version_min, ''), COALESCE(version_max, ''), \
              COALESCE(priority, 0) FROM agent_rules",
-        )
-        .fetch_all(&self.db)
-        .await
-        .ok()
-        .map(|rows| {
-            rows.into_iter()
-                .filter_map(|(mode, agent, peer, vmin, vmax, prio)| {
-                    let agent_re = if agent.is_empty() {
-                        None
-                    } else {
-                        match regex::Regex::new(&agent) {
-                            Ok(r) => Some(r),
-                            Err(e) => {
-                                tracing::warn!(
-                                    %agent, %e,
-                                    "agent_rules 正则无效，规则跳过"
-                                );
-                                return None;
+            )
+            .fetch_all(&self.db)
+            .await
+            .ok()
+            .map(|rows| {
+                rows.into_iter()
+                    .filter_map(|(mode, agent, peer, vmin, vmax, prio)| {
+                        let agent_re = if agent.is_empty() {
+                            None
+                        } else {
+                            match regex::Regex::new(&agent) {
+                                Ok(r) => Some(r),
+                                Err(e) => {
+                                    tracing::warn!(
+                                        %agent, %e,
+                                        "agent_rules 正则无效，规则跳过"
+                                    );
+                                    return None;
+                                }
                             }
-                        }
-                    };
-                    let peer_re = if peer.is_empty() {
-                        None
-                    } else {
-                        match regex::Regex::new(&peer) {
-                            Ok(r) => Some(r),
-                            Err(e) => {
-                                tracing::warn!(
-                                    %peer, %e,
-                                    "agent_rules peer_id 正则无效，规则跳过"
-                                );
-                                return None;
+                        };
+                        let peer_re = if peer.is_empty() {
+                            None
+                        } else {
+                            match regex::Regex::new(&peer) {
+                                Ok(r) => Some(r),
+                                Err(e) => {
+                                    tracing::warn!(
+                                        %peer, %e,
+                                        "agent_rules peer_id 正则无效，规则跳过"
+                                    );
+                                    return None;
+                                }
                             }
-                        }
-                    };
-                    Some(AgentRule {
-                        deny: mode == "deny",
-                        agent_re,
-                        peer_re,
-                        version_min: vmin,
-                        version_max: vmax,
-                        priority: prio as i64,
+                        };
+                        Some(AgentRule {
+                            deny: mode == "deny",
+                            agent_re,
+                            peer_re,
+                            version_min: vmin,
+                            version_max: vmax,
+                            priority: prio as i64,
+                        })
                     })
-                })
-                .collect()
-        });
+                    .collect()
+            });
         // 「查询失败保留旧值」是本函数自述的纪律，五轮实测发现两处违反：
         // interval 与 pending_policy 用 `.ok().flatten().unwrap_or(缺省)`，
         // 让**瞬时 DB 抖动**与**设定本来就不存在**长得一模一样，都被当成

@@ -303,10 +303,7 @@ pub async fn toggle_term(
 }
 
 /// 删一条规则，返回删除行数。
-pub async fn delete_term(
-    repo: &Repo,
-    canonical: &str,
-) -> DomainResult<u64> {
+pub async fn delete_term(repo: &Repo, canonical: &str) -> DomainResult<u64> {
     Ok(sqlx::query("DELETE FROM site_terms WHERE canonical = $1")
         .bind(canonical)
         .execute(&repo.db)
@@ -317,19 +314,16 @@ pub async fn delete_term(
 
 /// 当前生效规则条数（版本快照的 changed 计数用）。
 pub async fn active_term_count(repo: &Repo) -> DomainResult<i64> {
-    Ok(sqlx::query_scalar(
-        "SELECT count(*) FROM site_terms WHERE enabled",
+    Ok(
+        sqlx::query_scalar("SELECT count(*) FROM site_terms WHERE enabled")
+            .fetch_one(&repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?,
     )
-    .fetch_one(&repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?)
 }
 
 /// 某条规则是否已登记（给上限判定用）。
-pub async fn term_exists(
-    repo: &Repo,
-    canonical: &str,
-) -> DomainResult<bool> {
+pub async fn term_exists(repo: &Repo, canonical: &str) -> DomainResult<bool> {
     Ok(sqlx::query_scalar::<_, i64>(
         "SELECT count(*) FROM site_terms WHERE canonical = $1",
     )
@@ -351,12 +345,12 @@ pub async fn restore_terms(
     let rows = snapshot
         .get("terms")
         .and_then(|v| v.as_array())
-        .ok_or_else(|| {
-            DomainError::Validation("版本快照格式不正确".into())
-        })?;
-    let mut tx = repo.db.begin().await.map_err(|e| {
-        DomainError::Internal(e.into())
-    })?;
+        .ok_or_else(|| DomainError::Validation("版本快照格式不正确".into()))?;
+    let mut tx = repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 全表替换：快照语义就是「那一刻的完整形态」，只补差会漏掉
     // 「快照里有、现在没有」的规则。
     sqlx::query("DELETE FROM site_terms")
@@ -365,18 +359,12 @@ pub async fn restore_terms(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let mut n = 0u64;
     for row in rows {
-        let c = row
-            .get("canonical")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let c = row.get("canonical").and_then(|v| v.as_str()).unwrap_or("");
         let r = row
             .get("replacement")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        let en = row
-            .get("enabled")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
+        let en = row.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
         if c.is_empty() || r.is_empty() {
             continue;
         }
@@ -393,7 +381,9 @@ pub async fn restore_terms(
         .map_err(|e| DomainError::Internal(e.into()))?;
         n += 1;
     }
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(n)
 }
 

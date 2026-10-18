@@ -7,8 +7,8 @@
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
 
-use crate::dto::ok;
 use crate::domain::medal as md;
+use crate::dto::ok;
 use crate::errors::DomainResult;
 use crate::http::require_auth;
 use crate::repo::medal_auto as repo_ma;

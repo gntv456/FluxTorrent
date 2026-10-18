@@ -13,9 +13,8 @@ fn now() -> chrono::DateTime<chrono::Utc> {
 fn inp(open: i32, earliest: Option<i32>, base: i32, cap: i32) -> WarnInput {
     WarnInput {
         open_warnings: open,
-        earliest_expiry: earliest.map(|d| {
-            now() + chrono::Duration::days(d as i64)
-        }),
+        earliest_expiry: earliest
+            .map(|d| now() + chrono::Duration::days(d as i64)),
         base_days: base,
         max_shift_days: cap,
         now: now(),
@@ -124,10 +123,7 @@ fn zero_cap_means_unbounded() {
     let d = decide(&inp(1, Some(3), 7, 0));
     assert!(!d.hit_cap);
     assert_eq!(d.shifted_days, 3);
-    assert_eq!(
-        d.expires_at,
-        now() + chrono::Duration::days(17)
-    );
+    assert_eq!(d.expires_at, now() + chrono::Duration::days(17));
 }
 
 /// 站长配的 base_days 可覆盖阶梯（不被阶梯压低）。
@@ -141,10 +137,8 @@ fn base_days_can_raise_step() {
 #[test]
 fn restore_requires_all_expired() {
     let t = now();
-    let exps = vec![
-        t - chrono::Duration::days(1),
-        t + chrono::Duration::days(5),
-    ];
+    let exps =
+        vec![t - chrono::Duration::days(1), t + chrono::Duration::days(5)];
     assert!(
         !should_auto_restore(&exps, t),
         "最早那条已过期但还有 5 天后才到期的，不该放人"
@@ -155,10 +149,8 @@ fn restore_requires_all_expired() {
 #[test]
 fn restore_when_all_expired() {
     let t = now();
-    let exps = vec![
-        t - chrono::Duration::days(3),
-        t - chrono::Duration::days(1),
-    ];
+    let exps =
+        vec![t - chrono::Duration::days(3), t - chrono::Duration::days(1)];
     assert!(should_auto_restore(&exps, t));
 }
 

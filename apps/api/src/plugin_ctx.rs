@@ -66,7 +66,12 @@ impl<'a> PluginCtx<'a> {
         name: &'static str,
         iso: &'a crate::plugin_sql::Isolation,
     ) -> Self {
-        Self { pool, caps, name, iso }
+        Self {
+            pool,
+            caps,
+            name,
+            iso,
+        }
     }
 
     /// 执行写/读语句（无行返回）。先过 sql_guard，再参数化执行。
@@ -166,9 +171,7 @@ trait BindVal: Sized {
     fn bind_val(self, b: &Bind) -> Self;
 }
 
-impl<'q> BindVal
-    for sqlx::query::Query<'q, sqlx::Postgres, PgArguments>
-{
+impl<'q> BindVal for sqlx::query::Query<'q, sqlx::Postgres, PgArguments> {
     fn bind_val(self, b: &Bind) -> Self {
         match b {
             Bind::I64(v) => self.bind(*v),
@@ -181,12 +184,7 @@ impl<'q> BindVal
 }
 
 impl<'q> BindVal
-    for sqlx::query::QueryScalar<
-        'q,
-        sqlx::Postgres,
-        i64,
-        PgArguments,
-    >
+    for sqlx::query::QueryScalar<'q, sqlx::Postgres, i64, PgArguments>
 {
     fn bind_val(self, b: &Bind) -> Self {
         match b {

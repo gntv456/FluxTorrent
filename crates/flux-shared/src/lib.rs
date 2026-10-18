@@ -106,11 +106,12 @@ pub async fn earn_spark(
     idem: &str,
 ) -> EffectResult {
     let mut tx = db.begin().await?;
-    let balance: i64 =
-        sqlx::query_scalar("SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE")
-            .bind(user_id)
-            .fetch_one(&mut *tx)
-            .await?;
+    let balance: i64 = sqlx::query_scalar(
+        "SELECT spark_balance FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await?;
     let exists: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM spark_ledger WHERE idempotency_key = $1)",
     )
@@ -162,11 +163,13 @@ pub async fn apply_item_effect(
             .bind(gb * 1024 * 1024 * 1024)
             .execute(db)
             .await?;
-            sqlx::query("UPDATE users SET uploaded = uploaded + $2 WHERE id = $1")
-                .bind(user_id)
-                .bind(gb * 1024 * 1024 * 1024)
-                .execute(db)
-                .await?;
+            sqlx::query(
+                "UPDATE users SET uploaded = uploaded + $2 WHERE id = $1",
+            )
+            .bind(user_id)
+            .bind(gb * 1024 * 1024 * 1024)
+            .execute(db)
+            .await?;
         }
         "avatar_frame" | "animated_avatar" | "rainbow_id" | "rainbow_name" => {
             let item_id =
@@ -207,7 +210,8 @@ pub async fn apply_item_effect(
         // make_interval(days =>) 只收 int4，无隐式转换。
         // 不 cast 就是「购买 500、扣款成功效果丢失」（商城审计 P0-1）。
         "vip" | "app_vip" => {
-            let days = config.get("days").and_then(|v| v.as_i64()).unwrap_or(30);
+            let days =
+                config.get("days").and_then(|v| v.as_i64()).unwrap_or(30);
             sqlx::query(
                 "UPDATE users SET vip_until = \
                     GREATEST(COALESCE(vip_until, now()), now()) \
@@ -220,7 +224,8 @@ pub async fn apply_item_effect(
             .await?;
         }
         "ad_free" => {
-            let days = config.get("days").and_then(|v| v.as_i64()).unwrap_or(15);
+            let days =
+                config.get("days").and_then(|v| v.as_i64()).unwrap_or(15);
             sqlx::query(
                 "UPDATE users SET donor_until = \
                     GREATEST(COALESCE(donor_until, now()), now()) \
@@ -242,17 +247,20 @@ pub async fn apply_item_effect(
                         .await?;
                 }
             }
-            let unlock =
-                config.get("unlock").and_then(|v| v.as_bool()).unwrap_or(false);
+            let unlock = config
+                .get("unlock")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             if unlock {
                 // 防重只拦「仍可用」的那张（未核销且未过期）——
                 // 已用过/已过期的旧券不该挡住补发。
-                let usable: bool =
-                    sqlx::query_scalar("SELECT has_usable_voucher($1, 'title_unlock')")
-                        .bind(user_id)
-                        .fetch_one(db)
-                        .await
-                        .unwrap_or(false);
+                let usable: bool = sqlx::query_scalar(
+                    "SELECT has_usable_voucher($1, 'title_unlock')",
+                )
+                .bind(user_id)
+                .fetch_one(db)
+                .await
+                .unwrap_or(false);
                 if !usable {
                     sqlx::query(
                         "INSERT INTO user_vouchers (user_id, kind, source) \
@@ -367,14 +375,19 @@ mod tests {
     fn voucher_kind_defaults_by_sku_prefix() {
         assert_eq!(voucher_kind(&json!({}), "voucher_neutral"), "neutral");
         assert_eq!(voucher_kind(&json!({}), "voucher_free"), "free");
-        assert_eq!(voucher_kind(&json!({"kind": "neutral"}), "voucher_free"), "neutral");
+        assert_eq!(
+            voucher_kind(&json!({"kind": "neutral"}), "voucher_free"),
+            "neutral"
+        );
     }
 
     #[test]
     fn passkey_is_32_chars_lowercase_alnum() {
         let c = new_passkey();
         assert_eq!(c.len(), 32);
-        assert!(c.chars().all(|x| x.is_ascii_lowercase() || x.is_ascii_digit()));
+        assert!(c
+            .chars()
+            .all(|x| x.is_ascii_lowercase() || x.is_ascii_digit()));
     }
 
     #[test]

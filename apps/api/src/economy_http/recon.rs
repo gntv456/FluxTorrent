@@ -295,7 +295,10 @@ async fn torznab_search_inner(
     let page = crate::torrents::list_torrents_noclamp_for_sub(
         &state.repo.db,
         &filter,
-        None, fetch_n, tk.uid, hide_paid,
+        None,
+        fetch_n,
+        tk.uid,
+        hide_paid,
     )
     .await?;
     let items: Vec<String> = page

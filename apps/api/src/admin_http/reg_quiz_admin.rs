@@ -37,7 +37,12 @@ async fn reg_quiz_list(
     // 而 GET 这条仍回 200（实测 91 档拿到 email-domains 200 行、
     // roles-dict 5 行、agentrules 12 条）。
     // 修法：读口与写口对齐同一把权限键；语义上「读配置」与「改配置」同档。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let limit = q.limit.unwrap_or(200).clamp(1, 1000);
     let rows = quiz_repo::list_questions(&state.repo, limit)
         .await
@@ -50,9 +55,7 @@ async fn reg_quiz_list(
     let (attempts, passed) = quiz_repo::attempt_stats(&state.repo, days)
         .await
         .unwrap_or((0, 0));
-    let total: i64 = quiz_repo::count_questions(&state.repo)
-        .await
-        .unwrap_or(0);
+    let total: i64 = quiz_repo::count_questions(&state.repo).await.unwrap_or(0);
     Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "items": rows,
         "total": total,

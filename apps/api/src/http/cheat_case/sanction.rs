@@ -103,7 +103,11 @@ pub async fn cheat_case_resolve(
     let pending = matches!(kind, "ban" | "full_ban");
     let close = body.close.unwrap_or(true) && !pending;
 
-    let mut tx = state.repo.db.begin().await
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // ① 证据处置（即时解除做种收益停发；seeding.rs NOT EXISTS 口径）
     let n_ev: i64 = if resolve_ev {
@@ -249,14 +253,13 @@ pub async fn cheat_case_resolve(
     )
     .await;
     if kind == "warn" {
-        let target: Option<(String, Option<String>)> = sqlx::query_as(
-            "SELECT username, email FROM users WHERE id = $1",
-        )
-        .bind(uid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten();
+        let target: Option<(String, Option<String>)> =
+            sqlx::query_as("SELECT username, email FROM users WHERE id = $1")
+                .bind(uid)
+                .fetch_optional(&state.repo.db)
+                .await
+                .ok()
+                .flatten();
         if let Some((username, email)) = target {
             let site: String = sqlx::query_scalar(
                 "SELECT COALESCE((SELECT value FROM site_settings \

@@ -108,8 +108,7 @@ pub(super) fn swap_bounds(f: &mut TorrentFilter) {
 #[cfg(test)]
 mod tests {
     use super::{
-        alive_from_pref, bookmarked_from_pref, limit_from_pref,
-        promo_from_pref,
+        alive_from_pref, bookmarked_from_pref, limit_from_pref, promo_from_pref,
     };
 
     /// 纯函数部分：0289 的首屏共享缓存资格依赖「偏好 1 留 None」，

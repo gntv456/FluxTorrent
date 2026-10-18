@@ -17,25 +17,75 @@ use crate::plugin_ctx::{DbCapability, DbMode};
 
 /// 允许的函数（小写）。插件需要更多时在此扩展并补测试。
 pub(super) const FUNC_ALLOWLIST: &[&str] = &[
-    "min", "max", "count", "sum", "avg", "coalesce", "nullif", "greatest",
-    "least", "abs", "round", "floor", "ceil", "ceiling", "lower", "upper",
-    "length", "char_length", "now", "current_timestamp", "date_trunc",
-    "extract", "to_char",
+    "min",
+    "max",
+    "count",
+    "sum",
+    "avg",
+    "coalesce",
+    "nullif",
+    "greatest",
+    "least",
+    "abs",
+    "round",
+    "floor",
+    "ceil",
+    "ceiling",
+    "lower",
+    "upper",
+    "length",
+    "char_length",
+    "now",
+    "current_timestamp",
+    "date_trunc",
+    "extract",
+    "to_char",
 ];
 
 /// 类型白名单（DataType::Custom 的用户自定义类型名，如 `$1::inet`
 /// 的标准类型是具名变体不经对象名，Custom 才是兜底目标）。
 pub(super) const TYPE_ALLOWLIST: &[&str] = &[
-    "inet", "text", "varchar", "char", "bpchar", "citext", "int", "int2",
-    "int4", "int8", "integer", "bigint", "smallint", "boolean", "bool",
-    "numeric", "decimal", "real", "float4", "float8", "timestamptz",
-    "timestamp", "date", "time", "jsonb", "json", "uuid", "bytea",
+    "inet",
+    "text",
+    "varchar",
+    "char",
+    "bpchar",
+    "citext",
+    "int",
+    "int2",
+    "int4",
+    "int8",
+    "integer",
+    "bigint",
+    "smallint",
+    "boolean",
+    "bool",
+    "numeric",
+    "decimal",
+    "real",
+    "float4",
+    "float8",
+    "timestamptz",
+    "timestamp",
+    "date",
+    "time",
+    "jsonb",
+    "json",
+    "uuid",
+    "bytea",
 ];
 
 /// 粗粒度危险记号兜底（结构校验之外的额外一层；大写比较）。
 pub(super) const FORBIDDEN_TOKENS: &[&str] = &[
-    "FOR UPDATE", "FOR SHARE", "SET_CONFIG", "CURRENT_SETTING", "PG_SLEEP",
-    "PG_READ_FILE", "DBLINK", "LO_IMPORT", "LO_EXPORT",
+    "FOR UPDATE",
+    "FOR SHARE",
+    "SET_CONFIG",
+    "CURRENT_SETTING",
+    "PG_SLEEP",
+    "PG_READ_FILE",
+    "DBLINK",
+    "LO_IMPORT",
+    "LO_EXPORT",
 ];
 
 /// AST 收集器：遍历语句，收集表/标识符/对象名/星号/函数。
@@ -97,7 +147,8 @@ impl Collector {
 
     /// 手动补收：限定/裸标识符（INSERT 列名、UPDATE SET 目标）。
     pub(super) fn push_ident(&mut self, head: Option<&str>, col: &str) {
-        self.idents.push((head.map(str::to_string), col.to_string()));
+        self.idents
+            .push((head.map(str::to_string), col.to_string()));
     }
 
     /// 手动补收：表引用（DELETE 多表名）。
@@ -147,10 +198,7 @@ impl Visitor for Collector {
         ControlFlow::Continue(())
     }
 
-    fn pre_visit_table_factor(
-        &mut self,
-        tf: &TableFactor,
-    ) -> ControlFlow<()> {
+    fn pre_visit_table_factor(&mut self, tf: &TableFactor) -> ControlFlow<()> {
         // 表别名 / 派生表：其标识符无法匹配声明表（v1 直接拒）
         let why = match tf {
             TableFactor::Table { alias: Some(a), .. } => {

@@ -2,20 +2,16 @@
 
 use sqlx::PgPool;
 
+use super::api_domain as md;
 use super::{
     award, awarded, progress_of, rules_of, save_progress, RuleRow, BATCH,
 };
-use super::api_domain as md;
 
 /// 阈值模式的统计值（按周期取）。
 ///
 /// 取数口径与站内既有统计同源，避免「成就里的上传量」和「个人页显示的
 /// 上传量」对不上——这类不一致一旦出现就极难解释。
-async fn threshold_value(
-    db: &PgPool,
-    user_id: i64,
-    rule: &str,
-) -> i64 {
+async fn threshold_value(db: &PgPool, user_id: i64, rule: &str) -> i64 {
     match rule {
         "uploaded" => sqlx::query_scalar(
             "SELECT COALESCE(uploaded, 0)::bigint FROM users WHERE id = $1",
@@ -99,11 +95,7 @@ pub(crate) async fn threshold_sweep(db: &PgPool) -> anyhow::Result<u64> {
 }
 
 /// event 模式回填时的当前累计（供 backfill 调用）。
-pub(super) async fn event_total(
-    db: &PgPool,
-    user_id: i64,
-    event: &str,
-) -> i64 {
+pub(super) async fn event_total(db: &PgPool, user_id: i64, event: &str) -> i64 {
     sqlx::query_scalar(
         "SELECT COALESCE(sum(amount), 0)::bigint FROM medal_events \
          WHERE user_id = $1 AND event = $2",
@@ -116,10 +108,6 @@ pub(super) async fn event_total(
 }
 
 /// 读进度（转发出给 backfill / event 用）。
-pub(crate) async fn prog(
-    db: &PgPool,
-    user_id: i64,
-    medal_id: i64,
-) -> i64 {
+pub(crate) async fn prog(db: &PgPool, user_id: i64, medal_id: i64) -> i64 {
     progress_of(db, user_id, medal_id).await
 }

@@ -50,7 +50,8 @@ async fn cheat_accuracy(
     // 能读到**误报统计**（等于反作弊模型的内部指标）。
     // 对齐既有权限键 audit.view（class 90 起，与 cheat.cases.moderate 同档）：
     // 「看处置台账」与「看它的准确率」是同一档信息。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::AUDIT_VIEW).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::AUDIT_VIEW)
+        .await?;
     let days = match q.days {
         Some(d) => d.clamp(1, 3650),
         None => acc_repo::accuracy_days(&state.repo).await.clamp(1, 3650),
@@ -62,9 +63,7 @@ async fn cheat_accuracy(
         .into_iter()
         .map(|r| {
             let accuracy = if r.resolved > 0 {
-                Some(
-                    1.0 - (r.false_positive as f64) / (r.resolved as f64),
-                )
+                Some(1.0 - (r.false_positive as f64) / (r.resolved as f64))
             } else {
                 None
             };

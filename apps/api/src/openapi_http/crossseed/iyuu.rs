@@ -31,8 +31,10 @@
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 
-use super::{norm_hashes, daily_quota, with_rl, require_scope, require_token,
-           MAX_FINGERPRINTS, RL_PER_MIN, SCOPE_CROSSSEED};
+use super::{
+    daily_quota, norm_hashes, require_scope, require_token, with_rl,
+    MAX_FINGERPRINTS, RL_PER_MIN, SCOPE_CROSSSEED,
+};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
@@ -101,9 +103,7 @@ pub async fn xseed_iyuu(
     let v1 = norm_hashes(&body.hash)?;
     let ph = norm_hashes(&body.sha1)?;
     if v1.is_empty() && ph.is_empty() {
-        return Err(DomainError::Validation(
-            "hash 与 sha1 不能都为空".into(),
-        ));
+        return Err(DomainError::Validation("hash 与 sha1 不能都为空".into()));
     }
     if v1.len() + ph.len() > MAX_FINGERPRINTS {
         return Err(DomainError::Validation(format!(
@@ -121,13 +121,10 @@ pub async fn xseed_iyuu(
     daily_quota(&state, tk.uid, (v1.len() + ph.len()) as i64).await?;
     let v1v: Vec<String> = v1.iter().cloned().collect();
     let phv: Vec<String> = ph.iter().cloned().collect();
-    let rows = crate::repo::xseed::find_by_fingerprints(
-        &state.repo,
-        &v1v,
-        &phv,
-    )
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows =
+        crate::repo::xseed::find_by_fingerprints(&state.repo, &v1v, &phv)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     // 折成 IYUU 形状：payload = 下载链接（metadata 恒 false）。
     // 与 lookup 一致：info_hash 命中优先归类，只影响附带信息不影响链接。
     let hits: Vec<IyuuHit> = rows
@@ -168,9 +165,7 @@ passkey 字段名。公开元数据，不含凭据。",
     responses((status = 200, description = "站点描述对象"))
 )]
 #[actix_web::get("/crossseed/iyuu/site")]
-pub async fn xseed_iyuu_site(
-    _req: HttpRequest,
-) -> impl actix_web::Responder {
+pub async fn xseed_iyuu_site(_req: HttpRequest) -> impl actix_web::Responder {
     // 站名/域名从环境读（与仓库既有 PUBLIC_SITE_URL 口径一致），
     // 读不到就给占位——**不给错域名**，让 IYUU 侧报「未识别」而不是
     // 拿着错的域名去爬。
@@ -179,9 +174,8 @@ pub async fn xseed_iyuu_site(
     let root = base.trim_end_matches('/').to_string();
     // NexusPHP 兼容路由：详情与下载同入口，下载走 action=download
     let detail_tpl = format!("{root}/torrents.php?id={{torrent_id}}");
-    let download_tpl = format!(
-        "{root}/torrents.php?id={{torrent_id}}&action=download"
-    );
+    let download_tpl =
+        format!("{root}/torrents.php?id={{torrent_id}}&action=download");
     actix_web::HttpResponse::Ok().json(serde_json::json!({
         "site": "fluxtorrent",
         "name": "FluxTorrent",

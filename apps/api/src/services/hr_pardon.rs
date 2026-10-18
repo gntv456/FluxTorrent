@@ -38,12 +38,8 @@ pub(crate) async fn pardon_one(
     tid: i64,
     note: &str,
 ) -> DomainResult<bool> {
-    crate::admin_http::guard::ensure_outranks(
-        &state.repo.db,
-        actor_class,
-        uid,
-    )
-    .await?;
+    crate::admin_http::guard::ensure_outranks(&state.repo.db, actor_class, uid)
+        .await?;
     let n = sqlx::query(
         "UPDATE hr_snapshots SET status = 'pardoned', pardoned_by = $1, \
          updated_at = now() WHERE user_id = $2 AND torrent_id = $3 \

@@ -46,8 +46,15 @@ pub(super) fn personal_hidden(privacy: Option<&str>) -> bool {
 /// 面板说的「个人信息」在这一屏上就是这些键（新增个人信息列要一起加；
 /// DA 闸门按这份清单逐键断言，键名写错=漏遮，判据会红）。
 pub(super) const PERSONAL_KEYS: [&str; 9] = [
-    "gender", "info", "signature", "upload_speed", "download_speed",
-    "client_agent", "inviter_id", "inviter_name", "user_fields",
+    "gender",
+    "info",
+    "signature",
+    "upload_speed",
+    "download_speed",
+    "client_agent",
+    "inviter_id",
+    "inviter_name",
+    "user_fields",
 ];
 
 /// 公开主页响应的隐私遮蔽入口：**判定 + 遮蔽合成一步**，让承载文件

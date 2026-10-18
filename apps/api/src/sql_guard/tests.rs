@@ -62,16 +62,14 @@ fn rejects_qualified_over_column() {
 #[test]
 fn rejects_insert_over_column() {
     // INSERT 列名走手动补收：未声明列必须拒
-    let e = v("INSERT INTO torrents (id, descr) VALUES ($1, $2)")
-        .unwrap_err();
+    let e = v("INSERT INTO torrents (id, descr) VALUES ($1, $2)").unwrap_err();
     assert!(e.to_string().contains("未知列"), "{e}");
 }
 
 #[test]
 fn rejects_update_set_over_column() {
     // UPDATE SET 目标走手动补收：未声明列必须拒
-    let e = v("UPDATE torrents SET descr = 'x' WHERE id = $1")
-        .unwrap_err();
+    let e = v("UPDATE torrents SET descr = 'x' WHERE id = $1").unwrap_err();
     assert!(e.to_string().contains("未知列"), "{e}");
 }
 
@@ -139,9 +137,7 @@ fn rejects_derived_table() {
 #[test]
 fn rejects_cte() {
     // WITH 被语句类型闸门拦
-    assert!(
-        v("WITH x AS (SELECT id FROM torrents) SELECT id FROM x").is_err()
-    );
+    assert!(v("WITH x AS (SELECT id FROM torrents) SELECT id FROM x").is_err());
 }
 
 #[test]
@@ -179,11 +175,7 @@ fn write_on_read_cap_rejected() {
     // 只读能力的表执行 UPDATE → 拒
     let read_caps = vec![DbCapability {
         table: "torrents".into(),
-        columns: vec![
-            "sticky".into(),
-            "id".into(),
-            "official_tag".into(),
-        ],
+        columns: vec!["sticky".into(), "id".into(), "official_tag".into()],
         mode: DbMode::Read,
         allow_unbounded: false,
     }];

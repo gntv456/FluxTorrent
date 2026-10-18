@@ -46,14 +46,10 @@ pub async fn quiz_challenge(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(q) = row else {
-        return Err(DomainError::Validation(
-            "题库为空，请联系管理组".into(),
-        ));
+        return Err(DomainError::Validation("题库为空，请联系管理组".into()));
     };
-    let ttl = setting_default(
-        read_setting(&state, "reg_quiz_ttl_minutes").await,
-        10,
-    );
+    let ttl =
+        setting_default(read_setting(&state, "reg_quiz_ttl_minutes").await, 10);
     let ticket = uuid::Uuid::new_v4().to_string();
     let mut c = state.redis.clone();
     let val = format!("{}:{}", q.id, q.answer_index);
@@ -67,8 +63,7 @@ pub async fn quiz_challenge(
     .map_err(|e| {
         DomainError::Internal(anyhow::anyhow!("答题票据存储不可用: {e}"))
     })?;
-    let expires_at =
-        chrono::Utc::now() + chrono::Duration::minutes(ttl);
+    let expires_at = chrono::Utc::now() + chrono::Duration::minutes(ttl);
     Ok(ok(serde_json::json!({
         "ticket": ticket,
         "question_id": q.id,
@@ -110,9 +105,7 @@ pub(crate) async fn quiz_verify(
     let t = ticket.trim();
     if t.is_empty()
         || t.len() > 64
-        || !t
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        || !t.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
     {
         return Err(DomainError::Validation("答题票据形状无效".into()));
     }
@@ -149,5 +142,8 @@ pub(crate) async fn quiz_verify(
     )
     .await
     .map_err(|e| tracing::warn!(%e, "reg_quiz_attempts 留痕失败"));
-    Ok(QuizOutcome { passed, question_id })
+    Ok(QuizOutcome {
+        passed,
+        question_id,
+    })
 }

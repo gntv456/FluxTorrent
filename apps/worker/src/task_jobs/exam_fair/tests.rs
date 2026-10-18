@@ -2,11 +2,23 @@
 
 use super::*;
 
-fn inp(seq: i32, is_last: bool, dur: i32, rem: i32, act: FailAction,
-       elapsed: i32, met: bool) -> StageInput {
+fn inp(
+    seq: i32,
+    is_last: bool,
+    dur: i32,
+    rem: i32,
+    act: FailAction,
+    elapsed: i32,
+    met: bool,
+) -> StageInput {
     StageInput {
-        seq, is_last, duration_days: dur, remedy_days: rem,
-        fail_action: act, elapsed_days: elapsed, met,
+        seq,
+        is_last,
+        duration_days: dur,
+        remedy_days: rem,
+        fail_action: act,
+        elapsed_days: elapsed,
+        met,
     }
 }
 
@@ -45,14 +57,24 @@ fn overdue_enters_remedy_not_fail() {
 #[test]
 fn after_remedy_fails() {
     let v = judge_stage(&inp(1, false, 7, 3, FailAction::Ban, 10, false));
-    assert_eq!(v, StageVerdict::StageFailed { action: FailAction::Ban });
+    assert_eq!(
+        v,
+        StageVerdict::StageFailed {
+            action: FailAction::Ban
+        }
+    );
 }
 
 /// 无补救期（remedy=0）→ 到期直接失败（向后兼容旧行为）。
 #[test]
 fn no_remedy_fails_directly() {
     let v = judge_stage(&inp(1, false, 7, 0, FailAction::None, 7, false));
-    assert_eq!(v, StageVerdict::StageFailed { action: FailAction::None });
+    assert_eq!(
+        v,
+        StageVerdict::StageFailed {
+            action: FailAction::None
+        }
+    );
 }
 
 /// 非最后一段达标 → 进下一段（不是整体通过）。
@@ -61,7 +83,10 @@ fn mid_stage_advances() {
     let v = judge_stage(&inp(2, false, 7, 0, FailAction::None, 3, true));
     assert_eq!(
         progress(&v, 2),
-        Progress::Advance { next_seq: 3, next_is_last: false }
+        Progress::Advance {
+            next_seq: 3,
+            next_is_last: false
+        }
     );
 }
 
@@ -94,7 +119,7 @@ fn fail_action_parse_is_conservative() {
 fn suggest_remedy_uses_p80() {
     assert_eq!(suggest_remedy_days(&[]), None);
     let days: Vec<i32> = (1..=10).collect(); // 1..10
-    // 80 分位 → 第 8 个（idx = ceil(10*0.8)-1 = 7 → 值 8）
+                                             // 80 分位 → 第 8 个（idx = ceil(10*0.8)-1 = 7 → 值 8）
     assert_eq!(suggest_remedy_days(&days), Some(8));
     // 乱序也要对
     let mut shuffled = days.clone();
@@ -122,7 +147,12 @@ fn validate_stage_rejects_bad_config() {
 fn remedy_boundary_is_inclusive() {
     // overdue == remedy_days → 刚好用尽宽限，下一轮才失败
     let v = judge_stage(&inp(1, false, 7, 3, FailAction::Ban, 10, false));
-    assert_eq!(v, StageVerdict::StageFailed { action: FailAction::Ban });
+    assert_eq!(
+        v,
+        StageVerdict::StageFailed {
+            action: FailAction::Ban
+        }
+    );
     // overdue == remedy_days - 1 → 还在宽限
     let v = judge_stage(&inp(1, false, 7, 3, FailAction::Ban, 9, false));
     assert!(matches!(v, StageVerdict::InRemedy { .. }));

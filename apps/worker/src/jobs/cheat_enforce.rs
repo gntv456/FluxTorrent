@@ -89,7 +89,9 @@ pub(crate) async fn auto_open_case(
                 WHERE class_id >= 90 AND status < 2) s",
     )
     .bind(case_id)
-    .bind(format!("{note_head}；归案未处置证据 {n} 条。请及时认领核实并处置。"))
+    .bind(format!(
+        "{note_head}；归案未处置证据 {n} 条。请及时认领核实并处置。"
+    ))
     .execute(db)
     .await;
     Some(case_id)
@@ -231,8 +233,7 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
                  其做种收益已被自动暂停，并已在后台「反作弊案件」自动开案。\
                  请及时认领核实并处置。"
             );
-            let dup =
-                alerted_within_7d(db, "cheater", L2_SUBJ, &prefix).await;
+            let dup = alerted_within_7d(db, "cheater", L2_SUBJ, &prefix).await;
             let n = if dup {
                 0
             } else {

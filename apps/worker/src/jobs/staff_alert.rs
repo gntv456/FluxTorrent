@@ -51,7 +51,10 @@ pub(crate) async fn staff_alert(
         Ok(n) => {
             let wrote = n.rows_affected();
             if wrote == 0 {
-                tracing::warn!(subject, "staff_alert: 无在册职员可署名，告警未发出");
+                tracing::warn!(
+                    subject,
+                    "staff_alert: 无在册职员可署名，告警未发出"
+                );
             }
             wrote
         }

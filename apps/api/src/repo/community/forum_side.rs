@@ -118,9 +118,7 @@ pub async fn count_board_topics(
     fid: i64,
     where_sql: &str,
 ) -> DomainResult<i64> {
-    let sql = format!(
-        "SELECT count(*) FROM topics t WHERE {where_sql}"
-    );
+    let sql = format!("SELECT count(*) FROM topics t WHERE {where_sql}");
     sqlx::query_scalar::<_, i64>(&sql)
         .bind(fid)
         .fetch_one(&repo.db)

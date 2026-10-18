@@ -61,10 +61,10 @@ pub async fn cheat_case_open(
             let uid: Option<i64> = sqlx::query_scalar(
                 "SELECT user_id FROM cheat_events WHERE id = $1",
             )
-                    .bind(e)
-                    .fetch_optional(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+            .bind(e)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             (Some(e), uid.ok_or(DomainError::NotFound(e))?)
         }
         (None, Some(u)) => (None, u),
@@ -235,7 +235,11 @@ pub async fn cheat_case_claim(
         .repo
         .audit_detail(
             Some(auth.id),
-            if release { "cheat_case.release" } else { "cheat_case.claim" },
+            if release {
+                "cheat_case.release"
+            } else {
+                "cheat_case.claim"
+            },
             Some(id),
             None,
             None,

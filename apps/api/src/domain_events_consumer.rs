@@ -3,12 +3,11 @@
 //! 与 domain_events.rs（写入面 + 存储/查询）分家：那个文件回答
 //! 「有哪些事件、怎么入队」，这个文件回答「谁来消费、失败了怎么办」。
 
-
 use sqlx::PgPool;
 
 use crate::domain_events::{
-    self, fetch_pending, has_active_subscription, mark_consumed,
-    mark_failed, Dispatched, PendingEvent, MAX_ATTEMPTS,
+    self, fetch_pending, has_active_subscription, mark_consumed, mark_failed,
+    Dispatched, PendingEvent, MAX_ATTEMPTS,
 };
 use crate::errors::{DomainError, DomainResult};
 
@@ -52,14 +51,13 @@ async fn drain_locked(pool: &sqlx::PgPool) -> DomainResult<()> {
     for ev in batch {
         // 无活跃订阅直接标消费：这行事件本就不该惊动任何人，留着只会
         // 反复出现在每轮拉取里（热路径成本）。
-        let subscribed =
-            match has_active_subscription(pool, &ev.event).await {
-                Ok(v) => v,
-                Err(e) => {
-                    let _ = mark_failed(pool, ev.id, &e.to_string()).await;
-                    continue;
-                }
-            };
+        let subscribed = match has_active_subscription(pool, &ev.event).await {
+            Ok(v) => v,
+            Err(e) => {
+                let _ = mark_failed(pool, ev.id, &e.to_string()).await;
+                continue;
+            }
+        };
         if !subscribed {
             let _ = mark_consumed(pool, ev.id).await;
             continue;
@@ -95,23 +93,24 @@ async fn drain_locked(pool: &sqlx::PgPool) -> DomainResult<()> {
 /// 它把事件载荷翻译成既有 `Plugin` hook 的调用——**不重跑 SQL**：
 /// 插件 hook 自己在 `PluginCtx`/`sql_guard` 边界内完成写入与校验，
 /// 总线只负责「什么时候该跑」（事件驱动替代调用点手写）。
-async fn dispatch(
-    pool: &sqlx::PgPool,
-    ev: &PendingEvent,
-) -> Dispatched {
+async fn dispatch(pool: &sqlx::PgPool, ev: &PendingEvent) -> Dispatched {
     use crate::domain_events::events;
     match ev.event.as_str() {
         events::TORRENT_UPLOADED => {
             let tid = ev.aggregate_id.or_else(|| {
                 ev.payload.get("torrent_id").and_then(|v| v.as_i64())
             });
-            let owner = ev.payload
+            let owner = ev
+                .payload
                 .get("owner_id")
                 .and_then(|v| v.as_i64())
                 .unwrap_or_default();
             match tid {
                 None => {
-                    tracing::warn!(id = ev.id, "torrent.uploaded 缺 torrent_id");
+                    tracing::warn!(
+                        id = ev.id,
+                        "torrent.uploaded 缺 torrent_id"
+                    );
                     Dispatched::Dead
                 }
                 Some(tid) => {

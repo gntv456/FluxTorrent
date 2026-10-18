@@ -14,9 +14,11 @@ use serde::Deserialize;
 #[serde(deny_unknown_fields)]
 struct BuyReq {
     item_id: i64,
-    #[serde(default)] idempotency_key: Option<String>,
+    #[serde(default)]
+    idempotency_key: Option<String>,
     /// 购买数量（0207）：仅 stackable 类生效；装扮/头衔类强制 1
-    #[serde(default)] qty: Option<i64>,
+    #[serde(default)]
+    qty: Option<i64>,
 }
 
 use crate::dto::ok;
@@ -324,15 +326,25 @@ async fn shop_buy(
             // 记 total 会让 N 行台账合计 N×total，对账时凭空多出
             // 一笔钱——而 worker 的退款兜底正是按 frozen_amount 退的。
             crate::repo::shop::freeze_order(
-                &state.repo, auth.id, body.item_id, unit_price, &key,
-                &config, unit_price,
+                &state.repo,
+                auth.id,
+                body.item_id,
+                unit_price,
+                &key,
+                &config,
+                unit_price,
             )
             .await?;
         }
     } else {
         crate::repo::shop::freeze_order(
-            &state.repo, auth.id, body.item_id, total, &idem,
-            &config, total,
+            &state.repo,
+            auth.id,
+            body.item_id,
+            total,
+            &idem,
+            &config,
+            total,
         )
         .await?;
     }

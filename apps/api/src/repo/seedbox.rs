@@ -91,9 +91,11 @@ pub async fn review(
     bonus_factor: f64,
     speed_relax: bool,
 ) -> DomainResult<Option<i64>> {
-    let mut tx = repo.db.begin().await.map_err(|e| {
-        DomainError::Internal(e.into())
-    })?;
+    let mut tx = repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let user_id: Option<i64> = sqlx::query_scalar(
         "UPDATE seedbox_claims \
          SET status = $2, reviewer_id = $3, review_note = $4, \
@@ -132,15 +134,14 @@ pub async fn review(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    tx.commit().await.map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(Some(uid))
 }
 
 /// 读生效标志位（反作弊 / H&R / 保种倍率的唯一读取口）。
-pub async fn flags_of(
-    repo: &Repo,
-    user_id: i64,
-) -> DomainResult<Flags> {
+pub async fn flags_of(repo: &Repo, user_id: i64) -> DomainResult<Flags> {
     let row: Option<(bool, bool, bool, f64, bool)> = sqlx::query_as(
         "SELECT approved, detected, hnr_exempt, bonus_factor::float8, \
                 anticheat_speed_relax \
@@ -178,12 +179,7 @@ pub async fn flags_for(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     for (uid, ap, det, hnr, bf, relax) in rows {
-        out.insert(
-            uid,
-            Flags::from_profile(
-                ap, det, hnr, bf, relax,
-            ),
-        );
+        out.insert(uid, Flags::from_profile(ap, det, hnr, bf, relax));
     }
     Ok(out)
 }

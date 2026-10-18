@@ -95,7 +95,10 @@ pub struct Limits {
 
 impl Default for Limits {
     fn default() -> Self {
-        Self { rate_per_min: 0, timeout_s: 0 }
+        Self {
+            rate_per_min: 0,
+            timeout_s: 0,
+        }
     }
 }
 
@@ -157,7 +160,10 @@ pub fn native_manifest(id: &str, caps: &[DbCapability]) -> ExtensionManifest {
         kind: ExtensionKind::Native,
         version: EXTENSION_CONTRACT_VERSION.to_string(),
         display: id.to_string(),
-        capabilities: Capabilities { db: caps.to_vec(), ..Default::default() },
+        capabilities: Capabilities {
+            db: caps.to_vec(),
+            ..Default::default()
+        },
         triggers: Vec::new(),
         limits: Default::default(),
         signature: None,

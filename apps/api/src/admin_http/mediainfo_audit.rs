@@ -40,7 +40,8 @@ pub(crate) async fn mediainfo_mismatches(
     q: crate::http::Q<MiQ>,
 ) -> DomainResult<HttpResponse> {
     let _auth = staff(&req, &state).await?;
-    let rows = crate::mediainfo_service::list_mismatches(&state, q.limit).await?;
+    let rows =
+        crate::mediainfo_service::list_mismatches(&state, q.limit).await?;
     Ok(ok(serde_json::json!({
         "mismatches": rows,
         "note": "判定是提示不是闸门：不拦截发布、不自动下架，处置由人工判定。",

@@ -290,7 +290,13 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
                 );
                 staff_alert(db, BAND_SUBJ, &body, "cheater").await;
             }
-            tracing::warn!(user = uid, score, old, band, "risk_score: 档位变化");
+            tracing::warn!(
+                user = uid,
+                score,
+                old,
+                band,
+                "risk_score: 档位变化"
+            );
         }
 
         // high/critical 且无进行中案件 → 自动开案（priority 2/1）。
@@ -335,8 +341,13 @@ pub async fn risk_score(db: &PgPool, full: bool) -> anyhow::Result<u64> {
             )
             .await
             {
-                tracing::warn!(user = uid, case = cid, score, band,
-                    "risk_score: 自动开案");
+                tracing::warn!(
+                    user = uid,
+                    case = cid,
+                    score,
+                    band,
+                    "risk_score: 自动开案"
+                );
             }
         } else if shadow {
             // 掉出 high/critical 也要清影子行，否则 would_open 会永远

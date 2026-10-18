@@ -17,14 +17,12 @@ use sqlx::PgPool;
 /// 就算完了**，把一个该由数据库拒绝的业务错误变成了进程级 panic 或静默
 /// 回绕。此处统一改成 checked_add：越界时返回既有的 1004 语义错误，
 /// 不改任何余额、也不惊动线程。
-pub(crate) fn checked_balance(
-    balance: i64,
-    delta: i64,
-) -> DomainResult<i64> {
+pub(crate) fn checked_balance(balance: i64, delta: i64) -> DomainResult<i64> {
     balance.checked_add(delta).ok_or_else(|| {
         tracing::error!(
             balance,
-            delta, "余额累加溢出 bigint：拒绝入账（不静默回绕、不 panic）"
+            delta,
+            "余额累加溢出 bigint：拒绝入账（不静默回绕、不 panic）"
         );
         DomainError::Internal(anyhow::anyhow!(
             "spark 余额越界：{} + {} 超出 int64 范围",
@@ -33,7 +31,6 @@ pub(crate) fn checked_balance(
         ))
     })
 }
-
 
 pub async fn spend_spark(
     db: &PgPool,

@@ -4,8 +4,8 @@
 //! 没角色走裸 pool（= 0367 的既有强度）。降级分支刻意保留，
 //! 保证自部署缺 CREATEROLE 时行为与迁移 0378 之前完全一致。
 
-use sqlx::PgPool;
 use sqlx::postgres::{PgArguments, PgQueryResult, PgRow};
+use sqlx::PgPool;
 use sqlx::Postgres;
 
 use crate::errors::{DomainError, DomainResult};
@@ -30,9 +30,7 @@ impl<'q> BindVal for sqlx::query::Query<'q, Postgres, PgArguments> {
     }
 }
 
-impl<'q> BindVal
-    for sqlx::query::QueryScalar<'q, Postgres, i64, PgArguments>
-{
+impl<'q> BindVal for sqlx::query::QueryScalar<'q, Postgres, i64, PgArguments> {
     fn bind_val(self, b: &crate::plugin_ctx::Bind) -> Self {
         use crate::plugin_ctx::Bind as B;
         match b {

@@ -86,14 +86,8 @@ mod tests {
     #[test]
     fn ascii_name_survives_unchanged() {
         let h = content_disposition("Show.S01E01-7.torrent");
-        assert!(
-            h.contains("filename=\"Show.S01E01-7.torrent\""),
-            "{h}"
-        );
-        assert!(
-            h.contains("filename*=UTF-8''Show.S01E01-7.torrent"),
-            "{h}"
-        );
+        assert!(h.contains("filename=\"Show.S01E01-7.torrent\""), "{h}");
+        assert!(h.contains("filename*=UTF-8''Show.S01E01-7.torrent"), "{h}");
     }
 
     #[test]

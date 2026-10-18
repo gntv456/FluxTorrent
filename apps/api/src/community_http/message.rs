@@ -45,7 +45,11 @@ fn page_envelope<T: serde::Serialize>(
     );
     hdr.insert(
         actix_web::http::header::HeaderName::from_static("x-has-more"),
-        actix_web::http::header::HeaderValue::from_static(if has_more { "1" } else { "0" }),
+        actix_web::http::header::HeaderValue::from_static(if has_more {
+            "1"
+        } else {
+            "0"
+        }),
     );
     resp
 }

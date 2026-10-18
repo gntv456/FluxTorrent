@@ -152,13 +152,11 @@ pub async fn has_active_subscription(
 
 /// 标记已消费（投递成功）。
 pub async fn mark_consumed(pool: &sqlx::PgPool, id: i64) -> DomainResult<()> {
-    sqlx::query(
-        "UPDATE domain_events SET consumed_at = now() WHERE id = $1",
-    )
-    .bind(id)
-    .execute(pool)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("UPDATE domain_events SET consumed_at = now() WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(())
 }
 

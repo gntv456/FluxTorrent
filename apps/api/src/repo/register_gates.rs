@@ -63,10 +63,12 @@ pub async fn insert_ip_signup(
     ip_hash: &str,
     user_id: i64,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO reg_ip_signups (ip_hash, user_id) VALUES ($1, $2)")
-        .bind(ip_hash)
-        .bind(user_id)
-        .execute(&repo.db)
-        .await?;
+    sqlx::query(
+        "INSERT INTO reg_ip_signups (ip_hash, user_id) VALUES ($1, $2)",
+    )
+    .bind(ip_hash)
+    .bind(user_id)
+    .execute(&repo.db)
+    .await?;
     Ok(())
 }
