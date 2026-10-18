@@ -18,6 +18,11 @@ type Db = web::Data<std::sync::Arc<AppState>>;
 #[derive(Deserialize)]
 pub(super) struct AnimalReq {
     pub(super) animal: String,
+    /// 客户端幂等键（可选）：带上来就认它，重复提交只扣一次；不带就是新的一笔。
+    /// 牧场买入必须有这个口子——退休会删栏并要求「重新领养」，若把幂等键写死成
+    /// `ranch-buy:{uid}:{animal}`，第二次领养会被当成重复提交永久拒（P-334）。
+    #[serde(default)]
+    pub(super) idempotency_key: Option<String>,
 }
 
 #[derive(Deserialize)]

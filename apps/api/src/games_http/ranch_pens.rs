@@ -18,6 +18,7 @@ use crate::economy_http::{earn_spark_tx, spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
+use uuid::Uuid;
 
 type Db = web::Data<std::sync::Arc<AppState>>;
 
@@ -57,7 +58,21 @@ pub(super) async fn ranch_buy(
     if exists {
         return Err(DomainError::Validation("这只已经养在栏里了".into()));
     }
-    let idem = format!("ranch-buy:{}:{}", auth.id, body.animal);
+    // 幂等键必须认「本笔」而不是「本种」（P-334，实测）：产满 95% 时
+    // ranch_collect 会删掉栏位并要玩家「重新领养」，而旧键
+    // `ranch-buy:{uid}:{animal}` 的那笔扣费永久留在 spark_ledger —— 于是同种
+    // 动物的第二次领养被当成重复提交永久拒，报的还是误导性的「请勿重复提交」。
+    // 带客户端键就认它；不带就是新的一笔（重复提交另有两道更硬的防护：上面的
+    // exists 预检，以及 (user_id, animal) 唯一键在事务内冲突即回滚扣费）。
+    let idem = match body.idempotency_key.as_deref().map(str::trim) {
+        Some(k) if !k.is_empty() && k.len() <= 128 => {
+            format!("ranch-buy:{}:{}:c:{}", auth.id, body.animal, k)
+        }
+        _ => {
+            let epoch = Uuid::new_v4().to_string();
+            format!("ranch-buy:{}:{}:{}", auth.id, body.animal, epoch)
+        }
+    };
     // 扣费与落栏同一事务（P-184）：任何一步失败整笔回滚，钱不会先走
     let mut tx = db.begin().await.map_err(dberr)?;
     match spend_spark_tx(&mut tx, auth.id, price, "game", &idem, "ranch_buy", 0)
