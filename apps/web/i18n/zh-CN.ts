@@ -476,6 +476,8 @@ const zhCnBase = {
     bannedIntro: "账号被禁用？",
     bannedLog: "查看封禁记录",
     appealIntro: "对处理结果有异议？",
+    applyIntro: "需要邀请码？",
+    applyLink: "申请邀请码",
     appealLink: "申诉通道",
     activateIntro: "收不到激活邮件？",
     activateLink: "去激活页重发",
@@ -572,6 +574,14 @@ const zhCnBase = {
   register: {
     title: "加入我们",
     subtitle: "凭邀请码注册，种下你的第一颗种子",
+    /** 认证画布左栏（样图 § auth） */
+    heroTag: "加入我们，开始分享与获取",
+    heroDesc: "填写邀请码与账号信息完成注册，注册后即可开始你的资源之旅。",
+    /** 右卡状态徽章 + 无码出口（样图：邀请制注册 · 需有双通道码） */
+    inviteBadge: "邀请制注册",
+    applyForCode: "无邀请码？申请邀请码",
+    usernameHint: "用户名一旦注册不可修改",
+    termsNote: "注册即代表同意站规与隐私政策",
     inviteCode: "邀请码",
     emailMustMatch: "定向邀请：请填写收到邀请邮件的邮箱，不一致将无法注册",
     inviteOptional: "（开放注册可不填）",
@@ -599,6 +609,15 @@ const zhCnBase = {
   /** 申请制入站（/apply，0227 P2 触点 #3） */
   apply: {
     title: "申请入站",
+    heroTag: "申请邀请码，通过审核入站",
+    heroDesc: "提交申请与举证，管理组审核通过后将自动发送邀请码到你的邮箱。",
+    badge: "申请通道开放 · 人工审核",
+    notice:
+      "申请制入站：填写下方信息并提交举证。请如实填写，虚假信息将直接拒绝。",
+    usernameHint: "审核通过后将成为你的注册账号",
+    emailHint: "请使用常用邮箱",
+    proofHint: "建议提供 2-3 个有效链接",
+    reasonHint: "不少于 20 字",
     closedNote: "本站未开放申请通道。请通过受邀成员获取邀请码注册。",
     backToLogin: "返回登录",
     usernameLabel: "期望的用户名",
@@ -613,6 +632,9 @@ const zhCnBase = {
   /** 邮箱激活（/email-verify，C7-#4） */
   emailVerify: {
     title: "邮箱激活",
+    heroTag: "验证邮箱，完成账号激活",
+    heroDesc: "激活链接 48 小时内有效，验证成功后可正常登录。",
+    badge: "待验证 · 链接 48 小时内有效",
     intro: "点击下方按钮完成激活（链接 {hours} 小时内有效，一次性使用）。",
     verifyBtn: "激活我的账号",
     okPrefix: "✅ 激活成功！现在可以",
@@ -624,12 +646,18 @@ const zhCnBase = {
     expiredHint: "链接过期？输入注册邮箱重新发送激活邮件。",
     noTokenHint: "没有点开邮件里的链接？输入注册邮箱重发一封激活邮件。",
     emailPh: "注册邮箱",
+    resendLabel: "重发激活邮件",
+    or: "或",
     resendBtn: "重新发送",
     resentNote: "若该邮箱有未激活账号，激活邮件已发出（1 分钟内勿重复发送）。",
   },
   /** 自助解封（/self-unban，P2 触点 #24） */
   selfUnban: {
     title: "自助解封（首次宽恕）",
+    heroTag: "自助解封 · 首次宽恕机会",
+    heroDesc:
+      "被封账号可在不联系管理组的情况下解封一次，用掉后只能走申诉通道。",
+    badge: "首次解封 · 一次性机会",
     note: "每个账号有一次自助解封机会：适用于首次误封/轻微违规。使用后再次被封只能通过申诉通道联系管理组。",
     done: "已解封。请刷新后进入站点；再次违规将只能走申诉通道。",
     btn: "立即解封我的账号",
@@ -639,6 +667,9 @@ const zhCnBase = {
   forgot: {
     title: "找回密码",
     subtitle: "输入注册邮箱，接收重置链接",
+    heroTag: "找回密码，三步完成",
+    heroDesc: "输入注册邮箱，重置链接将发送到你的邮箱，30 分钟内有效。",
+    emailHint: "用于接收密码重置链接",
     email: "注册邮箱",
     submit: "发送重置邮件",
     busy: "发送中…",
@@ -650,6 +681,11 @@ const zhCnBase = {
   reset: {
     title: "设置新密码",
     subtitle: "通过邮件重置链接设置新密码",
+    heroTag: "设置新密码，重获账号访问",
+    heroDesc: "重置链接有效期内可设置新密码，成功后即可用新密码登录。",
+    notice:
+      "重置链接通过邮件发送，30 分钟内有效；设置新密码后旧密码立即失效。",
+    confirmHint: "两次输入需保持一致",
     token: "重置令牌",
     newPassword: "新密码",
     confirmPassword: "确认新密码",
@@ -3701,6 +3737,34 @@ const zhCnBase = {
     navEmpty: "没有匹配的工具",
     navToggle: "导航",
     navAriaLabel: "管理功能导航",
+    /** 页头面包屑首段（样图 § pg-head「后台 / 工作台」） */
+    crumbAdmin: "后台",
+    /** 侧栏卡片标题（样图：搜索框上方的栏头） */
+    navTitle: "后台职能导航",
+    /** 二级子分类（样图 § 后台职能导航：大组按职能再分组，key=子类 id） */
+    navSubs: {
+      contentSite: "站点内容",
+      contentForum: "论坛与互动",
+      contentHonor: "荣誉与激励",
+      contentDoc: "文档与页面",
+      usersAccount: "账号管理",
+      usersSecurity: "安全风控",
+      usersReward: "激励与发放",
+      usersConfig: "配置与记录",
+      opsSettings: "站点设定",
+      opsMessage: "消息与邮件",
+      opsRun: "运营配置",
+      opsExam: "考核与激励",
+      opsBiz: "商业化",
+      sysStatus: "系统状态",
+      sysClean: "清理维护",
+      sysNet: "网络与客户端",
+      sysAccess: "安全与访问",
+      sysPerm: "权限与插件",
+      sysCustom: "站点定制",
+    } as Record<string, string>,
+    /** 独立后台页（设定/论坛/用户详情）页头右侧返回入口 */
+    backToAdmin: "返回后台",
     groupOverview: "概览",
     groupQueue: "处理队列",
     groupManage: "用户与内容",
@@ -4984,6 +5048,9 @@ const zhCnBase = {
   userDetail: {
     actionFail: "操作失败",
     loadFail: "加载失败",
+    /** 页头（样图 § 用户详情：面包屑 + 标题 + 描述 + 返回） */
+    pageTitle: "用户详情",
+    pageSub: "字段全景 · 关联数据 · 管理动作",
     adjusted: "已调整",
     unsuspended: "已解除挂起",
     suspended: "已挂起",
@@ -5984,6 +6051,13 @@ const zhCnBase = {
   settingsAdmin: {
     title: "站点设定",
     groupFieldCount: "{g} 分区 · {f} 字段",
+    /** 页头副标题（样图 § 站点设置） */
+    headSub: "类型化站点配置与修改历史",
+    /** 左导航标题（样图：设定分区 - 19） */
+    navTitle: "设定分区",
+    /** 分区信息条（样图：字段来源与保存端点） */
+    groupBar:
+      "{group} · {n} 个设置项 · 字段来自 settings_meta ⋈ site_settings · 保存端 PUT /admin/settings/groups",
     note: "以 NexusPHP settings.php 十二分区为基线；字段类型化渲染，保存前服务端权威校验。",
     entryOpen: "进入站点设定",
     adminOnly: "仅系统管理员（站长）可保存",

@@ -501,6 +501,8 @@ const enBase: Omit<
     bannedIntro: "Account banned?",
     bannedLog: "View ban log",
     appealIntro: "Disagree with a decision?",
+    applyIntro: "Need an invite code?",
+    applyLink: "Apply for one",
     appealLink: "Appeals",
     activateIntro: "No verification email?",
     activateLink: "Resend it",
@@ -597,6 +599,13 @@ const enBase: Omit<
   register: {
     title: "Join us",
     subtitle: "Register with an invite code, plant your first seed",
+    heroTag: "Join us — start sharing",
+    heroDesc:
+      "Enter your invite code and account details to register, then start your resource journey.",
+    inviteBadge: "Invite-only registration",
+    applyForCode: "No invite code? Apply for one",
+    usernameHint: "Your username cannot be changed after registration",
+    termsNote: "By registering you agree to the site rules and privacy policy",
     inviteCode: "Invite code",
     emailMustMatch:
       "Targeted invite: use the email address that received the invitation",
@@ -626,6 +635,16 @@ const enBase: Omit<
   },
   apply: {
     title: "Apply for membership",
+    heroTag: "Apply for an invite, join after review",
+    heroDesc:
+      "Submit your application and evidence; once approved, staff will send an invite code to your email.",
+    badge: "Applications open · manual review",
+    notice:
+      "Application-based entry: fill in the form and submit your evidence. Please be truthful — false information is rejected outright.",
+    usernameHint: "This becomes your account name once approved",
+    emailHint: "Please use a mailbox you check often",
+    proofHint: "2-3 valid links recommended",
+    reasonHint: "At least 20 characters",
     closedNote:
       "Applications are not open on this site. Please get an invite code from an invited member to register.",
     backToLogin: "Back to sign in",
@@ -642,6 +661,10 @@ const enBase: Omit<
   },
   emailVerify: {
     title: "Email verification",
+    heroTag: "Verify your email, activate the account",
+    heroDesc:
+      "The activation link is valid for 48 hours. After verifying you can sign in normally.",
+    badge: "Unverified · link valid for 48 hours",
     intro:
       "Click the button below to finish verification (link valid for {hours} hours, one-time use).",
     verifyBtn: "Verify my account",
@@ -655,6 +678,8 @@ const enBase: Omit<
     expiredHint:
       "Link expired? Enter your registered email to resend the verification email.",
     emailPh: "Registered email",
+    resendLabel: "Resend activation email",
+    or: "or",
     noTokenHint:
       "Link didn't open? Enter your registered email to request a new " +
       "verification email.",
@@ -664,6 +689,10 @@ const enBase: Omit<
   },
   selfUnban: {
     title: "Self-unban (first-time grace)",
+    heroTag: "Self-unban · one-time grace",
+    heroDesc:
+      "A banned account can lift its ban once without contacting staff. Once used, only the appeal channel remains.",
+    badge: "First unban · one-time chance",
     note: "Each account gets one self-unban chance: for first-time mistaken bans or minor violations. After using it, further bans can only be lifted through the appeal channel.",
     done: "Unbanned. Refresh to enter the site; further violations can only go through the appeal channel.",
     btn: "Unban my account now",
@@ -674,6 +703,10 @@ const enBase: Omit<
   forgot: {
     title: "Recover password",
     subtitle: "Enter your registered email to receive a reset link",
+    heroTag: "Reset in three steps",
+    heroDesc:
+      "Enter your registered email and we will send you a reset link, valid for 30 minutes.",
+    emailHint: "Used to receive the reset link",
     email: "Registered email",
     submit: "Send reset email",
     busy: "Sending…",
@@ -685,6 +718,12 @@ const enBase: Omit<
   reset: {
     title: "Set a new password",
     subtitle: "Set a new password via the email reset link",
+    heroTag: "Set a new password, regain access",
+    heroDesc:
+      "While the reset link is valid you can set a new password and sign in with it right away.",
+    notice:
+      "The reset link is sent by email and is valid for 30 minutes. Your old password stops working immediately.",
+    confirmHint: "Both entries must match",
     token: "Reset token",
     newPassword: "New password",
     confirmPassword: "Confirm password",
@@ -3738,6 +3777,30 @@ const enBase: Omit<
     navEmpty: "No matching tools",
     navToggle: "Nav",
     navAriaLabel: "Staff tools navigation",
+    crumbAdmin: "Admin",
+    navTitle: "Staff navigation",
+    navSubs: {
+      contentSite: "Site content",
+      contentForum: "Forums & interaction",
+      contentHonor: "Honors & rewards",
+      contentDoc: "Docs & pages",
+      usersAccount: "Accounts",
+      usersSecurity: "Security & risk",
+      usersReward: "Rewards & grants",
+      usersConfig: "Config & records",
+      opsSettings: "Site settings",
+      opsMessage: "Messages & mail",
+      opsRun: "Operations",
+      opsExam: "Exams & payroll",
+      opsBiz: "Monetization",
+      sysStatus: "System status",
+      sysClean: "Cleanup & maintenance",
+      sysNet: "Network & clients",
+      sysAccess: "Access & security",
+      sysPerm: "Permissions & plugins",
+      sysCustom: "Site layout",
+    } as Record<string, string>,
+    backToAdmin: "Back to admin",
     groupOverview: "Overview",
     groupQueue: "Queues",
     groupManage: "Users & Content",
@@ -5096,6 +5159,8 @@ const enBase: Omit<
   userDetail: {
     actionFail: "Action failed",
     loadFail: "Load failed",
+    pageTitle: "User detail",
+    pageSub: "Full field view · related data · admin actions",
     adjusted: "Adjusted",
     unsuspended: "Suspension lifted",
     suspended: "Suspended",
@@ -6120,6 +6185,10 @@ medalDaysPh: "Days (empty = medal default)",
   settingsAdmin: {
     title: "Site settings",
     groupFieldCount: "{g} groups · {f} fields",
+    headSub: "Typed site configuration & change history",
+    navTitle: "Setting groups",
+    groupBar:
+      "{group} · {n} settings · sourced from settings_meta ⋈ site_settings · saved via PUT /admin/settings/groups",
     note: "Twelve NexusPHP settings.php groups; fields render by type and are authoritatively validated server-side.",
     entryOpen: "Open site settings",
     adminOnly: "Only the sysop can save",
