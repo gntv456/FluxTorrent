@@ -15,7 +15,7 @@ mod fun_links;
 mod home;
 mod home_attendance;
 mod home_layout;
-mod home_news;
+pub(crate) mod home_news;
 pub mod idempotency;
 mod links;
 mod misc_handlers;
