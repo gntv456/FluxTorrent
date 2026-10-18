@@ -36,7 +36,7 @@ pub async fn collection_create(
         return Err(DomainError::Forbidden);
     }
     let name = body.name.trim();
-    if name.is_empty() || name.len() > 120 {
+    if name.is_empty() || name.chars().count() > 120 {
         return Err(DomainError::Validation("合集名需 1-120 字".into()));
     }
     let kind = match body.kind.as_deref() {

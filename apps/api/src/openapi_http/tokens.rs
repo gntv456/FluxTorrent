@@ -111,7 +111,7 @@ pub(super) async fn token_issue(
     )
     .await?;
     let name = body.name.trim();
-    if name.is_empty() || name.len() > 50 {
+    if name.is_empty() || name.chars().count() > 50 {
         return Err(DomainError::Validation("name 长度 1-50".into()));
     }
     if !(1..=600).contains(&body.rate_per_min) {

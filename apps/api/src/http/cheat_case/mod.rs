@@ -267,7 +267,7 @@ pub async fn cheat_case_note(
     require_staff(&auth)?;
     let id = path.into_inner();
     let text = body.body.trim();
-    if text.is_empty() || text.len() > 4000 {
+    if text.is_empty() || text.chars().count() > 4000 {
         return Err(DomainError::Validation("备注 1-4000 字符".into()));
     }
     let n: i64 = sqlx::query_scalar(

@@ -70,7 +70,7 @@ pub(crate) async fn shoutbox_send(
     body: web::Json<ShoutReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    if body.message.trim().is_empty() || body.message.len() > 300 {
+    if body.message.trim().is_empty() || body.message.chars().count() > 300 {
         return Err(DomainError::Validation("发言需 1-300 字".into()));
     }
     // 禁言位（NP chatpost 口径）：被禁言用户不能在聊天室继续刷屏

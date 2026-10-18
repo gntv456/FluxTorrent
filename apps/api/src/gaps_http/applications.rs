@@ -45,10 +45,10 @@ pub(super) async fn apply_submit(
     }
     let username = body.username.trim().to_string();
     let email = body.email.trim().to_lowercase();
-    if username.len() < 2
-        || username.len() > 24
+    if username.chars().count() < 2
+        || username.chars().count() > 24
         || !email.contains('@')
-        || body.reason.trim().len() < 20
+        || body.reason.trim().chars().count() < 20
     {
         return Err(DomainError::Validation(
             "用户名 2-24 字符、邮箱有效、申请理由至少 20 字".into(),

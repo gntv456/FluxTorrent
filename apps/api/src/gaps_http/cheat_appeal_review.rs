@@ -66,7 +66,7 @@ pub async fn cheat_appeal_resolve(
         ));
     }
     let note = body.note.trim();
-    if note.is_empty() || note.len() > 4000 {
+    if note.is_empty() || note.chars().count() > 4000 {
         return Err(DomainError::Validation("复核说明 1-4000 字符".into()));
     }
     let id = path.into_inner();

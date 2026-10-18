@@ -62,7 +62,7 @@ pub(super) struct SubtitleUploadMeta {
 
 impl SubtitleUploadMeta {
     pub(super) fn validate(body: &SubtitleUploadReq) -> DomainResult<Self> {
-        if body.title.trim().len() > 200 {
+        if body.title.trim().chars().count() > 200 {
             return Err(DomainError::Validation("标题过长（≤200 字）".into()));
         }
         if let Some(fps) = body.fps {
