@@ -5,7 +5,7 @@
 > apps/api/src/i18n.rs（三语文案）。CI 跑 `--check`：源码改动而未刷新 → 红灯。
 > 码集对拍（与 index.ts 手写 ErrorCode）见 check_type_drift.mjs 第 4 维。
 
-- 变体 22 个 → 错误码 21 个；i18n 文案 22 条（缺 2 见文末待补清单）
+- 变体 22 个 → 错误码 21 个；i18n 文案 24 条（缺 0 见文末待补清单）
 
 | 码 | 变体 | 触发条件 | zh-CN | zh-TW | en | HTTP |
 |----:|------|----------|-------|-------|----|------|
@@ -27,12 +27,7 @@
 | 4001 | InsufficientSpark | 经济操作（购买/抽卡/打赏…）火花余额不足 | 余额不足 | 餘額不足 | Insufficient balance | 409 CONFLICT |
 | 4002 | LedgerConflict | spark_ledger 乐观并发版本冲突，客户端应重试 | 流水冲突，请重试 | 流水衝突，請重試 | Ledger conflict, please retry | 409 CONFLICT |
 | 4101 | ModuleDisabled | 站点关闭了该功能模块（先模块后权限，§5.5） | 本站未开放此功能 | 本站未開放此功能 | This feature is not enabled on this site | 404 NOT_FOUND |
-| 4102 | PoolGuard | 抽卡池含保底综合返还率 >100% 被运行时拒绝（G31-B） | — | — | — | 409 CONFLICT |
+| 4102 | PoolGuard | 抽卡池含保底综合返还率 >100% 被运行时拒绝（G31-B） | 奖池保底后的返还率超过 100%，已拒绝 | 獎池保底後的返還率超過 100%，已拒絕 | Pool return rate exceeds 100% after the guarantee; rejected | 409 CONFLICT |
 | 4103 | MailUnconfigured | 站点未配邮件服务却走了必须发信的链路（P-102） | 站点未开通邮件服务，请联系管理组 | 站點未開通郵件服務，請聯繫管理組 | Mail service is not configured; contact staff | 503 SERVICE_UNAVAILABLE |
 | 5002 | AlreadyThanked | 对同一资源重复提交感谢 | 已感谢过 | 已感謝過 | Already thanked | 400 BAD_REQUEST |
-| 5003 | VersionConflict | 设定保存携带的 expected updated_at 与库中不一致 | — | — | — | 409 CONFLICT |
-
-## 待补文案（不阻塞，存量缺口同 error_registry.mjs KNOWN_GAPS）
-
-- 4102（PoolGuard）：MESSAGES 缺四元组，运行时回退 1000
-- 5003（VersionConflict）：MESSAGES 缺四元组，运行时回退 1000
+| 5003 | VersionConflict | 设定保存携带的 expected updated_at 与库中不一致 | 配置已被其他人修改，请刷新后重试 | 配置已被其他人修改，請重新整理後重試 | This configuration was changed by someone else; please reload and retry | 409 CONFLICT |
