@@ -48,7 +48,11 @@ RUN cargo build --release -p flux-api \
 RUN mkdir -p apps/api/geoip
 
 FROM ${BASE_REGISTRY}/library/debian:bookworm-slim
-RUN sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list.d/debian.sources 2>/dev/null; sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list 2>/dev/null; apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
+# apt 走官方源：GitHub runner 在海外，换国内镜像（tuna）反被墙/超时——
+# v0.4.0 发布实录：arm64 job apt exit 100 即此因。国内构建想提速用
+# --build-arg 换 APT_MIRROR，不写死。
+ARG APT_MIRROR=deb.debian.org
+RUN sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list.d/debian.sources 2>/dev/null; sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list 2>/dev/null; apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
 # 非 root 运行（审计 P1）：专用用户 uid/gid 1000；附件卷 /app/attachments 与
 # 备份卷 /backups 由 compose 卷首次创建时按此属主落盘（named volume 初次挂载会
 # 继承镜像目录属主；宿主绑定目录需站长自行 chown 1000:1000）
