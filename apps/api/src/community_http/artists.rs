@@ -79,7 +79,7 @@ pub async fn artists_list(
              ORDER BY 3 DESC, a.norm_name LIMIT $2 OFFSET $3",
         MATCH_PRED
     ))
-    .bind(kw)
+    .bind(kw.map(crate::torrents::esc_like))
     .bind(limit)
     .bind(offset)
     .bind(&kind)
@@ -90,7 +90,7 @@ pub async fn artists_list(
         "SELECT count(*) FROM artists WHERE kind = $2 \
            AND ($1::text IS NULL OR name ILIKE '%' || $1 || '%')",
     )
-    .bind(&kw)
+    .bind(kw.map(crate::torrents::esc_like))
     .bind(&kind)
     .fetch_one(&state.repo.db)
     .await

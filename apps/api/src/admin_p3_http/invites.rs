@@ -12,6 +12,12 @@ use super::staff;
 
 // ============ P2-4 邀请管理（参考站 user/invites 口径） ============
 
+/// ILIKE 关键词转义（P-332）：裸 %/_ 当通配会让「按邮箱搜邀请」退化成全表扫。
+fn email_pat(raw: Option<&str>) -> Option<String> {
+    let s = raw.map(str::trim).filter(|v| !v.is_empty());
+    s.map(crate::torrents::esc_like)
+}
+
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct InviteAdminRow {
     id: i64,
@@ -73,7 +79,7 @@ async fn admin_invites(
     )
     .bind(q.uid)
     .bind(q.valid)
-    .bind(q.email.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(email_pat(q.email.as_deref()))
     .bind(
         q.used_by_name
             .as_deref()
@@ -95,7 +101,7 @@ async fn admin_invites(
     )
     .bind(q.uid)
     .bind(q.valid)
-    .bind(q.email.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(email_pat(q.email.as_deref()))
     .bind(
         q.used_by_name
             .as_deref()

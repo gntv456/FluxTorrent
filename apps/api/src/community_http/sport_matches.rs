@@ -15,6 +15,12 @@ use crate::state::AppState;
 
 // ============ admin 维护面 ============
 
+/// ILIKE 球队名转义（P-332）：与 esc_like 同口径，防用户输入的 %/_ 变成通配。
+fn team_pat(raw: Option<&str>) -> Option<String> {
+    let s = raw.map(str::trim).filter(|v| !v.is_empty());
+    s.map(crate::torrents::esc_like)
+}
+
 #[derive(Deserialize, utoipa::ToSchema)]
 struct MatchBody {
     league: String,
@@ -218,7 +224,7 @@ pub async fn matches_list(
     .bind(q.league.as_deref().map(str::trim).filter(|s| !s.is_empty()))
     .bind(q.season.as_deref().map(str::trim).filter(|s| !s.is_empty()))
     .bind(q.round.as_deref().map(str::trim).filter(|s| !s.is_empty()))
-    .bind(q.team.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(team_pat(q.team.as_deref()))
     .bind(limit)
     .fetch_all(&state.repo.db)
     .await
