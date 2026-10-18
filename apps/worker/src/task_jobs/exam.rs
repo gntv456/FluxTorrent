@@ -25,8 +25,10 @@ pub async fn exam_assign(db: &PgPool) -> anyhow::Result<u64> {
     // onboard：新人窗口内 + 未删号 + 未领过（含已结算——转正考核一次性）
     let onboard = sqlx::query(
         r#"
-        INSERT INTO task_claims (task_id, user_id, base_uploaded, base_seed_seconds, base_uploads)
-        SELECT t.id, u.id, u.uploaded,
+        INSERT INTO task_claims (task_id, user_id, base_uploaded,
+                                 base_downloaded, base_seed_seconds,
+                                 base_uploads)
+        SELECT t.id, u.id, u.uploaded, u.downloaded,
                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
                (SELECT count(*) FROM torrents tr WHERE tr.owner_id = u.id AND tr.approval_status = 1)
         FROM tasks t
@@ -46,8 +48,10 @@ pub async fn exam_assign(db: &PgPool) -> anyhow::Result<u64> {
     // periodic：等级达标全体；period='once' 仅未领过；monthly/quarterly 上轮已结算可重派
     let periodic = sqlx::query(
         r#"
-        INSERT INTO task_claims (task_id, user_id, base_uploaded, base_seed_seconds, base_uploads)
-        SELECT t.id, u.id, u.uploaded,
+        INSERT INTO task_claims (task_id, user_id, base_uploaded,
+                                 base_downloaded, base_seed_seconds,
+                                 base_uploads)
+        SELECT t.id, u.id, u.uploaded, u.downloaded,
                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
                (SELECT count(*) FROM torrents tr WHERE tr.owner_id = u.id AND tr.approval_status = 1)
         FROM tasks t

@@ -78,65 +78,10 @@ pub(super) async fn task_overview(
         })
         .collect();
 
-    // 我的任务记录：含进行中任务的实时进度（current 与 /me/exams、task_settle 同口径）
-    let mine: Vec<(
-        i64,
-        String,
-        i16,
-        chrono::DateTime<chrono::Utc>,
-        Option<chrono::DateTime<chrono::Utc>>,
-        Option<chrono::DateTime<chrono::Utc>>,
-        i64,
-        Option<String>,
-        i64,
-        i64,
-        i64,
-        serde_json::Value,
-    )> = sqlx::query_as(
-        "SELECT t.id, t.name, c.status, c.claimed_at, c.settled_at, \
-                (c.claimed_at + (t.duration_days || ' days')::interval) AS deadline, \
-                t.reward, t.tier, c.base_uploaded, c.base_seed_seconds, c.base_uploads, t.metric \
-         FROM task_claims c JOIN tasks t ON t.id = c.task_id \
-         WHERE c.user_id = $1 ORDER BY c.id DESC LIMIT 20",
-    )
-    .bind(uid)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-
-    // 指标现值一次性取齐（四源与 task_settle/my_exams 一致）
-    let stats: Option<(i64, i64, i64, i64)> = sqlx::query_as(
-        "SELECT u.uploaded, \
-                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0)::bigint, \
-                (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), \
-                (SELECT count(*) FROM subtitles sub WHERE sub.user_id = u.id) \
-         FROM users u WHERE u.id = $1",
-    )
-    .bind(uid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let (cur_up, cur_seed, cur_uploads, cur_subtitles) =
-        stats.unwrap_or((0, 0, 0, 0));
-
-    let mine_json: Vec<serde_json::Value> = mine
-        .iter()
-        .map(|(id, name, status, at, settled, deadline, reward, tier, b_up, b_seed, b_uploads, metric)| {
-            let (up, seed, ups) = if tier.is_some() {
-                (cur_up, cur_seed, cur_uploads)
-            } else {
-                (cur_up - b_up, cur_seed - b_seed, cur_uploads - b_uploads)
-            };
-            serde_json::json!({
-                "task_id": id, "name": name, "status": status,
-                "claimed_at": at.to_rfc3339(), "settled_at": settled.map(|s| s.to_rfc3339()),
-                "deadline": deadline.map(|d| d.to_rfc3339()),
-                "reward": reward,
-                "metric": metric,
-                "current": { "uploaded": up, "seed_seconds": seed, "uploads": ups, "subtitles": cur_subtitles },
-            })
-        })
-        .collect();
+    // 我的任务记录：含进行中任务的实时进度（取数与折算拆到
+    // task_records.rs，与 worker 结算同尺）
+    let mine_json = super::task_records::records(&state, uid)
+        .await?;
 
     Ok(ok(serde_json::json!({
         "shop": shop_json,
@@ -160,10 +105,12 @@ pub(super) async fn task_claim(
     let auth = require_auth(&req, &state).await?;
 
     // 一次性取任务配置：存在性/时段/限领/报名费/等级门槛/指标
-    let task: Option<(bool, Option<i32>, i64, i32, serde_json::Value)> = sqlx::query_as(
-        "SELECT starts_at <= now() AND now() < ends_at, claim_limit, fee, target_class, metric \
-         FROM tasks WHERE id = $1",
-    )
+    let task: Option<(bool, Option<i32>, i64, i32, serde_json::Value)> =
+        sqlx::query_as(
+            "SELECT starts_at <= now() AND now() < ends_at, claim_limit, fee, \
+             target_class, metric \
+             FROM tasks WHERE id = $1",
+        )
     .bind(body.task_id)
     .fetch_optional(&state.repo.db)
     .await
@@ -219,9 +166,12 @@ pub(super) async fn task_claim(
     };
     let claim_id: i64 = sqlx::query_scalar(
         r#"
-        INSERT INTO task_claims (task_id, user_id, base_uploaded, base_seed_seconds, base_uploads)
+        INSERT INTO task_claims (task_id, user_id, base_uploaded,
+                                 base_downloaded, base_seed_seconds,
+                                 base_uploads)
         SELECT $1, $2,
                u.uploaded,
+               u.downloaded,
                COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0),
                (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)
         FROM users u
