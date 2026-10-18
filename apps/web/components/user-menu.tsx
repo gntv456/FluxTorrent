@@ -281,7 +281,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
             {isStaffClass(me.class_id) && (
               <Link
                 href="/admin"
-                className="font-bold text-[var(--baozi-orange-dark)]"
+                className="usermenu__staff font-bold"
               >
                 {dict.admin.panelTitle}
               </Link>
