@@ -88,6 +88,8 @@ use utoipa::OpenApi;
         crate::community_http::follow_delete,
         crate::community_http::forum_list,
         crate::community_http::forum_boards,
+        crate::community_http::forum_mine,
+        crate::community_http::forum_side,
         crate::community_http::bounty_award,
         crate::community_http::forum_embed_rules,
         crate::community_http::forum_feed,
