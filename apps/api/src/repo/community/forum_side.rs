@@ -49,7 +49,9 @@ pub async fn side_stats(
               JOIN forums f ON f.id = t.forum_id WHERE f.minclassread <= $1), \
             (SELECT count(*) FROM topics t JOIN forums f ON f.id = t.forum_id \
               WHERE f.minclassread <= $1 \
-                AND t.created_at >= date_trunc('day', now()))",
+                AND t.created_at >= (date_trunc('day', now() \
+                      AT TIME ZONE 'Asia/Shanghai') \
+                      AT TIME ZONE 'Asia/Shanghai'))",
     )
     .bind(class_id)
     .fetch_one(&repo.db)

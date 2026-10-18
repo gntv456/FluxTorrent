@@ -87,8 +87,9 @@ pub(super) async fn arcade_meta(
     let counts: Vec<(String, i64)> = sqlx::query_as(
         "SELECT COALESCE(ref_type, ''), count(*)::bigint FROM spark_ledger \
          WHERE user_id = $1 AND kind = 'game' AND amount < 0 \
-           AND created_at >= date_trunc('week', \
-                  now() AT TIME ZONE 'UTC') + interval '8 hours' \
+           AND created_at >= (date_trunc('week', \
+                  now() AT TIME ZONE 'Asia/Shanghai') \
+                  AT TIME ZONE 'Asia/Shanghai') \
          GROUP BY 1",
     )
     .bind(uid)

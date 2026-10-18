@@ -34,8 +34,9 @@ pub(super) async fn weekly_seed_hours(
         "SELECT count(DISTINCT split_part(l.idempotency_key, ':', 3))::bigint \
            FROM spark_ledger l \
           WHERE l.kind = 'seeding_reward' AND l.user_id = $1 \
-            AND l.created_at >= date_trunc('week', now() AT TIME ZONE 'UTC') \
-              + interval '8 hours'",
+            AND l.created_at >= (date_trunc('week', \
+                      now() AT TIME ZONE 'Asia/Shanghai') \
+                      AT TIME ZONE 'Asia/Shanghai')",
     )
     .bind(uid)
     .fetch_one(db)

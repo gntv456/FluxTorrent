@@ -125,8 +125,9 @@ pub(super) async fn claim_quest(
         "SELECT count(*)::bigint FROM spark_ledger \
           WHERE user_id = $1 AND kind = 'game' AND amount < 0 \
             AND ($2 = '*' OR ref_type = $2) \
-            AND created_at >= date_trunc('week', \
-                  now() AT TIME ZONE 'UTC') + interval '8 hours'",
+            AND created_at >= (date_trunc('week', \
+                      now() AT TIME ZONE 'Asia/Shanghai') \
+                      AT TIME ZONE 'Asia/Shanghai')",
     )
     .bind(uid)
     .bind(&r.game_ref)
