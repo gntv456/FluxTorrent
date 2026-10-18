@@ -253,12 +253,12 @@
  },
  "app/(main)/torrents/page.tsx": {
   "h1": [],
+  "h1First": 243,
   "palette": [
    38,
-   343
+   358
   ],
-  "color": [],
-  "h1First": 228
+  "color": []
  },
  "app/(main)/torrents/_parts/adv-collapse-button.tsx": {
   "h1": [],

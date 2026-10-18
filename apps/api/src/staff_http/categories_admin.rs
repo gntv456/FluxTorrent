@@ -106,6 +106,7 @@ pub async fn category_create(
         .repo
         .audit(Some(auth.id), "category.create", Some(id as i64))
         .await;
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
 
@@ -162,6 +163,7 @@ pub async fn category_update(
         .repo
         .audit(Some(auth.id), "category.update", Some(cid))
         .await;
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
 
@@ -207,5 +209,6 @@ pub async fn category_delete(
         .repo
         .audit(Some(auth.id), "category.delete", Some(did))
         .await;
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }

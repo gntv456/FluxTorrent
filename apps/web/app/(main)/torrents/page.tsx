@@ -73,22 +73,18 @@ export default async function TorrentsPage({
   const { dict } = await getDict();
   // 列表形态（方案阶段二）：视图与每页条数都走 URL，未知值回落默认（table / 20）
   // 用户级列表偏好（0316）：URL 未显式指定时，回落用户偏好，再回落默认。
-  const userPrefs = await api
-    .get<{
-      view?: string;
-      per_page?: number;
-      hidden_cols?: string[];
-    }>("/api/v1/me/list-prefs")
-    .catch(() => null);
-  const view = sp.view
-    ? parseView(sp.view)
-    : parseView(userPrefs?.view ?? "table");
-  const pageSize = sp.limit
-    ? parsePageSize(sp.limit)
-    : parsePageSize(
-        userPrefs?.per_page ? String(userPrefs.per_page) : "20",
-      );
-  const [profile, secDict, tagDict] = await Promise.all([
+  // 与三个站点级字典并行取（2026-10-18 主菜单切换提速：此前 list-prefs 先
+  // 串行一跳再发字典，RSC 首字节白等一整个 API RTT）。
+  // 多维筛选参数转发（sec_{kind} → 后端通用解析）：不转发则筛选静默失效
+  const secParams: Record<string, string> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    if (k.startsWith("sec_") && v) secParams[k] = v;
+  }
+  // 双链并发（2026-10-18 提速二段）：字典链与「偏好→列表」链并行——
+  // paged 依赖 view/pageSize（仅 URL 未指定时才回落 userPrefs），故链2
+  // 先取偏好再取列表；此前字典与列表串行，RSC 尾延 = 两段之和。
+  const dictsPromise = (async () => {
+    const [profile, secDict, tagDict] = await Promise.all([
     loadPublic<{
       categories: {
         id: number;
@@ -112,7 +108,82 @@ export default async function TorrentsPage({
       | { id: number; name: string; kind: string }[]
       | [number, string, string][]
     >("/api/v1/tags-dict"),
-  ]);
+    ]);
+    return { profile, secDict, tagDict };
+  })();
+  const listChain = (async () => {
+    const userPrefs = await api
+      .get<{
+        view?: string;
+        per_page?: number;
+        hidden_cols?: string[];
+      }>("/api/v1/me/list-prefs")
+      .catch(() => null);
+    const view = sp.view
+      ? parseView(sp.view)
+      : parseView(userPrefs?.view ?? "table");
+    const pageSize = sp.limit
+      ? parsePageSize(sp.limit)
+      : parsePageSize(
+          userPrefs?.per_page ? String(userPrefs.per_page) : "20",
+        );
+    let loadErr: unknown = null;
+    const page = await paged<TorrentListItem, TorrentPage<TorrentListItem>>(
+      "/api/v1/torrents",
+      {
+      limit: pageSize,
+      // 多选分类（0088）：后端 category_ids 兼容逗号串
+      category_id: sp.category_id,
+      official: sp.official ? sp.official === "1" : undefined,
+      search: sp.search,
+      // 搜索范围/匹配模式（NP 口径 0=标题 1=简介 3=发布者 4=IMDb；mode 2=精确）：
+      // 落在 URL 却不转发会让下拉选择静默失效
+      search_area: sp.search_area || undefined,
+      search_mode: sp.search_mode || undefined,
+      // 0102 高级搜索三态 + 多维多选（secParams 已是逗号串，后端 ANY 解析）
+      alive: sp.alive || undefined,
+      status: sp.status || undefined,
+      approval: sp.approval || undefined,
+      sort: sp.sort,
+      // 标签多选（0159 P1）：tag_ids 逗号串优先，旧单值 tag_id 兜底（后端合并解析）
+      tag_ids: sp.tag_ids || sp.tag_id || undefined,
+      tag_mode: sp.tag_mode || undefined,
+      cursor: sp.cursor,
+      // 0170 双向翻页：dir=prev 取游标之前的页（服务端反向 keyset）
+      dir: sp.dir || undefined,
+      // 0105 高级搜索增强（体积带单位串 / 日期 YYYY-MM-DD / 数值区间 / 优惠 / 发布者 / 仅我）
+      size_min: sp.size_min || undefined,
+      size_max: sp.size_max || undefined,
+      date_from: sp.date_from || undefined,
+      date_to: sp.date_to || undefined,
+      min_seeders: sp.min_seeders || undefined,
+      max_seeders: sp.max_seeders || undefined,
+      exclude: sp.exclude || undefined,
+      promo: sp.promo || undefined,
+      owner: sp.owner || undefined,
+      mine: sp.mine || undefined,
+      bookmarked: sp.bookmarked || undefined,
+      // 0118 补齐（下载数/完成数区间 / 匿名发布 / 排序视图）
+      min_leechers: sp.min_leechers || undefined,
+      max_leechers: sp.max_leechers || undefined,
+      min_completed: sp.min_completed || undefined,
+      max_completed: sp.max_completed || undefined,
+      anonymous: sp.anonymous || undefined,
+      ...secParams,
+    }).catch((e) => {
+      loadErr = e;
+      return {
+        items: [] as TorrentListItem[],
+        next_cursor: null,
+        total_estimate: 0,
+        hidden_dead: 0,
+      };
+    });
+    return { userPrefs, view, pageSize, page, loadErr };
+  })();
+  const [dictsRes, listRes] = await Promise.all([dictsPromise, listChain]);
+  const { profile, secDict, tagDict } = dictsRes;
+  const { userPrefs, view, pageSize, page, loadErr } = listRes;
   // E6 视图布局：站点级列隐藏集合（profile.view_hidden.columns；空=全显示）
   // 用户级覆盖（0316）：叠加用户额外隐藏列（title/选择/行为列恒显，见表格门控）
   const hiddenCols = new Set([
@@ -130,65 +201,9 @@ export default async function TorrentsPage({
   // 平行组别数组（0160 P2）：筛选面板按 attribute/content 分两行渲染
   const tagGroups =
     tagDict && !Array.isArray(tagDict) ? (tagDict.groups ?? []) : [];
-  // 多维筛选参数转发（sec_{kind} → 后端通用解析）：不转发则筛选静默失效
-  const secParams: Record<string, string> = {};
-  for (const [k, v] of Object.entries(sp)) {
-    if (k.startsWith("sec_") && v) secParams[k] = v;
-  }
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用；
   // 但要把「失败」与「确实没有结果」区分开（方案 P0-6：此前两者都渲染成空态）
-  let loadErr: unknown = null;
-  const page = await paged<TorrentListItem, TorrentPage<TorrentListItem>>(
-    "/api/v1/torrents",
-    {
-    limit: pageSize,
-    // 多选分类（0088）：后端 category_ids 兼容逗号串
-    category_id: sp.category_id,
-    official: sp.official ? sp.official === "1" : undefined,
-    search: sp.search,
-    // 搜索范围/匹配模式（NP 口径 0=标题 1=简介 3=发布者 4=IMDb；mode 2=精确）：
-    // 落在 URL 却不转发会让下拉选择静默失效
-    search_area: sp.search_area || undefined,
-    search_mode: sp.search_mode || undefined,
-    // 0102 高级搜索三态 + 多维多选（secParams 已是逗号串，后端 ANY 解析）
-    alive: sp.alive || undefined,
-    status: sp.status || undefined,
-    approval: sp.approval || undefined,
-    sort: sp.sort,
-    // 标签多选（0159 P1）：tag_ids 逗号串优先，旧单值 tag_id 兜底（后端合并解析）
-    tag_ids: sp.tag_ids || sp.tag_id || undefined,
-    tag_mode: sp.tag_mode || undefined,
-    cursor: sp.cursor,
-    // 0170 双向翻页：dir=prev 取游标之前的页（服务端反向 keyset）
-    dir: sp.dir || undefined,
-    // 0105 高级搜索增强（体积带单位串 / 日期 YYYY-MM-DD / 数值区间 / 优惠 / 发布者 / 仅我）
-    size_min: sp.size_min || undefined,
-    size_max: sp.size_max || undefined,
-    date_from: sp.date_from || undefined,
-    date_to: sp.date_to || undefined,
-    min_seeders: sp.min_seeders || undefined,
-    max_seeders: sp.max_seeders || undefined,
-    exclude: sp.exclude || undefined,
-    promo: sp.promo || undefined,
-    owner: sp.owner || undefined,
-    mine: sp.mine || undefined,
-    bookmarked: sp.bookmarked || undefined,
-    // 0118 补齐（下载数/完成数区间 / 匿名发布 / 排序视图）
-    min_leechers: sp.min_leechers || undefined,
-    max_leechers: sp.max_leechers || undefined,
-    min_completed: sp.min_completed || undefined,
-    max_completed: sp.max_completed || undefined,
-    anonymous: sp.anonymous || undefined,
-    ...secParams,
-  }).catch((e) => {
-    loadErr = e;
-    return {
-      items: [] as TorrentListItem[],
-      next_cursor: null,
-      total_estimate: 0,
-      hidden_dead: 0,
-    };
-  });
+
 
   // 分类只以 site-profile 为准（后台可改，与站型包同步）。拿不到就是空列表——
   // 不再回落 i18n 字典：那是另一套筛选用词表，会把选项 id 指到不存在的分类上
