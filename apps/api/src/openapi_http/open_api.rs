@@ -292,9 +292,10 @@ mod tests {
         // /torrents/{id}/previews 有 get/post/delete，故键数少于操作数）
         // C1（2026-10-16）：+1 download-link = 144
         // 64c5a097（2026-10-18）：社区 +forums/mine、+forums/side = 146
+        // 并行 forum 批（2026-10-18 晚）：+forums/recent = 147
         assert_eq!(
-            ops, 146,
-            "聚合应有 146 个操作（开放 17 + 种子 40 + 社区 89）"
+            ops, 147,
+            "聚合应有 147 个操作（开放 17 + 种子 40 + 社区 90）"
         );
     }
 }

@@ -4452,6 +4452,8 @@ const enBase: Omit<
     renameTip: "Rename",
     delTip: "Delete section",
     catNewBtn: "＋ New section",
+    gateNote: "Gate 0 = everyone; must satisfy read ≤ reply ≤ post, otherwise saving is rejected. Protected boards: from floor 2 the body is hidden from regular users (visible to moderators and staff).",
+    catTip: "Drag the handle or use the arrows to reorder — the order decides the front-end section order. After hiding, the section and its boards disappear from the front end while staying in the admin, so you can build first and reveal later.",
     newNamePh: "New section name",
     createBtn: "Create",
     catRenamed: "Section renamed",

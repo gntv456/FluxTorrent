@@ -102,9 +102,9 @@ export function checkCommunityCoverage(read, manifest) {
     r.file.startsWith("apps/api/src/community_http/"),
   );
   let fails = 0;
-  if (expected.length !== 89) {
+  if (expected.length !== 90) {
     console.log(
-      `FAIL  route-manifest 社区路由数为 ${expected.length}，预期 89` +
+      `FAIL  route-manifest 社区路由数为 ${expected.length}，预期 90` +
         `（新增社区路由请同步 open_api.rs 聚合并更新本判据）`,
     );
     fails++;
