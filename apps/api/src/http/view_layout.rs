@@ -158,6 +158,9 @@ pub async fn admin_view_hidden_put(
         .repo
         .audit(Some(auth.id), "view_hidden.update", None)
         .await;
+    // view_hidden 是 site-profile 的组成键（552da295 整包缓存 300s）：不失效
+    // 就是「后台藏了列、前台列表照旧」——站长以为改动没落地。
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     Ok(ok(serde_json::json!({ "saved": true, "view": value })))
 }
 

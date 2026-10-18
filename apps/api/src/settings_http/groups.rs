@@ -14,8 +14,7 @@ use redis::AsyncCommands;
 
 use super::engine::validate_field;
 use super::expected::{check_expected, merge_conflict};
-use super::meta::write_min;
-use super::meta::MAX_BATCH;
+use super::meta::{write_min, MAX_BATCH};
 use super::meta::{MetaRow, META_SELECT};
 
 // PUT /admin/settings/groups —— 分组批量保存
@@ -103,6 +102,7 @@ pub(super) async fn invalidate_cache(
     // 0224 G30：settings:changed 的 publish 全仓零订阅者（否定式假通过），
     // 改走 cfg:ver 版本通道（订阅侧见 cfgver.rs；Redis 分区缓存 DEL 保留）
     crate::cfgver::bump(state.get_ref(), "modules").await;
+    crate::staff_http::invalidate_site_profile_cache(state).await;
 }
 
 #[put("/admin/settings/groups")]

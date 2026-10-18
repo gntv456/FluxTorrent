@@ -161,6 +161,9 @@ pub async fn setup_apply_onboarding(
     set_kv(&state.repo.db, "onboarding_preset", preset).await;
     state.module_flags.invalidate().await;
     crate::cfgver::bump(state.get_ref(), "settings").await;
+    // 向导簇里含 site_name 等档案键（site-profile 整包缓存 300s）：失效收在
+    // 这里而不是各调用方，凡是走本助手的批量写都一并覆盖。
+    crate::staff_http::invalidate_site_profile_cache(state).await;
     state
         .repo
         .audit(Some(actor_id), "onboarding_apply", None)

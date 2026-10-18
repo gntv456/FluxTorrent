@@ -205,6 +205,9 @@ async fn setup_finish(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state.module_flags.invalidate().await;
     crate::cfgver::bump(state.get_ref(), "modules").await;
+    // 安装向导落 site_name/announce_url 等档案键；容器起来后首屏已经把这些键的
+    // 默认值灌进 site-profile 整包缓存（300s），不失效则新站名要等缓存过期才见。
+    crate::staff_http::invalidate_site_profile_cache(&state).await;
     // 5) 首个邀请码（P0-2.2 注册死锁）：注册模式为 invite_only 且站内尚无
     //    可用码时，自动发一枚给完成向导的管理员——否则新站长无法产生第二个
     //    用户（自己没配额、后台路径也不知道）。幂等：已有未用码不重复发。
