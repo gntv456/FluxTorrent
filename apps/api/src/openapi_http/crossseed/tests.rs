@@ -81,8 +81,7 @@ fn iyuu_req_tolerates_missing_fields() {
     // 客户端可能只发 sha1（pieces 匹配）；空对象也不该 500
     let r: IyuuReq = serde_json::from_str(r#"{}"#).unwrap();
     assert!(r.hash.is_empty() && r.sha1.is_empty());
-    let r2: IyuuReq =
-        serde_json::from_str(r#"{"sha1":["aa"]}"#).unwrap();
+    let r2: IyuuReq = serde_json::from_str(r#"{"sha1":["aa"]}"#).unwrap();
     assert_eq!(r2.sha1, vec!["aa".to_string()]);
 }
 

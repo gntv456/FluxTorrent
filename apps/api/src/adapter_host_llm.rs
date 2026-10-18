@@ -4,7 +4,6 @@
 //!（fetch / cache / log / secret），本文件管 LLM 这一个——
 //! 闸门顺序、返回码约定完全一致。
 
-
 use wasmtime::Linker;
 
 use crate::adapter_sandbox::{guest_mem, read_str, write_str, HostState};
@@ -90,9 +89,7 @@ fn llm_chat(route: &str, prompt: &str, max_tokens: i32) -> Result<String, i32> {
 ///
 /// 闸门顺序刻意与既有导入一致：**先查能力，再查限流，最后才出网**——
 /// 越权调用不该消耗配额。
-pub(crate) fn register_llm(
-    linker: &mut Linker<HostState>,
-) -> DomainResult<()> {
+pub(crate) fn register_llm(linker: &mut Linker<HostState>) -> DomainResult<()> {
     linker
         .func_wrap(
             "host",

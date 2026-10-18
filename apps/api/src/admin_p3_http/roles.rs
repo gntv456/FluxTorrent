@@ -33,7 +33,8 @@ async fn roles_dict_list(
     // 而 GET 这条仍回 200（实测 91 档拿到 email-domains 200 行、
     // roles-dict 5 行、agentrules 12 条）。
     // 修法：读口与写口对齐同一把权限键；语义上「读配置」与「改配置」同档。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::ROLES_MANAGE)
+        .await?;
     let rows: Vec<RoleDefRow> = sqlx::query_as(
         "SELECT key, name, descr, sort FROM roles ORDER BY sort, key",
     )

@@ -53,10 +53,7 @@ async fn grace_secs(db: &PgPool) -> i64 {
 }
 
 /// 拉取卡住的订单（超过宽限的）。
-async fn stuck_orders(
-    db: &PgPool,
-    grace: i64,
-) -> anyhow::Result<Vec<Stuck>> {
+async fn stuck_orders(db: &PgPool, grace: i64) -> anyhow::Result<Vec<Stuck>> {
     Ok(sqlx::query_as(
         "SELECT o.id, o.user_id, o.item_id, o.price, o.frozen_amount, \
                 o.idempotency_key, si.kind, si.config, o.effect_applied \
@@ -152,7 +149,8 @@ async fn apply_effect(db: &PgPool, o: &Stuck) -> anyhow::Result<bool> {
                 // 并发窗口：另一条路径已置位但效果尚未落地。此时返回
                 // false 让本轮退款是错的，保守起见交给下一轮重试。
                 tracing::warn!(
-                    order_id = o.id, "商城恢复：effect_applied 已被他方置位"
+                    order_id = o.id,
+                    "商城恢复：effect_applied 已被他方置位"
                 );
                 return Ok(false);
             }
@@ -202,11 +200,7 @@ async fn settle_charge(db: &PgPool, o: &Stuck) -> anyhow::Result<bool> {
 }
 
 /// 解冻退款：把钱还回去。
-async fn release(
-    db: &PgPool,
-    o: &Stuck,
-    reason: &str,
-) -> anyhow::Result<bool> {
+async fn release(db: &PgPool, o: &Stuck, reason: &str) -> anyhow::Result<bool> {
     let mut tx = db.begin().await?;
     let n = sqlx::query(
         "UPDATE shop_orders SET fulfill_state = 'refunded', \
@@ -230,8 +224,11 @@ async fn release(
     .await?;
     tx.commit().await?;
     tracing::info!(
-        order_id = o.id, user_id = o.user_id,
-        amount = o.frozen_amount, reason, "商城履约失败：已解冻"
+        order_id = o.id,
+        user_id = o.user_id,
+        amount = o.frozen_amount,
+        reason,
+        "商城履约失败：已解冻"
     );
     Ok(true)
 }

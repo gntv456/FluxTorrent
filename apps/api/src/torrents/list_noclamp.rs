@@ -59,8 +59,7 @@ pub async fn list_torrents_noclamp_for_sub(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if !blocked.is_empty() {
-        let set: std::collections::HashSet<i64> =
-            blocked.into_iter().collect();
+        let set: std::collections::HashSet<i64> = blocked.into_iter().collect();
         page.items.retain(|t| !set.contains(&t.id));
     }
     Ok(page)

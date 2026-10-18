@@ -50,8 +50,8 @@ pub use manage::*;
 pub use peers::*;
 pub use preview::*;
 pub(crate) use query::{
-    anonymous_or_err, date_or_err, norm_date, norm_promo,
-    norm_tags, norm_text, parse_size, promo_or_err, size_or_err,
+    anonymous_or_err, date_or_err, norm_date, norm_promo, norm_tags, norm_text,
+    parse_size, promo_or_err, size_or_err,
 };
 pub use related::*;
 /// 多维筛选参数解析：后台管理列表也要用同一实现（B3）。
@@ -67,28 +67,28 @@ pub use trump_admin::*;
 pub(crate) use aggregate::torrent_aggregate;
 pub(crate) use batch::batch_download;
 pub(crate) use cue::cue_check;
+pub(crate) use detail::comments;
 pub(crate) use detail::torrent_detail_ext;
 pub(crate) use detail::torrent_files;
-pub(crate) use detail::torrent_thanks;
-pub(crate) use detail::comments;
-pub(crate) use detail::torrent_snatches;
 pub(crate) use detail::torrent_nfo;
+pub(crate) use detail::torrent_snatches;
+pub(crate) use detail::torrent_thanks;
 pub(crate) use file_conflict::file_conflicts;
 pub(crate) use interact::create_comment;
 pub(crate) use interact::delete_comment;
-pub(crate) use interact::toggle_comment_like;
+pub(crate) use interact::do_bookmark;
 pub(crate) use interact::do_thank;
 pub(crate) use interact::request_reseed;
-pub(crate) use interact::torrent_tags;
+pub(crate) use interact::toggle_comment_like;
 pub(crate) use interact::torrent_tag_put;
-pub(crate) use interact::do_bookmark;
-pub(crate) use logs::torrent_log_body;
+pub(crate) use interact::torrent_tags;
 pub(crate) use logs::log_adjust;
+pub(crate) use logs::torrent_log_body;
 pub(crate) use magnet::torrent_magnet;
 pub(crate) use manage::edit_torrent;
-pub(crate) use manage::set_torrent_price;
 pub(crate) use manage::restore_torrent;
 pub(crate) use manage::resubmit_torrent;
+pub(crate) use manage::set_torrent_price;
 pub(crate) use peers::torrent_peers;
 pub(crate) use preview::preview_add;
 pub(crate) use preview::preview_list;

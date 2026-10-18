@@ -12,30 +12,28 @@ pub async fn topic_forum_id(
     repo: &Repo,
     tid: i64,
 ) -> DomainResult<Option<i64>> {
-    Ok(sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
-        .bind(tid)
-        .fetch_optional(&repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?)
+    Ok(
+        sqlx::query_scalar("SELECT forum_id FROM topics WHERE id = $1")
+            .bind(tid)
+            .fetch_optional(&repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?,
+    )
 }
 
 /// 主题楼主。
-pub async fn topic_owner(
-    repo: &Repo,
-    tid: i64,
-) -> DomainResult<Option<i64>> {
-    Ok(sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
-        .bind(tid)
-        .fetch_one(&repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?)
+pub async fn topic_owner(repo: &Repo, tid: i64) -> DomainResult<Option<i64>> {
+    Ok(
+        sqlx::query_scalar("SELECT user_id FROM topics WHERE id = $1")
+            .bind(tid)
+            .fetch_one(&repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?,
+    )
 }
 
 /// 待退的悬赏金额（0124：只有 open 且 > 0 的才退；已 awarded 的不动）。
-pub async fn open_bounty(
-    repo: &Repo,
-    tid: i64,
-) -> DomainResult<Option<i64>> {
+pub async fn open_bounty(repo: &Repo, tid: i64) -> DomainResult<Option<i64>> {
     Ok(sqlx::query_scalar(
         "SELECT bounty_spark FROM topics \
          WHERE id = $1 AND topic_type = 'bounty' \

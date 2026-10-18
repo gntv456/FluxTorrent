@@ -120,9 +120,8 @@ pub async fn count_members(
     } else {
         ""
     };
-    let sql = format!(
-        "SELECT count(*) FROM users u WHERE {VISIBLE}{class_filter}"
-    );
+    let sql =
+        format!("SELECT count(*) FROM users u WHERE {VISIBLE}{class_filter}");
     let mut query = sqlx::query_scalar::<_, i64>(&sql).bind(q);
     if let Some(cid) = class_id {
         query = query.bind(cid);

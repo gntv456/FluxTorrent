@@ -15,9 +15,7 @@
 
 use std::sync::Arc;
 
-use crate::extension::{
-    ExtensionManifest, EXTENSION_CONTRACT_VERSION,
-};
+use crate::extension::{ExtensionManifest, EXTENSION_CONTRACT_VERSION};
 use crate::plugin_ctx::{DbCapability, PluginCtx};
 use crate::state::AppState;
 

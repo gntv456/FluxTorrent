@@ -13,9 +13,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::torrent_http::query::{norm_date, parse_size};
 
 /// 日期：空 ⇒ 不筛；`YYYY-MM-DD` 且日历上存在 ⇒ 放行；其余 ⇒ 400。
-pub(crate) fn date_or_err(
-    s: Option<String>,
-) -> DomainResult<Option<String>> {
+pub(crate) fn date_or_err(s: Option<String>) -> DomainResult<Option<String>> {
     if s.as_deref().unwrap_or("").trim().is_empty() {
         return Ok(None);
     }
@@ -30,9 +28,7 @@ pub(crate) fn date_or_err(
 
 /// 体积：空 ⇒ 不筛；`1024`/`500MB`/`1.5GB`/`2TB`（含 KiB/GiB）⇒ 字节数；
 /// 其余（含非正数）⇒ 400。
-pub(crate) fn size_or_err(
-    s: Option<String>,
-) -> DomainResult<Option<i64>> {
+pub(crate) fn size_or_err(s: Option<String>) -> DomainResult<Option<i64>> {
     if s.as_deref().unwrap_or("").trim().is_empty() {
         return Ok(None);
     }
@@ -47,9 +43,7 @@ pub(crate) fn size_or_err(
 
 /// 匿名发布三态：`0` 全部 / `1` 仅匿名 / `2` 仅具名；空 ⇒ 不筛；
 /// 其余 ⇒ 400（旧行为是把 5 丢掉 = 不筛，与 `?approval=9` 那条同族）。
-pub(crate) fn anonymous_or_err(
-    v: Option<i16>,
-) -> DomainResult<Option<i16>> {
+pub(crate) fn anonymous_or_err(v: Option<i16>) -> DomainResult<Option<i16>> {
     match v {
         None => Ok(None),
         Some(n) if (0..=2).contains(&n) => Ok(Some(n)),
@@ -76,10 +70,14 @@ mod tests {
     /// 合法值放行且语义不变
     #[test]
     fn valid_values_pass() {
-        assert_eq!(date_or_err(Some("2026-10-01".into())).unwrap().as_deref(),
-                   Some("2026-10-01"));
-        assert_eq!(size_or_err(Some("1GB".into())).unwrap(),
-                   Some(1024i64.pow(3)));
+        assert_eq!(
+            date_or_err(Some("2026-10-01".into())).unwrap().as_deref(),
+            Some("2026-10-01")
+        );
+        assert_eq!(
+            size_or_err(Some("1GB".into())).unwrap(),
+            Some(1024i64.pow(3))
+        );
         assert_eq!(size_or_err(Some("1024".into())).unwrap(), Some(1024));
         for n in [0i16, 1, 2] {
             assert_eq!(anonymous_or_err(Some(n)).unwrap(), Some(n));
@@ -90,12 +88,13 @@ mod tests {
     #[test]
     fn garbage_is_rejected_not_ignored() {
         for bad in ["2025-13-45", "2025-02-30", "2025-1-5", "tomorrow"] {
-            assert!(date_or_err(Some(bad.into())).is_err(),
-                    "{bad} 必须 400，而不是当成没筛");
+            assert!(
+                date_or_err(Some(bad.into())).is_err(),
+                "{bad} 必须 400，而不是当成没筛"
+            );
         }
         for bad in ["abc", "12XB", "-5MB", "0"] {
-            assert!(size_or_err(Some(bad.into())).is_err(),
-                    "{bad} 必须 400");
+            assert!(size_or_err(Some(bad.into())).is_err(), "{bad} 必须 400");
         }
         for n in [3i16, -1, 5] {
             assert!(anonymous_or_err(Some(n)).is_err(), "{n} 必须 400");

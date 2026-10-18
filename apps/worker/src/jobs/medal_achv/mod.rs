@@ -9,13 +9,13 @@
 
 mod backfill;
 mod eval;
-mod seeding_bridge;
 mod event;
+mod seeding_bridge;
 
 pub(super) use backfill::backfill;
 pub(crate) use backfill::medal_backfill;
-pub(super) use eval::threshold_sweep;
 pub(crate) use eval::prog;
+pub(super) use eval::threshold_sweep;
 // `record_event` 是给业务侧（发种/评论等处）调的入口，当前站内尚未
 // 接线——接线时直接 `use crate::jobs::medal_achv::record_event`。
 #[allow(unused_imports)]
@@ -57,10 +57,7 @@ pub(super) async fn rules_of(
                auto_period FROM medals \
                WHERE auto_mode IS NOT NULL \
                  AND ($1::text IS NULL OR auto_mode = $1)";
-    Ok(sqlx::query_as(sql)
-        .bind(mode)
-        .fetch_all(db)
-        .await?)
+    Ok(sqlx::query_as(sql).bind(mode).fetch_all(db).await?)
 }
 
 /// 是否已授予（幂等判据之一）。

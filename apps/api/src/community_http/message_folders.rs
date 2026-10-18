@@ -73,8 +73,8 @@ pub(crate) async fn message_box_upsert(
                 "删除文件夹要给出它的 id（清空名称即表示删除）".into(),
             ));
         };
-        let gone = crate::repo::pmboxes::delete_box(&state.repo, auth.id, bid)
-            .await;
+        let gone =
+            crate::repo::pmboxes::delete_box(&state.repo, auth.id, bid).await;
         if gone == 0 {
             return Err(DomainError::NotFound(bid));
         }
@@ -85,18 +85,15 @@ pub(crate) async fn message_box_upsert(
     }
     match body.id {
         None => {
-            let n = crate::repo::pmboxes::count_boxes(&state.repo, auth.id)
-                .await;
+            let n =
+                crate::repo::pmboxes::count_boxes(&state.repo, auth.id).await;
             if n >= 3 {
                 return Err(DomainError::Validation("最多 3 个文件夹".into()));
             }
-            let id = crate::repo::pmboxes::upsert_box(
-                &state.repo,
-                auth.id,
-                name,
-            )
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            let id =
+                crate::repo::pmboxes::upsert_box(&state.repo, auth.id, name)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?;
             Ok(ok(serde_json::json!({ "id": id })))
         }
         Some(bid) => {

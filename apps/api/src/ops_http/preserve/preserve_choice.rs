@@ -61,4 +61,3 @@ mod choice_tests {
         assert!(m.contains("all/official/general"), "{m}");
     }
 }
-

@@ -37,14 +37,16 @@ pub async fn list_boxes(repo: &Repo, user_id: i64) -> Vec<PmBoxRow> {
 
 /// 删除文件夹并连带清空夹内信。返回被删的夹子行数（0 = 未命中）。
 pub async fn delete_box(repo: &Repo, user_id: i64, box_id: i64) -> i64 {
-    sqlx::query("DELETE FROM messages WHERE folder = $2 AND \
-                 receiver_id = $1")
-        .bind(user_id)
-        .bind(box_id)
-        .execute(&repo.db)
-        .await
-        .map_err(|e| crate::errors::DomainError::Internal(e.into()))
-        .unwrap_or_default();
+    sqlx::query(
+        "DELETE FROM messages WHERE folder = $2 AND \
+                 receiver_id = $1",
+    )
+    .bind(user_id)
+    .bind(box_id)
+    .execute(&repo.db)
+    .await
+    .map_err(|e| crate::errors::DomainError::Internal(e.into()))
+    .unwrap_or_default();
     sqlx::query("DELETE FROM pmboxes WHERE id = $2 AND user_id = $1")
         .bind(user_id)
         .bind(box_id)
@@ -88,15 +90,13 @@ pub async fn rename_box(
     box_id: i64,
     name: &str,
 ) -> i64 {
-    sqlx::query(
-        "UPDATE pmboxes SET name = $3 WHERE id = $2 AND user_id = $1",
-    )
-    .bind(user_id)
-    .bind(box_id)
-    .bind(name)
-    .execute(&repo.db)
-    .await
-    .map_err(|e| crate::errors::DomainError::Internal(e.into()))
-    .unwrap_or_default()
-    .rows_affected() as i64
+    sqlx::query("UPDATE pmboxes SET name = $3 WHERE id = $2 AND user_id = $1")
+        .bind(user_id)
+        .bind(box_id)
+        .bind(name)
+        .execute(&repo.db)
+        .await
+        .map_err(|e| crate::errors::DomainError::Internal(e.into()))
+        .unwrap_or_default()
+        .rows_affected() as i64
 }

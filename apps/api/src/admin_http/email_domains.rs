@@ -80,15 +80,18 @@ async fn email_domains_list(
     // 而 GET 这条仍回 200（实测 91 档拿到 email-domains 200 行、
     // roles-dict 5 行、agentrules 12 条）。
     // 修法：读口与写口对齐同一把权限键；语义上「读配置」与「改配置」同档。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     let needle = format!("%{}%", q.q.as_deref().unwrap_or("").trim());
     let limit = q.limit.unwrap_or(200).clamp(1, 1000);
     let rows = domain_repo::list_domains(&state.repo, &needle, limit)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let total = domain_repo::count_domains(&state.repo)
-        .await
-        .unwrap_or(0);
+    let total = domain_repo::count_domains(&state.repo).await.unwrap_or(0);
     Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "items": rows,
         "total": total,
@@ -168,8 +171,9 @@ async fn email_domains_import(
                     valid.push(d);
                 }
             }
-            Err(w) => rejected
-                .push(serde_json::json!({ "index": i, "reason": w })),
+            Err(w) => {
+                rejected.push(serde_json::json!({ "index": i, "reason": w }))
+            }
         }
     }
     // 整批一事务（ON CONFLICT 幂等）在 repo 内完成；已存在计入 skipped

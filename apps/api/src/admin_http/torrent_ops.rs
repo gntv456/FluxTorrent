@@ -37,7 +37,7 @@ async fn torrent_op_logs(
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<TorrentOpQ>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-269: ledger read gated with torrent.manage (as its writes).
     crate::authz::require_perm(
         &state,

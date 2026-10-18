@@ -5,7 +5,7 @@
 //! （H 层不 import sqlx，FRAME §2）。本文件只留权限判定、钱的回收
 //! 编排（earn_spark 的幂等键在 H 层）与 JSON 组装。
 
-use actix_web::{delete, web, HttpRequest, HttpResponse};
+use super::forum_access;
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
@@ -13,7 +13,7 @@ use crate::http::require_auth;
 use crate::repo::community::follows as repo_follows;
 use crate::repo::community::topic_delete as repo_td;
 use crate::state::AppState;
-use super::forum_access;
+use actix_web::{delete, web, HttpRequest, HttpResponse};
 
 /// 删主题：仅版主/postmanage；收回发帖 +2 火花（KPS("-", starttopic_bonus) 口径）
 #[utoipa::path(
@@ -73,8 +73,7 @@ pub(crate) async fn topic_delete(
                 &format!("forum-lottery-refund:{tid}"),
             )
             .await;
-            let _ =
-                repo_td::mark_lottery_cancelled(&state.repo, tid).await;
+            let _ = repo_td::mark_lottery_cancelled(&state.repo, tid).await;
         }
     }
     if let Some(op_id) = op {

@@ -30,18 +30,20 @@ struct WarnCfg {
 }
 
 async fn warn_cfg(db: &PgPool) -> WarnCfg {
-    let rows: Vec<(String, String)> =
-        sqlx::query_as(
-            "SELECT name, value FROM site_settings \
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings \
              WHERE name IN ('hr_warn_enable', 'hr_warn_base_days', \
                             'hr_warn_max_shift_days')",
-        )
-        .fetch_all(db)
-        .await
-        .unwrap_or_default();
-    let get = |k: &str| rows.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone());
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let get =
+        |k: &str| rows.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone());
     WarnCfg {
-        enabled: get("hr_warn_enable").map(|v| v != "0" && v != "no").unwrap_or(true),
+        enabled: get("hr_warn_enable")
+            .map(|v| v != "0" && v != "no")
+            .unwrap_or(true),
         base_days: get("hr_warn_base_days")
             .and_then(|v| v.parse().ok())
             .unwrap_or(7)
@@ -239,11 +241,13 @@ async fn restore_due(db: &PgPool, now: DateTime<Utc>) -> anyhow::Result<u64> {
         .execute(db)
         .await?;
     // 只解 H&R 自己锁的：别把 Ratio Watch 等其它原因锁住的人一并放开。
-    sqlx::query("UPDATE users SET download_enabled = TRUE, \
+    sqlx::query(
+        "UPDATE users SET download_enabled = TRUE, \
                  download_locked_by = NULL \
-                 WHERE id = ANY($1) AND download_locked_by = 'hr'")
-        .bind(&ids)
-        .execute(db)
-        .await?;
+                 WHERE id = ANY($1) AND download_locked_by = 'hr'",
+    )
+    .bind(&ids)
+    .execute(db)
+    .await?;
     Ok(ids.len() as u64)
 }

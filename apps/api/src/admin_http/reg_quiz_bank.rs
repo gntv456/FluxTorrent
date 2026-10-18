@@ -31,10 +31,9 @@ pub(crate) struct QuizReq {
 
 /// 归一化 + 校验；`Ok((category, question, options, answer, explanation))`。
 /// add / update / import 三处共用同一把尺（拒绝而不是静默截断）。
-pub(crate) fn validate_quiz(r: &QuizReq) -> Result<
-    (String, String, Vec<String>, i32, Option<String>),
-    String,
-> {
+pub(crate) fn validate_quiz(
+    r: &QuizReq,
+) -> Result<(String, String, Vec<String>, i32, Option<String>), String> {
     let question = r.question.trim().to_string();
     let n = question.chars().count();
     if n < 4 || n > Q_MAX {

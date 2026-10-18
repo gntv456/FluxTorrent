@@ -68,11 +68,7 @@ fn parse_body(raw: &[u8]) -> DomainResult<dd::Disposal> {
 
 /// 形状校验（全在进数据库之前）：坏理由/缺说明/超长说明都拒
 fn to_disposal(b: &DeleteReq) -> DomainResult<dd::Disposal> {
-    let reason = b
-        .reason
-        .as_deref()
-        .map(str::trim)
-        .filter(|r| !r.is_empty());
+    let reason = b.reason.as_deref().map(str::trim).filter(|r| !r.is_empty());
     if let Some(r) = reason {
         if !REASONS.contains(&r) {
             return Err(DomainError::Validation("删除理由不合法".into()));

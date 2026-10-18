@@ -60,8 +60,7 @@ pub async fn cheat_appeal_resolve(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     require_perm(&state, &auth, CHEAT_SANCTIONS).await?;
-    if !["upheld", "mitigated", "overturned"].contains(&body.outcome.as_str())
-    {
+    if !["upheld", "mitigated", "overturned"].contains(&body.outcome.as_str()) {
         return Err(DomainError::Validation(
             "outcome 只认 upheld/mitigated/overturned".into(),
         ));
@@ -104,10 +103,19 @@ pub async fn cheat_appeal_resolve(
         "rejected"
     };
 
-    let mut tx = state.repo.db.begin().await
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     appeal_repo::resolve_appeal(
-        &mut tx, id, status, &body.outcome, auth.id, note,
+        &mut tx,
+        id,
+        status,
+        &body.outcome,
+        auth.id,
+        note,
     )
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -130,7 +138,11 @@ pub async fn cheat_appeal_resolve(
             auth.id,
             format!(
                 "申诉 #{id} 复核结论：{}。说明：{note}",
-                if body.outcome == "mitigated" { "减轻" } else { "维持" }
+                if body.outcome == "mitigated" {
+                    "减轻"
+                } else {
+                    "维持"
+                }
             ),
         )
         .await

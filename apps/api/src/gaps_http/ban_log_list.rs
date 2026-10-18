@@ -46,12 +46,11 @@ pub(crate) async fn ban_log_list(
     let auth = require_auth(&req, &state).await?;
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let per = q.per.unwrap_or(PER_DEFAULT).clamp(1, PER_MAX);
-    let needle = q
-        .q
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.chars().take(64).collect::<String>());
+    let needle =
+        q.q.as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.chars().take(64).collect::<String>());
     let kind: Option<i16> = match q.kind.as_deref() {
         Some("ban") => Some(2),
         Some("mute") => Some(1),

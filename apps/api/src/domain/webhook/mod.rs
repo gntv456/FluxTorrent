@@ -28,10 +28,7 @@ pub enum Egress {
 /// 「解析完再连」之间存在 rebinding 窗口——真要防 rebinding 得在
 /// 连接层固定 IP，超出本函数的职责。这里拦的是「配置里直接写了
 /// 内网地址」这一类，成本极低、覆盖绝大多数实际滥用。
-pub fn egress_allowed(
-    url: &str,
-    allow_cidrs: &[String],
-) -> Egress {
+pub fn egress_allowed(url: &str, allow_cidrs: &[String]) -> Egress {
     let u = match url::Url::parse(url) {
         Ok(u) => u,
         Err(_) => return Egress::Deny("URL 无法解析".into()),
@@ -135,11 +132,7 @@ pub fn cidr_contains(cidr: &str, ip: std::net::IpAddr) -> bool {
 ///
 /// 密钥为空 → 返回 None（不签名）。这不是「安全」，而是**兼容**
 /// 老站：突然要求签名会让既有出口全部静默失效，且失败原因难查。
-pub fn sign(
-    secret: &str,
-    timestamp: i64,
-    body: &str,
-) -> Option<String> {
+pub fn sign(secret: &str, timestamp: i64, body: &str) -> Option<String> {
     if secret.is_empty() {
         return None;
     }

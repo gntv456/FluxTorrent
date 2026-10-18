@@ -121,11 +121,13 @@ pub async fn activate(repo: &Repo, version: i32) -> DomainResult<u64> {
     if !exists {
         return Err(DomainError::NotFound(version as i64));
     }
-    sqlx::query("UPDATE cheat_rulesets SET active = false \
-                 WHERE active")
-        .execute(&mut *tx)
-        .await
-        .map_err(internal)?;
+    sqlx::query(
+        "UPDATE cheat_rulesets SET active = false \
+                 WHERE active",
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(internal)?;
     let n = sqlx::query(
         "UPDATE cheat_rulesets SET active = true, activated_at = now() \
          WHERE version = $1",
@@ -216,33 +218,39 @@ pub async fn list_backtests(
     limit: i64,
 ) -> DomainResult<Vec<serde_json::Value>> {
     let rows: Vec<(
-        i64, i32, i32, i32, i32, i32, i32, i32, Option<i64>, String,
-    )> =
-        sqlx::query_as(
-            "SELECT id, from_ver, to_ver, window_days, total_users, \
+        i64,
+        i32,
+        i32,
+        i32,
+        i32,
+        i32,
+        i32,
+        i32,
+        Option<i64>,
+        String,
+    )> = sqlx::query_as(
+        "SELECT id, from_ver, to_ver, window_days, total_users, \
                     would_open, band_up, band_down, \
                     CASE WHEN total_users < 0 THEN NULL \
                          ELSE jsonb_array_length(diffs)::bigint END, \
                     created_at::text \
              FROM cheat_backtest_runs ORDER BY created_at DESC LIMIT $1",
-        )
-        .bind(limit)
-        .fetch_all(&repo.db)
-        .await
-        .map_err(internal)?;
+    )
+    .bind(limit)
+    .fetch_all(&repo.db)
+    .await
+    .map_err(internal)?;
     Ok(rows
         .into_iter()
-        .map(
-            |(id, from, to, days, total, open, up, down, diff_n, at)| {
-                serde_json::json!({
-                    "id": id, "from_ver": from, "to_ver": to,
-                    "window_days": days, "total_users": total,
-                    "would_open": open, "band_up": up, "band_down": down,
-                    "diff_count": diff_n, "created_at": at,
-                    // -1 = 排队占位（enqueue 写入，等 worker 回填）
-                    "done": total >= 0,
-                })
-            },
-        )
+        .map(|(id, from, to, days, total, open, up, down, diff_n, at)| {
+            serde_json::json!({
+                "id": id, "from_ver": from, "to_ver": to,
+                "window_days": days, "total_users": total,
+                "would_open": open, "band_up": up, "band_down": down,
+                "diff_count": diff_n, "created_at": at,
+                // -1 = 排队占位（enqueue 写入，等 worker 回填）
+                "done": total >= 0,
+            })
+        })
         .collect())
 }

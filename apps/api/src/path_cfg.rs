@@ -119,7 +119,10 @@ pub(crate) fn humanize_parse_error(raw: &str) -> String {
             .nth(1)
             .map(|w| {
                 // 去掉「at line 1 column 20」这类位置尾巴，它不是给人看的
-                w.split(" at line ").next().unwrap_or(w).trim_end_matches('.')
+                w.split(" at line ")
+                    .next()
+                    .unwrap_or(w)
+                    .trim_end_matches('.')
             })
             .unwrap_or("类型不符");
         return format!("字段类型不对：应为 {want}");
@@ -127,16 +130,21 @@ pub(crate) fn humanize_parse_error(raw: &str) -> String {
     if body.contains("invalid value") || body.contains("expected variant") {
         return "取值不在允许范围内".to_string();
     }
-    if body.contains("invalid digit") || body.contains("cannot parse")
-        || body.contains("can not parse") {
+    if body.contains("invalid digit")
+        || body.contains("cannot parse")
+        || body.contains("can not parse")
+    {
         let num = quoted(body, "parse ");
         return match num {
             Some(v) => format!("应为数字：{v}"),
             None => "应为数字".to_string(),
         };
     }
-    if body.contains("expected value") || body.contains("trailing characters")
-        || body.contains("key must be a string") || body.contains("EOF") {
+    if body.contains("expected value")
+        || body.contains("trailing characters")
+        || body.contains("key must be a string")
+        || body.contains("EOF")
+    {
         return "请求体不是合法 JSON".to_string();
     }
     if body.contains("content type") || body.contains("Content-Type") {

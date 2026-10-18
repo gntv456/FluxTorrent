@@ -4,12 +4,12 @@
 //! 2026-10-16：SQL 已下沉到 repo::community::matches（H 层不 import
 //! sqlx，FRAME §2）。
 
-use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::repo::community::matches as repo_matches;
 use crate::state::AppState;
+use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
 
 /// 对阵页：该场全部过审种（全场/集锦/回放并列）。
 #[utoipa::path(

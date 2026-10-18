@@ -3,8 +3,8 @@
 //! upload.rs，聚合组在 group.rs，.torrent 生成下载在 download.rs。
 //! 路由注册沿用 http.rs 的 crate::publish_http::fn 引用（glob re-export）。
 
-mod auto_meta;
 pub(crate) mod attachment;
+mod auto_meta;
 mod collections;
 mod descr_image;
 mod download;

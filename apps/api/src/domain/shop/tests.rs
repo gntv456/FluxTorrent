@@ -42,10 +42,7 @@ fn frozen_ok_fulfills() {
 /// 已冻结 + 履约失败 + 仍在宽限 → 不动（等下一轮）。
 #[test]
 fn frozen_fail_within_grace_waits() {
-    assert_eq!(
-        advance(&inp(State::Frozen, false, 10, false)),
-        Action::None
-    );
+    assert_eq!(advance(&inp(State::Frozen, false, 10, false)), Action::None);
 }
 
 /// 已冻结 + 履约失败 + 宽限已过 → 解冻退款（钱不能永久卡住）。
@@ -108,7 +105,10 @@ fn terminal_states_are_noop() {
 /// 递增价格：未过 anchor 不涨。
 #[test]
 fn price_flat_before_anchor() {
-    assert_eq!(price_with_step(100, 3, Some(10), Some(500), 10).unwrap(), 100);
+    assert_eq!(
+        price_with_step(100, 3, Some(10), Some(500), 10).unwrap(),
+        100
+    );
     assert_eq!(
         price_with_step(100, 10, Some(10), Some(500), 10).unwrap(),
         100,
@@ -146,8 +146,10 @@ fn no_step_means_flat_price() {
 fn missing_max_is_rejected_not_silently_capped() {
     // 偷偷兜底会得到「明明配了递增却卖不动」这种查不出原因的现场
     assert!(price_with_step(100, 1_000_000, Some(10), None, 10).is_err());
-    assert!(price_with_step(100, 1, Some(0), None, 0).is_err(),
-            "step=0 也不该放行——配了递增就说明打算涨，得配上限");
+    assert!(
+        price_with_step(100, 1, Some(0), None, 0).is_err(),
+        "step=0 也不该放行——配了递增就说明打算涨，得配上限"
+    );
 }
 
 /// 负数输入必须拒。

@@ -132,11 +132,10 @@ pub async fn claim_promote(
 
 /// 自审回滚 / 在架守卫失败回滚：把 promoted 置回 false。
 pub async fn unpromote(repo: &Repo, offer_id: i64) {
-    let _ =
-        sqlx::query("UPDATE offers SET promoted = false WHERE id = $1")
-            .bind(offer_id)
-            .execute(&repo.db)
-            .await;
+    let _ = sqlx::query("UPDATE offers SET promoted = false WHERE id = $1")
+        .bind(offer_id)
+        .execute(&repo.db)
+        .await;
 }
 
 /// 种的发布者（自审拦截用；行不在或无主 → None）。

@@ -158,14 +158,7 @@ pub async fn recent_read_topics(
     class_id: i32,
     limit: i64,
 ) -> DomainResult<
-    Vec<(
-        i64,
-        String,
-        i64,
-        String,
-        i64,
-        chrono::DateTime<chrono::Utc>,
-    )>,
+    Vec<(i64, String, i64, String, i64, chrono::DateTime<chrono::Utc>)>,
 > {
     sqlx::query_as(
         "SELECT t.id, t.title, t.forum_id, f.name, \

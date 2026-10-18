@@ -2,9 +2,9 @@
 
 use sqlx::PgPool;
 
-use super::eval::{event_total, eval_threshold_one, prog};
-use super::{award, pending_users, save_progress, RuleRow, BATCH, MAX_BATCHES};
 use super::api_domain as md;
+use super::eval::{eval_threshold_one, event_total, prog};
+use super::{award, pending_users, save_progress, RuleRow, BATCH, MAX_BATCHES};
 
 /// 回填单个人（event / threshold 两条路径）。返回是否新授予。
 async fn backfill_one(

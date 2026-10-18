@@ -149,9 +149,7 @@ pub fn price_with_step(
     // 负数校验必须在 step 提前返回**之前**：否则「单价 -1、step 未配」
     // 这条最危险的配置反而绕过了检查（负单价会反向给用户加钱）。
     if unit < 0 || sold < 0 {
-        return Err(DomainError::Validation(
-            "单价与已售量不能为负".into(),
-        ));
+        return Err(DomainError::Validation("单价与已售量不能为负".into()));
     }
     let Some(step) = step else {
         return Ok(unit);
@@ -187,22 +185,17 @@ pub fn validate_step(
         }
         if s > 0 && max.is_none() {
             return Err(DomainError::Validation(
-                "启用递增价格必须设上限 price_max——否则单价会无限膨胀"
-                    .into(),
+                "启用递增价格必须设上限 price_max——否则单价会无限膨胀".into(),
             ));
         }
     }
     if let Some(m) = max {
         if m < 0 {
-            return Err(DomainError::Validation(
-                "价格上限不能为负".into(),
-            ));
+            return Err(DomainError::Validation("价格上限不能为负".into()));
         }
     }
     if anchor < 0 {
-        return Err(DomainError::Validation(
-            "阶梯起点不能为负".into(),
-        ));
+        return Err(DomainError::Validation("阶梯起点不能为负".into()));
     }
     Ok(())
 }

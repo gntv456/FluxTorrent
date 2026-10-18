@@ -110,9 +110,10 @@ pub(crate) async fn torrent_magnet(
         .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some((price, owner)) = paid {
         if price > 0 && owner != Some(auth.id) {
-            let owned = crate::repo::magnet::purchased(&state.repo, auth.id, id)
-                .await
-            .unwrap_or(false);
+            let owned =
+                crate::repo::magnet::purchased(&state.repo, auth.id, id)
+                    .await
+                    .unwrap_or(false);
             if !owned {
                 return Err(DomainError::Validation(format!(
                     "该种子为付费种子（{price} 魔力）：请先在详情页点\
@@ -121,11 +122,8 @@ pub(crate) async fn torrent_magnet(
             }
         }
     }
-    let announce = format!(
-        "{}/announce/{}",
-        announce_base(&state.repo).await,
-        passkey
-    );
+    let announce =
+        format!("{}/announce/{}", announce_base(&state.repo).await, passkey);
     let magnet = format!(
         "magnet:?xt=urn:btih:{}&dn={}&tr={}",
         info_hash,

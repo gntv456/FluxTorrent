@@ -93,9 +93,12 @@ pub(crate) async fn add_cidr(
             "请填 CIDR（含前缀长度），例如 192.168.10.0/24".into(),
         ));
     }
-    let added = repo_wh::add_egress_cidr(&state.repo, cidr, body.note.trim())
-        .await?;
-    state.repo.audit(Some(auth.id), "webhook.egress_add", None).await;
+    let added =
+        repo_wh::add_egress_cidr(&state.repo, cidr, body.note.trim()).await?;
+    state
+        .repo
+        .audit(Some(auth.id), "webhook.egress_add", None)
+        .await;
     Ok(ok(serde_json::json!({ "added": added, "cidr": cidr })))
 }
 
@@ -140,10 +143,7 @@ pub(crate) async fn reset(
         return Err(DomainError::Validation("未知出口".into()));
     }
     let n = repo_wh::reset_failures(&state.repo, &ch).await?;
-    state
-        .repo
-        .audit(Some(auth.id), "webhook.reset", None)
-        .await;
+    state.repo.audit(Some(auth.id), "webhook.reset", None).await;
     Ok(ok(serde_json::json!({ "cleared": n, "channel": ch })))
 }
 
@@ -165,7 +165,7 @@ pub(crate) async fn deliveries(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, perm::SETTINGS_MANAGE).await?;
-    let rows = repo_wh::recent_deliveries(&state.repo, q.limit.clamp(1, 200))
-        .await?;
+    let rows =
+        repo_wh::recent_deliveries(&state.repo, q.limit.clamp(1, 200)).await?;
     Ok(ok(serde_json::json!({ "deliveries": rows })))
 }

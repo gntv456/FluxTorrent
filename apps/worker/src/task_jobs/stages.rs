@@ -57,8 +57,8 @@ pub(super) async fn stage_advance(
     let started = c.exam_stage_started_at.unwrap_or(c.claimed_at);
     let elapsed_days = (now_minus(started)).num_days().max(0) as i32;
 
-    let verdict = super::exam_fair::judge_stage(
-        &super::exam_fair::StageInput {
+    let verdict =
+        super::exam_fair::judge_stage(&super::exam_fair::StageInput {
             seq,
             is_last,
             duration_days: dur,
@@ -66,8 +66,7 @@ pub(super) async fn stage_advance(
             fail_action: super::exam_fair::FailAction::parse(&action_s),
             elapsed_days,
             met,
-        },
-    );
+        });
     let prog = super::exam_fair::progress(&verdict, seq);
     match prog {
         super::exam_fair::Progress::None => Ok(None),
@@ -93,8 +92,7 @@ pub(super) async fn stage_advance(
             }
         }
         super::exam_fair::Progress::EnterRemedy {
-            remedy_until_days,
-            ..
+            remedy_until_days, ..
         } => {
             let n = sqlx::query(
                 "UPDATE task_claims SET exam_remedy_until = \

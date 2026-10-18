@@ -8,9 +8,9 @@
 
 pub mod ban_log;
 pub mod boards;
+pub mod follows;
 pub mod forum_mine;
 pub mod forum_side;
-pub mod follows;
 pub mod friends;
 pub mod matches;
 pub mod topic_delete;

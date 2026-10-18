@@ -44,7 +44,8 @@ async fn post_signed(
 
     let mut last = String::new();
     for attempt in 1..=retries.max(1) {
-        let mut req = client.post(url).header("content-type", "application/json");
+        let mut req =
+            client.post(url).header("content-type", "application/json");
         if let Some(sig) = crate::domain::webhook::sign(secret, ts, &body) {
             req = req
                 .header("X-Flux-Timestamp", ts.to_string())
@@ -94,9 +95,13 @@ async fn settle(
 ) {
     let repo = &state.repo;
     let _ = repo_wh::record_delivery(
-        repo, channel, event,
+        repo,
+        channel,
+        event,
         if d.ok { "ok" } else { "failed" },
-        d.attempts, d.elapsed_ms, &d.detail,
+        d.attempts,
+        d.elapsed_ms,
+        &d.detail,
     )
     .await;
     if !d.ok && threshold > 0 {

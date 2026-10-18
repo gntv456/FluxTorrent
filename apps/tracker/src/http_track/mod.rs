@@ -1,8 +1,8 @@
 //! HTTP tracker 域模块（从 main.rs 按域拆出）。
 
 pub(crate) mod agent_ver;
-pub(crate) mod announce;
 pub(crate) mod ann_ban;
+pub(crate) mod announce;
 pub(crate) mod emit;
 pub(crate) mod gate;
 pub(crate) mod guard;

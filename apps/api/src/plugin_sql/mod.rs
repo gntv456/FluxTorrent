@@ -27,12 +27,10 @@
 
 mod exec;
 
-pub use exec::{
-    exec_isolated, fetch_all_isolated, fetch_scalar_i64_isolated,
-};
+pub use exec::{exec_isolated, fetch_all_isolated, fetch_scalar_i64_isolated};
 
-use sqlx::PgPool;
 use sqlx::postgres::Postgres;
+use sqlx::PgPool;
 use sqlx::{Acquire, Transaction};
 
 use crate::errors::{DomainError, DomainResult};
@@ -102,17 +100,21 @@ pub async fn ensure_isolation(
     caps: &[DbCapability],
 ) -> Isolation {
     let (read, write) = split_tables(caps);
-    let mode = if write.is_empty() { DbMode::Read } else { DbMode::Write };
+    let mode = if write.is_empty() {
+        DbMode::Read
+    } else {
+        DbMode::Write
+    };
 
     // 迁移未跑（老库/跳号）时函数不存在；这一层也要能降级。
     let role: Option<String> =
         sqlx::query_scalar::<_, String>("SELECT flux_plugin_role_name($1)")
             .bind(name)
-    .fetch_optional(pool)
-    .await
-    .ok()
-    .flatten()
-    .filter(|r| !r.is_empty());
+            .fetch_optional(pool)
+            .await
+            .ok()
+            .flatten()
+            .filter(|r| !r.is_empty());
 
     let Some(role) = role else {
         tracing::warn!(
@@ -149,13 +151,12 @@ pub async fn ensure_isolation(
 
     // 站点连接必须能 SET ROLE 到该角色（NOINHERIT 的反面：需要 SET TRUE）。
     // 权限不足时静默降级——SET 权拿不到不代表角色不存在。
-    let can_set: bool = sqlx::query_scalar(
-        "SELECT pg_has_role(current_user, $1, 'USAGE')",
-    )
-    .bind(&role)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(false);
+    let can_set: bool =
+        sqlx::query_scalar("SELECT pg_has_role(current_user, $1, 'USAGE')")
+            .bind(&role)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(false);
     if !can_set {
         tracing::warn!(
             plugin = name,

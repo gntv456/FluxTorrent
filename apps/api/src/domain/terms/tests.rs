@@ -4,7 +4,11 @@ use super::*;
 
 fn inp(total: i64, active: i64, dep: i64, ret: i64, rule: i64) -> AuditInput {
     AuditInput {
-        total, active, deprecated: dep, retired: ret, with_rule: rule,
+        total,
+        active,
+        deprecated: dep,
+        retired: ret,
+        with_rule: rule,
     }
 }
 
@@ -85,8 +89,10 @@ fn retired_blocks_reference() {
 #[test]
 fn retirement_is_one_way_with_rollback() {
     assert!(can_transition(Status::Deprecated, Status::Retired));
-    assert!(can_transition(Status::Retired, Status::Active),
-            "撤回误操作必须留通道");
+    assert!(
+        can_transition(Status::Retired, Status::Active),
+        "撤回误操作必须留通道"
+    );
     // 刻意退役的键不能直接跳去别的态，必须先回 active
     assert!(!can_transition(Status::Retired, Status::Deprecated));
     // active → retired 也要走 deprecated 一步

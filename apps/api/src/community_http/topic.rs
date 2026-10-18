@@ -127,8 +127,7 @@ pub(crate) async fn topic_list(
         Some("digest") => " AND t.digest",
         _ => "",
     };
-    let where_sql =
-        format!("t.forum_id = $1{tag_filter}{type_filter}");
+    let where_sql = format!("t.forum_id = $1{tag_filter}{type_filter}");
     let sql = format!(
         "SELECT t.id, t.forum_id, t.title, u.username, \
             greatest( \
@@ -166,13 +165,12 @@ pub(crate) async fn topic_list(
         repo_side::count_board_topics(&state.repo, fid, &where_sql).await?;
     // 版块名与版块规则（0392）随列表一起回：避免前端只为拿标题/规则条
     // 再打一次 /forums。规则为 NULL 时前台整条规则条不渲染。
-    let board: Option<(String, Option<String>)> = sqlx::query_as(
-        "SELECT name, rules FROM forums WHERE id = $1",
-    )
-    .bind(fid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let board: Option<(String, Option<String>)> =
+        sqlx::query_as("SELECT name, rules FROM forums WHERE id = $1")
+            .bind(fid)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let (forum_name, forum_rules) = match board {
         Some((n, r)) => (Some(n), r),
         None => (None, None),

@@ -36,9 +36,7 @@ pub async fn count_domains(repo: &Repo) -> Result<i64, sqlx::Error> {
 }
 
 /// 导出：纯域名数组（可分享 JSON 用）。
-pub async fn export_domains(
-    repo: &Repo,
-) -> Result<Vec<String>, sqlx::Error> {
+pub async fn export_domains(repo: &Repo) -> Result<Vec<String>, sqlx::Error> {
     sqlx::query_scalar(
         "SELECT domain FROM disposable_email_domains ORDER BY domain",
     )

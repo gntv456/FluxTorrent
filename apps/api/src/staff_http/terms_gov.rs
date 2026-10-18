@@ -10,8 +10,8 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::authz::perm;
-use crate::dto::ok;
 use crate::domain::terms as tg;
+use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::repo::terms_gov as repo_tg;
@@ -57,8 +57,7 @@ pub(crate) async fn key_upsert(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, perm::TERMS_MANAGE).await?;
     // 键名会进 URL / Redis key / 前端字典，字符集由 domain 层限定
-    tg::validate_key(&body.key)
-        .map_err(|e| DomainError::Validation(e.0))?;
+    tg::validate_key(&body.key).map_err(|e| DomainError::Validation(e.0))?;
     repo_tg::upsert_key(
         &state.repo,
         body.key.trim(),
@@ -107,11 +106,7 @@ pub(crate) async fn key_set_status(
     }
     state
         .repo
-        .audit(
-            Some(auth.id),
-            &format!("terms.key_{}", to.as_str()),
-            None,
-        )
+        .audit(Some(auth.id), &format!("terms.key_{}", to.as_str()), None)
         .await;
     Ok(ok(serde_json::json!({
         "key": body.key,
@@ -178,7 +173,11 @@ pub(crate) async fn run_audit(
         a.with_rule,
         a.coverage_pct,
         &refs,
-        if a.healthy { "healthy" } else { "needs_attention" },
+        if a.healthy {
+            "healthy"
+        } else {
+            "needs_attention"
+        },
     )
     .await?;
     state

@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 802,
+ "total": 808,
  "routes": [
   {
    "method": "POST",
@@ -1566,6 +1566,12 @@
   },
   {
    "method": "GET",
+   "path": "/users",
+   "handler": "users_list",
+   "file": "apps/api/src/auth_http/users_list.rs"
+  },
+  {
+   "method": "GET",
    "path": "/artists",
    "handler": "artists_list",
    "file": "apps/api/src/community_http/artists.rs"
@@ -1647,6 +1653,18 @@
    "path": "/forums/boards",
    "handler": "forum_boards",
    "file": "apps/api/src/community_http/forums_boards.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/mine",
+   "handler": "forum_mine",
+   "file": "apps/api/src/community_http/forums_mine.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/forums/side",
+   "handler": "forum_side",
+   "file": "apps/api/src/community_http/forums_side.rs"
   },
   {
    "method": "POST",
@@ -2537,6 +2555,12 @@
    "file": "apps/api/src/economy_http/shop_list.rs"
   },
   {
+   "method": "GET",
+   "path": "/me/spark/ledger",
+   "handler": "my_ledger",
+   "file": "apps/api/src/economy_http/spark_ledger_http.rs"
+  },
+  {
    "method": "POST",
    "path": "/me/vouchers/use",
    "handler": "voucher_use",
@@ -2546,12 +2570,6 @@
    "method": "GET",
    "path": "/me/spark",
    "handler": "my_spark",
-   "file": "apps/api/src/economy_http/voucher_use.rs"
-  },
-  {
-   "method": "GET",
-   "path": "/me/spark/ledger",
-   "handler": "my_ledger",
    "file": "apps/api/src/economy_http/voucher_use.rs"
   },
   {
@@ -2982,6 +3000,12 @@
   },
   {
    "method": "GET",
+   "path": "/ban-log",
+   "handler": "ban_log_list",
+   "file": "apps/api/src/gaps_http/ban_log_list.rs"
+  },
+  {
+   "method": "GET",
    "path": "/auth/captcha",
    "handler": "captcha_issue",
    "file": "apps/api/src/gaps_http/captcha.rs"
@@ -3029,12 +3053,6 @@
    "file": "apps/api/src/gaps_http/classes_public.rs"
   },
   {
-   "method": "GET",
-   "path": "/me/hr",
-   "handler": "my_hr_status",
-   "file": "apps/api/src/gaps_http/hr.rs"
-  },
-  {
    "method": "POST",
    "path": "/admin/hr/pardon",
    "handler": "hr_pardon",
@@ -3051,6 +3069,12 @@
    "path": "/me/hr/pardon",
    "handler": "hr_self_pardon",
    "file": "apps/api/src/gaps_http/hr.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/hr",
+   "handler": "my_hr_status",
+   "file": "apps/api/src/gaps_http/hr_mine.rs"
   },
   {
    "method": "GET",
@@ -3300,6 +3324,12 @@
   },
   {
    "method": "GET",
+   "path": "/links",
+   "handler": "link_public_list",
+   "file": "apps/api/src/http/links.rs"
+  },
+  {
+   "method": "GET",
    "path": "/me/torrentlist",
    "handler": "my_torrentlist",
    "file": "apps/api/src/http/misc_handlers.rs"
@@ -3431,12 +3461,6 @@
    "file": "apps/api/src/invite_http.rs"
   },
   {
-   "method": "GET",
-   "path": "/invites/invitees",
-   "handler": "list_invitees_handler",
-   "file": "apps/api/src/invite_http.rs"
-  },
-  {
    "method": "POST",
    "path": "/invites/redeem",
    "handler": "redeem_invite_handler",
@@ -3447,6 +3471,12 @@
    "path": "/invites/email",
    "handler": "email_invite_handler",
    "file": "apps/api/src/invite_http/email.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/invites/invitees",
+   "handler": "list_invitees_handler",
+   "file": "apps/api/src/invite_http/invitees.rs"
   },
   {
    "method": "POST",
@@ -3698,6 +3728,12 @@
    "method": "GET",
    "path": "/torrents/{id}/download",
    "handler": "download",
+   "file": "apps/api/src/publish_http/download.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/torrents/{id}/download-link",
+   "handler": "download_link",
    "file": "apps/api/src/publish_http/download.rs"
   },
   {

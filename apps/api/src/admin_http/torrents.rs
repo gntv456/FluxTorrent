@@ -105,7 +105,7 @@ async fn admin_torrent_list(
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<TorrentListQ>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-270: ledger read gated with torrent.manage (as its writes).
     crate::authz::require_perm(
         &state,

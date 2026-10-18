@@ -31,7 +31,7 @@ async fn report_queue(
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<ReportQueueQuery>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-262: ledger read gated with reports.handle (as its writes).
     crate::authz::require_perm(
         &state,

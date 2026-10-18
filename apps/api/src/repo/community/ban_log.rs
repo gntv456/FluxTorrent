@@ -108,14 +108,13 @@ pub async fn ban_log_count(
     q: Option<&str>,
     kind: Option<i16>,
 ) -> DomainResult<i64> {
-    let n: i64 = sqlx::query_scalar(&format!(
-        "SELECT count(*) FROM users u{WHERE}"
-    ))
-    .bind(q)
-    .bind(kind)
-    .fetch_one(&repo.read_db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let n: i64 =
+        sqlx::query_scalar(&format!("SELECT count(*) FROM users u{WHERE}"))
+            .bind(q)
+            .bind(kind)
+            .fetch_one(&repo.read_db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(n)
 }
 
@@ -185,4 +184,3 @@ mod tests {
         assert_eq!(cause_of(1, false), "mute");
     }
 }
-

@@ -20,9 +20,7 @@
 pub struct InvalidConfig(pub String);
 
 impl std::fmt::Display for InvalidConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>)
-        -> std::fmt::Result
-    {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
@@ -92,9 +90,7 @@ pub enum StageVerdict {
         overdue_days: i32,
     },
     /// 本阶段最终失败（含补救期也过了），按 fail_action 处置。
-    StageFailed {
-        action: FailAction,
-    },
+    StageFailed { action: FailAction },
 }
 
 /// 判定单阶段状态。
@@ -135,10 +131,7 @@ pub enum Progress {
     /// 未到判定点，什么都不做（省一次 UPDATE）。
     None,
     /// 阶段通过，进入下一阶段（不是最后一段）。
-    Advance {
-        next_seq: i32,
-        next_is_last: bool,
-    },
+    Advance { next_seq: i32, next_is_last: bool },
     /// 整体通过（最后一段达标）。
     ExamPassed,
     /// 进入补救期。
@@ -147,9 +140,7 @@ pub enum Progress {
         overdue_days: i32,
     },
     /// 阶段失败。
-    Failed {
-        action: FailAction,
-    },
+    Failed { action: FailAction },
 }
 
 /// 由单阶段判定推出整体推进。
@@ -200,9 +191,7 @@ pub fn validate_stage(
     max_extensions: i32,
 ) -> DomainResult<()> {
     if duration_days <= 0 {
-        return Err(InvalidConfig(
-            "阶段时限必须为正数天".into(),
-        ));
+        return Err(InvalidConfig("阶段时限必须为正数天".into()));
     }
     if remedy_days < 0 {
         return Err(InvalidConfig("补救期不能为负".into()));

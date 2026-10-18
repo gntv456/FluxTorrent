@@ -82,8 +82,9 @@ pub(crate) fn promo_audit(
     // 那一档不在促销码里，别把券记成促销（事后按码核算促销效果会凭空多一笔）
     let code = match winner {
         None => 0,
-        Some(w) => code_from_pair(effective.0, effective.1)
-            .unwrap_or_else(|| code(w)),
+        Some(w) => {
+            code_from_pair(effective.0, effective.1).unwrap_or_else(|| code(w))
+        }
     };
     (code, note)
 }
@@ -112,8 +113,7 @@ mod tests {
     /// ——否则作弊差距判据不豁免，免流期间的 up/down 差额全被告警（P-120）
     #[test]
     fn stacked_free_x2_is_recorded_as_x2free() {
-        let (code, note) =
-            promo_audit(Some("free"), Some("x2"), (2.0, 0.0));
+        let (code, note) = promo_audit(Some("free"), Some("x2"), (2.0, 0.0));
         assert_eq!(code, 3, "free+x2 应记 x2free");
         assert_eq!(note.as_deref(), Some("promo torrent=free global=x2"));
     }

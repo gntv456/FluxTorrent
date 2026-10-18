@@ -67,11 +67,7 @@ pub(crate) async fn my_ledger(
     let auth = require_auth(&req, &state).await?;
     let per = q.per.unwrap_or(PER_DEFAULT).clamp(1, PER_MAX);
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
-    let kind = q
-        .kind
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
+    let kind = q.kind.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let dir = match q.dir.as_deref() {
         Some("in") | Some("out") => q.dir.as_deref(),
         _ => None,

@@ -29,19 +29,26 @@ pub(crate) async fn run_named(
             env_i("BACKTEST_FROM", 1),
             env_i("BACKTEST_TO", 2),
             env_i("BACKTEST_DAYS", 90),
-        ).await?.max(0) as u64),
+        )
+        .await?
+        .max(0) as u64),
         "hr_punish" => d(hr_punish(db).await?),
         "class_auto_adjust" => d(class_auto_adjust(db).await?),
         "preserve_seed" => n(preserve_seed(db).await?),
         "task_settle" => n(crate::task_jobs::task_settle(db).await?),
         "exam_assign" => n(crate::task_jobs::exam_assign(db).await?),
-        "medal_seeding_bridge" =>
-            n(crate::jobs::medal_achv::record_seeding_hours(db).await?),
-        "medal_threshold" =>
-            n(crate::jobs::medal_achv::threshold_sweep(db).await?),
-        "medal_backfill" => n(crate::jobs::medal_achv::medal_backfill(db).await?),
-        "shop_fulfill_recover" =>
-            n(crate::jobs::shop_fulfill::recover(db).await?),
+        "medal_seeding_bridge" => {
+            n(crate::jobs::medal_achv::record_seeding_hours(db).await?)
+        }
+        "medal_threshold" => {
+            n(crate::jobs::medal_achv::threshold_sweep(db).await?)
+        }
+        "medal_backfill" => {
+            n(crate::jobs::medal_achv::medal_backfill(db).await?)
+        }
+        "shop_fulfill_recover" => {
+            n(crate::jobs::shop_fulfill::recover(db).await?)
+        }
         "lottery_settle" => n(lottery_settle_due(db).await?),
         "bank_daily" => {
             crate::bank_jobs::bank_daily(db).await;
@@ -192,5 +199,8 @@ async fn run_guarded(
 
 /// 从环境读一个整数（手动触发口用；面板走 api 侧的专用端点）。
 fn env_i(k: &str, default: i32) -> i32 {
-    std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    std::env::var(k)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }

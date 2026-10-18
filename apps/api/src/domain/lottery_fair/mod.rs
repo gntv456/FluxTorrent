@@ -111,7 +111,13 @@ pub fn genesis_root() -> String {
 pub fn commit_new_round() -> (String, Commitment) {
     let seed = new_seed();
     let commit = commit_of(&seed);
-    (seed.clone(), Commitment { commit, seed_cipher: seed.clone() })
+    (
+        seed.clone(),
+        Commitment {
+            commit,
+            seed_cipher: seed.clone(),
+        },
+    )
 }
 
 /// 开奖随机值：`HMAC-SHA-256(key = seed, msg = round_id ‖ tickets_root)`。
@@ -239,8 +245,7 @@ pub fn verify(
         .filter(|(_, won)| *won)
         .map(|(h, _)| *h)
         .collect();
-    let claimed: Vec<&String> =
-        proof.winner_ticket_hashes.iter().collect();
+    let claimed: Vec<&String> = proof.winner_ticket_hashes.iter().collect();
     let ok = winners_actual == claimed;
     if !ok {
         return Err(crate::errors::DomainError::Validation(
@@ -268,4 +273,3 @@ fn hex_encode(b: &[u8]) -> String {
     }
     s
 }
-

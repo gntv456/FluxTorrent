@@ -9,12 +9,12 @@
 use super::*;
 use crate::community_http::forum_perm::forum_access;
 use crate::community_http::forum_util::notify_user;
+use crate::domain::lottery_fair as fair;
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
-use crate::domain::lottery_fair as fair;
-use crate::repo::lottery_fair as repo_fair;
 use crate::repo::lottery_draw as repo_draw;
+use crate::repo::lottery_fair as repo_fair;
 use crate::repo::Repo;
 
 /// 开奖核心（手动入口与 worker 共用）：CAS open→drawn 后随机抽 winners 名，
@@ -53,31 +53,22 @@ pub async fn lottery_draw_core(
             )
             .await;
         }
-        return Ok(
-            serde_json::json!({
-                "topic_id": topic_id,
-                "winners": [],
-                "refunded": refund,
-            }),
-        );
+        return Ok(serde_json::json!({
+            "topic_id": topic_id,
+            "winners": [],
+            "refunded": refund,
+        }));
     }
     // commit-reveal（0379）：公平场用 seed 派生的次序定中奖，公开证明
     // 供第三方复算；老抽奖（seed 为空）保持 RANDOM() 洗牌不变。
-    let picked: Vec<i64> = match repo_fair::seed_of(repo, topic_id)
-        .await?
-    {
+    let picked: Vec<i64> = match repo_fair::seed_of(repo, topic_id).await? {
         Some(seed) => {
-            let pairs =
-                repo_fair::ticket_to_user(repo, topic_id).await?;
-            let tickets: Vec<String> = pairs
-                .iter()
-                .map(|(h, _)| h.clone())
-                .collect();
-            let root = tickets.last().cloned().unwrap_or_else(
-                fair::genesis_root,
-            );
-            let order =
-                fair::draw_order(&seed, &tickets, winners as usize);
+            let pairs = repo_fair::ticket_to_user(repo, topic_id).await?;
+            let tickets: Vec<String> =
+                pairs.iter().map(|(h, _)| h.clone()).collect();
+            let root =
+                tickets.last().cloned().unwrap_or_else(fair::genesis_root);
+            let order = fair::draw_order(&seed, &tickets, winners as usize);
             let winner_hashes: Vec<String> = order
                 .iter()
                 .filter(|(_, won)| *won)
@@ -101,10 +92,7 @@ pub async fn lottery_draw_core(
             winner_hashes
                 .iter()
                 .filter_map(|h| {
-                    pairs
-                        .iter()
-                        .find(|(th, _)| th == h)
-                        .map(|(_, uid)| *uid)
+                    pairs.iter().find(|(th, _)| th == h).map(|(_, uid)| *uid)
                 })
                 .collect()
         }
@@ -136,11 +124,9 @@ pub async fn lottery_draw_core(
             .await;
         }
     }
-    Ok(
-        serde_json::json!({
-            "topic_id": topic_id,
-            "winners": picked,
-            "prize": prize,
-        }),
-    )
+    Ok(serde_json::json!({
+        "topic_id": topic_id,
+        "winners": picked,
+        "prize": prize,
+    }))
 }

@@ -32,7 +32,7 @@ async fn section_dict_admin(
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<SectionDictQ>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-266: ledger read gated with categories.manage (as its writes).
     crate::authz::require_perm(
         &state,

@@ -68,9 +68,7 @@ async fn my_orders(
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let per = q.per_page.unwrap_or(20).clamp(1, 50);
     let group = match q.fulfill.as_deref() {
-        Some("pending") | Some("done") | Some("failed") => {
-            q.fulfill.as_deref()
-        }
+        Some("pending") | Some("done") | Some("failed") => q.fulfill.as_deref(),
         _ => None,
     };
     let rows: Vec<MyOrderRow> = sqlx::query_as(&format!(

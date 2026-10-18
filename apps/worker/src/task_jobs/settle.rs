@@ -166,9 +166,7 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
 
         // 0381：多阶段考核走状态机判定（domain::exam），单段/未配置阶段
         // 的 task 行为与迁移前逐位一致（remedy_days=0 + seq=1）。
-        if let Some(adv) = stage_advance(db, &c, met && has_target)
-            .await?
-        {
+        if let Some(adv) = stage_advance(db, &c, met && has_target).await? {
             done += adv;
             continue;
         }

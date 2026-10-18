@@ -241,13 +241,15 @@ pub async fn insert_case_note(
     author_id: i64,
     body: String,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO case_notes (case_id, author_id, body) \
-         VALUES ($1, $2, $3)")
-        .bind(case_id)
-        .bind(author_id)
-        .bind(body)
-        .execute(&mut **tx)
-        .await?;
+    sqlx::query(
+        "INSERT INTO case_notes (case_id, author_id, body) \
+         VALUES ($1, $2, $3)",
+    )
+    .bind(case_id)
+    .bind(author_id)
+    .bind(body)
+    .execute(&mut **tx)
+    .await?;
     Ok(())
 }
 

@@ -41,10 +41,7 @@ pub(crate) fn pick_cutoff(
 }
 
 /// 分批上限：候选 cutoff 若会把本批推过上限，压到第 BATCH 万行的 id。
-pub(crate) fn clamp_cutoff(
-    cutoff: i64,
-    batch_nth_id: Option<i64>,
-) -> i64 {
+pub(crate) fn clamp_cutoff(cutoff: i64, batch_nth_id: Option<i64>) -> i64 {
     match batch_nth_id {
         Some(nth) if nth < cutoff => nth,
         _ => cutoff,
@@ -124,12 +121,11 @@ async fn archive_once(db: &PgPool, retain: i64) -> anyhow::Result<u64> {
 
     let mut tx = db.begin().await?;
     // 删除前取 cutoff 行 self_hash（锚点对照物；行不存在=窗口空，早退）
-    let cutoff_hash: Option<Vec<u8>> = sqlx::query_scalar(
-        "SELECT self_hash FROM audit_log WHERE id = $1",
-    )
-    .bind(cutoff)
-    .fetch_optional(&mut *tx)
-    .await?;
+    let cutoff_hash: Option<Vec<u8>> =
+        sqlx::query_scalar("SELECT self_hash FROM audit_log WHERE id = $1")
+            .bind(cutoff)
+            .fetch_optional(&mut *tx)
+            .await?;
     let Some(cutoff_self_hash) = cutoff_hash else {
         tx.rollback().await?;
         return Ok(0);

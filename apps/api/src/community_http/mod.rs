@@ -11,8 +11,8 @@ pub(crate) use friend_action::*;
 pub(crate) use post_topic_delete::*;
 pub(crate) use sport_match_detail::*;
 // 名字与模块同名/与既有导出歧义时用别名
-pub(crate) use friend_action::friend_action as friend_action_op;
 pub(crate) use follow_read::follow_status as follow_status_op;
+pub(crate) use friend_action::friend_action as friend_action_op;
 
 mod artists;
 mod bounty;
@@ -36,8 +36,8 @@ mod list_prefs;
 mod lottery;
 mod lottery_draw;
 mod lottery_verify;
-pub(crate) use lottery_verify::*;
 pub(crate) use lottery_draw::*;
+pub(crate) use lottery_verify::*;
 pub mod medal;
 mod medal_buy;
 mod medal_gift;
@@ -53,14 +53,14 @@ mod networks;
 mod notice;
 mod post_ctx;
 mod post_edit;
-mod post_topic_delete;
 mod post_group;
 mod post_read;
+mod post_topic_delete;
 mod post_write;
 mod seasonal;
 mod shoutbox;
-mod sport_matches;
 mod sport_match_detail;
+mod sport_matches;
 mod staff_answer;
 mod staffbox;
 mod subs_calendar;
@@ -273,8 +273,8 @@ mod scope_tree_tests {
     /// 编译、单测、路由清单三样都绿，只有真打一次才看得见。
     #[actix_web::test]
     async fn csrf_scope_does_not_eat_the_chain() {
-        let app = test::init_service(App::new().configure(super::configure))
-            .await;
+        let app =
+            test::init_service(App::new().configure(super::configure)).await;
         for p in [
             "/api/v1/ready",
             "/api/v1/health",

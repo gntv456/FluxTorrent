@@ -267,5 +267,9 @@ async fn site_defaults(db: &PgPool) -> SiteDefaults {
     .await
     .unwrap_or(14)
     .clamp(1, 365);
-    SiteDefaults { lookback_h, seed_hours, days }
+    SiteDefaults {
+        lookback_h,
+        seed_hours,
+        days,
+    }
 }

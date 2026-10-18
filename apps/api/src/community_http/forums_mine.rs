@@ -54,12 +54,8 @@ pub(crate) async fn forum_mine(
     };
     let (total, items) = if kind == "replies" {
         (
-            repo_mine::count_my_replies(
-                &state.repo,
-                auth.id,
-                auth.class_id,
-            )
-            .await?,
+            repo_mine::count_my_replies(&state.repo, auth.id, auth.class_id)
+                .await?,
             serde_json::json!(
                 repo_mine::my_replies(
                     &state.repo,
@@ -73,12 +69,8 @@ pub(crate) async fn forum_mine(
         )
     } else {
         (
-            repo_mine::count_my_topics(
-                &state.repo,
-                auth.id,
-                auth.class_id,
-            )
-            .await?,
+            repo_mine::count_my_topics(&state.repo, auth.id, auth.class_id)
+                .await?,
             serde_json::json!(
                 repo_mine::my_topics(
                     &state.repo,

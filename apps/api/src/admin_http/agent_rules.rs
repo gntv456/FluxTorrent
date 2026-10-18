@@ -73,7 +73,12 @@ async fn agent_rules_list(
     // 而 GET 这条仍回 200（实测 91 档拿到 email-domains 200 行、
     // roles-dict 5 行、agentrules 12 条）。
     // 修法：读口与写口对齐同一把权限键；语义上「读配置」与「改配置」同档。
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::SETTINGS_MANAGE).await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::SETTINGS_MANAGE,
+    )
+    .await?;
     // sqlx 的 `FromRow` 按**列名**取值，而 `COALESCE(...)` 的默认输出列名是
     // `coalesce`（不是 `version_min`）——0351 加这三列时没起别名，于是这条
     // SELECT 对任何人都 500「no column found for name: version_min」，

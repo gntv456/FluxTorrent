@@ -22,7 +22,7 @@ async fn deny_reasons_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-        let auth = staff(&req, &state).await?;
+    let auth = staff(&req, &state).await?;
     // P-271: ledger read gated with settings.manage (as its writes).
     crate::authz::require_perm(
         &state,

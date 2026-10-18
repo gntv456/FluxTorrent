@@ -292,8 +292,7 @@ pub(crate) async fn list(
     // Redis 故障/序列化失败一律直查。
     // 0170：show_pending/show_rejected/reverse 均在 filter 内，序列化自动进 hash key。
     if !crate::torrents::view_scope::viewer_scoped(&filter) {
-        if let Ok(canonical) =
-            serde_json::to_string(&(&filter, &cursor, limit))
+        if let Ok(canonical) = serde_json::to_string(&(&filter, &cursor, limit))
         {
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             std::hash::Hash::hash(&canonical, &mut hasher);

@@ -105,12 +105,10 @@ pub fn parse(text: &str) -> Summary {
     // MediaInfo 的键是复数 "Transfer characteristics"（不是 singular），
     // 两个拼法都收：不同版本/不同工具的输出不一致。
     let transfer = scan_stream_kv(&low, "video", "transfer characteristics")
-        .or_else(|| {
-            scan_stream_kv(&low, "video", "transfer characteristic")
-        })
+        .or_else(|| scan_stream_kv(&low, "video", "transfer characteristic"))
         .unwrap_or_default();
-    let color_space = scan_stream_kv(&low, "video", "color space")
-        .unwrap_or_default();
+    let color_space =
+        scan_stream_kv(&low, "video", "color space").unwrap_or_default();
     // 实际值形如 "SMPTE ST 2084 (PQ)"（小写后含 "st 2084"）。
     if transfer.contains("smpte st 2084") || transfer.contains("pq") {
         s.hdr = true;
@@ -230,12 +228,8 @@ fn scan_stream_channel_layout(low: &str) -> Option<u32> {
                     let mut parts = layout.split('.');
                     let front: u32 =
                         parts.next().unwrap_or("").trim().parse().ok()?;
-                    let back: u32 = parts
-                        .next()
-                        .unwrap_or("0")
-                        .trim()
-                        .parse()
-                        .unwrap_or(0);
+                    let back: u32 =
+                        parts.next().unwrap_or("0").trim().parse().unwrap_or(0);
                     // LFE 记在布局尾部的 "L"（如 5.1(side) 无 L，5.1 视为含 LFE）
                     let lfe = if layout.contains("L") { 1 } else { 0 };
                     return Some(front + back + lfe);
@@ -275,8 +269,10 @@ fn scan_resolution(low: &str) -> Option<(u32, u32)> {
     for (i, _) in it.by_ref() {
         let left = low[..i].split_whitespace().last()?;
         let right_start = i + 3;
-        let right: String =
-            low[right_start..].chars().take_while(|c| c.is_ascii_digit()).collect();
+        let right: String = low[right_start..]
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .collect();
         if let (Ok(w), Ok(h)) = (left.parse::<u32>(), right.parse::<u32>()) {
             if w > 0 && h > 0 && w < 100_000 && h < 100_000 {
                 return Some((w, h));
@@ -337,7 +333,11 @@ fn scan_channel_count(low: &str) -> Option<u32> {
     let mut parts = layout.split('.');
     let front: u32 = parts.next()?.trim().parse().ok()?;
     let back: u32 = parts.next().unwrap_or("0").trim().parse().unwrap_or(0);
-    let lfe = if layout.to_lowercase().contains('l') { 1 } else { 0 };
+    let lfe = if layout.to_lowercase().contains('l') {
+        1
+    } else {
+        0
+    };
     Some(front + back + lfe)
 }
 
@@ -346,11 +346,12 @@ fn scan_dolby_vision(low: &str) -> Option<String> {
     // Dolby Vision 的判定锚点是 `Dolby Vision ELG`（兼容层号）这个
     // MediaInfo 字段；只要它出现就是 DV。早前版本用 `?` 卡在
     // `scan_kv("dovi elg")` 上——键名拼错导致整个函数恒返回 None。
-    let has_dovi_field =
-        low.lines().any(|l| l.split_once(':').is_some_and(|(k, _)| {
+    let has_dovi_field = low.lines().any(|l| {
+        l.split_once(':').is_some_and(|(k, _)| {
             k.trim().eq_ignore_ascii_case("dovi elg")
                 || k.trim().eq_ignore_ascii_case("dovi elg")
-        }));
+        })
+    });
     if has_dovi_field || low.contains("dolby vision") {
         Some("dolby_vision".into())
     } else {
@@ -398,7 +399,8 @@ fn normalize_video_codec(f: &str) -> Option<String> {
         "vc1"
     } else if f.contains("mpeg-2") || f.contains("mpeg2") {
         "mpeg2"
-    } else if f.contains("mpeg-4") || f.contains("mpeg4") || f.contains("divx") {
+    } else if f.contains("mpeg-4") || f.contains("mpeg4") || f.contains("divx")
+    {
         "mpeg4"
     } else if f.contains("prores") {
         "prores"
@@ -463,9 +465,17 @@ pub fn normalize_declared_codec(s: &str) -> Option<String> {
     // 不做任何前缀裁剪：'x.265' / 'h.265' / 'x264' 的分隔符位置不固定，
     // 统一按子串判定（先把 '.' 与 '-' 之外的写法归一）。
     let t: String = t.chars().filter(|c| *c != '.' && *c != '_').collect();
-    if t.contains("x265") || t.contains("h265") || t.contains("h.265") || t.contains("hevc") {
+    if t.contains("x265")
+        || t.contains("h265")
+        || t.contains("h.265")
+        || t.contains("hevc")
+    {
         Some("hevc".into())
-    } else if t.contains("x264") || t.contains("h264") || t.contains("h.264") || t.contains("avc") {
+    } else if t.contains("x264")
+        || t.contains("h264")
+        || t.contains("h.264")
+        || t.contains("avc")
+    {
         Some("h264".into())
     } else if t.contains("av1") {
         Some("av1".into())
@@ -513,8 +523,8 @@ pub fn compare(declared: &Declared, actual: &Summary) -> CompareResult {
                 Some(a) if a == d => {}
                 Some(a) => {
                     // h264 容器里装 av1 这类不现实；只报明确的跨族差异
-                    let same_family =
-                        (a == "h264" && d == "mpeg4") || (a == "mpeg4" && d == "h264");
+                    let same_family = (a == "h264" && d == "mpeg4")
+                        || (a == "mpeg4" && d == "h264");
                     if !same_family {
                         r.mismatches.push(Mismatch {
                             field: "video_codec".into(),
@@ -534,8 +544,8 @@ pub fn compare(declared: &Declared, actual: &Summary) -> CompareResult {
     // 「声明 SDR 但实际 HDR」不是问题（顶多是没写全）。
     if declared.hdr == Some(true) && !actual.hdr {
         // 若 MediaInfo 压根没给 transfer/color 信息，无法判定
-        let has_color_info = actual.hdr_format.is_some()
-            || actual.pixel_format.is_some();
+        let has_color_info =
+            actual.hdr_format.is_some() || actual.pixel_format.is_some();
         if has_color_info {
             r.mismatches.push(Mismatch {
                 field: "hdr".into(),
@@ -573,9 +583,7 @@ pub fn sanitize(text: &str) -> String {
                     .find(|s| !s.is_empty())
                     .unwrap_or("(file)")
                     .trim();
-                out.push_str(&format!(
-                    "{key} : {}\n", mask_path(fname)
-                ));
+                out.push_str(&format!("{key} : {}\n", mask_path(fname)));
                 continue;
             }
         }

@@ -23,20 +23,18 @@ use crate::errors::{DomainError, DomainResult};
 /// 要防的那类漂移；
 /// 用户控制面板第 4/6 档也只有在这一天才可能折对（折成 `free,x2` 并集
 /// 会把「只免费」「只 2X」的种一起端出来＝给错数据）。
-const KINDS: [&str; 8] = ["free", "x2", "half", "p30", "x2free", "x2half",
-                          "any", "none"];
+const KINDS: [&str; 8] = [
+    "free", "x2", "half", "p30", "x2free", "x2half", "any", "none",
+];
 /// 可并列多选的具体档（含两个合成档）
-const SPECIFICS: [&str; 6] = ["free", "x2", "half", "p30", "x2free",
-                              "x2half"];
+const SPECIFICS: [&str; 6] = ["free", "x2", "half", "p30", "x2free", "x2half"];
 
 /// 归一 `?promo=`：空=不筛（`Ok(None)`）；任一不认识的值=报错（`Err`）。
 ///
 /// 保留的既有归一行为：大小写与空格归一、保序去重、多选逗号串、
 /// `any`/`none` 与具体档混给时按具体档。改变的只有「非法值」的去向：
 /// 静默丢弃 → 400。
-pub(crate) fn norm_promo(
-    s: Option<String>,
-) -> Result<Option<String>, String> {
+pub(crate) fn norm_promo(s: Option<String>) -> Result<Option<String>, String> {
     let raw = match s {
         Some(v) => v.trim().to_ascii_lowercase(),
         None => return Ok(None),
@@ -75,9 +73,7 @@ pub(crate) fn norm_promo(
 
 /// 端点用包装：把「非法档位」直接打成站内 400 信封（两处入口共用，
 /// 保证界面与第三方工具不会各判一套；P-277 之前这里是静默返回全站）。
-pub(crate) fn promo_or_err(
-    s: Option<String>,
-) -> DomainResult<Option<String>> {
+pub(crate) fn promo_or_err(s: Option<String>) -> DomainResult<Option<String>> {
     norm_promo(s).map_err(DomainError::Validation)
 }
 

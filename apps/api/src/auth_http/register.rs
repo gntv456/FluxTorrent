@@ -116,13 +116,11 @@ pub async fn register(
     }
     // 注册答题闸（0372 M5）：reg_quiz_enabled=yes 时须带一次性票据；
     // reg_quiz_pass_required=yes 时答错即拒（no 只记录不拦截）。
-    let quiz_on = crate::repo::reg_quiz::read_setting(
-        &state.repo,
-        "reg_quiz_enabled",
-    )
-    .await
-    .map(|v| v == "yes")
-    .unwrap_or(false);
+    let quiz_on =
+        crate::repo::reg_quiz::read_setting(&state.repo, "reg_quiz_enabled")
+            .await
+            .map(|v| v == "yes")
+            .unwrap_or(false);
     if quiz_on {
         if body.quiz_ticket.trim().is_empty() {
             return Err(DomainError::Validation(

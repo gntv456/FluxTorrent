@@ -45,9 +45,7 @@ pub fn forum_upsert_check(body: &ForumUpsertReq) -> DomainResult<String> {
     // 无限长能把那一屏撑成一篇帖。
     if let Some(r) = &body.rules {
         if r.chars().count() > 1000 {
-            return Err(DomainError::Validation(
-                "版块规则最长 1000 字".into(),
-            ));
+            return Err(DomainError::Validation("版块规则最长 1000 字".into()));
         }
     }
     Ok(name)

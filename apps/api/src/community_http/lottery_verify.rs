@@ -12,8 +12,8 @@
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
 
-use crate::dto::ok;
 use crate::domain::lottery_fair as fair;
+use crate::dto::ok;
 use crate::errors::DomainResult;
 use crate::http::require_auth;
 use crate::repo::lottery_fair as repo_lf;
@@ -44,8 +44,7 @@ pub(crate) async fn lottery_fairness(
     let _ = require_auth(&req, &state).await.ok();
     let topic_id = path.into_inner();
 
-    let Some(mat) = repo_lf::public_commit(&state.repo, topic_id).await?
-    else {
+    let Some(mat) = repo_lf::public_commit(&state.repo, topic_id).await? else {
         return Ok(ok(serde_json::json!({
             "exists": false,
             "note": "该抽奖未登记可验证承诺（可能是老抽奖或未启用公平模式）",
@@ -74,25 +73,23 @@ pub(crate) async fn lottery_fairness(
     // 服务端自验：把 proof 还原成结构体再跑 verify()。
     // 验不过也要返回（且明确 verified=false），而不是报错 500——
     // 「验不过」本身就是要告诉用户的事实。
-    let (verified, verify_note) = match serde_json::from_value::<
-        fair::DrawProof,
-    >(proof.clone())
-    {
-        Ok(p) => {
-            let n = p.winner_ticket_hashes.len();
-            match fair::verify(&commit, &p, &tickets, n) {
-                Ok(v) => (
-                    true,
-                    format!(
-                        "服务端复算通过：{} 名参与者 / {} 名中奖",
-                        v.participants, v.winners
+    let (verified, verify_note) =
+        match serde_json::from_value::<fair::DrawProof>(proof.clone()) {
+            Ok(p) => {
+                let n = p.winner_ticket_hashes.len();
+                match fair::verify(&commit, &p, &tickets, n) {
+                    Ok(v) => (
+                        true,
+                        format!(
+                            "服务端复算通过：{} 名参与者 / {} 名中奖",
+                            v.participants, v.winners
+                        ),
                     ),
-                ),
-                Err(e) => (false, format!("服务端复算失败：{e}")),
+                    Err(e) => (false, format!("服务端复算失败：{e}")),
+                }
             }
-        }
-        Err(e) => (false, format!("证明材料无法解析：{e}")),
-    };
+            Err(e) => (false, format!("证明材料无法解析：{e}")),
+        };
 
     Ok(ok(serde_json::json!({
         "exists": true,
@@ -110,7 +107,7 @@ pub(crate) async fn lottery_fairness(
             "order_key": "HMAC-SHA-256(seed_hex, 0x6f726465725f|ticket_hash)",
             "pick": "按 order_key 升序取前 N 名",
             "note": "所有输入都是 hex 文本，无需自行解码；rand 绑 tickets_root，\
-事后改名单会让公开的 rand 对不上。",
+    事后改名单会让公开的 rand 对不上。",
         },
     })))
 }

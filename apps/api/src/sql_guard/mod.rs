@@ -47,7 +47,9 @@ pub fn validate(sql: &str, caps: &[DbCapability]) -> DomainResult<()> {
     }
     // 1. 解析（fail-closed）
     let ast = Parser::parse_sql(&PostgreSqlDialect {}, sql).map_err(|e| {
-        DomainError::Validation(format!("插件 SQL 解析失败（fail-closed）: {e}"))
+        DomainError::Validation(format!(
+            "插件 SQL 解析失败（fail-closed）: {e}"
+        ))
     })?;
     // 2. 单语句
     if ast.len() != 1 {
@@ -138,10 +140,8 @@ pub fn validate(sql: &str, caps: &[DbCapability]) -> DomainResult<()> {
                         "插件 SQL 限定表未声明：{t}（表别名/派生表 v1 不支持）"
                     )));
                 }
-                let ok = col
-                    .cols
-                    .get(&t)
-                    .is_some_and(|cs| cs.contains(&name_l));
+                let ok =
+                    col.cols.get(&t).is_some_and(|cs| cs.contains(&name_l));
                 if !ok {
                     return Err(DomainError::Validation(format!(
                         "插件 SQL 越列：{t}.{name}"

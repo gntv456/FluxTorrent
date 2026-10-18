@@ -20,10 +20,12 @@ pub fn declared_from_title(name: &str) -> mi::Declared {
         .iter()
         .find(|p| low.contains(**p))
         .map(|p| p.to_string());
-    let video_codec = ["x265", "h.265", "hevc", "x264", "h.264", "h264", "avc", "xvid"]
-        .iter()
-        .find(|p| low.contains(**p))
-        .map(|p| p.to_string());
+    let video_codec = [
+        "x265", "h.265", "hevc", "x264", "h.264", "h264", "avc", "xvid",
+    ]
+    .iter()
+    .find(|p| low.contains(**p))
+    .map(|p| p.to_string());
     // HDR：只在标题出现 HDR/DV/杜比视界 等词时才判「声明了」。
     // 没出现 → None（未声明），而不是 Some(false)（声明了不是）。
     // 标题里点分隔是常态（`Movie.Dolby.Vision.2160p`），而
@@ -36,13 +38,16 @@ pub fn declared_from_title(name: &str) -> mi::Declared {
             contains_word(&low, p)
                 || contains_word(&punct_norm, p)
                 || p.contains(' ') && punct_norm.contains(p)
-        })
-    {
+        }) {
         Some(true)
     } else {
         None
     };
-    mi::Declared { resolution, video_codec, hdr }
+    mi::Declared {
+        resolution,
+        video_codec,
+        hdr,
+    }
 }
 
 /// 词边界匹配：`dv` 不该命中 `dvd`/`dvi`，`hdr` 不该命中 `hdr_look`。
@@ -50,8 +55,12 @@ fn contains_word(hay: &str, needle: &str) -> bool {
     hay.match_indices(needle).any(|(i, _)| {
         let before = hay[..i].chars().next_back();
         let after = hay[i + needle.len()..].chars().next();
-        let ok_before = before.map(|c| !c.is_alphanumeric() && c != '_').unwrap_or(true);
-        let ok_after = after.map(|c| !c.is_alphanumeric() && c != '_').unwrap_or(true);
+        let ok_before = before
+            .map(|c| !c.is_alphanumeric() && c != '_')
+            .unwrap_or(true);
+        let ok_after = after
+            .map(|c| !c.is_alphanumeric() && c != '_')
+            .unwrap_or(true);
         ok_before && ok_after
     })
 }
@@ -136,11 +145,15 @@ mod tests {
     #[test]
     fn reads_codec_from_title() {
         assert_eq!(
-            declared_from_title("Movie.2160p.x265").video_codec.as_deref(),
+            declared_from_title("Movie.2160p.x265")
+                .video_codec
+                .as_deref(),
             Some("x265")
         );
         assert_eq!(
-            declared_from_title("Show.S01.1080p.H.264").video_codec.as_deref(),
+            declared_from_title("Show.S01.1080p.H.264")
+                .video_codec
+                .as_deref(),
             Some("h.264")
         );
     }
@@ -165,7 +178,8 @@ mod tests {
     #[test]
     fn undeclared_spec_is_unverifiable_not_mismatch() {
         // 标题什么都没写 → 无可比字段 → 不得判为标题党
-        let s = mi::parse("Stream #0:0: Video: AVC\nWidth : 1920\nHeight : 1080\n");
+        let s =
+            mi::parse("Stream #0:0: Video: AVC\nWidth : 1920\nHeight : 1080\n");
         let r = mi::compare(&declared_from_title("Some.Release"), &s);
         assert!(!r.is_mismatch());
     }

@@ -308,7 +308,11 @@ fn modern_section_style_output_is_parsed() {
         Format                                   : DTS\n\
         Channel layout                           : 5.1\n";
     let s = parse(text);
-    assert_eq!(s.resolution, Some((1920, 1080)), "千分位空格 + 单位后缀必须能解出");
+    assert_eq!(
+        s.resolution,
+        Some((1920, 1080)),
+        "千分位空格 + 单位后缀必须能解出"
+    );
     // AVC 经 normalize_video_codec 映射为 h264（与旧格式路径同一口径）。
     assert_eq!(s.video_codec.as_deref(), Some("h264"));
 }
@@ -348,7 +352,8 @@ fn fake_4k_is_caught_in_modern_output() {
     assert!(
         r.mismatches.iter().any(|m| m.field == "resolution"),
         "必须拦住假 4K，实际拿到的 mismatches={:?} unverifiable={:?}",
-        r.mismatches, r.unverifiable
+        r.mismatches,
+        r.unverifiable
     );
 }
 

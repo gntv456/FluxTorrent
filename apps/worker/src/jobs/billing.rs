@@ -50,10 +50,11 @@ pub(crate) fn billing_multipliers(kinds: &[&str]) -> (f64, f64) {
 /// 代表档（强度序最高的一条）：只给落账留痕用作可读出处，不参与裁决。
 /// 等强时保留先出现的那条（调用方的 SQL 已按 `id DESC` 排序 ⇒ 取最新一条）。
 pub(crate) fn strongest_kind<'a>(kinds: &[&'a str]) -> Option<&'a str> {
-    kinds.iter().copied().fold(None, |acc: Option<&str>, k| {
-        match acc {
+    kinds
+        .iter()
+        .copied()
+        .fold(None, |acc: Option<&str>, k| match acc {
             Some(a) if promo_strength(a) >= promo_strength(k) => acc,
             _ => Some(k),
-        }
-    })
+        })
 }

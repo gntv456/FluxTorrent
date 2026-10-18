@@ -149,15 +149,14 @@ pub async fn me_overview(
     // 最近读过的主题（样图 § ucp「最近阅读主题」那张表）。SQL 住在
     // repo/community/forum_mine.rs——本文件 sqlx 计数压在基线上，只许转调。
     // 取不到不整页 500：这一块是回顾性信息，缺了不影响任何操作。
-    let recent_topics =
-        crate::repo::community::forum_mine::recent_read_topics(
-            &state.repo,
-            uid,
-            class_id,
-            5,
-        )
-        .await
-        .unwrap_or_default();
+    let recent_topics = crate::repo::community::forum_mine::recent_read_topics(
+        &state.repo,
+        uid,
+        class_id,
+        5,
+    )
+    .await
+    .unwrap_or_default();
     let recent_topics: Vec<serde_json::Value> = recent_topics
         .into_iter()
         .map(|(id, title, forum_id, forum_name, replies, read_at)| {

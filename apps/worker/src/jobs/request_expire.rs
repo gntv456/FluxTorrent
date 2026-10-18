@@ -26,7 +26,11 @@ pub(crate) async fn request_expire(db: &PgPool) -> anyhow::Result<u64> {
     // 既不退还、也不被任何作业回收——永久冻结在 requests.bounty 里。
     // 现在：days<=0 时改用「兜底 30 天」判据，保证钱最终一定回到发起人。
     // 想彻底关掉自动回收，站长应把 days 设成一个很大的值，而不是 0。
-    let days = if days <= 0 { FALLBACK_EXPIRE_DAYS } else { days };
+    let days = if days <= 0 {
+        FALLBACK_EXPIRE_DAYS
+    } else {
+        days
+    };
     // 过期集合：status=0 且发布超 N 天。逐行「先抢坑再退钱」——幂等键
     // req-refund:{id} 防重复回收。
     // make_interval 的 days 参数是 int4，i64 绑成 int8 无隐式转换
@@ -113,8 +117,11 @@ mod tests {
         // 而 bounty 是 spend_spark 真扣的钱 —— 那等于永久冻结。
         // 现在 0 走兜底 30 天，钱最终一定回到发起人。
         let configured = 0i64;
-        let effective =
-            if configured <= 0 { FALLBACK_EXPIRE_DAYS } else { configured };
+        let effective = if configured <= 0 {
+            FALLBACK_EXPIRE_DAYS
+        } else {
+            configured
+        };
         assert_eq!(effective, 30);
         assert!(effective > 0, "兜底必须是正数，否则等于没修");
     }
@@ -122,16 +129,22 @@ mod tests {
     #[test]
     fn positive_days_are_respected() {
         let configured = 7i64;
-        let effective =
-            if configured <= 0 { FALLBACK_EXPIRE_DAYS } else { configured };
+        let effective = if configured <= 0 {
+            FALLBACK_EXPIRE_DAYS
+        } else {
+            configured
+        };
         assert_eq!(effective, 7, "站方显式设的天数必须原样生效");
     }
 
     #[test]
     fn negative_days_also_fall_back() {
         let configured = -1i64;
-        let effective =
-            if configured <= 0 { FALLBACK_EXPIRE_DAYS } else { configured };
+        let effective = if configured <= 0 {
+            FALLBACK_EXPIRE_DAYS
+        } else {
+            configured
+        };
         assert_eq!(effective, FALLBACK_EXPIRE_DAYS);
     }
 }

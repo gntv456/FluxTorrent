@@ -6,8 +6,8 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
-use crate::dto::ok;
 use crate::domain::seedbox as sb;
+use crate::dto::ok;
 use crate::errors::DomainResult;
 use crate::http::require_auth;
 use crate::repo::seedbox as repo_sb;

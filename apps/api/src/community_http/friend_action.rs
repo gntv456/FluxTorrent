@@ -4,13 +4,13 @@
 //! 2026-10-16：SQL 已下沉到 repo::community::friends（H 层不 import
 //! sqlx，FRAME §2）。本文件只留「能不能这么做」的口径判断与 JSON 组装。
 
-use actix_web::{post, web, HttpRequest, HttpResponse};
+use super::friend::FriendActionReq;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::repo::community::friends as repo_friends;
 use crate::state::AppState;
-use super::friend::FriendActionReq;
+use actix_web::{post, web, HttpRequest, HttpResponse};
 
 /// 好友操作：拉黑/取消拉黑入口（此前黑名单只有消费端没有生产端，PM 拦截成死代码）。
 /// 拉黑语义：upsert 我为 user_id 的行 list='black'；并撤回我对对方的 pending 申请。
@@ -47,7 +47,8 @@ pub(crate) async fn friend_action(
             ))
         }
         "unblack" => {
-            let n = repo_friends::unset_black(&state.repo, auth.id, fid).await?;
+            let n =
+                repo_friends::unset_black(&state.repo, auth.id, fid).await?;
             Ok(ok(
                 serde_json::json!({ "user": body.username, "removed": n }),
             ))
@@ -66,24 +67,17 @@ pub(crate) async fn friend_action(
             repo_friends::mark_both_friend(&state.repo, auth.id, fid).await?;
             repo_friends::ensure_my_side_friend(&state.repo, auth.id, fid)
                 .await?;
-            repo_friends::notify_friend_accepted(
-                &state.repo,
-                fid,
-                auth.id,
-            )
-            .await;
+            repo_friends::notify_friend_accepted(&state.repo, fid, auth.id)
+                .await;
             Ok(ok(
                 serde_json::json!({ "user": body.username, "state": "friend" }),
             ))
         }
         // 拒绝 = 只撤掉对方发来的那条申请，不通知（NP 同口径）
         "reject" => {
-            let n = repo_friends::reject_their_pending(
-                &state.repo,
-                auth.id,
-                fid,
-            )
-            .await?;
+            let n =
+                repo_friends::reject_their_pending(&state.repo, auth.id, fid)
+                    .await?;
             Ok(ok(serde_json::json!({
                 "user": body.username, "rejected": n as i64,
             })))

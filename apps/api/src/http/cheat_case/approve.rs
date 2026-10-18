@@ -73,7 +73,11 @@ pub async fn cheat_case_approve(
     let ban_days = sj.get("ban_days").and_then(|v| v.as_i64()).unwrap_or(30);
     let note = body.note.as_deref().unwrap_or("").trim();
 
-    let mut tx = state.repo.db.begin().await
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // ① 停权生效（full_ban 叠加全站封禁 status=2）
     sqlx::query(
@@ -130,7 +134,11 @@ pub async fn cheat_case_approve(
     .bind(auth.id)
     .bind(format!(
         "批准：{label}；批准人 ≠ 决定人 #{decider}。{}",
-        if note.is_empty() { "（无批准意见）" } else { note }
+        if note.is_empty() {
+            "（无批准意见）"
+        } else {
+            note
+        }
     ))
     .execute(&mut *tx)
     .await

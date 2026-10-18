@@ -207,7 +207,9 @@ pub async fn ratio_watch(db: &PgPool) -> anyhow::Result<u64> {
                 "您好 {uname}，您的观察期已结束但分享率仍未恢复至 {threshold_f:.2}。本次仅提醒；持续未恢复可能影响下载权限。"
             ))
             .execute(db).await;
-            if let Err(e) = side { tracing::warn!(%e, uid, "警告信未写入"); }
+            if let Err(e) = side {
+                tracing::warn!(%e, uid, "警告信未写入");
+            }
         }
         (expired.len() as u64, 0u64)
     } else {

@@ -65,13 +65,12 @@ pub(crate) async fn issue_download_key(
     // 与 magnet 同口径三道闸：① 下载资格（被停下载/挂起账号照拿）；
     // ② 付费种必须已购（本人发布者免费）；③ 归属不可达。
     crate::torrents::ensure_downloadable(&state.repo.db, uid).await?;
-    let paid: Option<(i64, Option<i64>)> = sqlx::query_as(
-        "SELECT price, owner_id FROM torrents WHERE id = $1",
-    )
-    .bind(torrent_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let paid: Option<(i64, Option<i64>)> =
+        sqlx::query_as("SELECT price, owner_id FROM torrents WHERE id = $1")
+            .bind(torrent_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if let Some((price, owner)) = paid {
         if price > 0 && owner != Some(uid) {
             let owned: bool = sqlx::query_scalar(

@@ -94,7 +94,7 @@ pub async fn user_public_profile(
         up_speed,
         down_speed,
         info,
-        _signature,   // P-339: 常量 NULL（见上方注释），顶层改用 profile 里那份
+        _signature, // P-339: 常量 NULL（见上方注释），顶层改用 profile 里那份
         online,
     ) = extra
         .map(|(g, c, i, u, d, inf, s, o)| (g, c, i, u, d, inf, s, o))
@@ -247,8 +247,11 @@ pub async fn user_public_profile(
         }
     }
     let recent_posts = super::profile_helpers::recent_posts_of(
-        &state.repo.read_db, uid, auth.class_id,
-    ).await;
+        &state.repo.read_db,
+        uid,
+        auth.class_id,
+    )
+    .await;
     let uploads: Vec<RecentUpload> = sqlx::query_as(
                 "SELECT id, name, small_descr, size, \
          created_at FROM torrents WHERE owner_id = $1 AND approval_status = 1 AND NOT anonymous ORDER BY id DESC LIMIT 10",

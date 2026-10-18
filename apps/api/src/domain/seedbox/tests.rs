@@ -15,10 +15,7 @@ fn accepts_reasonable_v4() {
 #[test]
 fn rejects_too_wide_v4() {
     for bad in ["1.2.3.0/23", "1.2.0.0/16", "10.0.0.0/8", "0.0.0.0/0"] {
-        assert!(
-            normalize_cidr(bad).is_err(),
-            "{bad} 应被拒（过宽）"
-        );
+        assert!(normalize_cidr(bad).is_err(), "{bad} 应被拒（过宽）");
     }
 }
 
@@ -66,9 +63,7 @@ fn batch_normalizes_dedups_and_sorts() {
 /// 批量上限。
 #[test]
 fn batch_respects_max() {
-    let many: Vec<String> = (0..30)
-        .map(|i| format!("10.{i}.0.0/24"))
-        .collect();
+    let many: Vec<String> = (0..30).map(|i| format!("10.{i}.0.0/24")).collect();
     assert!(normalize_claims(&many).is_err());
 }
 

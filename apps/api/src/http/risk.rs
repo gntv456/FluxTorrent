@@ -72,12 +72,11 @@ pub async fn risk_score_list(
             )))
         }
     };
-    let like = q
-        .q
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(|s| format!("%{s}%"));
+    let like =
+        q.q.as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| format!("%{s}%"));
     let rows = sqlx::query_as::<_, RiskRow>(&format!(
         "{RISK_SELECT} \
          WHERE ($1::text IS NULL OR r.band = $1) \

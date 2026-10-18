@@ -4,12 +4,12 @@
 //! 2026-10-16：SQL 已下沉到 repo::community::boards（H 层不 import
 //! sqlx，FRAME §2）。
 
-use actix_web::{get, web, HttpRequest, HttpResponse};
 use crate::dto::ok;
 use crate::errors::DomainResult;
 use crate::http::require_auth;
 use crate::repo::community::boards as repo_boards;
 use crate::state::AppState;
+use actix_web::{get, web, HttpRequest, HttpResponse};
 
 pub(crate) use crate::repo::community::boards::BoardBrief;
 
@@ -30,12 +30,8 @@ pub(crate) async fn forum_boards(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let is_staff = auth.class_id >= 93;
-    let rows = repo_boards::list_boards(
-        &state.repo,
-        auth.id,
-        auth.class_id,
-        is_staff,
-    )
-    .await?;
+    let rows =
+        repo_boards::list_boards(&state.repo, auth.id, auth.class_id, is_staff)
+            .await?;
     Ok(ok(rows))
 }
