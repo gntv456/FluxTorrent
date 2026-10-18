@@ -28,7 +28,15 @@
     的「我与职员的往来」⇒ 成员 200 + 空数组是对的（曾被我记成越权，已排除）。
   - `/shoutbox/bot`、`/shoutbox/bot/exec` 文案写着「需 staff 权」，实测全员可用
     且喊话界面就走这一口 ⇒ P-336 修的是文案不是代码。
+
+DA12 把「前端↔API 参数契约」也钉进来：活体回 400 且文案写着「缺少必填字段：X」
+的口，apps/web 里必须有一个同时出现该路径与 `X=` 的调用点；确实服务外部客户端的
+（NexusPHP 兼容入口、邮件链接、辅助下载 token、网关回跳）进 EXTERNAL 写明读者。
+本轮实测 15 条要求必填参数：外部读者 5 条、前端 10 条全部传对（负控：把
+forum-follow.tsx 的 `target_type=` 改成 `type_=` ⇒ DA12 红在
+`/follows/status?target_type`，还原后绿）。
 """
+import io
 import json
 import os
 import re
@@ -37,6 +45,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
     BASE, call, clear_register_rl, login, ok, summary)
 
@@ -294,6 +303,56 @@ R400 = {"/auth/pow-challenge", "/compat/nexusphp/details.php",
 bad400 = [p for p, st, _b in MINE if st == 400 and p not in R400]
 ok("DA8 400 一族没长出新面孔（缺参台账 %d 条，新增 %d 条）"
    % (len(R400), len(bad400)), not bad400, "、".join(bad400[:6]))
+
+# ---------- DA12 前端↔API 参数契约对账 ----------
+# 活体回 400 且文案是「缺少必填字段：X」的口，apps/web 里必须有一个同时出现
+# 该路径与 `X=` 的调用点；少传 = 用户点开就是错误页/空数据。查不到调用点又
+# 确实服务外部客户端的，进 EXTERNAL 写明读者是谁（不许用白名单蒙过去）。
+EXTERNAL = {
+    "/compat/nexusphp/details.php": "NexusPHP 系下载器/客户端的兼容入口",
+    "/compat/nexusphp/download.php": "同上（?id=&passkey= 由客户端拼）",
+    "/auth/email/verify": "读者是邮件里的链接，不经过前端",
+    "/downloads/{torrent_id}": "辅助下载/cross-seed 的一次性 token 链接",
+    "/donate/order-status": "支付网关同步回跳查单；页面轮询走 /donate/state",
+}
+WEB_DIR = os.path.join(ROOTDIR, "apps", "web")
+WEB_BLOB = []
+for _dp, dn, _fn in os.walk(WEB_DIR):
+    dn[:] = [d for d in dn if d not in (".next", "node_modules")]
+    for _f in _fn:
+        if _f.endswith((".ts", ".tsx")):
+            WEB_BLOB.append(io.open(os.path.join(_dp, _f), encoding="utf-8",
+                                    errors="replace").read())
+WEB_TEXT = "\n".join(WEB_BLOB)
+
+
+def web_sends(path, field):
+    bare = path.split("{")[0].rstrip("/")
+    hit = [t for t in WEB_BLOB if bare in t]
+    return bool(hit) and any(bare in t and (field + "=") in t for t in hit)
+
+
+needles = []
+for p, st, b in MINE:
+    if st != 400 or not isinstance(b, dict):
+        continue
+    msg = str(b.get("message") or "")
+    m = re.search(r"缺少必填字段：([A-Za-z0-9_]+)|缺少\s+([A-Za-z0-9_]+)", msg)
+    if not m:
+        continue
+    field = m.group(1) or m.group(2)
+    needles.append((p, field))
+broken = [(p, f) for p, f in needles if p not in EXTERNAL and not web_sends(p, f)]
+outs = [(p, f) for p, f in needles if p in EXTERNAL]
+print("   活体要求必填参数的口 %d 条；外部读者 %d 条；前端契约检查 %d 条"
+      % (len(needles), len(outs), len(needles) - len(outs)))
+for p, f in sorted(outs):
+    print("      外部：%s 需要 %s —— %s" % (p, f, EXTERNAL[p]))
+ok("DA12 每条「必填 query 参数」的口，前端都有传这个键（违例 %d）" % len(broken),
+   not broken, "、".join("%s?%s" % b for b in broken[:6]))
+ok("DA12b 正控：契约检查确实能认出「没传键」的形状（拿一个前端不存在的路径试）",
+   not web_sends("/api/v1/zz-not-a-route", "whatever") and web_sends(
+       "/forums/search", "q"), "判据本身要能红也能绿")
 
 print("\n== 状态分布（成员 / 匿名）==")
 for label, rows in (("成员", MINE), ("匿名", ANON)):
