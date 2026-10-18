@@ -36,11 +36,14 @@ from pt_audit_lib import call, login, ok, summary  # noqa: E402
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Rust 字符串里的行连接符 `\` 会夹在 SQL 片段中间 ⇒ 分隔位一律 [\s\\]*
 SEP = r"[\s\\]*"
-TOK = r"date_trunc\('(day|week)',%snow\(\)" % SEP
+TOK = r"date_trunc\('(day|week|month)',%snow\(\)" % SEP
 WRONG_A = re.compile(TOK + r"\s*AT TIME ZONE 'UTC'%s\+%sinterval%s'8 hours'"
                      % (SEP, SEP, SEP))
 WRONG_B = re.compile(TOK + r"\s*AT TIME ZONE 'UTC'\)%s\+%sinterval%s'8 hours'"
                      % (SEP, SEP, SEP))
+# 错C：连 +8 都没写，`now()` 后面直接收括号 ⇒ 拿 UTC 日历界去比 timestamptz。
+# 月界这档本批实测在个人页「本月做种收益（本月）」上露出（P-339）。
+WRONG_C = re.compile(r"date_trunc\('(day|week|month)',%snow\(\)\)" % SEP)
 RIGHT = re.compile(TOK + SEP + r"AT TIME ZONE 'Asia/Shanghai'\)" + SEP
                    + r"AT TIME ZONE 'Asia/Shanghai'")
 
@@ -77,7 +80,7 @@ def sources():
 
 hits, right_sites = [], []
 for rel, txt in sources():
-    for tag, pat in (("A", WRONG_A), ("B", WRONG_B)):
+    for tag, pat in (("A", WRONG_A), ("B", WRONG_B), ("C", WRONG_C)):
         for mm in pat.finditer(txt):
             hits.append((tag, rel, txt[:mm.start()].count("\n") + 1))
     for mm in RIGHT.finditer(txt):
@@ -86,7 +89,8 @@ for rel, txt in sources():
 real = [h for h in hits if not any(h[1].startswith(k) for k in PENDING)]
 for tag, rel, ln in hits:
     print("   错%s  %-46s:%-4d（待裁台账内，见文件头）" % (tag, rel, ln))
-ok("DB1 两种「+8 小时」错法在全仓归零（命中 %d，台账 %d，真违例 %d）"
+ok("DB1 三种日历界错法（+8 回弹两种 / 裸 UTC 一种）在全仓归零"
+   "（命中 %d，台账 %d，真违例 %d）"
    % (len(hits), len(hits) - len(real), len(real)), not real,
    "、".join("%s:%s" % (h[1], h[2]) for h in real[:5]))
 # 按「文件」而不是「处」钉：少一个口就点名是哪个口
@@ -98,10 +102,11 @@ EXPECT = ("apps/api/src/games_http/linkage.rs",
           "apps/api/src/games_http/arcade_board.rs",
           "apps/api/src/games_http/pet_log.rs",
           "apps/api/src/repo/community/forum_side.rs",
+          "apps/api/src/auth_http/profile.rs",
           "apps/worker/src/jobs/game_coupons.rs")
 have = set(r for r, _l in right_sites)
 miss = [f for f in EXPECT if f not in have]
-ok("DB2 九处日/周窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
+ok("DB2 十处日/周/月窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
    % (len(right_sites), len(miss)), not miss,
    "缺=%s｜有=%s" % ("、".join(miss), "、".join(sorted(have))))
 
@@ -110,12 +115,15 @@ PC_A = ("  AND l.created_at >= date_trunc('day', now() AT TIME ZONE 'UTC' "
         "+ interval '8 hours')")
 PC_B = ("  AND l.created_at >= date_trunc('week', now() AT TIME ZONE 'UTC') "
         "+ interval '8 hours'")
+PC_C = "  AND t.created_at >= date_trunc('month', now())"
 pc_hit = (["A"] if WRONG_A.search(PC_A) else []) \
-    + (["B"] if WRONG_B.search(PC_B) else [])
-ok("DB2a 正控：两种错法各造一条假源码，判据必须都抓到（抓到 %s）" % pc_hit,
-   pc_hit == ["A", "B"], str(pc_hit))
-ok("DB2b 正控：同一份假源码里不许误报「正确形状」",
-   not RIGHT.search(PC_A) and not RIGHT.search(PC_B))
+    + (["B"] if WRONG_B.search(PC_B) else []) \
+    + (["C"] if WRONG_C.search(PC_C) else [])
+ok("DB2a 正控：三种错法各造一条假源码，判据必须都抓到（抓到 %s）" % pc_hit,
+   pc_hit == ["A", "B", "C"], str(pc_hit))
+ok("DB2b 正控：三条假源码里都不许误报「正确形状」",
+   not RIGHT.search(PC_A) and not RIGHT.search(PC_B)
+   and not RIGHT.search(PC_C))
 
 
 def psql(q):
@@ -180,6 +188,27 @@ ok("DB6 上周那条流水被错 B 的「本周」收进来（对=%s vs 错B=%s�
    % (m.get("wk_ok"), m.get("wk_B")),
    m.get("wk_ok") == "1" and m.get("wk_B") == "2", rows.replace("\n", " "))
 
+# ---------- DB10：月界同族（P-339，个人页「本月做种收益（本月）」） ----------
+FIX2 = "TIMESTAMP WITH TIME ZONE '2026-11-01 03:10:00+08'"
+M_UTC = "date_trunc('month', %s AT TIME ZONE 'UTC')" % FIX2
+M_OK = "(date_trunc('month', %s AT TIME ZONE 'Asia/Shanghai') " \
+       "AT TIME ZONE 'Asia/Shanghai')" % FIX2
+mon = psql("""WITH t(ts) AS (VALUES
+    (TIMESTAMP WITH TIME ZONE '2026-11-01 01:30:00+08'),
+    (TIMESTAMP WITH TIME ZONE '2026-10-31 23:30:00+08')
+)
+SELECT '月_对', count(*) FILTER (WHERE ts >= %s) FROM t
+UNION ALL SELECT '月_裸UTC', count(*) FILTER (WHERE ts >= (%s)::timestamptz)
+FROM t""" % (M_OK, M_UTC)).replace("\n", " ")
+mm = dict(re.findall(r"(月_[^|]+)\|(\d+)", mon))
+print("   固定时刻 2026-11-01 03:10+08 的月界 A/B：%s" % mon)
+ok("DB10 月界同族（P-339 个人页「本月做种收益（本月）」）：北京 11-01 01:30 "
+   "与 10-31 23:30 两条流水，北京月界只数本月那条（对=%s），裸 UTC 月界把上月"
+   "的也算进「本月」（裸=%s，应 1 vs 2）⇒ 每月 1 号 00:00-08:00 该磁贴显示的是"
+   "上一整个月的收益，本月的第一笔要等 08:00 才计入"
+   % (mm.get("月_对"), mm.get("月_裸UTC")),
+   mm.get("月_对") == "1" and mm.get("月_裸UTC") == "2", mon)
+
 # ---------- 活体层：新码才判，旧镜像回 WARN（豁免不是通过） ----------
 tok = login()
 KW40 = "甲" * 40
@@ -226,18 +255,38 @@ elif w_ok != w_utc:
 else:
     print("   WARN DB8 此刻两窗口无法区分，这条不承重（数据依赖，非放过）")
 
+# ---------- DB11：个人页那格「本月」真的走了改过的 SQL（活体接线层） ----------
+prof = call("GET", "/users/1", token=tok)
+api_month = ((prof[1] or {}).get("data") or {}).get("month_seed_earn")
+S = ("SELECT COALESCE(sum(amount),0)::bigint FROM spark_ledger WHERE "
+     "user_id = 1 AND amount > 0 AND kind = 'seeding_reward' "
+     "AND created_at >= ")
+m_ok = psql(S + "(date_trunc('month', now() AT TIME ZONE 'Asia/Shanghai') "
+            "AT TIME ZONE 'Asia/Shanghai')").replace("\n", "")
+m_utc = psql(S + "date_trunc('month', now())").replace("\n", "")
+print("   /users/1 month_seed_earn=%s；北京月窗口=%s，UTC 月窗口=%s"
+      % (api_month, m_ok, m_utc))
+if not NEWCODE:
+    print("   WARN DB11 豁免：旧镜像走 UTC 月窗口（API=%s / 北京=%s / UTC=%s）"
+          % (api_month, m_ok, m_utc))
+elif m_ok != m_utc:
+    ok("DB11 个人页「本月做种收益」= 北京月窗口读数（API=%s / 北京=%s / UTC=%s）"
+       % (api_month, m_ok, m_utc), str(api_month) == str(m_ok))
+else:
+    print("   WARN DB11 此刻两窗口同数，这条不承重（数据依赖，非放过）")
+
 # ---------- DB9：本批改过的每个口都必须在活体打得通（防「SQL 改坏但判据没覆盖」） ----------
 # 本轮真实踩到过：改 arcade_board 的周窗口时把行连接符塞进了 r#"…"# 原始串，
 # SQL 里多出字面反斜杠 → /games/arcade-meta 整口 500，而 DB7/DB8 恰好没覆盖它。
 TOUCHED = ["/games", "/games/arcade-meta", "/games/arcade/leaderboard",
            "/games/linkage/status", "/games/fishing/rod", "/games/pet/log",
-           "/forums/side", "/forums/recent"]
+           "/forums/side", "/forums/recent", "/users/1"]
 t5xx = []
 for path in TOUCHED:
     st9, body9 = call("GET", path, token=tok)
     if st9 >= 500 or st9 <= 0:
         t5xx.append((path, st9, json.dumps(body9, ensure_ascii=False)[:70]))
-ok("DB9 改过窗口的 8 个活口全部打得通（5xx=%d）" % len(t5xx), not t5xx,
+ok("DB9 改过窗口的 %d 个活口全部打得通（5xx=%d）" % (len(TOUCHED), len(t5xx)), not t5xx,
    "、".join("%s=%s" % (p, s) for p, s, _ in t5xx))
 for p, s, b in t5xx:
     print("   [5xx] %s http=%s %s" % (p, s, b))
