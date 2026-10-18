@@ -245,6 +245,28 @@ try:
                                            cnt("arcade_ranch_pens",
                                                "user_id = %d" % P1)))
 
+    # K4b/K4c（P-334）：退休之后必须能「重新领养」——退休那句提示就是这么写的。
+    # 买入的幂等键原先是 `ranch-buy:{uid}:{animal}`：退休只删栏位，删不掉
+    # spark_ledger 里那笔扣费 ⇒ 同种动物的第二次领养永远被当成重复提交拒掉，
+    # 而且报的是误导性的「请勿重复提交」。重复提交本身另有两道更硬的防护
+    # （`exists` 预检 + (user_id, animal) 唯一键在事务内冲突即回滚扣费）。
+    b1 = int(psql("SELECT spark_balance FROM users WHERE id = %d" % P1))
+    s5, r5 = post("/farm/ranch/buy", {"animal": "chick"}, T1)
+    # 自诊断：最近一条 ranch-buy 幂等键的形状能直接指出跑的是哪版代码
+    lastkey = psql("SELECT coalesce(max(idempotency_key),'-') FROM "
+                   "spark_ledger WHERE user_id = %d AND idempotency_key "
+                   "LIKE 'ranch-buy%%'" % P1)
+    ok("K4b 退休后可以重新领养同一只（http=%s msg=%s 最近键=%s）"
+       % (s5, msg((s5, r5))[:36], lastkey[:40]), s5 == 200,
+       "http=%s msg=%s 键=%s" % (s5, msg((s5, r5))[:70], lastkey[:56]))
+    pens_after = cnt("arcade_ranch_pens",
+                     "user_id = %d AND animal = 'chick'" % P1)
+    bal_after = int(psql("SELECT spark_balance FROM users WHERE id = %d" % P1))
+    ok("K4c 重新领养是一笔真实消费：余额减 %s、栏位回来（%s→%s pens=%s）"
+       % (PRICE, b1, bal_after, pens_after),
+       s5 == 200 and b1 - bal_after == PRICE and pens_after == "1",
+       "http=%s 余额 %s→%s pens=%s" % (s5, b1, bal_after, pens_after))
+
 finally:
     setv("module_farm", FARM0)
     ok("K0d module_farm 已复原并复读一致（%s）" % sval("module_farm"),
