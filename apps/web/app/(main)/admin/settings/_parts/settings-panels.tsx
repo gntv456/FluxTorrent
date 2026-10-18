@@ -14,6 +14,7 @@ import { enumOptions } from "@/components/setting-field-controls";
 import type {
   SettingCard,
   SettingFieldMeta,
+  SettingGroup,
   SettingsSchema,
 } from "@/components/setting-field";
 
@@ -46,6 +47,10 @@ export function SettingsGroupNav({
     " md:overflow-y-auto";
   return (
     <nav className={NAV_CLS}>
+      {/* 栏头（对齐样图 § 站点设置左栏：「设定分区 · N 分区」） */}
+      <p className="mb-1 hidden px-1 text-xs font-bold text-ink md:block">
+        {s.navTitle} · {groups.length} 分区
+      </p>
       <div className="hidden md:block">
         <input
           value={q}
@@ -86,12 +91,44 @@ export function SettingsGroupNav({
   );
 }
 
+/** 搜索命中项（从 settings-client 拆出，保 300 行门禁）：标注所属分区 */
+export interface SettingsHit {
+  group: string;
+  groupLabel: string;
+  field: SettingFieldMeta;
+}
+
+/** 全字段搜索：label / label_en / name / hint / 分区名 命中即收 */
+export function searchSettings(
+  groups: SettingGroup[],
+  kw: string,
+): SettingsHit[] {
+  if (!kw) return [];
+  const out: SettingsHit[] = [];
+  const hit = (f: SettingFieldMeta, groupLabel: string) =>
+    f.label.toLowerCase().includes(kw) ||
+    (f.label_en ?? "").toLowerCase().includes(kw) ||
+    f.name.toLowerCase().includes(kw) ||
+    (f.hint ?? "").toLowerCase().includes(kw) ||
+    groupLabel.toLowerCase().includes(kw);
+  for (const g of groups) {
+    for (const c of g.cards) {
+      for (const f of c.fields) {
+        if (hit(f, g.label)) {
+          out.push({ group: g.key, groupLabel: g.label, field: f });
+        }
+      }
+    }
+  }
+  return out;
+}
+
 /** 搜索命中列表：每条标注所属分区，字段渲染走 renderField */
 export function SettingsSearchResults({
   matches,
   renderField,
 }: {
-  matches: { group: string; groupLabel: string; field: SettingFieldMeta }[];
+  matches: SettingsHit[];
   renderField: (f: SettingFieldMeta) => React.ReactNode;
 }) {
   const { dict } = useI18n();
@@ -112,19 +149,29 @@ export function SettingsSearchResults({
   );
 }
 
-/** 当前分区卡片分组：开关类字段（yesno/短 enum）紧凑多列；其余纵向大卡片 */
+/** 当前分区卡片分组：开关类字段（yesno/短 enum）紧凑多列；其余纵向大卡片。
+ *  顶部先渲染分区信息条（对齐样图 § 站点设置：字段来源 + 保存端点）。 */
 export function SettingsGroupCards({
-  cards,
+  group,
   renderField,
 }: {
-  cards: SettingCard[];
+  group: SettingGroup;
   renderField: (f: SettingFieldMeta) => React.ReactNode;
 }) {
   const { dict, currency } = useI18n();
   const s = dict.settingsAdmin;
+  const groupLabel = (
+    dict.admin.settingGroups[group.key] ?? group.label
+  ).replace("{magic}", currency);
   return (
     <section className="flex flex-col gap-3">
-      {cards.map((c) => {
+      <p
+        className="rounded-[var(--r-md)] border border-line
+          bg-[var(--surface-card)] px-3 py-2 text-xs text-sub"
+      >
+        {fmt(s.groupBar, { group: groupLabel, n: group.count })}
+      </p>
+      {group.cards.map((c) => {
         const isSwitch = (f: SettingFieldMeta) =>
           f.type === "yesno" ||
           (f.type === "enum" &&
@@ -159,7 +206,9 @@ export function SettingsGroupCards({
           </div>
         );
       })}
-      {cards.length === 0 && <p className={PANEL_CENTER}>{s.searchEmpty}</p>}
+      {group.cards.length === 0 && (
+        <p className={PANEL_CENTER}>{s.searchEmpty}</p>
+      )}
     </section>
   );
 }

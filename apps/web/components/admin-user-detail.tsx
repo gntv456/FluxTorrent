@@ -3,7 +3,7 @@
 import { CELL_CARD_SUB } from "@/lib/ui-classes";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { dateLocale, fmt } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { AdminActions } from "./admin-user-detail-actions";
@@ -15,9 +15,9 @@ import {
   useDetailLoad,
   useDetailTabs,
 } from "./admin-user-detail-hooks";
+import { UserDetailHero } from "./admin-user-detail-hero";
 import { ProfilePanels } from "./admin-user-detail-panels";
 import { DetailTabsBody } from "./admin-user-detail-tabs";
-import { statusLabels } from "./admin-user-detail-shared";
 
 /** 后台用户详情（同类站 Filament UserResource 的 user-profile 口径）：
  *  字段全景 + 管理动作 + 关联数据 tab（火花流水 / 登录记录 / 做种列表）。
@@ -28,10 +28,6 @@ import { statusLabels } from "./admin-user-detail-shared";
  *  类型与常量拆至 ./admin-user-detail-shared.ts；
  *  详情加载 / 操作面板字典 / 关联 tab 拆至 ./admin-user-detail-hooks.ts。 */
 
-// 头部状态徽标的公共底色（含警示红与普通两种）
-const BADGE_DANGER = "rounded-full bg-coral/20 px-2 py-0.5 text-xs";
-const BADGE_PLAIN = "rounded-full px-2 py-0.5 text-xs";
-const BADGE_DANGER_TXT = `${BADGE_DANGER} text-danger`;
 // tab 按钮两种形态（选中高亮 / 未选中描边）
 const TAB_BTN = "min-h-[40px] rounded-full px-4 text-sm font-bold";
 const TAB_BTN_OFF = CELL_CARD_SUB;
@@ -39,15 +35,9 @@ const TAB_BTN_OFF = CELL_CARD_SUB;
 const TMP_PASS_CLS =
   "rounded-[var(--r-md)] bg-sky-soft p-3 font-mono text-sm text-ink";
 
-const ASK_INPUT =
-  "min-h-[36px] rounded-[var(--r-sm)] border border-line " +
-  "bg-[var(--surface-card)] px-3 text-sm text-ink";
-
 export function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const { locale, dict, currency } = useI18n();
-  const STATUS_LABELS = statusLabels(dict.userDetail.statusLabels);
   const classList = (dict.admin as unknown as { classList: [number, string][] })
     .classList;
   const uid = Number(params.id);
@@ -107,48 +97,9 @@ export function AdminUserDetailPage() {
     s ? new Date(s).toLocaleString(dateLocale(locale)) : "—";
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="font-display text-2xl">{d.username}</h1>
-          <span className="text-sm text-sub">
-            UID {d.id} · {d.class_name ?? `LV${d.class_id}`}
-          </span>
-          {d.title && (
-            <span className={`${BADGE_PLAIN} bg-sun/30`}>{d.title}</span>
-          )}
-          {d.status > 0 && (
-            <span className={BADGE_DANGER_TXT}>
-              {STATUS_LABELS[d.status] ?? d.status}
-            </span>
-          )}
-          {d.suspended && (
-            <span className={BADGE_DANGER_TXT}>
-              {dict.userDetail.badgeSuspended}
-            </span>
-          )}
-          {!d.download_enabled && (
-            <span className={BADGE_DANGER_TXT}>
-              {dict.userDetail.badgeNoDl}
-            </span>
-          )}
-          {d.parked && (
-            <span className={`${BADGE_PLAIN} bg-sky-soft`}>
-              {dict.userDetail.badgeParked}
-            </span>
-          )}
-          {d.donor && (
-            <span className={`${BADGE_PLAIN} bg-mint/30`}>
-              {dict.userDetail.badgeDonor}
-            </span>
-          )}
-        </div>
-        <button
-          onClick={() => router.push("/admin?tool=users")}
-          className="min-h-[36px] rounded-full border border-line px-4 text-xs"
-        >
-          {dict.userDetail.backToUsers}
-        </button>
-      </div>
+      {/* 资料 Hero（对齐样图 § 用户详情）：组件本体拆至
+          ./admin-user-detail-hero.tsx（300 行门禁）。 */}
+      <UserDetailHero d={d} currency={currency} dt={dt} />
 
       {/* 关联数据 tab */}
       <div className="flex flex-wrap gap-2" role="tablist">

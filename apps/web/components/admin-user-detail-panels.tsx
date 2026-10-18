@@ -12,30 +12,11 @@ import type {
   SeedRow,
   SparkRow,
 } from "./admin-user-detail-shared";
-import { fmtBytes, fmtHours, PER_PAGE } from "./admin-user-detail-shared";
+import { fmtBytes, fmtHours } from "./admin-user-detail-shared";
+import { PagedBar } from "./admin-user-detail-pager";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { SPARK_KIND_LABELS } from "@/lib/spark-kind-labels";
-import { Pager } from "@/components/ui/pager";
-
-export function PagedBar({
-  total,
-  cur,
-  onPage,
-}: {
-  total: number;
-  cur: number;
-  onPage: (v: number) => void;
-}) {
-  return (
-    <Pager
-      page={cur}
-      pages={Math.max(1, Math.ceil(total / PER_PAGE))}
-      total={total}
-      onStep={onPage}
-    />
-  );
-}
 
 export function ProfilePanels({
   d,
@@ -108,24 +89,8 @@ export function ProfilePanels({
       <section className="brand-panel p-4">
         <h2 className="mb-2 text-base font-bold text-ink">{u.statsTitle}</h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-4">
-          <div>
-            <dt className="text-sub">{u.uploaded}</dt>
-            <dd>{fmtBytes(d.uploaded)}</dd>
-          </div>
-          <div>
-            <dt className="text-sub">{u.downloaded}</dt>
-            <dd>{fmtBytes(d.downloaded)}</dd>
-          </div>
-          <div>
-            <dt className="text-sub">{u.ratio}</dt>
-            <dd>
-              {d.downloaded > 0 ? (d.uploaded / d.downloaded).toFixed(3) : "∞"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sub">{fmt(u.balance, { magic: currency })}</dt>
-            <dd>{d.spark_balance.toLocaleString()}</dd>
-          </div>
+          {/* 上传/下载/分享率/魔力余额已上移资料 Hero（对齐样图 § 用户详情
+              的头条统计位），不是删字段——Hero 与页面头仍在原处展示。 */}
           <div>
             <dt className="text-sub">{u.uploadsCount}</dt>
             <dd>{d.uploads}</dd>

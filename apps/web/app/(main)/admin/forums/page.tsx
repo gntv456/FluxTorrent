@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { AdminPageShell } from "@/components/admin-page-shell";
@@ -79,7 +80,20 @@ export default function AdminForumsPage() {
       : (cats.find((c) => c.id === selected)?.name ?? "—");
 
   return (
-    <AdminPageShell active="forums">
+    <AdminPageShell
+      active="forums"
+      headTitle={f.title}
+      headSub={f.hint}
+      headAside={
+        <Link
+          href="/admin"
+          className="min-h-[36px] rounded-full border border-line
+            px-4 text-xs font-bold text-ink"
+        >
+          ‹ {dict.admin.backToAdmin}
+        </Link>
+      }
+    >
       {msg && <p className={MSG_CLS}>{msg}</p>}
 
       {loadFailed ? (
@@ -102,14 +116,8 @@ export default function AdminForumsPage() {
         </p>
       ) : (
         <div className="brand-panel p-4">
-          <div className="mb-3 flex items-center gap-3">
-            {/* 唯一 h1：顶栏标题已降为视觉 p（admin-shell），页面标题自持 */}
-            <h1 className="font-display text-base font-bold text-ink">
-              {f.title}
-            </h1>
-            <span className="text-xs text-sub">{f.hint}</span>
-          </div>
-
+          {/* 页头（标题/说明/返回）已由 AdminPageShell 的 PageHeader 承载，
+              这里直接进入「分区树 + 版块表」双栏。 */}
           <div className="flex items-stretch">
             <ForumCategoryPanel
               categories={cats}

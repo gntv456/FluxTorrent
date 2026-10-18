@@ -46,10 +46,12 @@ export function SettingsToolbar({
   }, [editable, schema, io]);
   return (
     <>
-      {/* 顶部标题 + 全局操作条（偏移到站点头栏之下：头栏 sticky 占 73px，见 theme-tide.css） */}
+      {/* 顶部标题 + 全局操作条（偏移到站点头栏之下：头栏 sticky 占 73px，见 theme-tide.css）。
+          h1 已由 AdminPageShell 的页头卡片自持（= 导航条目名「站点设定」），
+          这里降为视觉标题——吸顶条滚动时仍可见。 */}
       <div className="sticky top-[84px] z-10 flex flex-wrap items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]/95 p-3 backdrop-blur shadow-[var(--shadow-card)]">
         <div>
-          <h1 className="font-display text-xl">{s.title}</h1>
+          <p className="font-display text-xl">{s.title}</p>
           <p className="text-[11px] text-sub">
             {schema
               ? fmt(s.groupFieldCount, {

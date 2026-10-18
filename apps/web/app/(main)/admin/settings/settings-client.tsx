@@ -29,6 +29,7 @@ import {
   SettingsGroupCards,
   SettingsGroupNav,
   SettingsSearchResults,
+  searchSettings,
 } from "./_parts/settings-panels";
 import { useSettingsTransfer } from "./_parts/settings-io";
 import { useSettingsSave } from "./_parts/settings-save";
@@ -169,24 +170,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
   const kw = q.trim().toLowerCase();
   const searching = kw.length > 0;
 
-  const matches = useMemo(() => {
-    if (!searching) return [] as { group: string; groupLabel: string; field: SettingFieldMeta }[];
-    const out: { group: string; groupLabel: string; field: SettingFieldMeta }[] = [];
-    const hit = (f: SettingFieldMeta, groupLabel: string) =>
-      f.label.toLowerCase().includes(kw) ||
-      (f.label_en ?? "").toLowerCase().includes(kw) ||
-      f.name.toLowerCase().includes(kw) ||
-      (f.hint ?? "").toLowerCase().includes(kw) ||
-      groupLabel.toLowerCase().includes(kw);
-    for (const g of groups) {
-      for (const c of g.cards) {
-        for (const f of c.fields) {
-          if (hit(f, g.label)) out.push({ group: g.key, groupLabel: g.label, field: f });
-        }
-      }
-    }
-    return out;
-  }, [searching, kw, groups]);
+  const matches = useMemo(() => searchSettings(groups, kw), [groups, kw]);
 
   function renderField(f: SettingFieldMeta) {
     return (
@@ -272,7 +256,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
                   </button>
                 </div>
               )}
-              <SettingsGroupCards cards={activeGroup.cards} renderField={renderField} />
+              <SettingsGroupCards group={activeGroup} renderField={renderField} />
             </>
           ) : (
             !schema && (
