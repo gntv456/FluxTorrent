@@ -14,6 +14,8 @@ export interface ForumAdminForum {
   minclasscreate: number;
   protected: boolean;
   topics: number;
+  /** 回复数（帖子总数；topics 表只存主题，帖子在 posts 表——与 Rust 行镜像） */
+  posts: number;
   /** 分区内排序（0154） */
   sort: number;
   category_id?: number | null;
@@ -28,6 +30,50 @@ export type ModTuple = [number, number, string];
 
 /** 等级档（user_classes）：三档门槛下拉的候选 [id, name] 元组 */
 export type ClassTuple = [number, string];
+
+/** 版块抽屉的表单模型（新建/编辑共用；编辑=整行回填，防 B3 复发） */
+export interface ForumBoardForm {
+  name: string;
+  descr: string;
+  /** 版块规则正文（0392）：空串 = 清空（后端把缺省与空串分开处理） */
+  rules: string;
+  mr: number;
+  mw: number;
+  mc: number;
+  prot: boolean;
+  catId: number | "";
+  sort: number;
+}
+
+/** 空表单（新建用；分区预选为当前选中的分区） */
+export function blankBoardForm(defaultCatId: number | ""): ForumBoardForm {
+  return {
+    name: "",
+    descr: "",
+    rules: "",
+    mr: 0,
+    mw: 0,
+    mc: 0,
+    prot: false,
+    catId: defaultCatId,
+    sort: 0,
+  };
+}
+
+/** 由已有版块构造表单 —— 这是「编辑不可用」的修复核心 */
+export function formFromForum(f: ForumAdminForum): ForumBoardForm {
+  return {
+    name: f.name,
+    descr: f.descr ?? "",
+    rules: f.rules ?? "",
+    mr: f.minclassread,
+    mw: f.minclasswrite,
+    mc: f.minclasscreate,
+    prot: f.protected,
+    catId: typeof f.category_id === "number" ? f.category_id : "",
+    sort: f.sort,
+  };
+}
 
 export interface ForumAdminData {
   forums: ForumAdminForum[];
