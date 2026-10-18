@@ -126,7 +126,10 @@ module.exports = {
         // 移动档 Slow 4G（preset:"mobile" 需新版 Lighthouse，0.14 内置
         // 12.1 不认，显式给节流参数等价）
         emulatedFormFactor: "mobile",
-        onlyCategories: ["performance"],
+        // 双类目：performance=性能预算（§12.1）；accessibility=DS §9 第 6 条
+        // 的 axe 同源扫描（Lighthouse a11y 即 axe-core 内核），取 P0 十页
+        // 游客可达面的 critical 数作为过堂证据（登录态页待 LHC_PASS）。
+        onlyCategories: ["performance", "accessibility"],
         throttling: {
           rttMs: 150,
           throughputKbps: 1638.4,
