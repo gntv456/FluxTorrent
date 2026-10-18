@@ -286,7 +286,7 @@ pub async fn multi_ip_check(db: &PgPool) -> anyhow::Result<u64> {
     .fetch_all(db)
     .await?;
     let mut n = 0u64;
-    for (user_id, segments) in rows {
+    for (user_id, _segments) in rows {
         sqlx::query(
             "INSERT INTO cheat_events (user_id, agent, reason) VALUES ($1, 'login_ip_spread', 'multi_subnet_24h') \
              ON CONFLICT (user_id, agent, reason) DO UPDATE SET hits = cheat_events.hits + 1, last_seen = now()",
@@ -294,7 +294,6 @@ pub async fn multi_ip_check(db: &PgPool) -> anyhow::Result<u64> {
         .bind(user_id)
         .execute(db)
         .await?;
-        let _ = segments;
         n += 1;
     }
     Ok(n)
