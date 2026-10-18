@@ -63,7 +63,7 @@ pub async fn artists_list(
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
-    let offset = (q.page.unwrap_or(1).max(1) - 1) * limit;
+    let offset = crate::dto::page_offset(q.page.unwrap_or(1), limit);
     let kw = q.q.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let kind = norm_kind(q.kind.as_deref());
     // 该实体名下过审种数（值可能多人共用一条 sections 行）

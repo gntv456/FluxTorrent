@@ -78,9 +78,8 @@ pub(crate) async fn my_ledger(
         from: ts(q.from.as_deref()),
         to: ts(q.to.as_deref()),
     };
-    let rows =
-        repo_ledger::ledger(&state.repo, auth.id, &f, per, (page - 1) * per)
-            .await?;
+    let off = crate::dto::page_offset(page, per);
+    let rows = repo_ledger::ledger(&state.repo, auth.id, &f, per, off).await?;
     let total = repo_ledger::count_ledger(&state.repo, auth.id, &f).await?;
     Ok(ok(serde_json::json!({
         "items": rows,

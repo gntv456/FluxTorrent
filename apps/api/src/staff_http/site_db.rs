@@ -121,7 +121,7 @@ pub async fn sys_log(
     .bind(lv)
     .bind(kw.map(crate::torrents::esc_like))
     .bind(per)
-    .bind((page - 1) * per)
+    .bind(crate::dto::page_offset(page, per))
     .bind(inst)
     .fetch_all(&state.repo.db)
     .await
@@ -129,10 +129,16 @@ pub async fn sys_log(
     let total: i64 = sqlx::query_scalar(&format!(
         "SELECT count(*) FROM runtime_logs WHERE {where_sql}",
     ))
+    // where_sql 是「列表与计数同一谓词」共用的一段，里面写着 $5（instance），
+    // 所以计数口必须按 $1..$5 的顺序补齐占位：$3/$4 是列表的 LIMIT/OFFSET，
+    // 计数用不到也要占位，否则 PG 报「bind message supplies 4 parameters,
+    // but prepared statement requires 5」，而下面 .unwrap_or(0) 会把这条错误
+    // 吞成「共 0 条」——列表有行、计数报 0，界面那句总数是谎话（P-333）。
     .bind(lv)
     .bind(kw.map(crate::torrents::esc_like))
+    .bind(0i64)
+    .bind(0i64)
     .bind(inst)
-    .bind((page - 1) * per)
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
@@ -200,7 +206,7 @@ pub async fn locations(
                 "SELECT host(n.net) AS net, masklen(n.net) AS netmask, \
          n.logins, n.users, n.failed, \
          n.last_seen FROM ( SELECT (CASE family(ip) WHEN 4 THEN network(set_masklen(ip, 24)) ELSE network(set_masklen(ip, 64)) END) AS net, count(*)::bigint AS logins, count(DISTINCT user_id)::bigint AS users, count(*) FILTER (WHERE NOT ok)::bigint AS failed, max(created_at) AS last_seen FROM login_events WHERE ip IS NOT NULL GROUP BY 1 ) n ORDER BY n.last_seen DESC NULLS LAST LIMIT $1 OFFSET $2",
-    ).bind(per).bind((page - 1) * per)
+    ).bind(per).bind(crate::dto::page_offset(page, per))
     .fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(

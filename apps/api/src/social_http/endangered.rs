@@ -106,7 +106,7 @@ async fn endangered_list(
 
     let page = q.page.unwrap_or(1).max(1);
     let size = q.size.unwrap_or(20).clamp(1, 100);
-    let offset = (page - 1) * size;
+    let offset = crate::dto::page_offset(page, size);
 
     // count 与列表必须同套谓词，否则总数与实际行数不符
     let total: i64 = sqlx::query_scalar(

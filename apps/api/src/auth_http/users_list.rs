@@ -78,7 +78,7 @@ pub(crate) async fn users_list(
         order,
         desc,
         per,
-        (page - 1) * per,
+        crate::dto::page_offset(page, per),
     )
     .await?;
     let total =

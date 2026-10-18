@@ -41,7 +41,7 @@ pub(super) async fn preserve_list(
     // 而 total 明明 >0。
     let page = q.page.unwrap_or(1).max(1);
     let per = 50i64;
-    let offset = (page - 1) * per;
+    let offset = crate::dto::page_offset(page, per);
     let kw = q
         .keyword
         .as_deref()

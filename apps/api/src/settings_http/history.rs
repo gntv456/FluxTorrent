@@ -61,7 +61,7 @@ pub(super) async fn settings_history(
     )
     .bind(name)
     .bind(per_page)
-    .bind((q.page.max(1) - 1) * per_page)
+    .bind(crate::dto::page_offset(q.page, per_page))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

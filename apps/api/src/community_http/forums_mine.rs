@@ -46,7 +46,7 @@ pub(crate) async fn forum_mine(
     let auth = require_auth(&req, &state).await?;
     let per = MINE_PAGE_SIZE;
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
-    let offset = (page - 1) * per;
+    let offset = crate::dto::page_offset(page, per);
     let kind = if q.r#type.as_deref() == Some("replies") {
         "replies"
     } else {

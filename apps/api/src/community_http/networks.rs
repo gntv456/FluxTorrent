@@ -59,7 +59,7 @@ pub async fn networks_list(
 ) -> DomainResult<impl Responder> {
     let _auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
-    let offset = (q.page.unwrap_or(1).max(1) - 1) * limit;
+    let offset = crate::dto::page_offset(q.page.unwrap_or(1), limit);
     let kw = q.q.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let kind = q.kind.as_deref().unwrap_or("network");
     let sql = format!(

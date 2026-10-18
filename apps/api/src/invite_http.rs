@@ -146,7 +146,7 @@ pub async fn list_invites_handler(
     )
     .bind(auth.id)
     .bind(per)
-    .bind((page - 1) * per)
+    .bind(crate::dto::page_offset(page, per))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

@@ -45,7 +45,7 @@ pub async fn admin_export_users(
              FROM users u ORDER BY u.id LIMIT $1 OFFSET $2",
     )
     .bind(PER)
-    .bind((page - 1) * PER)
+    .bind(crate::dto::page_offset(page, PER))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -105,7 +105,7 @@ pub async fn admin_export_torrents(
              FROM torrents t ORDER BY t.id LIMIT $1 OFFSET $2",
     )
     .bind(PER)
-    .bind((page - 1) * PER)
+    .bind(crate::dto::page_offset(page, PER))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
