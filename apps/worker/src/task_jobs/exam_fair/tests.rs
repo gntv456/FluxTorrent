@@ -118,8 +118,8 @@ fn fail_action_parse_is_conservative() {
 #[test]
 fn suggest_remedy_uses_p80() {
     assert_eq!(suggest_remedy_days(&[]), None);
-    let days: Vec<i32> = (1..=10).collect(); // 1..10
-                                             // 80 分位 → 第 8 个（idx = ceil(10*0.8)-1 = 7 → 值 8）
+    // 1..10 的 80 分位 → 第 8 个（idx = ceil(10*0.8)-1 = 7 → 值 8）
+    let days: Vec<i32> = (1..=10).collect();
     assert_eq!(suggest_remedy_days(&days), Some(8));
     // 乱序也要对
     let mut shuffled = days.clone();
