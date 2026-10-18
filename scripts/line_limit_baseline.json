@@ -547,5 +547,6 @@
  "scripts/mobile/_mdiag3.js::wide": 4,
  "scripts/mobile/_mdiag4.js::wide": 4,
  "scripts/mobile/_mdiag5.js::wide": 1,
- "apps/api/src/staff_http/sitetype.rs": 351
+ "apps/api/src/staff_http/sitetype.rs": 351,
+ "apps/api/src/openapi_http/open_api.rs": 301
 }
