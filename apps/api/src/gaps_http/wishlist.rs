@@ -70,7 +70,10 @@ pub async fn wishlist_add(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let kw = body.keyword.trim();
-    if kw.is_empty() || kw.len() > 100 {
+    // 按**字**判（P-128 同族，批三十八先例）：旧写法 .len() 数的是 UTF-8 字节，
+    // 而文案写「1-100」，中文用户实际只配 33 字；torrent-actionbar-mount.tsx:67
+    // 是拿**种名**当关键词提交的，中文长名一点就 400。
+    if kw.is_empty() || kw.chars().count() > 100 {
         return Err(DomainError::Validation("关键词长度 1-100".into()));
     }
     let count: i64 =

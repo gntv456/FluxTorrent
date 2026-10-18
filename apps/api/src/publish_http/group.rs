@@ -19,7 +19,7 @@ pub async fn group_attach(
     let auth = require_auth(&req, &state).await?;
     let torrent_id = path.into_inner();
     let name = body.name.trim();
-    if name.is_empty() || name.len() > 100 {
+    if name.is_empty() || name.chars().count() > 100 {
         return Err(DomainError::Validation("组名需 1-100 字".into()));
     }
     let owner: Option<i64> =

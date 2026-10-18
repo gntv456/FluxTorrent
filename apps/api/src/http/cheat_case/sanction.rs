@@ -83,7 +83,7 @@ pub async fn cheat_case_resolve(
         ));
     }
     let note = body.note.trim();
-    if note.is_empty() || note.len() > 4000 {
+    if note.is_empty() || note.chars().count() > 4000 {
         return Err(DomainError::Validation("处置说明 1-4000 字符".into()));
     }
     let warn_weeks = body.warn_weeks.unwrap_or(2).clamp(1, 52);

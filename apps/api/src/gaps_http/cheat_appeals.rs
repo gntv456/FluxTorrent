@@ -45,7 +45,7 @@ pub async fn cheat_appeal_by_token(
 ) -> DomainResult<HttpResponse> {
     let token = body.token.trim();
     let content = body.body.trim();
-    if content.len() < 10 || content.len() > 4000 {
+    if content.chars().count() < 10 || content.chars().count() > 4000 {
         return Err(DomainError::Validation("申诉内容 10-4000 字符".into()));
     }
     let (cid, tail) = token
@@ -109,7 +109,7 @@ pub async fn cheat_appeal_submit(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let content = body.body.trim();
-    if content.len() < 10 || content.len() > 4000 {
+    if content.chars().count() < 10 || content.chars().count() > 4000 {
         return Err(DomainError::Validation("申诉内容 10-4000 字符".into()));
     }
     let owns =

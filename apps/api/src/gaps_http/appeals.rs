@@ -98,7 +98,7 @@ pub async fn appeal_create(
             "kind 仅支持 hr/warn/ban/other".into(),
         ));
     }
-    if body.body.trim().len() < 10 {
+    if body.body.trim().chars().count() < 10 {
         return Err(DomainError::Validation("申诉内容至少 10 字".into()));
     }
     // 未结申诉上限 3 条

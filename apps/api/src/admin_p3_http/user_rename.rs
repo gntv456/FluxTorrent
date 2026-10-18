@@ -46,7 +46,7 @@ async fn admin_user_rename(
         }
     }
     let new_name = body.new_name.trim();
-    if new_name.is_empty() || new_name.len() > 32 {
+    if new_name.is_empty() || new_name.chars().count() > 32 {
         return Err(DomainError::Validation("用户名长度 1-32".into()));
     }
     let db = &state.repo.db;
