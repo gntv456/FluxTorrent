@@ -1,7 +1,6 @@
 //! 社区模块 HTTP 接口（M14 勋章 + M15 论坛 + M16 短讯/好友）。
 //! 按域拆分（300 行门禁）：见各子模块头注释。
 use actix_web::web;
-
 // 按域拆出的子模块（本文件自己卡在 300 行门禁：新增子域要补这里与 mod 清单）
 pub(crate) use follow_read::*;
 pub(crate) use forums_boards::*;
@@ -156,6 +155,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum_side)
         .service(forum_mine)
         .service(forum_search)
+        .service(forum_recent)
         .service(topic_create)
         .service(topic_list)
         .service(topic_detail)
