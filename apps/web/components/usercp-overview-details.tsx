@@ -67,8 +67,12 @@ export function MoreInfoTable({
           <tr>
             <td className="rowhead">{t.ip}</td>
             <td className="rowfollow">
+              {/* 行头写的是「IP/地点」，那这一格只放后端真取到的东西。
+                  旧写法是 `ov.passkey ? "127.0.0.1" : "—"`——有 passkey 就
+                  编一个本机回环地址画上去，看着像「上次从这台的 IP 登录」。 */}
               <span className="uc-hidden-text">
-                {ov.passkey ? "127.0.0.1" : "—"}
+                {ov.last_ip || "—"}
+                {ov.last_city ? ` · ${ov.last_city}` : ""}
               </span>
             </td>
           </tr>

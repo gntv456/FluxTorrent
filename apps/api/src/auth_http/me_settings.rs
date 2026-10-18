@@ -98,13 +98,23 @@ pub async fn me_overview(
         .map(|(d, n)| serde_json::json!({ "date": d.format("%Y-%m-%d").to_string(), "count": n }))
         .collect();
     let login_total_30d: i64 = trend.iter().map(|(_, n)| n).sum();
-    let last_login: Option<String> = sqlx::query_scalar(
-        "SELECT max(created_at)::text FROM login_events WHERE user_id = $1",
-    )
-    .bind(uid)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 最近一次**成功**登录的 IP + 城市（样图 § ucp 概览「最后登录 … · 地点」）。
+    // 写法照 admin_http/user_detail.rs:76：host() 把 inet 收成文本。取不到就
+    // 回 null 由界面说「未记录」——旧版这里写死「—」，前端再用「有没有 passkey」
+    // 猜一个 127.0.0.1 画上去，两层都在编数据。
+    let (last_login, last_ip): (Option<String>, Option<String>) =
+        sqlx::query_as(
+            "SELECT max(created_at)::text, \
+             host((SELECT l.ip FROM login_events l \
+             WHERE l.user_id = $1 AND l.ok \
+             ORDER BY l.id DESC LIMIT 1)) \
+             FROM login_events WHERE user_id = $1",
+        )
+        .bind(uid)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let last_city = last_ip.as_deref().and_then(|ip| crate::geo::lookup(ip).2);
 
     // 等级进度：下一等级阈值以 class_rules 为准（worker class_auto_adjust 的升降级权威来源；
     // user_classes.min_uploaded 在 live 数据中全为 0，用它预览会恒显示「已达」）
@@ -193,7 +203,8 @@ pub async fn me_overview(
         "privacy": get_str("privacy"),
         "totp_enabled": get_bool("totp_enabled"),
         "passkey": get_str("passkey"),
-        "last_ip": "—",
+        "last_ip": last_ip,
+        "last_city": last_city,
         "login_trend_30d": trend_json,
         "login_days_30d": trend.iter().filter(|(_, n)| *n > 0).count(),
         "login_total_30d": login_total_30d,

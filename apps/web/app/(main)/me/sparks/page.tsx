@@ -45,6 +45,8 @@ export default function MySparksPage() {
   const [page, setPage] = useState(1);
   const [dir, setDir] = useState("");
   const [kind, setKind] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
@@ -54,10 +56,21 @@ export default function MySparksPage() {
       .catch(() => setBalance(null));
   }, []);
 
+  // 后端谓词是 created_at >= from AND created_at < to（repo/spark_ledger.rs:59-60），
+  // 所以「止」那一天要送**次日零点**才包含整天；本地日界用 toISOString 折成 UTC。
+  const dayEdge = (v: string, plusDay: boolean) => {
+    const d = new Date(`${v}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return "";
+    if (plusDay) d.setDate(d.getDate() + 1);
+    return d.toISOString();
+  };
+
   const load = useCallback(() => {
     const sp = new URLSearchParams({ page: String(page) });
     if (dir) sp.set("dir", dir);
     if (kind) sp.set("kind", kind);
+    if (from) sp.set("from", dayEdge(from, false));
+    if (to) sp.set("to", dayEdge(to, true));
     setData(null);
     api
       .get<LedgerEnvelope>(`/api/v1/me/spark/ledger?${sp.toString()}`)
@@ -66,7 +79,7 @@ export default function MySparksPage() {
         setFailed(false);
       })
       .catch(() => setFailed(true));
-  }, [page, dir, kind]);
+  }, [page, dir, kind, from, to]);
   useEffect(load, [load]);
 
   const per = data?.per ?? 50;
@@ -124,6 +137,47 @@ export default function MySparksPage() {
             </option>
           ))}
         </select>
+        {/* 时间范围（样图 § sparks 的「筛选时间范围」）：后端 from/to 早就
+            支持（spark_ledger_http.rs:36-40），此前是前端没接。本页所有筛选
+            都是改了就重取，故不加样图那颗「筛选」按钮——它会是第二套同义操作。 */}
+        <label className="flex items-center gap-1 text-xs text-sub">
+          {t.dateFrom}
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setPage(1);
+            }}
+            className={`${INPUT_CARD} px-2 py-1 text-xs text-ink`}
+          />
+        </label>
+        <label className="flex items-center gap-1 text-xs text-sub">
+          {t.dateTo}
+          <input
+            type="date"
+            value={to}
+            max={from || undefined}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setPage(1);
+            }}
+            className={`${INPUT_CARD} px-2 py-1 text-xs text-ink`}
+          />
+        </label>
+        {(from || to) && (
+          <button
+            type="button"
+            className="text-xs text-sub underline"
+            onClick={() => {
+              setFrom("");
+              setTo("");
+              setPage(1);
+            }}
+          >
+            {t.clearRange}
+          </button>
+        )}
       </div>
 
       {failed ? (

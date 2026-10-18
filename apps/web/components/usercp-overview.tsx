@@ -100,7 +100,8 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
             {t.trendTitle} <small>{t.trendRange}</small>
           </h3>
           <span>
-            {ov.login_days_30d} {t.trendDays}
+            {ov.login_days_30d} {t.trendDays} · {ov.login_total_30d}{" "}
+            {t.trendUnit}
           </span>
         </header>
         <div className="uc-trend-chart" aria-label={t.trendAria}>

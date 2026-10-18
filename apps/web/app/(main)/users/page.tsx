@@ -16,7 +16,13 @@ import {
 export const dynamic = "force-dynamic";
 
 const PER = 25;
-const SORTS = ["created", "class", "uploaded", "last_seen"] as const;
+const SORTS = [
+  "created",
+  "class",
+  "uploaded",
+  "last_seen",
+  "seeding",
+] as const;
 
 function num(n: number) {
   return n.toLocaleString();
@@ -53,7 +59,9 @@ export default async function UsersPage({
   const page =
     Number.isFinite(pageNum) && pageNum > 1 ? Math.floor(pageNum) : 1;
   const [data, classes] = await Promise.all([
-    getMembers({ q: q || undefined, classId, sort, page }),
+    // per 必须真传：本页按 PER=25 算页数，而接口缺省是 20
+    // ⇒ 不传的话「共 N 页」按 25 算、每页实际只回 20 条，尾页是空的。
+    getMembers({ q: q || undefined, classId, sort, page, per: PER }),
     getClassOptions(),
   ]);
 
@@ -139,6 +147,13 @@ export default async function UsersPage({
             label: t.sortLastSeen,
             href: sortHref("last_seen"),
           },
+          {
+            // 排序档直接复用列名「做种」（后端白名单里就是 seeding），
+            // 不为此页再开一组三语新键
+            value: "seeding",
+            label: t.colSeeding,
+            href: sortHref("seeding"),
+          },
         ]}
       />
 
@@ -172,14 +187,34 @@ export default async function UsersPage({
               {(data?.rows ?? []).map((m) => (
                 <tr key={m.id}>
                   <td>
-                    <Link
-                      href={`/users/${m.id}`}
-                      className="font-bold text-ink hover:text-[var(--sky)]"
-                    >
-                      {m.username}
-                    </Link>
-                    <div className="text-xs text-faint">
-                      {t.uid} {m.id}
+                    <div className="flex items-center gap-2">
+                      {/* 样图 § users 的用户列带头像（um-avatar-lg）。
+                          尺寸用工具类现拼，不为一列头像再开一套 CSS。 */}
+                      <span className={AV}>
+                        {m.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.avatar_url}
+                            alt=""
+                            className={AV_IMG}
+                          />
+                        ) : (
+                          <i className={AV_FALLBACK}>
+                            {m.username.slice(0, 1).toUpperCase()}
+                          </i>
+                        )}
+                      </span>
+                      <span>
+                        <Link
+                          href={`/users/${m.id}`}
+                          className="font-bold text-ink hover:text-[var(--sky)]"
+                        >
+                          {m.username}
+                        </Link>
+                        <div className="text-xs text-faint">
+                          {t.uid} {m.id}
+                        </div>
+                      </span>
                     </div>
                   </td>
                   <td className="text-xs text-sub">
@@ -228,9 +263,16 @@ export default async function UsersPage({
           page={data.page}
           pages={pages}
           total={data.total}
+          posLabel={`${fmt(dict.common.pageX, { n: data.page })} / ${pages}`}
           hrefs={hrefs}
         />
       )}
     </div>
   );
 }
+
+/** 列表行头像（样图 § users 的用户列）：尺寸走工具类，不为一列头像开 CSS */
+const AV = "size-7 shrink-0 overflow-hidden rounded-full bg-soft";
+const AV_IMG = "h-full w-full object-cover";
+const AV_FALLBACK =
+  "flex h-full w-full items-center justify-center text-xs";

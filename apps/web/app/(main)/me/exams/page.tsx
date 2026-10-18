@@ -5,7 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
-import { formatBytes } from "@/lib/format";
+import {
+  examCurrent,
+  examSummary,
+  examTarget,
+} from "./_parts/exam-metrics";
 import { PageHeader } from "@/components/ui/page-header";
 import { TabPanel, Tabs } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -111,28 +115,11 @@ function ExamsPanel() {
     subtitles: t.mSubtitles,
   };
 
-  /** 指标键 → (current) → 展示值。字节键走 formatBytes，秒键折算小时 */
-  const renderCurrent = (key: string, cur: ExamRow["current"]): string => {
-    if (key === "upload_delta" && cur.uploaded !== undefined)
-      return formatBytes(cur.uploaded);
-    if (key === "download_delta") return "—"; // 累计口径，结算时判定，不展示增量
-    if (key === "seed_seconds_delta" && cur.seed_seconds !== undefined)
-      return `${(cur.seed_seconds / 3600).toFixed(1)} ${t.hoursUnit}`;
-    if (key === "seed_points_delta" && cur.seed_seconds !== undefined)
-      return `${(cur.seed_seconds / 3600).toFixed(0)}`;
-    if (key === "uploads" && cur.uploads !== undefined)
-      return String(cur.uploads);
-    if (key === "subtitles" && cur.subtitles !== undefined)
-      return String(cur.subtitles);
-    return "—";
-  };
-  const renderTarget = (key: string, v: number): string => {
-    if (key === "upload_delta" || key === "download_delta")
-      return formatBytes(v);
-    if (key === "seed_seconds_delta")
-      return `${(v / 3600).toFixed(0)} ${t.hoursUnit}`;
-    return v.toLocaleString();
-  };
+  /** 指标键 → (current) → 展示值。折算口径抽在 ./_parts/exam-metrics */
+  const renderCurrent = (key: string, cur: ExamRow["current"]): string =>
+    examCurrent(key, cur, t.hoursUnit);
+  const renderTarget = (key: string, v: number): string =>
+    examTarget(key, v, t.hoursUnit);
 
   const all = rows ?? [];
   const tab = pickTab(sp.get("tab"), rows);
@@ -140,6 +127,8 @@ function ExamsPanel() {
   const href = (k: TabKey) => `/me/exams?tab=${k}`;
   const at = (s: string) => new Date(s).toLocaleString(dateLocale(locale));
   const isNewcomer = shown.some((e) => e.kind === "onboard");
+  // 样图 § exams 顶部两指标：达标率与「考核剩余 N 天」（折算在 _parts 里）
+  const { rate, daysLeft } = examSummary(shown);
 
   return (
     <div className="flex flex-col gap-4">
@@ -154,22 +143,32 @@ function ExamsPanel() {
         }
       />
 
+      {/* KPI 五格同一口径：都算**当前这一档**（shown），和下方表格一致。
+          原先总数/已达标算 all，「考核项 2」却配一行的表格。 */}
       <div className="pgstats">
         <div>
           <div className="k">{t.kpiTotal}</div>
-          <div className="v">{all.length.toLocaleString()}</div>
+          <div className="v">{shown.length.toLocaleString()}</div>
         </div>
         <div>
           <div className="k">{t.kpiPassed}</div>
           <div className="v">
-            {all.filter((e) => e.status === 1).length.toLocaleString()}
+            {shown.filter((e) => e.status === 1).length.toLocaleString()}
           </div>
         </div>
         <div>
           <div className="k">{t.kpiPending}</div>
           <div className="v">
-            {all.filter((e) => e.status === 0).length.toLocaleString()}
+            {shown.filter((e) => e.status === 0).length.toLocaleString()}
           </div>
+        </div>
+        <div>
+          <div className="k">{t.kpiRate}</div>
+          <div className="v">{rate}%</div>
+        </div>
+        <div>
+          <div className="k">{t.kpiDaysLeft}</div>
+          <div className="v">{daysLeft === null ? "—" : daysLeft}</div>
         </div>
       </div>
 

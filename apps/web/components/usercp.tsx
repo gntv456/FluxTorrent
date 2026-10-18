@@ -129,6 +129,9 @@ export interface Overview {
   login_days_30d: number;
   login_total_30d: number;
   last_login: string | null;
+  /** 最近一次成功登录的 IP / 城市；后端没记到就是 null */
+  last_ip?: string | null;
+  last_city?: string | null;
   seed_points: number;
   next_class: { name: string; required: number };
   /** GET /me/overview 的最近阅读主题（样图 § ucp 概览那张表） */
