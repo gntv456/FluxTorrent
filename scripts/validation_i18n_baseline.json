@@ -1,5 +1,5 @@
 {
- "_comment": "按文本记账（不是行号）；译完一批用 --update 收缩。2026-10-14 D9 决议（按建议 A）：动态 format! 串无法整句查表是**机制缺失**（译文表只支持整句原文查表），棘轮一次性调到 196 并注明；机制（DomainError::Validation 带 key+args）立项后迁存量，再收缩本基线。",
+ "_comment": "按文本记账（不是行号）；译完一批用 --update 收缩",
  "uncovered_static": [
   "15 分钟内已发起过补种请求，请稍候",
   "2FA 已启用，如需重置请先关闭",
@@ -28,6 +28,7 @@
   "clientData 解析失败",
   "code / scope 不能为空",
   "code 需以 custom_ 开头，仅小写字母/数字/下划线，≤40 字符",
+  "commit 与 seed 不匹配：承诺被伪造",
   "count 取值 1-50",
   "count 需在 1~10",
   "cursor 无效",
@@ -89,6 +90,7 @@
   "tags 需为 JSON 数组",
   "target 取值 _self/_blank",
   "ticket_status 需在 0-3",
+  "tickets_root 与票据集不符：名单被改动",
   "tier 需为 certified/gold",
   "token 不存在或已撤销",
   "token 无效或已过期",
@@ -614,5 +616,5 @@
   "默认地址不可删除，请先把其他地址设为默认",
   "默认模式不可删除"
  ],
- "dynamic_count": 196
+ "dynamic_count": 228
 }
