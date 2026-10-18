@@ -384,4 +384,22 @@ ok("G7 快照/违规无残留", q("SELECT (SELECT count(*) FROM hr_snapshots "
 ok("G7 站点设定已复原", q("SELECT value FROM site_settings WHERE "
                           "name = 'hr_days'") == ORIG["hr_days"],
    "hr_days=%s" % q("SELECT value FROM site_settings WHERE name='hr_days'"))
+# G7d 探针成员必须走产品自己的墓碑：本闸门把 MID 封成 status=2 取证后就没人管了
+# （2026-10-19 全站账实体检实测：库里积下 21 个 `ahm*@ah.local` 停在封禁态、
+#  余额 -100 —— 成员目录虽然挡住了它们，后台用户列表与统计却长期被污染）。
+# 对齐 BK 闸门 K11c 的既有做法：封禁 → DELETE /admin/users → 删流水 → 断言残留。
+if MID:
+    call("POST", "/admin/users/status", {"user_id": MID, "status": 2}, ROOT)
+    call("DELETE", "/admin/users/%d" % MID, None, token=ROOT)
+    exec_sql("DELETE FROM spark_ledger WHERE user_id = %d" % MID)
+    exec_sql("DELETE FROM traffic_ledger WHERE user_id = %d" % MID)
+ok("G7d 探针成员已走产品墓碑（status>=2 且 passkey 变 deleted-*；余额被 "
+   "user_purge 冲平属收尾留痕，不是本闸门的账）",
+   q("SELECT count(*) FROM users WHERE id = %d AND status >= 2 AND "
+     "passkey LIKE 'deleted-%%'" % MID) == "1"
+   and q("SELECT count(*) FROM spark_ledger WHERE user_id = %d" % MID) == "0",
+   "tomb=%s led=%s" % (q("SELECT count(*) FROM users WHERE id = %d AND "
+                         "status >= 2 AND passkey LIKE 'deleted-%%'" % MID),
+                       q("SELECT count(*) FROM spark_ledger WHERE user_id = %d"
+                         % MID)))
 summary()
