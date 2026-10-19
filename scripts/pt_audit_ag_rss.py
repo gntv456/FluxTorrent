@@ -340,6 +340,16 @@ for k, v in (eps.get("aliases") or {}).items():
     if isinstance(v, str) and v.strip().startswith("/api"):
         gets["alias." + k] = first_tok(v)
 missing = []
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """不跟随 3xx：别名口按口径就是 302 到站点详情页。"""
+
+    def redirect_request(self, *a):  # noqa: D102
+        return None
+
+
+_opener = urllib.request.build_opener(_NoRedirect)
 # {id} 要换成库里真实存在的过审种号：download.php 对不存在的种回 404 是
 # 「资源没有」，不是「路由不存在」，拿 1 去探会把正确行为报成虚报
 LIVE = q("SELECT COALESCE(max(id), 1)::text FROM torrents "
@@ -349,12 +359,15 @@ for k, path in sorted(gets.items()):
            .replace("{token}", "fxo_none").replace("{anchor}", "1"))
     rq = urllib.request.Request(BASE.replace("/api/v1", "") + url)
     try:
-        st = urllib.request.urlopen(rq, timeout=25).status
+        st = _opener.open(rq, timeout=25).status
     except urllib.error.HTTPError as e:
         st = e.code
     except Exception:
         st = 0
-    # 401/400/429 都是「口在、只是要凭证」；404/1004 才是虚报
+    # 401/400/429/3xx 都算「口在」（3xx 是别名按口径跳转）；404/405 才是虚报。
+    # 302 的目标由 site_base 决定（PUBLIC_SITE_URL 优先，否则按请求 Host 拼）：
+    # 直打 API 端口时目标会落到 API 自己身上并 404，跟着那一跳会把好口报成
+    # 虚报——批一百八十就在 :8099 上这样误判过一次「details.php 掉了」。
     if st in (0, 404, 405):
         missing.append("%s(%s→%s)" % (k, path, st))
 rq = urllib.request.Request(BASE + "/torznab")
