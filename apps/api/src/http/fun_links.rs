@@ -12,6 +12,24 @@ use crate::state::AppState;
 
 use super::auth_infra::require_auth;
 
+/// staff 档判定：与权限位 `FUN_MANAGE` 并行的旧口径（两者任一即视为可判决）。
+fn is_staff_of(auth: &crate::http::AuthUser) -> bool {
+    auth.class_id >= 90
+}
+
+/// 标题按**字符**判长度上限（`fun_items.title` 是 varchar(255)）。
+/// 不判就会让超长提交撞 Postgres 的 22001，会员收到 500 而不是中文 422
+/// （P-331 一族：按字节当字判是另一个方向的错，这里按字符）。
+fn check_fun_title(title: &str) -> DomainResult<()> {
+    if title.trim().is_empty() {
+        return Err(DomainError::Validation("标题不能为空".into()));
+    }
+    if title.chars().count() > 255 {
+        return Err(DomainError::Validation("标题不能超过 255 字".into()));
+    }
+    Ok(())
+}
+
 // ============ 趣味盒（fun.php 复刻：浏览/投票/发布/编辑/删除/禁止） ============
 
 #[derive(serde::Serialize, sqlx::FromRow)]
@@ -73,6 +91,22 @@ pub async fn fun_item_vote(
     if body.vote != "fun" && body.vote != "dull" {
         return Err(DomainError::Validation("投票只能是 fun 或 dull".into()));
     }
+    // P-368：投票目标必须先存在且未被禁止。旧版直接 INSERT，打到不存在的
+    // fun_id 会撞外键（`fun_item_votes_fun_id_fkey`）变 500，而已 banned 的
+    // 内容照旧收票——被禁的内容不该还能涨票。
+    let target: Option<String> =
+        sqlx::query_scalar("SELECT status FROM fun_items WHERE id = $1")
+            .bind(body.fun_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    match target.as_deref() {
+        None => return Err(DomainError::NotFound(body.fun_id as i64)),
+        Some("banned") => {
+            return Err(DomainError::Validation("该内容已被禁止".into()));
+        }
+        Some(_) => {}
+    }
     let inserted = sqlx::query(
         "INSERT INTO fun_item_votes (fun_id, user_id, vote) VALUES \
          ($1, $2, $3) ON CONFLICT DO NOTHING",
@@ -104,9 +138,7 @@ pub async fn fun_item_create(
     body: web::Json<FunItemBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    if body.title.trim().is_empty() {
-        return Err(DomainError::Validation("标题不能为空".into()));
-    }
+    check_fun_title(&body.title)?;
     let recent: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
         "SELECT max(added) FROM fun_items WHERE status NOT IN \
          ('banned','dull')",
@@ -160,6 +192,7 @@ pub async fn fun_item_update(
     {
         return Err(DomainError::Forbidden);
     }
+    check_fun_title(&body.title)?;
     sqlx::query("UPDATE fun_items SET title = $2, body = $3 WHERE id = $1")
         .bind(*path)
         .bind(body.title.trim())
@@ -198,9 +231,23 @@ pub async fn fun_item_set_status(
     let Some(owner) = owner else {
         return Err(DomainError::NotFound(*path as i64));
     };
-    let is_staff = auth.class_id >= 90;
-    if (body.status == "banned" || owner != auth.id) && !is_staff {
+    // P-368：状态位是 staff 的判决权限，作者不能自判。旧条件
+    // `(status == "banned" || owner != auth.id) && !is_staff` 把「自己是作者
+    // 且状态不是 banned」整条放开 ⇒ 作者能给自己打 veryfunny/funny/notfunny/
+    // dull，而界面 fun-box.tsx 只提供 staff 的 ban/restore
+    // （`setStatus(id, "banned" | "normal")`）——两份规则里被改漏的是 API 这侧。
+    // 另有一条后果：create 的 24h 冷却只看未 banned/dull 的最新一条，作者把
+    // 自己刚发的标成 dull 就能把它移出冷却池、立刻再发一条。
+    if owner != auth.id
+        && !crate::authz::can(&state, &auth, crate::authz::perm::FUN_MANAGE)
+            .await
+    {
         return Err(DomainError::Forbidden);
+    }
+    if owner == auth.id && !is_staff_of(&auth) {
+        return Err(DomainError::Validation(
+            "内容状态由管理员判定，作者不能自判".into(),
+        ));
     }
     sqlx::query("UPDATE fun_items SET status = $2 WHERE id = $1")
         .bind(*path)
