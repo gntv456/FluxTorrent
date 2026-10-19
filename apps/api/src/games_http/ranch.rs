@@ -6,7 +6,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark, spend_spark, SpendOutcome};
+use crate::economy_http::{earn_spark, spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -122,62 +122,56 @@ pub(super) async fn craft_start(
     let Some((spend, yld, mins)) = recipe else {
         return Err(DomainError::Validation("没有这个配方".into()));
     };
-    let busy: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM arcade_farm_crafts \
-          WHERE user_id = $1 AND recipe = $2)",
-    )
-    .bind(auth.id)
-    .bind(&body.recipe)
-    .fetch_one(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if busy {
-        return Err(DomainError::Validation("这个配方已经在做了".into()));
-    }
-    let idem = format!("craft-start:{}:{}:{}", auth.id, body.recipe, yld);
-    match spend_spark(db, auth.id, spend, "game", &idem, "farm_craft", 0)
-        .await?
-    {
-        SpendOutcome::Replayed => {
-            return Err(DomainError::Validation("请勿重复提交".into()))
-        }
-        SpendOutcome::Spent => {}
-    }
-    let inserted = sqlx::query(
-        "INSERT INTO arcade_farm_crafts (user_id, recipe, ready_at, out_spark) \
-         VALUES ($1, $2, now() + make_interval(mins => $4::int), $3) \
-         ON CONFLICT (user_id, recipe) DO NOTHING",
+    // P-385：占位（在产行）与投入扣款**同一事务**，幂等键锚「这一轮的
+    // ready_at」。旧版是先扣款 → 再插行 → 插 0 行退款，且键写成
+    // `craft-start:{uid}:{recipe}:{out_spark}`：收工每轮都删掉
+    // arcade_farm_crafts 的 (user_id, recipe) 行，而流水按口径不删 ⇒
+    // 同一个配方第二次开工必撞旧键，永久 400「请勿重复提交」——加工玩法
+    // 每人每配方一辈子只能做一次。同文件 AnimalReq 的注释里，牧场买入
+    // 早已因同样的理由把键改成带周期（P-334），这里是被改漏的兄弟口。
+    let mut tx = db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let ready_at: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
+        "INSERT INTO arcade_farm_crafts (user_id, recipe, ready_at, \
+         out_spark) VALUES ($1, $2, now() + make_interval(mins => $4::int), \
+         $3) ON CONFLICT (user_id, recipe) DO NOTHING RETURNING ready_at",
     )
     .bind(auth.id)
     .bind(&body.recipe)
     .bind(yld)
     .bind(mins)
-    .execute(db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    if inserted.rows_affected() == 0 {
-        // P-366：这笔是「开工失败退回已扣的魔力」，旧版 `let _ =` 吞失败 ⇒
-        // 会员被扣了材料魔力、活没开工、退款也没到账，三件事叠在一起只有
-        // 当事人自己数得出来。改成出声（键稳定，运维可按它手工补退）。
-        if let Err(e) = earn_spark(
-            db,
+    let Some(ready_at) = ready_at else {
+        return Err(DomainError::Validation("这个配方已经在做了".into()));
+    };
+    let idem = format!(
+        "craft-start:{}:{}:{}",
+        auth.id,
+        body.recipe,
+        ready_at.timestamp_micros()
+    );
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
             auth.id,
             spend,
             "game",
-            &format!("craft-start-refund:{}", idem),
+            &idem,
+            "farm_craft",
+            0,
         )
-        .await
-        {
-            tracing::warn!(
-                err = %e,
-                user = auth.id,
-                amount = spend,
-                refund_key = format!("craft-start-refund:{}", idem),
-                "ranch craft refund failed"
-            );
-        }
-        return Err(DomainError::Validation("这个配方已经在做了".into()));
+        .await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation("这一轮加工的投入已受理".into()));
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "started": body.recipe, "cost": spend, "out": yld,
         "ready_in_mins": mins,
