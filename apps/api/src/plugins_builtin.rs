@@ -48,8 +48,13 @@ impl Plugin for AutoPinOfficial {
         // hook 已在 blocking 线程；db_exec 内部 block_on（同旧版语义），
         // 且先过 sql_guard（本句：UPDATE torrents SET sticky WHERE id/official_tag，
         // 全部在声明能力内）。
+        // P-420：表名必须**带 schema 限定**。plugin_sql::begin_isolated 把
+        // `search_path` 收成只剩 pg_catalog（防同名表被前序项劫持），业务表不限定
+        // 就报 `relation "torrents" does not exist`——本 hook 因此**从没成功过**
+        // （现网 runtime_logs：330 条 ERROR「pin update failed」，最近 2026-10-19）。
         match ctx.db_exec(
-            "UPDATE torrents SET sticky = TRUE WHERE id = $1 AND official_tag",
+            "UPDATE public.torrents SET sticky = TRUE WHERE id = $1 AND \
+             official_tag",
             &[Bind::I64(torrent_id)],
         ) {
             Ok(r) if r.rows_affected() > 0 => {

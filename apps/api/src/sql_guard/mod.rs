@@ -80,6 +80,14 @@ pub fn validate(sql: &str, caps: &[DbCapability]) -> DomainResult<()> {
             "插件 SQL 不支持{w}（写平铺 SQL）"
         )));
     }
+    // 5b. schema 限定只允许 public（P-420b）：护栏按最后一段比对白名单，
+    // 不加这道判据时 `evil.torrents` 能借声明过的表名溜过去，实际写到
+    // 另一个 schema 的同名表上。
+    if let Some(s) = &col.bad_schema {
+        return Err(DomainError::Validation(format!(
+            "插件 SQL 只允许 public schema 限定：{s}（裸名或 public.表名）"
+        )));
+    }
     // 6. 表白名单
     for t in &col.relations {
         if !col.tables.contains(t) {
