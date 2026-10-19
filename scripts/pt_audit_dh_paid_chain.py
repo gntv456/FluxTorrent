@@ -109,12 +109,15 @@ ok("DH3 torrent_purchases 主键=(user_id,torrent_id) 且幂等触发器会 RAIS
    pk.split("\n") == ["torrent_id", "user_id"] and raises
    and int(trg or 0) >= int(parts or 0), "主键列=%s RAISE=%s" % (pk, raises))
 
-# ---------- DH4 在册会员(status=2)的账面一一对应 ----------
-# status 语义（admin_http/user_del.rs:21 定稿）：0/1 新人未转正、
-# 2 正式会员、3 墓碑软删、4 封禁；已删号的历史流水只进台账不算洞。
+# ---------- DH4 正常会员的账面一一对应 ----------
+# status 语义以**鉴权层**为准：passkey_login.rs:148 `if status >= 2`
+# 拦登录、appeal_unban.rs:28 解封写回 0、appeals.rs:76 申诉只认
+# `status >= 2`、overview.rs:35 页脚在册数用 `status < 2` ⇒ **<2 正常、
+# >=2 被处置（2 停用/3 墓碑/4 封禁）**。被处置会员的账也要对，只是
+# 分开数：DH4 数正常会员，DH4b 数被处置会员，任一条非 0 都是洞。
 LIVE = ("FROM torrent_purchases p JOIN users u ON u.id = p.user_id "
         "JOIN torrents t ON t.id = p.torrent_id "
-        "WHERE u.status = 2 AND t.approval_status = 1")
+        "WHERE u.status < 2 AND t.approval_status = 1")
 n_live = sval("SELECT count(*) " + LIVE)
 miss_buy = sval("SELECT count(*) " + LIVE + " AND NOT EXISTS (SELECT 1 "
                 "FROM spark_ledger l WHERE l.kind='torrent_buy' AND "
@@ -127,7 +130,7 @@ wrong_amt = sval("SELECT count(*) FROM torrent_purchases p "
                  "AND l.user_id = p.user_id "
                  "AND l.idempotency_key = "
                  "'torrent-buy:' || p.user_id || ':' || p.torrent_id "
-                 "WHERE u.status = 2 AND t.approval_status = 1 "
+                 "WHERE u.status < 2 AND t.approval_status = 1 "
                  "AND l.amount <> -p.price")
 no_sell = sval("SELECT count(*) " + LIVE + " AND t.owner_id <> p.user_id "
                "AND NOT EXISTS (SELECT 1 FROM spark_ledger l WHERE "
@@ -148,6 +151,25 @@ ok("DH4 活体账面守恒对齐（在册 %s：缺买方流水 %s、金额不符
    all(x == "0" for x in (miss_buy, wrong_amt, no_sell, self_buy, orph))
    and int(n_live or 0) > 0,
    "任一条非 0＝有人付了钱却拿不到，或站方账实不符")
+sus_ok = all(x == "0" for x in (
+    (sval("SELECT count(*) FROM torrent_purchases p JOIN users u "
+          "ON u.id = p.user_id JOIN torrents t ON t.id = p.torrent_id "
+          "WHERE u.status >= 2 AND t.approval_status = 1 AND NOT EXISTS "
+          "(SELECT 1 FROM spark_ledger l WHERE l.kind='torrent_buy' AND "
+          "l.idempotency_key='torrent-buy:'||p.user_id||':'||p.torrent_id)"),
+     sval("SELECT count(*) FROM torrent_purchases p JOIN users u "
+          "ON u.id = p.user_id JOIN torrents t ON t.id = p.torrent_id "
+          "JOIN spark_ledger l ON l.kind='torrent_buy' "
+          "AND l.user_id=p.user_id AND l.idempotency_key="
+          "'torrent-buy:'||p.user_id||':'||p.torrent_id "
+          "WHERE u.status >= 2 AND t.approval_status = 1 "
+          "AND l.amount <> -p.price"))))
+n_sus = sval("SELECT count(*) FROM torrent_purchases p JOIN users u "
+             "ON u.id = p.user_id JOIN torrents t ON t.id = p.torrent_id "
+             "WHERE u.status >= 2 AND t.approval_status = 1")
+ok("DH4b 被处置会员(>=2)的账同样对齐（在册 %s）" % n_sus, sus_ok,
+   "停用/封禁账号的已购行也必须有买方流水且金额相符")
+
 print("   [台账] 全部 torrent_buy 流水里的孤儿（含已删号/已删种）：%s 条"
       "——历史残留，钱与对象都已不存在" % hist)
 
@@ -163,7 +185,7 @@ ok("DH5 价格无负值(=%s)无天文数(=%s)、税率读数 %s 落在 clamp(0,9
 ctl = psql("BEGIN; SET LOCAL lock_timeout='5s'; "
            "CREATE TEMP TABLE ctl AS SELECT DISTINCT p.user_id AS uid, "
            "t.id AS tid FROM torrent_purchases p JOIN users pu "
-           "ON pu.id = p.user_id AND pu.status = 2 JOIN torrents t "
+           "ON pu.id = p.user_id AND pu.status < 2 JOIN torrents t "
            "ON t.price > 0 "
            "AND t.approval_status = 1 WHERE NOT EXISTS (SELECT 1 "
            "FROM torrent_purchases q WHERE q.user_id=p.user_id AND "
@@ -178,7 +200,7 @@ ok("DH6 正控可植入：事务内确实插进一条假已购行（planted=%s�
 chk_red = sval("BEGIN; SET LOCAL lock_timeout='5s'; CREATE TEMP TABLE ctl "
                "AS SELECT DISTINCT p.user_id AS uid, t.id AS tid FROM torrent_"
                "purchases p JOIN users pu ON pu.id = p.user_id "
-               "AND pu.status = 2 JOIN torrents t ON t.price > 0 AND t."
+               "AND pu.status < 2 JOIN torrents t ON t.price > 0 AND t."
                "approval_status = 1 WHERE NOT EXISTS (SELECT 1 FROM "
                "torrent_purchases q WHERE q.user_id=p.user_id AND "
                "q.torrent_id=t.id) LIMIT 1; INSERT INTO torrent_purchases "
