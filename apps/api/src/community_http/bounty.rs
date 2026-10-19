@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use super::*;
 use crate::dto::ok;
-use crate::economy_http::earn_spark;
+use crate::economy_http::{earn_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -74,22 +74,36 @@ pub(crate) async fn bounty_award(
     if answerer == op {
         return Err(DomainError::Validation("不能采纳自己的首帖".into()));
     }
-    // CAS：open → awarded（并发双采只成功一个）
+    // P-411：CAS、审计流水、发放必须同一事务。旧写法三步各自 autocommit：
+    // ① CAS `open→awarded` 先落库；② `topic_bounty_awards` 用 `let _ =` 吞失败
+    // （「谁采了谁」可以整条不留痕）；③ 最后才 earn_spark 给答主。
+    // 只要第③步失败（`.await?` 上抛），悬赏已经是 awarded，而重试撞 CAS ⇒
+    // `LedgerConflict` 永久挡回：楼主的钱早发帖时冻了、答主一分没拿、单子还
+    // 显示「已采纳」——同型口径见 P-364（留 open 可重试）、P-406、P-407、
+    // `bank_withdraw`。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // CAS：open → awarded（并发双采只成功一个；失败即整体回滚，单子留 open）
     let n = sqlx::query(
         "UPDATE topics SET bounty_status = 'awarded', bounty_post_id = $2 \
          WHERE id = $1 AND bounty_status = 'open'",
     )
     .bind(tid)
     .bind(body.post_id)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if n == 0 {
         return Err(DomainError::LedgerConflict);
     }
-    // 审计流水（钱以 spark_ledger 为准，此表只留「谁采了谁」）
-    let _ = sqlx::query(
+    // 审计流水（钱以 spark_ledger 为准，此表只留「谁采了谁」）——写失败就该
+    // 让整笔采纳回滚，而不是悄悄少一条台账
+    sqlx::query(
         "INSERT INTO topic_bounty_awards (topic_id, post_id, answerer_id, awarded_by, spark) \
          VALUES ($1, $2, $3, $4, $5)",
     )
@@ -98,13 +112,25 @@ pub(crate) async fn bounty_award(
     .bind(answerer)
     .bind(auth.id)
     .bind(spark)
-    .execute(&state.repo.db)
-    .await;
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if spark > 0 {
         let idem = format!("forum-bounty-pay:{}", tid);
-        earn_spark(&state.repo.db, answerer, spark, "forum_bounty", &idem)
-            .await?;
+        // 采纳只发生一次：非 Spent（重放）说明这笔钱已经发过，整笔回滚不出双份
+        let paid = earn_spark_tx(
+            &mut tx, answerer, spark, "forum_bounty", &idem,
+        )
+        .await?;
+        if !matches!(paid, SpendOutcome::Spent) {
+            return Err(DomainError::Validation(
+                "该悬赏的款项已发放过，未重复出账".into(),
+            ));
+        }
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 双向通知：答主拿钱（后端拿不到 site_settings，货币名落默认口径「魔力」，与 economy_http 同约定）
     notify_user(
         &state.repo.db,
