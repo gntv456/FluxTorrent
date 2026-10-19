@@ -158,15 +158,8 @@ pub(super) async fn prior_draw_rows(
     .fetch_all(&mut **tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let shard_balance: i32 = sqlx::query_scalar(
-        "SELECT COALESCE(balance, 0) FROM gacha_shard_balance \
-         WHERE user_id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(&mut **tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .unwrap_or(0);
+    // 同一把尺子（P-361）：没有快照行时按流水净额回，不写死 0
+    let shard_balance = super::shards::shard_balance(&mut **tx, user_id).await?;
     let rows = serde_json::json!(rows
         .iter()
         .map(|(seq, ty, rar, card, shards, pity, wp, is_new)| {

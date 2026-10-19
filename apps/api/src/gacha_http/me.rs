@@ -27,15 +27,8 @@ pub(super) async fn gacha_me(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .unwrap_or(0);
-    let shard: i32 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT balance FROM gacha_shard_balance \
-         WHERE user_id = $1), 0)",
-    )
-    .bind(uid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .unwrap_or(0);
+    // 碎片读数走共用尺子（P-361）：只在流水里有碎片的会员不该看到 0
+    let shard = super::shards::shard_balance(&state.repo.db, uid).await?;
     let cards: Vec<(
         i64,
         String,
