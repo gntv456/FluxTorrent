@@ -151,10 +151,37 @@ print("== A2 反例：接口限流中，真实 id 不得被报成「不存在」
 api = "%s/api/v1/users/%s" % (BASE, uid)
 # 60 次打不满 60/分这一档（前置会假红：本轮实测 429×0、全是 200）——
 # 判据的前提要自己成立，把次数提到 90 并在断言里带上实测分布。
-codes = [hit(api, CK) for _ in range(90)]
-throttled = codes.count(429)
-ok("A2 前置：确实把 SSR 反代打到限流（429>0）", throttled > 0,
-   "429×%d 其它=%s" % (throttled, sorted(set(codes))))
+# 前提要自己成立：逐次 `docker exec node -e` 起进程，90 次拉跨超过一分钟，
+# 60/分的窗口中途回血 ⇒ 永远打不到 429（本轮实测 429×0 就是这么来的假红）。
+# 改成单进程内 Promise.all 并发打满，必要时加大并发再试一轮。
+HAMMER_JS = (
+    "const u=process.argv[1],c=process.argv[2],n=Number(process.argv[3]);"
+    "Promise.all(Array.from({length:n},()=>fetch(u,{headers:{cookie:c},"
+    "cache:'no-store'}).then(r=>r.status))).then(a=>{"
+    "const m={};a.forEach(s=>m[s]=(m[s]||0)+1);"
+    "console.log(Object.entries(m).map(([k,v])=>k+'x'+v).join(' '));});")
+
+
+def hammer(url, n):
+    p = sh(["docker", "exec", "flux-web", "node", "-e", HAMMER_JS,
+            url, CK, str(n)])
+    line = (p.stdout or "").strip().splitlines()
+    dist = {}
+    for part in (line[-1] if line else "").split():
+        k, _, v = part.partition("x")
+        if k.isdigit():
+            dist[int(k)] = int(v)
+    return dist
+
+
+dist = {}
+for n in (120, 240):
+    dist = hammer(api, n)
+    if dist.get(429):
+        break
+throttled = dist.get(429, 0)
+ok("A2 前置：并发打满确实把 SSR 反代打到限流（429>0）", throttled > 0,
+   "分布=%s（旧写法逐次 exec 跨窗口 ⇒ 假红）" % (dist or "空",))
 page = hit("%s/users/%s" % (BASE, uid), CK)
 ok("A2 限流窗口里真实主页不是 404（读不到 ≠ 不存在）",
    page != 404, "http=%s" % page)
