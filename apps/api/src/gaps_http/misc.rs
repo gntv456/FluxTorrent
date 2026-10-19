@@ -165,7 +165,7 @@ pub async fn resub_use(
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
     // 补签出勤行：streak 不续（补的是漏签日）、reward=0（火花在正常签到发放）
-    sqlx::query(
+    let att_rows = sqlx::query(
         "INSERT INTO attendance (user_id, date, streak, reward, makeup) \
          VALUES ($1, $2, 0, 0, TRUE) ON CONFLICT (user_id, date) DO NOTHING",
     )
@@ -173,7 +173,17 @@ pub async fn resub_use(
     .bind(date)
     .execute(&mut *tx)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    // P-349：「该日已签」判在事务外，用户在检查与本事务之间正常签了当天
+    // （双标签页/并发）时，这条只写 0 行——旧写法照样提交，于是**卡被扣掉、
+    // 接口回 200、补签其实什么都没发生**。行数在这里必须当闸门用：0 行就整笔
+    // 回滚（resub_uses 与 arcade_item_uses 一起撤销），卡不消耗。
+    if att_rows == 0 {
+        return Err(DomainError::Validation(
+            "该日已有签到记录，本次未消耗补签卡".into(),
+        ));
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
