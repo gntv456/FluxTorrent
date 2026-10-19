@@ -20,9 +20,9 @@ use crate::state::AppState;
 /// 每人有效 token 上限（0352 迁移注释同源：应用层校验，不进 schema）
 const RSS_TOKEN_MAX: i64 = 5;
 
-fn sha3_hex(bytes: &[u8]) -> String {
+pub(crate) fn token_hash_hex(plain: &str) -> String {
     let mut h = Sha3_256::new();
-    h.update(bytes);
+    h.update(plain.as_bytes());
     h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
@@ -83,7 +83,7 @@ async fn insert_token(
     )
     .bind(uid)
     .bind(name)
-    .bind(sha3_hex(plain.as_bytes()))
+    .bind(token_hash_hex(&plain))
     .bind(RSS_TOKEN_MAX)
     .fetch_optional(&state.repo.db)
     .await

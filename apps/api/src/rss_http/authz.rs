@@ -6,6 +6,7 @@
 
 use actix_web::web;
 
+use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 /// token 命中查询：按 sha3-256 哈希取有效 token 的 user_id。
@@ -34,15 +35,7 @@ pub(crate) async fn resolve_identity(
     path_cred: &str,
 ) -> Option<RssIdentity> {
     if super::tokens::valid_token_shape(path_cred) {
-        let hash = {
-            use sha3::{Digest, Sha3_256};
-            let mut h = Sha3_256::new();
-            h.update(path_cred.as_bytes());
-            h.finalize()
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>()
-        };
+        let hash = super::tokens::token_hash_hex(path_cred);
         let uid: Option<i64> = sqlx::query_scalar(AUTH_BY_TOKEN_SQL)
             .bind(&hash)
             .fetch_optional(&state.repo.db)
@@ -72,6 +65,38 @@ pub(crate) async fn resolve_identity(
         class_id: Some(class_id),
         credential: path_cred.to_string(),
     })
+}
+
+/// 下载/兼容口的凭证 → 用户 id（`fxr_` 命名 token 与主 passkey 两条形状
+/// 同一把尺）。RSS 的 `<enclosure>` 直链里放的就是订阅用的那枚 token，
+/// `download.php` 若不认它，刷流器照直链一点就 401（P-389 实测：订阅 200、
+/// 直链 401 ⇒ token 用户的自动刷流整条断掉）。两条路径都必须过
+/// `status < 2`——换凭证不放宽状态闸（P-346 同口径）。
+pub(crate) async fn resolve_user_id(
+    state: &web::Data<std::sync::Arc<AppState>>,
+    cred: &str,
+) -> DomainResult<Option<i64>> {
+    if super::tokens::valid_token_shape(cred) {
+        let hash = super::tokens::token_hash_hex(cred);
+        let uid: Option<i64> = sqlx::query_scalar(
+            "SELECT t.user_id FROM rss_tokens t \
+             JOIN users u ON u.id = t.user_id \
+             WHERE t.token_hash = $1 AND t.revoked_at IS NULL AND u.status < 2",
+        )
+        .bind(&hash)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        return Ok(uid);
+    }
+    let uid: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
+    )
+    .bind(cred)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(uid)
 }
 
 /// 节流打点 last_used_at（>300s 才写）；写失败只影响展示，不影响鉴权。
