@@ -1065,7 +1065,7 @@
    "method": "POST",
    "path": "/forums/poll/close",
    "tag": "社区/论坛",
-   "desc": "关闭投票并结算（作者或版主）。",
+   "desc": "关闭投票（作者或版主）；票数即时汇总，没有额外结算动作。",
    "params": [],
    "errors": [
     [
@@ -1078,7 +1078,7 @@
    "method": "POST",
    "path": "/forums/poll/vote",
    "tag": "社区/论坛",
-   "desc": "投票（单选/多选；改票需在截止前）。",
+   "desc": "投票（单选，一人一票；投出后不可改票）。",
    "params": [],
    "errors": []
   },

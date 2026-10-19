@@ -22,7 +22,7 @@ struct PollVoteReq {
     post,
     path = "/api/v1/forums/poll/vote",
     tag = "社区/论坛",
-    description = "投票（单选/多选；改票需在截止前）。",
+    description = "投票（单选，一人一票；投出后不可改票）。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
@@ -90,7 +90,7 @@ struct PollCloseReq {
     post,
     path = "/api/v1/forums/poll/close",
     tag = "社区/论坛",
-    description = "关闭投票并结算（作者或版主）。",
+    description = "关闭投票（作者或版主）；票数即时汇总，没有额外结算动作。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
