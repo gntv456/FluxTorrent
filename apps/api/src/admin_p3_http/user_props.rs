@@ -97,10 +97,13 @@ async fn admin_user_prop_revoke(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
         .await?;
     let order_id = path.into_inner();
+    // 这条路由只给 order_id（背包页直接回发），归属由 reclaim_order 读单
+    // 得出并用于审计，故 expect_uid 传 None；带 {id} 的旧路由传 Some(uid)。
     let (uid, item_id, name) = crate::admin_http::reclaim_order(
         &state.repo.db,
         auth.class_id,
         order_id,
+        None,
     )
     .await?;
     state

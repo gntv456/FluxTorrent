@@ -23,12 +23,17 @@ use super::guard::{ensure_outranks, staff};
 ///   所以这里不是「等谁来退款」，而是这条动作根本不适用于付费单；
 ///   要给用户提供价值只能走调账（发放大额道具/魔力），那有自己的审计与权限位；
 /// - 已生效单不可回收：即时类到账即生效，只能走调账冲销；
-/// - 操作者等级须严格高于目标：否则 93 能删 99 的背包。
+/// - 操作者等级须严格高于目标：否则 93 能删 99 的背包；
+/// - `expect_uid` 非空时必须是这张单的归属人：旧路由
+///   `/admin/users/{id}/revoke-item/{order_id}` 的路径 `{id}` 原先**什么都不校验**
+///   ——单子属于 42 也能用 `/admin/users/7/...` 回收成功，而审计把处置记在 7 头上
+///   （事后翻账会找不到真正被回收的人）。现在要么不匹配就拒、一行动都不删。
 /// 删除与库存回滚同事务——配额没退回去就是永久少卖一格。
 pub async fn reclaim_order(
     db: &PgPool,
     actor_class: i32,
     order_id: i64,
+    expect_uid: Option<i64>,
 ) -> DomainResult<(i64, i64, String)> {
     let row: Option<(i64, i64, String, i64, bool, i32)> = sqlx::query_as(
         "SELECT o.user_id, o.item_id, i.name, o.price, o.effect_applied, \
@@ -43,6 +48,15 @@ pub async fn reclaim_order(
     let Some((uid, item_id, name, price, applied, target_class)) = row else {
         return Err(DomainError::NotFound(order_id));
     };
+    // 归属闸门：路径里的目标用户必须就是这张单的归属人（一行动都不许删之前
+    // 先拒），否则「按 A 的单回收、把处置记在 B 头上」会一路走下去。
+    if let Some(want) = expect_uid {
+        if want != uid {
+            return Err(DomainError::Validation(format!(
+                "订单 #{order_id} 不属于用户 #{want}，未回收任何行"
+            )));
+        }
+    }
     if price > 0 {
         return Err(DomainError::Validation(
             "用户自行购买的道具不可回收（购买即终局，本就没有退款通道）".into(),
@@ -100,14 +114,19 @@ pub(super) async fn user_revoke_item(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
         .await?;
     let (uid, order_id) = path.into_inner();
-    let (_, item_id, _name) =
-        reclaim_order(&state.repo.db, auth.class_id, order_id).await?;
+    let (owner, item_id, _name) = reclaim_order(
+        &state.repo.db,
+        auth.class_id,
+        order_id,
+        Some(uid),
+    )
+    .await?;
     state
         .repo
         .audit_detail(
             Some(auth.id),
             "user.revoke_item",
-            Some(uid),
+            Some(owner),
             None,
             Some(serde_json::json!({
                 "order_id": order_id, "item_id": item_id,
