@@ -221,16 +221,17 @@ pub(crate) async fn do_thank(
     if amount > 0 && owner == auth.id {
         return Err(DomainError::Validation("不能向自己的种子答谢魔力".into()));
     }
-    // P-360：感谢行与转账同一事务、扣款在前（成因见 thanks_spark.rs 头）
+    // P-360/380：感谢行与转账同事务；键取本次行时间戳（成因见 thanks_spark）
     let mut tx = state
         .repo
         .db
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    torrents::thank(&mut *tx, tid, auth.id).await?;
+    let row_ts = torrents::thank(&mut *tx, tid, auth.id).await?;
     let given = if amount > 0 {
-        super::thanks_spark::transfer(&mut tx, auth.id, owner, amount, tid)
+        super::thanks_spark::transfer(&mut tx, auth.id, owner, amount, tid,
+                                      row_ts)
             .await?
     } else {
         0
@@ -240,9 +241,7 @@ pub(crate) async fn do_thank(
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 聚合缓存：thanks_count 与「最近活动」都在 aggregate 里
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
-    Ok(ok(
-        serde_json::json!({ "thanked": true, "spark_given": given }),
-    ))
+    Ok(ok(serde_json::json!({ "thanked": true, "spark_given": given })))
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]

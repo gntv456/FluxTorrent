@@ -12,13 +12,17 @@
   凭空魔力在流水与后台「任务/考核奖励」台账里都被记成奖励发放。
 
   修法：扣款（spend_spark_tx）→ 入账（earn_spark_tx）→ 落 thanks 行**同一事务**，
-  幂等键锚在「谁谢了哪种种」这个事实上（365 天内同一对不可能第二次转账），
+  幂等键锚在**本次新落的感谢行**（created_at 微秒，DU9）而不是「谁谢了哪种」——
+  P-380：清号会 `DELETE FROM thanks`（user_del.rs:118）而账本流水按口径不删，
+  账号又是墓碑化不物理删除，键若锚在人-种上，复活后再谢同一种永远撞 Replayed
+  （实测 400「该笔答谢已受理」且感谢行也落不下去）。防重放本来就由
+  `thanks_pkey (torrent_id, user_id)` 承担：并发双击在插行那一步就被弹走。
   两种结局之间不存在「记了感谢、钱没动」的中间态。种不存在直接 404（旧版
   owner=None 时静默跳过转账、再让 thanks 行去撞外键）。
 
 判据形状：DU1-DU5 钉代码形状（含「时钟进幂等键」这条通病），DU6 是真库守恒账，
 DU7 用事务内正控证明 DU6 会红（只插一边＝不成对），DU8 钉界面仍发这个口、
-且回包用的是服务端真实数额。
+且回包用的是服务端真实数额，DU9 钉幂等键锚在行上（旧的两段键判红）。
 
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_du_thanks.py
 """
@@ -92,6 +96,21 @@ ok("DU2 答谢幂等键不再掺秒（本文件内 thank-spark 键不带 timesta
 ok("DU2b 入账键是扣款键的派生（:to），不是又一把独立随机键",
    '{idem}:to' in spk,
    "独立键意味着扣款与入账可以被分别重放")
+
+# ---------- DU9 幂等键锚在「这一行感谢」上（P-380） ----------
+ROW3 = re.compile(r'format!\("thank-spark:\{\}:\{\}:\{\}"')
+ok("DU9a transfer 的键是三段占位且第三段用 row_ts",
+   bool(ROW3.search(spk)) and "row_ts" in spk,
+   "命中=%s row_ts=%s" % (bool(ROW3.search(spk)), "row_ts" in spk))
+ok("DU9b thank() 把行 created_at 带回（RETURNING + timestamp_micros）",
+   "RETURNING created_at" in det and "timestamp_micros" in det,
+   "键的源头必须是行，不是请求时钟")
+ok("DU9c do_thank 把行时间戳递进 transfer（不是自己造一个）",
+   "torrents::thank(&mut *tx, tid, auth.id).await?" in thanks
+   and "row_ts)" in thanks, "调用链断了就等于键又回到人-种")
+OLD2 = 'let idem = format!("thank-spark:{}:{}", giver, torrent_id);'
+ok("DU9d 承重自证：旧的两段键（人-种）必须判红", not ROW3.search(OLD2),
+   "旧键命中=%s" % bool(ROW3.search(OLD2)))
 
 # ---------- DU3 感谢行与转账同事务 ----------
 ok("DU3 do_thank 拿到事务、感谢行写 tx、末尾一次 commit",

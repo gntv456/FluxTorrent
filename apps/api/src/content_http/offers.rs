@@ -70,19 +70,16 @@ pub(super) async fn offer_vote(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // 先占位投票记录（原子判重，防重放刷票）
-    let voted = crate::repo::offers::place_vote(
-        &mut *tx,
-        body.offer_id,
-        auth.id,
-    )
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if !voted {
+    // 先占位投票记录（主键原子判重，防重放刷票）
+    let ts = crate::repo::offers::place_vote(&mut *tx, body.offer_id, auth.id)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(row_ts) = ts else {
         return Err(DomainError::Validation("已投过票啦".into()));
-    }
-    // 候选投票 1 火花（旧站口径）；幂等键与占位行同笔事务，撞上重放即整笔回滚
-    let idem = format!("offer-vote:{}:{}", auth.id, body.offer_id);
+    };
+    // 候选投票 1 火花（旧站口径）；幂等键跟着这一行票走（P-380），
+    // 撞上重放只剩「行被删过而键还留着」，仍整笔回滚不发空头回执
+    let idem = format!("offer-vote:{}:{}:{}", auth.id, body.offer_id, row_ts);
     let spent = spend_spark_tx(
         &mut tx,
         auth.id,

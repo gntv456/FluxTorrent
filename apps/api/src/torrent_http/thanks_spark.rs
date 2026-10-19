@@ -8,7 +8,8 @@
 //! 闸门形同不存在。
 //!
 //! 现在：扣款、入账、落感谢行同一事务，任一步失败整体回滚；幂等键锚在
-//! 「谁谢了哪种种」这个事实上，365 天内同一对键不可能第二次转账。
+//! 「这一条感谢行」上（行时间戳，见 transfer 的 P-380 说明），而不是锚在
+//! 「谁谢了哪种」——后者会让清号复活后的二次答谢永久卡死。
 //!
 //! kind 暂借 `forum_tip`（流水页译名「打赏」，见 apps/web/i18n/zh-CN.ts
 //! 的 ledger kinds 块）：`torrent_thanks` 这个新键还没有译名，而三份 i18n
@@ -46,14 +47,22 @@ pub(super) fn is_valid_amount(amount: i64) -> bool {
 ///
 /// 调用方负责把这条与 `thanks` 行放进同一个事务；这里不再自己 begin，
 /// 否则又回到「感谢落了账、钱没动」的两段写。
+///
+/// `row_ts` 是**本次新落的感谢行**的 created_at（`torrents::thank` 带回）。
+/// 键跟着行走（P-380）：清号会 `DELETE FROM thanks` 而流水按口径不删
+/// （user_del.rs 开头），账号又是墓碑化不物理删除——键若锚在「人-种」上，
+/// 复活后再谢同一种永远撞 Replayed，实测 400 且感谢行也落不下去。防重放
+/// 本来就不靠这把键：并发双击在 `thanks` 主键上就被弹走，走不到这里。
+/// Replayed 仍 fail-close 整笔回滚，绝不发空头回执。
 pub(super) async fn transfer(
     tx: &mut Transaction<'_, sqlx::Postgres>,
     giver: i64,
     owner: i64,
     amount: i64,
     torrent_id: i64,
+    row_ts: i64,
 ) -> DomainResult<i64> {
-    let idem = format!("thank-spark:{}:{}", giver, torrent_id);
+    let idem = format!("thank-spark:{}:{}:{}", giver, torrent_id, row_ts);
     // 扣款在前：余额不足由 spend 自己拒单，「先送钱再发现扣不动」不存在
     if !matches!(
         spend_spark_tx(
