@@ -106,6 +106,8 @@ pub(super) struct Collector {
     pub(super) star: bool,
     /// 表别名 / 派生表 / 子查询 WITH / INSERT 表别名（命中即拒）
     pub(super) bad_factor: Option<String>,
+    /// 非 public 的 schema 限定（P-420b：隔离执行只允许 `public.` 前缀）
+    pub(super) bad_schema: Option<String>,
 }
 
 impl Collector {
@@ -121,6 +123,7 @@ impl Collector {
             funcs: BTreeSet::new(),
             star: false,
             bad_factor: None,
+            bad_schema: None,
         };
         for cap in caps {
             let t = cap.table.to_lowercase();
@@ -161,6 +164,17 @@ impl Visitor for Collector {
     type Break = ();
 
     fn pre_visit_relation(&mut self, r: &ObjectName) -> ControlFlow<()> {
+        // P-420b：这里原先只取最后一段 ⇒ `evil.torrents` 会被当成 `torrents`
+        // 放行，而 PG 真去写另一个 schema 的同名表——表白名单形同被绕过。
+        // 隔离执行（plugin_sql::begin_isolated）把 search_path 收成只剩
+        // pg_catalog，业务表必须写 `public.`，故此处只接受「裸名」或
+        // `public.` 前缀，其它限定一律记为违例（mod.rs 里 fail-closed 拒）。
+        if r.0.len() >= 2 {
+            let schema = r.0[r.0.len() - 2].value.to_lowercase();
+            if schema != "public" && self.bad_schema.is_none() {
+                self.bad_schema = Some(r.to_string());
+            }
+        }
         if let Some(i) = r.0.last() {
             self.relations.insert(i.value.to_lowercase());
         }

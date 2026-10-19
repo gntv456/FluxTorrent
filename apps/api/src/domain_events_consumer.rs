@@ -29,10 +29,21 @@ pub async fn spawn_consumer(pool: sqlx::PgPool) {
 }
 
 /// 一轮消费：拿锁 → 拉一批 → 逐条分发 → 记成功/失败 → 放锁。
+/// P-421：会话级咨询锁属于「拿到它的那条连接」。旧写法把 try_lock / unlock 都
+/// 直接丢给 pool，sqlx 在两条语句之间会把连接归还 ⇒ ① unlock 常落在另一条连接上，
+/// PG 回 notice「you don't own a lock of type ExclusiveLock」（现网 runtime_logs
+/// 累计 24,432 条，最近 2026-10-19 16:19）；② 更糟的是互斥并不成立——别的连接
+/// 再 try_lock 会**照样成功**（锁记在那条正躺在池子里被别人借用的连接上），
+/// 消费循环于是并发跑，置顶/通知这类「用户正在等」的动作被双份分发。
+/// 现在显式借一条连接，加锁与解锁都走它，排空期间不归还。
 pub async fn drain_once(pool: &sqlx::PgPool) -> DomainResult<()> {
+    let mut conn = pool
+        .acquire()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let got: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock($1)")
         .bind(DRAIN_LOCK)
-        .fetch_one(pool)
+        .fetch_one(&mut *conn)
         .await
         .unwrap_or(false);
     if !got {
@@ -41,7 +52,7 @@ pub async fn drain_once(pool: &sqlx::PgPool) -> DomainResult<()> {
     let r = drain_locked(pool).await;
     let _ = sqlx::query("SELECT pg_advisory_unlock($1)")
         .bind(DRAIN_LOCK)
-        .execute(pool)
+        .execute(&mut *conn)
         .await;
     r
 }
