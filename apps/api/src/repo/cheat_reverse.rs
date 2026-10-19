@@ -13,6 +13,57 @@ use sqlx::{Postgres, Transaction};
 
 use crate::errors::{DomainError, DomainResult};
 
+/// 下达侧的回收（P-403）：在调用方事务内扣上传量，返回**实际扣掉的字节数**。
+///
+/// 流水记实际值而非请求值：快照列是 `GREATEST(uploaded - 请求值, 0)`，夹到 0
+/// 之后实际只扣掉 `uploaded` 那么多。旧写法把请求值写进 traffic_ledger，于是
+/// `sum(ledger)` 与 `users.uploaded` 永久撕裂；而下面的反向解除按同一枚请求值
+/// 回补 ⇒ 虚报数大于现有上传量的案件被推翻后，会员白得差额（分享率、等级、
+/// 成就全读这一列）。同仓定例见 `admin_http/user_ops.rs` 的 P0 错账注释。
+pub async fn apply_reclaim_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    uid: i64,
+    case_id: i64,
+    operator_id: i64,
+    requested: i64,
+) -> DomainResult<i64> {
+    if requested <= 0 {
+        return Ok(0);
+    }
+    let up_now: i64 = sqlx::query_scalar(
+        "SELECT uploaded FROM users WHERE id = $1 FOR UPDATE",
+    )
+    .bind(uid)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let applied = requested.min(up_now.max(0));
+    if applied <= 0 {
+        return Ok(0);
+    }
+    let sql_ledger = "INSERT INTO traffic_ledger (id, user_id, torrent_id, \
+        delta_up, delta_down, window_start, reason, operator_id) \
+        VALUES (nextval('traffic_ledger_id_seq'), $1, 0, $2, 0, \
+        now(), $3, $4)";
+    sqlx::query(sql_ledger)
+        .bind(uid)
+        .bind(-applied)
+        .bind(format!("cheat reclaim case #{case_id}"))
+        .bind(operator_id)
+        .execute(&mut **tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query(
+        "UPDATE users SET uploaded = GREATEST(uploaded - $1, 0) WHERE id = $2",
+    )
+    .bind(applied)
+    .bind(uid)
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(applied)
+}
+
 /// 执行反向解除（调用方持有事务与 commit）；返回已执行项的说明
 /// （供通知正文与响应体）。
 pub async fn reverse_sanction(
