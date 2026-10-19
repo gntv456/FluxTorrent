@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
-import { SPARK_KIND_LABELS } from "@/lib/spark-kind-labels";
+import { sparkKindLabels } from "@/lib/spark-kind-labels";
 import { PageHeader } from "@/components/ui/page-header";
 import { FilterLinks } from "@/components/ui/filter-links";
 import { Pager } from "@/components/ui/pager";
@@ -85,7 +85,8 @@ export default function MySparksPage() {
   const per = data?.per ?? 50;
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / per));
   const rows = data?.items ?? [];
-  const kindOptions = Object.entries(SPARK_KIND_LABELS).sort((a, b) =>
+  const kindLabels = sparkKindLabels(dict.my);
+  const kindOptions = Object.entries(kindLabels).sort((a, b) =>
     a[1].localeCompare(b[1], dateLocale(locale)),
   );
   const summary = (r: LedgerRow) =>
@@ -216,7 +217,7 @@ export default function MySparksPage() {
                     )}
                   </td>
                   <td className="text-xs">
-                    {SPARK_KIND_LABELS[r.kind] ?? r.kind}
+                    {kindLabels[r.kind] ?? r.kind}
                   </td>
                   <td className="text-xs text-body">{summary(r)}</td>
                   <td

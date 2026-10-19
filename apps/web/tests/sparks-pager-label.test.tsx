@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import MySparksPage from "@/app/(main)/me/sparks/page";
 import { LocaleProvider } from "@/i18n/client";
 import { zhCN } from "@/i18n/zh-CN";
+import { sparkKindLabels } from "@/lib/spark-kind-labels";
 
 /**
  * 火花流水页的翻页条必须同时报出「第几页」和「共几页」。
@@ -76,5 +77,26 @@ describe("流水页翻页条的页数信息", () => {
     mount();
     await waitFor(() => expect(document.body.textContent).toContain("论坛"));
     expect(document.querySelector(".ui-pager")).toBeNull();
+  });
+});
+
+
+describe("kind 标签必须来自调用方字典（P-425 接线）", () => {
+  // 只测接线本身：旧实现把标签表硬绑 zh-CN 源字典，于是 i18n 的段级回落机制
+  // 对这张表完全不起作用（将来补任何语种都不会生效）。这里不依赖词典内容，
+  // 免得「某个语种恰好没翻」被读成「接线坏了」。
+  it("传入字典优先于源字典；不传时回落 zh-CN", () => {
+    expect(sparkKindLabels({ kinds: { shop: "Shop purchase" } }).shop).toBe(
+      "Shop purchase",
+    );
+    const fallback = sparkKindLabels();
+    expect(Object.keys(fallback).length).toBeGreaterThan(30);
+    expect(fallback.shop).toBe(zhCN.my.kinds.shop);
+  });
+  it("两个语种给同一批键时各取自己的文案", () => {
+    const a = sparkKindLabels({ kinds: { forum: "AAA" } });
+    const b = sparkKindLabels({ kinds: { forum: "BBB" } });
+    expect(a.forum).toBe("AAA");
+    expect(b.forum).toBe("BBB");
   });
 });
