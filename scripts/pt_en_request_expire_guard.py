@@ -245,7 +245,30 @@ def label_keys(text):
         r"(?m)^\s*[\"']?([A-Za-z][\w-]{2,})[\"']?\s*:\s*[\"']", text))
 
 
-labels_now = label_keys(here(LBL))
+ZH = "apps/web/i18n/zh-CN.ts"
+LBLFILE = here(LBL)
+if re.search(r"=\s*zhCN\.my\.kinds", LBLFILE):
+    # i18n 收口批把标签表搬进 zh-CN 的 my.kinds 块（本文件只留键序与
+    # 回落逻辑）⇒ 判据必须跟着搬，否则抓到 0 个键会把全部 kind 误报缺名
+    def kinds_block(t):
+        i = t.find("kinds:")
+        if i < 0:
+            return ""
+        j = t.find("{", i)
+        d = 0
+        for k in range(j, len(t)):
+            if t[k] == "{":
+                d += 1
+            elif t[k] == "}":
+                d -= 1
+                if d == 0:
+                    return t[j:k + 1]
+        return ""
+    labels_now = label_keys(kinds_block(here(ZH)))
+else:
+    labels_now = label_keys(LBLFILE)
+ok("EN3e 正控：标签表读到的键数必须 >30（搬家后判据别又读空）",
+   len(labels_now) > 30, "实读=%s" % len(labels_now))
 labels_pin = label_keys(strip_ts(blob(FIX, LBL)))
 ok("EN3a 正控：抽到的 kind 全集里确实含 torrent_buy/request_refund 两只",
    {"torrent_buy", "request_refund"} <= used, "实抽 %s 个" % len(used))
