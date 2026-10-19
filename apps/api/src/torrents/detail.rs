@@ -252,6 +252,20 @@ pub async fn bookmark(
     on: bool,
 ) -> DomainResult<()> {
     if on {
+        // P-373：先验存在性再插。旧写法直接 INSERT，打到不存在/已删的种号会撞
+        // `bookmarks_torrent_id_fkey` ⇒ 会员收到 500「内部错误」，而这个端点自己的
+        // OpenAPI 写的是「404 种子不存在或不可见」（现网实测 tid 不存在即 500）。
+        // 同文件的评论删除/点赞/标签三处都有存在性判定，收藏是这一族里被改漏的那一份。
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)",
+        )
+        .bind(torrent_id)
+        .fetch_one(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if !exists {
+            return Err(DomainError::NotFound(torrent_id));
+        }
         sqlx::query(
             "INSERT INTO bookmarks (user_id, torrent_id) VALUES \
              ($1, $2) ON CONFLICT DO NOTHING",
