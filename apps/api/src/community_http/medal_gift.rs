@@ -145,6 +145,41 @@ pub(crate) async fn medal_gift(
             "该笔赠送已受理，请勿重复提交".into(),
         ));
     }
+    // 发货（P-345）：原先这里是 `ON CONFLICT DO NOTHING`，把「对方曾持有、
+    // 现已过期」的重赠场景静默吞掉——上面的「已拥有」判据只看未过期的行，
+    // 而 user_medals 主键是 (user_id, medal_id)，于是扣款成功、接口回 200、
+    // 一行都没写、税也照抽。过期件按产品口径复活（重新起算有效期）；
+    // 仍为 0 行只可能是并发竞态或勋章被删，此时退款并报错，绝不「收钱不发货」。
+    let granted: u64 = sqlx::query(
+        "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
+         SELECT $1, $2, 'gift', now() + make_interval(days => m.duration_days) \
+         FROM medals m WHERE m.id = $2 \
+         ON CONFLICT (user_id, medal_id) DO UPDATE SET source = 'gift', \
+           expires_at = EXCLUDED.expires_at \
+         WHERE user_medals.expires_at IS NOT NULL \
+           AND user_medals.expires_at <= now()",
+    )
+    .bind(to_id)
+    .bind(body.medal_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if granted == 0 {
+        // 退款幂等键加前缀：同一笔重放不会二次退款
+        let refund = format!("medal-gift-refund:{idem}");
+        crate::economy_http::earn_spark(
+            &state.repo.db,
+            auth.id,
+            price,
+            "shop",
+            &refund,
+        )
+        .await?;
+        return Err(DomainError::Validation(
+            "勋章发放失败，本次扣款已退回，请稍后重试".into(),
+        ));
+    }
     if tax > 0 {
         let month = crate::economy::pool_month(chrono::Utc::now());
         sqlx::query(
@@ -167,19 +202,10 @@ pub(crate) async fn medal_gift(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    sqlx::query(
-        "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
-         SELECT $1, $2, 'gift', now() + make_interval(days => m.duration_days) \
-         FROM medals m WHERE m.id = $2 \
-         ON CONFLICT (user_id, medal_id) DO NOTHING",
-    )
-    .bind(to_id)
-    .bind(body.medal_id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
     // 收件人通知（审计补齐：收礼物却无感知，只能自己去勋章页发现）
-    let _ = sqlx::query(
+    // 失败必须出声（P-323/P-328 同族：钱与勋章都已落定，只有信没送到，
+    // 静默会让「对方说我没收到礼物」这类投诉无从查证）
+    if let Err(e) = sqlx::query(
         "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
          SELECT $1, $2, $3, $4, 'gift' WHERE u_notice_enabled($2, 'gift')",
     )
@@ -191,7 +217,10 @@ pub(crate) async fn medal_gift(
         auth.id, body.medal_id
     ))
     .execute(&state.repo.db)
-    .await;
+    .await
+    {
+        tracing::warn!(%e, "勋章赠送收件通知写入失败");
+    }
     Ok(ok(serde_json::json!({
         "to": body.to_user,
         "medal_id": body.medal_id,
