@@ -89,7 +89,8 @@ BODY = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{([^{}]*)\}", re.S)
 # 都算。漏认 setMsg 会把「已修好」的救援面板与「本来就对」的 embed-rules 一起
 # 判成裸吞（本闸门首跑的两条假红就是这个成因）。
 SIGNAL = re.compile(
-    r"toast|flash|setErr|setMsg|set\w*Failed|set\w*Error|throw|console", re.I)
+    r"toast|flash|setErr|set\w*Err\b|setMsg|set\w*Failed|"
+    r"set\w*Error|throw|console", re.I)
 # 口径：只把 [] 换成 null（不谎报了但仍无提示）**不算**有信号——
 # 闸门要的是可诊断。admin-applications.tsx 就因此仍留在 PENDING。
 EMPTYSET = re.compile(r"set\w+\(\s*(?:\[\]|null|\{\})\s*\)")
