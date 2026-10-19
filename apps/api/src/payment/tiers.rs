@@ -118,14 +118,22 @@ pub async fn grant_tier(
     // ① 魔力：earn_spark_tx（行锁+幂等键双保险）
     if tier.spark > 0 {
         let idem = format!("donation_tier:{order_no}");
-        crate::economy_http::earn_spark_tx(
-            tx,
-            user_id,
-            tier.spark,
-            "donation_tier",
-            &idem,
-        )
-        .await?;
+        // 入账结果必须消费（P-347）：上面的 user_donation_tiers CAS 已挡住
+        // 同档重发，正常路径必然 Spent；回 Replayed 却仍拼「魔力 +N」给订单
+        // 回执＝告诉法币捐赠者钱到账了而实际没到。整笔事务回滚更诚实。
+        if !matches!(
+            crate::economy_http::earn_spark_tx(
+                tx,
+                user_id,
+                tier.spark,
+                "donation_tier",
+                &idem,
+            )
+            .await?,
+            crate::economy_http::SpendOutcome::Spent
+        ) {
+            return Err(DomainError::LedgerConflict);
+        }
         parts.push(format!("魔力 +{}", tier.spark));
     }
     // ② 上传量：traffic_ledger + users.uploaded 双写（6h reconcile 以流水为准）
