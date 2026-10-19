@@ -9,8 +9,8 @@
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 
+use crate::economy_http::{earn_spark_tx, SpendOutcome};
 use crate::dto::ok;
-use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -26,6 +26,17 @@ pub(super) async fn subtitle_request_cancel(
     let auth = require_auth(&req, &state).await?;
     let rid = path.into_inner();
     let staff = auth.class_id >= 90;
+    // P-406：CAS 与退款必须同生共死。旧写法 `UPDATE ... SET status=2` 先
+    // autocommit 落库，再在事务外逐个退款——任一 `earn_spark` 失败（`.await?`
+    // 直接上抛）就退到一半停住：单子已经是 status=2，而这条 UPDATE 只认
+    // status=0 ⇒ **撤销无法重试、没退到的人永远拿不回火花**。同型口径见
+    // P-364（钱到账才落标记）与 `bank_withdraw`（销单与入账同事务）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let row: Option<(i64, serde_json::Value)> = sqlx::query_as(
         "UPDATE subtitle_requests SET status = 2 WHERE id = $1 AND status = 0 \
          AND ($2 OR user_id = $3) RETURNING user_id, contributors",
@@ -33,7 +44,7 @@ pub(super) async fn subtitle_request_cancel(
     .bind(rid)
     .bind(staff)
     .bind(auth.id)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((owner, contributors)) = row else {
@@ -57,23 +68,43 @@ pub(super) async fn subtitle_request_cancel(
         }
     }
     let mut refunded = Vec::new();
-    for (uid, amount) in totals {
+    let mut already = Vec::new();
+    for (uid, amount) in &totals {
         let idem = format!("sub-req-refund:{}:{}", rid, uid);
-        let _ = earn_spark(
-            &state.repo.db,
-            uid,
-            amount,
+        // 有意容忍的重放：历史上「退款已落账但状态位被回滚」的单，这次只补销单。
+        // P-406b：但**不许把这种情形写进 `refunded`**——那一笔钱这次并没有动账，
+        // 照 totals 列出来就是告诉会员「已退 20」而账面什么都没有。重放单另列
+        // `already_settled` 并出声，界面与对账读的是同一件事。
+        let outcome = earn_spark_tx(
+            &mut tx,
+            *uid,
+            *amount,
             "subtitle_request_refund",
             &idem,
         )
         .await?;
-        refunded.push(serde_json::json!({"user_id": uid, "amount": amount}));
+        let item = serde_json::json!({"user_id": uid, "amount": amount});
+        if matches!(outcome, SpendOutcome::Replayed) {
+            tracing::warn!(
+                rid = rid,
+                user = uid,
+                refund_key = idem.as_str(),
+                "subtitle cancel refund replayed: settling the row only"
+            );
+            already.push(item);
+        } else {
+            refunded.push(item);
+        }
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "subreq.cancel", Some(rid))
         .await;
     Ok(ok(serde_json::json!({
         "id": rid, "status": 2, "owner": owner, "refunded": refunded,
+        "already_settled": already,
     })))
 }
