@@ -88,15 +88,20 @@ ok("FA2c 已终局与无对手两道闸在",
 # ---------- FA4 真库正控：同一谓词的第二次 CAS 必须 0 行 ----------
 AB = r"""
 BEGIN;
+-- 探针必须用库里真实存在的两个会员：gomoku_games 对 black_id/white_id 都有外键
 INSERT INTO gomoku_games (id, black_id, white_id, board, turn)
-VALUES (999997, 1, 2, '', 'b')
+SELECT 999997, min(u.id), (array_agg(u.id ORDER BY u.id))[2], '', 'b'
+  FROM users u HAVING count(*) >= 2
 ON CONFLICT (id) DO NOTHING;
+-- 第一次：按读到的 board='' / turn='b' 改（应 1 行）
 WITH x AS (UPDATE gomoku_games SET board='b' || repeat('.', 224), turn='w'
    WHERE id=999997 AND board='' AND turn='b' RETURNING 1)
 SELECT 'cas1=' || count(*) FROM x;
+-- 第二次：同一份旧值再 CAS（并发后到者，应 0 行）
 WITH y AS (UPDATE gomoku_games SET board='w' || repeat('.', 224), turn='b'
    WHERE id=999997 AND board='' AND turn='b' RETURNING 1)
 SELECT 'cas2=' || count(*) FROM y;
+-- 无 CAS 的旧写法：同一行照样算成功（覆盖的来源）
 WITH z AS (UPDATE gomoku_games SET board=repeat('.', 225), turn='b'
    WHERE id=999997 RETURNING 1)
 SELECT 'naive2=' || count(*) FROM z;
