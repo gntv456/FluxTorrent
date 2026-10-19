@@ -2,6 +2,7 @@
 //! 从 economy_http.rs 按域拆出。
 //! 0207：购买支持数量（stackable 类）；装扮类 SKU 拆分后 config 驱动候选选择。
 
+use super::shop_guards::{card_kind_probe, ensure_deliverable};
 use super::shop_effects::apply_item_effect;
 use super::shop_list::buffer_cap_check;
 use super::shop_list::shop_items;
@@ -38,10 +39,6 @@ enum PaidQty {
     Rows(usize),
     /// 其余类：已付总金额（÷单价=件数）
     Amount(i64),
-}
-
-fn card_kind_probe(kind: &str) -> bool {
-    matches!(kind, "makeup_card" | "rename_card" | "temp_invite")
 }
 
 #[post("/shop/buy")]
@@ -145,6 +142,8 @@ async fn shop_buy(
         buffer_cap_check(&state.repo.db, auth.id).await?;
     }
 
+    // 扣款前先确认这个品类发得出东西（P-348，判定见 shop_guards.rs）
+    ensure_deliverable(&kind)?;
     // 幂等键必填（P1）：网络层重试必须携带同一键，否则双扣款。
     // 服务端键必须带 uid 前缀：裸客户端键跨用户碰撞时，B 的消费会被误判为 A 的重放。
     // trim 后为空视同缺失（商城审计 P2）：空白键会落成 `shop:{uid}:` 这种

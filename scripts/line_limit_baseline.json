@@ -379,7 +379,7 @@
  "apps/api/src/economy_http/pool.rs::wide": 2,
  "apps/api/src/economy_http/recon.rs": 376,
  "apps/api/src/economy_http/recon.rs::wide": 2,
- "apps/api/src/economy_http/shop.rs": 417,
+ "apps/api/src/economy_http/shop.rs": 416,
  "apps/api/src/economy_http/shop.rs::wide": 2,
  "apps/api/src/economy_http/spend.rs::wide": 3,
  "apps/api/src/economy_http/vouchers.rs::wide": 1,
