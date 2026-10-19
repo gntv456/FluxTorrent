@@ -106,14 +106,33 @@ pub(crate) async fn lottery_join(
         )
         .await
         {
-            let _ = sqlx::query(
-                "DELETE FROM lottery_entries WHERE \
-             topic_id = $1 AND user_id = $2",
+            // P-395：扣费失败但占位没删成 ⇒ 这名会员白拿一张票——下次参与
+            // 会被「已经参与过了」挡回，票价永远收不到，名单里还占着名额。
+            // 旧版 `let _ =` 把这件事吞得无声无息（P-366 同族：吞掉的补偿
+            // 必须出声，并留下运维可按号补删的稳定键）。
+            let cleanup_key = format!(
+                "lottery-ticket-cleanup:{}:{}",
+                auth.id,
+                body.topic_id
+            );
+            if let Err(de) = sqlx::query(
+                "DELETE FROM lottery_entries \
+                 WHERE topic_id = $1 AND user_id = $2",
             )
             .bind(body.topic_id)
             .bind(auth.id)
             .execute(&state.repo.db)
-            .await;
+            .await
+            {
+                tracing::warn!(
+                    err = %de,
+                    user = auth.id,
+                    topic = body.topic_id,
+                    amount = ticket,
+                    cleanup_key = cleanup_key.as_str(),
+                    "lottery join placeholder rollback failed"
+                );
+            }
             return Err(e);
         }
     }
