@@ -208,3 +208,5 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 该楼层作者账号状态异常，暂时无法打赏	該樓層作者帳號狀態異常，暫時無法打賞	The post author's account is not in good standing; tipping is unavailable.
 该道具品类尚未接入发放逻辑，已停售	該道具品類尚未接入發放邏輯，已停售	This item category has no delivery logic yet; sales are suspended.
 该订单不属于路径里的用户，未回收任何行	該訂單不屬於路徑裡的使用者，未回收任何行	The order does not belong to the user in the path; nothing was reclaimed.
+不能向自己的种子答谢魔力	不能向自己的種子答谢魔力	You cannot send thanks magic to your own torrent.
+该笔答谢已受理，魔力未重复转出	該筆答谢已受理，魔力未重複轉出	This thank-you transfer was already accepted; no extra magic left your account.

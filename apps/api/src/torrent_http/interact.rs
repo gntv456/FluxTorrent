@@ -210,45 +210,38 @@ pub(crate) async fn do_thank(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
-    torrents::thank(&state.repo.db, tid, auth.id).await?;
     let amount = body.and_then(|b| b.amount).unwrap_or(0);
-    if amount > 0 {
-        if ![1, 10, 100, 500, 1000, 10000].contains(&amount) {
-            return Err(DomainError::Validation(
-                "答谢数额需为 1/10/100/500/1000/10000".into(),
-            ));
-        }
-        // 给发布者转魔力（匿名也按 owner_id 记账）
-        let owner: Option<i64> =
-            sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
-                .bind(tid)
-                .fetch_optional(&state.repo.db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?
-                .flatten();
-        if let Some(owner) = owner {
-            if owner != auth.id {
-                let idem = format!(
-                    "thank-spark:{}:{}:{}",
-                    auth.id,
-                    tid,
-                    chrono::Utc::now().timestamp()
-                );
-                crate::economy_http::earn_spark(
-                    &state.repo.db,
-                    owner,
-                    amount,
-                    "task_reward",
-                    &idem,
-                )
-                .await?;
-            }
-        }
+    if amount > 0 && !super::thanks_spark::is_valid_amount(amount) {
+        return Err(DomainError::Validation(
+            "答谢数额需为 1/10/100/500/1000/10000".into(),
+        ));
     }
+    // 种主随种一起读出；种不存在直接 404（旧版 owner=None 时静默跳过转账）
+    let owner = super::thanks_spark::owner_of(&state.repo.db, tid).await?;
+    if amount > 0 && owner == auth.id {
+        return Err(DomainError::Validation("不能向自己的种子答谢魔力".into()));
+    }
+    // P-360：感谢行与转账同一事务、扣款在前（成因见 thanks_spark.rs 头）
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    torrents::thank(&mut *tx, tid, auth.id).await?;
+    let given = if amount > 0 {
+        super::thanks_spark::transfer(&mut tx, auth.id, owner, amount, tid)
+            .await?
+    } else {
+        0
+    };
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 聚合缓存：thanks_count 与「最近活动」都在 aggregate 里
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(
-        serde_json::json!({ "thanked": true, "spark_given": amount }),
+        serde_json::json!({ "thanked": true, "spark_given": given }),
     ))
 }
 
