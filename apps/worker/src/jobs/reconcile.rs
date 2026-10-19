@@ -68,16 +68,24 @@ pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
              没有任何流水＝演示/种子未登记进 balance_baseline.base_spark，属数据卫生）"
         );
     }
-    let (ledger_up, snapshot_up, ledger_down, snapshot_down): (i64, i64, i64, i64) =
-        sqlx::query_as(
-            "SELECT \
-               COALESCE((SELECT sum(delta_up) FROM traffic_ledger), 0)::bigint, \
-               COALESCE((SELECT sum(uploaded) FROM users), 0)::bigint, \
-               COALESCE((SELECT sum(delta_down) FROM traffic_ledger), 0)::bigint, \
-               COALESCE((SELECT sum(downloaded) FROM users), 0)::bigint",
-        )
-        .fetch_one(db)
-        .await?;
+    let (ledger_up, snapshot_up, ledger_down, snapshot_down): (
+        i64,
+        i64,
+        i64,
+        i64,
+    ) = sqlx::query_as(
+        "SELECT \
+           COALESCE((SELECT sum(delta_up) FROM traffic_ledger), 0)::bigint \
+           + COALESCE((SELECT sum(base_up) FROM balance_baseline), \
+               0)::bigint, \
+           COALESCE((SELECT sum(uploaded) FROM users), 0)::bigint, \
+           COALESCE((SELECT sum(delta_down) FROM traffic_ledger), 0)::bigint \
+           + COALESCE((SELECT sum(base_down) FROM balance_baseline), \
+               0)::bigint, \
+           COALESCE((SELECT sum(downloaded) FROM users), 0)::bigint",
+    )
+    .fetch_one(db)
+    .await?;
     // 阈值（0311 site_settings 化，anticheat_reconcile_tolerance_gb，缺省 10GiB）
     let tolerance: i64 = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings \
@@ -93,20 +101,61 @@ pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
         * 1024
         * 1024
         * 1024;
-    for (name, ledger_v, snapshot_v) in [
-        ("uploaded", ledger_up, snapshot_up),
-        ("downloaded", ledger_down, snapshot_down),
+    // 列名只能来自下面这份字面量数组：SQL 里的标识符不能当参数绑定，
+    // 数组之外没有别的取值来源。
+    for (name, snap, base, delta, ledger_v, snapshot_v) in [
+        (
+            "uploaded",
+            "uploaded",
+            "base_up",
+            "delta_up",
+            ledger_up,
+            snapshot_up,
+        ),
+        (
+            "downloaded",
+            "downloaded",
+            "base_down",
+            "delta_down",
+            ledger_down,
+            snapshot_down,
+        ),
     ] {
         let diff = ledger_v - snapshot_v;
-        if diff.abs() > tolerance {
-            tracing::error!(
-                field = name,
-                ledger = ledger_v,
-                snapshot = snapshot_v,
-                diff = diff,
-                "对账告警：traffic_ledger 合计与 users 快照背离超阈值（存在流水外的流量变动源，请排查）"
-            );
+        if diff.abs() <= tolerance {
+            continue;
         }
+        // 归因（与 spark 侧 P-419 同一套两分法）：有流水仍漂＝真嫌疑；无流水却
+        // 有快照＝演示/种子未登记进 base_*（数据卫生）。现网实测（2026-10-19）：
+        // 25,165,824,000 B 的全站差额 100% 出自 4 个「一条流量流水都没有」的
+        // 种子账户 ⇒ 旧文案「存在流水外的流量变动源」把数据卫生误报成缺陷，
+        // 值班照它去查动账路径就是白跑一趟。
+        let (drift_live, drift_seed): (i64, i64) = sqlx::query_as(
+            &format!(
+                "SELECT count(*) FILTER (WHERE EXISTS \
+                   (SELECT 1 FROM traffic_ledger l WHERE l.user_id = u.id)), \
+                 count(*) FILTER (WHERE NOT EXISTS \
+                   (SELECT 1 FROM traffic_ledger l WHERE l.user_id = u.id)) \
+                 FROM users u WHERE u.{snap} <> COALESCE((SELECT b.{base} \
+                   FROM balance_baseline b WHERE b.user_id = u.id), 0) \
+                   + COALESCE((SELECT sum(l.{delta}) FROM traffic_ledger l \
+                     WHERE l.user_id = u.id), 0)"
+            ),
+        )
+        .fetch_one(db)
+        .await?;
+        tracing::error!(
+            field = name,
+            ledger = ledger_v,
+            snapshot = snapshot_v,
+            diff = diff,
+            drift_with_ledger = drift_live,
+            drift_zero_ledger = drift_seed,
+            "对账告警：流量快照与「基线+流水」合计背离超阈值（drift_with_ledger \
+             个账户有流水仍漂＝疑似绕过流水的流量变动源，drift_zero_ledger 个\
+             账户的快照没有任何流量流水＝演示/种子未登记进 balance_baseline.\
+             base_up/base_down，属数据卫生）"
+        );
     }
     let negatives: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM users WHERE spark_balance < 0 OR \
