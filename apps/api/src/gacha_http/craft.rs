@@ -45,14 +45,9 @@ async fn shard_move(
     ref_id: i64,
     idem: &str,
 ) -> DomainResult<i32> {
-    let bal: i32 = sqlx::query_scalar(
-        "SELECT balance FROM gacha_shard_balance \
-         WHERE user_id = $1 FOR UPDATE",
-    )
-    .bind(user_id)
-    .fetch_one(&mut **tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 快照行自愈 + 行锁（P-353）：三条消费口共用本函数，而过去只有抽卡路径
+    // 会建碎片行；播种取流水净额，形状见 gacha_http/shards.rs。
+    let bal = super::shards::lock_shard_balance(tx, user_id).await?;
     let after = bal + delta;
     if after < 0 {
         return Err(DomainError::Validation(format!(
