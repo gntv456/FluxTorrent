@@ -224,3 +224,21 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 这张票的票价已受理，未重复扣款	這張票的票價已受理，未重複扣款	Ticket price already charged; no duplicate deduction.
 该悬赏的款项已发放过，未重复出账	該懸賞的款項已發放過，未重複出帳	This bounty was already paid; no duplicate payout.
 该单的赏金已发放过，未重复出账	該單的賞金已發放過，未重複出帳	This request's bounty was already paid; no duplicate payout.
+发言需 1-300 字	發言需 1-300 字	Message must be 1-300 characters.
+你已被禁言	你已被禁言	You are muted and cannot post.
+该主题不是悬赏帖	該主題不是懸賞帖	This topic is not a bounty post.
+悬赏已处理	懸賞已處理	This bounty has already been processed.
+目标回复不存在	目標回覆不存在	Target reply does not exist.
+不能采纳自己的首帖	不能採納自己的首帖	You cannot accept your own first post.
+正文不能为空	正文不能為空	Body cannot be empty.
+该求字幕不在待验收状态	該求字幕不在待驗收狀態	This subtitle request is not awaiting acceptance.
+该求字幕不在协作状态	該求字幕不在協作狀態	This subtitle request is not in a collaboration state.
+你没有该求字幕的协作邀请	你沒有該求字幕的協作邀請	You have no collaboration invite for this subtitle request.
+该求字幕已处理	該求字幕已處理	This subtitle request has already been processed.
+语言不能为空	語言不能為空	Language cannot be empty.
+悬赏不能为负	懸賞不能為負	Bounty cannot be negative.
+入池金额需为正整数	入池金額需為正整數	Pool contribution must be a positive integer.
+该求字幕不存在或已被认领	該求字幕不存在或已被認領	This subtitle request does not exist or is already claimed.
+不能认领自己发起的求字幕	不能認領自己發起的求字幕	You cannot claim your own subtitle request.
+action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismiss.
+举报不存在或已处理	舉報不存在或已處理	Report does not exist or was already handled.
