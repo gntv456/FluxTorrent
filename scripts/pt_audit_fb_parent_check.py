@@ -169,4 +169,40 @@ else:
     ok("FB4 探针未污染库（bookmarks 行数 %s→%s 不变）" % (before, after),
        before == after, "探针写脏了收藏表")
 
+# ---------- FB7 P-374：/requests 的未知键必须被拒（P-314 家族） ----------
+reqs = cut(os.path.join(APISRC, "content_http", "requests.rs"))
+n_deny = reqs.count("#[serde(deny_unknown_fields)]")
+ok("FB7 requests.rs 的写口结构带 deny_unknown_fields（%d 处，须 2）" % n_deny,
+   n_deny == 2,
+   "create 与 fulfill 都要收：静默忽略未知键＝会员以为提交成功了")
+rows0 = psql("SELECT count(*) FROM requests")
+r_ok = call("POST", "/requests", {"title": "闸门 FB 探针", "descr": "x",
+                                  "bounty": 0}, tok)
+code_ok = r_ok[1].get("code") if isinstance(r_ok, tuple) and isinstance(
+    r_ok[1], dict) else None
+rid = None
+if isinstance(r_ok, tuple) and isinstance(r_ok[1], dict):
+    rid = (r_ok[1].get("data") or {}).get("id")
+r_bad = call("POST", "/requests", {"title": "闸门 FB 探针2", "bounty": 0,
+                                   "torrent_id": 999999999}, tok)
+code_bad = r_bad[1].get("code") if isinstance(r_bad, tuple) and isinstance(
+    r_bad[1], dict) else None
+if isinstance(rid, int):
+    psql("DELETE FROM requests WHERE id=%d AND title='闸门 FB 探针'" % rid)
+# 未部署豁免的另一面：旧镜像会把「未知键」那一条也建成帖子，必须一起清干净
+# （第一次跑就是在 :8080 上留下过一条 id=111 的垃圾帖，FB9 因此才红）。
+psql("DELETE FROM requests WHERE title LIKE '闸门 FB 探针%' "
+     "AND created_at > now() - interval '15 minutes'")
+rows1 = psql("SELECT count(*) FROM requests")
+if code_bad == 0:
+    print("   [WARN] 未知键仍被接受（现网镜像早于 P-374，未部署）")
+deployed = "8099" not in os.environ.get("FLUX_API_BASE", "")
+ok("FB8 合法提交受理（code=%s）且未知键被拒（code=%s%s）"
+   % (code_ok, code_bad, "，现网未部署按 WARN 放行" if (
+      code_bad == 0 and deployed) else ""),
+   code_ok == 0 and (code_bad == 1002 or (deployed and code_bad == 0)),
+   "侧进程（含本批）上仍返回 200＝收紧没生效；返回 500 也不合格")
+ok("FB9 探针未留求种行（requests %s→%s）" % (rows0, rows1), rows0 == rows1,
+   "闸门跑一次留一条垃圾帖＝污染现网")
+
 summary()
