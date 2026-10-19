@@ -205,4 +205,47 @@ ok("FB8 合法提交受理（code=%s）且未知键被拒（code=%s%s）"
 ok("FB9 探针未留求种行（requests %s→%s）" % (rows0, rows1), rows0 == rows1,
    "闸门跑一次留一条垃圾帖＝污染现网")
 
+# ---------- FB10/FB11：评论正文的防膨胀天花板（P-377） ----------
+cmt = cut(os.path.join(APISRC, "torrents", "comments.rs"))
+ok("FB10 add_comment_as 有字符上限（chars().count() + 常量）",
+   "COMMENT_MAX_CHARS" in cmt
+   and "body.chars().count() > COMMENT_MAX_CHARS" in cmt,
+   "无上限时实测一条 300,000 字的评论直接落库（现网 id 239），"
+   "任何人可无限撑大 comments 表与详情页聚合缓存")
+c1 = psql("SELECT count(*) FROM comments")
+# 长度探针必须打在真实可见的种上：用 BAD（不存在的种号）会被父行判定先挡成
+# 1004，长度上限根本没被触达（第一版就犯了这个错，红得毫无意义）。
+TID_OK = psql("SELECT id FROM torrents WHERE approval_status = 1 "
+             "ORDER BY id LIMIT 1")
+# 超大评论这一枪**默认不打**：在未部署本批的站点上它会真把 30 万字写进
+# comments 表（现网曾因此留下 id 239）。只有显式 FLUX_GATE_FULL=1（部署后复跑，
+# 或对着侧进程）才执行；执行时无论受理还是拒绝都按前缀把探针行删干净。
+if os.environ.get("FLUX_GATE_FULL") == "1":
+    big = call("POST", "/torrents/%s/comments" % TID_OK,
+               {"body": "A" * 300000}, tok)
+    plb = big[1] if isinstance(big, tuple) else {}
+    code_big = plb.get("code") if isinstance(plb, dict) else None
+    bid = (plb.get("data") or {}).get("id") if isinstance(plb, dict) else None
+    if isinstance(bid, int):
+        psql("DELETE FROM comments WHERE id=%d" % bid)
+    ok("FB11 全量模式：30 万字评论被拒（code=%s，须 1002）；探针行已清"
+       % code_big, code_big == 1002,
+       "仍受理＝上限没生效（本批 P-377 未部署或被判据绕过）")
+else:
+    print("   [说明] 超大评论活测默认跳过（FLUX_API_BASE 指向未部署本批的站点时，"
+          "这一枪会真写 30 万字入库）。部署后复跑请加 FLUX_GATE_FULL=1。")
+small = call("POST", "/torrents/%s/comments" % TID_OK,
+             {"body": "闸门 FB 探针"}, tok)
+pl_small = small[1] if isinstance(small, tuple) else {}
+code_small = pl_small.get("code") if isinstance(pl_small, dict) else None
+nid = (pl_small.get("data") or {}).get("id") if isinstance(pl_small, dict) \
+    else None
+if isinstance(nid, int):
+    psql("DELETE FROM comments WHERE id=%d AND body='闸门 FB 探针'" % nid)
+c2 = psql("SELECT count(*) FROM comments")
+ok("FB12 正常长度评论仍能提交（code=%s）且探针帖已清（comments %s→%s）"
+   % (code_small, c1, c2),
+   code_small in (0, 1004) and c1 == c2,
+   "上限把正常评论也挡住＝误伤；探针留在库里＝闸门污染现网")
+
 summary()
