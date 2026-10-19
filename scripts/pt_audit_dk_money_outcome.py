@@ -217,4 +217,34 @@ for k in sorted(LEDGER):
     print("      [在册] %s：%d 处（现读数 %d）" % (k, LEDGER[k],
                                                   found.get(k, 0)))
 
+# ---------- DK8 余额地板：负余额只降不升（批一百七十五新增） ----------
+# 现网 25 个会员 spark_balance < 0，而 `users` 上**没有 spark_balance 的 CHECK**；
+# 成因之一是可确定的一条：扣罚走的是发放原语 `earn_spark(…, -2, "forum-topic-del", …)`
+# （post_topic_delete.rs），`checked_balance` 只防 int64 溢出、不防负数，
+# `UPDATE users SET spark_balance = spark_balance + $2` 也没有地板 ⇒ 绕过
+# `spend_spark` 的余额充足校验，可以一路扣成负数。
+# 修法是口径问题（夹到 0 / 拦住动作 / 允许欠账），要站方拍板 + 一次性处置存量 25 人，
+# 所以这里钉成**只降不升的上界**：新增一个负余额会员就红，处置完应收敛到 0。
+def _dk_one(sql):
+    import subprocess
+    r = subprocess.run(
+        ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
+         "-q", "-d", "fluxtorrent", "-tA", "-c", sql],
+        capture_output=True, text=True, encoding="utf-8")
+    return (r.stdout or "").strip().split("\n")[0].strip()
+
+
+if "sval" not in globals():          # 本闸门原自带取数器名不同，这里补一个别名
+    sval = _dk_one
+NEG_CEIL = 25
+neg = int(sval("SELECT count(*) FROM users WHERE spark_balance < 0") or 0)
+ok("DK8 余额为负的会员 %d ≤ 上界 %d（只降不升，处置完该收敛到 0）" % (neg,
+                                                                       NEG_CEIL),
+   neg <= NEG_CEIL,
+   "上升＝又有一条扣费路径绕过 spend 的充足校验（对照 earn_spark 收负数那一族）")
+chk = sval("SELECT count(*) FROM pg_constraint WHERE conrelid = 'users'::regclass"
+           " AND pg_get_constraintdef(oid) LIKE '%spark_balance%'")
+print("   [在册] users.spark_balance 的库层 CHECK：%s 条（0＝地板只写在应用层）"
+      % chk)
+
 summary()

@@ -51,29 +51,53 @@ pub(crate) async fn topic_delete(
     if let Some(op_id) = op {
         let bounty_open = repo_td::open_bounty(&state.repo, tid).await?;
         if let Some(refund) = bounty_open {
-            let _ = earn_spark(
+            // P-364：钱到账才落「已退」标记。旧版 `let _ = earn_spark` 吞掉失败，
+            // 紧接着无条件 mark_bounty_refunded ⇒ 楼主的悬赏被记成「已退回」，
+            // 而魔力根本没进他账户，且标记之后再也重试不了（open_bounty 只认
+            // open 状态）。现在：失败就出声并**跳过标记**，悬赏留在 open 态可重试，
+            // 幂等键 `forum-bounty-refund:{tid}` 保证真退只退一次。
+            if let Err(e) = earn_spark(
                 &state.repo.db,
                 op_id,
                 refund,
                 "forum_bounty_refund",
                 &format!("forum-bounty-refund:{tid}"),
             )
-            .await;
-            let _ = repo_td::mark_bounty_refunded(&state.repo, tid).await;
+            .await
+            {
+                tracing::warn!(
+                    err = %e,
+                    topic = tid,
+                    owner = op_id,
+                    "bounty refund failed: left open for retry"
+                );
+            } else {
+                let _ = repo_td::mark_bounty_refunded(&state.repo, tid).await;
+            }
         }
         // 抽奖未决退回（0126）：open 状态的抽奖在删主题时奖金池退还楼主（drawn 的不动——钱已归中奖人）。
         // 票价不退（参与者享受了参与过程；与删悬赏帖不追回已发赏金同一不对称口径）。
         let lot_open = repo_td::open_lottery_pool(&state.repo, tid).await?;
         if let Some(refund) = lot_open {
-            let _ = earn_spark(
+            // P-364 同式：奖金池到账才落「已取消」，失败就出声并留 open 可重试
+            if let Err(e) = earn_spark(
                 &state.repo.db,
                 op_id,
                 refund,
                 "forum_lottery_refund",
                 &format!("forum-lottery-refund:{tid}"),
             )
-            .await;
-            let _ = repo_td::mark_lottery_cancelled(&state.repo, tid).await;
+            .await
+            {
+                tracing::warn!(
+                    err = %e,
+                    topic = tid,
+                    owner = op_id,
+                    "lottery refund failed: left open for retry"
+                );
+            } else {
+                let _ = repo_td::mark_lottery_cancelled(&state.repo, tid).await;
+            }
         }
     }
     if let Some(op_id) = op {
