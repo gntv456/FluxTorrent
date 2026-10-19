@@ -61,6 +61,7 @@ mod my_orders;
 mod pool;
 pub(crate) mod recon;
 mod shop;
+mod shop_guards;
 mod shop_effects;
 mod shop_list;
 mod spark_ledger_http;
