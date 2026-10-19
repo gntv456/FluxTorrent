@@ -255,4 +255,29 @@ chk = sval("SELECT count(*) FROM pg_constraint WHERE "
 print("   [在册] users.spark_balance 的库层 CHECK：%s 条（0＝地板只写在应用层）"
       % chk)
 
+# ---------- DK9 「只判 Err、不判 Replayed」的扣款口（台账棘轮，只降不升） ----------
+# DK1 数的是「结果被整个丢弃」（`spend_spark(…).await?;` 没人接）。这里补它
+# 的另一半盲区：`if let Err(e) = spend_spark(…)` **看着像消费了**，其实放过了
+# `Ok(Replayed)`——即「幂等键还在、业务占位行已被删掉」那一族（P-379 实测的
+# 白票形状）。现网 spark_ledger.idempotency_key 有全局唯一约束，而
+# admin_http/user_del.rs 清号会删 thanks/offer_votes/fun_votes/task_claims 等
+# 占位行、从不删流水 ⇒ 复活后对同一目标再操作一次就撞进来。
+# 正解不是加判断就完事：键必须锚「这一行」（P-380），否则白票翻成永久死端。
+# 所以这一条按**在册数**钉，修一处降一处，不许新增。
+LEAKY = re.compile(r"if let Err\([^)]*\)\s*=\s*(?:crate::)?(?:economy_http::)?"
+                   r"spend_spark\(")
+leaky_files = []
+for _p in sorted(rs_files()):
+    _t = strip_comments(io.open(_p, encoding="utf-8", errors="replace").read())
+    if LEAKY.search(_t):
+        leaky_files.append(os.path.relpath(_p, ROOTDIR).replace("\\", "/"))
+DK9_CEIL = 3
+ok("DK9 「只判 Err 不判 Replayed」的扣款口 %d ≤ 上界 %d（只降不升）"
+   % (len(leaky_files), DK9_CEIL),
+   len(leaky_files) <= DK9_CEIL,
+   "新增一处＝多一条可被清号复活踩中的白拿口：%s" % leaky_files)
+print("   [在册] DK9 待修清单（每处照 P-379+P-380 一起改：同事务 + 键锚行）：")
+for f in leaky_files:
+    print("      · %s" % f)
+
 summary()
