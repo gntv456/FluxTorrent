@@ -126,6 +126,15 @@ async fn dressup_wear(
             "尚未拥有该装扮（先在商店购买）".into(),
         ));
     };
+    // 多写并进一笔事务（P-355）：原先「摘同槽位 → 置 wearing → 落展示列」是
+    // 4~6 条各自提交的语句，中间任一条失败（DB 抖动、进程被杀）就留下
+    // 「面板说佩戴中、页面没效果」或反过来——与 bank/checkin 早前收过的 P1 同族。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let frame_id_cfg = cfg.get("frame_id").and_then(|v| v.as_i64());
     let effect_url: Option<String> = cfg
         .get("avatar_url")
@@ -140,7 +149,7 @@ async fn dressup_wear(
         )
         .bind(auth.id)
         .bind(&slot)
-        .execute(&state.repo.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         sqlx::query(
@@ -149,7 +158,7 @@ async fn dressup_wear(
         )
         .bind(auth.id)
         .bind(body.item_id)
-        .execute(&state.repo.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         // 展示列落地（同槽位互斥）：avatar 槽二选一——
@@ -172,18 +181,9 @@ async fn dressup_wear(
                             // frame_id 也无数值 avatar_url，佩戴它 code=0，
                             // users.avatar_frame_id 被写成 id=3（彩虹描边，
                             // 标价 10000）——成员以为自己有贵框，管理组也查不
-                            // 到来源。静默给错数据比拒单更坏，故改为先把
-                            // wearing 标记回滚（避免面板显示「佩戴中」却无
-                            // 展示列）再如实拒绝。
-                            sqlx::query(
-                                "UPDATE user_dressups SET wearing = FALSE \
-                                 WHERE user_id = $1 AND item_id = $2",
-                            )
-                            .bind(auth.id)
-                            .bind(body.item_id)
-                            .execute(&state.repo.db)
-                            .await
-                            .map_err(|e| DomainError::Internal(e.into()))?;
+                            // 到来源。静默给错数据比拒单更坏，故这里直接拒；
+                            // 本函数已在事务里（P-355），return Err 让整笔回滚，
+                            // wearing 标记与展示列都不会留下痕迹。
                             return Err(DomainError::Validation(
                                 "该装扮未配置头像框（商品 config 缺 \
                                  frame_id），请联系管理组补齐后再佩戴"
@@ -196,7 +196,7 @@ async fn dressup_wear(
                 )
                 .bind(auth.id)
                 .bind(fid)
-                .execute(&state.repo.db)
+                .execute(&mut *tx)
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
             }
@@ -210,7 +210,7 @@ async fn dressup_wear(
                 sqlx::query("UPDATE users SET avatar_url = $2 WHERE id = $1")
                     .bind(auth.id)
                     .bind(url)
-                    .execute(&state.repo.db)
+                    .execute(&mut *tx)
                     .await
                     .map_err(|e| DomainError::Internal(e.into()))?;
             }
@@ -223,14 +223,14 @@ async fn dressup_wear(
         )
         .bind(auth.id)
         .bind(body.item_id)
-        .execute(&state.repo.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         // 摘下恢复：动态头像恢复空值（回退首字母/原头像由用户自查），头像框清佩戴
         if kind == "animated_avatar" && slot.as_deref() == Some("avatar") {
             sqlx::query("UPDATE users SET avatar_url = NULL WHERE id = $1")
                 .bind(auth.id)
-                .execute(&state.repo.db)
+                .execute(&mut *tx)
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
         } else if kind == "avatar_frame" && slot.as_deref() == Some("avatar") {
@@ -238,11 +238,14 @@ async fn dressup_wear(
                 "UPDATE users SET avatar_frame_id = NULL WHERE id = $1",
             )
             .bind(auth.id)
-            .execute(&state.repo.db)
+            .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(
