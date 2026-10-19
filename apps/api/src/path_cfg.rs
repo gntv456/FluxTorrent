@@ -29,10 +29,22 @@ pub fn path_config() -> web::PathConfig {
         let raw = err.to_string();
         // 原文只进日志不进响应体：路径解析发生在鉴权之前，未登录请求也能
         // 读到这条响应，把 serde/actix 原文塞进 data 等于换个字段继续泄漏
-        tracing::warn!("路径参数解析失败：{raw}");
+        tracing::warn!("路径解析失败：{raw}");
+        // 外层句子必须走站内 i18n（P-390）：这里此前写死中文前缀
+        // 「路径参数无效：」，实测 `Accept-Language: en-US` 与 `zh-TW` 都照样
+        // 回简体——而同文件下方 40 行的 json_config() 早就用
+        // `localized_message(1002, locale)` 取外层句子。两条中央错误口径必须
+        // 同一把尺，否则非中文用户看到的是一半英文一半简体。
+        // 人话细节（humanize_parse_error 的短语）仍是动态串，与 JSON 侧同状态，
+        // 属「动态 format! 串需先参数化 key」那本台账，本批不扩面。
+        let locale = crate::i18n::current();
         let body = serde_json::json!({
             "code": 1002,
-            "message": format!("路径参数无效：{}", humanize_parse_error(&raw)),
+            "message": format!(
+                "{}: {}",
+                crate::i18n::localized_message(1002, locale),
+                humanize_parse_error(&raw)
+            ),
             "data": serde_json::Value::Null,
             "request_id": crate::request_id::current(),
         });
