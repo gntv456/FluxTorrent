@@ -23,8 +23,14 @@ pub(super) fn ensure_deliverable(kind: &str) -> DomainResult<()> {
     if crate::economy_http::has_effect(kind) || card_kind_probe(kind) {
         return Ok(());
     }
-    Err(DomainError::Validation(format!(
-        "该道具品类「{kind}」尚未接入发放逻辑，已停售：请先在生效链里实现它 \
-         （crates/flux-shared 的 apply_item_effect 与 has_effect 两处要一起加）"
-    )))
+    // 整句字面量：校验详情要能按原句在 validation_details.tsv 查到；具体
+    // kind 与修法只进日志（同 donate_order 的拒单口径）
+    tracing::warn!(
+        kind,
+        "shop sale refused: item kind has no delivery path \
+         (implement it in flux-shared apply_item_effect + has_effect)"
+    );
+    Err(DomainError::Validation(
+        "该道具品类尚未接入发放逻辑，已停售".into(),
+    ))
 }
