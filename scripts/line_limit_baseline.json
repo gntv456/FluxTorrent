@@ -265,7 +265,7 @@
  "apps/api/src/torrents/list.rs::wide": 3,
  "apps/api/src/torrents/list_noclamp_as.rs": 374,
  "apps/api/src/torrents/list_noclamp_as.rs::wide": 7,
- "apps/api/src/torrents/manage.rs::wide": 3,
+ "apps/api/src/torrents/manage.rs::wide": 1,
  "apps/api/src/torrents/section_filter.rs": 313,
  "apps/api/src/torrents/types.rs": 338,
  "apps/api/src/torrents/types.rs::wide": 2,
