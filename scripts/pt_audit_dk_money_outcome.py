@@ -297,4 +297,26 @@ OLD3 = 'let idem = format!("fun-vote:{}:{}", auth.id, body.poll_id);'
 ok("DK10b 承重自证：旧的「人 × 投票」键必须判红",
    not ROWKEY.search(OLD3), "旧键命中=%s" % bool(ROWKEY.search(OLD3)))
 
+# DK11 加工开工（P-385）：键必须带「这一轮」的周期量，扣款必须在事务里。
+# 旧键 craft-start:{uid}:{recipe}:{out_spark} 里三段全是常量 ⇒ 收工删掉在产行后
+# 第二次开工永久 400「请勿重复提交」（实测红），而同文件 AnimalReq 的注释早已
+# 因同一理由把 ranch-buy 改成带周期（P-334）——本闸门钉住别把它改回去。
+RN = os.path.join(APPS, "api", "src", "games_http", "ranch.rs")
+rn = strip_comments(io.open(RN, encoding="utf-8", errors="replace").read())
+ci = rn.find("async fn craft_start")
+seg = rn[ci:] if ci >= 0 else ""
+seg = seg[:seg.index("\n}\n")] if "\n}\n" in seg else seg
+ok("DK11 craft_start 键含行周期且走 spend_spark_tx",
+   "timestamp_micros" in seg and "spend_spark_tx(" in seg
+   and ".begin()" in seg and "tx.commit()" in seg,
+   "键里只剩常量＝每配方一辈子只能开工一次")
+OLD4 = ('let idem = format!("craft-start:{}:{}:{}", auth.id, body.recipe, '
+        'yld);\n    match spend_spark(db, auth.id, spend, "game", &idem, '
+        '"farm_craft", 0)\n        .await?')
+ok("DK11b 承重自证：旧的常量三段键必须判红",
+   not ("timestamp_micros" in OLD4 and "spend_spark_tx(" in OLD4),
+   "旧键命中=%s" % ("timestamp_micros" in OLD4))
+ok("DK11c 撤占位的退款分支已随事务删除（craft-start-refund 不许复活）",
+   "craft-start-refund" not in rn, "退款兜底留着＝又回到两段写")
+
 summary()
