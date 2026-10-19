@@ -216,17 +216,29 @@ pub async fn gomoku_move(
     // 胜负判定（四方向五连）
     let won = check_gomoku_win(&cells, body.pos as usize, my_color);
     let winner_id = if won { Some(auth.id) } else { None };
-    sqlx::query(
+    // P-372：落子必须带 CAS（把我刚读到的 board 与 turn 一起当条件）。旧写法是
+    // 无条件 UPDATE ⇒ 同一玩家的两次并发落子（两个标签页、连点、脚本重试）各自
+    // 读到同一份 board，后提交的那笔把前一颗子整盘覆盖掉：盘上少一颗子，
+    // 而当事人还白多得一次行棋机会；若两次都判成胜负，winner_id 也会互相覆盖。
+    let done = sqlx::query(
         "UPDATE gomoku_games SET board=$2, turn=$3, winner_id=$4, \
-         updated_at=now() WHERE id=$1",
+         updated_at=now() WHERE id=$1 AND board=$5 AND turn=$6",
     )
     .bind(*path)
     .bind(&new_board)
     .bind(next_turn)
     .bind(winner_id)
+    .bind(&board)
+    .bind(&turn)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if done == 0 {
+        return Err(DomainError::Validation(
+            "棋盘已被改动，请刷新后重试".into(),
+        ));
+    }
     Ok(ok(
         serde_json::json!({ "board": new_board, "turn": next_turn, "winner": winner_id, "you_won": won }),
     ))
