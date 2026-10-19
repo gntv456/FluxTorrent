@@ -22,6 +22,7 @@ struct PostTipReq {
 /// 打赏某楼：任何登录用户可打赏任何非匿名楼的作者。约束：
 /// · 金额 1~100,000 钳位外拒绝；
 /// · 不能打赏自己的楼（自己转自己只是流水噪音）；
+/// · 收件方须是正常会员（`status < 2`，与勋章赠送同口径）；
 /// · 打赏人余额不足自然被 spend_spark 拒（409）；
 /// · 幂等键 `forum-tip:{from}:{post}:{uuid}`——打赏是主动行为可重复（同一个人可以多次打赏同一楼），
 ///   幂等只防网络重试，不防故意多次。
@@ -55,15 +56,16 @@ pub(crate) async fn post_tip(
         .take(50)
         .collect();
     // 目标楼必须存在且属于某主题（匿名楼的 user_id 为 NULL 不可打赏）
-    let p: Option<(i64, Option<i64>, i64)> = sqlx::query_as(
-        "SELECT p.topic_id, p.user_id, t.forum_id FROM posts p JOIN topics t ON t.id = p.topic_id \
-         WHERE p.id = $1",
+    let p: Option<(i64, Option<i64>, i64, Option<i16>)> = sqlx::query_as(
+        "SELECT p.topic_id, p.user_id, t.forum_id, u.status \
+         FROM posts p JOIN topics t ON t.id = p.topic_id \
+         LEFT JOIN users u ON u.id = p.user_id WHERE p.id = $1",
     )
     .bind(body.post_id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((topic_id, author, fid)) = p else {
+    let Some((topic_id, author, fid, author_status)) = p else {
         return Err(DomainError::NotFound(body.post_id));
     };
     let Some(author_id) = author else {
@@ -71,6 +73,15 @@ pub(crate) async fn post_tip(
     };
     if author_id == auth.id {
         return Err(DomainError::Validation("不能打赏自己".into()));
+    }
+    // 收件方与勋章赠送同尺（community_http/medal_gift.rs 的 `status < 2`）：
+    // 打赏是自愿转账，打进出不了账的账号＝钱沉进死账户（被处置账号现网已
+    // 持有 769,204 魔力）、通知永远没人看。悬赏/字幕酬劳**不打**这条闸——
+    // 那是劳动所得，先被封也要照付（口径差异由闸门 DJ3 钉住，别被"顺手对齐"）。
+    if !matches!(author_status, Some(st) if st < 2) {
+        return Err(DomainError::Validation(
+            "该楼层作者账号状态异常，暂时无法打赏".into(),
+        ));
     }
     let perm =
         forum_access(&state.repo.db, auth.id, auth.class_id, fid).await?;
