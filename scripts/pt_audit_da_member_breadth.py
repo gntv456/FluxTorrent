@@ -378,7 +378,7 @@ if ME:
          token=ROOT)
     call("DELETE", "/admin/users/%d" % ME, None, token=ROOT)
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 TB = psql("SELECT count(*) FROM users WHERE id = %d AND status >= 2 "
           "AND passkey LIKE 'deleted-%%'" % ME) if ME else "0"

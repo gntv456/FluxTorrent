@@ -373,7 +373,7 @@ ok("S6c 列表不超过 LIMIT 200（合计取自整期已在 S6a 钉住；>200 �
 
 # ============ S7 收尾 ============
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 for uid, tok in ((SU, STOK), (MV, MTOK), (BO, BTOK)):
     psql("DELETE FROM hr_snapshots WHERE user_id = %d" % uid)

@@ -349,7 +349,7 @@ for u in (P1, P2):
     psql("DELETE FROM spark_ledger WHERE user_id = %d" % u)
     psql("DELETE FROM traffic_ledger WHERE user_id = %d" % u)
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 ok("K11a 本轮栏位/钓局/流水已清空（pens/rounds/led 全为 0）",
    cnt("arcade_ranch_pens", "user_id IN (%d, %d)" % (P1, P2)) == "0"

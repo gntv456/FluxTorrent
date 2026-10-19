@@ -390,7 +390,7 @@ ok("S7c 探针号走真实墓碑：passkey 作废后旧钥下载 401（不是仍
    "tomb=%s dl=%s" % (TOMB[:20], st))
 psql("DELETE FROM download_keys WHERE user_id = 1 OR user_id = %d" % PU)
 if codes:
-    psql("UPDATE invites SET status = 2 WHERE id = %d" % codes[0]["id"])
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id = %d" % codes[0]["id"])
 psql("DELETE FROM traffic_ledger WHERE user_id = %d" % PU)
 psql("DELETE FROM snatches WHERE user_id = %d" % PU)
 # 墓碑那一步产品自己会写一条 `user-purge-<uid>` 流水把余额冲平（实测

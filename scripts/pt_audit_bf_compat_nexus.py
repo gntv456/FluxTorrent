@@ -441,7 +441,7 @@ ok("S9b 探针号走真实墓碑：passkey 作废后旧钥在 userdetails 读不
    "tomb=%s http=%s" % (TOMB[:20], ud(PPK)[0]))
 psql("DELETE FROM download_keys WHERE user_id = 1 OR user_id = %d" % PU)
 if codes:
-    psql("UPDATE invites SET status = 2 WHERE id = %d" % codes[0]["id"])
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id = %d" % codes[0]["id"])
 NOW = {"users": cnt("users"), "live": cnt("users", "status < 2"),
        "keys": cnt("download_keys"),
        "traffic": cnt("traffic_ledger"),

@@ -132,7 +132,7 @@ def finalize():
                  token=ROOT)
             call("DELETE", "/admin/users/%d" % u, None, token=ROOT)
     if INV:
-        psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+        psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
              % ",".join(str(int(i)) for i in INV))
 
 
@@ -313,7 +313,7 @@ for u in (P95, P93):
              token=ROOT)
         call("DELETE", "/admin/users/%d" % u, None, token=ROOT)
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 DONE[0] = True
 ok("O9b 探针已墓碑、本轮不留活跃账号",

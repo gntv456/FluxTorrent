@@ -428,7 +428,7 @@ for u in (A, B, C):
     psql("DELETE FROM spark_ledger WHERE user_id = %d" % u)
     psql("DELETE FROM traffic_ledger WHERE user_id = %d" % u)
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 ok("I5a 本轮请求/字幕已清空（请求残留 %s 条、字幕残留 %s 条）"
    % (cnt("subtitle_requests", "descr LIKE 'BI%d%%'" % TAG),
