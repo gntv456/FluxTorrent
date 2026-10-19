@@ -234,4 +234,15 @@ ok("DT9 本闸门无残料（探针地块 %s 块、探针流水 %s 条）" % (re
    res == "0" and res2 == "0",
    "探针行留在现网会被下一个玩家碰到")
 
+# ---------- DT10 接口层未验的桩（现网开关关着，别拿静态绿冒充端到端） ----------
+mf = sval("SELECT value FROM site_settings WHERE name = 'module_farm'")
+print("   [钉桩] site_settings.module_farm = %s；农场整模块在网关层就 4101，"
+      "本闸门的 17 条是**静态 + 真库事务内 A/B**，没有一条打到 HTTP 口。"
+      "开关置 yes 后要补的验收：同一槽位隔分钟二次 /farm/plant 必须 400 且"
+      "余额净 0、不再产生 farm-refund 行；对 ready_at 已过的地块 /farm/water "
+      "必须 400 且不扣 farm_water_spark。" % (mf or "<无此行>"))
+ok("DT10 桩位仍在（模块开着时也不许把这段删掉——它是接口层欠账的唯一记录）",
+   "module_farm" in open(__file__, encoding="utf-8").read(),
+   "删桩＝接口层欠账无痕")
+
 summary()
