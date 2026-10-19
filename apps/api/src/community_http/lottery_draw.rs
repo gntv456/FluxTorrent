@@ -94,14 +94,24 @@ pub async fn lottery_draw_core(
                 &tickets,
                 winners as usize,
             );
-            let _ = repo_fair::store_proof(
+            // P-396：证明写失败旧版 `let _ =` 吞掉——`draw_proof` 留 NULL ⇒
+            // 验证页永远停在「开售中，开奖后公开 seed」，而奖其实已经开完了。
+            // 出声留下现场（P-323 同族），别把没落库说成已揭晓。
+            if let Err(e) = repo_fair::store_proof(
                 repo,
                 topic_id,
                 &root,
                 &serde_json::to_value(&proof)
                     .unwrap_or(serde_json::Value::Null),
             )
-            .await;
+            .await
+            {
+                tracing::warn!(
+                    err = %e,
+                    topic = topic_id,
+                    "lottery draw proof not stored: fairness page stuck at open"
+                );
+            }
             winner_hashes
                 .iter()
                 .filter_map(|h| {
@@ -148,7 +158,16 @@ pub async fn lottery_draw_core(
             )
             .await;
         }
-        let _ = repo_draw::mark_won(repo, topic_id, *uid).await;
+        // 钱已到账、但「已中奖」标记写失败 ⇒ 界面仍是未中奖，而参与行已判过
+        // 无法重试：出声留下可补现场（同 P-364 口径）。
+        if let Err(e) = repo_draw::mark_won(repo, topic_id, *uid).await {
+            tracing::warn!(
+                err = %e,
+                topic = topic_id,
+                winner = *uid,
+                "lottery mark_won failed after payout"
+            );
+        }
     }
     Ok(serde_json::json!({
         "topic_id": topic_id,

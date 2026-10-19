@@ -271,14 +271,30 @@ for _p in sorted(rs_files()):
     _t = strip_comments(io.open(_p, encoding="utf-8", errors="replace").read())
     if LEAKY.search(_t):
         leaky_files.append(os.path.relpath(_p, ROOTDIR).replace("\\", "/"))
-DK9_CEIL = 1
+DK9_CEIL = 0
 ok("DK9 「只判 Err 不判 Replayed」的扣款口 %d ≤ 上界 %d（只降不升）"
    % (len(leaky_files), DK9_CEIL),
    len(leaky_files) <= DK9_CEIL,
-   "新增一处＝多一条可被清号复活踩中的白拿口：%s" % leaky_files)
-print("   [在册] DK9 待修清单（每处照 P-379+P-380 一起改：同事务 + 键锚行）：")
-for f in leaky_files:
-    print("      · %s" % f)
+   "新增一处＝多一条可被清号/清行踩中的白拿口：%s" % leaky_files)
+ok("DK9a 待修清单必须为空（最后一处 lottery_join 已随 P-396 收口）",
+   not leaky_files, "仍在册：%s" % leaky_files)
+# DK9b 承重自证：把 lottery_join 修前的字面旧码喂给判据，必须打中
+OLD9 = ('if let Err(e) = crate::economy_http::spend_spark(\n'
+        '            &state.repo.db, auth.id, ticket, "forum_lottery",\n'
+        '            &idem, "forum_lottery", body.topic_id,).await\n        {')
+ok("DK9b 承重自证：旧 lottery_join 那句 `if let Err(e) = spend_spark(` "
+   "必须判红", LEAKY.search(OLD9) is not None,
+   "打不中说明这条判据已经瞎了（白拿口不会被普查抓到）")
+# DK9c 抽奖票价的键必须锚在「这一张票」上（created_at 微秒），且扣款
+# 走同事务的 spend_spark_tx——只改判断不改键＝白拿翻成永久死端（P-380）
+LJ = os.path.join(APPS, "api", "src", "community_http", "lottery.rs")
+lot = strip_comments(io.open(LJ, encoding="utf-8", errors="replace").read())
+ok("DK9c 抽奖票价键含行周期且走 spend_spark_tx",
+   re.search(r'format!\(\s*\n?\s*"forum-lottery-ticket:\{\}:\{\}:\{\}"',
+             lot) is not None
+   and "row_ts.timestamp_micros()" in lot
+   and "spend_spark_tx" in lot,
+   "两段键（uid:topic）配可删的占位行＝同一场抽奖第二次参与分文不扣")
 
 # DK10 已修的两口不许把键退回「人 × 目标」：第二段实参必须是**行标识**
 # （fun_vote 用 fun_votes.id、task_claim 用 claim_id），否则白拿翻成永久死端
