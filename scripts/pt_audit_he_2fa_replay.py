@@ -47,8 +47,8 @@ seg = t.split("fn totp_disable")[1].split("fn ")[0] if (
 bad = bare_verify(seg)
 ok("HE1 关掉 2FA 走 totp_verify_login（与登录同一把尺）",
    bool(seg) and bad is False, "读数=%s（True=仍是裸校验）" % bad)
-OLD = "let raw = BASE32_NOPAD.decode(b32)?; if !totp_verify(&raw, "
-       "body.code) { return Err(..); }"
+OLD = ("let raw = BASE32_NOPAD.decode(b32)?; if !totp_verify(&raw, "
+       "body.code) { return Err(..); }")
 ok("HE1b 承重自证：同一谓词打旧的裸校验必须为真",
    bare_verify(OLD) is True, "打不中＝认不出旧形状，判据是橡皮章")
 # 登录那一路不许被反向改坏：它必须仍在用带防重放的校验
