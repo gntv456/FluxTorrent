@@ -194,9 +194,13 @@ pub async fn public_commit(
     repo: &Repo,
     topic_id: i64,
 ) -> DomainResult<Option<PublicMaterial>> {
+    // P-398：这里原先写 `COALESCE(commit_hash, '')` 并只看「抽奖行是否存在」
+    // ⇒ 对**任何普通抽奖**都回一段空承诺 + note「开奖后公开 seed 与 rand」，
+    // 把「根本没登记承诺」演成「有承诺、还没揭晓」。没登记就说没登记，
+    // 让读面的 exists=false 分支去接管（前端正是按它显示空态）。
     let row: Option<(String, Option<serde_json::Value>)> = sqlx::query_as(
-        "SELECT COALESCE(commit_hash, ''), draw_proof \
-         FROM topic_lotteries WHERE topic_id = $1",
+        "SELECT commit_hash, draw_proof FROM topic_lotteries \
+         WHERE topic_id = $1 AND commit_hash IS NOT NULL",
     )
     .bind(topic_id)
     .fetch_optional(&repo.db)
