@@ -459,7 +459,7 @@ psql("DELETE FROM cheat_events WHERE id IN (%s)"
 psql("UPDATE users SET wallet_usd = 0, donor = FALSE WHERE id IN (%d, %d, %d)"
      % (S92, S95, MV))
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 for uid in (S92, S95, MV):
     psql("DELETE FROM messages WHERE receiver_id = %d OR sender_id = %d"

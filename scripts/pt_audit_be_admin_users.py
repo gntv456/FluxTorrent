@@ -94,7 +94,7 @@ PU, PTOK, WHY = 0, None, ""
 if not codes:
     WHY = "发码失败"
 else:
-    CLEAN.append("UPDATE invites SET status = 2 WHERE id = %d"
+    CLEAN.append("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id = %d"
                  % codes[0]["id"])
     cap = data(get("/auth/captcha"))
     nums = re.findall(r"-?\d+", str(cap.get("question") or ""))
@@ -412,7 +412,12 @@ s, r = post("/admin/users/%d/2fa/clear" % PU)
 ok("S6b 没开 2FA 的号清 2FA：400 且点名「未开启」（不许假装清了）",
    s == 400 and "未开启" in blob(r), "%s %s" % (s, blob(r)[:110]))
 s, r = call("DELETE", "/admin/users/%d" % PU, None, token=ROOT)
-ok("S6c 删号必须先封禁（活跃账号防误删）", s == 400 and "先封禁" in blob(r),
+# 话术同尺（站方 7b773433）：拒单句改成「仅已处置的账号（停用/墓碑/封禁）可删除」。
+# 本条原来断言旧句子「先封禁」，产品改口径后它就**永远不可能红得对**——
+# 现在按现口径断言，并加一条承重：活跃号确实没被删掉（状态仍 <2、行还在）。
+ok("S6c 删号必须先处置（活跃账号防误删，且账号确实还在）",
+   s == 400 and "仅已处置的账号" in blob(r)
+   and cnt("users", "id = %d AND status < 2" % PU) == "1",
    "%s %s" % (s, blob(r)[:110]))
 # 造证据：删号**之前**探针号名下有两张未使用邀请码
 pre_inv = adjust({"invite_grant": 2})

@@ -286,7 +286,7 @@ psql("DELETE FROM arcade_quests WHERE code LIKE 'bjq%%'")
 psql("DELETE FROM arcade_milestones WHERE code LIKE 'bjm%%'")
 psql("DELETE FROM arcade_items WHERE key LIKE 'bjitem%%'")
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 post("/admin/users/status", {"user_id": MV, "status": 2})
 call("DELETE", "/admin/users/%d" % MV, None, token=ROOT)

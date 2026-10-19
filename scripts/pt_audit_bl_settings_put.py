@@ -334,7 +334,7 @@ for u in (MV, S92):
     psql("DELETE FROM spark_ledger WHERE user_id = %d" % u)
 DONE = True
 if INV:
-    psql("UPDATE invites SET status = 2 WHERE id IN (%s)"
+    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
          % ",".join(str(int(i)) for i in INV))
 NSET1 = cnt("site_settings")
 JUNK = cnt("site_settings", "name LIKE 'bl\\_%'")
