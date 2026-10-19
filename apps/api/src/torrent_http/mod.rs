@@ -7,6 +7,7 @@
 //! 删除与附带处置在 torrent_delete.rs。
 
 mod aggregate;
+mod thanks_spark;
 mod batch;
 mod comments_like;
 mod detail;

@@ -254,7 +254,7 @@
  "apps/api/src/storage.rs::wide": 5,
  "apps/api/src/v4_http.rs::wide": 4,
  "apps/api/src/v4_http/metrics.rs::wide": 4,
- "apps/api/src/torrent_http/interact.rs": 457,
+ "apps/api/src/torrent_http/interact.rs": 450,
  "apps/api/src/torrent_http/list.rs": 341,
  "apps/api/src/torrent_http/list.rs::wide": 1,
  "apps/api/src/torrent_http/manage.rs": 447,

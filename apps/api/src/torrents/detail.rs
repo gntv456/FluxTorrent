@@ -220,18 +220,23 @@ pub async fn list_thanks(
     .map_err(|e| DomainError::Internal(e.into()))
 }
 
-pub async fn thank(
-    db: &PgPool,
+/// 落一行感谢。**执行器泛型**（与 farm_egg 同式）：调用方要把它和答谢转账
+/// 放进同一笔事务（P-360），自己 begin 的版本会退回「感谢记了、钱没动」。
+pub async fn thank<'e, E>(
+    exe: E,
     torrent_id: i64,
     user_id: i64,
-) -> DomainResult<()> {
+) -> DomainResult<()>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     let res = sqlx::query(
         "INSERT INTO thanks (torrent_id, user_id) VALUES ($1, $2) ON \
          CONFLICT DO NOTHING",
     )
     .bind(torrent_id)
     .bind(user_id)
-    .execute(db)
+    .execute(exe)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if res.rows_affected() == 0 {
