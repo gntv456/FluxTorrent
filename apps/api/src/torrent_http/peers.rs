@@ -242,9 +242,16 @@ async fn load_peers(
     let peers = raw
         .and_then(|r| serde_json::from_str::<Snap>(&r).ok())
         .map(|snap| {
+            // 双口径（info_hash / raw_info_hash）同时命中时，同一条 peer 会在
+            // 两个桶里各出现一次：调用方的 seeders/leechers 计数已按 user_id
+            // 去重（「同一账号只计一次，否则多开客户端的人把自己显示成 10 个
+            // 做种者」），列表却按 peer 原样输出 ⇒ 同一个人被列两遍。列表的
+            // 去重尺是 peer_id（多开两个客户端仍是两条真实记录），不是人。
+            let mut seen = std::collections::HashSet::<String>::new();
             snap.into_iter()
                 .filter(|(h, _)| h == ih || ih_raw.is_some_and(|r| h == r))
                 .flat_map(|(_, ps)| ps)
+                .filter(|p| seen.insert(p.key.peer_id.clone()))
                 .collect()
         })
         .unwrap_or_default();
