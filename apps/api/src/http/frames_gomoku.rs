@@ -1,7 +1,7 @@
 //! 头像挂件 + 五子棋（插件区后半）。
 //! 从 http.rs 按域拆出。
 
-use crate::economy_http::spend_spark;
+use crate::economy_http::spend_spark_tx;
 use actix_web::{get, post, put, web, HttpRequest, Responder};
 use serde::Deserialize;
 
@@ -53,12 +53,24 @@ pub async fn frame_equip(
             let Some(price) = price else {
                 return Err(DomainError::NotFound(fid as i64));
             };
+            // P-371：扣款与佩戴必须同一事务。旧版是 `spend_spark`（独立提交）
+            // 之后再 UPDATE users ⇒ 「魔力已扣、展示列没写」是可达中间态；而头像框
+            // 的归属只活在 `users.avatar_frame_id` 这一列上（没有持有表），一旦停在
+            // 中间态，会员付的钱在任何面板里都找不到。同事务里 UPDATE 影响 0 行
+            // 也整笔回滚。
+            let mut tx = state
+                .repo
+                .db
+                .begin()
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
             if price > 0 {
+                // 确定性幂等键（frame:{uid}:{fid}）：换戴回已购框架 = Replayed，
+                // 不重复扣款但仍继续佩戴。这是本口唯一一条有意的「重放也放行」：
+                // 扣款侧不会凭空入账，所以不判 Spent（对照发放侧必须判）。
                 let idem = format!("frame:{}:{}", auth.id, fid);
-                // 幂等键确定性（frame:{uid}:{fid}）：换戴回已购框架 → Replayed（不重复
-                // 扣款）后仍继续佩戴，这正是「重复佩戴不重复收费」的预期语义，显式丢弃。
-                let outcome = spend_spark(
-                    &state.repo.db,
+                let outcome = spend_spark_tx(
+                    &mut tx,
                     auth.id,
                     price as i64,
                     "shop",
@@ -69,10 +81,19 @@ pub async fn frame_equip(
                 .await?;
                 let _ = outcome;
             }
-            sqlx::query("UPDATE users SET avatar_frame_id=$2 WHERE id=$1")
-                .bind(auth.id)
-                .bind(fid)
-                .execute(&state.repo.db)
+            let n = sqlx::query(
+                "UPDATE users SET avatar_frame_id=$2 WHERE id=$1",
+            )
+            .bind(auth.id)
+            .bind(fid)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected();
+            if n == 0 {
+                return Err(DomainError::NotFound(auth.id));
+            }
+            tx.commit()
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
             Ok(ok(serde_json::json!({ "equipped": fid })))
