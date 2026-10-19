@@ -186,17 +186,19 @@ if LIVE:
 
     # 历史证据 vs 新增发生：现网已有 15 条 balance_after<0 的流水，全部由旧收回
     # 留下（forum-*-del 收回 + 闸门探针的 user_purge）。清零要等镜像上线，
-    # 所以这里做**棘轮（只降不升）**；GF_AFTER_DEPLOY=1 时改成零容忍。
+    # 存量与增量必须分两条判据（批一百八十九纠偏）：原先
+    # `` 那种「部署后一律零容忍」把两件事混成一件——现网 15 条
+    # 负 balance_after 全是 2026-09-30~10-03 的历史行（17:06 重部署后新增 0），
+    # 零容忍读起来像「地板原语没生效」，实际缺的是一次清账数据迁移，而归站方定尺。
+    fresh = psql("SELECT count(*) FROM spark_ledger WHERE balance_after < 0 "
+                 "AND created_at > now() - interval '7 days';")
+    ok("GF6a 近 7 天不再新增负 balance_after 流水（地板原语承重）",
+       int(fresh) == 0, "现网=%s（>0 即收回/扣费仍能写穿零）" % fresh)
     bad_rows = psql("SELECT count(*) FROM spark_ledger "
                     "WHERE balance_after < 0;")
-    if os.environ.get("GF_AFTER_DEPLOY") == "1":
-        ok("GF6a 流水不写负 balance_after（部署后零容忍）",
-           int(bad_rows) == 0, "现网=%s" % bad_rows)
-    else:
-        ok("GF6a 负 balance_after 流水只许 ≤ 基线",
-           int(bad_rows) <= NEG_ROW_BASELINE,
-           "现网=%s 基线=%s（旧收回留下的证据，上线后转零容忍）"
-           % (bad_rows, NEG_ROW_BASELINE))
+    ok("GF6c 历史负 balance_after 存量只许 ≤ 基线（待清账，闸门不擅改）",
+       int(bad_rows) <= NEG_ROW_BASELINE,
+       "现网=%s 基线=%s" % (bad_rows, NEG_ROW_BASELINE))
     negs = psql("SELECT count(*) FROM users WHERE spark_balance < 0;")
     ok("GF6b 负余额账号数只许 ≤ 基线", int(negs) <= NEG_BASELINE,
        "现网=%s 基线=%s（清账口径待站长定）" % (negs, NEG_BASELINE))
