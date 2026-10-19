@@ -416,7 +416,7 @@
  "apps/api/src/community_http/staffbox.rs::wide": 2,
  "apps/api/src/community_http/staff_answer.rs::wide": 3,
  "apps/api/src/community_http/ticket.rs::wide": 1,
- "apps/api/src/community_http/tip.rs::wide": 3,
+ "apps/api/src/community_http/tip.rs::wide": 2,
  "apps/api/src/community_http/topic.rs::wide": 10,
  "apps/api/src/community_http/topic_create.rs::wide": 1,
  "apps/api/src/auth_http/login.rs::wide": 4,
