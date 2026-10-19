@@ -158,9 +158,11 @@ pub async fn report_resolve(
                 if uploader != reporter_id {
                     let fine_idem =
                         format!("subtitle-report-fine:{}", body.report_id);
-                    // 余额不足扣不满也无妨：spend_spark 会报 InsufficientSpark，
-                    // 悬赏已发、字幕已删，罚金失败不阻断举报结案
-                    let _ = crate::economy_http::spend_spark(
+                    // P-415b：「罚金失败不阻断结案」是口径，但不阻断 ≠ 不留痕。
+                    // 旧写法 `let _ =` 把 DB 故障、幂等冲突一起吞掉，站方事后根本
+                    // 看不出这 100 点扣没扣。余额不足是预期内的（扣不满就算了），
+                    // 其余一律出声（P-323 / P-328 同口径）。
+                    match crate::economy_http::spend_spark(
                         &state.repo.db,
                         uploader,
                         100,
@@ -169,7 +171,17 @@ pub async fn report_resolve(
                         "subtitle",
                         ref_id,
                     )
-                    .await;
+                    .await
+                    {
+                        Ok(_) => {}
+                        Err(DomainError::InsufficientSpark) => {}
+                        Err(e) => tracing::warn!(
+                            err = %e,
+                            report = rid,
+                            user = uploader,
+                            "字幕举报罚金扣款失败（结案继续，罚金未落账）"
+                        ),
+                    }
                 }
             }
         }

@@ -7,7 +7,7 @@
 
 use super::forum_access;
 use crate::dto::ok;
-use crate::economy_http::earn_spark;
+use crate::economy_http::{clawback_spark, earn_spark};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::repo::community::follows as repo_follows;
@@ -101,14 +101,25 @@ pub(crate) async fn topic_delete(
         }
     }
     if let Some(op_id) = op {
-        let _ = earn_spark(
+        // P-415：收回走地板原语（旧写法把 -2 送进 earn_spark：发放原语不防负，
+        // `spark_balance` 也没有 CHECK，零余额楼主会被直接写成 -2，且 `let _ =`
+        // 把失败吞干净）。能收多少收多少、流水与余额同步、失败出声。
+        if let Err(e) = clawback_spark(
             &state.repo.db,
             op_id,
-            -2,
+            2,
             "forum-topic-del",
             &format!("forum-topic-del:{tid}"),
         )
-        .await;
+        .await
+        {
+            tracing::warn!(
+                err = %e,
+                topic = tid,
+                user = op_id,
+                "删主题收回发帖火花失败"
+            );
+        }
     }
     // 级联回收回帖 +1：主题删除会把全部回帖 CASCADE 掉，逐笔回收回帖奖励保持对称。
     // 审计修复（P1 双重扣分）：楼主首帖也存于 posts（topic_create 落 posts 行），
@@ -117,14 +128,26 @@ pub(crate) async fn topic_delete(
     let replies =
         repo_td::reply_reward_debt(&state.repo, tid, op.unwrap_or(0)).await;
     for (uid, n) in replies {
-        let _ = earn_spark(
+        if n <= 0 {
+            continue;
+        }
+        // P-415：级联收回同样走地板原语；逐人夹零，不会把某个回帖作者写成负账
+        if let Err(e) = clawback_spark(
             &state.repo.db,
             uid,
-            -(n as i64),
+            n as i64,
             "forum-topic-del-reply",
             &format!("forum-topic-del-reply:{tid}:{uid}"),
         )
-        .await;
+        .await
+        {
+            tracing::warn!(
+                err = %e,
+                topic = tid,
+                user = uid,
+                "删主题级联收回回帖火花失败"
+            );
+        }
     }
     repo_td::delete_topic(&state.repo, tid).await?;
     // 关注本主题的行：target_id 无外键（指向 3 张表），必须应用层清理，否则留下悬空关注

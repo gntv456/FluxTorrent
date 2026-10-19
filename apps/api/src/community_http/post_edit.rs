@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use super::*;
 use crate::dto::ok;
-use crate::economy_http::earn_spark;
+use crate::economy_http::clawback_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -120,14 +120,25 @@ pub(crate) async fn post_delete(
     }
     // 删单帖收回该帖的回帖 +1（与删主题收回发帖 +2 对称，堵住「发帖赚火花再被删」的获利通道）
     {
-        let _ = earn_spark(
+        // P-415：收回走地板原语。旧写法 `let _ = earn_spark(…, -1, …)` 把 -1 送进
+        // 发放原语（`checked_balance` 只防溢出不防负、`spark_balance` 无 CHECK），
+        // 零余额会员被删一帖就变成「欠站里 1 火花」，失败还被 `let _ =` 吞干净。
+        if let Err(e) = clawback_spark(
             &state.repo.db,
             author_id,
-            -1,
+            1,
             "forum-post-del",
             &format!("forum-post-del:{pid}"),
         )
-        .await;
+        .await
+        {
+            tracing::warn!(
+                err = %e,
+                post = pid,
+                user = author_id,
+                "删帖收回火花失败"
+            );
+        }
     }
     // 审计修复（P2）：被删帖若是该主题最新回复，last_post_at 残留已删时间——
     // 版块「最后回复」排序/展示失真。先取被删帖时间，删后回填剩余最新回复
