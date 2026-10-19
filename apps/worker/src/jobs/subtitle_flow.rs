@@ -4,24 +4,23 @@
 
 use sqlx::PgPool;
 
-/// 幂等发火花（事务内流水+余额同护栏；与 achievement_grant 同口径）。
-/// 幂等护栏只在本事务 INSERT 上判断：事务内已插入的行对本事务可见，
-/// 若 UPDATE 仍带同款 NOT EXISTS 会恒 0 行 → 整体回滚 → 支付静默丢失
-/// （链路缺陷 #10：自动验收赏金从未入账）。INSERT 未插入 = 已发过，跳过。
-async fn spark_award(
-    db: &PgPool,
+/// 幂等发火花（**事务内**版，P-416）：调用方的 CAS 与这里必须同一个事务。
+///
+/// 旧版收 `&PgPool` 自己开事务，并把一切失败折成「warn + 跳过」；上层 CAS
+/// `4→1` 却是 autocommit 先落库的 ⇒ 「一分钱没发出去」这件事永远不会被重试，
+/// 而站内信照发「赏金已按份额分发」（P-412 同族，这次在 worker 侧）。
+/// 现在失败一律 `?` 上抛 ⇒ 上层回滚 ⇒ 单子留在 status=4，下一 tick 重试。
+///
+/// 幂等护栏只在本事务 INSERT 上判断：事务内已插入的行对本事务可见，若 UPDATE
+/// 仍带同款 NOT EXISTS 会恒 0 行 → 整体回滚 → 支付静默丢失（链路缺陷 #10）。
+/// 返回 `true`=本次真出账；`false`=同键已在册（钱早就发出去了，只补状态位）。
+async fn spark_award_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     uid: i64,
     amount: i64,
     kind: &str,
     idem: &str,
-) {
-    let mut tx = match db.begin().await {
-        Ok(t) => t,
-        Err(e) => {
-            tracing::warn!(error = %e, idem, "spark_award begin failed");
-            return;
-        }
-    };
+) -> anyhow::Result<bool> {
     let inserted = sqlx::query(
         "INSERT INTO spark_ledger \
          (id, user_id, amount, kind, idempotency_key, balance_after) \
@@ -34,34 +33,28 @@ async fn spark_award(
     .bind(amount)
     .bind(kind)
     .bind(idem)
-    .execute(&mut *tx)
-    .await
-    .map(|r| r.rows_affected() > 0)
-    .unwrap_or_else(|e| {
-        tracing::warn!(error = %e, idem, "spark_award insert failed");
-        false
-    });
-    if !inserted {
-        let _ = tx.rollback().await;
-        return;
+    .execute(&mut **tx)
+    .await?
+    .rows_affected();
+    if inserted == 0 {
+        // 同键已在册而单子仍是 status=4 ⇒ 上一次「发了钱没落状态」的撕裂残留：
+        // 这里只补状态，绝不双发
+        tracing::warn!(uid, idem, "字幕赏金幂等键已在册：只补状态不重复出账");
+        return Ok(false);
     }
     let balanced = sqlx::query(
         "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
     )
     .bind(uid)
     .bind(amount)
-    .execute(&mut *tx)
-    .await
-    .map(|r| r.rows_affected() > 0)
-    .unwrap_or_else(|e| {
-        tracing::warn!(error = %e, idem, "spark_award balance failed");
-        false
-    });
-    if balanced {
-        let _ = tx.commit().await;
-    } else {
-        let _ = tx.rollback().await;
+    .execute(&mut **tx)
+    .await?
+    .rows_affected();
+    if balanced == 0 {
+        // 账号不存在（并发删号）：上抛让整笔回滚，别把「已结算」落在没人的单上
+        anyhow::bail!("字幕赏金入账失败：账号 {uid} 不存在（{idem}）");
     }
+    Ok(true)
 }
 
 /// 认领超时回池（3→0）+ 交稿超时自动验收（4→1）
@@ -77,38 +70,43 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
     // 计数补上「主动弃单」之外的漏洞，漏计等于故意拖到超时的霸单人免罚。
     // 正确写法=先用 CTE 快照候选行，RETURNING 取 cand 的旧值。
     let expired: Vec<(i64, Option<i64>)> = sqlx::query_as(
-        r#"
-        WITH cand AS (
-            SELECT id, claimed_by FROM subtitle_requests
-            WHERE status = 3 AND deadline_at IS NOT NULL
-              AND deadline_at < now()
-        ), upd AS (
-            UPDATE subtitle_requests s
-               SET status = 0, claimed_by = NULL, claimed_at = NULL,
-                   deadline_at = NULL, crew = '[]'
-              FROM cand c WHERE s.id = c.id
-            RETURNING c.id AS id, c.claimed_by AS claimed_by
-        )
-        SELECT id, claimed_by FROM upd
-        "#,
+        "SELECT id, claimed_by FROM subtitle_requests WHERE status = 3 \
+         AND deadline_at IS NOT NULL AND deadline_at < now()",
     )
     .fetch_all(db)
     .await?;
+    let mut released = 0usize;
     for (rid, claimer) in &expired {
+        // P-416：回池 CAS、subreq.abandon 审计、认领人站内信同一事务。
+        // P-49 修的是「RETURNING 取到更新后的行」，但三步各自 autocommit +
+        // 两处 `let _ =` 仍然让失败无声——漏一条审计就等于漏计一次弃单，
+        // 「30 天内 3 次禁认领」的门槛靠拖超时就能绕过。现在任一写失败
+        // ⇒ 整单回滚，留在 status=3，下一 tick 重试。
+        let mut tx = db.begin().await?;
+        let n = sqlx::query(
+            "UPDATE subtitle_requests SET status = 0, claimed_by = NULL, \
+             claimed_at = NULL, deadline_at = NULL, crew = '[]' \
+             WHERE id = $1 AND status = 3",
+        )
+        .bind(rid)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        if n == 0 {
+            // 这一轮里已被人手动弃单/重新认领：不用回池，事务随 drop 回滚
+            continue;
+        }
         if let Some(uid) = claimer {
-            // B1：超时回池等价于系统代行弃单——必须落 subreq.abandon 审计，
-            // 否则「弃单禁令」只数主动弃单，故意拖到超时的霸单人绕过计数。
-            // worker 无 repo.audit，同款 INSERT（ref 内 by=sweep-timeout 留痕）。
-            let _ = sqlx::query(
+            sqlx::query(
                 "INSERT INTO audit_log (id, actor_id, action, ref) \
                  VALUES (nextval('audit_log_id_seq'), $1, 'subreq.abandon', \
                  $2::jsonb)",
             )
             .bind(uid)
             .bind(format!("{{\"by\":\"sweep-timeout\",\"id\":{rid}}}"))
-            .execute(db)
-            .await;
-            let _ = sqlx::query(
+            .execute(&mut *tx)
+            .await?;
+            sqlx::query(
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
                  VALUES (NULL, $1, '字幕认领已超时', $2)",
             )
@@ -116,9 +114,11 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
             .bind(format!(
                 "你认领的求字幕 #{rid} 已超时回池（计入弃单次数），其他用户可重新认领。"
             ))
-            .execute(db)
-            .await;
+            .execute(&mut *tx)
+            .await?;
         }
+        tx.commit().await?;
+        released += 1;
     }
     // 交稿超时：自动验收（天数可配，默认 3；1-30 钳位）。
     // 分账与 api 侧 subtitles_close::settle_crew 同键域
@@ -133,16 +133,34 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
     .flatten()
     .unwrap_or_else(|| "3".into());
     let days: i64 = days.trim().parse().unwrap_or(3).clamp(1, 30);
+    // 候选只读出来，不在这里翻状态：CAS 与分账必须在同一个事务里（P-416）。
+    // 旧写法 `UPDATE ... SET status = 1 ... WHERE status = 4 RETURNING` 先
+    // autocommit 把单子写成「已自动验收」，随后逐笔 spark_award 把一切失败
+    // 折成「warn + 跳过」——于是发放失败永远不会被重试，站内信还写着「赏金
+    // 已按份额分发」。同键域互斥（F4）挡住了双发，挡不住零发。
     let auto: Vec<(i64, i64, i64, i64, serde_json::Value)> = sqlx::query_as(
-        "UPDATE subtitle_requests SET status = 1, paid_at = now() WHERE \
-         status = 4 AND deliver_at < now() - ($1 || ' days')::interval \
-         RETURNING id, bounty, COALESCE(claimed_by, user_id), user_id, crew",
+        "SELECT id, bounty, COALESCE(claimed_by, user_id), user_id, crew \
+         FROM subtitle_requests WHERE status = 4 AND deliver_at IS NOT NULL \
+         AND deliver_at < now() - ($1 || ' days')::interval",
     )
     .bind(days.to_string())
     .fetch_all(db)
     .await?;
-    let auto_n = auto.len();
+    let mut auto_ok = 0usize;
     for (rid, bounty, claimer, owner, crew) in auto {
+        let mut tx = db.begin().await?;
+        let n = sqlx::query(
+            "UPDATE subtitle_requests SET status = 1, paid_at = now() \
+             WHERE id = $1 AND status = 4",
+        )
+        .bind(rid)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        if n == 0 {
+            // 人工验收抢先了：本单不用自动结算，事务随 drop 回滚
+            continue;
+        }
         let mut remainder = bounty;
         if let Some(list) = crew.as_array() {
             for m in list.iter().filter(|m| {
@@ -159,15 +177,19 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
                     continue;
                 }
                 let idem = format!("subtitle-bounty-pay:{}:{}", rid, uid);
-                spark_award(db, uid, amount, "subtitle_bounty", &idem).await;
+                spark_award_tx(&mut tx, uid, amount, "subtitle_bounty", &idem)
+                    .await?;
                 remainder -= amount;
             }
         }
         if remainder > 0 {
             let idem = format!("subtitle-bounty-pay:{}:{}", rid, claimer);
-            spark_award(db, claimer, remainder, "subtitle_bounty", &idem).await;
+            spark_award_tx(&mut tx, claimer, remainder, "subtitle_bounty",
+                           &idem)
+                .await?;
         }
-        let _ = sqlx::query(
+        // 通知与结算同事务：钱没落地就别发「已分发」这句话
+        sqlx::query(
             "INSERT INTO messages (sender_id, receiver_id, subject, body) \
              VALUES (NULL, $1, '字幕已自动验收', $2)",
         )
@@ -175,13 +197,15 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
         .bind(format!(
             "求字幕 #{rid} 验收超时已自动结算（赏金 {bounty} 已按份额分发）。"
         ))
-        .execute(db)
-        .await;
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        auto_ok += 1;
     }
-    if !expired.is_empty() || auto_n > 0 {
+    if released > 0 || auto_ok > 0 {
         tracing::info!(
-            released = expired.len(),
-            auto_accepted = auto_n,
+            released,
+            auto_accepted = auto_ok,
             "subtitle request timeouts swept"
         );
     }
