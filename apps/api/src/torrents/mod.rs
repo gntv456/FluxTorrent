@@ -20,6 +20,7 @@ mod list_noclamp_as;
 // 抓轨日志读路径（0312）
 mod logs;
 mod manage;
+mod reseed;
 pub(crate) mod manage_perm;
 pub(crate) mod promo;
 pub(crate) mod related;
@@ -37,6 +38,7 @@ pub use comments::*;
 pub use delete_dispose::*;
 pub use detail::*;
 pub use interact::*;
+pub use reseed::*;
 pub(crate) use list::esc_like;
 pub(crate) mod view_scope;
 mod visibility;
