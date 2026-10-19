@@ -5,7 +5,7 @@ use actix_web::{post, web, HttpRequest, HttpResponse};
 use sqlx::PgPool;
 
 use crate::dto::ok;
-use crate::economy_http::earn_spark;
+use crate::economy_http::{earn_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -22,68 +22,62 @@ pub(super) async fn subtitle_request_accept(
     let auth = require_auth(&req, &state).await?;
     let rid = path.into_inner();
     let staff = auth.class_id >= 90;
+    // P-412：状态翻转与分账必须同一事务。旧写法 CAS `4→1` 先 autocommit 落库，
+    // 之后才逐个 earn_spark——任一处失败（`.await?` 上抛）这单已是 status=1 而钱
+    // 没出，重试撞 `status = 4` ⇒ 「不在待验收状态」永久挡回：凑池的魔力冻在单里、
+    // 译者一分没拿、界面却显示「已验收」。同型口径见 P-364 / P-411。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // (发起人, 赏金池, 认领人, crew, offer_free, free_days, torrent_id)
     type AcceptRow = (i64, i64, i64, serde_json::Value, bool, i32, Option<i64>);
-    let row: Option<AcceptRow> = sqlx::query_as(
-        "SELECT user_id, bounty, COALESCE(claimed_by, user_id), crew, \
-         offer_free, free_days, torrent_id FROM subtitle_requests WHERE \
-         id = $1 AND status = 4",
+    // CAS 与取行一步做完：旧实现先 SELECT 再 UPDATE，两步之间被人抢先就会拿过期
+    // 行判权。判权失败/无行都在事务内返回 ⇒ 整笔自动回滚，不留半个状态。
+    let row: Option<AcceptRow> = sqlx::query_as::<_, AcceptRow>(
+        "UPDATE subtitle_requests SET status = 1, paid_at = now() WHERE \
+         id = $1 AND status = 4 RETURNING user_id, bounty, \
+         COALESCE(claimed_by, user_id), crew, offer_free, free_days, \
+         torrent_id",
     )
     .bind(rid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((
-        req_owner,
-        bounty,
-        claimer,
-        crew,
-        offer_free,
-        free_days,
-        torrent_id,
-    )) = row
+    let Some((owner, bounty, claimer, crew, offer_free, free_days, tid)) = row
     else {
         return Err(DomainError::Validation("该求字幕不在待验收状态".into()));
     };
-    if !staff && auth.id != req_owner {
+    if !staff && auth.id != owner {
         return Err(DomainError::Forbidden);
     }
-    // C4 free 联动的 created_by 记账人：人工验收记验收人，worker 自动验收
-    // 由 worker 补挂（恒发起人/管理口径）；此处统一用发起人，避免 staff 代收
-    // 时把「站方出免费」记到 staff 名下（审计追责口径 = 需求发起人）。
-    let n = sqlx::query(
-        "UPDATE subtitle_requests SET status = 1, paid_at = now() WHERE id \
-         = $1 AND status = 4",
-    )
-    .bind(rid)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if n == 0 {
-        return Err(DomainError::Validation("该求字幕已被处理".into()));
-    }
-    // 分账（C3）：份额乘法后按人发（floor，尾差给主认领人）
-    let mut paid =
-        settle_crew(&state.repo.db, rid, bounty, claimer, &crew).await?;
-    // free 联动（C4）：结算即给种子挂限时免费（source=subtitle 可追责回收）
+    // C4 free 联动的 created_by 记账人统一用发起人：staff 代收时不该把
+    // 「站方出免费」记到 staff 名下（审计追责口径 = 需求发起人）。
+    let mut paid = settle_crew_tx(&mut tx, rid, bounty, claimer, &crew).await?;
+    // 免费联动进同一事务：挂了就该挂，`let _ =` 吞失败＝承诺的限时免费凭空消失
     if offer_free {
-        if let Some(tid) = torrent_id {
-            let _ = sqlx::query(
+        if let Some(tid) = tid {
+            sqlx::query(
                 "INSERT INTO promotions (scope, torrent_id, kind, starts_at, \
                  ends_at, source, created_by) VALUES ('torrent', $1, 'free', \
                  now(), now() + ($2 || ' days')::interval, 'subtitle', $3)",
             )
             .bind(tid)
             .bind(free_days.max(1).to_string())
-            .bind(req_owner)
-            .execute(&state.repo.db)
-            .await;
+            .bind(owner)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             paid.push(serde_json::json!({
                 "free": true, "torrent_id": tid, "days": free_days,
             }));
         }
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "subreq.accept", Some(rid))
@@ -93,10 +87,11 @@ pub(super) async fn subtitle_request_accept(
     })))
 }
 
-/// crew 分账核心：[{user_id, share, accepted}]，只发 accepted=true 的；
-/// 余量（含未确认者份额）归主认领人。每人幂等键 subtitle-bounty-pay:{rid}:{uid}。
-pub(super) async fn settle_crew(
-    db: &PgPool,
+/// crew 分账核心（P-412 起在调用方事务内出账）：`[{user_id, share, accepted}]`
+/// 只发 accepted=true 的；余量（含未确认者份额）归主认领人。每人独立幂等键
+/// `subtitle-bounty-pay:{rid}:{uid}`（与交稿/worker 自动验收同键域，防双发）。
+pub(super) async fn settle_crew_tx(
+    tx: &mut sqlx::PgTransaction<'_>,
     rid: i64,
     bounty: i64,
     claimer: i64,
@@ -122,8 +117,7 @@ pub(super) async fn settle_crew(
             if amount <= 0 || uid == claimer {
                 continue;
             }
-            let idem = format!("subtitle-bounty-pay:{}:{}", rid, uid);
-            earn_spark(db, uid, amount, "subtitle_bounty", &idem).await?;
+            pay_bounty(tx, uid, amount, rid).await?;
             remainder -= amount;
             shared_out += share;
             paid.push(serde_json::json!({
@@ -132,14 +126,32 @@ pub(super) async fn settle_crew(
         }
     }
     if remainder > 0 {
-        let idem = format!("subtitle-bounty-pay:{}:{}", rid, claimer);
-        earn_spark(db, claimer, remainder, "subtitle_bounty", &idem).await?;
+        pay_bounty(tx, claimer, remainder, rid).await?;
         paid.push(serde_json::json!({
             "user_id": claimer, "amount": remainder,
             "share": 100 - shared_out,
         }));
     }
     Ok(paid)
+}
+
+/// 单笔记账：非 Spent（幂等键已在册）＝这单此前真结过，整笔回滚远比
+/// 「一半人到账、一半没到」诚实。
+async fn pay_bounty(
+    tx: &mut sqlx::PgTransaction<'_>,
+    uid: i64,
+    amount: i64,
+    rid: i64,
+) -> DomainResult<()> {
+    let idem = format!("subtitle-bounty-pay:{}:{}", rid, uid);
+    let outcome = earn_spark_tx(tx, uid, amount, "subtitle_bounty", &idem)
+        .await?;
+    if !matches!(outcome, SpendOutcome::Spent) {
+        return Err(DomainError::Validation(
+            "该单的赏金已发放过，未重复出账".into(),
+        ));
+    }
+    Ok(())
 }
 
 /// crew 成员确认邀请（认领后随时可确认；确认与否决定结算份额归属）

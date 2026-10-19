@@ -70,6 +70,15 @@ pub(super) async fn subtitle_request_fulfill(
     }
     // CAS：0 → 1（并发双交付只成功一个）。
     // (赏金池, crew, offer_free, free_days, torrent_id)
+    // P-413：状态翻转与整池结算必须同一事务（同 P-412）——旧写法先 autocommit
+    // 把单子写成 status=1，再 settle_crew 发钱；发钱一失败（`.await?` 上抛）这单
+    // 已是「已结算」而池子里的魔力一分没出，重试撞 `status = 0` ⇒ 永久挡回。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     type FulfillRow = (i64, serde_json::Value, bool, i32, Option<i64>);
     let row: Option<FulfillRow> = sqlx::query_as::<_, FulfillRow>(
         "UPDATE subtitle_requests SET status = 1, fulfilled_subtitle_id \
@@ -78,22 +87,18 @@ pub(super) async fn subtitle_request_fulfill(
     )
     .bind(rid)
     .bind(body.subtitle_id)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (bounty, crew, offer_free, free_days, torrent_id) =
+    let (bounty, crew, offer_free, free_days, tid) =
         row.ok_or(DomainError::Validation("该求字幕已处理".into()))?;
-    let mut paid = super::subtitles_close::settle_crew(
-        &state.repo.db,
-        rid,
-        bounty,
-        auth.id,
-        &crew,
+    let mut paid = super::subtitles_close::settle_crew_tx(
+        &mut tx, rid, bounty, auth.id, &crew,
     )
     .await?;
     if offer_free {
-        if let Some(tid) = torrent_id {
-            let _ = sqlx::query(
+        if let Some(tid) = tid {
+            sqlx::query(
                 "INSERT INTO promotions (scope, torrent_id, kind, starts_at, \
                  ends_at, source, created_by) VALUES ('torrent', $1, 'free', \
                  now(), now() + ($2 || ' days')::interval, 'subtitle', $3)",
@@ -101,13 +106,17 @@ pub(super) async fn subtitle_request_fulfill(
             .bind(tid)
             .bind(free_days.max(1).to_string())
             .bind(auth.id)
-            .execute(&state.repo.db)
-            .await;
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             paid.push(serde_json::json!({
                 "free": true, "torrent_id": tid, "days": free_days,
             }));
         }
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "request_id": rid, "bounty_paid": bounty, "settlement": paid,
     })))
