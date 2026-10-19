@@ -2,7 +2,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::spend_spark;
+use crate::economy_http::{spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -61,18 +61,30 @@ pub(super) async fn offer_vote(
     if !offer_ok {
         return Err(DomainError::NotFound(body.offer_id));
     }
+    // P-379：占位 → 扣火花 → 计数**同一事务**（旧版四段独立提交：
+    // 扣款失败靠 best-effort 撤票，撤票失败＝白投一票；计数失败＝钱扣了、
+    // 票留下了、会员只收到 404）。任何一步 Err 出去，整笔回滚。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     // 先占位投票记录（原子判重，防重放刷票）
-    let voted =
-        crate::repo::offers::place_vote(&state.repo, body.offer_id, auth.id)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    let voted = crate::repo::offers::place_vote(
+        &mut *tx,
+        body.offer_id,
+        auth.id,
+    )
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     if !voted {
         return Err(DomainError::Validation("已投过票啦".into()));
     }
-    // 候选投票 1 火花（旧站口径）；扣款失败回滚占位
+    // 候选投票 1 火花（旧站口径）；幂等键与占位行同笔事务，撞上重放即整笔回滚
     let idem = format!("offer-vote:{}:{}", auth.id, body.offer_id);
-    if let Err(e) = spend_spark(
-        &state.repo.db,
+    let spent = spend_spark_tx(
+        &mut tx,
         auth.id,
         1,
         "vote",
@@ -80,18 +92,19 @@ pub(super) async fn offer_vote(
         "offer",
         body.offer_id,
     )
-    .await
-    {
-        crate::repo::offers::drop_vote(&state.repo, body.offer_id, auth.id)
-            .await;
-        return Err(e);
+    .await?;
+    if !matches!(spent, SpendOutcome::Spent) {
+        return Err(DomainError::Validation("这一票的火花已经扣过".into()));
     }
-    let counted = crate::repo::offers::count_vote(&state.repo, body.offer_id)
+    let counted = crate::repo::offers::count_vote(&mut *tx, body.offer_id)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     if !counted {
         return Err(DomainError::NotFound(body.offer_id));
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "voted": true })))
 }
 
