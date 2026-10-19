@@ -238,12 +238,12 @@ if "sval" not in globals():          # 本闸门原自带取数器名不同，�
     sval = _dk_one
 NEG_CEIL = 25
 neg = int(sval("SELECT count(*) FROM users WHERE spark_balance < 0") or 0)
-ok("DK8 余额为负的会员 %d ≤ 上界 %d（只降不升，处置完该收敛到 0）" % (neg,
-                                                                       NEG_CEIL),
+ok("DK8 余额为负的会员 %d ≤ 上界 %d（只降不升）" % (neg, NEG_CEIL),
    neg <= NEG_CEIL,
    "上升＝又有一条扣费路径绕过 spend 的充足校验（对照 earn_spark 收负数那一族）")
-chk = sval("SELECT count(*) FROM pg_constraint WHERE conrelid = 'users'::regclass"
-           " AND pg_get_constraintdef(oid) LIKE '%spark_balance%'")
+chk = sval("SELECT count(*) FROM pg_constraint WHERE "
+           "conrelid = 'users'::regclass "
+           "AND pg_get_constraintdef(oid) LIKE '%spark_balance%'")
 print("   [在册] users.spark_balance 的库层 CHECK：%s 条（0＝地板只写在应用层）"
       % chk)
 
