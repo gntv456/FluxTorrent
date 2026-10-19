@@ -117,16 +117,28 @@ pub async fn lottery_draw_core(
         }
     };
     for uid in &picked {
-        let _ = repo_draw::mark_won(repo, topic_id, *uid).await;
+        // P-367 换序：**先派彩，后落「已中奖」标记**，通知也只发给真到账的人。
+        // 旧顺序是 mark_won 先落、`let _ = earn_spark` 后走且吞失败 ⇒ 派彩出错时
+        // 会员已被记成「已中奖」（参与行已被判过，不可重试），奖金却没到账——
+        // 把一次可重试的失败固化成永久假成功。prize==0 的抽奖（不发魔力）照旧标记。
         if prize > 0 {
-            let _ = earn_spark(
+            if let Err(e) = earn_spark(
                 db,
                 *uid,
                 prize,
                 "forum_lottery",
                 &format!("forum-lottery-win:{topic_id}:{uid}"),
             )
-            .await;
+            .await
+            {
+                tracing::warn!(
+                    err = %e,
+                    topic = topic_id,
+                    winner = *uid,
+                    "lottery payout failed: winner left unmarked for retry"
+                );
+                continue;
+            }
             notify_user(
                 db,
                 *uid,
@@ -136,6 +148,7 @@ pub async fn lottery_draw_core(
             )
             .await;
         }
+        let _ = repo_draw::mark_won(repo, topic_id, *uid).await;
     }
     Ok(serde_json::json!({
         "topic_id": topic_id,

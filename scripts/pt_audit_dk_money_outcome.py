@@ -188,8 +188,6 @@ else:
 # 批一百七十四初版把两种混在一起数，虚报了 6 处；本轮分清后现网真吞只有下面这些。
 # 谁修掉一处就把清单缩一行，**新增一条就红**。
 LEDGER = {
-    # 派彩在 mark_won 之后，失败即「中奖没奖且不可重试」——待修（下一批）
-    "apps/api/src/community_http/lottery_draw.rs": 1,
     # P-365 同族：负数走 earn_spark（回收 +1 惩罚），修法属资金口径，待站方裁
     "apps/api/src/community_http/post_edit.rs": 1,
     # P-365 同族两条：删主题扣 2 + 级联回收回帖各扣 1
