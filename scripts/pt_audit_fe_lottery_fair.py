@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """FE 闸门：论坛抽奖「可验证公平」链路（批一百六十八新增）。
-
 三段生死：① 售票把「占位行 / 票据哈希链 / 票价」同事务落库——旧写法先
 autocommit 插占位，再让 `issue_ticket` 自开事务去插那条冲突必中的
 ON CONFLICT DO NOTHING（⇒ 哈希永不落库、链恒空），扣费又只判 Err 而放过
@@ -31,11 +30,9 @@ GENESIS = "0" * 64
 RUN = int(time.time()) % 100000   # 探针号名要按轮次唯一，否则重跑撞「用户名已占用」
 PROBE_UIDS: list = []
 
-
 def rd(rel):
     return io.open(os.path.join(ROOT, rel), encoding="utf-8",
                    errors="replace").read()
-
 
 def cut(s):
     """剥 // 行注释：不先剥就会被自己刚写下的说明文字喂出假数据。"""
@@ -176,8 +173,12 @@ if LIVE:
             "lottery_winners": 1, "lottery_prize": 10,
             "lottery_ticket": 5, "lottery_hours": 6}, token=ROOT_TOK)
         tid = int(dat(r).get("topic_id") or dat(r).get("id") or 0)
-        ok("FE-L1 抽奖主题建出来（tid=%d）" % tid, tid > 0,
-           "http=%s %s" % (s, str(r)[:160]))
+        f0 = dat(call("GET", "/forums/lottery/%d/fairness" % tid)[1])
+        ok("FE-L1 建出主题，未登记承诺时验证页说未登记（tid=%d exists=%s）"
+           % (tid, f0.get("exists")),
+           tid > 0 and f0.get("exists") is False,
+           "http=%s %s｜旧形状：exists=true + 空 commit 演成「有承诺」"
+           % (s, str(r)[:160]))
         CLEAN += [
             "DELETE FROM lottery_entries WHERE topic_id = %d" % tid,
             "DELETE FROM topic_lotteries WHERE topic_id = %d" % tid,
@@ -189,10 +190,9 @@ if LIVE:
             "AND created_at > now() - interval '15 min'"]
         # 生产者未接线：按 open_fair_round 该写的三列直接做夹具，
         # 把「链能不能跑」与「公平场能不能被开出来」分开定性。
-        commit = hashlib.sha256(SEED.encode()).hexdigest()
-        sql("UPDATE topic_lotteries SET fair_enabled=TRUE, "
-            "commit_hash='%s', seed_cipher='%s' WHERE topic_id=%d"
-            % (commit, SEED, tid))
+        sql("UPDATE topic_lotteries SET fair_enabled=TRUE, commit_hash='%s',"
+            " seed_cipher='%s' WHERE topic_id=%d"
+            % (hashlib.sha256(SEED.encode()).hexdigest(), SEED, tid))
         M = [new_member(1), new_member(2)]
         if not M[0] or not M[1]:
             ok("FE-L2 两个探针会员", False, "注册窗口/邀请造不出来")
