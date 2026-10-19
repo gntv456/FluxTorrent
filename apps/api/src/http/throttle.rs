@@ -19,8 +19,16 @@ const LOGIN_THROTTLE_MAX: i64 = 5;
 
 /// Redis 故障统一 fail-close（ZT81 口径）：`unwrap_or(0)` 会让计数恒 0
 /// ⇒ 限流永不触发，抖动期间爆破/撞库/凭据重放全部失守。
-fn rl_err(e: redis::RedisError) -> DomainError {
-    DomainError::Internal(anyhow::anyhow!("限流服务不可用: {e}"))
+/// P-423：带**键名**的故障口径。现网 66 条 `限流服务不可用`
+/// （2026-10-12~10-19，另有 33 条 RSS 侧同事件）只留下
+/// `ResponseError: value is not an integer or out of range` 与
+/// `TypeError: Could not convert`，两种都指向「计数器键撞上了字符串值」，
+/// 但日志里**没有键名**，事后 Redis TTL 已过、值无从再看 ⇒ 无法归因。
+/// 旧版 `rl_err`（不带键）已删除：三个计数器出口都拿得到键。
+fn rl_err_k(e: redis::RedisError, key: &str) -> DomainError {
+    DomainError::Internal(anyhow::anyhow!(
+        "限流服务不可用 [key={key}]: {e}"
+    ))
 }
 
 /// 通用限流（缺省按登录档 5 次/分）。
@@ -64,7 +72,10 @@ pub async fn rate_window(
     let bucket = chrono::Utc::now().timestamp() / window;
     let k = format!("rl:{key}:{bucket}");
     let mut c = state.redis.clone();
-    let n: i64 = c.incr(&k, 1).await.map_err(rl_err)?;
+    let n: i64 = c
+        .incr(&k, 1)
+        .await
+        .map_err(|e| rl_err_k(e, &k))?;
     // 留两窗：当前桶够用，旧桶自然回收
     let touched: redis::RedisResult<()> = c.expire(&k, window * 2).await;
     if let Err(e) = touched {
@@ -91,7 +102,10 @@ pub async fn counter_peek(
 ) -> DomainResult<i64> {
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
-    let v: Option<i64> = c.get(key).await.map_err(rl_err)?;
+    let v: Option<i64> = c
+        .get(key)
+        .await
+        .map_err(|e| rl_err_k(e, key))?;
     Ok(v.unwrap_or(0))
 }
 
@@ -110,7 +124,10 @@ pub async fn counter_bump(
 ) -> DomainResult<i64> {
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
-    let n: i64 = c.incr(key, 1).await.map_err(rl_err)?;
+    let n: i64 = c
+        .incr(key, 1)
+        .await
+        .map_err(|e| rl_err_k(e, key))?;
     let touched: redis::RedisResult<()> = c.expire(key, ttl).await;
     if let Err(e) = touched {
         tracing::warn!(%e, key = %key, "计数键续期失败（下一次调用会补上）");
