@@ -46,6 +46,22 @@ pub async fn submit(
     Ok(id)
 }
 
+/// 这个人当前压着多少条待审申报（提交口用它给「重复提交」出声提示）。
+pub async fn count_pending(
+    repo: &Repo,
+    user_id: i64,
+) -> DomainResult<i64> {
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM seedbox_claims WHERE user_id = $1 \
+         AND status = 'pending'",
+    )
+    .bind(user_id)
+    .fetch_one(&repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(n)
+}
+
 /// 我提交过的申报（最新在前）。
 pub async fn my_claims(repo: &Repo, user_id: i64) -> DomainResult<Vec<Claim>> {
     Ok(sqlx::query_as(
