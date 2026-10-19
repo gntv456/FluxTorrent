@@ -5,7 +5,7 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::spend_spark;
+use crate::economy_http::{spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -76,41 +76,51 @@ pub(super) async fn fun_vote(
     if body.option_index < 0 || body.option_index as usize >= n {
         return Err(DomainError::Validation("选项无效".into()));
     }
-    let voted = sqlx::query(
+    // P-383（照 P-379/P-380）：占位与扣款同一事务，幂等键锚「这一行票」。
+    // 旧版两段各自提交 + 扣款失败 best-effort 撤占位；键按「人 × 投票」定，
+    // 而 admin_http/user_del.rs:122 清号会删 fun_votes 却从不删 spark_ledger
+    // ⇒ 复活后对同一个未结束的投票再投一次，spend 回 Ok(Replayed) 被当成
+    // 成功放过（实测：票落了、火花没扣＝白票）。防重放本来就由
+    // fun_votes (poll_id,user_id) 唯一键承担。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let vote_id: Option<i64> = sqlx::query_scalar(
         "INSERT INTO fun_votes (poll_id, user_id, option_index) VALUES \
-         ($1, $2, $3) ON CONFLICT DO NOTHING",
+         ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id",
     )
     .bind(body.poll_id)
     .bind(auth.id)
     .bind(body.option_index)
-    .execute(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    if voted.rows_affected() == 0 {
+    let Some(vote_id) = vote_id else {
         return Err(DomainError::Validation("已经投过啦，一人一票".into()));
-    }
-    // 投票 +1 火花（旧站口径），扣款失败回滚占位
-    let idem = format!("fun-vote:{}:{}", auth.id, body.poll_id);
-    if let Err(e) = spend_spark(
-        &state.repo.db,
-        auth.id,
-        1,
-        "vote",
-        &idem,
-        "fun_poll",
-        body.poll_id,
-    )
-    .await
-    {
-        let _ = sqlx::query(
-            "DELETE FROM fun_votes WHERE poll_id = $1 AND user_id = $2",
+    };
+    // 投票 +1 火花（旧站口径）
+    let idem = format!("fun-vote:{}:{}", auth.id, vote_id);
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
+            auth.id,
+            1,
+            "vote",
+            &idem,
+            "fun_poll",
+            body.poll_id,
         )
-        .bind(body.poll_id)
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await;
-        return Err(e);
+        .await?,
+        SpendOutcome::Spent
+    ) {
+        return Err(DomainError::Validation("这一票的火花已经扣过".into()));
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(
         serde_json::json!({ "voted": body.option_index, "cost": 1 }),
     ))
