@@ -203,3 +203,8 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 请填 CIDR（含前缀长度），例如 192.168.10.0/24	請填 CIDR（含前綴長度），例如 192.168.10.0/24	Provide a CIDR with prefix length, e.g. 192.168.10.0/24
 请给 enabled 或完整题目	請給 enabled 或完整題目	Provide either enabled or the full question
 递增价格超出可计算范围	遞增價格超出可計算範圍	The incremental price exceeds the computable range
+勋章发放失败，本次扣款已退回，请稍后重试	勳章發放失敗，本次扣款已退回，請稍後重試	Medal grant failed; the charge has been refunded. Please retry later.
+该日已有签到记录，本次未消耗补签卡	該日已有簽到記錄，本次未消耗補簽卡	That day is already checked in; no makeup card was consumed.
+该楼层作者账号状态异常，暂时无法打赏	該樓層作者帳號狀態異常，暫時無法打賞	The post author's account is not in good standing; tipping is unavailable.
+该道具品类尚未接入发放逻辑，已停售	該道具品類尚未接入發放邏輯，已停售	This item category has no delivery logic yet; sales are suspended.
+该订单不属于路径里的用户，未回收任何行	該訂單不屬於路徑裡的使用者，未回收任何行	The order does not belong to the user in the path; nothing was reclaimed.

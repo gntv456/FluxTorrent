@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::economy_http::{
-    earn_spark, earn_spark_tx, spend_spark, SpendOutcome,
+    earn_spark_tx, spend_spark, spend_spark_tx, SpendOutcome,
 };
 use crate::errors::{DomainError, DomainResult};
 use crate::games;
@@ -50,13 +50,19 @@ pub(super) async fn farm_plant(
         games::roll_market_factor(),
     );
 
-    // 买种经统一交易管线扣款（幂等键含用户+槽位+当前分钟）。
-    // 审计修复（P0 铸币）：旧逻辑对 spend_spark 返回的 Replayed 不检查——同槽同分钟内
-    // 第二个请求（换高价作物）不扣款即走到占位失败分支，再按"本次请求的高价"全额退款。
-    // 现在：Replayed 直接拒绝（本请求未付费），退款金额以幂等键对应的实际扣款额为准。
+    // 买种扣款与占位**同一事务**（P0 双扣收口）：旧版扣款走独立事务，占位
+    // 失败后按幂等键回查支出流水取「退款额」，而支出流水的 amount 按约定存
+    // 负数 ⇒ earn_spark(-80) 变成第二次扣款（现网 spark_ledger 1795/1796：
+    // 同一分钟键两行 -80，balance_after 3527→3447）。回滚即分文未扣。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let idem = format!("farm-plant:{}:{}:{}", auth.id, body.slot, now / 60);
-    let outcome = spend_spark(
-        &state.repo.db,
+    let outcome = spend_spark_tx(
+        &mut tx,
         auth.id,
         price,
         "game",
@@ -80,28 +86,16 @@ pub(super) async fn farm_plant(
     .bind(body.slot)
     .bind(crop.id)
     .bind(minutes)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if planted.is_none() {
-        // 占位失败（槽位已被占）：退款补偿。退款额必须取该幂等键的实际扣款额，
-        // 而非本次请求价——两者在本请求 Replayed 已被拒绝的前提下仍可能有差异
-        //（同分钟内首请求是低价作物），按实际扣款退才能保证净 0。
-        let actual: Option<i64> = sqlx::query_scalar(
-            "SELECT amount FROM spark_ledger WHERE idempotency_key \
-             = $1 AND user_id = $2 LIMIT 1",
-        )
-        .bind(&idem)
-        .bind(auth.id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let refund_amt = actual.unwrap_or(price);
-        let refund = format!("farm-refund:{}", idem);
-        earn_spark(&state.repo.db, auth.id, refund_amt, "game", &refund)
-            .await?;
+        // 槽位已被占：直接拒绝，事务回滚 = 本请求分文未扣（旧版在这里二次扣款）
         return Err(DomainError::Validation("该地块已有作物".into()));
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "farm.plant", Some(crop.id as i64))
@@ -126,11 +120,17 @@ pub(super) async fn farm_water(
     body: web::Json<SlotReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // 枯萎地块不能浇水（有效期已过，救不回来）
+    // 枯萎地块不能浇水（有效期已过，救不回来）；**已成熟也不能浇**（P1 坑钱，
+    // 与同文件 /farm/fertilize 同式）：旧版少了这道闸门，对 ready_at 已过的
+    // 地块仍然 rows_affected=1 并扣 farm_water_spark——收获时刻一点没提前，
+    // 而枯萎截止是按 ready_at + farm_wither_days 算的，于是这一笔钱买到的
+    // 只有「自己的作物提前 10 分钟枯死」。现网实测（事务内 A/B）：成熟 30 分钟
+    // 的地块浇水 UPDATE 影响 1 行、ready_at 前移 10 分钟、仍可立即收获。
     let wither_days = farm_wither_days(&state).await;
     let updated = sqlx::query(
         r#"UPDATE farm_plots SET watered = TRUE, ready_at = ready_at - interval '10 minutes'
          WHERE user_id = $1 AND slot = $2 AND watered = FALSE
+           AND ready_at > now()
            AND ($3 = 0 OR ready_at + make_interval(days => $3::int) >= now())"#,
     )
     .bind(auth.id)
@@ -141,7 +141,7 @@ pub(super) async fn farm_water(
     .map_err(|e| DomainError::Internal(e.into()))?;
     if updated.rows_affected() == 0 {
         return Err(DomainError::Validation(
-            "该地块无需浇水（未种植 / 已浇过 / 已枯萎）".into(),
+            "该地块无需浇水（未种植 / 已浇过 / 已成熟或已枯萎）".into(),
         ));
     }
     // 浇水消耗（0109 键 farm_water_spark，缺省 1；为 0 表示免费）。

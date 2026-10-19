@@ -52,9 +52,17 @@ pub async fn reclaim_order(
     // 先拒），否则「按 A 的单回收、把处置记在 B 头上」会一路走下去。
     if let Some(want) = expect_uid {
         if want != uid {
-            return Err(DomainError::Validation(format!(
-                "订单 #{order_id} 不属于用户 #{want}，未回收任何行"
-            )));
+            // 整句字面量：校验详情按原句进 validation_details.tsv 查表，
+            // 单号与归属只进日志（同 donate_order 的拒单口径）
+            tracing::warn!(
+                order_id,
+                path_user = want,
+                owner = uid,
+                "reclaim refused: order does not belong to path user"
+            );
+            return Err(DomainError::Validation(
+                "该订单不属于路径里的用户，未回收任何行".into(),
+            ));
         }
     }
     if price > 0 {
