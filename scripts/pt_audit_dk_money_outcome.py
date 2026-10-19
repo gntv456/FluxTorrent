@@ -335,4 +335,36 @@ ok("DK11b 承重自证：旧的常量三段键必须判红",
 ok("DK11c 撤占位的退款分支已随事务删除（craft-start-refund 不许复活）",
    "craft-start-refund" not in rn, "退款兜底留着＝又回到两段写")
 
+# ---------- DK12 「先落状态位、后发货」的形状（批一百七十二 P-407） ----------
+# 券核销 temp_invite 旧顺序：CAS 把 used_at 写成 now()（autocommit）→ 再发邀请码。
+# 发码一步失败 ⇒ 券已消耗、码没到手，而 CAS 只认 used_at IS NULL ⇒ 重试被
+# 「券不存在、已使用或已过期」挡回：会员手里既没券也没码。同型口径见 P-364、
+# P-406（撤销的 CAS 与退款同事务）、bank_withdraw（销单与入账同事务）。
+VU = os.path.join(APPS, "api", "src", "economy_http", "voucher_use.rs")
+vu = strip_comments(io.open(VU, encoding="utf-8", errors="replace").read())
+
+
+def mark_then_grant(seg):
+    """把这段核销逻辑判一遍：是否仍是「先 autocommit 落状态位、后发货」。"""
+    if 'UPDATE user_vouchers SET used_at' not in seg:
+        return None                     # 这段没有销券语句：不判
+    after = seg.split('UPDATE user_vouchers SET used_at')[1]
+    return ("let mut tx" not in seg[:seg.index('UPDATE user_vouchers')]
+            or "&mut *tx" not in after[:500])
+
+
+seg12 = vu.split('Some("temp_invite")')[1][:1400] if (
+    'Some("temp_invite")' in vu) else ""
+bad12 = mark_then_grant(seg12)
+ok("DK12 券核销：发码与销券在同一事务内（否则失败就白吃一张券）",
+   seg12 and bad12 is False, "读数=%s（True=仍是先落状态位后发货）" % bad12)
+OLD12 = ('let n = sqlx::query("UPDATE user_vouchers SET used_at = '
+         'now() WHERE id = $1 AND used_at IS NULL")'
+         '.bind(v).execute(&state.repo.db).await?'
+         '.rows_affected(); let id = state.repo.issue_invite('
+         'u, &code, exp).await?;')
+ok("DK12b 承重自证：同一谓词打旧的「先 autocommit 销券、后发码」必须为真",
+   mark_then_grant(OLD12) is True,
+   "打不中＝DK12 认不出旧形状，是橡皮章")
+
 summary()
