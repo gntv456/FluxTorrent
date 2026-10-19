@@ -2055,6 +2055,7 @@ const zhCnBase = {
     ledger: "{magic}流水",
     noLedger: "暂无流水",
     kinds: {
+      exam_penalty: '考试扣罚',
       seeding_reward: "做种收益",
       attendance: "签到",
       forum: "论坛奖励",
