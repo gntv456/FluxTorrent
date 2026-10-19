@@ -59,6 +59,10 @@ pub async fn list_comments_as(
 /// 0156 嵌套回复版发表：parent_id 是「回复目标评论 id」——
 /// 存储层把它归一到根（回复某条回复 → 挂到该回复的根楼层，组内按时间正序）；
 /// reply_to_user 取被回复人用户名用于「回复 @xxx」显示。
+/// 评论正文的防膨胀天花板（字符数）。不是「合理长度」的编辑口径，
+/// 只挡「一条请求把表与详情页聚合缓存撑大」这一类放大（P-377）。
+const COMMENT_MAX_CHARS: usize = 20_000;
+
 pub async fn add_comment_as(
     db: &PgPool,
     torrent_id: i64,
@@ -79,6 +83,18 @@ pub async fn add_comment_as(
     }
     if body.trim().is_empty() {
         return Err(DomainError::Validation("评论不能为空".into()));
+    }
+    // P-377：评论正文此前**没有任何长度上限**，实测一条 300,000 字符的评论
+    // 直接落库（id 239，length=300000）：任何人可无限放大 comments 表与
+    // 详情页聚合缓存（aggregate 整包带评论）。这里只加「防膨胀天花板」，
+    // 不替站长定「合理长度」——上限取得远大于正常评论，误伤概率≈0。
+    // 同仓既有的短文本口径是 shoutbox 300 字（community_http/shoutbox.rs:73）。
+    if body.chars().count() > COMMENT_MAX_CHARS {
+        // 整句字面量：校验详情要能按原句在 validation_details.tsv 查到
+        // （动态串条数被 validation_i18n_guard 锁死，同 donate_order 口径）
+        return Err(DomainError::Validation(
+            "评论太长，请精简后再发".into(),
+        ));
     }
     // 归一：目标必须存在且属于同一种子；回复的回复挂到根
     let (root_id, reply_to_user): (Option<i64>, Option<String>) =
