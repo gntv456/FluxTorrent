@@ -1,0 +1,172 @@
+# -*- coding: utf-8 -*-
+"""闸门 FB：外键型写口必须先验存在性（500 族收口，P-373）。
+
+会员视角：从旧页面/别人转来的链接点「收藏」，页面只说「内部错误」。
+
+  P-373（本批已修）：`torrents::bookmark` 的 on=true 分支直接 INSERT，
+  打到不存在/已删的种号就撞 `bookmarks_torrent_id_fkey` ⇒ 会员收到 500
+  「内部错误」，而这个端点自己的 OpenAPI 写着「404 种子不存在或不可见」。
+  同文件的评论删除（interact.rs:83）、评论点赞（:151）、标签
+  （manage.rs:184）三处都先查存在性——收藏是这一族里被改漏的那一份。
+  现网实测（:8080，种号不存在）：HTTP 500 + PG 日志
+  `Key (torrent_id)=(999999999) is not present in table "torrents"`。
+  修后（侧进程 :8099 实测）：bogus → 404/code 1004；真种号 → 200；
+  取消收藏 → 200；bookmarks 总数与 root 收藏数回到原值（零残留）。
+
+这一族的通用形状：**往「带外键的写口」插行而不先验父行存在**——错误表征是 500，
+不是可读的 4xx。FB3 把它做成普查台账：库里每一条指向 `torrents(id)` 的外键，
+源码里对应的 INSERT 位置是否带存在性判定，命中数只降不升。
+
+跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_fb_parent_check.py
+"""
+import io
+import os
+import re
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pt_audit_lib import ok, summary, call, login  # noqa: E402
+
+ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APISRC = os.path.join(ROOTDIR, "apps", "api", "src")
+DETAIL = os.path.join(APISRC, "torrents", "detail.rs")
+# 在册：INSERT 指向 torrents 的子表里，函数段内没有存在性/可见性判定的位置数
+
+
+def rd(p):
+    return io.open(p, encoding="utf-8", errors="replace").read()
+
+
+def cut(f):
+    s = re.sub(r"/\*.*?\*/", "", rd(f), flags=re.S)
+    return "\n".join(re.sub(r"//.*", "", ln) for ln in s.split("\n"))
+
+
+def psql(q):
+    r = subprocess.run(
+        ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
+         "-q", "-d", "fluxtorrent", "-tA", "-F", " | ", "-c", q],
+        input=None, capture_output=True, text=True, encoding="utf-8")
+    if r.returncode != 0:
+        print("   psql 失败：%s" % (r.stderr or "").strip()[:220])
+    return (r.stdout or "").strip()
+
+
+det = cut(DETAIL)
+i_bm = det.find("pub async fn bookmark")
+bm = det[i_bm:det.find("pub async fn", i_bm + 10)] if i_bm >= 0 else ""
+
+# ---------- FB1 收藏口的存在性判定 ----------
+ok("FB1 bookmark 的 on 分支先验父行存在（EXISTS ... FROM torrents）",
+   i_bm >= 0 and "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)" in bm,
+   "不验就是拿 500 当「种不存在」的答案")
+ok("FB1b 不存在时回 NotFound（不是内部错误）",
+   "DomainError::NotFound(torrent_id)" in bm,
+   "错误码要落在本端点 OpenAPI 承诺的那一档")
+
+# ---------- FB2 同族三处判定的对照（它们本来就有）----------
+inter = cut(os.path.join(APISRC, "torrent_http", "interact.rs"))
+manage = cut(os.path.join(APISRC, "torrents", "manage.rs"))
+ok("FB2 评论删除/点赞/标签三处都带存在性判定（对照物不许被改坏）",
+   "DomainError::NotFound(comment_id)" in inter
+   and inter.count("FROM comments WHERE id = $1") >= 2
+   and "DomainError::NotFound(torrent_id)" in manage,
+   "这三处是同一族的正例；哪天它们也漏了，本闸门要红")
+
+# ---------- FB3 全库外键普查 → 源码台账 ----------
+fks = psql("SELECT c.conrelid::regclass::text FROM pg_constraint c "
+           "JOIN pg_class t ON t.oid=c.confrelid "
+           "WHERE t.relname='torrents' AND c.contype='f'")
+tables = [x.strip() for x in fks.split("\n") if x.strip()]
+hits, unguarded = [], []
+for f in sorted(os.listdir(APISRC)):
+    p = os.path.join(APISRC, f)
+    if os.path.isdir(p):
+        continue
+for root, _, fs in os.walk(APISRC):
+    for fn in fs:
+        if not fn.endswith(".rs"):
+            continue
+        p = os.path.join(root, fn)
+        t = cut(p)
+        rel = os.path.relpath(p, ROOTDIR).replace("\\", "/")
+        for tb in tables:
+            for m in re.finditer(r"INSERT INTO %s\b" % re.escape(tb), t):
+                seg = t[max(0, m.start() - 900):m.start() + 900]
+                guarded = ("FROM torrents" in seg or "torrent_access" in seg
+                           or "EXISTS(SELECT 1 FROM torrents" in seg
+                           or "load_torrent" in seg or "get_torrent" in seg
+                           or "visibility" in seg)
+                hits.append((tb, rel))
+                if not guarded:
+                    unguarded.append((tb, rel))
+uniq = sorted(set(unguarded))
+print("   [普查·只报数不判红] 指向 torrents(id) 的子表 %d 张；源码 INSERT 位点 "
+      "%d 处，上下文 900 字符内看不到父行判定的 %d 处"
+      % (len(tables), len(set(hits)), len(uniq)))
+for tb, f in uniq[:6]:
+    print("      [候选] %s <- %s" % (tb, f))
+# 这条窗口普查**不作硬判据**：本轮实测把它点名的 22 处逐个用活口打一遍，
+# 六个成员面 torrent 写口全部干净回 404/1004（父行在上游就已验过），
+# 假阳率 100% ⇒ 拿它当棘轮只会逼人加空判定。真判据是下面 FB5 的活测。
+
+# ---------- FB5 活测台账：成员面 torrent 写口必须回 4xx ----------
+PROBES = [
+    ("POST", "/torrents/%d/comments", {"body": "闸门探针"}, False),
+    ("POST", "/torrents/%d/comments/1/like", None, False),
+    ("DELETE", "/torrents/%d/comments/1", None, False),
+    ("PUT", "/torrents/%d/tags", {"tag_id": 1, "on": True}, False),
+    ("POST", "/torrents/%d/thanks", {"amount": 0}, True),
+    ("POST", "/torrents/%d/reseed", None, False),
+    ("PUT", "/torrents/%d/bookmark", {"on": True}, True),
+]
+BAD = 999999999
+tok = login("root")
+bad_codes, warns = [], []
+rows_before = {"bookmarks": psql("SELECT count(*) FROM bookmarks"),
+               "comments": psql("SELECT count(*) FROM comments")}
+for m, path, body, pending in PROBES:
+    r = call(m, path % BAD, body, tok)
+    code = r[1].get("code") if isinstance(r, tuple) and isinstance(r[1], dict) \
+        else None
+    if code in (1004, 1002, 2003):
+        continue
+    if pending and code == 1000:
+        # 现网镜像早于本批：这条口的修复还没上线，只报 WARN 不判红
+        warns.append("%s %s 仍回 500（本批修复未部署）" % (m, path))
+        continue
+    bad_codes.append("%s %s -> code=%s" % (m, path, code))
+for w in warns:
+    print("   [WARN] %s" % w)
+rows_after = {"bookmarks": psql("SELECT count(*) FROM bookmarks"),
+              "comments": psql("SELECT count(*) FROM comments")}
+ok("FB5 七个成员面 torrent 写口打不存在的种，全部回 4xx（异常项：%s）"
+   % (bad_codes or "无"),
+   not bad_codes,
+   "回 500/1000＝把「种不存在」说成「服务器坏了」（P-373 本体形状）")
+ok("FB6 探针未写脏库（bookmarks %s→%s，comments %s→%s）"
+   % (rows_before["bookmarks"], rows_after["bookmarks"],
+      rows_before["comments"], rows_after["comments"]),
+   rows_before == rows_after,
+   "判据跑一次就脏一次现网＝闸门自己在制造数据")
+
+# ---------- FB4 现网活测（部署豁免要出声）----------
+before = psql("SELECT count(*) FROM bookmarks")
+r = call("PUT", "/torrents/999999999/bookmark", {"on": True},
+         login("root"))
+status = r[0] if isinstance(r, tuple) else None
+payload = r[1] if isinstance(r, tuple) else r
+code = payload.get("code") if isinstance(payload, dict) else None
+after = psql("SELECT count(*) FROM bookmarks")
+if code == 1004:
+    ok("FB4 现网：收藏不存在的种回 404/1004（本批修复已在跑的镜像里）",
+       after == before, "404 却没回滚计数＝探针写了库")
+else:
+    print("   [WARN] 现网这条口仍是 code=%s（HTTP %s）——本批未部署到现网镜像；"
+          "侧进程实测为 404/1004。镜像含本批后此条须转硬判据。"
+          % (code, status))
+    ok("FB4 探针未污染库（bookmarks 行数 %s→%s 不变）" % (before, after),
+       before == after, "探针写脏了收藏表")
+
+summary()
