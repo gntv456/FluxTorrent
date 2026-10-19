@@ -38,10 +38,21 @@ struct Keys {
     auth: String,
 }
 fn default_topics() -> Vec<String> {
-    vec!["promo".into(), "request".into(), "message".into()]
+    // P-370：必须含 "hr"。投递侧（push_notify.rs）发 H&R 预警/违规用的就是
+    // topic="hr"，而 `push_to_user` 的过滤是 `$topic = ANY(p.topics)`——订阅端
+    // 不收 "hr" 就等于全站 H&R 推送结构上永远发不出去（现网 push_outbox 里
+    // 57 条 hr 事件全被标 processed_ok=true，活跃订阅 0 条）。
+    vec![
+        "promo".into(),
+        "request".into(),
+        "message".into(),
+        "hr".into(),
+    ]
 }
 
-const VALID_TOPICS: &[&str] = &["promo", "request", "message"];
+/// 可订阅话题 = 投递侧 TOPICS 的同一张表（P-370 补 "hr"）。
+/// 两侧词表必须一致：只改一侧就会「订阅得到、投递发不出」或反过来。
+const VALID_TOPICS: &[&str] = &["promo", "request", "message", "hr"];
 
 #[post("/push/subscribe")]
 async fn subscribe(

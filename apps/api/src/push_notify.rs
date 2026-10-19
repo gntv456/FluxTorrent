@@ -24,7 +24,10 @@ fn pref_key(topic: &str) -> &'static str {
 }
 
 /// 合法 topic 集合（与订阅端 VALID_TOPICS 对齐；outbox 消费侧校验）
-const TOPICS: &[&str] = &["hr", "promo", "message"];
+/// P-370：补 "request"。旧表只有 hr/promo/message，而订阅端与界面都把 request
+/// 当成可订话题 ⇒ 任何 request 事件入队后永远进不了消费循环（被这道
+/// `topic = ANY($1)` 过滤掉），且 processed_at 一直为空、看不出丢在哪。
+const TOPICS: &[&str] = &["hr", "promo", "message", "request"];
 
 #[derive(sqlx::FromRow)]
 struct SubRow {
