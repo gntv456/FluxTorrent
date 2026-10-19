@@ -29,6 +29,32 @@ pub(super) async fn ensure_shard_row(
     Ok(())
 }
 
+/// 读侧口径：**有快照用快照，没有快照用流水净额**（与 `ensure_shard_row`
+/// 的播种是同一条尺子）。旧读口写死 `COALESCE(balance, 0)`，于是只在
+/// `gacha_shard_ledger` 里有碎片的会员，一进 `/gacha/me` 就看到
+/// `shardBalance: 0`——等于当面宣告他被清零了（现网实证：user 69
+/// 流水净额 100、无快照行，读口回 0）。消费口会自愈建行，但展示不必
+/// 等到那一刻才说实话。
+pub(super) async fn shard_balance<'e, E>(
+    exe: E,
+    user_id: i64,
+) -> DomainResult<i32>
+where
+    E: sqlx::PgExecutor<'e>,
+{
+    let v: Option<i32> = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT balance FROM gacha_shard_balance \
+         WHERE user_id = $1), \
+         (SELECT COALESCE(sum(delta), 0)::int FROM gacha_shard_ledger \
+          WHERE user_id = $1))",
+    )
+    .bind(user_id)
+    .fetch_optional(exe)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(v.unwrap_or(0))
+}
+
 /// 读快照（行必须已存在；调用前先 `ensure_shard_row`），并加行锁防并发。
 pub(super) async fn lock_shard_balance(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
