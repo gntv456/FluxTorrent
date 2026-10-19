@@ -159,6 +159,7 @@ pub(super) async fn request_list(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct FulfillReq {
     request_id: i64,
     torrent_id: i64,
@@ -286,9 +287,10 @@ pub(super) async fn request_fulfill(
     ))
 }
 
-// ============ M17 求种 ============
-
+// P-374：P-314（写口不拒未知键）的漏网位。前端 request-board-form.tsx:41
+//   只发 {title, descr, bounty}，故收紧未知键零风险。
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RequestCreateReq {
     title: String,
     #[serde(default)]
