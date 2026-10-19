@@ -406,10 +406,17 @@ buckets = [k for k in live_keys("rl:npdl:*")
            if re.match(r"^rl:npdl:[0-9a-f]{16}:\d+$", k)]
 ok("S5 正控：npdl 桶存在，形状是 rl:<scope>:<passkey 哈希前 16>:<窗口>",
    buckets, "命中=%s http=%s" % (len(buckets), s))
-ok("S5 反控：窗口写进键名（不是把窗口留在值/TTL 里滑动）",
-   buckets and int(buckets[0].rsplit(":", 1)[1]) == int(time.time()) // 60,
-   brief(buckets))
-t5 = redis_cmd('TTL "%s"' % buckets[0]) if buckets else "-2"
+win_now = int(time.time()) // 60
+wins = [int(k.rsplit(":", 1)[1]) for k in buckets]
+# 窗口必须落在**键名**里（P-67：把窗口留在值/TTL 里滑动＝换键就清零）。
+# 但 SCAN 返回无序，同一分钟窗之外还会捞到上一分钟的桶，所以判「最新那个
+# 窗口 ≒ 当前分钟」而不是「任意 buckets[0] == 当前分钟」——否则跨过一次
+# 分钟边界就假红（本轮实测红在 29873514 与 29873515 之间）。
+ok("S5 反控：窗口写进键名，且最新桶落在当前分钟（±1）",
+   bool(wins) and win_now - 1 <= max(wins) <= win_now + 1,
+   "buckets=%s 当前窗口=%s" % (brief(buckets), win_now))
+newest = buckets[wins.index(max(wins))] if wins else ""
+t5 = redis_cmd('TTL "%s"' % newest) if newest else "-2"
 ok("S5 窗口键 TTL 落在 (0,120]：TTL 只为回收，滑动续期会把 429 续命（P-65）",
    t5.isdigit() and 0 < int(t5) <= 120, "ttl=%s" % t5)
 
