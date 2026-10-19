@@ -218,16 +218,17 @@ pub(crate) async fn version_restore(
     let snap = repo_tg::version_snapshot(&state.repo, v)
         .await?
         .ok_or_else(|| DomainError::NotFound(v))?;
-    // 先给现态留一份（source=rollback 让日后一眼看出这是回滚留下的）。
-    let cur = repo_tg::push_version(
+    // 「给现态留一版」与「回灌」在同一事务里（P-402）：旧写法两步各自
+    // autocommit，restore 一失败就留下一条 `rollback / restore -> vN` 的假记录
+    // 而表体一行没动——版本列表是站长判断「能回滚到哪一版」的唯一依据，
+    // 多一条没发生过的记录，就会有人照着它回滚到一段从未存在过的形态。
+    let (cur, n) = repo_tg::restore_marked(
         &state.repo,
-        "rollback",
+        &snap,
         &format!("restore -> v{v}"),
-        0,
         Some(auth.id),
     )
     .await?;
-    let n = repo_tg::restore_terms(&state.repo, &snap).await?;
     // 恢复后必须热加载，否则进程还在用旧快照（改了却「不生效」）。
     let live = crate::terms::reload(&state.repo.db).await;
     crate::cfgver::bump(state.get_ref(), "terms").await;
