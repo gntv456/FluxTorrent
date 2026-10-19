@@ -401,13 +401,13 @@ async fn compat_np_download(
     super::limit_passkey(&state, &req, "npdl", &q.passkey, 30)
         .await
         .map_err(actix_web::Error::from)?;
-    let user_id: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
-    )
-    .bind(&q.passkey)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-389：RSS 的 <enclosure> 直链放的就是订阅用的那枚 fxr_ token（口径见
+    // rss_http.rs），本口此前只查 passkey ⇒ 订阅 200、点直链 401。改调共用
+    // 解析器：两种形状一把尺，状态闸不放宽。
+    let user_id: Option<i64> =
+        crate::rss_http::authz::resolve_user_id(&state, &q.passkey)
+            .await
+            .map_err(actix_web::Error::from)?;
     let Some(user_id) = user_id else {
         return Err(DomainError::Unauthorized.into());
     };

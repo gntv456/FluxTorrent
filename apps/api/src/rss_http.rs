@@ -5,7 +5,7 @@
 //! B3（2026-09-25）起另认 `sec_{kind}` 六类型维度筛选——与前台列表、
 //! 后台管理列表共用同一解析与谓词实现，三处语义不漂移。
 
-mod authz;
+pub(crate) mod authz;
 mod forum;
 mod query;
 // utoipa::path 宏的 __path_* 辅助类型需对 compat_api 聚合可见
