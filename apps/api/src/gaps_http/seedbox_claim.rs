@@ -44,16 +44,30 @@ pub(crate) async fn seedbox_claim(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let cidrs = sb::normalize_claims(&body.cidrs)?;
+    // 本文件口径承诺「pending 时提示避免刷单」——审计修复（P-388）：这句
+    // 提示此前**根本不存在**，提交口无条件插行、也无按人限流，一个人可以把
+    // 后台待审队列无限灌。这里先把该人已压着的条数数出来随响应回显。
+    // 是否要硬上限（拒绝第 N+1 条）属站点审核口径，未拍板，我不擅自加闸。
+    let waiting = repo_sb::count_pending(&state.repo, auth.id).await?;
     let id = repo_sb::submit(&state.repo, auth.id, &cidrs).await?;
     state
         .repo
         .audit(Some(auth.id), "seedbox.claim_submit", Some(id))
         .await;
+    let note = if waiting > 0 {
+        format!(
+            "已提交，等待管理员审核。你已有 {} 条待审申报，重复提交不会更快通过。",
+            waiting
+        )
+    } else {
+        "已提交，等待管理员审核。审核通过前不产生任何放宽效果。".to_string()
+    };
     Ok(ok(serde_json::json!({
         "claim_id": id,
         "cidrs": cidrs,
         "status": "pending",
-        "note": "已提交，等待管理员审核。审核通过前不产生任何放宽效果。",
+        "pending_before": waiting,
+        "note": note,
     })))
 }
 
