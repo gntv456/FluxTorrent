@@ -221,3 +221,4 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 该种子已被别人认领	該種子已被別人認領	This torrent has already been claimed.
 该种子不在可认领范围（未过审或已退出保种区）	該種子不在可認領範圍（未過審或已退出保種區）	This torrent is not claimable (unapproved or out of the seed-preserve zone).
 仅已处置的账号（停用/墓碑/封禁）可删除，请先在后台处置该账号	僅已處置的帳號（停用/墓碑/封禁）可刪除，請先在後台處置該帳號	Only disposed accounts (suspended/tombstoned/banned) can be deleted; dispose it first.
+这张票的票价已受理，未重复扣款	這張票的票價已受理，未重複扣款	Ticket price already charged; no duplicate deduction.

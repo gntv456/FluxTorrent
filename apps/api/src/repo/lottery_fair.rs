@@ -61,21 +61,25 @@ pub async fn seed_of(
     .flatten())
 }
 
-/// 售票：为一名参与者落一张票据。
+/// 售票（P-396：必须在调用方事务内）：给这张票编号并接上哈希链。
 ///
-/// 幂等靠 `lottery_entries` 的 (topic_id, user_id) 主键（一人一次）——
-/// 重复参与时 UPDATE 不生效，仍返回该人已有的票据哈希。
-pub async fn issue_ticket(
-    repo: &Repo,
+/// 旧版自己 `begin()`，且写的是 `ON CONFLICT (topic_id, user_id) DO NOTHING`
+/// ——而调用方 `lottery_join` 已经先落了占位行，这条 INSERT **必然冲突**
+/// ⇒ 哈希从不落库。实测 2 人参与的公平抽奖：库里 `ticket_hash`/`ticket_seq`
+/// 全 NULL，开奖后验证页却回「服务端复算通过：0 名参与者 / 0 名中奖」，
+/// 而 `picked` 为空 ⇒ 奖池既不派彩也不再退回（status 已 drawn）。
+/// 不是坏了不响，是响亮地给出假证明。
+///
+/// 现在占位行由同一事务先行落库，本函数只负责给它补上 `(ticket_seq,
+/// ticket_hash)`；补不上就是链没接上，宁可报错也不静默返回空串。
+/// 链尾推进靠调用方持有的 advisory 锁串行（并发售票各自从 genesis
+/// 起链会产生两条分叉，验证页无法判断哪条是真的）。
+pub async fn issue_ticket_tx(
+    tx: &mut sqlx::PgTransaction<'_>,
     topic_id: i64,
     user_id: i64,
     seed_hex: &str,
 ) -> DomainResult<String> {
-    let mut tx = repo
-        .db
-        .begin()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
     // 链尾 = 该场最大的 ticket_seq 对应的哈希（无则 genesis）
     let prev: Option<(Option<i64>, Option<String>)> = sqlx::query_as(
         "SELECT ticket_seq, ticket_hash FROM lottery_entries \
@@ -83,7 +87,7 @@ pub async fn issue_ticket(
          ORDER BY ticket_seq DESC NULLS LAST LIMIT 1",
     )
     .bind(topic_id)
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut **tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (seq, prev_hash) = prev
@@ -96,33 +100,23 @@ pub async fn issue_ticket(
         prev_hash
     };
     let hash = fair::ticket_hash(seed_hex, &root, next_seq as u32);
-    sqlx::query(
-        "INSERT INTO lottery_entries \
-         (topic_id, user_id, ticket_hash, ticket_seq) \
-         VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (topic_id, user_id) DO NOTHING",
+    let written: Option<String> = sqlx::query_scalar(
+        "UPDATE lottery_entries SET ticket_hash = $3, ticket_seq = $4 \
+         WHERE topic_id = $1 AND user_id = $2 AND ticket_hash IS NULL \
+         RETURNING ticket_hash",
     )
     .bind(topic_id)
     .bind(user_id)
     .bind(&hash)
     .bind(next_seq)
-    .execute(&mut *tx)
+    .fetch_optional(&mut **tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 冲突（已参与）时把既有的票据哈希取回来返回
-    let existing: String = sqlx::query_scalar(
-        "SELECT COALESCE(ticket_hash, '') FROM lottery_entries \
-         WHERE topic_id = $1 AND user_id = $2",
-    )
-    .bind(topic_id)
-    .bind(user_id)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    tx.commit()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(existing)
+    written.ok_or_else(|| {
+        // 占位行刚在本事务里插入，补不上哈希只可能是链断了（不是并发，
+        // 场次锁已串行）——留 500 而不是回一张空票。
+        DomainError::Internal(anyhow::anyhow!("抽奖票据未能接上哈希链"))
+    })
 }
 
 /// 停售：锁死 tickets_root（链尾哈希）。
