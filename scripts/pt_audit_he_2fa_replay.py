@@ -85,4 +85,29 @@ ok("HE5 轮换仍是「破坏性 + 取利」一体（新钥回给调用方且旧
    and 'json!({ "passkey": pk })' in sec,
    "P-409 的成因：一次调用既发新身份又废旧身份，还连带撤 RSS/下载键")
 
+# ---------- HE6/HE7 重置密码与自助改密必须同尺（P-410） ----------
+# 「忘记密码」成功 = 用户已经拿到并设置了新密码，那么装机临时密码标志位
+# `must_reset_password` 就该和自助改密一样清掉、一样失效 5s 状态缓存。
+# 旧写法只改 pass_hash ⇒ 走邮件重置的用户登录回来仍被回显 must_reset_password=True，
+# 安装向导下一步继续吃 400（同一个标志位，两条出口两把尺）。
+RESET = "apps/api/src/gaps_http/reset.rs"
+rs = cut(io.open(os.path.join(ROOT, RESET), encoding="utf-8",
+                 errors="replace").read())
+seg = rs.split("fn password_reset")[1].split("#[derive")[0] if (
+    "fn password_reset" in rs) else ""
+
+
+def flag_cleared(x):
+    return ("must_reset_password = false" in x
+            and "user_status_cache.invalidate" in x)
+
+
+ok("HE6 重置口清临时密码标志位并失效状态缓存（与改密同尺）",
+   bool(seg) and flag_cleared(seg) and "token_revocations" in seg,
+   "缺一样都会让走邮件重置的用户继续被「临时密码」卡住")
+OLD6 = "UPDATE users SET pass_hash = $2 WHERE id = $1"
+ok("HE6b 承重自证：旧的「只改哈希」写法必须判红",
+   flag_cleared(OLD6) is False and "must_reset_password" not in OLD6,
+   "打不中＝这条认不出旧形状")
+
 summary()

@@ -160,12 +160,20 @@ pub async fn password_reset(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query("UPDATE users SET pass_hash = $2 WHERE id = $1")
-        .bind(uid)
-        .bind(&hash)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-410：重置成功就是「用户已经拿到并设置了新密码」——`must_reset_password`
+    // 必须一起清掉。旧写法只改 pass_hash，而自助改密口（`me_security.rs`）会清：
+    // 于是拿装机临时密码、走「忘记密码」的用户，改完密码登录回来仍被回显
+    // `must_reset_password=True`，安装向导下一步继续吃 400（同一个标志位，
+    // 两条出口两把尺）。与改密同口径：连同 5s 状态缓存一起失效。
+    sqlx::query(
+        "UPDATE users SET pass_hash = $2, must_reset_password = false \
+         WHERE id = $1",
+    )
+    .bind(uid)
+    .bind(&hash)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query(
         "UPDATE password_resets SET used_at = now() WHERE token_hash = $1",
     )
@@ -176,6 +184,9 @@ pub async fn password_reset(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 与改密同口径：`must_reset_password` 是 5s 状态缓存的字段之一，不清缓存
+    // 的话重置完立刻走下一步仍可能被旧值卡住（me_security.rs 同处注释）。
+    state.user_status_cache.invalidate(uid);
     // 撤销该用户全部会话（改密后旧 token 全失效）。
     // 审计修复（P1）：此前只写 Redis nbf —— Redis 重启/故障后 24h 内旧 JWT「复活」
     // （JWT 与密码无关）。补写 DB 权威表 token_revocations（与 logout/改密路径同口径）。
