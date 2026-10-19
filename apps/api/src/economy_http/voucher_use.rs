@@ -32,25 +32,41 @@ async fn voucher_use(
     match vkind.as_deref() {
         Some("temp_invite") => {
             let ttl_days = invite_admin_ttl_days(&state.repo.db).await;
+            let code = crate::domain::new_invite_code();
+            let expires = chrono::Utc::now() + chrono::Duration::days(ttl_days);
+            // P-407：旧顺序是「CAS 销券（autocommit）→ 再发邀请码」。发码那步
+            // 一旦失败（DB 抖动/约束），券已经是 used_at=now()，而这条 CAS 只认
+            // used_at IS NULL ⇒ 重试被「券不存在、已使用或已过期」挡回：会员手里
+            // 既没有券也没有码，那张券花出去的火花永久蒸发。同型口径见 P-364
+            // （钱到账才落标记）与刚修的 P-406（撤销的 CAS 与退款同事务）。
+            // 现在两条写进同一事务：任何一步失败 ⇒ 整体回滚，券与码一个都不动。
+            let mut tx = state
+                .repo
+                .db
+                .begin()
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            let id = issue_invite_tx(&mut tx, auth.id, &code, expires).await?;
             let n = sqlx::query(
                 "UPDATE user_vouchers SET used_at = now() WHERE id = $1 \
-                 AND user_id = $2 AND used_at IS NULL AND used_torrent_id IS NULL \
-                 AND expires_at > now()",
+                 AND user_id = $2 AND used_at IS NULL \
+                 AND used_torrent_id IS NULL AND expires_at > now()",
             )
             .bind(body.voucher_id)
             .bind(auth.id)
-            .execute(&state.repo.db)
+            .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
             .rows_affected();
             if n == 0 {
+                // 券在这瞬间被另一路用掉/过期：回滚，不把刚生成的码留在库里
                 return Err(DomainError::Validation(
                     "券不存在、已使用或已过期".into(),
                 ));
             }
-            let code = crate::domain::new_invite_code();
-            let expires = chrono::Utc::now() + chrono::Duration::days(ttl_days);
-            let id = state.repo.issue_invite(auth.id, &code, expires).await?;
+            tx.commit()
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
             state
                 .repo
                 .audit(Some(auth.id), "voucher.temp_invite", Some(id))
@@ -102,6 +118,29 @@ async fn voucher_use(
         "torrent_id": body.torrent_id,
         "note": "已对该种子生效；下载量超过种子大小 4% 后自动核销"
     })))
+}
+
+/// 事务内发一枚邀请码（P-407）。
+///
+/// 与 `Repo::issue_invite` 是同一条 INSERT：之所以在本地再写一遍，是券核销必须
+/// 与发码同事务，而 `repo/mod.rs` 已压在行数基线上（多一行就红）。
+/// 动任何一侧请同步另一侧——只有本口走事务版。
+async fn issue_invite_tx(
+    tx: &mut sqlx::PgTransaction<'_>,
+    inviter_id: i64,
+    code: &str,
+    expires_at: chrono::DateTime<chrono::Utc>,
+) -> DomainResult<i64> {
+    Ok(sqlx::query_scalar::<_, i64>(
+        "INSERT INTO invites (inviter_id, code, expires_at) \
+         VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(inviter_id)
+    .bind(code)
+    .bind(expires_at)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?)
 }
 
 /// 管理端直发邀请码 TTL（0204 配置化）：site_settings.invite_admin_ttl_days，
