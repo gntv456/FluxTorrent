@@ -108,13 +108,21 @@ for i, (p, what, good) in enumerate(BAD_PATHS, start=1):
        "http=%s ctype=%s body=%s" % (st, ct[:16], body[:80]))
 
 print("== CD1 带 token：畸形路径参数必须回站内信封（修前 404 text/plain）==")
+# P-390：外层句子改走站内 i18n（默认 locale 简体＝「参数校验失败」），
+# 旧写法在这里写死「路径参数无效」——en-US / zh-TW 用户也拿到简体。
+FRAME = "参数校验失败"
+OLD_FRAME = "路径参数无效"
+# 解析失败的**细节**短语集合：外层句子全站共用（所有 1002 都是「参数校验失败: 」），
+# 所以「是不是中央解析口径」只能靠这些细节短语判
+PARSE_DETAILS = ("应为数字", "缺少必填字段", "字段类型不对",
+                 "取值不在允许范围内", "含未识别的字段")
 for p, what, _g in BAD_PATHS:
     st, ct, body = raw_send("GET", p, token=ROOT)
     isenv, j = shape(st, ct, body)
     ok("CD1 %s `%s`：400 信封 + 中文前缀 + request_id（修前 404 text/plain "
        "英文）http=%s code=%s" % (what, p, st, j.get("code")),
        st == 400 and isenv and j.get("code") == 1002
-       and "路径参数无效" in str(j.get("message", ""))
+       and str(j.get("message", "")).startswith(FRAME)
        and bool(j.get("request_id")),
        "http=%s ctype=%s body=%s" % (st, ct[:18], body[:96]))
 
@@ -182,8 +190,8 @@ try:
 except Exception:  # noqa: BLE001
     pass
 print("   WARN 现网 message 原文：%s" % str(msg)[:110])
-ok("CD7 message 必须以中文前缀开头（细节原文保留是已知取舍）",
-   str(msg).startswith("路径参数无效"), "message=%s" % str(msg)[:70])
+ok("CD7 message 必须以**本地化**的 1002 句子开头（P-390 前是写死简体）",
+   str(msg).startswith(FRAME), "message=%s" % str(msg)[:70])
 
 print("== CD8 字符串路径参数不被中央口径误伤（原判据写错了，已改对）==")
 # 第一版这里断言 `st != 400`，实测红了两条——红的是判据前提：
@@ -200,7 +208,7 @@ for k, (p_bad, p_ok) in enumerate(PAIRS, start=1):
     msg = str(j2.get("message", ""))
     ok("CD8a 非法形状 `%s` 走业务口径、不被念成解析失败 http=%s「%s」"
        % (p_bad[:32], st, msg[:30]),
-       isenv and not msg.startswith("路径参数无效"),
+       isenv and not any(k in msg for k in PARSE_DETAILS),
        "http=%s ctype=%s msg=%s" % (st, ct[:16], msg[:60]))
     st2, ct2, body2 = raw_send("GET", p_ok, token=ROOT)
     isenv2, j3 = shape(st2, ct2, body2)
