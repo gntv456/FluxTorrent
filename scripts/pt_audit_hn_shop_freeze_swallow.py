@@ -96,7 +96,8 @@ def buy_span(src):
 
 frz = freeze_body(rd(REPO_SHOP))
 pair = swallow_pair(frz)
-between = "begin()" in buy_span(rd(BUY)) or ".begin().await" in buy_span(rd(BUY))
+bsp = buy_span(rd(BUY))
+between = "begin()" in bsp or ".begin().await" in bsp
 ok("HN1 洞在册：插单静默 DO NOTHING + 空 oid 仍 Ok(())", pair == [],
    "缺项=%s" % (pair,))
 ok("HN2 两段写尚未收进同一事务（与 HN1 同一结论的两侧取证）",
