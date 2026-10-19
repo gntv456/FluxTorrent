@@ -81,7 +81,8 @@ ok("HE4 同一文件的两把尺对照：改密确实要旧密码",
    "verify_password" in pw and "old_password" in pw,
    "若哪天把改密的旧密码校验也拿掉，这条与 HE3 一起说明全站尺子都没了")
 ok("HE5 轮换仍是「破坏性 + 取利」一体（新钥回给调用方且旧钥即刻失效）",
-   "update_passkey(auth.id, false)" in rot and 'json!({ "passkey": pk })' in sec,
+   "update_passkey(auth.id, false)" in rot
+   and 'json!({ "passkey": pk })' in sec,
    "P-409 的成因：一次调用既发新身份又废旧身份，还连带撤 RSS/下载键")
 
 summary()
