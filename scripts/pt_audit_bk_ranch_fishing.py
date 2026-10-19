@@ -137,6 +137,20 @@ try:
     setv("module_farm", "yes")
     ok("K0c 造现场：module_farm 已临时开成 yes（开局=%s）" % FARM0,
        sval("module_farm") == "yes", "现值=%s" % sval("module_farm"))
+    # P-386（仪器账）：模块开关是进程内 30s TTL 缓存（apps/api/src/
+    # modules.rs 的 enabled/invalidate），只有走后台保存才会主动失效。
+    # 本闸门直接 UPDATE 库后立刻打接口 ⇒ 在「模块关着」的站上会整批被
+    # 旧缓存吃成 4101/404，活体判据恒红——红的是判据不是站。等到接口
+    # 真的认这个开关为止（等不到位就是产品问题，照红）。
+    opened = False
+    for _ in range(45):
+        sc, rc = post("/farm/ranch/buy", {"animal": "nope"})
+        if sc != 404 and "未开放" not in msg((sc, rc)):
+            opened = True
+            break
+        time.sleep(1)
+    ok("K0e 改库后接口在 TTL 内认账（等到位才跑活体）", opened,
+       "最后一格 http=%s msg=%s" % (sc, msg((sc, rc))[:40]))
     # ============ K1 买入：扣费与落栏必须同事务（P-184） ============
     s0, r0 = post("/farm/ranch/buy", {"animal": "nope"}, T1)
     ok("K1a 买不存在的物种必须 400（不得 500）", s0 == 400 and "没有这种牲畜"
