@@ -17,9 +17,10 @@
   GE4 两条通道里不得再有 `let _ =` 包住 promotions 插入；
   GE5 commit 必须排在结算与 free 联动之后、audit 之前；
   GE6 承重自证：同一把尺喂「旧形状」合成码必须报出违例，喂现文件必须零违例；
-  GE7 家族在册清单（只许缩不许长）：全站仍把「状态翻转」与「动账」分在两个
-      autocommit 里的求字幕口——本批记下 `cancel`（撤销退款循环）与
-      `contribute`（追投失败退款 `let _ =`）两只，修掉一只就要从这里划掉一只。
+  GE7 家族在册清单（只许缩不许长）：按**形状**普查「动账与改池分居两个
+      autocommit」的求字幕口——P-414 收口 contribute（追投扣款与入池同事务、
+      取消 `let _ =` 补偿退款）后应为空集；cancel 早在 P-406 已进事务，所以
+      判据不能按 `SET status = 2` 这类标记找（会把修好的形状误算成待改项）。
 
 用法：`PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_ge_subreq_atomic.py`
 """
@@ -144,14 +145,60 @@ ok("GE6 承重：旧形状被抓", len(oa) >= 3 and len(of) >= 2,
 ok("GE6b 现文件零违例（同一把尺）", va == [] and vf == [],
    "accept=%s fulfill=%s" % (va, vf))
 
-# 家族在册清单：仍把「翻状态」与「动账」拆在两个 autocommit 里的求字幕口
-INregister = {"cancel": CANCEL, "contribute": CONTRIB}
-still = []
-for name, rel in sorted(INregister.items()):
-    b = rd(rel)
-    if "SET status = 2" in b or "let _ = crate::economy_http::earn_spark" in b:
-        still.append(name)
-ok("GE7 在册清单未长大", sorted(still) == sorted(INregister.keys()),
-   "在册=%s（修掉一只就要从这里划掉一只）" % (still,))
+# 家族在册清单（只许缩不许长）：仍是「动账与改池分在两个 autocommit」的求字幕口。
+# 判据必须按**形状**而不是按标记：`SET status = 2` 这类字面在已经收口的 cancel 里
+# 照样存在（它现在走事务），拿它当违例证据会把「刚改好的形状」算成待改项。
+OLD_CONTRIB = r"""
+    let cur: serde_json::Value = sqlx::query_scalar(
+        "SELECT contributors FROM subtitle_requests WHERE id = $1")
+    .bind(rid)
+    .fetch_optional(&state.repo.db)
+    .await?;
+    let idem = format!("sub-req-contrib:{}:{}:{}", auth.id, rid, seq);
+    if matches!(spend_spark(&state.repo.db, auth.id, body.amount,
+        "subtitle_request", &idem, "subtitle_request", rid).await?,
+        crate::economy_http::SpendOutcome::Replayed) {
+        return Err(DomainError::Validation("重复提交".into()));
+    }
+    let bounty: Option<i64> = sqlx::query_scalar(
+        "UPDATE subtitle_requests SET bounty = bounty + $2 WHERE id = $1")
+    .bind(rid)
+    .fetch_optional(&state.repo.db)
+    .await?;
+    let Some(bounty) = bounty else {
+        let _ = crate::economy_http::earn_spark(&state.repo.db, auth.id,
+            body.amount, "subtitle_request_refund", &format!("{idem}:refund"))
+            .await;
+        return Err(DomainError::NotFound(rid));
+    };
+"""
+
+
+def unatomic(body):
+    """返回该 handler 里仍存在的「动账与改池分居两个 autocommit」违例名。"""
+    bad = []
+    if re.search(r"let _ = (crate::economy_http::)?earn_spark", body):
+        bad.append("补偿退款被 let _ = 吞掉")
+    i = body.find("spend_spark")
+    j = body.find("UPDATE subtitle_requests SET bounty")
+    if i >= 0 and j >= 0 and "&state.repo.db" in body[i:i + 220] \
+            and "&state.repo.db" in body[j:j + 420]:
+        bad.append("扣款与入池各自 autocommit")
+    if body.count("spend_spark") and ".begin()" not in body \
+            and "spend_spark_tx" not in body:
+        bad.append("动账口不在事务里")
+    return bad
+
+
+SITES = {
+    "contribute": ("pub(super) async fn subtitle_request_contribute", CONTRIB),
+    "cancel": ("pub(super) async fn subtitle_request_cancel", CANCEL),
+}
+still = sorted(k for k, (m, rel) in SITES.items()
+               if unatomic(body_of(strip(rd(rel)), m)))
+ok("GE7 家族在册清单已清零", still == [], "在册=%s（长出新的就红）" % (still,))
+oc = unatomic(OLD_CONTRIB)
+ok("GE7b 承重：旧凑池形状被抓出 ≥2 处", len(oc) >= 2, "旧违例=%s" % (oc,))
+
 
 summary()
