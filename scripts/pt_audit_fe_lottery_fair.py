@@ -39,7 +39,6 @@ def cut(s):
     return "\n".join(
         ln for ln in s.split("\n") if not ln.strip().startswith("//"))
 
-
 def ticket_hash(seed, prev, nonce):
     h = hashlib.sha256()
     h.update(seed.encode())
@@ -48,7 +47,6 @@ def ticket_hash(seed, prev, nonce):
     h.update(b"|")
     h.update(nonce.to_bytes(4, "big"))
     return h.hexdigest()
-
 
 # ---------- 静态：① 同事务 + 键锚行 ----------
 jt, ft, dt = cut(rd(JOIN)), cut(rd(FAIR)), cut(rd(DRAW))
@@ -81,15 +79,15 @@ ok("FE7 store_proof / mark_won 两处 `let _ =` 不得复活",
    "证明没落库＝验证页永远停在开售中；标记没落库＝已派彩的人显示未中奖")
 
 # ---------- 静态：③ 生产者在册缺口（钉桩） ----------
-callers = 0
-for dp, _d, fs in os.walk(os.path.join(ROOT, "apps", "api", "src")):
-    for fn in fs:
-        if fn.endswith(".rs") and not os.path.join(dp, fn).endswith(
-                os.path.join("repo", "lottery_fair.rs")):
-            if "open_fair_round(" in cut(io.open(
-                    os.path.join(dp, fn), encoding="utf-8",
-                    errors="replace").read()):
-                callers += 1
+def rs_all():
+    for dp, _d, fs in os.walk(os.path.join(ROOT, "apps", "api", "src")):
+        for fn in fs:
+            if fn.endswith(".rs"):
+                yield os.path.relpath(os.path.join(dp, fn), ROOT).replace(
+                    "\\", "/")
+
+callers = sum("open_fair_round(" in cut(rd(p)) for p in rs_all()
+              if not p.endswith("repo/lottery_fair.rs"))
 ok("FE8 钉桩：公平场生产者仍是 0 个调用方（P-396 未结）", callers == 0,
    "接线时把 FE8/FE9 与验证页的「未登记」判定一起改，别做半接线")
 ct = cut(rd(CREATE))
@@ -174,18 +172,20 @@ if LIVE:
             "lottery_ticket": 5, "lottery_hours": 6}, token=ROOT_TOK)
         tid = int(dat(r).get("topic_id") or dat(r).get("id") or 0)
         f0 = dat(call("GET", "/forums/lottery/%d/fairness" % tid)[1])
-        ok("FE-L1 建出主题，未登记承诺时验证页说未登记（tid=%d exists=%s）"
-           % (tid, f0.get("exists")),
-           tid > 0 and f0.get("exists") is False,
-           "http=%s %s｜旧形状：exists=true + 空 commit 演成「有承诺」"
-           % (s, str(r)[:160]))
+        pk = sql("SELECT coalesce(string_agg(kind,','),'空') FROM spark_ledger "
+                 "WHERE idempotency_key LIKE 'forum-lottery-pool:%%:%d'" % tid)
+        ok("FE-L1 建出主题：未登记承诺→exists=%s、奖池 kind=%s（tid=%d）"
+           % (f0.get("exists"), pk, tid),
+           tid > 0 and f0.get("exists") is False and pk == "forum_lottery",
+           "http=%s %s｜旧形状：exists=true 演「有承诺」；池子记成 "
+           "forum_bounty ⇒ 明细标成悬赏、按 kind 对账永不平" % (s, str(r)[:120]))
         CLEAN += [
             "DELETE FROM lottery_entries WHERE topic_id = %d" % tid,
             "DELETE FROM topic_lotteries WHERE topic_id = %d" % tid,
             "DELETE FROM topics WHERE id = %d" % tid,
-            "DELETE FROM spark_ledger WHERE ref_id = %d" % tid,
-            "DELETE FROM spark_ledger WHERE idempotency_key LIKE "
-            "'forum-lottery-win:%d:%%'" % tid,
+            "DELETE FROM spark_ledger WHERE ref_id = %d "
+            "OR idempotency_key LIKE 'forum-lottery-win:%d:%%' "
+            "OR idempotency_key = 'forum-topic:1:%d'" % (tid, tid, tid),
             "DELETE FROM messages WHERE sender_id IS NULL "
             "AND created_at > now() - interval '15 min'"]
         # 生产者未接线：按 open_fair_round 该写的三列直接做夹具，
