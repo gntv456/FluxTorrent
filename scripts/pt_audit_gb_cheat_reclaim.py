@@ -29,6 +29,8 @@ from pt_audit_lib import ok, summary  # noqa: E402
 
 SANCT = "apps/api/src/http/cheat_case/sanction.rs"
 REV = "apps/api/src/repo/cheat_reverse.rs"
+# P-403 收尾：回收的正向执行下沉到 repo（sanction.rs 曾长到 312 行破 300 门禁），
+# 所以 GB1 的读向要跟着换文件——**判据跟着实现走，不许反过来让实现迁就判据**。
 
 
 def rd(rel):
@@ -51,16 +53,21 @@ def one(sql):
 
 san = cut(rd(SANCT))
 rev = cut(rd(REV))
+# 下沉后：正向执行的 SQL 在 rev 里，san 里只剩一次调用
+CALL = "crate::repo::cheat_reverse::apply_reclaim_tx"
 # 锚点只能取**码体**：这段的说明文字在 `//` 注释里，而 `cut()` 已把注释整行
 # 剥掉——按注释关键词去 split 会得到空串，判据恒红（仪器自伤，本轮实测）。
 READ = "SELECT uploaded FROM users WHERE id = $1 FOR UPDATE"
-i_read = san.find(READ)
-i_ledger = san.find("INSERT INTO traffic_ledger")
-ok("GB1 回收前先锁行读实际上传量，流水绑的是 applied 而非请求值",
-   0 <= i_read < i_ledger
-   and "reclaim_applied = reclaim_up.min(" in san
-   and ".bind(-reclaim_applied)" in san and ".bind(-reclaim_up)" not in san,
+# 下沉后这两处都在 repo 侧：索引必须建在同一个文件里，否则恒红（本轮就红过一次）
+i_read = rev.find(READ)
+i_ledger = rev.find("INSERT INTO traffic_ledger")
+ok("GB1 回收前先锁行读实际上传量，流水绑的是实际值（下沉后的 repo 侧）",
+   0 <= i_read < i_ledger and ".bind(-applied)" in rev
+   and ".bind(-reclaim_up)" not in rev and "applied = requested.min(" in rev,
    "写请求值＝sum(ledger) 与快照永久撕裂（对照 user_ops 的 P0 错账定例）")
+ok("GB1b handler 侧只调一次下沉原语，且把返回值写进案件 JSON",
+   CALL in san and "let reclaim_applied = " in san,
+   "编排层自己再拼一份 SQL＝第二把尺，正反对账迟早漂移")
 ok("GB2 案件 JSON 同时留请求值与实际值（前者读数、后者回补）",
    '"reclaim_up": reclaim_up' in san and '"reclaim_applied": reclaim_applied'
    in san, "只留一个数就没法两边对账，也没法判断历史案件该按哪个口径")
