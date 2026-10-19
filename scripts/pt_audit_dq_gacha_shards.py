@@ -199,4 +199,19 @@ after = {t: sval("SELECT count(*) FROM %s" % t) for t in
 ok("DQ6 正控回滚后三表计数逐位回到原样 %s→%s" % (snap, after),
    snap == after, "回滚没吃干净＝闸门在往现网写数据")
 
+# ---------- DQ7 客户端幂等键必须按用户划域（P-382） ----------
+# 现网 gacha_shard_ledger.idempotency_key 上有**全局唯一索引**，而键是客户端
+# 自填的：键里不带 uid ⇒ 别人用过同一个字符串，我的请求就被误判「重复提交」。
+# 同仓先例是商城（economy_http/shop.rs:153 注释原话「全站可碰撞的键，不同请求
+# 互相误判重放」），修法照它：format!("gacha:dis:{uid}:{key}")。
+KEYD = re.compile(r'format!\(\s*"gacha:(dis|exc|lv):\{\}:\{\}",\s*uid,')
+got = KEYD.findall(craft)
+ok("DQ7a dis/exc/lv 三把键都按 uid 划域（命中=%d/3）" % len(set(got)),
+   len(set(got)) == 3 and len(got) == 3, "命中=%s" % got)
+ok("DQ7b 承重自证：旧的两段无主键必须判红",
+   not KEYD.search('format!("gacha:dis:{}", body.idempotency_key.trim())'),
+   "旧形状应判红")
+ok("DQ7c 键前缀仍与商城/银行同族可辨（gacha: 开头，后台按前缀对账数得到）",
+   "gacha:dis:" in craft and "gacha:exc:" in craft and "gacha:lv:" in craft)
+
 summary()
