@@ -2,7 +2,8 @@
 //! 唯一居所）。2026-10-15 下沉：FRAME §2「H 不 import sqlx」。
 //!
 //! 搬运时逐字保留三处口径（都是踩过坑定下来的，改动请连注释一起看）：
-//!   · 投票先占位再扣款：扣款失败要能删掉占位行，否则留下"已投过票"假象
+//!   · 投票三段（占位/扣火花/计票）同事务，`place_vote`/`count_vote` 收
+//!     执行器泛型（P-379：旧版分开提交，扣款失败只能 best-effort 撤票）
 //!   · 转正先抢 offers.promoted，抢到再验种是否在架；抢不到/种已下架都要
 //!     **回滚 promoted**（P-317：过期的候选不得撤销审核台的裁决）
 //!   · 自审拦截在转正之后做，回滚同样要把 promoted 置回 false
@@ -75,43 +76,38 @@ pub async fn voteable(repo: &Repo, offer_id: i64) -> bool {
 }
 
 /// 占位投票（原子判重）。返回 false = 已投过。
-pub async fn place_vote(
-    repo: &Repo,
+pub async fn place_vote<'e, E>(
+    exe: E,
     offer_id: i64,
     user_id: i64,
-) -> Result<bool, sqlx::Error> {
+) -> Result<bool, sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     let r = sqlx::query(
         "INSERT INTO offer_votes (offer_id, user_id, \
          cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING",
     )
     .bind(offer_id)
     .bind(user_id)
-    .execute(&repo.db)
+    .execute(exe)
     .await?;
     Ok(r.rows_affected() > 0)
 }
 
-/// 扣款失败时撤掉投票占位（best-effort，失败也不阻断报错返回）。
-pub async fn drop_vote(repo: &Repo, offer_id: i64, user_id: i64) {
-    let _ = sqlx::query(
-        "DELETE FROM offer_votes WHERE offer_id = $1 AND user_id = $2",
-    )
-    .bind(offer_id)
-    .bind(user_id)
-    .execute(&repo.db)
-    .await;
-}
-
 /// 计票 +1（仍限未转正）。返回 false = 已被转正，投票落空。
-pub async fn count_vote(
-    repo: &Repo,
+pub async fn count_vote<'e, E>(
+    exe: E,
     offer_id: i64,
-) -> Result<bool, sqlx::Error> {
+) -> Result<bool, sqlx::Error>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     let r = sqlx::query(
         "UPDATE offers SET votes = votes + 1 WHERE id = $1 AND NOT promoted",
     )
     .bind(offer_id)
-    .execute(&repo.db)
+    .execute(exe)
     .await?;
     Ok(r.rows_affected() > 0)
 }
