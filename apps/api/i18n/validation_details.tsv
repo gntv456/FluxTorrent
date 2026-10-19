@@ -210,3 +210,6 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 该订单不属于路径里的用户，未回收任何行	該訂單不屬於路徑裡的使用者，未回收任何行	The order does not belong to the user in the path; nothing was reclaimed.
 不能向自己的种子答谢魔力	不能向自己的種子答谢魔力	You cannot send thanks magic to your own torrent.
 该笔答谢已受理，魔力未重复转出	該筆答谢已受理，魔力未重複轉出	This thank-you transfer was already accepted; no extra magic left your account.
+标题不能超过 255 字	標題不能超過 255 字	The title cannot exceed 255 characters.
+该内容已被禁止	該內容已被禁止	This item has been banned.
+内容状态由管理员判定，作者不能自判	內容狀態由管理員判定，作者不能自判	Item status is decided by staff; authors cannot self-rate.
