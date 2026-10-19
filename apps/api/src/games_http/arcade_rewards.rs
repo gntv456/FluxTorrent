@@ -170,14 +170,22 @@ pub(super) async fn award_tx(
         }
     }
     if spark > 0 {
-        crate::economy_http::earn_spark_tx(
-            tx,
-            uid,
-            spark,
-            "arcade",
-            &format!("{idem}:spark"),
-        )
-        .await?;
+        // 入账结果必须消费（P-347 同族）：调用方的 mark_claim 已挡同期重领，
+        // 正常路径必然 Spent；回 Replayed 却仍把 spark 报给回执，就是
+        // 「告诉玩家领到了、钱没进账」。整笔回滚（流水冲突）更诚实。
+        if !matches!(
+            crate::economy_http::earn_spark_tx(
+                tx,
+                uid,
+                spark,
+                "arcade",
+                &format!("{idem}:spark"),
+            )
+            .await?,
+            crate::economy_http::SpendOutcome::Spent
+        ) {
+            return Err(DomainError::LedgerConflict);
+        }
     }
     Ok((spark, got_item, fell))
 }
