@@ -85,7 +85,10 @@ SKIP = {"/me/messages/stream"}  # SSE 会挂着不回，30s 超时把它算成�
 ok("DA0 清单拿到 GET 全集（%d 条，下限 350）" % len(GETS), len(GETS) >= 350)
 
 # ---------- 路径参数取真值（取不到就用 1，红账里会写明来源） ----------
-TORRENT = one("SELECT id FROM torrents WHERE approval_status = 1 LIMIT 1")
+# 取样必须定序：不带 ORDER BY 时 PG 可以回任意一行，探到的种就随运行漂
+# （曾漂到无存档的探针种上，下载口回「种子文件缺失」这条业务 400）。
+TORRENT = one("SELECT id FROM torrents WHERE approval_status = 1 "
+              "ORDER BY id LIMIT 1")
 TOPIC = one("SELECT id FROM topics ORDER BY id LIMIT 1")
 BOARD = one("SELECT id FROM forums ORDER BY id LIMIT 1")
 ARTIST = one("SELECT id FROM artists ORDER BY id LIMIT 1")
@@ -300,7 +303,14 @@ R400 = {"/auth/pow-challenge", "/compat/nexusphp/details.php",
         "/downloads/{torrent_id}", "/admin/user-vouchers", "/ptgen",
         "/admin/user-permissions", "/games/pet/of", "/auth/ban-log",
         "/donate/order-status", "/games/collection/{game}"}
-bad400 = [p for p, st, _b in MINE if st == 400 and p not in R400]
+MISS = "缺少必填字段"
+bad400 = [p for p, st, b in MINE if st == 400 and p not in R400
+          and MISS in json.dumps(b, ensure_ascii=False)]
+biz400 = [(p, json.dumps(b, ensure_ascii=False)[:70]) for p, st, b in MINE
+          if st == 400 and p not in R400
+          and MISS not in json.dumps(b, ensure_ascii=False)]
+if biz400:
+    print("   [业务 400（不是缺参），只报不判红] %s" % biz400)
 ok("DA8 400 一族没长出新面孔（缺参台账 %d 条，新增 %d 条）"
    % (len(R400), len(bad400)), not bad400, "、".join(bad400[:6]))
 

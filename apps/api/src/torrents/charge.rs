@@ -51,7 +51,7 @@ pub async fn ensure_downloadable(
 /// 付费下载扣费（0086，NP 价格 口径）：下载前调用（资格闸门须已在前面
 /// 跑过 —— 见 `ensure_downloadable`）。
 /// 免费/发布者本人/已购 → 直接放行；否则原子扣款 → 发布者得 (100-税)% → 税入当月魔法池。
-/// 全程单事务，余额不足返回校验错误。
+/// 全程单事务，余额不足回 4001/409（`InsufficientSpark`，P-401）。
 /// 审计修复（P0 错账）：旧版直接 UPDATE users.spark_balance、不写 spark_ledger ——
 /// 买方扣款与发布者入账都被每小时「余额=流水重算」回滚（下载变免费/收益被抹除），
 /// 且 /admin/spark-logs 完全看不到这类变动。改为流水驱动（幂等键绑定 torrent+user）。
@@ -113,9 +113,14 @@ pub async fn charge_for_download(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if balance < price {
-        return Err(DomainError::Validation(format!(
-            "魔力不足：该种子为付费种子（{price} 魔力），请先充值或签到攒魔力"
-        )));
+        // P-401：这里原先回 `Validation("魔力不足：该种子为付费种子…")` ⇒
+        // HTTP 400 + code 1002「参数校验失败」。付费下载是经济操作，全站口径
+        // 是 `InsufficientSpark`（HTTP 409 + code 4001，`errors.rs` 的注释就写着
+        // 「购买/抽卡/打赏…余额不足」，`spend_spark` 也回这一枚）——回 1002 等于
+        // 告诉会员「你请求发错了」，而真实原因是钱不够；前端按 4001 才给得出
+        // 充值引导（buy-button/medal-actions 都以 4001 为兜底）。
+        // 具体差额由种页与下载按钮先显示（付费种标价），不靠这句文案承载。
+        return Err(DomainError::InsufficientSpark);
     }
     // 买方扣款流水（幂等键含 torrent：同一种子只扣一次，重放安全）
     sqlx::query(

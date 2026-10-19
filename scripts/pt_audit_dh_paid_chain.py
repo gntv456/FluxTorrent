@@ -218,4 +218,23 @@ left = sval("SELECT count(*) FROM torrent_purchases WHERE price = 500 "
 ok("DH7 正控残料清零（近 5 分钟新插入的假已购行 %s）" % left, left == "0",
    "闸门不许往现网留数据")
 
+# ---------- DH8 付费下载的余额错误码（批一百六十八 P-401） ----------
+# 付费下载是经济操作，余额不足必须回 4001/409（`spend_spark` 同一把尺，
+# errors.rs 的注释也写着「购买/抽卡/打赏…余额不足」）。旧实现回的是
+# `Validation(format!("魔力不足：该种子为付费种子…"))` ⇒ HTTP 400 + code 1002
+# 「参数校验失败」，等于告诉会员「你请求发错了」，而真原因是钱不够；且那句是
+# 动态 format! 串（英文/繁体用户看简体），前端只对 4001 才给得出充值引导。
+# 实测 A/B：旧镜像 400/1002 → 新二进制 409/4001（发布者豁免口两边都 200）。
+BAD8 = re.compile(r'Validation\(\s*format!\(\s*"魔力不足')
+CHARGE = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "apps", "api", "src", "torrents", "charge.rs")
+ch8 = io.open(CHARGE, encoding="utf-8", errors="replace").read()
+ok("DH8 付费下载余额不足走 4001/409，不再伪装成参数错误",
+   "InsufficientSpark" in ch8 and BAD8.search(ch8) is None,
+   "回 1002/400＝把「钱不够」报成「请求发错」，前端的充值引导也不触发")
+OLD8 = ('if balance < price {\n    return Err(DomainError::Validation(\n'
+        '        format!("魔力不足：该种子为付费种子（{price} 魔力）")));}')
+ok("DH8b 承重自证：旧的 1002 写法必须判红", BAD8.search(OLD8) is not None,
+   "把旧码喂进判据仍算绿＝这条不承重")
+
 summary()
