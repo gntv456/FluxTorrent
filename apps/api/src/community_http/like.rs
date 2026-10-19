@@ -74,6 +74,10 @@ async fn set_post_like(
         .bind(auth.id)
         .fetch_one(&state.repo.db)
         .await
+        // 读不到年龄按「不够老」处理是可以的，但不能无声：这条一旦因 SQL/连接
+        // 故障恒假，全站点赞火花会静默归零（对照 P-323/P-328 一族）。
+        .inspect_err(|e| tracing::warn!(user = auth.id, post = pid,
+            err = %e, "liker age query failed; like reward skipped"))
         .unwrap_or(false);
         if !liker_age_ok {
             let likes: i64 = sqlx::query_scalar(
@@ -99,8 +103,14 @@ async fn set_post_like(
         .fetch_one(&state.repo.db)
         .await
         .unwrap_or(false);
-        let _ =
-            earn_spark(&state.repo.db, author, 1, "forum-like", &idem).await;
+        // 发放失败必须出声（P-363）：旧版 `let _ =` 让「作者少收火花」这件事
+        // 不可观测。不用 `?`——点赞行已落库，为一颗火花把请求打成 500 更糟。
+        if let Err(e) =
+            earn_spark(&state.repo.db, author, 1, "forum-like", &idem).await
+        {
+            tracing::warn!(post = pid, author, liker = auth.id, err = %e,
+                "like spark grant failed");
+        }
         if !already {
             notify_user(
                 &state.repo.db,

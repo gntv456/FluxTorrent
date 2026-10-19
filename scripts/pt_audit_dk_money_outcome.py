@@ -178,4 +178,43 @@ else:
           "本脚本）；本轮实测 `cargo build --bin flux-api --bin flux-worker` "
           "rc=0 且该告警数已从 3 降到 0")
 
+# ---------- DK7 发放结果被吞的台账（批一百七十四新增，只降不升） ----------
+# 形状：`let _ = earn_spark…(…)` —— 发放失败被整条吞掉，会员少收魔力这件事
+# 在站点里既无日志也无账面差（P-323/P-328 同族）。like.rs 那处已在本批改成
+# 出声；剩下的登记在此，谁修掉一处就把清单缩一行，**新增一条就红**。
+LEDGER = {
+    "apps/api/src/community_http/lottery_draw.rs": 2,
+    "apps/api/src/community_http/post_edit.rs": 1,
+    "apps/api/src/community_http/post_topic_delete.rs": 4,
+    "apps/api/src/content_http/subtitles_cancel.rs": 1,
+    "apps/api/src/games_http/farm_actions.rs": 1,
+    "apps/api/src/games_http/ranch.rs": 1,
+}
+found = {}
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for root, _, fs in os.walk(os.path.join(_root, "apps", "api", "src")):
+    for f in fs:
+        if not f.endswith(".rs"):
+            continue
+        p = os.path.join(root, f)
+        t = io.open(p, encoding="utf-8", errors="replace").read()
+        t = "\n".join(re.sub(r"//.*", "", ln) for ln in t.split("\n"))
+        n = len(re.findall(
+            r"let _ =\s*(?:earn_spark|earn_spark_tx|spend_spark"
+            r"|spend_spark_tx)\(", t))
+        if n:
+            found[os.path.relpath(p, _root).replace("\\", "/")] = n
+new_on = {k: v for k, v in found.items() if k not in LEDGER}
+grew = {k: (v, LEDGER[k]) for k, v in found.items()
+        if k in LEDGER and v > LEDGER[k]}
+ok("DK7 发放结果被吞的站点 %d 处，必须等于在册 %d 处（新增 %s，变多 %s）"
+   % (sum(found.values()), sum(LEDGER.values()),
+      sorted(new_on) or "无", sorted(grew) or "无"),
+   not new_on and not grew,
+   "每吞一次发放，「会员该收到却没收到」就少一个可查证的出口；"
+   "修掉请把台账与 `tracing::warn!` 一起改（对照 like.rs 的 P-363 形状）")
+for k in sorted(LEDGER):
+    print("      [在册] %s：%d 处（现读数 %d）" % (k, LEDGER[k],
+                                                  found.get(k, 0)))
+
 summary()
