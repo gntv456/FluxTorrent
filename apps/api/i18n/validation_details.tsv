@@ -242,3 +242,4 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 不能认领自己发起的求字幕	不能認領自己發起的求字幕	You cannot claim your own subtitle request.
 action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismiss.
 举报不存在或已处理	舉報不存在或已處理	Report does not exist or was already handled.
+该比赛当前不在报名期	該比賽當前不在報名期	Entries for this contest are closed.
