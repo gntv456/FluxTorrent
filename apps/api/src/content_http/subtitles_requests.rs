@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::subtitles_util::trim_opt;
 use crate::dto::ok;
-use crate::economy_http::{spend_spark, spend_spark_tx};
+use crate::economy_http::spend_spark_tx;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -205,10 +205,13 @@ struct ContributeReq {
     amount: i64,
 }
 
-/// 凑魔力入池（一人可追投；扣款走 spend_spark 幂等键锚定请求+用户+笔次）。
+/// 凑魔力入池（一人可追投；扣款走 spend_spark_tx 幂等键锚定请求+用户+笔次）。
 /// 审计修复（并发双计）：原实现先 UPDATE bounty 再扣款，同用户并发两笔时
-/// 流水幂等只挡住一笔扣款、bounty 却加两次（池被灌水）。改为「先扣款、
-/// 成功才入池」+ 扣款幂等键带笔次（contrib_count 序号），双保险。
+/// 流水幂等只挡住一笔扣款、bounty 却加两次（池被灌水）。
+/// P-414（本批）：「先扣款、成功才入池」仍是两个 autocommit——扣款成功了而
+/// UPDATE 拿不到行（单刚被关/撤销）时，收尾靠一条 `let _ =` 的补偿退款，退款
+/// 一失败＝「钱扣了、池没进、退款也没落账」的静默资损（同族 P-323 / P-406）。
+/// 现在扣款、行锁、入池在同一事务：拿不到行就整笔回滚，压根不需要补偿退款。
 #[post("/subtitles/requests/{id}/contribute")]
 pub(super) async fn subtitle_request_contribute(
     req: HttpRequest,
@@ -221,13 +224,20 @@ pub(super) async fn subtitle_request_contribute(
     if body.amount <= 0 {
         return Err(DomainError::Validation("入池金额需为正整数".into()));
     }
-    // 笔次 = 该用户此前对此单的入池次数（ contributors 数组里本人条数）
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 笔次 = 该用户此前对此单的入池次数（contributors 数组里本人条数）。
+    // FOR UPDATE 把这把锁加在本单行上：并发两笔不会再算出同一个 seq。
     let cur: serde_json::Value = sqlx::query_scalar(
         "SELECT contributors FROM subtitle_requests WHERE id = $1 AND \
-         status = 0",
+         status = 0 FOR UPDATE",
     )
     .bind(rid)
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .ok_or(DomainError::NotFound(rid))?;
@@ -241,11 +251,11 @@ pub(super) async fn subtitle_request_contribute(
                 .count()
         })
         .unwrap_or(0);
-    // 先扣款（幂等键带笔次：同用户第 N 笔唯一；并发重放同笔被挡）
+    // 扣款（幂等键带笔次：同用户第 N 笔唯一；并发重放同笔被挡）
     let idem = format!("sub-req-contrib:{}:{}:{}", auth.id, rid, seq);
-    if matches!(
-        spend_spark(
-            &state.repo.db,
+    if !matches!(
+        spend_spark_tx(
+            &mut tx,
             auth.id,
             body.amount,
             "subtitle_request",
@@ -254,13 +264,13 @@ pub(super) async fn subtitle_request_contribute(
             rid,
         )
         .await?,
-        crate::economy_http::SpendOutcome::Replayed
+        crate::economy_http::SpendOutcome::Spent
     ) {
         return Err(DomainError::Validation(
             "该笔入池已受理，请勿重复提交".into(),
         ));
     }
-    // 扣款成功才入池；UPDATE 带条件 bounty = 原值（乐观锁防与扣款竞态错位）
+    // 扣款与入池同事务：无行（单被关）⇒ 上面的扣款一并回滚
     let bounty: Option<i64> = sqlx::query_scalar(
         "UPDATE subtitle_requests SET bounty = bounty + $2, contributors = \
          contributors::jsonb || $3::jsonb WHERE id = $1 AND status = 0 \
@@ -269,20 +279,14 @@ pub(super) async fn subtitle_request_contribute(
     .bind(rid)
     .bind(body.amount)
     .bind(serde_json::json!([{ "user_id": auth.id, "amount": body.amount }]))
-    .fetch_optional(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(bounty) = bounty else {
-        // 单已关：退款（幂等键加 refund 后缀；极小窗口）
-        let _ = crate::economy_http::earn_spark(
-            &state.repo.db,
-            auth.id,
-            body.amount,
-            "subtitle_request_refund",
-            &format!("{idem}:refund"),
-        )
-        .await;
         return Err(DomainError::NotFound(rid));
     };
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "id": rid, "bounty": bounty })))
 }
