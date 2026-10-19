@@ -215,8 +215,12 @@ async fn user_admin_delete(
     match status {
         None => return Err(DomainError::NotFound(uid)),
         Some(s) if s < 2 => {
+            // 话术必须与闸门同尺：这里实际放行的是「已处置态」（2 停用 /
+            // 3 墓碑 / 4 封禁），旧句子只说「封禁」——既让操作员以为必须去
+            // 封禁（而后台改状态的口只收 0/1/2，根本置不了 4），也没说出
+            // 「停用」同样可以。
             return Err(DomainError::Validation(
-                "仅封禁状态的账号可删除，请先封禁".into(),
+                "仅已处置的账号（停用/墓碑/封禁）可删除，请先在后台处置该账号".into(),
             ));
         }
         _ => {}
