@@ -18,6 +18,7 @@ mod me;
 mod pool;
 mod rates;
 mod roll;
+mod shards;
 mod staff;
 
 use actix_web::Scope;

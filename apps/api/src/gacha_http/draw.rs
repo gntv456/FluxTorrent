@@ -275,23 +275,9 @@ pub(super) async fn gacha_draw(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 碎片聚合入账（一批一行）
-    sqlx::query(
-        "INSERT INTO gacha_shard_balance (user_id, balance) \
-         VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING",
-    )
-    .bind(user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let sbal: i32 = sqlx::query_scalar(
-        "SELECT balance FROM gacha_shard_balance \
-         WHERE user_id = $1 FOR UPDATE",
-    )
-    .bind(user_id)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 碎片聚合入账（一批一行）；快照行自愈按流水净额播种（P-353，
+    // 形状见 gacha_http/shards.rs）
+    let sbal = super::shards::lock_shard_balance(&mut tx, user_id).await?;
     let s_after = sbal + shard_total;
     sqlx::query(
         "INSERT INTO gacha_shard_ledger (user_id, delta, kind, ref_type, \
