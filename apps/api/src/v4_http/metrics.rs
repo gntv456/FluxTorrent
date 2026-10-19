@@ -44,9 +44,24 @@ pub async fn metrics_mw(
 ) -> actix_web::Result<ServiceResponse<impl MessageBody>> {
     METRIC_REQUESTS.fetch_add(1, Ordering::Relaxed);
     let started = std::time::Instant::now();
+    // P-422：5xx 要能归因。`errors.rs` 的 `error_response(&self)` 拿不到请求，
+    // 于是现网 218 条 `internal error`（2026-10-15~10-18）指不出是哪个接口，
+    // 每次排查都得靠时间戳猜。这层本来就看得见状态码，顺手补一行：
+    // 只记 method + **路由模板**（`/x/{id}` 形态，不含查询串）⇒ 不泄露参数值，
+    // 又能把同类 500 聚成一组。
+    let method = req.method().clone();
+    let route = req
+        .match_pattern()
+        .unwrap_or_else(|| req.path().to_string());
     let res = next.call(req).await?;
     if res.status().as_u16() >= 500 {
         METRIC_REQUESTS_5XX.fetch_add(1, Ordering::Relaxed);
+        tracing::error!(
+            method = %method,
+            route = %route,
+            status = res.status().as_u16(),
+            "5xx 出口归因（与 internal error 同一请求）"
+        );
     }
     record_latency(started.elapsed().as_millis() as u64);
     Ok(res)
