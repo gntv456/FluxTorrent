@@ -182,13 +182,18 @@ else:
 # 形状：`let _ = earn_spark…(…)` —— 发放失败被整条吞掉，会员少收魔力这件事
 # 在站点里既无日志也无账面差（P-323/P-328 同族）。like.rs 那处已在本批改成
 # 出声；剩下的登记在此，谁修掉一处就把清单缩一行，**新增一条就红**。
+# 形状：`let _ = earn_spark…(…)` 且**语句结尾没有 `?`** —— 带 `?` 的那些
+# （subtitles_cancel 的退款、farm_actions 的收获派彩）其实会把错误向上抛，
+# 丢弃的只是 `SpendOutcome`/`()`，属 DK2b/DK4b 管的「丢弃结果」而不是「吞掉失败」。
+# 批一百七十四初版把两种混在一起数，虚报了 6 处；本轮分清后现网真吞只有下面这些。
+# 谁修掉一处就把清单缩一行，**新增一条就红**。
 LEDGER = {
-    "apps/api/src/community_http/lottery_draw.rs": 2,
+    # 派彩在 mark_won 之后，失败即「中奖没奖且不可重试」——待修（下一批）
+    "apps/api/src/community_http/lottery_draw.rs": 1,
+    # P-365 同族：负数走 earn_spark（回收 +1 惩罚），修法属资金口径，待站方裁
     "apps/api/src/community_http/post_edit.rs": 1,
-    "apps/api/src/community_http/post_topic_delete.rs": 4,
-    "apps/api/src/content_http/subtitles_cancel.rs": 1,
-    "apps/api/src/games_http/farm_actions.rs": 1,
-    "apps/api/src/games_http/ranch.rs": 1,
+    # P-365 同族两条：删主题扣 2 + 级联回收回帖各扣 1
+    "apps/api/src/community_http/post_topic_delete.rs": 2,
 }
 found = {}
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -199,9 +204,14 @@ for root, _, fs in os.walk(os.path.join(_root, "apps", "api", "src")):
         p = os.path.join(root, f)
         t = io.open(p, encoding="utf-8", errors="replace").read()
         t = "\n".join(re.sub(r"//.*", "", ln) for ln in t.split("\n"))
-        n = len(re.findall(
-            r"let _ =\s*(?:earn_spark|earn_spark_tx|spend_spark"
-            r"|spend_spark_tx)\(", t))
+        n = 0
+        for m in re.finditer(
+                r"let _ =\s*(?:earn_spark|earn_spark_tx|spend_spark"
+                r"|spend_spark_tx)\(", t):
+            # 只看「真吞」：语句到第一个 `;` 为止，结尾不是 `?` 才算没抛出去
+            seg = t[m.start():m.start() + 400].split(";")[0]
+            if not seg.rstrip().endswith("?"):
+                n += 1
         if n:
             found[os.path.relpath(p, _root).replace("\\", "/")] = n
 new_on = {k: v for k, v in found.items() if k not in LEDGER}

@@ -44,14 +44,27 @@ pub async fn lottery_draw_core(
         let op = repo_draw::topic_owner(repo, topic_id).await?;
         let refund = winners as i64 * prize;
         if refund > 0 {
-            let _ = earn_spark(
+            // P-366：无人参与时奖池退回楼主——旧版 `let _ =` 吞失败，
+            // 而调用方拿到的仍是「已退回」的返回值（假成功）。
+            // 键 `forum-lottery-refund:{topic}` 稳定，失败时出声并让上层
+            // 看见 `refunded=false`，别把没到账说成到账。
+            let refunded = earn_spark(
                 db,
                 op,
                 refund,
                 "forum_lottery_refund",
                 &format!("forum-lottery-refund:{topic_id}"),
             )
-            .await;
+            .await
+            .is_ok();
+            if !refunded {
+                tracing::warn!(
+                    topic = topic_id,
+                    owner = op,
+                    amount = refund,
+                    "lottery pool refund failed"
+                );
+            }
         }
         return Ok(serde_json::json!({
             "topic_id": topic_id,

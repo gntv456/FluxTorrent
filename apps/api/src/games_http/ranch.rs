@@ -156,14 +156,26 @@ pub(super) async fn craft_start(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if inserted.rows_affected() == 0 {
-        let _ = earn_spark(
+        // P-366：这笔是「开工失败退回已扣的魔力」，旧版 `let _ =` 吞失败 ⇒
+        // 会员被扣了材料魔力、活没开工、退款也没到账，三件事叠在一起只有
+        // 当事人自己数得出来。改成出声（键稳定，运维可按它手工补退）。
+        if let Err(e) = earn_spark(
             db,
             auth.id,
             spend,
             "game",
             &format!("craft-start-refund:{}", idem),
         )
-        .await;
+        .await
+        {
+            tracing::warn!(
+                err = %e,
+                user = auth.id,
+                amount = spend,
+                refund_key = format!("craft-start-refund:{}", idem),
+                "ranch craft refund failed"
+            );
+        }
         return Err(DomainError::Validation("这个配方已经在做了".into()));
     }
     Ok(ok(serde_json::json!({
