@@ -211,9 +211,34 @@ pub async fn contest_join(
     path: web::Path<i32>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    let cid = *path;
+    // P-427：旧写法 `INSERT ... VALUES ($1,$2) ON CONFLICT DO NOTHING` 三处
+    // 都不设防——比赛**不存在**时撞 FK 冒 500（`contest_entries_contest_id_fkey`），
+    // **已过期**或 `is_active=false` 时照样插行（报名成功），于是榜单与
+    // 「前 10 名发限定勋章」的结算会把早已收场的比赛继续吸进新人。
+    // 现在把「存在 / 在进行中 / 在时间窗内」三件事先查清再写，
+    // 且 INSERT 改成带同样谓词的 `SELECT ... FROM contests`（谓词已在现网
+    // 库内四例 A/B：有效⇒1 行，过期/关闭/不存在⇒均 0 行，事务回滚验证）。
+    let state_row: Option<(bool, bool)> = sqlx::query_as(
+        "SELECT c.is_active, now() BETWEEN c.starts_at AND c.ends_at \
+         FROM contests c WHERE c.id = $1",
+    )
+    .bind(cid)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((active, in_window)) = state_row else {
+        return Err(DomainError::NotFound(cid as i64));
+    };
+    if !active || !in_window {
+        return Err(DomainError::Validation("该比赛当前不在报名期".into()));
+    }
     let inserted = sqlx::query(
-        "INSERT INTO contest_entries (contest_id, user_id) VALUES ($1, \
-         $2) ON CONFLICT DO NOTHING",
+        "INSERT INTO contest_entries (contest_id, user_id) \
+         SELECT $1, $2 FROM contests c \
+          WHERE c.id = $1 AND c.is_active \
+            AND now() BETWEEN c.starts_at AND c.ends_at \
+         ON CONFLICT DO NOTHING",
     )
     .bind(*path)
     .bind(auth.id)
