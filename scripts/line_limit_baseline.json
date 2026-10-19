@@ -425,7 +425,7 @@
  "apps/api/src/auth_http/me_settings.rs::wide": 13,
  "apps/api/src/auth_http/me_settings_kv.rs::wide": 30,
  "apps/api/src/auth_http/mod.rs::wide": 1,
- "apps/api/src/auth_http/profile.rs": 326,
+ "apps/api/src/auth_http/profile.rs": 327,
  "apps/api/src/auth_http/profile.rs::wide": 17,
  "apps/api/src/auth_http/register.rs::wide": 1,
  "apps/api/src/auth_http/user_torrentlist.rs::wide": 8,
