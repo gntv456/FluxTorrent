@@ -72,7 +72,7 @@ pub(super) async fn build_snapshots(
           -- 语义边界见 domain/seedbox 模块头：只豁免「因不可探测被误判」，
           -- 幽灵做种、流量虚报仍照常检测。
           AND NOT EXISTS (
-              SELECT 1 FROM seedbox_profiles sp
+              SELECT 1 FROM seedbox_effective sp
               WHERE sp.user_id = s.user_id AND sp.hnr_exempt
           )
         ON CONFLICT DO NOTHING

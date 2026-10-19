@@ -145,8 +145,14 @@ pub async fn review(
     .bind(uid)
     .bind(approve)
     .bind(approve && hnr_exempt)
-    .bind(bonus_factor)
-    .bind(speed_relax)
+    // 驳回必须把三样一起清零（P-426）：旧写法只清 hnr_exempt，倍率与
+    // speed_relax 原样落库。视图 `seedbox_effective` 现在靠
+    // `WHERE approved OR detected` 挡住了这行，但 detected 一旦由 ASN
+    // 自动识别置上，**被驳回那单**的 bonus_factor=3.0 / speed_relax=true
+    // 就会立刻生效——脏数据等着被激活，比当场出错更坏。
+    // 钳位与 domain::Flags::from_profile 同一条尺：approved 时取 max(1.0)。
+    .bind(if approve { bonus_factor.max(1.0) } else { 1.0 })
+    .bind(approve && speed_relax)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
