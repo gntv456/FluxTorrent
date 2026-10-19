@@ -116,18 +116,40 @@ pub(crate) async fn medal_buy(
             "该笔请求已受理，请勿重复提交".into(),
         ));
     }
-    // 限时勋章按 duration_days 写 expires_at（0067；NULL = 永久）
-    sqlx::query(
+    // 限时勋章按 duration_days 写 expires_at（0067；NULL = 永久）。
+    // P-350（与赠送口 P-345 同形）：上面的「已拥有」判据只看未过期的行，
+    // 而 user_medals 主键是 (user_id, medal_id) —— 过期件重买时旧写法写 0 行，
+    // 扣款与回显都成功、勋章却没复活。这里过期件按产品口径复活重算有效期；
+    // 仍为 0 行只可能是并发竞取，退款并报中文错误，绝不收钱不发货。
+    let granted: u64 = sqlx::query(
         "INSERT INTO user_medals (user_id, medal_id, source, expires_at) \
          SELECT $1, $2, 'buy', now() + make_interval(days => m.duration_days) \
          FROM medals m WHERE m.id = $2 \
-         ON CONFLICT (user_id, medal_id) DO NOTHING",
+         ON CONFLICT (user_id, medal_id) DO UPDATE SET source = 'buy', \
+           expires_at = EXCLUDED.expires_at \
+         WHERE user_medals.expires_at IS NOT NULL \
+           AND user_medals.expires_at <= now()",
     )
     .bind(auth.id)
     .bind(body.medal_id)
     .execute(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if granted == 0 {
+        let refund = format!("medal-buy-refund:{idem}");
+        crate::economy_http::earn_spark(
+            &state.repo.db,
+            auth.id,
+            price,
+            "shop",
+            &refund,
+        )
+        .await?;
+        return Err(DomainError::Validation(
+            "勋章发放失败，本次扣款已退回，请稍后重试".into(),
+        ));
+    }
     Ok(ok(
         serde_json::json!({ "medal_id": body.medal_id, "price": price }),
     ))
