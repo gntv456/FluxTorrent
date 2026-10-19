@@ -213,3 +213,4 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 标题不能超过 255 字	標題不能超過 255 字	The title cannot exceed 255 characters.
 该内容已被禁止	該內容已被禁止	This item has been banned.
 内容状态由管理员判定，作者不能自判	內容狀態由管理員判定，作者不能自判	Item status is decided by staff; authors cannot self-rate.
+棋盘已被改动，请刷新后重试	棋盤已被改動，請刷新後重試	The board changed under you; refresh and try again.
