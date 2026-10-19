@@ -186,16 +186,26 @@ pub(crate) async fn topic_create(
     // 悬赏冻结（0124）+ 抽奖奖金池冻结（0126）：与建主题同事务（对齐求种 req-bounty 范式）
     let frozen = bounty + lot_winners as i64 * lot_prize;
     if frozen > 0 {
-        let idem = format!("forum-bounty:{}:{}", auth.id, topic_id);
+        // P-399：抽奖奖池旧版跟着悬赏共用 `forum_bounty` 这一枚 kind/ref_type
+        // ⇒ 楼主在魔力明细里看到「论坛悬赏 -N」，而那笔其实是抽奖奖池；同一场
+        // 抽奖的派彩记 `forum_lottery`、退池记 `forum_lottery_refund`，一场池子
+        // 被拆进三枚 kind，按 kind 对账永不平。池子按类型分家（键同理），
+        // 现网这类流水 0 行 ⇒ 不需要补数。
+        let (pool_kind, pool_key) = if ttype == "lottery" {
+            ("forum_lottery", "forum-lottery-pool")
+        } else {
+            ("forum_bounty", "forum-bounty")
+        };
+        let idem = format!("{}:{}:{}", pool_key, auth.id, topic_id);
         // 幂等重放闸门（#[must_use] 连审）：冻结与建主题同事务，重放即整体拒绝
         if !matches!(
             crate::economy_http::spend_spark_tx(
                 &mut tx,
                 auth.id,
                 frozen,
-                "forum_bounty",
+                pool_kind,
                 &idem,
-                "forum_bounty",
+                pool_kind,
                 topic_id,
             )
             .await?,
