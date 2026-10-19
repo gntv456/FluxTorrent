@@ -21,12 +21,12 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from pt_audit_lib import ok, summary  # noqa: E402
-
+from pt_audit_lib import call, login, ok, summary, clear_register_rl
 SANCT = "apps/api/src/http/cheat_case/sanction.rs"
 REV = "apps/api/src/repo/cheat_reverse.rs"
 # P-403 收尾：回收的正向执行下沉到 repo（sanction.rs 曾长到 312 行破 300 门禁），
@@ -97,5 +97,116 @@ ok("GB5 带回收的作弊案必须写明实际扣减数（旧形状只许是历
        "sanction->>'reclaim_applied' IS NULL AND status <> 1") == "0",
    "未结案件缺 reclaim_applied＝有人绕过 sanction 口写了 JSON，"
    "反向解除会退回按请求值回补的老洞")
+
+# ---------- 可选活体：端到端跑一遍「回收 → 申诉推翻 → 回补额」 ----------
+# 默认关：站方镜像未重建时这条必然红（旧码就是会白给流量），常驻红账没人看；
+# 要复跑：GB_LIVE=1 FLUX_API_BASE=http://127.0.0.1:8099/api/v1 python -u 本脚本
+LIVE = os.environ.get("GB_LIVE", "0") != "0"
+UP0, RECLAIM = 100, 500
+CLN = []
+UIDS = []
+
+
+def dat(p):
+    return (p or {}).get("data") or {}
+
+
+def mk_member(seq, staff=False):
+    """造探针号；staff=True 时临时提到 class 99（复核要四眼，决定人不能自复核）。"""
+    clear_register_rl()
+    time.sleep(6)
+    cs = dat(call("POST", "/admin/invites", {"user_id": 1, "count": 1},
+                  token=ROOT_TOK)[1]).get("codes") or []
+    if not cs:
+        return None
+    code, cid = cs[0]["code"], cs[0]["id"]
+    cap = dat(call("GET", "/auth/captcha", token=ROOT_TOK)[1])
+    ns = re.findall(r"-?\d+", str(cap.get("question") or ""))
+    if len(ns) < 2:
+        return None
+    nm = "gb%d%d" % (seq, int(time.time()) % 100000)
+    s2, r2 = call("POST", "/auth/register", {
+        "username": nm, "email": "%s@gb.local" % nm,
+        "password": "password123", "invite_code": code,
+        "captcha_id": cap.get("captcha_id"),
+        "captcha_answer": int(ns[0]) + int(ns[1]),
+        "captcha_token": "", "fields": {}})
+    u2 = dat(r2).get("user_id")
+    if not u2:
+        print("   [GB 造号失败] %s" % str(r2)[:150])
+        return None
+    UIDS.append(int(u2))
+    CLN.append("UPDATE users SET status = 2, class_id = 1, uploaded = 0 "
+               "WHERE id = %s" % u2)
+    CLN.append("DELETE FROM invites WHERE id = %d" % cid)
+    if staff:
+        one("UPDATE users SET class_id = 99 WHERE id = %s" % u2)
+    tok = None
+    for _ in range(10):
+        s3, r3 = call("POST", "/auth/login",
+                      {"username": nm, "password": "password123"})
+        tok = dat(r3).get("token")
+        if tok:
+            break
+        time.sleep(3)
+    return tok if tok else None
+
+
+if LIVE:
+    ROOT_TOK = login("root")
+    ok("GB-L0 root 登录可用", bool(ROOT_TOK), "卡在 PoW/限流则活体段作废")
+    if ROOT_TOK:
+        victim = mk_member(1)
+        reviewer = mk_member(2, staff=True)
+        ok("GB-L1 受害者与第二个职员探针", bool(victim) and bool(reviewer),
+           "复核申诉要四眼：root 是决定人，自复核会被拒（那条拒绝是对的）")
+        if victim and reviewer:
+            # 受害者是第一个造出来的号（第二个是复核职员）
+            uid = UIDS[0]
+            one("UPDATE users SET uploaded = %d WHERE id = %s" % (UP0, uid))
+            s, r = call("POST", "/admin/cheat-cases/open",
+                        {"user_id": int(uid), "note": "gb live"},
+                        token=ROOT_TOK)
+            tid = dat(r).get("case_id") or dat(r).get("id")
+            call("POST", "/admin/cheat-cases/%s/claim" % tid,
+                 {"note": "gb"}, token=ROOT_TOK)
+            s, r = call("POST", "/admin/cheat-cases/%s/resolve" % tid, {
+                "sanction": "none", "reclaim_up": RECLAIM,
+                "note": "gb 回收虚报"}, token=ROOT_TOK)
+            snap = int(one("SELECT uploaded FROM users WHERE id=%s" % uid))
+            led = int(one("SELECT coalesce(sum(delta_up),0) FROM "
+                          "traffic_ledger WHERE user_id=%s AND reason LIKE "
+                          "'cheat reclaim %%'" % uid) or 0)
+            ok("GB-L2 不变量一：流水合计 == 快照实际变化（快照=%s 流水=%s）"
+               % (snap, led), snap == UP0 - 100 and led == -100,
+               "旧码在这里就是撕裂 %d 字节" % (UP0 - snap + led))
+            s, r = call("POST", "/cheat-appeals", {
+                "case_id": int(tid),
+                "body": "这不是我做的，请复核证据来源与统计口径。"},
+                token=victim)
+            aid = dat(r).get("appeal_id") or dat(r).get("id")
+            CLN.append("DELETE FROM appeals WHERE id = %s" % aid)
+            s, r = call("POST", "/admin/cheat-appeals/%s/resolve" % aid,
+                        {"outcome": "overturned", "note": "gb 推翻"},
+                        token=reviewer)
+            end = int(one("SELECT uploaded FROM users WHERE id=%s" % uid) or 0)
+            net = int(one("SELECT coalesce(sum(delta_up),0) FROM "
+                          "traffic_ledger WHERE user_id=%s AND reason LIKE "
+                          "'cheat %%'" % uid) or 0)
+            ok("GB-L3 不变量二：推翻后回补到最初值（=%s，期望 %s；流水净额=%s）"
+               % (end, UP0, net), end == UP0 and net == 0,
+               "旧码这里 uploaded 变 %s＝白得 %d 字节，而流水净额 0 看不出来"
+               % (end, end - UP0))
+            CLN.append("DELETE FROM traffic_ledger WHERE user_id = %s" % uid)
+            CLN.append("DELETE FROM case_notes WHERE case_id = %s" % tid)
+            CLN.append("DELETE FROM reports WHERE id = %s" % tid)
+        print("== 收尾 ==")
+        for st in reversed(CLN):
+            if st:
+                one(st)
+        ok("GB-L4 残料清零（探针流水 0、在册数不变）",
+           one("SELECT count(*) FROM traffic_ledger WHERE user_id IN (%s)"
+               % (",".join(str(x) for x in UIDS) or "-1")) == "0",
+           "在册=%s" % one("SELECT count(*) FROM users WHERE status < 2"))
 
 summary()
