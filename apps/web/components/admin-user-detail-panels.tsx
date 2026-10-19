@@ -16,7 +16,7 @@ import { fmtBytes, fmtHours } from "./admin-user-detail-shared";
 import { PagedBar } from "./admin-user-detail-pager";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import { SPARK_KIND_LABELS } from "@/lib/spark-kind-labels";
+import { sparkKindLabels } from "@/lib/spark-kind-labels";
 
 export function ProfilePanels({
   d,
@@ -136,7 +136,9 @@ export function SparkPanel({
   setPage: (v: number) => void;
   dt: (s: string | null) => string;
 }) {
-  const u = useI18n().dict.userDetail;
+  const dl = useI18n().dict;
+  const u = dl.userDetail;
+  const kindLabels = sparkKindLabels(dl.my);
   return (
     <section className="brand-panel flex flex-col gap-2 p-4">
       <PagedBar total={spark?.total ?? 0} cur={page} onPage={setPage} />
@@ -159,7 +161,7 @@ export function SparkPanel({
                   {r.amount >= 0 ? "+" : ""}
                   {r.amount.toLocaleString()}
                 </td>
-                <td>{SPARK_KIND_LABELS[r.kind] ?? r.kind}</td>
+                <td>{kindLabels[r.kind] ?? r.kind}</td>
                 <td className="num">{r.balance_after.toLocaleString()}</td>
                 <td className="text-sub">{dt(r.created_at)}</td>
               </tr>

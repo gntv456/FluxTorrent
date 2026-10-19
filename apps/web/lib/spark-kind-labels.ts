@@ -7,12 +7,20 @@
  * 统一「银行」类——用户看的是来源大类，不必区分内部动作细节。
  *
  * 使用：me/sparks 用户流水页与后台用户详情 SparkPanel 共用。
- * i18n 收口批：文案改由 zh-CN 源字典 me.kinds 提供（en/zh-TW/ja 随
- * getDict 深合并各自覆盖），本文件只保留键序与回落逻辑；未收录 kind
- * 回落原始 key，不静默。
+ *
+ * ⚠️ 2026-10-20 接线更正：这里原先写成 `= zhCN.my.kinds`（直连源字典），
+ * 于是 `getDict` 的段级回落机制对这张表完全不起作用——en/zh-TW 已经翻好的
+ * 27 个 kind（shop / game / download / attendance / forum…全是流水里最常见的
+ * 来源）在英文界面永远显示简体中文，属「翻了但没人读」。现在按调用方传进的
+ * 当前字典取，回落仍由 i18n/server.ts 的深合并负责（未翻的键自动落 zh-CN）。
  */
 
-import { zhCN } from "@/i18n/zh-CN";
+import { zhCN, type Dict } from "@/i18n/zh-CN";
 
-export const SPARK_KIND_LABELS: Record<string, string> =
-  zhCN.my.kinds as Record<string, string>;
+/** 当前语种的 kind 标签；不传 `dict.my` 时退回 zh-CN 源。 */
+export function sparkKindLabels(
+  my?: Pick<Dict["my"], "kinds">,
+): Record<string, string> {
+  const src = (my ?? zhCN.my).kinds;
+  return (src ?? {}) as unknown as Record<string, string>;
+}
