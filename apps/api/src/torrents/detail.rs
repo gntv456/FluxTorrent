@@ -220,29 +220,37 @@ pub async fn list_thanks(
     .map_err(|e| DomainError::Internal(e.into()))
 }
 
-/// 落一行感谢。**执行器泛型**（与 farm_egg 同式）：调用方要把它和答谢转账
+/// 落一行感谢，并把这一行的时间戳（微秒）带回给调用方。
+/// **执行器泛型**（与 farm_egg 同式）：调用方要把它和答谢转账
 /// 放进同一笔事务（P-360），自己 begin 的版本会退回「感谢记了、钱没动」。
+///
+/// 带回时间戳是给幂等键用的（P-380）：键要锚在「这一条感谢行」这次事件上，
+/// 而不是锚在「谁谢了哪种」上。`admin_http/user_del.rs:118` 清号时
+/// `DELETE FROM thanks` 却从不删 `spark_ledger`（全仓零命中），账号又是
+/// 墓碑化不物理删除——按人-种定键时，复活后再谢同一种永远撞 Replayed，
+/// 实测 400「该笔答谢已受理」且感谢行落不下去（钱货两头都卡死）。
 pub async fn thank<'e, E>(
     exe: E,
     torrent_id: i64,
     user_id: i64,
-) -> DomainResult<()>
+) -> DomainResult<i64>
 where
     E: sqlx::PgExecutor<'e>,
 {
-    let res = sqlx::query(
+    let ts: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
         "INSERT INTO thanks (torrent_id, user_id) VALUES ($1, $2) ON \
-         CONFLICT DO NOTHING",
+         CONFLICT DO NOTHING RETURNING created_at",
     )
     .bind(torrent_id)
     .bind(user_id)
-    .execute(exe)
+    .fetch_optional(exe)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    if res.rows_affected() == 0 {
-        return Err(DomainError::AlreadyThanked);
+    // 零行 = (torrent_id, user_id) 主键已存在 = 真的谢过了
+    match ts {
+        Some(t) => Ok(t.timestamp_micros()),
+        None => Err(DomainError::AlreadyThanked),
     }
-    Ok(())
 }
 
 pub async fn bookmark(

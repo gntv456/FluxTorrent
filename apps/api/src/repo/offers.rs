@@ -75,24 +75,28 @@ pub async fn voteable(repo: &Repo, offer_id: i64) -> bool {
     .unwrap_or(false)
 }
 
-/// 占位投票（原子判重）。返回 false = 已投过。
+/// 占位投票（原子判重）。返回这次投票事件＝新行的时间戳（微秒）；
+/// `None` = 已投过（`offer_votes_pkey (offer_id, user_id)` 挡住）。
+/// 时间戳是给幂等键用的（P-380）：键锚「这一票」而不是「谁投了哪个候选」，
+/// 否则清号删掉占位行、流水按口径不删，复活后重投同一候选会被旧键卡死。
 pub async fn place_vote<'e, E>(
     exe: E,
     offer_id: i64,
     user_id: i64,
-) -> Result<bool, sqlx::Error>
+) -> Result<Option<i64>, sqlx::Error>
 where
     E: sqlx::PgExecutor<'e>,
 {
-    let r = sqlx::query(
+    let ts: Option<chrono::DateTime<chrono::Utc>> = sqlx::query_scalar(
         "INSERT INTO offer_votes (offer_id, user_id, \
-         cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING",
+         cost) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING \
+         RETURNING created_at",
     )
     .bind(offer_id)
     .bind(user_id)
-    .execute(exe)
+    .fetch_optional(exe)
     .await?;
-    Ok(r.rows_affected() > 0)
+    Ok(ts.map(|t| t.timestamp_micros()))
 }
 
 /// 计票 +1（仍限未转正）。返回 false = 已被转正，投票落空。
