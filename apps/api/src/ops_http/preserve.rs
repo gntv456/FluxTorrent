@@ -7,6 +7,8 @@ use serde::Deserialize;
 use crate::dto::ok;
 mod preserve_choice;
 use self::preserve_choice::{norm_choice, SCOPES, STATUSES};
+mod claim;
+pub use self::claim::preserve_claim;
 
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -178,46 +180,6 @@ pub(super) async fn preserve_list(
     })))
 }
 
-#[derive(Deserialize)]
-struct PreserveClaimReq {
-    torrent_id: i64,
-}
-
-#[post("/preserve/claim")]
-pub(super) async fn preserve_claim(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<PreserveClaimReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    // 认领即记录做种时长/上传量基线（NP claims.seed_time_begin/uploaded_begin 口径）
-    let updated = sqlx::query(
-        "UPDATE seed_preserve sp SET \
-            claimed_by = $2, claimed_at = now(), last_settle_at = now(), \
-            seed_time_begin = COALESCE(( \
-                SELECT s.seeded_seconds FROM snatches s \
-                WHERE s.torrent_id = sp.torrent_id AND s.user_id = $2), 0), \
-            uploaded_begin = COALESCE(( \
-                SELECT s.uploaded FROM snatches s \
-                WHERE s.torrent_id = sp.torrent_id AND s.user_id = $2), 0) \
-         WHERE sp.torrent_id = $1 AND sp.claimed_by IS NULL",
-    )
-    .bind(body.torrent_id)
-    .bind(auth.id)
-    .execute(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    if updated.rows_affected() == 0 {
-        return Err(DomainError::Validation(
-            "该种子已被认领或不在保种区".into(),
-        ));
-    }
-    state
-        .repo
-        .audit(Some(auth.id), "preserve_claim", Some(body.torrent_id))
-        .await;
-    Ok(ok(serde_json::json!({ "claimed": body.torrent_id })))
-}
 
 // ============ M28 插件 ============
 
