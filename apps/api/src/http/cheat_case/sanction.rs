@@ -151,30 +151,49 @@ pub async fn cheat_case_resolve(
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
     // ③ 回收虚报上传量（负向流水 + 同步快照列；申诉 overturned 时反向）
+    //
+    // P-403：流水记「实际发生的差额」，不记请求值。快照列是
+    // `GREATEST(uploaded - 请求值, 0)`——夹到 0 之后实际只扣掉了 `uploaded`
+    // 那么多，而旧写法把**请求值**写进 traffic_ledger：①`sum(ledger)` 与
+    // `users.uploaded` 永久撕裂；②申诉推翻按同一枚请求值回补，于是
+    // 「只有 100G、被回收 500G」的号推翻后白得 400G 上传量（分享率/等级/成就
+    // 全读这一列）。同仓早有成文口径：`admin_http/user_ops.rs` 的 P0 错账注释
+    // 「流水必须记实际发生的差额而非请求 delta」。
+    let mut reclaim_applied = 0i64;
     if reclaim_up > 0 {
-        sqlx::query(
-            "INSERT INTO traffic_ledger \
-               (id, user_id, torrent_id, delta_up, delta_down, \
-                window_start, reason, operator_id) \
-             VALUES (nextval('traffic_ledger_id_seq'), $1, 0, $2, 0, \
-                     now(), $3, $4)",
+        let up_now: i64 = sqlx::query_scalar(
+            "SELECT uploaded FROM users WHERE id = $1 FOR UPDATE",
         )
         .bind(uid)
-        .bind(-reclaim_up)
-        .bind(format!("cheat reclaim case #{id}"))
-        .bind(auth.id)
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        sqlx::query(
-            "UPDATE users SET uploaded = GREATEST(uploaded - $1, 0) \
-             WHERE id = $2",
-        )
-        .bind(reclaim_up)
-        .bind(uid)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+        reclaim_applied = reclaim_up.min(up_now.max(0));
+        if reclaim_applied > 0 {
+            sqlx::query(
+                "INSERT INTO traffic_ledger \
+                   (id, user_id, torrent_id, delta_up, delta_down, \
+                    window_start, reason, operator_id) \
+                 VALUES (nextval('traffic_ledger_id_seq'), $1, 0, $2, 0, \
+                         now(), $3, $4)",
+            )
+            .bind(uid)
+            .bind(-reclaim_applied)
+            .bind(format!("cheat reclaim case #{id}"))
+            .bind(auth.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            sqlx::query(
+                "UPDATE users SET uploaded = GREATEST(uploaded - $1, 0) \
+                 WHERE id = $2",
+            )
+            .bind(reclaim_applied)
+            .bind(uid)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
     }
     // ④ sanction JSONB + 关案
     let sj = if kind == "none" && reclaim_up == 0 {
@@ -188,6 +207,8 @@ pub async fn cheat_case_resolve(
             "warn_weeks": warn_weeks,
             "ban_days": ban_days,
             "reclaim_up": reclaim_up,
+            // 反向解除只回补这个数（请求值仅作台账/界面读数）
+            "reclaim_applied": reclaim_applied,
             "note": note,
         })
     };

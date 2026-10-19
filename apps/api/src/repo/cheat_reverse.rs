@@ -28,10 +28,20 @@ pub async fn reverse_sanction(
         .and_then(|s| s.get("kind"))
         .and_then(|v| v.as_str())
         .unwrap_or("");
+    // P-403：只回补**实际扣掉的那个数**（`reclaim_applied`）。旧写法读请求值
+    // `reclaim_up`，而扣减侧被 `GREATEST(...,0)` 夹过 ⇒ 虚报多于现有上传量的
+    // 案件被推翻时，会员白得差额。缺 `reclaim_applied` 的老案件仍按请求值走
+    // （那些案的扣减侧本来就是请求值，账目自洽，不能凭空改口径）。
     let r_up = sanction
-        .and_then(|s| s.get("reclaim_up"))
+        .and_then(|s| s.get("reclaim_applied"))
         .and_then(|v| v.as_i64())
-        .unwrap_or(0);
+        .or_else(|| {
+            sanction
+                .and_then(|s| s.get("reclaim_up"))
+                .and_then(|v| v.as_i64())
+        })
+        .unwrap_or(0)
+        .max(0);
     let mut reversed: Vec<String> = Vec::new();
     // ① 停权 / 全站封禁
     if matches!(kind, "ban" | "full_ban") {
