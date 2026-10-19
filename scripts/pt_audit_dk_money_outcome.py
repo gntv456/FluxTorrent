@@ -271,7 +271,7 @@ for _p in sorted(rs_files()):
     _t = strip_comments(io.open(_p, encoding="utf-8", errors="replace").read())
     if LEAKY.search(_t):
         leaky_files.append(os.path.relpath(_p, ROOTDIR).replace("\\", "/"))
-DK9_CEIL = 3
+DK9_CEIL = 1
 ok("DK9 「只判 Err 不判 Replayed」的扣款口 %d ≤ 上界 %d（只降不升）"
    % (len(leaky_files), DK9_CEIL),
    len(leaky_files) <= DK9_CEIL,
@@ -279,5 +279,22 @@ ok("DK9 「只判 Err 不判 Replayed」的扣款口 %d ≤ 上界 %d（只降�
 print("   [在册] DK9 待修清单（每处照 P-379+P-380 一起改：同事务 + 键锚行）：")
 for f in leaky_files:
     print("      · %s" % f)
+
+# DK10 已修的两口不许把键退回「人 × 目标」：第二段实参必须是**行标识**
+# （fun_vote 用 fun_votes.id、task_claim 用 claim_id），否则白拿翻成永久死端
+ROWKEY = re.compile(
+    r'format!\("(fun-vote|task_fee):\{\}:\{\}"\s*,\s*'
+    r'(?:auth\.id,\s*)?(vote_id|claim_id)')
+GF = os.path.join(APPS, "api", "src", "games_http", "fun.rs")
+TO = os.path.join(APPS, "api", "src", "ops_http", "task_overview.rs")
+gfun = strip_comments(io.open(GF, encoding="utf-8", errors="replace").read())
+gtask = strip_comments(io.open(TO, encoding="utf-8", errors="replace").read())
+got2 = set(ROWKEY.findall(gfun + gtask))
+WANT2 = {("fun-vote", "vote_id"), ("task_fee", "claim_id")}
+ok("DK10 fun-vote/task_fee 两口键已锚行（命中=%s）" % sorted(got2),
+   WANT2 <= got2, "第二段退回目标号＝P-380 的另一头（永久死端）")
+OLD3 = 'let idem = format!("fun-vote:{}:{}", auth.id, body.poll_id);'
+ok("DK10b 承重自证：旧的「人 × 投票」键必须判红",
+   not ROWKEY.search(OLD3), "旧键命中=%s" % bool(ROWKEY.search(OLD3)))
 
 summary()

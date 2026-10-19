@@ -163,6 +163,16 @@ pub(super) async fn task_claim(
         Some(l) if l > 0 => i64::from(l),
         _ => i64::from(i32::MAX), // NULL = 不限领
     };
+    // P-383：占位与报名费同一事务，幂等键锚「这一条认领」（claim_id）。
+    // 旧版键按「人 × 任务」定，而 admin_http/user_del.rs:88 清号删 task_claims
+    // 却从不删 spark_ledger ⇒ 复活后重新认领同一任务时 spend 回 Ok(Replayed)
+    // 被当成成功放过（实测：认领落了、报名费没扣＝免费认领）。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let claim_id: i64 = sqlx::query_scalar(
         r#"
         INSERT INTO task_claims (task_id, user_id, base_uploaded,
@@ -182,7 +192,7 @@ pub(super) async fn task_claim(
     .bind(body.task_id)
     .bind(auth.id)
     .bind(limit_param)
-    .fetch_one(&state.repo.db)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| match e {
         sqlx::Error::Database(db) if db.is_unique_violation() => {
@@ -193,31 +203,31 @@ pub(super) async fn task_claim(
         other => DomainError::Internal(other.into()),
     })?;
 
-    // 报名费：先占位后扣费，扣费失败回滚占位（此前扣费在前，INSERT 失败会白扣费；
-    // 幂等键 task_fee:{uid}:{task_id} 保证重试不会双扣）
+    // 报名费：与占位同事务（此前扣费在前、INSERT 失败会白扣费；扣费失败
+    // 回滚占位靠 best-effort DELETE，撤失败就留下「已认领但没交费」的行）
     if fee > 0 {
-        let idem = format!("task_fee:{}:{}", auth.id, body.task_id);
-        if let Err(e) = crate::economy_http::spend_spark(
-            &state.repo.db,
-            auth.id,
-            fee,
-            "task_fee",
-            &idem,
-            "task",
-            body.task_id,
-        )
-        .await
-        {
-            let _ = sqlx::query(
-                "DELETE FROM task_claims WHERE id = $1 AND user_id = $2",
+        let idem = format!("task_fee:{}:{}", auth.id, claim_id);
+        if !matches!(
+            crate::economy_http::spend_spark_tx(
+                &mut tx,
+                auth.id,
+                fee,
+                "task_fee",
+                &idem,
+                "task",
+                body.task_id,
             )
-            .bind(claim_id)
-            .bind(auth.id)
-            .execute(&state.repo.db)
-            .await;
-            return Err(e);
+            .await?,
+            crate::economy_http::SpendOutcome::Spent
+        ) {
+            return Err(DomainError::Validation(
+                "这笔报名费已受理，未重复扣款".into(),
+            ));
         }
     }
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "claim_id": claim_id })))
 }
 
