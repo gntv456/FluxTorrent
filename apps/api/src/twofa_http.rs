@@ -194,7 +194,15 @@ async fn totp_disable(
     let raw = BASE32_NOPAD
         .decode(b32.as_bytes())
         .map_err(|e| DomainError::Validation(format!("密钥损坏: {e}")))?;
-    if !totp_verify(&raw, body.code) {
+    // P-408：关掉 2FA 必须走**登录同一把尺**的校验（`totp_verify_login`：
+    // 同码防重放，Redis 键 TTL 3 个窗口）。旧写法用裸 `totp_verify` ⇒ 一枚码
+    // 在登录时已被消费，90 秒内却仍能被拿来关掉二次验证：两路口各记各的账，
+    // 防重放被自己人绕过。对会话劫持者而言「旁观到一次登录」就等于
+    // 「可以永久关掉 2FA」，这正是要堵的持久化路径。
+    // （`totp_enable` 那处维持裸校验：新密钥的码此前不可能被消费过。）
+    if !totp_verify_login(&mut state.redis.clone(), auth.id, &raw, body.code)
+        .await
+    {
         return Err(DomainError::Validation("验证码不正确".into()));
     }
     sqlx::query(
