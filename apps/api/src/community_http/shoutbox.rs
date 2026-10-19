@@ -58,7 +58,7 @@ struct ShoutReq {
     post,
     path = "/api/v1/shoutbox",
     tag = "社区/喊话",
-    description = "发喊话（扣魔力；限频）。",
+    description = "发喊话（每 10 秒一条；被禁言者不可发；不收费）。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
@@ -113,7 +113,7 @@ struct ShoutDeleteReq {
     post,
     path = "/api/v1/shoutbox/delete",
     tag = "社区/喊话",
-    description = "删自己的喊话。",
+    description = "删喊话（本人 2 分钟内可撤回；职员不受时限）。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
