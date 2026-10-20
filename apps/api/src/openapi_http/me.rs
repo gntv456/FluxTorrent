@@ -117,7 +117,7 @@ pub(super) async fn me_hr(
     } else {
         ""
     };
-    // 列表与计数共用同一个 FROM/WHERE 片段（P-444：total 必须是「能翻出来
+    // 列表与计数共用同一个 FROM/WHERE 片段（P-451：total 必须是「能翻出来
     // 的那些行」的总数，不是另一套谓词数出来的）
     let fw = format!(
         "hr_violations h JOIN torrents t ON t.id = h.torrent_id \
@@ -160,7 +160,7 @@ pub(super) async fn me_hr(
         ok(serde_json::json!({
             "items": items,
             // count = 本次返回条数（与同族 /open/announces 同口径）；
-            // 总数看 total，还有没有下一页看 has_more（P-444）
+            // 总数看 total，还有没有下一页看 has_more（P-451）
             "count": got,
             "total": total,
             "offset": offset,
@@ -235,7 +235,7 @@ pub(super) async fn me_messages(
         ok(serde_json::json!({
             "items": items,
             // count = 本次返回条数（与同族 /open/announces 同口径）；
-            // 总数看 total，还有没有下一页看 has_more（P-444）
+            // 总数看 total，还有没有下一页看 has_more（P-451）
             "count": got,
             "total": total,
             "offset": offset,

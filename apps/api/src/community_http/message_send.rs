@@ -187,7 +187,7 @@ pub(crate) async fn message_send(
         }
     }
 
-    // P-441：「保存短讯至发件箱」(users.save_pm，0024，默认 FALSE) 此前全站
+    // P-448：「保存短讯至发件箱」(users.save_pm，0024，默认 FALSE) 此前全站
     // 无人读，而发件箱按 `saved = 1` 过滤（message.rs 的 outbox 口）⇒ 关着
     // 开关的人每封照样留副本。现网账面：2961 人 save_pm=false，其中 30 人
     // 已背着不该有的发件副本。写值改由本人这一列决定。

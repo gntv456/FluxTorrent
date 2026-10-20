@@ -14,7 +14,7 @@ use super::paging::{count_with, has_more, page_params};
 use super::{require_scope, require_token, with_rl, SCOPE_READ};
 
 /// 列表与计数共用的 FROM/WHERE 片段（`$1` = Token 主人 uid）。
-/// P-444：`total` 数的必须正是「能翻出来的那些行」——两处各写一份
+/// P-451：`total` 数的必须正是「能翻出来的那些行」——两处各写一份
 /// 迟早分叉，所以这里只留一份给两边共用（同仓 `/me/torrentlist` 同口径）。
 fn snatch_fw(seeding_only: bool) -> String {
     format!(
@@ -168,7 +168,7 @@ pub(super) async fn me_seeding(
         ok(serde_json::json!({
             "items": items,
             // count = 本次返回条数；total = 这套谓词下的总行数；
-            // has_more = 后面还有（P-444 前这两个字段根本不存在，
+            // has_more = 后面还有（P-451 前这两个字段根本不存在，
             // 客户端只能拿到被 limit 截断的一页还当它是全部）
             "count": got,
             "total": total,
@@ -241,7 +241,7 @@ pub(super) async fn me_history(
         ok(serde_json::json!({
             "items": items,
             // count = 本次返回条数；total = 这套谓词下的总行数；
-            // has_more = 后面还有（P-444 前这两个字段根本不存在，
+            // has_more = 后面还有（P-451 前这两个字段根本不存在，
             // 客户端只能拿到被 limit 截断的一页还当它是全部）
             "count": got,
             "total": total,

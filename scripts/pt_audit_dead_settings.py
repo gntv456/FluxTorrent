@@ -10,7 +10,7 @@
   topics_per_page：设 2 → 库里 2 → 设置页回显 2 → GET /forums/1/topics 仍 20 条
   posts_per_page：设 1 → 库里 1 → 主题 472（库里 3 层）仍回 2 条
 ⇒ 不是「没存进去」，也不是「存了但回显坏」，是**没有读者**。
-（topics_per_page 已于 P-442 接通读侧，行为判据搬到
+（topics_per_page 已于 P-449 接通读侧，行为判据搬到
 `pt_audit_forum_per_page.py`；posts_per_page 仍在册——本主题楼层列表
 端点根本不分页（一次 `LIMIT 200`），接它等于新加分页，属加功能不是接线。）
 
@@ -18,7 +18,7 @@
   · 读者扫描范围＝apps/api + apps/worker + apps/tracker + crates + apps/web，
     排除设置表单本身与写/回显口（那只能证明「有控件」，不证明「有人读」）；
   · **先剥 `//` 与 `/* */` 注释再扫**：注释里提一句字段名不算读者。
-    这条是 P-440 的负控抓出来的——把谓词翻掉之后「还有没有读者」仍判绿，
+    这条是 P-447 的负控抓出来的——把谓词翻掉之后「还有没有读者」仍判绿，
     因为日志字符串与文档注释里写着那个列名；
   · **必须减掉人工核实过的活口**：`site_language` 纯 grep 会被误判成死开关，
     实际 usercp.tsx:175/217 拿到它后调 syncLocaleCookie(want) + router.refresh()
@@ -31,7 +31,7 @@
   D0 尺自证：写口列数 >40、且抽样的字段确实在设置面板里有控件
   D1 台账集合相等：算出的候选死开关 == 登记值（多=新死开关；少=已接通，删桩）
   D2 活口名单：ALIVE 里每个字段都能静态找到消费点（防把真生效的字段记成死的）
-  D3 写口回环：topics_per_page=2 存得下也回显（P-442 之前这里是
+  D3 写口回环：topics_per_page=2 存得下也回显（P-449 之前这里是
      「列表仍回几十条」的活体钉桩，接通之后按本文件自己的口径撤桩；
      行为判据住在 pt_audit_forum_per_page.py）
   D3b 探针偏好已还原（活体闸门最怕留残料）
@@ -68,11 +68,11 @@ ALIVE = {
     "tooltip": "apps/web/components/torrent-table-badges.tsx",
 }
 # 登记在册的候选死开关（只许缩小）。来源：写口 46 列全量扫 + 人工排除误判
-# notify_hr 已接通（P-440，2026-10-21）：hr_resolve.rs 的达标消除信按
+# notify_hr 已接通（P-447，2026-10-21）：hr_resolve.rs 的达标消除信按
 # `users.notify_hr` 执法，常驻闸门 scripts/pt_audit_hr_fulfilled_pref.py。
-# save_pm 已接通（P-441，2026-10-21）：message_send.rs 按本人 save_pm 决定
+# save_pm 已接通（P-448，2026-10-21）：message_send.rs 按本人 save_pm 决定
 # 发件副本，常驻闸门 scripts/pt_audit_pm_outbox_copy.py。
-# topics_per_page 已接通（P-442，2026-10-21）：topic.rs 按本人那一列
+# topics_per_page 已接通（P-449，2026-10-21）：topic.rs 按本人那一列
 # 折算每页条数（0=未设置、越界夹 200），常驻闸门
 # scripts/pt_audit_forum_per_page.py；本文件原 D3 活体钉桩随之撤掉。
 DEAD_LEDGER = {
@@ -190,7 +190,7 @@ def main():
        "多＝又添了不生效的控件；少＝有字段接通了，请把它从台账里删掉并补活口名单")
     print("   [在册 %d] %s" % (len(DEAD_LEDGER), ", ".join(sorted(DEAD_LEDGER))))
     # ---------- D3 写口回环（原「列表仍回几十条」活体钉桩已撤）----------
-    # P-442 把 topics_per_page 接上了读侧，钉桩的使命到此结束；
+    # P-449 把 topics_per_page 接上了读侧，钉桩的使命到此结束；
     # 行为层判据搬去 scripts/pt_audit_forum_per_page.py。
     token = tok()
     if not token:

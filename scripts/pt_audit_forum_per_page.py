@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""常驻闸门：版块每页主题数必须听控制面板那一列（P-442）。
+"""常驻闸门：版块每页主题数必须听控制面板那一列（P-449）。
 
 会员视角：控制面板 → 追踪偏好 → 「每页主题数」，我填 2、保存、回显也是 2，
 可版块页照样一次几十条。这一列（`users.topics_per_page`，0024）此前全站
@@ -18,7 +18,7 @@
     `repo::settings::read`（按 name 读 site_settings 的唯一居所）；
   · 读失败按「无偏好」处理，偏好不该把列表主路径拖倒。
 
-P-443 是本批的续集：接线时才发现后台有个「主题列表默认每页」（现网值 20），
+P-450 是本批的续集：接线时才发现后台有个「主题列表默认每页」（现网值 20），
 它躺在 `fake_switch_baseline.json` 的存量登记里没人读——站长改完保存成功、
 回显正常、版块页照旧 50 条。**行为可见变化**：站方重建后，没设过偏好的
 会员看到的版块页从 50 条/页变成站点值 20 条/页（这才是后台那一格一直说
@@ -142,7 +142,7 @@ ok("G1b 折函数取的是 repo 点查（SQL 不留在 H 层）",
 ok("G1c 读失败按「无偏好」兜，不拿偏好把列表主路径拖倒",
    re.search(r"pub async fn board_per_page[\s\S]{0,400}"
              r"unwrap_or\(0\)", prefs_t) is not None)
-ok("G1d 站点默认那层也接上了（P-443，走 repo::settings 的单键读居所）",
+ok("G1d 站点默认那层也接上了（P-450，走 repo::settings 的单键读居所）",
    "topics_per_page_default" in new_t
    and "crate::repo::settings::read" in new_t)
 

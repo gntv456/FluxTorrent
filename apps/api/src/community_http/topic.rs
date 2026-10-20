@@ -75,13 +75,13 @@ pub(crate) const TOPIC_PAGE_SIZE: i64 = 50;
 /// 打断设置页（P-275 在种子列表上就是这么处理的）。
 const TOPIC_PAGE_MAX: i64 = 500;
 
-/// 每页主题数的三层优先：本人偏好 > 站点默认 > 硬常量（P-442/P-443）。
+/// 每页主题数的三层优先：本人偏好 > 站点默认 > 硬常量（P-449/P-450）。
 ///
 /// · `pref` = `users.topics_per_page`（0024）。此前只有写口与回显读它，
 ///   面板填 2 照样一次给几十条——「能改能存能回显但没人读」的假开关。
 ///   0/负数 = 未设置（建表默认就是 0）。
 /// · `site` = `site_settings.topics_per_page_default`（0025 播种 20、
-///   0039 登记进 `/admin/settings` 的「主题列表默认每页」）。P-443 之前
+///   0039 登记进 `/admin/settings` 的「主题列表默认每页」）。P-450 之前
 ///   它躺在 `fake_switch_baseline.json` 的存量里无人读：站长在后台改了，
 ///   版块页照旧 50 条。
 /// 正数一律夹到 `TOPIC_PAGE_MAX`；两层都没给到合法正数才回落常量。
@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(page_size_of(0, None), TOPIC_PAGE_SIZE, "两层都没给");
         assert_eq!(page_size_of(-7, None), TOPIC_PAGE_SIZE, "负数同缺省");
         assert_eq!(page_size_of(2, Some(20)), 2, "偏好压过站点默认");
-        assert_eq!(page_size_of(0, Some(20)), 20, "站点默认生效（P-443）");
+        assert_eq!(page_size_of(0, Some(20)), 20, "站点默认生效（P-450）");
         assert_eq!(page_size_of(0, Some(0)), TOPIC_PAGE_SIZE,
                    "站点那格清空=回落常量");
         assert_eq!(page_size_of(0, Some(-1)), TOPIC_PAGE_SIZE,
