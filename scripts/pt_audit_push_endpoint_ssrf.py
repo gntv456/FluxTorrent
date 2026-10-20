@@ -133,6 +133,11 @@ ok("S1c 投递端钉地址 + 有超时（DNS 重绑定窗口与挂死线程都�
    and ".timeout(std::time::Duration::from_secs(10))" in cry_s)
 ok("S1d scheme 只认 https，解析不出来就拒（不再是 if let Ok 跳过）",
    'if u.scheme() != "https"' in ep_s and "is_empty()" in ep_s)
+ok("S1e IP 分类全仓只有一处实现（push 委托 domain::webhook::is_forbidden）",
+   len(git_grep("fn is_forbidden(")) == 1
+   and "is_forbidden(ip)" in ep_s and "octets()" not in ep_s,
+   "P-455：本文件的闸门本体一度被抄成第二份规则（两边缺段还不一样），"
+   "这条就是防它再长回来")
 
 print("== S2 纯函数行为 ==")
 t = subprocess.run(["cargo", "test", "--bin", "flux-api",
