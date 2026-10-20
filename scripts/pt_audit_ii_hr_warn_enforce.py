@@ -79,6 +79,27 @@ def quota_used(uid):
                  "now())::date), 0)" % uid))
 
 
+def run_job(job, wait_s=170):
+    """等 worker 真跑完一轮该任务（last_finished_at 前移才算）。
+
+    只看 last_started_at 会在 SQL 还没跑完时就返回——AH 的 G5 曾因此假红。
+    """
+    t0 = q("SELECT to_char(now(), 'YYYY-MM-DD\"T\"HH24:MI:SS.US')")
+    call("POST", "/admin/jobs/run", {"job": job}, token=ROOT)
+    deadline = time.time() + wait_s
+    while time.time() < deadline:
+        row = q("SELECT COALESCE(to_char(last_finished_at, "
+                "'YYYY-MM-DD\"T\"HH24:MI:SS.US'),'-')||'|'||"
+                "COALESCE(last_ok::text,'-') FROM job_status "
+                "WHERE job = '%s'" % job)
+        if "|" in row:
+            fin, _okv = row.split("|", 1)
+            if fin not in ("-", "") and fin > t0:
+                return fin
+        time.sleep(3)
+    return None
+
+
 print("== II0 探针成员与站点设定 ==")
 ORIG_EN = q("SELECT value FROM site_settings WHERE name = "
             "'hr_warn_enable'")
@@ -161,6 +182,23 @@ s, r = call("POST", "/invites", {}, TOK)
 ok("II4b 重新打开后拦截恢复（翻转正控）",
    s == 400 and "禁邀档" in msg(r),
    "http=%s %s" % (s, msg(r)[:120]))
+
+print("== II6 限下锁不被「低于阈值」提前解锁 ==")
+# fixture：无未解决违规（阶梯不会重算这一行），到期在未来（restore_due
+# 不清），此时唯一会碰这把锁的就是 hr_punish 的 restore_hr_locks。
+x("UPDATE users SET download_enabled = FALSE, "
+  "download_locked_by = 'hr' WHERE id = %d" % UID)
+x("INSERT INTO hr_warn_states (user_id, step, base_days, expires_at, "
+  "restrict_download, block_upload, block_invite) VALUES "
+  "(%d, 2, 7, now() + interval '1 day', true, false, false) "
+  "ON CONFLICT (user_id) DO UPDATE SET step = 2, "
+  "expires_at = now() + interval '1 day', restrict_download = true, "
+  "block_upload = false, block_invite = false" % UID)
+FIN = run_job("hr_punish")
+EN = q("SELECT download_enabled::text FROM users WHERE id = %d" % UID)
+ok("II6 警告到期前 hr_punish 不得解锁（旧实现 <阈值即放人）",
+   FIN is not None and EN == "false",
+   "download_enabled=%s finished=%s" % (EN, FIN))
 
 print("== II5 收尾 ==")
 if ORIG_EN is None:

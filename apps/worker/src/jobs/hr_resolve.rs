@@ -23,6 +23,18 @@ pub(crate) async fn restore_hr_locks(
         WHERE u.status < 2
           AND NOT u.download_enabled
           AND u.download_locked_by = 'hr'
+          -- P-445：阶梯第 2 档起的「限下」有自己的 expires_at；本作业若按
+          -- 「未解决违规 < 阈值」放人，会在一分钟内把阶梯的 14/30 天锁抹掉，
+          -- 恢复承诺形同虚设。阶梯总开关关闭时整段不生效（与 warn_cfg 同口径）。
+          AND NOT EXISTS (
+              SELECT 1 FROM hr_warn_states w
+              WHERE w.user_id = u.id
+                AND w.step > 0
+                AND w.restrict_download
+                AND COALESCE((SELECT value FROM site_settings
+                              WHERE name = 'hr_warn_enable'), '1')
+                    NOT IN ('0', 'no')
+          )
           AND COALESCE((SELECT count(*) FROM hr_violations v
                         WHERE v.user_id = u.id
                           AND v.resolved_at IS NULL), 0) < $1
