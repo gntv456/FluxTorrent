@@ -146,6 +146,21 @@ else:
 ok("S0 module_social 已开（收尾还原 %s）" % MOD0,
    q("SELECT value FROM site_settings WHERE name = 'module_social'") == "yes")
 
+# 库里写了 yes 不等于接口认了：ModuleFlags 是**进程内 30s TTL 缓存**，
+# 只有后台保存才会 invalidate（台账里 BK 那 10 条红的真因就是这个）。
+# 旧写法改完库直接跑 S1，撞上缓存里的旧值 ⇒ 4101「本站未开放此功能」假红。
+_ack = 0
+_last = 0
+for _i in range(12):
+    _st, _b = call("GET", "/social/team/mine", None, ROOT)
+    _last = _st
+    if _st == 200:
+        _ack = 1
+        break
+    time.sleep(5)
+ok("S0b 开关已被接口认账（30s 进程内缓存，不能只信库）", _ack == 1,
+   "轮询 12 次最后 http=%s" % _last)
+
 # 门槛压低到 1 小时：缺省 240h=864000s 增量，探针造不出也等不起；
 # 这里测的是「达标→结算」链路，不是门槛本身（建队时按现值写进任务）。
 RH0 = q("SELECT COALESCE((SELECT value::text FROM site_settings WHERE "
