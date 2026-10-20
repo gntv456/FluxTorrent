@@ -92,8 +92,14 @@ pub(super) async fn search_pred_with_syn(
         ),
         3 => format!("AND ($6::text IS NULL OR u.username ILIKE $6{esc})"),
         4 => format!(
+            // P-436（批二百一十一）：IMDb 在这张表上有两个落库目标——上传/生成口
+            // 写 `media_info.imdb`（ptgen.rs:38、upload.rs:139），编辑口与导入/
+            // 演示种写 `imdb_id` 列（interact.rs:87）。`auto_meta.rs:67` 取数时
+            // 两处都读，唯独搜索只认 media_info ⇒ 会员在编辑表单填过 IMDb 的种，
+            // 用 search_area=4 永远搜不到（现网实测 imdb_id 非空的过审种 4 条，
+            // 旧谓词命中 0 条）。与 P-426 同族：同一字段多处落库、只有一处有读者。
             "AND ($6::text IS NULL OR t.media_info->>'imdb' ILIKE $6{esc} \
-             OR t.descr ILIKE $6{esc}){syn_pred}"
+             OR t.imdb_id ILIKE $6{esc} OR t.descr ILIKE $6{esc}){syn_pred}"
         ),
         _ => format!(
             "AND ($6::text IS NULL OR t.name ILIKE $6{esc} \
