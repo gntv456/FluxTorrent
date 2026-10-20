@@ -4,9 +4,9 @@
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 
+use super::subtitles_upload::{resolve_file, resolve_release};
 use super::subtitles_util::{
-    normalize_release, subtitle_ext_whitelist, subtitle_setting,
-    SubtitleUploadMeta, SubtitleUploadReq,
+    subtitle_setting, SubtitleUploadMeta, SubtitleUploadReq,
 };
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
@@ -143,123 +143,10 @@ pub(super) async fn subtitle_upload(
     ))
 }
 
-/// 文件三件套解析：attach://sha（体积/白名单/查重全链）或外部直链
-async fn resolve_file(
-    state: &web::Data<std::sync::Arc<AppState>>,
-    auth: &crate::http::AuthUser,
-    body: &SubtitleUploadReq,
-    torrent_id: Option<i64>,
-) -> DomainResult<(String, i64, Option<String>)> {
-    let _ = torrent_id;
-    if let Some(sha) =
-        body.file_sha.as_deref().map(str::trim).filter(|s| {
-            s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
-        })
-    {
-        // 校验附件归属：必须是本人在 attachments 上传过的文件（防冒用他人 sha）
-        let owned: Option<(i64, String)> = sqlx::query_as(
-            "SELECT size, filename FROM attachments WHERE sha256 = $1 \
-             AND user_id = $2",
-        )
-        .bind(sha)
-        .bind(auth.id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let Some((fsize, fname)) = owned else {
-            // 0285 P2：sha 字段是服务端算的 SHA3-256（字段名沿用历史契约），
-            // 第三方工具用本地 SHA2 会落这里——文案必须指路正确的取值方式
-            return Err(DomainError::Validation(
-                "附件未上传或不存在（请先通过 POST /api/v1/attachments \
-                 提交字幕文件，并原样回传其响应中的 sha256 字段值；\
-                 该值是服务端按 SHA3-256 计算的，与本地 SHA2 不同）"
-                    .into(),
-            ));
-        };
-        // P0-2 体积上限（maxsubsize 接线；默认 1MB）
-        let limit: i64 =
-            subtitle_setting(&state.repo.db, "maxsubsize", "1048576")
-                .await?
-                .parse()
-                .unwrap_or(1048576);
-        if fsize > limit {
-            return Err(DomainError::Validation(format!(
-                "字幕体积超限（{fsize} > {limit} 字节）"
-            )));
-        }
-        // P0-3 扩展名白名单：按 kind 取（lyric 允许 lrc，影视禁 lrc）
-        let file_ext = fname
-            .rsplit('.')
-            .next()
-            .map(|e| e.to_ascii_lowercase())
-            .filter(|_| fname.contains('.'));
-        let whitelist = subtitle_ext_whitelist(&state.repo.db).await?;
-        if let Some(e) = file_ext.as_ref() {
-            if !whitelist.contains(e) {
-                return Err(DomainError::Validation(format!(
-                    "不允许的扩展名 .{e}（允许：{}）",
-                    whitelist.join("/")
-                )));
-            }
-        }
-        // P0-4 sha 查重：同文件已挂在未删字幕下 → 拒绝（防重复 +5 火花）
-        let dup: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM subtitles WHERE file_ref = $1 \
-             AND deleted_at IS NULL)",
-        )
-        .bind(format!("attach://{sha}"))
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or(false);
-        if dup {
-            return Err(DomainError::Validation(
-                "该字幕已存在（相同文件）".into(),
-            ));
-        }
-        Ok((format!("attach://{sha}"), fsize, file_ext))
-    } else if let Some(link) = body
-        .file_ref
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| s.starts_with("http://") || s.starts_with("https://"))
-    {
-        // 直链分支按人节流（throttle 5/min）：外链不改奖励口径，但防脚本批量
-        // 提交外链刷字幕条数/占审核队列
-        crate::http::throttle(state, format!("sub-link:{}", auth.id)).await?;
-        Ok((link.to_string(), 0, None))
-    } else {
-        Err(DomainError::Validation(
-            "请上传字幕文件（或提供 http/https 直链）".into(),
-        ))
-    }
-}
-
-/// release_name：优先客户端提供，缺省用种子名归一化
-async fn resolve_release(
-    state: &web::Data<std::sync::Arc<AppState>>,
-    torrent_id: Option<i64>,
-    provided: Option<&str>,
-) -> DomainResult<Option<String>> {
-    if let Some(rn) = provided.map(str::trim).filter(|s| !s.is_empty()) {
-        return Ok(Some(normalize_release(rn)));
-    }
-    match torrent_id {
-        Some(tid) => sqlx::query_scalar::<_, String>(
-            "SELECT name FROM torrents WHERE id = $1",
-        )
-        .bind(tid)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .map(|n| normalize_release(&n))
-        .map_or(Ok(None), |v| Ok(Some(v))),
-        None => Ok(None),
-    }
-}
-
-/// 公告联动（0405 双路口径）：缺省写首页公告区（announcements，系统身份
-/// +「字幕」徽章），站长开 `shoutbox_announce_subtitles` 后才同时广播进
-/// 聊天室（传统 NP 气氛）。失败静默——公告不可用不应阻断上传主链路。
+/// 播报联动（0407 三渠分立）：全站动态流（site_activity）是缺省承接方
+/// ——公告区（announcements）回归管理员官方发布专用，播报不再写入；
+/// 站长开 `shoutbox_announce_subtitles` 后同时广播聊天室（传统 NP 气氛）。
+/// 失败静默——播报不可用不应阻断上传主链路。
 async fn announce_upload(
     state: &web::Data<std::sync::Arc<AppState>>,
     auth: &crate::http::AuthUser,
@@ -280,17 +167,16 @@ async fn announce_upload(
         .unwrap_or_else(|_| "用户".into())
     };
     let text = format!("{display} 上传了字幕「{title}」");
-    // 首页公告区（缺省路）：badge 区分来源；sort 追加到尾部不冲站务公告
+    // 全站动态流（缺省路；0405/0406 曾先后落聊天室/公告区，皆因渠道
+    // 语义不符回迁——timeline 见迁移 0407 头注释）
     let _ = sqlx::query(
-        "INSERT INTO announcements (title, body, badge, author_id, sort) \
-         VALUES ($1, $2, '字幕', NULL, \
-                 (SELECT COALESCE(max(sort),0)+10 FROM announcements))",
+        "INSERT INTO site_activity (kind, text, actor_id) \
+         VALUES ('subtitle_upload', $1, $2)",
     )
-    .bind(format!("新字幕上架"))
     .bind(text.clone())
+    .bind(auth.id)
     .execute(&state.repo.db)
     .await;
-    crate::http::home::invalidate_home_cache(state).await;
     // 聊天室广播（回开路，缺省关）
     let broadcast: Option<String> = sqlx::query_scalar(
         "SELECT value FROM site_settings \
