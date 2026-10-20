@@ -80,6 +80,29 @@ pub async fn settle_notify(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(user_id) = claimed else {
+        // P-463：这里原来一律回 `Duplicate`——把「订单号查无此单」也当成
+        // 「重复回调」，调用方据此给网关回 `success`。后果是钱确实在网关付了、
+        // 我们这边无处入账，而**回执把重投掐了**，全站没有任何人会知道。
+        // （`scripts/pt_audit_bh_donate_cheat.py` 的 H1g 只钉过管理员手工补单
+        // 那条口的「单号不存在要 404」，回调这条口没人管。）
+        // 现在分两种：确有此单且已 paid ⇒ 幂等成功；查无此单 ⇒ 出声并回失败，
+        // 让网关按它的策略继续重投——异常要留在能被看见的地方。
+        let known: Option<i64> = sqlx::query_scalar(
+            "SELECT id FROM payment_orders WHERE order_no = $1",
+        )
+        .bind(&n.order_no)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if known.is_none() {
+            tracing::warn!(
+                order = %n.order_no,
+                trade = %n.trade_no,
+                money = %n.amount_paid,
+                "donate notify: 签名有效但查无此单，回 fail 等网关重投（需人工核对）"
+            );
+            return Ok(SettleOutcome::UnknownOrder);
+        }
         // 已处理过的重复回调：幂等成功返回
         return Ok(SettleOutcome::Duplicate);
     };
@@ -143,6 +166,9 @@ pub enum SettleOutcome {
     Paid,
     Duplicate,
     NotSuccess,
+    /// 签名有效但 `payment_orders` 里查无此单（P-463）：调用方必须回失败，
+    /// 不能像 Duplicate 那样 ack success 把网关的重投掐掉。
+    UnknownOrder,
 }
 
 /// 演示环境模拟充值（FLUX_DEMO=1 专用，U4 从 topup 主路径移出）：

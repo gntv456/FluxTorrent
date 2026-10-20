@@ -20,8 +20,17 @@ pub async fn donate_notify(
     q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> HttpResponse {
     let _ = req;
+    // 回执分三种：入账成功与重复回调都 ack（停止重投）；「签名有效但查无此单」
+    // 回 fail——钱在网关那侧确实收到了，ack 会把重投掐掉、异常就地蒸发（P-463）。
+    use crate::payment::SettleOutcome;
     match crate::payment::settle_notify(&state, &q.into_inner()).await {
-        Ok(_) => HttpResponse::Ok().body("success"),
+        Ok(SettleOutcome::Paid) | Ok(SettleOutcome::Duplicate) => {
+            HttpResponse::Ok().body("success")
+        }
+        Ok(SettleOutcome::NotSuccess) => HttpResponse::Ok().body("success"),
+        Ok(SettleOutcome::UnknownOrder) => {
+            HttpResponse::Ok().body("fail: unknown order")
+        }
         Err(e) => {
             tracing::warn!(?e, "donate notify rejected");
             HttpResponse::Ok().body("fail")
