@@ -62,10 +62,16 @@ FORM = re.compile(
     r"(usercp[\w.-]*\.tsx?|me_settings"
     r"|/i18n/(zh-CN|en|zh-TW|ja)\.ts)")
 UID = int(os.environ.get("PROBE_UID", "6273"))
-# 人工逐个核实过的「真生效」字段（消费点写在注释里，D2 逐条验）
+# 人工逐个核实过的「真生效」字段：值是 (文件, 生效谓词)，谓词必须打到那个
+# 字段**真正起作用的那行代码**，不是文件里出现过这个单词。
+# 反面教材（10-21 实踩）：tooltip 原本被豁免，消费点写的是
+# apps/web/components/torrent-table-badges.tsx——可那处只是注释里
+# 「徽标类名与 tooltip 拼装」几个字。剥掉注释后 readers_of 返回空，而面板
+# 三档值（minorimdb/medianimdb/off）除写口枚举校验外全仓零消费：它一直是
+# 死开关，被旧 D2 的「单词共现」判据洗白。
 ALIVE = {
-    "site_language": "apps/web/components/usercp.tsx",
-    "tooltip": "apps/web/components/torrent-table-badges.tsx",
+    "site_language": (
+        "apps/web/components/usercp.tsx", r"siteLangToLocale\("),
 }
 # 登记在册的候选死开关（只许缩小）。来源：写口 46 列全量扫 + 人工排除误判
 # notify_hr 已接通（P-447，2026-10-21）：hr_resolve.rs 的达标消除信按
@@ -81,7 +87,7 @@ DEAD_LEDGER = {
     "dl_icon", "fontsize", "pm_per_page", "posts_per_page",
     "show_ad", "show_com_num", "show_comment", "show_description",
     "show_imdb", "show_last_com", "stylesheet", "time_type",
-    "tt_last_post",
+    "tooltip", "tt_last_post",
 }
 
 
@@ -168,16 +174,34 @@ def main():
        len(cols) > 40 and all(panel_has_control(c) for c in
                              ["topics_per_page", "posts_per_page", "fontsize"]),
        "写口列数或控件不见了，说明这条尺看的已经不是设置面板")
-    # ---------- D2 活口名单（防误判） ----------
+    # ---------- D2 活口名单（谓词必须打到生效那行） ----------
+    def _stripped(rel):
+        return strip_comments(io.open(os.path.join(ROOT, rel),
+                                      encoding="utf-8",
+                                      errors="replace").read())
+
     bad_alive = []
-    for col, where in ALIVE.items():
-        t = io.open(os.path.join(ROOT, where), encoding="utf-8",
-                    errors="replace").read()
-        if not (re.search(r"\b%s\b" % col, t)
-                and re.search(r"syncLocaleCookie|title|Tooltip|tooltip", t)):
-            bad_alive.append((col, where))
-    ok("D2 已核实活口 %d 个都找得到消费点（异常 %s）" % (len(ALIVE), bad_alive or "无"),
-       not bad_alive, "消费点没了＝它可能已退化成死开关，要么移进 D1 台账")
+    for col, (where, pat) in ALIVE.items():
+        if not re.search(pat, _stripped(where)):
+            bad_alive.append(col)
+    ok("D2 已核实活口 %d 个都找得到生效代码（异常 %s）"
+       % (len(ALIVE), bad_alive or "无"), not bad_alive,
+       "消费点没了＝它可能已退化成死开关，要么移进 D1 台账")
+    # ---------- D2b 尺的分辨力（A/B 同一把谓词） ----------
+    # 旧 D2 只要求「文件里同时出现字段名和 Tooltip 字样」，注释就能满足，
+    # 于是把死开关洗成活口（tooltip 实案）。新判据：同一把尺下，真生效的
+    # 字段必须命中、被撤销豁免的必须不命中，缺一边都说明这把尺量的是单词
+    # 而不是行为。
+    hit_alive = bool(re.search(ALIVE["site_language"][1],
+                               _stripped(ALIVE["site_language"][0])))
+    badges = _stripped(
+        "apps/web/components/torrent-table-badges.tsx")
+    hit_dead = any(v in badges for v in ("minorimdb", "medianimdb",
+                                         "users.tooltip"))
+    ok("D2b 同一把尺能分辨生效与提及"
+       "（site_language 命中=%s / badges 提 tooltip 档位=%s）"
+       % (hit_alive, hit_dead), hit_alive and not hit_dead,
+       "两头反了说明判据又在量单词共现")
     # ---------- D1 台账集合 ----------
     computed = {c for c in cols
                 if c not in ALIVE
