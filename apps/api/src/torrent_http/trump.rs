@@ -71,6 +71,13 @@ pub async fn torrent_trump(
         ));
     }
     let id = path.into_inner();
+    // 0288 唯一可见性口径：不可见种子与主详情一样回 404，不能靠举报口探存在
+    crate::torrents::assert_visible(
+        &state.repo.db,
+        id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let reason = body.reason.as_deref().unwrap_or("other");
     if !REASONS.contains(&reason) {
         return Err(DomainError::Validation("举报理由不合法".into()));
@@ -163,6 +170,13 @@ pub async fn torrent_trumps(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
+    // 旧实现不查存在性：不存在的 id 回 `{pending:0}` 而不是文档承诺的 404
+    crate::torrents::assert_visible(
+        &state.repo.db,
+        id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let pending: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrent_trumps \
          WHERE torrent_id = $1 AND status = 'pending'",

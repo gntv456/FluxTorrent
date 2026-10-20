@@ -153,6 +153,10 @@ def main():
     ok("重复裁决被拒",
        call("POST", "/admin/trumps/%s/resolve" % trump_id,
             {"accept": True}, token=tok)[0] == 400)
+    # 旧实现不查存在性：GET 对任意 id 回 {pending:0}，等于给了一个存在性探针
+    s, r = call("GET", "/torrents/999999999/trumps", token=tok)
+    ok("不存在的种举报汇总回 404（不是 {pending:0}）", s == 404,
+       "%s %s" % (s, r))
 
     # ---- 6. 切 general → 能力关闭（features 门真的在起作用） ----
     s, r = call("POST", "/admin/site-type-packs/apply",
