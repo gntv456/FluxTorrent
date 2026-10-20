@@ -24,7 +24,7 @@ H&R 豁免、RSS 的「仅免费」筛选、对外 compat 的 free 标记，全�
   S8 自购促销（/promo/buy）→ 花魔力买「限时免费」：按价目扣款并落 spark_ledger
      → 出现 scope=torrent/kind=free 的促销行 → 详情角标跟着变 →
      **同幂等键重放不双扣、不多加促销行**；再叠全站 x2 必须合成 x2free
-  S7 收尾   → 促销行清零、announce_interval 前后同值（证明确实没动共享设定）、
+  S7 收尾   → 先 cleanup() 再断言：促销行清零、announce_interval 同值、
               探针号墓碑、探针的 snatch/流水与 announce_seen 全删（不留计费残料）
 
 跑法（仓库根目录，需本地栈在跑）：
@@ -480,7 +480,7 @@ ok("S8 自购残料已清（流水 0 条、该种促销 0 条）",
    % (psql("SELECT count(*) FROM spark_ledger WHERE user_id = %s" % UID),
       left_self))
 
-print("== S7 收尾 ==")
+print("== S7 收尾 =="); cleanup()  # 清理必须先于断言（原只挂 atexit=假红）
 ok("S7 站点设定 announce_interval 全程未被改动（前 %s / 后 %s）"
    % (INTERVAL_SAVED, setting("announce_interval")),
    setting("announce_interval") == INTERVAL_SAVED)
