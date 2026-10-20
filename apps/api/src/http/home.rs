@@ -98,7 +98,13 @@ async fn home_shared_fresh(
 
     // 30 天新增资源统计（home-resource-stats）：普通 vs 官种
     let daily: Vec<(chrono::NaiveDate, i64, i64)> = sqlx::query_as(
-        "SELECT created_at::date AS d, \
+        // 分桶轴必须是**站点日**（UTC+8）：`today` 用的就是站点日，
+        // 而 PG 会话时区是 UTC——按 `created_at::date` 分桶，每根柱子
+        // 与自己的标签错开 8 小时，北京 0-8 点窗口内「今日新增资源」
+        // 恒显示 0（P-465 现网实测：站点今天已过审 2 枚，按站点日查
+        // 桶取不到，那 14 枚挂在「昨天」那根柱子上）。
+        "SELECT ((created_at AT TIME ZONE 'UTC') \
+                + interval '8 hours')::date AS d, \
                 count(*) FILTER (WHERE NOT official_tag) AS ordinary, \
                 count(*) FILTER (WHERE official_tag) AS official \
          FROM torrents WHERE approval_status = 1 \
