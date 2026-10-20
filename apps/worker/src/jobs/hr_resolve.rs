@@ -106,7 +106,7 @@ pub(crate) async fn resolve_met_violations(db: &PgPool) -> anyhow::Result<u64> {
         tracing::info!(
             cleared,
             pm_sent,
-            "H&R 违规达标自清（发信数按各人 notify_hr 偏好，可小于清除数）"
+            "H&R 违规达标自清（发信数按各人达标通知开关，可小于清除数）"
         );
     }
     // count(*) 回 bigint，本函数对外口径一直是 u64（rows_affected 同形）

@@ -60,10 +60,12 @@ ALIVE = {
     "tooltip": "apps/web/components/torrent-table-badges.tsx",
 }
 # 登记在册的候选死开关（只许缩小）。来源：写口 46 列全量扫 + 人工排除误判
+# notify_hr 已接通（P-440，2026-10-21）：hr_resolve.rs 的达标消除信按
+# `users.notify_hr` 执法，常驻闸门 scripts/pt_audit_hr_fulfilled_pref.py。
 DEAD_LEDGER = {
     "append_new", "append_picked", "append_promotion", "append_sticky",
     "bm_icon", "browsecat", "click_topic", "comment_pm", "delete_pm",
-    "dl_icon", "fontsize", "notify_hr", "pm_per_page", "posts_per_page",
+    "dl_icon", "fontsize", "pm_per_page", "posts_per_page",
     "save_pm", "show_ad", "show_com_num", "show_comment", "show_description",
     "show_imdb", "show_last_com", "stylesheet", "time_type",
     "topics_per_page", "tt_last_post",
@@ -74,6 +76,14 @@ def write_cols():
     src = io.open(KV, encoding="utf-8").read()
     m = re.search(r"UPDATE users SET([\s\S]*?)WHERE", src)
     return sorted(set(re.findall(r"(\w+)\s*=\s*COALESCE", m.group(1))))
+
+
+def strip_comments(text):
+    """剥 `//` 行注释与 `/* */` 块注释：注释里提一句字段名不算读者。
+    `https://` 的那个 `//` 不剥（(?<!:) 挡住），否则 URL 后半行消失，
+    会把真读者误判成死开关。"""
+    t = re.sub(r"/\*[\s\S]*?\*/", " ", text)
+    return re.sub(r"(?<!:)//[^\n]*", " ", t)
 
 
 def readers_of(col):
@@ -90,7 +100,8 @@ def readers_of(col):
                 rel = os.path.relpath(p, ROOT).replace("\\", "/")
                 if FORM.search(rel):
                     continue
-                t = io.open(p, encoding="utf-8", errors="replace").read()
+                t = strip_comments(io.open(p, encoding="utf-8",
+                                           errors="replace").read())
                 if re.search(r"\b%s\b" % re.escape(col), t):
                     hits.append(rel)
     return hits
