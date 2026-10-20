@@ -38,6 +38,8 @@ export default async function MainLayout({
       {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}
       <MotionShell />
       {/* M4：md-lg 平板细侧栏（底 Tab 同步隐藏，见 CSS） */}
+      {/* 内容容器与页头/页脚同宽（1536）：此前内容 1280、页头页脚 1536，
+          1920 屏上内容比页头页脚窄一截，显得小气（2026-10-20 用户口径） */}
       <div className="flex">
         <TabletSidebar
           items={navPrimary.map((n) => ({ ...n, icon: null }))}
@@ -45,7 +47,7 @@ export default async function MainLayout({
         />
         <main
           id="main-content"
-          className="mx-auto min-w-0 w-full max-w-[1280px] flex-1 px-4 pb-24
+          className="mx-auto min-w-0 w-full max-w-[1536px] flex-1 px-4 pb-24
             pt-6 md:px-6"
         >
           {children}

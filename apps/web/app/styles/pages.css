@@ -124,7 +124,7 @@ table.baozi-wide-table-scroll {
  * 已显式用 .baozi-wide-table-scroll 包裹的表格不在此容器内，互不影响。
  * display:block 会丢 table 语义布局（行不再随内容撑宽），因此配合
  * width:max-content 保证列宽按内容计算，滚动容器裁剪。
- * ≥1280（xl，配合下方 main:has 放宽到 1600）恢复表格布局撑满内容区：
+ * ≥1280（xl）恢复表格布局撑满内容区：
  * block 化在宽屏让表格收缩成内容宽（实测经济仪表 204px / 捐赠订单
  * 528px），连带 w-full 失效。恢复点取 1280 而非 1024：1024–1279 窄桌面
  * 内容区仍 ~1016px，users 表 min-content 1014 / torrents 780 会顶破
@@ -135,16 +135,6 @@ table.baozi-wide-table-scroll {
     width: max-content;
     max-width: 100%;
     overflow-x: auto;
-  }
-}
-
-/* 后台数据密集页在宽屏放宽内容区：main 默认 max-w-[1280px]（全站统一），
- * 但后台左导航 + 多列表格在 1600 屏右侧留白 ~470px。仅对含后台内容区的
- * 页面放宽（:has 后代匹配），前台各页不动；pages.css 未分层，稳压
- * Tailwind utility 的 max-w。1280 以下无效果，与本文件表格恢复点一致。 */
-@media (min-width: 1280px) {
-  main:has(.admin-panel-content) {
-    max-width: 1600px;
   }
 }
 
