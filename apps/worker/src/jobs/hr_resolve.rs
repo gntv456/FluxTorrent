@@ -55,9 +55,16 @@ pub(crate) async fn restore_hr_locks(
     Ok(n)
 }
 
-/// 返回本轮被消除的违规条数（0 时不发通知、不写日志）。
+/// 返回本轮被消除的违规条数（0 时不写日志）。
+///
+/// P-440：这条「达标消除」信是站内三档 H&R 通知里唯一没有读者的一档——
+/// 控制面板的「H&R 达标时通知我」`users.notify_hr`（0024）全站无消费点，
+/// 关掉它的人照收。预警走 `notice_prefs.hr_prewarn`、违规确认走
+/// `hr_violation`，达标这一档在 13 档偏好面板里根本没有对应键，
+/// 所以按列判、不另立新键（新键属加档位，不是接线）。
+/// 消除本身与发信分开计数：偏好关掉的是「打扰」，不是「违规已清」。
 pub(crate) async fn resolve_met_violations(db: &PgPool) -> anyhow::Result<u64> {
-    let cleared = sqlx::query(
+    let row = sqlx::query_as::<_, (i64, i64)>(
         r#"
         WITH met AS (
             UPDATE hr_violations v SET resolved_at = now()
@@ -74,21 +81,34 @@ pub(crate) async fn resolve_met_violations(db: &PgPool) -> anyhow::Result<u64> {
             FROM met m WHERE h.user_id = m.user_id
               AND h.torrent_id = m.torrent_id
               AND h.status = 'violated'
+        ),
+        pm AS (
+            INSERT INTO messages (sender_id, receiver_id, subject, body, kind)
+            SELECT NULL, m.user_id, 'H&R 违规已消除',
+                   format('您此前一条 H&R 违规（种子 #%s）经复核已消除：'
+                          '该种子累计做种时长已达到要求。您现在的未解决违规数'
+                          '已相应减少，无需再操作。如下载权限曾被暂停，将在'
+                          '下一轮检查自动恢复；若处于警告限制期，则待警告'
+                          '到期后恢复。', m.torrent_id),
+                   'hr_fulfilled'
+            FROM met m
+            JOIN users u ON u.id = m.user_id
+            WHERE u.notify_hr
+            RETURNING 1
         )
-        INSERT INTO messages (sender_id, receiver_id, subject, body)
-        SELECT NULL, m.user_id, 'H&R 违规已消除',
-               format('您此前一条 H&R 违规（种子 #%s）经复核已消除：该种子累计做种时长'
-                      '已达到要求。您现在的未解决违规数已相应减少，无需再操作。'
-                      '如下载权限曾被暂停，将在下一轮检查自动恢复；若处于警告'
-                      '限制期，则待警告到期后恢复。', m.torrent_id)
-        FROM met m
+        SELECT (SELECT count(*) FROM met), (SELECT count(*) FROM pm)
         "#,
     )
-    .execute(db)
+    .fetch_one(db)
     .await?;
-    let n = cleared.rows_affected();
-    if n > 0 {
-        tracing::info!(n, "H&R 违规达标自清（含通知）");
+    let (cleared, pm_sent) = row;
+    if cleared > 0 {
+        tracing::info!(
+            cleared,
+            pm_sent,
+            "H&R 违规达标自清（发信数按各人 notify_hr 偏好，可小于清除数）"
+        );
     }
-    Ok(n)
+    // count(*) 回 bigint，本函数对外口径一直是 u64（rows_affected 同形）
+    Ok(cleared.max(0) as u64)
 }
