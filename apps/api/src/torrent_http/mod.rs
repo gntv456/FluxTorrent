@@ -35,6 +35,10 @@ mod torrent_delete;
 // 举报/替换（0336 trumping；裁决侧面在 trump_admin）
 mod trump;
 mod trump_admin;
+// 作品聚合（资源页「作品聚合」视图 + 作品详情）：同片多版本归一部作品
+mod works;
+pub(crate) mod works_sql;
+mod works_rows_sql;
 
 pub use aggregate::*;
 pub use batch::*;
@@ -61,6 +65,7 @@ pub use suggest::*;
 pub use torrent_delete::*;
 pub use trump::*;
 pub use trump_admin::*;
+pub use works::*;
 // ===== F4 utoipa 聚合出口（种子域 38 条路由的 #[utoipa::path] 入口）====
 // openapi_http 的 OpenApi 聚合要从 crate 外部引用这些 handler，
 // 而子模块是私有 `mod`。这里做一层显式重导出，而不是把 20 个子模块
