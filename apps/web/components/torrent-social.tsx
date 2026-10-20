@@ -73,10 +73,16 @@ export function ThankButton({ torrentId }: { torrentId: number }) {
 }
 
 /** 收藏 + 评论表单 + 魔力答谢（进「更多操作」面板；感谢单钮在头部） */
-export function TorrentSocial({ torrentId }: { torrentId: number }) {
+export function TorrentSocial({
+  torrentId,
+  initialBookmarked = false,
+}: {
+  torrentId: number;
+  initialBookmarked?: boolean;
+}) {
   const { dict, currency } = useI18n();
   const t = dict.tdetail;
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [comment, setComment] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

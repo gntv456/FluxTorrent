@@ -29,6 +29,8 @@ export interface TorrentDetailExt {
   price: number;
   purchased: boolean;
   is_owner: boolean;
+  /** 当前用户是否已收藏（详情个人段；收藏按钮初始态） */
+  bookmarked?: boolean;
   /** 动态属性（0085/0087；B2 六类型）：kind → { dict_id, name, label, sort,
    *  field_type, values[] }。`name` = 首个展示值（向后兼容），多值看 `values`。 */
   sections?: Record<

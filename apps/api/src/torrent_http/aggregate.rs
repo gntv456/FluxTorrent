@@ -20,10 +20,19 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents;
 
+/// 详情共享段 + 仅本用户可见的收藏位（平铺成 detail JSON 的同一层，
+/// 不改共享缓存结构）
+#[derive(Serialize)]
+struct DetailViewer {
+    #[serde(flatten)]
+    detail: torrents::TorrentDetailRow,
+    bookmarked: bool,
+}
+
 #[derive(Serialize)]
 struct TorrentAggregate {
     torrent: torrents::TorrentRow,
-    detail: torrents::TorrentDetailRow,
+    detail: DetailViewer,
     files: Vec<torrents::FileRow>,
     thanks: Vec<torrents::ThankRow>,
     /// 首屏评论（20 条；聚合审计 P2-3：总数看 `torrent.comments`，
@@ -242,11 +251,15 @@ async fn assemble(
     let mut detail = shared.detail;
     detail.is_owner = false;
     detail.purchased = false;
-    let own: Option<(bool, bool)> = sqlx::query_as(
+    let mut bookmarked = false;
+    let own: Option<(bool, bool, bool)> = sqlx::query_as(
         "SELECT (t.owner_id = $2) AS is_owner, \
                 EXISTS(SELECT 1 FROM torrent_purchases p \
                         WHERE p.torrent_id = t.id \
-                          AND p.user_id = $2) AS purchased \
+                          AND p.user_id = $2) AS purchased, \
+                EXISTS(SELECT 1 FROM bookmarks b \
+                        WHERE b.torrent_id = t.id \
+                          AND b.user_id = $2) AS bookmarked \
          FROM torrents t WHERE t.id = $1",
     )
     .bind(id)
@@ -255,13 +268,14 @@ async fn assemble(
     .await
     .ok()
     .flatten();
-    if let Some((is_owner, purchased)) = own {
+    if let Some((is_owner, purchased, is_bookmarked)) = own {
         detail.is_owner = is_owner;
         detail.purchased = purchased;
+        bookmarked = is_bookmarked;
     }
     Ok(TorrentAggregate {
         torrent: shared.torrent,
-        detail,
+        detail: DetailViewer { detail, bookmarked },
         files: shared.files,
         thanks: thanks.unwrap_or_default(),
         comments: match comments {
