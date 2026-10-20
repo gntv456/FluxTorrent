@@ -189,7 +189,10 @@ export function TorrentHead({
               <span className="td-thank--sheet">
                 <ThankButton torrentId={t.id} />
               </span>
-              <TorrentSocial torrentId={t.id} />
+              <TorrentSocial
+                torrentId={t.id}
+                initialBookmarked={ext?.bookmarked ?? false}
+              />
               <div className="td-head__actions-row">
                 {t.seeders === 0 && (
                   <ResurrectButton torrentId={t.id} name={t.name} />
