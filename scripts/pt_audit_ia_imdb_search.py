@@ -23,8 +23,10 @@ IMDb 检索是 PT 站刚需（按号找种、Prowlarr/Sonarr、豆瓣对照）�
       （media_info OR imdb_id）命中数，且新谓词 > 0。现网应为 旧 0 / 新 2。
       这是数据库级红证：站长可能正在重启 flux-api，活体 HTTP 会把「部署中」
       误读成「闸门坏」；真库算账不受镜像影响。
-  IA4 活体读数（默认关）：IA_LIVE=1 时打一次现网 search_area=4 命中数，
-      只记读数不硬断言（镜像更新后应等于 IA3 的新谓词命中数，届时升硬判据）。
+  IA4 活体三档（默认开）：按 IMDb 号搜到的 id 必须覆盖库里带号的过审种、
+      库里没有的号必须 0 命中（负控，防「恒返全部」）、tt/TT 同数（钉
+      ILIKE）。/health 打不通或登录被限流 ⇒ 只 WARN 不出红，避免把「部署
+      中」读成「闸门坏」。
 
 用法：`PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_ia_imdb_search.py`
       IA_LIVE=1 额外做一次只读活体读数。
@@ -42,9 +44,9 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from pt_audit_lib import BASE, login, ok, summary  # noqa: E402
 
-LIVE = os.environ.get("IA_LIVE", "0") == "1"
+LIVE = os.environ.get("IA_LIVE", "1") != "0"
 SYN = "apps/api/src/torrents/syn_search.rs"
-NEEDLE = "33051301"
+NEEDLE = "33051301"  # 兜底常量：真正取值见 pick_needle()
 
 
 def rd(rel):
@@ -76,6 +78,15 @@ def psql(q):
     return (x.stdout or "").strip()
 
 
+def pick_needle():
+    """取一枚「imdb 号只写在 imdb_id 列、media_info 两个键都没有」的过审种。"""
+    return psql(
+        "SELECT regexp_replace(imdb_id, '\\D', '', 'g') FROM torrents "
+        "WHERE approval_status = 1 AND imdb_id <> '' "
+        "AND media_info->>'imdb_id' IS NULL AND media_info->>'imdb' IS NULL "
+        "ORDER BY id DESC LIMIT 1").strip()
+
+
 arm = arm4(strip(rd(SYN)))
 has_mi = "media_info->>'imdb'" in arm
 has_jk = "media_info->>'imdb_id'" in arm
@@ -105,6 +116,7 @@ ok("IA2 承重：只读 media_info 的旧臂被 IA1 那对条件判违例",
    not ("media_info->>'imdb'" in OLD_ARM and "t.imdb_id" in OLD_ARM),
    "旧臂若仍算合格＝判据恒真，不算承重")
 
+NEEDLE = pick_needle() or NEEDLE
 PAT = "'%" + NEEDLE + "%'"
 BASE_W = "SELECT count(*) FROM torrents t WHERE t.approval_status=1 AND ("
 OLD_SQL = BASE_W + "t.media_info->>'imdb' ILIKE " + PAT + ")"
@@ -118,25 +130,50 @@ ok("IA3 真库 A/B：补读 imdb_id 后该关键字必须多命中且 >0",
    "旧谓词命中=%d 新谓词命中=%d；差额＝只有 imdb_id 能命中的种数。"
    "这条是数据库级红证，与现网镜像是否含本笔无关" % (old_n, new_n))
 
-if LIVE:
-    try:
-        tok = login("root", "password123")
-        url = ("%s/torrents?limit=50&alive=0&search_area=4&search=%s"
-               % (BASE, urllib.parse.quote("TT" + NEEDLE)))
-        with urllib.request.urlopen(urllib.request.Request(
-                url, headers={"Authorization": "Bearer " + tok})) as x:
-            import json
-            d = json.loads(x.read()).get("data") or {}
-        got = len(d.get("items") or [])
-        print("   [读数] 现网 search_area=4 命中=%d（新镜像落地后应=%d，"
-              "届时把 IA3 的期望搬到活体做硬判据）" % (got, new_n))
-    except urllib.error.HTTPError as e:
-        print("   [WARN] 活体取数 http=%s：%s"
-              % (e.code, e.read()[:80].decode("utf-8", "replace")))
-    except Exception as e:  # noqa: BLE001
-        print("   [WARN] 活体取数未完成（多半是 flux-api 正在重启）：%s"
-              % type(e).__name__)
+# 活体三档：期望集合 ⊆ 命中集合 / 库里没有的号必须 0 命中 / tt 与 TT 同数。
+def http_get(path, tok=None):
+    h = {"Authorization": "Bearer " + tok} if tok else {}
+    with urllib.request.urlopen(
+            urllib.request.Request(BASE + path, headers=h), timeout=20) as x:
+        import json
+        return json.loads(x.read())
+
+
+def hits4(tok, kw):
+    d = http_get("/torrents?limit=50&alive=0&search_area=4&search=%s"
+                 % urllib.parse.quote(kw), tok).get("data") or {}
+    return sorted(int(i["id"]) for i in (d.get("items") or []))
+
+
+want = [int(r) for r in psql(
+    "SELECT id FROM torrents WHERE approval_status=1 AND ("
+    "COALESCE(NULLIF(imdb_id, ''), media_info->>'imdb_id', "
+    "media_info->>'imdb')) ILIKE '%" + NEEDLE + "%'").split("\n")
+    if r.strip()]
+
+if not LIVE:
+    print("[IA4] IA_LIVE=0 跳过活体三档")
+elif not want:
+    print("   [WARN] 现网已没有「imdb 号只写在列里」的过审种，活体三档与 IA3 "
+          "无从取证（静态 IA1/IA2 仍承重）")
 else:
-    print("[IA4] IA_LIVE=0 跳过活体读数（默认关：镜像重启窗口会误读）")
+    try:
+        http_get("/health")
+        tok = login("root", "password123")
+        up = hits4(tok, "TT" + NEEDLE)
+        lo = hits4(tok, "tt" + NEEDLE)
+        absent = hits4(tok, "TT9999" + NEEDLE)
+        ok("IA4 活体：按 IMDb 号搜到的集合必须覆盖库里的期望集合",
+           set(want) <= set(up),
+           "期望=%s 实得=%s——带号的种在搜索区 4 一个都不能少" % (want, up))
+        ok("IA4b 负控：库里不存在的 IMDb 号必须 0 命中（防该臂退化成恒真）",
+           not absent,
+           "TT9999%s 命中=%s——非空说明谓词把不相干的种也放进来" % (NEEDLE,
+                                                              absent))
+        ok("IA4c 大小写同数：tt 与 TT 结果必须一致（钉 ILIKE 不是 LIKE）",
+           lo == up, "TT=%s 小写=%s" % (up, lo))
+    except Exception as e:  # noqa: BLE001
+        print("   [WARN] 活体未完成（重启窗口/限流），本轮不出红：%s: %s"
+              % (type(e).__name__, str(e)[:120]))
 
 summary()
