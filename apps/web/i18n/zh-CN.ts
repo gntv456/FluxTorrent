@@ -796,6 +796,8 @@ const zhCnBase = {
     noPermission:
       "发布失败：没有发布权限（403）。请确认账号具备发布资格，或稍后重试",
     submitFailStatus: "发布失败：服务端返回 {status}，请稍后重试或联系管理员",
+    metaIds: "豆瓣 / TMDB",
+    metaIdsHint: "填條目 ID 或連結：作品聚合據此把同一部片的多版本歸到一起",
   },
   home2: {
     newsTitle: "社区新鲜事",
@@ -1625,6 +1627,36 @@ const zhCnBase = {
     hiddenTag: "已隐藏",
   },
   /** 论坛首页三列布局补的两翼（样图集 § forum：左列用户卡/我的、右列四块） */
+  works: {
+    title: "作品库",
+    rating: "评分",
+    viewGroup: "作品聚合",
+    director: "导演",
+    cast: "主演",
+    yearLabel: "年份",
+    runtime: "片长",
+    min: "分钟",
+    region: "地区",
+    countWorks: "{n} 部作品",
+    countSeeds: "匹配种子 {n} 个",
+    addSeed: "新增种子",
+    seedsInWork: "{n} 个种子",
+    totalSeeders: "合计做种 {n}",
+    latestAt: "最新 {t}",
+    back: "返回资源列表",
+    synopsis: "简介",
+    fullSynopsis: "完整剧情简介",
+    noSynopsis: "暂无简介",
+    chipSubs: "中字",
+    douban: "豆瓣",
+    tmdb: "TMDB",
+    imdb: "IMDb",
+    inWork: "本片资源",
+    related: "相关推荐",
+    openWork: "查看作品",
+    empty: "还没有可聚合的作品",
+  },
+
   forums3: {
     userAria: "我的论坛概览",
     anonUserHint: "登录后查看你的分享率与{magic}",
@@ -1635,6 +1667,9 @@ const zhCnBase = {
     guideTitle: "新手必读",
     guideDesc: "读一读发帖礼仪与版块门槛，快速融入社区。",
     guideCta: "发新主题",
+    /** 手机端工具条（≤768px）：四按钮一排 + 弹窗 */
+    mbarFilter: "话题筛选",
+    mbarMore: "更多",
     statTopics: "主题总数",
     statPosts: "回复总数",
     statToday: "今日新帖",
@@ -1669,6 +1704,7 @@ const zhCnBase = {
     sideEmptyUsers: "还没关注任何作者——去他个人页点「关注」",
     /** 版块页顶部规则条（0392） */
     rulesTitle: "版块规则：",
+    latestPhrase: "在 {forum} 回覆了 {topic}",
   },
   usercp: {
     activityTitle: "当前活动",
@@ -2251,6 +2287,7 @@ const zhCnBase = {
     sortHot: "热门",
     sortNew: "最新",
     filterAll: "全部话题",
+    filterNotice: "只看公告",
     filterSticky: "只看置顶",
     filterDigest: "只看精华",
     hot: "热",
@@ -2362,6 +2399,11 @@ const zhCnBase = {
     // 主题页底部提示
     lockedNoReply: "主题已锁定，无法回复",
     noReplyPermission: "您没有在本版块回帖的权限",
+    markNotice: "公告",
+    modNotice: "加公告",
+    modUnnotice: "取消公告",
+    unnotice: "取消公告",
+    notice: "取消公告",
   },
   medals: {
     title: "勋章图鉴",
@@ -2399,6 +2441,7 @@ const zhCnBase = {
     grantOnly: "仅授予",
     synthOnly: "仅合成",
     emptyFilter: "没有符合条件的勋章。",
+    insufficient: "餘額不足",
   },
   textbooks: {
     title: "课本中心",
@@ -3724,6 +3767,41 @@ const zhCnBase = {
     deleted: "已删除",
   },
   admin: {
+    autoReview: {
+      title: "自动审种台账",
+      verdictPass: "通过",
+      verdictDeny: "拒绝",
+      verdictPostpone: "暂缓",
+      verdictDeep: "深检中",
+      loadFailed: "加载失败",
+      replayFailed: "回放失败",
+      restoreFailed: "恢复失败",
+      replaySummary:
+        "回放 {n} 例：结论不变 {same}，变化 {changed}",
+      pickRuleFirst: "请先在筛选框选择/输入要恢复的规则 id",
+      restoreSummary:
+        "按规则 {rule} 恢复 {n} 个种子回待审（扫描 {scanned}）",
+      degradeLine: "（已过降级线）",
+      shadowAgree: "影子一致率",
+      ready: "已达标，可切执法（建议先半自动）",
+      notReady: "未达标（样本与一致率门槛未满足）",
+      notReadyTpl: "未达标（样本≥{min} 且一致率≥{agree}%）",
+      falseKill: "误杀（机拒人过）",
+      falsePass: "漏放（机过人拒）",
+      today: "今日计数",
+      ruleFilter: "按规则筛选，如 arule_ads_keywords",
+      refresh: "刷新",
+      replay: "回放预演（当前配置）",
+      restore: "按规则批量恢复",
+      thTime: "时间",
+      thTorrent: "种子",
+      thVerdict: "机器意见",
+      thScore: "软分",
+      thHits: "命中规则",
+      empty: "暂无台账——开启总开关并发布种子后，影子意见会出现在这里",
+      health: "规则健康度",
+      statBar: "今日实况：自动通过 {pass} · 自动拒绝 {deny} · 暂缓 {postpone} · 待人工 {pending}；影子一致率 {agree}%（{samples} 样本）",
+    },
     trendTitle: "14 天注册 / 发种趋势",
     trendEmpty: "暂无数据",
     trendReg: "注册",
@@ -4780,6 +4858,22 @@ const zhCnBase = {
   },
   /** 任务定义（admin-tasks 系）：任务种类与周期 */
   adminTasks: {
+    penaltyKinds: {
+      ban: "封禁账号",
+      suspend: "挂起账号",
+      restrict_download: "禁止下载",
+      mute: "禁言",
+      ban_upload: "禁止发布",
+      ban_pages: "禁止浏览指定页面",
+      spark_fine: "扣魔力",
+      traffic_fine: "扣上传/下载量",
+    } as Record<string, string>,
+    penaltyAmtPh: "数额",
+    penaltyTgtUploaded: "扣上传量",
+    penaltyTgtDownloaded: "扣下载量",
+    penaltyPagesPh: "权限位，逗号分隔，如 forum.view, games.play",
+    penaltyNone: "无处置",
+    colPenalty: "不达标处置",
     kinds: {
       task: "普通任务",
       onboard: "新人转正考核",
@@ -4858,6 +4952,8 @@ const zhCnBase = {
     metricBadJson: "metric 需为合法 JSON",
     rangeRequired: "起止时间必填",
     saved: "已保存",
+    penaltyTitle: "考核不达标处置",
+    penaltyHint: "可多选组合。处置在考核到期且补救期過後仍未达标時自動執行，與后台人工处置写同一批欄位；每项处置有审计與站内信通知。普通任務不受影響。",
   },
   /** 勋章管理：获取方式（admin-medals 系） */
   adminMedals: {
@@ -6840,6 +6936,7 @@ const zhCnBase = {
     giftOk: "已赠送给 {name}",
     giftFeeNote: "（含手续费 {n}）",
     giftFeeRate: "赠送手续费 {n}%",
+    priceLabel: "勋章价格",
   },
   medalwall: {
     title: "勋章墙",

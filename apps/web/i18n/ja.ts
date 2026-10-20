@@ -9,6 +9,41 @@
 import type { Dict } from "./zh-CN";
 
 export const ja: DeepPartial<Dict> = {
+  myspark: {
+    otherKind: "その他",
+  },
+  my: {
+    kinds: {
+      seeding_reward: "シード報酬",
+      attendance: "チェックイン",
+      forum: "フォーラム報酬",
+      subtitle: "字幕報酬",
+      shop: "ショップ購入",
+      bank_deposit: "銀行預入",
+      bank_withdraw: "銀行引出",
+      pool_donate: "フリープール寄付",
+      admin_grant: "運営付与",
+      task_reward: "タスク/試験報酬",
+      vote: "投票",
+      increment_bulk: "一括付与",
+      game: "ゲーム",
+      download: "ダウンロード消費",
+      hr_pardon_refund: "H&R 払い戻し",
+      subtitle_request: "字幕リクエスト",
+      achievement: "実績報酬",
+      admin: "管理者調整",
+      "forum-like": "フォーラムいいね",
+      bank_fixed_interest: "定期利息",
+      bank_demand_in: "普通預入",
+      promo_buy: "プロモ購入",
+      forum_bounty: "フォーラム懸賞",
+      subtitle_bounty: "字幕懸賞",
+      subtitle_award: "字幕落札",
+      funding: "クラウドファンディング",
+      hr_pardon: "業績免除",
+      adjust: "手動調整",
+    },
+  },
   nav: {
     home: "ホーム",
     library: "ライブラリ",
