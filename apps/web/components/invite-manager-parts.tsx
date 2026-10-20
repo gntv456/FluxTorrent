@@ -158,7 +158,7 @@ export function SendEmailDialog({
   onClose: () => void;
   onSend: () => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, locale } = useI18n();
   const t = dict.invites;
   // 邮箱后缀策略（0282）：与后端同口径的前端预判——填到受限后缀时
   // 禁用发送按钮并说明原因，而不是等点发送才被 400。
@@ -191,7 +191,18 @@ export function SendEmailDialog({
     <Modal open onClose={onClose} title={t.sendEmailTitle}>
       <div className="w-full max-w-md">
         <p className="mt-1 break-all text-xs text-sub">
-          {t.sendEmailNote}
+          {t.sendEmailNote.replace(
+            "{date}",
+            new Date(sendFor.expires_at).toLocaleString(
+              dateLocale(locale),
+              {
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              },
+            ),
+          )}
           <br />
           {sendFor.code}
         </p>

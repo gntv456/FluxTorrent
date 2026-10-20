@@ -2676,7 +2676,7 @@ const enBase: Omit<
     colAction: "Action",
     sendEmail: "Send invite",
     sendEmailTitle: "Send invite by email",
-    sendEmailNote: "The invite link will be emailed (valid for 72 hours)",
+    sendEmailNote: "The invite link will be emailed (expires {date})",
     emailPlaceholder: "Recipient email",
     suffixNotAllowed:
       "This email suffix is not on the site allowlist; the recipient cannot register with it",

@@ -2638,7 +2638,7 @@ const zhCnBase = {
     colAction: "操作",
     sendEmail: "发送邀请",
     sendEmailTitle: "发送邀请到邮箱",
-    sendEmailNote: "邀请链接将发送到对方邮箱（72 小时内有效）",
+    sendEmailNote: "邀请链接将发送到对方邮箱（有效期至 {date}）",
     emailPlaceholder: "对方邮箱地址",
     suffixNotAllowed: "该邮箱后缀不在本站允许清单内，对方无法用它注册",
     suffixBanned: "该邮箱后缀已被本站禁止注册，换一个邮箱吧",
