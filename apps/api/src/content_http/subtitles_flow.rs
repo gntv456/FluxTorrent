@@ -2,6 +2,7 @@
 //! 发起/凑赏/列表在 subtitles_requests.rs；结算核心（含分账）在
 //! subtitles_close.rs（300 行门禁按域拆分）。
 
+use crate::repo::community::actor::actor_name;
 use actix_web::{post, web, HttpRequest, HttpResponse};
 
 use super::subtitles_requests::SubReqClaimBody;
@@ -182,8 +183,8 @@ pub(super) async fn subtitle_request_claim(
         )
         .bind(c.user_id)
         .bind(format!(
-            "用户 #{} 邀请你协作求字幕 #{rid}（角色 {}，份额 {}%）。结算按此份额分账。§§URL§§/subtitles",
-            auth.id, c.role, c.share
+            "{} 邀请你协作求字幕 #{rid}（角色 {}，份额 {}%）。结算按此份额分账。§§URL§§/subtitles",
+            actor_name(&state.repo.db, auth.id).await, c.role, c.share
         ))
         .execute(&state.repo.db)
         .await;

@@ -4,6 +4,7 @@
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
+use crate::repo::community::actor::actor_name;
 use super::*;
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
@@ -111,6 +112,9 @@ pub(crate) async fn post_reply(
     // 回帖 +1 火花
     let idem = format!("forum-reply:{}:{}", auth.id, post_id);
     earn_spark(&state.repo.db, auth.id, 1, "forum", &idem).await?;
+    // 通知正文里的身份：一次回查，三条通知共用（此前写 `用户 #{uid}`，
+    // 收件人看不懂那是谁）
+    let who = actor_name(&state.repo.db, auth.id).await;
     // 通知楼主有新回复（自己回自己不通知）；@提及 排除楼主，避免同一件事两条通知。
     // 接收方闸门：users.notify_topic_reply 此前是「设置页能改、代码零读」的假开关，
     // 用户关掉后照样被发站内信。
@@ -122,8 +126,8 @@ pub(crate) async fn post_reply(
             "comment_reply",
             "主题收到回复",
             &format!(
-                "用户 #{} 回复了你的主题：[{}](/forums/topic/{})",
-                auth.id, title, tid
+                "{} 回复了你的主题：[{}](/forums/topic/{})",
+                who, title, tid
             ),
         )
         .await;
@@ -139,8 +143,8 @@ pub(crate) async fn post_reply(
                 "comment_reply",
                 "你的楼层收到回复",
                 &format!(
-                    "用户 #{} 回复了你在[{}](/forums/topic/{})的楼层",
-                    auth.id, title, tid
+                    "{} 回复了你在[{}](/forums/topic/{})的楼层",
+                    who, title, tid
                 ),
             )
             .await;
@@ -163,7 +167,7 @@ pub(crate) async fn post_reply(
         tid,
         "comment_reply",
         "关注的主题有新回复",
-        &format!("[{}](/forums/topic/{}) · 来自用户 #{}", title, tid, auth.id),
+        &format!("[{}](/forums/topic/{}) · 来自 {}", title, tid, who),
         &[author, auth.id],
     )
     .await;

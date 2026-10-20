@@ -3,6 +3,7 @@
 //! 2026-10-16 下沉：见 follows.rs 头注。四个动作 black / unblack /
 //! accept / reject 的落库语义全在这里，H 层只做口径判断。
 
+use crate::repo::community::actor::actor_name;
 use super::super::Repo;
 use crate::errors::{DomainError, DomainResult};
 
@@ -135,10 +136,8 @@ pub async fn notify_friend_accepted(repo: &Repo, them: i64, me: i64) {
     )
     .bind(them)
     .bind("好友申请已通过")
-    .bind(format!(
-        "用户 #{} 接受了你的好友申请，你们现在是好友了。",
-        me
-    ))
+    .bind(format!("{} 接受了你的好友申请，你们现在是好友了。",
+                  actor_name(&repo.db, me).await))
     .execute(&repo.db)
     .await;
 }

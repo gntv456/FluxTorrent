@@ -1,6 +1,7 @@
 //! M15 论坛打赏（楼层打赏 post_tip）。
 //! 从 community_http.rs 按域拆出。
 
+use crate::repo::community::actor::actor_name;
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -149,8 +150,8 @@ pub(crate) async fn post_tip(
         "comment_reply",
         "收到打赏",
         &format!(
-            "用户 #{} 打赏了您在 [/forums/topic/{}] 的回复：{} 魔力{}",
-            auth.id,
+            "{} 打赏了您在 [/forums/topic/{}] 的回复：{} 魔力{}",
+            actor_name(&state.repo.db, auth.id).await,
             topic_id,
             body.spark,
             if note.is_empty() {

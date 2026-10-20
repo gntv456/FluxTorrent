@@ -6,6 +6,7 @@
 //!
 //! 分文件是因为单文件装不下四个域的 SQL；每个文件对应一组路由。
 
+pub mod actor;
 pub mod ban_log;
 pub mod boards;
 pub mod follows;

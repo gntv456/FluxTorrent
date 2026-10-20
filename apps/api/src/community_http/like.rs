@@ -3,6 +3,7 @@
 
 use actix_web::{delete, post, web, HttpRequest, HttpResponse};
 
+use crate::repo::community::actor::actor_name;
 use super::*;
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
@@ -117,10 +118,10 @@ async fn set_post_like(
                 author,
                 "comment_reply",
                 "帖子被点赞",
-                &format!(
-                    "用户 #{} 赞了你在主题「{}」里的回复：[查看](/forums/topic/{})",
-                    auth.id, title, tid
-                ),
+                &format!("{} 赞了你在主题「{}」里的回复：\
+                          [查看](/forums/topic/{})",
+                         actor_name(&state.repo.db, auth.id).await,
+                         title, tid),
             )
             .await;
         }

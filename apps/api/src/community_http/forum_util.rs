@@ -3,6 +3,7 @@
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
 
+use crate::repo::community::actor::actor_name;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
@@ -196,10 +197,9 @@ pub(crate) async fn notify_mentions(
             uid,
             "comment_reply",
             "论坛提及",
-            &format!(
-                "用户 #{} 在{}提到了你：[{}](/forums/topic/{})",
-                from, where_txt, topic_title, topic_id
-            ),
+            &format!("{} 在{}提到了你：[{}](/forums/topic/{})",
+                     actor_name(db, from).await,
+                     where_txt, topic_title, topic_id),
         )
         .await;
     }

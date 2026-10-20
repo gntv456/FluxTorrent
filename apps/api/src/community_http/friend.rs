@@ -4,6 +4,7 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
+use crate::repo::community::actor::actor_name;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -84,10 +85,8 @@ pub(crate) async fn friend_add(
         )
         .bind(fid)
         .bind("好友申请已通过")
-        .bind(format!(
-            "用户 #{} 接受了你的好友申请，你们现在是好友了。",
-            auth.id
-        ))
+        .bind(format!("{} 接受了你的好友申请，你们现在是好友了。",
+                      actor_name(&state.repo.db, auth.id).await))
         .execute(&state.repo.db)
         .await;
         return Ok(ok(
@@ -109,10 +108,8 @@ pub(crate) async fn friend_add(
     )
     .bind(fid)
     .bind("收到好友申请")
-    .bind(format!(
-        "用户 #{} 向你发送了好友申请。添加对方为好友即可接受。",
-        auth.id
-    ))
+    .bind(format!("{} 向你发送了好友申请。添加对方为好友即可接受。",
+                  actor_name(&state.repo.db, auth.id).await))
     .execute(&state.repo.db)
     .await;
     Ok(ok(
