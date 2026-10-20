@@ -100,8 +100,8 @@ pub(super) async fn search_pred_with_syn(
             // `COALESCE(NULLIF(t.imdb_id,''), media_info->>'imdb_id')`。这里向它看齐，
             // 并把旧的 `imdb` 键留在末尾做历史兼容。属 P-426 同族：同一字段多处落库、
             // 只有一处有读者。
-            "AND ($6::text IS NULL OR COALESCE(NULLIF(t.imdb_id, ''), \\
-                 t.media_info->>'imdb_id', t.media_info->>'imdb') \\
+            "AND ($6::text IS NULL OR COALESCE(NULLIF(t.imdb_id, ''), \
+                 t.media_info->>'imdb_id', t.media_info->>'imdb') \
                  ILIKE $6{esc} OR t.descr ILIKE $6{esc}){syn_pred}"
         ),
         _ => format!(
