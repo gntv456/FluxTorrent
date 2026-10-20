@@ -10,6 +10,7 @@ mod me;
 mod me_torrents;
 mod open;
 mod open_api;
+mod paging;
 mod spec;
 mod spec_schemas;
 mod tokens;

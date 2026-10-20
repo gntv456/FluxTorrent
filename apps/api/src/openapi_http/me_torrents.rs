@@ -10,8 +10,23 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 use crate::torrents::CatMap;
 
-use super::me::MAX_ROWS;
+use super::paging::{count_with, has_more, page_params};
 use super::{require_scope, require_token, with_rl, SCOPE_READ};
+
+/// 列表与计数共用的 FROM/WHERE 片段（`$1` = Token 主人 uid）。
+/// P-444：`total` 数的必须正是「能翻出来的那些行」——两处各写一份
+/// 迟早分叉，所以这里只留一份给两边共用（同仓 `/me/torrentlist` 同口径）。
+fn snatch_fw(seeding_only: bool) -> String {
+    format!(
+        "snatches s JOIN torrents t ON t.id = s.torrent_id \
+         WHERE s.user_id = $1{}",
+        if seeding_only {
+            " AND s.seeding"
+        } else {
+            ""
+        }
+    )
+}
 
 /// snatches × torrents 的共同投影（做种/历史两个端点同一形状，工具只需认一次）
 #[allow(clippy::type_complexity)]
@@ -20,6 +35,7 @@ async fn my_snatches(
     uid: i64,
     seeding_only: bool,
     limit: i64,
+    offset: i64,
 ) -> DomainResult<
     Vec<(
         i64,
@@ -37,20 +53,21 @@ async fn my_snatches(
         bool,
     )>,
 > {
+    let fw = snatch_fw(seeding_only);
     let sql = format!(
         "SELECT t.id, t.name, t.size, t.seeders, t.leechers, t.category_id, \
          s.uploaded, s.downloaded, \
          EXTRACT(EPOCH FROM s.completed_at)::bigint, \
          EXTRACT(EPOCH FROM s.last_seen_at)::bigint, \
          s.progress, s.seeding, s.leeching \
-         FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
-         WHERE s.user_id = $1 {} ORDER BY s.last_seen_at DESC NULLS LAST, \
-         s.torrent_id DESC LIMIT $2",
-        if seeding_only { "AND s.seeding" } else { "" },
+         FROM {} ORDER BY s.last_seen_at DESC NULLS LAST, \
+         s.torrent_id DESC LIMIT $2 OFFSET $3",
+        fw
     );
     sqlx::query_as(&sql)
         .bind(uid)
         .bind(limit)
+        .bind(offset)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))
@@ -96,7 +113,12 @@ fn project(
     path = "/api/v1/open/me/seeding",
     tag = "我的数据",
     description = "我正在做种的清单（含 my_uploaded 与进度）。",
-    params(("limit" = String, Query, description = "1-100，默认 50")),
+    params((
+        "limit" = String,
+        Query,
+        description = "1-100，默认 50"
+    ),
+    ("offset" = String, Query, description = "跳过前 N 行，默认 0")),
     responses(
         (status = 200, description = "items + count"),
         (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
@@ -112,13 +134,10 @@ pub(super) async fn me_seeding(
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     require_scope(&tk, SCOPE_READ)?;
-    let limit = q
-        .get("limit")
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(50)
-        .clamp(1, MAX_ROWS);
+    let (limit, offset) = page_params(&q);
     let cats = CatMap::load(&state.repo.db).await;
-    let rows = my_snatches(&state, tk.uid, true, limit).await?;
+    let rows = my_snatches(&state, tk.uid, true, limit, offset).await?;
+    let total = count_with(&state, tk.uid, &snatch_fw(true)).await?;
     let items: Vec<_> = rows
         .into_iter()
         .map(
@@ -144,8 +163,19 @@ pub(super) async fn me_seeding(
             },
         )
         .collect();
+    let got = items.len() as i64;
     Ok(with_rl(
-        ok(serde_json::json!({ "items": items, "count": items.len() })),
+        ok(serde_json::json!({
+            "items": items,
+            // count = 本次返回条数；total = 这套谓词下的总行数；
+            // has_more = 后面还有（P-444 前这两个字段根本不存在，
+            // 客户端只能拿到被 limit 截断的一页还当它是全部）
+            "count": got,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "has_more": has_more(offset, got, total),
+        })),
         &tk,
     ))
 }
@@ -156,7 +186,12 @@ pub(super) async fn me_seeding(
     path = "/api/v1/open/me/history",
     tag = "我的数据",
     description = "我的下载/抓取历史（按最近活跃排序）。",
-    params(("limit" = String, Query, description = "1-100，默认 50")),
+    params((
+        "limit" = String,
+        Query,
+        description = "1-100，默认 50"
+    ),
+    ("offset" = String, Query, description = "跳过前 N 行，默认 0")),
     responses(
         (status = 200, description = "items + count"),
         (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
@@ -172,13 +207,10 @@ pub(super) async fn me_history(
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     require_scope(&tk, SCOPE_READ)?;
-    let limit = q
-        .get("limit")
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(50)
-        .clamp(1, MAX_ROWS);
+    let (limit, offset) = page_params(&q);
     let cats = CatMap::load(&state.repo.db).await;
-    let rows = my_snatches(&state, tk.uid, false, limit).await?;
+    let rows = my_snatches(&state, tk.uid, false, limit, offset).await?;
+    let total = count_with(&state, tk.uid, &snatch_fw(false)).await?;
     let items: Vec<_> = rows
         .into_iter()
         .map(
@@ -204,8 +236,19 @@ pub(super) async fn me_history(
             },
         )
         .collect();
+    let got = items.len() as i64;
     Ok(with_rl(
-        ok(serde_json::json!({ "items": items, "count": items.len() })),
+        ok(serde_json::json!({
+            "items": items,
+            // count = 本次返回条数；total = 这套谓词下的总行数；
+            // has_more = 后面还有（P-444 前这两个字段根本不存在，
+            // 客户端只能拿到被 limit 截断的一页还当它是全部）
+            "count": got,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "has_more": has_more(offset, got, total),
+        })),
         &tk,
     ))
 }

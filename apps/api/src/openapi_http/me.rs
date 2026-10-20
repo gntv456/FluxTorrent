@@ -10,6 +10,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
+use super::paging::{count_with, has_more, page_params};
 use super::{require_scope, require_token, with_rl, SCOPE_READ};
 
 /// 单次返回上限
@@ -89,6 +90,7 @@ pub(super) async fn me_overview(
     params(
         ("status" = String, Query, description = "open（默认）/ all"),
         ("limit" = String, Query, description = "1-100，默认 50"),
+        ("offset" = String, Query, description = "跳过前 N 行，默认 0"),
     ),
     responses(
         (status = 200, description = "items + count"),
@@ -109,30 +111,35 @@ pub(super) async fn me_hr(
     if !matches!(status, "open" | "all") {
         return Err(DomainError::Validation("status 只认 open / all".into()));
     }
-    let limit = q
-        .get("limit")
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(50)
-        .clamp(1, MAX_ROWS);
+    let (limit, offset) = page_params(&q);
+    let cond = if status == "open" {
+        " AND h.resolved_at IS NULL"
+    } else {
+        ""
+    };
+    // 列表与计数共用同一个 FROM/WHERE 片段（P-444：total 必须是「能翻出来
+    // 的那些行」的总数，不是另一套谓词数出来的）
+    let fw = format!(
+        "hr_violations h JOIN torrents t ON t.id = h.torrent_id \
+         WHERE h.user_id = $1{}",
+        cond
+    );
     let sql = format!(
         "SELECT h.torrent_id, t.name, h.seeded_seconds, h.required_seconds, \
          EXTRACT(EPOCH FROM h.detected_at)::bigint, \
          EXTRACT(EPOCH FROM h.resolved_at)::bigint \
-         FROM hr_violations h JOIN torrents t ON t.id = h.torrent_id \
-         WHERE h.user_id = $1 {} ORDER BY h.id DESC LIMIT $2",
-        if status == "open" {
-            "AND h.resolved_at IS NULL"
-        } else {
-            ""
-        },
+         FROM {} ORDER BY h.id DESC LIMIT $2 OFFSET $3",
+        fw
     );
     let rows: Vec<(i64, String, i32, i32, i64, Option<i64>)> =
         sqlx::query_as(&sql)
             .bind(tk.uid)
             .bind(limit)
+            .bind(offset)
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    let total = count_with(&state, tk.uid, &fw).await?;
     let items: Vec<_> = rows
         .into_iter()
         .map(|(tid, name, seeded, need, det, res)| {
@@ -148,8 +155,18 @@ pub(super) async fn me_hr(
             })
         })
         .collect();
+    let got = items.len() as i64;
     Ok(with_rl(
-        ok(serde_json::json!({ "items": items, "count": items.len() })),
+        ok(serde_json::json!({
+            "items": items,
+            // count = 本次返回条数（与同族 /open/announces 同口径）；
+            // 总数看 total，还有没有下一页看 has_more（P-444）
+            "count": got,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "has_more": has_more(offset, got, total),
+        })),
         &tk,
     ))
 }
@@ -163,6 +180,7 @@ pub(super) async fn me_hr(
     params(
         ("unread" = String, Query, description = "1 = 仅未读"),
         ("limit" = String, Query, description = "1-100，默认 50"),
+        ("offset" = String, Query, description = "跳过前 N 行，默认 0"),
     ),
     responses(
         (status = 200, description = "items + count"),
@@ -183,30 +201,26 @@ pub(super) async fn me_messages(
         q.get("unread").map(String::as_str),
         Some("1") | Some("true")
     );
-    let limit = q
-        .get("limit")
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(50)
-        .clamp(1, MAX_ROWS);
+    let (limit, offset) = page_params(&q);
+    let cond = if unread_only { " AND m.read_at IS NULL" } else { "" };
+    let fw = format!("messages m LEFT JOIN users su ON su.id = m.sender_id \
+                      WHERE m.receiver_id = $1{}", cond);
     let sql = format!(
         "SELECT m.id, COALESCE(su.username, '系统'), m.subject, m.body, \
          EXTRACT(EPOCH FROM m.created_at)::bigint, \
          EXTRACT(EPOCH FROM m.read_at)::bigint \
-         FROM messages m LEFT JOIN users su ON su.id = m.sender_id \
-         WHERE m.receiver_id = $1 {} ORDER BY m.id DESC LIMIT $2",
-        if unread_only {
-            "AND m.read_at IS NULL"
-        } else {
-            ""
-        },
+         FROM {} ORDER BY m.id DESC LIMIT $2 OFFSET $3",
+        fw
     );
     let rows: Vec<(i64, String, String, String, i64, Option<i64>)> =
         sqlx::query_as(&sql)
             .bind(tk.uid)
             .bind(limit)
+            .bind(offset)
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    let total = count_with(&state, tk.uid, &fw).await?;
     let items: Vec<_> = rows
         .into_iter()
         .map(|(id, from, subject, body, at, read_at)| {
@@ -216,8 +230,18 @@ pub(super) async fn me_messages(
             })
         })
         .collect();
+    let got = items.len() as i64;
     Ok(with_rl(
-        ok(serde_json::json!({ "items": items, "count": items.len() })),
+        ok(serde_json::json!({
+            "items": items,
+            // count = 本次返回条数（与同族 /open/announces 同口径）；
+            // 总数看 total，还有没有下一页看 has_more（P-444）
+            "count": got,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "has_more": has_more(offset, got, total),
+        })),
         &tk,
     ))
 }
