@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 818,
+ "total": 819,
  "routes": [
   {
    "method": "POST",
@@ -2034,6 +2034,12 @@
   },
   {
    "method": "GET",
+   "path": "/site-activity",
+   "handler": "site_activity_list",
+   "file": "apps/api/src/community_http/site_activity.rs"
+  },
+  {
+   "method": "GET",
    "path": "/matches/{id}",
    "handler": "match_detail",
    "file": "apps/api/src/community_http/sport_match_detail.rs"
@@ -3491,12 +3497,6 @@
    "file": "apps/api/src/invite_http.rs"
   },
   {
-   "method": "GET",
-   "path": "/invites",
-   "handler": "list_invites_handler",
-   "file": "apps/api/src/invite_http.rs"
-  },
-  {
    "method": "POST",
    "path": "/invites",
    "handler": "issue_invite_handler",
@@ -3525,6 +3525,12 @@
    "path": "/invites/invitees",
    "handler": "list_invitees_handler",
    "file": "apps/api/src/invite_http/invitees.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/invites",
+   "handler": "list_invites_handler",
+   "file": "apps/api/src/invite_http/list.rs"
   },
   {
    "method": "POST",
@@ -4691,22 +4697,22 @@
    "file": "apps/api/src/torrent_http/interact.rs"
   },
   {
+   "method": "PUT",
+   "path": "/torrents/{id}/bookmark",
+   "handler": "do_bookmark",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
    "method": "GET",
    "path": "/torrents/{id}/tags",
    "handler": "torrent_tags",
-   "file": "apps/api/src/torrent_http/interact.rs"
+   "file": "apps/api/src/torrent_http/interact_tags.rs"
   },
   {
    "method": "PUT",
    "path": "/torrents/{id}/tags",
    "handler": "torrent_tag_put",
-   "file": "apps/api/src/torrent_http/interact.rs"
-  },
-  {
-   "method": "PUT",
-   "path": "/torrents/{id}/bookmark",
-   "handler": "do_bookmark",
-   "file": "apps/api/src/torrent_http/interact.rs"
+   "file": "apps/api/src/torrent_http/interact_tags.rs"
   },
   {
    "method": "GET",

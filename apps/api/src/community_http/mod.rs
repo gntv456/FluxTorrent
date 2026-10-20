@@ -1,7 +1,6 @@
 //! 社区模块 HTTP 接口（M14 勋章 + M15 论坛 + M16 短讯/好友）。
 //! 按域拆分（300 行门禁）：见各子模块头注释。
 use actix_web::web;
-// 按域拆出的子模块（本文件自己卡在 300 行门禁：新增子域要补这里与 mod 清单）
 pub(crate) use follow_read::*;
 pub(crate) use forums_boards::*;
 pub(crate) use forums_mine::*;
@@ -58,6 +57,7 @@ mod post_topic_delete;
 mod post_write;
 mod seasonal;
 mod shoutbox;
+mod site_activity;
 mod sport_match_detail;
 mod sport_matches;
 mod staff_answer;
@@ -101,6 +101,7 @@ pub use post_read::*;
 pub use post_write::*;
 pub use seasonal::*;
 pub use shoutbox::*;
+pub use site_activity::*;
 pub use sport_matches::*;
 pub use staff_answer::*;
 pub use staffbox::*;
@@ -210,6 +211,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(shoutbox_send)
         .service(shoutbox_delete)
         .service(shoutbox_clear)
+        .service(site_activity::site_activity_list)
         .service(shoutbox_bot_help)
         .service(shoutbox_bot_exec)
         .service(ticket_list)

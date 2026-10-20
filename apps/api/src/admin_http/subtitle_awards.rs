@@ -219,25 +219,25 @@ async fn awards_grant(
             "reward": reward, "medal": medal_name,
         }));
     }
-    // 揭晓公告（0405 双路口径）：缺省写首页公告区（系统身份+「评选」徽章），
-    // 站长开 `shoutbox_announce_awards` 后才同时广播聊天室。
+    // 揭晓播报（0407 三渠分立）：全站动态流（site_activity）承接，
+    // 公告区（announcements）回归管理员专用不再写入；站长开
+    // `shoutbox_announce_awards` 后同时广播聊天室。
     // P-239 纪律保留：两路任一发不出去都要报出来（不能让站长以为已通知）。
-    let announce_text =
-        format!("「{}」期金字字幕评选已揭晓！详见字幕区评选榜。", body.period);
+    let announce_text = format!(
+        "「{}」期金字字幕评选已揭晓！详见字幕区评选榜。",
+        body.period
+    );
     if let Err(e) = sqlx::query(
-        "INSERT INTO announcements (title, body, badge, author_id, sort) \
-         VALUES ($1, $2, '评选', $3, \
-                 (SELECT COALESCE(max(sort),0)+10 FROM announcements))",
+        "INSERT INTO site_activity (kind, text, actor_id) \
+         VALUES ('award_reveal', $1, $2)",
     )
-    .bind(format!("金字字幕评选揭晓（{}）", body.period))
     .bind(announce_text.clone())
     .bind(auth.id)
     .execute(&state.repo.db)
     .await
     {
-        tracing::warn!(%e, period = %body.period, "揭晓公告写入公告区失败");
+        tracing::warn!(%e, period = %body.period, "揭晓播报写入全站动态失败");
     }
-    crate::http::home::invalidate_home_cache(&state).await;
     let broadcast: Option<String> = sqlx::query_scalar(
         "SELECT value FROM site_settings \
          WHERE name = 'shoutbox_announce_awards'",
