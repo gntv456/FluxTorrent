@@ -299,7 +299,13 @@ async fn main() -> anyhow::Result<()> {
                     .add((
                         "Content-Security-Policy",
                         "default-src 'none'; frame-ancestors 'none'",
-                    )),
+                    ))
+                    // 个性化 JSON 默认不可缓存（2026-10-20）：/me、/invites、
+                    // /torrents 等响应按 Cookie 区分用户，此前却没有任何
+                    // Cache-Control——共享缓存若只按 URI 命中会把 A 的响应
+                    // 发给 B。口径同 openapi_http::no_store；DefaultHeaders
+                    // 只补缺失项，视频附件长缓存与 SSE 的 no-transform 不受影响。
+                    .add(("Cache-Control", "private, no-store, max-age=0")),
             )
             .wrap(actix_web::middleware::from_fn(request_id::request_id_mw)) // request_id 贯穿（信封/响应头/日志同源）
             // Idempotency-Key 头 → task-local（幂等键「体优先，头兜底」的头侧来源）
