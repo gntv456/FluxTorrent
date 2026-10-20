@@ -15,6 +15,14 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(review_queue)
         .service(review_decide)
         .service(review_batch)
+        // 自动审种执法裁决（0400）：worker 引擎内调，与人审同走 decide_one
+        .service(engine_decide)
+        // 自动审种管理面（0401）：统计/台账/回放/套用
+        .service(ar_stats)
+        .service(ar_logs)
+        .service(ar_replay)
+        .service(ar_apply)
+        .service(ar_bulk_restore)
         .service(report_queue)
         .service(report_resolve)
         .service(report_claim)
@@ -138,6 +146,16 @@ mod reports_resolve;
 mod review;
 // 审核台批量裁决（0286）：单条 decide 之外的吞吐口，副作用与 decide 同源
 mod review_batch;
+// 自动审种执法裁决口（0400）：worker 引擎内调；鉴权=引擎 JWT+内部头
+mod review_auto;
+// 自动审种·裁决出口（0400 批 2，从 review_auto 拆出）
+mod review_auto_decide;
+// 自动审种管理面（0401）：stats/logs/replay/apply
+mod auto_review_admin;
+// 自动审种·管理台动作端点（0400 批 2，从 auto_review_admin 拆出）
+mod auto_review_ops;
+// 自动审种·预设套用（0400 批 2，从 auto_review_ops 再拆）
+mod auto_review_preset;
 // F2：services/review_decide.rs（用例层）复用通知实现
 pub(crate) mod review_notify;
 // 过审副作用（自动促销 + 组订阅）：单条与批量裁决共用；offers 转正也走同一份（0306）
@@ -182,6 +200,11 @@ pub use reports::*;
 pub use reports_resolve::*;
 pub use review::*;
 pub use review_batch::*;
+pub use review_auto::*;
+pub use review_auto_decide::*;
+pub use auto_review_admin::{logs as ar_logs, stats as ar_stats};
+pub use auto_review_ops::{bulk_restore as ar_bulk_restore, replay as ar_replay};
+pub use auto_review_preset::apply as ar_apply;
 pub use roles::*;
 pub use site::*;
 pub use site_put::*;

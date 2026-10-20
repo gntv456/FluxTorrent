@@ -45,6 +45,11 @@ export const LAZY_PANELS = {
       default: m.AdminUsers,
     })),
   ),
+    AutoReviewPanel: lazy(() =>
+    import("./auto-review-panel").then((m) => ({
+      default: m.AutoReviewPanel,
+    })),
+  ),
     AdminTorrents: lazy(() =>
     import("@/components/admin-torrents").then((m) => ({
       default: m.AdminTorrents,

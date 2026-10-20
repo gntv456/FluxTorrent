@@ -11,6 +11,7 @@ import { PANEL_CENTER } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { enumOptions } from "@/components/setting-field-controls";
+import { AutoReviewStatBar } from "./auto-review-stat-bar";
 import type {
   SettingCard,
   SettingFieldMeta,
@@ -171,6 +172,8 @@ export function SettingsGroupCards({
       >
         {fmt(s.groupBar, { group: groupLabel, n: group.count })}
       </p>
+      {/* 自动审种（0400 A11）：分区顶部实时示例条——改阈值前先看效果 */}
+      {group.key === "auto_review" && <AutoReviewStatBar />}
       {group.cards.map((c) => {
         const isSwitch = (f: SettingFieldMeta) =>
           f.type === "yesno" ||
