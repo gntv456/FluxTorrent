@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/i18n/client";
 import type { PmBox } from "@/components/message-center-table";
+import { Icon } from "@/components/icons";
 
 /** 消息中心工具条（从 components/message-center.tsx 按域拆出）：
  *  ToolbarSwitcher 收件箱/自建文件夹/发件箱切换 + 🗂 管理 + 搜索/未读
@@ -21,6 +22,7 @@ export function ToolbarSwitcher({
   onShowFolder,
   onShowSent,
   onToggleManage,
+  managing,
   onCompose,
 }: {
   t: ReturnType<typeof useI18n>["dict"]["messages"];
@@ -35,6 +37,7 @@ export function ToolbarSwitcher({
   onShowFolder: (id: number) => void;
   onShowSent: () => void;
   onToggleManage: () => void;
+  managing: boolean;
   onCompose: () => void;
 }) {
   return (
@@ -82,10 +85,17 @@ export function ToolbarSwitcher({
         <button
           type="button"
           onClick={onToggleManage}
-          className="min-h-[44px] rounded-[10px] border border-[var(--brand-line)] bg-[var(--row-veil-soft)] px-3 text-sm text-sub"
+          aria-pressed={managing}
           title={t.manageBoxes}
+          className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px]
+            border px-3 text-sm font-bold ${
+              managing
+                ? "border-[var(--brand-orange)] bg-[var(--sky-soft)] text-[var(--brand-orange-dark)]"
+                : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] text-ink hover:-translate-y-px hover:text-[var(--brand-orange)]"
+            }`}
         >
-          🗂
+          <Icon name="folder" size={16} />
+          {t.manageBoxes}
         </button>
       </div>
       <div className="flex flex-wrap items-center gap-2">

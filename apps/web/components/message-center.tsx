@@ -203,6 +203,7 @@ export function MessageCenter() {
           setOpenId(null);
         }}
         onToggleManage={() => setBoxManage((v) => !v)}
+        managing={boxManage}
         onCompose={() => {
           setReplyTo(null);
           setForwardOf(null);
