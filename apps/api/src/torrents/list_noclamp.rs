@@ -8,6 +8,13 @@ use crate::errors::{DomainError, DomainResult};
 use super::list_noclamp_as::list_torrents_noclamp_as;
 use super::types::{ListCursor, TorrentFilter, TorrentPage};
 
+/// 「可发货」谓词（P-433）：订阅类出口只能广告有原始存档的种。下载口对
+/// 无存档种回 400「种子文件缺失…请联系管理组补档」，而 Prowlarr/Sonarr/
+/// qBittorrent 会按 guid 自动重试同一枚，用户侧只看到永久失败的红色条目。
+/// RSS 的 SQL 与 Torznab 的回收共用这一份，别在别处另写一句。
+pub const HAS_ARCHIVE_CLAUSE: &str =
+    "EXISTS (SELECT 1 FROM torrent_files tf WHERE tf.torrent_id = t.id)";
+
 /// 不做 50 上限钳制的列表查询：仅供 Torznab 等需要 offset+limit>50 深翻页的外部端点，
 /// 调用方必须自行 clamp 防滥用（见 economy_http torznab_search）。viewer=0（无状态筛选视角）。
 pub async fn list_torrents_noclamp(
@@ -19,7 +26,8 @@ pub async fn list_torrents_noclamp(
     list_torrents_noclamp_as(db, filter, cursor, limit, 0).await
 }
 
-/// 凭证类订阅出口专用（P-324）：在 noclamp 之上回收「付费且未购」的种。
+/// 凭证类订阅出口专用（P-324）：在 noclamp 之上回收「付费且未购」的种，
+/// 以及「无原始存档、下载口必 400」的种（P-433）。
 ///
 /// 为什么必须回收：这类出口的 item 直接带 `download.php?id&passkey`（本人
 /// passkey），Prowlarr/Sonarr/Radarr 会**自动**抓 enclosure，而
@@ -43,21 +51,26 @@ pub async fn list_torrents_noclamp_for_sub(
 ) -> DomainResult<TorrentPage> {
     let mut page =
         list_torrents_noclamp_as(db, filter, cursor, limit, viewer).await?;
-    if !hide_paid || page.items.is_empty() {
+    if page.items.is_empty() {
         return Ok(page);
     }
     let ids: Vec<i64> = page.items.iter().map(|t| t.id).collect();
-    let blocked: Vec<i64> = sqlx::query_scalar(
-        "SELECT t.id FROM torrents t WHERE t.id = ANY($1) AND t.price > 0 \
-         AND t.owner_id IS DISTINCT FROM $2 AND NOT EXISTS (SELECT 1 \
-         FROM torrent_purchases tp WHERE tp.user_id = $2 \
-         AND tp.torrent_id = t.id)",
-    )
-    .bind(&ids)
-    .bind(viewer)
-    .fetch_all(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-433：无存档种的回收与 hide_paid 无关（逃生口也只放付费，不放
+    // 「点下去必 400」的种），两条条件合成一次查询，按 id 集合回收。
+    let sql = format!(
+        "SELECT t.id FROM torrents t WHERE t.id = ANY($1) AND ((NOT {}) \
+         OR ($2::bool AND t.price > 0 AND t.owner_id IS DISTINCT FROM $3 \
+         AND NOT EXISTS (SELECT 1 FROM torrent_purchases tp \
+         WHERE tp.user_id = $3 AND tp.torrent_id = t.id)))",
+        HAS_ARCHIVE_CLAUSE
+    );
+    let blocked: Vec<i64> = sqlx::query_scalar(&sql)
+        .bind(&ids)
+        .bind(hide_paid)
+        .bind(viewer)
+        .fetch_all(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     if !blocked.is_empty() {
         let set: std::collections::HashSet<i64> = blocked.into_iter().collect();
         page.items.retain(|t| !set.contains(&t.id));
