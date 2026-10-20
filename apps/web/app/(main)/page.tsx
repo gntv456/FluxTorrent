@@ -6,6 +6,10 @@ import { getSiteProfile } from "@/lib/site-profile";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
 import { MobileHomeHeader } from "@/components/mobile-home-header";
+import {
+  homeMeSummary,
+  type HomeMeRaw,
+} from "./_parts/home-me-summary";
 import type { HomeData } from "@/components/home-data";
 import { LatestPosters } from "@/components/latest-posters";
 import { Icon } from "@/components/icons";
@@ -42,23 +46,9 @@ export default async function HomePage() {
   }
   // M3 移动问候条数据（/me/overview 摘要；失败回落 null 只渲染问候语）
   const ov = await api
-    .get<{
-      uploaded?: number;
-      downloaded?: number;
-      spark_balance?: number;
-    }>("/api/v1/me/overview")
+    .get<HomeMeRaw>("/api/v1/me/overview")
     .catch(() => null);
-  const meSummary = ov
-    ? {
-        uploaded: `${((ov.uploaded ?? 0) / 1e9).toFixed(1)}G`,
-        downloaded: `${((ov.downloaded ?? 0) / 1e9).toFixed(1)}G`,
-        ratio:
-          (ov.downloaded ?? 0) > 0
-            ? ((ov.uploaded ?? 0) / (ov.downloaded ?? 1)).toFixed(2)
-            : "∞",
-        spark: (ov.spark_balance ?? 0).toLocaleString(dateLocale(locale)),
-      }
-    : null;
+  const meSummary = homeMeSummary(ov, dateLocale(locale));
   const brandName = profile?.brand || dict.common.brand;
 
   // 首页数据（SSR 直出，P1 修复）：一次取回完整 HomeData 传给 HomeSections，
