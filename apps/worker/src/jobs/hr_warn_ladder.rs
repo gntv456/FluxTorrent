@@ -18,6 +18,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
+use super::hr_warn_mail::warn_mail;
+
 // 判定矩阵的真身在 api（api/src/domain/hr_warn），worker 用 #[path] 复用。
 #[path = "../../../api/src/domain/hr_warn/mod.rs"]
 mod api_domain;
@@ -67,6 +69,11 @@ struct Candidate {
 /// 口径与 hr_punish 一致（hr_violations.resolved_at IS NULL），但这里
 /// 取的是**条数**用于选档，另外取该用户现存警告里最早的一条到期时刻
 /// 作为 Gazelle 顺延的起点。
+///
+/// `open_warnings` 是「本次之前」的条数（domain `WarnInput` 的口径）：
+/// 本次违规已经落表，直接拿 count(*) 会把它算进档位，于是
+/// `step_for(1)` 成为首次命中——第 1 档「只警告」永远走不到，
+/// 一次小违规就直接限下，与 0388 的「第 2 档起才限下」相反。
 async fn candidates(db: &PgPool) -> anyhow::Result<Vec<Candidate>> {
     let rows: Vec<(i64, i32, Option<DateTime<Utc>>)> = sqlx::query_as(
         "SELECT v.user_id, count(*)::int, min(w.expires_at) \
@@ -82,7 +89,7 @@ async fn candidates(db: &PgPool) -> anyhow::Result<Vec<Candidate>> {
         .into_iter()
         .map(|(user_id, open_warnings, earliest_expiry)| Candidate {
             user_id,
-            open_warnings,
+            open_warnings: (open_warnings - 1).max(0),
             earliest_expiry,
         })
         .collect())
@@ -100,6 +107,24 @@ pub(crate) async fn run(db: &PgPool) -> anyhow::Result<u64> {
     let mut changed = 0u64;
 
     for c in &cands {
+        let (idx, step) = api_domain::step_for(c.open_warnings);
+        let lvl = (idx + 1).min(4) as i32;
+
+        // 同档不重算。`decide` 的顺延起点是警告自身的 expires_at，每轮
+        // 重算就把到期时刻再加一档：现网 41 行因此被推到 2027 年以后，
+        // 同一批违规每分钟写一行 history（3.4 万行）。只有首次警告或
+        // 档位上升（真来了新违规）才重新发警告。
+        let prior_step: Option<i32> = sqlx::query_scalar(
+            "SELECT step FROM hr_warn_states WHERE user_id = $1",
+        )
+        .bind(c.user_id)
+        .fetch_optional(db)
+        .await
+        .unwrap_or(None);
+        if lvl <= prior_step.unwrap_or(0) {
+            continue;
+        }
+
         let d = api_domain::decide(&api_domain::WarnInput {
             open_warnings: c.open_warnings,
             earliest_expiry: c.earliest_expiry,
@@ -107,52 +132,26 @@ pub(crate) async fn run(db: &PgPool) -> anyhow::Result<u64> {
             max_shift_days: cfg.max_shift_days,
             now,
         });
-        let (_, step) = api_domain::step_for(c.open_warnings);
-        let lvl = (d.step + 1).min(4) as i32;
-
-        // 只在「到期时刻或处置动作真的变了」时写库 + 留史，
-        // 否则每轮都往 history 灌一行（几周后 history 就没用了）。
-        let prior: Option<(i32, Option<DateTime<Utc>>, bool, bool)> =
-            sqlx::query_as(
-                "SELECT step, expires_at, restrict_download, block_invite \
-                 FROM hr_warn_states WHERE user_id = $1",
-            )
-            .bind(c.user_id)
-            .fetch_optional(db)
-            .await
-            .unwrap_or(None);
-
-        let same = matches!(
-            prior,
-            Some((p, e, rd, bi))
-                if p == lvl
-                    && e == Some(d.expires_at)
-                    && rd == step.restrict_download
-                    && bi == step.block_invite
-        );
-        if same {
-            continue;
-        }
-
-        upsert_state(db, c.user_id, lvl, cfg.base_days, &d, step).await?;
-        sqlx::query(
-            "INSERT INTO hr_warn_history \
-             (user_id, step, base_days, expires_at, shifted_days, hit_cap, note) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        )
-        .bind(c.user_id)
-        .bind(lvl)
-        .bind(cfg.base_days)
-        .bind(d.expires_at)
-        .bind(d.shifted_days)
-        .bind(d.hit_cap)
-        .bind(format!(
+        let note = format!(
             "open={} shift={}d{}",
             c.open_warnings,
             d.shifted_days,
             if d.hit_cap { " cap" } else { "" }
-        ))
-        .execute(db)
+        );
+        let subject = format!("H&R 警告（第 {lvl} 档）");
+        let body = warn_mail(
+            c.open_warnings,
+            lvl,
+            step.restrict_download,
+            step.block_upload,
+            step.block_invite,
+            d.expires_at,
+            d.hit_cap,
+        );
+        record_step(
+            db, c.user_id, lvl, cfg.base_days, &d, step, &note, &subject,
+            &body,
+        )
         .await?;
         changed += 1;
         // 只在本档要求限制下载时才真的动 download_enabled；
@@ -177,42 +176,6 @@ pub(crate) async fn run(db: &PgPool) -> anyhow::Result<u64> {
     Ok(changed)
 }
 
-async fn upsert_state(
-    db: &PgPool,
-    user_id: i64,
-    lvl: i32,
-    base_days: i32,
-    d: &api_domain::WarnDecision,
-    step: api_domain::WarnStep,
-) -> anyhow::Result<()> {
-    sqlx::query(
-        "INSERT INTO hr_warn_states \
-         (user_id, step, base_days, expires_at, shifted_days, hit_cap, \
-          restrict_download, block_upload, block_invite, updated_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now()) \
-         ON CONFLICT (user_id) DO UPDATE SET \
-           step = EXCLUDED.step, base_days = EXCLUDED.base_days, \
-           expires_at = EXCLUDED.expires_at, \
-           shifted_days = EXCLUDED.shifted_days, \
-           hit_cap = EXCLUDED.hit_cap, \
-           restrict_download = EXCLUDED.restrict_download, \
-           block_upload = EXCLUDED.block_upload, \
-           block_invite = EXCLUDED.block_invite, \
-           updated_at = now()",
-    )
-    .bind(user_id)
-    .bind(lvl)
-    .bind(base_days)
-    .bind(d.expires_at)
-    .bind(d.shifted_days)
-    .bind(d.hit_cap)
-    .bind(step.restrict_download)
-    .bind(step.block_upload)
-    .bind(step.block_invite)
-    .execute(db)
-    .await?;
-    Ok(())
-}
 
 /// 到期且已无未解决违规 → 清零警告并解锁下载。
 ///
@@ -250,4 +213,65 @@ async fn restore_due(db: &PgPool, now: DateTime<Utc>) -> anyhow::Result<u64> {
     .execute(db)
     .await?;
     Ok(ids.len() as u64)
+}
+
+/// 状态、历史、通知一条语句落库。
+///
+/// 三者必须同生共死：只写状态不发信，下一轮就因档位相同被跳过，
+/// 这封信永远不会补发。
+#[allow(clippy::too_many_arguments)]
+async fn record_step(
+    db: &PgPool,
+    user_id: i64,
+    lvl: i32,
+    base_days: i32,
+    d: &api_domain::WarnDecision,
+    step: api_domain::WarnStep,
+    note: &str,
+    subject: &str,
+    body: &str,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        r#"
+        WITH st AS (
+            INSERT INTO hr_warn_states
+                (user_id, step, base_days, expires_at, shifted_days, hit_cap,
+                 restrict_download, block_upload, block_invite, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+            ON CONFLICT (user_id) DO UPDATE SET
+                step = EXCLUDED.step, base_days = EXCLUDED.base_days,
+                expires_at = EXCLUDED.expires_at,
+                shifted_days = EXCLUDED.shifted_days,
+                hit_cap = EXCLUDED.hit_cap,
+                restrict_download = EXCLUDED.restrict_download,
+                block_upload = EXCLUDED.block_upload,
+                block_invite = EXCLUDED.block_invite,
+                updated_at = now()
+            RETURNING user_id
+        ), hi AS (
+            INSERT INTO hr_warn_history
+                (user_id, step, base_days, expires_at, shifted_days, hit_cap, note)
+            SELECT $1, $2, $3, $4, $5, $6, $10 FROM st
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body, kind)
+        SELECT NULL, $1, $11, $12, 'hr_violation'
+        FROM st
+        WHERE u_notice_enabled($1, 'hr_violation')
+        "#,
+    )
+    .bind(user_id)
+    .bind(lvl)
+    .bind(base_days)
+    .bind(d.expires_at)
+    .bind(d.shifted_days)
+    .bind(d.hit_cap)
+    .bind(step.restrict_download)
+    .bind(step.block_upload)
+    .bind(step.block_invite)
+    .bind(note)
+    .bind(subject)
+    .bind(body)
+    .execute(db)
+    .await?;
+    Ok(())
 }

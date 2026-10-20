@@ -9,6 +9,8 @@ worker 只落库，发种口与邀请口从不看这两列——三四档此前�
   II2 生成邀请码：block_invite → 400「禁邀档」，邀请行数与配额均未动
   II3 魔力兑换：拦在 spend_spark 之前（余额/流水/幂等键零变化）
   II4 总开关关闭：同一行 fixture 不再拦人（「回到旧单档」为真）
+  II6 限下锁不被 hr_punish 提前解开
+  II7 阶梯变动必须给用户发站内信（第 1 档不动权限，信是它唯一的可见效果）
   II5 清理：fixture / 邀请 / 配额 / 探针号全部归零
 """
 import json
@@ -200,6 +202,52 @@ ok("II6 警告到期前 hr_punish 不得解锁（旧实现 <阈值即放人）",
    FIN is not None and EN == "false",
    "download_enabled=%s finished=%s" % (EN, FIN))
 
+print("== II7 阶梯变动必须告知用户 ==")
+# 清掉 II1/II6 留下的警告态：本段只放一条未解决违规，让阶梯从零算到
+# 第 1 档——该档不动任何权限，站内信是它唯一的用户可见效果。
+x("DELETE FROM hr_warn_states WHERE user_id = %d" % UID)
+x("DELETE FROM hr_warn_history WHERE user_id = %d" % UID)
+x("UPDATE users SET download_enabled = TRUE, download_locked_by = NULL "
+  "WHERE id = %d" % UID)
+TID = int(q("SELECT id FROM torrents ORDER BY id LIMIT 1"))
+# 时间戳先取再插夹具：worker 的自动 tick 可能抢在手动触发之前处理，
+# 按「条数增量」断言会因抢跑变假红。只认「夹具时间之后存在这封信」。
+T_MARK = q("SELECT to_char(now(), 'YYYY-MM-DD HH24:MI:SS.US')")
+x("INSERT INTO hr_violations (user_id, torrent_id, seeded_seconds, "
+  "required_seconds) VALUES (%d, %d, 0, 3600)" % (UID, TID))
+NVIO = q("SELECT count(*) FROM hr_violations WHERE user_id = %d "
+         "AND resolved_at IS NULL" % UID)
+def wmsg(agg):
+    return q("SELECT %s FROM messages WHERE receiver_id = %d AND "
+             "subject LIKE 'H&R 警告%%' AND created_at >= '%s'"
+             % (agg, UID, T_MARK))
+
+
+FIN = run_job("hr_warn_ladder")
+STEP = q("SELECT step::text FROM hr_warn_states WHERE user_id = %d" % UID)
+BODY = wmsg("COALESCE(max(body),'')")
+NMSG = int(wmsg("count(*)"))
+ok("II7a 第一次警告落库为第 1 档（只警告、不动权限）",
+   FIN is not None and NVIO == "1" and STEP == "1",
+   "violations=%s step=%s finished=%s" % (NVIO, STEP, FIN))
+ok("II7b 阶梯变动必须发站内信且写明档位与到期（旧实现零通知）",
+   NMSG >= 1 and "第 1 档" in BODY and "到期" in BODY,
+   "msg=%s body=%s" % (NMSG, BODY[:120]))
+EXP0 = q("SELECT expires_at::text FROM hr_warn_states WHERE user_id = %d"
+         % UID)
+H0 = int(q("SELECT count(*) FROM hr_warn_history WHERE user_id = %d"
+           % UID))
+FIN2 = run_job("hr_warn_ladder")
+EXP1 = q("SELECT expires_at::text FROM hr_warn_states WHERE user_id = %d"
+         % UID)
+H1 = int(q("SELECT count(*) FROM hr_warn_history WHERE user_id = %d"
+           % UID))
+NMSG2 = int(wmsg("count(*)"))
+ok("II7c 同一批违规重跑不得继续顺延（到期/历史/通知都不动）",
+   FIN2 is not None and EXP1 == EXP0 and H1 == H0 and NMSG2 == NMSG,
+   "exp=%s->%s hist=%s->%s msg=%s->%s"
+   % (EXP0, EXP1, H0, H1, NMSG, NMSG2))
+
 print("== II5 收尾 ==")
 if ORIG_EN is None:
     x("DELETE FROM site_settings WHERE name = 'hr_warn_enable'")
@@ -207,6 +255,9 @@ else:
     x("UPDATE site_settings SET value = '%s' WHERE name = "
       "'hr_warn_enable'" % ORIG_EN.replace("'", "''"))
 x("DELETE FROM hr_warn_states WHERE user_id = %d" % UID)
+x("DELETE FROM hr_warn_history WHERE user_id = %d" % UID)
+x("DELETE FROM hr_violations WHERE user_id = %d" % UID)
+x("DELETE FROM messages WHERE receiver_id = %d" % UID)
 x("DELETE FROM invites WHERE inviter_id = %d" % UID)
 x("DELETE FROM invite_quota WHERE user_id = %d" % UID)
 call("POST", "/admin/users/status", {"user_id": UID, "status": 2}, ROOT)
@@ -216,12 +267,15 @@ x("DELETE FROM traffic_ledger WHERE user_id = %d" % UID)
 ok("II5a 探针成员已走产品墓碑",
    q("SELECT count(*) FROM users WHERE id = %d AND status >= 2 "
      "AND passkey LIKE 'deleted-%%'" % UID) == "1", "uid=%s" % UID)
-ok("II5b 警告行/邀请/配额/火花流水无残留",
+ok("II5b 警告行/违规/站内信/邀请/配额/火花流水无残留",
    q("SELECT (SELECT count(*) FROM hr_warn_states WHERE user_id = %d) + "
+     "(SELECT count(*) FROM hr_warn_history WHERE user_id = %d) + "
+     "(SELECT count(*) FROM hr_violations WHERE user_id = %d) + "
+     "(SELECT count(*) FROM messages WHERE receiver_id = %d) + "
      "(SELECT count(*) FROM invites WHERE inviter_id = %d) + "
      "(SELECT count(*) FROM invite_quota WHERE user_id = %d) + "
      "(SELECT count(*) FROM spark_ledger WHERE user_id = %d)"
-     % (UID, UID, UID, UID)) == "0", "residue")
+     % (UID, UID, UID, UID, UID, UID, UID)) == "0", "residue")
 ok("II5c hr_warn_enable 已复原",
    q("SELECT value FROM site_settings WHERE name = 'hr_warn_enable'")
    == (ORIG_EN or ""), "now=%s" % q(
