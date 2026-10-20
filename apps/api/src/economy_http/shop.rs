@@ -2,8 +2,8 @@
 //! 从 economy_http.rs 按域拆出。
 //! 0207：购买支持数量（stackable 类）；装扮类 SKU 拆分后 config 驱动候选选择。
 
-use super::shop_guards::{card_kind_probe, ensure_deliverable};
 use super::shop_effects::apply_item_effect;
+use super::shop_guards::{card_kind_probe, ensure_deliverable};
 use super::shop_list::buffer_cap_check;
 use super::shop_list::shop_items;
 use super::spend::spend_spark;
@@ -313,6 +313,12 @@ async fn shop_buy(
         Some(PaidQty::Rows(paid)) => paid,
         _ => qty.max(1) as usize,
     };
+    // HN 裁 B（两段收口）：spend（tx1）与 freeze（tx2）之间的窄窗内，
+    // 同键订单行已存在（异常残留/并发抢先）会让 freeze 落空返回 None——
+    // 用户已扣款却无新订单行。首扣（Spent）且全部落空 = 钱花了空气：
+    // 同键退款（:refund 后缀，earn_spark 幂等防双退）+ 库存回滚 + 出声。
+    // 判定只在「本次真扣了钱」上触发；Replayed 分支不受影响（其落空属正常）。
+    let mut frozen_any = false;
     if card_kind && card_rows > 1 {
         for k in 1..=card_rows {
             let key = if k == 1 {
@@ -324,7 +330,7 @@ async fn shop_buy(
             // 拆成 N 行（每行一张卡），每行只对应一次履约。
             // 记 total 会让 N 行台账合计 N×total，对账时凭空多出
             // 一笔钱——而 worker 的退款兜底正是按 frozen_amount 退的。
-            crate::repo::shop::freeze_order(
+            if crate::repo::shop::freeze_order(
                 &state.repo,
                 auth.id,
                 body.item_id,
@@ -333,19 +339,56 @@ async fn shop_buy(
                 &config,
                 unit_price,
             )
-            .await?;
+            .await?
+            .is_some()
+            {
+                frozen_any = true;
+            }
         }
-    } else {
-        crate::repo::shop::freeze_order(
-            &state.repo,
+    } else if crate::repo::shop::freeze_order(
+        &state.repo,
+        auth.id,
+        body.item_id,
+        total,
+        &idem,
+        &config,
+        total,
+    )
+    .await?
+    .is_some()
+    {
+        frozen_any = true;
+    }
+    if matches!(outcome, crate::economy_http::SpendOutcome::Spent) && !frozen_any {
+        tracing::error!(
+            user = auth.id,
+            item = body.item_id,
+            idem = %idem,
+            "商店两段落空：扣款已成功但订单行未建立，自动退款 {total} 并回滚库存"
+        );
+        let refund_key = format!("{idem}:refund");
+        crate::economy_http::spend::earn_spark(
+            &state.repo.db,
             auth.id,
-            body.item_id,
             total,
-            &idem,
-            &config,
-            total,
+            "refund",
+            &refund_key,
         )
-        .await?;
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        if let Some((item_id, q)) = stock_rollback {
+            sqlx::query(
+                "UPDATE shop_items SET stock_used = stock_used - $2                  WHERE id = $1",
+            )
+            .bind(item_id)
+            .bind(q)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+        return Err(DomainError::Internal(anyhow::anyhow!(
+            "订单建立失败，已原路退回 {total} 火花；请稍后重试"
+        )));
     }
 
     // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发（此前 Replayed 直接跳过

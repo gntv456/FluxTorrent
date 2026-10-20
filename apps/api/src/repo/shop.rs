@@ -27,7 +27,7 @@ pub async fn freeze_order(
     idem: &str,
     config: &serde_json::Value,
     frozen_amount: i64,
-) -> DomainResult<()> {
+) -> DomainResult<Option<i64>> {
     let mut tx = repo.db.begin().await.map_err(internal)?;
     let oid: Option<i64> = sqlx::query_scalar(
         "INSERT INTO shop_orders \
@@ -59,7 +59,10 @@ pub async fn freeze_order(
         .map_err(internal)?;
     }
     tx.commit().await.map_err(internal)?;
-    Ok(())
+    // oid=None ⇒ 幂等键已存在（重放路径由调用方判 SpendOutcome 处理）；
+    // 首扣（Spent）却得 None = 扣款与落单两段间有同键行抢先/残留——
+    // 交给调用方的「落空退款」分支（HN 裁 B）。
+    Ok(oid)
 }
 
 /// 履约完成：冻结转 consumed、订单转 done（0383 三段式第三步）。
