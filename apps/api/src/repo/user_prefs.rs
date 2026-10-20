@@ -19,3 +19,18 @@ pub async fn viewer_prefs(repo: &Repo, viewer: i64) -> (i32, i32, i32, i32) {
     .unwrap_or(None)
     .unwrap_or((1, 0, 0, 0))
 }
+
+/// 版块主题列表读的偏好：`topics_per_page`（0024，0 = 未设置）。
+/// P-442 之前这一列只有写口与回显读它，列表按常量 50 出，「面板填 2 照样
+/// 20 条」是纯摆设。读失败按 0 处理（与 `viewer_prefs` 同口径：
+/// 偏好不该把列表主路径拖倒）。
+pub async fn board_per_page(repo: &Repo, viewer: i64) -> i32 {
+    sqlx::query_scalar::<_, i32>(
+        "SELECT topics_per_page FROM users WHERE id = $1",
+    )
+    .bind(viewer)
+    .fetch_optional(&repo.read_db)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(0)
+}

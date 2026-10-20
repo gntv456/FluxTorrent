@@ -9,6 +9,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::repo::community::forum_side as repo_side;
+use crate::repo::user_prefs;
 use crate::state::AppState;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -65,6 +66,26 @@ struct TopicListQuery {
 
 /// 每页主题数：前端 Pager 与提示语共用这一个数，不许各写一份。
 pub(crate) const TOPIC_PAGE_SIZE: i64 = 50;
+
+/// 控制面板「每页主题数」的天花板：那一列在面板里是自由数字输入、写口
+/// 不校验区间，`topics_per_page = 100000` 是能被写进库里的（P-275 在种子
+/// 列表上同款处理：越界夹回来，不拿 400 打断设置页）。
+const TOPIC_PAGE_MAX: i64 = 200;
+
+/// `users.topics_per_page` → 每页条数（P-442）。
+///
+/// 0024 建的这一列此前只有写口与回显读它，列表恒按 `TOPIC_PAGE_SIZE` 出，
+/// 面板填 2 照样一次给几十条——「能改能存能回显但没人读」的假开关。
+/// 0/负数 = 未设置（建表默认就是 0），交回缺省；正数夹到上限。
+/// 前端 Pager 读的是回显的 `per`（`forums/[id]/page.tsx` 的 `data.per`），
+/// 所以这里改一个数就够，不在两处各写一份。
+fn per_page_from_pref(pref: i32) -> i64 {
+    if pref <= 0 {
+        TOPIC_PAGE_SIZE
+    } else {
+        i64::from(pref).clamp(1, TOPIC_PAGE_MAX)
+    }
+}
 
 #[utoipa::path(
     get,
@@ -149,7 +170,9 @@ pub(crate) async fn topic_list(
          WHERE {where_sql} ORDER BY {order} \
          LIMIT $3 OFFSET $4"
     );
-    let per = TOPIC_PAGE_SIZE;
+    let per =
+        per_page_from_pref(user_prefs::board_per_page(&state.repo, auth.id)
+                           .await);
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let rows = sqlx::query_as::<_, TopicRow>(&sql)
         .bind(fid)
@@ -189,4 +212,22 @@ pub(crate) async fn topic_list(
         "total": total,
         "topics": rows,
     })))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{per_page_from_pref, TOPIC_PAGE_MAX, TOPIC_PAGE_SIZE};
+
+    /// 面板那一列到每页条数的折算：未设置/脏值回落缺省，正数生效，
+    /// 越界夹住。这条是纯函数层——界面层要等二进制换掉才能验。
+    #[test]
+    fn per_page_folds_pref() {
+        assert_eq!(per_page_from_pref(0), TOPIC_PAGE_SIZE, "0=未设置");
+        assert_eq!(per_page_from_pref(-7), TOPIC_PAGE_SIZE, "负数同缺省");
+        assert_eq!(per_page_from_pref(2), 2, "面板填 2 就 2 条");
+        assert_eq!(per_page_from_pref(50), 50, "与缺省同值不变形");
+        assert_eq!(per_page_from_pref(100_000), TOPIC_PAGE_MAX,
+                   "自由数字要夹住");
+        assert_eq!(per_page_from_pref(1), 1, "下限不夹成 0 页");
+    }
 }
