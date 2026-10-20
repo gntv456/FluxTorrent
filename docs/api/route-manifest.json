@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 809,
+ "total": 817,
  "routes": [
   {
    "method": "POST",
@@ -75,6 +75,36 @@
    "path": "/admin/audit/chain-verify",
    "handler": "audit_chain_verify",
    "file": "apps/api/src/admin_http/audit.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/auto-review/stats",
+   "handler": "stats",
+   "file": "apps/api/src/admin_http/auto_review_admin.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/auto-review/logs",
+   "handler": "logs",
+   "file": "apps/api/src/admin_http/auto_review_admin.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/auto-review/replay",
+   "handler": "replay",
+   "file": "apps/api/src/admin_http/auto_review_ops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/auto-review/bulk-restore",
+   "handler": "bulk_restore",
+   "file": "apps/api/src/admin_http/auto_review_ops.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/auto-review/apply",
+   "handler": "apply",
+   "file": "apps/api/src/admin_http/auto_review_preset.rs"
   },
   {
    "method": "GET",
@@ -375,6 +405,12 @@
    "path": "/admin/reviews/decide",
    "handler": "review_decide",
    "file": "apps/api/src/admin_http/review.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/reviews/auto-decide",
+   "handler": "engine_decide",
+   "file": "apps/api/src/admin_http/review_auto_decide.rs"
   },
   {
    "method": "POST",
@@ -2738,7 +2774,7 @@
    "method": "POST",
    "path": "/games/bigsmall",
    "handler": "guess_bigsmall",
-   "file": "apps/api/src/games_http/casino.rs"
+   "file": "apps/api/src/games_http/casino_bigsmall.rs"
   },
   {
    "method": "GET",
@@ -3647,16 +3683,16 @@
    "file": "apps/api/src/ops_http/preserve.rs"
   },
   {
-   "method": "POST",
-   "path": "/preserve/claim",
-   "handler": "preserve_claim",
-   "file": "apps/api/src/ops_http/preserve.rs"
-  },
-  {
    "method": "GET",
    "path": "/admin/plugins",
    "handler": "plugins_overview",
    "file": "apps/api/src/ops_http/preserve.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/preserve/claim",
+   "handler": "preserve_claim",
+   "file": "apps/api/src/ops_http/preserve/claim.rs"
   },
   {
    "method": "GET",
@@ -4785,6 +4821,18 @@
    "path": "/admin/trumps/{id}/resolve",
    "handler": "trump_resolve",
    "file": "apps/api/src/torrent_http/trump_admin.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/works",
+   "handler": "works_list",
+   "file": "apps/api/src/torrent_http/works.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/works/{key}",
+   "handler": "work_detail",
+   "file": "apps/api/src/torrent_http/works.rs"
   },
   {
    "method": "POST",
