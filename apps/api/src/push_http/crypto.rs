@@ -10,6 +10,7 @@ use p256::elliptic_curve::sec1::FromEncodedPoint;
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 use p256::{EncodedPoint, PublicKey};
 use sha2::Sha256;
+use super::endpoint::guard_endpoint;
 
 pub(super) fn b64url() -> base64::engine::GeneralPurpose {
     base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -104,12 +105,26 @@ pub(crate) async fn deliver(
             return PushResult::ServiceError;
         }
     };
-    // P2（2026-10-06 安全审计）：禁跟随重定向——endpoint 经白名单 push 服务域
-    // 校验（subscribe 侧），302 跳内网地址必须拒绝而不是跟随（SSRF）
-    let client = match reqwest::Client::builder()
+    // P2（2026-10-06 安全审计）：禁跟随重定向——302 跳内网地址必须拒绝而不是跟随。
+    // P-453：光禁跟随不够。endpoint 由会员自带，旧写法只在 subscribe 侧做
+    // **字符串前缀**白名单，`https://169-254-169-254.nip.io/`（公共通配 DNS，
+    // A 记录就是云元数据地址）与「自己域名指到 127.0.0.1」都能过——
+    // 站点于是成了往内网 POST 的代理，而 /push/test 还把 2xx/404 分给调用方，
+    // 等于一个状态码 oracle。这里在**发送那一刻**解析并逐 IP 判公网，
+    // 同时把地址钉进 client：堵住「校验时一个答案、发送时另一个答案」的重绑定。
+    let Some((host, addrs)) = guard_endpoint(endpoint).await else {
+        tracing::warn!(endpoint, "push endpoint 非公网或解析失败，拒绝投递");
+        return PushResult::ServiceError;
+    };
+    let mut b = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
-        .build()
-    {
+        // 无超时的出网请求：对方挂住就长期占着一个 worker 线程
+        .timeout(std::time::Duration::from_secs(10));
+    for a in &addrs {
+        // reqwest 0.12 的 resolve 一次只钉一个地址
+        b = b.resolve(&host, *a);
+    }
+    let client = match b.build() {
         Ok(c) => c,
         Err(_) => return PushResult::ServiceError,
     };

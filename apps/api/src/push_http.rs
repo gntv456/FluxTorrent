@@ -4,6 +4,7 @@
 //! 环境变量：`VAPID_PUBLIC_KEY` / `VAPID_PUBLIC_KEY`（P-256，未配置时推送端点禁用但订阅可管理）。
 
 pub(crate) mod crypto;
+pub(crate) mod endpoint;
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
@@ -14,6 +15,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use crypto::{decode_client_key, deliver, vapid_from_env, PushResult};
+use endpoint::guard_endpoint;
 
 pub fn mount_push(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -66,33 +68,16 @@ async fn subscribe(
             "endpoint 必须为 https 推送服务地址".into(),
         ));
     }
-    // P2（2026-10-06 安全审计）：内网/回环 endpoint 拒收——站点会向该地址
-    // POST（E2E 加密 payload），可被当内网探测 oracle。仅放行公网域名/IP。
-    if let Ok(u) = url::Url::parse(&body.endpoint) {
-        let private = matches!(
-            u.host_str(),
-            Some(h)
-                if h == "localhost"
-                    || h.ends_with(".localhost")
-                    || h.ends_with(".internal")
-                    || h.ends_with(".local")
-                    || h.split('.').count() == 1
-                    || h.starts_with("127.")
-                    || h.starts_with("10.")
-                    || h.starts_with("192.168.")
-                    || h.starts_with("169.254.")
-                    || h.starts_with("0.")
-                    || h.starts_with("[::1]")
-        ) || matches!(u.host_str(),
-            Some(h) if h.starts_with("172.")
-                && h.split('.').nth(1)
-                    .and_then(|o| o.parse::<u8>().ok())
-                    .map_or(false, |o| (16..=31).contains(&o)));
-        if private {
-            return Err(DomainError::Validation(
-                "endpoint 不允许指向内网地址".into(),
-            ));
-        }
+    // P-453（取代 P2 的字符串前缀白名单）：endpoint 由会员自带，站点会向它
+    // POST（E2E 加密载荷），所以这是**出网口**。旧写法只比字符串前缀，
+    // `https://169-254-169-254.nip.io/`（公共通配 DNS，A 记录就是云元数据）
+    // 与自建域指回 127.0.0.1 都能通过；且 `if let Ok(..)` 让「URL 解析失败」
+    // 直接跳过检查（解析不了＝放行）。现在按解析后的**每一个 IP** 判公网，
+    // 解析不出来一律拒。
+    if guard_endpoint(&body.endpoint).await.is_none() {
+        return Err(DomainError::Validation(
+            "endpoint 必须是可解析到公网地址的 https 推送服务地址".into(),
+        ));
     }
     for t in &body.topics {
         if !VALID_TOPICS.contains(&t.as_str()) {
