@@ -367,10 +367,10 @@ export default async function TorrentDetailPage({
         </section>
       )}
 
-      {sectOn("files") && files.length > 0 && (
+      {sectOn("files") && (
         <Fold
           title={dict.torrent.filesTitle}
-          count={files.length}
+          count={files.length || undefined}
           id="td-files"
         >
           <FileTree files={files} />

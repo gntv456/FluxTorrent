@@ -26,10 +26,19 @@ file_index, path, size)`，原始存档在 `torrent_files(torrent_id, raw)`。
   IE3 台账棘轮：「过审 + 无清单 + 无存档」种数只降不升（基线 7）。
   IE4 承重：把 IE2 那枚正常种喂给 IE1 的「该被判在册」谓词必须为假
       ⇒ 在册判据不是对所有种恒真。
+  IE6 接线：详情页的 `<FileTree` 不许再被 `files.length > 0` 门掉——
+      空态文案写在组件里却被父级条件整个跳过，这正是 P-438：改完组件
+      渲染层测试全绿，线上用户仍看不到任何提示。
+  IE6b 承重：同一个探测函数对旧/新两种 JSX 形状分别判「违例/合规」。
+  IE7a 活体：带登录态抓详情页 HTML，正常种必须出现 `td-files`
+      （证明抓取口径与锚点都在线，不是拿登录页的空壳当证据）。
+  IE7b 读数：缺存档种的详情页是否已出现 `td-files`——现网 web 仍是旧
+      构建时读 false；站长重建后应为 true，届时可翻硬判据。
 
 用法：`PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_ie_filelist_blind.py`
 """
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -148,5 +157,63 @@ ok("IE5 矛盾台账：`numfiles>0` 却列不出任何文件行的过审种数�
    "现=%d 基线=%d；样例=%s。numfiles 来自解析原始 .torrent "
    "（bencode/torrent.rs:78），files 表空 ⇒ 导入/生成时只写了计数没写清单，"
    "或清单后来被清掉" % (contra, LEDGER_BASE, sample))
+
+PAGE = os.path.join(ROOT, "apps", "web", "app", "(main)", "torrent",
+                    "[id]", "page.tsx")
+OLD_JSX = (
+    '{sectOn("files") && files.length > 0 && (\n'
+    "  <Fold title={dict.torrent.filesTitle} count={files.length}>\n"
+    "    <FileTree files={files} />\n"
+    "  </Fold>\n)}"
+)
+
+
+def page_guarded(src):
+    """旧形状：`{sectOn("files") && files.length > 0 && (` 把 FileTree 门掉。"""
+    s = re.sub(r"\{/\*.*?\*/\}", "", src, flags=re.S)
+    i = s.find("<FileTree")
+    if i < 0:
+        return True
+    head = s[max(0, i - 800):i]
+    j = head.rfind('sectOn("files")')
+    return j < 0 or "files.length > 0" in head[j:]
+
+
+src = open(PAGE, encoding="utf-8").read()
+ok("IE6 接线：详情页在 files 为空时仍渲染文件区"
+   "（否则组件里的空态文案永远到不了用户眼前）",
+   not page_guarded(src), "page.tsx 仍用 files.length > 0 门住 FileTree")
+ok("IE6b 承重：同一探测器对旧 JSX 形状判违例、对现形状判合规",
+   page_guarded(OLD_JSX) and not page_guarded(src),
+   "旧=%s 现=%s" % (page_guarded(OLD_JSX), page_guarded(src)))
+
+WEB = os.environ.get("FLUX_WEB_BASE", "http://127.0.0.1:3000")
+
+
+def web_page(tid):
+    req = urllib.request.Request(
+        "%s/torrent/%d" % (WEB, tid),
+        headers={"Cookie": "flux_token=%s; flux.session=1" % tok,
+                 "Accept-Language": "zh-CN"})
+    try:
+        with urllib.request.urlopen(req, timeout=40) as x:
+            return x.status, x.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace")
+    except Exception as e:  # noqa: BLE001
+        return 0, str(e)
+
+
+if bad_id and good_id:
+    g_st, g_html = web_page(good_id)
+    g_hit = 'id="td-files"' in g_html
+    ok("IE7a 活体：带登录态抓详情页 HTML，正常种必须有 `td-files` 锚点"
+       "（证明抓的不是登录页空壳）", g_st == 200 and g_hit,
+       "http=%s 命中=%s bytes=%d" % (g_st, g_hit, len(g_html)))
+    b_st, b_html = web_page(bad_id)
+    b_hit = 'id="td-files"' in b_html
+    print("   [读数] IE7b 缺存档种(id=%d)详情页文件区已渲染=%s"
+          "（旧构建读 false；修复上线后应为 true）http=%s"
+          % (bad_id, b_hit, b_st))
 
 summary()
