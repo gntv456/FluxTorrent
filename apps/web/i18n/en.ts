@@ -472,6 +472,9 @@ const enBase: Omit<
     edition: "Edition",
     infoHash: "Info Hash",
     numFiles: "Files",
+    filesMissing:
+      "File list unavailable: the original .torrent was not archived. " +
+      "Please contact staff to restore it",
     commentsTitle: "Comments ({n})",
     commentPlaceholder: "Say something…",
     commentSubmit: "Post comment",

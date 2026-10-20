@@ -414,6 +414,7 @@ const zhCnBase = {
     edition: "版本",
     infoHash: "Info Hash",
     numFiles: "文件数",
+    filesMissing: "文件清单缺失（原始 .torrent 未存档），请联系管理组补档",
     commentsTitle: "评论 ({n})",
     commentPlaceholder: "说点什么…",
     commentSubmit: "发表评论",

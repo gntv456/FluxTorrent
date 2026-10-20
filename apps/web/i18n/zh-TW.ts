@@ -459,6 +459,7 @@ const zhTwBase: Omit<
     edition: "版本",
     infoHash: "Info Hash",
     numFiles: "檔案數",
+    filesMissing: "檔案清單遺失（原始 .torrent 未存檔），請聯絡管理組補檔",
     commentsTitle: "評論 ({n})",
     commentPlaceholder: "說點什麼…",
     commentSubmit: "發表評論",
