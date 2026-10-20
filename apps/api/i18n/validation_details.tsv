@@ -243,3 +243,7 @@ sanction 只认 none/warn/ban/full_ban	sanction 只認 none/warn/ban/full_ban	sa
 action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismiss.
 举报不存在或已处理	舉報不存在或已處理	Report does not exist or was already handled.
 该比赛当前不在报名期	該比賽當前不在報名期	Entries for this contest are closed.
+主题最长 120 字	主題最長 120 字	Subject must be 120 characters or fewer.
+正文最长 5000 字	正文最長 5000 字	Message body must be 5000 characters or fewer.
+主题最长 100 字	主題最長 100 字	Subject must be 100 characters or fewer.
+该会员没有可撤销的券：本口只撤「管理员发放 + 未使用 + 未绑定」的券；已核销、生效中、商城或任务所得不在范围内	該會員沒有可撤銷的券：本口只撤「管理員發放 + 未使用 + 未綁定」的券；已核銷、生效中、商城或任務所得不在範圍內	This member has no voucher this endpoint can revoke: it only revokes admin-issued, unused, unbound vouchers. Redeemed, active, shop or task rewards are out of scope.

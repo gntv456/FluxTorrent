@@ -162,6 +162,28 @@ def live_c7_c8(tok):
        % (residue, before, after), residue == "0", "")
 
 
+def c9_translations():
+    """本闸门盯着的那几句必须仍在译文表里（三列齐）。
+
+    踩过的坑：新增校验文案只登记进源码就算完 ⇒ `validation_i18n_guard`
+    当场报「新增未译的校验串」，而 en/zh-TW 界面里那句是中文孤岛。
+    """
+    tsv = os.path.join(ROOT, "apps", "api", "i18n", "validation_details.tsv")
+    raw = io.open(tsv, encoding="utf-8", newline="").read()
+    keys = {}
+    for line in raw.replace("\r\n", "\n").split("\n"):
+        if not line or line.startswith("#"):
+            continue
+        cols = line.split("\t")
+        keys[cols[0]] = cols
+    need = ["主题最长 120 字", "正文最长 5000 字", "主题最长 100 字"]
+    for k in need:
+        cols = keys.get(k)
+        ok("C9 校验文案已进译文表三语齐：%s" % k,
+           bool(cols) and len(cols) == 3 and all(c.strip() for c in cols),
+           str(cols)[:110])
+
+
 def selftest():
     src = read(SEND)
     missing = [c for c in CAPS[SEND] if c not in src]
@@ -200,6 +222,7 @@ def main():
     c0_static()
     c6_static()
     c5_ledger()
+    c9_translations()
     if "--live" in sys.argv:
         tok = login("root")
         live_c1_c4(tok)
