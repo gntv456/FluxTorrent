@@ -383,7 +383,7 @@
  "apps/api/src/economy_http/shop.rs::wide": 2,
  "apps/api/src/economy_http/spend.rs::wide": 3,
  "apps/api/src/economy_http/vouchers.rs::wide": 1,
- "apps/api/src/economy_http/voucher_use.rs::wide": 9,
+ "apps/api/src/economy_http/voucher_use.rs::wide": 8,
  "apps/api/src/domain/mediainfo/mod.rs": 621,
  "apps/api/src/domain/mediainfo/tests.rs": 368,
  "apps/api/src/domain/mediainfo/tests.rs::wide": 2,

@@ -152,7 +152,13 @@ export function VoucherPanel() {
                 </small>
               </span>
               <div className="acts">
-                {v.kind === "rename_card" ? (
+                {v.used_torrent_id ? (
+                  <span className="text-xs text-sub">
+                    {dict.vouchers.used.replace(
+                      "{id}", String(v.used_torrent_id),
+                    )}
+                  </span>
+                ) : v.kind === "rename_card" ? (
                   <span className="text-xs text-sub">
                     {dict.vouchers.renameHint}
                   </span>

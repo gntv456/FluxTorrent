@@ -61,7 +61,12 @@ async fn voucher_use(
             if n == 0 {
                 // 券在这瞬间被另一路用掉/过期：回滚，不把刚生成的码留在库里
                 return Err(DomainError::Validation(
-                    "券不存在、已使用或已过期".into(),
+                    super::vouchers::why_unusable(
+                        &state.repo.db,
+                        body.voucher_id,
+                        auth.id,
+                    )
+                    .await,
                 ));
             }
             tx.commit()
@@ -80,7 +85,12 @@ async fn voucher_use(
         }
         None => {
             return Err(DomainError::Validation(
-                "券不存在、已使用或已过期".into(),
+                super::vouchers::why_unusable(
+                    &state.repo.db,
+                    body.voucher_id,
+                    auth.id,
+                )
+                .await,
             ));
         }
         // 0211 H2：绑种子语义只属于免费/中性券——rename_card 等其它券种
@@ -107,7 +117,16 @@ async fn voucher_use(
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if n == 0 {
-        return Err(DomainError::Validation("券不存在、已使用或已过期".into()));
+        // P-459：CAS 没打中不等于「用过或过期」——最常见的真因是这张券
+        // 已经绑定在某张种子上生效中（面板还把它列在「可用券」里）。
+        return Err(DomainError::Validation(
+            super::vouchers::why_unusable(
+                &state.repo.db,
+                body.voucher_id,
+                auth.id,
+            )
+            .await,
+        ));
     }
     state
         .repo
