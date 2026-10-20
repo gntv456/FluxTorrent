@@ -1,0 +1,660 @@
+/* ===== 作品聚合（资源页「作品聚合」视图 + 作品详情）=====
+   样图：design/资源页-影视资料库样图.html。
+   渐变走本域令牌 --wk-grad-*：样图的蓝是 Aurora 原色 #1e8ae8→#2fa8ff→#5b6bf5，
+   而当前激活的 TIDE 主题把 --sky/--indigo 压深成 #0f62c4/#0a3d6b（全站 chrome
+   口径）——直接引用 var(--sky) 系会比样图深一大截，故这里用页面级内容色，
+   夜间换深蓝阶（不是亮色照搬）。其余色值仍走全局令牌。 */
+:root {
+  --wk-grad-a: #1e8ae8;
+  --wk-grad-b: #2fa8ff;
+  --wk-grad-c: #5b6bf5;
+}
+[data-theme="baozi-night"] {
+  --wk-grad-a: #2e86e0;
+  --wk-grad-b: #47b3ff;
+  --wk-grad-c: #7d8aff;
+}
+
+/* ---------- 作品卡 ---------- */
+.wk-card {
+  display: flex;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-card);
+}
+.wk-cover {
+  display: flex;
+  flex: 0 0 178px;
+  width: 178px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-right: 1px solid var(--line);
+  background: var(--surface-cream);
+}
+.wk-poster {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      155deg,
+      var(--wk-grad-a),
+      var(--wk-grad-b) 55%,
+      var(--wk-grad-c)
+    );
+  box-shadow: 0 4px 12px rgba(31, 42, 68, 0.14);
+}
+.wk-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wk-eyebrow {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.38);
+  color: var(--on-dark);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.wk-poster-t {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  left: 10px;
+  color: var(--on-dark);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.wk-cover-note {
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+.wk-date {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--on-dark);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.wk-main {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+}
+.wk-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 7px 9px;
+}
+.wk-title {
+  font-size: 16.5px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.wk-title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.wk-title a:hover {
+  color: var(--sky-deep);
+}
+.wk-year {
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: var(--on-dark);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.wk-cat {
+  margin-top: 2px;
+  color: var(--sub);
+  font-size: 12px;
+}
+.wk-stat {
+  margin-top: 2px;
+  color: var(--sub);
+  font-size: 12px;
+}
+.wk-add {
+  margin-left: auto;
+  padding: 6px 13px;
+  border-radius: 8px;
+  background: var(--sky);
+  color: var(--on-dark);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.wk-add:hover {
+  background: var(--sky-deep);
+}
+.wk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0 7px;
+}
+.wk-tags span {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.wk-syn {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-bottom: 9px;
+  color: var(--text-body);
+  font-size: 12.5px;
+  line-height: 1.75;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.wk-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--sub);
+  font-size: 12px;
+}
+.wk-stats b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* ---------- 作品内种子行 ---------- */
+.wk-shead,
+.wk-row {
+  display: grid;
+  grid-template-columns:
+    minmax(240px, 1fr) 64px 76px 56px 56px 56px 76px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+}
+.wk-shead {
+  border-top: 1px dashed var(--line);
+  background: var(--surface-raised);
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.wk-row {
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.wk-row:hover {
+  background: var(--surface-hover);
+}
+.wk-name {
+  min-width: 0;
+}
+.wk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+.wk-chip {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.wk-c4k {
+  background: var(--ink);
+  color: var(--on-dark);
+}
+.wk-cweb {
+  background: var(--sky-soft);
+  color: var(--text-brand);
+}
+.wk-ch265 {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.wk-caud {
+  background: var(--sun-soft);
+  color: var(--warning);
+}
+.wk-chdr {
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+.wk-cep {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+.wk-csub {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+}
+.wk-cfree {
+  background: var(--mint-soft);
+  color: var(--success);
+}
+.wk-rtitle {
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.wk-rtitle a {
+  color: inherit;
+  text-decoration: none;
+}
+.wk-rtitle a:hover {
+  color: var(--sky-deep);
+}
+.wk-time,
+.wk-size,
+.wk-seed,
+.wk-leech,
+.wk-done {
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+.wk-seed {
+  color: var(--ink);
+  font-weight: 700;
+}
+.wk-seed.is-zero {
+  color: var(--text-faint);
+}
+.wk-act {
+  display: flex;
+  justify-content: flex-end;
+}
+.wk-more {
+  margin-top: 8px;
+  text-align: right;
+}
+.wk-more a {
+  color: var(--sky-deep);
+  font-size: 12px;
+  text-decoration: none;
+}
+.wk-more a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- 作品详情 ---------- */
+.wk-back {
+  margin-bottom: 12px;
+}
+.wk-back a {
+  display: inline-block;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--ink);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.wk-back a:hover {
+  border-color: var(--sky);
+  color: var(--sky-deep);
+}
+.wk-hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      120deg,
+      var(--wk-grad-a),
+      var(--wk-grad-b) 52%,
+      var(--wk-grad-c)
+    );
+  color: var(--on-dark);
+}
+.wk-hero-in {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 26px 30px;
+}
+.wk-hero-poster {
+  position: relative;
+  background:
+    linear-gradient(155deg, var(--wk-grad-a), var(--wk-grad-c) 90%);
+  display: flex;
+  flex: 0 0 120px;
+  width: 120px;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+}
+.wk-hero-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wk-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+.wk-hero-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.wk-hero-title .wk-year {
+  margin-top: 0;
+  background: rgba(0, 0, 0, 0.22);
+}
+.wk-hero-meta {
+  margin-top: 6px;
+  font-size: 12.5px;
+  opacity: 0.92;
+}
+.wk-hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 9px;
+}
+.wk-hero-tags span {
+  padding: 1px 7px;
+  border: 1px solid var(--on-dark-line);
+  border-radius: 5px;
+  background: var(--on-dark-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.wk-hero-syn {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 11px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  opacity: 0.95;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.wk-meta-box {
+  flex-shrink: 0;
+  min-width: 190px;
+  padding: 14px 18px;
+  border: 1px solid var(--on-dark-line);
+  border-radius: 12px;
+  background: var(--on-dark-soft);
+  backdrop-filter: blur(6px);
+}
+.wk-meta-box .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+.wk-meta-box .row b {
+  font-weight: 700;
+}
+.wk-panel {
+  margin-bottom: 14px;
+  padding: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-card);
+}
+.wk-panel-t {
+  padding: 2px 16px 8px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+.wk-panel-t .wk-count {
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 600;
+}
+.wk-related {
+  display: grid;
+  padding: 4px 16px 0;
+  margin-bottom: 6px;
+  /* 竖版卡：海报在上、片名在下。列数不写死，按可用宽度自动排，
+     单张 135~150px——宽屏一排能放几张就放几张，但只排一行：
+     首行之外的行高为 0 并裁剪，JS 未接管前也不会露出第二行。 */
+  column-gap: 12px;
+  grid-template-rows: auto;
+  grid-auto-rows: 0;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 150px));
+  overflow: hidden;
+}
+.wk-rel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  text-decoration: none;
+}
+.wk-rel:hover .wk-rel-name {
+  color: var(--sky-deep);
+}
+.wk-rel:hover .wk-rel-p {
+  outline: 2px solid var(--sky);
+  outline-offset: 1px;
+}
+.wk-rel-p {
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+  align-items: flex-end;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  background:
+    linear-gradient(150deg, var(--wk-grad-a), var(--wk-grad-c));
+  color: var(--on-dark);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.wk-rel-fb {
+  padding: 8px;
+}
+.wk-rel-p img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wk-rel-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.wk-rel-name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.wk-rel-y {
+  color: var(--sub);
+  font-size: 11.5px;
+}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 860px) {
+  .wk-card {
+    flex-direction: column;
+  }
+  .wk-cover {
+    width: auto;
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .wk-poster {
+    width: 84px;
+  }
+  .wk-cover-note {
+    text-align: left;
+  }
+  .wk-add {
+    margin-left: 0;
+  }
+  .wk-shead,
+  .wk-row {
+    grid-template-columns: minmax(0, 1fr) 70px 60px;
+  }
+  .wk-shead .wk-time,
+  .wk-shead .wk-leech,
+  .wk-shead .wk-done,
+  .wk-row .wk-time,
+  .wk-row .wk-leech,
+  .wk-row .wk-done {
+    display: none;
+  }
+  .wk-hero-in {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+  }
+  .wk-meta-box {
+    width: 100%;
+  }
+}
+
+/* 作品聚合视图顶部计数 + 分页按钮 */
+.wk-lead {
+  color: var(--sub);
+  font-size: 12.5px;
+}
+.wk-pg {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--ink);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.wk-pg:hover {
+  border-color: var(--sky);
+  color: var(--sky-deep);
+}
+
+/* 作品详情：完整简介（纯文本，保留换行） */
+.wk-full {
+  padding: 0 16px 6px;
+  color: var(--text-body);
+  font-size: 12.5px;
+  line-height: 1.85;
+  white-space: pre-line;
+}
+
+/* 外部条目徽标（豆瓣/TMDB/IMDb）：作品卡与作品详情共用 */
+.wk-ids {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+.wk-id {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.wk-id--douban {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.wk-id--tmdb {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+}
+.wk-id--imdb {
+  background: var(--sun-soft);
+  color: var(--warning);
+}
+.wk-hero .wk-id--douban,
+.wk-hero .wk-id--tmdb,
+.wk-hero .wk-id--imdb {
+  background: var(--on-dark-soft);
+  color: var(--on-dark);
+}
+
+/* Hero 内的导演/主演（work_meta 缓存，缺行不渲染） */
+.wk-crew {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+  opacity: 0.95;
+}
+.wk-crew b {
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+/* Hero 磨砂底图（0400）：海报放大 + 站长可调的高斯模糊 + 深色遮罩。
+   没有海报时页面不渲染这两层，Hero 退回纯渐变（见 works/[id]/page.tsx） */
+.wk-hero-bg {
+  position: absolute;
+  z-index: 0;
+  inset: -24px;
+  background-position: center;
+  background-size: cover;
+  /* 放大 1.12 防模糊后边缘露白（filter:blur 会吃掉外沿） */
+  transform: scale(1.12);
+}
+.wk-hero-dim {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: #061626;
+}
+.wk-hero-in {
+  position: relative;
+  z-index: 2;
+}
