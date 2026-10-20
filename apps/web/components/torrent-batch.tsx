@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
+import { api } from "@/lib/api-client";
 
 /**
  * 列表页批量下载（阶段三「最强」：UNIT3D 都没有的能力）。
@@ -94,26 +95,22 @@ export function TorrentBatchBar() {
     setBusy(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/v1/torrents/batch-download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const skipped = Number(res.headers.get("X-Batch-Skipped") ?? "0");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      // 走统一客户端：POST 必须带 x-csrf-token（缺则 csrf_mw 直接 403/2003）
+      const r = await api.postBlob("/api/v1/torrents/batch-download", { ids });
+      const url = URL.createObjectURL(new Blob([r.data]));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fluxtorrent-${ids.length}items.zip`;
+      // 按**实际拿到的件数**起名（旧的按请求数：选 2 拿 1 也写 2items）
+      a.download = `fluxtorrent-${ids.length - r.skipped}items.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      if (skipped > 0) {
-        setMsg(t.batchSkipped.replace("{n}", String(skipped)));
+      if (r.skipped > 0) {
+        setMsg(t.batchSkipped.replace("{n}", String(r.skipped)));
       }
       clear();
-    } catch {
-      setMsg(dict.common.loadFailed);
+    } catch (e) {
+      // 原因走 apiErrorMessage（P-305）：CSRF / 未登录 / 限流各有其名
+      setMsg(apiErrorMessage(dict, e));
     } finally {
       setBusy(false);
     }

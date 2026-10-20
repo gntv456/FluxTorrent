@@ -1,7 +1,7 @@
 import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
 import { apiServerBase } from "@/lib/api-upstream";
-import { toApiError } from "@/lib/blob-error";
+import { blobRequest, toApiError } from "@/lib/blob-error";
 import { zhCN } from "@/i18n/zh-CN";
 
 /**
@@ -19,7 +19,7 @@ const NET_DICTS: Record<string, () => { errors?: Record<string, string> }> = {
   "zh-TW": () =>
     require("@/i18n/zh-TW").zhTW as { errors?: Record<string, string> },
 };
-function netMsg(
+export function netMsg(
   locale: string | undefined,
   key: "httpServerError" | "httpDownloadFail" | "httpPleaseLogin",
 ): string {
@@ -62,7 +62,7 @@ export function csrfToken(): string | null {
  *  前端此前从不打这个口 ⇒ 浏览器里所有写操作回 403「无权限」（2026-10-16 实测：
  *  真表单登录后 cookie 只有 flux.locale/flux_token/flux.session）。这里在首次写之前
  *  续期一次，界面写口才可用；续期失败仍照原样发出，让后端那句出声。 */
-async function csrfHeaderAsync(
+export async function csrfHeaderAsync(
   method: string | undefined,
   bearer: string | null,
 ): Promise<Record<string, string>> {
@@ -106,7 +106,7 @@ export function setSessionCookie(loggedIn: boolean): void {
   }
 }
 
-function baseUrl(): string {
+export function baseUrl(): string {
   if (typeof window === "undefined") {
     // 服务端（RSC/容器内）：直连 api 服务（单源见 api-upstream.ts）
     return apiServerBase();
@@ -116,7 +116,7 @@ function baseUrl(): string {
 }
 
 /** 浏览器侧：读语言 Cookie → Accept-Language，后端错误消息按语言返回 */
-function acceptLanguage(): string | undefined {
+export function acceptLanguage(): string | undefined {
   if (typeof window === "undefined") return undefined;
   const m = document.cookie.match(
     new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`),
@@ -228,19 +228,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data;
 }
 
-/** 二进制下载（凭证由 HttpOnly cookie 自动携带） */
+/** 二进制下载（凭证由 HttpOnly cookie 自动携带）。实现搬在 blob-error.ts 的
+ *  blobRequest——本文件是基线 301 行的载体只许瘦不许胖，且 GET/POST 要共用
+ *  同一条 CSRF + 失败归一尺。 */
 async function requestBlob(path: string): Promise<ArrayBuffer> {
-  const lang = acceptLanguage();
-  const res = await fetch(`${baseUrl()}${path}`, {
-    headers: {
-      ...(lang ? { "Accept-Language": lang } : {}),
-    },
-  });
-  if (res.status === 401) {
-    throw new ApiError(2001, netMsg(lang, "httpPleaseLogin"));
-  }
-  if (!res.ok) throw await toApiError(res, netMsg(lang, "httpDownloadFail"));
-  return res.arrayBuffer();
+  return (await blobRequest(path)).data;
 }
 
 export const api = {
@@ -255,6 +247,13 @@ export const api = {
         : undefined,
     ),
   getBlob: (path: string) => requestBlob(path),
+  /** POST 取字节（批量收种）：CSRF 续期与失败归一与 GET 同一条路 */
+  postBlob: (path: string, body?: unknown) =>
+    blobRequest(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    }),
   post: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(data ?? {}) }),
   put: <T>(path: string, data?: unknown) =>
