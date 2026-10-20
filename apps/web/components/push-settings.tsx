@@ -53,7 +53,9 @@ export function PushSettings() {
       await api.post("/api/v1/push/subscribe", {
         endpoint: j.endpoint,
         keys: j.keys,
-        topics: ["promo", "request", "message"],
+        // P-370 的后半：显式话题会覆盖后端 default_topics，
+        // 漏 "hr" 时 H&R 预警/违规推送结构上永远送不到本订阅。
+        topics: ["promo", "request", "message", "hr"],
       });
       setSubscribed(true);
       flash(t.subscribed);
