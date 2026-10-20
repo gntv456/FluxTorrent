@@ -107,14 +107,97 @@ function sourceCorpus() {
     if (f.endsWith("fake_switch_baseline.json")) continue;
     parts.push(readFileSync(f, "utf-8"));
   }
+  // SQL 侧读者（2026-10-21 补）：迁移里的函数/视图体。缺这一段就会把
+  // 「只有数据库函数读的键」判成假开关——见 sqlObjectBodies() 的说明。
+  parts.push(sqlObjectBodies());
   return parts.join("\n");
+}
+
+/** 迁移里 SQL 对象（函数 / 视图）的**函数体**文本。
+ *
+ *  为什么必须单独取：本门禁的证据面一直只有 Rust/TS，于是 0136 之后
+ *  做种火花的全部参数键（`seeding_base_hourly / seeding_cap_hourly /
+ *  seeding_bonus_scale / seeding_donor_mult / seeding_curve_k /
+ *  seeding_rarity_k / seeding_rarity_exp / seeding_vol_log_base_gb`）
+ *  被登记成「无人读取的假开关」——读它们的是迁移 0136/0385/0394 里建的
+ *  数据库函数 `seeding_params()`，worker 的做种收益 SQL 直接调它。
+ *  基线是「清理清单」，照它删这些键会当场拆掉做种公式（P-460 的姊妹面：
+ *  同一族里，旧键是真死、这八把是被误判为死）。
+ *
+ *  只收 dollar-quoted 区域（函数 / DO 块体）且**必须含 `FROM site_settings`**：
+ *  注册语句是 `INSERT INTO settings_meta …`，不含这个读法，所以不会被算成
+ *  引用——否则每个键都「有读者」，门禁直接失明（这就是它原来整份排除迁移
+ *  文件的原因）。实测现网只有 9 段函数体读 site_settings，无一例视图读它。
+ */
+function sqlObjectBodies() {
+  const bodies = [];
+  // 配对的 dollar-quote（$$…$$ 与 $tag$…$tag$）。非贪婪，避免跨函数吞并。
+  const QUOTED = /\$([A-Za-z_0-9]*)\$([\s\S]*?)\$\1\$/g;
+  for (const f of readdirSync(MIGRATIONS)
+    .filter((n) => n.endsWith(".sql"))
+    .sort()) {
+    const text = readFileSync(path.join(MIGRATIONS, f), "utf-8");
+    let m;
+    QUOTED.lastIndex = 0;
+    while ((m = QUOTED.exec(text))) {
+      if (m[2].includes("FROM site_settings")) bodies.push(m[2]);
+    }
+  }
+  return bodies.join("\n");
+}
+
+/** 动态拼出来的键名（门禁的老盲区，2026-10-20 补上）。
+ *
+ *  自动审种的规则开关就是这么写的：
+ *      for id in ["arule_title_garbled", ...] {
+ *          let enabled = gb(&format!("{id}_enabled"), true);
+ *          let action  = Action::parse(&g(&format!("{id}_action")));
+ *      }
+ *  —— 完整键名 arule_title_garbled_enabled 在源码里一次都不出现，
+ *  静态子串匹配判它「无人读取」，于是 12 个真开关被判成假开关。
+ *  （门禁自己的注释早就写了「动态拼出来的键名读不到」，只是没说怎么补。）
+ *
+ *  判据（两条件同时成立才算数，宁可放过不误伤）：
+ *    1) 键名的基名（去掉后缀）在源码里出现；
+ *    2) 源码里存在「占位符 + 同一后缀」的动态拼接。
+ */
+const DYN_SUFFIXES = [
+  "_enabled",
+  "_action",
+  "_level",
+  "_min_chars",
+  "_threshold",
+  "_pct",
+  "_days",
+  "_secs",
+  "_limit",
+  "_max",
+  "_min",
+  "_mode",
+  "_note",
+  "_hint",
+];
+
+function dynamicHit(corpus, key) {
+  for (const suf of DYN_SUFFIXES) {
+    if (!key.endsWith(suf)) continue;
+    const base = key.slice(0, -suf.length);
+    if (!base || !corpus.includes(base)) continue;
+    const re = new RegExp(
+      "\\{[a-zA-Z_][a-zA-Z0-9_]*\\}" + suf,
+    );
+    if (re.test(corpus)) return true;
+  }
+  return false;
 }
 
 const keys = metaKeys();
 const corpus = sourceCorpus();
 const dead = [];
 for (const [k, mig] of keys) {
-  if (!corpus.includes(k)) dead.push({ key: k, migration: mig });
+  if (corpus.includes(k)) continue;
+  if (dynamicHit(corpus, k)) continue;
+  dead.push({ key: k, migration: mig });
 }
 
 if (process.argv.includes("--update")) {
