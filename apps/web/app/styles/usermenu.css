@@ -384,11 +384,20 @@
   height: 17px;
   color: inherit;
 }
-/* 移动端：弹窗全宽贴右缘（对齐样图集移动端弹层） */
+/* 移动端（<768px）：弹窗近全宽贴右缘。
+   修复：原写法 left:10+right:10+width:auto 以为会拉满视口，但弹窗的
+   定位包含块是 65px 宽的 .usermenu（relative）——两侧定位夹出的只有
+   45px，弹窗坍缩成一条竖排（实测 414-600px 全档复现）。改为：
+   保留 right:0 锚定，宽度用视口 calc（width:min() 已在基础规则兜过
+   100vw-32px，这里只解除对包含块的依赖）。 */
 @media not all and (min-width: 768px) {
   .usermenu__drop {
-    right: 10px;
-    left: 10px;
+    /* 锚定脱离小包含块：以视口为参照（.usermenu 换 fixed 参照会动整条
+       顶栏布局，故用 position:fixed 直取视口坐标），左右各留 12px */
+    position: fixed;
+    top: 61px;
+    right: 12px;
+    left: 12px;
     width: auto;
     min-width: 0;
   }
