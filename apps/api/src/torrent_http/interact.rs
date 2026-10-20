@@ -148,6 +148,13 @@ pub(crate) async fn toggle_comment_like(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let (torrent_id, comment_id) = path.into_inner();
+    // 0288 唯一可见性口径：主详情 404 的种子，点赞口不能再单独放行
+    torrents::assert_visible(
+        &state.repo.db,
+        torrent_id,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let author: Option<i64> = sqlx::query_scalar(
         "SELECT user_id FROM comments WHERE id = $1 AND torrent_id = $2",
     )
