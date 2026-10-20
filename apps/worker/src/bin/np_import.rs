@@ -9,8 +9,8 @@
 //! 分阶段映射（幂等，可断点续导——info_hash 唯一键即去重面）：
 //!   users    : NP users → users（pass_hash 原样搬运，argon2/bcrypt 验证侧兼容另议；
 //!              不兼容时置 must_reset_password）映射表 np_map_users 保留双向 ID
-//!   torrents : NP torrents + torrents_files → torrents + torrent_files（raw 必须
-//!              可得；info_hash 重算校验，不一致拒入）
+//!   torrents : NP torrents → torrents（raw 不在 NP 库内 ⇒ 一律落**待审**，
+//!              raw 回填并人工过审前不可下载；info_hash 校验重算）
 //!   stats    : uploaded/downloaded 累计量 → users 快照列（幂等：仅零值时写入）
 //!   report   : 计数比对 + info_hash 全量 diff
 //!
@@ -138,7 +138,7 @@ async fn import_torrents(
             "INSERT INTO torrents (info_hash, name, small_descr, descr, category_id, medium_id, \
                  owner_id, size, approval_status, times_completed, created_at) \
              SELECT $1, $2, NULL, $3, (SELECT min(id) FROM categories), (SELECT min(id) FROM media), \
-                    $4, $5, 1, $6, now() \
+                    $4, $5, 0, $6, now() \
              WHERE NOT EXISTS (SELECT 1 FROM torrents WHERE info_hash = $1)",
         )
         .bind(&ih)
@@ -154,7 +154,8 @@ async fn import_torrents(
     }
     println!("torrents: 源 {total} / 新导入 {imported}（已存在跳过）");
     println!(
-        "注意：raw .torrent 文件与做种 peer 数据不在 NP 库内，需站长另行放置后走 0022 口径回填"
+        "注意：raw .torrent 不在 NP 库内 ⇒ 新导入一律待审（approval_status=0），\
+         待站长回填 torrent_files 并过审后才对会员可见"
     );
     Ok(())
 }
