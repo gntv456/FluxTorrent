@@ -71,7 +71,13 @@ pub(crate) async fn message_stream(
     let uid = auth.id;
     Ok(HttpResponse::Ok()
         .content_type("text/event-stream")
-        .insert_header(("Cache-Control", "no-cache"))
+        // no-transform：web 容器（Next 15）内置 gzip 会把 text/* 压成
+        // chunk 流，但 zlib 要攒够数据才出块——47 字节的 unread 帧会一直
+        // 卡在压缩器里，浏览器直到连接结束（10 分钟上限）才拿到未读数。
+        // Next 的压缩器遇 Cache-Control 含 no-transform 即跳过（见
+        // next/dist/compiled/compression 的 shouldTransform），故这里
+        // 声明不可变换；X-Accel-Buffering 只管 nginx，管不到 Next。
+        .insert_header(("Cache-Control", "no-cache, no-transform"))
         .insert_header(("X-Accel-Buffering", "no"))
         .streaming(unfold_stream(db, uid)))
 }
