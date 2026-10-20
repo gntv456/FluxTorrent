@@ -6,6 +6,7 @@
 站长两桶里也不许互串。非法值类容错的判据都是「等于不加该参数」并配合法对照。
 """
 import datetime
+import glob
 import hashlib
 import json
 import os
@@ -99,6 +100,19 @@ def dstr(off_days):
 
 
 print("== G0 造语料：5 颗属性矩阵已知的探针种 ==")
+# 静态防呆：Rust 字符串行尾写成两个反斜杠**不会续行**，SQL 里会留下一个
+# 真反斜杠——3ac09f0a 之前的 area=4 就是这样现网全 500（静态/真库判据全绿，
+# 只有打路由才看得见）。单反斜杠才是续行。
+_BAD_BS = []
+for _p in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "..", "apps", "**", "*.rs"),
+                    recursive=True):
+    with open(_p, encoding="utf-8") as _f:
+        for _i, _line in enumerate(_f, 1):
+            if _line.rstrip("\r\n").endswith("\\\\"):
+                _BAD_BS.append("%s:%d" % (_p, _i))
+ok("G0s Rust 源无「双反斜杠续行」（SQL 里不许留真反斜杠）",
+   not _BAD_BS, str(_BAD_BS[:5]))
 MTOK, MID, MNAME = member_user("m")
 ok("G0 成员探针号可准备", MTOK is not None and MID, MNAME)
 AIR = q("SELECT id FROM section_dict WHERE kind = 'air_season' "
