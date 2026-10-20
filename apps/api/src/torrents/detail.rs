@@ -48,7 +48,11 @@ pub async fn get_torrent(
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    items_or_not_found(page, id)
+    let mut row = items_or_not_found(page, id)?;
+    // H&R 承诺与执法同源：详情/聚合/OpenAPI 三个出口都走本函数，一处对上
+    crate::repo::hr::override_policy_effective(db, &mut row,
+        viewer.map(|v| v.0)).await?;
+    Ok(row)
 }
 
 fn items_or_not_found(

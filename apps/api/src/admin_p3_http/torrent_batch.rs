@@ -205,21 +205,20 @@ async fn torrent_batch(
                     return Err(DomainError::VersionConflict(conflicts));
                 }
             }
-            // 深测 2026-10-03：挂 H&R 把站点缺省口径（hr_hours；days=14）落进
-            // 种子 policy——只写 {"on":true} 会全靠 COALESCE，改设定不生效。
+            // 挂/摘统一写 `enabled` 键：worker 建快照判的是
+            // `hr_policy->>'enabled'`，而此前这里写 `on`、摘除写成 NULL——
+            // 两种形状在判侧都落回「缺省追责」，等于职员面板点了「摘除 H&R」
+            // 义务照建（2026-10-20 实测键名三面分叉）。
+            // 基线落站点缺省口径，与 `repo_hr::effective` 同源；days 此前
+            // 写死 14，站长改 `hr_days` 不跟动。
             let policy: serde_json::Value = if on {
-                let hr_hours: i32 = sqlx::query_scalar(
-                    "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
-                     WHERE name = 'hr_hours'), '')::int, 48)",
-                )
-                .fetch_one(db)
-                .await
-                .unwrap_or(48)
-                .clamp(1, 24 * 365);
-                serde_json::json!({ "on": true, "seed_hours": hr_hours,
-                    "days": 14 })
+                serde_json::json!({
+                    "enabled": true,
+                    "seed_hours": crate::repo::hr::hours_setting(db).await,
+                    "days": crate::repo::hr::days_setting(db).await,
+                })
             } else {
-                serde_json::Value::Null
+                serde_json::json!({ "enabled": false })
             };
             sqlx::query(
                 "UPDATE torrents SET hr_policy = $2, \
