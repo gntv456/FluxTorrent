@@ -2,10 +2,41 @@
 //! 从 jobs.rs 按域拆出。
 
 use sqlx::PgPool;
+use std::sync::OnceLock;
+use tokio::sync::Semaphore;
 
 /// job 硬超时：超时只掐业务 future，不掐持锁连接（见 with_lock）。
 /// 超时文案（日志 + job_status.last_result）的数值由此常量派生，改一处即全同步。
 pub(crate) const JOB_HARD_TIMEOUT_SECS: u64 = 900;
+
+/// 一条 job 在 `with_lock` 里占**两条**连接：持 advisory lock 的连接
+/// （整个 job 期间不放，否则 session 锁会跟着泄）+ 业务体自己从池里再取一条。
+/// 调度器一分钟能扇出 15 条 job（2026-10-20 现网 `job_status` 实测：
+/// 同一分钟内最多 15 行 last_started_at 相同），16 条池必然有一半的 job
+/// 抢不到连接 ⇒ `pool timed out while waiting for an open connection`，
+/// 被掐掉的是 hr_punish / hr_warn_ladder / cheat_enforce / collusion_check /
+/// class_auto_adjust / sweep_stale_peers 这一族「该执行没执行」的任务。
+///
+/// 这里把「抢连接抢到超时」换成「抢槽位，抢不到就排队」：排队期间不动账，
+/// 超过排队宽限就按既有 Skip 语义跳过本轮（下一 tick 自然补跑，job 都有幂等键）。
+const JOB_SLOT_PER_JOB: usize = 2;
+const SLOT_QUEUE_GRACE_SECS: u64 = 60;
+
+/// 并发槽位数 = 连接池容量的一半（`with_lock` 每条 job 占 2 条连接）。
+/// 池容量在 main.rs（缺省 `DEFAULT_POOL_SIZE`=32，可经 DB_POOL_SIZE 覆盖）；
+/// 两处数字必须成倍数关系，闸门 pt_audit_worker_job_health 的 J3 就是钉这一条的
+/// （历史上「改了一处忘了另一处」在这仓里反复出现过，见 P-426 一族）。
+/// 运维若把 DB_POOL_SIZE 调大，这里可以跟着调；不调也不会失败，只是并发用不满。
+const JOB_SLOTS_MAX: usize = 16;
+
+static JOB_SLOTS: OnceLock<Semaphore> = OnceLock::new();
+
+fn job_slots() -> &'static Semaphore {
+    JOB_SLOTS.get_or_init(|| {
+        tracing::info!(slots = JOB_SLOTS_MAX, "job 并发槽位（每 job 占 2 条连接）");
+        Semaphore::new(JOB_SLOTS_MAX)
+    })
+}
 
 pub(crate) async fn with_lock<F, T>(db: &PgPool, key: &str, fut: F) -> Option<T>
 where
@@ -20,6 +51,28 @@ where
             return None;
         }
     }
+    // 槽位先于连接：抢不到槽位就按既有 Skip 语义跳过本轮，
+    // 而不是把「等待连接」变成一次失败（失败会让 job_status 亮红且整轮动作没做）
+    let _permit = match tokio::time::timeout(
+        std::time::Duration::from_secs(SLOT_QUEUE_GRACE_SECS),
+        job_slots().acquire(),
+    )
+    .await
+    {
+        Ok(Ok(p)) => p,
+        Ok(Err(_)) => {
+            tracing::error!(key, "job 槽位信号量已关闭，跳过本轮");
+            return None;
+        }
+        Err(_) => {
+            tracing::warn!(
+                key,
+                secs = SLOT_QUEUE_GRACE_SECS,
+                "并发槽位排队超时，跳过本轮（下一 tick 自然补跑）"
+            );
+            return None;
+        }
+    };
     let mut conn = match db.acquire().await {
         Ok(c) => c,
         Err(e) => {
@@ -181,5 +234,23 @@ pub(crate) async fn init_bank_day(db: &PgPool) -> chrono::NaiveDate {
         // 今日已结 → 以今日为基线（当日不重跑）；更早/无记录 → 昨日（跨日即触发）
         Some(d) if d >= site_today => d,
         _ => site_today - chrono::Duration::days(1),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 池容量与并发槽位必须成倍数（闸门 pt_audit_worker_job_health 的 J3
+    /// 在编译期的那一份）：一条 job 占 `JOB_SLOT_PER_JOB` 条连接，
+    /// 槽位给多了就又回到「抢连接抢到超时」，给少了是白养连接。
+    /// 另钉一次初值：信号量确实按 JOB_SLOTS_MAX 建起来（不是 1 或 0）。
+    #[test]
+    fn job_slots_is_half_the_default_pool() {
+        assert_eq!(
+            crate::JOB_POOL_DEFAULT as usize,
+            JOB_SLOTS_MAX * JOB_SLOT_PER_JOB
+        );
+        assert_eq!(job_slots().available_permits(), JOB_SLOTS_MAX);
     }
 }

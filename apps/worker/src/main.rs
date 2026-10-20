@@ -9,6 +9,11 @@ mod runtime_log;
 mod shutdown;
 mod task_jobs;
 
+/// worker 连接池缺省容量（DB_POOL_SIZE 可覆盖）。并发 job 的槽位在
+/// `jobs/locks.rs` 取它的一半——一条 job 在 `with_lock` 里占两条连接，
+/// 两个数字必须成倍数关系（闸门 pt_audit_worker_job_health 的 J3 钉这一条）。
+pub(crate) const JOB_POOL_DEFAULT: u32 = 32;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
@@ -38,10 +43,21 @@ async fn main() -> anyhow::Result<()> {
     // 0225 G30-B14：并发调度后同 tick 最多 10 定时 + 3 手动任务并发抢连接，
     // 固定 5 会 PoolTimedOut（且被 run_guarded 的笼统文案误报成锁冲突）。
     // 缺省提到 16，可经 DB_POOL_SIZE 覆盖。
+    //
+    // 2026-10-20 再提到 32：16 仍不够。`with_lock` 每条 job 占两条连接
+    // （持 advisory lock 的连接 + 业务体自己那条，见 jobs/locks.rs 注释），
+    // 而现网一分钟最多同时起跑 15 条 job（job_status 实测），
+    // 于是 16 条池只能养活 8 条，剩下的一律
+    // 「pool timed out while waiting for an open connection」——
+    // 24 小时内 29 次，集中在 hr_punish / hr_warn_ladder / cheat_enforce /
+    // collusion_check / class_auto_adjust / sweep_stale_peers 这一族。
+    // 32 = 15 条并发 × 2 + 余量；PG max_connections=100，同机 api 侧 10，
+    // 合起来仍留足头寸。真正的护栏是 locks.rs 里的槽位（池的一半），
+    // 这个数只是让「一半」也够用。
     let pool_size: u32 = std::env::var("DB_POOL_SIZE")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(16);
+        .unwrap_or(JOB_POOL_DEFAULT);
     let db = sqlx::postgres::PgPoolOptions::new()
         .max_connections(pool_size)
         .connect(&db_url)
