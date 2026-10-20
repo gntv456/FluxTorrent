@@ -242,9 +242,16 @@ def sec_f_source_wired():
     # shop_effects.rs 只剩重导出，donor_privileged/has_usable_voucher 的判定已经迁到
     # shop.rs（仍在这五个名单里）。保留这个名单而不强放宽：
     # 判据的本意是「这五处业务侧都得走判定函数」，而不是「某个文件里必须有」。
+    #
+    # 批二百廿七（巡检实测 F1 报 4）：`content_http/misc.rs` 不再引用判定函数，
+    # 是 1036279c 的**正确**改动——后宫时魔榜从「自己复刻 0133 前的算式
+    # （基础 10 + 做种数×2 + 体积TB，捐赠×2）」改成「读 spark_ledger 里每人最近
+    # 一条 kind='seeding_reward' 的实发额」，判定随之前移到 worker 结算本体。
+    # ⇒ 不放宽计数，而是把这一格换成它**应有的形状**：misc 里既不许再出现
+    # 判定/复刻算式，也必须真的在读结算流水（见 F1b）。名单从五格缩到四格，
+    # 但覆盖面不减反增——多加了一条反向钉。
     for rel in ["apps/worker/src/jobs/seeding.rs",
                 "apps/api/src/economy_http/voucher_use.rs",
-                "apps/api/src/content_http/misc.rs",
                 "apps/api/src/economy_http/shop.rs",
                 "crates/flux-shared/src/lib.rs"]:
         p = os.path.join(ROOT, rel)
@@ -255,7 +262,18 @@ def sec_f_source_wired():
                           or "has_usable_voucher(" in text) else 0
         except OSError:
             pass
-    ok("F1 五个消费点至少 5 处引用判定函数", hits >= 5, hits)
+    ok("F1 四处消费点全部引用判定函数（少一处＝那面的权益判定掉了）",
+       hits == 4, hits)
+    # F1b：排行榜不许回到「自己复刻算式」那条老路（那正是 0133 立档要堵的
+    # 堆小种排到榜前的形状），权威只能是结算流水。
+    with open(os.path.join(ROOT, "apps/api/src/content_http/misc.rs"),
+              encoding="utf-8") as f:
+        misc = f.read()
+    ok("F1b 后宫时魔榜读结算实发、不再复刻算式",
+       "donor_privileged(" not in misc and "has_usable_voucher(" not in misc
+       and "kind = 'seeding_reward'" in misc,
+       "判定残留=%s 读流水=%s" % ("donor_privileged(" in misc,
+                                 "kind = 'seeding_reward'" in misc))
     # 做种结算必须走判定函数，不能再裸读 u.donor。
     # （用 Python 扫而不起 grep 子进程：Windows 宿主上没有 grep，
     # 上一版这里直接抛异常，闸门红得毫无意义。）
