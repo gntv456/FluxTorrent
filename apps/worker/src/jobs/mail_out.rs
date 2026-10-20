@@ -105,3 +105,78 @@ async fn send_via_smtp(
     mailer.send(email).await?;
     Ok(())
 }
+
+/// mail_outbox 消费轮（0404，§17-2）：捞未发送行退避重试。
+/// 幂等：sent_at 置位即完成；失败 attempts+1，attempts≥5 停试并在
+/// staffmessages 落死信告警（一次）。由 run.rs 挂 60s 档。
+pub(crate) async fn mail_outbox_drain(db: &PgPool) -> anyhow::Result<u64> {
+    // 认领一批（FOR UPDATE SKIP LOCKED 防双 worker 重发；行内 attempts
+    // 即重试计数，退避 = 60s * 2^attempts，由 WHERE 谓词表达）
+    let rows: Vec<(i64, String, String, String)> = sqlx::query_as(
+        "SELECT id, to_email, subject, body FROM mail_outbox \
+         WHERE sent_at IS NULL AND attempts < 5 \
+           AND (last_attempt_at IS NULL OR last_attempt_at < \
+                now() - make_interval(secs => 60 * power(2, attempts)::int8)) \
+         ORDER BY id LIMIT 20 FOR UPDATE SKIP LOCKED",
+    )
+    .bind(0)
+    .fetch_all(db)
+    .await?;
+    if rows.is_empty() {
+        return Ok(0);
+    }
+    let mut sent = 0u64;
+    for (id, to, subject, body) in rows {
+        let Some((url, from)) = smtp_config(db).await else {
+            // SMTP 未配置：不算失败也不死信（配置问题，配置好了下一轮自然发）
+            tracing::info!("mail_outbox: SMTP 未配置，待命");
+            return Ok(sent);
+        };
+        let r = send_via_smtp(&url, &from, &to, &subject, &body).await;
+        match r {
+            Ok(()) => {
+                let _ = sqlx::query(
+                    "UPDATE mail_outbox SET sent_at = now(), attempts = \
+                     attempts + 1 WHERE id = $1",
+                )
+                .bind(id)
+                .execute(db)
+                .await;
+                sent += 1;
+            }
+            Err(e) => {
+                let attempts: i32 = sqlx::query_scalar(
+                    "UPDATE mail_outbox SET attempts = attempts + 1, \
+                     last_error = $2, last_attempt_at = now() \
+                     WHERE id = $1 RETURNING attempts",
+                )
+                .bind(id)
+                .bind(e.to_string())
+                .fetch_one(db)
+                .await
+                .unwrap_or(0);
+                if attempts >= 5 {
+                    tracing::warn!(id, to, "mail_outbox: 达重试上限，落死信告警");
+                    // P-428：这里原先自己写
+                    // `INSERT … SELECT MIN(id) … WHERE class_id >= 99`——
+                    // 把聚合当 EXISTS 用：命中 0 行时 `MIN(id)` 仍返回**一行
+                    // NULL**，于是 INSERT 真执行并撞 staffmessages.user_id 的
+                    // NOT NULL；外面又套 `let _ =` 把数据库错误吞成静默
+                    // ⇒ 邮件死信这种最该出声的告警，既发不出去也没人看得见。
+                    // 收进唯一出口 staff_alert（无在册职员可署名时 warn + 返回 0）。
+                    super::staff_alert::staff_alert(
+                        db,
+                        "邮件死信告警",
+                        &format!(
+                            "outbox #{} 发送 5 次失败：{}（收件已脱敏）",
+                            id, e
+                        ),
+                        "staff_panel",
+                    )
+                    .await;
+                }
+            }
+        }
+    }
+    Ok(sent)
+}
