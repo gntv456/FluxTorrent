@@ -154,3 +154,36 @@ pub(crate) async fn shoutbox_delete(
     }
     Ok(ok(serde_json::json!({ "deleted": body.id })))
 }
+
+/// 清空聊天室（staff 专属，0406 纯净化配套：纯聊天室需要一个整体的
+/// 「翻页」口——逐条删 50 次不现实）。全量 DELETE + 审计；幂等
+///（空表也 200，cleared=0）。
+#[utoipa::path(
+    post,
+    path = "/api/v1/shoutbox/clear",
+    tag = "社区/喊话",
+    description = "清空聊天室全部发言（仅职员）。",
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 403, description = "无权限（code 2003）")))]
+#[post("/shoutbox/clear")]
+pub(crate) async fn shoutbox_clear(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    if auth.class_id < 90 {
+        return Err(DomainError::Forbidden);
+    }
+    let n = sqlx::query("DELETE FROM shoutbox")
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .rows_affected();
+    state
+        .repo
+        .audit(Some(auth.id), "shoutbox.clear", None)
+        .await;
+    Ok(ok(serde_json::json!({ "cleared": n })))
+}

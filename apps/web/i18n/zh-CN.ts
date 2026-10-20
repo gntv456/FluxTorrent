@@ -548,6 +548,7 @@ const zhCnBase = {
     newBoxPh: "新文件夹名（≤14 字）",
     addBox: "新建",
     renameBoxPh: "修改文件夹名",
+    deleteBox: "删除文件夹",
     deleteBoxConfirm: "删除文件夹将连带清空夹内信件，确认？",
     toCol: "收件人",
   },
@@ -1404,6 +1405,9 @@ const zhCnBase = {
     empty: "还没有人说话，来开个头吧",
     placeholder: "说点什么…（1-300 字）",
     send: "发言",
+    clear: "清空",
+    clearAsk: "确定清空聊天室全部发言？此操作不可撤销。",
+    clearDone: "已清空 {n} 条发言",
   },
   apidocs: {
     ungrouped: "未分组",
