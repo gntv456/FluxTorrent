@@ -88,6 +88,28 @@ pub async fn my_rows(
     Ok(rows)
 }
 
+/// H&R 警告阶梯落在该用户身上的处置位：(禁发新种, 禁发邀请)。
+///
+/// 读 worker 写入的**当前态**而不是在 API 现算档位：到期恢复
+/// （hr_warn_ladder::restore_due）清位后这里自然放行，两边不会各算一套。
+/// 无行 = 无警告 = 全 false。总开关关闭时也回 false——否则关掉阶梯后，
+/// 上次运行留下的位会继续拦人，「回到旧单档行为」就是假的。
+pub async fn warn_blocks(repo: &Repo, uid: i64) -> DomainResult<(bool, bool)> {
+    let row: Option<(bool, bool)> = sqlx::query_as(
+        "SELECT w.block_upload, w.block_invite \
+         FROM hr_warn_states w \
+         WHERE w.user_id = $1 \
+           AND COALESCE((SELECT value FROM site_settings \
+                         WHERE name = 'hr_warn_enable'), '1') \
+               NOT IN ('0', 'no')",
+    )
+    .bind(uid)
+    .fetch_optional(&repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(row.unwrap_or((false, false)))
+}
+
 /// 站点缺省做种时限（小时）。读失败回 48——与 worker 建快照时的
 /// COALESCE 缺省一致，不能因为一次设置读不到就把整页打回 500。
 pub async fn hours_setting(repo: &Repo) -> i32 {

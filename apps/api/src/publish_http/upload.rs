@@ -60,6 +60,15 @@ async fn upload_core(
     // 发种基础权限（默认配给全体用户 class 1；可用于限制上传资格）
     crate::authz::require_perm(state, auth, crate::authz::perm::TORRENT_UPLOAD)
         .await?;
+    // 0388 阶梯第 3 档起禁发新种：worker 把 block_upload 写进
+    // hr_warn_states，但此前全仓没有读点——「禁传」只是库里的装饰。
+    // 与禁下同一口径按当前态执行，到期由 worker restore_due 清位。
+    if crate::repo::hr::warn_blocks(&state.repo, auth.id).await?.0 {
+        return Err(DomainError::Validation(
+            "H&R 警告已达禁传档：暂不能发布新种，警告到期且违规处理完毕后自动恢复"
+                .into(),
+        ));
+    }
     // 体积上限、multipart 读取与元数据装配都在 upload_body.rs
     let body =
         super::upload_body::read_body(&state.repo.db, &mut payload).await?;

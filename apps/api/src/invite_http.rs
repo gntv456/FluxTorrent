@@ -171,6 +171,14 @@ pub async fn issue_invite_handler(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 0388 阶梯第 4 档禁发邀请。block_invite 此前只被 worker 写入、
+    // 全仓无读点。必须排在扣配额之前——否则拒绝时配额已被吃掉。
+    if crate::repo::hr::warn_blocks(&state.repo, auth.id).await?.1 {
+        return Err(DomainError::Validation(
+            "H&R 警告已达禁邀档：暂不能生成邀请码，警告到期且违规处理完毕后自动恢复"
+                .into(),
+        ));
+    }
     // 配额：等级 LV3+ 每周 2 枚；持有 invites.bonus（外联员 / VIP）提升为 4 枚。
     // quota_extra（捐赠/管理发放的额外配额）优先于周配额消耗（0066 修复：此前只加不扣，
     // 用户永远领不到这部分额外邀请）。
@@ -271,6 +279,15 @@ pub async fn redeem_invite_handler(
     body: web::Json<RedeemInviteReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 同上（0388）：魔力兑换也是「发邀请」的一个入口，漏了它等于
+    // 禁邀档只拦住免费配额、拦不住付费通道。且必须排在 spend_spark
+    // 之前——先扣钱再拒绝正是「收钱必须发货」红线。
+    if crate::repo::hr::warn_blocks(&state.repo, auth.id).await?.1 {
+        return Err(DomainError::Validation(
+            "H&R 警告已达禁邀档：暂不能兑换邀请码，警告到期且违规处理完毕后自动恢复"
+                .into(),
+        ));
+    }
     let item: Option<(i64, i64)> = sqlx::query_as(
                 "SELECT id, \
          price FROM shop_items WHERE kind = 'invite' AND active = true ORDER BY price LIMIT 1",
