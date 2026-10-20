@@ -184,6 +184,15 @@ s, r, _ = mkreq(TA, tid=999999999)
 ok("I1a 挂一个不存在的种子必须 400 并指出来（不得 500、不得静默当「无种子」）",
    s == 400 and "不存在" in msg((s, r)),
    "http=%s msg=%s" % (s, msg((s, r))[:80]))
+# 软删种连本人/staff 都不可见；旧口径会收下悬赏，兑现代码却公开看不到
+psql("UPDATE torrents SET approval_status=3 WHERE id=%s" % TID)
+sg, rg, gid = mkreq(TA, tid=TID)
+psql("UPDATE torrents SET approval_status=1 WHERE id=%s" % TID)
+if gid:
+    psql("DELETE FROM subtitle_requests WHERE id=%s" % gid)
+ok("I1a2 不可见种（软删）挂悬赏必须 400",
+   sg == 400 and "不可见" in msg((sg, rg)),
+   "http=%s msg=%s" % (sg, msg((sg, rg))[:80]))
 s, r, _ = mkreq(TA, bounty=-1, tid=TID)
 ok("I1b 悬赏为负必须拒", s == 400 and "悬赏" in msg((s, r)),
    "http=%s msg=%s" % (s, msg((s, r))[:70]))
