@@ -201,7 +201,9 @@ export function TorrentHead({
                 initialThanked={ext?.thanked ?? false}
               />
               <div className="td-head__actions-row">
-                {t.seeders === 0 && (
+                {/* 后端明确拒绝领取自己的种（resurrections.rs:76）——
+                    种主看到这枚按钮点下去必回 400，直接不渲染 */}
+                {t.seeders === 0 && !ext?.is_owner && (
                   <ResurrectButton torrentId={t.id} name={t.name} />
                 )}
                 <TrumpButton torrentId={t.id} />
