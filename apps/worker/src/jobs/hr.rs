@@ -129,6 +129,9 @@ async fn refresh_hr_flag(
     default_hr_hours: i32,
     default_hr_days: i32,
 ) -> anyhow::Result<()> {
+    // 赦免口径：staff/自助免罪都会把 snatches.hr_flag 清回 FALSE；
+    // 本刷新若只按做种缺口置 TRUE，会在下一轮把刚清掉的标记重新点亮，
+    // 赦免等于只生效一个 tick——已赦免的 (user, torrent) 不再参与刷新。
     sqlx::query(
         // 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取 policy；
         // 深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours（与建快照口径一致）；
@@ -137,7 +140,11 @@ async fn refresh_hr_flag(
          FROM torrents t WHERE t.id = s.torrent_id AND s.completed_at IS NOT NULL \
            AND s.seeded_seconds < COALESCE((t.hr_policy->>'seed_hours')::int, $1::int) * 3600 \
            AND s.completed_at < now() - make_interval(days => COALESCE((t.hr_policy->>'days')::int, $2::int)) \
-           AND NOT s.hr_flag",
+           AND NOT s.hr_flag \
+           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h \
+                           WHERE h.user_id = s.user_id \
+                             AND h.torrent_id = s.torrent_id \
+                             AND h.status = 'pardoned')",
     )
     .bind(default_hr_hours)
     .bind(default_hr_days)
