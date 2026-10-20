@@ -15,6 +15,11 @@ export default function AvatarFramesPage() {
     avatar_frame_id: number | null;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 挂载门控（同 /my-spark）：hasSessionCookie() 在渲染期读 document.cookie，
+  // SSR 恒 false → 服务端直接出 FrameShop，客户端首帧却是骨架，
+  // 两棵树不同 → React #418。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!hasSessionCookie()) return;
@@ -34,7 +39,7 @@ export default function AvatarFramesPage() {
       </p>
       {/* A3 四态：错误占位（ErrorPanel）而非裸段落；未登录=直通商店 */}
       <StatePanel
-        loading={hasSessionCookie() && me === null && err === null}
+        loading={mounted && hasSessionCookie() && me === null && err === null}
         error={err}
         loadingFallback={<SkeletonRows rows={3} height={120} />}
       >
