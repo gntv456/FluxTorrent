@@ -29,38 +29,15 @@ pub(crate) fn ips_public(addrs: &[SocketAddr]) -> bool {
     !addrs.is_empty() && addrs.iter().all(|a| is_public_ip(a.ip()))
 }
 
-/// IP 层「可出网」判定。白名单写反了就是默认放行，所以这里逐条列**拒绝**。
+/// IP 层「可出网」判定：**委托** `domain::webhook::is_forbidden`。
 ///
-/// `std` 的 `is_private()` 不含 CGNAT 100.64/10 与 0/8；IPv6 的
-/// `is_private()` 是 ULA fc00::/7；`::ffff:127.0.0.1` 这类 IPv4-mapped
-/// 必须单独拦（reqwest 会按 IPv4 连过去）。
+/// P-455：这里原来自己写了第二份（与运维 webhook 那套并行），两边各有
+/// 缺段——那套不认 v4 组播 / 0/8 / 240/4（已补进去），这份不认
+/// documentation 段与 fe80::/10。两份规则并存必然漂移，所以分类只留一处；
+/// push 只保留自己更严的部分：scheme 只认 https、解析后**逐个**地址判、
+/// 并把地址钉进 client（见 `guard_endpoint`）。
 pub(crate) fn is_public_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v) => {
-            let o = v.octets();
-            !(v.is_loopback()
-                || v.is_private()
-                || v.is_link_local()
-                || v.is_unspecified()
-                || v.is_multicast()
-                || v.is_broadcast()
-                || o[0] == 0
-                // 240.0.0.0/4 保留段（std 的 is_reserved 仍未稳定）
-                || o[0] >= 240
-                // CGNAT 100.64.0.0/10：is_private() 不含它
-                || (o[0] == 100 && (o[1] & 0b1100_0000) == 64))
-        }
-        IpAddr::V6(v) => {
-            let o = v.octets();
-            !(v.is_loopback()
-                || v.is_unspecified()
-                || v.is_multicast()
-                // ULA fc00::/7（std 的 Ipv6Addr::is_private 不存在/不稳定）
-                || (o[0] & 0xFE) == 0xFC
-                // v4-mapped：::ffff:127.0.0.1 会按 IPv4 连过去
-                || v.to_ipv4_mapped().is_some())
-        }
-    }
+    !crate::domain::webhook::is_forbidden(ip)
 }
 
 /// endpoint 出网闸门：取主机端口（fail-close）→ 解析 → 逐 IP 判公网。

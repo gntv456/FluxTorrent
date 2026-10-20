@@ -89,6 +89,13 @@ pub fn is_forbidden(ip: std::net::IpAddr) -> bool {
                 || v4.is_broadcast()
                 || v4.is_documentation()
                 || v4.is_unspecified()
+                // P-455：push 侧曾自己写第二份判定，多认了三段——组播、
+                // 0/8（"this network"）、240/4 保留。补齐后分类只留这一处：
+                // 两份规则并存必然漂移（push 那个闸门本来就在断言
+                // 「全仓只有一份」，正是该由它抓住这次重复的）。
+                || v4.is_multicast()
+                || v4.octets()[0] == 0
+                || v4.octets()[0] >= 240
                 // 100.64.0.0/10 CGNAT：盒子常用，不能直接当内网拦，
                 // 但也不该被当公网放行——交给白名单显式表态。
                 || (v4.octets()[0] == 100
@@ -98,6 +105,7 @@ pub fn is_forbidden(ip: std::net::IpAddr) -> bool {
             let s = v6.segments();
             v6.is_loopback()
                 || v6.is_unspecified()
+                || v6.is_multicast()   // P-455：与 v4 同理由
                 // fc00::/7 唯一本地地址
                 || (s[0] & 0xfe00) == 0xfc00
                 // fe80::/10 链路本地

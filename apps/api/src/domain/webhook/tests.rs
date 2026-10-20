@@ -201,3 +201,19 @@ fn redirect_must_not_be_followed() {
         "每个自建客户端都必须显式禁跟随重定向（否则可 302 绕过 SSRF 判据）"
     );
 }
+
+/// P-455 补的四段：v4 组播、0/8、240/4 与 v6 组播。
+/// 此前只有 push 那份副本认得它们——两份规则并存的代价正落在这里。
+#[test]
+fn multicast_and_reserved_v4_are_forbidden() {
+    use std::net::IpAddr;
+    let f = |s: &str| super::is_forbidden(s.parse::<IpAddr>().unwrap());
+    assert!(f("224.0.0.1"), "v4 组播");
+    assert!(f("239.255.255.255"), "v4 管理范围组播");
+    assert!(f("0.0.0.0"), "0/8 this-network");
+    assert!(f("0.1.2.3"), "0/8 非全零也算内网");
+    assert!(f("240.0.0.1"), "240/4 保留");
+    assert!(f("ff02::1"), "v6 链路本地组播");
+    assert!(!f("8.8.8.8") && !f("2001:4860:4860::8888"),
+            "公网仍要放行，否则这四条断言是恒真的");
+}
