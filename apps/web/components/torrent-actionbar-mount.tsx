@@ -11,11 +11,6 @@ import { useI18n, apiErrorMessage } from "@/i18n/client";
  *  反馈通道（W-21）：失败走 toast（带 request_id 芯片），收藏成功
  *  走 toast 确认——此前 alert / 静默均不符合反馈协议。 */
 
-/** 下载失败 toast 文案（字典优先，ApiError 消息更具体时透传） */
-function failMsg(e: unknown, fallback: string): string {
-  return e instanceof Error && e.message ? e.message : fallback;
-}
-
 export function TorrentActionBarMount({
   torrentId,
   name,
@@ -43,12 +38,12 @@ export function TorrentActionBarMount({
       URL.revokeObjectURL(url);
     } catch (e) {
       // W-21：裸 alert → toast.error（request_id 芯片可复制报障）
-      toast.error(
-        e instanceof ApiError
-          ? e.message
-          : failMsg(e, dict.common.networkError),
-        { requestId: e instanceof ApiError ? e.requestId : undefined },
-      );
+      // 文案走 apiErrorMessage 这一条口径（P-305）：后端把「该怎么办」写在
+      // 信封 message 的标签尾巴上（下载权限已暂停 / 火花不足 / 种子未存档），
+      // 直接抛 e.message 会把「参数校验失败: 」这层冗余标签一起摊给用户。
+      toast.error(apiErrorMessage(dict, e), {
+        requestId: e instanceof ApiError ? e.requestId : undefined,
+      });
     }
   };
   const copy = async () => {

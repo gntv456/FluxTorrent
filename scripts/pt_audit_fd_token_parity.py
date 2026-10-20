@@ -119,7 +119,9 @@ else:
         # 本轮实测：enclosure 指向的种可能**根本没有原始存档**（闸门夹具留下的
         # 无档案过审种，与 GC1 同族台账）。那是「缺档案」而不是「凭证不对等」，
         # FD 的职责只判凭证对等 ⇒ 缺档案降级成显式信号，不误报也不放过。
-        missing_archive = body.startswith(b'{"code":1002') and             "未存档".encode() in body
+        missing_archive = body.startswith(b'{"code":1002') and (
+            "未存档".encode() in body
+        )
         if missing_archive:
             print("   [GC1 同族] enclosure 指向的种缺原始存档 ⇒ FD3b 本轮只判对等")
         ok("FD3b 照 enclosure 直链下载：有档案必须 200 回 .torrent；"
