@@ -12,6 +12,7 @@ import {
 import { UserTools } from "@/components/user-tools";
 import { UserCheckin } from "@/components/user-checkin";
 import { SparkChip } from "@/components/spark-chip";
+import { useSparkSync } from "@/lib/spark-event";
 import { MedalIcon } from "@/components/medal-icon";
 import { isStaffClass } from "@/lib/domain/user-class";
 
@@ -112,6 +113,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
       .get<{ balance: number }>("/api/v1/me/spark")
       .then((b) => setSpark(b.balance))
       .catch(() => {});
+  useSparkSync(refreshSpark);
 
   useEffect(() => {
     if (!open) return;
@@ -272,7 +274,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
           <nav className="usermenu__links" aria-label={t.center}>
             <a href="/notifications">{dict.notifications.title}</a>
             <a href="/my">{t.center}</a>
-            <a href="/my?tab=bookmarks">{t.bookmarksCount}</a>
+            <a href="/me/subscriptions?tab=bookmarks">{t.bookmarksCount}</a>
             <a href="/my/torrentlist">{dict.mytl.title}</a>
             {mod("medals") && <a href="/medals">{dict.nav.medals}</a>}
             {mod("tasks") && <a href="/tasks">{dict.nav.tasks}</a>}
