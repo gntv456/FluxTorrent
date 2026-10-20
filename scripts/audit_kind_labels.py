@@ -22,7 +22,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API = os.path.join(ROOT, "apps", "api", "src")
 I18N = os.path.join(ROOT, "apps", "web", "i18n", "zh-CN.ts")
-FUNCS = r"earn_spark|earn_spark_tx|spend_spark|spend_spark_tx|clawback_spark|clawback_spark_tx"
+FUNCS = (r"earn_spark|earn_spark_tx|spend_spark|spend_spark_tx"
+         r"|clawback_spark|clawback_spark_tx")
 # 前面是 `fn ` 的是**函数定义**（形参里就有 kind: &str），不是调用
 CALL = re.compile(r"(?<!fn\s)\b(?:%s)\s*\(" % FUNCS)
 # 直插 spark_ledger 的写入口（不走余额原语）：kind 是 VALUES/SELECT 里的

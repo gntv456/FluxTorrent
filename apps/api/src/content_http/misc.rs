@@ -81,8 +81,10 @@ struct TopRow {
     val: f64,
 }
 
-/// 六个榜单统一口径：status<2、每榜 Top10；后宫时魔 = 做种时魔（与 worker 小时结算同式：
-/// 基础10 + 做种数×2 + 做种体积TB，捐赠者×2）
+/// 六个榜单统一口径：status<2、每榜 Top10。
+/// 后宫时魔不在这里写算式——它取 `spark_ledger` 里每人最近一条
+/// kind='seeding_reward' 的实发额，本体永远是 worker 那一份
+/// （DB 函数 `seeding_hourly` + `seeding_torrent_bonus`，参数在 site_settings）。
 #[get("/top/boards")]
 pub(super) async fn top_boards(
     req: HttpRequest,
@@ -98,6 +100,9 @@ pub(super) async fn top_boards(
     let sel = "row_number() OVER (ORDER BY val DESC) AS rank, x.uid AS id, \
         u.username, c.name AS class_name, \
         u.title, u.avatar_url, f.css AS avatar_frame_css, f.image_url AS avatar_frame_image, x.val::float8 AS val";
+    // 外层补身份列：六个榜的内层都只出 (uid, val)，尾部这一段是共享的
+    let tail = "JOIN users u ON u.id = x.uid JOIN user_classes c ON c.id = u.class_id \
+        LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id";
     let base = |agg: &str,
                 joins: &str,
                 extra_where: &str,
@@ -109,9 +114,8 @@ pub(super) async fn top_boards(
                 FROM users u {joins} \
                 WHERE u.status < 2 {extra_where} \
                 GROUP BY u.id {group_by} \
-                ORDER BY val DESC LIMIT 10 \
-            ) x JOIN users u ON u.id = x.uid JOIN user_classes c ON c.id = u.class_id \
-            LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id"
+                ORDER BY val DESC, u.id LIMIT 10 \
+            ) x {tail}"
         )
     };
     let bonus_q = base("u.spark_balance", "", "AND u.spark_balance > 0", "");
@@ -123,18 +127,39 @@ pub(super) async fn top_boards(
         "",
         "",
     );
-    // 审计修复（P2）：seeding INNER JOIN 在无做种用户时全空导致恒空榜。
-    // 改 LEFT JOIN + HAVING count>0：有做种记录者才进榜，口径与做种收益一致
-    let hourly_q = base(
-        "(10 + count(*) * 2 + COALESCE(sum(t.size), 0) / 1099511627776.0) \
-            * CASE WHEN donor_privileged(u.id) THEN 2 ELSE 1 END",
-        "JOIN snatches s ON s.user_id = u.id AND s.seeding LEFT JOIN torrents t ON t.id = s.torrent_id",
-        "",
-        "HAVING count(*) > 0",
+    // 后宫时魔榜读**上一次真正结算到的那笔**，不再自己复刻算式。
+    // 旧写法把 0133 之前的算式（基础 10 + 做种数×2 + 体积TB，捐赠×2）留在榜里，
+    // 而结算本体早已换成 DB 函数 seeding_hourly(Σ seeding_torrent_bonus(…))，
+    // 参数在 site_settings 可热调（实测现值 base=10 cap=150 curve_k=0.12
+    // scale=0.4 donor_mult=2）。两套式子并存的后果：榜按「做种颗数 × 体积」
+    // 排序，恰好把 0133 立档要堵的「堆小种」排到前面
+    // （见 apps/worker/src/jobs/seeding.rs 顶部的公式与标定注释）。
+    // 口径照 seeding.rs 自己那句「权威在流水，快照仅展示」：取每人最近一条
+    // kind='seeding_reward' 的实发额。没结算过的人不进榜（不是 0，是不适用），
+    // 顺带也不再出现「全站没人挂着做种 ⇒ 整榜空白」那张死榜。
+    let hourly_q = format!(
+        "SELECT {sel} FROM ( \
+            SELECT l.uid, l.val FROM ( \
+                SELECT DISTINCT ON (g.user_id) g.user_id AS uid, \
+                       g.amount::float8 AS val \
+                FROM spark_ledger g WHERE g.kind = 'seeding_reward' \
+                ORDER BY g.user_id, g.created_at DESC, g.id DESC \
+            ) l JOIN users lu ON lu.id = l.uid \
+            WHERE lu.status < 2 AND l.val > 0 \
+            ORDER BY l.val DESC, l.uid LIMIT 10 \
+        ) x {tail}"
     );
+    // 发种量榜的口径必须与「公开把匿名种算给谁」一致：匿名种不记名。
+    // 全站对 anonymous 的处理是**一律隐去发布者**——详情页与列表与 RSS 与保种页
+    // 都写 `CASE WHEN t.anonymous THEN NULL ELSE u.username END`，
+    // 本人主页的 uploads 与 /users/{id}/torrentlist 也都带 `NOT t.anonymous`
+    // （profile.rs:47、user_torrentlist.rs:33）。这一榜原先只过 approval_status，
+    // 于是「匿名发 5 颗种」的人主页写着「发布 0 种」，却以真名挂在全站排行榜第 1，
+    // 榜替站方把匿名性卖了——还顺带造成两处数字对不上。
     let torrents_q = base(
         "count(*)",
-        "JOIN torrents t ON t.owner_id = u.id AND t.approval_status = 1",
+        "JOIN torrents t ON t.owner_id = u.id \
+         AND t.approval_status = 1 AND NOT t.anonymous",
         "",
         "",
     );

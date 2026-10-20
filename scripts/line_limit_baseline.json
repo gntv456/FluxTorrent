@@ -387,7 +387,7 @@
  "apps/api/src/domain/mediainfo/mod.rs": 621,
  "apps/api/src/domain/mediainfo/tests.rs": 368,
  "apps/api/src/domain/mediainfo/tests.rs::wide": 2,
- "apps/api/src/content_http/misc.rs::wide": 5,
+ "apps/api/src/content_http/misc.rs::wide": 4,
  "apps/api/src/content_http/promo.rs::wide": 4,
  "apps/api/src/content_http/requests.rs::wide": 7,
  "apps/api/src/compat_http/download_keys.rs": 335,
