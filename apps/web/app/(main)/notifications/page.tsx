@@ -32,6 +32,9 @@ interface HrResp {
 interface StaffResp {
   data?: unknown[] | { items?: unknown[] };
 }
+interface HomeResp {
+  news?: { id: number; title: string; badge?: string }[];
+}
 
 export default async function NotificationsPage() {
   const { dict } = await getDict();
@@ -39,10 +42,13 @@ export default async function NotificationsPage() {
     api.get<OverviewResp>("/api/v1/me/overview"),
     api.get<HrResp>("/api/v1/me/hr"),
     api.get<StaffResp>("/api/v1/messages/staff"),
+    // 全站动态（0405）：首页公告区最近条目（含字幕上架/评选揭晓播报）
+    api.get<HomeResp>("/api/v1/home"),
   ]);
   const ov = results[0].status === "fulfilled" ? results[0].value : null;
   const hr = results[1].status === "fulfilled" ? results[1].value : null;
   const staff = results[2].status === "fulfilled" ? results[2].value : null;
+  const home = results[3].status === "fulfilled" ? results[3].value : null;
   const t = dict.notifications;
 
   // 三路全挂 = 会话失效或 API 整体故障：数字全是演的，不如诚实报错
@@ -89,6 +95,17 @@ export default async function NotificationsPage() {
             title: t.staffCard,
             count: staffUnread,
             tone: staffUnread > 0 ? ("warm" as const) : ("idle" as const),
+          },
+        ]
+      : []),
+    // 全站动态（0405）：公告区最近一条直达首页；无动态不渲染（不演空卡）
+    ...(home?.news?.length
+      ? [
+          {
+            href: "/",
+            title: t.activityCard,
+            count: home.news.length,
+            tone: ("idle" as const),
           },
         ]
       : []),

@@ -219,20 +219,45 @@ async fn awards_grant(
             "reward": reward, "medal": medal_name,
         }));
     }
-    // 揭晓公告（shoutbox；系统口径挂在发起管理名下——user_id NOT NULL）
-    // P-239：揭晓公告发不出去也得报出来（旧写法 `let _ =` 吞掉，站长以为
-    // 已通知，实际榜上无音——与 P-218 同族）
-    if let Err(e) =
-        sqlx::query("INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)")
-            .bind(auth.id)
-            .bind(format!(
-                "「{}」期金字字幕评选已揭晓！详见字幕区评选榜。",
-                body.period
-            ))
-            .execute(&state.repo.db)
-            .await
+    // 揭晓公告（0405 双路口径）：缺省写首页公告区（系统身份+「评选」徽章），
+    // 站长开 `shoutbox_announce_awards` 后才同时广播聊天室。
+    // P-239 纪律保留：两路任一发不出去都要报出来（不能让站长以为已通知）。
+    let announce_text =
+        format!("「{}」期金字字幕评选已揭晓！详见字幕区评选榜。", body.period);
+    if let Err(e) = sqlx::query(
+        "INSERT INTO announcements (title, body, badge, author_id, sort) \
+         VALUES ($1, $2, '评选', $3, \
+                 (SELECT COALESCE(max(sort),0)+10 FROM announcements))",
+    )
+    .bind(format!("金字字幕评选揭晓（{}）", body.period))
+    .bind(announce_text.clone())
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
     {
-        tracing::warn!(%e, period = %body.period, "授金揭晓公告写入失败");
+        tracing::warn!(%e, period = %body.period, "揭晓公告写入公告区失败");
+    }
+    crate::http::home::invalidate_home_cache(&state).await;
+    let broadcast: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings \
+         WHERE name = 'shoutbox_announce_awards'",
+    )
+    .bind(0)
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
+    if broadcast.as_deref() == Some("1") {
+        if let Err(e) = sqlx::query(
+            "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)",
+        )
+        .bind(auth.id)
+        .bind(announce_text)
+        .execute(&state.repo.db)
+        .await
+        {
+            tracing::warn!(%e, period = %body.period, "揭晓公告写入聊天室失败");
+        }
     }
     state
         .repo

@@ -1510,6 +1510,7 @@ const zhCnBase = {
     hrUrgent: "{n} 个即将到期",
     // 四态（W-28）：三路全挂（含未登录）时的 ErrorPanel 说明
     errorDesc: "通知服务暂时不可用，请稍后重试。",
+    activityCard: "全站动态",
   },
   readState: {
     failTitle: "这块数据没取到",
