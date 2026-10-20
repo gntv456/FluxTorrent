@@ -54,6 +54,11 @@ pub(crate) async fn contact_staff(
     if body.subject.trim().is_empty() || body.body.trim().is_empty() {
         return Err(DomainError::Validation("主题与正文不能为空".into()));
     }
+    // 审计修复（P-467）：主题上限与界面 maxLength=100 同一枚数；
+    // 正文界面没给上限，不替站长拍数（进闸门待收口台账）。
+    if body.subject.chars().count() > 100 {
+        return Err(DomainError::Validation("主题最长 100 字".into()));
+    }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO staffmessages (user_id, subject, body) VALUES \
          ($1, $2, $3) RETURNING id",
