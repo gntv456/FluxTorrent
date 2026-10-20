@@ -43,6 +43,18 @@ pub(crate) async fn message_send(
     let auth = require_auth(&req, &state).await?;
     let staff = auth.class_id >= 90;
 
+    // 审计修复（P-466）：主题/正文此前只有浏览器的 maxLength（120 / 5000），
+    // 写口零上限——绕开界面直接 POST 就是一封几十 MB 的信，还会原样进
+    // 收件箱、推送与邮件。上限与界面同一枚数（各写一份＝两套口径必分叉），
+    // 按「字」判而非 UTF-8 字节（P-128/P-331 的成文口径），且必须在任何
+    // 写库与发通知之前拒——先落库再报错会把信卡在已发送状态。
+    if body.subject.chars().count() > 120 {
+        return Err(DomainError::Validation("主题最长 120 字".into()));
+    }
+    if body.body.chars().count() > 5000 {
+        return Err(DomainError::Validation("正文最长 5000 字".into()));
+    }
+
     let target: Option<(i64, String, i32)> = sqlx::query_as(
         "SELECT id, accept_pm, \
          class_id FROM users WHERE username = $1 AND status < 2",
