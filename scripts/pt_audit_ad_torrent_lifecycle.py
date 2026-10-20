@@ -391,12 +391,14 @@ ok("D5 站长过审 → status=1 且写 approved_at",
    s == 200 and col(TID, "approval_status") == "1"
    and col(TID, "approved_at") != "", "http=%s %s" % (s, brief(r)))
 s, ms = call("GET", "/messages/inbox?limit=30", token=MTOK)
-ok("D5 作者也收到过审通知（标题带「种子过审：」+ 种名）",
-   s == 200 and "种子过审：" in json.dumps(ms.get("data") or [],
-                                           ensure_ascii=False)
-   and NAME in json.dumps(ms.get("data") or [], ensure_ascii=False),
-   "http=%s %s" % (s, json.dumps(ms.get("data") or [],
-                                  ensure_ascii=False)[:150]))
+# 标题自 0400 起可由 `auto_review_mail_pass_subject` 配置（现网默认
+# 「您的种子已自动过审」），锁「种子过审：」会把合法文案变更读成产品洞；
+# 正文里 `#id 种名 + 已通过审核` 才是稳定的契约。
+BLOB = json.dumps(ms.get("data") or [], ensure_ascii=False)
+ok("D5 作者也收到过审通知（正文含种 id + 种名 + 已通过审核）",
+   s == 200 and ("#%s" % TID) in BLOB and NAME in BLOB
+   and "已通过审核" in BLOB,
+   "http=%s %s" % (s, BLOB[:150]))
 s, r = decide(TID, True)
 ok("D5 正控：已过审的种再裁决报错（不静默改一遍）",
    s == 400 and "不在待审" in str(r.get("message")),
