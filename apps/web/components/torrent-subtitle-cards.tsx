@@ -1,6 +1,6 @@
 "use client";
 
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
 import {
@@ -69,7 +69,7 @@ export function TorrentSubtitleCards({
                 try {
                   await downloadSubtitle(s);
                 } catch (err) {
-                  onMsg(err instanceof Error ? err.message : "failed");
+                  onMsg(apiErrorMessage(dict, err));
                 }
               }}
             >

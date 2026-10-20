@@ -48,12 +48,9 @@ LIVE = os.environ.get("HW_LIVE", "1") != "0"
 AC = "apps/web/lib/api-client.ts"
 BE = "apps/web/lib/blob-error.ts"
 # HW4 已知未统一台账：字幕四出口仍直抛 err.message
-RAW_LEDGER = {
-    "subtitle-board-table.tsx",
-    "subtitle-card-list.tsx",
-    "torrent-subtitle-cards.tsx",
-    "torrent-subtitles.tsx",
-}
+# 批二百零八：字幕四出口已接 apiErrorMessage ⇒ 台账清零，本条由「在册」
+# 翻成硬判据（谁再退回直抛 e.message 或英文兜底即红）。
+RAW_LEDGER = set()
 
 # 旧形状（本批修之前 requestBlob 的真码）：只按 HTTP 状态码造错
 OLD_SHAPE = """
@@ -154,9 +151,10 @@ ok("HW3 两口同尺（request 与 blob 路径都调 toApiError）",
    "只修一处等于没修：JSON 口与 blob 口必须共用这一把尺")
 
 ledger_now = set(blob_outlets_missing_helper())
-ok("HW4 报错文案台账＝已知未统一的字幕四出口（只准销账不准新增）",
+ok("HW4 硬判据：任何取字节的下载出口都不许直抛 e.message/英文兜底",
    ledger_now == RAW_LEDGER,
-   "在册=%s 台账=%s" % (sorted(ledger_now), sorted(RAW_LEDGER)))
+   "违例出口=%s（应为空；判据口径＝有 getBlob/downloadSubtitle 且自己"
+   "报错给界面时必须走 apiErrorMessage）" % (sorted(ledger_now),))
 
 old_bad = []
 old_blob = body_of(strip(OLD_SHAPE), "async function requestBlob")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
 import {
@@ -97,10 +97,10 @@ export function SubtitleCardList({
                 e.preventDefault();
                 try {
                   await downloadSubtitle(s);
-                  onMsg(t.downloadOk?.replace("{title}", s.title) ?? "ok");
+                  onMsg(t.downloadOk?.replace("{title}", s.title) ?? "");
                   onReload();
                 } catch (err) {
-                  onMsg(err instanceof Error ? err.message : "fail");
+                  onMsg(apiErrorMessage(dict, err));
                 }
               }}
             >
