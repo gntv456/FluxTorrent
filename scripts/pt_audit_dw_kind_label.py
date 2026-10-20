@@ -38,8 +38,13 @@ ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ZHCN = os.path.join(ROOTDIR, "apps", "web", "i18n", "zh-CN.ts")
 SRCDIR = os.path.join(ROOTDIR, "apps", "api", "src")
 # 已登记的违例集合（只许缩小，不许变大，也不许偷偷换个名字躲判据）
-KNOWN_UNLABELED = {"social_team_reward", "probe_cleanup",
-                   "forum-topic-del", "orphan_offset"}
+# 只认**确实没有译名**的：forum-topic-del / forum-post-del 的译名在
+# zh-CN.ts 里本来就有（"删主题扣除"/"删帖扣除"），旧正则读不出带引号的键
+# 才把它们误列进来（2026-10-20 实测）。
+# 2026-10-21 批：上面三个键的译名已登记进三语（apps/web/i18n/{zh-CN,en,zh-TW}.ts
+# 的 my.kinds），按本文件自己的口径「少了＝有人补了译文，请把清单同步收缩」
+# 收到这里。再出现裸 kind 就是新违例，直接红。三语覆盖由 pt_audit_kind_label_all_lang.py 判。
+KNOWN_UNLABELED = set()
 # 转账类 kind：扣款与入账必须成对且净额 0（P-360 的常驻形状）
 TRANSFER_KINDS = {"forum_tip"}
 
@@ -51,7 +56,7 @@ def psql(q):
          " | ", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:240])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:240])
     return (r.stdout or "").strip()
 
 
@@ -59,7 +64,11 @@ def labeled_keys():
     ts = io.open(ZHCN, encoding="utf-8", errors="replace").read()
     i = ts.index("forum_tip")
     blk = ts[max(0, i - 3000): i + 3000]
-    return {m for m in re.findall(r"([a-z_][a-z0-9_-]*)\s*:", blk)}
+    # 带引号的键（"forum-post-del": "删帖扣除"）也要认：旧正则要求
+    # 「键名紧跟冒号」，于是所有**带引号**的键（正是 0388 之后新加的那批）
+    # 全都读不出来 ⇒ 明明有译名却被判成缺译名（2026-10-20 实测
+    # forum-post-del 在 zh-CN.ts 里明明有译名）。
+    return {m for m in re.findall(r'"?([a-z_][a-z0-9_-]*)"?\s*:', blk)}
 
 
 live = [ln.strip() for ln in psql(

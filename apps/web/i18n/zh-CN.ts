@@ -2169,6 +2169,10 @@ const zhCnBase = {
       amountbonus: "魔力奖励",
       refund: "退款",
       gift: "赠送",
+      task_fee: "任务手续费",
+      social_team_reward: "团队协作奖励",
+      orphan_offset: "系统对冲调整",
+      probe_cleanup: "运营清理调整",
     } as Record<string, string>,
   },
   shop: {
