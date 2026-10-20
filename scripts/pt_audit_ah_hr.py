@@ -26,6 +26,7 @@ import urllib.request
 
 ROOT = login()
 CLEAN = []
+RUN = int(time.time())
 ST = ("hr_days", "hr_hours", "hr_violation_limit", "enable_hr",
       "cancel_hr", "hr_prewarn_hours", "hr_scan_lookback_hours")
 
@@ -86,15 +87,20 @@ def run_job(job, wait_s=170):
     call("POST", "/admin/jobs/run", {"job": job}, token=ROOT)
     deadline = time.time() + wait_s
     while time.time() < deadline:
-        row = q("SELECT to_char(last_started_at, "
-                "'YYYY-MM-DD\"T\"HH24:MI:SS.US')||'|'||"
+        row = q("SELECT COALESCE(to_char(last_started_at, "
+                "'YYYY-MM-DD\"T\"HH24:MI:SS.US'),'-')||'|'||"
+                "COALESCE(to_char(last_finished_at, "
+                "'YYYY-MM-DD\"T\"HH24:MI:SS.US'),'-')||'|'||"
                 "COALESCE(last_ok::text,'-')||'|'||"
                 "LEFT(COALESCE(last_result,''),60) FROM job_status "
                 "WHERE job = '%s'" % job)
-        if "|" in row:
-            started, okv, res = row.split("|", 2)
-            if started > t0:
-                return (okv == "true"), "started=%s %s" % (started, res)
+        if row.count("|") >= 3:
+            started, finished, okv, res = row.split("|", 3)
+            # 必须等 last_finished_at 前移：只看 last_started_at 会在任务刚
+            # 启动、SQL 还没跑完时就返回（G5 自动恢复曾因此假红）。
+            if finished not in ("-", "") and finished > t0:
+                return (okv == "true"), "started=%s finished=%s %s" % (
+                    started, finished, res)
         time.sleep(4)
     return None, "等待 worker 本轮执行超时（%ss）" % wait_s
 
@@ -131,6 +137,19 @@ ORIG = {}
 for k in ST:
     ORIG[k] = q("SELECT value FROM site_settings WHERE name = '%s'" % k)
 CLEAN.append("__restore_settings__")
+# 原值若已经等于本闸门的探针值，说明上一次运行在中途崩了——闸门会把
+# 污染值当「原值」复原，污染就被永久固化（10-18/10-19 两次崩溃实测：
+# hr_days=1/hr_hours=1/cancel_hr=100/lookback=72 一直留在现网）。
+SIG = {"hr_days": "1", "hr_hours": "1", "cancel_hr": "100",
+       "hr_scan_lookback_hours": "72"}
+if all(ORIG.get(k) == v for k, v in SIG.items()):
+    print("   [WARN] H&R 设置与本闸门探针值完全一致，疑似上次崩溃残留；"
+          "本轮会把它当原值复原，请人工核对迁移默认值")
+LEFTOVER = q("SELECT count(*) FROM users WHERE username LIKE 'ahm%' "
+             "AND status < 2")
+if LEFTOVER not in ("", "0"):
+    print("   [WARN] 更早的 AH 运行留下 %s 个未墓碑探针号（可能仍被 hr 锁住）"
+          % LEFTOVER)
 # 站点侧参数（快照与处罚都按这三档走）
 setting("hr_days", "1")
 setting("hr_hours", "1")
@@ -149,7 +168,7 @@ MUSER, MID, MTOK = member("ahm")
 ok("G0 探针成员可用", MID > 0 and MTOK is not None, "uid=%s" % MID)
 TIDS = []
 for i in (1, 2, 3):
-    nm = "ahprobe t%d %d" % (i, int(time.time()))
+    nm = "ahprobe r%d t%d" % (RUN, i)
     r = upload(ROOT, nm)
     tid = (r.get("data") or {}).get("id")
     if not tid:
@@ -340,10 +359,11 @@ s2, r2 = call("POST", "/me/hr/pardon", {"torrent_id": T3}, token=MTOK)
 bal2 = q("SELECT spark_balance::text FROM users WHERE id = %d" % MID)
 ok("G5 重放被拒且不退款/不再扣（幂等）",
    s2 != 200 and bal2 == bal, "http=%s balance=%s" % (s2, bal2))
-# 阈值降回 2 → 下一轮自动恢复下载
+# pardon 掉 T3 后只剩 T1/T2 两条未解决违规（2 < 阈值 3）→ 下一轮应自动恢复
 jok, jres = run_job("hr_punish")
 de = q("SELECT download_enabled::text FROM users WHERE id = %d" % MID)
-ok("G5 违规降回阈值 → 下载权限自动恢复", de == "true", "enabled=%s" % de)
+ok("G5 违规降回阈值 → 下载权限自动恢复", de == "true",
+   "enabled=%s %s" % (de, jres))
 
 print("== G6 假开关反向：enable_hr=no 整段冻结 ==")
 exec_sql("DELETE FROM hr_snapshots WHERE user_id = %d" % MID)
@@ -374,9 +394,13 @@ for stmt in reversed(CLEAN):
                 exec_sql("DELETE FROM site_settings WHERE name = '%s'" % k)
         continue
     exec_sql(stmt)
-ok("G7 探针种无残留", q("SELECT count(*) FROM torrents WHERE "
-                        "name LIKE 'ahprobe%'") == "0",
-   q("SELECT count(*) FROM torrents WHERE name LIKE 'ahprobe%'"))
+MINE = q("SELECT count(*) FROM torrents WHERE name LIKE 'ahprobe r%d t%%'"
+         % RUN)
+ok("G7 本轮探针种无残留", MINE == "0", "rows=%s" % MINE)
+OLD = q("SELECT count(*) FROM torrents WHERE name LIKE 'ahprobe%'")
+if OLD not in ("", "0"):
+    # 不代删：可能是并行在跑的另一轮；本轮前缀已独立，旧账只喊不判红
+    print("   [WARN] 更早的 AH 运行留下 %s 条 ahprobe 探针种" % OLD)
 ok("G7 快照/违规无残留", q("SELECT (SELECT count(*) FROM hr_snapshots "
                            "WHERE user_id = %d) + (SELECT count(*) FROM "
                            "hr_violations WHERE user_id = %d)" % (MID, MID))
