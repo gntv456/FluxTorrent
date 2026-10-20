@@ -152,7 +152,7 @@ export function AdminFundings() {
               <tr key={r.id}>
                 <td className="num">{r.id}</td>
                 <td className="max-w-[16rem] truncate">
-                  <a href={`/torrents/${r.torrent_id}`} className="text-link">
+                  <a href={`/torrent/${r.torrent_id}`} className="text-link">
                     {r.torrent_name ?? `#${r.torrent_id}`}
                   </a>
                 </td>
