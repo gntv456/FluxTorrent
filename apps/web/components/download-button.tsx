@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
 
 /** 磁力按钮（六维 2.4）：GET /torrents/{id}/magnet → 复制到剪贴板，
@@ -85,12 +85,9 @@ export function DownloadButton({
       const noauth = e instanceof ApiError && e.code === 2001;
       setState(noauth ? "noauth" : "idle");
       // W-24 反馈协议：alert → toast.error（request_id 可诊断）
+      // 文案与列表行/移动条同一条口径（apiErrorMessage / P-305）
       toast.error(
-        noauth
-          ? dict.torrent.downloadNoauth
-          : e instanceof Error
-            ? e.message
-            : dict.torrent.downloadFailed,
+        noauth ? dict.torrent.downloadNoauth : apiErrorMessage(dict, e),
         { requestId: e instanceof ApiError ? e.requestId : undefined },
       );
     }

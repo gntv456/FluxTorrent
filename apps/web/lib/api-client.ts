@@ -1,6 +1,7 @@
 import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
 import { apiServerBase } from "@/lib/api-upstream";
+import { toApiError } from "@/lib/blob-error";
 import { zhCN } from "@/i18n/zh-CN";
 
 /**
@@ -198,13 +199,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   // 非 JSON 响应（网关错误页等）归一化为 ApiError；带响应头 request_id
   const ctype = res.headers.get("content-type") ?? "";
   if (!ctype.includes("application/json")) {
-    throw new ApiError(
-      1000,
-      netMsg(lang, "httpServerError").replace("{status}", String(res.status)),
-      undefined,
-      res.status,
-      res.headers.get("x-request-id") ?? undefined,
-    );
+    throw await toApiError(res, netMsg(lang, "httpServerError"));
   }
   const body = (await res.json()) as ApiEnvelope<T>;
   if (body.code !== 0) {
@@ -244,12 +239,7 @@ async function requestBlob(path: string): Promise<ArrayBuffer> {
   if (res.status === 401) {
     throw new ApiError(2001, netMsg(lang, "httpPleaseLogin"));
   }
-  if (!res.ok) {
-    throw new ApiError(
-      1000,
-      netMsg(lang, "httpDownloadFail").replace("{status}", String(res.status)),
-    );
-  }
+  if (!res.ok) throw await toApiError(res, netMsg(lang, "httpDownloadFail"));
   return res.arrayBuffer();
 }
 

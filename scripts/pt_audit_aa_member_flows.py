@@ -152,7 +152,8 @@ ids1 = [x["torrent_id"] for x in d1.get("items") or []]
 ok("A3 page=1 与缺省同集且非空", bool(ids0) and ids0 == ids1,
    "default=%d page1=%d" % (len(ids0), len(ids1)))
 # 正控必须按视图的真实排序取全集：`/preserve` 是
-# `ORDER BY (exited_at IS NULL ? seeders : 0) ASC, COALESCE(exited_at, created_at)
+# `ORDER BY (exited_at IS NULL ? seeders : 0) ASC,
+#  COALESCE(exited_at, created_at)
 # DESC`（最缺人保种的排前面），所以一条 seeders=1 的行**本来就不在第一页**。
 # 旧写法断言「在第一页」，早先只是碰巧成立——批一百九十七扫到 49710 就红了。
 def all_pres_ids():
