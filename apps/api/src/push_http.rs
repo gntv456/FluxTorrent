@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
+use crate::http::{rate_window, require_auth};
 use crate::state::AppState;
 
 use crypto::{decode_client_key, deliver, vapid_from_env, PushResult};
@@ -63,6 +63,10 @@ async fn subscribe(
     body: web::Json<SubscribeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // P-454：这一口每次都要做一次 DNS 解析 + 一行 upsert，此前全站唯一的
+    // 限流层是逐口挂的 `rate_window`，而 /push 三个口一个都没挂 ⇒ 登录态
+    // 下可以无限刷（键名只传业务段，`rl:` 前缀由 throttle 统一加，P-72）。
+    rate_window(&state, &format!("pushsub:{}", auth.id), 30, 60).await?;
     if !body.endpoint.starts_with("https://") {
         return Err(DomainError::Validation(
             "endpoint 必须为 https 推送服务地址".into(),
@@ -122,6 +126,9 @@ async fn unsubscribe(
     body: web::Json<UnsubscribeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 退订与订阅同档：软删一行很便宜，但两口成对刷（订阅→退订→订阅）
+    // 会让 upsert 的写放大翻倍，同档才不用解释为什么一个是 30 一个是 300。
+    rate_window(&state, &format!("pushunsub:{}", auth.id), 30, 60).await?;
     let n = sqlx::query(
         "UPDATE push_subscriptions SET expired_at = now() \
          WHERE endpoint = $1 AND user_id = $2 AND expired_at IS NULL",
@@ -153,6 +160,9 @@ async fn push_test(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 测试推送是**唯一会真向外发 HTTP POST** 的口（每次最多 5 条订阅），
+    // 所以按「签发 Token」那一档的 5/分收，而不是读取口的 60/时。
+    rate_window(&state, &format!("pushtest:{}", auth.id), 5, 60).await?;
     let subs: Vec<SubRow> = sqlx::query_as(
         "SELECT id, user_id, endpoint, p256dh, auth FROM push_subscriptions \
          WHERE user_id = $1 AND expired_at IS NULL LIMIT 5",
