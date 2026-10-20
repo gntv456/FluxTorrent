@@ -1,4 +1,10 @@
-import { ApiError } from "@/lib/api-client";
+import {
+  ApiError,
+  acceptLanguage,
+  baseUrl,
+  csrfHeaderAsync,
+  netMsg,
+} from "@/lib/api-client";
 import type { ApiEnvelope } from "@fluxtorrent/domain-types";
 
 /** 失败响应归一化（批二百零三）：JSON 口与 blob 口共用一把尺。
@@ -39,4 +45,35 @@ export async function toApiError(
     res.status,
     res.headers.get("x-request-id") ?? undefined,
   );
+}
+
+/** 取字节 + 元信息（批二百零五，GET 与 POST 共用一条路）。
+ *
+ *  必须在统一客户端里：csrf_mw 的成文判据是「非安全方法 + /api/v1 + 带了非空
+ *  会话 cookie ⇒ X-CSRF-Token 与 cookie 逐字相等」，而缺 cookie 时去 GET /me/csrf
+ *  续期那步（csrfHeaderAsync）是 api-client 私有的。组件内裸 fetch 两头都够不到
+ *  ⇒ 活体 A/B：只带 flux_token 的 POST 回 403/2003「无权限」，补同名头回 200。
+ *  浏览器同源必带 HttpOnly flux_token ⇒ 批量收种在真浏览器里整条不可用。
+ *
+ *  skipped：服务端 batch.rs 回 X-Batch-Skipped（少发几件），这个数必须交回调用方
+ *  ——文件名与提示都按**实际件数**报，不许按请求数猜。 */
+export async function blobRequest(
+  path: string,
+  init?: RequestInit,
+): Promise<{ data: ArrayBuffer; skipped: number }> {
+  const lang = acceptLanguage();
+  const res = await fetch(`${baseUrl()}${path}`, {
+    ...init,
+    headers: {
+      ...(lang ? { "Accept-Language": lang } : {}),
+      ...(await csrfHeaderAsync(init?.method, null)),
+      ...init?.headers,
+    },
+  });
+  if (res.status === 401) {
+    throw new ApiError(2001, netMsg(lang, "httpPleaseLogin"));
+  }
+  if (!res.ok) throw await toApiError(res, netMsg(lang, "httpDownloadFail"));
+  const data = await res.arrayBuffer();
+  return { data, skipped: Number(res.headers.get("x-batch-skipped")) || 0 };
 }

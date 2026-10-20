@@ -117,18 +117,18 @@ ts = code_only(rd(BATCH_TS))
 rs = code_only(rd(BATCH_RS))
 
 bare = bare_post_fetch(ts)
-ok("HY3 在册：批量收种仍是组件内裸 fetch 且不带 x-csrf-token",
-   bool(bare) and "api.postBlob" not in ts,
-   "命中=%s；方案 §8.3.2 禁止组件内裸 fetch，这里够不到 csrf 续期"
-   % (bare[:1],))
-ok("HY4 在册：批量口失败仍把信封丢掉、只显示通用 loadFailed",
-   drops_envelope(ts) and "apiErrorMessage" not in ts,
-   "403/2003「无权限」与「没登录」「被限流」在界面上是同一句「加载失败」")
+ok("HY3 硬判据：批量收种必须走统一客户端 api.postBlob（无组件内裸 fetch）",
+   "api.postBlob" in ts and not bare,
+   "裸 fetch 命中=%s；P-431 已收口，退回旧形状即红" % (bare[:1],))
+ok("HY4 硬判据：批量口失败必须把服务端信封读成中文（走 apiErrorMessage）",
+   not drops_envelope(ts) and "apiErrorMessage" in ts,
+   "403/2003「无权限」、「没登录」、「被限流」不该塌成同一句「加载失败」")
 
 ok("HY5 硬判据：件数差额两侧都必须在（服务端发 + 前端读）",
    re.search(r'X-Batch-Skipped",\s*skipped\.to_string', rs) is not None
-   and re.search(r'headers\.get\("X-Batch-Skipped"\)', ts) is not None,
-   "服务端 batch.rs 与 torrent-batch.tsx:103 任一侧断线即红")
+   and (re.search(r'headers\.get\("X-Batch-Skipped"\)', ts) is not None
+        or ("postBlob" in ts and "r.skipped" in ts)),
+   "服务端发 + 前端读，任一侧断线即红（前端可读头或读 postBlob 的 skipped）")
 
 good = code_only(GOOD_SHAPE)
 ok("HY6 承重：已收口形状不被 HY3/HY4 探测器误报",

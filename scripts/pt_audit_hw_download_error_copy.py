@@ -123,6 +123,12 @@ def blob_outlets_missing_helper():
 ac = strip(rd(AC))
 be = strip(rd(BE))
 blob = body_of(ac, "async function requestBlob")
+if "export async function blobRequest" in be:
+    # 批二百零五：blob 路径搬到 blob-error.ts。按列零闭括号切区域
+    # （body_of 会撞上返回类型 Promise<{…}> 的第一个花括号）
+    _bi = be.index("export async function blobRequest")
+    _bj = be.find("\n}", _bi)
+    blob += be[_bi:_bj + 2] if _bj > 0 else be[_bi:]
 json_body = body_of(ac, "async function request")
 
 hw1_bad = []
@@ -142,7 +148,7 @@ hw2_bad = [w for w, hit in (
 ok("HW2 归一化真读信封且只在非 JSON 时兜底", hw2_bad == [],
    "缺项=%s" % (hw2_bad,))
 
-ok("HW3 两口同尺（request 与 requestBlob 都调 toApiError）",
+ok("HW3 两口同尺（request 与 blob 路径都调 toApiError）",
    "toApiError(res, netMsg(lang, \"httpServerError\"))" in json_body
    and "toApiError(res," in blob,
    "只修一处等于没修：JSON 口与 blob 口必须共用这一把尺")
