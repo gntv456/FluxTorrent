@@ -16,6 +16,14 @@ import type { BookmarkRow } from "@/lib/data";
  *  后端 limit 截断、无 cursor（取满 100 就要说出口，同 /my/torrentlist）。 */
 const CAP = 100;
 
+/** 固定站点时区（UTC+8，与站点日/签到同口径）：RSC 在容器（UTC）里也会
+ *  渲染这一列，只有两端都用同一固定时区才不会水合出不同文本。 */
+function fmtSavedAt(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, {
+    timeZone: "Asia/Shanghai",
+  });
+}
+
 export function MyBookmarks({ rows }: { rows: BookmarkRow[] | null }) {
   const { dict, locale } = useI18n();
   const t = dict.subscriptions;
@@ -73,9 +81,7 @@ export function MyBookmarks({ rows }: { rows: BookmarkRow[] | null }) {
                 <td className="num text-right">{r.seeders}</td>
                 <td className="num text-right">{r.leechers}</td>
                 <td className="text-xs text-sub">
-                  {new Date(r.created_at).toLocaleString(
-                    dateLocale(locale),
-                  )}
+                  {fmtSavedAt(r.created_at, dateLocale(locale))}
                 </td>
                 <td className="text-right">
                   <BookmarkRemoveButton torrentId={r.torrent_id} />
