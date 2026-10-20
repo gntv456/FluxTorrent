@@ -1890,7 +1890,7 @@ const zhCnBase = {
       showAd: "显示广告",
       wantAds: "我想看到广告",
       adNote1: "及以上等级用户可选择不显示广告",
-      adNote2: "及以上等级用户可用魔力值兑换一定期限内不显示广告的权限，",
+      adNote2: "及以上等级用户可用魔力值兑换一定期限内不显示广告的权限。",
       timeType: "时间显示类型",
       timeAdded: "发生时间",
       timeAlive: "已去时间",
