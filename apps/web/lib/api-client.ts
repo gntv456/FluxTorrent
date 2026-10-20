@@ -2,7 +2,6 @@ import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
 import { apiServerBase } from "@/lib/api-upstream";
 import { blobRequest, toApiError } from "@/lib/blob-error";
-import { maybeNotifySparkChanged } from "@/lib/spark-event";
 import { zhCN } from "@/i18n/zh-CN";
 
 /**
@@ -227,8 +226,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
   // 扣/加魔力的写口成功后统一广播：顶栏余额是 user-menu 的本地 state，
-  // 组件里各写一遍必漏（登记表与后端余额原语由 pt_audit_spark_sync 对账）
-  maybeNotifySparkChanged(path, init?.method);
+  // 组件里各写一遍必漏（登记表与后端余额原语由 pt_audit_spark_sync 对账）。
+  // 广播函数住在 "use client" 模块里，而本文件也被 RSC 服务端组件 import——
+  // 静态 import 会让服务端直呼客户端函数（Next 15.3 起直接炸渲染），改为
+  // 浏览器侧动态 import 按需加载（服务端 GET 恒不触发；动态 import 不在
+  // 服务端 bundle 里展开 "use client" 模块，vitest 也认 @ 别名）。
+  if (typeof window !== "undefined") {
+    const { maybeNotifySparkChanged } = await import("@/lib/spark-event");
+    maybeNotifySparkChanged(path, init?.method);
+  }
   return body.data;
 }
 
