@@ -69,27 +69,109 @@ pub(crate) async fn notify_review_result(
                 }),
         )
     };
+    // 卡片 5（0400）：站长自定义邮件主题模板（auto_review_mail_*_subject），
+    // 变量 {site}/{username}/{torrent}/{reason}；未配置回落缺省文案。
+    let tmpl: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings WHERE name IN \
+           ('auto_review_mail_pass_subject', \
+            'auto_review_mail_deny_subject', 'site_name')",
+    )
+    .bind(0)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let get = |k: &str| {
+        tmpl.iter()
+            .find(|(n, _)| n == k)
+            .map(|(_, v)| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+    };
+    let site_name = get("site_name").unwrap_or_else(|| "站点".into());
+    let render = |t: &str, reason: &str| {
+        t.replace("{site}", &site_name)
+            .replace("{username}", "")
+            .replace("{torrent}", &title)
+            .replace("{reason}", reason)
+    };
     let (kind, subject, body_text) = if approve {
         (
             "review_approved",
-            format!("种子过审：{title}"),
+            get("auto_review_mail_pass_subject")
+                .map(|t| render(&t, ""))
+                .unwrap_or_else(|| format!("种子过审：{title}")),
             format!("你发布的种子已通过审核：#{torrent_id} {title}。"),
         )
     } else {
         let why = reason_text.clone().unwrap_or_else(|| "未注明".into());
         (
             "review_rejected",
-            format!("种子被拒：{title}"),
+            get("auto_review_mail_deny_subject")
+                .map(|t| render(&t, why.as_str()))
+                .unwrap_or_else(|| format!("种子被拒：{title}")),
             format!(
                 "你发布的种子未通过审核：#{torrent_id} {title}\n\
-                 原因：{why}\n可修改后重新发布。"
+                 原因：{why}\n\
+                 修改建议：请按原因补充或修正内容（描述可补充资源介绍/截图/MediaInfo；标题请按站规命名）。\n\
+                 修改后可在「我的发布」中重新提交；如有异议可通过站内工单申诉。"
             ),
         )
     };
+    // 0400 §4.2：自动拒因（字典 sort 91-96）的邮件走 1h/3 封限频——
+    // 超限只发站内信；人工拒因不限频（人工逐条裁决自带节奏）。
+    let email = if approve {
+        email
+    } else {
+        let is_auto_deny: bool = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT d.sort BETWEEN 91 AND 96 \
+               FROM torrent_deny_reasons d \
+               JOIN torrents t ON t.deny_reason_id = d.id \
+               WHERE t.id = $1), false)",
+        )
+        .bind(torrent_id)
+        .fetch_one(db)
+        .await
+        .unwrap_or(false);
+        if is_auto_deny
+            && !crate::mailer::mail_rate_allow(&mut state.redis.clone(), owner)
+                .await
+        {
+            tracing::info!(owner, torrent = torrent_id,
+                "自动拒邮件超频（1h>3），本封只发站内信");
+            None
+        } else {
+            email
+        }
+    };
+    // 自动拒因邮件走 outbox（0404：丢了=用户不知情被拒，须重试）；
+    // 过审邮件保持尽力直发（丢了无实害）。
+    let is_auto_deny_mail = !approve
+        && sqlx::query_scalar::<_, bool>(
+            "SELECT COALESCE((SELECT d.sort BETWEEN 91 AND 96 \
+               FROM torrent_deny_reasons d \
+               JOIN torrents t ON t.deny_reason_id = d.id \
+               WHERE t.id = $1), false)",
+        )
+        .bind(torrent_id)
+        .fetch_one(db)
+        .await
+        .unwrap_or(false);
+    if is_auto_deny_mail {
+        if let Some(to) = email.clone() {
+            crate::mailer::enqueue_mail_outbox(
+                db,
+                owner,
+                &to,
+                &subject,
+                &body_text,
+                &format!("auto_deny:{torrent_id}"),
+            )
+            .await;
+        }
+    }
     crate::mailer::notify_keyed(
         db,
         owner,
-        email,
+        if is_auto_deny_mail { None } else { email },
         &subject,
         &body_text,
         kind,

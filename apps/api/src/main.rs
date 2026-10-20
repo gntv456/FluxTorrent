@@ -51,6 +51,7 @@ mod invite_http;
 // 抓轨日志识别与打分（0312 音乐站 Logchecker）
 mod logcheck;
 mod mailer;
+mod mailer_notify;
 mod mediainfo_service;
 mod modules;
 mod openapi_http;

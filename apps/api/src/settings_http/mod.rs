@@ -10,7 +10,9 @@ mod engine;
 // 乐观并发（expected updated_at）：groups 与 admin_http/site_put 共用
 pub(crate) mod expected;
 mod export;
-pub(crate) mod groups; // admin_http/site_put.rs 旧端点复用保存域助手
+pub(crate) mod groups;
+// 审种规则集版本递增（0400，从 groups.rs 拆出）
+mod ruleset; // admin_http/site_put.rs 旧端点复用保存域助手
 #[cfg(test)]
 mod groups_tests;
 mod history;

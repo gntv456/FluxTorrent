@@ -53,6 +53,9 @@ export function renderSimpleTool(
     // 举报处理（0336 trumping 的版主入口；导航项见迁移 0339）
     case "trumps":
       return <P.AdminTrumps />;
+    // 自动审种台账（0400）：四指标/回放/批量恢复
+    case "autoreview":
+      return <P.AutoReviewPanel />;
     case "content":
       return (
         <section className="nexus-detail">

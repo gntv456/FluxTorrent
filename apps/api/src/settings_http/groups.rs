@@ -90,7 +90,7 @@ pub(super) fn effects_for(names: &[String]) -> Vec<String> {
 }
 
 /// 缓存失效：删分区缓存 + 广播变更（§7.2，不整库 FLUSHALL）
-pub(super) async fn invalidate_cache(
+pub(crate) async fn invalidate_cache(
     state: &web::Data<std::sync::Arc<AppState>>,
     group: &str,
 ) {
@@ -99,8 +99,7 @@ pub(super) async fn invalidate_cache(
     let _: () = conn.del("settings:all").await.unwrap_or(());
     // 模块开关（module_*）属 module 组：本进程缓存立即失效（U1 §5.1，最坏竞态由 TTL 兜底）
     state.module_flags.invalidate().await;
-    // 0224 G30：settings:changed 的 publish 全仓零订阅者（否定式假通过），
-    // 改走 cfg:ver 版本通道（订阅侧见 cfgver.rs；Redis 分区缓存 DEL 保留）
+    // 0224 G30：settings:changed 零订阅者，改走 cfg:ver 版本通道（Redis 分区缓存 DEL 保留）
     crate::cfgver::bump(state.get_ref(), "modules").await;
     crate::staff_http::invalidate_site_profile_cache(state).await;
 }
@@ -310,6 +309,10 @@ pub(super) async fn settings_groups_put(
     };
     if !changed.is_empty() {
         invalidate_cache(&state, &group).await;
+        // 自动审种（0400 §7）：组内任一键变更 → ruleset +1
+        if group == "auto_review" {
+            super::ruleset::bump(&state.repo.db).await;
+        }
     }
     let effects = effects_for(&changed);
     Ok(ok(serde_json::json!({
@@ -331,7 +334,4 @@ pub(super) fn truncate(s: &str) -> String {
     }
 }
 
-// 乐观并发（check_expected / merge_conflict）拆至 expected.rs；
-// 单元测试拆至 groups_tests.rs（300 行门禁）
-
-// ============================================================================
+// 乐观并发拆至 expected.rs；测试拆至 groups_tests.rs（300 行门禁）

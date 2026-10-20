@@ -150,6 +150,60 @@ pub async fn site_message_keyed(
     Ok(())
 }
 
+/// 邮件风暴防护（0400 §4.2）：同一收件人 1 小时内同类邮件超 3 封时，
+/// 后续只发站内信。键 = mailcap:{user}:{bucket}，Redis INCR+EXPIRE。
+/// 只在「自动审种拒绝」类调用（人工审核/关键流程不走此闸）。
+pub async fn mail_rate_allow(
+    redis: &mut redis::aio::ConnectionManager,
+    user_id: i64,
+) -> bool {
+    use redis::AsyncCommands;
+    let key = format!(
+        "mailcap:{user_id}:{}",
+        chrono::Utc::now().timestamp() / 3600
+    );
+    let n: i64 = redis
+        .incr(&key, 1)
+        .await
+        .unwrap_or(0);
+    if n == 1 {
+        let _: () = redis
+            .expire(&key, 3700)
+            .await
+            .unwrap_or(());
+    }
+    n <= 3
+}
+
+/// 邮件入 outbox（0404 §17-2）：自动审种拒信等「丢了用户就不知情」的
+/// 邮件走这里——api 只入队，worker（job:mail_outbox）退避重试。
+/// dedupe_key 幂等：同键重复入队被吞（重放安全）。
+pub async fn enqueue_mail_outbox(
+    db: &sqlx::PgPool,
+    user_id: i64,
+    to_email: &str,
+    subject: &str,
+    body: &str,
+    dedupe_key: &str,
+) {
+    let r = sqlx::query(
+        "INSERT INTO mail_outbox (user_id, to_email, subject, body, \
+           dedupe_key) VALUES ($1, $2, $3, $4, $5) \
+         ON CONFLICT (dedupe_key) DO NOTHING",
+    )
+    .bind(user_id)
+    .bind(to_email)
+    .bind(subject)
+    .bind(body)
+    .bind(dedupe_key)
+    .execute(db)
+    .await;
+    if let Err(e) = r {
+        tracing::warn!(?e, user_id, "mail_outbox 入队失败（退化为尽力直发）");
+        let _ = send_mail_with(db, to_email, subject, body).await;
+    }
+}
+
 /// notify 的带键版：站内信按键落库 + 邮件尽力（邮件正文只能是成品文本，保持原样）
 pub async fn notify_keyed(
     db: &PgPool,
@@ -227,57 +281,6 @@ async fn smtp_config_common() -> Option<SmtpConfig> {
     }
 }
 
-/// 通知双通道：站内信必达 + 邮件尽力（后台线程）
-/// 带事件类通知（0075 通知偏好的消费侧）：kind 对应 notice-prefs 白名单键，
-/// 用户关掉该类（notice_prefs JSONB 显式 false）时**站内信也静默**——
-/// 与既有 email 偏好语义一致。密码/审核等关键流程继续走 notify()（不受偏好控制）。
-pub async fn notify_kind(
-    db: &PgPool,
-    to_user: i64,
-    kind: &str,
-    email: Option<String>,
-    subject: &str,
-    body: &str,
-) {
-    let prefs: serde_json::Value =
-        sqlx::query_scalar("SELECT notice_prefs FROM users WHERE id = $1")
-            .bind(to_user)
-            .fetch_one(db)
-            .await
-            .unwrap_or(serde_json::json!({}));
-    let enabled = prefs.get(kind).and_then(|v| v.as_bool()).unwrap_or(true);
-    if !enabled {
-        return;
-    }
-    notify(db, to_user, email, subject, body).await;
-}
-
-pub async fn notify(
-    db: &PgPool,
-    to_user: i64,
-    email: Option<String>,
-    subject: &str,
-    body: &str,
-) {
-    if let Err(e) = site_message(db, to_user, subject, body).await {
-        tracing::error!(?e, to_user, "site message failed");
-    }
-    if let Some(to) = email {
-        // 后台线程也要走「站点设定优先」：先把配置查出来再移动进任务
-        let cfg = smtp_config(db).await;
-        let (s, b) = (subject.to_string(), body.to_string());
-        actix_web::rt::spawn(async move {
-            let Some(cfg) = cfg else {
-                tracing::info!(to, subject = %s, "SMTP 未配置，邮件降级为日志");
-                return;
-            };
-            if let Err(e) = crate::gaps_http::send_generic_mail(
-                &cfg.url, &cfg.from, &to, &s, &b,
-            )
-            .await
-            {
-                tracing::error!(?e, to, "mail send failed");
-            }
-        });
-    }
-}
+// 通知分发（notify_kind/notify）拆至 mailer_notify.rs（300 行门禁），
+// 对外路径保持 crate::mailer::notify 不变（调用方无须改 import）
+pub(crate) use super::mailer_notify::{notify, notify_kind};
