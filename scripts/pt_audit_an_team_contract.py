@@ -102,6 +102,22 @@ def run_job(job, wait_s=170):
     return None, "等 worker 本轮执行超时（%ss）" % wait_s
 
 
+# 开机自清（批二百零二）：AN 的夹具只在**正常收尾**时删除，崩溃/超时那一跑
+# 会把 `AnTeam.s*` 种子与探针号永久留在现网。2026-10-20 实测库里积了 5 个批次
+# 共 20 个这样的夹具种，且它们没有 .torrent 存档 ⇒ 直接抬高 GC1
+# 「过审种缺原始档案」台账（31 → 11；过审种 180 → 160）。
+# 名字模式是本闸门专属（AnTeam.s<序号>.<批次号>），演示数据不会撞上；
+# 删除顺序按 `torrents` 的外键实况：snatches 先走（其余多为 ON DELETE CASCADE），
+# 且这批夹具都不在 requests/offers/subtitle_requests 等 NO ACTION 引用面上
+# （2026-10-20 事务内 dry-run 验证通过并回滚）。
+_leak = q("SELECT id FROM torrents WHERE name LIKE 'AnTeam.s%' "
+          "AND split_part(name, '.', 1) = 'AnTeam' "
+          "AND split_part(name, '.', 3) ~ '^[0-9]+$'")
+for _tid in [x for x in _leak.split("\n") if x.strip()]:
+    exec_sql("DELETE FROM snatches WHERE torrent_id = %s" % _tid)
+    exec_sql("DELETE FROM torrents WHERE id = %s" % _tid)
+
+
 def probe_torrent(owner_id, tag):
     """直接建一颗探针种（本闸门不打 tracker，纯链上数据）。"""
     name = "AnTeam.%s.%d" % (tag, TS)
