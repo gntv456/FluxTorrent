@@ -77,6 +77,11 @@ pub(super) fn group_label<'a>(key: &'a str) -> &'a str {
         "module_fun" => "模块开关·娱乐",
         "module_ops" => "模块开关·运营",
         "appearance" => "外观与主题",
+        // 论坛（0397）：该组此前只有 forum_video_* 等无 meta 行的键，
+        // 设置页从不出现；新键 forum_hot_views 进来后补上中文分区名
+        "forum" => "论坛",
+        // 自动审种（0400）：总开关/规则三要素/词库名单/站型适配均在该组
+        "auto_review" => "自动审种",
         other => other,
     }
 }
@@ -100,6 +105,7 @@ const DEFAULT_GROUP_ORDER: &[&str] = &[
     "module_fun",
     "module_ops",
     "appearance",
+    "auto_review",
     "misc",
 ];
 

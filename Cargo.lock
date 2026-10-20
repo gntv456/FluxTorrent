@@ -1411,6 +1411,7 @@ dependencies = [
  "dotenvy",
  "flux-shared",
  "futures-util",
+ "hmac",
  "lettre",
  "redis",
  "reqwest",
