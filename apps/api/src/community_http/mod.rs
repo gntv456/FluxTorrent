@@ -209,6 +209,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(shoutbox_list)
         .service(shoutbox_send)
         .service(shoutbox_delete)
+        .service(shoutbox_clear)
         .service(shoutbox_bot_help)
         .service(shoutbox_bot_exec)
         .service(ticket_list)

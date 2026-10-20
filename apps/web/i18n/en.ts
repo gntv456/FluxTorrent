@@ -606,6 +606,7 @@ const enBase: Omit<
     newBoxPh: "New folder name (≤14 chars)",
     addBox: "Add",
     renameBoxPh: "Rename folder",
+    deleteBox: "Delete folder",
     deleteBoxConfirm: "Deleting a folder also clears its messages. Continue?",
     toCol: "To",
   },
@@ -1488,6 +1489,9 @@ const enBase: Omit<
     empty: "No messages yet — say hi!",
     placeholder: "Say something… (1-300 chars)",
     send: "Send",
+    clear: "Clear",
+    clearAsk: "Clear ALL shoutbox messages? This cannot be undone.",
+    clearDone: "Cleared {n} messages",
   },
   apidocs: {
     ungrouped: "Ungrouped",

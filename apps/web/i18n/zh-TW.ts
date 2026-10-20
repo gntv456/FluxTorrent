@@ -591,6 +591,7 @@ const zhTwBase: Omit<
     newBoxPh: "新資料夾名（≤14 字）",
     addBox: "新建",
     renameBoxPh: "修改資料夾名",
+    deleteBox: "刪除資料夾",
     deleteBoxConfirm: "刪除資料夾將連帶清空夾內信件，確認？",
     toCol: "收件人",
   },
@@ -1442,6 +1443,9 @@ const zhTwBase: Omit<
     empty: "還沒有人說話，來開個頭吧",
     placeholder: "說點什麼…（1-300 字）",
     send: "發言",
+    clear: "清空",
+    clearAsk: "確定清空聊天室全部發言？此操作不可撤銷。",
+    clearDone: "已清空 {n} 條發言",
   },
   apidocs: {
     ungrouped: "未分組",

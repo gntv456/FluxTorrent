@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { isStaffClass } from "@/lib/domain/user-class";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { Icon } from "@/components/icons";
@@ -38,6 +40,15 @@ export function ShoutBox() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [botReplies, setBotReplies] = useState<BotReply[]>([]);
+  // 清空（0406 纯净化配套）：仅职员可见；danger 确认防手滑
+  const [meClass, setMeClass] = useState<number | null>(null);
+  const ask = useConfirm();
+  useEffect(() => {
+    api
+      .get<{ class_id?: number }>("/api/v1/me")
+      .then((m) => setMeClass(m.class_id ?? null))
+      .catch(() => {});
+  }, []);
   const [commands, setCommands] = useState<BotCommand[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const replySeq = useRef(0);
@@ -112,6 +123,22 @@ export function ShoutBox() {
     }
   }
 
+  async function clearAll() {
+    if (busy) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.post<{ cleared: number }>("/api/v1/shoutbox/clear");
+      setMsg(t.clearDone.replace("{n}", String(r.cleared)));
+      setItems([]);
+      setBotReplies([]);
+    } catch (e) {
+      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const timeStr = (iso: string) =>
     new Date(iso).toLocaleTimeString(dateLocale(locale), {
       hour: "2-digit",
@@ -129,8 +156,27 @@ export function ShoutBox() {
           />{" "}
           {t.title}
         </h2>
-        <small>{t.note}</small>
+        <small className="flex items-center gap-2">
+          {t.note}
+          {isStaffClass(meClass ?? undefined) && (
+            <button
+              type="button"
+              className="text-xs text-danger underline disabled:opacity-50"
+              disabled={busy || (items ?? []).length === 0}
+              onClick={() =>
+                ask.open({
+                  tone: "danger",
+                  title: t.clearAsk,
+                  run: () => void clearAll(),
+                })
+              }
+            >
+              {t.clear}
+            </button>
+          )}
+        </small>
       </header>
+      <AskDialog {...ask} />
       <ul className="shoutbox__list">
         {(items ?? [])
           .slice()
