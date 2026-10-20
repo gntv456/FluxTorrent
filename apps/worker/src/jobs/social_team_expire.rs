@@ -126,8 +126,13 @@ pub(crate) async fn social_team_expire(db: &PgPool) -> anyhow::Result<u64> {
     Ok(n)
 }
 
-/// 教材愿望单推送（0074，U3D WishList 教育化）：扫过去 1 小时过审的种子，
+/// 教材愿望单推送（0074，U3D WishList 教育化）：扫过去 3 小时过审的种子，
 /// 对 wishlist 做 ILIKE/维度匹配；每条愿望 24h 限推一次，**每用户聚合一封信**（防信箱轰炸）。
+///
+/// 窗口比 cadence(1h) 宽：hourly 分支按序串跑多个 job，本 job 与上一轮的
+/// 实际间隔会随前序任务耗时漂移；多实例抢锁失败还会整轮跳过。窗口与
+/// cadence 等宽时，漂移/跳过产生的切片会永久漏推。3h 覆盖连续两次跳过；
+/// 重复扫描由 24h 节流与 wishlist_hits 唯一键吸收。
 pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
     // 审计修复（原子性）：INSERT 消息与 UPDATE notified_at 包进同一事务——
     // 两条独立语句中途崩溃会出现「发了信却没标记」（下轮重发）或「标记了却没发信」
@@ -138,7 +143,7 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
         WITH recent AS (
             SELECT id, name FROM torrents
             WHERE approval_status = 1
-              AND approved_at > now() - interval '1 hour'
+              AND approved_at > now() - interval '3 hours'
               AND approved_at IS NOT NULL
         ),
         hits AS (
@@ -197,7 +202,7 @@ pub(crate) async fn wishlist_notify(db: &PgPool) -> anyhow::Result<u64> {
         WITH recent AS (
             SELECT id, name FROM torrents
             WHERE approval_status = 1
-              AND approved_at > now() - interval '1 hour'
+              AND approved_at > now() - interval '3 hours'
               AND approved_at IS NOT NULL
         ),
         hits AS (
