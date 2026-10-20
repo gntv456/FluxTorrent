@@ -34,22 +34,27 @@ pub async fn me(
         .await?
         .ok_or(DomainError::Unauthorized)?;
     // 个人主页口径（旧站 getusertorrentlist / my_data_stats）：传输量 + 分享率 + 做种/下载计数
-    let row: Option<(i64, i64, i64, i64, i64, i64, Option<String>)> = sqlx::query_as(
+    // P-439：角标必须等于「点进收藏夹看到的条数」——与列表同用可见性口径
+    let vis = crate::torrents::visibility_sql(Some((auth.id, auth.class_id >= 90)));
+    let sql = format!(
         r#"
         SELECT u.uploaded, u.downloaded,
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
                (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1) AS uploads,
-               (SELECT count(*) FROM bookmarks b WHERE b.user_id = u.id) AS bookmarks,
+               (SELECT count(*) FROM bookmarks b
+                JOIN torrents t ON t.id = b.torrent_id
+                WHERE b.user_id = u.id AND {vis}) AS bookmarks,
                c.name AS class_name
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
         WHERE u.id = $1
-        "#,
-    )
-    .bind(auth.id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        "#
+    );
+    let row: Option<(i64, i64, i64, i64, i64, i64, Option<String>)> = sqlx::query_as(&sql)
+            .bind(auth.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let (
         uploaded,
         downloaded,

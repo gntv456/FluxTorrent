@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use crate::errors::{DomainError, DomainResult};
 
 use super::types::{FileRow, ThankRow, TorrentDetailRow, TorrentRow};
-use super::visibility::visibility_sql;
+use super::visibility::{assert_visible, visibility_sql};
 
 pub async fn get_torrent(
     db: &PgPool,
@@ -260,20 +260,18 @@ pub async fn bookmark(
     on: bool,
 ) -> DomainResult<()> {
     if on {
-        // P-373：先验存在性再插。旧写法直接 INSERT，打到不存在/已删的种号会撞
-        // `bookmarks_torrent_id_fkey` ⇒ 会员收到 500「内部错误」，而这个端点自己的
-        // OpenAPI 写的是「404 种子不存在或不可见」（现网实测 tid 不存在即 500）。
-        // 同文件的评论删除/点赞/标签三处都有存在性判定，收藏是这一族里被改漏的那一份。
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)",
+        // P-373 + P-439：收藏必须与详情同一可见性口径。旧写法只验「行存在」，
+        // 于是待审/被拒/软删种也能收藏成功，而 /me/bookmarks 只列过审种 ⇒
+        // 提示成功但收藏夹里没有，/me 角标却 +1（现网实测 1→2）。
+        // 取消收藏不设可见性闸门：种变不可见后仍要能清掉这一行。
+        let staff: bool = sqlx::query_scalar(
+            "SELECT class_id >= 90 FROM users WHERE id = $1",
         )
-        .bind(torrent_id)
+        .bind(user_id)
         .fetch_one(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        if !exists {
-            return Err(DomainError::NotFound(torrent_id));
-        }
+        assert_visible(db, torrent_id, (user_id, staff)).await?;
         sqlx::query(
             "INSERT INTO bookmarks (user_id, torrent_id) VALUES \
              ($1, $2) ON CONFLICT DO NOTHING",
