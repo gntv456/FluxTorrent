@@ -95,4 +95,43 @@ SET step = want.lvl,
 FROM want
 WHERE w.user_id = want.user_id;
 
+-- ③ 补发阶梯通知：旧 worker 只落状态、从未发过「第 N 档」信；新 worker
+--    对同档用户会跳过，不补则这批人永远只知道自己违规、不知道被限了
+--    什么、何时恢复。只在从未收到过阶梯信时补一次（幂等）。
+INSERT INTO messages (sender_id, receiver_id, subject, body, kind)
+SELECT NULL, w.user_id,
+       'H&R 警告（第 ' || w.step || ' 档）',
+       '您当前有 ' || c.n || ' 条未解决的 H&R 违规，站点已按警告阶梯'
+       || '记为第 ' || w.step || ' 档（共 4 档）。' || chr(10)
+       || '本次处置：' || CASE
+           WHEN w.step = 1 THEN '本次仅警告，暂不限制任何权限'
+           ELSE '已暂停：' || concat_ws('、',
+               CASE WHEN w.restrict_download THEN '下载' END,
+               CASE WHEN w.block_upload THEN '发布新种' END,
+               CASE WHEN w.block_invite THEN '生成邀请码' END)
+       END || '。' || chr(10)
+       || '本档警告到期时间：'
+       || to_char(w.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI')
+       || '（UTC）。' || chr(10)
+       || '恢复方式：补足做种时长达标后违规会自动消除；也可在'
+       || '「我的 H&R」用魔力自助免罪。未解决违规全部处理完毕且'
+       || '本档警告到期后，权限自动恢复。',
+       'hr_violation'
+FROM hr_warn_states w
+JOIN (
+    SELECT user_id, count(*)::int AS n
+    FROM hr_violations
+    WHERE resolved_at IS NULL
+    GROUP BY user_id
+) c ON c.user_id = w.user_id
+WHERE w.step > 0
+  AND w.expires_at IS NOT NULL
+  AND u_notice_enabled(w.user_id, 'hr_violation')
+  AND NOT EXISTS (
+      SELECT 1 FROM messages m
+      WHERE m.receiver_id = w.user_id
+        AND m.kind = 'hr_violation'
+        AND m.body LIKE '%警告阶梯%'
+  );
+
 COMMIT;
