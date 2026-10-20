@@ -180,12 +180,18 @@ pub async fn my_bookmarks(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
-    let rows: Vec<BookmarkRow> = sqlx::query_as(
+    // P-439：列表与详情同可见性口径——发布者/staff 收藏的待审、被拒种也要
+    // 列得出来，否则「收藏成功」在收藏夹里凭空消失；普通会员看不到的种
+    // 在写入侧已被 assert_visible 拦住。
+    let vis =
+        crate::torrents::visibility_sql(Some((auth.id, auth.class_id >= 90)));
+    let sql = format!(
         "SELECT t.id AS torrent_id, t.name, t.small_descr, t.size, t.seeders, t.leechers, \
          b.created_at FROM bookmarks b JOIN torrents t ON t.id = b.torrent_id \
-         WHERE b.user_id = $1 AND t.approval_status = 1 \
-         ORDER BY b.created_at DESC, t.id DESC LIMIT $2",
-    )
+         WHERE b.user_id = $1 AND {vis} \
+         ORDER BY b.created_at DESC, t.id DESC LIMIT $2"
+    );
+    let rows: Vec<BookmarkRow> = sqlx::query_as(&sql)
     .bind(auth.id)
     .bind(limit)
     .fetch_all(&state.repo.db)
