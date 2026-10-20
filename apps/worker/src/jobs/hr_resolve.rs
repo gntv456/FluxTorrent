@@ -79,7 +79,8 @@ pub(crate) async fn resolve_met_violations(db: &PgPool) -> anyhow::Result<u64> {
         SELECT NULL, m.user_id, 'H&R 违规已消除',
                format('您此前一条 H&R 违规（种子 #%s）经复核已消除：该种子累计做种时长'
                       '已达到要求。您现在的未解决违规数已相应减少，无需再操作。'
-                      '如下载权限曾被暂停，将在下一轮检查自动恢复。', m.torrent_id)
+                      '如下载权限曾被暂停，将在下一轮检查自动恢复；若处于警告'
+                      '限制期，则待警告到期后恢复。', m.torrent_id)
         FROM met m
         "#,
     )

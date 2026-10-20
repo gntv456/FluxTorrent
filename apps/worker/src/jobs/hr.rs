@@ -190,7 +190,8 @@ pub(crate) async fn hr_punish(db: &PgPool) -> anyhow::Result<()> {
         SELECT NULL, b.id, '下载权限暂停：H&R 违规超限',
                format('您当前有 %s 条未解决的 H&R 违规（阈值 %s），已暂停下载权限。'
                       '恢复方式：①持续做种达标后违规自动消除；②在「我的 H&R」页用魔力自助免罪；'
-                      '③联系管理组申请 Pardon。违规数降回阈值以下后下载权限将自动恢复。',
+                      '③联系管理组申请 Pardon。违规数降回阈值以下后下载权限将自动恢复'
+                      '（若处于 H&R 警告限制期，则待警告到期后再解）。',
                       b.n, $1)
         FROM banned b
         "#,
