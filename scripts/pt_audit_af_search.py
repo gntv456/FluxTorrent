@@ -221,9 +221,10 @@ ok("G1 exclude 排除 laoyouji → 4 颗且不含 A3",
 ok("G1 search_area=3 按发布者命中 A3（正控：不含自己发的 A1）",
    eqs(sel("search_area=3&search=afm"), {A3}), str(
        sel("search_area=3&search=afm")))
+_IMDB_HIT = sel("search_area=4&search=tt1111111")
 ok("G1 search_area=4 按 IMDb 编号命中 A1（发种填的 IMDb 真能搜到）",
-   eqs(sel("search_area=4&search=tt1111111"), {A1}), str(
-       sel("search_area=4&search=tt1111111")))
+   eqs(_IMDB_HIT, {A1}) and not LAST_ERR[0],
+   "err=%s items=%s" % (LAST_ERR[0] or "-", str(_IMDB_HIT)))
 
 print("== G2 数值与日期 facet（含边界与容错）==")
 B2 = 2 << 30
