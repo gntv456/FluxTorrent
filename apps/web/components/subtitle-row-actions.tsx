@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
 import { SubtitleEditDialog } from "@/components/subtitle-edit-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -40,12 +40,12 @@ export function SubtitleRowActionsInner({
         onMsg(t.reportOk);
       } else {
         await api.del(`/api/v1/subtitles/${s.id}`);
-        onMsg(t.delOk ?? "ok");
+        onMsg(t.delOk ?? "");
       }
       setAsk(null);
       onReload();
     } catch (e) {
-      onMsg(e instanceof Error ? e.message : "fail");
+      onMsg(apiErrorMessage(dict, e));
     }
   }
 
@@ -114,7 +114,7 @@ export function SubtitleRowActionsInner({
               onClose={() => setEditing(false)}
               onSaved={() => {
                 setEditing(false);
-                onMsg(t.editOk ?? "ok");
+                onMsg(t.editOk ?? "");
                 onReload();
               }}
             />
@@ -177,10 +177,10 @@ export function SubtitleVoteSelect({
             `/api/v1/subtitles/${s.id}/vote`,
             { score: Number(v) },
           );
-          onMsg(t.voteOk ?? "ok");
+          onMsg(t.voteOk ?? "");
           onReload();
         } catch (err) {
-          onMsg(err instanceof Error ? err.message : "fail");
+          onMsg(apiErrorMessage(dict, err));
         }
       }}
     >
