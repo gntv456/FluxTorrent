@@ -155,6 +155,56 @@ pub(crate) async fn lottery_settle(
         .execute(&mut *tx)
         .await?;
     }
+    // P-429：参与人数少于中奖名额时，差额必须退回楼主。旧写法只有
+    // 「无人参与」那一支会整退（上面 `picked.is_empty()`），一旦有人参与但
+    // 不足额，楼主发帖时按 `winners × prize` 押出去的那截奖池就静默蒸发——
+    // 押款有流水、派彩有流水，全站「快照 = 基线 + 流水」的对账仍然平，
+    // 所以没有任何人看得见这笔损失（现网 topic_lotteries 至今 0 行 ⇒ 潜伏）。
+    // 同一事务、同一幂等键纪律 ⇒ 重跑安全。
+    let short = (winners as i64 - picked.len() as i64).max(0)
+        * (prize as i64);
+    if short > 0 {
+        let op: i64 = sqlx::query_scalar("SELECT user_id FROM topics \
+                                          WHERE id = $1")
+            .bind(topic_id)
+            .fetch_one(&mut *tx)
+            .await?;
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM spark_ledger \
+             WHERE idempotency_key = $1)",
+        )
+        .bind(format!("forum-lottery-refund-short:{topic_id}"))
+        .fetch_one(&mut *tx)
+        .await?;
+        if !exists {
+            let bal: i64 = sqlx::query_scalar(
+                "UPDATE users SET spark_balance = \
+                 spark_balance + $2 WHERE id = $1 RETURNING spark_balance",
+            )
+            .bind(op)
+            .bind(short)
+            .fetch_one(&mut *tx)
+            .await?;
+            sqlx::query(
+                "INSERT INTO spark_ledger \
+                 (id, user_id, amount, kind, idempotency_key, \
+                 balance_after) \
+                 VALUES (nextval('spark_ledger_id_seq'), $1, $2, \
+                 'forum_lottery_refund', $3, $4)",
+            )
+            .bind(op)
+            .bind(short)
+            .bind(format!("forum-lottery-refund-short:{topic_id}"))
+            .bind(bal)
+            .execute(&mut *tx)
+            .await?;
+            tracing::info!(
+                topic_id,
+                short,
+                "lottery settled: 派彩不足的奖池已退回楼主"
+            );
+        }
+    }
     tx.commit().await?;
     tracing::info!(topic_id, winners = picked.len(), prize, "lottery settled");
     Ok(picked.len() as u64)
