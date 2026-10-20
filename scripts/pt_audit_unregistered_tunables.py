@@ -33,7 +33,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-from pt_audit_lib import BASE, call, login, ok, psql_stdin, summary  # noqa: E402
+from pt_audit_lib import (  # noqa: E402
+    BASE, call, login, ok, psql_stdin, summary)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MIG = "apps/api/migrations/0411_webhook_settings_meta.sql"
