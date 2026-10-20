@@ -87,7 +87,7 @@ ok("HS1 结构：不足额奖池会退回楼主（同事务 + 幂等键）", g =
    % (g,))
 old = body.replace('forum-lottery-refund-short:{topic_id}',
                    'forum-lottery-XXX:{topic_id}')
-old = re.sub(r"let short = winners[\s\S]{0,80}?;\n", "", old, count=1)
+old = re.sub(r"let short[\s\S]*?tx\.commit\(\)\.await\?;", "", old, count=1)
 ok("HS2 承重：摘掉退还支的合成旧码被抓", len(gaps(old)) >= 2,
    "抓到=%s" % (len(gaps(old)),))
 kinds = set(re.findall(r"'(forum_lottery[a-z_]*)'", strip_lines(rd(JOB))))
