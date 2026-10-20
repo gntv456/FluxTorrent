@@ -53,11 +53,13 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               // Next 运行时/水合脚本与引导内联脚本（见上注）
-              "script-src 'self' 'unsafe-inline'",
-              // 开发态连 HMR；生产不受影响（VerbatimModuleSyntax 无 eval）
-              ...(process.env.NODE_ENV === "development"
-                ? ["script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' ws:"]
-                : []),
+              // 开发态 webpack 用 eval devtool（source map）：eval 归属
+              // script-src，不是 script-src-elem——只给后者会让整页脚本
+              // 在水合前抛 CSP 错，页面可见但所有按钮都没接线。生产不
+              // 受影响（build 不用 eval）。
+              `script-src 'self' 'unsafe-inline'${
+                process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""
+              }`,
               // Tailwind 产出与主题令牌 <style> 注入
               "style-src 'self' 'unsafe-inline'",
               // 附件/封面/头像可能来自站长配置的绝对 URL 或外域图床
@@ -67,9 +69,15 @@ const nextConfig: NextConfig = {
               "connect-src 'self'",
               // 站内上传与字幕/论坛媒体播放（Range 206 那套）
               "media-src 'self' blob:",
-              // 论坛/公告视频内嵌白名单（embed_rules）按 frame-src 'self' 收口，
-              // 外域 embed 站点如需生效，站长须在反向代理层为 /embed 路径放宽
-              "frame-src 'self'",
+              // 论坛/公告视频内嵌白名单（embed_rules）：只放行内置播放器域。
+              // 站长新增自定义规则时，若 iframe 在外域还需把该域加进这里
+              // （或由反向代理层追加），否则命中规则也会被浏览器拦下。
+              [
+                "frame-src 'self'",
+                "https://player.bilibili.com",
+                "https://www.youtube-nocookie.com",
+                "https://player.vimeo.com",
+              ].join(" "),
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

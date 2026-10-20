@@ -8,7 +8,6 @@ import { fmt } from "@/i18n/config";
 import { ClaimButton } from "@/components/claim-button";
 import { TorrentTr } from "@/components/torrent-table";
 import { SeedStatsCard } from "@/components/seed-stats-card";
-import { ResurrectionPanel } from "@/components/resurrection-panel";
 import { requireModule } from "@/components/module-gate";
 import { Icon } from "@/components/icons";
 
@@ -94,8 +93,13 @@ export default async function PreservePage({
       {/* 保种统计：持 seed.stats.view 权限者可见（保种员 / 贵宾 / 管理组），无权限自动降级为提示 */}
       <SeedStatsCard />
 
-      {/* 复活任务（0073）：可领取死种列表 + 我的任务 */}
-      <ResurrectionPanel />
+      {/* 复活任务（0409 IA 收口）：内嵌面板移除——复活是独立契约玩法，
+          正主入口在导航「复活任务」/resurrections；此处只留引导链防老用户迷路 */}
+      <p className="text-sm text-muted">
+        <Link href="/resurrections" className="text-link hover:underline">
+          {dict.preserve.resurrectionHint}
+        </Link>
+      </p>
 
       {/* 筛选卡 */}
       <section className="brand-panel preserve-filter-card">
