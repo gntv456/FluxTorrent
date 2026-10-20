@@ -9,6 +9,7 @@ use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::actor::actor_name;
 use crate::state::AppState;
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -261,6 +262,8 @@ pub(crate) async fn topic_create(
     )
     .await;
     // 关注了作者的人：他发新主题时收到通知（关注版块只进关注流，不发通知，见 0121 注释）
+    // 身份写真人名字：这里此前是 `来自用户 #123`，收件人只知道有个号
+    let who = actor_name(&state.repo.db, auth.id).await;
     notify_followers(
         &state.repo.db,
         "user",
@@ -268,8 +271,8 @@ pub(crate) async fn topic_create(
         "comment_reply",
         "关注的人发了新主题",
         &format!(
-            "[{}](/forums/topic/{}) · 来自用户 #{}",
-            body.title, topic_id, auth.id
+            "[{}](/forums/topic/{}) · 来自 {}",
+            body.title, topic_id, who
         ),
         &[],
     )

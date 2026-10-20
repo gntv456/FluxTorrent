@@ -40,8 +40,10 @@ ALLOW = {
     "i18n/zh-CN.ts": 3,
     "content_http/subtitles_flow.rs": 1,
 }
-# 待收口台账（站方在途文件，本轮不代改）：命中数必须等于登记值
-PENDING = {"community_http/topic_create.rs": 1}
+# 待收口台账：本轮清空。最后一条 `community_http/topic_create.rs`
+# （「关注的人发了新主题 · 来自用户 #123」）已于 2026-10-21 收口成真人名字，
+# 该文件从此按 A1 的零裸 uid 硬判据管。将来若又要钉桩「站方在途文件」，
+# 重新加 PENDING 字典 + A2 那条「数量必须等于登记值」的断言，别只改注释。
 UID_SHAPE = re.compile(r"用户\s*#\s*(\{|\$|\d)")
 SKIP = (os.sep + "node_modules", os.sep + ".next")
 
@@ -93,18 +95,12 @@ def main():
     print("扫到裸 uid 形状的文件与次数：", hits or "无")
 
     bad = {k: "%d 处/允许 %d" % (v, ALLOW.get(k, 0))
-           for k, v in hits.items()
-           if k not in PENDING and v > ALLOW.get(k, 0)}
+           for k, v in hits.items() if v > ALLOW.get(k, 0)}
     ok("A1 发给会员的出口里没有裸 uid（职员侧按文件+次数入账）",
        not bad, "违例 %s" % bad)
 
-    miss = {k: (hits.get(k, 0), want) for k, want in PENDING.items()
-            if hits.get(k, 0) != want}
-    ok("A2 待收口台账数量与登记一致（多=新洞，少=已修要转硬断言）",
-       not miss, "偏差(实际,登记)=%s" % miss)
-
     staff = hits.get("community_http/leak_bot.rs", 0)
-    ok("A3 正控：职员侧工单仍按 id 写（判据没把口径改反）", staff >= 1,
+    ok("A2 正控：职员侧工单仍按 id 写（判据没把口径改反）", staff >= 1,
        "leak_bot 命中=%d" % staff)
     summary()
 
