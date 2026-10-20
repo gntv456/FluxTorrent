@@ -22,14 +22,17 @@ use crate::economy_http::{earn_spark_tx, spend_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 
 /// 这条种的发布者（匿名发布也按 `owner_id` 记账，钱要给真账号）。
-/// 读不到就是种不存在/已删 → 404，不能让调用方拿着 `None` 继续往下走：
-/// 旧版正是 `owner=None` 时静默跳过转账，却照样落一条「已答谢」。
+/// 读不到就是种不存在/已删 **/未过审** → 404：感谢是公开互动且可能转火花，
+/// 待审/被拒/暂缓/软删种一律不参与（P-440；旧写法只按 id 取 owner，
+/// 任意登录用户拿旧 id 就能给不可见的种落感谢行、给种主转魔力）。
 pub(super) async fn owner_of(
     db: &PgPool,
     torrent_id: i64,
 ) -> DomainResult<i64> {
-    let owner: Option<i64> =
-        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+    let owner: Option<i64> = sqlx::query_scalar(
+        "SELECT owner_id FROM torrents WHERE id = $1 \
+         AND approval_status = 1",
+    )
             .bind(torrent_id)
             .fetch_optional(db)
             .await
