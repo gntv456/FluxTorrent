@@ -1548,6 +1548,7 @@ const zhTwBase: Omit<
     hrUrgent: "{n} 個即將到期",
     // 四態（W-28）：三路全掛（含未登入）時的 ErrorPanel 說明
     errorDesc: "通知服務暫時不可用，請稍後重試。",
+    activityCard: "全站動態",
   },
   readState: {
     failTitle: "這塊資料沒取到",

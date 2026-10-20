@@ -248,8 +248,9 @@ async fn resolve_release(
     }
 }
 
-/// 公告联动（P2-3）：shoutbox 系统消息（匿名则「一位匿名用户」）。
-/// 失败静默——公告不可用不应阻断上传主链路
+/// 公告联动（0405 双路口径）：缺省写首页公告区（announcements，系统身份
+/// +「字幕」徽章），站长开 `shoutbox_announce_subtitles` 后才同时广播进
+/// 聊天室（传统 NP 气氛）。失败静默——公告不可用不应阻断上传主链路。
 async fn announce_upload(
     state: &web::Data<std::sync::Arc<AppState>>,
     auth: &crate::http::AuthUser,
@@ -269,10 +270,35 @@ async fn announce_upload(
         .await
         .unwrap_or_else(|_| "用户".into())
     };
-    let _ =
-        sqlx::query("INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)")
-            .bind(auth.id)
-            .bind(format!("{display} 上传了字幕「{title}」"))
-            .execute(&state.repo.db)
-            .await;
+    let text = format!("{display} 上传了字幕「{title}」");
+    // 首页公告区（缺省路）：badge 区分来源；sort 追加到尾部不冲站务公告
+    let _ = sqlx::query(
+        "INSERT INTO announcements (title, body, badge, author_id, sort) \
+         VALUES ($1, $2, '字幕', NULL, \
+                 (SELECT COALESCE(max(sort),0)+10 FROM announcements))",
+    )
+    .bind(format!("新字幕上架"))
+    .bind(text.clone())
+    .execute(&state.repo.db)
+    .await;
+    crate::http::home::invalidate_home_cache(state).await;
+    // 聊天室广播（回开路，缺省关）
+    let broadcast: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings \
+         WHERE name = 'shoutbox_announce_subtitles'",
+    )
+    .bind(0)
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
+    if broadcast.as_deref() == Some("1") {
+        let _ = sqlx::query(
+            "INSERT INTO shoutbox (user_id, message) VALUES ($1, $2)",
+        )
+        .bind(auth.id)
+        .bind(text)
+        .execute(&state.repo.db)
+        .await;
+    }
 }

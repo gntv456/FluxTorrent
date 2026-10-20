@@ -1601,6 +1601,7 @@ const enBase: Omit<
     // Four states (W-28): ErrorPanel hint when all three feeds fail
     errorDesc:
       "The notification service is temporarily unavailable. Please retry later.",
+    activityCard: "Site activity",
   },
   readState: {
     failTitle: "This list could not be loaded",

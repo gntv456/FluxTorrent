@@ -12,7 +12,7 @@ mod cheat_case;
 mod cheat_http;
 mod frames_gomoku;
 mod fun_links;
-mod home;
+pub(crate) mod home;
 mod home_attendance;
 mod home_layout;
 pub(crate) mod home_news;
@@ -69,10 +69,9 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::staff_http::terms_upsert)
         .service(crate::staff_http::terms_toggle)
         .service(crate::staff_http::terms_delete)
-        // 术语治理后台面（0386）：键登记 / 状态迁移 / 版本 /
-        // 巡检五条端点。此前只写了处理函数（模块也已 export），但
-        // **从未注册到路由表**——实测三条读口全回 `1004 接口不存在`，
-        // 写口同样。产品上线了、迁移 0386 也入库了，却没有一条可调用的接口。
+        // 术语治理后台面（0386）：键登记 / 状态迁移 / 版本 / 巡检五条端点。
+        // 文件写了、模块也 export 了，但此前**从未注册到路由表**——实测
+        // 三条读口全回 `1004 接口不存在`，写口同样（迁移入库≠接口可调）。
         .service(crate::staff_http::keys_list)
         .service(crate::staff_http::key_upsert)
         .service(crate::staff_http::key_set_status)
@@ -147,14 +146,15 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::user_fields_update)
         .service(crate::auth_http::user_fields_delete)
         .service(crate::torrent_http::list)
-        // suggest 必须先于 detail（/torrents/{id}）注册：actix 按注册顺序
-        // 匹配，{id} 的 Path<i64> 解析失败会直接 404 而不是fallthrough
+        .service(crate::torrent_http::works_list)
+        // ↑ 作品聚合（资源页作品视图）：独立端点，不进 /torrents 热路径
+        .service(crate::torrent_http::work_detail)
+        // suggest 必须先于 detail：{id} 的 Path<i64> 解析失败会直接 404
         .service(crate::torrent_http::torrent_suggest)
         .service(crate::torrent_http::detail)
         .service(crate::torrent_http::torrent_aggregate)
         .service(crate::torrent_http::torrent_detail_ext)
-        // 抓轨日志正文（0312）：详情页「查看日志」懒加载，四段路径不与
-        // /torrents/{id} 冲突
+        // 抓轨日志正文（0312）：详情页懒加载，四段路径不与 /torrents/{id} 冲突
         .service(crate::torrent_http::torrent_log_body)
         .service(crate::torrent_http::torrent_peers)
         .service(crate::torrent_http::torrent_related)
