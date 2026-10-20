@@ -19,7 +19,11 @@ pub async fn register(
 ) -> DomainResult<impl Responder> {
     let new_user = domain::NewUser {
         username: body.username.trim().to_string(),
-        email: body.email.trim().to_string(),
+        // P-437：邮箱一律按小写入库。找回口读的是 `WHERE email = $1`（入参
+        // 已 trim+lowercase），写入口若保留大小写，注册时打成 `Zhang@Gmail.com`
+        // 的人此后**永远**命中 0 行、收不到重置信，而响应刻意与成功一致
+        // （防枚举）⇒ 静默不可恢复。归一化口径与 applications.rs:46 同形。
+        email: body.email.trim().to_lowercase(),
         password: body.password.clone(),
     };
     domain::validate_register(&new_user)?;

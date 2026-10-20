@@ -52,7 +52,7 @@ pub async fn password_forgot(
     let base = base.unwrap_or_default();
 
     let uid: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
+        sqlx::query_scalar("SELECT id FROM users WHERE lower(email) = $1")
             .bind(body.email.trim().to_lowercase())
             .fetch_optional(&state.repo.db)
             .await
