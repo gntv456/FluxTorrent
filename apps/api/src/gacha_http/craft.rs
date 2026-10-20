@@ -19,6 +19,9 @@ use crate::state::AppState;
 type Db = web::Data<std::sync::Arc<AppState>>;
 
 #[derive(Deserialize)]
+// 会员面「花火花」写口：多带的键不静默忽略（P-314 一族，普查见 scripts/pt_audit_write_unknown_field.py）。
+// 分解/兑换/升级三口共用本结构：多发一个键（如 `count`、`cardId`）旧写法静默忽略照样化一张，玩家以为化了一叠。
+#[serde(deny_unknown_fields)]
 struct CardReq {
     card_id: i64,
     #[serde(default)]

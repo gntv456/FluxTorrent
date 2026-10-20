@@ -20,7 +20,7 @@ use super::{pool, roll};
 
 type Db = web::Data<std::sync::Arc<AppState>>;
 
-#[derive(Deserialize)]
+#[derive(Deserialize)] #[serde(deny_unknown_fields)]
 struct DrawReq {
     banner_id: i64,
     count: i32,

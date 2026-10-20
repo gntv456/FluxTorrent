@@ -190,6 +190,9 @@ pub(super) async fn check_bet(
 }
 
 #[derive(Deserialize)]
+// 会员面「花火花」写口：多带的键不静默忽略（P-314 一族，普查见 scripts/pt_audit_write_unknown_field.py）。
+// 刮刮乐等下注口：`bet` 拼错之外多带的键静默忽略，注额按缺省走。
+#[serde(deny_unknown_fields)]
 pub(super) struct BetReq {
     pub(super) bet: i64,
     /// 客户端幂等键（审计 P2-8）：网络重试/双击须带同一键，缺省回落随机键保持兼容

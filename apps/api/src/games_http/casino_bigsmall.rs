@@ -19,6 +19,9 @@ use super::helpers::{check_bet, check_rate, idem_key};
 use super::pool::{dberr, load_table};
 
 #[derive(Deserialize)]
+// 会员面「花火花」写口：多带的键不静默忽略（P-314 一族，普查见 scripts/pt_audit_write_unknown_field.py）。
+// 猜大小：`props`（道具位）拼错时旧写法当没带道具——玩家的「用了放大镜」被吞，事后无从追查。
+#[serde(deny_unknown_fields)]
 struct GuessReq {
     bet: i64,
     guess: String, // "small" | "big"

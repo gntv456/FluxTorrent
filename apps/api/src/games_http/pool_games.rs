@@ -19,6 +19,9 @@ use super::helpers::{check_rate, eco_i64, idem_key};
 use super::pool::{dberr, load_pool};
 
 #[derive(Deserialize)]
+// 会员面「花火花」写口：多带的键不静默忽略（P-314 一族，普查见 scripts/pt_audit_write_unknown_field.py）。
+// 九宫格/扭蛋/大转盘：票价在池配置里，客户端多带的键被吞后「我以为下的是 X」没有回执。
+#[serde(deny_unknown_fields)]
 struct DrawReq {
     /// 客户端幂等键（审计 P2-8）
     #[serde(default)]
@@ -129,4 +132,28 @@ pub(super) async fn wheel(
     let auth = require_auth(&req, &state).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
     Ok(ok(pool_round(&state, auth.id, "wheel", client_idem).await?))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DrawReq;
+
+    /// `deny_unknown_fields` 的**行为**证据（不是静态断言）：票价写在池
+    /// 配置里，客户端多带一个键（以为 `count: 5` 能连抽五局）时，旧写法
+    /// 静默忽略、照样扣一张票开一局；现在要求它在解析边界就被拒。
+    /// 六个兄弟结构体（CardReq/BetReq/GuessReq/CastReq/DrawReq/DonateReq）
+    /// 挂的是同一条 serde 属性，行为一致，取一个作现场。
+    #[test]
+    fn unknown_field_is_rejected() {
+        let good = serde_json::from_str::<DrawReq>(
+            r#"{"idempotency_key":"abcdefgh"}"#,
+        );
+        assert!(good.is_ok(), "合法载荷必须照常受理：{:?}", good.err());
+        let bad = serde_json::from_str::<DrawReq>(
+            r#"{"idempotency_key":"abcdefgh","count":5}"#,
+        );
+        let msg = bad.err().map(|e| e.to_string()).unwrap_or_default();
+        assert!(msg.contains("unknown field"), "应报 unknown field：%{}", msg);
+        assert!(msg.contains("count"), "报错要点名那个键：%{}", msg);
+    }
 }

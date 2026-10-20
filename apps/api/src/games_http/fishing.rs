@@ -22,6 +22,9 @@ use super::helpers::{check_bet, check_rate, eco_i64, idem_key};
 use super::pool::{dberr, load_pool};
 
 #[derive(Deserialize)]
+// 会员面「花火花」写口：多带的键不静默忽略（P-314 一族，普查见 scripts/pt_audit_write_unknown_field.py）。
+// 钓鱼下注：同 BetReq 一族。
+#[serde(deny_unknown_fields)]
 struct CastReq {
     bet: i64,
     #[serde(default)]

@@ -48,6 +48,9 @@ async fn pool_status(
 }
 
 #[derive(Deserialize)]
+// 会员面「花火花」写口：多带的键不静默忽略（P-314 一族，普查见 scripts/pt_audit_write_unknown_field.py）。
+// 魔力池捐赠：捐赠口的静默忽略最贵——钱扣了、意图没执行。
+#[serde(deny_unknown_fields)]
 struct DonateReq {
     amount: i64,
     /// 客户端幂等键（审计修复 P1：防网络重试双扣；缺省回退随机键保持兼容）
