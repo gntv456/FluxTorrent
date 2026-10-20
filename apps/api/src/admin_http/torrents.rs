@@ -49,7 +49,8 @@ struct AdminTorrentRow {
     /// 活动单种促销类型与截止（promotions scope='torrent'）
     promotion: Option<String>,
     promotion_ends_at: Option<chrono::DateTime<chrono::Utc>>,
-    /// H&R 标记（hr_policy.on）
+    /// H&R 标记：与建快照同源的开关判定（`enabled` 优先、兼容历史 `on`、
+    /// 无 policy 按站点缺省＝追责），不是「种子自己挂没挂过」
     hr: bool,
     /// 自建维度取值（G5，2026-09-26）：与前台列表同一形状的可读名数组
     /// （枚举取字典名、自由值取原文本），供后台列表新增「维度」列
@@ -137,7 +138,9 @@ async fn admin_torrent_list(
            AND ($4::smallint IS NULL OR t.pos_state = $4)
            AND ($5::bool IS NULL OR ($5 AND {promo_exists}) OR (NOT $5 AND NOT {promo_exists}))
            AND ($6::smallint IS NULL OR t.pick_type = $6)
-           AND ($7::bool IS NULL OR COALESCE((t.hr_policy->>'on')::bool, FALSE) = $7)
+           AND ($7::bool IS NULL OR COALESCE(
+                  (t.hr_policy->>'enabled') IN ('true', '1'),
+                  (t.hr_policy->>'on') IN ('true', '1'), TRUE) = $7)
            AND ($8::int IS NULL OR t.id IN (SELECT torrent_id FROM tags WHERE tag_id = $8))
            AND ($9::bigint IS NULL OR t.size >= $9)
            AND ($10::bigint IS NULL OR t.size <= $10)
@@ -164,7 +167,8 @@ async fn admin_torrent_list(
                   t.pos_state, t.pos_state_until, t.pick_type,
                   {ekind} AS promotion,
                   {eends} AS promotion_ends_at,
-                  COALESCE((t.hr_policy->>'on')::bool, FALSE) AS hr,
+                  COALESCE((t.hr_policy->>'enabled') IN ('true', '1'),
+                           (t.hr_policy->>'on') IN ('true', '1'), TRUE) AS hr,
                   (SELECT COALESCE(json_agg(
                             COALESCE(x.name, ts.value #>> '{{}}')
                             ORDER BY k.sort, k.kind, ts.ordinal), '[]'::json)

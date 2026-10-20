@@ -21,8 +21,6 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
         return Ok(());
     }
     let d = site_defaults(db).await;
-    let default_hr_hours = d.seed_hours;
-    let default_hr_days = d.days;
     let _built = super::hr_snapshot::build_snapshots(db, &d).await?;
 
     // 2) 刷新累计做种秒数（快照口径：snatches.seeded_seconds）。
@@ -114,40 +112,36 @@ pub(crate) async fn hr_enforce(db: &PgPool) -> anyhow::Result<()> {
     }
 
     // 5) hr_flag 刷新（独立函数，口径注释见 refresh_hr_flag）
-    refresh_hr_flag(db, default_hr_hours as i32, default_hr_days as i32)
-        .await?;
+    refresh_hr_flag(db).await?;
     Ok(())
 }
 
 /// hr_flag 刷新（0029 一次性迁移的运行时延续）。
 /// 此前该标记只在迁移里置过一次，运行时无人刷新 —— /me/hr 口径失真。
-/// 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取
-/// policy；深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours
-/// （与建快照口径一致）。
-async fn refresh_hr_flag(
-    db: &PgPool,
-    default_hr_hours: i32,
-    default_hr_days: i32,
-) -> anyhow::Result<()> {
+///
+/// 2026-10-20 口径收口：缺口**不再重算一遍**「policy→站点缺省→折扣」，
+/// 改为只认 `hr_snapshots` 这本执法台账。此前正是这条重算与建快照分叉——
+/// 它不判 `hr_policy.enabled`（免除的种子照样点亮）、不判 `approval_status`
+/// （待审/回收站里的种照样点亮，而建快照侧 0286 已明确排除）、不判
+/// 10% buffer 豁免（秒删的照样点亮）、也不吃档位折扣（strict 档按 48h
+/// 判而执法是 72h）。职员面板据此展示的「H&R 待处理」是假义务。
+async fn refresh_hr_flag(db: &PgPool) -> anyhow::Result<()> {
     // 赦免口径：staff/自助免罪都会把 snatches.hr_flag 清回 FALSE；
     // 本刷新若只按做种缺口置 TRUE，会在下一轮把刚清掉的标记重新点亮，
     // 赦免等于只生效一个 tick——已赦免的 (user, torrent) 不再参与刷新。
     sqlx::query(
-        // 审计修复（P1）：硬编码 14 天/120 小时与 hr_policy 可配口径脱节，逐种取 policy；
-        // 深测 2026-10-03：无 policy 种子的缺省同样走站点设定 hr_hours（与建快照口径一致）；
-        // 0311：days 缺省同走站点设定 hr_days（与建快照口径一致）
         "UPDATE snatches s SET hr_flag = TRUE \
-         FROM torrents t WHERE t.id = s.torrent_id AND s.completed_at IS NOT NULL \
-           AND s.seeded_seconds < COALESCE((t.hr_policy->>'seed_hours')::int, $1::int) * 3600 \
-           AND s.completed_at < now() - make_interval(days => COALESCE((t.hr_policy->>'days')::int, $2::int)) \
-           AND NOT s.hr_flag \
-           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h \
-                           WHERE h.user_id = s.user_id \
-                             AND h.torrent_id = s.torrent_id \
-                             AND h.status = 'pardoned')",
+         WHERE s.completed_at IS NOT NULL AND NOT s.hr_flag \
+           AND EXISTS (SELECT 1 FROM hr_snapshots h \
+                       WHERE h.user_id = s.user_id \
+                         AND h.torrent_id = s.torrent_id \
+                         AND h.status = 'open' AND now() > h.deadline \
+                         AND s.seeded_seconds < h.required_seconds) \
+           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h2 \
+                           WHERE h2.user_id = s.user_id \
+                             AND h2.torrent_id = s.torrent_id \
+                             AND h2.status = 'pardoned')",
     )
-    .bind(default_hr_hours)
-    .bind(default_hr_days)
     .execute(db)
     .await?;
     Ok(())

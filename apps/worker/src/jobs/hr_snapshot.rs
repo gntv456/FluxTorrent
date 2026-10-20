@@ -49,7 +49,8 @@ pub(super) async fn build_snapshots(
           AND NOT EXISTS (SELECT 1 FROM hr_snapshots h
                            WHERE h.user_id = s.user_id
                              AND h.torrent_id = s.torrent_id)
-          AND COALESCE(t.hr_policy->>'enabled', 'true')::boolean
+          AND COALESCE((t.hr_policy->>'enabled') IN ('true', '1'),
+                        (t.hr_policy->>'on') IN ('true', '1'), TRUE)
           -- 0072 buffer 豁免（U3D hitrun.buffer 口径）：下载量不足种子 10% 视为误触/秒删，不计 H&R
           -- 与券核销同阈值（≈10.4%）：10%~10.4% 区间不再误判
       AND s.downloaded > t.size * 104 / 1000

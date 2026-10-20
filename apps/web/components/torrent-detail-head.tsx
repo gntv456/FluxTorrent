@@ -84,12 +84,16 @@ export function TorrentHead({
         {/* 标签行（0173：副标题与发布人之间） */}
         {tags && <div className="td-head__tags">{tags}</div>}
 
-        {/* H&R 义务明示（评审 P1-5）：下载前必须可见，否则用户被追责时无预期。
-         *  hr_policy.enabled=false → 免 H&R；null/无键 → 站点默认（与 worker
-         *  jobs/hr.rs 的 COALESCE 口径一致：days=14 / seed_hours=48）。 */}
+        {/* H&R 义务明示（评审 P1-5）：下载前必须可见，否则被追责时无预期。
+         *  这里的 `hr_policy` 已由详情/聚合出口换成**本人视角的生效义务**
+         *  （种子 policy → 站点缺省 hr_days/hr_hours → 档位折扣，算在
+         *  `repo_hr::effective`，与 worker 建快照同一句 SQL）。
+         *  前端不许再自算缺省：实测 strict 档（现网绑 class 1 普通会员）
+         *  被执法成 72 小时／11 天，照旧文案「48 小时」攒够照样吃违规，
+         *  累计到阈值直接停下载权。`?? 14/48` 只作后端未下发时的兜底。 */}
         {(() => {
           const hr = t.hr_policy;
-          const on = hr ? hr.enabled !== false : true;
+          const on = hr?.enabled !== false;
           const days = hr?.days ?? 14;
           const hours = hr?.seed_hours ?? 48;
           return (

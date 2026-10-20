@@ -69,7 +69,7 @@ pub async fn my_hr_status(
         per,
         status: status.map(str::to_string),
         counts,
-        default_seed_hours: repo_hr::hours_setting(&state.repo).await,
-        default_days: 14,
+        default_seed_hours: repo_hr::hours_setting(&state.repo.db).await,
+        default_days: repo_hr::days_setting(&state.repo.db).await,
     }))
 }
