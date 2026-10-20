@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type {
   SubtitleListResp,
@@ -93,7 +93,7 @@ export function TorrentSubtitles({
       setMsg(t.uploadDone);
       load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : dict.common.networkError);
+      setMsg(apiErrorMessage(dict, e));
     } finally {
       setBusy(false);
     }
@@ -135,9 +135,7 @@ export function TorrentSubtitles({
                       try {
                         await downloadSubtitle(s);
                       } catch (err) {
-                        setMsg(
-                          err instanceof Error ? err.message : "failed",
-                        );
+                        setMsg(apiErrorMessage(dict, err));
                       }
                     }}
                   >

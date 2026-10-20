@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import type { SubtitleRow } from "@/components/subtitle-board-shared";
 import {
@@ -129,7 +129,7 @@ export function SubtitleListTable({
                       onMsg(t.downloadOk?.replace("{title}", s.title));
                       onReload();
                     } catch (err) {
-                      onMsg(err instanceof Error ? err.message : "fail");
+                      onMsg(apiErrorMessage(dict, err));
                     }
                   }}
                 >
