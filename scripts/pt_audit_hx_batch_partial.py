@@ -150,9 +150,9 @@ def empty_case_404(block):
 
 batch = code_only(rd(BATCH))
 loop = loop_body(batch)
-ok("HX1 在册：批量口仍在扣费之后才发货（改好即红，届时升成硬判据）",
-   charges_before_ship(loop),
-   "charge@%s < build@%s；循环内无退款路径"
+ok("HX1 硬判据：批量口必须先发货后动账（charge 不得排在 build 之前）",
+   not charges_before_ship(loop),
+   "charge@%s build@%s；本批（P-432）已调换，退回旧顺序即红"
    % (loop.find("charge_for_download"), loop.find("build_torrent_bytes")))
 dead = dead_counters(batch)
 # 本条写这份闸门的过程中变了形：起初 batch.rs:75 的 skipped 确实是死变量，
@@ -163,8 +163,8 @@ ok("HX3 计数通道：batch.rs 必须把失败件数报给调用方（X-Batch-S
    re.search(r'X-Batch-Skipped", skipped\.to_string', batch) is not None,
    "无读者的累加器=%s；界面还须真读这个头（torrent-batch.tsx 现在仍按请求数"
    "自己起名）" % (dead,))
-ok("HX2 在册：空结果仍报 NotFound（把存在的种说成不存在）",
-   empty_case_404(batch),
+ok("HX2 硬判据：空结果不得谎报 NotFound，必须报「没能打包 + 件数」",
+   not empty_case_404(batch) and "没能打包" in code_only(rd(BATCH)),
    "单种口对同一枚种给的是 400「种子文件缺失…请联系管理组补档」，两路口径相反")
 
 good = code_only(GOOD_SHAPE)
