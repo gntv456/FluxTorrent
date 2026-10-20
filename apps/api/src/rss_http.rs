@@ -122,6 +122,9 @@ pub(crate) async fn rss_feed(
     // 深测 2026-10-03：付费种子无差别推给订阅器——未购用户下载时才被
     // charge_for_download 拦下（402）。默认排除「付费且未购」；paid=0 全量。
     let exclude_paid = q.paid != Some(0);
+    // P-433：无原始存档的种在下载口必然 400，而 RSS 消费者按 guid 自动
+    // 重试 ⇒ 不能广告。与 Torznab 共用同一份谓词，别在这里另写一句。
+    let has_archive = crate::torrents::HAS_ARCHIVE_CLAUSE;
     // 0375：RSS 存活口径开关。默认 no = 保持「全部」（刷流器既有订阅
     // 按「全部」在跑，直接翻转会让它们突然少掉源种）。改 yes 时接的是
     // **同一份** seeders > 0 谓词，不在 RSS 里另写一份（另写会与主
@@ -134,6 +137,7 @@ pub(crate) async fn rss_feed(
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          {promo_lateral} \
          WHERE t.approval_status = 1 \
+           AND {has_archive} \
            AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
            AND ($2::int[] IS NULL OR \
                 t.medium_id = ANY($2) \

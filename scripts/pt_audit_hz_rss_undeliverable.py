@@ -22,18 +22,22 @@ qBittorrent / FlexGet / autobrr / Prowlarr+Sonarr，它们按 guid 轮询并**�
 样张种 + 闸门夹具），而 `np_import.rs:138` 那条导入路径直接落
 approval_status=1 且无 raw ⇒ 内容包一旦导入，这个数会成百地上涨。
 
-判据（活体三条 + 静态两条 + 承重一条 + 台账棘轮一条）：
+判据（活体三条 + 静态三条 + 真库 A/B 一条 + 承重一条 + 台账棘轮一条）：
   HZ1 正控硬判据：有存档的过审种，RSS 里它的 enclosure 必须 200 且首字节是 'd'
       （bencode 字典）——证明「RSS→下载」这条路本身是通的，问题只在无存档种；
-  HZ2 在册：RSS 仍为无存档种发 enclosure（按 present 断言；排除掉即转红，
-      届时翻成「必须 0 条」的硬判据）；
+  HZ2 硬判据：RSS **必须 0 条**无存档种的 enclosure（P-433 修复：两出口共用
+      `torrents::HAS_ARCHIVE_CLAUSE`）。⚠️ 现网 api 镜像仍是修复前构建时这条
+      会红，红账里会打出命中的旧 id——那是镜像滞后，不是判据坏；
+  HZ2s 静态硬判据：RSS 的取数 SQL 与 Torznab 的回收路径都引用同一个共享
+      谓词常量（RSS 直接插值、Torznab 经 list_torrents_noclamp_for_sub）；
   HZ3 活体读数：Torznab 侧同样枚举与否——现网 229 枚 api_tokens 全是哈希、
       没有明文可用，故不新建凭证（那是写操作），本条只记 WARN 读数；
-  HZ4 静态同尺：RSS 取数谓词与 Torznab 取数谓词必须对「无存档」取同一口径
-      （两边都排 or 两边都不排 ⇒ 绿；一边排一边不排 ⇒ 红，同 HJ3 手法）；
+  HZ4 静态同尺：两个出口对「无存档」必须取同一口径（共用常量 ⇒ 绿）；
   HZ5 承重：把「200 + bencode」的正确形状喂给 HZ2 的违例探测器必须不报，
       把「400 + JSON 信封」的形状必须报（证明探测器不是恒真/恒假）；
-  HZ6 台账棘轮：现网「过审 + 无存档」种数 ≤ 7，只许降不许升。
+  HZ6 台账棘轮：现网「过审 + 无存档」种数 ≤ 7，只许降不许升；
+  HZ7 真库 A/B：同一份「过审」取数，不加谓词必须命中无存档种（夹具在册）、
+      加上共享谓词后必须 0 条——证明谓词本身真的排得掉，不是恒真/恒假。
 
 用法：`PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_hz_rss_undeliverable.py`
       HZ_LIVE=0 跳过 HZ1/HZ2/HZ3（都是只读 GET；passkey 不外传，输出里打码）。
@@ -120,16 +124,22 @@ def is_bencode(status, body):
     return head == b"d" or str(head) == "d"
 
 
-# —— HZ4 静态同尺：两个出口的取数谓词对「无存档」必须一致
+# —— HZ2s/HZ4 静态同尺：两个出口必须引用**同一个**共享谓词常量
 rss_txt = strip(rd(RSS_RS))
 tz_txt = strip(rd(TORZNAB_RS))
-rss_excl = "torrent_files" in rss_txt
-tz_excl = "torrent_files" in tz_txt
-ok("HZ4 静态同尺：RSS 与 Torznab 对「无存档」必须取同一口径",
-   rss_excl == tz_excl,
-   "RSS 引用 torrent_files=%s；Torznab=%s（两边都不排=统一在册，"
-   "一边排一边不排=口径分叉，会员在两个工具里看到的不一样）"
+NOCLAMP_RS = "apps/api/src/torrents/list_noclamp.rs"
+noc_txt = strip(rd(NOCLAMP_RS))
+rss_excl = "HAS_ARCHIVE_CLAUSE" in rss_txt
+tz_excl = ("list_torrents_noclamp_for_sub" in tz_txt
+           and "HAS_ARCHIVE_CLAUSE" in noc_txt)
+ok("HZ2s 静态硬判据：RSS SQL 与 Torznab 回收路径都接上了共享谓词",
+   rss_excl and tz_excl,
+   "RSS 引用共享谓词=%s；Torznab 走 for_sub 且其实现引用共享谓词=%s"
    % (rss_excl, tz_excl))
+ok("HZ4 静态同尺：RSS 与 Torznab 对「无存档」必须取同一口径",
+   rss_excl and tz_excl,
+   "两边都引用 torrents::HAS_ARCHIVE_CLAUSE ⇒ 同一把尺；"
+   "任一侧不引用=口径分叉，会员在两个工具里看到的不一样")
 
 # —— HZ5 承重：探测器不是恒真
 ok("HZ5 承重：探测器对 200+bencode 不误报、对 400+JSON 必报",
@@ -144,6 +154,19 @@ ok("HZ6 台账棘轮：现网「过审 + 无存档」种数只降不升（基线
    "现网=%d 基线=%d ids=%s；np_import.rs:138 那条导入路径一跑就会成百上涨"
    % (len(no_raw_ids), NO_RAW_CEIL, no_raw_ids[:8]))
 
+# —— HZ7 真库 A/B：同一份取数，只换「共享谓词」这一处
+SQL_ALL_APPROVED = "SELECT t.id FROM torrents t WHERE t.approval_status = 1"
+SQL_WITH_ARCHIVE = (SQL_ALL_APPROVED + " AND EXISTS (SELECT 1 FROM "
+                    "torrent_files tf WHERE tf.torrent_id = t.id)")
+before = set(int(x) for x in psql(SQL_ALL_APPROVED).split())
+after = set(int(x) for x in psql(SQL_WITH_ARCHIVE).split())
+leak_before = sorted(before & set(no_raw_ids))
+leak_after = sorted(after & set(no_raw_ids))
+ok("HZ7 真库 A/B：共享谓词真能排掉无存档种（加谓词前命中、后 0 条）",
+   bool(leak_before) and not leak_after,
+   "加谓词前命中=%s / 加谓词后命中=%s；前后都空=夹具不在、判据不出结论"
+   % (leak_before[:6], leak_after[:6]))
+
 if LIVE:
     login("root", "password123")  # 顺带验鉴权链活着（不打印 token）
     pk = psql("SELECT passkey FROM users WHERE username='root';")
@@ -152,12 +175,12 @@ if LIVE:
     xml = (body or b"").decode("utf-8", "replace") if isinstance(body, bytes)\
         else str(body)
     enc = enclosures(xml)
-    ok("HZ2 在册：RSS 仍在给无存档种发 enclosure（排除掉即转红）",
-       st == 200 and bool(set(i for i, _u in enc) & set(no_raw_ids)),
-       "feed http=%s item=%d，其中无存档 ids=%s；命中即红说明已修，"
-       "届时把本条翻成「必须 0 条」硬判据（passkey=%s 已打码）"
-       % (st, len(enc), sorted(set(i for i, _u in enc) & set(no_raw_ids))[:6],
-          mask))
+    hits = sorted(set(i for i, _u in enc) & set(no_raw_ids))
+    ok("HZ2 硬判据：RSS 给无存档种发的 enclosure 必须 0 条（P-433）",
+       st == 200 and not hits,
+       "feed http=%s item=%d；命中无存档 ids=%s（非空=修复未生效或镜像"
+       "仍是修复前构建，红账里的 id 就是被广告出去的坏种）"
+       % (st, len(enc), hits[:6]))
     # 正控 + 违例：各取一条 enclosure 真点
     bad_id = sorted(set(i for i, _u in enc) & set(no_raw_ids))
     good_pair = [(i, u) for i, u in enc if i not in set(no_raw_ids)]
@@ -177,11 +200,12 @@ if LIVE:
         s2, b2 = get(bu)
         txt = (b2 or b"").decode("utf-8", "replace")[:120] \
             if isinstance(b2, bytes) else str(b2)[:120]
-        print("   [在册] 无存档 enclosure 实测 id=%s http=%s 响应=%s"
+        print("   [镜像滞后] 无存档 enclosure 实测 id=%s http=%s 响应=%s"
               % (bad_id[0], s2, txt.replace(pk, mask)))
-        print("   [在册] 消费者拿到的是错误信封而不是 .torrent："
+        print("   [镜像滞后] 消费者拿到的是错误信封而不是 .torrent："
               "qBittorrent/FlexGet/autobrr 按 guid 轮询会无限重试同一枚种，"
-              "而「请联系管理组补档」这句中文只有本站界面看得到")
+              "而「请联系管理组补档」这句中文只有本站界面看得到；"
+              "本条将在 api 镜像重建后转绿")
     print("   [WARN] HZ3 Torznab 侧未做活体：现网 api_tokens=%s 枚全部是哈希，"
           "没有明文可用；新建凭证属写操作，本闸门不擅自做（静态口径见 HZ4）"
           % psql("SELECT count(*) FROM api_tokens;"))
