@@ -195,6 +195,10 @@ def listed(resp, tid):
 TODAY = int(time.time()) % 1000000
 MTOK, MID, WHY = new_member("life")
 ok("D0 作者探针号可准备", MTOK is not None, WHY)
+# P-439/P-440 的判据需要一个**对探针种不可见**的普通成员：站长(ROOT)按
+# 可见性口径看得到待审/被拒种，拿站长当「陌生人」会把缺陷洗成 200。
+STOK, SID, SWHY = new_member("stranger")
+ok("D0 陌生人探针号可准备（不可见种互动判据用）", STOK is not None, SWHY)
 
 print("== D1 发种：六件套一起提交 ==")
 TAGS = json.dumps([3, 6])
@@ -366,6 +370,15 @@ s, ms = call("GET", "/messages/inbox?limit=30", token=MTOK)
 mm = json.dumps(ms.get("data") or [], ensure_ascii=False)
 ok("D5 作者在站内信里看到拒因",
    s == 200 and "封面失效" in mm, "http=%s %s" % (s, mm[:150]))
+# P-439/P-440：被拒种对陌生人不可见 ⇒ 收藏/答谢都必须 404。旧镜像上
+# 这两条会红（200 并落行），属「等新镜像」而不是产品洞复发；过审后
+# 紧接着各给一个正控，证明同一通道对可见种是通的、不是一刀切 404。
+s, r = call("PUT", "/torrents/%s/bookmark" % TID, {"on": True}, token=STOK)
+ok("D5 陌生人收藏被拒种 → 404（收藏与详情同可见性）",
+   s == 404, "http=%s %s" % (s, brief(r)))
+s, r = call("POST", "/torrents/%s/thanks" % TID, {}, token=STOK)
+ok("D5 陌生人答谢被拒种 → 404（不可见种不落感谢/不动火花）",
+   s == 404, "http=%s %s" % (s, brief(r)))
 s, r = call("POST", "/torrents/%s/resubmit" % TID, {}, token=ROOT)
 ok("D5 非作者重提被拒", s == 403, "http=%s %s" % (s, brief(r)))
 s, r = call("POST", "/torrents/%s/resubmit" % TID, {}, token=MTOK)
@@ -399,6 +412,17 @@ ok("D5 作者也收到过审通知（正文含种 id + 种名 + 已通过审核�
    s == 200 and ("#%s" % TID) in BLOB and NAME in BLOB
    and "已通过审核" in BLOB,
    "http=%s %s" % (s, BLOB[:150]))
+s, r = call("PUT", "/torrents/%s/bookmark" % TID, {"on": True}, token=STOK)
+ok("D5 正控：过审后陌生人收藏 → 200（不是一刀切 404）",
+   s == 200, "http=%s %s" % (s, brief(r)))
+call("PUT", "/torrents/%s/bookmark" % TID, {"on": False}, token=STOK)
+# 旧镜像上「被拒种答谢」会真的落行，正控再打就回「已感谢过」——那是
+# 上一条的残留，不是正控通道坏了。先只清这对探针行的感谢记录。
+exec_sql("DELETE FROM thanks WHERE torrent_id = %d AND user_id = %d"
+         % (TID, SID or 0))
+s, r = call("POST", "/torrents/%s/thanks" % TID, {}, token=STOK)
+ok("D5 正控：过审后陌生人答谢 → 200（amount=0 不动火花）",
+   s == 200, "http=%s %s" % (s, brief(r)))
 s, r = decide(TID, True)
 ok("D5 正控：已过审的种再裁决报错（不静默改一遍）",
    s == 400 and "不在待审" in str(r.get("message")),
