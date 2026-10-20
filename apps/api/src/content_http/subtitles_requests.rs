@@ -67,16 +67,24 @@ pub(super) async fn subtitle_request_create(
     // 500（与批四十三 P-171「改档不查字典」同族：值域是表里的集合时，判据
     // 必须查表，不能靠外键替业务报错）。0/负数仍按「不挂种子」处理。
     if let Some(tid) = body.torrent_id.filter(|v| *v > 0) {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)",
-        )
+        // 不只是存在性：与详情同一可见性口径（待审/被拒只放行本人与
+        // staff，软删谁都不可见）。旧口径下悬赏会冻在一颗公开列表里
+        // 看不到的种上，兑现的字幕也进不了公开列表。
+        let vis = crate::torrents::visibility_sql(Some((
+            auth.id,
+            auth.class_id >= 90,
+        )));
+        let exists: bool = sqlx::query_scalar(&format!(
+            "SELECT EXISTS(SELECT 1 FROM torrents t \
+             WHERE t.id = $1 AND {vis})",
+        ))
         .bind(tid)
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         if !exists {
             return Err(DomainError::Validation(format!(
-                "种子 #{tid} 不存在（求字幕可留空不挂种子）"
+                "种子 #{tid} 不存在或不可见（求字幕可留空不挂种子）"
             )));
         }
     }
