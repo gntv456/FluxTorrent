@@ -182,7 +182,6 @@
     "maxnewsnum",
     "max_pm_per_page",
     "posts_per_page_default",
-    "topics_per_page_default",
     "torrents_per_page_default",
     "pm_per_page_default",
     "max_torrent_size",

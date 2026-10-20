@@ -6,12 +6,24 @@
 只有两处读它：设置写口 `me_settings_kv.rs` 与设置页自己——列表端点
 `/forums/{id}/topics` 的每页条数是硬常量 `TOPIC_PAGE_SIZE = 50`。
 
-修法沿用仓里既有惯例（P-275 在种子列表上就是这套）：
-  · 折算写成纯函数 `per_page_from_pref`（0/负数=未设置→缺省，正数生效、
-    越界夹到 TOPIC_PAGE_MAX=200，因为面板那格是自由数字输入）；
+修法沿用仓里既有惯例（P-275 在种子列表上就是这套），分三层，不另起机制：
+  · 折算写成纯函数 `page_size_of(本人偏好, 站点默认)`——
+    偏好 > 站点默认 `topics_per_page_default` > 硬常量 50；
+    0/负数 = 未设置（建表默认就是 0），正数生效、越界夹到
+    `TOPIC_PAGE_MAX`。上限不自己拍：0039 给这一键登记的元数据就是
+    min 1 / max 500，后台那格控件按它校验，代码夹到同一个界才不会
+    「管理员填 300、程序给 200」两套口径；
   · 点查下沉 H 层 `repo::user_prefs::board_per_page`（FRAME §2：H 不
-    import sqlx 的反面是 SQL 只住在 repo）；
+    import sqlx 的反面是 SQL 只住在 repo），站点那一键走
+    `repo::settings::read`（按 name 读 site_settings 的唯一居所）；
   · 读失败按「无偏好」处理，偏好不该把列表主路径拖倒。
+
+P-443 是本批的续集：接线时才发现后台有个「主题列表默认每页」（现网值 20），
+它躺在 `fake_switch_baseline.json` 的存量登记里没人读——站长改完保存成功、
+回显正常、版块页照旧 50 条。**行为可见变化**：站方重建后，没设过偏好的
+会员看到的版块页从 50 条/页变成站点值 20 条/页（这才是后台那一格一直说
+的数）；要维持 50，一条 `UPDATE site_settings SET value='50' WHERE
+name='topics_per_page_default';` 即可，不必改代码。
 
 判据分层（每层各管一段，别拿其中一层冒充另一层）：
   G0 正控   修前的 topic.rs：`let per = TOPIC_PAGE_SIZE;` 且函数体不出现
@@ -119,9 +131,10 @@ old_t, new_t, prefs_t = old.stdout or "", read(TOPIC), read(PREFS)
 ok("G0 正控：修前 per 取硬常量且函数体不出现那一列（尺抓得到旧形状）",
    re.search(r"let per = TOPIC_PAGE_SIZE;", old_t) is not None
    and "topics_per_page" not in old_t)
-ok("G1a 现网 per 走折算函数",
-   re.search(r"let per =\s*per_page_from_pref\(", new_t) is not None
-   and "let per = TOPIC_PAGE_SIZE;" not in new_t)
+ok("G1a 现网 per 走三层折叠（偏好 > 站点默认 > 常量）",
+   re.search(r"let per = page_size_of\(", new_t) is not None
+   and "let per = TOPIC_PAGE_SIZE;" not in new_t
+   and "per_page_from_pref" not in new_t)
 ok("G1b 折函数取的是 repo 点查（SQL 不留在 H 层）",
    "user_prefs::board_per_page" in new_t
    and re.search(r"SELECT topics_per_page FROM users WHERE id = \$1",
@@ -129,6 +142,9 @@ ok("G1b 折函数取的是 repo 点查（SQL 不留在 H 层）",
 ok("G1c 读失败按「无偏好」兜，不拿偏好把列表主路径拖倒",
    re.search(r"pub async fn board_per_page[\s\S]{0,400}"
              r"unwrap_or\(0\)", prefs_t) is not None)
+ok("G1d 站点默认那层也接上了（P-443，走 repo::settings 的单键读居所）",
+   "topics_per_page_default" in new_t
+   and "crate::repo::settings::read" in new_t)
 
 print("== G2 纯函数行为（真跑单元测试）==")
 t2 = subprocess.run(["cargo", "test", "--bin", "flux-api",
@@ -205,5 +221,26 @@ else:
         print("   [WARN 不判红] %s｜现网镜像若无本批修复，per 仍是 50。"
               % msg)
         print("   站方重建 api 后用 --live 升硬。")
+
+print("== G7 站点设定台账（假开关门禁）联动 ==")
+SITE_KEY = "topics_per_page_default"
+SIBLINGS = ["posts_per_page_default", "pm_per_page_default",
+            "torrents_per_page_default"]
+bs = json.loads(read(os.path.join("scripts", "fake_switch_baseline.json"))
+                 or "{}")
+inb = set(str(x) for x in (bs.get("dead") or []))
+site_val = psql("SELECT coalesce(value,'<无行>') FROM site_settings"
+                " WHERE name = '%s';" % SITE_KEY)
+ok("G7a %s 已从假开关存量登记里移出（现网值 %s 条/页）"
+   % (SITE_KEY, site_val or "?"), SITE_KEY not in inb,
+   "接了却留登记＝台账说谎；站方重建后用 "
+   "node scripts/fake_switch_guard.mjs --update 收缩基线")
+ok("G7b 同族三键仍在册（本批没接它们，基线不许顺手删）：%s"
+   % [k for k in SIBLINGS if k in inb],
+   all(k in inb for k in SIBLINGS),
+   "少一条＝有人删了没接线的登记（posts/pm 端点不分页，torrents 走"
+   " P-275 那条 clamp 缺省，都不读这个键）")
+print("   [待裁] 站点级「每页默认」四键里本批只接了主题这一键；其余三键"
+      " 接它需要先加分页/改缺省口径，属功能改动。")
 
 summary()

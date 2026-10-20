@@ -67,23 +67,34 @@ struct TopicListQuery {
 /// 每页主题数：前端 Pager 与提示语共用这一个数，不许各写一份。
 pub(crate) const TOPIC_PAGE_SIZE: i64 = 50;
 
-/// 控制面板「每页主题数」的天花板：那一列在面板里是自由数字输入、写口
-/// 不校验区间，`topics_per_page = 100000` 是能被写进库里的（P-275 在种子
-/// 列表上同款处理：越界夹回来，不拿 400 打断设置页）。
-const TOPIC_PAGE_MAX: i64 = 200;
+/// 每页主题数的天花板。上限不自己拍：0039 给 `topics_per_page_default`
+/// 登记的元数据就是 `min 1 / max 500`（后台那格控件按它校验），代码夹到
+/// 同一个界，管理员填的数与程序给的数才不会两套口径。
+/// 用户那一列（`users.topics_per_page`）是自由数字输入、写口不校验区间，
+/// `topics_per_page = 100000` 是能被写进库里的 ⇒ 同款夹住，不拿 400
+/// 打断设置页（P-275 在种子列表上就是这么处理的）。
+const TOPIC_PAGE_MAX: i64 = 500;
 
-/// `users.topics_per_page` → 每页条数（P-442）。
+/// 每页主题数的三层优先：本人偏好 > 站点默认 > 硬常量（P-442/P-443）。
 ///
-/// 0024 建的这一列此前只有写口与回显读它，列表恒按 `TOPIC_PAGE_SIZE` 出，
-/// 面板填 2 照样一次给几十条——「能改能存能回显但没人读」的假开关。
-/// 0/负数 = 未设置（建表默认就是 0），交回缺省；正数夹到上限。
+/// · `pref` = `users.topics_per_page`（0024）。此前只有写口与回显读它，
+///   面板填 2 照样一次给几十条——「能改能存能回显但没人读」的假开关。
+///   0/负数 = 未设置（建表默认就是 0）。
+/// · `site` = `site_settings.topics_per_page_default`（0025 播种 20、
+///   0039 登记进 `/admin/settings` 的「主题列表默认每页」）。P-443 之前
+///   它躺在 `fake_switch_baseline.json` 的存量里无人读：站长在后台改了，
+///   版块页照旧 50 条。
+/// 正数一律夹到 `TOPIC_PAGE_MAX`；两层都没给到合法正数才回落常量。
 /// 前端 Pager 读的是回显的 `per`（`forums/[id]/page.tsx` 的 `data.per`），
 /// 所以这里改一个数就够，不在两处各写一份。
-fn per_page_from_pref(pref: i32) -> i64 {
-    if pref <= 0 {
-        TOPIC_PAGE_SIZE
-    } else {
-        i64::from(pref).clamp(1, TOPIC_PAGE_MAX)
+fn page_size_of(pref: i32, site: Option<i32>) -> i64 {
+    // 本人偏好压过站点默认
+    if pref > 0 {
+        return i64::from(pref).clamp(1, TOPIC_PAGE_MAX);
+    }
+    match site {
+        Some(v) if v > 0 => i64::from(v).clamp(1, TOPIC_PAGE_MAX),
+        _ => TOPIC_PAGE_SIZE,
     }
 }
 
@@ -170,9 +181,17 @@ pub(crate) async fn topic_list(
          WHERE {where_sql} ORDER BY {order} \
          LIMIT $3 OFFSET $4"
     );
-    let per =
-        per_page_from_pref(user_prefs::board_per_page(&state.repo, auth.id)
-                           .await);
+    // 站点默认那层走 `repo::settings::read`（按 name 读 site_settings 的
+    // 唯一居所）；解析不出正整数就当没设，继续回落硬常量。
+    let site_default =
+        crate::repo::settings::read(&state.repo, "topics_per_page_default")
+            .await;
+    let per = page_size_of(
+        user_prefs::board_per_page(&state.repo, auth.id).await,
+        site_default
+            .as_deref()
+            .and_then(|v| v.trim().parse::<i32>().ok()),
+    );
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let rows = sqlx::query_as::<_, TopicRow>(&sql)
         .bind(fid)
@@ -216,18 +235,24 @@ pub(crate) async fn topic_list(
 
 #[cfg(test)]
 mod tests {
-    use super::{per_page_from_pref, TOPIC_PAGE_MAX, TOPIC_PAGE_SIZE};
+    use super::{page_size_of, TOPIC_PAGE_MAX, TOPIC_PAGE_SIZE};
 
-    /// 面板那一列到每页条数的折算：未设置/脏值回落缺省，正数生效，
-    /// 越界夹住。这条是纯函数层——界面层要等二进制换掉才能验。
+    /// 每页条数的三层优先（本人偏好 > 站点默认 > 硬常量）与夹界。
+    /// 这条是纯函数层——界面层要等二进制换掉才能验。
     #[test]
     fn per_page_folds_pref() {
-        assert_eq!(per_page_from_pref(0), TOPIC_PAGE_SIZE, "0=未设置");
-        assert_eq!(per_page_from_pref(-7), TOPIC_PAGE_SIZE, "负数同缺省");
-        assert_eq!(per_page_from_pref(2), 2, "面板填 2 就 2 条");
-        assert_eq!(per_page_from_pref(50), 50, "与缺省同值不变形");
-        assert_eq!(per_page_from_pref(100_000), TOPIC_PAGE_MAX,
+        assert_eq!(page_size_of(0, None), TOPIC_PAGE_SIZE, "两层都没给");
+        assert_eq!(page_size_of(-7, None), TOPIC_PAGE_SIZE, "负数同缺省");
+        assert_eq!(page_size_of(2, Some(20)), 2, "偏好压过站点默认");
+        assert_eq!(page_size_of(0, Some(20)), 20, "站点默认生效（P-443）");
+        assert_eq!(page_size_of(0, Some(0)), TOPIC_PAGE_SIZE,
+                   "站点那格清空=回落常量");
+        assert_eq!(page_size_of(0, Some(-1)), TOPIC_PAGE_SIZE,
+                   "脏站点值不折成 0 页");
+        assert_eq!(page_size_of(0, Some(9_999)), TOPIC_PAGE_MAX,
+                   "站点默认夹到元数据上限");
+        assert_eq!(page_size_of(100_000, None), TOPIC_PAGE_MAX,
                    "自由数字要夹住");
-        assert_eq!(per_page_from_pref(1), 1, "下限不夹成 0 页");
+        assert_eq!(page_size_of(1, None), 1, "下限不夹成 0 页");
     }
 }
