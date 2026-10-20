@@ -2,6 +2,7 @@ import type { ApiEnvelope, Page, PageParams } from "@fluxtorrent/domain-types";
 import { LOCALE_COOKIE } from "@/i18n/config";
 import { apiServerBase } from "@/lib/api-upstream";
 import { blobRequest, toApiError } from "@/lib/blob-error";
+import { maybeNotifySparkChanged } from "@/lib/spark-event";
 import { zhCN } from "@/i18n/zh-CN";
 
 /**
@@ -225,6 +226,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       body.request_id,
     );
   }
+  // 扣/加魔力的写口成功后统一广播：顶栏余额是 user-menu 的本地 state，
+  // 组件里各写一遍必漏（登记表与后端余额原语由 pt_audit_spark_sync 对账）
+  maybeNotifySparkChanged(path, init?.method);
   return body.data;
 }
 

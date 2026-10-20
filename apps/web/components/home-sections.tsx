@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
-import { notifySparkChanged } from "@/lib/spark-event";
 import { useI18n } from "@/i18n/client";
 import { HomeNewsModal } from "@/components/home-news-modal";
 import { HomeNewsPoster } from "@/components/home-news-poster";
@@ -85,8 +84,7 @@ export function HomeSections({
           .replace("{streak}", String(r.streak))
           .replace("{magic}", currency),
       );
-      // 顶栏魔力 chip 与本卡不是同一条取数链路，成功后广播一次
-      notifySparkChanged();
+      // 余额同步不在这里做：所有写口过 api-client 的统一广播（见 lib/spark-event）
       load();
     } catch {
       setCheckinMsg(dict.home2.checkinFail);

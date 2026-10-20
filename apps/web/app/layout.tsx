@@ -7,6 +7,7 @@ import { LocaleProvider } from "@/i18n/client";
 import { PwaInstallBar } from "@/components/pwa-install-bar";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { SkipLink } from "@/components/ui/skip-link";
+import { SparkBridge } from "@/components/spark-bridge";
 import {
   THEMES,
   THEME_IDS,
@@ -217,6 +218,8 @@ export default async function RootLayout({
           {/* 设计系统 W-01/W-04：SkipLink 是 Tab 第一站；ToastProvider
               挂载一次，全站写操作反馈走 toast 协议（role=status/alert） */}
           <SkipLink />
+          {/* 余额广播的 SSR 侧消费者（写魔力后广播一次，重取直出的数字） */}
+          <SparkBridge />
           <ToastProvider>
             <PwaInstallBar />
             {children}
