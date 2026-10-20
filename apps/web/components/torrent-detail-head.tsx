@@ -181,17 +181,24 @@ export function TorrentHead({
             <WishlistButton keyword={t.name} />
           </div>
           <div className="td-head__actions-row">
-            <ThankButton torrentId={t.id} />
+            <ThankButton
+              torrentId={t.id}
+              initialThanked={ext?.thanked ?? false}
+            />
             <HeadActionsMore label={dict.torrents.moreActions}>
               <MagnetButton torrentId={t.id} />
               {/* 「感谢发布者」第二位置：<768 头部整块隐藏，面板内补一枚
                   （两个实例按断点互斥显示，见 base.css .td-thank--sheet） */}
               <span className="td-thank--sheet">
-                <ThankButton torrentId={t.id} />
+                <ThankButton
+                  torrentId={t.id}
+                  initialThanked={ext?.thanked ?? false}
+                />
               </span>
               <TorrentSocial
                 torrentId={t.id}
                 initialBookmarked={ext?.bookmarked ?? false}
+                initialThanked={ext?.thanked ?? false}
               />
               <div className="td-head__actions-row">
                 {t.seeders === 0 && (
