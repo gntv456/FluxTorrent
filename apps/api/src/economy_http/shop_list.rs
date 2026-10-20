@@ -56,88 +56,81 @@ pub(super) async fn buffer_cap_check(
     Ok(())
 }
 
+/// 目录里的「价」必须与下单扣款的价是同一个式子。
+/// 0383 起单价可按已售量递增（`price_step`/`price_max`/`price_anchor_qty`），
+/// 但目录只回 `shop_items.price` 这一列死值 ⇒ 站方一旦给某个商品配上递增档，
+/// 商店页写 5000、点下去扣 8000：会员先在价格上看错，再在余额上看到。
+/// 单价本体只有一处（`domain::shop::price_with_step`，购买口 shop.rs 用的就是它），
+/// 这里把它同样用到目录上。配置漏填（开了 step 没填 max）照实报错，
+/// 不兜底回显一个假价——那跟不配档位没区别，而且更糟（价是错的）。
+fn eff_price(
+    base: i64,
+    sold: i64,
+    step: Option<i64>,
+    max: Option<i64>,
+    anchor: i32,
+) -> DomainResult<i64> {
+    crate::domain::shop::price_with_step(base, sold, step, max, anchor)
+}
+
+/// 目录取数行：比 `ShopItem` 多带档位四列（`owned` 由 $1 为 NULL 时自然变假）
+#[derive(sqlx::FromRow)]
+struct ItemRow {
+    id: i64,
+    name: String,
+    kind: String,
+    price: i64,
+    config: serde_json::Value,
+    owned: bool,
+    stock_left: Option<i64>,
+    price_step: Option<i64>,
+    price_max: Option<i64>,
+    price_anchor_qty: i32,
+    sold: i64,
+}
+
 #[get("/shop/items")]
 pub(super) async fn shop_items(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
-    // 匿名可看目录（owned=false 全员）；登录后附拥有态
+    // 匿名可看目录：$1 绑 NULL 时 EXISTS 恒假 ⇒ owned 全员 false，
+    // 不必再按 kind 拆两条 UNION（那条拆分只为给装扮类算 owned，
+    // 而 user_dressups 里本来只会有装扮类的行）
     let uid: Option<i64> = crate::http::require_auth(&req, &state)
         .await
         .ok()
         .map(|a| a.id);
-    let items: Vec<ShopItem> = match uid {
-        Some(uid) => {
-            let rows: Vec<(
-                i64,
-                String,
-                String,
-                i64,
-                serde_json::Value,
-                bool,
-                Option<i64>,
-            )> = sqlx::query_as(
-                "SELECT si.id, si.name, si.kind, si.price, si.config, \
-                 EXISTS(SELECT 1 FROM user_dressups ud \
-                 WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned, \
-                 (si.stock_quota - si.stock_used) AS stock_left \
-                 FROM shop_items si WHERE si.active = true \
-                 AND si.kind IN ('avatar_frame','animated_avatar',\
-                 'rainbow_id','rainbow_name') \
-                 UNION ALL \
-                 SELECT si.id, si.name, si.kind, si.price, si.config, FALSE, \
-                 (si.stock_quota - si.stock_used) AS stock_left \
-                 FROM shop_items si WHERE si.active = true \
-                 AND si.kind NOT IN ('avatar_frame','animated_avatar',\
-                 'rainbow_id','rainbow_name') \
-                 ORDER BY price",
-            )
-            .bind(uid)
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            rows.into_iter()
-                .map(|(id, name, kind, price, config, owned, stock_left)| {
-                    ShopItem {
-                        id,
-                        name,
-                        kind,
-                        price,
-                        config,
-                        owned,
-                        stock_left,
-                    }
-                })
-                .collect()
-        }
-        None => {
-            let rows: Vec<(
-                i64,
-                String,
-                String,
-                i64,
-                serde_json::Value,
-                Option<i64>,
-            )> = sqlx::query_as(
-                "SELECT id, name, kind, price, config, \
-                 (stock_quota - stock_used) AS stock_left \
-                 FROM shop_items WHERE active = true ORDER BY price",
-            )
-            .fetch_all(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            rows.into_iter()
-                .map(|(id, name, kind, price, config, stock_left)| ShopItem {
-                    id,
-                    name,
-                    kind,
-                    price,
-                    config,
-                    owned: false,
-                    stock_left,
-                })
-                .collect()
-        }
-    };
+    let rows: Vec<ItemRow> = sqlx::query_as(
+        "SELECT si.id, si.name, si.kind, si.price, si.config, \
+         EXISTS(SELECT 1 FROM user_dressups ud \
+         WHERE ud.user_id = $1 AND ud.item_id = si.id) AS owned, \
+         (si.stock_quota - si.stock_used) AS stock_left, \
+         si.price_step, si.price_max, si.price_anchor_qty, \
+         COALESCE(si.stock_used, 0) AS sold \
+         FROM shop_items si WHERE si.active = true ORDER BY si.price",
+    )
+    .bind(uid)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let mut items: Vec<ShopItem> = Vec::with_capacity(rows.len());
+    for r in rows {
+        items.push(ShopItem {
+            id: r.id,
+            name: r.name,
+            kind: r.kind,
+            price: eff_price(
+                r.price,
+                r.sold,
+                r.price_step,
+                r.price_max,
+                r.price_anchor_qty,
+            )?,
+            config: r.config,
+            owned: r.owned,
+            stock_left: r.stock_left,
+        });
+    }
     Ok(ok(items))
 }
