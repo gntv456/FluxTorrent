@@ -79,7 +79,8 @@ def bad_write(v):
 
 def bad_read(sql):
     """读入口探测器：按邮箱等值查 users/applications 却没 lower(email)。"""
-    return bool(re.search(r"\bemail\s*=\s*\$", sql)) and "lower(email)" not in sql
+    HIT = re.compile(r"\bemail\s*=\s*\$")
+    return "lower(email)" not in sql and bool(HIT.search(sql))
 
 
 # ID1 写入口：把邮箱交给 NewUser / users INSERT 之前必须 lowercase
