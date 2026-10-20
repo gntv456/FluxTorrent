@@ -78,11 +78,26 @@ def psql(q):
 
 arm = arm4(strip(rd(SYN)))
 has_mi = "media_info->>'imdb'" in arm
+has_jk = "media_info->>'imdb_id'" in arm
 has_col = "t.imdb_id" in arm
-ok("IA1 静态：area=4 谓词必须同时读 media_info.imdb 与 imdb_id 列",
-   has_mi and has_col,
-   "臂内出现的键=%s（缺 imdb_id＝编辑填过 IMDb 的种永久隐身）"
-   % [k for k, v in (("media_info", has_mi), ("imdb_id", has_col)) if v])
+ok("IA1 静态：area=4 谓词必须覆盖 列 imdb_id + JSON 键 imdb_id（旧 imdb 键兼容可选）",
+   has_jk and has_col,
+   "臂内出现的键=%s；只认 JSON 的 `imdb` 键＝拿一把不存在的钥匙开锁"
+   % [k for k, v in (("media_info.imdb", has_mi),
+                    ("media_info.imdb_id", has_jk),
+                    ("列 imdb_id", has_col)) if v])
+
+# IA0 现网形态取证：真正有值的是哪一处（决定「谁该被读」）
+phantom = int(psql("SELECT count(*) FROM torrents WHERE "
+                   "media_info->>'imdb' IS NOT NULL") or 0)
+jk = int(psql("SELECT count(*) FROM torrents WHERE "
+              "media_info->>'imdb_id' IS NOT NULL") or 0)
+col = int(psql("SELECT count(*) FROM torrents WHERE imdb_id IS NOT NULL "
+               "AND imdb_id <> ''") or 0)
+ok("IA0 现网形态：写入口落的键与列必须确有值，而旧 `imdb` 键是空的",
+   phantom == 0 and (jk > 0 or col > 0),
+   "media_info->>'imdb'=%d 行（幻键）；media_info->>'imdb_id'=%d；imdb_id 列=%d"
+   % (phantom, jk, col))
 
 # IA2 承重：旧臂形状（只有 media_info）必须被同一对条件判成不合格
 OLD_ARM = "t.media_info->>'imdb' ILIKE $6{esc} OR t.descr ILIKE"
@@ -93,8 +108,9 @@ ok("IA2 承重：只读 media_info 的旧臂被 IA1 那对条件判违例",
 PAT = "'%" + NEEDLE + "%'"
 BASE_W = "SELECT count(*) FROM torrents t WHERE t.approval_status=1 AND ("
 OLD_SQL = BASE_W + "t.media_info->>'imdb' ILIKE " + PAT + ")"
-NEW_SQL = (BASE_W + "t.media_info->>'imdb' ILIKE " + PAT
-           + " OR t.imdb_id ILIKE " + PAT + ")")
+NEW_SQL = (BASE_W + "COALESCE(NULLIF(t.imdb_id, ''), "
+           + "t.media_info->>'imdb_id', t.media_info->>'imdb') ILIKE "
+           + PAT + ")")
 old_n = int(psql(OLD_SQL) or 0)
 new_n = int(psql(NEW_SQL) or 0)
 ok("IA3 真库 A/B：补读 imdb_id 后该关键字必须多命中且 >0",
