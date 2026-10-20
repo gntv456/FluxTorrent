@@ -78,9 +78,22 @@ def bad_write(v):
 
 
 def bad_read(sql):
-    """读入口探测器：按邮箱等值查 users/applications 却没 lower(email)。"""
-    HIT = re.compile(r"\bemail\s*=\s*\$")
-    return "lower(email)" not in sql and bool(HIT.search(sql))
+    """读入口探测器：在 WHERE 段里按邮箱等值比较却没套 lower()。
+
+    只认比较、不认赋值——`UPDATE invites SET email = $2 WHERE id = $1` 里那处
+    是写侧，判它会把每条正常 UPDATE 报成洞。判法：命中点前一跳若是 `lower(`
+    即合规；命中点之前没有 WHERE（或 WHERE 在 SET 之后）即赋值段。
+    """
+    low = sql.lower()
+    for m in re.finditer(r"\bemail\s*=\s*\$", low):
+        w = low.rfind("where", 0, m.start())
+        s = low.rfind("set ", 0, m.start())
+        if w < 0 or w < s:
+            continue
+        if low[max(0, m.start() - 6):m.start()].endswith("lower("):
+            continue
+        return True
+    return False
 
 
 # ID1 写入口：把邮箱交给 NewUser / users INSERT 之前必须 lowercase
@@ -93,14 +106,14 @@ for rel, t in ALL:
 ok("ID1 写入口归一化：进 users 的邮箱必须先小写（台账内不该有例外）",
    not w_pairs, "违例=%s" % w_pairs)
 
-# ID2 读入口：按邮箱取人的 SQL 不许拿原始大小写做等值比较
+# ID2 读入口：全仓所有 SQL 片段里的邮箱等值比较都要同尺（不限表名）
 bad_r = []
 for rel, t in ALL:
-    SEL = r"(SELECT[^\"']*?FROM (?:users|applications)[^\"']*)"
-    for m in re.finditer(SEL, t, re.S):
-        sql = m.group(1)
-        if bad_read(sql) and rel not in EXACT_OK:
-            bad_r.append((rel, sql[:70].replace("\n", " ")))
+    if rel not in EXACT_OK and bad_read(t):
+        hit = [ln.strip()[:76] for ln in t.split("\n")
+               if re.search(r"\bemail\s*=\s*\$", ln.lower())
+               and "lower(email)" not in ln.lower()]
+        bad_r.append((rel, hit[:1]))
 ok("ID2 读入口同尺：按邮箱查 users 的谓词必须 lower(email)（或两侧已归一化）",
    not bad_r, "违例=%s" % bad_r)
 
