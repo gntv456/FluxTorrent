@@ -219,11 +219,11 @@ if LIVE:
     st, _h, body = post([no_raw_id])
     txt = body.decode("utf-8", "replace")
     ok("HX4 硬判据：只选缺存档种必须回 4xx 且给出可行动中文（不许谎报不存在）",
-       400 <= st < 500 and '"code":1002' in txt and "存档" in msg
-       and "资源不存在" not in msg,
-       "id=%s http=%s message=%r；批二百一十一（P-432）已把 NotFound(ids[0]) 的"
+       400 <= st < 500 and '"code":1002' in txt and "存档" in txt
+       and "资源不存在" not in txt,
+       "id=%s http=%s body=%s；批二百一十一（P-432）已把 NotFound(ids[0]) 的"
        "谎报改成「没能打包＋原因」，现网实测已生效 ⇒ 本条由在册升为硬判据"
-       % (no_raw_id, st, msg[:56]))
+       % (no_raw_id, st, txt[:70]))
     st2, h2, zip_body = post([no_raw_id, raw_id])
     try:
         names = zipfile.ZipFile(io.BytesIO(zip_body)).namelist()
