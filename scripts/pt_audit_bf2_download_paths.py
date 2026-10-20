@@ -149,7 +149,14 @@ def mint(pfx, tok=None):
         token=tok or ROOT)).get("token")
 
 
+LAST_ISSUE = {"st": 0, "body": ""}
+
+
 def issue_key(tok, tid):
+    """签不出凭证时把 http 状态与响应体留档：S2c 要用它区分「闸门拒」与
+    「签发口坏了」——只看 None 分不清。每次调用先清空，免得上一次的状态
+    被这一次读成判决。"""
+    LAST_ISSUE.update(st=0, body="")
     rq = urllib.request.Request(BASE + "/downloads/keys", method="POST")
     rq.add_header("Authorization", "Token " + (tok or ""))
     rq.add_header("Content-Type", "application/json")
@@ -158,8 +165,19 @@ def issue_key(tok, tid):
             rq, json.dumps({"torrent_id": int(tid)}).encode(),
             timeout=30).read()
         return json.loads(body)["data"]["key"]
+    except urllib.error.HTTPError as e:
+        LAST_ISSUE["st"] = e.code
+        try:
+            LAST_ISSUE["body"] = e.read().decode("utf-8", "replace")[:300]
+        except Exception:
+            pass
+        print("   签发凭证异常：http=%s %s"
+              % (e.code, LAST_ISSUE["body"][:80]))
+        return None
     except Exception as e:
-        print("   签发凭证异常：%s" % str(e)[:70])
+        LAST_ISSUE["st"] = -1
+        LAST_ISSUE["body"] = "%s: %s" % (type(e).__name__, str(e)[:120])
+        print("   签发凭证异常：%s" % LAST_ISSUE["body"][:80])
         return None
 
 
@@ -241,9 +259,18 @@ ok("S2a 停下载 + 余额 0 的账号打**付费**种（网页口）：原话�
 ok("S2b 冻结走管理接口：download_locked_by=staff（ratio_watch 巡检不许误"
    "解）", LOCK == "staff", "lock=%s" % LOCK)
 K2 = issue_key(PTK, PAID[0])
-st, _, t, _ = hit(DKEY % (PAID[0], K2))
-ok("S2c 临时凭证口同判据：%s" % st,
-   st == 400 and "已被暂停" in t and "魔力不足" not in t, t[:100])
+if K2 is None:
+    # P-344 之后签发口自己先过 ensure_downloadable（download_keys.rs:67），
+    # 冻着的账号根本签不出凭证——这是合格行为，不是「签发口坏了」。判据钉
+    # 「拒的理由」：http=400 且原话是停下载；若回 401/404/500 仍红。
+    ok("S2c 临时凭证口同判据：签发口先拒冻结账号（http=%s，原话「已被暂停」）"
+       % LAST_ISSUE["st"],
+       LAST_ISSUE["st"] == 400 and "已被暂停" in LAST_ISSUE["body"]
+       and "魔力不足" not in LAST_ISSUE["body"], LAST_ISSUE["body"][:120])
+else:
+    st, _, t, _ = hit(DKEY % (PAID[0], K2))
+    ok("S2c 临时凭证口同判据：%s" % st,
+       st == 400 and "已被暂停" in t and "魔力不足" not in t, t[:100])
 st, _, t, _ = hit(NPDL % (PAID[0], PPK))
 ok("S2d 兼容口同判据（P-164）：凭证没坏就不再报 401，回 400 + 可行动原话",
    st == 400 and "已被暂停" in t, "%s %s" % (st, t[:100]))
@@ -273,13 +300,14 @@ call("PUT", "/admin/users/flags", {"user_id": PU, "download_enabled": True},
 # ============ S4 未过审与非法 id（拒得对，且不退化成 401） ============
 st, _, t, _ = hit(NPDL % (UN, PK))
 st2, _, _, _ = hit(DL % UN, RH)
-st3, _, _, _ = hit(BATCH, dict(RH, **JS), "POST",
-                   json.dumps({"ids": [int(UN)]}).encode())
+st3, _, t3, _ = hit(BATCH, dict(RH, **JS), "POST",
+                    json.dumps({"ids": [int(UN)]}).encode())
 ok("S4a 未过审种：兼容口/网页口/批量口都 404（不是 200 空壳、不是 401）",
    st == 404 and st2 == 404, "np=%s web=%s batch=%s %s" % (
        st, st2, st3, t[:40]))
-ok("S4b 批量口全项失败时不静默回空 zip（404 而非 200+0 条目）",
-   st3 == 404, "batch=%s" % st3)
+ok("S4b 批量口全项失败时不静默回空 zip（400 + 点名「都没能打包」，不是 "
+   "200+0 条目；P-432/HX 钉的就是这条文案）",
+   st3 == 400 and "都没能打包" in t3, "batch=%s %s" % (st3, t3[:120]))
 st, _, t, _ = hit(NPDL % ("-1", PK))
 st2, _, _, _ = hit(NPDL % ("99999999", "z" * 32))
 ok("S4c 非法 id / 畸形 passkey 安全拒（400/401/404，不 500）",
