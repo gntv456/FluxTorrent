@@ -95,8 +95,8 @@ ok("ID1 写入口归一化：进 users 的邮箱必须先小写（台账内不�
 # ID2 读入口：按邮箱取人的 SQL 不许拿原始大小写做等值比较
 bad_r = []
 for rel, t in ALL:
-    for m in re.finditer(r"(SELECT[^\"']*?FROM (?:users|applications)[^\"']*)",
-                         t, re.S):
+    SEL = r"(SELECT[^\"']*?FROM (?:users|applications)[^\"']*)"
+    for m in re.finditer(SEL, t, re.S):
         sql = m.group(1)
         if bad_read(sql) and rel not in EXACT_OK:
             bad_r.append((rel, sql[:70].replace("\n", " ")))
@@ -142,10 +142,10 @@ else:
         tok = login("root", "password123")
         import json
         import urllib.request
-        req = urllib.request.Request(BASE + "/auth/password/forgot",
-                                     method="POST",
-                                     headers={"Authorization": "Bearer " + tok,
-                                              "Content-Type": "application/json"})
+        req = urllib.request.Request(
+            BASE + "/auth/password/forgot", method="POST",
+            headers={"Authorization": "Bearer " + tok,
+                     "Content-Type": "application/json"})
         with urllib.request.urlopen(req, data=json.dumps(
                 {"email": em}).encode(), timeout=20) as r:
             code = r.status
