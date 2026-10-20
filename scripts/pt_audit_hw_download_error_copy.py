@@ -165,6 +165,47 @@ if re.search(r"new ApiError\(\s*1000,", old_blob):
 ok("HW5 承重：旧形状被 HW1 判据抓住", len(old_bad) == 2,
    "旧违例=%s" % (old_bad,))
 
+# HW8：用户可见文案路径里不许出现英文裸兜底（批二百零九收口那一族）
+# 只认真码：`? x.message : "fail|failed"` 与 `?? "ok|done|granted|fail|failed"`。
+BAD_RE = re.compile(r'\?\s*\w+\.message\s*:\s*"(?:fail|failed)"'
+                    r'|\?\?\s*"(?:ok|done|granted|fail|failed)"')
+# 排除：CSS 类名/状态 token（task-board-parts.tsx:219 那种 `"failed"` 是样式名）
+SCAN_DIRS = ["apps/web/components", "apps/web/app"]
+hits = []
+for d in SCAN_DIRS:
+    top = os.path.join(ROOT, d)
+    for root, dirs, files in os.walk(top):
+        dirs[:] = [x for x in dirs if x not in ("node_modules", ".next")]
+        for fn in files:
+            if not fn.endswith((".ts", ".tsx")):
+                continue
+            rel = os.path.relpath(os.path.join(root, fn),
+                                  ROOT).replace(os.sep, "/")
+            t = strip(rd(rel))
+            for ln in t.split("\n"):
+                s = ln.strip()
+                if not BAD_RE.search(s):
+                    continue
+                # 样式名 / 路由与状态 token 不算文案（这些行不含 ?? 或 .message，
+                # 正常情况下根本进不到这里，留一道防御）
+                if ("className" in s or s.startswith("value:")
+                        or "href=" in s or s.startswith("tone:")):
+                    continue
+                hits.append("%s: %s" % (fn, s[:64]))
+ok("HW8 硬判据：界面文案兜底不许是英文裸字面量（也不许直抛 e.message）",
+   hits == [], "命中=%d %s（ja 经 deepMergeDict 回落 zh-CN，这些 ?? 全是死分支，"
+   "真取值失败时宁可留空也别在中文站吐英文）" % (len(hits), hits[:4]))
+
+# HW8 承重：旧形状必须被 BAD_RE 抓到
+CONTROL = [
+    'onMsg(e instanceof Error ? e.message : "fail");',
+    'setMsg(t.grantOk ?? "granted");',
+    'toast.error(err instanceof Error ? err.message : "failed");',
+]
+ok("HW8b 承重：三条旧形状全部被 BAD_RE 抓住",
+   all(BAD_RE.search(c) for c in CONTROL),
+   "抓不到即判据恒假")
+
 if LIVE:
     def psql(q):
         r = subprocess.run(

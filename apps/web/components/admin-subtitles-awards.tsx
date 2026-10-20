@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** 金字幕评选管理（0150 缺口4）：候选列表（双赛道）+ 生成/授金。
@@ -58,10 +58,10 @@ export function AdminSubtitlesAwards() {
           `?period=${encodeURIComponent(period)}`,
         {},
       );
-      setMsg((t.buildOk ?? "generated {n}").replace("{n}", String(r.added)));
+      setMsg((t.buildOk ?? "").replace("{n}", String(r.added)));
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "failed");
+      setMsg(apiErrorMessage(dict, e));
     } finally {
       setBusy(false);
     }
@@ -74,10 +74,10 @@ export function AdminSubtitlesAwards() {
         period,
         grants: [{ id: row.id, rank }],
       });
-      setMsg(t.grantOk ?? "granted");
+      setMsg(t.grantOk ?? "");
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "failed");
+      setMsg(apiErrorMessage(dict, e));
     } finally {
       setBusy(false);
     }

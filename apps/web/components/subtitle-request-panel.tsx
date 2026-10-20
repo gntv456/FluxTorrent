@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import type { SubtitleRequestRow } from "@/components/subtitle-board-shared";
 import { SubtitleRequestActions } from "@/components/subtitle-request-actions";
 import type { SubReqAct } from "@/components/subtitle-request-actions";
@@ -140,11 +140,11 @@ export function SubtitleRequestPanel({
           {},
         );
       }
-      toast.success(t.wfDone?.replace("{act}", kind) ?? "done");
+      toast.success(t.wfDone?.replace("{act}", kind) ?? "");
       setAsk(null);
       loadReqs();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "failed", {
+      toast.error(apiErrorMessage(dict, e), {
         requestId: e instanceof ApiError ? e.requestId : undefined,
       });
     }
