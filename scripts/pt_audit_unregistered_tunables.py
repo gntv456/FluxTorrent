@@ -98,6 +98,75 @@ def rust_blob():
     return "\n".join(out)
 
 
+# —— V4：反向台账的第一版只从「有行的键」里挑读者 ⇒「代码在读、连行都没有」
+# 的参数（面板彻底摸不到、只能改代码缺省）永远抓不到。
+# 2026-10-21 实测漏网：`games_coupon_seed_hours`（worker 在读、文档写着
+# 「运维可热调」，但 site_settings 无行、settings_meta 无登记）⇒ 迁移 0412 补上。
+# 正则要排掉两类误抓：`nspname = 'public'`（左边不是 name）与
+# `name = 'module_' || m.module_key`（拼接前缀，不是完整键名）。
+NOROW_NOISE = {"module_"}
+KEYREAD = re.compile(r"(?:^|[^a-z])name\s*=\s*'([a-z0-9_]+)'(?!\s*\|\|)")
+
+
+def v4_no_row(rust, dbf, all_meta):
+    rows = {r.strip() for r in psql_stdin(
+        "SELECT name FROM site_settings;").splitlines() if r.strip()}
+    cand = set()
+    for blob in (rust, dbf):
+        for m in KEYREAD.finditer("\n" + blob):
+            cand.add(m.group(1))
+    unreach = {k for k in cand if k not in all_meta and k not in rows}
+    noise = sorted(unreach & NOROW_NOISE)
+    gap = sorted(unreach - NOROW_NOISE)
+    ok("V4 「代码在读 + 库里无行 + 面板无登记」的键必须为空（读不到就是面板摸不到）",
+       not gap, "缺口=%s｜已排除噪声=%s｜候选键=%d" % (gap, noise, len(cand)))
+    # V4z 正控（0412 落地前这条就是当时的现场）：把刚补登记的键从「已登记」集合里
+    # 拿掉，检测器必须重新点名它——否则「V4 绿」只是尺子没看见东西。
+    probe = "games_coupon_seed_hours"
+    meta_wo = all_meta - {probe}
+    rows_wo = rows - {probe}
+    again = {k for k in cand if k not in meta_wo and k not in rows_wo}
+    ok("V4z 正控：撤掉 0412 的登记后必须重新点名 %s" % probe,
+       probe in again, "撤掉后缺口=%s" % sorted(again - NOROW_NOISE))
+    return len(cand)
+
+
+# V5：能力面断言——「登记」不等于「站长摸得到」。
+# 面板 schema 是分组→卡片→字段三层嵌套，且字段名可能落在 name 或 key 上；
+# 第一版我在 data.groups[].fields[] 这一层直接找，把「解析没写对」读成
+# 「面板里没有这格」（假阴性）。所以这里递归收集全部 name/key，并拿
+# 同卡片已在册的 pet_feed_cost 当对照——对照不在＝判据坏，不是站坏。
+PANEL_KEYS = ["webhook_timeout_secs", "webhook_retry_times",
+              "webhook_failure_threshold", "webhook_sign_secret",
+              "games_coupon_seed_hours"]
+PANEL_REF = "pet_feed_cost"
+
+
+def _collect_names(node, sink):
+    if isinstance(node, dict):
+        for k in ("name", "key"):
+            v = node.get(k)
+            if isinstance(v, str):
+                sink.add(v)
+        for v in node.values():
+            _collect_names(v, sink)
+    elif isinstance(node, list):
+        for v in node:
+            _collect_names(v, sink)
+
+
+def v5_panel(tok):
+    import json  # noqa: F401  (call 已解好，这里只用结构)
+    s, r = call("GET", "/admin/settings/schema", token=tok)
+    names = set()
+    _collect_names((r or {}).get("data") or {}, names)
+    ok("V5z 正控：对照字段 %s 必须在面板 schema 里（不在＝解析坏）" % PANEL_REF,
+       PANEL_REF in names, "收集到字段名=%d" % len(names))
+    miss = [k for k in PANEL_KEYS if k not in names]
+    ok("V5 五把补登记的参数面板真摸得到（P-462 四把 + P-469 口粮券）",
+       not miss, "缺=%s" % miss)
+
+
 def main():
     rust = rust_blob()
     dbf = psql_stdin("SELECT coalesce(string_agg(prosrc, E'\\n'),'') FROM "
@@ -175,6 +244,8 @@ def main():
        "状态口字段改名要同步这里；密钥非空说明站方已配置，台账口径不变")
     if "--selftest" in sys.argv:
         selftest()
+    v4_no_row(rust, dbf, all_meta)
+    v5_panel(login("root"))
     summary()
 
 
