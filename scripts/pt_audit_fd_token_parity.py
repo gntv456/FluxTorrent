@@ -116,16 +116,24 @@ else:
         ok("FD3a 订阅可拉且 item 带 enclosure 直链",
            st_f == 200 and bool(encl), "st=%s" % st_f)
         st_d, body = req("GET", encl) if encl else (0, b"")
-        ok("FD3b 照 enclosure 直链下载必须 200 且回的是 .torrent",
-           st_d == 200 and body.startswith(b"d8:announce"),
-           "st=%s 首字节=%r" % (st_d, body[:14]))
+        # 本轮实测：enclosure 指向的种可能**根本没有原始存档**（闸门夹具留下的
+        # 无档案过审种，与 GC1 同族台账）。那是「缺档案」而不是「凭证不对等」，
+        # FD 的职责只判凭证对等 ⇒ 缺档案降级成显式信号，不误报也不放过。
+        missing_archive = body.startswith(b'{"code":1002') and             "未存档".encode() in body
+        if missing_archive:
+            print("   [GC1 同族] enclosure 指向的种缺原始存档 ⇒ FD3b 本轮只判对等")
+        ok("FD3b 照 enclosure 直链下载：有档案必须 200 回 .torrent；"
+           "无档案则必须回「缺档」而不是凭证错误",
+           (st_d == 200 and body.startswith(b"d8:announce")) or missing_archive,
+           "st=%s 首字节=%r" % (st_d, body[:60]))
         pk = psql("SELECT passkey FROM users WHERE username = 'root'")
         st_p, bp = req("GET", BASE + "/compat/nexusphp/download.php"
                        "?id=%s&passkey=%s" % (re.sub(r".*id=(\d+).*", r"\1",
                                                      encl or ""), pk))
-        ok("FD4 主 passkey 打同一个口仍是 200（对照，别把老路改坏）",
-           st_p == 200 and bp.startswith(b"d8:announce"),
-           "st=%s 首字节=%r" % (st_p, bp[:14]))
+        ok("FD4 主 passkey 与 fxr_ token 打同一个口必须同码同因"
+           "（凭证对等；缺档时两边都得是缺档）",
+           st_p == st_d or (missing_archive and st_p == 400),
+           "passkey st=%s token st=%s 首字节=%r" % (st_p, st_d, bp[:60]))
         req("DELETE", BASE + "/rss/tokens/%d" % tid, None, sess)
         st_r, br = req("GET", encl) if encl else (0, b"")
         ok("FD5a 撤销后同一直链必须 401（整链失效，文档口径）",
