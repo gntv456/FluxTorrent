@@ -157,6 +157,11 @@ def main():
     s, r = call("GET", "/torrents/999999999/trumps", token=tok)
     ok("不存在的种举报汇总回 404（不是 {pending:0}）", s == 404,
        "%s %s" % (s, r))
+    # 软删种连 staff 也不可见（唯一口径 approval=3），旧实现照样回 pending
+    psql("UPDATE torrents SET approval_status=3 WHERE id=%s" % ids["UHD"])
+    s, r = call("GET", "/torrents/%s/trumps" % ids["UHD"], token=tok)
+    ok("软删种的举报汇总回 404（staff 也不可见）", s == 404,
+       "%s %s" % (s, r))
 
     # ---- 6. 切 general → 能力关闭（features 门真的在起作用） ----
     s, r = call("POST", "/admin/site-type-packs/apply",
