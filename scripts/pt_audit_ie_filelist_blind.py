@@ -129,4 +129,24 @@ ok("IE3 台账棘轮：「过审 + 无文件清单 + 无原始存档」种数只
    n <= LEDGER_BASE, "现=%d 基线=%d；每少一枚就是少一颗坏记录"
    % (n, LEDGER_BASE))
 
+# IE5 界面自相矛盾（比「空数组没提示」更硬的一层）：详情页规格区渲染
+# `torrent-detail-specs.tsx:30` 的「文件数」取自 `ext.numfiles`，而文件表取自
+# /files。现网实测同一条记录两边打架：numfiles=1/2 却列不出任何一行。
+# ⇒ 用户在同一屏里就能看到矛盾，只是没人告诉他「这条记录坏了」。
+SQL_CONTRA = (
+    "SELECT count(*) FROM torrents t WHERE t.approval_status = 1 "
+    "AND COALESCE(t.numfiles, 0) > 0 "
+    "AND NOT EXISTS (SELECT 1 FROM files f WHERE f.torrent_id = t.id)")
+contra = int(psql_one(SQL_CONTRA) or 0)
+sample = psql_one(
+    "SELECT t.id || ' numfiles=' || t.numfiles FROM torrents t "
+    "WHERE t.approval_status = 1 AND COALESCE(t.numfiles, 0) > 0 "
+    "AND NOT EXISTS (SELECT 1 FROM files f WHERE f.torrent_id = t.id) "
+    "ORDER BY t.id DESC LIMIT 1")
+ok("IE5 矛盾台账：`numfiles>0` 却列不出任何文件行的过审种数（同屏自相矛盾）",
+   0 <= contra <= LEDGER_BASE,
+   "现=%d 基线=%d；样例=%s。numfiles 来自解析原始 .torrent "
+   "（bencode/torrent.rs:78），files 表空 ⇒ 导入/生成时只写了计数没写清单，"
+   "或清单后来被清掉" % (contra, LEDGER_BASE, sample))
+
 summary()
