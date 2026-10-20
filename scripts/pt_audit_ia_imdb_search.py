@@ -172,8 +172,22 @@ else:
                                                               absent))
         ok("IA4c 大小写同数：tt 与 TT 结果必须一致（钉 ILIKE 不是 LIKE）",
            lo == up, "TT=%s 小写=%s" % (up, lo))
+    except urllib.error.HTTPError as e:
+        # 5xx 是产品洞，不是「重启窗口」：3ac09f0a 之前 area=4 因 SQL 里
+        # 多了一个真反斜杠而全 500，旧写法在这里按 WARN 吞掉，闸门全绿。
+        body = ""
+        try:
+            body = e.read().decode("utf-8", "replace")[:200]
+        except Exception:  # noqa: BLE001
+            pass
+        if e.code >= 500 and e.code != 503:
+            ok("IA4 活体：搜索端点 5xx 必须红（不是重启窗口）", False,
+               "http=%s body=%s" % (e.code, body))
+        else:
+            print("   [WARN] 活体未完成（http=%s，按部署窗口/限流跳过）：%s"
+                  % (e.code, body[:80]))
     except Exception as e:  # noqa: BLE001
-        print("   [WARN] 活体未完成（重启窗口/限流），本轮不出红：%s: %s"
+        print("   [WARN] 活体未完成（连接失败，按重启窗口跳过）：%s: %s"
               % (type(e).__name__, str(e)[:120]))
 
 summary()
