@@ -10,6 +10,12 @@ use super::guard::staff;
 // ============ 举报处理 ============
 
 /// 举报队列：状态过滤 + 举报人 + 被举报对象上下文摘要
+///
+/// 字段必须与下面 SQL 的 `AS` 别名一一对上：SQL 早就把 `cu.username AS
+/// claimed_name` 取出来了，但结构体漏了这一列 ⇒ serde 只序列化结构体字段，
+/// 面板 `staff-tools-reports.tsx:23/136` 的 `claimed_name` 永远是 undefined，
+/// 「已被 X 认领」那枚徽章是死代码。版主看不出这单在谁名下（认领互斥
+/// 0285 是有的，报错才看得见），只能靠撞上去试。
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct ReportQueueRow {
     id: i64,
@@ -22,6 +28,7 @@ struct ReportQueueRow {
     status: i16,
     handled_name: Option<String>,
     handled_at: Option<chrono::DateTime<chrono::Utc>>,
+    claimed_name: Option<String>,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
