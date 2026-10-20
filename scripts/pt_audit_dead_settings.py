@@ -62,11 +62,13 @@ ALIVE = {
 # 登记在册的候选死开关（只许缩小）。来源：写口 46 列全量扫 + 人工排除误判
 # notify_hr 已接通（P-440，2026-10-21）：hr_resolve.rs 的达标消除信按
 # `users.notify_hr` 执法，常驻闸门 scripts/pt_audit_hr_fulfilled_pref.py。
+# save_pm 已接通（P-441，2026-10-21）：message_send.rs 按本人 save_pm 决定
+# 发件副本，常驻闸门 scripts/pt_audit_pm_outbox_copy.py。
 DEAD_LEDGER = {
     "append_new", "append_picked", "append_promotion", "append_sticky",
     "bm_icon", "browsecat", "click_topic", "comment_pm", "delete_pm",
     "dl_icon", "fontsize", "pm_per_page", "posts_per_page",
-    "save_pm", "show_ad", "show_com_num", "show_comment", "show_description",
+    "show_ad", "show_com_num", "show_comment", "show_description",
     "show_imdb", "show_last_com", "stylesheet", "time_type",
     "topics_per_page", "tt_last_post",
 }
