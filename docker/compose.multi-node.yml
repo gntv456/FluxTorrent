@@ -193,6 +193,11 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@${FLUX_REDIS_HOST:-redis}:6379
       FLUX_INSTANCE_ID: ${FLUX_INSTANCE_ID:-}
       RUST_LOG: info
+      # 自动审种（0400）：执法裁决内调 api decide 需签引擎 JWT（与 api 同源
+      # JWT_SECRET；RS256 站点须改用 FLUX_ENGINE_JWT 注入现成 token）
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_ALG: ${JWT_ALG:-hs256}
+      AUTO_REVIEW_API: ${AUTO_REVIEW_API:-http://api:9000}
     healthcheck:
       test: ["NONE"]
       disable: true

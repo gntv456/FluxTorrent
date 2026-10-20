@@ -153,9 +153,12 @@ pub async fn run_all(
             // 手动触发认领（0218 G7）：与定时同函数、同 advisory 锁，不阻塞本循环
             poll_manual_triggers(&db, &redis, &mut manual_tasks).await;
             // 多实例互斥（with_lock：advisory lock + 900s 超时，拿不到锁静默
-            // 跳过本轮；失败/超时在 with_lock 内统一记日志）
+            // 跳过本轮；失败/超时记日志）
             shard_lock!(&db, "job:expire_promotions",
                 expire_promotions(&db), &shard);
+            // 邮件 outbox 消费（0404 §17-2）
+            shard_lock!(&db, "job:mail_outbox",
+                mail_out::mail_outbox_drain(&db), &shard);
             shard_lock!(&db, "job:magic_pool_promo",
                 magic_pool_promo(&db), &shard);
             shard_lock!(&db, "job:preserve_exit",
@@ -307,6 +310,9 @@ pub async fn run_all(
                             risk_score_tick, shard2);
                 spawn_lock!(js, db2, "job:collusion_check",
                             collusion_check, shard2);
+                // 自动审种引擎轮（0400）
+                spawn_lock!(js, db2, "job:auto_review",
+                            auto_review::auto_review_tick, shard2);
             });
         }
         _ = tick30.tick() => {
@@ -330,13 +336,16 @@ pub async fn run_all(
             if first_tick1d { first_tick1d = false; continue; }
             shard_lock!(&db, "job:ensure_partitions",
                 ensure_partitions(&db), &shard);
-            // 0368 M2 风险评分全量轮（权重调参安全网；增量轮 1h 内也自愈）
+            // 0368 M2 风险评分全量轮（权重调参安全网）
             shard_lock!(&db, "job:risk_score_daily",
                 risk_score_daily(&db), &shard);
             shard_lock!(&db, "job:reg_cleanup", reg_cleanup(&db), &shard);
-            // 匿名统计（0276）：体内自查开关，未开即返回
+            // 匿名统计（0276）：体内自查开关
             shard_lock!(&db, "job:usage_stats",
-                usage_stats_report(&db), &shard); }        }
+                usage_stats_report(&db), &shard);
+            // 自动审种每日摘要（0400 §4.3）
+            shard_lock!(&db, "job:auto_review_digest",
+                auto_review::auto_review_digest(&db), &shard); }        }
     }
     manual_tasks.drain().await;
     tracing::info!("flux-worker 已排空，退出");

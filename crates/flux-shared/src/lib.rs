@@ -335,6 +335,14 @@ fn pool_month(t: chrono::DateTime<chrono::Utc>) -> String {
     format!("{:04}-{:02}", t.year(), t.month())
 }
 
+/// 自动审种·规则内核（0400）：api（裁决出口/回放）与 worker（取件评估）
+/// 共用的纯函数评估器。裁决同尺纪律见模块头。
+pub mod auto_review;
+
+/// 金标准回归集（§18.3，≥60 例数据表）：仅测试用，不出 lib 面。
+#[cfg(test)]
+mod auto_review_corpus;
+
 #[cfg(test)]
 mod tests {
     use super::*;

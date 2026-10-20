@@ -9,6 +9,7 @@ mod announce;
 mod announce_main;
 pub(crate) mod audit;
 mod audit_retain;
+mod auto_review;
 mod backfill;
 mod billing;
 mod billing_mults;

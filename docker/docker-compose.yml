@@ -179,6 +179,11 @@ services:
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       RUST_LOG: info
+      # 自动审种（0400）：执法裁决内调 api decide 需签引擎 JWT（与 api 同源
+      # JWT_SECRET；RS256 站点须改用 FLUX_ENGINE_JWT 注入现成 token）
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_ALG: ${JWT_ALG:-hs256}
+      AUTO_REVIEW_API: ${AUTO_REVIEW_API:-http://api:9000}
     # 健康探测：worker 无 HTTP 面，用进程存活 + 近期无崩溃重启判定
     healthcheck:
       test: ["NONE"]
