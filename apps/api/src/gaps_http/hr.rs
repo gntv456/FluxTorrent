@@ -198,6 +198,18 @@ pub async fn hr_self_pardon(
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 与 staff 赦免同一副作用（services::hr_pardon）：worker 只把
+    // snatches.hr_flag 置 TRUE，全库没有回清路径 ⇒ 不在这里清的话，
+    // 用户付火花免罪后，管理员用户详情页仍挂着 H&R 标记。
+    sqlx::query(
+        "UPDATE snatches SET hr_flag = FALSE WHERE user_id = $1 \
+         AND torrent_id = $2",
+    )
+    .bind(auth.id)
+    .bind(body.torrent_id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "hr.self_pardon", Some(body.torrent_id))
