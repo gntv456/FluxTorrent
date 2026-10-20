@@ -28,7 +28,16 @@ pub(super) async fn subtitle_upload(
     }
     // torrent_id=0 或不存在的种子 → 存 NULL（外键可空），不阻断独立字幕分享
     let torrent_id = if body.torrent_id > 0 {
-        Some(body.torrent_id)
+        // 旧实现只判 >0 就进 INSERT：不存在的 id 撞 CASCADE 外键回 500，
+        // 与上面这句注释承诺相反（实测 torrent_id=999999999 → 500）
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)",
+        )
+        .bind(body.torrent_id)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        exists.then_some(body.torrent_id)
     } else {
         None
     };

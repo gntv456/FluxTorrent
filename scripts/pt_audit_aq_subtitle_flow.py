@@ -114,6 +114,14 @@ ok("S1 反例：冒用他人附件 sha 被拒",
    call("POST", "/subtitles", {"title": "AqSub X", "lang": "zh",
                                "file_sha": shaA, "torrent_id": 0},
         token=tNew)[0] == 400)
+# 注释承诺「不存在的种子 → 存 NULL」，旧实现却让 FK 把它打成 500
+s, r = call("POST", "/subtitles", {"title": "AqSub Ghost", "lang": "zh",
+                                   "file_ref": "https://x/ghost.srt",
+                                   "torrent_id": 999999999}, token=tVet)
+ghost = q("SELECT COALESCE(torrent_id::text,'NULL') FROM subtitles "
+          "WHERE title = 'AqSub Ghost' ORDER BY id DESC LIMIT 1")
+ok("S1c 不存在的 torrent_id 不 500、按注释存 NULL",
+   s == 200 and ghost == "NULL", "%s %s tid=%s" % (s, str(r)[:90], ghost))
 
 print("== AQ-S2 列表 / 详情 / 下载计数去重 ==")
 sid2 = d3.get("id") or 0
