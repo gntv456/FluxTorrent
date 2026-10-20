@@ -43,6 +43,13 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const plain = groups.length === 1 && groups[0].dir === "";
 
+  // 空清单不等于「这颗种没有文件」：`torrents.numfiles` 来自解析原始
+  // .torrent，而这张表来自 `files` 行——两者可以互相矛盾（现网实测有
+  // 过审种 numfiles>0 却一行清单都没有）。列不出来就是记录坏了，必须说。
+  if (files.length === 0) {
+    return <p className="text-sm text-sub">{dict.torrent.filesMissing}</p>;
+  }
+
   function toggle(dir: string) {
     setCollapsed((prev) => {
       const next = new Set(prev);

@@ -133,6 +133,9 @@ export const ja: DeepPartial<Dict> = {
   torrent: {
     size: "サイズ",
     numFiles: "ファイル数",
+    filesMissing:
+      "ファイル一覧を取得できません（元の .torrent が保存されていません）。" +
+      "管理組にご相談ください",
     category: "カテゴリ",
     infoHash: "Info Hash",
     sticky: "ピン留め",
