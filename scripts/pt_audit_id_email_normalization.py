@@ -78,19 +78,19 @@ def bad_write(v):
 
 
 def bad_read(sql):
-    """读入口探测器：在 WHERE 段里按邮箱等值比较却没套 lower()。
+    """读入口探测器：在 WHERE 段里按邮箱**裸等值**比较（`email = $N`）。
 
-    只认比较、不认赋值——`UPDATE invites SET email = $2 WHERE id = $1` 里那处
-    是写侧，判它会把每条正常 UPDATE 报成洞。判法：命中点前一跳若是 `lower(`
-    即合规；命中点之前没有 WHERE（或 WHERE 在 SET 之后）即赋值段。
+    形状即判据：写成 `lower(email) = $N` 时 `email` 与 `=` 之间夹着 `)`，
+    正则根本不会命中——所以合规写法是「不匹配」，不必再回头看前一跳。
+    只认比较、不认赋值：`UPDATE invites SET email = $2 WHERE id = $1` 里那处
+    是写侧，判它会把每条正常 UPDATE 报成洞 ⇒ 命中点之前必须有 WHERE，
+    且 WHERE 要比最近的 `set ` 更靠近命中点。
     """
     low = sql.lower()
     for m in re.finditer(r"\bemail\s*=\s*\$", low):
         w = low.rfind("where", 0, m.start())
         s = low.rfind("set ", 0, m.start())
         if w < 0 or w < s:
-            continue
-        if low[max(0, m.start() - 6):m.start()].endswith("lower("):
             continue
         return True
     return False
