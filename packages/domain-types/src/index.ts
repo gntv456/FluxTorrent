@@ -213,6 +213,78 @@ export interface TagBadge {
   color: string;
 }
 
+/** 作品（资源页「作品聚合」视图）：同一部片/剧的多个版本归一部作品。
+ *  归属口径 = torrents.group_id 优先，否则按归一化标题兜底（后端单源，
+ *  见 apps/api/src/torrent_http/works_sql.rs）。键形如 `g12` / `n<md5>`，
+ *  可直接回拼 `/api/v1/works/{key}` 与 `/works/{key}`。 */
+export interface WorkListItem {
+  /** 作品键：`g{group_id}` 或 `n{md5(归一化标题)}` */
+  key: string;
+  /** 作品名（组内最新一条片名） */
+  name: string;
+  poster: string | null;
+  rating: string | null;
+  category_id: number;
+  /** 简介（组内最新一条的小简介） */
+  synopsis: string | null;
+  /** 完整简介（组内最新一条的 descr；纯文本，前端按纯文本渲染） */
+  detail: string | null;
+  /** 外部条目 ID（发种时归一化；作品键即它们生成：i/m/d 前缀） */
+  imdb_id: string | null;
+  tmdb_id: string | null;
+  /** TMDB 条目链接（movie/tv 路径只有链接里才有） */
+  tmdb_url: string | null;
+  douban_id: string | null;
+  /** 作品层元数据缓存（导演/主演/类型/时长/地区/评分），缺行 = 未回查 */
+  meta: WorkMeta | null;
+  /** 年份（从片名抓的第一处 19xx/20xx） */
+  year: number | null;
+  /** 作品内种子数 */
+  torrents: number;
+  seeders: number;
+  leechers: number;
+  size: number;
+  latest_at: string;
+  /** 组内最新种子 id（下载兜底落点） */
+  top_id: number;
+  tags: TagBadge[];
+}
+
+/** 作品列表项：作品行 + 前若干种子（样图：作品卡下直接挂种子行） */
+export interface WorkWithSeeds extends WorkListItem {
+  seeds: TorrentListItem[];
+}
+
+export interface WorkPage {
+  items: WorkWithSeeds[];
+  total: number;
+  limit: number;
+  page: number;
+}
+
+/** 作品条目缓存（work_meta 0399）：TMDB details 拉一次存库，作品页零外呼。
+ *  `source` 为 null/缺行 = 还没回查过，前端走 media_info/descr 回落。 */
+export interface WorkMeta {
+  source: string | null;
+  name: string | null;
+  year: number | null;
+  rating: number | null;
+  runtime: number | null;
+  region: string | null;
+  director: string[] | null;
+  cast_list: string[] | null;
+  genres: string[] | null;
+  poster: string | null;
+  synopsis: string | null;
+}
+
+/** 作品详情：作品头 + 全部种子行 + 同分类相关作品 */
+export interface WorkDetail {
+  work: WorkListItem;
+  items: TorrentListItem[];
+  related: WorkListItem[];
+}
+
 /** 种子评论（M07；0155 点赞 + 0156 嵌套回复） */
 export interface TorrentComment {
   id: number;
@@ -400,6 +472,8 @@ export interface Topic {
   locked?: boolean;
   /** 精华帖（0099 NP digest 口径） */
   digest?: boolean;
+  /** 公告（0396）：版主标记，列表 coral 徽章 + 珊瑚行底 */
+  notice?: boolean;
   /** 帖子类型（0115）：normal|bounty|poll|lottery */
   topic_type?: string;
   /** 标签（0123）：tag_dict id + 名称 + 样式列（TagChip 直接渲染） */
@@ -444,10 +518,15 @@ export interface ForumTopics {
 
 /** 论坛首页中栏话题流（GET /forums/recent，样图集 § tplForum）：
  *  全站可读版块的最新主题窗口（无翻页）。比 Topic 多两列——
- *  版块名（徽章）与最后回复者（零回帖时为 null，前端回落主题作者）。 */
+ *  版块名（徽章）与最后回复者（零回帖时为 null，前端回落主题作者），
+ *  另带 created_at（行首 meta 的发布时间，与「最后回复」时间是两个值）。 */
 export interface ForumRecentTopic extends Topic {
   forum_name: string;
   last_replier: string | null;
+  created_at?: string | null;
+  /** 热度标（0397）：浏览数达到管理端阈值（settings.forum_hot_views）；
+   *  阈值 0 = 关闭，此字段恒 false */
+  hot?: boolean;
 }
 
 export interface ForumRecent {
@@ -556,6 +635,8 @@ export interface TopicDetail {
   locked: boolean;
   /** 精华帖（0099 NP digest 口径） */
   digest?: boolean;
+  /** 公告（0396）：版主标记，详情头加公告徽章 */
+  notice?: boolean;
   /** 帖子类型（0115）：normal|bounty|poll|lottery */
   topic_type?: string;
   /** 悬赏（0124）：金额/状态/中选楼层 */
