@@ -115,7 +115,8 @@ async fn team_create(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // torrent_id 唯一约束保证一个资源同时只有一个任务在跑
+    // torrent_id 是全表唯一约束：一个资源**一辈子**只有一条任务行，
+    // 终态行（done/expired）也占位——下面据此说清是「有人在跑」还是「跑完了」
     let ins = sqlx::query(
         "INSERT INTO resurrections (torrent_id, user_id, required_hours, reward_sparks, team_id) \
          VALUES ($1, $2, $3, 5000, $4) ON CONFLICT (torrent_id) DO NOTHING",
@@ -129,10 +130,26 @@ async fn team_create(
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if ins == 0 {
+        // P-457 同口径：占用行可能是终态，文案要分清「有人在跑」与
+        // 「这一世的任务已经结束」，队长才知道是等人还是换资源。
+        let occ: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM resurrections WHERE torrent_id = $1",
+        )
+        .bind(tid)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         // tx 随作用域 drop，自动回滚
-        return Err(DomainError::Validation(
-            "该资源已有进行中的复活任务".into(),
-        ));
+        return Err(DomainError::Validation(match occ.as_deref() {
+            Some("open") => "该资源已有进行中的复活任务".to_string(),
+            Some("done") => {
+                "该资源此前已被成功复活，同一资源只开一次任务".to_string()
+            }
+            Some(st) => format!(
+                "该资源的复活任务已结束（状态 {st}），同一资源只开一次任务"
+            ),
+            None => "该资源已有进行中的复活任务".to_string(),
+        }));
     }
 
     sqlx::query(

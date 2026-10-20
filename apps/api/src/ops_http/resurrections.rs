@@ -29,7 +29,7 @@ pub(super) async fn resurrection_list(
          WHERE t.approval_status = 1 AND t.seeders = 0 \
            AND NOT EXISTS (SELECT 1 FROM snatches s WHERE s.torrent_id = t.id \
                            AND s.last_seen_at > now() - interval '30 days') \
-           AND NOT EXISTS (SELECT 1 FROM resurrections r WHERE r.torrent_id = t.id AND r.status = 'open') \
+           AND NOT EXISTS (SELECT 1 FROM resurrections r WHERE r.torrent_id = t.id) \
          ORDER BY COALESCE((SELECT max(s.last_seen_at) FROM snatches s WHERE s.torrent_id = t.id), \
                            t.created_at) DESC, t.id DESC \
          LIMIT 50",
@@ -97,9 +97,39 @@ pub(super) async fn resurrection_claim(
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if inserted == 0 {
-        return Err(DomainError::Validation(
-            "该种子已有进行中的复活任务".into(),
-        ));
+        // P-457：`resurrections_torrent_id_key` 是全表 UNIQUE(torrent_id)，
+        // 一个种只能有一条任务行——`done` / `expired` 这些**终态行**照样
+        // 占位。旧文案统一回「已有进行中的复活任务」对终态行是谎话：根本
+        // 没有任务在跑，用户等多久都领不到。列表侧已改成「有任何行就不露出」，
+        // 这里给直接打接口的人把真话说完。
+        let occ: Option<(String, bool)> = sqlx::query_as(
+            "SELECT r.status::text, r.user_id = $2 FROM resurrections r \
+             WHERE r.torrent_id = $1",
+        )
+        .bind(body.torrent_id)
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+        let msg = match occ {
+            Some((st, true)) if st == "open" => {
+                "这个种子的复活任务是你自己领的，进度在「我的复活任务」里看"
+                    .to_string()
+            }
+            Some((st, false)) if st == "open" => {
+                "该种子已有会员在复活，同一资源不重复开任务".to_string()
+            }
+            Some((st, _)) if st == "done" => {
+                "该种子此前已被成功复活，同一资源只开一次复活任务".to_string()
+            }
+            Some((st, _)) => {
+                format!("该种子的复活任务已结束（状态 {st}），\
+                         同一资源只开一次复活任务")
+            }
+            // 冲突却读不到行＝并发窗口（他人刚领完又被删号清行）
+            None => "该种子已有进行中的复活任务".to_string(),
+        };
+        return Err(DomainError::Validation(msg));
     }
     state
         .repo
