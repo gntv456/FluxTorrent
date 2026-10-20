@@ -14,6 +14,7 @@ import { useI18n } from "@/i18n/client";
 import { BusyLabel } from "@/components/ui/busy-label";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { inputCls } from "@/components/message-center-table";
+import { Icon } from "@/components/icons";
 
 export function ComposeForm({
   t,
@@ -160,16 +161,23 @@ export function BoxManager({
               setRenameTo(b.name);
               setAsk({ kind: "rename", id: b.id, name: b.name });
             }}
-            className="min-h-[36px] rounded-full border border-[var(--baozi-line)] px-3 text-xs"
+            aria-label={`${t.renameBoxPh}: ${b.name}`}
+            title={t.renameBoxPh}
+            className="inline-flex min-h-[36px] items-center gap-1 rounded-full
+              border border-[var(--baozi-line)] px-3 text-xs"
           >
-            ✎ {b.name}
+            <Icon name="edit" size={13} />
+            {b.name}
           </button>
           <button
             type="button"
             onClick={() => setAsk({ kind: "delete", id: b.id, name: b.name })}
-            className="min-h-[36px] rounded-full px-2 text-xs text-danger"
+            aria-label={`${t.deleteBox}: ${b.name}`}
+            title={t.deleteBox}
+            className="inline-flex min-h-[36px] items-center rounded-full border
+              border-[var(--danger-border)] px-2 text-danger"
           >
-            ✕
+            <Icon name="close" size={14} />
           </button>
         </span>
       ))}
