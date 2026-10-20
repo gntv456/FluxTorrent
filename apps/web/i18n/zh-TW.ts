@@ -1893,7 +1893,7 @@ const zhTwBase: Omit<
       showAd: "顯示廣告",
       wantAds: "我想看到廣告",
       adNote1: "及以上等級用戶可選擇不顯示廣告",
-      adNote2: "及以上等級用戶可用魔力值兌換一定期限內不顯示廣告的權限，",
+      adNote2: "及以上等級用戶可用魔力值兌換一定期限內不顯示廣告的權限。",
       timeType: "時間顯示類型",
       timeAdded: "發生時間",
       timeAlive: "已去時間",

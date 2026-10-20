@@ -1955,7 +1955,7 @@ const enBase: Omit<
       showAd: "Show ads",
       wantAds: "I want to see ads",
       adNote1: " and above may hide ads",
-      adNote2: " and above can spend bonus points to hide ads for a period, ",
+      adNote2: " and above can spend bonus points to hide ads for a period.",
       timeType: "Time display",
       timeAdded: "Added time",
       timeAlive: "Elapsed time",

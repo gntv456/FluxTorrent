@@ -133,11 +133,7 @@ export function TrackerTab({
             onChange={(e) => patch({ stylesheet: e.target.value })}
           >
             <option value="FluxTorrent">FluxTorrent</option>
-          </select>{" "}
-          <span className="uc-note">
-            {t.stylesheetMore}
-            <a>{dict.usercp.clickHere}</a>
-          </span>
+          </select>
         </Row>
         <Row head={t.fontsize}>
           <select
@@ -157,11 +153,7 @@ export function TrackerTab({
             <option value="en">English</option>
             <option value="chs">简体中文</option>
             <option value="cht">繁體中文</option>
-          </select>{" "}
-          <span className="uc-note">
-            {t.languageMore}
-            <a>{dict.usercp.helpTranslate}</a>
-          </span>
+          </select>
         </Row>
         <Row head={t.pmPerPage}>
           {t.pmPerPagePrefix}
@@ -216,7 +208,6 @@ export function TrackerTab({
           <br />
           <b className="uc-poweruser">Power User</b>
           {t.adNote2}
-          <a>{dict.usercp.clickHere}</a>
         </Row>
         <Row head={t.timeType}>
           <label>
