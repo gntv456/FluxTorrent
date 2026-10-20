@@ -55,7 +55,13 @@ pub async fn wishlist_list(
     Ok(ok(serde_json::json!({ "items": rows, "hits": hits })))
 }
 
+/// P-314 同族（写口不拒未知键）：`category_id` 拼成 `cat_id`/`categoryId` 时，
+/// 旧写法照样 200 建出一条**不限分类**的愿望，而客户端以为限了分类——
+/// 之后每次命中都比预期宽，会员只看到「莫名其妙推我一条」。
+/// 前端实际载荷只有 `keyword`（wishlist.tsx:66/134、
+/// torrent-actionbar-mount.tsx:62），加这条对现有界面零行为变化。
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WishAddReq {
     keyword: String,
     #[serde(default)]
@@ -101,7 +107,10 @@ pub async fn wishlist_add(
     Ok(ok(serde_json::json!({ "keyword": kw })))
 }
 
+/// 删除口同理：`{id}` 拼成 `{wish_id}` 时会因缺字段报错，但反过来多带一个键
+/// （如从别的删除口抄来的 `ids`）旧写法静默忽略、照样回 200 removed。
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WishDelReq {
     id: i64,
 }

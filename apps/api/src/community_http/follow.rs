@@ -19,7 +19,12 @@ pub(crate) fn normalize_follow_type(raw: &str) -> Option<&'static str> {
     }
 }
 
+/// P-314 同族：`target_type` 拼成 `type`、`target_id` 拼成 `id` 都会因缺字段
+/// 报错，但**多带一个键**旧写法静默接受并回 200——例如客户端从别处抄来的
+/// `following: true`，接口照样报「关注成功」，实际状态由服务端算。
+/// 前端载荷只有这两个键（forum-follow.tsx:82-85），加这条零行为变化。
 #[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 struct FollowReq {
     target_type: String,
     target_id: i64,
@@ -80,7 +85,7 @@ async fn validate_follow_target(
     post,
     path = "/api/v1/follows",
     tag = "社区/关注",
-    description = "关注对象（type 区分种子/主题/用户）。",
+    description = "关注对象（target_type 只有 user|forum|topic 三档）。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
