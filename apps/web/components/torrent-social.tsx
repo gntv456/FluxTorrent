@@ -20,13 +20,44 @@ import {
  *  W-17 乐观更新：收藏按钮点击瞬间 UI 翻转（不等网络），失败时
  *  翻回 + toast.optimistic 自动改口成错误提示（含 request_id） */
 
+/** 感谢成功广播：头部与面板各有一枚 ThankButton（断点互斥），
+ *  任一处成功后其余实例立即同步——否则第二处点下去必回 5002 */
+const THANK_EVENT = "flux:torrent-thanked";
+
+function announceThanked(torrentId: number) {
+  window.dispatchEvent(
+    new CustomEvent(THANK_EVENT, { detail: { torrentId } }),
+  );
+}
+
+function useThankedSync(
+  torrentId: number,
+  setThanked: (v: boolean) => void,
+) {
+  useEffect(() => {
+    const onThanked = (e: Event) => {
+      const d = (e as CustomEvent<{ torrentId: number }>).detail;
+      if (d?.torrentId === torrentId) setThanked(true);
+    };
+    window.addEventListener(THANK_EVENT, onThanked);
+    return () => window.removeEventListener(THANK_EVENT, onThanked);
+  }, [torrentId, setThanked]);
+}
+
 /** 「感谢发布者」单钮（plain thank；带金额的打赏组在面板内 TorrentSocial） */
-export function ThankButton({ torrentId }: { torrentId: number }) {
+export function ThankButton({
+  torrentId,
+  initialThanked = false,
+}: {
+  torrentId: number;
+  initialThanked?: boolean;
+}) {
   const { dict, currency } = useI18n();
   const t = dict.tdetail;
-  const [thanked, setThanked] = useState(false);
+  const [thanked, setThanked] = useState(initialThanked);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  useThankedSync(torrentId, setThanked);
 
   async function thank() {
     setBusy(true);
@@ -36,6 +67,7 @@ export function ThankButton({ torrentId }: { torrentId: number }) {
         { amount: 0 },
       );
       setThanked(true);
+      announceThanked(torrentId);
       setMsg(
         r.spark_given > 0
           ? t.thankSparkOk
@@ -76,13 +108,17 @@ export function ThankButton({ torrentId }: { torrentId: number }) {
 export function TorrentSocial({
   torrentId,
   initialBookmarked = false,
+  initialThanked = false,
 }: {
   torrentId: number;
   initialBookmarked?: boolean;
+  initialThanked?: boolean;
 }) {
   const { dict, currency } = useI18n();
   const t = dict.tdetail;
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
+  const [thanked, setThanked] = useState(initialThanked);
+  useThankedSync(torrentId, setThanked);
   const [comment, setComment] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -112,6 +148,8 @@ export function TorrentSocial({
         `/api/v1/torrents/${torrentId}/thanks`,
         { amount },
       );
+      setThanked(true);
+      announceThanked(torrentId);
       setMsg(
         r.spark_given > 0
           ? t.thankSparkOk
@@ -225,14 +263,16 @@ export function TorrentSocial({
       <div className="donate-spark">
         <span className="text-xs font-bold text-sub">
           {/* 0173：{magic} 占位符须替换为站点货币名，不得原样渲染 */}
-          {fmt(t.sparkReward, { magic: currency })}
+          {thanked
+            ? dict.torrent.thanked
+            : fmt(t.sparkReward, { magic: currency })}
         </span>
         <div className="flex flex-wrap gap-2">
           {[1, 10, 100, 500, 1000, 10000].map((v) => (
             <button
               key={v}
               onClick={() => tip(v)}
-              disabled={busy}
+              disabled={busy || thanked}
               className="min-h-[32px] rounded-full border border-[var(--baozi-orange)] px-3 text-xs font-bold text-[var(--baozi-orange-dark)] active:scale-[0.97] disabled:opacity-50"
             >
               +{v}

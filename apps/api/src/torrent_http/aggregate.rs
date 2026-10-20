@@ -20,13 +20,15 @@ use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents;
 
-/// 详情共享段 + 仅本用户可见的收藏位（平铺成 detail JSON 的同一层，
+/// 详情共享段 + 仅本用户可见的互动位（平铺成 detail JSON 的同一层，
 /// 不改共享缓存结构）
 #[derive(Serialize)]
 struct DetailViewer {
     #[serde(flatten)]
     detail: torrents::TorrentDetailRow,
     bookmarked: bool,
+    /// 已感谢（thanks 一人一种一行，重复提交回 5002；按钮初始态）
+    thanked: bool,
 }
 
 #[derive(Serialize)]
@@ -252,14 +254,18 @@ async fn assemble(
     detail.is_owner = false;
     detail.purchased = false;
     let mut bookmarked = false;
-    let own: Option<(bool, bool, bool)> = sqlx::query_as(
+    let mut thanked = false;
+    let own: Option<(bool, bool, bool, bool)> = sqlx::query_as(
         "SELECT (t.owner_id = $2) AS is_owner, \
                 EXISTS(SELECT 1 FROM torrent_purchases p \
                         WHERE p.torrent_id = t.id \
                           AND p.user_id = $2) AS purchased, \
                 EXISTS(SELECT 1 FROM bookmarks b \
                         WHERE b.torrent_id = t.id \
-                          AND b.user_id = $2) AS bookmarked \
+                          AND b.user_id = $2) AS bookmarked, \
+                EXISTS(SELECT 1 FROM thanks th \
+                        WHERE th.torrent_id = t.id \
+                          AND th.user_id = $2) AS thanked \
          FROM torrents t WHERE t.id = $1",
     )
     .bind(id)
@@ -268,14 +274,15 @@ async fn assemble(
     .await
     .ok()
     .flatten();
-    if let Some((is_owner, purchased, is_bookmarked)) = own {
+    if let Some((is_owner, purchased, is_bookmarked, is_thanked)) = own {
         detail.is_owner = is_owner;
         detail.purchased = purchased;
         bookmarked = is_bookmarked;
+        thanked = is_thanked;
     }
     Ok(TorrentAggregate {
         torrent: shared.torrent,
-        detail: DetailViewer { detail, bookmarked },
+        detail: DetailViewer { detail, bookmarked, thanked },
         files: shared.files,
         thanks: thanks.unwrap_or_default(),
         comments: match comments {
