@@ -122,7 +122,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                 )}
                 {r.ref_type === "torrent" && (
                   <Link
-                    href={`/torrents/${r.ref_id}`}
+                    href={`/torrent/${r.ref_id}`}
                     className="ml-1 text-sky"
                   >
                     {t.view}

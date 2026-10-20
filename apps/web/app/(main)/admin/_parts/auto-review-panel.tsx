@@ -215,7 +215,7 @@ export function AutoReviewPanel() {
                 <td className="p-2">
                   <a
                     className="text-link hover:underline"
-                    href={`/torrents/${r.torrent_id}`}
+                    href={`/torrent/${r.torrent_id}`}
                   >
                     {r.name}
                   </a>
