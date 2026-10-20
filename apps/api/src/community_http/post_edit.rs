@@ -7,6 +7,7 @@ use serde::Deserialize;
 use super::*;
 use crate::dto::ok;
 use crate::economy_http::clawback_spark;
+use crate::repo::community::forum_reward;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -118,26 +119,50 @@ pub(crate) async fn post_delete(
     if !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
-    // 删单帖收回该帖的回帖 +1（与删主题收回发帖 +2 对称，堵住「发帖赚火花再被删」的获利通道）
+    // 删单帖收回这一帖当初真拿到的回帖奖励（与删主题收回发帖奖励对称，
+    // 堵住「发帖赚火花再被删」的获利通道）
     {
         // P-415：收回走地板原语。旧写法 `let _ = earn_spark(…, -1, …)` 把 -1 送进
         // 发放原语（`checked_balance` 只防溢出不防负、`spark_balance` 无 CHECK），
         // 零余额会员被删一帖就变成「欠站里 1 火花」，失败还被 `let _ =` 吞干净。
-        if let Err(e) = clawback_spark(
-            &state.repo.db,
-            author_id,
-            1,
-            "forum-post-del",
-            &format!("forum-post-del:{pid}"),
+        // P-456：收回额回查流水，不再写死 1。写死有两处错——面板 makepost 调成
+        // 3 之后老帖按 1 发、按 3 收（多扣）；楼主首帖拿的是发帖奖励、从来没有
+        // 回帖流水，单独删首帖会被凭空扣 1。查不到流水＝当时没发过，本就没有
+        // 可收回的，此时必须跳过：clawback 原语对 <=0 直接判 Err（负数请走扣款
+        // 原语），硬塞 0 只会刷「收回失败」的假告警。
+        let owed = match forum_reward::granted_by_idem(
+            &state.repo,
+            &forum_reward::reply_idem(author_id, pid),
         )
         .await
         {
-            tracing::warn!(
-                err = %e,
-                post = pid,
-                user = author_id,
-                "删帖收回火花失败"
-            );
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(
+                    err = %e,
+                    post = pid,
+                    "删帖前回查回帖发放流水失败：本笔不收回"
+                );
+                0
+            }
+        };
+        if owed > 0 {
+            if let Err(e) = clawback_spark(
+                &state.repo.db,
+                author_id,
+                owed,
+                "forum-post-del",
+                &format!("forum-post-del:{pid}"),
+            )
+            .await
+            {
+                tracing::warn!(
+                    err = %e,
+                    post = pid,
+                    user = author_id,
+                    "删帖收回火花失败"
+                );
+            }
         }
     }
     // 审计修复（P2）：被删帖若是该主题最新回复，last_post_at 残留已删时间——

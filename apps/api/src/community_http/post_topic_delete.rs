@@ -10,6 +10,7 @@ use crate::dto::ok;
 use crate::economy_http::{clawback_spark, earn_spark};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::forum_reward;
 use crate::repo::community::follows as repo_follows;
 use crate::repo::community::topic_delete as repo_td;
 use crate::state::AppState;
@@ -104,24 +105,47 @@ pub(crate) async fn topic_delete(
         // P-415：收回走地板原语（旧写法把 -2 送进 earn_spark：发放原语不防负，
         // `spark_balance` 也没有 CHECK，零余额楼主会被直接写成 -2，且 `let _ =`
         // 把失败吞干净）。能收多少收多少、流水与余额同步、失败出声。
-        if let Err(e) = clawback_spark(
-            &state.repo.db,
-            op_id,
-            2,
-            "forum-topic-del",
-            &format!("forum-topic-del:{tid}"),
+        // P-456：收回额回查当年那笔发放（键 forum-topic:{uid}:{tid}），
+        // 不再写死 2——面板 starttopic 改成 5 之后删老帖会多扣 3。
+        // 查不到流水＝当时没发过；clawback 原语对 <=0 判 Err，必须跳过，
+        // 否则刷「收回失败」假告警。
+        let owed = match forum_reward::granted_by_idem(
+            &state.repo,
+            &forum_reward::topic_idem(op_id, tid),
         )
         .await
         {
-            tracing::warn!(
-                err = %e,
-                topic = tid,
-                user = op_id,
-                "删主题收回发帖火花失败"
-            );
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(
+                    err = %e,
+                    topic = tid,
+                    "删主题前回查发帖发放流水失败：本笔不收回"
+                );
+                0
+            }
+        };
+        if owed > 0 {
+            if let Err(e) = clawback_spark(
+                &state.repo.db,
+                op_id,
+                owed,
+                "forum-topic-del",
+                &format!("forum-topic-del:{tid}"),
+            )
+            .await
+            {
+                tracing::warn!(
+                    err = %e,
+                    topic = tid,
+                    user = op_id,
+                    "删主题收回发帖火花失败"
+                );
+            }
         }
     }
-    // 级联回收回帖 +1：主题删除会把全部回帖 CASCADE 掉，逐笔回收回帖奖励保持对称。
+    // 级联回收回帖奖励：主题删除会把全部回帖 CASCADE 掉，逐笔按当年发放额
+    // 收回（P-456：reply_reward_debt 交的是流水汇总，不再乘常数）。
     // 审计修复（P1 双重扣分）：楼主首帖也存于 posts（topic_create 落 posts 行），
     // 旧版把它计为「回帖」再 -1，楼主实扣 -3（发帖 -2 + 首帖按回帖 -1）。
     // 排除楼主首帖，楼主只按发帖口径 -2。

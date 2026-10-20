@@ -92,21 +92,31 @@ pub async fn mark_lottery_cancelled(
     .rows_affected())
 }
 
-/// 待扣回帖奖励的人次（审计 P1：排除楼主首帖）。
+/// 待收回的回帖奖励额（按人汇总；审计 P1：排除楼主首帖）。
 ///
 /// 主题删除会 CASCADE 掉全部 posts，逐笔回收回帖奖励保持对称。旧版把
 /// 楼主首帖也计为「回帖」再 -1，楼主实扣 -3（发帖 -2 + 首帖按回帖 -1），
 /// 这里按「非楼主 或 非首帖」把首帖排除，楼主只按发帖口径 -2。
+///
+/// P-456：返回的不再是「回帖条数」而是「这些人当初真拿到了多少火花」——
+/// 回帖奖励的额度改由面板 `makepost` 决定后，条数 × 常数就不等于发放额了
+/// （站长先按 1 发帖、再把面板调成 3，删帖会多扣两倍）。发放侧写的幂等键
+/// `forum-reply:{uid}:{pid}` 可直接回查 `spark_ledger`。
 pub async fn reply_reward_debt(
     repo: &Repo,
     tid: i64,
     op: i64,
 ) -> Vec<(i64, i64)> {
     sqlx::query_as(
-        "SELECT DISTINCT user_id, \
-         count(*) OVER (PARTITION BY user_id) FROM posts \
-         WHERE topic_id = $1 AND NOT (user_id = $2 \
-           AND id = (SELECT min(id) FROM posts WHERE topic_id = $1))",
+        "SELECT p.user_id, COALESCE(sum(l.amount), 0)::bigint \
+         FROM posts p \
+         LEFT JOIN spark_ledger l \
+           ON l.idempotency_key = 'forum-reply:' || p.user_id::text \
+              || ':' || p.id::text \
+         WHERE p.topic_id = $1 AND NOT (p.user_id = $2 \
+           AND p.id = (SELECT min(x.id) FROM posts x \
+                        WHERE x.topic_id = $1)) \
+         GROUP BY p.user_id",
     )
     .bind(tid)
     .bind(op)

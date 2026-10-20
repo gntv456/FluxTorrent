@@ -10,6 +10,7 @@ use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::repo::community::actor::actor_name;
+use crate::repo::community::forum_reward;
 use crate::state::AppState;
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -247,9 +248,15 @@ pub(crate) async fn topic_create(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     forum_flood_mark(&state.repo.db, auth.id).await;
-    // 发主题 +2 火花（M11 论坛行为奖励）
-    let idem = format!("forum-topic:{}:{}", auth.id, topic_id);
-    earn_spark(&state.repo.db, auth.id, 2, "forum", &idem).await?;
+    // 发主题火花（M11 论坛行为奖励）。P-456：额度读后台「行为奖励 →
+    // 发主题奖励」（键 starttopic），此前这里写死 2、面板改多少都不生效；
+    // 现网该键本来就是 2，接线当天行为不变。
+    let topic_award = forum_reward::topic_reward(&state.repo).await;
+    if topic_award > 0 {
+        let idem = forum_reward::topic_idem(auth.id, topic_id);
+        earn_spark(&state.repo.db, auth.id, topic_award, "forum", &idem)
+            .await?;
+    }
     // 楼主的首帖里 @ 了谁就通知谁
     notify_mentions(
         &state.repo.db,
