@@ -79,7 +79,19 @@ pub async fn members(
         ""
     };
     let sql = {
-        let ord = if desc { "DESC" } else { "ASC" };
+        // P-458：PG 的 `DESC` 缺省是 **NULLS FIRST**，而 `users.last_seen_at`
+        // 可空。会员目录的排序档 `desc` 缺省为 true，于是点「最近上线」拿到的
+        // 第一页全是**从没上线过**的号（现网实测 20/20 行为 NULL，56 个可见
+        // 会员里 50 个 last_seen_at 为空），真最近活跃的 6 个人被推到第三页
+        // 之后——「最近上线」这一档排出来的是它的反面。
+        // 两个方向一律 NULLS LAST：未知值沉底。非空列（本表其余排序键都非空）
+        // 加它零影响；同仓已有先例 `openapi_http/me_torrents.rs`、
+        // `staff_http/site_db.rs` 写的就是 `DESC NULLS LAST`。
+        let ord = if desc {
+            "DESC NULLS LAST"
+        } else {
+            "ASC NULLS LAST"
+        };
         let (lim, off) = if class_id.is_some() {
             ("$3", "$4")
         } else {
