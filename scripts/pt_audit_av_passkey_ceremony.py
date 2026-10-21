@@ -359,7 +359,8 @@ ok("S7 finish：连续 12 次必须出现 429（ECDSA 验签是 CPU 活，且这
 
 print("== S8 注册仪式要 step-up（P-107：会话被偷不得白送一把永久后门）==")
 # 先给「受害者」真开 2FA：闸门自己按 RFC 6238 算码，口径与服务端 totp_at 同
-s, r = call("POST", "/me/2fa/setup", {}, token=VTOK)
+s, r = call("POST", "/me/2fa/setup",
+            {"password": "password123"}, token=VTOK)
 SEC_B32 = ((r.get("data") or {}).get("secret") or "").strip()
 ok("S8 前置：探针可生成 2FA 密钥（拿得到 base32）", bool(SEC_B32), brief(r))
 s, r = call("POST", "/me/2fa/enable", {"code": totp_now(SEC_B32)}, token=VTOK)

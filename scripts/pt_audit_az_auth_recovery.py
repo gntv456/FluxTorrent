@@ -418,7 +418,8 @@ ok("S5 连续 12 次错 token 后必须出现 429（红线：全是 400，无上
    429 in seen, "状态序列=%s" % seen)
 
 print("== S6 P-106 otpauth 标签用用户名 ==")
-s, r = call("POST", "/me/2fa/setup", {}, token=BT)
+s, r = call("POST", "/me/2fa/setup", {"password": "password123"},
+            token=BT)
 d = r.get("data") or {}
 uri = d.get("otpauth_uri") or ""
 # 期望 otpauth://totp/{站点}:{username}?secret=…；红线是 {站点}:{uid}

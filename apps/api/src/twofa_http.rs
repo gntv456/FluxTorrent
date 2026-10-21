@@ -81,12 +81,25 @@ async fn totp_verify_login(
 }
 
 /// 第一步：生成密钥，返回 otpauth:// URI（验证器 App 扫码用）。此时未启用。
+/// P-496：签发密钥等同于给账号「装一把只有调用方知道的锁」——会话被偷的人
+/// 可以抢先绑上自己的验证器，再把原主锁在门外（原主只凭密码登录会被
+/// 2010 挡住，关掉又需要攻击者的码）。与 passkey 绑定（P-107）同一威胁模型，
+/// 因此必须复核密码，并按敏感动线限流（防在线爆破）。
+#[derive(Deserialize)]
+struct SetupReq {
+    #[serde(default)]
+    password: String,
+}
+
 #[post("/me/2fa/setup")]
 async fn totp_setup(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<SetupReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    crate::http::rate_window(&state, &format!("tfasetup:{}", auth.id), 5, 60)
+        .await?;
     let enabled: Option<String> = sqlx::query_scalar(
         "SELECT totp_secret FROM users WHERE id = $1 AND totp_secret \
          IS NOT NULL AND totp_enabled",
@@ -100,6 +113,8 @@ async fn totp_setup(
             "2FA 已启用，如需重置请先关闭".into(),
         ));
     }
+    self::step_up::step_up(&state, auth.id, &body.password, None, "启用 2FA")
+        .await?;
     // 20 字节随机 → base32
     let secret: [u8; 20] = rand::random();
     let b32 = BASE32_NOPAD.encode(&secret);

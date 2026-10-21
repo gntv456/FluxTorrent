@@ -167,7 +167,8 @@ def login_retry(pw, tries=4):
     return None
 
 tok = login_retry("password123")
-st, r = call("POST", "/me/2fa/setup", {}, token=tok)
+st, r = call("POST", "/me/2fa/setup", {"password": "password123"},
+             token=tok)
 check("2FA·setup发secret", st == 200 and ("secret" in json.dumps(
     r) or "otpauth" in json.dumps(r)), f"got {st}")
 

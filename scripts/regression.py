@@ -293,7 +293,7 @@ else:
 _, r = call("GET", "/me/appeals", token=tok)
 check("申诉·我的列表", r.get("code") == 0)
 
-_, r = call("POST", "/me/2fa/setup", None, tok)
+_, r = call("POST", "/me/2fa/setup", {"password": "password123"}, tok)
 _b32 = (r.get("data") or {}).get("secret", "")
 check("2FA·setup", r.get("code") == 0 and bool(_b32))
 

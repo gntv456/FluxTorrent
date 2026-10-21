@@ -6,6 +6,10 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 
+const PW_INPUT_CLS =
+  "w-40 rounded-[var(--r-sm)] border border-line " +
+  "bg-[var(--surface-card)] px-2 py-1 text-sm";
+
 /** 安全中心 2FA 自助绑定/解绑（TOTP RFC 6238）：setup → 扫码/手抄密钥 → enable；已启用可 disable */
 export function TwoFactorSetup() {
   const { dict } = useI18n();
@@ -29,6 +33,9 @@ export function TwoFactorSetup() {
     otpauth_uri: string;
   } | null>(null);
   const [code, setCode] = useState("");
+  // P-496：签发密钥前要复核本人密码——会话被偷的人不能抢先绑上自己的
+  // 验证器再把原主锁在门外。标签复用改密行的「当前密码」。
+  const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -38,17 +45,19 @@ export function TwoFactorSetup() {
     try {
       const r = await api.post<{ secret: string; otpauth_uri: string }>(
         "/api/v1/me/2fa/setup",
-        {},
+        { password },
       );
       setSetup(r);
+      setPassword("");
     } catch (e) {
-      // 已启用的用户 setup 会报"2FA 已启用"
-      setMsg(apiErrorMessage(dict, e));
-      setEnabled(true);
+      // 已启用的用户 setup 会报"2FA 已启用"；密码错等其它失败不改状态
+      const text = apiErrorMessage(dict, e);
+      if (text.includes("已启用")) setEnabled(true);
+      setMsg(text);
     } finally {
       setBusy(false);
     }
-  }, [dict]);
+  }, [dict, password]);
 
   useEffect(() => {
     // /me/overview 的 totp_enabled 字段探测启用态
@@ -110,14 +119,25 @@ export function TwoFactorSetup() {
       </p>
 
       {!enabled && !setup && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={beginSetup}
-          className="min-h-[36px] w-fit rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50"
-        >
-          {t.setup}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            placeholder={dict.usercp.security.oldPassword}
+            aria-label={dict.usercp.security.oldPassword}
+            className={PW_INPUT_CLS}
+          />
+          <button
+            type="button"
+            disabled={busy || !password}
+            onClick={beginSetup}
+            className="min-h-[36px] w-fit rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50"
+          >
+            {t.setup}
+          </button>
+        </div>
       )}
 
       {setup && (
