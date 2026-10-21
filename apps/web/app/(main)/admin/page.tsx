@@ -244,6 +244,7 @@ export default function AdminPage() {
           verdict: approve ? a.approve : a.reject,
         }),
         tone: "danger",
+        confirmLabel: approve ? a.approve : a.reject,
         run: () => void doBatch(ids, approve, ""),
       });
       return;
@@ -256,6 +257,7 @@ export default function AdminPage() {
       }),
       tone: "danger",
       label: a.rejectReason,
+      confirmLabel: a.reject,
       run: (reason) => {
         if (reason.trim()) void doBatch(ids, approve, reason.trim());
       },

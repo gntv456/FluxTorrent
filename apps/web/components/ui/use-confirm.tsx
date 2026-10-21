@@ -36,6 +36,10 @@ export interface ConfirmAsk {
   requireText?: string;
   /** 复选槽：label 显示文案，run 的第二参收勾选状态 */
   check?: { label: string; initial?: boolean };
+  /** 确认钮文案：不给时按 tone 回落（danger=删除/其余=确认）——批量通过等
+   *  danger 但语义非删除的场景必须显式给（2026-10-21 种审员实测：批量通过
+   *  的确认钮显示「删除」）。 */
+  confirmLabel?: string;
   busy?: boolean;
   run: (text: string, checked: boolean) => void | Promise<void>;
 }
@@ -81,6 +85,7 @@ export function AskDialog({
       title={ask.title}
       message={ask.message}
       requireText={ask.requireText}
+      confirmLabel={ask.confirmLabel}
       busy={ask.busy}
     >
       {ask.check ? (
