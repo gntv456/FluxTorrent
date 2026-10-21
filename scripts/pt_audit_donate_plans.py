@@ -25,7 +25,7 @@ if os.environ.get("FLUX_API_BASE"):
 
 BASE = pt_audit_lib.BASE
 PW = "ProbePass123"
-PROBE_PLAN_IDS = list(range(901, 909))
+PROBE_PLAN_IDS = list(range(901, 911))
 CREATED = []
 TOKEN = ""
 PROBE = None
@@ -100,6 +100,11 @@ def quota(uid):
 
 def uploaded(uid):
     return int(psql("SELECT uploaded FROM users WHERE id=%d" % uid))
+
+
+def vip_epoch(uid):
+    return int(psql("SELECT COALESCE(EXTRACT(EPOCH FROM vip_until),0)"
+                    "::bigint FROM users WHERE id=%d" % uid))
 
 
 def sec_a_surface():
@@ -228,6 +233,25 @@ def sec_d_upload_vip():
     s, r = order(tok, 908)
     ok("D5 quota 套餐不因 reward 双发（只 +2）",
        s == 200 and quota(uid) == q1 + 2, "%s -> %s %s" % (q1, quota(uid), r))
+
+    # D6/D7（P-505 现网红证）：旧实现只认标题里的 "180"/"终身"，其余一律
+    # 按 30 天发——标题写「365 天」照扣 10 USD 只发 30 天。现网实测
+    # 365 天套餐 vip_delta=30.00 天、half-year 同样 30 天。修复后：天数取
+    # 标题首段数字；解析不出（如「半年 VIP」）在扣款之前拒单。
+    add_plan(909, "vip", "365 天", 1)
+    v0 = vip_epoch(uid)
+    s, r = order(tok, 909)
+    delta = (vip_epoch(uid) - v0) / 86400.0
+    ok("D6 vip 天数随标题数字走（365 天套餐真发 365 天）",
+       s == 200 and 364 <= delta <= 366, (s, r, round(delta, 2)))
+
+    add_plan(910, "vip", "半年 VIP", 1)
+    w0, v0 = float(wallet(uid)), vip_epoch(uid)
+    s, r = order(tok, 910)
+    ok("D7 VIP 标题无可解析天数时先拒单", refused(r), (s, r))
+    ok("D8 该拒单未扣款也未加期",
+       abs(float(wallet(uid)) - w0) < 1e-6 and vip_epoch(uid) == v0,
+       (wallet(uid), vip_epoch(uid) - v0))
 
 
 def sec_e_consume():

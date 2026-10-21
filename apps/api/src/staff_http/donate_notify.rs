@@ -68,33 +68,24 @@ pub async fn donate_order(
     let Some((plan_type, title, reward, price)) = plan else {
         return Err(DomainError::NotFound(body.plan_id as i64));
     };
-    // 发放量取自标题首段数字（upload 计 GB、quota 计枚），上限沿用批量发放口径
-    // （上传 10 TB / 邀请 50 枚）。必须在扣款之前判定：解析不出就拒单，
-    // 收钱不给货是这条链路上唯一不可逆的损失。
-    let cap: i64 = match plan_type.as_str() {
-        "upload" => 10_000,
-        "quota" => 50,
-        _ => 0,
+    // 发放量取自标题首段数字（upload 计 GB、quota 计枚、vip 计天），上限沿用
+    // 批量发放口径（上传 10 TB / 邀请 50 枚 / VIP 36500 天）。必须在扣款之前
+    // 判定：解析不出就拒单，收钱不给货是这条链路上唯一不可逆的损失。
+    // VIP 旧实现只认 contains("180")/contains("终身")，其余静默按 30 天发：
+    // 站长把「180 天」改成「半年」就少发 150 天且照常扣款。
+    let grant = match plan_grant(&plan_type, &title) {
+        Ok(v) => v,
+        Err(msg) => {
+            // 校验详情必须整句可查 validation_details.tsv，所以不能用
+            // format! 拼（validation_i18n_guard 锁动态串条数）。
+            tracing::warn!(
+                plan_id = body.plan_id,
+                title = %title,
+                "donate order rejected: ungrantable plan"
+            );
+            return Err(DomainError::Validation(msg.into()));
+        }
     };
-    let grant: i64 = title
-        .split_whitespace()
-        .next()
-        .and_then(|w| w.parse().ok())
-        .filter(|v| (1..=cap).contains(v))
-        .unwrap_or(0);
-    if cap > 0 && grant == 0 {
-        // 校验详情必须整句可查 validation_details.tsv，所以不能用 format! 拼
-        // （validation_i18n_guard 锁动态串条数）；标题与上限只进日志。
-        tracing::warn!(
-            plan_id = body.plan_id,
-            title = %title,
-            cap,
-            "donate order rejected: plan title head number invalid"
-        );
-        return Err(DomainError::Validation(
-            "套餐标题首段数量无效，已拒单未扣款".into(),
-        ));
-    }
     let mut tx = state
         .repo
         .db
@@ -153,20 +144,16 @@ pub async fn donate_order(
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
         "vip" => {
-            let days: i64 = if title.contains("终身") {
-                36500
-            } else if title.contains("180") {
-                180
-            } else {
-                30
-            };
             sqlx::query(
                 "UPDATE users SET vip_until = \
                  GREATEST(COALESCE(vip_until, now()), now()) + \
                  make_interval(days => $2::int) WHERE id = $1",
             )
             .bind(auth.id)
-            .bind(days)
+            // 参数位是 int4（make_interval(days => $2::int)）：显式转 i32
+            // 与 arcade_meta.rs:45 的口径一致，不依赖 PG 对 8 字节绑定的
+            // 容忍。上限 36500 已确保不溢出。
+            .bind(grant as i32)
             .execute(&mut *tx)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
@@ -215,3 +202,58 @@ pub async fn donate_order(
 }
 
 // ---- 批量邮件（massmail）----
+
+/// 套餐发货量：upload 计 GB / quota 计枚 / vip 计天。
+/// 标题首段必须给出 1..=上限 的数字（VIP 的「终身」按上限发）。
+/// 解析不出或类型未知一律 Err(整句文案)：调用方必须在**扣款前**拒单，
+/// 收钱不给货是这条链路上唯一不可逆的损失。
+fn plan_grant(
+    plan_type: &str,
+    title: &str,
+) -> Result<i64, &'static str> {
+    let cap = match plan_type {
+        "upload" => 10_000,
+        "quota" => 50,
+        "vip" => 36_500,
+        _ => return Err("套餐类型无效，已拒单未扣款"),
+    };
+    if plan_type == "vip" && title.contains("终身") {
+        return Ok(cap);
+    }
+    let n: i64 = title
+        .split_whitespace()
+        .next()
+        .and_then(|w| w.parse().ok())
+        .unwrap_or(0);
+    if (1..=cap).contains(&n) {
+        Ok(n)
+    } else {
+        Err("套餐标题首段数量无效，已拒单未扣款")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::plan_grant;
+
+    #[test]
+    fn plan_grant_reads_live_titles() {
+        // 现网 6 个套餐的标题（donation_plans）必须全部解析成功
+        assert_eq!(plan_grant("quota", "10 枚邀请名额"), Ok(10));
+        assert_eq!(plan_grant("upload", "100 GB 上传量"), Ok(100));
+        assert_eq!(plan_grant("upload", "500 GB 上传量"), Ok(500));
+        assert_eq!(plan_grant("vip", "30 天"), Ok(30));
+        assert_eq!(plan_grant("vip", "180 天"), Ok(180));
+        assert_eq!(plan_grant("vip", "终身用户"), Ok(36_500));
+    }
+
+    #[test]
+    fn plan_grant_rejects_ungrantable() {
+        // 文案改成「半年」必须拒单，不能静默按 30 天发货
+        assert!(plan_grant("vip", "半年").is_err());
+        assert!(plan_grant("vip", "180天").is_err());
+        assert!(plan_grant("upload", "大量上传量").is_err());
+        assert!(plan_grant("quota", "0 枚邀请名额").is_err());
+        assert!(plan_grant("spark", "100 火花").is_err());
+    }
+}
