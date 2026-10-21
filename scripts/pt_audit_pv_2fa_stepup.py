@@ -13,6 +13,11 @@
 前端签发按钮旁补「当前密码」输入框。enable 仍只认码——密钥只在复核通过后
 才发得出来，攻击者无法据此算出有效码。
 
+P-497（同批）：`enable`/`disable` 对错码没有限流。现网旧镜像实测两支
+各连发 12 次错码全是 400/1002、无一次 429；disable 成功后 2FA 被移除，
+且每码 ±1 窗口内有效 ⇒ 期望约 33 万次即可试中。修复=两入口各加
+5 次/分的按用户固定窗（键 tfaenable/tfadisable）。
+
 夹具：一支探针号（注册→用例→停用清密钥），跑完回读零残留。
 """
 import atexit
@@ -148,6 +153,25 @@ if TOK:
        s == 200 and bool(secret), "http=%s msg=%s"
        % (s, str(r.get("message"))[:60]))
     if secret:
+        # P-497：悬空密钥（已 setup、未启用）也是可爆破的状态写口
+        step = int(time.time()) // 30
+        valid = {totp(secret, step - 1), totp(secret, step),
+                 totp(secret, step + 1)}
+        cand = [c for c in range(1, 1000) if c not in valid][:12]
+        seen_en = []
+        for c in cand:
+            s, r = call("POST", "/me/2fa/enable", {"code": c},
+                        token=TOK)
+            seen_en.append(s)
+        ok("PV-A4e 启用错码：前 5 次 400、12 次内必现 429",
+           seen_en[:5] == [400] * 5 and 429 in seen_en,
+           "statuses=%s" % seen_en)
+        st4 = secret_state()
+        ok("PV-A4f 限流命中后仍未启用（错码没把锁装上）",
+           st4.endswith("|false") and not st4.startswith("-|"),
+           "secret|enabled=%s" % st4)
+        # 固定窗按分钟分桶：等下一桶再走正确启用
+        time.sleep(60 - int(time.time()) % 60 + 1)
         s, r = call("POST", "/me/2fa/enable", {"code": totp(secret)},
                     token=TOK)
         ok("PV-A5 自算动态码可完成启用", s == 200,
@@ -160,6 +184,22 @@ if TOK:
         ok("PV-A7 已启用时 setup 只回「已启用」、不换发密钥",
            s == 400 and "已启用" in str(r.get("message") or ""),
            "http=%s msg=%s" % (s, str(r.get("message"))[:60]))
+        # P-497：关闭 2FA 的错码同样必须限流（成功即永久移除第二因子）
+        step = int(time.time()) // 30
+        valid = {totp(secret, step - 1), totp(secret, step),
+                 totp(secret, step + 1)}
+        cand = [c for c in range(1, 1000) if c not in valid][:12]
+        seen_dis = []
+        for c in cand:
+            s, r = call("POST", "/me/2fa/disable", {"code": c},
+                        token=TOK)
+            seen_dis.append(s)
+        ok("PV-A7d 关闭错码：前 5 次 400、12 次内必现 429",
+           seen_dis[:5] == [400] * 5 and 429 in seen_dis,
+           "statuses=%s" % seen_dis)
+        st7 = secret_state()
+        ok("PV-A7e 限流命中后 2FA 仍启用（错码没能关掉）",
+           st7.endswith("|true"), "secret|enabled=%s" % st7)
         s, r = login_probe()
         ok("PV-A8 开了 2FA 后密码登录需要动态码（400/2010）",
            s == 400 and r.get("code") == 2010,
@@ -208,6 +248,24 @@ ok("PV-S2 前端签发请求体带 password", fe_password(fe))
 old_fe = '"/api/v1/me/2fa/setup",\n        {},'
 ok("PV-S2b 承重自证：旧的前端空 body 必须判红",
    fe_password(old_fe) is False)
+
+
+def be_limited(src, fn, end):
+    if ("async fn %s" % fn) not in src:
+        return False
+    seg = src.split("async fn %s" % fn)[1].split(end)[0]
+    return "rate_window" in seg
+
+
+ok("PV-S3 后端 enable/disable 都按用户限流",
+   be_limited(be, "totp_enable", "#[derive(Deserialize)]")
+   and be_limited(be, "totp_disable",
+                  "pub async fn login_totp_check"))
+old_lim = ("async fn totp_disable() {\n"
+           "    let auth = require_auth().await?;\n}")
+ok("PV-S3b 承重自证：无 rate_window 的旧形状判红",
+   be_limited(old_lim, "totp_disable",
+              "pub async fn login_totp_check") is False)
 
 print("== PV-Z 收尾 ==")
 cleanup()

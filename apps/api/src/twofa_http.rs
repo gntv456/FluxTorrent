@@ -156,6 +156,11 @@ async fn totp_enable(
     body: web::Json<EnableReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // P-497：启用同样是「用 6 位码决定账号安全状态」的写口。setup 过但没
+    // 启用的悬空密钥会一直躺在库里，会话被偷的人可无限试码把它启用——
+    // 原主登录便要求一个他可能从没导入验证器的码（与 P-496 同一锁死后果）。
+    crate::http::rate_window(&state, &format!("tfaenable:{}", auth.id), 5, 60)
+        .await?;
     let secret: Option<String> = sqlx::query_scalar(
         "SELECT totp_secret FROM users WHERE id = $1 AND totp_secret \
          IS NOT NULL AND NOT totp_enabled",
@@ -196,6 +201,16 @@ async fn totp_disable(
     body: web::Json<DisableReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // P-497：关闭 2FA 是永久移除第二因子。P-408 只堵了重放，失败仍不限次：
+    // 现网实测 12 次错码全是 400/1002、没有一次 429。每码在 ±1 窗口内有效，
+    // 期望约 33 万次就能试中——会话被偷即可在线爆破关掉 2FA。
+    crate::http::rate_window(
+        &state,
+        &format!("tfadisable:{}", auth.id),
+        5,
+        60,
+    )
+    .await?;
     let secret: Option<String> = sqlx::query_scalar(
         "SELECT totp_secret FROM users WHERE id = $1 AND totp_enabled",
     )
