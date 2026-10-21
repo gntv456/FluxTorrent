@@ -6,7 +6,9 @@
         first_post_id，仓里多处拿 min(id) 当首帖（protected 正文保护、
         搜索片段、最新回复、我的回帖、删主题对账）。版主删掉一楼后二楼
         顶成一楼，主题变成「有标题没正文」，楼层号与回帖统计全跟着漂。
-        现在首帖删除必须 422 并指向「删主题」；普通回帖照常可删。
+        现在首帖删除回 400/1002 并指向「删主题」（DomainError::Validation
+        在 errors.rs 里映射的是 400，OpenAPI 注解写的 422 不作数）；
+        普通回帖照常可删。
   P-495 protected 版块「只公开一楼」按本页下标放行。详情默认只取最近
         200 楼，长主题的第一条其实是回帖；旧码把每页的下标 0 原文送出，
         `?before=` 还能指定窗口复现。现在只认真实首帖 min(id)。
@@ -176,8 +178,8 @@ ok("PQ-A1 普通成员删首帖仍被 403 挡住（正控）", s == 403,
    "http=%s msg=%s" % (s, str(r.get("message"))[:60]))
 s, r = call("DELETE", "/forums/posts/%s" % FIRST2, token=ROOT)
 msg = str(r.get("message") or "")
-ok("PQ-A2 版主删首帖必须 422（一楼不能按回帖删）",
-   s == 422 and r.get("code") == 1002 and "首帖" in msg,
+ok("PQ-A2 版主删首帖必须 400/1002（一楼不能按回帖删）",
+   s == 400 and r.get("code") == 1002 and "首帖" in msg,
    "http=%s code=%s msg=%s" % (s, r.get("code"), msg[:60]))
 s, d = detail(ROOT, T2)
 posts = d.get("posts") or []
