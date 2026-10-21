@@ -43,7 +43,8 @@ pub(crate) async fn staff_answer(
     }
     let orig: Option<(i64, String)> = sqlx::query_as(
         "SELECT user_id, \
-         subject FROM staffmessages WHERE id = $1 AND answered = 0",
+         subject FROM staffmessages WHERE id = $1 AND answered = 0 \
+         AND ticket_status < 3",
     )
     .bind(body.id)
     .fetch_optional(&state.repo.db)

@@ -210,7 +210,7 @@ pub(crate) async fn my_ticket_confirm(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let n = sqlx::query(
-        "UPDATE staffmessages SET ticket_status = 3 \
+        "UPDATE staffmessages SET ticket_status = 3, answered = 1 \
          WHERE id = $1 AND user_id = $2 AND ticket_status = 2",
     )
     .bind(body.id)

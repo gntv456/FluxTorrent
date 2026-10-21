@@ -186,12 +186,19 @@ pub(crate) async fn ticket_update(
             "UPDATE staffmessages SET \
                 priority = COALESCE($2, priority), \
                 ticket_status = COALESCE($3, ticket_status), \
+                answered = CASE WHEN $3::smallint IS NULL THEN answered \
+                    WHEN $3::smallint = 1 THEN 0 ELSE 1 END, \
+                answered_by = CASE WHEN $3::smallint = 2 \
+                    THEN COALESCE(answered_by, $4) ELSE answered_by END, \
+                answered_at = CASE WHEN $3::smallint = 2 \
+                    THEN COALESCE(answered_at, now()) ELSE answered_at END, \
                 assigned_to = NULL \
              WHERE id = $1",
         )
         .bind(body.id)
         .bind(body.priority)
         .bind(body.ticket_status)
+        .bind(auth.id)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -201,6 +208,12 @@ pub(crate) async fn ticket_update(
             "UPDATE staffmessages SET \
                 priority = COALESCE($2, priority), \
                 ticket_status = COALESCE($3, ticket_status), \
+                answered = CASE WHEN $3::smallint IS NULL THEN answered \
+                    WHEN $3::smallint = 1 THEN 0 ELSE 1 END, \
+                answered_by = CASE WHEN $3::smallint = 2 \
+                    THEN COALESCE(answered_by, $5) ELSE answered_by END, \
+                answered_at = CASE WHEN $3::smallint = 2 \
+                    THEN COALESCE(answered_at, now()) ELSE answered_at END, \
                 assigned_to = COALESCE($4, assigned_to) \
              WHERE id = $1",
         )
@@ -208,6 +221,7 @@ pub(crate) async fn ticket_update(
         .bind(body.priority)
         .bind(body.ticket_status)
         .bind(assignee)
+        .bind(auth.id)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
