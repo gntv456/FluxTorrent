@@ -74,7 +74,7 @@ export default function AchievementsPage() {
   const shown = flt ? list.filter((a) => stateOf(a) === flt) : list;
   const families = [...new Set(shown.map((r) => r.family))];
   const familyLabel: Record<string, string> = {
-    seed: t.familySeed,
+    seeding: t.familySeed,
     rescue: t.familyRescue,
     upload: t.familyUpload,
     forum: t.familyForum,

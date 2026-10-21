@@ -37,41 +37,6 @@ async fn spark_flow_daily(
     Ok(ok(rows))
 }
 
-// ============ G6：我的成就 + 全站成就定义 ============
-
-#[derive(sqlx::FromRow, serde::Serialize)]
-struct AchievementRow {
-    code: String,
-    family: String,
-    name: String,
-    descr: String,
-    threshold: i64,
-    reward_sparks: i64,
-    earned: bool,
-    granted_at: Option<chrono::DateTime<chrono::Utc>>,
-    metric_value: Option<i64>,
-}
-
-#[get("/me/achievements")]
-async fn my_achievements(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<impl actix_web::Responder> {
-    let auth = require_auth(&req, &state).await?;
-    let rows = sqlx::query_as::<_, AchievementRow>(
-        "SELECT d.code, d.family, d.name, d.descr, d.threshold, d.reward_sparks, \
-                (ua.user_id IS NOT NULL) AS earned, ua.granted_at, ua.metric_value \
-         FROM achievement_defs d \
-         LEFT JOIN user_achievements ua ON ua.def_id = d.id AND ua.user_id = $1 \
-         ORDER BY d.family, d.position",
-    )
-    .bind(auth.id)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
-}
-
 // ============ G7：POSTPONED 审核第四态（U3D 口径） ============
 // approval_status 语义扩容：0待审 1过审 2被拒 3下架 4暂缓。
 // 暂缓种仅发布者本人与 staff 可见；证据补齐后走常规 approve/reject 决策。
@@ -243,7 +208,7 @@ pub fn mount_v4(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         .service(metrics::api_metrics)
         .service(spark_flow_daily)
-        .service(my_achievements)
+        .service(crate::me_achievements::my_achievements)
         .service(review_postpone)
         .service(review_resume)
         .service(rule_revisions)

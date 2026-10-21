@@ -52,6 +52,7 @@ mod invite_http;
 mod logcheck;
 mod mailer;
 mod mailer_notify;
+mod me_achievements;
 mod mediainfo_service;
 mod modules;
 mod openapi_http;
