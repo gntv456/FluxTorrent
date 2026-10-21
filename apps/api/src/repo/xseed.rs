@@ -18,17 +18,26 @@ pub type HitRow = (i64, String, i64, String, Option<String>);
 ///
 /// 可见性口径 = 详情页：`approval_status = 1`（已过审）。未过审的种
 /// 不进辅种结果——否则会通过辅种链泄露待审内容的存在性。
+///
+/// **交付性口径 = RSS/Torznab（P-433）同一把尺**：只回有存档的种。
+/// 实测（批二百四十，现网）：7 个「已过审但无 `.torrent` 存档」的种都能被
+/// 指纹命中，客户端拿到的 `download_url` 一打就是 400（`issue_download_key`
+/// 那三道闸之外还有一道存档判定）——链接根本兑不了现，还要按 10 次/分钟
+/// 吃掉辅种下载额度。辅种是对外的第三个出口，不该比 RSS 宽。
+/// 共用 `torrents::HAS_ARCHIVE_CLAUSE` 而不是自己抄一份，防的是
+/// 「存档判定分叉」——那条常量已经因为同样原因修过一次。
 pub async fn find_by_fingerprints(
     repo: &Repo,
     info_hash_v1: &[String],
     pieces_sha1: &[String],
 ) -> Result<Vec<HitRow>, sqlx::Error> {
-    sqlx::query_as::<_, HitRow>(
-        "SELECT id, name, size, info_hash, pieces_hash FROM torrents \
-         WHERE approval_status = 1 \
-           AND (info_hash = ANY($1::char(40)[]) \
-                OR pieces_hash = ANY($2::char(40)[]))",
-    )
+    sqlx::query_as::<_, HitRow>(&format!(
+        "SELECT t.id, t.name, t.size, t.info_hash, t.pieces_hash FROM \
+         torrents t WHERE t.approval_status = 1 AND {arch} \
+           AND (t.info_hash = ANY($1::char(40)[]) \
+                OR t.pieces_hash = ANY($2::char(40)[]))",
+        arch = crate::torrents::HAS_ARCHIVE_CLAUSE
+    ))
     .bind(info_hash_v1)
     .bind(pieces_sha1)
     .fetch_all(&repo.db)
