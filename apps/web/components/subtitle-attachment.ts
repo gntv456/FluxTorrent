@@ -7,10 +7,12 @@ export async function uploadAttachment(file: File): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   const lang = rawFetchHelpers.lang();
+  const csrf = await rawFetchHelpers.csrf("POST");
   const upRes = await fetch(rawFetchHelpers.base() + "/api/v1/attachments", {
     method: "POST",
     headers: {
       ...(lang ? { "Accept-Language": lang } : {}),
+      ...csrf,
     },
     body: form,
   });

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { BTN_XS_GHOST } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
+import { rawFetchHelpers } from "@/lib/api-client";
 import type { MedalRow } from "./admin-medals-shared";
 import { MedalImagePreview } from "./admin-medals-rarity";
 
@@ -44,8 +45,10 @@ export function MedalAssetBar({
       const fd = new FormData();
       fd.append("file", file);
       // 凭证由 HttpOnly flux_token cookie 自动携带（同源 rewrites 转发）
+      const csrf = await rawFetchHelpers.csrf("POST");
       const res = await fetch("/api/v1/attachments", {
         method: "POST",
+        headers: { ...csrf },
         body: fd,
       });
       const j = (await res.json()) as {

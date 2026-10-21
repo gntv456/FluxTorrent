@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { formatBytes } from "@/lib/format";
 import { Fold } from "@/components/torrent-detail-parts";
@@ -55,8 +55,10 @@ export function TorrentPreviews({
     try {
       const fd = new FormData();
       fd.append("file", file);
+      const csrf = await rawFetchHelpers.csrf("POST");
       const res = await fetch("/api/v1/attachments", {
         method: "POST",
+        headers: { ...csrf },
         body: fd,
       });
       const j = (await res.json()) as {
@@ -84,9 +86,10 @@ export function TorrentPreviews({
     setBusy(true);
     setMsg(null);
     try {
+      const csrf = await rawFetchHelpers.csrf("DELETE");
       const res = await fetch(`/api/v1/torrents/${torrentId}/previews`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...csrf },
         body: JSON.stringify({ sha256: sha }),
       });
       if (!res.ok) {

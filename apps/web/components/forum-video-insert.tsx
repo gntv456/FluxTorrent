@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
+import { api, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { matchEmbedRule } from "@/components/forum-video-embed";
 import { toast } from "@/components/ui/toast";
@@ -56,8 +56,10 @@ async function probeVideo(file: File) {
       // FormData 直传（api.post 走 JSON.stringify，不适用于 multipart）
       const fd = new FormData();
       fd.append("file", new File([blob], "poster.jpg", { type: "image/jpeg" }));
+      const csrf = await rawFetchHelpers.csrf("POST");
       const res = await fetch("/api/v1/attachments", {
         method: "POST",
+        headers: { ...csrf },
         body: fd,
       });
       const j = (await res.json()) as {
@@ -107,8 +109,10 @@ export function VideoInsertRow({
       const fd = new FormData();
       fd.append("file", file);
       fd.append("meta", JSON.stringify(meta));
+      const csrf = await rawFetchHelpers.csrf("POST");
       const res = await fetch("/api/v1/attachments/video", {
         method: "POST",
+        headers: { ...csrf },
         body: fd,
       });
       const j = (await res.json()) as {

@@ -12,7 +12,7 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { Pager } from "@/components/ui/pager";
 
@@ -98,9 +98,10 @@ export function AdminAttendance() {
   async function revoke(r: AttendanceRow) {
     setBusy(true);
     try {
+      const csrf = await rawFetchHelpers.csrf("DELETE");
       const res = await fetch("/api/v1/admin/attendance/makeup", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...csrf },
         body: JSON.stringify({ user_id: r.user_id, date: r.date }),
       });
       if (!res.ok) {

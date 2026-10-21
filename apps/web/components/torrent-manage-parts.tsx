@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { normTagRow, type TagPayload } from "@/components/torrent-tags";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
@@ -187,8 +187,8 @@ export function useAttachmentUpload(
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/v1/attachments", {
-        method: "POST",
-        body: fd,
+        method: "POST", body: fd,
+        headers: await rawFetchHelpers.csrf("POST"),
       });
       const j = (await res.json()) as {
         data?: { url?: string; deduplicated?: boolean };

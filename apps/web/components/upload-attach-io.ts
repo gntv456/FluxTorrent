@@ -4,6 +4,7 @@
  *  组装，busy/msg 状态由调用方管理。 */
 
 import type { Dict } from "@/i18n/zh-CN";
+import { rawFetchHelpers } from "@/lib/api-client";
 
 type DescrSetter = (v: string | ((prev: string) => string)) => void;
 
@@ -14,8 +15,14 @@ export async function attachUpload(
 ): Promise<{ msg: string }> {
   const fd = new FormData();
   fd.append("file", file);
-  // 凭证由 HttpOnly flux_token cookie 自动携带（P1 收敛，token 不进 JS）
-  const res = await fetch("/api/v1/attachments", { method: "POST", body: fd });
+  // 凭证由 HttpOnly flux_token cookie 自动携带（P1 收敛，token 不进 JS）；
+  // 写方法还要带 CSRF 双提交头，否则整条被 403（P-500）。
+  const csrf = await rawFetchHelpers.csrf("POST");
+  const res = await fetch("/api/v1/attachments", {
+    method: "POST",
+    headers: { ...csrf },
+    body: fd,
+  });
   const j = (await res.json()) as {
     data?: { url?: string; deduplicated?: boolean };
     message?: string;
