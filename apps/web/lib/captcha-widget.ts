@@ -22,7 +22,11 @@ export function mountCaptchaWidget(
   siteKey: string,
   onToken: (token: string) => void,
 ) {
-  if (provider === "none" || !siteKey) return;
+  // pow/none 与未识别的驱动都没有第三方脚本可挂：旧写法只挡 none，
+  // 换驱动后遗留 site key 时会在取脚本表处抛 TypeError，注册页把它
+  // 读成「读配置失败」⇒ 开放注册退回邀请制（P-503）。
+  const script = DRIVER_SCRIPT[provider];
+  if (!script || !siteKey) return;
   const w = window as unknown as {
     turnstile?: { render: (el: HTMLElement, o: unknown) => void };
     grecaptcha?: { render: (el: HTMLElement, o: unknown) => void };
@@ -41,7 +45,7 @@ export function mountCaptchaWidget(
     else if (provider === "hcaptcha") w.hcaptcha?.render(el, opts);
   };
   const sc = document.createElement("script");
-  sc.src = DRIVER_SCRIPT[provider](siteKey);
+  sc.src = script(siteKey);
   sc.async = true;
   sc.onload = inject;
   document.head.appendChild(sc);
