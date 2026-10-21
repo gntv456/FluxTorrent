@@ -229,6 +229,9 @@ pub(crate) async fn leak_scan(db: &PgPool) -> anyhow::Result<u64> {
 /// 每 24h 做种退该种计费下载的 1/14（两周退满，与 H&R 120h 宽限同量级）。
 /// 退款以负流量流水落 traffic_ledger（delta_down 为负），users 快照由 reconcile 聚合。
 /// 幂等：当日已退过（同用户同种当日存在负流水）不再退——一天一结。
+/// 日界取**站点日（UTC+8）**：本作业 1h 一班，旧写法 `> current_date` 是容器
+/// UTC 日界，北京 07:00 与 08:00 两班跨不过同一道日界 ⇒ 同一站点日退两次
+/// （P-472：下载量多退 1/14，分享率虚高）。
 pub(crate) async fn refundable_settle(db: &PgPool) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
@@ -250,7 +253,10 @@ pub(crate) async fn refundable_settle(db: &PgPool) -> anyhow::Result<u64> {
         WHERE NOT EXISTS (
             SELECT 1 FROM traffic_ledger l
             WHERE l.user_id = d.user_id AND l.torrent_id = d.torrent_id
-              AND l.delta_down < 0 AND l.window_start > current_date
+              AND l.delta_down < 0
+              AND l.window_start > date_trunc('day',
+                    now() AT TIME ZONE 'Asia/Shanghai')
+                    AT TIME ZONE 'Asia/Shanghai'
         )
         "#,
     )

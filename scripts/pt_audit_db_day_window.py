@@ -19,6 +19,13 @@
 行集是两条写死的流水时间戳 —— 纯函数 A/B，任何时刻重跑结论一样。真库一层由
 DB3~DB6 在现场 Postgres 上求值（不是本地模拟）。
 
+批二百三十（P-472）补两条本闸门的盲区：
+  DB12 refundable_settle 的「一天一结」幂等窗口写的是 `window_start > current_date`
+       （UTC 日界），而作业 cadence=1h ⇒ 北京 07:00 与 08:00 两班在同一站点日，
+       第二班看不见第一班那条退款 ⇒ 同一站点日退两次（下载量多退 1/14）。
+  DB13 四条错法都带 date_trunc/::date，看不见直接拿裸 current_date 比较的那一族
+       ——按台账钉「恰好这几个口」，多一个＝新引入 UTC 日界，少一个＝修掉却没销账。
+
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_db_day_window.py
 侧进程：FLUX_API_BASE=http://127.0.0.1:8099/api/v1 python -u \\
         scripts/pt_audit_db_day_window.py
@@ -47,6 +54,11 @@ WRONG_C = re.compile(r"date_trunc\('(day|week|month)',%snow\(\)\)" % SEP)
 RIGHT = re.compile(TOK + SEP + r"AT TIME ZONE 'Asia/Shanghai'\)" + SEP
                    + r"AT TIME ZONE 'Asia/Shanghai'")
 
+# 错D：把 timestamptz 截成 date 再去比「now() ± interval」——
+# ::date 按**会话时区**（本库 UTC）取日界，差 8 小时：
+# 00:00-08:00（北京时间）跑出来的「昨日」其实是前天的后半段 + 昨天的一半。
+# 形状：`created_at::date = (now() - interval '1 day')::date`。
+WRONG_D = re.compile(r"::date\s*=\s*\(\s*now\(\)\s*[-+]\s*interval")
 # 待裁台账（不是本批的活）：这些口把日/周界写进了**持久化的 date 键**，
 # 换窗口等于给存量数据换身份证 ⇒ 要站方拍板 + 迁移，本批只登记不动。
 PENDING = ("apps/api/src/invite_http.rs", "apps/api/src/economy_http/",
@@ -80,7 +92,8 @@ def sources():
 
 hits, right_sites = [], []
 for rel, txt in sources():
-    for tag, pat in (("A", WRONG_A), ("B", WRONG_B), ("C", WRONG_C)):
+    for tag, pat in (("A", WRONG_A), ("B", WRONG_B), ("C", WRONG_C),
+                   ("D", WRONG_D)):
         for mm in pat.finditer(txt):
             hits.append((tag, rel, txt[:mm.start()].count("\n") + 1))
     for mm in RIGHT.finditer(txt):
@@ -103,10 +116,11 @@ EXPECT = ("apps/api/src/games_http/linkage.rs",
           "apps/api/src/games_http/pet_log.rs",
           "apps/api/src/repo/community/forum_side.rs",
           "apps/api/src/auth_http/profile.rs",
-          "apps/worker/src/jobs/game_coupons.rs")
+          "apps/worker/src/jobs/game_coupons.rs",
+          "apps/worker/src/jobs/settle.rs")
 have = set(r for r, _l in right_sites)
 miss = [f for f in EXPECT if f not in have]
-ok("DB2 十处日/周/月窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
+ok("DB2 十一处日/周/月窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
    % (len(right_sites), len(miss)), not miss,
    "缺=%s｜有=%s" % ("、".join(miss), "、".join(sorted(have))))
 
@@ -116,11 +130,14 @@ PC_A = ("  AND l.created_at >= date_trunc('day', now() AT TIME ZONE 'UTC' "
 PC_B = ("  AND l.created_at >= date_trunc('week', now() AT TIME ZONE 'UTC') "
         "+ interval '8 hours'")
 PC_C = "  AND t.created_at >= date_trunc('month', now())"
+PC_D = ("  WHERE decided_by = 0 AND created_at::date = "
+        "(now() - interval '1 day')::date")
 pc_hit = (["A"] if WRONG_A.search(PC_A) else []) \
     + (["B"] if WRONG_B.search(PC_B) else []) \
-    + (["C"] if WRONG_C.search(PC_C) else [])
-ok("DB2a 正控：三种错法各造一条假源码，判据必须都抓到（抓到 %s）" % pc_hit,
-   pc_hit == ["A", "B", "C"], str(pc_hit))
+    + (["C"] if WRONG_C.search(PC_C) else []) \
+    + (["D"] if WRONG_D.search(PC_D) else [])
+ok("DB2a 正控：四种错法各造一条假源码，判据必须都抓到（抓到 %s）" % pc_hit,
+   pc_hit == ["A", "B", "C", "D"], str(pc_hit))
 ok("DB2b 正控：三条假源码里都不许误报「正确形状」",
    not RIGHT.search(PC_A) and not RIGHT.search(PC_B)
    and not RIGHT.search(PC_C))
@@ -134,7 +151,7 @@ def psql(q):
          "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:170])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:170])
     return (r.stdout or "").strip()
 
 
@@ -290,5 +307,67 @@ ok("DB9 改过窗口的 %d 个活口全部打得通（5xx=%d）" % (len(TOUCHED)
    "、".join("%s=%s" % (p, s) for p, s, _ in t5xx))
 for p, s, b in t5xx:
     print("   [5xx] %s http=%s %s" % (p, s, b))
+
+# ---------- DB12：退款幂等窗口（P-472，refundable_settle「一天一结」） ----------
+# 作业 cadence=1h ⇒ 北京 07:00（UTC 10-20 23:00）与 08:00（UTC 10-21 00:00）两班
+# 落在同一个站点日里。旧写法 `window_start > current_date` 的日界是 UTC 零点，
+# 第二班看不见第一班那条退款流水 ⇒ 同一站点日退两次（下载量多退 1/14＝分享率虚高）。
+OLD12 = "clock::date"  # current_date 在本库（会话 UTC）里的展开
+NEW12 = ("(date_trunc('day', clock AT TIME ZONE 'Asia/Shanghai') "
+         "AT TIME ZONE 'Asia/Shanghai')")
+
+
+def dedup_pair(clock, prev):
+    """在真库求值：第二班能否看见第一班那条负流水（t=能看见=不重复退）。"""
+    return psql(("WITH c(clock, prev) AS (VALUES "
+                 "(TIMESTAMP WITH TIME ZONE '%s', TIMESTAMP WITH TIME ZONE "
+                 "'%s')) SELECT 'old', (prev > %s)::text FROM c "
+                 "UNION ALL SELECT 'new', (prev > %s)::text FROM c")
+                % (clock, prev, OLD12, NEW12))
+
+
+r12 = dict(l.split("|") for l in dedup_pair(
+    "2026-10-21 00:00+00", "2026-10-20 23:00+00").split("\n") if "|" in l)
+print("   跨界那一班：旧闸门看得见=%s 新闸门看得见=%s"
+      % (r12.get("old"), r12.get("new")))
+ok("DB12 同一站点日跨 UTC 零点那一班：旧窗口看不见上一班退款（会重复退）、"
+   "新窗口看得见 ⇒ 一天一结 %s/%s" % (r12.get("old"), r12.get("new")),
+   r12.get("old") == "false" and r12.get("new") == "true",
+   "old=%s new=%s" % (r12.get("old"), r12.get("new")))
+# 正控：不跨界的一班里两窗口必须同真——否则「旧闸门看不见」只是判据恒假
+r12b = dict(l.split("|") for l in dedup_pair(
+    "2026-10-20 09:00+00", "2026-10-20 02:00+00").split("\n") if "|" in l)
+ok("DB12b 正控：同 UTC 日内两窗口都看得见（旧闸门不是恒假）%s/%s"
+   % (r12b.get("old"), r12b.get("new")),
+   r12b.get("old") == "true" and r12b.get("new") == "true",
+   "old=%s new=%s" % (r12b.get("old"), r12b.get("new")))
+SETTLE = strip_comments(io.open(os.path.join(ROOTDIR, "apps", "worker",
+                                             "src", "jobs", "settle.rs"),
+                                encoding="utf-8").read())
+ok("DB12c settle.rs 的日界已换成站点日形状（裸 current_date 归零）",
+   "current_date" not in SETTLE.lower(),
+   "命中=%d" % SETTLE.lower().count("current_date"))
+
+# ---------- DB13：裸 current_date 的比较族（本闸门的盲区，登记不等于放过） ----------
+# DB1 的四条错法都带 date_trunc/::date，看不见直接拿 current_date 比的那一族。
+# 台账钉「恰好这几个口」：多一个＝新引入 UTC 日界；少一个＝有人修掉了却没更新
+# 台账（同批删掉那一行即可）。持久化 date 键那两族改窗口＝给存量数据换身份证，
+# 与文件头 PENDING 同口径，等站方拍板。
+CMP13 = re.compile(r"(?:[<>]=?|::date\s*=)\s*current_date\b"
+                   r"|current_date\b\s*(?:[-+]\s*\d|[-+]\s*interval|<=?|>=?)",
+                   re.I)
+NAIVE_LEDGER = {
+    "apps/api/src/admin_http/overview.rs": "后台 14 天图（待裁）",
+    "apps/api/src/economy_http/checkin.rs": "签到近 30 天列表（展示窗口）",
+    "apps/worker/src/bank_jobs/deposit.rs": "利息日界＝持久化 date 键（待裁）",
+    "apps/worker/src/bank_jobs/loan.rs": "同上（待裁）",
+}
+naive = {rel for rel, txt in sources() if CMP13.search(txt)}
+extra = sorted(naive - set(NAIVE_LEDGER))
+gone = sorted(set(NAIVE_LEDGER) - naive)
+ok("DB13 裸 current_date 比较族恰好等于台账 %d 个口（多=%s 少=%s）"
+   % (len(NAIVE_LEDGER), extra, gone),
+   not extra and not gone,
+   "、".join("%s=%s" % (f, NAIVE_LEDGER[f]) for f in sorted(naive)))
 
 summary()
