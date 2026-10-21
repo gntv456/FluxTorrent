@@ -35,26 +35,46 @@ pub async fn list_boxes(repo: &Repo, user_id: i64) -> Vec<PmBoxRow> {
     .unwrap_or_default()
 }
 
-/// 删除文件夹并连带清空夹内信。返回被删的夹子行数（0 = 未命中）。
-pub async fn delete_box(repo: &Repo, user_id: i64, box_id: i64) -> i64 {
+/// 删除文件夹并清空夹内信。返回被删的夹子行数（0 = 未命中）。
+///
+/// P-489：夹内信不能无条件物理删。messages 一行两态（receiver 的
+/// location / sender 的 saved），删文件夹只是**收件方**的一次批量删除；
+/// 发件方仍存着副本（saved=1）时必须留行，否则对方发件箱里的信会跟着
+/// 消失（现网实测：收件方删文件夹后 sender 的 saved 副本被物理抹掉）。
+/// 与 `message_box.rs` 删信口的双删语义同口径：双方都删（saved=0）才
+/// 物理清，否则只把收件方这一侧置为已删并摘掉文件夹。
+pub async fn delete_box(
+    repo: &Repo,
+    user_id: i64,
+    box_id: i64,
+) -> Result<i64, sqlx::Error> {
+    let mut tx = repo.db.begin().await?;
+    // 发件方没留副本的，属于双方都不要了，可物理清；必须在前一步做，
+    // 后一步摘掉 folder 之后就再也找不到这批行了。
     sqlx::query(
-        "DELETE FROM messages WHERE folder = $2 AND \
-                 receiver_id = $1",
+        "DELETE FROM messages WHERE folder = $2 AND receiver_id = $1 \
+         AND saved = 0",
     )
     .bind(user_id)
     .bind(box_id)
-    .execute(&repo.db)
-    .await
-    .map_err(|e| crate::errors::DomainError::Internal(e.into()))
-    .unwrap_or_default();
-    sqlx::query("DELETE FROM pmboxes WHERE id = $2 AND user_id = $1")
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        "UPDATE messages SET location = 0, folder = NULL \
+         WHERE folder = $2 AND receiver_id = $1",
+    )
+    .bind(user_id)
+    .bind(box_id)
+    .execute(&mut *tx)
+    .await?;
+    let n = sqlx::query("DELETE FROM pmboxes WHERE id = $2 AND user_id = $1")
         .bind(user_id)
         .bind(box_id)
-        .execute(&repo.db)
-        .await
-        .map_err(|e| crate::errors::DomainError::Internal(e.into()))
-        .unwrap_or_default()
-        .rows_affected() as i64
+        .execute(&mut *tx)
+        .await?
+        .rows_affected() as i64;
+    tx.commit().await?;
+    Ok(n)
 }
 
 /// 已有文件夹数（上限判定用；读失败按 0 放行）。
@@ -66,16 +86,16 @@ pub async fn count_boxes(repo: &Repo, user_id: i64) -> i64 {
         .unwrap_or(0)
 }
 
-/// 新建（同名则改名，UPSERT 返回 id）。
-pub async fn upsert_box(
+/// 新建。重名由唯一约束拒绝（`user_id, name`），调用方把
+/// `is_unique_violation` 译成「已有同名文件夹」——不能像旧版那样
+/// `ON CONFLICT DO UPDATE ... RETURNING id` 把重名当成新建成功。
+pub async fn insert_box(
     repo: &Repo,
     user_id: i64,
     name: &str,
 ) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(
-        "INSERT INTO pmboxes (user_id, name) VALUES ($1, $2) \
-         ON CONFLICT (user_id, name) DO UPDATE SET \
-         name = EXCLUDED.name RETURNING id",
+        "INSERT INTO pmboxes (user_id, name) VALUES ($1, $2) RETURNING id",
     )
     .bind(user_id)
     .bind(name)
@@ -83,20 +103,20 @@ pub async fn upsert_box(
     .await
 }
 
-/// 改名。返回受影响行数（0 = 未命中）。
+/// 改名。返回受影响行数（0 = 未命中）；重名由唯一约束拒绝，由调用方
+/// 译成「已有同名文件夹」而不是静默吞成 0 行（旧版吞错后回 404
+/// 「资源不存在」，把「名字被占用」演成「文件夹不存在」）。
 pub async fn rename_box(
     repo: &Repo,
     user_id: i64,
     box_id: i64,
     name: &str,
-) -> i64 {
+) -> Result<i64, sqlx::Error> {
     sqlx::query("UPDATE pmboxes SET name = $3 WHERE id = $2 AND user_id = $1")
         .bind(user_id)
         .bind(box_id)
         .bind(name)
         .execute(&repo.db)
         .await
-        .map_err(|e| crate::errors::DomainError::Internal(e.into()))
-        .unwrap_or_default()
-        .rows_affected() as i64
+        .map(|r| r.rows_affected() as i64)
 }

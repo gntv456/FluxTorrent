@@ -43,6 +43,20 @@ struct BoxReq {
     name: String,
 }
 
+/// 文件夹写口的错误归一（P-490/P-491）：`pmboxes` 有
+/// `UNIQUE (user_id, name)`；重名在旧版被 `unwrap_or_default` 吞成 0 行，
+/// 于是「改名撞名」回 404 资源不存在（0.10 实测），「新建撞名」更被
+/// `ON CONFLICT DO UPDATE` 演成 200 新建成功而列表一封没多。
+/// 两处都改成把唯一键冲突译成可读的 1002。
+fn map_box_write<T>(r: Result<T, sqlx::Error>) -> DomainResult<T> {
+    r.map_err(|e| match e {
+        sqlx::Error::Database(db) if db.is_unique_violation() => {
+            DomainError::Validation("已有同名文件夹".into())
+        }
+        e => DomainError::Internal(e.into()),
+    })
+}
+
 /// 新建/改名/删除（editmailboxes 口径：一人最多 3 个、名 ≤14 字；
 /// 清空名 = 删除并连带清信）
 #[utoipa::path(
@@ -73,8 +87,12 @@ pub(crate) async fn message_box_upsert(
                 "删除文件夹要给出它的 id（清空名称即表示删除）".into(),
             ));
         };
-        let gone =
-            crate::repo::pmboxes::delete_box(&state.repo, auth.id, bid).await;
+        // P-489：repo 里做的是「双删语义」——发件方仍存副本时只摘
+        // 收件方这一侧，不再物理抹掉（旧版无条件 DELETE，实测把
+        // sender 发件箱里 saved=1 的信一起删了）。
+        let gone = map_box_write(
+            crate::repo::pmboxes::delete_box(&state.repo, auth.id, bid).await,
+        )?;
         if gone == 0 {
             return Err(DomainError::NotFound(bid));
         }
@@ -90,22 +108,24 @@ pub(crate) async fn message_box_upsert(
             if n >= 3 {
                 return Err(DomainError::Validation("最多 3 个文件夹".into()));
             }
-            let id =
-                crate::repo::pmboxes::upsert_box(&state.repo, auth.id, name)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
+            let id = map_box_write(
+                crate::repo::pmboxes::insert_box(&state.repo, auth.id, name)
+                    .await,
+            )?;
             Ok(ok(serde_json::json!({ "id": id })))
         }
         Some(bid) => {
-            let n = crate::repo::pmboxes::rename_box(
-                &state.repo,
-                auth.id,
-                bid,
-                name,
-            )
-            .await;
+            let n = map_box_write(
+                crate::repo::pmboxes::rename_box(
+                    &state.repo,
+                    auth.id,
+                    bid,
+                    name,
+                )
+                .await,
+            )?;
             if n == 0 {
-                return Err(DomainError::NotFound(0));
+                return Err(DomainError::NotFound(bid));
             }
             Ok(ok(serde_json::json!({ "renamed": true })))
         }
