@@ -32,8 +32,9 @@ export function CommentLikeButton({
       setLiked(r.liked);
       setLikes(r.likes);
     } catch (e) {
-      // 自赞（业务校验）就地提示；其余静默（网络异常下次点击重试）
-      if (e instanceof ApiError && e.code === 1003) {
+      // 自赞是业务校验（DomainError::Validation ⇒ code 1002）；1003 是
+      // web→api 网关不通，不是这一层能就地解释的错。
+      if (e instanceof ApiError && e.code === 1002) {
         // W-24 反馈协议：alert → toast.error（request_id 可诊断）
         toast.error(e.message, { requestId: e.requestId });
       }
