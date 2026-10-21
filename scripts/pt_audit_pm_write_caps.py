@@ -23,6 +23,10 @@ MB 的信，而且这封信会原样进收件箱、web-push 载荷与邮件正�
         的请求必须放行到下一道校验；前后 messages/staffmessages 的 count/max(id)
         不变 ⇒ 「先落库再报错」没发生
 跑法：python -u scripts/pt_audit_pm_write_caps.py [--live] [--selftest]
+现网实测（2026-10-21 00:10Z，api 容器仍是本批之前的镜像）：C1/C2 回的是
+「收件人不存在…」（400）、C7 直接 200 落库 ⇒ 三条红都是**待部署证据**；
+同时 C4 证明三条私信探针零写入（messages 1507|11244 前后不变），
+C8b 证明职员箱那两封探针信按专属正文清干净（残留 0）。
 """
 import io
 import os
@@ -118,13 +122,16 @@ def live_c1_c4(tok):
                                       "body": "探针"}, token=tok)
     m1 = (r or {}).get("message", "") if isinstance(r, dict) else ""
     ok("C1 主题 121 字 ⇒「主题最长 120 字」（status=%s）" % s,
-       s == 422 and "主题最长 120 字" in m1, m1[:90])
+       s == 422 and "主题最长 120 字" in m1,
+       "详情=%s｜若详情是「收件人不存在…」＝现网二进制未含本批修复（待部署）"
+       % m1[:70])
     s2, r2 = call("POST", "/messages", {"to": "__no_such_member__",
                                        "subject": "探针",
                                        "body": probe_long(5001)}, token=tok)
     m2 = (r2 or {}).get("message", "") if isinstance(r2, dict) else ""
     ok("C2 正文 5001 字 ⇒「正文最长 5000 字」（status=%s）" % s2,
-       s2 == 422 and "正文最长 5000 字" in m2, m2[:90])
+       s2 == 422 and "正文最长 5000 字" in m2,
+       "详情=%s｜同上：回收件人那句＝待部署" % m2[:70])
     s3, r3 = call("POST", "/messages", {"to": "__no_such_member__",
                                        "subject": probe_long(120),
                                        "body": probe_long(5000)}, token=tok)
@@ -145,7 +152,8 @@ def live_c7_c8(tok):
                                           "body": "闸门探针"}, token=tok)
     m = (r or {}).get("message", "") if isinstance(r, dict) else ""
     ok("C7 职员箱主题 101 字 ⇒「主题最长 100 字」（status=%s）" % s,
-       s == 422 and "主题最长 100 字" in m, m[:90])
+       s == 422 and "主题最长 100 字" in m,
+       "详情=%s｜status=200 且 ok＝现网二进制未含 P-467（待部署）" % m[:60])
     s2, r2 = call("POST", "/contactstaff", {"subject": probe_long(100),
                                            "body": "闸门探针"}, token=tok)
     m2 = (r2 or {}).get("message", "") if isinstance(r2, dict) else ""

@@ -149,13 +149,25 @@ def h3_ledger():
 
 
 def selftest():
-    src = read_source()
-    if SITE_DAY not in src:
-        print("SELFTEST 前置失败：源码里没有站点日表达式（本闸门测的就是它）")
+    """负控：把分桶表达式翻回裸 `created_at::date`，H0b/H3 必须同时红。
+
+    第一版在这里写的是「源码里有 SITE_DAY 这个整串」——可 home.rs 那行为了
+    守 80 列被拆成两行 `\` 续行，拼平才等于 SITE_DAY（H0 用的就是拼平后的
+    SQL）。所以前置检查用错了视图，selftest 直接 rc=2 报「源码里没有」，
+    而闸门本体是好的：判据的坏，不是站的坏。改成按**物理行对**翻转。
+    """
+    raw = io.open(HOME_RS, encoding="utf-8", newline="").read()
+    nl = "\r\n" if "\r\n" in raw[:2000] else "\n"
+    lines = raw.split(nl)
+    pair = [(i, ln) for i, ln in enumerate(lines)
+            if ln.strip() == '"SELECT ((created_at AT TIME ZONE \'UTC\') \\']
+    if len(pair) != 1 or "+ interval '8 hours')::date AS d" not in lines[pair[0][0] + 1]:
+        print("SELFTEST 前置失败：找不到那两行续行的分桶表达式（本闸门测的就是它）")
         return 2
-    back = src.replace(SITE_DAY, UTC_DAY)
-    io.open(HOME_RS, "w", encoding="utf-8", newline="").write(
-        back.replace("\n", "\r\n"))
+    i = pair[0][0]
+    flipped = list(lines)
+    flipped[i:i + 2] = ['        "SELECT created_at::date AS d, \\']
+    io.open(HOME_RS, "w", encoding="utf-8", newline="").write(nl.join(flipped))
     try:
         p = subprocess.run([sys.executable, os.path.abspath(__file__)],
                            capture_output=True, encoding="utf-8",
@@ -171,8 +183,9 @@ def selftest():
             return 1
         return 0
     finally:
-        io.open(HOME_RS, "w", encoding="utf-8", newline="").write(src)
-        same = (io.open(HOME_RS, encoding="utf-8", newline="").read() == src)
+        io.open(HOME_RS, "w", encoding="utf-8", newline="").write(raw)
+        same = io.open(HOME_RS, encoding="utf-8",
+                       newline="").read() == raw
         print("SELFTEST 还原字节一致=%s" % same)
 
 
