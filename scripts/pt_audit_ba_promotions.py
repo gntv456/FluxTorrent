@@ -200,11 +200,11 @@ def measure(ann, state, label):
 print("== S0 地基：探针成员 + 探针种（不动站点共享设定）==")
 UID, PK = new_member()
 tid, ih = psql("SELECT t.id || ' ' || trim(t.info_hash) FROM torrents t "
-               "WHERE t.approval_status = 1 ORDER BY t.id DESC LIMIT 1"
-               ).split(" ", 1)
+               "WHERE t.approval_status = 1 AND t.size >= 16 * 1024 * 1024 "
+               "ORDER BY t.id DESC LIMIT 1").split(" ", 1)
 SIZE = int(psql("SELECT size FROM torrents WHERE id = %s" % tid))
 CAT = psql("SELECT category_id FROM torrents WHERE id = %s" % tid)
-ok("探针成员与探针种就位（uid=%s torrent=%s size=%s）" % (UID, tid, SIZE),
+ok("探针成员与探针种就位（uid=%s torrent=%s size=%s；按体积筛，避开别支闸门夹具种）" % (UID, tid, SIZE),
    bool(UID) and bool(PK) and SIZE > 8 * STEP,
    "pk=%s…" % ((PK or "")[:6]))
 if not UID:

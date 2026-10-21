@@ -161,7 +161,8 @@ def selftest():
     lines = raw.split(nl)
     pair = [(i, ln) for i, ln in enumerate(lines)
             if ln.strip() == '"SELECT ((created_at AT TIME ZONE \'UTC\') \\']
-    if len(pair) != 1 or "+ interval '8 hours')::date AS d" not in lines[pair[0][0] + 1]:
+    nxt = pair[0][0] + 1 if len(pair) == 1 else 0
+    if len(pair) != 1 or "+ interval '8 hours')::date AS d" not in lines[nxt]:
         print("SELFTEST 前置失败：找不到那两行续行的分桶表达式（本闸门测的就是它）")
         return 2
     i = pair[0][0]
