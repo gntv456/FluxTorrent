@@ -5,7 +5,7 @@
 > apps/api/src/i18n.rs（三语文案）。CI 跑 `--check`：源码改动而未刷新 → 红灯。
 > 码集对拍（与 index.ts 手写 ErrorCode）见 check_type_drift.mjs 第 4 维。
 
-- 变体 22 个 → 错误码 21 个；i18n 文案 24 条（缺 0 见文末待补清单）
+- 变体 23 个 → 错误码 22 个；i18n 文案 24 条（缺 0 见文末待补清单）
 
 | 码 | 变体 | 触发条件 | zh-CN | zh-TW | en | HTTP |
 |----:|------|----------|-------|-------|----|------|
@@ -22,6 +22,7 @@
 | 2007 | UsernameTaken | 注册/改名的用户名与他人冲突 | 用户名已被占用 | 用戶名已被佔用 | Username already taken | 400 BAD_REQUEST |
 | 2010 | TwoFactorRequired | 密码已对但未提交 2FA 验证码（登录第二步） | 账号已开启两步验证，请填写动态验证码 | 帳號已開啟兩步驗證，請填寫動態驗證碼 | This account has 2FA enabled; enter the 6-digit code | 400 BAD_REQUEST |
 | 2011 | TwoFactorInvalid | 已提交 2FA 验证码但校验不匹配 | 两步验证码不正确，请核对验证器当前 6 位数字 | 兩步驗證碼不正確，請核對驗證器當前 6 位數字 | Incorrect 2FA code; check the current 6 digits | 400 BAD_REQUEST |
+| 2012 | PowRequired | 登录失败达到触发线，缺令牌或令牌失效应重新取题 | 登录尝试较多，需先完成工作量证明 | 登入嘗試較多，需先完成工作量證明 | Too many attempts; solve the proof-of-work first | 400 BAD_REQUEST |
 | 3003 | TorrentInvalid | 种子文件解析失败或不合规（缺 info_hash 等） | 种子文件无效 | 種子檔案無效 | Invalid torrent file | 400 BAD_REQUEST |
 | 3004 | TorrentDuplicate | info_hash 与库中已有种子重复 | 种子重复 | 種子重複 | Duplicate torrent | 400 BAD_REQUEST |
 | 4001 | InsufficientSpark | 经济操作（购买/抽卡/打赏…）火花余额不足 | 余额不足 | 餘額不足 | Insufficient balance | 409 CONFLICT |

@@ -69,7 +69,13 @@ pub async fn login(
                 crate::gaps_http::pow_verify(&state, &token, &sol).await
             {
                 crate::http::counter_bump(&state, &lock_key, 900).await?;
-                return Err(e);
+                // 缺令牌/解无效都回 2012，让前端重新取题后自动重提；
+                // 旧版原样透出 1002「参数校验失败」，客户端无从恢复（P-502）。
+                // 注册链路不经这里，仍保留 pow_verify 的 1002 细节口径。
+                return Err(match e {
+                    DomainError::Validation(_) => DomainError::PowRequired,
+                    other => other,
+                });
             }
             pow_token_used = Some(token);
         }

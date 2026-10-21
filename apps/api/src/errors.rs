@@ -40,6 +40,9 @@ pub enum DomainError {
     /// 登录两步验证码不正确（已填但校验失败）
     #[error("两步验证码不正确，请核对验证器当前 6 位数字")]
     TwoFactorInvalid,
+    /// 登录连续失败后需先完成工作量证明（P-502）：客户端重新取题求解后重提
+    #[error("登录尝试较多，需先完成工作量证明")]
+    PowRequired,
     #[error("种子文件无效: {0}")]
     TorrentInvalid(String),
     #[error("种子重复")]
@@ -94,6 +97,8 @@ impl DomainError {
             DomainError::TwoFactorRequired => 2010,
             // 2011 TwoFactorInvalid：已提交 2FA 验证码但校验不匹配
             DomainError::TwoFactorInvalid => 2011,
+            // 2012 PowRequired：登录失败达到触发线，缺令牌或令牌失效应重新取题
+            DomainError::PowRequired => 2012,
             // 4001 InsufficientSpark：经济操作（购买/抽卡/打赏…）火花余额不足
             DomainError::InsufficientSpark => 4001,
             // 4002 LedgerConflict：spark_ledger 乐观并发版本冲突，客户端应重试
@@ -134,7 +139,8 @@ impl DomainError {
             | DomainError::Validation(_)
             | DomainError::FieldErrors(_)
             | DomainError::TwoFactorRequired
-            | DomainError::TwoFactorInvalid => StatusCode::BAD_REQUEST,
+            | DomainError::TwoFactorInvalid
+            | DomainError::PowRequired => StatusCode::BAD_REQUEST,
             // 429 与 openapi 文档（openapi_http.rs 429 描述）及 _ratelimit_check 口径一致
             DomainError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             DomainError::InsufficientSpark | DomainError::LedgerConflict => {
@@ -248,4 +254,17 @@ pub fn db_to_domain(e: sqlx::Error, what: &str) -> DomainError {
         }
     }
     DomainError::Internal(e.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// P-502：登录 PoW 闸门必须发 2012，前端据此重新取题并自动重提
+    #[test]
+    fn pow_required_maps_to_2012() {
+        let e = DomainError::PowRequired;
+        assert_eq!(e.code(), 2012);
+        assert_eq!(e.status(), StatusCode::BAD_REQUEST);
+    }
 }

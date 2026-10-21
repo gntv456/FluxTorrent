@@ -28,6 +28,8 @@ export const ErrorCode = {
   USERNAME_TAKEN: 2007,
   TWO_FACTOR_REQUIRED: 2010,
   TWO_FACTOR_INVALID: 2011,
+  // 登录连续失败后需完成工作量证明（P-502）：前端取题求解后自动重提
+  POW_REQUIRED: 2012,
   // 3xxx 种子
   TORRENT_INVALID_FILE: 3003,
   TORRENT_DUPLICATE: 3004,

@@ -24,7 +24,6 @@ interface LoginResp {
   user: { id: number; username: string; class_id: number };
 }
 
-
 /** SVG 图标（theme.css：stroke 1.8 / round，25×25 左侧嵌入输入框） */
 export function IconUser() {
   return (
@@ -123,6 +122,7 @@ export function LoginForm() {
       // 处处报「请先修改密码」——登录成功即引导直达「我的 → 安全」改密。
       router.push(resp.must_reset_password ? "/my?tab=security" : next);
     } catch (err) {
+      powRef.current = null; // 服务端已 GETDEL 消费本次令牌，下轮重解
       if (err instanceof ApiError) {
         // 展示优先级：字典文案（三语）→ 后端 message（兜底，含具体原因）→ 通用失败
         // 不再显示「登录失败（数字码）」——用户看不懂错误码，必须给文字原因
