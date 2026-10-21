@@ -25,8 +25,10 @@ pub(crate) async fn highspeed_tag(db: &PgPool) -> anyhow::Result<u64> {
     Ok(res.rows_affected())
 }
 
-/// 复活任务自动验收（0073，U3D Graveyard 口径）：领取者补种累计时长 ≥ required_hours
-/// 且当前仍在做种 → 发奖（火花 + 1 枚免费券）+ 种子挂 7 天 free bump + 站内信。
+/// 复活任务自动验收（0073，U3D Graveyard 口径）：领取后**新增**做种时长
+/// ≥ required_hours 且当前仍在做种 → 发奖（火花 + 1 枚免费券）+ 种子挂 7 天
+/// free bump + 站内信。基线在领取时快照进 seed_base_seconds（P-483）：
+/// 此前用累计 seeded_seconds 判定，老会员领任务后下一跳就达标，等于白送。
 /// 幂等：状态 CAS（open→done），奖励只随成功转移发放一次。
 pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
     // 三轮审计 P2（2026-10-07）：候选集只读（不再 CTE 内置 done）——旧版
@@ -41,7 +43,8 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
           AND EXISTS (SELECT 1 FROM snatches s
                       WHERE s.user_id = r.user_id
                         AND s.torrent_id = r.torrent_id
-                        AND s.seeded_seconds >= r.required_hours * 3600
+                        AND s.seeded_seconds >= r.seed_base_seconds
+                            + r.required_hours * 3600
                         AND s.seeding
                         -- P0-2（2026-10-07 保种组审计）：幽灵挂种不计——实测
                         -- port=0 纯 curl announce 无文件无下载即可累计做种时长

@@ -18,6 +18,7 @@ pub use jixiao::*;
 use jixiao_claim::*;
 pub use onboarding::*;
 use preserve::*;
+pub(crate) use resurrections::DEAD_TORRENT_CLAUSE;
 use resurrections::*;
 use task_overview::*;
 use tasks::*;

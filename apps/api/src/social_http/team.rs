@@ -51,17 +51,26 @@ async fn team_create(
     }
     let tid = body.torrent_id;
 
-    // 与 resurrections/claim 同口径：须过审，且不能拯救自己发布的种
-    let owner: i64 = sqlx::query_scalar(
-        "SELECT owner_id FROM torrents WHERE id = $1 AND approval_status = 1",
-    )
+    // 与 resurrections/claim 同口径：须过审、不能拯救自己发布的种、且必须
+    // 真是死种（列表谓词共用，P-483）——否则界面上看不到的活种也能占用
+    // `resurrections_torrent_id_key` 的唯一槽位。
+    let (owner, dead) = sqlx::query_as::<_, (i64, bool)>(&format!(
+        "SELECT t.owner_id, ({dead}) AS dead FROM torrents t \
+         WHERE t.id = $1 AND t.approval_status = 1",
+        dead = crate::ops_http::DEAD_TORRENT_CLAUSE
+    ))
     .bind(tid)
     .fetch_optional(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .ok_or(DomainError::NotFound(tid))?;
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .ok_or(DomainError::NotFound(tid))?;
     if owner == auth.id {
         return Err(DomainError::Validation("不能拯救自己发布的种子".into()));
+    }
+    if !dead {
+        return Err(DomainError::Validation(
+            "该种子当前仍有会员在做种或近 30 天有下载活动，无需复活".into(),
+        ));
     }
 
     // 注意：snatches.seeded_seconds 是 INT（非 BIGINT），显式 ::bigint 以便统一按 i64 读
@@ -118,13 +127,15 @@ async fn team_create(
     // torrent_id 是全表唯一约束：一个资源**一辈子**只有一条任务行，
     // 终态行（done/expired）也占位——下面据此说清是「有人在跑」还是「跑完了」
     let ins = sqlx::query(
-        "INSERT INTO resurrections (torrent_id, user_id, required_hours, reward_sparks, team_id) \
-         VALUES ($1, $2, $3, 5000, $4) ON CONFLICT (torrent_id) DO NOTHING",
+        "INSERT INTO resurrections (torrent_id, user_id, required_hours, \
+         reward_sparks, team_id, seed_base_seconds) \
+         VALUES ($1, $2, $3, 5000, $4, $5) ON CONFLICT (torrent_id) DO NOTHING",
     )
     .bind(tid)
     .bind(auth.id)
     .bind(hours)
     .bind(team_id)
+    .bind(seed0)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
