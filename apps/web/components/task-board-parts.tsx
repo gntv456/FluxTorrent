@@ -59,6 +59,7 @@ export interface TaskOverview {
     metric?: Record<string, number>;
     current?: {
       uploaded?: number;
+      downloaded?: number;
       seed_seconds?: number;
       uploads?: number;
       subtitles?: number;
@@ -72,6 +73,7 @@ function progressCells(
   current:
     | {
         uploaded?: number;
+        downloaded?: number;
         seed_seconds?: number;
         uploads?: number;
         subtitles?: number;
@@ -84,9 +86,15 @@ function progressCells(
     .map(([k, v]) => {
       if (k === "upload_delta")
         return `${fmtBytes(current.uploaded ?? 0)} / ${fmtBytes(v)}`;
-      if (k === "download_delta") return `${fmtBytes(v)}`;
-      if (k === "seed_seconds_delta" || k === "seed_points_delta")
+      if (k === "download_delta")
+        return current.downloaded === undefined
+          ? `${fmtBytes(v)}`
+          : `${fmtBytes(current.downloaded)} / ${fmtBytes(v)}`;
+      // seed_points_delta 的单位是小时（结算按 v×3600 秒判），不能同除 3600
+      if (k === "seed_seconds_delta")
         return `${((current.seed_seconds ?? 0) / 3600).toFixed(1)} / ${(v / 3600).toFixed(0)}h`;
+      if (k === "seed_points_delta")
+        return `${((current.seed_seconds ?? 0) / 3600).toFixed(1)} / ${v.toLocaleString()}h`;
       if (k === "uploads") return `${current.uploads ?? 0} / ${v}`;
       if (k === "subtitles") return `${current.subtitles ?? 0} / ${v}`;
       return `${v}`;

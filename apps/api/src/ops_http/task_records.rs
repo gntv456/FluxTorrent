@@ -19,6 +19,7 @@ struct MineRow {
     /// 非空 = 累计口径（tier 等级系列）；空 = 增量口径
     tier: Option<String>,
     base_uploaded: i64,
+    base_downloaded: i64,
     base_seed_seconds: i64,
     base_uploads: i64,
     metric: serde_json::Value,
@@ -35,8 +36,8 @@ pub(super) async fn records(
         "SELECT t.id, t.name, c.status, c.claimed_at, c.settled_at, \
                 (c.claimed_at + (t.duration_days || ' days')::interval) \
                   AS deadline, \
-                t.reward, t.tier, c.base_uploaded, c.base_seed_seconds, \
-                c.base_uploads, t.metric, \
+                t.reward, t.tier, c.base_uploaded, c.base_downloaded, \
+                c.base_seed_seconds, c.base_uploads, t.metric, \
                 (SELECT count(*) FROM subtitles sub WHERE sub.user_id = \
                  c.user_id AND sub.deleted_at IS NULL \
                  AND sub.created_at >= c.claimed_at) AS sub_since \
@@ -48,9 +49,9 @@ pub(super) async fn records(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 指标现值一次性取齐（四源与 task_settle/my_exams 一致）
-    let stats: Option<(i64, i64, i64, i64)> = sqlx::query_as(
-        "SELECT u.uploaded, \
+    // 指标现值一次性取齐（与 task_settle 同源；my_exams 暂无下载源）
+    let stats: Option<(i64, i64, i64, i64, i64)> = sqlx::query_as(
+        "SELECT u.uploaded, u.downloaded, \
                 COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s \
                           WHERE s.user_id = u.id), 0)::bigint, \
                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id \
@@ -63,17 +64,24 @@ pub(super) async fn records(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (cur_up, cur_seed, cur_uploads, cur_subtitles) =
-        stats.unwrap_or((0, 0, 0, 0));
+    let (cur_up, cur_dl, cur_seed, cur_uploads, cur_subtitles) =
+        stats.unwrap_or((0, 0, 0, 0, 0));
 
     Ok(rows
         .iter()
         .map(|r| {
-            let (up, seed, ups, subs) = if r.tier.is_some() {
-                (cur_up, cur_seed, cur_uploads, cur_subtitles)
+            let (up, dl, seed, ups, subs) = if r.tier.is_some() {
+                (
+                    cur_up,
+                    cur_dl,
+                    cur_seed,
+                    cur_uploads,
+                    cur_subtitles,
+                )
             } else {
                 (
                     cur_up - r.base_uploaded,
+                    cur_dl - r.base_downloaded,
                     cur_seed - r.base_seed_seconds,
                     cur_uploads - r.base_uploads,
                     r.sub_since,
@@ -87,7 +95,8 @@ pub(super) async fn records(
                 "reward": r.reward,
                 "metric": r.metric,
                 "current": {
-                    "uploaded": up, "seed_seconds": seed,
+                    "uploaded": up, "downloaded": dl,
+                    "seed_seconds": seed,
                     "uploads": ups, "subtitles": subs,
                 },
             })
