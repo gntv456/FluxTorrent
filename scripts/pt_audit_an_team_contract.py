@@ -13,6 +13,8 @@
   S5 P-38 回归哨兵：模块关着（module_social=no）settle/expire 仍必须
      真跑——契约收尾不受模块开关拦；同日建队 API 被拒（关模块拦的是
      「办新契约」，不是「收尾旧契约」）。
+  S0c P-483 回归哨兵：seeders=1 的濒危种必须能建队（濒危页唯一动线；
+     套死种谓词会把「近 30 天有下载活动」的队长整条拒掉）。
 
 判据纪律：每条「没有」都配正控（该有的出口必须先为真），
 出账断言把「余额增量」与「流水金额」两处一起钉。收尾原样还原
@@ -118,13 +120,14 @@ for _tid in [x for x in _leak.split("\n") if x.strip()]:
     exec_sql("DELETE FROM torrents WHERE id = %s" % _tid)
 
 
-def probe_torrent(owner_id, tag):
+def probe_torrent(owner_id, tag, seeders=0):
     """直接建一颗探针种（本闸门不打 tracker，纯链上数据）。"""
     name = "AnTeam.%s.%d" % (tag, TS)
     tid = int(q(
         "INSERT INTO torrents (info_hash, name, size, owner_id, "
-        "category_id, approval_status) VALUES (md5(random()::text), "
-        "'%s', 1024, %d, 1, 1) RETURNING id" % (name, owner_id)))
+        "category_id, approval_status, seeders) VALUES "
+        "(md5(random()::text), '%s', 1024, %d, 1, 1, %d) RETURNING id"
+        % (name, owner_id, seeders)))
     CLEAN.append("DELETE FROM torrents WHERE id = %d" % tid)
     return tid
 
@@ -212,6 +215,25 @@ RH = q("SELECT COALESCE((SELECT value::int FROM site_settings WHERE "
        "name = 'resurrection_hours'), 240)")
 ok("S0 探针齐（7 成员/3 种，required_hours=%s）" % RH,
    len(users) == 7 and int(RH) > 0)
+
+# P-483 回归哨兵：濒危页（seeders 1..阈值）的「发起协作」直接调本口。
+# 队长必须先下载才有基线快照，而这次下载就是「近 30 天活动」——组队入口
+# 若套单人死种谓词，这条唯一下单动线会整条 400（P-483 实测回归）。
+EMAX = int(q("SELECT COALESCE((SELECT value::int FROM site_settings "
+             "WHERE name = 'social_endangered_seeders'), 1)"))
+if EMAX >= 1:
+    T5 = probe_torrent(uD, "sx", seeders=1)
+    snatch_touch(uA, T5)
+    s, r = call("POST", "/social/team/create", {"torrent_id": T5}, token=tA)
+    TEAMX = (r.get("data") or {}).get("team_id")
+    if TEAMX:
+        CLEAN.append("DELETE FROM resurrections WHERE team_id = %d" % TEAMX)
+        CLEAN.append("DELETE FROM social_team WHERE id = %d" % TEAMX)
+    ok("S0c seeders=1 濒危种可建队（濒危页唯一动线，P-483 回归）",
+       s == 200 and TEAMX, "http=%s %s" % (s, str(r)[:100]))
+else:
+    print("   WARN social_endangered_seeders=%d：雷达无条目，S0c 跳过"
+          % EMAX)
 
 print("== S1 到期前达标：settle 分账 + 荣誉 + 信誉 + 幂等 ==")
 s, r = call("POST", "/social/team/create", {"torrent_id": T1}, token=tA)

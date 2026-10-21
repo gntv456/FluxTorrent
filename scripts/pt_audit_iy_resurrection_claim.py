@@ -9,14 +9,17 @@
     一天补种都不用做。组队契约那边一直用 `seed_seconds_begin` 增量口径，
     单人是唯一例外。
 
-修法：领取口补死种谓词（列表/领取/组队共用 `DEAD_TORRENT_CLAUSE`），
+修法：领取口补死种谓词（列表/领取共用 `DEAD_TORRENT_CLAUSE`），
 并把领取时的做种秒数快照进 `resurrections.seed_base_seconds`（0415）；
 worker 验收改成 `seeded_seconds >= seed_base_seconds + required_hours*3600`。
+组队入口不吃这把尺：它服务濒危页（seeders 1..阈值），队长必须先下载，
+套死种谓词会把唯一的「发起协作」动线整条拒掉（P-483 回归，见 team.rs）。
 
 判据：
   IY1 静态：领取口引用共用死种谓词，INSERT 带 seed_base_seconds；
   IY2 静态：worker 验收必须同时引用两者（只加列不改谓词＝白加）；
-  IY3 静态：0415 迁移在册，组队建任务也走同一死种谓词；
+  IY3 静态：0415 迁移在册，组队按濒危阈值（不套死种谓词——濒危页
+      按钮要先下载，必然有近期 snatch 活动，套上去等于全拒）；
   IY4 真库 A/B：活种 dead=false、死种 dead=true；摘掉谓词正控放回活种；
   IY5 基线快照：tx 内给死种造 12345s 旧做种，领取查询必须读到 12345；
   IY6 验收 A/B：tx 内建基线 864000 的行——旧谓词选中 1，新谓词 0；
@@ -82,10 +85,12 @@ ok("IY2 worker 验收要求「基線 + 新增」(=%s)"
    "只加列不改验收谓词＝历史做种照样即时达标")
 MIG = read(os.path.join("apps", "api", "migrations",
                         "0415_resurrection_seed_baseline.sql"))
-ok("IY3 0415 迁移在册且组队建任务共用死种谓词",
+ok("IY3 0415 迁移在册且组队按濒危阈值建任务（不套死种谓词）",
    "ADD COLUMN IF NOT EXISTS seed_base_seconds" in MIG
-   and "DEAD_TORRENT_CLAUSE" in TEAM,
-   "迁移缺列会让新 SQL 在重建时 500；组队留旧口径会绕过同一闸门")
+   and "social_endangered_seeders" in TEAM
+   and "DEAD_TORRENT_CLAUSE" not in TEAM,
+   "迁移缺列会让新 SQL 在重建时 500；组队套死种谓词会把濒危页"
+   "「发起协作」整条拒掉（P-483 回归）")
 MINE = CLAIM.split("async fn resurrection_my", 1)[-1]
 ok("IY10 我的任务进度减基线（=%s）"
    % ("- r.seed_base_seconds" in MINE),

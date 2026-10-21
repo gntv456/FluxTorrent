@@ -9,10 +9,12 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-/// 死种口径（列表、领取、组队共用）：没有做种者，且近 30 天无人从本站
+/// 死种口径（列表、单人领取共用）：没有做种者，且近 30 天无人从本站
 /// snatch 过该种。领取口必须与列表同一把尺——否则界面上看不到的活种
 /// 也能直接打接口认领（P-483 实测：seeders=2 的种 claim 回 200），还会
 /// 占掉 `resurrections_torrent_id_key` 的唯一槽位，让真正的抢救排不进来。
+/// 组队入口**不**用这把尺：它服务的是濒危页（seeders 1..阈值），队长下载
+/// 后再发起协作，必然有近期 snatch 活动（见 social_http/team.rs）。
 pub(crate) const DEAD_TORRENT_CLAUSE: &str =
     "t.seeders = 0 AND NOT EXISTS (SELECT 1 FROM snatches s \
      WHERE s.torrent_id = t.id \

@@ -15,7 +15,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::endangered::social_disabled;
+use super::endangered::{setting_i64, social_disabled};
 
 // ============ 组队契约（把单人复活任务扩展为多人协作）============
 //
@@ -51,25 +51,28 @@ async fn team_create(
     }
     let tid = body.torrent_id;
 
-    // 与 resurrections/claim 同口径：须过审、不能拯救自己发布的种、且必须
-    // 真是死种（列表谓词共用，P-483）——否则界面上看不到的活种也能占用
-    // `resurrections_torrent_id_key` 的唯一槽位。
-    let (owner, dead) = sqlx::query_as::<_, (i64, bool)>(&format!(
-        "SELECT t.owner_id, ({dead}) AS dead FROM torrents t \
+    // 组队口径是「濒危」而非「已死」：/endangered 雷达列出 1..阈值的做种者，
+    // 按钮直接调本口；队长必须先下载（见下方基线快照）——这次下载本身就是
+    // 「近 30 天活动」，若套用单人死种谓词，页面上的「发起协作」将必然 400。
+    // 阈值与雷达共用 social_endangered_seeders；0 做种也允许（有人存着数据
+    // 就能组队抢救），只要不占用健康种的唯一任务槽位。
+    let (owner, seeders) = sqlx::query_as::<_, (i64, i32)>(
+        "SELECT t.owner_id, t.seeders FROM torrents t \
          WHERE t.id = $1 AND t.approval_status = 1",
-        dead = crate::ops_http::DEAD_TORRENT_CLAUSE
-    ))
+    )
     .bind(tid)
     .fetch_optional(&state.repo.db)
     .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .ok_or(DomainError::NotFound(tid))?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .ok_or(DomainError::NotFound(tid))?;
     if owner == auth.id {
         return Err(DomainError::Validation("不能拯救自己发布的种子".into()));
     }
-    if !dead {
+    let endangered_max =
+        setting_i64(&state.repo.db, "social_endangered_seeders", 1).await;
+    if i64::from(seeders) > endangered_max {
         return Err(DomainError::Validation(
-            "该种子当前仍有会员在做种或近 30 天有下载活动，无需复活".into(),
+            "该种子当前做种者充足，尚未濒危，无需组队保种".into(),
         ));
     }
 
