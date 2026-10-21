@@ -107,10 +107,10 @@ try:
     msg2 = (r2 or {}).get("message") or ""
     same = psql("SELECT count(*) FROM pmboxes WHERE user_id=%s AND name='%s'"
                 % (ROOTID, BOX_A))
-    ok("CV1 新建撞名：必须 422/1002「已有同名文件夹」（实测 http=%s "
+    ok("CV1 新建撞名：必须 400/1002「已有同名文件夹」（实测 http=%s "
        "code=%s msg=%s；修前 200 且回旧 id），同名单夹必须仍只有 %s 行"
        % (s2, code2, msg2[:24], same),
-       s2 == 422 and code2 == 1002 and "同名" in msg2 and same == "1",
+       s2 == 400 and code2 == 1002 and "同名" in msg2 and same == "1",
        "http=%s code=%s same=%s" % (s2, code2, same))
 
     # ===== CV2 改名撞名 =====
@@ -120,10 +120,10 @@ try:
     msg3 = (r3 or {}).get("message") or ""
     name_b = psql("SELECT name FROM pmboxes WHERE id=%d" % id_b)
     name_a = psql("SELECT name FROM pmboxes WHERE id=%s" % id_a)
-    ok("CV2 改名撞名：必须 422/1002「已有同名文件夹」且两个夹子名字都不动"
+    ok("CV2 改名撞名：必须 400/1002「已有同名文件夹」且两个夹子名字都不动"
        "（实测 http=%s code=%s msg=%s；修前 404 资源不存在）；"
        "B=%s A=%s" % (s3, code3, msg3[:24], name_b, name_a),
-       s3 == 422 and code3 == 1002 and "同名" in msg3
+       s3 == 400 and code3 == 1002 and "同名" in msg3
        and name_b == BOX_B and name_a == BOX_A,
        "http=%s code=%s B=%s A=%s" % (s3, code3, name_b, name_a))
 
