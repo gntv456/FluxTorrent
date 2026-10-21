@@ -3,6 +3,17 @@
 链路：价目表 → 购买一级置顶（扣魔力流水）→ torrents.pos_state 生效 → 列表排序置顶
      → 同幂等键重试不双扣 → 续购顺延 → 购买限时免费 → promotions 生效（列表 free 角标口径）
      → 权限（非本人被拒）→ 环境还原。
+
+⚠️ 本脚本在 HEAD 里就是坏的，别当回归用（10-21 实录；我只补了「取探针种」那一处
+   前置，其余留给站方修或删）：
+     - 4 处 SQL 跨行拼接丢空格（`ORDERBY` / `WHEREid=` / `free'AND` / `-interval`）
+       ⇒ psql 报错，而 helper 只回 stdout ⇒ `int('')` 崩在断言之前；
+     - 3 处 SQL 少了 f 前缀 ⇒ 语句里是字面量 `{tid}`；
+     - 幂等键按客户原键等值查，服务端存的其实是 `promo:<uid>:<客户键>`
+       ⇒ 「没落流水」是假红；收尾同错 ⇒ 「环境还原」是永远成立的空判据；
+     - 拿 root 余额相等当幂等判据：root 会被 worker 的做种奖励随时充值
+       （实测 20 分钟内 7575 → 95000+）⇒ 竞态判据。
+   这条链路的常驻覆盖已迁到 scripts/pt_audit_gq_promo_buy.py（GQ1~GQ9）。
 """
 import json
 import subprocess
@@ -50,9 +61,15 @@ s, r = call("POST", "/auth/login", {"username": "root",
 tok = r["data"]["token"]
 
 # 选一个 root 自己的过审种做探针
-tid = int(psql(
-    "SELECT id FROM torrents WHERE owner_id = 1 AND approval_status = 1 ORDER"
-        "BY id LIMIT 1"))
+# （修脚本自己的洞：原来两句拼接漏了空格，SQL 变成 `… = 1 ORDERBY id` ⇒
+#   psql 报错、stdout 空串 ⇒ `int('')` 崩在第一行，断言一条都没跑到；
+#   而下一行的 `assert tid` 永远走不到，等于没有前置检查。）
+tid_raw = psql("SELECT id FROM torrents WHERE owner_id = 1 AND "
+               "approval_status = 1 ORDER BY id LIMIT 1")
+if not tid_raw.strip().isdigit():
+    raise SystemExit("前置失败：root 名下取不到过审种（psql 读数=%r，"
+                     "多半是 SQL 报错被 helper 吞了）" % tid_raw)
+tid = int(tid_raw)
 assert tid, "no owned torrent"
 
 # ---------- 价目表 ----------
