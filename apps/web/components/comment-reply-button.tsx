@@ -10,7 +10,7 @@ export const REPLY_EVENT = "flux:comment-reply";
 
 export interface ReplyTarget {
   torrentId: number;
-  /** 根楼层 id（点在回复上也是回复其根） */
+  /** 被回复评论 id（后端归一到根楼层；回复楼中楼时据此写 reply_to_user） */
   targetId: number;
   targetUser: string;
 }

@@ -244,10 +244,12 @@ export function Comments({
             {c.body}
           </p>
           <div className="td-comment__ops">
+            {/* 传被回复评论本身：后端会归一到根楼层，并用它写
+                reply_to_user。传根楼层会丢掉「回复 @某条回复」的标注。 */}
             <CommentReplyButton
               target={{
                 torrentId,
-                targetId: c.parent_id ?? c.id,
+                targetId: c.id,
                 targetUser: c.username ?? "",
               }}
             />
