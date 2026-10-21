@@ -26,12 +26,16 @@
 //! 换正确性不亏。
 
 mod exec;
+mod grant_state;
 
 pub use exec::{exec_isolated, fetch_all_isolated, fetch_scalar_i64_isolated};
+use grant_state::{
+    grant_in_critical_section, ledger_expectation, ledger_state, same_set,
+};
 
 use sqlx::postgres::Postgres;
 use sqlx::PgPool;
-use sqlx::{Acquire, Transaction};
+use sqlx::Transaction;
 
 use crate::errors::{DomainError, DomainResult};
 use crate::plugin_ctx::{DbCapability, DbMode};
@@ -94,6 +98,19 @@ fn split_tables(caps: &[DbCapability]) -> (Vec<String>, Vec<String>) {
 ///
 /// 失败（无 CREATEROLE / 迁移未跑）一律降级为 `role: None`，不抛错——
 /// 见模块头「降级语义」。
+///
+/// ⚠️ 2026-10-21 缺陷修复（现网实证：官种置顶插件每次发种都报
+/// 「pin update failed / permission denied for table torrents」）：
+/// 旧实现**每次分发都**「revoke 全撤 → 再 grant」。而发种是**双重分发**
+/// ——upload.rs 内联 `dispatch_upload` 一次 + 领域事件消费端
+/// `dispatch_upload_pool` 一次——两个 ensure_isolation 并发跑时，一个的
+/// `REVOKE ALL PRIVILEGES` 会把插件角色授权清零，另一个正在执行的插件
+/// SQL 当场撞权限墙。改为：
+///   ① 快路：台账（plugin_sql_roles）已登记且与本次声明一致、角色仍在册
+///      → 直接用，**不撤不授**（稳态零写，窗口消失）；
+///   ② 慢路：事务 + `pg_advisory_xact_lock` 临界区内撤授，并发首分发
+///      串行化；授权随事务提交原子可见。能力收窄只可能来自声明变更，
+///      由台账漂移触发，不必每次事件重放。
 pub async fn ensure_isolation(
     pool: &PgPool,
     name: &str,
@@ -105,18 +122,18 @@ pub async fn ensure_isolation(
     } else {
         DbMode::Write
     };
+    let (want_tables, want_mode) = ledger_expectation(&read, &write);
 
     // 迁移未跑（老库/跳号）时函数不存在；这一层也要能降级。
-    let role: Option<String> =
+    let Some(role) =
         sqlx::query_scalar::<_, String>("SELECT flux_plugin_role_name($1)")
             .bind(name)
             .fetch_optional(pool)
             .await
             .ok()
             .flatten()
-            .filter(|r| !r.is_empty());
-
-    let Some(role) = role else {
+            .filter(|r| !r.is_empty())
+    else {
         tracing::warn!(
             plugin = name,
             "插件 DB 角色隔离不可用（迁移 0378 未跑？），退回纯 sql_guard 模式"
@@ -128,40 +145,60 @@ pub async fn ensure_isolation(
         };
     };
 
-    // 授权：先撤后授，保证「能力收窄」真的收窄了（只授不撤会累积）。
-    // 两张表单分开授——读表给 SELECT，写表才给写权限。
-    let _ = sqlx::query("SELECT flux_plugin_revoke($1)")
-        .bind(name)
-        .execute(pool)
-        .await;
-    if !read.is_empty() {
-        let _ = sqlx::query("SELECT flux_plugin_grant($1, $2, 'read')")
-            .bind(name)
-            .bind(&read)
-            .execute(pool)
-            .await;
-    }
-    if !write.is_empty() {
-        let _ = sqlx::query("SELECT flux_plugin_grant($1, $2, 'write')")
-            .bind(name)
-            .bind(&write)
-            .execute(pool)
-            .await;
+    // ① 快路：台账一致 + 角色在册 → 零写返回
+    if let Some((tables, m, role_alive)) = ledger_state(pool, name, &role).await
+    {
+        if role_alive && m == want_mode && same_set(&tables, &want_tables) {
+            return Isolation {
+                role: Some(role),
+                tables: read,
+                mode,
+            };
+        }
     }
 
-    // 站点连接必须能 SET ROLE 到该角色（NOINHERIT 的反面：需要 SET TRUE）。
-    // 权限不足时静默降级——SET 权拿不到不代表角色不存在。
+    // ② 慢路（台账缺失/声明漂移/角色被删）：临界区内撤授。
+    // 先无锁双检一次——等锁前可能已有并发者按同样声明授完。
+    if let Some((tables, m, role_alive)) = ledger_state(pool, name, &role).await
+    {
+        if role_alive && m == want_mode && same_set(&tables, &want_tables) {
+            return Isolation {
+                role: Some(role),
+                tables: read,
+                mode,
+            };
+        }
+    }
+    if !grant_in_critical_section(pool, name, &read, &write).await {
+        return Isolation {
+            role: None,
+            tables: read,
+            mode,
+        };
+    }
+    // 锁内双检通过/新授完成都可能已满足；再确认一次台账与角色
+    let settled = ledger_state(pool, name, &role)
+        .await
+        .map(|(tables, m, alive)| {
+            alive && m == want_mode && same_set(&tables, &want_tables)
+        })
+        .unwrap_or(false);
+    // 站点连接必须能 SET ROLE 到该角色（NOINHERIT 的反面：需要 SET TRUE）
     let can_set: bool =
         sqlx::query_scalar("SELECT pg_has_role(current_user, $1, 'USAGE')")
             .bind(&role)
             .fetch_one(pool)
             .await
             .unwrap_or(false);
-    if !can_set {
+    if !settled || !can_set {
+        // 授权没落地（如无 CREATEROLE）或切不过去：降级到纯 sql_guard，
+        // 别让插件 SQL 抱着空授权去撞权限墙（那正是本修复要消灭的症状）
         tracing::warn!(
             plugin = name,
             role = %role,
-            "站点连接无 SET ROLE 权限，插件退回纯 sql_guard 模式"
+            settled,
+            can_set,
+            "插件 DB 角色授权未落地/不可用，退回纯 sql_guard 模式"
         );
         return Isolation {
             role: None,
