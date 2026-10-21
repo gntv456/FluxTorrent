@@ -106,6 +106,13 @@ def rust_blob():
 # `name = 'module_' || m.module_key`（拼接前缀，不是完整键名）。
 NOROW_NOISE = {"module_"}
 KEYREAD = re.compile(r"(?:^|[^a-z])name\s*=\s*'([a-z0-9_]+)'(?!\s*\|\|)")
+# 0413 又抓到一类：键名不写在 SQL 里，而是当**帮助函数实参**传进去
+# （`eco_i64(state, "games_fishing_event_seed_hours", 20)`）——只认
+# `name = '字面量'` 就看不见整类调用。两类都算「代码在读」。
+HELPER = re.compile(
+    r"\b(?:eco_i64|eco_f64|eco_str|eco_bool|eco_text|setting_i64"
+    r"|setting_str|get_setting|cfg_i64|cfg_str|site_int|site_str"
+    r"|site_bool)\s*\(\s*[^,]+,\s*\"([a-z0-9_]+)\"")
 
 
 def v4_no_row(rust, dbf, all_meta):
@@ -115,19 +122,25 @@ def v4_no_row(rust, dbf, all_meta):
     for blob in (rust, dbf):
         for m in KEYREAD.finditer("\n" + blob):
             cand.add(m.group(1))
+        for m in HELPER.finditer(blob):
+            cand.add(m.group(1))
     unreach = {k for k in cand if k not in all_meta and k not in rows}
     noise = sorted(unreach & NOROW_NOISE)
     gap = sorted(unreach - NOROW_NOISE)
     ok("V4 「代码在读 + 库里无行 + 面板无登记」的键必须为空（读不到就是面板摸不到）",
        not gap, "缺口=%s｜已排除噪声=%s｜候选键=%d" % (gap, noise, len(cand)))
-    # V4z 正控（0412 落地前这条就是当时的现场）：把刚补登记的键从「已登记」集合里
-    # 拿掉，检测器必须重新点名它——否则「V4 绿」只是尺子没看见东西。
-    probe = "games_coupon_seed_hours"
-    meta_wo = all_meta - {probe}
-    rows_wo = rows - {probe}
+    # V4z 正控（0412/0413 落地前这条就是当时的现场）：把补登记的键从集合里拿掉，
+    # 检测器必须重新点名它们——否则「V4 绿」只是尺子没看见东西。
+    # 后两把只能靠 HELPER 那条读法才看得见（键名是函数实参，不在 SQL 里），
+    # 所以这个正控同时也在钉「读法覆盖面」没退回去。
+    probes = ["games_coupon_seed_hours", "farm_fertilize_spark",
+              "games_fishing_event_seed_hours"]
+    meta_wo = all_meta - set(probes)
+    rows_wo = rows - set(probes)
     again = {k for k in cand if k not in meta_wo and k not in rows_wo}
-    ok("V4z 正控：撤掉 0412 的登记后必须重新点名 %s" % probe,
-       probe in again, "撤掉后缺口=%s" % sorted(again - NOROW_NOISE))
+    missed = [k for k in probes if k not in again]
+    ok("V4z 正控：撤掉这三把登记后检测器必须重新点名（缺=%s）" % (missed or "无"),
+       not missed, "撤掉后缺口=%s" % sorted(again - NOROW_NOISE))
     return len(cand)
 
 
@@ -138,7 +151,10 @@ def v4_no_row(rust, dbf, all_meta):
 # 同卡片已在册的 pet_feed_cost 当对照——对照不在＝判据坏，不是站坏。
 PANEL_KEYS = ["webhook_timeout_secs", "webhook_retry_times",
               "webhook_failure_threshold", "webhook_sign_secret",
-              "games_coupon_seed_hours"]
+              "games_coupon_seed_hours",
+              # 0413：帮助函数式读法扫出来的三把（当时同样是无行/无登记）
+              "farm_fertilize_spark", "games_fishing_event_seed_hours",
+              "fishing_event_enabled"]
 PANEL_REF = "pet_feed_cost"
 
 
@@ -163,8 +179,8 @@ def v5_panel(tok):
     ok("V5z 正控：对照字段 %s 必须在面板 schema 里（不在＝解析坏）" % PANEL_REF,
        PANEL_REF in names, "收集到字段名=%d" % len(names))
     miss = [k for k in PANEL_KEYS if k not in names]
-    ok("V5 五把补登记的参数面板真摸得到（P-462 四把 + P-469 口粮券）",
-       not miss, "缺=%s" % miss)
+    ok("V5 补登记的 %d 把参数面板真摸得到（P-462/P-469/P-470）"
+       % len(PANEL_KEYS), not miss, "缺=%s" % miss)
 
 
 def main():
