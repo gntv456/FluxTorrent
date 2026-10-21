@@ -115,8 +115,9 @@ diff = [k for k in S if not eqv(r2["data"].get(k), S[k])]
 check("复原原值", not diff, f"diff={diff[:6]}")
 
 # ---- 4. 安全链路 ----
-# 4a. passkey 轮换
-st, r = call("POST", "/me/passkey/rotate", {}, token=tok)
+# 4a. passkey 轮换（P-409：轮换要复核本人密码）
+st, r = call("POST", "/me/passkey/rotate", {"password": "password123"},
+             token=tok)
 check("passkey轮换", st == 200 and len(r["data"]["passkey"]) == 32, f"got {st}")
 # 4b. 改密：错误旧密码拒绝
 st, r = call("POST", "/me/password/change", {"old_password": "wrong-old",

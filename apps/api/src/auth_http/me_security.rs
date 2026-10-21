@@ -14,8 +14,23 @@ use crate::state::AppState;
 pub async fn rotate_passkey(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<PasskeyRotateReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    // P-409：一次轮换同时发新钥、废旧钥、撤下载键与 RSS token，且**不触发
+    // 任何登出联动**——会话被偷的人不只白拿一份新的 tracker/RSS 身份，还能
+    // 把原主所有下载器与命名订阅打成 401。与改密同一把尺：先复核本人。
+    // 复核要试密码，故与 pwchange 同样按用户限流，别把这里变成新的 oracle。
+    crate::http::rate_window(&state, &format!("pkrotate:{}", auth.id), 5, 60)
+        .await?;
+    crate::twofa_http::step_up(
+        &state,
+        auth.id,
+        &body.password,
+        body.code,
+        "重置密钥",
+    )
+    .await?;
     // 自助「重置密钥」= 安全处置动作 ⇒ grace=false，旧钥当场失效
     // （留宽限窗等于没撤销；改密顺带轮换那条路才给宽限，见
     // repo::update_passkey 与 me_security 的改密分支）
@@ -149,4 +164,14 @@ pub async fn me_password_change(
 pub(super) struct PasswordChangeReq {
     pub(super) old_password: String,
     pub(super) new_password: String,
+}
+
+/// P-409：`{}`（旧前端/裸按钮）也走 step_up 的中文「需先复核密码」，
+/// 不让 actix 的解析错误先把它折成一句无上下文的坏请求。
+#[derive(Deserialize)]
+pub(super) struct PasskeyRotateReq {
+    #[serde(default)]
+    pub(super) password: String,
+    #[serde(default)]
+    pub(super) code: Option<u32>,
 }

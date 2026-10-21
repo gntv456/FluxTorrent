@@ -40,7 +40,11 @@ for path in ("/me/overview", "/me/settings"):
         pass
 if not pk:
     # 兜底：rotate passkey 接口拿新值（会刷新 root passkey，tracker 缓存 60s 内跟进）
-    req = urllib.request.Request(BASE + "/me/passkey/rotate", method="POST")
+    # P-409：轮换要复核本人密码
+    req = urllib.request.Request(
+        BASE + "/me/passkey/rotate", method="POST",
+        data=json.dumps({"password": "password123"}).encode())
+    req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", f"Bearer {tok}")
     with urllib.request.urlopen(req, timeout=10) as r:
         pk = json.loads(r.read())["data"].get("passkey")

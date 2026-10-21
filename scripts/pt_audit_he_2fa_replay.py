@@ -57,13 +57,15 @@ lg = t.split("fn login_totp_check")[1].split("fn ")[0] if (
 ok("HE2 登录侧仍走带防重放的校验（不许把两把尺统一成裸校验）",
    "totp_verify_login" in lg, "退化＝一枚码可重复用于登录，锁死 acctlock 语义")
 
-# ---------- HE3..HE5 在册：/me/passkey/rotate 只要会话就能「取新钥+废旧钥+撤凭据」 ----------
-# 实测（:8080 现网，探针会员，无旧密码/无 TOTP/无 body）：
+# ---------- HE3..HE5：/me/passkey/rotate 必须复核本人（P-409 已修） ----------
+# 旧形状（:8080 现网实测，探针会员，无旧密码/无 TOTP/无 body）：
 #   POST /me/passkey/rotate -> http=200，返回新 passkey，库里 passkey 已换，
 #   该号未撤销的 RSS token 从 1 变 0（download_keys 同口一起废）；
 #   同文件 `/me/password/change` 用错旧密码 -> 400「旧密码不正确」⇒ 一个文件两把尺。
 # 会话被劫持 = 攻击者拿到新的 tracker/RSS 身份、把受害者所有下载器与命名订阅
 # 打成 401，且**不触发任何登出联动**（改密才抬 logout_nbf）。
+# 修法：step_up（密码必对；开了 2FA 再要当前码）+ 5 次/分限流（复核本身
+# 会试密码，不能变成新的 oracle）；前端拆出 passkey-rotate.tsx 带两个输入。
 SEC = "apps/api/src/auth_http/me_security.rs"
 sec = cut(io.open(os.path.join(ROOT, SEC), encoding="utf-8",
                   errors="replace").read())
@@ -71,12 +73,35 @@ rot = sec.split("fn rotate_passkey")[1].split("#[post")[0] if (
     "fn rotate_passkey" in sec) else ""
 pw = sec.split("fn me_password_change")[1].split("#[derive")[0] if (
     "fn me_password_change" in sec) else ""
-has_reauth = ("verify_password" in rot or "totp_verify" in rot
-              or "old_password" in rot)
-ok("HE3 在册缺口（P-409 未修）：轮换 passkey 仍不需要任何再验证",
-   bool(rot) and not has_reauth,
-   "这条转绿说明有人补上了再验证——把判据改成「rotate 必须验旧密码/TOTP」"
-   "并同步前端（apps/web/components/usercp-security.tsx:106 目前是裸按钮）")
+
+
+def needs_reauth(x):
+    return ("step_up" in x and "rate_window" in x
+            and "password" in x)
+
+
+ok("HE3 轮换 passkey 先复核本人并限流（P-409）",
+   bool(rot) and needs_reauth(rot),
+   "缺 step_up ⇒ 会话被偷即可白拿新钥 + 废旧钥 + 撤 RSS/下载键")
+OLD3 = ("async fn rotate_passkey(req: HttpRequest,\n"
+        "    state: web::Data<std::sync::Arc<AppState>>,\n"
+        ") -> DomainResult<impl Responder> {\n"
+        "    let auth = require_auth(&req, &state).await?;\n"
+        "    let pk = state.repo.update_passkey(auth.id, false).await?;\n}")
+ok("HE3b 承重自证：旧的裸轮换形状必须判红",
+   needs_reauth(OLD3) is False,
+   "打不中＝认不出旧形状，这条判据是橡皮章")
+WEB = "apps/web/components/passkey-rotate.tsx"
+USERC = "apps/web/components/usercp-security.tsx"
+web = io.open(os.path.join(ROOT, WEB), encoding="utf-8",
+              errors="replace").read() if os.path.exists(
+                  os.path.join(ROOT, WEB)) else ""
+userc = io.open(os.path.join(ROOT, USERC), encoding="utf-8",
+                errors="replace").read()
+ok("HE3c 前端轮换入口带密码/动态码并用新组件",
+   '"/api/v1/me/passkey/rotate"' in web and "password" in web
+   and "PasskeyRotate" in userc,
+   "旧界面是无输入裸按钮 ⇒ 后端收紧后用户会永久 400")
 ok("HE4 同一文件的两把尺对照：改密确实要旧密码",
    "verify_password" in pw and "old_password" in pw,
    "若哪天把改密的旧密码校验也拿掉，这条与 HE3 一起说明全站尺子都没了")

@@ -11,7 +11,7 @@ import { LoginHistory } from "@/components/login-history";
 import { SessionsCard } from "@/components/sessions-card";
 import { NoticePrefsCard } from "@/components/notice-prefs";
 import { PasskeysCard } from "@/components/passkeys-card";
-import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
+import { PasskeyRotate } from "@/components/passkey-rotate";
 import type { UserSettings } from "@/components/usercp";
 
 /** 安全设定面板（从 usercp.tsx 按域拆出，300 行门禁）：
@@ -32,11 +32,6 @@ export function SecurityTab({
   const [oldPass, setOldPass] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
-  const [pkBusy, setPkBusy] = useState(false);
-  const [pkResult, setPkResult] = useState<string | null>(null);
-  const [pkMsg, setPkMsg] = useState<string | null>(null);
-  // P2 清偿：重置 passkey 二次确认（danger：旧 RSS/下载链接全部失效）
-  const ask = useConfirm();
 
   // 锚点直达：账户概览的「访问令牌 → 创建」带 #tokens、「密钥 → 重置」带
   // #passkey 跳进来。本面板是
@@ -98,27 +93,6 @@ export function SecurityTab({
     }
   }
 
-  async function rotatePasskeyNow() {
-    setPkBusy(true);
-    setPkMsg(null);
-    try {
-      const r = await api.post<{ passkey: string }>(
-        "/api/v1/me/passkey/rotate",
-        {},
-      );
-      setPkResult(r.passkey);
-      setPkMsg(dict.my.passkeyRotated);
-    } catch (e) {
-      setPkMsg(
-        e instanceof ApiError
-          ? (apiErrorMessage(dict, e))
-          : dict.common.networkError,
-      );
-    } finally {
-      setPkBusy(false);
-    }
-  }
-
   return (
     <div className="brand-wide-table-scroll">
       <table className="nexus-table nexus-form">
@@ -132,29 +106,7 @@ export function SecurityTab({
             id="passkey"
             className={flash("passkey")}
           >
-            <button
-              type="button"
-              disabled={pkBusy}
-              onClick={() =>
-                ask.open({
-                  title: dict.my.passkeyRotate,
-                  message: dict.my.passkeyConfirm,
-                  tone: "danger",
-                  busy: pkBusy,
-                  run: rotatePasskeyNow,
-                })
-              }
-              className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white disabled:opacity-50"
-            >
-              {pkBusy ? dict.my.passkeyRotating : dict.my.passkeyRotate}
-            </button>
-            {pkResult && (
-              <>
-                <br />
-                <code className="num break-all text-xs">{pkResult}</code>
-              </>
-            )}
-            {pkMsg && <p className="text-xs text-sub">{pkMsg}</p>}
+            <PasskeyRotate />
             <br />
             <span className="uc-note">
               <b>{dict.usercp.note}</b>
@@ -291,7 +243,6 @@ export function SecurityTab({
           </Row>
         </tbody>
       </table>
-      <AskDialog {...ask} />
     </div>
   );
 }
