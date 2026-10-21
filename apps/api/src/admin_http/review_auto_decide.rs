@@ -64,6 +64,7 @@ async fn engine_decide(
         &body.reason,
         body.deny_reason_id,
         false,
+        true,
     )
     .await?
     {

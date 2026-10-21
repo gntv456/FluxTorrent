@@ -58,13 +58,13 @@ export function AutoReviewPanel() {
 
   const load = useCallback(async () => {
     try {
-      const s = await api.get<Stats>("/admin/auto-review/stats");
+      const s = await api.get<Stats>("/api/v1/admin/auto-review/stats");
       setStats(s);
       const q = rule
         ? `?rule=${encodeURIComponent(rule)}&limit=50`
         : "?limit=50";
       const l = await api.get<{ items: LogRow[] }>(
-        `/admin/auto-review/logs${q}`,
+        `/api/v1/admin/auto-review/logs${q}`,
       );
       setRows(l.items ?? []);
     } catch (e) {
@@ -80,7 +80,7 @@ export function AutoReviewPanel() {
     setBusy(true);
     try {
       const r = await api.post<{ replayed: number; changed: number }>(
-        "/admin/auto-review/replay",
+        "/api/v1/admin/auto-review/replay",
         {},
       );
       setMsg(
@@ -104,7 +104,7 @@ export function AutoReviewPanel() {
     setBusy(true);
     try {
       const r = await api.post<{ restored: number; scanned: number }>(
-        "/admin/auto-review/bulk-restore",
+        "/api/v1/admin/auto-review/bulk-restore",
         { rule, days: 30 },
       );
       setMsg(

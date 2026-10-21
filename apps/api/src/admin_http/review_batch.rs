@@ -109,6 +109,7 @@ async fn review_batch(
             &reason,
             body.deny_reason_id,
             true,
+            false,
         )
         .await?
         {

@@ -49,6 +49,7 @@ pub(crate) async fn decide_one(
     reason: &str,
     deny_reason_id: Option<i64>,
     batch: bool,
+    by_auto: bool,
 ) -> DomainResult<DecideOutcome> {
     let db = &state.repo.db;
     // 利益冲突预检（0285）：两入口原本就都先查 owner——查无即「种子不存在」
@@ -157,9 +158,11 @@ pub(crate) async fn decide_one(
     {
         tracing::warn!(%e, torrent = torrent_id, "审核留痕写入失败");
     }
-    // U2 §12.5 审核结果通知：取数与发送在 review_notify.rs（0285 拆出并修列名）
+    // U2 §12.5 审核结果通知：取数与发送在 review_notify.rs（0285 拆出并修列名）。
+    // by_auto 贯通到通知层：自动裁决才用「自动」模板主题/限频/outbox，
+    // 人工裁决即便选了 91-96 段拒因也如实按人工口径通知（2026-10-21 实测修）。
     crate::admin_http::review_notify::notify_review_result(
-        state, torrent_id, approve, reason,
+        state, torrent_id, approve, reason, by_auto,
     )
     .await;
     Ok(DecideOutcome::Done)

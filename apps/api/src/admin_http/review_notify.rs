@@ -18,6 +18,7 @@ pub(crate) async fn notify_review_result(
     torrent_id: i64,
     approve: bool,
     free_reason: &str,
+    by_auto: bool,
 ) {
     let db = &state.repo.db;
     let row = sqlx::query_as::<
@@ -96,18 +97,29 @@ pub(crate) async fn notify_review_result(
     let (kind, subject, body_text) = if approve {
         (
             "review_approved",
-            get("auto_review_mail_pass_subject")
-                .map(|t| render(&t, ""))
-                .unwrap_or_else(|| format!("种子过审：{title}")),
+            if by_auto {
+                get("auto_review_mail_pass_subject")
+                    .map(|t| render(&t, ""))
+                    .unwrap_or_else(|| format!("种子已自动过审：{title}"))
+            } else {
+                format!("种子过审：{title}")
+            },
             format!("你发布的种子已通过审核：#{torrent_id} {title}。"),
         )
     } else {
         let why = reason_text.clone().unwrap_or_else(|| "未注明".into());
+        // 模板键是给自动审种用的（键名/出厂文案都带「自动」）：人工裁决即便
+        // 选了 91-96 段的自动拒因，用户看到的也必须如实是人工结论——否则
+        // 用户会误以为被机器拒了，走错申诉渠道（2026-10-21 种审员实测抓到）。
         (
             "review_rejected",
-            get("auto_review_mail_deny_subject")
-                .map(|t| render(&t, why.as_str()))
-                .unwrap_or_else(|| format!("种子被拒：{title}")),
+            if by_auto {
+                get("auto_review_mail_deny_subject")
+                    .map(|t| render(&t, why.as_str()))
+                    .unwrap_or_else(|| format!("种子被自动拒绝：{title}"))
+            } else {
+                format!("种子被拒：{title}")
+            },
             format!(
                 "你发布的种子未通过审核：#{torrent_id} {title}\n\
                  原因：{why}\n\
@@ -117,11 +129,12 @@ pub(crate) async fn notify_review_result(
         )
     };
     // 0400 §4.2：自动拒因（字典 sort 91-96）的邮件走 1h/3 封限频——
-    // 超限只发站内信；人工拒因不限频（人工逐条裁决自带节奏）。
+    // 超限只发站内信；人工裁决（by_auto=false）一律不限频（逐条裁决自带节奏）。
     let email = if approve {
         email
     } else {
-        let is_auto_deny: bool = sqlx::query_scalar(
+        let is_auto_deny: bool = by_auto
+            && sqlx::query_scalar(
             "SELECT COALESCE((SELECT d.sort BETWEEN 91 AND 96 \
                FROM torrent_deny_reasons d \
                JOIN torrents t ON t.deny_reason_id = d.id \
@@ -135,16 +148,20 @@ pub(crate) async fn notify_review_result(
             && !crate::mailer::mail_rate_allow(&mut state.redis.clone(), owner)
                 .await
         {
-            tracing::info!(owner, torrent = torrent_id,
-                "自动拒邮件超频（1h>3），本封只发站内信");
+            tracing::info!(
+                owner,
+                torrent = torrent_id,
+                "自动拒邮件超频（1h>3），本封只发站内信"
+            );
             None
         } else {
             email
         }
     };
     // 自动拒因邮件走 outbox（0404：丢了=用户不知情被拒，须重试）；
-    // 过审邮件保持尽力直发（丢了无实害）。
+    // 过审邮件保持尽力直发（丢了无实害）。人工裁决不进 outbox（by_auto 闸）。
     let is_auto_deny_mail = !approve
+        && by_auto
         && sqlx::query_scalar::<_, bool>(
             "SELECT COALESCE((SELECT d.sort BETWEEN 91 AND 96 \
                FROM torrent_deny_reasons d \
