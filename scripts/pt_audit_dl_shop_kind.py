@@ -211,16 +211,22 @@ def voucher_issued(text):
 
 
 GU = rd(GUARDS)
-REDEEM = list_kinds(GU, "redeem_port_exists")
-ISSUED = voucher_issued(src) | cards
+# P-477 之后清单收在共享层（flux-shared），api 侧的 shop_guards 只是转发：
+# 判据必须读**清单的本家**，否则「转发改了、本家没改」这种漂移量不出来。
+REDEEM = list_kinds(src, "redeem_port_exists")
+ISSUED = voucher_issued(src) | cards | list_kinds(src, "issues_voucher")
 unredeemed = sorted(ISSUED - REDEEM)
 ok("DL7 「发得出但花不掉」的品类恰为台账 %d 档（实测 %s／发卡券侧共 %d 档）"
    % (len(NO_REDEEM), unredeemed, len(ISSUED)),
    unredeemed == sorted(NO_REDEEM) and len(ISSUED) >= 4,
    "多出来的档＝新上的券没人核销还在卖；少了＝台账该销账（同批删一行）")
-ok("DL7a 售卖口真问了这把尺（ensure_deliverable 里含 redeem_port_exists 判断）",
-   GU[GU.index("fn ensure_deliverable"):].count("redeem_port_exists") >= 1,
-   "只在清单里写、不在售卖口问＝照样收钱")
+IU = rd(os.path.join(ROOTDIR, "apps", "api", "src", "games_http",
+                     "item_use.rs"))
+ok("DL7a 两个入口都问这把尺（商城售卖口 + 娱乐屋奖品绑定口）",
+   GU[GU.index("fn ensure_deliverable"):].count(
+       "voucher_without_redeem_port") >= 1
+   and IU.count("voucher_without_redeem_port") >= 1,
+   "只在售卖侧写清单＝半个闸门：奖品侧照样能把废纸发到会员手上")
 drift = sorted(cards - REDEEM)
 ok("DL7b 卡白名单 %d 档每档都在「花得掉」清单里（漂移=%s）"
    % (len(cards), drift), not drift, "白名单=%s" % sorted(cards))

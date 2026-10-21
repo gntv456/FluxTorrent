@@ -12,35 +12,12 @@ pub(super) fn card_kind_probe(kind: &str) -> bool {
     matches!(kind, "makeup_card" | "temp_invite")
 }
 
-/// 「花得掉」正面清单——核销口真在读这些 kind 的券或订单行：
-/// - `makeup_card` / `resub_card`：`gaps_http/misc.rs` 的补签（张数走
-///   `shop_orders` × `i.kind IN ('makeup_card','resub_card')`，0066 起 resub
-///   是同一支口的历史别名）；
-/// - `temp_invite` / `voucher_free` / `voucher_neutral`：
-///   `economy_http/voucher_use.rs`（券种 temp_invite / free / neutral）。
-///
-/// P-477 加这张表的原因：**「发得出」不等于「花得掉」**。`rename_card` 在
-/// `has_effect` 里有臂（会往 `user_vouchers` 插一张 kind='rename_card' 的券），
-/// 但没有任何口认这张券——用户侧不存在自助改名端点，唯一的改名口是
-/// `POST /admin/users/{id}/rename`（判 `USER_RESETPASS`，不读券）。现网在售
-/// 档位 id=14 定价 100000 火花 ⇒ 会员花钱买到一张废纸，钱照扣、接口回 200。
-/// 装上核销口那天（自助改名 + 消耗这张券），把它加进这张表即可恢复售卖。
+/// 「花得掉」清单转发到共享层（`flux_shared::redeem_port_exists`，P-477）：
+/// 发卡/发券那一侧在本 crate 的 `apply_item_effect`，而问这把尺子的有两个口
+/// ——商城售卖口与娱乐屋奖品绑定口。清单写在这里就会出现「售卖停了、奖品照发」
+/// 的半个闸门，所以只留一份。
 pub(super) fn redeem_port_exists(kind: &str) -> bool {
-    matches!(
-        kind,
-        "makeup_card" | "resub_card" | "temp_invite" | "voucher_free"
-            | "voucher_neutral"
-    )
-}
-
-/// 「按张发卡/发券」的品类（区别于直接改状态/落账那一族）。
-/// 这些档位的价值不在「拿到一张凭证」本身，而在后面有人认它。
-fn issued_as_card_or_voucher(kind: &str) -> bool {
-    card_kind_probe(kind)
-        || matches!(
-            kind,
-            "voucher_free" | "voucher_neutral" | "rename_card"
-        )
+    flux_shared::redeem_port_exists(kind)
 }
 
 /// 统一的拒单出口：整句字面量（校验详情要能按原句在 validation_details.tsv
@@ -65,8 +42,9 @@ fn refuse(kind: &str) -> DomainResult<()> {
 /// 直接改出来的 active 行、以及「加了 match 臂却忘了加清单」的漂移都绕得过
 /// 那道口 —— 所以收钱的售卖口自己也要拦一次。
 pub(super) fn ensure_deliverable(kind: &str) -> DomainResult<()> {
-    // P-477：先发券/发卡、后面没人认 ⇒ 别收钱。
-    if issued_as_card_or_voucher(kind) && !redeem_port_exists(kind) {
+    // P-477：先发券/发卡、后面没人认 ⇒ 别收钱。成对判据在共享层，
+    // 娱乐屋奖品绑定口（games_http/item_use.rs）问的是同一句。
+    if flux_shared::voucher_without_redeem_port(kind) {
         return refuse(kind);
     }
     if crate::economy_http::has_effect(kind) || card_kind_probe(kind) {

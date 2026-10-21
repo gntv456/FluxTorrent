@@ -95,6 +95,19 @@ pub(super) async fn check_use_shape(
                     "「{sname}」（kind={skind}）没有已实现的生效逻辑，不能绑为奖品用途"
                 )));
             }
+            // P-477：发的是凭证、但没人认这张凭证 ⇒ 奖品侧也不能发。
+            // 售卖口先修过一次，但清单只写在售卖侧就是半个闸门：会员抽奖/兑换
+            // 走的是这里，照样能把 rename_card 这种废纸发到手上。
+            // 整句复用已在册的译文（新增动态串会推高 i18n 棘轮），细节只进日志。
+            if flux_shared::voucher_without_redeem_port(&skind) {
+                tracing::warn!(
+                    item = %name, sku = %sname, kind = %skind,
+                    "prize binding refused: voucher kind has no redeem port"
+                );
+                return Err(DomainError::Validation(
+                    "该道具品类尚未接入发放逻辑，已停售".into(),
+                ));
+            }
             // 奖池按 anchor 计负债，实际兑出去的是售价 price 的东西：
             // anchor 低于 price 就是这条配置在偷偷少计
             if anchor < price {
