@@ -153,6 +153,13 @@ fn new_passkey() -> String {
 /// 入账（与 api 侧 `spend::earn_spark` 同口径：行锁 + 幂等键 + 台账）。
 ///
 /// 幂等键必须在行锁**之后**检查（P0：防并发双入账）。
+///
+/// P-479：台账列名必须是 `spark_ledger` 真实的那套（`amount`，不是 `delta`；
+/// 没有 `memo` 这一列），且 `id` 无默认值 ⇒ 必须显式 `nextval`，
+/// `balance_after` 也要跟着写（否则「余额与流水对账」永远差一笔）。
+/// 旧写法两条都错，于是 `gift_spark` 这一档**结构性发不出货**：语句必先撞
+/// `column "delta" does not exist`（42703），整笔事务回滚——钱扣了、火花没到。
+/// 顺序按 api 兄弟口：先落流水、再动余额。
 pub async fn earn_spark(
     db: &PgPool,
     user_id: i64,
@@ -174,20 +181,26 @@ pub async fn earn_spark(
     .fetch_one(&mut *tx)
     .await?;
     if !exists {
-        sqlx::query("UPDATE users SET spark_balance = $2 WHERE id = $1")
-            .bind(user_id)
-            .bind(balance + amount)
-            .execute(&mut *tx)
-            .await?;
+        let after = balance.checked_add(amount).ok_or_else(|| {
+            EffectError::Internal("火花余额溢出，已拒绝入账".into())
+        })?;
         sqlx::query(
             "INSERT INTO spark_ledger \
-             (user_id, delta, kind, memo, idempotency_key) \
-             VALUES ($1, $2, $3, '', $4)",
+             (id, user_id, amount, kind, idempotency_key, balance_after) \
+             VALUES (nextval('spark_ledger_id_seq'), $1, $2, $3, $4, $5)",
         )
         .bind(user_id)
         .bind(amount)
         .bind(kind)
         .bind(idem)
+        .bind(after)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query(
+            "UPDATE users SET spark_balance = spark_balance + $2 WHERE id = $1",
+        )
+        .bind(user_id)
+        .bind(amount)
         .execute(&mut *tx)
         .await?;
     }
