@@ -117,10 +117,11 @@ EXPECT = ("apps/api/src/games_http/linkage.rs",
           "apps/api/src/repo/community/forum_side.rs",
           "apps/api/src/auth_http/profile.rs",
           "apps/worker/src/jobs/game_coupons.rs",
-          "apps/worker/src/jobs/settle.rs")
+          "apps/worker/src/jobs/settle.rs",
+          "apps/api/src/admin_http/overview.rs")
 have = set(r for r, _l in right_sites)
 miss = [f for f in EXPECT if f not in have]
-ok("DB2 十一处日/周/月窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
+ok("DB2 十二处日/周/月窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
    % (len(right_sites), len(miss)), not miss,
    "缺=%s｜有=%s" % ("、".join(miss), "、".join(sorted(have))))
 
@@ -357,7 +358,6 @@ CMP13 = re.compile(r"(?:[<>]=?|::date\s*=)\s*current_date\b"
                    r"|current_date\b\s*(?:[-+]\s*\d|[-+]\s*interval|<=?|>=?)",
                    re.I)
 NAIVE_LEDGER = {
-    "apps/api/src/admin_http/overview.rs": "后台 14 天图（待裁）",
     "apps/api/src/economy_http/checkin.rs": "签到近 30 天列表（展示窗口）",
     "apps/worker/src/bank_jobs/deposit.rs": "利息日界＝持久化 date 键（待裁）",
     "apps/worker/src/bank_jobs/loan.rs": "同上（待裁）",
@@ -369,5 +369,34 @@ ok("DB13 裸 current_date 比较族恰好等于台账 %d 个口（多=%s 少=%s�
    % (len(NAIVE_LEDGER), extra, gone),
    not extra and not gone,
    "、".join("%s=%s" % (f, NAIVE_LEDGER[f]) for f in sorted(naive)))
+
+# ---------- DB14：后台大盘「今日」那一格（P-473） ----------
+# trend() 原来用 generate_series(current_date-13,…) 配 created_at::date ⇒ 格子是
+# 「北京 08:00→次日 08:00」，而首页/会员中心的「今日」按北京零点（P-465 同族）：
+# 站长在大盘看到的今日格整段漏掉北京 0–8 点，那些行全堆到昨日格。
+st14, body14 = call("GET", "/admin/overview", token=tok)
+tr14 = ((body14 or {}).get("data") or {}).get("trend") or []
+site14 = psql("SELECT count(*) FROM users WHERE created_at >= "
+              "date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') "
+              "AT TIME ZONE 'Asia/Shanghai'").strip()
+utc14 = psql("SELECT count(*) FROM users WHERE created_at::date = "
+             "current_date").strip()
+lab14 = psql("SELECT to_char((now() AT TIME ZONE 'Asia/Shanghai')::date, "
+             "'MM-DD')").strip()
+last14 = tr14[-1] if isinstance(tr14, list) and tr14 else []
+print("   后台最后一格：标签=%s 注册数=%s｜站点日读数=%s UTC 日读数=%s（14 格=%d）"
+      % (last14[:1], last14[1:2], site14, utc14, len(tr14)))
+ok("DB14 后台趋势最后一格 = 北京今日 %s 且注册数 = 站点日读数 %s（API=%s）"
+   % (lab14, site14, last14[1:2]),
+   st14 == 200 and len(tr14) == 14 and last14[0] == lab14
+   and str(last14[1]) == site14,
+   "http=%s 格=%s" % (st14, json.dumps(last14, ensure_ascii=False)))
+if site14 == utc14:
+    print("   WARN DB14a 此刻两轴同数（都=%s），上一条只验标签；分岔窗口内它会变硬判据"
+          % site14)
+else:
+    ok("DB14a 正控：此刻两轴读数分岔（站点日=%s / UTC 日=%s），上一条是硬判据"
+       % (site14, utc14), str(last14[1]) != utc14,
+       "旧形状会把今日格读成 %s" % utc14)
 
 summary()

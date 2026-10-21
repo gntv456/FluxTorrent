@@ -47,18 +47,26 @@ async fn admin_overview(
     })))
 }
 
-/// 近 14 天注册/发种趋势：数组 [日期, 注册数, 发种数]，旧→新
+/// 近 14 天注册/发种趋势：数组 [日期, 注册数, 发种数]，旧→新。
+/// 日界按**站点日（UTC+8）**：旧写法 `generate_series(current_date-13, …)` 配
+/// `created_at::date`（本库会话时区 UTC）画的是「北京 08:00→次日 08:00」的格子，
+/// 而首页/会员中心的所有「今日」都是北京零点起算（P-465 同族）⇒ 站长在大盘
+/// 看到的今日那一格少了整段北京 0–8 点，且全部堆到昨日。
 async fn trend(
     state: &web::Data<std::sync::Arc<AppState>>,
 ) -> serde_json::Value {
     let rows: Vec<(chrono::NaiveDate, i64, i64)> = sqlx::query_as(
-        "SELECT d::date, \
-            (SELECT count(*) FROM users u \
-             WHERE u.created_at::date = d::date), \
-            (SELECT count(*) FROM torrents t \
-             WHERE t.created_at::date = d::date) \
-         FROM generate_series(current_date - 13, current_date, \
-         interval '1 day') d",
+        "SELECT (d AT TIME ZONE 'Asia/Shanghai')::date, \
+            (SELECT count(*) FROM users u WHERE u.created_at >= d \
+             AND u.created_at < d + interval '1 day'), \
+            (SELECT count(*) FROM torrents t WHERE t.created_at >= d \
+             AND t.created_at < d + interval '1 day') \
+         FROM generate_series( \
+            date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+              AT TIME ZONE 'Asia/Shanghai' - interval '13 days', \
+            date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+              AT TIME ZONE 'Asia/Shanghai', \
+            interval '1 day') d",
     )
     .fetch_all(&state.repo.db)
     .await
