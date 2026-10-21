@@ -158,9 +158,16 @@ pub async fn bank_auto_deduct(
         if left > 0 {
             if allow_negative {
                 // 负余额口径：直接扣清（上方幂等闸门已保证当日只扣一次）
+                // P-481：快照口径与下方「仅扣现有余额」分支对齐——同一条语句里
+                // 读前余额 + 行锁，流水带上 `balance_after`，别只留一条断链行
+                // （`FOR UPDATE` 放在 WHERE 之后，PG 允许 INSERT…SELECT 带锁）。
                 sqlx::query(
-                    "INSERT INTO spark_ledger (id, user_id, amount, kind, ref_type, ref_id, idempotency_key) \
-                     VALUES (nextval('spark_ledger_id_seq'), $2, -$3, 'bank_auto_deduct', 'bank', $1, $4)",
+                    "INSERT INTO spark_ledger (id, user_id, amount, kind, \
+                     ref_type, ref_id, idempotency_key, balance_after) \
+                     SELECT nextval('spark_ledger_id_seq'), $2, -$3, \
+                            'bank_auto_deduct', 'bank', $1, $4, \
+                            u.spark_balance - $3 \
+                     FROM users u WHERE u.id = $2 FOR UPDATE",
                 )
                 .bind(loan_id)
                 .bind(user_id)

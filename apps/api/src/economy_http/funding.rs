@@ -4,6 +4,7 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
+use super::spend::SpendOutcome;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
@@ -233,32 +234,31 @@ async fn admin_funding_cancel(
         .map_err(|e| DomainError::Internal(e.into()))?;
         for (uid, amount) in &contribs {
             let idem = format!("funding-refund:{}:{uid}", body.id);
-            sqlx::query(
-                r#"INSERT INTO spark_ledger
-                   (id, user_id, amount, kind, idempotency_key)
-                   SELECT nextval('spark_ledger_id_seq'), $1, $2,
-                          'funding_refund', $3
-                   WHERE NOT EXISTS (SELECT 1 FROM spark_ledger
-                     WHERE idempotency_key = $3)"#,
-            )
-            .bind(uid)
-            .bind(amount)
-            .bind(&idem)
-            .execute(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            sqlx::query(
-                "UPDATE users SET spark_balance = spark_balance + $2 \
-                 WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM spark_ledger \
-                 WHERE idempotency_key = $3)",
-            )
-            .bind(uid)
-            .bind(amount)
-            .bind(&idem)
-            .execute(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-            refunded += 1;
+            // P-480（实测）：旧写法自己拼两条语句——INSERT 带
+            // `WHERE NOT EXISTS(key)` 幂等闸门，紧接着的 UPDATE **又带同款**
+            // NOT EXISTS。上一条已经把那个键插进本会话可见的表 ⇒ UPDATE 恒
+            // 0 行：流水写着 +1000、余额一分没退、接口还回 200「refunded:1」，
+            // 而且那条流水不带 balance_after（断链）。同族的 worker 版
+            // `settle.rs` 早就是「事务内 INSERT 决定 inserted，UPDATE 不再带
+            // 闸门」，`funding_contribute.rs` 也是单事务——只有这个口没跟上。
+            // 现在改走共用入账原语（行锁 → 查幂等 → 落流水含 balance_after →
+            // 加余额）；并发重放在 `trg_spark_idem` 上撞键整笔回滚，不会双退。
+            let mut tx = db
+                .begin()
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            if matches!(
+                crate::economy_http::earn_spark_tx(
+                    &mut tx, *uid, *amount, "funding_refund", &idem,
+                )
+                .await?,
+                SpendOutcome::Spent
+            ) {
+                refunded += 1;
+            }
+            tx.commit()
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
     sqlx::query("UPDATE fundings SET status = 2 WHERE id = $1")

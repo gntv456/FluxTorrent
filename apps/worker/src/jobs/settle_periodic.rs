@@ -81,9 +81,15 @@ pub(crate) async fn resurrection_settle(db: &PgPool) -> anyhow::Result<u64> {
         // 会恒不命中 → 整体回滚 → 奖励静默丢失——链路缺陷 #10 同款教训）。
         let inserted = sqlx::query(
             r#"
-            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
-            SELECT nextval('spark_ledger_id_seq'), $1, $2, 'resurrection', $3
-            WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)
+            INSERT INTO spark_ledger (id, user_id, amount, kind,
+                                     idempotency_key, balance_after)
+            SELECT nextval('spark_ledger_id_seq'), $1, $2, 'resurrection',
+                   $3, u.spark_balance + $2
+            FROM users u
+            WHERE u.id = $1
+              AND NOT EXISTS (SELECT 1 FROM spark_ledger
+                              WHERE idempotency_key = $3)
+            FOR UPDATE
             "#,
         )
         .bind(uid)

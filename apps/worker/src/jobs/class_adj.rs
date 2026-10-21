@@ -195,9 +195,15 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
         let mut tx = db.begin().await?;
         let credited = sqlx::query(
             r#"
-            INSERT INTO spark_ledger (id, user_id, amount, kind, idempotency_key)
-            SELECT nextval('spark_ledger_id_seq'), $1, $2, 'class_promotion', $3
-            WHERE NOT EXISTS (SELECT 1 FROM spark_ledger WHERE idempotency_key = $3)
+            INSERT INTO spark_ledger (id, user_id, amount, kind,
+                                     idempotency_key, balance_after)
+            SELECT nextval('spark_ledger_id_seq'), $1, $2, 'class_promotion',
+                   $3, u.spark_balance + $2
+            FROM users u
+            WHERE u.id = $1
+              AND NOT EXISTS (SELECT 1 FROM spark_ledger
+                              WHERE idempotency_key = $3)
+            FOR UPDATE
             "#,
         )
         .bind(uid)

@@ -40,6 +40,10 @@ SRC_DIRS = [os.path.join(ROOTDIR, "apps", "api", "src"),
 TABLE = "spark_ledger"
 
 
+def rel(p):
+    return os.path.relpath(p, ROOTDIR).replace("\\", "/")
+
+
 def rs_flat(*parts):
     """读 Rust 源码：剥 // 注释（否则自己刚写的说明会被当成判据对象），
     再把字符串字面量里的 `\\` + 换行拼回去（Rust 的续行写法）。"""
@@ -88,19 +92,46 @@ ok("GT1 %s 的列取到 %d 个，其中必填（NOT NULL 且无默认值）= %s"
        "'%s';" % TABLE))
 
 print("== GT2 源码里的 INSERT 列清单逐条对账 ==")
-found, bad = 0, []
+# `spark_ledger.balance_after` 是「这一笔之后余额多少」的逐行链：会员页
+# `/me/sparks` 与后台流水都读它（前端对 NULL 显示「—」，不假报 0）。少填一列
+# ＝那一行永久断链，事后无法复原（当时的余额没别处记）。现网实测 188 行 NULL
+# （seeding_reward 123 / achievement 53 / social_team 12，最晚 10-16）都是历史
+# 写入；本轮把**当下仍缺这一列的写口**逐个点名。
+stmts, found, bad, noafter = 0, 0, [], []
 for f in rs_files():
-    for cs, frag in inserts(rs_flat(f)):
+    t = rs_flat(f)
+    stmts += len(re.findall(r"INSERT\s+INTO\s+" + TABLE, t, re.I))
+    for cs, frag in inserts(t):
         found += 1
         unknown = sorted(cs - set(schema))
         missing = sorted(k for k, v in schema.items() if v and k not in cs)
         if unknown or missing:
-            bad.append((os.path.relpath(f, ROOTDIR).replace("\\", "/"),
-                        sorted(cs), unknown, missing, frag))
+            bad.append((rel(f), sorted(cs), unknown, missing, frag))
+        if "balance_after" not in cs:
+            noafter.append("%s" % rel(f))
 ok("GT2 全仓 %d 条 %s 的 INSERT：列名全在 schema 内、必填列齐（违例 %d）"
    % (found, TABLE, len(bad)), found >= 6 and not bad,
    " | ".join("%s 未知=%s 缺=%s" % (b[0], b[2], b[3]) for b in bad[:3])
    or "全部对齐")
+RECOMPUTE_ONLY = set(["apps/worker/src/jobs/preserve.rs",
+                      "apps/worker/src/jobs/seeding_referral.rs"])
+ok("GT2b 既改余额又写流水的语句必须带 balance_after（违例 %d：%s）"
+   % (len(set(noafter) - RECOMPUTE_ONLY),
+      sorted(set(noafter) - RECOMPUTE_ONLY)),
+   set(noafter) - RECOMPUTE_ONLY == set(),
+   "例外=%s 是「只写流水、余额交给 seeding 小时重算」的集合式结算，写流水"
+   "那一刻的余额本就未知；例外要成立，得看下一条判据"
+   % sorted(RECOMPUTE_ONLY))
+lazy_bad = []
+for f in sorted(RECOMPUTE_ONLY):
+    if re.search(r"UPDATE\s+users", rs_flat(os.path.join(ROOTDIR, f))):
+        lazy_bad.append(f)
+ok("GT2d 例外清单名副其实：%s 里确实不自己改余额（违例=%s）"
+   % (sorted(RECOMPUTE_ONLY), lazy_bad), not lazy_bad,
+   "哪天这些文件加了 UPDATE users，就必须同时带 balance_after，"
+   "并从例外清单里删掉")
+ok("GT2c 普查抓到的语句数 == 原文出现次数（%d vs %d）" % (found, stmts),
+   found == stmts, "两者不等＝有 INSERT 的形状没被解析出来，先修解析器再谈对账")
 
 print("== GT3 正控：旧形状必须被普查抓出 ==")
 OLD_SHAPE = ('INSERT INTO spark_ledger (user_id, delta, kind, memo, '
@@ -141,24 +172,40 @@ left = sval("SELECT count(*) FROM spark_ledger WHERE idempotency_key LIKE "
 ok("GT4c 零残留：本轮探针流水 %s 行（须 0，两侧都在事务里且 ROLLBACK）" % left,
    left == "0", left)
 
-print("== GT5 有流水用户的余额对账（按台账集合钉，多一个红、少一个也红）==")
-# 在册未记账号（按本闸门自己在现网跑出来的集合钉，2026-10-21）：
-#   1     root——历年闸门用 `UPDATE users SET spark_balance = <绝对值>` 注资所致
-#   39    批一百三十七一次探针的残留
-#   7256~7260 本轮 GS/GR 首跑时同样直写 SQL 注资的探针号（已停用）
-# 观察留档：探针 7255 首跑后被**站外动作**按其流水净额重算（撤掉直写的 4000，
-#   余额 -1400 == sum(amount)）——纠偏本身不留流水，这一族值得站方留意。
-# 之后 GS/GR 改走 /admin/amountbonus（会落流水），这一族不该再长。
-# 清账那天把对应 id 从集合里删掉（少一个也红＝逼着来销桩）。
-UNJOURNALLED = set(["1", "39", "7256", "7257", "7258", "7259", "7260"])
-ids = sval("WITH l AS (SELECT user_id, sum(amount) s FROM spark_ledger "
-           "GROUP BY user_id) SELECT string_agg(u.id::text, ',') FROM users u "
-           "JOIN l ON l.user_id = u.id WHERE u.spark_balance <> l.s")
+print("== GT5 余额对账（真实不变式：基线 + 流水净额，排除系统对冲行）==")
+# 现网余额口径见 `apps/worker/src/jobs/seeding.rs` 的快照重算段：
+#   spark_balance == balance_baseline.base_spark
+#                     + sum(spark_ledger.amount WHERE kind <> 'orphan_offset')
+# 「权威在流水，快照仅展示」；0266 把历史孤儿流水对冲 -52374 记成
+# kind='orphan_offset' 的系统行，个人重算**不该**吃它。
+# 我第一版把不变式写成「余额 == sum(amount)」，于是 root 被判成不平——
+# 实测 52374 + (-103400) = -51026 恰好相等，是把口径读错，不是站点有洞。
+# 现网实跑（2026-10-21）：按真实不变式只剩 **39** 一人不平（批一百三十七某次
+# 探针直写余额的残留）。root 恰好对平——它靠的是**排除 orphan_offset** 这一项
+# （0266 把历史孤儿流水对冲 -52374 挂在 root 名下），不是靠基线表；
+# 而本轮 GS/GR 那几个直写注资的探针号（7254/7256~7260）已被 seeding 小时重算
+# 刷回「基线+净额」，自己消失了——这正是那条重算段的语义：余额权威在流水。
+UNJOURNALLED = set(["39"])
+REC = ("WITH l AS (SELECT user_id, sum(amount) FILTER "
+       "(WHERE kind <> 'orphan_offset') s FROM spark_ledger GROUP BY user_id) "
+       "SELECT string_agg(u.id::text, ',') FROM users u JOIN l "
+       "ON l.user_id = u.id LEFT JOIN balance_baseline b "
+       "ON b.user_id = u.id WHERE u.spark_balance <> "
+       "coalesce(b.base_spark, 0) + coalesce(l.s, 0)")
+ids = sval(REC + ";")
 now = set(sorted(x for x in ids.split(",") if x))
-ok("GT5 余额≠流水净额的账号集合 == 在册台账（实=%s 册=%s）"
-   % (sorted(now, key=int), sorted(UNJOURNALLED, key=int)),
+ok("GT5 余额≠基线+流水净额（排除 orphan_offset）的账号集合 == 在册（实=%s "
+   "册=%s）" % (sorted(now, key=int), sorted(UNJOURNALLED, key=int)),
    now == UNJOURNALLED,
-   "多出来＝新的直写余额口（先归因再动代码）；少了＝有人清账，请把该 id "
+   "多出来＝新的直写余额口（先归因再动代码）；少了＝重算已自愈，把该 id "
    "从 UNJOURNALLED 删掉")
+ok("GT5b 正控：把「排除 orphan_offset」这一项拆掉后必须报出 root（实=%s）"
+   % sorted(
+       x for x in sval(REC.replace("(WHERE kind <> 'orphan_offset')",
+                                   "(WHERE true)") + ";").split(",")
+       if x)[:6],
+   "1" in [x for x in sval(REC.replace(
+       "(WHERE kind <> 'orphan_offset')", "(WHERE true)") + ";").split(",")],
+   "拆掉这一项还报不出 root＝这条 SQL 根本没在对账（不变式写错了）")
 
 summary()
