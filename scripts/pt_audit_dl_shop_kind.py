@@ -24,6 +24,7 @@ admin_p3_http/shop.rs:71 与娱乐屋奖品绑定 item_use.rs:93 都问它），
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_dl_shop_kind.py
 """
 import io
+import json
 import os
 import re
 import subprocess
@@ -55,7 +56,7 @@ def psql(q):
          "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:220])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:220])
     return (r.stdout or "").strip()
 
 
@@ -129,5 +130,54 @@ lazy = [os.path.relpath(f, ROOTDIR).replace("\\", "/") for f in ASKERS
         if "has_effect" not in rd(f)]
 ok("DL5 三处入口都问 has_effect（自写清单的 %d 处）" % len(lazy), not lazy,
    "缺尺子：%s" % ("、".join(lazy) or "-"))
+
+# ---------- DL6 档位金额：品类被认领 ≠ 这件商品发得出货（P-476） ----------
+# 生效链对「发放数量」用的是 config 里的键；算不出来时 charity/gift_spark/
+# upload_credit 三档的兜底是 **0**，于是 `if amount > 0` 静默跳过：钱照扣、
+# 货不发、接口 200。现网实测：0004 起「慈善捐赠」的 config 一直是 '{}'，
+# root 三笔订单（id 33/35/49，各 1000 火花）五分钟内进池记录全空。
+AMOUNT_KEYS = {
+    "charity": ("spark", "sparks", "amount", "price"),
+    "gift_spark": ("spark", "sparks", "amount"),
+    "upload_credit": ("gb", "upload_gb", "gb_per_unit"),
+}
+
+
+def resolve(cfg, keys):
+    for k in keys:
+        v = cfg.get(k)
+        if isinstance(v, int) and v > 0:
+            return v
+    return 0
+
+
+rows6 = psql("SELECT id || '@' || kind || '@' || price || '@' || "
+             "coalesce(config::text, '{}') FROM shop_items WHERE active "
+             "AND kind IN ('charity','gift_spark','upload_credit') "
+             "ORDER BY id").splitlines()
+bad6, seen6 = [], 0
+for ln in rows6:
+    if "@" not in ln:
+        continue
+    iid, kind, price, cfgtxt = ln.split("@", 3)
+    seen6 += 1
+    try:
+        cfg = json.loads(cfgtxt)
+    except Exception:  # noqa: BLE001
+        bad6.append("%s(%s) config 不是合法 JSON" % (iid, kind))
+        continue
+    got = resolve(cfg, AMOUNT_KEYS[kind])
+    if got == 0:
+        # charity 允许退到「档位售价」，其余两档没有默认值＝静默不发
+        bad6.append("%s(%s) 算不出发放数额（config=%s price=%s）"
+                    % (iid, kind, cfgtxt[:44], price))
+ok("DL6 在售的计量档位（%d 件）都必须算得出正数发放额（不可发 %d）"
+   % (seen6, len(bad6)), seen6 >= 3 and not bad6, "; ".join(bad6[:3]))
+# 正控：同一把尺必须能抓出「config 空」那件（否则 DL6 是空判据）
+ctl = resolve({}, AMOUNT_KEYS["charity"])
+ctl2 = resolve(json.loads('{"spark": 1000}'), AMOUNT_KEYS["charity"])
+ok("DL6z 正控：空 config 算得出 0（实测 %s）、补好金额后算得出 1000（实测 %s）"
+   % (ctl, ctl2), ctl == 0 and ctl2 == 1000,
+   "两值相同＝这把尺没装刻度")
 
 summary()

@@ -71,6 +71,22 @@ pub fn credit_gb(config: &Value) -> Option<i64> {
         .find(|v| *v > 0)
 }
 
+/// 慈善捐赠的进池金额（P-476）。
+///
+/// 生效链原先自写一串 `spark | sparks | price`，与上面那条「发放数量唯一读法」
+/// `spark_amount`（`spark / sparks / amount`）差一个键；而 0004 起「慈善捐赠」
+/// 档位的 config 一直是 `{}` ⇒ 两把尺都算不出数额，`if amount > 0` 直接静默跳过：
+/// 用户被扣 1000 火花，池子 0 进账、接口回 200、没有任何失败信号
+/// （10-21 现网实测 root 三单一笔都没落池）。
+///
+/// 收口成一处：先走 `spark_amount`，再退到档位自身的 `price`（商品配置里显式
+/// 写了面值时），目录侧另有闸门 DL6 钉「在售慈善档位必须算得出 >0」。
+pub fn donation_amount(config: &Value) -> i64 {
+    spark_amount(config)
+        .or_else(|| config.get("price").and_then(|v| v.as_i64()))
+        .unwrap_or(0)
+}
+
 /// 券类 SKU 发的券种。
 pub fn voucher_kind(config: &Value, sku_kind: &str) -> String {
     config
@@ -285,12 +301,8 @@ pub async fn apply_item_effect(
             }
         }
         "charity" => {
-            let amount = config
-                .get("spark")
-                .or_else(|| config.get("sparks"))
-                .and_then(|v| v.as_i64())
-                .or_else(|| config.get("price").and_then(|v| v.as_i64()))
-                .unwrap_or(0);
+            // P-476：金额一律走 donation_amount（与 spark_amount 同一把尺）。
+            let amount = donation_amount(config);
             if amount > 0 {
                 let month = pool_month(chrono::Utc::now());
                 sqlx::query(
@@ -369,6 +381,18 @@ mod tests {
         // 非正数不认：取不到正数由调用方决定拒发，不静默当 0。
         assert_eq!(spark_amount(&json!({"spark": 0})), None);
         assert_eq!(spark_amount(&json!({})), None);
+    }
+
+    #[test]
+    fn donation_amount_follows_the_canonical_reader() {
+        // 与 spark_amount 同一把尺：amount 这个拼法以前在慈善分支里不认
+        assert_eq!(donation_amount(&json!({"amount": 700})), 700);
+        assert_eq!(donation_amount(&json!({"spark": 1000})), 1000);
+        // 退路：档位写了自己的面值
+        assert_eq!(donation_amount(&json!({"price": 1000})), 1000);
+        // P-476 的现场：0004 起慈善档位的 config 就是 {} ⇒ 0（由目录闸门拦下）
+        assert_eq!(donation_amount(&json!({})), 0);
+        assert_eq!(donation_amount(&json!({"spark": 0, "price": 1000})), 1000);
     }
 
     #[test]
