@@ -20,12 +20,15 @@ pub async fn list_torrents_noclamp_as(
     let limit = limit.max(1);
     let viewer_sql = viewer.to_string();
     // 匹配模式（旧站 torrents.php 口径）：0/缺省 = AND 模糊；2 = 精确等值（不带通配）
+    // 两种模式都要转义用户输入的 %/_：旧实现精确模式原样进 ILIKE，
+    // 「精确」搜 `%` 会退化成通配（命中全站），与字面等值语义相反。
     let exact = filter.search_mode == Some(2);
     let mk_pat = |s: &str| {
+        let escaped = esc_like(s);
         if exact {
-            s.to_string()
+            escaped
         } else {
-            format!("%{}%", esc_like(s))
+            format!("%{}%", escaped)
         }
     };
     let pattern = filter.search.as_deref().map(mk_pat);
@@ -70,7 +73,7 @@ pub async fn list_torrents_noclamp_as(
         filter.search.as_deref(),
         filter.search_area,
         exact,
-        if exact { "" } else { " ESCAPE chr(92)" },
+        " ESCAPE chr(92)",
     )
     .await;
 

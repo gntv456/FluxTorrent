@@ -2,12 +2,11 @@
 """批九闸门 F：种子列表的搜索 / 筛选 / 排序 / 翻页 / 缓存面。
 
 列表是 PT 用户待得最久的地方，参数 30 多个，每个 facet 都必须「可判别」：
-先造一套属性矩阵已知的探针种，再逐条断言精确 id 集合。同一 URL 在成员与
-站长两桶里也不许互串。非法值类容错的判据都是「等于不加该参数」并配合法对照。
+先造一套属性矩阵已知的探针种，再逐条断言精确 id 集合。同一 URL 在成员与站长
+两桶里也不许互串。非法值类容错的判据都是「等于不加该参数」并配合法对照。
 """
 import datetime
 import glob
-import hashlib
 import json
 import os
 import subprocess
@@ -26,23 +25,21 @@ ROOT = login()
 CLEAN = []
 
 
-def q(sql_text):
+def exec_sql(sql_text, tuples_only=False):
     p = subprocess.run(
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-q",
-         "-d", "fluxtorrent", "-tAc", sql_text],
-        capture_output=True, text=True, encoding="utf-8")
-    return p.stdout.strip()
-
-
-def exec_sql(sql_text):
-    p = subprocess.run(
-        ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-q",
-         "-d", "fluxtorrent", "-c", sql_text],
+         "-d", "fluxtorrent",
+         "-tAc" if tuples_only else "-c", sql_text],
         capture_output=True, text=True, encoding="utf-8")
     # 静默失败的 psql 会让「语料属性」停在默认值上，后续每条 facet 断言
     # 都变成对空集/全集的巧合判断（本闸门第一跑就是这么被骗过去的）
     if p.returncode:
         raise RuntimeError("psql 失败: %s" % (p.stderr or "")[:220])
+    return p.stdout.strip()
+
+
+def q(sql_text):
+    return exec_sql(sql_text, True)
 
 
 def brief(resp):
@@ -406,6 +403,17 @@ ok("G8 裸 % 不当通配：命中数不得等于全站（应为 0 或仅名称�
 got3 = sel("search=%s" % urllib.parse.quote("afprobe pct%10"))
 ok("G8 名称里真含 % 的种能被搜到（转义没把合法用例打死）",
    eqs(got3, {A5}), str(got3))
+# 精确模式同样要转义：旧实现把原串直接塞进 ILIKE，`%`/`_` 仍是通配，
+# 「精确搜 %」会命中全站（现网红证：total 与不加筛选相同）。
+got4 = sel("search=%s&search_mode=2" % urllib.parse.quote("%"))
+ok("G8b 精确模式下裸 % 是字面量（旧行为当通配 ⇒ 命中全集）",
+   got4 == frozenset(), str(got4))
+got5 = sel("search=%s&search_mode=2" % urllib.parse.quote("afprobe pct%10 x"))
+ok("G8b 正控：精确模式能搜到名称里真含 % 的整串",
+   eqs(got5, {A5}), str(got5))
+got6 = sel("search=%s&search_mode=2" % urllib.parse.quote("afprobe pct_10 x"))
+ok("G8b 精确模式下 _ 不当单字符通配（不该命中 A5）",
+   got6 == frozenset(), str(got6))
 
 print("== G9 同一 URL 的两个缓存桶不得互串 ==")
 # 列表层 SQL 对匿名种一律 CASE WHEN anonymous THEN NULL（list_noclamp_as），
