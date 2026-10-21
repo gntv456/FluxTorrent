@@ -11,6 +11,10 @@
      （商店未消耗订单 + 娱乐屋发放−消耗，0262），首页只数商店订单——刮刮乐
      抽到的补签卡在首页显示 0，用户以为卡丢了。断言：发放 1 张 arcade
      resub_card 后两端口径一致为 1。
+  S2 P-471 展示口的连签数断签后不衰减：签到主流程按「昨天有非补签行才 +1，
+     否则重置为 1」落库，而两个展示口只把「最后一条非补签行的 streak」原样
+     端出去——断签三天仍显示「连签 12 天」，点下签到拿回的却是 streak=1。
+     断言：基线在 d-3 时两端口都归 0；基线在 d-1 时仍显示原计数（衰减不许过头）。
   S5 P-92 前端补签取日按 UTC：home-resub-button.tsx 用 toISOString 直接切
      日——北京 0-8 点窗口「昨天」不在列表、尾项落到第 8 天（后端必拒）。
      断言：node 在固定「北京 03:00」求值旧/新两式（旧式缺昨天、含第 8 天；
@@ -205,6 +209,12 @@ def craft_att(uid, off, streak, reward, makeup):
        % (uid, off, streak, reward, "TRUE" if makeup else "FALSE"))
 
 
+def wipe_from(off):
+    """删站点日 today-off 及之后的出勤行（含补签占位行）：夹具复位用。"""
+    ex("DELETE FROM attendance WHERE user_id = %d AND date >= "
+       "((CURRENT_TIMESTAMP + interval '8 hours')::date - %d)" % (CID, off))
+
+
 def pos_ids(raw):
     """'10,20,30' → [10,20,30]（与 economy_checkin::parse_id_list 同口径）。"""
     out = []
@@ -340,9 +350,11 @@ craft_att(CID, 1, 0, 0, True)
 craft_att(CID, 3, 5, STREAK, False)
 s, h = get_home(CT)
 s2, a = get_att(CT)
-ok("S2 P-90 /home 与 /attendance 连签一致=5（补签行在后不为 0）",
-   s == 200 and s2 == 200 and h.get("streak") == 5 and a.get("streak") == 5,
+ok("S2 P-90 /home 与 /attendance 连签同值（补签行在后不当基线）",
+   s == 200 and s2 == 200 and h.get("streak") == a.get("streak"),
    "home.streak=%s att.streak=%s" % (h.get("streak"), a.get("streak")))
+# 值本身归 P-471 管（P-90 只问「两端口是不是同一格」；旧写法在这里是 5/5，
+# 修复后是 0/0——都在同值这条线上，具体该显示几由下面两条钉）。
 
 print("== S2 P-91 首页补签卡只数商店订单（红=娱乐屋卡显示 0）==")
 s, h = get_home(CT)
@@ -358,6 +370,49 @@ ok("S2 P-91 娱乐屋发 1 张后 /home 与 /attendance 一致=1",
    s == 200 and s2 == 200 and h.get("makeup_cards") == 1
    and a.get("makeup_cards") == 1,
    "home=%s att=%s" % (h.get("makeup_cards"), a.get("makeup_cards")))
+
+print("== S2 P-471 断签后展示口不衰减（红=继续端库里的旧计数）==")
+# 现场就是 P-90 那格夹具：最后一条非补签行落在 d-3，链条其实早断了（今天签到
+# 主流程只会落 streak=1，见下面「S2 反控」），可 /home 与 /attendance 都把库里
+# 那个 5 原样端出去——会员看到的「连签 5 天」和点下去拿回的 streak=1 是两回事。
+wipe_from(1)
+craft_att(CID, 3, 5, STREAK, False)
+s, h = get_home(CT)
+s2, a = get_att(CT)
+ok("S2 P-471 基线在 d-3（断签）→ 两端口都归 0（实测 %s/%s）"
+   % (h.get("streak"), a.get("streak")),
+   s == 200 and s2 == 200 and h.get("streak") == 0 and a.get("streak") == 0,
+   "home=%s att=%s｜主流程今天落 streak=1" % (h.get("streak"), a.get("streak")))
+# 反向钉：昨天签过 → 链条还活着，两端口继续显示原计数（衰减做过头另一半也是洞）
+wipe_from(1)
+craft_att(CID, 1, 6, STREAK, False)
+s, h = get_home(CT)
+s2, a = get_att(CT)
+ok("S2 P-471 基线在 d-1（昨天签过）→ 两端口仍显示 6（实测 %s/%s）"
+   % (h.get("streak"), a.get("streak")),
+   s == 200 and s2 == 200 and h.get("streak") == 6 and a.get("streak") == 6,
+   "home=%s att=%s" % (h.get("streak"), a.get("streak")))
+# 复位给下面的「S2 反控」：d-1 只留补签占位行，非补签基线回到 d-3
+wipe_from(1)
+craft_att(CID, 1, 0, 0, True)
+
+
+def flat_src(p):
+    """静态判据用源码：剥注释（本批注释里写着旧形状）+ 拼平 Rust 字符串续行。"""
+    t = re.sub(r"/\*.*?\*/", "", open(p, encoding="utf-8").read(), flags=re.S)
+    t = "\n".join(re.sub(r"(?<!:)//.*", "", ln) for ln in t.split("\n"))
+    return re.sub(r"\\\n[ \t]*", "", t)
+
+
+CKF = flat_src(os.path.join(REPO, "apps/api/src/economy_http/checkin.rs"))
+HAF = flat_src(os.path.join(REPO, "apps/api/src/http/home_attendance.rs"))
+ok("S2 P-471 静态：两端口都走 economy_checkin::shown_streak（判定只一处）",
+   "economy_checkin::shown_streak(" in CKF
+   and "economy_checkin::shown_streak(" in HAF,
+   "%d/%d" % (CKF.count("shown_streak("), HAF.count("shown_streak(")))
+ok("S2 P-90 静态：基线仍排除补签行（SQL 侧 NOT makeup / 首页侧 !*mk）",
+   "AND NOT makeup" in CKF and "!*mk" in HAF,
+   "att=%d home=%d" % (CKF.count("NOT makeup"), HAF.count("!*mk")))
 
 print("== S2 反控：有补签行但无签到历史者今日签到 ==")
 sp0 = spark(CID)

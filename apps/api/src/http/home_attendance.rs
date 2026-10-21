@@ -73,12 +73,15 @@ pub async fn attendance_json(
             })
         })
         .collect();
-    let streak = att
-        .iter()
-        .rev()
-        .find(|(_, _, _, mk)| !*mk)
-        .map(|(_, s, _, _)| *s)
-        .unwrap_or(0);
+    // P-471：断签后展示必须衰减到 0，边界与 /attendance、签到主流程同一条
+    // （旧写法只把最后一格的计数端出来：库里 12 就一直显示 12）
+    let streak = crate::economy_checkin::shown_streak(
+        att.iter()
+            .rev()
+            .find(|(_, _, _, mk)| !*mk)
+            .map(|(ad, s, _, _)| (*ad, *s as i64)),
+        today,
+    ) as i32;
     let total_days = att.len() as i32;
     let checked_today = att.iter().any(|(d, _, _, _)| *d == today);
     Ok(serde_json::json!({

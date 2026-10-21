@@ -124,6 +124,23 @@ pub fn next_streak(
     }
 }
 
+/// 展示用连签数（P-471）：最后一条非补签行落在**今天或昨天**才叫链条还活着，
+/// 照原计数展示；断了一天及以上 → 0。
+///
+/// 断链边界必须与签到主流程一致（checkin.rs 里 `prev_date == Some(yesterday)`
+/// 那条），否则会员在首页看到「连签 12 天」、点下去回的是 `streak=1`——展示口
+/// 各写一份时忘了衰减，就是这个形状。补签行（makeup）由调用方先排除，
+/// 补签不续连签是 §9.3 定案（运营口径「不影响原始连续计数」）。
+pub fn shown_streak(
+    last: Option<(chrono::NaiveDate, i64)>,
+    today: chrono::NaiveDate,
+) -> i64 {
+    match last {
+        Some((d, s)) if (today - d).num_days() <= 1 => s,
+        _ => 0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,5 +213,29 @@ mod tests {
             1
         );
         assert_eq!(next_streak(None, today), 1);
+    }
+    #[test]
+    fn shown_streak_decays_on_gap() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 8).unwrap();
+        let d = |n| Some((today - chrono::Duration::days(n), 12_i64));
+        // 今天已签 / 昨天签过：链条还活着，照原计数展示
+        assert_eq!(shown_streak(d(0), today), 12);
+        assert_eq!(shown_streak(d(1), today), 12);
+        // 断一天起必须归 0——旧写法把库里那个 12 原样端给首页和签到面板
+        assert_eq!(shown_streak(d(2), today), 0);
+        assert_eq!(shown_streak(d(30), today), 0);
+        assert_eq!(shown_streak(None, today), 0);
+        // 与签到主流程同一条边界（n=0 那档走不到：今日已签在落库前就被拒）。
+        // 展示 >0 的那天签到落 13，展示 =0 的那天签到落 1。
+        for n in 1..31 {
+            let prev = d(n);
+            let next = if (today - prev.unwrap().0).num_days() == 1 {
+                prev.unwrap().1 + 1
+            } else {
+                1
+            };
+            let alive = shown_streak(prev, today) > 0;
+            assert_eq!(next, if alive { 13 } else { 1 });
+        }
     }
 }

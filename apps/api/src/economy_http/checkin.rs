@@ -187,17 +187,21 @@ async fn checkin_status(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive(); // 站点时区 UTC+8
     let checked_today = rows.iter().any(|(d, _, _)| *d == today);
-    // streak 基线取最后一条非补签行（与签到主流程同口径），补签不重置显示
-    let current_streak: i64 = sqlx::query_scalar(
-        "SELECT streak FROM attendance WHERE user_id = $1 AND NOT \
+    // streak 基线取最后一条非补签行（与签到主流程同口径），补签不重置显示。
+    // P-471：断一天起展示必须归 0——旧写法把库里那格的旧计数原样端出去，
+    // 会员首页看到「连签 12 天」、点下去回的却是 streak=1。
+    let last_live: Option<(chrono::NaiveDate, i32)> = sqlx::query_as(
+        "SELECT date, streak FROM attendance WHERE user_id = $1 AND NOT \
          makeup ORDER BY date DESC LIMIT 1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .map(|s: i32| s as i64)
-    .unwrap_or(0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let current_streak: i64 = crate::economy_checkin::shown_streak(
+        last_live.map(|(d, s)| (d, s as i64)),
+        today,
+    );
     // 补签卡持有数（双源 0262：未消耗订单 + 娱乐屋发放的补签卡；kind 兼容 makeup_card/resub_card，0066）
     let makeup_cards: i64 = sqlx::query_scalar(
         "SELECT (SELECT count(*) FROM shop_orders o \
