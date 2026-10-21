@@ -156,12 +156,43 @@ pub(crate) async fn shoutbox_bot_help() -> impl Responder {
     }))
 }
 
+/// /free 回话的种子卡片数据（0420 播报带种卡）：与论坛 !torrent 引用卡
+/// 同族，随回话直接下发（零新端点）；promotion 取 promotions.kind。
+#[derive(sqlx::FromRow, serde::Serialize, Default)]
+struct FreeCard {
+    id: i64,
+    name: String,
+    small_descr: Option<String>,
+    size: i64,
+    seeders: i32,
+    leechers: i32,
+    poster: Option<String>,
+    promotion: String,
+}
+
+/// /free 纯文本回话；种卡由 cards[] 并行下发，文本保留供纯文本消费方。
+fn free_reply(cards: &[FreeCard]) -> String {
+    if cards.is_empty() {
+        "当前没有免费促销的种子。".to_string()
+    } else {
+        format!(
+            "当前免费：{}",
+            cards
+                .iter()
+                .map(|c| format!("#{} {}", c.id, c.name))
+                .collect::<Vec<_>>()
+                .join("；")
+        )
+    }
+}
+
 /// 命令分发（GET 供前端在发送 /命令 时调用并展示回话）
 #[utoipa::path(
     get,
     path = "/api/v1/shoutbox/bot/exec",
     tag = "社区/喊话",
-    description = "执行喊话机器人指令：三条只读回话，任何登录用户可用。",
+    description = "执行喊话机器人指令：三条只读回话，任何登录用户可用。 \
+     /free 另附免费种子卡片数据 cards[]（喊话盒「播报带种卡」消费）。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）")))]
@@ -173,27 +204,23 @@ pub(crate) async fn shoutbox_bot_exec(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let cmd = q.get("cmd").map(|s| s.trim()).unwrap_or("");
+    // cards 仅 /free 填充（0420 播报带种卡）；其余命令回空数组，前端不渲染
+    let mut cards: Vec<FreeCard> = Vec::new();
     let reply = match cmd {
         "/free" => {
-            let rows: Vec<(i64, String)> = sqlx::query_as(
-                "SELECT t.id, t.name FROM promotions p JOIN torrents t ON t.id = p.torrent_id \
+            cards = sqlx::query_as(
+                "SELECT t.id, t.name, t.small_descr, t.size, t.seeders, \
+                 t.leechers, t.media_info->>'poster' AS poster, \
+                 p.kind AS promotion \
+                 FROM promotions p JOIN torrents t ON t.id = p.torrent_id \
                  WHERE p.starts_at <= now() AND p.ends_at > now() \
-                   AND p.kind IN ('free','x2free') ORDER BY p.ends_at LIMIT 5",
+                   AND p.kind IN ('free','x2free') \
+                 ORDER BY p.ends_at LIMIT 5",
             )
             .fetch_all(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
-            if rows.is_empty() {
-                "当前没有免费促销的种子。".to_string()
-            } else {
-                format!(
-                    "当前免费：{}",
-                    rows.iter()
-                        .map(|(id, name)| format!("#{} {}", id, name))
-                        .collect::<Vec<_>>()
-                        .join("；")
-                )
-            }
+            free_reply(&cards)
         }
         "/stats" => {
             let (users, torrents, seeding): (i64, i64, i64) = sqlx::query_as(
@@ -232,5 +259,40 @@ pub(crate) async fn shoutbox_bot_exec(
         }
         _ => "可用命令：/free /stats /me /help".to_string(),
     };
-    Ok(ok(serde_json::json!({ "cmd": cmd, "reply": reply })))
+    let body =
+        serde_json::json!({ "cmd": cmd, "reply": reply, "cards": cards });
+    Ok(ok(body))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn card(id: i64, name: &str) -> FreeCard {
+        FreeCard {
+            id,
+            name: name.to_string(),
+            promotion: "free".to_string(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn free_reply_text() {
+        // 无促销一句话；有种列「#id 名称」分号相连
+        assert_eq!(free_reply(&[]), "当前没有免费促销的种子。");
+        let cards = vec![card(7, "甲"), card(9, "乙")];
+        assert_eq!(free_reply(&cards), "当前免费：#7 甲；#9 乙");
+    }
+
+    /// cards 序列化含前端紧凑卡所需字段（缺字段 = 静默少渲染一角）
+    #[test]
+    fn free_cards_serialize() {
+        let v = serde_json::to_value(&card(7, "甲")).unwrap();
+        let s = v.to_string();
+        for k in ["id", "name", "size", "seeders", "promotion", "poster"] {
+            assert!(s.contains(&format!("\"{k}\":")), "cards 缺字段 {k}");
+        }
+        assert_eq!(v["promotion"], "free");
+    }
 }

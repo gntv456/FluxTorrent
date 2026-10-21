@@ -401,7 +401,7 @@
  "apps/api/src/community_http/forum_util.rs::wide": 3,
  "apps/api/src/community_http/friend.rs::wide": 4,
  "apps/api/src/community_http/interact.rs::wide": 3,
- "apps/api/src/community_http/leak_bot.rs::wide": 4,
+ "apps/api/src/community_http/leak_bot.rs::wide": 3,
  "apps/api/src/community_http/like.rs::wide": 2,
  "apps/api/src/community_http/lottery.rs::wide": 5,
  "apps/api/src/community_http/medal.rs::wide": 4,

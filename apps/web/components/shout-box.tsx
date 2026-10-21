@@ -7,6 +7,10 @@ import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
 import { Icon } from "@/components/icons";
+import {
+  ShoutFreeCards,
+  type FreeCard,
+} from "@/components/shout-free-cards";
 
 interface Shout {
   id: number;
@@ -20,6 +24,8 @@ interface BotReply {
   key: number;
   cmd: string;
   reply: string;
+  /** /free 的免费种子卡片数据（0420 播报带种卡）；其余命令缺省 */
+  cards?: FreeCard[];
   at: string;
 }
 
@@ -96,7 +102,11 @@ export function ShoutBox() {
       // /命令：额外触发机器人回话（GET /shoutbox/bot/exec?cmd=），展示在本会话聊天流
       if (raw.startsWith("/")) {
         try {
-          const r = await api.get<{ cmd: string; reply: string }>(
+          const r = await api.get<{
+            cmd: string;
+            reply: string;
+            cards?: FreeCard[];
+          }>(
             `/api/v1/shoutbox/bot/exec?cmd=${encodeURIComponent(raw.split(/\s+/)[0])}`,
           );
           replySeq.current += 1;
@@ -107,6 +117,7 @@ export function ShoutBox() {
                 key: replySeq.current,
                 cmd: r.cmd,
                 reply: r.reply,
+                cards: r.cards,
                 at: new Date().toISOString(),
               },
             ].slice(-10),
@@ -191,7 +202,13 @@ export function ShoutBox() {
         {botReplies.map((r) => (
           <li key={`bot-${r.key}`} className="shoutbox__bot">
             <b className="text-sky">🤖 {tb.botName}</b>
-            <span className="shoutbox__text">{r.reply}</span>
+            {/* 纵列包一层：li 是 flex 行布局，种卡块要落在回话文本下方 */}
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="shoutbox__text">{r.reply}</span>
+              {r.cards && r.cards.length > 0 && (
+                <ShoutFreeCards cards={r.cards} />
+              )}
+            </span>
             <time>{timeStr(r.at)}</time>
           </li>
         ))}
