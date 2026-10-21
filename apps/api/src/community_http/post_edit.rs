@@ -119,6 +119,24 @@ pub(crate) async fn post_delete(
     if !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
+    // P-494：首帖不能按「回帖」删——topics 没有 first_post_id，仓里多处拿
+    // min(id) 当首帖（protected 版块的正文保护、搜索片段、最新回复、我的
+    // 回帖、删主题对账）。删掉后二楼顶成一楼：楼层号与回帖统计跟着漂，主题
+    // 还变成「有标题没正文」的空壳。要删首帖请走
+    // DELETE /forums/topics/{id}。
+    let is_first: bool = sqlx::query_scalar(
+        "SELECT COALESCE(min(id), 0) = $2 FROM posts WHERE topic_id = $1",
+    )
+    .bind(tid)
+    .bind(pid)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if is_first {
+        return Err(DomainError::Validation(
+            "首帖不能单独删除，请改用「删主题」".into(),
+        ));
+    }
     // 删单帖收回这一帖当初真拿到的回帖奖励（与删主题收回发帖奖励对称，
     // 堵住「发帖赚火花再被删」的获利通道）
     {

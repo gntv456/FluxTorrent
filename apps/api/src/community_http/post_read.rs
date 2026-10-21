@@ -150,10 +150,20 @@ pub(crate) async fn topic_detail(
             .await
             .unwrap_or(false);
     if protected {
+        // P-495：放行「一楼」必须认真实首帖（min(id)），不能认本页下标。
+        // 默认只取最近 200 楼，长主题的第一条其实是回帖；按 `i > 0` 放行
+        // 等于每翻一页都漏一条正文（`?before=` 还能指定窗口）。
+        let first_pid: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(min(id), 0) FROM posts WHERE topic_id = $1",
+        )
+        .bind(tid)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         let is_op = op_id == Some(auth.id);
-        for (i, p) in posts.iter_mut().enumerate() {
+        for p in posts.iter_mut() {
             let is_self = p.user_id == Some(auth.id);
-            if i > 0 && !is_self && !is_op && !perm.can_mod {
+            if p.id != first_pid && !is_self && !is_op && !perm.can_mod {
                 p.hidden = true;
                 p.body = "……".to_string();
             }
