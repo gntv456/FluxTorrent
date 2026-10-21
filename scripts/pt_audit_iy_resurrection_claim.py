@@ -23,7 +23,9 @@ worker 验收改成 `seeded_seconds >= seed_base_seconds + required_hours*3600`�
       再补足 240h 新增后新谓词选中 1（两个方向都钉）；
   IY7 活体：活种 claim 必须拒且不落行（旧镜像红＝缺陷本体）；
   IY8 活体正控：死种 claim 必须 200 且落一行（证明不是一刀切拒绝）；
-  IY9 收尾：探针任务/做种零残留，成员停用。
+  IY9 收尾：探针任务/做种零残留，成员停用；
+  IY10 静态：我的任务进度必须减基线（否则面板显示已达标却永不发奖）；
+  IY11 真库 A/B：旧展示读 900000、新展示读 36000（只钉增量口径）。
 
 跑法：PYTHONIOENCODING=utf-8 python scripts/pt_audit_iy_resurrection_claim.py
 """
@@ -84,6 +86,12 @@ ok("IY3 0415 迁移在册且组队建任务共用死种谓词",
    "ADD COLUMN IF NOT EXISTS seed_base_seconds" in MIG
    and "DEAD_TORRENT_CLAUSE" in TEAM,
    "迁移缺列会让新 SQL 在重建时 500；组队留旧口径会绕过同一闸门")
+MINE = CLAIM.split("async fn resurrection_my", 1)[-1]
+ok("IY10 我的任务进度减基线（=%s）"
+   % ("- r.seed_base_seconds" in MINE),
+   "GREATEST(COALESCE(s.seeded_seconds, 0)::bigint "
+   "- r.seed_base_seconds, 0)" in MINE,
+   "累计值展示会让老会员看到「已达标」而 worker 永不发奖")
 
 ROOT = login()
 uid = 0
@@ -186,6 +194,34 @@ try:
        % (vals.get("OLD"), vals.get("NEW"), vals.get("FULL")),
        vals.get("OLD") == "1" and vals.get("NEW") == "0"
        and vals.get("FULL") == "1", out[-200:])
+
+    mine_probe = (
+        "BEGIN;"
+        "ALTER TABLE resurrections ADD COLUMN IF NOT EXISTS "
+        "seed_base_seconds BIGINT NOT NULL DEFAULT 0;"
+        "INSERT INTO resurrections (torrent_id, user_id, required_hours, "
+        "reward_sparks, seed_base_seconds) VALUES (%s, %d, 240, 5000, "
+        "864000);"
+        "INSERT INTO snatches (user_id, torrent_id, seeded_seconds, seeding, "
+        "last_port, downloaded, uploaded, connectable, last_seen_at) VALUES "
+        "(%d, %s, 900000, TRUE, 6881, 1024, 2048, -1, now()) "
+        "ON CONFLICT (user_id, torrent_id) DO UPDATE SET seeded_seconds = "
+        "900000;"
+        "SELECT 'OLDMINE=' || COALESCE(s.seeded_seconds, 0)::bigint "
+        "FROM resurrections r LEFT JOIN snatches s ON s.user_id = r.user_id "
+        "AND s.torrent_id = r.torrent_id WHERE r.torrent_id = %s "
+        "AND r.user_id = %d;"
+        "SELECT 'NEWMINE=' || GREATEST(COALESCE(s.seeded_seconds, 0)::bigint "
+        "- r.seed_base_seconds, 0) FROM resurrections r LEFT JOIN snatches s "
+        "ON s.user_id = r.user_id AND s.torrent_id = r.torrent_id "
+        "WHERE r.torrent_id = %s AND r.user_id = %d;"
+        "ROLLBACK;")
+    mout = q(mine_probe % (dead, uid, uid, dead, dead, uid, dead, uid))
+    mvals = dict(re.findall(r"(OLDMINE|NEWMINE)=(\d+)", mout))
+    ok("IY11 我的任务进度 A/B：旧展示=%s（应 900000）·新展示增量=%s（应 36000）"
+       % (mvals.get("OLDMINE"), mvals.get("NEWMINE")),
+       mvals.get("OLDMINE") == "900000" and mvals.get("NEWMINE") == "36000",
+       mout[-200:])
 
     sh, bh = call("POST", "/resurrections/claim",
                   {"torrent_id": int(healthy)}, token=tok)

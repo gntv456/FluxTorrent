@@ -173,9 +173,11 @@ pub(super) async fn resurrection_my(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let rows: Vec<(i64, i64, i32, chrono::DateTime<chrono::Utc>, String, i32)> = sqlx::query_as(
+    // P-483 起验收按「领取后新增」判定，进度必须同口径：旧版回累计
+    // seeded_seconds，老会员看到「已做种 500h / 要求 240h」却永远不达标。
+    let rows: Vec<(i64, i64, i32, chrono::DateTime<chrono::Utc>, String, i64)> = sqlx::query_as(
         "SELECT r.torrent_id, r.reward_sparks, r.required_hours, r.claimed_at, r.status, \
-                COALESCE(s.seeded_seconds, 0) \
+                GREATEST(COALESCE(s.seeded_seconds, 0)::bigint - r.seed_base_seconds, 0) \
          FROM resurrections r \
          LEFT JOIN snatches s ON s.user_id = r.user_id AND s.torrent_id = r.torrent_id \
          WHERE r.user_id = $1 ORDER BY r.claimed_at DESC LIMIT 50",
