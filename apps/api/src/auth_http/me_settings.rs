@@ -80,10 +80,17 @@ pub async fn me_overview(
     } else {
         Some((uploaded as f64 / downloaded as f64 * 100.0).round() / 100.0)
     };
-    // 最近 30 天登录趋势（对齐旧站 usercp 首页活跃图）
+    // 最近 30 天登录趋势（对齐旧站 usercp 首页活跃图）。日界按**站点日**：
+    // 旧写法是 `created_at::date`（本库会话 UTC）配 `now() - interval '30 days'`
+    // （滚动 720 小时）⇒ 北京 0–8 点的登录全记到「昨天」那一格，今日那格空一截，
+    // 而界面下面那句「30 天内登录 N 天」数的也是这些 UTC 格（P-474，与后台
+    // 大盘 P-473、首页 P-465 同族）。窗口取「今天(北京)往前数 30 个站点日」。
     let trend: Vec<(chrono::NaiveDate, i64)> = sqlx::query_as(
-        "SELECT created_at::date AS d, count(*) AS n FROM login_events \
-         WHERE user_id = $1 AND created_at > now() - interval '30 days' \
+        "SELECT ((created_at AT TIME ZONE 'UTC') + interval '8 hours')::date \
+         AS d, count(*) AS n FROM login_events \
+         WHERE user_id = $1 AND created_at >= date_trunc('day', \
+             now() AT TIME ZONE 'Asia/Shanghai') \
+             AT TIME ZONE 'Asia/Shanghai' - interval '29 days' \
          GROUP BY d ORDER BY d",
     )
     .bind(uid)

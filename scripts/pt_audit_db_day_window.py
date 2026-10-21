@@ -118,10 +118,11 @@ EXPECT = ("apps/api/src/games_http/linkage.rs",
           "apps/api/src/auth_http/profile.rs",
           "apps/worker/src/jobs/game_coupons.rs",
           "apps/worker/src/jobs/settle.rs",
-          "apps/api/src/admin_http/overview.rs")
+          "apps/api/src/admin_http/overview.rs",
+          "apps/api/src/auth_http/me_settings.rs")
 have = set(r for r, _l in right_sites)
 miss = [f for f in EXPECT if f not in have]
-ok("DB2 十二处日/周/月窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
+ok("DB2 十三处日/周/月窗口都在「两次 AT TIME ZONE」形状上（实测 %d 处、缺 %d 个口）"
    % (len(right_sites), len(miss)), not miss,
    "缺=%s｜有=%s" % ("、".join(miss), "、".join(sorted(have))))
 
@@ -398,5 +399,48 @@ else:
     ok("DB14a 正控：此刻两轴读数分岔（站点日=%s / UTC 日=%s），上一条是硬判据"
        % (site14, utc14), str(last14[1]) != utc14,
        "旧形状会把今日格读成 %s" % utc14)
+
+# ---------- DB15：控制面板「最近 30 天登录趋势」那一格（P-474） ----------
+# 旧写法 `created_at::date`（会话 UTC）+ `now() - interval '30 days'`（滚动 720h）
+# ⇒ 北京 0–8 点的登录记到「昨天」，今日那格空一截，而下面「30 天内登录 N 天」
+# 数的也是这些 UTC 格。root 今天实测：站点日 285 条 / UTC 日 59 条。
+uid15 = psql("SELECT id FROM users WHERE username = 'root'").strip()
+# 对照必须与被验 SQL 同一谓词：那条趋势语句数的是**全部**登录（含失败），
+# 我先加了 AND ok 就差了 1 条 ⇒ 两边都去掉，另把「失败登录该不该进活跃图」
+# 单独记成待裁（不是本批改动，旧写法也一直没过滤）。
+site15 = psql("SELECT count(*) FROM login_events WHERE user_id = %s "
+              "AND created_at >= date_trunc('day', now() AT TIME ZONE "
+              "'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai'" % uid15).strip()
+utc15 = psql("SELECT count(*) FROM login_events WHERE user_id = %s "
+             "AND created_at::date = current_date" % uid15).strip()
+st15, body15 = call("GET", "/me/overview", token=tok)
+tr15 = ((body15 or {}).get("data") or {}).get("login_trend_30d") or []
+lab15 = psql("SELECT to_char((now() AT TIME ZONE 'Asia/Shanghai')::date, "
+             "'YYYY-MM-DD')").strip()
+hit15 = [r for r in tr15 if isinstance(r, dict) and r.get("date") == lab15]
+cnt15 = str(hit15[0].get("count")) if hit15 else "无今日格"
+print("   控制面板今日格：API=%s/%s｜站点日读数=%s UTC 日读数=%s（格数=%d）"
+      % (lab15, cnt15, site15, utc15, len(tr15)))
+ok("DB15 控制面板趋势今日格 = 站点日读数 %s（API=%s，标签 %s 在册=%s）"
+   % (site15, cnt15, lab15, bool(hit15)),
+   st15 == 200 and bool(hit15) and cnt15 == site15,
+   "http=%s 格=%s" % (st15, json.dumps(hit15, ensure_ascii=False)))
+if site15 == utc15:
+    print("   WARN DB15a 此刻两轴同数（都=%s），上一条只验标签对齐" % site15)
+else:
+    ok("DB15a 正控：此刻两轴分岔（站点日=%s / UTC 日=%s），上一条是硬判据"
+       % (site15, utc15), cnt15 != utc15, "旧形状今日格读成 %s" % utc15)
+MSS15 = strip_comments(io.open(os.path.join(ROOTDIR, "apps", "api", "src",
+                                           "auth_http", "me_settings.rs"),
+                               encoding="utf-8").read())
+# Rust 字符串续行（\ + 换行）会吃掉下一行缩进 ⇒ 静态判据按 DB1/DB2
+# 同款 SEP=[\s\\]* 匹配，不做全文拼平（免得误伤别的判据）。
+B15 = r"\+ interval '8 hours'\)[\s\\]*::date[\s\\]*AS d"
+ok("DB15b 静态：me_settings.rs 的趋势桶带 +8 偏移且窗口是站点日整日",
+   re.search(B15, MSS15)
+   and "created_at > now() - interval '30 days'" not in MSS15,
+   "桶命中=%s 旧窗残留=%s" % (bool(re.search(B15, MSS15)),
+                            "created_at > now() - interval '30 days'"
+                            in MSS15))
 
 summary()
