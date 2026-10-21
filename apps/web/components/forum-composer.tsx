@@ -6,8 +6,9 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { TagChip, TagChipData } from "@/components/forum-bits";
 import { VideoInsertRow } from "@/components/forum-video-insert";
+import { TorrentInsertRow } from "@/components/forum-torrent-insert";
+import { appendVideoBlock } from "@/lib/forum-video";
 import { Modal } from "@/components/modal";
-
 /** 论坛发主题组件群（从 forum-composer.tsx 按域拆出）：
  *  发帖选标签 TagPicker + 发主题 TopicComposer（悬赏/投票/抽奖三型，
  *  0124/0125/0126）。视频插入行在 forum-video-insert.tsx；回帖/管理操作
@@ -354,7 +355,11 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
         </div>
         {/* 视频内嵌（0189/0190）：白名单链接或本地上传，插入 !video() 独立行 */}
         <VideoInsertRow
-          onInsert={(line) => setBody((b) => `${b}${b ? "\n" : ""}${line}\n`)}
+          onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
+        />
+        {/* 引用种子：搜索选择后插入 !torrent(id) 独立行（渲染为摘要卡） */}
+        <TorrentInsertRow
+          onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
         />
         {msg && (
           <p role="alert" className="text-sm text-danger">

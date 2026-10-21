@@ -137,6 +137,7 @@ pub async fn forum_flood_mark(db: &sqlx::PgPool, user_id: i64) {
 /// 把 Markdown 正文压成纯文本摘要（写入 posts.body_text，供搜索/列表预览）。
 /// 不追求完美解析，够用即可：去代码围栏/标题/引用/列表符号 + 行内强调与链接语法。
 /// 视频内嵌（0189）：!video(URL) 整行压成 URL 本身（预览可读、搜索可命中）。
+/// 种子引用卡：!torrent(id) 压成站内链接 /torrent/{id}（摘要可点、口径同渲染）。
 pub fn strip_markdown(src: &str) -> String {
     let mut out = String::with_capacity(src.len());
     let mut in_fence = false;
@@ -149,6 +150,15 @@ pub fn strip_markdown(src: &str) -> String {
         if in_fence {
             continue; // 代码块内容不进摘要，避免噪音
         }
+        let link = torrent_line_link(t);
+        let owned;
+        let t = match &link {
+            Some(l) => {
+                owned = l.clone();
+                owned.as_str()
+            }
+            None => t,
+        };
         let t = strip_video_syntax(t);
         let mut l = t.trim_start_matches('#').trim_start();
         while let Some(rest) = l.strip_prefix('>') {
@@ -201,8 +211,42 @@ fn strip_video_syntax(line: &str) -> &str {
     line
 }
 
+/// !torrent(id) → Some("/torrent/{id}")（其余行 None；与前端 torrentLine 同口径，
+/// 仅认纯数字 id——非数字是用户手误，保留原样让预览可读）。返回 String 以
+/// 借出堆内存，strip_markdown 里短暂使用后即弃。
+fn torrent_line_link(line: &str) -> Option<String> {
+    let t = line.trim();
+    let rest = t.strip_prefix("!torrent(")?;
+    let id = rest.strip_suffix(')')?;
+    if !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit()) {
+        Some(format!("/torrent/{id}"))
+    } else {
+        None
+    }
+}
+
 /// 每帖视频块上限实现在 embed_video.rs（0190 post_video_max；
 /// 计数要与前端渲染口径同源，故与规则匹配放在一起）。
+
+#[cfg(test)]
+mod tests {
+    use super::strip_markdown;
+
+    /// 种子引用卡（!torrent）：摘要里语法串必须压成站内链接（预览可点、
+    /// 口径同前端渲染）；非数字 id 是手误，保留原样让预览可读。
+    #[test]
+    fn strip_markdown_torrent_ref() {
+        let s = strip_markdown("看看这个\n!torrent(42)\n完事");
+        assert_eq!(s, "看看这个 /torrent/42 完事");
+        let bad = strip_markdown("!torrent(abc)");
+        assert_eq!(bad, "!torrent(abc)");
+        let empty = strip_markdown("!torrent()");
+        assert_eq!(empty, "!torrent()");
+        // 围栏内不解析（与视频口径一致）
+        let fenced = strip_markdown("```\n!torrent(42)\n```\n正文");
+        assert_eq!(fenced, "正文");
+    }
+}
 
 pub fn strip_inline_links(s: &str) -> String {
     let b = s.as_bytes();

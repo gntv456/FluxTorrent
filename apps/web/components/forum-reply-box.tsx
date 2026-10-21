@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
+import { TorrentInsertRow } from "@/components/forum-torrent-insert";
+import { appendVideoBlock } from "@/lib/forum-video";
 
 /** 长类名提常量（行宽门禁 ≤80） */
 /** 长类名提常量（行宽门禁 ≤80；原 forum-post-actions 基线债随迁） */
@@ -92,6 +94,10 @@ export function ReplyBox({
           className={TXT_CLS}
         />
       </label>
+      {/* 引用种子：搜索选择后插入 !torrent(id) 独立行（渲染为摘要卡） */}
+      <TorrentInsertRow
+        onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
+      />
       {msg && (
         <p role="alert" className="text-sm text-danger">
           {msg}

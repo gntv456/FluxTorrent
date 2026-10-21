@@ -8,23 +8,28 @@ import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
 import { Modal } from "@/components/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TorrentInsertRow } from "@/components/forum-torrent-insert";
+import { appendVideoBlock } from "@/lib/forum-video";
 
 /** 论坛回帖与帖子级管理操作（从 forum-composer.tsx 按域拆出）：
  *  ReplyBox 回帖、TopicModActions 主题管理（版主）、PostActions 帖子编辑/删除。
  *  发新主题（含悬赏/投票/抽奖）见 forum-composer.tsx。 */
 
-/** 主题管理操作（版主/postmanage）——置顶/锁定/移动/删主题 */
+/** 主题管理操作（版主/postmanage）——置顶/锁定/移动/删主题/公告 */
 export function TopicModActions({
   topicId,
   sticky,
   locked,
   digest,
+  notice,
   forums,
 }: {
   topicId: number;
   sticky: boolean;
   locked: boolean;
   digest: boolean;
+  /** 公告（0396） */
+  notice: boolean;
   forums: { id: number; name: string }[];
 }) {
   const router = useRouter();
@@ -82,6 +87,13 @@ export function TopicModActions({
         onClick={() => manage({ digest: !digest })}
       >
         {digest ? dict.forums.undigest : dict.forums.digest}
+      </button>
+      <button
+        className={btn}
+        disabled={busy}
+        onClick={() => manage({ notice: !notice })}
+      >
+        {notice ? dict.forums.unnotice : dict.forums.notice}
       </button>
       <select
         aria-label={dict.forums.moveTo}
@@ -221,6 +233,10 @@ export function PostActions({
             maxLength={5000}
             autoFocus
             className="min-h-[160px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
+          />
+          {/* 引用种子：搜索选择后插入 !torrent(id) 独立行（渲染为摘要卡） */}
+          <TorrentInsertRow
+            onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
           />
           {msg && (
             <p role="alert" className="text-xs text-danger">

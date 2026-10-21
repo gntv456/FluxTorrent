@@ -1,5 +1,6 @@
 import React from "react";
 import { VideoEmbedBlock } from "@/components/forum-video-embed";
+import { TorrentRefBlock, torrentLine } from "@/components/forum-torrent-card";
 import type { EmbedRule } from "@/lib/data-forum";
 
 /**
@@ -10,6 +11,8 @@ import type { EmbedRule } from "@/lib/data-forum";
  * 链接仅允许 http(s)/mailto/站内绝对路径，其余当纯文本（防 javascript: 等）。
  * 视频内嵌（0189）：!video(URL) 显式语法 + 整段恰为 URL 的段落自动转换；
  * 命中白名单规则才渲染播放器，否则降级为普通链接（fail-closed）。
+ * 种子引用卡：!torrent(id) 显式语法 + 整行恰为站内种子链接（/torrent/{id}）
+ * 自动转摘要卡；数据由 TorrentRefBlock 现场点查，失败降级（fail-closed）。
  */
 
 const SAFE_URL = /^(https?:\/\/|mailto:|\/)/i;
@@ -156,6 +159,15 @@ function parseBlocks(
       continue;
     }
 
+    // 种子引用卡：!torrent(id) / 站内种子裸链 unfurl。优先于视频行判
+    // （同是裸链形态），fail-closed 降级在 TorrentCard 内部处理。
+    const tid = torrentLine(line);
+    if (tid !== null) {
+      out.push(<TorrentRefBlock key={`t${k++}`} id={tid} />);
+      i++;
+      continue;
+    }
+
     // 视频内嵌（0189）：!video(URL) 显式语法 + 整段恰为 URL 的自动转换。
     // 未命中规则时 VideoEmbedBlock 内部降级为链接（fail-closed）。
     const v = videoLine(line);
@@ -230,6 +242,8 @@ function parseBlocks(
     }
 
     // 段落：连续非空、非块级起始行合并；软换行保留为 <br/>
+    // 视频/种子引用行也是块级边界：正文后面紧跟的 !video(...) / !torrent(...)
+    // （只差一个 \n）必须独立成块，否则显成字面量。
     const buf: string[] = [];
     while (
       i < lines.length &&
@@ -239,7 +253,9 @@ function parseBlocks(
       !isQuote(lines[i]) &&
       !isUl(lines[i]) &&
       !isOl(lines[i]) &&
-      !isHr(lines[i])
+      !isHr(lines[i]) &&
+      !videoLine(lines[i]) &&
+      torrentLine(lines[i]) === null
     ) {
       buf.push(lines[i]);
       i++;
