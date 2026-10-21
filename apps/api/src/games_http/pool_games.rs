@@ -101,7 +101,7 @@ async fn pool_round(
 pub(super) async fn jgg(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<DrawReq>>,
+    body: crate::http::OptJson<DrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
@@ -113,7 +113,7 @@ pub(super) async fn jgg(
 pub(super) async fn capsule(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<DrawReq>>,
+    body: crate::http::OptJson<DrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
@@ -127,7 +127,7 @@ pub(super) async fn capsule(
 pub(super) async fn wheel(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<DrawReq>>,
+    body: crate::http::OptJson<DrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());

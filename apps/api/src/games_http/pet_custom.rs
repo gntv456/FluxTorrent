@@ -32,10 +32,10 @@ pub(super) struct CustomizeReq {
 pub(super) async fn pet_customize(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<CustomizeReq>>,
+    body: crate::http::OptJson<CustomizeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let b = body.map(|j| j.into_inner()).unwrap_or(CustomizeReq {
+    let b = body.unwrap_or(CustomizeReq {
         name: None,
         species: None,
     });

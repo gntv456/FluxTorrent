@@ -92,7 +92,7 @@ pub(super) struct UseCouponReq {
 pub(super) async fn use_coupon(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<UseCouponReq>>,
+    body: crate::http::OptJson<UseCouponReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());

@@ -214,7 +214,7 @@ struct PetActionReq {
 pub(super) async fn pet_feed(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<PetActionReq>>,
+    body: crate::http::OptJson<PetActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let db = &state.repo.db;
@@ -222,7 +222,7 @@ pub(super) async fn pet_feed(
     // 无限互动；与农场同档慢节奏（pet_max_feeds_per_hour，缺省 30/时）
     check_rate_scoped(&state, &state.redis, auth.id, RateScope::Pet).await?;
     let (feed, dig) = tune(&state).await;
-    let (client, use_coupon) = match body {
+    let (client, use_coupon) = match body.into_inner() {
         Some(b) => (b.idempotency_key.clone(), b.use_coupon),
         None => (None, false),
     };
@@ -279,7 +279,7 @@ pub(super) async fn pet_feed(
 pub(super) async fn pet_claim(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<PetActionReq>>,
+    body: crate::http::OptJson<PetActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let (feed, dig) = tune(&state).await;

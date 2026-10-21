@@ -189,7 +189,7 @@ const REVOKE_KEY_SQL: &str = "DELETE FROM download_keys \
 async fn download_key_revoke(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<DownloadKeyRevokeReq>>,
+    body: crate::http::OptJson<DownloadKeyRevokeReq>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
     let uid = tk.uid;

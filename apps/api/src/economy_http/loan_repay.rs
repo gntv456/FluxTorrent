@@ -28,10 +28,10 @@ struct RepayReq {
 async fn loan_repay(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-    body: Option<web::Json<RepayReq>>,
+    body: crate::http::OptJson<RepayReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    let body = body.map(|b| b.into_inner()).unwrap_or_default();
+    let body = body.into_inner().unwrap_or_default();
     // P-85：负数显式拒绝——旧版 filter(*a > 0) 把 -1 静默降级成「缺省=全结清」，
     // 手滑一个负号直接销账扣款（0/缺省才是全结清兼容口径）
     if body.amount.is_some_and(|a| a < 0) {
