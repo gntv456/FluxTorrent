@@ -37,6 +37,12 @@ export function mountCaptchaWidget(
     callback: onToken,
     "expired-callback": () => onToken(""),
   };
+  const api =
+    provider === "turnstile"
+      ? w.turnstile
+      : provider === "recaptcha"
+        ? w.grecaptcha
+        : w.hcaptcha;
   const inject = () => {
     const el = document.getElementById(DRIVER_WIDGET_ID[provider]);
     if (!el) return;
@@ -44,6 +50,12 @@ export function mountCaptchaWidget(
     else if (provider === "recaptcha") w.grecaptcha?.render(el, opts);
     else if (provider === "hcaptcha") w.hcaptcha?.render(el, opts);
   };
+  // 同一驱动二次挂载（注册失败重试，P-504）：脚本已在页面，
+  // 直接渲染进新容器；再追加 <script> 未必会重新触发 onload。
+  if (api) {
+    inject();
+    return;
+  }
   const sc = document.createElement("script");
   sc.src = script(siteKey);
   sc.async = true;

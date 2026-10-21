@@ -2,7 +2,7 @@
 
 import { INPUT_LG } from "@/lib/ui-classes";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
@@ -121,10 +121,20 @@ export default function RegisterPage() {
         setSiteKey(r.captcha_site_key ?? "");
         setQuizOn(r.reg_quiz_enabled === true);
         setQuizHard(r.reg_quiz_pass_required !== false);
-        mountCaptchaWidget(prov, r.captcha_site_key ?? "", setCaptchaToken);
       })
       .catch(() => setOpenMode(false));
   }, []);
+
+  /** 验证码组件挂载（P-504）：token 一次性，失败后靠 gateNonce 换 key 重挂；
+   *  ref 去重防 StrictMode 开发态二次执行把同一容器渲染两遍。 */
+  const mounted = useRef("");
+  useEffect(() => {
+    if (driver === "none" || !siteKey) return;
+    const k = `${driver}|${siteKey}|${gateNonce}`;
+    if (mounted.current === k) return;
+    mounted.current = k;
+    mountCaptchaWidget(driver, siteKey, setCaptchaToken);
+  }, [driver, siteKey, gateNonce]);
 
   /** W-18 错误路径：后端错 → 字段级 map。优先 1002 多字段信封
    *  （fieldErrorsFrom），单错误码按 CODE_TO_FIELD 归字段；归不了的
@@ -176,6 +186,9 @@ export default function RegisterPage() {
       router.push("/torrents");
     } catch (err) {
       setFieldErrs(mapError(err));
+      // 凭据一次性：验证码 token / 算术答案 / PoW 解与服务端 GETDEL 同寿命
+      setCaptchaToken("");
+      setCaptchaAnswer("");
       refreshCaptcha(); setGateNonce((n) => n + 1);
     } finally {
       setBusy(false);
@@ -222,6 +235,7 @@ export default function RegisterPage() {
             error={first("pow")} />
         ) : (
           <RegisterCaptcha
+            key={gateNonce}
             driver={driver}
             siteKey={siteKey}
             captcha={captcha}
