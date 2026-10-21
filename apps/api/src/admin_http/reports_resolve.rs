@@ -63,6 +63,15 @@ pub async fn report_resolve(
     let Some((reporter_id, ref_type, ref_id, claimed_by)) = info else {
         return Err(DomainError::Validation("举报不存在或已处理".into()));
     };
+    // P-475：作弊案件的结案口是 POST /admin/cheat-cases/{id}/resolve——那边判
+    // CHEAT_SANCTIONS、要处置说明、校验 sanction 档位、比高低（ensure_outranks），
+    // 并顺带解除证据停发。本口只判 REPORTS_HANDLE，从这边点「处理」会把案件状态
+    // 写成 1 而跳过以上全部。改状态之前点名拒。
+    if ref_type == "cheat" {
+        return Err(DomainError::Validation(
+            super::reports::CHEAT_GUARD.into(),
+        ));
+    }
     // 认领互斥（0285）：resolve 此前无视 claimed_by，任何人可关掉别人正在办的工单。
     if claimed_by.is_some() && claimed_by != Some(auth.id) {
         return Err(DomainError::Validation(

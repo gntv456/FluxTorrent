@@ -247,3 +247,4 @@ action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismis
 正文最长 5000 字	正文最長 5000 字	Message body must be 5000 characters or fewer.
 主题最长 100 字	主題最長 100 字	Subject must be 100 characters or fewer.
 该会员没有可撤销的券：本口只撤「管理员发放 + 未使用 + 未绑定」的券；已核销、生效中、商城或任务所得不在范围内	該會員沒有可撤銷的券：本口只撤「管理員發放 + 未使用 + 未綁定」的券；已核銷、生效中、商城或任務所得不在範圍內	This member has no voucher this endpoint can revoke: it only revokes admin-issued, unused, unbound vouchers. Redeemed, active, shop or task rewards are out of scope.
+作弊案件请到「作弊处置队列」处理（需作弊处置权限）	作弊案件請到「作弊處置隊列」處理（需作弊處置權限）	This is a cheat case; handle it in the cheat-case queue (needs the cheat sanction permission).

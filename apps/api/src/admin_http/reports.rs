@@ -32,6 +32,14 @@ struct ReportQueueRow {
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// P-475：`reports` 表里 `ref_type='cheat'` 那一族是**作弊案件**，有自己的队列
+/// （GET /admin/cheat-cases）与处置流程（POST /admin/cheat-cases/{id}/approve，
+/// 判 `CHEAT_SANCTIONS`，0369 M3 四眼）。举报口这一族只判 `REPORTS_HANDLE`，
+/// 版主不碰作弊权限也能认领/结案一个案件，还会给「举报人」发一封私信。
+/// 因此：队列里不列 cheat（有专属面板），三个写状态口点名拒单。
+pub(super) const CHEAT_GUARD: &str =
+    "作弊案件请到「作弊处置队列」处理（需作弊处置权限）";
+
 #[get("/admin/reports")]
 async fn report_queue(
     req: HttpRequest,
@@ -71,10 +79,11 @@ async fn report_queue(
          LEFT JOIN users u ON u.id = r.reporter_id \
          LEFT JOIN users hu ON hu.id = r.handled_by \
          LEFT JOIN users cu ON cu.id = r.claimed_by \
-         WHERE ($1 = 'all' AND TRUE) \
+         WHERE r.ref_type <> 'cheat' \
+           AND (($1 = 'all' AND TRUE) \
             OR ($1 = 'pending' AND r.status = 0) \
             OR ($1 = 'handling' AND r.status = 2) \
-            OR ($1 = 'handled' AND r.status = 1) \
+            OR ($1 = 'handled' AND r.status = 1)) \
          ORDER BY r.id DESC LIMIT 200",
     )
     .bind(status_filter)
@@ -110,6 +119,17 @@ async fn report_claim(
         crate::authz::perm::REPORTS_HANDLE,
     )
     .await?;
+    // P-475：先认类型再动状态——cheat 工单归作弊队列处置（见 CHEAT_GUARD 上方注释）。
+    let kind: Option<String> = sqlx::query_scalar(
+        "SELECT ref_type FROM reports WHERE id = $1",
+    )
+    .bind(body.report_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if kind.as_deref() == Some("cheat") {
+        return Err(DomainError::Validation(CHEAT_GUARD.into()));
+    }
     let n = sqlx::query(
         "UPDATE reports SET status = 2, claimed_by = $1, claimed_at = now() \
          WHERE id = $2 AND status = 0",
@@ -147,6 +167,18 @@ async fn report_release(
         crate::authz::perm::REPORTS_HANDLE,
     )
     .await?;
+    // P-475：cheat 工单的释放走作弊自己的 claim/release（面板传 {release:true}），
+    // 不在举报口流转（改状态前先认类型）。
+    let kind: Option<String> = sqlx::query_scalar(
+        "SELECT ref_type FROM reports WHERE id = $1",
+    )
+    .bind(body.report_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if kind.as_deref() == Some("cheat") {
+        return Err(DomainError::Validation(CHEAT_GUARD.into()));
+    }
     let n = sqlx::query(
         "UPDATE reports SET status = 0, claimed_by = NULL, claimed_at = NULL \
          WHERE id = $1 AND status = 2 AND claimed_by = $2",
