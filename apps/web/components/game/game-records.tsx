@@ -25,7 +25,7 @@ interface CollEntry {
   rarity: number;
   count: number;
   mult: number;
-  value: number;
+  value?: number;
 }
 
 const RAR_TONE: Record<number, string> = {
@@ -66,11 +66,27 @@ function GameRecords({
       .get<RoundRow[]>(`/api/v1/games/rounds?game=${game}&limit=50`)
       .then(setRows)
       .catch(() => setRows([]));
+    // 钓鱼的图鉴在专属端点（标准塘 + 渔汛塘合并）。通用端点只认
+    // capsule/jgg/scratch/wheel，对 fishing 回 400——旧写法让这块图鉴
+    // 永远静默消失，而页面文案写的是「对局记录 + 奖档图鉴整页」。
+    const collUrl =
+      game === "fishing"
+        ? "/api/v1/games/fishing/collection"
+        : `/api/v1/games/collection/${game}`;
     void api
-      .get<{ got: number; total: number; entries: CollEntry[] }>(
-        `/api/v1/games/collection/${game}`,
+      .get<{
+        got: number;
+        total: number;
+        entries?: CollEntry[];
+        fishes?: CollEntry[];
+      }>(collUrl)
+      .then((r) =>
+        setColl({
+          got: r.got,
+          total: r.total,
+          entries: r.entries ?? r.fishes ?? [],
+        }),
       )
-      .then(setColl)
       .catch(() => {});
   }, [game]);
 
@@ -86,6 +102,8 @@ function GameRecords({
   const gameTitle =
     (dict.games.cards as Record<string, { title: string }>)[game]?.title ??
     game;
+  const albumTitle =
+    game === "fishing" ? dict.games.fishing.albumTitle : t.albumTitle;
 
   return (
     <div className="flex flex-col gap-4">
@@ -172,7 +190,7 @@ function GameRecords({
       {coll && coll.total > 0 && (
         <section className={PANEL_LG}>
           <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 className="font-display text-base">{t.albumTitle}</h2>
+            <h2 className="font-display text-base">{albumTitle}</h2>
             <span className="num text-xs text-sub">
               {t.albumGot} {coll.got}/{coll.total}
             </span>
