@@ -43,7 +43,8 @@ export function CheaterBox() {
       .get<CheaterRow[]>("/api/v1/admin/cheaters")
       .then(setRows)
       .catch((e) => {
-        if (e instanceof ApiError && e.code === 403) setNoPerm(true);
+        // 信封码 2003 = 无权限（403 是 HTTP 状态，P-501）。
+        if (e instanceof ApiError && e.code === 2003) setNoPerm(true);
         else setRows([]);
       });
   }, []);

@@ -33,7 +33,8 @@ export function ReportBox() {
       .get<ReportRow[]>("/api/v1/admin/reports")
       .then(setRows)
       .catch((e) => {
-        if (e instanceof ApiError && e.code === 403) setNoPerm(true);
+        // 后端 Forbidden 的信封码是 2003；403 只是 HTTP 状态（P-501）。
+        if (e instanceof ApiError && e.code === 2003) setNoPerm(true);
         else setRows([]);
       });
   }, []);
