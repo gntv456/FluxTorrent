@@ -65,6 +65,12 @@ pub async fn me_password_change(
     if body.new_password == body.old_password {
         return Err(DomainError::Validation("新密码不能与旧密码相同".into()));
     }
+    // P-498：这里是登录之外的第二个密码 oracle——登录侧有 acctlock（失败
+    // 计数 + PoW），这一口原先不限次：会话被偷即可无限猜旧密码，猜中后
+    // 顺手改密，把原主踢下线（改密会撤销全部旧 token）并永久夺号。
+    // 现网实测 12 次错旧密码全 400、无 429。按用户与登录同档限流。
+    crate::http::rate_window(&state, &format!("pwchange:{}", auth.id), 5, 60)
+        .await?;
     let (pass_hash,): (String,) =
         sqlx::query_as("SELECT pass_hash FROM users WHERE id = $1")
             .bind(auth.id)
