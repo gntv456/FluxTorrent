@@ -39,7 +39,15 @@ SHOP = os.path.join(ROOTDIR, "apps", "api", "src", "economy_http", "shop.rs")
 GUARDS = os.path.join(ROOTDIR, "apps", "api", "src", "economy_http",
                       "shop_guards.rs")
 # 卡类：不走 apply_item_effect，按张插订单行；反向比对时豁免
-CARD_KINDS = ("makeup_card", "rename_card", "temp_invite")
+# 「有核销口的卡类」白名单在代码侧（shop_guards::card_kind_probe → 下面的 cards）。
+# 这张台账钉的是**反向**：在售、但全仓找不到任何核销口的卡类——rename_card（P-477）。
+# 站方若实现「用户自助改名 + 卡消耗」，就把它从这里删掉并加回 card_kind_probe；
+# 若选择下架，也从这里删掉（那时 DB 里不再有这一 kind，DL1 自然收口）。
+NO_REDEEM = {"rename_card": "全仓无核销口：用户侧没有自助改名端点"}
+PLUMBING = ("economy_http/shop", "economy_http/shop_guards",
+            "economy_http/shop_list", "economy_http/my_orders",
+            "admin_p3_http/increment", "admin_http/user_grant_item",
+            "games_http/arcade_cfg")
 ASKERS = [os.path.join(ROOTDIR, "apps", "api", "src", "admin_p3_http",
                        "shop.rs"),
           os.path.join(ROOTDIR, "apps", "api", "src", "games_http",
@@ -97,7 +105,7 @@ cards = set(re.findall(r'"([a-z_]+)"', rd(GUARDS).split(
 db_kinds = set(x.strip() for x in psql(
     "SELECT kind FROM shop_items GROUP BY kind ORDER BY kind").split("\n")
     if x.strip())
-missing = covered(db_kinds, HE | cards)
+missing = covered(db_kinds, HE | cards | set(NO_REDEEM))
 ok("DL1 DB 里 %d 个品类都有人认领（未认领 %d）" % (len(db_kinds), len(missing)),
    len(db_kinds) >= 10 and not missing,
    "缺认领：%s ／ 卡类专用支：%s" % ("、".join(missing) or "-",
@@ -179,5 +187,55 @@ ctl2 = resolve(json.loads('{"spark": 1000}'), AMOUNT_KEYS["charity"])
 ok("DL6z 正控：空 config 算得出 0（实测 %s）、补好金额后算得出 1000（实测 %s）"
    % (ctl, ctl2), ctl == 0 and ctl2 == 1000,
    "两值相同＝这把尺没装刻度")
+
+# ---------- DL7 卡/券类：发得出 ≠ 花得掉（P-477） ----------
+def list_kinds(text, fn_name):
+    """从 Rust 源码里抓一个 matches!(kind, "a" | "b") 型判据的品类清单。"""
+    i = text.index("fn " + fn_name + "(")
+    body = text[i:]
+    stop = body.index(chr(10) + "}")
+    return set(re.findall(r'"([a-z_]+)"', body[:stop]))
+
+
+def voucher_issued(text):
+    """apply_item_effect 里「往 user_vouchers 插一张券」的那些臂。"""
+    i = text.index("pub async fn apply_item_effect")
+    seg = text[i:]
+    out = set()
+    for m in re.finditer(r'((?:"[a-z_]+"\s*\|?\s*)+)\s*=>', seg):
+        head = m.group(1)
+        tail = seg[m.end():m.end() + 400]
+        if "INSERT INTO user_vouchers" in tail:
+            out |= set(re.findall(r'"([a-z_]+)"', head))
+    return out
+
+
+GU = rd(GUARDS)
+REDEEM = list_kinds(GU, "redeem_port_exists")
+ISSUED = voucher_issued(src) | cards
+unredeemed = sorted(ISSUED - REDEEM)
+ok("DL7 「发得出但花不掉」的品类恰为台账 %d 档（实测 %s／发卡券侧共 %d 档）"
+   % (len(NO_REDEEM), unredeemed, len(ISSUED)),
+   unredeemed == sorted(NO_REDEEM) and len(ISSUED) >= 4,
+   "多出来的档＝新上的券没人核销还在卖；少了＝台账该销账（同批删一行）")
+ok("DL7a 售卖口真问了这把尺（ensure_deliverable 里含 redeem_port_exists 判断）",
+   GU[GU.index("fn ensure_deliverable"):].count("redeem_port_exists") >= 1,
+   "只在清单里写、不在售卖口问＝照样收钱")
+drift = sorted(cards - REDEEM)
+ok("DL7b 卡白名单 %d 档每档都在「花得掉」清单里（漂移=%s）"
+   % (len(cards), drift), not drift, "白名单=%s" % sorted(cards))
+ctl = sorted((ISSUED | {"zzz_card"}) - REDEEM)
+ok("DL7c 正控：合成一张没人核销的 zzz_card 必须被同一算式抓到（抓到=%s）"
+   % ctl, "zzz_card" in ctl and ctl != unredeemed,
+   "抓不住＝DL7 是空判据（算式对合成档没有反应）")
+rn = psql("SELECT coalesce(string_agg('id' || id || '/价' || price"
+          " || '/active=' || active::text, ' '), '无') FROM shop_items "
+          "WHERE kind = 'rename_card'")
+sold = psql("SELECT count(*) FROM shop_orders o JOIN shop_items i "
+            "ON i.id = o.item_id WHERE i.kind = 'rename_card'")
+vch = psql("SELECT count(*) FROM user_vouchers WHERE kind = 'rename_card'")
+ok("DL7d 现网读数在册：改名卡 %s；累计成交 %s 张、手上券 %s 张（停售闸门随镜像生效）"
+   % (rn, sold, vch), rn != "无",
+   "此前下单=扣 100000 火花拿一张没人认的券；成交 0 说明还是潜伏")
 
 summary()
