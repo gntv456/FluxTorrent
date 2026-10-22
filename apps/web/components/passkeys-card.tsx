@@ -226,7 +226,8 @@ export function PasskeysCard() {
           {dict.common.loadFailed}
         </p>
       )}
-      {(rows ?? []).length === 0 && (
+      {/* 失败已有上方 alert：再显示「还没有 Passkey」= 把故障读成钥匙被清 */}
+      {!failed && (rows ?? []).length === 0 && (
         <p className="text-xs text-sub">
           {rows === null ? "…" : dict.usercp.security.webauthnEmpty}
         </p>
