@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale, fmt } from "@/i18n/config";
+import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { formatBytes } from "@/lib/format";
 
@@ -127,10 +127,10 @@ export function ResurrectionPanel() {
                     {r.name}
                   </Link>
                   <div className="text-[11px] text-sub">
-                    {fmt(t.contract, {
+                    {fmtCur(t.contract, {
                       h: String(r.required_hours),
                       sparks: String(r.reward_sparks),
-                    })}
+                    }, currency)}
                   </div>
                 </td>
                 <td className="num text-sub">{formatBytes(r.size)}</td>

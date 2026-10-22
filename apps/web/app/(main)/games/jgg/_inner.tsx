@@ -335,7 +335,7 @@ export default function JggPage({
           open={ten.open}
           title={tj.tenTitle}
           rows={ten.rows}
-          totalLabel={tj.tenTotal}
+          totalLabel={tj.tenTotal.replaceAll("{magic}", currency)}
           onClose={ten.close}
         />
       }

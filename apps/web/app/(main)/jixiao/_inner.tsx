@@ -89,7 +89,11 @@ export default function JixiaoPage() {
         type_id: p.type_id,
         ...(p.claimable_prev && p.period ? { period: p.period } : {}),
       });
-      flash(t.claimed.replace("{n}", r.total.toLocaleString()));
+      flash(
+        t.claimed
+          .replace("{n}", r.total.toLocaleString())
+          .replaceAll("{magic}", currency),
+      );
       load();
     } catch (e) {
       flashErr(e instanceof ApiError ? e.message : dict.common.networkError);

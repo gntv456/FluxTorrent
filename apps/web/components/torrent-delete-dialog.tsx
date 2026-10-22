@@ -62,7 +62,7 @@ export function TorrentDeleteDialog({
   /** 删除已成立（含处置部分失败后操作员确认知悉）：关窗并离开本页 */
   onDeleted: () => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.torrentManage2;
   const [pv, setPv] = useState<Preview | null>(null);
   const [reason, setReason] = useState("dead");
@@ -198,9 +198,11 @@ export function TorrentDeleteDialog({
                     if (!e.target.checked) setDbl(false);
                   }}
                 />
-                {t.delSpark}
+                {t.delSpark.replaceAll("{magic}", currency)}
                 <span className="text-sub font-normal">
-                  {t.delSparkNote.replace("{n}", String(pv.spark))}
+                  {t.delSparkNote
+                    .replace("{n}", String(pv.spark))
+                    .replaceAll("{magic}", currency)}
                 </span>
               </label>
               <label className="flex items-center gap-2 pl-6 text-xs">
@@ -210,7 +212,7 @@ export function TorrentDeleteDialog({
                   disabled={!deduct}
                   onChange={(e) => setDbl(e.target.checked)}
                 />
-                {t.delDouble}
+                {t.delDouble.replaceAll("{magic}", currency)}
                 <span className="text-sub font-normal">
                   {t.delDoubleNote.replace(
                     "{n}",

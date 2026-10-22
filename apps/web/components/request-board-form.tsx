@@ -17,7 +17,7 @@ export function RequestForm({
   onCreated: () => void;
   onCancel: () => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.requests;
   const [ftTitle, setFtTitle] = useState("");
   const [ftDescr, setFtDescr] = useState("");
@@ -43,7 +43,11 @@ export function RequestForm({
             descr: ftDescr.trim() || undefined,
             bounty,
           });
-          setFtMsg(t.formOk.replace("{n}", String(bounty)));
+          setFtMsg(
+            t.formOk
+              .replace("{n}", String(bounty))
+              .replaceAll("{magic}", currency),
+          );
           setFtTitle("");
           setFtDescr("");
           setFtBounty("100");
@@ -76,7 +80,7 @@ export function RequestForm({
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        {t.formBounty}
+        {t.formBounty.replaceAll("{magic}", currency)}
         <input
           type="number"
           min={0}

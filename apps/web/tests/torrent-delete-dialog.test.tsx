@@ -21,6 +21,7 @@ import { zhCN } from "@/i18n/zh-CN";
  */
 
 const T = zhCN.torrentManage2;
+// P-558：`{magic}` 要换成站点货币名——旧断言拿模板原文当期望＝把缺陷钉成基线
 const PREV = {
   owner_name: "uploader01",
   seeders: 0,
@@ -53,7 +54,7 @@ function res(body: unknown): Response {
 
 function mount() {
   return render(
-    <LocaleProvider dict={zhCN} locale="zh-CN">
+    <LocaleProvider dict={zhCN} locale="zh-CN" currency="魔力">
       <TorrentDeleteDialog
         open
         torrentId={42}
@@ -119,6 +120,9 @@ describe("站方删除表单（渲染层）", () => {
   it("图样要求的字段一个都不缺，数字取自后端预览口", async () => {
     const dlg = await opened();
     const txt = dlg.textContent ?? "";
+    // P-558：不许露 {magic}，也不许被 fmt 折成空串少一截
+    expect(txt).not.toContain("{magic}");
+    expect(txt).toContain("获得的魔力：350点");
     for (const want of [
       T.delReason,
       T.delNote,
@@ -127,8 +131,8 @@ describe("站方删除表单（渲染层）", () => {
       T.delReasonLowQuality,
       T.delReasonViolation,
       T.delReasonOther,
-      T.delSpark,
-      T.delDouble,
+      T.delSpark.replaceAll("{magic}", "魔力"),
+      T.delDouble.replaceAll("{magic}", "魔力"),
       T.delBan,
       T.delBanNote,
     ]) {
