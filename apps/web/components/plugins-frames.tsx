@@ -43,13 +43,21 @@ export function FrameShop({
   const { dict } = useI18n();
   const t = dict.frames;
   const [frames, setFrames] = useState<Frame[]>([]);
+  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api
       .get<Frame[]>("/api/v1/avatar-frames")
-      .then(setFrames)
-      .catch(() => setFrames([]));
+      .then((r) => {
+        setFrames(r);
+        setFailed(false);
+      })
+      // 失败只剩「不佩戴」卡片时像「本站没有挂件」，补一条失败提示
+      .catch(() => {
+        setFrames([]);
+        setFailed(true);
+      });
   }, []);
 
   async function equip(id: number | null) {
@@ -72,6 +80,9 @@ export function FrameShop({
 
   return (
     <div className="flex flex-col gap-3">
+      {failed && (
+        <p className="text-xs text-warn">{dict.common.loadFailed}</p>
+      )}
       <div className={FRAME_GRID}>
         <div className={FRAME_CARD}>
           <span

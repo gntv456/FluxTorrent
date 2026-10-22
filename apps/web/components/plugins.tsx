@@ -33,13 +33,21 @@ export function ContestBoard() {
   const t = dict.contests2;
   // null=加载中（A3 四态：骨架代替静默空表）
   const [rows, setRows] = useState<Contest[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     api
       .get<Contest[]>("/api/v1/contests")
-      .then(setRows)
-      .catch(() => setRows([]));
+      .then((r) => {
+        setRows(r);
+        setFailed(false);
+      })
+      // 失败演成「暂无大赛」会让会员以为站方没办活动
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      });
   }, []);
   useEffect(load, [load]);
 
@@ -64,6 +72,8 @@ export function ContestBoard() {
     <div className="flex flex-col gap-3">
       {rows === null ? (
         <SkeletonRows rows={4} />
+      ) : failed ? (
+        <p className="text-sm text-warn">{dict.common.loadFailed}</p>
       ) : (
         <div className="brand-wide-table-scroll">
       <table className="nexus-table">
