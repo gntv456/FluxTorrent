@@ -29,6 +29,9 @@ const REASON_PRIV =
 const REASON_NAME = "参数校验失败: 种子名不能为空";
 
 let postReply: Record<string, unknown> = {};
+// P-569：真实拒单是 HTTP 400（1002/3003/3004 全走 BAD_REQUEST），
+// 旧用例一律 mock 200 ⇒ 走的是一条生产不会出现的分支。
+let postStatus = 200;
 const calls: string[] = [];
 
 function envelope(payload: unknown) {
@@ -37,6 +40,7 @@ function envelope(payload: unknown) {
 
 beforeEach(() => {
   calls.length = 0;
+  postStatus = 200;
   postReply = { code: 3003, message: REASON_PRIV, data: null };
   vi.stubGlobal(
     "fetch",
@@ -59,7 +63,11 @@ beforeEach(() => {
       if (url.includes("/api/v1/tags-dict")) return json(envelope([]));
       if (url.includes("/api/v1/section-dict")) return json(envelope([]));
       if (url.includes("/api/v1/torrents")) {
-        return json({ request_id: "t2", ...postReply });
+        return {
+          ok: postStatus < 400,
+          status: postStatus,
+          json: async () => ({ request_id: "t2", ...postReply }),
+        };
       }
       return json(envelope(null));
     }),
@@ -70,7 +78,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function submitTorrent() {
+async function submitAndWait() {
   render(<UploadForm />);
   await waitFor(() => expect(calls.some((u) => u.includes("site-profile"))));
   const fileInput = document.querySelector(
@@ -86,6 +94,10 @@ async function submitTorrent() {
   const form = document.getElementById("upload-form") as HTMLFormElement;
   expect(form).toBeInstanceOf(HTMLFormElement);
   fireEvent.submit(form);
+}
+
+async function submitTorrent() {
+  await submitAndWait();
   const st = await screen.findByRole("status");
   return st.textContent ?? "";
 }
@@ -124,5 +136,26 @@ describe("发种拒单的读者（P-303）", () => {
     expect(text).not.toContain("deserialize");
     expect(text).not.toContain("column");
     expect(text).toEqual(zhCN.errors?.[1002]);
+  });
+
+  it("HTTP 400 的真实状态码下，信封原因必须露出来（P-569）", async () => {
+    postStatus = 400;
+    postReply = { code: 3003, message: REASON_PRIV, data: null };
+    const text = await submitTorrent();
+    expect(text).toContain("info.private");
+    expect(text).toContain("私有");
+    // 负控：不能退回「发布失败：服务端返回 400」
+    expect(text).not.toContain("服务端返回");
+  });
+
+  it("HTTP 400 + 1002 字段级信封，字段错误要内联渲染", async () => {
+    postStatus = 400;
+    postReply = {
+      code: 1002,
+      message: "参数校验失败: 字段校验未通过",
+      data: { name: ["种子名不能为空"] },
+    };
+    await submitAndWait();
+    expect(await screen.findByText("种子名不能为空")).toBeTruthy();
   });
 });

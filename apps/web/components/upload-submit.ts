@@ -49,14 +49,31 @@ export async function postTorrent(
     headers: { ...csrf, ...(lang ? { "Accept-Language": lang } : {}) },
     body: form,
   });
-  const fail =
-    res.status === 403 || res.status === 401
-      ? msgs.noPermission
-      : msgs.failStatus(res.status);
-  if (!res.ok) return { ok: false, msg: fail };
-  try {
-    return { ok: true, body: (await res.json()) as TorrentPostResp };
-  } catch {
-    return { ok: false, msg: fail };
+  if (res.status === 403 || res.status === 401) {
+    return { ok: false, msg: msgs.noPermission };
   }
+  // P-569：1002/3003/3004 都以 HTTP 400 返回，业务原因只在信封
+  // message/data 里。旧实现非 2xx 直接丢体 ⇒ 界面永远只有「服务端
+  // 返回 400」，P-303 的「拒单原因必须露出」在真实状态码下走不到。
+  if (!res.ok) {
+    const body = res.status < 500 ? await readEnvelope(res) : null;
+    if (body && body.code !== 0) return { ok: true, body };
+    return { ok: false, msg: msgs.failStatus(res.status) };
+  }
+  const body = await readEnvelope(res);
+  if (!body) return { ok: false, msg: msgs.failStatus(res.status) };
+  return { ok: true, body };
+}
+
+/** 解析信封；非 JSON（CSRF/反代错误页）或缺数字 code 时返回 null。 */
+async function readEnvelope(res: Response): Promise<TorrentPostResp | null> {
+  try {
+    const body = (await res.json()) as TorrentPostResp;
+    if (body && typeof body === "object" && typeof body.code === "number") {
+      return body;
+    }
+  } catch {
+    // 非 JSON：交给调用方的通用失败文案
+  }
+  return null;
 }
