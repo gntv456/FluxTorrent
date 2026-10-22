@@ -26,8 +26,8 @@ export function RegisterBasicFields({
   onChange: (patch: Partial<RegisterBasicValues>) => void;
   /** 取某字段的首条错误 */
   first: (field: string) => string | undefined;
-  /** 开放注册：邀请码非必填 */
-  openMode: boolean;
+  /** 开放注册：邀请码非必填；null = 模式探测失败（不能默认成邀请制） */
+  openMode: boolean | null;
 }) {
   const { dict } = useI18n();
   return (
@@ -35,14 +35,14 @@ export function RegisterBasicFields({
       <FormField
         name="invite_code"
         label={dict.register.inviteCode}
-        required={!openMode}
+        required={openMode === false}
         error={first("invite_code")}
-        hint={openMode ? dict.register.inviteOptional : undefined}
+        hint={openMode === true ? dict.register.inviteOptional : undefined}
       >
         <input
           value={values.inviteCode}
           onChange={(e) => onChange({ inviteCode: e.target.value })}
-          required={!openMode}
+          required={openMode === false}
           maxLength={32}
           className={INPUT_LG}
         />

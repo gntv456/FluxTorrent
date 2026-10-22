@@ -71,7 +71,9 @@ export default function RegisterPage() {
   // 0236 回补的 email_verify = 开放注册 + 邮件激活：注册口同样不需要
   // 邀请码（后端只在 invite_only 分支校验），旧写法只认 open ⇒ 选择该
   // 模式后浏览器按 required 挡住提交，开放注册整条走不通（P-567）。
-  const [openMode, setOpenMode] = useState(false);
+  // 模式未知（探测失败）不能默认成 invite_only：那会给邀请码加 required
+  // 把开放注册的访客挡在浏览器校验上；null = 不标必填，交后端裁决。
+  const [openMode, setOpenMode] = useState<boolean | null>(null);
   // email_verify：注册成功后不硬登（guard_login 必然拦下），改落激活页
   const [verifyMode, setVerifyMode] = useState(false);
   // 0227：验证码驱动（none=自研算术题，其他=第三方组件 token）
@@ -127,7 +129,7 @@ export default function RegisterPage() {
         setQuizOn(r.reg_quiz_enabled === true);
         setQuizHard(r.reg_quiz_pass_required !== false);
       })
-      .catch(() => setOpenMode(false));
+      .catch(() => setOpenMode(null));
   }, []);
 
   /** 验证码组件挂载（P-504）：token 一次性，失败后靠 gateNonce 换 key 重挂；
@@ -219,14 +221,14 @@ export default function RegisterPage() {
       heroTag={dict.register.heroTag}
       heroDesc={dict.register.heroDesc}
       badge={
-        openMode ? undefined : (
+        openMode === false ? (
           <>
             {dict.register.inviteBadge} ·{" "}
             <Link href="/apply" className="underline">
               {dict.register.applyForCode}
             </Link>
           </>
-        )
+        ) : undefined
       }
       foot={dict.register.termsNote}
     >
