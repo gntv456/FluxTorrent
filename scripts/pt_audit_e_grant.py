@@ -24,7 +24,8 @@ PW = "ProbePass123"
 ITEM_SPARK = 10      # 赠送魔力 config={"spark":1000}
 ITEM_UP1G = 1        # 1GB 上传量
 ITEM_VOUCHER = 19    # 免费券
-ITEM_RENAME = 14     # 改名卡（背包类，付费）
+ITEM_RENAME = 14     # 改名卡：P-477 起售卖口就拦（无核销口）
+ITEM_BACKPACK = None # E 段现造的在售补签卡（赠予口只认在册 kind）
 CREATED = []         # 探针 uid，收尾清理
 QUOTA_BACKUP = {}    # item_id -> stock_quota 原值
 
@@ -308,33 +309,50 @@ def sec_d_bulk():
 
 def sec_e_reclaim():
     print("\n--- E 回收路径 ---")
+    global ITEM_BACKPACK
     uid = PROBE["target"][0]
     hi = PROBE["super"][0]
+    # P-539 把后台赠予口接到与售卖口同一把尺：没有核销口的 kind（改名
+    # 卡）两边都拒 ⇒ 回收路径不能再拿 id 14 当夹具，也不去动真实在售件
+    # 的库存计数，这里现造一枚临时件，收尾由 cleanup 删干净。
+    psql("INSERT INTO shop_items (kind, name, price, active, stock_quota,"
+         " stock_used) VALUES ('makeup_card', 'gate-e-backpack', 1000,"
+         " true, 5, 0)")
+    ITEM_BACKPACK = int(psql("SELECT id FROM shop_items"
+                             " WHERE name='gate-e-backpack'"))
+    # P-539 的正主：无核销口的 kind 必须从赠予口拒出来，且不许留订单行
+    s, r = call("POST", "/admin/users/%d/grant-item/%d" % (uid, ITEM_RENAME),
+                {}, TOKEN)
+    dead = int(psql("SELECT count(*) FROM shop_orders WHERE user_id=%d"
+                    " AND item_id=%d" % (uid, ITEM_RENAME)))
+    ok("E0 无核销口的改名卡不得从赠予口发空单（HTTP %s，订单 %d）"
+       % (s, dead), s == 400 and dead == 0, str(r)[:120])
     order = psql("INSERT INTO shop_orders (user_id, item_id, price,"
                  " idempotency_key, effect_applied) VALUES (%d, %d, 100000,"
-                 " 'gate-e-paid-%d', false) RETURNING id" % (hi, ITEM_RENAME,
-                                                             int(time.time())))
+                 " 'gate-e-paid-%d', false) RETURNING id"
+                 % (hi, ITEM_BACKPACK, int(time.time())))
     s, r = call("DELETE", "/admin/user-props/%s" % order, None,
                 PROBE["hr"][1])
     still = int(psql("SELECT count(*) FROM shop_orders WHERE id=%s" % order))
     ok("E1 付费购买的背包单不得被直接删（口径：购买即终局，无退款通道）",
        s in (400, 403) and still == 1, "HTTP %s 行仍在=%d" % (s, still))
 
-    s, r = call("POST", "/admin/users/%d/grant-item/%d" % (uid, ITEM_RENAME),
-                {}, TOKEN)
+    s, r = call("POST", "/admin/users/%d/grant-item/%d"
+                % (uid, ITEM_BACKPACK), {}, TOKEN)
     used1 = int(psql("SELECT stock_used FROM shop_items WHERE id=%d"
-                     % ITEM_RENAME))
+                     % ITEM_BACKPACK))
     s, r = call("GET", "/admin/user-props?uid=%d&per_page=5" % uid, None,
                 TOKEN)
     prow = ((r.get("data") or {}).get("rows") or [{}])[0]
     ok("E2a 背包列表须下发 effect_applied（兼本批部署的阳性对照）",
        "effect_applied" in prow, "字段 %s" % sorted(prow.keys()))
     free = psql("SELECT id FROM shop_orders WHERE user_id=%d AND price=0"
-                " ORDER BY id DESC LIMIT 1" % uid)
+                " ORDER BY id DESC LIMIT 1" % uid).strip() or "0"
+    # 取空＝赠予没落单（多半是 kind 又被清单拦了），让断言红而不是炸段
     s, r = call("DELETE", "/admin/user-props/%s" % free, None, TOKEN)
     back = int(psql("SELECT count(*) FROM shop_orders WHERE id=%s" % free))
     used2 = int(psql("SELECT stock_used FROM shop_items WHERE id=%d"
-                     % ITEM_RENAME))
+                     % ITEM_BACKPACK))
     ok("E2 界面回收须与 revoke-item 同校验，并退回库存配额",
        back == 0 and used2 == used1 - 1,
        "HTTP %s 行仍在=%d 配额 %d->%d（应回落到 %d）"
@@ -422,6 +440,14 @@ def cleanup():
         psql("UPDATE shop_items SET stock_quota=%s WHERE id=%d" % (val, iid))
     psql("UPDATE shop_items SET stock_used=0 WHERE id IN (%d,%d,%d)"
          % (ITEM_VOUCHER, ITEM_RENAME, ITEM_SPARK))
+    if ITEM_BACKPACK:
+        # FK 是 RESTRICT：先摘订单再删临时件，否则收尾删不掉＝现网留个
+        # 「gate-e-backpack」的幽灵商品在商城里卖 1000 魔力。
+        psql("DELETE FROM shop_orders WHERE item_id=%d" % ITEM_BACKPACK)
+        psql("DELETE FROM shop_items WHERE id=%d" % ITEM_BACKPACK)
+        left = int(psql("SELECT count(*) FROM shop_items"
+                         " WHERE name='gate-e-backpack'"))
+        ok("G2 临时背包 SKU 残料归零（%d）" % left, left == 0)
     psql("UPDATE shop_items SET config='{\"spark\":1000,\"stackable\":true}'"
          "::jsonb WHERE id=%d" % ITEM_SPARK)
     print("[CLEAN] 探针号 %s 已封禁删除，配额与配置已复原" % CREATED)
