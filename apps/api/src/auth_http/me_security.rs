@@ -64,8 +64,8 @@ pub async fn rotate_passkey(
     Ok(ok(serde_json::json!({ "passkey": pk })))
 }
 
-/// 自助修改密码（usercp 口径）：验旧密码 → 换哈希 → 抬 logout_nbf 撤销既有 token
-///（改密后所有设备下线，重新登录拿新 token —— 与 logout 同一套撤销机制）。
+/// 自助修改密码（usercp 口径）：验旧密码 → 换哈希 → 撤销既有 token，
+/// 并给本设备重签（其它设备全部下线，本设备凭新 token 继续使用）。
 
 #[post("/me/password/change")]
 pub async fn me_password_change(
@@ -141,24 +141,39 @@ pub async fn me_password_change(
             Some(auth.id),
         )
         .await;
-    // 撤销既有 token：nbf 抬到「本次凭证 iat − 1」。require_auth 用 iat<=nbf 判失效，
-    // 因此界线为 iat−1 时：本次改密凭证自身已通过认证（不再受检），一切 iat ≤ iat−1
-    // 的旧 token 失效；改密后同秒重登的新 token（iat 相同）不受牵连 —— 不误杀合法新登录，
-    // 而真正的旧凭证（改密所用的那张）即便 iat 同秒也已在本次请求中消耗，语义无损。
+    // P-565：撤销线要覆盖「改密前任何时刻签发的凭证」。旧口径 nbf=本
+    // token 的 iat−1 只判死更早的会话——改密前在别处登录（iat 更晚）的
+    // 会话反而幸存，与「其它设备全部失效」的文案不符。
+    // nbf=now−1 让所有既有 token 失效，同时给本设备重签一枚 iat=now 的
+    // 新 token 随响应写回 cookie（本设备不受影响）；与本次改密同一秒内
+    // 签发的其它 token 也会幸存——与踢出会话口同一处可接受边界。
+    let nbf = chrono::Utc::now().timestamp() - 1;
+    let ttl_hours: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
+         'jwt_ttl_hours')::bigint, 24)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(24)
+    .clamp(1, 720);
+    let token = state
+        .jwt
+        .issue(auth.id, auth.class_id, ttl_hours)
+        .map_err(DomainError::Internal)?;
     let _ = sqlx::query(
         "INSERT INTO token_revocations (user_id, nbf) VALUES ($1, $2) \
          ON CONFLICT (user_id) DO UPDATE SET nbf = \
          GREATEST(token_revocations.nbf, EXCLUDED.nbf), updated_at = now()",
     )
     .bind(auth.id)
-    .bind(auth.iat - 1)
+    .bind(nbf)
     .execute(&state.repo.db)
     .await;
     let mut c = state.redis.clone();
     let _: () = redis::AsyncCommands::set_ex(
         &mut c,
         format!("logout_nbf:{}", auth.id),
-        auth.iat - 1,
+        nbf,
         86400u64,
     )
     .await
@@ -167,7 +182,31 @@ pub async fn me_password_change(
         .repo
         .audit(Some(auth.id), "password_change", Some(auth.id))
         .await;
-    Ok(ok(serde_json::json!({ "changed": true })))
+    let mut resp = ok(serde_json::json!({
+        "changed": true,
+        "token": token.clone()
+    }));
+    let cookie = actix_web::cookie::Cookie::build("flux_token", token)
+        .path("/")
+        .max_age(actix_web::cookie::time::Duration::hours(ttl_hours))
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .secure(
+            req.headers()
+                .get("x-forwarded-proto")
+                .and_then(|v| v.to_str().ok())
+                .map(|v| v.eq_ignore_ascii_case("https"))
+                .unwrap_or(false),
+        )
+        .finish()
+        .to_string();
+    use actix_web::http::header::{HeaderName, HeaderValue};
+    resp.headers_mut().insert(
+        HeaderName::from_static("set-cookie"),
+        HeaderValue::from_str(&cookie)
+            .expect("cookie 串解析为 HeaderValue 必然成功"),
+    );
+    Ok(resp)
 }
 
 #[derive(Deserialize)]
