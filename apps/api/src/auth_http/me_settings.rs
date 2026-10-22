@@ -62,14 +62,46 @@ pub async fn me_overview(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let r = &row;
+    // P-554：下面三个闭包把「解码失败」咽成 0/false/""，那正是 P-515
+    // （等级名恒空）与 P-517（cid 恒 0）的机制。为可用性仍然回默认值，
+    // 但必须留声——以后新增列一旦类型对不上，日志里要有字段名，
+    // 而不是界面安静显示 0、所有静态门全绿。
+    let decode_warn = |col: &str, e: &sqlx::Error| {
+        tracing::warn!(
+            field = col,
+            error = %e,
+            "/me/overview 解码失败，回默认值"
+        );
+    };
     let get_opt_str = |col: &str| -> Option<String> {
         r.try_get::<Option<String>, _>(col).ok().flatten()
     };
-    let get_i64 = |col: &str| -> i64 { r.try_get::<i64, _>(col).unwrap_or(0) };
-    let get_bool =
-        |col: &str| -> bool { r.try_get::<bool, _>(col).unwrap_or(false) };
+    let get_i64 = |col: &str| -> i64 {
+        match r.try_get::<i64, _>(col) {
+            Ok(v) => v,
+            Err(e) => {
+                decode_warn(col, &e);
+                0
+            }
+        }
+    };
+    let get_bool = |col: &str| -> bool {
+        match r.try_get::<bool, _>(col) {
+            Ok(v) => v,
+            Err(e) => {
+                decode_warn(col, &e);
+                false
+            }
+        }
+    };
     let get_str = |col: &str| -> String {
-        r.try_get::<String, _>(col).unwrap_or_default()
+        match r.try_get::<String, _>(col) {
+            Ok(v) => v,
+            Err(e) => {
+                decode_warn(col, &e);
+                String::new()
+            }
+        }
     };
     let get_ts = |col: &str| -> Option<String> {
         r.try_get::<chrono::DateTime<chrono::Utc>, _>(col)
