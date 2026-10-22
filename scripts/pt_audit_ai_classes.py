@@ -293,4 +293,20 @@ ok("G5 探针成员已墓碑化",
      "AND status < 2") == "0",
    q("SELECT count(*) FROM users WHERE email LIKE '%@ai.local' "
      "AND status < 2"))
+print("== G7 静态：动账事务与提交之间不许再借第二条连接（P-514）==")
+import re as _re  # 就近导入，不去动顶部那段 import 块
+_src = open(os.path.join(ROOT, "apps", "worker", "src", "jobs",
+                         "class_adj.rs"), encoding="utf-8",
+            errors="replace").read()
+# 剥 // 注释再扫：本批修复的说明注释里就写着「INSERT INTO messages」
+_src = "\n".join(_re.sub(r"//.*", "", ln) for ln in _src.split("\n"))
+_b = _src.index("let mut tx = db.begin()")
+_c = _src.index("tx.commit().await?", _b)
+inside = _src[_b:_c]
+bad = [t for t in ("INSERT INTO messages", "fetch_optional(db)",
+                   ".execute(db)") if t in inside]
+ok("G7 tx 未提交前不碰 db 连接，祝贺信只在 commit 之后发"
+   "（外键 KEY SHARE 与 FOR UPDATE 互等，实测挂 899.9s）",
+   not bad and _src.index("INSERT INTO messages") > _c,
+   "tx 内的跨连接语句=%s" % bad)
 summary()

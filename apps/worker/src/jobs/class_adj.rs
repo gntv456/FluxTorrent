@@ -188,10 +188,20 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
             continue;
         }
         let idem = format!("class_promo:{}:{}", uid, new_class);
+        let level_name: String = sqlx::query_scalar(
+            "SELECT name FROM class_rules WHERE class_id = $1",
+        )
+        .bind(new_class)
+        .fetch_optional(db)
+        .await?
+        .unwrap_or_else(|| format!("LV{new_class}"));
         // 三轮遗留（2026-10-07）：流水与余额同事务——旧注释自称「并入同一
         // 事务」但实现是两条 autocommit，崩溃窗内「流水落、余额不加」
         // （靠 2h seeding 重算自愈）。现真正收口：事务内 INSERT 判定 +
         // 无条件 UPDATE（卫语句以本事务可见性为准）。
+        // P-514：tx 里用 FOR UPDATE 锁住了这行 users，事务开着期间不能再走第二条
+        // 连接——祝贺信 INSERT 的 receiver_id 外键要向父行拿 KEY SHARE 锁，与之互等
+        // （死锁检测看不见这环：本事务那头是客户端在等）。实测挂 899.9s。
         let mut tx = db.begin().await?;
         let credited = sqlx::query(
             r#"
@@ -225,14 +235,9 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
                 tracing::error!(%e, uid, "promotion balance update failed");
                 continue;
             }
-            let level_name: String = sqlx::query_scalar(
-                "SELECT name FROM class_rules WHERE class_id = $1",
-            )
-            .bind(new_class)
-            .fetch_optional(db)
-            .await?
-            .unwrap_or_else(|| format!("LV{new_class}"));
-            let _ = sqlx::query(
+            tx.commit().await?;
+            // 通知放提交后：不占锁发信，失败也不回滚已到账的奖励（要出声，P-323）
+            if let Err(e) = sqlx::query(
                 "INSERT INTO messages (sender_id, receiver_id, subject, body) \
                  SELECT NULL, $1, $2, $3 WHERE u_notice_enabled($1, 'class_promo')",
             )
@@ -243,8 +248,10 @@ pub(crate) async fn class_auto_adjust(db: &PgPool) -> anyhow::Result<()> {
                  继续保持做种与分享，更高等级还有更多奖励。"
             ))
             .execute(db)
-            .await;
-            tx.commit().await?;
+            .await
+            {
+                tracing::warn!(%e, uid, "晋升祝贺信写入失败（奖励已入账）");
+            }
         } else {
             tx.rollback().await?;
         }
