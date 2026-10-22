@@ -215,8 +215,12 @@ pub async fn upload_attachment(
     // 反向 A private / B shared 则 B 的图对全站 404。同人已有行才复用；
     // 他人已有行且本次要 private 时改插独立行（物理文件共享不破坏，权限
     // 行按人隔离）。shared 命中他人行维持旧行为（全站可读语义等价）。
+    // P-571：复用本人行时可见性沿用库里那行（0294），响应必须回它——
+    // 旧写法回显请求值：shared 图以 private 重传会报 private 而实际全站可读。
+    let want: &str = if visibility.is_empty() { "shared" } else { &visibility };
     let mine: Option<(i64, String)> = sqlx::query_as(
-        "SELECT id, visibility FROM attachments          WHERE sha256 = $1 AND user_id = $2",
+        "SELECT id, visibility FROM attachments \
+         WHERE sha256 = $1 AND user_id = $2 LIMIT 1",
     )
     .bind(&sha)
     .bind(auth.id)
@@ -236,6 +240,7 @@ pub async fn upload_attachment(
     // 其余组合（本次 private / 他人只有 private·staff 行）一律插独立行，
     // 权限按人隔离；物理文件按 sha 共享不受影响。
     let deduped = mine.is_some() || (visibility.is_empty() && others_shared);
+    let effective = mine.as_ref().map(|(_, v)| v.as_str()).unwrap_or(want);
     if !deduped {
         // 0102 对象存储：按 storage_backend 分发（local 卷 / S3 兼容），目录结构与
         // 旧实现一致（sha 两级分片），读取端自动双后端回落——迁移期无缝。
@@ -255,11 +260,7 @@ pub async fn upload_attachment(
         })
         .bind(&mime)
         .bind(bytes.len() as i64)
-        .bind(if visibility.is_empty() {
-            "shared"
-        } else {
-            visibility.as_str()
-        })
+        .bind(effective)
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
@@ -279,13 +280,7 @@ pub async fn upload_attachment(
         // 如实回显**库里生效的行**的可见性——独立 private 行回 private，
         // 复用 shared 行回 shared（旧版回显请求值，private 命中 shared 时说谎）
         "deduplicated": deduped,
-        "visibility": if deduped && mine.is_none() {
-            "shared"
-        } else if visibility.is_empty() {
-            "shared"
-        } else {
-            &visibility
-        },
+        "visibility": effective,
     })))
 }
 
