@@ -155,6 +155,27 @@ try:
        hmark in seen_on, "看到=%s" % seen_on)
     psql("UPDATE torrents SET approval_status = 3 WHERE id = %s" % htid)
 
+    # P-576 钉桩：/me/torrentlist 的 seeding/completed 两档按 snatches.user_id
+    # 直取，不接 visibility_sql ⇒ 本人「已完成」仍列着点进去 404 的种。
+    # 载体 misc_handlers.rs 正被全仓排版（工作树未提交），本轮只钉桩。
+    if htid:
+        psql("INSERT INTO snatches (user_id,torrent_id,completed_at) VALUES "
+             "(%s,%s,now()) ON CONFLICT DO NOTHING" % (VID, htid))
+        CLEAN.append("DELETE FROM snatches WHERE user_id=%s AND torrent_id=%s"
+                     % (VID, htid))
+        nrow = psql("SELECT count(*) FROM snatches WHERE user_id=%s AND "
+                    "torrent_id=%s" % (VID, htid))
+        s_l, b_l = call("GET", "/me/torrentlist?kind=completed&per=100",
+                        None, token=VT)
+        lst = (b_l or {}).get("data") or {}
+        ids = [str(r.get("torrent_id")) for r in (lst.get("rows") or [])]
+        sd, _ = call("GET", "/torrents/%s" % htid, None, token=VT)
+        ok("DA1g P-576 钉桩（改好删本条）：本人已完成列表仍列着已下架种 "
+           "id=%s（列表命中=%s），而详情 http=%s ⇒ 点名字即 404"
+           % (htid, htid in ids, sd), htid in ids and sd == 404,
+           "夹具行=%s 列表 http=%s total=%s 详情=%s"
+           % (nrow, s_l, lst.get("total"), sd))
+
     # ===== DA1 遮蔽本体（修前必红）=====
     s1, b1 = call("GET", "/users/%s" % TID, None, token=VT)
     d1 = (b1 or {}).get("data") or {}
