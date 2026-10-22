@@ -24,6 +24,17 @@
              库里出现真实做种后这条才带牙齿，故只 WARN 不冒充绿证。
              之所以不插 snatches 夹具行：那会被分钟级 worker tick 真结算
              （做种积分/HR 检查），代价大于这条判据的价值。
+  JE4 普查   同一把尺推广到「发布数」族（P-549）：全仓凡用户维度的
+             AS uploads 必须带 approval_status = 1。后台用户详情此前写
+             `<> 3`（今天 P-544 的残留），把待审/驳回也算进发布数，与
+             会员 /me、控制台、上传榜又是两个数（现网有 12 行是 0/2/4 档）。
+             JE4b 拿旧尺 `<> 3` 的字面量当正控，证明这条普查抓得到。
+  JE5 活体   挑一名下有未过审种的会员：后台 uploads 必须等于过审数。
+             旧镜像读到旧尺＝这条红＝部署账，不是新洞。
+
+窗口口径一条自我纠正：AS uploads 的标签在右括号**之外**，用 `[^)]*`
+取子查询会整族漏抓（本批第一版就这么漏过一遍），所以 JE4 的窗口一律
+取到 AS uploads 为止；基数一起报（命中 5 条）。
 
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_je_label_ruler.py
 """
@@ -89,6 +100,36 @@ def census():
     return hits, bad
 
 
+# 「发布数」那一族：窗口要一直取到 AS uploads（标签在右括号之外，
+# 用 [^)]* 会整族漏抓——本批普查先踩过一次）
+UP_PAT = re.compile(r"SELECT count\(\*\) FROM torrents.{0,180}?AS uploads",
+                    re.S)
+
+
+def uploads_all(text):
+    return [" ".join(m.group(0).split())
+            for m in UP_PAT.finditer(strip_comments(text))]
+
+
+def uploads_offending(text):
+    return [s for s in uploads_all(text) if "approval_status = 1" not in s]
+
+
+def uploads_census():
+    rows, bad = [], []
+    for dirpath, _d, names in os.walk(SRC):
+        for n in names:
+            if not n.endswith(".rs"):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, n), SRC)
+            rel = rel.replace("\\", "/")
+            for s in uploads_all(scan(rel)):
+                rows.append(rel)
+                if "approval_status = 1" not in s:
+                    bad.append("%s :: %s" % (rel, s[:88]))
+    return rows, bad
+
+
 def main():
     ok("JE1 正控：旧形状必须被这把尺抓到（抓到 %d 条）"
        % len(offending(OLD_SHAPE)), len(offending(OLD_SHAPE)) == 1,
@@ -102,6 +143,17 @@ def main():
     ok("JE3a 上传榜的 seeding 子查询已是站内尺",
        not offending(scan(SITE)),
        offending(scan(SITE))[:1])
+
+    # P-549：后台「发布数」与会员控制台同尺——只数过审（1 档）。
+    # 0/2/4 只有作者与职员可读、3 档谁都不可读，两种都不算「已发布」。
+    up_hits, up_bad = uploads_census()
+    ok("JE4 普查：用户维度 AS uploads 必须带 approval_status = 1"
+       "（命中 %d 条、违例 %d 条）" % (len(up_hits), len(up_bad)),
+       not up_bad and len(up_hits) >= 5, "; ".join(up_bad[:3]))
+    ok("JE4b 正控：旧尺 <> 3 的形状必须被同一把尺抓到",
+       len(uploads_offending("SELECT count(*) FROM torrents t WHERE "
+                             "t.owner_id = u.id AND t.approval_status <> 3) "
+                             "AS uploads")) == 1)
 
     root = login()
     s, r = call("GET", "/admin/uploaders", None, token=root)
@@ -120,6 +172,22 @@ def main():
     print("[WARN] 现网此刻 seeding 行数=%s；0 行时 JE3b 只能证明"
           "「不矛盾」，出现真实做种后这条才有牙齿（不插夹具行：snatches "
           "会被分钟级 tick 真结算）" % (n_seed or "?"))
+
+    u9 = (psql_stdin("SELECT owner_id FROM torrents WHERE approval_status "
+                    "IN (0,2,4) GROUP BY owner_id ORDER BY count(*) DESC"
+                    " LIMIT 1") or "").strip()
+    if u9:
+        uid9 = int(u9)
+        pub = int(psql_stdin("SELECT count(*) FROM torrents WHERE owner_id=%d"
+                             " AND approval_status = 1" % uid9) or 0)
+        not3 = int(psql_stdin("SELECT count(*) FROM torrents WHERE owner_id=%d"
+                              " AND approval_status <> 3" % uid9) or 0)
+        s9, d9 = call("GET", "/admin/users/%d" % uid9, None, token=root)
+        api9 = ((d9 or {}).get("data") or {}).get("uploads")
+        ok("JE5 后台发布数不数待审/驳回（uid=%d 过审 %d、旧尺 %d、api=%s）"
+           % (uid9, pub, not3, api9), not3 > pub and api9 == pub,
+           "读成 %s＝与会员 /me 的 uploads 两个数；旧镜像没带上本批时"
+           "这条红＝部署账" % api9)
     print("[INFO] 上传榜首行读数样例：%s" % (rows[0] if rows else {}))
 
 
