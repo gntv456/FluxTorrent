@@ -141,15 +141,26 @@ SELECT 'F|' || count(*)::text FROM settings_meta WHERE name IN (%s)
    AND readonly;
 """ % (in_list, mig, in_list, in_list, in_list))
     c = cells(dry)
+    # 前提自适应：0410 一旦在现网应用过（K5 那条就是查这个），dry-run 起手
+    # 读到的 A 已经是 8 而不是 0——旧判据把「库里还是旧状态」写死，于是在
+    # 「迁移已上线」这条时间线上常年假红（本轮 K3/K3b 即是）。两种世界都要成立：
+    #   A ∈ {0, 8}（未应用／已应用）；B=8（套上迁移后八把都只读）；
+    #   C=BASE_READONLY+8（总数等式，不误伤别的键）；D=8（值没被迁移改写）；
+    #   F=A（回滚后回到起手状态，不留改动在现网）。
+    a0 = c.get("A") in ("0", str(len(OLD)))
+    eq = c.get("C") == str(BASE_READONLY + len(OLD))
     ok("K3 dry-run：旧键只读数 %s→%s；只读键总数 %s（=%d+%d 精确等式，"
        "没误伤）；八把键的值仍在=%s/8"
        % (c.get("A"), c.get("B"), c.get("C"), BASE_READONLY, len(OLD),
           c.get("D")),
-       c.get("A") == "0" and c.get("B") == "8"
-       and c.get("C") == str(BASE_READONLY + len(OLD)) and c.get("D") == "8",
-       "等式不成立＝要么误伤了别的键，要么键清单变了（逐条定性再改判据）")
-    ok("K3b dry-run 已回滚（残留只读旧键=%s）" % c.get("F"),
-       c.get("F") == "0", "残留＝把没经站方批准的改动留在了现网")
+       a0 and c.get("B") == str(len(OLD)) and eq and c.get("D") == "8",
+       "A 只能是 0（未应用）或 8（0410 已上线）；现 A=%s B=%s C=%s D=%s"
+       % (c.get("A"), c.get("B"), c.get("C"), c.get("D")))
+    ok("K3b dry-run 已回滚（起手只读旧键 %s → 回滚后 %s）"
+       % (c.get("A"), c.get("F")),
+       c.get("F") == c.get("A"),
+       "F≠A＝dry-run 把没经站方批准的改动留在了现网（0410 已上线时 A 本就是 8，"
+       "所以判据是「回到起手状态」而不是「必须归零」）")
     # ---------- K4 readonly 机制真的被执行 ----------
     groups = strip(io.open(os.path.join(
         ROOT, "apps/api/src/settings_http/groups.rs"),
