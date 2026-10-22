@@ -60,6 +60,17 @@ pub async fn password_forgot(
 
     // 无论命中与否都返回相同响应（防账号枚举）
     if let Some(uid) = uid {
+        // P-563：与激活信同口径（email_verify.rs:74），同一账号同刻只留
+        // 一枚可用链接。旧写法连点三次找回就有三枚同时有效，用户用完最新
+        // 那枚后，前两封里的链接仍能再来一次改密。
+        sqlx::query(
+            "UPDATE password_resets SET used_at = now() \
+             WHERE user_id = $1 AND used_at IS NULL",
+        )
+        .bind(uid)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         let token = format!("pwd_{}", uuid::Uuid::new_v4().simple());
         sqlx::query(
             "INSERT INTO password_resets (user_id, token_hash, expires_at) \
@@ -174,13 +185,21 @@ pub async fn password_reset(
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query(
-        "UPDATE password_resets SET used_at = now() WHERE token_hash = $1",
+    // P-563：成功重置 = 该账号所有待用链接一并作废（不止本次这枚）。
+    // 并发重放也在这里收口：另一请求先消费时本次更新 0 行，整笔回滚，
+    // 不会出现两次并发的 reset 各写一个密码都回 200。
+    let used = sqlx::query(
+        "UPDATE password_resets SET used_at = now() \
+         WHERE user_id = $1 AND used_at IS NULL",
     )
-    .bind(hash_token(body.token.trim()))
+    .bind(uid)
     .execute(&mut *tx)
     .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if used == 0 {
+        return Err(DomainError::Validation("token 无效或已过期".into()));
+    }
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

@@ -122,6 +122,16 @@ pub async fn me_password_change(
     // 不失效的话，用户改完密（尤其装机时 root 首次强制改密）最多 5 秒内仍被判
     // 「账号正在使用临时密码」，向导下一步 POST /setup 直接吃 400。
     state.user_status_cache.invalidate(auth.id);
+    // P-563：改密也要让此前寄出的找回链接失效——攻击者手里待用的那枚
+    // 不能把刚换掉的密码再改回去（与重置口的「一次性」同一把尺）。
+    sqlx::query(
+        "UPDATE password_resets SET used_at = now() \
+         WHERE user_id = $1 AND used_at IS NULL",
+    )
+    .bind(auth.id)
+    .execute(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let _ = rotated;
     state
         .repo
