@@ -395,6 +395,36 @@ ok("DA13b 正控：该公开的对照口不许被同一把尺误伤（违例 %d�
    not openers, "非 200 的=%s" % "、".join(
        "%s=%s" % (p, anon_pair(p)) for p in openers))
 
+print("\n== DA14 /me/overview 的等级卡字段（P-515/516/517）==")
+# 三条都是「界面读得出、静态门全绿」的形状：text 列按 JSON 解码被吞成 null、
+# 分子（做种数×100）与分母（字节门槛）不同量纲、int4 按 i64 读被吞成 0
+# ⇒ 下一档恒 LV2。拿探针会员打真接口，字段逐一对库里读数。
+ov = data(call("GET", "/me/overview", token=MT)) or {}
+DB_NAME = one("SELECT c.name FROM users u LEFT JOIN user_classes c "
+              "ON c.id = u.class_id WHERE u.id = %d" % ME)
+ok("DA14 class_name 是真名（旧写法对每个会员恒 null）",
+   ov.get("class_name") == DB_NAME and bool(DB_NAME),
+   "api=%r 库里=%r" % (ov.get("class_name"), DB_NAME))
+nc14 = ov.get("next_class")
+KEYS14 = ("uploaded_need", "download_count_need", "seed_hours_need",
+          "account_age_days_need")
+NEXTRA = one("SELECT count(*) FROM class_rules WHERE class_id > "
+             "(SELECT class_id FROM users WHERE id = %d) "
+             "AND class_id < 90 AND min_uploaded > 0" % ME)
+if nc14 is None:
+    ok("DA14b 没有下一档时回 null（不许假装一个 required）",
+       NEXTRA == "0", "next_class=None 而库里还有 %s 个候选档" % NEXTRA)
+else:
+    ok("DA14b next_class 是四项条件（旧形状只有 name+required，required 是字节）",
+       NEXTRA != "0"
+       and all(isinstance(nc14.get(k), int) for k in KEYS14)
+       and "required" not in nc14,
+       "class_id=%s 候选档=%s keys=%s" % (
+           one("SELECT class_id FROM users WHERE id = %d" % ME),
+           NEXTRA, sorted(nc14.keys())))
+ok("DA14c 假积分键不许回到响应里（站内没有发放/消费点）",
+   "seed_points" not in ov, "keys=%s" % sorted(ov.keys())[:12])
+
 print("\n== 状态分布（成员 / 匿名）==")
 for label, rows in (("成员", MINE), ("匿名", ANON)):
     d = {}
