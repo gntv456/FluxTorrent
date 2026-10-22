@@ -20,7 +20,16 @@ describe("考核指标折算", () => {
     ).toBe("2.0 小时");
   });
 
-  it("download_delta 一律不展示增量（累计口径，结算时才判定）", () => {
+  it("download_delta 有现值就报字节，没有才回「—」（P-527 补第五源）", () => {
+    const five = 5 * 1024 ** 3;
+    expect(examCurrent("download_delta", { downloaded: five }, "h")).toBe(
+      "5.0 GB",
+    );
+    // 现值与目标值必须同一套单位，否则表格又是「5.0 GB / 5368709120」
+    expect(examCurrent("download_delta", { downloaded: five }, "h")).toBe(
+      examTarget("download_delta", five, "h"),
+    );
+    // 后端没下发 downloaded（旧契约）时不许编数
     expect(examCurrent("download_delta", { uploaded: 999 }, "h")).toBe("—");
     expect(examCurrent("download_delta", {}, "h")).toBe("—");
   });

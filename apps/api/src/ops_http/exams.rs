@@ -10,6 +10,11 @@ use crate::state::AppState;
 
 /// 我的考核进度：task_claims 关联 kind IN ('onboard','periodic') 的任务，
 /// current 按 task_settle 同款口径实时计算（tier 非空 = 累计口径按现值）。
+/// P-527：下载量原先不在这一屏的现值里（只有 uploaded/seed_seconds/
+/// uploads/subtitles 四源），配了 `download_delta` 的考核项因此永远只能
+/// 「只见目标」——而结算引擎早就按 `downloaded - base_downloaded` 判达标
+/// （P-344），会员看不到自己被这条判据推到哪了。补齐第五源，口径与
+/// `task_records.rs`（P-506）逐字相同。
 #[get("/me/exams")]
 pub(super) async fn my_exams(
     req: HttpRequest,
@@ -21,7 +26,8 @@ pub(super) async fn my_exams(
                 c.status, c.claimed_at, c.settled_at, \
                 (c.claimed_at + (t.duration_days || ' days')::interval) AS deadline, \
                 t.reward, t.penalty, \
-                c.base_uploaded, c.base_seed_seconds, c.base_uploads, \
+                c.base_uploaded, c.base_downloaded, \
+                c.base_seed_seconds, c.base_uploads, \
                 t.tier, \
                 (SELECT count(*) FROM subtitles sub WHERE sub.user_id = \
                  c.user_id AND sub.deleted_at IS NULL \
@@ -35,9 +41,9 @@ pub(super) async fn my_exams(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 指标现值一次性取齐（与 task_settle 相同的四个数据源）
-    let stats: Option<(i64, i64, i64, i64)> = sqlx::query_as(
-        "SELECT u.uploaded, \
+    // 指标现值一次性取齐（与 task_settle / task_records 相同的五个数据源）
+    let stats: Option<(i64, i64, i64, i64, i64)> = sqlx::query_as(
+        "SELECT u.uploaded, u.downloaded, \
                 COALESCE((SELECT sum(s.seeded_seconds) FROM snatches s WHERE s.user_id = u.id), 0)::bigint, \
                 (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), \
                 (SELECT count(*) FROM subtitles sub WHERE sub.user_id = u.id \
@@ -53,13 +59,14 @@ pub(super) async fn my_exams(
         .iter()
         .map(|r| {
             let current =
-                stats.map(|(uploaded, seed_secs, uploads, subtitles)| {
+                stats.map(|(uploaded, downloaded, seed_secs, uploads, subtitles)| {
                     // 累计口径（tier 任务）：基线视为 0，直接报现值；否则报增量
-                    let (up, seed, ups) = if r.tier.is_some() {
-                        (uploaded, seed_secs, uploads)
+                    let (up, dl, seed, ups) = if r.tier.is_some() {
+                        (uploaded, downloaded, seed_secs, uploads)
                     } else {
                         (
                             uploaded - r.base_uploaded,
+                            downloaded - r.base_downloaded,
                             seed_secs - r.base_seed_seconds,
                             uploads - r.base_uploads,
                         )
@@ -72,6 +79,7 @@ pub(super) async fn my_exams(
                     };
                     serde_json::json!({
                         "uploaded": up,
+                        "downloaded": dl,
                         "seed_seconds": seed,
                         "uploads": ups,
                         "subtitles": subs,
@@ -115,6 +123,7 @@ struct MyExamRow {
     penalty: i64,
     /// 基线快照（领取/派发时）：与现值相减得增量
     base_uploaded: i64,
+    base_downloaded: i64,
     base_seed_seconds: i64,
     base_uploads: i64,
     /// 认领后新增的字幕数（非 tier 任务的展示口径）

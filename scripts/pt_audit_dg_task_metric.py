@@ -101,6 +101,31 @@ for f in (RECORDS, EXAMS):
 ok("DG3 /tasks 与 /me/exams 的字幕进度与结算同窗（失真 %d）" % len(bad),
    not bad, "、".join(bad) or "-")
 
+# ---------- DG3b 展示侧五源齐全（P-527：考核屏曾缺 downloaded）----------
+METRIC_KEYS = {"uploaded", "downloaded", "seed_seconds", "uploads",
+               "subtitles"}
+
+
+def cur_keys(f):
+    """取 `"seed_seconds"` 所在那个 current 映射里的指标键。"""
+    s = cut(f)
+    i = s.find('"seed_seconds"')
+    if i < 0:
+        return set()
+    win = s[max(0, i - 320):i + 320]
+    return set(re.findall(r'"([a-z_]+)":', win)) & METRIC_KEYS
+
+
+ks = {os.path.basename(f): cur_keys(f) for f in (RECORDS, EXAMS)}
+gaps = {k: sorted(METRIC_KEYS - v) for k, v in ks.items()
+        if v != METRIC_KEYS}
+ok("DG3b 我的任务记录与我的考核的 current 都是五源（缺 %d 处）" % len(gaps),
+   not gaps,
+   "缺键=%s ／ 实测=%s" % (gaps, {k: sorted(v) for k, v in ks.items()}))
+ok("DG3c 正控：这一条确实读得到键（两文件都是五键）",
+   all(len(v) == 5 for v in ks.values()),
+   "实测=%s" % {k: len(v) for k, v in ks.items()})
+
 # ---------- DG4 列是否已上线（未上线＝豁免，不是通过）----------
 has_col = psql("SELECT count(*) FROM information_schema.columns WHERE "
                "table_name = 'task_claims' AND column_name = "

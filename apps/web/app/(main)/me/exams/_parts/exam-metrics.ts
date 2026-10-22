@@ -8,14 +8,17 @@ import { formatBytes } from "@/lib/format";
 
 export interface ExamCurrent {
   uploaded?: number;
+  downloaded?: number;
   seed_seconds?: number;
   uploads?: number;
   subtitles?: number;
 }
 
 /** 指标现值。字节键走 formatBytes，秒键折算小时；
- *  `download_delta` 后端只在结算时判定，本屏没有下载快照可对照，
- *  一律回「—」（0395 起非 tier 任务也按认领后增量判定）。 */
+ *  `download_delta` P-527 起有现值了——后端 `ops_http/exams.rs` 补上第五源
+ *  （`users.downloaded - base_downloaded`，与 worker 结算、task_records 同口径），
+ *  配了下载增量的考核项不再「只见目标、看不到自己走到哪」。
+ *  拿不到键（旧后端）时仍回「—」，不编数。 */
 export function examCurrent(
   key: string,
   cur: ExamCurrent,
@@ -24,7 +27,9 @@ export function examCurrent(
   if (key === "upload_delta" && cur.uploaded !== undefined) {
     return formatBytes(cur.uploaded);
   }
-  if (key === "download_delta") return "—";
+  if (key === "download_delta" && cur.downloaded !== undefined) {
+    return formatBytes(cur.downloaded);
+  }
   if (key === "seed_seconds_delta" && cur.seed_seconds !== undefined) {
     return `${(cur.seed_seconds / 3600).toFixed(1)} ${hoursUnit}`;
   }
