@@ -73,13 +73,18 @@ def benc(obj):
     raise TypeError(type(obj))
 
 
+# 本轮唯一盐（任务 #13）：服务端按 pieces_hash 判重复发布，写死摘要会让
+# 第 2 轮起全数撞「同内容种子已存在」。导入期求一次 ⇒ 同轮内恒定（重复
+# 被拒的正控仍成立），跨轮不同。
+PIECE_SALT = ("%f" % time.time()).encode()
+
 def make_torrent(name, total=4096, piece=16384):
     # 片数必须与「文件大小 / 片长」相符，否则站点的校验会拒
     count = max(1, (total + piece - 1) // piece)
     info = {
         b"name": name.encode(),
         b"piece length": piece,
-        b"pieces": hashlib.sha1(b"piece").digest() * count,
+        b"pieces": hashlib.sha1(b"piece:" + PIECE_SALT).digest() * count,
         b"private": 1,
         b"length": total,
     }

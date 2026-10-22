@@ -55,6 +55,10 @@ def benc(obj):
     raise TypeError(type(obj))
 
 
+# 本轮唯一盐（任务 #13）：服务端按 pieces_hash 判重复发布，写死摘要会让
+# 第 2 轮起全数撞「同内容种子已存在」。
+PIECE_SALT = ("%f" % time.time()).encode()
+
 def make_torrent(name=None, files=None, piece_length=32768):
     total = sum(s for _, s in files) if files else piece_length
     n = max(1, (total + piece_length - 1) // piece_length)
@@ -63,7 +67,7 @@ def make_torrent(name=None, files=None, piece_length=32768):
             name or "Audit.Log.%d" % random.randint(100000, 999999)
         ).encode(),
         b"piece length": piece_length,
-        b"pieces": hashlib.sha1(b"piece").digest() * n,
+        b"pieces": hashlib.sha1(b"piece:" + PIECE_SALT).digest() * n,
         b"private": 1,
     }
     if files:
