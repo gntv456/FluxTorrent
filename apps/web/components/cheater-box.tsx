@@ -36,6 +36,8 @@ export function CheaterBox() {
   const { dict, locale } = useI18n();
   const t = dict.cheaterbox;
   const [rows, setRows] = useState<CheaterRow[] | null>(null);
+  // P-615：取数失败曾被演成「0 条 + 本页为空」——复核人员会以为没有可疑会话
+  const [failed, setFailed] = useState(false);
   const [noPerm, setNoPerm] = useState(false);
 
   useEffect(() => {
@@ -45,7 +47,10 @@ export function CheaterBox() {
       .catch((e) => {
         // 信封码 2003 = 无权限（403 是 HTTP 状态，P-501）。
         if (e instanceof ApiError && e.code === 2003) setNoPerm(true);
-        else setRows([]);
+        else {
+          setRows([]);
+          setFailed(true);
+        }
       });
   }, []);
 
@@ -69,7 +74,7 @@ export function CheaterBox() {
         <h2>
           <span aria-hidden="true">🚫</span> {t.title}
         </h2>
-        {rows !== null && <small>{rows.length}</small>}
+        {rows !== null && !failed && <small>{rows.length}</small>}
       </header>
 
       {/* 作弊事件待办 + 反作弊案件队列（0367 M1）+ 风险观察名单（0368 M2）
@@ -82,6 +87,10 @@ export function CheaterBox() {
 
       {rows === null ? (
         <p className="funbox__empty">…</p>
+      ) : failed ? (
+        <p role="alert" className="funbox__empty">
+          {dict.common.loadFailed}
+        </p>
       ) : rows.length === 0 ? (
         <p className="funbox__empty">{t.empty}</p>
       ) : (
