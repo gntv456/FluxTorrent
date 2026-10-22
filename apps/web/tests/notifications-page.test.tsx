@@ -31,11 +31,11 @@ const acts = [
   },
 ];
 
-function mockApi(activity: unknown | Error) {
+function mockApi(activity: unknown | Error, staff: unknown[] = []) {
   return vi.spyOn(api, "get").mockImplementation(async (path: string) => {
     if (path === "/api/v1/me/overview") return { unread_messages: 3 };
     if (path === "/api/v1/me/hr") return { rows: [] };
-    if (path === "/api/v1/messages/staff") return [];
+    if (path === "/api/v1/messages/staff") return staff;
     if (path === "/api/v1/site-activity") {
       if (activity instanceof Error) throw activity;
       return activity;
@@ -67,5 +67,17 @@ describe("通知中心的全站动态", () => {
     render(await NotificationsPage());
     expect(screen.queryByText(zhCN.notifications.activityCard))
       .not.toBeInTheDocument();
+  });
+
+  it("管理组信箱按数组计数，且不混进待处理总数", async () => {
+    mockApi(acts, [
+      { id: 1, subject: "工单答复", read_at: null, unread: null },
+      { id: 2, subject: "旧信", read_at: "2026-10-01T00:00:00Z", unread: false },
+    ]);
+    render(await NotificationsPage());
+    const card = screen.getByRole("link", { name: /管理组信箱/ });
+    expect(card.textContent).toContain("2");
+    // 待办 = 私信未读 3 + H&R 临期 0；信箱往来 2 封不算待办
+    expect(screen.getByText("你有 3 条待处理消息")).toBeInTheDocument();
   });
 });

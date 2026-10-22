@@ -33,9 +33,6 @@ interface HrResp {
     required_seconds: number;
   }[];
 }
-interface StaffResp {
-  data?: unknown[] | { items?: unknown[] };
-}
 interface ActivityRow {
   id: number;
   kind: string;
@@ -48,7 +45,7 @@ export default async function NotificationsPage() {
   const results = await Promise.allSettled([
     api.get<OverviewResp>("/api/v1/me/overview"),
     api.get<HrResp>("/api/v1/me/hr"),
-    api.get<StaffResp>("/api/v1/messages/staff"),
+    api.get<unknown[]>("/api/v1/messages/staff"),
     // 全站动态（0407）：独立时间线（字幕上架/评选揭晓等系统事件）
     api.get<ActivityRow[]>("/api/v1/site-activity"),
   ]);
@@ -76,10 +73,11 @@ export default async function NotificationsPage() {
   }
 
   const unread = ov?.unread_messages ?? 0;
-  const staffRows = Array.isArray(staff?.data)
-    ? staff!.data!
-    : (staff?.data?.items ?? []);
-  const staffUnread = staffRows.length;
+  // 该端点也回数组，原代码按 {data} 取，管理组信箱卡同样恒 0。
+  // 这里数的是往来封数（含已读/已发），不是未读——staffbox 没有已读
+  // 标记，且员工回信若未读已计入上面的私信卡，不能再算一次待办。
+  const staffRows = Array.isArray(staff) ? staff : [];
+  const staffCount = staffRows.length;
   // 该端点回的是数组（api.get 已拆信封），原代码按 {data: []} 取，
   // 于是这张卡无论有多少动态都不出现。
   const activities = Array.isArray(activity) ? activity : [];
@@ -103,8 +101,8 @@ export default async function NotificationsPage() {
           {
             href: "/staffbox",
             title: t.staffCard,
-            count: staffUnread,
-            tone: staffUnread > 0 ? ("warm" as const) : ("idle" as const),
+            count: staffCount,
+            tone: staffCount > 0 ? ("warm" as const) : ("idle" as const),
           },
         ]
       : []),
@@ -128,7 +126,9 @@ export default async function NotificationsPage() {
       tone: hrUrgent > 0 ? "hot" : hrOpen.length > 0 ? "warm" : "idle",
     },
   ];
-  const total = unread + staffUnread + hrUrgent;
+  // 待办只数真正未处理的：私信未读 + 临期 H&R。管理组信箱卡是往来
+  // 封数（含已读/已发），计进「待处理」会让旧信永远清不掉。
+  const total = unread + hrUrgent;
 
   return (
     <div className="flex flex-col gap-4">
