@@ -293,6 +293,28 @@ if tid:
        cnt("messages", "receiver_id = %s AND subject = '%s'"
            % (A[1], SUBJ_REPLY)) > after)
 
+print("E6 回复楼主那一楼只该发一封（P-532：同一事件两封信）")
+SUBJ_FLOOR = "你的楼层收到回复"
+if tid:
+    op_post = (psql("SELECT min(id) FROM posts WHERE topic_id = %d" % tid)
+               or "0").strip()
+    w6 = ("receiver_id = %s AND subject IN ('%s','%s')"
+          % (A[1], SUBJ_REPLY, SUBJ_FLOOR))
+    before6 = cnt("messages", w6)
+    exec_sql("DELETE FROM forum_flood WHERE user_id = %s" % D[1])
+    s, r = call("POST", "/forums/topics/%s/reply" % tid,
+                {"body": "回帖四（引用楼主一楼）", "reply_to": int(op_post)},
+                token=DT)
+    ok("E6 前置：带 reply_to 的回帖本身成功", s == 200, str(r)[:120])
+    after6 = cnt("messages", w6)
+    ok("E6 楼主因这一次回帖只多收 1 封（实测多 %d 封）"
+       % (after6 - before6), after6 - before6 == 1,
+       "before=%d after=%d 楼主的信=%s" % (before6, after6, op_post))
+    ok("E6b 正控：reply_to 通道确实走通（该回帖的 parent_id 已落库，"
+       "否则 E6 会因为「没进楼中楼分支」而假绿）",
+       cnt("posts", "topic_id = %d AND parent_id = %s"
+           % (int(tid), op_post)) > 0, "op_post=%s" % op_post)
+
 try:
     summary()
 finally:

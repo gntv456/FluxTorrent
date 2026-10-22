@@ -134,9 +134,12 @@ pub(crate) async fn post_reply(
     }
     // 楼中楼（0163）：被回复楼层作者收到定向通知（自己/匿名楼不通知，
     // 且同样受 notify_topic_reply 闸门约束）
+    // P-532：还得挡「被回复的就是楼主本人」——回楼主那一楼是最常见的回帖形状，
+    // 上一条件已经给楼主发过「X 回复了你的主题」，再发一条「X 回复了你在…的
+    // 楼层」就是同一件事两封信，未读角标每楼都多算 1。
     if let Some(pa) = parent_author {
         let want_parent = reply_pref_wanted(&state.repo.db, pa).await;
-        if pa != auth.id && want_parent {
+        if pa != auth.id && pa != author && want_parent {
             notify_user(
                 &state.repo.db,
                 pa,
