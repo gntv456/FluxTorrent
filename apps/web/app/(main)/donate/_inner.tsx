@@ -31,26 +31,29 @@ interface DonateState {
 
 const QUICK_AMOUNTS = [10, 20, 30, 50, 66];
 
-/** 捐赠中心（同类站 donate 口径）：储值钱包 + 充值 + 三区套餐订购
- *  （储值流水表格拆到 _inner-ledger.tsx） */
+/** 捐赠中心（同类站 donate 口径）：储值钱包 + 充值 + 三区套餐订购 */
 export default function DonatePage() {
   const { dict, locale } = useI18n();
   const t = dict.donate;
   const [st, setSt] = useState<DonateState | null>(null);
+  const [failed, setFailed] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // 充值弹层
   const [topupOpen, setTopupOpen] = useState(false);
   const [amount, setAmount] = useState(10);
   const [channel, setChannel] = useState<"alipay" | "wechat">("alipay");
-  // 流水弹层
   const [ledgerOpen, setLedgerOpen] = useState(false);
-  // 挂载门控（同 /my-spark）：hasSessionCookie() 在渲染期读 document.cookie，
-  // SSR 恒 false → 服务端出「请先登录」而客户端出完整页面 → React #418。
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false); // SSR 期 cookie 恒 false → 先出中性态
 
   const load = useCallback(() => {
-    api.get<DonateState>("/api/v1/donate/state").then(setSt).catch(() => setSt(null));
+    setFailed(false);
+    api
+      .get<DonateState>("/api/v1/donate/state")
+      .then(setSt)
+      .catch(() => {
+        setSt(null);
+        setFailed(true);
+      });
   }, []);
   useEffect(load, [load]);
   useEffect(() => setMounted(true), []);
@@ -153,6 +156,9 @@ export default function DonatePage() {
           {msg}
         </p>
       )}
+      {failed && (
+        <p className="text-sm text-warn">{dict.common.loadFailed}</p>
+      )}
 
       {/* 储值钱包 */}
       <section className="brand-panel">
@@ -165,8 +171,7 @@ export default function DonatePage() {
             <div>
               <p className="text-xs text-sub">{t.balance}</p>
               <p className="num text-2xl font-bold text-deep">
-                {(st?.wallet_usd ?? 0).toFixed(2)}
-                <span className="text-sm"> USD</span>
+                {st ? `${st.wallet_usd.toFixed(2)} USD` : "—"}
               </p>
             </div>
             <div className="ml-auto flex gap-2">
@@ -218,7 +223,6 @@ export default function DonatePage() {
 
       <DonateTiers tiers={st?.donation_tiers ?? []} t={t} />
 
-      {/* 众筹免费（0078）：凑火花挂限时免费 */}
       <FundingPanel />
 
       {/* 流水 */}
