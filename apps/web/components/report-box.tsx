@@ -20,6 +20,8 @@ export function ReportBox() {
   const u = dict.usertools;
   const [rows, setRows] = useState<ReportRow[] | null>(null);
   const [noPerm, setNoPerm] = useState(false);
+  // P-610：队列取数失败不能演成「队列为空」——管理组会以为没人举报
+  const [failed, setFailed] = useState(false);
 
   // 提交表单（原 userbar 弹层表单迁入本页）
   const [refType, setRefType] = useState("torrent");
@@ -29,13 +31,18 @@ export function ReportBox() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
+    setFailed(false);
     api
       .get<ReportRow[]>("/api/v1/admin/reports")
       .then(setRows)
       .catch((e) => {
         // 后端 Forbidden 的信封码是 2003；403 只是 HTTP 状态（P-501）。
-        if (e instanceof ApiError && e.code === 2003) setNoPerm(true);
-        else setRows([]);
+        if (e instanceof ApiError && e.code === 2003) {
+          setNoPerm(true);
+        } else {
+          setRows([]);
+          setFailed(true);
+        }
       });
   }, []);
 
@@ -116,7 +123,9 @@ export function ReportBox() {
           <p className="funbox__empty">{t.noPerm}</p>
         ) : (
           rows !== null &&
-          (rows.length === 0 ? (
+          (failed ? (
+            <p className="funbox__empty">{dict.common.loadFailed}</p>
+          ) : rows.length === 0 ? (
             <p className="funbox__empty">{t.queueEmpty}</p>
           ) : (
             <div className="overflow-x-auto">
