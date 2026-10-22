@@ -9,7 +9,7 @@ import { BTN_MD_SKY } from "@/lib/ui-classes";
  * 空列表保存 = 恢复默认排版。实时预览：编辑状态即渲染 home-stack--custom 结构。
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import {
@@ -34,10 +34,11 @@ export function HomeLayoutEditor() {
   const [sections, setSections] = useState<HomeSectionMeta[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   // 初始值 = 当前线上配置（/api/v1/home.home_layout；空/非法回默认排版）
-  useEffect(() => {
-    const fallback = (s: HomeSectionMeta[]) => defaultLayout(s);
+  const load = useCallback(() => {
+    setFailed(false);
     api
       .get<{
         home_layout?: string;
@@ -49,10 +50,17 @@ export function HomeLayoutEditor() {
         setItems(parseHomeLayout(h.home_layout, secs));
       })
       .catch(() => {
+        // P-612：取数失败不能演成「当前排版为空」——本页空列表保存 =
+        // 恢复默认排版，空表格上顺手一点就会把线上排版清掉。
+        // items 回 null：重试期间走加载态，不暴露可保存的空表格窗口。
         setSections([]);
-        setItems(fallback([]));
+        setItems(null);
+        setFailed(true);
       });
   }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const hiddenKeys = useMemo(
     () =>
@@ -108,6 +116,16 @@ export function HomeLayoutEditor() {
     setMsg(t.resetHint);
   }
 
+  if (failed) {
+    return (
+      <p role="alert" className="flex items-center gap-2 text-sm text-sub">
+        {dict.common.loadFailed}
+        <button type="button" onClick={load} className="underline">
+          {dict.common.retry}
+        </button>
+      </p>
+    );
+  }
   if (!items) return <p className="text-sm text-sub">{dict.my.loading}</p>;
 
   return (
