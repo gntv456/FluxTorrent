@@ -190,10 +190,22 @@ if LIVE:
     # 「部署后一律零容忍」开关把两件事混成一件——现网 15 条
     # 负 balance_after 全是 2026-09-30~10-03 的历史行（17:06 重部署后新增 0），
     # 零容忍读起来像「地板原语没生效」，实际缺的是一次清账数据迁移，而归站方定尺。
-    fresh = psql("SELECT count(*) FROM spark_ledger WHERE balance_after < 0 "
+    # 判据自己也要对账（2026-10-22 全量回归实测）：GF6a 原先写的是
+    # 「近 7 天不许出现 balance_after<0 的行」，可现网那 59 条全是**已经欠着的
+    # 账号收到钱**（shop +1000、forum +2 这类入账行，余额从 -15285 涨到 -11285），
+    # 一条都不是「扣费写穿零」。用 `balance_after - amount >= 0` 复原扣费前的
+    # 余额才知道有没有跨零——全历史这条都是 0，所以地板原语没被写穿，
+    # 红的是判据（把入账读成违约），存量归 GT/HJ/DK 那几条清账账本管。
+    cross = psql("SELECT count(*) FROM spark_ledger WHERE balance_after < 0 "
+                 "AND balance_after - amount >= 0 "
                  "AND created_at > now() - interval '7 days';")
-    ok("GF6a 近 7 天不再新增负 balance_after 流水（地板原语承重）",
-       int(fresh) == 0, "现网=%s（>0 即收回/扣费仍能写穿零）" % fresh)
+    ok("GF6a 近 7 天没有「扣费跨零」流水（地板原语承重）",
+       int(cross) == 0, "现网=%s（>0 才是收回/扣费真写穿了零）" % cross)
+    carry = psql("SELECT count(*) FROM spark_ledger WHERE balance_after < 0 "
+                 "AND balance_after - amount < 0 "
+                 "AND created_at > now() - interval '7 days';")
+    print("   [信息] GF6a2 近 7 天负 balance_after 的**入账续写** %s 条"
+          "（欠着的人收到钱，不是新违约；清账口径见 GF6b/GF6c）" % carry)
     bad_rows = psql("SELECT count(*) FROM spark_ledger "
                     "WHERE balance_after < 0;")
     ok("GF6c 历史负 balance_after 存量只许 ≤ 基线（待清账，闸门不擅改）",

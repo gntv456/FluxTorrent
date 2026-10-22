@@ -31,10 +31,12 @@ it("导出 {magic} 文案表并守住基数", () => {
   }
   expect(Object.keys(flat).length).toBeGreaterThan(2000);
   expect(Object.keys(magic).length).toBeGreaterThan(50);
+  // 两本一起导：{magic} 那一族只是「占位符没喂值」的一个特例，
+  // audit_placeholder_fill.py 要拿整本叶子去比每个 fmt(...) 的实参键集。
   writeFileSync(
     // 落到仓库根：`.gitignore` 里 `/_*.json` 是「跑完即弃」的调试产物位
-    path.resolve(__dirname, "../../../_tmp_magic_leaves.json"),
-    JSON.stringify({ total: Object.keys(flat).length, magic }, null, 1),
+    path.resolve(__dirname, "../../../_tmp_dict_leaves.json"),
+    JSON.stringify({ total: Object.keys(flat).length, magic, flat }, null, 0),
     "utf-8",
   );
 });

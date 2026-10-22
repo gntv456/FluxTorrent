@@ -27,7 +27,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LEAVES = os.path.join(ROOT, "_tmp_magic_leaves.json")
+LEAVES = os.path.join(ROOT, "_tmp_dict_leaves.json")
 WEB = os.path.join(ROOT, "apps", "web")
 ALIAS = re.compile(r"const\s+(\w+)\s*=\s*dict\.([A-Za-z0-9_.]+)")
 DIRECT = re.compile(r"dict\.([A-Za-z0-9_.]+)\.([A-Za-z0-9_]+)\b")
@@ -36,7 +36,7 @@ DIRECT = re.compile(r"dict\.([A-Za-z0-9_.]+)\.([A-Za-z0-9_]+)\b")
 def magic_paths():
     if not os.path.exists(LEAVES):
         raise SystemExit(
-            "缺数据源 _tmp_magic_leaves.json：先在 apps/web 跑 "
+            "缺数据源 _tmp_dict_leaves.json：先在 apps/web 跑 "
             "`npx vitest run tests/i18n-magic-leaves.test.ts` 生成"
             "（它从运行时字典导，基数断言在测试里）"
         )
