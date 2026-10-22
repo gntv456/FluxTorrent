@@ -17,6 +17,7 @@ const CARD =
  *  （凑赏/认领/撤销/交稿/弃单/验收，与桌面同一份 Inner，逻辑不分叉）。 */
 export function SubtitleRequestCards({
   reqs,
+  failed,
   langs,
   currency,
   meId,
@@ -26,6 +27,8 @@ export function SubtitleRequestCards({
   onContribute,
 }: {
   reqs: SubtitleRequestRow[];
+  /** 取数失败：空列表是故障，不是「暂无求字幕」（P-613） */
+  failed?: boolean;
   langs: { code: string; name: string; flag: string }[];
   currency: string;
   meId: number;
@@ -71,7 +74,9 @@ export function SubtitleRequestCards({
         );
       })}
       {reqs.length === 0 && (
-        <li className="py-4 text-center text-sub">{t.reqEmpty}</li>
+        <li className="py-4 text-center text-sub">
+          {failed ? dict.common.loadFailed : t.reqEmpty}
+        </li>
       )}
     </ul>
   );

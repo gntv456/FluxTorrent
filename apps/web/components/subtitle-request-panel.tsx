@@ -30,6 +30,9 @@ export function SubtitleRequestPanel({
   const { dict, currency } = useI18n();
   const t = dict.subtitles;
   const [reqs, setReqs] = useState<SubtitleRequestRow[]>([]);
+  // P-613：取数失败曾只弹一条几秒后消失的 toast，随后表格显示「暂无
+  // 求字幕」——故障被演成空板（与 P-314 同形）。failed 只换那一句文案。
+  const [failed, setFailed] = useState(false);
   const [rLang, setRLang] = useState("");
   const [rBounty, setRBounty] = useState("");
   const [rFree, setRFree] = useState(false);
@@ -47,6 +50,7 @@ export function SubtitleRequestPanel({
   const [input, setInput] = useState("");
 
   const loadReqs = useCallback(async () => {
+    setFailed(false);
     try {
       setReqs(
         await api.get<SubtitleRequestRow[]>(
@@ -54,9 +58,10 @@ export function SubtitleRequestPanel({
         ),
       );
     } catch {
-      setReqs([]); toast.error(dict.common.loadFailed);
+      setReqs([]);
+      setFailed(true);
     }
-  }, [dict]);
+  }, []);
 
   useEffect(() => {
     loadReqs();
@@ -217,6 +222,7 @@ export function SubtitleRequestPanel({
       {compact ? (
         <SubtitleRequestCards
           reqs={reqs}
+          failed={failed}
           langs={langs}
           currency={currency}
           meId={me?.id ?? 0}
@@ -258,7 +264,7 @@ export function SubtitleRequestPanel({
             {reqs.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-4 text-center text-sub">
-                  {t.reqEmpty}
+                  {failed ? dict.common.loadFailed : t.reqEmpty}
                 </td>
               </tr>
             )}
