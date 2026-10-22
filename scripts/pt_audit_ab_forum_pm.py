@@ -16,6 +16,7 @@ import subprocess
 import sys
 import time
 
+from urllib.parse import quote as urlquote
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (call, clear_register_rl, login, ok,
                          summary)  # noqa: E402
@@ -314,6 +315,24 @@ if tid:
        "否则 E6 会因为「没进楼中楼分支」而假绿）",
        cnt("posts", "topic_id = %d AND parent_id = %s"
            % (int(tid), op_post)) > 0, "op_post=%s" % op_post)
+
+
+print("E7 搜索结果的回复数与主题口径一致（P-542：count(posts) 不减楼主帖）")
+if tid:
+    posts = cnt("posts", "topic_id = %s" % tid)
+    truth = posts - 1
+    s, r = call("GET", "/forums/search?q=" + urlquote("主题正文"), token=AT)
+    rows = (r or {}).get("data") or []
+    hit = [x for x in (rows if isinstance(rows, list) else rows.get("rows")
+                       or []) if str(x.get("topic_id") or x.get("id"))
+           == str(tid)]
+    ok("E7 前置：这条主题能被搜到且确有回帖（帖数=%s ⇒ 回复数应为 %s）"
+       % (posts, truth), s == 200 and len(hit) >= 1 and posts >= 2,
+       "http=%s 命中=%s 帖数=%s" % (s, len(hit), posts))
+    got = hit[0].get("replies") if hit else None
+    ok("E7 搜索口 replies == 楼层数-1（与主题列表/主题页同一把尺）",
+       hit and got == truth,
+       "api=%s 期望=%s 旧口径会给=%s" % (got, truth, posts))
 
 try:
     summary()

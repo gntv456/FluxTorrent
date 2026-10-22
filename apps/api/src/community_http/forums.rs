@@ -89,9 +89,12 @@ pub(crate) async fn forum_search(
                        fm3.forum_id = f.id AND fm3.user_id = $3))";
     let first_of = "(SELECT min(pp.id) FROM posts pp WHERE pp.topic_id = \
                     t.id)";
+    // P-542：回复数按站点口径＝楼层数减楼主帖（与主题列表 topic.rs 同式）。
+    // 旧写法直接 count(posts) ⇒ 搜索结果比主题页多 1，同一主题两页自相矛盾。
     let sql = format!(
         "SELECT t.id, t.title, f.id, f.name, u.username, t.created_at, \
-                (SELECT count(*) FROM posts p WHERE p.topic_id = t.id), \
+                greatest((SELECT count(*) FROM posts p WHERE p.topic_id = \
+                    t.id) - 1, 0), \
                 t.locked, \
                 (SELECT left(p2.body_text, 90) FROM posts p2 WHERE \
                    p2.topic_id = t.id AND p2.body_text ILIKE $1 \
