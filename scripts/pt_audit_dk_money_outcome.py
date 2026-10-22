@@ -244,11 +244,23 @@ def _dk_one(sql):
 
 if "sval" not in globals():          # 本闸门原自带取数器名不同，这里补一个别名
     sval = _dk_one
-NEG_CEIL = 25
-neg = int(sval("SELECT count(*) FROM users WHERE spark_balance < 0") or 0)
-ok("DK8 余额为负的会员 %d ≤ 上界 %d（只降不升）" % (neg, NEG_CEIL),
-   neg <= NEG_CEIL,
-   "上升＝又有一条扣费路径绕过 spend 的充足校验（对照 earn_spark 收负数那一族）")
+NEG_LIVE_CEIL = 1   # 唯一在册例外＝root（被历轮活体闸门的真实扣款花负）
+neg_all = int(sval("SELECT count(*) FROM users WHERE spark_balance < 0") or 0)
+neg_live = int(sval("SELECT count(*) FROM users WHERE spark_balance < 0 "
+                    "AND status < 2") or 0)
+live_names = sval("SELECT coalesce(string_agg(username || ':' || "
+                  "spark_balance::text, ', '), '无') FROM users "
+                  "WHERE spark_balance < 0 AND status < 2")
+print("   [读数] 负余额账号共 %d 个；其中在册会员(status<2) %d 个（%s）；"
+      "其余 %d 个是各闸门停用/墓碑掉的探针号"
+      % (neg_all, neg_live, live_names, neg_all - neg_live))
+# 上界只看**在册会员**：探针号的负余额数量只随闸门跑动单调上涨（10-19 记 25，
+# 本轮已 31，全是 ahm*/ptb_*/ecm*/deleted-* 这类），拿它当棘轮等于量「这个月
+# 跑了多少闸门」，真洞反而被噪音盖掉。
+ok("DK8 在册会员里不许出现负余额（≤%d，唯一例外是 root）" % NEG_LIVE_CEIL,
+   neg_live <= NEG_LIVE_CEIL,
+   "在册负余额=%d（%s）＝有新的扣费路径绕过 spend 的充足校验"
+   "（对照 earn_spark 收负数那一族）" % (neg_live, live_names))
 chk = sval("SELECT count(*) FROM pg_constraint WHERE "
            "conrelid = 'users'::regclass "
            "AND pg_get_constraintdef(oid) LIKE '%spark_balance%'")
