@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /**
@@ -19,11 +19,10 @@ interface SessionRow {
 
 export function SessionsCard() {
   const { dict } = useI18n();
-  const t = dict.security2fa; // 复用安全页文案段
   const s = dict.sessions;
   const [rows, setRows] = useState<SessionRow[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   // P2 清偿：踢出其它会话二次确认（danger：其它设备立即失效）
   const ask = useConfirm();
@@ -43,11 +42,13 @@ export function SessionsCard() {
 
   const revokeOthers = async () => {
     setBusy(true);
+    setMsg(null);
     try {
       await api.post("/api/v1/me/sessions/revoke-others");
-      setMsg(s.revokedOk);
-    } catch {
-      setMsg(t.statusOff);
+      setMsg({ ok: true, text: s.revokedOk });
+    } catch (e) {
+      // P-609：失败曾复用「未启用」并以成功色显示，像是功能没开
+      setMsg({ ok: false, text: apiErrorMessage(dict, e) });
     } finally {
       setBusy(false);
     }
@@ -83,6 +84,8 @@ export function SessionsCard() {
               title: s.revokeBtn,
               message: s.revokeConfirm,
               tone: "danger",
+              // danger 默认确认文案是「删除」，踢会话不是删东西
+              confirmLabel: s.revokeBtn,
               busy,
               run: revokeOthers,
             })
@@ -93,7 +96,11 @@ export function SessionsCard() {
         >
           {s.revokeBtn}
         </button>
-        {msg && <span className="text-xs text-mint">{msg}</span>}
+        {msg && (
+          <span className={msg.ok ? "text-xs text-mint" : "text-xs text-coral"}>
+            {msg.text}
+          </span>
+        )}
       </div>
       <p className="text-[11px] text-sub">{s.hint}</p>
       <AskDialog {...ask} />
