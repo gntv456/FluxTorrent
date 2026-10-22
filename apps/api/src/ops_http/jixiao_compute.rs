@@ -100,8 +100,15 @@ pub async fn compute_metrics(
     .fetch_one(db)
     .await
     .unwrap_or(0);
+    // P-528：绩效的「当月发种数」原先不带审核态过滤——被拒（2）与
+    // 「谁都不可见」（3）的种一样计薪。同 subsystem 的另两个出口
+    // （worker `jobs/jixiao_loop.rs:23` 与 `jobs/jixiao_snap.rs:18`）都按
+    // `approval_status = 1`，`/me/overview` 与任务结算也是同一把尺 ⇒ 漏的是这里。
+    // 现网实测 2026-10：全站 210 条 vs 过审 177 条；user 52 本月 9 条
+    // **全部**来自被拒/不可见种（真实过审 0），却能按"发种 9 条"拿绩效。
     let uploads: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents WHERE owner_id = $1 AND \
+         approval_status = 1 AND \
          to_char(created_at, 'YYYY-MM') = $2",
     )
     .bind(user_id)

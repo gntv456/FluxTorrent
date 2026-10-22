@@ -336,4 +336,72 @@ ok("CE10a 真实授权表一条都没改（%d→%d）；jixiao_claims 回 %d→%
    "JC=%s RP=%s SL=%s" % (psql("SELECT count(*) FROM jixiao_claims"), RP1,
                           SL1))
 
+print("\n== CE11 绩效「当月发种数」三出口一律只数过审种（P-528）==")
+# API 的 compute_metrics（会员屏 + /admin/jixiao/assign-batch 同口径）、
+# worker 的 jixiao_loop（结算现值）与 jixiao_snap（期初基线）三处都在数
+# "这个月发了多少种"。少一处 `approval_status = 1`，被拒/谁都不可见的种
+# 就照样计薪。现网 2026-10：全站 210 条 vs 过审 177 条；user 52 本月 9 条
+# 全部来自没过审的种（真实过审 0），却能按"发种 9 条"拿绩效。
+JX_FILES = ["apps/api/src/ops_http/jixiao_compute.rs",
+            "apps/worker/src/jobs/jixiao_loop.rs",
+            "apps/worker/src/jobs/jixiao_snap.rs"]
+
+
+def uploads_stmts(rel):
+    raw = io.open(os.path.join(REPO, *rel.split("/")), encoding="utf-8",
+                  errors="replace").read()
+    # 剥 // 注释：本批修复的说明注释里就写着 approval_status = 1
+    raw = "\n".join(re.sub(r"//.*", "", ln) for ln in raw.split("\n"))
+    return [raw[m.end():m.end() + 240]
+            for m in re.finditer(r"count\(\*\)\s+FROM\s+torrents", raw, re.I)]
+
+
+stmts = [(os.path.basename(r), s) for r in JX_FILES
+         for s in uploads_stmts(r)]
+miss = [f for f, s in stmts if "approval_status = 1" not in s]
+ok("CE11 三出口的 uploads 语句都带 approval_status = 1（违例 %d/%d）"
+   % (len(miss), len(stmts)),
+   len(stmts) == 3 and not miss,
+   "取到 %d 条语句；缺过滤=%s" % (len(stmts), "、".join(miss) or "-"))
+ok("CE11b 正控：判据认得出「漏过滤」与「多算别的表」两种形状",
+   len(stmts) == 3
+   and "approval_status = 1" not in
+   "WHERE owner_id = $1 AND to_char(created_at, 'YYYY-MM') = $2"
+   and not re.findall(r"count\(\*\)\s+FROM\s+torrents",
+                      "SELECT count(*) FROM users WHERE 1=1"),
+   "stmts=%d" % len(stmts))
+# CE11c：把**本批改过的那条**语句按 Rust 行续行规则折叠后真跑一遍。
+# 只查"键在不在"抓不到补丁自己写坏的 SQL——本批还原负控时就写出过
+# `AND AND` 与丢掉的 `to_char`，cargo 照绿、CE11 照 PASS。
+# worker 那两条在 INSERT ... SELECT 里（不能真跑，会写库），改做形状体检：
+# `AND AND`、`= 1 AND (` 这类断裂的函数调用、以及 `count(*)` 后缺 FROM。
+fold = lambda s: re.sub(r"\\\s*\n\s*", " ", s)
+api_raw = io.open(os.path.join(REPO, *JX_FILES[0].split("/")),
+                  encoding="utf-8", errors="replace").read()
+m11 = re.search(r'"(SELECT count\(\*\)\s+FROM torrents[^"]*?)"',
+                api_raw, re.S)
+run_res = ("没有语句", False)
+if m11:
+    q = fold(m11.group(1)).replace("$1", "1").replace("$2", "'1999-01'")
+    try:
+        v = psql(q).strip()
+        run_res = ("回值=%s" % v[:12], v.isdigit())
+    except Exception as e:  # noqa: BLE001：这里就是要接住 SQL 报错
+        run_res = ("ERR %s" % str(e)[:40], False)
+SMELLS = (r"AND\s+AND", r"=\s*1\s+AND\s+\(", r"count\(\*\)\s+WHERE")
+smell_hit = []
+for rel in JX_FILES:
+    raw = io.open(os.path.join(REPO, *rel.split("/")), encoding="utf-8",
+                  errors="replace").read()
+    raw = "\n".join(re.sub(r"//.*", "", ln) for ln in raw.split("\n"))
+    for m in re.finditer(r"SELECT count\(\*\)\s+FROM torrents[^\"]*",
+                         raw, re.S):
+        frag = fold(m.group(0))[:260]
+        for pat in SMELLS:
+            if re.search(pat, frag):
+                smell_hit.append("%s:/%s/" % (os.path.basename(rel), pat))
+ok("CE11c 改过的那条在真库跑得通、三处形状都没坏（跑测 %s，形状违例 %d）"
+   % (run_res[1], len(smell_hit)),
+   run_res[1] and not smell_hit, "跑测=%s 形状=%s" % (run_res[0], smell_hit))
+
 summary()
