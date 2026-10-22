@@ -415,7 +415,7 @@ async fn shop_buy(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
-        return Err(DomainError::Internal(anyhow::anyhow!(
+        return Err(DomainError::Validation(format!(
             "订单建立失败，已原路退回 {total} 火花；请稍后重试"
         )));
     }
