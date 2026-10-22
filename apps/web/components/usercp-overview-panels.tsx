@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
+import type { LevelProgress } from "@/lib/usercp-level";
 import type { Overview } from "@/components/usercp";
 
 /** 概览子面板共用的字典入参（details 面板同引此定义） */
@@ -20,24 +21,12 @@ export function SummaryRow({
   ov,
   t,
   dict,
-  seedPct,
+  level,
 }: {
   ov: Overview;
   t: Record<string, string>;
-  seedPct: number;
+  level: LevelProgress | null;
 } & DictProp) {
-  // 做种积分是类字节大数（LV2 门槛 ≈ 10G）：与上传/下载量同款单位化展示，
-  // 不再甩 10,737,418,240 这种原始值（评审 P1-7）
-  const fmtPts = (v: number): string => {
-    const units = ["", "K", "M", "G", "T"];
-    let val = v;
-    let i = 0;
-    while (val >= 1024 && i < units.length - 1) {
-      val /= 1024;
-      i += 1;
-    }
-    return `${val >= 100 ? val.toFixed(0) : val.toFixed(1)}${units[i]}`;
-  };
   return (
     // 2026-10-17 对齐样图集 § overview-grid：原先这 5 张摘要卡被一个
     // `.uc-summary-row` 容器（auto-fit minmax(190px)）包着，宽屏下挤成
@@ -48,13 +37,21 @@ export function SummaryRow({
         <h3>{t.levelTitle}</h3>
         <strong>{ov.class_name ?? "—"}</strong>
         <div>
-          <i style={{ width: `${seedPct}%` }} />
+          <i style={{ width: `${level?.pct ?? 100}%` }} />
         </div>
+        {/* P-516：旧版这里写「做种积分 700 / 50.0G」——分子是「在做种数×100」
+            的假积分，分母却是下一等级的上传量门槛（字节），两个量纲相除。
+            现在显示四项权威条件里达标率最低的那一项（其余三项再快也不升职）。 */}
         <p>
-          {t.seedPoints} {fmtPts(ov.seed_points)} /{" "}
-          {fmtPts(ov.next_class.required)}，{t.nextClass}{" "}
-          {ov.next_class.name} {t.still}
-          {fmtPts(ov.next_class.required - ov.seed_points)}
+          {level ? (
+            <>
+              {level.label} {level.text}，{t.nextClass}{" "}
+              {ov.next_class?.name} {t.still}
+              {level.gap}
+            </>
+          ) : (
+            dict.userProfile2.maxLevel
+          )}
         </p>
       </section>
       <section className="uc-summary-card">

@@ -195,8 +195,9 @@ if host and port:
          "wget -T 3 -O /dev/null http://%s:%s/ 2>&1 | head -1" % (host, port)],
         capture_output=True, text=True, encoding="utf-8", errors="replace")
     txt = ((r.stdout or "") + (r.stderr or "")).lower()
-    conn_ok = ("connection refused" not in txt and "bad address" not in txt
-               and "unable to connect" not in txt and "cannot assign" not in txt)
+    dead = [k for k in ("connection refused", "bad address",
+                        "unable to connect", "cannot assign") if k in txt]
+    conn_ok = not dead
     where = "API 容器内"
 elif host:
     conn_ok, txt, where = True, "（smtp_port 缺省，按 ssl/tls 推）", "API 容器内"

@@ -29,7 +29,7 @@ pub async fn me_overview(
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 0) AS invites_pending,
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 1) AS invites_used,
                (SELECT count(*) FROM user_medals m WHERE m.user_id = u.id) AS medals,
-               c.name AS class_name, c.id AS cid
+               c.name AS class_name, u.class_id::bigint AS cid
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
              LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id
         WHERE u.id = $1
@@ -55,9 +55,6 @@ pub async fn me_overview(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let r = &row;
-    let get = |col: &str| -> serde_json::Value {
-        r.try_get(col).unwrap_or(serde_json::Value::Null)
-    };
     let get_opt_str = |col: &str| -> Option<String> {
         r.try_get::<Option<String>, _>(col).ok().flatten()
     };
@@ -123,22 +120,59 @@ pub async fn me_overview(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let last_city = last_ip.as_deref().and_then(|ip| crate::geo::lookup(ip).2);
 
-    // 等级进度：下一等级阈值以 class_rules 为准（worker class_auto_adjust 的升降级权威来源；
-    // user_classes.min_uploaded 在 live 数据中全为 0，用它预览会恒显示「已达」）
+    // 等级进度：按 worker `class_adj.rs` 升降级权威谓词的四项条件预览
+    // （上传量 / 完成数 / 做种小时 / 账龄），现值写法与 `auth_http/profile.rs`
+    // 公开主页同一份尺。旧版分子是「在做种数×100」的假积分、分母却是
+    // min_uploaded（字节），量纲不同 ⇒ 进度条恒 0%、「还差」永远等于整个
+    // 门槛（P-516）。无下一档规则行（职员档）出 null，界面显示已达最高级。
+    // cid 必须是 bigint：`get_i64` 把解码失败吞成 0，而 `user_classes.id` 是
+    // integer（sqlx 不把 int4 解成 i64）⇒ 旧写法对每个会员都读成 0，下一
+    // 等级恒按 LV2 门槛预览，LV5 与职员档也一样（P-517：现网 root
+    // class_id=99 仍回 next_class=LV2/53687091200）。
     let class_id = get_i64("cid") as i32;
-    let next: Option<(String, i64)> = sqlx::query_as(
-        "SELECT name, min_uploaded FROM class_rules \
-         WHERE class_id > $1 AND class_id < 90 AND min_uploaded > 0 \
-         ORDER BY class_id LIMIT 1",
+    let seeding = get_i64("seeding");
+    type NextRow = (String, i64, i64, i64, i64, i64, i64, i64, i64);
+    let next: Option<NextRow> = sqlx::query_as(
+        "WITH s AS (SELECT u.uploaded, \
+                    COALESCE((SELECT count(*) FROM snatches sn \
+                              WHERE sn.user_id = u.id \
+                                AND sn.completed_at IS NOT NULL), \
+                             0)::bigint AS dl, \
+                    (COALESCE((SELECT sum(sn.seeded_seconds) \
+                               FROM snatches sn \
+                               WHERE sn.user_id = u.id), 0) \
+                     / 3600)::bigint AS sh, \
+                    EXTRACT(DAY FROM now() - u.created_at)::bigint AS age \
+             FROM users u WHERE u.id = $1) \
+         SELECT r.name, s.uploaded, r.min_uploaded, s.dl, \
+                r.min_download_count::bigint, s.sh, \
+                r.min_seed_hours::bigint, s.age, \
+                r.min_account_age_days::bigint \
+         FROM s JOIN class_rules r \
+           ON r.class_id > $2 AND r.class_id < 90 \
+              AND r.min_uploaded > 0 \
+         ORDER BY r.class_id LIMIT 1",
     )
+    .bind(uid)
     .bind(class_id)
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let seeding = get_i64("seeding");
-    let seed_points = (seeding as f64) * 100.0;
-    let (next_name, next_req) =
-        next.unwrap_or_else(|| ("Max".into(), uploaded.max(1)));
+    let next_class = next.map(
+        |(name, up, up_need, dl, dl_need, sh, sh_need, age, age_need)| {
+            serde_json::json!({
+                "name": name,
+                "uploaded": up,
+                "uploaded_need": up_need,
+                "download_count": dl,
+                "download_count_need": dl_need,
+                "seed_hours": sh,
+                "seed_hours_need": sh_need,
+                "account_age_days": age,
+                "account_age_days_need": age_need,
+            })
+        },
+    );
     // 通知中心「未读私信」卡片读的就是这个字段（批二十 P-29：/me/overview
     // 原本没有它，页面 `ov?.unread_messages ?? 0` 于是对谁都恒显示 0——
     // 实测 root 收件箱 56 封未读，卡片仍写 0）。谓词与 `/messages?unread=true`
@@ -182,7 +216,9 @@ pub async fn me_overview(
         "id": uid,
         "username": get_str("username"),
         "email": get_str("email"),
-        "class_name": get("class_name"),
+        // P-515：旧写法按 serde_json::Value 读 text 列（无该解码），失败被
+        // `unwrap_or(Null)` 吞掉 ⇒ 等级名对每个会员恒空
+        "class_name": get_opt_str("class_name"),
         "unread_messages": unread_messages,
         "recent_topics": recent_topics,
         "avatar_url": get_opt_str("avatar_url"),
@@ -215,7 +251,6 @@ pub async fn me_overview(
         "login_days_30d": trend.iter().filter(|(_, n)| *n > 0).count(),
         "login_total_30d": login_total_30d,
         "last_login": last_login,
-        "seed_points": seed_points,
-        "next_class": { "name": next_name, "required": next_req },
+        "next_class": next_class,
     })))
 }

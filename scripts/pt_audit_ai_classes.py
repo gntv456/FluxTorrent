@@ -24,6 +24,7 @@ TIER = 3          # 探针用的目标档（阈值高，站内真实用户早已
 SPARKS = 70
 CLEAN = []
 GB = 2 ** 30
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def q(sql_text):
@@ -295,7 +296,7 @@ ok("G5 探针成员已墓碑化",
      "AND status < 2"))
 print("== G7 静态：动账事务与提交之间不许再借第二条连接（P-514）==")
 import re as _re  # 就近导入，不去动顶部那段 import 块
-_src = open(os.path.join(ROOT, "apps", "worker", "src", "jobs",
+_src = open(os.path.join(REPO, "apps", "worker", "src", "jobs",
                          "class_adj.rs"), encoding="utf-8",
             errors="replace").read()
 # 剥 // 注释再扫：本批修复的说明注释里就写着「INSERT INTO messages」
@@ -309,4 +310,70 @@ ok("G7 tx 未提交前不碰 db 连接，祝贺信只在 commit 之后发"
    "（外键 KEY SHARE 与 FOR UPDATE 互等，实测挂 899.9s）",
    not bad and _src.index("INSERT INTO messages") > _c,
    "tx 内的跨连接语句=%s" % bad)
+print("== G8 静态：等级进度的三处口径（worker 权威 / 公开主页 / 会员中心）==")
+# P-516：会员中心那张卡把「在做种数×100」当分子、把 min_uploaded（字节）
+# 当分母，两个量纲相除恒 0%。判据钉三件事：四列门槛在两个出口都读到、
+# 与 worker 权威谓词同一批列、会员中心不许再出现假积分。
+NEED_KEYS = ["uploaded_need", "download_count_need", "seed_hours_need",
+             "account_age_days_need"]
+NEED_COLS = ["min_uploaded", "min_download_count", "min_seed_hours",
+             "min_account_age_days"]
+
+
+def _read(rel):
+    with open(os.path.join(REPO, *rel.split("/")), encoding="utf-8",
+              errors="replace") as f:
+        return f.read()
+
+
+def _nocmt(src):
+    # 剥 // 注释再扫：本批修复的说明注释里就写着被禁的旧写法
+    return "\n".join(_re.sub(r"//.*", "", ln) for ln in src.split("\n"))
+
+
+ME_REL = "apps/api/src/auth_http/me_settings.rs"
+me = _nocmt(_read(ME_REL))
+pr = _nocmt(_read("apps/api/src/auth_http/profile.rs"))
+ca = _nocmt(_read("apps/worker/src/jobs/class_adj.rs"))
+ok("G8 两个出口的 next_class 都带齐四项条件键",
+   not [k for k in NEED_KEYS if k not in me]
+   and not [k for k in NEED_KEYS if k not in pr],
+   "me 缺=%s profile 缺=%s" % ([k for k in NEED_KEYS if k not in me],
+                              [k for k in NEED_KEYS if k not in pr]))
+ok("G8b worker 权威谓词用的四列，会员中心一处都不能少",
+   not [c for c in NEED_COLS if c not in ca]
+   and not [c for c in NEED_COLS if c not in me],
+   "class_adj 缺=%s me 缺=%s" % ([c for c in NEED_COLS if c not in ca],
+                                [c for c in NEED_COLS if c not in me]))
+ok("G8c 会员中心不许再拿「做种数×100」当分子除字节门槛",
+   "seed_points" not in me,
+   "seed_points 仍在 me_settings.rs=%d 处" % me.count("seed_points"))
+print("== G9 静态：text 列不许按 JSON 解码（P-515 等级名恒空）==")
+raw_me = _read(ME_REL)
+ok("G9a class_name 走 get_opt_str，不走裸 get()",
+   '"class_name": get_opt_str("class_name")' in raw_me
+   and '"class_name": get(' not in raw_me,
+   "class_name 读取行=%s"
+   % [ln.strip() for ln in raw_me.split("\n")
+      if '"class_name":' in ln])
+ok("G9b 「解码失败即 Null」的裸 get() 助手不许留在这个出口",
+   "unwrap_or(serde_json::Value::Null)" not in raw_me,
+   "残留=%d" % raw_me.count("unwrap_or(serde_json::Value::Null)"))
+ok("G10 前端折算读满四项条件，等级卡不再输出「做种积分」文案",
+   all(k in _read("apps/web/lib/usercp-level.ts") for k in NEED_KEYS)
+   and "t.seedPoints" not in _read(
+       "apps/web/components/usercp-overview-panels.tsx"),
+   "缺键=%s 旧文案残留=%d"
+   % ([k for k in NEED_KEYS
+       if k not in _read("apps/web/lib/usercp-level.ts")],
+      _read("apps/web/components/usercp-overview-panels.tsx")
+      .count("t.seedPoints")))
+print("== G11 静态：cid 必须是 bigint（P-517 int4 按 i64 读被吞成 0）==")
+# get_i64 把解码失败吞成 0 ⇒ `c.id`（integer）读进来的会员一律是 0 档，
+# 下一等级永远按 LV2 门槛预览。钉「取自 u.class_id 且带 ::bigint」，
+# 顺带要求别再从 user_classes 那侧取号（JOIN 不命中时同样是 0）。
+ok("G11 cid 走 u.class_id::bigint，不许再拿 c.id（int4）喂 get_i64",
+   "u.class_id::bigint AS cid" in raw_me and "c.id AS cid" not in raw_me,
+   "cid 取法=%s" % [ln.strip() for ln in raw_me.split("\n")
+                    if "AS cid" in ln])
 summary()

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
+import { levelProgress } from "@/lib/usercp-level";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, type Locale } from "@/i18n/config";
 import { MedalIcon } from "@/components/medal-icon";
@@ -71,10 +72,17 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
 
   const trendMax = Math.max(1, ...ov.login_trend_30d.map((d) => d.count));
 
-  const seedPct = Math.min(
-    100,
-    Math.round((ov.seed_points / Math.max(1, ov.next_class.required)) * 100),
-  );
+  // 等级进度：四项权威条件里最慢的一项（折算抽在 lib/usercp-level.ts，
+  // 与公开主页 prog() 同式）；P-516 前这里是「做种数×100 ÷ 上传门槛」
+  const p2 = dict.userProfile2;
+  const level = levelProgress(ov.next_class, {
+    up: p2.upProgress,
+    dl: p2.dlProgress,
+    seed: p2.seedProgress,
+    age: p2.ageProgress,
+    hours: p2.hours,
+    days: p2.days,
+  });
 
   return (
     <div className="usercp-dashboard">
@@ -118,7 +126,7 @@ export function OverviewTab({ ov, loading }: OverviewProps) {
       </section>
 
       {/* 摘要行：等级进度 / 最近登录 / 邀请配额 / 成就勋章 / 登录活动 */}
-      <SummaryRow ov={ov} t={t} dict={dict} seedPct={seedPct} />
+      <SummaryRow ov={ov} t={t} dict={dict} level={level} />
 
       {/* 更多账户信息（经典 rowhead/rowfollow 表格） */}
       <MoreInfoTable

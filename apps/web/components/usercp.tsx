@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, setSessionCookie } from "@/lib/api-client";
+import type { NextClass } from "@/lib/usercp-level";
 import { useI18n } from "@/i18n/client";
 import { LOCALE_COOKIE, siteLangToLocale, type Locale } from "@/i18n/config";
 import { WishlistPanel } from "@/components/wishlist";
@@ -132,8 +133,7 @@ export interface Overview {
   /** 最近一次成功登录的 IP / 城市；后端没记到就是 null */
   last_ip?: string | null;
   last_city?: string | null;
-  seed_points: number;
-  next_class: { name: string; required: number };
+  next_class: NextClass | null;
   /** GET /me/overview 的最近阅读主题（样图 § ucp 概览那张表） */
   recent_topics?: {
     topic_id: number; title: string; forum_id: number;
