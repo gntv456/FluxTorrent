@@ -226,6 +226,16 @@ pub(super) async fn dup_policy(
         return Ok(DupVerdict::Allow);
     }
     let policy = setting_str(db, "upload_dup_policy", "suggest").await;
+    // 未登记档位不得静默升到最严档（P-510）：库里一旦落成代码不认的值
+    // （现网就被探针写进过 'warn'），旧写法会一路走到兜底分支按「拦下」拒绝
+    // 全站同内容重发，而面板显示的仍是那个不存在的档——行为与设置两本账。
+    if !matches!(policy.as_str(), "suggest" | "block" | "group") {
+        tracing::warn!(
+            policy = %policy,
+            "upload_dup_policy 档位未登记，按出厂档 suggest 放行"
+        );
+        return Ok(DupVerdict::Allow);
+    }
     if policy == "suggest" {
         return Ok(DupVerdict::Allow);
     }
