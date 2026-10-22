@@ -443,4 +443,57 @@ ok("DB15b 静态：me_settings.rs 的趋势桶带 +8 偏移且窗口是站点日
                             "created_at > now() - interval '30 days'"
                             in MSS15))
 
+
+# ---------- DB16：银行贷款到期提醒的「当日去重」（P-538） ----------
+# 去重谓词 `m.created_at::date = CURRENT_DATE` 的日界是 UTC 零点（本库会话
+# UTC），而 bank_daily 的游标 bank_settle_runs.run_date 是站点日。现网就有过
+# 同一 UTC 日里跑两班（UTC 10-20 10:54 与 23:22＝站点日 10-20 与 10-21）：
+# 旧谓词吞掉第二班＝到期前最后一次提醒没了；反向同一站点日跨 UTC 午夜两班
+# 会发两封。
+OLD16 = "(prev::date = clock::date)"
+NEW16 = ("(prev >= (date_trunc('day', clock AT TIME ZONE 'Asia/Shanghai')"
+         " AT TIME ZONE 'Asia/Shanghai'))")
+
+
+def seen16(clock, prev):  # 真库求值：上一封信算不算「本日已提醒过」
+    return psql(("WITH c(clock, prev) AS (VALUES "
+                 "(TIMESTAMP WITH TIME ZONE '%s', TIMESTAMP WITH TIME ZONE "
+                 "'%s')) SELECT 'old', %s::text FROM c "
+                 "UNION ALL SELECT 'new', %s::text FROM c")
+                % (clock, prev, OLD16, NEW16))
+
+
+ad = lambda raw: dict(l.split("|") for l in raw.split("\n") if "|" in l)
+
+
+# 场景一：同 UTC 日、跨站点日的两班（现网 10-20 实测过这种时刻）
+r14 = ad(seen16("2026-10-20 23:22+00", "2026-10-20 10:54+00"))
+print("   同 UTC 日跨站点日：旧吞掉=%s 新吞掉=%s（新必须=false，本日那封要发）"
+      % (r14.get("old"), r14.get("new")))
+ok("DB16 到期前最后一天的提醒不会被上一站点日那封吞掉（P-538 少发型）",
+   r14.get("old") == "true" and r14.get("new") == "false",
+   "old=%s new=%s" % (r14.get("old"), r14.get("new")))
+# 场景二：同站点日、跨 UTC 午夜的两班
+r14b = ad(seen16("2026-10-21 00:30+00", "2026-10-20 23:30+00"))
+ok("DB16b 同一站点日内两班只提醒一封（重发型）%s/%s"
+   % (r14b.get("old"), r14b.get("new")),
+   r14b.get("old") == "false" and r14b.get("new") == "true",
+   "old=%s new=%s" % (r14b.get("old"), r14b.get("new")))
+r14c = ad(seen16("2026-10-20 12:00+00", "2026-10-20 02:00+00"))
+ok("DB16c 正控：同 UTC 日同站点日两窗口都吞（判据不是恒假）%s/%s"
+   % (r14c.get("old"), r14c.get("new")),
+   r14c.get("old") == "true" and r14c.get("new") == "true",
+   "old=%s new=%s" % (r14c.get("old"), r14c.get("new")))
+LOAN16 = strip_comments(io.open(os.path.join(ROOTDIR, "apps", "worker", "src",
+                                             "bank_jobs", "loan.rs"),
+                                encoding="utf-8").read().replace("\r\n",
+                                                                 "\n"))
+ok("DB16d loan.rs 的提醒去重已换成站点日窗口（旧的 ::date = CURRENT_DATE "
+   "没了）", "m.created_at::date = CURRENT_DATE" not in LOAN16
+   and "m.created_at >= date_trunc('day', now() AT TIME ZONE" in LOAN16,
+   "旧形命中=%d 新形命中=%d"
+   % (LOAN16.count("m.created_at::date = CURRENT_DATE"),
+      LOAN16.count("m.created_at >= date_trunc('day', now() AT TIME ZONE")))
+
+print()
 summary()

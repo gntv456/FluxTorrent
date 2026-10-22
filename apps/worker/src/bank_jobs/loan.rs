@@ -269,7 +269,8 @@ pub async fn bank_auto_deduct(
 /// 到期前提醒：贷款 3 天内到期发一次站内信（当日去重靠消息标题 + due_at 匹配）。
 /// 审计修复（去重失真）：subject 带贷款 id——旧标题全站同一字符串，NOT EXISTS 按
 /// 「该用户当日已有过任意一条到期提醒」去重，多笔贷款同时到期时只提醒第一笔。
-/// 改为 `...提醒 #{loan_id}` 且 NOT EXISTS 匹配同 subject 当日，每笔贷款各自去重。
+/// 改为 `...提醒 #{loan_id}` 且 NOT EXISTS 匹配同 subject 站点日内那封
+/// （P-538：旧写法比 UTC 日，同一 UTC 日跨两个站点日会吞掉本日那封）。
 pub async fn bank_due_notify(
     db: &PgPool,
     days_before: i32,
@@ -287,7 +288,8 @@ pub async fn bank_due_notify(
             SELECT 1 FROM messages m
             WHERE m.receiver_id = l.user_id
               AND m.subject = '银行贷款即将到期提醒 #' || l.id
-              AND m.created_at::date = CURRENT_DATE
+              AND m.created_at >= date_trunc('day', now() AT TIME ZONE
+                  'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai'
           )
         "#,
     )
