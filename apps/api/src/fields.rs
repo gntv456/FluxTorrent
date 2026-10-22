@@ -102,6 +102,11 @@ pub fn validate_value(
     Ok(())
 }
 
+/// 校验错误点名是哪个字段（handler 拼 422 文案用）。
+pub fn named(label: &str, msg: &str) -> String {
+    format!("「{label}」{msg}")
+}
+
 /// 必填语义的统一判定：空值 = null / 空串 / 空数组 / 空对象。
 ///
 /// 与用户侧 `my_fields_put` 的既有语义一致（null 表示清除），内容侧据此挡必填维度缺值。

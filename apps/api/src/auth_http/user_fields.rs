@@ -9,6 +9,7 @@ use sqlx::PgPool;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::fields::named;
 use crate::http::require_auth;
 use crate::state::AppState;
 
@@ -127,7 +128,7 @@ pub async fn my_fields_put(
             continue;
         }
         validate_value(&ftype, &options, val)
-            .map_err(DomainError::Validation)?;
+            .map_err(|e| DomainError::Validation(named(&_label, &e)))?;
         sqlx::query(
             "INSERT INTO user_field_values (user_id, field_key, value) \
              VALUES ($1, $2, $3) ON CONFLICT (user_id, field_key) \

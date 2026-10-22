@@ -1809,6 +1809,7 @@ const zhCnBase = {
       title: "自定义字段",
       empty: "站长未定义自定义字段",
       saved: "自定义字段已保存",
+      savedPartial: "已保存 {saved} 项；{skipped} 项字段已下线，未保存",
       boolOn: "是",
     },
     personal: {

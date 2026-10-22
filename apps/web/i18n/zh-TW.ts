@@ -1810,6 +1810,7 @@ const zhTwBase: Omit<
       title: "自訂欄位",
       empty: "站長未定義自訂欄位",
       saved: "自訂欄位已儲存",
+      savedPartial: "已儲存 {saved} 項；{skipped} 項欄位已下線，未儲存",
       boolOn: "是",
     },
     personal: {

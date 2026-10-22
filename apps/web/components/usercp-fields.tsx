@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import { Row } from "@/components/usercp-row";
 
 /** 自定义字段面板（0186 一审 R4.1）：站长在后台定义的字段（文本/数字/
@@ -56,8 +57,17 @@ export function UserFieldsTab() {
     setBusy(true);
     setMsg(null);
     try {
-      await api.put("/api/v1/me/fields", { values: vals });
-      setMsg(t.saved);
+      const r = await api.put<{ saved: number; skipped: number }>(
+        "/api/v1/me/fields",
+        { values: vals },
+      );
+      // P-572：后端对已下线/停用字段如实回 skipped，界面必须照说——
+      // 旧写法无条件喊「已保存」，值没落库也看不出来。
+      setMsg(
+        r.skipped > 0
+          ? fmt(t.savedPartial, { saved: r.saved, skipped: r.skipped })
+          : t.saved,
+      );
     } catch (e) {
       setMsg(
         e instanceof Error && e.message

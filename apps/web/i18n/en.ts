@@ -1871,6 +1871,8 @@ const enBase: Omit<
       title: "Custom Fields",
       empty: "No custom fields defined by the site owner",
       saved: "Custom fields saved",
+      savedPartial:
+        "Saved {saved} field(s); {skipped} skipped because they are no longer available",
       boolOn: "Yes",
     },
     personal: {

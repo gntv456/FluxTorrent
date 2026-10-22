@@ -13,6 +13,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::fields::named;
 use crate::state::AppState;
 
 use super::guard::staff;
@@ -141,7 +142,7 @@ async fn admin_user_fields_put(
             continue;
         }
         crate::fields::validate_value(&ftype, &options, val)
-            .map_err(DomainError::Validation)?;
+            .map_err(|e| DomainError::Validation(named(&label, &e)))?;
         sqlx::query(
             "INSERT INTO user_field_values (user_id, field_key, value) \
              VALUES ($1, $2, $3) ON CONFLICT (user_id, field_key) \

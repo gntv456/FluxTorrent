@@ -70,13 +70,13 @@ pub async fn register(
             let val = body.fields.get(key);
             if *req && (val.is_none() || val == Some(&serde_json::Value::Null))
             {
-                return Err(DomainError::Validation(format!(
-                    "「{label}」为必填字段"
-                )));
+                return Err(DomainError::Validation(format!("「{label}」为必填字段")));
             }
             if let Some(v) = val.filter(|v| !v.is_null()) {
                 super::user_fields::validate_value_pub(ftype, options, v)
-                    .map_err(DomainError::Validation)?;
+                    .map_err(|e| {
+                        DomainError::Validation(crate::fields::named(label, &e))
+                    })?;
             }
         }
     }
