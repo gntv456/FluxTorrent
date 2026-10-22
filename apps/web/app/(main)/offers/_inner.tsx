@@ -24,15 +24,21 @@ export default function OffersPage() {
   const { dict, locale, currency } = useI18n();
   const t = dict.offers2;
   const [rows, setRows] = useState<OfferItem[] | null>(null);
+  const [err, setErr] = useState<unknown>(null);
   const [newTorrentId, setNewTorrentId] = useState("");
   const [busy, setBusy] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
 
   const load = useCallback(() => {
+    setErr(null);
     api
       .get<OfferItem[]>("/api/v1/offers")
       .then(setRows)
-      .catch(() => setRows([]));
+      .catch((e) => {
+        // 失败不能落成空表：那会被读成「暂时没人求种」
+        setRows([]);
+        setErr(e);
+      });
   }, []);
   useEffect(load, [load]);
 
@@ -105,6 +111,8 @@ export default function OffersPage() {
           A3 四态：加载骨架 + 空态走 StatePanel（表内空行保底不变） */}
       <StatePanel
         loading={rows === null}
+        error={err}
+        onRetry={load}
         loadingFallback={<SkeletonRows rows={5} />}
       >
         <div className="brand-wide-table-scroll">
