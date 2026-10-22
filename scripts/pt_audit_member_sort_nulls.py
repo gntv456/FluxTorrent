@@ -33,7 +33,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-from pt_audit_lib import ok, psql_stdin, summary  # noqa: E402
+from pt_audit_lib import call, login, ok, psql_stdin, summary  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UD = "apps/api/src/repo/community/user_directory.rs"
@@ -168,11 +168,34 @@ SELECT 'NEWTOP1|' || COALESCE(max(x.l)::text, 'NULL')
         "community_http/notice.rs(荣誉榜)":
             "apps/api/src/community_http/notice.rs",
         "http/plugins.rs(勋章墙)": "apps/api/src/http/plugins.rs",
+        "http/home.rs(首页在册数)": "apps/api/src/http/home.rs",
     }
     nofetch = [k for k, v in neighbors.items()
                if "user_directory::member_visible" not in read(v)]
     ok("M6b 名录的两个邻居出口都引同一单点（漏接 %d）" % len(nofetch),
        not nofetch, "、".join(nofetch) or "-")
+    # ---- M7 首页「在册会员」与名录同一把尺（P-543）----
+    # /home 的 site_data 段整个缓存在 Redis（cache:home:shared:v2）：不清掉
+    # 就是在读上一次渲染的旧数，两个基线会给出同一个读数，判据当场失效。
+    subprocess.run(["docker", "exec", "flux-redis", "sh", "-c",
+                    'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning '
+                    "DEL cache:home:shared:v2"], capture_output=True,
+                    text=True)
+    tok = login("root")
+    s1, h = call("GET", "/home", token=tok)
+    site = ((h or {}).get("data") or {}).get("site_data") or {}
+    s2, u = call("GET", "/users?per_page=1", token=tok)
+    tot = ((u or {}).get("data") or {}).get("total")
+    a = int(psql("SELECT count(*) FROM users WHERE status < 2"))
+    b = int(psql("SELECT count(*) FROM users WHERE status < 2 AND NOT "
+                 "parked AND NOT archived AND username NOT LIKE "
+                 "'deleted-%'"))
+    ok("M7 前置：现网确有「status<2 但名字仍是 deleted-」的行（%d vs %d）"
+       % (a, b), a > b, "旧口径=%d 名录口径=%d" % (a, b))
+    ok("M7b 首页 site.users == 名录 total == 名录口径（三处一致）",
+       s1 == 200 and s2 == 200 and site.get("users") == tot == b,
+       "首页=%s 名录=%s 名录口径=%s" % (site.get("users"), tot, b))
+
     if "--selftest" in sys.argv:
         selftest()
     summary()

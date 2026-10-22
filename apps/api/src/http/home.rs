@@ -152,12 +152,16 @@ async fn home_shared_fresh(
     // 口径修正（评审 P0-1）：墓碑行（status=3 的 deleted-* 账号）是 e2e/删号清理产物，
     // 不是「被禁用户」；must_reset_password 也不等于「未验证」。两者都把墓碑
     // （must_reset_password 恒真）排除，否则空站会出现「11 人 10 被禁」的矛盾数字。
+    // P-543：在册会员数改走名录同一把尺（member_visible）——旧写法只筛
+    // status<2，把 username 仍是 deleted-* 而 status 被改回 0 的那一行算进来，
+    // 于是脚注「83 人」与会员名录「82 人」对不上（会员列表用的就是它）。
+    let vis = crate::repo::community::user_directory::member_visible("u");
     #[rustfmt::skip]
     let (users, torrents_n, peers, seeders, leechers, warned, banned, unverified): (
         i64, i64, i64, i64, i64, i64, i64, i64,
-    ) = sqlx::query_as(
+    ) = sqlx::query_as(&format!(
         "SELECT \
-            (SELECT count(*) FROM users WHERE status < 2), \
+            (SELECT count(*) FROM users u WHERE {vis}), \
             (SELECT count(*) FROM torrents WHERE approval_status = 1), \
             (SELECT count(*) FROM snatches WHERE seeding OR leeching), \
             (SELECT count(*) FROM snatches WHERE seeding), \
@@ -166,7 +170,7 @@ async fn home_shared_fresh(
             (SELECT count(*) FROM users WHERE status = 2), \
             (SELECT count(*) FROM users WHERE must_reset_password \
              AND status < 2 AND username NOT LIKE 'deleted-%')",
-    )
+    ))
     .fetch_one(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
