@@ -12,19 +12,35 @@
   3. 再发 ep_last=13 过审 → latest_episode 涨到 13（进度随更新推进）
   4. /me/subscriptions/calendar 当天日期分组含两枚种
   5. 清理 + 还原
+  6. P-581：日历「按天」与「最近更新」必须用站内时区
+     （Asia/Shanghai）格式化——DB 会话时区是 UTC，直接 to_char 会把
+     00:00-08:00（北京）的更新标到前一天；本例 144 枚近 14 天过审种里
+     有 29 枚会被标错。判据含静态正控 + 摘掉时区的合成旧码。
 """
+import io
 import json
 import os
+import re
 import subprocess
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
 from pt_audit_lib import call, login, ok, summary  # noqa: E402
 from pt_audit_g_logcheck import make_torrent, upload  # noqa: E402
 
 PG = ["docker", "exec", os.environ.get("FLUX_PG_CONTAINER", "flux-postgres"),
       "psql", "-U", "flux", "-d",
       os.environ.get("FLUX_PG_DB", "fluxtorrent"), "-t", "-A", "-c"]
+
+
+def tz_ok(src):
+    tz = "AT TIME ZONE 'Asia/Shanghai'"
+    flat = " ".join(src.split())
+    return (flat.count(tz) >= 2
+            and "to_char(t.approved_at," not in flat
+            and "to_char(max(t.approved_at)," not in flat)
 
 
 def psql(sql):
@@ -35,6 +51,16 @@ def psql(sql):
 
 
 def main():
+    src = io.open(os.path.join(
+        ROOT, "apps/api/src/community_http/subs_calendar.rs"),
+        encoding="utf-8").read()
+    ok("日历与最近更新按站内时区格式化（不是 UTC 日）", tz_ok(src),
+       "Asia/Shanghai 命中=%d"
+       % " ".join(src.split()).count("AT TIME ZONE 'Asia/Shanghai'"))
+    old_src = re.sub(r"AT TIME ZONE\s+'Asia/Shanghai'", "", src)
+    ok("承重：摘掉两处时区转换的合成旧码被抓",
+       not tz_ok(old_src),
+       "旧码里 Asia/Shanghai 命中=%d" % old_src.count("Asia/Shanghai"))
     tok = login()
     orig_type = psql("SELECT value FROM site_settings WHERE name='site_type'")
     psql("DELETE FROM torrents WHERE name LIKE 'Audit.Cal%'")
@@ -86,7 +112,8 @@ def main():
     # 4. 日历
     s, r = call("GET", "/me/subscriptions/calendar", token=tok)
     days = r.get("data") or []
-    today = psql("SELECT to_char(now(), 'YYYY-MM-DD')")
+    today = psql("SELECT to_char(now() AT TIME ZONE 'Asia/Shanghai', "
+                 "'YYYY-MM-DD')")
     day0 = next((d for d in days if d.get("date") == today), None)
     ids = [i.get("torrent_id") for i in (day0 or {}).get("items") or []]
     ok("日历今天分组含两枚种", t1 in ids and t2 in ids, (t1, t2, ids))

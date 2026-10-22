@@ -44,7 +44,8 @@ pub async fn my_group_subscriptions(
                     ON ts.torrent_id = t.id
                    AND ts.kind IN ('ep_last', 'episode_last')
                  WHERE t.group_id = g.id AND t.approval_status = 1),
-               (SELECT to_char(max(t.approved_at), 'YYYY-MM-DD HH24:MI')
+               (SELECT to_char(max(t.approved_at) AT TIME ZONE
+                               'Asia/Shanghai', 'YYYY-MM-DD HH24:MI')
                   FROM torrents t WHERE t.group_id = g.id
                     AND t.approval_status = 1),
                (SELECT count(*) FROM torrents t
@@ -86,7 +87,8 @@ pub async fn my_subscription_calendar(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<(String, i64, String, i64, Option<i64>)> = sqlx::query_as(
-        r#"SELECT to_char(t.approved_at, 'YYYY-MM-DD') AS day,
+        r#"SELECT to_char(t.approved_at AT TIME ZONE 'Asia/Shanghai',
+                         'YYYY-MM-DD') AS day,
                   t.id, t.name, g.id,
                   (SELECT max((ts.value #>> '{}')::numeric)::bigint
                      FROM torrent_sections ts
