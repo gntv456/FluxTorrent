@@ -18,6 +18,7 @@ export function SubtitleAwardsBoard() {
   const { dict } = useI18n();
   const t = dict.subtitles;
   const [rows, setRows] = useState<SubtitleAwardRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
   // 评选开关（0148 C5 / 二审 G2-6 修复）：subtitle_award=0 时整个榜单不挂载，
   // 也不发起请求——关闭评选的站不再出现空榜占位。
   const [awardOn, setAwardOn] = useState(true);
@@ -41,11 +42,21 @@ export function SubtitleAwardsBoard() {
           ? r
           : ((r as { items?: SubtitleAwardRow[] }).items ?? []);
         setRows(list);
+        setFailed(false);
       })
-      .catch(() => setRows([]));
+      // 取数失败不等于「本期没有评选结果」，空榜会让会员以为没人入选
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      });
   }, [awardOn]);
   if (!awardOn) return null;
   if (rows === null) return <p className="py-2 text-center text-sub">…</p>;
+  if (failed) {
+    return (
+      <p className="py-2 text-center text-warn">{dict.common.loadFailed}</p>
+    );
+  }
   const won = rows.filter((r) => r.rank > 0);
   if (!won.length) {
     return (

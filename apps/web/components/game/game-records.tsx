@@ -55,6 +55,7 @@ function GameRecords({
   const { dict, currency } = useI18n();
   const t = dict.games.sub;
   const [rows, setRows] = useState<RoundRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [coll, setColl] = useState<{
     got: number;
     total: number;
@@ -64,8 +65,15 @@ function GameRecords({
   useEffect(() => {
     void api
       .get<RoundRow[]>(`/api/v1/games/rounds?game=${game}&limit=50`)
-      .then(setRows)
-      .catch(() => setRows([]));
+      .then((r) => {
+        setRows(r);
+        setFailed(false);
+      })
+      // 失败若演成空记录 + 零统计，会员会以为自己的对局没入库
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      });
     // 钓鱼的图鉴在专属端点（标准塘 + 渔汛塘合并）。通用端点只认
     // capsule/jgg/scratch/wheel，对 fishing 回 400——旧写法让这块图鉴
     // 永远静默消失，而页面文案写的是「对局记录 + 奖档图鉴整页」。
@@ -120,7 +128,7 @@ function GameRecords({
       )}
 
       {/* 统计卡（样图②③④ 子页的统计三格） */}
-      {stats && (
+      {stats && !failed && (
         <div className="sw-stat-row">
           <div className="sw-stat">
             <div className="sw-stat-lb">{t.statPlays}</div>
@@ -153,6 +161,8 @@ function GameRecords({
         <h2 className="mb-3 font-display text-base">{t.recentTitle}</h2>
         {rows === null ? (
           <p className="text-sm text-sub">{dict.common.loading ?? "…"}</p>
+        ) : failed ? (
+          <p className="text-sm text-warn">{dict.common.loadFailed}</p>
         ) : rows.length === 0 ? (
           <p className="text-sm text-sub">{t.empty}</p>
         ) : (
