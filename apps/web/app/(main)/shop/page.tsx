@@ -45,7 +45,16 @@ export default async function ShopPage() {
         </div>
       </div>
 
-      <ShopCatalog items={items} balance={spark} />
+      {items === null ? (
+        <p
+          role="alert"
+          className="rounded-[var(--r-md)] border border-line p-4 text-sm text-sub"
+        >
+          {dict.common.loadFailed}
+        </p>
+      ) : (
+        <ShopCatalog items={items} balance={spark} />
+      )}
 
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">
         {magic(dict.shop.ledgerNote)}

@@ -93,11 +93,12 @@ export async function getMySpark(): Promise<number | null> {
   }
 }
 
-export async function getShopItems(): Promise<ShopItem[]> {
+export async function getShopItems(): Promise<ShopItem[] | null> {
   try {
     return await api.get<ShopItem[]>("/api/v1/shop/items");
   } catch {
-    return [];
+    // P-616：失败不能当成「货架为空」——页面要能区分两句话
+    return null;
   }
 }
 
