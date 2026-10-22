@@ -175,6 +175,16 @@ try:
            % (htid, htid in ids, sd), htid in ids and sd == 404,
            "夹具行=%s 列表 http=%s total=%s 详情=%s"
            % (nrow, s_l, lst.get("total"), sd))
+        # P-577（已修）：公开主页的完成档也必须与详情同尺。
+        s_p, b_p = call("GET", "/users/%s/torrentlist?limit=100" % VID,
+                        None, token=VT)
+        p_lst = (b_p or {}).get("data") or {}
+        p_ids = [str(r.get("torrent_id"))
+                 for r in (p_lst.get("completed") or [])]
+        ok("DA1h P-577：主页完成档不得列出不可见种（详情 http=%s）" % sd,
+           s_p == 200 and htid not in p_ids,
+           "夹具行=%s completed 条数=%s 列表 http=%s"
+           % (nrow, len(p_ids), s_p))
 
     # ===== DA1 遮蔽本体（修前必红）=====
     s1, b1 = call("GET", "/users/%s" % TID, None, token=VT)

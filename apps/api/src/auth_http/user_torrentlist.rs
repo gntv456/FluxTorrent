@@ -23,6 +23,10 @@ pub async fn user_torrentlist(
     // （NP userdetails 的普通用户口径）。uploads 本就过滤匿名发布、preserved 是
     // 保种区的公开认领承诺，保持公开。
     let reveal = auth.id == uid || auth.class_id >= 90;
+    // P-577：snatch 各档必须与详情同用一把尺，否则下架/待审种会留在
+    // 「做种中/已完成」里，点名字 404（上传档在 P-525 已接同一口径）。
+    let vis =
+        crate::torrents::visibility_sql(Some((uid, auth.class_id >= 90)));
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
     let uploads: Vec<SnatchRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
@@ -39,13 +43,13 @@ pub async fn user_torrentlist(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let seeding: Vec<SnatchRow> = if reveal {
-        sqlx::query_as(
+        sqlx::query_as(&format!(
             "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
-             WHERE s.user_id = $1 AND s.seeding \
-             ORDER BY s.torrent_id DESC LIMIT $2",
-        )
+             WHERE s.user_id = $1 AND s.seeding AND {vis} \
+             ORDER BY s.torrent_id DESC LIMIT $2"
+        ))
         .bind(uid)
         .bind(limit)
         .fetch_all(&state.repo.db)
@@ -57,13 +61,13 @@ pub async fn user_torrentlist(
     // —— 憨憨式标签页其余四路（NP userdetails 同口径）——
     // 当前下载：leeching 抓取记录；完成：completed_at 非空；未完成：抓过但未完成且已不在做种/下载
     let leeching: Vec<SnatchRow> = if reveal {
-        sqlx::query_as(
+        sqlx::query_as(&format!(
             "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
-             WHERE s.user_id = $1 AND s.leeching \
-             ORDER BY s.torrent_id DESC LIMIT $2",
-        )
+             WHERE s.user_id = $1 AND s.leeching AND {vis} \
+             ORDER BY s.torrent_id DESC LIMIT $2"
+        ))
         .bind(uid)
         .bind(limit)
         .fetch_all(&state.repo.db)
@@ -73,13 +77,13 @@ pub async fn user_torrentlist(
         Vec::new()
     };
     let completed: Vec<SnatchRow> = if reveal {
-        sqlx::query_as(
+        sqlx::query_as(&format!(
             "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
-             WHERE s.user_id = $1 AND s.completed_at IS NOT NULL \
-             ORDER BY s.completed_at DESC LIMIT $2",
-        )
+             WHERE s.user_id = $1 AND s.completed_at IS NOT NULL AND {vis} \
+             ORDER BY s.completed_at DESC LIMIT $2"
+        ))
         .bind(uid)
         .bind(limit)
         .fetch_all(&state.repo.db)
@@ -89,13 +93,14 @@ pub async fn user_torrentlist(
         Vec::new()
     };
     let incomplete: Vec<SnatchRow> = if reveal {
-        sqlx::query_as(
+        sqlx::query_as(&format!(
             "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
              WHERE s.user_id = $1 AND s.completed_at IS NULL AND NOT s.seeding AND NOT s.leeching \
-             ORDER BY s.last_seen_at DESC LIMIT $2",
-        )
+               AND {vis} \
+             ORDER BY s.last_seen_at DESC LIMIT $2"
+        ))
         .bind(uid)
         .bind(limit)
         .fetch_all(&state.repo.db)
@@ -118,6 +123,7 @@ pub async fn user_torrentlist(
          JOIN torrents t ON t.id = sp.torrent_id \
          LEFT JOIN snatches s ON s.torrent_id = sp.torrent_id AND s.user_id = $1 \
          WHERE sp.claimed_by = $1 AND sp.exited_at IS NULL \
+           AND t.approval_status = 1 \
          ORDER BY sp.torrent_id DESC LIMIT $2",
     )
     .bind(uid)
