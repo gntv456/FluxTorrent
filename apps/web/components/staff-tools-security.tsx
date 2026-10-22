@@ -33,6 +33,9 @@ export function StaffSecurityPanel({
   const [mails, setMails] = useState<MailItem[]>([]);
   const [emailBans, setEmailBans] = useState<EmailBan[]>([]);
   const [busy, setBusy] = useState(false);
+  // P-619：三张表取数失败曾被演成「暂无封禁/暂无发送/暂无规则」——
+  // 复核人员会以为现网零封禁、零群发。失败只换那一格文案。
+  const [failed, setFailed] = useState(false);
 
   const [banIp, setBanIp] = useState("");
   const [banReason, setBanReason] = useState("");
@@ -42,21 +45,31 @@ export function StaffSecurityPanel({
   // 只拉当前 tab 需要的数据——本组件对全部 SECURITY_TABS 挂载，
   // 无条件三连拉会让「IP 测试」「域名库」这类无列表页白付 2-3 个请求。
   const load = useCallback(async () => {
+    setFailed(false);
     if (tab === "bans") {
       api
         .get<BanItem[]>("/api/v1/admin/bans")
         .then(setBans)
-        .catch(() => setBans([]));
+        .catch(() => {
+          setBans([]);
+          setFailed(true);
+        });
     } else if (tab === "mail") {
       api
         .get<MailItem[]>("/api/v1/admin/massmail")
         .then(setMails)
-        .catch(() => setMails([]));
+        .catch(() => {
+          setMails([]);
+          setFailed(true);
+        });
     } else if (tab === "emailbans") {
       api
         .get<EmailBan[]>("/api/v1/admin/emailbans")
         .then(setEmailBans)
-        .catch(() => setEmailBans([]));
+        .catch(() => {
+          setEmailBans([]);
+          setFailed(true);
+        });
     }
   }, [tab]);
   useEffect(() => {
@@ -147,7 +160,7 @@ export function StaffSecurityPanel({
               {bans.length === 0 && (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-sub">
-                    {t.banEmpty}
+                    {failed ? dict.common.loadFailed : t.banEmpty}
                   </td>
                 </tr>
               )}
@@ -216,7 +229,7 @@ export function StaffSecurityPanel({
               {mails.length === 0 && (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-sub">
-                    {t.mailEmpty}
+                    {failed ? dict.common.loadFailed : t.mailEmpty}
                   </td>
                 </tr>
               )}
@@ -230,6 +243,7 @@ export function StaffSecurityPanel({
         <StaffSecPanels
           tab={tab}
           emailBans={emailBans}
+          failed={failed}
           busy={busy}
           guard={guard}
           flash={flash}

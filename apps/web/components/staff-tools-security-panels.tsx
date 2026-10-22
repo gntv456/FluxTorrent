@@ -21,6 +21,8 @@ interface SecPanelsProps {
     created_by: string | null;
     created_at: string;
   }[];
+  /** 取数失败（P-619）：空表不能断言「暂无规则」 */
+  failed: boolean;
   busy: boolean;
   guard: (fn: () => Promise<void>, ok: string) => Promise<void>;
   flash: (m: string) => void;
@@ -29,6 +31,7 @@ interface SecPanelsProps {
 export function StaffSecPanels({
   tab,
   emailBans,
+  failed,
   busy,
   guard,
   flash,
@@ -125,7 +128,7 @@ export function StaffSecPanels({
               {emailBans.length === 0 && (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-sub">
-                    {t.ebEmpty}
+                    {failed ? dict.common.loadFailed : t.ebEmpty}
                   </td>
                 </tr>
               )}
