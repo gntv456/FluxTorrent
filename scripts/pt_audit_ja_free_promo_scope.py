@@ -23,7 +23,10 @@
       （抽取失效 ⇒ JA1 量的是一份过期口径，必须先红）；
   JA3 静态接线：读侧不得再出现内联促销匹配，必须调共用层 + 可见性口径；
   JA4 现网契约：/free 回 200 且 cards 是数组（前端 li 内纵包卡片，形状变了就崩）；
-  JA5 残料：回滚后 promotions 行数等于基线。
+  JA5 残料：回滚后 promotions 行数等于基线；
+  JA7 会员面「站点现状」两个出口同源：喊话盒 /stats 的 users/torrents 计数谓词
+      必须与首页站点数据（http/home.rs）逐字相等（P-509：旧写法把被拒/回收站种
+      算进种子数，现网同刻 200 vs 168）。
 
 夹具只在未提交的事务里存在，ROLLBACK 后消失；本支不写任何真实余额/流水。
 
@@ -195,5 +198,40 @@ print("   [现网] http=%s code=%s cards=%d reply=%r"
          (data.get("reply") or "")[:24]))
 ok("JA4 /free 回话契约齐（cmd/reply/cards，卡内 id/name/promotion/poster）",
    shape and not bad_row, "形状=%s 坏卡=%d 张" % (shape, len(bad_row)))
+
+# ── JA7 会员面「站点现状」两个出口必须同源 ────────────────
+# 喊话盒 /stats（leak_bot）与首页站点数据（http/home.rs）给会员看的是同一组数，
+# 过去 /stats 用裸 `count(*) FROM torrents` ⇒ 现网同刻 200 vs 168（P-509）。
+HOME = "apps/api/src/http/home.rs"
+
+
+def stats_preds(rel):
+    """抽「count(*) FROM <表> [WHERE <谓词>]」里 users/torrents 两把谓词。"""
+    s = re.sub(r"\\\s*\n\s*", " ", rd(rel))  # 吃掉 Rust 字符串的续行
+    s = cut(s)
+    out = {}
+    for tbl in ("users", "torrents"):
+        m = re.search(
+            r"count\(\*\)\s+FROM\s+%s(?:\s+WHERE\s+([^)]*))?\)" % tbl, s)
+        if m:
+            out[tbl] = re.sub(r"\s+", " ", (m.group(1) or "")).strip()
+    return out
+
+
+bot_p, home_p = stats_preds(BOT), stats_preds(HOME)
+diff = [t for t in ("users", "torrents")
+        if bot_p.get(t) is not None and bot_p.get(t) != home_p.get(t)]
+print("   [读数] /stats 谓词=%s；首页站点数据=%s" % (bot_p, home_p))
+ok("JA7 喊话盒 /stats 的 users/torrents 计数谓词与首页站点数据同源",
+   not diff and bot_p.get("torrents") == "approval_status = 1",
+   "分叉的表=%s（bot=%s home=%s）" % (diff, bot_p, home_p))
+
+# 活体读数（不参与判定：现网镜像未重建时必然还是旧数字，只留档）
+st2, resp2 = call("GET", "/shoutbox/bot/exec?cmd=/stats", token=tok)
+st3, resp3 = call("GET", "/stats", token=tok)
+print("   [现网] 喊话盒=%r /stats口=%s"
+      % ((dig(resp2, "data", "reply") or "")[:44],
+         {k: v for k, v in (dig(resp3, "data") or {}).items()
+          if k in ("users", "torrents")}))
 
 summary()

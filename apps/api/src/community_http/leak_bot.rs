@@ -193,9 +193,12 @@ pub(crate) async fn shoutbox_bot_exec(
             free_reply(&cards)
         }
         "/stats" => {
+            // 三数与首页站点数据同源（P-509）：旧写法把被拒/回收站种也算进
+            // 「站点现状」，会员在喊话盒看到 200 个种子，同刻 /stats 写 168。
             let (users, torrents, seeding): (i64, i64, i64) = sqlx::query_as(
                 "SELECT (SELECT count(*) FROM users WHERE status < 2), \
-                        (SELECT count(*) FROM torrents), \
+                        (SELECT count(*) FROM torrents \
+                         WHERE approval_status = 1), \
                         (SELECT count(*) FROM snatches WHERE seeding)",
             )
             .fetch_one(&state.repo.db)
