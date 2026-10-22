@@ -71,6 +71,8 @@ pub(crate) async fn apply_approval_side_effects(
     // 偏好过滤）；实体值经 section_dict 反查 content_networks（枚举维度的
     // 标准关联路径）。两种 kind 共用一张 content_networks + 一张订阅表，
     // 这里的 VALUES 列表即「可订阅维度的白名单」——加新可订阅维度只改此处。
+    // P-584：实体名键必须叫 entity——叫 name 会被后面的种子名覆盖
+    // （jsonb_build_object 同键后者胜），且消息中心无此二 kind 模板。
     let side = sqlx::query(
         r#"
         INSERT INTO messages
@@ -83,7 +85,7 @@ pub(crate) async fn apply_approval_side_effects(
                       cn.name, t.id, t.name),
                CASE k.kind WHEN 'network' THEN 'network_new_release'
                            ELSE 'subgroup_new_release' END,
-               jsonb_build_object('kind', k.kind, 'name', cn.name,
+               jsonb_build_object('kind', k.kind, 'entity', cn.name,
                                   'id', t.id, 'name', t.name)
         FROM torrents t
         JOIN (VALUES ('network'), ('subtitle_group')) AS k(kind) ON TRUE

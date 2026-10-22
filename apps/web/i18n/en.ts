@@ -564,6 +564,12 @@ const enBase: Omit<
       "Your upload was rejected: #{id} {name}\nReason: {reason}\nEdit and resubmit any time.",
     bodyGroupNewVersion:
       "Group “{group}” has a new approved torrent: #{id} {name}. See the group page for related releases.",
+    kindNetworkNewRelease: "New release from a studio you follow",
+    kindSubgroupNewRelease: "New work from a subtitle group you follow",
+    bodyNetworkNewRelease:
+      "Studio “{entity}” you follow has a new approved torrent: #{id} {name}.",
+    bodySubgroupNewRelease:
+      "Subtitle group “{entity}” you follow has a new approved torrent: #{id} {name}.",
     subject: "Subject",
     body: "Body",
     send: "Send",

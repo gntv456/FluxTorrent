@@ -70,6 +70,14 @@ export function MessageTable({
     review_approved: { s: t.kindReviewApproved, b: t.bodyReviewApproved },
     review_rejected: { s: t.kindReviewRejected, b: t.bodyReviewRejected },
     group_new_version: { s: t.kindGroupNewVersion, b: t.bodyGroupNewVersion },
+    network_new_release: {
+      s: t.kindNetworkNewRelease,
+      b: t.bodyNetworkNewRelease,
+    },
+    subgroup_new_release: {
+      s: t.kindSubgroupNewRelease,
+      b: t.bodySubgroupNewRelease,
+    },
   };
   const keyed = (m: MessageRow, part: "s" | "b", fallback: string) => {
     const k = m.kind ? NOTICE[m.kind] : undefined;

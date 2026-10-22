@@ -119,4 +119,15 @@ wired = [k for k in ("push_hr", "push_promo", "push_message")
          if '"%s"' % k in push_ui]
 ok("P-574：push_* 三键必须在推送设置页有开关（send 侧逐类过滤，"
    "只存不拨=用户只能全收）", len(wired) == 3, "已接=%s" % wired)
+
+# P-584：带 kind 落库的系统通知，消息中心要有现取模板（否则切语言翻不动）。
+mc = read("apps/web/components/message-center-table.tsx")
+noticed = set(re.findall(r"^\s*([a-z_]+): \{\s*s: t\.kind", mc, re.M))
+need = {"group_new_version", "network_new_release", "subgroup_new_release"}
+ok("订阅推送三类 kind 都有消息中心模板", need <= noticed,
+   "缺=%s" % sorted(need - noticed) if not need <= noticed else "")
+# P-584：jsonb_build_object 同键后者胜——实体名不得与种子名共用 name。
+rse = read("apps/api/src/admin_http/review_side_effects.rs")
+ok("订阅推送 params 的实体名用独立键 entity",
+   "'entity', cn.name" in rse and "'name', cn.name" not in rse)
 summary()

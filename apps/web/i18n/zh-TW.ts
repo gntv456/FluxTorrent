@@ -548,6 +548,12 @@ const zhTwBase: Omit<
       "你發布的種子未通過審核：#{id} {name}\n原因：{reason}\n可修改後重新發布。",
     bodyGroupNewVersion:
       "你訂閱的資源組「{group}」有種子過審：#{id} {name}。同類資源聚合頁見種子詳情。",
+    kindNetworkNewRelease: "訂閱的出品方有新片",
+    kindSubgroupNewRelease: "訂閱的字幕組有新作",
+    bodyNetworkNewRelease:
+      "你訂閱的出品方「{entity}」有種子過審：#{id} {name}。",
+    bodySubgroupNewRelease:
+      "你訂閱的字幕組「{entity}」有種子過審：#{id} {name}。",
     subject: "主題",
     body: "正文",
     send: "傳送",

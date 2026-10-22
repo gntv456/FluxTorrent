@@ -506,6 +506,12 @@ const zhCnBase = {
       "你发布的种子未通过审核：#{id} {name}\n原因：{reason}\n可修改后重新发布。",
     bodyGroupNewVersion:
       "你订阅的资源组「{group}」有新种子过审：#{id} {name}。同类资源聚合页见种子详情。",
+    kindNetworkNewRelease: "订阅的出品方有新片",
+    kindSubgroupNewRelease: "订阅的字幕组有新作",
+    bodyNetworkNewRelease:
+      "你订阅的出品方「{entity}」有新种子过审：#{id} {name}。",
+    bodySubgroupNewRelease:
+      "你订阅的字幕组「{entity}」有新种子过审：#{id} {name}。",
     subject: "主题",
     body: "正文",
     send: "发送",
