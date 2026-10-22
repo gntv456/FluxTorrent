@@ -251,7 +251,7 @@ pub async fn uploaders(
     let rows: Vec<UploaderRow> = sqlx::query_as(
                 "SELECT u.id, u.username, \
          (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1)::bigint AS uploads, \
-         (SELECT count(*) FROM snatches s JOIN torrents t2 ON t2.id = s.torrent_id WHERE s.user_id = u.id AND s.seeding AND t2.owner_id = u.id)::bigint AS seeding, \
+         (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding)::bigint AS seeding, \
          COALESCE((SELECT sum(t.size) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1), 0)::bigint AS total_size FROM users u WHERE u.status < 2 AND EXISTS (SELECT 1 FROM torrents t3 WHERE t3.owner_id = u.id AND t3.approval_status = 1) ORDER BY uploads DESC LIMIT 100",
     ).fetch_all(&state.repo.db).await
     .map_err(|e| DomainError::Internal(e.into()))?;
