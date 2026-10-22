@@ -40,16 +40,28 @@ export default function JixiaoPage() {
   const t = dict.jixiao2;
   const [me, setMe] = useState<JixiaoMe | null>(null);
   const [claims, setClaims] = useState<MyClaim[]>([]);
+  const [failed, setFailed] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = useCallback(() => {
+    // 成功分支不回写 failed：另一路失败时不能被这一路的成功洗白
+    setFailed(false);
     api
       .get<JixiaoMe>("/api/v1/jixiao/me")
       .then(setMe)
-      .catch(() => setMe(null));
-    api.get<MyClaim[]>("/api/v1/jixiao/my").then(setClaims).catch(() => setClaims([]));
+      .catch(() => {
+        setMe(null);
+        setFailed(true);
+      });
+    api
+      .get<MyClaim[]>("/api/v1/jixiao/my")
+      .then(setClaims)
+      .catch(() => {
+        setClaims([]);
+        setFailed(true);
+      });
   }, []);
   useEffect(load, [load]);
 
@@ -113,9 +125,15 @@ export default function JixiaoPage() {
         <p className="rounded-[var(--r-md)] bg-mint/30 p-3 text-sm text-ink">{msg}</p>
       )}
       {err && <p className="rounded-[var(--r-md)] bg-sun/30 p-3 text-sm text-ink">{err}</p>}
+      {failed && (
+        <p className="rounded-[var(--r-md)] bg-sun/30 p-3 text-sm text-ink">
+          {dict.common.loadFailed}
+        </p>
+      )}
 
       {/* 我的岗位卡片（NP「当前考核信息 + 考核数据统计」合并视图） */}
-      {me && me.assigned.length > 0 ? (
+      {!failed &&
+        (me && me.assigned.length > 0 ? (
         <div className="grid gap-3 md:grid-cols-2">
           {me.assigned.map((p) => (
             <JixiaoPostCard
@@ -131,19 +149,20 @@ export default function JixiaoPage() {
           ))}
         </div>
       ) : (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-4 text-sm text-ink">
-          {t.noAssignment}
-        </p>
-      )}
+          <p className="rounded-[var(--r-md)] bg-sky-soft p-4 text-sm text-ink">
+            {t.noAssignment}
+          </p>
+        ))}
 
       {/* 月末自动结算说明（0106）：提示结算机制与补领窗口 */}
-      {me && me.assigned.length > 0 && (
+      {!failed && me && me.assigned.length > 0 && (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">
           {t.autoSettleNote?.replace("{n}", String(me.claim_window_days ?? 7)) ?? t.note}
         </p>
       )}
 
       {/* 领取记录（M6.2：compact 档转行卡片） */}
+      {!failed && (
       <section className="brand-panel">
         <div className="brand-panel__head">
           <h2>{t.myTitle}</h2>
@@ -176,7 +195,7 @@ export default function JixiaoPage() {
           </div>
         )}
         {(!compact || claims.length === 0) && (
-          <table className={`nexus-table${compact ? " sr-only" : ""}`}>
+          <table className={`nexus-table${compact && claims.length > 0 ? " sr-only" : ""}`}>
             <tbody>
               {compact && (
                 <tr>
@@ -226,6 +245,7 @@ export default function JixiaoPage() {
           </table>
         )}
       </section>
+      )}
 
       <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-xs text-ink">{t.note}</p>
     </div>
