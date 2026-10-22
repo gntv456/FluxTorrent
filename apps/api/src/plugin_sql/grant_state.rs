@@ -35,20 +35,25 @@ pub(super) fn ledger_expectation(
     }
 }
 
-/// 查台账 + 角色在册状态（快路与慢路双检共用）。
+/// 查台账 + 角色在册 + SET ROLE 权限（快路与慢路双检共用，一次往返）。
 /// 泛型执行器：快路走 pool，慢路双检必须走事务内（`&mut *tx`），
 /// 否则双检读的是锁外快照，等于没检。
+///
+/// 为什么快路也要 `can_set`：站点连接中途被收走 SET ROLE 权限时，旧实现
+/// 会走 can_set 检查优雅降级纯 sql_guard；快路若只信台账，exec 的
+/// `SET LOCAL ROLE` 会直接报错——把「降级」变成「故障」。
 pub(super) async fn ledger_state<'e, E>(
     exec: E,
     name: &str,
     role: &str,
-) -> Option<(Vec<String>, String, bool)>
+) -> Option<(Vec<String>, String, bool, bool)>
 where
     E: sqlx::PgExecutor<'e>,
 {
     sqlx::query_as(
         "SELECT l.tables, l.mode::text, \
-         EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $2) \
+         EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $2), \
+         pg_has_role(current_user, $2, 'USAGE') \
          FROM plugin_sql_roles l WHERE l.plugin = $1",
     )
     .bind(name)
@@ -57,6 +62,17 @@ where
     .await
     .ok()
     .flatten()
+}
+
+/// 台账与声明一致、角色在册、站点连接切得过去——三者齐了才算「已隔离」。
+pub(super) fn ledger_settled(
+    state: &Option<(Vec<String>, String, bool, bool)>,
+    want_tables: &[String],
+    want_mode: &str,
+) -> bool {
+    matches!(state, Some((tables, m, alive, can_set))
+        if *alive && *can_set && m == want_mode
+            && same_set(tables, want_tables))
 }
 
 /// 事务内撤授临界区：咨询锁 + 先撤后授，提交后授权对其它连接原子可见。

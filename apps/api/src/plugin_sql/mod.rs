@@ -30,7 +30,7 @@ mod grant_state;
 
 pub use exec::{exec_isolated, fetch_all_isolated, fetch_scalar_i64_isolated};
 use grant_state::{
-    grant_in_critical_section, ledger_expectation, ledger_state, same_set,
+    grant_in_critical_section, ledger_expectation, ledger_settled, ledger_state,
 };
 
 use sqlx::postgres::Postgres;
@@ -145,30 +145,21 @@ pub async fn ensure_isolation(
         };
     };
 
-    // ① 快路：台账一致 + 角色在册 → 零写返回
-    if let Some((tables, m, role_alive)) = ledger_state(pool, name, &role).await
-    {
-        if role_alive && m == want_mode && same_set(&tables, &want_tables) {
-            return Isolation {
-                role: Some(role),
-                tables: read,
-                mode,
-            };
-        }
+    // ① 快路：台账一致 + 角色在册 + 切得过去 → 零写返回
+    if ledger_settled(
+        &ledger_state(pool, name, &role).await,
+        &want_tables,
+        want_mode,
+    ) {
+        return Isolation {
+            role: Some(role),
+            tables: read,
+            mode,
+        };
     }
 
-    // ② 慢路（台账缺失/声明漂移/角色被删）：临界区内撤授。
-    // 先无锁双检一次——等锁前可能已有并发者按同样声明授完。
-    if let Some((tables, m, role_alive)) = ledger_state(pool, name, &role).await
-    {
-        if role_alive && m == want_mode && same_set(&tables, &want_tables) {
-            return Isolation {
-                role: Some(role),
-                tables: read,
-                mode,
-            };
-        }
-    }
+    // ② 慢路（台账缺失/声明漂移/角色被删/切不过去）：临界区内撤授。
+    // 咨询锁把并发首分发串行化，授权随事务提交原子可见。
     if !grant_in_critical_section(pool, name, &read, &write).await {
         return Isolation {
             role: None,
@@ -176,28 +167,17 @@ pub async fn ensure_isolation(
             mode,
         };
     }
-    // 锁内双检通过/新授完成都可能已满足；再确认一次台账与角色
-    let settled = ledger_state(pool, name, &role)
-        .await
-        .map(|(tables, m, alive)| {
-            alive && m == want_mode && same_set(&tables, &want_tables)
-        })
-        .unwrap_or(false);
-    // 站点连接必须能 SET ROLE 到该角色（NOINHERIT 的反面：需要 SET TRUE）
-    let can_set: bool =
-        sqlx::query_scalar("SELECT pg_has_role(current_user, $1, 'USAGE')")
-            .bind(&role)
-            .fetch_one(pool)
-            .await
-            .unwrap_or(false);
-    if !settled || !can_set {
-        // 授权没落地（如无 CREATEROLE）或切不过去：降级到纯 sql_guard，
-        // 别让插件 SQL 抱着空授权去撞权限墙（那正是本修复要消灭的症状）
+    // 授权落地确认：台账没对上、角色不在册或切不过去 = 授权没生效
+    // （如无 CREATEROLE）。直接降级纯 sql_guard，别让插件 SQL 抱着空
+    // 授权去撞权限墙（那正是本修复要消灭的症状）。
+    if !ledger_settled(
+        &ledger_state(pool, name, &role).await,
+        &want_tables,
+        want_mode,
+    ) {
         tracing::warn!(
             plugin = name,
             role = %role,
-            settled,
-            can_set,
             "插件 DB 角色授权未落地/不可用，退回纯 sql_guard 模式"
         );
         return Isolation {
