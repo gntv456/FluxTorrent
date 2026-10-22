@@ -3,12 +3,18 @@
 判什么（每段都可单独核对）：
   G1 后端扫描出「经余额原语的会员侧 POST 端点」集合 B ⊆ 前端登记表 F
      —— 少登记一条 = 用户扣了魔力而顶栏数字不动（本轮修的缺陷本体）；
-  G2 F ⊆ B —— 表里有条目却在后端找不到对应写口 = 路由改名/删了而表没跟上；
+  G2 F ⊆ 后端全部路由 —— 表里有条目而后端**已无此路由** = 改名/删除而表没跟上；
+     存在但本尺未判动账的条目**不算违例**（多广播一次顶栏无害，批二百四十五）；
   G3 表自身形状：非空、无重复、不含 /api/v1 前缀（api-client 按剥前缀匹配）；
   G4 正控：`/shop/buy`、`/attendance/checkin` 必须同时在 B 与 F 里
      —— 抓不到正控说明这把尺坏了，结论作废；
   G5 接线：api-client 的 request() 成功路径上必须真的调用
      maybeNotifySparkChanged（剥注释后再扫，且在 `return body.data` 之前）。
+
+归因粒度（批二百四十五）：按 **handler 切片** 归因，不按文件。
+     旧写法「文件里出现任一余额原语 ⇒ 该文件所有 #[post] 都算」会把
+     `POST /fundings`（funding_create 只 INSERT + audit，不动魔力）也算成
+     动账口，逼前端登记表收一条假条目。
 
 用法：python scripts/pt_audit_spark_sync.py
 自测（证明判据承重）：python scripts/pt_audit_spark_sync.py --selftest
@@ -79,17 +85,44 @@ def backend_write_paths():
             if not fn.endswith(".rs"):
                 continue
             p = os.path.join(dirpath, fn)
-            txt = read(p)
-            if not any(re.search(r"\b%s\(" % re.escape(n), txt)
-                       for n in prims):
+            txt = strip_comments(read(p))
+            hits = list(re.finditer(r'#\[post\("([^"]+)"\)\]', txt))
+            if not hits:
                 continue
-            for m in re.finditer(r'#\[post\("([^"]+)"\)\]', txt):
-                out.add(m.group(1))
+            bounds = [m.start() for m in re.finditer(r"^\s*#\[", txt, re.M)]
+            for m in hits:
+                # 该 handler 的片段 = 本属性行 → 下一条属性行（下一条属性
+                # 必然在上一段函数结束之后，故切片不会漏掉函数尾，也不会把
+                # 邻居 handler 的动账算进来）
+                nxt = [b for b in bounds if b > m.start()]
+                body = txt[m.start(): nxt[1] if len(nxt) > 1 else len(txt)]
+                if any(re.search(r"\b%s\(" % re.escape(n), body)
+                       for n in prims):
+                    out.add(m.group(1))
     # 只保留会员侧：职员面（admin/staff）与外部兼容层由各自面板口径负责
     member = {p for p in out if not p.startswith("/admin")
               and "/staff" not in p and not p.startswith("/compat")
               and not p.startswith("/openapi")}
     return out, member
+
+
+def all_backend_routes():
+    """后端全部路由（任意方法）。G2 用它判「条目是否还存在」——表里保守地多
+    登记一条**不动账**的写口只多刷一次顶栏（无害），而路由被改名/删除才是
+    该报的账（批二百四十五：按 handler 切片后，20 条保守条目会被误判成
+    「后端找不到对应」，那是尺的语义错位，不是产品的洞）。"""
+    out = set()
+    for dirpath, _d, files in os.walk(API):
+        if any(s in dirpath for s in SKIP_DIRS):
+            continue
+        for fn in files:
+            if not fn.endswith(".rs"):
+                continue
+            txt = read(os.path.join(dirpath, fn))
+            for m in re.finditer(
+                    r'#\[(?:get|post|put|delete|patch)\("([^"]+)"\)\]', txt):
+                out.add(m.group(1))
+    return out
 
 
 def frontend_table():
@@ -125,9 +158,15 @@ def main():
     ok("G1 会员侧写口全部登记（漏一条=顶栏数字不动）", not missing,
        "未登记 %d 条：%s" % (len(missing), ", ".join(missing[:12])))
 
-    stale = sorted(t for t in tset if t not in raw)
-    ok("G2 表里没有已消失的条目（路由改名要跟上）", not stale,
-       "表内找不到后端对应 %d 条：%s" % (len(stale), ", ".join(stale[:12])))
+    routes = all_backend_routes()
+    stale = sorted(t for t in tset if t not in routes)
+    conservative = sorted(t for t in tset if t in routes and t not in raw)
+    print("   [读数] 表内 %d 条：动账写口 %d 条、保守登记（存在但本尺未判动账）"
+          "%d 条、后端已不存在的 %d 条"
+          % (len(tset), len(tset) - len(conservative) - len(stale),
+             len(conservative), len(stale)))
+    ok("G2 表里没有已消失的条目（路由改名/删除要跟上）", not stale,
+       "后端已无此路由 %d 条：%s" % (len(stale), ", ".join(stale[:12])))
 
     bad_shape = [t for t in table if not t.startswith("/")
                  or t.startswith("/api/v1") or "{" in t and "}" in t
