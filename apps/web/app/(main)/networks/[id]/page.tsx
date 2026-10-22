@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { formatBytes } from "@/lib/format";
 import { getDict } from "@/i18n/server";
+import { SubscribeNetworkButton } from "@/components/subscribe-network-button";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ interface NetworkDetail {
   id: number;
   kind: string;
   name: string;
+  subscribed: boolean;
   items: {
     id: number;
     name: string;
@@ -53,7 +55,14 @@ export default async function NetworkDetailPage({
         <span aria-hidden> › </span>
         <span className="text-body">{n.name}</span>
       </nav>
-      <h1 className="font-display text-2xl">{n.name}</h1>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="font-display text-2xl">{n.name}</h1>
+        <SubscribeNetworkButton
+          networkId={n.id}
+          initialSubscribed={n.subscribed}
+          scope="network"
+        />
+      </div>
       <ul className="flex list-none flex-col gap-2 p-0">
         {n.items.map((it) => (
           <li key={it.id} data-torrent-id={it.id}>

@@ -3647,6 +3647,8 @@ const enBase: Omit<
   },
   subscriptions: {
     tabGroups: "Subscribed groups",
+    tabNetworks: "Networks & subtitle groups",
+    networksEmpty: "Not following any network or subtitle group yet",
     tabAuthors: "Followed authors",
     tabBookmarks: "Bookmarks",
     addSub: "Add subscription",

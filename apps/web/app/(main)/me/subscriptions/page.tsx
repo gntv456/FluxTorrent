@@ -6,6 +6,7 @@ import { getDict } from "@/i18n/server";
 import { BTN_SM_BOLD, PANEL_MD } from "@/lib/ui-classes";
 import { UnsubscribeButton } from "@/components/unsubscribe-button";
 import { FollowTable } from "./_parts/follow-table";
+import { NetworkSubs, type NetSubRow } from "./_parts/network-subs";
 import { MyBookmarks } from "@/components/my-bookmarks";
 import { PageHeader } from "@/components/ui/page-header";
 import { TabPanel, Tabs } from "@/components/ui/tabs";
@@ -37,7 +38,13 @@ interface CalendarDay {
 /** 标签白名单。`forums` 是样图 § subscriptions 的第一块「我订阅的版块」——
  *  `/follows/mine` 一直回 `forums` 数组（domain-types MyFollows），
  *  此前这页只读了 `users`，版块关注在站内没有任何出口。 */
-const TABS = ["groups", "forums", "authors", "bookmarks"] as const;
+const TABS = [
+  "groups",
+  "networks",
+  "forums",
+  "authors",
+  "bookmarks",
+] as const;
 
 /** 追更中心（0328 剧集批补齐前端）。
  *  后端两读口此前无入口：/me/subscriptions/groups（进度）、
@@ -62,6 +69,7 @@ export default async function SubscriptionsPage({
 
   let rows: SubRow[] = [];
   let days: CalendarDay[] = [];
+  let netRows: NetSubRow[] = [];
   let failed = false;
   try {
     const r = await api.get<SubRow[]>("/api/v1/me/subscriptions/groups");
@@ -70,6 +78,22 @@ export default async function SubscriptionsPage({
       "/api/v1/me/subscriptions/calendar",
     );
     days = Array.isArray(c) ? c : [];
+    if (tab === "networks") {
+      // 同一张表存两种 kind，接口默认 kind=network 会把字幕组订阅藏掉
+      // （P-588），这一档两类都取。
+      const [nets, subs] = await Promise.all([
+        api.get<NetSubRow[]>(
+          "/api/v1/me/subscriptions/networks?kind=network",
+        ),
+        api.get<NetSubRow[]>(
+          "/api/v1/me/subscriptions/networks?kind=subtitle_group",
+        ),
+      ]);
+      netRows = [
+        ...(Array.isArray(nets) ? nets : []),
+        ...(Array.isArray(subs) ? subs : []),
+      ];
+    }
   } catch {
     failed = true;
   }
@@ -103,12 +127,14 @@ export default async function SubscriptionsPage({
         value={tab}
         items={[
           { key: "groups", label: t.tabGroups },
+          { key: "networks", label: t.tabNetworks },
           { key: "forums", label: t.tabForums },
           { key: "authors", label: t.tabAuthors },
           { key: "bookmarks", label: t.tabBookmarks },
         ]}
         hrefs={[
           "/me/subscriptions",
+          "/me/subscriptions?tab=networks",
           "/me/subscriptions?tab=forums",
           "/me/subscriptions?tab=authors",
           "/me/subscriptions?tab=bookmarks",
@@ -193,6 +219,12 @@ export default async function SubscriptionsPage({
               )}
             </section>
           </div>
+        </TabPanel>
+      )}
+
+      {tab === "networks" && (
+        <TabPanel idPrefix="subs" tabKey="networks">
+          <NetworkSubs rows={netRows} dict={dict} />
         </TabPanel>
       )}
 

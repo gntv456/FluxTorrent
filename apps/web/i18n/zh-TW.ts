@@ -3540,6 +3540,8 @@ const zhTwBase: Omit<
   },
   subscriptions: {
     tabGroups: "我訂閱的資源組",
+    tabNetworks: "我訂閱的出品方/字幕組",
+    networksEmpty: "還沒有訂閱任何出品方或字幕組",
     tabAuthors: "我關注的作者",
     tabBookmarks: "我的收藏",
     addSub: "新增訂閱",

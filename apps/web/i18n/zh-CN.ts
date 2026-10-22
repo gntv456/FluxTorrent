@@ -3564,6 +3564,8 @@ const zhCnBase = {
   },
   subscriptions: {
     tabGroups: "我订阅的资源组",
+    tabNetworks: "我订阅的出品方/字幕组",
+    networksEmpty: "还没有订阅任何出品方或字幕组",
     tabAuthors: "我关注的作者",
     tabBookmarks: "我的收藏",
     addSub: "添加订阅",

@@ -114,7 +114,7 @@ pub async fn network_detail(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<impl Responder> {
-    let _auth = require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let id = path.into_inner();
     let row: Option<(String, String)> =
         sqlx::query_as("SELECT kind, name FROM content_networks WHERE id = $1")
@@ -140,8 +140,20 @@ pub async fn network_detail(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-588：订阅按钮初始态由服务端带回（同组订阅 P-583 口径）；
+    // 缺了它刷新后按钮恒显「订阅」，已订的人还会以为没订上。
+    let subscribed: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM network_subscriptions \
+         WHERE user_id = $1 AND network_id = $2)",
+    )
+    .bind(auth.id)
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "id": id, "kind": kind, "name": name,
+        "subscribed": subscribed,
         "items": items.iter().map(|(tid, tn, sz, sd, tc)| {
             serde_json::json!({
                 "id": tid, "name": tn, "size": sz,

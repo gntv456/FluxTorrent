@@ -16,6 +16,7 @@ interface SubGroupDetail {
   id: number;
   kind: string;
   name: string;
+  subscribed: boolean;
   items: {
     id: number;
     name: string;
@@ -57,7 +58,10 @@ export default async function SubtitleGroupPage({
       </nav>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="font-display text-2xl">{g.name}</h1>
-        <SubscribeNetworkButton networkId={g.id} />
+        <SubscribeNetworkButton
+          networkId={g.id}
+          initialSubscribed={g.subscribed}
+        />
       </div>
       <ul className="flex list-none flex-col gap-2 p-0">
         {g.items.map((it) => (
