@@ -2135,6 +2135,7 @@ const zhTwBase: Omit<
       orphan_offset: "系統沖銷調整",
       probe_cleanup: "運營清理調整",
       admin_grant_item: "管理發放道具",
+      funding_refund: "眾籌退還",
       arcade: "娛樂屋",
       bank_demand_out: "活期轉出",
       bank_loan_payout: "貸款放款",

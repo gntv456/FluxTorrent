@@ -2205,6 +2205,7 @@ const enBase: Omit<
       orphan_offset: "System offset",
       probe_cleanup: "Ops cleanup",
       admin_grant_item: "Item granted by staff",
+      funding_refund: "Crowdfund refund",
       arcade: "Arcade",
       bank_demand_out: "Demand withdrawal",
       bank_loan_payout: "Loan payout",
