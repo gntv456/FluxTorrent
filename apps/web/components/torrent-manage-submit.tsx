@@ -144,12 +144,22 @@ export function buildEditPayload(x: {
       : { sections: buildSections(x.catKinds, x.fSec) }),
     // 标签整组提交（official 类保留不动：前端只编辑普通标签，
     // 后端 DELETE+apply 会把 official 一并清掉，所以这里带上原 official 集）
-    tag_ids: [
-      ...x.fTags,
-      ...(x.tagMine ?? []).filter((id) =>
-        x.dictRows.some((d) => d.id === id && d.kind === "official"),
-      ),
-    ],
+    // P-622：聚合口 tags 段读失败会降级成 {dict:[],mine:[]}，面板因此
+    // 一个标签控件都不渲染——此时发 tag_ids:[] 等于替用户确认「清空整组」，
+    // 既有标签（含 official，official_tag 列随之归零）会被静默删掉。
+    // 看不到控件就不发这个键（同 P-620 的 sections 口径）。
+    ...(x.dictRows.length === 0
+      ? {}
+      : {
+          tag_ids: [
+            ...x.fTags,
+            ...(x.tagMine ?? []).filter((id) =>
+              x.dictRows.some(
+                (d) => d.id === id && d.kind === "official",
+              ),
+            ),
+          ],
+        }),
     // 推荐位（0184）：staff 提交才带；后端 class>=90 强校验，
     // 非 staff 带值会 403 而不是静默吞掉
     ...(x.isStaff
