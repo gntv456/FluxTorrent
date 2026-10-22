@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 interface SeedStats {
@@ -22,7 +22,9 @@ interface SeedStats {
 export function SeedStatsCard() {
   const { dict } = useI18n();
   const [data, setData] = useState<SeedStats | null>(null);
-  const [state, setState] = useState<"loading" | "ok" | "denied">("loading");
+  const [state, setState] = useState<
+    "loading" | "ok" | "denied" | "failed"
+  >("loading");
 
   useEffect(() => {
     let alive = true;
@@ -33,8 +35,14 @@ export function SeedStatsCard() {
         setData(d);
         setState("ok");
       })
-      .catch(() => {
-        if (alive) setState("denied");
+      .catch((e) => {
+        if (!alive) return;
+        // 只有 403 才是「没权限」；网络/500 不能演成权限说明
+        setState(
+          e instanceof ApiError && (e.status === 403 || e.code === 2003)
+            ? "denied"
+            : "failed",
+        );
       });
     return () => {
       alive = false;
@@ -45,6 +53,15 @@ export function SeedStatsCard() {
     return (
       <section className="brand-panel p-4">
         <p className="text-sm text-sub">加载中…</p>
+      </section>
+    );
+  }
+
+  if (state === "failed") {
+    return (
+      <section className="brand-panel p-4">
+        <h2 className="mb-1 text-base font-bold">保种统计</h2>
+        <p className="text-xs text-warn">{dict.common.loadFailed}</p>
       </section>
     );
   }
