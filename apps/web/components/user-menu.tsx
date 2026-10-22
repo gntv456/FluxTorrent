@@ -43,6 +43,7 @@ type SseUnread = { count?: number };
 export function UserMenu({ loginLabel }: { loginLabel: string }) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
+  const [meFailed, setMeFailed] = useState(false);
   // 模块开关（G2-7）：快捷链接按模块过滤（medals/tasks/jixiao）
   const [mods, setMods] = useState<Record<string, boolean>>({});
   // 顶栏魔力 chip 开关（W-31 / IA-2 ①）：site_settings.topbar_spark_chip，
@@ -81,8 +82,9 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
           .catch(() => {});
       })
       .catch(() => {
-        localStorage.removeItem("flux.user");
-        setSessionCookie(false);
+        // P-611：取数失败不等于会话失效（2001 已由 api-client 统一跳登录）。
+        // 旧写法在这里清本地凭证，网络抖动一次就把已登录用户演成游客。
+        setMeFailed(true);
       });
   }, []);
   // 未读 SSE：连上即推+15s 轮询变化才推；onerror 静默重连；会话失效
@@ -142,6 +144,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
     location.href = "/login";
   }
 
+  if (!me && meFailed && hasSessionCookie()) return null;
   if (!me)
     return (
       <a href="/login" className="mainmenu-link usermenu-login">
