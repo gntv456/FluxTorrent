@@ -4,6 +4,7 @@ import { BTN_SM_DANGER } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { pushTestMessage, type PushTestTally } from "@/lib/push-test-result";
 import { useI18n } from "@/i18n/client";
 
 /** 浏览器推送订阅开关（控制面板 · 安全设定内嵌）
@@ -87,8 +88,12 @@ export function PushSettings() {
   async function sendTest() {
     setBusy(true);
     try {
-      await api.post("/api/v1/push/test", {});
-      flash(t.testSent);
+      const r = await api.post<PushTestTally>("/api/v1/push/test", {});
+      flash(pushTestMessage(r, t));
+      // 服务端已把这枚订阅标成失效：本地开关也不能再演「已订阅」。
+      if ((r.delivered ?? 0) === 0 && (r.expired_cleaned ?? 0) > 0) {
+        setSubscribed(false);
+      }
     } catch (e) {
       flash(e instanceof ApiError ? e.message : dict.common.networkError);
     } finally {

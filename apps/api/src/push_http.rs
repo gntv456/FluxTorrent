@@ -177,7 +177,10 @@ async fn push_test(
         ));
     }
     let vapid = vapid_from_env();
+    // P-570：ServiceError（推送服务拒收/网络错）与 Gone 各自计数——
+    // 旧写法把它并进 delivered，界面于是对一次没送达的测试报「已发送」。
     let mut delivered = 0usize;
+    let mut failed = 0usize;
     let mut gone = 0usize;
     for s in &subs {
         match deliver(
@@ -190,7 +193,8 @@ async fn push_test(
         )
         .await
         {
-            PushResult::Delivered | PushResult::ServiceError => delivered += 1,
+            PushResult::Delivered => delivered += 1,
+            PushResult::ServiceError => failed += 1,
             PushResult::Gone => {
                 gone += 1;
                 let _ = sqlx::query(
@@ -203,9 +207,11 @@ async fn push_test(
             }
         }
     }
-    Ok(ok(
-        serde_json::json!({ "delivered": delivered, "expired_cleaned": gone }),
-    ))
+    Ok(ok(serde_json::json!({
+        "delivered": delivered,
+        "failed": failed,
+        "expired_cleaned": gone,
+    })))
 }
 
 #[get("/push/vapid-key")]
