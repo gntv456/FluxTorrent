@@ -48,4 +48,22 @@ describe("ShoutFreeCards（/free 播报带种卡）", () => {
       "/torrent/43",
     );
   });
+
+  // P-551：促销的「免费」只免上传量扣费，不免种子定价（charge_for_download
+  // 从不看促销）。播报把有价种说成免费却不给价格，会员点进去才被扣魔力。
+  it("有价种在播报卡上带定价（复用下载口同款价格标）", () => {
+    const { container } = render(
+      <ShoutFreeCards cards={[{ ...CARD, id: 45, price: 800 }]} />,
+    );
+    const price = container.querySelector(".td-dl-price");
+    expect(price).not.toBeNull();
+    expect(price?.textContent).toContain("800");
+  });
+
+  it("定价为零时不渲染价格标（免价种不许看着像要收费）", () => {
+    const { container } = render(
+      <ShoutFreeCards cards={[{ ...CARD, id: 46, price: 0 }]} />,
+    );
+    expect(container.querySelector(".td-dl-price")).toBeNull();
+  });
 });

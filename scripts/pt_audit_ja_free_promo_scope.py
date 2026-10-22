@@ -62,13 +62,20 @@ def rd(rel):
 
 
 def psql(q):
+    """出错必须抛（P-552 实测的两个坑）：
+      ① `-e ON_ERROR_STOP=1` 是设给 docker exec 的环境变量，psql 不认，
+         语句报错照样 rc=0、ERROR 只落在 stderr ⇒ 判据读空串一路报绿；
+      ② psql 从 stdin 读 SQL 时默认也不按错误返回非零码。
+    所以 ON_ERROR_STOP 要用 `-v` 交给 psql 本身，再补一道 stderr 检查。"""
     r = subprocess.run(
-        ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-F", "|",
-         "-f", "-"],
-        input=q, capture_output=True, text=True, encoding="utf-8")
-    if r.returncode != 0:
-        raise RuntimeError("psql 失败：%s" % (r.stderr or "").strip()[:300])
+        ["docker", "exec", "-i", "flux-postgres",
+         "psql", "-U", "flux", "-q", "-d", "fluxtorrent",
+         "-v", "ON_ERROR_STOP=1", "-tA", "-F", "|", "-f", "-"],
+        input=q, capture_output=True, text=True, encoding="utf-8",
+        errors="replace")
+    err = (r.stderr or "").strip()
+    if r.returncode != 0 or "ERROR" in err:
+        raise RuntimeError("psql 失败：%s" % err[:300])
     return (r.stdout or "").strip()
 
 
@@ -192,12 +199,13 @@ shape = (st == 200 and dig(resp, "code") == 0 and isinstance(cards, list)
 bad_row = [c for c in (cards or []) if not isinstance(c, dict)
            or not isinstance(c.get("id"), int)
            or not isinstance(c.get("name"), str)
-           or "promotion" not in c or "poster" not in c]
+           or "promotion" not in c or "poster" not in c
+           or "price" not in c]
 print("   [现网] http=%s code=%s cards=%d reply=%r"
       % (st, dig(resp, "code"), len(cards or []),
          (data.get("reply") or "")[:24]))
-ok("JA4 /free 回话契约齐（cmd/reply/cards，卡内 id/name/promotion/poster）",
-   shape and not bad_row, "形状=%s 坏卡=%d 张" % (shape, len(bad_row)))
+ok("JA4 /free 回话契约齐（cmd/reply/cards，卡内 id/name/promotion/poster/"
+   "price）", shape and not bad_row, "形状=%s 坏卡=%d 张" % (shape, len(bad_row)))
 
 # ── JA7 会员面「站点现状」两个出口必须同源 ────────────────
 # 喊话盒 /stats（leak_bot）与首页站点数据（http/home.rs）给会员看的是同一组数，
@@ -205,26 +213,35 @@ ok("JA4 /free 回话契约齐（cmd/reply/cards，卡内 id/name/promotion/poste
 HOME = "apps/api/src/http/home.rs"
 
 
-def stats_preds(rel):
-    """抽「count(*) FROM <表> [WHERE <谓词>]」里 users/torrents 两把谓词。"""
-    s = re.sub(r"\\\s*\n\s*", " ", rd(rel))  # 吃掉 Rust 字符串的续行
-    s = cut(s)
-    out = {}
-    for tbl in ("users", "torrents"):
-        m = re.search(
-            r"count\(\*\)\s+FROM\s+%s(?:\s+WHERE\s+([^)]*))?\)" % tbl, s)
-        if m:
-            out[tbl] = re.sub(r"\s+", " ", (m.group(1) or "")).strip()
-    return out
+# 抽取器搬家课（P-543 之后重做）：原先按 `count(*) FROM <表> WHERE <谓词>)`
+# 抓文本比对，一旦某一侧改走 member_visible()（谓词在源码里是 `{vis}`）或
+# 表带了别名，正则就跳去抓隔壁那条 `status = 1` 的警告数——红得毫无道理。
+# 判据改成只问两件事：① 两个出口都真的调名录单点；
+# ② 谁都不许再留「裸 status < 2 的在册数」（首页的 warned/banned 计数用
+# status = 1/2 是另一件事，不在这条尺的射程内）。
+BARE = (r"count\(\*\)\s+FROM\s+users(?:\s+\w+)?\s+WHERE\s+"
+        r"status\s*<\s*2\s*\)")
+OLD_STATS = ("SELECT (SELECT count(*) FROM users WHERE status < 2), "
+             "(SELECT count(*) FROM torrents WHERE approval_status = 1)")
 
 
-bot_p, home_p = stats_preds(BOT), stats_preds(HOME)
-diff = [t for t in ("users", "torrents")
-        if bot_p.get(t) is not None and bot_p.get(t) != home_p.get(t)]
-print("   [读数] /stats 谓词=%s；首页站点数据=%s" % (bot_p, home_p))
-ok("JA7 喊话盒 /stats 的 users/torrents 计数谓词与首页站点数据同源",
-   not diff and bot_p.get("torrents") == "approval_status = 1",
-   "分叉的表=%s（bot=%s home=%s）" % (diff, bot_p, home_p))
+def single_point(rel):
+    body = re.sub(r"\\\s*\n\s*", " ", rd(rel))  # 吃掉 Rust 续行
+    body = cut(body)
+    return ("user_directory::member_visible(" in body,
+            re.search(BARE, body) is not None)
+
+
+bot_ok, bot_bare = single_point(BOT)
+home_ok, home_bare = single_point(HOME)
+print("   [读数] 喊话盒 单点=%s 裸尺=%s；首页 单点=%s 裸尺=%s"
+      % (bot_ok, bot_bare, home_ok, home_bare))
+ok("JA7 两个出口的用户数都走名录单点 member_visible",
+   bot_ok and home_ok and not bot_bare and not home_bare,
+   "喊话盒=%s/%s 首页=%s/%s" % (bot_ok, bot_bare, home_ok, home_bare))
+ok("JA7b 正控：修前那版 /stats 的裸 status < 2 必须被同一把尺抓到",
+   re.search(BARE, OLD_STATS) is not None,
+   "抓不到旧形状＝JA7 的绿是空的")
 
 # 活体读数（不参与判定：现网镜像未重建时必然还是旧数字，只留档）
 st2, resp2 = call("GET", "/shoutbox/bot/exec?cmd=/stats", token=tok)
@@ -233,5 +250,51 @@ print("   [现网] 喊话盒=%r /stats口=%s"
       % ((dig(resp2, "data", "reply") or "")[:44],
          {k: v for k, v in (dig(resp3, "data") or {}).items()
           if k in ("users", "torrents")}))
+
+# ── JA6 播报带种卡必须带定价（P-551：促销的「免费」只免上传量扣费）──
+# charge_for_download 从不看促销 ⇒ 有价种进 /free 却不带 price，会员按
+# 「当前免费」去下载才发现要扣魔力。现网此刻没有免费促销在册（cards 恒空），
+# 所以这条自己挂一枚限时促销当靶子，跑完立刻删，不在现网留档。
+_pa = (psql("SELECT id, price FROM torrents WHERE approval_status = 1 "
+            "AND price > 0 ORDER BY id LIMIT 1") or "").split("|")
+if len(_pa) == 2 and all(x.strip().isdigit() for x in _pa):
+    _pt, _pp = int(_pa[0]), int(_pa[1])
+    _b6 = int(psql("SELECT count(*) FROM promotions"))
+    _pid = ""
+    try:
+        # ends_at 取最近的 ⇒ 按 effective_ends 排序必进前 5，靶子一定在卡里
+        # source 是枚举 promotion_source{manual,magic_pool,preserve_grace,
+        # task,subtitle}，自造标记会被旧 psql 静默咽掉 ⇒ 用合法值取回 id
+        _pid = psql("INSERT INTO promotions (scope, torrent_id, kind,"
+                    " starts_at, ends_at, source)"
+                    " VALUES ('torrent', %d, 'free',"
+                    " now() - interval '1 minute',"
+                    " now() + interval '10 minutes', 'manual')"
+                    " RETURNING id;" % _pt).strip()
+        assert _pid.isdigit(), "夹具促销没插进去（id=%r）" % _pid
+        st6, resp6 = call("GET", "/shoutbox/bot/exec?cmd=/free", token=tok)
+        c6 = [c for c in ((dig(resp6, "data") or {}).get("cards") or [])
+              if isinstance(c, dict) and c.get("id") == _pt]
+        print("   [JA6] 靶子 #%d 定价 %s 魔力；命中卡=%s"
+              % (_pt, _pp, str(c6[:1])[:120]))
+        ok("JA6a 靶子进了播报（前置：促销生效且对本人可见）", bool(c6),
+           "http=%s 靶子不在 cards＝夹具或行序失效，JA6b 的绿不算数" % st6)
+        ok("JA6b 有价种的卡必须带库里那个定价",
+           bool(c6) and c6[0].get("price") == _pp,
+           "缺 price 键＝播报只说免费不给价（旧镜像即此形状）")
+    finally:
+        if _pid.isdigit():
+            psql("DELETE FROM promotions WHERE id = %s;" % _pid)
+        _l6 = int(psql("SELECT count(*) FROM promotions"))
+        ok("JA6c 残料：靶子促销删净且 promotions 回到基线（%d→%d）"
+           % (_b6, _l6), _l6 == _b6)
+else:
+    ok("JA6a 靶子：库里须有「过审且有定价」的种", False,
+       "读数=%r（现网有 34 枚有价种；这条红说明数据或谓词变了）" % (_pa,))
+
+_fe = cut(rd("apps/web/components/shout-free-cards.tsx"))
+ok("JA6d 界面那侧真在消费 price（接线判据，不只后端有字段）",
+   "c.price" in _fe and "td-dl-price" in _fe,
+   "后端下发而界面不渲染＝同一个洞换个出口（批二百六十那一课）")
 
 summary()

@@ -28,6 +28,10 @@ pub(super) struct FreeCard {
     pub(super) leechers: i32,
     pub(super) poster: Option<String>,
     pub(super) promotion: Option<String>,
+    /// P-551：促销「免费」只免上传量扣费，不免种子定价——charge_for_download
+    /// 从不看促销。有价种进播报时必须把价格一起给出去，否则会员按播报
+    /// 去下载才发现要扣魔力（下载口有 priceHint 提示，播报卡此前没有）。
+    pub(super) price: i64,
 }
 
 /// /free 纯文本回话；种卡由 cards[] 并行下发，文本保留供纯文本消费方。
@@ -53,7 +57,7 @@ pub(super) fn free_reply(cards: &[FreeCard]) -> String {
 fn sql_for(uid: i64, is_staff: bool) -> String {
     format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.seeders, \
-         t.leechers, t.media_info->>'poster' AS poster, \
+         t.leechers, t.price, t.media_info->>'poster' AS poster, \
          {} AS promotion \
          FROM torrents t \
          WHERE {} AND {} \
@@ -104,7 +108,8 @@ mod tests {
     fn free_cards_serialize() {
         let v = serde_json::to_value(&card(7, "甲")).unwrap();
         let s = v.to_string();
-        for k in ["id", "name", "size", "seeders", "promotion", "poster"] {
+        for k in ["id", "name", "size", "seeders", "promotion", "poster",
+                  "price"] {
             assert!(s.contains(&format!("\"{k}\":")), "cards 缺字段 {k}");
         }
         assert_eq!(v["promotion"], "free");
@@ -133,6 +138,8 @@ mod tests {
         // 占位符必须都被替换掉（format! 少一个参数是编译错，少一片口径是静默）
         assert!(!s.contains("{}"), "SQL 里还留着未替换的占位符");
         assert!(s.ends_with("LIMIT 5"), "播报上限丢了");
+        // P-551：免费促销不免种子定价，播报必须把定价一起带出去
+        assert!(s.contains("t.price"), "cards 没带种子定价");
     }
 
     /// 可见性走唯一口径：待审/被拒/暂缓种不得进广播（上传期就会自动挂促销）

@@ -195,11 +195,16 @@ pub(crate) async fn shoutbox_bot_exec(
         "/stats" => {
             // 三数与首页站点数据同源（P-509）：旧写法把被拒/回收站种也算进
             // 「站点现状」，会员在喊话盒看到 200 个种子，同刻 /stats 写 168。
+            // P-553：用户数也要同源——首页在册数走名录单点 member_visible，
+            // 旧写法 `status < 2` 把停用/归档/墓碑号一起报成「位用户」。
+            let vis = crate::repo::community::user_directory::member_visible(
+                "u",
+            );
             let (users, torrents, seeding): (i64, i64, i64) = sqlx::query_as(
-                "SELECT (SELECT count(*) FROM users WHERE status < 2), \
+                &format!("SELECT (SELECT count(*) FROM users u WHERE {vis}), \
                         (SELECT count(*) FROM torrents \
                          WHERE approval_status = 1), \
-                        (SELECT count(*) FROM snatches WHERE seeding)",
+                        (SELECT count(*) FROM snatches WHERE seeding)"),
             )
             .fetch_one(&state.repo.db)
             .await
