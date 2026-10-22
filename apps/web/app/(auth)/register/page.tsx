@@ -62,6 +62,9 @@ export default function RegisterPage() {
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   // 自定义字段（0186）：站长标记 show_on_register 的字段动态渲染
   const [regFields, setRegFields] = useState<RegField[]>([]);
+  // P-618：字段清单取数失败曾被演成「本站没有自定义字段」——
+  // 必填字段消失后注册必被后端拒绝，会员却找不到该填哪里
+  const [fieldsFailed, setFieldsFailed] = useState(false);
   const [fieldVals, setFieldVals] = useState<Record<string, unknown>>({});
   const [captcha, setCaptcha] = useState<Captcha | null>(null);
   // W-18：字段级错误 map（字段名 → 消息）；表单级错误降级为 form 键
@@ -113,10 +116,14 @@ export default function RegisterPage() {
     refreshCaptcha();
     fetch("/api/v1/register-fields")
       .then((r) => r.json())
-      .then((b: { data?: typeof regFields }) =>
-        setRegFields(b?.data ?? []),
-      )
-      .catch(() => setRegFields([]));
+      .then((b: { data?: typeof regFields }) => {
+        setRegFields(b?.data ?? []);
+        setFieldsFailed(false);
+      })
+      .catch(() => {
+        setRegFields([]);
+        setFieldsFailed(true);
+      });
     // 注册模式与后端 registration_mode 同步（open 下邀请码非必填）
     api
       .get<ModeInfo>("/api/v1/register-mode")
@@ -279,6 +286,7 @@ export default function RegisterPage() {
           fields={regFields}
           values={fieldVals}
           onChange={setFieldVals}
+          failedLabel={fieldsFailed ? dict.common.loadFailed : null}
         />
       </form>
       <div className="auth-card__links">

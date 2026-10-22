@@ -16,13 +16,21 @@ export function RegisterFields({
   fields,
   values,
   onChange,
+  failedLabel,
 }: {
   fields: RegField[];
   values: Record<string, unknown>;
   onChange: (p: Record<string, unknown>) => void;
+  /** P-618：字段清单取数失败时的提示；null = 正常（含真实空清单） */
+  failedLabel?: string | null;
 }) {
   return (
     <>
+      {failedLabel && (
+        <p role="alert" className="text-sm text-danger">
+          {failedLabel}
+        </p>
+      )}
       {fields.map((f) => (
         <label key={f.key} className="flex flex-col gap-1">
           <span className="text-sm text-sub">
