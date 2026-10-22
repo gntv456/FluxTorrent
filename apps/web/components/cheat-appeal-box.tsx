@@ -25,6 +25,8 @@ export function CheatAppealBox() {
   const { dict } = useI18n();
   const t = dict.cheaterbox;
   const [rows, setRows] = useState<MyAppeal[] | null>(null);
+  // P-614：取数失败曾被演成「暂无申诉记录」——会员会以为自己的申诉没了
+  const [failed, setFailed] = useState(false);
   const [loggedIn, setLoggedIn] = useState(true);
   const [token, setToken] = useState("");
   const [body, setBody] = useState("");
@@ -37,8 +39,12 @@ export function CheatAppealBox() {
       .get<MyAppeal[]>("/api/v1/my/cheat-appeals")
       .then(setRows)
       .catch((e) => {
-        if (e instanceof ApiError && e.code === 2001) setLoggedIn(false);
+        if (e instanceof ApiError && e.code === 2001) {
+          setLoggedIn(false);
+          return;
+        }
         setRows([]);
+        setFailed(true);
       });
   }, []);
 
@@ -131,10 +137,15 @@ export function CheatAppealBox() {
         <div className="flex flex-col gap-2 border-t border-line pt-3">
           <h3 className="font-display text-base">{t.myAppealTitle}</h3>
           {rows === null && <p className="text-sm text-sub">…</p>}
-          {rows?.length === 0 && (
+          {failed && (
+            <p role="alert" className="text-sm text-sub">
+              {dict.common.loadFailed}
+            </p>
+          )}
+          {!failed && rows?.length === 0 && (
             <p className="text-sm text-sub">{t.myAppealEmpty}</p>
           )}
-          {rows && rows.length > 0 && (
+          {!failed && rows && rows.length > 0 && (
             <ul className="flex flex-col divide-y divide-line">
               {rows.map((r) => (
                 <li key={r.id} className="py-2">
