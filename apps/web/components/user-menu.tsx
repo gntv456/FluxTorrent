@@ -92,9 +92,9 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
     const es = new EventSource("/api/v1/me/messages/stream");
     es.addEventListener("unread", (ev) => {
       try {
-        const n = (JSON.parse((ev as MessageEvent).data) as SseUnread)
-          .count;
-        if (n !== undefined && me) setMe({ ...me, unread_messages: n });
+        const n = (JSON.parse((ev as MessageEvent).data) as SseUnread).count;
+        if (n === undefined) return;
+        setMe((m) => (m ? { ...m, unread_messages: n } : m));
       } catch {
         /* 帧体异常：忽略本帧 */
       }
