@@ -57,6 +57,46 @@ export function useTorrentActions(opts: {
   return { reseed, askDel, delDialog };
 }
 
+/** catKinds 为空而 fSec 仍有值 = 切分类后 section-dict 取数失败
+ *  （成功加载的空分类会先把 fSec 清洗成空）——见 P-620。 */
+function hasSecValues(fSec: Record<string, string>): boolean {
+  return Object.values(fSec).some((v) => v !== "");
+}
+
+/** 多维属性编码：枚举发整数（旧格式，后端零改动兼容）、多选发
+ *  {"dict_ids":[…]}、自由值发 {"text":…} 等；后端按值的 JSON 类型分派。 */
+function buildSections(
+  catKinds: SectionKindMeta[],
+  fSec: Record<string, string>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of catKinds) {
+    const v = fSec[k.kind] ?? "";
+    if (!v) continue;
+    const type = k.field_type ?? "select";
+    if (type === "select") {
+      const n = Number(v);
+      if (n > 0) out[k.kind] = n;
+    } else if (type === "multiselect") {
+      const ids = v
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => n > 0);
+      if (ids.length > 0) out[k.kind] = { dict_ids: ids };
+    } else if (type === "number") {
+      const n = Number(v);
+      if (!Number.isNaN(n)) out[k.kind] = { number: n };
+    } else if (type === "bool") {
+      out[k.kind] = { bool: v === "true" };
+    } else if (type === "date") {
+      out[k.kind] = { date: v };
+    } else {
+      out[k.kind] = { text: v };
+    }
+  }
+  return out;
+}
+
 /** 编辑提交载荷（0184 从 torrent-manage.tsx 拆出）：PUT /torrents/{id} body */
 export function buildEditPayload(x: {
   fName: string;
@@ -97,34 +137,11 @@ export function buildEditPayload(x: {
     // 多维属性（B2 六类型）：按 field_type 编码 —— 枚举发整数（旧格式，
     // 后端零改动兼容）、多选发 {"dict_ids":[…]}、自由值发 {"text":…} 等；
     // 后端按**值的 JSON 类型**分派。
-    sections: (() => {
-      const out: Record<string, unknown> = {};
-      for (const k of x.catKinds) {
-        const v = x.fSec[k.kind] ?? "";
-        if (!v) continue;
-        const type = k.field_type ?? "select";
-        if (type === "select") {
-          const n = Number(v);
-          if (n > 0) out[k.kind] = n;
-        } else if (type === "multiselect") {
-          const ids = v
-            .split(",")
-            .map((s) => Number(s.trim()))
-            .filter((n) => n > 0);
-          if (ids.length > 0) out[k.kind] = { dict_ids: ids };
-        } else if (type === "number") {
-          const n = Number(v);
-          if (!Number.isNaN(n)) out[k.kind] = { number: n };
-        } else if (type === "bool") {
-          out[k.kind] = { bool: v === "true" };
-        } else if (type === "date") {
-          out[k.kind] = { date: v };
-        } else {
-          out[k.kind] = { text: v };
-        }
-      }
-      return out;
-    })(),
+    // P-620：元数据缺失而旧值还在时不能发 sections:{} —— 后端把 Some({})
+    // 当「整组重建」，会把该种已有维度全部清空（切分类取数失败即触发）。
+    ...(x.catKinds.length === 0 && hasSecValues(x.fSec)
+      ? {}
+      : { sections: buildSections(x.catKinds, x.fSec) }),
     // 标签整组提交（official 类保留不动：前端只编辑普通标签，
     // 后端 DELETE+apply 会把 official 一并清掉，所以这里带上原 official 集）
     tag_ids: [
