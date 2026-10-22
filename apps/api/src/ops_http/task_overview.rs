@@ -38,7 +38,7 @@ pub(super) async fn task_overview(
     // 最新动态（领取流）
     let feed: Vec<(String, String, chrono::DateTime<chrono::Utc>)> =
         sqlx::query_as(
-            "SELECT u.username, t.name, now() FROM task_claims c \
+            "SELECT u.username, t.name, c.claimed_at FROM task_claims c \
          JOIN users u ON u.id = c.user_id JOIN tasks t ON t.id = c.task_id \
          ORDER BY c.id DESC LIMIT 10",
         )

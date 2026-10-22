@@ -52,7 +52,7 @@ def psql(q):
          "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:200])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:200])
     return (r.stdout or "").strip()
 
 
@@ -228,5 +228,13 @@ print("   [台账] 现网 tier 为空却配了 download_delta 的任务：%s 条
       "（0395 后按增量判定，不再有白拿窗口）" % cnt)
 ok("DG7 判定键集合未漂移（TaskMetric 仍 6 键，新增键须同步本闸门）",
    len(KEYS) == 6, "实测 %d：%s" % (len(KEYS), "、".join(KEYS)))
+
+# ---------- DG8 任务动态时间必须是领取时刻，不是请求时刻 ----------
+# P-578（现网实测）：投影写 now() ⇒ 12 天前的领取在「最新动态」里
+# 也显示成刚刚发生，时间列等于没有。
+claim_src = cut(CLAIM)
+ok("DG8 任务动态投影领取时刻（不是请求时刻 now()）",
+   "t.name, c.claimed_at" in claim_src and "t.name, now()" not in claim_src,
+   "投影里仍是 now()：历史领取会被显示成当前时间")
 
 summary()
