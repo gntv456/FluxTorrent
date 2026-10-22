@@ -17,7 +17,10 @@
   JC2 出厂值对质：现网值 == 某支闸门的探针值 且 != 该键最后一次迁移写入值
       ⇒ 判红并点名（谁写的、出厂该是多少）；
   JC3 无主键：`site_settings` 里 descr='probe'（探针插入时用的标记）的行
-      必须为零——闸门该用 ON CONFLICT 复原而不是留新行。
+      必须为零——闸门该用 ON CONFLICT 复原而不是留新行；
+  JC4 投递能力一致性：配了 smtp_host/smtp_port 就必须在 API 所在位置真连得上，
+      且 `mail_outbox` 里不许烂着超 30 分钟的未发行。豁免那两把邮件键之后，
+      这条才是真正要盯的不变式（站长可以选诱捕信箱，但"配了发不出去"不行）。
 
 正控（承重自证，改完必撤）：
   python scripts/pt_audit_jc_probe_leak.py --selftest
@@ -81,8 +84,14 @@ def probe_pairs():
 WHITELIST = {
     # 与 enable_hr / hr_violation_limit 同一批（2026-09-25 13:26）由站型包/
     # 演示铺数写入，且 0148 之后没有任何闸门运行时间戳落在它们身上。
-    "subtitle_workflow": "09-25 与站型包同批写入，待站长确认（非闸门时间戳）",
+    "subtitle_workflow": "09-25 与站型包同批写入（站长 10-22 确认：站型意图）",
     "subtitle_award": "同上",
+    # 站长 10-22 拍板：演示站的投递目标是 compose 网内的审计诱捕信箱
+    # （flux-audit-smtp-sink:2525，encryption=none）。这两把键于是**不该**回到
+    # 迁移出厂值（465/ssl 会把链路指回一个不存在的服务）。真正要盯的是
+    # 「配置与投递能力一致」⇒ 见 JC4。
+    "smtp_port": "演示站走内网诱捕信箱（站长 10-22 拍板），出厂 465 不适用",
+    "encryption": "同上：诱捕信箱不加密，出厂 ssl 会把链路指回不可达服务",
 }
 
 
@@ -173,6 +182,38 @@ probe_rows = psql("SELECT count(*) FROM site_settings "
                   "WHERE descr = 'probe'")
 ok("JC3 site_settings 里不许留 descr='probe' 的行（闸门该复原不该留新行）",
    probe_rows == "0", "残留 %s 行" % probe_rows)
+
+# ── JC4 配置与投递能力一致（本轮邮件事故的真正不变式）──────
+# 现网 smtp_host 曾指向一个已被删掉的诱捕容器 ⇒ 出信全挂在 DNS 上，
+# 10-21 那封「您的种子未通过自动审核」在 mail_outbox 里重试到 5 次变死信。
+# 豁免掉那两把键之后，这条才是真正该盯住的：值合不合理由站长发，
+# 「配了就要发得出去、发不出去不许烂在队列里」由本条盯。
+host, port = live.get("smtp_host", ""), live.get("smtp_port", "")
+if host and port:
+    r = subprocess.run(
+        ["docker", "exec", "flux-api", "sh", "-c",
+         "wget -T 3 -O /dev/null http://%s:%s/ 2>&1 | head -1" % (host, port)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    txt = ((r.stdout or "") + (r.stderr or "")).lower()
+    conn_ok = ("connection refused" not in txt and "bad address" not in txt
+               and "unable to connect" not in txt and "cannot assign" not in txt)
+    where = "API 容器内"
+elif host:
+    conn_ok, txt, where = True, "（smtp_port 缺省，按 ssl/tls 推）", "API 容器内"
+else:
+    conn_ok, txt, where = True, "SMTP 未配置（待命是合法态）", "-"
+pend = psql("SELECT count(*) FROM mail_outbox WHERE sent_at IS NULL")
+stale = psql("SELECT count(*) FROM mail_outbox WHERE sent_at IS NULL "
+             "AND created_at < now() - interval '30 minutes'")
+dead = psql("SELECT count(*) FROM mail_outbox WHERE sent_at IS NULL "
+            "AND attempts >= 5")
+print("   [投递能力] smtp=%s:%s 连通判读=%s（%s）；队列 未发=%s 超30分=%s 死信=%s"
+      % (host or "-", port or "-", conn_ok, txt.strip()[:60] or where,
+         pend, stale, dead))
+ok("JC4 配了 SMTP 就得发得出去，且队列里不许烂着超 30 分钟的未发行",
+   conn_ok and stale == "0",
+   "连通=%s 滞留=%s 死信=%s（死信只能靠 staffmessages 告警+人工恢复，"
+   "无 requeue 出口＝待站长裁）" % (conn_ok, stale, dead))
 
 # ── 自测：正控必须能红，且必须还原 ────────────────────────
 if "--selftest" in sys.argv:
