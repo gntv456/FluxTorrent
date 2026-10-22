@@ -108,7 +108,9 @@ pub(crate) async fn decide_one(
     crate::torrent_http::invalidate_tdetail_cache(state, torrent_id).await;
     // 0075 连击 +1/被拒清零；0077 deny_count 累计（P2-1 过审清零）；
     // 0355 信用分独立累积：+1（上限 5）/ -2（下限 0）。
-    let _ = sqlx::query(
+    // P-587：失败必须出声——publish_credits 是免审线判据（upload_credits），
+    // 静默吞掉会让「连过五审」的人永远拿不到免审，且日志里毫无线索。
+    if let Err(e) = sqlx::query(
         "UPDATE users u SET approve_streak = CASE WHEN $2 THEN \
          u.approve_streak + 1 ELSE 0 END, \
          deny_count = CASE WHEN $2 THEN 0 ELSE u.deny_count + 1 END, \
@@ -119,7 +121,14 @@ pub(crate) async fn decide_one(
     .bind(torrent_id)
     .bind(approve)
     .execute(db)
-    .await;
+    .await
+    {
+        tracing::warn!(
+            %e,
+            torrent = torrent_id,
+            "审核计数/信用分更新失败（裁决已落库）"
+        );
+    }
     // 过审副作用（自动促销 + 组/厂牌/字幕组订阅推送）：单条与批量共用
     if approve {
         crate::admin_http::review_side_effects::apply_approval_side_effects(
