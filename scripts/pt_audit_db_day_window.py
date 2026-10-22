@@ -150,7 +150,8 @@ def psql(q):
     # 加上它才能让 SQL 语法错误变成响亮的失败而不是安静的空值
     r = subprocess.run(
         ["docker", "exec", "-i", "flux-postgres",
-         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-v", "ON_ERROR_STOP=1", "-tA", "-f", "-"],
+         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-v",
+          "ON_ERROR_STOP=1", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0 or "ERROR" in (r.stderr or ""):
         raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:170])

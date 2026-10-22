@@ -46,7 +46,8 @@ PROBE_USER = 4348         # e2e_probe_retired：status=4、无 HR 历史 ⇒ 计
 PROBE_TORRENT = 40
 SUBJ = u"H&R 违规已消除"
 PSQL = ["docker", "exec", "-i", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v",
+         "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 # 「有控件/能写能回显」的地方不算读者（与死开关台账同一把尺）
 FORM = re.compile(

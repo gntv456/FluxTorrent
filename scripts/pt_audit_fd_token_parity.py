@@ -92,7 +92,8 @@ def json_dumps(obj):
 def psql(q):
     r = subprocess.run(
         ["docker", "exec", "-i", "flux-postgres",
-         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-c", q],
+         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v",
+          "ON_ERROR_STOP=1", "-c", q],
         capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0 or "ERROR" in (r.stderr or ""):
         raise RuntimeError("psql 失败：" +

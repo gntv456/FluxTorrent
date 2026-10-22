@@ -39,7 +39,8 @@ RS = "apps/api/src/ops_http/resurrections.rs"
 TM = "apps/api/src/social_http/team.rs"
 FIX = "b73c81e6"
 PSQL = ["docker", "exec", "-i", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v",
+         "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 ANCHOR = "SELECT t.id AS torrent_id"
 STATUS_OLD = "AND r.status = 'open'"

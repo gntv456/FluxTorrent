@@ -433,7 +433,8 @@ print("\n== DA15 我的发布：分桶与总数自洽（3 档谁都不可见，�
 # 若哪天出现 4 档（回收站/暂缓）在册，这条同样会红，逼出「分桶缺一名」的
 # 那个待裁项（见任务 #6 ④），不是误伤。
 for who, tk in (("root", ROOT), ("探针会员", MT)):
-    dlt = data(call("GET", "/me/torrentlist?kind=uploads&per=1", token=tk)) or {}
+    dlt = data(call("GET", "/me/torrentlist?kind=uploads&per=1",
+                    token=tk)) or {}
     slt = dlt.get("stats") or {}
     tot15 = int(dlt.get("total") or 0)
     sum15 = sum(int(slt.get(k) or 0) for k in ("pending", "approved", "denied"))

@@ -84,7 +84,8 @@ def strip_comments(t):
 def psql(sql):
     p = subprocess.run(
         ["docker", "exec", "-i", "flux-postgres",
-         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-f", "-"],
+         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v",
+          "ON_ERROR_STOP=1", "-f", "-"],
         input=sql, capture_output=True, text=True, encoding="utf-8",
         errors="replace", cwd=ROOT)
     if p.returncode != 0:

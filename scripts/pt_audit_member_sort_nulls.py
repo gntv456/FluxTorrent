@@ -43,7 +43,8 @@ VISIBLE = ("u.status < 2 AND NOT u.parked AND NOT u.archived "
            "AND u.username NOT LIKE 'deleted-%'")
 OLD_ORD = "DESC"          # PG 缺省 = DESC NULLS FIRST
 PSQL = ["docker", "exec", "-i", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v",
+         "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 
 
