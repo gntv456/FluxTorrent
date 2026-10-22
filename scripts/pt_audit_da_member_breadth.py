@@ -365,6 +365,36 @@ ok("DA12b 正控：契约检查确实能认出「没传键」的形状（拿一�
    not web_sends("/api/v1/zz-not-a-route", "whatever") and web_sends(
        "/forums/search", "q"), "判据本身要能红也能绿")
 
+print("\n== DA13 匿名准入：会员身份数据口不许对访客开门 ==")
+# 成文口径在 `apps/web/middleware.ts`：「站点准入（PT 惯例）：未登录只放行
+# 登录页与静态资源，其余一律 302 → /login」。页面侧有这条，API 侧当时没有：
+# 批二百五十匿名扫 321 条 GET 抓到 5 条对访客回真数据的口（P-518/521/522/523）。
+# 对照口一起钉，防这把尺把自己跑成全站红（/subtitles 是刻意 optional-auth，
+# 见 content_http/subtitles_list.rs 的 P-46/P-47 注释，不在必拒清单里）。
+MUST_DENY = ["/preserve", "/pool/honor", "/offers", "/medal-wall",
+             "/resurrections"]
+MUST_OPEN = ["/health", "/register-mode", "/auth/captcha", "/about"]
+amap = {p: (st, b) for p, st, b in ANON}
+
+
+def anon_pair(p):
+    st, b = amap.get(p, (None, None))
+    return st, (b or {}).get("code") if isinstance(b, dict) else None
+
+
+absent = [p for p in MUST_DENY if p not in amap]
+leaks = [p for p in MUST_DENY
+         if p not in absent and anon_pair(p) != (401, 2001)]
+ok("DA13 会员身份数据口匿名一律 401/2001（违例 %d）" % len(leaks),
+   not leaks and not absent,
+   "还开着的=%s 没扫到=%s（现网旧镜像必红：P-518/521/522/523 等重建）"
+   % ("、".join("%s=%s" % (p, anon_pair(p)) for p in leaks),
+      "、".join(absent)))
+openers = [p for p in MUST_OPEN if anon_pair(p)[0] != 200]
+ok("DA13b 正控：该公开的对照口不许被同一把尺误伤（违例 %d）" % len(openers),
+   not openers, "非 200 的=%s" % "、".join(
+       "%s=%s" % (p, anon_pair(p)) for p in openers))
+
 print("\n== 状态分布（成员 / 匿名）==")
 for label, rows in (("成员", MINE), ("匿名", ANON)):
     d = {}

@@ -68,9 +68,14 @@ struct MedalWallEntryRich {
 /// 会让每行都背一遍用户名，且「用户名命中→整人进墙」的搜索语义用 OR 谓词更直白。
 #[get("/medal-wall")]
 pub async fn medal_wall(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<MedalWallQuery>,
 ) -> DomainResult<impl Responder> {
+    // P-523：勋章墙匿名可读 ⇒ 会员用户名 + 他拿到哪些勋章 + 颁发时间整份
+    // 铺给访客（这面墙只挂在会员导航，public 页表里没有它）。
+    // 与 pool_honor / offer_list 同批补门（P-521/P-522）。
+    let _auth = crate::http::require_auth(&req, &state).await?;
     // 搜索语义：q 命中用户名 → 该用户全部勋章都进墙；只命中勋章名 → 只进那几枚。
     // 一条 OR 谓词即两义齐备，无需先查用户再回表。
     // 三段 WHERE 只从「有无关键字」二选一，值不拼接（关键字走 $1 绑定）——format! 仅作模板拼装。

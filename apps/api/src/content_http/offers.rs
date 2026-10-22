@@ -34,8 +34,15 @@ pub(super) async fn offer_create(
 
 #[get("/offers")]
 pub(super) async fn offer_list(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    // P-522：供种板匿名可读 ⇒ 会员用户名 + 他要供哪一枚种一起漏给访客
+    // （`repo/offers.rs:61` 那圈 LEFT JOIN 不带 approval 过滤，待审/被驳回的
+    // 种名也在里面）；同文件的投票与认领腿都走 require_auth，
+    // 这块板面只挂在会员导航里。补门与 pool_honor/medal_wall 同批
+    // （P-521/P-523）。
+    let _auth = require_auth(&req, &state).await?;
     let rows = crate::repo::offers::list_offers(&state.repo)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

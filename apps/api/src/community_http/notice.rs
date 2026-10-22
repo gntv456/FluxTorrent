@@ -110,8 +110,14 @@ pub(crate) async fn notice_prefs_set(
         (status = 401, description = "会话未登录（code 2001）")))]
 #[get("/pool/honor")]
 pub(crate) async fn pool_honor(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
+    // P-521：这一口的 utoipa 契约自己声明了 `401 会话未登录（code 2001）`,
+    // 代码里却一次登录都不验——匿名直接取到 50 名会员的
+    // id/用户名/捐赠标记/本月与累计捐池火花。站点准入见 web/middleware.ts
+    // 「未登录只放行登录页与静态资源」，荣誉榜也只挂在会员侧导航里。
+    let _auth = require_auth(&req, &state).await?;
     // SUM() 出来是 NUMERIC：query_as 元组按 i64 解码会 22P02 类 500，显式 cast
     let rows: Vec<(i64, String, bool, i64, i64)> = sqlx::query_as(
         "SELECT id, username, donor, this_month::bigint, \
