@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
@@ -26,11 +26,15 @@ export function UserFieldsTab() {
   const { dict } = useI18n();
   const t = dict.usercp.fields;
   const [defs, setDefs] = useState<FieldDef[] | null>(null);
+  // P-617：取数失败曾被演成「暂无可填写字段」——会员会以为自己站点的
+  // 自定义字段被删光了。failed 只换那一句文案，真实空列表仍走 t.empty。
+  const [failed, setFailed] = useState(false);
   const [vals, setVals] = useState<Record<string, unknown>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setFailed(false);
     api
       .get<FieldDef[]>("/api/v1/me/fields")
       .then((rows) => {
@@ -39,11 +43,26 @@ export function UserFieldsTab() {
         for (const d of rows) init[d.key] = d.value ?? null;
         setVals(init);
       })
-      .catch(() => setDefs([]));
+      .catch(() => {
+        setDefs([]);
+        setFailed(true);
+      });
   }, []);
+  useEffect(load, [load]);
 
   if (defs === null)
     return <p className="py-4 text-sm text-sub">{dict.my.loading}</p>;
+  if (failed)
+    return (
+      <div className="flex flex-col items-start gap-2 py-4">
+        <p role="alert" className="text-sm text-sub">
+          {dict.common.loadFailed}
+        </p>
+        <button type="button" className="brand-button" onClick={load}>
+          {dict.common.retry}
+        </button>
+      </div>
+    );
   if (defs.length === 0)
     return (
       <p className="py-4 text-sm text-sub">{t.empty}</p>
