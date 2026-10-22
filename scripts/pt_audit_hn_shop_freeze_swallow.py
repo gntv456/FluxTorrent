@@ -47,7 +47,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from pt_audit_lib import ok, summary  # noqa: E402
+from pt_audit_lib import call, login, ok, summary  # noqa: E402
 
 LIVE = os.environ.get("HN_LIVE", "1") != "0"
 REPO_SHOP = "apps/api/src/repo/shop.rs"
@@ -133,5 +133,43 @@ if LIVE:
        int(n_shop) > len(got), "shop 键流水=%s 违例=%s" % (n_shop, len(got)))
 else:
     print("[HN3/HN3b] HN_LIVE=0 跳过活体两条")
+
+print("== HN5/HN6 面板 Top 消耗只认钱货两清的订单（P-541）==")
+DSH = rd("apps/api/src/economy_http/dashboard.rs")
+seg = DSH[DSH.find("top_sku"):][:900]
+ok("HN5 静态：top_sku 查询带 fulfill_state='done'",
+   "AND o.fulfill_state = 'done'" in seg, "该段 fulfill_state 命中=%d"
+   % seg.count("fulfill_state"))
+if LIVE:
+    TOK = login("root")
+    ITEM = int(psql("INSERT INTO shop_items (name, kind, price, config,"
+                    " active) VALUES ('HN探针面板卡', 'gift_spark', 500, "
+                    "'{\"spark\": 10}'::jsonb, true) RETURNING id"
+                    ).split("\n")[0])
+
+    def ex(sql):
+        psql(sql)
+
+    ex("INSERT INTO shop_orders (user_id, item_id, price, idempotency_key,"
+       " fulfill_state) VALUES (1, %d, 500, 'hn6-done', 'done'), (1, %d, "
+       "999999, 'hn6-ref', 'refunded'), (1, %d, 888888, 'hn6-frz', 'frozen')"
+       % (ITEM, ITEM, ITEM))
+    st, body = call("GET", "/admin/economy-dashboard", token=TOK)
+    rows = ((body or {}).get("data") or {}).get("top_sku_30d") or []
+    mine = [x for x in rows if x.get("name") == "HN探针面板卡"]
+    ok("HN6 面板不把 refunded/frozen 两笔（1,888,887）算进近 30 天消耗"
+       "（旧行为＝orders=3/spent=1889387）",
+       st == 200 and len(mine) == 1 and mine[0].get("orders") == 1
+       and mine[0].get("spent") == 500,
+       "http=%s 命中=%s 全表=%s" % (st, mine,
+                                    sum(x.get("orders", 0) for x in rows)))
+    ex("DELETE FROM shop_orders WHERE idempotency_key LIKE 'hn6-%'")
+    ex("DELETE FROM shop_items WHERE id = %d" % ITEM)
+    resid = psql("SELECT count(*) FROM shop_orders WHERE idempotency_key"
+                 " LIKE 'hn6-%'")
+    print("   [cleanup] hn6 残料 订单=%s SKU=%s" % (
+        resid.split("\n")[0],
+        psql("SELECT count(*) FROM shop_items WHERE name = 'HN探针面板卡'"
+             ).split("\n")[0]))
 
 summary()

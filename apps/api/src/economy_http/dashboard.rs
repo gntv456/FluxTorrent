@@ -62,11 +62,15 @@ pub(super) async fn economy_dashboard(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 近 30 天 Top 消耗 SKU（shop_orders 按商品聚合）
+    // P-541：只认钱货两清的订单行。旧写法把 frozen（钱还冻着没扣）与
+    // refunded（钱已退回）一起算进「消耗」，反通胀面板据此以为阀门在收钱，
+    // 于是把 economy_max_buffer_gb 往松里调——读数会推着阀门做错方向。
     let top_sku: Vec<(String, i64, i64)> = sqlx::query_as(
         "SELECT si.name, COUNT(o.id)::bigint, \
              COALESCE(SUM(o.price), 0)::bigint \
          FROM shop_orders o JOIN shop_items si ON si.id = o.item_id \
          WHERE o.created_at > now() - interval '30 days' \
+         AND o.fulfill_state = 'done' \
          GROUP BY si.name \
          ORDER BY SUM(o.price) DESC LIMIT 10",
     )
