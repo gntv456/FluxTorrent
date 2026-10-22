@@ -56,7 +56,22 @@ fn parse_effect(
         "voucher_free" | "voucher_neutral" => {
             Effect::Voucher(voucher_kind(config, kind))
         }
-        _ => Effect::Backpack,
+        // P-539：「效果就是这条订单行」的只有补签两类（核销口真在读
+        // shop_orders × kind）。其余 kind 的效果由生效链
+        // （crates/flux-shared::apply_item_effect）执行，本口没有对应腿——
+        // 旧写法 `_ => Effect::Backpack` 于是赠 VIP 卡/装扮/头衔只往
+        // shop_orders 插一条 0 价行、fulfill_state 落默认值 done，接口回
+        // 200 而会员状态一点没动＝账面「已发货」的空单（现网实测
+        // vip_until 不变）。新增 kind 只加进生效链而忘了这里，也从这里
+        // 拒出来，而不是静默发空单。
+        "makeup_card" | "resub_card" => Effect::Backpack,
+        _ => {
+            return Err(DomainError::Validation(format!(
+                "后台赠予口暂不支持「{kind}」：它的效果要走商城生效链，本口只\
+                 会插一条订单行＝发个空单。请让会员自购，或走对应的调账口\
+                 （时长/装扮见用户详情，火花走调账）。"
+            )));
+        }
     })
 }
 
