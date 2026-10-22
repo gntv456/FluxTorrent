@@ -26,12 +26,20 @@ export function BigsmallRoadPage() {
   const t = dict.games.bigsmall as Record<string, string>;
   const sub = dict.games.sub;
   const [rows, setRows] = useState<RoundRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     void api
       .get<RoundRow[]>("/api/v1/games/rounds?game=bigsmall&limit=50")
-      .then(setRows)
-      .catch(() => setRows([]));
+      .then((r) => {
+        setRows(r);
+        setFailed(false);
+      })
+      // 失败演成空路单 + 全零走势，会员会以为自己的对局没上账
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      });
   }, []);
 
   const stats = useMemo(() => {
@@ -85,7 +93,7 @@ export function BigsmallRoadPage() {
       </section>
 
       {/* 走势统计 */}
-      {stats && (
+      {stats && !failed && (
         <div className="sw-stat-row">
           <div className="sw-stat">
             <div className="sw-stat-lb">{sub.statPlays}</div>
@@ -111,6 +119,8 @@ export function BigsmallRoadPage() {
         <h2 className="mb-3 font-display text-base">{t.roadRecent}</h2>
         {rows === null ? (
           <p className="text-sm text-sub">…</p>
+        ) : failed ? (
+          <p className="text-sm text-warn">{dict.common.loadFailed}</p>
         ) : rows.length === 0 ? (
           <p className="text-sm text-sub">{sub.empty}</p>
         ) : (
