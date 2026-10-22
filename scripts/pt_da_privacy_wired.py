@@ -126,6 +126,35 @@ try:
                                         body.get("info"),
                                         body.get("inviter_name")))
 
+    # P-575：造一条「已下架种 + 评论者本人的评论」夹具，验证主页评论动态
+    # 是否越过种子可见性（旧口径按 user_id 直取）。
+    cat = psql("SELECT id FROM categories LIMIT 1")
+    htid = psql(
+        "INSERT INTO torrents (info_hash,name,category_id,size,owner_id,"
+        "approval_status) VALUES (md5('da-hide-%d'),'DA隐藏种',%s,1,%s,3) "
+        "RETURNING id" % (TAG, cat, TID))
+    ok("DA1d0 P-575 夹具落库（已下架种 id=%s）" % htid, bool(htid))
+    if htid:
+        psql("INSERT INTO comments (torrent_id,user_id,body) VALUES "
+             "(%s,%s,'DAHIDE%d')" % (htid, TID, TAG))
+        CLEAN.append("DELETE FROM comments WHERE torrent_id = %s" % htid)
+        CLEAN.append("DELETE FROM torrents WHERE id = %s" % htid)
+
+    def recent_bodies(tok):
+        d = (call("GET", "/users/%s" % TID, None, token=tok)[1].get("data")
+             or {})
+        return [c.get("body") for c in (d.get("recent_comments") or [])]
+
+    hmark = "DAHIDE%d" % TAG
+    seen_v = recent_bodies(VT)
+    ok("DA1e P-575：已下架种上的评论不得从评论者主页下发（成员看到=%s）"
+       % seen_v, hmark not in seen_v)
+    psql("UPDATE torrents SET approval_status = 1 WHERE id = %s" % htid)
+    seen_on = recent_bodies(VT)
+    ok("DA1f 对照：同一条评论在种子上架后必须出现（防止一律空表）",
+       hmark in seen_on, "看到=%s" % seen_on)
+    psql("UPDATE torrents SET approval_status = 3 WHERE id = %s" % htid)
+
     # ===== DA1 遮蔽本体（修前必红）=====
     s1, b1 = call("GET", "/users/%s" % TID, None, token=VT)
     d1 = (b1 or {}).get("data") or {}
@@ -228,6 +257,11 @@ try:
     ok("DA7e P-573：apply 必须同步清嵌套 profile.signature（"
        "get_mut(profile)=%d 处、insert(signature)=%d 处）" % (nest, ins),
        nest == 1 and ins == 1)
+    ph = code("auth_http/profile_helpers.rs")
+    direct = pr.count("FROM comments WHERE user_id")
+    vis = ph.count("visibility_sql(Some(viewer))")
+    ok("DA7f P-575：评论动态必须按观看者可见性过滤（profile.rs 直取=%d、"
+       "helper visibility_sql=%d）" % (direct, vis), direct == 0 and vis == 1)
 finally:
     # ===== DA8 收尾 =====
     for stmt in CLEAN:

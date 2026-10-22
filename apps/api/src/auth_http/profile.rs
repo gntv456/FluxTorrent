@@ -7,7 +7,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 
-use super::profile_types::{PublicProfile, RecentComment, RecentUpload};
+use super::profile_types::{PublicProfile, RecentUpload};
 use crate::state::AppState;
 
 #[get("/users/{id}")]
@@ -261,14 +261,12 @@ pub async fn user_public_profile(
     .fetch_all(&state.repo.read_db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let recent_comments: Vec<RecentComment> = sqlx::query_as(
-        "SELECT torrent_id, body, \
-         created_at FROM comments WHERE user_id = $1 ORDER BY id DESC LIMIT 10",
+    let recent_comments = super::profile_helpers::recent_comments_of(
+        &state.repo.read_db,
+        uid,
+        (auth.id, auth.class_id >= 90),
     )
-    .bind(uid)
-    .fetch_all(&state.repo.read_db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    .await;
     // 字幕作品摘要（0146 P2-2：数量 + 下载总数 + 署名；匿名上传不计入公开归属）
     let sub_stats: Option<(i64, i64)> = sqlx::query_as(
         "SELECT count(*), COALESCE(sum(downloads), 0)::bigint FROM \

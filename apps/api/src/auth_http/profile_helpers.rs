@@ -1,5 +1,7 @@
 //! 公开主页查询 helpers（从 profile.rs 拆出，300 行门禁）。
 
+use super::profile_types::RecentComment;
+
 /// 近期回帖的取数行型：(post_id, topic_id, 话题标题, forum_id, 版块名,
 /// 回复数, 发帖时间)。出参是 JSON，行型只在这一处用，得显式写出来。
 type PostRow = (
@@ -26,6 +28,30 @@ pub(super) async fn subtitle_cert_tier(
     .fetch_optional(db)
     .await
     .unwrap_or(None)
+}
+
+/// 近期评论（主页动态块）：只取**观看者可见**种子上的评论。
+///
+/// P-575：旧版只按 `user_id` 过滤，种子被下架（approval_status=3）
+/// 后评论正文仍从主页下发——普通成员看不到种子详情，却能在评论者
+/// 主页读到那条评论。论坛回帖块早已按读者等级过滤，这里补同一道尺。
+/// 失败容忍 → 空表（主页不该因一块动态取不到而整页 500）。
+pub(super) async fn recent_comments_of(
+    db: &sqlx::PgPool,
+    uid: i64,
+    viewer: (i64, bool),
+) -> Vec<RecentComment> {
+    let vis = crate::torrents::visibility_sql(Some(viewer));
+    let sql = format!(
+        "SELECT c.torrent_id, c.body, c.created_at FROM comments c \
+         JOIN torrents t ON t.id = c.torrent_id \
+         WHERE c.user_id = $1 AND {vis} ORDER BY c.id DESC LIMIT 10"
+    );
+    sqlx::query_as(&sql)
+        .bind(uid)
+        .fetch_all(db)
+        .await
+        .unwrap_or_default()
 }
 
 /// 近期论坛回帖（主页动态块），出口直接给语义字段名。
