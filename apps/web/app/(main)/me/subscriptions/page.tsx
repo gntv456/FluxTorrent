@@ -128,7 +128,7 @@ export default async function SubscriptionsPage({
                     <li key={r.group_id} data-group-id={r.group_id}>
                       <div className={ROW_CLS}>
                         <Link
-                          href={`/torrents?group=${r.group_id}`}
+                          href={`/works/g${r.group_id}`}
                           className="min-w-0 flex-1 truncate font-bold"
                         >
                           {r.name}

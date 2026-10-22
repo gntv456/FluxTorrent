@@ -16,6 +16,9 @@
      （Asia/Shanghai）格式化——DB 会话时区是 UTC，直接 to_char 会把
      00:00-08:00（北京）的更新标到前一天；本例 144 枚近 14 天过审种里
      有 29 枚会被标错。判据含静态正控 + 摘掉时区的合成旧码。
+  7. P-582：订阅页的组名必须链到 `/works/g<id>`（作品详情）。
+     旧链 `/torrents?group=` 的参数列表页与后端都不读——点进去是全站
+     列表。判据同时钉正向路由与旧参数缺席。
 """
 import io
 import json
@@ -43,6 +46,11 @@ def tz_ok(src):
             and "to_char(max(t.approved_at)," not in flat)
 
 
+def link_ok(src):
+    return ("/works/g${r.group_id}" in src
+            and "torrents?group=" not in src)
+
+
 def psql(sql):
     r = subprocess.run(PG + [sql], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
@@ -61,6 +69,15 @@ def main():
     ok("承重：摘掉两处时区转换的合成旧码被抓",
        not tz_ok(old_src),
        "旧码里 Asia/Shanghai 命中=%d" % old_src.count("Asia/Shanghai"))
+    web = io.open(os.path.join(
+        ROOT, "apps/web/app/(main)/me/subscriptions/page.tsx"),
+        encoding="utf-8").read()
+    ok("订阅页组名链到能显示该组的路由（/works/g<id>）", link_ok(web),
+       "旧链 /torrents?group= 在列表页与后端都没人读")
+    ok("承重：改回 /torrents?group= 的合成旧码被抓",
+       not link_ok(web.replace("/works/g${r.group_id}",
+                               "/torrents?group=${r.group_id}")),
+       "旧链接必须不满足正控")
     tok = login()
     orig_type = psql("SELECT value FROM site_settings WHERE name='site_type'")
     psql("DELETE FROM torrents WHERE name LIKE 'Audit.Cal%'")
