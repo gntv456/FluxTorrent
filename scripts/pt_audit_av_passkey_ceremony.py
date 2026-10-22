@@ -97,6 +97,13 @@ def b64u(b):
     return base64.urlsafe_b64encode(b).decode().rstrip("=")
 
 
+ORIGIN = os.environ.get("PUBLIC_SITE_URL") or "http://localhost:3000"
+
+
+def cd_of(typ, chal):
+    return json.dumps({"type": typ, "challenge": chal, "origin": ORIGIN})
+
+
 def new_cred():
     """一把 P-256 密钥，同时给出两种公钥编码：
     - SPKI DER：浏览器 `getPublicKey()` 交回来的形态（本闸门主用，
@@ -141,7 +148,7 @@ def reg_bind(token, priv, pub, cred_id, rp, step_up=None):
         body = {"label": "AV%d" % TAG, **step_up}
     s, r = call("POST", "/auth/passkeys/begin", body, token=token)
     chal = (r.get("data") or {}).get("challenge") or ""
-    cd = json.dumps({"type": "webauthn.create", "challenge": chal})
+    cd = cd_of("webauthn.create", chal)
     return s, call("POST", "/auth/passkeys/finish", {
         "cred_id": cred_id, "public_key": b64u(pub),
         "client_data_json": b64u(cd.encode()),
@@ -164,8 +171,7 @@ def pk_login(username, priv, cred_id, rp, count=2, uv=True, raw=False):
     """走一遍登录仪式，返回 (begin 状态, begin 数据, finish 状态, 响应)。"""
     s0, d = begin_login(username)
     ad = authdata(rp, uv=uv, count=count)
-    cd = json.dumps({"type": "webauthn.get",
-                     "challenge": d.get("challenge") or ""})
+    cd = cd_of("webauthn.get", d.get("challenge") or "")
     msg = ad + hashlib.sha256(cd.encode()).digest()
     sig = priv.sign(msg, ec.ECDSA(ch.SHA256())) if priv else b""
     if sig and raw:
@@ -235,7 +241,7 @@ VNAME, VID, VTOK = mkuser("avv")
 ANAME, AID, ATOK = mkuser("ava")
 _, d0 = begin_login(VNAME)
 RP = d0.get("rp_id") or "127.0.0.1"
-print("   rpId=%s（服务端从 announce_url 推，闸门照它造 authData）" % RP)
+print("   rpId=%s（站点对外地址的 host，P-114；闸门照它造 authData）" % RP)
 
 print("== S1 地基：绑定自己的 passkey 并用它登录 ==")
 vpriv, vsec1, vspki = new_cred()
@@ -328,8 +334,7 @@ ok("S5 计数器回退（重放旧值）必须被这条判据本身拒掉，而�
 
 print("== S6 UV 位强制不退 ==")
 _, d6 = begin_login(VNAME)
-cd6 = json.dumps({"type": "webauthn.get",
-                  "challenge": d6.get("challenge") or ""})
+cd6 = cd_of("webauthn.get", d6.get("challenge") or "")
 ad6 = authdata(RP, uv=False, count=300)
 sig6 = vpriv.sign(ad6 + hashlib.sha256(cd6.encode()).digest(),
                   ec.ECDSA(ch.SHA256()))
@@ -385,7 +390,7 @@ if CH_STEAL:
     # 用它登录」这一步不被自己的前一轮拖成 429 假象。
     clear_rl("rl:pklogin*")
     sk, _, pk = new_cred()
-    cd = json.dumps({"type": "webauthn.create", "challenge": CH_STEAL})
+    cd = cd_of("webauthn.create", CH_STEAL)
     s_ff, r_ff = call("POST", "/auth/passkeys/finish", {
         "cred_id": STOLEN, "public_key": b64u(pk),
         "client_data_json": b64u(cd.encode()),
@@ -414,10 +419,9 @@ ok("S8 正控：密码 + 当前验证码 = 正常动线照走（step-up 不是�
    "%s %s" % (s_okb, brief(r_okb)))
 s_fin, r_fin = call("POST", "/auth/passkeys/finish", {
     "cred_id": "av-legit-%d" % TAG, "public_key": b64u(pk2),
-    "client_data_json": b64u(json.dumps({
-        "type": "webauthn.create",
-        "challenge": (r_okb.get("data") or {}).get("challenge") or ""
-    }).encode()),
+    "client_data_json": b64u(cd_of(
+        "webauthn.create",
+        (r_okb.get("data") or {}).get("challenge") or "").encode()),
     "auth_data": b64u(authdata(RP)), "sign_count": 1}, token=VTOK)
 got = psql("SELECT user_id FROM user_passkeys WHERE cred_id = "
            "'av-legit-%d'" % TAG)
@@ -438,9 +442,8 @@ ok("S8 begin 也要有档（连发 6 次错密码必须出现 429；红线：全
 NOKEY = "av-nocred-%d" % TAG
 s_no, r_no = call("POST", "/auth/passkeys/finish", {
     "cred_id": NOKEY, "public_key": b64u(new_cred()[2]),
-    "client_data_json": b64u(json.dumps(
-        {"type": "webauthn.create", "challenge": "forged-by-attacker"}
-    ).encode()),
+    "client_data_json": b64u(cd_of(
+        "webauthn.create", "forged-by-attacker").encode()),
     "auth_data": b64u(authdata(RP)), "sign_count": 1}, token=VTOK)
 ok("S8 跳过 begin 直接 finish 必须被拒，且库里不落凭证（challenge 是唯一"
    "入口：begin 不放行这条链就走不完）",

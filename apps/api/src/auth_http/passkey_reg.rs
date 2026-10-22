@@ -7,7 +7,7 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use super::passkey_util::{
-    b64url, rp_id, rp_id_hash, store_challenge, take_challenge,
+    b64url, origin_allowed, rp_id, rp_id_hash, store_challenge, take_challenge,
 };
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -146,6 +146,16 @@ pub(super) async fn passkey_finish(
     if cd.get("type").and_then(|v| v.as_str()) != Some("webauthn.create") {
         return Err(DomainError::Validation(
             "clientData 类型不符（期望 webauthn.create）".into(),
+        ));
+    }
+    // P-566：注册同样要钉断言来源（与登录侧同一把闸、同一份信任集合）。
+    let origin = cd
+        .get("origin")
+        .and_then(|v| v.as_str())
+        .ok_or(DomainError::Validation("clientData 缺少 origin".into()))?;
+    if !origin_allowed(&req, origin) {
+        return Err(DomainError::Validation(
+            "来源不符：passkey 只接受本站页面的断言".into(),
         ));
     }
     if cd.get("challenge").and_then(|v| v.as_str()) != Some(challenge) {

@@ -91,3 +91,55 @@ pub(super) fn rp_id(req: &HttpRequest) -> String {
     }
     "localhost".into()
 }
+
+/// 来源归一：`scheme://authority`，协议与主机小写、去路径与尾斜杠。
+/// 非 http(s)（含 `null`）一律归空——沙箱 iframe 与自定义协议都不该
+/// 出现在 passkey 的 clientDataJSON 里。
+fn normalize_origin(raw: &str) -> String {
+    let s = raw.trim();
+    let Some((scheme, rest)) = s.split_once("://") else {
+        return String::new();
+    };
+    let scheme = scheme.to_ascii_lowercase();
+    if scheme != "http" && scheme != "https" {
+        return String::new();
+    }
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    if authority.is_empty() {
+        return String::new();
+    }
+    format!("{}://{}", scheme, authority.to_ascii_lowercase())
+}
+
+/// WebAuthn L2 要求 RP 校验 `clientDataJSON.origin`：断言必须由**自家
+/// 页面**发起。rpId 只保证「同一注册域」，同域下的兄弟子域（用户空间、
+/// 被接管的 CDN 子域）拿到的断言也带合法签名——不看 origin 就等于把
+/// passkey 借给整个注册域用。
+///
+/// 信任集合 = PUBLIC_SITE_URL / PUBLIC_WEB_URL / CORS_ORIGINS（运营方
+/// 声明的自家前端来源）；都没配时退回请求同源判定（本机开发）。
+pub(super) fn origin_allowed(req: &HttpRequest, raw: &str) -> bool {
+    let origin = normalize_origin(raw);
+    if origin.is_empty() {
+        return false;
+    }
+    let mut configured: Vec<String> = ["PUBLIC_SITE_URL", "PUBLIC_WEB_URL"]
+        .iter()
+        .filter_map(|k| std::env::var(k).ok())
+        .collect();
+    configured.extend(
+        std::env::var("CORS_ORIGINS")
+            .unwrap_or_default()
+            .split(',')
+            .map(str::to_string),
+    );
+    let allowed: Vec<String> = configured
+        .iter()
+        .map(|o| normalize_origin(o))
+        .filter(|o| !o.is_empty())
+        .collect();
+    if !allowed.is_empty() {
+        return allowed.iter().any(|o| o == &origin);
+    }
+    super::origin_matches(req, &origin)
+}

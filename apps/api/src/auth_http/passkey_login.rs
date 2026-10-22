@@ -9,7 +9,8 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use super::passkey_util::{
-    b64url, flags, rp_id, rp_id_hash, store_challenge, take_challenge,
+    b64url, flags, origin_allowed, rp_id, rp_id_hash, store_challenge,
+    take_challenge,
 };
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -116,6 +117,17 @@ pub(super) async fn passkey_login_finish(
     if cd.get("type").and_then(|v| v.as_str()) != Some("webauthn.get") {
         return Err(DomainError::Validation(
             "clientData 类型不符（期望 webauthn.get）".into(),
+        ));
+    }
+    // P-566：rpId 只圈到注册域，同域兄弟子域也能拿到合法签名——断言来源
+    // 必须钉到自家页面。校验放在取 challenge 之前：来源不对不烧掉会话。
+    let origin = cd
+        .get("origin")
+        .and_then(|v| v.as_str())
+        .ok_or(DomainError::Validation("clientData 缺少 origin".into()))?;
+    if !origin_allowed(&req, origin) {
+        return Err(DomainError::Validation(
+            "来源不符：passkey 只接受本站页面的断言".into(),
         ));
     }
     let uid_str = take_challenge(&state, format!("pklogin:{}", challenge))
