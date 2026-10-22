@@ -158,7 +158,7 @@ export default function MySparksPage() {
           <input
             type="date"
             value={to}
-            max={from || undefined}
+            min={from || undefined}
             onChange={(e) => {
               setTo(e.target.value);
               setPage(1);
