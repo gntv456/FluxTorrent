@@ -22,6 +22,7 @@ export function SessionsCard() {
   const t = dict.security2fa; // 复用安全页文案段
   const s = dict.sessions;
   const [rows, setRows] = useState<SessionRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   // P2 清偿：踢出其它会话二次确认（danger：其它设备立即失效）
@@ -30,8 +31,14 @@ export function SessionsCard() {
   useEffect(() => {
     api
       .get<SessionRow[]>("/api/v1/me/sessions")
-      .then(setRows)
-      .catch(() => setRows([]));
+      .then((d) => {
+        setRows(d);
+        setFailed(false);
+      })
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      });
   }, []);
 
   const revokeOthers = async () => {
@@ -47,6 +54,9 @@ export function SessionsCard() {
   };
 
   if (rows === null) return <span className="text-sub">…</span>;
+  // 取不到会话列表不等于「没有会话」：空态会被读成账号干净
+  if (failed)
+    return <p className="text-xs text-warn">{dict.common.loadFailed}</p>;
   return (
     <div className="flex flex-col gap-2 p-3 text-sm">
       {rows.length === 0 && <span className="text-sub">{s.empty}</span>}

@@ -18,15 +18,25 @@ export function LoginHistory() {
   const { dict, locale } = useI18n();
   const t = dict.usercp.security;
   const [rows, setRows] = useState<LoginEvent[] | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     api
       .get<LoginEvent[]>("/api/v1/me/logins")
-      .then(setRows)
-      .catch(() => setRows([]));
+      .then((d) => {
+        setRows(d);
+        setFailed(false);
+      })
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      });
   }, []);
 
   if (rows === null) return <p className="text-xs text-sub">…</p>;
+  // 取不到历史不等于「没有登录记录」：空态会被读成没有可疑登录
+  if (failed)
+    return <p className="text-xs text-warn">{dict.common.loadFailed}</p>;
   if (rows.length === 0)
     return <p className="text-xs text-sub">{t.loginsEmpty}</p>;
   const reasonLabel = (r: number, ok: boolean) => {
