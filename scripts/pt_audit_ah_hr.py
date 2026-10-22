@@ -36,6 +36,11 @@ def q(sql_text):
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-q",
          "-d", "fluxtorrent", "-tAc", sql_text],
         capture_output=True, text=True, encoding="utf-8")
+    # psql 出错时 stdout 是空串、退出码非 0。静默返回空串会让判据变成
+    # "rows="（看着像「查到了 0 条」），其实根本没查成——
+    # 这里把 stderr 打出来，判据红时能一眼看出是 SQL 写错还是数据不对。
+    if p.returncode:
+        print("   [psql-err] %s" % (p.stderr or "").strip()[:200])
     return p.stdout.strip()
 
 
@@ -142,14 +147,36 @@ CLEAN.append("__restore_settings__")
 # hr_days=1/hr_hours=1/cancel_hr=100/lookback=72 一直留在现网）。
 SIG = {"hr_days": "1", "hr_hours": "1", "cancel_hr": "100",
        "hr_scan_lookback_hours": "72"}
+FACTORY = {"hr_days": "14", "hr_hours": "120", "cancel_hr": "10000",
+           "hr_scan_lookback_hours": "6"}  # 0311/0025/0278/0270
 if all(ORIG.get(k) == v for k, v in SIG.items()):
-    print("   [WARN] H&R 设置与本闸门探针值完全一致，疑似上次崩溃残留；"
-          "本轮会把它当原值复原，请人工核对迁移默认值")
+    # 只 WARN 不算修好：现网因此连着几周按 hr_days=1 判违规。四把同时撞上
+    # 才判污染（单把相等可能真是站长选的），改按迁移出厂值复原。
+    ORIG.update(FACTORY)
+    print("   [复原基线] 读到的是本闸门探针签名 ⇒ 按迁移出厂值复原：%s"
+          % FACTORY)
 LEFTOVER = q("SELECT count(*) FROM users WHERE username LIKE 'ahm%' "
              "AND status < 2")
 if LEFTOVER not in ("", "0"):
     print("   [WARN] 更早的 AH 运行留下 %s 个未墓碑探针号（可能仍被 hr 锁住）"
           % LEFTOVER)
+    # 只 WARN 不清 = 下一轮被毒害：复用的 ahm 号带着上次的未解决违规，
+    # 「2/3 未达阈值不下停下载」的反控会红在残留上（2026-10-22 实测：
+    # 首跑 300s 超时被 SIGTERM → 次跑 G4 反控 FAIL，enabled=false）。
+    # 按 G7d 同一条产品墓碑路径收：封禁 → DELETE → 清账 → 清违规/阶梯态。
+    for uid in q("SELECT id FROM users WHERE username LIKE 'ahm%' "
+                 "AND status < 2").split():
+        if not uid.strip():
+            continue
+        call("POST", "/admin/users/status",
+             {"user_id": int(uid), "status": 2}, ROOT)
+        call("DELETE", "/admin/users/%s" % uid, None, token=ROOT)
+        exec_sql("DELETE FROM spark_ledger WHERE user_id = %s" % uid)
+        exec_sql("DELETE FROM traffic_ledger WHERE user_id = %s" % uid)
+        exec_sql("DELETE FROM hr_warn_states WHERE user_id = %s" % uid)
+        exec_sql("DELETE FROM hr_violations WHERE user_id = %s" % uid)
+        exec_sql("DELETE FROM hr_snapshots WHERE user_id = %s" % uid)
+    print("   [清理] 残留探针号已按产品墓碑路径收走")
 # 站点侧参数（快照与处罚都按这三档走）
 setting("hr_days", "1")
 setting("hr_hours", "1")
@@ -335,9 +362,14 @@ jok, jres = run_job("hr_punish")
 row = q("SELECT download_enabled::text||'|'||COALESCE(download_locked_by,'-') "
         "FROM users WHERE id = %d" % MID)
 ok("G4 超限 → 停下载并记归因 hr", row == "false|hr", "row=%s" % row)
+# 停下载有两条告知路径：① 违规超限处罚（"下载权限暂停：H&R 违规超限"）；
+# ② 警告阶梯第 2 档起自带限下（"H&R 警告（第 N 档）"，正文写明「已暂停：
+# 下载」）。探针凑够三条违规时，阶梯往往**先一步**把下载关掉，处罚口看到
+# download_enabled 已经是 false 就不再重复发信 ⇒ 只认处罚信会假红。
 pm = q("SELECT count(*) FROM messages WHERE receiver_id = %d "
-       "AND subject = '下载权限暂停：H&R 违规超限'" % MID)
-ok("G4 停下载说明信到达", pm == "1", "rows=%s" % pm)
+       "AND (subject = '下载权限暂停：H&R 违规超限' "
+       "OR subject LIKE 'H&R 警告（第 %%')" % MID)
+ok("G4 停下载有站内信告知（处罚信或阶梯警告信）", pm >= "1", "rows=%s" % pm)
 s, r = call("GET", "/me/hr", token=MTOK)
 ok("G4 停下载后本人读口仍可用（不 500）", s == 200, "http=%s" % s)
 
@@ -359,11 +391,59 @@ s2, r2 = call("POST", "/me/hr/pardon", {"torrent_id": T3}, token=MTOK)
 bal2 = q("SELECT spark_balance::text FROM users WHERE id = %d" % MID)
 ok("G5 重放被拒且不退款/不再扣（幂等）",
    s2 != 200 and bal2 == bal, "http=%s balance=%s" % (s2, bal2))
-# pardon 掉 T3 后只剩 T1/T2 两条未解决违规（2 < 阈值 3）→ 下一轮应自动恢复
+# pardon 掉 T3 后只剩 T1/T2 两条未解决违规（2 < 阈值 3）→ 阈值这条线该放人
+#
+# 但**阶梯限下在位时不能放**：P-445 明确「阶梯第 2 档起的『限下』有自己的
+# expires_at」，restore_hr_locks 遇到 hr_warn_states.step>0 且
+# restrict_download 时**故意不放人**（否则 14/30 天的锁会被一分钟抹掉）。
+# 这条承诺也写在停下载通知里：「违规数降回阈值以下后下载权限将自动恢复
+#（若处于 H&R 警告限制期，则待警告到期后再解）」。
+#
+# 原判据只写「降回阈值 → 自动恢复」，没排除阶梯在位 ⇒ 实测假红
+#（2026-10-20：worker 日志显示阶梯已推进，restore 被 P-445 挡住；
+#  隔离复现：阶梯在位 → 不恢复；阶梯状态清掉 → 恢复）。
+# 这里把两段拆开判：阶梯在位 → 保持关闭（阶梯期限不被抹掉）；
+# 阶梯状态清掉（模拟到期）→ 下一轮必须恢复（阈值路径单独承重）。
+# 阶梯状态**自己钉**，不靠抢时序：阶梯作业（hr_warn_ladder，每 5 分钟一轮）
+# 会随时把探针重新推到限下档，两种写法都会踩竞态——
+#   ① 作业前读状态：阶梯还没推进 → 读成「不在位」（首轮实测就是假红）；
+#   ② 作业后读状态：定时阶梯作业正好在读之前跑过 → 读成「在位」但
+#      那一刻其实还没限下（同样假红）。
+# 所以：① 段自己把阶梯钉成限下在位；② 段自己把阶梯清干净，
+# 若中途又被定时阶梯作业推回限下（可观测：状态行又长回来了），
+# 再清一次重跑，最多 4 轮（阶梯 5 分钟一轮，4 轮内必有一次干净窗口）。
+LADDER_ON_SQL = (
+    "INSERT INTO hr_warn_states (user_id, step, base_days, expires_at,"
+    " restrict_download, block_upload, block_invite) "
+    "VALUES (%d, 2, 7, now() + interval '14 days', true, false, false) "
+    "ON CONFLICT (user_id) DO UPDATE SET step=2, "
+    " expires_at=now() + interval '14 days', restrict_download=true, "
+    " block_upload=false, block_invite=false" % MID)
+LADDER_OFF_SQL = (
+    "UPDATE hr_warn_states SET step=0, expires_at=NULL, "
+    " restrict_download=false, block_upload=false, block_invite=false "
+    "WHERE user_id = %d" % MID)
+exec_sql(LADDER_ON_SQL)
 jok, jres = run_job("hr_punish")
 de = q("SELECT download_enabled::text FROM users WHERE id = %d" % MID)
-ok("G5 违规降回阈值 → 下载权限自动恢复", de == "true",
-   "enabled=%s %s" % (de, jres))
+warn = q("SELECT COALESCE(step::text,'-')||'|'||"
+          "COALESCE(restrict_download::text,'f') FROM hr_warn_states"
+          " WHERE user_id = %d" % MID)
+ok("G5a 阶梯限下在位 → 阈值恢复被挡住（P-445：阶梯期限不被抹掉）",
+   de == "false", "enabled=%s warn=%s %s" % (de, warn, jres))
+restored = False
+detail = ""
+for _try in range(4):
+    exec_sql(LADDER_OFF_SQL)
+    jok, jres = run_job("hr_punish")
+    de = q("SELECT download_enabled::text FROM users WHERE id = %d" % MID)
+    detail = "enabled=%s %s" % (de, jres)
+    if de == "true":
+        restored = True
+        break
+    time.sleep(3)
+ok("G5b 阶梯状态清掉（模拟到期）→ 下载权限自动恢复",
+   restored, detail)
 
 print("== G6 假开关反向：enable_hr=no 整段冻结 ==")
 exec_sql("DELETE FROM hr_snapshots WHERE user_id = %d" % MID)
@@ -417,6 +497,10 @@ if MID:
     call("DELETE", "/admin/users/%d" % MID, None, token=ROOT)
     exec_sql("DELETE FROM spark_ledger WHERE user_id = %d" % MID)
     exec_sql("DELETE FROM traffic_ledger WHERE user_id = %d" % MID)
+    # 阶梯状态行也要收：它挂在探针号上会长期留在 hr_warn_states 里
+    #（现网实测：49 行里 41 行属于已墓碑的探针号），
+    # 还会挡住「同一探针能生成邀请码」这类以 hr_warn_states 为前提的判据。
+    exec_sql("DELETE FROM hr_warn_states WHERE user_id = %d" % MID)
 ok("G7d 探针成员已走产品墓碑（status>=2 且 passkey 变 deleted-*；余额被 "
    "user_purge 冲平属收尾留痕，不是本闸门的账）",
    q("SELECT count(*) FROM users WHERE id = %d AND status >= 2 AND "
