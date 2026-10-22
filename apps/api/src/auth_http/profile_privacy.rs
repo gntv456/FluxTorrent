@@ -94,6 +94,13 @@ fn apply(body: &mut serde_json::Value, hide: bool) {
         };
         map.insert(key.to_string(), blank);
     }
+    // P-573：`profile` 子对象里还序列化了一份 signature（PublicProfile），
+    // 只清顶层时强隐私档在 data.profile.signature 照旧把签名档发出去。
+    if let Some(p) = map.get_mut("profile").and_then(|p| p.as_object_mut()) {
+        if p.contains_key("signature") {
+            p.insert("signature".into(), serde_json::Value::Null);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -118,6 +125,7 @@ mod tests {
             "client_agent": "qBittorrent/4.6", "inviter_id": 7,
             "inviter_name": "someone", "user_fields": [{"k": 1}],
             "username": "tom", "spark_balance": 12,
+            "profile": {"id": 7, "username": "tom", "signature": "签名"},
         });
         let before = body.clone();
         apply(&mut body, false);
@@ -131,6 +139,9 @@ mod tests {
                 assert!(v.is_null(), "{key} 必须 null");
             }
         }
+        // P-573：嵌套 profile 里那份签名也是同一份个人信息
+        assert!(body["profile"]["signature"].is_null(), "profile.signature");
+        assert_eq!(body["profile"]["username"], "tom", "嵌套公开列不许误伤");
         assert_eq!(body["username"], "tom", "公开身份列不许被误伤");
         assert_eq!(body["spark_balance"], 12, "统计列不许被误伤");
     }

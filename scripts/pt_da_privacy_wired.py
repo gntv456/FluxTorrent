@@ -147,6 +147,13 @@ try:
        d1.get("upload_speed") is None
        and d1.get("download_speed") is None)
 
+    # P-573：响应里 profile 子对象还带一份 signature（现网红证：顶层 null
+    # 而 data.profile.signature 仍是明文）。
+    nested_sig = (d1.get("profile") or {}).get("signature")
+    ok("DA1d P-573：嵌套 profile.signature 也必须 null（实测 %r）——"
+       "只遮顶层时普通成员照样拿到签名档" % nested_sig,
+       d1.get("signature") is None and nested_sig is None)
+
     # ===== DA2 反向：normal 不许被一起藏掉 =====
     psql("UPDATE users SET privacy='normal' WHERE id=%s" % TID)
     d2 = (call("GET", "/users/%s" % TID, None, token=VT)[1].get("data") or {})
@@ -215,6 +222,12 @@ try:
     reg = code("auth_http/mod.rs").count("mod profile_privacy")
     ok("DA7d 承载文件必须在 mod 注册（没注册就编译不进来）：%d 处" % reg,
        reg == 1)
+    # P-573：单测与 DA1d 之外再加一道静态钉——防止有人「优化」掉嵌套遮蔽。
+    nest = hv.count('map.get_mut("profile")')
+    ins = hv.count('p.insert("signature"')
+    ok("DA7e P-573：apply 必须同步清嵌套 profile.signature（"
+       "get_mut(profile)=%d 处、insert(signature)=%d 处）" % (nest, ins),
+       nest == 1 and ins == 1)
 finally:
     # ===== DA8 收尾 =====
     for stmt in CLEAN:
