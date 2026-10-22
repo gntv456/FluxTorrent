@@ -475,4 +475,17 @@ ok("S7c2 累计量不许被删：四类总量 %s 不得低于开闸时的 %s"
    % (sum(_n4.values()), sum(BASE["audit4"].values())),
    sum(_n4.values()) >= sum(BASE["audit4"].values()),
    "现值=%s" % sum(_n4.values()))
+# ---- S8 后台用户详情的「发布数」不含 3 档软删种（P-544）----
+_s8 = int(psql("SELECT owner_id FROM torrents WHERE approval_status = 3 "
+               "GROUP BY owner_id ORDER BY count(*) DESC LIMIT 1"))
+_s8all = int(cnt("torrents", "owner_id = %d" % _s8))
+_s8vis = int(cnt("torrents", "owner_id = %d AND "
+                 "approval_status <> 3" % _s8))
+ok("S8 前置：该用户名下确有「谁都不可读」的软删种（%d 行里 %d 行是 3 档）"
+   % (_s8all, _s8all - _s8vis), _s8all > _s8vis, "uid=%d" % _s8)
+_d8 = data(get("/admin/users/%d" % _s8))
+ok("S8 用户详情 uploads == 排除 3 档后的行数（软删种的治理面在 /admin/torrents）",
+   _d8.get("uploads") == _s8vis,
+   "api=%s 应为=%s 全量=%s" % (_d8.get("uploads"), _s8vis, _s8all))
+
 summary()

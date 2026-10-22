@@ -67,7 +67,9 @@ async fn user_admin_detail(
                   u.invited_by, i.username AS inviter_name, u.created_at, u.last_seen_at,
                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.seeding) AS seeding,
                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
-                  (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id) AS uploads,
+                  -- P-544：发布数不数 3 档软删种——visibility_sql 里 approval=3
+                  -- 「谁都不可读」，算进贡献会让后台虚报（现网有人 9 个种全软删）
+                  (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status <> 3) AS uploads,
                   (SELECT count(*) FROM invites v WHERE v.inviter_id = u.id AND v.status = 0) AS invites_unused,
                   (SELECT count(*) FROM comments cm WHERE cm.user_id = u.id) AS comments,
                   (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS downloaded_count,
