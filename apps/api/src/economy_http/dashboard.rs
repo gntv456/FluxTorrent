@@ -41,12 +41,16 @@ pub(super) async fn economy_dashboard(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 站免池存量 + 全站持币 + 活跃用户（30 天登录）人均
+    // P-535：SUM(bigint) 的结果类型是 NUMERIC，不写 ::bigint 时 sqlx 解 i64
+    // 必失败，而旧的 unwrap_or(0) 把「查不动」演成「池子是空的」——响应
+    // 仍是 200/code=0，站长据此以为站免池没粮。（同段 total_spark 有 cast，
+    // 这一行漏了。）
     let pool: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(SUM(amount), 0) FROM pool_donations",
+        "SELECT COALESCE(SUM(amount), 0)::bigint FROM pool_donations",
     )
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let (total_spark, holders, active30): (i64, i64, i64) = sqlx::query_as(
         "SELECT COALESCE(SUM(spark_balance), 0)::bigint, \
              COUNT(*)::bigint, \
@@ -70,13 +74,16 @@ pub(super) async fn economy_dashboard(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 阀门现值（0 = 未启用）
+    // P-535 同族：unwrap_or(0.0) 会让「查不动」冒充「阀门没开」，而这两个
+    // 语义在运营上是反的。空串是后台清空该键的正常形态（NULLIF 折成 0），
+    // 真正的库错误必须出声。
     let cap_gb: f64 = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings \
-         WHERE name = 'economy_max_buffer_gb')::float8, 0)",
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'economy_max_buffer_gb'), '')::float8, 0)",
     )
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0.0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "weeks": weeks.iter().map(|(w, m, b, n)| serde_json::json!({
             "week": w, "minted": m, "burned": b, "net": n,

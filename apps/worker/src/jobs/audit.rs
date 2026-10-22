@@ -69,7 +69,7 @@ pub async fn cheat_audit(db: &PgPool) -> anyhow::Result<u64> {
     // promotion_kind：free=1 x2free=3（promotion_kind_enum 标签序，见 promo_audit.rs）
     let rows: Vec<(i64, i64)> = sqlx::query_as(
         r#"
-        SELECT torrent_id, SUM(delta_up) - SUM(delta_down) AS gap
+        SELECT torrent_id, (SUM(delta_up) - SUM(delta_down))::bigint AS gap
         FROM traffic_ledger
         WHERE window_start > now() - interval '7 days'
           AND COALESCE(promotion_kind, 0) NOT IN (1, 3)
