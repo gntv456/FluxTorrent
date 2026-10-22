@@ -8,7 +8,9 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { expect, it } from "vitest";
+import { en } from "../i18n/en";
 import { zhCN } from "../i18n/zh-CN";
+import { zhTW } from "../i18n/zh-TW";
 
 function walk(node: unknown, prefix: string, out: Record<string, string>) {
   if (typeof node === "string") {
@@ -31,12 +33,21 @@ it("导出 {magic} 文案表并守住基数", () => {
   }
   expect(Object.keys(flat).length).toBeGreaterThan(2000);
   expect(Object.keys(magic).length).toBeGreaterThan(50);
-  // 两本一起导：{magic} 那一族只是「占位符没喂值」的一个特例，
-  // audit_placeholder_fill.py 要拿整本叶子去比每个 fmt(...) 的实参键集。
+  // 三本一起导：{magic} 那一族只是「占位符没喂值」的一个特例，
+  // audit_placeholder_fill.py 要拿整本叶子比实参键集；而 audit_lang_cjk.py
+  // 拿 en 的**值**找「英文界面夹中文」——键集对齐由 tsc（`en: Dict`）保证，
+  // 值没翻过就不是类型能管的事了。
+  const enFlat: Record<string, string> = {};
+  walk(en, "", enFlat);
+  expect(Object.keys(enFlat).length).toBeGreaterThan(2000);
   writeFileSync(
     // 落到仓库根：`.gitignore` 里 `/_*.json` 是「跑完即弃」的调试产物位
     path.resolve(__dirname, "../../../_tmp_dict_leaves.json"),
-    JSON.stringify({ total: Object.keys(flat).length, magic, flat }, null, 0),
+    JSON.stringify(
+      { total: Object.keys(flat).length, magic, flat, en: enFlat },
+      null,
+      0,
+    ),
     "utf-8",
   );
 });
