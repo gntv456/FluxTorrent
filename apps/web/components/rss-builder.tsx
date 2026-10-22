@@ -34,10 +34,11 @@ const SHOWROWS = [10, 50, 100, 200];
 
 /** 获取 RSS 页（同类站 getrss.php 复刻）：
  *  检索分类（分类/媒介多选）+ 官种 + 付费 + 标题格式 + 每页条数 + 关键字 → 生成带 passkey 的订阅链接 */
-export function RssBuilder({ loginToView }: { loginToView: string }) {
+export function RssBuilder() {
   const { dict, currency } = useI18n();
   const t = dict.getrss;
   const [info, setInfo] = useState<RssInfo | null>(null);
+  const [failed, setFailed] = useState(false);
   const [cats, setCats] = useState<number[]>([]);
   const [media, setMedia] = useState<number[]>([]);
   const [official, setOfficial] = useState(false);
@@ -63,8 +64,15 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
   useEffect(() => {
     api
       .get<RssInfo>("/api/v1/rss-info")
-      .then(setInfo)
-      .catch(() => setInfo(null));
+      .then((v) => {
+        setInfo(v);
+        setFailed(false);
+      })
+      // 未登录会由 api-client 按 2001 跳登录；其余失败不能演成「请先登录」
+      .catch(() => {
+        setInfo(null);
+        setFailed(true);
+      });
     api
       .get<ProfileCats>("/api/v1/site-profile")
       .then(setProfile)
@@ -125,7 +133,13 @@ export function RssBuilder({ loginToView }: { loginToView: string }) {
     }
   }
 
-  if (!info) return <p className="text-xs text-sub">{loginToView}</p>;
+  if (!info) {
+    return (
+      <p className="text-xs text-sub">
+        {failed ? dict.common.loadFailed : dict.common.loading}
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
