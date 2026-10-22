@@ -231,6 +231,7 @@ export function ShopCatalog({
                     : null
                 }
                 balance={bal}
+                gift={it.kind === "gift_spark"}
                 onBought={() => markBought(it, it.price)}
               />
             )}

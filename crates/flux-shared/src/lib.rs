@@ -345,10 +345,23 @@ pub async fn apply_item_effect(
             if sparks > 0 {
                 let item_id =
                     config.get("item_id").and_then(|v| v.as_i64()).unwrap_or(0);
-                let idem = format!(
-                    "shop-gift:{user_id}:{item_id}:{}",
-                    chrono::Utc::now().timestamp()
-                );
+                // 幂等键优先取**购买单键**（shop:{buyer}:{key}，每次购买唯一）。
+                // 旧写法只用「接收人+商品+秒级时间戳」：两个买家同一秒赠同
+                // 一人会产生同键，后一笔被 earn_spark 幂等**静默吞掉**
+                // （买家付了钱、接收方凭空少收——2026-10-22 审计实证）。
+                // 传入 gift_idem 后同时获得「按购买单幂等」：同单重试/补发
+                // 不会给接收方双倍入账。
+                let idem = config
+                    .get("gift_idem")
+                    .and_then(|v| v.as_str())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| format!("shop-gift:{s}"))
+                    .unwrap_or_else(|| {
+                        format!(
+                            "shop-gift:{user_id}:{item_id}:{}",
+                            chrono::Utc::now().timestamp()
+                        )
+                    });
                 earn_spark(db, user_id, sparks, "shop", &idem).await?;
             }
         }
@@ -402,6 +415,9 @@ fn pool_month(t: chrono::DateTime<chrono::Utc>) -> String {
 /// 自动审种·规则内核（0400）：api（裁决出口/回放）与 worker（取件评估）
 /// 共用的纯函数评估器。裁决同尺纪律见模块头。
 pub mod auto_review;
+
+/// 每日火花流水结算凭证（Merkle）：worker 封存与 api 出证明共用。
+pub mod merkle;
 
 /// 金标准回归集（§18.3，≥60 例数据表）：仅测试用，不出 lib 面。
 #[cfg(test)]

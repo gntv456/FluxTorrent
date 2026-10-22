@@ -13,6 +13,8 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(shop_buy)
         .service(my_spark)
         .service(my_ledger)
+        .service(my_ledger_manifest)
+        .service(ledger_roots)
         .service(my_orders)
         .service(bank_deposit)
         .service(bank_withdraw)
@@ -49,6 +51,7 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
 mod bank;
 mod bank_withdraw;
 mod checkin;
+mod clawback;
 mod dashboard;
 mod dressup;
 mod funding;
@@ -62,10 +65,11 @@ mod pool;
 pub(crate) mod recon;
 mod shop;
 mod shop_effects;
+mod shop_gift;
 mod shop_guards;
 mod shop_list;
 mod spark_ledger_http;
-mod clawback;
+mod spark_merkle_http;
 mod spend;
 mod torznab_fmt;
 mod voucher_use;
@@ -89,12 +93,13 @@ pub use shop::*;
 // 娱乐屋奖品的「使用」侧复用商店生效链：一件物品能干什么，只在这一个地方实现。
 // 三个 config 取值器同属「一把尺」：商店购买与管理端发放必须读同一组键，
 // 各读各的会让某一张 SKU 在某一侧静默空转（0291 实测 A1）。
+pub use clawback::*;
 pub(crate) use shop_effects::{
     apply_item_effect, credit_gb, has_effect, spark_amount, voucher_kind,
 };
 pub use shop_list::*;
 pub use spark_ledger_http::*;
-pub use clawback::*;
+pub use spark_merkle_http::*;
 pub use spend::*;
 pub use voucher_use::*;
 pub use vouchers::*;

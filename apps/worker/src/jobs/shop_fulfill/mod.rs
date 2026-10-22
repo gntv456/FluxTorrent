@@ -37,6 +37,9 @@ struct Stuck {
     idempotency_key: String,
     kind: String,
     config: serde_json::Value,
+    /// 下单时的配置快照（0421 赠礼修复）：按单富化过——gift_spark 的
+    /// 接收人 gift_to 只在这里，商品 config 里没有
+    config_snapshot: serde_json::Value,
     effect_applied: bool,
 }
 
@@ -56,7 +59,8 @@ async fn grace_secs(db: &PgPool) -> i64 {
 async fn stuck_orders(db: &PgPool, grace: i64) -> anyhow::Result<Vec<Stuck>> {
     Ok(sqlx::query_as(
         "SELECT o.id, o.user_id, o.item_id, o.price, o.frozen_amount, \
-                o.idempotency_key, si.kind, si.config, o.effect_applied \
+                o.idempotency_key, si.kind, si.config, o.config_snapshot, \
+                o.effect_applied \
          FROM shop_orders o \
          JOIN shop_items si ON si.id = o.item_id \
          WHERE o.fulfill_state = 'frozen' \
@@ -124,15 +128,32 @@ async fn advance_one(db: &PgPool, o: &Stuck) -> anyhow::Result<bool> {
 /// 漂移的后果是「api 发了券、worker 判定失败退款」——用户既没拿到东西
 /// 也丢了钱，且两边日志各自自洽、事后对不上。
 async fn apply_effect(db: &PgPool, o: &Stuck) -> anyhow::Result<bool> {
-    let mut cfg = o.config.clone();
+    // 配置取**订单快照**（每次下单的实况），缺省回落商品配置：
+    // 0421 赠礼修复后 gift_spark 的接收人（gift_to）只富化在快照里，
+    // 读商品 config 会把礼物补发给买家本人（收礼人什么都收不到）。
+    let snapshot_ok = o
+        .config_snapshot
+        .as_object()
+        .map(|m| !m.is_empty())
+        .unwrap_or(false);
+    let mut cfg = if snapshot_ok {
+        o.config_snapshot.clone()
+    } else {
+        o.config.clone()
+    };
     cfg["item_id"] = serde_json::json!(o.item_id);
+    // 赠礼入账幂等键跟购买单走：与 api 侧同一把钥匙，双路补发不双入账
+    cfg["gift_idem"] = serde_json::json!(o.idempotency_key);
+    // 效果目标：赠礼类 = 快照里的接收人；其余 = 买家本人
+    let target = cfg
+        .get("gift_to")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(o.user_id);
     // dressup_source 用 "recover"：与用户主动购买（'buy'）、娱乐屋奖品
     // （'prize'）区分开。事后从 user_dressups.source 能看出这枚装扮
     // 是恢复任务补发的，而不是用户自己买的。
-    match flux_shared::apply_item_effect(
-        db, o.user_id, &o.kind, &cfg, "recover",
-    )
-    .await
+    match flux_shared::apply_item_effect(db, target, &o.kind, &cfg, "recover")
+        .await
     {
         Ok(()) => {
             // 效果真的发出去了才置位。顺序反了就是「标记已发但没发」，

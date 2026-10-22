@@ -3,6 +3,7 @@
 //! 0207：购买支持数量（stackable 类）；装扮类 SKU 拆分后 config 驱动候选选择。
 
 use super::shop_effects::apply_item_effect;
+use super::shop_gift::resolve_gift_recipient;
 use super::shop_guards::{card_kind_probe, ensure_deliverable};
 use super::shop_list::buffer_cap_check;
 use super::shop_list::shop_items;
@@ -20,6 +21,11 @@ struct BuyReq {
     /// 购买数量（0207）：仅 stackable 类生效；装扮/头衔类强制 1
     #[serde(default)]
     qty: Option<i64>,
+    /// 赠礼接收人用户名（0421）：仅 gift_spark 类必填——效果记接收方
+    /// 而非买家本人（旧实现无此参数且效果记买家，花 1200 得 1000 的
+    /// 亏本陷阱；界面文案「赠予其他用户」自此才名副其实）
+    #[serde(default)]
+    to: Option<String>,
 }
 
 use crate::dto::ok;
@@ -140,6 +146,18 @@ async fn shop_buy(
 
     if matches!(kind.as_str(), "upload_credit" | "upload" | "upload_gb") {
         buffer_cap_check(&state.repo.db, auth.id).await?;
+    }
+
+    // 赠礼类（gift_spark，0421）：扣款前必须落实接收人。效果记接收方，
+    // 不是买家自己——旧实现既无接收人参数、效果又 earn_spark 记买家
+    // （花 1200 只回账 1000 且收礼人什么都收不到），与货架文案
+    // 「赠予其他用户，可指定份数」完全相反。校验见 shop_gift.rs。
+    let mut gift_to: Option<i64> = None;
+    if kind == "gift_spark" {
+        gift_to = Some(
+            resolve_gift_recipient(&state.repo.db, auth.id, body.to.as_deref())
+                .await?,
+        );
     }
 
     // 扣款前先确认这个品类发得出东西（P-348，判定见 shop_guards.rs）
@@ -277,7 +295,8 @@ async fn shop_buy(
         // 已付数量：卡牌 = 已存在行数；其余 = 订单总额 ÷ 单价
         let paid = if card_kind_probe(&kind) {
             let rows: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM shop_orders WHERE user_id = $1                  AND (idempotency_key = $2 OR idempotency_key LIKE $3)",
+                "SELECT count(*) FROM shop_orders WHERE user_id = $1 \
+                   AND (idempotency_key = $2 OR idempotency_key LIKE $3)",
             )
             .bind(auth.id)
             .bind(&idem)
@@ -289,7 +308,8 @@ async fn shop_buy(
             PaidQty::Rows(rows as usize)
         } else {
             let amt: Option<i64> = sqlx::query_scalar(
-                "SELECT price FROM shop_orders WHERE user_id = $1                  AND idempotency_key = $2",
+                "SELECT price FROM shop_orders WHERE user_id = $1 \
+                   AND idempotency_key = $2",
             )
             .bind(auth.id)
             .bind(&idem)
@@ -305,6 +325,12 @@ async fn shop_buy(
     // 订单落库（幂等键唯一）。卡牌类（补签/改名/临时邀请）库存口径 = 订单行数
     //（checkin/gaps 按「无 resub_uses 的订单」计数），因此 qty 张就插 qty 行
     //（键加序号后缀保持幂等）；其余类一行、price 记总额（0207）。
+    // 0421：赠礼单把接收人写进快照（gift_to）——worker 兜底补发时从
+    // config_snapshot 读它，否则卡单会把礼物补发给买家本人。
+    let mut order_cfg = config.clone();
+    if let Some(t) = gift_to {
+        order_cfg["gift_to"] = serde_json::json!(t);
+    }
     let card_kind =
         matches!(kind.as_str(), "makeup_card" | "rename_card" | "temp_invite");
     let card_rows: usize = match replay_ctx {
@@ -336,7 +362,7 @@ async fn shop_buy(
                 body.item_id,
                 unit_price,
                 &key,
-                &config,
+                &order_cfg,
                 unit_price,
             )
             .await?
@@ -351,7 +377,7 @@ async fn shop_buy(
         body.item_id,
         total,
         &idem,
-        &config,
+        &order_cfg,
         total,
     )
     .await?
@@ -359,7 +385,9 @@ async fn shop_buy(
     {
         frozen_any = true;
     }
-    if matches!(outcome, crate::economy_http::SpendOutcome::Spent) && !frozen_any {
+    if matches!(outcome, crate::economy_http::SpendOutcome::Spent)
+        && !frozen_any
+    {
         tracing::error!(
             user = auth.id,
             item = body.item_id,
@@ -378,7 +406,8 @@ async fn shop_buy(
         .map_err(|e| DomainError::Internal(e.into()))?;
         if let Some((item_id, q)) = stock_rollback {
             sqlx::query(
-                "UPDATE shop_items SET stock_used = stock_used - $2                  WHERE id = $1",
+                "UPDATE shop_items SET stock_used = stock_used - $2 \
+                 WHERE id = $1",
             )
             .bind(item_id)
             .bind(q)
@@ -394,6 +423,8 @@ async fn shop_buy(
     // 效果执行（CAS 置位，0085）：首次成功扣款 OR 重试补发（此前 Replayed 直接跳过
     // 效果分支——扣款成功但效果失败后重试 = 花钱买空气）。置位失败 = 效果已发过，跳过。
     // 卡牌多行订单：逐行 CAS，每次置位成功发一轮效果。
+    // 0421：赠礼类的效果目标 = 接收人（gift_to），其余 = 买家本人。
+    let effect_user = gift_to.unwrap_or(auth.id);
     let mut applied = 0usize;
     loop {
         let hit: Option<i64> = sqlx::query_scalar(
@@ -415,7 +446,9 @@ async fn shop_buy(
         // 数量类效果按件发（上传量×N、券×N、邀请×N、卡牌入库×N）
         let mut cfg = config.clone();
         cfg["item_id"] = serde_json::json!(body.item_id);
-        apply_item_effect(&state.repo.db, auth.id, &kind, &cfg, "buy").await?;
+        cfg["gift_idem"] = serde_json::json!(idem);
+        apply_item_effect(&state.repo.db, effect_user, &kind, &cfg, "buy")
+            .await?;
         if !card_kind {
             break; // 非卡牌：单行订单，一轮即全部效果（qty 循环见下）
         }
@@ -436,8 +469,11 @@ async fn shop_buy(
         };
         let mut cfg = config.clone();
         cfg["item_id"] = serde_json::json!(body.item_id);
-        for _ in 1..rounds {
-            apply_item_effect(&state.repo.db, auth.id, &kind, &cfg, "buy")
+        for k in 1..rounds {
+            // 多件时每轮一个唯一键：同一 gift_idem 会被 earn_spark 幂等
+            // 静默吞掉后几轮（接收方凭空少收 (rounds-1) 份）
+            cfg["gift_idem"] = serde_json::json!(format!("{idem}:{k}"));
+            apply_item_effect(&state.repo.db, effect_user, &kind, &cfg, "buy")
                 .await?;
         }
     }

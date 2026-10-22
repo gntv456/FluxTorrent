@@ -15,6 +15,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
  * 一口价/装扮类固定 1 件；提交前展示总价预判（余额不足时按总额禁用）。
  * W-18 表单协议试点：确认弹窗换 ConfirmDialog（焦点陷阱/Esc/遮罩语义
  * 统一），购买失败走 toast.error + request_id（余额不足 4001 等可诊断）。
+ * 0421：赠礼类（gift）多一个接收人用户名输入——提交带 `to`，后端把
+ * 效果记到接收方而不是买家本人（旧前端无此输入，赠礼 SKU 名不副实）。
  */
 export function BuyButton({
   itemId,
@@ -23,6 +25,7 @@ export function BuyButton({
   affordable = true,
   shortBy = null,
   balance,
+  gift = false,
   onBought,
 }: {
   itemId: number;
@@ -36,6 +39,8 @@ export function BuyButton({
   shortBy?: string | null;
   /** 当前余额（null=未知）：弹窗内按总价实时预判 */
   balance: number | null;
+  /** 赠礼类（gift_spark）：弹窗内要填接收人用户名，提交带 to */
+  gift?: boolean;
   /** 购买成功回调（0207b：父层刷新余额/拥有态） */
   onBought?: () => void;
 }) {
@@ -43,6 +48,7 @@ export function BuyButton({
   const t = dict.buyDialog;
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
+  const [toName, setToName] = useState("");
   const [busy, setBusy] = useState(false);
   const [bought, setBought] = useState(false);
   // 幂等键：每次打开弹窗生成一次，弹窗内重试复用（§8.2 幂等语义）；
@@ -51,14 +57,21 @@ export function BuyButton({
 
   const total = unitPrice * qty;
   const totalOk = balance === null || balance >= total;
+  const toOk = !gift || toName.trim().length > 0;
 
   async function buy() {
+    // 赠礼类必须先落接收人（后端同口径；这里提前拦，少一次无效请求）
+    if (gift && !toName.trim()) {
+      toast.error(t.giftToNeed);
+      return;
+    }
     setBusy(true);
     try {
       await api.post("/api/v1/shop/buy", {
         item_id: itemId,
         qty: stackable ? qty : 1,
         idempotency_key: idem,
+        ...(gift ? { to: toName.trim() } : {}),
       });
       // 成功反馈落在卡片按钮「已购买 ✓」+ 父层刷新的余额上（0207b）；
       // 换新幂等键，连买第二单不被上一单的键挡住
@@ -113,7 +126,13 @@ export function BuyButton({
             : `${t.fixedOne}（${total.toLocaleString()} ${currency}）`
         }
         busy={busy}
-        confirmLabel={totalOk ? t.confirm : dict.shop.insufficient}
+        confirmLabel={
+          !totalOk
+            ? dict.shop.insufficient
+            : !toOk
+              ? t.giftTo
+              : t.confirm
+        }
       >
         {/* 数量选择（可叠加类）：ConfirmDialog 消息区下方的内容槽 */}
         {stackable ? (
@@ -158,6 +177,24 @@ export function BuyButton({
                 +
               </button>
             </span>
+          </label>
+        ) : null}
+        {/* 赠礼接收人（0421）：gift 类必填——后端把效果记到接收方 */}
+        {gift ? (
+          <label
+            className="mt-2 flex items-center justify-between
+              gap-3 text-sm"
+          >
+            <span className="text-sub">{t.giftTo}</span>
+            <input
+              type="text"
+              value={toName}
+              onChange={(e) => setToName(e.target.value)}
+              disabled={busy}
+              placeholder={t.giftToPh}
+              className="h-8 w-40 rounded-[var(--r-sm)] border
+                border-line bg-transparent px-2 text-right text-sm"
+            />
           </label>
         ) : null}
         <p className="mt-2 flex items-baseline justify-between text-sm">
