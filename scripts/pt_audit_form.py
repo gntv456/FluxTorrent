@@ -5,6 +5,7 @@
 tracker 侧的解析判据在 pt_audit_wire.py，这里只管「造」。
 """
 import hashlib
+import time
 
 
 def benc(obj):
