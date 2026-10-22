@@ -23,6 +23,8 @@ export function PushSettings() {
   const { dict } = useI18n();
   const t = dict.push2;
   const [enabled, setEnabled] = useState<boolean | null>(null); // 服务端 VAPID 是否配置
+  const [vapidFailed, setVapidFailed] = useState(false);
+  const [prefsFailed, setPrefsFailed] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [prefs, setPrefs] = useState<Record<PushKey, boolean> | null>(null);
   const [prefBusy, setPrefBusy] = useState<PushKey | null>(null);
@@ -30,10 +32,16 @@ export function PushSettings() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
+    setVapidFailed(false);
+    setPrefsFailed(false);
     api
       .get<{ public_key: string; enabled: boolean }>("/api/v1/push/vapid-key")
       .then((r) => setEnabled(r.enabled))
-      .catch(() => setEnabled(false));
+      // 取数失败不等于服务端未配置：enabled 留 null 由失败态说话
+      .catch(() => {
+        setEnabled(null);
+        setVapidFailed(true);
+      });
     api
       .get<Record<string, unknown>>("/api/v1/me/notice-prefs")
       .then((p) => {
@@ -44,7 +52,10 @@ export function PushSettings() {
           push_message: on("push_message"),
         });
       })
-      .catch(() => setPrefs(null));
+      .catch(() => {
+        setPrefs(null);
+        setPrefsFailed(true);
+      });
     // 本地是否已订阅（sw 注册 + localStorage 标记）
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker
@@ -143,11 +154,16 @@ export function PushSettings() {
       {msg && <p className="text-xs text-[var(--brand-orange-dark)]">{msg}</p>}
       {enabled === false ? (
         <p className="text-xs text-sub">{t.serverDisabled}</p>
+      ) : vapidFailed ? (
+        <p className="text-xs text-warn">{dict.common.loadFailed}</p>
       ) : (
         <>
           <p className="text-xs text-sub">
             {subscribed ? t.statusOn : t.statusOff} · {t.topicsNote}
           </p>
+          {prefsFailed && (
+            <p className="text-xs text-warn">{dict.common.loadFailed}</p>
+          )}
           {prefs && (
             <ul className="flex flex-col gap-1">
               {PUSH_KEYS.map((k) => {
