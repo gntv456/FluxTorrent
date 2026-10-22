@@ -35,7 +35,9 @@ export function PasskeysCard() {
   const [step, setStep] = useState(false);
   const [pw, setPw] = useState("");
   const [code, setCode] = useState("");
-  const [twofa, setTwofa] = useState(false);
+  // P-608：null = 状态未知（探测失败）。不能当成「没开 2FA」：开了的账号
+  // 会连验证码输入框都不画，begin 被服务端驳回时无处可填。
+  const [twofa, setTwofa] = useState<boolean | null>(null);
 
   // P-314：passkey 列表拉取失败此前也 setRows([]) ⇒ 界面回「你还没有 Passkey」，
   // 在凭证面上把服务故障演成「我的钥匙没了」，用户会去重注册或误以为被清。
@@ -57,7 +59,7 @@ export function PasskeysCard() {
     void api
       .get<{ totp_enabled?: boolean }>("/api/v1/me/overview")
       .then((o) => setTwofa(Boolean(o?.totp_enabled)))
-      .catch(() => setTwofa(false));
+      .catch(() => setTwofa(null));
   }, [load]);
 
   async function register() {
@@ -76,7 +78,7 @@ export function PasskeysCard() {
       }>("/api/v1/auth/passkeys/begin", {
         label,
         password: pw,
-        ...(twofa ? { totp: Number(code) } : {}),
+        ...(code.length === 6 ? { totp: Number(code) } : {}),
       });
       const cred = await navigator.credentials.create({
         publicKey: {
@@ -184,7 +186,7 @@ export function PasskeysCard() {
             value={pw}
             onChange={(e) => setPw(e.target.value)}
           />
-          {twofa && (
+          {twofa !== false && (
             <input
               className="min-h-[32px] rounded border border-line bg-cloud
                 px-3 text-xs"
@@ -198,7 +200,7 @@ export function PasskeysCard() {
           )}
           <button
             type="button"
-            disabled={busy || !pw || (twofa && code.length < 6)}
+            disabled={busy || !pw || (twofa === true && code.length < 6)}
             onClick={() => {
               setBindLabel("");
               ask.open({

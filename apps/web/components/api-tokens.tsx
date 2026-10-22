@@ -48,7 +48,9 @@ export function ApiTokens() {
   // （/me/overview 的 totp_enabled），服务端仍会自己再核一遍。
   const [pw, setPw] = useState("");
   const [code, setCode] = useState("");
-  const [twofa, setTwofa] = useState(false);
+  // P-608：null = 状态未知（/me/overview 探测失败）。不能当成「没开 2FA」：
+  // 开了的账号会连验证码输入框都不画，复核被服务端驳回时无处可填。
+  const [twofa, setTwofa] = useState<boolean | null>(null);
 
   // P-314：本表没有任何空态文案，取数失败与「你没配过 Token」在界面上是同一个
   // 空壳（凭证面）——补一条显式失败提示。
@@ -68,7 +70,7 @@ export function ApiTokens() {
     void api
       .get<{ totp_enabled?: boolean }>("/api/v1/me/overview")
       .then((o) => setTwofa(Boolean(o?.totp_enabled)))
-      .catch(() => setTwofa(false));
+      .catch(() => setTwofa(null));
   }, [load]);
 
   async function issue() {
@@ -79,7 +81,7 @@ export function ApiTokens() {
       const r = await api.post<{ token: string }>("/api/v1/me/tokens", {
         name: name.trim(),
         password: pw,
-        ...(twofa ? { totp: Number(code) } : {}),
+        ...(code.length === 6 ? { totp: Number(code) } : {}),
       });
       setPlain(r.token);
       setName("");
@@ -135,7 +137,7 @@ export function ApiTokens() {
           className="min-h-[36px] w-40 rounded-[var(--r-sm)] border
             border-line bg-[var(--surface-card)] px-3 text-sm"
         />
-        {twofa && (
+        {twofa !== false && (
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
@@ -150,7 +152,9 @@ export function ApiTokens() {
         )}
         <button
           type="button"
-          disabled={busy || !name.trim() || !pw || (twofa && code.length < 6)}
+          disabled={
+            busy || !name.trim() || !pw || (twofa === true && code.length < 6)
+          }
           onClick={issue}
           className={BTN_SM_SKY}
         >

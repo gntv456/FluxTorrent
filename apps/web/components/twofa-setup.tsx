@@ -28,6 +28,8 @@ export function TwoFactorSetup() {
 
   // enabled 状态三态：null=未知（无专用查询接口，enable/setup 报错即未启用）
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  // P-608：探测失败曾一直停在「查询中…」，得让失败自己说话
+  const [probeFailed, setProbeFailed] = useState(false);
   const [setup, setSetup] = useState<{
     secret: string;
     otpauth_uri: string;
@@ -64,7 +66,10 @@ export function TwoFactorSetup() {
     api
       .get<{ totp_enabled?: boolean }>("/api/v1/me/overview")
       .then((s) => setEnabled(Boolean(s.totp_enabled)))
-      .catch(() => setEnabled(null));
+      .catch(() => {
+        setEnabled(null);
+        setProbeFailed(true);
+      });
   }, []);
 
   async function enable() {
@@ -111,11 +116,13 @@ export function TwoFactorSetup() {
   return (
     <div className="flex flex-col gap-2 text-sm">
       <p>
-        {enabled === null
-          ? t.statusLoading
-          : enabled
-            ? `✅ ${t.statusOn}`
-            : `⚪ ${t.statusOff}`}
+        {probeFailed
+          ? dict.common.loadFailed
+          : enabled === null
+            ? t.statusLoading
+            : enabled
+              ? `✅ ${t.statusOn}`
+              : `⚪ ${t.statusOff}`}
       </p>
 
       {!enabled && !setup && (
