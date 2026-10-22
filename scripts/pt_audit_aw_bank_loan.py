@@ -458,5 +458,42 @@ ok("S6 存款口恢复后可用（无残留 4101）",
         token=AT)[0] == 200
    and qi("SELECT count(*) FROM bank_deposits WHERE user_id = %d" % AID) == 2)
 
+
+# ---- S7 银行页站点级两格口径（P-533 结息日历界 / P-534 违约敞口）----
+SITE0 = ("date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai')"
+         " AT TIME ZONE 'Asia/Shanghai'")
+REC = ("INSERT INTO bank_interest_records (user_id, kind, reference_id,"
+       " amount, rate_bp, calc_date, created_at) VALUES ")
+# 夹具一 = worker 站点日 00:30 结息的真实形状（今天产生、calc_date 是 UTC 昨日）
+ex(REC + "(%d,'demand',0,5,1,CURRENT_DATE - 1,(" % AID
+   + SITE0 + ") + interval '30 minutes')")
+ex(REC + "(%d,'demand',0,5,1,CURRENT_DATE,now())" % AID)
+n_new = qi("SELECT count(*) FROM bank_interest_records"
+           " WHERE created_at >= " + SITE0)
+n_old = qi("SELECT count(*) FROM bank_interest_records"
+           " WHERE calc_date = CURRENT_DATE")
+s, r = call("GET", "/bank/overview", token=AT)
+site = ((r or {}).get("data") or {}).get("site") or {}
+ok("S7 夹具造出口径分歧（站点日 %d > UTC 日 %d）" % (n_new, n_old),
+   s == 200 and n_new - n_old >= 1, "http=%s 差=%d" % (s, n_new - n_old))
+ok("S7 今日结息记录按站点日计（P-533：算 UTC 日 ⇒ 结息后报 0）",
+   site.get("today_interest_records") == n_new,
+   "api=%s 站点日=%s UTC日=%s" % (site.get("today_interest_records"),
+                                  n_new, n_old))
+ex("INSERT INTO bank_loans (user_id, amount, daily_rate_bp,"
+   " penalty_rate_bp, term_days, remaining, accrued_interest, status,"
+   " due_at, last_interest_date) VALUES (%d, 4000, 10, 10, 7, 3000, 500,"
+   " 'defaulted', now() - interval '9 days', CURRENT_DATE)" % AID)
+LB = "SELECT COALESCE(sum(remaining + accrued_interest), 0)::bigint "
+want = qi(LB + "FROM bank_loans WHERE status IN ('active', 'defaulted')")
+act = qi(LB + "FROM bank_loans WHERE status = 'active'")
+site = call("GET", "/bank/overview", token=AT)[1]
+site = ((site or {}).get("data") or {}).get("site") or {}
+ok("S7b 夹具 defaulted 未还 3500 被「仅活跃」口径漏掉（%d vs %d）"
+   % (act, want), want - act == 3500, "act=%d want=%d" % (act, want))
+ok("S7b 全站贷款敞口含 defaulted（P-534）",
+   site.get("loan_outstanding_total") == want,
+   "api=%s 期望=%s 仅活跃=%s" % (site.get("loan_outstanding_total"), want, act))
+
 print()
 summary()

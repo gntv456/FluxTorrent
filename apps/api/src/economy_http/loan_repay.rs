@@ -303,16 +303,16 @@ async fn bank_overview_inner(
     let total_asset = spark + demand.balance + fixed.unwrap_or((0, 0)).0;
     let max_loan = max_loan_amount(&state.repo.db, auth.id, &bs).await?;
 
-    // 站点级运营概览 + 结息健康状态（对齐火花「站点银行概览/结息状态」）
+    // 站点级运营概览 + 结息健康状态（对齐火花「站点银行概览/结息状态」）：敞口含 defaulted；今日=站点日
     let site: (i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(
         "SELECT \
            (SELECT COALESCE(sum(balance), 0)::bigint FROM bank_demand_accounts), \
            (SELECT count(*) FROM bank_demand_accounts WHERE balance > 0), \
            (SELECT COALESCE(sum(amount), 0)::bigint FROM bank_deposits WHERE status = 0), \
            (SELECT count(*) FROM bank_deposits WHERE status = 0), \
-           (SELECT COALESCE(sum(remaining + accrued_interest), 0)::bigint FROM bank_loans WHERE status = 'active'), \
-           (SELECT count(*) FROM bank_loans WHERE status = 'active'), \
-           (SELECT count(*) FROM bank_interest_records WHERE calc_date = CURRENT_DATE)",
+           (SELECT COALESCE(sum(remaining + accrued_interest), 0)::bigint FROM bank_loans WHERE status IN ('active', 'defaulted')), \
+  (SELECT count(*) FROM bank_loans WHERE status IN ('active', 'defaulted')), \
+           (SELECT count(*) FROM bank_interest_records WHERE created_at >= date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')",
     )
     .fetch_one(&state.repo.db)
     .await
