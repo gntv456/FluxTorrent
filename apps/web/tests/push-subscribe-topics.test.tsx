@@ -70,4 +70,22 @@ describe("推送订阅话题", () => {
       "hr",
     ]);
   });
+
+  it("逐类推送开关写回 /me/notice-prefs（P-574）", async () => {
+    render(
+      <LocaleProvider dict={zhCN} locale="zh-CN">
+        <PushSettings />
+      </LocaleProvider>,
+    );
+    const sw = await screen.findByRole("switch", {
+      name: zhCN.push2.prefs.push_hr,
+    });
+    await userEvent.click(sw);
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    const call = post.mock.calls.find(
+      (c: unknown[]) => c[0] === "/api/v1/me/notice-prefs",
+    );
+    expect(call).toBeTruthy();
+    expect(call?.[1]).toEqual({ key: "push_hr", enabled: false });
+  });
 });

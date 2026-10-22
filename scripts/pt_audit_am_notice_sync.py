@@ -10,7 +10,8 @@
   · ② ⊆ ①（UI 能拨的必须存得下）；
   · ③ ⊆ ①（会发的必须存得下）；
   · ③ ⊆ ② ∪ push_*（会发的事件类必须可关；push_* 走 users.notice_prefs
-    另一段 JSON、不属站内信事件类，由 push_notify.rs 单独消费，豁免）。
+    另一段 JSON、不属站内信事件类，由 push_notify.rs 单独消费——但它同样
+    必须有写入口：P-574 起由 push-settings.tsx 三档开关写回，本闸门另钉）。
 只拦新增：历史遗留如果哪天要清，先改脚本常量再谈。
 """
 import os
@@ -112,4 +113,10 @@ mutable = base | {k for k in wl if k.startswith("push_")}
 unmutable = sent - mutable
 ok("会发的事件类都有关闭开关（push_* 另段豁免）", not unmutable,
    "无法关=%s" % sorted(unmutable) if unmutable else "可关=%s" % sorted(sent))
+
+push_ui = read("apps/web/components/push-settings.tsx")
+wired = [k for k in ("push_hr", "push_promo", "push_message")
+         if '"%s"' % k in push_ui]
+ok("P-574：push_* 三键必须在推送设置页有开关（send 侧逐类过滤，"
+   "只存不拨=用户只能全收）", len(wired) == 3, "已接=%s" % wired)
 summary()

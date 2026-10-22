@@ -7125,6 +7125,12 @@ const zhTwBase: Omit<
     testPartial: "部分裝置未收到測試推送，請檢查瀏覽器通知設定",
     testFailed: "測試推送未送達：推送服務異常，請稍後重試",
     testExpired: "推送訂閱已失效，請重新開啟推送",
+    prefs: {
+      push_hr: "瀏覽器推播：H&R 預警",
+      push_promo: "瀏覽器推播：促銷 / 心願單",
+      push_message: "瀏覽器推播：私訊",
+    },
+    prefSaved: "推送偏好已儲存",
     serverDisabled: "服務端未配置 VAPID 金鑰，推送暫不可用。",
     browserUnsupported: "當前瀏覽器不支援 Web Push。",
   },

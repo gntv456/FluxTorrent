@@ -7368,6 +7368,12 @@ const enBase: Omit<
     testPartial: "Some devices did not get the test push; check notification settings.",
     testFailed: "Test push not delivered: push service error. Try again later.",
     testExpired: "Push subscription expired; enable push again.",
+    prefs: {
+      push_hr: "Browser push: H&R alerts",
+      push_promo: "Browser push: promotions / wishlist",
+      push_message: "Browser push: private messages",
+    },
+    prefSaved: "Push preferences saved",
     serverDisabled: "Server VAPID key is not configured; push unavailable.",
     browserUnsupported: "Web Push is not supported in this browser.",
   },

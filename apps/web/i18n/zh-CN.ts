@@ -7166,6 +7166,12 @@ const zhCnBase = {
     testPartial: "部分设备未收到测试推送，请检查浏览器通知设置",
     testFailed: "测试推送未送达：推送服务异常，请稍后重试",
     testExpired: "推送订阅已失效，请重新开启推送",
+    prefs: {
+      push_hr: "浏览器推送：H&R 预警",
+      push_promo: "浏览器推送：促销 / 心愿单",
+      push_message: "浏览器推送：私信",
+    },
+    prefSaved: "推送偏好已保存",
     serverDisabled: "服务端未配置 VAPID 密钥，推送暂不可用。",
     browserUnsupported: "当前浏览器不支持 Web Push。",
   },
