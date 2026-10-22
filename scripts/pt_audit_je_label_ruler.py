@@ -188,6 +188,14 @@ def main():
            % (uid9, pub, not3, api9), not3 > pub and api9 == pub,
            "读成 %s＝与会员 /me 的 uploads 两个数；旧镜像没带上本批时"
            "这条红＝部署账" % api9)
+    # P-550：控制台概览的「收藏夹」格此前被硬写成 0（payload 有键没人算）
+    s10, me10 = call("GET", "/me", None, token=root)
+    bm_me = ((me10 or {}).get("data") or {}).get("bookmarks")
+    s11, ov11 = call("GET", "/me/overview", None, token=root)
+    bm_ov = ((ov11 or {}).get("data") or {}).get("bookmarks")
+    ok("JE6 概览收藏夹数等于 /me（/me=%s 概览=%s）" % (bm_me, bm_ov),
+       bm_me == bm_ov and (bm_me or 0) > 0,
+       "两个口读同一个「我的收藏」，恒 0 那格是编出来的装饰值")
     print("[INFO] 上传榜首行读数样例：%s" % (rows[0] if rows else {}))
 
 

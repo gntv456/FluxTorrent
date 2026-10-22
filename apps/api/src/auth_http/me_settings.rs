@@ -17,7 +17,11 @@ pub async fn me_overview(
     let auth = require_auth(&req, &state).await?;
     let uid = auth.id;
     // 主档 + 统计（一次查询，口径与旧站 my_data_stats 一致）
-    let row = sqlx::query(
+    // P-550：收藏夹数接 /me 的同一把尺（visibility_sql 带本人与职员档），
+    // 此前这一格在 payload 里被硬写成 0。
+    let vis =
+        crate::torrents::visibility_sql(Some((uid, auth.class_id >= 90)));
+    let row = sqlx::query(&format!(
         r#"
         SELECT u.username, u.email, u.uploaded, u.downloaded, u.created_at, u.avatar_url,
                u.parked, u.privacy, u.totp_enabled, u.passkey,
@@ -29,12 +33,15 @@ pub async fn me_overview(
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 0) AS invites_pending,
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 1) AS invites_used,
                (SELECT count(*) FROM user_medals m WHERE m.user_id = u.id AND (m.expires_at IS NULL OR m.expires_at > now())) AS medals,
+               (SELECT count(*) FROM bookmarks b
+                JOIN torrents t ON t.id = b.torrent_id
+                WHERE b.user_id = u.id AND {vis}) AS bookmarks,
                c.name AS class_name, u.class_id::bigint AS cid
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
              LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id
         WHERE u.id = $1
         "#,
-    )
+    ))
     .bind(uid)
     .fetch_optional(&state.repo.db)
     .await
@@ -236,7 +243,7 @@ pub async fn me_overview(
         "leeching": get_i64("leeching"),
         "uploads": get_i64("uploads"),
         "comments": get_i64("comments"),
-        "bookmarks": 0,
+        "bookmarks": get_i64("bookmarks"),
         "spark_balance": get_i64("spark_balance"),
         "invites_pending": get_i64("invites_pending"),
         "invites_used": get_i64("invites_used"),
