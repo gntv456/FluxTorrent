@@ -46,7 +46,7 @@ pub async fn user_public_profile(
                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.leeching) AS leeching,
                (SELECT count(*) FROM torrents t WHERE t.owner_id = u.id AND t.approval_status = 1 AND NOT t.anonymous) AS uploads,
                (SELECT count(*) FROM comments cm WHERE cm.user_id = u.id) AS comment_count,
-               (SELECT count(*) FROM user_medals um WHERE um.user_id = u.id) AS medals
+               (SELECT count(*) FROM user_medals um WHERE um.user_id = u.id AND (um.expires_at IS NULL OR um.expires_at > now())) AS medals
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
              LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id
         WHERE u.id = $1 AND u.status < 2 AND NOT u.archived

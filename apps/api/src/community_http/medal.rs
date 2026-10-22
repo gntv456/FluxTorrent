@@ -187,7 +187,10 @@ pub(crate) async fn medal_wear(
     if wear && !currently {
         let max_worn = medals_max_worn(&state.repo.db).await;
         let worn: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM user_medals WHERE user_id = $1 AND wearing",
+            // P-547：上限只数「还戴得出去的」——过期未下线的行不计，否则
+            // 界面（/me/medals、勋章墙都筛过期）显示 1 枚却报「已达上限」。
+            "SELECT count(*) FROM user_medals WHERE user_id = $1 \
+             AND wearing AND (expires_at IS NULL OR expires_at > now())",
         )
         .bind(auth.id)
         .fetch_one(&mut *tx)

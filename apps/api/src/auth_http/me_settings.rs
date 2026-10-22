@@ -28,7 +28,7 @@ pub async fn me_overview(
                (SELECT count(*) FROM comments c WHERE c.user_id = u.id) AS comments,
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 0) AS invites_pending,
                (SELECT count(*) FROM invites i WHERE i.inviter_id = u.id AND i.status = 1) AS invites_used,
-               (SELECT count(*) FROM user_medals m WHERE m.user_id = u.id) AS medals,
+               (SELECT count(*) FROM user_medals m WHERE m.user_id = u.id AND (m.expires_at IS NULL OR m.expires_at > now())) AS medals,
                c.name AS class_name, u.class_id::bigint AS cid
         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id
              LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id
