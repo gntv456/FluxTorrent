@@ -71,6 +71,9 @@ async fn ptpp_user_info(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?
             .unwrap_or_else(|| "LV0".into());
+    // P-545：未读只算「点进收件箱看得见的」——已删/移入文件夹的不计。
+    // 旧写法吃 read_at IS NULL，插件据此把已删的信报成永久未读，而站内
+    // 没有任何入口能清掉它（与 /me、message_stream::unread_inbox 同尺）。
     let (seeding, leeching, invites, unread_messages): (i64, i64, i64, i64) =
         sqlx::query_as(
             "SELECT \
@@ -79,7 +82,7 @@ async fn ptpp_user_info(
             (SELECT count(*) FROM invites WHERE inviter_id = $1 AND status = 0 \
                 AND expires_at > now()), \
             (SELECT count(*) FROM messages WHERE receiver_id = $1 \
-                AND read_at IS NULL)",
+                AND unread AND location = 1 AND folder IS NULL)",
         )
         .bind(uid)
         .fetch_one(&state.repo.db)
