@@ -45,8 +45,8 @@ FIX = "4ab4ff2a"        # 本批修复的提交（H0 从它的父提交取旧形
 PROBE_USER = 4348         # e2e_probe_retired：status=4、无 HR 历史 ⇒ 计数精确
 PROBE_TORRENT = 40
 SUBJ = u"H&R 违规已消除"
-PSQL = ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-F", "|",
+PSQL = ["docker", "exec", "-i", "flux-postgres",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 # 「有控件/能写能回显」的地方不算读者（与死开关台账同一把尺）
 FORM = re.compile(

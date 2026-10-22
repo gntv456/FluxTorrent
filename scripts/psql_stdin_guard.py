@@ -15,8 +15,9 @@
 
 硬规矩（stdin 形态必须同时满足）：
   ① 失败要**抛异常**（print 后继续＝假绿）；
-  ② 要么 argv 带 `ON_ERROR_STOP=1`（-e 或 -v 都算），要么显式查 stderr 里的
-     ERROR —— 二者至少有一，否则 stdin psql 出错时退出码仍是 0。
+  ② 要么 argv 带 `-v ON_ERROR_STOP=1`，要么显式查 stderr 里的 ERROR。
+     **`-e ON_ERROR_STOP=1` 不算**（P-552 实测）：那是设给 docker exec 的
+     环境变量，psql 不读它，语句报错照样 rc=0、ERROR 只在 stderr。
 
 存量放行：`scripts/psql_stdin_baseline.json`（路径 → 放行理由）。
 新写的脚本不在基线里就直接红；基线只减不增（谁修好谁从基线里划掉）。
@@ -70,8 +71,10 @@ def offenders():
         why = []
         if not SIGNAL.search(text):
             why.append('失败不抛异常（print 后继续 → 假绿）')
-        if 'ON_ERROR_STOP' not in text and 'ERROR' not in text:
-            why.append('既无 ON_ERROR_STOP 也不查 stderr')
+        if not (re.search(r'"-v",\s*"ON_ERROR_STOP=1"', text)
+                or '"ERROR" in' in text):
+            why.append('既没用 `-v ON_ERROR_STOP=1` 也不查 stderr'
+                       '（`-e` 是 docker 环境变量，psql 不认：报错也 rc=0）')
         if why and name not in base:
             bad.append((name, '；'.join(why)))
     return bad
@@ -83,7 +86,8 @@ def main():
         print('psql stdin 闸门红：%d 个脚本可能在吞 SQL 错误' % len(bad))
         for name, why in bad:
             print('  ', name, '—', why)
-        print('修法：失败要 raise，且 argv 带 ON_ERROR_STOP（或显式查 stderr）')
+        print('修法：失败要 raise，且 psql argv 带 -v ON_ERROR_STOP=1'
+          '（或显式查 stderr；docker 的 -e 不算）')
         sys.exit(1)
     print('OK: psql stdin 形态的脚本都会在失败时抛异常')
 

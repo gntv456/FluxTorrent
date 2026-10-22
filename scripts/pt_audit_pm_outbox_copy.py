@@ -45,8 +45,8 @@ SEND_POSIX = "apps/api/src/community_http/message_send.rs"
 FIX = "be7b00c5"            # 本批修复的提交（V0 从它的父提交取旧形状）
 SENDER = 6924               # hrprobe493220（闸门探针号，status=0）
 RECV = 72                   # e2ecap3565（闸门探针号，status=0）
-PSQL = ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-F", "|",
+PSQL = ["docker", "exec", "-i", "flux-postgres",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 
 

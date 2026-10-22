@@ -48,8 +48,8 @@ OLD = ["perseeding", "maxseeding", "bonus_per_seed", "donortimes",
 REAL = ["seeding_base_hourly", "seeding_cap_hourly", "seeding_bonus_scale",
         "seeding_donor_mult", "seeding_curve_k", "seeding_rarity_k",
         "seeding_rarity_exp", "seeding_vol_log_base_gb"]
-PSQL = ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-F", "|",
+PSQL = ["docker", "exec", "-i", "flux-postgres",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 # 应用前的既有只读键数（现网实测 11：五条登录兼容键 + 站型 + 四把展示键）
 BASE_READONLY = 11

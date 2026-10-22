@@ -49,8 +49,8 @@ MT = "apps/api/src/openapi_http/me_torrents.rs"
 PG = "apps/api/src/openapi_http/paging.rs"
 FIX = "26a9acf3"           # 本批修复的提交（O0 从它的父提交取旧形状）
 LIVE = "--live" in sys.argv
-PSQL = ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-F", "|",
+PSQL = ["docker", "exec", "-i", "flux-postgres",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 # 四个口：文件 → 该文件里必须出现的口名
 ROUTES = {ME: ["me_hr", "me_messages"], MT: ["me_seeding", "me_history"]}

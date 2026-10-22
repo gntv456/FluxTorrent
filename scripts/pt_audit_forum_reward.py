@@ -36,8 +36,8 @@ PW = "apps/api/src/community_http/post_write.rs"
 PE = "apps/api/src/community_http/post_edit.rs"
 PTD = "apps/api/src/community_http/post_topic_delete.rs"
 FIX = "a85d5fe1"
-PSQL = ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-F", "|",
+PSQL = ["docker", "exec", "-i", "flux-postgres",
+        "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-v", "ON_ERROR_STOP=1", "-F", "|",
         "-f", "-"]
 # 金额实参位允许的来源：面板额度变量、回查额、流水汇总值
 ARG_OK = ("topic_award", "reply_award", "owed", "n as i64")
