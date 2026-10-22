@@ -21,6 +21,19 @@ const GRACE_JOIN: &str = "LEFT JOIN LATERAL \
       WHERE p.source = 'preserve_grace' AND p.torrent_id = sp.torrent_id \
       ORDER BY p.ends_at DESC LIMIT 1) gr ON true";
 
+/// 统计六格与列表同源：一枚保种行必须还指向一枚「过审可见」的种才数得进去。
+/// 旧写法直接数 `seed_preserve` 全表——管理员把在保种驳回或回收之后，板块上
+/// 「保种中」仍算它，而列表按 `approval_status = 1` 已经不出这一行（现网事务内
+/// A/B：改一档驳回 → 统计 73、列表 72）。P-519。
+const LISTED: &str = "JOIN torrents t ON t.id = sp.torrent_id \
+                      AND t.approval_status = 1";
+
+/// 站点日界（北京 0 点对应的 UTC 时刻），与 `auth_http/me_settings.rs`、
+/// `admin_http/overview.rs` 同一份写法。旧「今日新增/今日移出」用滚动
+/// `now() - interval '1 day'` ⇒ 早上九点看到的「今日」含昨天白天。P-520。
+const SITE_TODAY: &str = "date_trunc('day', now() AT TIME ZONE \
+                          'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai'";
+
 /// 四档视图判定片段，`{m}` 由调用方填占位符编号（列表/计数的参数序不同）。
 /// in=在保全部（默认）、active=保种中（已认领）、grace=延续中（已移出但宽限未过）、
 /// out=已移出（宽限已过或从未挂宽限）。
@@ -35,9 +48,15 @@ const VIEW_FILTER: &str = "(   ({m} = 'in' AND sp.exited_at IS NULL) \
 /// 保种区列表（同类站 requireseed.php 口径）：统计六格 + 筛选 + 分页 + 种子九列表格
 #[get("/preserve")]
 pub(super) async fn preserve_list(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<PreserveQuery>,
 ) -> DomainResult<impl Responder> {
+    // P-518：这个口原先不验登录。同级口 /resurrections、/torrents、/forums、
+    // /classes 匿名一律 401(2001)，而保种区对任何人回 200 加 73 条在保种的
+    // 名称/大小/做种数/认领人用户名（RSC 走 next/headers 转发访客 Cookie，
+    // 会员照旧可见，见 lib/api-client.ts:176）。
+    let _auth = require_auth(&req, &state).await?;
     // 分页与全站列表同口径（dto::page_window 是 1 基）。此前这里按 0 基算 offset，
     // 客户端照惯例传 page=1 时翻到的是第二页——保种区首页整页空白，
     // 而 total 明明 >0。
@@ -139,34 +158,45 @@ pub(super) async fn preserve_list(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 统计六格（同类站保种区口径：保种中/延续中/官方保种/普通保种/今日新增/今日移出）
+    // 六格一律 `map_err` 出声：这里是插值拼出来的 SQL，写错不许演成「0 个要救的种」
     let (preserving, _exited, today_in, today_out): (i64, i64, i64, i64) =
-        sqlx::query_as(
+        sqlx::query_as(&format!(
             "SELECT \
-                (SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL), \
-                (SELECT count(*) FROM seed_preserve WHERE exited_at IS NOT NULL), \
-                (SELECT count(*) FROM seed_preserve WHERE claimed_at \
-                   > now() - interval '1 day'), \
-                (SELECT count(*) FROM seed_preserve WHERE exited_at \
-                   > now() - interval '1 day')",
-        )
+                (SELECT count(*) FROM seed_preserve sp {l1} \
+                   WHERE sp.exited_at IS NULL), \
+                (SELECT count(*) FROM seed_preserve sp {l2} \
+                   WHERE sp.exited_at IS NOT NULL), \
+                (SELECT count(*) FROM seed_preserve sp {l3} \
+                   WHERE sp.claimed_at > {t1}), \
+                (SELECT count(*) FROM seed_preserve sp {l4} \
+                   WHERE sp.exited_at > {t2})",
+            l1 = LISTED,
+            l2 = LISTED,
+            l3 = LISTED,
+            t1 = SITE_TODAY,
+            l4 = LISTED,
+            t2 = SITE_TODAY
+        ))
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let official = sqlx::query_scalar::<_, i64>(
-        "SELECT count(*) FROM seed_preserve sp JOIN torrents t ON t.id = sp.torrent_id \
+    let official = sqlx::query_scalar::<_, i64>(&format!(
+        "SELECT count(*) FROM seed_preserve sp {l} \
          WHERE sp.exited_at IS NULL AND t.official_tag",
-    )
+        l = LISTED
+    ))
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 延续中 = 已被认领且仍在保种区（此前硬编码 0 永远显示 0）
-    let continued: i64 = sqlx::query_scalar::<_, i64>(
-        "SELECT count(*) FROM seed_preserve WHERE exited_at IS NULL \
-         AND claimed_by IS NOT NULL",
-    )
+    let continued: i64 = sqlx::query_scalar::<_, i64>(&format!(
+        "SELECT count(*) FROM seed_preserve sp {l} \
+         WHERE sp.exited_at IS NULL AND sp.claimed_by IS NOT NULL",
+        l = LISTED
+    ))
     .fetch_one(&state.repo.db)
     .await
-    .unwrap_or(0);
+    .map_err(|e| DomainError::Internal(e.into()))?;
 
     Ok(ok(serde_json::json!({
         "items": rows,
@@ -179,7 +209,6 @@ pub(super) async fn preserve_list(
         "page": page, "per_page": per,
     })))
 }
-
 
 // ============ M28 插件 ============
 

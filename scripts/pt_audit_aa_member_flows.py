@@ -308,6 +308,49 @@ else:
     ok("A7 GET /me/logins 200", s == 200 and r.get("code") == 0,
        "http=%s %s" % (s, str(r.get("message"))[:140]))
 
+print("A9 保种区：登录门 + 六格与列表同源 + 今日按站点日")
+# P-518：`/preserve` 原先整口不验登录——同级 /resurrections、/torrents、/forums、
+# /classes 匿名一律 401(2001)，而它回 200 外加 73 条在保种的名称/大小/做种数/
+# 认领人用户名。判据拿同域那条当参照，两条一起看才不孤单。
+s_an, r_an = call("GET", "/preserve")
+s_ref, r_ref = call("GET", "/resurrections")
+ok("A9 匿名打 /preserve 必须与 /resurrections 同形拒登（2001）",
+   s_an == 401 and (r_an or {}).get("code") == 2001 and s_ref == 401,
+   "preserve=%s/%s resurrections=%s/%s"
+   % (s_an, (r_an or {}).get("code"), s_ref, (r_ref or {}).get("code")))
+# P-519：六格旧写法直接数 seed_preserve 全表，列表与 total 却按
+# approval_status=1 过滤 —— 挂一枚未过审的种进保种区，两边就该分叉。
+rej_tid = psql("SELECT t.id FROM torrents t WHERE t.approval_status <> 1 "
+               "AND NOT EXISTS (SELECT 1 FROM seed_preserve sp "
+               "WHERE sp.torrent_id = t.id) LIMIT 1")
+if rej_tid:
+    psql("INSERT INTO seed_preserve (torrent_id, claimed_by, claimed_at) "
+         "VALUES (%s, NULL, now())" % rej_tid)
+    CLEANUP.append("DELETE FROM seed_preserve WHERE torrent_id = %s" % rej_tid)
+    d9 = (call("GET", "/preserve", token=ROOT)[1].get("data") or {})
+    st9 = d9.get("stats") or {}
+    ok("A9b 六格「保种中」与列表 total 同数（被驳回/回收的种不许还计数）",
+       str(st9.get("preserving")) == str(d9.get("total")),
+       "preserving=%s total=%s 夹具 tid=%s"
+       % (st9.get("preserving"), d9.get("total"), rej_tid))
+else:
+    print("   [WARN] 没有可当夹具的未过审种，A9b 没跑（没跑不等于通过）")
+# P-520：「今日新增」旧写法是滚动 now() - interval '1 day'。把夹具挪到
+# 「北京昨天 23:00」：它还在滚动 24h 窗口内（北京 0-22 点跑），却已在站点日
+# 之前 ⇒ 按站点日口径必须少 1。北京 23-24 点这一小时两种口径同数，属已知窗口。
+if pres_tid:
+    base = int((((call("GET", "/preserve", token=ROOT)[1].get("data")
+                   or {}).get("stats") or {}).get("today_in")) or 0)
+    psql("UPDATE seed_preserve SET claimed_at = "
+         "(date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') "
+         "AT TIME ZONE 'Asia/Shanghai') - interval '1 hour' "
+         "WHERE torrent_id = %s" % pres_tid)
+    after = int((((call("GET", "/preserve", token=ROOT)[1].get("data")
+                    or {}).get("stats") or {}).get("today_in")) or 0)
+    ok("A9c 挪到站点日之前认领的种不算「今日新增」（六格按北京日界）",
+       after == base - 1, "base=%s after=%s 夹具 tid=%s"
+       % (base, after, pres_tid))
+
 try:
     summary()
 finally:
