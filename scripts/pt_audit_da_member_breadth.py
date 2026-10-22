@@ -443,6 +443,28 @@ for who, tk in (("root", ROOT), ("探针会员", MT)):
        % (tot15 - sum15, sorted({int(r.get("approval_status") or -1)
                                  for r in (dlt.get("rows") or [])})))
 
+print("\n== DA16 名录型出口不列被处置/墓碑账号（P-529/P-530）==")
+# 会员名录自己一直是对的（user_directory 规则 3），漏的是同族邻居：
+# 荣誉榜 5 席里 4 席、勋章墙 27 个名字里 10 个是 status>=2 或 `deleted-` 号。
+# 名字直接从本轮成员 sweep 的响应体里取，不再多打一次接口。
+DISPOSED = set(x for x in one(
+    "SELECT username FROM users WHERE status >= 2 "
+    "OR username LIKE 'deleted-%'").split("\n") if x)
+BODIES = {p: ((b or {}).get("data") if isinstance(b, dict) else b)
+          for p, _st, b in MINE}
+honor = BODIES.get("/pool/honor") or []
+wall = ((BODIES.get("/medal-wall") or {}).get("rows")) or []
+h_names = [r[1] for r in honor if isinstance(r, list) and len(r) > 1]
+w_names = [x.get("username") for x in wall if isinstance(x, dict)]
+hit16 = sorted(set(h_names) & DISPOSED) + sorted(set(w_names) & DISPOSED)
+ok("DA16 荣誉榜与勋章墙都不含被处置账号（命中 %d / 取名 %d）"
+   % (len(hit16), len(h_names) + len(w_names)), not hit16,
+   "命中=%s" % hit16[:6])
+ok("DA16b 正控：两榜都取得到名字、被处置号池够大（不因空榜假绿）",
+   len(h_names) > 0 and len(w_names) > 0 and len(DISPOSED) > 50,
+   "honor=%d wall=%d 被处置号=%d" % (len(h_names), len(w_names),
+                                     len(DISPOSED)))
+
 print("\n== 状态分布（成员 / 匿名）==")
 for label, rows in (("成员", MINE), ("匿名", ANON)):
     d = {}

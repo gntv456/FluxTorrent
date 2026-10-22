@@ -150,6 +150,29 @@ SELECT 'NEWTOP1|' || COALESCE(max(x.l)::text, 'NULL')
        "LAST 扩到 profile.rs:189 / user_torrentlist.rs:97 的理由；变成 "
        "YES 就得重看那两条）" % sn, sn == "NO",
        "可空性变了，那两条按 last_seen DESC 的口要重新定性")
+    # ---------- M6 在册谓词只有一个来源，邻居出口必须引它 ----------
+    # P-529/P-530：荣誉榜与勋章墙各写一份 WHERE，两处都漏了本模块规则 3
+    # （封号/封存/归档/墓碑不进名录）。修法是把那四项收成 `member_visible(alias)`
+    # 单点，两个邻居改成调它；这条判据钉的就是"单点 + 邻居引用"，
+    # 以后谁再手抄一份字面量就会在这里红。
+    ud = read(UD)
+    four = ["status < 2", "parked", "archived", "deleted-%"]
+    body = ud.split("fn member_visible(")[-1].split("pub ")[0]
+    ok("M6 在册四条件收在 user_directory::member_visible 单点（缺 %d 项）"
+       % len([c for c in four if c not in body]),
+       "pub(crate) fn member_visible(" in ud
+       and all(c in body for c in four) and "const VISIBLE" not in ud,
+       "fn 体里缺=%s；const VISIBLE 残留=%s"
+       % ([c for c in four if c not in body], "const VISIBLE" in ud))
+    neighbors = {
+        "community_http/notice.rs(荣誉榜)":
+            "apps/api/src/community_http/notice.rs",
+        "http/plugins.rs(勋章墙)": "apps/api/src/http/plugins.rs",
+    }
+    nofetch = [k for k, v in neighbors.items()
+               if "user_directory::member_visible" not in read(v)]
+    ok("M6b 名录的两个邻居出口都引同一单点（漏接 %d）" % len(nofetch),
+       not nofetch, "、".join(nofetch) or "-")
     if "--selftest" in sys.argv:
         selftest()
     summary()

@@ -119,10 +119,16 @@ pub(crate) async fn pool_honor(
     // 「未登录只放行登录页与静态资源」，荣誉榜也只挂在会员侧导航里。
     let _auth = require_auth(&req, &state).await?;
     // SUM() 出来是 NUMERIC：query_as 元组按 i64 解码会 22P02 类 500，显式 cast
-    let rows: Vec<(i64, String, bool, i64, i64)> = sqlx::query_as(
-        "SELECT id, username, donor, this_month::bigint, \
-         total::bigint FROM v_pool_honor ORDER BY total DESC LIMIT 50",
-    )
+    // P-529：荣誉榜原先直接查视图，把已停用/已墓碑的号当成"当前荣誉会员"
+    // 展示并占排名位（现网实测 5 席里 4 席是被处置账号）。名录那条出口的
+    // 规则 3（封号/封存/归档/墓碑不进列表）在这里同样成立 ⇒ 共用同一谓词。
+    let rows: Vec<(i64, String, bool, i64, i64)> = sqlx::query_as(&format!(
+        "SELECT h.id, h.username, h.donor, h.this_month::bigint, \
+         h.total::bigint FROM v_pool_honor h \
+         JOIN users u ON u.id = h.id \
+         WHERE {} ORDER BY h.total DESC LIMIT 50",
+        crate::repo::community::user_directory::member_visible("u")
+    ))
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

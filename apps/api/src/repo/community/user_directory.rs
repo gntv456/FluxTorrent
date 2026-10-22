@@ -55,11 +55,27 @@ pub fn order_col(raw: Option<&str>) -> &'static str {
     }
 }
 
-/// 可见会员的 WHERE（不含参数占位以外的条件）。
-/// `$1` = 用户名检索词（可空）。
-const VISIBLE: &str = "u.status < 2 AND NOT u.parked AND NOT u.archived \
-    AND u.username NOT LIKE 'deleted-%' \
-    AND ($1::text IS NULL OR u.username::text ILIKE '%' || $1 || '%')";
+/// 名录型出口共用的「在册会员」谓词（本模块顶部规则 3：
+/// 封号/封存/归档/墓碑不进列表）。别名由调用方给：名录与荣誉榜用 `u`，
+/// 勋章墙的排名子查询用 `u2`。
+///
+/// P-529/P-530：荣誉榜与勋章墙此前各写一份 WHERE、两处都漏了这四项——
+/// 现网实测 `/pool/honor` 5 席里 4 席、`/medal-wall` 27 个名字里 10 个是
+/// `status >= 2` 或 `deleted-` 墓碑号（名录自己是对的，漏的是邻居）。
+/// 单点放在这里，和名录共用一份字面量，免得再分叉。
+pub(crate) fn member_visible(alias: &str) -> String {
+    let a = format!("{}.", alias);
+    format!("{}status < 2 AND NOT {}parked AND NOT {}archived \
+             AND {}username NOT LIKE 'deleted-%'",
+            a, a, a, a)
+}
+
+/// 会员名录专用：在册四条件 + 可空的关键词检索（`$1`）。
+fn visible() -> String {
+    format!("{} AND ($1::text IS NULL \
+             OR u.username::text ILIKE '%' || $1 || '%')",
+            member_visible("u"))
+}
 
 #[allow(clippy::too_many_arguments)]
 pub async fn members(
@@ -97,6 +113,7 @@ pub async fn members(
         } else {
             ("$2", "$3")
         };
+        let vis = visible();
         format!(
             "SELECT u.id, u.username, u.title, u.avatar_url, u.class_id, \
                 c.name AS class_name, u.uploaded, u.downloaded, \
@@ -104,7 +121,7 @@ pub async fn members(
                   WHERE s.user_id = u.id AND s.seeding) AS seeding, \
                 u.spark_balance, u.created_at, u.last_seen_at \
              FROM users u LEFT JOIN user_classes c ON c.id = u.class_id \
-             WHERE {VISIBLE}{class_filter} \
+             WHERE {vis}{class_filter} \
              ORDER BY {order} {ord}, u.id {ord} \
              LIMIT {lim} OFFSET {off}"
         )
@@ -134,8 +151,9 @@ pub async fn count_members(
     } else {
         ""
     };
+    let vis = visible();
     let sql =
-        format!("SELECT count(*) FROM users u WHERE {VISIBLE}{class_filter}");
+        format!("SELECT count(*) FROM users u WHERE {vis}{class_filter}");
     // 列表与计数同一谓词，转义也必须同一处（P-332）
     let q = q.map(crate::torrents::esc_like);
     let mut query = sqlx::query_scalar::<_, i64>(&sql).bind(q);

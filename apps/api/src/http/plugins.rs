@@ -91,18 +91,34 @@ pub async fn medal_wall(
     } else {
         None
     };
+    // P-530：墙原先只按「勋章未过期」选人，把已停用/已墓碑的号也编进榜
+    // （现网实测 100 页里 27 个名字有 10 个是被处置账号）⇒ 与会员名录
+    // 规则 3 分叉。行查询与排名/计数子查询必须一起接，别名分别是 u / u2。
+    let vis_u = crate::repo::community::user_directory::member_visible("u");
+    let vis_u2 =
+        crate::repo::community::user_directory::member_visible("u2");
     let sql_where = if has_kw {
-        "WHERE (um.expires_at IS NULL OR um.expires_at > now()) \
-         AND (u.username ILIKE $1 OR m.name ILIKE $1)"
+        format!(
+            "WHERE (um.expires_at IS NULL OR um.expires_at > now()) \
+             AND {vis_u} AND (u.username ILIKE $1 OR m.name ILIKE $1)"
+        )
     } else {
-        "WHERE um.expires_at IS NULL OR um.expires_at > now()"
+        format!(
+            "WHERE (um.expires_at IS NULL OR um.expires_at > now()) \
+             AND {vis_u}"
+        )
     };
     // 计数子查询与行查询必须同口径（total 与 rank 窗口来自同一份谓词）——别名带 2 后缀
     let count_where = if has_kw {
-        "WHERE (um2.expires_at IS NULL OR um2.expires_at > now()) \
-         AND (u2.username ILIKE $1 OR m2.name ILIKE $1)"
+        format!(
+            "WHERE (um2.expires_at IS NULL OR um2.expires_at > now()) \
+             AND {vis_u2} AND (u2.username ILIKE $1 OR m2.name ILIKE $1)"
+        )
     } else {
-        "WHERE um2.expires_at IS NULL OR um2.expires_at > now()"
+        format!(
+            "WHERE (um2.expires_at IS NULL OR um2.expires_at > now()) \
+             AND {vis_u2}"
+        )
     };
     let (offset, limit) = crate::dto::page_window(q.page, q.per_page);
 
