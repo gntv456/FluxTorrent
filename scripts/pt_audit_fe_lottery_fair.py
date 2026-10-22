@@ -164,6 +164,11 @@ if LIVE:
         ROOT_BAL0 = sql("SELECT spark_balance FROM users WHERE id=1")
         CLEAN.append("UPDATE users SET spark_balance = %s WHERE id = 1"
                      % ROOT_BAL0)
+        # 建抽奖主题要向发起人扣押金。root 的余额被历轮活体闸门花成了负数
+        # （本轮实测 -25006 ⇒ 409 code=4001「余额不足」），FE-L1 一红，
+        # 后面 7 条（票落库/重复参与/链复算/派彩/验证页）全是下游假红。
+        # 探针期垫到 5000，收尾按 ROOT_BAL0 原值还原（CLEAN 已挂，倒序执行）。
+        sql("UPDATE users SET spark_balance = 5000 WHERE id = 1")
         fid = int(sql("SELECT min(id) FROM forums WHERE minclasscreate=0"))
         s, r = call("POST", "/forums/topics", {
             "forum_id": fid, "title": "FE188 fair lottery probe",
