@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { getMyFollows, getMyBookmarks } from "@/lib/data";
 import { getDict } from "@/i18n/server";
 import { BTN_SM_BOLD, PANEL_MD } from "@/lib/ui-classes";
@@ -70,7 +70,6 @@ export default async function SubscriptionsPage({
   let rows: SubRow[] = [];
   let days: CalendarDay[] = [];
   let netRows: NetSubRow[] = [];
-  let failed = false;
   try {
     const r = await api.get<SubRow[]>("/api/v1/me/subscriptions/groups");
     rows = Array.isArray(r) ? r : [];
@@ -94,10 +93,14 @@ export default async function SubscriptionsPage({
         ...(Array.isArray(subs) ? subs : []),
       ];
     }
-  } catch {
-    failed = true;
+  } catch (e) {
+    // 只有 401 才是「没登录」。取数 500 也踢去登录页，会让已登录用户
+    // 反复登录，且把故障演成「没有订阅」（与 /me 的跳转语义对齐）。
+    if (e instanceof ApiError && e.status === 401) {
+      redirect("/login?next=/me/subscriptions");
+    }
+    throw e;
   }
-  if (failed) redirect("/login?next=/me/subscriptions");
   // 关注名单在「作者」与「版块」两档都要取（同一次 /follows/mine 回两类）：
   // `getMyFollows` 自己回落空数组，不 throw，所以不会把上面那条 redirect
   // 的语义搅浑。

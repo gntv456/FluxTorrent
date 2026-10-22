@@ -14,7 +14,7 @@
 use actix_web::{get, web, HttpRequest, Responder};
 
 use crate::dto::ok;
-use crate::errors::DomainResult;
+use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
@@ -58,7 +58,7 @@ pub async fn my_group_subscriptions(
         .bind(auth.id)
         .fetch_all(&state.repo.db)
         .await
-        .unwrap_or_default();
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows
         .iter()
         .map(|(gid, name, ep, last, n)| {
@@ -105,7 +105,7 @@ pub async fn my_subscription_calendar(
     .bind(auth.id)
     .fetch_all(&state.repo.db)
     .await
-    .unwrap_or_default();
+    .map_err(|e| DomainError::Internal(e.into()))?;
     use std::collections::BTreeMap;
     let mut days: BTreeMap<String, Vec<serde_json::Value>> = BTreeMap::new();
     for (day, tid, name, gid, ep) in rows {
