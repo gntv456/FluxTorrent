@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
@@ -16,6 +17,7 @@ interface FriendRow {
 
 export function FriendsActions() {
   const { dict } = useI18n();
+  const router = useRouter();
   const t = dict.friendsActions ?? {
     addTitle: "添加好友",
     addPlaceholder: "对方用户名",
@@ -55,6 +57,9 @@ export function FriendsActions() {
       // A1 反馈协议：写操作结果走 toast（失败带 requestId 芯片）
       toast.success(okText ?? t.ok);
       await load();
+      // 页面上半部的好友/黑名单是 RSC 渲染的：不刷新的话，接受申请后
+      // 对方从「收到的申请」消失却不出现在「好友」区，拉黑同理。
+      router.refresh();
     } catch (e) {
       toast.error(
         e instanceof ApiError ? e.message : dict.common.networkError,
