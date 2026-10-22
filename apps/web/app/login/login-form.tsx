@@ -124,11 +124,11 @@ export function LoginForm() {
     } catch (err) {
       powRef.current = null; // 服务端已 GETDEL 消费本次令牌，下轮重解
       if (err instanceof ApiError) {
-        // 展示优先级：字典文案（三语）→ 后端 message（兜底，含具体原因）→ 通用失败
-        // 不再显示「登录失败（数字码）」——用户看不懂错误码，必须给文字原因
+        // P-568：1002 的服务端 message 是「参数校验失败: 具体判据」，
+        // 旧写法优先取字典标签，把停用/归档/邮箱未激活三类账号的**原因与
+        // 下一步**整条盖掉。统一走 apiErrorMessage 取「标签后的正文」。
         setError(
-          dict.errors[err.code] ??
-            err.message ??
+          apiErrorMessage(dict, err) ||
             fmt(dict.login.fail, { code: err.code }),
         );
         if (err.code === 2004) setAttempts((n) => n + 1);

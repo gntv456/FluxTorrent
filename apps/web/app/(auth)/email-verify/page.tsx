@@ -27,7 +27,8 @@ function VerifyInner() {
   );
   const [msg, setMsg] = useState("");
   const [rmsg, setRmsg] = useState("");
-  const [email, setEmail] = useState("");
+  // P-567：注册成功后带 ?email 跳到本页，重发表单直接预填
+  const [email, setEmail] = useState(sp.get("email") ?? "");
   const [resent, setResent] = useState(false);
 
   const verify = useCallback(async () => {

@@ -117,6 +117,14 @@ async fn send_verification_inner(
 /// 返回 Some 时登录终止；login.rs 把带 `EMAIL_NOT_VERIFIED:` 前缀的标记
 /// 转成可直接展示的中文提示（信封仍是 1002 参数校验失败——历史上写过
 /// 「转 4103」，代码里从来没有那个码，注释就此对齐实现）。
+///
+/// P-567：拦截范围只限「模式开关之后注册的账号」。0236 迁移把当时的存量
+/// 回填成已验证，但之后在 open/invite 模式下注册的账号 `email_verified_at`
+/// 仍是 NULL（2026-10-22 现网 3631/3674）。旧判据只看该列 ⇒ 管理员把
+/// registration_mode 一改成 email_verify，全站存量会员下一次登录就被拦，
+/// 而他们中的很多人注册时站点根本没要求过验证。`site_settings.updated_at`
+/// 只在值真正变化时刷新（groups.rs / site_put.rs / import 三处写口都跳过
+/// 同值写），用它作为开关时刻：只有开关后新建的账号需要激活。
 pub(super) async fn guard_login(
     state: &Db,
     user_id: i64,
@@ -124,15 +132,17 @@ pub(super) async fn guard_login(
     if !mode_is_email_verify(&state.repo.db).await {
         return None;
     }
-    let unverified: Option<Option<String>> = sqlx::query_scalar(
-        "SELECT email FROM users WHERE id = $1 \
-         AND email_verified_at IS NULL",
+    let unverified: Option<String> = sqlx::query_scalar(
+        "SELECT u.email FROM users u \
+         WHERE u.id = $1 AND u.email_verified_at IS NULL \
+           AND u.created_at > COALESCE((SELECT updated_at FROM \
+         site_settings WHERE name = 'registration_mode'), \
+         to_timestamp(0))",
     )
     .bind(user_id)
     .fetch_optional(&state.repo.db)
     .await
     .ok()
-    .flatten()
     .flatten();
     unverified.map(|_| {
         DomainError::Validation(format!("EMAIL_NOT_VERIFIED:{user_id}"))
