@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""P-583 组订阅按钮初始态闸门。
+"""P-583/P-585 组订阅闸门。
 
 跑法：
     export FLUX_API_BASE=http://127.0.0.1:8080/api/v1
@@ -9,11 +9,13 @@
   1. 静态三节接线：组详情口回 subscribed；详情块把它传给按钮；
      按钮用它初始化 state。
   2. 承重：三节各自改回旧形状，静态判据必须变红。
-  3. 活体：匿名 false → root 订阅后 true → 退订后 false；
+  3. P-585：单版本组（items=1）详情页仍渲染组区块，订阅入口不依赖第二版。
+  4. 活体：匿名 false → root 订阅后 true → 退订后 false；
      只清理本轮新增的订阅行（进门前已有的不动）。
 """
 import io
 import os
+import re
 import subprocess
 import sys
 
@@ -25,6 +27,7 @@ from pt_audit_lib import call, login, ok, summary  # noqa: E402
 API = "apps/api/src/publish_http/group.rs"
 BLOCKS = "apps/web/components/torrent-detail-blocks.tsx"
 BUTTON = "apps/web/components/group-subscribe-button.tsx"
+PAGE = "apps/web/app/(main)/torrent/[id]/page.tsx"
 
 PG = ["docker", "exec", os.environ.get("FLUX_PG_CONTAINER", "flux-postgres"),
       "psql", "-U", "flux", "-d",
@@ -49,6 +52,10 @@ def wiring_ok(api, blocks, btn):
             and "useState(initialSubscribed)" in btn)
 
 
+def group_block_visible(page):
+    return bool(re.search(r"group\.items\.length\s*>\s*0", page))
+
+
 def main():
     api, blocks, btn = src(API), src(BLOCKS), src(BUTTON)
     ok("组详情口回 subscribed + 详情块传参 + 按钮按初始态渲染",
@@ -64,6 +71,14 @@ def main():
     ok("承重：按钮忽略初始态被抓",
        not wiring_ok(api, blocks, btn.replace(
            "useState(initialSubscribed)", "useState(false)")),
+       "合成旧码")
+
+    page = src(PAGE)
+    ok("单版本组也渲染组区块（订阅入口不依赖第二版）",
+       group_block_visible(page), "详情页门禁应为 items.length > 0")
+    ok("承重：门禁退回只认多版本被抓",
+       not group_block_visible(page.replace(
+           "group.items.length > 0", "group.items.length > 1")),
        "合成旧码")
 
     tok = login()

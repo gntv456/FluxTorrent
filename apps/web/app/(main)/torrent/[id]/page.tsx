@@ -340,7 +340,7 @@ export default async function TorrentDetailPage({
       )}
 
 
-      {sectOn("group") && group?.group && group.items.length > 1 && (
+      {sectOn("group") && group?.group && group.items.length > 0 && (
         <GroupVersions group={group} dict={dict} />
       )}
 
