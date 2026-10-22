@@ -169,6 +169,33 @@ pub async fn lottery_draw_core(
             );
         }
     }
+    // P-580：参与人数少于中奖名额时，差额必须退回楼主。worker 的
+    // `lottery_settle` 已有这一支（P-429/HS），手动开奖这条腿漏了——楼主
+    // 发帖时按 `winners × prize` 全额押池，只派出 `picked.len() × prize`
+    // 时剩下那截不在任何人余额里，押款/派彩又各有流水，快照对账仍然平，
+    // 没人看得见这笔损失。提前开奖与 worker 兜底都走本函数，必须同口径。
+    let short = (winners as i64 - picked.len() as i64).max(0) * prize;
+    if short > 0 {
+        let op = repo_draw::topic_owner(repo, topic_id).await?;
+        // 与 worker 共用一个幂等键：两条腿谁先跑，另一条都不会再退一次。
+        if let Err(e) = earn_spark(
+            db,
+            op,
+            short,
+            "forum_lottery_refund",
+            &format!("forum-lottery-refund-short:{topic_id}"),
+        )
+        .await
+        {
+            tracing::warn!(
+                err = %e,
+                topic = topic_id,
+                owner = op,
+                amount = short,
+                "lottery shortfall refund failed"
+            );
+        }
+    }
     Ok(serde_json::json!({
         "topic_id": topic_id,
         "winners": picked,

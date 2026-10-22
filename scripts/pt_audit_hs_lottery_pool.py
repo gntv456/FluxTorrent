@@ -28,6 +28,10 @@
       ⇒ 现在恒 0；一旦有人踩到旧码就会变负 ⇒ 红）；
   HS5 正控：判据取数路径写错时不得恒真（同法在代码里必须能搜到
       `forum_lottery` 这个 kind 字面量）。
+  HS6 双入口：同一笔退还还必须在 **API 手动开奖** 那条腿里
+      （`community_http/lottery_draw.rs::lottery_draw_core`）。P-429 只修了
+      worker，楼主提前开奖/worker 兜底走的是这条，差额照样蒸发（P-580）；
+      HS6b 用摘掉该支的合成旧码做承重。
 
 用法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_hs_lottery_pool.py
       HS_LIVE=0 跳过 HS4 的现网只读查询。
@@ -45,6 +49,7 @@ from pt_audit_lib import ok, summary  # noqa: E402
 
 LIVE = os.environ.get("HS_LIVE", "1") != "0"
 JOB = "apps/worker/src/jobs/lottery.rs"
+DRAW = "apps/api/src/community_http/lottery_draw.rs"
 
 
 def rd(rel):
@@ -66,6 +71,23 @@ def settle_body(src):
     i = src.find("async fn lottery_settle(")
     j = src.find("\n}\n", i)
     return src[i:j if j > i else len(src)]
+
+
+def draw_body(src):
+    i = src.find("async fn lottery_draw_core(")
+    j = src.find("\n}\n", i)
+    return src[i:j if j > i else len(src)]
+
+
+def draw_gaps(body):
+    bad = []
+    if "forum-lottery-refund-short:{topic_id}" not in body:
+        bad.append("手动开奖缺「参与不足额」退还支（P-580）")
+    if not re.search(r"winners as i64[\s\S]{0,40}picked\.len\(\)", body):
+        bad.append("没有按 winners 与实际中奖人数算差额")
+    if "forum_lottery_refund" not in body:
+        bad.append("退还 kind 不是 forum_lottery_refund")
+    return bad
 
 
 def gaps(body):
@@ -101,6 +123,16 @@ ok("HS5 正控：取数路径确实读到了这份文件（防恒真）",
    (pos.stdout or "0").strip().isdigit() and int(
        (pos.stdout or "0").strip() or 0) > 0,
    "命中行=%s" % (pos.stdout or "").strip())
+dbody = draw_body(strip_lines(rd(DRAW)))
+dg = draw_gaps(dbody)
+ok("HS6 API 手动开奖也必须退还差额（P-429 的另一条腿）",
+   dg == [], "缺项=%s" % (dg,))
+dold = dbody.replace("winners as i64 - picked.len() as i64",
+                     "winners as i64")
+dold = dold.replace("forum-lottery-refund-short:{topic_id}",
+                    "forum-lottery-XXX")
+ok("HS6b 承重：摘掉手动开奖退还支的合成旧码被抓",
+   len(draw_gaps(dold)) >= 2, "抓到=%s" % (len(draw_gaps(dold)),))
 
 if LIVE:
     def psql(q):
