@@ -2,13 +2,17 @@ import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { ErrorPanel } from "@/components/ui/error-panel";
+import { PANEL_MD } from "@/lib/ui-classes";
+import { timeAgo } from "@/lib/time-ago";
 
 export const dynamic = "force-dynamic";
 
 /**
  * 通知中心（0283 P1-9）：把散落三处的「要看的消息」聚合到一页——
  * 未读私信 / 管理组信箱 / H&R 待办（到期前 7 天内算紧急）。
- * 各面板是入口卡（数字 + 直达链接），不在本页复刻列表。
+ * 各面板是入口卡（数字 + 直达链接），不在本页复刻列表；
+ * 例外是全站动态：0407 只建了读口、没有独立页面，所以本页在卡下方
+ * 渲染最近 50 条正文，卡片锚点直达（原链接指 / 但首页没有动态流）。
  *
  * 四态（W-28）：三路全挂（含未登录 401）→ ErrorPanel 整页错误（原实现
  * 恒显三张 0 卡，对着游客演「一切安好」）；任一路成功即正常渲染，
@@ -32,8 +36,11 @@ interface HrResp {
 interface StaffResp {
   data?: unknown[] | { items?: unknown[] };
 }
-interface ActivityResp {
-  data?: { id: number; kind: string; text: string }[];
+interface ActivityRow {
+  id: number;
+  kind: string;
+  text: string;
+  created_at: string;
 }
 
 export default async function NotificationsPage() {
@@ -43,7 +50,7 @@ export default async function NotificationsPage() {
     api.get<HrResp>("/api/v1/me/hr"),
     api.get<StaffResp>("/api/v1/messages/staff"),
     // 全站动态（0407）：独立时间线（字幕上架/评选揭晓等系统事件）
-    api.get<ActivityResp>("/api/v1/site-activity"),
+    api.get<ActivityRow[]>("/api/v1/site-activity"),
   ]);
   const ov = results[0].status === "fulfilled" ? results[0].value : null;
   const hr = results[1].status === "fulfilled" ? results[1].value : null;
@@ -73,6 +80,9 @@ export default async function NotificationsPage() {
     ? staff!.data!
     : (staff?.data?.items ?? []);
   const staffUnread = staffRows.length;
+  // 该端点回的是数组（api.get 已拆信封），原代码按 {data: []} 取，
+  // 于是这张卡无论有多少动态都不出现。
+  const activities = Array.isArray(activity) ? activity : [];
   const week = Date.now() + 7 * 86400_000;
   const hrOpen = (hr?.rows ?? []).filter((r) => r.status === "open");
   const hrUrgent = hrOpen.filter(
@@ -99,12 +109,12 @@ export default async function NotificationsPage() {
         ]
       : []),
     // 全站动态（0407）：独立流最近条数；无动态不渲染（不演空卡）
-    ...((activity?.data?.length ?? 0) > 0
+    ...(activities.length > 0
       ? [
           {
-            href: "/",
+            href: "#site-activity",
             title: t.activityCard,
-            count: activity!.data!.length,
+            count: activities.length,
             tone: ("idle" as const),
           },
         ]
@@ -139,6 +149,31 @@ export default async function NotificationsPage() {
           </Link>
         ))}
       </div>
+
+      {activities.length > 0 && (
+        <section id="site-activity" className={PANEL_MD}>
+          <h2 className="font-bold">{t.activityCard}</h2>
+          <ul className="mt-2 flex list-none flex-col gap-2 p-0">
+            {activities.map((a) => (
+              <li
+                key={a.id}
+                className={
+                  "flex flex-wrap items-baseline justify-between " +
+                  "gap-2 text-sm"
+                }
+              >
+                <span className="min-w-0 flex-1">{a.text}</span>
+                <time
+                  className="shrink-0 text-xs text-sub"
+                  dateTime={a.created_at}
+                >
+                  {timeAgo(a.created_at, dict.common)}
+                </time>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
