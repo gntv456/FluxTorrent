@@ -35,8 +35,8 @@ struct SubRow {
     endpoint: String,
     p256dh: String,
     auth: String,
-    /// 用户级推送开关（notice_prefs JSONB；true = 用户已关）
-    pref_off: Option<bool>,
+    /// 用户级推送开关（notice_prefs JSONB；显式 false 才是关，缺省发）
+    pref_on: Option<bool>,
 }
 
 /// 给某用户的所有活跃订阅推送一条事件（topic 过滤 + 偏好过滤 + Gone 清理）。
@@ -50,7 +50,7 @@ pub async fn push_to_user(
 ) {
     let subs: Vec<SubRow> = match sqlx::query_as(
         "SELECT p.id, p.endpoint, p.p256dh, p.auth, \
-                COALESCE((u.notice_prefs->>$2)::boolean, false) AS pref_off \
+                COALESCE((u.notice_prefs->>$2)::boolean, true) AS pref_on \
          FROM push_subscriptions p JOIN users u ON u.id = p.user_id \
          WHERE p.user_id = $1 AND p.expired_at IS NULL AND $3 = ANY(p.topics) \
          LIMIT 20",
@@ -75,7 +75,7 @@ pub async fn push_to_user(
         return; // 未配置 VAPID：静默跳过（订阅管理不受影响）
     }
     for s in &subs {
-        if s.pref_off == Some(true) {
+        if s.pref_on == Some(false) {
             continue;
         }
         match deliver(&s.endpoint, &s.p256dh, &s.auth, title, body, &vapid)
