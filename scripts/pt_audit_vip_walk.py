@@ -560,16 +560,15 @@ def d_subscribe(vip: str, root: str) -> None:
         st, js = call("GET", ep, vip)
         ok_envelope(d, f"GET {ep}", st, js)
     # 组订阅写链：聚合组（torrent_groups）订阅 → 读口可见 → 退订。
-    # gid 来源：任意入组种子的 GET /torrents/{id}/group（group.id）
-    st, js = call("GET", "/api/v1/torrents?alive=0&limit=50", vip)
+    # gid 来源：取一枚入组种子——/torrents/{id}/group 的入参是 **torrent id**
+    # （2026-10-22 曾误传 group id）；扫列表前 50 个会被并行会话的探针种
+    # 占满 id 头部，故直接库取入组种
     gid = None
-    if isinstance(js, dict) and js.get("code") == 0:
-        for it in js["data"].get("items", []):
-            st2, js2 = call("GET", f"/api/v1/torrents/{it['id']}/group", vip)
-            g = (js2.get("data") or {}).get("group") if isinstance(js2, dict) else None
-            if g and g.get("id"):
-                gid = g["id"]
-                break
+    t = psql("SELECT id FROM torrents WHERE group_id IS NOT NULL ORDER BY id DESC LIMIT 1")
+    if t:
+        st2, js2 = call("GET", f"/api/v1/torrents/{t}/group", vip)
+        gg = (js2.get("data") or {}).get("group") if isinstance(js2, dict) else None
+        gid = gg["id"] if gg and gg.get("id") else None
     if gid:
         st, js = call("POST", f"/api/v1/torrents/groups/{gid}/subscribe", vip, {})
         ok_envelope(d, "订阅字幕组", st, js)
@@ -581,7 +580,7 @@ def d_subscribe(vip: str, root: str) -> None:
         st, js = call("POST", f"/api/v1/torrents/groups/{gid}/unsubscribe", vip, {})
         ok_envelope(d, "退订字幕组", st, js)
     else:
-        expect(d, "有可订阅的字幕组", False)
+        rec(d, "WARN", "站内无聚合组可订阅（数据形态，非缺陷）")
     # 厂牌订阅：订一个 content_network → 读口可见
     st, js = call("GET", "/api/v1/networks?limit=1", vip)
     nid = None
@@ -650,7 +649,9 @@ def upload_probe_torrent(tok: str, name: str) -> tuple[int, str] | None:
         "name": name,
         "small_descr": "全站深测探针种",
         "descr": "全站深测探针种：正常长度描述。本资源为测试用途，包含充分的说明"
-                 "文字以通过最低内容标准检查。补充来源与出处说明，长度足够通过校验。",
+                 "文字以通过最低内容标准检查。补充来源与出处说明，长度足够通过校验。"
+                 "另附媒体参数与转码来源备注，确保描述长度达到站点自动审核的"
+                 "最低字数要求，避免探针种在测试周期内被自动审种流程拒绝。",
     }.items():
         parts += (
             f"--{b}{crlf}Content-Disposition: form-data; name={dq}{k}{dq}"
@@ -699,18 +700,18 @@ def tracker_announce(passkey: str, info_hash_hex: str, size: int = 0,
         with urllib.request.urlopen(
             f"{TRACKER}/announce/{passkey}?{q}", timeout=15
         ) as r:
-            return b"peers" in r.read() or b"interval" in r.read()
+            body = r.read()
+            if b"failure reason" in body:
+                return False
+            return b"peers" in body or b"interval" in body
     except Exception:
         return False
 
 
 def ensure_probe_torrent(root_tok: str, vip_tok: str) -> None:
-    """站点无活种时（并行会话清光了）自建一枚并挂做种 peer，
-    保浏览/下载/做种三域可测（默认视图仅活种）。"""
-    st, js = call("GET", "/api/v1/torrents?limit=1", root_tok)
-    items = (js.get("data") or {}).get("items", []) if isinstance(js, dict) else []
-    if items:
-        return
+    """每轮都自建一枚探针种并挂做种 peer——不能只在「无活种」时补：
+    浏览/做种域的断言按 pt_audit 前缀找自家探针（并行会话的 deep_ 种
+    不算数），列表非空就跳过会让这些断言必挂（2026-10-22 实测）。"""
     name = f"pt_audit_alive.{int(time.time())}"
     out = upload_probe_torrent(root_tok, name)
     if not out:
@@ -725,15 +726,19 @@ def ensure_probe_torrent(root_tok: str, vip_tok: str) -> None:
     ok2 = tracker_announce("a17b2c3d4e5f60718293a4b5c6d7e8f9", ih,
                            size=1_048_576, downloaded=1_048_576)
     if ok1 and ok2:
-        # worker 经 Redis 流异步落账：轮询等种子进活种列表（默认视图）
-        for _ in range(20):
-            time.sleep(1.5)
-            st, js = call("GET", "/api/v1/torrents?limit=1", root_tok)
-            rows = (js.get("data") or {}).get("items", []) if isinstance(js, dict) else []
-            if rows:
-                rec("自愈", "PASS", f"无活种，已建探针种 #{tid} 并挂做种 peer")
+        # worker 经 Redis 流异步落账：consume_announce 是 60s tick，
+        # 轮询必须覆盖一个完整周期（旧 30s 上限在 tick 后半窗写入时必挂）。
+        # 且必须等**自家探针**（tid 的 seeders>0）——等「任意活种」会在
+        # 站上另有活种时秒过，探针自己还没落账，后续按 pt_audit 前缀
+        # 找探针的断言全挂（2026-10-22 实测假成功）。
+        for _ in range(24):
+            time.sleep(5)
+            st, js = call("GET", f"/api/v1/torrents/{tid}", root_tok)
+            row = (js.get("data") or {}) if isinstance(js, dict) else {}
+            if (row.get("seeders") or 0) > 0:
+                rec("自愈", "PASS", f"已建探针种 #{tid} 并挂做种 peer")
                 return
-        rec("自愈", "WARN", f"探针种 #{tid} 做种已挂但 30s 内未进活种列表")
+        rec("自愈", "WARN", f"探针种 #{tid} 做种已挂但 120s 内未进活种列表")
     else:
         rec("自愈", "WARN", f"探针种 #{tid} 已建但 announce 失败（可能仍不可见）")
 
@@ -757,11 +762,23 @@ DOMAINS = {
 def main() -> None:
     wanted = sys.argv[1:] or list(DOMAINS)
     # 自愈：并行会话的后台工具可能把探针用户降级/清零，探测前拉回 VIP 态
+    # users.uploaded/spark_balance 是快照列（worker 按 base+Σledger 重算）：
+    # 裸写会在下一次 announce 消费时被冲掉（实测 50GB 归零）。自愈走
+    # balance_baseline + 清 ledger，与快照公式自洽。
+    # ⚠️ spark_ledger 也必须清：只重置 base_spark 不清流水，下一次小时
+    # 重算（做种 job）就把余额拽回 base+Σledger 的历史负值——商城域
+    # 随后全部「余额不足」（2026-10-22 实测踩中）。
+    psql("UPDATE users SET class_id = 9 WHERE id = 7346")
+    psql("DELETE FROM traffic_ledger WHERE user_id = 7346")
+    psql("DELETE FROM spark_ledger WHERE user_id = 7346")
     psql(
-        "UPDATE users SET class_id = 9, uploaded = 53687091200, "
-        "downloaded = 2684354560, "
-        "spark_balance = GREATEST(spark_balance, 20000) WHERE id = 7346"
+        "INSERT INTO balance_baseline (user_id, base_up, base_down, base_spark, "
+        "base_seed_secs, through, updated_at) VALUES "
+        "(7346, 53687091200, 2684354560, 100000, 0, now(), now()) "
+        "ON CONFLICT (user_id) DO UPDATE SET base_up = 53687091200, "
+        "base_down = 2684354560, base_spark = 100000, updated_at = now()"
     )
+    psql("UPDATE users SET spark_balance = 100000 WHERE id = 7346")
     # 周邀请配额重置（上周量耗尽属正确站方行为，探针要可重复跑）
     psql("DELETE FROM invite_quota WHERE user_id = 7346")
     vip = mint(7346, 9)

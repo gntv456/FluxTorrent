@@ -149,17 +149,31 @@ if LIVE:
     def psql(q):
         r = subprocess.run(
             ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
-             "-d", "fluxtorrent", "-q", "-tA"], input=q,
+             "-d", "fluxtorrent", "-q", "-tA", "-v", "ON_ERROR_STOP=1"],
+            input=q,
             capture_output=True, text=True, encoding="utf-8", errors="replace")
-        return (r.stdout or "").strip(), (r.stderr or "").strip()
+        # stdin 形态的 psql 出错时退出码可能仍是 0 → 显式查 stderr，
+        # 否则「SQL 失败」会被读成「角色没在册」，红得看不出因果。
+        err = (r.stderr or "").strip()
+        if r.returncode != 0 or "ERROR" in err:
+            raise RuntimeError("psql 失败：%s" % err[:300])
+        return (r.stdout or "").strip(), err
 
     role, _ = psql(ROLE_SQL)
     if not role:
         ok("HK3 活体：插件角色在册", False, "没找到 flux_plugin_auto_pin_*")
     else:
         def ctx(sql):
-            return psql("BEGIN; SET LOCAL ROLE %s; SET LOCAL search_path = "
-                        "pg_catalog; %s; ROLLBACK;" % (role, sql))[1]
+            # HK3 反控：裸名 SQL 在隔离上下文中**必然**报
+            # relation does not exist——错误文本本身就是判据，不能当
+            # 意外失败 raise（包装器的 ON_ERROR_STOP 正是为了抓意外
+            # 失败，这里要绕过它把预期错误当返回值）。
+            try:
+                return psql("BEGIN; SET LOCAL ROLE %s; SET LOCAL "
+                            "search_path = pg_catalog; %s; ROLLBACK;"
+                            % (role, sql))[1]
+            except RuntimeError as e:
+                return str(e)
         err_bare = ctx(BARE)
         err_ok = ctx(QUALIFIED)
         ok("HK3 活体：裸名必失败、限定名必通过（同隔离上下文）",
