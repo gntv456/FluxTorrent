@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::require_auth;
+use crate::http::{optional_auth, require_auth};
 use crate::state::AppState;
 
 #[post("/torrents/{id}/group")]
@@ -122,6 +122,7 @@ pub async fn group_unsubscribe(
 /// 组详情 + 组内全部过审版本（详情页「同组资源」数据源；未入组返回 group=null）
 #[get("/torrents/{id}/group")]
 pub async fn group_info(
+    req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
@@ -188,9 +189,23 @@ pub async fn group_info(
             })
         })
         .collect();
+    // P-583 订阅按钮初始态：详情页公开，匿名恒 false；登录用户按本人一行判。
+    let subscribed = match optional_auth(&req, &state).await {
+        Some(u) => sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM group_subscriptions \
+             WHERE user_id = $1 AND group_id = $2)",
+        )
+        .bind(u.id)
+        .bind(gid)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?,
+        None => false,
+    };
     Ok(ok(serde_json::json!({
         "group": { "id": gid, "name": name, "descr": descr, "category_id": category_id },
         "items": items,
+        "subscribed": subscribed,
     })))
 }
 

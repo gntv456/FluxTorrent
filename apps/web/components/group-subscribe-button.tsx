@@ -5,11 +5,18 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
 /** 聚合组订阅（0075）：POST /torrents/groups/{gid}/subscribe | /unsubscribe
- *  新版本入组并过审时站内通知（受 notice_prefs.group_new_version 偏好控制） */
-export function GroupSubscribeButton({ groupId }: { groupId: number }) {
+ *  新版本入组并过审时站内通知（受 notice_prefs.group_new_version 偏好控制）
+ *  P-583：初始态由组详情口带回（匿名 false），不再恒显示「订阅」。 */
+export function GroupSubscribeButton({
+  groupId,
+  initialSubscribed = false,
+}: {
+  groupId: number;
+  initialSubscribed?: boolean;
+}) {
   const { dict } = useI18n();
   const t = dict.groupsub;
-  const [subscribed, setSubscribed] = useState(false);
+  const [subscribed, setSubscribed] = useState(initialSubscribed);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 

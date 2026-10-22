@@ -57,6 +57,8 @@ export interface TorrentDetailExt {
 /** 聚合组（0069）：同一资源的多个版本 */
 export interface GroupInfo {
   group: { id: number; name: string; descr: string | null } | null;
+  /** P-583：当前登录者是否已订阅该组（匿名 false），订阅按钮初始态 */
+  subscribed?: boolean;
   items: Array<{
     id: number;
     name: string;
@@ -93,7 +95,10 @@ export function GroupVersions({
     >
       {/* 组订阅（0075）：新版本过审时通知 */}
       <div className="mb-2 flex justify-end">
-        <GroupSubscribeButton groupId={group.group!.id} />
+        <GroupSubscribeButton
+          groupId={group.group!.id}
+          initialSubscribed={group.subscribed ?? false}
+        />
       </div>
       <div className="brand-wide-table-scroll">
       <table className="td-files">
