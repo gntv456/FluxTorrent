@@ -226,12 +226,12 @@ pub async fn appeal_handle(
         .await?;
     // 0209 P1-8：受理即联动解封（可选）+ 双通道通知当事人（此前 accept 只改 appeals 表，
     // 站长须手动恢复 status=0，且被封者不能登录看 PM、收不到任何处理结果）。
-    // 0285 护栏/解封先于状态翻转；SELECT 带 open，已处理申诉不解封。
+    // 0285 解封先于翻转；只认 open+2，墓碑(3)不可复活。
     let (user_id, email, mut unbanned): (i64, Option<String>, bool) =
         sqlx::query_as(
             "SELECT a.user_id, u.email, \
              ($2 AND a.kind = 'ban' AND a.status = 'open' \
-              AND u.status >= 2) \
+              AND u.status = 2) \
              FROM appeals a JOIN users u ON u.id = a.user_id WHERE a.id = $1",
         )
         .bind(body.appeal_id)

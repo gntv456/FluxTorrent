@@ -25,7 +25,9 @@ pub(crate) async fn restore_if_outranked(
     )
     .await?;
     let restored = sqlx::query(
-        "UPDATE users SET status = 0 WHERE id = $1 AND status >= 2",
+        // 只认 2=封禁；3=墓碑已匿名化（user_del 删申诉后仍有并发窗口），
+        // 旧谓词 `>= 2` 会把刚墓碑化的号复活成空壳账号
+        "UPDATE users SET status = 0 WHERE id = $1 AND status = 2",
     )
     .bind(user_id)
     .execute(&state.repo.db)
