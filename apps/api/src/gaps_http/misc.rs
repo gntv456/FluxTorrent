@@ -57,7 +57,7 @@ pub async fn resub_use(
     let owned: i64 = sqlx::query_scalar(
         "SELECT (SELECT count(*) FROM shop_orders o \
                    JOIN shop_items i ON i.id = o.item_id \
-                  WHERE o.user_id = $1 \
+                  WHERE o.user_id = $1 AND o.fulfill_state = 'done' \
                     AND i.kind IN ('makeup_card','resub_card') \
                     AND NOT EXISTS (SELECT 1 FROM resub_uses r \
                                      WHERE r.idempotency_key = concat('resub:', o.id))) \
@@ -91,7 +91,7 @@ pub async fn resub_use(
     let shop_order: Option<i64> = sqlx::query_scalar(
         "SELECT o.id FROM shop_orders o JOIN shop_items i ON i.id = o.item_id \
          WHERE o.user_id = $1 AND i.kind IN ('makeup_card','resub_card') \
-           AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id)) \
+           AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.idempotency_key = concat('resub:', o.id)) AND o.fulfill_state = 'done' \
          ORDER BY o.id LIMIT 1 FOR UPDATE OF o SKIP LOCKED",
     )
     .bind(auth.id)
@@ -191,7 +191,7 @@ pub async fn resub_use(
     let left: i64 = sqlx::query_scalar(
         "SELECT (SELECT count(*) FROM shop_orders o \
                    JOIN shop_items i ON i.id = o.item_id \
-                  WHERE o.user_id = $1 \
+                  WHERE o.user_id = $1 AND o.fulfill_state = 'done' \
                     AND i.kind IN ('makeup_card','resub_card') \
                     AND NOT EXISTS (SELECT 1 FROM resub_uses r \
                                      WHERE r.idempotency_key = concat('resub:', o.id))) \

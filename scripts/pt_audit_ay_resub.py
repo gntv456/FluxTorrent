@@ -39,12 +39,15 @@ audit_log 是防篡改链（库上触发器不许删），管理动作只断言�
     PYTHONIOENCODING=utf-8 python scripts/pt_audit_ay_resub.py
 """
 import atexit
+import io
 import os
 import re
 import subprocess
 import sys
 import threading
 import time
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -386,4 +389,56 @@ ok("S6 撤销补签行成功且落审计",
           "now() - interval '60 seconds'" % MID) >= 1, "%s %s" % (s, r))
 
 print()
+
+print("== S7 P-540：未付清/已退款的订单行不算持有补签卡 ==")
+D5 = q("SELECT to_char(sd, 'YYYY-MM-DD') FROM (SELECT (CURRENT_TIMESTAMP + "
+       "interval '8 hours')::date - generate_series(1,7) AS sd) x WHERE NOT "
+       "EXISTS (SELECT 1 FROM attendance a WHERE a.user_id=%d AND a.date=x.sd)"
+       " AND NOT EXISTS (SELECT 1 FROM resub_uses r WHERE r.user_id=%d AND "
+       "r.target_date=x.sd) ORDER BY sd LIMIT 1" % (XID, XID))
+ok("S7 前置：给 X 找到 7 天内一个没补签过的日子", D5 not in ("", "None"),
+   "D5=%s" % D5)
+
+
+def mk_order(uid, key, state):
+    return int(q("INSERT INTO shop_orders (user_id, item_id, price,"
+                 " idempotency_key, fulfill_state) VALUES (%d, %d, 1000,"
+                 " '%s', '%s') RETURNING id" % (uid, SHOP_ITEM, key, state)))
+
+
+FR_OID = mk_order(XID, "p540-frozen", "frozen")
+RF_OID = mk_order(XID, "p540-ref", "refunded")
+rej("S7 手里只有 frozen/refunded 两行时不许补签（旧口径＝白拿一张卡）",
+    *resub(XT, D5, "p540-a"), 400, "没有可用补签卡")
+ok("S7b 拒单后这两行都没被消耗（resub_uses 里找不到 resub:{oid}）",
+   qi("SELECT count(*) FROM resub_uses WHERE user_id = %d AND "
+      "idempotency_key IN ('resub:%d','resub:%d')"
+      % (XID, FR_OID, RF_OID)) == 0, "frozen=%d refunded=%d" % (FR_OID, RF_OID))
+DONE_OID = give_card(XID, "p540-done")
+s, r = resub(XT, D5, "p540-b")
+ok("S7c 正控：补一张 done 卡后同一日能补签，且消耗锚在 done 行",
+   s == 200 and qi("SELECT count(*) FROM resub_uses WHERE user_id = %d AND "
+                   "idempotency_key = 'resub:%d'" % (XID, DONE_OID)) == 1,
+   "%s %s" % (s, brief(r)))
+
+print("== S8 静态：数补签卡的 SQL 必须筛 fulfill_state ==")
+hits = []
+for dp, dns, fs in os.walk(os.path.join(REPO, "apps", "api", "src")):
+    dns[:] = [d for d in dns if d != "target"]
+    for fn in sorted(fs):
+        if not fn.endswith(".rs"):
+            continue
+        rel = os.path.relpath(os.path.join(dp, fn), REPO).replace("\\", "/")
+        txt = io.open(os.path.join(dp, fn), encoding="utf-8",
+                      errors="replace").read().replace("\r\n", "\n")
+        txt = re.sub(r"//[^\n]*", "", txt)
+        for m in re.finditer(r'r#"[^"]*?"#|"((?:\\.|[^"\\])*)"', txt, re.S):
+            body = m.group(1) if m.group(1) is not None else m.group(0)
+            if "makeup_card" not in body or "shop_orders" not in body:
+                continue
+            if "fulfill_state" not in body:
+                hits.append("%s:%d" % (rel, txt[:m.start()].count("\n") + 1))
+ok("S8 每处「持有补签卡」的 SQL 都带 fulfill_state（多一处＝新白拿口子）",
+   not hits, "未筛的站点=%s" % hits)
+
 summary()

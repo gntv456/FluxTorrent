@@ -16,7 +16,7 @@ pub async fn attendance_json(
     let makeup_cards: i64 = sqlx::query_scalar(
         "SELECT (SELECT count(*) FROM shop_orders o \
                    JOIN shop_items i ON i.id = o.item_id \
-                  WHERE o.user_id = $1 \
+                  WHERE o.user_id = $1 AND o.fulfill_state = 'done' \
                     AND i.kind IN ('makeup_card','resub_card') \
                     AND NOT EXISTS (SELECT 1 FROM resub_uses r \
                        WHERE r.idempotency_key = concat('resub:', o.id))) \
