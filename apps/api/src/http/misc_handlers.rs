@@ -83,24 +83,34 @@ pub async fn my_torrentlist(
     let per = q.per.or(q.limit).unwrap_or(50).clamp(1, 100);
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let kind = q.kind.as_deref().unwrap_or("seeding");
+    // P-525：「我的发布」原先只按 `owner_id` 过滤，把 approval_status=3
+    // （`torrents::visibility` 的成文口径：谁都不可见）也发给作者本人——
+    // 现网实测 root 的 kind=uploads 回 total=170，其中 8 条是 3 档，
+    // 而 stats 的三档只有 162+0+0，分桶与总数对不上就是这条泄漏的形状。
+    // 收藏夹（同文件下面）早就接了同一把尺，这里是漏接的第二个出口。
+    let vis =
+        crate::torrents::visibility_sql(Some((auth.id, auth.class_id >= 90)));
+    let uploads_sql = format!(
+        "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, \
+         t.leechers, false AS seeding, false AS leeching, \
+         NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here, \
+         t.approval_status, t.created_at AS published_at, \
+         c.name AS category, \
+         NULLIF(CONCAT_WS('：', dr.reason, \
+           NULLIF(t.deny_note, '')), '') AS deny_reason \
+         FROM torrents t \
+         LEFT JOIN torrent_deny_reasons dr ON dr.id = t.deny_reason_id \
+         LEFT JOIN categories c ON c.id = t.category_id \
+         WHERE t.owner_id = $1 AND {vis} \
+         ORDER BY t.approval_status = 1 DESC, t.id DESC \
+         LIMIT $2 OFFSET $3",
+        vis = vis
+    );
     let rows: Vec<SnatchRow> = match kind {
         // 自己的 uploads 放开全部审核态（0284 P0-1）：发种者要能跟踪「待审/被拒
         // + 拒因」，此前硬编码 =1 让待审种从「我的发布」消失。别人视角的
         // users/{id}/torrentlist 维持只看过审（user_torrentlist.rs）。
-        "uploads" => sqlx::query_as(
-            "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, \
-             t.leechers, false AS seeding, false AS leeching, \
-             NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here, \
-             t.approval_status, t.created_at AS published_at, \
-             c.name AS category, \
-             NULLIF(CONCAT_WS('：', dr.reason, \
-               NULLIF(t.deny_note, '')), '') AS deny_reason \
-             FROM torrents t \
-             LEFT JOIN torrent_deny_reasons dr ON dr.id = t.deny_reason_id \
-             LEFT JOIN categories c ON c.id = t.category_id \
-             WHERE t.owner_id = $1 \
-             ORDER BY t.approval_status = 1 DESC, t.id DESC LIMIT $2 OFFSET $3",
-        ),
+        "uploads" => sqlx::query_as(&uploads_sql),
         "completed" => sqlx::query_as(
             "SELECT s.torrent_id, t.name, t.size, t.seeders, t.leechers, s.seeding, s.leeching, \
              s.completed_at, s.uploaded AS uploaded_here \
@@ -126,12 +136,16 @@ pub async fn my_torrentlist(
     // 计数与列表同一套 FROM/WHERE，否则前端按 total 画的页码里有空页。
     // uploads 顺手带三档审核态（样图的四格统计条），其余 kind 该三格为 0，
     // 由前端决定不渲染。
-    let stats_sql: &str = if kind == "uploads" {
+    let uploads_stats = format!(
         "SELECT count(*) AS total, \
             count(*) FILTER (WHERE t.approval_status = 0) AS pending, \
             count(*) FILTER (WHERE t.approval_status = 1) AS approved, \
             count(*) FILTER (WHERE t.approval_status = 2) AS denied \
-         FROM torrents t WHERE t.owner_id = $1"
+         FROM torrents t WHERE t.owner_id = $1 AND {vis}",
+        vis = vis
+    );
+    let stats_sql: &str = if kind == "uploads" {
+        &uploads_stats
     } else if kind == "completed" {
         "SELECT count(*) AS total, 0::bigint AS pending, \
              0::bigint AS approved, 0::bigint AS denied \

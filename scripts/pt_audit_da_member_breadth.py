@@ -425,6 +425,24 @@ else:
 ok("DA14c 假积分键不许回到响应里（站内没有发放/消费点）",
    "seed_points" not in ov, "keys=%s" % sorted(ov.keys())[:12])
 
+print("\n== DA15 我的发布：分桶与总数自洽（3 档谁都不可见，不许漏给作者）==")
+# `torrents::visibility` 的成文口径：approval_status=3 对**任何人**都不可见
+# （含作者与职员）。旧写法「我的发布」只按 owner_id 过滤 ⇒ 3 档种连同名称、
+# 分类、大小、发布时间一起发给作者，而 stats 的三档只数 0/1/2，
+# 于是现网 root 看到 total=170 与 162+0+0 对不上——差值就是漏出去的条数。
+# 若哪天出现 4 档（回收站/暂缓）在册，这条同样会红，逼出「分桶缺一名」的
+# 那个待裁项（见任务 #6 ④），不是误伤。
+for who, tk in (("root", ROOT), ("探针会员", MT)):
+    dlt = data(call("GET", "/me/torrentlist?kind=uploads&per=1", token=tk)) or {}
+    slt = dlt.get("stats") or {}
+    tot15 = int(dlt.get("total") or 0)
+    sum15 = sum(int(slt.get(k) or 0) for k in ("pending", "approved", "denied"))
+    ok("DA15 %s 的「我的发布」total=%s 等于三档之和=%s" % (who, tot15, sum15),
+       tot15 == sum15,
+       "差的 %d 条是 visibility 口径里谁都不可见的 3 档；rows 里出现的档=%s"
+       % (tot15 - sum15, sorted({int(r.get("approval_status") or -1)
+                                 for r in (dlt.get("rows") or [])})))
+
 print("\n== 状态分布（成员 / 匿名）==")
 for label, rows in (("成员", MINE), ("匿名", ANON)):
     d = {}
