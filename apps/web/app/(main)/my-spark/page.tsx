@@ -10,6 +10,7 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { SkeletonRows } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pager } from "@/components/ui/pager";
+import { MerklePanel } from "./_parts/merkle-panel";
 
 interface SparkInfo {
   balance: number;
@@ -38,17 +39,25 @@ interface LedgerRow {
   item_name?: string | null;
 }
 
+type Summary = { income: number; spend: number };
+
+const sums = (rows: LedgerRow[]): Summary => ({
+  income: rows.filter((r) => r.amount > 0).reduce((s, r) => s + r.amount, 0),
+  spend: rows.filter((r) => r.amount < 0).reduce((s, r) => s + r.amount, 0),
+});
+
 /** 我的魔力（mybonus.php 口径）：余额卡片 + 收益估算 + 最近流水 */
 export default function MySparkPage() {
   const { dict, locale, currency } = useI18n();
   const t = dict.myspark;
   const [info, setInfo] = useState<SparkInfo | null>(null);
   const [rows, setRows] = useState<LedgerRow[]>([]);
-  // 2026-10-16 改真分页：此前是 limit 20..50 的「加载更多」，封顶 50 条后
-  // 再也看不到更早的流水，且界面没有任何「还有更多」的提示。后端补 page/total。
+  // 2026-10-16 改真分页：旧「加载更多」封顶 50 条且无任何「还有更多」提示
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+  // 近期收支固定取第一页（最近 50 笔），翻页只换表格不换合计
+  const [summary, setSummary] = useState<Summary | null>(null);
   // 样图 § my-spark 的「兑换邀请（15,000）」：价格取 /invites/status 的
   // redeem_price 真值（invite_http.rs:119），取不到就只显示按钮名
   const [redeemPrice, setRedeemPrice] = useState<number | null>(null);
@@ -76,6 +85,7 @@ export default function MySparkPage() {
       .then((d) => {
         setRows(d.items);
         setTotal(d.total);
+        if (page === 1) setSummary(sums(d.items));
       })
       .catch((e) => {
         setErr(e instanceof ApiError ? e.message : dict.common.loadFailed);
@@ -110,12 +120,8 @@ export default function MySparkPage() {
     );
   }
 
-  const income = rows
-    .filter((r) => r.amount > 0)
-    .reduce((s, r) => s + r.amount, 0);
-  const spend = rows
-    .filter((r) => r.amount < 0)
-    .reduce((s, r) => s + r.amount, 0);
+  const income = summary?.income;
+  const spend = summary?.spend;
 
   return (
     <div className="flex flex-col gap-4">
@@ -144,11 +150,15 @@ export default function MySparkPage() {
         </div>
         <div>
           <div className="k">{t.recentIncome}</div>
-          <div className="v">{income.toLocaleString()}</div>
+          <div className="v">
+            {income !== undefined ? income.toLocaleString() : "—"}
+          </div>
         </div>
         <div>
           <div className="k">{t.recentSpend}</div>
-          <div className="v">{spend.toLocaleString()}</div>
+          <div className="v">
+            {spend !== undefined ? spend.toLocaleString() : "—"}
+          </div>
         </div>
         <div>
           <div className="k">{t.hourly}</div>
@@ -207,10 +217,14 @@ export default function MySparkPage() {
           <h2>{t.ledger.replace("{magic}", currency)}</h2>
           <span className="text-xs text-sub">
             {t.recentIncome}{" "}
-            <b className="num text-success">+{income.toLocaleString()}</b>
+            <b className="num text-success">
+              {income !== undefined ? `+${income.toLocaleString()}` : "—"}
+            </b>
             {" · "}
             {t.recentSpend}{" "}
-            <b className="num text-danger">{spend.toLocaleString()}</b>
+            <b className="num text-danger">
+              {spend !== undefined ? spend.toLocaleString() : "—"}
+            </b>
           </span>
         </div>
         {/* M6.5：compact 档 CSS 双态（.profilet 同款：thead 隐藏+块化+小标签），
@@ -278,6 +292,8 @@ export default function MySparkPage() {
           onStep={setPage}
         />
       )}
+
+      <MerklePanel />
     </div>
   );
 }
