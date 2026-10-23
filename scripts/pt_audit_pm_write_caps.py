@@ -18,6 +18,8 @@ MB 的信，而且这封信会原样进收件箱、web-push 载荷与邮件正�
   受理  处理意见 ≤2000 —— P-634：站方口但正文会进会员收件箱，界面那枚
         输入框连 maxLength 都没有（现网实测 6000 字 note 落库成一条 6040
         字的站内信，绕开私信自己的 5000 字上限）
+  群发  主题 ≤120、正文 ≤5000 —— P-635：批量发放那条信一句发给整批受众
+        （单批最多 500 人），沿用私信同一枚数与同一句文案，不另立新键
 
 分层：
   C0/C6/C14/C15 静态：cap 在册 + 位置 + 中文整句
@@ -25,7 +27,8 @@ MB 的信，而且这封信会原样进收件箱、web-push 载荷与邮件正�
         IN_FLIGHT = 站方正在排版的文件（论坛三口），不往里塞护栏
         CEILING   = 载体行数卡死（P-632 求种与申诉已各自拆文件收口，
                     清单已空；再出现时按同样口径登记，收口后改成硬断言）
-  C1..C4/C7..C8/C10..C13 `--live`（全程零写入或当场清理）：超长必回中文
+  C1..C4/C7..C8/C10..C13/C17..C19/C21..C23 `--live`（全程零写入或当场清理）：
+        超长必回中文
         整句；正控＝正好在上限上的请求必须放行到下一道校验；前后
         messages/staffmessages/appeals 的 count/max(id) 不变 ⇒ 「先落库再
         报错」没发生（appeals 的 max(id) 只在正控 INSERT 后前移，属序列
@@ -56,6 +59,7 @@ BOX = "apps/api/src/community_http/staffbox.rs"
 REQ = "apps/api/src/content_http/requests/create.rs"
 APL = "apps/api/src/gaps_http/appeals/create.rs"
 HAN = "apps/api/src/gaps_http/appeals.rs"
+INC = "apps/api/src/admin_p3_http/increment_targets.rs"
 CAPS = {
     SEND: ["if body.subject.chars().count() > 120 {",
            "if body.body.chars().count() > 5000 {"],
@@ -144,6 +148,25 @@ def c16_handle_static():
     ok("C16b cap 在首次查库之前（先验形状）", -1 < i_cap < i_sel,
        "cap@%s vs select@%s" % (i_cap, i_sel))
     ok("C16c 上限文案中文整句", '"处理意见最长 2000 字"' in t, "")
+
+
+def c20_bulk_static():
+    """P-635：批量发放的站内信主题/正文——一句要发给整批受众（≤500 人）。
+
+    句子刻意沿用私信那两条（同一只收件箱同一把尺），所以本条不新增译文键，
+    只钉「装在册 + 装在对的位置」。
+    """
+    t = read(INC)
+    cap_s = "s.trim().chars().count() > 120"
+    cap_b = "s.trim().chars().count() > 5000"
+    ok("C20 群发主题 cap 在册：subject > 120", cap_s in t, "")
+    ok("C20b 群发正文 cap 在册：body > 5000", cap_b in t, "")
+    i_tgt = t.find("需选择目标")
+    ok("C20c 两条 cap 都在目标校验之前（先验形状再选受众）",
+       -1 < t.find(cap_s) < i_tgt and -1 < t.find(cap_b) < i_tgt,
+       "cap@%s/%s vs targets@%s" % (t.find(cap_s), t.find(cap_b), i_tgt))
+    ok("C20d 复用私信原句（不另立新文案）",
+       '"主题最长 120 字"' in t and '"正文最长 5000 字"' in t, "")
 
 
 def c5_ledger():
@@ -293,6 +316,42 @@ def live_c17_c19(tok):
        before_a == after_a and before_m == after_m, "")
 
 
+def live_c21_c23(tok):
+    """群发通知口：三条探针都不给目标名单 ⇒ 最多走到「需选择目标」，不会真发。
+
+    为什么不在现网真发一批：批量发放会造出真实流水与真实余额变动（收钱必
+    发货那条账反过来也成立——发出去收不回），落库后果用同族已实测的 P-634
+    那条 6040 字站内信举证，这里只钉「形状校验在不在、装在哪一步」。
+    """
+    before = psql_stdin("SELECT count(*)::text || '|' || "
+                        "COALESCE(max(id), 0)::text FROM messages")
+    base = {"kind": "spark", "amount": 1,
+            "classes": [], "roles": [], "user_ids": []}
+    s, r = call("POST", "/admin/increment-bulk",
+                dict(base, subject=probe_long(121), body="探针"), token=tok)
+    m = (r or {}).get("message", "") if isinstance(r, dict) else ""
+    ok("C21 群发主题 121 字 ⇒「主题最长 120 字」（status=%s）" % s,
+       s == 400 and "主题最长 120 字" in m,
+       "详情=%s｜回「需选择目标…」＝形状校验根本不在（待部署）" % m[:70])
+    s2, r2 = call("POST", "/admin/increment-bulk",
+                  dict(base, subject="探针", body=probe_long(5001)),
+                  token=tok)
+    m2 = (r2 or {}).get("message", "") if isinstance(r2, dict) else ""
+    ok("C22 群发正文 5001 字 ⇒「正文最长 5000 字」（status=%s）" % s2,
+       s2 == 400 and "正文最长 5000 字" in m2,
+       "详情=%s｜同上" % m2[:60])
+    s3, r3 = call("POST", "/admin/increment-bulk",
+                  dict(base, subject=probe_long(120), body=probe_long(5000)),
+                  token=tok)
+    m3 = (r3 or {}).get("message", "") if isinstance(r3, dict) else ""
+    ok("C23 正控：正好 120/5000 必须放行到目标校验（回收「需选择目标」那句）",
+       "需选择目标" in m3, "status=%s message=%s" % (s3, m3[:80]))
+    after = psql_stdin("SELECT count(*)::text || '|' || "
+                       "COALESCE(max(id), 0)::text FROM messages")
+    ok("C23b 三条群发探针零写入（messages %s → %s）" % (before, after),
+       before == after, "")
+
+
 def c9_translations():
     """本闸门盯着的那几句必须仍在译文表里（三列齐）。
 
@@ -357,6 +416,7 @@ def main():
     c14_req_static()
     c15_apl_static()
     c16_handle_static()
+    c20_bulk_static()
     c5_ledger()
     c9_translations()
     if "--live" in sys.argv:
@@ -365,8 +425,9 @@ def main():
         live_c7_c8(tok)
         live_c10_c13(tok)
         live_c17_c19(tok)
+        live_c21_c23(tok)
     else:
-        print("   [C1..C19] 跳过（加 --live 才发请求；探针全程零写入或当场清理）")
+        print("   [C1..C23] 跳过（加 --live 才发请求；探针全程零写入或当场清理）")
     summary()
 
 

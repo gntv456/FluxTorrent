@@ -29,6 +29,24 @@ pub(super) async fn increment_bulk_validate(
         }
     };
     crate::authz::require_perm(state, auth, perm).await?;
+    // P-635（P-466/P-634 同族）：这两句会原样进**每个**受众的收件箱（再开
+    // 邮件开关还多一份），而会员自己的私信写口有主题 ≤120 / 正文 ≤5000。
+    // 同一只收件箱必须同一把尺——一批最多 500 人 × 任意大正文＝整站收件箱
+    // 被灌满。句子沿用私信那两条，不另立新文案。
+    if body
+        .subject
+        .as_deref()
+        .is_some_and(|s| s.trim().chars().count() > 120)
+    {
+        return Err(DomainError::Validation("主题最长 120 字".into()));
+    }
+    if body
+        .body
+        .as_deref()
+        .is_some_and(|s| s.trim().chars().count() > 5000)
+    {
+        return Err(DomainError::Validation("正文最长 5000 字".into()));
+    }
     if body.amount == 0 {
         return Err(DomainError::Validation("数量不能为 0".into()));
     }
