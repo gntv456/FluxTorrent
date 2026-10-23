@@ -110,6 +110,46 @@ pub(super) async fn subtitle_setting(
         .unwrap_or_else(|| default.to_string()))
 }
 
+/// 求字幕发起口的入参形状（P-636）：语言必须在字典内、说明有上限。
+///
+/// 这两条同文件的 `torrent_id` 早已立过口径——「值域是表里的集合时，判据
+/// 必须查表，不能靠外键替业务报错」（P-178）。`lang` 此前只判非空，于是
+/// 任意字符串都能入池：而交稿侧（`ensure_req_match`）是按 `subtitle_langs`
+/// 的 code 比对的，`dict.is_none()` 一律判「语言不一致」⇒ 一条拼错或造语
+/// 的语言**永远交不了稿**，死单挂在公开悬赏池里，别人照样为它凑赏。
+/// 界面那份下拉读的正是这张表（`/subtitles/langs` 无 WHERE），所以本判据
+/// 与界面同一集合，不会误伤正常通路。
+pub(super) async fn check_request_inputs(
+    db: &sqlx::PgPool,
+    lang: &str,
+    descr: Option<&str>,
+) -> DomainResult<()> {
+    if lang.trim().is_empty() {
+        return Err(DomainError::Validation("语言不能为空".into()));
+    }
+    let in_dict: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM subtitle_langs \
+         WHERE lower(code) = lower($1))",
+    )
+    .bind(lang.trim())
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if !in_dict {
+        return Err(DomainError::Validation(
+            "字幕语言不在语言字典内，请从列表中选择".into(),
+        ));
+    }
+    // 说明没有界面输入框（面板只发 lang/torrent_id/bounty/offer_free），
+    // 但它是公开悬赏列表原样渲染的会员文本——与求种简介同一枚数。
+    if descr.is_some_and(|d| d.trim().chars().count() > 2000) {
+        return Err(DomainError::Validation(
+            "求字幕说明最长 2000 字".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// 交付相关性判据（批四十五 P-177）：两条交付路（旧直交付 `fulfill` 与工作流
 /// 交稿 `deliver`）共用的唯一一把尺 —— 交的东西必须与这一单要的是**同一件事**。
 ///

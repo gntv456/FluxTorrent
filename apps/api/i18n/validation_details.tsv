@@ -255,3 +255,5 @@ action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismis
 求种简介最长 2000 字	求種簡介最長 2000 字	Request description must be 2000 characters or fewer.
 申诉内容最长 2000 字	申訴內容最長 2000 字	Appeal content must be 2000 characters or fewer.
 处理意见最长 2000 字	處理意見最長 2000 字	Handling note must be 2000 characters or fewer.
+字幕语言不在语言字典内，请从列表中选择	字幕語言不在語言字典內，請從列表中選擇	Subtitle language must be one of the listed dictionary codes.
+求字幕说明最长 2000 字	求字幕說明最長 2000 字	Subtitle request note must be 2000 characters or fewer.

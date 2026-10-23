@@ -5,7 +5,7 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
-use super::subtitles_util::trim_opt;
+use super::subtitles_util::{check_request_inputs, trim_opt};
 use crate::dto::ok;
 use crate::economy_http::spend_spark_tx;
 use crate::errors::{DomainError, DomainResult};
@@ -57,9 +57,8 @@ pub(super) async fn subtitle_request_create(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let lang = body.lang.trim().to_string();
-    if lang.is_empty() {
-        return Err(DomainError::Validation("语言不能为空".into()));
-    }
+    check_request_inputs(&state.repo.db, &lang, body.descr.as_deref())
+        .await?;
     if body.bounty < 0 {
         return Err(DomainError::Validation("悬赏不能为负".into()));
     }

@@ -14,6 +14,11 @@
   P-178（P2）`POST /subtitles/requests` 的 `torrent_id` 直接进 INSERT，撞
         `torrent_id → torrents(id)` 外键成 500（与批四十三 P-171 同族）。
 
+  P-636（P2，I6 段）同一直口的 `lang` 只判非空、`descr` 零上限。语言不在
+        `subtitle_langs` 里 ⇒ 交稿侧 `ensure_req_match` 的 `dict.is_none()`
+        恒判「语言不一致」，这一单**永远交不了稿**，却挂在公开悬赏池里让人
+        凑赏（P-178 的口径就在同一个函数上面几行，当时只补了种子没补语言）。
+
 修法是一处判据两处接：`subtitles_util::ensure_req_match`（种子必须同一部；
 语言按字面量或按 `subtitle_langs` 字典 id 对齐），`fulfill` 与 `deliver` 都调；
 `fulfill` 额外要求字幕有文件本体（`file_ref` 以 `attach://` 开头）—— 外链字幕
@@ -412,6 +417,40 @@ finally:
                "'subtitle_workflow'"), WF0),
        psql("SELECT value FROM site_settings WHERE name = "
             "'subtitle_workflow'") == WF0, "wf=%s" % WF0)
+
+# ============ I6 发起口入参（P-636）：语言查字典、说明有上限 ============
+# 同文件对 torrent_id 早已按「值域是表里的集合就查表」立过判据（P-178），
+# 但 lang 此前只判非空：造语语言能入池，而交稿侧 ensure_req_match 是按
+# subtitle_langs 比对的，`dict.is_none()` 一律判「语言不一致」⇒ 这一单谁也
+# 交不了稿，却照样挂在公开悬赏池里让人凑赏（发起人只能撤销退款）。界面那份
+# 下拉读的就是这张表（/subtitles/langs 无 WHERE），所以正控用 chs 不会误伤。
+PFX = "BI%d 入参探针 " % TAG
+DESC_OK = PFX + "说" * (2000 - len(PFX))
+SRS0 = cnt("subtitle_requests")
+s6a, r6a = post("/subtitles/requests", {"lang": "qae%d" % TAG, "bounty": 0,
+                                       "descr": PFX + "造语语言"})
+ok("I6a 造语语言必须被拒（回字典那句；http=%s）" % s6a,
+   s6a == 400 and "字幕语言不在语言字典内" in blob(r6a), blob(r6a)[:100])
+s6b, r6b = post("/subtitles/requests", {"lang": "chs", "bounty": 0,
+                                       "descr": PFX + "说" * 2001})
+ok("I6b 说明超 2000 字必须被拒（回上限那句；http=%s）" % s6b,
+   s6b == 400 and "求字幕说明最长 2000 字" in blob(r6b), blob(r6b)[:100])
+ok("I6c 两条被拒的探针没落库（subtitle_requests %s → %s）"
+   % (SRS0, cnt("subtitle_requests")), cnt("subtitle_requests") == SRS0)
+s6d, r6d = post("/subtitles/requests", {"lang": "chs", "bounty": 0,
+                                       "descr": DESC_OK})
+ok("I6d 正控：字典内语言 + 正好 2000 字必须收下（http=%s id=%s）"
+   % (s6d, data(r6d).get("id")),
+   s6d == 200 and bool(data(r6d).get("id")), blob(r6d)[:100])
+ok("I6e 字典侧同一条谓词读数正确（chs 为真、造语为假 ⇒ I6a 的红不是判据写反）",
+   psql("SELECT EXISTS(SELECT 1 FROM subtitle_langs WHERE "
+        "lower(code) = 'chs')::text") == "true"
+   and psql("SELECT EXISTS(SELECT 1 FROM subtitle_langs WHERE "
+            "lower(code) = 'qae%d')::text" % TAG) == "false",
+   "chs=%s 造语=%s" % (psql("SELECT EXISTS(SELECT 1 FROM subtitle_langs "
+                            "WHERE lower(code) = 'chs')::text"),
+                       psql("SELECT EXISTS(SELECT 1 FROM subtitle_langs "
+                            "WHERE lower(code) = 'qae%d')::text" % TAG)))
 
 # ============ I5 收尾与残留 ============
 psql("DELETE FROM subtitle_requests WHERE descr LIKE 'BI%d%%'" % TAG)
