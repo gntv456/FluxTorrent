@@ -78,12 +78,15 @@ def rs_files():
 
 
 def psql(q):
+    # ON_ERROR_STOP 是 psql 变量，不是环境变量：`-e` 传它无效，SQL 报错
+    # 仍回 rc=0、后续行全被「事务已中止」吞掉 ⇒ 读数变成 None（DM2 曾假红）。
     r = subprocess.run(
-        ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
+        ["docker", "exec", "-i", "flux-postgres",
+         "psql", "-U", "flux", "-q", "-v", "ON_ERROR_STOP=1",
+         "-d", "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:220])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:220])
     return (r.stdout or "").strip()
 
 
@@ -113,10 +116,20 @@ AB = r"""
 SET lock_timeout = '5s';
 BEGIN;
 CREATE TEMP TABLE ab AS
-  SELECT (SELECT min(id) FROM users WHERE status < 2) AS uid,
-         ((CURRENT_DATE - interval '2 days')::date) AS d;
+  SELECT x.uid, x.d FROM (
+    SELECT u.id AS uid, (CURRENT_DATE - interval '2 days')::date AS d
+    FROM users u WHERE u.status < 2
+  ) x
+  WHERE NOT EXISTS (SELECT 1 FROM attendance a
+                    WHERE a.user_id = x.uid AND a.date IN (x.d, x.d + 1))
+    AND NOT EXISTS (SELECT 1 FROM resub_uses r
+                    WHERE r.user_id = x.uid
+                      AND r.target_date IN (x.d, x.d + 1))
+  ORDER BY x.uid LIMIT 1;
+SELECT 'uid=' || uid || '|d=' || d FROM ab;
 INSERT INTO attendance (user_id, date, streak, reward, makeup)
-SELECT uid, d, 3, 100, FALSE FROM ab;
+SELECT uid, d, 3, 100, FALSE FROM ab
+ON CONFLICT (user_id, date) DO NOTHING;
 WITH i AS (INSERT INTO resub_uses (user_id, target_date, idempotency_key)
   SELECT uid, d, 'dm-ab:' || uid FROM ab
   ON CONFLICT (user_id, target_date) DO NOTHING RETURNING 1)
@@ -141,6 +154,10 @@ for ln in psql(AB).split("\n"):
     if "=" in ln:
         k, v = ln.split("=", 1)
         rd2[k.strip()] = v.strip()
+# 夹具必须自己找空档：旧版取 min(id)=root，root 某天签过之后建夹具就撞
+# attendance_pkey，事务中止、后面四条读数全丢（时间一过就假红）。
+ok("DM2 夹具：找到两天都空档的成员/日期（不撞既有签到/补签）",
+   bool(rd2.get("uid")), "读数=%s" % rd2)
 ok("DM2 当天已正常签到时：resub 写 %s 行、attendance 写 %s 行（后者须 0 ⇒ "
    "闸门必要）" % (rd2.get("resub_rows"), rd2.get("att_rows")),
    rd2.get("resub_rows") == "1" and rd2.get("att_rows") == "0",
