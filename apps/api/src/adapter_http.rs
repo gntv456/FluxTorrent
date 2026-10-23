@@ -16,7 +16,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-const MAX_WASM_BYTES: usize = 2 * 1024 * 1024;
+const MAX_WASM_BYTES: usize = (crate::path_cfg::JSON_BODY_LIMIT - 4096) * 3 / 4;
 
 fn internal<E: Into<anyhow::Error>>(e: E) -> DomainError {
     DomainError::Internal(e.into())
@@ -70,7 +70,7 @@ async fn adapter_install(
         .decode(body.wasm_b64.trim())
         .map_err(|_| DomainError::Validation("wasm_b64 解码失败".into()))?;
     if wasm.is_empty() || wasm.len() > MAX_WASM_BYTES {
-        return Err(DomainError::Validation("wasm 需为 1B–2MiB".into()));
+        return Err(DomainError::Validation("wasm 需为 1B–1569792 字节".into()));
     }
     // 编译预检：坏模块直接拒绝（不能装一个起不来的适配器）
     wasmtime::Module::new(&AdapterRuntime::global().engine, &wasm)

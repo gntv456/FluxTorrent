@@ -57,10 +57,26 @@ pub fn path_config() -> web::PathConfig {
     })
 }
 
+/// 全站 JSON 请求体上限。原先这里没写 `.limit()`，吃的是 actix 的
+/// `DEFAULT_LIMIT = 2MiB`——一个没人做过的决定，所以「上限是多少」只能
+/// 靠撞（2026-10-23 实测：同一口只改体大小，2,097,152 字节进 handler、
+/// 2,097,162 字节在抽取层被拒）。现在把它写成显式数字并按证据定值：
+///   · 最大的一档合法包体是内容包导入，`payload` 声明 ≤1MiB
+///     （pack_import.rs:45），整体包体约 1.05MiB ⇒ 一倍余量；
+///   · 其余写口都在 64KiB 以下（自定义页 body ≤200_000 字节、
+///     批量口最多 500 条、私信正文 5000 字）；
+///   · 不再放大：抽取发生在 handler 鉴权之前（KQ3c 一族），这道墙是
+///     匿名请求唯一的全局边界，而本服务没配 worker/连接上限。
+/// 由它反推的量：`adapter_http::MAX_WASM_BYTES`（base64 按 4/3 膨胀，
+/// 再扣 4KiB 信封——满打满算等于墙也会撞线，实测过）。
+pub const JSON_BODY_LIMIT: usize = 2 * 1024 * 1024;
+
 /// JSON 载荷解析错误的中央口径（原 main.rs 内联块，逐字搬来；
 /// P-304 把 serde 原文换成人话，原文进日志不进 message）。
 pub fn json_config() -> web::JsonConfig {
-    web::JsonConfig::default().error_handler(|err, _req| {
+    // 分两行写：链在一行会顶破 80 列门禁
+    let jc = web::JsonConfig::default().limit(JSON_BODY_LIMIT);
+    jc.error_handler(|err, _req| {
         let locale = crate::i18n::current();
         let raw = err.to_string();
         tracing::warn!("请求体解析失败：{raw}");
@@ -162,10 +178,33 @@ pub(crate) fn humanize_parse_error(raw: &str) -> String {
     if body.contains("content type") || body.contains("Content-Type") {
         return "请求的 Content-Type 不是 application/json".to_string();
     }
+    if body.contains("larger than allowed") {
+        // 现网原句（超限）：JSON payload (2097162 bytes) is larger than
+        // allowed (limit: 2097152 bytes). —— 这句原先只被下面那条
+        // `contains("payload")` 接住，出口写成「请求体读取失败」：把
+        // 「太大」演成「读不到」，运维只会去查网络与反代，永远查不到
+        // 东西。超限是客户端可自助的错，必须报尺寸并报上限。
+        let n = digits_after(body, "payload (");
+        let m = digits_after(body, "allowed (limit: ");
+        return match (n, m) {
+            (Some(n), Some(m)) => format!("请求体过大：{n} 字节，上限 {m} 字节"),
+            _ => format!("请求体过大，上限 {} 字节", JSON_BODY_LIMIT),
+        };
+    }
     if body.contains("Stream error") || body.contains("payload") {
         return "请求体读取失败".to_string();
     }
     "请求参数格式不正确".to_string()
+}
+
+/// 取 `mark` 之后第一段十进制数（超限句里的两个字节数）
+fn digits_after(s: &str, mark: &str) -> Option<usize> {
+    let rest = s.split(mark).nth(1)?;
+    let digits: String = rest
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    digits.parse().ok()
 }
 
 #[cfg(test)]
@@ -211,6 +250,19 @@ mod tests {
         );
         // 认不出的形状也必须给人话，而不是把原文留在 message 上
         assert_eq!(humanize_parse_error("wibbel wobble"), "请求参数格式不正确");
+        // 超限（现网 2026-10-23 实测原句）：必须报尺寸并点名上限，
+        // 不能塌成「请求体读取失败」——那是把可自助的错演成故障
+        assert_eq!(
+            humanize_parse_error(
+                "JSON payload (2097162 bytes) is larger than allowed \
+                 (limit: 2097152 bytes).",
+            ),
+            "请求体过大：2097162 字节，上限 2097152 字节"
+        );
+        assert_eq!(
+            humanize_parse_error("payload is larger than allowed"),
+            "请求体过大，上限 2097152 字节"
+        );
         for s in [
             "Json deserialize error: missing field `x`",
             "Json deserialize error: expected value at line 1 column 1",
