@@ -2,7 +2,7 @@
 //! 与 agent_rules 同构（站级配置须 SETTINGS_MANAGE）：
 //!   GET  /admin/email-domains            列表（q 模糊 + limit）
 //!   GET  /admin/email-domains/export     导出（可分享 JSON）
-//!   POST /admin/email-domains/import     幂等导入（≤10 万条/批）
+//!   POST /admin/email-domains/import     幂等导入（批数上限由请求体墙反推）
 //!   POST /admin/email-domains/delete     按域名删除（可多个）
 //!
 //! 内置库（source='builtin'）随迁移 0370 seed；导入行 source='import'。
@@ -20,8 +20,14 @@ use crate::state::AppState;
 
 use super::guard::staff;
 
-/// 单批导入上限：10 万条（规格口径）；再多请分批，避免单事务过长。
-const IMPORT_MAX: usize = 100_000;
+/// 单批导入上限——由请求体墙反推，不是拍的（P-638）。本口走 JSON，一条
+/// 域名的最坏包体开销 = 域名最长 253（`normalize()` 判据）+ 引号 2 + 逗号
+/// 1 = 256 字节，于是天花板 = (JSON_BODY_LIMIT − 4KiB 信封) / 256 = 8176 条。
+/// 原先写死 10 万条（最坏 25.6MB）声明的是**传输层送不到的一批**：那种请求
+/// 在抽取层就被墙拒掉，连下面那句中文文案都执行不到（同族教训见 KR 闸门）。
+/// 再多请分批；真要一次灌整张公共清单该走文件导入（multipart 不受 JSON 墙
+/// 约束），那是另一批的活，不在此假收口。
+const IMPORT_MAX: usize = (crate::path_cfg::JSON_BODY_LIMIT - 4096) / 256;
 
 /// 归一化域名：`Ok(domain)` / `Err(原话)`。
 fn normalize(raw: &str) -> Result<String, String> {

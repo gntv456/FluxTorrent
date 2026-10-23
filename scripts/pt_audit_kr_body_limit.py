@@ -29,6 +29,14 @@
   收尾：探针不改 adapters / content_packs 的行数（库未留痕）。
 正控：同一条 wasm 可达性判据跑在 CTRL_REV（修复前那个提交）的
       adapter_http.rs 上必须报洞。
+
+P-638 续账（同一把尺的第二处撒谎，已收口）：`/admin/email-domains/import`
+原先写死「单批 10 万条」——按 `normalize()` 允许的 253 字符域名算，最坏包体
+25.6MB，那种请求在抽取层就被墙拒掉，连 handler 里那句「单次导入上限」都执行
+不到。现在批数上限由墙反推 `(JSON_BODY_LIMIT − 4KiB) / 256 = 8176`，于是它
+**第一次变成打得到的承诺**：KR21b 用 8177 条（体仅约 205KB）当场验负控红在
+业务闸而不是传输层，KR21c/d 用 3 条真导入验收单与幂等，KR22/22a 删净并回到
+库内基线。文件导入通路（multipart 不受此墙约束）是另一批的活，不在这里假收口。
 """
 import json
 import os
@@ -203,10 +211,6 @@ ok("KR9 内容包 payload 上限存在且塞得进墙（约一倍余量）",
 CAND_RE = re.compile(r"const\s+([A-Z_]+):\s*usize\s*=\s*(\d[\d_]{4,})\s*;")
 # 每条候选写死「最坏合法包体」怎么算（per 是每个元素的字节数），两头对账
 LEDGER = {
-    "admin_http/email_domains.rs::IMPORT_MAX": (
-        256, "PENDING 待裁：声明单批 10 万条、域名最长 253 ⇒ 最坏包体 "
-        "25.6MB，远超传输墙。现网仅 445 条、均值 13 字节（约 1.6MB 恰好塞"
-        "得下），所以今天不炸；要么降批数要么给这一口单独放宽——归站长裁"),
     "publish_http/upload_precheck.rs::DESCR_MAX": (
         1, "发种描述本身就是字节总量，60_000 在墙内"),
     "staff_http/wiki.rs::WIKI_BODY_LIMIT": (
@@ -242,11 +246,39 @@ bad_fit = [k for k in keys
 ok("KR13 在册项的最坏包体都塞得进墙（待裁桩除外）", not bad_fit,
    "超墙：%s" % bad_fit[:4])
 pending = [k for k in LEDGER if LEDGER[k][1].startswith("PENDING")]
-ok("KR14 待裁桩仍成立（墙没被偷偷抬到塞得下 10 万条；抬了就该撤桩）",
-   bool(pending) and all(cands.get(k, 0) * LEDGER[k][0] + ENVELOPE > LIMIT
-                         for k in pending),
-   "PENDING=%s 最坏=%s 墙=%s" % (
-       pending, [cands.get(k, 0) * LEDGER[k][0] for k in pending], LIMIT))
+ok("KR14 待裁桩不悬空（PENDING 条目必须仍然超墙，否则就地撤桩）",
+   all(cands.get(k, 0) * LEDGER[k][0] + ENVELOPE > LIMIT for k in pending),
+   "已塞得进墙却还挂着待裁：%s" % pending)
+
+# P-638 收口：域名库单批导入上限必须由墙反推，不许再声明送不到的一批
+EMAIL = API + "/admin_http/email_domains.rs"
+src_em = read(EMAIL) or ""
+PER_DOMAIN = 256  # normalize() 判域名最长 253，JSON 里再加引号 2 + 逗号 1
+
+
+def domain_batch_overshoots(src):
+    """批数 × 最坏单条 + 信封 是否超墙（反推式与硬编码都按这一把尺量）。"""
+    v = const_of(src, "IMPORT_MAX", SUBS)
+    if v is None:
+        return "IMPORT_MAX 读不出"
+    if v * PER_DOMAIN + ENVELOPE > LIMIT:
+        return "单批 %d 条最坏 %d 字节 > 传输墙 %s" % (
+            v, v * PER_DOMAIN, LIMIT)
+    return None
+
+
+overshoots = domain_batch_overshoots(src_em)
+BATCH_MAX = const_of(src_em, "IMPORT_MAX", SUBS) or 0
+ok("KR14b 域名库批数上限塞得进墙（按最坏单条 256 字节算，非均值）",
+   overshoots is None, overshoots or "")
+ok("KR14c 批数上限由墙反推（改墙会自动跟着走，不许两处各写各的）",
+   "crate::path_cfg::JSON_BODY_LIMIT" in src_em,
+   "IMPORT_MAX 没引用 JSON_BODY_LIMIT")
+ctrl_em = read(EMAIL, CTRL_REV)
+ok("KR8b 正控：%s 那版写死 10 万条必须被 KR14b 报洞（判据承重）" % CTRL_REV,
+   ctrl_em is not None
+   and domain_batch_overshoots(ctrl_em) is not None,
+   "该版不红＝正控失效")
 
 print()
 if os.environ.get("KR_SKIP_LIVE"):
@@ -289,6 +321,8 @@ EP = "/admin/adapters/install"
 before = psql_stdin(
     "SELECT (SELECT count(*) FROM adapters)||'|'||"
     "(SELECT count(*) FROM content_packs)")
+dom0 = psql_stdin("SELECT count(*) FROM disposable_email_domains")
+tok, probes = None, []
 try:
     st, js = post_bytes(EP, pad_to(LIMIT + 512))
     msg = dig(js, "message") or ""
@@ -334,15 +368,55 @@ try:
     ok("KR21 这个体走到了应用层的包体闸而不是传输层（两层分工成立）",
        "1MiB" in msg3 and "请求体过大" not in msg3,
        "http=%s msg=%s" % (st3, msg3[:140]))
+
+    # P-638 的线上证：批数上限现在**打得到**（负控红在业务闸，不撞墙）
+    probes = ["kr-probe-%d.invalid" % i for i in range(3)]
+    over = ["kr-probe-%d.invalid" % i for i in range(BATCH_MAX + 1)]
+    ok("KR21a 负控夹具本身成立（超一批的条数对、且体在墙内＝只能红在业务闸）",
+       BATCH_MAX > 0 and len(over) == BATCH_MAX + 1
+       and len(json.dumps({"domains": over})) < LIMIT,
+       "批上限=%d 条数=%d 体=%d 墙=%s" % (
+           BATCH_MAX, len(over), len(json.dumps({"domains": over})), LIMIT))
+    st5, js5 = call("POST", "/admin/email-domains/import",
+                    {"domains": over}, tok)
+    msg5 = dig(js5, "message") or ""
+    ok("KR21b 超一批必须红在业务闸并点名上限（而不是传输层的拒收）",
+       st5 == 400 and "单次导入上限 %d 条" % BATCH_MAX in msg5
+       and "请求体过大" not in msg5,
+       "http=%s msg=%s" % (st5, msg5[:140]))
+    s6, j6 = call("POST", "/admin/email-domains/import",
+                  {"domains": probes}, tok)
+    ok("KR21c 一批内真收：3 条探针域名 added=3",
+       s6 == 200 and dig(j6, "data", "added") == 3,
+       "http=%s 回执=%s" % (s6, dig(j6, "data") or j6))
+    s7, j7 = call("POST", "/admin/email-domains/import",
+                  {"domains": probes}, tok)
+    ok("KR21d 幂等：同批再导 added=0、skipped=3（不重复建行）",
+       s7 == 200 and dig(j7, "data", "added") == 0
+       and dig(j7, "data", "skipped") == 3,
+       "http=%s 回执=%s" % (s7, dig(j7, "data") or j7))
 finally:
+    # 收尾只用已记录的 tok / probes：崩溃在半路时也不许在 finally 里
+    # 二次登录或读未定义变量（那样红账会被 NameError 盖掉）
+    if tok and probes:
+        call("POST", "/admin/email-domains/delete",
+             {"domains": probes}, tok)
+    left_dom = psql_stdin(
+        "SELECT count(*) FROM disposable_email_domains "
+        "WHERE domain ~ '^kr-probe-[0-9]+[.]invalid$'")
+    ok("KR22 收尾：探针域名已删净（残留=%s 条）" % left_dom,
+       left_dom == "0", "残留=%s" % left_dom)
+    dom1 = psql_stdin("SELECT count(*) FROM disposable_email_domains")
+    ok("KR22a 库内域名数回到跑前基线（前=%s 后=%s）" % (dom0, dom1),
+       dom0 == dom1, "前=%s 后=%s" % (dom0, dom1))
     after = psql_stdin(
         "SELECT (SELECT count(*) FROM adapters)||'|'||"
         "(SELECT count(*) FROM content_packs)")
-    ok("KR22 收尾：探针没在库里留痕（adapters/content_packs 行数不变）",
+    ok("KR23 收尾：探针没在库里留痕（adapters/content_packs 行数不变）",
        before == after, "前=%s 后=%s" % (before, after))
     left = psql_stdin(
         "SELECT count(*) FROM content_packs WHERE pack_id LIKE 'kr.probe%'")
-    ok("KR22b 回读未登记任何 kr.probe 包", left == "0", "残留=%s" % left)
+    ok("KR23b 回读未登记任何 kr.probe 包", left == "0", "残留=%s" % left)
 
 print()
 print("红账：%s" % (FAILURES or "无"))
