@@ -29,8 +29,8 @@ use super::guard::staff;
 /// 约束），那是另一批的活，不在此假收口。
 const IMPORT_MAX: usize = (crate::path_cfg::JSON_BODY_LIMIT - 4096) / 256;
 
-/// 归一化域名：`Ok(domain)` / `Err(原话)`。
-fn normalize(raw: &str) -> Result<String, String> {
+/// 归一化域名：`Ok(domain)` / `Err(原话)`。文件导入口也用这一份判据。
+pub(super) fn normalize(raw: &str) -> Result<String, String> {
     let mut s = raw.trim().to_lowercase();
     if s.is_empty() {
         return Err("域名为空".into());

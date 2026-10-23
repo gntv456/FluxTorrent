@@ -73,6 +73,8 @@ pub fn mount_admin(scope: actix_web::Scope) -> actix_web::Scope {
         .service(email_domains_list)
         .service(email_domains_export)
         .service(email_domains_import)
+        // 大清单走文件（multipart 不受 JSON 墙约束，P-638 的续账）
+        .service(email_domains_import_file)
         .service(email_domains_delete)
         // 0372 M5：注册答题题库
         .service(reg_quiz_list)
@@ -124,6 +126,8 @@ mod cheat_accuracy;
 mod cheat_ruleset_admin;
 mod deny;
 mod email_domains;
+// P-638 续账：大清单走 multipart 文件导入（流式解析 + 分批独立事务）
+mod email_domains_file;
 pub(crate) mod embed_rule_check;
 mod embed_rules;
 mod forum;
@@ -187,6 +191,7 @@ pub use cheat_accuracy::*;
 pub use cheat_ruleset_admin::*;
 pub use deny::*;
 pub use email_domains::*;
+pub use email_domains_file::*;
 pub use embed_rules::*;
 pub use forum::*;
 pub use forum_mods::*;
