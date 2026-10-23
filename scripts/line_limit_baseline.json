@@ -365,7 +365,7 @@
  "apps/api/src/games_http/overview.rs::wide": 4,
  "apps/api/src/gacha_http/draw.rs": 310,
  "apps/api/src/economy_http/bank.rs::wide": 4,
- "apps/api/src/economy_http/bank_withdraw.rs::wide": 4,
+ "apps/api/src/economy_http/bank_withdraw.rs::wide": 3,
  "apps/api/src/economy_http/checkin.rs::wide": 6,
  "apps/api/src/economy_http/dressup.rs::wide": 1,
  "apps/api/src/economy_http/funding.rs::wide": 2,

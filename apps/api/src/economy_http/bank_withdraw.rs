@@ -66,6 +66,14 @@ async fn bank_withdraw(
         ));
     }
 
+    // P-639：`interest` 列原先在支取后保持「预计利息」原值，而 `/bank/deposits`
+    // 不过滤 status、前端 `bank-actions-parts.tsx` 那行又无条件渲染
+    // 「到期利息: {interest}」⇒ 提前支取（不计息）的单会在页面上一直挂着
+    // 一笔从没发过的钱（现网实证：id=1 标 interest=12、罚金 25、实际到账
+    // 4975=本金−罚金；id=2 同形 123/250/49750）。列的语义收到「本单实付利息」，
+    // 与回执里 `interest_earned` 用同一个表达式，A 处扣钱与 B 处展示同尺。
+    let paid_interest_final =
+        if mode != "daily" && matured { interest } else { 0 };
     // 单事务（P1 撕裂窗口收口）：销单 CAS 与本息入账同生共死。旧版 CAS 先提交、
     // earn 失败靠回滚状态位补偿——进程崩溃窗口内 status=1 锁死重试路径 = 本息蒸发。
     // 锁序对齐 worker bank_fixed_mature（先销单后入账），且共用 withdraw:{id} 幂等键，
@@ -78,11 +86,13 @@ async fn bank_withdraw(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let updated = sqlx::query(
-        "UPDATE bank_deposits SET status = 1, settled_at = now(), penalty = $2, withdrawn_at = now() \
+        "UPDATE bank_deposits SET status = 1, settled_at = now(), penalty = $2, \
+         interest = $3, withdrawn_at = now() \
          WHERE id = $1 AND status = 0",
     )
     .bind(id)
     .bind(penalty)
+    .bind(paid_interest_final)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -101,7 +111,8 @@ async fn bank_withdraw(
     Ok(ok(
         serde_json::json!({ "paid": payable, "matured": matured, "penalty": penalty,
             "clawback": clawback,
-            "interest_earned": if mode != "daily" && matured { interest } else { 0 } }),
+            // 与落库的 interest 列同一个值（P-639 的「一处真源」）
+            "interest_earned": paid_interest_final }),
     ))
 }
 
