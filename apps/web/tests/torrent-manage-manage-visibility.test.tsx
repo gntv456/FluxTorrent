@@ -13,6 +13,9 @@ import { zhCN } from "@/i18n/zh-CN";
  * 修复：编辑/删除入口按 canManage（种主或管理组）显隐；补种请求
  * 后端对全体会员开放（torrents/reseed.rs 只查种子状态），必须保留。
  * 负控：回放 HEAD 版本（组件不认识 canManage）⇒ 第一条红成按钮仍在。
+ *
+ * P-627：补种对「种主自己待审/被拒的种」也渲染，点了后端回 404
+ * 「资源不存在」（reseed 只认 approval_status=1）。入口按 approved 显隐。
  */
 
 vi.mock("next/navigation", () => ({
@@ -22,7 +25,7 @@ vi.mock("next/navigation", () => ({
 const T = zhCN.torrentManage2;
 const R = zhCN.reseed2;
 
-function mount(canManage: boolean, seeders: number) {
+function mount(canManage: boolean, seeders: number, approved = true) {
   return render(
     <LocaleProvider dict={zhCN} locale="zh-CN" currency="魔力">
       <TorrentManage
@@ -49,6 +52,7 @@ function mount(canManage: boolean, seeders: number) {
         isStaff={false}
         autoOpen={false}
         canManage={canManage}
+        approved={approved}
       />
     </LocaleProvider>,
   );
@@ -71,6 +75,16 @@ describe("P-623 详情页管理入口按归属显隐", () => {
   it("非种主/非管理组且有种：整块无按钮（补种也不该出现）", () => {
     mount(false, 3);
     expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("种主看待审种：编辑/删除在，补种不在（点了只会回资源不存在）", () => {
+    mount(true, 0, false);
+    expect(
+      screen.getByRole("button", { name: new RegExp(T.edit) }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: new RegExp(R.btn) }),
+    ).toBe(null);
   });
 
   it("种主/管理组：编辑与删除都在（正控）", () => {
@@ -110,6 +124,7 @@ describe("P-623 详情页管理入口按归属显隐", () => {
           isStaff={false}
           autoOpen
           canManage={false}
+          approved
         />
       </LocaleProvider>,
     );

@@ -283,6 +283,7 @@ export default async function TorrentDetailPage({
               posState={ext?.pos_state ?? 0} pickType={ext?.pick_type ?? 0}
               posStateUntil={ext?.pos_state_until ?? null} isStaff={isStaff}
               canManage={isStaff || !!ext?.is_owner}
+              approved={t.approval_status === 1}
               metaSources={profile?.metadata_sources} autoOpen={sp.edit === "1"}
             />
           </>

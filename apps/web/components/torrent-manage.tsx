@@ -65,6 +65,8 @@ export interface TorrentManageProps {
   autoOpen?: boolean;
   /** 编辑/删除只在种主或管理组面前渲染（补种仍对全体会员开放） */
   canManage: boolean;
+  /** 补种只对已过审种给入口：待审/被拒/暂缓种后端回 404「资源不存在」 */
+  approved: boolean;
 }
 
 export function TorrentManage(p: TorrentManageProps) {
@@ -93,6 +95,7 @@ export function TorrentManage(p: TorrentManageProps) {
     metaSources,
     autoOpen,
     canManage,
+    approved,
   } = p;
   const { dict, currency } = useI18n();
   const router = useRouter();
@@ -229,9 +232,11 @@ export function TorrentManage(p: TorrentManageProps) {
             ✎ {t.edit}
           </button>
         )}
-        <ReseedButton seeders={seeders} busy={busy}
-          note={dict.reseed2.note} label={dict.reseed2.btn}
-          onClick={actions.reseed} />
+        {approved && (
+          <ReseedButton seeders={seeders} busy={busy}
+            note={dict.reseed2.note} label={dict.reseed2.btn}
+            onClick={actions.reseed} />
+        )}
         {canManage && (
           <button
             type="button"
