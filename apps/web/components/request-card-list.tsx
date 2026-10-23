@@ -25,6 +25,7 @@ export interface RequestCardRow {
   latest_bounty: number | null;
   comments: number | null;
   bids: number | null;
+  status: number;
   fulfilled_torrent_id: number | null;
   created_at: string;
 }
@@ -117,6 +118,10 @@ export function RequestCardList({
               >
                 {t.fulfilled}
               </a>
+            ) : r.status === 2 ? (
+              <span className="request-status text-sub">
+                {dict.invites.expired}
+              </span>
             ) : (
               <span className="flex items-center gap-1">
                 <span className="request-status is-progress">

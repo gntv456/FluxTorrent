@@ -2974,7 +2974,7 @@ const enBase: Omit<
     filterAll: "All",
     filterYes: "Solved",
     filterNo: "Unsolved",
-    filterIng: "In progress",
+    filterIng: "Expired",
     filterMy: "Mine",
     colName: "Name",
     colLatestBounty: "Latest bid",

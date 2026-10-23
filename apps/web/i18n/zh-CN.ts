@@ -2903,7 +2903,7 @@ const zhCnBase = {
     filterAll: "查看所有",
     filterYes: "查看已解决",
     filterNo: "查看未解决",
-    filterIng: "查看解决中",
+    filterIng: "查看已过期",
     filterMy: "查看我发布的",
     colName: "名称",
     colLatestBounty: "最新出价",

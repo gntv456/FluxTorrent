@@ -2880,7 +2880,7 @@ const zhTwBase: Omit<
     filterAll: "查看所有",
     filterYes: "查看已解決",
     filterNo: "查看未解決",
-    filterIng: "查看解決中",
+    filterIng: "查看已過期",
     filterMy: "查看我發布的",
     colName: "名稱",
     colLatestBounty: "最新出價",

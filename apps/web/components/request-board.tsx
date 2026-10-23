@@ -220,17 +220,17 @@ export function RequestBoard({
                   </td>
                   <td>
                     {r.fulfilled_torrent_id ? (
-                      <a
-                        className="request-status is-done"
+                      <a className="request-status is-done"
                         href={`/torrent/${r.fulfilled_torrent_id}`}
                       >{t.fulfilled}</a>
+                    ) : r.status === 2 ? (
+                      <span className="request-status text-sub">
+                        {dict.invites.expired}</span>
                     ) : (
                       <span className="flex items-center gap-1">
                         <span className="request-status is-progress">
                           {t.pending}</span>
-                        <button
-                          type="button"
-                          className={ROW_BTN}
+                        <button type="button" className={ROW_BTN}
                           title={t.fulfillTorrentId}
                           onClick={() => setAskRow(r)}
                         >{t.fulfillBtn}</button>
