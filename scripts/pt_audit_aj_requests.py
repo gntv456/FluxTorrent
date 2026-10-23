@@ -89,6 +89,9 @@ ok("R0 requests 模块已开（收尾原样还原）",
 ua, ta = mkuser(A, 5000)
 ub, tb = mkuser(B, 1000)
 uc, tc = mkuser(C, 1000)
+# 兜底清理：超限探针若被旧实现收下，其 id 拿不到——按探针前缀一并删。
+CLEAN.append("DELETE FROM requests WHERE user_id = %d AND "
+             "title LIKE 'aj %%'" % ua)
 TID = int(q("SELECT id::text FROM torrents WHERE approval_status = 1 "
             "ORDER BY id DESC LIMIT 1"))
 OWNER0 = q("SELECT COALESCE(owner_id::text, 'NULL') FROM torrents "
@@ -117,6 +120,62 @@ CLEAN.append("DELETE FROM messages WHERE receiver_id IN (%d,%d,%d)"
              % (ua, ub, uc))
 if rid:
     CLEAN.append("DELETE FROM requests WHERE id = %s" % rid)
+
+print("== R0b 写口上限：界面 maxLength 不是护栏 ==")
+s, r = call("POST", "/requests",
+            {"title": "aj " + "长" * 198, "bounty": 0}, token=ta)
+ok("R0b 201 字标题被拒", s == 400 and r.get("code") != 0,
+   "http=%s %s" % (s, str(r)[:90]))
+s, r = call("POST", "/requests",
+            {"title": "aj 边界", "descr": "长" * 2001, "bounty": 0},
+            token=ta)
+ok("R0b 2001 字简介被拒", s == 400 and r.get("code") != 0,
+   "http=%s %s" % (s, str(r)[:90]))
+s, r = call("POST", "/requests",
+            {"title": "aj " + "边" * 197,
+             "descr": "简" * 2000, "bounty": 0}, token=ta)
+rid3 = (r.get("data") or {}).get("id")
+ok("R0b 恰好 200/2000 字可建单（上限不是一刀切）",
+   s == 200 and rid3, "http=%s %s" % (s, str(r)[:90]))
+if rid3:
+    CLEAN.append("DELETE FROM requests WHERE id = %s" % rid3)
+ok("R0b 被拒的超限单没有落库",
+   q("SELECT count(*) FROM requests WHERE user_id = %d AND "
+     "(char_length(title) > 200 OR char_length(descr) > 2000)"
+     % ua) == "0",
+   q("SELECT count(*) FROM requests WHERE user_id = %d" % ua))
+
+print("== R0c 幂等：响应丢失后同键重试不得再扣一次 ==")
+KEY = "aj-idem-%d" % TS
+BODY = {"title": "aj 幂等探针 %d" % TS, "bounty": 111,
+        "idempotency_key": KEY}
+bal0 = q("SELECT spark_balance::text FROM users WHERE id = %d" % ua)
+s, r = call("POST", "/requests", BODY, token=ta)
+rid4 = (r.get("data") or {}).get("id")
+ok("R0c 带键建单成功", s == 200 and rid4,
+   "http=%s %s" % (s, str(r)[:90]))
+if rid4:
+    CLEAN.append("DELETE FROM requests WHERE id = %s" % rid4)
+s2, r2 = call("POST", "/requests", BODY, token=ta)
+rid4b = (r2.get("data") or {}).get("id")
+ok("R0c 同键重试回原单（不新建、不报假失败）",
+   s2 == 200 and rid4b == rid4, "http=%s %s" % (s2, str(r2)[:90]))
+ok("R0c 余额只扣一次",
+   q("SELECT spark_balance::text FROM users WHERE id = %d" % ua)
+   == str(int(bal0) - 111),
+   "before=%s after=%s" % (bal0, q("SELECT spark_balance::text FROM "
+                                  "users WHERE id = %d" % ua)))
+ok("R0c 只有一张单一条冻结流水",
+   q("SELECT count(*) FROM requests WHERE user_id = %d AND "
+     "title = 'aj 幂等探针 %d'" % (ua, TS)) == "1"
+   and q("SELECT count(*) FROM spark_ledger WHERE user_id = %d AND "
+         "idempotency_key LIKE 'req-bounty-idem:%%:%s'"
+         % (ua, KEY)) == "1",
+   "req=%s ledger=%s"
+   % (q("SELECT count(*) FROM requests WHERE user_id = %d AND "
+        "title = 'aj 幂等探针 %d'" % (ua, TS)),
+      q("SELECT count(*) FROM spark_ledger WHERE user_id = %d AND "
+        "idempotency_key LIKE 'req-bounty-idem:%%:%s'" % (ua, KEY))))
 
 
 def fulfill(tok, req_id, torrent_id):

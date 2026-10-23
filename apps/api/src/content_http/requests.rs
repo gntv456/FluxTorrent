@@ -3,86 +3,12 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::economy_http::earn_spark_tx;
-use crate::economy_http::spend_spark_tx;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-#[post("/requests")]
-pub(super) async fn request_create(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    body: web::Json<RequestCreateReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    if body.title.trim().is_empty() {
-        return Err(DomainError::Validation("求种标题不能为空".into()));
-    }
-    if body.bounty < 0 {
-        return Err(DomainError::Validation("悬赏不能为负".into()));
-    }
-    // 悬赏即时冻结（从余额划走，应种交付时转移给应种人）。
-    // 审计修复（P0 吞钱）：扣费与建单此前非原子——INSERT 失败（超长/瞬断）时扣款已提交、
-    // 且幂等键带随机 UUID 不可追回。改为：先建单占坑 → 扣费失败连单回滚（同一事务语义）。
-    let id: i64 = if body.bounty > 0 {
-        let mut tx = state
-            .repo
-            .db
-            .begin()
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        let id: i64 = sqlx::query_scalar(
-            "INSERT INTO requests (user_id, title, descr, bounty) \
-             VALUES ($1, $2, $3, $4) RETURNING id",
-        )
-        .bind(auth.id)
-        .bind(&body.title)
-        .bind(&body.descr)
-        .bind(body.bounty)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        // spend_spark 自带事务（锁行→幂等→扣款→流水）；此处复用同一连接保证原子性。
-        // 幂等键含新建单 id，重放不可达；闸门为 #[must_use] 契约统一口径。
-        let idem = format!("req-bounty:{}:{}", auth.id, id);
-        if !matches!(
-            spend_spark_tx(
-                &mut tx,
-                auth.id,
-                body.bounty,
-                "request_bounty",
-                &idem,
-                "request_bounty",
-                id,
-            )
-            .await?,
-            crate::economy_http::SpendOutcome::Spent
-        ) {
-            return Err(DomainError::Validation(
-                "该笔请求已受理，请勿重复提交".into(),
-            ));
-        }
-        tx.commit()
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        id
-    } else {
-        sqlx::query_scalar(
-            "INSERT INTO requests (user_id, title, descr, bounty) \
-             VALUES ($1, $2, $3, $4) RETURNING id",
-        )
-        .bind(auth.id)
-        .bind(&body.title)
-        .bind(&body.descr)
-        .bind(body.bounty)
-        .fetch_one(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-    };
-    Ok(ok(
-        serde_json::json!({ "id": id, "bounty_frozen": body.bounty }),
-    ))
-}
+mod create;
+pub(crate) use create::request_create;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
 #[allow(dead_code)] // 列表响应复用字段，部分列暂未在 handler 中读取
@@ -285,16 +211,4 @@ pub(super) async fn request_fulfill(
     Ok(ok(
         serde_json::json!({ "request_id": id, "bounty_paid": bounty }),
     ))
-}
-
-// P-374：P-314（写口不拒未知键）的漏网位。前端 request-board-form.tsx:41
-//   只发 {title, descr, bounty}，故收紧未知键零风险。
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RequestCreateReq {
-    title: String,
-    #[serde(default)]
-    descr: Option<String>,
-    #[serde(default)]
-    bounty: i64,
 }

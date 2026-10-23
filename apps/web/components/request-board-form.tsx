@@ -4,6 +4,7 @@ import { BTN_MD_SKY } from "@/lib/ui-classes";
 
 import { useState } from "react";
 import { api } from "@/lib/api-client";
+import { clientUuid } from "@/lib/client-uuid";
 import { useI18n } from "@/i18n/client";
 
 /** 求种区发布表单（从 request-board.tsx 按域拆出）：
@@ -24,6 +25,8 @@ export function RequestForm({
   const [ftBounty, setFtBounty] = useState("100");
   const [ftBusy, setFtBusy] = useState(false);
   const [ftMsg, setFtMsg] = useState<string | null>(null);
+  // P-632：一次表单会话一枚幂等键，失败重试复用、成功换新（同买按钮）。
+  const [idem, setIdem] = useState(() => `web-req-${clientUuid()}`);
 
   return (
     <form
@@ -42,7 +45,9 @@ export function RequestForm({
             title: ftTitle.trim(),
             descr: ftDescr.trim() || undefined,
             bounty,
+            idempotency_key: idem,
           });
+          setIdem(`web-req-${clientUuid()}`);
           setFtMsg(
             t.formOk
               .replace("{n}", String(bounty))
