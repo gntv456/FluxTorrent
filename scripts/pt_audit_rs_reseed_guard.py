@@ -48,6 +48,8 @@ TID, ORIG = row.split("|", 1)
 if not TID.isdigit():
     summary()
 TID = int(TID)
+ORIG_OWNER = int(psql_stdin(
+    "SELECT owner_id FROM torrents WHERE id = %d" % TID))
 
 
 def msg_since(t0):
@@ -63,8 +65,8 @@ def cleanup(t0):
         "AND body LIKE '%%/torrent/%d%%' "
         "AND created_at >= '%s'::timestamptz" % (TID, t0))
     val = "NULL" if ORIG == "NULL" else "'%s'" % ORIG
-    psql_stdin("UPDATE torrents SET last_reseed = %s WHERE id = %d"
-               % (val, TID))
+    psql_stdin("UPDATE torrents SET last_reseed = %s, owner_id = %d "
+               "WHERE id = %d" % (val, ORIG_OWNER, TID))
 
 
 def pair():
@@ -117,10 +119,34 @@ ok("RS5 收尾：last_reseed 按原值还原、本轮残料清零",
    % (psql_stdin("SELECT COALESCE(last_reseed::text, 'NULL') "
                  "FROM torrents WHERE id = %d" % TID).strip(),
       ORIG, msg_since(T0)))
-ok("RS6 目标种仍可变（未被本轮动作改档/下架）",
-   psql_stdin("SELECT approval_status || '|' || seeders "
-              "FROM torrents WHERE id = %d" % TID).strip() == "1|0",
-   psql_stdin("SELECT approval_status || '|' || seeders "
+# RS7（P-629）：零收件人不能演成 200/notified=0 并占掉冷却。借用探针种
+# 临时把种主换成 root、由 root 自己发起：收件人 SQL 会把 requester 排除，
+# 而 RS0 已保证该种没有其他有效完成者。收尾还原 owner 与时间戳。
+root_id = int(psql_stdin("SELECT id FROM users WHERE username = 'root'"))
+val = "NULL" if ORIG == "NULL" else "'%s'" % ORIG
+zero = (0, None, "", "unset", -1)
+try:
+    psql_stdin("UPDATE torrents SET owner_id = %d, last_reseed = NULL "
+               "WHERE id = %d" % (root_id, TID))
+    before = msg_since(T0)
+    st, resp = call("POST", "/torrents/%d/reseed" % TID, {}, token=ROOT)
+    zero = (st, resp.get("code"), resp.get("message") or "",
+            psql_stdin("SELECT COALESCE(last_reseed::text, 'NULL') "
+                       "FROM torrents WHERE id = %d" % TID).strip(),
+            msg_since(T0) - before)
+finally:
+    psql_stdin("UPDATE torrents SET owner_id = %d, last_reseed = %s "
+               "WHERE id = %d" % (ORIG_OWNER, val, TID))
+ok("RS7 无人可通知时回业务错、不占冷却、不发信（旧版 200/notified=0）",
+   zero[0] == 400 and zero[1] == 1002
+   and "没有可通知的下载者" in zero[2]
+   and zero[3] == "NULL" and zero[4] == 0,
+   "http=%s code=%s msg=%r last=%s new_msgs=%s" % zero)
+ok("RS6 目标种仍可变（未被本轮动作改档/下架/换主）",
+   psql_stdin("SELECT approval_status || '|' || seeders || '|' || owner_id "
+              "FROM torrents WHERE id = %d" % TID).strip()
+   == "1|0|%d" % ORIG_OWNER,
+   psql_stdin("SELECT approval_status || '|' || seeders || '|' || owner_id "
               "FROM torrents WHERE id = %d" % TID).strip())
 print("== 目标 %s（%s）" % (TID, BASE))
 summary()

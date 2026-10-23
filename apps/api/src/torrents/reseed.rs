@@ -45,22 +45,6 @@ pub async fn request_reseed(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let claimed = sqlx::query(
-        "UPDATE torrents SET last_reseed = now() WHERE id = $1 \
-         AND (last_reseed IS NULL \
-              OR last_reseed < now() - interval '15 minutes')",
-    )
-    .bind(torrent_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .rows_affected();
-    if claimed == 0 {
-        let _ = tx.rollback().await;
-        return Err(DomainError::Validation(
-            "15 分钟内已发起过补种请求，请稍候".into(),
-        ));
-    }
     let receivers: Vec<i64> = sqlx::query_scalar(
         "SELECT DISTINCT s.user_id FROM snatches s \
          JOIN users u ON u.id = s.user_id \
@@ -77,6 +61,32 @@ pub async fn request_reseed(
     .fetch_all(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-629：零收件人时旧版照样回 200/notified=0 并占掉 15 分钟冷却，
+    // 界面只会显示「已通知 0 位下载者，请耐心等待」。种主自己点补种、
+    // 或唯一完成者已被处置时必然落到这一格：一封信都没发出就不该进
+    // 限频窗口，直接回业务错，让界面说出真正的原因。
+    if receivers.is_empty() {
+        let _ = tx.rollback().await;
+        return Err(DomainError::Validation(
+            "没有可通知的下载者（可能尚无人完成下载）".into(),
+        ));
+    }
+    let claimed = sqlx::query(
+        "UPDATE torrents SET last_reseed = now() WHERE id = $1 \
+         AND (last_reseed IS NULL \
+              OR last_reseed < now() - interval '15 minutes')",
+    )
+    .bind(torrent_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if claimed == 0 {
+        let _ = tx.rollback().await;
+        return Err(DomainError::Validation(
+            "15 分钟内已发起过补种请求，请稍候".into(),
+        ));
+    }
     let subject = "【补种请求】".to_string();
     let body = format!(
         "用户 {} 请求补种：{}（/torrent/{}）。如果你保留了文件，欢迎重新做种，谢谢！",
