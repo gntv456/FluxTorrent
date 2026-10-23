@@ -23,11 +23,8 @@ use super::arcade_rewards::{
     det_cost_value, load_milestones, load_quests, refs_gate, season_key,
 };
 use super::arcade_stubs::sync_stubs;
-use super::helpers::eco_i64;
+use super::helpers::{eco_i64, ARCADE_WEEK_SQL};
 use super::pool::load_table;
-
-/// ISO 周键（与 arcade_claim 同口径）
-const WEEK_SQL: &str = "SELECT to_char(now(), 'IYYY-\"W\"IW')";
 
 /// 大厅游戏表面聚合（单请求，SSR 直出）。
 #[get("/games/arcade-meta")]
@@ -80,7 +77,7 @@ pub(super) async fn arcade_meta(
     let net = back - det;
 
     // ── 周常：本周（ISO 周）进度 + 领取态 ──
-    let week: String = sqlx::query_scalar(WEEK_SQL)
+    let week: String = sqlx::query_scalar(ARCADE_WEEK_SQL)
         .fetch_one(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

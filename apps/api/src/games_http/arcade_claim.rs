@@ -12,7 +12,7 @@ use serde_json::json;
 use super::arcade_rewards::{
     award_tx, det_cost_value, load_milestones, load_quests, season_key, Reward,
 };
-use super::helpers::eco_i64;
+use super::helpers::{eco_i64, ARCADE_WEEK_SQL};
 use super::pool::dberr;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
@@ -24,9 +24,6 @@ pub(super) struct ClaimReq {
     #[serde(default)]
     pub(super) idempotency_key: Option<String>,
 }
-
-/// ISO 周键（与 arcade_meta 同口径）
-const WEEK_SQL: &str = "SELECT to_char(now(), 'IYYY-\"W\"IW')";
 
 fn find(rows: &[Reward], code: &str) -> DomainResult<Reward> {
     rows.iter()
@@ -117,7 +114,7 @@ pub(super) async fn claim_quest(
     let db = &state.repo.db;
     let r = find(&load_quests(db).await?, &code)?;
 
-    let week: String = sqlx::query_scalar(WEEK_SQL)
+    let week: String = sqlx::query_scalar(ARCADE_WEEK_SQL)
         .fetch_one(db)
         .await
         .map_err(dberr)?;

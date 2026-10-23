@@ -10,6 +10,13 @@ use crate::errors::{DomainError, DomainResult};
 use crate::games::{self, MAX_PLAYS_PER_HOUR};
 use crate::state::AppState;
 
+/// 周常的周期键：必须与进度窗口同一时区（上海）。
+/// 旧写法 `to_char(now(), …)` 走 DB 会话时区（现网 UTC），而进度窗口
+/// 按上海周一 00:00 翻周：每周有 8 小时「新周进度 + 旧周键」错位，
+/// 同一周的奖励可被领两次。领取与大厅聚合共用这一句。
+pub(super) const ARCADE_WEEK_SQL: &str =
+    "SELECT to_char(now() AT TIME ZONE 'Asia/Shanghai', 'IYYY-\"W\"IW')";
+
 /// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）。
 /// ⚠️ 键缺失回落 default 是正常态（站长没配）；**查询失败**也回落则是
 /// fail-open：DB 抖一下限次/上限就按代码缺省放行。查询错误改成
@@ -261,4 +268,20 @@ pub(super) fn ensure_pool_shapes(entries: &[PoolEntryReq]) -> DomainResult<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ARCADE_WEEK_SQL;
+
+    /// 周期键与进度窗口必须同界：进度窗按 `AT TIME ZONE 'Asia/Shanghai'`
+    /// 翻周，周键退回裸 `now()`（DB 会话时区，现网 UTC）就会每周错位
+    /// 8 小时、可双领周常奖励。
+    #[test]
+    fn arcade_week_key_shares_progress_timezone() {
+        assert!(
+            ARCADE_WEEK_SQL.contains("now() AT TIME ZONE 'Asia/Shanghai'"),
+            "周键必须按上海时区取，否则与进度窗口错位：{ARCADE_WEEK_SQL}"
+        );
+    }
 }
