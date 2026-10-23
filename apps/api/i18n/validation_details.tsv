@@ -254,3 +254,4 @@ action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismis
 求种标题最长 200 字	求種標題最長 200 字	Request title must be 200 characters or fewer.
 求种简介最长 2000 字	求種簡介最長 2000 字	Request description must be 2000 characters or fewer.
 申诉内容最长 2000 字	申訴內容最長 2000 字	Appeal content must be 2000 characters or fewer.
+处理意见最长 2000 字	處理意見最長 2000 字	Handling note must be 2000 characters or fewer.

@@ -110,6 +110,13 @@ pub async fn appeal_handle(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::APPEAL_HANDLE)
         .await?;
+    // P-634（P-466 同族）：这枚 note 同时写进 appeals.result_note、当事人
+    // 收到的站内信正文与邮件正文，而界面那条输入框连 maxLength 都没有——
+    // 私信写口自己有 5000 字上限，站方这条路却能把任意长正文从旁边灌进
+    // 同一个收件箱。上限与所答复的申诉正文同一枚数（2000），装在查库之前。
+    if body.note.trim().chars().count() > 2000 {
+        return Err(DomainError::Validation("处理意见最长 2000 字".into()));
+    }
     // 0209 P1-8：受理即联动解封（可选）+ 双通道通知当事人（此前 accept 只改 appeals 表，
     // 站长须手动恢复 status=0，且被封者不能登录看 PM、收不到任何处理结果）。
     // 0285 解封先于翻转；只认 open+2，墓碑(3)不可复活。

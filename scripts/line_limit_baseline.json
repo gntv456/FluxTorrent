@@ -351,7 +351,6 @@
  "apps/api/src/http/misc_handlers.rs::wide": 5,
  "apps/api/src/http/mod.rs": 328,
  "apps/api/src/http/plugins.rs::wide": 11,
- "apps/api/src/gaps_http/appeals.rs": 199,
  "apps/api/src/gaps_http/appeals.rs::wide": 3,
  "apps/api/src/gaps_http/hr.rs::wide": 3,
  "apps/api/src/gaps_http/misc.rs::wide": 8,

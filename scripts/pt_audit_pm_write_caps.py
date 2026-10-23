@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""常驻闸门：会员面写口的长度上限台账（P-466 私信 / P-467 职员箱）。
+"""常驻闸门：写口长度上限台账——会员面写口，以及**正文会流进会员收件箱的
+站方写口**（P-466 私信 / P-467 职员箱 / P-632 求种 / P-633 申诉 / P-634 受理）。
 
 缺陷本体：`POST /messages`（主题/正文）与 `POST /contactstaff`（主题）唯一的
 长度约束是浏览器 `maxLength`，写口本身零上限——绕开界面直接 POST 就是一封几十
@@ -14,6 +15,9 @@ MB 的信，而且这封信会原样进收件箱、web-push 载荷与邮件正�
   职员箱 主题 ≤100（与界面同一枚数；正文界面没给上限，不替站长拍数）
   求种  标题 ≤200、简介 ≤2000 —— P-632，上限与界面 maxLength 同数
   申诉  正文 ≤2000 —— 与 /appeals 界面同数，装在 require_auth 与查库之前
+  受理  处理意见 ≤2000 —— P-634：站方口但正文会进会员收件箱，界面那枚
+        输入框连 maxLength 都没有（现网实测 6000 字 note 落库成一条 6040
+        字的站内信，绕开私信自己的 5000 字上限）
 
 分层：
   C0/C6/C14/C15 静态：cap 在册 + 位置 + 中文整句
@@ -51,6 +55,7 @@ SEND = "apps/api/src/community_http/message_send.rs"
 BOX = "apps/api/src/community_http/staffbox.rs"
 REQ = "apps/api/src/content_http/requests/create.rs"
 APL = "apps/api/src/gaps_http/appeals/create.rs"
+HAN = "apps/api/src/gaps_http/appeals.rs"
 CAPS = {
     SEND: ["if body.subject.chars().count() > 120 {",
            "if body.body.chars().count() > 5000 {"],
@@ -125,6 +130,20 @@ def c15_apl_static():
        -1 < i_cap < i_auth and -1 < i_cap < i_sql,
        "cap@%s auth@%s sql@%s" % (i_cap, i_auth, i_sql))
     ok("C15c 上限文案是中文整句", '"申诉内容最长 2000 字"' in t, "")
+
+
+def c16_handle_static():
+    """P-634：受理申诉那句「处理意见」不只进队列详情，还进当事人收件箱。"""
+    t = read(HAN)
+    cap = "if body.note.trim().chars().count() > 2000 {"
+    i_cap = t.find(cap)
+    # 锚点取 appeal_handle 自己那条 SELECT（`FROM appeals a JOIN users u` 在
+    # 队列口appeal_queue 里也有，用它会拿到更靠前的位置⇒ 假红）
+    i_sel = t.find("SELECT a.user_id, u.email,")
+    ok("C16 处理意见 cap 在册：note.trim() > 2000", i_cap >= 0, "")
+    ok("C16b cap 在首次查库之前（先验形状）", -1 < i_cap < i_sel,
+       "cap@%s vs select@%s" % (i_cap, i_sel))
+    ok("C16c 上限文案中文整句", '"处理意见最长 2000 字"' in t, "")
 
 
 def c5_ledger():
@@ -245,6 +264,35 @@ def live_c10_c13(tok):
        "属序列语义）" % (residue, before, after), residue == "0", "")
 
 
+def live_c17_c19(tok):
+    """受理口探针：用一个不存在的申诉号，只验形状不碰任何真实队列项。"""
+    before_a = psql_stdin("SELECT count(*)::text || '|' || "
+                          "COALESCE(max(id), 0)::text FROM appeals")
+    before_m = psql_stdin("SELECT count(*)::text || '|' || "
+                          "COALESCE(max(id), 0)::text FROM messages")
+    s, r = call("POST", "/admin/appeals/handle",
+                {"appeal_id": 999999999, "accept": True,
+                 "note": probe_long(2001), "unban": False}, token=tok)
+    m = (r or {}).get("message", "") if isinstance(r, dict) else ""
+    ok("C17 处理意见 2001 字 ⇒「处理意见最长 2000 字」（status=%s）" % s,
+       s == 400 and "处理意见最长 2000 字" in m,
+       "详情=%s｜回「申诉不存在或已处理」＝现网二进制未含 P-634（待部署）"
+       % m[:70])
+    s2, r2 = call("POST", "/admin/appeals/handle",
+                  {"appeal_id": 999999999, "accept": True,
+                   "note": probe_long(2000), "unban": False}, token=tok)
+    m2 = (r2 or {}).get("message", "") if isinstance(r2, dict) else ""
+    ok("C18 正控：正好 2000 字必须放行到存在性校验（回收「不存在」那句）",
+       "申诉不存在或已处理" in m2, "status=%s message=%s" % (s2, m2[:80]))
+    after_a = psql_stdin("SELECT count(*)::text || '|' || "
+                         "COALESCE(max(id), 0)::text FROM appeals")
+    after_m = psql_stdin("SELECT count(*)::text || '|' || "
+                         "COALESCE(max(id), 0)::text FROM messages")
+    ok("C19 两条受理探针零写入（appeals %s → %s；messages %s → %s）"
+       % (before_a, after_a, before_m, after_m),
+       before_a == after_a and before_m == after_m, "")
+
+
 def c9_translations():
     """本闸门盯着的那几句必须仍在译文表里（三列齐）。
 
@@ -261,7 +309,7 @@ def c9_translations():
         keys[cols[0]] = cols
     need = ["主题最长 120 字", "正文最长 5000 字", "主题最长 100 字",
             "求种标题最长 200 字", "求种简介最长 2000 字",
-            "申诉内容最长 2000 字"]
+            "申诉内容最长 2000 字", "处理意见最长 2000 字"]
     for k in need:
         cols = keys.get(k)
         ok("C9 校验文案已进译文表三语齐：%s" % k,
@@ -308,6 +356,7 @@ def main():
     c6_static()
     c14_req_static()
     c15_apl_static()
+    c16_handle_static()
     c5_ledger()
     c9_translations()
     if "--live" in sys.argv:
@@ -315,8 +364,9 @@ def main():
         live_c1_c4(tok)
         live_c7_c8(tok)
         live_c10_c13(tok)
+        live_c17_c19(tok)
     else:
-        print("   [C1..C13] 跳过（加 --live 才发请求；探针全程零写入或当场清理）")
+        print("   [C1..C19] 跳过（加 --live 才发请求；探针全程零写入或当场清理）")
     summary()
 
 
