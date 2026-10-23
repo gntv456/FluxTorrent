@@ -274,10 +274,12 @@ ok("EN3a 正控：抽到的 kind 全集里确实含 torrent_buy/request_refund �
    {"torrent_buy", "request_refund"} <= used, "实抽 %s 个" % len(used))
 ok("EN3b 正控：修复前那版标签表确实没有 torrent_buy",
    "torrent_buy" not in labels_pin)
-# 待站方定性的两只：ops_http/task_overview.rs 里的 task_fee/task_penalty
-# 落在 kind 位，但那条口是统计口径，认不出它真会写 spark_ledger——
-# 宁可不接名字，也别套个最近的中文做假收口。多一只少一只都红。
-PENDING_KINDS = {"task_fee", "task_penalty"}
+# 待站方定性的这一只：worker/task_jobs/reward.rs:138 已确认会把
+# task_penalty 写进 spark_ledger（任务失败/超时扣罚），但流水页对未登记
+# kind 直出英文键（me/sparks 与后台 SparkPanel 都是 `kindLabels[k] ?? k`），
+# 补中文名要新增字典键——先钉桩，等站方拍板。task_fee 已有三语名
+# （任务手续费），不再算待裁。多一只少一只都红。
+PENDING_KINDS = {"task_penalty"}
 miss = sorted(used - labels_now)
 ok("EN3c 后端写入的 %s 个 kind 除在册待裁 %s 只外都有中文名"
    % (len(used), len(PENDING_KINDS)), miss == sorted(PENDING_KINDS),
