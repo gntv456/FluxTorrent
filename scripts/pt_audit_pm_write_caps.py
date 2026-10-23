@@ -12,35 +12,45 @@ MB 的信，而且这封信会原样进收件箱、web-push 载荷与邮件正�
   私信  主题 ≤120、正文 ≤5000 —— 装在**收件人查询之前**（先验形状再查库，
         也才谈得上零写入探针）
   职员箱 主题 ≤100（与界面同一枚数；正文界面没给上限，不替站长拍数）
+  求种  标题 ≤200、简介 ≤2000 —— P-632，上限与界面 maxLength 同数
+  申诉  正文 ≤2000 —— 与 /appeals 界面同数，装在 require_auth 与查库之前
 
 分层：
-  C0/C6 静态：cap 在册 + 位置 + 中文整句
+  C0/C6/C14/C15 静态：cap 在册 + 位置 + 中文整句
   C5 待收口台账（双向棘轮，两类原因分开记）：
         IN_FLIGHT = 站方正在排版的文件（论坛三口），不往里塞护栏
-        FILE_FULL = 载体已顶在 300 行门禁上（requests.rs 净增 1 行即红、
-                    appeals.rs 已在基线 315），要先拆文件才装得下
-  C1..C4/C7..C8 `--live`（全程零写入）：超长必回中文整句；正控＝正好在上限上
-        的请求必须放行到下一道校验；前后 messages/staffmessages 的 count/max(id)
-        不变 ⇒ 「先落库再报错」没发生
+        CEILING   = 载体行数卡死（P-632 求种与申诉已各自拆文件收口，
+                    清单已空；再出现时按同样口径登记，收口后改成硬断言）
+  C1..C4/C7..C8/C10..C13 `--live`（全程零写入或当场清理）：超长必回中文
+        整句；正控＝正好在上限上的请求必须放行到下一道校验；前后
+        messages/staffmessages/appeals 的 count/max(id) 不变 ⇒ 「先落库再
+        报错」没发生（appeals 的 max(id) 只在正控 INSERT 后前移，属序列
+        语义；残留按本轮专属前缀回读）
 跑法：python -u scripts/pt_audit_pm_write_caps.py [--live] [--selftest]
-现网实测（2026-10-21 00:10Z，api 容器仍是本批之前的镜像）：C1/C2 回的是
-「收件人不存在…」（400）、C7 直接 200 落库 ⇒ 三条红都是**待部署证据**；
-同时 C4 证明三条私信探针零写入（messages 1507|11244 前后不变），
-C8b 证明职员箱那两封探针信按专属正文清干净（残留 0）。
+现网实测：2026-10-21 00:10Z（旧镜像）C1/C2 回「收件人不存在…」、C7 直接
+200 落库 ⇒ 待部署证据；2026-10-23 在 p632-e650ae30（P-466/P-467 已上线）
+上 C1/C2/C7 回的是上限整句但状态码是 **400**——本仓 Validation 统一 400
+（errors.rs），旧断言写 422 是闸门自己的假红，已改正。同日 C10/C11 在旧
+镜像上红（2001 字申诉 status=200、appeals 3|3 → 4|14），C13 收尾回读
+3|3 ⇒ 缺陷本体与清场都取到证；C4 零写入（messages 2585|13934 前后不变）、
+C8b 职员箱探针信按专属正文清干净（残留 0）。
 """
 import io
 import os
 import re
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-from pt_audit_lib import call, login, ok, psql_stdin, summary  # noqa: E402
+from pt_audit_lib import call, dig, login, ok, psql_stdin, summary  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SEND = "apps/api/src/community_http/message_send.rs"
 BOX = "apps/api/src/community_http/staffbox.rs"
+REQ = "apps/api/src/content_http/requests/create.rs"
+APL = "apps/api/src/gaps_http/appeals/create.rs"
 CAPS = {
     SEND: ["if body.subject.chars().count() > 120 {",
            "if body.body.chars().count() > 5000 {"],
@@ -54,14 +64,11 @@ IN_FLIGHT = {  # 站方正在同一文件里排版/改口径
     "apps/api/src/community_http/post_write.rs": ["body"],
     "apps/api/src/community_http/post_edit.rs": ["body"],
 }
-# 载体行数卡死，护栏塞不进去（各自的原因不同，别混写成一句）：
-#   requests.rs 300 行＝正好顶在 300 上限，净增一行即「新超限」；
-#   appeals.rs 315 行＝存量超限、基线钉在 315，「只许瘦不许胖」，净增即红。
-# 两者都要先拆文件才装得下 cap ⇒ 交回站长（拆文件不是本批的活）。
-CEILING = {
-    "apps/api/src/content_http/requests.rs": ["title(200)", "descr(2000)"],
-    "apps/api/src/gaps_http/appeals.rs": ["body(2000，现只有 ≥10 字下限)"],
-}
+# 载体行数卡死，护栏塞不进去（各自的原因不同，别混写成一句）。
+# P-632 起两个口都已按「文件内子模块」拆出（requests/create.rs、
+# appeals/create.rs），清单清空；上限本体改由 C14/C15 硬断言盯着。
+# 再遇到载体顶格时按同样口径登记：写口 → 该装的列 + 为什么这轮没装。
+CEILING = {}
 
 
 def read(rel):
@@ -89,6 +96,35 @@ def c6_static():
         ok("C6 职员箱 cap 在册：%s" % cap.replace("if ", "").replace(" {", ""),
            cap in t, "")
     ok("C6b 主题上限文案中文整句", '"主题最长 100 字"' in t, "")
+
+
+def c14_req_static():
+    """P-632 求种：上限与界面 maxLength 同数，且在建单 INSERT 之前。"""
+    t = read(REQ)
+    cap_t = "body.title.chars().count() > 200 {"
+    cap_d = "d.chars().count() > 2000)"
+    ok("C14 求种标题 cap 在册：title > 200", cap_t in t, "")
+    ok("C14b 求种简介 cap 在册：descr > 2000", cap_d in t, "")
+    i_ins = t.find("INSERT INTO requests")
+    ok("C14c 两条 cap 都在建单 INSERT 之前（被拒不落库）",
+       -1 < t.find(cap_t) < i_ins and -1 < t.find(cap_d) < i_ins,
+       "cap@%s/%s vs insert@%s" % (t.find(cap_t), t.find(cap_d), i_ins))
+    ok("C14d 求种两句上限文案是中文整句",
+       '"求种标题最长 200 字"' in t and '"求种简介最长 2000 字"' in t, "")
+
+
+def c15_apl_static():
+    """申诉口：上限在 require_auth 与任何 sqlx 查库之前（形状先于身份）。"""
+    t = read(APL)
+    cap = "if body.body.trim().chars().count() > 2000 {"
+    i_cap = t.find(cap)
+    i_auth = t.find("let auth = require_auth(&req, &state).await;")
+    i_sql = t.find("sqlx::")
+    ok("C15 申诉正文 cap 在册：body.trim() > 2000", i_cap >= 0, "")
+    ok("C15b cap 在 require_auth 与首个查库之前",
+       -1 < i_cap < i_auth and -1 < i_cap < i_sql,
+       "cap@%s auth@%s sql@%s" % (i_cap, i_auth, i_sql))
+    ok("C15c 上限文案是中文整句", '"申诉内容最长 2000 字"' in t, "")
 
 
 def c5_ledger():
@@ -122,7 +158,7 @@ def live_c1_c4(tok):
                                       "body": "探针"}, token=tok)
     m1 = (r or {}).get("message", "") if isinstance(r, dict) else ""
     ok("C1 主题 121 字 ⇒「主题最长 120 字」（status=%s）" % s,
-       s == 422 and "主题最长 120 字" in m1,
+       s == 400 and "主题最长 120 字" in m1,
        "详情=%s｜若详情是「收件人不存在…」＝现网二进制未含本批修复（待部署）"
        % m1[:70])
     s2, r2 = call("POST", "/messages", {"to": "__no_such_member__",
@@ -130,7 +166,7 @@ def live_c1_c4(tok):
                                        "body": probe_long(5001)}, token=tok)
     m2 = (r2 or {}).get("message", "") if isinstance(r2, dict) else ""
     ok("C2 正文 5001 字 ⇒「正文最长 5000 字」（status=%s）" % s2,
-       s2 == 422 and "正文最长 5000 字" in m2,
+       s2 == 400 and "正文最长 5000 字" in m2,
        "详情=%s｜同上：回收件人那句＝待部署" % m2[:70])
     s3, r3 = call("POST", "/messages", {"to": "__no_such_member__",
                                        "subject": probe_long(120),
@@ -152,7 +188,7 @@ def live_c7_c8(tok):
                                           "body": "闸门探针"}, token=tok)
     m = (r or {}).get("message", "") if isinstance(r, dict) else ""
     ok("C7 职员箱主题 101 字 ⇒「主题最长 100 字」（status=%s）" % s,
-       s == 422 and "主题最长 100 字" in m,
+       s == 400 and "主题最长 100 字" in m,
        "详情=%s｜status=200 且 ok＝现网二进制未含 P-467（待部署）" % m[:60])
     s2, r2 = call("POST", "/contactstaff", {"subject": probe_long(100),
                                            "body": "闸门探针"}, token=tok)
@@ -170,6 +206,45 @@ def live_c7_c8(tok):
        % (residue, before, after), residue == "0", "")
 
 
+def live_c10_c13(tok):
+    """通用申诉 /appeals：2001 字必拒、恰好 2000 必须放行，探针零残留。"""
+    mark = "闸门申诉探针-%s" % time.strftime("%Y%m%d%H%M%S")
+    before = psql_stdin("SELECT count(*)::text || '|' || "
+                        "COALESCE(max(id), 0)::text FROM appeals")
+    # 超长探针也带同一枚专属前缀：旧镜像会把它收下（红证本体），收尾时
+    # 不能只清正控那条，否则 C13 的「零残留」自己就变成了假绿。
+    s, r = call("POST", "/appeals",
+                {"kind": "other",
+                 "body": mark + "字" * (2001 - len(mark))}, token=tok)
+    m = (r or {}).get("message", "") if isinstance(r, dict) else ""
+    ok("C10 申诉正文 2001 字 ⇒「申诉内容最长 2000 字」（status=%s）" % s,
+       s == 400 and "申诉内容最长 2000 字" in m,
+       "详情=%s｜status=200 且 ok＝现网二进制未含本批修复（待部署）" % m[:70])
+    mid = psql_stdin("SELECT count(*)::text || '|' || "
+                     "COALESCE(max(id), 0)::text FROM appeals")
+    ok("C11 超长申诉零写入（appeals %s → %s）" % (before, mid),
+       before == mid, "")
+    # 正控：正好 2000 字必须放行到下一道校验（未结上限/落库），不能回长度文案。
+    # 带本轮专属前缀，落库了就按返回 id（缺失时按前缀）精确清掉再回读。
+    body = mark + "字" * (2000 - len(mark))
+    s2, r2 = call("POST", "/appeals", {"kind": "other", "body": body},
+                  token=tok)
+    m2 = (r2 or {}).get("message", "") if isinstance(r2, dict) else ""
+    pid = dig(r2, "data", "id")
+    ok("C12 正控：正好 2000 字必须放行（回的不是长度文案；status=%s）" % s2,
+       "申诉内容最长 2000 字" not in m2,
+       "message=%s｜id=%s" % (m2[:70], pid))
+    if pid:
+        psql_stdin("DELETE FROM appeals WHERE id = %d" % int(pid))
+    psql_stdin("DELETE FROM appeals WHERE body LIKE '%s%%'" % mark)
+    residue = psql_stdin("SELECT count(*)::text FROM appeals "
+                         "WHERE body LIKE '%s%%'" % mark)
+    after = psql_stdin("SELECT count(*)::text || '|' || "
+                       "COALESCE(max(id), 0)::text FROM appeals")
+    ok("C13 本轮探针申诉零残留（残留=%s；appeals %s → %s，max(id) 前移"
+       "属序列语义）" % (residue, before, after), residue == "0", "")
+
+
 def c9_translations():
     """本闸门盯着的那几句必须仍在译文表里（三列齐）。
 
@@ -184,7 +259,9 @@ def c9_translations():
             continue
         cols = line.split("\t")
         keys[cols[0]] = cols
-    need = ["主题最长 120 字", "正文最长 5000 字", "主题最长 100 字"]
+    need = ["主题最长 120 字", "正文最长 5000 字", "主题最长 100 字",
+            "求种标题最长 200 字", "求种简介最长 2000 字",
+            "申诉内容最长 2000 字"]
     for k in need:
         cols = keys.get(k)
         ok("C9 校验文案已进译文表三语齐：%s" % k,
@@ -229,14 +306,17 @@ def main():
         sys.exit(selftest())
     c0_static()
     c6_static()
+    c14_req_static()
+    c15_apl_static()
     c5_ledger()
     c9_translations()
     if "--live" in sys.argv:
         tok = login("root")
         live_c1_c4(tok)
         live_c7_c8(tok)
+        live_c10_c13(tok)
     else:
-        print("   [C1..C8] 跳过（加 --live 才发请求；探针全程零写入或当场清理）")
+        print("   [C1..C13] 跳过（加 --live 才发请求；探针全程零写入或当场清理）")
     summary()
 
 

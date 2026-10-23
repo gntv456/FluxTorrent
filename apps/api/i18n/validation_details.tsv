@@ -251,3 +251,6 @@ action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismis
 作弊案件请到「作弊处置队列」处理（需作弊处置权限）	作弊案件請到「作弊處置隊列」處理（需作弊處置權限）	This is a cheat case; handle it in the cheat-case queue (needs the cheat sanction permission).
 该种子当前仍有会员在做种或近 30 天有下载活动，无需复活	該種子目前仍有會員在做種或近 30 天有下載活動，無需復活	This torrent still has active seeders or recent download activity within 30 days; no revival is needed.
 该种子当前做种者充足，尚未濒危，无需组队保种	該種子目前做種者充足，尚未瀕危，無需組隊保種	This torrent still has enough seeders and is not endangered; no team preservation is needed.
+求种标题最长 200 字	求種標題最長 200 字	Request title must be 200 characters or fewer.
+求种简介最长 2000 字	求種簡介最長 2000 字	Request description must be 2000 characters or fewer.
+申诉内容最长 2000 字	申訴內容最長 2000 字	Appeal content must be 2000 characters or fewer.
