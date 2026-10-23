@@ -22,6 +22,7 @@ import {
 } from "@/components/torrent-manage-fields";
 import {
   buildEditPayload,
+  ReseedButton,
   useTorrentActions,
 } from "@/components/torrent-manage-submit";
 
@@ -62,6 +63,8 @@ export interface TorrentManageProps {
   metaSources?: string[];
   /** 深链（列表编辑按钮 /torrent/{id}?edit=1）自动展开 */
   autoOpen?: boolean;
+  /** 编辑/删除只在种主或管理组面前渲染（补种仍对全体会员开放） */
+  canManage: boolean;
 }
 
 export function TorrentManage(p: TorrentManageProps) {
@@ -89,11 +92,12 @@ export function TorrentManage(p: TorrentManageProps) {
     isStaff,
     metaSources,
     autoOpen,
+    canManage,
   } = p;
   const { dict, currency } = useI18n();
   const router = useRouter();
   const t = dict.torrentManage2;
-  const [open, setOpen] = useState(Boolean(autoOpen));
+  const [open, setOpen] = useState(Boolean(autoOpen) && canManage);
   const [fName, setFName] = useState(name);
   const [fSub, setFSub] = useState(smallDescr ?? "");
   const [fDescr, setFDescr] = useState(descr ?? "");
@@ -216,32 +220,28 @@ export function TorrentManage(p: TorrentManageProps) {
   return (
     <div className="flex flex-col items-start gap-2">
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className={`${PILL} border border-line text-sky-deep`}
-        >
-          ✎ {t.edit}
-        </button>
-        {(seeders ?? 1) === 0 && (
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={`${PILL} border border-line text-sky-deep`}
+          >
+            ✎ {t.edit}
+          </button>
+        )}
+        <ReseedButton seeders={seeders} busy={busy}
+          note={dict.reseed2.note} label={dict.reseed2.btn}
+          onClick={actions.reseed} />
+        {canManage && (
           <button
             type="button"
             disabled={busy}
-            onClick={actions.reseed}
-            className={`${PILL} border border-line text-sun`}
-            title={dict.reseed2.note}
+            onClick={actions.askDel}
+            className={`${PILL} border border-tomato/60 text-tomato`}
           >
-            🔄 {dict.reseed2.btn}
+            🗑 {t.del}
           </button>
         )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={actions.askDel}
-          className={`${PILL} border border-tomato/60 text-tomato`}
-        >
-          🗑 {t.del}
-        </button>
       </div>
       {actions.delDialog}
 

@@ -258,7 +258,6 @@ export default async function TorrentDetailPage({
 
       {/* ===== 双栏骨架（设计稿 §4：head 通栏 + 左主栏 + 右信息栏） ===== */}
       <div className="td-layout">
-
         {/* ===== 海报头（同类站口径：左海报 + 右主信息 + 操作行） ===== */}
       <TorrentHead
         t={t} ext={ext} dict={dict} locale={locale} left={left}
@@ -283,6 +282,7 @@ export default async function TorrentDetailPage({
               tagDict={agg.tags.dict} tagMine={agg.tags.mine}
               posState={ext?.pos_state ?? 0} pickType={ext?.pick_type ?? 0}
               posStateUntil={ext?.pos_state_until ?? null} isStaff={isStaff}
+              canManage={isStaff || !!ext?.is_owner}
               metaSources={profile?.metadata_sources} autoOpen={sp.edit === "1"}
             />
           </>

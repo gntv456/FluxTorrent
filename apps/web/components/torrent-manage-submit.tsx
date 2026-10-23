@@ -3,9 +3,40 @@
 import { useState } from "react";
 
 import { TorrentDeleteDialog } from "@/components/torrent-delete-dialog";
+import { PILL } from "@/components/torrent-manage-parts";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
+
+/** 补种按钮（P-623 从 torrent-manage.tsx 抽出以守住行数门禁）：
+ *  后端 torrents/reseed.rs 对全体会员开放（只查种子的 seeders），
+ *  所以编辑/删除按归属门控时它必须保留。 */
+export function ReseedButton({
+  seeders,
+  busy,
+  note,
+  label,
+  onClick,
+}: {
+  seeders?: number;
+  busy: boolean;
+  note: string;
+  label: string;
+  onClick: () => void;
+}) {
+  if ((seeders ?? 1) !== 0) return null;
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={onClick}
+      className={`${PILL} border border-line text-sun`}
+      title={note}
+    >
+      🔄 {label}
+    </button>
+  );
+}
 
 /** 编辑提交载荷 + 补种/删除动作（0184 从 torrent-manage.tsx 拆出，
  *  300 行门禁）：buildEditPayload 组 PUT /torrents/{id} body（含推荐位
