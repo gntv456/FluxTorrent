@@ -4,6 +4,10 @@
 列表是 PT 用户待得最久的地方，参数 30 多个，每个 facet 都必须「可判别」：
 先造一套属性矩阵已知的探针种，再逐条断言精确 id 集合。同一 URL 在成员与站长
 两桶里也不许互串。非法值类容错的判据都是「等于不加该参数」并配合法对照。
+
+拆分（500 行门禁，本文件原 511 行）：G8 注入与 LIKE 转义 / G9 视角桶 /
+G10 参数容错与错误信封 已搬去 pt_audit_af2_inject_envelope.py，那边自带一套
+三颗的最小语料，两支可各自独立跑（不许并发：同名 afprobe 前缀会互相数到）。
 """
 import datetime
 import glob
@@ -391,116 +395,6 @@ ok("G7 dir=prev 用第一页末游标回翻得到第一页（锚行属上一页�
    c1 and set(prev1) == set(p1), "p1=%s prev1=%s" % (p1, prev1))
 ok("G7 dir=prev 用第二页末游标得到第二页（同一语义的另一面）",
    c2 and set(prev2) == set(p2), "p2=%s prev2=%s" % (p2, prev2))
-
-print("== G8 注入与 LIKE 转义 ==")
-bad = urllib.parse.quote("x' OR 1=1;--")
-got = sel("search=%s" % bad)
-ok("G8 注入串安全返回空集（不炸也不放全表）",
-   got == frozenset(), str(got))
-got2 = sel("search=%s" % urllib.parse.quote("%"))
-ok("G8 裸 % 不当通配：命中数不得等于全站（应为 0 或仅名称含 % 的 A5）",
-   got2.issubset({A5}), str(got2))
-got3 = sel("search=%s" % urllib.parse.quote("afprobe pct%10"))
-ok("G8 名称里真含 % 的种能被搜到（转义没把合法用例打死）",
-   eqs(got3, {A5}), str(got3))
-# 精确模式同样要转义：旧实现把原串直接塞进 ILIKE，`%`/`_` 仍是通配，
-# 「精确搜 %」会命中全站（现网红证：total 与不加筛选相同）。
-got4 = sel("search=%s&search_mode=2" % urllib.parse.quote("%"))
-ok("G8b 精确模式下裸 % 是字面量（旧行为当通配 ⇒ 命中全集）",
-   got4 == frozenset(), str(got4))
-got5 = sel("search=%s&search_mode=2" % urllib.parse.quote("afprobe pct%10 x"))
-ok("G8b 正控：精确模式能搜到名称里真含 % 的整串",
-   eqs(got5, {A5}), str(got5))
-got6 = sel("search=%s&search_mode=2" % urllib.parse.quote("afprobe pct_10 x"))
-ok("G8b 精确模式下 _ 不当单字符通配（不该命中 A5）",
-   got6 == frozenset(), str(got6))
-
-print("== G9 同一 URL 的两个缓存桶不得互串 ==")
-# 列表层 SQL 对匿名种一律 CASE WHEN anonymous THEN NULL（list_noclamp_as），
-# 站长也不例外——匿名豁免只在详情页 view_anonymous。所以正控不是
-# 「站长看匿名种有名字」，而是「具名种在成员视角有名字」。
-s, mrows = call("GET", "/torrents?limit=100&alive=0&search=afprobe",
-                token=MTOK)
-mitems = (mrows.get("data") or {}).get("items") or []
-
-
-def by_id(items, tid):
-    return next((x for x in items if (x or {}).get("id") == tid), {})
-
-
-m2 = by_id(mitems, A2)
-m1 = by_id(mitems, A1)
-ok("G9 匿名种在成员视角不透露发布者名",
-   not m2.get("owner_name"), "owner_name=%r" % (m2.get("owner_name"),))
-ok("G9 正控：具名种 A1 在成员视角有发布者名（防恒空桶伪通过）",
-   bool(m1.get("owner_name")), "owner_name=%r" % (m1.get("owner_name"),))
-s, rrows = call("GET", "/torrents?limit=100&alive=0&search=afprobe",
-                token=ROOT)
-ritems = (rrows.get("data") or {}).get("items") or []
-r1 = by_id(ritems, A1)
-ok("G9 站长视角具名种同样有名字（两桶都活着）",
-   bool(r1.get("owner_name")), "owner_name=%r" % (r1.get("owner_name"),))
-s, r = call("GET", "/torrents?limit=100&approval=3&alive=0", token=MTOK)
-its = (r.get("data") or {}).get("items") or []
-ok("G9 成员的 approval=3 被吞掉（回收站不外泄）",
-   s == 200 and not any((x or {}).get("approval_status") == 3
-                        for x in its), "n=%d" % len(its))
-
-print("== G10 参数容错与错误信封（本轮两处修复的判据面）==")
-ok("G10 min_seeders=abc 不筛也不炸（宽松反序列化丢非法值）",
-   eqs(sel("min_seeders=abc"), CORPUS), str(sel("min_seeders=abc")))
-ok("G10 limit=abc 回退默认条数（集合仍等于全集）",
-   eqs(sel("limit=abc"), CORPUS), str(sel("limit=abc")))
-
-
-def probe_url(qs):
-    rq = urllib.request.Request(BASE + "/torrents" + qs)
-    rq.add_header("Authorization", "Bearer " + ROOT)
-    try:
-        rr = urllib.request.urlopen(rq, timeout=30)
-        body = rr.read()
-        return "http=%d ct=%s" % (rr.status,
-                                  rr.headers.get("Content-Type"))
-    except urllib.error.HTTPError as e:
-        body = e.read()
-        out = "http=%d ct=%s" % (e.code, e.headers.get("Content-Type"))
-        try:
-            out += " code=%s" % json.loads(body).get("code")
-        except Exception:
-            out += " raw=%r" % body[:80]
-        return out
-
-
-# 实测钉死（aa1010m）：重复键在 serde derive 层就整体拒绝（标量与 seq
-# 字段一视同仁），「取最后」不可达——最终契约 = 400 + 统一 JSON 信封。
-# 判据从「取最后」改成「信封可解」。
-dup = probe_url("?limit=100&alive=0&search=afprobe&alive=2")
-ok("G10 重复 alive 键 → 400 + JSON 信封 code=1002（不再裸 text/plain）",
-   "http=400" in dup and "application/json" in dup
-   and "code=1002" in dup, dup)
-utf8 = probe_url("?limit=100&search=%FF%FE")
-ok("G10 非法 UTF-8 搜索不炸（非 500，回统一信封；actix 宽容解码实测 200）",
-   "http=500" not in utf8 and ("http=200" in utf8
-                               or "code=" in utf8), utf8)
-
-
-def probe_lang(lang):
-    rq = urllib.request.Request(BASE + "/torrents?limit=2&limit=3")
-    rq.add_header("Authorization", "Bearer " + ROOT)
-    rq.add_header("Accept-Language", lang)
-    try:
-        urllib.request.urlopen(rq, timeout=30)
-        return "http=200"
-    except urllib.error.HTTPError as e:
-        return "%d|%s" % (e.code, json.loads(e.read()).get("message") or "")
-
-
-en = probe_lang("en")
-ok("G10 拒单译文真烤进镜像（Accept-Language: en 回英文整句）",
-   en.startswith("400|") and "Invalid list filter parameters" in en, en)
-zh = probe_lang("zh-CN")
-ok("G10 中文拒单同一断言面（zh-CN 回原句）",
-   zh.startswith("400|") and "列表筛选参数格式无效" in zh, zh)
 
 print("== G11 收尾 ==")
 for stmt in reversed(CLEAN):
