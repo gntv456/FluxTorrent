@@ -14,16 +14,15 @@ pub async fn request_reseed(
     torrent_id: i64,
     requester: (i64, String),
 ) -> DomainResult<usize> {
-    let row: Option<(i32, Option<chrono::DateTime<chrono::Utc>>, String)> =
-        sqlx::query_as(
-            "SELECT seeders, last_reseed, \
-         name FROM torrents WHERE id = $1 AND approval_status = 1",
-        )
-        .bind(torrent_id)
-        .fetch_optional(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((seeders, last_reseed, name)) = row else {
+    let row: Option<(i32, String)> = sqlx::query_as(
+        "SELECT seeders, name FROM torrents \
+         WHERE id = $1 AND approval_status = 1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((seeders, name)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };
     if seeders > 0 {
@@ -31,23 +30,37 @@ pub async fn request_reseed(
             "该种子仍有人做种，无需补种".into(),
         ));
     }
-    if let Some(lr) = last_reseed {
-        if chrono::Utc::now() - lr < chrono::Duration::seconds(900) {
-            return Err(DomainError::Validation(
-                "15 分钟内已发起过补种请求，请稍候".into(),
-            ));
-        }
-    }
     // 完成过下载的用户（含发布者）。P-378 三条收口：
     //  ① 排除被处置账号（`users.status >= 2` = 停用/墓碑/封禁）：旧版照发，
     //    现网聚合实测 176 封里有 100 封（57%）投给没人能登录的收件箱；
     //  ② 排除发起人自己（完成过该种的人会给自己发一封「我请求补种」）；
     //  ③ 发信与 `last_reseed` 落库并入一个事务：旧版逐条 autocommit，中途失败留下
     //    「半批人已收到、时间戳没更新」，重试时前半批**再收一遍**。
+    // P-626：15 分钟限频的读取与写入必须原子。旧版事务外 SELECT 判限频、
+    //  事务尾才 UPDATE：两个请求同时进来都读到旧时间戳 ⇒ 各发一整批。
+    //  实测同一颗种 2ms 内两条 200/notified=1，收件人收到两封。改为在
+    //  事务内用带谓词的 UPDATE 抢槽位；抢不到即被限频拒绝，事务回滚会
+    //  释放这次抢占，下一个请求仍可正常发起。
     let mut tx = db
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    let claimed = sqlx::query(
+        "UPDATE torrents SET last_reseed = now() WHERE id = $1 \
+         AND (last_reseed IS NULL \
+              OR last_reseed < now() - interval '15 minutes')",
+    )
+    .bind(torrent_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .rows_affected();
+    if claimed == 0 {
+        let _ = tx.rollback().await;
+        return Err(DomainError::Validation(
+            "15 分钟内已发起过补种请求，请稍候".into(),
+        ));
+    }
     let receivers: Vec<i64> = sqlx::query_scalar(
         "SELECT DISTINCT s.user_id FROM snatches s \
          JOIN users u ON u.id = s.user_id \
@@ -82,11 +95,6 @@ pub async fn request_reseed(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    sqlx::query("UPDATE torrents SET last_reseed = now() WHERE id = $1")
-        .bind(torrent_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
