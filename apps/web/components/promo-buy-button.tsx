@@ -4,14 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { fmt } from "@/i18n/config";
+import { fmtCur } from "@/i18n/config";
 import { Modal } from "@/components/modal";
 import { clientUuid } from "@/lib/client-uuid";
 
 /** 用户自购置顶/限时免费（0101，同类站插件口径；0213 起档位读服务端注册表）：
  *  档位由 GET /promo/plans 返回的 kinds 元数据驱动（站方可自定义增删），
  *  价目同响应；购买走 /promo/buy（幂等键防双扣）。
- *  0173：详情页头部只留「购买置顶免费」按钮，档位选择进覆盖式弹窗。 */
+ *  0173：详情页头部只留「购买置顶免费」按钮，档位选择进覆盖式弹窗。
+ *  0213 起档位读服务端注册表；P-628：待审/被拒/暂缓种后端只认
+ *  approval_status=1（购买回 404「资源不存在」）⇒ 入口按 approved 显隐。 */
 interface PlanEntry {
   hours: number;
   price: number;
@@ -38,8 +40,15 @@ function kindLabel(k: KindMeta, dict: ReturnType<typeof useI18n>["dict"]) {
   return map?.[key] ?? k.label_zh ?? k.kind;
 }
 
-export function PromoBuyButton({ torrentId }: { torrentId: number }) {
-  const { dict } = useI18n();
+export function PromoBuyButton({
+  torrentId,
+  approved,
+}: {
+  torrentId: number;
+  /** 关闭档（approval_status≠1）不给入口：后端在扣款前就回 404 */
+  approved: boolean;
+}) {
+  const { dict, currency } = useI18n();
   const router = useRouter();
   const t = dict.promoBuy ?? {
     title: "购买置顶免费",
@@ -53,6 +62,10 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
   const [plans, setPlans] = useState<PlansResp | null>(null);
   const [open, setOpen] = useState(false);
   const [pick, setPick] = useState<string>("");
+  // P-628：幂等键每次打开弹窗生成一次、弹窗内重试复用（§8.2，同商店
+  // buy-button 口径）；成功后换新键，连买两单不被上一单挡住。旧实现每次
+  // 点击都新生成 ⇒ 响应丢失后重试会真扣两次。
+  const [idem, setIdem] = useState(() => `web-${torrentId}-${clientUuid()}`);
   const [msg, setMsg] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,9 +82,10 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (approved) void load();
+  }, [load, approved]);
 
+  if (!approved) return null;
   if (plans && !plans.enabled) return null;
   if (!plans) return null;
 
@@ -86,9 +100,10 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
         torrent_id: torrentId,
         kind,
         hours: Number(hours),
-        idempotency_key: `web-${torrentId}-${kind}-${clientUuid()}`,
+        idempotency_key: idem,
       });
       setOkMsg(t.ok);
+      setIdem(`web-${torrentId}-${clientUuid()}`);
       router.refresh();
     } catch (err) {
       setMsg(err instanceof ApiError ? err.message : dict.common.networkError);
@@ -150,9 +165,7 @@ export function PromoBuyButton({ torrentId }: { torrentId: number }) {
                         }
                       >
                         {e.hours}h · {e.price}{" "}
-                        {fmt(dict.common.spark, {
-                          magic: e.price,
-                        })}
+                        {fmtCur(dict.common.spark, {}, currency)}
                       </button>
                     );
                   })}

@@ -271,7 +271,10 @@ export default async function TorrentDetailPage({
         }
         manage={
           <>
-            <PromoBuyButton torrentId={t.id} />
+            <PromoBuyButton
+              torrentId={t.id}
+              approved={t.approval_status === 1}
+            />
             <TorrentManage
               torrentId={t.id} name={t.name} smallDescr={t.small_descr}
               descr={ext?.descr ?? null} anonymous={t.anonymous}
