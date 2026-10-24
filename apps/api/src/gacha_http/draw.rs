@@ -20,7 +20,8 @@ use super::{pool, roll};
 
 type Db = web::Data<std::sync::Arc<AppState>>;
 
-#[derive(Deserialize)] #[serde(deny_unknown_fields)]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DrawReq {
     banner_id: i64,
     count: i32,
@@ -128,8 +129,11 @@ pub(super) async fn gacha_draw(
         .await
         .map_err(|e: sqlx::Error| DomainError::Internal(e.into()))?;
         if !(never_drawn && count == 1 && bal >= 1) {
+            // 0418（B2）：获取路径一并给出——签到每日送 1 券，商店有
+            // 单张/十连 SKU。报错断头会让用户以为功能坏了。
             return Err(DomainError::Validation(format!(
-                "抽卡券不足：需要 {total}，持有 {bal}"
+                "抽卡券不足：需要 {total}，持有 {bal}。每日签到送 1 券，\
+                 也可在商店购买抽卡券"
             )));
         }
     }

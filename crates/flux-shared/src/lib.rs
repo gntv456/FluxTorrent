@@ -52,6 +52,7 @@ pub fn has_effect(kind: &str) -> bool {
             | "charity"
             | "rename_card"
             | "temp_invite"
+            | "gacha_ticket"
     )
 }
 
@@ -400,6 +401,76 @@ pub async fn apply_item_effect(
             .bind(kind)
             .execute(db)
             .await?;
+        }
+        // 抽卡券（0418，二轮深测 B2）：抽卡券此前只有签到 daily_free 一条
+        // 获取路径（每天 1 张、攒 25 天才够一抽），商店无 SKU——gacha 对
+        // 普通用户是纯橱窗。购买按 config.qty 入券账；幂等键沿用 gift_idem
+        //（购买单键，多件时 shop.rs 会加 :k 后缀），重放补发不双入。
+        "gacha_ticket" => {
+            let n: i32 = config
+                .get("qty")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(1)
+                .clamp(1, 100) as i32;
+            let idem = config
+                .get("gift_idem")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| format!("shop-ticket:{s}"))
+                .unwrap_or_else(|| {
+                    format!(
+                        "shop-ticket:{user_id}:{}",
+                        chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+                    )
+                });
+            let mut tx = db.begin().await?;
+            sqlx::query(
+                "INSERT INTO gacha_ticket_balance (user_id, balance) \
+                 VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING",
+            )
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await?;
+            let bal: i32 = sqlx::query_scalar(
+                "SELECT balance FROM gacha_ticket_balance \
+                 WHERE user_id = $1 FOR UPDATE",
+            )
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await?;
+            // 同键已入过账：幂等返回（外层 shop_orders 的 effect_applied
+            // CAS 已挡住绝大多数重放，这里兜 worker 补发/崩溃重跑）
+            let seen: Option<i32> = sqlx::query_scalar(
+                "SELECT balance_after FROM gacha_ticket_ledger \
+                 WHERE idempotency_key = $1",
+            )
+            .bind(&idem)
+            .fetch_optional(&mut *tx)
+            .await?;
+            if seen.is_none() {
+                let after = bal + n;
+                sqlx::query(
+                    "INSERT INTO gacha_ticket_ledger \
+                     (user_id, delta, kind, ref_type, idempotency_key, \
+                      balance_after) \
+                     VALUES ($1, $2, 'shop', 'shop', $3, $4)",
+                )
+                .bind(user_id)
+                .bind(n)
+                .bind(&idem)
+                .bind(after)
+                .execute(&mut *tx)
+                .await?;
+                sqlx::query(
+                    "UPDATE gacha_ticket_balance SET balance = $2 \
+                     WHERE user_id = $1",
+                )
+                .bind(user_id)
+                .bind(after)
+                .execute(&mut *tx)
+                .await?;
+            }
+            tx.commit().await?;
         }
         _ => {} // 其余类型：权益标记后续按需扩展
     }
