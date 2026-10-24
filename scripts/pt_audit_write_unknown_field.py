@@ -82,7 +82,34 @@ COVERED = [
      ["bet", "idempotency_key"]),
     ("/magic-pool/donate", "DonateReq", "apps/api/src/economy_http/pool.rs",
      "components/pool-donate.tsx", "/api/v1/magic-pool/donate", ["amount"]),
+    # P-642 续：可选请求体（OptJson）这一族——P-314 那轮扫的是
+    # `body: web::Json<T>`，这族整个漏在门外，而漏下来的正是最需要
+    # 拒未知键的几只（缺省语义会扩大破坏范围）。
+    ("/games/coupons/use", "UseCouponReq",
+     "apps/api/src/games_http/linkage.rs", None, "", ["idempotency_key"]),
+    ("/games/pet/feed", "PetActionReq", "apps/api/src/games_http/pets.rs",
+     "app/(main)/games/pet/_inner.tsx", "/api/v1/games/pet/feed",
+     ["idempotency_key", "use_coupon"]),
+    ("/games/pet/claim", "PetActionReq", "apps/api/src/games_http/pets.rs",
+     "app/(main)/games/pet/_inner.tsx", "/api/v1/games/pet/claim",
+     ["idempotency_key"]),
+    ("/games/pet/customize", "CustomizeReq",
+     "apps/api/src/games_http/pet_custom.rs",
+     "components/game/pet-pen.tsx", "/api/v1/games/pet/customize",
+     ["name", "species"]),
 ]
+# OptJson 写口里**暂时**没加的，每条必须写明为什么（空着等于放行）：
+#   · 存量超限文件（>300 行，门禁「只许瘦不许胖」）要先拆文件才能加属性；
+#   · 站方在途文件不代改。
+OPT_PENDING = {
+    "/downloads/keys/revoke":
+        "compat_http/download_keys.rs 是 335 行的存量超限文件，加一行属性就撞"
+        "「只许瘦不许胖」⇒ 先拆文件再补 deny（这条缺省语义是「撤本人全部凭证」，"
+        "字段名打错的代价最大，已在待办点名）",
+    "/bank/loan/repay":
+        "economy_http/loan_repay.rs 376 行存量超限，同上要先拆；缺省语义是"
+        "「一次性结清」＝替会员决定多扣一笔钱",
+}
 PATH = "/api/v1/gacha/dismantle"
 
 
@@ -131,7 +158,8 @@ def web_payload(relfile, marker):
             break
         i += 1
     seg = seg[:i + 1]
-    keys = re.findall(r"[{\s,]([a-zA-Z_]\w*)\s*(?::|,|\s*$)", seg)
+    keys = re.findall(r"[{\s,]([a-zA-Z_]\w*)\s*"
+                    r"(?::|,|\s*$|\s*\})", seg)
     stop = {"const", "await", "return", "new", "typeof"}
     return sorted(set(k for k in keys if k not in stop))
 
@@ -167,7 +195,7 @@ def any_web_caller(path):
                 hits.append(os.path.relpath(os.path.join(dp, n),
                                             ROOT).replace("\\", "/"))
             elif path.count("/") >= 2 and ("/api/v1/gacha/${path}" in t
-                                           and tail in t):
+                                           and ("/" + tail) in t):
                 hits.append("%s(模板串)" % os.path.relpath(
                     os.path.join(dp, n), ROOT).replace("\\", "/"))
     return sorted(hits)
@@ -254,6 +282,97 @@ try:
               % (st2, b.get("code"), msg[:44]))
 except Exception as ex:
     print("   [跳过 V4] 打不通：%s" % str(ex)[:90])
+
+print("== V6 可选请求体写口全数对账（这族曾被整族漏掉）==")
+src_api = os.path.join(ROOT, "apps", "api", "src")
+opt_routes = {}
+for dp, dns, names in os.walk(src_api):
+    dns[:] = [d for d in dns if d not in ("target",)]
+    for n in names:
+        if not n.endswith(".rs"):
+            continue
+        rel = os.path.relpath(os.path.join(dp, n),
+                              ROOT).replace("\\", "/")
+        txt = read(rel)
+        if "OptJson<" not in txt:
+            continue
+        for m in re.finditer(r"OptJson<\w+>", txt):
+            head = txt[:m.start()]
+            rm = None
+            for cm in re.finditer(r'#\[(get|post|put|patch|delete)\("([^"]+)"'
+                                  r"\)?", head):
+                rm = cm
+            if rm is None or rm.group(2) == "":
+                continue
+            opt_routes.setdefault(rm.group(2), rel)
+covered_paths = {p for p, *_ in COVERED}
+not_reg = sorted(p for p in opt_routes
+                 if p not in covered_paths and p not in OPT_PENDING)
+gone = sorted(p for p in OPT_PENDING
+              if p in covered_paths or p not in opt_routes)
+print("   OptJson 写口路由=%d 已在册=%d 待补=%d"
+      % (len(opt_routes), len([p for p in opt_routes
+                               if p in covered_paths]), len(OPT_PENDING)))
+ok("V6 每个可选体写口要么带 deny、要么在待补台账里有理由（漏 %s）"
+   % (not_reg or "无"), not not_reg,
+   "这族的缺省语义常是破坏性更大的那一个（撤全部/一次结清/扣魔力）")
+ok("V6b 待补台账不悬空（补上了就撤桩，条目过期也红）", not gone,
+   "已不存在的口=%s｜已升为在册=%s" % (
+       [p for p in OPT_PENDING if p not in opt_routes],
+       [p for p in OPT_PENDING if p in covered_paths]))
+
+print("== V7 正控（可翻转的旧内容 A/B，不钉『旧文件不存在』）==")
+
+
+def read_rev(rel, rev):
+    t = subprocess.run(["git", "show", "%s:%s" % (rev, rel)],
+                       capture_output=True, encoding="utf-8",
+                       errors="replace")
+    return t.stdout if t.returncode == 0 else ""
+
+
+CTRL_REV = "e9c560bd"
+still = []
+for path, name, rel, _w, _m, _k in COVERED[-4:]:
+    src = read_rev(rel, CTRL_REV)
+    i = src.find("struct %s" % name)
+    head = src[max(0, i - 260):i] if i >= 0 else ""
+    if i >= 0 and "deny_unknown_fields" in head:
+        still.append("%s(%s)" % (path, name))
+ok("V7 正控：%s 那版这四只结构体都没有 deny（有则判据不承重）"
+   % CTRL_REV, not still, "旧版已带=%s" % still)
+
+print("== V8 活体探针（天生不花钱：拒在解析边界，两边都不写库）==")
+try:
+    st, lg = post("/auth/login",
+                  {"username": "root", "password": "***"})
+    tk = (lg.get("data") or {}).get("token")
+    def pet_name():
+        r = subprocess.run(["docker", "exec", "flux-postgres", "psql",
+                            "-U", "flux", "-d", "fluxtorrent", "-tAc",
+                            "SELECT name FROM arcade_pets"
+                            " WHERE user_id=1"], capture_output=True,
+                           text=True, encoding="utf-8", errors="replace")
+        return (r.stdout or "").strip()
+    nm = pet_name()
+    # 名字超 12 字 ⇒ 业务层必拒；`specie` 是打错的键 ⇒ 新代码在解析层就拒。
+    # 两种答案都是 400 且都不写库（改名那步在校验之后），所以现网跑也不留痕。
+    st2, b2 = post("/games/pet/customize",
+                   {"name": "这个名字故意超过十二个字的限制",
+                    "specie": "cat"}, tk)
+    msg2 = b2.get("message") or ""
+    if "未识别的字段" in msg2:
+        ok("V8 未知键在解析边界被拒（%d「%s」）" % (st2, msg2[:40]),
+           st2 == 400 and "specie" in msg2,
+           "400 之外还回这句＝状态码不对，前端不弹")
+    else:
+        print("   [WARN 不判红] %d code=%s 文案=%s｜现网镜像仍静默忽略未知键"
+              "（本批修复未进镜像）" % (st2, b2.get("code"), msg2[:44]))
+    nm2 = pet_name()
+    ok("V8b 这条探针没改到宠物名（前后读数一致：%r）" % nm, nm == nm2,
+       "前=%r 后=%r" % (nm, nm2))
+except Exception as ex:
+    print("   [跳过 V8] 打不通：%s" % str(ex)[:90])
 
 print("== V5 中文文案的单测在册 ==")
 pc = read("apps/api/src/path_cfg.rs")

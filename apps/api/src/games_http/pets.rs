@@ -201,6 +201,8 @@ pub(super) async fn pet_status(
 }
 
 #[derive(Deserialize)]
+// P-642：`use_coupon` 打错＝静默按扣魔力执行，投喂这一笔花的币种不许由解析失败决定
+#[serde(deny_unknown_fields)]
 struct PetActionReq {
     #[serde(default)]
     idempotency_key: Option<String>,

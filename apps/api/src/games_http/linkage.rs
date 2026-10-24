@@ -78,7 +78,10 @@ pub(super) async fn linkage_status(
     })))
 }
 
+// P-642：拒未知键。幂等键名打错 ⇒ 退化成随机键，「重试防双扣」这件事静默失效，
+// 一次网络抖动就多发一次核销（消耗的是做种换来的口粮券）。
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct UseCouponReq {
     /// 客户端幂等键（网络重试 / 双击须带同一键，缺省回落随机键保持兼容）
     #[serde(default)]

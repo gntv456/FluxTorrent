@@ -19,6 +19,8 @@ use super::helpers::eco_i64;
 const SPECIES: [&str; 4] = ["slime", "cat", "bunny", "drake"];
 
 #[derive(Deserialize)]
+// P-642：拒未知键（名/种都打错时会静默「什么都不改」却回成功）
+#[serde(deny_unknown_fields)]
 pub(super) struct CustomizeReq {
     #[serde(default)]
     name: Option<String>,
