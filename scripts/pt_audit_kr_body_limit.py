@@ -220,6 +220,11 @@ LEDGER = {
         3, "评论 20_000 字，汉字按 3 字节折最坏 60_000，在墙内"),
     "http/auth_infra.rs::CAP": (
         0, "非请求体：进程内缓存容量（登记只为普查不留白）"),
+    "admin_http/email_domains_file.rs::MAX_DOMAINS": (
+        256, "非 JSON 通路：multipart 流式导入的条数天花板，不受本墙约束"
+        "（站方 7a92f375 落的新口，10 万条逐条 INSERT，上限按时长与病态输入定）"),
+    "admin_http/email_domains_file.rs::BATCH": (
+        256, "非 JSON 通路：每批条数（一批一个独立事务），与请求体大小无关"),
 }
 out = sh(["git", "grep", "-l", "-E",
           r"const\s+[A-Z_]+:\s*usize\s*=\s*[1-9][0-9_]", "--", API])
@@ -243,8 +248,10 @@ ok("KR12 普查基数可信（≥ 4 个体积类常量在册）", len(keys) >= 4
 bad_fit = [k for k in keys
            if k in LEDGER and not LEDGER[k][1].startswith("PENDING")
            and not LEDGER[k][1].startswith("非请求体")
+           and not LEDGER[k][1].startswith("非 JSON 通路")
            and cands[k] * LEDGER[k][0] + ENVELOPE > (LIMIT or 0)]
-ok("KR13 在册项的最坏包体都塞得进墙（待裁桩除外）", not bad_fit,
+ok("KR13 在册项的最坏包体都塞得进墙（待裁桩与 multipart 通路除外）",
+   not bad_fit,
    "超墙：%s" % bad_fit[:4])
 pending = [k for k in LEDGER if LEDGER[k][1].startswith("PENDING")]
 ok("KR14 待裁桩不悬空（PENDING 条目必须仍然超墙，否则就地撤桩）",
