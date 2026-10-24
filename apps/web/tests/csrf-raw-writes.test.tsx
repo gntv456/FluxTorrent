@@ -4,6 +4,7 @@ import { join, relative } from "node:path";
 
 import { attachUpload } from "@/components/upload-attach-io";
 import { uploadAttachment } from "@/components/subtitle-attachment";
+import { importEmailDomainsFile } from "@/lib/email-domain-file-import";
 import { zhCN } from "@/i18n/zh-CN";
 
 /**
@@ -36,6 +37,13 @@ beforeEach(() => {
       calls.push({ url: String(input), init });
       if (String(input).includes("/me/csrf")) {
         return res({ code: 0, data: null, request_id: "t" });
+      }
+      if (String(input).includes("/import-file")) {
+        return res({
+          code: 0,
+          data: { file: "list.txt", added: 3, skipped: 1, invalid: 0 },
+          request_id: "t",
+        });
       }
       return res({
         code: 0,
@@ -75,6 +83,16 @@ describe("裸 fetch 写口的 CSRF 头", () => {
       uploadAttachment(new File(["x"], "a.srt")),
     ).resolves.toBe("abc123");
     expect(headerOf()["x-csrf-token"]).toBe("tok123");
+  });
+
+  it("域名库文件导入 importEmailDomainsFile 带 x-csrf-token", async () => {
+    const r = await importEmailDomainsFile(
+      new File(["a.invalid\n"], "list.txt"),
+      "fail",
+    );
+    expect(r.added).toBe(3);
+    expect(calls.some((c) => c.url.endsWith("/import-file"))).toBe(true);
+    expect(headerOf(calls.length - 1)["x-csrf-token"]).toBe("tok123");
   });
 });
 

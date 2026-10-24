@@ -7020,11 +7020,12 @@ const enBase: Omit<
     ebEmpty: "No email rules yet.",
     edImport: "Import domains",
     edNote:
-      "Gate 4 of registration admission: an email domain in this list (including subdomains) is rejected at sign-up. You can paste whole email addresses or URLs — the domain part is extracted; duplicates are skipped.",
+      "Gate 4 of registration admission: an email domain in this list (including subdomains) is rejected at sign-up. You can paste whole email addresses or URLs — the domain part is extracted; duplicates are skipped. For very large lists use the file import button — the text area has a size cap.",
     edImportLabel: "Domain list",
     edImportPh:
       "One per line, or comma/semicolon separated; a JSON array also works. e.g.\ntemp-mail.org\nhttps://x.com/foo\nsomeone@guerrillamail.com",
     edImportBtn: "Import",
+    edFileBtn: "Import file",
     edExportBtn: "Export JSON",
     edSearch: "Search",
     edSearchPh: "example.com",

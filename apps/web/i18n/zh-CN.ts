@@ -6821,11 +6821,12 @@ const zhCnBase = {
     ebEmpty: "暂无邮箱规则。",
     edImport: "导入域名",
     edNote:
-      "注册准入第 ④ 道闸：命中本库的邮箱域名（含子域）将被拒绝注册。可直接粘贴整邮箱或网址，系统会取域名部分；重复项自动跳过。",
+      "注册准入第 ④ 道闸：命中本库的邮箱域名（含子域）将被拒绝注册。可直接粘贴整邮箱或网址，系统会取域名部分；重复项自动跳过。数万条的大清单请用「从文件导入」，不受文本框上限约束。",
     edImportLabel: "域名列表",
     edImportPh:
       "每行一个，或用逗号/分号分隔；也可粘贴 JSON 数组。例：\ntemp-mail.org\nhttps://x.com/foo\nsomeone@guerrillamail.com",
     edImportBtn: "导入",
+    edFileBtn: "从文件导入",
     edExportBtn: "导出 JSON",
     edSearch: "搜索",
     edSearchPh: "example.com",

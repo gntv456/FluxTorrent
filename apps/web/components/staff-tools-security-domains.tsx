@@ -3,15 +3,17 @@
 /**
  * 安全域·一次性邮箱域名库子面板（0370 M4 注册治理第 ④ 道闸）：
  * 独立工具页 `?tool=emaildomains`。列表（q 模糊）/ 批量导入（粘贴或
- * JSON 数组，可含整邮箱与 URL，后端归一化）/ 导出 JSON / 按域名删除。
+ * JSON 数组，可含整邮箱与 URL，后端归一化；大清单走 multipart 文件
+ * 口，不受 JSON 请求体墙约束）/ 导出 JSON / 按域名删除。
  *
  * 与「邮件黑白名单」同族但语义不同——黑白名单是**规则**（pattern + 模式），
  * 本库是**清单**（域名全集），命中判定在 auth_http/register_gates.rs
  * （含子域后缀匹配）。动作用本地 busy + 父级 flash 上抛。
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import { importEmailDomainsFile } from "@/lib/email-domain-file-import";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, fmt } from "@/i18n/config";
 import { ErrorPanel } from "@/components/ui/error-panel";
@@ -42,6 +44,7 @@ export function StaffEmailDomainsPanel({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
     setRows(null);
@@ -111,6 +114,17 @@ export function StaffEmailDomainsPanel({
     });
   }
 
+  function onFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    // 清空 value：同一个文件连选两次也要能再次触发 change
+    e.target.value = "";
+    if (!f) return;
+    void run(async () => {
+      const r = await importEmailDomainsFile(f, dict.common.networkError);
+      flash(fmt(t.edImported, r));
+    });
+  }
+
   function doExport() {
     void (async () => {
       setBusy(true);
@@ -159,6 +173,17 @@ export function StaffEmailDomainsPanel({
             >
               {t.edImportBtn}
             </button>
+            <button
+              className="brand-button" disabled={busy}
+              onClick={() => fileRef.current?.click()}
+            >
+              {t.edFileBtn}
+            </button>
+            <input
+              ref={fileRef}
+              type="file" accept=".txt,.csv" hidden
+              onChange={onFilePick}
+            />
             <button
               className="brand-button"
               disabled={busy}

@@ -10,7 +10,8 @@
 判据三层：
   静态：新口在册且挂载；鉴权与 JSON 口同档且早于读书；两个上限是读取
         过程中数出来的（不是声明）；分批 = 独立事务；复用同一份
-        `normalize` 判据；正控钉 a3affae2（文件口出现之前）必须报缺。
+        `normalize` 判据；正控钉 a3affae2（文件口出现之前）必须报缺；
+        KS17/18 钉界面半：面板文件按钮接到本口（lib 同端点 + CSRF + 三语键）。
   活体：匿名 401 且不落库；3 条真导入；幂等；文件内大小写重复；**体
         超过 JSON 墙（2MiB）仍被完整收下**（这是「不受墙约束」的行为
         证据，不靠嘴说）；条数上限真打得到且有 2000 条已提交时文案点名。
@@ -37,6 +38,8 @@ CTRL_REV = "a3affae2"  # 文件口出现之前（P-638 那版）
 EP = "/admin/email-domains/import-file"
 TAG = "kr-probe-file-%08x-" % os.getpid()
 LINK = "http://127.0.0.1:8099/api/v1"
+WEB_LIB = "apps/web/lib/email-domain-file-import.ts"
+WEB_PANEL = "apps/web/components/staff-tools-security-domains.tsx"
 
 
 def read(rel, rev=None):
@@ -116,6 +119,29 @@ ctrl = read(NEW, CTRL_REV)
 ok("KS7 正控：%s 那版必须被 KS1/KS6 报缺（判据承重）" % CTRL_REV,
    ctrl is None,
    "该版已有文件：正控失效")
+
+# 界面半（同批的 web 侧）：后端不受墙约束只到接口层为止——面板没有文件
+# 按钮，站长依旧只有 8176 条的文本框。lib 里的端点字符串与闸门 EP 同源对账；
+# 用完整带引号的 URL 比（裸 EP 是前缀形态，漂成 import-file-v2 也照样命中）。
+lib = read(WEB_LIB) or ""
+panel = read(WEB_PANEL) or ""
+url = '"/api/v1%s"' % EP
+ok("KS17 面板的文件按钮真接到本口（lib 同端点 + CSRF + 文件输入）",
+   url in lib and 'method: "POST"' in lib
+   and "rawFetchHelpers.csrf" in lib
+   and "importEmailDomainsFile" in panel and 'type="file"' in panel
+   and "t.edFileBtn" in panel,
+   "lib[url=%s POST=%s csrf=%s] 面板[import=%s input=%s btn=%s]" % (
+       url in lib, 'method: "POST"' in lib,
+       "rawFetchHelpers.csrf" in lib,
+       "importEmailDomainsFile" in panel, 'type="file"' in panel,
+       "t.edFileBtn" in panel))
+dicts = {n: read("apps/web/i18n/%s.ts" % n) or ""
+         for n in ("zh-CN", "en", "zh-TW")}
+ok("KS18 三语 edFileBtn 键齐（en/zh-TW 缺键 tsc 也会挡，这里独立读数）",
+   all("edFileBtn:" in s for s in dicts.values()),
+   " / ".join("%s=%s" % (n, "edFileBtn:" in s)
+              for n, s in dicts.items()))
 
 print()
 if os.environ.get("KS_SKIP_LIVE"):

@@ -6780,11 +6780,12 @@ const zhTwBase: Omit<
     ebEmpty: "暫無郵箱規則。",
     edImport: "匯入域名",
     edNote:
-      "註冊准入第 ④ 道閘：命中本庫的郵箱域名（含子域）將被拒絕註冊。可直接貼上整郵箱或網址，系統會取域名部分；重複項自動略過。",
+      "註冊准入第 ④ 道閘：命中本庫的郵箱域名（含子域）將被拒絕註冊。可直接貼上整郵箱或網址，系統會取域名部分；重複項自動略過。數萬筆的大清單請用「從檔案匯入」，不受文字框上限約束。",
     edImportLabel: "域名清單",
     edImportPh:
       "每行一個，或用逗號/分號分隔；也可貼上 JSON 陣列。例：\ntemp-mail.org\nhttps://x.com/foo\nsomeone@guerrillamail.com",
     edImportBtn: "匯入",
+    edFileBtn: "從檔案匯入",
     edExportBtn: "匯出 JSON",
     edSearch: "搜尋",
     edSearchPh: "example.com",

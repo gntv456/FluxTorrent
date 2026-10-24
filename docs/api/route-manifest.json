@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 819,
+ "total": 820,
  "routes": [
   {
    "method": "POST",
@@ -201,6 +201,12 @@
    "path": "/admin/email-domains/delete",
    "handler": "email_domains_delete",
    "file": "apps/api/src/admin_http/email_domains.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/email-domains/import-file",
+   "handler": "email_domains_import_file",
+   "file": "apps/api/src/admin_http/email_domains_file.rs"
   },
   {
    "method": "GET",
