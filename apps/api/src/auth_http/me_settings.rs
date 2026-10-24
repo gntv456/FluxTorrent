@@ -136,6 +136,19 @@ pub async fn me_overview(
     .into_iter()
     .map(|(d, n)| (d, n))
     .collect::<Vec<_>>();
+    // 0417 F11：稀疏行补零成连续 30 格（SQL 只回有登录的日）。此前账号注册
+    // 两天就只回 1 个数据点——图表孤点、宽度塌陷，「30 天趋势」名不副实。
+    // 日界与上面 SQL 同一口径：北京时间今天往前数 30 天。
+    let sparse: std::collections::HashMap<chrono::NaiveDate, i64> =
+        trend.into_iter().collect();
+    let today_cn = (chrono::Utc::now() + chrono::Duration::hours(8))
+        .date_naive();
+    let trend: Vec<(chrono::NaiveDate, i64)> = (0..30)
+        .map(|i| {
+            let d = today_cn - chrono::Duration::days(29 - i);
+            (d, sparse.get(&d).copied().unwrap_or(0))
+        })
+        .collect();
     let trend_json: Vec<serde_json::Value> = trend
         .iter()
         .map(|(d, n)| serde_json::json!({ "date": d.format("%Y-%m-%d").to_string(), "count": n }))

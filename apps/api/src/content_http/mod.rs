@@ -18,6 +18,7 @@ mod subtitles_govern;
 mod subtitles_list;
 mod subtitles_meta;
 mod subtitles_requests;
+mod subtitles_upload;
 mod subtitles_util;
 
 use misc::*;
@@ -43,6 +44,8 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(request_create)
         .service(request_list)
         .service(request_fulfill)
+        // 0417 求种加价（楼主续押/他人加价共用）
+        .service(request_bid)
         // M17 候选
         .service(offer_create)
         .service(offer_list)

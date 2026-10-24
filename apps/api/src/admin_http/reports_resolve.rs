@@ -111,8 +111,8 @@ pub async fn report_resolve(
     // 收不到结论，事后也无从发现。结案本身是事实，不为一条私信反转，
     // 但必须**留痕 + 如实回报**（面板/闸门看 `pm_sent`）。
     let pm_sent = match sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES ($1, $2, $3, $4)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES ($1, $2, $3, $4, 'report_resolved')",
     )
     .bind(auth.id)
     .bind(reporter_id)

@@ -1,9 +1,7 @@
 //! 种子互动（M07/M10）：发评论/删评论/感谢/收藏/求续种/标签读写。
 //! 从 torrent_http.rs 按域拆出。
 
-use actix_web::{
-    delete, get, post, put, web, HttpRequest, HttpResponse, Responder,
-};
+use actix_web::{delete, post, put, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
 use crate::dto::ok;
@@ -237,9 +235,10 @@ pub(crate) async fn do_thank(
         .map_err(|e| DomainError::Internal(e.into()))?;
     let row_ts = torrents::thank(&mut *tx, tid, auth.id).await?;
     let given = if amount > 0 {
-        super::thanks_spark::transfer(&mut tx, auth.id, owner, amount, tid,
-                                      row_ts)
-            .await?
+        super::thanks_spark::transfer(
+            &mut tx, auth.id, owner, amount, tid, row_ts,
+        )
+        .await?
     } else {
         0
     };
@@ -248,7 +247,9 @@ pub(crate) async fn do_thank(
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 聚合缓存：thanks_count 与「最近活动」都在 aggregate 里
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
-    Ok(ok(serde_json::json!({ "thanked": true, "spark_given": given })))
+    Ok(ok(
+        serde_json::json!({ "thanked": true, "spark_given": given }),
+    ))
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -348,82 +349,6 @@ pub(crate) async fn request_reseed(
     Ok(ok(serde_json::json!({ "notified": n })))
 }
 
-/// 种子标签（T-04）：字典 + 已打
-#[utoipa::path(
-    get,
-    path = "/api/v1/torrents/{id}/tags",
-    tag = "种子",
-    description = "种子标签列表（0159 标签体系）。",
-    params(
-        ("id" = i64, description = "种子 id"),
-    ),
-    responses(
-        (status = 200, description = "ok"),
-        (status = 401, description = "会话未登录（code 2001）"),
-        (status = 404, description = "种子不存在或不可见（code 1004）"),
-    )
-)]
-#[get("/torrents/{id}/tags")]
-pub(crate) async fn torrent_tags(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<impl Responder> {
-    let auth = require_auth(&req, &state).await?;
-    let id = path.into_inner();
-    let viewer = (auth.id, auth.class_id >= 90);
-    Ok(ok(torrents::list_tags(&state.repo.db, id, viewer).await?))
-}
-
-#[derive(Deserialize, utoipa::ToSchema)]
-struct TagReq {
-    tag_id: i32,
-    on: bool,
-}
-
-#[utoipa::path(
-    put,
-    path = "/api/v1/torrents/{id}/tags",
-    tag = "种子",
-    description = "覆盖写标签（0159；any/all 两种匹配口径由 tag_all 决定）。",
-    params(
-        ("id" = i64, description = "种子 id"),
-    ),
-    responses(
-        (status = 200, description = "ok"),
-        (status = 401, description = "会话未登录（code 2001）"),
-        (status = 404, description = "种子不存在或不可见（code 1004）"),
-        (status = 422, description = "参数校验失败（code 1002）"),
-        (status = 403, description = "权限不足（code 2003）"),
-    )
-)]
-#[put("/torrents/{id}/tags")]
-pub(crate) async fn torrent_tag_put(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-    body: web::Json<TagReq>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    let tid = path.into_inner();
-    torrents::tag_torrent(
-        &state.repo.db,
-        tid,
-        (auth.id, auth.class_id as i16),
-        body.tag_id,
-        body.on,
-    )
-    .await?;
-    state
-        .repo
-        .audit(Some(auth.id), "torrent.tag", Some(tid))
-        .await;
-    // 聚合缓存：详情页标签条读的就是 aggregate.tags.mine——不失效的话，
-    // 用户点完「官种/中字」刷新页面标签条纹丝不动（2026-10-10 实测）
-    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
-    Ok(ok(serde_json::json!({ "tag": body.tag_id, "on": body.on })))
-}
-
 #[utoipa::path(
     put,
     path = "/api/v1/torrents/{id}/bookmark",
@@ -453,4 +378,35 @@ pub(crate) async fn do_bookmark(
     // 聚合缓存：bookmark_count 在 aggregate.detail 里
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(serde_json::json!({ "bookmarked": body.on })))
+}
+
+/// DELETE 对称口（0417 F5）：REST 客户端/第三方工具按直觉调
+/// DELETE /torrents/{id}/bookmark 取消收藏（旧口径只有 PUT {on:false}，
+/// 实测 404）。语义与 PUT on=false 完全一致：取消不设可见性闸门
+/// （种变不可见后仍要能清掉这一行），幂等（无行删 0 也回 false）。
+#[utoipa::path(
+    delete,
+    path = "/api/v1/torrents/{id}/bookmark",
+    tag = "种子",
+    description = "取消收藏（与 PUT {on:false} 同义；幂等）。",
+    params(
+        ("id" = i64, description = "种子 id"),
+    ),
+    responses(
+        (status = 200, description = "ok"),
+        (status = 401, description = "会话未登录（code 2001）"),
+        (status = 404, description = "种子不存在（code 1004）"),
+    )
+)]
+#[delete("/torrents/{id}/bookmark")]
+pub(crate) async fn delete_bookmark(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    let tid = path.into_inner();
+    torrents::bookmark(&state.repo.db, tid, auth.id, false).await?;
+    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
+    Ok(ok(serde_json::json!({ "bookmarked": false })))
 }

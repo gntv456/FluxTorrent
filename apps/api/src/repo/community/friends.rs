@@ -3,9 +3,9 @@
 //! 2026-10-16 下沉：见 follows.rs 头注。四个动作 black / unblack /
 //! accept / reject 的落库语义全在这里，H 层只做口径判断。
 
-use crate::repo::community::actor::actor_name;
 use super::super::Repo;
 use crate::errors::{DomainError, DomainResult};
+use crate::repo::community::actor::actor_name;
 
 /// 按用户名找活着的用户 id（status < 2 排除封禁/幽灵）。
 pub async fn find_live_user_id(
@@ -131,13 +131,15 @@ pub async fn ensure_my_side_friend(
 /// 给对方发一条「申请已通过」系统信（best-effort，失败不阻断）。
 pub async fn notify_friend_accepted(repo: &Repo, them: i64, me: i64) {
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES (NULL, $1, $2, $3)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES (NULL, $1, $2, $3, 'friend_accepted')",
     )
     .bind(them)
     .bind("好友申请已通过")
-    .bind(format!("{} 接受了你的好友申请，你们现在是好友了。",
-                  actor_name(&repo.db, me).await))
+    .bind(format!(
+        "{} 接受了你的好友申请，你们现在是好友了。",
+        actor_name(&repo.db, me).await
+    ))
     .execute(&repo.db)
     .await;
 }

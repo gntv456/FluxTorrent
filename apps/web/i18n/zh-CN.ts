@@ -2923,6 +2923,12 @@ const zhCnBase = {
     fulfillInvalid: "请输入正整数种子 ID",
     fulfillOk: "求种已标记为达成",
     fulfillFailed: "达成失败：",
+    bidBtn: "加价",
+    bidTitle: "给求种加价",
+    bidAmount: "加价金额（{magic}）",
+    bidOk: "加价成功，悬赏池现为 {n} {magic}",
+    bidInvalid: "请输入正整数金额",
+    bidFailed: "加价失败：",
   },
 
   top: {

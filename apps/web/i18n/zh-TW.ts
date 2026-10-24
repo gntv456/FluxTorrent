@@ -2900,6 +2900,12 @@ const zhTwBase: Omit<
     fulfillInvalid: "請輸入正整數種子 ID",
     fulfillOk: "求種已標記為達成",
     fulfillFailed: "達成失敗：",
+    bidBtn: "加價",
+    bidTitle: "給求種加價",
+    bidAmount: "加價金額（{magic}）",
+    bidOk: "加價成功，懸賞池現為 {n} {magic}",
+    bidInvalid: "請輸入正整數金額",
+    bidFailed: "加價失敗：",
   },
 
   top: {

@@ -57,8 +57,8 @@ pub(super) async fn admin_2fa_clear(
         .await;
     // 通知用户：2FA 已被管理员清除，下次登录仅需密码（建议尽快重新开启）
     let _ = sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES (NULL, $1, $2, $3)",
+                "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES (NULL, $1, $2, $3, 'twofa_reset')",
     )
     .bind(uid)
     .bind("两步验证已被管理员重置")

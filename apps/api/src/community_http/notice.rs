@@ -12,11 +12,14 @@ use crate::state::AppState;
 // ============ 通知偏好 + 站免池荣誉榜（0075） ============
 
 /// 我的通知偏好（缺省键 = 开）。已知事件类见 0075 迁移注释。
+/// 0417 F10：回包从「仅存量覆盖」改为「全键位 + 用户覆盖」——此前用户一个
+/// 开关没动过时回 {}，前端设置页无数据可渲染（空对象被当成「无此功能」）。
+/// 键表与 notice_prefs_set 的白名单同源（16 键）。
 #[utoipa::path(
     get,
     path = "/api/v1/me/notice-prefs",
     tag = "社区/通知",
-    description = "我的通知偏好（13 档逐项开关）。",
+    description = "我的通知偏好（16 档逐项开关；缺省=开）。",
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）")))]
@@ -26,13 +29,39 @@ pub(crate) async fn notice_prefs_get(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    const DEFAULT_ON: [&str; 16] = [
+        "hr_prewarn",
+        "hr_violation",
+        "wishlist",
+        "group_new_version",
+        "network_new_release",
+        "subgroup_new_release",
+        "request_fulfilled",
+        "resurrection",
+        "class_promo",
+        "gift",
+        "comment_reply",
+        "system",
+        "donate_tier",
+        "push_hr",
+        "push_promo",
+        "push_message",
+    ];
     let prefs: serde_json::Value =
         sqlx::query_scalar("SELECT notice_prefs FROM users WHERE id = $1")
             .bind(auth.id)
             .fetch_one(&state.repo.db)
             .await
             .unwrap_or(serde_json::json!({}));
-    Ok(ok(prefs))
+    let mut out = serde_json::Map::new();
+    for k in DEFAULT_ON {
+        let on = prefs
+            .get(k)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true); // 缺省 = 开
+        out.insert(k.to_string(), serde_json::json!(on));
+    }
+    Ok(ok(serde_json::Value::Object(out)))
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]

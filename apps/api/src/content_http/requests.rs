@@ -7,7 +7,9 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
+mod bid;
 mod create;
+pub(crate) use bid::request_bid;
 pub(crate) use create::request_create;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -24,7 +26,7 @@ struct RequestRow {
 }
 
 /// 求种列表（同类站 viewrequests.php 口径）：finished 筛选 + 名称搜索。
-/// 最新出价/评论数/应求数：数据模型暂无加价与评论表，取 bounty/0/0 兜底。
+/// 最新出价/加价人次自 0417 起为真数据（request_bids 明细表）。
 #[get("/requests")]
 pub(super) async fn request_list(
     req: HttpRequest,
@@ -44,22 +46,43 @@ pub(super) async fn request_list(
         _ => "r.status = 0",
     };
     let only_mine = finished == "my";
+    // 0417：latest_bounty/bids 从 request_bids 明细聚合（不再兜底伪数据）。
+    // LATERAL 走 request_bids_req_idx（request_id, id DESC），每行恒定两次
+    // 索引探测，无 GROUP BY 全表物化。
+    let cols = "r.id, u.username, r.title, r.descr, r.bounty, r.status, \
+                r.fulfilled_torrent_id, r.created_at, \
+                lb.amount, bc.cnt";
+    let laterals = "\
+         LEFT JOIN LATERAL ( \
+           SELECT amount FROM request_bids b \
+           WHERE b.request_id = r.id ORDER BY b.id DESC LIMIT 1 \
+         ) lb ON TRUE \
+         LEFT JOIN LATERAL ( \
+           SELECT count(*) AS cnt FROM request_bids b \
+           WHERE b.request_id = r.id \
+         ) bc ON TRUE";
     let rows: Vec<serde_json::Value> = if only_mine {
-        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>)>(
-            "SELECT r.id, u.username, r.title, r.descr, r.bounty, r.status, r.fulfilled_torrent_id, r.created_at \
-             FROM requests r LEFT JOIN users u ON u.id = r.user_id \
-             WHERE r.user_id = $2 AND r.title ILIKE $1 ORDER BY r.id DESC LIMIT 50",
+        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>, Option<i64>, i64)>(
+            &format!(
+                "SELECT {cols} \
+                 FROM requests r LEFT JOIN users u ON u.id = r.user_id \
+                 {laterals} \
+                 WHERE r.user_id = $2 AND r.title ILIKE $1 \
+                 ORDER BY r.id DESC LIMIT 50",
+            ),
         )
         .bind(&search)
         .bind(auth.id)
         .fetch_all(&state.repo.db)
         .await
     } else {
-        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>)>(
+        sqlx::query_as::<_, (i64, Option<String>, String, Option<String>, i64, i16, Option<i64>, chrono::DateTime<chrono::Utc>, Option<i64>, i64)>(
             &format!(
-                "SELECT r.id, u.username, r.title, r.descr, r.bounty, r.status, r.fulfilled_torrent_id, r.created_at \
+                "SELECT {cols} \
                  FROM requests r LEFT JOIN users u ON u.id = r.user_id \
-                 WHERE {status_cond} AND r.title ILIKE $1 ORDER BY r.id DESC LIMIT 50",
+                 {laterals} \
+                 WHERE {status_cond} AND r.title ILIKE $1 \
+                 ORDER BY r.id DESC LIMIT 50",
             ),
         )
         .bind(&search)
@@ -68,15 +91,13 @@ pub(super) async fn request_list(
     }
     .map_err(|e| DomainError::Internal(e.into()))?
     .into_iter()
-    .map(|(id, username, title, descr, bounty, status, fulfilled, ts)| {
+    .map(|(id, username, title, descr, bounty, status, fulfilled, ts, latest_bid, bid_cnt)| {
         serde_json::json!({
             "id": id, "username": username, "title": title, "descr": descr,
-            "bounty": bounty, "latest_bounty": null,
-            // 求种单没有评论线，offers 也不带 request_id（候选与求种之间无外键），
-            // 此前这里硬写 0 让界面读成「零人应求/零条讨论」。改回 null，
-            // 由界面显示「—」，不把「无数据」伪装成「无人响应」。最新出价同
-            // 口径（批二十 P-28）：加价不存在，回 `bounty` 就是两列恒等伪数据。
-            "comments": null, "bids": null,
+            "bounty": bounty, "latest_bounty": latest_bid,
+            // 0417 前 latest_bounty/bids 是兜底伪数据；现在为真聚合。
+            // comments 仍为 null：求种单没有评论线，伪装成 0 会读成「零条讨论」。
+            "comments": null, "bids": bid_cnt,
             "status": status, "fulfilled_torrent_id": fulfilled, "created_at": ts,
         })
     })
@@ -123,7 +144,11 @@ pub(super) async fn request_fulfill(
         return Err(DomainError::TorrentInvalid("种子不存在或未过审".into()));
     }
     // 应种人必须是该种子的发布者（旧站口径）：防止他人拿别人的 torrent_id
-    // 完结求种、把悬赏转入自己账户（原实现任何登录用户可领任意求种的 bounty）
+    // 完结求种、把悬赏转入自己账户（原实现任何登录用户可领任意求种的 bounty）。
+    // 0417 放宽一档：staff（class≥90）可替任何种子应种——「楼主发完种离站、
+    // 无人能交付」的僵局此前只能进库改数据。staff 冒领的审计面由 audit_log
+    // 不变式覆盖（写口全程留痕），经济面无增量风险（悬赏仍全额归发布者）。
+    let is_staff = auth.class_id >= 90;
     let owner_match: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1 AND owner_id = $2)",
     )
@@ -132,11 +157,19 @@ pub(super) async fn request_fulfill(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(false);
-    if !owner_match {
+    if !owner_match && !is_staff {
         return Err(DomainError::Validation(
-            "只有该种子的发布者可以应种此求种".into(),
+            "只有该种子的发布者可以应种此求种（管理组可代为交付）".into(),
         ));
     }
+    // staff 代交付时悬赏必须归发布者而不是自己：payee 换成 torrent.owner_id。
+    let torrent_owner: i64 = sqlx::query_scalar(
+        "SELECT owner_id FROM torrents WHERE id = $1",
+    )
+    .bind(body.torrent_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     // 完结与发奖必须同事务（批十九 P-26）：旧实现把「UPDATE status=1」与
     // 「earn_spark 转悬赏」拆成两条 autocommit。发钱一失败（余额溢出、
     // 流水冲突、瞬断）请求已经是「完结」，而入口守卫 `status != 0` 又把
@@ -160,11 +193,12 @@ pub(super) async fn request_fulfill(
     if updated.rows_affected() == 0 {
         return Err(DomainError::LedgerConflict);
     }
-    // 悬赏：应种给他人 → 转移；自己应自己的 → 退还
+    // 悬赏：发布者得（含 staff 代交付——归 torrent_owner 而非经办 staff）；
+    // 楼主自应自求 → 退还。payee 与上面 owner 校验/torrent_owner 查询同源。
     let mut pm_bounty = 0i64;
     if bounty > 0 {
-        let payee = if requester != auth.id {
-            auth.id
+        let payee = if requester != torrent_owner {
+            torrent_owner
         } else {
             requester
         };
@@ -185,7 +219,7 @@ pub(super) async fn request_fulfill(
     // 求种人应当被通知（旧实现发完钱就走，求种人只能自己回列表翻）。
     // 站内信按 0286 口径带 kind/params 并过 u_notice_enabled；写入失败只
     // 出声不阻断——完结已落库，因通知失败回 500 会让人重复应求。
-    if requester != auth.id {
+    if requester != torrent_owner {
         let pm = sqlx::query(
             "INSERT INTO messages (sender_id, receiver_id, subject, body, \
                 kind, params) \

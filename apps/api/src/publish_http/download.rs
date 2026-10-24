@@ -105,7 +105,8 @@ pub async fn download_link(
             &state, auth.id, torrent_id,
         )
         .await?;
-    // 响应含一次性凭证明文：禁缓存（与 compat 层同口径）
+    // 响应含凭证明文：禁缓存（与 compat 层同口径）。hint 与实现同义
+    // （0417 F3：窗口内可复用，非一次性——此前「仅显示一次」误导泄露处置）。
     Ok(crate::openapi_http::no_store(crate::dto::ok(
         serde_json::json!({
             "key": plain,
@@ -113,7 +114,7 @@ pub async fn download_link(
             "ttl_minutes": TTL,
             "download_url":
                 format!("/api/v1/downloads/{torrent_id}?token={plain}"),
-            "hint": "凭证与用户+种子绑定；明文仅显示一次",
+            "hint": "凭证 30 分钟内可重复使用，与你的账号绑定；如泄露请立即吊销",
         }),
     )))
 }

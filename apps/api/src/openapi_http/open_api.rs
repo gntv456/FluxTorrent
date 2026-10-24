@@ -52,6 +52,7 @@ use utoipa::OpenApi;
         crate::torrent_http::torrent_tags,
         crate::torrent_http::torrent_tag_put,
         crate::torrent_http::do_bookmark,
+        crate::torrent_http::delete_bookmark,
         crate::torrent_http::list,
         crate::torrent_http::torrent_log_body,
         crate::torrent_http::log_adjust,
@@ -158,6 +159,8 @@ use utoipa::OpenApi;
         crate::community_http::shoutbox_bot_help,
         crate::community_http::shoutbox_bot_exec,
         crate::community_http::shoutbox_delete,
+        crate::community_http::shoutbox_clear,
+        crate::community_http::site_activity_list,  // 0409 三渠分立
         crate::community_http::leak_list,
         crate::community_http::leak_resolve,
         crate::community_http::staff_messages,
@@ -172,14 +175,11 @@ use utoipa::OpenApi;
         (name = "发种", description = "Token 化发种（需 upload scope）"),
         (name = "我的数据", description = "/open/me/*：Token 主人自己的数据"),
         (name = "凭据", description = "/me/tokens：API Token 管理面（会话鉴权）"),
-        (name = "种子",
-            description = "/torrents/*：列表/详情/互动/管理/磁力（会话鉴权域）"),
-        (name = "辅种(crossseed)",
-            description = "/crossseed/*：辅种指纹查询与下载（需 crossseed scope）"),
+        (name = "种子", description = "/torrents/*：列表/详情/互动/管理/磁力（会话鉴权域）"),
+        (name = "辅种(crossseed)", description = "/crossseed/*：辅种查询（需 scope）"),
         (name = "社区/论坛", description = "/forums/*：版块/主题/帖子读写与互动"),
         (name = "社区/消息", description = "/messages/*：站内私信收发、信件箱与流式推送"),
-        (name = "社区/联络",
-            description = "/shoutbox/*、/leaks/*、/bounty/*：喊话/举报/悬赏"),
+        (name = "社区/联络", description = "/shoutbox/*、/leaks/*：喊话/举报"),
         (name = "社区/勋章", description = "/medals/*：勋章列表、佩戴、购买与赠送"),
         (name = "社区/关注", description = "/follows/*：关注对象的状态与我的关注列表"),
         (name = "社区/好友", description = "/friends/*：好友申请、列表与同意/拒绝"),
@@ -293,9 +293,11 @@ mod tests {
         // C1（2026-10-16）：+1 download-link = 144
         // 64c5a097（2026-10-18）：社区 +forums/mine、+forums/side = 146
         // 并行 forum 批（2026-10-18 晚）：+forums/recent = 147
+        // 0406/0409 批：+shoutbox_clear、+site_activity = 149
+        // 0417（2026-10-24）：+DELETE /torrents/{id}/bookmark 对称口 = 150
         assert_eq!(
-            ops, 147,
-            "聚合应有 147 个操作（开放 17 + 种子 40 + 社区 90）"
+            ops, 150,
+            "聚合应有 150 个操作（开放 17 + 种子 41 + 社区 92）"
         );
     }
 }

@@ -277,8 +277,8 @@ pub async fn user_grant_item(
         .await;
     // 附送 PM：只在真发出去之后发（前面已 commit，此处失败不影响结果）。
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES ($1, $2, $3, $4)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES ($1, $2, $3, $4, 'item_grant')",
     )
     .bind(auth.id)
     .bind(uid)

@@ -2994,6 +2994,12 @@ const enBase: Omit<
     fulfillInvalid: "Enter a positive integer torrent ID",
     fulfillOk: "Request fulfilled",
     fulfillFailed: "Fulfill failed: ",
+    bidBtn: "Raise",
+    bidTitle: "Raise the bounty",
+    bidAmount: "Amount ({magic})",
+    bidOk: "Raised. Bounty pool is now {n} {magic}",
+    bidInvalid: "Enter a positive integer amount",
+    bidFailed: "Raise failed: ",
   },
 
   top: {

@@ -7,12 +7,13 @@
 //! 删除与附带处置在 torrent_delete.rs。
 
 mod aggregate;
-mod thanks_spark;
 mod batch;
 mod comments_like;
 mod detail;
 mod interact;
+mod interact_tags;
 mod list;
+mod thanks_spark;
 // 列表入口的偏好折算与区间对调（P-275）
 mod list_prefs;
 mod magnet;
@@ -37,8 +38,8 @@ mod trump;
 mod trump_admin;
 // 作品聚合（资源页「作品聚合」视图 + 作品详情）：同片多版本归一部作品
 mod works;
-pub(crate) mod works_sql;
 mod works_rows_sql;
+pub(crate) mod works_sql;
 
 pub use aggregate::*;
 pub use batch::*;
@@ -81,13 +82,17 @@ pub(crate) use detail::torrent_snatches;
 pub(crate) use detail::torrent_thanks;
 pub(crate) use file_conflict::file_conflicts;
 pub(crate) use interact::create_comment;
+pub(crate) use interact::delete_bookmark;
 pub(crate) use interact::delete_comment;
 pub(crate) use interact::do_bookmark;
 pub(crate) use interact::do_thank;
 pub(crate) use interact::request_reseed;
 pub(crate) use interact::toggle_comment_like;
-pub(crate) use interact::torrent_tag_put;
-pub(crate) use interact::torrent_tags;
+pub(crate) use interact_tags::torrent_tag_put;
+pub(crate) use interact_tags::torrent_tags;
+// utoipa 的 paths! 在「handler 可见的模块」里找 __path_* 类型，
+// 拆文件后 handler 的 __path_* 生在新模块里——得在这里转出。
+pub(crate) use interact_tags::{__path_torrent_tag_put, __path_torrent_tags};
 pub(crate) use logs::log_adjust;
 pub(crate) use logs::torrent_log_body;
 pub(crate) use magnet::torrent_magnet;

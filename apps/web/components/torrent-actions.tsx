@@ -123,7 +123,7 @@ export function TorrentActions({
    *  走会话口 POST /torrents/{id}/download-link（内部复用 download_keys
    *  签发内核：30 分钟、与用户+种子绑定）——与 downloadRow 的会话 getBlob
    *  是两条通道：直链可粘进下载器/传给别人临时救急，泄露窗口只有 30 分钟。
-   *  凭证明文仅显示一次，复制后本组件不留存。 */
+   *  凭证窗口内可复用（0417 F3 与后端 hint 同义）；复制后本组件不留存。 */
   async function copyDlLink() {
     setBusy(true);
     try {

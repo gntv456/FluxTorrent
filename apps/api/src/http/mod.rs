@@ -168,6 +168,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::torrent_http::toggle_comment_like)
         .service(crate::torrent_http::do_thank)
         .service(crate::torrent_http::do_bookmark)
+        .service(crate::torrent_http::delete_bookmark)
         .service(crate::torrent_http::edit_torrent)
         .service(crate::torrent_http::set_torrent_price)
         .service(crate::torrent_http::delete_preview)

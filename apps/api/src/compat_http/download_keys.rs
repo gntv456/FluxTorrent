@@ -147,7 +147,7 @@ async fn download_key_issue(
                           "/api/v1/downloads/{}?token={}",
                           body.torrent_id, plain
                       ),
-            "hint": "凭证与用户+种子绑定；明文仅显示一次",
+            "hint": "凭证 30 分钟内可重复使用，与你的账号绑定；如泄露请立即吊销",
         })),
         &tk,
     )))

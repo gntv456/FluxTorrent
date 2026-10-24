@@ -105,9 +105,14 @@ impl ListCursor {
 
 /// 详情页扩展字段（简介/文件数/感谢数；列表不需要，独立查询）
 /// Deserialize：aggregate 共享段 Redis 缓存反序列化（2.5 详情对象缓存）
+/// 0417：name/size/seeders 为冗余回显（F2）——防第三方单接 /detail 渲染空壳；
+/// 主数据仍以 GET /torrents/{id} 为准，两处同表同源不会漂移。
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct TorrentDetailRow {
     pub id: i64,
+    pub name: Option<String>,
+    pub size: Option<i64>,
+    pub seeders: Option<i32>,
     pub descr: Option<String>,
     pub numfiles: i32,
     pub thanks_count: i64,

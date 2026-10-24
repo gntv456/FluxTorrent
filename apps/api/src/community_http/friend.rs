@@ -4,10 +4,10 @@
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 
-use crate::repo::community::actor::actor_name;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::actor::actor_name;
 use crate::state::AppState;
 
 // ============ 好友（M16） ============
@@ -85,8 +85,10 @@ pub(crate) async fn friend_add(
         )
         .bind(fid)
         .bind("好友申请已通过")
-        .bind(format!("{} 接受了你的好友申请，你们现在是好友了。",
-                      actor_name(&state.repo.db, auth.id).await))
+        .bind(format!(
+            "{} 接受了你的好友申请，你们现在是好友了。",
+            actor_name(&state.repo.db, auth.id).await
+        ))
         .execute(&state.repo.db)
         .await;
         return Ok(ok(
@@ -103,13 +105,15 @@ pub(crate) async fn friend_add(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES (NULL, $1, $2, $3)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES (NULL, $1, $2, $3, 'friend_request')",
     )
     .bind(fid)
     .bind("收到好友申请")
-    .bind(format!("{} 向你发送了好友申请。添加对方为好友即可接受。",
-                  actor_name(&state.repo.db, auth.id).await))
+    .bind(format!(
+        "{} 向你发送了好友申请。添加对方为好友即可接受。",
+        actor_name(&state.repo.db, auth.id).await
+    ))
     .execute(&state.repo.db)
     .await;
     Ok(ok(

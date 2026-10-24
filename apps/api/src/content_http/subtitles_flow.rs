@@ -167,8 +167,8 @@ pub(super) async fn subtitle_request_claim(
     }
     // 通知：发起人 + 被 crew 邀请者
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES (NULL, $1, '字幕翻译已被认领', $2)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES (NULL, $1, '字幕翻译已被认领', $2, 'subtitle_claimed')",
     )
     .bind(owner_id)
     .bind(format!(
@@ -178,8 +178,8 @@ pub(super) async fn subtitle_request_claim(
     .await;
     for c in crew {
         let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-             VALUES (NULL, $1, '字幕翻译协作邀请', $2)",
+            "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+             VALUES (NULL, $1, '字幕翻译协作邀请', $2, 'subtitle_crew_invite')",
         )
         .bind(c.user_id)
         .bind(format!(
@@ -241,9 +241,9 @@ pub(super) async fn subtitle_request_abandon(
     let banned = recent >= 3;
     if banned {
         let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) \
+            "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
              VALUES (NULL, $1, '字幕认领限制', \
-             '你近期多次弃单，30 天内暂停认领求字幕。')",
+             '你近期多次弃单，30 天内暂停认领求字幕。', 'subtitle_claim_ban')",
         )
         .bind(auth.id)
         .execute(&state.repo.db)

@@ -130,8 +130,8 @@ pub async fn admin_passkey_reset(
         .await;
     // 被重置的人必须知道自己凭证被换过（否则客户端突然全部报「passkey 无效」只能靠猜）
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES ($1, $2, $3, $4)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES ($1, $2, $3, $4, 'passkey_reset')",
     )
     .bind(auth.id)
     .bind(uid)

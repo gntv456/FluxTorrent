@@ -101,7 +101,10 @@ pub async fn smtp_config(db: &PgPool) -> Option<SmtpConfig> {
     }
 }
 
-/// 站内信（系统发件人 user_id=0 口径，收件人不存在时静默跳过）
+/// 站内信（系统发件人 user_id=0 口径，收件人不存在时静默跳过）。
+/// 0417 F9：统一打 kind='system'——此前经此管线的通知（账号状态变更/
+/// 申诉回执等）kind 恒 NULL，消息中心分类过滤无从落地；特定 kind 的
+/// 通知走各域自带 kind 的直写 INSERT。
 pub async fn site_message(
     db: &PgPool,
     to_user: i64,
@@ -109,8 +112,9 @@ pub async fn site_message(
     body: &str,
 ) -> anyhow::Result<()> {
     sqlx::query(
-        "INSERT INTO messages (receiver_id, subject, body) \
-         SELECT $1, $2, $3 WHERE EXISTS (SELECT 1 FROM users WHERE id = $1)",
+        "INSERT INTO messages (receiver_id, subject, body, kind) \
+         SELECT $1, $2, $3, 'system' \
+         WHERE EXISTS (SELECT 1 FROM users WHERE id = $1)",
     )
     .bind(to_user)
     .bind(subject)
@@ -162,15 +166,9 @@ pub async fn mail_rate_allow(
         "mailcap:{user_id}:{}",
         chrono::Utc::now().timestamp() / 3600
     );
-    let n: i64 = redis
-        .incr(&key, 1)
-        .await
-        .unwrap_or(0);
+    let n: i64 = redis.incr(&key, 1).await.unwrap_or(0);
     if n == 1 {
-        let _: () = redis
-            .expire(&key, 3700)
-            .await
-            .unwrap_or(());
+        let _: () = redis.expire(&key, 3700).await.unwrap_or(());
     }
     n <= 3
 }

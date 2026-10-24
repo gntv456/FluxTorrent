@@ -144,8 +144,8 @@ async fn pay_bounty(
     rid: i64,
 ) -> DomainResult<()> {
     let idem = format!("subtitle-bounty-pay:{}:{}", rid, uid);
-    let outcome = earn_spark_tx(tx, uid, amount, "subtitle_bounty", &idem)
-        .await?;
+    let outcome =
+        earn_spark_tx(tx, uid, amount, "subtitle_bounty", &idem).await?;
     if !matches!(outcome, SpendOutcome::Spent) {
         return Err(DomainError::Validation(
             "该单的赏金已发放过，未重复出账".into(),
@@ -267,8 +267,8 @@ pub(super) async fn subtitle_request_deliver(
     .parse()
     .unwrap_or(3);
     let _ = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         VALUES (NULL, $1, '字幕已交稿，请验收', $2)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         VALUES (NULL, $1, '字幕已交稿，请验收', $2, 'subtitle_delivered')",
     )
     .bind(req_owner)
     .bind(format!(

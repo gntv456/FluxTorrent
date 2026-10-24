@@ -53,7 +53,11 @@ pub(crate) async fn detail(
     Ok(ok(t))
 }
 
-/// 详情页扩展数据（简介/文件数/感谢数），与 detail 合并渲染
+/// 详情页扩展数据（简介/文件数/感谢数），与 detail 合并渲染。
+/// 0417 口径澄清（VIP 深测 F2）：本端点是 GET /torrents/{id} 的**补充段**
+/// （descr/numfiles/thanks_count/sections…），核心字段（name/size/seeders）
+/// 在主端点；对外深详情走 GET /open/torrents/{id}（两者已合并）。为防
+/// 第三方按直觉单接本端点渲染出「无标题卡片」，name/size 在此冗余回显。
 #[utoipa::path(
     get,
     path = "/api/v1/torrents/{id}/detail",

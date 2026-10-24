@@ -49,7 +49,7 @@ export function RequestBoard({
   initialFinished: string;
   initialSearch: string;
 }) {
-  const { dict, locale } = useI18n();
+  const { dict, locale, currency } = useI18n();
   const t = dict.requests;
   const [finished, setFinished] = useState(initialFinished);
   const [search, setSearch] = useState(initialSearch);
@@ -64,6 +64,9 @@ export function RequestBoard({
   // A1 反馈协议：应求 prompt/alert → ConfirmDialog + toast（桌面表）
   const [askRow, setAskRow] = useState<RequestRow | null>(null);
   const [tid, setTid] = useState("");
+  // 0417 加价（楼主续押/他人加价共用一口）
+  const [bidRow, setBidRow] = useState<RequestRow | null>(null);
+  const [bidAmount, setBidAmount] = useState("");
 
   function submitFulfill() {
     const r = askRow;
@@ -87,6 +90,37 @@ export function RequestBoard({
       .catch((e: unknown) => {
         toast.error(
           t.fulfillFailed + (e instanceof Error ? e.message : ""),
+          { requestId: e instanceof ApiError ? e.requestId : undefined },
+        );
+      });
+  }
+
+  function submitBid() {
+    const r = bidRow;
+    if (!r) return;
+    const n = parseInt(bidAmount, 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      toast.warn(t.bidInvalid);
+      return;
+    }
+    api
+      .post<{ bounty_total?: number }>(
+        `/api/v1/requests/${r.id}/bid`,
+        { amount: n },
+      )
+      .then((d) => {
+        toast.success(
+          t.bidOk
+            .replace("{n}", (d?.bounty_total ?? r.bounty + n).toLocaleString())
+            .replaceAll("{magic}", currency),
+        );
+        setBidRow(null);
+        setBidAmount("");
+        load(finished, search);
+      })
+      .catch((e: unknown) => {
+        toast.error(
+          t.bidFailed + (e instanceof Error ? e.message : ""),
           { requestId: e instanceof ApiError ? e.requestId : undefined },
         );
       });
@@ -231,6 +265,10 @@ export function RequestBoard({
                         <span className="request-status is-progress">
                           {t.pending}</span>
                         <button type="button" className={ROW_BTN}
+                          title={t.bidTitle}
+                          onClick={() => setBidRow(r)}
+                        >{t.bidBtn}</button>
+                        <button type="button" className={ROW_BTN}
                           title={t.fulfillTorrentId}
                           onClick={() => setAskRow(r)}
                         >{t.fulfillBtn}</button>
@@ -265,6 +303,26 @@ export function RequestBoard({
             onChange={(e) => setTid(e.target.value.replace(/\D/g, ""))}
             inputMode="numeric"
             placeholder="#"
+            className={TID_INPUT}
+          />
+        </label>
+      </ConfirmDialog>
+
+      {/* 加价对话框（0417：与应求对话框同款 A1 反馈协议） */}
+      <ConfirmDialog
+        open={bidRow !== null}
+        onClose={() => setBidRow(null)}
+        onConfirm={submitBid}
+        title={t.bidTitle}
+        confirmLabel={t.bidBtn}
+      >
+        <label className="mt-2 flex flex-col gap-1 text-xs text-sub">
+          {t.bidAmount.replaceAll("{magic}", currency)}
+          <input
+            value={bidAmount}
+            onChange={(e) => setBidAmount(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder="100"
             className={TID_INPUT}
           />
         </label>

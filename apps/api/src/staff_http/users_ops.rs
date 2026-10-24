@@ -24,8 +24,8 @@ pub async fn staffmess_send(
         return Err(DomainError::Validation("主题和正文不能为空".into()));
     }
     let n = sqlx::query(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         SELECT $1, id, $2, $3 FROM users WHERE status < 2 AND ($4::int IS NULL OR class_id >= $4)",
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         SELECT $1, id, $2, $3, 'mass_pm' FROM users WHERE status < 2 AND ($4::int IS NULL OR class_id >= $4)",
     )
     .bind(auth.id)
     .bind(body.subject.trim())

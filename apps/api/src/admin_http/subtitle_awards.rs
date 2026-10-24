@@ -204,8 +204,8 @@ async fn awards_grant(
         }
         // 通知
         let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-             VALUES (NULL, $1, '金字幕评选揭晓', $2)",
+            "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+             VALUES (NULL, $1, '金字幕评选揭晓', $2, 'subtitle_award')",
         )
         .bind(uid)
         .bind(format!(

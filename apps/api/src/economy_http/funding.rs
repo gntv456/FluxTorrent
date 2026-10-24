@@ -249,7 +249,11 @@ async fn admin_funding_cancel(
                 .map_err(|e| DomainError::Internal(e.into()))?;
             if matches!(
                 crate::economy_http::earn_spark_tx(
-                    &mut tx, *uid, *amount, "funding_refund", &idem,
+                    &mut tx,
+                    *uid,
+                    *amount,
+                    "funding_refund",
+                    &idem,
                 )
                 .await?,
                 SpendOutcome::Spent
@@ -272,8 +276,8 @@ async fn admin_funding_cancel(
         "'众筹已被管理员关闭。'"
     };
     let _ = sqlx::query(&format!(
-        "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-         SELECT NULL, creator_id, '众筹已关闭', {note} \
+        "INSERT INTO messages (sender_id, receiver_id, subject, body, kind) \
+         SELECT NULL, creator_id, '众筹已关闭', {note}, 'funding_closed' \
          FROM fundings WHERE id = $1"
     ))
     .bind(body.id)

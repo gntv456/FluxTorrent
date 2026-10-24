@@ -44,11 +44,46 @@ export function RequestCardList({
   /** 应求成功后通知父级刷新列表 */
   onChanged: () => void;
 }) {
-  const { dict } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.requests;
   // A1 反馈协议：应求（prompt/alert）→ ConfirmDialog + toast
   const [askId, setAskId] = useState<number | null>(null);
   const [tid, setTid] = useState("");
+  // 0417 加价（与桌面表共用一口）
+  const [bidId, setBidId] = useState<number | null>(null);
+  const [bidAmount, setBidAmount] = useState("");
+
+  function submitBid() {
+    const id = bidId;
+    if (id == null) return;
+    const n = parseInt(bidAmount, 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      toast.warn(t.bidInvalid);
+      return;
+    }
+    api
+      .post<{ bounty_total?: number }>(`/api/v1/requests/${id}/bid`, {
+        amount: n,
+      })
+      .then((d) => {
+        toast.success(
+          t.bidOk
+            .replace("{n}", (d?.bounty_total ?? 0).toLocaleString())
+            .replaceAll("{magic}", currency),
+        );
+        setBidId(null);
+        setBidAmount("");
+        onChanged();
+      })
+      .catch((e: unknown) => {
+        toast.error(
+          t.bidFailed + (e instanceof Error ? e.message : ""),
+          {
+            requestId: e instanceof ApiError ? e.requestId : undefined,
+          },
+        );
+      });
+  }
 
   function submit() {
     const id = askId;
@@ -130,6 +165,13 @@ export function RequestCardList({
                 <button
                   type="button"
                   className={FULFILL_BTN}
+                  onClick={() => setBidId(r.id)}
+                >
+                  {t.bidBtn}
+                </button>
+                <button
+                  type="button"
+                  className={FULFILL_BTN}
                   onClick={() => setAskId(r.id)}
                 >
                   {t.fulfillBtn}
@@ -153,6 +195,27 @@ export function RequestCardList({
             onChange={(e) => setTid(e.target.value.replace(/\D/g, ""))}
             inputMode="numeric"
             placeholder="#"
+            autoFocus
+            className="min-h-[36px] rounded-[var(--r-sm)] border border-line
+              bg-[var(--surface-card)] px-3 text-sm text-ink"
+          />
+        </label>
+      </ConfirmDialog>
+      {/* 0417 加价对话框（窄屏卡片入口） */}
+      <ConfirmDialog
+        open={bidId !== null}
+        onClose={() => setBidId(null)}
+        onConfirm={submitBid}
+        title={t.bidTitle}
+        confirmLabel={t.bidBtn}
+      >
+        <label className="mt-2 flex flex-col gap-1 text-xs text-sub">
+          {t.bidAmount.replaceAll("{magic}", currency)}
+          <input
+            value={bidAmount}
+            onChange={(e) => setBidAmount(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder="100"
             autoFocus
             className="min-h-[36px] rounded-[var(--r-sm)] border border-line
               bg-[var(--surface-card)] px-3 text-sm text-ink"

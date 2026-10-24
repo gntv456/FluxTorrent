@@ -161,8 +161,8 @@ async fn admin_pm(
     body: &str,
 ) {
     let sql = "INSERT INTO messages \
-               (sender_id, receiver_id, subject, body) \
-               VALUES ($1, $2, $3, $4)";
+               (sender_id, receiver_id, subject, body, kind) \
+               VALUES ($1, $2, $3, $4, 'medal_grant')";
     let _ = sqlx::query(sql)
         .bind(sender)
         .bind(uid)

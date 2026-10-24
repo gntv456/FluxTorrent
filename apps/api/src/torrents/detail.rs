@@ -50,8 +50,12 @@ pub async fn get_torrent(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let mut row = items_or_not_found(page, id)?;
     // H&R 承诺与执法同源：详情/聚合/OpenAPI 三个出口都走本函数，一处对上
-    crate::repo::hr::override_policy_effective(db, &mut row,
-        viewer.map(|v| v.0)).await?;
+    crate::repo::hr::override_policy_effective(
+        db,
+        &mut row,
+        viewer.map(|v| v.0),
+    )
+    .await?;
     Ok(row)
 }
 
@@ -78,7 +82,7 @@ pub async fn get_torrent_detail(
     // 由 SQL 内 EXISTS 子查询判定（user_status 权威行 class_id >= 90）。
     let row = sqlx::query_as::<_, TorrentDetailRow>(
         r#"
-        SELECT t.id, t.descr, t.numfiles, t.price, t.media_info->>'mediainfo' AS mediainfo,
+        SELECT t.id, t.name, t.size, t.seeders, t.descr, t.numfiles, t.price, t.media_info->>'mediainfo' AS mediainfo,
                (t.owner_id = $2) AS is_owner,
                EXISTS(SELECT 1 FROM torrent_purchases p WHERE p.torrent_id = t.id AND p.user_id = $2) AS purchased,
                (SELECT count(*) FROM thanks th WHERE th.torrent_id = t.id) AS thanks_count,
