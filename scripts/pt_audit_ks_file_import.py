@@ -116,9 +116,18 @@ ok("KS6 复用同一份 normalize 判据（不许文件口另写一套校验）"
    "两份校验会各自漂移")
 
 ctrl = read(NEW, CTRL_REV)
-ok("KS7 正控：%s 那版必须被 KS1/KS6 报缺（判据承重）" % CTRL_REV,
-   ctrl is None,
-   "该版已有文件：正控失效")
+# 正控要「旧内容 A/B」，不能钉「旧文件不存在」——后者永远不会失败（文件
+# 一旦加过就再也不会出现在那一版里），等于假承重。这里换成可翻转的事实：
+# 文件口能复用同一份判据的前提是 `normalize` 被提到 pub(super)，
+# 而 CTRL_REV 那版它是私有的 ⇒ 同一把尺跑在旧版上必须报缺。
+old_ctrl = read(OLD, CTRL_REV) or ""
+ok("KS7 正控：同一把尺跑在 %s 的旧版上必须报缺（旧 normalize 私有）"
+   % CTRL_REV,
+   ctrl is None and "pub(super) fn normalize" not in old_ctrl
+   and "fn normalize" in old_ctrl,
+   "旧版=%s 版 normalize 可见性=%s" % (
+       "文件已存在" if ctrl is not None else "缺文件",
+       "pub(super)" if "pub(super) fn normalize" in old_ctrl else "私有"))
 
 # 界面半（同批的 web 侧）：后端不受墙约束只到接口层为止——面板没有文件
 # 按钮，站长依旧只有 8176 条的文本框。lib 里的端点字符串与闸门 EP 同源对账；
@@ -246,6 +255,16 @@ try:
        s6 == 400 and "条数上限 %s" % MAX_DOMAINS in msg6
        and "已导入前 2000 条" in msg6 and in_db == "2000",
        "http=%s msg=%s 库内=%s" % (s6, msg6[:140], in_db))
+
+    # 「部分提交也要先落账」原先只在源码里字符串对账（KS4），这里补一层
+    # 真库红证：那次 abort 必须留下一行审计，ref 里的条数 == 已提交的 2000。
+    # 时间窗限定本轮（audit_log 有防篡改触发器，收尾不许删，所以只能按窗口取）。
+    audited = psql_stdin(
+        "SELECT count(*) FROM audit_log WHERE action = "
+        "'emaildomain.import_file' AND ref->>'id' = '2000' "
+        "AND created_at > now() - interval '10 minutes'")
+    ok("KS19 部分提交真落账：审计行带的条数与文案点名的一致（真库证据）",
+       audited == "1", "本轮审计行数=%s" % audited)
 finally:
     try:
         if tok:
