@@ -13,12 +13,12 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::economy_http::{earn_spark_tx, SpendOutcome};
+use crate::economy_http::earn_spark_tx;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::food_coupon::pay_feed_tx;
+use super::food_coupon::{expect_fresh, pay_feed_tx};
 use super::helpers::{check_rate_scoped, eco_i64, idem_key, RateScope};
 use super::pool::dberr;
 
@@ -116,11 +116,11 @@ async fn tick_tx(
     let mut earned = 0i64;
     if let Some(idem) = claim_idem {
         if new_pending > 0 {
+            // P-640：撞重放不许报 200 再清账——那句形状是「接口成功而用户
+            // 零到账」，且会抹掉这枚键之后新攒的产出（口径同投喂腿）。
             let out = earn_spark_tx(tx, uid, new_pending, "game", idem).await?;
-            // Replayed = 这枚幂等键已入过账：不再重复付，但 pending 仍要清零
-            if !matches!(out, SpendOutcome::Replayed) {
-                earned = new_pending;
-            }
+            expect_fresh(out)?;
+            earned = new_pending;
             new_pending = 0;
         }
     }

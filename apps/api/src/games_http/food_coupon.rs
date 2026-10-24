@@ -67,6 +67,23 @@ pub(super) async fn consume_tx(
     Ok(CouponOutcome::Fresh)
 }
 
+/// 领取侧撞重放的处置：报「已受理」并让整笔事务回滚（P-640）。
+///
+/// 语义与 [`pay_feed_tx`] 对投喂重放完全一致，但**不复用**
+/// `economy_http::expect_spent`——那句文案写给批量发放的操作者
+/// （「请检查目标名单里是否有重复用户」），会员个人动作拿到它无从行动。
+/// 旧写法是发放撞重放时继续报 200 并把 `pending` 清零，两个后果叠在一起：
+/// 「接口成功而用户零到账」（`spend.rs:219` 成文口径点名的最贵形状），
+/// 且把这枚键之后**新攒**的产出一起抹掉。
+pub(super) fn expect_fresh(out: SpendOutcome) -> DomainResult<()> {
+    match out {
+        SpendOutcome::Spent => Ok(()),
+        SpendOutcome::Replayed => Err(DomainError::Validation(
+            "这次领取已受理，请勿重复提交".into(),
+        )),
+    }
+}
+
 /// 投喂扣款：走魔力（原路径）或用 1 张口粮券抵扣（行为联动出口）。
 /// 返回 `(实扣魔力, 是否用了券)`。
 pub(super) async fn pay_feed_tx(
@@ -95,5 +112,22 @@ pub(super) async fn pay_feed_tx(
         CouponOutcome::Insufficient => Err(DomainError::Validation(
             "口粮券不足：每日做种满 6 小时可得 1 张".into(),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 投喂与领取对「同一枚键第二次到达」必须同一口径：都是拒，不是
+    /// 「成功但不付」。负控翻 `expect_fresh` 的 `Replayed` 分支即红两条。
+    #[test]
+    fn replay_is_rejected_not_silently_accepted() {
+        assert!(expect_fresh(SpendOutcome::Spent).is_ok());
+        let e = expect_fresh(SpendOutcome::Replayed).unwrap_err();
+        let msg = format!("{:?}", e);
+        assert!(msg.contains("已受理"), "重放文案不像重放：{msg}");
+        // 批量发放那句「请检查目标名单里是否有重复用户」不许搬给会员
+        assert!(!msg.contains("重复用户"), "文案是发放名单口径：{msg}");
     }
 }
