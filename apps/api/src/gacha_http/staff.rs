@@ -50,14 +50,9 @@ async fn grant_tx(
         .begin()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    sqlx::query(&format!(
-        "INSERT INTO {table} (user_id, balance) VALUES ($1, 0) \
-         ON CONFLICT (user_id) DO NOTHING"
-    ))
-    .bind(body.user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-18（2026-10-25 站长八轮）：用户存在性检查必须在首条 INSERT 之前——
+    // 余额表对 users 有 FK，不存在用户的 INSERT 当场炸外键 500，原先排在
+    // 后面的 EXISTS→404 守卫永远走不到（幽灵发放 500 而非 404 即此因）。
     let exists: bool =
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)")
             .bind(body.user_id)
@@ -67,6 +62,14 @@ async fn grant_tx(
     if !exists {
         return Err(DomainError::NotFound(body.user_id));
     }
+    sqlx::query(&format!(
+        "INSERT INTO {table} (user_id, balance) VALUES ($1, 0) \
+         ON CONFLICT (user_id) DO NOTHING"
+    ))
+    .bind(body.user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let bal: i32 = sqlx::query_scalar(&format!(
         "SELECT balance FROM {table} WHERE user_id = $1 FOR UPDATE"
     ))

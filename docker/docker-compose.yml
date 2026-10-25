@@ -101,6 +101,8 @@ services:
     environment:
       BIND: 0.0.0.0:8080
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
+      # 备份口直连 pg_dump 的口令（P-17；与 DATABASE_URL 同源）
+      DB_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET（至少 32 字节随机值）}
       DB_POOL_SIZE: "10"

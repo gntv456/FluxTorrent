@@ -141,10 +141,14 @@ async fn staff_panel_entries_add(
     if body.name.trim().is_empty() || body.url.trim().is_empty() {
         return Err(DomainError::Validation("面板条目需要名称与 URL".into()));
     }
+    // panel 列 NOT NULL 但自 0052 起不参与任何读取口径（分组已改按
+    // section）；不写这列会让「面板条目新建」整个口 500——P-16。
     let id: i32 = sqlx::query_scalar(
         "INSERT INTO staff_panel_entries \
-         (section, name, url, info, sort, tab_key, min_class, module_key, perm_key) \
-         VALUES ($1, $2, $3, $4, COALESCE($5, 0), COALESCE($6, ''), COALESCE($7, 90), $8, $9) \
+         (panel, section, name, url, info, sort, tab_key, min_class, \
+          module_key, perm_key) \
+         VALUES ('moderator', $1, $2, $3, $4, COALESCE($5, 0), \
+                 COALESCE($6, ''), COALESCE($7, 90), $8, $9) \
          RETURNING id",
     )
     .bind(body.section.trim())

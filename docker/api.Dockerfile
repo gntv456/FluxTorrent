@@ -52,7 +52,16 @@ FROM ${BASE_REGISTRY}/library/debian:bookworm-slim
 # v0.4.0 发布实录：arm64 job apt exit 100 即此因。国内构建想提速用
 # --build-arg 换 APT_MIRROR，不写死。
 ARG APT_MIRROR=deb.debian.org
-RUN sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list.d/debian.sources 2>/dev/null; sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list 2>/dev/null; apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/*
+# postgresql-client-16：pg 容器是 16（P-17）。bookworm 主源只有 client 15
+# （pg_dump 15 连 16 服务器直接「version mismatch」），从 PGDG 官方源装 16；
+# PGDG 不可达时回退主源 client（裸机部署自带匹配 pg_dump 的场景不受影响）。
+RUN sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list.d/debian.sources 2>/dev/null; sed -i s/deb.debian.org/${APT_MIRROR}/g /etc/apt/sources.list 2>/dev/null; apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates wget gnupg \
+  && (wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pgdg.grep 2>/dev/null || true) \
+  && echo "deb [signed-by=/usr/share/keyrings/pgdg.grep] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+  && (apt-get update && apt-get install -y --no-install-recommends postgresql-client-16 \
+      || apt-get install -y --no-install-recommends postgresql-client) \
+  && rm -rf /var/lib/apt/lists/*
 # 非 root 运行（审计 P1）：专用用户 uid/gid 1000；附件卷 /app/attachments 与
 # 备份卷 /backups 由 compose 卷首次创建时按此属主落盘（named volume 初次挂载会
 # 继承镜像目录属主；宿主绑定目录需站长自行 chown 1000:1000）

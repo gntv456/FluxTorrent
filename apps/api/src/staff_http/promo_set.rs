@@ -202,16 +202,33 @@ pub async fn freeleech_update(
             None,
         )
     };
-    let n = sqlx::query(sql)
-        .bind(pid)
-        .bind(cid)
-        .bind(&kind)
-        .bind(starts_at)
-        .bind(ends_at)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .rows_affected();
+    let n = if scope == "category" {
+        sqlx::query(sql)
+            .bind(pid)
+            .bind(cid)
+            .bind(&kind)
+            .bind(starts_at)
+            .bind(ends_at)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected()
+    } else {
+        // P-19（2026-10-25 站长八轮）：非 category 分支的 SQL 占位 $2 是
+        // scope::promotion_scope，旧代码却按 category 分支的绑定顺序把
+        // cid（Option<i32>，恒 None）绑给了它——「cannot cast integer to
+        // promotion_scope」当场 500，PUT 整个口从未成功过。
+        sqlx::query(sql)
+            .bind(pid)
+            .bind(&scope)
+            .bind(&kind)
+            .bind(starts_at)
+            .bind(ends_at)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .rows_affected()
+    };
     // 目标行不存在或非 manual 时 UPDATE 静默 0 行——显式报错对齐旧语义
     if n == 0 {
         return Err(DomainError::Validation("促销不存在或非手动创建".into()));

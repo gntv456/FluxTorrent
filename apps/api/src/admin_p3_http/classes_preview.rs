@@ -178,7 +178,9 @@ pub async fn admin_class_impact_preview(
                 AND s.age >= r.min_account_age_days
             GROUP BY s.id, s.username, s.class_id
         )
-        SELECT t.new_class - t.class_id, t.username
+        -- new_class/class_id 都是 INT4，相减仍 INT4；sqlx 按 i64 解码
+        -- 会炸 mismatched types（P-20，本站 sqlx ::int 系坑又一例）。
+        SELECT (t.new_class - t.class_id)::bigint, t.username
         FROM target t JOIN rules cr ON cr.class_id = t.class_id
         WHERE t.new_class > t.class_id
            OR (t.new_class < t.class_id AND cr.demotable)

@@ -80,16 +80,12 @@ async fn admin_backup_run(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or_default();
-    let default_args = [
-        "docker",
-        "exec",
-        "flux-postgres",
-        "pg_dump",
-        "-U",
-        "flux",
-        "-Fc",
-        "fluxtorrent",
-    ];
+    // P-17（2026-10-25 站长八轮）：默认命令原样照抄 0208 迁移的
+    // `docker exec flux-postgres pg_dump …`——compose 里 api 容器没有
+    // docker 二进制（也无 socket），执行必炸 ENOENT 500，「备份」按钮
+    // 从未成功过。api 与 postgres 同网络（DATABASE_URL 直连 postgres:5432），
+    // 默认改为容器内 pg_dump 远连；站点仍可用 backup_docker_exec 覆盖。
+    let default_args = ["pg_dump", "-h", "postgres", "-U", "flux", "-Fc", "fluxtorrent"];
     let argv: Vec<String> = if cfg_cmd.trim().is_empty() {
         default_args.iter().map(|s| s.to_string()).collect()
     } else {
@@ -124,6 +120,12 @@ async fn admin_backup_run(
     }
     let st = tokio::process::Command::new(&argv[0])
         .args(&argv[1..])
+        // 直连 postgres 时口令走 PGPASSWORD（DATABASE_URL 里已有；
+        // 单独拆出来免得出现在 argv/错误正文里）
+        .env(
+            "PGPASSWORD",
+            std::env::var("DB_PASSWORD").unwrap_or_default(),
+        )
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .output()
