@@ -42,7 +42,10 @@ RUN = int(time.time())
 MARK = "gs%d" % RUN
 # 站长在途件（interact.rs 本轮未提交）：等那批落地后把答谢口换成 OptJson，
 # 再把这一项从清单里删掉（销桩＝清单变空）。
-OPTION_JSON_IN = set(["apps/api/src/torrent_http/interact.rs"])
+# 2026-10-26 版主撤桩：最后一只（感谢口 /torrents/{id}/thanks）已换 OptJson，
+# 清单清空。这一支从此只作**棘轮**用——谁再写 `Option<web::Json<T>>`，
+# 该形状会把一切解析错误折成 `Ok(None)`（坏载荷静默走缺省），GS1 当场红。
+OPTION_JSON_IN = set()
 OPT_PORTS = [
     ("apps/api/src/games_http/pool_games.rs", 3),
     ("apps/api/src/games_http/pets.rs", 2),
@@ -50,6 +53,7 @@ OPT_PORTS = [
     ("apps/api/src/games_http/linkage.rs", 1),
     ("apps/api/src/economy_http/loan_repay.rs", 1),
     ("apps/api/src/compat_http/download_keys.rs", 1),
+    ("apps/api/src/torrent_http/interact.rs", 1),
 ]
 
 
@@ -82,8 +86,8 @@ for base, _d, names in os.walk(API):
             hits.add(rel(p))
 ok("GS1 剩余口清单 == 在册清单（实抓=%s）" % sorted(hits),
    hits == OPTION_JSON_IN,
-   "多出来＝新长的口要一起换；少了＝站长已修，请从 OPTION_JSON_IN 删掉这一项"
-   "（答谢口 /torrents/{id}/thanks 的坏载荷会把「火花答谢」演成免费感谢）")
+   "多出来＝新写的口在用吞错形状（坏载荷静默走缺省，钱照样扣而不报错），"
+   "要一起换 OptJson；少了＝清单里那一行已修，从 OPTION_JSON_IN 删掉")
 
 print("== GS2 换过 OptJson 的口逐个在册 ==")
 miss = []
@@ -94,8 +98,8 @@ for r, want in OPT_PORTS:
     total += got
     if got != want:
         miss.append("%s 应 %d 实 %d" % (r, want, got))
-ok("GS2 六个文件共 %d 处 OptJson 形参（应 9）；缺配=%s" % (total, miss or "无"),
-   total == 9 and not miss, "少一处＝那一口退回吞错误写法，钱照样扣而不报错")
+ok("GS2 七个文件共 %d 处 OptJson 形参（应 10）；缺配=%s" % (total, miss or "无"),
+   total == 10 and not miss, "少一处＝那一口退回吞错误写法，钱照样扣而不报错")
 
 print("== GS3 提取器本体不许吞错 ==")
 qenv = flat_comments(rs(os.path.join(API, "http", "qenv.rs")))
