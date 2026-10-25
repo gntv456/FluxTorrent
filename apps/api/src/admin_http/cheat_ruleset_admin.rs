@@ -107,8 +107,13 @@ pub(crate) async fn activate(
 
 #[derive(Deserialize)]
 struct ShadowReq {
-    #[serde(default)]
-    on: bool,
+    /// 必填。旧写法 `#[serde(default)]`：`POST /admin/cheat/shadow` 少带
+    /// `on` 就等于**关掉影子模式**——而影子模式是「只算分不开案」的保护，
+    /// 关掉后下一轮 `risk_score` 会直接对真人开案件（现网读侧缺省是 '1'
+    /// 开着，见 worker `risk_score.rs:62` 的 COALESCE）。
+    /// 与 `PUT /admin/classes/{id}` 的 demotable 同一族：缺省语义会扩大
+    /// 破坏范围的字段，一律要求显式给出。
+    on: Option<bool>,
 }
 
 /// 影子模式开关。
@@ -121,12 +126,18 @@ pub(crate) async fn set_shadow(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, perm::CHEAT_CASES_MODERATE)
         .await?;
-    repo_cr::set_shadow_mode(&state.repo, body.on).await?;
+    let on = body.on.ok_or_else(|| {
+        DomainError::Validation(
+            "必须显式给出 on：省略会被当成关掉影子模式（只算分不开案的保护）"
+                .into(),
+        )
+    })?;
+    repo_cr::set_shadow_mode(&state.repo, on).await?;
     state
         .repo
         .audit(Some(auth.id), "cheat.shadow_set", None)
         .await;
-    Ok(ok(serde_json::json!({ "shadow_mode": body.on })))
+    Ok(ok(serde_json::json!({ "shadow_mode": on })))
 }
 
 /// 影子对比：谁会因此被开案、谁会掉档。

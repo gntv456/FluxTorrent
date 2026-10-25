@@ -59,7 +59,11 @@ pub(super) struct PoolEntryReq {
     pub item_key: Option<String>,
     #[serde(default = "default_qty")]
     pub qty: i32,
-    #[serde(default)]
+    /// **必填**（十三轮）：旧写法 `#[serde(default)]` ⇒ 客户端少带这一列不是
+    /// 「不动」，而是把该档**静默停用**（库里落 enabled=false，退出抽奖与 EV）。
+    /// 与 `PUT /admin/classes/{id}` 的 demotable、`POST /admin/cheat/shadow`
+    /// 的 on 同族：缺省方向会扩大破坏范围的字段一律要求显式给出。
+    /// 面板本来就固定发 `enabled: true`（admin-arcade-pool.tsx:135），零影响。
     pub enabled: bool,
     /// 猜大小用：win | tie | lose。其余玩法不填（落库为 any）
     #[serde(default)]
