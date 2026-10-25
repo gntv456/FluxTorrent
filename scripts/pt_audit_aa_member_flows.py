@@ -213,9 +213,9 @@ print("A5 求种板：无数据源的计数不得伪装成 0")
 items = call("GET", "/requests?finished=all", token=ROOT)[1].get("data") or []
 ok("A5 自建求种出现在列表", any(x.get("id") == my_req for x in items),
    "my_req=%s n=%d" % (my_req, len(items)))
-ok("A5 comments/bids 为 null（读作「—」而不是「无人应求」）",
-   bool(items) and all(x.get("comments") is None and x.get("bids") is None
-                       for x in items),
+ok("A5 comments 无数据源须为 null、bids 自 0417 起是真聚合（整数）",
+   bool(items) and all(x.get("comments") is None
+                       and isinstance(x.get("bids"), int) for x in items),
    str([(x.get("comments"), x.get("bids")) for x in items[:3]]))
 
 
@@ -276,8 +276,11 @@ else:
                        "WHERE name='subtitle_workflow'")
     ids = []
     for i in range(4):
+        # P-636 起 lang 必须在 subtitle_langs 字典里（chs/cht/eng/…）。
+        # 旧判据传 "zh-CN" 被当场拒（十二轮在现网实测：ids=[]），于是
+        # 「在身 3 单上限」这条真判据其实一直没在跑——修判据而不是改产品。
         s, r = call("POST", "/subtitles/requests",
-                    {"lang": "zh-CN", "descr": "AA闸门单%d" % stamp},
+                    {"lang": "chs", "descr": "AA闸门单%d" % stamp},
                     token=ROOT)
         rid = (r.get("data") or {}).get("id")
         if rid:

@@ -75,10 +75,13 @@ struct ClassPutBody {
     min_download_count: i32,
     min_seed_hours: i32,
     min_account_age_days: i32,
-    #[serde(default)]
-    demotable: bool,
-    #[serde(default)]
-    promo_sparks: i64,
+    /// 整对象更新的**必填**两枚（2026-10-25 十一轮实测）：旧写法是
+    /// `#[serde(default)]`，省略就被读成 `false / 0` —— 一次只想改奖励的
+    /// PUT 会静默关掉「不达标自动降级」（worker 的 demote CTE 按
+    /// `cr.demotable` 过滤，见 class_adj.rs:277），一次只想改档名的 PUT
+    /// 会把晋升火花清零，两种都不报错。现网 LV3 就是这么被关了几天。
+    demotable: Option<bool>,
+    promo_sparks: Option<i64>,
 }
 
 /// PUT /admin/classes/{id}：改单档规则（1..=12；staff 档与无规则档拒绝）
@@ -119,11 +122,22 @@ pub async fn admin_class_put(
     if body.name.trim().is_empty() || body.name.trim().chars().count() > 32 {
         return Err(DomainError::Validation("档位名需 1-32 字符".into()));
     }
+    // 缺省即拒（见 ClassPutBody 注释）：这两枚是「反做型」字段，缺省值会
+    // 静默改掉站点行为，不能按可选处理。
+    let (demotable, promo_sparks) = match (body.demotable, body.promo_sparks) {
+        (Some(d), Some(p)) => (d, p),
+        _ => {
+            return Err(DomainError::Validation(
+                "整对象更新必须带上 demotable 与 promo_sparks（省略会被当成关掉自动降级/清零奖励）"
+                    .into(),
+            ));
+        }
+    };
     if body.min_uploaded < 0
         || body.min_download_count < 0
         || body.min_seed_hours < 0
         || body.min_account_age_days < 0
-        || body.promo_sparks < 0
+        || promo_sparks < 0
     {
         return Err(DomainError::Validation("阈值/奖励不能为负".into()));
     }
@@ -150,8 +164,8 @@ pub async fn admin_class_put(
     .bind(body.min_download_count)
     .bind(body.min_seed_hours)
     .bind(body.min_account_age_days)
-    .bind(body.demotable)
-    .bind(body.promo_sparks)
+    .bind(demotable)
+    .bind(promo_sparks)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?

@@ -9,6 +9,16 @@ P-19 的实质是「后端实现完整、界面进不去」：`class_rules.promo
 
 判据纪律：改的是**共享设定**（class_rules），收尾必须原值还原；
 worker 与站点其它探针都在 60s tick 上，本闸门跑时别再并行改设定。
+
+批十二轮补的两件事（现网实测）：
+  * G0 开局校验探针档 `demotable`：0277 出厂 1..12 全为 true，而本轮实测
+    现网只有 class 3 是 false 且无迁移这么写 ⇒ LV3 成员永远不会被自动
+    降级（`class_adj.rs:277` 的 demote CTE 按这一列过滤）。闸门出声并按
+    出厂值复原；这一列若是站方有意关的，请走面板显式勾选。
+  * G4b 验「省略 demotable 的整对象 PUT 必须被拒」：写口原来是
+    `#[serde(default)]`，客户端少带这一列就被静默当成 false——与
+    「拼错键静默放宽」同族，本轮改成缺省即拒。镜像未含时这条会红，
+    红的是现网不是判据，且探针会当场把改动复原。
 """
 import os
 import subprocess
@@ -33,6 +43,12 @@ def q(sql_text):
          "-d", "fluxtorrent", "-tAc", sql_text],
         capture_output=True, text=True, encoding="utf-8")
     return p.stdout.strip()
+
+
+def as_bool(v):
+    """psql 的布尔渲染在不同版本/客户端里是 `t`/`f` 或 `true`/`false`
+    （本机实测 PG16 容器出 "true"），两种都认，别拿字面量比字符串。"""
+    return str(v).strip().lower() in ("t", "true", "1", "yes")
 
 
 def exec_sql(sql_text):
@@ -112,6 +128,27 @@ OTHERS = q(SAFE)
 ok("G0 窗口安全：没有其它已达探针档的成员（否则改 sparks 会给真人发奖）",
    OTHERS == "0", "others=%s" % OTHERS)
 CLEAN.append("__restore_tier__")
+# 探针档的 demotable 若为 false，G3「降得回去」这条判据根本不可能红
+# （worker demote CTE 按 cr.demotable 过滤，class_adj.rs:277）。0277 出厂时
+# class 1..12 全为 true，而本轮实测现网只有 class 3 是 false，且没有任何
+# 迁移这么写 ⇒ 是一次运行期写入。最可能的入口就是这支闸门在验的那个洞：
+# PUT /admin/classes/{id} 的 `#[serde(default)] demotable`——客户端省略这一
+# 列就被静默关掉自动降级（本轮已在后端改成缺省即拒）。
+# 顺序刻意是「先红后修」：先让污染露在账面上（rc=1），再按出厂值复原，
+# 好让后面的判据能正常跑。站方若确有意的关掉这一档，请走面板显式提交。
+ok("G0 探针档 demotable 与 0277 出厂一致（false 说明现网被静默反做过）",
+   as_bool(ORIG["demotable"]), "原值=%s" % ORIG["demotable"])
+if not as_bool(ORIG["demotable"]):
+    print("[WARN] G0 已按出厂值 true 复原 class %d 的 demotable" % TIER)
+    exec_sql("UPDATE class_rules SET demotable = true WHERE class_id = %d"
+             % TIER)
+    ORIG["demotable"] = q(
+        "SELECT demotable::text FROM class_rules WHERE class_id = %d" % TIER)
+OTHER = q("SELECT COALESCE(string_agg(class_id::text, ','), '-') "
+          "FROM class_rules WHERE NOT demotable AND class_id NOT IN (0, 1)")
+if OTHER != "-":
+    print("[WARN] 另有档位 demotable=false（出厂为 true；如是有意设置请忽略）："
+          "%s" % OTHER)
 
 user = "ai%d" % (int(time.time()) % 100000)
 pw = "Gate#123456"
@@ -137,10 +174,16 @@ CLEAN.append("DELETE FROM messages WHERE receiver_id = %d" % UID)
 CLEAN.append("DELETE FROM spark_ledger WHERE user_id = %d" % UID)
 
 def tier_payload(src):
-    """字符串读数 → PUT body 的类型（bool / int / str 混在一列里）"""
+    """字符串读数 → PUT body 的类型（bool / int / str 混在一列里）。
+
+    布尔这一列必须走 `as_bool`：旧写法只比 `v == "true"`，在本机侥幸对，
+    换成渲染 `t`/`f` 的 psql 就会**每次都把 demotable 写成 false**，
+    收尾还原也用 false——污染就此固化。这类「按字符串猜类型」的写法
+    不该存在，所以顺带收口。
+    """
     out = {}
     for k, v in src.items():
-        out[k] = (v == "true") if k == "demotable" else (
+        out[k] = as_bool(v) if k == "demotable" else (
             int(v) if v.lstrip("-").isdigit() else v)
     return out
 
@@ -220,6 +263,25 @@ s, r = call("PUT", "/admin/classes/3", dict(body, promo_sparks=-5),
             token=ROOT)
 ok("G4 负奖励被拒（不能拿负数扣别人的火花）",
    s == 400 and r.get("code") == 1002, "http=%s %s" % (s, str(r)[:80]))
+# G4b：整对象 PUT **省略 demotable** ⇒ 必须拒。旧写法 `#[serde(default)]`
+# 让省略即 false：一次只想改档名/奖励的 PUT 会静默关掉「不达标自动降级」，
+# 而 worker 的 demote CTE 正是按这一列过滤（class_adj.rs:277）。
+partial = {k: v for k, v in body.items() if k != "demotable"}
+before_dm = q("SELECT demotable::text FROM class_rules WHERE class_id = %d"
+              % TIER)
+s, r = call("PUT", "/admin/classes/%d" % TIER, partial, token=ROOT)
+ok("G4b 省略 demotable 的整对象 PUT 被拒（缺省即关掉自动降级）",
+   s == 400 and r.get("code") == 1002, "http=%s %s" % (s, str(r)[:110]))
+after_dm = q("SELECT demotable::text FROM class_rules WHERE class_id = %d"
+             % TIER)
+if after_dm != before_dm:
+    # 镜像里还没有这条必填校验时，探针会被真的写进去——当场按原值复原，
+    # 并把「被改了」这件事留在这条红里（红要指名道姓，不许静默自愈）
+    exec_sql("UPDATE class_rules SET demotable = %s WHERE class_id = %d"
+             % ("true" if as_bool(before_dm) else "false", TIER))
+ok("G4b 正控：被拒之后 demotable 没被动过（改了就红并当场复原）",
+   q("SELECT demotable::text FROM class_rules WHERE class_id = %d" % TIER)
+   == before_dm, "before=%s after=%s" % (before_dm, after_dm))
 CN = "晋升验证档位名称十二字"
 s, r = call("PUT", "/admin/classes/%d" % TIER, dict(body, name=CN),
             token=ROOT)
@@ -289,6 +351,12 @@ ok("G5 档位 promo_sparks 已还原",
    q("SELECT promo_sparks::text FROM class_rules WHERE class_id = %d" % TIER)
    == ORIG["promo_sparks"],
    q("SELECT promo_sparks::text FROM class_rules WHERE class_id = %d" % TIER))
+ok("G5 收尾还原 demotable（省略/缺省语义会把探针写的值固化成原值）",
+   as_bool(q("SELECT demotable::text FROM class_rules WHERE class_id = %d"
+             % TIER)) == as_bool(ORIG["demotable"]),
+   "want=%s got=%s" % (ORIG["demotable"],
+                       q("SELECT demotable::text FROM class_rules "
+                         "WHERE class_id = %d" % TIER)))
 ok("G5 探针成员已墓碑化",
    q("SELECT count(*) FROM users WHERE email LIKE '%@ai.local' "
      "AND status < 2") == "0",

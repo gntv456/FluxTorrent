@@ -235,8 +235,19 @@ v = row.split("|")
 s, b = call("PUT", "/admin/classes/%d" % CLASS_ID, {
     "name": "LV1改%d" % TAG, "min_uploaded": int(v[0]),
     "min_download_count": int(v[1]), "min_seed_hours": int(v[2]),
-    "min_account_age_days": int(v[3]), "demotable": v[4] == "t",
+    "min_account_age_days": int(v[3]),
+    # psql 的布尔渲染本机是 "true"/"false"（PG16），旧写法只认 "t" ⇒
+    # 读到的 true 会被当 False 写回去，探针自己就把这一档的自动降级关掉了。
+    # （十一轮在 AI 闸门上实测到同一族读法缺陷；现网 class 3 读到 false 而
+    #  0277 出厂为 true、又无迁移改过，来源未定，最可能就是这类
+    #  「客户端省略该列 ⇒ 后端按缺省 false 静默反做」。）
+    "demotable": v[4] in ("t", "true"),
     "promo_sparks": int(v[5])}, token=ROOT)
+ok("X5a0 正控：整对象 PUT 不许顺手改掉 demotable（省略/误读都会静默反做）",
+   psql("SELECT demotable::text FROM class_rules WHERE class_id = %d"
+        % CLASS_ID) == v[4],
+   "%s -> %s" % (v[4], psql("SELECT demotable::text FROM class_rules "
+                            "WHERE class_id = %d" % CLASS_ID)))
 a_c = aud("admin_class_put")
 ok("X5a 等级档改名的审计要带档位 id（这是数字主键，ref 本该装得下）："
    "http=%s ref=%s" % (s, a_c[:50]), s == 200 and str(CLASS_ID) in a_c,
