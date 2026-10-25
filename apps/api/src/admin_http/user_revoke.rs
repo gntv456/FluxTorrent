@@ -122,13 +122,9 @@ pub(super) async fn user_revoke_item(
     crate::authz::require_perm(&state, &auth, crate::authz::perm::PROP_MANAGE)
         .await?;
     let (uid, order_id) = path.into_inner();
-    let (owner, item_id, _name) = reclaim_order(
-        &state.repo.db,
-        auth.class_id,
-        order_id,
-        Some(uid),
-    )
-    .await?;
+    let (owner, item_id, _name) =
+        reclaim_order(&state.repo.db, auth.class_id, order_id, Some(uid))
+            .await?;
     state
         .repo
         .audit_detail(
@@ -144,7 +140,10 @@ pub(super) async fn user_revoke_item(
     Ok(ok(serde_json::json!({ "order_id": order_id })))
 }
 
+/// P-14 同族：days 拼错键时 serde 缺省 None =「改为永久」——限时章被静默
+/// 升成永久勋章。拒未知键后只有显式 `days: null` 才表达永久。
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct MedalRedateReq {
     /// 新有效期（天）：1-3650；null = 改为永久
     days: Option<i32>,

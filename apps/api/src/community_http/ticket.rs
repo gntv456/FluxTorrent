@@ -66,7 +66,11 @@ pub(crate) async fn ticket_list(
     Ok(ok(rows))
 }
 
+/// P-14（P-5/P-6/P-9 同族第五只）：全 Option 写口无 deny_unknown_fields 时，
+/// 拼错键被静默吞——实测带 `reply` 的载荷回 200 假成功，回复根本没落库
+/// （答复正路在 /staffmessages/answer），版主以为已回复。拒未知键杜绝这类静默。
 #[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 struct TicketUpdateReq {
     id: i64,
     /// 0低 1中 2高 3紧急

@@ -36,8 +36,8 @@ from pt_audit_lib import BASE, call, login, ok, summary  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SF = os.path.join(ROOT, "apps", "api", "src")
 
-# 现网 latest 还没含 41206fa8 ⇒ 活体三条判据本轮必然红，钉桩可撤
-KNOWN_PENDING_DEPLOY = True
+# 2026-10-25 五轮撤桩：容器 latest 已含四轮全部修复（活体 EI6-EI15 实测绿）
+KNOWN_PENDING_DEPLOY = False
 SRC_TAG = "probe_ei"
 
 
@@ -47,8 +47,7 @@ def psql(sql):
          "-d", "fluxtorrent", "-tAc", sql],
         capture_output=True, text=True, encoding="utf-8", errors="replace")
     if p.returncode != 0:
-        print("   psql 失败：%s / %s" % (sql[:70], p.stderr.strip()[:200]))
-        return ""
+        raise RuntimeError("   psql 失败：%s / %s" % (sql[:70], p.stderr.strip()[:200]))
     return p.stdout.strip()
 
 
@@ -110,31 +109,12 @@ STAFF_DENY = [
     ("举报处置", "admin_http/reports_resolve.rs", "ResolveReq"),
     ("IP 封禁创建", "staff_http/bans.rs", "BanBody"),
     ("按 IP 解封", "admin_p3_http/ban_ip.rs", "BanByIpReq"),
-]
-for _i, (_label, _rel, _struct) in enumerate(STAFF_DENY, 6):
-    _got = denies(src(_rel), _struct)
-    ok("EI%d %s %s 拒未知字段" % (_i, _label, _struct),
-       _got is True, "%s: %s" % (_rel, _got))
-
-# P-310/P-311 同族（2026-10-25 版主四轮）：这些管理写口的缺省分支会让权限/
-# 处置**反向执行**——minclassread 少一个字母=版块对所有人可读、
-# protected 拼错=取消保护、sanction 拼错=案件按「无处置」结案。
-# 属性被摘就必须在这里红，不能等下一次人工深测。
-print("== S1b 管理写口：缺省即放宽/降级的结构体 ==")
-STAFF_DENY = [
-    ("论坛版块新建/编辑", "admin_http/forum_mods.rs", "ForumUpsertReq"),
-    ("分区新建/编辑", "admin_http/forum.rs", "CategoryUpsertReq"),
-    ("分区排序", "admin_http/forum.rs", "CategoryReorderReq"),
-    ("作弊案件开案", "http/cheat_case/mod.rs", "OpenCaseReq"),
-    ("作弊案件认领/释放", "http/cheat_case/mod.rs", "ClaimReq"),
-    ("作弊案件备注", "http/cheat_case/mod.rs", "CaseNoteReq"),
-    ("作弊案件处置", "http/cheat_case/sanction.rs", "ResolveReq"),
-    ("举报认领/释放", "admin_http/reports.rs", "ReportClaimReq"),
-    ("举报处置", "admin_http/reports_resolve.rs", "ResolveReq"),
-    ("IP 封禁创建", "staff_http/bans.rs", "BanBody"),
-    ("按 IP 解封", "admin_p3_http/ban_ip.rs", "BanByIpReq"),
     ("用户警告", "staff_http/warned.rs", "WarnBody"),
     ("管理端直发邀请码", "admin_p3_http/invites.rs", "AdminInviteIssueReq"),
+    # 六轮 P-14/P-15：工单流转口的 reply 拼错被吞=「已回复」假成功；
+    # 勋章改期口的 days 拼错缺省 None=限时章静默升永久
+    ("工单流转", "community_http/ticket.rs", "TicketUpdateReq"),
+    ("勋章改期", "admin_http/user_revoke.rs", "MedalRedateReq"),
 ]
 for _i, (_label, _rel, _struct) in enumerate(STAFF_DENY, 20):
     _got = denies(src(_rel), _struct)
