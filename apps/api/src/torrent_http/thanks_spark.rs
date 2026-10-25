@@ -33,11 +33,11 @@ pub(super) async fn owner_of(
         "SELECT owner_id FROM torrents WHERE id = $1 \
          AND approval_status = 1",
     )
-            .bind(torrent_id)
-            .fetch_optional(db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .flatten();
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .flatten();
     owner.ok_or(DomainError::NotFound(torrent_id))
 }
 

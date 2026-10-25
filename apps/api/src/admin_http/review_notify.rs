@@ -135,15 +135,15 @@ pub(crate) async fn notify_review_result(
     } else {
         let is_auto_deny: bool = by_auto
             && sqlx::query_scalar(
-            "SELECT COALESCE((SELECT d.sort BETWEEN 91 AND 96 \
+                "SELECT COALESCE((SELECT d.sort BETWEEN 91 AND 96 \
                FROM torrent_deny_reasons d \
                JOIN torrents t ON t.deny_reason_id = d.id \
                WHERE t.id = $1), false)",
-        )
-        .bind(torrent_id)
-        .fetch_one(db)
-        .await
-        .unwrap_or(false);
+            )
+            .bind(torrent_id)
+            .fetch_one(db)
+            .await
+            .unwrap_or(false);
         if is_auto_deny
             && !crate::mailer::mail_rate_allow(&mut state.redis.clone(), owner)
                 .await

@@ -119,11 +119,11 @@ pub async fn spawn_outbox_consumer(db: PgPool) {
 
 async fn outbox_drain(db: &PgPool) -> anyhow::Result<()> {
     const LOCK: i64 = 0x70757368; // "push"
-    // P-421：会话级咨询锁属于「拿到它的那条连接」。旧写法把 try_lock 与 unlock
-    // 都直接丢给 pool ⇒ unlock 常落在另一条连接上（现网 runtime_logs 已累计
-    // 24,432 条 notice「you don't own a lock of type ExclusiveLock」），
-    // 而且另一条连接再 try_lock 会**照样成功**——互斥不成立，出站队列可能被
-    // 并发排空（同一条通知双份推给会员）。现在锁与解锁都走同一条借出的连接。
+                                  // P-421：会话级咨询锁属于「拿到它的那条连接」。旧写法把 try_lock 与 unlock
+                                  // 都直接丢给 pool ⇒ unlock 常落在另一条连接上（现网 runtime_logs 已累计
+                                  // 24,432 条 notice「you don't own a lock of type ExclusiveLock」），
+                                  // 而且另一条连接再 try_lock 会**照样成功**——互斥不成立，出站队列可能被
+                                  // 并发排空（同一条通知双份推给会员）。现在锁与解锁都走同一条借出的连接。
     let mut conn = db.acquire().await?;
     let got: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock($1)")
         .bind(LOCK)

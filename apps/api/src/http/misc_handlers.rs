@@ -206,11 +206,11 @@ pub async fn my_bookmarks(
          ORDER BY b.created_at DESC, t.id DESC LIMIT $2"
     );
     let rows: Vec<BookmarkRow> = sqlx::query_as(&sql)
-    .bind(auth.id)
-    .bind(limit)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+        .bind(auth.id)
+        .bind(limit)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(rows))
 }
 
