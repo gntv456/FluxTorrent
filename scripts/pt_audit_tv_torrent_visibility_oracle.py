@@ -17,6 +17,7 @@
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import BASE, call, ok, summary  # noqa: E402
@@ -201,5 +202,39 @@ rel_sql = open(os.path.join(SRC, "torrents", "related.rs"),
 ok("TV16 torrents/related.rs 候选段仍带 approval_status = 1（4 段都在）",
    rel_sql.count("t.approval_status = 1") >= 4,
    "出现 %d 次" % rel_sql.count("t.approval_status = 1"))
+
+# 同族的**写**口：入口种没准入门时，别人能往隐种上落一行数据。
+# 字幕上传口此前只判 `EXISTS(...)` ⇒ 任意会员可给待审/被驳的种挂字幕。
+print("== S17 写口同族：字幕上传不许挂到看不见的种上 ==")
+sub_src = open(os.path.join(SRC, "content_http", "subtitles.rs"),
+               encoding="utf-8", errors="replace").read()
+ok("TV17 subtitles.rs 上传口走 assert_visible（不再是裸 EXISTS）",
+   "assert_visible" in sub_src and
+   "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)" not in sub_src)
+PROBE_TITLE = "tv-probe-%d" % int(time.time())
+pre_sub = int(psql("SELECT count(*) FROM subtitles WHERE torrent_id = %d" % hid)
+              or 0)
+# 载荷必须**本来会成功**才算打到准入门：不带文件时上一版两条基线都回
+# 「请上传字幕文件」（1002），那是在测校验顺序、不是测可见性——正控要能
+# 指出红在哪一层。带 http 直链是仓里认可的形态（外链不发火花，零经济影响）。
+st, body = call("POST", "/subtitles",
+                {"torrent_id": hid, "title": PROBE_TITLE, "lang": "zh-CN",
+                 "file_ref": "https://sub.invalid.example/tv-probe.srt"},
+                token=vtok)
+code = (body or {}).get("code")
+ok("TV18 会员往隐种挂字幕 = 1004（旧实现回 200 并真落一行）",
+   code == 1004, "http=%s code=%s msg=%s" % (
+       st, code, str((body or {}).get("message"))[:80]))
+post_sub = int(psql("SELECT count(*) FROM subtitles WHERE torrent_id = %d" % hid)
+               or 0)
+ok("TV19 隐种的字幕行数没动（%d → %d）" % (pre_sub, post_sub),
+   pre_sub == post_sub)
+# 万一打的是旧镜像（真落了行），只清我自己这一行标题，别的都不许碰
+stray = psql("SELECT count(*) FROM subtitles WHERE title = '%s'" % PROBE_TITLE)
+if stray != "0":
+    psql("DELETE FROM subtitles WHERE title = '%s'" % PROBE_TITLE)
+    print("   收尾：删掉本轮自造的字幕行 1 条（旧镜像路径）")
+ok("TV20 本轮没有留下字幕残料（按专属标题精确数=%s）" % stray, stray == "0",
+   "标题=%s" % PROBE_TITLE)
 
 summary()
