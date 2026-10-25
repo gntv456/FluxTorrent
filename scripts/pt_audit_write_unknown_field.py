@@ -50,6 +50,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "apps", "web")
 # (路由, 结构体, 源文件, 前端调用文件, 调用点 marker, 前端实发的键)
 COVERED = [
+    # 2026-10-26 版主登记（P-644）：感谢口补了 deny_unknown_fields，并把
+    # `Option<web::Json<T>>` 换成 `OptJson<T>`（旧形状把解析错误折成
+    # `Ok(None)`，deny 根本不生效）。放在表首是为了不动 V7 的 `COVERED[-4:]`
+    # ——那四条是它挑定的正控对象，尾部一漂正控就测在别的口上。
+    ("/torrents/{id}/thanks", "ThankBody",
+     "apps/api/src/torrent_http/interact.rs",
+     "components/torrent-social.tsx", "/api/v1/torrents/${torrentId}/thanks",
+     ["amount"]),
     ("/gacha/dismantle", "CardReq", "apps/api/src/gacha_http/craft.rs",
      "components/gacha-album.tsx", "/api/v1/gacha/${path}",
      ["card_id", "idempotency_key"]),
