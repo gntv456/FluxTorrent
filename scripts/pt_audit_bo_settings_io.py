@@ -132,7 +132,8 @@ def finalize():
                  token=ROOT)
             call("DELETE", "/admin/users/%d" % u, None, token=ROOT)
     if INV:
-        psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
+        psql(
+            "UPDATE invites SET status = 2 WHERE used_by IS NULL AND id IN (%s)"
              % ",".join(str(int(i)) for i in INV))
 
 

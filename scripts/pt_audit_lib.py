@@ -117,6 +117,30 @@ def summary():
         sys.exit(1)
     print("== ALL PASS")
 
+def psql_stdin(sql: str, sep: str = "|") -> str:
+    """经容器跑一段 SQL：**出错即抛**，不把错误吞成空串。
+
+    为什么不能只信 returncode：psql 从 **stdin** 读 SQL 时，语句出错
+    仍然返回 **0**（只有 -c 才按错误码返回 1）——实测
+    `SELECT * FROM 不存在的表` 走 stdin 时 rc=0，ERROR 只出现在 stderr。
+    闸门要是只看 returncode，SQL 写错了照样一路报绿：判据读到的全是
+    空串/0 行，结论却是「通过」。这里统一两件事：
+      ① 加 -v ON_ERROR_STOP=1（首个错误即中止，rc=3）；
+      ② stderr 里出现 ERROR 一律当真错抛出去。
+    """
+    import subprocess
+
+    r = subprocess.run(
+        ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
+         "-d", "fluxtorrent", "-v", "ON_ERROR_STOP=1", "-tA", "-F", sep],
+        input=sql, capture_output=True, text=True, encoding="utf-8",
+        errors="replace")
+    err = (r.stderr or "").strip()
+    if r.returncode != 0 or "ERROR" in err:
+        raise RuntimeError("psql 失败：%s" % err[:300])
+    return (r.stdout or "").strip()
+
+
 def clear_register_rl():
     """闸门侧清掉**自己造出来的**注册额度占用。
 
@@ -164,6 +188,63 @@ def clear_register_rl():
     if (out.stdout or "").strip() not in ("", "0"):
         psql("DELETE FROM reg_ip_signups WHERE user_id IN (%s)" % probe)
 
+
+#
+# 递归文本检索（纯 Python）。
+# 为什么不用系统的 grep：Windows 上没有 grep 可执行文件，
+# subprocess.run(["grep", ...]) 会抛 FileNotFoundError ⇒ 闸门带着 traceback
+# 退出（rc=1）却**一条判据都没打**，看上去像产品坏了，其实是环境问题。
+# 批一百四十七实测：hm_class_source / hs_lottery_pool / ht_seedbox_chain /
+# hv_ads_liveness 四个闸门在 Windows 上全是这么崩的。
+def grep_files(pattern, paths, root=".", suffix=None, ignore_case=False,
+               fixed=False, skip_dirs=(".git", "node_modules", "target",
+                                       ".next", "dist", ".turbo")):
+    """返回命中的文件路径列表（相对 root 的路径，正斜杠）。"""
+    import re
+    rx = re.compile(re.escape(pattern) if fixed else pattern,
+                    re.IGNORECASE if ignore_case else 0)
+    if suffix and suffix.startswith("*"):
+        suffix = suffix[1:]
+    out = []
+    for p in paths:
+        base = os.path.join(root, p) if root else p
+        if os.path.isfile(base):
+            files = [base]
+        else:
+            files = []
+            for dirpath, dirnames, filenames in os.walk(base):
+                dirnames[:] = [d for d in dirnames if d not in skip_dirs]
+                for fn in filenames:
+                    if suffix and not fn.endswith(suffix):
+                        continue
+                    files.append(os.path.join(dirpath, fn))
+        for f in files:
+            try:
+                with open(f, encoding="utf-8", errors="replace") as fh:
+                    txt = fh.read()
+            except OSError:
+                continue
+            if rx.search(txt):
+                out.append(os.path.relpath(f, root).replace("\\", "/"))
+    return out
+
+def grep_count(pattern, paths, root=".", ignore_case=False, fixed=False,
+                skip_dirs=(".git", "node_modules", "target", ".next", "dist",
+                            ".turbo")):
+    """返回命中的**行数**（等价 grep -c：命中文件数与行数都返回行数）。"""
+    import re
+    rx = re.compile(re.escape(pattern) if fixed else pattern,
+                    re.IGNORECASE if ignore_case else 0)
+    n = 0
+    for f in grep_files(pattern, paths, root=root, ignore_case=ignore_case,
+                         fixed=fixed, skip_dirs=skip_dirs):
+        try:
+            with open(os.path.join(root, f), encoding="utf-8",
+                      errors="replace") as fh:
+                n += sum(1 for ln in fh if rx.search(ln))
+        except OSError:
+            continue
+    return n
 
 def totp_now(secret_b32, skew=0):
     """按 RFC 6238 算 TOTP 码，与服务端 `twofa_http::totp_at` 同口径
