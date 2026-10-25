@@ -114,7 +114,15 @@ pub async fn list_torrents_noclamp_as(
         .map(|v| v.to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    let approval_pred = format!(" AND t.approval_status IN ({in_list})");
+    // 内层谓词与外层闸门必须同口径放行：include_unapproved（staff see_banned）
+    // 为真时待审/被拒/软删都要出现在结果里，这里若仍是纯 AND IN，会把闸门
+    // 刚放行的行又滤掉——`?include_unapproved=1` 静默退化成「只看过审」
+    // （2026-10-25 版主三轮深测实测：库内 0/2/3 态 86 行一行不出）。
+    let approval_pred =
+        format!(" AND (t.approval_status IN ({in_list}) OR $10::bool)");
+    // 计数侧复用同一谓词文本，但 include_unapproved 在 count_bind 的槽位是 $7
+    let approval_pred_count =
+        format!(" AND (t.approval_status IN ({in_list}) OR $7::bool)");
     // 外层闸门：include_unapproved（staff see_banned）放行全部之外，开关放行的
     // 默认集合也须放行 —— 否则开关开了仍被 (status=1 OR ...) 滤掉。
     // 列表侧外层参数是 $10，计数侧是 $7（两处 bind 序号不同，分别生成）。
@@ -299,7 +307,7 @@ pub async fn list_torrents_noclamp_as(
          AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
          AND {medium_pred} AND {grade_pred} AND {edition_pred} \
          AND ($5::bool IS NULL OR t.official_tag = $5) \
-         {alive_pred} {approval_pred} {status_pred} \
+         {alive_pred} {approval_pred_count} {status_pred} \
          {bookmark_pred} {search_pred} \
          {tag_pred_count} \
          {sec_sql} {extra_count_sql} LIMIT 10001) sub",
@@ -331,7 +339,7 @@ pub async fn list_torrents_noclamp_as(
              AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
              AND {medium_pred} AND {grade_pred} AND {edition_pred} \
              AND ($5::bool IS NULL OR t.official_tag = $5) \
-             {approval_pred} {status_pred} {bookmark_pred} {search_pred} \
+             {approval_pred_count} {status_pred} {bookmark_pred} {search_pred} \
              {tag_pred_count} {sec_sql} {extra_count_sql} LIMIT 10001) sub",
         );
         let all_total: i64 =
