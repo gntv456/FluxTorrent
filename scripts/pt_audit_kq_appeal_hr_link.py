@@ -30,7 +30,23 @@ H&R 申诉都不知道指哪一条，想联动也没有目标。
        补号会指向 ORDER BY created_at DESC 的第一条，即替会员猜
   KQ11 两段联动并存：ban 的解封联动没被 hr 联动挤掉（同一函数里两把钥匙）
 
-跑法（默认读源码，不写库；KQ9~KQ11 只读现网夹具）：
+九轮把同一口径推到最后一种：kind='warn' 的受理此前也只翻状态——
+`users.warned_until/warned_reason` 原样留着，后台「警告用户」面板
+（`GET /admin/warned` 只列 `warned_until > now()`）与管理端用户详情的警告条
+继续把当事人当背着警告的人。撤销走 `appeals/unwarn.rs`（与 appeal_unban
+同形状：先 ensure_outranks，只清 warned_until IS NOT NULL 的行，动作进审计
+appeal.unwarn），同样**早于**状态翻转；回执按真做的事分档，响应加 warn_lifted。
+
+  KQ20 撤销警告早于申诉状态翻转      KQ21 联动锁死 accept + kind=="warn"
+  KQ22 走 ensure_outranks 且带 IS NOT NULL   KQ23 审计名 appeal.unwarn
+  KQ24 警告回执两档                 KQ25 响应带 warn_lifted
+  KQ26 源码抠出撤销 UPDATE；真语句清「有警告」的行回 1 行
+  KQ27 真语句对「本就没警告」的行回 0 行（不谎称撤过）
+  KQ28 负控：去掉 IS NOT NULL 后同一空行仍算撤了一条（判据承重）
+  KQ29 事务回滚后两枚夹具原样
+
+跑法（默认读源码，不写库；KQ9~KQ11 与 KQ26~KQ29 只读现网夹具或在事务里
+自造自滚，不留痕）：
     python scripts/pt_audit_kq_appeal_hr_link.py
 """
 import io
@@ -161,6 +177,66 @@ def main():
        "ONE=%s" % got1)
     ok("KQ10 真数据负控：多条违规者回 >=2 行（len==1 若不成立就会猜条）",
        got2 != "-" and int(got2) >= 2, "TWO=%s" % got2)
+
+    # ---- 警告联动（九轮：kind='warn' 受理即撤销在册警告）----
+    UNWARN = os.path.join(ROOT, "apps", "api", "src", "gaps_http",
+                          "appeals", "unwarn.rs")
+    uw = strip_comments(read(UNWARN)) if os.path.exists(UNWARN) else ""
+    ok("KQ20 撤销警告早于申诉状态翻转",
+       0 <= handle.find("lift_if_outranked(") < upd,
+       "lift@%d update@%d" % (handle.find("lift_if_outranked("), upd))
+    ok("KQ21 联动条件锁死 accept + kind==\"warn\"",
+       bool(re.search(r"if\s+body\.accept\s+&&\s+kind\s*==\s*\"warn\""
+                      r"\s*\{", handle)))
+    ok("KQ22 撤销走 ensure_outranks 且只清真背着警告的行",
+       0 <= uw.find("ensure_outranks(") < uw.find("UPDATE users")
+       and "warned_until IS NOT NULL" in uw, uw[:80])
+    ok("KQ23 撤销动作进审计 appeal.unwarn", '"appeal.unwarn"' in uw)
+    ok("KQ24 警告回执两档（撤了说撤了 / 没得撤不谎称）",
+       "那条警告已撤销" in handle and "没有撤销任何警告" in handle)
+    ok("KQ25 响应带 warn_lifted", '"warn_lifted": warn_lifted' in handle)
+
+    m = re.search(r'"(UPDATE users SET warned_until = NULL[\s\S]{0,160}?)"',
+                  uw)
+    uw_sql = re.sub(r"\\\s*\n\s*", " ", m.group(1)) if m else ""
+    ok("KQ26a 能从源码抠出撤销 UPDATE", bool(uw_sql), uw_sql[:100])
+    if uw_sql:
+        ids = psql("SELECT 'ID|' || id FROM users WHERE id <> 1"
+                   " AND warned_until IS NULL ORDER BY id LIMIT 2;")
+        pair = [x.split("|")[1] for x in ids if x.startswith("ID|")]
+        ok("KQ26b 取到两枚无警告夹具", len(pair) == 2, str(ids))
+        if len(pair) == 2:
+            a, b = pair
+            loose = uw_sql.replace(" AND warned_until IS NOT NULL", "")
+            tx = ["BEGIN;",
+                  "UPDATE users SET warned_until = now() + interval '7 days'"
+                  " WHERE id = %s;" % a,
+                  "WITH hit AS (%s RETURNING id) SELECT 'HIT_A|' || count(*)"
+                  " FROM hit;" % uw_sql.replace("$1", a),
+                  "WITH hit AS (%s RETURNING id) SELECT 'HIT_B|' || count(*)"
+                  " FROM hit;" % uw_sql.replace("$1", b),
+                  "WITH hit AS (%s RETURNING id) SELECT 'LOOSE_B|' || count(*)"
+                  " FROM hit;" % loose.replace("$1", b),
+                  "ROLLBACK;"]
+            out = psql("\n".join(tx))
+
+            def cnt(tag):
+                rows = [x for x in out if x.startswith(tag + "|")]
+                return rows[0].split("|")[1] if len(rows) == 1 else None
+
+            ok("KQ26 真语句正控：有警告的行清真后回 1 行",
+               cnt("HIT_A") == "1", "HIT_A=%s" % cnt("HIT_A"))
+            ok("KQ27 真语句：本就没警告的行回 0 行（不谎称撤过）",
+               cnt("HIT_B") == "0", "HIT_B=%s" % cnt("HIT_B"))
+            ok("KQ28 负控：去掉 IS NOT NULL 后同一空行仍算「撤了一条」",
+               cnt("LOOSE_B") == "1", "LOOSE_B=%s" % cnt("LOOSE_B"))
+            back = psql("SELECT 'AFTER|' || id || '|' ||"
+                        " COALESCE(warned_until::text,'NULL') FROM users"
+                        " WHERE id IN (%s, %s) ORDER BY id;" % (a, b))
+            left = [x for x in back if x.startswith("AFTER|")]
+            ok("KQ29 事务回滚后夹具原样（两行都仍无警告）",
+               len(left) == 2 and all(x.endswith("|NULL") for x in left),
+               str(left))
 
     head = subprocess.run(
         ["git", "-C", ROOT, "show", "HEAD:apps/api/src/gaps_http/appeals.rs"],

@@ -12,6 +12,7 @@ use crate::state::AppState;
 // ============ 申诉 ============
 
 mod create;
+mod unwarn;
 pub(crate) use create::appeal_create;
 
 #[derive(sqlx::FromRow, serde::Serialize)]
@@ -172,6 +173,19 @@ pub async fn appeal_handle(
             .await?;
         }
     }
+    // 警告申诉同口径（批九轮）：受理即撤销那条在册警告。警告只存在
+    // `users.warned_until/warned_reason` 这一枚「按人」的状态上，所以不需要
+    // `ref_id` 指条目；等级不够撤不动时整个受理一起失败（与解封/赦免同前置）。
+    let mut warn_lifted = false;
+    if body.accept && kind == "warn" {
+        warn_lifted = unwarn::lift_if_outranked(
+            &state,
+            auth.id,
+            auth.class_id,
+            user_id,
+        )
+        .await?;
+    }
     let n = sqlx::query(
         "UPDATE appeals SET status = $2, handled_by = $1, handled_at = now(), result_note = $3 \
          WHERE id = $4 AND status = 'open'",
@@ -210,6 +224,10 @@ pub async fn appeal_handle(
             "本次受理没有附带可撤销的 H&R 记录：申诉未指明条目，或该条已不是\
              「已违规」状态。如需撤销该条违规，请到「我的 H&R」按条目重新申诉，\
              或联系职员在 H&R 管理里处理。"
+        } else if kind == "warn" && body.accept && warn_lifted {
+            "那条警告已撤销，账号上的警告期限与理由已清除。"
+        } else if kind == "warn" && body.accept {
+            "本次受理没有撤销任何警告：您的账号当前没有在册警告。"
         } else {
             ""
         };
@@ -240,5 +258,6 @@ pub async fn appeal_handle(
         "handled": body.appeal_id,
         "unbanned": unbanned,
         "hr_pardoned": hr_pardoned,
+        "warn_lifted": warn_lifted,
     })))
 }
