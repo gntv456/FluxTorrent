@@ -32,6 +32,7 @@ from ci_reg_common import jwt, psql  # noqa: E402
 MARK = "tx-gate-%d" % int(time.time())
 PHRASE = "ZebraQuix%s" % str(int(time.time()))[-6:]
 NAME = "闸门夹具-受限版块-" + MARK
+READ_CLS = 5  # 夹具版块的读档；读者取 class_id < READ_CLS 的正常会员
 DOORS = [
     ("/forums/search?q=%s", "全站搜索"),
     ("/forums/recent?limit=200", "最近主题"),
@@ -41,9 +42,10 @@ DOORS = [
     ("/forums/boards", "版块清单"),
 ]
 
-member = int(psql("SELECT id FROM users WHERE class_id < 5 AND status < 2 "
-                  "AND id <> 1 ORDER BY id DESC LIMIT 1") or 0)
-ok("TX0 夹具读者取到（class<5 的正常会员）", bool(member), "member=%s" % member)
+member = int(psql("SELECT id FROM users WHERE class_id < %d AND status < 2 "
+                  "AND id <> 1 ORDER BY id DESC LIMIT 1" % READ_CLS) or 0)
+ok("TX0 夹具读者取到（class<%d 的正常会员）" % READ_CLS, bool(member),
+   "member=%s" % member)
 if not member:
     summary()
 mcls = int(psql("SELECT class_id FROM users WHERE id=%d" % member) or 1)
@@ -71,7 +73,8 @@ POSTS0 = psql("SELECT count(*) FROM posts")
 try:
     st, b = call("POST", "/admin/forums",
                  {"name": NAME, "descr": "闸门夹具，跑完即删",
-                  "minclassread": 5, "minclasswrite": 5, "minclasscreate": 5},
+                  "minclassread": READ_CLS, "minclasswrite": READ_CLS,
+                  "minclasscreate": READ_CLS},
                  token=ts)
     fid = int(psql("SELECT id FROM forums WHERE name='%s'" % NAME) or 0)
     ok("TX3 夹具版块建成（fid=%s http=%s code=%s msg=%s）"
@@ -134,14 +137,20 @@ try:
     side_s = call("GET", "/forums/side", token=ts)
     side_m = call("GET", "/forums/side", token=tm)
 
-    def rows(env, key):
-        return dig(env[1], "data", key) or []
+    def rows_of(body, key):
+        return dig(body, "data", key) or []
 
-    def hit_idx(env, key):
-        for i, r in enumerate(rows(env, key)):
+    def hit_idx_of(body, key):
+        for i, r in enumerate(rows_of(body, key)):
             if PHRASE in json.dumps(r, ensure_ascii=False):
                 return i
         return -1
+
+    def rows(env, key):
+        return rows_of(env[1], key)
+
+    def hit_idx(env, key):
+        return hit_idx_of(env[1], key)
 
     ok("TX7 会员侧栏两榜不是空榜（热帖 %s 行、最新回复 %s 行⇒"
        "「看不见夹具」不是「整块没货」）"
@@ -167,6 +176,22 @@ try:
                "会员 http=%s code=%s 命中第 %s 位；职员榜=%s 会员榜=%s"
                % (side_m[0], side_m[1].get("code"), mrank, ids_s, ids_m))
 
+    # A/B：只把夹具版块的读档改成公开，别的都不动 ⇒ 会员侧两榜必须立刻
+    # 看得见夹具。翻过来仍「看不见」＝这条口根本没读夹具，前面的红/绿都
+    # 不是 minclassread 造成的（否则「会员看不见」可能是夹具压根进不了榜）。
+    psql("UPDATE forums SET minclassread=0 WHERE id=%d" % fid)
+    ab = call("GET", "/forums/side", token=tm)[1]
+    psql("UPDATE forums SET minclassread=%d WHERE id=%d" % (READ_CLS, fid))
+    back = int(psql("SELECT minclassread FROM forums WHERE id=%d" % fid) or -1)
+    ok("TX9 夹具读档改公开后会员侧两榜都看得见（热帖第 %s 位、最新回复第 %s "
+       "位；夹具前会员榜有货＝TX7）"
+       % (hit_idx_of(ab, "hot") + 1, hit_idx_of(ab, "latest_replies") + 1),
+       hit_idx_of(ab, "hot") >= 0 and hit_idx_of(ab, "latest_replies") >= 0,
+       "会员榜=%s" % [r.get("id") or r.get("topic_id")
+                      for r in (dig(ab, "data", "hot") or [])])
+    ok("TX9b 夹具读档已还原成 %d（回读=%s）" % (READ_CLS, back),
+       back == READ_CLS)
+
 finally:
     if tid:
         psql("DELETE FROM posts WHERE topic_id=%d" % tid)
@@ -181,7 +206,7 @@ finally:
         "SELECT count(*) FROM posts WHERE topic_id=%d" % tid)
     left_body = psql("SELECT count(*) FROM posts WHERE body LIKE '%%%s%%'"
                      % PHRASE)
-    ok("TX9 残料清零（主题=%s 版块=%s 回帖=%s 带短语的帖=%s；"
+    ok("TX10 残料清零（主题=%s 版块=%s 回帖=%s 带短语的帖=%s；"
        "夹具前后现网 posts=%s→%s）"
        % (left_t, left_f, left_p, left_body, POSTS0,
           psql("SELECT count(*) FROM posts")),
