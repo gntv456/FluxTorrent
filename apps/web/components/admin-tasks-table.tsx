@@ -10,7 +10,13 @@ import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type { TaskRow } from "./admin-tasks-shared";
-import { kindList, periodList, toLocalInput } from "./admin-tasks-shared";
+import {
+  PENALTY_KEYS,
+  fromPenaltyItems,
+  kindList,
+  periodList,
+  toLocalInput,
+} from "./admin-tasks-shared";
 
 interface TasksTableProps {
   rows: TaskRow[];
@@ -37,6 +43,11 @@ interface TasksTableProps {
       fee: string;
       quota_total: string;
       sort: string;
+      penaltyChecked: Record<string, boolean>;
+      penaltyParams: Record<
+        string,
+        { amount?: string; target?: string; pages?: string }
+      >;
     };
   }) => void;
 }
@@ -65,6 +76,7 @@ export function TasksTable({
           <td className="colhead">{d.colClaimLimit}</td>
           <td className="colhead">{d.colWindow}</td>
           <td className="colhead">{d.colAutoAssign}</td>
+          <td className="colhead">{d.colPenalty}</td>
           <td className="colhead text-right">{d.colActions}</td>
         </tr>
       </thead>
@@ -96,17 +108,31 @@ export function TasksTable({
                 ? "—"
                 : fmt(d.daysUnit, { n: t.duration_days })}
             </td>
-            <td>
+            <td>{t.kind === "task" ? "—" : t.auto_assign ? d.yes : d.no}</td>
+            <td className="text-sub">
               {t.kind === "task"
                 ? "—"
-                : t.auto_assign
-                  ? d.yes
-                  : d.no}
+                : (t.fail_penalty ?? []).length === 0
+                  ? d.penaltyNone
+                  : (t.fail_penalty ?? [])
+                      .filter((p) =>
+                        (PENALTY_KEYS as readonly string[]).includes(p.kind),
+                      )
+                      .map((p) => {
+                        const label =
+                          dict.adminTasks.penaltyKinds[p.kind] ?? p.kind;
+                        return p.kind === "spark_fine" ||
+                          p.kind === "traffic_fine"
+                          ? `${label} ${p.amount ?? 0}`
+                          : label;
+                      })
+                      .join("、")}
             </td>
             <td className="text-right">
               <button
                 className="cmgmt-act"
-                onClick={() =>
+                onClick={() => {
+                  const back = fromPenaltyItems(t.fail_penalty);
                   setEdit({
                     id: t.id,
                     f: {
@@ -127,9 +153,11 @@ export function TasksTable({
                       fee: String(t.fee ?? 0),
                       quota_total: String(t.quota_total ?? 200),
                       sort: String(t.sort ?? 0),
+                      penaltyChecked: back.checked,
+                      penaltyParams: back.params,
                     },
-                  })
-                }
+                  });
+                }}
               >
                 {d.editBtn}
               </button>
@@ -153,7 +181,7 @@ export function TasksTable({
         ))}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={10} className="py-6 text-center text-sub">
+            <td colSpan={11} className="py-6 text-center text-sub">
               {d.empty}
             </td>
           </tr>

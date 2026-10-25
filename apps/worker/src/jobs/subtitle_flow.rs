@@ -184,9 +184,14 @@ pub(crate) async fn subreq_sweep(db: &PgPool) -> anyhow::Result<()> {
         }
         if remainder > 0 {
             let idem = format!("subtitle-bounty-pay:{}:{}", rid, claimer);
-            spark_award_tx(&mut tx, claimer, remainder, "subtitle_bounty",
-                           &idem)
-                .await?;
+            spark_award_tx(
+                &mut tx,
+                claimer,
+                remainder,
+                "subtitle_bounty",
+                &idem,
+            )
+            .await?;
         }
         // 通知与结算同事务：钱没落地就别发「已分发」这句话
         sqlx::query(

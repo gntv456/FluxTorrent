@@ -36,6 +36,15 @@ export function useIsCompact(): boolean {
   return useMediaQuery("(max-width: 767px)", false);
 }
 
+/** 平板收敛态（<lg，768–1023 也算）：顶栏一级平铺改汉堡侧滑抽屉。
+ *  2026-10-19 平板实测：820–1024 宽下一级 5 项在 flex-wrap 下竖排成
+ *  5 行（顶栏 259px 高，首屏近 1/3 被菜单吃掉）——平板这个宽度段
+ *  「横向排不下、竖排太占地」，收敛进抽屉是唯一不牺牲入口的形态。
+ *  SSR 默认 false（桌面平铺），挂载后校正。 */
+export function useIsNavCollapsed(): boolean {
+  return useMediaQuery("(max-width: 1023px)", false);
+}
+
 export type Posture = {
   /** 逻辑屏段数：1=普通设备，2=双折叠展开，3=三折叠全展。 */
   segments: 1 | 2 | 3;
@@ -50,14 +59,8 @@ export type Posture = {
  *  SSR 首帧 { segments: 1, folded: false }（桌面默认），挂载后校正；
  *  折展是连续 resize，消费方状态须 URL 化（方案 §4.4），本 hook 不承担状态保持。 */
 export function usePosture(): Posture {
-  const two = useMediaQuery(
-    "(horizontal-viewport-segments: 2)",
-    false,
-  );
-  const three = useMediaQuery(
-    "(horizontal-viewport-segments: 3)",
-    false,
-  );
+  const two = useMediaQuery("(horizontal-viewport-segments: 2)", false);
+  const three = useMediaQuery("(horizontal-viewport-segments: 3)", false);
   const folded = useMediaQuery("(folded)", false);
   const segments = three ? 3 : two ? 2 : 1;
   return { segments: segments as 1 | 2 | 3, folded };

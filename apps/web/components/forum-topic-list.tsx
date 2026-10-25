@@ -4,7 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { BoardBrief, Topic } from "@fluxtorrent/domain-types";
-import { TypeBadge, TagChip } from "@/components/forum-bits";
+import {
+  TypeBadge,
+  TagChip,
+  MarkBadge,
+} from "@/components/forum-bits";
 import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
@@ -61,8 +65,15 @@ export function ForumTopicList({
               className="ftopic-card"
             >
               <p className="ftopic-card__title">
-                {t.sticky ? "📌 " : ""}
-                {t.digest ? "💎 " : ""}
+                {t.notice && (
+                  <MarkBadge kind="notice" label={dict.forums.markNotice} />
+                )}
+                {t.sticky && (
+                  <MarkBadge kind="pin" label={dict.forums.markPin} />
+                )}
+                {t.digest && (
+                  <MarkBadge kind="ess" label={dict.forums.markEss} />
+                )}
                 {t.title}
               </p>
               <p className="ftopic-card__meta">
@@ -97,7 +108,18 @@ export function ForumTopicList({
         </thead>
         <tbody>
           {topics.map((t) => (
-            <tr key={t.id}>
+            <tr
+              key={t.id}
+              className={
+                t.notice
+                  ? "bg-coral-soft"
+                  : t.sticky
+                    ? "bg-sky-soft"
+                    : t.digest
+                      ? "bg-sun-soft"
+                      : undefined
+              }
+            >
               {canMod && (
                 <td>
                   <input
@@ -109,21 +131,16 @@ export function ForumTopicList({
                 </td>
               )}
               <td>
-                {t.digest && (
-                  <span
-                    aria-label="精华"
-                    className="mr-1 text-[var(--brand-orange-dark)]"
-                  >
-                    ⭐
-                  </span>
+                {/* 标记只用文字徽章（用户要求：不再要星形图标）；
+                    公告/置顶/精华各自出，多个标记并存就都显示 */}
+                {t.notice && (
+                  <MarkBadge kind="notice" label={dict.forums.markNotice} />
                 )}
                 {t.sticky && (
-                  <Icon
-                    name="pin"
-                    size={13}
-                    className="mr-1 inline align-[-2px] font-bold text-coral"
-                    title="置顶"
-                  />
+                  <MarkBadge kind="pin" label={dict.forums.markPin} />
+                )}
+                {t.digest && (
+                  <MarkBadge kind="ess" label={dict.forums.markEss} />
                 )}
                 {t.locked && (
                   <Icon

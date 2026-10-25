@@ -22,11 +22,13 @@ export function promoTitle(
 export const promoCls = (k: string) =>
   k === "free" ? "torrents-promo torrents-promo--free" : "torrents-promo";
 
-/** 审核状态徽标类名（被拒 = 红系变体） */
+/** 审核状态徽标类名：被拒 = 红系变体；暂缓(4) = 中性灰系变体 */
 export const approvalCls = (s: number) =>
   s === 2
     ? "torrents-approval torrents-approval--rejected"
-    : "torrents-approval";
+    : s === 4
+      ? "torrents-approval torrents-approval--held"
+      : "torrents-approval";
 
 /** 用户标签徽标内联色（bg_color 缺省回退皮肤默认） */
 export const tagStyle = (b: { bg_color?: string; color?: string }) =>

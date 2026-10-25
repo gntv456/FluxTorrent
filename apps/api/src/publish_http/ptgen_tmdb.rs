@@ -3,13 +3,16 @@
 //! 直连路线（不走 WASM/PT-Gen 上游）：TMDB 一发拿全标题/简介/海报，
 //! key 走 site_settings.tmdb_api_key（空 = 禁用，报可操作文案）。
 
+use super::tmdb_client::{tmdb_key, tmdb_timeout_get};
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 /// 从 themoviedb.org URL 提取 `(类型, id)`。
 /// 只认条目页 `/movie/{id}` 或 `/tv/{id}`（含语言前缀 `/zh-CN/tv/…`）；
 /// 搜索页 / 人物页不支持（fetch 需要 id 定位，搜索页给不了）。
-fn parse_tmdb_url(url: &str) -> DomainResult<(&'static str, String)> {
+pub(super) fn parse_tmdb_url(
+    url: &str,
+) -> DomainResult<(&'static str, String)> {
     let parsed = url::Url::parse(url.trim())
         .map_err(|_| DomainError::Validation("链接无效".into()))?;
     let segs: Vec<&str> =
@@ -60,80 +63,48 @@ fn fold_name(
     })
 }
 
-/// 单次 API 请求（zh-CN 与英文回退共用；404 单独给文案）。
-async fn tmdb_get(
-    client: &reqwest::Client,
-    key: &str,
-    kind: &str,
-    id: &str,
-    lang: &str,
-) -> DomainResult<serde_json::Value> {
-    let url = format!(
-        "https://api.themoviedb.org/3/{kind}/{id}?api_key={key}\
-         &language={lang}&append_to_response=external_ids"
-    );
-    let resp = client.get(url).send().await.map_err(|e| {
-        DomainError::Validation(format!(
-            "TMDB 服务不可达（{e}），请稍后重试或手动填写简介"
-        ))
-    })?;
-    if resp.status().as_u16() == 404 {
-        return Err(DomainError::Validation(
-            "TMDB 上没有该条目（404），请核对链接".into(),
-        ));
-    }
-    if !resp.status().is_success() {
-        return Err(DomainError::Validation(format!(
-            "TMDB 接口异常（HTTP {}，常见原因是 api_key 无效）",
-            resp.status().as_u16()
-        )));
-    }
-    resp.json()
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))
-}
-
-/// TMDB 直连抓取：GET /3/{type}/{id}（zh-CN，overview 空回退 en-US）。
-/// 出口与 PT-Gen 同形 `(name, descr, poster)`；poster 无则 None。
 pub(super) async fn fetch_tmdb(
     state: &AppState,
     url: &str,
 ) -> DomainResult<(String, String, Option<String>)> {
     let (kind, id) = parse_tmdb_url(url)?;
-    let key: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
-         'tmdb_api_key'), '')",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or_default();
-    if key.trim().is_empty() {
-        return Err(DomainError::Validation(
-            "TMDB 源未启用（未配置 tmdb_api_key，请在后台站点设定中填写\
-             或改用其他元数据源）"
-                .into(),
-        ));
-    }
+    let key = tmdb_key(state).await?;
     let client = reqwest::Client::new();
     let secs = std::time::Duration::from_secs(
         crate::http::OUTBOUND_FETCH_TIMEOUT_SECS,
     );
-    let zh =
-        tmdb_timeout_get(&client, key.trim(), kind, &id, "zh-CN", secs).await?;
+    let zh = tmdb_timeout_get(
+        &client,
+        key.trim(),
+        kind,
+        &id,
+        "zh-CN",
+        secs,
+        "external_ids",
+    )
+    .await?;
     let zh_empty = zh
         .get("overview")
         .and_then(|x| x.as_str())
         .map(|s| s.trim().is_empty())
         .unwrap_or(true);
     let en = if zh_empty {
-        tmdb_timeout_get(&client, key.trim(), kind, &id, "en-US", secs)
-            .await
-            .ok()
-            .and_then(|v2| {
-                v2.get("overview")
-                    .and_then(|x| x.as_str())
-                    .map(String::from)
-            })
+        tmdb_timeout_get(
+            &client,
+            key.trim(),
+            kind,
+            &id,
+            "en-US",
+            secs,
+            "external_ids",
+        )
+        .await
+        .ok()
+        .and_then(|v2| {
+            v2.get("overview")
+                .and_then(|x| x.as_str())
+                .map(String::from)
+        })
     } else {
         None
     };
@@ -147,20 +118,6 @@ pub(super) async fn fetch_tmdb(
 }
 
 /// tmdb_get + 统一超时（对齐 fetch_meta 的 OUTBOUND_FETCH_TIMEOUT_SECS）。
-async fn tmdb_timeout_get(
-    client: &reqwest::Client,
-    key: &str,
-    kind: &str,
-    id: &str,
-    lang: &str,
-    secs: std::time::Duration,
-) -> DomainResult<serde_json::Value> {
-    let fut = tmdb_get(client, key, kind, id, lang);
-    tokio::time::timeout(secs, fut).await.map_err(|_| {
-        DomainError::Validation("TMDB 请求超时，请稍后重试".into())
-    })?
-}
-
 /// 纯函数折三元组（单元测试覆盖回退链；IO 与折解耦）。
 /// `en_overview`：zh-CN 简介为空时的英文回退（由调用方二次请求拿到）。
 fn fold_tmdb_json(

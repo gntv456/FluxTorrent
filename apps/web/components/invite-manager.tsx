@@ -56,6 +56,8 @@ export function InviteManager() {
   const [invites, setInvites] = useState<InviteItem[] | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<number | null>(null);
+  const listSeqRef = useRef(0);
   const [invitees, setInvitees] = useState<Invitee[] | null>(null);
   const [inviteeTotal, setInviteeTotal] = useState(0);
   const [inviteePage, setInviteePage] = useState(1);
@@ -101,22 +103,28 @@ export function InviteManager() {
   }, []);
 
   const refresh = useCallback(async (p = 1) => {
+    const seq = ++listSeqRef.current;
+    const statusQ = filter === null ? "" : `&status=${filter}`;
     try {
       const [st, list] = await Promise.all([
         api.get<InviteStatus>("/api/v1/invites/status"),
-        api.get<InvitesEnvelope>(`/api/v1/invites?page=${p}`),
+        api.get<InvitesEnvelope>(
+          `/api/v1/invites?page=${p}${statusQ}`,
+        ),
       ]);
+      if (seq !== listSeqRef.current) return;
       setStatus(st);
       setInvites(list.items);
       setTotal(list.total);
       setPage(list.page);
     } catch {
+      if (seq !== listSeqRef.current) return;
       // P-314：置回 null（渲染侧 null 分支不宣称「暂无邀请码」）+ 走可见的 toast
       setStatus(null); setInvites(null); flashErr(dict.common.loadFailed);
     }
     // 被邀请人独立分页：不跟邀请记录的 page 联动，两张表各翻各的
     void refreshInvitees();
-  }, [dict, flashErr, refreshInvitees]);
+  }, [dict, filter, flashErr, refreshInvitees]);
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -211,14 +219,18 @@ export function InviteManager() {
         quotaLeft={quotaLeft}
         canIssue={canIssue}
         busy={busy}
+        filter={filter}
         onIssue={issue}
         onRedeem={redeem}
+        onFilter={(f) => setFilter((cur) => (cur === f ? null : f))}
       />
 
       {/* 邀请码列表（空态与加载态由 InviteList 内部处理，面板外壳始终在） */}
       {invites === null ? null : (
         <InviteList
           invites={invites}
+          filter={filter}
+          onClearFilter={() => setFilter(null)}
           copiedId={copiedId}
           busyId={busyId}
           onCopy={(inv) => void copyCode(inv)}

@@ -9,8 +9,8 @@
 
 use actix_web::{post, web, HttpRequest, HttpResponse};
 
-use crate::economy_http::{earn_spark_tx, SpendOutcome};
 use crate::dto::ok;
+use crate::economy_http::{earn_spark_tx, SpendOutcome};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;

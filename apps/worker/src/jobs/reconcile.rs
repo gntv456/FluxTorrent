@@ -130,9 +130,8 @@ pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
         // 25,165,824,000 B 的全站差额 100% 出自 4 个「一条流量流水都没有」的
         // 种子账户 ⇒ 旧文案「存在流水外的流量变动源」把数据卫生误报成缺陷，
         // 值班照它去查动账路径就是白跑一趟。
-        let (drift_live, drift_seed): (i64, i64) = sqlx::query_as(
-            &format!(
-                "SELECT count(*) FILTER (WHERE EXISTS \
+        let (drift_live, drift_seed): (i64, i64) = sqlx::query_as(&format!(
+            "SELECT count(*) FILTER (WHERE EXISTS \
                    (SELECT 1 FROM traffic_ledger l WHERE l.user_id = u.id)), \
                  count(*) FILTER (WHERE NOT EXISTS \
                    (SELECT 1 FROM traffic_ledger l WHERE l.user_id = u.id)) \
@@ -140,8 +139,7 @@ pub async fn reconcile_diff_alert(db: &PgPool) -> anyhow::Result<()> {
                    FROM balance_baseline b WHERE b.user_id = u.id), 0) \
                    + COALESCE((SELECT sum(l.{delta}) FROM traffic_ledger l \
                      WHERE l.user_id = u.id), 0)"
-            ),
-        )
+        ))
         .fetch_one(db)
         .await?;
         tracing::error!(

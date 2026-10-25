@@ -5,58 +5,21 @@ import { Modal } from "@/components/modal";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import type { ForumCategory } from "@fluxtorrent/domain-types";
 import {
   BTN_LINE,
+  BTN_ROW_DANGER,
   BTN_SKY,
-  INPUT_CLS,
-  NUM_INPUT,
+  blankBoardForm,
+  formFromForum,
   type ClassTuple,
   type ForumAdminForum,
+  type ForumBoardForm,
+  type ModTuple,
 } from "./forum-structure-types";
-
-interface Form {
-  name: string;
-  descr: string;
-  /** 版块规则正文（0392）：空串 = 清空（后端把缺省与空串分开处理） */
-  rules: string;
-  mr: number;
-  mw: number;
-  mc: number;
-  prot: boolean;
-  catId: number | "";
-  sort: number;
-}
-
-/** 空表单（新建用；分区预选为当前选中的分区） */
-function blank(defaultCatId: number | ""): Form {
-  return {
-    name: "",
-    descr: "",
-    rules: "",
-    mr: 0,
-    mw: 0,
-    mc: 0,
-    prot: false,
-    catId: defaultCatId,
-    sort: 0,
-  };
-}
-
-/** 由已有版块构造表单 —— 这是「编辑不可用」的修复核心 */
-function fromForum(f: ForumAdminForum): Form {
-  return {
-    name: f.name,
-    descr: f.descr ?? "",
-    rules: f.rules ?? "",
-    mr: f.minclassread,
-    mw: f.minclasswrite,
-    mc: f.minclasscreate,
-    prot: f.protected,
-    catId: typeof f.category_id === "number" ? f.category_id : "",
-    sort: f.sort,
-  };
-}
+import { ForumBoardFields } from "./forum-board-fields";
+import { ForumModsField } from "./forum-mods-field";
 
 /** 新建/编辑版块抽屉。
  *
@@ -64,6 +27,10 @@ function fromForum(f: ForumAdminForum): Form {
  *  1. 打开时必须用该版块数据**回填**；旧版表单初值全空且无回填，
  *     点「编辑」后只填名称保存，会把三档门槛静默写成 0/0/0（权限放开）。
  *  2. 未改动任何字段时「保存」禁用（脏检查），避免误触提交空表单。
+ *
+ *  字段区在 ./forum-board-fields，版主任免在 ./forum-mods-field
+ *  （样图版块表只有 编辑/排序，其余动作收进抽屉）；删除版块在
+ *  本组件底部危险按钮，非空版块要「把版块名原样打一遍」才放行。
  */
 export function ForumBoardDrawer({
   open,
@@ -71,6 +38,7 @@ export function ForumBoardDrawer({
   categories,
   classes,
   defaultCatId,
+  mods,
   busy,
   run,
   onClose,
@@ -81,15 +49,19 @@ export function ForumBoardDrawer({
   /** 等级档候选（GET /admin/forums 附带 user_classes）；空则回落数字输入 */
   classes: ClassTuple[];
   defaultCatId: number | "";
+  /** 全部版主元组（父页数据，任命/移除后由 run→load 整页刷新） */
+  mods: ModTuple[];
   busy: boolean;
   run: (fn: () => Promise<void>, ok: string) => void;
   onClose: () => void;
 }) {
-  const initial = useMemo<Form>(
-    () => (forum ? fromForum(forum) : blank(defaultCatId)),
+  const initial = useMemo<ForumBoardForm>(
+    () => (forum ? formFromForum(forum) : blankBoardForm(defaultCatId)),
     [forum, defaultCatId],
   );
-  const [form, setForm] = useState<Form>(initial);
+  const [form, setForm] = useState<ForumBoardForm>(initial);
+  // 删版块二次确认（danger）；免版主的确认在 ForumModsField 内部
+  const ask = useConfirm();
   // hook 必须在 `if (!open) return null` 之前调用
   const { dict } = useI18n();
 
@@ -114,7 +86,10 @@ export function ForumBoardDrawer({
   const canSave = forum ? dirty : form.name.trim().length > 0;
   const gatesBad = !(form.mr <= form.mw && form.mw <= form.mc);
 
-  function set<K extends keyof Form>(k: K, v: Form[K]) {
+  function set<K extends keyof ForumBoardForm>(
+    k: K,
+    v: ForumBoardForm[K],
+  ) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
@@ -130,6 +105,10 @@ export function ForumBoardDrawer({
       protected: form.prot,
       category_id: form.catId === "" ? null : Number(form.catId),
       sort: form.sort,
+      // 0376 乐观并发：把抽屉读到的版本戳原样带回，服务端比对不一致
+      // 就返 409（两人同时改同一版块，后保存的不会静默覆盖先保存的）。
+      // 缺省不带 = 退回修前的 last-write-wins（新建时本来也没有戳）。
+      ...(forum?.mtime ? { expected_mtime: forum.mtime } : {}),
     };
     run(
       async () => {
@@ -144,6 +123,32 @@ export function ForumBoardDrawer({
     );
   }
 
+  /** 删除版块（仅编辑态）。非空版块后端要求 force=true，这里用
+   *  「把版块名原样打一遍才放行」替用户完成那个显式知悉。 */
+  function removeBoard() {
+    if (!forum) return;
+    const msg =
+      forum.topics > 0
+        ? fmt(t.boardDelNonEmpty, { name: forum.name, n: forum.topics })
+        : fmt(t.boardDelEmpty, { name: forum.name });
+    ask.open({
+      title: t.delBoardBtn,
+      message: msg,
+      tone: "danger",
+      busy,
+      requireText: forum.topics > 0 ? forum.name : undefined,
+      run: () =>
+        run(
+          async () => {
+            const q = forum.topics > 0 ? "?force=true" : "";
+            await api.del(`/api/v1/admin/forums/${forum.id}${q}`);
+            onClose();
+          },
+          t.boardDeleted,
+        ),
+    });
+  }
+
   return (
     <Modal
       open
@@ -152,148 +157,58 @@ export function ForumBoardDrawer({
       align="right"
     >
       <p className="mb-4 text-xs text-sub">
-          {forum
-            ? fmt(t.editSub, {
-                name: forum.name,
-                id: forum.id,
-                n: forum.topics,
-              })
-            : t.newSub}
-        </p>
+        {forum
+          ? fmt(t.editSub, {
+              name: forum.name,
+              id: forum.id,
+              n: forum.topics,
+            })
+          : t.newSub}
+      </p>
 
-        <label className="mb-3 block">
-          <span className="mb-1 block text-xs text-sub">{t.fldName}</span>
-          <input
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            className={INPUT_CLS}
-          />
-        </label>
+      <ForumBoardFields
+        form={form}
+        set={set}
+        categories={categories}
+        gateOpts={gateOpts}
+        gatesBad={gatesBad}
+      />
 
-        <label className="mb-3 block">
-          <span className="mb-1 block text-xs text-sub">{t.fldDescr}</span>
-          <input
-            value={form.descr}
-            onChange={(e) => set("descr", e.target.value)}
-            className={INPUT_CLS}
-          />
-        </label>
+      {forum && (
+        <ForumModsField
+          forumId={forum.id}
+          mods={mods}
+          busy={busy}
+          run={run}
+        />
+      )}
 
-        {/* 版块规则（0392）：换行按 pre-line 原样渲染；maxLength 只是
-            提前拦一下，真上限 1000 字由后端 forum_upsert_check 判。 */}
-        <label className="mb-3 block">
-          <span className="mb-1 block text-xs text-sub">{t.fldRules}</span>
-          <textarea
-            value={form.rules}
-            onChange={(e) => set("rules", e.target.value)}
-            rows={4}
-            maxLength={1000}
-            className={INPUT_CLS}
-          />
-        </label>
-
-        <label className="mb-3 block">
-          <span className="mb-1 block text-xs text-sub">{t.fldCat}</span>
-          <select
-            value={form.catId === "" ? "" : String(form.catId)}
-            onChange={(e) =>
-              set("catId", e.target.value === "" ? "" : Number(e.target.value))
-            }
-            className={INPUT_CLS}
-          >
-            <option value="">{t.noCategory}</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="mb-1">
-          <span className="mb-1 block text-xs text-sub">{t.fldGates}</span>
-          <div className="grid grid-cols-3 gap-2">
-            {(
-              [
-                ["mr", t.gateRead],
-                ["mw", t.gateWrite],
-                ["mc", t.gateCreate],
-              ] as const
-            ).map(([k, label]) => (
-              <label key={k} className="flex flex-col gap-1">
-                <span className="text-[11px] text-sub">{label}</span>
-                {gateOpts.length > 0 ? (
-                  <select
-                    value={form[k]}
-                    onChange={(e) => set(k, Number(e.target.value))}
-                    className={NUM_INPUT}
-                  >
-                    {gateOpts.map(([id, name]) => (
-                      <option key={id} value={id}>
-                        {id} · {name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="number"
-                    min={0}
-                    max={99}
-                    value={form[k]}
-                    onChange={(e) => set(k, Number(e.target.value))}
-                    className={NUM_INPUT}
-                  />
-                )}
-              </label>
-            ))}
-          </div>
-          <p
-            className={`mt-1 text-xs ${gatesBad ? "text-danger" : "text-sub"}`}
-          >
-            {gatesBad
-              ? t.gatesBad
-              : fmt(t.gatesOk, {
-                  r: form.mr,
-                  w: form.mw,
-                  c: form.mc,
-                })}
-          </p>
-        </div>
-
-        <label className="mb-3 mt-3 block">
-          <span className="mb-1 block text-xs text-sub">{t.fldSort}</span>
-          <input
-            type="number"
-            value={form.sort}
-            onChange={(e) => set("sort", Number(e.target.value))}
-            className={NUM_INPUT}
-          />
-        </label>
-
-        <label className="mb-3 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.prot}
-            onChange={(e) => set("prot", e.target.checked)}
-          />
-          {t.fldProtect}
-        </label>
-        <p className="text-xs text-sub">{t.protectNote}</p>
-
-        <div className="mt-5 flex justify-end gap-2 border-t border-line pt-4">
-          <button type="button" className={BTN_LINE} onClick={onClose}>
-            {t.cancel}
-          </button>
+      <div className="mt-5 flex items-center gap-2 border-t border-line pt-4">
+        {forum && (
           <button
             type="button"
-            disabled={busy || !canSave || gatesBad}
-            className={BTN_SKY}
-            onClick={save}
-            title={canSave ? undefined : t.untouched}
+            disabled={busy}
+            className={BTN_ROW_DANGER}
+            onClick={removeBoard}
           >
-            {forum ? t.saveBtn : t.boardCreateBtn}
+            {t.delBoardBtn}
           </button>
-        </div>
+        )}
+        <span className="flex-1" />
+        <button type="button" className={BTN_LINE} onClick={onClose}>
+          {t.cancel}
+        </button>
+        <button
+          type="button"
+          disabled={busy || !canSave || gatesBad}
+          className={BTN_SKY}
+          onClick={save}
+          title={canSave ? undefined : t.untouched}
+        >
+          {forum ? t.saveBtn : t.boardCreateBtn}
+        </button>
+      </div>
+      <AskDialog {...ask} />
     </Modal>
   );
 }

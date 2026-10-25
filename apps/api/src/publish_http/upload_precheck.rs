@@ -23,7 +23,7 @@ pub(super) const NAME_MAX: usize = 500;
 pub(super) const SMALL_DESCR_MAX: usize = 255;
 pub(super) const DESCR_MAX: usize = 60_000;
 /// 付费种子价格上限（原为静默 clamp）
-pub(super) const PRICE_MAX: i64 = 1_000_000;
+pub(crate) const PRICE_MAX: i64 = 1_000_000;
 
 async fn setting_str(db: &PgPool, name: &str, default: &str) -> String {
     sqlx::query_scalar(
@@ -74,14 +74,52 @@ pub(super) fn check_lengths(form: &UploadForm) -> DomainResult<()> {
     Ok(())
 }
 
+/// 定价上限兜底（真实上限读站点设定 `max_price`，见 `price_gate`）。
+pub(crate) struct PriceGate {
+    pub(crate) enabled: bool,
+    pub(crate) limit: i64,
+}
+
+pub(crate) async fn price_gate(db: &PgPool) -> PriceGate {
+    let (enabled, limit): (bool, i64) = sqlx::query_as(
+        "SELECT COALESCE((SELECT value = 'yes' FROM site_settings WHERE \
+         name = 'paid_torrent_enabled'), false), \
+         COALESCE((SELECT value::bigint FROM site_settings WHERE \
+         name = 'max_price'), $1)",
+    )
+    .bind(100_000i64)
+    .fetch_one(db)
+    .await
+    .unwrap_or((false, 100_000));
+    PriceGate {
+        enabled,
+        limit: limit.clamp(1, PRICE_MAX),
+    }
+}
+
 /// 定价：越界直接 400。过去 `clamp(0, 1_000_000)` 会让「发 2000000」静默变成
 /// 「1000000」，发布者以为设置成功（与本项目「静默改写即缺陷」的既有口径一致）。
-pub(super) fn check_price(raw: Option<i64>) -> DomainResult<i64> {
+/// 开关关闭时只放行 0（免费种），定价即拒——站长关付费是业务决定，
+/// 静默把 500 收成 0 等于既骗发布者又白送下载方。
+pub(super) async fn check_price(
+    db: &PgPool,
+    raw: Option<i64>,
+) -> DomainResult<i64> {
     let p = raw.unwrap_or(0);
-    if !(0..=PRICE_MAX).contains(&p) {
+    let gate = price_gate(db).await;
+    if p == 0 {
+        return Ok(0);
+    }
+    if !gate.enabled {
         return Err(DomainError::Validation(
-            "付费下载价格需在 0–1000000 之间".into(),
+            "本站未开启付费种子：价格只能为 0（免费）".into(),
         ));
+    }
+    if p > gate.limit {
+        return Err(DomainError::Validation(format!(
+            "付费下载价格需在 0–{} 之间（站点售价上限）",
+            gate.limit
+        )));
     }
     Ok(p)
 }

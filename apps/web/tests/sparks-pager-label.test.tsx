@@ -64,11 +64,25 @@ function mount() {
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** 等流水行真正落地再断言。
+ *
+ *  原来等的是「页面文本里出现『论坛』」——那四个字在**类型图例**里就有，
+ *  首屏就有，于是这个 wait 几乎是空转：断言在数据到达之前就跑。
+ *  实测：450 条那条会假红（翻页条还没渲染，标签取到空串），
+ *  不满一页那条与 kind 标签那条会**假绿**（行压根没渲染也照样绿）。
+ *  真正的信号是表格里有行了。
+ */
+async function waitRows() {
+  await waitFor(() =>
+    expect(document.querySelectorAll("tbody tr").length).toBeGreaterThan(0),
+  );
+}
+
 describe("流水页翻页条的页数信息", () => {
   it("450 条：标签同时写当前页与总页数", async () => {
     stubLedger(450);
     mount();
-    await waitFor(() => expect(document.body.textContent).toContain("论坛"));
+    await waitRows();
     const pager = document.querySelector(".ui-pager");
     const label = (pager?.textContent ?? "").replace(/\s+/g, " ");
     expect(label).toMatch(/第 1 页 \/ 9/);
@@ -77,7 +91,7 @@ describe("流水页翻页条的页数信息", () => {
   it("不满一页：不画翻页条（否则只有一页也报页数）", async () => {
     stubLedger(20);
     mount();
-    await waitFor(() => expect(document.body.textContent).toContain("论坛"));
+    await waitRows();
     expect(document.querySelector(".ui-pager")).toBeNull();
   });
 });
@@ -166,9 +180,7 @@ describe("kind 标签登记过人话，页面不直出裸键", () => {
       </LocaleProvider>,
     );
     const labels = KINDS.map((k) => zhLabels[k] ?? "");
-    await waitFor(() =>
-      expect(document.body.textContent).toContain(labels[0]),
-    );
+    await waitRows();
     const text = document.body.textContent ?? "";
     KINDS.forEach((k, i) => {
       expect(labels[i]).not.toBe("");

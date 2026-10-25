@@ -3,6 +3,7 @@
 import { BTN_SM_BOLD as PLAIN_BTN_CLS, INPUT_CLOUD } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { PenaltyMenuEdit } from "./admin-tasks-penalty-form";
 import { EMPTY, kindList, periodList } from "./admin-tasks-shared";
 
 const inp = INPUT_CLOUD;
@@ -266,6 +267,10 @@ export function TasksForm(props: {
           </button>
         )}
       </div>
+
+      {/* 0397 处置菜单：考核（kind≠task）未达标时的惩罚组合编辑器
+          （拆至 admin-tasks-penalty-form.tsx 守 300 行门禁） */}
+      {isExam && <PenaltyMenuEdit edit={edit} setEdit={setEdit} />}
     </section>
   );
 }

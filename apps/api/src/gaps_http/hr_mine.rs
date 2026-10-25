@@ -8,9 +8,10 @@ use actix_web::{get, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
 use crate::dto::ok;
-use crate::errors::DomainResult;
+use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::repo::hr as repo_hr;
+use crate::repo::settings as repo_settings;
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -38,6 +39,10 @@ struct MyHrResp {
     /// 供前端动态渲染规则文案（此前写死 120h 与实际执行 48h 矛盾）
     default_seed_hours: i32,
     default_days: i32,
+    /// 本响应所依据的策略版本（与 `/system/policies` 的 version 同值）。
+    /// 文案与版本对不上 ⇒ 读错了键，可据此跨页对账。
+    policy_version: String,
+    policy_updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[get("/me/hr")]
@@ -47,6 +52,9 @@ pub async fn my_hr_status(
     q: crate::http::Q<MyHrQuery>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    let policy = repo_settings::policy_snapshot(&state.repo)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let per = q.per.unwrap_or(20).clamp(1, 100);
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
     let status = repo_hr::status_filter(q.status.as_deref());
@@ -69,7 +77,9 @@ pub async fn my_hr_status(
         per,
         status: status.map(str::to_string),
         counts,
-        default_seed_hours: repo_hr::hours_setting(&state.repo.db).await,
-        default_days: repo_hr::days_setting(&state.repo.db).await,
+        default_seed_hours: policy.hr.seed_hours,
+        default_days: policy.hr.days,
+        policy_version: policy.version,
+        policy_updated_at: policy.updated_at,
     }))
 }

@@ -46,7 +46,7 @@ export async function Footer() {
   ];
 
   return (
-    <footer className="mt-10 border-t border-line bg-[var(--brand-bg)] pb-20 md:pb-6">
+    <footer className="mt-10 border-t border-line bg-[var(--brand-bg)] pb-20 lg:pb-6">
       <div className="mx-auto w-full max-w-[1536px] px-4 pt-6 md:px-6">
         {/* 三栏信息卡片 */}
         <div className="grid gap-4 md:grid-cols-3">

@@ -1,4 +1,4 @@
-import { getMedals, getMedalRarities } from "@/lib/data";
+import { getMedals, getMedalRarities, getMySpark } from "@/lib/data";
 import { MedalHall } from "@/components/medal-hall";
 import { MedalProgress } from "@/components/medal-progress";
 import { getDict } from "@/i18n/server";
@@ -17,15 +17,17 @@ export default async function MedalsPage() {
   if (gate) return gate;
 
   const { dict } = await getDict();
-  const [{ items: medals, max_worn: maxWorn }, rarities] =
-    await Promise.all([getMedals(), getMedalRarities()]);
+  const [{ items: medals, max_worn: maxWorn }, rarities, spark] =
+    await Promise.all([
+      getMedals(),
+      getMedalRarities(),
+      // 余额预判用（null=匿名不预判）：购买按钮「余额不足」禁用态
+      getMySpark(),
+    ]);
   const owned = medals.filter((m) => m.owned);
   const wearing = medals.filter((m) => m.wearing);
   // 「当前加成」= 佩戴中勋章的加成之和（0204 多佩戴位）
-  const bonus = wearing.reduce(
-    (acc, m) => acc + m.bonus_addition_factor,
-    0,
-  );
+  const bonus = wearing.reduce((acc, m) => acc + m.bonus_addition_factor, 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -53,7 +55,12 @@ export default async function MedalsPage() {
           </>
         }
       />
-      <MedalHall medals={medals} rarities={rarities} maxWorn={maxWorn} />
+      <MedalHall
+        medals={medals}
+        rarities={rarities}
+        maxWorn={maxWorn}
+        balance={spark}
+      />
       {/* 0382 自动成就进度：放在殿堂之下，让「已有啥」与「还差啥」
           连着看——两者割裂会让用户以为勋章只能买。 */}
       <section className="flex flex-col gap-3">

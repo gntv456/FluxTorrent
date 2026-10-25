@@ -19,6 +19,9 @@ mod hr_mine;
 mod login_aux;
 mod mail;
 mod misc;
+mod my_onboarding;
+mod my_risk;
+mod policy;
 mod pow;
 mod reg_quiz;
 mod reset;
@@ -36,6 +39,9 @@ use hr_mine::*;
 use login_aux::*;
 pub use mail::*;
 use misc::*;
+use my_onboarding::*;
+use my_risk::*;
+use policy::*;
 pub use pow::*;
 pub use reg_quiz::*;
 use reset::*;
@@ -44,6 +50,8 @@ use wishlist::*;
 pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
     scope
         .service(ban_log)
+        // 公开策略快照（H&R / 风险衰减 / 抽奖校验路径），登录可读亦可匿名
+        .service(policy_public)
         // 封禁公示名单（登录可读，用户名已打码）
         .service(ban_log_list)
         // 找回密码
@@ -61,6 +69,10 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         .service(seedbox_my_claims)
         .service(seedbox_my_status)
         .service(my_hr_status)
+        // 本人风险解释 + 申诉入口（分数/证据原因码，会员可读）
+        .service(my_risk)
+        // 新手清单（全部来自库内真实痕迹）
+        .service(my_onboarding)
         .service(hr_pardon)
         .service(hr_pardon_batch)
         .service(hr_self_pardon)

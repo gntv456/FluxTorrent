@@ -69,5 +69,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     tracing::info!("flux-worker started");
+    // 0416 每日结算凭证：独立循环（run.rs 已是存量超限文件，只许瘦）
+    tokio::spawn(jobs::spark_merkle_loop(db.clone()));
     jobs::run_all(db, redis).await
 }

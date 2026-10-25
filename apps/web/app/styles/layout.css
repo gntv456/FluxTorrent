@@ -2397,6 +2397,14 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border-radius: var(--r-sm, 8px);
   color: var(--sub);
 }
+/* 抽屉顶部搜索框（2026-10-20：主菜单上的直显搜索，与桌面顶栏同源） */
+.navdrawer__search {
+  position: relative;
+  padding: 10px 12px 4px;
+}
+.navdrawer__search .gsearch {
+  max-width: none;
+}
 .navdrawer__body {
   display: flex;
   flex-direction: column;
@@ -2450,24 +2458,12 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 
 /* 管理端抽屉变体（M2-3）：条目行距更紧（59 条目全量滚动） */
-/* ============ 平板细侧栏（M4，方案 §8）：md-lg ============ */
+/* ============ 平板细侧栏（M4）——已退役（2026-10-19） ============
+ * 平板区间（768–1023）改为与手机同构：底部 5 Tab（lg:hidden）+ 顶栏
+ * 汉堡抽屉，细侧栏让出内容宽度。样式块保留防缓存残留，选择器已无对应
+ * DOM（组件 tablet-sidebar.tsx 已删）。 */
 .tsidebar {
   display: none;
-}
-@media (min-width: 768px) and (max-width: 1023px) {
-  .tsidebar {
-    position: sticky;
-    top: 84px;
-    z-index: 30;
-    display: flex;
-    width: 76px;
-    flex-shrink: 0;
-    flex-direction: column;
-    gap: 4px;
-    align-self: flex-start;
-    padding: 8px;
-  }
-  /* 底 Tab 已是 md:hidden（本区间天然不显示），侧栏接管导航 */
 }
 .tsidebar__item {
   display: flex;

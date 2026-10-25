@@ -42,10 +42,12 @@ export default async function ForumPage({
   const pageNum = Number(pageRaw);
   const page =
     Number.isFinite(pageNum) && pageNum > 1 ? Math.floor(pageNum) : 1;
-  // 类型筛选（对齐样图 § tplForumBoard 的筛选行）：白名单 sticky/digest，
-  // 其余（含爬虫乱造的）一律回落全量，不拿 400 打断浏览。
+  // 类型筛选（对齐样图 § tplForumBoard 的筛选行）：白名单
+  // notice/sticky/digest，其余（含爬虫乱造的）一律回落全量，不拿 400 打断浏览。
   const type =
-    typeRaw === "sticky" || typeRaw === "digest" ? typeRaw : undefined;
+    typeRaw === "notice" || typeRaw === "sticky" || typeRaw === "digest"
+      ? typeRaw
+      : undefined;
   const [data, tagDict] = await Promise.all([
     getTopics(forumId, sort, tag, page, type),
     getForumTags(),
@@ -133,6 +135,7 @@ export default async function ForumPage({
             {(
               [
                 [undefined, dict.forums.filterAll],
+                ["notice", dict.forums.filterNotice],
                 ["sticky", dict.forums.filterSticky],
                 ["digest", dict.forums.filterDigest],
               ] as [string | undefined, string][]

@@ -115,34 +115,31 @@ export default function AdminForumsPage() {
           {dict.common.loading}
         </p>
       ) : (
-        <div className="brand-panel p-4">
-          {/* 页头（标题/说明/返回）已由 AdminPageShell 的 PageHeader 承载，
-              这里直接进入「分区树 + 版块表」双栏。 */}
-          <div className="flex items-stretch">
-            <ForumCategoryPanel
-              categories={cats}
-              forums={all}
-              selected={selected ?? NO_CATEGORY}
-              onSelect={setSelected}
-              busy={busy}
-              run={run}
-            />
-            <ForumBoardTable
-              forums={shown}
-              mods={data.mods ?? []}
-              catName={curName}
-              busy={busy}
-              run={run}
-              onEdit={(f) => {
-                setEditing(f);
-                setDrawerOpen(true);
-              }}
-              onNew={() => {
-                setEditing(null);
-                setDrawerOpen(true);
-              }}
-            />
-          </div>
+        // 双卡片：左「论坛分区」侧卡 + 右版块表卡（样图主从布局）
+        <div className="grid items-start gap-3
+          grid-cols-[248px_minmax(0,1fr)]">
+          <ForumCategoryPanel
+            categories={cats}
+            forums={all}
+            selected={selected ?? NO_CATEGORY}
+            onSelect={setSelected}
+            busy={busy}
+            run={run}
+          />
+          <ForumBoardTable
+            forums={shown}
+            catName={curName}
+            busy={busy}
+            run={run}
+            onEdit={(f) => {
+              setEditing(f);
+              setDrawerOpen(true);
+            }}
+            onNew={() => {
+              setEditing(null);
+              setDrawerOpen(true);
+            }}
+          />
         </div>
       )}
 
@@ -154,6 +151,7 @@ export default function AdminForumsPage() {
         defaultCatId={
           selected === null || selected === NO_CATEGORY ? "" : selected
         }
+        mods={data?.mods ?? []}
         busy={busy}
         run={run}
         onClose={() => setDrawerOpen(false)}

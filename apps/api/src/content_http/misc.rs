@@ -103,21 +103,18 @@ pub(super) async fn top_boards(
     // 外层补身份列：六个榜的内层都只出 (uid, val)，尾部这一段是共享的
     let tail = "JOIN users u ON u.id = x.uid JOIN user_classes c ON c.id = u.class_id \
         LEFT JOIN avatar_frames f ON f.id = u.avatar_frame_id";
-    let base = |agg: &str,
-                joins: &str,
-                extra_where: &str,
-                group_by: &str|
-     -> String {
-        format!(
-            "SELECT {sel} FROM ( \
+    let base =
+        |agg: &str, joins: &str, extra_where: &str, group_by: &str| -> String {
+            format!(
+                "SELECT {sel} FROM ( \
                 SELECT u.id AS uid, {agg} AS val \
                 FROM users u {joins} \
                 WHERE u.status < 2 {extra_where} \
                 GROUP BY u.id {group_by} \
                 ORDER BY val DESC, u.id LIMIT 10 \
             ) x {tail}"
-        )
-    };
+            )
+        };
     let bonus_q = base("u.spark_balance", "", "AND u.spark_balance > 0", "");
     let uploaded_q = base("u.uploaded", "", "AND u.uploaded > 0", "");
     let downloaded_q = base("u.downloaded", "", "AND u.downloaded > 0", "");

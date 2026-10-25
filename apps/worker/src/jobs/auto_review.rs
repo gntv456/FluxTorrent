@@ -36,17 +36,20 @@ async fn ruleset_ver(db: &PgPool) -> i16 {
 /// 从 site_settings 装配引擎配置（键清单见 0400 迁移；缺键回缺省）。
 pub async fn load_config(db: &PgPool) -> EngineConfig {
     let mut cfg = EngineConfig::defaults();
-    let rows: Vec<(String, String)> =
-        sqlx::query_as("SELECT name, value FROM site_settings \
-                        WHERE grp = 'auto_review'")
-            .bind(0)
-            .fetch_all(db)
-            .await
-            .unwrap_or_default();
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings \
+                        WHERE grp = 'auto_review'",
+    )
+    .bind(0)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
     let map: HashMap<String, String> = rows.into_iter().collect();
     let g = |k: &str| map.get(k).cloned().unwrap_or_default();
     let gb = |k: &str, d: bool| {
-        map.get(k).map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(d)
+        map.get(k)
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(d)
     };
     let gi = |k: &str, d: i64| {
         map.get(k).and_then(|v| v.trim().parse().ok()).unwrap_or(d)
@@ -54,15 +57,24 @@ pub async fn load_config(db: &PgPool) -> EngineConfig {
     cfg.enabled = gb("auto_review_enabled", false);
     cfg.mode = {
         let m = g("auto_review_mode");
-        if m.is_empty() { "shadow".into() } else { m }
+        if m.is_empty() {
+            "shadow".into()
+        } else {
+            m
+        }
     };
     cfg.delay_sec = gi("auto_review_delay_sec", 90);
     cfg.daily_cap = gi("auto_review_daily_cap", 0);
-    cfg.descr_min_chars = gi("arule_descr_missing_min_chars", 80).max(0) as usize;
+    cfg.descr_min_chars =
+        gi("arule_descr_missing_min_chars", 80).max(0) as usize;
     cfg.dupe_threshold_pct = gi("arule_dupe_check_threshold", 92) as i32;
     cfg.title_level = {
         let l = g("arule_title_format_level");
-        if l.is_empty() { "warn".into() } else { l }
+        if l.is_empty() {
+            "warn".into()
+        } else {
+            l
+        }
     };
     cfg.title_template = g("auto_review_title_template");
     cfg.title_required = g("auto_review_title_required")
@@ -125,7 +137,9 @@ pub async fn auto_review_tick(db: &PgPool) -> anyhow::Result<u64> {
         let used: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM auto_review_log \
              WHERE decided_by = 0 AND mode <> 0 \
-               AND created_at >= date_trunc('day', now())",
+               AND created_at >= \
+               (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+               AT TIME ZONE 'Asia/Shanghai')",
         )
         .bind(0)
         .fetch_one(db)
@@ -247,9 +261,7 @@ async fn load_profile(db: &PgPool, owner: i64) -> PublisherProfile {
         None => return PublisherProfile::default(),
     };
     let registered_days = created
-        .map(|d| {
-            (chrono::Utc::now().date_naive() - d).num_days().max(0) as i32
-        })
+        .map(|d| (chrono::Utc::now().date_naive() - d).num_days().max(0) as i32)
         .unwrap_or(0);
     // 近 90 天人工通过/被拒（ torrents.approved_at / deny 时间用
     // modified_time 近似——被拒时 mtime 即拒绝时刻）
@@ -367,16 +379,14 @@ async fn handle(
     .fetch_all(db)
     .await
     .unwrap_or_default();
-    let deny_evidence = a
-        .hits
-        .iter()
-        .any(|h| h.action == Action::Deny && !overturned.contains(&h.rule.to_string()));
+    let deny_evidence = a.hits.iter().any(|h| {
+        h.action == Action::Deny && !overturned.contains(&h.rule.to_string())
+    });
     // 半自动不执行自动拒绝；全自动拒绝须 deny 档证据（软分永不拒）
-    let should_deny = mode == 2
-        && a.suggestion == Suggestion::Deny
-        && deny_evidence;
-    let should_approve =
-        a.suggestion == Suggestion::Pass && a.hits.iter().all(|h| h.action != Action::Deny);
+    let should_deny =
+        mode == 2 && a.suggestion == Suggestion::Deny && deny_evidence;
+    let should_approve = a.suggestion == Suggestion::Pass
+        && a.hits.iter().all(|h| h.action != Action::Deny);
     if !should_deny && !should_approve {
         if a.suggestion == Suggestion::Deny && !overturned.is_empty() {
             tracing::info!(torrent = torrent_id,
@@ -417,8 +427,11 @@ async fn handle(
         .await;
     match resp {
         Ok(r) if r.status().is_success() => {
-            tracing::info!(torrent = torrent_id, approve = should_approve,
-                           "auto_review: 已裁决（decide 同尺）");
+            tracing::info!(
+                torrent = torrent_id,
+                approve = should_approve,
+                "auto_review: 已裁决（decide 同尺）"
+            );
         }
         Ok(r) => {
             tracing::warn!(torrent = torrent_id, status = %r.status(),
@@ -454,23 +467,33 @@ async fn engine_jwt(db: &PgPool) -> Option<String> {
     });
     let b64 = |v: &str| {
         let bytes = v.as_bytes();
-        const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        const T: &[u8] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         let mut out = String::new();
         for chunk in bytes.chunks(3) {
-            let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+            let b = [
+                chunk[0],
+                *chunk.get(1).unwrap_or(&0),
+                *chunk.get(2).unwrap_or(&0),
+            ];
             let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
             out.push(T[(n >> 18) as usize & 63] as char);
             out.push(T[(n >> 12) as usize & 63] as char);
-            out.push(if chunk.len() > 1 { T[(n >> 6) as usize & 63] as char } else { '=' });
-            out.push(if chunk.len() > 2 { T[n as usize & 63] as char } else { '=' });
+            out.push(if chunk.len() > 1 {
+                T[(n >> 6) as usize & 63] as char
+            } else {
+                '='
+            });
+            out.push(if chunk.len() > 2 {
+                T[n as usize & 63] as char
+            } else {
+                '='
+            });
         }
         out
     };
-    let signing_input = format!(
-        "{}.{}",
-        b64(&header.to_string()),
-        b64(&claims.to_string())
-    );
+    let signing_input =
+        format!("{}.{}", b64(&header.to_string()), b64(&claims.to_string()));
     let sig = {
         use hmac::{Hmac, Mac};
         type HmacSha256 = Hmac<sha2::Sha256>;
@@ -479,14 +502,27 @@ async fn engine_jwt(db: &PgPool) -> Option<String> {
         let bytes = mac.finalize().into_bytes();
         let mut s = String::new();
         // URL-safe base64（无填充形态与 jsonwebtoken 一致）
-        const T: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        const T: &str =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         for chunk in bytes.chunks(3) {
-            let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+            let b = [
+                chunk[0],
+                *chunk.get(1).unwrap_or(&0),
+                *chunk.get(2).unwrap_or(&0),
+            ];
             let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
             s.push(T.as_bytes()[(n >> 18) as usize & 63] as char);
             s.push(T.as_bytes()[(n >> 12) as usize & 63] as char);
-            s.push(if chunk.len() > 1 { T.as_bytes()[(n >> 6) as usize & 63] as char } else { '=' });
-            s.push(if chunk.len() > 2 { T.as_bytes()[n as usize & 63] as char } else { '=' });
+            s.push(if chunk.len() > 1 {
+                T.as_bytes()[(n >> 6) as usize & 63] as char
+            } else {
+                '='
+            });
+            s.push(if chunk.len() > 2 {
+                T.as_bytes()[n as usize & 63] as char
+            } else {
+                '='
+            });
         }
         s
     };
@@ -516,7 +552,6 @@ async fn deny_reason_id_for(
     .ok()
     .flatten()
 }
-
 
 /// 人工推翻回填 + 熔断（§6/§12）。与 api 侧 review_auto::sweep_overturns
 /// 同款 SQL 的 worker 副本（两边都无法跨 crate 调用；台账是共享表，
@@ -592,7 +627,10 @@ async fn sweep_overturns(db: &PgPool) {
     .unwrap_or(5);
     if threshold > 0 {
         let today: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM auto_review_log              WHERE human_decided_at >= date_trunc('day', now())",
+            "SELECT count(*) FROM auto_review_log \
+             WHERE human_decided_at >= \
+             (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+             AT TIME ZONE 'Asia/Shanghai')",
         )
         .bind(0)
         .fetch_one(db)
@@ -614,13 +652,15 @@ async fn sweep_overturns(db: &PgPool) {
                 )
                 .execute(db)
                 .await;
-                tracing::warn!(today, threshold,
-                    "auto_review: 熔断——日推翻达阈值，已降级半自动");
+                tracing::warn!(
+                    today,
+                    threshold,
+                    "auto_review: 熔断——日推翻达阈值，已降级半自动"
+                );
             }
         }
     }
 }
-
 
 /// 深检·文件清单层：D2 可疑可执行 / D4 话数交叉 / D5 伪媒体（文件名层）。
 /// 结果并入 Assessment.hits（postpone 档），与在线规则同走台账/执法流。
@@ -686,7 +726,9 @@ async fn deep_file_rules(
             a.suggestion
         };
     }
-    if let Some(d) = auto_review::hit_files_crosscheck(&snap.title, &snap.file_names) {
+    if let Some(d) =
+        auto_review::hit_files_crosscheck(&snap.title, &snap.file_names)
+    {
         a.hits.push(auto_review::RuleHit {
             rule: "arule_files_crosscheck",
             action: Action::Postpone,
@@ -714,9 +756,11 @@ async fn deep_file_rules(
     if has_mi_video {
         let any_video = snap.file_names.iter().any(|f| {
             let low = f.to_lowercase();
-            [".mp4", ".mkv", ".avi", ".wmv", ".mov", ".ts", ".m2ts", ".iso"]
-                .iter()
-                .any(|e| low.ends_with(e))
+            [
+                ".mp4", ".mkv", ".avi", ".wmv", ".mov", ".ts", ".m2ts", ".iso",
+            ]
+            .iter()
+            .any(|e| low.ends_with(e))
         });
         if !any_video {
             a.hits.push(auto_review::RuleHit {
@@ -763,7 +807,10 @@ pub async fn auto_review_digest(db: &PgPool) -> anyhow::Result<()> {
     }
     // 今日已发则跳过
     let sent: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM messages          WHERE kind = 'review_auto_digest'            AND created_at > date_trunc('day', now())",
+        "SELECT count(*) FROM messages WHERE kind = 'review_auto_digest' \
+         AND created_at > \
+         (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+         AT TIME ZONE 'Asia/Shanghai')",
     )
     .bind(0)
     .fetch_one(db)
@@ -773,7 +820,7 @@ pub async fn auto_review_digest(db: &PgPool) -> anyhow::Result<()> {
         return Ok(());
     }
     let (pass, deny, postpone): (i64, i64, i64) = sqlx::query_as(
-        "SELECT             count(*) FILTER (WHERE verdict = 0),             count(*) FILTER (WHERE verdict = 1),             count(*) FILTER (WHERE verdict = 2)          FROM auto_review_log          WHERE decided_by = 0 AND created_at::date = (now() - interval '1 day')::date",
+        "SELECT             count(*) FILTER (WHERE verdict = 0),             count(*) FILTER (WHERE verdict = 1),             count(*) FILTER (WHERE verdict = 2)          FROM auto_review_log          WHERE decided_by = 0            AND created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') - interval '1 day') AT TIME ZONE 'Asia/Shanghai'            AND created_at < (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai')) AT TIME ZONE 'Asia/Shanghai'",
     )
     .bind(0)
     .fetch_one(db)
@@ -788,7 +835,7 @@ pub async fn auto_review_digest(db: &PgPool) -> anyhow::Result<()> {
     .unwrap_or((0, 0));
     let agree_pct = if total > 0 { agree * 100 / total } else { 0 };
     let top_rules: Vec<(String, i64)> = sqlx::query_as(
-        "SELECT e->>'rule' AS rule, count(*)          FROM auto_review_log l, jsonb_array_elements(l.hit_rules) e          WHERE l.created_at > now() - interval '1 day'          GROUP BY 1 ORDER BY 2 DESC LIMIT 5",
+        "SELECT e->>'rule' AS rule, count(*)          FROM auto_review_log l, jsonb_array_elements(l.hit_rules) e          WHERE l.created_at >= (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') - interval '1 day') AT TIME ZONE 'Asia/Shanghai'            AND l.created_at < (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai')) AT TIME ZONE 'Asia/Shanghai'          GROUP BY 1 ORDER BY 2 DESC LIMIT 5",
     )
     .bind(0)
     .fetch_all(db)
@@ -826,7 +873,6 @@ pub async fn auto_review_digest(db: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
-
 /// §13.4 + §15.1：队列健康观测（超时升级 + 深度告警），均一天最多一封。
 async fn queue_health(db: &PgPool) {
     let (depth, stale): (i64, i64) = sqlx::query_as(
@@ -858,22 +904,16 @@ async fn queue_health(db: &PgPool) {
         None
     };
     if let Some(body) = msg {
-        let uid: Option<i64> = sqlx::query_scalar(
-            "SELECT MIN(id) FROM users WHERE class_id >= 99 AND status < 2",
+        // 走 worker 的管理组告警**唯一出口**（staff_alert_as，署名档 99
+        // = 与 leak_bot 同口径）：守卫（无在册署名不插行、只署在册号）
+        // 收在出口件里，闸门 BQ 的 R1d 才站得住。
+        super::staff_alert::staff_alert_as(
+            db,
+            "自动审种：队列健康提醒",
+            &body,
+            "torrent",
+            99,
         )
-        .bind(0)
-        .fetch_optional(db)
-        .await
-        .ok()
-        .flatten();
-        if let Some(uid) = uid {
-            let _ = sqlx::query(
-                "INSERT INTO staffmessages (user_id, subject, body, permission)                  VALUES ($1, '自动审种：队列健康提醒', $2, 'torrent')",
-            )
-            .bind(uid)
-            .bind(body)
-            .execute(db)
-            .await;
-        }
+        .await;
     }
 }

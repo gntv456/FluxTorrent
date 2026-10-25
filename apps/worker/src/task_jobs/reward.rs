@@ -91,9 +91,14 @@ pub(crate) async fn settle_complete(
 }
 
 /// 失败/超时：status=2；配置了罚金则扣（幂等键 task_penalty:{claim_id}）
+///
+/// `penalty_notes` 是 0397 处置菜单的执行结果（每项一句实况文案）。
+/// **必须带进站内信**：自动封禁/禁言/禁下载对用户是不可见的黑箱，
+/// 只发一句「任务失败」＝用户不知道自己被处置了什么、找谁申诉。
 pub(crate) async fn settle_fail(
     db: &PgPool,
     c: &OpenClaim,
+    penalty_notes: &[String],
 ) -> anyhow::Result<()> {
     let mut tx = db.begin().await?;
     // 罚金说明文案按实扣额生成（见下方审计修复注释）；未配置罚金时为空串
@@ -161,6 +166,13 @@ pub(crate) async fn settle_fail(
             };
         }
     }
+    // 0397：处置菜单的执行结果逐项写进正文（实况优先于配置——
+    // 扣了 100 不写「扣 500」）
+    let penalty_extra = if penalty_notes.is_empty() {
+        String::new()
+    } else {
+        format!("，并已执行以下处置：{}", penalty_notes.join("；"))
+    };
     sqlx::query(
         "INSERT INTO messages (sender_id, receiver_id, subject, body) \
          VALUES (NULL, $1, $2, $3)",
@@ -168,8 +180,8 @@ pub(crate) async fn settle_fail(
     .bind(c.user_id)
     .bind("任务超时通知")
     .bind(format!(
-        "您认领的任务已超出完成时限（{} 天），任务标记为失败{}。",
-        c.duration_days, penalty_note
+        "您认领的任务已超出完成时限（{} 天），任务标记为失败{}{}。",
+        c.duration_days, penalty_note, penalty_extra
     ))
     .execute(&mut *tx)
     .await?;

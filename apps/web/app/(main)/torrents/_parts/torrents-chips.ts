@@ -77,7 +77,9 @@ export function buildTorrentChips(opts: {
     chip("approval", `${t2.approvalLegend}：${t2.approvalPassed}`);
   if (sp.approval === "2")
     chip("approval", `${t2.approvalLegend}：${t2.approvalRejected}`);
-  if (sp.official === "1") chip("official", t2.officialOnly);
+  // 官种是导航频道（菜单/页脚都指 /torrents?official=1），不算可移除的
+  // 高级筛选条件：不生成 chip，落地页也不因它自动展开高级搜索面板。
+  // 面板里的「仅官种」仍按 URL 回显，取消后即回全量列表。
   if (sp.mine === "1") chip("mine", t2.mineOnly);
   if (sp.bookmarked === "1") chip("bookmarked", t2.bookmarkedOnly);
   // 0159 P1：标签多选——每个已选标签各一个 chip，移除只去掉该标签；

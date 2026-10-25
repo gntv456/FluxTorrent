@@ -133,9 +133,11 @@ describe("论坛首页右列四块", () => {
     for (const st of ["guest", "ok", "fail"] as const) {
       const { unmount } = mountSide(st, st === "ok" ? side : null);
       expect(screen.getByText(t.guideTitle)).toBeInTheDocument();
+      // CTA 文案是「发新主题」（i18n guideCta + 样图 f3b-guide 一致），
+      // 落点是真发帖页 /forums/new——早前这里断言 /rules，与文案自相矛盾。
       expect(screen.getByRole("link", { name: t.guideCta })).toHaveAttribute(
         "href",
-        "/rules",
+        "/forums/new",
       );
       unmount();
     }

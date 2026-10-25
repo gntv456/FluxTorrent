@@ -12,6 +12,7 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import type { DenyReason } from "@/components/admin-torrents-shared";
 import type { AppealRow, PendingTorrent } from "./admin-shared";
+import { ReviewQueueToolbar } from "./review-queue-toolbar";
 
 /** 待审时长（0286）：旧版取了 created_at 却从不渲染，压了三天看上去还是三天。 */
 function waitingText(iso: string): string {
@@ -36,6 +37,9 @@ export function ReviewsPanel({
   onDecide,
   onPostpone,
   onBatch,
+  onResume,
+  status,
+  onStatus,
 }: {
   reviews: PendingTorrent[];
   total: number;
@@ -49,63 +53,36 @@ export function ReviewsPanel({
   onPostpone: (torrentId: number) => void;
   /** 批量通过本页全部待审（POST /admin/reviews/batch；自审条目由后端跳过） */
   onBatch: (ids: number[], approve: boolean) => void;
+  /** 暂缓恢复（POST /admin/reviews/resume；暂缓视图专用） */
+  onResume: (torrentId: number) => void;
+  /** 0306：审核态视图 0=待审 / 4=暂缓 */
+  status: number;
+  onStatus: (s: number) => void;
 }) {
   const { dict } = useI18n();
   const a = dict.admin as unknown as Record<string, string>;
   const pageSize = reviews.length || 50;
   const pageIds = reviews.map((t) => t.id);
+  const postponed = status === 4;
+  // 恢复按钮类名拆两行拼：单行会超 80 列门禁（行宽按 UTF-16 码元）
+  const resumeCls =
+    "min-h-[36px] rounded-full border border-sun px-4 " +
+    "text-xs font-bold text-ink";
   return (
     <section className={PANEL_LG}>
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-sub">{fmt(a.queueTotal, { n: total })}</span>
-        <select
-          className="rounded border border-line bg-transparent px-2 py-1"
-          value={denyReasonId ?? ""}
-          onChange={(e) =>
-            onDenyReason(e.target.value ? Number(e.target.value) : null)
-          }
-        >
-          <option value="">{a.denyPickNone}</option>
-          {denyReasons.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.reason}
-            </option>
-          ))}
-        </select>
-        {/* 0306：批量裁决后端早已就绪（0288），积压时审核员此前仍只能逐条点 */}
-        <span className="flex gap-1">
-          <button
-            disabled={pageIds.length === 0}
-            onClick={() => onBatch(pageIds, true)}
-            className="min-h-[36px] rounded-full border border-mint px-3 py-1 font-bold text-mint disabled:opacity-40"
-          >
-            {a.batchApprove}
-          </button>
-          <button
-            disabled={pageIds.length === 0}
-            onClick={() => onBatch(pageIds, false)}
-            className="min-h-[36px] rounded-full border border-coral px-3 py-1 font-bold text-danger disabled:opacity-40"
-          >
-            {a.batchReject}
-          </button>
-        </span>
-        <span className="ml-auto flex gap-1">
-          <button
-            disabled={offset <= 0}
-            onClick={() => onPage(Math.max(0, offset - pageSize))}
-            className="rounded border border-line px-2 py-1 disabled:opacity-40"
-          >
-            {a.queuePrev}
-          </button>
-          <button
-            disabled={offset + reviews.length >= total}
-            onClick={() => onPage(offset + pageSize)}
-            className="rounded border border-line px-2 py-1 disabled:opacity-40"
-          >
-            {a.queueNext}
-          </button>
-        </span>
-      </div>
+      <ReviewQueueToolbar
+        total={total}
+        offset={offset}
+        pageSize={pageSize}
+        itemCount={pageIds.length}
+        denyReasons={denyReasons}
+        denyReasonId={denyReasonId}
+        onDenyReason={onDenyReason}
+        onBatch={(approve) => onBatch(pageIds, approve)}
+        onPage={onPage}
+        status={status}
+        onStatus={onStatus}
+      />
       <ul className="flex flex-col divide-y divide-line">
         {reviews.map((t) => (
           <li key={t.id} className="flex items-start gap-3 py-2">
@@ -172,29 +149,42 @@ export function ReviewsPanel({
             >
               {a.queueOpen}
             </a>
-            <button
-              onClick={() => onDecide(t.id, true)}
-              className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"
-            >
-              {a.approve}
-            </button>
-            <button
-              onClick={() => onDecide(t.id, false)}
-              className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white"
-            >
-              {a.reject}
-            </button>
-            {/* 0306：暂缓口（证据不足挂起），后端 v4_http 早已就绪 */}
-            <button
-              onClick={() => onPostpone(t.id)}
-              className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
-            >
-              {a.postpone}
-            </button>
+            {postponed ? (
+              /* 暂缓视图：只能先恢复待审（decide 的 WHERE 谓词只认
+                 status=0，直接过审/拒审会被后端挡回）；恢复后回到
+                 待审视图即可常规裁决 */
+              <button onClick={() => onResume(t.id)} className={resumeCls}>
+                {a.resume}
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => onDecide(t.id, true)}
+                  className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"
+                >
+                  {a.approve}
+                </button>
+                <button
+                  onClick={() => onDecide(t.id, false)}
+                  className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white"
+                >
+                  {a.reject}
+                </button>
+                {/* 0306：暂缓口（证据不足挂起），后端 v4_http 早已就绪 */}
+                <button
+                  onClick={() => onPostpone(t.id)}
+                  className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+                >
+                  {a.postpone}
+                </button>
+              </>
+            )}
           </li>
         ))}
         {reviews.length === 0 && (
-          <li className="py-6 text-center text-sub">{a.queueEmpty}</li>
+          <li className="py-6 text-center text-sub">
+            {postponed ? a.queuePostponedEmpty : a.queueEmpty}
+          </li>
         )}
       </ul>
     </section>

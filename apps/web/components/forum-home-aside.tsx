@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatRatio } from "@/lib/format";
-import { timeAgo } from "@/lib/time-ago";
 import { fmt, fmtCur } from "@/i18n/config";
 import type { Dict } from "@/i18n/server";
 import type { ForumUserCard } from "@/lib/data-forum";
@@ -17,6 +16,15 @@ import type { ForumSide } from "@fluxtorrent/domain-types";
 export type SideState = "guest" | "ok" | "fail";
 
 const g1 = (n: number) => n.toLocaleString();
+
+/** MM-DD HH:mm（样图「最新回复」行的绝对时间格式） */
+const stamp = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(
+    d.getMinutes(),
+  )}`;
+};
 
 /** 左列第一块：头像 + 昵称/等级 + 分享率·{magic}·做种。
  *  `me === null`（未登录或 /me 取档失败）→ 回落一句登录引导，
@@ -82,11 +90,13 @@ export function ForumUserCardBlock({
 }
 
 /** 左列「我的」面板（样图 § forum 左列第三块）：三条链接都指向关注流页
- *  的三个标签——那三个标签各有真数据源，没有一条是占位。 */
+ *  的三个标签——那三个标签各有真数据源，没有一条是占位。
+ *  首链文案用 feedTitle「关注流」（样图左栏原文；feed 页自己的标签是
+ *  「关注动态」，两处按样图各就各位，不硬统一）。 */
 export function ForumMineLinks({ dict }: { dict: Dict }) {
   const t = dict.forums3;
   const links: [string, string][] = [
-    ["/forums/feed", t.tabFeed],
+    ["/forums/feed", dict.forums.feedTitle],
     ["/forums/feed?tab=mine", t.tabMyTopics],
     ["/forums/feed?tab=replies", t.tabMyReplies],
   ];
@@ -168,7 +178,14 @@ export function ForumSideColumn({
               <ol className="fh-hot">
                 {side.hot.map((h, i) => (
                   <li key={h.id} className="fh-hot__row">
-                    <span className="fh-hot__rk num">{i + 1}</span>
+                    {/* 排名圈（样图 .f3b-hot .rk）：前三 coral，其余 sky */}
+                    <span
+                      className={
+                        "fh-hot__rk num" + (i < 3 ? " fh-hot__rk--top" : "")
+                      }
+                    >
+                      {i + 1}
+                    </span>
                     <Link
                       href={`/forums/topic/${h.id}`}
                       className="fh-hot__tt"
@@ -198,10 +215,16 @@ export function ForumSideColumn({
                       {r.username ?? "—"}
                     </Link>
                     <span className="fh-lr__what">
-                      {r.forum_name} · {r.topic_title}
+                      {fmt(t.latestPhrase, {
+                        forum: r.forum_name,
+                        topic: r.topic_title,
+                      })}
                     </span>
-                    <span className="fh-lr__time">
-                      {timeAgo(r.created_at, dict.common)}
+                    {/* 样图「最新回复」用绝对时间（10-15 09:31），与话题行
+                        同一口径；服务端 UTC / 浏览器本地时区必然不同，
+                        抑制 hydration 告警（与版块页一致） */}
+                    <span className="fh-lr__time" suppressHydrationWarning>
+                      {stamp(r.created_at)}
                     </span>
                   </li>
                 ))}
@@ -213,7 +236,8 @@ export function ForumSideColumn({
       <section className="fh-guide">
         <div className="fh-guide__t">{t.guideTitle}</div>
         <p className="fh-guide__d">{t.guideDesc}</p>
-        <Link href="/rules" className="fh-guide__cta">
+        {/* 样图该卡 CTA 是「发新主题」——指到真发帖页，不是 toast */}
+        <Link href="/forums/new" className="fh-guide__cta">
           {t.guideCta}
         </Link>
       </section>

@@ -121,15 +121,20 @@ export function CenterGrid({
                   ),
                 },
               ].map((r) => (
-                <div key={r.label} className="flex items-center gap-2 text-xs">
-                  <span className="w-16 shrink-0 text-sub">{r.label}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-sunken)]">
+                <div
+                  key={r.label}
+                  className="up-progress flex items-center gap-2 text-xs"
+                >
+                  <span className="up-progress__label w-16 shrink-0 text-sub">
+                    {r.label}
+                  </span>
+                  <div className="up-progress__track h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface-sunken)]">
                     <div
                       className={`h-full rounded-full ${r.pct >= 100 ? "bg-mint" : "bg-sky"}`}
                       style={{ width: `${r.pct}%` }}
                     />
                   </div>
-                  <span className="num w-44 shrink-0 text-right text-sub">
+                  <span className="up-progress__val num w-44 shrink-0 text-right text-sub">
                     {`${r.pct}% · ${r.text}`}
                   </span>
                 </div>

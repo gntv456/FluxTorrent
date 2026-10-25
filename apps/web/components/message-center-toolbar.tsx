@@ -90,8 +90,11 @@ export function ToolbarSwitcher({
           className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px]
             border px-3 text-sm font-bold ${
               managing
-                ? "border-[var(--brand-orange)] bg-[var(--sky-soft)] text-[var(--brand-orange-dark)]"
-                : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] text-ink hover:-translate-y-px hover:text-[var(--brand-orange)]"
+                ? "border-[var(--brand-orange)] bg-[var(--sky-soft)] " +
+                  "text-[var(--brand-orange-dark)]"
+                : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] " +
+                  "text-ink hover:-translate-y-px " +
+                  "hover:text-[var(--brand-orange)]"
             }`}
         >
           <Icon name="folder" size={16} />

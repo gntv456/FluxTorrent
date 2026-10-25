@@ -1,5 +1,4 @@
-//! PTGen 元数据抓取 + NFO 解码/HTML 转文本助手。
-//! 从 publish_http.rs 按域拆出（upload.rs 也用 decode_nfo）。
+//! PTGen 元数据抓取 + NFO 解码；UploadForm 定义（发种请求字段）。
 
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -8,8 +7,6 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
-
-// ============ 发布 / 下载（M04 / M05） ============
 
 #[derive(Deserialize)]
 pub(super) struct UploadForm {
@@ -43,10 +40,12 @@ pub(super) struct UploadForm {
     /// MediaInfo 文本（NP 详情页折叠块口径）：存 media_info.mediainfo，详情页原样展示
     #[serde(default)]
     pub(super) mediainfo: Option<String>,
-    // TMDB id（0358 第五源）：照 imdb 键形态存外链；title 年份由 PT-Gen
-    // 抓取时拼进 name（form.name），media_info 不另落 title 键
+    /// TMDB 条目 ID/链接（0358 第五源）：外链存 media_info.tmdb
     #[serde(default)]
     pub(super) tmdb: Option<String>,
+    /// 豆瓣条目 ID/链接（作品聚合归堆用，存 media_info.douban_id）
+    #[serde(default)]
+    pub(super) douban: Option<String>,
     /// 付费下载定价（0086）：0 = 免费，≤ 1,000,000；下载者支付，发布者得 (100-税)%
     #[serde(default)]
     pub(super) price: Option<i64>,

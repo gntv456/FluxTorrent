@@ -10,7 +10,12 @@ import { useMediaQuery } from "@/lib/hooks/use-media";
  *  选中态口径：裸路径条目（资源库 /torrents）与带参条目（官种
  *  /torrents?official=1）共享同一路径——带参条目仅当当前 URL 携带同参数
  *  才点亮；裸路径条目在同路径带参条目命中时「让位」，否则三个条目
- *  （资源库/官种/更多）会一起点亮（参数剥掉后匹配路径必然同真）。 */
+ *  （资源库/官种/更多）会一起点亮（参数剥掉后匹配路径必然同真）。
+ *
+ *  平板收敛（2026-10-19）：<lg（1023px 及以下）一级平铺也收进汉堡
+ *  抽屉（与 <md 同款 compact 形态）。实测 820–1024 宽下 5 个一级项
+ *  flex-wrap 竖排成 5 行、顶栏高 259px，占掉首屏近 1/3——平板这个
+ *  宽度段「横排排不下、竖排太占地」，一级菜单只由 lg+ 桌面平铺承载。 */
 type NavItem = { href: string; label: string };
 type NavGroup = { group: string; items: NavItem[] };
 
@@ -32,7 +37,7 @@ export function MainMenu({
   const moreRef = useRef<HTMLLIElement>(null);
   // M1 小屏收敛：<md 隐藏一级平铺，全部入口收进「更多 ▾」（M2 抽屉的过渡兜底）。
   // SSR 首帧 fallback=false（桌面）：与 use-media 全站纪律一致，挂载后校正。
-  const compact = useMediaQuery("(max-width: 767px)", false);
+  const compact = useMediaQuery("(max-width: 1023px)", false);
 
   const pathActive = (p: string) =>
     p === "/"

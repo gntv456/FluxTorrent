@@ -167,6 +167,22 @@ export function ForumModBar({
       >
         {dict.forums.modUndigest}
       </button>
+      <button
+        type="button"
+        className={BTN}
+        disabled={busy || empty}
+        onClick={() => run({ notice: true }, dict.forums.modNotice)}
+      >
+        {dict.forums.modNotice}
+      </button>
+      <button
+        type="button"
+        className={BTN}
+        disabled={busy || empty}
+        onClick={() => run({ notice: false }, dict.forums.modUnnotice)}
+      >
+        {dict.forums.modUnnotice}
+      </button>
 
       <select
         className={SELECT}

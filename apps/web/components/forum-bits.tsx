@@ -60,35 +60,16 @@ export function TagChip({
   );
 }
 
-/** 置顶/精华的**实心五角星**（样图集 § tplForum/tplForumBoard 的
- *  starPin/starEss）。app 的 Icon 是线性描边（fill=none），观感与样图
- *  的实心星不同，故照抄样图那条 path，用 currentColor 由外部上色：
- *  置顶 text-coral、精华 text-sun。 */
-export function StarMark({ tone }: { tone: "coral" | "sun" }) {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-      className={`shrink-0 ${tone === "coral" ? "text-coral" : "text-sun"}`}
-    >
-      <path
-        d="M12 2l2.4 6.9L21 9l-5.3 4.2 1.7 6.8L12 16.6
-           6.6 20l1.7-6.8L3 9l6.6-.1z"
-      />
-    </svg>
-  );
-}
-
-/** 话题标记文字徽章（样图 badge--pin/sun）：置顶 / 精华。
- *  样式（底色/字色/圆角）在 forums-home.css 的 .fh-badge 系。 */
+/** 话题标记文字徽章（样图 badge--notice/pin/sun）：公告 / 置顶 / 精华。
+ *  样式（底色/字色/圆角）在 forums-home.css 的 .fh-badge 系。
+ *
+ *  2026-10-19：星形/图钉图标已按用户要求下线（只用文字徽章），
+ *  原 StarMark 组件一并删除——标记一律用本组件表达。 */
 export function MarkBadge({
   kind,
   label,
 }: {
-  kind: "pin" | "ess";
+  kind: "notice" | "pin" | "ess";
   label: string;
 }) {
   return <span className={`fh-badge fh-badge--${kind}`}>{label}</span>;

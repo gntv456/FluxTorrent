@@ -112,14 +112,22 @@ pub(super) async fn subtitle_upload(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 发字幕 +5 火花（旧站口径）——仅附件上传得奖励；外链填 URL 零成本刷分
-    // 不得发钱（四轮 A1）。奖励金额随链接与否落库。
+    // 发字幕奖励（P-4 接线）——读站点设定 `uploadsubtitle`（行为奖励卡，
+    // 缺省 5），站长改数值此前不生效（硬编码 5）。仅附件上传得奖励；
+    // 外链填 URL 零成本刷分不得发钱（四轮 A1）。奖励金额随链接与否落库。
     // P-42（本批实测）：幂等键必须锚「文件」而不是「字幕行」——旧键
     // subtitle:{uid}:{id} 每次重传都是新 id，而查重只看 deleted_at IS NULL，
-    // 于是「上传→自删→再传」可无限再领 +5（实测流水 2 条 / 10 火花）。
-    // 顺带：已发过的这一次不再谎报 reward=5（响应要与流水一致）。
+    // 于是「上传→自删→再传」可无限再领（实测流水 2 条 / 10 火花）。
+    // 顺带：已发过的这一次不再谎报 reward（响应要与流水一致）。
+    let subtitle_reward: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'uploadsubtitle'), 5)",
+    )
+    .fetch_one(&state.repo.db)
+    .await
+    .unwrap_or(5);
     let mut reward: i64 = if file_ref.starts_with("attach://") {
-        5
+        subtitle_reward
     } else {
         0
     };

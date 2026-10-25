@@ -32,7 +32,7 @@ const STATS_CLS =
   "num flex flex-wrap items-center gap-x-3 gap-y-0.5 " +
   "text-[11.5px] text-sub";
 const WALL_CLS =
-  "grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-3 " +
+  "grid list-none grid-cols-3 gap-2 p-0 sm:gap-3 " +
   "lg:grid-cols-5 xl:grid-cols-6";
 const WALL_ITEM_CLS =
   "group relative block overflow-hidden rounded-xl border border-line " +
@@ -86,9 +86,11 @@ function PromoBadges({ t, dict }: { t: TorrentListItem; dict: Dict }) {
   );
   const isNew = Date.now() - new Date(t.created_at).getTime() < 3 * 86400000;
   const userTags = t.tags ?? [];
-  // 0170 审核状态徽标：仅待审(0)/被拒(2)行显示（站点开关放行后进列表）
+  // 0170 审核状态徽标：仅待审(0)/被拒(2)/暂缓(4)行显示（站点开关放行后进列表）
   const approval =
-    t.approval_status === 0 || t.approval_status === 2
+    t.approval_status === 0 ||
+    t.approval_status === 2 ||
+    t.approval_status === 4
       ? t.approval_status
       : null;
   if (
@@ -118,18 +120,22 @@ function PromoBadges({ t, dict }: { t: TorrentListItem; dict: Dict }) {
       {isNew && (
         <span className="torrents-new">{dict.torrents.newTag}</span>
       )}
-      {/* 0170 审核状态徽标：与表格行同款（待审琥珀 / 被拒红） */}
+      {/* 0170 审核状态徽标：与表格行同款（待审琥珀 / 被拒红 / 暂缓灰） */}
       {approval !== null && (
         <span
           className={
             approval === 0
               ? "torrents-approval"
-              : "torrents-approval torrents-approval--rejected"
+              : approval === 2
+                ? "torrents-approval torrents-approval--rejected"
+                : "torrents-approval torrents-approval--held"
           }
         >
           {approval === 0
             ? dict.torrents.statusPending
-            : dict.torrents.statusRejected}
+            : approval === 2
+              ? dict.torrents.statusRejected
+              : dict.torrents.statusHeld}
         </span>
       )}
       {/* 用户标签徽标（0159 P1）：与表格行同口径，消费字典样式列 */}
@@ -231,7 +237,7 @@ export function TorrentCards({
   );
 }
 
-/** 海报墙：2/3 网格，移动 2 列 → 桌面 6 列；底部信息条压在图上 */
+/** 海报墙：2/3 网格，移动 3 列 → 桌面 6 列；底部信息条压在图上 */
 export function TorrentPosters({
   items,
   dict,
@@ -264,7 +270,7 @@ export function TorrentPosters({
               <Cover
                 t={t}
                 className="absolute inset-0 h-full w-full"
-                sizes="(max-width: 640px) 45vw, 220px"
+                sizes="(max-width: 639px) 30vw, 220px"
                 colors={colors}
               />
             </span>

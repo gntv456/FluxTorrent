@@ -185,7 +185,7 @@ export default async function UserProfilePage({
       )}
 
       {/* 标签页导航（憨憨式：链接切换 ?tab=，SSR 渲染对应内容，无客户端状态） */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="up-tabs flex flex-wrap items-center gap-1.5">
         {tabMeta.map((m) => (
           <Link
             key={m.key}

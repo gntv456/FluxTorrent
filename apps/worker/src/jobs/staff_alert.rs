@@ -34,17 +34,32 @@ pub(crate) async fn staff_alert(
     body: &str,
     permission: &str,
 ) -> u64 {
+    staff_alert_as(db, subject, body, permission, 90).await
+}
+
+/// 同上，但**署名档位**可指定：默认 90（老口径：class_id >= 90 的在册职员），
+/// 自动审种批次用的是 99（与 leak_bot 的署名口径一致：class_id >= 99）。
+/// 两档都收在**这个出口**里写，闸门 BQ 的 R1d（worker 里写 staffmessages 的
+/// 地方只许有出口件一处）才站得住——散落的第二处会各自长出不同的守卫。
+pub(crate) async fn staff_alert_as(
+    db: &PgPool,
+    subject: &str,
+    body: &str,
+    permission: &str,
+    min_class: i32,
+) -> u64 {
     // `t.uid IS NOT NULL` 是关键：把「没有收件署名」变成不插入，而不是插 NULL
     let r = sqlx::query(
         "INSERT INTO staffmessages (user_id, subject, body, permission) \
          SELECT t.uid, $1, $2, $3 \
          FROM (SELECT MIN(id) AS uid FROM users \
-                WHERE class_id >= 90 AND status < 2) t \
+                WHERE class_id >= $4 AND status < 2) t \
          WHERE t.uid IS NOT NULL",
     )
     .bind(subject)
     .bind(body)
     .bind(permission)
+    .bind(min_class)
     .execute(db)
     .await;
     match r {

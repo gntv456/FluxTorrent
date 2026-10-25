@@ -112,6 +112,46 @@ describe("MedalActions", () => {
     // 锁定态是静态 chip（非可点按钮）——按文本断言，不按 role=button
     expect(screen.getByText(/仅授予/)).toBeInTheDocument();
   });
+
+  it("余额不足 → 按钮禁用并显示「余额不足」，不发起购买", async () => {
+    const { api } = await import("@/lib/api-client");
+    const buySpy = vi
+      .spyOn(api, "post")
+      .mockImplementation(() => ok({}) as never);
+    render(
+      <MedalActions
+        medalId={5}
+        owned={false}
+        wearing={false}
+        price={30000}
+        getType={1}
+        balance={100}
+      />,
+    );
+    const btn = screen.getByRole("button", {
+      name: /余额不足/,
+    }) as HTMLButtonElement;
+    expect(btn).toBeDisabled();
+    await userEvent.click(btn);
+    expect(buySpy).not.toHaveBeenCalled();
+  });
+
+  it("余额未知（null）不预判，按钮可点交后端校验", () => {
+    render(
+      <MedalActions
+        medalId={5}
+        owned={false}
+        wearing={false}
+        price={30000}
+        getType={1}
+        balance={null}
+      />,
+    );
+    const btn = screen.getByRole("button", {
+      name: /购买/,
+    }) as HTMLButtonElement;
+    expect(btn).toBeEnabled();
+  });
 });
 
 describe("ClaimButton", () => {

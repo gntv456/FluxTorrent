@@ -213,7 +213,6 @@ export function MessageCenter() {
           setComposing((v) => !v);
         }}
       />
-
       {/* 文件夹管理（建/改名/删除=清空名） */}
       {boxManage && (
         <BoxManager

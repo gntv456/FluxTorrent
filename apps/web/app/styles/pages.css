@@ -423,6 +423,12 @@ table.subtitles-upload-table {
   font-size: 12px;
   color: var(--text-muted);
 }
+/* 论坛引用种子下拉（forum-torrent-insert）：复用 tsb-suggest 视觉，
+   定位改锚自身 wrapper（relative），左贴输入框、弹性同宽 */
+.fti-pop {
+  left: 0;
+  right: 0;
+}
 
 /* 高级搜索触发器：「给我搜」右侧的小齿轮按钮（点击开合 details，JS 在
    torrents-adv-gear.tsx）；原 summary 仍保留可点击 */
@@ -779,11 +785,47 @@ table.subtitles-upload-table {
 
 /* 窄屏收紧 */
 @media (max-width: 640px) {
+  /* 搜索行压成两行（原 156px：范围独占一行、输入独占一行、模式/按钮第三行）：
+     首行输入 + 给我搜 + 齿轮，次行范围/模式两个下拉。用 grid 固定行位，
+     输入框保住约 240px（纯 flex 折行时会被五个控件挤到 96px）。 */
+  .tsb-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    padding: 8px;
+    gap: 6px;
+  }
   .tsb-field__label {
     display: none;
   }
   .tsb-input {
-    flex: 1 1 100%;
+    grid-area: 1 / 1;
+    min-width: 0;
+    min-height: 36px;
+  }
+  .tsb-submit {
+    grid-area: 1 / 2;
+    min-height: 36px;
+    padding: 0 12px;
+  }
+  .tsb-adv-btn {
+    grid-area: 1 / 3;
+    width: 36px;
+    min-height: 36px;
+  }
+  .tsb-field--scope {
+    grid-area: 2 / 1;
+    min-width: 0;
+  }
+  .tsb-field--mode {
+    grid-area: 2 / 2 / 2 / 4;
+    min-width: 0;
+  }
+  .tsb-field--scope select,
+  .tsb-field--mode select {
+    width: 100%;
+    min-height: 32px;
+    padding: 2px 6px;
+    font-size: 12.5px;
   }
   .tsb-grid,
   .tsb-grid--half {
@@ -919,6 +961,8 @@ table.subtitles-upload-table {
   background: var(--danger);
   color: #fff;
 }
+/* 0306 暂缓(4)：中性灰——挂起等证据，非终态也非拒绝 */
+.torrents-approval--held { background: var(--line-soft); color: var(--ink); }
 .torrents-promo {
   padding: 0 6px;
   border-radius: 4px;
@@ -2919,6 +2963,35 @@ textarea.bbcode {
   font-size: 12px;
   font-weight: 600;
 }
+/* 磁贴列数按内容宽显式给：auto-fit minmax(160px) 在 360px 屏只剩单列
+   （328 内容宽放不下 160×2+12），5 块竖排把首屏撑到 400px。 */
+@media (max-width: 768px) and (min-width: 641px) {
+  .up-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .up-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .up-stat {
+    gap: 10px;
+    padding: 12px;
+  }
+  .up-stat__icon {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .up-stat__value {
+    font-size: 16px;
+  }
+  /* 5 块奇数时最后一块占满整行，避免右下留半格空洞 */
+  .up-stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
 /* 卡片网格：双列，gap 14；卡片按内容自然高度（align-items:start，不为对齐拉高） */
 .up-grid {
   display: grid;
@@ -3041,17 +3114,45 @@ textarea.bbcode {
     grid-column: auto;
     grid-row: auto;
   }
-  .up-hero {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-  }
+  /* 窄屏标签列固定 96px 仍放得下（最长的「真实分享率」≈86px）；
+     原先把每行折成上下两段，账号信息卡在手机上高 380px */
   .up-row {
-    flex-direction: column;
-    gap: 4px;
+    gap: 10px;
   }
   .up-row__label {
-    flex-basis: auto;
+    flex: 0 0 96px;
+  }
+}
+/* 手机上标签页排成一行横向滚动（9 个药丸折三行太占首屏）；
+   下一级进度的进度条通栏放第二行（原布局 360px 屏只剩 44px 可见） */
+@media (max-width: 640px) {
+  .up-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .up-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .up-tabs > a {
+    flex: 0 0 auto;
+  }
+  .up-progress {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .up-progress__label {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .up-progress__val {
+    width: auto;
+    flex: 0 1 auto;
+  }
+  .up-progress__track {
+    order: 3;
+    flex: 1 0 100%;
   }
 }
 
@@ -3634,19 +3735,14 @@ input.batch-all {
 }
 
 /* ============ M6.1 卡片网格类：compact 档单列降级 ============
- * 任务/勋章/商店等卡片网格 auto-fill(minmax) 在窄屏仍会挤到最小卡宽，
- * 信息密度不可读。统一在此收敛：767px 以下五张网格全部降单列。
- * 断点口径与 M1 断点归一（<768 = compact）一致。
- * （task-shop-grid 复用 task-card-grid 列定义，无独立规则，故无需列条目） */
+ * 任务卡片网格 auto-fill(minmax) 在窄屏仍会挤到最小卡宽，
+ * 信息密度不可读。767px 以下降单列（断点口径与 M1 归一）。
+ * 勋章/商店网格（.hall-grid/.honor-grid/.shop-grid）的列定义住在
+ * 后导入的 medal-shop.css：它们的轨道本就放得下 320 屏，保留 auto-fill
+ * 的多列密度，不做单列降级（覆盖写这里会被源序压掉）。 */
 @media not all and (min-width: 768px) {
-  .task-card-grid,
-  .hall-grid,
-  .honor-grid,
-  .shop-grid {
-    grid-template-columns: 1fr;
-  }
-  .shop-grid {
-    padding: 10px;
+  .task-card-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

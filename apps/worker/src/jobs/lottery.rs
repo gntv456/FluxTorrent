@@ -161,14 +161,15 @@ pub(crate) async fn lottery_settle(
     // 押款有流水、派彩有流水，全站「快照 = 基线 + 流水」的对账仍然平，
     // 所以没有任何人看得见这笔损失（现网 topic_lotteries 至今 0 行 ⇒ 潜伏）。
     // 同一事务、同一幂等键纪律 ⇒ 重跑安全。
-    let short = (winners as i64 - picked.len() as i64).max(0)
-        * (prize as i64);
+    let short = (winners as i64 - picked.len() as i64).max(0) * (prize as i64);
     if short > 0 {
-        let op: i64 = sqlx::query_scalar("SELECT user_id FROM topics \
-                                          WHERE id = $1")
-            .bind(topic_id)
-            .fetch_one(&mut *tx)
-            .await?;
+        let op: i64 = sqlx::query_scalar(
+            "SELECT user_id FROM topics \
+                                          WHERE id = $1",
+        )
+        .bind(topic_id)
+        .fetch_one(&mut *tx)
+        .await?;
         let exists: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM spark_ledger \
              WHERE idempotency_key = $1)",

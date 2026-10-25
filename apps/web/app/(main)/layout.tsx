@@ -1,5 +1,4 @@
 import { Header, MobileTabBar } from "@/components/layout";
-import { TabletSidebar } from "@/components/tablet-sidebar";
 import { buildNav } from "@/lib/nav-menu";
 import { getMenuItems } from "@/lib/data";
 import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
@@ -24,7 +23,9 @@ export default async function MainLayout({
     getSiteDims(),
     getMenuItems("topbar").catch(() => []),
   ]);
-  const { primary: navPrimary } = buildNav({
+  // buildNav 此处仅为类型兼容保留调用链（Header 内部会再算一次，
+  // getSiteProfile/getDict 是 React cache 同请求去重，无二次请求）。
+  buildNav({
     nav: dict.nav,
     tabbar: dict.tabbar,
     currency,
@@ -37,14 +38,12 @@ export default async function MainLayout({
       <Header />
       {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}
       <MotionShell />
-      {/* M4：md-lg 平板细侧栏（底 Tab 同步隐藏，见 CSS） */}
+      {/* 2026-10-19 平板对齐手机：M4 细侧栏（tsidebar）退役——平板区间
+          改由底部 5 Tab + 顶栏汉堡抽屉承担导航（与手机同构），
+          侧栏让出内容宽度。桌面 ≥lg 仍是顶栏平铺。 */}
       {/* 内容容器与页头/页脚同宽（1536）：此前内容 1280、页头页脚 1536，
           1920 屏上内容比页头页脚窄一截，显得小气（2026-10-20 用户口径） */}
       <div className="flex">
-        <TabletSidebar
-          items={navPrimary.map((n) => ({ ...n, icon: null }))}
-          ariaLabel={dict.nav.ariaPrimary}
-        />
         <main
           id="main-content"
           className="mx-auto min-w-0 w-full max-w-[1536px] flex-1 px-4 pb-24

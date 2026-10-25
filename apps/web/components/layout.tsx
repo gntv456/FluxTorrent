@@ -7,13 +7,12 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { MainMenu } from "@/components/main-menu";
-import { HeaderSearch } from "@/components/header-search";
 import { CustomMenu } from "@/components/custom-menu";
 import { Icon } from "@/components/icons";
 import { getMenuItems } from "@/lib/data";
 import { buildNav } from "@/lib/nav-menu";
 import { MobileNavShell } from "@/components/mobile-nav-shell";
-import { GlobalSearchDialog } from "@/components/global-search-dialog";
+import { GlobalSearch } from "@/components/global-search";
 import { TabLink } from "@/components/tab-link";
 import { api } from "@/lib/api-client";
 
@@ -61,7 +60,7 @@ export async function Header() {
     <>
       <header className="tide-header border-b border-line">
         {/* 单行导航条：品牌（logo）居左 + 一级/更多菜单 + 主题/语言/头像弹窗居右 */}
-        <div className="mx-auto flex min-h-[72px] w-full max-w-[1536px] items-center gap-3 px-4 py-2 md:gap-5 md:px-6">
+        <div className="mx-auto flex min-h-[56px] w-full max-w-[1536px] items-center gap-3 px-3 py-1 md:min-h-[72px] md:gap-5 md:px-6 md:py-2">
           {/* M1：品牌长站名在 375px 会把右侧工具区推出视口（brand + 工具 + 头像
               总宽 >375）。窄屏截断品牌字，min-w-0 允许收缩；完整名留在 logo title。
               ⚠️ min-w-0 必须挂在 Link 上：truncate 的 span 是 nowrap 文本，
@@ -70,7 +69,7 @@ export async function Header() {
           <Link
             href="/"
             title={brand}
-            className="flex min-w-0 max-w-[46%] shrink items-center
+            className="flex min-w-0 max-w-[56%] shrink items-center
               gap-2 md:max-w-none"
           >
             {/* 品牌标记：内置 FluxTorrent 站标（白字深底，浅色/夜间均可见）；
@@ -87,9 +86,10 @@ export async function Header() {
               {brand}
             </span>
           </Link>
-          <div className="min-w-0 flex-1">
+          <div className="hidden min-w-0 flex-1 lg:block">
             {/* Suspense：MainMenu 用 useSearchParams 区分带参条目（官种），
-                预渲染路由要求它包在边界里 */}
+                预渲染路由要求它包在边界里。2026-10-21：<lg 不再渲染「更多 ▾」
+                ——抽屉已承载全部同源入口，两者并排属于重复导航，也白占顶栏宽度。 */}
             <Suspense fallback={null}>
               <MainMenu
                 items={primary}
@@ -102,32 +102,23 @@ export async function Header() {
           {/* IA-1（W-30）：顶栏搜索直显框——/top 从一级让位给它。
               <md 收进汉堡抽屉（右工具区在 375px 已超宽），桌面常驻。 */}
           <div className="hidden w-44 shrink-0 md:block lg:w-56">
-            <HeaderSearch
+            <GlobalSearch
               placeholder={dict.common.globalSearchPh}
-              label={dict.common.globalSearchBtn}
+              tipTorrents={dict.common.gsTorrents}
+              tipTopics={dict.common.gsTopics}
+              tipEmpty={dict.common.gsEmpty}
+              tipMore={dict.common.gsMore}
+              tipSearching={dict.common.gsSearching}
+              tipError={dict.common.gsError}
+              retryLabel={dict.common.gsRetry}
             />
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {/* M2 移动汉堡（<md）：抽屉与桌面同源配置；摘要行回落游客 */}
-            <div className="md:hidden">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {/* 移动/平板汉堡（<lg）：抽屉与桌面同源配置；摘要行回落游客。
+                2026-10-19 平板收敛：768–1023 也收进抽屉（实测该宽度段
+                一级 5 项竖排 5 行、顶栏 259px），lg+ 才恢复桌面平铺。 */}
+            <div className="lg:hidden">
               <MobileNavShell primary={primary} groups={groups} summary={me} />
-            </div>
-            {/* 全局搜索（0283 P1-6 → 弹窗化）：以前它独占头栏一行，
-                实测头栏两行 117px；收成一个按钮 + 弹窗后一行 73px。
-                与主题切换同档（<md 隐藏）——280px 折叠屏外屏态的右工具区
-                本来就已经挤，不能再往里塞东西。 */}
-            <div className="hidden md:block">
-              <GlobalSearchDialog
-                label={dict.common.globalSearchBtn}
-                placeholder={dict.common.globalSearchPh}
-                tipTorrents={dict.common.gsTorrents}
-                tipTopics={dict.common.gsTopics}
-                tipEmpty={dict.common.gsEmpty}
-                tipMore={dict.common.gsMore}
-                tipSearching={dict.common.gsSearching}
-                tipError={dict.common.gsError}
-                retryLabel={dict.common.gsRetry}
-              />
             </div>
             {/* 主题切换 <md 收进汉堡抽屉：280px 折叠屏外屏态右工具区
                 （汉堡+主题+头像）会挤出横向滚动 */}
@@ -152,7 +143,9 @@ export async function Header() {
   );
 }
 
-/** 移动底部 5 Tab（Seedlight §3）：首页/发现/发布（极光凸起）/消息/我的 */
+/** 移动/平板底部 5 Tab（Seedlight §3）：首页/发现/发布（极光凸起）/消息/我的。
+ *  2026-10-19 平板对齐手机：<lg（含 768–1023 平板）同样显示——顶栏一级
+ *  已收进汉堡抽屉，底部 Tab 提供高频四口，与手机完全同构。 */
 export async function MobileTabBar() {
   const { dict } = await getDict();
   const profile = await getSiteProfile();
@@ -193,7 +186,7 @@ export async function MobileTabBar() {
   return (
     <nav
       aria-label={dict.tabbar.ariaBottom}
-      className="fixed inset-x-0 bottom-0 z-40 flex items-end border-t border-line bg-[var(--brand-paper)] pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex items-end border-t border-line bg-[var(--brand-paper)] pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {tabs.map((t) =>
         t.center ? (

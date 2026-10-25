@@ -176,11 +176,22 @@
   border-bottom: none;
 }
 .fh-hot__rk {
-  width: 16px;
+  display: flex;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  color: var(--text-faint);
-  font-size: 11px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+  font-size: 10.5px;
   font-weight: 800;
+}
+/* 前三名用 coral（样图 .f3b-hot .row:nth-child(-n+3) .rk） */
+.fh-hot__rk--top {
+  background: var(--coral-soft);
+  color: var(--coral);
 }
 .fh-hot__tt {
   flex: 1;
@@ -260,6 +271,375 @@
   transform: translateY(-1px);
 }
 
+/* ---------- 中栏：话题流（样图集 § tplForum 中列：筛选行 + 列表） ----------
+ * 结构对齐样图 .f3b-filter / .f3b-list / .f3b-topic：白卡列表 +
+ * 头像 + 标题行（置顶/精华标 + 版块徽章 + 热度标）+ 作者/时间 +
+ * 右侧回复数 / 最后回复两档。置顶行 sky-soft 底 + 左 3px 内描边
+ * （样图 .f3b-topic--pin 口径）。 */
+.fh-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.fh-filter a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--brand-paper);
+  color: var(--sub);
+  font-size: 12px;
+  transition: border-color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+.fh-filter a:hover,
+.fh-filter a.on {
+  border-color: var(--sky);
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+}
+.fh-filter__dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.fh-stream__list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--brand-paper);
+  box-shadow: var(--shadow-card);
+}
+.fh-stream__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--cloud);
+  color: var(--sub);
+  font-size: 12px;
+}
+.fh-stream__head b {
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.fh-stream__sp {
+  flex: 1;
+  min-width: 0;
+}
+/* 列头（回复列已去掉：只留话题 + 最后回复两列） */
+.fh-stream__col-last {
+  width: 92px;
+  text-align: right;
+}
+.fh-stream__empty {
+  padding: 32px 14px;
+  color: var(--sub);
+  font-size: 13px;
+  text-align: center;
+}
+
+.fh-topic {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+.fh-topic:last-child {
+  border-bottom: none;
+}
+.fh-topic:hover {
+  background: var(--cloud);
+}
+/* 公告行（样图 f3b-topic--notice：coral-soft 底 + 左 3px coral，
+   优先级最高——与 pin/ess 并存时公告色压过其余两档） */
+.fh-topic--notice {
+  background: var(--coral-soft);
+  box-shadow: inset 3px 0 0 var(--coral);
+}
+.fh-topic--notice:hover {
+  background: var(--coral-soft);
+}
+.fh-topic--pin {
+  background: var(--sky-soft);
+  box-shadow: inset 3px 0 0 var(--sky);
+}
+.fh-topic--pin:hover {
+  background: var(--sky-soft);
+}
+/* 精华行：样图没给行底色（只给了徽章），按用户要求补 sun-soft，
+   与徽章同色系；公告行同理备好（本站暂无公告类型） */
+.fh-topic--ess {
+  background: var(--sun-soft);
+  box-shadow: inset 3px 0 0 var(--sun);
+}
+.fh-topic--ess:hover {
+  background: var(--sun-soft);
+}
+
+/* ---------- 话题标记（样图 badge--pin/sun/notice：星形图标 + 文字徽章） ---------- */
+.fh-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.fh-badge--pin {
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+.fh-badge--ess {
+  background: var(--sun-soft);
+  color: #92400e;
+}
+.fh-badge--notice {
+  background: var(--coral);
+  color: #fff;
+}
+/* 深色主题：sun-soft 是深底、coral 提亮，字色跟着翻 */
+[data-theme="brand-night"] .fh-badge--ess {
+  color: #fbbf24;
+}
+[data-theme="brand-night"] .fh-badge--notice {
+  color: #2a1005;
+}
+.fh-topic__av {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.fh-topic__main {
+  flex: 1;
+  min-width: 0;
+}
+.fh-topic__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.fh-topic__t {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-topic__t:hover {
+  color: var(--sky);
+}
+.fh-topic__board {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.fh-topic__hot {
+  flex-shrink: 0;
+  color: var(--coral);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.fh-topic__meta {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-topic__meta b {
+  color: var(--sub);
+  font-weight: 600;
+}
+.fh-topic__sep {
+  margin: 0 4px;
+}
+.fh-topic__stats {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 16px;
+}
+.fh-topic__last {
+  min-width: 92px;
+  text-align: right;
+}
+.fh-topic__last b {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-topic__last small {
+  display: block;
+  color: var(--text-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ---------- 左栏版块导航（样图 f3b-nav：全部版块 + 分组 + 各版块计数） ----------
+ * 挂在既有 .pting-sidenav 卡内（pages.css），这里只补分组标签、
+ * 右对齐计数与隐藏版块的划线态。 */
+.fh-nav__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 3px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.fh-nav__group::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--line);
+}
+.fh-nav__cnt {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+.fh-nav__hidden {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+/* 左栏二级（版块）缩进：与一级「全部版块」分出层级（样图 --sub 口径）。
+ * ⚠️ 必须带 .pting-sidenav 前缀：pages.css 的 `.pting-sidenav a`
+ * （0,1,1）会压过单类选择器（0,1,0），只写 .fh-nav__sub 缩进不生效。 */
+.pting-sidenav a.fh-nav__sub {
+  padding-left: 20px;
+  font-size: 12.5px;
+}
+/* 一级选中态（样图 f3b-nav__item.active：sky-soft 底 + 加深字 + 加粗） */
+.pting-sidenav a.on {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+  font-weight: 700;
+}
+/* 二级圆点：6px 实心圆（样图 f3b-nav__item i） */
+.fh-nav__dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+/* ---------- 中栏游客 / 取档失败两态 ---------- */
+.fh-stream__guest {
+  padding: 28px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--brand-paper);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+.fh-stream__guest b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 14px;
+}
+.fh-stream__guest p {
+  margin: 0 0 14px;
+  color: var(--sub);
+  font-size: 12.5px;
+}
+
+/* ---------- 手机端工具条（≤768px）：四个按钮一排，各自开弹窗 ----------
+ * 按钮本体是行内工具类（forum-mobile-bar.tsx），这里只定容器布局。
+ * 桌面 display:none——桌面两翼留在列里，不需要弹窗。 */
+.fh-mbar {
+  display: none;
+}
+
+/* 手机筛选弹窗里的四档（竖排选择行，选中项 sky-soft） */
+.fh-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fh-pick__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.fh-pick__row:hover,
+.fh-pick__row.on {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+}
+.fh-pick__row.on {
+  font-weight: 800;
+}
+.fh-pick__dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+/* 「更多」弹窗顶部两个动作（关注流 / 发布主题） */
+.fh-macts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fh-macts__a {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--brand-paper);
+  color: var(--sky-deep);
+  font-size: 13px;
+  font-weight: 800;
+}
+/* TopicComposer 的按钮在弹窗里也要占满一格（其根节点是 inline-flex） */
+.fh-macts > *:last-child {
+  width: 100%;
+}
+
 /* ---------- 断点：右列先落到底部整行，再与左列一起收成一列 ---------- */
 @media (max-width: 1024px) {
   .pting-forums {
@@ -276,6 +656,33 @@
   }
   .fh-side {
     position: static;
+  }
+  /* 手机端：两翼收进弹窗（选择器带 .pting-forums 父级——弹窗内容
+     portal 到 body，不是这里的直接子节点，所以不会被连坐隐藏） */
+  .pting-forums > .fh-left,
+  .pting-forums > .fh-side {
+    display: none;
+  }
+  /* 页头的搜索/关注流/发帖挪进弹窗，手机上整条页头没有可见内容——
+     整条隐藏（h1 已移到页头之外，无障碍树不受影响） */
+  .fh-head__search,
+  .fh-head__feed,
+  .fh-head__new {
+    display: none;
+  }
+  .pting-board__head {
+    display: none;
+  }
+  /* 话题流里的筛选行同理（改由「筛选」弹窗） */
+  .fh-filter {
+    display: none;
+  }
+  /* 四按钮一排 */
+  .fh-mbar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
   }
 }
 

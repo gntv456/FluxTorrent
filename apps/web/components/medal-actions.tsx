@@ -22,6 +22,7 @@ export function MedalActions({
   wearing,
   price,
   getType,
+  balance,
   giftFeeBp,
   globalGiftTaxBp,
   onWearChange,
@@ -31,6 +32,9 @@ export function MedalActions({
   wearing: boolean;
   price: number | null;
   getType: number;
+  /** 当前魔力余额（null=匿名/未知：不预判，购买交后端校验）。
+   *  余额 < 价格时按钮禁用并显示「余额不足」（shop BuyButton 同款口径）。 */
+  balance?: number | null;
   /** per-勋章赠送手续费（基点；null = 用全站） */
   giftFeeBp?: number | null;
   /** 全站赠送税率（基点，仅用于费率提示） */
@@ -44,6 +48,8 @@ export function MedalActions({
   const [msg, setMsg] = useState<string | null>(null);
   const [idem] = useState(() => `web-medal-${medalId}-${clientUuid()}`);
   const buyable = getType === 1 && price !== null;
+  // 余额已知且不够 → 禁用购买（null 不预判，后端 4001 兜底）
+  const affordable = balance == null || price == null || balance >= price;
   // P2 清偿：赠送对象采集（window.prompt 退役 → 输入槽）
   const ask = useConfirm();
 
@@ -166,9 +172,10 @@ export function MedalActions({
             <button
               type="button"
               onClick={buy}
-              className="btn btn-sm btn-primary"
+              disabled={!affordable}
+              className={`btn btn-sm${affordable ? " btn-primary" : ""}`}
             >
-              {dict.medals.buy}
+              {affordable ? dict.medals.buy : dict.medals.insufficient}
             </button>
             {giftBtn}
           </>

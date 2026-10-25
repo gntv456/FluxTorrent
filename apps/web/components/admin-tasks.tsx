@@ -9,7 +9,7 @@ import { ExamUsersPanel } from "@/components/admin-tasks-exams";
 import { TasksTable } from "./admin-tasks-table";
 import { TasksForm } from "./admin-tasks-form";
 import type { TaskRow } from "./admin-tasks-shared";
-import { EMPTY } from "./admin-tasks-shared";
+import { EMPTY, fromPenaltyItems, toPenaltyItems } from "./admin-tasks-shared";
 
 /** 任务定义 + 考核配置（tasks 表 CRUD，0093 起 kind/auto_assign/period 支撑考核引擎）。
  *  考核记录浏览拆出 admin-tasks-exams.tsx；列表拆至 ./admin-tasks-table.tsx；
@@ -79,6 +79,11 @@ export function AdminTasks() {
         fee: Number(edit.f.fee) || 0,
         quota_total: Number(edit.f.quota_total) || 200,
         sort: Number(edit.f.sort) || 0,
+        // 0397 处置菜单：仅考核类型提交（后端校验 kind 白名单）
+        fail_penalty:
+          edit.f.kind !== "task"
+            ? toPenaltyItems(edit.f.penaltyChecked, edit.f.penaltyParams)
+            : [],
       };
       if (edit.id === null) await api.post("/api/v1/admin/tasks", payload);
       else await api.put(`/api/v1/admin/tasks/${edit.id}`, payload);

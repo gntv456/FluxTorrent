@@ -21,8 +21,10 @@ export function InviteQuotaPanel({
   quotaLeft,
   canIssue,
   busy,
+  filter,
   onIssue,
   onRedeem,
+  onFilter,
 }: {
   status: InviteStatus | null;
   t: Record<string, string>;
@@ -31,8 +33,10 @@ export function InviteQuotaPanel({
   quotaLeft: number;
   canIssue: boolean;
   busy: boolean;
+  filter: number | null;
   onIssue: () => void;
   onRedeem: () => void;
+  onFilter: (status: number) => void;
 }) {
   const issueLabelWith = (base: string, lvOk: boolean, left: number) => {
     if (!lvOk) return t.issueDisabledLevel;
@@ -62,15 +66,28 @@ export function InviteQuotaPanel({
             </span>
           </p>
         </div>
+        {/* 三块计数同时是列表筛选器（再点一次取消），角标数与筛选结果同口径 */}
         {[
-          { label: t.statUnused, value: status?.unused },
-          { label: t.statUsed, value: status?.used },
-          { label: t.statExpired, value: status?.expired },
+          { label: t.statUnused, value: status?.unused, status: 0 },
+          { label: t.statUsed, value: status?.used, status: 1 },
+          { label: t.statExpired, value: status?.expired, status: 2 },
         ].map((s) => (
-          <div key={s.label} className={PANEL_MD_FLAT}>
+          <button
+            key={s.status}
+            type="button"
+            aria-pressed={filter === s.status}
+            title={t.filterHint}
+            onClick={() => onFilter(s.status)}
+            className={`${PANEL_MD_FLAT} cursor-pointer text-left
+              transition-shadow ${
+                filter === s.status
+                  ? "ring-2 ring-sky-deep"
+                  : "hover:ring-1 hover:ring-line"
+              }`}
+          >
             <p className="text-xs text-sub">{s.label}</p>
             <p className="mt-1 num text-lg font-bold">{s.value ?? "—"}</p>
-          </div>
+          </button>
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-2">

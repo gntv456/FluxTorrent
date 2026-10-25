@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MarkBadge, StarMark } from "@/components/forum-bits";
+import { MarkBadge } from "@/components/forum-bits";
 import type { Dict } from "@/i18n/server";
 import type { ForumRecentTopic } from "@fluxtorrent/domain-types";
 
@@ -41,10 +41,15 @@ const badgePair = (id: number) => BADGE_PAIRS[id % BADGE_PAIRS.length];
 const avatarBg = (name: string) =>
   AV_GRADIENTS[hash(name) % AV_GRADIENTS.length];
 
-/** 热度标：浏览过千才显示（样图 hot-tag；数字是真的 views）；
- *  标签词走字典（i18n 门禁），数字部分本地拼 */
-const hotTag = (views: number, label: string) =>
-  views >= 1000 ? `${label} ${(views / 1000).toFixed(1)}k` : null;
+/** 热度标（样图 hot-tag「热 1.2k」）：**判定在后端**——阈值读管理端
+ *  设置 site_settings.forum_hot_views（0397，0 = 关闭），接口回 hot 布尔；
+ *  这里只拼文案与数量：过千折成 1.2k，未过千显示原数（阈值调低时
+ *  98 次浏览显示「热 98」而不是「热 0.1k」）。 */
+const hotTag = (views: number, label: string, hot: boolean) => {
+  if (!hot) return null;
+  const n = views >= 1000 ? `${(views / 1000).toFixed(1)}k` : String(views);
+  return `${label} ${n}`;
+};
 
 /** MM-DD HH:mm（样图话题行的时间格式；本地时区渲染，理由见使用处） */
 const stamp = (iso: string | null) => {
@@ -56,7 +61,7 @@ const stamp = (iso: string | null) => {
   )}`;
 };
 
-export type StreamType = "sticky" | "digest" | undefined;
+export type StreamType = "notice" | "sticky" | "digest" | undefined;
 
 export function ForumHomeStream({
   topics,
@@ -69,13 +74,13 @@ export function ForumHomeStream({
   dict: Dict;
 }) {
   const t = dict.forums;
+  // 样图筛选行四档：全部话题 / 只看公告 / 只看置顶 / 只看精华
   const filters: [StreamType, string][] = [
     [undefined, t.filterAll],
+    ["notice", t.filterNotice],
     ["sticky", t.filterSticky],
     ["digest", t.filterDigest],
   ];
-  // 「回复 {n}」是带占位的句子，取列头用去掉占位的纯词
-  const replyLabel = t.replies.replace("{n}", "").trim() || t.replies;
 
   return (
     <div className="fh-stream">
@@ -83,12 +88,15 @@ export function ForumHomeStream({
       <div className="fh-filter">
         {filters.map(([val, label]) => {
           const on = val === type;
+          // 圆点色（样图）：全部 sky / 公告 coral / 置顶 indigo / 精华 sun
           const dot =
-            val === "sticky"
+            val === "notice"
               ? "bg-coral"
-              : val === "digest"
-                ? "bg-sun"
-                : "bg-sky";
+              : val === "sticky"
+                ? "bg-indigo"
+                : val === "digest"
+                  ? "bg-sun"
+                  : "bg-sky";
           return (
             <Link
               key={val ?? "all"}
@@ -105,10 +113,9 @@ export function ForumHomeStream({
 
       <div className="fh-stream__list">
         <div className="fh-stream__head">
-          <b>{t.topicTitleFallback}</b>
+          <b>{t.colTopic}</b>
           <span className="fh-stream__sp" />
-          <span className="fh-stream__col-reply">{replyLabel}</span>
-          <span className="fh-stream__col-last">{t.lastPost}</span>
+          <span className="fh-stream__col-last">{t.colLast}</span>
         </div>
         {topics.length === 0 ? (
           <p className="fh-stream__empty">{t.noTopics}</p>
@@ -116,14 +123,16 @@ export function ForumHomeStream({
           topics.map((x) => {
             const [bb, bf] = badgePair(x.forum_id);
             const last = x.last_replier ?? x.username ?? "—";
-            // 行底色（样图 f3b-topic--pin/--notice 口径；精华行样图没给
-            // 底色，按用户要求补 sun-soft，与徽章同色系）：
-            // 置顶 sky-soft + 左 3px sky；精华 sun-soft + 左 3px sun
-            const rowTone = x.sticky
-              ? " fh-topic--pin"
-              : x.digest
-                ? " fh-topic--ess"
-                : "";
+            // 行底色（样图 f3b-topic 三档，优先级 公告 > 置顶 > 精华）：
+            // 公告 coral-soft + 左 3px coral；置顶 sky-soft + sky；
+            // 精华 sun-soft + sun（精华行底色样图未给，按约定补）
+            const rowTone = x.notice
+              ? " fh-topic--notice"
+              : x.sticky
+                ? " fh-topic--pin"
+                : x.digest
+                  ? " fh-topic--ess"
+                  : "";
             return (
               <div key={x.id} className={`fh-topic${rowTone}`}>
                 <span
@@ -135,53 +144,49 @@ export function ForumHomeStream({
                 </span>
                 <div className="fh-topic__main">
                   <div className="fh-topic__title">
-                    {/* 标记顺序照样图：星形图标 → 文字徽章 → 标题 */}
-                    {x.sticky && <StarMark tone="coral" />}
-                    {x.digest && <StarMark tone="sun" />}
-                    {x.sticky && (
-                      <MarkBadge kind="pin" label={t.markPin} />
+                    {/* 标记只用**文字徽章**（用户要求：不再要图钉/星形图标）：
+                        公告 > 置顶 > 精华 依次出，多个标记同时存在就都显示，
+                        不靠图标表达第二层含义 */}
+                    {x.notice && (
+                      <MarkBadge kind="notice" label={t.markNotice} />
                     )}
-                    {x.digest && (
-                      <MarkBadge kind="ess" label={t.markEss} />
-                    )}
+                    {x.sticky && <MarkBadge kind="pin" label={t.markPin} />}
+                    {x.digest && <MarkBadge kind="ess" label={t.markEss} />}
                     <Link
                       href={`/forums/topic/${x.id}`}
                       className="fh-topic__t"
                     >
                       {x.title}
                     </Link>
-                    <span className={`fh-topic__board ${bb} ${bf}`}>
-                      {x.forum_name}
-                    </span>
-                    {hotTag(x.views, t.hot) && (
+                    {hotTag(x.views, t.hot, Boolean(x.hot)) && (
                       <span className="fh-topic__hot">
-                        {hotTag(x.views, t.hot)}
+                        {hotTag(x.views, t.hot, Boolean(x.hot))}
                       </span>
                     )}
                   </div>
                   <div className="fh-topic__meta">
-                    {t.author}
+                    {/* 版块名在作者前面（用户要求；也替代了标题行的徽章位） */}
+                    <span className={`fh-topic__board ${bb} ${bf}`}>
+                      {x.forum_name}
+                    </span>
+                    {t.authorMeta}
                     <b>{x.username ?? "—"}</b>
                     <span className="fh-topic__sep">·</span>
-                    {/* 容器跑 UTC、浏览器在本地时区，文本必然不同——这是
+                    {/* meta = **发布时间**（与右侧最后回复时间分开）；
+                        容器跑 UTC、浏览器在本地时区，文本必然不同——这是
                         有意的差异（与版块页同一口径），抑制 hydration 告警 */}
                     <span suppressHydrationWarning>
-                      {stamp(x.last_post_at) ?? "—"}
+                      {stamp(x.created_at ?? x.last_post_at) ?? "—"}
                     </span>
                   </div>
                 </div>
                 <div className="fh-topic__stats">
-                  <div className="fh-topic__reply">
-                    <b className="num">{Math.max(x.replies, 0)}</b>
-                    <small>{replyLabel}</small>
-                  </div>
+                  {/* 回复列已去掉（用户要求）；最后回复不再带「最后回复」
+                      四个字，只留回复人与时间 */}
                   <div className="fh-topic__last">
                     <b>{last}</b>
-                    <small>
-                      {t.lastPost}{" "}
-                      <span suppressHydrationWarning>
-                        {stamp(x.last_post_at) ?? ""}
-                      </span>
+                    <small suppressHydrationWarning>
+                      {stamp(x.last_post_at) ?? ""}
                     </small>
                   </div>
                 </div>

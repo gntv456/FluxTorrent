@@ -149,7 +149,14 @@ pub(crate) async fn run(db: &PgPool) -> anyhow::Result<u64> {
             d.hit_cap,
         );
         record_step(
-            db, c.user_id, lvl, cfg.base_days, &d, step, &note, &subject,
+            db,
+            c.user_id,
+            lvl,
+            cfg.base_days,
+            &d,
+            step,
+            &note,
+            &subject,
             &body,
         )
         .await?;
@@ -175,7 +182,6 @@ pub(crate) async fn run(db: &PgPool) -> anyhow::Result<u64> {
     }
     Ok(changed)
 }
-
 
 /// 到期且已无未解决违规 → 清零警告并解锁下载。
 ///

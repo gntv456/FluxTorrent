@@ -8,6 +8,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { getDict } from "@/i18n/server";
+import { accountHealthCopy } from "@/i18n/account-health";
 import { getSiteProfile } from "@/lib/site-profile";
 import { api } from "@/lib/api-client";
 
@@ -31,7 +32,7 @@ export default async function MyPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const { dict } = await getDict();
+  const { dict, locale } = await getDict();
   const profile = await getSiteProfile().catch(() => null);
   // 页面头所需的身份信息（样图 § pg-head：面包屑 + 标题 + 描述 + 右侧徽章）。
   // 取不到就降级为无描述，绝不因此挡住控制面板本身。
@@ -80,9 +81,12 @@ export default async function MyPage({
         }
       />
       <UsercpPanel initialTab={tab} nav={nav} />
-      <p className="text-xs text-sub">
+      <p className="flex flex-wrap gap-x-3 text-xs text-sub">
+        <Link href="/account-health" className="faqlink">
+          {accountHealthCopy[locale].title}
+        </Link>
         <Link href="/faq" className="faqlink">
-          {dict.my.center}
+          {dict.faq.title}
         </Link>
       </p>
     </div>

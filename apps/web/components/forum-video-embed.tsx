@@ -10,8 +10,9 @@
  * 规则来自 GET /api/v1/forums/embed-rules（总开关关闭时后端返回空数组，
  * 全部视频语法自动降级为链接）。
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { EmbedRule } from "@/lib/data-forum";
+import { isBilibiliShortUrl, resolveVideoUrl } from "@/lib/forum-video";
 import { useI18n } from "@/i18n/client";
 
 const ASPECT_CLASS: Record<string, string> = {
@@ -133,7 +134,23 @@ export function VideoEmbedBlock({
   url: string;
   rules: EmbedRule[] | null;
 }) {
-  const hit = matchEmbedRule(url, rules);
+  // b23.tv 短链不在规则表里：渲染时解析成完整视频页再匹配（旧帖同样生效）。
+  const [resolved, setResolved] = useState<string | null>(null);
+  const effective = resolved ?? url;
+  const hit = matchEmbedRule(effective, rules);
+  const needsResolve =
+    !!rules?.length && !hit && isBilibiliShortUrl(url);
+  useEffect(() => {
+    if (!needsResolve) return;
+    let alive = true;
+    resolveVideoUrl(url).then((u) => {
+      if (alive && u !== url) setResolved(u);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [url, needsResolve]);
+
   if (!hit) {
     return (
       <a
@@ -163,7 +180,7 @@ export function VideoEmbedBlock({
       src={hit.src}
       aspect={hit.rule.aspect}
       name={hit.rule.name_zh}
-      href={url}
+      href={effective}
     />
   );
 }

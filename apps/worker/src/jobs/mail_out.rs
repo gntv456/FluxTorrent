@@ -156,7 +156,11 @@ pub(crate) async fn mail_outbox_drain(db: &PgPool) -> anyhow::Result<u64> {
                 .await
                 .unwrap_or(0);
                 if attempts >= 5 {
-                    tracing::warn!(id, to, "mail_outbox: 达重试上限，落死信告警");
+                    tracing::warn!(
+                        id,
+                        to,
+                        "mail_outbox: 达重试上限，落死信告警"
+                    );
                     // P-428：这里原先自己写
                     // `INSERT … SELECT MIN(id) … WHERE class_id >= 99`——
                     // 把聚合当 EXISTS 用：命中 0 行时 `MIN(id)` 仍返回**一行

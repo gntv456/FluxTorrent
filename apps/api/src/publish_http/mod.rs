@@ -13,15 +13,25 @@ mod ptgen;
 mod ptgen_html;
 // TMDB 第五源直连适配（0358）：fetch_meta 按 host 分流到这里
 mod ptgen_tmdb;
+// TMDB v3 客户端（PT-Gen 抓取与作品元数据缓存共用）
+mod tmdb_client;
+// 作品条目缓存（TMDB details 拉一次存 work_meta，作品页零外呼）
 mod upload;
+mod work_meta;
 // 发种前置校验（0288）：把「报错时种子已入库」的校验全部提到 INSERT 之前
 mod upload_body;
 mod upload_fields;
+// 外部条目 ID 归一化（IMDb/TMDB/豆瓣）：作品聚合归堆的唯一口径
+mod upload_ids;
 // 种子工件（0323 game/software）：校验和清单/更新日志的 part 通道与落库
 mod upload_artifacts;
 // 抓轨日志闸门与落库（0312）
 mod upload_logcheck;
 mod upload_precheck;
+/// 定价闸门（P-3）：torrent_http/manage.rs 改价口与发种口共用同一判据
+pub(crate) mod upload_precheck_pub {
+    pub(crate) use super::upload_precheck::{price_gate, PriceGate};
+}
 // 0355 信用分免审（第五条）：阈值读取与口径锁定单测
 mod upload_credits;
 // 墓碑复活（0288）：同作者删除后重发同一 .torrent 走 UPDATE 复用原 id

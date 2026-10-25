@@ -3,6 +3,11 @@
  * NP 经典双栏 —— 左栏作者卡（头像/用户名链接/等级/佩戴勋章/楼层号/入站时间），
  * 右栏正文与操作行（时间·编辑标记·中选标记·悬赏采纳·打赏·点赞·编辑删除）。
  * Server component：无 hooks，全部数据由 page.tsx 预取。
+ *
+ * 2026-10-19 改版（用户要求）：**正文在上，其余全沉到楼层底部条**——
+ * 原左栏作者卡（头像/等级/勋章/入站）+ 时间/编辑标记/中选标记 + 全部
+ * 操作 + 楼层号收进一条 `post-foot`，正文独占整行宽度。`<td>` 从两个
+ * 合并成一个（表头本就没有列语义，`colSpan` 也不需要）。
  */
 import Link from "next/link";
 import { MedalIcon } from "@/components/medal-icon";
@@ -20,9 +25,9 @@ import { dateLocale, fmt } from "@/i18n/config";
 import type { Locale } from "@/i18n/config";
 
 /** 长类名提常量（行宽门禁 ≤80） */
-const ACTION_BAR =
-  "mt-2 flex flex-wrap items-center gap-3 text-[11px] text-sub";
-
+const FOOT =
+  "mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 " +
+  "border-t border-line pt-2 text-[11px] text-sub";
 const REPLY_BTN =
   "inline-flex min-h-[30px] items-center rounded-full border border-line " +
   "px-3 text-xs font-bold text-sub hover:border-sky";
@@ -32,9 +37,10 @@ const REPLIES_BOX =
 const MINI_AVATAR =
   "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center " +
   "rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)]";
-const AVATAR_BOX =
-  "mb-1 flex h-14 w-14 items-center justify-center overflow-hidden " +
-  "rounded-[var(--r-md)] border border-line bg-[var(--surface-sunken)]";
+/** 底部条里的作者头像（比原左栏 56px 收小，横排不吃高度） */
+const FOOT_AVATAR =
+  "flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden " +
+  "rounded-[var(--r-sm)] border border-line bg-[var(--surface-sunken)]";
 
 export function PostRow({
   p,
@@ -58,66 +64,76 @@ export function PostRow({
 }) {
   return (
     <tr id={`p${p.id}`} className="align-top">
-      <td className="w-36 border-r border-line bg-[var(--sun-soft)] p-3">
-        {/* 楼层作者栏（2026-09-23）：头像 + 用户名 + 等级 + 佩戴勋章 + 入站时间 */}
-        <div className={AVATAR_BOX}>
-          {p.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={p.avatar_url}
-              alt={p.username ?? ""}
-              className="h-full w-full object-cover"
-            />
-          ) : p.username ? (
-            <span className="font-display text-lg text-deep">
-              {p.username.slice(0, 1)}
+      <td className="p-3">
+        {/* 正文（独占整行宽） */}
+        <MarkdownRenderer source={p.body} embedRules={embedRules} />
+
+        {/* 楼层底部条：内容以外的一切都收在这里 */}
+        <div className={FOOT}>
+          {/* 作者簇：头像 + 用户名 + 等级 + 勋章 + 入站 */}
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className={FOOT_AVATAR}>
+              {p.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.avatar_url}
+                  alt={p.username ?? ""}
+                  className="h-full w-full object-cover"
+                />
+              ) : p.username ? (
+                <span className="text-[11px] font-bold text-deep">
+                  {p.username.slice(0, 1)}
+                </span>
+              ) : (
+                <Icon name="user" size={14} />
+              )}
             </span>
-          ) : (
-            <Icon name="user" size={22} />
-          )}
-        </div>
-        {p.user_id ? (
-          <Link
-            href={`/users/${p.user_id}`}
-            className="font-bold text-sky hover:underline"
-          >
-            {p.username}
-          </Link>
-        ) : (
-          <span className="font-bold text-sky">
-            {p.username ?? dict.torrent.anonymous}
-          </span>
-        )}
-        {p.class_name && (
-          <p className="mt-0.5 text-[11px] font-bold text-sub">
-            {p.class_name}
-          </p>
-        )}
-        {p.worn_medals && p.worn_medals.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {p.worn_medals.slice(0, 5).map((m) => (
-              <span key={m.name} className="medal-chip" title={m.name}>
-                {m.asset_ref ? (
-                  <MedalIcon src={m.asset_ref} size={14} title={m.name} />
-                ) : (
-                  <b className="text-[10px] text-ink">{m.name.slice(0, 1)}</b>
+            {p.user_id ? (
+              <Link
+                href={`/users/${p.user_id}`}
+                className="font-bold text-sky hover:underline"
+              >
+                {p.username}
+              </Link>
+            ) : (
+              <span className="font-bold text-sky">
+                {p.username ?? dict.torrent.anonymous}
+              </span>
+            )}
+            {p.class_name && (
+              <span className="text-[11px] font-bold text-sub">
+                {p.class_name}
+              </span>
+            )}
+            {p.worn_medals && p.worn_medals.length > 0 && (
+              <span className="flex flex-wrap gap-1">
+                {p.worn_medals.slice(0, 5).map((m) => (
+                  <span key={m.name} className="medal-chip" title={m.name}>
+                    {m.asset_ref ? (
+                      <MedalIcon
+                        src={m.asset_ref}
+                        size={14}
+                        title={m.name}
+                      />
+                    ) : (
+                      <b className="text-[10px] text-ink">
+                        {m.name.slice(0, 1)}
+                      </b>
+                    )}
+                  </span>
+                ))}
+              </span>
+            )}
+            {p.author_joined_at && (
+              <span className="text-[10px] text-fainter">
+                {dict.forums.joinedShort}
+                {new Date(p.author_joined_at).toLocaleDateString(
+                  dateLocale(locale),
                 )}
               </span>
-            ))}
-          </div>
-        )}
-        {p.author_joined_at && (
-          <p className="mt-1 text-[10px] text-fainter">
-            {dict.forums.joinedShort}
-            {new Date(p.author_joined_at).toLocaleDateString(
-              dateLocale(locale),
             )}
-          </p>
-        )}
-      </td>
-      <td className="p-3">
-        <MarkdownRenderer source={p.body} embedRules={embedRules} />
-        <div className={ACTION_BAR}>
+          </span>
+
           <span>
             {new Date(p.created_at).toLocaleString(dateLocale(locale))}
           </span>
@@ -138,8 +154,7 @@ export function PostRow({
               ✓ {dict.forums.bountyPicked}
             </span>
           )}
-          {/* 悬赏未决 + 我是楼主 + 这层不是首帖：*/}
-          {/* 显示采纳按钮 */}
+          {/* 悬赏未决 + 我是楼主 + 这层不是首帖：显示采纳按钮 */}
           {detail.topic_type === "bounty" &&
             detail.bounty_status === "open" &&
             detail.is_op &&
@@ -173,7 +188,7 @@ export function PostRow({
               />
             )}
           {authId > 0 && (
-            <span className="ml-3 flex items-center gap-2">
+            <span className="flex items-center gap-2">
               {/* 打赏（0127）：非本人的楼都可打赏（匿名楼 user_id 为空不渲染） */}
               {p.user_id && p.user_id !== authId && (
                 <PostTipButton

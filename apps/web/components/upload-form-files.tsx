@@ -25,6 +25,10 @@ export function UploadFilesBlock({
   setSmallDescr,
   imdb,
   setImdb,
+  douban,
+  setDouban,
+  tmdb,
+  setTmdb,
   ptgenUrl,
   setPtgenUrl,
   ptgenBusy,
@@ -49,6 +53,10 @@ export function UploadFilesBlock({
   setSmallDescr: (v: string) => void;
   imdb: string;
   setImdb: (v: string) => void;
+  douban: string;
+  setDouban: (v: string) => void;
+  tmdb: string;
+  setTmdb: (v: string) => void;
   ptgenUrl: string;
   setPtgenUrl: (v: string) => void;
   ptgenBusy: boolean;
@@ -162,6 +170,19 @@ export function UploadFilesBlock({
             />
             <span className="text-xs text-sub">{dict.upload.imdbHint}</span>
           </div>
+        </FormRow>
+      )}
+      {(metaSources.includes("douban") || metaSources.includes("tmdb")) && (
+        <FormRow label={dict.upload.metaIds}>
+          <div className="flex flex-wrap gap-2">
+            <input value={douban} onChange={(e) => setDouban(e.target.value)}
+              placeholder="movie.douban.com/subject/1292052" maxLength={300}
+              className={`${fieldCls} min-w-0 flex-1`} />
+            <input value={tmdb} onChange={(e) => setTmdb(e.target.value)}
+              placeholder="themoviedb.org/movie/603" maxLength={300}
+              className={`${fieldCls} min-w-0 flex-1`} />
+          </div>
+          <span className="text-xs text-sub">{dict.upload.metaIdsHint}</span>
         </FormRow>
       )}
       {metaSources.length > 0 && (

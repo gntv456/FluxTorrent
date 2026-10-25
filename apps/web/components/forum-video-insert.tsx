@@ -11,6 +11,11 @@ import { useEffect, useState } from "react";
 import { api, rawFetchHelpers } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { matchEmbedRule } from "@/components/forum-video-embed";
+import {
+  isBilibiliShortUrl,
+  resolveVideoUrl,
+  splitVideoUrls,
+} from "@/lib/forum-video";
 import { toast } from "@/components/ui/toast";
 import type { EmbedRule } from "@/lib/data-forum";
 
@@ -83,9 +88,24 @@ export function VideoInsertRow({
 }) {
   const { dict } = useI18n();
   const t = dict.forums;
-  const [url, setUrl] = useState("");
+  const [urls, setUrls] = useState<string[]>([""]);
   const [rules, setRules] = useState<EmbedRule[] | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function setRow(i: number, value: string) {
+    setUrls((rows) => rows.map((r, j) => (j === i ? value : r)));
+  }
+
+  function addRow() {
+    setUrls((rows) => (rows.length < 10 ? [...rows, ""] : rows));
+  }
+
+  function removeRow(i: number) {
+    setUrls((rows) => {
+      const next = rows.filter((_, j) => j !== i);
+      return next.length ? next : [""];
+    });
+  }
 
   useEffect(() => {
     let alive = true;
@@ -133,28 +153,103 @@ export function VideoInsertRow({
     }
   }
 
-  const hit = url.trim() ? matchEmbedRule(url.trim(), rules) : null;
+  async function insertLinks() {
+    const list = splitVideoUrls(urls.join("\n"));
+    if (list.length === 0) return;
+    setBusy(true);
+    try {
+      // 短链先解析成完整视频页，再按白名单逐条匹配（命中才写 !video）。
+      const resolved = await Promise.all(list.map((u) => resolveVideoUrl(u)));
+      const lines: string[] = [];
+      let embedded = 0;
+      for (const u of resolved) {
+        if (matchEmbedRule(u, rules)) {
+          lines.push(`!video(${u})`);
+          embedded++;
+        } else {
+          lines.push(u);
+        }
+      }
+      onInsert(lines.join("\n"));
+      setUrls([""]);
+      const plain = resolved.length - embedded;
+      if (plain === 0) {
+        toast.success(
+          t.videoInserted.replace("{n}", String(embedded)),
+        );
+      } else if (embedded > 0) {
+        toast.warn(
+          t.videoPartial
+            .replace("{a}", String(embedded))
+            .replace("{b}", String(plain)),
+        );
+      } else {
+        toast.warn(
+          t.videoNoHitInserted.replace("{n}", String(plain)),
+        );
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const total = splitVideoUrls(urls.join("\n")).length;
   return (
     <div className="flex flex-col gap-1">
       <span className="text-sm text-sub">{t.videoBtn}</span>
+      {urls.map((u, i) => {
+        const parts = splitVideoUrls(u);
+        const single = parts.length === 1 ? parts[0] : null;
+        const hit = single ? matchEmbedRule(single, rules) : null;
+        return (
+          <div key={i} className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <input
+                value={u}
+                onChange={(e) => setRow(i, e.target.value)}
+                maxLength={500}
+                placeholder={t.videoPh}
+                className={URL_INPUT}
+              />
+              {urls.length > 1 && (
+                <button
+                  type="button"
+                  aria-label={t.videoRemove}
+                  onClick={() => removeRow(i)}
+                  className={`${PILL_BTN} min-h-[34px]`}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            {single && (
+              <span className="text-xs text-sub">
+                {isBilibiliShortUrl(single)
+                  ? t.videoShortHint
+                  : hit
+                    ? t.videoPreview.replace("{name}", hit.rule.name_zh)
+                    : t.videoNoHit}
+              </span>
+            )}
+          </div>
+        );
+      })}
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          maxLength={500}
-          placeholder={t.videoPh}
-          className={URL_INPUT}
-        />
         <button
           type="button"
-          disabled={!url.trim()}
-          onClick={() => {
-            onInsert(`!video(${url.trim()})`);
-            setUrl("");
-          }}
-          className={`${PILL_BTN} disabled:opacity-40`}
+          disabled={total === 0 || busy || rules === null}
+          onClick={insertLinks}
+          className={`${PILL_BTN} min-h-[38px] disabled:opacity-40`}
         >
-          {t.videoInsert}
+          {busy ? t.videoInserting : t.videoInsert}
+        </button>
+        <button
+          type="button"
+          disabled={urls.length >= 10}
+          onClick={addRow}
+          className={`${PILL_BTN} min-h-[38px] disabled:opacity-40`}
+        >
+          + {t.videoAdd}
         </button>
         <label className={`cursor-pointer ${PILL_BTN}`}>
           {busy ? t.videoUploading : t.videoUpload}
@@ -171,11 +266,9 @@ export function VideoInsertRow({
           />
         </label>
       </div>
-      {url.trim() && (
+      {total > 1 && (
         <span className="text-xs text-sub">
-          {hit
-            ? t.videoPreview.replace("{name}", hit.rule.name_zh)
-            : t.videoNoHit}
+          {t.videoMultiHint.replace("{n}", String(total))}
         </span>
       )}
     </div>

@@ -1,3 +1,4 @@
+import "@/app/styles/works.css";
 import { EmptyTorrents } from "@/components/torrent";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { normalizeError } from "@/lib/render-error";
@@ -10,13 +11,13 @@ import type {
   TorrentPage,
 } from "@fluxtorrent/domain-types";
 import { TorrentsSearchBox } from "./_parts/torrents-search-box";
-import { FilterFab } from "./_parts/filter-fab";
+import { MobileSearch } from "./_parts/torrents-mobile-search";
 import { TorrentsPullRefresh } from "./_parts/refresh-mount";
 import { TorrentSplitView } from "./_parts/torrent-split";
-import { TorrentCards, TorrentPosters } from "./_parts/torrents-cards";
 import { TorrentsViewSwitch } from "./_parts/torrents-view-switch";
 import { TorrentsColSettings } from "./_parts/torrents-col-settings";
-import { TorrentsTableView } from "./_parts/torrents-table-view";
+import { TorrentListViews } from "./_parts/torrents-list-views";
+import { TorrentWorks } from "./_parts/torrents-works";
 import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
 import { TorrentHoverPreview } from "@/components/torrent-hover-preview";
 import { buildTorrentChips } from "./_parts/torrents-chips";
@@ -70,7 +71,7 @@ export default async function TorrentsPage({
       Array.isArray(v) ? v.join(",") : v,
     ]),
   );
-  const { dict } = await getDict();
+  const { dict, locale } = await getDict();
   // 列表形态（方案阶段二）：视图与每页条数都走 URL，未知值回落默认（table / 20）
   // 用户级列表偏好（0316）：URL 未显式指定时，回落用户偏好，再回落默认。
   // 与三个站点级字典并行取（2026-10-18 主菜单切换提速：此前 list-prefs 先
@@ -204,7 +205,6 @@ export default async function TorrentsPage({
   // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用；
   // 但要把「失败」与「确实没有结果」区分开（方案 P0-6：此前两者都渲染成空态）
 
-
   // 分类只以 site-profile 为准（后台可改，与站型包同步）。拿不到就是空列表——
   // 不再回落 i18n 字典：那是另一套筛选用词表，会把选项 id 指到不存在的分类上
   const cats = profile?.categories ?? [];
@@ -237,27 +237,30 @@ export default async function TorrentsPage({
   // IMDb 范围随站点元数据源显隐（与上传页条目输入同口径）
   const showImdb =
     !profile || (profile.metadata_sources ?? []).includes("imdb");
-
   return (
     <div className="flex flex-col gap-3">
-      <h1 className="sr-only">{dict.torrents.title}</h1>
-
-      {/* 搜索盒：常驻一行 + 折叠高级面板（0105 重排） */}
-      <TorrentsSearchBox
-        dict={dict}
-        sp={sp}
-        categories={categories}
-        tags={tags}
-        tagGroups={tagGroups}
-        secDict={secDict}
-        dimKinds={dimKinds}
-        selectedCats={selectedCats}
-        chips={chips}
-        advancedOpen={advancedOpen}
-        nonSearchChips={nonSearchChips}
-        showImdb={showImdb}
-        withParam={withParam}
-      />
+      <h1 className={sp.official === "1" ? "text-lg font-bold" : "sr-only"}>
+        {sp.official === "1" ? dict.nav.official : dict.torrents.title}
+      </h1>
+      {/* 搜索盒：常驻一行 + 折叠高级面板（0105 重排）；
+          <md 整块收进右下角「搜索」弹层，避免与旧筛选 FAB 重复 */}
+      <MobileSearch>
+        <TorrentsSearchBox
+          dict={dict}
+          sp={sp}
+          categories={categories}
+          tags={tags}
+          tagGroups={tagGroups}
+          secDict={secDict}
+          dimKinds={dimKinds}
+          selectedCats={selectedCats}
+          chips={chips}
+          advancedOpen={advancedOpen}
+          nonSearchChips={nonSearchChips}
+          showImdb={showImdb}
+          withParam={withParam}
+        />
+      </MobileSearch>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="num text-xs text-sub">
@@ -301,12 +304,20 @@ export default async function TorrentsPage({
       {/* 列表 hover 预览卡（阶段三）：事件委托整页生效 */}
       <TorrentHoverPreview />
 
-      {/* 三种形态共享同一份数据：表格（信息密度）/ 卡片（浏览）/ 海报墙（视觉）。
-          M4：md-lg（含折叠展开一档）外层再包双栏排布（?selected= 存选中态）
-          四态（W-20）：失败 ErrorPanel（含重试链接）/ 空 EmptyTorrents
-          （原两态是手写段落，现收敛为原语） */}
+      {/* 四形态：表格 / 卡片 / 海报墙 / 作品聚合（M4 双栏 + 四态见下方分支） */}
       <TorrentSplitView items={page.items}>
-      {page.items.length === 0 ? (
+      {view === "group" ? (
+        // 作品聚合（样图 group 模式）：作品卡 + 卡内种子，取数走 /works。
+        // 必须先于「列表为空」分支判断——作品视图含断种，种子列表默认只给
+        // 活种，若先判空就会出现「有作品却显示空态」。
+        <TorrentWorks
+          dict={dict}
+          locale={locale}
+          sp={sp}
+          cats={categories}
+          withParam={withParam}
+        />
+      ) : page.items.length === 0 ? (
         loadErr !== null ? (
           <ErrorPanel
             error={normalizeError(loadErr)}
@@ -316,35 +327,24 @@ export default async function TorrentsPage({
         ) : (
           <EmptyTorrents aliveFiltered={sp.alive !== "0" && sp.alive !== "2"} />
         )
-      ) : view === "card" ? (
-        <TorrentCards items={page.items} dict={dict} colors={catColors} />
-      ) : view === "poster" ? (
-        <TorrentPosters items={page.items} dict={dict} colors={catColors} />
       ) : (
-        <>
-          {/* M3：<640 表格隐藏、行卡片接管（useIsCompact 客户端分支，
-              URL view 显式指定时上面已分流不会走到这里）。SSR 首帧
-              渲染表格（fallback=桌面），挂载后双态切换。 */}
-          <TorrentsTableView
-            dict={dict}
-            sp={sp}
-            items={page.items}
-            withParam={withParam}
-            toggleSort={toggleSort}
-            catIcons={catIcons}
-            catColors={catColors}
-            hiddenCols={hiddenCols}
-          />
-        </>
+        <TorrentListViews
+          view={view}
+          items={page.items}
+          dict={dict}
+          sp={sp}
+          withParam={withParam}
+          toggleSort={toggleSort}
+          catIcons={catIcons}
+          colors={catColors}
+          hiddenCols={hiddenCols}
+        />
       )}
 
       </TorrentSplitView>
 
       {/* M3：下拉刷新（仅触屏渲染，不影响桌面） */}
       <TorrentsPullRefresh />
-
-      {/* M3：<md 筛选 FAB + Bottom Sheet（URL 双向同步） */}
-      <FilterFab />
 
       {/* RSS 订阅入口（NP 列表头 RSS 图标口径）：携带当前关键字/分类/维度
           跳转订阅页——维度筛选（B3）一并带走，否则「订阅当前结果」名不副实 */}

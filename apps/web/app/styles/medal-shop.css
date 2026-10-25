@@ -199,7 +199,8 @@
 /* ---------- 4. 勋章墙：荣誉卡 ---------- */
 .honor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(332px, 1fr));
+  /* 最小轨道钳到容器宽：320 视口内容宽 296，固定 332 会把卡片顶出页面。 */
+  grid-template-columns: repeat(auto-fill, minmax(min(332px, 100%), 1fr));
   gap: 14px;
 }
 .honor {
@@ -438,6 +439,10 @@
 }
 .spec li b.is-bonus {
   color: var(--sun);
+}
+/* 价格行迁入 spec 后保留原 pricetag 的品牌色强调 */
+.spec li b.is-price {
+  color: var(--text-brand);
 }
 .mcard-ft {
   display: flex;

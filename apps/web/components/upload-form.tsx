@@ -29,10 +29,8 @@ export interface SectionDictRow {
 }
 
 /** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类与质量维度全部站点数据驱动）。
- *  按域拆出（300 行门禁）：upload-form-parts.tsx（共用行/样式）、
- *  upload-form-files.tsx（文件与 NFO/附件/元数据）、upload-form-descr.tsx
- *  （简介与 BBCode 工具条）、upload-form-quality.tsx（分类/质量/标签/推荐）；
- *  本文件保留数据源加载、状态与提交逻辑。 */
+ *  按域拆出：parts（共用行）/ files（文件与元数据）/ descr（简介与工具条）/
+ *  quality（分类与质量）；本文件只保留数据源加载、状态与提交逻辑。 */
 export function UploadForm() {
   const { dict, currency } = useI18n();
   // 分类/元数据源以 /site-profile 为准；tmdb（0358）为档案缺省兜底第五源
@@ -58,11 +56,12 @@ export function UploadForm() {
   const [fileName, setFileName] = useState("");
   const [name, setName] = useState("");
   const [imdb, setImdb] = useState("");
+  const [douban, setDouban] = useState("");
+  const [tmdb, setTmdb] = useState("");
   const [ptgenUrl, setPtgenUrl] = useState("");
   const [ptgenBusy, setPtgenBusy] = useState(false);
   const [categoryId, setCategoryId] = useState(0);
-  // 默认分类不硬编码 2（P2-11）：换包后 id=2 可能不存在。统一取档案
-  // 首个分类；初值 0 仅作档案到位前的占位。
+  // 默认分类不硬编码 2（P2-11）：换包后 id=2 可能不存在，统一取档案首个分类。
   useEffect(() => {
     if (!profileCats?.length) return;
     setCategoryId((cur) =>
@@ -80,8 +79,7 @@ export function UploadForm() {
   // W-18：字段级错误（后端 1002 信封；multipart 走裸 fetch 手工解）
   const [fieldErrs, setFieldErrs] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
-  // 标签（NP upload tags 口径）：启用字典多选，官方标签仅 staff（后端同口径校验）
-  // 0160 P2：groups 平行数组（与 dict 下标对齐）用于按组分区
+  // 标签（0160 P2）：字典多选，官方标签仅 staff；groups 与 dict 下标对齐
   type TagRow = { id: number; name: string; kind: string };
   const [tagDict, setTagDict] = useState<TagRow[]>([]);
   const [tagGroups, setTagGroups] = useState<string[]>([]);
@@ -111,19 +109,18 @@ export function UploadForm() {
         setTagGroups([]);
       });
   }, []);
-  // 价格（0086 付费下载）：下载者支付，发布者得 (100-税)%，0 = 免费
+  // 价格（0086）：下载者支付，发布者得 (100-税)%，0 = 免费
   const [price, setPrice] = useState(0);
   // 推荐位（0089，NP 挑选 口径）：置顶位置/截止 + 推荐影片，需管理组权限
   const [posState, setPosState] = useState(0);
   const [posUntil, setPosUntil] = useState("");
   const [pickType, setPickType] = useState(0);
-  // 质量维度（0085 可配置）：维度清单与标签来自 section_kinds，站方可自建
+  // 质量维度（0085）：清单与标签来自 section_kinds，站方可自建
   const [secDict, setSecDict] = useState<Record<string, SectionDictRow[]>>({});
   const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
   const [secVals, setSecVals] = useState<Record<string, string>>({});
   useEffect(() => {
-    // 归属模式决定「这个分类能填哪些维度」（mode_id → show_*），
-    // 换分类必须重取维度清单，不能拿首次结果用到底
+    // 归属模式决定可填维度：换分类必须重取
     api
       .get<Record<string, unknown>>(
         `/api/v1/section-dict?category_id=${categoryId}`,
@@ -166,13 +163,13 @@ export function UploadForm() {
       form.append("file", file);
       const nfoFile = nfoRef.current?.files?.[0];
       if (nfoFile) form.append("nfo", nfoFile);
-      // 0288：元数据走 multipart 文本字段（服务端仍兼容 query string 老通道）。
-      // 塞 URL 时简介上限由 HTTP 请求行决定：实测 8192 汉字即 400 空响应体。
+      // 0288：元数据走 multipart 文本字段（塞 URL 时简介上限受请求行长度限制）。
       appendMeta(form, {
         category_id: categoryId,
         anonymous,
         name,
         imdb,
+        douban, tmdb,
         price,
         small_descr: smallDescr,
         descr,
@@ -250,6 +247,8 @@ export function UploadForm() {
             setSmallDescr={setSmallDescr}
             imdb={imdb}
             setImdb={setImdb}
+            douban={douban} setDouban={setDouban}
+            tmdb={tmdb} setTmdb={setTmdb}
             ptgenUrl={ptgenUrl}
             setPtgenUrl={setPtgenUrl}
             ptgenBusy={ptgenBusy}

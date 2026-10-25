@@ -103,6 +103,12 @@ pub(crate) async fn run_named(
         "reconcile_diff_alert" => d(reconcile_diff_alert(db).await?),
         "reconcile_snapshots" => d(reconcile_snapshots(db).await?),
         "ensure_partitions" => d(ensure_partitions(db).await?),
+        // 0400/0404：自动审种与邮件 outbox 此前只在 run.rs 的定时 tick 里，
+        // 目录/手触两边都缺——面板看不见积压、站长也无法手动补跑。
+        "auto_review" => n(auto_review::auto_review_tick(db).await?),
+        "auto_review_digest" => d(auto_review::auto_review_digest(db).await?),
+        "spark_merkle" => n(spark_merkle_daily(db).await?),
+        "mail_outbox" => n(mail_out::mail_outbox_drain(db).await?),
         other => anyhow::bail!("未知任务 {other}"),
     })
 }

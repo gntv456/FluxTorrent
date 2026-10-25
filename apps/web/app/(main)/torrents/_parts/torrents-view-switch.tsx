@@ -13,6 +13,7 @@ import {
   type TorrentView,
   type TorrentsSP,
 } from "./torrents-utils";
+import { TorrentsViewSelect } from "./torrents-view-select";
 
 export function TorrentsViewSwitch({
   dict,
@@ -32,6 +33,7 @@ export function TorrentsViewSwitch({
     table: t.viewTable,
     card: t.viewCard,
     poster: t.viewPoster,
+    group: dict.works.viewGroup,
   };
   // 换形态 = 回到第一页：先把 cursor 从参数集里剔除再拼链接
   // （游标是「(排序键,id)」位置，形态/条数变了继续用它只会让人以为翻页丢内容）
@@ -42,53 +44,78 @@ export function TorrentsViewSwitch({
     withParam(base, key, value);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div
-        className={
-          "flex items-center gap-0.5 rounded-full border border-line " +
-          "bg-[var(--surface-card)] p-0.5"
-        }
-        role="group"
-        aria-label={t.viewLabel}
-      >
-        {TORRENT_VIEWS.map((v) => {
-          const on = v === view;
-          return (
-            <a
-              key={v}
-              href={href("view", v === "table" ? undefined : v)}
-              aria-current={on ? "page" : undefined}
-              className={`rounded-full px-3 py-1 text-xs transition-colors ${
-                on
-                  ? "bg-[var(--sky-soft)] font-semibold text-sky-deep"
-                  : "text-sub hover:text-ink"
-              }`}
-            >
-              {labels[v]}
-            </a>
-          );
-        })}
+    <>
+      {/* 桌面/平板：药丸直选 */}
+      <div className="hidden flex-wrap items-center justify-between gap-2 md:flex">
+        <div
+          className={
+            "flex items-center gap-0.5 rounded-full border border-line " +
+            "bg-[var(--surface-card)] p-0.5"
+          }
+          role="group"
+          aria-label={t.viewLabel}
+        >
+          {TORRENT_VIEWS.map((v) => {
+            const on = v === view;
+            return (
+              <a
+                key={v}
+                href={href("view", v === "table" ? undefined : v)}
+                aria-current={on ? "page" : undefined}
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  on
+                    ? "bg-[var(--sky-soft)] font-semibold text-sky-deep"
+                    : "text-sub hover:text-ink"
+                }`}
+              >
+                {labels[v]}
+              </a>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-1 text-xs text-sub">
+          {PAGE_SIZES.map((n) => {
+            const on = n === pageSize;
+            return (
+              <a
+                key={n}
+                href={href("limit", n === 20 ? undefined : String(n))}
+                aria-current={on ? "page" : undefined}
+                className={`num rounded-full px-2 py-1 transition-colors ${
+                  on
+                    ? "bg-[var(--sky-soft)] font-semibold text-sky-deep"
+                    : "hover:text-ink"
+                }`}
+                title={t.perPage.replace("{n}", String(n))}
+              >
+                {n}
+              </a>
+            );
+          })}
+        </div>
       </div>
-      <div className="flex items-center gap-1 text-xs text-sub">
-        {PAGE_SIZES.map((n) => {
-          const on = n === pageSize;
-          return (
-            <a
-              key={n}
-              href={href("limit", n === 20 ? undefined : String(n))}
-              aria-current={on ? "page" : undefined}
-              className={`num rounded-full px-2 py-1 transition-colors ${
-                on
-                  ? "bg-[var(--sky-soft)] font-semibold text-sky-deep"
-                  : "hover:text-ink"
-              }`}
-              title={t.perPage.replace("{n}", String(n))}
-            >
-              {n}
-            </a>
-          );
-        })}
+      {/* 手机：两排药丸收成两个下拉（列表页首屏优先给种子内容） */}
+      <div className="flex items-center gap-1.5 md:hidden">
+        <TorrentsViewSelect
+          label={t.viewLabel}
+          current={href("view", view === "table" ? undefined : view)}
+          options={TORRENT_VIEWS.map((v) => ({
+            href: href("view", v === "table" ? undefined : v),
+            label: labels[v],
+          }))}
+        />
+        <TorrentsViewSelect
+          label={t.perPage.replace("{n}", "N")}
+          current={href(
+            "limit",
+            pageSize === 20 ? undefined : String(pageSize),
+          )}
+          options={PAGE_SIZES.map((n) => ({
+            href: href("limit", n === 20 ? undefined : String(n)),
+            label: t.perPage.replace("{n}", String(n)),
+          }))}
+        />
       </div>
-    </div>
+    </>
   );
 }

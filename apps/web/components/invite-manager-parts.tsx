@@ -16,6 +16,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 /** 邀请码列表：复制 / 状态角标 / 发送到邮箱 / 重发 / 撤销 / 过期展示 */
 export function InviteList({
   invites,
+  filter,
+  onClearFilter,
   copiedId,
   busyId,
   onCopy,
@@ -23,6 +25,8 @@ export function InviteList({
   onRevoke,
 }: {
   invites: InviteItem[];
+  filter: number | null;
+  onClearFilter: () => void;
   copiedId: number | null;
   busyId: number | null;
   onCopy: (inv: InviteItem) => void;
@@ -31,6 +35,10 @@ export function InviteList({
 }) {
   const { dict, locale } = useI18n();
   const t = dict.invites;
+  const filterLabel =
+    filter === null
+      ? null
+      : [t.statUnused, t.statUsed, t.statExpired][filter];
   const fmtDate = (s: string) =>
     new Date(s).toLocaleString(dateLocale(locale), {
       month: "2-digit",
@@ -45,12 +53,28 @@ export function InviteList({
     <section className="brand-panel">
       <div className="brand-panel__head">
         <h2>{t.listTitle}</h2>
+        {filterLabel !== null && (
+          <span className="text-xs text-sub">
+            {t.filtering.replace("{name}", filterLabel)}
+            <button
+              type="button"
+              onClick={onClearFilter}
+              className="ml-2 text-sky-deep hover:underline"
+            >
+              {t.showAll}
+            </button>
+          </span>
+        )}
       </div>
       {invites.length === 0 ? (
         // 空态走统一件（设计系统决策 § 加载/空/错误：空态统一组件）；
         // 原先由上层渲染一行裸 <p>，连面板外壳一起消失。
         <div className="p-4">
-          <EmptyState icon="mail" title={t.empty} compact />
+          <EmptyState
+            icon="mail"
+            title={filterLabel !== null ? t.emptyFiltered : t.empty}
+            compact
+          />
         </div>
       ) : (
       <div className="brand-wide-table-scroll">

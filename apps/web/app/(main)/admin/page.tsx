@@ -232,6 +232,19 @@ export default function AdminPage() {
     }
   }
 
+  /** 0306：暂缓恢复（4→0）。钩子内部已切回待审视图并重拉队列，
+   *  这里只补反馈文案与总览徽章。 */
+  async function doResume(torrentId: number) {
+    try {
+      if (await rq.resume(torrentId)) {
+        setMsg(fmt(a.resumed, { id: torrentId }));
+        load();
+      }
+    } catch (e) {
+      setMsg(errText(e, a, dict));
+    }
+  }
+
   /** 0306：批量裁决本页待审（自审条目后端逐条跳过并在回执里说明原因）。
    *  P2 清偿：拒因 prompt + 批量 confirm 收编为一个状态机。 */
   function batchDecide(ids: number[], approve: boolean) {
@@ -376,6 +389,9 @@ export default function AdminPage() {
             onDecide={decide}
             onPostpone={postpone}
             onBatch={batchDecide}
+            onResume={doResume}
+            status={rq.status}
+            onStatus={rq.setStatus}
           />
         );
 

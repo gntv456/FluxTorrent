@@ -188,8 +188,10 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         batchClass={batchClass}
         setBatchClass={setBatchClass}
       />
-      {/* 用户列表 */}
-      <UsersTable data={data} sel={sel} setSel={setSel} sortBtn={sortBtn} />
+      {/* 用户列表（12 列，手机上交给外层横滚，别把每列压成一字一行） */}
+      <div className="overflow-x-auto">
+        <UsersTable data={data} sel={sel} setSel={setSel} sortBtn={sortBtn} />
+      </div>
 
       {/* 分页 */}
       <UsersPager

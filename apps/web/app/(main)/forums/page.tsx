@@ -13,27 +13,15 @@ import {
   ForumHomeStream,
   type StreamType,
 } from "@/components/forum-home-stream";
-import {
-  ForumMineLinks,
-  ForumSideColumn,
-  ForumUserCardBlock,
-} from "@/components/forum-home-aside";
+import { ForumSideColumn } from "@/components/forum-home-aside";
+import { ForumLeftColumn, type BoardGroup } from "@/components/forum-left-column";
+import { ForumMobileBar } from "@/components/forum-mobile-bar";
 import { requireModule } from "@/components/module-gate";
 /* 页面专属样式走路由级 import（globals.css 尾注的纪律）：只有论坛首页
    需要三列与两翼的表面，不往全站 @import 链里堆。 */
 import "@/app/styles/forums-home.css";
 
 export const dynamic = "force-dynamic";
-
-/** 左栏版块导航的圆点色板（样图 f3b-nav__item i 的六色，按版块 id 取） */
-const NAV_DOTS = [
-  "#2fa8ff",
-  "#2fbf9b",
-  "#ffc93c",
-  "#5b6bf5",
-  "#ff8fc7",
-  "#ff7a59",
-];
 
 /** 论坛首页：三列（样图集 § tplForum）——左列用户卡 + 版块导航、
  * 中栏全站话题流、右列统计/热帖/最新回复/新手必读。
@@ -54,8 +42,12 @@ export default async function ForumsPage({
   const dictP = getDict();
   const signedP = hasSessionToken();
   const { type: typeRaw } = await searchParams;
+  // 白名单四档（对齐样图筛选行）：notice=公告 / sticky=置顶 / digest=精华；
+  // 其余（含爬虫乱造的）一律回落全量。
   const type: StreamType =
-    typeRaw === "sticky" || typeRaw === "digest" ? typeRaw : undefined;
+    typeRaw === "notice" || typeRaw === "sticky" || typeRaw === "digest"
+      ? typeRaw
+      : undefined;
   const gate = await gateP;
   if (gate) return gate;
   const { dict, currency } = await dictP;
@@ -71,7 +63,7 @@ export default async function ForumsPage({
   const sideState = !signed ? "guest" : side ? "ok" : "fail";
 
   // 分区是分组骨架：没有版块的分区照样成组（左栏渲染空态占位）
-  const groups = categories.map((c) => ({
+  const groups: BoardGroup[] = categories.map((c) => ({
     key: `cat-${c.id}`,
     name: c.name,
     hidden: !c.visible,
@@ -95,77 +87,109 @@ export default async function ForumsPage({
   // 冒充「今天没人发帖」，也不拿取档失败冒充空。
   const stream = signed ? recent : null;
 
+  // 手机端四档筛选（与桌面话题流同一组白名单；第三列是圆点色）
+  const filterOpts: [StreamType, string, string][] = [
+    [undefined, dict.forums.filterAll, "bg-sky"],
+    ["notice", dict.forums.filterNotice, "bg-coral"],
+    ["sticky", dict.forums.filterSticky, "bg-indigo"],
+    ["digest", dict.forums.filterDigest, "bg-sun"],
+  ];
+  const filterLabel = (filterOpts.find(([v]) => v === type) ??
+    filterOpts[0])[1];
+  // 左列与搜索框的 RSC 节点：桌面原位 + 手机弹窗，两处复用同一份
+  const leftColumn = (
+    <ForumLeftColumn
+      me={me}
+      dict={dict}
+      currency={currency}
+      groups={groups}
+      totalTopics={totalTopics}
+    />
+  );
+  const searchBox = (
+    <ForumSearch
+      placeholder={dict.forums2.searchPh}
+      button={dict.forums2.searchBtn}
+    />
+  );
+
   return (
     <div className="pting-forums">
-      {/* 左列：用户卡（样图第一块）+ 版块导航（全部版块 + 分组 + 各版块计数） */}
-      <div className="fh-left">
-        <ForumUserCardBlock me={me} dict={dict} currency={currency} />
-        <aside className="pting-sidenav">
-          <h2>{dict.forums2.allNodes}</h2>
-          <nav aria-label={dict.forums.title}>
-            <Link href="/forums" className="on">
-              <span
-                className="pting-sidenav__dot"
-                style={{ background: "var(--sky)" }}
-                aria-hidden="true"
-              />
-              {dict.forums2.navAll}
-              <span className="fh-nav__cnt num">{totalTopics}</span>
+      {/* 左列：用户卡 + 版块导航（≤768 隐藏，改由「版块」弹窗承载） */}
+      <div className="fh-left">{leftColumn}</div>
+
+      {/* 中栏：页头（搜索/关注流/发帖）+ 手机工具条 + 话题流 */}
+      <div className="pting-board">
+        {/* 无障碍标题放头部之外：手机端整条页头隐藏（搜索/关注流/发帖都进了
+            弹窗，留着只剩一个空色块），但 h1 仍要在无障碍树里 */}
+        <h1 className="sr-only">{dict.forums.title}</h1>
+        <header className="pting-board__head">
+          <span className="fh-head__search">{searchBox}</span>
+          <span className="fh-head__feed">
+            <Link href="/forums/feed" className="pting-feed-pill">
+              {dict.forums.feedTitle}
             </Link>
-            {groups.map((g) => (
-              <div key={g.key}>
-                <div className="fh-nav__group">
-                  {g.name}
-                  {g.hidden && (
-                    <span className="pting-card__count">
-                      {dict.forums2.hiddenTag}
-                    </span>
-                  )}
-                </div>
-                {g.items.map((f) => (
+          </span>
+          <span className="fh-head__new">
+            <TopicComposer />
+          </span>
+        </header>
+
+        {/* 手机端（≤768）四按钮一排：筛选 / 版块 / 更多 / 搜帖 */}
+        <ForumMobileBar
+          filterLabel={filterLabel}
+          labels={{
+            nav: dict.forums2.allNodes,
+            more: dict.forums3.mbarMore,
+            search: dict.forums2.searchBtn,
+          }}
+          titles={{
+            filter: dict.forums3.mbarFilter,
+            nav: dict.forums2.allNodes,
+            more: dict.forums3.mbarMore,
+            search: dict.forums2.searchBtn,
+          }}
+          panels={{
+            filter: (
+              <div className="fh-pick">
+                {filterOpts.map(([v, label, dot]) => (
                   <Link
-                    key={f.id}
-                    href={`/forums/${f.id}`}
-                    className={g.hidden ? "fh-nav__hidden" : undefined}
+                    key={v ?? "all"}
+                    href={v ? `/forums?type=${v}` : "/forums"}
+                    className={
+                      "fh-pick__row" + (type === v ? " on" : undefined)
+                    }
+                    aria-current={type === v ? "true" : undefined}
                   >
                     <span
-                      className="pting-sidenav__dot"
-                      style={{
-                        background: NAV_DOTS[f.id % NAV_DOTS.length],
-                      }}
+                      className={"fh-pick__dot " + dot}
                       aria-hidden="true"
                     />
-                    {f.name}
-                    <span className="fh-nav__cnt num">{f.topics}</span>
+                    {label}
                   </Link>
                 ))}
               </div>
-            ))}
-          </nav>
-        </aside>
-        <ForumMineLinks dict={dict} />
-      </div>
-
-      {/* 中栏：页头（搜索/标题/收录数/关注流/发帖）+ 全站话题流 */}
-      <div className="pting-board">
-        <header className="pting-board__head">
-          <ForumSearch
-            placeholder={dict.forums2.searchPh}
-            button={dict.forums2.searchBtn}
-          />
-          <div>
-            <h1 className="pting-board__title">{dict.forums.title}</h1>
-            <p>
-              {dict.forums2.totalPrefix}
-              {totalTopics}
-              {dict.forums2.totalSuffix}
-            </p>
-          </div>
-          <Link href="/forums/feed" className="pting-feed-pill">
-            {dict.forums.feedTitle}
-          </Link>
-          <TopicComposer />
-        </header>
+            ),
+            nav: leftColumn,
+            more: (
+              <>
+                {/* 用户要求：关注流 / 发布主题 两个按钮放在右列弹窗的上面 */}
+                <div className="fh-macts">
+                  <Link href="/forums/feed" className="fh-macts__a">
+                    {dict.forums.feedTitle}
+                  </Link>
+                  <TopicComposer />
+                </div>
+                <ForumSideColumn
+                  side={side}
+                  state={sideState}
+                  dict={dict}
+                />
+              </>
+            ),
+            search: searchBox,
+          }}
+        />
 
         {!signed ? (
           /* 游客：话题流与右栏热帖一样要登录——说清楚，别摆空列表 */

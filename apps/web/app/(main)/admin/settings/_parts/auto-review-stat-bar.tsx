@@ -15,6 +15,8 @@ type Stats = {
   today: { pass: number; deny: number; postpone: number };
   pending_human: number;
   shadow: { samples: number; agree_pct: number; ready: boolean };
+  /** 切执法提示文案（0402 设置键，站点可编辑） */
+  switch_hint?: string;
 };
 
 export function AutoReviewStatBar() {
@@ -39,6 +41,7 @@ export function AutoReviewStatBar() {
   }, []);
 
   if (!stats) return null;
+  const hint = (stats.switch_hint ?? "").trim();
   return (
     <p
       className="rounded-[var(--r-md)] border border-sky bg-sky-soft px-3 py-2
@@ -55,6 +58,10 @@ export function AutoReviewStatBar() {
       {stats.shadow.ready
         ? ` · ${ar.ready}`
         : ""}
+      {/* 切执法提示（0402）：站点可编辑的文案，空则不占行 */}
+      {hint ? (
+        <span className="mt-1 block text-ink-2">{hint}</span>
+      ) : null}
     </p>
   );
 }

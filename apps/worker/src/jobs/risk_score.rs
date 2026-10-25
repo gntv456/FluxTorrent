@@ -78,7 +78,7 @@ pub(super) struct RiskCfg {
 
 impl RiskCfg {
     pub(super) fn f(&self, key: &str, default: f64) -> f64 {
-        self.kv.get(key).copied().unwrap_or(default)
+        self.kv.get(key).copied().filter(|v| !v.is_nan()).unwrap_or(default)
     }
     /// 家族权重：未列名家族落 risk_weight_default；负权当 0（防呆）。
     pub(super) fn weight(&self, family: &str) -> f64 {

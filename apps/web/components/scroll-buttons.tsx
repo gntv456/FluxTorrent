@@ -11,7 +11,8 @@ import { Icon } from "@/components/icons";
  *  - 「至底端」在已经到底时禁用（视觉 40% + not-allowed），避免无反馈的点击；
  *  - 尊重 prefers-reduced-motion：改为瞬时跳转，不做平滑滚动；
  *  - 层级 z-[45]：高于移动端底部 TabBar（z-40）、低于顶栏下拉（z-60）与弹窗（z-90）；
- *  - 位置：移动端 bottom-20 抬离 TabBar（约 60px 高 + 视觉间距），桌面 bottom-6。
+ *  - 位置：移动/平板（<lg，有底部 TabBar）bottom-20 抬离 TabBar
+ *    （约 60px 高 + 视觉间距），桌面 bottom-6。
  *
  * 颜色一律用主题语义变量（`--surface-card`/`--border-*`/`--sky-*`），
  * 因此浅色与夜间主题下都成立（不引用只在浅色定义的 --tide-* 专有令牌）。
@@ -53,7 +54,7 @@ export function ScrollButtons() {
 
   return (
     <div
-      className={`fixed right-4 bottom-20 z-[45] flex flex-col gap-2 transition-opacity duration-200 md:right-6 md:bottom-6 ${
+      className={`fixed right-4 bottom-20 z-[45] flex flex-col gap-2 transition-opacity duration-200 lg:right-6 lg:bottom-6 ${
         show ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
       aria-hidden={!show}

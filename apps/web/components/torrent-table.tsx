@@ -168,14 +168,18 @@ async function TorrentTr({
           {isNew && (
             <span className="torrents-new">{dict.torrents.newTag}</span>
           )}
-          {/* 0170 审核状态徽标：仅待审(0)/被拒(2)行显示（站点开关放行后进列表；
+          {/* 0170 审核状态徽标：仅待审(0)/被拒(2)/暂缓(4)行显示（站点开关放行后进列表；
               保种区等复用方行类型无此字段，in 收窄容错） */}
           {"approval_status" in t &&
-            (t.approval_status === 0 || t.approval_status === 2) && (
+            (t.approval_status === 0 ||
+              t.approval_status === 2 ||
+              t.approval_status === 4) && (
               <span className={approvalCls(t.approval_status)}>
                 {t.approval_status === 0
                   ? dict.torrents.statusPending
-                  : dict.torrents.statusRejected}
+                  : t.approval_status === 2
+                    ? dict.torrents.statusRejected
+                    : dict.torrents.statusHeld}
               </span>
             )}
           {/* 促销状态 + 剩余时间：紧跟种子名（同类站口径）。

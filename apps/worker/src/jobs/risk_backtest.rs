@@ -261,3 +261,16 @@ fn score_with(cfg: &RiskCfg, fams: &[Fam]) -> (i32, String) {
     let score = (total.round() as i32).clamp(0, 100);
     (score, cfg.band(score).to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nan_setting_falls_back_to_default() {
+        let mut kv = HashMap::new();
+        kv.insert("risk_decay_days".to_string(), f64::NAN);
+        let cfg = RiskCfg { kv };
+        assert_eq!(cfg.f("risk_decay_days", 14.0), 14.0);
+    }
+}

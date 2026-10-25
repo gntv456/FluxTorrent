@@ -53,6 +53,9 @@ export interface MetaValues {
   anonymous: boolean;
   name: string;
   imdb: string;
+  /** 豆瓣 / TMDB 条目（ID 或链接）：作品聚合归堆用 */
+  douban: string;
+  tmdb: string;
   price: number;
   small_descr: string;
   descr: string;
@@ -83,6 +86,8 @@ export function appendMeta(fd: FormData, v: MetaValues) {
   fd.append("anonymous", String(v.anonymous));
   put("name", v.name.trim());
   put("imdb", v.imdb.trim());
+  put("douban", v.douban.trim());
+  put("tmdb", v.tmdb.trim());
   if (v.price > 0)
     put("price", String(Math.min(1_000_000, Math.max(0, v.price))));
   put("small_descr", v.small_descr.trim());

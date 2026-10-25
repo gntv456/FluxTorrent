@@ -26,17 +26,34 @@ pub(super) async fn stage_advance(
     c: &OpenClaim,
     met: bool,
 ) -> anyhow::Result<Option<u64>> {
-    let stage: Option<(i32, i32, i32, String, i32, i32, serde_json::Value)> =
-        sqlx::query_as(
-            "SELECT seq, duration_days, remedy_days, fail_action, reward, \
-                    max_extensions, metric \
+    let stage: Option<(
+        i32,
+        i32,
+        i32,
+        String,
+        i32,
+        i32,
+        serde_json::Value,
+        serde_json::Value,
+    )> = sqlx::query_as(
+        "SELECT seq, duration_days, remedy_days, fail_action, reward, \
+                    max_extensions, metric, fail_penalty \
              FROM exam_stages WHERE task_id = $1 AND seq = $2",
-        )
-        .bind(c.task_id)
-        .bind(c.exam_stage_seq)
-        .fetch_optional(db)
-        .await?;
-    let Some((seq, dur, remedy, action_s, _reward, _ext, _metric)) = stage
+    )
+    .bind(c.task_id)
+    .bind(c.exam_stage_seq)
+    .fetch_optional(db)
+    .await?;
+    let Some((
+        seq,
+        dur,
+        remedy,
+        action_s,
+        _reward,
+        _ext,
+        _metric,
+        fail_penalty,
+    )) = stage
     else {
         // 没配阶段 → 旧路径。exam_stage_seq 也可能是 1（默认值）。
         return Ok(None);
@@ -107,53 +124,49 @@ pub(super) async fn stage_advance(
             Ok(Some(n))
         }
         super::exam_fair::Progress::Failed { action } => {
-            apply_fail_action(db, c, action).await?;
-            settle_fail(db, c).await?;
+            // 0397：fail_penalty 菜单优先；空则回退 fail_action 三态
+            // （0381 兼容——已有站点的处置语义零变化）
+            let items = match fail_penalty.as_array() {
+                Some(a) if !a.is_empty() => {
+                    super::penalty::parse_penalty(fail_penalty)
+                }
+                _ => vec![],
+            };
+            let mut items = items;
+            // 三态映射（fail_action → 菜单项）：处置细节统一走 penalty
+            // 模块，本文件不再各写一份 UPDATE
+            if items.is_empty() {
+                match action {
+                    super::exam_fair::FailAction::Restrict => {
+                        items = vec![penalty_item(
+                            super::penalty::KIND_RESTRICT_DOWNLOAD,
+                        )];
+                    }
+                    super::exam_fair::FailAction::Ban => {
+                        items = vec![penalty_item(super::penalty::KIND_BAN)];
+                    }
+                    super::exam_fair::FailAction::None => {}
+                }
+            }
+            // 0397：处置结果随站内信告知用户（黑箱处置＝白处置）
+            let notes =
+                super::penalty::apply_penalties(db, c, seq, &items).await?;
+            settle_fail(db, c, &notes).await?;
             Ok(Some(1))
         }
     }
 }
 
-fn now_minus(t: chrono::DateTime<chrono::Utc>) -> chrono::Duration {
-    chrono::Utc::now() - t
+/// 无参数菜单项（三态回退用）
+fn penalty_item(kind: &str) -> super::penalty::PenaltyItem {
+    super::penalty::PenaltyItem {
+        kind: kind.into(),
+        amount: None,
+        target: None,
+        pages: None,
+    }
 }
 
-/// 按 fail_action 处置（0381）。
-///
-/// 列口径对齐 `admin_http/user_status.rs`：`Restrict` → `download_enabled
-/// = FALSE`（禁下载不封号），`Ban` → `status = 2`（0正常/1禁言/2封号）。
-/// 只改既有列，后台人工入口与考核自动入口写同一处，不会出现两套真相。
-///
-/// ⚠️ tracker 的 passkey 缓存在 api 侧 60s，worker 这里改完无法立即让
-/// 失效。故建议站长优先用 `restrict`（人工复核），真要 `ban` 也应确认
-/// 失效窗口可接受——这条路是伤害性操作，不该默认打开。
-pub(super) async fn apply_fail_action(
-    db: &PgPool,
-    c: &OpenClaim,
-    action: super::exam_fair::FailAction,
-) -> anyhow::Result<()> {
-    use super::exam_fair::FailAction;
-    match action {
-        FailAction::None => Ok(()),
-        FailAction::Restrict => {
-            sqlx::query(
-                "UPDATE users SET download_enabled = FALSE
-                 WHERE id = $1 AND download_enabled = TRUE",
-            )
-            .bind(c.user_id)
-            .execute(db)
-            .await?;
-            Ok(())
-        }
-        FailAction::Ban => {
-            sqlx::query(
-                "UPDATE users SET status = 2 \
-                 WHERE id = $1 AND status < 2",
-            )
-            .bind(c.user_id)
-            .execute(db)
-            .await?;
-            Ok(())
-        }
-    }
+fn now_minus(t: chrono::DateTime<chrono::Utc>) -> chrono::Duration {
+    chrono::Utc::now() - t
 }

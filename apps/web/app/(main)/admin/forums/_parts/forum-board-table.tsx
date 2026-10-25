@@ -1,27 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import {
-  BTN_LINE,
-  INPUT_CLS,
+  BTN_SKY,
   type ForumAdminForum,
-  type ModTuple,
 } from "./forum-structure-types";
 
-const MOD_TAG =
-  "mr-1 inline-flex items-center gap-1 rounded-full " +
-  "border border-line px-2 py-0.5";
-
-/** 右栏：选中分区下的版块表。
- *  版主任免的输入框按版块隔离（旧版共用一个 state，会把用户任命到错版块）。 */
+/** 右栏：选中分区下的版块表（对齐样图五列）。
+ *
+ *  样图列：版块 | 说明 | 主题 / 回复 | 状态 | 操作（编辑 / 排序）。
+ *  从本表移除的列没有丢功能，各自搬了家：
+ *   - 三档门槛 / 受保护 / 排序值 / 规则 → 编辑抽屉（本就在那里）
+ *   - 版主任免 → 编辑抽屉新增「版主」区
+ *   - 删除版块 → 编辑抽屉底部危险按钮（带非空确认）
+ *
+ *  「排序」= 与下一个版块交换：交换后按新序号重排落库。常规数据
+ *  （sort 稠密）只发两条 PUT；历史脏数据（sort 全同）会顺带重排整列。
+ */
 export function ForumBoardTable({
   forums,
-  mods,
   catName,
   busy,
   run,
@@ -29,186 +29,148 @@ export function ForumBoardTable({
   onNew,
 }: {
   forums: ForumAdminForum[];
-  mods: ModTuple[];
   catName: string;
   busy: boolean;
   run: (fn: () => Promise<void>, ok: string) => void;
   onEdit: (f: ForumAdminForum) => void;
   onNew: () => void;
 }) {
-  // 每个版块一个草稿值，互不影响
-  const [modDraft, setModDraft] = useState<Record<number, string>>({});
   const { dict } = useI18n();
-  // 字典取名 t：下面的 map 变量 f 是「版块」，别撞名
   const t = dict.adminForums;
-  // P2 清偿：免版主/删版块二次确认共用一个状态机（删版块 danger）
-  const ask = useConfirm();
 
-  function addMod(x: ForumAdminForum) {
-    const username = (modDraft[x.id] ?? "").trim();
-    if (!username) return;
+  /** 整行 payload（PUT 是全量语义：省略的 gates 会被写成 0，必须带原值） */
+  function payload(f: ForumAdminForum, sort: number) {
+    return {
+      name: f.name,
+      descr: f.descr,
+      rules: f.rules ?? null,
+      minclassread: f.minclassread,
+      minclasswrite: f.minclasswrite,
+      minclasscreate: f.minclasscreate,
+      protected: f.protected,
+      category_id:
+        typeof f.category_id === "number" ? f.category_id : null,
+      sort,
+    };
+  }
+
+  /** 与下一个版块交换顺序；末位禁用（想上移就点上面那一行的排序）。
+   *
+   *  常规状态（sort 已稠密、各自等于下标）只需发两条 PUT；历史脏数据
+   *  （sort 全同 / 跳号 / 负值）按下标赋值会错序，此时按新顺序把整列
+   *  重排——重排后 sort === 下标，之后又回到两条的快路径。 */
+  function swapNext(i: number) {
+    const order = [...forums];
+    [order[i], order[i + 1]] = [order[i + 1], order[i]];
+    const dense = forums.every((b, idx) => b.sort === idx);
+    const moves = order
+      .map((b, idx) => ({ b, idx }))
+      .filter(({ b, idx }) => !dense || b.sort !== idx);
+    if (moves.length === 0) return;
     run(
       async () => {
-        await api.post(`/api/v1/admin/forums/${x.id}/mods`, { username });
-        setModDraft((d) => ({ ...d, [x.id]: "" }));
+        for (const { b, idx } of moves) {
+          await api.put(`/api/v1/admin/forums/${b.id}`, payload(b, idx));
+        }
       },
-      fmt(t.modAdded, { name: username }),
+      t.boardSorted,
     );
   }
 
-  function removeMod(fid: number, uid: number, uname: string) {
-    ask.open({
-      title: t.modRemoveTip,
-      message: fmt(t.modRemoved, { name: uname }),
-      run: () =>
-        run(
-          async () => {
-            await api.del(`/api/v1/admin/forums/${fid}/mods/${uid}`);
-          },
-          fmt(t.modRemoved, { name: uname }),
-        ),
-    });
-  }
-
-  function removeForum(x: ForumAdminForum) {
-    // 后端对非空版块要求显式 force=true（防误删整版内容）
-    const msg =
-      x.topics > 0
-        ? fmt(t.boardDelNonEmpty, { name: x.name, n: x.topics })
-        : fmt(t.boardDelEmpty, { name: x.name });
-    ask.open({
-      title: t.delBtn,
-      message: msg,
-      tone: "danger",
-      busy,
-      // 非空版块：force=true 由这里自动补上，等于「确认框」替版主点了那个
-      // 显式知悉——改成把版块名原样打一遍才解禁，打名字这个动作本身就是知悉。
-      requireText: x.topics > 0 ? x.name : undefined,
-      run: () =>
-        run(async () => {
-          const q = x.topics > 0 ? "?force=true" : "";
-          await api.del(`/api/v1/admin/forums/${x.id}${q}`);
-        }, t.boardDeleted),
-    });
-  }
+  const num = (n: number) => n.toLocaleString();
 
   return (
-    <div className="min-w-0 flex-1 pl-4">
-      <div className="mb-2 flex items-baseline gap-2">
-        <b className="text-sm">{catName}</b>
-        <span className="text-xs text-sub">
-          {fmt(t.boardCount, { n: forums.length })}
-        </span>
+    <div className="brand-panel flex min-w-0 flex-1 flex-col">
+      <div className="flex items-center gap-2 border-b border-line px-3.5
+        py-2.5">
+        <b className="text-sm text-ink">
+          {fmt(t.catPanelTitle, { name: catName })}
+        </b>
         <span className="flex-1" />
         <button
           type="button"
-          className={`${BTN_LINE} min-h-[30px] text-xs`}
+          className={`${BTN_SKY} min-h-[30px] px-3 text-xs`}
           onClick={onNew}
         >
           {t.newBoardBtn}
         </button>
       </div>
 
-      <table className="nexus-table text-xs">
-        <thead>
-          <tr>
-            <td className="colhead">{t.colBoard}</td>
-            <td className="colhead w-28">{t.colGates}</td>
-            <td className="colhead w-14">{t.colProtect}</td>
-            <td className="colhead w-14">{t.colTopics}</td>
-            <td className="colhead w-56">{t.colMods}</td>
-            <td className="colhead w-28" />
-          </tr>
-        </thead>
-        <tbody>
-          {forums.map((f) => {
-            const mine = mods.filter((m) => m[0] === f.id);
-            return (
-              <tr key={f.id}>
-                <td>
-                  <Link href={`/forums/${f.id}`} className="font-bold text-sky">
-                    {f.name}
-                  </Link>
-                  {f.descr && <p className="text-sub">{f.descr}</p>}
-                </td>
-                <td className="num">
-                  {f.minclassread} / {f.minclasswrite} / {f.minclasscreate}
-                </td>
-                <td className="text-center">{f.protected ? "🛡" : "—"}</td>
-                <td className="num">{f.topics}</td>
-                <td>
-                  {mine.map((m) => (
-                    <span key={m[1]} className={MOD_TAG}>
-                      {m[2]}
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className="font-bold text-danger"
-                        title={t.modRemoveTip}
-                        onClick={() => removeMod(f.id, m[1], m[2])}
-                      >
-                        ×
-                      </button>
+      <div className="overflow-x-auto">
+        <table className="nexus-table text-xs">
+          <thead>
+            <tr>
+              <td className="colhead">{t.colBoard}</td>
+              <td className="colhead">{t.colDescr}</td>
+              <td className="colhead w-32">{t.colStats}</td>
+              <td className="colhead w-20">{t.colStatus}</td>
+              <td className="colhead w-28">{t.colOps}</td>
+            </tr>
+          </thead>
+          <tbody>
+            {forums.map((f, i) => {
+              const open =
+                f.minclassread === 0 &&
+                f.minclasswrite === 0 &&
+                f.minclasscreate === 0;
+              return (
+                <tr key={f.id}>
+                  <td>
+                    <Link
+                      href={`/forums/${f.id}`}
+                      className="font-bold text-sky"
+                    >
+                      {f.name}
+                    </Link>
+                  </td>
+                  <td className="text-sub">{f.descr || "—"}</td>
+                  <td className="num">
+                    {num(f.topics)} / {num(f.posts ?? 0)}
+                  </td>
+                  <td>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                        open
+                          ? "bg-mint-soft text-mint"
+                          : "bg-sun-soft text-ink"
+                      }`}
+                    >
+                      {open ? t.statusOpen : t.statusLimited}
                     </span>
-                  ))}
-                  <span className="inline-flex items-center gap-1">
-                    <input
-                      value={modDraft[f.id] ?? ""}
-                      onChange={(e) =>
-                        setModDraft((d) => ({
-                          ...d,
-                          [f.id]: e.target.value,
-                        }))
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") addMod(f);
-                      }}
-                      placeholder={t.usernamePh}
-                      className={`${INPUT_CLS} min-h-[26px] w-24 text-xs`}
-                    />
+                  </td>
+                  <td>
                     <button
                       type="button"
-                      disabled={busy || !(modDraft[f.id] ?? "").trim()}
-                      className="text-xs font-bold text-sky disabled:opacity-40"
-                      onClick={() => addMod(f)}
+                      disabled={busy}
+                      className="font-bold text-sky"
+                      onClick={() => onEdit(f)}
                     >
-                      ＋
+                      {t.editBtn}
                     </button>
-                  </span>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="font-bold text-sky"
-                    onClick={() => onEdit(f)}
-                  >
-                    {t.editBtn}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="ml-2 font-bold text-danger"
-                    onClick={() => removeForum(f)}
-                  >
-                    {t.delBtn}
-                  </button>
+                    <button
+                      type="button"
+                      disabled={busy || i === forums.length - 1}
+                      title={t.sortTip}
+                      className="ml-2 font-bold text-sky
+                        disabled:opacity-40"
+                      onClick={() => swapNext(i)}
+                    >
+                      {t.sortBtn}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {forums.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-sub">
+                  {t.boardEmpty}
                 </td>
               </tr>
-            );
-          })}
-          {forums.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-6 text-center text-sub">
-                {t.boardEmpty}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      <p className="mt-3 text-xs text-sub">{t.gateNote}</p>
-      <AskDialog {...ask} />
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -26,11 +26,17 @@ function rankOf(list: MedalRarity[], v?: string | null): number {
   return i < 0 ? list.length : i;
 }
 
+/** 价格行文案（本地化数字 + 站点货币名；行宽门禁故抽成帮助函数） */
+function priceText(m: Medal, locale: string, currency: string): string {
+  return `${m.price?.toLocaleString(locale)} ${currency}`;
+}
+
 export function MedalHall({
   medals,
   rarities,
   maxWorn,
   globalGiftTaxBp,
+  balance,
 }: {
   medals: Medal[];
   rarities: MedalRarity[];
@@ -38,6 +44,8 @@ export function MedalHall({
   maxWorn?: number;
   /** 全站赠送税率（基点；仅用于赠送按钮费率提示） */
   globalGiftTaxBp?: number;
+  /** 当前用户魔力余额（null=匿名/未知：不做余额预判，购买交后端校验） */
+  balance?: number | null;
 }) {
   const { dict, locale, currency } = useI18n();
   const t = dict.medals;
@@ -75,9 +83,7 @@ export function MedalHall({
     } else if (sort === "price") {
       copy.sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
     } else {
-      copy.sort(
-        (a, b) => b.bonus_addition_factor - a.bonus_addition_factor,
-      );
+      copy.sort((a, b) => b.bonus_addition_factor - a.bonus_addition_factor);
     }
     return copy;
   }, [medals, cat, only, sort, rarities]);
@@ -100,7 +106,8 @@ export function MedalHall({
         <div className="tide-tabs" role="tablist">
           <button
             type="button"
-            role="tab" className="tide-tab"
+            role="tab"
+            className="tide-tab"
             aria-selected={cat === null}
             onClick={() => setCat(null)}
           >
@@ -110,12 +117,12 @@ export function MedalHall({
             <button
               key={id}
               type="button"
-              role="tab" className="tide-tab"
+              role="tab"
+              className="tide-tab"
               aria-selected={cat === id}
               onClick={() => setCat(id)}
             >
-              {name}{" "}
-              {medals.filter((m) => m.category_id === id).length}
+              {name} {medals.filter((m) => m.category_id === id).length}
             </button>
           ))}
         </div>
@@ -166,10 +173,7 @@ export function MedalHall({
 
       <div className="hall-grid">
         {list.map((m) => (
-          <article
-            key={m.id}
-            className={`mcard${m.owned ? " is-owned" : ""}`}
-          >
+          <article key={m.id} className={`mcard${m.owned ? " is-owned" : ""}`}>
             <div
               className="mcard-tier"
               data-tone={medalRarityTone(rarities, m.rarity)}
@@ -203,13 +207,19 @@ export function MedalHall({
                   </div>
                 </div>
               </div>
-              {m.description && (
-                <p className="mcard-desc">{m.description}</p>
-              )}
+              {m.description && <p className="mcard-desc">{m.description}</p>}
               <ul className="spec">
                 <li>
                   <span>{g.getType}</span>
                   <b>{getTypeText(m)}</b>
+                </li>
+                <li>
+                  <span>{g.priceLabel}</span>
+                  <b className={m.price ? "is-price" : ""}>
+                    {m.price
+                      ? priceText(m, dateLocale(locale), currency)
+                      : t.notForSale}
+                  </b>
                 </li>
                 <li>
                   <span>{g.duration}</span>
@@ -227,11 +237,7 @@ export function MedalHall({
                 </li>
                 <li>
                   <span>{t.specBonus}</span>
-                  <b
-                    className={
-                      m.bonus_addition_factor > 0 ? "is-bonus" : ""
-                    }
-                  >
+                  <b className={m.bonus_addition_factor > 0 ? "is-bonus" : ""}>
                     {m.bonus_addition_factor > 0
                       ? `+${m.bonus_addition_factor.toFixed(2)}%`
                       : t.noBonus}
@@ -248,25 +254,13 @@ export function MedalHall({
               </ul>
             </div>
             <div className="mcard-ft">
-              <div className="pricetag">
-                {m.price ? (
-                  <>
-                    <b>{m.price.toLocaleString(dateLocale(locale))}</b>
-                    <span>{currency}</span>
-                  </>
-                ) : (
-                  <>
-                    <b>—</b>
-                    <span>{t.notForSale}</span>
-                  </>
-                )}
-              </div>
               <MedalActions
                 medalId={m.id}
                 owned={m.owned}
                 wearing={m.wearing}
                 price={m.price}
                 getType={m.get_type}
+                balance={balance}
                 giftFeeBp={m.gift_fee_bp ?? null}
                 globalGiftTaxBp={globalGiftTaxBp}
                 onWearChange={() =>

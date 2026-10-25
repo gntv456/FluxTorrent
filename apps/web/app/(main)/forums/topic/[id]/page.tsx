@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getPosts, getForums, getEmbedRules } from "@/lib/data";
 import { TopicModActions } from "@/components/forum-post-actions";
 import { ReplyBox } from "@/components/forum-reply-box";
-import { TypeBadge, TagChip } from "@/components/forum-bits";
+import { TypeBadge, TagChip, MarkBadge } from "@/components/forum-bits";
 import { Icon } from "@/components/icons";
 import { TopicFavoriteButton } from "@/components/forum-vote";
 import { PollWidget } from "@/components/forum-poll";
@@ -75,21 +75,22 @@ export default async function TopicPage({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-2xl">
+          {/* 标记统一用文字徽章（用户要求：不再要图钉/星形图标）：
+              公告 → 置顶 → 精华 各自出，锁定仍用锁图标（是状态不是标记） */}
+          {detail.notice && (
+            <span className="mr-2 inline-block align-[2px]">
+              <MarkBadge kind="notice" label={dict.forums.markNotice} />
+            </span>
+          )}
           {detail.sticky && (
-            <Icon
-              name="pin"
-              size={15}
-              className="mr-1 inline align-[-3px] text-coral"
-            />
+            <span className="mr-2 inline-block align-[2px]">
+              <MarkBadge kind="pin" label={dict.forums.markPin} />
+            </span>
           )}
           {detail.digest && (
-            <Icon
-              name="star"
-              size={15}
-              className={
-                "mr-1 inline align-[-3px] text-[var(--brand-orange-dark)]"
-              }
-            />
+            <span className="mr-2 inline-block align-[2px]">
+              <MarkBadge kind="ess" label={dict.forums.markEss} />
+            </span>
           )}
           {detail.locked && (
             <Icon name="lock" size={15} className="mr-1 inline align-[-3px]" />
@@ -160,6 +161,7 @@ export default async function TopicPage({
           sticky={detail.sticky}
           locked={detail.locked}
           digest={detail.digest ?? false}
+          notice={detail.notice ?? false}
           forums={forums.map((f) => ({ id: f.id, name: f.name }))}
         />
       )}

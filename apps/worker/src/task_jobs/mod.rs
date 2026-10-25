@@ -1,10 +1,12 @@
 //! 任务系统结算（0051）：领取时记指标基线，达标发奖、超时失败。
 //!
 //! 按域拆分：settle（认领结算主循环）、reward（达标/失败发奖与罚金）、
-//! exam（考核自动派发）。
+//! exam（考核自动派发）、penalty（0397 不达标处置菜单）。
 
 mod exam;
 pub(crate) mod exam_fair;
+pub(crate) mod penalty;
+mod penalty_ops;
 mod reward;
 mod settle;
 mod stages;

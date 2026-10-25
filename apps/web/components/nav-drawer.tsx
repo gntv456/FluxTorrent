@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/i18n/client";
+import { GlobalSearch } from "@/components/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import type { NavItem, NavGroup } from "@/lib/nav-menu";
@@ -125,6 +126,20 @@ export function NavDrawer({
           >
             ✕
           </button>
+        </div>
+        {/* 主菜单上的搜索框（与桌面顶栏同源 GlobalSearch）：2026-10-20
+            用户口径——抽屉里也要有直显搜索，不再走顶栏弹窗按钮。 */}
+        <div className="navdrawer__search">
+          <GlobalSearch
+            placeholder={dict.common.globalSearchPh}
+            tipTorrents={dict.common.gsTorrents}
+            tipTopics={dict.common.gsTopics}
+            tipEmpty={dict.common.gsEmpty}
+            tipMore={dict.common.gsMore}
+            tipSearching={dict.common.gsSearching}
+            tipError={dict.common.gsError}
+            retryLabel={dict.common.gsRetry}
+          />
         </div>
         <nav className="navdrawer__body">
           <div className="navdrawer__group">

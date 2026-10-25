@@ -27,8 +27,8 @@ pub(crate) fn token_hash(raw: &str) -> String {
     h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// 未结作弊申诉上限（与通用申诉同口径）
-const MAX_OPEN: i64 = 3;
+/// 未结作弊申诉上限（与通用申诉同口径）。账户健康页也读它。
+pub(crate) const MAX_OPEN: i64 = 3;
 
 #[derive(Deserialize)]
 struct TokenAppealReq {

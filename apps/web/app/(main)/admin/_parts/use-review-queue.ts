@@ -22,6 +22,13 @@ export interface ReviewQueueState {
   setReasonId: (id: number | null) => void;
   setPage: (offset: number) => void;
   reload: () => Promise<void>;
+  /** 0306：审核态视图——0=待审（默认）· 4=暂缓（可取回、可恢复）。
+   *  旧口径只拉 status=0，暂缓完的种从台上消失，审核员再也找不回它。 */
+  status: number;
+  setStatus: (s: number) => void;
+  /** 0306：暂缓恢复（4→0）——暂缓不是终态，证据补齐后回待审队列。
+   *  内部已切回待审视图并重拉；成功回 true（调用方只补反馈文案）。 */
+  resume: (torrentId: number) => Promise<boolean>;
 }
 
 interface QueueEnvelope {
@@ -35,17 +42,25 @@ export function useReviewQueue(): ReviewQueueState {
   const [items, setItems] = useState<PendingTorrent[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
+  const [status, setStatus] = useState(0);
   const [reasons, setReasons] = useState<DenyReason[]>([]);
   const [reasonId, setReasonId] = useState<number | null>(null);
   const pageSize = 50;
 
-  const reload = useCallback(async () => {
+  // 取数抽成带参函数：resume 要在 setStatus 后立刻按新态重拉，
+  // 不能依赖会随 state 重建的 reload 闭包（否则拿到旧 status 的列表）。
+  const fetchQueue = useCallback(async (off: number, st: number) => {
     const d = await api.get<QueueEnvelope>(
-      `/api/v1/admin/reviews?limit=${pageSize}&offset=${offset}`,
+      `/api/v1/admin/reviews?limit=${pageSize}` +
+        `&offset=${off}&status=${st}`,
     );
     setItems(d.items ?? []);
     setTotal(d.total ?? 0);
-  }, [offset]);
+  }, []);
+
+  const reload = useCallback(async () => {
+    await fetchQueue(offset, status);
+  }, [fetchQueue, offset, status]);
 
   useEffect(() => {
     reload().catch(() => {});
@@ -59,6 +74,20 @@ export function useReviewQueue(): ReviewQueueState {
       .catch(() => {});
   }, []);
 
+  const resume = useCallback(
+    async (torrentId: number) => {
+      await api.post("/api/v1/admin/reviews/resume", {
+        torrent_id: torrentId,
+        reason: "",
+      });
+      setOffset(0);
+      setStatus(0);
+      await fetchQueue(0, 0);
+      return true;
+    },
+    [fetchQueue],
+  );
+
   return {
     items,
     total,
@@ -69,5 +98,8 @@ export function useReviewQueue(): ReviewQueueState {
     setReasonId,
     setPage: setOffset,
     reload,
+    status,
+    setStatus,
+    resume,
   };
 }

@@ -79,6 +79,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           defaultValue={sp.search}
           placeholder={t2.keywordPh}
           autoComplete="off"
+          data-autofocus
         />
         {/* 联想下拉（0283 P0-2）：overlay 定位挂在输入框下方，不改表单语义 */}
         <SearchSuggest />

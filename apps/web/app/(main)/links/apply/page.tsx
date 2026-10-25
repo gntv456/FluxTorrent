@@ -35,7 +35,7 @@ export default async function LinkApplyPage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <LinkApply />
 
         <aside className="flex flex-col gap-4">

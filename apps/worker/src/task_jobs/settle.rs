@@ -60,6 +60,8 @@ pub(super) struct OpenClaim {
     pub(super) exam_remedy_until: Option<chrono::DateTime<chrono::Utc>>,
     /// 已用延期次数
     pub(super) exam_extensions: i32,
+    /// 0397：任务级处置菜单（单段考核消费；多阶段用 exam_stages.fail_penalty）
+    pub(crate) fail_penalty: serde_json::Value,
 }
 
 /// 结算一次所有进行中的认领。worker 分钟级调用（幂等：状态推进用条件更新 + 发奖幂等键）。
@@ -70,7 +72,7 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
                 c.base_uploaded, c.base_downloaded, c.base_seed_seconds, \
                 c.base_uploads, \
                 c.exam_stage_seq, c.exam_stage_started_at, \
-                c.exam_remedy_until, c.exam_extensions \
+                c.exam_remedy_until, c.exam_extensions, t.fail_penalty \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          WHERE c.status = 0 AND c.exempted_at IS NULL LIMIT $1",
     )
@@ -200,7 +202,20 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
             let deadline = stage_deadline(&c);
             let ended = now > deadline || now > task_end(db, c.task_id).await;
             if ended {
-                settle_fail(db, &c).await?;
+                // 0397：单段考核（kind≠task）到期失败时应用任务级处置菜单。
+                // 普通任务不受置——它的语义是「自愿参加的悬赏」，罚金（penalty
+                // 列）已经是失败代价，再叠加账号处置等于惩罚参加者。
+                let mut penalty_notes: Vec<String> = Vec::new();
+                if c.kind != "task" {
+                    let items =
+                        super::penalty::parse_penalty(c.fail_penalty.clone());
+                    if !items.is_empty() {
+                        penalty_notes =
+                            super::penalty::apply_penalties(db, &c, 1, &items)
+                                .await?;
+                    }
+                }
+                settle_fail(db, &c, &penalty_notes).await?;
                 done += 1;
             }
         }

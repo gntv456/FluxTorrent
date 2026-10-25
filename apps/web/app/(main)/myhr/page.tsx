@@ -1,7 +1,9 @@
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { fmt } from "@/i18n/config";
+import { accountHealthCopy } from "@/i18n/account-health";
 import { MyHrTable } from "@/components/my-hr";
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReadState } from "@/components/ui/read-state";
 import { Pager } from "@/components/ui/pager";
@@ -41,6 +43,9 @@ interface MyHrResp {
   };
   default_seed_hours: number;
   default_days: number;
+  /** 生效策略的版本与更新时间（与 /system/policies 同源） */
+  policy_version: string;
+  policy_updated_at: string | null;
 }
 
 const ZERO_COUNTS = {
@@ -67,6 +72,7 @@ export default async function MyHrPage({
   const sp = await searchParams;
   const { dict, locale } = await getDict();
   const t = dict.myhr;
+  const ah = accountHealthCopy[locale];
   const status = (HR_STATUSES as readonly string[]).includes(sp.status ?? "")
     ? (sp.status as string)
     : "";
@@ -116,14 +122,26 @@ export default async function MyHrPage({
         }
       />
 
-      <p
-        className={
-          "rounded-[var(--r-md)] p-3 text-sm text-ink " +
-          "bg-[var(--sky-soft)]"
-        }
-      >
-        {fmt(t.rule, { days, hours })}
-      </p>
+      {data && (
+        <p
+          className={
+            "rounded-[var(--r-md)] p-3 text-sm text-ink " +
+            "bg-[var(--sky-soft)]"
+          }
+        >
+          {fmt(t.rule, { days, hours })}
+        </p>
+      )}
+
+      {data?.policy_version && (
+        <p className="-mt-2 text-xs text-sub">
+          {fmt(ah.policyVersion, { version: data.policy_version })}
+          {" · "}
+          <Link href="/account-health" className="text-link">
+            {ah.title}
+          </Link>
+        </p>
+      )}
 
       {data && (
         <HrKpiStrip

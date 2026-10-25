@@ -229,24 +229,18 @@ async fn upload_core(
     // ---- 以下全部在 INSERT 之前（P0-4：过去 tags / 推荐位 / 价格越界都在入库后
     //      才报错，留下待审残种 + 同一 .torrent 永久「种子重复」）----
     precheck::check_lengths(&form)?;
-    let price = precheck::check_price(form.price)?;
+    let price = precheck::check_price(&state.repo.db, form.price).await?;
     precheck::check_tags(&state.repo.db, &form, auth).await?;
     let promo = precheck::check_promo(&form, auth)?;
-    // 0148 C1：IMDb 编号落 `imdb_id` 列（详情页/编辑页/审核台/`?imdb=`
-    // 并集都以它为准）。三个来源按优先级取，同一正则口径：①表单 imdb 栏
-    // （`tt0468569` 或整条链接）②正文引用 ③种子名。此前只认 ②③，用户在
-    // 发种页填了 IMDb 详情页仍空白（2026-10-10 实测）。
+    // 0148 C1：IMDb 编号落 `imdb_id` 列（详情页/编辑页/审核台/`?imdb=` 并集
+    // 都以它为准）；三栏（IMDb/TMDB/豆瓣）填了却解析不出编号 ⇒ 当场 1002。
     let imdb_id: Option<String> = form
         .imdb
         .as_deref()
         .and_then(extract_imdb)
         .or_else(|| form.descr.as_deref().and_then(extract_imdb))
         .or_else(|| extract_imdb(&name));
-    // 那一栏填了却解析不出编号 ⇒ 当场报错，静默收下等于骗用户「填上了」
-    let raw_imdb = form.imdb.as_deref().map(str::trim).unwrap_or("");
-    if !raw_imdb.is_empty() && extract_imdb(raw_imdb).is_none() {
-        return Err(DomainError::Validation(IMDB_HINT.into()));
-    }
+    super::upload_ids::validate(&form)?;
     // 简介里的图 → screenshots 列（该列过去全仓无写入，审核队列的「截图数」恒 0）
     let shots = descr_images(form.descr.as_deref());
     precheck::check_quality(&state.repo.db, &form, &parsed, shots.len())
@@ -354,9 +348,13 @@ async fn upload_core(
             }
         }
     };
-    // P-346：发布带 MediaInfo 就跑一次一致性判定。
-    // 与编辑口同一口径：判定是提示不是闸门，
-    // 解析失败不拦发布回包（与站方“不拦截发布”同口径）。
+    // 外部条目 ID 归一化（imdb_id/tmdb_id/douban_id 落 media_info）：
+    // 作品聚合据此把同片多版本归一部作品，见 torrent_http/works_sql.rs
+    super::upload_ids::persist(&state.repo.db, id, &form, &name).await?;
+    // MoviePilot 口径：有 ID 就回查补全元数据（异步，不阻塞发种回包）
+    super::upload_ids::maybe_enrich(std::sync::Arc::clone(state.get_ref()), id);
+    // P-346：发布带 MediaInfo 跑一致性判定（与编辑口同口径：提示不闸门，
+    // 解析失败不拦发布回包）。
     if let Some(t) = form
         .mediainfo
         .as_deref()
@@ -371,15 +369,9 @@ async fn upload_core(
         )
         .await;
     }
-    // 0374 outbox：种子行与 torrent.uploaded 事件同事务落库。
-    //
-    // 此前 dispatch_upload 是**事务外** fire-and-forget：种入库失败事件仍会
-    // 跑（幽灵置顶），进程崩溃时事件直接丢。同事务让两件事同生共死——
-    // 这正是 outbox 模式相对「提交后再 emit」的全部收益。
-    //
-    // dedupe_key 取 info_hash：并发上传同一内容只留一条未消费事件。
-    // 幂等索引是**部分**索引（只覆盖 consumed_at IS NULL），已消费行不占键，
-    // 所以「删种复活后重发同一 info_hash」不会被历史行永久挡住。
+    // 0374 outbox：种子行与 uploaded 事件同事务落库（事务外 fire-and-forget
+    // 会丢事件、出幽灵置顶）。dedupe_key=info_hash：并发发同一种只留一条
+    // 未消费事件；幂等索引只覆盖未消费行，删种复活后重发不会被历史行挡住。
     {
         let mut tx_up = state
             .repo
@@ -461,6 +453,16 @@ async fn upload_core(
     .await?;
     // M28 插件 Hook：发布成功后分发（异步、失败不影响主流程）
     state.plugins.dispatch_upload(state.get_ref(), id, auth.id);
+    // 发种奖励（P-4）：免审种此刻就是「发布完成」，与人工过审同一函数
+    // 发放（幂等键锚种子，见 review_side_effects::pay_upload_reward）；
+    // 待审种的奖励在 review_decide 过审时发。失败只 warn（种子已入库）。
+    if auto_approve {
+        crate::admin_http::review_side_effects::pay_upload_reward(
+            &state.repo.db,
+            id,
+        )
+        .await;
+    }
     // 聚合组推荐（同名候选 / 同源命中）：外提至 upload_suggest.rs
     let group_suggest = super::upload_suggest::group_suggest(
         &state.repo.db,
