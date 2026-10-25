@@ -106,6 +106,14 @@ pub fn bencode_scrape(files: &[(Vec<u8>, usize, usize, usize)]) -> Vec<u8> {
 
 /// 手工 percent-decode：BT 客户端的 info_hash/peer_id 是任意字节的 URL 编码（含 %00-%FF），
 /// 标准库 Query 反序列化走 UTF-8 会失败或损坏 —— 必须在字节层解码。
+///
+/// `+` → 0x20（form-urlencoded 语义，2026-10-25 修）：urllib（Python 默认
+/// quote_plus）、部分简易 BT 工具把二进制参数里的 0x20 字节按表单语义编成
+/// 裸 `+`；旧实现原样收 0x2b ⇒ hex 后与库内 info_hash 永不相等，该种对
+/// 这类客户端「不存在」——announce 恒「torrent unregistered」、做种收益
+/// 停发（实测 info_hash 含 0x20 字节的探针种全链路挂死）。合规客户端发
+/// `%2b`/`%20`，解码结果不变（%2b→0x2b），无回归；text 参数（event 等）
+/// 本就不含裸 `+`，与原 serde_urlencoded 行为一致。
 pub fn percent_decode(raw: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(raw.len());
     let mut i = 0;
@@ -118,6 +126,11 @@ pub fn percent_decode(raw: &[u8]) -> Vec<u8> {
                 i += 3;
                 continue;
             }
+        }
+        if raw[i] == b'+' {
+            out.push(b' ');
+            i += 1;
+            continue;
         }
         out.push(raw[i]);
         i += 1;

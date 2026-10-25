@@ -147,6 +147,11 @@ fn percent_decode_binary_safe() {
     assert_eq!(percent_decode(b"a%20b"), b"a b".to_vec());
     assert_eq!(percent_decode(b"plain"), b"plain".to_vec());
     assert_eq!(percent_decode(b"100%"), b"100%".to_vec()); // 尾部孤立 % 保留
+    // form-urlencoded 兼容（2026-10-25）：裸 '+' 即空格字节——urllib 默认
+    // quote_plus 把 info_hash 里的 0x20 编成 '+'，旧实现拒所有这类客户端
+    assert_eq!(percent_decode(b"a+b"), b"a b".to_vec());
+    // %2b 仍解为 0x2b（合规客户端路径无回归）
+    assert_eq!(percent_decode(b"a%2bb"), vec![0x61, 0x2b, 0x62]);
 }
 
 #[test]
