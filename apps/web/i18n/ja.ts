@@ -11,6 +11,22 @@ import type { Dict } from "./zh-CN";
 export const ja: DeepPartial<Dict> = {
   myspark: {
     otherKind: "その他",
+    merkleTitle: "毎日の決済証明",
+    merkleDesc: "毎日の火花台帳は Merkle 木として封印されます。ご自身のブラウザで再計算し、その日の決済に含まれ、事後に改変されていないことを確認できます。",
+    merkleDate: "決済日",
+    merkleLoad: "読み込む",
+    merkleVerify: "ブラウザで再計算",
+    merkleChecking: "再計算中…",
+    merkleRoot: "ルート",
+    merkleLeaves: "当日の明細 {n} 件 · {u} 人",
+    merkleBuiltAt: "封印時刻",
+    merkleLeaf: "リーフ",
+    merkleNotBuilt: "この日はまだ封印されていません（毎日の決済後に生成されます）。",
+    merkleNoRows: "この日の明細はありません。",
+    merkleOk: "検証成功：あなたの {n} 件の記録はすべて木に含まれ、公開ルートと一致しています。",
+    merkleBad: "検証失敗：記録が公開ルートと一致しません。サポートチケットを発行してください。",
+    merkleUnsupported: "この環境では WebCrypto が使えないため、ローカル検証を実行できません。",
+    merkleNote: "この証明はその日の台帳が事後に改変されていないことだけを示し、金額ルールの正しさは示しません。チェーンもトークンも使いません（anchoring: none）。",
   },
   my: {
     kinds: {

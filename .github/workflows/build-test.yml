@@ -70,7 +70,7 @@ jobs:
         # 版本从根 package.json 的 packageManager 读取（与 lockfile 匹配；显式 version 会与其冲突）
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
           # pnpm workspace：锁文件在仓库根（web 是 workspace 成员，无独立锁文件）
           cache-dependency-path: pnpm-lock.yaml
@@ -143,8 +143,11 @@ jobs:
       - name: Next build
         run: pnpm exec next build
       # i18n 防新增门禁（存量基线 i18n_baseline.json；迁移存量后跑 --update 收缩基线）
+      # 简繁门禁：zh-CN 里混进繁体 / zh-TW 里混进简体（i18n_guard 管不了字形）
       - name: i18n guard
-        run: node ../../scripts/i18n_guard.mjs
+        run: |
+          node ../../scripts/i18n_guard.mjs
+          node ../../scripts/zh_cn_variant_guard.mjs
       # 设计模板门禁（S3 收敛与治理）：标题级唯一 + 禁语义色类直写，
       # 固化 S1（h1 语义）/ S2（tone 化，Badge 收敛 20 处）的成果防回退。
       # 存量基线 design_guard_baseline.json；迁移某文件用 --touch 定向重算，

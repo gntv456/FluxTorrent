@@ -1,6 +1,6 @@
 ARG BASE_REGISTRY=docker.1ms.run
 ARG NPM_REGISTRY=https://registry.npmmirror.com
-FROM ${BASE_REGISTRY}/library/node:20-slim AS builder
+FROM ${BASE_REGISTRY}/library/node:24-slim AS builder
 # 全局 ARG（FROM 前声明）在 stage 内不可见，必须在本 stage 重新声明才能
 # 被 ENV/RUN 引用——否则 COREPACK_NPM_REGISTRY 落空，corepack 回落
 # registry.npmjs.org，在受限网络下 pnpm install 直接失败（实测 exit 1）。
@@ -25,7 +25,7 @@ ENV API_SERVER_URL=$API_SERVER_URL
 WORKDIR /build/apps/web
 RUN pnpm exec next build
 
-FROM ${BASE_REGISTRY}/library/node:20-slim AS runner
+FROM ${BASE_REGISTRY}/library/node:24-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0
 # Next standalone 输出自带最小 node_modules

@@ -155,7 +155,7 @@ jobs:
           probe GET  /health
           # 鉴权矩阵（匿名列）：受保护资源匿名一律 401/403——任何 200 = 守卫缺失
           # M1~M5 新增端点必须在列（漏挂 staff() 的表现是匿名也能读案件/题库）
-          for path in /torrents /me /me/overview /invites /bank/overview /friends /forums /admin/overview /admin/users /admin/cheat-cases /admin/risk-scores /admin/cheat-appeals /admin/cheat-accuracy /admin/email-domains /admin/reg-quiz /my/cheat-appeals; do
+          for path in /torrents /works /me /me/overview /invites /bank/overview /friends /forums /forums/recent /admin/overview /admin/users /admin/cheat-cases /admin/risk-scores /admin/cheat-appeals /admin/cheat-accuracy /admin/email-domains /admin/reg-quiz /my/cheat-appeals; do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$B$path")
             echo "anon GET $path → $code"
             case "$code" in
@@ -238,6 +238,11 @@ jobs:
         run: |
           sudo apt-get install -y -qq redis-tools > /dev/null 2>&1 || sudo apt-get install -y -qq redis > /dev/null
           python3 scripts/ci_announce_billing_check.py
+
+      # 考核处置菜单（0397）：三项都是「不炸但悄悄错」的坑，
+      # 没有真库 + 真 worker 跑一遍结算就抓不到。
+      - name: 考核处置菜单不变式 e2e
+        run: python3 scripts/pt_audit_exam_penalty.py
 
       - name: Upload logs on failure
         if: failure()
