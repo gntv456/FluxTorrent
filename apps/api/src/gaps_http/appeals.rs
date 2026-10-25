@@ -120,19 +120,26 @@ pub async fn appeal_handle(
     // 0209 P1-8：受理即联动解封（可选）+ 双通道通知当事人（此前 accept 只改 appeals 表，
     // 站长须手动恢复 status=0，且被封者不能登录看 PM、收不到任何处理结果）。
     // 0285 解封先于翻转；只认 open+2，墓碑(3)不可复活。
-    let (user_id, email, mut unbanned): (i64, Option<String>, bool) =
-        sqlx::query_as(
-            "SELECT a.user_id, u.email, \
-             ($2 AND a.kind = 'ban' AND a.status = 'open' \
-              AND u.status = 2) \
-             FROM appeals a JOIN users u ON u.id = a.user_id WHERE a.id = $1",
-        )
-        .bind(body.appeal_id)
-        .bind(body.accept && body.unban)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .unwrap_or((0, None, false));
+    // 批七轮补同一口径的第二段：kind='hr' 的受理过去只翻状态、发一句「已受理」，
+    // 会员照旧被 hr_flag 挡在下载口外——受理与处置是两回事，却写成了一回事。
+    let (user_id, email, kind, hr_target, mut unbanned): (
+        i64,
+        Option<String>,
+        String,
+        Option<i64>,
+        bool,
+    ) = sqlx::query_as(
+        "SELECT a.user_id, u.email, a.kind, a.ref_id, \
+         ($2 AND a.kind = 'ban' AND a.status = 'open' \
+          AND u.status = 2) \
+         FROM appeals a JOIN users u ON u.id = a.user_id WHERE a.id = $1",
+    )
+    .bind(body.appeal_id)
+    .bind(body.accept && body.unban)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?
+    .unwrap_or((0, None, String::new(), None, false));
     if unbanned {
         // 0285：解封需严格高于目标（旧版任何 staff 都能放出被封的管理员/站长）
         unbanned = super::appeal_unban::restore_if_outranked(
@@ -142,6 +149,28 @@ pub async fn appeal_handle(
             user_id,
         )
         .await?;
+    }
+    // 与解封同一口径（也同一失败面）：等级不够赦不得这条时，整个受理一起失败，
+    // 申诉留在 open，不会出现「回了已受理、记录还在违规」。
+    let mut hr_pardoned = false;
+    if body.accept && kind == "hr" {
+        if let Some(tid) = hr_target {
+            let reason = if body.note.trim().is_empty() {
+                "申诉受理：撤销该条 H&R 违规"
+            } else {
+                body.note.trim()
+            };
+            hr_pardoned = crate::services::hr_pardon::pardon_one(
+                &state,
+                auth.id,
+                auth.class_id,
+                "hr.pardon",
+                user_id,
+                tid,
+                reason,
+            )
+            .await?;
+        }
     }
     let n = sqlx::query(
         "UPDATE appeals SET status = $2, handled_by = $1, handled_at = now(), result_note = $3 \
@@ -171,13 +200,21 @@ pub async fn appeal_handle(
             "未通过"
         };
         let subject = format!("[{site}] 你的申诉{verdict}");
+        // 回执必须说清真做了什么事：只回「已受理」而记录还在违规，
+        // 会员会以为限制已解除，下一次下载才撞墙。
+        let tail = if unbanned {
+            "账号已恢复，现在可以正常登录。"
+        } else if kind == "hr" && body.accept && hr_pardoned {
+            "对应那条 H&R 违规已一并撤销，下载限制已解除。"
+        } else if kind == "hr" && body.accept {
+            "本次受理没有附带可撤销的 H&R 记录：申诉未指明条目，或该条已不是\
+             「已违规」状态。如需撤销该条违规，请到「我的 H&R」按条目重新申诉，\
+             或联系职员在 H&R 管理里处理。"
+        } else {
+            ""
+        };
         let body_text = format!(
-            "你的申诉（#{id}）处理结果：{verdict}。\n处理说明：{note}\n{}",
-            if unbanned {
-                "账号已恢复，现在可以正常登录。"
-            } else {
-                ""
-            },
+            "你的申诉（#{id}）处理结果：{verdict}。\n处理说明：{note}\n{tail}",
             id = body.appeal_id,
             note = if body.note.trim().is_empty() {
                 "（无）"
@@ -202,5 +239,6 @@ pub async fn appeal_handle(
     Ok(ok(serde_json::json!({
         "handled": body.appeal_id,
         "unbanned": unbanned,
+        "hr_pardoned": hr_pardoned,
     })))
 }

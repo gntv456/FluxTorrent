@@ -118,16 +118,43 @@ pub(crate) async fn appeal_create(
             "未结申诉上限 3 条，请等待处理".into(),
         ));
     }
+    let ref_id =
+        sole_violated_hr(&state, &body.kind, body.ref_id, user_id).await?;
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO appeals (user_id, kind, ref_id, body) VALUES ($1, \
          $2, $3, $4) RETURNING id",
     )
     .bind(user_id)
     .bind(&body.kind)
-    .bind(body.ref_id)
+    .bind(ref_id)
     .bind(body.body.trim())
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({ "id": id })))
+    Ok(ok(serde_json::json!({ "id": id, "ref_id": ref_id })))
+}
+
+/// H&R 申诉的靶子（批七轮 P-?）：「我的 H&R」卡片只把会员递到 /appeals，
+/// 界面送出的载荷里**没有条目号**（`appeals/page.tsx` 只拼 kind/body），
+/// 于是职员看到的每条 H&R 申诉都不知道指的是哪一条，受理也落不到动作。
+/// 只在「该会员恰好有一条已违规记录」时替他把条目号补上；多于一条留空，
+/// 宁可让职员去问，也不替会员猜是哪一条。
+async fn sole_violated_hr(
+    state: &AppState,
+    kind: &str,
+    given: Option<i64>,
+    user_id: i64,
+) -> DomainResult<Option<i64>> {
+    if kind != "hr" || given.is_some() {
+        return Ok(given);
+    }
+    let rows: Vec<i64> = sqlx::query_scalar(
+        "SELECT torrent_id FROM hr_snapshots WHERE user_id = $1 \
+         AND status = 'violated' ORDER BY created_at DESC LIMIT 2",
+    )
+    .bind(user_id)
+    .fetch_all(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(if rows.len() == 1 { rows.into_iter().next() } else { None })
 }
