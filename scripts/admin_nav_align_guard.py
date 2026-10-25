@@ -18,6 +18,12 @@
     就会红，但这里再兜一层，防有人改成 `as any`）。
   - ToolTab 里存在、但 DB 没有导航项的键：只告警（staff-tools 内部
     子页签可能有意不出现在后台导航里）。
+
+第四条轴（0420）：导航项的 `perm_key` 必须等于该工具首屏读口的
+`require_perm`。NULL 只按 min_class 放行，于是 90/93 档看得到入口、
+点进去 403——入口与后端不是同一把钥匙。`NAV_REQUIRED_PERM` 是显式
+登记表：工具名 → 权限键；DB 里改坏、迁移漏写、tab_key 改名都会红。
+未登记的 NULL 条目只告警（工作台等确实没有权限判据）。
 """
 import os
 import re
@@ -32,6 +38,26 @@ STAFF = os.path.join(ROOT, "apps", "web", "components", "staff-tools.tsx")
 PAGE = os.path.join(ROOT, "apps", "web", "app", "(main)", "admin",
                    "page.tsx")
 ADMIN_DIR = os.path.join(ROOT, "apps", "web", "app", "(main)", "admin")
+
+# 工具 → 首屏读口 require_perm（0420 版主六轮实测，逐条用 91/92/93/95/98
+# 探针打过：可见即 200、不可见即 403）。不在此表的导航项按 min_class 放行。
+NAV_REQUIRED_PERM = {
+    "users": "user.view",                     # /admin/users
+    "userlogs": "user.view",                  # /admin/rename-logs
+    "reports": "reports.handle",              # /admin/reports
+    "cheaters": "cheaters.view",              # /admin/cheaters
+    "subawards": "subtitles.grant",           # /admin/subtitles/awards/*
+    "cats": "categories.manage",              # /admin/categories
+    "tagdict": "categories.manage",           # /admin/tags-dict
+    "sections": "categories.manage",          # /admin/section-dict
+    "menu": "settings.manage",                # /admin/menu-items
+    "p2tools": "settings.manage",             # /admin/sticky-promos
+    "freeleech": "settings.manage",           # 子面板 promo-kinds 同键
+    "jixiao": "jixiao.payroll.view",          # /admin/jixiao/payroll
+    "resetpass": "user.resetpass",            # /admin/resetpass
+    "roles": "roles.manage",                  # /admin/roles-dict
+    "applications": "user.adjust",            # /admin/applications
+}
 
 
 def read(path):
@@ -115,6 +141,30 @@ def db_blank_module_keys():
     return {x.strip() for x in p.stdout.splitlines() if x.strip()}
 
 
+def db_nav_perms():
+    """tab_key → perm_key（NULL 归一成空串，便于和登记表比差集）。"""
+    sql = ("SELECT tab_key || '|' || COALESCE(perm_key, '') "
+           "FROM staff_panel_entries WHERE COALESCE(tab_key, '') <> ''")
+    p = subprocess.run(psql_argv(sql), capture_output=True, text=True,
+                       encoding="utf-8")
+    if p.returncode:
+        raise RuntimeError("psql 失败: %s" % (p.stderr or "")[:200])
+    out = {}
+    for line in p.stdout.splitlines():
+        if "|" in line:
+            key, perm = line.split("|", 1)
+            out[key.strip()] = perm.strip()
+    return out
+
+
+def db_permission_keys():
+    p = subprocess.run(psql_argv("SELECT key FROM permissions"),
+                       capture_output=True, text=True, encoding="utf-8")
+    if p.returncode:
+        raise RuntimeError("psql 失败: %s" % (p.stderr or "")[:200])
+    return {x.strip() for x in p.stdout.splitlines() if x.strip()}
+
+
 def main():
     switch_src = read(SWITCH)
     page_src = read(PAGE)
@@ -157,6 +207,36 @@ def main():
             problems.append(
                 "导航项 module_key 写成空串（规范值是 NULL，空串是"
                 "「迁移手写列踩哨兵」的产物）：%s" % ", ".join(blank))
+        try:
+            nav_perms = db_nav_perms()
+            known = db_permission_keys()
+        except Exception as e:  # noqa: BLE001
+            problems.append("权限对齐校验读不了库：%s" % e)
+            nav_perms, known = {}, set()
+        for key, want in sorted(NAV_REQUIRED_PERM.items()):
+            if key not in nav_perms:
+                problems.append(
+                    "权限对齐表登记了导航项 '%s'，但 DB 没有（tab_key 改名/"
+                    "删除？）" % key)
+                continue
+            got = nav_perms[key] or "NULL"
+            if got != want:
+                problems.append(
+                    "导航项 '%s' 的 perm_key=%s，首屏后端要 '%s'——"
+                    "可见即 403" % (key, got, want))
+        missing = sorted(set(NAV_REQUIRED_PERM.values()) - known)
+        if missing:
+            problems.append("权限对齐表引用了不存在的权限键：%s"
+                            % ", ".join(missing))
+        unmapped = sorted(k for k, v in nav_perms.items()
+                          if not v and k not in NAV_REQUIRED_PERM)
+        if unmapped:
+            warns.append(
+                "按 min_class 放行的导航项 %d 条（未登记权限键，请确认"
+                "上游页面确无权限判据）：%s"
+                % (len(unmapped),
+                   ", ".join(unmapped[:10])
+                   + ("…" if len(unmapped) > 10 else "")))
     unused_case = sorted(k for k in (cases | page_cases)
                          if k not in dbk and k not in subroutes)
     if unused_case and dbk:
