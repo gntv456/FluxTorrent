@@ -101,6 +101,7 @@ struct ReportQueueQuery {
 
 /// 认领举报（0 pending → 2 handling）：原子 CAS 防多人重复认领
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ReportClaimReq {
     report_id: i64,
 }

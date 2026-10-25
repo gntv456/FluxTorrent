@@ -31,6 +31,7 @@ pub use sanction::cheat_case_resolve;
 const SLA_HOURS: i64 = 72;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct OpenCaseReq {
     /// 从一条证据行开案（取其 user 为对象）；与 user_id 二选一
     #[serde(default)]
@@ -180,6 +181,7 @@ pub async fn cheat_case_open(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ClaimReq {
     /// true=认领（互斥）；false=释放回队列
     #[serde(default)]
@@ -251,6 +253,7 @@ pub async fn cheat_case_claim(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct CaseNoteReq {
     body: String,
 }

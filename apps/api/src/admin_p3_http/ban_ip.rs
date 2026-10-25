@@ -13,6 +13,7 @@ use super::staff;
 // ============ P2-10 按 IP 解封（登录记录页一键封/解封配套） ============
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BanByIpReq {
     ip: String,
 }

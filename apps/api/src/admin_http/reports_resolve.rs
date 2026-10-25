@@ -15,6 +15,7 @@ use super::guard::staff;
 
 /// 处置举报：action = act(已处置) | dismiss(驳回)；结果自动 PM 通知举报人
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ResolveReq {
     report_id: i64,
     #[serde(default)]

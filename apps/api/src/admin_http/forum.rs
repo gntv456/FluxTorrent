@@ -110,6 +110,7 @@ async fn forum_admin_list(
 // ---- 分区/节点管理（0115；与版块同权限档 FORUMS_MANAGE） ----
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct CategoryUpsertReq {
     name: String,
     #[serde(default)]
@@ -237,6 +238,7 @@ async fn forum_category_delete(
 // ---- 分区批量排序（拖拽 / 上下移动后一次性落库） ----
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct CategoryReorderReq {
     /// 目标顺序的分区 id 列表；下标即新的 sort 值
     ids: Vec<i64>,

@@ -30,6 +30,7 @@ pub async fn ban_list(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BanBody {
     ip: String,
     #[serde(default)]
@@ -121,12 +122,27 @@ pub async fn ban_delete(
     let auth = require_auth(&req, &state).await?;
     crate::authz::require_perm(&state, &auth, crate::authz::perm::BANS_MANAGE)
         .await?;
-    sqlx::query("DELETE FROM ip_bans WHERE id=$1")
-        .bind(*path)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "ip_unban", None).await;
+    let deleted: Option<String> = sqlx::query_scalar(
+        "DELETE FROM ip_bans WHERE id=$1 RETURNING ip::text",
+    )
+    .bind(*path)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // P-225 同族：0 行命中不许回成功，也不许写「有人解封」的假账。
+    let Some(ip) = deleted else {
+        return Err(DomainError::NotFound(i64::from(*path)));
+    };
+    state
+        .repo
+        .audit_detail(
+            Some(auth.id),
+            "ip_unban",
+            None,
+            None,
+            Some(serde_json::json!({ "ip": ip })),
+        )
+        .await;
     bump_guard_ver(&state).await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }

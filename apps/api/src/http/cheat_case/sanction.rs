@@ -24,6 +24,7 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ResolveReq {
     /// none（缺省）/ warn / ban / full_ban；后两者进四眼待批准
     #[serde(default)]
