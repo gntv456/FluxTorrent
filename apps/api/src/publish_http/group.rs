@@ -120,6 +120,11 @@ pub async fn group_unsubscribe(
 }
 
 /// 组详情 + 组内全部过审版本（详情页「同组资源」数据源；未入组返回 group=null）
+///
+/// 匿名可读（P-583：详情页公开），但**被问的那颗种**仍要先过统一可见性——
+/// 版式与 `/torrents/{id}/related` 同：SQL 里的 `approval_status = 1` 只管
+/// 组内列出的版本，不管入口种自己。版主实测（2026-10-25）待审种主详情 1004、
+/// 本口 200，等于把「这个号存在、还没过审」交给任意来客。
 #[get("/torrents/{id}/group")]
 pub async fn group_info(
     req: HttpRequest,
@@ -127,6 +132,19 @@ pub async fn group_info(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let torrent_id = path.into_inner();
+    let auth = optional_auth(&req, &state).await;
+    let vis = crate::torrents::visibility_sql(
+        auth.as_ref().map(|u| (u.id, u.class_id >= 90)));
+    let seen: bool = sqlx::query_scalar(&format!(
+        "SELECT EXISTS(SELECT 1 FROM torrents t WHERE t.id = $1 AND {vis})"
+    ))
+    .bind(torrent_id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if !seen {
+        return Err(DomainError::NotFound(torrent_id));
+    }
     // torrents.group_id 可空：fetch_optional 得 Option<Option<i64>>——外层 None=行不存在，
     // 内层 None=未挂组。旧版直接解一层 Option，group_id 为 NULL 时把内层 None 当
     // 行不存在之外还触发 sqlx「unexpected null」解码错（500）。显式双层解构。
@@ -190,7 +208,7 @@ pub async fn group_info(
         })
         .collect();
     // P-583 订阅按钮初始态：详情页公开，匿名恒 false；登录用户按本人一行判。
-    let subscribed = match optional_auth(&req, &state).await {
+    let subscribed = match auth {
         Some(u) => sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM group_subscriptions \
              WHERE user_id = $1 AND group_id = $2)",
