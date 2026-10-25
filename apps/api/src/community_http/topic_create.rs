@@ -13,7 +13,11 @@ use crate::repo::community::actor::actor_name;
 use crate::repo::community::forum_reward;
 use crate::state::AppState;
 
+/// P-6（P-311/P-5 同族）：无 deny_unknown_fields 时拼错字段被静默吞——
+/// 实测 `{poll: {options…}}` 形态建出普通帖（投票没建）回 200 零提示，
+/// 发帖者以为发起了投票。前端 forum-composer 只发已声明键，补拒未知键安全。
 #[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 pub(super) struct TopicCreateReq {
     pub(super) forum_id: i64,
     pub(super) title: String,
@@ -202,12 +206,7 @@ pub(crate) async fn topic_create(
         // 幂等重放闸门（#[must_use] 连审）：冻结与建主题同事务，重放即整体拒绝
         if !matches!(
             crate::economy_http::spend_spark_tx(
-                &mut tx,
-                auth.id,
-                frozen,
-                pool_kind,
-                &idem,
-                pool_kind,
+                &mut tx, auth.id, frozen, pool_kind, &idem, pool_kind,
                 topic_id,
             )
             .await?,

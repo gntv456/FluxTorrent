@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 820,
+ "total": 825,
  "routes": [
   {
    "method": "POST",
@@ -2297,12 +2297,6 @@
    "file": "apps/api/src/content_http/promo.rs"
   },
   {
-   "method": "POST",
-   "path": "/requests",
-   "handler": "request_create",
-   "file": "apps/api/src/content_http/requests.rs"
-  },
-  {
    "method": "GET",
    "path": "/requests",
    "handler": "request_list",
@@ -2313,6 +2307,18 @@
    "path": "/requests/fulfill",
    "handler": "request_fulfill",
    "file": "apps/api/src/content_http/requests.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/requests/{id}/bid",
+   "handler": "request_bid",
+   "file": "apps/api/src/content_http/requests/bid.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/requests",
+   "handler": "request_create",
+   "file": "apps/api/src/content_http/requests/create.rs"
   },
   {
    "method": "POST",
@@ -2619,6 +2625,18 @@
    "path": "/me/spark/ledger",
    "handler": "my_ledger",
    "file": "apps/api/src/economy_http/spark_ledger_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/me/spark/ledger/manifest",
+   "handler": "my_ledger_manifest",
+   "file": "apps/api/src/economy_http/spark_merkle_http.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/system/ledger/roots",
+   "handler": "ledger_roots",
+   "file": "apps/api/src/economy_http/spark_merkle_http.rs"
   },
   {
    "method": "POST",
@@ -3017,12 +3035,6 @@
    "file": "apps/api/src/games_http/ranch_pens.rs"
   },
   {
-   "method": "POST",
-   "path": "/appeals",
-   "handler": "appeal_create",
-   "file": "apps/api/src/gaps_http/appeals.rs"
-  },
-  {
    "method": "GET",
    "path": "/me/appeals",
    "handler": "appeal_my",
@@ -3039,6 +3051,12 @@
    "path": "/admin/appeals/handle",
    "handler": "appeal_handle",
    "file": "apps/api/src/gaps_http/appeals.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/appeals",
+   "handler": "appeal_create",
+   "file": "apps/api/src/gaps_http/appeals/create.rs"
   },
   {
    "method": "POST",
@@ -3365,6 +3383,12 @@
    "file": "apps/api/src/http/links.rs"
   },
   {
+   "method": "POST",
+   "path": "/admin/links",
+   "handler": "link_create",
+   "file": "apps/api/src/http/links.rs"
+  },
+  {
    "method": "PUT",
    "path": "/admin/links/{id}",
    "handler": "link_update",
@@ -3503,6 +3527,12 @@
    "file": "apps/api/src/invite_http.rs"
   },
   {
+   "method": "GET",
+   "path": "/invites",
+   "handler": "list_invites_handler",
+   "file": "apps/api/src/invite_http.rs"
+  },
+  {
    "method": "POST",
    "path": "/invites",
    "handler": "issue_invite_handler",
@@ -3534,9 +3564,9 @@
   },
   {
    "method": "GET",
-   "path": "/invites",
-   "handler": "list_invites_handler",
-   "file": "apps/api/src/invite_http/list.rs"
+   "path": "/me/achievements",
+   "handler": "my_achievements",
+   "file": "apps/api/src/me_achievements.rs"
   },
   {
    "method": "POST",
@@ -4709,6 +4739,12 @@
    "file": "apps/api/src/torrent_http/interact.rs"
   },
   {
+   "method": "DELETE",
+   "path": "/torrents/{id}/bookmark",
+   "handler": "delete_bookmark",
+   "file": "apps/api/src/torrent_http/interact.rs"
+  },
+  {
    "method": "GET",
    "path": "/torrents/{id}/tags",
    "handler": "torrent_tags",
@@ -4892,12 +4928,6 @@
    "method": "GET",
    "path": "/admin/spark-flow/daily",
    "handler": "spark_flow_daily",
-   "file": "apps/api/src/v4_http.rs"
-  },
-  {
-   "method": "GET",
-   "path": "/me/achievements",
-   "handler": "my_achievements",
    "file": "apps/api/src/v4_http.rs"
   },
   {

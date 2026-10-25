@@ -11,7 +11,11 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 /// 主题管理：置顶/锁定/移动版块（版主限本版块）
+/// P-5（P-311 同族单条版补修）：无 deny_unknown_fields 时键名拼错
+/// （如 `{action, value}` 形态）被 serde 静默吞掉 ⇒ 全部 Option 缺省、
+/// 零动作回 200「已管理」——版主看到成功而什么都没改。
 #[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 struct TopicManageReq {
     #[serde(default)]
     sticky: Option<bool>,
@@ -20,6 +24,9 @@ struct TopicManageReq {
     /// 精华帖（NP digest 口径）：版主标记，列表/详情加精徽标
     #[serde(default)]
     digest: Option<bool>,
+    /// 公告（0396）：版主标记，列表/详情加公告徽标 + 珊瑚行底
+    #[serde(default)]
+    notice: Option<bool>,
     #[serde(default)]
     move_to_forum_id: Option<i64>,
 }
@@ -105,6 +112,14 @@ pub(crate) async fn topic_manage(
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     }
+    if let Some(notice) = body.notice {
+        sqlx::query("UPDATE topics SET notice = $1 WHERE id = $2")
+            .bind(notice)
+            .bind(tid)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     state
         .repo
         .audit(Some(auth.id), "forum.topic_manage", Some(tid))
@@ -130,6 +145,9 @@ struct TopicManageBatchReq {
     locked: Option<bool>,
     #[serde(default)]
     digest: Option<bool>,
+    /// 公告（0396）
+    #[serde(default)]
+    notice: Option<bool>,
     #[serde(default)]
     move_to_forum_id: Option<i64>,
 }
@@ -165,6 +183,7 @@ pub(crate) async fn topic_manage_batch(
     if body.sticky.is_none()
         && body.locked.is_none()
         && body.digest.is_none()
+        && body.notice.is_none()
         && body.move_to_forum_id.is_none()
     {
         return Err(DomainError::Validation("没有要执行的操作".into()));
@@ -207,6 +226,7 @@ pub(crate) async fn topic_manage_batch(
             sticky = COALESCE($2::boolean, sticky), \
             locked = COALESCE($3::boolean, locked), \
             digest = COALESCE($4::boolean, digest), \
+            notice = COALESCE($6::boolean, notice), \
             forum_id = COALESCE($5::bigint, forum_id) \
          WHERE id = ANY($1::bigint[])",
     )
@@ -215,6 +235,7 @@ pub(crate) async fn topic_manage_batch(
     .bind(body.locked)
     .bind(body.digest)
     .bind(body.move_to_forum_id)
+    .bind(body.notice)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?

@@ -75,6 +75,51 @@ struct LinkAdminBody {
     status: Option<String>,
 }
 
+/// 管理员直建友链（P-7）：`links.manage` 权限字典写「友链增删改」，但增
+/// 此前只有 `/links/apply`（公开申请：强制 20 字理由+邮箱+落 pending 态），
+/// staff 想添一条友链只能「自己申请再自己批准」。本口直落 active，与
+/// link_update 同一守卫；URL 协议白名单与 apply 同源（防 javascript: 注入）。
+#[post("/admin/links")]
+pub async fn link_create(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    body: web::Json<LinkAdminBody>,
+) -> DomainResult<impl Responder> {
+    let auth = require_auth(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::LINKS_MANAGE)
+        .await?;
+    let name = body.name.as_deref().map(str::trim).unwrap_or("");
+    let url = body.url.as_deref().map(str::trim).unwrap_or("");
+    if name.is_empty() || url.is_empty() {
+        return Err(DomainError::Validation("站点名和 URL 必填".into()));
+    }
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err(DomainError::Validation("友链仅支持 http(s) 地址".into()));
+    }
+    let status = body.status.as_deref().unwrap_or("active");
+    if !["pending", "active", "hidden"].contains(&status) {
+        return Err(DomainError::Validation("非法状态".into()));
+    }
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO friend_links (name, url, title, status, sort, applied_by) \
+         VALUES ($1, $2, $3, $4, COALESCE($5, 0), $6) RETURNING id",
+    )
+    .bind(name)
+    .bind(url)
+    .bind(&body.title)
+    .bind(status)
+    .bind(body.sort)
+    .bind(auth.id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "link_create", Some(i64::from(id)))
+        .await;
+    Ok(crate::dto::ok(serde_json::json!({ "id": id, "status": status })))
+}
+
 /// 编辑/审核友链（staff；status: pending→active 通过）
 #[put("/admin/links/{id}")]
 pub async fn link_update(
