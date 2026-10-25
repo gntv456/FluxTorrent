@@ -96,6 +96,13 @@ jobs:
       # 修复：node scripts/route_manifest.mjs --update 后连清单一起提交。
       - name: Route manifest guard
         run: node ../../scripts/route_manifest.mjs --check
+      # 漏交文件守门（两次翻车：2026-09-26 / 2026-10-25）：并行会话的功能
+      # commit 只提交引用方（mod/import/迁移登记），文件本体留在未跟踪区
+      # ——本地容器从工作区构建一切正常，远端 CI/干净克隆拿快照直接炸。
+      # 四口径：mod 可解析 / 迁移无断档（历史让号空洞见脚本 KNOWN_GAPS）/
+      # include_*! 字面路径 / tsconfig references。
+      - name: Repo hygiene guard
+        run: node ../../scripts/repo_hygiene_guard.mjs
       # 分层宪法门禁（FRAME-PLAN-01 F2 / W-48）：H 路由层禁 SQL（存量按
       # scripts/layer_baseline.json 棘轮「只许瘦不许胖」）、services/ 禁
       # actix_web、domain/ 双禁——新文件零容忍，存量迁移净 SQL 后
