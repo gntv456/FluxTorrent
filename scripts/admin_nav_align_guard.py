@@ -24,6 +24,11 @@
 点进去 403——入口与后端不是同一把钥匙。`NAV_REQUIRED_PERM` 是显式
 登记表：工具名 → 权限键；DB 里改坏、迁移漏写、tab_key 改名都会红。
 未登记的 NULL 条目只告警（工作台等确实没有权限判据）。
+
+第五条轴（0421）：反方向也要对齐——有渲染分支（renderSimpleTool 的
+case / page.tsx 的内联分支）却没有 DB 导航项，等于功能只活在手敲的
+`?tool=` 里，后台导航与 Ctrl/⌘+K 搜索都找不到它。红；确实有意不留入口的，
+写进 `NAV_INTENTIONAL_NO_ENTRY` 并注明理由。
 """
 import os
 import re
@@ -57,7 +62,15 @@ NAV_REQUIRED_PERM = {
     "resetpass": "user.resetpass",            # /admin/resetpass
     "roles": "roles.manage",                  # /admin/roles-dict
     "applications": "user.adjust",            # /admin/applications
+    # 0421 补的三条（此前只有渲染分支、没有入口，导航与 Ctrl+K 都找不到）
+    "ops": "settings.manage",                 # /admin/version + backups + jobs
+    "homelayout": "settings.manage",          # PUT /admin/home-layout
+    "viewlayout": "settings.manage",          # PUT /admin/view-hidden
 }
+
+# 有意不做成后台导航入口的渲染分支。往这里写名字要带理由——
+# 「面板存在但没人找得到」本身就是缺陷形状（0421 三条即为此）。
+NAV_INTENTIONAL_NO_ENTRY: set = set()
 
 
 def read(path):
@@ -238,10 +251,15 @@ def main():
                    ", ".join(unmapped[:10])
                    + ("…" if len(unmapped) > 10 else "")))
     unused_case = sorted(k for k in (cases | page_cases)
-                         if k not in dbk and k not in subroutes)
+                         if k not in dbk
+                         and k not in subroutes
+                         and k not in NAV_INTENTIONAL_NO_ENTRY)
     if unused_case and dbk:
-        warns.append("renderSimpleTool 有 case 但 DB 没有导航项：%s"
-                     % ", ".join(unused_case))
+        problems.append(
+            "renderSimpleTool/page.tsx 有渲染分支却没有任何后台导航入口"
+            "（只能手敲 ?tool= 才进得去）：%s——要么补 staff_panel_entries"
+            "（参照 0421），要么写进 NAV_INTENTIONAL_NO_ENTRY 并说明理由"
+            % ", ".join(unused_case))
 
     for w in warns:
         print("[告警] %s" % w)
