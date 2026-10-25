@@ -225,8 +225,8 @@ code = (body or {}).get("code")
 ok("TV18 会员往隐种挂字幕 = 1004（旧实现回 200 并真落一行）",
    code == 1004, "http=%s code=%s msg=%s" % (
        st, code, str((body or {}).get("message"))[:80]))
-post_sub = int(psql("SELECT count(*) FROM subtitles WHERE torrent_id = %d" % hid)
-               or 0)
+post_sub = int(psql("SELECT count(*) FROM subtitles "
+                     "WHERE torrent_id = %d" % hid) or 0)
 ok("TV19 隐种的字幕行数没动（%d → %d）" % (pre_sub, post_sub),
    pre_sub == post_sub)
 # 万一打的是旧镜像（真落了行），只清我自己这一行标题，别的都不许碰

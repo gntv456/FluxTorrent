@@ -72,9 +72,10 @@ viewer = int(psql("SELECT id FROM users WHERE class_id < 90 AND status < 2 "
 tgts = [int(x) for x in psql(
     "SELECT id FROM torrents WHERE approval_status = 1 AND owner_id <> %d "
     "ORDER BY id DESC LIMIT 6" % viewer).splitlines() if x.strip()]
-hidden = int(psql("SELECT t.id FROM torrents t JOIN users u ON u.id = t.owner_id "
-                  "WHERE t.approval_status IN (0, 2) AND u.class_id < 90 "
-                  "AND t.owner_id <> %d ORDER BY t.id DESC LIMIT 1" % viewer) or 0)
+hid_sql = ("SELECT t.id FROM torrents t JOIN users u ON u.id = t.owner_id "
+             "WHERE t.approval_status IN (0, 2) AND u.class_id < 90 "
+             "AND t.owner_id <> %d ORDER BY t.id DESC LIMIT 1" % viewer)
+hidden = int(psql(hid_sql) or 0)
 ok("TW7 夹具取到（低档会员 / 过审种 >=5 颗 / 对本人不可见的种）",
    bool(viewer) and len(tgts) >= 5 and bool(hidden),
    "viewer=%s 种数=%s hidden=%s" % (viewer, len(tgts), hidden))
@@ -94,7 +95,8 @@ owner = int(psql("SELECT owner_id FROM torrents WHERE id = %d" % tgt) or 0)
 
 def read(tid):
     return {
-        "thanks": psql("SELECT count(*) FROM thanks WHERE torrent_id = %d" % tid),
+        "thanks": psql("SELECT count(*) FROM thanks "
+                       "WHERE torrent_id = %d" % tid),
         "ledger": psql("SELECT count(*) FROM spark_ledger WHERE ref_id = %d"
                        % tid),
     }
@@ -109,7 +111,8 @@ print("   前置读数：种主=%d %s" % (owner, pre))
 def post(path, body, tok):
     st, resp = call("POST", path, body=body, token=tok)
     resp = resp if isinstance(resp, dict) else {}
-    return st, resp.get("code"), str(resp.get("message") or resp.get("msg") or "")
+    shown = resp.get("message") or resp.get("msg") or ""
+    return st, resp.get("code"), str(shown)
 
 
 print("== S9 必被拒的载荷 ==")
