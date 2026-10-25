@@ -47,8 +47,9 @@ ok("TX0 夹具读者取到（class<5 的正常会员）", bool(member), "member=
 if not member:
     summary()
 mcls = int(psql("SELECT class_id FROM users WHERE id=%d" % member) or 1)
+SCLS = int(psql("SELECT class_id FROM users WHERE id=1") or 99)
 tm = jwt(member, cls=mcls)
-ts = jwt(1, cls=int(psql("SELECT class_id FROM users WHERE id=1")))
+ts = jwt(1, cls=SCLS)
 
 # 静态先钉：版块读档的执法点在哪几处（被摘掉就红，不等活体）
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -87,7 +88,7 @@ try:
     if not tid:
         summary()
 
-    print("== TX5 活体：四道口，职员必须看得见、会员必须看不见 ==")
+    print("== TX5 活体：五道口，职员必须看得见、会员必须看不见 ==")
 
     def sees(blob):
         return (PHRASE in blob
@@ -117,9 +118,9 @@ try:
         "SELECT greatest(max(r), 0) FROM (SELECT greatest("
         "  (SELECT count(*) FROM posts p WHERE p.topic_id = t.id) - 1, 0)"
         " AS r FROM topics t JOIN forums f ON f.id = t.forum_id"
-        " WHERE f.minclassread <= 99 AND t.id <> %d"
+        " WHERE f.minclassread <= %d AND t.id <> %d"
         "   AND COALESCE(t.last_post_at, t.created_at)"
-        "       >= now() - make_interval(days => 7)) x" % tid) or 0)
+        "       >= now() - make_interval(days => 7)) x" % (SCLS, tid)) or 0)
     need = min(top + 1, 20)
     psql("INSERT INTO posts (id, topic_id, user_id, body, body_text)"
          " SELECT nextval('posts_id_seq'), %d, NULL,"
@@ -157,12 +158,14 @@ try:
                False, "职员 http=%s code=%s 会员 http=%s"
                % (side_s[0], side_s[1].get("code"), side_m[0]))
         else:
+            ids_s = [r.get("id") or r.get("topic_id")
+                     for r in rows(side_s, key)]
+            ids_m = [r.get("id") or r.get("topic_id")
+                     for r in rows(side_m, key)]
             ok("TX8 侧栏%s：职员看得见（第 %s 位）、会员必须看不见"
                % (label, rank + 1), mrank < 0,
                "会员 http=%s code=%s 命中第 %s 位；职员榜=%s 会员榜=%s"
-               % (side_m[0], side_m[1].get("code"), mrank,
-                  [r.get("id") or r.get("topic_id") for r in rows(side_s, key)],
-                  [r.get("id") or r.get("topic_id") for r in rows(side_m, key)]))
+               % (side_m[0], side_m[1].get("code"), mrank, ids_s, ids_m))
 
 finally:
     if tid:
@@ -180,9 +183,10 @@ finally:
                      % PHRASE)
     ok("TX9 残料清零（主题=%s 版块=%s 回帖=%s 带短语的帖=%s；"
        "夹具前后现网 posts=%s→%s）"
-       % (left_t, left_f, left_p, left_body, posts_before,
+       % (left_t, left_f, left_p, left_body, POSTS0,
           psql("SELECT count(*) FROM posts")),
        left_t == "0" and left_f == "0" and left_p == "0"
-       and left_body == "0")
+       and left_body == "0"
+       and psql("SELECT count(*) FROM posts") == POSTS0)
 
 summary()
