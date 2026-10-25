@@ -184,6 +184,7 @@ pub(crate) async fn toggle_comment_like(
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
 struct ThankBody {
     /// 魔力答谢数额（同类站口径：+1/+10/+100/+500/+1000/+10000；缺省 0 = 免费感谢）
     #[serde(default)]
@@ -211,17 +212,33 @@ pub(crate) async fn do_thank(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i64>,
-    body: Option<web::Json<ThankBody>>,
+    body: crate::http::OptJson<ThankBody>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let tid = path.into_inner();
+    // 提取器形状是承重的一环：旧写法 `Option<web::Json<ThankBody>>` 会把
+    // **一切解析错误折成 `Ok(None)`**（本仓实测过的 prod-layer 陷阱），于是
+    // `deny_unknown_fields` 根本没机会生效——`{"amountt": 100}` 静默降级成
+    // 免费感谢还回 200。仓里为这一族已有 `OptJson`（空体/裸 null 仍算缺省，
+    // 写坏的载荷回 1002 并走中央中文口径），先例见 loan_repay/pets。
     let amount = body.and_then(|b| b.amount).unwrap_or(0);
-    if amount > 0 && !super::thanks_spark::is_valid_amount(amount) {
+    // 白名单判定不带符号：旧写法 `amount > 0 &&` 让负数一路放行，
+    // 于是 `{"amount": -100}` 静默演成「免费感谢 + 200」——客户端以为
+    // 答谢了 100 魔力，账面一分没转（P-310 同族：缺省分支反做）。
+    if amount != 0 && !super::thanks_spark::is_valid_amount(amount) {
         return Err(DomainError::Validation(
             "答谢数额需为 1/10/100/500/1000/10000".into(),
         ));
     }
     // 种主随种一起读出；种不存在直接 404（旧版 owner=None 时静默跳过转账）
+    // P-643 同族：入口种先过统一准入门——此前只经 `owner_of` 读种主，任意
+    // 会员都能往别人待审/被驳回的种上落一行感谢（注解一直写着 1004）。
+    torrents::assert_visible(
+        &state.repo.db,
+        tid,
+        (auth.id, auth.class_id >= 90),
+    )
+    .await?;
     let owner = super::thanks_spark::owner_of(&state.repo.db, tid).await?;
     if amount > 0 && owner == auth.id {
         return Err(DomainError::Validation("不能向自己的种子答谢魔力".into()));
