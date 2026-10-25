@@ -11,6 +11,7 @@
 
 短语必须 ASCII：本仓 pg_trgm 对中文不给分，中文查询恒空会把「漏」读成「正常」。
 """
+import json
 import os
 import re
 import sys
@@ -28,6 +29,8 @@ DOORS = [
     ("/forums/recent?limit=200", "最近主题"),
     ("/forums/{fid}/topics", "按版块列主题"),
     ("/forums/topics/{tid}", "主题详情"),
+    # 版块清单：本轮实测职员侧含夹具 fid、会员侧不含 ⇒ 正控成立，收进判据
+    ("/forums/boards", "版块清单"),
 ]
 
 member = int(psql("SELECT id FROM users WHERE class_id < 5 AND status < 2 "
@@ -35,12 +38,13 @@ member = int(psql("SELECT id FROM users WHERE class_id < 5 AND status < 2 "
 ok("TX0 夹具读者取到（class<5 的正常会员）", bool(member), "member=%s" % member)
 if not member:
     summary()
-tm = jwt(member, cls=int(psql("SELECT class_id FROM users WHERE id=%d" % member)))
+mcls = int(psql("SELECT class_id FROM users WHERE id=%d" % member) or 1)
+tm = jwt(member, cls=mcls)
 ts = jwt(1, cls=int(psql("SELECT class_id FROM users WHERE id=1")))
 
 # 静态先钉：版块读档的执法点在哪几处（被摘掉就红，不等活体）
-src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                   "apps", "api", "src", "community_http")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src = os.path.join(ROOT, "apps", "api", "src", "community_http")
 
 
 def body(rel):
@@ -69,8 +73,8 @@ try:
                   "body": "正文只存在于受限版块：" + PHRASE}, token=ts)
     tid = int(psql("SELECT id FROM topics WHERE title LIKE '%%%s%%' "
                    "ORDER BY id DESC LIMIT 1" % PHRASE) or 0)
-    ok("TX4 夹具主题建成（tid=%s http=%s code=%s）" % (tid, st, b.get("code")),
-       bool(tid))
+    ok("TX4 夹具主题建成（tid=%s http=%s code=%s）" % (tid, st,
+       b.get("code")), bool(tid))
     if not tid:
         summary()
 
@@ -85,24 +89,29 @@ try:
         p = tpl % PHRASE if "%s" in tpl else tpl.format(fid=fid, tid=tid)
         m_st, m_b = call("GET", p, token=tm)
         s_st, s_b = call("GET", p, token=ts)
-        mt, stx = str(m_b), str(s_b)
+        mt = json.dumps(m_b, ensure_ascii=False)
+        stx = json.dumps(s_b, ensure_ascii=False)
         m_see, s_see = sees(mt), sees(stx)
         if not s_see:
-            ok("TX5 %s：正控不成立（职员也看不见⇒这条没被 exercised，"
-               "不许算已验）" % label, False,
-               "会员 http=%s 职员 http=%s len=%d" % (m_st, s_st, len(stx)))
+            ok("TX5 %s：正控不成立（职员也看不见⇒这条没被 "
+               "exercised，不许算已验）" % label, False,
+               "会员 http=%s 职员 http=%s len=%d"
+               % (m_st, s_st, len(stx)))
         else:
-            ok("TX5 %s：职员看得见、会员必须看不见（会员看见=%s）" % (label, m_see),
-               not m_see, "会员 http=%s code=%s 命中短语=%s" % (
-                   m_st, m_b.get("code"), m_see))
+            ok("TX5 %s：职员看得见、会员必须看不见（会员看见=%s）"
+               % (label, m_see), not m_see,
+               "会员 http=%s code=%s 命中短语=%s"
+               % (m_st, m_b.get("code"), m_see))
 finally:
     if tid:
         psql("DELETE FROM posts WHERE topic_id=%d" % tid)
         psql("DELETE FROM topics WHERE id=%d" % tid)
     if fid:
         psql("DELETE FROM forums WHERE id=%d" % fid)
-    left_t = psql("SELECT count(*) FROM topics WHERE id=%d" % tid) if tid else "0"
-    left_f = psql("SELECT count(*) FROM forums WHERE id=%d" % fid) if fid else "0"
+    left_t = "0" if not tid else psql(
+        "SELECT count(*) FROM topics WHERE id=%d" % tid)
+    left_f = "0" if not fid else psql(
+        "SELECT count(*) FROM forums WHERE id=%d" % fid)
     ok("TX6 残料清零（主题=%s 版块=%s；现网总量 版块=%s 主题=%s）"
        % (left_t, left_f, psql("SELECT count(*) FROM forums"),
           psql("SELECT count(*) FROM topics")),
