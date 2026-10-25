@@ -40,6 +40,7 @@ export function AdminInvites() {
   const [issueCount, setIssueCount] = useState("1");
   const [issueDays, setIssueDays] = useState("");
   const [busy, setBusy] = useState(false);
+  const [canAdjust, setCanAdjust] = useState(false);
   // P2 清偿：作废邀请码二次确认（danger），window.confirm 退役
   const ask = useConfirm();
   const [issuedCodes, setIssuedCodes] = useState<string[] | null>(null);
@@ -56,6 +57,7 @@ export function AdminInvites() {
       );
       setRows(r.rows);
       setTotal(r.total);
+      setCanAdjust(Boolean((r as { can_adjust?: boolean }).can_adjust));
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : dict.adminInvites.loadFail);
     }
@@ -117,45 +119,47 @@ export function AdminInvites() {
         </p>
       )}
 
-      {/* 直发邀请码（0204 P1） */}
-      <section className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs">
-          {at.fIssueUid}
-          <input
-            value={issueUid}
-            onChange={(e) => setIssueUid(e.target.value)}
-            inputMode="numeric"
-            placeholder="42"
-            className={INPUT_W32}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          {at.fIssueCount}
-          <input
-            value={issueCount}
-            onChange={(e) => setIssueCount(e.target.value)}
-            inputMode="numeric"
-            className={INPUT_CARD}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          {at.fIssueDays}
-          <input
-            value={issueDays}
-            onChange={(e) => setIssueDays(e.target.value)}
-            inputMode="numeric"
-            placeholder={at.phIssueDays}
-            className={INPUT_CARD}
-          />
-        </label>
-        <button
-          disabled={busy || !issueUid.trim()}
-          onClick={() => void issue()}
-          className={BTN_SM_GHOST + " border-sky text-sky-deep"}
-        >
-          {at.issueBtn}
-        </button>
-      </section>
+      {/* 直发邀请码（0204 P1）；邀请管理只读档看不到 */}
+      {canAdjust && (
+        <section className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs">
+            {at.fIssueUid}
+            <input
+              value={issueUid}
+              onChange={(e) => setIssueUid(e.target.value)}
+              inputMode="numeric"
+              placeholder="42"
+              className={INPUT_W32}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            {at.fIssueCount}
+            <input
+              value={issueCount}
+              onChange={(e) => setIssueCount(e.target.value)}
+              inputMode="numeric"
+              className={INPUT_CARD}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            {at.fIssueDays}
+            <input
+              value={issueDays}
+              onChange={(e) => setIssueDays(e.target.value)}
+              inputMode="numeric"
+              placeholder={at.phIssueDays}
+              className={INPUT_CARD}
+            />
+          </label>
+          <button
+            disabled={busy || !issueUid.trim()}
+            onClick={() => void issue()}
+            className={BTN_SM_GHOST + " border-sky text-sky-deep"}
+          >
+            {at.issueBtn}
+          </button>
+        </section>
+      )}
 
       {/* 筛选区 */}
       <section className="flex flex-wrap items-end gap-2">
@@ -223,7 +227,7 @@ export function AdminInvites() {
             <td className="colhead">{at.thUsedBy}</td>
             <td className="colhead">{at.thEmail}</td>
             <td className="colhead">{at.thExpires}</td>
-            <td className="colhead">{at.thAction}</td>
+            <td className="colhead">{canAdjust ? at.thAction : ""}</td>
           </tr>
         </thead>
         <tbody>
@@ -254,7 +258,7 @@ export function AdminInvites() {
                 {new Date(r.expires_at).toLocaleDateString(dateLocale(locale))}
               </td>
               <td>
-                {r.status === 0 && (
+                {canAdjust && r.status === 0 && (
                   <button
                     disabled={busy}
                     onClick={() =>

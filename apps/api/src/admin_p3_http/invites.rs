@@ -111,14 +111,19 @@ async fn admin_invites(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
+    // 只读档（invite.view）也能进这个面板，但直发/作废要 user.adjust；
+    // 不回这个位，界面就会给出永远 403 的按钮。
+    let can_adjust =
+        crate::authz::can(&state, &auth, crate::authz::perm::USER_ADJUST).await;
     Ok(ok(
-        serde_json::json!({ "rows": rows, "total": total, "page": q.page.max(1), "per_page": q.per_page }),
+        serde_json::json!({ "rows": rows, "total": total, "page": q.page.max(1), "per_page": q.per_page, "can_adjust": can_adjust }),
     ))
 }
 
 /// 管理端直发邀请码（0204 P1）：给指定用户发 N 天码（上限 50）。
 /// NP takeinvite 口径；天数缺省读 invite_admin_ttl_days（30）。
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AdminInviteIssueReq {
     user_id: i64,
     #[serde(default = "one")]

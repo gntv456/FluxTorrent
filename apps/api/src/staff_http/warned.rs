@@ -28,6 +28,7 @@ pub async fn warned_list(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WarnBody {
     user_id: i64,
     weeks: i32,

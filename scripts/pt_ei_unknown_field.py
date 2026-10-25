@@ -116,6 +116,31 @@ for _i, (_label, _rel, _struct) in enumerate(STAFF_DENY, 6):
     ok("EI%d %s %s 拒未知字段" % (_i, _label, _struct),
        _got is True, "%s: %s" % (_rel, _got))
 
+# P-310/P-311 同族（2026-10-25 版主四轮）：这些管理写口的缺省分支会让权限/
+# 处置**反向执行**——minclassread 少一个字母=版块对所有人可读、
+# protected 拼错=取消保护、sanction 拼错=案件按「无处置」结案。
+# 属性被摘就必须在这里红，不能等下一次人工深测。
+print("== S1b 管理写口：缺省即放宽/降级的结构体 ==")
+STAFF_DENY = [
+    ("论坛版块新建/编辑", "admin_http/forum_mods.rs", "ForumUpsertReq"),
+    ("分区新建/编辑", "admin_http/forum.rs", "CategoryUpsertReq"),
+    ("分区排序", "admin_http/forum.rs", "CategoryReorderReq"),
+    ("作弊案件开案", "http/cheat_case/mod.rs", "OpenCaseReq"),
+    ("作弊案件认领/释放", "http/cheat_case/mod.rs", "ClaimReq"),
+    ("作弊案件备注", "http/cheat_case/mod.rs", "CaseNoteReq"),
+    ("作弊案件处置", "http/cheat_case/sanction.rs", "ResolveReq"),
+    ("举报认领/释放", "admin_http/reports.rs", "ReportClaimReq"),
+    ("举报处置", "admin_http/reports_resolve.rs", "ResolveReq"),
+    ("IP 封禁创建", "staff_http/bans.rs", "BanBody"),
+    ("按 IP 解封", "admin_p3_http/ban_ip.rs", "BanByIpReq"),
+    ("用户警告", "staff_http/warned.rs", "WarnBody"),
+    ("管理端直发邀请码", "admin_p3_http/invites.rs", "AdminInviteIssueReq"),
+]
+for _i, (_label, _rel, _struct) in enumerate(STAFF_DENY, 20):
+    _got = denies(src(_rel), _struct)
+    ok("EI%d %s %s 拒未知字段" % (_i, _label, _struct),
+       _got is True, "%s: %s" % (_rel, _got))
+
 print("== S2 活体：笔误键必须被拒且不留副作用 ==")
 # 前置的口径改了。原写法要求 root「开跑前不拥有任何勋章」，以便收尾时
 # 能用「数量回到 0」验证清干净。但批一百五十四修了 P-342（medals.active 不存在，
