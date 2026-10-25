@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FluxTorrent · Spectrum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#08090D; --panel:#101219; --panel2:#161A24; --panel3:#1C212E;
+  --line:#262C3A; --line2:#333B4E;
+  --txt:#F3F6FC; --mut:#9AA2B8; --mut2:#5C647A;
+  --c-blue:#2D5BFF; --c-cyan:#00E0D6; --c-green:#00D26A; --c-amber:#FFB200; --c-coral:#FF5A36; --c-mag:#FF2E93;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --ui:'Inter','Noto Sans SC',system-ui,sans-serif;
+  --disp:'Sora',var(--ui);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--ui);background:var(--ink);color:var(--txt);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+::selection{background:rgba(45,91,255,.4);color:#fff}
+a{color:inherit;text-decoration:none}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.spectrum{position:fixed;top:0;left:0;right:0;height:4px;z-index:1000;
+  background:linear-gradient(90deg,var(--c-blue),var(--c-cyan),var(--c-green),var(--c-amber),var(--c-coral),var(--c-mag),var(--c-blue));
+  background-size:220% 100%;animation:flow 7s linear infinite}
+@keyframes flow{to{background-position:220% 0}}
+
+header.mast{position:sticky;top:4px;z-index:900;background:rgba(8,9,13,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.mastrow{max-width:1480px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;gap:22px}
+.logo{width:44px;height:44px;border-radius:13px;flex:none;
+  background:conic-gradient(from 210deg,var(--c-blue),var(--c-cyan),var(--c-green),var(--c-amber),var(--c-coral),var(--c-mag),var(--c-blue));
+  padding:3px;box-shadow:0 0 22px -4px var(--c-blue)}
+.logo i{display:block;width:100%;height:100%;border-radius:10px;background:var(--ink);
+  display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:800;font-size:20px;
+  background:linear-gradient(120deg,var(--c-cyan),var(--c-mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand{font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:-.02em;line-height:1}
+.brand b{background:linear-gradient(90deg,var(--c-cyan),var(--c-blue) 55%,var(--c-mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand small{display:block;font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.32em;color:var(--mut2);margin-top:3px}
+nav.tabs{display:flex;gap:3px;margin-left:8px}
+.tab{padding:9px 15px;font-size:13.5px;font-weight:600;color:var(--mut);border-radius:11px;cursor:pointer;position:relative;transition:.18s}
+.tab:hover{color:var(--txt);background:var(--panel2)}
+.tab.on{color:var(--txt);background:var(--panel2)}
+.tab.on::after{content:"";position:absolute;left:14px;right:14px;bottom:3px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--c-cyan),var(--c-mag))}
+.ticker{margin-left:auto;display:flex;gap:20px;align-items:center}
+.tk{text-align:right;line-height:1.1}
+.tk b{font-family:var(--mono);font-weight:700;font-size:16px;display:block}
+.tk span{font-size:10px;letter-spacing:.14em;color:var(--mut2);text-transform:uppercase}
+.tk b.g{color:var(--c-green)} .tk b.b{color:var(--c-cyan)} .tk b.m{color:var(--c-mag)}
+
+.marquee{border-bottom:1px solid var(--line);background:var(--panel);overflow:hidden;white-space:nowrap}
+.marquee div{display:inline-block;padding:7px 0;animation:scroll 26s linear infinite;font-family:var(--mono);font-size:12px;color:var(--mut)}
+.marquee span{margin:0 26px}
+.marquee i{font-style:normal;color:var(--c-cyan)}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+main{max-width:1480px;margin:0 auto;padding:30px 28px 90px}
+.v{display:none}
+.v.on{display:block;animation:fade .4s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.sec-h{display:flex;align-items:baseline;gap:14px;margin:6px 0 18px}
+.sec-h h2{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em}
+.sec-h .bar{width:34px;height:5px;border-radius:3px;background:linear-gradient(90deg,var(--c-cyan),var(--c-mag))}
+.sec-h .sub{font-family:var(--mono);font-size:12px;color:var(--mut2);letter-spacing:.1em}
+.sec-h .right{margin-left:auto;display:flex;gap:8px}
+.chip{font-size:12px;font-weight:600;color:var(--mut);padding:6px 12px;border:1px solid var(--line);border-radius:9px;cursor:pointer;transition:.18s}
+.chip:hover,.chip.on{color:var(--txt);border-color:var(--line2);background:var(--panel2)}
+
+/* ===== 浏览 ===== */
+.browse{display:grid;grid-template-columns:216px 1fr;gap:26px;align-items:start}
+.rail{position:sticky;top:84px;display:flex;flex-direction:column;gap:5px}
+.rail .rh{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--mut2);margin:2px 12px 8px}
+.rcat{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:13px;cursor:pointer;color:var(--mut);font-size:14px;font-weight:500;transition:.18s;border:1px solid transparent}
+.rcat:hover{background:var(--panel2);color:var(--txt)}
+.rcat.on{background:var(--panel2);color:var(--txt);border-color:var(--line)}
+.rcat .blk{width:11px;height:11px;border-radius:4px;background:var(--rc);box-shadow:0 0 12px -1px var(--rc);flex:none}
+.rcat .nm{flex:1}
+.rcat .ct{font-family:var(--mono);font-size:12px;color:var(--mut2)}
+
+.feat{position:relative;border-radius:22px;overflow:hidden;margin-bottom:26px;border:1px solid var(--line);
+  background:radial-gradient(120% 140% at 85% -10%,rgba(255,46,147,.30),transparent 55%),radial-gradient(120% 140% at 10% 120%,rgba(0,224,214,.28),transparent 55%),linear-gradient(120deg,#0E1422,#141A2C)}
+.feat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--c-cyan),var(--c-mag))}
+.featgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:0}
+.feat .l{padding:34px 36px}
+.feat .badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--c-cyan);border:1px solid rgba(0,224,214,.4);padding:5px 11px;border-radius:20px;margin-bottom:18px}
+.feat .badge i{width:7px;height:7px;border-radius:50%;background:var(--c-cyan);box-shadow:0 0 10px var(--c-cyan);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.feat h1{font-family:var(--disp);font-weight:800;font-size:46px;line-height:1.02;letter-spacing:-.03em;margin-bottom:14px}
+.feat h1 em{font-style:normal;background:linear-gradient(90deg,var(--c-amber),var(--c-coral));-webkit-background-clip:text;background-clip:text;color:transparent}
+.feat p{color:var(--mut);font-size:14.5px;max-width:46ch;margin-bottom:22px}
+.feat .metarow{display:flex;gap:26px;flex-wrap:wrap}
+.feat .metarow div b{font-family:var(--mono);font-size:20px;display:block}
+.feat .metarow div span{font-size:11px;color:var(--mut2);letter-spacing:.1em}
+.feat .r{padding:34px;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;border-left:1px solid var(--line);background:linear-gradient(180deg,transparent,rgba(0,0,0,.25))}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:13px;font-weight:700;font-size:14px;cursor:pointer;border:1px solid transparent;transition:.18s}
+.btn.prime{background:linear-gradient(120deg,var(--c-blue),var(--c-mag));color:#fff;box-shadow:0 12px 30px -10px var(--c-blue)}
+.btn.prime:hover{transform:translateY(-2px);box-shadow:0 18px 40px -12px var(--c-mag)}
+.btn.ghost{background:var(--panel2);border-color:var(--line2);color:var(--txt)}
+.btn.ghost:hover{border-color:var(--c-cyan);color:var(--c-cyan)}
+
+.feed{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.tcard{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s;cursor:pointer;display:flex;flex-direction:column}
+.tcard::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--rc);box-shadow:0 0 16px -1px var(--rc)}
+.tcard:hover{transform:translateY(-5px);border-color:color-mix(in srgb,var(--rc) 45%,var(--line));box-shadow:0 26px 60px -26px var(--rc)}
+.tc-body{padding:15px 17px 13px;display:flex;flex-direction:column;flex:1}
+.tc-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.tc-cat{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--rc);font-weight:700}
+.tc-cat i{width:7px;height:7px;border-radius:2px;background:var(--rc)}
+.tc-title{font-family:var(--disp);font-weight:700;font-size:17px;line-height:1.3;letter-spacing:-.01em;margin-bottom:7px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tc-spec{font-family:var(--mono);font-size:11.5px;color:var(--mut2);margin-bottom:12px;letter-spacing:.02em}
+.tc-mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.tc-mgrid div{background:var(--panel2);padding:8px 6px;text-align:center}
+.tc-mgrid span{display:block;font-size:9.5px;letter-spacing:.08em;color:var(--mut2)}
+.tc-mgrid b{font-family:var(--mono);font-size:14px;font-weight:700}
+.tc-mgrid b.s{color:var(--c-green)} .tc-mgrid b.l{color:var(--c-coral)} .tc-mgrid b.d{color:var(--c-cyan)}
+.tc-foot{display:flex;align-items:center;gap:9px;margin-top:auto;padding-top:11px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
+.tc-foot .up{width:22px;height:22px;border-radius:50%;flex:none;background:conic-gradient(from 0deg,var(--c-blue),var(--c-cyan),var(--c-mag),var(--c-blue));padding:2px}
+.tc-foot .up i{display:block;width:100%;height:100%;border-radius:50%;background:var(--panel3)}
+.tc-foot b{color:var(--txt);font-weight:600}
+.tc-foot .dot{width:7px;height:7px;border-radius:50%;margin-left:auto}
+.tc-foot .dot.ok{background:var(--c-green);box-shadow:0 0 8px var(--c-green)}
+.tc-foot .dot.no{background:var(--c-coral)}
+.tc-foot .cm{font-family:var(--mono);font-size:11px;color:var(--mut2)}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;padding:2.5px 7px;border-radius:6px}
+.tag.free{background:rgba(0,210,106,.16);color:var(--c-green)}
+.tag.x2{background:rgba(255,178,0,.16);color:var(--c-amber)}
+.tag.x3{background:rgba(255,90,54,.16);color:var(--c-coral)}
+.tag.new{background:rgba(45,91,255,.18);color:#8aa2ff}
+.tag.uhc{background:rgba(255,46,147,.16);color:var(--c-mag)}
+.tag.int{background:rgba(0,224,214,.14);color:var(--c-cyan)}
+.tag.sub{background:rgba(154,162,178,.14);color:#9AA2B8}
+
+/* ===== 详情 ===== */
+.detail{display:grid;grid-template-columns:1.55fr 1fr;gap:24px;align-items:start}
+.poster{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);aspect-ratio:16/9;
+  background:linear-gradient(135deg,var(--c-blue),var(--c-mag) 70%);display:flex;align-items:flex-end;padding:22px}
+.poster::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 120% at 80% 0,rgba(255,178,0,.4),transparent 50%),radial-gradient(90% 120% at 0 100%,rgba(0,224,214,.4),transparent 50%)}
+.poster .pg{position:relative;z-index:2}
+.poster .pg .cat{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#fff;opacity:.85}
+.poster .pg h1{font-family:var(--disp);font-weight:800;font-size:38px;line-height:1.04;letter-spacing:-.02em;margin-top:8px;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.4)}
+.gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.gallery .g{border-radius:12px;aspect-ratio:16/10;border:1px solid var(--line)}
+.g:nth-child(1){background:linear-gradient(135deg,var(--c-blue),#0a1a4d)}
+.g:nth-child(2){background:linear-gradient(135deg,var(--c-cyan),#063b3a)}
+.g:nth-child(3){background:linear-gradient(135deg,var(--c-amber),#4d2e00)}
+.g:nth-child(4){background:linear-gradient(135deg,var(--c-mag),#4d0030)}
+.terminal{margin-top:16px;background:#0A0C12;border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-family:var(--mono);font-size:12px;color:#aeb6cc;line-height:1.7;overflow:auto}
+.terminal .k{color:var(--c-cyan)} .terminal .v{color:var(--txt)} .terminal .d{color:var(--mut2)}
+
+.block{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 20px;margin-bottom:16px}
+.block h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--mut2);text-transform:uppercase;margin-bottom:14px;display:flex;justify-content:space-between}
+.block h4 .meta{color:var(--mut)}
+.specgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-radius:12px;overflow:hidden}
+.specgrid div{background:var(--panel2);padding:11px 13px}
+.specgrid span{display:block;font-size:10px;letter-spacing:.06em;color:var(--mut2);margin-bottom:3px}
+.specgrid b{font-family:var(--mono);font-size:13.5px;font-weight:700}
+.specgrid b.g{color:var(--c-green)} .specgrid b.c{color:var(--c-cyan)} .specgrid b.a{color:var(--c-amber)}
+.tree{font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--mut)}
+.tree .f{color:var(--txt)} .tree .sz{color:var(--mut2);float:right}
+.tree .ind{color:var(--c-cyan)}
+.ext{display:flex;gap:10px;flex-wrap:wrap}
+.ext .e{flex:1;min-width:130px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.ext .e span{font-size:10px;letter-spacing:.1em;color:var(--mut2);display:block}
+.ext .e b{font-family:var(--mono);font-size:18px}
+.ext .e b.y{color:var(--c-amber)} .ext .e b.g{color:var(--c-green)}
+.factstrip{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border-radius:12px;overflow:hidden}
+.factstrip .f{background:var(--panel2);padding:13px 15px}
+.factstrip .f span{font-size:11px;color:var(--mut2);letter-spacing:.08em;display:block}
+.factstrip .f b{font-family:var(--mono);font-size:19px;font-weight:700}
+.factstrip .f b.g{color:var(--c-green)} .factstrip .f b.r{color:var(--c-coral)} .factstrip .f b.c{color:var(--c-cyan)}
+.act{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.ptable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+.ptable th{text-align:left;color:var(--mut2);font-weight:500;font-size:11px;letter-spacing:.08em;padding:9px 10px;border-bottom:1px solid var(--line)}
+.ptable td{padding:10px;border-bottom:1px solid var(--line);color:var(--mut)}
+.ptable tr:hover td{background:var(--panel2);color:var(--txt)}
+.ptable .seed{color:var(--c-green)} .ptable .lee{color:var(--c-coral)}
+.sublist{display:flex;flex-direction:column;gap:8px}
+.subrow{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--panel2);border-radius:11px;font-size:13px}
+.subrow .lang{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(0,224,214,.14);color:var(--c-cyan)}
+.subrow .dl{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--c-green);cursor:pointer}
+.similar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sim{border-radius:12px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
+.sim .ph{aspect-ratio:16/10;background:linear-gradient(135deg,var(--c-blue),var(--c-mag))}
+.sim .c{padding:9px 11px;font-size:12.5px;font-weight:600}
+.comment{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.comment .av{width:34px;height:34px;border-radius:50%;flex:none;background:conic-gradient(from 0deg,var(--c-blue),var(--c-cyan),var(--c-mag),var(--c-blue));padding:2px}
+.comment .av i{display:block;width:100%;height:100%;border-radius:50%;background:var(--panel3)}
+.comment .cn{font-size:13.5px;color:var(--mut)} .comment .cn b{color:var(--txt)} .comment .cn .t{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-left:8px}
+
+/* ===== 主页 ===== */
+.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;grid-auto-rows:minmax(118px,auto)}
+.b{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;position:relative;overflow:hidden}
+.b.hero{grid-column:span 2;grid-row:span 2;display:flex;flex-direction:column;justify-content:space-between;background:radial-gradient(120% 130% at 90% 0,rgba(45,91,255,.22),transparent 55%),var(--panel)}
+.b.ring{grid-column:span 1;grid-row:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.b.wide{grid-column:span 2}
+.b .brow{display:flex;align-items:baseline;justify-content:space-between}
+.b .brow .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--mut2);text-transform:uppercase}
+.b .bnum{font-family:var(--mono);font-weight:700;font-size:34px;letter-spacing:-.02em;margin-top:6px}
+.b .bnum.c{color:var(--c-cyan)} .b .bnum.g{color:var(--c-green)} .b .bnum.m{color:var(--c-mag)} .b .bnum.a{color:var(--c-amber)}
+.b .bsub{font-size:12px;color:var(--mut);margin-top:4px}
+.avatar{width:96px;height:96px;border-radius:50%;background:conic-gradient(from 0deg,var(--c-blue),var(--c-cyan),var(--c-green),var(--c-amber),var(--c-coral),var(--c-mag),var(--c-blue));padding:4px;box-shadow:0 0 40px -8px var(--c-mag)}
+.avatar i{display:block;width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#10131c,#1c2233);display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:800;font-size:34px;color:transparent;background-image:linear-gradient(120deg,var(--c-cyan),var(--c-mag));-webkit-background-clip:text;background-clip:text}
+.ring{width:150px;height:150px;border-radius:50%;position:relative;background:conic-gradient(var(--c-blue) 0 28%,var(--c-cyan) 28% 46%,var(--c-green) 46% 63%,var(--c-amber) 63% 80%,var(--c-coral) 80% 92%,var(--c-mag) 92% 100%);-webkit-mask:radial-gradient(circle,transparent 56%,#000 57%);mask:radial-gradient(circle,transparent 56%,#000 57%)}
+.ring .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .ctr b{font-family:var(--mono);font-size:26px;font-weight:700}
+.ring .ctr span{font-size:10px;color:var(--mut2);letter-spacing:.12em}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:center;font-size:11px;color:var(--mut)}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle}
+.spark{display:flex;align-items:flex-end;gap:5px;height:64px;margin-top:12px}
+.spark .bar{flex:1;border-radius:4px 4px 2px 2px;background:linear-gradient(180deg,var(--c-cyan),rgba(45,91,255,.25));transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes grow{from{transform:scaleY(0)}}
+.classbar{height:10px;border-radius:6px;background:var(--panel2);overflow:hidden;margin-top:14px;display:flex}
+.classbar i{flex:var(--w);background:linear-gradient(90deg,var(--c-blue),var(--c-mag))}
+.classnote{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-top:9px;font-family:var(--mono)}
+.medals{display:flex;gap:8px;flex-wrap:wrap}
+.medals .md{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:#08090D}
+.mini{display:flex;flex-direction:column;gap:8px}
+.mini .mr{display:grid;grid-template-columns:18px 1fr auto;gap:10px;align-items:center;font-size:12.5px}
+.mini .mr .n{font-family:var(--mono);color:var(--mut2)}
+.mini .mr b{font-weight:600}
+.mini .mr .sz{font-family:var(--mono);font-size:11.5px;color:var(--c-green)}
+.hrbar{display:flex;gap:6px;margin-top:10px}
+.hrbar .h{flex:1;height:8px;border-radius:5px;background:var(--panel2)}
+.hrbar .h.r{background:var(--c-coral)} .hrbar .h.y{background:var(--c-amber)}
+
+/* ===== 求种 ===== */
+.reqlist{display:flex;flex-direction:column;gap:14px}
+.req{display:grid;grid-template-columns:64px 1fr auto;gap:18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px;transition:.2s}
+.req:hover{border-color:var(--line2);transform:translateX(4px)}
+.req .rk{font-family:var(--disp);font-weight:800;font-size:30px;background:linear-gradient(120deg,var(--c-cyan),var(--c-mag));-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
+.req .rt{font-family:var(--disp);font-weight:700;font-size:17px}
+.req .rm{font-size:12.5px;color:var(--mut);margin-top:5px;font-family:var(--mono)}
+.req .rbar{width:170px;height:8px;border-radius:5px;background:var(--panel2);overflow:hidden;margin:8px 0}
+.req .rbar i{display:block;height:100%;background:linear-gradient(90deg,var(--c-green),var(--c-cyan))}
+.req .rnum{font-family:var(--mono);font-size:13px;color:var(--c-amber)}
+
+/* ===== 排行 ===== */
+.seg{display:flex;gap:6px;margin-bottom:20px}
+.seg .s{padding:8px 16px;border-radius:11px;font-size:13px;font-weight:600;color:var(--mut);border:1px solid var(--line);cursor:pointer;transition:.18s}
+.seg .s.on{color:var(--txt);background:var(--panel2);border-color:var(--line2)}
+.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.pod{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;text-align:center;position:relative;overflow:hidden}
+.pod:nth-child(1){border-color:rgba(255,178,0,.5);box-shadow:0 0 40px -16px var(--c-amber)}
+.pod:nth-child(2){border-color:rgba(154,162,178,.4)}
+.pod:nth-child(3){border-color:rgba(255,90,54,.45)}
+.pod .rk{font-family:var(--disp);font-weight:800;font-size:40px;line-height:1}
+.pod:nth-child(1) .rk{color:var(--c-amber)} .pod:nth-child(2) .rk{color:#9AA2B8} .pod:nth-child(3) .rk{color:var(--c-coral)}
+.pod .av{width:60px;height:60px;border-radius:50%;margin:12px auto;background:conic-gradient(from 0deg,var(--c-blue),var(--c-cyan),var(--c-mag),var(--c-blue));padding:3px}
+.pod .av i{display:block;width:100%;height:100%;border-radius:50%;background:var(--panel3)}
+.pod .pn{font-family:var(--disp);font-weight:700;font-size:17px}
+.pod .pc{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:3px}
+.pod .pv{font-family:var(--mono);font-size:13px;color:var(--c-cyan);margin-top:6px}
+.rankrow{display:grid;grid-template-columns:54px 1fr auto;gap:16px;align-items:center;padding:13px 18px;border-bottom:1px solid var(--line);transition:.18s}
+.rankrow:hover{background:var(--panel2)}
+.rankrow .av{width:38px;height:38px;border-radius:50%;background:conic-gradient(from 0deg,var(--c-blue),var(--c-cyan),var(--c-mag),var(--c-blue));padding:2px;flex:none}
+.rankrow .av i{display:block;width:100%;height:100%;border-radius:50%;background:var(--panel3)}
+.rankrow .n{font-family:var(--disp);font-weight:800;font-size:22px;color:var(--mut2)}
+.rankrow .pn{font-weight:600;font-size:15px}
+.rankrow .pc{font-family:var(--mono);font-size:11px;color:var(--mut2)}
+.rankrow .pm{font-family:var(--mono);font-size:13px;color:var(--c-cyan);text-align:right}
+.rankrow .pm .ch{font-size:11px;margin-left:8px}
+.rankrow .pm .ch.up{color:var(--c-green)} .rankrow .pm .ch.dn{color:var(--c-coral)}
+
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+footer{border-top:1px solid var(--line);padding:26px 28px;max-width:1480px;margin:0 auto;display:flex;justify-content:space-between;color:var(--mut2);font-family:var(--mono);font-size:11.5px;letter-spacing:.06em}
+@media(max-width:1100px){.browse{grid-template-columns:1fr}.rail{position:static;flex-direction:row;flex-wrap:wrap}.feed{grid-template-columns:1fr}.detail{grid-template-columns:1fr}.bento{grid-template-columns:repeat(2,1fr)}.featgrid{grid-template-columns:1fr}.ticker{display:none}.specgrid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="spectrum"></div>
+
+<header class="mast">
+  <div class="mastrow">
+    <div class="logo"><i>F</i></div>
+    <div class="brand"><b>Flux</b>Torrent<small>SPECTRUM · PRIVATE TRACKER</small></div>
+    <nav class="tabs">
+      <div class="tab on vtab" onclick="go('browse')">浏览</div>
+      <div class="tab vtab" onclick="go('detail')">详情</div>
+      <div class="tab vtab" onclick="go('profile')">主页</div>
+      <div class="tab vtab" onclick="go('requests')">求种</div>
+      <div class="tab vtab" onclick="go('ranking')">排行</div>
+    </nav>
+    <div class="ticker">
+      <div class="tk"><b class="g" data-to="28471">0</b><span>做种中</span></div>
+      <div class="tk"><b class="b" data-to="9124">0</b><span>在线</span></div>
+      <div class="tk"><b class="m" data-to="1339920">0</b><span>总魔力</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="marquee"><div>
+  <span><i>●</i> FREELEECH 全站免费 48h 进行中</span><span><i>◆</i> 新种 [4K.Remux] Dune.Part.Two 已发布</span><span><i>★</i> 用户 Nebula 冲上做种榜首</span><span><i>●</i> 2x 上传加成 · 纪录片分类</span><span><i>◆</i> 月度大赛报名截止 3 天后</span>
+  <span><i>●</i> FREELEECH 全站免费 48h 进行中</span><span><i>◆</i> 新种 [4K.Remux] Dune.Part.Two 已发布</span><span><i>★</i> 用户 Nebula 冲上做种榜首</span><span><i>●</i> 2x 上传加成 · 纪录片分类</span><span><i>◆</i> 月度大赛报名截止 3 天后</span>
+</div></div>
+
+<main>
+<!-- ============ 浏览 ============ -->
+<section class="v on" id="v-browse">
+  <div class="sec-h reveal">
+    <span class="bar"></span><h2>种子频谱</h2><span class="sub">// 2,841 LIVE · 共 184,302</span>
+    <div class="right">
+      <div class="chip on">最新</div><div class="chip">热门</div><div class="chip">即将断种</div><div class="chip">免费</div><div class="chip">含字幕</div><div class="chip">内部</div>
+    </div>
+  </div>
+
+  <div class="feat reveal">
+    <div class="featgrid">
+      <div class="l">
+        <div class="badge"><i></i>FEATURED · 今日精选</div>
+        <h1>沙丘 <em>2</em><br>4K REMUX 原盘</h1>
+        <p>杜比视界 + 真 4K 原盘，HDR10 双层，含中英双语字幕轨。本月最热大片首发，限时 2x 上传加成。</p>
+        <div class="metarow">
+          <div><b>84.2 GB</b><span>SIZE</span></div>
+          <div><b style="color:var(--c-green)">1,204</b><span>SEEDERS</span></div>
+          <div><b style="color:var(--c-coral)">37</b><span>LEECHERS</span></div>
+          <div><b style="color:var(--c-cyan)">9,330</b><span>SNAPS</span></div>
+          <div><b style="color:var(--c-amber)">2x</b><span>UP MULT</span></div>
+        </div>
+      </div>
+      <div class="r">
+        <div class="btn prime">立即下载</div>
+        <div class="btn ghost">查看详情 / 字幕</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="browse">
+    <aside class="rail reveal">
+      <div class="rh">CATEGORIES</div>
+      <div class="rcat on" style="--rc:var(--c-blue)"><span class="blk"></span><span class="nm">电影 Movie</span><span class="ct">842</span></div>
+      <div class="rcat" style="--rc:var(--c-cyan)"><span class="blk"></span><span class="nm">剧集 TV</span><span class="ct">611</span></div>
+      <div class="rcat" style="--rc:var(--c-green)"><span class="blk"></span><span class="nm">音乐 Music</span><span class="ct">388</span></div>
+      <div class="rcat" style="--rc:var(--c-amber)"><span class="blk"></span><span class="nm">游戏 Game</span><span class="ct">204</span></div>
+      <div class="rcat" style="--rc:var(--c-coral)"><span class="blk"></span><span class="nm">动画 Anime</span><span class="ct">296</span></div>
+      <div class="rcat" style="--rc:var(--c-mag)"><span class="nm">软件 App</span><span class="ct">173</span></div>
+      <div class="rcat" style="--rc:#9AA2B8"><span class="blk"></span><span class="nm">文档 Doc</span><span class="ct">91</span></div>
+    </aside>
+
+    <div class="feed">
+      <div class="tcard reveal" style="--rc:var(--c-blue)">
+        <div class="tc-body">
+          <div class="tc-top"><span class="tc-cat"><i></i>MOVIE · 4K REMUX</span>
+            <span class="tags"><span class="tag x2">2x</span><span class="tag free">FREE</span><span class="tag uhc">UHC</span><span class="tag sub">字幕</span><span class="tag int">内部</span></span></div>
+          <div class="tc-title">Oppenheimer 奥本海默 2160p DoVi HDR10</div>
+          <div class="tc-spec">2160p · HEVC · Dolby Vision · TrueHD Atmos 7.1 · BD100</div>
+          <div class="tc-mgrid"><div><span>大小</span><b>62.4G</b></div><div><span>做种</span><b class="s">892</b></div><div><span>下载</span><b class="l">41</b></div><div><span>完成</span><b class="d">3,210</b></div></div>
+          <div class="tc-foot"><span class="up"><i></i></span><span>by <b>Hyperion</b></span><span class="dot ok"></span><span class="cm">评12 · 12m</span></div>
+        </div>
+      </div>
+
+      <div class="tcard reveal" style="--rc:var(--c-cyan)">
+        <div class="tc-body">
+          <div class="tc-top"><span class="tc-cat"><i></i>TV · WEB-DL</span>
+            <span class="tags"><span class="tag new">NEW</span><span class="tag free">FREE</span><span class="tag sub">字幕</span></span></div>
+          <div class="tc-title">Severance S02 变异公司 第二季 全 9 集</div>
+          <div class="tc-spec">1080p · H.264 · 5.1 · WEB-DL · 9 Episodes</div>
+          <div class="tc-mgrid"><div><span>大小</span><b>38.1G</b></div><div><span>做种</span><b class="s">1,540</b></div><div><span>下载</span><b class="l">88</b></div><div><span>完成</span><b class="d">6,902</b></div></div>
+          <div class="tc-foot"><span class="up"><i></i></span><span>by <b>Vault</b></span><span class="dot ok"></span><span class="cm">评31 · 34m</span></div>
+        </div>
+      </div>
+
+      <div class="tcard reveal" style="--rc:var(--c-green)">
+        <div class="tc-body">
+          <div class="tc-top"><span class="tc-cat"><i></i>MUSIC · FLAC</span>
+            <span class="tags"><span class="tag x3">3x</span><span class="tag sub">歌词</span></span></div>
+          <div class="tc-title">Tame Impala – The Slow Rush [24bit/96kHz]</div>
+          <div class="tc-spec">FLAC · 24bit/96kHz · Lossless · 12 Tracks</div>
+          <div class="tc-mgrid"><div><span>大小</span><b>2.3G</b></div><div><span>做种</span><b class="s">410</b></div><div><span>下载</span><b class="l">12</b></div><div><span>完成</span><b class="d">1,044</b></div></div>
+          <div class="tc-foot"><span class="up"><i></i></span><span>by <b>Resonance</b></span><span class="dot ok"></span><span class="cm">评5 · 1h</span></div>
+        </div>
+      </div>
+
+      <div class="tcard reveal" style="--rc:var(--c-amber)">
+        <div class="tc-body">
+          <div class="tc-top"><span class="tc-cat"><i></i>GAME · PC</span>
+            <span class="tags"><span class="tag free">FREE</span><span class="tag x2">2x</span><span class="tag int">内部</span></span></div>
+          <div class="tc-title">Elden Ring Shadow of the Erdtree 黄金树幽影</div>
+          <div class="tc-spec">FITGIRL · v1.12 · DLC · 简体汉化 · 52 Files</div>
+          <div class="tc-mgrid"><div><span>大小</span><b>94.7G</b></div><div><span>做种</span><b class="s">2,201</b></div><div><span>下载</span><b class="l">310</b></div><div><span>完成</span><b class="d">14,880</b></div></div>
+          <div class="tc-foot"><span class="up"><i></i></span><span>by <b>Forge</b></span><span class="dot no"></span><span class="cm">评77 · 2h</span></div>
+        </div>
+      </div>
+
+      <div class="tcard reveal" style="--rc:var(--c-coral)">
+        <div class="tc-body">
+          <div class="tc-top"><span class="tc-cat"><i></i>ANIME · BDRip</span>
+            <span class="tags"><span class="tag new">NEW</span><span class="tag sub">字幕</span></span></div>
+          <div class="tc-title">葬送的芙莉莲 S01 蓝光全集 10bit 1080p</div>
+          <div class="tc-spec">1080p · 10bit · HEVC · BDRip · 28 Ep</div>
+          <div class="tc-mgrid"><div><span>大小</span><b>27.8G</b></div><div><span>做种</span><b class="s">668</b></div><div><span>下载</span><b class="l">19</b></div><div><span>完成</span><b class="d">2,311</b></div></div>
+          <div class="tc-foot"><span class="up"><i></i></span><span>by <b>Sakura</b></span><span class="dot ok"></span><span class="cm">评14 · 3h</span></div>
+        </div>
+      </div>
+
+      <div class="tcard reveal" style="--rc:var(--c-mag)">
+        <div class="tc-body">
+          <div class="tc-top"><span class="tc-cat"><i></i>APP · LINUX</span>
+            <span class="tags"><span class="tag x2">2x</span><span class="tag int">内部</span></span></div>
+          <div class="tc-title">DaVinci Resolve Studio 19 全套插件包</div>
+          <div class="tc-spec">x64 · v19.0.1 · 含 Fusion/Neural · 简中</div>
+          <div class="tc-mgrid"><div><span>大小</span><b>5.6G</b></div><div><span>做种</span><b class="s">233</b></div><div><span>下载</span><b class="l">7</b></div><div><span>完成</span><b class="d">690</b></div></div>
+          <div class="tc-foot"><span class="up"><i></i></span><span>by <b>Kernel</b></span><span class="dot ok"></span><span class="cm">评3 · 5h</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 详情 ============ -->
+<section class="v" id="v-detail">
+  <div class="sec-h reveal"><span class="bar"></span><h2>种子详情</h2><span class="sub">#148204 · MOVIE · 4K REMUX</span></div>
+  <div class="detail">
+    <div>
+      <div class="poster reveal">
+        <div class="pg"><div class="cat">MOVIE · 4K REMUX · DoVi</div><h1>沙丘 2<br>Dune: Part Two</h1></div>
+      </div>
+      <div class="gallery reveal"><div class="g"></div><div class="g"></div><div class="g"></div><div class="g"></div></div>
+
+      <div class="block reveal">
+        <h4>种子规格 <span class="meta">MEDIAINFO</span></h4>
+        <div class="specgrid">
+          <div><span>分辨率</span><b>3840×2160</b></div>
+          <div><span>编码</span><b>HEVC Main10</b></div>
+          <div><span>HDR</span><b class="a">DoVi + HDR10</b></div>
+          <div><span>帧率</span><b>23.976 fps</b></div>
+          <div><span>位深</span><b>10-bit</b></div>
+          <div><span>音频</span><b>TrueHD Atmos</b></div>
+          <div><span>声道</span><b>7.1 + 5.1</b></div>
+          <div><span>来源</span><b>BD100 Remux</b></div>
+          <div><span>封装</span><b>MKV · 84.2G</b></div>
+          <div><span>字幕</span><b class="c">CHS/CHT/ENG/JPN</b></div>
+          <div><span>时长</span><b>166 min</b></div>
+          <div><span>区域</span><b>US · IMAX</b></div>
+        </div>
+      </div>
+
+      <div class="block reveal">
+        <h4>文件结构 <span class="meta">FILE TREE</span></h4>
+        <div class="tree">
+<span class="ind">■</span> Dune.Part.Two.2160p/<br>
+&nbsp;&nbsp;<span class="ind">▢</span> <span class="f">Dune.2.2160p.DoVi.mkv</span> <span class="sz">84.2 GB</span><br>
+&nbsp;&nbsp;<span class="ind">▢</span> <span class="f">Dune.2.ENG.PGS.sup</span> <span class="sz">12.4 MB</span><br>
+&nbsp;&nbsp;<span class="ind">▢</span> <span class="f">Dune.2.CHS.ass</span> <span class="sz">88 KB</span><br>
+&nbsp;&nbsp;<span class="ind">▢</span> <span class="f">Dune.2.CHT.ass</span> <span class="sz">91 KB</span><br>
+&nbsp;&nbsp;<span class="ind">▢</span> <span class="f">NFO.txt</span> <span class="sz">4 KB</span>
+        </div>
+      </div>
+
+      <div class="terminal reveal">
+<span class="d"># MediaInfo — </span><span class="k">Video</span><br>
+<span class="k">Format</span>                 <span class="v">HEVC</span> <span class="d">/</span> <span class="v">Main 10@5.1</span><br>
+<span class="k">Resolution</span>             <span class="v">3840 x 2160</span> <span class="d">(16:9)</span><br>
+<span class="k">HDR</span>                    <span class="v">Dolby Vision + HDR10</span><br>
+<span class="k">Frame Rate</span>             <span class="v">23.976 fps</span> <span class="d">/</span> <span class="v">10-bit</span><br>
+<span class="k">Audio</span>                  <span class="v">TrueHD Atmos 7.1</span> <span class="d">/</span> <span class="v">EAC3 5.1</span><br>
+<span class="k">Subtitles</span>              <span class="v">CHS / CHT / ENG / JPN</span><br>
+<span class="d"># Container — </span><span class="v">MKV</span> <span class="d">·</span> <span class="v">84.2 GB</span> <span class="d">·</span> <span class="v">BD100 Remux</span>
+      </div>
+
+      <div class="block reveal">
+        <h4>外部评分 <span class="meta">RATINGS</span></h4>
+        <div class="ext">
+          <div class="e"><span>豆瓣 DOUBAN</span><b class="y">8.9</b></div>
+          <div class="e"><span>IMDb</span><b class="y">8.6</b></div>
+          <div class="e"><span>RT 鲜度</span><b class="g">93%</b></div>
+          <div class="e"><span>站内评分</span><b class="y">9.4</b></div>
+        </div>
+      </div>
+
+      <div class="block reveal">
+        <h4>Peers · 实时连接 <span class="meta">1,241 在线</span></h4>
+        <table class="ptable">
+          <tr><th>用户</th><th>进度</th><th>上传</th><th>下载</th><th>状态</th></tr>
+          <tr><td>Hyperion</td><td>100%</td><td class="seed">↑ 84.2</td><td>0.0</td><td class="seed">做种 ●</td></tr>
+          <tr><td>Nebula</td><td>100%</td><td class="seed">↑ 71.0</td><td>0.0</td><td class="seed">做种 ●</td></tr>
+          <tr><td>Vault</td><td>64%</td><td>2.1</td><td class="lee">↓ 30.4</td><td class="lee">下载中</td></tr>
+          <tr><td>Orbit</td><td>12%</td><td>0.4</td><td class="lee">↓ 9.8</td><td class="lee">下载中</td></tr>
+        </table>
+      </div>
+
+      <div class="block reveal">
+        <h4>字幕列表 <span class="meta">4 条 · 可下载</span></h4>
+        <div class="sublist">
+          <div class="subrow"><span class="lang">CHS</span>简体中文（外挂）· 校准版 · 88KB<span class="dl">下载 ↓</span></div>
+          <div class="subrow"><span class="lang">CHT</span>繁体中文（内封）· 91KB<span class="dl">下载 ↓</span></div>
+          <div class="subrow"><span class="lang">ENG</span>English（PGS）· 12.4MB<span class="dl">下载 ↓</span></div>
+          <div class="subrow"><span class="lang">JPN</span>日本語（PGS）· 11.8MB<span class="dl">下载 ↓</span></div>
+        </div>
+      </div>
+
+      <div class="block reveal">
+        <h4>相似种子 <span class="meta">3</span></h4>
+        <div class="similar">
+          <div class="sim"><div class="ph"></div><div class="c">沙丘 1 4K Remux</div></div>
+          <div class="sim"><div class="ph" style="background:linear-gradient(135deg,var(--c-amber),var(--c-coral))"></div><div class="c">Dune 1080p Web</div></div>
+          <div class="sim"><div class="ph" style="background:linear-gradient(135deg,var(--c-green),var(--c-cyan))"></div><div class="c">沙丘 OST FLAC</div></div>
+        </div>
+      </div>
+
+      <div class="block reveal">
+        <h4>评论 <span class="meta">28</span></h4>
+        <div class="comment"><span class="av"><i></i></span><div class="cn"><b>Vault</b><span class="t">刚刚</span><br>原盘画质炸裂，字幕校准到位，感谢发布！</div></div>
+        <div class="comment"><span class="av"><i></i></span><div class="cn"><b>Sakura</b><span class="t">20m</span><br>2x 加成冲了，做种中</div></div>
+        <div class="comment"><span class="av"><i></i></span><div class="cn"><b>Forge</b><span class="t">1h</span><br>Atmos 7.1 在家庭影院直接起飞。</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="block reveal">
+        <div class="factstrip">
+          <div class="f"><span>大小 SIZE</span><b class="c">84.2 GB</b></div>
+          <div class="f"><span>做种 SEED</span><b class="g">1,204</b></div>
+          <div class="f"><span>下载 LEECH</span><b class="r">37</b></div>
+          <div class="f"><span>完成 SNAP</span><b>9,330</b></div>
+          <div class="f"><span>加成 UP MULT</span><b class="c">2x</b></div>
+          <div class="f"><span>免费 FREE</span><b class="g">YES</b></div>
+          <div class="f"><span>收藏 SAVED</span><b>412</b></div>
+          <div class="f"><span>感谢 THX</span><b class="g">1,208</b></div>
+          <div class="f"><span>评论 CMT</span><b>28</b></div>
+          <div class="f"><span>最后活种</span><b class="c">2m 前</b></div>
+        </div>
+        <div class="act">
+          <div class="btn prime">下载 .torrent</div>
+          <div class="btn ghost">收藏</div>
+          <div class="btn ghost">感谢 +1</div>
+          <div class="btn ghost">举报</div>
+        </div>
+      </div>
+
+      <div class="block reveal">
+        <h4>种子信息 <span class="meta">TECH</span></h4>
+        <div class="factstrip">
+          <div class="f"><span>INFO_HASH</span><b style="font-size:11px">a17b2c3d…e8f9</b></div>
+          <div class="f"><span>类型</span><b>内部官种</b></div>
+          <div class="f"><span>发布于</span><b>2026-10-21</b></div>
+          <div class="f"><span>过期</span><b class="r">2027-10-21</b></div>
+        </div>
+      </div>
+
+      <div class="block reveal">
+        <h4>发布者</h4>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <span class="up" style="width:42px;height:42px"><i></i></span>
+          <div><div style="font-weight:700">Hyperion</div><div style="font-family:var(--mono);font-size:11.5px;color:var(--c-amber)">CLASS · Elite</div></div>
+        </div>
+        <div class="factstrip">
+          <div class="f"><span>已发种</span><b>312</b></div>
+          <div class="f"><span>分享率</span><b class="g">14.2</b></div>
+          <div class="f"><span>存活率</span><b class="c">98%</b></div>
+          <div class="f"><span>被赞</span><b>5,021</b></div>
+        </div>
+      </div>
+
+      <div class="block reveal">
+        <h4>下载记录 <span class="meta">SNACH LOG</span></h4>
+        <table class="ptable">
+          <tr><th>用户</th><th>时间</th><th>完成</th></tr>
+          <tr><td>Nebula</td><td>12m</td><td class="seed">100%</td></tr>
+          <tr><td>Orbit</td><td>40m</td><td class="seed">100%</td></tr>
+          <tr><td>Pixel</td><td>1h</td><td class="seed">100%</td></tr>
+          <tr><td>Quartz</td><td>2h</td><td class="seed">100%</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 主页 ============ -->
+<section class="v" id="v-profile">
+  <div class="sec-h reveal"><span class="bar"></span><h2>用户主页</h2><span class="sub">@Nebula · CLASS ELITE</span></div>
+  <div class="bento">
+    <div class="b hero reveal">
+      <div style="display:flex;align-items:center;gap:18px">
+        <div class="avatar"><i>N</i></div>
+        <div>
+          <div style="font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em">Nebula</div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--c-amber);letter-spacing:.1em;margin-top:4px">CLASS · ELITE · 加入 1,284 天 · 最近活跃 4m 前</div>
+        </div>
+      </div>
+      <div>
+        <div class="brow"><span class="lbl">分享率 RATIO</span><span style="font-family:var(--mono);font-size:13px;color:var(--c-green)">▲ 健康</span></div>
+        <div class="bnum g" data-to="14" data-suffix=".2">0</div>
+        <div class="brow" style="margin-top:14px"><span class="lbl">上传 / 下载</span></div>
+        <div style="font-family:var(--mono);font-size:14px;color:var(--mut)">↑ <span style="color:var(--c-green)">612.4 TB</span> &nbsp; ↓ <span style="color:var(--c-coral)">43.1 TB</span></div>
+        <div class="brow" style="margin-top:12px"><span class="lbl">邀请 / 被邀</span></div>
+        <div style="font-family:var(--mono);font-size:13px;color:var(--mut)">已发出 <span style="color:var(--txt)">8</span> · 受邀 <span style="color:var(--txt)">3</span></div>
+      </div>
+    </div>
+
+    <div class="b ring reveal">
+      <div class="ring"><div class="ctr"><b data-to="1284">0</b><span>做种中</span></div></div>
+      <div class="legend">
+        <span><i style="background:var(--c-blue)"></i>电影</span><span><i style="background:var(--c-cyan)"></i>剧集</span>
+        <span><i style="background:var(--c-green)"></i>音乐</span><span><i style="background:var(--c-amber)"></i>游戏</span>
+        <span><i style="background:var(--c-coral)"></i>动画</span><span><i style="background:var(--c-mag)"></i>软件</span>
+      </div>
+    </div>
+
+    <div class="b reveal"><div class="brow"><span class="lbl">魔力 MAGIC</span></div><div class="bnum m" data-to="1339920">0</div><div class="bsub">本月 +18,204 · 可兑 90 天</div></div>
+    <div class="b reveal"><div class="brow"><span class="lbl">积分 SCORE</span></div><div class="bnum c" data-to="98214">0</div><div class="bsub">全站排名 #7</div></div>
+    <div class="b reveal"><div class="brow"><span class="lbl">奖励 BONUS</span></div><div class="bnum a" data-to="45210">0</div><div class="bsub">待领 1,200</div></div>
+    <div class="b reveal"><div class="brow"><span class="lbl">发种 / 存活</span></div><div class="bnum" style="color:var(--txt)" data-to="312">0</div><div class="bsub">存活率 98% · 被赞 5,021</div></div>
+
+    <div class="b wide reveal">
+      <div class="brow"><span class="lbl">月度魔力流水</span><span style="font-family:var(--mono);font-size:11px;color:var(--mut2)">近 12 月 · 收入/支出</span></div>
+      <div class="spark">
+        <div class="bar" style="height:40%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:48%"></div>
+        <div class="bar" style="height:70%"></div><div class="bar" style="height:62%"></div><div class="bar" style="height:85%"></div>
+        <div class="bar" style="height:73%"></div><div class="bar" style="height:90%"></div><div class="bar" style="height:66%"></div>
+        <div class="bar" style="height:78%"></div><div class="bar" style="height:95%"></div><div class="bar" style="height:100%"></div>
+      </div>
+    </div>
+
+    <div class="b wide reveal">
+      <div class="brow"><span class="lbl">阶级进度 ELITE → ARCHON</span><span style="font-family:var(--mono);font-size:11px;color:var(--c-amber)">76%</span></div>
+      <div class="classbar"><i style="--w:76"></i></div>
+      <div class="classnote"><span>还需上传 88.6 TB</span><span>距晋升 12 天</span></div>
+      <div class="brow" style="margin-top:14px"><span class="lbl">纪律记录 HR</span><span style="font-family:var(--mono);font-size:11px;color:var(--c-green)">clean</span></div>
+      <div class="hrbar"><div class="h"></div><div class="h"></div><div class="h"></div><div class="h"></div><div class="h"></div></div>
+    </div>
+
+    <div class="b reveal">
+      <div class="brow"><span class="lbl">勋章 MEDALS</span><span style="font-family:var(--mono);font-size:11px;color:var(--mut2)">9</span></div>
+      <div class="medals" style="margin-top:12px">
+        <div class="md" style="background:var(--c-amber)">UL</div>
+        <div class="md" style="background:var(--c-cyan)">SE</div>
+        <div class="md" style="background:var(--c-green)">RG</div>
+        <div class="md" style="background:var(--c-mag)">VIP</div>
+        <div class="md" style="background:var(--c-blue)">YR</div>
+        <div class="md" style="background:#9AA2B8">10K</div>
+      </div>
+    </div>
+
+    <div class="b reveal">
+      <div class="brow"><span class="lbl">好友 / 留言</span></div>
+      <div class="bnum" style="color:var(--txt);font-size:26px" data-to="42">0</div>
+      <div class="bsub">好友 42 · 未读留言 3 · 站内信 1</div>
+    </div>
+
+    <div class="b wide reveal">
+      <div class="brow"><span class="lbl">最近上传</span><span style="font-family:var(--mono);font-size:11px;color:var(--mut2)">近 30 天</span></div>
+      <div class="mini" style="margin-top:12px">
+        <div class="mr"><span class="n">01</span><b>Dune.Part.Two 4K Remux</b><span class="sz">84.2G</span></div>
+        <div class="mr"><span class="n">02</span><b>Severance S02 WEB-DL</b><span class="sz">38.1G</span></div>
+        <div class="mr"><span class="n">03</span><b>The Slow Rush 24/96</b><span class="sz">2.3G</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 求种 ============ -->
+<section class="v" id="v-requests">
+  <div class="sec-h reveal"><span class="bar"></span><h2>求种大厅</h2><span class="sub">// 164 OPEN · 总悬赏 2.1M</span>
+    <div class="right"><div class="chip on">进行中</div><div class="chip">已填</div><div class="chip">高赏</div><div class="chip">我的</div></div>
+  </div>
+  <div class="reqlist">
+    <div class="req reveal"><div class="rk">01</div><div>
+      <div class="rt">[4K Remux] Blade Runner 2049 银翼杀手 2049</div>
+      <div class="rm">MOVIE · DoVi · 求中英双语字幕轨 · 发起者 Hyperion · 23 人参与 · 截止 12-01</div></div>
+      <div class="rr"><div class="rbar"><i style="width:82%"></i></div><div class="rnum">赏 50,000 魔力 · 82% 填</div></div></div>
+    <div class="req reveal"><div class="rk">02</div><div>
+      <div class="rt">[FLAC] Pink Floyd – The Wall 母带重制</div>
+      <div class="rm">MUSIC · 24bit/192kHz · 求无损 · 发起者 Resonance · 11 人参与 · 截止 11-28</div></div>
+      <div class="rr"><div class="rbar"><i style="width:45%"></i></div><div class="rnum">赏 32,000 魔力 · 45% 填</div></div></div>
+    <div class="req reveal"><div class="rk">03</div><div>
+      <div class="rt">[BDRip] 间谍过家家 S02 全集</div>
+      <div class="rm">ANIME · 1080p · 求 CHS 校准 · 发起者 Sakura · 18 人参与 · 截止 11-30</div></div>
+      <div class="rr"><div class="rbar"><i style="width:67%"></i></div><div class="rnum">赏 18,500 魔力 · 67% 填</div></div></div>
+    <div class="req reveal"><div class="rk">04</div><div>
+      <div class="rt">[PC] Cyberpunk 2077 终极版</div>
+      <div class="rm">GAME · 含 DLC · 求完整镜像 · 发起者 Forge · 7 人参与 · 已填 ✓</div></div>
+      <div class="rr"><div class="rbar"><i style="width:100%;background:var(--c-green)"></i></div><div class="rnum" style="color:var(--c-green)">已满足 · 发放中</div></div></div>
+  </div>
+</section>
+
+<!-- ============ 排行 ============ -->
+<section class="v" id="v-ranking">
+  <div class="sec-h reveal"><span class="bar"></span><h2>排行榜</h2><span class="sub">// 本月考种 · 上传量</span></div>
+  <div class="seg reveal"><div class="s on">本月</div><div class="s">本年</div><div class="s">做种数</div><div class="s">魔力</div><div class="s">分享率</div></div>
+  <div class="podium reveal">
+    <div class="pod"><div class="rk">1</div><div class="av"><i></i></div><div class="pn">Hyperion</div><div class="pc">CLASS · Elite</div><div class="pv">↑ 612.4 TB</div></div>
+    <div class="pod"><div class="rk">2</div><div class="av"><i></i></div><div class="pn">Nebula</div><div class="pc">CLASS · Elite</div><div class="pv">↑ 544.1 TB</div></div>
+    <div class="pod"><div class="rk">3</div><div class="av"><i></i></div><div class="pn">Vault</div><div class="pc">CLASS · Veteran</div><div class="pv">↑ 498.7 TB</div></div>
+  </div>
+  <div class="reveal">
+    <div class="rankrow"><span class="av"><i></i></span><span class="n">04</span><span><div class="pn">Orbit</div><div class="pc">Veteran · 做种 1,044</div></span><span class="pm">↑ 421.0 TB<span class="ch up">▲2</span></span></div>
+    <div class="rankrow"><span class="av"><i></i></span><span class="n">05</span><span><div class="pn">Sakura</div><div class="pc">Elite · 做种 988</div></span><span class="pm">↑ 398.5 TB<span class="ch dn">▼1</span></span></div>
+    <div class="rankrow"><span class="av"><i></i></span><span class="n">06</span><span><div class="pn">Forge</div><div class="pc">Veteran · 做种 902</div></span><span class="pm">↑ 377.2 TB<span class="ch up">▲3</span></span></div>
+    <div class="rankrow"><span class="av"><i></i></span><span class="n">07</span><span><div class="pn">Resonance</div><div class="pc">Elite · 做种 870</div></span><span class="pm">↑ 351.9 TB<span class="ch up">▲1</span></span></div>
+    <div class="rankrow"><span class="av"><i></i></span><span class="n">08</span><span><div class="pn">Kernel</div><div class="pc">Veteran · 做种 812</div></span><span class="pm">↑ 330.4 TB<span class="ch dn">▼2</span></span></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <span>FLUXTORRENT · SPECTRUM CONCEPT MOCKUP v7</span>
+  <span>ZERO-ICON · CSS-GEOMETRY ONLY · 仅样图</span>
+</footer>
+
+<script>
+function go(v){
+  document.querySelectorAll('.vtab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>{ if(t.textContent.trim()==={browse:'浏览',detail:'详情',profile:'主页',requests:'求种',ranking:'排行'}[v]) t.classList.add('on'); });
+  document.querySelectorAll('.v').forEach(s=>s.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+  revealIn();
+}
+function revealIn(){
+  const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.06});
+  document.querySelectorAll('.v.on .reveal').forEach(el=>io.observe(el));
+  document.querySelectorAll('.v.on [data-to]').forEach(el=>{
+    if(el.dataset.done)return; el.dataset.done=1;
+    const to=+el.dataset.to, suf=el.dataset.suffix||'', step=to/45, t=setInterval(()=>{let n=(+el.textContent.replace(/[^\d.]/g,'')||0)+step; if(n>=to){n=to;clearInterval(t);} el.textContent=Math.round(n).toLocaleString()+suf;},22);
+  });
+  document.querySelectorAll('.v.on .spark .bar').forEach((b,i)=>{b.style.animationDelay=(i*60)+'ms';});
+}
+document.addEventListener('DOMContentLoaded',revealIn);
+</script>
+</body>
+</html>

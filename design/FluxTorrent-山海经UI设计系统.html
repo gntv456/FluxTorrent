@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FluxTorrent · 山海经 UI 设计系统「岩彩长卷」V1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700;900&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════
+   山海经 · 岩彩长卷 —— 设计令牌（本设计系统文档即按此渲染）
+   语义槽位与 base.css 一一对应：换肤 = 覆盖同名变量
+   ════════════════════════════════════════════════════════════ */
+:root{
+  /* —— 四正色（岩彩） —— */
+  --shiqing:#2e7a8c;        /* 石青 · 次品牌 */
+  --shiqing-bright:#5cb3c7; /* 石青亮（文本档） */
+  --shilv:#3fae8f;          /* 石绿 · 主交互 */
+  --shilv-bright:#63c9aa;
+  --shilv-deep:#2c7a64;
+  --zhusha:#d0442a;         /* 朱砂 · 印记/危险 */
+  --zhusha-deep:#a82e1c;
+  --jin:#d3a13f;            /* 金 · 促销/题字 */
+  --jin-bright:#f0d795;     /* 金箔 */
+  --jin-deep:#8a6a1c;
+  /* —— 玄墨中性阶（带青绿微染，非纯灰） —— */
+  --xuan:#0a0f0d;   --mo:#101914;   --ka:#15211a;
+  --ka-2:#1a2a21;   --ka-3:#22362b;
+  /* —— 宣纸文本阶 —— */
+  --paper:#ece4cf; --paper-dim:#b7c0ad; --faint:#7d8b7c;
+  /* —— 金线 —— */
+  --line:rgba(211,161,63,.26); --line-soft:rgba(211,161,63,.13);
+  /* —— 字族 —— */
+  --font-title:"Ma Shan Zheng","Noto Serif SC",serif;
+  --font-body:"Noto Serif SC",serif;
+  --font-wei:"ZCOOL XiaoWei","Noto Serif SC",serif;
+  /* —— 圆角/阴影 —— */
+  --r-lg:16px;--r-md:10px;--r-sm:6px;
+  --shadow-card:0 2px 6px rgba(0,0,0,.3),0 14px 34px -12px rgba(0,0,0,.55);
+  --shadow-hover:0 6px 14px rgba(0,0,0,.4),0 24px 48px -14px rgba(0,0,0,.65),0 0 30px rgba(211,161,63,.1);
+  /* —— 动效令牌 —— */
+  --dur-1:120ms;--dur-2:220ms;--dur-3:400ms;--dur-4:700ms;
+  --ease-out:cubic-bezier(.22,1,.36,1);--ease-seal:cubic-bezier(.34,1.56,.64,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:var(--xuan);color:var(--paper);font-family:var(--font-body);font-size:15px;line-height:1.7;overflow-x:hidden}
+::selection{background:var(--zhusha);color:var(--paper)}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:var(--xuan)}
+::-webkit-scrollbar-thumb{background:#3d3423;border-radius:5px;border:2px solid var(--xuan)}
+a{color:var(--shilv-bright);text-decoration:none}
+code{background:rgba(0,0,0,.45);border:1px solid var(--line-soft);border-radius:4px;padding:1px 7px;font-size:.86em;color:var(--shilv-bright);font-family:ui-monospace,Consolas,monospace}
+
+/* ===== 焦点环（全域金环，交互示意实装） ===== */
+:focus-visible{outline:2px solid var(--jin);outline-offset:2px;border-radius:4px}
+
+/* ===== 页底氛围 ===== */
+.sky-stars{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(1px 1px at 15% 15%,rgba(240,215,149,.7) 50%,transparent 51%),radial-gradient(1.5px 1.5px at 40% 10%,rgba(236,228,207,.5) 50%,transparent 51%),radial-gradient(1px 1px at 70% 20%,rgba(240,215,149,.5) 50%,transparent 51%),radial-gradient(1px 1px at 90% 30%,rgba(236,228,207,.6) 50%,transparent 51%);}
+
+/* ===== 目次（左卷签） ===== */
+.toc{position:fixed;left:0;top:0;bottom:0;width:200px;z-index:50;padding:26px 0;
+  background:linear-gradient(180deg,#0d1410,#0c130e);border-right:1px solid var(--line);display:flex;flex-direction:column}
+.toc-brand{padding:0 20px 18px;border-bottom:1px solid var(--line-soft);display:flex;gap:11px;align-items:center}
+.toc-seal{width:44px;height:44px;border-radius:7px;background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-title);font-size:18px;
+  box-shadow:inset 0 0 0 2px rgba(236,228,207,.35);transform:rotate(-3deg)}
+.toc-brand b{font-family:var(--font-title);font-size:19px;letter-spacing:2px;font-weight:400;
+  background:linear-gradient(180deg,var(--jin-bright),var(--jin));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.toc-brand i{display:block;font-style:normal;font-size:9.5px;letter-spacing:2.5px;color:var(--faint)}
+.toc nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.toc a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-sm);
+  color:var(--paper-dim);font-size:13.5px;border:1px solid transparent;transition:all var(--dur-2) var(--ease-out)}
+.toc a:hover{color:var(--paper);background:rgba(63,174,143,.09);transform:translateX(3px)}
+.toc a.on{color:var(--jin-bright);background:rgba(211,161,63,.1);border-color:var(--line)}
+.toc a .no{font-family:var(--font-wei);font-size:11px;color:var(--faint);width:20px}
+.toc a.on .no{color:var(--jin)}
+.toc-foot{padding:14px 20px;border-top:1px solid var(--line-soft);font-size:10.5px;color:var(--faint);letter-spacing:1px}
+
+/* ===== 主体 ===== */
+.doc{margin-left:200px;position:relative;z-index:1}
+.dc-inner{max-width:1080px;padding:0 44px}
+
+/* 卷首 */
+.juan{position:relative;margin:0 0 8px;padding:70px 44px 46px;overflow:hidden;border-bottom:1px solid var(--line)}
+.juan-bg{position:absolute;inset:0;background-size:cover;background-position:center 28%;opacity:.4;
+  -webkit-mask-image:linear-gradient(90deg,#000 30%,transparent 92%);mask-image:linear-gradient(90deg,#000 30%,transparent 92%)}
+.juan::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,var(--xuan) 4%,transparent 55%)}
+.juan-in{position:relative}
+.juan-kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:5px;color:var(--jin-bright);
+  border:1px solid rgba(211,161,63,.45);padding:4px 14px;border-radius:999px;background:rgba(10,15,13,.55)}
+.juan h1{font-family:var(--font-title);font-size:88px;line-height:1.08;letter-spacing:8px;margin:20px 0 4px;
+  background:linear-gradient(180deg,#f7ebc0 8%,var(--jin) 62%,#8a6420);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.juan-sub{font-family:var(--font-wei);font-size:17px;color:var(--paper-dim);letter-spacing:3px}
+.juan-sub em{font-style:normal;color:var(--shilv-bright)}
+.juan-meta{display:flex;gap:26px;margin-top:26px;font-size:12.5px;color:var(--faint);letter-spacing:1px;flex-wrap:wrap}
+.juan-meta b{color:var(--paper-dim);font-weight:400}
+
+/* 设计三原则 */
+.principles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px;position:relative}
+.prin{border:1px solid var(--line-soft);border-radius:var(--r-md);padding:18px 20px;background:rgba(16,25,20,.72);backdrop-filter:blur(6px)}
+.prin b{display:flex;align-items:center;gap:9px;font-family:var(--font-title);font-weight:400;font-size:20px;letter-spacing:2px;color:var(--jin-bright);margin-bottom:6px}
+.prin b i{font-style:normal;font-family:var(--font-title);font-size:14px;color:var(--paper);background:var(--zhusha);border-radius:4px;padding:1px 7px;transform:rotate(-3deg)}
+.prin p{font-size:13px;color:var(--paper-dim)}
+
+/* 章节骨架 */
+.chapter{padding:56px 0 8px}
+.ch-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+.ch-no{font-family:var(--font-title);font-size:15px;color:var(--paper);background:var(--zhusha);
+  padding:3px 10px;border-radius:5px;transform:rotate(-2deg);box-shadow:inset 0 0 0 1.5px rgba(236,228,207,.4);letter-spacing:2px}
+.ch-title{font-family:var(--font-title);font-size:40px;letter-spacing:4px;
+  background:linear-gradient(180deg,var(--jin-bright),var(--jin));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ch-en{font-family:var(--font-wei);font-size:11px;letter-spacing:5px;color:var(--faint);text-transform:uppercase}
+.ch-line{flex:1;height:12px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='12' viewBox='0 0 46 12'%3E%3Cpath d='M0 7h14M18 7a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0M29 7h17' stroke='%23d3a13f' stroke-opacity='.4' fill='none'/%3E%3C/svg%3E") repeat-x center}
+.ch-desc{max-width:72ch;color:var(--paper-dim);font-size:14.5px;margin-bottom:26px}
+.sub-h{font-family:var(--font-wei);font-weight:400;font-size:17px;color:var(--jin);letter-spacing:3px;
+  margin:30px 0 14px;display:flex;align-items:center;gap:10px}
+.sub-h::before{content:"◈";color:var(--zhusha);font-size:12px}
+.sub-h .en{font-size:10px;color:var(--faint);letter-spacing:2px}
+
+/* 色卡 */
+.ramp{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.pig{border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden;background:var(--ka)}
+.pig-swatch{height:118px;position:relative;display:flex;align-items:flex-end;padding:12px}
+.pig-swatch .p-zh{font-family:var(--font-title);font-size:24px;letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.pig-swatch .p-role{position:absolute;top:10px;left:12px;font-size:10.5px;letter-spacing:2px;opacity:.92;
+  background:rgba(0,0,0,.35);padding:2px 8px;border-radius:99px}
+.pig-steps{display:flex}
+.pig-steps i{flex:1;height:20px;display:block}
+.pig-meta{padding:10px 12px;font-size:11.5px;color:var(--paper-dim);line-height:1.9}
+.pig-meta code{font-size:10.5px}
+.pig-meta .slot{color:var(--faint)}
+.wt-bar{display:flex;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--line-soft);margin-top:10px}
+.wt-bar span{display:flex;align-items:center;justify-content:center;font-size:10.5px;letter-spacing:1px}
+
+/* 令牌映射表 */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
+.tbl th{font-family:var(--font-wei);font-weight:400;color:var(--jin);text-align:left;padding:9px 12px;
+  background:rgba(211,161,63,.07);border-bottom:1px solid var(--line);letter-spacing:1.5px;font-size:12px}
+.tbl td{padding:8px 12px;border-bottom:1px solid rgba(211,161,63,.07);color:var(--paper-dim);vertical-align:middle}
+.tbl tr:hover td{background:rgba(63,174,143,.05)}
+.tbl .sw{display:inline-block;width:26px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:8px;border:1px solid rgba(255,255,255,.12)}
+.tbl .mono{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--shilv-bright)}
+.tbl .pass{color:var(--shilv-bright);font-family:var(--font-wei)}
+.tbl .warnx{color:var(--jin)}
+.tbl .fail{color:var(--zhusha)}
+
+/* 排版样张 */
+.type-spec{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--ka);overflow:hidden}
+.type-row{display:grid;grid-template-columns:150px 1fr 200px;gap:18px;align-items:baseline;padding:16px 22px;border-bottom:1px solid rgba(211,161,63,.08)}
+.type-row:last-child{border-bottom:none}
+.type-row .tk{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--faint)}
+.type-row .tk b{display:block;color:var(--shilv-bright);font-weight:400}
+.type-row .demo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.type-row .note{font-size:11.5px;color:var(--faint);text-align:right}
+.font-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.font-card{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--ka);padding:20px}
+.font-card .fa{font-size:46px;line-height:1.2;margin-bottom:8px}
+.font-card .f-title{font-family:var(--font-title)}
+.font-card .f-body{font-family:var(--font-body)}
+.font-card .f-wei{font-family:var(--font-wei)}
+.font-card h5{font-size:13.5px;color:var(--paper);font-weight:600;letter-spacing:1px}
+.font-card p{font-size:12px;color:var(--faint);margin-top:4px;line-height:1.7}
+.vtext-demo{display:flex;gap:22px;align-items:center;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--ka);padding:20px 22px}
+.vtext{writing-mode:vertical-rl;font-family:var(--font-wei);letter-spacing:8px;font-size:15px;color:var(--paper);
+  border-right:1px solid rgba(240,215,149,.4);padding-right:12px;height:170px}
+.vtext-note{font-size:12.5px;color:var(--paper-dim);max-width:56ch}
+
+/* 组件展台 */
+.stage{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--ka);
+  padding:26px;margin-bottom:14px;position:relative}
+.stage-tag{position:absolute;top:-9px;left:18px;font-family:var(--font-wei);font-size:11px;letter-spacing:2px;
+  color:var(--jin);background:var(--xuan);border:1px solid var(--line);padding:1px 10px;border-radius:99px}
+.stage .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.stage .row + .row{margin-top:16px}
+.stage-cap{font-size:12px;color:var(--faint);margin-top:14px;line-height:1.8}
+.stage-cap b{color:var(--paper-dim);font-weight:400}
+
+/* 印章组件 */
+.seal{font-family:var(--font-title);letter-spacing:1px;color:var(--paper);border-radius:4px;
+  background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));
+  box-shadow:inset 0 0 0 1.5px rgba(236,228,207,.45),0 3px 10px rgba(0,0,0,.4);transform:rotate(-5deg);
+  display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;font-size:14px;transition:transform var(--dur-2) var(--ease-seal)}
+.seal:hover{transform:rotate(-2deg) scale(1.06)}
+.seal.gold{background:linear-gradient(145deg,#a87e22,#7d5a12)}
+.seal.qing{background:linear-gradient(145deg,var(--shiqing),#1d5563)}
+.seal.sm{font-size:11.5px;padding:2px 8px}
+.seal.lg{font-size:19px;padding:8px 16px;border-radius:6px}
+.seal.ghost{background:none;border:1.5px solid var(--zhusha);color:var(--zhusha);box-shadow:none;transform:rotate(-3deg)}
+
+/* 按钮 */
+.btn{position:relative;display:inline-flex;align-items:center;gap:8px;padding:9px 24px;border-radius:999px;
+  font-family:var(--font-body);font-size:14px;letter-spacing:2px;cursor:pointer;border:1px solid transparent;
+  transition:all var(--dur-2) var(--ease-out)}
+.btn:active{transform:translateY(1px) scale(.98)}
+.btn-primary{background:linear-gradient(135deg,var(--shilv),var(--shilv-deep));color:#08130f;font-weight:700;
+  box-shadow:0 4px 16px rgba(63,174,143,.3)}
+.btn-primary:hover{box-shadow:0 6px 22px rgba(63,174,143,.45);transform:translateY(-2px)}
+.btn-seal{background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));color:var(--paper);
+  box-shadow:0 4px 16px rgba(208,68,42,.32)}
+.btn-seal:hover{box-shadow:0 6px 22px rgba(208,68,42,.5);transform:translateY(-2px)}
+.btn-gold{background:none;border-color:var(--jin);color:var(--jin-bright)}
+.btn-gold:hover{background:rgba(211,161,63,.12);transform:translateY(-2px)}
+.btn-ghost{background:none;border-color:var(--line);color:var(--paper-dim)}
+.btn-ghost:hover{border-color:var(--shilv);color:var(--paper)}
+.btn[disabled]{opacity:.38;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/*  chips & 徽章 */
+.chipx{padding:5px 15px;border-radius:999px;font-size:13px;cursor:pointer;border:1px solid var(--line-soft);
+  color:var(--paper-dim);background:none;font-family:var(--font-body);transition:all var(--dur-2) var(--ease-out)}
+.chipx:hover{border-color:var(--shilv);color:var(--paper)}
+.chipx.on{background:linear-gradient(135deg,rgba(63,174,143,.3),rgba(46,122,140,.2));border-color:var(--shilv);color:var(--paper)}
+.badge-wei{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-wei);font-size:11.5px;
+  padding:2px 10px;border-radius:4px;letter-spacing:1px;border:1px solid}
+.badge-wei.lv{color:var(--shilv-bright);border-color:rgba(63,174,143,.5);background:rgba(63,174,143,.1)}
+.badge-wei.jin{color:var(--jin-bright);border-color:rgba(211,161,63,.5);background:rgba(211,161,63,.1)}
+.badge-wei.zhu{color:#e88d7a;border-color:rgba(208,68,42,.55);background:rgba(208,68,42,.12)}
+.badge-wei.qing{color:var(--shiqing-bright);border-color:rgba(46,122,140,.55);background:rgba(46,122,140,.14)}
+
+/* 输入 */
+.inputx{display:flex;align-items:center;gap:10px;background:rgba(16,25,20,.9);border:1px solid var(--line);
+  border-radius:999px;padding:9px 18px;min-width:280px;transition:all var(--dur-2) var(--ease-out)}
+.inputx:focus-within{border-color:var(--jin);box-shadow:0 0 0 3px rgba(211,161,63,.15),0 0 24px rgba(211,161,63,.1)}
+.inputx input{flex:1;background:none;border:none;outline:none;color:var(--paper);font-family:var(--font-body);font-size:14px}
+.inputx input::placeholder{color:var(--faint)}
+.inputx.err{border-color:var(--zhusha);box-shadow:0 0 0 3px rgba(208,68,42,.14)}
+
+/* 开关 */
+.switchx{position:relative;width:46px;height:24px;border-radius:999px;background:rgba(0,0,0,.5);
+  border:1px solid var(--line);cursor:pointer;transition:all var(--dur-2) var(--ease-out)}
+.switchx i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+  background:var(--paper-dim);transition:all var(--dur-2) var(--ease-seal)}
+.switchx.on{background:linear-gradient(135deg,rgba(63,174,143,.5),rgba(46,122,140,.4));border-color:var(--shilv)}
+.switchx.on i{left:24px;background:var(--shilv-bright);box-shadow:0 0 10px rgba(63,174,143,.6)}
+
+/* 图鉴卡（组件版） */
+.beast-card{width:200px;border-radius:var(--r-md);overflow:hidden;background:var(--mo);border:1px solid var(--line-soft);
+  transition:transform var(--dur-3) var(--ease-out),box-shadow var(--dur-3) var(--ease-out),border-color var(--dur-3);cursor:pointer}
+.beast-card:hover{transform:translateY(-6px);border-color:var(--jin);box-shadow:var(--shadow-hover)}
+.bc-poster{position:relative}
+.bc-poster img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.bc-poster::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(16,25,20,.65),transparent 42%)}
+.bc-seals{position:absolute;top:10px;right:10px;z-index:2}
+.bc-body{padding:12px 14px}
+.bc-body h4{font-family:var(--font-wei);font-weight:400;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-sub{font-size:11px;color:var(--faint);margin-top:2px}
+.bc-meta{display:flex;gap:10px;margin-top:9px;font-size:12px}
+.bc-meta .up{color:var(--shilv-bright)}.bc-meta .dn{color:#e88d7a}.bc-meta .ok{color:var(--jin)}
+.bc-foot{display:flex;justify-content:space-between;margin-top:9px;padding-top:8px;border-top:1px dashed var(--line-soft);font-size:11px;color:var(--faint)}
+.bc-foot .free{color:var(--jin-bright)}
+
+/* 竹简行 */
+.slip{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--mo);width:100%}
+.slip-rowx{display:grid;grid-template-columns:56px 1fr 84px 64px 64px 64px;gap:10px;align-items:center;
+  padding:11px 16px;border-bottom:1px solid rgba(211,161,63,.08);position:relative;font-size:13px;
+  background-image:repeating-linear-gradient(90deg,transparent 0 47px,rgba(0,0,0,.2) 47px 48px);transition:background var(--dur-2)}
+.slip-rowx::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:2px;
+  background:linear-gradient(180deg,transparent,rgba(211,161,63,.4),transparent)}
+.slip-rowx:last-child{border-bottom:none}
+.slip-rowx:hover{background-color:rgba(63,174,143,.07)}
+.slip-rowx .cat{font-size:11px;color:var(--shilv-bright);border:1px solid rgba(63,174,143,.4);border-radius:4px;text-align:center;padding:1px 0}
+.slip-rowx .tt{color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slip-rowx .n{font-family:var(--font-wei);font-size:12.5px}
+.slip-rowx .n.up{color:var(--shilv-bright)}.slip-rowx .n.dn{color:#e88d7a}.slip-rowx .n.ok{color:var(--jin)}
+
+/* 玉牌 */
+.jadex{min-width:128px;padding:12px 18px;border-radius:var(--r-md);background:rgba(16,25,20,.75);
+  border:1px solid rgba(63,174,143,.35);position:relative;overflow:hidden}
+.jadex::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--shilv),transparent)}
+.jadex b{display:block;font-family:var(--font-wei);font-size:22px;font-weight:400}
+.jadex span{font-size:11px;letter-spacing:3px;color:var(--faint)}
+.jadex.hot{border-color:rgba(211,161,63,.45)}
+.jadex.hot::before{background:linear-gradient(90deg,transparent,var(--jin),transparent)}
+.jadex.hot b{color:var(--jin-bright)}
+
+/* 昆仑诏 */
+.decreex{border-radius:var(--r-md);background:linear-gradient(90deg,rgba(208,68,42,.16),rgba(211,161,63,.1) 60%,rgba(208,68,42,.16));
+  border:1px solid rgba(208,68,42,.4);padding:13px 20px;display:flex;align-items:center;gap:16px;width:100%;position:relative;overflow:hidden}
+.decreex::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--zhusha),var(--jin))}
+.decreex p{flex:1;font-size:13.5px}
+.decreex p b{color:var(--jin-bright);font-weight:600}
+
+/* 导航项三态 */
+.nav-demo{width:230px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:#0d1410;padding:10px;display:flex;flex-direction:column;gap:4px}
+.navi{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);color:var(--paper-dim);font-size:13px;border:1px solid transparent;transition:all var(--dur-2) var(--ease-out)}
+.navi:hover{color:var(--paper);background:rgba(63,174,143,.1);border-color:rgba(63,174,143,.25);transform:translateX(2px)}
+.navi.on{color:var(--paper);background:linear-gradient(135deg,rgba(208,68,42,.28),rgba(208,68,42,.12));border-color:rgba(208,68,42,.5);box-shadow:inset 3px 0 0 var(--zhusha)}
+
+/* 进度条 */
+.qbarx{height:6px;border-radius:3px;background:rgba(0,0,0,.45);overflow:hidden;width:280px}
+.qbarx i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--shiqing),var(--shilv))}
+.qbarx.gold i{background:linear-gradient(90deg,var(--jin-deep),var(--jin-bright))}
+
+/* 分页 */
+.pagerx{display:flex;gap:6px}
+.pagerx a{min-width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);
+  border:1px solid var(--line-soft);color:var(--paper-dim);font-size:13px;font-family:var(--font-wei);transition:all var(--dur-2)}
+.pagerx a:hover{border-color:var(--jin);color:var(--jin-bright)}
+.pagerx a.on{background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));color:var(--paper);border-color:transparent;box-shadow:inset 0 0 0 1.5px rgba(236,228,207,.35)}
+
+/* toast */
+.toastx{display:flex;align-items:center;gap:10px;background:rgba(16,25,20,.95);border:1px solid rgba(63,174,143,.45);
+  border-left:4px solid var(--shilv);border-radius:var(--r-sm);padding:11px 16px;font-size:13.5px;box-shadow:var(--shadow-card)}
+.toastx.warn{border-color:rgba(211,161,63,.5);border-left-color:var(--jin)}
+.toastx.bad{border-color:rgba(208,68,42,.5);border-left-color:var(--zhusha)}
+
+/* 空态 */
+.emptyx{width:100%;border:1px dashed var(--line);border-radius:var(--r-md);padding:34px;text-align:center}
+.emptyx .e-seal{width:58px;height:58px;margin:0 auto 12px;border-radius:8px;background:linear-gradient(145deg,var(--shiqing),#1d5563);
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-title);font-size:22px;transform:rotate(-4deg);
+  box-shadow:inset 0 0 0 2px rgba(236,228,207,.3)}
+.emptyx p{color:var(--paper-dim);font-size:14px}
+.emptyx small{display:block;color:var(--faint);font-size:12px;margin-top:4px}
+
+/* ===== 交互示意 ===== */
+.motion-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.mo-card{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--ka);padding:18px}
+.mo-card h6{font-family:var(--font-wei);font-weight:400;font-size:13.5px;color:var(--jin);letter-spacing:2px;margin-bottom:4px}
+.mo-card p{font-size:11.5px;color:var(--faint);margin-bottom:14px}
+.mo-box{height:64px;border-radius:var(--r-sm);background:linear-gradient(135deg,rgba(63,174,143,.3),rgba(46,122,140,.2));
+  border:1px solid rgba(63,174,143,.4);display:flex;align-items:center;justify-content:center;font-size:12.5px;color:var(--paper);
+  cursor:pointer;user-select:none;transition:all var(--dur-2) var(--ease-out)}
+.mo-box:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,0,0,.4)}
+.mo-box.d1{transition-duration:var(--dur-1)}
+.mo-box.d3{transition-duration:var(--dur-3)}
+.mo-box.seal-in{transition-timing-function:var(--ease-seal)}
+.mo-box.seal-in:hover{transform:rotate(-4deg) scale(1.05);border-color:var(--zhusha);background:linear-gradient(135deg,rgba(208,68,42,.3),rgba(168,46,28,.18))}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(211,161,63,.35)}50%{box-shadow:0 0 0 10px rgba(211,161,63,0)}}
+.mo-box.breathe{animation:breathe 2.4s infinite}
+@keyframes stampIn{0%{transform:scale(1.8) rotate(-14deg);opacity:0}60%{transform:scale(.94) rotate(-3deg);opacity:1}100%{transform:scale(1) rotate(-5deg)}}
+.stamp-demo{font-family:var(--font-title);font-size:26px;color:var(--paper);background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));
+  border-radius:6px;padding:10px 20px;display:inline-block;box-shadow:inset 0 0 0 2px rgba(236,228,207,.45);animation:stampIn .7s var(--ease-seal) both;cursor:pointer}
+.ease-chart{width:100%;height:110px;border:1px solid var(--line-soft);border-radius:var(--r-sm);background:rgba(0,0,0,.25)}
+.toggle-rm{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--paper-dim);cursor:pointer}
+body.rm *{animation:none!important;transition:none!important}
+
+/* 落地清单 */
+.step{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;border:1px solid var(--line-soft);border-radius:var(--r-sm);background:var(--ka)}
+.step + .step{margin-top:8px}
+.step i{flex:none;width:24px;height:24px;border-radius:6px;background:var(--zhusha);color:var(--paper);font-style:normal;
+  font-family:var(--font-wei);font-size:12px;display:inline-flex;align-items:center;justify-content:center;margin-top:2px}
+.step div{font-size:13.5px;color:var(--paper-dim)}
+.step div b{color:var(--paper);font-weight:400}
+.chk{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.chk label{display:flex;gap:9px;align-items:center;font-size:13px;color:var(--paper-dim);border:1px solid var(--line-soft);
+  border-radius:var(--r-sm);padding:9px 12px;cursor:pointer;background:var(--ka)}
+.chk input{accent-color:var(--shilv)}
+
+/* 入场 */
+.rise{opacity:0;transform:translateY(24px);transition:opacity var(--dur-4) var(--ease-out),transform var(--dur-4) var(--ease-out)}
+.rise.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rise{opacity:1;transform:none;transition:none}}
+
+/* 响应式 */
+@media (max-width:980px){
+  .toc{display:none}
+  .doc{margin-left:0}
+  .dc-inner{padding:0 20px}
+  .juan h1{font-size:56px}
+  .principles,.ramp,.font-cards{grid-template-columns:1fr 1fr}
+  .type-row{grid-template-columns:1fr;gap:4px}
+  .type-row .note{text-align:left}
+}
+@media (max-width:640px){.principles,.ramp,.font-cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="sky-stars"></div>
+
+<!-- ═══ 目次 ═══ -->
+<aside class="toc">
+  <div class="toc-brand">
+    <div class="toc-seal">山</div>
+    <div><b>山海经</b><i>DESIGN SYSTEM</i></div>
+  </div>
+  <nav id="tocNav">
+    <a href="#juan" class="on"><span class="no">卷首</span>设计哲学</a>
+    <a href="#color"><span class="no">壹</span>色彩 · 岩彩</a>
+    <a href="#type"><span class="no">贰</span>排版 · 书刻</a>
+    <a href="#comp"><span class="no">叁</span>组件 · 百器</a>
+    <a href="#motion"><span class="no">肆</span>交互 · 灵气</a>
+    <a href="#impl"><span class="no">伍</span>落地 · 入谱</a>
+  </nav>
+  <div class="toc-foot">FluxTorrent 主题 №3<br>玄墨底 · 暗色优先</div>
+</aside>
+
+<div class="doc">
+
+<!-- ═══════════ 卷首 ═══════════ -->
+<header class="juan" id="juan">
+  <div class="juan-bg" style="background-image:url('https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Epic%20Chinese%20mythology%20Shan%20Hai%20Jing%20landscape%20painting%2C%20a%20giant%20kun%20whale%20flying%20above%20layered%20teal-green%20mineral%20pigment%20mountains%2C%20gold%20foil%20cloud%20patterns%2C%20cinnabar%20red%20sun%2C%20dark%20ink%20night%20sky%20with%20stars%2C%20traditional%20Chinese%20gongbi%20rock%20painting%20texture%2C%20masterpiece%20composition&image_size=landscape_16_9')"></div>
+  <div class="juan-in">
+    <span class="juan-kicker">FluxTorrent · 主题设计系统 · V1</span>
+    <h1>岩彩长卷</h1>
+    <p class="juan-sub">观于山海，藏于万象 —— 以<em>岩彩四色</em>绘于玄墨长卷之上</p>
+    <div class="juan-meta">
+      <span>适用范围 <b>全站 93 页 + 管理端</b></span>
+      <span>主题 ID <code style="color:var(--jin-bright)">shanhaijing</code></span>
+      <span>接入机制 <code>data-theme</code> 令牌覆盖</span>
+      <span>基线 <b>WCAG 2.2 AA</b></span>
+    </div>
+    <div class="principles">
+      <div class="prin">
+        <b><i>壹</i>玄墨为底</b>
+        <p>页面如深夜长卷：中性色全部带青绿微染（禁纯灰纯黑），内容浮于其上，如岩彩敷于绢本。深色优先是本主题的默认形态。</p>
+      </div>
+      <div class="prin">
+        <b><i>贰</i>岩彩四色</b>
+        <p>石青、石绿、朱砂、金箔四色各司其职，从矿物颜料取色而非屏幕荧光色。色皆有名，名皆有职——不允许"顺手找个颜色"。</p>
+      </div>
+      <div class="prin">
+        <b><i>叁</i>印绶为记</b>
+        <p>促销、官方、热榜等关键状态一律用"盖章"表达，而非彩色圆点。印章是山海经的签名方式：斜置、朱底、白文、有重量。</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="dc-inner">
+
+<!-- ═══════════ 壹 · 色彩 ═══════════ -->
+<section class="chapter rise" id="color">
+  <div class="ch-head">
+    <span class="ch-no">壹</span><h2 class="ch-title">色彩 · 岩彩</h2><span class="ch-en">Color System</span><div class="ch-line"></div>
+  </div>
+  <p class="ch-desc">四正色 + 玄墨中性阶。视觉重量按 60-30-10 分配：玄墨约占六成（底色与留白），文本与分隔约三成，石绿/朱砂/金合计一成——<b style="color:var(--paper)">强调色因稀缺而有效</b>。</p>
+
+  <h3 class="sub-h">四正色 <span class="en">FOUR MINERAL PIGMENTS</span></h3>
+  <div class="ramp">
+    <div class="pig">
+      <div class="pig-swatch" style="background:linear-gradient(135deg,#3a95aa,#2e7a8c)"><span class="p-role">次品牌 · 石青位</span><span class="p-zh">石青</span></div>
+      <div class="pig-steps"><i style="background:#123440"></i><i style="background:#1d5563"></i><i style="background:#2e7a8c"></i><i style="background:#5cb3c7"></i><i style="background:#a8d8e2"></i></div>
+      <div class="pig-meta"><code>#2e7a8c</code> · 亮档 <code>#5cb3c7</code><br><span class="slot">映射 --indigo 系</span> · 分类章/次标题/链接辅助</div>
+    </div>
+    <div class="pig">
+      <div class="pig-swatch" style="background:linear-gradient(135deg,#4cc39e,#3fae8f)"><span class="p-role">主交互 · 石绿位</span><span class="p-zh">石绿</span></div>
+      <div class="pig-steps"><i style="background:#16382c"></i><i style="background:#2c7a64"></i><i style="background:#3fae8f"></i><i style="background:#63c9aa"></i><i style="background:#b3e8d6"></i></div>
+      <div class="pig-meta"><code>#3fae8f</code> · 亮档 <code>#63c9aa</code><br><span class="slot">映射 --sky 系</span> · 主按钮/链接/做种态/成功</div>
+    </div>
+    <div class="pig">
+      <div class="pig-swatch" style="background:linear-gradient(135deg,#e05840,#d0442a)"><span class="p-role">印记 · 朱砂位</span><span class="p-zh">朱砂</span></div>
+      <div class="pig-steps"><i style="background:#3d130c"></i><i style="background:#a82e1c"></i><i style="background:#d0442a"></i><i style="background:#e88d7a"></i><i style="background:#f6cfc4"></i></div>
+      <div class="pig-meta"><code>#d0442a</code> · 亮档 <code>#e88d7a</code><br><span class="slot">映射 --coral 系</span> · 印章/危险/下载态 · <b>不作正文</b></div>
+    </div>
+    <div class="pig">
+      <div class="pig-swatch" style="background:linear-gradient(135deg,#e8bc58,#d3a13f)"><span class="p-role">金饰 · 金箔位</span><span class="p-zh">金</span></div>
+      <div class="pig-steps"><i style="background:#3a2d0e"></i><i style="background:#8a6a1c"></i><i style="background:#d3a13f"></i><i style="background:#f0d795"></i><i style="background:#faf0d0"></i></div>
+      <div class="pig-meta"><code>#d3a13f</code> · 箔 <code>#f0d795</code><br><span class="slot">映射 --sun 系</span> · 促销/FREE/题字渐变/金线</div>
+    </div>
+  </div>
+  <div class="wt-bar" title="视觉重量 60-30-10">
+    <span style="flex:60;background:#101914;color:#7d8b7c">玄墨 60</span>
+    <span style="flex:30;background:#22362b;color:#b7c0ad">纸墨 30</span>
+    <span style="flex:5.5;background:#3fae8f;color:#08130f">绿</span>
+    <span style="flex:2.5;background:#d0442a;color:#ece4cf">朱</span>
+    <span style="flex:2;background:#d3a13f;color:#241a05">金</span>
+  </div>
+
+  <h3 class="sub-h">玄墨中性阶 <span class="en">INK SCALE · 青绿微染禁纯灰</span></h3>
+  <div class="ramp" style="grid-template-columns:repeat(5,1fr)">
+    <div class="pig"><div class="pig-swatch" style="height:64px;background:#0a0f0d"><span class="p-zh" style="font-size:15px">玄</span></div><div class="pig-meta"><code>#0a0f0d</code><br>--surface-page</div></div>
+    <div class="pig"><div class="pig-swatch" style="height:64px;background:#101914"><span class="p-zh" style="font-size:15px">墨</span></div><div class="pig-meta"><code>#101914</code><br>--surface-sunken</div></div>
+    <div class="pig"><div class="pig-swatch" style="height:64px;background:#15211a"><span class="p-zh" style="font-size:15px">皂</span></div><div class="pig-meta"><code>#15211a</code><br>--surface-card</div></div>
+    <div class="pig"><div class="pig-swatch" style="height:64px;background:#1a2a21"><span class="p-zh" style="font-size:15px">苍</span></div><div class="pig-meta"><code>#1a2a21</code><br>--surface-hover</div></div>
+    <div class="pig"><div class="pig-swatch" style="height:64px;background:#22362b"><span class="p-zh" style="font-size:15px">黛</span></div><div class="pig-meta"><code>#22362b</code><br>--surface-raised</div></div>
+  </div>
+
+  <h3 class="sub-h">语义令牌全映射 <span class="en">TOKEN MAPPING · 与 base.css 槽位一一对应</span></h3>
+  <table class="tbl">
+    <tr><th>语义槽（base.css）</th><th>潮汐值（现）</th><th>山海经值（拟）</th><th>职掌</th></tr>
+    <tr><td class="mono">--sky / --sky-deep / --sky-soft</td><td>#0f62c4</td><td><span class="sw" style="background:#3fae8f"></span>#3fae8f / #2c7a64 / rgba(63,174,143,.14)</td><td>主交互 · 链接 · 做种</td></tr>
+    <tr><td class="mono">--indigo / --indigo-soft</td><td>#0a3d6b</td><td><span class="sw" style="background:#2e7a8c"></span>#2e7a8c / rgba(46,122,140,.16)</td><td>次品牌 · 分类</td></tr>
+    <tr><td class="mono">--sun / --sun-soft</td><td>#b4790a</td><td><span class="sw" style="background:#d3a13f"></span>#d3a13f / rgba(211,161,63,.12)</td><td>促销 · FREE · 2X</td></tr>
+    <tr><td class="mono">--coral / --coral-soft</td><td>#c0392b</td><td><span class="sw" style="background:#d0442a"></span>#d0442a / rgba(208,68,42,.14)</td><td>危险 · 印章 · 下载</td></tr>
+    <tr><td class="mono">--mint / --mint-soft</td><td>#147d5f</td><td><span class="sw" style="background:#3fae8f"></span>#3fae8f（与主交互同色归并）</td><td>成功 · 达标</td></tr>
+    <tr><td class="mono">--candy / --candy-soft</td><td>#0091a8</td><td><span class="sw" style="background:#5cb3c7"></span>#5cb3c7 / rgba(92,179,199,.14)</td><td>在线 · 进行中</td></tr>
+    <tr><td class="mono">--surface-page / card / hover / raised</td><td>#f6f8fc / #fff…</td><td><span class="sw" style="background:#0a0f0d"></span>#0a0f0d / #15211a / #1a2a21 / #22362b</td><td>表面四层</td></tr>
+    <tr><td class="mono">--text-strong / heading / body / muted / faint</td><td>#0e1b2a…</td><td><span class="sw" style="background:#ece4cf"></span>#f4eedd / #ece4cf / #d9d2ba / #b7c0ad / #7d8b7c</td><td>宣纸文本五阶</td></tr>
+    <tr><td class="mono">--border-soft / deep / strong</td><td>#e1e8f2…</td><td>rgba(211,161,63,.13 / .26 / .45)</td><td>金线三档</td></tr>
+    <tr><td class="mono">--success / --warning / --danger / --info</td><td>#147d5f…</td><td>#3fae8f / #d3a13f / #d0442a / #5cb3c7</td><td>四态归四色</td></tr>
+    <tr><td class="mono">--r-xl / lg / md / sm</td><td>18 / 14 / 10 / 6</td><td>16 / 10 / 6 / 4（更方，近简牍）</td><td>圆角</td></tr>
+    <tr><td class="mono">--shadow-card / hover</td><td>冷调低扩散</td><td>深黑投影 + hover 微量金晕</td><td>阴影</td></tr>
+    <tr><td class="mono">--grad-aurora / --ribbon</td><td>蓝渐层</td><td>金箔渐层 linear-gradient(180deg,#f0d795,#d3a13f 60%,#8a6a1c)</td><td>题字渐变 · 彩带</td></tr>
+    <tr><td class="mono">--content-*（BBCode/评级/画质）</td><td colspan="2" style="color:var(--faint)">不映射 —— 内容色属用户数据，明暗同值，主题不动（base.css §W-36 既有纪律）</td><td>豁免</td></tr>
+  </table>
+
+  <h3 class="sub-h">对比度合规 <span class="en">CONTRAST · WCAG 2.2 实测</span></h3>
+  <table class="tbl">
+    <tr><th>组合</th><th>比率</th><th>等级</th><th>用法裁定</th></tr>
+    <tr><td>宣纸 #ece4cf / 玄 #0a0f0d</td><td>≈ 15.2:1</td><td class="pass">AAA</td><td>正文主力</td></tr>
+    <tr><td>次文本 #b7c0ad / 玄</td><td>≈ 9.7:1</td><td class="pass">AAA</td><td>次要文本</td></tr>
+    <tr><td>弱文本 #7d8b7c / 玄</td><td>≈ 5.2:1</td><td class="pass">AA</td><td>辅助说明（底线，不得更浅）</td></tr>
+    <tr><td>石绿 #3fae8f / 玄 · 卡 #15211a</td><td>≈ 5.3 / 4.7:1</td><td class="pass">AA</td><td>链接/图标/按钮底</td></tr>
+    <tr><td>金 #d3a13f / 玄</td><td>≈ 7.5:1</td><td class="pass">AAA</td><td>促销文本可用</td></tr>
+    <tr><td>朱砂 #d0442a / 玄</td><td>≈ 2.9:1</td><td class="fail">✗ 正文</td><td class="warnx">仅作印章底/图标/大字（≥18.7px 粗体）</td></tr>
+    <tr><td>宣纸字 / 朱砂底（印章内）</td><td>≈ 5.2:1</td><td class="pass">AA</td><td>印章合法形态</td></tr>
+    <tr><td>石青 #2e7a8c / 玄</td><td>≈ 3.6:1</td><td class="warnx">△ 大字</td><td>文本用亮档 #5cb3c7（≈6.1:1）</td></tr>
+  </table>
+  <p class="stage-cap" style="margin-top:10px"><b>禁忌</b>：朱不上绿（红绿相犯，色盲不辨）、金不上白、正文不用朱砂/石青原色（用亮档）、灰不上彩底（按底色加深而非套灰）。</p>
+</section>
+
+<!-- ═══════════ 贰 · 排版 ═══════════ -->
+<section class="chapter rise" id="type">
+  <div class="ch-head">
+    <span class="ch-no">贰</span><h2 class="ch-title">排版 · 书刻</h2><span class="ch-en">Typography</span><div class="ch-line"></div>
+  </div>
+  <p class="ch-desc">三族分工，沿明确轴线分离：<b style="color:var(--paper)">书体题字（感性）</b> × <b style="color:var(--paper)">宋体正文（理性）</b> × <b style="color:var(--paper)">仿宋签条（事务）</b>。字阶取五档、倍率 1.25（大三度），杜绝 14/15/16 近似堆叠。深色反白阅读，行高按 +0.05 加气。</p>
+
+  <h3 class="sub-h">字族三体 <span class="en">TYPEFACES</span></h3>
+  <div class="font-cards">
+    <div class="font-card"><div class="fa f-title">山海经</div><h5>Ma Shan Zheng · 题字</h5><p>仅用于：品牌、卷题、印章、区块标题（≥20px）。禁用于正文与按钮——书体小字号不可读。加载：woff2 自托管 + font-display:swap + size-adjust 回退对齐（沿 fonts-tide.css 分片纪律）。</p></div>
+    <div class="font-card"><div class="fa f-body">北冥有鱼</div><h5>Noto Serif SC · 正文</h5><p>全站正文/表格/按钮/输入框唯一字族，400/600/700/900 四重。宋体骨架与主题同频，且屏显优化成熟。数字统一 font-variant-numeric: tabular-nums（做种数对齐）。</p></div>
+    <div class="font-card"><div class="fa f-wei">万兽谱录</div><h5>ZCOOL XiaoWei · 签条</h5><p>事务性标签专用：分组题签、统计数字、排行、表头。气质介于题字与正文之间，承担"古意但不碍读"的中间层。</p></div>
+  </div>
+
+  <h3 class="sub-h">字阶五档 <span class="en">SCALE · ×1.25</span></h3>
+  <div class="type-spec">
+    <div class="type-row"><div class="tk"><b>display</b>44–88px / 题字</div><div class="demo" style="font-family:var(--font-title);font-size:54px;letter-spacing:6px;background:linear-gradient(180deg,var(--jin-bright),var(--jin));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">山海图卷</div><div class="note">Hero / 卷题，金箔渐变</div></div>
+    <div class="type-row"><div class="tk"><b>h2</b>33px / 题字</div><div class="demo" style="font-family:var(--font-title);font-size:33px;letter-spacing:4px;color:var(--jin-bright)">万兽谱</div><div class="note">区块标题</div></div>
+    <div class="type-row"><div class="tk"><b>h3</b>21px / 题字</div><div class="demo" style="font-family:var(--font-title);font-size:21px;letter-spacing:3px;color:var(--jin-bright)">封神榜 · 点卯</div><div class="note">面板标题</div></div>
+    <div class="type-row"><div class="tk"><b>lg</b>17px / 仿宋</div><div class="demo" style="font-family:var(--font-wei);font-size:17px;letter-spacing:2px;color:var(--jin)">探宝 · 发现资源</div><div class="note">分组题签 / 小节</div></div>
+    <div class="type-row"><div class="tk"><b>base</b>15px / 宋体 1.7</div><div class="demo" style="font-size:15px">种子如异兽，做种即豢养；分享率是修士的道行。</div><div class="note">正文唯一档</div></div>
+    <div class="type-row"><div class="tk"><b>sm</b>13px / 宋体</div><div class="demo" style="font-size:13px;color:var(--paper-dim)">4K REMUX · 国语中字 · DIY 官种 · 38.6 GB</div><div class="note">元信息 / 导航项</div></div>
+    <div class="type-row"><div class="tk"><b>xs</b>11.5px / 宋体</div><div class="demo" style="font-size:11.5px;color:var(--faint);letter-spacing:2px">剩余 2 天 14 时 · 发布于 3 时辰前</div><div class="note">辅助说明（对比度底线）</div></div>
+  </div>
+
+  <h3 class="sub-h">竖排规则 <span class="en">VERTICAL WRITING</span></h3>
+  <div class="vtext-demo">
+    <div class="vtext">南山经 · 异兽录 · 卷一</div>
+    <div class="vtext-note"><b style="color:var(--paper)">writing-mode: vertical-rl</b>，字距 ≥6px，仅三处合法：Hero 卷签、长卷边注、空态题字。<b style="color:var(--paper)">禁令</b>：竖排永不承载可操作文本（按钮/链接/表单），永不超 12 字，数字与拉丁字母一律转横排或全角。窄屏（&lt;1180px）竖排自动隐藏，防止误触与挤压。</div>
+  </div>
+</section>
+
+<!-- ═══════════ 叁 · 组件 ═══════════ -->
+<section class="chapter rise" id="comp">
+  <div class="ch-head">
+    <span class="ch-no">叁</span><h2 class="ch-title">组件 · 百器</h2><span class="en">Components</span><div class="ch-line"></div>
+  </div>
+  <p class="ch-desc">全部组件为<b style="color:var(--paper)">现有 DOM 结构的主题皮肤</b>——不新增组件类名，只在 <code>[data-theme="shanhaijing"]</code> 作用域内重绘。以下为带态样张（hover 即真实悬停态，可直接试）。</p>
+
+  <h3 class="sub-h">印 · 印章与徽记 <span class="en">SEALS</span></h3>
+  <div class="stage"><span class="stage-tag">seal / badge</span>
+    <div class="row">
+      <span class="seal lg">FREE</span><span class="seal">2X</span><span class="seal gold">荐</span>
+      <span class="seal qing">官</span><span class="seal sm">热</span><span class="seal ghost">自刻</span>
+      <span class="badge-wei lv">保种达标</span><span class="badge-wei jin">促销中</span>
+      <span class="badge-wei zhu">HR 预警</span><span class="badge-wei qing">蓝光原盘</span>
+    </div>
+    <p class="stage-cap"><b>规</b>：印章必斜置（-2°~-6°）、朱底白文、内描边拟印泥；hover 回正放大（ease-seal 回弹）。一档信息一章，同卡不超过两章。ghost 章用于用户自定义标签。徽记（badge-wei）承载"状态词"，印章承载"身份/促销"，二者不混用。</p>
+  </div>
+
+  <h3 class="sub-h">钮 · 四档 <span class="en">BUTTONS · 悬停/按下/禁用可试</span></h3>
+  <div class="stage"><span class="stage-tag">button</span>
+    <div class="row">
+      <button class="btn btn-primary">立即下载</button>
+      <button class="btn btn-seal">献宝发布</button>
+      <button class="btn btn-gold">查看全卷</button>
+      <button class="btn btn-ghost">稍后再说</button>
+      <button class="btn btn-primary" disabled>已领完</button>
+    </div>
+    <p class="stage-cap"><b>规</b>：一屏一主钮（石绿实心）；朱砂钮仅用于"不可逆/需掂量"的动作（发布、删除确认），借印章的"落印无悔"暗示；金边钮=次级导航型动作；幽灵钮=最弱。胶囊圆角沿用 --r 体系最大档，与卡片的方形成方圆对比。</p>
+  </div>
+
+  <h3 class="sub-h">引 · 检索与开关 <span class="en">INPUTS</span></h3>
+  <div class="stage"><span class="stage-tag">input / switch</span>
+    <div class="row">
+      <div class="inputx"><span style="color:var(--jin)">⌕</span><input placeholder="寻踪觅宝：搜资源 / 求种 / 字幕…"></div>
+      <div class="inputx err"><span style="color:var(--zhusha)">⚠</span><input value="密码两次不符" style="color:#e88d7a"></div>
+      <div class="switchx on" onclick="this.classList.toggle('on')"><i></i></div>
+      <div class="switchx" onclick="this.classList.toggle('on')"><i></i></div>
+    </div>
+    <p class="stage-cap"><b>规</b>：聚焦金环外晕（非浏览器默认蓝）；错误态朱砂边 + 浅朱文字（#e88d7a 亮档保对比度）；开关开示用石绿、回弹缓动。Tab 键序可见（全域 :focus-visible 金环已实装，可按 Tab 试）。</p>
+  </div>
+
+  <h3 class="sub-h">谱 · 图鉴卡与竹简 <span class="en">TORRENT CARD / SLIP ROW</span></h3>
+  <div class="stage"><span class="stage-tag">torrent card / table row</span>
+    <div class="row" style="align-items:flex-start">
+      <div class="beast-card">
+        <div class="bc-poster">
+          <div class="bc-seals"><span class="seal sm">FREE</span></div>
+          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Epic%20fantasy%20movie%20poster%20art%2C%20armored%20warrior%20standing%20on%20a%20floating%20mountain%20peak%20above%20sea%20of%20clouds%2C%20teal%20and%20gold%20palette%2C%20cinematic%20composition%2C%20no%20text&image_size=portrait_4_3" alt="昆仑墟·觉醒海报">
+        </div>
+        <div class="bc-body">
+          <h4>昆仑墟 · 觉醒</h4><p class="bc-sub">2025 · 4K REMUX · 官种</p>
+          <div class="bc-meta"><span class="up">▲ 1,204</span><span class="dn">▼ 96</span><span class="ok">✓ 3,860</span></div>
+          <div class="bc-foot"><span>38.6 GB</span><span class="free">FREE 剩 2天14时</span></div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:300px">
+        <div class="slip">
+          <div class="slip-rowx"><span class="cat">影视</span><span class="tt">昆仑墟 · 觉醒 2025 4K REMUX 国语中字</span><span class="n">38.6 GB</span><span class="n up">1,204</span><span class="n dn">96</span><span class="n ok">3,860</span></div>
+          <div class="slip-rowx"><span class="cat">影视</span><span class="tt">青丘剑雨 2025 1080p BluRay <span class="seal sm gold" style="margin-left:6px">2X</span></span><span class="n">12.4 GB</span><span class="n up">862</span><span class="n dn">141</span><span class="n ok">2,317</span></div>
+          <div class="slip-rowx"><span class="cat">纪录</span><span class="tt">归墟深渊 2025 4K BBC 联合摄制</span><span class="n">43.5 GB</span><span class="n up">415</span><span class="n dn">27</span><span class="n ok">1,102</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="stage-cap"><b>规</b>：图鉴卡（浏览发现）与竹简行（效率扫读）是同一份数据的两种皮肤，切换器记忆于 localStorage。竹简的竖向簡纹为 48px 间隔的 2% 黑线 + 左侧金编绳；数字一律 tabular-nums。▲做种绿 / ▼下载朱亮 / ✓完成金，三色在暗底均过 AA。</p>
+  </div>
+
+  <h3 class="sub-h">璋 · 玉牌与诏令 <span class="en">STAT / NOTICE</span></h3>
+  <div class="stage"><span class="stage-tag">stat / banner</span>
+    <div class="row">
+      <div class="jadex"><b>42,816</b><span>修士 · 会员</span></div>
+      <div class="jadex hot"><b>128,640</b><span>收录 · 种子</span></div>
+      <div class="jadex"><b>99.2%</b><span>保种存活</span></div>
+    </div>
+    <div class="row">
+      <div class="decreex"><span class="seal sm">昆仑诏</span><p>霜降大赦：<b>全站 FREE 72 时辰</b> · 新修士考核名录已张榜</p><a href="#" style="white-space:nowrap">阅全诏 →</a></div>
+    </div>
+    <p class="stage-cap"><b>规</b>：玉牌顶部一线光=玉的开脸；hot 档（站方想让你看的）换金线。诏令条全站最多一条，朱金渐边但底仍玄墨——显眼靠"礼制"而非亮度轰炸。</p>
+  </div>
+
+  <h3 class="sub-h">鉴 · 导航三态与分页 <span class="en">NAV / PAGER</span></h3>
+  <div class="stage"><span class="stage-tag">nav item / pagination</span>
+    <div class="row" style="align-items:flex-start">
+      <div class="nav-demo">
+        <a class="navi on" href="#">📜 万兽谱 · 资源</a>
+        <a class="navi" href="#">🗣 论道台 · 论坛</a>
+        <a class="navi" href="#">🎁 献宝 · 发布</a>
+      </div>
+      <div class="pagerx">
+        <a href="#">‹</a><a href="#">1</a><a href="#">2</a><a class="on" href="#">3</a><a href="#">4</a><a href="#">…</a><a href="#">42</a><a href="#">›</a>
+      </div>
+    </div>
+    <p class="stage-cap"><b>规</b>：导航激活=朱砂底 + 左缘三寸朱线（落印之形），hover 微右移 2px；分页当前页盖朱章。所有可点元素 hover 反馈 ≤220ms。</p>
+  </div>
+
+  <h3 class="sub-h">讯 · 提示 · 进度 · 空态 <span class="en">FEEDBACK</span></h3>
+  <div class="stage"><span class="stage-tag">toast / progress / empty</span>
+    <div class="row">
+      <div class="toastx">✓ 点卯成功，灵力 +120</div>
+      <div class="toastx warn">◈ 分享率逼近红线 1.20，注意涵养</div>
+      <div class="toastx bad">✕ 传送失败，请重试</div>
+    </div>
+    <div class="row">
+      <div><div style="font-size:12px;color:var(--faint);margin-bottom:5px">护种 100 时辰 · 64/100</div><div class="qbarx"><i style="width:64%"></i></div></div>
+      <div><div style="font-size:12px;color:var(--faint);margin-bottom:5px">每日点卯 · 已完成</div><div class="qbarx gold"><i style="width:100%"></i></div></div>
+    </div>
+    <div class="row">
+      <div class="emptyx">
+        <div class="e-seal">空</div>
+        <p>此卷尚无收录</p>
+        <small>成为第一个献宝之人 → <a href="#">前往发布</a></small>
+      </div>
+    </div>
+    <p class="stage-cap"><b>规</b>：toast 左缘色条=三态（绿/金/朱），3.5s 自隐；进度条完成态由绿转金（功德圆满）；空态给"下一步行动"而非干站着——每处空态必带一条可点出路。</p>
+  </div>
+</section>
+
+<!-- ═══════════ 肆 · 交互 ═══════════ -->
+<section class="chapter rise" id="motion">
+  <div class="ch-head">
+    <span class="ch-no">肆</span><h2 class="ch-title">交互 · 灵气</h2><span class="en">Interaction & Motion</span><div class="ch-line"></div>
+  </div>
+  <p class="ch-desc">动效如气息：<b style="color:var(--paper)">短促、有重量、可关闭</b>。四档时长 + 两条缓动曲线覆盖全站；装饰性动效全部经 <code>prefers-reduced-motion</code> 熔断。右侧开关可现场体验降级。 <label class="toggle-rm"><span class="switchx" id="rmSwitch" onclick="rmToggle()"><i></i></span> 模拟 reduced-motion</label></p>
+
+  <h3 class="sub-h">动效令牌 <span class="en">MOTION TOKENS · 移指试之</span></h3>
+  <div class="motion-grid">
+    <div class="mo-card"><h6>--dur-1 · 120ms</h6><p>微反馈：chip、图标、checkbox</p><div class="mo-box d1">悬停 · 即触即应</div></div>
+    <div class="mo-card"><h6>--dur-2 · 220ms</h6><p>常规：按钮、导航、卡片边框</p><div class="mo-box">悬停 · 标准抬升</div></div>
+    <div class="mo-card"><h6>--dur-3 · 400ms</h6><p>位移：卡片浮起、抽屉、横幅</p><div class="mo-box d3">悬停 · 从容浮现</div></div>
+    <div class="mo-card"><h6>--ease-seal · 回弹</h6><p>盖章、开关、印章 hover 专用</p><div class="mo-box seal-in">悬停 · 印泥回弹</div></div>
+  </div>
+  <div class="stage" style="margin-top:14px"><span class="stage-tag">缓动对照</span>
+    <svg class="ease-chart" viewBox="0 0 300 110" preserveAspectRatio="none">
+      <path d="M10,100 C80,100 60,10 290,10" fill="none" stroke="#3fae8f" stroke-width="2"/>
+      <path d="M10,100 C120,100 100,4 290,10" fill="none" stroke="#d3a13f" stroke-width="2" stroke-dasharray="5 4"/>
+      <text x="14" y="94" fill="#3fae8f" font-size="10">ease-out (.22,1,.36,1) 全站默认</text>
+      <text x="120" y="24" fill="#d3a13f" font-size="10">ease-seal (.34,1.56,.64,1) 回弹</text>
+    </svg>
+    <p class="stage-cap">位移/透明度用 ease-out（快入缓出）；带"印"语义的弹响用 ease-seal（过冲 1.56）。<b>禁</b>：线性匀速、弹跳链（stagger >3 项）、无限循环动画（呼吸灯仅允许通知类单点，如右下示）。</p>
+    <div class="row" style="margin-top:14px">
+      <div class="mo-box breathe" style="width:150px">传讯 3 条 · 呼吸</div>
+      <div><span class="stamp-demo" id="stampDemo" title="点击重演">FREE</span> <span style="font-size:12px;color:var(--faint);margin-left:10px">盖章动效 · 点击重演（700ms 一次到位，不循环）</span></div>
+    </div>
+  </div>
+
+  <h3 class="sub-h">交互铁律 <span class="en">INTERACTION RULES</span></h3>
+  <table class="tbl">
+    <tr><th>条目</th><th>裁定</th></tr>
+    <tr><td>焦点可见</td><td>全域 <code>:focus-visible</code> 2px 金环 + 2px 偏移，本页即生效（Tab 试之）</td></tr>
+    <tr><td>悬停反馈</td><td>≤220ms，位移 ≤4px（卡片 ≤8px），变色先于变形</td></tr>
+    <tr><td>Hero 视差</td><td>仅首屏 0.18 倍率位移，滚过 700px 停止计算；reduced-motion 全局关闭</td></tr>
+    <tr><td>触控目标</td><td>≥40×40px（竹简行高 58px 即为此设），移动端 hover 态降级为 :active</td></tr>
+    <tr><td>降级链</td><td>异兽水彩 = CSS mask 水印，加载失败静默消失；动图全部 CSS 实现，无 GIF 依赖</td></tr>
+    <tr><td>键盘流</td><td>图鉴导航、双视图切换、海报墙横向滚动均可纯键盘到达（海报墙容器 tabindex=0 + 方向键）</td></tr>
+  </table>
+</section>
+
+<!-- ═══════════ 伍 · 落地 ═══════════ -->
+<section class="chapter rise" id="impl" style="padding-bottom:60px">
+  <div class="ch-head">
+    <span class="ch-no">伍</span><h2 class="ch-title">落地 · 入谱</h2><span class="en">Integration</span><div class="ch-line"></div>
+  </div>
+  <p class="ch-desc">沿用 TIDE 趟通的"链末覆盖"路径，组件零改动。结构层差异（侧栏、竹简）全部收在 <code>[data-theme="shanhaijing"]</code> 作用域。</p>
+  <div class="step"><i>1</i><div><b>注册</b> · <code>lib/themes.ts</code> 追加 <code>shanhaijing: { chrome: "#0a0f0d" }</code>；auto 深色分支可选指向。</div></div>
+  <div class="step"><i>2</i><div><b>令牌</b> · 新建 <code>app/styles/theme-shanhaijing.css</code>（壹章映射表全量），挂 globals.css @import 链末端；<code>--brand-*</code> 兼容层自动跟随。</div></div>
+  <div class="step"><i>3</i><div><b>结构</b> · 同文件追加作用域结构 CSS：侧栏化 <code>.main-menu</code>、竹简皮、印章角标、金箔题字（background-clip:text + 静态回退色）。</div></div>
+  <div class="step"><i>4</i><div><b>字库</b> · Ma Shan Zheng / Noto Serif SC / ZCOOL XiaoWei 三族 woff2 入 <code>public/fonts/</code>，unicode-range 分片 + font-display:swap + size-adjust 回退。</div></div>
+  <div class="step"><i>5</i><div><b>词条</b> · i18n 三语补 <code>themeShanhaijing</code>（山海经 / 山海經 / Mythica），门禁自动校验。</div></div>
+  <h3 class="sub-h">验收清单 <span class="en">ACCEPTANCE · 可勾选</span></h3>
+  <div class="chk">
+    <label><input type="checkbox"> 93 页无硬编码色值越界</label>
+    <label><input type="checkbox"> 正文对比度全量 ≥ AA</label>
+    <label><input type="checkbox"> Tab 键序全程金环可见</label>
+    <label><input type="checkbox"> reduced-motion 下零动效残留</label>
+    <label><input type="checkbox"> 1180px 侧栏收轨无挤压</label>
+    <label><input type="checkbox"> 移动底栏 TabBar 不变形</label>
+    <label><input type="checkbox"> 字体 swap 无可见跳动</label>
+    <label><input type="checkbox"> 亮暗（包子/潮汐）主题回切无损</label>
+  </div>
+  <p style="margin-top:26px;font-size:12px;color:var(--faint);letter-spacing:2px;text-align:center">山海经 UI 设计系统 V1 · 岩彩长卷 · 与 FluxTorrent-Tide 体系同源共生 · 2026-10-23</p>
+</section>
+
+</div>
+</div>
+
+<script>
+// 目次跟随
+const links = [...document.querySelectorAll('#tocNav a')];
+const secs = links.map(a => document.querySelector(a.getAttribute('href')));
+const spy = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('on', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+secs.forEach(s => s && spy.observe(s));
+
+// 入场
+const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.classList.add('in')), { threshold: .06 });
+document.querySelectorAll('.rise').forEach(el => io.observe(el));
+
+// 盖章重演
+document.getElementById('stampDemo').onclick = function () {
+  this.style.animation = 'none'; void this.offsetWidth; this.style.animation = '';
+};
+
+// reduced-motion 模拟
+function rmToggle() {
+  document.body.classList.toggle('rm');
+  document.getElementById('rmSwitch').classList.toggle('on');
+}
+</script>
+</body>
+</html>

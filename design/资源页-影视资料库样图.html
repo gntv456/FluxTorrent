@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>资源页 · 影视资料库样图</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23163E9E%27/%3E%3Cpath d=%27M8 12h16M8 17h12%27 stroke=%27%23fff%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3Ccircle cx=%2725%27 cy=%278%27 r=%273.5%27 fill=%27%23e8b94a%27/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f5faff; --card:#ffffff; --ink:#1f2a44; --sub:#6b7a99; --faint:#94a3b8;
+  --line:#e3edf7; --red:#ff7a59; --amber:#ffc93c; --green:#2fbf9b; --blue:#2fa8ff;
+  --purple:#5b6bf5; --sky:#2fa8ff; --violet:#1e8ae8;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;font-size:13.5px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+
+/* ===== 顶栏 ===== */
+.topbar{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px;position:sticky;top:10px;z-index:20;box-shadow:0 4px 14px rgba(31,42,68,.06)}
+.topbar .total{font-size:14px;font-weight:700}
+.topbar .total b{color:var(--red);font-size:17px;font-weight:800}
+.topbar .sep{flex:1}
+.pgctl{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sub)}
+.pgctl select{border:1px solid var(--line);border-radius:8px;background:#fff;font-size:12.5px;padding:4px 8px;color:var(--ink);outline:none;cursor:pointer}
+.seg{display:flex;overflow:hidden;padding:0!important;border:1px solid var(--line);border-radius:8px}
+.seg button{border:none;background:#fff;padding:4px 10px;font-size:12.5px;color:var(--sub);cursor:pointer}
+.seg button.on{background:var(--sky);color:#fff;font-weight:600}
+.fbtn{border:1px solid var(--line);border-radius:8px;background:#fff;font-size:12.5px;padding:4px 10px;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.fbtn.on{border-color:var(--sky);color:var(--sky);font-weight:600}
+.fbtn .dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.fbtn.on .dot{background:var(--sky)}
+
+/* ===== 视图切换条 ===== */
+.viewbar{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.viewbar h1{font-size:19px;font-weight:800}
+.viewbar .crumbs{font-size:12.5px;color:var(--faint)}
+.vswitch{margin-left:auto;display:flex;gap:6px}
+.vswitch button{border:1px solid var(--line);border-radius:8px;background:#fff;padding:5px 12px;font-size:12.5px;cursor:pointer;color:var(--sub)}
+.vswitch button.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+
+/* ===== 作品卡 ===== */
+.movie{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;display:flex}
+.movie-cover{width:178px;flex-shrink:0;background:#EEEAE2;border-right:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:8px}
+.poster{position:relative;border-radius:10px;aspect-ratio:3/4;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(28,26,23,.14)}
+.poster .t{position:absolute;left:10px;right:10px;bottom:8px;font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);line-height:1.4}
+.poster .eyebrow{position:absolute;top:7px;left:7px;font-size:9.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.35);border-radius:4px;padding:1px 5px;letter-spacing:.5px}
+.cover-note{font-size:11px;color:var(--faint);text-align:center;line-height:1.5}
+.cover-note .date{display:inline-block;background:var(--ink);color:#fff;font-size:10.5px;font-weight:700;border-radius:5px;padding:1px 7px;margin-top:3px}
+.pg1{background:linear-gradient(155deg,#1e8ae8 0%,#2fa8ff 55%,#5b6bf5 100%)}
+.pg2{background:linear-gradient(155deg,#1d8f73 0%,#2fbf9b 55%,#7ac7ff 100%)}
+.pg3{background:linear-gradient(155deg,#5b6bf5 0%,#7a86ff 55%,#2fa8ff 100%)}
+.pg4{background:linear-gradient(155deg,#ff7a59 0%,#ff9f7a 55%,#ffc93c 100%)}
+.movie-main{flex:1;min-width:0;padding:14px 16px}
+.m-head{display:flex;align-items:flex-start;flex-wrap:wrap;gap:7px 9px}
+.m-title{font-size:16.5px;font-weight:800;line-height:1.35}
+.m-title a{color:var(--ink);text-decoration:none;cursor:pointer}
+.m-title a:hover{color:var(--sky)}
+.yr{font-size:10.5px;font-weight:700;background:var(--amber);color:#fff;border-radius:4px;padding:1px 6px;margin-top:2px}
+.reg{font-size:12px;color:var(--sub);margin-top:2px}
+.m-dir{font-size:12.5px;color:var(--sub);margin-top:2px}
+.m-add{margin-left:auto}
+.btn{border:none;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:600;padding:6px 13px}
+.btn-add{background:var(--sky);color:#fff}
+.btn-add:hover{background:#1e8ae8}
+.btn-dl{background:var(--green);color:#fff;padding:4px 11px;font-size:12px}
+.btn-dl:hover{background:#1d8f73}
+.btn-ghost{border:1px solid var(--line);background:#fff;color:var(--ink)}
+.m-tags{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 7px}
+.m-tags span{font-size:10.5px;font-weight:600;color:var(--ink);border:1px solid var(--line);background:#f8fafc;border-radius:5px;padding:1px 7px}
+.m-syn{font-size:12.5px;color:#3d4a63;line-height:1.75;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.m-act{font-size:12px;color:var(--sub);margin-bottom:10px}
+.m-act b{font-weight:600;color:var(--ink)}
+
+/* ===== 种子表 ===== */
+.shead,.srow{display:grid;grid-template-columns:minmax(340px,1fr) 64px 76px 56px 56px 56px 72px;align-items:center;gap:8px;padding:7px 12px}
+.shead{font-size:11.5px;color:var(--faint);border-top:1px dashed var(--line);background:#f8fafc;font-weight:600}
+.srow{border-top:1px solid var(--line);font-size:12px}
+.srow:hover{background:#f5faff}
+.s-name{min-width:0}
+.chips{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px}
+.chip{font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.c4k{background:#1f2a44;color:#fff}
+.cweb{background:#e8f4ff;color:#1e8ae8}
+.ch265{background:#dff7f0;color:#1d8f73}
+.caud{background:#fff4d6;color:#c0861a}
+.csrc{background:#eaebff;color:#5b6bf5}
+.cep{background:#fff4d6;color:#d97706}
+.chdr{background:#e8f4ff;color:#1e8ae8}
+.cfree{background:#dff7f0;color:#1d8f73}
+.csub{background:#e8f4ff;color:#2fa8ff}
+.s-title{font-size:12.5px;color:var(--ink);line-height:1.5;word-break:break-all}
+.s-time,.s-size,.s-seed,.s-leech,.s-done{color:var(--ink);font-variant-numeric:tabular-nums}
+.s-seed{font-weight:700}
+.s-seed.zero{color:var(--faint)}
+.s-size{color:var(--sub)}
+.s-act{text-align:right}
+.sact-btn{border:1px solid var(--line);border-radius:6px;background:#fff;font-size:11.5px;padding:2px 9px;cursor:pointer;color:var(--ink)}
+.sact-btn:hover{border-color:var(--green);color:var(--green)}
+
+/* ===== 网格模式 ===== */
+.grid-mode .movie{flex-direction:column}
+.grid-mode .movie-cover{width:auto;border-right:none;border-bottom:1px solid var(--line);padding:10px;flex-direction:row;align-items:center}
+.grid-mode .poster{width:74px;aspect-ratio:3/4}
+.grid-mode .cover-note{text-align:left;font-size:11px}
+.grid-mode .m-add{display:none}
+.grid-mode .m-syn,.grid-mode .m-act{display:none}
+.grid-mode .shead{display:none}
+.grid-mode .srow{grid-template-columns:minmax(0,1fr) 90px;padding:7px 12px}
+.grid-mode .srow .s-time,.grid-mode .srow .s-size,.grid-mode .srow .s-seed,.grid-mode .srow .s-leech,.grid-mode .srow .s-done{display:none}
+
+/* ===== 分页 ===== */
+.pager{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:8px}
+.pager button{border:1px solid var(--line);background:#fff;border-radius:8px;min-width:32px;height:32px;font-size:12.5px;cursor:pointer;color:var(--ink)}
+.pager button.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:700}
+.pager button:disabled{opacity:.45;cursor:default}
+.pager .info{font-size:12px;color:var(--faint);margin:0 6px}
+
+/* ===== 详情视图 ===== */
+#view-detail{display:none}
+.detail-hero{position:relative;border-radius:16px;overflow:hidden;background:linear-gradient(120deg,#1e8ae8 0%,#2fa8ff 52%,#5b6bf5 100%);color:#fff;padding:0;margin-bottom:14px;min-height:250px}
+.detail-hero .bgtext{position:absolute;right:14px;top:-6px;font-size:64px;font-weight:800;line-height:1;opacity:.14;letter-spacing:2px;transform:rotate(-6deg);white-space:nowrap}
+.detail-in{display:flex;gap:24px;padding:26px 30px;position:relative;z-index:1;align-items:center}
+.d-poster{width:120px;aspect-ratio:3/4;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.28);flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.d-poster .t{position:absolute;left:9px;right:9px;bottom:7px;font-size:11px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.d-info{flex:1;min-width:0}
+.d-slogan{font-size:24px;font-weight:800;letter-spacing:1px;text-shadow:0 2px 8px rgba(0,0,0,.18);margin-bottom:6px}
+.d-title{font-size:17px;font-weight:800;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.d-title .y{font-size:11.5px;font-weight:700;background:rgba(0,0,0,.22);border-radius:5px;padding:1px 7px}
+.d-meta{font-size:12.5px;opacity:.92;margin-top:4px}
+.d-actions{display:flex;gap:8px;margin-top:12px}
+.d-actions button{border:none;border-radius:8px;font-size:12.5px;font-weight:600;padding:7px 14px;cursor:pointer}
+.d-src{background:#fff;color:#D9483B}
+.d-sub{background:rgba(255,255,255,.18);color:#fff}
+.d-sub:hover{background:rgba(255,255,255,.3)}
+.d-follow{background:rgba(0,0,0,.16);color:#fff}
+.d-follow:hover{background:rgba(0,0,0,.3)}
+.d-syn{margin-top:12px;font-size:12.5px;line-height:1.8;opacity:.95;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.d-crew{font-size:12px;opacity:.85;margin-top:8px}
+.d-meta-box{flex-shrink:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:14px 18px;backdrop-filter:blur(6px);min-width:190px}
+.d-meta-box .row{display:flex;justify-content:space-between;gap:14px;font-size:12px;padding:3px 0}
+.d-meta-box .row b{font-weight:700}
+.d-meta-box .stars{color:#FFD666;font-size:13px;letter-spacing:1px;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.d-back{margin-bottom:12px}
+.d-back button{border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12.5px;padding:5px 12px;cursor:pointer;color:var(--ink)}
+.d-torrents{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 0}
+.d-torrents .tt{font-size:14px;font-weight:800;padding:2px 16px 8px}
+.d-note{margin-top:12px;font-size:11.5px;color:var(--faint);text-align:center}
+
+/* ===== 详情扩展字段 ===== */
+.d-alias{font-size:12px;opacity:.8;margin-top:2px}
+.d-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.d-tags span{font-size:10.5px;font-weight:600;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);border-radius:5px;padding:1px 7px}
+.st{font-size:10.5px;font-weight:700;background:rgba(0,0,0,.25);border-radius:5px;padding:1px 7px;vertical-align:middle}
+.st-live{background:var(--red)}
+.d-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.d-actgap{flex:1}
+.d-want{background:#fff;color:var(--ink)}
+.d-score{background:rgba(0,0,0,.16);color:#fff}
+.d-want:hover{background:#FFF3E0;border:1px solid var(--amber)}
+.d-crew{font-size:12px;opacity:.95;margin-top:10px}
+.d-crew .rowline{display:flex;gap:8px;padding:2px 0}
+.d-crew .k{min-width:44px;font-weight:700;opacity:.75}
+.d-crew .v{flex:1;min-width:0}
+.d-syn{margin-top:10px;font-size:12.5px;line-height:1.8;opacity:.95;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.d-syn.open{-webkit-line-clamp:unset;display:block}
+.d-synmore{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;border-radius:7px;font-size:11.5px;padding:3px 10px;margin-top:6px;cursor:pointer}
+.d-meta-box .r{display:inline-flex;align-items:center;gap:6px}
+.d-meta-box .num{color:#FFD666;font-weight:800;font-size:13px}
+.d-block{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.d-bt{font-size:14px;font-weight:800;margin-bottom:10px}
+.d-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:center}
+.gitem{position:relative;border-radius:10px;aspect-ratio:16/9;overflow:hidden;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);font-size:11.5px;font-weight:600}
+.gitem span{background:rgba(0,0,0,.32);border-radius:5px;padding:2px 9px}
+.gg1{background:linear-gradient(140deg,#1e8ae8,#2fa8ff 60%,#9bd1ff)}
+.gg2{background:linear-gradient(140deg,#5b6bf5,#7a86ff 60%,#b9c0ff)}
+.gg3{background:linear-gradient(140deg,#1d8f73,#2fbf9b 60%,#a8e8d5)}
+.g-trailer{grid-column:1 / -1;justify-self:end;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12px;padding:5px 12px;cursor:pointer;color:var(--ink)}
+.g-trailer:hover{border-color:var(--sky);color:var(--sky)}
+.d-fullsyn{font-size:12.5px;line-height:1.85;color:#3d4a63}
+.d-related{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ritem{display:flex;flex-direction:column;gap:4px}
+.rp{border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;color:#fff;background:#8C6D4A;aspect-ratio:16/7;display:flex;align-items:flex-end}
+.rp0{background:linear-gradient(140deg,#1e8ae8,#2fa8ff)}
+.rp1{background:linear-gradient(140deg,#5b6bf5,#7a86ff)}
+.rp2{background:linear-gradient(140deg,#1d8f73,#2fbf9b)}
+.rp3{background:linear-gradient(140deg,#ff7a59,#ff9f7a)}
+.ry{font-size:11.5px;color:var(--sub)}
+@media (max-width:760px){
+  .d-gallery{grid-template-columns:1fr 1fr}
+  .g-trailer{grid-column:1 / -1}
+  .d-related{grid-template-columns:1fr 1fr}
+  .d-actgap{display:none}
+}
+
+/* ===== v6 更多下拉菜单 ===== */
+.sact-more{position:relative}
+.more-menu{position:absolute;right:0;top:calc(100% + 5px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 28px rgba(31,42,68,.16);min-width:138px;padding:5px;display:none;z-index:40}
+.sact-more.open .more-menu{display:block}
+.mm-item{display:block;width:100%;text-align:left;font-size:12.5px;color:var(--ink);background:transparent;border:0;padding:7px 11px;border-radius:7px;cursor:pointer;font-family:inherit}
+.mm-item:hover{background:var(--sky-soft);color:var(--sky-deep)}
+.mm-del{color:#d64541}
+.mm-del:hover{background:#ffe9e5;color:#c0392b}
+.toast{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);background:#1f2a44;color:#fff;font-size:13px;padding:9px 18px;border-radius:10px;box-shadow:0 10px 26px rgba(31,42,68,.3);z-index:99;opacity:0;pointer-events:none;transition:opacity .18s}
+.toast.show{opacity:1}
+
+/* ===== v5 列表：分类图标 / 海报缩略图 / 回复列 / 操作双按钮 ===== */
+.cat-ic{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;font-weight:700;justify-content:center}
+.cat-ic svg{display:block}
+.c-cat-ep svg{color:var(--sky)}
+.c-cat-mv svg{color:var(--purple)}
+.s-post{display:flex;align-items:center;gap:8px}
+.poster-min{width:40px;height:56px;border-radius:6px;flex-shrink:0;display:flex;align-items:flex-end;padding:3px;box-shadow:0 2px 8px rgba(31,42,68,.12)}
+.poster-min .pm-t{font-size:8.5px;font-weight:700;color:#fff;line-height:1.15;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.s-reply{color:var(--sub);font-size:12px}
+.sact-ghost{background:#fff;color:var(--sky);border:1px solid var(--sky-line)}
+.sact-ghost:hover{background:var(--sky-soft)}
+
+/* ===== v3 字段补充 ===== */
+.catb{display:inline-block;font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 6px;color:#fff}
+.c-cat-ep{background:var(--sky)}
+.c-cat-mv{background:var(--purple)}
+.stb{display:inline-block;font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.st-free{background:#dff7f0;color:#1d8f73}
+.st-2x{background:#ffe9e2;color:#e85c3f}
+.st-plain{background:#F0EDE7;color:#7A7266}
+.s-uploader{font-size:12px;color:var(--sub)}
+.cc-poster .stb{position:absolute;top:7px;right:7px}
+.cc-poster .st-plain{background:rgba(0,0,0,.38);color:#fff}
+#mode-list .srow:hover{background:#FFFDF8}
+
+/* ===== 三模式：列表 / 卡片 / 海报墙 ===== */
+.mode-note{font-size:12px;color:var(--faint);margin-bottom:10px}
+.mode-note b{color:var(--sub)}
+#mode-list{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
+#mode-list .shead{border-top:none;background:#FAF7F0;font-weight:700}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:16px}
+.ccard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:7px}
+.cc-poster{position:relative;border-radius:8px;aspect-ratio:16/7;overflow:hidden;display:flex;align-items:flex-end;padding:8px;color:#fff}
+.cc-poster .t{font-size:11.5px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.cc-t{font-size:13px;font-weight:700;display:flex;gap:6px;align-items:center}
+.cc-name{font-size:11.5px;color:#3d4a63;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc-meta{font-size:11px;color:var(--sub)}
+.cc-btn{align-self:flex-start}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:16px}
+.wall{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.wposter{position:relative;border-radius:8px;aspect-ratio:3/4;overflow:hidden;display:flex;align-items:flex-end;padding:9px;color:#fff}
+.wposter .t{font-size:13px;font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.wposter .wstar{position:absolute;top:7px;right:7px;font-size:10.5px;color:#FFD666;background:rgba(0,0,0,.38);border-radius:4px;padding:1px 6px;letter-spacing:.5px}
+.wposter .wdate{position:absolute;top:7px;left:7px;font-size:9.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.35);border-radius:4px;padding:1px 6px}
+.wmeta{display:flex;gap:6px;align-items:center}
+.wmeta b{font-size:13px}
+.wsub{font-size:11.5px;color:var(--sub)}
+@media (max-width:760px){
+  .cgrid{grid-template-columns:1fr 1fr}
+  .wgrid{grid-template-columns:1fr 1fr}
+  #mode-list .srow{grid-template-columns:minmax(0,1fr) 76px 60px}
+}
+
+/* ===== 响应式 ===== */
+@media (max-width:760px){
+  .movie{flex-direction:column}
+  .movie-cover{width:auto;border-right:none;border-bottom:1px solid var(--line);flex-direction:row;align-items:center}
+  .poster{width:80px;aspect-ratio:3/4}
+  .cover-note{text-align:left}
+  .shead,.srow{grid-template-columns:minmax(0,1fr) 76px 60px;padding:7px 10px}
+  .srow .s-time,.srow .s-leech,.srow .s-done{display:none}
+  .shead .s-time,.shead .s-leech,.shead .s-done{display:none}
+  .detail-in{flex-direction:column;align-items:flex-start;padding:20px}
+  .d-meta-box{width:100%}
+  .d-slogan{font-size:19px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 视图切换 -->
+  <div class="viewbar">
+    <h1 id="vh1">资源列表 · 影视资料库</h1>
+    <span class="crumbs" id="vcrumbs">影视站 / 资源库 · 按作品聚合</span>
+    <div class="vswitch">
+      <button data-act="ui" id="v-list" class="on">列表</button>
+      <button data-act="ui" id="v-detail">作品详情</button>
+    </div>
+  </div>
+
+  <!-- 顶栏工具 -->
+  <div class="topbar">
+    <span class="total"><b>1012</b> 部作品 · 匹配种子 <b>3,284</b> 个</span>
+    <span class="sep"></span>
+    <span class="pgctl">每页
+      <select id="sel-page"><option>25</option><option>50</option><option>100</option></select>
+    </span>
+    <span class="pgctl">布局
+      <span class="seg" data-act="seg"><button data-act="ui" id="lay-list">列表</button><button data-act="ui" id="lay-card">卡片</button><button data-act="ui" id="lay-poster">海报墙</button><button data-act="ui" id="lay-group" class="on">作品聚合</button></span>
+    </span>
+    <button data-act="ui" class="fbtn" id="f-match"><span class="dot"></span>仅匹配种子</button>
+    <button data-act="ui" class="fbtn" id="f-seed">按种子显示</button>
+    <button data-act="ui" class="fbtn">筛选 <span id="fcount"></span></button>
+  </div>
+
+  <!-- 列表视图 -->
+  <div id="view-list">
+
+  <div id="mode-group">
+    <!-- 作品 1：第二次初恋 -->
+    <div class="movie" data-cover="pg1" data-mid="1">
+      <div class="movie-cover">
+        <div class="poster pg1"><span class="eyebrow">剧集</span><span class="t">第二次初恋</span></div>
+        <div class="cover-note">第二次初恋<span class="date">10月15日起</span></div>
+      </div>
+      <div class="movie-main">
+        <div class="m-head">
+          <div class="m-title"><a data-mid="1" class="gofull">第二次初恋</a></div>
+          <span class="yr">2026</span>
+          <span class="reg">中国大陆</span>
+          <span class="m-dir">导演：马应寿 Yingshou Ma</span>
+          <button data-act="ui" class="btn btn-add m-add" data-mid="1">＋ 添加种子</button>
+        </div>
+        <div class="m-tags"><span>喜剧</span><span>爱情</span><span>短片</span></div>
+        <div class="m-syn">以元气励志少女“周想想”和禁欲系篮球大神“顾哈”浪漫专一的爱情故事为主线，辅以青春、热血、梦想等多重元素，讲述了周想想和顾哈由欢喜冤家进阶成为恋爱教材的高甜故事。</div>
+        <div class="m-act">主演：黄灿灿 Cancan Huang / 周大为 David Chou / 孙晨竣 Chenjun Sun</div>
+        <div class="shead"><span>种子</span><span>时间</span><span>大小</span><span>做种</span><span>下载</span><span>完成</span><span>操作</span></div>
+        <div class="srow">
+          <div class="s-name">
+            <div class="chips"><span class="chip c4k">4K</span><span class="chip cweb">WEB-DL</span><span class="chip ch265">H.265</span><span class="chip caud">AAC LC 2.0</span><span class="chip csrc">HHWEB</span><span class="chip cep">S01 E15-E16</span><span class="chip chdr">HDR Vivid</span><span class="chip cfree">Free 74D</span></div>
+            <div class="s-title">第二次初恋｜第15-16集｜4K HDR｜类型: 喜剧/爱情｜导演: 马应寿｜主演: 黄灿灿/周大为/孙晨竣/郭耘奇/葛兆恩</div>
+          </div>
+          <span class="s-time">刚刚</span><span class="s-size">6.6 GiB</span><span class="s-seed zero">0</span><span class="s-leech">0</span><span class="s-done">0</span>
+          <div class="s-act"><button data-act="ui" class="sact-btn">下载</button><div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div></div>
+        </div>
+        <div class="srow">
+          <div class="s-name">
+            <div class="chips"><span class="chip c4k">4K</span><span class="chip cweb">WEB-DL</span><span class="chip ch265">H.265</span><span class="chip caud">AAC 5.1</span><span class="chip cep">S01 全集</span><span class="chip chdr">HDR Vivid</span><span class="chip csub">中字</span></div>
+            <div class="s-title">第二次初恋｜全24集｜导演: 马应寿｜主演: 黄灿灿/周大为/孙晨竣 [国语/简繁中字] [软字幕版] [4K版] *菁彩HDR*</div>
+          </div>
+          <span class="s-time">3分</span><span class="s-size">42.8 GiB</span><span class="s-seed">2</span><span class="s-leech">5</span><span class="s-done">0</span>
+          <div class="s-act"><button data-act="ui" class="sact-btn">下载</button><div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作品 2：喜剧之王 -->
+    <div class="movie" data-cover="pg2" data-mid="2">
+      <div class="movie-cover">
+        <div class="poster pg2"><span class="eyebrow">剧集</span><span class="t">喜剧之王(剧版)</span></div>
+        <div class="cover-note">喜剧之王<span class="date">10月6日起</span></div>
+      </div>
+      <div class="movie-main">
+        <div class="m-head">
+          <div class="m-title"><a data-mid="2" class="gofull">喜剧之王(剧版)</a></div>
+          <span class="yr">2026</span>
+          <span class="reg">中国大陆</span>
+          <span class="m-dir">导演：蒋龙 / 李炳强 / 王建华 / 张亢 / 松天硕</span>
+          <span class="m-dir" style="color:var(--amber);font-weight:600">时长：45分钟</span>
+          <button data-act="ui" class="btn btn-add m-add" data-mid="2">＋ 添加种子</button>
+        </div>
+        <div class="m-tags"><span>剧情</span><span>喜剧</span><span>年代</span></div>
+        <div class="m-syn">该剧根据1999年周星驰同名电影《喜剧之王》改编。喜人团建，开启新生代喜剧与经典的碰撞。“冷饭热炒”，上演笑中有泪的“乡村商战”。</div>
+        <div class="m-act">主演：杨超越 Chaoyue Yang / 蒋龙 Long Jiang / 张弛 Chi Zhang</div>
+        <div class="shead"><span>种子</span><span>时间</span><span>大小</span><span>做种</span><span>下载</span><span>完成</span><span>操作</span></div>
+        <div class="srow">
+          <div class="s-name">
+            <div class="chips"><span class="chip c4k">4K</span><span class="chip cweb">WEB-DL</span><span class="chip ch265">H.265</span><span class="chip caud">DDP 5.1</span><span class="chip caud">AAC 5.1</span><span class="chip csrc">UBWEB</span><span class="chip cep">S01 本季全</span><span class="chip chdr">HDR Vivid</span><span class="chip csub">中字</span><span class="chip cfree">Free 74D</span></div>
+            <div class="s-title">喜剧之王｜全24集｜导演: 蒋龙 李炳强 王建华 张亢 松天硕｜主演: 杨超越 蒋龙 张弛 蒋诗萌 李川 [国语/简繁中字] [软字幕版] [4K版] *菁彩HDR*</div>
+          </div>
+          <span class="s-time">14分</span><span class="s-size">86.2 GiB</span><span class="s-seed">1</span><span class="s-leech">8</span><span class="s-done">0</span>
+          <div class="s-act"><button data-act="ui" class="sact-btn">下载</button><div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作品 3：什么意思夫妇 -->
+    <div class="movie" data-cover="pg3" data-mid="3">
+      <div class="movie-cover">
+        <div class="poster pg3"><span class="eyebrow">电影</span><span class="t">什么意思夫妇</span></div>
+        <div class="cover-note">什么意思夫妇<span class="date">10月1日上映</span></div>
+      </div>
+      <div class="movie-main">
+        <div class="m-head">
+          <div class="m-title"><a data-mid="3" class="gofull">什么意思夫妇</a></div>
+          <span class="yr">2026</span>
+          <span class="reg">中国大陆</span>
+          <span class="m-dir">导演：高可 / 马小雨</span>
+          <span class="m-dir" style="color:var(--amber);font-weight:600">106分钟</span>
+          <button data-act="ui" class="btn btn-add m-add" data-mid="3">＋ 添加种子</button>
+        </div>
+        <div class="m-tags"><span>喜剧</span><span>家庭</span></div>
+        <div class="m-syn">同在一个屋檐下，日子却过得没滋没味。沈默（小沈阳 饰）和尤天意（沈春阳 饰）这对老夫老妻，究竟是怎么硬生生把N年婚姻，熬成了“对抗路”上的极限拉扯？</div>
+        <div class="m-act">主演：小沈阳 / 沈春阳 / 董宝石 / 何欢</div>
+        <div class="shead"><span>种子</span><span>时间</span><span>大小</span><span>做种</span><span>下载</span><span>完成</span><span>操作</span></div>
+        <div class="srow">
+          <div class="s-name">
+            <div class="chips"><span class="chip c4k">4K</span><span class="chip cweb">WEB-DL</span><span class="chip ch265">H.265</span><span class="chip caud">DDP 5.1</span><span class="chip csrc">HHWEB</span><span class="chip chdr">HDR10</span><span class="chip csub">中字</span><span class="chip cfree">Free 30D</span></div>
+            <div class="s-title">什么意思夫妇｜4K HDR｜类型: 喜剧/家庭｜导演: 高可｜主演: 小沈阳/沈春阳 [国语] [简繁中字] [软字幕版]</div>
+          </div>
+          <span class="s-time">2小时</span><span class="s-size">28.4 GiB</span><span class="s-seed">12</span><span class="s-leech">6</span><span class="s-done">3</span>
+          <div class="s-act"><button data-act="ui" class="sact-btn">下载</button><div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div></div>
+        </div>
+        <div class="srow">
+          <div class="s-name">
+            <div class="chips"><span class="chip c4k">1080P</span><span class="chip cweb">WEB-DL</span><span class="chip ch265">H.264</span><span class="chip caud">AAC 2.0</span><span class="chip csub">中字</span></div>
+            <div class="s-title">什么意思夫妇｜1080P｜导演: 高可｜主演: 小沈阳/沈春阳 [国语原版] [简繁中字]</div>
+          </div>
+          <span class="s-time">昨天</span><span class="s-size">9.1 GiB</span><span class="s-seed">34</span><span class="s-leech">9</span><span class="s-done">18</span>
+          <div class="s-act"><button data-act="ui" class="sact-btn">下载</button><div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作品 4：沙丘：复仇 -->
+    <div class="movie" data-cover="pg4" data-mid="4">
+      <div class="movie-cover">
+        <div class="poster pg4"><span class="eyebrow">电影</span><span class="t">沙丘：复仇</span></div>
+        <div class="cover-note">沙丘：复仇<span class="date">9月26日上映</span></div>
+      </div>
+      <div class="movie-main">
+        <div class="m-head">
+          <div class="m-title"><a data-mid="4" class="gofull">沙丘：复仇</a></div>
+          <span class="yr">2026</span>
+          <span class="reg">美国</span>
+          <span class="m-dir">导演：丹尼斯·维伦纽瓦</span>
+          <span class="m-dir" style="color:var(--amber);font-weight:600">168分钟</span>
+          <button data-act="ui" class="btn btn-add m-add" data-mid="4">＋ 添加种子</button>
+        </div>
+        <div class="m-tags"><span>科幻</span><span>冒险</span><span>动作</span></div>
+        <div class="m-syn">厄拉科斯星上的权力之争进入终章。保罗·厄崔迪带领弗雷曼人迎战宿命，香料与血脉的史诗对决一触即发。</div>
+        <div class="m-act">主演：提莫西·查拉梅 / 赞达亚 / 弗洛伦丝·皮尤</div>
+        <div class="shead"><span>种子</span><span>时间</span><span>大小</span><span>做种</span><span>下载</span><span>完成</span><span>操作</span></div>
+        <div class="srow">
+          <div class="s-name">
+            <div class="chips"><span class="chip c4k">4K</span><span class="chip cweb">REMUX</span><span class="chip ch265">H.265</span><span class="chip caud">DTS-HD MA 5.1</span><span class="chip chdr">HDR10+</span><span class="chip csub">中字</span><span class="chip cfree">Free 90D</span></div>
+            <div class="s-title">沙丘：复仇｜4K REMUX｜导演: 维伦纽瓦｜主演: 查拉梅/赞达亚 [国配/英语] [简繁中字]</div>
+          </div>
+          <span class="s-time">45分</span><span class="s-size">74.9 GiB</span><span class="s-seed">28</span><span class="s-leech">40</span><span class="s-done">12</span>
+          <div class="s-act"><button data-act="ui" class="sact-btn">下载</button><div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div></div>
+        </div>
+        <div class="srow">
+          <div class="s-name">
+            <div class="chips"><span class="chip c4k">1080P</span><span class="chip cweb">BluRay</span><span class="chip ch265">H.264</span><span class="chip caud">DTS 5.1</span><span class="chip csub">中字</span></div>
+            <div class="s-title">沙丘：复仇｜1080P BluRay｜导演: 维伦纽瓦 [国配/英语] [简繁中字]</div>
+          </div>
+          <span class="s-time">1小时</span><span class="s-size">18.6 GiB</span><span class="s-seed">56</span><span class="s-leech">23</span><span class="s-done">31</span>
+          <div class="s-act"><button data-act="ui" class="sact-btn">下载</button><div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pager">
+      <button data-act="ui" disabled>‹</button><button data-act="ui" class="on">1</button><button data-act="ui">2</button><button data-act="ui">3</button><button data-act="ui">4</button><button data-act="ui">…</button><button data-act="ui">41</button><button data-act="ui">›</button>
+      <span class="info">第 1 / 41 页 · 共 1012 部</span>
+    </div>
+
+    </div>
+
+    <!-- 模式：列表（原种子页表格视图） -->
+    <div id="mode-list" style="display:none"></div>
+
+    <!-- 模式：卡片（原种子页卡片视图） -->
+    <div id="mode-card" style="display:none"></div>
+
+    <!-- 模式：海报墙（原种子页海报墙视图） -->
+    <div id="mode-poster" style="display:none"></div>
+
+  </div>
+
+  <!-- 详情视图 -->
+  <div id="view-detail">
+    <div class="d-back"><button data-act="ui" id="d-back">‹ 返回资源列表</button></div>
+    <div class="detail-hero">
+      <div class="bgtext" id="d-bg">十一欢聚 得看喜剧</div>
+      <div class="detail-in">
+        <div class="d-poster pg3" id="d-poster"><span class="t">什么意思夫妇</span></div>
+        <div class="d-info">
+          <div class="d-slogan" id="d-slogan">十一欢聚 得看喜剧</div>
+          <div class="d-title"><span id="d-title">什么意思夫妇</span> <span class="y" id="d-year">2026</span> <span class="st" id="d-status">已上映</span></div>
+          <div class="d-alias" id="d-alias">Mr &amp; Mrs. What · 别名《到底什么意思》</div>
+          <div class="d-meta" id="d-meta">106分钟 · 喜剧、家庭</div>
+          <div class="d-tags" id="d-tags"></div>
+          <div class="d-actions">
+            <button data-act="ui" class="d-follow">订阅</button>
+            <span class="d-actgap"></span>
+            <button data-act="ui" class="d-want">想看</button>
+            <button data-act="ui" class="d-score">评分</button>
+          </div>
+          <div class="d-crew" id="d-crew">
+            <div><span class="k">导演</span><span class="v" id="d-dir"></span></div>
+            <div><span class="k">编剧</span><span class="v" id="d-writer"></span></div>
+            <div><span class="k">主演</span><span class="v" id="d-actors"></span></div>
+            <div><span class="k">制片人</span><span class="v" id="d-prod"></span></div>
+          </div>
+          <div class="d-syn" id="d-syn" data-act="syn"></div>
+          <button data-act="ui" class="d-synmore" id="d-synmore">展开完整简介</button>
+        </div>
+        <div class="d-meta-box">
+          <div class="row"><span>豆瓣评分</span><span class="r"><b class="stars" id="d-dbrating">★★★★★☆☆☆☆☆</b><b class="num" id="d-dbnum">8.9</b></span></div>
+          <div class="row"><span>豆瓣ID</span><b id="d-dbid">37667015</b></div>
+          <div class="row"><span>IMDb</span><b id="d-imdb">tt21643884 · 8.1</b></div>
+          <div class="row"><span>TMDB ID</span><b id="d-tmdb">1122334</b></div>
+          <div class="row"><span>上映日期</span><b id="d-date">2026-10-01</b></div>
+          <div class="row"><span>出品国家</span><b id="d-country">中国大陆</b></div>
+          <div class="row"><span>片长</span><b id="d-runtime">106 分钟</b></div>
+          <div class="row"><span>语言</span><b id="d-lang">国语 / 东北话</b></div>
+          <div class="row"><span>分级</span><b id="d-rate">大众级</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="d-block">
+      <div class="d-bt">剧照与预告</div>
+      <div class="d-gallery">
+        <div class="gitem gg1"><span>剧照 01</span></div>
+        <div class="gitem gg2"><span>剧照 02</span></div>
+        <div class="gitem gg3"><span>剧照 03</span></div>
+        <button data-act="ui" class="g-trailer">播放预告片 01:12</button>
+      </div>
+    </div>
+    <div class="d-block">
+      <div class="d-bt">完整剧情简介</div>
+      <p class="d-fullsyn" id="d-fullsyn"></p>
+    </div>
+    <div class="d-torrents">
+      <div class="tt">本片资源 · <span id="d-tcount">2</span> 个种子</div>
+      <div class="shead"><span>种子</span><span>时间</span><span>大小</span><span>做种</span><span>下载</span><span>完成</span><span>操作</span></div>
+      <div id="d-rows"></div>
+    </div>
+    <div class="d-block">
+      <div class="d-bt">相关推荐 · 同导演与同类型</div>
+      <div class="d-related" id="d-related"></div>
+    </div>
+    <p class="d-note">样图示例 · 数据为设计占位，海报为渐变示意 · FluxTorrent 影视资料库资源页</p>
+  </div>
+
+  <p class="d-note" style="margin-top:4px">参考图设计的独立样图 · 宽松 / 网格布局可切换 · 点击作品名查看详情视图 · 示例数据</p>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+var VIEW = location.hash === "#detail" ? "detail" : "list";
+var MODE = "group";
+var DETAILS = {
+  1: {t:"第二次初恋", alias:"Second First Love · 别名《二次初恋》", y:"2026", meta:"24集 × 45分钟 · 喜剧、爱情", tags:["中国大陆","国语","网络剧","10月15日 开播","已完结"], dir:"马应寿 / 吴磊", writer:"马应寿 / 梁思思", actors:"黄灿灿 / 周大为 / 孙晨竣 / 郭耘奇 / 葛兆恩", prod:"沈甜", syn:"以元气励志少女“周想想”和禁欲系篮球大神“顾哈”浪漫专一的爱情故事为主线，辅以青春、热血、梦想等多重元素，讲述了周想想和顾哈由欢喜冤家进阶成为恋爱教材的高甜故事。", fullsyn:"以元气励志少女“周想想”和禁欲系篮球大神“顾哈”浪漫专一的爱情故事为主线，辅以青春、热血、梦想等多重元素，讲述了周想想和顾哈由欢喜冤家进阶成为恋爱教材的高甜故事。开学首日，周想想在篮球馆误闯了训练中的顾哈，两人就此结下梁子；此后每一次偶遇都成为一场“欢喜冤家”的拉锯战——直到学校周年庆的话剧排练把两人绑进同一间排练室，他们才开始在互怼与和解中读懂彼此。全剧以校园为舞台，串起友情、亲情与初恋的成长线。", db:"37667012", dbnum:"8.2", imdb:"tt21409987 · 7.6", tmdb:"109221", date:"2026-10-15", country:"中国大陆", runtime:"45 分钟 / 集", lang:"国语", rate:"大众级", status:"已完结", poster:"pg1", bg:"剧集上新 · 10月15日起", related:[["第二次初恋 电影版","2027","爱情"],["校园篮球风云","2025","运动"],["小欢喜2","2026","家庭"]]},
+  2: {t:"喜剧之王(剧版)", alias:"The King of Comedy · 改编自1999同名电影", y:"2026", meta:"24集 · 45分钟 · 剧情、喜剧", tags:["中国大陆","国语","网络剧","10月6日 开播","更新至 12 集"], dir:"蒋龙 / 李炳强 / 王建华 / 张亢 / 松天硕", writer:"蒋龙 / 张弛 / 王建华", actors:"杨超越 / 蒋龙 / 张弛 / 蒋诗萌 / 李川", prod:"周星驰（监制）", syn:"该剧根据1999年周星驰同名电影《喜剧之王》改编。喜人团建，开启新生代喜剧与经典的碰撞。“冷饭热炒”，上演笑中有泪的“乡村商战”。", fullsyn:"该剧根据1999年周星驰同名电影《喜剧之王》改编。喜人团建，开启新生代喜剧与经典的碰撞。“冷饭热炒”，上演笑中有泪的“乡村商战”。尹天仇的学徒们离开香港片场，回到内地乡镇接手一家濒临倒闭的乡村剧场；为了保住剧场，他们组队参加县里举办的“喜剧之王”擂台赛，把老电影里的经典桥段搬进田间地头，笑料与泪水交织。", db:"37667014", dbnum:"8.5", imdb:"tt21415301 · 7.9", tmdb:"109401", date:"2026-10-06", country:"中国大陆", runtime:"45 分钟 / 集", lang:"国语 / 粤语", rate:"大众级", status:"连载中", poster:"pg2", bg:"喜人团建 · 笑中有泪", related:[["喜剧之王 (1999)","1999","喜剧"],["小人物大舞台","2026","喜剧"],["星夜喜剧社","2025","真人秀"]]},
+  3: {t:"什么意思夫妇", alias:"Mr & Mrs. What · 别名《到底什么意思》", y:"2026", meta:"106分钟 · 喜剧、家庭", tags:["中国大陆","国语 / 东北话","院线","10月1日 上映","已上映"], dir:"高可 / 马小雨", writer:"高可 / 马小雨", actors:"小沈阳 / 沈春阳 / 董宝石 / 何欢", prod:"沈春阳 / 张杰", syn:"同在一个屋檐下，日子却过得没滋没味。沈默（小沈阳 饰）和尤天意（沈春阳 饰）这对老夫老妻，究竟是怎么硬生生把N年婚姻，熬成了“对抗路”上的极限拉扯？", fullsyn:"同在一个屋檐下，日子却过得没滋没味。沈默（小沈阳 饰）和尤天意（沈春阳 饰）这对老夫老妻，究竟是怎么硬生生把N年婚姻，熬成了“对抗路”上的极限拉扯？前脚刚要潇洒转头，谁料后脚一场奇葩意外猝不及防地兜头砸下，硬生生把两人又给原地“焊死”！乏善可陈的日子突然脱了轨，啼笑皆非的状况接踵而来，两人被迫在这场荒诞闹剧里重新审视彼此，也再次爆发出那句经典的灵魂拷问：“你到底什么意思？”“我没什么意思！”——这场离谱的遭遇，究竟能不能让这段婚姻焕发出点儿新“意思”……", db:"37667015", dbnum:"8.9", imdb:"tt21643884 · 8.1", tmdb:"1122334", date:"2026-10-01", country:"中国大陆", runtime:"106 分钟", lang:"国语 / 东北话", rate:"大众级", status:"已上映", poster:"pg3", bg:"十一欢聚 得看喜剧", related:[["东北一家人 大电影","2027","喜剧"],["二龙湖往事","2026","喜剧"],["爸妈离婚记","2025","家庭"]]},
+  4: {t:"沙丘：复仇", alias:"Dune: Vengeance · 沙丘系列最终章", y:"2026", meta:"168分钟 · 科幻、冒险、动作", tags:["美国","英语","IMAX 3D","9月26日 上映","已上映"], dir:"丹尼斯·维伦纽瓦", writer:"丹尼斯·维伦纽瓦 / 乔·斯派茨", actors:"提莫西·查拉梅 / 赞达亚 / 弗洛伦丝·皮尤", prod:"玛丽·帕伦特", syn:"厄拉科斯星上的权力之争进入终章。保罗·厄崔迪带领弗雷曼人迎战宿命，香料与血脉的史诗对决一触即发。", fullsyn:"厄拉科斯星上的权力之争进入终章。保罗·厄崔迪带领弗雷曼人迎战宿命，香料与血脉的史诗对决一触即发。皇帝与贝尼·杰瑟里特的阴谋层层剥开，保罗在“天选之子”的预言与真实的自我之间抉择；弗雷曼大军兵临凯坦城，香料与血脉的史诗对决最终收束于一场改写银河秩序的决战。", db:"37667016", dbnum:"8.7", imdb:"tt15239678 · 8.4", tmdb:"1122620", date:"2026-09-26", country:"美国 / 加拿大", runtime:"168 分钟", lang:"英语 / 中文字幕", rate:"PG-13", status:"已上映", poster:"pg4", bg:"终章对决 · 史诗降临", related:[["沙丘 (2021)","2021","科幻"],["沙丘2 (2024)","2024","科幻"],["沙丘：厄拉科斯之战","2027","科幻"]]}
+};
+function applyView(){
+  document.getElementById("view-list").style.display = VIEW === "list" ? "block" : "none";
+  document.getElementById("view-detail").style.display = VIEW === "detail" ? "block" : "none";
+  document.getElementById("v-list").className = VIEW === "list" ? "on" : "";
+  document.getElementById("v-detail").className = VIEW === "detail" ? "on" : "";
+  document.getElementById("vh1").textContent = VIEW === "list" ? "资源列表 · 影视资料库" : "作品详情";
+  document.getElementById("vcrumbs").textContent = VIEW === "list" ? "影视站 / 资源库 · 按作品聚合" : "影视站 / 资源库 / 作品详情";
+}
+function applyMode(){
+  var on = {list:false, card:false, poster:false, group:false};
+  on[MODE] = true;
+  document.getElementById("lay-list").className = on.list ? "on" : "";
+  document.getElementById("lay-card").className = on.card ? "on" : "";
+  document.getElementById("lay-poster").className = on.poster ? "on" : "";
+  document.getElementById("lay-group").className = on.group ? "on" : "";
+  document.getElementById("mode-list").style.display = MODE === "list" ? "block" : "none";
+  document.getElementById("mode-card").style.display = MODE === "card" ? "block" : "none";
+  document.getElementById("mode-poster").style.display = MODE === "poster" ? "block" : "none";
+  document.getElementById("mode-group").style.display = MODE === "group" ? "block" : "none";
+}
+var SEEDS = [
+  [1,"第二次初恋","pg1","剧集",["c4k","cweb","ch265","caud","csrc","cep","chdr","cfree"],["4K","WEB-DL","H.265","AAC LC 2.0","HHWEB","S01 E15-E16","HDR Vivid","Free 74D"],"第二次初恋｜第15-16集｜4K HDR｜类型: 喜剧/爱情｜导演: 马应寿｜主演: 黄灿灿/周大为/孙晨竣/郭耘奇/葛兆恩","刚刚","6.6 GiB",0,0,0,"2026","Free 74D","FTP 发布组",24],
+  [1,"第二次初恋","pg1","剧集",["c4k","cweb","ch265","caud","cep","chdr","csub"],["4K","WEB-DL","H.265","AAC 5.1","S01 全集","HDR Vivid","中字"],"第二次初恋｜全24集｜导演: 马应寿｜主演: 黄灿灿/周大为/孙晨竣 [国语/简繁中字] [软字幕版] [4K版] *菁彩HDR*","3分","42.8 GiB",2,5,0,"2026","2x 促销","FTP 发布组",128],
+  [2,"喜剧之王(剧版)","pg2","剧集",["c4k","cweb","ch265","caud","caud","csrc","cep","chdr","csub","cfree"],["4K","WEB-DL","H.265","DDP 5.1","AAC 5.1","UBWEB","S01 本季全","HDR Vivid","中字","Free 74D"],"喜剧之王｜全24集｜导演: 蒋龙 李炳强 王建华 张亢 松天硕｜主演: 杨超越 蒋龙 张弛 蒋诗萌 李川 [国语/简繁中字] [软字幕版] [4K版] *菁彩HDR*","14分","86.2 GiB",1,8,0,"2026","Free 74D","官方发布",86],
+  [3,"什么意思夫妇","pg3","电影",["c4k","cweb","ch265","caud","csrc","chdr","csub","cfree"],["4K","WEB-DL","H.265","DDP 5.1","HHWEB","HDR10","中字","Free 30D"],"什么意思夫妇｜4K HDR｜类型: 喜剧/家庭｜导演: 高可｜主演: 小沈阳/沈春阳 [国语] [简繁中字] [软字幕版]","2小时","28.4 GiB",12,6,3,"2026","Free 30D","FTP 发布组",42],
+  [3,"什么意思夫妇","pg3","电影",["c4k","cweb","ch265","caud","csub"],["1080P","WEB-DL","H.264","AAC 2.0","中字"],"什么意思夫妇｜1080P｜导演: 高可｜主演: 小沈阳/沈春阳 [国语原版] [简繁中字]","昨天","9.1 GiB",34,9,18,"2026","普通","用户 拾光",18],
+  [4,"沙丘：复仇","pg4","电影",["c4k","cweb","ch265","caud","chdr","csub","cfree"],["4K","REMUX","H.265","DTS-HD MA 5.1","HDR10+","中字","Free 90D"],"沙丘：复仇｜4K REMUX｜导演: 维伦纽瓦｜主演: 查拉梅/赞达亚 [国配/英语] [简繁中字]","45分","74.9 GiB",28,40,12,"2026","Free 90D","FTP 发布组",156],
+  [4,"沙丘：复仇","pg4","电影",["c4k","cweb","ch265","caud","csub"],["1080P","BluRay","H.264","DTS 5.1","中字"],"沙丘：复仇｜1080P BluRay｜导演: 维伦纽瓦 [国配/英语] [简繁中字]","1小时","18.6 GiB",56,23,31,"2026","2x 促销","官方发布",73]
+];
+var MOVIES = [
+  ["第二次初恋","2026","喜剧 · 爱情 · 短片","pg1","★★★★★★★☆☆☆",2,"10月15日起","马应寿","剧集"],
+  ["喜剧之王(剧版)","2026","剧情 · 喜剧 · 年代","pg2","★★★★★★★☆☆☆",1,"10月6日起","蒋龙 等 5 位","剧集"],
+  ["什么意思夫妇","2026","喜剧 · 家庭","pg3","★★★★★★★☆☆☆",46,"10月1日上映","高可 / 马小雨","电影"],
+  ["沙丘：复仇","2026","科幻 · 冒险 · 动作","pg4","★★★★★★★☆☆☆",84,"9月26日上映","丹尼斯·维伦纽瓦","电影"]
+];
+function chipsHtml(cls, txt){
+  return '<div class="chips">' + txt.map(function(x, i){ return '<span class="chip ' + cls[i] + '">' + x + '</span>'; }).join("") + '</div>';
+}
+function stBadge(st){
+  var c = st.indexOf("Free") === 0 ? "st-free" : (st.indexOf("2x") === 0 ? "st-2x" : "st-plain");
+  return '<span class="stb ' + c + '">' + st + '</span>';
+}
+function renderModes(){
+  // 数据布局：[0]mid [1]片名 [2]pg [3]分类 [4]chips类 [5]chips文本 [6]种子名 [7]时间 [8]大小 [9]做种 [10]下载 [11]完成 [12]年份 [13]状态 [14]发布者 [15]回复数
+  // 列表模式：分类图标 / 海报+作品 / 种子 / 回复 / 时间 / 大小 / 做种 / 下载 / 完成 / 发布 / 操作
+  var cols = "44px 132px minmax(0,1fr) 52px 60px 74px 46px 46px 46px 92px 108px";
+  var rows = SEEDS.map(function(s){
+    var catc = s[3] === "剧集" ? "c-cat-ep" : "c-cat-mv";
+    var catIco = s[3] === "剧集"
+      ? '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="3" y="5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 21h8M12 18v3" stroke="currentColor" stroke-width="2"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 9l6 3-6 3z" fill="currentColor"/></svg>';
+    return '<div class="srow" data-mid="' + s[0] + '" style="grid-template-columns:' + cols + '">'
+      + '<div class="cat-ic ' + catc + '">' + catIco + '<span>' + s[3] + '</span></div>'
+      + '<div class="s-post">' + '<div class="poster-min ' + s[2] + '"><span class="pm-t">' + s[1] + '</span></div>'
+      + '<div class="s-name" style="font-size:12px;min-width:0"><div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + s[1] + '</div><span class="yr" style="font-size:11px">' + s[12] + '</span></div></div>'
+      + '<div class="s-name" style="min-width:0">' + chipsHtml(s[4], s[5]) + '<div class="s-title">' + s[6] + '</div></div>'
+      + '<span class="s-reply">' + s[15] + '</span>'
+      + '<span class="s-time">' + s[7] + '</span><span class="s-size">' + s[8] + '</span>'
+      + '<span class="s-seed' + (s[9] === 0 ? " zero" : "") + '">' + s[9] + '</span><span class="s-leech">' + s[10] + '</span><span class="s-done">' + s[11] + '</span>'
+      + '<span class="s-uploader">' + s[14] + '</span>'
+      + '<div class="s-act"><button data-act="ui" class="sact-btn">下载</button>' + '<div class="sact-more"><button data-act="more" class="sact-btn sact-ghost">更多 ▾</button><div class="more-menu"><button class="mm-item" data-act="moreitem" data-mi="detail">详情</button><button class="mm-item" data-act="moreitem" data-mi="fav">☆ 收藏</button><button class="mm-item" data-act="moreitem" data-mi="link">复制下载直链</button><button class="mm-item" data-act="moreitem" data-mi="edit">编辑</button><button class="mm-item mm-del" data-act="moreitem" data-mi="del">删除</button></div></div>' + '</div></div>';  }).join("");
+  document.getElementById("mode-list").innerHTML =
+    '<div class="shead" style="grid-template-columns:' + cols + '"><span>分类</span><span>作品</span><span>种子</span><span>回复</span><span>时间</span><span>大小</span><span>做种</span><span>下载</span><span>完成</span><span>发布</span><span>操作</span></div>' + rows;
+  // 卡片模式：补状态徽章 + 发布者
+  var cards = SEEDS.map(function(s){
+    return '<div class="ccard"><div class="cc-poster ' + s[2] + '"><span class="t">' + s[1] + '</span>' + stBadge(s[13]) + '</div>'
+      + '<div class="cc-t">' + s[1] + ' <span class="yr">' + s[12] + '</span></div>'
+      + chipsHtml(s[4], s[5])
+      + '<div class="cc-name">' + s[6] + '</div>'
+      + '<div class="cc-meta">' + s[8] + ' · 做种 ' + s[9] + ' · 下载 ' + s[10] + '</div>'
+      + '<div class="cc-meta">发布：' + s[14] + ' · ' + s[7] + '</div>'
+      + '<button data-act="ui" class="sact-btn cc-btn">下载</button></div>';
+  }).join("");
+  document.getElementById("mode-card").innerHTML = '<div class="cgrid">' + cards + '</div>';
+  // 海报墙：补导演 + 分类
+  var walls = MOVIES.map(function(m){
+    return '<div class="wall"><div class="wposter ' + m[3] + '"><span class="wdate">' + m[6] + '</span><span class="wstar">' + m[4] + '</span><span class="t">' + m[0] + '</span></div>'
+      + '<div class="wmeta"><b>' + m[0] + '</b> <span class="yr">' + m[1] + '</span></div>'
+      + '<div class="wsub">' + m[2] + '</div>'
+      + '<div class="wsub">导演：' + m[7] + ' · ' + m[8] + ' · 合计做种 ' + m[5] + '</div></div>';
+  }).join("");
+  document.getElementById("mode-poster").innerHTML = '<div class="wgrid">' + walls + '</div>';
+}
+function openDetail(id){
+  var d = DETAILS[id] || DETAILS[3];
+  document.getElementById("d-poster").className = "d-poster " + d.poster;
+  document.getElementById("d-poster").querySelector(".t").textContent = d.t;
+  document.getElementById("d-slogan").textContent = d.bg;
+  document.getElementById("d-title").textContent = d.t;
+  document.getElementById("d-year").textContent = d.y;
+  document.getElementById("d-status").textContent = d.status;
+  document.getElementById("d-status").className = "st" + (d.status === "连载中" ? " st-live" : "");
+  document.getElementById("d-alias").textContent = d.alias;
+  document.getElementById("d-meta").textContent = d.meta;
+  document.getElementById("d-tags").innerHTML = d.tags.map(function(x){ return "<span>" + x + "</span>"; }).join("");
+  document.getElementById("d-syn").textContent = d.syn;
+  document.getElementById("d-synmore").style.display = "none";
+  document.getElementById("d-fullsyn").textContent = d.fullsyn;
+  document.getElementById("d-dir").textContent = d.dir;
+  document.getElementById("d-writer").textContent = d.writer;
+  document.getElementById("d-actors").textContent = d.actors;
+  document.getElementById("d-prod").textContent = d.prod;
+  document.getElementById("d-dbrating").textContent = d.dbnum >= 9 ? "★★★★★★★★★☆" : (d.dbnum >= 8 ? "★★★★★★★☆☆☆" : "★★★★★☆☆☆☆☆");
+  document.getElementById("d-dbnum").textContent = d.dbnum;
+  document.getElementById("d-dbid").textContent = d.db;
+  document.getElementById("d-imdb").textContent = d.imdb;
+  document.getElementById("d-tmdb").textContent = d.tmdb;
+  document.getElementById("d-date").textContent = d.date;
+  document.getElementById("d-country").textContent = d.country;
+  document.getElementById("d-runtime").textContent = d.runtime;
+  document.getElementById("d-lang").textContent = d.lang;
+  document.getElementById("d-rate").textContent = d.rate;
+  document.getElementById("d-bg").textContent = d.bg;
+  var rows = document.querySelectorAll(".movie[data-mid='" + id + "'] .srow");
+  var html = "", n = 0;
+  rows.forEach(function(r){ n++; html += r.outerHTML; });
+  document.getElementById("d-rows").innerHTML = html;
+  document.getElementById("d-tcount").textContent = n;
+  document.getElementById("d-related").innerHTML = (d.related || []).map(function(x){
+    return '<div class="ritem"><span class="rp rp' + (x[1] % 4) + '">' + x[0] + '</span><div class="ry">' + x[1] + ' · ' + x[2] + '</div></div>';
+  }).join("");
+  VIEW = "detail";
+  location.hash = "#detail";
+  applyView();
+  window.scrollTo(0, 0);
+}
+document.addEventListener("click", function(e){
+  var t = e.target;
+  var act = t.getAttribute && t.getAttribute("data-act");
+  if (act && act !== "ui") { /* 语义化动作走下方 id/class 分支；"ui" 为布局控件统一兜底 */ }
+  if (t.getAttribute && t.getAttribute("data-act") === "more") {
+    var wrap = t.closest(".sact-more");
+    var was = wrap && wrap.classList.contains("open");
+    document.querySelectorAll(".sact-more.open").forEach(function(m){ m.classList.remove("open"); });
+    if (wrap && !was) wrap.classList.add("open");
+    return;
+  }
+  else if (t.getAttribute && t.getAttribute("data-act") === "moreitem") {
+    var mi = t.getAttribute("data-mi");
+    var wrap2 = t.closest(".sact-more");
+    var row2 = t.closest(".srow");
+    var mv2 = t.closest(".movie");
+    var mid2 = row2 ? row2.getAttribute("data-mid") : (mv2 ? mv2.getAttribute("data-mid") : null);
+    if (wrap2) wrap2.classList.remove("open");
+    if (mi === "detail") { if (mid2) { openDetail(mid2); } return; }
+    if (mi === "fav") { var fav = document.getElementById("toast"); fav.textContent = "☆ 已收藏（演示）"; fav.classList.add("show"); setTimeout(function(){ fav.classList.remove("show"); }, 1200); return; }
+    var ts = document.getElementById("toast");
+    ts.textContent = mi === "link" ? "下载直链已复制（演示）" : (mi === "edit" ? "编辑种子（演示）" : "删除种子（演示）");
+    ts.classList.add("show"); setTimeout(function(){ ts.classList.remove("show"); }, 1200);
+    return;
+  }
+  else if (t.id === "v-list") { document.querySelectorAll(".sact-more.open").forEach(function(m){ m.classList.remove("open"); }); VIEW = "list"; location.hash = "#list"; applyView(); }
+  else if (t.id === "v-detail") { var f = document.querySelector(".movie"); if (f) openDetail(f.getAttribute("data-mid") || 3); else { VIEW="detail"; location.hash="#detail"; applyView(); } }
+  else if (t.id === "d-back") { VIEW = "list"; location.hash = "#list"; applyView(); }
+  else if (t.id === "lay-list" || t.id === "lay-card" || t.id === "lay-poster" || t.id === "lay-group") { MODE = t.id.replace("lay-", ""); applyMode(); }
+  else if (t.id === "f-match") { t.classList.toggle("on"); }
+  else if (t.id === "f-seed") { t.classList.toggle("on"); }
+  else if (t.classList && t.classList.contains("gofull")) { openDetail(t.getAttribute("data-mid")); }
+  else if (t.classList && t.classList.contains("sact-btn")) { t.textContent = "✓ 已发送"; t.disabled = true; setTimeout(function(){ t.textContent = "下载"; t.disabled = false; }, 1600); }
+  else if (t.classList && t.classList.contains("btn-add")) { t.textContent = "✓ 已添加"; setTimeout(function(){ t.textContent = "＋ 添加种子"; }, 1600); }
+  else if (t.classList && t.classList.contains("d-follow")) { var o = t.textContent; t.textContent = "已订阅"; setTimeout(function(){ t.textContent = o; }, 1400); }
+  else if (t.id === "d-synmore") { var sy = document.getElementById("d-syn"); sy.classList.toggle("open"); t.textContent = sy.classList.contains("open") ? "收起简介" : "展开完整简介"; }
+  else if (t.classList && t.classList.contains("d-want")) { t.textContent = t.textContent === "想看" ? "✓ 想看" : "想看"; }
+  else if (t.classList && t.classList.contains("d-score")) { t.textContent = "已评分"; setTimeout(function(){ t.textContent = "评分"; }, 1600); }
+  else if (t.classList && t.classList.contains("pager") === false && t.tagName === "BUTTON" && t.closest(".pager")) { t.textContent = "✓"; }
+  if (!t.closest(".sact-more")) { document.querySelectorAll(".sact-more.open").forEach(function(m){ m.classList.remove("open"); }); }
+});
+applyView();
+applyMode();
+renderModes();
+</script>
+</body>
+</html>
