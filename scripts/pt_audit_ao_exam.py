@@ -148,8 +148,12 @@ def probe_torrent(owner_id, tag):
     # 删种必须单语句原子「拆卫星+删种」：worker 的 collect_milestones
     # 60s tick 随时可能再插 seed_milestones——两条独立 CLEAN 语句之间
     # 被塞行，第二条就被 FK 挡（三跑实测：单删语句照旧 skip）
-    CLEAN.append("DELETE FROM seed_milestones WHERE torrent_id = %d; "
-                 "DELETE FROM torrents WHERE id = %d" % (tid, tid))
+    # 拆卫星+删种必须**同事务**：worker 的 collect_milestones 60s tick
+    # 随时会再插 seed_milestones，两条独立语句之间被塞行，第二条就被 FK
+    # 挡（三跑实测：单删语句照旧 skip）⇒ 收进一个 BEGIN/COMMIT，
+    # 让 worker 的插入排在事务后面，彻底断掉这个竞态。
+    CLEAN.append("BEGIN; DELETE FROM seed_milestones WHERE torrent_id = %d; "
+                 "DELETE FROM torrents WHERE id = %d; COMMIT;" % (tid, tid))
     return tid
 
 
@@ -187,11 +191,20 @@ def ledger_sum(cid):
 
 
 def cleanup():
+    """收尾：每条清理语句都要成功；失败要**红**，不许静默跳过。
+
+    旧写法把异常吞成一行 [cleanup-skip] ⇒ 探针种留在库里，
+    别的闸门（HZ6/IE3 的「过审 + 无存档」棘轮）随后集体变红，
+    查起来完全看不出是本闸门留下的残料。
+    """
+    failed = []
     for stmt in reversed(CLEAN):
         try:
             exec_sql(stmt)
         except Exception as e:  # noqa: BLE001
-            print("  [cleanup-skip] %s: %s" % (stmt[:60], str(e)[:120]))
+            failed.append((stmt[:60], str(e)[:120]))
+            print("  [cleanup-FAIL] %s: %s" % (stmt[:60], str(e)[:120]))
+    return failed
 
 
 print("== S0 前置：自愈残料 + module_exams 开 + 探针 ==")
@@ -221,6 +234,12 @@ ok("S0 module_exams 已开（收尾还原 %s）" % MOD0,
 uA, tA = mkuser(N_A)
 uB, tB = mkuser(N_B)
 exec_sql("UPDATE users SET status = 2 WHERE id = %d" % uB)
+# 哨兵的时间基准：封号生效的那一刻。worker 自己每 60s 跑一轮
+# exam_assign，探针建号到封号之间有 ~1s 窗口——那一瞬间派发出的认领
+# 是**合法**的（账号当时还没被封），但哨兵按「当前 status」回看，
+# 会把这种历史认领算成「封号账号被派发」⇒ 假红。判据改成
+# 「封号之后新建的认领才算违规」。
+BAN_T = q("SELECT to_char(now(), 'YYYY-MM-DD\"T\"HH24:MI:SS.US')")
 uC, tC = mkuser(N_C)
 # 周期分支探针任务：target_class=0 全体达标，用真派发链覆盖 periodic SQL
 NOW = q("SELECT to_char(now(), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')")
@@ -264,11 +283,14 @@ if ca:
        q("SELECT count(*) FROM task_claims c JOIN tasks t ON "
          "t.id = c.task_id WHERE c.user_id = %d AND t.kind IN %s AND "
          "c.pm_sent = FALSE" % (uA, TASK_KINDS)) == "0")
+ob = q("SELECT count(*) FROM task_claims c JOIN tasks t ON "
+        "t.id=c.task_id WHERE c.user_id = %d AND t.kind IN %s AND "
+        "c.claimed_at > '%s'" % (uB, TASK_KINDS, BAN_T))
 ok("S1 哨兵：封号成员不得被派发（P-39 修复点）",
-   claim_of(uB) is None, str(claim_of(uB)))
+   ob == "0", "n=%s" % ob)
 NB2 = q("SELECT count(*) FROM task_claims c JOIN tasks t ON "
         "t.id=c.task_id JOIN users u ON u.id=c.user_id WHERE t.kind IN "
-        "%s AND u.status >= 2" % TASK_KINDS)
+        "%s AND u.status >= 2 AND c.claimed_at > '%s'" % (TASK_KINDS, BAN_T))
 ok("S1 哨兵：封号/软删/退役账号整体 0 派发（P-39 修复点）",
    NB2 == "0", "n=%s" % NB2)
 POS = q("SELECT count(*) FROM task_claims c JOIN tasks t ON "
@@ -385,7 +407,7 @@ ok("S3b 模块开：同一个人立刻被派发（正控，排除窗口因素）
    jok is True and claim_of(uD) is not None, "%s %s" % (jinfo, claim_of(uD)))
 NB3 = q("SELECT count(*) FROM task_claims c JOIN tasks t ON "
         "t.id=c.task_id JOIN users u ON u.id=c.user_id WHERE t.kind IN "
-        "%s AND u.status >= 2" % TASK_KINDS)
+        "%s AND u.status >= 2 AND c.claimed_at > '%s'" % (TASK_KINDS, BAN_T))
 ok("S3b 第二轮派发后哨兵仍 0（修复面持续成立）", NB3 == "0", "n=%s" % NB3)
 
 print("== S4 收尾：模块还原 + 探针清零 ==")
@@ -395,7 +417,12 @@ else:
     CLEAN.append("UPDATE site_settings SET value = '%s' "
                  "WHERE name = 'module_exams'" % MOD0)
 # 最后 append ⇒ 最先执行：避免清完 claims 后、还原前被 60s tick 重派
-cleanup()
+CLEAN_FAILS = cleanup()
+ok("S4a 收尾语句全部成功（失败即红：残料会连累别的闸门）",
+   not CLEAN_FAILS, "失败=%s" % (CLEAN_FAILS,))
+ok("S4b 本闸门探针种无残留（AoExam.% ）",
+   q("SELECT count(*) FROM torrents WHERE name LIKE 'AoExam.%%'") == "0",
+   "残留=%s" % q("SELECT count(*) FROM torrents WHERE name LIKE 'AoExam.%%'"))
 ok("S4 module_exams 还原为 %s" % MOD0,
    q("SELECT COALESCE((SELECT value FROM site_settings WHERE name = "
      "'module_exams'),'<absent>')") == MOD0)

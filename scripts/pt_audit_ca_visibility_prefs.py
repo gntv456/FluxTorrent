@@ -35,9 +35,11 @@ import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import login, ok, summary  # noqa: E402
+from pt_audit_lib import BASE, login, ok, summary  # noqa: E402
 
-BASE = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8100/api/v1")
+# BASE 一律取自 pt_audit_lib（单一来源）：此前这里另起一份默认 8100，
+# 与主栈 8080 不同步，且与同一脚本里 login() 用的 base 不是一回事——
+# 闸门直接连不上（WinError 10061），整条判据根本跑不起来。
 UID = 1
 MARK = "ca339%d" % (int(time.time()) % 100000)
 AV = "https://example.invalid/avatar-probe.png"
@@ -166,6 +168,16 @@ def cleanup():
     #     （报 `column "t" does not exist`），必须写 true/false。第一版直接把
     #     回读到的 `t` 填回 UPDATE，于是清理静默失败，头像与签名留在库里。
     av, sg, va, vs = (ORIG.split("|") + ["", "", "true", "true"])[:4]
+    # 跑前快照里若**已经是**探针值，说明上一轮清理没生效（或进程被打断）：
+    # 「恢复成跑前值」只会把污染原样留下——探针头像指向永不可解析的
+    # example.invalid，站长头像就一直是坏图，登录态每个页面都在报
+    # net::ERR_NAME_NOT_RESOLVED。认探针值 = 脏，这里直接清空，
+    # 让脚本跑一次就把历史污染洗掉（自愈），而不是一轮轮继承下去。
+    healed = av == AV or sg == SG
+    if av == AV:
+        av = ""
+    if sg == SG:
+        sg = ""
     av_lit = "NULL" if av == "" else "$q$%s$q$" % av
     sg_lit = "NULL" if sg == "" else "$q$%s$q$" % sg
     psql("UPDATE users SET avatar_url = %s, signature = %s, "
@@ -178,8 +190,11 @@ def cleanup():
     # 因此报了一条假红）。
     now = psql("SELECT COALESCE(avatar_url,''), COALESCE(signature,''), "
                "view_avatars, view_signatures FROM users WHERE id = %d" % UID)
-    ok("S8 零残留：头像/签名/两档开关回到跑前值", now == ORIG,
-       "现=%s 前=%s" % (now, ORIG))
+    # 口径同上：洗过脏就按洗后的期望值比，否则会把「自愈」判成假红
+    expect = "%s|%s|%s|%s" % (av, sg, va, vs)
+    ok("S8 零残留：头像/签名/两档开关回到跑前值", now == expect,
+       "现=%s 期望=%s%s" % (now, expect,
+          "（跑前快照已是探针值 → 已洗空）" if healed else ""))
 
 
 try:

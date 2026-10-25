@@ -48,7 +48,7 @@ def psql(q):
          "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:240])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:240])
     return (r.stdout or "").strip()
 
 

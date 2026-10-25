@@ -37,7 +37,7 @@ import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from pt_audit_lib import call, dig, login, ok, summary  # noqa: E402
+from pt_audit_lib import psql_stdin, call, dig, login, ok, summary  # noqa: E402
 
 LIVE = os.environ.get("HU_LIVE", "1") != "0"
 # 夹具标签用 tag_dict.id=3（官种）；作用在 root 名下已过审的种上，跑完撤掉。
@@ -46,11 +46,9 @@ FAKE_TERM = "zz-不存在的关键词-qq"
 
 
 def psql(q):
-    r = subprocess.run(
-        ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
-         "-d", "fluxtorrent", "-q", "-tA", "-c", q],
-        capture_output=True, text=True, encoding="utf-8", errors="replace")
-    return (r.stdout or "").strip()
+    # 出错即抛：旧写法既不看 returncode 也不看 stderr（-c 路径本可
+    # 可靠判），SQL 写错了闸门照样报绿。
+    return psql_stdin(q, sep="|")
 
 
 def main():

@@ -87,17 +87,43 @@ def finalize():
     psql("DELETE FROM staffmessages WHERE body LIKE '%s%%'" % PREFIX)
     psql("DELETE FROM messages WHERE body LIKE '%s%%'" % PREFIX)
     psql("DELETE FROM cheat_events WHERE agent = '%s'" % AGENT)
+    # 收尾不只认 UID 列表：mkmember() 登记 id 靠一次 psql 查询，那一次
+    # 要是抖了（比如 docker exec 偶发失败），成员就在库里活着没人管——
+    # 下一轮 R9b 数「活着的 bqm%」就会把上一轮的残骸算到自己头上。
+    # 所以：UID 里的照常走，另外把所有活着的 bqm% 一并墓碑。
     for u in UID:
         if u and psql("SELECT status::text FROM users WHERE id = %d" % u) \
                 != "2":
             call("POST", "/admin/users/status", {"user_id": u, "status": 2},
                  token=ROOT)
             call("DELETE", "/admin/users/%d" % u, None, token=ROOT)
+    for u in live_probe_ids():
+        call("POST", "/admin/users/status", {"user_id": u, "status": 2},
+             token=ROOT)
+        call("DELETE", "/admin/users/%d" % u, None, token=ROOT)
 
 
 import atexit  # noqa: E402
 
 atexit.register(finalize)
+
+
+def live_probe_ids():
+    """库里还活着的 bqm% 探针号（墓碑化前的 active 成员）。"""
+    out = psql("SELECT id FROM users WHERE username LIKE 'bqm%' "
+               "AND status < 2 ORDER BY id")
+    return [int(x) for x in (out or "").split() if x.strip()]
+
+
+def purge_probe():
+    """开跑前把历次跑剩的 bqm% 探针号墓碑掉。
+
+    闸门自己的残骸不该在下一轮变成红账（更不该被当成站点缺陷）。
+    """
+    for u in live_probe_ids():
+        call("POST", "/admin/users/status", {"user_id": u, "status": 2},
+             token=ROOT)
+        call("DELETE", "/admin/users/%d" % u, None, token=ROOT)
 
 
 def mkmember():
@@ -115,7 +141,16 @@ def mkmember():
         "captcha_id": cap.get("captcha_id"),
         "captcha_answer": int(nums[0]) + int(nums[1]),
         "captcha_token": "", "fields": {}}, token=ROOT)
-    return int(psql("SELECT id FROM users WHERE username = '%s'" % name) or 0)
+    # 登记 id 不能只查一次：docker exec 偶发失败时 psql 返回空串，
+    # 成员已经在库里却没被记进 UID ⇒ 永远没人收它。抖了就重试，
+    # 还不行就按邮箱找（注册邮箱唯一）。
+    for _ in range(5):
+        got = psql("SELECT id FROM users WHERE username = '%s'" % name)
+        if got:
+            return int(got)
+        time.sleep(1)
+    got = psql("SELECT id FROM users WHERE email = '%s@bq.local'" % name)
+    return int(got or 0)
 
 
 def run_job(job):
@@ -135,6 +170,7 @@ def run_job(job):
 
 
 clear_register_rl()
+purge_probe()  # 先把历次跑剩的 bqm% 探针号收干净，别让残骸变成本轮红账
 BASE_ALERTS = int(psql("SELECT count(*) FROM staffmessages") or 0)
 L2 = psql("SELECT coalesce((SELECT value FROM site_settings WHERE name = "
           "'cheat_l2_hits'), '5(缺省)')")

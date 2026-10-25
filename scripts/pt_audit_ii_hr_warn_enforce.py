@@ -124,6 +124,14 @@ bs, br = upload_empty(TOK)
 ok("II1a 基线：无警告行时不是「禁传档」拦截（前置正控）",
    not (bs == 400 and "禁传档" in msg(br)),
    "baseline http=%s %s" % (bs, msg(br)[:120]))
+
+# 0388 起 block_invite 有读点（POST /invites 会查 warn_blocks），
+#   所以「无拦截时能生成邀请码」这个前置正控必须取在**插入警告行之前**，
+#   否则基线必然被禁邀档拦掉 → 假红。
+print("== II2 生成邀请码 ==")
+s, r = call("POST", "/invites", {}, TOK)
+ok("II2a 基线：同一探针（无拦截）能生成邀请码（前置正控）",
+   s == 200 and r.get("code") == 0, "http=%s %s" % (s, msg(r)[:120]))
 x("INSERT INTO hr_warn_states (user_id, step, base_days, expires_at, "
   "restrict_download, block_upload, block_invite) VALUES "
   "(%d, 3, 7, now() + interval '1 day', true, true, true)" % UID)
@@ -132,10 +140,7 @@ ok("II1b block_upload=true 时发种口必须 400 且说明「禁传档」",
    s == 400 and "禁传档" in msg(r),
    "http=%s %s" % (s, msg(r)[:160]))
 
-print("== II2 生成邀请码 ==")
-s, r = call("POST", "/invites", {}, TOK)
-ok("II2a 基线：同一探针（无拦截）能生成邀请码（前置正控）",
-   s == 200 and r.get("code") == 0, "http=%s %s" % (s, msg(r)[:120]))
+
 n0, used0 = inv_rows(UID), quota_used(UID)
 s, r = call("POST", "/invites", {}, TOK)
 ok("II2b block_invite=true 时生成邀请码必须 400「禁邀档」",

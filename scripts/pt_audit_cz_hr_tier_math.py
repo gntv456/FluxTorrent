@@ -25,7 +25,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, "scripts")
-from pt_audit_lib import ok, FAILURES  # noqa: E402
+from pt_audit_lib import psql_stdin, ok, FAILURES  # noqa: E402
 
 MIG = "apps/api/migrations/0394_hr_seed_hours_pct_divide.sql"
 RUST = "apps/api/src/domain/hr/mod.rs"
@@ -35,11 +35,9 @@ MATRIX = [(1, 1, 0), (1, 2, 0), (48, 1, 0), (48, 2, 0), (48, 2, 200),
 
 
 def psql(sql_text):
-    o = subprocess.run(
-        ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
-         "-d", "fluxtorrent", "-At", "-f", "-"],
-        input=sql_text.encode("utf-8"), capture_output=True)
-    return o.stdout.decode("utf-8", "replace")
+    # 出错即抛：旧写法无视 returncode/stderr，而 psql 走 stdin 时
+    # 语句出错也返回 0——SQL 写错了闸门照样报绿。
+    return psql_stdin(sql_text, sep="|")
 
 
 def read(path):

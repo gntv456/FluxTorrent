@@ -49,7 +49,7 @@ def psql(q):
          "-q", "-d", "fluxtorrent", "-tA", "-F", " | ", "-c", q],
         input=None, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:220])
+        raise RuntimeError("psql 失败：%s" % (r.stderr or "").strip()[:220])
     return (r.stdout or "").strip()
 
 
@@ -58,11 +58,22 @@ i_bm = det.find("pub async fn bookmark")
 bm = det[i_bm:det.find("pub async fn", i_bm + 10)] if i_bm >= 0 else ""
 
 # ---------- FB1 收藏口的存在性判定 ----------
+# 0288 起「存在性 + 可见性」收口到共享的 assert_visible（torrents/visibility.rs）：
+# 旧判据只认**内联**的 `SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)`，
+# 实现换成共享口径后闸门就红——实测是一次**假红**：现网收藏不存在的种回 404
+#（FB4 活测通过，行为是对的）。这里改成「内联 EXISTS **或** 走共享
+# assert_visible」都算过门，并把「不存在回 NotFound」钉在**真正下判据的那份
+# 代码**上：内联时看 bookmark 本体，走共享时看 visibility.rs。
+VIS = os.path.join(APISRC, "torrents", "visibility.rs")
+vis = cut(VIS) if os.path.exists(VIS) else ""
+inline = "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)" in bm
+shared = "assert_visible(" in bm
 ok("FB1 bookmark 的 on 分支先验父行存在（EXISTS ... FROM torrents）",
-   i_bm >= 0 and "SELECT EXISTS(SELECT 1 FROM torrents WHERE id = $1)" in bm,
-   "不验就是拿 500 当「种不存在」的答案")
+   i_bm >= 0 and (inline or shared),
+   "不验就是拿 500 当「种不存在」的答案（内联 EXISTS 或共享 assert_visible）")
 ok("FB1b 不存在时回 NotFound（不是内部错误）",
-   "DomainError::NotFound(torrent_id)" in bm,
+   ("DomainError::NotFound(torrent_id)" in bm if inline
+    else "DomainError::NotFound(id)" in vis),
    "错误码要落在本端点 OpenAPI 承诺的那一档")
 
 # ---------- FB2 同族三处判定的对照（它们本来就有）----------

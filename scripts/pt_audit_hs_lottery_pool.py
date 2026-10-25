@@ -45,7 +45,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from pt_audit_lib import ok, summary  # noqa: E402
+from pt_audit_lib import grep_count, ok, summary  # noqa: E402
 
 LIVE = os.environ.get("HS_LIVE", "1") != "0"
 JOB = "apps/worker/src/jobs/lottery.rs"
@@ -116,13 +116,10 @@ kinds = set(re.findall(r"'(forum_lottery[a-z_]*)'", strip_lines(rd(JOB))))
 ok("HS3 kind 纪律：只用 forum_lottery / forum_lottery_refund 两名",
    kinds <= {"forum_lottery", "forum_lottery_refund"} and
    "forum_lottery_refund" in kinds, "实见=%s" % (sorted(kinds),))
-pos = subprocess.run(["grep", "-c", "forum_lottery",
-                      "apps/worker/src/jobs/lottery.rs"], cwd=ROOT,
-                     capture_output=True, text=True, errors="replace")
+pos = grep_count("forum_lottery", ["apps/worker/src/jobs/lottery.rs"],
+                 root=ROOT)
 ok("HS5 正控：取数路径确实读到了这份文件（防恒真）",
-   (pos.stdout or "0").strip().isdigit() and int(
-       (pos.stdout or "0").strip() or 0) > 0,
-   "命中行=%s" % (pos.stdout or "").strip())
+   pos > 0, "命中行=%s" % pos)
 dbody = draw_body(strip_lines(rd(DRAW)))
 dg = draw_gaps(dbody)
 ok("HS6 API 手动开奖也必须退还差额（P-429 的另一条腿）",

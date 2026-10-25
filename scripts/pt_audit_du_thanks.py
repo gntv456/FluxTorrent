@@ -58,7 +58,7 @@ def psql(q):
          "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:240])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:240])
     return (r.stdout or "").strip()
 
 
@@ -105,9 +105,13 @@ ok("DU9a transfer 的键是三段占位且第三段用 row_ts",
 ok("DU9b thank() 把行 created_at 带回（RETURNING + timestamp_micros）",
    "RETURNING created_at" in det and "timestamp_micros" in det,
    "键的源头必须是行，不是请求时钟")
+# 认「row_ts 确实作为参数递进 transfer」这件事，而不是认某一个标点形状：
+# 旧判据写死 "row_ts)"（参数表末尾恰好带右括号），产品把参数换成尾随逗号
+# 的多行调用后，判据就红了——调用链其实没断（2026-10-20 实测）。
 ok("DU9c do_thank 把行时间戳递进 transfer（不是自己造一个）",
    "torrents::thank(&mut *tx, tid, auth.id).await?" in thanks
-   and "row_ts)" in thanks, "调用链断了就等于键又回到人-种")
+   and re.search(r"transfer\([^)]*row_ts", thanks) is not None,
+   "调用链断了就等于键又回到人-种")
 OLD2 = 'let idem = format!("thank-spark:{}:{}", giver, torrent_id);'
 ok("DU9d 承重自证：旧的两段键（人-种）必须判红", not ROW3.search(OLD2),
    "旧键命中=%s" % bool(ROW3.search(OLD2)))

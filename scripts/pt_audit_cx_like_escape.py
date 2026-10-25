@@ -25,7 +25,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, "scripts")
-from pt_audit_lib import call, login, ok, dig, FAILURES  # noqa: E402
+from pt_audit_lib import psql_stdin, call, login, ok, dig, FAILURES  # noqa: E402
 
 CTRL_REV = "00ea5f7b"  # 本批转义修复的前一个提交（绝对钉）
 ROOT = "."
@@ -166,11 +166,9 @@ SELECT 'xyz' ILIKE '%' || 'x%' || '%'                          AS p_unesc,
 
 
 def psql(sql_text):
-    o = subprocess.run(
-        ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
-         "-d", "fluxtorrent", "-At", "-f", "-"],
-        input=sql_text.encode("utf-8"), capture_output=True)
-    return o.stdout.decode("utf-8", "replace").strip()
+    # 出错即抛：旧写法无视 returncode/stderr，而 psql 走 stdin 时
+    # 语句出错也返回 0——SQL 写错了闸门照样报绿。
+    return psql_stdin(sql_text, sep="|")
 
 
 sem = psql(SEM_SQL)

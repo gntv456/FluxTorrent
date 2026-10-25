@@ -7,21 +7,20 @@ fail-close（P-67）、approval 默认在安全侧、user.json 与 userdetails.p
 
 本轮立的四条：P-161 的判据在本文件 S2，P-162~P-164 的判据在 BF2（下载路专卷）：
 
-  P-161 torrents.json 只认本站参数名 —— 实测 `?search=片名` 回 200 + 全站
-        未筛（total_estimate 仍是 69），`?cat=1`、`?incldead=0` 同理被 serde
-        静默丢掉。NP 工具的 `search/cat/incldead/rowset` 必须双收：RSS 侧
-        批十一就是这么修的（rss_http/query.rs），兼容层内两处口径不一致
-        比两处都缺更糟 —— 刷流脚本拿到的是「没报错但内容不对」的列表。
+  P-161 torrents.json 只认本站参数名 —— 实测 `?search=片名` 回 200 + 全站未筛
+        （total_estimate 仍是 69），`?cat=1`、`?incldead=0` 同理被 serde 静默丢掉。
+        NP 工具的 `search/cat/incldead/rowset` 必须双收：RSS 侧批十一就是这么修的
+        （rss_http/query.rs），兼容层内两处口径不一致比两处都缺更糟 —— 刷流脚本
+        拿到的是「没报错但内容不对」的列表。
   P-162 扣费排在交付判定之前 —— 网页口/凭证口/批量口先 `charge_for_download`
-        再 `build_torrent_bytes`：付费种 + 被停下载/挂起/封禁的账号会先扣
-        魔力、写好已购，再被拒发；批量口一次最多把 50 个付费种全扣完回 404，
-        已购记录还让重试跳过扣费段。判据：同一账号（停下载 + 余额 0）打
-        付费种，原话必须是「下载权限已被暂停」而不是「魔力不足」，且探针
-        号流水零增长。
-  P-163 同一份 .torrent 字节，compat/凭证两路口带 no-store，网页口与批量
-        zip 没有 —— 内嵌本人 passkey 的响应一律禁缓存。
-  P-164 download.php 把「停下载」报成 401 未认证（凭证其实没坏）—— 工具据此
-        去重置 passkey、把账号问题当对接问题查；现在三路同口径 400/403。
+        再 `build_torrent_bytes`：付费种 + 被停下载/挂起/封禁的账号会先扣魔力、
+        写好已购，再被拒发；批量口一次最多把 50 个付费种全扣完回 404，已购记录
+        还让重试跳过扣费段。判据：同一账号（停下载 + 余额 0）打付费种，原话必须
+        是「下载权限已被暂停」而不是「魔力不足」，且探针号流水零增长。
+  P-163 同一份 .torrent 字节，compat/凭证两路口带 no-store，网页口与批量 zip
+        没有 —— 内嵌本人 passkey 的响应一律禁缓存。
+  P-164 download.php 把「停下载」报成 401 未认证（凭证其实没坏）—— 工具据此去
+        重置 passkey、把账号问题当对接问题查；现在三路同口径 400/403。
 
 本文件只管**只读契约**；三条下载路（字节一致 / no-store / 资格先扣费 /
 扣费正控与痕迹复原）在 `pt_audit_bf2_download_paths.py`，两个文件各自
@@ -98,8 +97,7 @@ def hit(path, hdr=None, method="GET", body=None):
 
 
 def jget(path, tok=None, **kw):
-    return hit(path, {"Authorization": "Token " + tok} if tok else None,
-               **kw)
+    return hit(path, {"Authorization": "Token " + tok} if tok else None, **kw)
 
 
 def np_list(path, tok):
@@ -129,8 +127,7 @@ CATN = int(psql("SELECT count(*) FROM torrents WHERE approval_status = 1 "
 ok("S0a 语料齐（root passkey %d 位、活跃成员 %s 人、全量过审种=%s、"
    "关键词=%s 命中=%s、cat1=%s）" % (len(PK), cnt("users", "status < 2"),
                                      TOTAL, KW, KWN, CATN),
-   len(PK) == 32 and 0 < KWN < TOTAL and 0 < CATN < TOTAL,
-   "缺任一则对应判据不承重")
+   len(PK) == 32 and 0 < KWN < TOTAL and 0 < CATN < TOTAL, "缺任一则对应判据不承重")
 
 # ---- 探针成员：注册一个真实账号，全程只动它 ----
 clear_register_rl()
@@ -169,8 +166,7 @@ MONTH = psql("SELECT to_char((now() at time zone 'utc+8'), 'YYYY-MM')")
 # 60s 也在写它们，比总量会把别人的账算到我头上（BF2 实测假红过一次）。
 B0 = {"users": cnt("users"), "live": cnt("users", "status < 2"),
       "keys": cnt("download_keys"),
-      "traffic": cnt("traffic_ledger"),
-      "buy": cnt("torrent_purchases"),
+      "traffic": cnt("traffic_ledger"), "buy": cnt("torrent_purchases"),
       "root_spark": psql("SELECT spark_balance FROM users WHERE id = 1"),
       "pool": psql("SELECT donated_total FROM magic_pool WHERE month = "
                    "'%s'" % MONTH),
@@ -189,9 +185,21 @@ def revoke_stale(pfx):
 
 def mint(pfx):
     revoke_stale(pfx)
-    return data(call("POST", "/me/tokens", {"name": "%s%d" % (pfx, TAG),
-                                            "password": "password123"},
-                     token=ROOT)).get("token")
+    body = {"name": "%s%d" % (pfx, TAG), "password": "password123"}
+    plain = data(call("POST", "/me/tokens", body, token=ROOT)).get("token")
+    if plain:
+        return plain
+    # 产品口径：每人**最多 3 枚有效 token**（apps/api/src/openapi_http/tokens.rs）。
+    # 上一轮遗留/别的套件占满 3 枚时，签发口直接 400「有效 token 上限 3 枚」，
+    # 而旧写法不判结果就 int(tok_id()) → ValueError 崩在判据外，闸门红得
+    # 看不出因果。这里：撤掉**最老的一枚在册 token** 再签一次；
+    # 仍失败就把原因记进判据（而不是抛异常）。
+    old = psql("SELECT id FROM api_tokens WHERE user_id = 1 AND "
+               "revoked_at IS NULL ORDER BY id LIMIT 1")
+    if old and old.isdigit():
+        call("POST", "/me/tokens/revoke", {"id": int(old)}, token=ROOT)
+        plain = data(call("POST", "/me/tokens", body, token=ROOT)).get("token")
+    return plain
 
 
 def tok_id(pfx):
@@ -201,8 +209,7 @@ def tok_id(pfx):
 
 
 TKF = mint("bfp")
-ok("S0c 功能 Token 签出（开局先撤上几轮残枚，在册上限 3）", bool(TKF),
-   "没撤干净会把签发口焊死")
+ok("S0c 功能 Token 签出（开局先撤上几轮残枚，在册上限 3）", bool(TKF), "没撤干净会把签发口焊死")
 
 # ============ S1 认证口径 ============
 st, _, t, _ = hit("/api/v1/compat/nexusphp/user.json")
@@ -218,19 +225,25 @@ ok("S1c `Authorization: Token` 200 且回本人 id",
    st == 200 and (json.loads(t).get("data") or {}).get("id") == 1,
    "http=%s %s" % (st, t[:70]))
 st, _, t, _ = jget("/api/v1/compat/nexusphp/user.json?apikey=" + TKF)
-ok("S1d `?apikey=` 同枚凭证同样受理（Prowlarr/Torznab 习惯）", st == 200,
-   "http=%s" % st)
+ok("S1d `?apikey=` 同枚凭证同样受理（Prowlarr/Torznab 习惯）", st == 200, "http=%s" % st)
 TKB = mint("bfb")
-call("POST", "/me/tokens/revoke", {"id": int(tok_id("bfb"))}, token=ROOT)
-st, _, t, _ = jget("/api/v1/compat/nexusphp/user.json", TKB)
-ok("S1e 撤销后立刻失效（401，不是仍 200）", st == 401, "http=%s" % st)
+TKB_ID = tok_id("bfb")
+ok("S1e 前置：限流用 Token 签出（在册上限 3 枚，得先腾位）",
+   bool(TKB) and TKB_ID.isdigit(), "token=%s id=%s" % (bool(TKB), TKB_ID))
+if TKB and TKB_ID.isdigit():
+    call("POST", "/me/tokens/revoke", {"id": int(TKB_ID)}, token=ROOT)
+    st, _, t, _ = jget("/api/v1/compat/nexusphp/user.json", TKB)
+    ok("S1e 撤销后立刻失效（401，不是仍 200）", st == 401, "http=%s" % st)
+else:
+    ok("S1e 撤销后立刻失效（401，不是仍 200）", False, "限流 Token 没签出来（在册 3 枚上限）")
 TKB = None
 
 # ============ S2 NP 惯用参数名（P-161） ============
 LIST = "/api/v1/compat/nexusphp/torrents.json"
 _, n_all, t_all, _ = np_list(LIST, TKF)
-_, n_kw, t_kw, _ = np_list(LIST + "?keyword=%s" % KW, TKF)
-_, n_se, t_se, _ = np_list(LIST + "?search=%s" % KW, TKF)
+KWQ = urllib.parse.quote(KW, safe="")
+_, n_kw, t_kw, _ = np_list(LIST + "?keyword=%s" % KWQ, TKF)
+_, n_se, t_se, _ = np_list(LIST + "?search=%s" % KWQ, TKF)
 ok("S2a `search=` 与 `keyword=` 同筛（total %s vs %s，全量 %s，库里前缀命中"
    "%s）" % (t_se, t_kw, t_all, KWN),
    t_se == t_kw and t_se < t_all and t_se >= KWN,
@@ -250,15 +263,14 @@ _, n_s, _, _ = np_list(LIST + "?slot_number=3", TKF)
 ok("S2d 条数名 `rowset`/`slot_number` 生效（%s 条 / %s 条）" % (n_r, n_s),
    n_r == 2 and n_s == 3, "rows=%s/%s" % (n_r, n_s))
 st, _, t, _ = jget(LIST + "?search=%s&cat=1&incldead=1&searcharea=4"
-                   "&searchmode=2&pagesize=3" % KW, TKF)
+                   "&searchmode=2&pagesize=3" % KWQ, TKF)
 ok("S2e NP 名一起发：200 不炸且按 cat 收口（%s）" % st, st == 200
    and '"code":0' in t.replace(" ", ""), t[:80])
 PCTN = int(psql("SELECT count(*) FROM torrents WHERE approval_status = 1 "
                 "AND name LIKE '%%\\%%' ESCAPE '\\'"))
 _, n_pct, t_pct, _ = np_list(LIST + "?keyword=%25", TKF)
 ok("S2f 裸「百分号」当字面量：total=%s 与库里真含该字符的种数 %s 相等"
-   "（不是全量 %s）" % (t_pct, PCTN, t_all), t_pct == PCTN,
-   "rows=%s" % n_pct)
+   "（不是全量 %s）" % (t_pct, PCTN, t_all), t_pct == PCTN, "rows=%s" % n_pct)
 
 # ============ S3 分页与上界 ============
 t0 = time.time()
@@ -333,8 +345,7 @@ ud_codes = burn("/api/v1/compat/nexusphp/userdetails.php?passkey=" + PK, 33)
 first = next((i + 1 for i, c in enumerate(ud_codes) if c == 429), None)
 st, hd, t, _ = hit("/api/v1/compat/nexusphp/userdetails.php?passkey=" + PK)
 ok("S5a 同一 passkey 第 %s 次撞 429（额度 30/分，P-67 那道 fail-close 闸）"
-   % first, first == 31 and 429 in ud_codes[-3:],
-   "tail=%s" % ud_codes[-4:])
+   % first, first == 31 and 429 in ud_codes[-3:], "tail=%s" % ud_codes[-4:])
 ok("S5b 429 体口径与 meta 一致：code 1015 + Retry-After: 60",
    '"code":1015' in t.replace(" ", "") and hd.get("retry-after") == "60",
    "%s / %s" % (t[:60], hd.get("retry-after")))
@@ -441,7 +452,10 @@ ok("S9b 探针号走真实墓碑：passkey 作废后旧钥在 userdetails 读不
    "tomb=%s http=%s" % (TOMB[:20], ud(PPK)[0]))
 psql("DELETE FROM download_keys WHERE user_id = 1 OR user_id = %d" % PU)
 if codes:
-    psql("UPDATE invites SET status = 2 WHERE used_by IS NULL AND id = %d" % codes[0]["id"])
+    psql(
+        "UPDATE invites SET status = 2 WHERE used_by IS NULL AND id = %d"
+        % codes[0]["id"]
+    )
 NOW = {"users": cnt("users"), "live": cnt("users", "status < 2"),
        "keys": cnt("download_keys"),
        "traffic": cnt("traffic_ledger"),

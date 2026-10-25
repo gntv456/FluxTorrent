@@ -46,7 +46,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from pt_audit_lib import call, login, ok, summary  # noqa: E402
+from pt_audit_lib import call, grep_files, login, ok, summary  # noqa: E402
 
 LIVE = os.environ.get("HT_LIVE", "1") != "0"
 REPO = "apps/api/src/repo/seedbox.rs"
@@ -188,13 +188,10 @@ if LIVE:
 else:
     print("[HT1/HT2/HT5/HT6] HT_LIVE=0 跳过现网与库侧")
 
-web = subprocess.run(["grep", "-ril", "seedbox", "apps/web"], cwd=ROOT,
-                     capture_output=True, text=True, errors="replace")
-hits = [x for x in (web.stdout or "").split("\n") if x.strip()]
+hits = grep_files("seedbox", ["apps/web"], root=ROOT, ignore_case=True)
 ok("HT7b 正控：同一 grep 手段在 apps/api 搜 seedbox 必须有命中（防路径写错恒 0）",
-   len(subprocess.run(["grep", "-rl", "seedbox", "apps/api/src"], cwd=ROOT,
-                      capture_output=True, text=True,
-                      errors="replace").stdout.strip().split("\n")) > 3,
+   len(grep_files("seedbox", ["apps/api/src"], root=ROOT,
+                  ignore_case=True)) > 3,
    "apps/api 命中=%s" % len(hits))
 ok("HT7 前端入口仍是 0 屏（申报与审核都只能在 API 操作＝待补的屏，钉桩）",
    len(hits) == 0, "apps/web 命中=%s（补界面后撤本条）" % (hits,))

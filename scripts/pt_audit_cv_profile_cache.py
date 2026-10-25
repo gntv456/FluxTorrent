@@ -53,6 +53,13 @@ ALLOW = {
     # ⇒ 本批不代改，钉桩待「下一批拆域回收」时补，见 CV9
     "settings_http/pack_store.rs": "PENDING：内容包导入重写分类，待拆域补失效",
     "settings_http/pack_import.rs": "PENDING：同上（调用方）",
+    # 0400–0402 自动审种批次写入的键全在 auto_review 组（{rule}_action /
+    # auto_review_mode / 预置覆盖），而 site-profile 只读 site_type、site_name、
+    # default_language、module_*、metadata_sources、subtitle_kind、site_tagline
+    # 这几类键 ⇒ 档案读出面不受影响，不需要挂档案失效。
+    "admin_http/auto_review_preset.rs": "写 auto_review 组预置覆盖键，档案不读",
+    "admin_http/review_auto.rs":
+    "写 auto_review 组（{rule}_action/auto_review_mode），档案不读",
 }
 
 

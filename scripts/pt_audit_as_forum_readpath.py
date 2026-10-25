@@ -394,24 +394,45 @@ CANON = {
     "vimeo": "https://vimeo.com/76979871",
     "self": "/api/v1/attachments/" + "0" * 64,
 }
-by_provider = {r.get("provider"): r for r in rules}
+# 一个 provider 可能有多条规则（桌面版/移动版/av 号/Shorts…）：产品口径是
+# 「按 sort 顺序逐条试，第一条命中的生效」。此前这里用 {provider: rule} 建
+# 字典（后一条覆盖前一条），多规则一进来就取错行——判据变假红：
+# 2026-10-20 实测 bilibili/youtube 各红两条（取到的是 av 号/移动版那条，
+# 拿它去撞桌面版规范 URL 当然不中），而产品行为是对的（活测能出播放器）。
+by_provider = {}
+for r in rules:
+    by_provider.setdefault(r.get("provider"), []).append(r)
 ok("S5 五条内置规则都在（不是被后台删了）",
    all(p in by_provider for p in CANON), brief(list(by_provider)))
+
+
+def first_hit(provider, url):
+    """产品口径：按 sort 顺序取第一条命中的规则。"""
+    for r in by_provider.get(provider) or []:
+        if pmatch(r.get("url_pattern") or "", url):
+            return r
+    return None
+
+
 for p, url in CANON.items():
-    pat = (by_provider.get(p) or {}).get("url_pattern") or ""
-    ok("S5 规则 %s 命中该平台规范 URL" % p, bool(pmatch(pat, url)),
-       "pattern=%s url=%s" % (brief(pat), url))
+    hit = first_hit(p, url)
+    ok("S5 规则 %s 命中该平台规范 URL" % p, hit is not None,
+       "url=%s 候选=%s" % (url, brief([
+           (r.get("url_pattern") or "") for r in by_provider.get(p) or []])))
 NEED = {"bilibili": "BV1xx411c7mD", "youtube": "dQw4w9WgXcQ",
         "youtube_short": "dQw4w9WgXcQ", "vimeo": "76979871",
         "self": "0" * 64}
 for p, url in CANON.items():
-    rule = by_provider.get(p) or {}
+    # 取**真命中**的那条规则来渲染（与产品同口径），别再拿任意一条
+    rule = first_hit(p, url) or {}
     src = embed_src(rule, url)
     ok("S5 %s 生成的播放器 src 取对捕获组且落在 embed_origin 内" % p,
        bool(src) and src.startswith(rule.get("embed_origin") or "无Origin")
        and NEED[p] in src, "src=%s" % brief(src))
-bad = pmatch((by_provider.get("bilibili") or {}).get("url_pattern") or "",
-             "https://evil.com/video/BV1xx411c7mD")
+# 反控要覆盖该 provider 的**全部**规则：任何一条能撞上仿冒域都不放过
+bad = [r for r in by_provider.get("bilibili") or []
+       if pmatch(r.get("url_pattern") or "",
+                 "https://evil.com/video/BV1xx411c7mD")]
 ok("S5 反控：域名锚定生效，仿冒域不命中", not bad, brief(bad))
 dub = psql("SELECT count(*) FROM video_embed_rules WHERE position("
             "E'\\\\\\\\' in url_pattern) > 0")

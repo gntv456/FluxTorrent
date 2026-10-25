@@ -83,9 +83,13 @@ def run_all(stmts):
                     "SQLERRM; END $$;" % (quote(sql), i))
     r = subprocess.run(
         ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux", "-q",
-         "-d", "fluxtorrent", "-f", "-"],
+         "-d", "fluxtorrent", "-v", "ON_ERROR_STOP=1", "-f", "-"],
         input="\n".join(body), capture_output=True, text=True,
         encoding="utf-8", errors="replace", timeout=900)
+    # 外层脚本自己出错（DO 块写错等）时 ON_ERROR_STOP 会让它非 0 退出，
+    # 此时一条 PREPARE_FAIL 都不会有 → 不查就是**假绿**。
+    if r.returncode != 0:
+        raise RuntimeError("psql 预检脚本报错：%s" % (r.stderr or "").strip()[:300])
     out = r.stdout or ""
     fails = {}
     for m in re.finditer(r"PREPARE_FAIL\[(\d+)\] (.+)", out):

@@ -35,9 +35,11 @@ import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import login, ok, summary  # noqa: E402
+from pt_audit_lib import BASE, login, ok, summary  # noqa: E402
 
-BASE = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8100/api/v1")
+# BASE 一律取自 pt_audit_lib（单一来源）：此前这里另起一份默认 8100，
+# 与主栈 8080 不同步，且与同一脚本里 login() 用的 base 不是一回事——
+# 闸门直接连不上（WinError 10061），整条判据根本跑不起来。
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEYS_FILE = os.path.join(REPO, "apps/api/src/compat_http/download_keys.rs")
 TNAME = []

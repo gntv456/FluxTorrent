@@ -41,15 +41,19 @@ def psql(sql: str) -> str:
     if CI:
         cmd = ["psql", os.environ["DATABASE_URL"], "-t", "-A", "-q"]
     else:
+        # ON_ERROR_STOP=1：psql 走 stdin 时语句出错也返回 0（只有 -c
+        # 才按错误码返回 1），不加这个开关则 SQL 写错也不报错——
+        # 闸门读到空串照样能判绿。
         cmd = ["docker", "exec", "-i", "flux-postgres", "psql",
-               "-U", "flux", "-d", "fluxtorrent", "-t", "-A", "-q"]
+               "-U", "flux", "-d", "fluxtorrent", "-t", "-A", "-q",
+               "-v", "ON_ERROR_STOP=1"]
     try:
         r = subprocess.run(cmd, input=sql, capture_output=True, text=True, encoding="utf-8", errors="replace")
     except OSError as e:
         print(f"    ! psql 不可用：{e}")
         return ""
-    if r.returncode != 0:
-        print(f"    ! psql 失败：{r.stderr.strip()[:160]}")
+    if r.returncode != 0 or "ERROR" in (r.stderr or ""):
+        raise RuntimeError("psql 失败：%s" % (r.stderr or "").strip()[:200])
     return "\n".join(r.stdout.splitlines()).strip()
 
 

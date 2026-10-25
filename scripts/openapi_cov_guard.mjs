@@ -131,8 +131,8 @@ for (const [method, p] of DOMAIN_ROUTES) {
 }
 
 
-// ---------- 3.5 社区域对拍（F4：社区 85 条必须全部注解化） ----------
-section("社区域 85 条路由 ↔ 注解对拍");
+// ---------- 3.5 社区域对拍（F4：社区 92 条必须全部注解化） ----------
+section("社区域 92 条路由 ↔ 注解对拍");
 fails += checkCommunityCoverage(read, manifest);
 
 // ---------- 4. 生成物面：gen_ts_types 落盘且与注解域对得上 ----------

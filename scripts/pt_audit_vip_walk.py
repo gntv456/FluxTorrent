@@ -226,7 +226,8 @@ def d_seeding(vip: str, root: str) -> None:
         "compact": 1,
         "event": "started",
         "numwant": 10,
-    })
+    }, quote_via=urllib.parse.quote)  # 严格 %XX：默认 quote_plus 把 0x20
+    # 编成 '+'，tracker 2026-10-25 前不认（含空格字节的 info_hash 全挂）
     try:
         ann = (f"{TRACKER}/announce/"
                "a17b2c3d4e5f60718293a4b5c6d7e8f9"

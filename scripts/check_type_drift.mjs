@@ -164,6 +164,9 @@ const DT = "packages/domain-types/src/index.ts";
 const ADMIN_TYPES =
   "apps/web/app/(main)/admin/forums/_parts/forum-structure-types.ts";
 const CONTRACTS = [
+  // 作品聚合（资源页「作品聚合」视图 + 作品详情）：作品行两端口径一致
+  ["作品列表 GET /works", "torrent_http/works.rs", "WorkRow", DT,
+    "WorkListItem"],
   ["版块列表 GET /forums", "community_http/forums.rs", "ForumRow", DT, "Forum"],
   ["分区（前台）GET /forums.categories", "community_http/forums.rs",
     "ForumCatRow", DT, "ForumCategory"],

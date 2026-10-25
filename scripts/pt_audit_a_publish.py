@@ -166,7 +166,8 @@ if passkey:
         except urllib.error.HTTPError as e:
             return e.code, e.read()
     bad_qs = urllib.parse.urlencode({"info_hash": ih_bytes, "peer_id": peer_id, "port": 51413,
-        "uploaded": -99999, "downloaded": -99999, "left": -5, "compact": 1})
+        "uploaded": -99999, "downloaded": -99999, "left": -5, "compact": 1},
+        quote_via=urllib.parse.quote)  # 严格 %XX（0x20 字节别编成 '+'）
     s, body = announce_raw(bad_qs)
     print("   负数参数 announce: %s %s" % (s, body[:100]))
     # bencode 协议口径：错误以 failure reason 返回（HTTP 仍 200）

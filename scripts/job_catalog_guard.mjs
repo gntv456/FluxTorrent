@@ -14,7 +14,7 @@
  *
  *  用法：node scripts/job_catalog_guard.mjs
  *  exit 1 = 不一致。无基线、无豁免：这三份清单本来就该同源。 */
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -31,7 +31,18 @@ function names(text, re) {
   return out;
 }
 
-const catalog = names(src(`${JOBS}/catalog.rs`), /name:\s*"([a-z0-9_]+)"/g);
+/** 目录清单可能在 catalog.rs，也可能在 catalog_jobs.rs（300 行门禁拆过家）。
+ *  两处都扫，谁有算谁——拆文件不该让门禁瞎掉。 */
+function readCatalog() {
+  const out = new Set();
+  for (const f of ["catalog.rs", "catalog_jobs.rs"]) {
+    const rel = `${JOBS}/${f}`;
+    if (!existsSync(path.join(ROOT, rel))) continue;
+    for (const m of src(rel).matchAll(/name:\s*"([a-z0-9_]+)"/g)) out.add(m[1]);
+  }
+  return out;
+}
+const catalog = readCatalog();
 const manual = names(src(`${JOBS}/manual.rs`), /^\s{8}"([a-z0-9_]+)"\s*=>/gm);
 const scheduled = names(src(`${JOBS}/run.rs`), /"job:([a-z0-9_]+)"/g);
 

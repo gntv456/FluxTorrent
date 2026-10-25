@@ -31,10 +31,16 @@ import urllib.error
 import urllib.request
 
 API = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")
-PROBE = int(os.environ.get("FLUX_PROBE", "39"))
+# 探针号：默认现场注册一个普通会员（口令已知）。
+# 老写法写死 id 39 —— 装站数据里 39 号是墓碑号（deleted-39-restored）：
+# 登录被拒（凭证无效）、RSS 取不到条目，J3/J6 恒红，闸门在测空气。
+# 显式给 FLUX_PROBE 时沿用指定号。
+PROBE = int(os.environ["FLUX_PROBE"]) if os.environ.get("FLUX_PROBE") else 0
+PROBE_PW = os.environ.get("FLUX_PROBE_PW", "password123")
 ROOT = 1
 TORRENT = int(os.environ.get("FLUX_TORRENT", "40079"))
 results = []
+ROOT_TOKEN = None
 
 
 def psql(q):
@@ -94,12 +100,13 @@ def jwt(sub, cls, ttl=600):
 
 
 def call(tok, method, path, body=None, raw_auth=None):
-    auth = raw_auth or ("Bearer " + tok)
+    auth = raw_auth or (("Bearer " + tok) if tok else None)
     data = json.dumps(body).encode() if body is not None else None
+    headers = {"Content-Type": "application/json"}
+    if auth:
+        headers["Authorization"] = auth
     req = urllib.request.Request(API + path, method=method,
-                                 headers={"Authorization": auth,
-                                          "Content-Type": "application/json"},
-                                 data=data)
+                                 headers=headers, data=data)
     try:
         with urllib.request.urlopen(req, timeout=25) as r:
             return r.status, json.loads(r.read().decode() or "{}")
@@ -122,6 +129,42 @@ def http_get_raw(tok, path):
         return e.code, e.headers
 
 
+def ensure_probe():
+    """现场注册一个普通会员探针（口令已知），返回 uid。
+
+    为什么要自己造：装站数据里 39 号是墓碑号，登录口直接拒
+    （"凭证无效"），RSS 也没有条目——写死 id 39 的老脚本拿到的
+    J3/J6 结论是「站点坏了」，其实是自己踩了个墓碑号。
+    """
+    global PROBE
+    if PROBE:
+        return PROBE
+    # 同 IP 注册限额：reg_ip_signups 是纯限流账本，测试前清一次
+    psql("DELETE FROM reg_ip_signups;")
+    code = "e2e" + hashlib.sha1(str(time.time()).encode()).hexdigest()[:24]
+    psql("INSERT INTO invites (inviter_id, code, status, expires_at) "
+         "VALUES (%d, '%s', 0, now() + interval '2 days');" % (ROOT, code))
+    name = "e2e_surface_%d" % (int(time.time()) % 1000000)
+    # 自研算术验证码（captcha_provider=none 也照要）：取题—算出答案
+    st, cap = call(None, "GET", "/auth/captcha")
+    capd = cap.get("data") or {}
+    nums = re.findall(r"\d+", capd.get("question") or "")
+    answer = int(nums[0]) + int(nums[1]) if len(nums) >= 2 else 0
+    st, d = call(None, "POST", "/auth/register", {
+        "username": name, "password": PROBE_PW,
+        "email": "%s@surface.local" % name, "invite_code": code,
+        "captcha_id": capd.get("captcha_id") or "",
+        "captcha_answer": answer})
+    if st != 200:
+        raise RuntimeError("探针号注册失败：HTTP %s %s" % (st, str(d)[:200]))
+    uid = psql("SELECT id FROM users WHERE username = '%s';" % name)
+    if not uid:
+        raise RuntimeError("探针号建号后查不到 id（username=%s）" % name)
+    PROBE = int(uid.splitlines()[-1])
+    print("探针号：%s（uid=%d）" % (name, PROBE))
+    return PROBE
+
+
 def check(name, ok, detail=""):
     results.append((name, ok))
     print(("  PASS  " if ok else "  FAIL  ") + name
@@ -138,8 +181,11 @@ def shop_probe():
 
 
 def main():
+    ensure_probe()
     print("api=%s probe=%d torrent=%d" % (API, PROBE, TORRENT))
     root = jwt(ROOT, 99)
+    global ROOT_TOKEN
+    ROOT_TOKEN = root
     st, _ = call(root, "GET", "/me")
     if st != 200:
         print("自检失败：root JWT 不可用（%s）" % st)
@@ -205,7 +251,10 @@ def main():
         feed = ""
         try:
             pk_probe = psql("SELECT passkey FROM users WHERE id=%d" % PROBE)
-            req = urllib.request.Request("%s/rss/%s" % (API, pk_probe))
+            # showrows 默认 50 且按 id 倒序：探针种是装站时留的老种子，
+            # 排在 50 条窗外 → 拿默认参数必然「命中 0 条」（闸门在测窗外）
+            req = urllib.request.Request("%s/rss/%s?showrows=200"
+                                         % (API, pk_probe))
             with urllib.request.urlopen(req, timeout=25) as r:
                 feed = r.read().decode("utf-8", "replace")
         except Exception as e:  # noqa: BLE001
@@ -223,8 +272,7 @@ def main():
         print("\n[J6] 改密/踢会话后 API 令牌必须失效")
         st, d = call(jwt(PROBE, 1), "POST", "/me/tokens",
                      {"name": "E2E 探针", "scopes": ["read"],
-                      "password": os.environ.get("FLUX_PROBE_PW",
-                                                 "password123")})
+                      "password": PROBE_PW})
         tok = ((d.get("data") or {}).get("token")
                or (d.get("data") or {}).get("plaintext"))
         check("J6a 令牌可签发", st == 200 and bool(tok), "HTTP %s" % st)
@@ -398,6 +446,21 @@ def cleanup():
          % PROBE)
     psql("DELETE FROM bookmarks WHERE torrent_id=%d AND user_id IN (%d, %d)"
          % (TORRENT, ROOT, PROBE))
+    if not os.environ.get("FLUX_PROBE") and ROOT_TOKEN:
+        # 探针号按**产品自己的口径**退场：先封禁(status=2)再走删号口，
+        # 由服务端做墓碑化（status=3 + 用户名/邮箱/passkey 改写 + 账号余额
+        # 清零并补 user_purge 负流水）。产品码里不得物理删 users 行
+        # （HL2 闸门红线），闸门脚本更不能偷偷破例——硬删会留下
+        # 「流水还在、人没了」的悬案（HL1 判红）并触发 180 处外键。
+        psql("DELETE FROM messages WHERE receiver_id=%d; "
+             "DELETE FROM api_tokens WHERE user_id=%d; "
+             "DELETE FROM token_revocations WHERE user_id=%d; "
+             "DELETE FROM user_vouchers WHERE user_id=%d; "
+             "DELETE FROM invites WHERE code LIKE 'e2e%%';" %
+             (PROBE, PROBE, PROBE, PROBE))
+        call(ROOT_TOKEN, "POST", "/admin/users/status",
+             {"user_id": PROBE, "status": 2, "reason": "E2E 探针退场"})
+        call(ROOT_TOKEN, "DELETE", "/admin/users/%d" % PROBE)
     flush_tlist()
     print("\n[cleanup] 探针发言/待审态/匿名态/令牌/撤销线/书签 均已复位")
 

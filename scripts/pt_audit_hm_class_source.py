@@ -40,7 +40,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from pt_audit_lib import ok, summary  # noqa: E402
+from pt_audit_lib import grep_files, ok, summary  # noqa: E402
 
 LIVE = os.environ.get("HM_LIVE", "1") != "0"
 ENGINE = "apps/worker/src/jobs/class_adj.rs"
@@ -121,12 +121,10 @@ for col in DEAD_COLS:
     hits = 0
     for rel in (ENGINE, PREVIEW, PUBLIC, ADMIN):
         hits += len(re.findall(r"\b%s\b" % col, strip(rd(rel))))
-    src_hits = subprocess.run(
-        ["grep", "-rl", col, os.path.join(ROOT, "apps", "api", "src"),
-         os.path.join(ROOT, "apps", "worker", "src")],
-        capture_output=True, text=True, encoding="utf-8", errors="replace"
-    ).stdout.strip()
-    n = len([l for l in src_hits.split("\n") if l.strip()])
+    # 不用系统 grep（Windows 上没有 ⇒ FileNotFoundError ⇒ 闸门带着
+    # traceback 崩在判据之外，看着像产品坏了）；改用纯 Python 检索。
+    n = len(grep_files(col, ["apps/api/src", "apps/worker/src"], root=ROOT,
+                        fixed=True))
     if n == 0:
         alive.append(col)
 ok("HM4 死列在册清单（只许缩）", sorted(alive) == sorted(DEAD_COLS),

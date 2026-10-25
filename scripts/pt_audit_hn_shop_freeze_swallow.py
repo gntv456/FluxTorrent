@@ -41,6 +41,7 @@
 """
 import io
 import os
+import re
 import subprocess
 import sys
 
@@ -73,16 +74,28 @@ def freeze_body(src):
     return src[i:j if j > i else len(src)]
 
 
-def swallow_pair(block):
-    """返回缺项列表：静默吞插的两处形状缺一即算已被改动。"""
-    bad = []
-    if "ON CONFLICT (idempotency_key) DO NOTHING" not in block:
-        bad.append("插单已不再 DO NOTHING（改法与钉桩不符，请同步本闸门）")
-    if "if let Some(oid) = oid" not in block:
-        bad.append("没找到「oid 为空即静默跳过」那段")
-    if "tx.commit().await.map_err(internal)?;\n    Ok(())" not in block:
-        bad.append("提交后无条件 Ok(())（钉桩认这条形状）")
-    return bad
+def swallow_shapes(block):
+    """静默吞插的两处形状是否**同时**在场。
+
+    洞 = 「插单 DO NOTHING（键撞上就静默跳过）」+「提交后无条件 Ok(())」
+    同时成立。**两处必须同时在场才算洞**：
+      * 只留 DO NOTHING ＝ 正常幂等语义（重放不重复下单），不是洞；
+      * 只留无条件 Ok(()) ＝ 函数根本不返回订单号，调用方无从判落空。
+    2026-10-20 实测：产品已按「裁 B」修好（freeze_order 返回 Option<i64>，
+    落空由调用方退款+回滚库存+出声），所以旧洞的两处形状不再同时在场；
+    本闸门从「钉桩在册」改成「洞不许回来」的回归护栏。
+    """
+    has_do_nothing = "ON CONFLICT (idempotency_key) DO NOTHING" in block
+    # 「无条件 Ok(())」＝ 函数返回的不是订单号（洞的另一半：
+    # 调用方根本无从判「落空」）。修好的形状是 Ok(oid)（Option<i64>）。
+    has_silent_ok = re.search(r"Ok\(\(\)\)", block) is not None
+    return has_do_nothing, has_silent_ok
+
+
+def hole_present(block):
+    """洞是否成立（两处形状同时在场）。"""
+    do_nothing, silent_ok = swallow_shapes(block)
+    return do_nothing and silent_ok
 
 
 def buy_span(src):
@@ -95,18 +108,29 @@ def buy_span(src):
 
 
 frz = freeze_body(rd(REPO_SHOP))
-pair = swallow_pair(frz)
 bsp = buy_span(rd(BUY))
-between = "begin()" in bsp or ".begin().await" in bsp
-ok("HN1 洞在册：插单静默 DO NOTHING + 空 oid 仍 Ok(())", pair == [],
-   "缺项=%s" % (pair,))
-ok("HN2 两段写尚未收进同一事务（与 HN1 同一结论的两侧取证）",
-   (not between) and pair == [],
-   "spend 与 freeze_order 之间出现 begin()＝已走方案 A，须撤本闸门钉桩")
-syn = frz.replace("ON CONFLICT (idempotency_key) DO NOTHING", "")
-ok("HN4 承重：摘掉 DO NOTHING 的合成码被 HN1 抓住",
-   len(swallow_pair(freeze_body(syn))) >= 1, "合成缺项=%s"
-   % (swallow_pair(freeze_body(syn)),))
+buy_src = rd(BUY)
+# ① 洞不许回来：两处形状不再同时在场（产品已按「裁 B」修好）
+ok("HN1 静默吞插的洞不再成立（DO NOTHING 与无条件 Ok(()) 不同时候在场）",
+   not hole_present(frz),
+   "两处形状=%s" % (swallow_shapes(frz),))
+# ② 裁 B 的三条腿：落空 ⇒ 退款 + 库存回滚 + 出声（缺一条就又变成
+#    「失败演成成功」）
+refund = (":refund" in buy_src and "earn_spark(" in buy_src
+          and "tracing::error!(" in buy_src)
+ok("HN2 落空必须退款 + 回滚库存 + 出声（裁 B 三条腿）", refund,
+   "退款键=%s 退款调用=%s 出声=%s"
+   % (":refund" in buy_src, "earn_spark(" in buy_src,
+      "tracing::error!(" in buy_src))
+# ③ 承重：把旧洞形状（DO NOTHING + 无条件 Ok(())）合成回来，
+#    判据必须判它仍是洞；修好的形状必须判它不是洞。
+syn_hole = frz.replace("Ok(oid)", "Ok(())")
+ok("HN4 承重：旧洞形状（DO NOTHING + 无条件 Ok(())）必须被判为洞",
+   hole_present(freeze_body(syn_hole)),
+   "合成洞=%s" % (swallow_shapes(freeze_body(syn_hole)),))
+ok("HN4b 承重：修好的形状（返回 Option）必须判为不是洞",
+   not hole_present(freeze_body(frz)),
+   "现网=%s" % (swallow_shapes(freeze_body(frz)),))
 
 if LIVE:
     def psql(q):
@@ -133,6 +157,7 @@ if LIVE:
        int(n_shop) > len(got), "shop 键流水=%s 违例=%s" % (n_shop, len(got)))
 else:
     print("[HN3/HN3b] HN_LIVE=0 跳过活体两条")
+
 
 print("== HN5/HN6 面板 Top 消耗只认钱货两清的订单（P-541）==")
 DSH = rd("apps/api/src/economy_http/dashboard.rs")

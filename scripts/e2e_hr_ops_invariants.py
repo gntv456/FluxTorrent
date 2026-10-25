@@ -27,7 +27,11 @@ import urllib.request
 
 API = os.environ.get("FLUX_API_BASE", "http://127.0.0.1:8080/api/v1")
 TRACKER = os.environ.get("FLUX_TRACKER", "http://127.0.0.1:7070")
-PROBE = int(os.environ.get("FLUX_PROBE", "39"))
+# 探针号：默认现场注册一个普通会员（口令已知）。
+# 老写法写死 id 39 —— 装站数据里 39 号可能是墓碑号（deleted-39-*），
+# 闸门结论不可信。显式给 FLUX_PROBE 时沿用指定号。
+PROBE = int(os.environ["FLUX_PROBE"]) if os.environ.get("FLUX_PROBE") else 0
+PROBE_PW = os.environ.get("FLUX_PROBE_PW", "password123")
 ROOT = 1
 TORRENT = int(os.environ.get("FLUX_TORRENT", "40"))
 INFO_HASH = os.environ.get(
@@ -69,10 +73,11 @@ def jwt(sub, cls, ttl=600):
 
 def call(tok, method, path, body=None):
     data = json.dumps(body).encode() if body is not None else None
+    headers = {"Content-Type": "application/json"}
+    if tok:
+        headers["Authorization"] = "Bearer " + tok
     req = urllib.request.Request(API + path, method=method,
-                                 headers={"Authorization": "Bearer " + tok,
-                                          "Content-Type": "application/json"},
-                                 data=data)
+                                 headers=headers, data=data)
     try:
         with urllib.request.urlopen(req, timeout=25) as r:
             return r.status, json.loads(r.read().decode() or "{}")
@@ -133,7 +138,41 @@ def check(name, ok, detail=""):
           + (("  [%s]" % detail) if detail else ""))
 
 
+def ensure_probe():
+    """现场注册一个普通会员探针（口令已知），返回 uid。
+
+    为什么要自己造：装站数据里 39 号是墓碑号（passkey 作废、pass_hash='!'），
+    写死 id 39 的老脚本拿到的结论是「站点坏了」，其实是自己踩了墓碑号。
+    """
+    global PROBE
+    if PROBE:
+        return PROBE
+    psql("DELETE FROM reg_ip_signups;")
+    code = "e2e" + hashlib.sha1(str(time.time()).encode()).hexdigest()[:24]
+    psql("INSERT INTO invites (inviter_id, code, status, expires_at) "
+         "VALUES (%d, '%s', 0, now() + interval '2 days');" % (ROOT, code))
+    name = "e2e_hr_ops_%d" % (int(time.time()) % 1000000)
+    st, cap = call(None, "GET", "/auth/captcha")
+    capd = (cap or {}).get("data") or {}
+    nums = re.findall(r"\d+", capd.get("question") or "")
+    ans = int(nums[0]) + int(nums[1]) if len(nums) >= 2 else 0
+    st, d = call(None, "POST", "/auth/register", {
+        "username": name, "password": PROBE_PW,
+        "email": "%s@hr.local" % name, "invite_code": code,
+        "captcha_id": capd.get("captcha_id") or "",
+        "captcha_answer": ans})
+    if st != 200:
+        raise RuntimeError("探针号注册失败：HTTP %s %s" % (st, str(d)[:200]))
+    uid = psql("SELECT id FROM users WHERE username = '%s';" % name)
+    if not uid:
+        raise RuntimeError("探针号建号后查不到 id（username=%s）" % name)
+    PROBE = int(uid.splitlines()[-1])
+    print("探针号：%s（uid=%d）" % (name, PROBE))
+    return PROBE
+
+
 def main():
+    ensure_probe()
     print("api=%s probe=%d torrent=%d" % (API, PROBE, TORRENT))
     root = jwt(ROOT, 99)
     if call(root, "GET", "/me")[0] != 200:
@@ -251,6 +290,16 @@ def main():
              "download_locked_by=NULL, uploaded=0, downloaded=0 "
              "WHERE id=%d" % PROBE)
         psql("UPDATE site_settings SET value='yes' WHERE name='enable_hr'")
+        if not os.environ.get("FLUX_PROBE"):
+            # 现场造的探针号按**产品自己的口径**退场：先封禁(status=2)再走
+            # 删号口，由服务端做墓碑化（status=3 + 用户名/邮箱/passkey 改写
+            # + 余额清零并补 user_purge 负流水）。产品码里不得物理删 users 行
+            # （HL2 红灯线），闸门脚本硬删会留悬空流水（HL1 判红）。
+            root = jwt(ROOT, 99)
+            call(root, "POST", "/admin/users/status",
+                 {"user_id": PROBE, "status": 2, "reason": "E2E 探针退场"})
+            call(root, "DELETE", "/admin/users/%d" % PROBE)
+            psql("DELETE FROM invites WHERE code LIKE 'e2e%%'")
         print("\n[cleanup] 探针快照/snatch/流水/促销/开关/下载锁 已复位")
 
     failed = [n for n, ok in results if not ok]

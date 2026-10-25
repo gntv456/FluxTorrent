@@ -5,12 +5,12 @@
 请求 → 真读库」，SQL 字面量全 ASCII：
   S1 目录可见 + 普通成员七个包端点全 403
   S2 taxonomy 往返；在用维度标注不得随整维重建蒸发（section_dict 换 id 而
-     torrent_sections 是 ON DELETE CASCADE）；同类型必须后装先回
-  S3 theme 白名单外键两态都拒 + 色键回滚不被自己锁死；S4 rules 键白名单 +
-     changed 与 will_change 同口径 + rule-try 只读
+     torrent_sections 是 ON DELETE CASCADE）；同类型必须后装先回；S3 theme
+     白名单外键两态都拒 + 色键回滚不被自己锁死；S4 rules 键白名单 + changed
+     与 will_change 同口径 + rule-try 只读
   S5 embed 保存侧六闸包侧一道不能少、不得覆写 builtin、快照拍全、能回滚
-  S6 assets 包没声明的表不碰（种子每张只带一张表，缺键当空集 = 一键清空）
-  S7 收尾：六张表 + 设置键回到基线，探针号墓碑，审计只增不删
+  S6 assets 包没声明的表不碰（缺键当空集 = 一键清空）；S7 收尾：六张表 +
+     设置键回到基线，探针号墓碑，审计只增不删
 
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_bd_content_packs.py
 """
@@ -73,6 +73,7 @@ BASE = {"cats": cnt("categories"), "dict": cnt("section_dict"),
         "kinds": cnt("section_kinds"), "medals": cnt("medals"),
         "frames": cnt("avatar_frames"), "embed": cnt("video_embed_rules"),
         "embed_nb": cnt("video_embed_rules", "NOT builtin"),
+        "embed_builtin": cnt("video_embed_rules", "builtin"),
         "packs": cnt("content_packs"), "tagline": sval("site_tagline"),
         "rule": sval("rule_bank_term_rate"),
         "announce": sval("announce_interval")}
@@ -126,8 +127,7 @@ ENDPOINTS = [
     ("GET", "/admin/content-packs", None),
     ("GET", "/admin/content-packs/export?kind=theme", None),
     ("POST", "/admin/content-packs/import", {"pack": {}, "confirm": False}),
-    ("POST", "/admin/content-packs/install",
-     {"pack_id": "x", "confirm": True}),
+    ("POST", "/admin/content-packs/install", {"pack_id": "x", "confirm": True}),
     ("POST", "/admin/content-packs/rollback", {"id": 1}),
     ("POST", "/admin/content-packs/rule-try",
      {"key": "rule_bank_term_rate", "expr": "1", "vars": {}})]
@@ -163,8 +163,7 @@ s, r = imp(p1, False)
 d = data(r)
 ok("S2c 预检只读：will_change=%s / 现网 %s / 包内 %s" %
    (d.get("will_change"), d.get("current_categories"),
-    d.get("pack_categories")),
-   s == 200 and d.get("dry_run") is True
+    d.get("pack_categories")), s == 200 and d.get("dry_run") is True
    and d.get("pack_categories") == len(cats) + 1
    and cnt("categories") == BASE["cats"], "%s %s" % (s, blob(r)[:120]))
 
@@ -227,7 +226,6 @@ ok("S3b 确认侧同一道闸：400 + 键名，绝不落库",
    s == 400 and BADK in blob(r) and sval(BADK) == BASE["announce"]
    and sval("site_tagline") == BASE["tagline"],
    "%s %s" % (s, blob(r)[:140]))
-
 tp_ok = pack("theme", "bd.theme.ok.%d" % TAG,
              {"settings": {"site_tagline": "BD 探针标语"}})
 s, r = imp(tp_ok, True)
@@ -385,10 +383,12 @@ for label, key, val, kw in MUT:
                            blob(res[1])[:48]))
 ok("S5a 九道形状/安全闸：预检与确认两态都 400 并点名原因（%d 组）"
    % len(MUT), not bad, blob(bad)[:260])
+# 内置规则数按**跑前基线**比，别写死条数：内置规则是站长可增删的
+# （2026-10-20 现场就多出 4 条移动版/av 号/Shorts 变体，写死 5 会假红）。
 ok("S5b 被拒的包一条规则也没写进去（非 builtin 仍 %s 行、内置未动）" % EB,
    cnt("video_embed_rules", "NOT builtin") == EB
    and cnt("video_embed_rules", "id = 1 AND provider = 'bilibili'") == "1"
-   and cnt("video_embed_rules", "builtin") == "5")
+   and cnt("video_embed_rules", "builtin") == BASE["embed_builtin"])
 s, r = imp(epack([GOOD], "bd.embed.ok.%d" % TAG), True)
 rowe = last_row_for("bd.embed.ok.%d" % TAG)
 d = data(r)

@@ -50,7 +50,6 @@ EXTRA_IDS = []
 TOKEN_ID = None
 MT = None
 
-
 def q(sql):
     r = subprocess.run(
         ["docker", "exec", "flux-postgres", "psql", "-U", "flux", "-q",
@@ -59,7 +58,6 @@ def q(sql):
     if r.returncode != 0:
         raise RuntimeError("psql failed: %s" % r.stderr.strip()[:180])
     return r.stdout.strip()
-
 
 def ex(sql):
     r = subprocess.run(
@@ -70,7 +68,6 @@ def ex(sql):
         print("   ! SQL 失败: %s" % (r.stderr or "").strip()[:150])
     return r.returncode
 
-
 def redis_cmd(args):
     """跑一条 redis-cli（密码只在容器内展开，不落本机命令行）。"""
     inner = 'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ' + args
@@ -79,12 +76,10 @@ def redis_cmd(args):
         capture_output=True, text=True, encoding="utf-8")
     return (r.stdout or "").strip()
 
-
 def poison(key):
     """计数键改成非数字：下一次 INCR/GET 必然报错（走同一条 map_err）。"""
     redis_cmd('SET "%s" not-a-number EX 300' % key)
     POISONED.append(key)
-
 
 def unpoison():
     for k in list(POISONED):
@@ -408,10 +403,8 @@ ok("S5 正控：npdl 桶存在，形状是 rl:<scope>:<passkey 哈希前 16>:<�
    buckets, "命中=%s http=%s" % (len(buckets), s))
 win_now = int(time.time()) // 60
 wins = [int(k.rsplit(":", 1)[1]) for k in buckets]
-# 窗口必须落在**键名**里（P-67：把窗口留在值/TTL 里滑动＝换键就清零）。
-# 但 SCAN 返回无序，同一分钟窗之外还会捞到上一分钟的桶，所以判「最新那个
-# 窗口 ≒ 当前分钟」而不是「任意 buckets[0] == 当前分钟」——否则跨过一次
-# 分钟边界就假红（本轮实测红在 29873514 与 29873515 之间）。
+# 窗口必须在**键名**里（P-67）；SCAN 无序且会留着上一分钟的桶，
+# 所以判「最新桶在当前分钟 ±1」而不是判任意 buckets[0]（跨分钟就假红）。
 ok("S5 反控：窗口写进键名，且最新桶落在当前分钟（±1）",
    bool(wins) and win_now - 1 <= max(wins) <= win_now + 1,
    "buckets=%s 当前窗口=%s" % (brief(buckets), win_now))

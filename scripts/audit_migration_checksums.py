@@ -67,20 +67,44 @@ def main():
         raise SystemExit("请在仓库根目录运行本脚本")
     db = db_rows()
     problems, pending, ok = [], [], 0
+    # ① 版本号重复 = 致命的：sqlx 按版本号去重，同号两份文件里只有一份
+    #    会被记账，另一份要么被忽略、要么顶掉已记账的那份——后者报
+    #    `migration NNN was previously applied but has been modified`，
+    #    api 启动即崩（2026-10-20 实测：0407_site_activity 与已应用的
+    #    0407_hr_warn_repair 撞号，api 直接 crash-loop，站点下线）。
+    #    旧实现把第二个同号文件当成「待应用」，于是**正好漏掉**这个
+    #    最致命的形态——先查重号，再谈校验和。
+    seen = {}
+    for name in sorted(os.listdir(MIG_DIR)):
+        if not re.match(r"^\d{4}_.*\.sql$", name):
+            continue
+        seen.setdefault(int(name[:4]), []).append(name)
+    dup = {v: ns for v, ns in seen.items() if len(ns) > 1}
+    for v, ns in sorted(dup.items()):
+        problems.append((v, "DUPLICATE-VERSION", " / ".join(ns)))
     for name in sorted(os.listdir(MIG_DIR)):
         if not re.match(r"^\d{4}_.*\.sql$", name):
             continue
         ver = int(name[:4])
+        if ver in dup:
+            continue
         b = blob(MIG_DIR + "/" + name)
         if b is None:
             problems.append((ver, "NOT-IN-HEAD", name))
             continue
+        # 工作区字节必须等于 canonical（LF）：编辑器把迁移另存成 CRLF 时，
+        # 本机构建恰好能起、干净检出/CI/官方镜像（LF）起不来——
+        # 2026-09-16 与 2026-10-20 两次事故都是这个成因。
+        wt = open(os.path.join(MIG_DIR, name), "rb").read()
+        if wt != b.replace(b"\r\n", b"\n"):
+            problems.append((ver, "WORKTREE-NOT-LF（编辑器另存 CRLF："
+                           "本地能起、干净检出起不来）", name))
         stored = db.pop(ver, None)
         if stored is None:
             pending.append((ver, name))
             continue
         lf = h(b.replace(b"\r\n", b"\n"))
-        crlf = h(b.replace(b"\n", b"\r\n"))
+        crlf = h(b.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
         if stored == lf or stored == h(b):
             ok += 1
         elif stored == crlf:

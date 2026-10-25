@@ -67,8 +67,7 @@ def psql(sql):
          "-d", "fluxtorrent", "-tAc", sql],
         capture_output=True, text=True, encoding="utf-8", errors="replace")
     if p.returncode != 0:
-        print("   psql 失败：%s / %s" % (sql[:50], p.stderr.strip()[:160]))
-        return ""
+        raise RuntimeError("   psql 失败：%s / %s" % (sql[:50], p.stderr.strip()[:160]))
     return p.stdout.strip()
 
 

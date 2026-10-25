@@ -38,6 +38,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+from pt_audit_lib import grep_files as lib_grep_files  # noqa: E402
 from pt_audit_lib import ok, summary  # noqa: E402
 
 LIVE = os.environ.get("HV_LIVE", "1") != "0"
@@ -51,10 +52,8 @@ def rd(rel):
 
 
 def grep_files(pattern, path, glob="*.rs"):
-    r = subprocess.run(
-        ["grep", "-rl", "--include=" + glob, pattern, path],
-        cwd=ROOT, capture_output=True, text=True, errors="replace")
-    return [x.strip() for x in (r.stdout or "").split("\n") if x.strip()]
+    # 纯 Python 检索：Windows 上没有 grep 可执行文件。
+    return lib_grep_files(pattern, [path], root=ROOT, suffix=glob)
 
 
 def ads_readers():

@@ -173,8 +173,12 @@ sa, ba = add("deny", "%s-perm" % NEW, PFX, tok=T92)
 ok("Q2a 写侧要 settings.manage：92 级新增被拒（403）、库里没多行",
    sa == 403 and probe_rows() == "0", "http=%s 探针行=%s"
    % (sa, probe_rows()))
-ok("Q2b 读侧（staff.panel）92 级可读 —— 这条与写侧不同级，已列待拍板",
-   sm == 200, "92 级 list http=%s" % sm)
+# 口径变更（2026-10-20）：本条原判「读侧 92 级可读」，那正是 P-338 修掉的
+# **权限倒挂**（读比写松：class 91 能读全表、写却被 403）。产品已把读口与
+# 写口对齐到同一把权限键 SETTINGS_MANAGE（class 99 起），故判据随之改成
+# 「92 级读同样被拒」——写侧拒（Q2a）、读侧也拒，读写同档才叫对齐。
+ok("Q2b 读侧与写侧同档（SETTINGS_MANAGE）：92 级读也被拒（403）",
+   sm == 403, "92 级 list http=%s（旧行为 200＝读比写松，P-338 已修）" % sm)
 
 # ===== Q3 导入必须逐条点名（P-195） =====
 rules = [

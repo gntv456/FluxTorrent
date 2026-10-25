@@ -38,8 +38,13 @@ LEDGER = {
     "resurrection_hours": "needs-ui",
     "shop_freeze_grace_secs": "needs-ui",
     "preserve_bonus_per_day": "needs-ui",
-    "games_coupon_seed_hours": "needs-ui",
+    # games_coupon_seed_hours 已由 0412（P-469）登记进面板 ⇒ 按本闸门自己的
+    # 规矩从清单撤下（留着会让「已消失」常年红，掩盖真正的新增漏登记）。
     "arcade_season_key": "needs-ui",
+    # 规则集版本号：worker 读（auto_review_log.ruleset_ver 取值来源），
+    # 面板没有这一项（系统级版本戳，不该让人手改）⇒ 待站方拍板。
+    "auto_review_ruleset_ver": "needs-ui",
+    # 规则集版本号：worker 读（auto_review_log.ruleset_ver 取值来源），
     "storage_backend": "infra-sql",
     "risk_shadow_mode": "dedicated-ui",
     "view_hidden": "dedicated-ui",
@@ -49,7 +54,13 @@ LEDGER = {
 DEDICATED = {"risk_shadow_mode": "apps/api/src/repo/cheat_ruleset.rs",
              "view_hidden": "apps/api/src/http/view_layout.rs"}
 # 正则会从 `name LIKE 'module_%'` 里抓出半个键名，不是真键
-ARTIFACTS = {"module_"}
+ARTIFACTS = {"module_",
+            # 自动审种批次（0400+）的写法把**组名**与**取值**也放在
+            # site_settings 附近的字面量里：grp = 'auto_review'、
+            # 规则动作值 'postpone'、模式值 'half'。判据的正则取的是
+            # 「site_settings 之后第一个引号字面量」，于是把这三个值当成了键
+            # ⇒ 登记为非键，免得每次都当新键来吵。
+            "auto_review", "half", "postpone"}
 # 面板已有的键：判据必须认得出它们**不是**孤儿（上一轮我把
 # attachment_authority 误报成孤儿键，就是因为只 grep 代码没查登记）
 PANEL_OK = ("attachment_authority", "attach_max_mib", "attach_quota_mib",
@@ -62,7 +73,7 @@ def psql(q):
          "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
-        print("   psql 失败：%s" % (r.stderr or "").strip()[:170])
+        raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:170])
     return (r.stdout or "").strip()
 
 

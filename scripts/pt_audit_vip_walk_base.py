@@ -248,7 +248,8 @@ def tracker_announce(passkey: str, info_hash_hex: str, size: int = 0,
         "compact": 1,
         "event": event,
         "numwant": 10,
-    })
+    }, quote_via=urllib.parse.quote)  # 严格 %XX：默认 quote_plus 把 0x20
+    # 编成 '+'，tracker 2026-10-25 前不认（含空格字节的 info_hash 全挂）
     try:
         with urllib.request.urlopen(
             f"{TRACKER}/announce/{passkey}?{q}", timeout=15

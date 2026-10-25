@@ -27,6 +27,7 @@ step "web: tsc --noEmit"
 step "仓库门禁脚本（行数/宽度、i18n 基线、模块键/首页板块/术语规则单源、类型契约、迁移校验和）"
 node scripts/line_limit_guard.mjs
 node scripts/i18n_guard.mjs
+node scripts/zh_cn_variant_guard.mjs
 node scripts/home_sections_guard.mjs
 node scripts/module_keys_guard.mjs
 node scripts/prop_wiring_guard.mjs
@@ -40,6 +41,7 @@ node scripts/openapi_cov_guard.mjs
 node scripts/audit_action_guard.mjs
 python3 scripts/validation_i18n_guard.py
 python3 scripts/audit_migration_checksums.py
+python3 scripts/psql_stdin_guard.py
 
 if [ "${1:-}" = "--with-install" ]; then
   step "空库装站闸门（会 down -v 清掉本地数据卷）"
@@ -65,6 +67,8 @@ if [ "${1:-}" = "--with-pt" ]; then
   python scripts/pt_audit_tracker_events.py
   step "权益与到期不变式（0295：待遇读时判定/券拦截与过期/任务手触真实性/写来源闸三态）"
   python scripts/pt_audit_f_entitlement.py
+  step "考核处置菜单不变式（0397：未知权限位不炸结算/流量扣减走流水不被对账抹平/实扣文案/站内信告知）"
+  python scripts/pt_audit_exam_penalty.py
 fi
 
 printf '\n本地闸门通过。\n'
