@@ -145,19 +145,21 @@ pub(crate) async fn works_list(
     let _auth = require_auth(&req, &state).await?;
     let limit = q.limit.unwrap_or(24).clamp(1, 100);
     let page = q.page.unwrap_or(1).max(1);
-    let offset = (page - 1) * limit;
+    // 统一走分页助手：旧式手写偏移（页码减一乘每页条数）在极端页码下会
+    // 绕成**负 offset**（release 构建）⇒ PG 报「OFFSET must not be negative」
+    // 打成 500；助手把页码夹在 1..=1_000_000 并用饱和乘法 ⇒ 极端页码只是空页。
+    let offset = crate::dto::page_offset(page, limit);
     let pat = like_of(&q);
 
-    let items: Vec<WorkRow> = sqlx::query_as(&works_sql::list_sql(order_of(
-        q.sort.as_deref(),
-    )))
-    .bind(q.category_id)
-    .bind(&pat)
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(&state.repo.read_db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let items: Vec<WorkRow> =
+        sqlx::query_as(&works_sql::list_sql(order_of(q.sort.as_deref())))
+            .bind(q.category_id)
+            .bind(&pat)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.repo.read_db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
 
     let total: i64 = sqlx::query_scalar(&works_sql::count_sql())
         .bind(q.category_id)
@@ -171,12 +173,13 @@ pub(crate) async fn works_list(
     let mut by: std::collections::HashMap<String, Vec<TorrentRow>> =
         std::collections::HashMap::new();
     if !keys.is_empty() {
-        let seeds: Vec<SeedRow> =
-            sqlx::query_as(&works_rows_sql::batch_sql(&promo::lateral_latest()))
-                .bind(&keys)
-                .fetch_all(&state.repo.read_db)
-                .await
-                .map_err(|e| DomainError::Internal(e.into()))?;
+        let seeds: Vec<SeedRow> = sqlx::query_as(&works_rows_sql::batch_sql(
+            &promo::lateral_latest(),
+        ))
+        .bind(&keys)
+        .fetch_all(&state.repo.read_db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
         for s in seeds {
             by.entry(s.work_key).or_default().push(s.tor);
         }

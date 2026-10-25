@@ -204,13 +204,8 @@ async fn totp_disable(
     // P-497：关闭 2FA 是永久移除第二因子。P-408 只堵了重放，失败仍不限次：
     // 现网实测 12 次错码全是 400/1002、没有一次 429。每码在 ±1 窗口内有效，
     // 期望约 33 万次就能试中——会话被偷即可在线爆破关掉 2FA。
-    crate::http::rate_window(
-        &state,
-        &format!("tfadisable:{}", auth.id),
-        5,
-        60,
-    )
-    .await?;
+    crate::http::rate_window(&state, &format!("tfadisable:{}", auth.id), 5, 60)
+        .await?;
     let secret: Option<String> = sqlx::query_scalar(
         "SELECT totp_secret FROM users WHERE id = $1 AND totp_enabled",
     )

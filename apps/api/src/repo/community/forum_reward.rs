@@ -61,10 +61,7 @@ pub async fn reply_reward(repo: &Repo) -> i64 {
 
 /// 当初真发放了多少（无流水行 = 当时没发过，回 0 = 没有可收回的）。
 /// 读失败必须出声：吞掉错误会退化成「不收回」，白拿火花没人知道。
-pub async fn granted_by_idem(
-    repo: &Repo,
-    key: &str,
-) -> DomainResult<i64> {
+pub async fn granted_by_idem(repo: &Repo, key: &str) -> DomainResult<i64> {
     let v: Option<i64> = sqlx::query_scalar(
         "SELECT sum(amount) FROM spark_ledger WHERE idempotency_key = $1",
     )

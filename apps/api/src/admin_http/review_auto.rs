@@ -41,9 +41,7 @@ pub(crate) async fn sweep_overturns(db: &sqlx::PgPool) {
     use std::collections::HashMap;
     let mut per_rule: HashMap<String, i32> = HashMap::new();
     for (log_id, _v, hits) in &rows {
-        if let Ok(arr) =
-            serde_json::from_str::<serde_json::Value>(hits)
-        {
+        if let Ok(arr) = serde_json::from_str::<serde_json::Value>(hits) {
             if let Some(list) = arr.as_array() {
                 for e in list {
                     if let Some(r) = e.get("rule").and_then(|v| v.as_str()) {
@@ -122,8 +120,9 @@ pub(crate) async fn sweep_overturns(db: &sqlx::PgPool) {
     .unwrap_or(5);
     if threshold > 0 {
         let today: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM auto_review_log WHERE human_decided_at >=  \
-             date_trunc('day', now())",
+            "SELECT count(*) FROM auto_review_log WHERE human_decided_at >= \
+             (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+             AT TIME ZONE 'Asia/Shanghai')",
         )
         .bind(0)
         .fetch_one(db)
@@ -169,15 +168,14 @@ pub(crate) async fn engine_config_from_db(
 ) -> flux_shared::auto_review::EngineConfig {
     // 与 worker 侧逐键同口径；抽出共享会引入跨 crate 复制，这里宁可
     // 保留两份薄读取（键清单以 0400 迁移为唯一真源）
-    let rows: Vec<(String, String)> =
-        sqlx::query_as(
-            "SELECT name, value FROM site_settings \
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings \
              WHERE grp = 'auto_review'",
-        )
-            .bind(0)
-            .fetch_all(db)
-            .await
-            .unwrap_or_default();
+    )
+    .bind(0)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
     let map: std::collections::HashMap<String, String> =
         rows.into_iter().collect();
     let mut cfg = flux_shared::auto_review::EngineConfig::defaults();
@@ -193,7 +191,11 @@ pub(crate) async fn engine_config_from_db(
     cfg.enabled = gb("auto_review_enabled", false);
     cfg.mode = {
         let m = g("auto_review_mode");
-        if m.is_empty() { "shadow".into() } else { m }
+        if m.is_empty() {
+            "shadow".into()
+        } else {
+            m
+        }
     };
     cfg.delay_sec = gi("auto_review_delay_sec", 90);
     cfg.daily_cap = gi("auto_review_daily_cap", 0);
@@ -202,7 +204,11 @@ pub(crate) async fn engine_config_from_db(
     cfg.dupe_threshold_pct = gi("arule_dupe_check_threshold", 92) as i32;
     cfg.title_level = {
         let l = g("arule_title_format_level");
-        if l.is_empty() { "warn".into() } else { l }
+        if l.is_empty() {
+            "warn".into()
+        } else {
+            l
+        }
     };
     cfg.title_template = g("auto_review_title_template");
     cfg.title_required = g("auto_review_title_required")
@@ -231,9 +237,9 @@ pub(crate) async fn engine_config_from_db(
         "arule_title_format",
     ] {
         let enabled = gb(&format!("{id}_enabled"), true);
-        let action = flux_shared::auto_review::Action::parse(&g(
-            &format!("{id}_action"),
-        ));
+        let action = flux_shared::auto_review::Action::parse(&g(&format!(
+            "{id}_action"
+        )));
         cfg.rules.insert(id, (enabled, action));
     }
     cfg

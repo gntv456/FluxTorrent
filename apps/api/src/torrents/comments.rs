@@ -92,9 +92,7 @@ pub async fn add_comment_as(
     if body.chars().count() > COMMENT_MAX_CHARS {
         // 整句字面量：校验详情要能按原句在 validation_details.tsv 查到
         // （动态串条数被 validation_i18n_guard 锁死，同 donate_order 口径）
-        return Err(DomainError::Validation(
-            "评论太长，请精简后再发".into(),
-        ));
+        return Err(DomainError::Validation("评论太长，请精简后再发".into()));
     }
     // 归一：目标必须存在且属于同一种子；回复的回复挂到根
     let (root_id, reply_to_user): (Option<i64>, Option<String>) =

@@ -143,9 +143,9 @@ impl<T: DeserializeOwned + 'static> FromRequest for OptJson<T> {
                 tracing::warn!(
                     "可选请求体解析失败，已拒绝而非按缺省放行：{detail}"
                 );
-                DomainError::Validation(
-                    crate::path_cfg::humanize_parse_error(&detail),
-                )
+                DomainError::Validation(crate::path_cfg::humanize_parse_error(
+                    &detail,
+                ))
                 .into()
             })
         })
@@ -216,7 +216,10 @@ mod opt_json_tests {
         let (code, j) = post(br#"{"count":5}"#).await;
         assert_eq!(code, 400, "未知键必须拒：{j}");
         assert!(
-            j["message"].as_str().unwrap_or("").contains("含未识别的字段"),
+            j["message"]
+                .as_str()
+                .unwrap_or("")
+                .contains("含未识别的字段"),
             "未知键要点名：{j}"
         );
         // ⑤ JSON 截断 ⇒ 1002，不是「当没填」

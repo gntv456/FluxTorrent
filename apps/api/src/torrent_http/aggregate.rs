@@ -282,7 +282,11 @@ async fn assemble(
     }
     Ok(TorrentAggregate {
         torrent: shared.torrent,
-        detail: DetailViewer { detail, bookmarked, thanked },
+        detail: DetailViewer {
+            detail,
+            bookmarked,
+            thanked,
+        },
         files: shared.files,
         thanks: thanks.unwrap_or_default(),
         comments: match comments {

@@ -26,6 +26,9 @@ struct TopicRow {
     /// 精华帖（0099，NP digest 口径）
     #[sqlx(default)]
     digest: bool,
+    /// 公告（0396）：版主标记，列表加公告徽标（样图 coral 底徽章）
+    #[sqlx(default)]
+    notice: bool,
     /// 帖子类型（0115）：normal|bounty|poll|lottery
     #[sqlx(default)]
     topic_type: String,
@@ -135,13 +138,13 @@ pub(crate) async fn topic_list(
         "new"
     };
     let order = if sort == "hot" {
-        "t.sticky DESC, \
+        "t.sticky DESC, t.notice DESC, \
          ((SELECT count(*)-1 FROM posts p WHERE p.topic_id = t.id) * 2 \
            + (SELECT count(*) FROM post_likes pl WHERE pl.topic_id = t.id) \
            + t.views * 0.1) \
           / (1 + EXTRACT(EPOCH FROM (now() - COALESCE(t.last_post_at, t.created_at))) / 86400.0) DESC, t.id DESC"
     } else {
-        "t.sticky DESC, t.id DESC"
+        "t.sticky DESC, t.notice DESC, t.id DESC"
     };
     // 标签筛选（0123）：EXISTS 谓词拼接（tag 解析成 i32 后格式化，无注入面），参数位次随谓词平移
     let tag_id = q
@@ -153,8 +156,9 @@ pub(crate) async fn topic_list(
         .map(|tg| format!(" AND EXISTS(SELECT 1 FROM topic_tags tt WHERE tt.topic_id = t.id AND tt.tag_id = {tg})"))
         .unwrap_or_default();
     // 类型筛选：白名单常量，且**列表与计数共用同一段**（否则 total 会
-    // 数出一批空页）。
+    // 数出一批空页）。notice=公告（0396）。
     let type_filter = match q.r#type.as_deref() {
+        Some("notice") => " AND t.notice",
         Some("sticky") => " AND t.sticky",
         Some("digest") => " AND t.digest",
         _ => "",
@@ -165,7 +169,7 @@ pub(crate) async fn topic_list(
             greatest( \
               (SELECT count(*) FROM posts p WHERE p.topic_id = t.id) - 1, 0 \
             ) AS replies, t.views, t.last_post_at, \
-            t.sticky, t.locked, t.digest, t.topic_type, \
+            t.sticky, t.locked, t.digest, t.notice, t.topic_type, \
             (SELECT r.last_post_id FROM topic_reads r WHERE r.user_id = $2 AND r.topic_id = t.id) AS read_last_post_id, \
             EXISTS(SELECT 1 FROM posts p2 WHERE p2.topic_id = t.id \
                    AND p2.id > COALESCE((SELECT r2.last_post_id FROM topic_reads r2 \
@@ -245,14 +249,26 @@ mod tests {
         assert_eq!(page_size_of(-7, None), TOPIC_PAGE_SIZE, "负数同缺省");
         assert_eq!(page_size_of(2, Some(20)), 2, "偏好压过站点默认");
         assert_eq!(page_size_of(0, Some(20)), 20, "站点默认生效（P-450）");
-        assert_eq!(page_size_of(0, Some(0)), TOPIC_PAGE_SIZE,
-                   "站点那格清空=回落常量");
-        assert_eq!(page_size_of(0, Some(-1)), TOPIC_PAGE_SIZE,
-                   "脏站点值不折成 0 页");
-        assert_eq!(page_size_of(0, Some(9_999)), TOPIC_PAGE_MAX,
-                   "站点默认夹到元数据上限");
-        assert_eq!(page_size_of(100_000, None), TOPIC_PAGE_MAX,
-                   "自由数字要夹住");
+        assert_eq!(
+            page_size_of(0, Some(0)),
+            TOPIC_PAGE_SIZE,
+            "站点那格清空=回落常量"
+        );
+        assert_eq!(
+            page_size_of(0, Some(-1)),
+            TOPIC_PAGE_SIZE,
+            "脏站点值不折成 0 页"
+        );
+        assert_eq!(
+            page_size_of(0, Some(9_999)),
+            TOPIC_PAGE_MAX,
+            "站点默认夹到元数据上限"
+        );
+        assert_eq!(
+            page_size_of(100_000, None),
+            TOPIC_PAGE_MAX,
+            "自由数字要夹住"
+        );
         assert_eq!(page_size_of(1, None), 1, "下限不夹成 0 页");
     }
 }

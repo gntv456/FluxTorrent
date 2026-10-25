@@ -1,6 +1,7 @@
 //! Web Push 加密与鉴权后端（从 push_http.rs 按域拆出）：
 //! RFC 8291 载荷加密（aes128gcm）、RFC 8292 VAPID JWT、单订阅投递。
 
+use super::endpoint::guard_endpoint;
 use aes_gcm::aead::{Aead, KeyInit, Payload};
 use aes_gcm::Aes128Gcm;
 use base64::Engine;
@@ -10,7 +11,6 @@ use p256::elliptic_curve::sec1::FromEncodedPoint;
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 use p256::{EncodedPoint, PublicKey};
 use sha2::Sha256;
-use super::endpoint::guard_endpoint;
 
 pub(super) fn b64url() -> base64::engine::GeneralPurpose {
     base64::engine::general_purpose::URL_SAFE_NO_PAD

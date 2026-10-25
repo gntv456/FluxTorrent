@@ -77,8 +77,7 @@ pub async fn push_version(
     created_by: Option<i64>,
 ) -> DomainResult<i64> {
     let mut tx = repo.db.begin().await.map_err(int)?;
-    let v =
-        push_version_tx(&mut tx, source, note, changed, created_by).await?;
+    let v = push_version_tx(&mut tx, source, note, changed, created_by).await?;
     tx.commit().await.map_err(int)?;
     Ok(v)
 }

@@ -159,7 +159,8 @@ pub(super) async fn prior_draw_rows(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 同一把尺子（P-361）：没有快照行时按流水净额回，不写死 0
-    let shard_balance = super::shards::shard_balance(&mut **tx, user_id).await?;
+    let shard_balance =
+        super::shards::shard_balance(&mut **tx, user_id).await?;
     let rows = serde_json::json!(rows
         .iter()
         .map(|(seq, ty, rar, card, shards, pity, wp, is_new)| {

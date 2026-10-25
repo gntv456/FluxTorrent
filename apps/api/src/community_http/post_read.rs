@@ -52,13 +52,15 @@ pub(crate) async fn topic_detail(
         bool,
         bool,
         bool,
+        bool,
         String,
         i64,
         String,
         Option<i64>,
     )> = sqlx::query_as(
-        "SELECT t.title, f.id, f.name, t.user_id, t.sticky, t.locked, t.digest, t.topic_type, \
-                t.bounty_spark, t.bounty_status, t.bounty_post_id \
+        "SELECT t.title, f.id, f.name, t.user_id, \
+                t.sticky, t.locked, t.digest, t.notice, \
+                t.topic_type, t.bounty_spark, t.bounty_status, t.bounty_post_id \
          FROM topics t LEFT JOIN forums f ON f.id = t.forum_id WHERE t.id = $1",
     )
     .bind(tid)
@@ -73,6 +75,7 @@ pub(crate) async fn topic_detail(
         sticky,
         locked,
         digest,
+        notice,
         topic_type,
         bounty_spark,
         bounty_status,
@@ -273,6 +276,7 @@ pub(crate) async fn topic_detail(
         "sticky": sticky,
         "locked": locked,
         "digest": digest,
+        "notice": notice,
         "topic_type": topic_type,
         "bounty_spark": bounty_spark,
         "bounty_status": bounty_status,

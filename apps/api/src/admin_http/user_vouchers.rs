@@ -133,7 +133,8 @@ pub(super) async fn admin_voucher_void(
         // 的「资源不存在」。真实原因只有一个：这个口管不到那些券。
         return Err(DomainError::Validation(
             "该会员没有可撤销的券：本口只撤「管理员发放 + 未使用 + 未绑定」\
-             的券；已核销、生效中、商城或任务所得不在范围内".into(),
+             的券；已核销、生效中、商城或任务所得不在范围内"
+                .into(),
         ));
     }
     state

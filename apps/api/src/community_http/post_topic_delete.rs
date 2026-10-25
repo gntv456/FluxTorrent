@@ -10,8 +10,8 @@ use crate::dto::ok;
 use crate::economy_http::{clawback_spark, earn_spark};
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
-use crate::repo::community::forum_reward;
 use crate::repo::community::follows as repo_follows;
+use crate::repo::community::forum_reward;
 use crate::repo::community::topic_delete as repo_td;
 use crate::state::AppState;
 use actix_web::{delete, web, HttpRequest, HttpResponse};
@@ -21,14 +21,14 @@ use actix_web::{delete, web, HttpRequest, HttpResponse};
     delete,
     path = "/api/v1/forums/topics/{id}",
     tag = "社区/论坛",
-    description = "删主题（作者或版主；级联删回帖）。",
+    description = "删主题（仅版主；级联删回帖）。",
     params(
         ("id" = i64, description = "主题 id"),
     ),
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
-        (status = 403, description = "非作者且无删帖权（code 2003）"),
+        (status = 403, description = "无删帖权（仅版主）（code 2003）"),
         (status = 422, description = "参数校验失败（code 1002）")))]
 #[delete("/forums/topics/{id}")]
 pub(crate) async fn topic_delete(

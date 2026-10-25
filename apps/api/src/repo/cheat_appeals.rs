@@ -39,13 +39,16 @@ pub async fn case_owned_by_user(
     .await
 }
 
-/// 未结申诉计数（MAX_OPEN 上限判据）。
+/// 未结作弊申诉计数（MAX_OPEN 上限判据）。
+/// 只算 `kind='cheat'`：通用申诉（hr/ban）占用的是另一条配额，
+/// 混在一起会让账户健康页显示「可申诉」而提交口回「已达上限」。
 pub async fn open_appeal_count(
     repo: &Repo,
     uid: i64,
 ) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(
-        "SELECT count(*) FROM appeals WHERE user_id = $1 AND status = 'open'",
+        "SELECT count(*) FROM appeals \
+         WHERE user_id = $1 AND kind = 'cheat' AND status = 'open'",
     )
     .bind(uid)
     .fetch_one(&repo.db)

@@ -187,6 +187,11 @@ mod user_vouchers;
 
 pub use agent_rules::*;
 pub use audit::*;
+pub use auto_review_admin::{logs as ar_logs, stats as ar_stats};
+pub use auto_review_ops::{
+    bulk_restore as ar_bulk_restore, replay as ar_replay,
+};
+pub use auto_review_preset::apply as ar_apply;
 pub use cheat_accuracy::*;
 pub use cheat_ruleset_admin::*;
 pub use deny::*;
@@ -204,12 +209,9 @@ pub use reg_quiz_bank::{reg_quiz_delete, reg_quiz_import};
 pub use reports::*;
 pub use reports_resolve::*;
 pub use review::*;
-pub use review_batch::*;
 pub use review_auto::*;
 pub use review_auto_decide::*;
-pub use auto_review_admin::{logs as ar_logs, stats as ar_stats};
-pub use auto_review_ops::{bulk_restore as ar_bulk_restore, replay as ar_replay};
-pub use auto_review_preset::apply as ar_apply;
+pub use review_batch::*;
 pub use roles::*;
 pub use site::*;
 pub use site_put::*;

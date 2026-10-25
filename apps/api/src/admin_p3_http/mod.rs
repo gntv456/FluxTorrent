@@ -30,6 +30,7 @@ pub(crate) mod meta;
 mod mount;
 mod ops;
 mod ops_jobs;
+mod penalty_menu;
 mod promo_kinds;
 mod promo_tiers;
 mod rename_logs;
@@ -91,3 +92,24 @@ pub use update_check::*;
 pub use user_props::*;
 pub use user_rename::*;
 pub use users_batch::*;
+/// 后台字典类枚举白名单校验（与库里的 CHECK 约束同源）。
+///
+/// 库里有一堆 `col = ANY (ARRAY[...])` 的 CHECK 约束（tasks.kind、
+/// tasks.period、tag_dict.kind、ads.position…）。约束只在**落库那一刻**
+/// 才炸 ⇒ 没在 API 层先拦的话，管理员填错一个词收到的就是「内部错误」
+/// 500，看不出是自己填错还是站点坏了。集中一个校验口，各处复用。
+pub(crate) fn check_enum(
+    field: &str,
+    value: Option<&str>,
+    allowed: &[&str],
+) -> crate::errors::DomainResult<()> {
+    if let Some(v) = value {
+        if !allowed.contains(&v) {
+            return Err(crate::errors::DomainError::Validation(format!(
+                "{field} 只能是 {}",
+                allowed.join(" / ")
+            )));
+        }
+    }
+    Ok(())
+}

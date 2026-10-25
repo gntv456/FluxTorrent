@@ -20,11 +20,7 @@ fn snatch_fw(seeding_only: bool) -> String {
     format!(
         "snatches s JOIN torrents t ON t.id = s.torrent_id \
          WHERE s.user_id = $1{}",
-        if seeding_only {
-            " AND s.seeding"
-        } else {
-            ""
-        }
+        if seeding_only { " AND s.seeding" } else { "" }
     )
 }
 

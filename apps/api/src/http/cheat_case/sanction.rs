@@ -154,11 +154,7 @@ pub async fn cheat_case_resolve(
     // ③ 回收虚报上传量（P-403）：锁行、夹 0、流水口径一律收在
     // repo/cheat_reverse.rs::apply_reclaim_tx，返回值就是反向解除只许回补的数。
     let reclaim_applied = crate::repo::cheat_reverse::apply_reclaim_tx(
-        &mut tx,
-        uid,
-        id,
-        auth.id,
-        reclaim_up,
+        &mut tx, uid, id, auth.id, reclaim_up,
     )
     .await?;
     // ④ sanction JSONB + 关案

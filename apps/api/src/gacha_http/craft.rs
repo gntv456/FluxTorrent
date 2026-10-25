@@ -94,11 +94,7 @@ pub(super) async fn gacha_dismantle(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let uid = auth.id;
-    let idem = format!(
-        "gacha:dis:{}:{}",
-        uid,
-        body.idempotency_key.trim(),
-    );
+    let idem = format!("gacha:dis:{}:{}", uid, body.idempotency_key.trim(),);
     check_idem(&idem)?;
     let mut tx = state
         .repo
@@ -175,11 +171,7 @@ pub(super) async fn gacha_exchange(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let uid = auth.id;
-    let idem = format!(
-        "gacha:exc:{}:{}",
-        uid,
-        body.idempotency_key.trim(),
-    );
+    let idem = format!("gacha:exc:{}:{}", uid, body.idempotency_key.trim(),);
     check_idem(&idem)?;
     let mut tx = state
         .repo
@@ -248,11 +240,7 @@ pub(super) async fn gacha_levelup(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let uid = auth.id;
-    let idem = format!(
-        "gacha:lv:{}:{}",
-        uid,
-        body.idempotency_key.trim(),
-    );
+    let idem = format!("gacha:lv:{}:{}", uid, body.idempotency_key.trim(),);
     check_idem(&idem)?;
     let mut tx = state
         .repo

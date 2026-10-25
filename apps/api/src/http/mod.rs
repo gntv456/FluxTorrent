@@ -219,6 +219,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(link_public_list)
         .service(link_apply)
         .service(link_admin_list)
+        .service(link_create)
         .service(link_update)
         .service(link_delete)
         .service(crate::staff_http::faq_list)

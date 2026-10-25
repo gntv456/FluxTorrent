@@ -153,7 +153,11 @@ mod tests {
             r#"{"idempotency_key":"abcdefgh","count":5}"#,
         );
         let msg = bad.err().map(|e| e.to_string()).unwrap_or_default();
-        assert!(msg.contains("unknown field"), "应报 unknown field：%{}", msg);
+        assert!(
+            msg.contains("unknown field"),
+            "应报 unknown field：%{}",
+            msg
+        );
         assert!(msg.contains("count"), "报错要点名那个键：%{}", msg);
     }
 }

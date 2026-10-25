@@ -42,8 +42,9 @@ pub(crate) fn is_public_ip(ip: IpAddr) -> bool {
 
 /// endpoint 出网闸门：取主机端口（fail-close）→ 解析 → 逐 IP 判公网。
 /// 返回 `(host, addrs)` 供调用方把地址钉进 HTTP client；`None` = 拒。
-pub(crate) async fn guard_endpoint(endpoint: &str)
-    -> Option<(String, Vec<SocketAddr>)> {
+pub(crate) async fn guard_endpoint(
+    endpoint: &str,
+) -> Option<(String, Vec<SocketAddr>)> {
     let (host, port) = endpoint_host_port(endpoint)?;
     let bare = host.trim_start_matches('[').trim_end_matches(']');
     let addrs: Vec<SocketAddr> = match bare.parse::<IpAddr>() {
@@ -75,11 +76,25 @@ mod tests {
     /// 内网/特殊用途一律不算公网：逐条点名，白名单写反就是默认放行。
     #[test]
     fn private_ranges_are_not_public() {
-        for s in ["127.0.0.1", "10.0.0.9", "172.16.5.5", "192.168.1.1",
-                  "169.254.169.254", "100.64.0.1", "100.127.255.255",
-                  "0.0.0.0", "0.1.2.3", "224.0.0.1", "255.255.255.255",
-                  "240.0.0.1", "::1", "fc00::1", "fd12:3456::7",
-                  "::ffff:127.0.0.1", "::"] {
+        for s in [
+            "127.0.0.1",
+            "10.0.0.9",
+            "172.16.5.5",
+            "192.168.1.1",
+            "169.254.169.254",
+            "100.64.0.1",
+            "100.127.255.255",
+            "0.0.0.0",
+            "0.1.2.3",
+            "224.0.0.1",
+            "255.255.255.255",
+            "240.0.0.1",
+            "::1",
+            "fc00::1",
+            "fd12:3456::7",
+            "::ffff:127.0.0.1",
+            "::",
+        ] {
             assert!(!is_public_ip(ip(s)), "{} 不能算公网", s);
         }
     }
@@ -87,8 +102,15 @@ mod tests {
     /// 公网侧也要有反例，否则「全判非公网」这种实现能骗过上一条。
     #[test]
     fn public_addresses_are_public() {
-        for s in ["8.8.8.8", "1.1.1.1", "172.32.0.1", "100.63.0.1",
-                  "100.128.0.1", "2001:4860:4860::8888", "13.225.0.1"] {
+        for s in [
+            "8.8.8.8",
+            "1.1.1.1",
+            "172.32.0.1",
+            "100.63.0.1",
+            "100.128.0.1",
+            "2001:4860:4860::8888",
+            "13.225.0.1",
+        ] {
             assert!(is_public_ip(ip(s)), "{} 应是公网", s);
         }
     }

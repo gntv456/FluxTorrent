@@ -41,11 +41,28 @@ pub(crate) async fn forum_side(
     })))
 }
 
+/// 热度标阈值缺省值（0397 设置项缺失/被填成非数字时的兜底，与旧硬编码一致）
+const HOT_VIEWS_DEFAULT: i64 = 1000;
+
+/// 读「话题热度标阈值」设置（site_settings.forum_hot_views）。
+/// 0 = 关闭热度标（阈值 0 时判定式恒 false）；负数/垃圾值回落默认。
+async fn hot_views_threshold(state: &AppState) -> i64 {
+    let raw: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'forum_hot_views'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
+    raw.and_then(|v| v.trim().parse::<i64>().ok())
+        .filter(|n| *n >= 0)
+        .unwrap_or(HOT_VIEWS_DEFAULT)
+}
+
 #[derive(Deserialize)]
 struct RecentQuery {
-    /// 类型筛选（对齐样图筛选行）：sticky=只看置顶 / digest=只看精华。
-    /// 样图还有「只看公告」一档——本站 topic_type 没有公告类型，
-    /// 不为装饰徽章凭空加字段（与版块页同一口径）。
+    /// 类型筛选（对齐样图筛选行四档）：notice=只看公告 / sticky=只看置顶 /
+    /// digest=只看精华，缺省全量。白名单之外一律回落全量。
     #[serde(default)]
     r#type: Option<String>,
 }
@@ -70,16 +87,20 @@ pub(crate) async fn forum_recent(
     let auth = require_auth(&req, &state).await?;
     // 白名单校验（H 层）：非法值回落全量，不拿 400 打断浏览
     let only = match q.r#type.as_deref() {
+        Some("notice") => Some("notice"),
         Some("sticky") => Some("sticky"),
         Some("digest") => Some("digest"),
         _ => None,
     };
+    // 热度标阈值走管理端设置（0397）：0 = 关闭，缺省 1000
+    let hot_min = hot_views_threshold(&state).await;
     let topics = repo_side::recent_topics(
         &state.repo,
         auth.class_id,
         auth.id,
         auth.class_id >= 93,
         only,
+        hot_min,
     )
     .await?;
     Ok(ok(serde_json::json!({ "topics": topics })))

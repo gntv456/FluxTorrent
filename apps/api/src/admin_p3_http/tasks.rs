@@ -8,6 +8,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
+use super::penalty_menu::validate_fail_penalty;
 use super::staff;
 
 // ============ P3-14 任务定义 CRUD ============
@@ -45,6 +46,9 @@ struct TaskRow {
     quota_total: i32,
     #[sqlx(default)]
     sort: i32,
+    /// 0397：考核不达标处置菜单（多选+参数化；普通任务不消费）
+    #[sqlx(default)]
+    fail_penalty: serde_json::Value,
 }
 
 #[get("/admin/tasks")]
@@ -59,7 +63,8 @@ async fn tasks_list(
     let rows: Vec<TaskRow> = sqlx::query_as(
         "SELECT id, name, metric, starts_at, ends_at, target_class, reward, penalty, claim_limit, \
                 kind, auto_assign, period, \
-                duration_days, subtitle, tier, fee, quota_total, sort \
+                duration_days, subtitle, tier, fee, quota_total, sort, \
+                fail_penalty \
          FROM tasks ORDER BY sort, id DESC",
     )
     .fetch_all(&state.repo.db)
@@ -106,8 +111,34 @@ struct TaskReq {
     quota_total: Option<i32>,
     #[serde(default)]
     sort: Option<i32>,
+    /// 0397 考核不达标处置菜单（[{kind,amount,target,pages}...]）。
+    /// 校验：kind 必须在菜单内、数值项 amount>=0——配置错误在保存时
+    /// 拦下，而不是等到结算夜静默不生效。
+    #[serde(default)]
+    fail_penalty: Option<serde_json::Value>,
 }
 
+// 0397 处置菜单校验拆至 penalty_menu.rs（300 行门禁）
+
+/// tasks.kind / tasks.period 的白名单（与库里两个 CHECK 约束同源）。
+///
+/// 约束只在落库那一刻才炸 ⇒ 管理员填错一个词，收到的就是「内部错误」
+/// 500（看不出是自己填错还是站点坏了）。这里先拦成可读的参数校验错误。
+fn check_kind_period(body: &TaskReq) -> DomainResult<()> {
+    let kind = body
+        .kind
+        .as_deref()
+        .map(str::trim)
+        .filter(|k| !k.is_empty());
+    let period = body
+        .period
+        .as_deref()
+        .map(str::trim)
+        .filter(|p| !p.is_empty());
+    super::check_enum("kind", kind, &["task", "onboard", "periodic"])?;
+    super::check_enum("period", period, &["once", "monthly", "quarterly"])?;
+    Ok(())
+}
 #[post("/admin/tasks")]
 async fn task_add(
     req: HttpRequest,
@@ -122,13 +153,18 @@ async fn task_add(
             "任务名必填且结束时间需晚于开始".into(),
         ));
     }
+    check_kind_period(&body)?;
+    if let Some(fp) = &body.fail_penalty {
+        validate_fail_penalty(&state.repo.db, fp).await?;
+    }
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO tasks (name, metric, starts_at, ends_at, target_class, reward, penalty, claim_limit, \
                             kind, auto_assign, period, \
-                            duration_days, subtitle, tier, fee, quota_total, sort) \
+                            duration_days, subtitle, tier, fee, quota_total, sort, fail_penalty) \
          VALUES ($1, COALESCE($2, '{}'::jsonb), $3, $4, COALESCE($5, 0), COALESCE($6, 0), COALESCE($7, 0), $8, \
                  COALESCE($9, 'task'), COALESCE($10, FALSE), COALESCE($11, 'once'), \
-                 COALESCE($12, 30), $13, $14, COALESCE($15, 0), COALESCE($16, 200), COALESCE($17, 0)) \
+                 COALESCE($12, 30), $13, $14, COALESCE($15, 0), COALESCE($16, 200), COALESCE($17, 0), \
+                 COALESCE($18, '[]'::jsonb)) \
          RETURNING id",
     )
     .bind(body.name.trim())
@@ -148,6 +184,9 @@ async fn task_add(
     .bind(body.fee)
     .bind(body.quota_total)
     .bind(body.sort)
+    .bind(body.fail_penalty.clone().unwrap_or(
+        serde_json::Value::Array(vec![]),
+    ))
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -169,6 +208,10 @@ async fn task_update(
     if body.ends_at <= body.starts_at {
         return Err(DomainError::Validation("结束时间需晚于开始".into()));
     }
+    check_kind_period(&body)?;
+    if let Some(fp) = &body.fail_penalty {
+        validate_fail_penalty(&state.repo.db, fp).await?;
+    }
     // subtitle / tier 直赋（允许清空）：后台表单每次都提交完整对象，故传 None 即为清空意图
     let n = sqlx::query(
         "UPDATE tasks SET name = $2, metric = COALESCE($3, metric), starts_at = $4, ends_at = $5, \
@@ -177,7 +220,8 @@ async fn task_update(
            kind = COALESCE($10, kind), auto_assign = COALESCE($11, auto_assign), \
            period = COALESCE($12, period), \
            duration_days = COALESCE($13, duration_days), subtitle = $14, tier = $15, \
-           fee = COALESCE($16, fee), quota_total = COALESCE($17, quota_total), sort = COALESCE($18, sort) \
+           fee = COALESCE($16, fee), quota_total = COALESCE($17, quota_total), sort = COALESCE($18, sort), \
+           fail_penalty = COALESCE($19, fail_penalty) \
          WHERE id = $1",
     )
     .bind(id)
@@ -208,6 +252,7 @@ async fn task_update(
     .bind(body.fee)
     .bind(body.quota_total)
     .bind(body.sort)
+    .bind(body.fail_penalty.clone())
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?

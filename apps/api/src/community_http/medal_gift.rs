@@ -5,10 +5,10 @@ use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::repo::community::actor::actor_name;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::actor::actor_name;
 use crate::state::AppState;
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -213,9 +213,11 @@ pub(crate) async fn medal_gift(
     .bind(auth.id)
     .bind(to_id)
     .bind("收到勋章礼物")
-    .bind(format!("{} 向你赠送了勋章「#{}」，快去勋章页看看吧！",
-                  actor_name(&state.repo.db, auth.id).await,
-                  body.medal_id))
+    .bind(format!(
+        "{} 向你赠送了勋章「#{}」，快去勋章页看看吧！",
+        actor_name(&state.repo.db, auth.id).await,
+        body.medal_id
+    ))
     .execute(&state.repo.db)
     .await
     {

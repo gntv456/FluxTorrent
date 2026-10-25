@@ -24,8 +24,7 @@ pub async fn notify_kind(
     if !enabled {
         return;
     }
-    super::mailer_notify::notify(db, to_user, email, subject, body)
-        .await;
+    super::mailer_notify::notify(db, to_user, email, subject, body).await;
 }
 
 pub async fn notify(

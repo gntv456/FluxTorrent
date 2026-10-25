@@ -3,12 +3,12 @@
 
 use actix_web::{delete, post, web, HttpRequest, HttpResponse};
 
-use crate::repo::community::actor::actor_name;
 use super::*;
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::actor::actor_name;
 use crate::state::AppState;
 
 // ---- 论坛互动：点赞 / 收藏（0116） ----
@@ -118,10 +118,13 @@ async fn set_post_like(
                 author,
                 "comment_reply",
                 "帖子被点赞",
-                &format!("{} 赞了你在主题「{}」里的回复：\
+                &format!(
+                    "{} 赞了你在主题「{}」里的回复：\
                           [查看](/forums/topic/{})",
-                         actor_name(&state.repo.db, auth.id).await,
-                         title, tid),
+                    actor_name(&state.repo.db, auth.id).await,
+                    title,
+                    tid
+                ),
             )
             .await;
         }

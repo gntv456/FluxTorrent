@@ -202,9 +202,16 @@ pub(super) async fn me_messages(
         Some("1") | Some("true")
     );
     let (limit, offset) = page_params(&q);
-    let cond = if unread_only { " AND m.read_at IS NULL" } else { "" };
-    let fw = format!("messages m LEFT JOIN users su ON su.id = m.sender_id \
-                      WHERE m.receiver_id = $1{}", cond);
+    let cond = if unread_only {
+        " AND m.read_at IS NULL"
+    } else {
+        ""
+    };
+    let fw = format!(
+        "messages m LEFT JOIN users su ON su.id = m.sender_id \
+                      WHERE m.receiver_id = $1{}",
+        cond
+    );
     let sql = format!(
         "SELECT m.id, COALESCE(su.username, '系统'), m.subject, m.body, \
          EXTRACT(EPOCH FROM m.created_at)::bigint, \

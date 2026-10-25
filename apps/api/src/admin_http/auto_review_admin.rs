@@ -24,8 +24,8 @@ async fn stats(
     let _auth = staff(&req, &state).await?;
     let db = &state.repo.db;
     // 机器先出意见、人工后裁决的样本（影子校准的分母口径，§13.3）
-    let (agree, machine_pass_human_deny, machine_deny_human_pass, pending)
-        = sqlx::query_as::<_, (i64, i64, i64, i64)>(
+    let (agree, machine_pass_human_deny, machine_deny_human_pass, pending) =
+        sqlx::query_as::<_, (i64, i64, i64, i64)>(
             "SELECT \
                 count(*) FILTER (WHERE \
                     (l.verdict = 0 AND t.approval_status = 1) OR \
@@ -43,14 +43,14 @@ async fn stats(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let total = agree + machine_pass_human_deny + machine_deny_human_pass;
-    let agree_pct = if total > 0 {
-        agree * 100 / total
-    } else {
-        0
-    };
-    let today: Vec<(i64, i64)> = sqlx::query_as(
+    let agree_pct = if total > 0 { agree * 100 / total } else { 0 };
+    // verdict 列是 smallint（int2）：按 i64 解码会报「类型不匹配」
+    // ⇒ 只要当天有台账行，这个口就 500（表一有数据就必炸）。
+    let today: Vec<(i16, i64)> = sqlx::query_as(
         "SELECT l.verdict, count(*) FROM auto_review_log l \
-         WHERE l.decided_by = 0 AND l.created_at >= date_trunc('day', now()) \
+         WHERE l.decided_by = 0 AND l.created_at >= \
+         (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+         AT TIME ZONE 'Asia/Shanghai') \
          GROUP BY l.verdict",
     )
     .bind(0)
@@ -58,9 +58,21 @@ async fn stats(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     let (t_pass, t_deny, t_postpone) = (
-        today.iter().find(|(v, _)| *v == 0).map(|(_, c)| *c).unwrap_or(0),
-        today.iter().find(|(v, _)| *v == 1).map(|(_, c)| *c).unwrap_or(0),
-        today.iter().find(|(v, _)| *v == 2).map(|(_, c)| *c).unwrap_or(0),
+        today
+            .iter()
+            .find(|(v, _)| *v == 0)
+            .map(|(_, c)| *c)
+            .unwrap_or(0),
+        today
+            .iter()
+            .find(|(v, _)| *v == 1)
+            .map(|(_, c)| *c)
+            .unwrap_or(0),
+        today
+            .iter()
+            .find(|(v, _)| *v == 2)
+            .map(|(_, c)| *c)
+            .unwrap_or(0),
     );
     // 影子→执法门槛（§6）
     let (min_samples, min_agree): (i64, i64) = sqlx::query_as(
@@ -82,7 +94,19 @@ async fn stats(
     .fetch_all(db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 切执法提示文案（0402 登记的设置键）：站点可编辑，
+    // 前端在设置页/台账页展示。原先只落库不读取——后台改得动、
+    // 界面回显正常、实际哪都不显示（假开关）。
+    let switch_hint: String = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value FROM site_settings \
+         WHERE name = 'auto_review_switch_hint'), '')",
+    )
+    .bind(0)
+    .fetch_one(db)
+    .await
+    .unwrap_or_default();
     Ok(ok(serde_json::json!({
+        "switch_hint": switch_hint,
         "shadow": {
             "samples": total,
             "agree": agree, "agree_pct": agree_pct,
@@ -129,9 +153,8 @@ async fn logs(
         Option<i16>,
         i16,
         chrono::DateTime<chrono::Utc>,
-    )> =
-        sqlx::query_as(
-            "SELECT l.id, l.torrent_id, t.name, l.hit_rules::text, \
+    )> = sqlx::query_as(
+        "SELECT l.id, l.torrent_id, t.name, l.hit_rules::text, \
                     l.final_score, l.verdict, l.created_at \
              FROM auto_review_log l JOIN torrents t ON t.id = l.torrent_id \
              WHERE l.decided_by = 0 \
@@ -139,13 +162,13 @@ async fn logs(
                      jsonb_array_elements(l.hit_rules) e \
                      WHERE e->>'rule' = $1)) \
              ORDER BY l.created_at DESC LIMIT $2 OFFSET $3",
-        )
-        .bind(&q.rule)
-        .bind(q.limit.min(200))
-        .bind(q.offset)
-        .fetch_all(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .bind(&q.rule)
+    .bind(q.limit.min(200))
+    .bind(q.offset)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let items: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|(id, tid, name, hits, score, verdict, at)| {

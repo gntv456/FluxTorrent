@@ -4,12 +4,13 @@
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 
-use crate::repo::community::actor::actor_name;
 use super::*;
 use crate::dto::ok;
 use crate::economy_http::earn_spark;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::actor::actor_name;
+use crate::repo::community::forum_reward;
 use crate::state::AppState;
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -109,9 +110,14 @@ pub(crate) async fn post_reply(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     forum_flood_mark(&state.repo.db, auth.id).await;
-    // 回帖 +1 火花
-    let idem = format!("forum-reply:{}:{}", auth.id, post_id);
-    earn_spark(&state.repo.db, auth.id, 1, "forum", &idem).await?;
+    // 回帖火花。P-456：额度读后台「行为奖励 → 回帖奖励」（键 makepost），
+    // 此前写死 1；现网该键本来就是 1，接线当天行为不变。
+    let reply_award = forum_reward::reply_reward(&state.repo).await;
+    if reply_award > 0 {
+        let idem = forum_reward::reply_idem(auth.id, post_id);
+        earn_spark(&state.repo.db, auth.id, reply_award, "forum", &idem)
+            .await?;
+    }
     // 通知正文里的身份：一次回查，三条通知共用（此前写 `用户 #{uid}`，
     // 收件人看不懂那是谁）
     let who = actor_name(&state.repo.db, auth.id).await;

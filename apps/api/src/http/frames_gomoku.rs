@@ -81,15 +81,14 @@ pub async fn frame_equip(
                 .await?;
                 let _ = outcome;
             }
-            let n = sqlx::query(
-                "UPDATE users SET avatar_frame_id=$2 WHERE id=$1",
-            )
-            .bind(auth.id)
-            .bind(fid)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .rows_affected();
+            let n =
+                sqlx::query("UPDATE users SET avatar_frame_id=$2 WHERE id=$1")
+                    .bind(auth.id)
+                    .bind(fid)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| DomainError::Internal(e.into()))?
+                    .rows_affected();
             if n == 0 {
                 return Err(DomainError::NotFound(auth.id));
             }

@@ -203,13 +203,12 @@ pub(crate) async fn message_send(
     // 无人读，而发件箱按 `saved = 1` 过滤（message.rs 的 outbox 口）⇒ 关着
     // 开关的人每封照样留副本。现网账面：2961 人 save_pm=false，其中 30 人
     // 已背着不该有的发件副本。写值改由本人这一列决定。
-    let keep_copy: bool = sqlx::query_scalar(
-        "SELECT save_pm FROM users WHERE id = $1",
-    )
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let keep_copy: bool =
+        sqlx::query_scalar("SELECT save_pm FROM users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
 
     let id: i64 = sqlx::query_scalar(
         "INSERT INTO messages (sender_id, receiver_id, subject, body, location, saved, unread) \

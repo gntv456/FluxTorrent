@@ -257,3 +257,5 @@ action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismis
 处理意见最长 2000 字	處理意見最長 2000 字	Handling note must be 2000 characters or fewer.
 字幕语言不在语言字典内，请从列表中选择	字幕語言不在語言字典內，請從列表中選擇	Subtitle language must be one of the listed dictionary codes.
 求字幕说明最长 2000 字	求字幕說明最長 2000 字	Subtitle request note must be 2000 characters or fewer.
+整对象更新必须带上 demotable 与 promo_sparks（省略会被当成关掉自动降级/清零奖励）	整對象更新必須帶上 demotable 與 promo_sparks（省略會被當成關閉自動降級／清零獎勵）	Full-object update must carry demotable and promo_sparks (omitting them is read as turning off auto-demotion / zeroing the reward)
+必须显式给出 on：省略会被当成关掉影子模式（只算分不开案的保护）	必須顯式給出 on：省略會被當成關閉影子模式（只算分不開案的保護）	on must be given explicitly: omitting it is read as turning shadow mode off (the score-only, no-case guard)

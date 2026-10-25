@@ -24,7 +24,6 @@ struct BulkRestoreReq {
     days: i32,
 }
 
-
 #[post("/admin/auto-review/replay")]
 async fn replay(
     req: HttpRequest,
@@ -35,19 +34,20 @@ async fn replay(
     // 取近 90 天有人工终审的台账样本（回放的黄金集：human_verdict 已知）
     let db = &state.repo.db;
     let cfg = crate::admin_http::review_auto::engine_config_from_db(db).await;
+    // count(*) 在 PG 里是 int8（INT8）：按 i32 解码必报「类型不匹配」
+    // ⇒ 这个口恒 500（列 7/8 两处近 90 天计数）。改成 i64 再在下面收窄。
     let rows: Vec<(
         i64,
         i64,
         String,
         Option<String>,
-        String,
+        Option<String>,
         i32,
         i32,
-        i32,
-        i32,
-    )> =
-        sqlx::query_as(
-            "SELECT t.id, t.owner_id, t.name, t.small_descr, t.descr, \
+        i64,
+        i64,
+    )> = sqlx::query_as(
+        "SELECT t.id, t.owner_id, t.name, t.small_descr, t.descr, \
                     COALESCE(u.publish_credits, 0), \
                     COALESCE(u.approve_streak, 0), \
                     COALESCE((SELECT count(*) FROM torrents x \
@@ -56,30 +56,30 @@ async fn replay(
                           - make_interval(days => 90)), 0), \
                     COALESCE((SELECT count(*) FROM torrents x \
                       WHERE x.owner_id = t.owner_id AND x.approval_status = 2 \
-                        AND x.modified_time > now()
+                        AND x.mtime > now() \
                           - make_interval(days => 90)), 0) \
              FROM auto_review_log l \
              JOIN torrents t ON t.id = l.torrent_id \
              JOIN users u ON u.id = t.owner_id \
              WHERE l.decided_by = 0 AND t.approval_status IN (1, 2) \
              ORDER BY l.created_at DESC LIMIT 500",
-        )
-        .bind(0)
-        .fetch_all(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    )
+    .bind(0)
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let mut changed = 0i64;
     let mut same = 0i64;
     let mut samples: Vec<serde_json::Value> = Vec::new();
-    for (tid, owner, name, small, descr, credits, streak, approved, denied)
-        in rows
+    for (tid, owner, name, small, descr, credits, streak, approved, denied) in
+        rows
     {
         let snap = flux_shared::auto_review::TorrentSnapshot {
             torrent_id: tid,
             owner_id: owner,
             title: name.clone(),
             small_descr: small.unwrap_or_default(),
-            descr,
+            descr: descr.unwrap_or_default(),
             category_id: 0,
             site_type: String::new(),
             file_names: vec![],
@@ -128,7 +128,6 @@ async fn replay(
     })))
 }
 
-
 /// POST /admin/auto-review/apply：套用一键预设或站型出厂包。
 /// 写 site_settings 走 UPSERT（设置保存链同款失效由 cfgver 轮询承接），
 /// 并把选择记进 auto_review_preset / auto_review_site_preset 键。
@@ -160,7 +159,7 @@ async fn bulk_restore(
          t.deny_reason_id JOIN auto_review_log l ON l.torrent_id = t.id AND  \
          l.decided_by = 0 AND l.verdict = 1 AND EXISTS (SELECT 1 FROM  \
          jsonb_array_elements(l.hit_rules) e WHERE e->>'rule' = $1) WHERE  \
-         t.approval_status = 2 AND d.sort = $2 AND t.modified_time > now() -  \
+         t.approval_status = 2 AND d.sort = $2 AND t.mtime > now() -  \
          make_interval(days => $3) LIMIT 200",
     )
     .bind(&body.rule)

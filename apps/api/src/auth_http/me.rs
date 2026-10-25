@@ -35,7 +35,8 @@ pub async fn me(
         .ok_or(DomainError::Unauthorized)?;
     // 个人主页口径（旧站 getusertorrentlist / my_data_stats）：传输量 + 分享率 + 做种/下载计数
     // P-439：角标必须等于「点进收藏夹看到的条数」——与列表同用可见性口径
-    let vis = crate::torrents::visibility_sql(Some((auth.id, auth.class_id >= 90)));
+    let vis =
+        crate::torrents::visibility_sql(Some((auth.id, auth.class_id >= 90)));
     let sql = format!(
         r#"
         SELECT u.uploaded, u.downloaded,
@@ -50,7 +51,8 @@ pub async fn me(
         WHERE u.id = $1
         "#
     );
-    let row: Option<(i64, i64, i64, i64, i64, i64, Option<String>)> = sqlx::query_as(&sql)
+    let row: Option<(i64, i64, i64, i64, i64, i64, Option<String>)> =
+        sqlx::query_as(&sql)
             .bind(auth.id)
             .fetch_optional(&state.repo.db)
             .await

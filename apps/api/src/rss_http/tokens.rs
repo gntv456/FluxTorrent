@@ -20,7 +20,9 @@ use crate::state::AppState;
 /// 每人有效 token 上限（0352 迁移注释同源：应用层校验，不进 schema）
 const RSS_TOKEN_MAX: i64 = 5;
 
-fn int(e: sqlx::Error) -> DomainError { DomainError::Internal(e.into()) }
+fn int(e: sqlx::Error) -> DomainError {
+    DomainError::Internal(e.into())
+}
 
 pub(crate) fn token_hash_hex(plain: &str) -> String {
     let mut h = Sha3_256::new();
@@ -74,7 +76,10 @@ async fn insert_token<'e, E>(
     exe: E,
     uid: i64,
     name: &str,
-) -> DomainResult<(TokenRow, String)> where E: sqlx::PgExecutor<'e> {
+) -> DomainResult<(TokenRow, String)>
+where
+    E: sqlx::PgExecutor<'e>,
+{
     let plain = new_token_plain();
     let row: TokenRow = sqlx::query_as(
         "INSERT INTO rss_tokens (user_id, name, token_hash) \
@@ -88,7 +93,8 @@ async fn insert_token<'e, E>(
     .bind(token_hash_hex(&plain))
     .bind(RSS_TOKEN_MAX)
     .fetch_optional(exe)
-    .await.map_err(int)?
+    .await
+    .map_err(int)?
     .ok_or_else(|| {
         DomainError::Validation(format!(
             "有效 RSS token 已达上限 {RSS_TOKEN_MAX} 个，请先撤销"
@@ -120,7 +126,8 @@ pub(crate) async fn rss_token_list(
     )
     .bind(auth.id)
     .fetch_all(&state.repo.db)
-    .await.map_err(int)?;
+    .await
+    .map_err(int)?;
     let items: Vec<serde_json::Value> = rows
         .iter()
         .map(|r| {
@@ -215,7 +222,8 @@ pub(crate) async fn rss_token_rotate(
     .bind(id)
     .bind(auth.id)
     .fetch_optional(&mut *tx)
-    .await.map_err(int)?;
+    .await
+    .map_err(int)?;
     // 越权口径：id 存在但不属于本人/已吊销 → NotFound（不泄露存在性）
     let Some(name) = name else {
         return Err(DomainError::NotFound(id));
@@ -258,7 +266,8 @@ pub(crate) async fn rss_token_revoke(
     .bind(id)
     .bind(auth.id)
     .execute(&state.repo.db)
-    .await.map_err(int)?
+    .await
+    .map_err(int)?
     .rows_affected();
     if n == 0 {
         return Err(DomainError::NotFound(id));

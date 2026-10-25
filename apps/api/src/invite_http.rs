@@ -4,9 +4,11 @@
 
 mod email;
 mod invitees;
+mod list;
 
 pub use email::email_invite_handler;
 pub use invitees::list_invitees_handler;
+pub use list::list_invites_handler;
 
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
@@ -19,23 +21,6 @@ use crate::http::{require_auth, AuthUser};
 use crate::state::AppState;
 
 // ============ 邀请（M23 P0 面） ============
-
-#[derive(serde::Serialize, sqlx::FromRow)]
-struct InviteRow {
-    id: i64,
-    code: String,
-    status: i16,
-    used_by: Option<String>,
-    expires_at: chrono::DateTime<chrono::Utc>,
-    /// NP invite.php 口径：发送对象邮箱（邮件邀请才有值）
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[sqlx(default)]
-    email: Option<String>,
-    /// 邮件是否已投递（发送失败为 false，用户可重发）
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[sqlx(default)]
-    emailed: Option<bool>,
-}
 
 /// 设置键点查（i64）：读不到/解析失败回退缺省。
 async fn setting_i64(db: &sqlx::PgPool, name: &str, default: i64) -> i64 {
@@ -100,10 +85,13 @@ pub async fn invites_status_handler(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    // 三个计数与列表筛选同一口径：已过期同时认存储态 status=2
+    //（历史码/管理作废）与「未用且已过期」，否则角标数 ≠ 筛选结果数。
     let inv_stats: (i64, i64, i64) = sqlx::query_as(
         "SELECT count(*) FILTER (WHERE status = 0 AND expires_at > now()), \
                 count(*) FILTER (WHERE status = 1), \
-                count(*) FILTER (WHERE status = 0 AND expires_at <= now()) \
+                count(*) FILTER (WHERE status = 2 \
+                    OR (status = 0 AND expires_at <= now())) \
          FROM invites WHERE inviter_id = $1",
     )
     .bind(auth.id)
@@ -124,45 +112,6 @@ pub async fn invites_status_handler(
 #[derive(Deserialize)]
 struct ListQuery {
     page: Option<i64>,
-}
-
-#[get("/invites")]
-pub async fn list_invites_handler(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    q: crate::http::Q<ListQuery>,
-) -> DomainResult<HttpResponse> {
-    let auth = require_auth(&req, &state).await?;
-    // 0204 分页：此前 LIMIT 50 截断重度用户历史；页大小 50。
-    let page = q.page.unwrap_or(1).clamp(1, 10_000);
-    let per = 50i64;
-    // status=2（已过期）在下发时即时折算：过期未用的码视为失效（注册侧已拒绝 expires_at > now()）
-    let rows = sqlx::query_as::<_, InviteRow>(
-        "SELECT i.id, i.code, \
-                (CASE WHEN i.status = 0 AND i.expires_at <= now() THEN 2 ELSE i.status END)::int2 AS status, \
-                u.username AS used_by, i.expires_at, i.email, i.emailed \
-         FROM invites i LEFT JOIN users u ON u.id = i.used_by \
-         WHERE i.inviter_id = $1 ORDER BY i.id DESC LIMIT $2 OFFSET $3",
-    )
-    .bind(auth.id)
-    .bind(per)
-    .bind(crate::dto::page_offset(page, per))
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM invites WHERE inviter_id = $1",
-    )
-    .bind(auth.id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(serde_json::json!({
-        "items": rows,
-        "total": total,
-        "page": page,
-        "per": per,
-    })))
 }
 
 #[post("/invites")]

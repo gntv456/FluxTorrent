@@ -129,7 +129,7 @@ pub(super) async fn why_unusable(
 
 #[cfg(test)]
 mod voucher_state_tests {
-    use super::{VoucherState, unusable_reason};
+    use super::{unusable_reason, VoucherState};
 
     #[test]
     fn available_has_no_error() {
@@ -148,10 +148,14 @@ mod voucher_state_tests {
 
     #[test]
     fn other_states_name_their_own_reason() {
-        assert_eq!(unusable_reason(&VoucherState::Used).as_deref(),
-                   Some("该券已核销"));
-        assert_eq!(unusable_reason(&VoucherState::Expired).as_deref(),
-                   Some("该券已过有效期"));
+        assert_eq!(
+            unusable_reason(&VoucherState::Used).as_deref(),
+            Some("该券已核销")
+        );
+        assert_eq!(
+            unusable_reason(&VoucherState::Expired).as_deref(),
+            Some("该券已过有效期")
+        );
         let m = unusable_reason(&VoucherState::Missing).unwrap_or_default();
         assert!(m.contains("不存在"), "actual: {m}");
         assert!(m.contains("不属于当前账号"), "actual: {m}");

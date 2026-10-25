@@ -22,6 +22,32 @@ pub(crate) async fn setting_text(db: &PgPool, name: &str) -> Option<String> {
     .filter(|v| !v.is_empty())
 }
 
+/// 数值型设定（0400 作品页磨砂底图）：解析失败/缺省回落默认值，
+/// 并按 [min,max] 钳制——站长手滑填 999 也不该把页面打成白屏。
+pub(crate) async fn setting_num(
+    db: &PgPool,
+    name: &str,
+    default: f64,
+    min: f64,
+    max: f64,
+) -> f64 {
+    setting_text(db, name)
+        .await
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(default)
+        .clamp(min, max)
+}
+
+/// 作品详情页 Hero 磨砂底图（0403）：`{blur, dim}`——海报高斯模糊半径
+/// （0~80 px）与遮罩深度（0~0.9）。后台「外观与主题」分区可调，
+/// clamp 在 [`setting_num`]，解析失败回落默认值。
+pub(crate) async fn work_hero(db: &PgPool) -> Value {
+    serde_json::json!({
+        "blur": setting_num(db, "work_hero_blur", 28.0, 0.0, 80.0).await,
+        "dim": setting_num(db, "work_hero_dim", 0.55, 0.0, 0.9).await,
+    })
+}
+
 /// SEO（0201）：META 描述/关键词 + 是否允许被收录。
 ///
 /// 0201 之前 metadescription 只有 RSS 消费、metakeywords 零消费，

@@ -31,13 +31,8 @@ pub(super) async fn email_invite_handler(
     // 本就可见，邮件只是代发，会员可以拿站点发信域对任意地址反复投递，
     // 既轰炸收件人，也会把站点信誉打进黑名单。10 封/小时/人：周邀请
     // 配额 2~4，正常使用碰不到。
-    crate::http::rate_window(
-        &state,
-        &format!("invmail:{}", auth.id),
-        10,
-        3600,
-    )
-    .await?;
+    crate::http::rate_window(&state, &format!("invmail:{}", auth.id), 10, 3600)
+        .await?;
     // 后缀策略（0282）：与注册同口径——发到不允许注册的邮箱等于白发邀请
     crate::auth_http::check_email_policy(&state, &email).await?;
     // 邮箱黑名单（与注册同口径）：无命中行为 allow，命中且非 allow 行才禁

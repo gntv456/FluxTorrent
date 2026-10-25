@@ -7,9 +7,9 @@ use serde::Deserialize;
 use super::*;
 use crate::dto::ok;
 use crate::economy_http::clawback_spark;
-use crate::repo::community::forum_reward;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
+use crate::repo::community::forum_reward;
 use crate::state::AppState;
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -93,14 +93,14 @@ pub(crate) async fn post_edit(
     delete,
     path = "/api/v1/forums/posts/{id}",
     tag = "社区/社区",
-    description = "删回帖（作者本人；删主题走 /forums/topics/{id}）。",
+    description = "删回帖（仅版主；删主题走 /forums/topics/{id}）。",
     params(
         ("id" = i64, description = "回帖 id"),
     ),
     responses(
         (status = 200, description = "ok"),
         (status = 401, description = "会话未登录（code 2001）"),
-        (status = 403, description = "非作者且无删帖权（code 2003）"),
+        (status = 403, description = "无删帖权（仅版主）（code 2003）"),
         (status = 422, description = "参数校验失败（code 1002）")))]
 #[delete("/forums/posts/{id}")]
 pub(crate) async fn post_delete(

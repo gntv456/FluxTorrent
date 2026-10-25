@@ -118,6 +118,8 @@ async fn tags_dict_add(
     if name.is_empty() {
         return Err(DomainError::Validation("标签名不能为空".into()));
     }
+    // tag_dict.kind 有 CHECK 白名单（plain/official）：不先拦就是 500
+    super::check_enum("kind", body.kind.as_deref(), &["plain", "official"])?;
     // tag_dict.name 有唯一约束（0063）：预查重，撞键时给校验错误而非 500
     let dup: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM tag_dict WHERE name = $1)",
@@ -191,6 +193,7 @@ async fn tags_dict_update(
     )
     .await?;
     let id = path.into_inner();
+    super::check_enum("kind", body.kind.as_deref(), &["plain", "official"])?;
     let scope = match body.scope.as_deref() {
         Some("forum") => "forum",
         _ => "torrent",

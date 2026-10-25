@@ -121,13 +121,12 @@ async fn report_claim(
     )
     .await?;
     // P-475：先认类型再动状态——cheat 工单归作弊队列处置（见 CHEAT_GUARD 上方注释）。
-    let kind: Option<String> = sqlx::query_scalar(
-        "SELECT ref_type FROM reports WHERE id = $1",
-    )
-    .bind(body.report_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let kind: Option<String> =
+        sqlx::query_scalar("SELECT ref_type FROM reports WHERE id = $1")
+            .bind(body.report_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if kind.as_deref() == Some("cheat") {
         return Err(DomainError::Validation(CHEAT_GUARD.into()));
     }
@@ -170,13 +169,12 @@ async fn report_release(
     .await?;
     // P-475：cheat 工单的释放走作弊自己的 claim/release（面板传 {release:true}），
     // 不在举报口流转（改状态前先认类型）。
-    let kind: Option<String> = sqlx::query_scalar(
-        "SELECT ref_type FROM reports WHERE id = $1",
-    )
-    .bind(body.report_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let kind: Option<String> =
+        sqlx::query_scalar("SELECT ref_type FROM reports WHERE id = $1")
+            .bind(body.report_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     if kind.as_deref() == Some("cheat") {
         return Err(DomainError::Validation(CHEAT_GUARD.into()));
     }

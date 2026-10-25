@@ -19,6 +19,9 @@ pub mod mediainfo;
 pub mod hr;
 pub mod hr_warn;
 
+// 站点策略的归一与版本化（公开口径单一事实源）
+pub mod policy;
+
 // seedbox 盒子：CIDR 校验与标志位语义（只放宽不加重）
 pub mod seedbox;
 

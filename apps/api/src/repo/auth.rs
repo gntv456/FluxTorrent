@@ -4,6 +4,7 @@
 
 use sqlx::PgPool;
 
+use super::Repo;
 use crate::domain::NewUser;
 use crate::errors::{DomainError, DomainResult};
 
@@ -170,4 +171,51 @@ impl AuthRepo {
             .map_err(|e| DomainError::Internal(e.into()))?;
         Ok((user_id, inviter))
     }
+}
+
+/// 新手清单的**可核验**事实：每一项都来自真实痕迹，不接收点击自报。
+#[derive(sqlx::FromRow)]
+pub struct OnboardingFacts {
+    pub email_verified: bool,
+    pub email_verify_mode: bool,
+    pub totp_enabled: bool,
+    pub passkey: bool,
+    pub rss_token: bool,
+    pub profile: bool,
+    pub first_download: bool,
+    pub first_seed: bool,
+}
+
+pub async fn onboarding_facts(
+    repo: &Repo,
+    uid: i64,
+) -> Result<Option<OnboardingFacts>, sqlx::Error> {
+    sqlx::query_as::<_, OnboardingFacts>(
+        "SELECT \
+           (u.email_verified_at IS NOT NULL) AS email_verified, \
+           COALESCE((SELECT value FROM site_settings \
+                     WHERE name = 'registration_mode'), \
+                    'invite_only') = 'email_verify' \
+             AS email_verify_mode, \
+           u.totp_enabled, \
+           EXISTS(SELECT 1 FROM user_passkeys p \
+                  WHERE p.user_id = u.id) AS passkey, \
+           EXISTS(SELECT 1 FROM rss_tokens t \
+                  WHERE t.user_id = u.id \
+                    AND t.revoked_at IS NULL) AS rss_token, \
+           (COALESCE(u.avatar_url, '') <> '' \
+            OR COALESCE(u.info, '') <> '') AS profile, \
+           EXISTS(SELECT 1 FROM snatches s \
+                  WHERE s.user_id = u.id \
+                    AND s.downloaded > 0 \
+                    AND s.completed_at IS NOT NULL) AS first_download, \
+           EXISTS(SELECT 1 FROM snatches s \
+                  WHERE s.user_id = u.id \
+                    AND (s.seeded_seconds > 0 \
+                         OR s.uploaded > 0)) AS first_seed \
+         FROM users u WHERE u.id = $1",
+    )
+    .bind(uid)
+    .fetch_optional(&repo.db)
+    .await
 }

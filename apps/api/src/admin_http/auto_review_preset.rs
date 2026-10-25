@@ -21,7 +21,6 @@ struct ApplyReq {
     site_pack: Option<String>,
 }
 
-
 #[post("/admin/auto-review/apply")]
 async fn apply(
     req: HttpRequest,
@@ -62,9 +61,7 @@ async fn apply(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
         let Some((template, ov)) = row else {
-            return Err(DomainError::Validation(format!(
-                "未知站型包：{pack}"
-            )));
+            return Err(DomainError::Validation(format!("未知站型包：{pack}")));
         };
         if !template.is_empty() {
             upsert_setting(db, "auto_review_title_template", &template).await?;
@@ -98,8 +95,10 @@ async fn apply_overrides(
     db: &PgPool,
     overrides_json: &str,
 ) -> DomainResult<()> {
-    let map: serde_json::Value = serde_json::from_str(overrides_json)
-        .map_err(|e| DomainError::Validation(format!("覆盖项 JSON 无效：{e}")))?;
+    let map: serde_json::Value =
+        serde_json::from_str(overrides_json).map_err(|e| {
+            DomainError::Validation(format!("覆盖项 JSON 无效：{e}"))
+        })?;
     let Some(obj) = map.as_object() else {
         return Err(DomainError::Validation("覆盖项必须是对象".into()));
     };

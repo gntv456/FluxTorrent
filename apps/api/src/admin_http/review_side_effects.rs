@@ -107,4 +107,52 @@ pub(crate) async fn apply_approval_side_effects(
     if let Err(e) = side {
         tracing::warn!(?e, torrent_id, "厂牌/字幕组订阅推送未写入");
     }
+    // 发种奖励（P-4 接线）：`uploadtorrent`（行为奖励卡，缺省 15）此前全仓
+    // 零读取方——站长设置页改了数值，发布者一个火花都拿不到。过审/免审
+    // 是同一条「发布完成」语义，在此统一发放（待审种的奖励也在这发：
+    // 走到本函数即已过审）。
+    pay_upload_reward(db, torrent_id).await;
+}
+
+/// 发种一次性奖励：读 `uploadtorrent` 站点设定，给种子 owner 入账。
+/// 免审发种（upload.rs）与人工过审（review_decide）共用——两侧都是
+/// 「种子进入已发布世界」的时刻，只挂一侧会让免审作者永远拿不到
+/// 待审作者能拿到的钱（或反过来）。幂等键锚种子（重放安全）；金额 0
+/// = 站长关停该奖励，不发流水也不报错。失败只 warn 不阻断主流程
+/// （奖励漏发可补，审核/发种不可回滚——与上面三条副作用同口径）。
+pub(crate) async fn pay_upload_reward(
+    db: &sqlx::PgPool,
+    torrent_id: i64,
+) {
+    let amount: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT value::bigint FROM site_settings \
+         WHERE name = 'uploadtorrent'), 15)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(15);
+    if amount <= 0 {
+        return;
+    }
+    let owner: Option<i64> = sqlx::query_scalar(
+        "SELECT owner_id FROM torrents WHERE id = $1",
+    )
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
+    let Some(owner) = owner else { return };
+    let idem = format!("upload-reward:{torrent_id}");
+    if let Err(e) = crate::economy_http::earn_spark(
+        db,
+        owner,
+        amount,
+        "upload",
+        &idem,
+    )
+    .await
+    {
+        tracing::warn!(?e, torrent_id, owner, "发种奖励入账失败");
+    }
 }

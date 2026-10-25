@@ -31,8 +31,7 @@ pub async fn invalidate_site_profile_cache(state: &AppState) {
 pub async fn site_profile(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
-    // 共享缓存读（fail-open）：命中即回，未命中重算后回填。响应体按字符串
-    // 原样返回（已是 ok() 信封 JSON），不重复包信封。
+    // 共享缓存读（fail-open）：命中即回；响应体按字符串原样返回。
     let mut c = state.redis.clone();
     let hit: Option<String> =
         AsyncCommands::get(&mut c, SITE_PROFILE_CACHE_KEY)
@@ -44,8 +43,7 @@ pub async fn site_profile(
             .body(cached));
     }
     let body = site_profile_fresh(&state).await?;
-    // 信封与 dto::ok 同构（code/message/data）；request_id 每请求不同、
-    // 不进缓存，由 body(s) 路径外的 json() 分支补——这里缓存命中返回的
+    // 信封与 dto::ok 同构；request_id 每请求不同、不进缓存，由 json() 分支补——这里缓存命中返回的
     // 信封 request_id 为缓存时点值，仅作日志关联展示，无正确性影响。
     let envelope =
         serde_json::json!({"code": 0, "message": "ok", "data": body});
@@ -277,6 +275,8 @@ async fn site_profile_fresh(
         "subtitle_ai_badge": flag("subtitle_ai_badge", "1") != "0",
         "founded": founded,
         "metadata_sources": sources,
+        // 作品页 Hero 磨砂底图（0403），后台「外观与主题」可调
+        "work_hero": profile_bits::work_hero(db).await,
         "site_desc": site_desc,
         "seo": seo,
         "categories": cats.iter().map(|(id, name, icon, bg, parent)| serde_json::json!({"id": id, "name": name, "icon_key": icon, "bg_color": bg, "parent_id": parent})).collect::<Vec<_>>(),

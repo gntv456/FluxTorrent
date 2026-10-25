@@ -306,7 +306,24 @@ pub(crate) async fn set_torrent_price(
     if owner_id != auth.id && auth.class_id < 90 {
         return Err(DomainError::Forbidden);
     }
-    let price = body.price.clamp(0, 1_000_000);
+    // P-3：改价口与发种口同一闸门（paid_torrent_enabled / max_price 此前
+    // 零读取方，站长关掉付费后作者仍可用本口把免费种改成付费种）。
+    // 越界明确报错而非 clamp——与发种口「静默改写即缺陷」同口径。
+    let gate =
+        crate::publish_http::upload_precheck_pub::price_gate(&state.repo.db)
+            .await;
+    if body.price != 0 && !gate.enabled {
+        return Err(DomainError::Validation(
+            "本站未开启付费种子：价格只能为 0（免费）".into(),
+        ));
+    }
+    if body.price > gate.limit {
+        return Err(DomainError::Validation(format!(
+            "付费下载价格需在 0–{} 之间（站点售价上限）",
+            gate.limit
+        )));
+    }
+    let price = body.price;
     sqlx::query("UPDATE torrents SET price = $2 WHERE id = $1")
         .bind(id)
         .bind(price)

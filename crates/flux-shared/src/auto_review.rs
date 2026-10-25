@@ -169,9 +169,8 @@ pub fn strip_tags(input: &str) -> String {
             '>' => in_tag = false,
             '&' if !in_tag => {
                 // 常见实体粗展开（nbsp 最常见——它算「空」不算「字」）
-                let rest: String = std::iter::once('&')
-                    .chain(chars.clone().take(6))
-                    .collect();
+                let rest: String =
+                    std::iter::once('&').chain(chars.clone().take(6)).collect();
                 if rest.starts_with("&nbsp;") {
                     // "&nbsp;" = '&' + 5 个字符；多吞一个会把正文吃掉
                     for _ in 0..5 {
@@ -266,7 +265,10 @@ pub fn hit_ads_keywords(text: &str, words: &[String]) -> Option<String> {
     } else {
         // §16：广告词给词（纠错需要）；单条通知最多列 5 个防刷屏
         let listed = hit.iter().take(5).cloned().collect::<Vec<_>>().join("、");
-        Some(format!("描述命中广告/引流词：{listed}（共 {} 处）", hit.len()))
+        Some(format!(
+            "描述命中广告/引流词：{listed}（共 {} 处）",
+            hit.len()
+        ))
     }
 }
 
@@ -307,10 +309,9 @@ pub fn hit_leak_marker(text: &str) -> Option<String> {
 /// 同作不同版本（WEB-DL vs BluRay）高分，不同作品低分。
 pub fn title_similarity_pct(a: &str, b: &str) -> i32 {
     const TECH: &[&str] = &[
-        "480p", "720p", "1080p", "1080i", "2160p", "4k", "8k",
-        "bluray", "blu", "ray", "web", "webdl", "webrip", "hdtv",
-        "remux", "dvdrip", "bdrip", "x264", "x265", "h264", "h265",
-        "hevc", "avc", "av1", "dl", "hd", "sd",
+        "480p", "720p", "1080p", "1080i", "2160p", "4k", "8k", "bluray", "blu",
+        "ray", "web", "webdl", "webrip", "hdtv", "remux", "dvdrip", "bdrip",
+        "x264", "x265", "h264", "h265", "hevc", "avc", "av1", "dl", "hd", "sd",
     ];
     fn chars_of(s: &str) -> std::collections::HashSet<char> {
         let mut set = std::collections::HashSet::new();
@@ -363,16 +364,14 @@ pub fn title_elements(
     required: &[String],
 ) -> (Vec<&'static str>, Vec<&'static str>, Option<String>) {
     // 内置词表（策划案 §2.6 十四要素的常用八项；站型特有要素在批 1.5）
-    const RESOLUTIONS: &[&str] = &[
-        "480p", "720p", "1080p", "1080i", "2160p", "4K", "4k", "8K",
-    ];
+    const RESOLUTIONS: &[&str] =
+        &["480p", "720p", "1080p", "1080i", "2160p", "4K", "4k", "8K"];
     const SOURCES: &[&str] = &[
-        "BluRay", "Blu-ray", "WEB-DL", "WEBRip", "HDTV", "Remux",
-        "DVDRip", "BDRip", "WEB",
+        "BluRay", "Blu-ray", "WEB-DL", "WEBRip", "HDTV", "Remux", "DVDRip",
+        "BDRip", "WEB",
     ];
     const CODECS: &[&str] = &[
-        "x264", "x265", "H.264", "H.265", "H264", "H265", "AVC", "HEVC",
-        "AV1",
+        "x264", "x265", "H.264", "H.265", "H264", "H265", "AVC", "HEVC", "AV1",
     ];
     let mut found: Vec<&'static str> = Vec::new();
     let mut year = None;
@@ -411,9 +410,7 @@ pub fn title_elements(
         let tail = &title[pos + 1..];
         let tail_ok = !tail.is_empty()
             && tail.len() <= 24
-            && tail
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '@');
+            && tail.chars().all(|c| c.is_ascii_alphanumeric() || c == '@');
         if tail_ok {
             group = Some(tail.to_string());
         }
@@ -457,12 +454,12 @@ pub fn title_elements(
             .split(|c: char| c == '{' || c == '}')
             .filter(|s| {
                 !s.is_empty()
-                    && !s.chars().all(|c| {
-                        "!@#$%^&*().,;:[] -".contains(c)
-                    })
+                    && !s.chars().all(|c| "!@#$%^&*().,;:[] -".contains(c))
             })
             .map(|s| match s {
-                "中文名" | "年份" | "分辨率" | "来源" | "编码" | "组名" => s,
+                "中文名" | "年份" | "分辨率" | "来源" | "编码" | "组名" => {
+                    s
+                }
                 _ => "中文名", // 未识别占位符不参与缺失判定
             })
             .collect()
@@ -504,7 +501,12 @@ pub fn title_elements(
         while s.contains("--") {
             s = s.replace("--", "-");
         }
-        Some(s.trim_matches(|c: char| !c.is_alphanumeric() && !matches!(c, '\u{4E00}'..='\u{9FFF}')).to_string())
+        Some(
+            s.trim_matches(|c: char| {
+                !c.is_alphanumeric() && !matches!(c, '\u{4E00}'..='\u{9FFF}')
+            })
+            .to_string(),
+        )
     };
     (found, missing, suggested)
 }
@@ -551,7 +553,11 @@ pub fn soft_score(t: &TorrentSnapshot, p: &PublisherProfile) -> i32 {
 /// 全量评估：H 规则短路（deny 档一票即出）→ 软评分 → 分数段建议。
 /// pass_score 缺省 80（策划案 §2.2）；软规则不产生 deny（一期口径：
 /// 自动拒绝必须硬规则证据）。
-pub fn assess(t: &TorrentSnapshot, p: &PublisherProfile, cfg: &EngineConfig) -> Assessment {
+pub fn assess(
+    t: &TorrentSnapshot,
+    p: &PublisherProfile,
+    cfg: &EngineConfig,
+) -> Assessment {
     let mut hits: Vec<RuleHit> = Vec::new();
     let mut suggested_title = None;
 
@@ -565,35 +571,62 @@ pub fn assess(t: &TorrentSnapshot, p: &PublisherProfile, cfg: &EngineConfig) -> 
     let (on, act) = cfg.rule("arule_title_garbled");
     if on {
         if let Some(d) = hit_title_garbled(&t.title) {
-            hits.push(RuleHit { rule: "arule_title_garbled", action: if trusted { Action::Postpone } else { act }, score: 0, detail: d });
+            hits.push(RuleHit {
+                rule: "arule_title_garbled",
+                action: if trusted { Action::Postpone } else { act },
+                score: 0,
+                detail: d,
+            });
         }
     }
     // H2 描述
     let (on, act) = cfg.rule("arule_descr_missing");
     if on {
         if let Some(d) = hit_descr_missing(&t.descr, cfg.descr_min_chars) {
-            hits.push(RuleHit { rule: "arule_descr_missing", action: if trusted { Action::Postpone } else { act }, score: 0, detail: d });
+            hits.push(RuleHit {
+                rule: "arule_descr_missing",
+                action: if trusted { Action::Postpone } else { act },
+                score: 0,
+                detail: d,
+            });
         }
     }
     // H3 广告
     let (on, act) = cfg.rule("arule_ads_keywords");
     if on && !cfg.ad_words.is_empty() {
         if let Some(d) = hit_ads_keywords(&text_all, &cfg.ad_words) {
-            hits.push(RuleHit { rule: "arule_ads_keywords", action: if trusted { Action::Postpone } else { act }, score: 0, detail: d });
+            hits.push(RuleHit {
+                rule: "arule_ads_keywords",
+                action: if trusted { Action::Postpone } else { act },
+                score: 0,
+                detail: d,
+            });
         }
     }
     // H4 泄露
     let (on, act) = cfg.rule("arule_leak_marker");
     if on {
         if let Some(d) = hit_leak_marker(&text_all) {
-            hits.push(RuleHit { rule: "arule_leak_marker", action: if trusted { Action::Postpone } else { act }, score: 0, detail: d });
+            hits.push(RuleHit {
+                rule: "arule_leak_marker",
+                action: if trusted { Action::Postpone } else { act },
+                score: 0,
+                detail: d,
+            });
         }
     }
     // H5 重复
     let (on, act) = cfg.rule("arule_dupe_check");
     if on && !t.recent_titles.is_empty() {
-        if let Some(d) = hit_dupe(&t.title, &t.recent_titles, cfg.dupe_threshold_pct) {
-            hits.push(RuleHit { rule: "arule_dupe_check", action: if trusted { Action::Postpone } else { act }, score: 0, detail: d });
+        if let Some(d) =
+            hit_dupe(&t.title, &t.recent_titles, cfg.dupe_threshold_pct)
+        {
+            hits.push(RuleHit {
+                rule: "arule_dupe_check",
+                action: if trusted { Action::Postpone } else { act },
+                score: 0,
+                detail: d,
+            });
         }
     }
     // H6 命名（level=off 时整条跳过）
@@ -616,7 +649,9 @@ pub fn assess(t: &TorrentSnapshot, p: &PublisherProfile, cfg: &EngineConfig) -> 
                 score: 0,
                 detail: format!(
                     "标题缺必备要素：{list}{}",
-                    suggested.map(|s| format!("；建议标题：{s}")).unwrap_or_default()
+                    suggested
+                        .map(|s| format!("；建议标题：{s}"))
+                        .unwrap_or_default()
                 ),
             });
         }
@@ -634,7 +669,12 @@ pub fn assess(t: &TorrentSnapshot, p: &PublisherProfile, cfg: &EngineConfig) -> 
     } else {
         Suggestion::Postpone
     };
-    Assessment { hits, score, suggestion, suggested_title }
+    Assessment {
+        hits,
+        score,
+        suggestion,
+        suggested_title,
+    }
 }
 
 /// 台账 hit_rules 的 JSONB 形态（0400 表注释口径）。
@@ -653,7 +693,6 @@ pub fn hits_to_json(hits: &[RuleHit]) -> serde_json::Value {
     )
 }
 
-
 /// D2：可疑可执行文件（§2.3）。白名单分类由调用方在 file_names 之外
 /// 判定（EngineConfig 无分类维度——分类豁免在 worker 取件侧做）。
 pub fn hit_suspicious_exe(
@@ -663,7 +702,8 @@ pub fn hit_suspicious_exe(
     if exe_whitelist {
         return None;
     }
-    const BAD: &[&str] = &[".exe", ".scr", ".bat", ".cmd", ".apk", ".msi", ".vbs"];
+    const BAD: &[&str] =
+        &[".exe", ".scr", ".bat", ".cmd", ".apk", ".msi", ".vbs"];
     let hits: Vec<&str> = file_names
         .iter()
         .filter(|f| {
@@ -675,7 +715,8 @@ pub fn hit_suspicious_exe(
     if hits.is_empty() {
         None
     } else {
-        let listed = hits.iter().take(3).cloned().collect::<Vec<_>>().join("、");
+        let listed =
+            hits.iter().take(3).cloned().collect::<Vec<_>>().join("、");
         Some(format!(
             "种内含可执行文件：{listed}（共 {} 个；如属工具类资源请选对应分类或加分类白名单）",
             hits.len()
@@ -702,7 +743,11 @@ pub fn hit_files_crosscheck(
             while j < bytes.len() && is_d(bytes[j]) {
                 j += 1;
             }
-            if j < bytes.len() && bytes[j] == '-' && j + 1 < bytes.len() && is_d(bytes[j + 1]) {
+            if j < bytes.len()
+                && bytes[j] == '-'
+                && j + 1 < bytes.len()
+                && is_d(bytes[j + 1])
+            {
                 let mut k = j + 1;
                 while k < bytes.len() && is_d(bytes[k]) {
                     k += 1;
@@ -713,7 +758,12 @@ pub fn hit_files_crosscheck(
                 if let (Ok(a), Ok(b)) = (a.parse::<i32>(), b.parse::<i32>()) {
                     let len_a = (j - i) as i32;
                     let len_b = (k - j - 1) as i32;
-                    if a >= 1 && b > a && b - a <= 200 && len_a >= 2 && len_b >= 2 {
+                    if a >= 1
+                        && b > a
+                        && b - a <= 200
+                        && len_a >= 2
+                        && len_b >= 2
+                    {
                         span = Some((a, b));
                         i = k;
                         continue;
@@ -729,9 +779,11 @@ pub fn hit_files_crosscheck(
     let expect = b - a + 1;
     let is_video = |f: &str| {
         let low = f.to_lowercase();
-        [".mp4", ".mkv", ".avi", ".wmv", ".mov", ".flv", ".ts", ".m2ts"]
-            .iter()
-            .any(|e| low.ends_with(e))
+        [
+            ".mp4", ".mkv", ".avi", ".wmv", ".mov", ".flv", ".ts", ".m2ts",
+        ]
+        .iter()
+        .any(|e| low.ends_with(e))
     };
     let is_sub = |f: &str| {
         let low = f.to_lowercase();
@@ -770,9 +822,12 @@ pub fn hit_fake_media_by_names(file_names: &[String]) -> Option<String> {
     }
     let Some(big) = max_name else { return None };
     let low = big.to_lowercase();
-    let known_media = [".mp4", ".mkv", ".avi", ".iso", ".ts", ".m2ts", ".flac", ".ape", ".wav", ".mp3"]
-        .iter()
-        .any(|e| low.ends_with(e));
+    let known_media = [
+        ".mp4", ".mkv", ".avi", ".iso", ".ts", ".m2ts", ".flac", ".ape",
+        ".wav", ".mp3",
+    ]
+    .iter()
+    .any(|e| low.ends_with(e));
     let looks_media = low.contains("sample") == false && known_media;
     if !looks_media {
         return Some(format!(
@@ -781,7 +836,6 @@ pub fn hit_fake_media_by_names(file_names: &[String]) -> Option<String> {
     }
     None
 }
-
 
 /// D3（§2.3）：伪媒体交叉——标题/文件声称的容器 vs MediaInfo 解析出的
 /// 实际容器族。真源=torrents.mediainfo_check.summary（0390 发布时已解析，
@@ -873,9 +927,13 @@ mod tests {
 
     #[test]
     fn h1_garbled_detects_replacement_and_code() {
-        assert!(hit_title_garbled("资源\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}").is_some());
+        assert!(hit_title_garbled(
+            "资源\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}"
+        )
+        .is_some());
         assert!(hit_title_garbled("标题 aBcDeFgHiJkLmNoPqRsTv").is_some());
-        assert!(hit_title_garbled("流浪地球2.2023.WEB-DL.2160p.H265-GROUP").is_none());
+        assert!(hit_title_garbled("流浪地球2.2023.WEB-DL.2160p.H265-GROUP")
+            .is_none());
         assert!(hit_title_garbled("进击的巨人 第01-12话").is_none());
     }
 
@@ -889,7 +947,9 @@ mod tests {
     #[test]
     fn h3_ads_hits_words_case_insensitive() {
         let d = LONG_DESCR.to_string() + " 进群看 T.ME/abc123";
-        assert!(hit_ads_keywords(&d, &["t.me/".into(), "微信群".into()]).is_some());
+        assert!(
+            hit_ads_keywords(&d, &["t.me/".into(), "微信群".into()]).is_some()
+        );
         assert!(hit_ads_keywords(LONG_DESCR, &["微信群".into()]).is_none());
     }
 
@@ -917,15 +977,16 @@ mod tests {
     #[test]
     fn h6_template_extract_and_suggest() {
         let ok = "流浪地球2.2023.WEB-DL.2160p.H265-GROUP";
-        let (found, missing, _) = title_elements(ok, "{中文名}.{年份}.{来源}.{分辨率}-{组名}", &[]);
+        let (found, missing, _) =
+            title_elements(ok, "{中文名}.{年份}.{来源}.{分辨率}-{组名}", &[]);
         assert!(missing.is_empty(), "missing={missing:?} found={found:?}");
         let bad = "流浪地球2 WEB-DL GROUPX";
-        let (_, missing, suggested) = title_elements(bad, "{中文名}.{年份}.{来源}.{分辨率}-{组名}", &[]);
+        let (_, missing, suggested) =
+            title_elements(bad, "{中文名}.{年份}.{来源}.{分辨率}-{组名}", &[]);
         assert!(missing.contains(&"年份") && missing.contains(&"分辨率"));
         let s = suggested.unwrap();
         assert!(s.contains("2023") || s.contains("流浪地球"));
     }
-
 
     #[test]
     fn d2_suspicious_exe_with_whitelist() {
@@ -938,7 +999,11 @@ mod tests {
 
     #[test]
     fn d4_span_crosscheck() {
-        let mk = |n: i32| (0..n).map(|i| format!("ep{:02}.mkv", i + 1)).collect::<Vec<_>>();
+        let mk = |n: i32| {
+            (0..n)
+                .map(|i| format!("ep{:02}.mkv", i + 1))
+                .collect::<Vec<_>>()
+        };
         let ok = mk(12);
         assert!(hit_files_crosscheck("某剧 [01-12] 1080p", &ok).is_none());
         let short = mk(10);
@@ -964,21 +1029,40 @@ mod tests {
             approved_90d: 20,
             denied_90d: 0,
         };
-        let a = assess(&snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", LONG_DESCR), &p, &cfg());
-        assert_eq!(a.suggestion, Suggestion::Pass, "hits={:?} score={}", a.hits, a.score);
+        let a = assess(
+            &snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", LONG_DESCR),
+            &p,
+            &cfg(),
+        );
+        assert_eq!(
+            a.suggestion,
+            Suggestion::Pass,
+            "hits={:?} score={}",
+            a.hits,
+            a.score
+        );
         // 命中广告 deny 档 → Deny
         let d = format!("{LONG_DESCR} 加微信群获取");
-        let a = assess(&snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", &d), &p, &cfg());
+        let a = assess(
+            &snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", &d),
+            &p,
+            &cfg(),
+        );
         assert_eq!(a.suggestion, Suggestion::Deny);
         // 白名单压 deny → 高分照样 Pass（白名单语义=跳过自动拒绝，§3.1 卡片 4）
         let mut c = cfg();
         c.trusted_uploaders = vec![10];
-        let a = assess(&snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", &d), &p, &c);
+        let a =
+            assess(&snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", &d), &p, &c);
         assert_eq!(a.suggestion, Suggestion::Pass, "hits={:?}", a.hits);
         assert!(a.hits.iter().all(|h| h.action != Action::Deny));
         // 低分新号灰区 → Postpone
         p = PublisherProfile::default();
-        let a = assess(&snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", LONG_DESCR), &p, &cfg());
+        let a = assess(
+            &snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", LONG_DESCR),
+            &p,
+            &cfg(),
+        );
         assert_eq!(a.suggestion, Suggestion::Postpone);
         // 观察名单不自动通过
         let p2 = PublisherProfile {
@@ -990,7 +1074,11 @@ mod tests {
         };
         let mut c2 = cfg();
         c2.watch_uploaders = vec![10];
-        let a = assess(&snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", LONG_DESCR), &p2, &c2);
+        let a = assess(
+            &snap("流浪地球2.2023.WEB-DL.2160p.H265-GROUP", LONG_DESCR),
+            &p2,
+            &c2,
+        );
         assert_eq!(a.suggestion, Suggestion::Postpone);
     }
 }

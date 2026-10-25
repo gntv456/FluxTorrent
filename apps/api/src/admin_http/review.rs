@@ -43,7 +43,7 @@ struct PendingTorrent {
     logs: Option<serde_json::Value>,
 }
 
-/// 队列查询参数（0286 分页 / 筛选 / 排序）。
+/// 队列查询参数（0286 分页 / 筛选 / 排序；0306 暂缓取回）。
 #[derive(Deserialize)]
 struct QueueQuery {
     /// 排序：true（默认）= 最老优先，先到的先审；false = 最新优先
@@ -57,6 +57,12 @@ struct QueueQuery {
     category_id: Option<i32>,
     #[serde(default)]
     owner_id: Option<i64>,
+    /// 审核态筛选：0=待审（默认）· 4=暂缓。
+    /// 0306：旧口径把 status 写死 0，暂缓完那条种就从审核台上消失，
+    /// 审核员再也找不回它（暂缓只是「证据不足挂起」，不是终态）。
+    /// 1/2/3 无审核台语义（过审/被拒走各自台账），不开放。
+    #[serde(default)]
+    status: Option<i16>,
 }
 #[get("/admin/reviews")]
 async fn review_queue(
@@ -76,10 +82,13 @@ async fn review_queue(
     .await?;
     // 旧口径是 `ORDER BY id LIMIT 200` 且无分页：实测积压 207 条时只回 200 条，
     // **最新提交的那几条根本不在返回里**（升序 + 截断 = 新种对审核员永久不可见）。
+    // 暂缓（approval_status=4）也要能取回：旧口径写死 status=0，
+    // 暂缓完那条种子就从审核台上消失，审核员再也找不回它（0306 断点）。
+    let status = q.status.unwrap_or(0);
     let limit = q.limit.unwrap_or(50).clamp(1, 200);
     let offset = q.offset.unwrap_or(0).max(0);
     let oldest_first = q.oldest_first.unwrap_or(true);
-    let filters = "WHERE t.approval_status = 0          AND ($1::int IS NULL OR t.category_id = $1)          AND ($2::bigint IS NULL OR t.owner_id = $2)".to_string();
+    let filters = "WHERE t.approval_status = $5         AND ($1::int IS NULL OR t.category_id = $1)          AND ($2::bigint IS NULL OR t.owner_id = $2)".to_string();
     let order = if oldest_first {
         "ORDER BY t.created_at ASC, t.id ASC"
     } else {
@@ -156,14 +165,16 @@ async fn review_queue(
         .bind(q.owner_id)
         .bind(limit)
         .bind(offset)
+        .bind(status)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM torrents t WHERE t.approval_status = 0          AND ($1::int IS NULL OR t.category_id = $1)          AND ($2::bigint IS NULL OR t.owner_id = $2)",
+        "SELECT count(*) FROM torrents t WHERE t.approval_status = $3        AND ($1::int IS NULL OR t.category_id = $1)          AND ($2::bigint IS NULL OR t.owner_id = $2)",
     )
     .bind(q.category_id)
     .bind(q.owner_id)
+    .bind(status)
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

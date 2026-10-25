@@ -94,6 +94,11 @@ pub async fn delete_user_cascade(
         "DELETE FROM pmboxes WHERE user_id = $1",
         "DELETE FROM message_flood WHERE user_id = $1",
         "DELETE FROM staffmessages WHERE user_id = $1",
+        // 警告阶梯的**状态行**不是证据（证据是 hr_snapshots/hr_violations，
+        // 上面已按「证据不删」口径留着）：账号都墓碑了，
+        // 它的第几档限下/禁传/禁邀已经没有执行对象，
+        // 留着只会让 hr_warn_states 越积越多（现网 49 行里 41 行是墓碑号）。
+        "DELETE FROM hr_warn_states WHERE user_id = $1",
         "DELETE FROM comments WHERE user_id = $1",
         "DELETE FROM posts WHERE user_id = $1",
         "DELETE FROM topics WHERE user_id = $1",
@@ -220,7 +225,8 @@ async fn user_admin_delete(
             // 封禁（而后台改状态的口只收 0/1/2，根本置不了 4），也没说出
             // 「停用」同样可以。
             return Err(DomainError::Validation(
-                "仅已处置的账号（停用/墓碑/封禁）可删除，请先在后台处置该账号".into(),
+                "仅已处置的账号（停用/墓碑/封禁）可删除，请先在后台处置该账号"
+                    .into(),
             ));
         }
         _ => {}

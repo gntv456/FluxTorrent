@@ -118,10 +118,9 @@ pub(crate) async fn bounty_award(
     if spark > 0 {
         let idem = format!("forum-bounty-pay:{}", tid);
         // 采纳只发生一次：非 Spent（重放）说明这笔钱已经发过，整笔回滚不出双份
-        let paid = earn_spark_tx(
-            &mut tx, answerer, spark, "forum_bounty", &idem,
-        )
-        .await?;
+        let paid =
+            earn_spark_tx(&mut tx, answerer, spark, "forum_bounty", &idem)
+                .await?;
         if !matches!(paid, SpendOutcome::Spent) {
             return Err(DomainError::Validation(
                 "该悬赏的款项已发放过，未重复出账".into(),

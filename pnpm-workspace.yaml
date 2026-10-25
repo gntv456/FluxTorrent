@@ -9,4 +9,7 @@ packages:
 # unrs-resolver 的 postinstall 仅用于下载平台二进制（ESLint 9 解析器链引入），
 # 本项目不需要其原生产物，显式标记 false = 已审阅且不允许执行，安装即可正常完成。
 allowBuilds:
+  # sharp 是 Next 图片优化的原生依赖（生产构建要它的 prebuilt 二进制）；
+  # 不放行则 next/image 静默退化成无优化。占位写法会让 pnpm 直接安装失败。
+  sharp: true
   unrs-resolver: false

@@ -148,14 +148,23 @@ pub struct RecentTopic {
     pub replies: i64,
     pub views: i32,
     pub last_post_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 主题发布时间（样图话题行 meta「作者：X · 时间」用的是它，
+    /// 与右侧「最后回复」的时间是两个值——此前两处都取 last_post_at，
+    /// 行首时间会跟着最后回复跳动）
+    pub created_at: chrono::DateTime<chrono::Utc>,
     pub sticky: bool,
     pub locked: bool,
     pub digest: bool,
+    /// 公告（0396）：样图 coral 底徽章 + 珊瑚行底，排序在置顶之后
+    pub notice: bool,
     pub topic_type: String,
     /// 标签（0123）：json 数组，随行回（与 topic_list 同口径）
     pub tags: serde_json::Value,
     /// 最后回复者；零回帖主题为 NULL（前端回落主题作者）
     pub last_replier: Option<String>,
+    /// 热度标（0397）：浏览数 ≥ site_settings.forum_hot_views 为 true；
+    /// 阈值 0/缺省视为关闭。判定在 SQL 里做，前端只负责拼「热 N」文案。
+    pub hot: bool,
 }
 
 /// 首页话题流行数（样图一屏约 13 行，取 30 覆盖两屏；更多历史去
@@ -168,9 +177,11 @@ pub async fn recent_topics(
     user_id: i64,
     is_staff: bool,
     only: Option<&str>,
+    hot_min: i64,
 ) -> DomainResult<Vec<RecentTopic>> {
-    // 白名单常量映射（H 层已校验，这里双保险）
+    // 白名单常量映射（H 层已校验，这里双保险）。notice=公告（0396）。
     let type_filter = match only {
+        Some("notice") => " AND t.notice",
         Some("sticky") => " AND t.sticky",
         Some("digest") => " AND t.digest",
         _ => "",
@@ -180,8 +191,8 @@ pub async fn recent_topics(
             u.username, \
             greatest( \
               (SELECT count(*) FROM posts p WHERE p.topic_id = t.id) - 1, 0 \
-            ) AS replies, t.views, t.last_post_at, \
-            t.sticky, t.locked, t.digest, t.topic_type, \
+            ) AS replies, t.views, t.last_post_at, t.created_at, \
+            t.sticky, t.locked, t.digest, t.notice, t.topic_type, \
             COALESCE( \
               (SELECT json_agg(json_build_object('id', d.id, \
                      'name', d.name, 'kind', d.kind, \
@@ -197,7 +208,8 @@ pub async fn recent_topics(
             (SELECT u2.username FROM posts p2 \
                JOIN users u2 ON u2.id = p2.user_id \
               WHERE p2.topic_id = t.id ORDER BY p2.id DESC LIMIT 1) \
-              AS last_replier \
+              AS last_replier, \
+            (t.views >= $4::bigint AND $4 > 0) AS hot \
          FROM topics t \
          JOIN forums f ON f.id = t.forum_id \
          LEFT JOIN forum_categories c ON c.id = f.category_id \
@@ -207,7 +219,7 @@ pub async fn recent_topics(
                   WHERE fm.forum_id = f.id AND fm.user_id = $2)) \
            AND (c.id IS NULL OR c.visible = TRUE OR $3) \
            {type_filter} \
-         ORDER BY t.sticky DESC, \
+         ORDER BY t.sticky DESC, t.notice DESC, \
                   COALESCE(t.last_post_at, t.created_at) DESC, t.id DESC \
          LIMIT {RECENT_LIMIT}"
     );
@@ -215,6 +227,7 @@ pub async fn recent_topics(
         .bind(class_id)
         .bind(user_id)
         .bind(is_staff)
+        .bind(hot_min)
         .fetch_all(&repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?)

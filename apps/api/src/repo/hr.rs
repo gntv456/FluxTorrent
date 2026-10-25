@@ -185,14 +185,14 @@ pub async fn override_policy_effective(
     viewer: Option<i64>,
 ) -> DomainResult<()> {
     let class: i32 = match viewer {
-        Some(v) => sqlx::query_scalar(
-            "SELECT class_id FROM users WHERE id = $1",
-        )
-        .bind(v)
-        .fetch_optional(db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?
-        .unwrap_or(0),
+        Some(v) => {
+            sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+                .bind(v)
+                .fetch_optional(db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?
+                .unwrap_or(0)
+        }
         None => 0,
     };
     let (on, days, hours) = effective(db, row.id, class).await?;

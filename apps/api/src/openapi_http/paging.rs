@@ -60,20 +60,32 @@ mod tests {
     use std::collections::HashMap;
 
     fn q(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
     }
 
     /// 缺省、夹界、脏值：`limit` 越界是夹（不 400），`offset` 负数当 0。
     #[test]
     fn page_params_clamps() {
         assert_eq!(page_params(&q(&[])), (50, 0), "两个都不给");
-        assert_eq!(page_params(&q(&[("limit", "200"), ("offset", "100")])),
-                   (100, 100), "limit 夹到上限、offset 生效");
+        assert_eq!(
+            page_params(&q(&[("limit", "200"), ("offset", "100")])),
+            (100, 100),
+            "limit 夹到上限、offset 生效"
+        );
         assert_eq!(page_params(&q(&[("limit", "0")])), (1, 0), "0 夹到 1");
-        assert_eq!(page_params(&q(&[("offset", "-5")])), (50, 0),
-                   "负 offset 不往前翻");
-        assert_eq!(page_params(&q(&[("limit", "abc"), ("offset", "x")])),
-                   (50, 0), "脏值回落缺省，不 400 打断工具");
+        assert_eq!(
+            page_params(&q(&[("offset", "-5")])),
+            (50, 0),
+            "负 offset 不往前翻"
+        );
+        assert_eq!(
+            page_params(&q(&[("limit", "abc"), ("offset", "x")])),
+            (50, 0),
+            "脏值回落缺省，不 400 打断工具"
+        );
     }
 
     /// `has_more` 只说「后面还有没有」，不负责说总数。

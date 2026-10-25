@@ -78,19 +78,19 @@ pub(super) async fn resurrection_claim(
     // 且必须真是死种（与列表同谓词），顺带快照领取者的做种基线。
     let (owner, dead, seed_base) =
         sqlx::query_as::<_, (i64, bool, i64)>(&format!(
-        "SELECT t.owner_id, ({dead}) AS dead, \
+            "SELECT t.owner_id, ({dead}) AS dead, \
                 COALESCE((SELECT s.seeded_seconds FROM snatches s \
                           WHERE s.user_id = $2 AND s.torrent_id = t.id), \
                          0)::bigint AS seed_base \
          FROM torrents t WHERE t.id = $1 AND t.approval_status = 1",
-        dead = DEAD_TORRENT_CLAUSE
-    ))
-    .bind(body.torrent_id)
-    .bind(auth.id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?
-    .ok_or(DomainError::NotFound(body.torrent_id))?;
+            dead = DEAD_TORRENT_CLAUSE
+        ))
+        .bind(body.torrent_id)
+        .bind(auth.id)
+        .fetch_optional(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?
+        .ok_or(DomainError::NotFound(body.torrent_id))?;
     if owner == auth.id {
         return Err(DomainError::Validation("不能领取自己发布的种子".into()));
     }
@@ -148,8 +148,10 @@ pub(super) async fn resurrection_claim(
                 "该种子此前已被成功复活，同一资源只开一次复活任务".to_string()
             }
             Some((st, _)) => {
-                format!("该种子的复活任务已结束（状态 {st}），\
-                         同一资源只开一次复活任务")
+                format!(
+                    "该种子的复活任务已结束（状态 {st}），\
+                         同一资源只开一次复活任务"
+                )
             }
             // 冲突却读不到行＝并发窗口（他人刚领完又被删号清行）
             None => "该种子已有进行中的复活任务".to_string(),

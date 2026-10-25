@@ -6,7 +6,8 @@ use super::auto_review::{
     assess, Action, EngineConfig, PublisherProfile, TorrentSnapshot,
 };
 
-const LONG: &str = "这是一份足够长的资源描述，包含来源说明、压制参数、字幕信息与观看建议，\
+const LONG: &str =
+    "这是一份足够长的资源描述，包含来源说明、压制参数、字幕信息与观看建议，\
         全文超过一百字符以满足 H2 的下限与软规则 S2 的长度档要求。\
         补充第二段介绍音轨与章节信息，以及制作花絮和字幕组的说明，\
         再补一段给收藏党看的版本对比：本版相对旧版修正了部分译名，\
@@ -93,9 +94,7 @@ pub(super) fn corpus(
 }
 
 /// 跑全表：期望每条必命中；期望为空的样本不得有 deny 档命中。
-pub(super) fn run_corpus(
-    cfg: &EngineConfig,
-) -> usize {
+pub(super) fn run_corpus(cfg: &EngineConfig) -> usize {
     let all = corpus();
     assert!(all.len() >= 60, "回归集须 ≥60 例（现 {}）", all.len());
     for (i, (title, descr, profile_key, expect)) in all.iter().enumerate() {
