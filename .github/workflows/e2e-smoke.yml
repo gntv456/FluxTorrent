@@ -241,6 +241,10 @@ jobs:
 
       # 考核处置菜单（0397）：三项都是「不炸但悄悄错」的坑，
       # 没有真库 + 真 worker 跑一遍结算就抓不到。
+      # ⚠️ 本步排在 install_e2e.py 之后：那一步的 S4 已把 root 口令改成随机
+      # NEW_PW，而 seed 步的 ON CONFLICT 只回写 passkey/class_id、刻意不回写
+      # pass_hash ⇒ 这条作业里新增的闸门别再按口令登录 root（表现是
+      # 400/2004「凭证无效」），按 ci_m_ops_panels.py 用 JWT_SECRET 自铸令牌。
       - name: 考核处置菜单不变式 e2e
         run: python3 scripts/pt_audit_exam_penalty.py
 
