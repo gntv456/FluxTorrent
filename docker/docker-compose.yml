@@ -161,6 +161,12 @@ services:
       # 附件持久化（P0）：api 落盘 savedirectory=./attachments（storage.rs），不挂卷
       # 的话 compose pull && up -d 重建容器即丢全部用户附件
       - attachments:/app/attachments
+      # GeoLite2 离线库（10-26 升级实测）：mmdb 按 .gitignore:23 不入库，CI 构建的
+      # api 镜像内没有 /app/geoip ⇒ geo::resolve() 返 None，站长面板 IP 归属地
+      # （admin_http/records.rs）与会员「最后城市」（auth_http/me_settings.rs）静默变空。
+      # 宿主本地有库就挂上（只读）；缺该目录的机器上 Docker 会建空目录，
+      # resolve() 照旧回落 None——行为与不挂一致，不会把容器起不来。
+      - ${FLUX_GEOIP_DIR:-../apps/api/geoip}:/app/geoip:ro
     # 0224 G30：SIGTERM 排空窗口须大于 actix 默认 drain 30s（缺省 10s 会 SIGKILL
     # 掐掉在途请求——这是「其实有优雅停机却用不上」的坑）
     stop_grace_period: 45s
