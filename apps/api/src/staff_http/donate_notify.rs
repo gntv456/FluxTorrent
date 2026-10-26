@@ -207,10 +207,7 @@ pub async fn donate_order(
 /// 标题首段必须给出 1..=上限 的数字（VIP 的「终身」按上限发）。
 /// 解析不出或类型未知一律 Err(整句文案)：调用方必须在**扣款前**拒单，
 /// 收钱不给货是这条链路上唯一不可逆的损失。
-fn plan_grant(
-    plan_type: &str,
-    title: &str,
-) -> Result<i64, &'static str> {
+fn plan_grant(plan_type: &str, title: &str) -> Result<i64, &'static str> {
     let cap = match plan_type {
         "upload" => 10_000,
         "quota" => 50,

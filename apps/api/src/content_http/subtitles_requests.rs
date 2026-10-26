@@ -57,8 +57,7 @@ pub(super) async fn subtitle_request_create(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let lang = body.lang.trim().to_string();
-    check_request_inputs(&state.repo.db, &lang, body.descr.as_deref())
-        .await?;
+    check_request_inputs(&state.repo.db, &lang, body.descr.as_deref()).await?;
     if body.bounty < 0 {
         return Err(DomainError::Validation("悬赏不能为负".into()));
     }

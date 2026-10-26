@@ -11,7 +11,8 @@ use super::forum_check::{
 use super::guard::staff;
 use crate::repo::forum as repo_forum;
 
-#[derive(Deserialize)] #[serde(deny_unknown_fields)]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ForumUpsertReq {
     pub(crate) name: String,
     #[serde(default)]

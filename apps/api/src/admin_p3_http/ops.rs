@@ -85,7 +85,15 @@ async fn admin_backup_run(
     // docker 二进制（也无 socket），执行必炸 ENOENT 500，「备份」按钮
     // 从未成功过。api 与 postgres 同网络（DATABASE_URL 直连 postgres:5432），
     // 默认改为容器内 pg_dump 远连；站点仍可用 backup_docker_exec 覆盖。
-    let default_args = ["pg_dump", "-h", "postgres", "-U", "flux", "-Fc", "fluxtorrent"];
+    let default_args = [
+        "pg_dump",
+        "-h",
+        "postgres",
+        "-U",
+        "flux",
+        "-Fc",
+        "fluxtorrent",
+    ];
     let argv: Vec<String> = if cfg_cmd.trim().is_empty() {
         default_args.iter().map(|s| s.to_string()).collect()
     } else {

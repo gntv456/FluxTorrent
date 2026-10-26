@@ -143,9 +143,7 @@ pub(super) async fn check_request_inputs(
     // 说明没有界面输入框（面板只发 lang/torrent_id/bounty/offer_free），
     // 但它是公开悬赏列表原样渲染的会员文本——与求种简介同一枚数。
     if descr.is_some_and(|d| d.trim().chars().count() > 2000) {
-        return Err(DomainError::Validation(
-            "求字幕说明最长 2000 字".into(),
-        ));
+        return Err(DomainError::Validation("求字幕说明最长 2000 字".into()));
     }
     Ok(())
 }

@@ -95,8 +95,7 @@ pub async fn medal_wall(
     // （现网实测 100 页里 27 个名字有 10 个是被处置账号）⇒ 与会员名录
     // 规则 3 分叉。行查询与排名/计数子查询必须一起接，别名分别是 u / u2。
     let vis_u = crate::repo::community::user_directory::member_visible("u");
-    let vis_u2 =
-        crate::repo::community::user_directory::member_visible("u2");
+    let vis_u2 = crate::repo::community::user_directory::member_visible("u2");
     let sql_where = if has_kw {
         format!(
             "WHERE (um.expires_at IS NULL OR um.expires_at > now()) \

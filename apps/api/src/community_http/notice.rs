@@ -1,4 +1,4 @@
-﻿//! 通知偏好 + 站免池荣誉榜。
+//! 通知偏好 + 站免池荣誉榜。
 //! 从 community_http.rs 按域拆出。
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
@@ -55,10 +55,8 @@ pub(crate) async fn notice_prefs_get(
             .unwrap_or(serde_json::json!({}));
     let mut out = serde_json::Map::new();
     for k in DEFAULT_ON {
-        let on = prefs
-            .get(k)
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true); // 缺省 = 开
+        // 缺省 = 开
+        let on = prefs.get(k).and_then(|v| v.as_bool()).unwrap_or(true);
         out.insert(k.to_string(), serde_json::json!(on));
     }
     Ok(ok(serde_json::Value::Object(out)))

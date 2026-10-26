@@ -19,8 +19,7 @@ pub async fn me_overview(
     // 主档 + 统计（一次查询，口径与旧站 my_data_stats 一致）
     // P-550：收藏夹数接 /me 的同一把尺（visibility_sql 带本人与职员档），
     // 此前这一格在 payload 里被硬写成 0。
-    let vis =
-        crate::torrents::visibility_sql(Some((uid, auth.class_id >= 90)));
+    let vis = crate::torrents::visibility_sql(Some((uid, auth.class_id >= 90)));
     let row = sqlx::query(&format!(
         r#"
         SELECT u.username, u.email, u.uploaded, u.downloaded, u.created_at, u.avatar_url,
@@ -141,8 +140,8 @@ pub async fn me_overview(
     // 日界与上面 SQL 同一口径：北京时间今天往前数 30 天。
     let sparse: std::collections::HashMap<chrono::NaiveDate, i64> =
         trend.into_iter().collect();
-    let today_cn = (chrono::Utc::now() + chrono::Duration::hours(8))
-        .date_naive();
+    let today_cn =
+        (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
     let trend: Vec<(chrono::NaiveDate, i64)> = (0..30)
         .map(|i| {
             let d = today_cn - chrono::Duration::days(29 - i);

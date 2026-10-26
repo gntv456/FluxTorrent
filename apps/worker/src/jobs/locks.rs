@@ -33,7 +33,10 @@ static JOB_SLOTS: OnceLock<Semaphore> = OnceLock::new();
 
 fn job_slots() -> &'static Semaphore {
     JOB_SLOTS.get_or_init(|| {
-        tracing::info!(slots = JOB_SLOTS_MAX, "job 并发槽位（每 job 占 2 条连接）");
+        tracing::info!(
+            slots = JOB_SLOTS_MAX,
+            "job 并发槽位（每 job 占 2 条连接）"
+        );
         Semaphore::new(JOB_SLOTS_MAX)
     })
 }

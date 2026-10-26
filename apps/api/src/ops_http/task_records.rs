@@ -71,13 +71,7 @@ pub(super) async fn records(
         .iter()
         .map(|r| {
             let (up, dl, seed, ups, subs) = if r.tier.is_some() {
-                (
-                    cur_up,
-                    cur_dl,
-                    cur_seed,
-                    cur_uploads,
-                    cur_subtitles,
-                )
+                (cur_up, cur_dl, cur_seed, cur_uploads, cur_subtitles)
             } else {
                 (
                     cur_up - r.base_uploaded,

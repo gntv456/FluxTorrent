@@ -134,7 +134,8 @@ pub async fn group_info(
     let torrent_id = path.into_inner();
     let auth = optional_auth(&req, &state).await;
     let vis = crate::torrents::visibility_sql(
-        auth.as_ref().map(|u| (u.id, u.class_id >= 90)));
+        auth.as_ref().map(|u| (u.id, u.class_id >= 90)),
+    );
     let seen: bool = sqlx::query_scalar(&format!(
         "SELECT EXISTS(SELECT 1 FROM torrents t WHERE t.id = $1 AND {vis})"
     ))

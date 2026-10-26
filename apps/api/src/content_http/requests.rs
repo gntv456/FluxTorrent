@@ -163,13 +163,12 @@ pub(super) async fn request_fulfill(
         ));
     }
     // staff 代交付时悬赏必须归发布者而不是自己：payee 换成 torrent.owner_id。
-    let torrent_owner: i64 = sqlx::query_scalar(
-        "SELECT owner_id FROM torrents WHERE id = $1",
-    )
-    .bind(body.torrent_id)
-    .fetch_one(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let torrent_owner: i64 =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(body.torrent_id)
+            .fetch_one(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     // 完结与发奖必须同事务（批十九 P-26）：旧实现把「UPDATE status=1」与
     // 「earn_spark 转悬赏」拆成两条 autocommit。发钱一失败（余额溢出、
     // 流水冲突、瞬断）请求已经是「完结」，而入口守卫 `status != 0` 又把

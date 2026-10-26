@@ -184,12 +184,8 @@ pub(crate) async fn shoutbox_bot_exec(
             // 命中口径与列表/后台共用 torrents::promo（P-121 同洞的第二
             // 出口）：旧写法只数种子级直挂促销，全站/官种/分类免费期间
             // 这里回「当前没有免费促销的种子」，而列表每行都挂着免费角标
-            cards = free_cards(
-                &state.repo.db,
-                auth.id,
-                auth.class_id >= 90,
-            )
-            .await?;
+            cards = free_cards(&state.repo.db, auth.id, auth.class_id >= 90)
+                .await?;
             free_reply(&cards)
         }
         "/stats" => {
@@ -197,18 +193,18 @@ pub(crate) async fn shoutbox_bot_exec(
             // 「站点现状」，会员在喊话盒看到 200 个种子，同刻 /stats 写 168。
             // P-553：用户数也要同源——首页在册数走名录单点 member_visible，
             // 旧写法 `status < 2` 把停用/归档/墓碑号一起报成「位用户」。
-            let vis = crate::repo::community::user_directory::member_visible(
-                "u",
-            );
-            let (users, torrents, seeding): (i64, i64, i64) = sqlx::query_as(
-                &format!("SELECT (SELECT count(*) FROM users u WHERE {vis}), \
+            let vis =
+                crate::repo::community::user_directory::member_visible("u");
+            let (users, torrents, seeding): (i64, i64, i64) =
+                sqlx::query_as(&format!(
+                    "SELECT (SELECT count(*) FROM users u WHERE {vis}), \
                         (SELECT count(*) FROM torrents \
                          WHERE approval_status = 1), \
-                        (SELECT count(*) FROM snatches WHERE seeding)"),
-            )
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+                        (SELECT count(*) FROM snatches WHERE seeding)"
+                ))
+                .fetch_one(&state.repo.db)
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
             format!(
                 "站点现状：{} 位用户 / {} 个种子 / {} 个做种连接。",
                 users, torrents, seeding

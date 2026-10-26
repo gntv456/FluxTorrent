@@ -21,9 +21,7 @@ fn site_day(now: DateTime<Utc>) -> NaiveDate {
 
 /// 站点日 [00:00, 24:00) 对应的 UTC 区间。
 fn bounds(day: NaiveDate) -> (DateTime<Utc>, DateTime<Utc>) {
-    let start = day
-        .and_hms_opt(0, 0, 0)
-        .expect("midnight 必然合法")
+    let start = day.and_hms_opt(0, 0, 0).expect("midnight 必然合法")
         - Duration::hours(8);
     let end = start + Duration::days(1);
     (
@@ -156,8 +154,7 @@ async fn seal_day(db: &PgPool, day: NaiveDate) -> anyhow::Result<u64> {
 
 /// 独立调度循环（60s）：封存是幂等的，跨日/重启都会自然补跑。
 pub(crate) async fn spark_merkle_loop(db: PgPool) {
-    let mut tick =
-        tokio::time::interval(std::time::Duration::from_secs(60));
+    let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     loop {
         tick.tick().await;

@@ -108,8 +108,15 @@ mod tests {
     fn free_cards_serialize() {
         let v = serde_json::to_value(&card(7, "甲")).unwrap();
         let s = v.to_string();
-        for k in ["id", "name", "size", "seeders", "promotion", "poster",
-                  "price"] {
+        for k in [
+            "id",
+            "name",
+            "size",
+            "seeders",
+            "promotion",
+            "poster",
+            "price",
+        ] {
             assert!(s.contains(&format!("\"{k}\":")), "cards 缺字段 {k}");
         }
         assert_eq!(v["promotion"], "free");
@@ -129,12 +136,19 @@ mod tests {
         ] {
             assert!(s.contains(frag), "促销作用域缺片段 {frag}");
         }
-        assert!(!s.contains("JOIN torrents t ON t.id = p.torrent_id"),
-                 "退回只数直挂促销的旧写法");
+        assert!(
+            !s.contains("JOIN torrents t ON t.id = p.torrent_id"),
+            "退回只数直挂促销的旧写法"
+        );
         // 档位取合并口径（含倍率合成），不是原始 p.kind
-        assert!(s.contains("x.du = 0 AND x.mu = 2 THEN 'x2free'"),
-                 "档位没走多维合并");
-        assert!(s.contains("p.kind::text IN ('free','x2free')"), "档位筛选丢失");
+        assert!(
+            s.contains("x.du = 0 AND x.mu = 2 THEN 'x2free'"),
+            "档位没走多维合并"
+        );
+        assert!(
+            s.contains("p.kind::text IN ('free','x2free')"),
+            "档位筛选丢失"
+        );
         // 占位符必须都被替换掉（format! 少一个参数是编译错，少一片口径是静默）
         assert!(!s.contains("{}"), "SQL 里还留着未替换的占位符");
         assert!(s.ends_with("LIMIT 5"), "播报上限丢了");

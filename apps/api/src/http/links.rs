@@ -117,7 +117,9 @@ pub async fn link_create(
         .repo
         .audit(Some(auth.id), "link_create", Some(i64::from(id)))
         .await;
-    Ok(crate::dto::ok(serde_json::json!({ "id": id, "status": status })))
+    Ok(crate::dto::ok(
+        serde_json::json!({ "id": id, "status": status }),
+    ))
 }
 
 /// 编辑/审核友链（staff；status: pending→active 通过）

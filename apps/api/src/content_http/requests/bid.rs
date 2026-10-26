@@ -27,13 +27,12 @@ pub(crate) async fn request_bid(
     }
     // 求种单必须存在且未完结——完结后加价等于把钱冻进没人能领的池子。
     // 连楼主带旁人一律拒绝（旁人加价看不到状态变化更冤）。
-    let r: Option<(i64, i16)> = sqlx::query_as(
-        "SELECT user_id, status FROM requests WHERE id = $1",
-    )
-    .bind(request_id)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let r: Option<(i64, i16)> =
+        sqlx::query_as("SELECT user_id, status FROM requests WHERE id = $1")
+            .bind(request_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let Some((requester, status)) = r else {
         return Err(DomainError::NotFound(request_id));
     };
@@ -76,7 +75,12 @@ pub(crate) async fn request_bid(
         // 无客户端键：用「单 + 人 + 池内笔数」构造——同人对同一单的连续加价
         // 键不同（笔数递增），网络重试则因事务里已落行的笔数变化不再命中，
         // 由下方 spend 幂等层兜住真双击。
-        format!("req-bid:{}:{}:{}:c", auth.id, request_id, chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0))
+        format!(
+            "req-bid:{}:{}:{}:c",
+            auth.id,
+            request_id,
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        )
     });
     if !matches!(
         spend_spark_tx(
@@ -91,7 +95,9 @@ pub(crate) async fn request_bid(
         .await?,
         crate::economy_http::SpendOutcome::Spent
     ) {
-        return Err(DomainError::Validation("该笔加价已受理，请勿重复提交".into()));
+        return Err(DomainError::Validation(
+            "该笔加价已受理，请勿重复提交".into(),
+        ));
     }
     sqlx::query(
         "INSERT INTO request_bids (request_id, user_id, amount, idem_key) \

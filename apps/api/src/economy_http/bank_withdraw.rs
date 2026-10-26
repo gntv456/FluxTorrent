@@ -72,8 +72,11 @@ async fn bank_withdraw(
     // 一笔从没发过的钱（现网实证：id=1 标 interest=12、罚金 25、实际到账
     // 4975=本金−罚金；id=2 同形 123/250/49750）。列的语义收到「本单实付利息」，
     // 与回执里 `interest_earned` 用同一个表达式，A 处扣钱与 B 处展示同尺。
-    let paid_interest_final =
-        if mode != "daily" && matured { interest } else { 0 };
+    let paid_interest_final = if mode != "daily" && matured {
+        interest
+    } else {
+        0
+    };
     // 单事务（P1 撕裂窗口收口）：销单 CAS 与本息入账同生共死。旧版 CAS 先提交、
     // earn 失败靠回滚状态位补偿——进程崩溃窗口内 status=1 锁死重试路径 = 本息蒸发。
     // 锁序对齐 worker bank_fixed_mature（先销单后入账），且共用 withdraw:{id} 幂等键，

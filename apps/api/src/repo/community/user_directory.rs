@@ -65,16 +65,20 @@ pub fn order_col(raw: Option<&str>) -> &'static str {
 /// 单点放在这里，和名录共用一份字面量，免得再分叉。
 pub(crate) fn member_visible(alias: &str) -> String {
     let a = format!("{}.", alias);
-    format!("{}status < 2 AND NOT {}parked AND NOT {}archived \
+    format!(
+        "{}status < 2 AND NOT {}parked AND NOT {}archived \
              AND {}username NOT LIKE 'deleted-%'",
-            a, a, a, a)
+        a, a, a, a
+    )
 }
 
 /// 会员名录专用：在册四条件 + 可空的关键词检索（`$1`）。
 fn visible() -> String {
-    format!("{} AND ($1::text IS NULL \
+    format!(
+        "{} AND ($1::text IS NULL \
              OR u.username::text ILIKE '%' || $1 || '%')",
-            member_visible("u"))
+        member_visible("u")
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -152,8 +156,7 @@ pub async fn count_members(
         ""
     };
     let vis = visible();
-    let sql =
-        format!("SELECT count(*) FROM users u WHERE {vis}{class_filter}");
+    let sql = format!("SELECT count(*) FROM users u WHERE {vis}{class_filter}");
     // 列表与计数同一谓词，转义也必须同一处（P-332）
     let q = q.map(crate::torrents::esc_like);
     let mut query = sqlx::query_scalar::<_, i64>(&sql).bind(q);

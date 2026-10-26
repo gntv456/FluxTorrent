@@ -61,8 +61,12 @@ pub fn has_effect(kind: &str) -> bool {
 pub fn issues_voucher(kind: &str) -> bool {
     matches!(
         kind,
-        "voucher_free" | "voucher_neutral" | "temp_invite" | "rename_card"
-            | "makeup_card" | "resub_card"
+        "voucher_free"
+            | "voucher_neutral"
+            | "temp_invite"
+            | "rename_card"
+            | "makeup_card"
+            | "resub_card"
     )
 }
 
@@ -90,7 +94,10 @@ pub fn voucher_without_redeem_port(kind: &str) -> bool {
 pub fn redeem_port_exists(kind: &str) -> bool {
     matches!(
         kind,
-        "makeup_card" | "resub_card" | "temp_invite" | "voucher_free"
+        "makeup_card"
+            | "resub_card"
+            | "temp_invite"
+            | "voucher_free"
             | "voucher_neutral"
     )
 }
@@ -534,7 +541,7 @@ mod tests {
         // P-477 的反面：发得出券但没人认 ⇒ 必须不在清单里
         assert!(!redeem_port_exists("rename_card"));
         assert!(!redeem_port_exists("vip")); // 状态类不走核销口，走 has_effect
-        // 成对判据：凭证类缺核销口才算废纸
+                                             // 成对判据：凭证类缺核销口才算废纸
         assert!(voucher_without_redeem_port("rename_card"));
         assert!(!voucher_without_redeem_port("temp_invite"));
         assert!(!voucher_without_redeem_port("makeup_card"));

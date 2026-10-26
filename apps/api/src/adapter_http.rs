@@ -70,7 +70,9 @@ async fn adapter_install(
         .decode(body.wasm_b64.trim())
         .map_err(|_| DomainError::Validation("wasm_b64 解码失败".into()))?;
     if wasm.is_empty() || wasm.len() > MAX_WASM_BYTES {
-        return Err(DomainError::Validation("wasm 需为 1B–1569792 字节".into()));
+        return Err(DomainError::Validation(
+            "wasm 需为 1B–1569792 字节".into(),
+        ));
     }
     // 编译预检：坏模块直接拒绝（不能装一个起不来的适配器）
     wasmtime::Module::new(&AdapterRuntime::global().engine, &wasm)

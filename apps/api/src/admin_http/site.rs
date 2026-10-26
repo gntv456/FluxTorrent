@@ -158,8 +158,18 @@ async fn staff_panel_entries_add(
     .bind(body.sort)
     .bind(body.tab_key.as_deref().map(str::trim))
     .bind(body.min_class)
-    .bind(body.module_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
-    .bind(body.perm_key.as_deref().map(str::trim).filter(|s| !s.is_empty()))
+    .bind(
+        body.module_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        body.perm_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty()),
+    )
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

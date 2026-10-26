@@ -187,7 +187,9 @@ pub(crate) fn humanize_parse_error(raw: &str) -> String {
         let n = digits_after(body, "payload (");
         let m = digits_after(body, "allowed (limit: ");
         return match (n, m) {
-            (Some(n), Some(m)) => format!("请求体过大：{n} 字节，上限 {m} 字节"),
+            (Some(n), Some(m)) => {
+                format!("请求体过大：{n} 字节，上限 {m} 字节")
+            }
             _ => format!("请求体过大，上限 {} 字节", JSON_BODY_LIMIT),
         };
     }
@@ -200,10 +202,8 @@ pub(crate) fn humanize_parse_error(raw: &str) -> String {
 /// 取 `mark` 之后第一段十进制数（超限句里的两个字节数）
 fn digits_after(s: &str, mark: &str) -> Option<usize> {
     let rest = s.split(mark).nth(1)?;
-    let digits: String = rest
-        .chars()
-        .take_while(|c| c.is_ascii_digit())
-        .collect();
+    let digits: String =
+        rest.chars().take_while(|c| c.is_ascii_digit()).collect();
     digits.parse().ok()
 }
 

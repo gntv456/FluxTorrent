@@ -58,8 +58,8 @@ pub(super) async fn my_exams(
     let out: Vec<serde_json::Value> = rows
         .iter()
         .map(|r| {
-            let current =
-                stats.map(|(uploaded, downloaded, seed_secs, uploads, subtitles)| {
+            let current = stats.map(
+                |(uploaded, downloaded, seed_secs, uploads, subtitles)| {
                     // 累计口径（tier 任务）：基线视为 0，直接报现值；否则报增量
                     let (up, dl, seed, ups) = if r.tier.is_some() {
                         (uploaded, downloaded, seed_secs, uploads)
@@ -84,7 +84,8 @@ pub(super) async fn my_exams(
                         "uploads": ups,
                         "subtitles": subs,
                     })
-                });
+                },
+            );
             serde_json::json!({
                 "task_id": r.task_id,
                 "name": r.name,

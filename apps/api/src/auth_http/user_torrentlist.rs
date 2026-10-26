@@ -25,8 +25,7 @@ pub async fn user_torrentlist(
     let reveal = auth.id == uid || auth.class_id >= 90;
     // P-577：snatch 各档必须与详情同用一把尺，否则下架/待审种会留在
     // 「做种中/已完成」里，点名字 404（上传档在 P-525 已接同一口径）。
-    let vis =
-        crate::torrents::visibility_sql(Some((uid, auth.class_id >= 90)));
+    let vis = crate::torrents::visibility_sql(Some((uid, auth.class_id >= 90)));
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
     let uploads: Vec<SnatchRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \

@@ -156,5 +156,9 @@ async fn sole_violated_hr(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(if rows.len() == 1 { rows.into_iter().next() } else { None })
+    Ok(if rows.len() == 1 {
+        rows.into_iter().next()
+    } else {
+        None
+    })
 }

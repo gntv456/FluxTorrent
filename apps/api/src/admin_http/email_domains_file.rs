@@ -253,14 +253,9 @@ async fn email_domains_import_file(
     let mut acc = Acc::default();
     let mut filename = String::new();
     let mut got_file = false;
-    let outcome = read_file(
-        &state,
-        &mut payload,
-        &mut acc,
-        &mut filename,
-        &mut got_file,
-    )
-    .await;
+    let outcome =
+        read_file(&state, &mut payload, &mut acc, &mut filename, &mut got_file)
+            .await;
     // 最后不足一批的余量也要落库；出错时保留已提交的账
     let outcome = match outcome {
         Ok(()) => flush(&state, &mut acc).await,
@@ -269,11 +264,7 @@ async fn email_domains_import_file(
     if got_file {
         state
             .repo
-            .audit(
-                Some(auth.id),
-                "emaildomain.import_file",
-                Some(acc.added),
-            )
+            .audit(Some(auth.id), "emaildomain.import_file", Some(acc.added))
             .await;
     }
     outcome?;

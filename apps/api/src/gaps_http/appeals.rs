@@ -109,8 +109,12 @@ pub async fn appeal_handle(
     body: web::Json<AppealHandleReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    crate::authz::require_perm(&state, &auth, crate::authz::perm::APPEAL_HANDLE)
-        .await?;
+    crate::authz::require_perm(
+        &state,
+        &auth,
+        crate::authz::perm::APPEAL_HANDLE,
+    )
+    .await?;
     // P-634（P-466 同族）：这枚 note 同时写进 appeals.result_note、当事人
     // 收到的站内信正文与邮件正文，而界面那条输入框连 maxLength 都没有——
     // 私信写口自己有 5000 字上限，站方这条路却能把任意长正文从旁边灌进
@@ -178,13 +182,9 @@ pub async fn appeal_handle(
     // `ref_id` 指条目；等级不够撤不动时整个受理一起失败（与解封/赦免同前置）。
     let mut warn_lifted = false;
     if body.accept && kind == "warn" {
-        warn_lifted = unwarn::lift_if_outranked(
-            &state,
-            auth.id,
-            auth.class_id,
-            user_id,
-        )
-        .await?;
+        warn_lifted =
+            unwarn::lift_if_outranked(&state, auth.id, auth.class_id, user_id)
+                .await?;
     }
     let n = sqlx::query(
         "UPDATE appeals SET status = $2, handled_by = $1, handled_at = now(), result_note = $3 \

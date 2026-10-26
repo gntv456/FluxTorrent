@@ -283,7 +283,13 @@ async fn my_spark(
     // 阈值常量与 worker 结算 CASE 分支同源。formula_note 保留（人话全文），
     // tiers 供前端渲染表格——此前只有一行长文，资深用户没法算账。
     let (base, cap, curve_k, vol_base, rarity_k, scale, donor_mult): (
-        f64, f64, f64, f64, f64, f64, f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
     ) = sqlx::query_as(
         "SELECT base::float8, cap::float8, curve_k::float8, \
                 vol_base::float8, rarity_k::float8, scale::float8, \

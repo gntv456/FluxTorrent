@@ -120,10 +120,7 @@ pub(crate) async fn apply_approval_side_effects(
 /// 待审作者能拿到的钱（或反过来）。幂等键锚种子（重放安全）；金额 0
 /// = 站长关停该奖励，不发流水也不报错。失败只 warn 不阻断主流程
 /// （奖励漏发可补，审核/发种不可回滚——与上面三条副作用同口径）。
-pub(crate) async fn pay_upload_reward(
-    db: &sqlx::PgPool,
-    torrent_id: i64,
-) {
+pub(crate) async fn pay_upload_reward(db: &sqlx::PgPool, torrent_id: i64) {
     let amount: i64 = sqlx::query_scalar(
         "SELECT COALESCE((SELECT value::bigint FROM site_settings \
          WHERE name = 'uploadtorrent'), 15)",
@@ -134,24 +131,18 @@ pub(crate) async fn pay_upload_reward(
     if amount <= 0 {
         return;
     }
-    let owner: Option<i64> = sqlx::query_scalar(
-        "SELECT owner_id FROM torrents WHERE id = $1",
-    )
-    .bind(torrent_id)
-    .fetch_optional(db)
-    .await
-    .ok()
-    .flatten();
+    let owner: Option<i64> =
+        sqlx::query_scalar("SELECT owner_id FROM torrents WHERE id = $1")
+            .bind(torrent_id)
+            .fetch_optional(db)
+            .await
+            .ok()
+            .flatten();
     let Some(owner) = owner else { return };
     let idem = format!("upload-reward:{torrent_id}");
-    if let Err(e) = crate::economy_http::earn_spark(
-        db,
-        owner,
-        amount,
-        "upload",
-        &idem,
-    )
-    .await
+    if let Err(e) =
+        crate::economy_http::earn_spark(db, owner, amount, "upload", &idem)
+            .await
     {
         tracing::warn!(?e, torrent_id, owner, "发种奖励入账失败");
     }

@@ -217,7 +217,11 @@ pub async fn upload_attachment(
     // 行按人隔离）。shared 命中他人行维持旧行为（全站可读语义等价）。
     // P-571：复用本人行时可见性沿用库里那行（0294），响应必须回它——
     // 旧写法回显请求值：shared 图以 private 重传会报 private 而实际全站可读。
-    let want: &str = if visibility.is_empty() { "shared" } else { &visibility };
+    let want: &str = if visibility.is_empty() {
+        "shared"
+    } else {
+        &visibility
+    };
     let mine: Option<(i64, String)> = sqlx::query_as(
         "SELECT id, visibility FROM attachments \
          WHERE sha256 = $1 AND user_id = $2 LIMIT 1",
