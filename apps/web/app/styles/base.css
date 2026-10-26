@@ -781,6 +781,16 @@ a:hover {
 .nexus-form tbody tr:hover td.rowfollow {
   background: var(--surface-hover);
 }
+/* 分节头（tbody 内的 colhead，如发布表单「质量」维度区分节）：与 thead
+   表头同款渐变/字色。.nexus-table tbody td 的行底色特异性 (0,1,2) 高于
+   裸 .colhead (0,1,0)，不补这条分节头会被行底色压平。 */
+.nexus-form tbody td.colhead {
+  background: linear-gradient(90deg, var(--head-a), var(--head-b));
+  color: var(--text-brand);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
 /* 窄屏表单堆叠（M5.7）：<sm 时 rowhead/rowfollow 两列结构整体转纵向，
    消灭 /upload 402px、/subtitles 上传表 451px 这类容器内横滚（表单
    拖动看全比换行更难用）。:has() 选「含 rowhead 单元格的表格」，一份

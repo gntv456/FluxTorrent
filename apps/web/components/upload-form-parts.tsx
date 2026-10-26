@@ -12,7 +12,8 @@ export function FormRow({
   label,
   children,
 }: {
-  label: string;
+  /** 文本或节点（维度行的必填星号等内联标记走节点） */
+  label: ReactNode;
   children: ReactNode;
 }) {
   return (

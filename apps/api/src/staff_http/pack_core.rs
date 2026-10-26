@@ -82,10 +82,8 @@ pub(crate) async fn apply_pack_full(
         if name.is_empty() {
             continue;
         }
-        // 跨包稳定身份（H1/0317）：声明了 key 的分类按 key 匹配——不同包的
-        // 分类互不覆盖（key 全局唯一），切站型只会追加新行，不再把老分类
-        // 原地改名偷换在用种子的语义；id 退化为内部主键。老载荷无 key 时
-        // 保持同 id 覆盖的旧语义（restore 快照重放也走这条）。
+        // 跨包稳定身份（H1/0317）：有 key 按 key 匹配——不同包的分类互不
+        // 覆盖，切站型只追加不偷换；无 key 的老载荷保持同 id 覆盖。
         let key = c
             .get("key")
             .and_then(serde_json::Value::as_str)
@@ -370,6 +368,8 @@ pub(crate) async fn apply_pack_full(
             }
         }
     }
+    // 0422：包自带维度集 → 分类模式（口径见 pack_modes 头注释）
+    super::pack_modes::apply_pack_modes(&mut tx, pack).await?;
     // ===== 标签数据节（0160 P2）：pack 层重建，global 层硬性不触碰 =====
     super::pack_tags::apply_pack_tags(&mut tx, pack).await?;
     // 首页排版（H10/0322）：包声明 home_sections 时写入 site_settings.home_layout。

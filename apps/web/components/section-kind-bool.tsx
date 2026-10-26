@@ -16,10 +16,13 @@ const CHIP_OFF = "border-line text-sub hover:border-sky";
 export function SectionKindBool({
   value,
   onChange,
+  ariaLabel,
 }: {
   /** "true" / "false" / ""（未设置）——与 `sec_{kind}` 协议同形 */
   value: string;
   onChange: (v: string) => void;
+  /** 组可达名：发布页 rowhead 不构成编程关联时传入（axe 按钮组需组名） */
+  ariaLabel?: string;
 }) {
   const { dict } = useI18n();
   const opts: [string, string][] = [
@@ -27,7 +30,7 @@ export function SectionKindBool({
     ["false", dict.common.no],
   ];
   return (
-    <span className="inline-flex gap-1">
+    <span role="group" aria-label={ariaLabel} className="inline-flex gap-1">
       {opts.map(([v, label]) => (
         <button
           key={v}

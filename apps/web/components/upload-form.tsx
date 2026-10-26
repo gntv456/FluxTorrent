@@ -120,7 +120,9 @@ export function UploadForm() {
   const [secKinds, setSecKinds] = useState<SectionKindMeta[]>([]);
   const [secVals, setSecVals] = useState<Record<string, string>>({});
   useEffect(() => {
-    // 归属模式决定可填维度：换分类必须重取
+    // 归属模式决定可填维度：换分类必须重取。categoryId=0 不取——后端拿
+    // 不到 mode_id 会按「无模式=全可见」返回全站维度，首屏先铺满再收窄。
+    if (!categoryId) return;
     api
       .get<Record<string, unknown>>(
         `/api/v1/section-dict?category_id=${categoryId}`,
@@ -154,7 +156,6 @@ export function UploadForm() {
       setMsg(dict.upload.chooseFile);
       return;
     }
-    // 媒介为 NOT NULL 外键（media.id），必须选一项，不能留空
     setBusy(true);
     setMsg(null);
     setFieldErrs({});
@@ -231,9 +232,7 @@ export function UploadForm() {
       <div className="brand-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <thead>
-          <tr>
-            <td className="colhead" colSpan={2}>{dict.upload.title}</td>
-          </tr>
+          <tr><td className="colhead" colSpan={2}>{dict.upload.title}</td></tr>
         </thead>
         <tbody>
           <UploadFilesBlock

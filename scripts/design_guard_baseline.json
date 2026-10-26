@@ -4547,8 +4547,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   247,
-   272
+   210,
+   235
   ],
   "color": []
  },
@@ -4733,7 +4733,7 @@
   "h1First": null,
   "palette": [],
   "color": [
-   194
+   135
   ]
  },
  "components/upload-form-riplogs.tsx": {
@@ -5314,6 +5314,12 @@
   "color": []
  },
  "components/arcade/arcade-meta.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/section-kind-control.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],

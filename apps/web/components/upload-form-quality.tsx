@@ -5,7 +5,7 @@ import { catPath } from "@/lib/site-profile";
 
 import { useI18n } from "@/i18n/client";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
-import { SectionKindBool } from "@/components/section-kind-bool";
+import { SectionKindControl } from "@/components/section-kind-control";
 import type {
   ProfileCat,
   SectionDictRow,
@@ -14,10 +14,24 @@ import type {
 
 /** 发布表单·分类/质量/标签/推荐块（从 upload-form.tsx 按域拆出，300 行门禁）：
  *  分类下拉、质量维度（section_kinds 数据驱动，B2 起六类型）、标签多选
- *  （NP tags 口径）、推荐位（NP 挑选口径：置顶位置/截止 + 推荐影片）。 */
+ *  （NP tags 口径）、推荐位（NP 挑选口径：置顶位置/截止 + 推荐影片）。
+ *
+ *  维度排版口径（2026-10-26，对齐正规 PT 站发布页）：「质量」分节头 +
+ *  单个 rowfollow 格内的**响应式网格**（窄屏 1 列 / ≥sm 2 列 / ≥2xl 3 列），
+ *  每格「右对齐标签 + 撑满控件」，多选独占整行。既不像原先把 42 个维度
+ *  平铺进一个 flex-wrap 行那样参差杂乱，也不至于一行一个白占半屏。
+ *  控件实现收敛到 section-kind-control（与编辑弹层同源，防口径漂移）。 */
 
 /** 六类型里需要「字典选项」的两类；其余为自由值（直接填） */
 const ENUM_TYPES = new Set(["select", "multiselect"]);
+
+/** 维度网格：窄屏 1 列 / ≥sm 2 列 / ≥2xl 3 列（音乐 12 维一屏放得下） */
+const GRID_CLS = "grid gap-x-6 gap-y-2 sm:grid-cols-2 2xl:grid-cols-3";
+const CELL_CLS = "flex items-center gap-2";
+/** 多选选项多，独占整行 */
+const CELL_WIDE_CLS = `${CELL_CLS} sm:col-span-2 2xl:col-span-3`;
+/** 定宽右对齐标签列，让同一列的控件左边缘对齐 */
+const LABEL_CLS = "w-[5.5rem] shrink-0 text-right text-sm text-sub";
 
 export function UploadQualityBlock({
   profileCats,
@@ -67,17 +81,6 @@ export function UploadQualityBlock({
   const setKindVal = (kind: string, v: string) => {
     setSecVals((prev) => ({ ...prev, [kind]: v }));
   };
-  // 多选：同一 kind 下多值以逗号串承载
-  const multiVal = (kind: string): number[] =>
-    (secVals[kind] ?? "")
-      .split(",")
-      .map((s) => Number(s.trim()))
-      .filter((n) => n > 0);
-  const toggleMulti = (kind: string, id: number) => {
-    const cur = multiVal(kind);
-    const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-    setKindVal(kind, next.join(","));
-  };
   const kindDefs = secKinds
     .map((k) => ({
       kind: k.kind,
@@ -87,84 +90,6 @@ export function UploadQualityBlock({
       opts: (secDict[k.kind] ?? []).map((d) => ({ v: d.id, label: d.name })),
     }))
     .filter((k) => (ENUM_TYPES.has(k.type) ? k.opts.length > 0 : true));
-
-  /** 按字段类型渲染控件（六类型） */
-  const renderControl = (k: (typeof kindDefs)[number]) => {
-    const val = kindVal(k.kind);
-    const cls = INPUT_BRAND;
-    switch (k.type) {
-      case "multiselect":
-        return (
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {k.opts.map((o) => {
-              const on = multiVal(k.kind).includes(o.v);
-              return (
-                <label
-                  key={o.v}
-                  className="flex cursor-pointer items-center gap-1"
-                >
-                  <input
-                    type="checkbox"
-                    checked={on}
-                    onChange={() => toggleMulti(k.kind, o.v)}
-                    className="h-4 w-4 accent-[var(--brand-orange)]"
-                  />
-                  {o.label}
-                </label>
-              );
-            })}
-          </span>
-        );
-      case "select":
-        return (
-          <select
-            value={val}
-            onChange={(e) => setKindVal(k.kind, e.target.value)}
-            className={cls}
-          >
-            <option value="">{u.gradeNone}</option>
-            {k.opts.map((o) => (
-              <option key={o.v} value={o.v}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        );
-      case "number":
-        return (
-          <input
-            type="number"
-            value={val}
-            onChange={(e) => setKindVal(k.kind, e.target.value)}
-            className={`${cls} w-28`}
-          />
-        );
-      case "date":
-        return (
-          <input
-            type="date"
-            value={val}
-            onChange={(e) => setKindVal(k.kind, e.target.value)}
-            className={`${cls} w-40`}
-          />
-        );
-      case "bool":
-        return (
-          <SectionKindBool
-            value={val}
-            onChange={(v) => setKindVal(k.kind, v)}
-          />
-        );
-      default:
-        return (
-          <input
-            value={val}
-            onChange={(e) => setKindVal(k.kind, e.target.value)}
-            className={`${cls} w-48`}
-          />
-        );
-    }
-  };
 
   return (
     <>
@@ -184,22 +109,48 @@ export function UploadQualityBlock({
         </select>
       </FormRow>
       {kindDefs.length > 0 && (
-        <FormRow label={dict.upload.quality}>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {kindDefs.map((k) => (
-              <label key={k.kind} className="flex items-center gap-1 text-sm">
-                <span className="whitespace-nowrap text-sub">
-                  {k.label}
-                  {k.required && (
-                    <span className="text-[var(--danger,#d33)]">*</span>
-                  )}
-                  ：
-                </span>
-                {renderControl(k)}
-              </label>
-            ))}
-          </div>
-        </FormRow>
+        <>
+          {/* 分节头（NP 发布页口径）：维度列表与上/下区块之间的视觉边界 */}
+          <tr>
+            <td className="colhead" colSpan={2}>
+              {dict.upload.quality}
+            </td>
+          </tr>
+          {/* 维度网格：一格里「标签 + 控件」，≥sm 两列、≥2xl 三列——一行一个
+              在宽屏上白占半屏（音乐 12 维要滚一屏半）。多选选项多，独占整行。
+              控件可达名就地补（表格 rowhead 不构成编程关联，axe 需可达名）。 */}
+          <tr>
+            <td className="rowfollow" colSpan={2}>
+              <div className={GRID_CLS}>
+                {kindDefs.map((k) => {
+                  const wide = k.type === "multiselect";
+                  return (
+                    <div
+                      key={k.kind}
+                      className={wide ? CELL_WIDE_CLS : CELL_CLS}
+                    >
+                      <span className={LABEL_CLS}>
+                        {k.label}
+                        {k.required && (
+                          <span className="text-[var(--danger,#d33)]"> *</span>
+                        )}
+                      </span>
+                      <SectionKindControl
+                        type={k.type}
+                        value={kindVal(k.kind)}
+                        onChange={(v) => setKindVal(k.kind, v)}
+                        opts={k.opts.map((o) => ({ id: o.v, name: o.label }))}
+                        noneLabel={u.gradeNone}
+                        ariaLabel={k.label}
+                        fluid
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </td>
+          </tr>
+        </>
       )}
       {tagDict.filter((t) => t.kind !== "official").length > 0 && (
         <FormRow label={dict.upload.tags}>

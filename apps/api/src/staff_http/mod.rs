@@ -18,6 +18,7 @@ mod massmail;
 mod pack_applies;
 mod pack_apply;
 mod pack_core;
+mod pack_modes;
 mod pack_save;
 mod pack_snapshot;
 mod pack_tags;

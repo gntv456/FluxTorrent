@@ -5,7 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { ATTACH_ACCEPT, FLD, PILL } from "@/components/torrent-manage-parts";
 import { MetaNfoFields } from "@/components/torrent-manage-meta-nfo";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
-import { SectionKindBool } from "@/components/section-kind-bool";
+import { SectionKindControl } from "@/components/section-kind-control";
 import { catPath } from "@/lib/site-profile";
 
 type Dict = ReturnType<typeof useI18n>["dict"];
@@ -94,80 +94,43 @@ export function ManageBasicFields({
           ))}
         </select>
       </label>
-      {/* 多维属性（B2 六类型）：按 field_type 渲染控件，空 = 不设。
-          multiselect 以逗号串承载多值（与发布表单同形） */}
+      {/* 多维属性（B2 六类型）：两列网格 + 标签在上控件在下（对齐模态字段
+          风格），不再 flex-wrap 平铺——42 个维度混排时观感即「乱」（与
+          发布页同源整改）。控件实现收敛到 section-kind-control（发布页
+          同款，ariaLabel 供可达名）；空选项枚举维度不显示（同发布页）。 */}
       {catKinds.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-          {catKinds.map((k) => {
-            const type = k.field_type ?? "select";
-            const val = fSec[k.kind] ?? "";
-            const fld = `${FLD} min-w-[6rem]`;
-            const set = (v: string) =>
-              setFSec((prev) => ({ ...prev, [k.kind]: v }));
-            const opts = catDict[k.kind] ?? [];
-            const multiIds = val
-              .split(",")
-              .map((s) => Number(s.trim()))
-              .filter((n) => n > 0);
-            return (
-              <label key={k.kind} className="flex items-center gap-1">
-                <span className="whitespace-nowrap text-sub">
-                  {k.label}：
-                </span>
-                {type === "multiselect" ? (
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {opts.map((o) => (
-                      <label
-                        key={o.id}
-                        className="flex cursor-pointer items-center gap-1"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={multiIds.includes(o.id)}
-                          onChange={() => {
-                            const next = multiIds.includes(o.id)
-                              ? multiIds.filter((x) => x !== o.id)
-                              : [...multiIds, o.id];
-                            set(next.join(","));
-                          }}
-                          className="h-3.5 w-3.5 accent-[var(--brand-orange)]"
-                        />
-                        {o.name}
-                      </label>
-                    ))}
+        <div className="grid gap-2 sm:grid-cols-2">
+          {catKinds
+            .filter((k) => {
+              const type = k.field_type ?? "select";
+              const opts = catDict[k.kind] ?? [];
+              return type === "multiselect" || type === "select"
+                ? opts.length > 0
+                : true;
+            })
+            .map((k) => {
+              const type = k.field_type ?? "select";
+              const val = fSec[k.kind] ?? "";
+              const set = (v: string) =>
+                setFSec((prev) => ({ ...prev, [k.kind]: v }));
+              return (
+                <div key={k.kind} className="flex flex-col gap-1 text-xs">
+                  <span className="whitespace-nowrap text-sub">
+                    {k.label}
+                    {k.required ? " *" : ""}
                   </span>
-                ) : type === "select" ? (
-                  <select
-                    value={val}
-                    onChange={(e) => set(e.target.value)}
-                    className={fld}
-                  >
-                    <option value="">{u.gradeNone}</option>
-                    {opts.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : type === "number" || type === "date" ? (
-                  <input
+                  <SectionKindControl
                     type={type}
                     value={val}
-                    onChange={(e) => set(e.target.value)}
-                    className={`${fld} w-28`}
+                    onChange={set}
+                    opts={catDict[k.kind] ?? []}
+                    noneLabel={u.gradeNone}
+                    ariaLabel={k.label}
+                    inputCls={FLD}
                   />
-                ) : type === "bool" ? (
-                  <SectionKindBool value={val} onChange={set} />
-                ) : (
-                  <input
-                    value={val}
-                    onChange={(e) => set(e.target.value)}
-                    className={`${fld} w-40`}
-                  />
-                )}
-              </label>
-            );
-          })}
+                </div>
+              );
+            })}
         </div>
       )}
       {/* 0173 对齐发布页：封面外链 + 付费价格 */}
