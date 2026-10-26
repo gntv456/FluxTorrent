@@ -115,7 +115,7 @@ pub async fn link_create(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "link_create", Some(i64::from(id)))
+        .audit(Some(auth.id), "links.create", Some(i64::from(id)))
         .await;
     Ok(crate::dto::ok(
         serde_json::json!({ "id": id, "status": status }),
