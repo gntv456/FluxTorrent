@@ -10,6 +10,7 @@ import base64
 import json
 import re
 import subprocess
+import os
 import sys
 import time
 import urllib.error
@@ -78,6 +79,10 @@ def strip_scripts(html):
 
 
 def login(name="root", pwd="password123"):
+    if name == "root" and os.environ.get("FLUX_GATE_JWT") == "1":
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from pt_audit_lib import jwt_token  # 装机步已把 root 口令随机化
+        return jwt_token(name)
     for _ in range(5):
         st, r = call("POST", "/auth/login", {"username": name, "password": pwd})
         if st == 200 and isinstance(r, dict) and r.get("token"):

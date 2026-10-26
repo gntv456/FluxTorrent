@@ -51,6 +51,10 @@ def call(method, path, body=None, token=None):
 
 
 def login(user="root", pw="password123"):
+    if user == "root" and os.environ.get("FLUX_GATE_JWT") == "1":
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from pt_audit_lib import jwt_token  # 装机步已把 root 口令随机化
+        return jwt_token(user)
     for i in range(10):
         st, r = call("POST", "/auth/login",
                      {"username": user, "password": pw})

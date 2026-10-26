@@ -51,6 +51,10 @@ DEFAULT_PROBE = "1"
 
 
 def login():
+    if os.environ.get("FLUX_GATE_JWT") == "1":
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from pt_audit_lib import jwt_token  # 装机步已把 root 口令随机化
+        return jwt_token("root")
     import time
     for i in range(8):
         req = urllib.request.Request(BASE + "/auth/login", method="POST")

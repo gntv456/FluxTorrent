@@ -62,13 +62,45 @@ def call_h(method, path, body=None, token=None):
         return status, {"raw": payload[:300].decode("utf-8", "replace")}, hdrs
 
 
+def jwt_token(username="root"):
+    """自铸职员令牌（HS256 + JWT_SECRET），口径同 `ci_m_ops_panels.py`。
+
+    为什么需要：`e2e-smoke` 作业排在 `install_e2e.py` 之后，那一步的 S4 会把
+    root 口令改成**随机** `NEW_PW`，而 seed 步的 `ON CONFLICT DO UPDATE` 只回写
+    passkey/class_id、刻意不回写 pass_hash ⇒ 在这条作业里按口令登 root 必得
+    400/2004「凭证无效」。
+    为什么**不自动**回退到铸令牌：一次失败口令会给 `acctlock:root` 计一次，
+    `login.rs` 里 5 次就把账号锁 15 分钟——闸门若每次悄悄回退，等于把站长的
+    真 root 往锁定里推。所以只在显式开关下走这条路，本地仍练真口令。
+    """
+    from ci_reg_common import jwt, psql  # 惰性导入：两边互不依赖，不成环
+
+    row = psql("SELECT id || ' ' || class_id FROM users "
+               "WHERE username='%s'" % username.replace("'", "''"))
+    if not row:
+        return None
+    uid, cls = row.split()[:2]
+    return jwt(int(uid), cls=int(cls))
+
+
 def login(username="root", pw="password123", tries=8):
     """带退避的登录。
 
     dev 实例上 `/auth/login` 会限流：几套闸门连着跑（每套要登好几次）之后
     直接返回无 token。后果比失败本身严重——放在 finally 里的兜底复原也要登录，
     于是兜底一起失败，脏数据留在原地。所以退避收在这一层，各闸门不必各自实现。
+
+    `FLUX_GATE_JWT=1`：跳过口令，改用 `jwt_token()` 自铸（CI 里 root 口令已被
+    装机步随机化，见 `jwt_token` 的注释）。只对默认 root 探针生效——各闸门自己
+    造的探针号，口令是它们设的，必须继续走真登录。
     """
+    if os.environ.get("FLUX_GATE_JWT") == "1" and username == "root":
+        tok = jwt_token(username)
+        if not tok:
+            raise SystemExit(
+                "FLUX_GATE_JWT=1 但铸不出令牌：查不到用户 %s，"
+                "或 JWT_SECRET 既不在 env 也取不到容器 printenv" % username)
+        return tok
     last = None
     for i in range(tries):
         s, r = call("POST", "/auth/login", {"username": username, "password": pw})
@@ -79,7 +111,9 @@ def login(username="root", pw="password123", tries=8):
             break
         time.sleep(min(2 + i * 3, 20))
     raise SystemExit(
-        "login failed for %s: %s %s"
+        "login failed for %s: %s %s —— 若这是 e2e-smoke 之类的 CI 作业：装机步"
+        "已把 root 口令随机化，请给该作业设 FLUX_GATE_JWT=1（这里不自动回退，"
+        "因为每次失败口令都在给 acctlock:root 计数，5 次锁 15 分钟）"
         % (username, last[0], last[1].get("message"))
     )
 

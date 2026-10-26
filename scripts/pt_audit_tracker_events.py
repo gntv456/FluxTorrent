@@ -77,6 +77,9 @@ def psql(q):
 
 
 def login_retry(user="root", pw="password123", tries=10):
+    if user == "root" and os.environ.get("FLUX_GATE_JWT") == "1":
+        from pt_audit_lib import jwt_token  # 装机步已把 root 口令随机化
+        return jwt_token(user)
     last = None
     for i in range(tries):
         s, r = call("POST", "/auth/login", {"username": user, "password": pw})

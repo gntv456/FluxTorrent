@@ -46,6 +46,7 @@ env:
   DATABASE_URL: postgres://flux:cipassword_32chars_for_smoke_only!@127.0.0.1:5432/fluxtorrent
   REDIS_URL: redis://127.0.0.1:6379
   FLUX_DEV: "1"
+  FLUX_GATE_JWT: "1"
   BIND: 127.0.0.1:8080
 
 jobs:
