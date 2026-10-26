@@ -518,7 +518,8 @@
 }
 
 /* ---------- 窄屏 ---------- */
-@media (max-width: 860px) {
+/* 860px 原为野断点；768px（md 档）等价收窄，卡片在 md 下即折为纵向 */
+@media (max-width: 768px) {
   .wk-card {
     flex-direction: column;
   }

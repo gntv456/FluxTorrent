@@ -259,3 +259,35 @@ action 需为 act/dismiss	action 需為 act/dismiss	action must be act or dismis
 求字幕说明最长 2000 字	求字幕說明最長 2000 字	Subtitle request note must be 2000 characters or fewer.
 整对象更新必须带上 demotable 与 promo_sparks（省略会被当成关掉自动降级/清零奖励）	整對象更新必須帶上 demotable 與 promo_sparks（省略會被當成關閉自動降級／清零獎勵）	Full-object update must carry demotable and promo_sparks (omitting them is read as turning off auto-demotion / zeroing the reward)
 必须显式给出 on：省略会被当成关掉影子模式（只算分不开案的保护）	必須顯式給出 on：省略會被當成關閉影子模式（只算分不開案的保護）	on must be given explicitly: omitting it is read as turning shadow mode off (the score-only, no-case guard)
+
+# —— v0.5.0 批次带入的校验串（存量补译，随 v0.5.1 登记进表）——
+H&R 警告已达禁传档：暂不能发布新种，警告到期且违规处理完毕后自动恢复	H&R 警告已達禁傳檔：暫不能發布新種，警告到期且違規處理完畢後自動恢復	Your H&R warnings have reached the upload-ban tier: uploading new torrents is suspended until the warnings expire and outstanding violations are resolved
+H&R 警告已达禁邀档：暂不能兑换邀请码，警告到期且违规处理完毕后自动恢复	H&R 警告已達禁邀檔：暫不能兌換邀請碼，警告到期且違規處理完畢後自動恢復	Your H&R warnings have reached the invite-ban tier: redeeming invite codes is suspended until the warnings expire and outstanding violations are resolved
+H&R 警告已达禁邀档：暂不能生成邀请码，警告到期且违规处理完毕后自动恢复	H&R 警告已達禁邀檔：暫不能生成邀請碼，警告到期且違規處理完畢後自動恢復	Your H&R warnings have reached the invite-ban tier: creating invite codes is suspended until the warnings expire and outstanding violations are resolved
+TMDB 上没有该 IMDb 编号对应的条目（/find 空结果）	TMDB 上沒有該 IMDb 編號對應的條目（/find 空結果）	TMDB has no entry for this IMDb ID (/find returned no results)
+TMDB 请求超时	TMDB 請求超時	TMDB request timed out
+ban_pages 需至少填写一个权限位	ban_pages 需至少填寫一個權限位	ban_pages must contain at least one permission bit
+body 须带 preset 或 site_pack	body 須帶 preset 或 site_pack	Request body must carry either preset or site_pack
+clientData 缺少 origin	clientData 缺少 origin	clientData is missing the origin field
+endpoint 必须是可解析到公网地址的 https 推送服务地址	endpoint 必須是可解析到公網地址的 https 推送服務地址	endpoint must be an https push-service URL that resolves to a public address
+fail_penalty 每项需含 kind	fail_penalty 每項需含 kind	Each fail_penalty entry must carry a kind
+fail_penalty 需为数组	fail_penalty 需為數組	fail_penalty must be an array
+wasm 需为 1B–1569792 字节	wasm 需為 1B–1569792 字節	wasm must be between 1 and 1569792 bytes
+不能赠送给自己——赠礼必须指定其他用户	不能贈送給自己——贈禮必須指定其他用戶	Cannot gift to yourself — a gift must target another user
+加价金额必须为正	加價金額必須為正	Bid increment must be a positive amount
+单笔加价上限 1,000,000	單筆加價上限 1,000,000	Maximum bid increment per offer is 1,000,000
+只有该种子的发布者可以应种此求种（管理组可代为交付）	只有該種子的發布者可以應種此求種（管理組可代為交付）	Only the torrent's uploader may fulfill this request (staff may deliver on their behalf)
+已有同名文件夹	已有同名文件夾	A folder with the same name already exists
+日期格式应为 YYYY-MM-DD	日期格式應為 YYYY-MM-DD	Date must be in YYYY-MM-DD format
+本站未开启付费种子：价格只能为 0（免费）	本站未開啟付費種子：價格只能為 0（免費）	Paid torrents are not enabled on this site: price must be 0 (free)
+来源不符：passkey 只接受本站页面的断言	來源不符：passkey 只接受本站頁面的斷言	Origin mismatch: passkey only accepts assertions from this site's own pages
+没有可通知的下载者（可能尚无人完成下载）	沒有可通知的下載者（可能尚無人完成下載）	No downloaders to notify (nobody may have completed the download yet)
+缺少 file 字段（multipart 字段名 file）	缺少 file 字段（multipart 字段名 file）	Missing file field (multipart field name: file)
+覆盖项必须是对象	覆蓋項必須是對象	Override entries must be objects
+该求种已处理，无法加价	該求種已處理，無法加價	This request has already been handled; bids are closed
+该种未填任何外部条目 ID	該種未填任何外部條目 ID	This torrent has no external entry IDs filled in
+该笔加价已受理，请勿重复提交	該筆加價已受理，請勿重複提交	This bid increment was already accepted; please do not submit again
+赠送魔力需要指定接收人用户名	贈送魔力需要指定接收人用戶名	Gifting bonus points requires the recipient's username
+这次领取已受理，请勿重复提交	這次領取已受理，請勿重複提交	This claim was already accepted; please do not submit again
+邀请状态筛选无效（0 待使用 / 1 已使用 / 2 已过期）	邀請狀態篩選無效（0 待使用 / 1 已使用 / 2 已過期）	Invalid invite status filter (0 = pending / 1 = used / 2 = expired)
+首帖不能单独删除，请改用「删主题」	首帖不能單獨刪除，請改用「刪主題」	The first post cannot be deleted on its own; use "Delete topic" instead

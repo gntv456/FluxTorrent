@@ -6,6 +6,13 @@
 #   暴露面评估：h2 仅在 HTTP/2 请求路径生效；本服务部署形态为反代（Nginx/网关）后端、
 #   常规 HTTP/1.1，且 8080 仅绑 127.0.0.1（compose API_BIND 默认），外部不可直连 h2。
 #   到期后复查：actix-http 发布 h2 0.4 兼容版即移除本条升级。
+# RUSTSEC-2026-0387（crypto-bigint 0.5.5 常数时间运算存在定时可变性）：
+#   修复版 >=0.7.6，而 0.5→0.7 为 semver-breaking；本站经 p256 0.13.2 传递依赖
+#   （passkey 登录/注册 + WebPush ECDH crypto.rs），p256 0.14 才换 crypto-bigint 0.7，
+#   属 API 迁移级变更，不塞补丁版。暴露面评估：定时侧信道要求攻击者可在同主机
+#   高精度测量密钥运算耗时（本运算仅处理本站自管 WebAuthn 断言与推送订阅协商，
+#   无外部攻击者可控的解密 oracle 路径）；告警级别 warning 级非漏洞级。
+#   到期后复查：p256 升 0.14 时一并移除本条。
 [advisories]
 ignore = [
     "RUSTSEC-2026-0258",
@@ -14,4 +21,5 @@ ignore = [
     #   时序侧信道前提（攻击者可反复触发解密 oracle）不成立。上游 rust-rsa
     #   尚未发布修复（No fixed upgrade available），与全网 actix-web 生态一致。
     "RUSTSEC-2023-0071",
+    "RUSTSEC-2026-0387",
 ]

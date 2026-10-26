@@ -1652,7 +1652,8 @@
    1）主容器：上 24→12、左右 16→12、下 96→80（底 Tab≈64 + 安全区）；
    2）页头卡：padding 14/16→10/12、gap 12→8，右侧槽去掉对齐留白；
    3）页面根列 gap-4→12，只作用于 main 直接子节点，不动卡片内部节奏。 */
-@media (max-width: 767px) {
+/* not all and (min-width:768px) 等价「低于 md」，不新增野断点（规则 3） */
+@media not all and (min-width: 768px) {
   #main-content {
     padding: 12px 12px 80px;
   }

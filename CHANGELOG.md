@@ -3,6 +3,43 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.1] - 2026-10-26
+
+v0.5.0 之后的 13 个提交（fix / ci / docs / chore，无 feat、无迁移）。定位：发布后
+回读发现的 CI 红账清偿 + 依赖安全补丁版。**无数据库迁移，升级即拉镜像重启。**
+
+### 修复（对 0.5.0 已知问题的清偿）
+
+- **wasmtime 49.0.3→49.0.4**：RUSTSEC-2026-0379（aarch64 大 `br_table` 跳错目标，
+  9.9 critical）——0.5.0 已知问题里点名的承重面告警，本版落账
+- **rustls-webpki 0.103.15→0.103.16 / webpki-roots 1.0.9→1.0.11**：证书验证可接受
+  不受信中间证书 / 内置根信任 emSign 不受信中间证书（RUSTSEC-2026-0382/0381）
+- **api 挂 GeoLite2 只读卷**：CI 构建的镜像内无 GeoLite2 库，GeoIP 归属地静默变空
+  （本地构建有库而 CI 版没有，部署后才发现）；compose 已补卷挂载
+- **e2e/闸门口令依赖收口**：装机步随机化 root 口令后，处置闸门改自铸职员令牌、
+  e2e 作业改写死凭据口径，不再按口令登 root（避免把真 root 推进防爆破锁定）
+
+### 治理
+
+- **两支守门的红账清偿**（v0.5.0 的 524 commit 带入、此前被 CI 早停在 Fmt/Line
+  limit 掩盖，fmt 清零后才首次跑到）：`ui_design` 野断点 2 处真修（works.css 860px
+  收窄到 md 档 768px、ui.css 767px 改 `not all and (min-width:768px)` 等价写法），
+  色值 +14 / z-index +5 系续补漏交源文件带入的存量，按实登记基线；
+  `validation_i18n` 30 条静态串补译进 `validation_details.tsv`（覆盖率 27.5%→31.1%），
+  动态 format! 串 229→245 按实登记（H&R 三档/加价/赠礼等新功能带入）
+- cargo fmt 归一（49 处→0）、路由清单刷新、line/layer 存量按实登记——
+  六支守门本地全 rc=0
+- **crypto-bigint（RUSTSEC-2026-0387）进 `.cargo/audit.toml` 豁免清单**：修复需
+  p256 0.13→0.14（semver-breaking，牵动 passkey 登录 + WebPush crypto），属迁移级
+  变更不塞补丁版；暴露面评估与复查条件已写进豁免注释，p256 升级批一并移除
+- tokio unsound 警告（RUSTSEC-2026-0386）与 wasmtime medium 条目维持观察（无承重面）
+
+### 发布前置已验
+
+`cargo check --workspace --all-targets` rc=0；`cargo fmt --all --check` rc=0；
+`ui_design_guard` / `validation_i18n_guard` 本地 rc=0；Cargo.lock 仅 3 成员版本 +
+2 个 webpki 升级，无其他漂移。
+
 ## [0.5.0] - 2026-10-26
 
 524 个提交（feat 14 / fix 359 / test 86 / docs 15 / chore 42）：自动审种全批落地、
