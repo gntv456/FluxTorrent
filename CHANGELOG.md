@@ -35,8 +35,11 @@
 
 ### 治理
 
-- 常驻深测闸门 265 支 `scripts/pt_audit_*.py`；本批新增 TV（可见性 oracle 32 条）/
-  TW（感谢金额 16 条）/ TX（受限版块读口 16 条，含 `/forums/side` 侧栏双榜）
+- 常驻深测闸门 265 支 `scripts/pt_audit_*.py`；本批新增 TV（可见性 oracle）/
+  TW（感谢金额）/ TX（受限版块读口 **17 条**，含 `/forums/side` 侧栏双榜与
+  数据层 A/B 负控）。条数一律按运行时 `[PASS]` 行数计——闸门里的 `ok()` 大多
+  写在循环内，静态数不出来。升级后 13 支常驻闸门在现网复跑：
+  **235 条断言全绿、0 红、残料 0**（`forums=9 / topics=47 / posts=54` 前后逐字一致）。
 - 新增漏交文件守门 `scripts/repo_hygiene_guard.mjs`（mod 可解析 / 迁移无断档 /
   `include_*!` 字面路径 / tsconfig references 四口径）
 
