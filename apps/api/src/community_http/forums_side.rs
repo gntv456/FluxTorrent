@@ -41,24 +41,6 @@ pub(crate) async fn forum_side(
     })))
 }
 
-/// 热度标阈值缺省值（0397 设置项缺失/被填成非数字时的兜底，与旧硬编码一致）
-const HOT_VIEWS_DEFAULT: i64 = 1000;
-
-/// 读「话题热度标阈值」设置（site_settings.forum_hot_views）。
-/// 0 = 关闭热度标（阈值 0 时判定式恒 false）；负数/垃圾值回落默认。
-async fn hot_views_threshold(state: &AppState) -> i64 {
-    let raw: Option<String> = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = 'forum_hot_views'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten();
-    raw.and_then(|v| v.trim().parse::<i64>().ok())
-        .filter(|n| *n >= 0)
-        .unwrap_or(HOT_VIEWS_DEFAULT)
-}
-
 #[derive(Deserialize)]
 struct RecentQuery {
     /// 类型筛选（对齐样图筛选行四档）：notice=只看公告 / sticky=只看置顶 /
@@ -93,7 +75,7 @@ pub(crate) async fn forum_recent(
         _ => None,
     };
     // 热度标阈值走管理端设置（0397）：0 = 关闭，缺省 1000
-    let hot_min = hot_views_threshold(&state).await;
+    let hot_min = repo_side::hot_views_threshold(&state.repo).await;
     let topics = repo_side::recent_topics(
         &state.repo,
         auth.class_id,

@@ -232,3 +232,24 @@ pub async fn recent_topics(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?)
 }
+
+/// 热度标阈值缺省值（0397 设置项缺失/被填成非数字时的兜底，与旧硬编码一致）
+const HOT_VIEWS_DEFAULT: i64 = 1000;
+
+/// 读「话题热度标阈值」设置（site_settings.forum_hot_views）。
+/// 0 = 关闭热度标（阈值 0 时判定式恒 false）；负数/垃圾值回落默认。
+///
+/// 10-26 从 `community_http/forums_side.rs` 下沉：H 层禁 SQL（分层宪法 §1，
+/// `layer_guard` 报的是「新函数带 SQL」，不属可登记的存量搬迁）。
+pub async fn hot_views_threshold(repo: &Repo) -> i64 {
+    let raw: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'forum_hot_views'",
+    )
+    .fetch_optional(&repo.db)
+    .await
+    .ok()
+    .flatten();
+    raw.and_then(|v| v.trim().parse::<i64>().ok())
+        .filter(|n| *n >= 0)
+        .unwrap_or(HOT_VIEWS_DEFAULT)
+}
