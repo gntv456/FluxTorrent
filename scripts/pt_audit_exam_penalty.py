@@ -19,6 +19,9 @@
 
 用法: python scripts/pt_audit_exam_penalty.py
 """
+import base64
+import hashlib
+import hmac
 import json
 import os
 import subprocess
@@ -91,16 +94,32 @@ def ok(name, cond, detail=""):
     return cond
 
 
+def b64url(raw):
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
 def login():
-    for i in range(8):
-        s, r = call("POST", "/auth/login",
-                    {"username": "root", "password": "password123"})
-        if s == 200 and r.get("code") == 0:
-            return r["data"]["token"]
-        if s != 429:
-            break
-        time.sleep(min(2 + i * 3, 20))
-    return None
+    """自铸职员令牌（HS256 + JWT_SECRET），与同作业的 ci_m_ops_panels.py 同口径。
+
+    不按口令登录：前序装机步 `install_e2e.py` 的 S4 会把 root 口令改成随机
+    `NEW_PW`，而随后的 seed 步 `ON CONFLICT DO UPDATE` 只回写 passkey/class_id、
+    **刻意不回写 pass_hash** ⇒ 在这条 e2e 作业里按口令登 root 必得
+    400/2004「凭证无效」（正控：占位哈希的号登录实测就是这个形状）。
+    自铸令牌不吃装机步的口令轮换，也不吃登录限流与 PoW 墙。
+    """
+    sec = os.environ.get("JWT_SECRET", "") or sh(
+        "docker", "exec", "flux-api", "printenv", "JWT_SECRET")
+    uid = psql("SELECT id FROM users WHERE username='root'")
+    if not sec or not uid:
+        return None
+    cls = psql("SELECT class_id FROM users WHERE id=%s" % uid) or "99"
+    now = int(time.time())
+    head = b64url(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    body = b64url(json.dumps({"sub": int(uid), "class_id": int(cls),
+                             "iat": now, "exp": now + 1800}).encode())
+    sig = b64url(hmac.new(sec.encode(), ("%s.%s" % (head, body)).encode(),
+                          hashlib.sha256).digest())
+    return "%s.%s.%s" % (head, body, sig)
 
 
 def cleanup(uid, tid):
@@ -135,7 +154,8 @@ def purge_probe():
 def main():
     token = login()
     if not token:
-        print("!! 登录失败")
+        print("!! 铸令牌失败：JWT_SECRET 取不到（env 与 flux-api 容器都空）"
+              "或 root 不在册——不是口令问题，本闸门已不按口令登录")
         return 1
     # 造数据：一次性用户 + 一次性考核任务 + 一条已过期的认领
     purge_probe()
