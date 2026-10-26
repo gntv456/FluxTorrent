@@ -42,12 +42,25 @@
 
 ### 已知问题（不影响运行，影响 CI）
 
-推 `master` 后 `build-test` 会如实报红三支守门：`layer_guard` 57 条（H 层 SQL 漂移，
-基线 `layer_baseline.json` 停在 10-19）、`line_limit_guard` 55 条超宽/超限、
-`route_manifest` 5 条差异（路由搬家未刷清单）。逐条归属见
-`_doc/种子详情子资源可见性实测-2026-10-26.md` 第六段。发布前置两条已验：
-`cargo check --workspace --all-targets` rc=0；`_sqlx_migrations` 415 行与
-`apps/api/migrations` 415 个文件双向求差为空。
+推送后回读实测，`build-test` 的两个作业都**在守门之前就更早停止**：rust 作业停在
+`Fmt`（`cargo fmt --all --check` 现存 49 处 diff，本批未碰其中任一文件），web 作业停在
+`Line limit guard`（55 条超宽/超限）。⇒ 本地量出的 `layer_guard` 57 条与
+`route_manifest` 5 条差异，这两步**在 CI 里根本没被执行到**。
+
+`security-audit` 同时报红：6 条 RUSTSEC 告警，其中一条是 **wasmtime 9.9 critical**
+（RUSTSEC-2026-0379：Cranelift 后端在 aarch64 上处理大 `br_table` 可跳到错误目标；
+修复 `>=49.0.4`）。本站 `adapter_seed.rs:13` 直接内置 douban wasm 适配器、
+`adapter_runtime.rs:106` 起 wasmtime 引擎，而发布 CI 又构建 arm64 镜像
+（`publish-images.yml` 双平台矩阵）⇒ 这条告警落在承重面上，不是纸面风险。
+当前 `Cargo.lock` 为 wasmtime 49.0.3，只差一个补丁版本；**本版未随发版改依赖**，
+建议单独一笔 `cargo update -p wasmtime --precise 49.0.4` 后复跑 cargo check + 闸门。
+其余五条：`crypto-bigint`（定时无变性，需 `>=0.7.6`）、`rustls-webpki`（可接受
+已被不信任的中间证书）、`webpki-roots` 1.0.9（内置根信任 emSign 中间证书，需 `>=1.0.10`）、
+`tokio` 1.53.1（`AsyncFd::new` 违反 I/O safety，unsound 警告）、
+wasmtime 另一条 medium（component model stream 降级 panic）。
+
+发布前置两条已验：`cargo check --workspace --all-targets` rc=0；`_sqlx_migrations`
+415 行与 `apps/api/migrations` 415 个文件双向求差为空。
 
 ## [0.3.2] - 2026-10-04
 
