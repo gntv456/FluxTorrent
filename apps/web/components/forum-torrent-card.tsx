@@ -29,26 +29,6 @@ type CardRow = {
 /** 模块级取数缓存：同页多帖引用同一种子只打一次接口；null = 已失效 */
 const cardCache = new Map<number, CardRow | null>();
 
-/** 种子引用行识别（渲染层唯一口径，forum-markdown 块解析调用）：
- *  !torrent(id) 显式语法，或整行恰为站内种子链接（/torrent/{id} 相对
- *  路径 / 任意绝对 URL 且 pathname 恰为 /torrent/{id}，尾斜杠容忍）。
- *  返回种子 id 或 null。解析器里须在 videoLine 之前判，否则裸链会被
- *  视频候选先抢走。 */
-export function torrentLine(line: string): number | null {
-  const t = line.trim();
-  const tm = t.match(/^!torrent\((\d{1,10})\)$/);
-  if (tm) return Number(tm[1]);
-  let u: URL | null = null;
-  try {
-    u = /^https?:\/\//i.test(t) ? new URL(t) : null;
-  } catch {
-    u = null;
-  }
-  const path = u ? u.pathname : t.startsWith("/") ? t : null;
-  const m = path?.match(/^\/torrent\/(\d{1,10})\/?$/);
-  return m ? Number(m[1]) : null;
-}
-
 /** 失效/不可见兜底：暗淡虚线框 + 保留链接（fail-closed，不出错态 UI） */
 function TorrentCardGone({ id, label }: { id: number; label: string }) {
   return (

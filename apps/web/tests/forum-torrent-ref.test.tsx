@@ -3,10 +3,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { api } from "../lib/api-client";
 import { appendVideoBlock } from "../lib/forum-video";
 import { MarkdownRenderer } from "../components/forum-markdown";
-import {
-  TorrentRefBlock,
-  torrentLine,
-} from "../components/forum-torrent-card";
+import { TorrentRefBlock } from "../components/forum-torrent-card";
+import { torrentLine } from "../lib/forum-torrent-line";
 import { TorrentInsertRow } from "../components/forum-torrent-insert";
 
 afterEach(() => {

@@ -1,6 +1,7 @@
 import React from "react";
 import { VideoEmbedBlock } from "@/components/forum-video-embed";
-import { TorrentRefBlock, torrentLine } from "@/components/forum-torrent-card";
+import { TorrentRefBlock } from "@/components/forum-torrent-card";
+import { torrentLine } from "@/lib/forum-torrent-line";
 import type { EmbedRule } from "@/lib/data-forum";
 
 /**
