@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { LEGACY_TOOL } from "../_parts/admin-shared";
+import { LEGACY_TOOL } from "../_parts/legacy-tool";
 
 /**
  * 后台路径式深链兜底（P2，2026-09-26）。

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, setSessionCookie } from "@/lib/api-client";
 import type { NextClass } from "@/lib/usercp-level";
+import { USERCP_NAV, type UsercpTab } from "@/lib/usercp-nav";
 import { useI18n } from "@/i18n/client";
 import { LOCALE_COOKIE, siteLangToLocale, type Locale } from "@/i18n/config";
 import { WishlistPanel } from "@/components/wishlist";
@@ -23,24 +24,6 @@ import { Icon } from "@/components/icons";
  *  usercp-personal.tsx（个人资料）、usercp-tracker.tsx（网站设定，含
  *  种子列表浏览参数）、usercp-forum.tsx（论坛设定）、usercp-security.tsx
  *  （安全设定）；共用表格行在 usercp-row.tsx。 */
-
-export type UsercpTab =
-  "overview" | "personal" | "fields" | "tracker" | "forum" | "security" | "wishlist";
-
-/** 侧栏导航图标：走 TIDE 图标系统（components/icons.tsx 的语义 SVG），
- *  颜色继承 currentColor，浅色/夜间自动适配。
- *  2026-10-03 修：此前用 ⌂♙✎⚙♧⌾☆ 七个键盘符号/装饰字符当图标，
- *  其中 ✎(U+270E) 缺字形在多数字体下渲染成「、」，控制面板第 4 项
- *  只剩一个孤立顿号；且与全站其他页面的图标体系不统一。 */
-export const USERCP_NAV: { key: UsercpTab; icon: string }[] = [
-  { key: "overview", icon: "gauge" },
-  { key: "personal", icon: "user" },
-  { key: "fields", icon: "edit" },
-  { key: "tracker", icon: "settings" },
-  { key: "forum", icon: "forums" },
-  { key: "security", icon: "shield" },
-  { key: "wishlist", icon: "star" },
-];
 
 // ============ 站点语言 ⇄ 前端 locale 映射 ============
 // 换算表已收敛到 i18n/config.siteLangToLocale（与后端 getLocale 默认语言回落共用）；

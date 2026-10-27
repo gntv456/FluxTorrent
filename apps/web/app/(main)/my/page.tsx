@@ -1,10 +1,6 @@
 import Link from "next/link";
-import {
-  USERCP_NAV,
-  UsercpPanel,
-  type UsercpTab,
-  type Overview,
-} from "@/components/usercp";
+import { UsercpPanel, type Overview } from "@/components/usercp";
+import { USERCP_NAV, type UsercpTab } from "@/lib/usercp-nav";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { getDict } from "@/i18n/server";

@@ -20,7 +20,6 @@ import {
   StaffToolsLazy as StaffTools,
 } from "./_parts/admin-tool-switch";
 import {
-  LEGACY_TOOL,
   type AppealRow,
   type AuditRow,
   type CheaterRow,
@@ -28,6 +27,7 @@ import {
   type PendingTorrent,
   type StatsData,
 } from "./_parts/admin-shared";
+import { LEGACY_TOOL } from "./_parts/legacy-tool";
 
 const MSG_CLS = "mb-3 rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink";
 
