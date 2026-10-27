@@ -87,6 +87,12 @@ jobs:
         run: node ../../scripts/line_limit_guard.mjs
       - name: tsc 类型检查（0 错误基线）
         run: pnpm exec tsc --noEmit
+      # RSC 边界门禁（2026-10-27 现网翻车建门）：服务端可达模块从 "use client"
+      # 模块取「值」——调用即抛（帖子页整页错误边界）、取下标得 undefined
+      # （后台旧书签别名静默失效）。tsc 与 next build 对此全绿，只有请求时炸，
+      # 故必须静态拦。口径与红测见 scripts/rsc_boundary_guard.mjs 头注。
+      - name: RSC boundary guard
+        run: node ../../scripts/rsc_boundary_guard.mjs
       # 契约漂移门禁（六维强化方案 P0-7）：errors.rs 错误码 ↔ domain-types ErrorCode、
       # promo.rs KIND_RANK ↔ PromotionKind；后端加码/改枚举而前端契约未跟 → 红灯
       - name: Type drift guard
