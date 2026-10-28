@@ -202,10 +202,14 @@ pub(super) async fn request_fulfill(
             requester
         };
         let idem = format!("req-payout:{}", id);
+        // kind 用 request_payout 而非 task_reward：后者是任务中心的口径，
+        // 复用会让「求种赏金」混进任务奖励报表（先例见
+        // ops_http/jixiao_claim.rs:155 的同一处修正）。
         // Replayed = 这笔悬赏早就入账过；那说明有上一次尝试半途而废，
         // 此时不能把「完结」落库（会再次掩盖问题），显式冲突回滚。
         if !matches!(
-            earn_spark_tx(&mut tx, payee, bounty, "task_reward", &idem).await?,
+            earn_spark_tx(&mut tx, payee, bounty, "request_payout", &idem)
+                .await?,
             crate::economy_http::SpendOutcome::Spent
         ) {
             return Err(DomainError::LedgerConflict);

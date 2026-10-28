@@ -2221,6 +2221,7 @@ const enBase: Omit<
       funding: "Funding",
       hr_pardon: "H&R pardon",
       hr_pardon_share: "H&R pardon share",
+      request_payout: "Request bounty",
       contract_reward: "Contract reward",
       contract_penalty: "Contract penalty",
       adjust: "Manual adjustment",

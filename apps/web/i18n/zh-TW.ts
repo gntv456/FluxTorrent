@@ -2150,6 +2150,7 @@ const zhTwBase: Omit<
       funding: "眾籌",
       hr_pardon: "績效豁免",
       hr_pardon_share: "績效豁免分成",
+      request_payout: "求種賞金",
       contract_reward: "契約獎勵",
       contract_penalty: "契約罰金",
       adjust: "手工調整",

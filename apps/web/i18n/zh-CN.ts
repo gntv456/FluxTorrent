@@ -2151,6 +2151,7 @@ const zhCnBase = {
       funding: "众筹",
       hr_pardon: "绩效豁免",
       hr_pardon_share: "绩效豁免分成",
+      request_payout: "求种赏金",
       contract_reward: "契约奖励",
       contract_penalty: "契约罚金",
       adjust: "手工调整",

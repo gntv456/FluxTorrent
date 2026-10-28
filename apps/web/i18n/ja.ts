@@ -58,6 +58,7 @@ export const ja: DeepPartial<Dict> = {
       funding: "クラウドファンディング",
       hr_pardon: "業績免除",
       hr_pardon_share: "業績免除分成",
+      request_payout: "リクエスト賞金",
       contract_reward: "契約報酬",
       contract_penalty: "契約罰金",
       adjust: "手動調整",
