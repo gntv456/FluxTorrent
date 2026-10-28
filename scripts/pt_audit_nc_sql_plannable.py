@@ -149,6 +149,13 @@ for i, msg in sorted(errs.items()):
     print("   [硬错] %s" % path)
     print("          %s" % msg.split("ERROR:")[-1].strip())
     print("          SQL: %s" % " ".join(sql.split())[:110])
+for i, msg in sorted(errs.items()):
+    if i == ghost_i or HARD.search(msg) or "does not exist" in msg.lower():
+        continue
+    sql, path = stmts[i]
+    print("   [语法/片段] %s" % path)
+    print("          %s" % msg.split("ERROR:")[-1].strip())
+    print("          SQL: %s" % " ".join(sql.split())[:100])
 ok("NC2 「规划期就报真错」的文件 = 台账 %s（ambiguous / 列不存在 / 算子 / 转型）"
    % sorted(HARD_LEDGER), set(hard) == set(HARD_LEDGER),
    "实测=%s" % {k: v[:2] for k, v in hard.items()})
