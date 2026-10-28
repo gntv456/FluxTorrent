@@ -19,7 +19,7 @@ const NUMERIC_FIELDS: [&str; 8] = [
     "pos_state",
     "pick_type",
 ];
-const BOOL_FIELDS: [&str; 1] = ["anonymous"];
+const BOOL_FIELDS: [&str; 2] = ["anonymous", "hr_punish"];
 
 /// 组装 `UploadForm`：query string 与 multipart 文本字段**都收**，后者优先。
 ///

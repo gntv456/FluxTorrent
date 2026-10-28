@@ -66,7 +66,67 @@ pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
 /// 播报过的促销在备注里带 id，重跑不重发（shoutbox 无删除通道，
 /// 防刷屏是硬约束）。60s 一轮与调度注册的 cadence 一致。
 /// 播报身份取在场最高等级职员（缺省 id=1）；无新促销时零查询副作用。
+///
+/// E-2 补齐（0423② 半成品）：promotions.announced_at 列自 0423 加上后
+/// 零消费——「全员站内信」只在迁移注释里存在。现在 global 促销在
+/// shoutbox 播报的同时给活跃用户（90 天内登录）发一封站内信，
+/// 幂等改锚 announced_at（UPDATE ... WHERE announced_at IS NULL），
+/// 与 shoutbox 的 LIKE 判据双保险。单种/分类促销仍不进全员信箱
+/// （防刷屏），触达走种子页促销标记与愿望单推送等既有通道。
 pub async fn announce_site_promos(db: &PgPool) -> anyhow::Result<u64> {
+    // ① 站内信（announced_at 幂等；一次一条促销一条信，收件=活跃用户集）
+    let pm = sqlx::query(
+        r#"
+        WITH fresh AS (
+            SELECT id, kind, ends_at FROM promotions
+            WHERE scope = 'global' AND starts_at <= now() AND ends_at > now()
+              AND announced_at IS NULL
+            ORDER BY id LIMIT 1
+        ),
+        claimed AS (
+            UPDATE promotions SET announced_at = now()
+            WHERE id IN (SELECT id FROM fresh)
+              -- 与头注「UPDATE ... WHERE announced_at IS NULL」对齐：
+              -- 缺这句多副本会各发一轮全员信（第二个 UPDATE 不跳行）。
+              AND announced_at IS NULL
+            RETURNING id, kind, ends_at
+        ),
+        staff AS (
+            SELECT id FROM users WHERE status < 2 AND class_id >= 99
+            ORDER BY id LIMIT 1
+        )
+        INSERT INTO messages (sender_id, receiver_id, subject, body, kind)
+        SELECT staff.id, u.id,
+               CASE claimed.kind
+                   WHEN 'x2free' THEN '促销开启：全站免费 + 双倍上传'
+                   WHEN 'free'   THEN '促销开启：全站免费'
+                   WHEN 'half'   THEN '促销开启：全站半量下载'
+                   WHEN 'x2'     THEN '促销开启：全站双倍上传'
+                   WHEN 'x2half' THEN '促销开启：全站双倍上传 + 半量下载'
+                   ELSE '促销开启：全站促销活动'
+               END,
+               '促销已开启，截止 ' || to_char(claimed.ends_at AT TIME ZONE 'Asia/Shanghai',
+                                               'MM-DD HH24:mi') || '，抓紧时间下载！',
+               'system'
+        FROM claimed
+        CROSS JOIN users u
+        -- staff 为空时也要发：LEFT JOIN 让 sender_id 落 NULL（系统信），
+        -- 否则 staff.id 不在 FROM 里＝运行期 missing FROM-clause，整条 job 失败。
+        LEFT JOIN staff ON TRUE
+        WHERE u.status < 2
+          AND u.last_seen_at > now() - interval '90 days'
+          -- 与欢迎信/违规信同口径：系统通知必须过收件人偏好闸
+          AND u_notice_enabled(u.id, 'system')
+          AND NOT EXISTS (SELECT 1 FROM users WHERE id = u.id AND id = staff.id)
+        "#,
+    )
+    .execute(db)
+    .await?;
+    let pm_n = pm.rows_affected();
+    if pm_n > 0 {
+        tracing::info!(pm_n, "site promo announced via site mail");
+    }
+    // ② shoutbox 播报（原有通道，LIKE 判据保留）
     let res = sqlx::query(
         r#"
         WITH fresh AS (
@@ -92,7 +152,7 @@ pub async fn announce_site_promos(db: &PgPool) -> anyhow::Result<u64> {
                    WHEN 'x2half' THEN '🎉 全站 2x上传+50%下载已开启！'
                    ELSE '🎉 全站促销活动进行中！'
                END
-               || ' 截止 ' || to_char(fresh.ends_at AT TIME ZONE 'UTC+8', 'MM-DD HH24:mi')
+               || ' 截止 ' || to_char(fresh.ends_at AT TIME ZONE 'Asia/Shanghai', 'MM-DD HH24:mi')
                || '（promo:' || fresh.id || '）'
         FROM fresh CROSS JOIN staff
         "#,
