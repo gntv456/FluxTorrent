@@ -177,13 +177,15 @@ pub(super) async fn bigsmall_trend(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let n = q.n.unwrap_or(20).clamp(1, 50);
-    let rows: Vec<(String, i64, i32, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
-        "SELECT prize, spark, rarity, created_at FROM arcade_pool_rounds          WHERE game = 'bigsmall' ORDER BY id DESC LIMIT $1",
-    )
-    .bind(n)
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(dberr)?;
+    let rows: Vec<(String, i64, i32, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT prize, spark, rarity, created_at FROM arcade_pool_rounds \
+             WHERE game = 'bigsmall' ORDER BY id DESC LIMIT $1",
+        )
+        .bind(n)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(dberr)?;
     // 区标签 → 开奖面（win = 命中所押面；走势只关心大/小/豹子三态，
     // 用 number 不可得（未落库），以 prize 近似：triple 标签 = 豹子；
     // 其余按 spark>0=win 行的两态展示为「开」）——分布口径在注释里说死。
@@ -203,7 +205,10 @@ pub(super) async fn bigsmall_trend(
         seq.push(face);
     }
     let total = rows.len().max(1) as f64;
-    state.repo.audit(Some(auth.id), "game.bigsmall_trend", None).await;
+    state
+        .repo
+        .audit(Some(auth.id), "game.bigsmall_trend", None)
+        .await;
     Ok(ok(serde_json::json!({
         "rounds": rows.iter().map(|(p, s, r, at)| serde_json::json!({
             "prize": p, "spark": s, "rarity": r, "at": at,

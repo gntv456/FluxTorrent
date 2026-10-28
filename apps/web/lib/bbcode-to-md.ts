@@ -11,7 +11,9 @@
 export function bbcodeToMarkdown(src: string): string {
   let s = src;
   // 代码块先行（内部不再做其它替换）
-  s = s.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (_m, c: string) => `\`\`\`\n${c.replace(/\n+$/, "")}\n\`\`\``);
+  s = s.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (_m, c: string) =>
+    `\`\`\`\n${c.replace(/\n+$/, "")}\n\`\`\``,
+  );
   // 粗体/斜体/删除线（下划线 MD 无原生语法，用 <u> 直排——渲染端支持内联 HTML 的场景兜得住）
   s = s.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "**$1**");
   s = s.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "*$1*");
@@ -33,7 +35,9 @@ export function bbcodeToMarkdown(src: string): string {
       .map((l) => `> ${l}`)
       .join("\n"),
   );
-  s = s.replace(/\[quote=([^\]]*)\]([\s\S]*?)\[\/quote\]/gi, (_m, who: string, q: string) =>
+  s = s.replace(
+    /\[quote=([^\]]*)\]([\s\S]*?)\[\/quote\]/gi,
+    (_m, who: string, q: string) =>
     `> **${who}**\n` +
     q
       .split("\n")

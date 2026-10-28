@@ -81,7 +81,8 @@ pub async fn torrent_suggest(
     // 只记规范化后的词（trim + 长度 2-64）。失败静默——统计不影响主路径。
     if !items.is_empty() && raw.chars().count() <= 64 {
         let _ = sqlx::query(
-            "INSERT INTO search_term_stats (term, hits) VALUES ($1, 1)              ON CONFLICT (term) DO UPDATE SET hits = hits + 1, last_at = now()",
+            "INSERT INTO search_term_stats (term, hits) VALUES ($1, 1) \
+             ON CONFLICT (term) DO UPDATE SET hits = hits + 1, last_at = now()",
         )
         .bind(raw)
         .execute(&state.repo.db)

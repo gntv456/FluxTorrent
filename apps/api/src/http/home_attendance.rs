@@ -116,19 +116,20 @@ async fn today_board(
     today: chrono::NaiveDate,
 ) -> serde_json::Value {
     let rows: Vec<(i64, Option<String>, i64)> = sqlx::query_as(
-        "SELECT a.user_id, u.username, a.reward FROM attendance a          JOIN users u ON u.id = a.user_id          WHERE a.date = $1 ORDER BY a.reward DESC, a.id ASC LIMIT 3",
+        "SELECT a.user_id, u.username, a.reward FROM attendance a \
+         JOIN users u ON u.id = a.user_id \
+         WHERE a.date = $1 ORDER BY a.reward DESC, a.id ASC LIMIT 3",
     )
     .bind(today)
     .fetch_all(db)
     .await
     .unwrap_or_default();
-    let total: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM attendance WHERE date = $1",
-    )
-    .bind(today)
-    .fetch_one(db)
-    .await
-    .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM attendance WHERE date = $1")
+            .bind(today)
+            .fetch_one(db)
+            .await
+            .unwrap_or(0);
     serde_json::json!({
         "top": rows.iter().map(|(id, name, r)| serde_json::json!({
             "user_id": id, "username": name, "reward": r,

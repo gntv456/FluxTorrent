@@ -58,7 +58,8 @@ pub async fn contract_tiers(
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 资格：注册满 30 天（同类站 口径）
     let eligible: bool = sqlx::query_scalar(
-        "SELECT created_at < now() - interval '30 days' FROM users WHERE id = $1",
+        "SELECT created_at < now() - interval '30 days' FROM users \
+         WHERE id = $1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -68,10 +69,15 @@ pub async fn contract_tiers(
     Ok(ok(serde_json::json!({
         "enabled": enabled,
         "eligible": eligible,
-        "tiers": tiers.iter().map(|(kind, label, target, reward, penalty, sort)| serde_json::json!({
-            "kind": kind, "label": label, "target": target,
-            "reward": reward, "penalty": penalty, "sort": sort,
-        })).collect::<Vec<_>>(),
+        "tiers": tiers
+            .iter()
+            .map(|(kind, label, target, reward, penalty, sort)| {
+                serde_json::json!({
+                    "kind": kind, "label": label, "target": target,
+                    "reward": reward, "penalty": penalty, "sort": sort,
+                })
+            })
+            .collect::<Vec<_>>(),
     })))
 }
 
@@ -95,7 +101,9 @@ pub async fn contract_sign(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     if body.kind != "seed" && body.kind != "publish" {
-        return Err(DomainError::Validation("契约类型必须是 seed/publish".into()));
+        return Err(DomainError::Validation(
+            "契约类型必须是 seed/publish".into(),
+        ));
     }
     // 档位必须真实存在且启用（不接受任意 target）
     let valid: bool = sqlx::query_scalar(
@@ -111,7 +119,8 @@ pub async fn contract_sign(
         return Err(DomainError::Validation("契约档位不存在或未启用".into()));
     }
     let eligible: bool = sqlx::query_scalar(
-        "SELECT created_at < now() - interval '30 days' FROM users WHERE id = $1",
+        "SELECT created_at < now() - interval '30 days' FROM users \
+         WHERE id = $1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -119,7 +128,9 @@ pub async fn contract_sign(
     .map_err(|e| DomainError::Internal(e.into()))?
     .unwrap_or(false);
     if !eligible {
-        return Err(DomainError::Validation("注册满 30 天后才可参与契约".into()));
+        return Err(DomainError::Validation(
+            "注册满 30 天后才可参与契约".into(),
+        ));
     }
     let month = current_month();
     let id: i64 = sqlx::query_scalar(
@@ -137,7 +148,10 @@ pub async fn contract_sign(
     .fetch_one(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    state.repo.audit(Some(auth.id), "contract.sign", Some(id)).await;
+    state
+        .repo
+        .audit(Some(auth.id), "contract.sign", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "contract_id": id, "month": month })))
 }
 

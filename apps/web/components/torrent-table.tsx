@@ -203,7 +203,9 @@ async function TorrentTr({
               {/* 0424 同类站对标：剩余时长内嵌角标（Free22H 口径）——
                   角标自身即携带时效信息，悬停才补绝对截止时刻 */}
               {dict.promotion[promo.key]}
-              {leftCompact && <b className="torrents-promo-left">{leftCompact}</b>}
+              {leftCompact && (
+                <b className="torrents-promo-left">{leftCompact}</b>
+              )}
             </span>
           )}
           {left && <span className="torrents-left">剩余 {left}</span>}

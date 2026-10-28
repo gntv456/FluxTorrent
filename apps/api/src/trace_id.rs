@@ -30,7 +30,11 @@ pub struct TraceIdMiddleware<S> {
 
 impl<S, B> Transform<S, ServiceRequest> for TraceId
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
+    S: Service<
+        ServiceRequest,
+        Response = ServiceResponse<B>,
+        Error = actix_web::Error,
+    >,
     S::Future: 'static,
     B: MessageBody + 'static,
 {
@@ -47,7 +51,11 @@ where
 
 impl<S, B> Service<ServiceRequest> for TraceIdMiddleware<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
+    S: Service<
+        ServiceRequest,
+        Response = ServiceResponse<B>,
+        Error = actix_web::Error,
+    >,
     S::Future: 'static,
     B: MessageBody + 'static,
 {
@@ -71,12 +79,18 @@ where
         let method = req.method().to_string();
         let fut = self.service.call(req);
         Box::pin(async move {
-            tracing::info!(trace_id = %tid, method = %method, path = %path, "request");
+            tracing::info!(
+                trace_id = %tid, method = %method, path = %path, "request"
+            );
             let mut res = fut.await?;
-            if let Ok(v) = actix_web::http::header::HeaderValue::from_str(&tid) {
-                res.response_mut()
-                    .headers_mut()
-                    .insert(actix_web::http::header::HeaderName::from_static("x-trace-id"), v);
+            if let Ok(v) = actix_web::http::header::HeaderValue::from_str(&tid)
+            {
+                res.response_mut().headers_mut().insert(
+                    actix_web::http::header::HeaderName::from_static(
+                        "x-trace-id",
+                    ),
+                    v,
+                );
             }
             Ok(res)
         })
