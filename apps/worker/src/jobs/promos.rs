@@ -88,7 +88,8 @@ pub async fn announce_site_promos(db: &PgPool) -> anyhow::Result<u64> {
                    WHEN 'x2free' THEN '🎉 全站 FREE + 双倍上传已开启！'
                    WHEN 'free'   THEN '🎉 全站 FREE 已开启！'
                    WHEN 'half'   THEN '🎉 全站 50% 下载已开启！'
-                   WHEN 'x2up'   THEN '🎉 全站双倍上传已开启！'
+                   WHEN 'x2'     THEN '🎉 全站双倍上传已开启！'
+                   WHEN 'x2half' THEN '🎉 全站 2x上传+50%下载已开启！'
                    ELSE '🎉 全站促销活动进行中！'
                END
                || ' 截止 ' || to_char(fresh.ends_at AT TIME ZONE 'UTC+8', 'MM-DD HH24:mi')
