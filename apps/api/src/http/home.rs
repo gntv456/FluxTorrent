@@ -209,11 +209,15 @@ async fn home_shared_fresh(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     // 0425 热搜词云：90 天窗口 TOP 20（词表冷启动期可能为空，前端隐藏区块）
+    // 「没有热搜」和「读不到热搜」不能同形：空表是合法的空，表不存在是事故。
+    // P-461 实测这条原本一路 unwrap_or_default，把 0425 从未落地演成首页词云
+    // 区块静默缺席——零报错、零账面。
     let hot_terms: Vec<(String, i64)> = sqlx::query_as(
         "SELECT term, hits FROM search_term_stats          WHERE last_at > now() - interval '90 days'          ORDER BY hits DESC, last_at DESC LIMIT 20",
     )
     .fetch_all(db)
     .await
+    .inspect_err(|e| tracing::warn!(error = %e, "热搜词云读取失败"))
     .unwrap_or_default();
 
     // 友情链接：只公示**已通过审核**的那批。friend_links.status 有三态

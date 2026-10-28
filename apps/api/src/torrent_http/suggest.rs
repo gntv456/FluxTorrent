@@ -78,15 +78,20 @@ pub async fn torrent_suggest(
         })
         .collect();
     // 0425 热搜统计（同类站对标 A-）：有结果才计（防乱敲污染词云）；
-    // 只记规范化后的词（trim + 长度 2-64）。失败静默——统计不影响主路径。
+    // 只记规范化后的词（trim + 长度 2-64）。失败不打断联想回包，但必须出声
+    //（P-323/P-328 同口径）：0425 在现网从未执行成功（见 0427 补建），表不在
+    // 时这里静默吞掉 = 热搜永久零累积且无人知道（P-461）。
     if !items.is_empty() && raw.chars().count() <= 64 {
-        let _ = sqlx::query(
+        if let Err(e) = sqlx::query(
             "INSERT INTO search_term_stats (term, hits) VALUES ($1, 1) \
              ON CONFLICT (term) DO UPDATE SET hits = hits + 1, last_at = now()",
         )
         .bind(raw)
         .execute(&state.repo.db)
-        .await;
+        .await
+        {
+            tracing::warn!(error = %e, "热搜词计数失败");
+        }
     }
     Ok(ok(serde_json::json!({ "items": items })))
 }
