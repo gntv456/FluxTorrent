@@ -240,7 +240,7 @@ pub async fn site_stats(db: &PgPool) -> DomainResult<serde_json::Value> {
     // 失败静默空表（统计增强不能拖垮主口径）。
     let class_rows: Vec<(i32, i64, String)> = sqlx::query_as(
         "SELECT u.class_id, count(*)::bigint, COALESCE(c.name, '?') \
-         FROM users u LEFT JOIN classes c ON c.id = u.class_id \
+         FROM users u LEFT JOIN user_classes c ON c.id = u.class_id \
          WHERE u.status < 2 GROUP BY u.class_id, c.name ORDER BY u.class_id",
     )
     .fetch_all(db)
