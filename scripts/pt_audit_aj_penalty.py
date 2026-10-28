@@ -31,6 +31,19 @@ def q(sql):
     return psql_stdin(sql)
 
 
+# 开局自愈：上一轮超时/崩溃留下的 AJ 探针任务会在任务中心对真实用户可见
+# （2026-10-29 现网清理过 id=93「AJ探针考核 43206」）。先按依赖顺序清掉。
+try:
+    q("DELETE FROM exam_penalties WHERE claim_id IN (SELECT id FROM "
+      "task_claims WHERE task_id IN (SELECT id FROM tasks WHERE name LIKE "
+      "'AJ探针考核%'))")
+    q("DELETE FROM task_claims WHERE task_id IN (SELECT id FROM tasks "
+      "WHERE name LIKE 'AJ探针考核%')")
+    q("DELETE FROM tasks WHERE name LIKE 'AJ探针考核%'")
+except Exception as e:  # noqa: BLE001
+    print("[CLEAN-WARN] pre-clean AJ probe tasks: %s" % e)
+
+
 def setting(name, value):
     q("UPDATE site_settings SET value = '%s' WHERE name = '%s'"
       % (value, name))

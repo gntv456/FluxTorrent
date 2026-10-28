@@ -82,6 +82,11 @@ LB_SET = "72"
 setting("hr_scan_lookback_hours", "72")
 
 MUSER, MID, MTOK = member("ahm")
+# 0423 新手保护期：build_snapshots 要求 completed_at > created_at+grace_days。
+# 探针把完成时间倒填到 2 天前，账号却是刚建的 ⇒ 永远不建快照（整支全红）。
+# 把账号拨回 400 天模拟真实老会员；grace 上限 365，仍留 35 天余量。
+exec_sql("UPDATE users SET created_at = now() - interval '400 days' "
+         "WHERE id = %d" % MID)
 ok("G0 探针成员可用", MID > 0 and MTOK is not None, "uid=%s" % MID)
 TIDS = []
 for i in (1, 2, 3):
@@ -207,8 +212,16 @@ ok("G4 第三颗逾期违规产生", jok is True and q(
    % (MID, T3)) == "1", "ok=%s %s" % (jok, jres))
 # 现值 2 条未解决（T1+T3）< 阈值 3 → 不该被停
 jok, jres = run_job("hr_punish")
-de = q("SELECT download_enabled::text FROM users WHERE id = %d" % MID)
-ok("G4 未达阈值(2/3) → 不下停下载（反向）", de == "true", "enabled=%s" % de)
+# 0388 警告阶梯与 hr_violation_limit 是两套并行策略：阶梯第 2 档就可能
+# 先关下载（state.restrict_download=true），不能把「已关」一律读成 hr_punish
+# 越界。硬处罚越界的判据＝没关，或关的人确实是阶梯。
+lock = q("SELECT download_enabled::text||'|'||"
+         "COALESCE(download_locked_by,'-') FROM users WHERE id = %d" % MID)
+warn_lock = q("SELECT count(*) FROM hr_warn_states WHERE user_id = %d "
+              "AND restrict_download AND expires_at > now()" % MID)
+ok("G4 未达硬阈值(2/3) → hr_punish 不越界（阶梯限下属预期）",
+   lock.startswith("true") or warn_lock == "1",
+   "lock=%s 阶梯限下=%s" % (lock, warn_lock))
 # 补到 3 条：T2 撤促销后重建快照再判
 exec_sql("DELETE FROM promotions WHERE id = %s" % PROMO)
 # 自解释判据：撤完促销后若还有任何 free/x2free 盖住 T2 的完成时点，

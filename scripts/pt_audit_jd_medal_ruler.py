@@ -169,10 +169,16 @@ def main():
            s == 400, "这条红说明上限被一起删掉了，不是尺子修好了")
     finally:
         psql("DELETE FROM user_medals WHERE user_id = %d;" % uid)
+        # 产品删除链要求先处置（与 AH/SW 同口径）；只打 DELETE 会因状态/FK
+        # 被静默拒掉，留下一个活跃探针号（2026-10-29 现网 jd13471 实证）。
+        call("POST", "/admin/users/status",
+             {"user_id": uid, "status": 2}, token=root)
         call("DELETE", "/admin/users/%d" % uid, None, token=root)
         left = psql("SELECT count(*) FROM user_medals WHERE user_id = %d"
                     % uid)
         ok("JD9 残料归零（探针持有行 %s）" % left, left == "0")
+        tomb = psql("SELECT status FROM users WHERE id = %d" % uid)
+        ok("JD9b 探针已墓碑（status=3）", tomb == "3", "status=%s" % tomb)
 
     for rel in ("auth_http/profile.rs", "auth_http/me_settings.rs",
                 "community_http/medal.rs"):

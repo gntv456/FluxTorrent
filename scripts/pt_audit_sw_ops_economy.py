@@ -165,6 +165,13 @@ else:
     ok("SW14 分层抽查未执行（探针号不可用）", False,
        "六条「92→403」判据一条都没打出去——红在仪器，不在现网")
 
+# 收尾：92 档探针号必须墓碑。class 92 + 与 root 相同的 pass_hash 的活号是
+# 安全残料（已知用户名/口令即可登录职员面）；下一轮 probe_token 会自愈或新建。
+if PROBE_UID:
+    call("POST", "/admin/users/status",
+         {"user_id": int(PROBE_UID), "status": 2}, token=ROOT)
+    call("DELETE", "/admin/users/%s" % PROBE_UID, None, token=ROOT)
+
 # ============ S6 备份盘存量台账（只记读数，不判红）============
 # 现网事实：POST /admin/backups/run 每次落一枚 ~5MB 的 manual dump，
 # GET /admin/backups 只读目录、没有任何保留上限，也没有删除入口

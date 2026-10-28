@@ -317,8 +317,16 @@ def d_dlforum(vip: str, root: str) -> None:
     # 无未决作弊事件时，手动跑 seeding_reward job → spark_ledger 到账。
     # 反作弊拦截（connectable=0 / 未决 ghost 事件）是设计行为，先模拟
     # 「管理员已处置 + 客户端可达」再验收益链本身。
-    psql("UPDATE snatches SET connectable = 1 WHERE user_id = 7346 "
-         "AND seeding AND last_port > 0")
+    # 2026-10-29：vip 的旧 snatch 全是 seeding=false（夹具过期），先给
+    # 最大体积的种补一条可结算 snatch；小体积探针种的档位分会四舍五入成 0。
+    BIG = psql("SELECT id FROM torrents ORDER BY size DESC LIMIT 1")
+    psql("INSERT INTO snatches (user_id, torrent_id, seeding, connectable, "
+         "last_port, last_seen_at, seeded_seconds) VALUES "
+         "(7346, %s, true, 1, 6881, now(), 3600) "
+         "ON CONFLICT (user_id, torrent_id) DO UPDATE SET "
+         "seeding=true, connectable=1, last_port=6881, "
+         "last_seen_at=now(), "
+         "seeded_seconds=GREATEST(snatches.seeded_seconds, 3600)" % BIG)
     psql("UPDATE cheat_events SET resolved_at = now() "
          "WHERE user_id = 7346 AND resolved_at IS NULL")
     st, js = call("POST", "/api/v1/admin/jobs/run", root,
@@ -338,5 +346,6 @@ def d_dlforum(vip: str, root: str) -> None:
     sp1 = int(psql("SELECT COALESCE(spark_balance,0) FROM users WHERE id=7346") or 0)
     expect(D, "余额快照 == base_spark+Σledger", sp1 == base_sp + led_all,
            f"bal={sp1} base={base_sp} Σ={led_all}")
+    psql("DELETE FROM snatches WHERE user_id = 7346 AND torrent_id = %s" % BIG)
 
 

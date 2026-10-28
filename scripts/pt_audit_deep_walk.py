@@ -67,17 +67,19 @@ def d_search(vip: str, root: str) -> None:
     expect(D, "无结果搜索 items 空", st == 200 and
            data_of(js).get("items") == [])
 
-    # 搜索范围：副标题/发布者/IMDb（中文关键词须百分号编码，否则 urllib 直接抛错）
+    # 搜索范围：副标题/发布者/IMDb（中文关键词须百分号编码，否则 urllib 直接抛错）。
+    # 中文/副标题探针种多是断种（seeders=0），默认视图会隐藏；这两条只验
+    # 分词/匹配，用 alive=0 显式纳入断种，别把「默认不列死种」读成「搜不到中文」。
     st, js = call("GET", "/api/v1/torrents?search_area=1&search="
-                  + urllib.parse.quote("探针") + "&limit=10", vip)
+                  + urllib.parse.quote("探针") + "&alive=0&limit=10", vip)
     rows = data_of(js).get("items", [])
-    expect(D, "search_area=1 副标题搜索", st == 200 and len(rows) > 0 and
+    expect(D, "search_area=1 副标题搜索（含断种）", st == 200 and len(rows) > 0 and
            all("探针" in (r.get("small_descr") or "") or
                "探针" in (r.get("name") or "") for r in rows),
            f"st={st} n={len(rows)}")
     st, js = call("GET", "/api/v1/torrents?search="
-                  + urllib.parse.quote("深测") + "&limit=10", vip)
-    expect(D, "中文关键词直搜", st == 200 and
+                  + urllib.parse.quote("深测") + "&alive=0&limit=10", vip)
+    expect(D, "中文关键词直搜（含断种）", st == 200 and
            len(data_of(js).get("items", [])) > 0, f"st={st}")
     st, js = call("GET", "/api/v1/torrents?search_area=3&search=root&limit=10",
         vip)
@@ -421,10 +423,12 @@ def main() -> None:
     psql(
         "UPDATE users SET class_id = 9, "
         "downloaded = GREATEST(downloaded, 2684354560), "
-        "spark_balance = GREATEST(COALESCE(spark_balance,0), 50000) WHERE id = "
-            "7346"
+        "spark_balance = 50000 WHERE id = 7346"
     )
     psql("DELETE FROM traffic_ledger WHERE user_id = 7346")
+    # spark 也是「基线 + 流水」快照：只抬 balance 不清 ledger 会让
+    # balance != base_spark + Σledger（dlforum 的恒等式因此假红）。
+    psql("DELETE FROM spark_ledger WHERE user_id = 7346")
     psql(
         "INSERT INTO balance_baseline (user_id, base_up, base_down, "
             "base_spark, "

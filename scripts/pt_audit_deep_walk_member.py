@@ -13,13 +13,23 @@ import sys
 
 def d_pm(vip: str, root: str) -> None:
     D = "pm"
-    # 收件箱基线 + /me 未读计数对账（真交叉验证）。limit=100 是上限：
-    # 用 unread=true 只取未读，55 条未读不会被 limit=50 截成一页 50。
+    # 收件箱基线 + /me 未读计数对账（真交叉验证）。limit 上限 100：
+    # 用 unread=true 只取未读，多于 100 时按 offset 翻完再比。
     st, js = call("GET",
                   "/api/v1/messages/inbox?unread=true&limit=100", vip)
     if not ok(D, "收件箱可读", st, js):
         return
-    before_unread = sum(1 for m in rows_of(js) if m.get("unread"))
+    page = rows_of(js)
+    before_unread = sum(1 for m in page if m.get("unread"))
+    # limit 上限 100：未读多于 100 时只数第一页会把 /me 的真计数报成红。
+    off = 100
+    while len(page) == 100 and off <= 1000:
+        st, js = call("GET",
+                      "/api/v1/messages/inbox?unread=true&limit=100"
+                      f"&offset={off}", vip)
+        page = rows_of(js)
+        before_unread += sum(1 for m in page if m.get("unread"))
+        off += 100
     st, js_me = call("GET", "/api/v1/me", vip)
     me_unread = data_of(js_me).get("unread_messages")
     expect(D, "/me 未读数 == 收件箱实际未读", me_unread == before_unread,

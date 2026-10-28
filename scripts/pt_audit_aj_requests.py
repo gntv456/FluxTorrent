@@ -191,7 +191,7 @@ ok("R1 非发布者应种被拒", s == 400 and r.get("code") != 0,
 ok("R1 拒绝是真拒绝：单仍待应、路人零入账",
    q("SELECT status::text FROM requests WHERE id = %s" % rid) == "0"
    and q("SELECT count(*) FROM spark_ledger WHERE user_id = %d AND "
-         "kind = 'task_reward'" % uc) == "0",
+         "kind = 'request_payout'" % uc) == "0",
    "status=%s" % q("SELECT status::text FROM requests WHERE id = %s" % rid))
 
 print("== R2 发布者应种：状态 / 到账 / 流水 / 通知 四出口 ==")
@@ -208,7 +208,7 @@ ok("R2 悬赏转到应种人账上",
    q("SELECT spark_balance::text FROM users WHERE id = %d" % ub)
    == str(1000 + BOUNTY)
    and q("SELECT count(*) FROM spark_ledger WHERE user_id = %d AND "
-         "kind = 'task_reward' AND idempotency_key = 'req-payout:%s'"
+         "kind = 'request_payout' AND idempotency_key = 'req-payout:%s'"
          % (ub, rid)) == "1",
    "balance=%s" % q("SELECT spark_balance::text FROM users WHERE id = %d"
                     % ub))
@@ -230,8 +230,8 @@ mine = [x for x in (r.get("data") or []) if str(x.get("id")) == str(rid)]
 row0 = mine[0] if mine else {}
 ok("R2b 命中列表能读到自己那张单", bool(row0), "http=%s n=%s"
    % (s, len((r.get("data") or []))))
-ok("R2b 评论数/应求数/最新出价为 null（加价与评论线都不存在）",
-   row0.get("comments") is None and row0.get("bids") is None
+ok("R2b 评论线不存在→null；加价线存在→真计数 0；无加价→latest 为 null",
+   row0.get("comments") is None and row0.get("bids") == 0
    and row0.get("latest_bounty") is None, str(row0)[:150])
 ok("R2b 原始出价仍是真值（null 只给「没有的东西」，不给有的）",
    row0.get("bounty") == BOUNTY, "bounty=%s" % row0.get("bounty"))
@@ -252,13 +252,13 @@ ok("R3 发奖失败（接口报错，不是静默成功）", s != 200 or r.get("
    "http=%s %s" % (s, str(r)[:90]))
 ok("R3 回滚完整：单仍待应、无 payout 流水、求种人无通知",
    q("SELECT status::text FROM requests WHERE id = %s" % rid2) == "0"
-   and q("SELECT count(*) FROM spark_ledger WHERE kind = 'task_reward' "
+   and q("SELECT count(*) FROM spark_ledger WHERE kind = 'request_payout' "
          "AND idempotency_key = 'req-payout:%s'" % rid2) == "0"
    and q("SELECT count(*) FROM messages WHERE receiver_id = %d AND "
          "subject = '%s'" % (ua, SUBJ)) == "1",
    "status=%s ledger=%s pm=%s"
    % (q("SELECT status::text FROM requests WHERE id = %s" % rid2),
-      q("SELECT count(*) FROM spark_ledger WHERE kind = 'task_reward' "
+      q("SELECT count(*) FROM spark_ledger WHERE kind = 'request_payout' "
         "AND idempotency_key = 'req-payout:%s'" % rid2),
       q("SELECT count(*) FROM messages WHERE receiver_id = %d AND "
         "subject = '%s'" % (ua, SUBJ))))
@@ -274,6 +274,9 @@ ok("R3 障碍排除后同一单可重试成功（没有死单）",
 print("== R4 收尾：残料清零 ==")
 for stmt in reversed(CLEAN):
     exec_sql(stmt)
+# 历史中断残留：@aj.local 还活着的号统一墓碑（本轮 CLEAN 只覆盖本轮三个号）
+exec_sql("UPDATE users SET status = 3 WHERE email LIKE '%@aj.local' "
+         "AND status < 2")
 ok("R4 探针成员已墓碑化",
    q("SELECT count(*) FROM users WHERE email LIKE '%@aj.local' AND "
      "status < 2") == "0",

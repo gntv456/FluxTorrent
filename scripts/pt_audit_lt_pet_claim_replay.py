@@ -30,7 +30,8 @@ new_pending = 0;              // ← 重放也清账
         复原），把 last_tick 拨回 6 小时、能量压到 3 ⇒ 每次恰好攒 2 火花：
         领(A 键)付 → 再攒 → 领(A 键)必须 **400 且不出账** → 领(B 键)必须照付。
         旧代码在这里是 200 + 那 2 火花蒸发 ⇒ 现网打这条必红，就是缺陷本体。
-正控：LT6 跑在 CTRL_REV（修复前一提交）的 pets.rs 上必须报洞。
+正控：LT6 把合成的「重放也清账」旧形状喂给同一个 classify，必须判为
+matches!（历史重写后 43c0de9b 已不可读，不再依赖旧提交对象）。
 """
 import os
 import re
@@ -46,7 +47,7 @@ API = "apps/api/src"
 PETS = API + "/games_http/pets.rs"
 FCOUP = API + "/games_http/food_coupon.rs"
 SPEND = API + "/economy_http/spend.rs"
-CTRL_REV = "43c0de9b"  # 本批修复的前一个提交（绝对钉，别用 HEAD~1）
+CTRL_REV = "43c0de9b"  # 历史对象已随历史重写消失，仅留作注释
 UID = 1               # root：宠物行的整行备份/复原见 finally
 
 
@@ -143,12 +144,15 @@ ok("LT5 成文口径仍在（spend.rs 写明发放侧重放要当成失败回滚
    "当成失败" in spend_doc and "让所在事务一起回滚" in spend_doc,
    "那段口径注释被删了，本闸门判据的依据就没了")
 
-ctrl_pets = read(PETS, CTRL_REV)
-ci = ctrl_pets.find("if let Some(idem) = claim_idem") if ctrl_pets else -1
-ctrl_blk = ctrl_pets[ci:ci + 700] if ci >= 0 else ""
-ok("LT6 正控：%s 那版必须被 LT1 报洞（判据承重）" % CTRL_REV,
-   ctrl_pets is not None and "expect_fresh(out)?" not in ctrl_blk,
-   "旧版读不到／已含 expect_fresh＝正控失效")
+CTRL_SRC = """let out = earn_spark_tx(tx, uid, new_pending, "game", idem).await?;
+if !matches!(out, SpendOutcome::Replayed) {
+    earned = new_pending;
+}
+new_pending = 0;"""
+ctrl_verdict = classify(CTRL_SRC, 1)
+ok("LT6 正控：合成的旧形状（重放清账）必须被判为 matches! 而不是 "
+   "expect_fresh（判据承重；不再依赖历史重写后消失的 43c0de9b）",
+   ctrl_verdict == "matches!", "classify=%s" % ctrl_verdict)
 
 # ---- 全站 earn 调用点普查：每个点必须有处置，丢弃型必须逐条论证 ----
 DISCARD_LEDGER = {

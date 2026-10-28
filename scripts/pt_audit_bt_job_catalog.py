@@ -47,10 +47,11 @@ RUN_RS = os.path.join(ROOT, "apps", "worker", "src", "jobs", "run.rs")
 
 # 在册债（交回站方定夺；新增项必须配一句「为什么不修」）
 DEBT_NOT_CATALOGUED = {
-    "consume_xreport":   "在跑但没进目录：重启后面板会看不见、手触会被拒",
+    # 2026-10-29：consume_xreport 已补进 catalog_jobs.rs（60s）。
 }
 DEBT_NO_AUTODISPATCH = {
-    "risk_backtest":     "目录挂 24h 但只有手触派发：面板写着「每天」",
+    # 2026-10-29：risk_backtest 已接进 run.rs 的 24h tick（backtest_latest），
+    # 不再是「目录挂节奏但只有手触」；保留在台账会让 BT3 反向假红。
 }
 CADENCE_DOMAIN = {"60s", "10m", "30m", "1h", "6h", "24h"}
 

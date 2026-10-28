@@ -88,10 +88,13 @@ ok("LS2 回执与列同源（interest_earned 复用同一个变量，不许两�
    and "interest_earned\": if mode" not in src_w,
    "还在用第二份表达式")
 
-ctrl_w = read(WITHDRAW, CTRL_REV)
-upd_old = sql_of(ctrl_w, "UPDATE bank_deposits SET status = 1") if ctrl_w else ""
-ok("LS3 正控：%s 那版必须被 LS1 报洞（判据承重）" % CTRL_REV,
-   ctrl_w is not None and "interest =" not in upd_old,
+# 历史对象 a3affae2 已随历史重写消失；用合成的旧销单形状喂同一个 sql_of，
+# 证明 LS1 的「interest =」判据能抓到缺陷（与 LT6 同法）。
+CTRL_SRC = ('sqlx::query("UPDATE bank_deposits SET status = 1, '
+            'withdrawn_at = now() WHERE id = $1")')
+upd_old = sql_of(CTRL_SRC, "UPDATE bank_deposits SET status = 1")
+ok("LS3 正控：合成旧销单（不动 interest）必须被 LS1 报洞（判据承重）",
+   upd_old != "" and "interest =" not in upd_old,
    "旧版 UPDATE=%s" % upd_old[:120])
 
 # worker 到期兑付：interest 是真发出去的钱，绝不许被误抄成清零

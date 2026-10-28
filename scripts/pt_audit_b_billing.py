@@ -75,7 +75,8 @@ t1 = login_or_skip(users[0]); t2 = login_or_skip(users[1])
 ok("两个测试号可用", bool(t1 and t2))
 
 def get_passkey(t):
-    s, r = call("GET", "/me/overview", token=t)
+    # P-448：overview 只回掩码；客户端凭据从专用读口取全文
+    s, r = call("GET", "/rss-info", token=t)
     return (r.get("data") or {}).get("passkey") or ""
 
 def get_uid(t):

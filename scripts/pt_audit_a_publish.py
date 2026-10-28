@@ -8,9 +8,17 @@
 - 重复 info_hash 拒绝
 - announce 参数边界（负数/超大 left）
 """
-import sys, io, json, hashlib, urllib.request, urllib.parse, time, random
+import sys, io, json, hashlib, urllib.request, urllib.parse, time, random, subprocess
 sys.stdout.reconfigure(encoding="utf-8")
 from pt_audit_lib import call, login, note_torrent, ok, summary
+
+
+def psql(sql):
+    r = subprocess.run(
+        ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+         "-d", "fluxtorrent", "-tAc", sql],
+        capture_output=True, text=True, encoding="utf-8")
+    return r.stdout.strip()
 
 # ---------- bencode 编码器 ----------
 def benc(obj):
@@ -98,9 +106,15 @@ print("类目数=%d 取 id=%s" % (len(cats), cat_id))
 # 1) 发种
 tor, ih = make_torrent(files=[("audit.bin", 52428800), ("nfo.txt", 128)])
 s, r = upload_torrent(tok, tor, category_id=str(cat_id), name="Audit.Pack.深测",
-                      small_descr="深测种子", descr="资深PT深测专用种子")
+                      small_descr="深测种子", descr="资深PT深测专用种子",
+                      hr_punish="true")
 ok("发种成功", s == 200 and r.get("code") == 0, "%s %s" % (s, r.get("message")))
 tid = ((r.get("data") or {}).get("id")) if s == 200 else None
+if tid:
+    hp = psql("SELECT COALESCE(hr_policy->>'publisher_enabled','') "
+              "FROM torrents WHERE id=%s" % tid)
+    ok("A-1 hr_punish=true 落库 publisher_enabled", hp.lower() in ("true", "1"),
+       "hr_policy.publisher_enabled=%r" % hp)
 # P-444：这条种子是本闸门造的，跑完必须自己收走（summary() 里按 id 精确删）。
 # 以前这里不清场，10-02 起每次跑留一条，同名 `Audit.Pack.深测` 已堆到 93 条。
 note_torrent(tid)
@@ -111,8 +125,9 @@ s2, r2 = upload_torrent(tok, tor, category_id=str(cat_id))
 ok("重复 info_hash 被拒", r2.get("code") not in (0, None) and s2 != 200, "%s %s" % (s2, r2.get("message")))
 
 # 3) 下载 .torrent（拿 passkey 链）
-s, me = call("GET", "/me/overview", token=tok)
-passkey = ((me.get("data") or {}).get("passkey")) or ""
+# P-448 后 /me/overview 只回掩码，全文改从 /rss-info 取（客户端订阅同口径）。
+s, info = call("GET", "/rss-info", token=tok)
+passkey = ((info.get("data") or {}).get("passkey")) or ""
 print("   passkey=%s..." % passkey[:6])
 ok("拿到 passkey", bool(passkey))
 
