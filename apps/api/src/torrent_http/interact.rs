@@ -36,6 +36,11 @@ pub(crate) async fn create_comment(
     body: web::Json<CommentReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
+    // 每条评论都会给种主发一条 torrent_comment 通知且无去重 ⇒ 没有频率闸时
+    // 单人就能把种主信箱灌满。按人 12 条/分（一次讨论远低于此），放在
+    // 内容校验/落库之前，洪水最贵的从来不是那行 INSERT。
+    crate::http::throttle_limited(&state, format!("cmt:{}", auth.id), 12)
+        .await?;
     let tid = path.into_inner();
     let id = torrents::add_comment_as(
         &state.repo.db,

@@ -6,11 +6,11 @@
 //! me 基础面 me.rs（perms/me/logins）/ me 安全面 me_security.rs（passkey/密码）/
 //! 公开主页 profile.rs + user_torrentlist.rs / me 总览与设置 me_settings.rs + me_settings_kv.rs。
 
-mod welcome_pm;
 mod email_policy;
 mod email_verify;
 mod login;
 mod login_origin;
+mod welcome_pm;
 pub(crate) use login_origin::origin_matches;
 mod login_types;
 mod logout;

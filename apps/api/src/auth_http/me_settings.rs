@@ -316,7 +316,9 @@ pub async fn me_overview(
         "parked": get_bool("parked"),
         "privacy": get_str("privacy"),
         "totp_enabled": get_bool("totp_enabled"),
-        "passkey": get_str("passkey"),
+        // 凭据不外发全文：这个端点被首页/通知/我的/任务四处轮询，全文唯一
+        // 需要的地方是「复制进下载端」，走 /rss-info 按需取（P-448）。
+        "passkey_masked": get_str("passkey").chars().take(4).collect::<String>(),
         "last_ip": last_ip,
         "last_city": last_city,
         "login_trend_30d": trend_json,

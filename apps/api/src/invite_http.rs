@@ -69,7 +69,7 @@ pub async fn invites_status_handler(
     let (used, extra): (i32, i32) = sqlx::query_as(
         "SELECT \
             COALESCE((SELECT used FROM invite_quota \
-                      WHERE user_id = $1 AND period = date_trunc('week', now())::date), 0), \
+                      WHERE user_id = $1 AND period = date_trunc('week', now() AT TIME ZONE 'Asia/Shanghai')::date), 0), \
             COALESCE(quota_extra, 0) \
          FROM users WHERE id = $1",
     )
@@ -150,7 +150,7 @@ pub async fn issue_invite_handler(
         }
         sqlx::query(
             "INSERT INTO invite_quota (user_id, period, used) \
-             VALUES ($1, date_trunc('week', now())::date, 0) ON CONFLICT DO \
+             VALUES ($1, date_trunc('week', now() AT TIME ZONE 'Asia/Shanghai')::date, 0) ON CONFLICT DO \
              NOTHING",
         )
         .bind(auth.id)
@@ -159,7 +159,7 @@ pub async fn issue_invite_handler(
         .map_err(|e| DomainError::Internal(e.into()))?;
         let taken: Option<i32> = sqlx::query_scalar(
             "UPDATE invite_quota SET used = used + 1 WHERE user_id \
-             = $1 AND period = date_trunc('week', now())::date AND used < $2 \
+             = $1 AND period = date_trunc('week', now() AT TIME ZONE 'Asia/Shanghai')::date AND used < $2 \
              RETURNING used",
         )
         .bind(auth.id)
