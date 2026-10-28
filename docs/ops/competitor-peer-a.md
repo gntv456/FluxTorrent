@@ -1,4 +1,4 @@
-# 同类站 / 同类站PT（同类站.com）深度分析
+# 同类站 / 同类站PT（同类站域名）深度分析
 
 > 分析时间：2026-10-13（北京时间）  
 > 方法：纯黑盒。DNS/证书/Whois + 证书透明度 + 前端 bundle 静态分析 + 协议探测 + 已登录状态的只读 API 遍历（未做任何写操作）。  
@@ -26,8 +26,8 @@
 ```
 客户端 ──► Cloudflare (NS: lia/trevor.ns.cloudflare.com)
              │  A/AAAA 104.21.47.92 / 172.67.146.96 / 2606:4700:...
-             ├─► www.同类站.com        静态资源 + /api/v1/*（同一后端，SPA fallback）
-             └─► tracker.同类站.com    ⚠ 裸解析，不过 CF
+             ├─► www.同类站域名        静态资源 + /api/v1/*（同一后端，SPA fallback）
+             └─► tracker.同类站域名    ⚠ 裸解析，不过 CF
                     154.89.149.3 + 2404:8c80:82:1059::74
                     AS55933 Cloudie Limited / Fastmos Co Limited
                     香港 · Kowloon · hosting
@@ -38,7 +38,7 @@
 - **tracker 与 Web 站分离部署**，且 tracker 的 DNS 记录**未走 Cloudflare**（直连香港主机）。好处是 announce 不受 CF 回源策略干扰，代价是源 IP 与主机商直接暴露。
 - tracker 只暴露两条路由：`/announce`、`/scrape`，其余一律返回 `not found`；`/stats` 返回 403。
 - **passkey 放在 query string**：`/announce?passkey=xxx`（`auth_key` 被显式拒绝：`auth_key is not allowed`）。  
-  scrape 报错文案里写死了 `https://tracker.同类站.com`，说明 passkey 与 tracker 域名强绑定。
+  scrape 报错文案里写死了 `https://tracker.同类站域名`，说明 passkey 与 tracker 域名强绑定。
 - 证书：crt.sh 只有 4 条记录，`www` / `tracker` 各一；签发方同时出现 Let's Encrypt 与 ZeroSSL——说明 tracker 那一端很可能不是 CF Universal SSL，而是自己在源站签发（与 DNS 裸解析互相印证）。
 - 无 `sitemap.xml`、无 `manifest.webmanifest`（有 apple-touch-icon 但没做 PWA）、无 `security.txt`。
 - **robots.txt 全是注释**：只有欧盟 CDSM 第 4 条的 content-signals 说明，**一行有效指令都没有**（既没 `User-agent` 也没 `search:`/`ai-train:` 值）。等于默认放行所有抓取——对一个 PT 站来说这是明显的疏漏。

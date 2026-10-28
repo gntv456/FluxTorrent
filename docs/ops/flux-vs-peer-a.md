@@ -380,7 +380,7 @@ grep -rnE 'If-Match|if_match|"[Ee]tag|expected_revision|row_version|lock_version
 
 ### 13.4 同类站 侧登录实测复核（2026-10-13 晚，站长账号 gntv）
 
-用账号真机登录 同类站.com 复核对方侧论断（详见 `competitor-同类站.md` §9）。要点：
+用账号真机登录 同类站域名 复核对方侧论断（详见 `competitor-peer-a.md` §9）。要点：
 
 - **逐字段命中**：`/me/points`（balance=0、revision=1）、`/promotions`（execution_revision=12、download 0/1）、`/me/publishing-credits`（0/5）、`/me/rank`（mini_can→classic_can 门槛 5 完成/7 天/1.0）、torrent 榜首「凡人修仙传」S01E194、`/series`=0、`/requests`=0、安全头（CSP Report-Only / HSTS 86400 / XFO DENY / no-referrer）、tracker bencode 报错、未登录 401、错误信封形态——全部与本文引用一致。
 - **水位更新**：`X-Reelcore-Api-Version` 13.2.0 → **13.5.0**（页脚自报 13.6.0）；`x-contract-version` 去重 **29 个值**；契约 chunk 875KB → **898KB**；榜首上传量已 ≈207GiB（高于成文快照）。§0/§3 引用的 13.2.0 是成文时快照，不回改——对方一天连发 3+ 版本，按日快照口径理解即可。
