@@ -349,7 +349,11 @@ pub async fn run_all(
             // 月度契约结算（0424 同类站对标 A2）：月初跑，结算上月契约。
             // 日频安全：只动 status='open' 且 month=上月的行，幂等。
             shard_lock!(&db, "job:contract_settle",
-                contract_settle(&db), &shard); }        }
+                contract_settle(&db), &shard);
+            // 反作弊规则集回测（P-471）：catalog 一直写着 24h，可这里从来没有
+            // 它的分支——只有面板手点才会跑。接上日频，版本取表里最高的两版。
+            shard_lock!(&db, "job:risk_backtest",
+                risk_backtest::backtest_latest(&db, 90), &shard); }        }
     }
     manual_tasks.drain().await;
     tracing::info!("flux-worker 已排空，退出");

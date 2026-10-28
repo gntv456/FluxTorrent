@@ -72,6 +72,29 @@ pub async fn backtest(
     Ok(id)
 }
 
+/// 每日调度入口：取 `cheat_rulesets` 里**最高的两版**做对比。
+///
+/// P-471：此前 catalog 写着 24h，但 run.rs 的日结分支里没有它——只有面板手点
+/// 才会跑，而手点默认参数是写死的 `BACKTEST_FROM=1 / BACKTEST_TO=2`，
+/// 表里已经到 v7 ⇒ 每日回测要么不跑、要么拿一对陈旧版本比。
+/// 表里不足两版（首装/清库）就跳过，不当故障。
+pub async fn backtest_latest(
+    db: &PgPool,
+    window_days: i32,
+) -> anyhow::Result<u64> {
+    let vers: Vec<i32> = sqlx::query_scalar(
+        "SELECT version FROM cheat_rulesets ORDER BY version DESC LIMIT 2",
+    )
+    .fetch_all(db)
+    .await?;
+    if vers.len() < 2 {
+        tracing::info!(n = vers.len(), "规则集不足两版，跳过每日回测");
+        return Ok(0);
+    }
+    backtest(db, vers[1], vers[0], window_days).await?;
+    Ok(1)
+}
+
 /// 消费已排队的回测占位（排队路径）：认领 → 算 → UPDATE 回填。
 ///
 /// 抢坑 `FOR UPDATE SKIP LOCKED`：多实例下同轮只有一个赢。
