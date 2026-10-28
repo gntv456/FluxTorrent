@@ -2150,6 +2150,9 @@ const zhCnBase = {
       subtitle_award: "字幕中标",
       funding: "众筹",
       hr_pardon: "绩效豁免",
+      hr_pardon_share: "绩效豁免分成",
+      contract_reward: "契约奖励",
+      contract_penalty: "契约罚金",
       adjust: "手工调整",
       // i18n 收口批：spark-kind-labels.ts 全量键并入（源注释里的现网 kind
       // 实测清单——游戏/银行/字幕/求种/管理等；未收录回落原值）

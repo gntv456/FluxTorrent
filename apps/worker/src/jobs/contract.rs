@@ -35,9 +35,7 @@ pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
     }
     let month: chrono::NaiveDate = {
         let today = chrono::Utc::now().date_naive();
-        let first_of_this = today
-            .with_day(1)
-            .expect("day 1 always valid");
+        let first_of_this = today.with_day(1).expect("day 1 always valid");
         first_of_this.pred_opt().expect("pred of month start")
     };
     // 1) 回填达成值
@@ -133,8 +131,20 @@ pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
     .bind(month)
     .fetch_all(db)
     .await?;
-    // 3) 奖罚入账（幂等键锚契约 id；失败只记日志不回滚状态——
-    //    状态已 settled/breached，重跑不会重复入账）
+    // 3) 奖罚入账（P-462 重写，旧形状见下方注释）
+    //
+    // 旧写法是两条 `let _ = sqlx::query("INSERT INTO spark_ledger …")`：
+    //   ① 只写流水、不动 `users.spark_balance`。全仓 spark_ledger 上唯一的
+    //      触发器是幂等护栏 `trg_spark_idem`（2026-10-28 实测父表与各分区都
+    //      只有它），没有任何东西替它把余额加上 ⇒ 月结会留下「流水写着
+    //      +5000、钱包一分没变」，而 `balance_after` 还是个凭空算出来的数，
+    //      把按行的余额链咬断（Merkle/对账那族判据读的就是它）。
+    //   ② 罚侧 `WHERE u.spark_balance >= $2` 不满足时静默 0 行 = 罚金永久
+    //      不收，而契约状态已经翻成 breached——「状态位先于动账」。
+    //   ③ `let _ =` 把上面两种都吞了：零日志、零账面（P-323/P-328 同族）。
+    // 现在：流水 + 钱包同事务（照同族先例 jobs/achv_dormant.rs:92-122，
+    // 幂等护栏只装在 INSERT 上——UPDATE 再带同款 NOT EXISTS 会恒 0 行，
+    // 整体回滚 = 奖励静默丢失），没动账/失败一律 warn 出声并带上契约号。
     use sqlx::Row;
     for r in &rows {
         let uid: i64 = r.get("user_id");
@@ -142,39 +152,94 @@ pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
         let reward: i32 = r.get("reward");
         let penalty: i32 = r.get("penalty");
         if reward > 0 {
-            let _ = sqlx::query(
-                "INSERT INTO spark_ledger \
-                 (id, user_id, amount, kind, idempotency_key, balance_after) \
-                 SELECT nextval('spark_ledger_id_seq'), $1, $2, \
-                 'contract_reward', $3, u.spark_balance + $2 \
-                 FROM users u WHERE u.id = $1 \
-                 AND NOT EXISTS (SELECT 1 FROM spark_ledger \
-                 WHERE idempotency_key = $3) \
-                 RETURNING 1",
-            )
-            .bind(uid)
-            .bind(reward as i64)
-            .bind(format!("contract:{cid}:reward"))
-            .execute(db)
-            .await;
+            let idem = format!("contract:{cid}:reward");
+            report(
+                settle_spark(db, uid, reward as i64, "contract_reward", &idem)
+                    .await,
+                uid,
+                cid,
+                "奖励",
+            );
         }
         if penalty > 0 {
-            let _ = sqlx::query(
-                "INSERT INTO spark_ledger \
-                 (id, user_id, amount, kind, idempotency_key, balance_after) \
-                 SELECT nextval('spark_ledger_id_seq'), $1, -$2, \
-                 'contract_penalty', $3, u.spark_balance - $2 \
-                 FROM users u WHERE u.id = $1 AND u.spark_balance >= $2 \
-                 AND NOT EXISTS (SELECT 1 FROM spark_ledger \
-                 WHERE idempotency_key = $3) \
-                 RETURNING 1",
-            )
-            .bind(uid)
-            .bind(penalty as i64)
-            .bind(format!("contract:{cid}:penalty"))
-            .execute(db)
-            .await;
+            let idem = format!("contract:{cid}:penalty");
+            report(
+                settle_spark(
+                    db,
+                    uid,
+                    -(penalty as i64),
+                    "contract_penalty",
+                    &idem,
+                )
+                .await,
+                uid,
+                cid,
+                "罚金",
+            );
         }
     }
     Ok(rows.len() as u64)
+}
+
+/// 契约奖罚入账：流水与钱包必须同事务，返回「这一笔是否真的动了账」。
+///
+/// 余额不足（罚侧）与幂等已存在都会得到 `Ok(false)`，调用方负责出声——
+/// 静默跳过正是旧实现最贵的那一处。
+async fn settle_spark(
+    db: &sqlx::PgPool,
+    uid: i64,
+    amount: i64,
+    kind: &str,
+    idem: &str,
+) -> anyhow::Result<bool> {
+    let mut tx = db.begin().await?;
+    let inserted = sqlx::query(
+        r#"
+        INSERT INTO spark_ledger
+            (id, user_id, amount, kind, idempotency_key, balance_after)
+        SELECT nextval('spark_ledger_id_seq'), $1, $2, $4, $3,
+               u.spark_balance + $2
+          FROM users u
+         WHERE u.id = $1
+           AND u.spark_balance + $2 >= 0
+           AND NOT EXISTS (SELECT 1 FROM spark_ledger
+                           WHERE idempotency_key = $3)
+        "#,
+    )
+    .bind(uid)
+    .bind(amount)
+    .bind(idem)
+    .bind(kind)
+    .execute(&mut *tx)
+    .await?
+    .rows_affected()
+        > 0;
+    if inserted {
+        sqlx::query(
+            "UPDATE users SET spark_balance = spark_balance + $2 \
+             WHERE id = $1",
+        )
+        .bind(uid)
+        .bind(amount)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(inserted)
+}
+
+/// 把 `settle_spark` 的三种结局翻成日志：动了账（无声）/ 没动账与失败（有声）。
+fn report(res: anyhow::Result<bool>, uid: i64, cid: i64, what: &str) {
+    match res {
+        Ok(true) => {}
+        Ok(false) => tracing::warn!(
+            user = uid,
+            contract = cid,
+            "契约{what}未入账：余额不足或该笔已入过（状态已翻转，须人工对账）"
+        ),
+        Err(e) => tracing::warn!(
+            user = uid, contract = cid, error = %e,
+            "契约{what}入账失败：状态已翻转而钱没动，须人工补"
+        ),
+    }
 }
