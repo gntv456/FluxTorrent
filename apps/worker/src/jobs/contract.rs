@@ -136,9 +136,12 @@ pub async fn contract_settle(db: &PgPool) -> anyhow::Result<u64> {
     // 旧写法是两条 `let _ = sqlx::query("INSERT INTO spark_ledger …")`：
     //   ① 只写流水、不动 `users.spark_balance`。全仓 spark_ledger 上唯一的
     //      触发器是幂等护栏 `trg_spark_idem`（2026-10-28 实测父表与各分区都
-    //      只有它），没有任何东西替它把余额加上 ⇒ 月结会留下「流水写着
-    //      +5000、钱包一分没变」，而 `balance_after` 还是个凭空算出来的数，
-    //      把按行的余额链咬断（Merkle/对账那族判据读的就是它）。
+    //      只有它），没有任何东西替它把余额加上。钱不是永久不到账：
+    //      jobs/seeding.rs:141-149 每小时把快照重算成 baseline+SUM(amount)
+    //      （只覆盖 2h 内有过流水的用户），下一拍会补上。真正的缺陷是那之前
+    //      `balance_after` 是个钱包里还不存在的数（Merkle/对账读的就是它，
+    //      同族 preserve.rs 干脆不写这一列就是为了不造这个数），加上罚金门槛
+    //      读的是可能滞后一小时的快照。
     //   ② 罚侧 `WHERE u.spark_balance >= $2` 不满足时静默 0 行 = 罚金永久
     //      不收，而契约状态已经翻成 breached——「状态位先于动账」。
     //   ③ `let _ =` 把上面两种都吞了：零日志、零账面（P-323/P-328 同族）。

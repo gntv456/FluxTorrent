@@ -6,9 +6,13 @@
 `apps/worker/src/jobs/contract.rs` 的奖罚入账写成两条
 `let _ = sqlx::query("INSERT INTO spark_ledger …")`——只落流水、
 **不 UPDATE `users.spark_balance`**，而全库 spark_ledger（父表 + 各月分区）上
-唯一的触发器是幂等护栏 `trg_spark_idem`（现网实查），没有任何东西替它把余额
-加上。后果是「流水写着 +5000、钱包一分没变」，而那条 `balance_after` 是凭空
-算的，会把按行的余额链咬断（Merkle / 对账那族判据读的就是这一列）。罚侧更隐蔽：
+唯一的触发器是幂等护栏 `trg_spark_idem`（现网实查：父表与各月分区都只有它）。
+钱不是「永久不到账」——jobs/seeding.rs:141-149 每小时把快照重算成
+`balance_baseline + SUM(amount)`（只覆盖 2h 内有过流水的用户，排除
+orphan_offset），下一拍会补上。真正的缺陷是那之前那条 `balance_after` 是个钱包
+里还不存在的数（Merkle / 对账读的就是这一列；同族 preserve.rs 干脆不写这一列，
+正是为了不造这个数），加上失败被 `let _ =` 吞成零日志、零账面，以及罚金门槛
+读的是可能滞后一小时的快照。罚侧更隐蔽：
 `WHERE u.spark_balance >= $2` 不满足时 INSERT 恒 0 行 = 罚金永久不收，而契约
 状态早已翻成 breached——「状态位先于动账」的同一条病形，被 `let _ =` 演成
 零日志、零账面。
@@ -37,22 +41,26 @@ WALLET_LEDGER = {
     # side (does anything else credit spark_balance for this kind?) before
     # turning either into a fix or a permanent exemption with a reason.
     "apps/worker/src/jobs/preserve.rs":
-        "[UNADJUDICATED] preserve_reward rows, no wallet UPDATE, balance_after omitted",  # noqa: E501
+        "刻意只写流水：余额快照由 jobs/seeding.rs:141-149 按 "
+        "baseline+SUM(amount) 每小时重算（2h 内有过流水的用户），"
+        "且本文件不填 balance_after，不留与钱包脱节的数（P-462 定性）",
     "apps/worker/src/jobs/seeding_referral.rs":
-        "[UNADJUDICATED] inviter bonus rows, no wallet UPDATE in file",
+        "同 preserve：邀请分润只落流水，余额走 seeding 重算那一拍；"
+        "本文件同样不写 balance_after ⇒ 不会留下造假的余额链",
 }
-SWALLOW_LEDGER = {
-    "apps/worker/src/jobs/settle.rs":
-        "[UNADJUDICATED] let _ = wraps a spark_ledger INSERT; must show failure",  # noqa: E501
-}
+SWALLOW_LEDGER = {}  # 收紧成同语句判定后：全仓零违例（MY1 正控证明尺会响）
 
 # 裸 SQL kind 里由别的语言文件负责登记的例外
 KIND_EXEMPT = set()
 
 INSERT = re.compile(r"INSERT\s+INTO\s+spark_ledger", re.I)
 WALLET = re.compile(r"UPDATE\s+users[\s\S]{0,240}?spark_balance\s*=", re.I)
-SWALLOW = re.compile(r"let\s+_\s*=\s*sqlx::query[\s\S]{0,1500}?"
-                     r"INSERT\s+INTO\s+spark_ledger", re.I)
+# `let _ =` 是否吞掉了写流水：**只看这一条语句自己**。
+# 第一版用 1500 字符窗口，从 `let _ = sqlx::query("INSERT INTO messages
+# …")` 一路够到隔壁事务里的 spark_ledger 插入，把 settle.rs 读成违例——
+# 那条流水其实在 db.begin()…tx.commit() 里，被吞的是站内信不是钱。
+LET_UNTIL_SEMI = re.compile(r"let\s+_\s*=\s*sqlx::query\(", re.I)
+SQL_TAIL_LIMIT = 4000
 STMT = re.compile(r"INSERT\s+INTO\s+spark_ledger[\s\S]{0,900}?[\"#]", re.I)
 LIT = re.compile(r"'([a-z][a-z0-9_]{2,})'")
 
@@ -99,7 +107,27 @@ def bodies():
 files = dict(bodies())
 no_wallet = sorted(p for p, b in files.items()
                    if INSERT.search(b) and not WALLET.search(b))
-swallowed = sorted(p for p, b in files.items() if SWALLOW.search(b))
+def statement_body(text, start):
+    """从 `let _ = sqlx::query(` 之后扫到第一个「引号外分号」——一条语句。"""
+    i, quote = start, False
+    while i < len(text) and i - start < SQL_TAIL_LIMIT:
+        c = text[i]
+        if c == '"':
+            quote = not quote
+        elif c == ";" and not quote:
+            return text[start:i]
+        i += 1
+    return text[start:i]
+
+
+def swallows_statement(body):
+    for m in LET_UNTIL_SEMI.finditer(body):
+        if INSERT.search(statement_body(body, m.end())):
+            return True
+    return False
+
+
+swallowed = sorted(p for p, b in files.items() if swallows_statement(b))
 stmt_count = sum(len(INSERT.findall(b)) for b in files.values())
 
 raw_kinds = set()
@@ -132,7 +160,7 @@ paired = ghost.replace(
     ".execute(db).await;")
 ok("MY1 正控：合成件须同时被两条尺点名（无钱包 UPDATE + let _ = 吞）",
    INSERT.search(ghost) and not WALLET.search(ghost)
-   and SWALLOW.search(ghost), "吞尺=%s" % bool(SWALLOW.search(ghost)))
+   and swallows_statement(ghost), "吞尺=%s" % bool(swallows_statement(ghost)))
 ok("MY1b 正控（反向）：同一件补上钱包 UPDATE 后，钱包尺必须转绿",
    WALLET.search(paired) and INSERT.search(paired), "")
 ok("MY1c 正控：探针 kind 若四语无译名，kind 尺必须抓到它（不是恒绿）",
