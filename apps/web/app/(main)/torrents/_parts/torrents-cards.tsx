@@ -31,9 +31,16 @@ const CARD_TITLE_CLS =
 const STATS_CLS =
   "num flex flex-wrap items-center gap-x-3 gap-y-0.5 " +
   "text-[11.5px] text-sub";
-const WALL_CLS =
-  "grid list-none grid-cols-3 gap-2 p-0 sm:gap-3 " +
-  "lg:grid-cols-5 xl:grid-cols-6";
+// 海报墙改流式列（0427 同类站 UI 对标采纳①）：flex-wrap + 百分比 basis +
+// min-width，零 media-query 实现 375px 三列 → 平板五列 → 宽屏六列的自动
+// 演进——列数由「容器宽度能塞下几张不小于 min-w 的卡」决定，断点表不再
+// 需要维护。basis 取 1/6 减去半格 gap（六列 5 个 gap 均摊），min-w 卡住
+// 移动端下限（约 343px 视口时 20%…16.7% 均小于 104px，自动落三列）。
+const WALL_CLS = "flex list-none flex-wrap gap-2.5 p-0";
+// 流式列的 basis/min-w 必须挂在 **li**（flex item 是它），Link 只承担视觉
+const WALL_LI_CLS =
+  "w-[calc((100%-50px)/6)] min-w-[104px] grow-0 shrink-0 " +
+  "basis-[calc((100%-50px)/6)]";
 const WALL_ITEM_CLS =
   "group relative block overflow-hidden rounded-xl border border-line " +
   "bg-[var(--surface-card)]";
@@ -194,7 +201,7 @@ export function TorrentCards({
         <li
           key={t.id}
           data-torrent-id={t.id}
-          className={[
+          className={[WALL_LI_CLS,
             promoSemanticClass(t.promotion),
             t.seeders === 0 ? "torrent-dead" : undefined,
             t.official ? "torrent-official" : undefined,
@@ -254,6 +261,7 @@ export function TorrentPosters({
           key={t.id}
           data-torrent-id={t.id}
           className={[
+            WALL_LI_CLS,
             promoSemanticClass(t.promotion),
             t.seeders === 0 ? "torrent-dead" : undefined,
             t.official ? "torrent-official" : undefined,

@@ -75,6 +75,8 @@ export function UploadForm() {
   const [poster, setPoster] = useState("");
   const [mediainfo, setMediainfo] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  // 0424 发布者 H&R 惩罚开关（同类站对标 A1）：受罚者免罪时本发布者得分成
+  const [hrPunish, setHrPunish] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   // W-18：字段级错误（后端 1002 信封；multipart 走裸 fetch 手工解）
   const [fieldErrs, setFieldErrs] = useState<Record<string, string[]>>({});
@@ -168,6 +170,7 @@ export function UploadForm() {
       appendMeta(form, {
         category_id: categoryId,
         anonymous,
+        hr_punish: hrPunish,
         name,
         imdb,
         douban, tmdb,
@@ -295,6 +298,17 @@ export function UploadForm() {
                 className="h-4 w-4 accent-[var(--brand-orange)]"
               />
               {dict.upload.anonymous}
+            </label>
+          </FormRow>
+          <FormRow label={dict.upload.hrPunish}>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={hrPunish}
+                onChange={(e) => setHrPunish(e.target.checked)}
+                className="h-4 w-4 accent-[var(--brand-orange)]"
+              />
+              {dict.upload.hrPunishHint}
             </label>
           </FormRow>
           <tr>

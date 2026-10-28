@@ -133,6 +133,7 @@ const enBase: Omit<
     frames: "Avatar Frames",
     gomoku: "Gomoku",
     faq: "FAQ",
+    clients: "Client Guide",
     donate: "Donate",
     games: "Arcade",
     gacha: "Gacha",
@@ -433,6 +434,12 @@ const enBase: Omit<
     synopsis: "Synopsis",
     fullSynopsis: "Full synopsis",
     noSynopsis: "No synopsis yet",
+    watch: {
+      add: "🔔 Watch new releases",
+      busy: "Submitting…",
+      done: "Watching (manage in wishlist)",
+      fail: "Failed, please retry",
+    },
     chipSubs: "Subs",
     douban: "Douban",
     tmdb: "TMDB",
@@ -653,6 +660,9 @@ const enBase: Omit<
     applyForCode: "No invite code? Apply for one",
     usernameHint: "Your username cannot be changed after registration",
     termsNote: "By registering you agree to the site rules and privacy policy",
+    termsNotePre: "By registering you agree to the ",
+    termsNoteRules: "site rules",
+    termsNotePrivacy: " and privacy policy",
     inviteCode: "Invite code",
     emailMustMatch:
       "Targeted invite: use the email address that received the invitation",
@@ -823,6 +833,9 @@ const enBase: Omit<
     promoHint:
       "Self-serve promo slot, requires promotion permission; default 48h (1-720)",
     anonymous: "Publish anonymously",
+    hrPunish: "H&R penalty",
+    hrPunishHint: "If enabled, you receive a share of the pardon fee when downloaders fail H&R",
+    bb2mdHint: "Convert BBCode tags in the description to Markdown in one click (unknown tags are kept)",
     formFileHint: "Click to choose or drop a .torrent file here",
     submit: "Submit",
     busy: "Publishing…",
@@ -2212,6 +2225,9 @@ const enBase: Omit<
       social_team_reward: "Team reward",
       orphan_offset: "System offset",
       probe_cleanup: "Ops cleanup",
+      upload: "Upload reward",
+      request_bid: "Request top-up",
+      task_penalty: "Task penalty",
       admin_grant_item: "Item granted by staff",
       funding_refund: "Crowdfund refund",
       arcade: "Arcade",
@@ -2765,6 +2781,7 @@ const enBase: Omit<
     title: "Subtitles",
     subtitle: "Upload subtitles - total {size}",
     empty: "No subtitles",
+    searchExternal: "Search subtitle sites",
     uploadTitle: "Upload subtitle",
     titlePlaceholder: "Subtitle title",
     reward: "✓ Uploaded, +5 {magic}",
@@ -3033,6 +3050,18 @@ const enBase: Omit<
     durMonthsDays: "{m} months {d} days",
     durDaysHours: "{d} days {h} hours",
     durHours: "{h} hours",
+  },
+  /** Torrent hot boards (0424 P1-1) */
+  topTorrents: {
+    today: "Trending Today",
+    week: "Most Downloaded (7d)",
+    free: "On Free Promo",
+    colTorrent: "Torrent",
+    unitDone: "Done",
+    unitSeeders: "Seeders",
+    empty: "No completions yet today",
+    emptyWeek: "No completions in the last 7 days",
+    emptyFree: "No free promo running",
   },
   games: {
     odds: {
@@ -6807,6 +6836,7 @@ const enBase: Omit<
     rules: "Site rules",
     faq: "FAQ",
     banlog: "Ban log",
+    clients: "Client Guide",
     disclaimer:
       "We host no content files, only torrent indexing. Do not upload unauthorized material; evaluate retention legality yourself after downloading.",
     copyright: "(c) {site} {date}",
@@ -6878,7 +6908,8 @@ const enBase: Omit<
     fldApplyActor: "By",
     packApplyChangesN: "{n} items",
     btnRollback: "Roll back",
-    packRollbackConfirm: 'Roll back to the config before "{name}"?',
+    packRollbackConfirm:
+      'Roll back to the config before "{name}"? (Homepage block layout is not covered — the snapshot never stores it, so the layout stays as-is and must be restored in Homepage layout.)',
     packRolledBack: 'Rolled back "{name}"',
     packRolledBackAt: "Rolled back · {at}",
     warnUserCol: "User",
@@ -7233,6 +7264,10 @@ const enBase: Omit<
     noCollections: "(no collections yet)",
     pickCollection: "Existing collection",
     newCollection: "New collection name",
+    kindLabel: "Type",
+    kindCollection: "Collection",
+    kindSeries: "Series",
+    newDescr: "Description (optional)",
     collect: "Add",
     collected: "Added to the collection",
     groupPlaceholder: "Version group name",
@@ -7528,6 +7563,9 @@ const apitokensEn: Dict["apitokens"] = {
   stepUpHint:
     "Confirm your credentials before issuing: password is required, and so " +
     "is the current code when two-factor is on.",
+  scopeHint: "Scopes: read is always included; tick extra rights to grant.",
+  scopeUpload: "Allow publishing torrents over the API (upload)",
+  scopeCrossseed: "Allow cross-seed lookups (crossseed)",
 };
 
 const noticePrefsEn: Dict["noticePrefs"] = {
@@ -7549,6 +7587,8 @@ const noticePrefsEn: Dict["noticePrefs"] = {
     network_new_release: "Subscribed network releases",
     subgroup_new_release: "Subscribed subgroup releases",
     request_fulfilled: "Request fulfilled",
+    torrent_comment: "New torrent comments",
+    torrent_thanks: "Torrent thanked",
   } as Record<string, string>,
 };
 
@@ -7839,6 +7879,9 @@ export const en: Dict = {
   },
   exams: {
     tabNew: "Newcomer",
+    capsule: "Exam",
+    capsuleDays: "{d}d left",
+    capsuleTip: "Onboarding exam in progress — click for details",
     tabMonthly: "Monthly",
     tabRecords: "History",
     kpiTotal: "Requirements",

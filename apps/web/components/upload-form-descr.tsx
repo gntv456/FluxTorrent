@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { useI18n } from "@/i18n/client";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
+import { bbcodeToMarkdown } from "@/lib/bbcode-to-md";
 
 /** 发布表单·简介与 BBCode 工具条（从 upload-form.tsx 按域拆出，300 行门禁）：
  *  NP bbcode 口径工具条（颜色/字体/字号/B/I/U/S/链接/图片/引用/代码/表情）
@@ -263,6 +264,15 @@ export function UploadDescrBlock({
               ))}
             </div>
           </details>
+          {/* 0424 同类站对标：BBCode 一键转 Markdown（转种场景最高频摩擦点） */}
+          <button
+            type="button"
+            className={bbBtn}
+            title={dict.upload.bb2mdHint}
+            onClick={() => setDescr(bbcodeToMarkdown(descr))}
+          >
+            ⇄ MD
+          </button>
         </div>
         <textarea
           ref={descrRef}

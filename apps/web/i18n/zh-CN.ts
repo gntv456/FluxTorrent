@@ -115,6 +115,7 @@ const zhCnBase = {
     frames: "头像挂件",
     gomoku: "五子棋",
     faq: "FAQ",
+    clients: "客户端指南",
     donate: "捐赠",
     games: "娱乐屋",
     gacha: "抽卡屋",
@@ -596,6 +597,9 @@ const zhCnBase = {
     applyForCode: "无邀请码？申请邀请码",
     usernameHint: "用户名一旦注册不可修改",
     termsNote: "注册即代表同意站规与隐私政策",
+    termsNotePre: "注册即代表同意",
+    termsNoteRules: "站规",
+    termsNotePrivacy: "与隐私政策",
     inviteCode: "邀请码",
     emailMustMatch: "定向邀请：请填写收到邀请邮件的邮箱，不一致将无法注册",
     inviteOptional: "（开放注册可不填）",
@@ -747,6 +751,9 @@ const zhCnBase = {
     promoHours: "时长（小时）",
     promoHint: "发布者自助促销位，需促销权限；缺省 48 小时（1-720）",
     anonymous: "匿名发布",
+    hrPunish: "H&R 惩罚",
+    hrPunishHint: "开启后下载者 H&R 违规免罪时，你将获得免罪费分成",
+    bb2mdHint: "把简介里的 BBCode 标签一键转换成 Markdown（不认识的标签会保留）",
     formFileHint: "点击选择或拖拽 .torrent 文件到此处",
     submit: "提交发布",
     busy: "发布中…",
@@ -1663,6 +1670,12 @@ const zhCnBase = {
     synopsis: "简介",
     fullSynopsis: "完整剧情简介",
     noSynopsis: "暂无简介",
+    watch: {
+      add: "🔔 订阅新作",
+      busy: "提交中…",
+      done: "已订阅（愿望单可管理）",
+      fail: "订阅失败，请重试",
+    },
     chipSubs: "中字",
     douban: "豆瓣",
     tmdb: "TMDB",
@@ -2108,7 +2121,7 @@ const zhCnBase = {
     ledger: "{magic}流水",
     noLedger: "暂无流水",
     kinds: {
-      exam_penalty: '考试扣罚',
+      exam_penalty: "考试扣罚",
       seeding_reward: "做种收益",
       attendance: "签到",
       forum: "论坛奖励",
@@ -2184,6 +2197,9 @@ const zhCnBase = {
       social_team_reward: "团队协作奖励",
       orphan_offset: "系统对冲调整",
       probe_cleanup: "运营清理调整",
+      upload: "发种奖励",
+      request_bid: "求种加价",
+      task_penalty: "任务扣罚",
     } as Record<string, string>,
   },
   shop: {
@@ -2534,7 +2550,8 @@ const zhCnBase = {
     totalResults: "共 {n} 个结果",
     claimedByCol: "认领人",
     action: "操作",
-    resurrectionHint: "保种区救不动的死种？试试复活任务——做种满约定期限，一次性高额奖励 →",
+    resurrectionHint:
+      "保种区救不动的死种？试试复活任务——做种满约定期限，一次性高额奖励 →",
   },
 
   tasks: {
@@ -2701,6 +2718,7 @@ const zhCnBase = {
     title: "字幕区",
     subtitle: "上传字幕 - 总上传量 {size}",
     empty: "暂无字幕",
+    searchExternal: "⌕ 站外搜字幕",
     uploadTitle: "上传字幕",
     titlePlaceholder: "字幕标题",
     reward: "✓ 上传成功，+5 {magic}",
@@ -2961,6 +2979,18 @@ const zhCnBase = {
     durMonthsDays: "{m} 个月 {d} 天",
     durDaysHours: "{d} 天 {h} 时",
     durHours: "{h} 时",
+  },
+  /** 内容热榜三件套（0424 P1-1） */
+  topTorrents: {
+    today: "今日热门",
+    week: "近 7 天最多下载",
+    free: "免费中",
+    colTorrent: "资源",
+    unitDone: "完成",
+    unitSeeders: "做种",
+    empty: "今天还没有完成记录",
+    emptyWeek: "近 7 天还没有完成记录",
+    emptyFree: "当前没有进行中的免费促销",
   },
   games: {
     odds: {
@@ -3825,11 +3855,9 @@ const zhCnBase = {
       loadFailed: "加载失败",
       replayFailed: "回放失败",
       restoreFailed: "恢复失败",
-      replaySummary:
-        "回放 {n} 例：结论不变 {same}，变化 {changed}",
+      replaySummary: "回放 {n} 例：结论不变 {same}，变化 {changed}",
       pickRuleFirst: "请先在筛选框选择/输入要恢复的规则 id",
-      restoreSummary:
-        "按规则 {rule} 恢复 {n} 个种子回待审（扫描 {scanned}）",
+      restoreSummary: "按规则 {rule} 恢复 {n} 个种子回待审（扫描 {scanned}）",
       degradeLine: "（已过降级线）",
       shadowAgree: "影子一致率",
       ready: "已达标，可切执法（建议先半自动）",
@@ -3849,7 +3877,8 @@ const zhCnBase = {
       thHits: "命中规则",
       empty: "暂无台账——开启总开关并发布种子后，影子意见会出现在这里",
       health: "规则健康度",
-      statBar: "今日实况：自动通过 {pass} · 自动拒绝 {deny} · 暂缓 {postpone} · 待人工 {pending}；影子一致率 {agree}%（{samples} 样本）",
+      statBar:
+        "今日实况：自动通过 {pass} · 自动拒绝 {deny} · 暂缓 {postpone} · 待人工 {pending}；影子一致率 {agree}%（{samples} 样本）",
     },
     trendTitle: "14 天注册 / 发种趋势",
     trendEmpty: "暂无数据",
@@ -4526,8 +4555,10 @@ const zhCnBase = {
     boardCreated: "版块已创建",
     catSub: "{b} 个版块 · {t} 主题",
     catNewBtn: "＋ 新建分区",
-    gateNote: "门槛 0 = 所有人；需满足 读 ≤ 回 ≤ 发，否则保存会被拒绝。受保护版块：2 楼起正文对普通用户隐藏（版主与管理可见）。",
-    catTip: "拖动手柄 ⋮⋮ 或用 ↑ ↓ 调整顺序 —— 顺序决定前台各分区的展示先后。隐藏 👁 后该分区及其版块在前台整块不出现，后台仍在（名称会划掉），方便先搭好再放开。",
+    gateNote:
+      "门槛 0 = 所有人；需满足 读 ≤ 回 ≤ 发，否则保存会被拒绝。受保护版块：2 楼起正文对普通用户隐藏（版主与管理可见）。",
+    catTip:
+      "拖动手柄 ⋮⋮ 或用 ↑ ↓ 调整顺序 —— 顺序决定前台各分区的展示先后。隐藏 👁 后该分区及其版块在前台整块不出现，后台仍在（名称会划掉），方便先搭好再放开。",
     catPanelTitle: "{name} 分区",
     colDescr: "说明",
     colStats: "主题 / 回复",
@@ -5007,7 +5038,8 @@ const zhCnBase = {
     rangeRequired: "起止时间必填",
     saved: "已保存",
     penaltyTitle: "考核不达标处置",
-    penaltyHint: "可多选组合。处置在考核到期且补救期过后仍未达标时自动执行，与后台人工处置写同一批字段；每项处置有审计与站内信通知。普通任务不受影响。",
+    penaltyHint:
+      "可多选组合。处置在考核到期且补救期过后仍未达标时自动执行，与后台人工处置写同一批字段；每项处置有审计与站内信通知。普通任务不受影响。",
   },
   /** 勋章管理：获取方式（admin-medals 系） */
   adminMedals: {
@@ -6612,6 +6644,7 @@ const zhCnBase = {
     rules: "站点规则",
     faq: "常见问题",
     banlog: "封禁记录",
+    clients: "客户端指南",
     disclaimer:
       "本站不存储任何资源文件，仅提供种子索引服务；请勿上传未经授权的内容，下载后请自行评估留存合法性。",
     copyright: "(c) {site} {date}",
@@ -6679,7 +6712,8 @@ const zhCnBase = {
     fldApplyActor: "操作人",
     packApplyChangesN: "{n} 项",
     btnRollback: "回滚",
-    packRollbackConfirm: "回滚到应用「{name}」之前的配置？",
+    packRollbackConfirm:
+      "回滚到应用「{name}」之前的配置？（首页板块排版不在回滚范围内——快照没存它，回滚后仍是现在的排版，需另行在「首页排版」改回）",
     packRolledBack: "已回滚「{name}」",
     packRolledBackAt: "已回滚 · {at}",
     warnUserCol: "用户",
@@ -7032,6 +7066,10 @@ const zhCnBase = {
     noCollections: "（还没有合集）",
     pickCollection: "选已有合集",
     newCollection: "新建合集名",
+    kindLabel: "类型",
+    kindCollection: "合集",
+    kindSeries: "系列",
+    newDescr: "简介（可留空）",
     collect: "收录",
     collected: "已收进合集",
     groupPlaceholder: "版本组名（如：某剧 多版本）",
@@ -7244,7 +7282,8 @@ const zhCnBase = {
     otherKind: "其他",
     loadMore: "加载更多",
     merkleTitle: "每日结算凭证",
-    merkleDesc: "每天的火花流水会被封存成一棵 Merkle 树。你可以用自己的浏览器现场复算，确认这些记录确实在那一天的结算里、事后没有被改动。",
+    merkleDesc:
+      "每天的火花流水会被封存成一棵 Merkle 树。你可以用自己的浏览器现场复算，确认这些记录确实在那一天的结算里、事后没有被改动。",
     merkleDate: "结算日",
     merkleLoad: "加载",
     merkleVerify: "在浏览器复算",
@@ -7258,7 +7297,8 @@ const zhCnBase = {
     merkleOk: "复算通过：你的 {n} 条记录都在树中，且与公开树根一致。",
     merkleBad: "复算未通过：记录与公开树根不一致，请提交工单。",
     merkleUnsupported: "当前环境不支持 WebCrypto，无法在浏览器本地复算。",
-    merkleNote: "凭证只证明这一天的流水没有被事后改动，不证明金额规则本身；不写链、不发币（anchoring: none）。",
+    merkleNote:
+      "凭证只证明这一天的流水没有被事后改动，不证明金额规则本身；不写链、不发币（anchoring: none）。",
   },
   contests2: {
     title: "大赛",
@@ -7338,6 +7378,10 @@ export interface ApiTokensDict {
   limit: string;
   /** P-113：签发前复核凭证的提示（服务端不再只看会话） */
   stepUpHint: string;
+  /** scope 选择：read 后端恒含，另两档必须用户自己点头（后端认得它们） */
+  scopeHint: string;
+  scopeUpload: string;
+  scopeCrossseed: string;
 }
 
 const security2fa: Security2faDict = {
@@ -7368,6 +7412,9 @@ export const zhCN = {
     plainOnce: "令牌明文仅此一次显示，请立即保存：",
     limit: "每人最多 3 枚有效令牌；用法 Authorization: Token fxo_…",
     stepUpHint: "签发需先复核本人凭证：密码必填，已开两步验证还要当前验证码。",
+    scopeHint: "权限（scope）：读取类恒含；下面两档要勾选才给。",
+    scopeUpload: "允许通过 API 发布种子（upload）",
+    scopeCrossseed: "允许辅种查询（crossseed）",
   } as ApiTokensDict,
 
   /** 通知偏好（/me/notice-prefs，键与后端 0075 白名单一一对应） */
@@ -7390,6 +7437,8 @@ export const zhCN = {
       network_new_release: "订阅出品方新片",
       subgroup_new_release: "订阅字幕组新作",
       request_fulfilled: "求种应求",
+      torrent_comment: "种子新评论",
+      torrent_thanks: "种子收到答谢",
     } as Record<string, string>,
   },
 
@@ -7661,6 +7710,9 @@ export const zhCN = {
   /** 我的考核（/me/exams，0093 考核引擎） */
   exams: {
     tabNew: "新手考核",
+    capsule: "考核",
+    capsuleDays: "剩 {d} 天",
+    capsuleTip: "新手考核进行中——点击查看详情",
     tabMonthly: "月度考核",
     tabRecords: "考核记录",
     kpiTotal: "考核项",

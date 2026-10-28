@@ -105,6 +105,16 @@ async function TorrentTr({
   const endsAt = t.promotion_ends_at
     ? new Date(t.promotion_ends_at).toLocaleString(dateLocale(locale))
     : null;
+  // 0424：角标内嵌紧凑剩余（22H / 77D；已另由 torrents-left 行展示完整口径）
+  const leftCompact = t.promotion_ends_at
+    ? (() => {
+        const ms = new Date(t.promotion_ends_at).getTime() - now;
+        if (ms <= 0) return null;
+        const h = Math.ceil(ms / 3600000);
+        const d = Math.floor(h / 24);
+        return h >= 48 ? d + "D" : h + "H";
+      })()
+    : null;
   const rowBg = promoRowBg(t.promotion);
   const subtitle = t.small_descr || "";
   // DOM 契约（NP 口径）：pro_* 促销态 + 断种/官种行级标记
@@ -187,10 +197,13 @@ async function TorrentTr({
               「Free 77D」只答剩余，悬停补「到什么时候」 */}
           {promo && (
             <span
-              className={promoCls(promo.key)}
+              className={`${promoCls(promo.key)} torrents-promo--text`}
               title={promoTitle(dict.promotion[promo.key], left, endsAt)}
             >
+              {/* 0424 同类站对标：剩余时长内嵌角标（Free22H 口径）——
+                  角标自身即携带时效信息，悬停才补绝对截止时刻 */}
               {dict.promotion[promo.key]}
+              {leftCompact && <b className="torrents-promo-left">{leftCompact}</b>}
             </span>
           )}
           {left && <span className="torrents-left">剩余 {left}</span>}

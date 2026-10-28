@@ -976,6 +976,29 @@ table.subtitles-upload-table {
   background: var(--mint);
   color: #fff;
 }
+/* 0427 角标「文字即色」轻量变体（同类站 UI 对标采纳②）：
+   无底色无圆角，纯品牌色粗体文字——表格密度模式下角标不撑行高，
+   行内多枚标签并排也不膨胀。实底版保留给卡片/详情等展示位。 */
+.torrents-promo--text {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #a16207;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: inherit;
+}
+.torrents-promo--text.torrents-promo--free {
+  background: transparent;
+  color: var(--sky-deep);
+}
+/* 0424 促销角标内嵌剩余时长（Free22H 口径）：小号加粗，与角标同色系反白 */
+.torrents-promo-left {
+  font-size: 10px;
+  font-weight: 800;
+  margin-left: 3px;
+  opacity: 0.85;
+}
 .torrents-left {
   color: var(--sky-deep);
   font-size: 11.5px;

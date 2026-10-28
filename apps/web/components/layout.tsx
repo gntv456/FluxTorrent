@@ -4,6 +4,7 @@ import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { ExamCapsule } from "@/components/exam-capsule";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { MainMenu } from "@/components/main-menu";
@@ -133,6 +134,9 @@ export async function Header() {
                 <LocaleSwitcher current={locale} />
               </div>
             )}
+            {/* 0427 考核进度胶囊（同类站 UI 对标采纳③）：onboard/periodic
+                考核进行中时常驻；无考核不渲染。md+ 显示，窄屏收抽屉摘要。 */}
+            <ExamCapsule />
             {/* 头像弹窗（0147）：点击头像展开用户下拉（摘要/数据/快捷/信箱） */}
             <UserMenu loginLabel={dict.common.login} />
           </div>

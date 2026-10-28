@@ -186,6 +186,20 @@ export function TorrentSubtitles({
               <tr>
                 <td colSpan={6} className="py-4 text-center text-sub">
                   {t.empty}
+                  {/* 0424 同类站对标：空态外链搜索（IMDb ID 有值时给
+                      OpenSubtitles；片名搜索给 assrt） */}
+                  <a
+                    className="ml-2 underline"
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    href={
+                      imdbId
+                        ? `https://www.opensubtitles.com/search/imdb-${imdbId.replace(/^tt/, "")}`
+                        : "https://assrt.net/subtitle-search/"
+                    }
+                  >
+                    {t.searchExternal}
+                  </a>
                 </td>
               </tr>
             )}
