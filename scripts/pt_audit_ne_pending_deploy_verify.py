@@ -25,12 +25,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (call, jwt_token, ok, psql_stdin,  # noqa
                           summary)
 
-# 已修待部署：检查名 -> 修的是哪一处
-PENDING = {
-    "home": "P-469 /home 500（TABLESAMPLE 位置）——镜像重建后应转绿",
-    "class_dist": "P-468 等级直方图 JOIN classes（表名应为 user_classes）",
-    "hot_search": "P-465 热搜 upsert 的 hits 列歧义",
-}
+# 已修待部署：检查名 -> 修的是哪一处（空 = 全部已在现网验过）
+# 2026-10-28 12:07Z 站长重建 api 后实测三条全绿：/home 200、class_dist 非空、
+# 热搜 hits 增长 ⇒ 按棘轮整段删号。再出现红就是新坏的东西。
+PENDING = {}
 
 
 def q(sql):
@@ -44,9 +42,11 @@ def payload(path, token):
 
 tok = jwt_token("root")
 red = {}
+checked = []
 
 
 def mark(name, good, detail):
+    checked.append(name)
     if not good:
         red[name] = detail
     return good
@@ -109,6 +109,6 @@ for k in sorted(red):
 for k in sorted(set(PENDING) - set(red)):
     print("   [已生效] %-11s 请把台账这一条删掉：%s" % (k, PENDING[k]))
 
-ok("NE4 反空转：台账非空时实测红也非空（else 说明探针全绿=可能没真跑）",
-   bool(PENDING) or bool(red), "台账=%d 红=%d" % (len(PENDING), len(red)))
+ok("NE4 反空转：三项探针必须真的都跑过（台账已清空时也不能靠空集假绿）",
+   len(checked) >= 3, "执行=%d 项：%s" % (len(checked), checked))
 summary()
