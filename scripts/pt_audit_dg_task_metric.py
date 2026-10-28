@@ -48,8 +48,9 @@ def cut(f):
 
 def psql(q):
     r = subprocess.run(
-        ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
+        ["docker", "exec", "-i", "flux-postgres",
+         "psql", "-v", "ON_ERROR_STOP=1", "-U", "flux", "-q", "-d",
+             "fluxtorrent", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
         raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:200])
@@ -173,10 +174,15 @@ SELECT 'DL' || CASE WHEN t.tier IS NULL THEN '-non' ELSE '-tier' END,
   JOIN tref r ON r.tid = t.id
  WHERE c.task_id IN (SELECT tid FROM tref)
  ORDER BY 1;
+-- 源行必须钉死成一行：`FROM subtitles s` 不带限量时，插入条数＝现网字幕总数×3
+-- （10-27 现网 3 条 ⇒ 造出 9 条，DG5d 那句 `== 3` 红得毫无道理）。夹具的条数
+-- 只能是夹具自己的参数，不能是被测表的基数。
 INSERT INTO subtitles (torrent_id, user_id, title, lang, file_ref, created_at)
 SELECT s.torrent_id, p.uid, '闸门DG字幕-%(tag)s-' || g, s.lang,
        s.file_ref || '-dg-%(tag)s-' || g, p.claimed - interval '2 hours'
-  FROM subtitles s, probe p, generate_series(1, 3) g;
+  FROM (SELECT torrent_id, lang, file_ref FROM subtitles
+         ORDER BY id LIMIT 1) s,
+       probe p, generate_series(1, 3) g;
 SELECT 'SUB',
        count(*) FILTER (WHERE s.deleted_at IS NULL)::int,
        (count(*) FILTER (WHERE s.deleted_at IS NULL) >= 3)::int,
@@ -206,10 +212,13 @@ if non_row:
 if tier_row:
     ok("DG5c tier（等级系列）仍按累计判定，old=new 且达标 (读数 %s)"
        % "/".join(tier_row), tier_row[0] == tier_row[1] == "1", "-")
-if sub_row:
+if sub_row and have_sub:
     ok("DG5d 字幕：历史 3 条在旧尺子下恒达标(=1)，新尺子按认领后计数(=0) "
        "实测 %s/%s/%s/%s" % tuple(sub_row),
-       sub_row == ["3", "1", "0", "0"], "-")
+       sub_row == ["3", "1", "0", "0"],
+       "夹具条数必须正好 3（多=插入吃了基数，少=源行被 LIMIT 1 掐掉了）")
+elif sub_row:
+    print("   [SKIP] 现网 subtitles 为空 ⇒ 无源行可抄，DG5d 这段跑不了")
 
 # ---------- DG6 残料：事务回滚后不许留任何一行 ----------
 res = {t: psql("SELECT count(*) FROM %s" % t) for t in
@@ -236,5 +245,34 @@ claim_src = cut(CLAIM)
 ok("DG8 任务动态投影领取时刻（不是请求时刻 now()）",
    "t.name, c.claimed_at" in claim_src and "t.name, now()" not in claim_src,
    "投影里仍是 now()：历史领取会被显示成当前时间")
+
+# ---------- DG9 展示侧第三条腿：前端必须给每个判定键画进度 ----------
+# DG7 只钉住「结算键集合」，P-343 那一类（面板达标≠结算达标）还有第三种发生
+# 方式：结算新增第 7 个判定键，而三块面板都不认它——面板对这一键显示「—」，
+# 会员看不见要求却照它被判定/倒扣罚金。三处展示文件都要覆盖全部判定键。
+SHOWN = {
+    "任务板": os.path.join(ROOTDIR, "apps", "web", "components",
+                          "task-board-parts.tsx"),
+    "考核胶囊": os.path.join(ROOTDIR, "apps", "web", "components",
+                            "exam-capsule.tsx"),
+    "考核指标": os.path.join(ROOTDIR, "apps", "web", "app", "(main)",
+                            "me", "exams", "_parts", "exam-metrics.ts"),
+}
+
+
+def shown_keys(f):
+    """前端认得的判定键：`k === "xxx"` 与 `m.xxx != null` 两种写法都算。"""
+    s = cut(f)
+    return (set(re.findall(r'===\s*\\?"([a-z_]+)"', s))
+            | set(re.findall(r"\bm\.([a-z_]+)\s*!=\s*null", s)))
+
+
+miss = {n: sorted(set(KEYS) - shown_keys(p)) for n, p in SHOWN.items()}
+miss = {k: v for k, v in miss.items() if v}
+ok("DG9 三块面板都认得全部 %d 个判定键（缺=面板看不见却在判定的键）"
+   % len(KEYS), not miss, "缺键=%s" % (miss or "-"))
+ok("DG9b 正控：这条确实读得到键（三块面板各自至少覆盖 6 键）",
+   all(len(shown_keys(p)) >= len(KEYS) for p in SHOWN.values()),
+   "实测=%s" % {n: len(shown_keys(p)) for n, p in SHOWN.items()})
 
 summary()

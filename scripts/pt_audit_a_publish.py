@@ -10,7 +10,7 @@
 """
 import sys, io, json, hashlib, urllib.request, urllib.parse, time, random
 sys.stdout.reconfigure(encoding="utf-8")
-from pt_audit_lib import call, login, ok, summary
+from pt_audit_lib import call, login, note_torrent, ok, summary
 
 # ---------- bencode 编码器 ----------
 def benc(obj):
@@ -101,6 +101,9 @@ s, r = upload_torrent(tok, tor, category_id=str(cat_id), name="Audit.Pack.深测
                       small_descr="深测种子", descr="资深PT深测专用种子")
 ok("发种成功", s == 200 and r.get("code") == 0, "%s %s" % (s, r.get("message")))
 tid = ((r.get("data") or {}).get("id")) if s == 200 else None
+# P-444：这条种子是本闸门造的，跑完必须自己收走（summary() 里按 id 精确删）。
+# 以前这里不清场，10-02 起每次跑留一条，同名 `Audit.Pack.深测` 已堆到 93 条。
+note_torrent(tid)
 print("   torrent id=%s info_hash=%s" % (tid, ih[:16]))
 
 # 2) 重复上传拒绝

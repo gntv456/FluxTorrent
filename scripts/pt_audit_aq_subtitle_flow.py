@@ -16,7 +16,7 @@ import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import call, login, ok, summary  # noqa: E402
+from pt_audit_lib import call, login, note_torrent, ok, summary  # noqa: E402
 from pt_audit_aq_util import make_exec  # noqa: E402
 
 CLEAN = []
@@ -114,14 +114,27 @@ ok("S1 反例：冒用他人附件 sha 被拒",
    call("POST", "/subtitles", {"title": "AqSub X", "lang": "zh",
                                "file_sha": shaA, "torrent_id": 0},
         token=tNew)[0] == 400)
-# 注释承诺「不存在的种子 → 存 NULL」，旧实现却让 FK 把它打成 500
+# 闸门首版按当时的注释判「不存在的种子 → 存 NULL」。P-643 之后口径收口：
+# 「不存在」与「存在但对本会员不可见」**同回 1004**（不给存在性探针留两种
+# 表征），且绝不允许 500、也不落孤儿行。2026-10-27 真机复验：
+# torrent_id=999999999 → 404/1004、subtitles 零新增；待审种同样 1004。
 s, r = call("POST", "/subtitles", {"title": "AqSub Ghost", "lang": "zh",
                                    "file_ref": "https://x/ghost.srt",
                                    "torrent_id": 999999999}, token=tVet)
-ghost = q("SELECT COALESCE(torrent_id::text,'NULL') FROM subtitles "
-          "WHERE title = 'AqSub Ghost' ORDER BY id DESC LIMIT 1")
-ok("S1c 不存在的 torrent_id 不 500、按注释存 NULL",
-   s == 200 and ghost == "NULL", "%s %s tid=%s" % (s, str(r)[:90], ghost))
+ghost = q("SELECT count(*) FROM subtitles WHERE title = 'AqSub Ghost'")
+ok("S1c 不存在的 torrent_id 不 500、不落孤儿行（1004）",
+   s == 404 and r.get("code") == 1004 and ghost == "0",
+   "%s %s rows=%s" % (s, str(r)[:90], ghost))
+inv = q("SELECT id FROM torrents WHERE approval_status <> 1 ORDER BY id "
+        "LIMIT 1")
+s2, r2 = (call("POST", "/subtitles",
+               {"title": "AqSub Inv", "lang": "zh",
+                "file_ref": "https://x/inv.srt", "torrent_id": int(inv)},
+               token=tVet) if inv else (404, {"code": 1004}))
+inv_rows = q("SELECT count(*) FROM subtitles WHERE title = 'AqSub Inv'")
+ok("S1c2 同一表征：存在但会员看不到的种也回 1004（反存在性探针）",
+   s2 == 404 and r2.get("code") == 1004 and inv_rows == "0",
+   "inv=%s %s %s rows=%s" % (inv, s2, str(r2)[:70], inv_rows))
 
 print("== AQ-S2 列表 / 详情 / 下载计数去重 ==")
 sid2 = d3.get("id") or 0
@@ -177,6 +190,9 @@ tidPend = int(q("INSERT INTO torrents (info_hash, name, size, owner_id, "
                 "category_id, approval_status) VALUES "
                 "(md5(random()::text), 'AqSub.pend', 1024, %d, 1, 0) "
                 "RETURNING id" % uVet))
+# P-444：这颗待审种是本闸门自己 INSERT 的，登记后由 summary() 按 id 精确回收
+# （subtitles 对 torrents 是 ON DELETE CASCADE，连带一起清）
+note_torrent(tidPend)
 sidPend = int(q("INSERT INTO subtitles (user_id, title, lang, file_ref, "
                 "size, ext, status, torrent_id) VALUES (%d, 'AqSub pendtxt',"
                 " 'zh', 'https://x/pd.srt', 10, 'srt', 1, %d) RETURNING id"

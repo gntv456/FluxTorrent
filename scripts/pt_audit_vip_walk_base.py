@@ -225,7 +225,16 @@ def upload_probe_torrent(tok: str, name: str) -> tuple[int, str] | None:
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             d = json.loads(r.read()).get("data") or {}
-            return d.get("id"), d.get("info_hash")
+            tid = d.get("id")
+            # P-444 回收登记（同 pt_audit_deep_walk_base 那处）：本底座造的
+            # 探针种交给 pt_audit_lib.summary() 按 id 精确删。
+            try:
+                from pt_audit_lib import note_torrent
+                note_torrent(tid)
+            except Exception as e:  # noqa: BLE001
+                rec("清理", "WARN", "回收登记失败，这颗种会留成残料：%s"
+                    % str(e)[:60])
+            return tid, d.get("info_hash")
     except Exception as e:
         rec("自愈", "WARN", f"上传探针种失败：{str(e)[:80]}")
         return None

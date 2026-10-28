@@ -214,7 +214,18 @@ def upload_probe_torrent(tok: str, name: str,
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             d = json.loads(r.read()).get("data") or {}
-            return d.get("id"), d.get("info_hash")
+            tid = d.get("id")
+            # P-444 回收登记：这颗探针种是本底座造的，登记后由
+            # pt_audit_lib.summary() 按 id 精确删。底座被 deep_walk /
+            # deep_walk_member / deep_walk_admin 星号导入，所以登记收在
+            # 这一处就覆盖全部调用方（各入口自己再写一遍必然漏）。
+            try:
+                from pt_audit_lib import note_torrent
+                note_torrent(tid)
+            except Exception as e:  # noqa: BLE001
+                rec("清理", "WARN", "回收登记失败，这颗种会留成残料：%s"
+                    % str(e)[:60])
+            return tid, d.get("info_hash")
     except Exception as e:
         rec("探针", "WARN", f"上传探针种失败：{str(e)[:80]}")
         return None

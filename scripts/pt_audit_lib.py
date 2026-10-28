@@ -145,11 +145,75 @@ def dig(resp, *keys):
 
 
 def summary():
+    # P-444：闸门经真实发布接口造的种必须自己收走。现网 213 条过审种里 203 条
+    # 是历史夹具（`Audit.Pack.深测` 一个名字 93 条），会员端「最新」那一屏被
+    # 测试行占满、公开列表又因存活过滤变成空——内容面被审计流程自己吃掉。
+    # 回收挂在 summary()：登记是各闸门显式做的（note_torrent），删除集中一处。
+    try:
+        n = purge_noted_torrents()
+        if n:
+            print("[清理] 回收本轮闸门造的种子 %d 条" % n)
+    except Exception as e:  # noqa: BLE001 收尾失败要出声，但不能吃掉断言账
+        print("[清理失败] 种子夹具没回收干净：%s" % e)
+        FAILURES.append("闸门造种回收失败")
     print()
     if FAILURES:
         print("== FAILURES (%d): %s" % (len(FAILURES), ", ".join(FAILURES)))
         sys.exit(1)
     print("== ALL PASS")
+
+
+# ---- 闸门造种回收（P-444）--------------------------------------------
+_CREATED_TORRENTS = []
+
+
+def note_torrent(torrent_id):
+    """登记「本轮我自己造出来的种子 id」，summary() 时统一回收。
+
+    只登记显式传进来的 id，不按标题猜——按名字删会误伤真内容（同名 93 条里
+    可能有站长自己起的名字）。
+    """
+    if torrent_id is None or torrent_id == "":
+        return
+    try:
+        _CREATED_TORRENTS.append(int(torrent_id))
+    except (TypeError, ValueError):
+        pass
+
+
+def purge_torrents(ids):
+    """按 id 精确删种：先清 NO ACTION 子表，其余交给 CASCADE，回读残留。
+
+    外键形状从 `pg_constraint` **运行时现取**而不是写死清单——写死的版本
+    漏一张表就会把删除变成静默失败（实测只有 auto_review_log 真命中过 3 行）。
+    残留不为 0 一律抛出，绝不让「以为清了」变成下一轮的红。
+    """
+    ids = sorted({int(i) for i in ids if i not in (None, "")})
+    if not ids:
+        return 0
+    in_list = ",".join(str(i) for i in ids)
+    blockers = psql_stdin(
+        "SELECT c.conrelid::regclass::text, a.attname FROM pg_constraint c "
+        "JOIN pg_attribute a ON a.attrelid=c.conrelid "
+        "AND a.attnum=(c.conkey)[1] WHERE c.confrelid='torrents'::regclass "
+        "AND c.contype='f' AND c.confdeltype='a' ORDER BY 1;")
+    for ln in blockers.splitlines():
+        p = ln.split("|")
+        if len(p) != 2:
+            continue
+        psql_stdin("DELETE FROM %s WHERE %s IN (%s);" % (p[0], p[1], in_list))
+    psql_stdin("DELETE FROM torrents WHERE id IN (%s);" % in_list)
+    left = psql_stdin("SELECT count(*) FROM torrents WHERE id IN (%s);"
+                      % in_list).splitlines()[0].strip()
+    if left != "0":
+        raise RuntimeError("种子夹具残留 %s 条（ids=%s）" % (left, ids))
+    return len(ids)
+
+
+def purge_noted_torrents():
+    ids = list(dict.fromkeys(_CREATED_TORRENTS))
+    del _CREATED_TORRENTS[:]
+    return purge_torrents(ids)
 
 def psql_stdin(sql: str, sep: str = "|") -> str:
     """经容器跑一段 SQL：**出错即抛**，不把错误吞成空串。

@@ -8,7 +8,8 @@
 """
 import sys, json, time, random
 sys.stdout.reconfigure(encoding="utf-8")
-from pt_audit_lib import call, clear_register_rl, login, ok, summary
+from pt_audit_lib import call, clear_register_rl, login, note_torrent, ok, \
+    summary
 clear_register_rl()   # #75：开工前清掉探针号占用的 24h 同 IP 额度
 from pt_audit_a_publish import make_torrent, upload_torrent
 import subprocess
@@ -47,6 +48,8 @@ print("发种人 approve_streak=%s deny_count=%s" % (streak0, deny0))
 tor1, ih1 = make_torrent(files=[("rev1.bin", 5242880)])
 s, r = upload_torrent(tup, tor1, category_id="1", name="AuditC.NeedReview.%d" % suffix)
 tid1 = (r.get("data") or {}).get("id")
+# P-444：本闸门造的种，summary() 时按 id 精确回收（两颗都登记）
+note_torrent(tid1)
 st1 = q("SELECT approval_status FROM torrents WHERE id=%s" % tid1)
 print("普通用户发种 tid=%s approval_status=%s（0=待审? 1=过审?）" % (tid1, st1))
 ok("普通发种落待审或自动过审", st1 in ("0", "1"), st1)
@@ -66,6 +69,7 @@ if tid1:
 tor2, ih2 = make_torrent(files=[("rev2.bin", 5242880)])
 s, r = upload_torrent(tup, tor2, category_id="1", name="AuditC.Review2.%d" % suffix)
 tid2 = (r.get("data") or {}).get("id")
+note_torrent(tid2)
 if tid2:
     s, r = call("POST", "/admin/reviews/decide", {"torrent_id": int(tid2), "approve": True}, token=tok)
     print("decide 通过:", s, r.get("code"))
