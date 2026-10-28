@@ -212,19 +212,11 @@ pub(crate) async fn works_list(
         (status = 401, description = "会话未登录（code 2001）"),
     )
 )]
-#[get("/works/{key}")]
-pub(crate) async fn work_detail(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<String>,
-) -> DomainResult<impl Responder> {
-    let _auth = require_auth(&req, &state).await?;
-    let key = path.into_inner();
-    // 键形态白名单：`g` + 数字 或 `n` + 32 位十六进制。拼错/乱填直接 404，
-    // 不放它去跑一次全表聚合。
-    let digit =
-        |s: &str| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit());
-    let valid = match key.as_bytes().first() {
+/// 作品键形态白名单（0424 从 detail 抽公共）：`g`+数字 / `i`+tt… /
+/// `m`/`d`+数字 / `n`+32 位十六进制。拼错/乱填直接 404，不放它去跑全表聚合。
+pub(crate) fn valid_work_key(key: &str) -> bool {
+    let digit = |s: &str| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit());
+    match key.as_bytes().first() {
         Some(b'g') => key[1..].parse::<i64>().is_ok(),
         // IMDb 键：`i` + tt…（大小写不敏感的比较交给 SQL，这里只认形态）
         Some(b'i') => key.len() > 3 && key[1..].starts_with(['t', 'T']),
@@ -233,7 +225,18 @@ pub(crate) async fn work_detail(
             key.len() == 33 && key[1..].bytes().all(|c| c.is_ascii_hexdigit())
         }
         _ => false,
-    };
+    }
+}
+
+#[get("/works/{key}")]
+pub(crate) async fn work_detail(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<String>,
+) -> DomainResult<impl Responder> {
+    let _auth = require_auth(&req, &state).await?;
+    let key = path.into_inner();
+    let valid = valid_work_key(&key);
     if !valid {
         return Err(DomainError::NotFound(0));
     }

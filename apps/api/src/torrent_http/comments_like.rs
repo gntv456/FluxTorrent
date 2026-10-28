@@ -35,3 +35,18 @@ pub(super) async fn toggle_like(
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(false)
 }
+
+/// 当前点赞数（0423 通知链路读口）：toggle 后回显与新通知都要带计数，
+/// 没有这个读口调用侧只能再写一份裸 SQL。
+pub(super) async fn like_count(
+    db: &sqlx::PgPool,
+    comment_id: i64,
+) -> DomainResult<i64> {
+    sqlx::query_scalar(
+        "SELECT count(*)::bigint FROM comment_likes WHERE comment_id = $1",
+    )
+    .bind(comment_id)
+    .fetch_one(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))
+}

@@ -6,6 +6,8 @@
 //! 感谢/收藏/求续种在 interact.rs，编辑/定价/恢复/标签管理在 manage.rs，
 //! 删除与附带处置在 torrent_delete.rs。
 
+mod works_watch;
+mod notify;
 mod aggregate;
 mod batch;
 mod comments_like;

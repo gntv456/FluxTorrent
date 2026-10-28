@@ -74,7 +74,8 @@ mod tests {
         let u = uri("同类站堂 PT", "donna", "JBSWY3DP");
         assert!(u.starts_with("otpauth://totp/"));
         assert!(u.contains(":donna?secret=JBSWY3DP"), "标签是用户名: {u}");
-        assert!(u.contains("%E5%A5%BD"), "站点名要转义: {u}");
+        // 「同」的 UTF-8 转义（%E5%90%8C）：站名非 ASCII 必须整体转义
+        assert!(u.contains("%E5%90%8C"), "站点名要转义: {u}");
         assert!(u.contains("%20PT"), "空格要转义: {u}");
         assert!(!u.contains(' '), "URI 里不得留裸空格: {u}");
     }

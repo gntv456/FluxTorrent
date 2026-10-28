@@ -57,3 +57,50 @@ pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
     }
     Ok(n)
 }
+
+/// 全站促销开播播报（run.rs:164 的 job:announce_site_promos）。
+///
+/// 语义：检测「已生效但尚未播报过」的全站（scope=global）促销，向聊天室
+/// （shoutbox）发一条系统播报——免费/双倍活动对散客的触达短板就在
+/// 「开了没人知道」（产品分析 P0：促销触达）。幂等锚 promotions.id：
+/// 播报过的促销在备注里带 id，重跑不重发（shoutbox 无删除通道，
+/// 防刷屏是硬约束）。60s 一轮与调度注册的 cadence 一致。
+/// 播报身份取在场最高等级职员（缺省 id=1）；无新促销时零查询副作用。
+pub async fn announce_site_promos(db: &PgPool) -> anyhow::Result<u64> {
+    let res = sqlx::query(
+        r#"
+        WITH fresh AS (
+            SELECT id, kind, ends_at FROM promotions
+            WHERE scope = 'global' AND starts_at <= now() AND ends_at > now()
+              AND NOT EXISTS (
+                  SELECT 1 FROM shoutbox sb
+                  WHERE sb.message LIKE '%promo:' || promotions.id || '%'
+              )
+            ORDER BY id LIMIT 3
+        ),
+        staff AS (
+            SELECT id FROM users WHERE status < 2 AND class_id >= 99
+            ORDER BY id LIMIT 1
+        )
+        INSERT INTO shoutbox (user_id, message)
+        SELECT staff.id,
+               CASE fresh.kind
+                   WHEN 'x2free' THEN '🎉 全站 FREE + 双倍上传已开启！'
+                   WHEN 'free'   THEN '🎉 全站 FREE 已开启！'
+                   WHEN 'half'   THEN '🎉 全站 50% 下载已开启！'
+                   WHEN 'x2up'   THEN '🎉 全站双倍上传已开启！'
+                   ELSE '🎉 全站促销活动进行中！'
+               END
+               || ' 截止 ' || to_char(fresh.ends_at AT TIME ZONE 'UTC+8', 'MM-DD HH24:mi')
+               || '（promo:' || fresh.id || '）'
+        FROM fresh CROSS JOIN staff
+        "#,
+    )
+    .execute(db)
+    .await?;
+    let n = res.rows_affected();
+    if n > 0 {
+        tracing::info!(n, "site promo announced to shoutbox");
+    }
+    Ok(n)
+}

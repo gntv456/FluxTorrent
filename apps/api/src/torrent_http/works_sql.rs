@@ -225,3 +225,10 @@ SELECT a.wk AS key, r.name, r.poster, r.category_id, a.torrents,
         meta_join = META_JOIN
     )
 }
+
+/// 归一化标题表达式（0424 P1-2 抽出）：种名去「｜之后/括注/年份/规格尾」
+/// 的纯片名——作品订阅用它与 WK 的 n-键 md5 同一归一化，两侧不各写一份。
+pub(super) fn title_expr() -> &'static str {
+    r#"COALESCE(NULLIF(split_part(split_part(t.name, '｜', 1), '|', 1), ''),
+             t.name)"#
+}

@@ -2,6 +2,7 @@
 //! 按域拆分（300 行门禁）：求种 requests.rs、候选 offers.rs、字幕 subtitles.rs、
 //! 课本/排行榜/促销 misc.rs；mount_content 留在此。
 
+mod top_torrents;
 mod misc;
 mod offers;
 mod promo;
