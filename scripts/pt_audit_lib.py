@@ -359,3 +359,24 @@ def totp_now(secret_b32, skew=0):
     off = digest[19] & 0x0F
     code = int.from_bytes(digest[off:off + 4], "big") & 0x7FFF_FFFF
     return code % 1_000_000
+
+def fund_spark(user_id: int, amount: int) -> None:
+    """给夹具号注资的**正确**方式：抬 `balance_baseline.base_spark`。
+
+    为什么不能直接 `UPDATE users SET spark_balance = N`：`spark_balance` 是快照，
+    权威是 `base_spark + SUM(spark_ledger)`（`jobs/seeding.rs` 每小时按这个重算）。
+    直接写快照的夹具会在下一拍被抹平，并留下不变量外的脏账——P-463 实测 232 个
+    违例、净额 +1.3M，其中 39 个被打成负余额。本函数把「应有余额」与「账面隐含
+    余额」的差额记进 baseline，重算之后余额仍是 `amount`，且台账自洽。
+    `through` 是归档水位（maintain 专用），重算不读它，手抬时记当天。
+    """
+    psql_stdin(
+        "INSERT INTO balance_baseline (user_id, base_spark, through) "
+        "SELECT u.id, {a} - (COALESCE((SELECT base_spark FROM "
+        "balance_baseline b WHERE b.user_id = u.id), 0) + COALESCE((SELECT "
+        "sum(amount) FROM spark_ledger l WHERE l.user_id = u.id AND "
+        "l.kind <> 'orphan_offset'), 0)), CURRENT_DATE "
+        "FROM users u WHERE u.id = {u} "
+        "ON CONFLICT (user_id) DO UPDATE SET base_spark = "
+        "balance_baseline.base_spark + EXCLUDED.base_spark".format(
+            a=amount, u=user_id))

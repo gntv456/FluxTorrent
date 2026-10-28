@@ -30,18 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import ok, psql_stdin, summary  # noqa: E402
 
 # 在册（status<2）漂移账号台账：id -> 定性（多一个少一个都红）
-LIVE_DRIFT = {
-    7483: "fe230714：夹具直接写钱包 200，未落流水未抬 baseline",
-    7524: "fe235916：同上",
-    7523: "fe135916：同上",
-    7482: "fe130714：同上",
-    39: "deleted-39-restored：反向（流水 +30 > 钱包 0），重算会把钱包抬上去",
-    # 7346 audit_vip 曾在册漂移 100000（本轮 04:49Z 实测 wallet=97813 /
-    # 流水净 -2187），5 分钟后再量就与不变量一致了——中间没有任何新流水
-    # （最后一行 10-25），是 seeding 那一拍把快照重算成 baseline+SUM，
-    # 直接把它打成 -2187。这就是「脏账会被静默抹平」的活体证据，
-    # 也是本仓成文的 P0-2 同族（np_import.rs:180、bulk_traffic.rs:5）。
-}
+LIVE_DRIFT = {}  # 5 个在册夹具号已于 10-28 用 fund_spark 抬 baseline 补齐
 # 脚本侧：闸门/e2e 里「写快照却不抬 baseline/不落流水」的处数是历史欠账，
 # 用基数棘轮钉住（只降不升），名单每轮打印——新增一只手的瞬间就多一个文件。
 MINT_BASELINE_MAX = 26  # 2026-10-28 实测基数：26 个脚本这么干过
@@ -49,6 +38,8 @@ MINT_BASELINE_MAX = 26  # 2026-10-28 实测基数：26 个脚本这么干过
 SNAP = re.compile(r"UPDATE\s+users\s+SET[^;]*?spark_balance\s*=", re.I)
 BASE = re.compile(r"balance_baseline", re.I)
 LEDGER_INS = re.compile(r"INSERT\s+INTO\s+spark_ledger", re.I)
+# 夹具注资的正确姿势（pt_audit_lib.fund_spark）：抬 baseline 而不是写快照。
+HELPER = re.compile(r"fund_spark\(", re.I)
 
 
 def offends(text):
