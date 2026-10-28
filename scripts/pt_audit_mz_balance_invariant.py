@@ -124,6 +124,35 @@ neg = int(psql_stdin("SELECT count(*) FROM users WHERE spark_balance < 0")
           .splitlines()[0].strip())
 ok("MZ5 棘轮：负余额账号数须 <= 39（该列无 CHECK，脏账被抹平就落到这里）",
    neg <= 39, "负余额=%d" % neg)
+TRAFFIC_SQL = """
+WITH cur AS (
+  SELECT u.id, u.status, u.uploaded, u.downloaded,
+    COALESCE(b.base_up,0)+COALESCE(t.su,0) AS iu,
+    COALESCE(b.base_down,0)+COALESCE(t.sd,0) AS idn
+  FROM users u
+  LEFT JOIN balance_baseline b ON b.user_id = u.id
+  LEFT JOIN (SELECT user_id, sum(delta_up) su, sum(delta_down) sd
+             FROM traffic_ledger GROUP BY user_id) t ON t.user_id = u.id)
+SELECT 'drift='||count(*) FILTER (WHERE uploaded <> iu
+                                  OR downloaded <> idn) FROM cur UNION ALL
+SELECT 'total='||count(*) FROM cur UNION ALL
+SELECT 'anchor='||(SELECT count(*) FROM traffic_ledger WHERE user_id = 0)"""
+
+tr = {}
+for ln in psql_stdin(TRAFFIC_SQL).splitlines():
+    if "=" in ln:
+        k, v = ln.split("=", 1)
+        tr[k] = int(v.strip())
+ok("MZ6 同一条不变量在 traffic 侧必须零漂移（现网实测 0；口径照 "
+   "announce_main.rs:209-219，无 kind 豁免）",
+   tr.get("drift", -1) == 0 and tr.get("total", 0) > 1000,
+   "漂移=%s 覆盖用户=%s" % (tr.get("drift"), tr.get("total")))
+ok("MZ7 traffic_ledger 的 user_id=0 锚点行须为 0（该表无外键，写了不会报错，"
+   "只会被静默留在账上）", tr.get("anchor", -1) == 0,
+   "锚点行=%s" % tr.get("anchor"))
+print("   [对照] traffic 侧漂移=%s / spark 侧在册漂移=%d ⇒ spark 那 232 条"
+      "是写入路径的孤立问题，不是设计缺陷" % (tr.get("drift"), live))
+
 print("   [账面] 在册漂移=%d 已处置号漂移=%d 净额=%s" % (live, purged, net))
 for i in sorted(ids):
     print("      [在册 %d] %s" % (i, LIVE_DRIFT.get(i, "未登记")))
