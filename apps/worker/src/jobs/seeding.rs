@@ -138,6 +138,28 @@ pub async fn seeding_reward(
     // 深测四轮（2026-10-03）：排除 kind='orphan_offset' 系统对冲行——0266 迁移把
     // 历史孤儿流水对冲 -52374 挂在 root 名下（对账口径是全站合计，个人重算不该吃），
     // 否则首个重算周期就把 root 快照打成大负数（实测 -51619，游戏/签到跟着报负）。
+    // 0428 之后 spark_balance 有 >=0 的 CHECK：历史 baseline 漂移的用户
+    // （旧探针/手工改余额）算出来是负数时，旧 UPDATE 会整批抛错，所有人的
+    // 做种收益一起停。负算行跳过并告警，先保住其余用户的发放。
+    let neg: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM users u \
+         LEFT JOIN balance_baseline b ON b.user_id = u.id \
+         LEFT JOIN (SELECT user_id, sum(amount) AS s FROM spark_ledger \
+                    WHERE kind <> 'orphan_offset' GROUP BY user_id) l \
+           ON l.user_id = u.id \
+         WHERE u.id IN (SELECT DISTINCT user_id FROM spark_ledger \
+                        WHERE created_at > now() - interval '2 hours') \
+           AND COALESCE(b.base_spark,0) + COALESCE(l.s,0) < 0",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    if neg > 0 {
+        tracing::warn!(
+            neg,
+            "seeding_reward: negative snapshots skipped (baseline drift)"
+        );
+    }
     sqlx::query(
         "UPDATE users SET spark_balance = COALESCE(( \
              SELECT base_spark FROM balance_baseline \
@@ -146,7 +168,12 @@ pub async fn seeding_reward(
              SELECT sum(amount) FROM spark_ledger \
              WHERE user_id = users.id \
                AND kind <> 'orphan_offset'), 0) \
-         WHERE id IN (SELECT DISTINCT user_id FROM spark_ledger WHERE created_at > now() - interval '2 hours')",
+         WHERE id IN (SELECT DISTINCT user_id FROM spark_ledger WHERE created_at > now() - interval '2 hours') \
+           AND COALESCE((SELECT base_spark FROM balance_baseline \
+                         WHERE user_id = users.id), 0) \
+             + COALESCE((SELECT sum(amount) FROM spark_ledger \
+                         WHERE user_id = users.id \
+                           AND kind <> 'orphan_offset'), 0) >= 0",
     )
     .execute(db)
     .await?;

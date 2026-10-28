@@ -39,6 +39,12 @@ pub const JOBS: &[JobDef] = &[
         name: "consume_agent_blocks",
         cadence: "60s",
     },
+    // 2026-10-29：run.rs 的 60s tick 一直在跑它，但目录没登记 ⇒ 面板看不见、
+    // 手触被拒；补登记（与 announce_site_promos/contract_settle 同族）。
+    JobDef {
+        name: "consume_xreport",
+        cadence: "60s",
+    },
     JobDef {
         name: "backfill_pieces_hash",
         cadence: "60s",
