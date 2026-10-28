@@ -84,7 +84,7 @@ pub async fn torrent_suggest(
     if !items.is_empty() && raw.chars().count() <= 64 {
         if let Err(e) = sqlx::query(
             "INSERT INTO search_term_stats (term, hits) VALUES ($1, 1) \
-             ON CONFLICT (term) DO UPDATE SET hits = hits + 1, last_at = now()",
+             ON CONFLICT (term) DO UPDATE SET \n             hits = search_term_stats.hits + 1, last_at = now()",
         )
         .bind(raw)
         .execute(&state.repo.db)

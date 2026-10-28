@@ -24,7 +24,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import ok, psql_stdin, summary  # noqa: E402
-from record_migration import SAFE, declared  # noqa: E402
+from record_migration import SAFE, declared, probe  # noqa: E402
 
 MIG = "apps/api/migrations"
 PROBE = ("SELECT x.lbl FROM (SELECT k || '|' || n AS lbl, CASE"
@@ -42,25 +42,11 @@ PROBE = ("SELECT x.lbl FROM (SELECT k || '|' || n AS lbl, CASE"
          " ELSE FALSE END AS present FROM (VALUES\n%s\n) v(k, n)"
          ") x WHERE NOT x.present")
 
-REASON = ("P-461：0424/0425 只被 record_migration.py 手工登记成 applied，"
-          "DDL 从未真跑过（0425 更是根本执行不了）；0427 补件已写好但未部署，"
-          "部署后本条必须整段删号")
-LEDGER = {
-    (424, "rel|seed_contracts"): REASON,
-    (424, "rel|seed_contracts_id_seq"): REASON,
-    (424, "rel|seed_contract_tiers"): REASON,
-    (424, "rel|seed_contract_tiers_id_seq"): REASON,
-    (424, "rel|seed_contracts_open"): REASON,
-    (424, "key|hr_pardon_share_pct"): REASON,
-    (424, "key|seed_contract_enabled"): REASON,
-    (425, "rel|search_term_stats"): REASON,
-    (425, "rel|search_term_stats_hot"): REASON,
-    (425, "func|seeding_publisher_mult"): REASON,
-    (425, "key|seeding_publisher_mult_day"): REASON,
-    (425, "key|seeding_publisher_mult_month"): REASON,
-    (425, "key|seeding_publisher_mult_year"): REASON,
-    (425, "key|upload_either_or"): REASON,
-}
+# 2026-10-28 13:00+08：站长在同一棵树上接受 0425 的修法（索引谓词去 now()）并把
+# 0427 执行后登记（record_migration.py，checksum 按 blob 字节，audit 实测 420/423
+# 对得上、0 问题）。现网实测 tiers=5 / keys=6 / 乘数 4:2.5:1.5:1 ⇒ 本条台账按棘轮
+# 清空：再出现任何「登记说跑过、对象却不在」都是新分叉。
+LEDGER = {}
 
 
 def read(v):
@@ -174,12 +160,13 @@ ok("MX4 补件覆盖：0427 声明须含 0424 与 0425 的全部对象（补一�
    bool(n24 or n25) and not ((n24 | n25) - n27),
    "缺=%s 0427=%d 项" % (sorted((n24 | n25) - n27), len(n27)))
 
-r = subprocess.run([sys.executable, os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "record_migration.py"),
-    "0425_publisher_seed_decay.sql", "--check"],
-    capture_output=True, text=True, encoding="utf-8", errors="replace")
-ok("MX5 工具门：record_migration.py 对 0425 必须拒绝登记（非零退出且出声）",
-   r.returncode != 0 and "拒绝登记" in (r.stdout + r.stderr)
-   and "recorded" not in r.stdout, "rc=%s" % r.returncode)
+miss_ghost = probe([("rel", "mx_probe_ghost"),
+                     ("func", "mx_probe_ghost_fn")])
+miss_real = probe([("rel", "seed_contracts"),
+                   ("func", "seeding_publisher_mult")])
+ok("MX5 工具门：同一支探针必须对合成 ghost 判缺、对已建对象判在"
+   "（既不是恒绿也不是恒红；登记工具用的就是它）",
+   set(miss_ghost) == {"rel|mx_probe_ghost", "func|mx_probe_ghost_fn"}
+   and miss_real == [], "ghost=%s real=%s" % (miss_ghost, miss_real))
 
 summary()
