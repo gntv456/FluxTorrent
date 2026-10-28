@@ -85,6 +85,8 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(game_rounds)
         .service(scratch)
         .service(guess_bigsmall)
+        // 0424 走势看板（同类站对标小件）
+        .service(bigsmall_trend)
         .service(jgg)
         .service(capsule)
         .service(wheel)
