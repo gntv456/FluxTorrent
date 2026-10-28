@@ -206,9 +206,10 @@ async fn home_shared_fresh(
             "SELECT id, name, small_descr, size::bigint, poster \
             FROM (SELECT id, name, small_descr, size, \
             media_info->>'poster' AS poster FROM torrents \
+            TABLESAMPLE SYSTEM (0.8) \
             WHERE approval_status = 1 AND seeders > 0 \
             AND created_at < now() - interval '7 days' \
-            TABLESAMPLE SYSTEM (0.8) LIMIT 12) r",
+            LIMIT 12) r",
         )
         .fetch_all(db)
         .await
