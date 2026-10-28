@@ -29,7 +29,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import ok, summary  # noqa: E402
 
-ROOTS = ["apps/api/src", "apps/worker/src", "apps/web/app", "apps/web/components"]
+ROOTS = ["apps/api/src", "apps/worker/src",
+         "apps/web/app", "apps/web/components"]
 CMP = re.compile(r"bounty_status\s*[=!]=?", re.I)
 GUARD = re.compile(r"topic_type|bounty_spark", re.I)
 # 台账：文件 -> 判定形态与生效谓词在哪一行（多一个少一个都红）

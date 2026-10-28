@@ -29,8 +29,10 @@ from pt_audit_lib import ok, summary  # noqa: E402
 
 ROOTS = ["apps/api/src", "apps/worker/src"]
 DO = re.compile(r"DO\s+UPDATE\s+SET\s+([\s\S]{0,240}?)(?:;|\"|$)", re.I)
-ASSIGN = re.compile(r"([a-z_][a-z0-9_]*)\s*=\s*(.+?)(?=,\s*[a-z_][a-z0-9_]*\s*=|$)",
-                    re.I | re.S)
+ASSIGN = re.compile(
+    r"([a-z_][a-z0-9_]*)\s*=\s*(.+?)(?=,\s*[a-z_][a-z0-9_]*\s*=|$)",
+    re.I | re.S,
+)
 # 台账：文件 -> 理由（多一个少一个都红）
 LEDGER = {}
 
