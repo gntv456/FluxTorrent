@@ -497,6 +497,9 @@ pub mod auto_review;
 /// 每日火花流水结算凭证（Merkle）：worker 封存与 api 出证明共用。
 pub mod merkle;
 
+/// 从归档 .torrent 取文件名（auto_review 的输入；空=不知道，不是没有）。
+pub mod torrent_names;
+
 /// 金标准回归集（§18.3，≥60 例数据表）：仅测试用，不出 lib 面。
 #[cfg(test)]
 mod auto_review_corpus;

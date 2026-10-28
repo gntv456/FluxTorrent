@@ -200,13 +200,23 @@ async fn build_snapshot(
     descr: String,
     cat: i64,
 ) -> TorrentSnapshot {
-    // P-466：`torrent_files` 只有 (torrent_id, raw, created_at)——没有
-    // filename 列。旧查询恒失败，被 `.unwrap_or_default()` 吞成空 Vec，
-    // 于是下面「MediaInfo 声明含视频轨 ⇒ 包内必须有视频文件」那条规则
-    // 对**每个带 MediaInfo 的种**都成立，整队列被标成伪媒体嫌疑。
-    // 文件名只能从归档的 .torrent（raw）里 bdecode 出来，那是另一件事；
-    // 先把它钉成「不知道」而不是「没有」：空清单不再当作证据。
-    let file_names: Vec<String> = Vec::new();
+    // P-466 → P-476：`torrent_files` 只有 (torrent_id, raw, created_at)——没有
+    // filename 列，旧查询恒失败被吞成空 Vec，于是「MediaInfo 声明含视频轨 ⇒
+    // 包内必须有视频文件」对**每个带 MediaInfo 的种**都成立。现在真解析归档的
+    // .torrent：`flux_shared::torrent_names::file_names(raw)` 取 info 里的
+    // name / files[].path。解析失败返回空 = **不知道**，下面那条规则用
+    // `!file_names.is_empty()` 把它和「确认没有视频」分开。
+    let file_names: Vec<String> = sqlx::query_scalar::<_, Vec<u8>>(
+        "SELECT raw FROM torrent_files WHERE torrent_id = $1 LIMIT 1",
+    )
+    .bind(id)
+    .fetch_optional(db)
+    .await
+    .inspect_err(|e| tracing::warn!(torrent = id, %e, "读取归档 .torrent 失败"))
+    .ok()
+    .flatten()
+    .map(|raw| flux_shared::torrent_names::file_names(&raw))
+    .unwrap_or_default();
     let recent_titles: Vec<String> = sqlx::query_scalar(
         "SELECT name FROM torrents \
          WHERE approval_status = 1 AND id <> $1 AND mtime > now() - \
