@@ -21,6 +21,8 @@ interface Contest {
   starts_at: string;
   ends_at: string;
   is_active: boolean;
+  /** 服务端派生：开关打开且在时间窗内（别在客户端比日期，SSR 会抖） */
+  live: boolean;
   entries: number;
   leader: string | null;
   leader_score: number | null;
@@ -89,7 +91,7 @@ export function ContestBoard() {
             <tr key={c.id}>
               <td>
                 <span className="font-bold text-ink">{c.title}</span>
-                {c.is_active && <span className="contest-live">{t.live}</span>}
+                {c.live && <span className="contest-live">{t.live}</span>}
                 {c.descr && <p className="mt-1 text-xs text-sub">{c.descr}</p>}
               </td>
               <td className="text-xs text-sub">
@@ -100,7 +102,7 @@ export function ContestBoard() {
               <td className="num">{c.entries}</td>
               <td>{c.leader ? `${c.leader} (${c.leader_score ?? 0})` : "—"}</td>
               <td className="text-right">
-                {c.is_active && (
+                {c.live && (
                   <button
                     className="cmgmt-act"
                     disabled={busy}

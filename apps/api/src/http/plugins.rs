@@ -200,6 +200,10 @@ struct ContestInfo {
     starts_at: chrono::DateTime<chrono::Utc>,
     ends_at: chrono::DateTime<chrono::Utc>,
     is_active: bool,
+    /// 派生：开关打开**且**在时间窗内。前端据此渲染「进行中」与报名按钮——
+    /// 只看 is_active 会让已结束但没手动关掉的比赛一直显示进行中，按钮点了
+    /// 必 400（P-473；contest_join 的谓词本来就是这两项合取）。
+    live: bool,
     entries: i64,
     #[sqlx(default)]
     leader: Option<String>,
@@ -213,6 +217,7 @@ pub async fn contest_list(
 ) -> DomainResult<impl Responder> {
     let mut rows: Vec<ContestInfo> = sqlx::query_as(
         "SELECT c.id, c.title, c.descr, c.starts_at, c.ends_at, c.is_active, \
+            (c.is_active AND now() BETWEEN c.starts_at AND c.ends_at) AS live, \
             (SELECT count(*) FROM contest_entries e WHERE e.contest_id = c.id) AS entries, \
             (SELECT u.username FROM contest_entries e JOIN users u ON u.id = e.user_id \
              WHERE e.contest_id = c.id ORDER BY e.score DESC LIMIT 1) AS leader, \
