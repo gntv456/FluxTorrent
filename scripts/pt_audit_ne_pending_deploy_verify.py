@@ -111,4 +111,58 @@ for k in sorted(set(PENDING) - set(red)):
 
 ok("NE4 反空转：三项探针必须真的都跑过（台账已清空时也不能靠空集假绿）",
    len(checked) >= 3, "执行=%d 项：%s" % (len(checked), checked))
+
+# ============ worker / web 两层（10-28 重建后补上，NE 从此覆盖三层） ============
+import subprocess  # noqa: E402
+import urllib.request  # noqa: E402
+
+
+def in_box(box, cmd):
+    r = subprocess.run(["docker", "exec", box, "sh", "-lc", cmd],
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace")
+    return (r.stdout or "").strip()
+
+
+js = psql_stdin(
+    "SELECT count(*) FILTER (WHERE last_finished_at > now() - interval '5 "
+    "minutes'), count(*) FILTER (WHERE last_finished_at > now() - interval "
+    "'5 minutes' AND NOT last_ok) FROM job_status")
+recent, failed = [int(x) for x in js.strip().split("|")]
+ok("NE5 worker 心跳：近 5 分钟有任务完成且失败 0（P-462/471/474 的载体活着）",
+   recent > 5 and failed == 0, "完成=%d 失败=%d" % (recent, failed))
+
+W471 = in_box("flux-worker", 'grep -cF "规则集不足两版" /usr/local/bin/flux-worker')
+WOLD = in_box("flux-worker",
+              'grep -cF "filename FROM torrent_files" '
+              '/usr/local/bin/flux-worker')
+WNONE = in_box("flux-worker",
+               'grep -cF "__ne_no_such_marker__" /usr/local/bin/flux-worker')
+ok("NE6 worker 产物：P-471 入口在、P-466c 旧查询已消失；探针不是恒真",
+   W471.isdigit() and int(W471) >= 1
+   and WOLD.isdigit() and int(WOLD) == 0
+   and WNONE.isdigit() and int(WNONE) == 0,
+   "471=%s 旧查询=%s 假探针=%s" % (W471, WOLD, WNONE))
+
+WEBKEY = in_box("flux-web",
+                'grep -rl "request_payout" /app/apps/web/.next 2>/dev/null '
+                '| wc -l')
+ok("NE7 web 产物含 request_payout（P-472 译名与 P-473 代码上线）",
+   WEBKEY.isdigit() and int(WEBKEY) >= 1, "命中文件=%s" % WEBKEY)
+
+try:
+    with urllib.request.urlopen("http://127.0.0.1:3000/", timeout=20) as r:
+        html = r.read().decode("utf-8", "replace")
+        st = r.status
+except Exception as e:  # noqa: BLE001
+    st, html = 0, "ERR %s" % e
+# 判错误边界要看**结构**，不看中文短语：`出错了` 这类文案会被打包进正常
+# 页面的 JS 里（实测首页命中 1 次而页面完全正常），拿它当判据必假红。
+bad = ("Application error", "Internal Server Error", "__next_error__")
+ok("NE8 web SSR：/ 返回 200、有真站点名、无错误边界结构、响应是整页",
+   st == 200 and len(html) > 100000 and "FluxTorrent" in html
+   and not any(b in html for b in bad),
+   "status=%s len=%d 错误标记=%s"
+   % (st, len(html), [b for b in bad if b in html]))
+
 summary()
