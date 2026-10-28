@@ -46,15 +46,26 @@ pub(super) async fn subtitle_vote(
             ));
         }
     }
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM subtitles WHERE id = $1 AND deleted_at \
-         IS NULL AND status = 1)",
+    // 一把事务（同 P-131 在 subtitle_report 里立的规矩）：投票与聚合重算
+    // 必须同生同死。原先两条语句各跑各的，第二条失败＝票落库而 rating_count
+    // 还是 0——详情页显示「暂无评分」，月度评选那句 `rating_count > 0` 会把
+    // 这条字幕整条筛掉，且只有**下一个人再投一次**才自愈。存在性判定也搬进
+    // 事务并 `FOR UPDATE`：先判后写之间被软删/驳回的字幕不再收得到新票。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let alive: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM subtitles WHERE id = $1 AND deleted_at IS NULL \
+         AND status = 1 FOR UPDATE",
     )
     .bind(sid)
-    .fetch_one(&state.repo.db)
+    .fetch_optional(&mut *tx)
     .await
-    .unwrap_or(false);
-    if !exists {
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if alive.is_none() {
         return Err(DomainError::NotFound(sid));
     }
     sqlx::query(
@@ -65,19 +76,23 @@ pub(super) async fn subtitle_vote(
     .bind(sid)
     .bind(auth.id)
     .bind(body.score)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 聚合列重算（覆盖投票时 sum 变 / count 不变，A8 断言口径）
+    // 聚合列重算（覆盖投票时 sum 变 / count 不变，A8 断言口径）。
+    // 上面已 `FOR UPDATE` 锁到这一行，这里必中一行，不再判 rows_affected。
     sqlx::query(
         "UPDATE subtitles s SET rating_sum = v.sum, rating_count = v.cnt \
          FROM (SELECT COALESCE(sum(score),0) AS sum, count(*) AS cnt FROM \
          subtitle_votes WHERE subtitle_id = $1) v WHERE s.id = $1",
     )
     .bind(sid)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({ "id": sid, "score": body.score })))
 }
 

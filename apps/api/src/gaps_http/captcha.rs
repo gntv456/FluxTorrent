@@ -50,7 +50,6 @@ pub async fn captcha_issue(
 /// 供注册等内部路径校验验证码。
 /// 审计修复（P1 防穷举）：同一 captcha_id 答错即作废 —— 1+20 算术题答案空间仅 2..40，
 /// 旧版答错不删键可对同一 id 平均 ~20 次穷举命中，一次性语义只防答对后重放。
-#[allow(dead_code)] // 注册流程集成点：前端接入验证码后启用
 pub async fn captcha_verify(state: &AppState, id: &str, answer: i32) -> bool {
     let mut c = state.redis.clone();
     let key = format!("captcha:{id}");
