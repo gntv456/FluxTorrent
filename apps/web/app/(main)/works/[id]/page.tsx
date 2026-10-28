@@ -18,6 +18,7 @@ import { PosterImage } from "@/components/poster-image";
 import { WorkRelatedGrid } from "@/components/work-related-grid";
 import { WorkSeedRows } from "@/components/work-seed-rows";
 import { WorkIds } from "@/components/work-ids";
+import { WorkWatchButton } from "@/components/work-watch-button";
 import { workTitle } from "@/components/work-chips";
 import type { WorkDetail } from "@fluxtorrent/domain-types";
 
@@ -36,12 +37,18 @@ interface CatRow {
 async function profile(): Promise<{
   cats: Record<number, string>;
   hero: { blur: number; dim: number };
+  wishlistOn: boolean;
 }> {
-  const fallback = { cats: {}, hero: { blur: 28, dim: 0.55 } };
+  const fallback = {
+    cats: {},
+    hero: { blur: 28, dim: 0.55 },
+    wishlistOn: false,
+  };
   try {
     const r = await api.get<{
       categories?: CatRow[];
       work_hero?: { blur?: number; dim?: number };
+      modules?: Record<string, boolean>;
     }>("/api/v1/site-profile");
     return {
       cats: Object.fromEntries(
@@ -51,6 +58,8 @@ async function profile(): Promise<{
         blur: Number(r.work_hero?.blur ?? fallback.hero.blur),
         dim: Number(r.work_hero?.dim ?? fallback.hero.dim),
       },
+      // 订阅写的是愿望单：模块关闭时后端回 4101，按钮也不该出现
+      wishlistOn: r.modules?.wishlist !== false,
     };
   } catch {
     return fallback;
@@ -227,6 +236,12 @@ export default async function WorkDetailPage({
               <span>{dict.works.latestAt.replace("{t}", "")}</span>
               <b>{latest}</b>
             </div>
+            {prof.wishlistOn && (
+              <WorkWatchButton
+                workKey={w.key}
+                initialWatching={data.watching}
+              />
+            )}
           </div>
         </div>
       </section>

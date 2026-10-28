@@ -87,7 +87,7 @@ export function SummaryRow({
         <strong>{ov.login_total_30d} {t.times}</strong>
         <p>
           {t.last30d} · {ov.totp_enabled ? t.twofaOn : t.twofaOff} ·{" "}
-          {dict.usercp.security.passkeyLabel} {ov.passkey.slice(0, 4)}••••
+          {dict.usercp.security.passkeyLabel} {ov.passkey_masked}••••
         </p>
         <Link href="/my?tab=security">{t.accountSecurity} ›</Link>
       </section>

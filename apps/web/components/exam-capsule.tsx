@@ -111,7 +111,7 @@ export function ExamCapsule() {
   if (!exam) return null;
   return (
     <Link
-      href="/jixiao"
+      href="/me/exams"
       title={`${exam.name} · ${dict.exams.capsuleTip}`}
       className="exam-capsule hidden items-center gap-1.5 rounded-full
         border border-[var(--sun)] px-2.5 py-1 text-[11.5px] font-semibold

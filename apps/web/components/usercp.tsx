@@ -108,7 +108,7 @@ export interface Overview {
   parked: boolean;
   privacy: string;
   totp_enabled: boolean;
-  passkey: string;
+  passkey_masked: string;
   login_trend_30d: { date: string; count: number }[];
   login_days_30d: number;
   login_total_30d: number;

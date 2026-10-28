@@ -108,7 +108,7 @@ function ovFixture(over: Partial<Overview> = {}): Overview {
     parked: false,
     privacy: "normal",
     totp_enabled: false,
-    passkey: "pk",
+    passkey_masked: "pk12",
     login_trend_30d: [],
     login_days_30d: 0,
     login_total_30d: 0,

@@ -85,6 +85,7 @@ describe("2FA 状态探测失败（P-608）", () => {
       expect(post).toHaveBeenCalledWith("/api/v1/me/tokens", {
         name: "rss",
         password: "pw",
+        scopes: ["read"],
         totp: 123456,
       }),
     );

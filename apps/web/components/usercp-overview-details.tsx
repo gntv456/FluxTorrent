@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale, type Locale } from "@/i18n/config";
 import { toast } from "@/components/ui/toast";
@@ -36,7 +37,10 @@ export function MoreInfoTable({
   const [copied, setCopied] = useState(false);
   async function copyPk() {
     try {
-      await navigator.clipboard.writeText(ov.passkey);
+      // 全文不在轮询的 /me/overview 里（P-448）：复制这一下才向
+      // /rss-info 要一次，既保留贴进下载端的用法，又不让凭据四处流动。
+      const r = await api.get<{ passkey: string }>("/api/v1/rss-info");
+      await navigator.clipboard.writeText(r.passkey);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -68,8 +72,8 @@ export function MoreInfoTable({
             <td className="rowhead">{t.ip}</td>
             <td className="rowfollow">
               {/* 行头写的是「IP/地点」，那这一格只放后端真取到的东西。
-                  旧写法是 `ov.passkey ? "127.0.0.1" : "—"`——有 passkey 就
-                  编一个本机回环地址画上去，看着像「上次从这台的 IP 登录」。 */}
+                  旧写法用「有没有凭据」猜一个 127.0.0.1 画上去，
+                  看着像「上次从这台的 IP 登录」。 */}
               <span className="uc-hidden-text">
                 {ov.last_ip || "—"}
                 {ov.last_city ? ` · ${ov.last_city}` : ""}
@@ -79,7 +83,9 @@ export function MoreInfoTable({
           <tr>
             <td className="rowhead">{t.passkeyRow}</td>
             <td className="rowfollow">
-              <span className="uc-hidden-text">{ov.passkey}</span>{" "}
+              <span className="uc-hidden-text">
+                {ov.passkey_masked}••••
+              </span>{" "}
               {/* 复制放这儿（passkey 要贴进下载端，此前只能选中打码文本手抄）；
                   重置不在概览里直接发 POST —— 那是不可逆操作，guarded 流程
                   （确认框 + 新钥回显）住在安全面板，这里用锚点跳过去。 */}
