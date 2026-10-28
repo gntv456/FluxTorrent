@@ -77,5 +77,15 @@ pub async fn torrent_suggest(
             })
         })
         .collect();
+    // 0425 热搜统计（同类站对标 A-）：有结果才计（防乱敲污染词云）；
+    // 只记规范化后的词（trim + 长度 2-64）。失败静默——统计不影响主路径。
+    if !items.is_empty() && raw.chars().count() <= 64 {
+        let _ = sqlx::query(
+            "INSERT INTO search_term_stats (term, hits) VALUES ($1, 1)              ON CONFLICT (term) DO UPDATE SET hits = hits + 1, last_at = now()",
+        )
+        .bind(raw)
+        .execute(&state.repo.db)
+        .await;
+    }
     Ok(ok(serde_json::json!({ "items": items })))
 }

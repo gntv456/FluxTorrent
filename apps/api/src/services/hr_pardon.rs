@@ -96,6 +96,64 @@ pub(crate) async fn pardon_one(
     Ok(true)
 }
 
+/// H&R 免罪费给发布者的分成（0424，同类站对标 A1）。
+///
+/// 钱只从**已扣的免罪费**里分——不是新的铸币口，分成上限即免罪费本身。
+/// 与 同类站 同口径的三个不分成例外：
+///   * 比例键为 0（站长关了分成）；
+///   * 发布者就是受罚者本人（自发种免罪）；
+///   * 发布者账号异常（status >= 2 即被禁/删，钱进系统回收）。
+/// 幂等键锚定免罪扣费键（`hr-self-pardon:{uid}:{tid}:share`）——免罪重放
+/// 在上游 spend 处已被拒，这里的键天然不会撞。
+pub(crate) async fn share_to_publisher(
+    db: &sqlx::PgPool,
+    pardoned_user: i64,
+    torrent_id: i64,
+    fee: i64,
+    fee_idem: &str,
+) -> DomainResult<i64> {
+    if fee <= 0 {
+        return Ok(0);
+    }
+    let pct: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(NULLIF((SELECT value FROM site_settings \
+         WHERE name = 'hr_pardon_share_pct'), '')::bigint, 30)",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(30)
+    .clamp(0, 100);
+    if pct == 0 {
+        return Ok(0);
+    }
+    let share = fee * pct / 100;
+    if share == 0 {
+        return Ok(0);
+    }
+    // 发布者须在册且未被封禁；自发种不分成（owner = 受罚者）。
+    let owner: Option<i64> = sqlx::query_scalar(
+        "SELECT t.owner_id FROM torrents t JOIN users u ON u.id = t.owner_id \
+         WHERE t.id = $1 AND u.status < 2 AND t.owner_id <> $2",
+    )
+    .bind(torrent_id)
+    .bind(pardoned_user)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(owner) = owner else {
+        return Ok(0);
+    };
+    crate::economy_http::earn_spark(
+        db,
+        owner,
+        share,
+        "hr_pardon_share",
+        &format!("{fee_idem}:share"),
+    )
+    .await?;
+    Ok(share)
+}
+
 /// 批量前的整批护栏预扫：任一目标不可赦免就**一个都不动**地拒掉，
 /// 免得留下「赦了一半、另一半被权限挡下」的中间态（`pardon_one` 内部
 /// 还会再判一次，同一份判据）。
@@ -114,3 +172,4 @@ pub(crate) async fn ensure_all_pardonable(
     }
     Ok(())
 }
+

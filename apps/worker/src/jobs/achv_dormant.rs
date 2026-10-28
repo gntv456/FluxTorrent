@@ -215,6 +215,13 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
             < now() - interval '90 days'
           AND NOT EXISTS (SELECT 1 FROM snatches s
                            WHERE s.user_id = u.id AND s.seeding)
+          -- 0424 契约豁免（同类站 口径）：当月有 open/settled 契约的
+          -- 用户免活跃度统计——签约即承诺保种，不该被休眠标记误伤。
+          AND NOT EXISTS (SELECT 1 FROM seed_contracts c
+                           WHERE c.user_id = u.id
+                             AND c.month = date_trunc('month',
+                                   now())::date
+                             AND c.status IN ('open', 'settled'))
         "#,
     )
     .execute(db)

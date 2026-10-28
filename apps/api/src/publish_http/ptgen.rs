@@ -58,6 +58,11 @@ pub(super) struct UploadForm {
     /// 推荐影片（0089）：pick_type 0/1/2 = 普通/推荐/经典，需管理组
     #[serde(default)]
     pub(super) pick_type: Option<i16>,
+    /// 发布者 H&R 惩罚开关（0424，同类站对标 A1）：true 时这颗种子
+    /// 写 hr_policy.publisher_enabled——单向 opt-in（只能从缺省里捞出
+    /// 追责，不能反向关掉站点缺省义务）。受罚者免罪时发布者得分成。
+    #[serde(default)]
+    pub(super) hr_punish: bool,
 }
 
 /// CP437 高位区（0x80-0xFF）→ Unicode（DOS 风格 NFO 的事实编码；表由 Python cp437 编解码器生成）

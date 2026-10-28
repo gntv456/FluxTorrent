@@ -133,7 +133,11 @@ pub(crate) async fn rss_feed(
     let sql = format!(
         "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, \
                 t.official_tag, pr.promotion, \
-            CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name \
+            CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name, \
+            COALESCE((t.hr_policy->>'enabled') IN ('true', '1'), \
+                     (t.hr_policy->>'on') IN ('true', '1'), \
+                     (t.hr_policy->>'publisher_enabled') IN ('true', '1'), \
+                     FALSE) AS hr \
          FROM torrents t LEFT JOIN users u ON u.id = t.owner_id \
          {promo_lateral} \
          WHERE t.approval_status = 1 \
@@ -214,18 +218,22 @@ pub(crate) async fn rss_feed(
         .unwrap_or_else(|| base.clone());
     let mut items = String::new();
     for r in &rows {
+        // 0424 [HR] 尾标（同类站对标 A1）：刷流/盒子用户按标题关键词过滤
+        // 带 H&R 追责的种子——与促销标同一消费场景，必须在标题层可见。
+        let hr_tag = if r.hr.unwrap_or(false) { " [HR]" } else { "" };
         let title = if verbose {
             format!(
-                "{}{}{} {} {} · {}",
+                "{}{}{} {} {} · {}{}",
                 promo_tag(&r.promotion),
                 if r.official_tag { "[官种] " } else { "" },
                 r.name,
                 r.small_descr.clone().unwrap_or_default(),
                 format_size(r.size),
                 r.owner_name.clone().unwrap_or_default(),
+                hr_tag,
             )
         } else {
-            format!("{}{}", promo_tag(&r.promotion), r.name)
+            format!("{}{}{}", promo_tag(&r.promotion), r.name, hr_tag)
         };
         // 0267 修复：此前 item 既无 <enclosure>、<link> 又指向网页，刷流器
         // （qBittorrent RSS / autobrr / Flexget）拿到 HTML → 刷流链路不可用。

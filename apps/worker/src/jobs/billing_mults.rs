@@ -86,5 +86,27 @@ pub(crate) async fn resolve_billing_mults(
         Some("free") => (up_mult, 0.0),
         _ => (up_mult, down_mult),
     };
+
+    // 0425 盒子经济限制（同类站对标 B 批）：盒子身份只压**上传促销**，
+    // 下载促销不受限（同类站 口径：盒子吃下载 free 可以，靠促销刷上传不行）。
+    // 只对「非自发种子」生效——发布者保自己发布的种是义务，不没收激励。
+    // 盒子身份经人工审核（seedbox_effective），误伤面可控；fail-open：
+    // 查询失败时按非盒子处理（计费链路不因新谓词挂掉）。
+    let box_promo_ban: bool = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT EXISTS(SELECT 1 FROM seedbox_effective sp \
+             JOIN torrents t ON t.id = $2 \
+             WHERE sp.user_id = $1 AND t.owner_id <> $1)), false)",
+    )
+    .bind(ev.user)
+    .bind(torrent_id)
+    .fetch_optional(db)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(false);
+    let (up_mult, down_mult) = if box_promo_ban && up_mult > 1.0 {
+        (1.0, down_mult)
+    } else {
+        (up_mult, down_mult)
+    };
     Ok((up_mult, down_mult, kind, global))
 }

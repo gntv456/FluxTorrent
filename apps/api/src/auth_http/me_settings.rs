@@ -110,6 +110,19 @@ pub async fn me_overview(
 
     let downloaded = get_i64("downloaded");
     let uploaded = get_i64("uploaded");
+    // 0425：流水原始口径（促销前的真实传输量）
+    let (real_uploaded, real_downloaded): (i64, i64) = sqlx::query(
+        "SELECT COALESCE(sum(delta_up),0)::bigint, COALESCE(sum(delta_down),0)::bigint \
+         FROM traffic_ledger WHERE user_id = $1",
+    )
+    .bind(uid)
+    .fetch_one(&state.repo.db)
+    .await
+    .map(|r| {
+        use sqlx::Row;
+        (r.try_get(0).unwrap_or(0), r.try_get(1).unwrap_or(0))
+    })
+    .unwrap_or((uploaded, downloaded));
     let ratio = if downloaded == 0 {
         None
     } else {
@@ -283,6 +296,14 @@ pub async fn me_overview(
         "uploaded": uploaded,
         "downloaded": downloaded,
         "ratio": ratio,
+        // 0425 双口径（同类站对标 B 批）：促销调整后的账面 vs 流水原始值。
+        // raw = traffic_ledger 全量 delta 累计（无促销折算），账面−raw 即
+        // 促销给用户省/赚的量。失败置 null（前端隐藏「实际」行）。
+        "raw_traffic": (|| Some(serde_json::json!({
+            "uploaded": real_uploaded, "downloaded": real_downloaded,
+            "promo_saved_up": real_uploaded - uploaded,
+            "promo_saved_down": downloaded - real_downloaded,
+        })))(),
         "seeding": seeding,
         "leeching": get_i64("leeching"),
         "uploads": get_i64("uploads"),

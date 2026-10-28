@@ -25,6 +25,10 @@ pub struct RssRow {
     pub promotion: Option<String>,
     #[sqlx(default)]
     pub owner_name: Option<String>,
+    /// 0424：H&R 追责在追（hr_policy 三键任一为真）。RSS 标题尾拼
+    /// [HR]，盒子用户可在客户端侧过滤（同类站 口径）。
+    #[sqlx(default)]
+    pub hr: Option<bool>,
 }
 
 /// 0375 存活口径开关：仅当 `rss_alive_only == "yes"` 才为真。

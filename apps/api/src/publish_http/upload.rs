@@ -287,11 +287,11 @@ async fn upload_core(
                  group_id, name, small_descr, descr, category_id, medium_id, \
                  grade_id, edition_id, owner_id, anonymous, size, numfiles, \
                  approval_status, approved_at, media_info, nfo, price, imdb_id, \
-                 screenshots) \
+                 screenshots, hr_policy) \
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, \
                  $13, $14, $15, $16, CASE WHEN $16::smallint = 1 THEN now() ELSE NULL END, \
                  $17, $18, $19, $20, \
-                 $21::jsonb) RETURNING id",
+                 $21::jsonb, $22::jsonb) RETURNING id",
             )
             .bind(&parsed.info_hash_hex)
             .bind(&parsed.raw_info_hash_hex)
@@ -314,6 +314,13 @@ async fn upload_core(
             .bind(price)
             .bind(imdb_id)
             .bind(serde_json::json!(shots))
+            // 0424：发布者 H&R 开关只在显式打开时写键（缺省不动 hr_policy，
+            // 站点缺省口径保持原语义——单向 opt-in）
+            .bind(if form.hr_punish {
+                serde_json::json!({ "publisher_enabled": true })
+            } else {
+                serde_json::Value::Null
+            })
             .fetch_one(&state.repo.db)
             .await;
             match insert_res {

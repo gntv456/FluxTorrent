@@ -198,6 +198,31 @@ pub(super) async fn check_quality(
     parsed: &ParsedTorrent,
     screenshots: usize,
 ) -> DomainResult<()> {
+    // 0424 弹性校验（同类站对标 A-）：upload_either_or=yes 时，四项
+    // （简介字数/截图数/MediaInfo/外部条目 ID）任一达标即视为「内容信息
+    // 足够」，跳过其余三项的硬性最低要求。降低转种/冷门资源发布门槛。
+    if setting_str(db, "upload_either_or", "no").await == "yes" {
+        let descr_ok = form
+            .descr
+            .as_deref()
+            .map(|d| d.trim().chars().count() >= 50)
+            .unwrap_or(false);
+        let shots_ok = screenshots > 0;
+        let mi_ok = form
+            .mediainfo
+            .as_deref()
+            .map(|m| !m.trim().is_empty())
+            .unwrap_or(false);
+        let id_ok = form.imdb.as_deref().map(|v| !v.trim().is_empty())
+            .unwrap_or(false)
+            || form.douban.as_deref().map(|v| !v.trim().is_empty())
+                .unwrap_or(false)
+            || form.tmdb.as_deref().map(|v| !v.trim().is_empty())
+                .unwrap_or(false);
+        if descr_ok || shots_ok || mi_ok || id_ok {
+            return check_title_only(db, parsed).await;
+        }
+    }
     let min_descr =
         setting_int(db, "upload_min_descr_len", 0).await.max(0) as usize;
     let descr_len = form
@@ -230,6 +255,27 @@ pub(super) async fn check_quality(
     {
         return Err(DomainError::Validation("本站要求提交 MediaInfo".into()));
     }
+    let pattern = setting_str(db, "upload_title_pattern", "").await;
+    if !pattern.trim().is_empty() {
+        let re = regex::Regex::new(&pattern).map_err(|e| {
+            DomainError::Validation(format!(
+                "站点命名正则非法，请联系站长：{e}"
+            ))
+        })?;
+        if !re.is_match(&parsed.name) {
+            return Err(DomainError::Validation(format!(
+                "种子名称不符合本站命名规范（要求：{pattern}）"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// 命名规范校验（弹性路径复用：内容门槛可以四选一，命名规范不放松）。
+async fn check_title_only(
+    db: &PgPool,
+    parsed: &ParsedTorrent,
+) -> DomainResult<()> {
     let pattern = setting_str(db, "upload_title_pattern", "").await;
     if !pattern.trim().is_empty() {
         let re = regex::Regex::new(&pattern).map_err(|e| {

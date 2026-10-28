@@ -3,6 +3,7 @@
 //! 服务层 services/（FRAME §2）：写用例居所，禁 actix（layer_guard 门禁）。
 
 mod access_log;
+mod trace_id;
 mod adapter_call;
 mod adapter_host;
 mod adapter_http;
@@ -286,6 +287,8 @@ async fn main() -> anyhow::Result<()> {
             .app_data(crate::path_cfg::path_config())
             // 访问日志与凭据脱敏（口径见 access_log.rs）
             .wrap(crate::access_log::build())
+            // 0424 traceId（同类站对标 B 批）：响应头 X-Trace-Id + 索引日志
+            .wrap(crate::trace_id::TraceId)
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
             // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略 / CSP
             // （HSTS 由 TLS 终结的反代统一注入）。E1：API 只出 JSON 与文件流，

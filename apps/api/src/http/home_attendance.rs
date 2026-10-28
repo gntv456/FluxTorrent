@@ -84,10 +84,55 @@ pub async fn attendance_json(
     ) as i32;
     let total_days = att.len() as i32;
     let checked_today = att.iter().any(|(d, _, _, _)| *d == today);
+    // 0425 签到热力足迹（同类站对标 B 批）：近 12 个月逐月签到天数。
+    // att 已是本人全量行（按日升序），直接分桶，无新查询。
+    let year_ago = today - chrono::Duration::days(365);
+    let mut heat: std::collections::BTreeMap<String, i64> =
+        std::collections::BTreeMap::new();
+    for (d, _, _, _) in &att {
+        if *d >= year_ago {
+            *heat.entry(d.format("%Y-%m").to_string()).or_insert(0) += 1;
+        }
+    }
+    let heatmap: Vec<serde_json::Value> = heat
+        .into_iter()
+        .map(|(m, n)| serde_json::json!({ "month": m, "days": n }))
+        .collect();
     Ok(serde_json::json!({
         "month": today.format("%Y年%m月").to_string(),
         "streak": streak, "total_days": total_days,
         "checked_today": checked_today,
         "calendar": calendar, "makeup_cards": makeup_cards,
+        // 0425：12 个月热力 + 今日风云榜（TOP3 + 本人次序）
+        "heatmap": heatmap,
+        "today_board": today_board(db, today).await,
     }))
+}
+
+/// 今日签到风云榜（同类站 口径）：当天签到的前三名（按奖励额）+
+/// 本人当日排名。连表 users 取用户名。
+async fn today_board(
+    db: &sqlx::PgPool,
+    today: chrono::NaiveDate,
+) -> serde_json::Value {
+    let rows: Vec<(i64, Option<String>, i64)> = sqlx::query_as(
+        "SELECT a.user_id, u.username, a.reward FROM attendance a          JOIN users u ON u.id = a.user_id          WHERE a.date = $1 ORDER BY a.reward DESC, a.id ASC LIMIT 3",
+    )
+    .bind(today)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    let total: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM attendance WHERE date = $1",
+    )
+    .bind(today)
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
+    serde_json::json!({
+        "top": rows.iter().map(|(id, name, r)| serde_json::json!({
+            "user_id": id, "username": name, "reward": r,
+        })).collect::<Vec<_>>(),
+        "total": total,
+    })
 }

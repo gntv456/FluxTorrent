@@ -19,6 +19,7 @@ mod class_adj;
 mod collusion;
 mod game_coupons;
 pub(crate) mod group;
+mod contract;
 mod group_housekeeping;
 mod group_parse;
 mod hr;
@@ -72,6 +73,7 @@ pub(crate) const JOB_BATCH: i64 = 500;
 
 pub(crate) use announce::*;
 pub(crate) use catalog::*;
+pub(crate) use contract::*;
 pub(crate) use locks::*;
 pub(crate) use lottery::*;
 // medal_achv / shop_fulfill 是 0382 / 0383 的新域，其入口经 run.rs

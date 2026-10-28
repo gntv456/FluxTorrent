@@ -63,7 +63,13 @@ pub async fn seeding_reward(
                            t.times_completed,
                            (GREATEST(s.seeded_seconds, 0) / 3600.0)::double precision,
                            p.vol_base, p.rarity_k, p.rarity_exp, p.scale
-                       ) * COALESCE(sb.bonus_factor, 1.0) AS b
+                       ) * COALESCE(sb.bonus_factor, 1.0)
+                       -- 0425 发布者三档衰减（同类站对标 A-）：自发种按种龄
+                       -- 乘 publisher 乘数；非发布者恒 1.0（函数内判）。
+                       * seeding_publisher_mult(
+                             t.owner_id = u.id,
+                             (EXTRACT(EPOCH FROM (now() - t.created_at)) / 86400.0)::double precision)
+                       AS b
                 FROM users u
                 JOIN snatches s ON s.user_id = u.id AND s.seeding
                 -- 0380 盒子倍率：经人工审核的盒子用户保种额外加成。

@@ -236,7 +236,20 @@ pub async fn site_stats(db: &PgPool) -> DomainResult<serde_json::Value> {
         tracing::warn!(%e, "site_stats seed_size 查询失败");
         0
     });
+    // 0425 等级分布直方图（同类站对标 B 批）：class_id → 人数（含等级名）。
+    // 失败静默空表（统计增强不能拖垮主口径）。
+    let class_rows: Vec<(i32, i64, String)> = sqlx::query_as(
+        "SELECT u.class_id, count(*)::bigint, COALESCE(c.name, '?') \
+         FROM users u LEFT JOIN classes c ON c.id = u.class_id \
+         WHERE u.status < 2 GROUP BY u.class_id, c.name ORDER BY u.class_id",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
     Ok(serde_json::json!({
-        "users": users, "torrents": torrents, "dead": dead, "seed_size": seed_size
+        "users": users, "torrents": torrents, "dead": dead, "seed_size": seed_size,
+        "class_dist": class_rows.iter().map(|(cid, n, name)| serde_json::json!({
+            "class_id": cid, "name": name, "count": n,
+        })).collect::<Vec<_>>(),
     }))
 }

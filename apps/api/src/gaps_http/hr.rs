@@ -214,7 +214,19 @@ pub async fn hr_self_pardon(
         .repo
         .audit(Some(auth.id), "hr.self_pardon", Some(body.torrent_id))
         .await;
+    // 0424 免罪费分成发布者（同类站对标 A1）：钱从已扣的免罪费里分，
+    // 自发种/发布者异常/比例关时不分成。分成入账失败不影响免罪结果
+    // （earn 幂等，极端故障时钱留在系统侧，不产生净增发）。
+    let share = crate::services::hr_pardon::share_to_publisher(
+        &state.repo.db,
+        auth.id,
+        body.torrent_id,
+        self_pardon_price,
+        &idem,
+    )
+    .await
+    .unwrap_or(0);
     Ok(ok(
-        serde_json::json!({ "pardoned": body.torrent_id, "cost": self_pardon_price }),
+        serde_json::json!({ "pardoned": body.torrent_id, "cost": self_pardon_price, "publisher_share": share }),
     ))
 }

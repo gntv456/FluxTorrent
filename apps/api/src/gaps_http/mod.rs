@@ -12,6 +12,7 @@ mod seedbox_claim;
 pub(crate) use seedbox_claim::*;
 pub mod captcha_drivers;
 mod cheat_appeal_review;
+mod contract;
 mod cheat_appeals;
 mod classes_public;
 mod hr;
@@ -32,6 +33,7 @@ use applications::*;
 use ban_log_list::*;
 pub use captcha::*;
 use cheat_appeal_review::*;
+use contract::*;
 use cheat_appeals::*;
 use classes_public::*;
 use hr::*;
@@ -89,6 +91,10 @@ pub fn mount_gaps(scope: actix_web::Scope) -> actix_web::Scope {
         .service(cheat_appeal_resolve)
         // 补签卡使用
         .service(resub_use)
+        // 月度契约（0424 同类站对标 A2）
+        .service(contract_tiers)
+        .service(contract_sign)
+        .service(contract_mine)
         // 等级
         .service(class_rules_list)
         .service(my_class_progress)

@@ -198,6 +198,24 @@ async fn home_shared_fresh(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 0425 随机推荐（同类站对标 A-）：TABLESAMPLE SYSTEM 抽 12 颗活种
+    // （seeders>0 的长尾曝光位）。SYSTEM 采样按页抽，可能不足 12——
+    // 宁少勿假，前端按实际条数渲染。
+    let random_picks: Vec<(i64, String, Option<String>, i64, Option<String>)> =
+        sqlx::query_as(
+            "SELECT id, name, small_descr, size::bigint, poster              FROM (SELECT id, name, small_descr, size,                     media_info->>'poster' AS poster FROM torrents                    WHERE approval_status = 1 AND seeders > 0                      AND created_at < now() - interval '7 days'                    TABLESAMPLE SYSTEM (0.8) LIMIT 12) r",
+        )
+        .fetch_all(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 0425 热搜词云：90 天窗口 TOP 20（词表冷启动期可能为空，前端隐藏区块）
+    let hot_terms: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT term, hits FROM search_term_stats          WHERE last_at > now() - interval '90 days'          ORDER BY hits DESC, last_at DESC LIMIT 20",
+    )
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+
     // 友情链接：只公示**已通过审核**的那批。friend_links.status 有三态
     // （pending/active/hidden，0028 迁移带的 CHECK），而这条 SQL 原先不带
     // WHERE —— 会员刚提交的申请（POST /links/apply 写死 status='pending'）
@@ -233,6 +251,14 @@ async fn home_shared_fresh(
         })).collect::<Vec<_>>(),
         // 首页排版（0089）：site_settings.home_layout 原样透传（JSON 数组或空串），
         // 前端按 home_sections 清单解析（清单单源在后端，四审 L6）
+        // 0425：随机推荐 + 热搜词云（同类站对标 A-）
+        "random_picks": random_picks.iter().map(|(id, name, descr, size, poster)| serde_json::json!({
+            "id": id, "name": name, "small_descr": descr,
+            "size": size, "poster": poster,
+        })).collect::<Vec<_>>(),
+        "hot_searches": hot_terms.iter().map(|(t, h)| serde_json::json!({
+            "term": t, "hits": h,
+        })).collect::<Vec<_>>(),
         "home_layout": crate::http::home_layout_raw(db).await,
         "home_sections": crate::http::home_sections_json(),
     }))
