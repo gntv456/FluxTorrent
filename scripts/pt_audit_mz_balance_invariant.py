@@ -150,6 +150,34 @@ ok("MZ6 同一条不变量在 traffic 侧必须零漂移（现网实测 0；口�
 ok("MZ7 traffic_ledger 的 user_id=0 锚点行须为 0（该表无外键，写了不会报错，"
    "只会被静默留在账上）", tr.get("anchor", -1) == 0,
    "锚点行=%s" % tr.get("anchor"))
+TORRENT_SQL = """
+WITH x AS (
+ SELECT t.seeders, t.leechers, t.times_completed,
+   (SELECT count(*) FROM snatches s
+     WHERE s.torrent_id = t.id AND s.seeding) AS cs,
+   (SELECT count(*) FROM snatches s
+     WHERE s.torrent_id = t.id AND s.leeching) AS cl,
+   (SELECT count(*) FROM snatches s
+     WHERE s.torrent_id = t.id AND s.completed_at IS NOT NULL) AS cc
+ FROM torrents t)
+SELECT 'n='||count(*) FROM x UNION ALL
+SELECT 'seeders='||count(*) FILTER (WHERE seeders <> cs) FROM x UNION ALL
+SELECT 'leechers='||count(*) FILTER (WHERE leechers <> cl) FROM x UNION ALL
+SELECT 'completed='||count(*) FILTER (WHERE times_completed <> cc) FROM x"""
+
+tx = {}
+for ln in psql_stdin(TORRENT_SQL).splitlines():
+    if "=" in ln:
+        k, v = ln.split("=", 1)
+        tx[k] = int(v.strip())
+ok("MZ8 第三腿：torrents 的三个计数快照对 snatches 权威须零漂移"
+   "（口径照 announce_main.rs:228-236 / reconcile.rs:192-194）",
+   tx.get("n", 0) > 0 and tx.get("seeders", -1) == 0
+   and tx.get("leechers", -1) == 0 and tx.get("completed", -1) == 0,
+   "种子=%s 漂移 s/l/c=%s/%s/%s"
+   % (tx.get("n"), tx.get("seeders"), tx.get("leechers"),
+      tx.get("completed")))
+
 print("   [对照] traffic 侧漂移=%s / spark 侧在册漂移=%d ⇒ spark 那 232 条"
       "是写入路径的孤立问题，不是设计缺陷" % (tr.get("drift"), live))
 
