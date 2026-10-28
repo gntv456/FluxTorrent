@@ -185,6 +185,10 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
         //  ① 阈值 hits>=1 太低——任何一条低置信信号（贴边节奏/单次超窗）
         //    就发信，且每轮（10 分钟）重发：实测用户 39 收 50 条同文提醒。
         //    提到 L1 线（默认 3；L1 是教育性告知，不是处罚）。
+        //  ③ kind（P-474）：这条一直是裸 INSERT、不带 kind ⇒ 用户关掉
+        //    「系统通知」也照收（现网 76 条 kind IS NULL 全是近 7 天新增的，
+        //    就是它与注册欢迎信）。按 bulk_notify/promos 的先例记
+        //    kind='system' 并过 u_notice_enabled 闸。
         //  ② 去重——文档声称的「每用户×事件只发一次」此前只对 L2 生效
         //    （staffmessages 靠 NOT EXISTS resolved 挡重），L1 无任何去重。
         //    与 L2 同源：该 (user, agent) 存在**已发出且对应事件未处置**
@@ -192,10 +196,12 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
         //    无 (receiver, kind) 唯一键，不能上硬约束）。
         if warn_action && hits >= l1_hits {
             let n = sqlx::query(
-                "INSERT INTO messages (sender_id, receiver_id, subject, body) \
-                 SELECT NULL, $1, '流量记录异常提醒', $2 \
+                "INSERT INTO messages (sender_id, receiver_id, subject, body, \
+                                       kind) \
+                 SELECT NULL, $1, '流量记录异常提醒', $2, 'system' \
                  FROM users u \
                  WHERE u.id = $1 AND u.class_id < 90 \
+                   AND u_notice_enabled(u.id, 'system') \
                    AND NOT EXISTS ( \
                      SELECT 1 FROM messages m \
                      WHERE m.receiver_id = $1 \
