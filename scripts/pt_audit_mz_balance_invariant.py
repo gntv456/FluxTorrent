@@ -113,8 +113,8 @@ ok("MZ4 棘轮：写快照不抬 baseline 的脚本数须 <= %d（只降不升�
    "实测=%d 个=%s" % (len(mint_offenders), mint_offenders))
 neg = int(psql_stdin("SELECT count(*) FROM users WHERE spark_balance < 0")
           .splitlines()[0].strip())
-ok("MZ5 棘轮：负余额账号数须 <= 39（该列无 CHECK，脏账被抹平就落到这里）",
-   neg <= 39, "负余额=%d" % neg)
+ok("MZ5 棘轮：负余额须为 0（0428 已加 CHECK，再出现负值=约束被绕开/被删）",
+   neg == 0, "负余额=%d" % neg)
 TRAFFIC_SQL = """
 WITH cur AS (
   SELECT u.id, u.status, u.uploaded, u.downloaded,
