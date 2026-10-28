@@ -6,8 +6,6 @@
 //! 感谢/收藏/求续种在 interact.rs，编辑/定价/恢复/标签管理在 manage.rs，
 //! 删除与附带处置在 torrent_delete.rs。
 
-mod works_watch;
-mod notify;
 mod aggregate;
 mod batch;
 mod comments_like;
@@ -15,7 +13,9 @@ mod detail;
 mod interact;
 mod interact_tags;
 mod list;
+mod notify;
 mod thanks_spark;
+mod works_watch;
 // 列表入口的偏好折算与区间对调（P-275）
 mod list_prefs;
 mod magnet;
@@ -69,6 +69,7 @@ pub use torrent_delete::*;
 pub use trump::*;
 pub use trump_admin::*;
 pub use works::*;
+pub(crate) use works_watch::work_watch;
 // ===== F4 utoipa 聚合出口（种子域 38 条路由的 #[utoipa::path] 入口）====
 // openapi_http 的 OpenApi 聚合要从 crate 外部引用这些 handler，
 // 而子模块是私有 `mod`。这里做一层显式重导出，而不是把 20 个子模块

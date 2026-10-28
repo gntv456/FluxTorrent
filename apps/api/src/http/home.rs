@@ -234,8 +234,11 @@ async fn home_shared_fresh(
     // 会在管理组看过之前就出现在首页对外展示，等于替站方把没审过的站点
     // 挂了出去。
     let links: Vec<(String, String, Option<String>)> = sqlx::query_as(
-        "SELECT name, url, title FROM friend_links \
-         WHERE status = 'active' ORDER BY sort",
+        "SELECT name, url, title FROM ( \
+           SELECT DISTINCT ON (url) name, url, title, sort, id \
+           FROM friend_links WHERE status = 'active' \
+           ORDER BY url, sort, id \
+         ) q ORDER BY sort, id",
     )
     .fetch_all(db)
     .await

@@ -47,24 +47,14 @@ pub(crate) async fn work_watch(
     if !super::works::valid_work_key(&key) {
         return Err(DomainError::NotFound(0));
     }
-    let name: Option<String> = sqlx::query_scalar(&format!(
-        "SELECT COALESCE(NULLIF({title}, ''), t.name) \
-         FROM torrents t \
-         WHERE t.approval_status = 1 AND {wk} = $1 \
-         ORDER BY (t.media_info->>'poster') IS NOT NULL DESC, \
-                  t.created_at DESC, t.id DESC LIMIT 1",
-        title = super::works_sql::title_expr(),
-        wk = super::works_sql::wk_expr(),
-    ))
-    .bind(&key)
-    .fetch_optional(&state.repo.read_db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(name) = name else {
+    let name: Option<String> =
+        super::works::keyword_for(&state.repo.read_db, &key)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some(kw) = name else {
         return Err(DomainError::NotFound(0));
     };
-    // 愿望单口径：长度按字数 1-100（正常片名远低于此）
-    let kw: String = name.trim().chars().take(100).collect();
+    // 归一化与 1-100 字截断都在 keyword_for（详情回读共用同一处）。
     if kw.is_empty() {
         return Err(DomainError::NotFound(0));
     }

@@ -2,7 +2,6 @@
 //! 按域拆分（300 行门禁）：求种 requests.rs、候选 offers.rs、字幕 subtitles.rs、
 //! 课本/排行榜/促销 misc.rs；mount_content 留在此。
 
-mod top_torrents;
 mod misc;
 mod offers;
 mod promo;
@@ -21,6 +20,7 @@ mod subtitles_meta;
 mod subtitles_requests;
 mod subtitles_upload;
 mod subtitles_util;
+mod top_torrents;
 
 use misc::*;
 use offers::*;
@@ -38,6 +38,7 @@ use subtitles_govern::*;
 use subtitles_list::*;
 use subtitles_meta::*;
 use subtitles_requests::*;
+use top_torrents::*;
 
 pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -81,6 +82,7 @@ pub fn mount_content(scope: actix_web::Scope) -> actix_web::Scope {
         .service(textbook_link)
         // M20 排行榜
         .service(top_boards)
+        .service(top_torrents)
         // 0101 用户自购置顶/限时免费
         .service(promo_plans)
         .service(promo_buy)

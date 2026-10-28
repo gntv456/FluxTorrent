@@ -238,8 +238,11 @@ pub async fn link_public_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let rows: Vec<PublicLink> = sqlx::query_as(
-        "SELECT name, url, title FROM friend_links \
-         WHERE status = 'active' ORDER BY sort, id",
+        "SELECT name, url, title FROM ( \
+           SELECT DISTINCT ON (url) name, url, title, sort, id \
+           FROM friend_links WHERE status = 'active' \
+           ORDER BY url, sort, id \
+         ) q ORDER BY sort, id",
     )
     .fetch_all(&state.repo.read_db)
     .await

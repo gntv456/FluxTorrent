@@ -3,12 +3,12 @@
 //! 种子批量工作台 / 标签字典 / H&R 总览 / 邀请·签到·改名·修改记录 /
 //! 勋章·道具 CRUD / 用户批量操作 / Section 多维 / 考核·任务配置 / Tracker URL / 后台运维。
 
-mod torrent_batch_tags;
 mod attendance;
 mod ban_ip;
 mod bulk_notify;
 mod bulk_traffic;
 mod classes_admin;
+mod torrent_batch_tags;
 // 等级门槛影响预览（classes_admin 的只读姊妹端点，300 行门禁拆出）
 mod classes_preview;
 mod exam_users;

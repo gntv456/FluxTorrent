@@ -215,7 +215,8 @@ pub(crate) async fn works_list(
 /// 作品键形态白名单（0424 从 detail 抽公共）：`g`+数字 / `i`+tt… /
 /// `m`/`d`+数字 / `n`+32 位十六进制。拼错/乱填直接 404，不放它去跑全表聚合。
 pub(crate) fn valid_work_key(key: &str) -> bool {
-    let digit = |s: &str| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit());
+    let digit =
+        |s: &str| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit());
     match key.as_bytes().first() {
         Some(b'g') => key[1..].parse::<i64>().is_ok(),
         // IMDb 键：`i` + tt…（大小写不敏感的比较交给 SQL，这里只认形态）
@@ -228,13 +229,37 @@ pub(crate) fn valid_work_key(key: &str) -> bool {
     }
 }
 
+/// 作品订阅关键词（归一化标题）。
+///
+/// 订阅写（works_watch）与详情回读（work_detail 的 watching）必须取同一
+/// 段 SQL 与**同一截断**——各写一份时「订阅成功但刷新又显示未订阅」是必然
+/// 结局。愿望单 keyword 口径 1-100 字，超长片名截断必须发生在这一处。
+pub(super) async fn keyword_for(
+    db: &sqlx::PgPool,
+    key: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    let raw: Option<String> = sqlx::query_scalar(&format!(
+        "SELECT COALESCE(NULLIF({title}, ''), t.name) \
+         FROM torrents t \
+         WHERE t.approval_status = 1 AND {wk} = $1 \
+         ORDER BY (t.media_info->>'poster') IS NOT NULL DESC, \
+                  t.created_at DESC, t.id DESC LIMIT 1",
+        title = works_sql::title_expr(),
+        wk = works_sql::wk_expr(),
+    ))
+    .bind(key)
+    .fetch_optional(db)
+    .await?;
+    Ok(raw.map(|s| s.trim().chars().take(100).collect()))
+}
+
 #[get("/works/{key}")]
 pub(crate) async fn work_detail(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<String>,
 ) -> DomainResult<impl Responder> {
-    let _auth = require_auth(&req, &state).await?;
+    let auth = require_auth(&req, &state).await?;
     let key = path.into_inner();
     let valid = valid_work_key(&key);
     if !valid {
@@ -264,9 +289,28 @@ pub(crate) async fn work_detail(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 订阅态回读（0424 P1-2）：按钮刷新后不该退回「订阅新作」。
+    // 关键词与订阅写口同一来源（keyword_for），不各写一份。
+    let keyword = keyword_for(&state.repo.read_db, &key)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let watching: bool = match keyword {
+        Some(kw) => sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM wishlist \
+             WHERE user_id = $1 AND keyword = $2)",
+        )
+        .bind(auth.id)
+        .bind(kw)
+        .fetch_one(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?,
+        None => false,
+    };
+
     Ok(ok(serde_json::json!({
         "work": work,
         "items": items,
         "related": related,
+        "watching": watching,
     })))
 }
