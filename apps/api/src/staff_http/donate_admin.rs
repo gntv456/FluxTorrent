@@ -155,6 +155,16 @@ pub async fn admin_payment_complete(
             let granted =
                 crate::payment::grant_tier(&mut tx, &state, order_no, uid, cum)
                     .await?;
+            // grant_tier 的 None 有两种含义：档位没配（donation_tiers=[]）与
+            // 本单已发过。回读一次 tier_granted 才分得清——把「无档可发」
+            // 报成「已发过」会让运维以为这单已经补过。
+            let now_granted: bool = sqlx::query_scalar(
+                "SELECT tier_granted FROM payment_orders WHERE order_no = $1",
+            )
+            .bind(order_no)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
             tx.commit()
                 .await
                 .map_err(|e| DomainError::Internal(e.into()))?;
@@ -162,8 +172,10 @@ pub async fn admin_payment_complete(
                 "order_no": order_no,
                 "result": if granted.is_some() {
                     "tier_regranted"
-                } else {
+                } else if now_granted {
                     "tier_already"
+                } else {
+                    "no_tier_configured"
                 },
                 "tier": granted,
             })));
