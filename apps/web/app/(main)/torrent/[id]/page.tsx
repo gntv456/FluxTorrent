@@ -243,7 +243,7 @@ export default async function TorrentDetailPage({
     .slice(0, 3)
     .map((v) => v.name)
     .join(" · ");
-  // 相对时间（同类站口径）：走 lib 的纯函数，别把闭包传过客户端边界
+  // 相对时间（同类站通用口径）：走 lib 的纯函数，别把闭包传过客户端边界
   const relTime = (iso: string) => rel(iso, d);
 
   return (
@@ -258,7 +258,7 @@ export default async function TorrentDetailPage({
 
       {/* ===== 双栏骨架（设计稿 §4：head 通栏 + 左主栏 + 右信息栏） ===== */}
       <div className="td-layout">
-        {/* ===== 海报头（同类站口径：左海报 + 右主信息 + 操作行） ===== */}
+        {/* ===== 海报头（同类站通用口径：左海报 + 右主信息 + 操作行） ===== */}
       <TorrentHead
         t={t} ext={ext} dict={dict} locale={locale} left={left}
         category={category}

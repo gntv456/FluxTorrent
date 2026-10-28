@@ -8,6 +8,10 @@ import { MenuItemLink } from "@/components/custom-menu";
 import { getSiteProfile } from "@/lib/site-profile";
 import { api } from "@/lib/api-client";
 
+/** 帮助区/快捷导航共用的链接样式（长类名抽常量守行宽门禁） */
+const FOOTER_LINK =
+  "inline-block py-1.5 text-sm text-sky hover:text-[var(--brand-orange)]";
+
 /**
  * 页脚：
  * 站点信息 / 快捷导航 / 帮助 三栏卡片 + 运行统计条 + 免责声明 + 版权条。
@@ -26,6 +30,13 @@ export async function Footer() {
   const profile = await getSiteProfile();
   const siteName = profile.brand || "FluxTorrent";
   const foundedDate = profile.founded || String(year);
+  // 帮助区链接（0423 补 /clients）：四条同构，map 渲染守行宽门禁
+  const helpLinks = [
+    { href: "/rules", label: dict.footer.rules },
+    { href: "/faq", label: dict.footer.faq },
+    { href: "/ban-log", label: dict.footer.banlog },
+    { href: "/clients", label: dict.footer.clients },
+  ];
   // IA-5：版本号与 about 页同源（/api/v1/about），失败静默省略
   const about = await api
     .get<{ product: string; version: string }>("/api/v1/about")
@@ -71,7 +82,7 @@ export async function Footer() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="inline-block py-1.5 text-sm text-sky hover:text-[var(--brand-orange)]"
+                    className={FOOTER_LINK}
                   >
                     {l.label}
                   </Link>
@@ -82,7 +93,7 @@ export async function Footer() {
                 <li key={`m${m.id}`}>
                   <MenuItemLink
                     item={m}
-                    className="inline-block py-1.5 text-sm text-sky hover:text-[var(--brand-orange)]"
+                    className={FOOTER_LINK}
                   />
                 </li>
               ))}
@@ -93,30 +104,16 @@ export async function Footer() {
               {dict.footer.helpTitle}
             </h2>
             <ul className="mt-1 flex flex-wrap gap-x-4">
-              <li>
-                <Link
-                  href="/rules"
-                  className="inline-block py-1.5 text-sm text-sky hover:text-[var(--brand-orange)]"
-                >
-                  {dict.footer.rules}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/faq"
-                  className="inline-block py-1.5 text-sm text-sky hover:text-[var(--brand-orange)]"
-                >
-                  {dict.footer.faq}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/ban-log"
-                  className="inline-block py-1.5 text-sm text-sky hover:text-[var(--brand-orange)]"
-                >
-                  {dict.footer.banlog}
-                </Link>
-              </li>
+              {helpLinks.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className={FOOTER_LINK}
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

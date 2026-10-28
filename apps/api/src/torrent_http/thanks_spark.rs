@@ -41,7 +41,7 @@ pub(super) async fn owner_of(
     owner.ok_or(DomainError::NotFound(torrent_id))
 }
 
-/// 允许的答谢档位（同类站口径按钮组）。0 由调用方先行拦下（免费感谢不进来）。
+/// 允许的答谢档位（同类站通用口径按钮组）。0 由调用方先行拦下（免费感谢不进来）。
 pub(super) fn is_valid_amount(amount: i64) -> bool {
     matches!(amount, 1 | 10 | 100 | 500 | 1000 | 10000)
 }

@@ -140,7 +140,7 @@ export function TorrentSocial({
     setReplyTo(null);
   }
 
-  /** 魔力答谢（同类站口径按钮组 +1..+10000）；plain thank 在头部 ThankButton */
+  /** 魔力答谢（同类站通用口径按钮组 +1..+10000）；plain thank 在头部 ThankButton */
   async function tip(amount: number) {
     setBusy(true);
     try {
@@ -259,7 +259,7 @@ export function TorrentSocial({
         </form>
       </div>
 
-      {/* 魔力答谢（同类站口径按钮组） */}
+      {/* 魔力答谢（同类站通用口径按钮组） */}
       <div className="donate-spark">
         <span className="text-xs font-bold text-sub">
           {/* 0173：{magic} 占位符须替换为站点货币名，不得原样渲染 */}

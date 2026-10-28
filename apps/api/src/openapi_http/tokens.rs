@@ -80,10 +80,10 @@ fn default_rpm() -> i32 {
     path = "/api/v1/me/tokens",
     tag = "凭据",
     description = "签发 Token（明文仅返回一次）：180 天、每人 ≤3 枚；\
-scopes 白名单 read/upload，read 恒隐含 —— 发种必须显式 upload。",
+scopes 白名单 read / upload / crossseed（read 恒隐含，写类要显式给）。",
     params(
         ("name" = String, Query, description = "Token 名称 1-50（body 字段）"),
-        ("scopes" = String, Query, description = "read / upload（body 字段）"),
+        ("scopes" = String, Query, description = "read/upload/crossseed"),
         ("rate_per_min" = String, Query, description = "1-600，默认 60（body 字段）"),
     ),
     responses(

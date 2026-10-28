@@ -58,6 +58,9 @@ export const ja: DeepPartial<Dict> = {
       funding: "クラウドファンディング",
       hr_pardon: "業績免除",
       adjust: "手動調整",
+      upload: "投稿報酬",
+      request_bid: "リクエスト加額",
+      task_penalty: "タスク罰則",
     },
   },
   nav: {
@@ -85,6 +88,7 @@ export const ja: DeepPartial<Dict> = {
     subsCenter: "更新追跡",
     classes: "等級",
     resurrections: "復活タスク",
+    clients: "クライアントガイド",
     more: "その他",
     discover: "発見",
     spark: "{magic}エコノミー",

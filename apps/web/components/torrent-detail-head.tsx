@@ -13,7 +13,7 @@ import type { TorrentDetailExt } from "@/components/torrent-detail-blocks";
 import type { RipLog } from "@/components/torrent-rip-logs";
 import { Badge } from "@/components/ui/badge";
 
-/** 种子详情页海报头（同类站口径：左海报 + 右主信息 + 操作行 + 状态卡）。
+/** 种子详情页海报头（同类站通用口径：左海报 + 右主信息 + 操作行 + 状态卡）。
  *  从 app/(main)/torrent/[id]/page.tsx 按域拆出；数据装载与派生值留在 page.tsx。
  *  0173 排版整理：标签行入头部（副标题↓、发布人↑）；操作区纵向语义分行
  *  （主操作 → 互动与打赏 → 管理），不再混排换行。 */
@@ -45,7 +45,7 @@ export function TorrentHead({
   categoryColor: string;
   /** 副题链（学段 · 媒介 · 版本） */
   subtitleChain: string;
-  /** 相对时间（同类站口径：x 天前；完整时间放 title） */
+  /** 相对时间（同类站通用口径：x 天前；完整时间放 title） */
   relTime: (iso: string) => string;
   /** 标签行（0173：副标题与发布人之间；undefined = 不渲染） */
   tags?: React.ReactNode;

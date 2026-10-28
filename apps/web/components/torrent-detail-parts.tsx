@@ -9,7 +9,7 @@ import type { Dict } from "@/i18n/zh-CN";
 
 /** 简介 markdown-lite 渲染：标题/列表/段落（descr 为简单 markdown 文本，无需完整 parser）
  *  含 BBCode 标签时走 BBCode 渲染器（NP 口径：颜色/字体/字号/引用/代码/图片/链接…）
- *  超长简介默认折叠（同类站口径：展开按钮在底部） */
+ *  超长简介默认折叠（同类站通用口径：展开按钮在底部） */
 export function Descr({ text }: { text: string }) {
   if (hasBBCode(text)) {
     return (
@@ -78,7 +78,7 @@ export function Spec({
   );
 }
 
-/** 折叠分区（同类站口径：默认收起，summary 带计数） */
+/** 折叠分区（同类站通用口径：默认收起，summary 带计数） */
 export function Fold({
   title,
   count,

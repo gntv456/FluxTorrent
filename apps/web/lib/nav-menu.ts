@@ -200,6 +200,10 @@ export function defaultNav({
         // 无订阅时是空态，不算「假成熟」——与 /me/achievements 同类。
         { href: "/me/subscriptions", label: nav.subsCenter },
         { href: "/faq", label: nav.faq },
+        // 客户端指南（0423 P0-1）：此前全站唯一入口在 /help 底部——新手
+        // 「装好 qB 默认开 DHT → 私站泄漏/触发作弊判定」是注册三天被封的
+        // 头号路径，防御知识不能藏在第四层。恒可见（核心做种纪律非模块）
+        { href: "/clients", label: nav.clients },
         // Wiki（0359）：多页文档（BBCode + 版本史），module_wiki 开关控制显隐
         ...(modules("wiki") ? [{ href: "/wiki", label: nav.wiki }] : []),
         ...(modules("magic_pool")

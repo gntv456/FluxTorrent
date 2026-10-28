@@ -161,8 +161,8 @@ pub async fn run_all(
                 mail_out::mail_outbox_drain(&db), &shard);
             shard_lock!(&db, "job:magic_pool_promo",
                 magic_pool_promo(&db), &shard);
-            shard_lock!(&db, "job:preserve_exit",
-                preserve_exit(&db), &shard);
+            shard_lock!(&db, "job:announce_site_promos", announce_site_promos(&db), &shard);
+            shard_lock!(&db, "job:preserve_exit", preserve_exit(&db), &shard);
             // consume_* 已改消费者组（0225 G30-B2）：组内投递唯一，多实例
             // 并发消费是真分摊而非双计——不再需要 advisory 锁互斥（保留
             // mark_start 登记则由面板覆盖写口径承担，executed_by 可见分实例）。
@@ -345,7 +345,11 @@ pub async fn run_all(
                 usage_stats_report(&db), &shard);
             // 自动审种每日摘要（0400 §4.3）
             shard_lock!(&db, "job:auto_review_digest",
-                auto_review::auto_review_digest(&db), &shard); }        }
+                auto_review::auto_review_digest(&db), &shard);
+            // 月度契约结算（0424 同类站对标 A2）：月初跑，结算上月契约。
+            // 日频安全：只动 status='open' 且 month=上月的行，幂等。
+            shard_lock!(&db, "job:contract_settle",
+                contract_settle(&db), &shard); }        }
     }
     manual_tasks.drain().await;
     tracing::info!("flux-worker 已排空，退出");

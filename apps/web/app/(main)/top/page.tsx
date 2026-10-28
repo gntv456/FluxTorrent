@@ -6,6 +6,7 @@ import type { Dict } from "@/i18n/zh-CN";
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { TopTorrentBoards } from "@/components/top-torrents";
 
 export const dynamic = "force-dynamic";
 
@@ -187,6 +188,9 @@ export default async function TopPage() {
           b ? <span className="sticker">{t.badgeSix}</span> : undefined
         }
       />
+      {/* 0424 P1-1：内容热榜三件套（今日/本周/免费），取数失败静默省略
+          （用户六榜的 ErrorPanel 口径不变，内容榜是增量不是承重面） */}
+      <TopTorrentBoards />
       {err !== null ? (
         <ErrorPanel
           error={err}

@@ -213,11 +213,20 @@ pub(super) async fn check_quality(
             .as_deref()
             .map(|m| !m.trim().is_empty())
             .unwrap_or(false);
-        let id_ok = form.imdb.as_deref().map(|v| !v.trim().is_empty())
+        let id_ok = form
+            .imdb
+            .as_deref()
+            .map(|v| !v.trim().is_empty())
             .unwrap_or(false)
-            || form.douban.as_deref().map(|v| !v.trim().is_empty())
+            || form
+                .douban
+                .as_deref()
+                .map(|v| !v.trim().is_empty())
                 .unwrap_or(false)
-            || form.tmdb.as_deref().map(|v| !v.trim().is_empty())
+            || form
+                .tmdb
+                .as_deref()
+                .map(|v| !v.trim().is_empty())
                 .unwrap_or(false);
         if descr_ok || shots_ok || mi_ok || id_ok {
             return check_title_only(db, parsed).await;

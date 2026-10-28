@@ -1779,7 +1779,7 @@ a:hover {
   background: var(--surface-hover);
 }
 
-/* 折叠分区（同类站口径 + 设计稿 §6 .fold：16px 圆角白卡） */
+/* 折叠分区（同类站通用口径 + 设计稿 §6 .fold：16px 圆角白卡） */
 .td-fold {
   border: 1px solid var(--line);
   border-radius: var(--r-lg, 16px);
@@ -1943,7 +1943,7 @@ a:hover {
   }
 }
 
-/* 感谢者（同类站口径：头像 + 用户名 chip） */
+/* 感谢者（同类站通用口径：头像 + 用户名 chip） */
 .td-thanker {
   display: inline-flex;
   align-items: center;

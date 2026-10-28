@@ -19,7 +19,7 @@ import { api } from "@/lib/api-client";
 
 /**
  * Seedlight 页头：单行导航条（logo 居左 + 一级/更多菜单居中 + 主题/语言/头像弹窗居右）。
- * 用户栏（userbar）已收进头像弹窗（0147，同类站 同类站 口径）——导航条整条吸顶。
+ * 用户栏（userbar）已收进头像弹窗（0147，同类站 同类站布局口径）——导航条整条吸顶。
  */
 export async function Header() {
   const { dict, locale, currency } = await getDict();

@@ -50,7 +50,7 @@
 | 项     | 实测                                                                                                                         |
 | ----- | -------------------------------------------------------------------------------------------------------------------------- |
 | 框架    | Vue 3（`runtime-core.esm-bundler` / `runtime-dom`），Vite 构建，`crossorigin` modulepreload                                      |
-| UI 方案 | 无第三方 UI 库痕迹，手写 CSS + CSS 变量做主题（3 套：`minimal` / `cola-cream-red` / `cola-black-red`，localStorage key `reelcore.theme`，默认黑红） |
+| UI 方案 | 无第三方 UI 库痕迹，手写 CSS + CSS 变量做主题（3 套：`minimal` / `alt-cream-red` / `alt-black-red`，localStorage key `reelcore.theme`，默认黑红） |
 | 代码分割  | **130 个 chunk**，按路由懒加载；入口 `index` 仅 5.7KB，`bootstrap` 19KB(gzip)                                                           |
 | 总体积   | 全部 JS 合计 2.4MB（未压缩）                                                                                                        |
 | 亮点    | 把**整份 OpenAPI 契约 + ajv 预编译校验器**打进了 `session-*.js`（原始 875KB / gzip 130KB），前端在运行时直接校验服务端响应                                   |

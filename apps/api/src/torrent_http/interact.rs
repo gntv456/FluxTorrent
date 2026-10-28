@@ -45,6 +45,8 @@ pub(crate) async fn create_comment(
         body.parent_id,
     )
     .await?;
+    // 0423 发布者正反馈：通知种主（详见 notify.rs）
+    super::notify::notify_comment(&state.repo.db, tid, auth.id).await;
     // 详情页聚合缓存（2.5）：评论数/评论列表是 aggregate 的一部分，
     // 写完不失效就会端着旧快照（与打标/感谢同一批漏项）
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
@@ -171,13 +173,7 @@ pub(crate) async fn toggle_comment_like(
     let db = &state.repo.db;
     let liked =
         super::comments_like::toggle_like(db, comment_id, auth.id).await?;
-    let likes: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM comment_likes WHERE comment_id = $1",
-    )
-    .bind(comment_id)
-    .fetch_one(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let likes: i64 = super::comments_like::like_count(db, comment_id).await?;
     // 聚合缓存：aggregate.comments 带着每条评论的点赞数
     super::aggregate::invalidate_tdetail_cache(&state, torrent_id).await;
     Ok(ok(serde_json::json!({ "liked": liked, "likes": likes })))
@@ -186,7 +182,7 @@ pub(crate) async fn toggle_comment_like(
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 struct ThankBody {
-    /// 魔力答谢数额（同类站口径：+1/+10/+100/+500/+1000/+10000；缺省 0 = 免费感谢）
+    /// 魔力答谢数额（同类站通用口径：+1/+10/+100/+500/+1000/+10000；缺省 0 = 免费感谢）
     #[serde(default)]
     amount: Option<i64>,
 }
@@ -262,6 +258,8 @@ pub(crate) async fn do_thank(
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
+    // 0423 发布者正反馈：答谢魔力通知种主（详见 notify.rs）
+    super::notify::notify_thanks(&state.repo.db, tid, auth.id, amount).await;
     // 聚合缓存：thanks_count 与「最近活动」都在 aggregate 里
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(

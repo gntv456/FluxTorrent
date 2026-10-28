@@ -36,7 +36,7 @@ interface MeInfo {
 // SSE unread 事件帧体（/me/messages/stream data 段）
 type SseUnread = { count?: number };
 /**
- * 头像弹窗（同类站 同类站 口径，0147）：头像按钮弹宽下拉——摘要区
+ * 头像弹窗（同类站 同类站布局口径，0147）：头像按钮弹宽下拉——摘要区
  * （大头像+用户名+勋章+等级+{magic}+退出）/ 数据条 / 快捷链接 / 信箱
  * 工具行（UserTools）。未登录回落登录链接；点外部/ESC 收起。
  */

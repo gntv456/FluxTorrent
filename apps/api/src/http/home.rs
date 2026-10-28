@@ -203,7 +203,12 @@ async fn home_shared_fresh(
     // 宁少勿假，前端按实际条数渲染。
     let random_picks: Vec<(i64, String, Option<String>, i64, Option<String>)> =
         sqlx::query_as(
-            "SELECT id, name, small_descr, size::bigint, poster              FROM (SELECT id, name, small_descr, size,                     media_info->>'poster' AS poster FROM torrents                    WHERE approval_status = 1 AND seeders > 0                      AND created_at < now() - interval '7 days'                    TABLESAMPLE SYSTEM (0.8) LIMIT 12) r",
+            "SELECT id, name, small_descr, size::bigint, poster \
+            FROM (SELECT id, name, small_descr, size, \
+            media_info->>'poster' AS poster FROM torrents \
+            WHERE approval_status = 1 AND seeders > 0 \
+            AND created_at < now() - interval '7 days' \
+            TABLESAMPLE SYSTEM (0.8) LIMIT 12) r",
         )
         .fetch_all(db)
         .await
@@ -213,7 +218,9 @@ async fn home_shared_fresh(
     // P-461 实测这条原本一路 unwrap_or_default，把 0425 从未落地演成首页词云
     // 区块静默缺席——零报错、零账面。
     let hot_terms: Vec<(String, i64)> = sqlx::query_as(
-        "SELECT term, hits FROM search_term_stats          WHERE last_at > now() - interval '90 days'          ORDER BY hits DESC, last_at DESC LIMIT 20",
+        "SELECT term, hits FROM search_term_stats \
+            WHERE last_at > now() - interval '90 days' \
+            ORDER BY hits DESC, last_at DESC LIMIT 20",
     )
     .fetch_all(db)
     .await
@@ -256,7 +263,8 @@ async fn home_shared_fresh(
         // 首页排版（0089）：site_settings.home_layout 原样透传（JSON 数组或空串），
         // 前端按 home_sections 清单解析（清单单源在后端，四审 L6）
         // 0425：随机推荐 + 热搜词云（同类站对标 A-）
-        "random_picks": random_picks.iter().map(|(id, name, descr, size, poster)| serde_json::json!({
+        "random_picks": random_picks
+         .iter().map(|(id, name, descr, size, poster)| serde_json::json!({
             "id": id, "name": name, "small_descr": descr,
             "size": size, "poster": poster,
         })).collect::<Vec<_>>(),

@@ -187,7 +187,7 @@ export interface TorrentListItem {
   approval_status: number;
   sticky: boolean;
   promotion: PromotionKind | null;
-  /** 进行中促销的截止时刻（ISO；列表展示「剩余时间」，同类站口径） */
+  /** 进行中促销的截止时刻（ISO；列表展示「剩余时间」，同类站通用口径） */
   promotion_ends_at: string | null;
   /** 媒体评分（media_info.rating；首页海报墙展示，缺省 null） */
   rating: string | null;
@@ -285,6 +285,8 @@ export interface WorkDetail {
   work: WorkListItem;
   items: TorrentListItem[];
   related: WorkListItem[];
+  /** 当前会员是否已订阅本作（愿望单里已有该作品的归一化标题） */
+  watching: boolean;
 }
 
 /** 种子评论（M07；0155 点赞 + 0156 嵌套回复） */

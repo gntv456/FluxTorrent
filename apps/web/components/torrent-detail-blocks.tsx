@@ -157,7 +157,7 @@ function tierBadge(tier?: string) {
   );
 }
 
-/** 感谢者（同类站口径：头像占位 + 用户名） */
+/** 感谢者（同类站通用口径：头像占位 + 用户名） */
 export function Thankers({
   thanks,
   count,

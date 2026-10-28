@@ -38,7 +38,7 @@
 | 框架 | Next.js 15.3 / React 19（App Router），SSR 为主，`"use client"` 370/507 tsx（`apps/web/package.json:14-16`） | Vue 3 + Vite，**纯 SPA 无 SSR**（`index.html` 只有 `<div id="app">`） |
 | 样式 | Tailwind v4 + 自建令牌链（`app/globals.css:6`；三环拆分注释 `:2-5`） | 无 UI 库，手写 CSS + CSS 变量主题 |
 | 构建 | `output: "standalone"`（`next.config.ts:4`），pnpm workspace + turbo（`package.json:4-9`） | Vite，130 个 chunk |
-| 主题 | 2 套（`brand` / `brand-night`），`theme-tide.css` 是覆盖层不是第三主题（`app/styles/theme-tide.css:4-24`）；令牌 265 个变量声明（`base.css:11-157` 明、`:158-510` 暗） | 3 套（`minimal` / `cola-cream-red` / `cola-black-red`），`localStorage["reelcore.theme"]`，默认黑红 |
+| 主题 | 2 套（`brand` / `brand-night`），`theme-tide.css` 是覆盖层不是第三主题（`app/styles/theme-tide.css:4-24`）；令牌 265 个变量声明（`base.css:11-157` 明、`:158-510` 暗） | 3 套（`minimal` / `alt-cream-red` / `alt-black-red`），`localStorage["reelcore.theme"]`，默认黑红 |
 | 防闪烁 | 首绘前内联脚本 + `data-theme`（`app/layout.tsx:120-134`） | 入口 JS 里 `y(v())` 同步设 `dataset.theme`（`index-Cc8_GNb4.js`） |
 
 ### 1.2 代码分割与加载 —— **对方明显更彻底**

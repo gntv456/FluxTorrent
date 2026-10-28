@@ -43,6 +43,13 @@ export function ApiTokens() {
   const [plain, setPlain] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 后端认三种 scope（read 恒含，upload / crossseed 需显式给）。此前前端
+  // 只提交 name+password，服务端按默认值落 `read`——于是「发种」「辅种」两类
+  // 客户端在界面上永远配不出来，功能只在 API 层存在（2026-10-27 实测：
+  // 现网 287 枚令牌全是 {read}，{read,upload} 只有 1 枚、{read,crossseed}
+  // 10 枚全是被撤的闸门夹具）。
+  const [scopeUpload, setScopeUpload] = useState(false);
+  const [scopeCross, setScopeCross] = useState(false);
   // P-113：Token 是 180 天的长期凭证，改密也不会让它失效，服务端现在要
   // 复核凭证才签。启用态探测沿用 twofa-setup / passkeys-card 的同一口径
   // （/me/overview 的 totp_enabled），服务端仍会自己再核一遍。
@@ -81,12 +88,19 @@ export function ApiTokens() {
       const r = await api.post<{ token: string }>("/api/v1/me/tokens", {
         name: name.trim(),
         password: pw,
+        scopes: [
+          "read",
+          ...(scopeUpload ? ["upload"] : []),
+          ...(scopeCross ? ["crossseed"] : []),
+        ],
         ...(code.length === 6 ? { totp: Number(code) } : {}),
       });
       setPlain(r.token);
       setName("");
       setPw("");
       setCode("");
+      setScopeUpload(false);
+      setScopeCross(false);
       load();
     } catch (e) {
       setMsg(apiErrorMessage(dict, e));
@@ -150,6 +164,22 @@ export function ApiTokens() {
               border-line bg-[var(--surface-card)] px-3 text-sm"
           />
         )}
+        <label className="flex items-center gap-2 text-xs text-sub">
+          <input
+            type="checkbox"
+            checked={scopeUpload}
+            onChange={(e) => setScopeUpload(e.target.checked)}
+          />
+          {t.scopeUpload}
+        </label>
+        <label className="flex items-center gap-2 text-xs text-sub">
+          <input
+            type="checkbox"
+            checked={scopeCross}
+            onChange={(e) => setScopeCross(e.target.checked)}
+          />
+          {t.scopeCrossseed}
+        </label>
         <button
           type="button"
           disabled={
@@ -161,6 +191,7 @@ export function ApiTokens() {
           {t.issue}
         </button>
       </div>
+      <p className="text-xs text-sub">{t.scopeHint}</p>
 
       {plain && (
         <p className="rounded-[var(--r-md)] bg-sun/30 p-2 text-xs">

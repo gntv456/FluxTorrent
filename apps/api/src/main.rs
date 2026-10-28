@@ -3,7 +3,6 @@
 //! 服务层 services/（FRAME §2）：写用例居所，禁 actix（layer_guard 门禁）。
 
 mod access_log;
-mod trace_id;
 mod adapter_call;
 mod adapter_host;
 mod adapter_http;
@@ -24,6 +23,7 @@ mod authz;
 mod bencode;
 mod cfgver;
 mod community_http;
+mod trace_id;
 // F3/W-49：compat 域 utoipa 聚合（路径表由 handler 注解生成，手写 spec_np 已删）
 mod compat_api;
 mod compat_http;

@@ -35,6 +35,13 @@ struct TextbookLinkReq {
     textbook_id: i64,
 }
 
+/// 课本 ↔ 种子关联。**守卫与种子编辑同一条门槛**：作者本人恒可，动别人的
+/// 按站点设定 `torrent_edit_class`（缺省 94）——此前这个口只验登录，任何
+/// 会员在 /textbooks 页面输一个别人的种子号就能改写它的教材归属（策展数据
+/// 被外人改），还能把未过审的种挂上去。
+/// 教材号不存在也不再是 500：`torrents.textbook_id` 有外键，原先直接撞约束
+/// 被读成 Internal，现在与种子的存在性一起判掉，回 1004（界面 toast 说
+/// 「资源不存在」）。
 #[post("/textbooks/link")]
 pub(super) async fn textbook_link(
     req: HttpRequest,
@@ -45,6 +52,31 @@ pub(super) async fn textbook_link(
     if module_disabled(&state.repo.db, "textbooks").await {
         return Err(DomainError::NotFound(0)); // 模块已关闭
     }
+    let row: Option<(i64, bool)> = sqlx::query_as(
+        "SELECT t.owner_id, EXISTS(SELECT 1 FROM textbooks b WHERE b.id = \
+         $2) AS book_ok FROM torrents t WHERE t.id = $1 \
+         AND t.approval_status = 1",
+    )
+    .bind(body.torrent_id)
+    .bind(body.textbook_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((owner_id, book_ok)) = row else {
+        return Err(DomainError::NotFound(body.torrent_id));
+    };
+    // 门槛口径与种子编辑同一条（interact.rs::edit_torrent 0159 阈值化）：
+    // 作者本人恒可，动别人的按站点设定 torrent_edit_class（缺省 94）。
+    if owner_id != auth.id {
+        let threshold =
+            crate::torrents::manage_perm::edit_threshold(&state.repo.db).await;
+        if auth.class_id < i32::from(threshold) {
+            return Err(DomainError::Forbidden);
+        }
+    }
+    if !book_ok {
+        return Err(DomainError::NotFound(body.textbook_id));
+    }
     let updated =
         sqlx::query("UPDATE torrents SET textbook_id = $2 WHERE id = $1")
             .bind(body.torrent_id)
@@ -52,6 +84,8 @@ pub(super) async fn textbook_link(
             .execute(&state.repo.db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    // 上面两道判据与这条 UPDATE 之间有窗口（种被删/被打回），0 行不许
+    // 回「已关联」——那是收钱不发货的轻量同族。
     if updated.rows_affected() == 0 {
         return Err(DomainError::NotFound(body.torrent_id));
     }

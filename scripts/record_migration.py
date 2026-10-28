@@ -34,7 +34,8 @@ import subprocess
 import sys
 
 for _s in (sys.stdout, sys.stderr):  # P-327：GBK 控制台下
-    _s.reconfigure(encoding="utf-8", errors="replace")  # 中文报错会整段抛 UnicodeEncodeError
+    # 中文报错在 GBK 控制台会整段抛 UnicodeEncodeError（P-327）
+    _s.reconfigure(encoding="utf-8", errors="replace")
 
 MIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "..", "apps", "api", "migrations")
