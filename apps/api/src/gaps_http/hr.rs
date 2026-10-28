@@ -225,6 +225,12 @@ pub async fn hr_self_pardon(
         &idem,
     )
     .await
+    .inspect_err(|e| {
+        // P-470：免罪费已扣、分成却没发成功时不许无声——发布者少拿一笔，
+        // 钱留在系统侧，而免罪已经生效、无法重放（幂等键不会再被调用）。
+        tracing::warn!(user = auth.id, torrent = body.torrent_id, %e,
+            "H&R 免罪费分成入账失败，须人工补");
+    })
     .unwrap_or(0);
     Ok(ok(
         serde_json::json!({ "pardoned": body.torrent_id, "cost": self_pardon_price, "publisher_share": share }),
