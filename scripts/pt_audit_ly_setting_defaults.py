@@ -15,9 +15,12 @@
     且没碰这几行），**不由我代改**——代改会把这一改混进别人那次提交的 diff。
 
 正控两条（不过就别信下面的数）：
-  LY1 假阴须被抓到：resurrection_hours 兜底 240 且现网无行 ⇒ 必须在读数里
+  LY1 双向合成正控：拿「兜底 240 vs 播种 241」喂检测器必须点名，
+      相等时必须沉默。**不钉真实键的现网存在性**——0426 一落地，
+      旧版那条「resurrection_hours 现网无行」就永不可能再成立（假承重）
   LY2 假阳须消失：`4 * 1024 * 1024` 必须求成 4194304（第一版只截到 4，
       把 upload_torrent_max_bytes 误报成分叉；第三版还把 `)` 吃进表达式）
+  LY6 实况：resurrection_hours 现网值 == 代码兜底 == 播种（0426 真落地旁证）
 """
 import os
 import re
@@ -95,21 +98,32 @@ for f in sorted(os.listdir(MIG)):
 live = {ln.strip() for ln in psql_stdin(
     "SELECT name FROM site_settings;").splitlines() if ln.strip()}
 
-ok("LY1 正控（假阴须抓到）：resurrection_hours 兜底 240 且现网无行",
-   code.get("resurrection_hours", (None,))[0] == 240
-   and "resurrection_hours" not in live,
-   "读到兜底=%s 库里有行=%s" % (code.get("resurrection_hours", (None,))[0],
-                              "resurrection_hours" in live))
+def drift_of(code_map, seed_map):
+    """两本账检测器本体（抽出来才敢拿合成样本喂正控）。"""
+    out = {}
+    for k, (n, fn) in sorted(code_map.items()):
+        if k in seed_map:
+            s = seed_map[k][0].strip()
+            if re.fullmatch(r"-?\d+", s) and int(s) != n:
+                out[k] = "代码=%s(%s) 播种=%s(%s)" % (n, fn, s, seed_map[k][1])
+    return out
+
+
+# 正控**不钉「某键现网无行」这类会前进的事实**：0426 一落地，
+# `resurrection_hours` 就从「缺行」变成「有行」，旧 LY1 永不可能再成立。
+# 改成拿合成数据喂检测器，双向都要过（分叉必须被点名、相等必须不报）。
+_ctl_hit = drift_of({"ly_probe_key": (240, "probe.rs")},
+                    {"ly_probe_key": ("241", "0000_probe.sql")})
+_ctl_calm = drift_of({"ly_probe_key": (240, "probe.rs")},
+                     {"ly_probe_key": ("240", "0000_probe.sql")})
+ok("LY1 正控（双向）：合成「兜底 240 vs 播种 241」必须被点名、相等必须不报",
+   list(_ctl_hit) == ["ly_probe_key"] and not _ctl_calm,
+   "分叉样本报=%s 相等样本报=%s" % (sorted(_ctl_hit), sorted(_ctl_calm)))
 ok("LY2 正控（假阳须消失）：4*1024*1024 求成 4194304",
    code.get("upload_torrent_max_bytes", (None,))[0] == 4194304,
    "实得=%s" % (code.get("upload_torrent_max_bytes", (None,))[0],))
 
-drift = {}
-for k, (n, fn) in sorted(code.items()):
-    if k in seeded:
-        s = seeded[k][0].strip()
-        if re.fullmatch(r"-?\d+", s) and int(s) != n:
-            drift[k] = "代码=%s(%s) 播种=%s(%s)" % (n, fn, s, seeded[k][1])
+drift = drift_of(code, seeded)
 
 ok("LY3 「两本账」集合=台账 %s（多一条=新分叉，少一条=改了要同步删号）"
    % sorted(LEDGER_DRIFT),
@@ -127,5 +141,14 @@ val = psql_stdin("SELECT COALESCE((SELECT value FROM site_settings WHERE "
                  ).splitlines()[0].strip()
 ok("LY5 现网实况：该键当前有行且=3 ⇒ 分叉是潜伏的，今天没咬人",
    val == "3", "现网值=%s" % val)
+
+rh_live = psql_stdin("SELECT value FROM site_settings "
+                     "WHERE name='resurrection_hours'").splitlines()
+rh_now = rh_live[0].strip() if rh_live and rh_live[0].strip() else "(缺行)"
+rh_code = code.get("resurrection_hours", (None,))[0]
+rh_seed = seeded.get("resurrection_hours", ("",))[0].strip()
+ok("LY6 实况：resurrection_hours 现网值 == 代码兜底 == 播种（0426 真落地的旁证）",
+   rh_now not in ("(缺行)", "") and str(rh_code) == rh_now == rh_seed,
+   "现网=%s 代码兜底=%s 播种=%s" % (rh_now, rh_code, rh_seed))
 
 summary()

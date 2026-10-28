@@ -9,15 +9,19 @@
 0419 补的四把键里只有 `upload_title_pattern` 两表皆无——它跑的时候文件里
 还没有这一条。
 
-判据（尺子=迁移文件最后一次提交时间 vs 该版本号的 installed_on）：
-  LV1  正控：这把尺必须点到 0419（点不到＝尺不成立，别看下面的数）
-  LV2  漂移集合必须等于台账 {419}——多一个（新的「应用后又改」）红、
-       少一个（补种迁移被应用掉）也红
-  LV3  「台账有、HEAD 里没这个文件」= 靠未提交文件跑掉的迁移，集合钉死
-  LV4  缺陷本体活体：upload_title_pattern 在 site_settings 与 settings_meta
-       里必须都在 ⇒ 现网这条**现在是红的**，0426 随下次 api 启动应用后转绿
-  LV5  0426 的写法在现网真跑一遍（BEGIN…回读…ROLLBACK），证明 SQL 有效
-       且不留下任何行；另断 grp=torrent 的 card_order 84 没被别的键占着
+判据（10-28 随「0426 已真落地」重写过一次，别照旧账读）：
+  LV1  正控：合成一份「一半落地一半没落地」的迁移正文喂给检测器，必须点名
+       缺的那把。**不钉真实号**——286/419 已被 0426 补种自愈，钉实号会退化
+       成永不可能成立的假承重
+  LV2  「跑过却只落地一半」的集合 = 台账（现为空集＝不变量：今后谁再往已应用
+       的文件里追加键，当场点名）
+  LV3  「已应用但 HEAD 里没这个文件」= 站方活账 ⇒ **现为红**（0423/0424/0425
+       已随重建跑进现网，文件却仍未提交 ⇒ 干净环境装机会少这三步）
+  LV4  缺陷本体活体：upload_title_pattern / resurrection_hours 两表都在
+       （10-28 api 重启后已转绿＝0426 真生效）
+  LV5  0426 的 SQL 在现网事务里再跑一遍 + **增量对账**：跑前/事务内/跑后行数
+       一致 ⇒ 证明确实幂等（ON CONFLICT DO NOTHING）且闸门不留残料。
+       另断两张卡的 card_order 没被别人占着。
 
 跑法：python scripts/pt_audit_lv_migration_drift.py
 """
@@ -33,14 +37,14 @@ MIG_DIR = "apps/api/migrations"
 KEY = "upload_title_pattern"
 FIX = os.path.join(MIG_DIR, "0426_reseed_upload_title_pattern.sql")
 
-# 台账：跑过却只落地一半的迁移。同一把键两次没落地——
-#   286 = 原始登记（本站 10-18 备份里就没有这把键，见 0419 头注）
-#   419 = 补种（installed 2026-10-25 02:58，文件进仓 2026-10-26 07:10
-#         ⇒ 跑的是草稿，追加的那条对本站永远不再执行）
-# 0426 应用后两行都会到位，但键名仍只由 0426 落地 ⇒ 286/419 属历史形状，
-# 留号当钉（多一个＝新的「应用后又改」，少一个＝有人把账改了）。
-PARTIAL_LEDGER = {"286", "419"}
+# 台账：跑过却只落地一半的迁移。**现为空集，这是不变量而非「站干净」**：
+#   286/419 两案（`upload_title_pattern` 缺登记）已由 0426 补种并在 10-28
+#   api 重启时真落地（现网 site_settings 与 settings_meta 两行都在）⇒ 自愈。
+# 留空集的用处：今后任何人再往「已应用」的迁移文件里追加键，本判据当场点名。
+PARTIAL_LEDGER = set()
 # 台账：已应用但 HEAD 里没有对应文件（靠工作树未提交文件跑掉的迁移）。
+# 这三条**是站方的活账**（10-28 实测 0423/0424/0425 已在现网跑过、文件仍未 add）
+# ⇒ 干净环境首启会少这三步。只有站长提交能关，故不入台账、让它继续红。
 UNTRACKED_LEDGER = {"423"}
 
 
@@ -157,6 +161,18 @@ def retired_hit(n):
         n.startswith(r) and r for r in retired if r.endswith(("_", ".")))
 
 
+def landing_of(txt):
+    """返回 (现网已落地的条数, 文件里有、现网没有、也没被退役的键清单)。"""
+    live = {"v": live_val, "m": live_meta}
+    want = ([(n, "v") for n in names_in(txt, "site_settings")]
+            + [(n, "m") for n in names_in(txt, "settings_meta")])
+    if not want:
+        return 0, []
+    have = sum(1 for n, w in want if n in live[w])
+    miss = [n for n, w in want if n not in live[w] and not retired_hit(n)]
+    return have, list(dict.fromkeys(miss))
+
+
 partial = {}
 for f in sorted(os.listdir(MIG_DIR)):
     if not f.endswith(".sql"):
@@ -166,20 +182,21 @@ for f in sorted(os.listdir(MIG_DIR)):
         continue  # 未应用的迁移不算（它还没机会落地）
     txt = strip_sql_comments(open(os.path.join(MIG_DIR, f), encoding="utf-8",
                                   errors="replace").read())
-    want = ([(n, "v") for n in names_in(txt, "site_settings")]
-            + [(n, "m") for n in names_in(txt, "settings_meta")])
-    if not want:
-        continue
-    have = sum(1 for n, w in want
-               if (n in (live_val if w == "v" else live_meta)))
-    miss = [n for n, w in want
-            if n not in (live_val if w == "v" else live_meta)
-            and not retired_hit(n)]
+    have, miss = landing_of(txt)
     if 0 < have and miss:
-        partial[ver] = list(dict.fromkeys(miss))
+        partial[ver] = miss
 
-ok("LV1 正控：检测器点名 0419 里缺的那把键（不是靠集合蒙对）",
-   partial.get("419") == [KEY], "0419 报缺=%s" % partial.get("419"))
+# 正控**不钉真实迁移号**：286/419 那两案已被 0426 补种自愈（现网两行都在），
+# 「某号必须报缺」在事实变化后会退化成永不可能成立的断言＝假承重。
+# 改成合成一份「一半落地一半没落地」的正文喂给同一把尺，它必须点名缺的那把。
+PROBE_ABSENT = "lv_probe_key_never_seeded"
+_ctl_have, _ctl_miss = landing_of(
+    "INSERT INTO site_settings (name, value) VALUES ('%s', '1'), ('%s', '2');"
+    "\nINSERT INTO settings_meta (name, group_key) VALUES ('%s', 'ops');"
+    % (KEY, PROBE_ABSENT, KEY))
+ok("LV1 正控：合成「一半落地一半没落地」的正文必须被点名（尺子认得这形状）",
+   _ctl_have > 0 and _ctl_miss == [PROBE_ABSENT],
+   "已落地=%d 报缺=%s" % (_ctl_have, _ctl_miss))
 ok("LV2 「跑过但只落地一半」的迁移=台账 %s（应用后再加键，存量站拿不到）"
    % sorted(PARTIAL_LEDGER),
    set(partial) == PARTIAL_LEDGER,
@@ -218,21 +235,37 @@ for k, g, co in CARDS:
 sql = open(FIX, encoding="utf-8").read()
 body = "\n".join(ln for ln in sql.splitlines()
                  if not ln.lstrip().startswith("--"))
+# 0426 现已真落地 ⇒ 「事务内插得进、回滚后归零」这个老探针的**前提没了**
+# （键本来就在表里，回滚后当然还是 2|2，红在判据自己身上）。改成**增量对账**：
+# 跑前/跑后各数一次，要求「跑通 SQL 且行数一克不多」——0426 用的是
+# ON CONFLICT DO NOTHING，幂等本身就是它该证的性质。
+pre = psql_stdin(
+    "SELECT 'pre', (SELECT count(*) FROM site_settings WHERE name IN (%s)), "
+    "(SELECT count(*) FROM settings_meta WHERE name IN (%s));"
+    % (IN_LIST, IN_LIST))
 probe = psql_stdin(
     "BEGIN;\n%s\nSELECT 'in_tx', (SELECT count(*) FROM site_settings WHERE "
     "name IN (%s)), (SELECT count(*) FROM settings_meta WHERE name IN (%s));\n"
-    "ROLLBACK;\nSELECT 'after', (SELECT count(*) FROM site_settings WHERE "
-    "name IN (%s)), (SELECT count(*) FROM settings_meta WHERE name IN (%s));\n"
-    % (body, IN_LIST, IN_LIST, IN_LIST, IN_LIST))
+    "ROLLBACK;\n" % (body, IN_LIST, IN_LIST))
+post = psql_stdin(
+    "SELECT 'post', (SELECT count(*) FROM site_settings WHERE name IN (%s)), "
+    "(SELECT count(*) FROM settings_meta WHERE name IN (%s));"
+    % (IN_LIST, IN_LIST))
+pre_t = re.search(r"pre\|(\d+)\|(\d+)", pre)
 in_tx = re.search(r"in_tx\|(\d+)\|(\d+)", probe)
-after = re.search(r"after\|(\d+)\|(\d+)", probe)
+post_t = re.search(r"post\|(\d+)\|(\d+)", post)
 n = len(CARDS)
-ok("LV5a 0426 的 SQL 在现网事务里真跑通（%d 把键的值行与元数据行都插得上，外键顺序没错）"
-   % n, in_tx is not None and in_tx.group(1) == str(n)
-   and in_tx.group(2) == str(n),
+ok("LV5a 0426 的 SQL 在现网事务里真跑通（%d 把键的行数都在，外键顺序没错）"
+   % n, in_tx is not None and int(in_tx.group(1)) >= n
+   and int(in_tx.group(2)) >= n,
    "事务内=%s" % (in_tx.group(0) if in_tx else "没取到读数"))
-ok("LV5b ROLLBACK 后回读为 0（本闸门没往现网留任何行）",
-   after is not None and after.group(1) == "0" and after.group(2) == "0",
-   "回滚后=%s" % (after.group(0) if after else "没取到读数"))
+ok("LV5b 幂等且不增殖：跑前/跑后行数一致（重放 0426 不会多加行、闸门不留残料）",
+   pre_t is not None and post_t is not None
+   and pre_t.group(0)[4:] == post_t.group(0)[5:]
+   and in_tx is not None and in_tx.group(1) == pre_t.group(1),
+   "跑前=%s 事务内=%s 跑后=%s"
+   % ((pre_t.group(1), pre_t.group(2)) if pre_t else "?",
+      (in_tx.group(1), in_tx.group(2)) if in_tx else "?",
+      (post_t.group(1), post_t.group(2)) if post_t else "?"))
 
 summary()
