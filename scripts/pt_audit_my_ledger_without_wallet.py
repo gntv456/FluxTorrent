@@ -37,16 +37,13 @@ WALLET_LEDGER = {
     # side (does anything else credit spark_balance for this kind?) before
     # turning either into a fix or a permanent exemption with a reason.
     "apps/worker/src/jobs/preserve.rs":
-        "[UNADJUDICATED] make-up settle: writes preserve_reward rows,
-         no wallet UPDATE in file, balance_after column omitted",
+        "[UNADJUDICATED] preserve_reward rows, no wallet UPDATE, balance_after omitted",  # noqa: E501
     "apps/worker/src/jobs/seeding_referral.rs":
-        "[UNADJUDICATED] inviter bonus: seeding_referral rows with
-         no wallet UPDATE in file",
+        "[UNADJUDICATED] inviter bonus rows, no wallet UPDATE in file",
 }
 SWALLOW_LEDGER = {
     "apps/worker/src/jobs/settle.rs":
-        "[UNADJUDICATED] let _ = wraps an INSERT INTO spark_ledger;
-         must show its failure like P-323/P-328/P-462 did",
+        "[UNADJUDICATED] let _ = wraps a spark_ledger INSERT; must show failure",  # noqa: E501
 }
 
 # 裸 SQL kind 里由别的语言文件负责登记的例外
@@ -90,7 +87,10 @@ def bodies():
         for dp, _dn, fns in os.walk(d):
             for fn in sorted(fns):
                 if fn.endswith(".rs"):
-                    p = os.path.join(dp, fn)
+                    # 路径统一成正斜杠：os.walk 在 Windows 给反斜杠，而台账键
+                    # 是按仓库习惯写的前斜杠——不归一会让「实测=台账」永远不等
+                    # （集合内容一致却判红，第一跑就是这么红的）。
+                    p = os.path.join(dp, fn).replace(chr(92), "/")
                     yield p, strip_comments(
                         open(p, encoding="utf-8",
                              errors="replace").read())
