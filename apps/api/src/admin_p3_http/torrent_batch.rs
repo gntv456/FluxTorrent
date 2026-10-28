@@ -145,18 +145,17 @@ async fn torrent_batch(
                 return Err(DomainError::Validation("缺少标签".into()));
             }
             // 0159：批量打标与发布/详情同口径（scope/enabled/official 校验，
-            // official_tag 物化列联动）——此前直插绕过全部校验
-            let who = (auth.id, auth.class_id as i16);
-            for tid in &id_arr {
-                crate::torrents::apply_torrent_tags(
-                    db,
-                    *tid,
-                    &body.tag_ids,
-                    who,
-                )
-                .await?;
-            }
-            id_arr.len() as u64
+            // official_tag 物化列联动）。P-445 起这一支住在
+            // `torrent_batch_tags.rs`：不存在的种号按「没改动」处理并回真实
+            // 颗数，旧写法在这里会撞 tags→torrents 外键折成 1000「内部错误」，
+            // 而前面几颗已经改完——界面只看到「服务异常」，分不清哪颗成。
+            super::torrent_batch_tags::set_tags(
+                db,
+                &id_arr,
+                &body.tag_ids,
+                (auth.id, auth.class_id as i16),
+            )
+            .await?
         }
         "clear_tags" => sqlx::query(
             "DELETE FROM tags WHERE torrent_id = ANY($1) \
