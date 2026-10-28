@@ -142,6 +142,20 @@ pub(super) fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
                             return Err("须为逗号分隔的数字 ID".into());
                         }
                     }
+                    // 坏正则的代价不对称：存进去那一刻毫无信号，之后**每一次**
+                    // 会员发种都被「站点命名正则非法，请联系站长」挡住
+                    // （publish_http/upload_precheck.rs 的 check_quality 在真实
+                    // 上传路径上），而站长界面一切正常。所以在保存这一刻就编译
+                    // 一次。引擎就是 `regex` crate——面板教的语法必须与它一致，
+                    // 报错里点名两条最常踩的不支持项（后查 / 反向引用）。
+                    "regex" => {
+                        if let Err(e) = regex::Regex::new(&v) {
+                            return Err(format!(
+                                "须为合法正则表达式（本站用 Rust regex 语法，\
+                                 不支持后查 (?<=) 与反向引用 \\1）：{e}"
+                            ));
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -153,6 +167,63 @@ pub(super) fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
     } else {
         v
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn text_meta(options: Option<serde_json::Value>) -> MetaRow {
+        MetaRow {
+            name: "upload_title_pattern".into(),
+            kind: "text".into(),
+            label_zh: None,
+            label_en: None,
+            hint: None,
+            unit: None,
+            min: None,
+            max: None,
+            step: None,
+            options,
+            secret: false,
+            readonly: false,
+            group_key: Some("torrent".into()),
+            min_class: None,
+            grp: "torrent".into(),
+            value: String::new(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    /// rule=regex：坏正则必须在**保存**这一刻被拒，而不是等会员发种才发现。
+    ///
+    /// 反面教材也是实测出来的：本用例第一版拿 `^[(\d]` 当「坏正则」，Rust
+    /// regex 收下了它（`[` 开字符类、`\d` 是类里的合法成员）⇒ 只钉真正编译
+    /// 不过的形状。
+    #[test]
+    fn regex_rule_rejects_bad_pattern() {
+        let m = text_meta(Some(serde_json::json!({ "rule": "regex" })));
+        let e = validate_field(&m, "(unclosed").unwrap_err();
+        assert!(e.contains("须为合法正则表达式"), "实得={e}");
+        assert!(validate_field(&m, "a{2,1}").is_err(), "区间倒挂须拒");
+        // 后查与反向引用是「Java 写法」里最常见的两条本站引擎不支持项
+        assert!(validate_field(&m, r"(?<=x)y").is_err(), "后查须拒");
+        assert!(validate_field(&m, r"^(a)\1$").is_err(), "反向引用须拒");
+        // 合法的放行（就是 0426 出厂说明里给的那条示例格式）
+        assert!(
+            validate_field(&m, r"^[^.]+\.[0-9]{4}\.(1080p|2160p)").is_ok(),
+            "示例格式须收下"
+        );
+        // 空串=不校验，既有语义不动
+        assert!(validate_field(&m, "").is_ok(), "空值仍表示不校验");
+    }
+
+    /// 正控：不带 rule 的 text 键不受影响——否则这条会把全站文本设定拦死。
+    #[test]
+    fn text_without_rule_still_accepts_anything() {
+        let m = text_meta(None);
+        assert!(validate_field(&m, "(unclosed").is_ok());
+    }
 }
 
 // ============================================================================

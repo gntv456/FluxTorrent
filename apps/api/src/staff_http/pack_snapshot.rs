@@ -12,6 +12,7 @@ use serde_json::{json, Map, Value};
 use sqlx::PgPool;
 
 use crate::errors::{DomainError, DomainResult};
+use crate::settings_http::pack_kinds::{kind_to_json, KindRow};
 
 pub(super) struct PackSnapshot {
     pub(super) sections: Value,
@@ -27,8 +28,9 @@ pub(super) struct PackSnapshot {
 /// 采集当前站点的五段自定义载荷。NULL 一律表达「未声明」，交由 apply 侧的
 /// `pack_declares_sections` 等守卫决定不动哪些维度，绝不主动清空。
 pub(super) async fn collect(db: &PgPool) -> DomainResult<PackSnapshot> {
-    let kinds: Vec<(String, String, i32)> = sqlx::query_as(
-        "SELECT kind, label, sort FROM section_kinds ORDER BY sort, kind",
+    let kinds: Vec<KindRow> = sqlx::query_as(
+        "SELECT kind, label, sort, field_type, required, multiple, enabled, \
+         icon_key, bg_color FROM section_kinds ORDER BY sort, kind",
     )
     .fetch_all(db)
     .await
@@ -51,17 +53,15 @@ pub(super) async fn collect(db: &PgPool) -> DomainResult<PackSnapshot> {
                 .push(Value::String(name.clone()));
         }
         // 空选项的维度也要显式列出（与预置包的 "team": [] 同形）
-        for (kind, _, _) in &kinds {
-            dict.entry(kind.clone())
+        for k in &kinds {
+            dict.entry(k.kind.clone())
                 .or_insert_with(|| Value::Array(Vec::new()));
         }
         json!({
-            "kinds": kinds
-                .iter()
-                .map(|(kind, label, sort)| {
-                    json!({"kind": kind, "label": label, "sort": sort})
-                })
-                .collect::<Vec<_>>(),
+            // 九列全字段：快照既是回滚基线，也是「另存为站型包」的正文。
+            // 漏列的维度在新站点被 kind_from_json 缺省成 select，text/
+            // number/bool/multiselect 的自由值当场失明（四处同形纪律）。
+            "kinds": kinds.iter().map(kind_to_json).collect::<Vec<_>>(),
             "dict": dict,
         })
     };

@@ -374,8 +374,8 @@ pub(crate) async fn apply_pack_full(
     super::pack_tags::apply_pack_tags(&mut tx, pack).await?;
     // 首页排版（H10/0322）：包声明 home_sections 时写入 site_settings.home_layout。
     // 站长守卫与 tagline 0145 同口径——只改「空值或等于任一预置包默认」的现值，
-    // 手工排版不被切站型复位；restore 回滚走快照重放不受限（快照存的就是
-    // apply 前的排版）。
+    // 手工排版不被切站型复位。restore（回滚）**不**重放排版：collect_state 的快照
+    // 根本没有这一段（`snapshot_to_pack` 恒给 None）⇒ 排版保持现值，界面须如实（i18n）。
     if let Some(layout) = pack
         .home_sections
         .as_ref()
