@@ -35,10 +35,7 @@ DB_ORPHAN = {
     "consume_xreport": "历史消费循环留下的状态行，catalog 未声明（无害，待清理）",
 }
 # run.rs 有调度、catalog 未声明 -> 理由（面板看不见 / 不能手点，但确实在跑）
-DISPATCH_UNDECLARED = {
-    "contract_settle": "0424 月结：run.rs 日频已接、catalog_jobs.rs 未登记"
-                       "（该文件是站长在途 M，不代改；补登一条 cadence=24h 即可）",
-}
+DISPATCH_UNDECLARED = {}  # contract_settle 已于 10-28 补进 catalog_jobs（ND3 由红转绿）
 
 cat = open(CAT, encoding="utf-8", errors="replace").read()
 run = open(RUN, encoding="utf-8", errors="replace").read()

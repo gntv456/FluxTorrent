@@ -11,6 +11,18 @@ pub const JOBS: &[JobDef] = &[
         name: "expire_promotions",
         cadence: "60s",
     },
+    // run.rs:164 一直在调度它，但 catalog 里从来没登记过 ⇒ 面板看不见、
+    // 不显示 cadence、也不能手点（ND3 实测抓到的幽灵调度）。
+    JobDef {
+        name: "announce_site_promos",
+        cadence: "60s",
+    },
+    // P-471 同族：tick1d 早已调度 job:contract_settle（0424 月结），
+    // 但 catalog 未登记 ⇒ 运维面板看不见这个任务。
+    JobDef {
+        name: "contract_settle",
+        cadence: "24h",
+    },
     JobDef {
         name: "magic_pool_promo",
         cadence: "60s",

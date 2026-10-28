@@ -176,7 +176,11 @@ pub(crate) fn job_module(job_key: &str) -> Option<&'static str> {
         "job:bank_daily" => "bank",
         "job:task_settle" => "tasks",
         "job:exam_assign" => "exams",
-        "job:jixiao_settle" => "jixiao",
+        // P-475：jixiao_settle 曾挂 jixiao 模块门，与本函数上面那条口径
+        // 自相矛盾——现网 module_jixiao=no ⇒ 它一次 mark_start 都没有，
+        // 已登记的绩效契约会永远不结算（今天 jixiao_claims 0 行才没咬人）。
+        // 收尾类 settle 一律不挂模块开关，回归哨兵见
+        // pt_audit_an_team_contract.py 的 S5（P-38）。
         "job:preserve_exit" | "job:preserve_settle" | "job:preserve_seed" => {
             "preserve"
         }
