@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS search_term_stats (
     hits BIGINT NOT NULL DEFAULT 0,
     last_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- 索引谓词不能用 now()（STABLE 非 IMMUTABLE，PG 拒绝建——0427 现网取证）：
+-- 90 天窗口是读侧查询条件（home.rs 的 SELECT 自带 WHERE），索引不筛窗口。
 CREATE INDEX IF NOT EXISTS search_term_stats_hot
-    ON search_term_stats (hits DESC, last_at DESC)
-    WHERE last_at > now() - interval '90 days';
+    ON search_term_stats (hits DESC, last_at DESC);
