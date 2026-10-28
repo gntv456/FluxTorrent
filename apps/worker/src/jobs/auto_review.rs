@@ -200,14 +200,13 @@ async fn build_snapshot(
     descr: String,
     cat: i64,
 ) -> TorrentSnapshot {
-    let file_names: Vec<String> = sqlx::query_scalar(
-        "SELECT filename FROM torrent_files WHERE torrent_id = $1 \
-         ORDER BY id LIMIT 200",
-    )
-    .bind(id)
-    .fetch_all(db)
-    .await
-    .unwrap_or_default();
+    // P-466：`torrent_files` 只有 (torrent_id, raw, created_at)——没有
+    // filename 列。旧查询恒失败，被 `.unwrap_or_default()` 吞成空 Vec，
+    // 于是下面「MediaInfo 声明含视频轨 ⇒ 包内必须有视频文件」那条规则
+    // 对**每个带 MediaInfo 的种**都成立，整队列被标成伪媒体嫌疑。
+    // 文件名只能从归档的 .torrent（raw）里 bdecode 出来，那是另一件事；
+    // 先把它钉成「不知道」而不是「没有」：空清单不再当作证据。
+    let file_names: Vec<String> = Vec::new();
     let recent_titles: Vec<String> = sqlx::query_scalar(
         "SELECT name FROM torrents \
          WHERE approval_status = 1 AND id <> $1 AND mtime > now() - \
@@ -753,7 +752,7 @@ async fn deep_file_rules(
     .ok()
     .flatten()
     .unwrap_or(false);
-    if has_mi_video {
+    if has_mi_video && !snap.file_names.is_empty() {
         let any_video = snap.file_names.iter().any(|f| {
             let low = f.to_lowercase();
             [

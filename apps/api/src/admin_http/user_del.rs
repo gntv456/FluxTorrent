@@ -57,8 +57,9 @@ pub async fn delete_user_cascade(
             (id, user_id, amount, kind, ref_type,
              idempotency_key, balance_after)
         SELECT nextval('spark_ledger_id_seq'), $1, -spark_balance,
-               'user_purge', 'user', 'user-purge-' || $1, 0
-        FROM users WHERE id = $1 AND spark_balance <> 0
+               'user_purge', 'user',
+               'user-purge-' || ($1::bigint)::text, 0
+        FROM users WHERE id = $1::bigint AND spark_balance <> 0
         ON CONFLICT DO NOTHING
         "#,
     )

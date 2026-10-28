@@ -118,7 +118,7 @@ async fn today_board(
     let rows: Vec<(i64, Option<String>, i64)> = sqlx::query_as(
         "SELECT a.user_id, u.username, a.reward FROM attendance a \
          JOIN users u ON u.id = a.user_id \
-         WHERE a.date = $1 ORDER BY a.reward DESC, a.id ASC LIMIT 3",
+         WHERE a.date = $1 ORDER BY a.reward DESC, a.user_id ASC LIMIT 3",
     )
     .bind(today)
     .fetch_all(db)

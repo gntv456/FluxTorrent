@@ -114,7 +114,7 @@ async fn import_torrents(
         i64,
     )> = sqlx::query_as(
         "SELECT id, info_hash, size, name, descr, owner_id, times_completed \
-         FROM torrents WHERE visible != 'no'",
+         FROM torrents WHERE true /* P-467: 无 visible 列，全表盘点 */",
     )
     .fetch_all(np)
     .await?;
@@ -224,7 +224,7 @@ async fn report(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
             .fetch_one(flux)
             .await?;
     let np_torrents: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM torrents WHERE visible != 'no'",
+        "SELECT COUNT(*) FROM torrents WHERE true /* P-467: 无 visible 列，全表盘点 */",
     )
     .fetch_one(np)
     .await?;
@@ -235,7 +235,7 @@ async fn report(np: &sqlx::MySqlPool, flux: &sqlx::PgPool) -> Result<()> {
     // info_hash 全量 diff（源有目标无 → 缺失清单前 20 条）
     let missing: Vec<String> = {
         let src: Vec<String> = sqlx::query_scalar(
-            "SELECT LOWER(info_hash) FROM torrents WHERE visible != 'no'",
+            "SELECT LOWER(info_hash) FROM torrents WHERE true /* P-467: 无 visible 列，全表盘点 */",
         )
         .fetch_all(np)
         .await?;
