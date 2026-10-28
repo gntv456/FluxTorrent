@@ -126,19 +126,48 @@ pub async fn admin_payment_complete(
     // 先锁订单再动金额（P-173）：面额要参与校验；「不存在 / 已补过 / 状态不
     // 对」三种情形分开报；行锁顺带把并发重复补单串成串行（第二个事务读到的
     // 已经是 paid，走 duplicate 分支）。
-    let head: Option<(String, f64)> = sqlx::query_as(
-        "SELECT status, amount_usd::float8 FROM payment_orders \
-         WHERE order_no = $1 FOR UPDATE",
+    let head: Option<(String, f64, bool)> = sqlx::query_as(
+        "SELECT status, amount_usd::float8, COALESCE(tier_granted, false) \
+         FROM payment_orders WHERE order_no = $1 FOR UPDATE",
     )
     .bind(order_no)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    let (status, amount_usd) = match head {
+    let (status, amount_usd, tier_granted) = match head {
         Some(v) => v,
         None => return Err(DomainError::NotFound(0)),
     };
     if status != "pending" {
+        if status == "paid" && !tier_granted {
+            // P-478：已 paid 但档位没发（E7 之前的手工补单留下的孤儿单）。
+            // 老实现直接回 duplicate ⇒ 这单永远欠着权益。现在按与回调/补单
+            // **同一把 CAS**（grant_tier 内部 NOT tier_granted）补发一次，
+            // 四种效果全走原语，并发双补只有一个赢。
+            let uid: i64 = sqlx::query_scalar(
+                "SELECT user_id FROM payment_orders WHERE order_no = $1",
+            )
+            .bind(order_no)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            let cum = crate::payment::cumulative_paid(&mut tx, uid).await?;
+            let granted =
+                crate::payment::grant_tier(&mut tx, &state, order_no, uid, cum)
+                    .await?;
+            tx.commit()
+                .await
+                .map_err(|e| DomainError::Internal(e.into()))?;
+            return Ok(ok(serde_json::json!({
+                "order_no": order_no,
+                "result": if granted.is_some() {
+                    "tier_regranted"
+                } else {
+                    "tier_already"
+                },
+                "tier": granted,
+            })));
+        }
         if status == "paid" {
             return Ok(ok(serde_json::json!({
                 "order_no": order_no, "result": "duplicate",

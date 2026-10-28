@@ -51,14 +51,20 @@ pub(super) async fn send_welcome_pm(db: &PgPool, user_id: i64) {
                 .to_string(),
         )
     };
-    let _ = sqlx::query(
+    // P-477：迎新信也是系统通知，必须过通知偏好闸（与 P-474 同口径）；
+    // 写失败出声，但绝不阻断注册。
+    if let Err(e) = sqlx::query(
         "INSERT INTO messages (sender_id, receiver_id, subject, body, \
-         location, saved, unread) \
-         VALUES (NULL, $1, $2, $3, 1, 1, true)",
+         location, saved, unread, kind) \
+         SELECT NULL, $1, $2, $3, 1, 1, true, 'system' \
+          WHERE u_notice_enabled($1, 'system')",
     )
     .bind(user_id)
     .bind(subject)
     .bind(body)
     .execute(db)
-    .await;
+    .await
+    {
+        tracing::warn!(user = user_id, %e, "欢迎私信写入失败");
+    }
 }
