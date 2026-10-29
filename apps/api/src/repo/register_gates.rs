@@ -26,6 +26,21 @@ pub async fn users_created_since(
         .await
 }
 
+/// 开放注册名额口径（P-684）：只数**直接注册**（invited_by IS NULL）——
+/// 邀请码注册走的是邀请人自己的配额，不应消耗开放轮名额；站长设定的
+/// 「开放 100 人」就是 100 个免邀请码入口。
+pub async fn direct_signups_since(
+    repo: &Repo,
+    since: chrono::DateTime<chrono::Utc>,
+) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT count(*) FROM users          WHERE created_at >= $1 AND invited_by IS NULL",
+    )
+    .bind(since)
+    .fetch_one(&repo.db)
+    .await
+}
+
 /// 同 IP 闸：窗口小时内该 IP 摘要的注册数。
 pub async fn ip_signup_count(
     repo: &Repo,

@@ -82,9 +82,18 @@ pub async fn register(
             }
         }
     }
-    if reg_mode == "invite_only" && body.invite_code.trim().is_empty() {
+    // P-686 预约窗口放行：reg_window 配了生效窗口（此刻在 open..close 内）
+    // 时，即便 registration_mode 仍是 invite_only 也按开放注册放行——
+    // 「未来时间自动开放注册」由窗口到点自然生效，站长无须守着切换。
+    // 名额满/窗口外由 check_reg_gates 的窗口闸先行拒绝，不会走到这里。
+    let window_active =
+        super::register_gates::reg_window_active(&state.repo).await;
+    let effective_open = reg_mode != "invite_only" || window_active;
+    if !effective_open && body.invite_code.trim().is_empty() {
         return Err(DomainError::InviteInvalid);
     }
+    // 带了邀请码就永远走邀请分支（核销 + 绑邀请人 + 不占开放轮名额），
+    // 与窗口是否生效无关——开放期间邀请注册照常计邀请人的功。
     // 验证码校验（防注册机）。0227 起按驱动分发：
     // - none（缺省）：自研算术题（captcha_id + captcha_answer）
     // - turnstile/recaptcha/hcaptcha：前端组件 token → 后端 siteverify
@@ -202,7 +211,7 @@ pub async fn register(
             &new_user,
             &pass_hash,
             body.invite_code.trim(),
-            reg_mode == "invite_only",
+            !body.invite_code.trim().is_empty(),
         )
         .await?;
     // 同 IP 注册留痕（0370 M4）：只存 sha3-256 摘要，失败只告警不阻断

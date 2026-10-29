@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 import { AuthCanvas } from "@/components/auth-canvas";
 import { mountCaptchaWidget } from "@/lib/captcha-widget";
 import {
@@ -39,6 +40,16 @@ interface ModeInfo {
   application_signup?: string;
   reg_quiz_enabled?: boolean;
   reg_quiz_pass_required?: boolean;
+  /** P-684 开放轮窗口投影（后端 register-mode 下发） */
+  reg_window?: {
+    label?: string;
+    slots_left?: number;
+    slots_total?: number | null;
+    close_at?: string | null;
+    open_at?: string | null;
+    closed?: boolean;
+    not_started?: boolean;
+  };
 }
 
 /** W-18：错误码→字段映射（2005 邀请码 / 2007 用户名；1002 走信封）。 */
@@ -77,6 +88,10 @@ export default function RegisterPage() {
   // 模式未知（探测失败）不能默认成 invite_only：那会给邀请码加 required
   // 把开放注册的访客挡在浏览器校验上；null = 不标必填，交后端裁决。
   const [openMode, setOpenMode] = useState<boolean | null>(null);
+  // P-684 开放轮窗口（剩余额度/预约预告）
+  const [regWindow, setRegWindow] = useState<ModeInfo["reg_window"]>(
+    undefined,
+  );
   // email_verify：注册成功后不硬登（guard_login 必然拦下），改落激活页
   const [verifyMode, setVerifyMode] = useState(false);
   // 0227：验证码驱动（none=自研算术题，其他=第三方组件 token）
@@ -130,6 +145,7 @@ export default function RegisterPage() {
       .then((r) => {
         setOpenMode(r.mode === "open" || r.mode === "email_verify");
         setVerifyMode(r.mode === "email_verify");
+        setRegWindow(r.reg_window);
         const prov = r.captcha_provider ?? "none";
         setDriver(prov);
         setSiteKey(r.captcha_site_key ?? "");
@@ -240,6 +256,28 @@ export default function RegisterPage() {
       foot={dict.register.termsNote}
     >
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
+        {/* P-684 开放轮窗口条：生效中显示剩余额度与截止；预约窗口显示
+            开放预告（未开始仍按当前模式注册，邀请码照常可用）。 */}
+        {openMode && regWindow && !regWindow.closed && (
+          <div className="bz-regwindow-chip" data-testid="reg-window">
+            {regWindow.slots_left !== undefined &&
+            regWindow.slots_left !== null ? (
+              <>
+                {fmt(dict.register.windowSlots, {
+                  left: regWindow.slots_left,
+                  total: regWindow.slots_total ?? regWindow.slots_left,
+                })}
+                {regWindow.close_at
+                  ? ` · ${fmt(dict.register.windowUntil, {
+                      t: new Date(regWindow.close_at).toLocaleString(),
+                    })}`
+                  : ""}
+              </>
+            ) : (
+              dict.register.windowNoLimit
+            )}
+          </div>
+        )}
         {/* W-18：表单级错误（含映射不出的码）走 FieldErrors 汇总 */}
         <FieldErrors fields={fieldErrs} />
         <RegisterBasicFields

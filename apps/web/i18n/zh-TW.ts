@@ -544,6 +544,7 @@ const zhTwBase: Omit<
     openRegHero: "資源分享社群，現已開放註冊",
     regBtn: "註冊",
     regBtnOpen: "立即註冊",
+    openRegSlots: "（剩餘 {n} 個名額）",
   },
 
   messages: {
@@ -648,6 +649,9 @@ const zhTwBase: Omit<
     applyForCode: "無邀請碼？申請邀請碼",
     usernameHint: "使用者名稱一旦註冊不可修改",
     termsNote: "註冊即代表同意站規與隱私政策",
+    windowSlots: "本輪開放名額剩餘 {left}/{total}（邀請註冊不佔名額）",
+    windowUntil: "截止 {t}",
+    windowNoLimit: "本輪開放註冊不限名額",
     termsNotePre: "註冊即代表同意",
     termsNoteRules: "站規",
     termsNotePrivacy: "與隱私政策",

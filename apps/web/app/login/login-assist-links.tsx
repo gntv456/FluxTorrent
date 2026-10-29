@@ -15,19 +15,30 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
 
 export function LoginAssistLinks() {
   const { dict } = useI18n();
   // null = 未知（探测中/失败），按邀请制渲染
   const [openReg, setOpenReg] = useState<boolean | null>(null);
+  // P-684 开放轮窗口（横幅里显示剩余名额）
+  const [win, setWin] = useState<{
+    slots_left?: number;
+    slots_total?: number | null;
+  } | null>(null);
 
   useEffect(() => {
     let alive = true;
     api
-      .get<{ mode?: string }>("/api/v1/register-mode")
+      .get<{ mode?: string; reg_window?: { slots_left?: number; slots_total?: number | null } }>(
+        "/api/v1/register-mode",
+      )
       .then((r) => {
-        if (alive)
-          setOpenReg(r.mode === "open" || r.mode === "email_verify");
+        if (!alive) return;
+        setOpenReg(r.mode === "open" || r.mode === "email_verify");
+        setWin(r.mode === "open" || r.mode === "email_verify"
+          ? (r.reg_window ?? null)
+          : null);
       })
       .catch(() => setOpenReg(null));
     return () => {
@@ -42,7 +53,15 @@ export function LoginAssistLinks() {
           <span className="bz-open-reg-badge">
             {dict.login.openRegBadge}
           </span>
-          <span className="bz-open-reg-text">{dict.login.openRegNow}</span>
+          <span className="bz-open-reg-text">
+            {dict.login.openRegNow}
+            {win?.slots_left != null && (
+              <strong className="bz-open-reg-slots">
+                {" "}
+                {fmt(dict.login.openRegSlots, { n: win.slots_left })}
+              </strong>
+            )}
+          </span>
         </Link>
       ) : (
         <p>

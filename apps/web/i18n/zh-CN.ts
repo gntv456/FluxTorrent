@@ -495,6 +495,7 @@ const zhCnBase = {
     openRegHero: "资源分享社区，现已开放注册",
     regBtn: "注册",
     regBtnOpen: "立即注册",
+    openRegSlots: "（剩余 {n} 个名额）",
   },
 
   messages: {
@@ -604,6 +605,9 @@ const zhCnBase = {
     applyForCode: "无邀请码？申请邀请码",
     usernameHint: "用户名一旦注册不可修改",
     termsNote: "注册即代表同意站规与隐私政策",
+    windowSlots: "本轮开放名额剩余 {left}/{total}（邀请注册不占名额）",
+    windowUntil: "截止 {t}",
+    windowNoLimit: "本轮开放注册不限名额",
     termsNotePre: "注册即代表同意",
     termsNoteRules: "站规",
     termsNotePrivacy: "与隐私政策",

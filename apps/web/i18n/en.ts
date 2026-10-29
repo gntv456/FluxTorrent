@@ -561,6 +561,7 @@ const enBase: Omit<
     openRegHero: "A resource-sharing community — registration now open",
     regBtn: "Sign up",
     regBtnOpen: "Join now",
+    openRegSlots: "({n} spots left)",
   },
 
   messages: {
@@ -668,6 +669,9 @@ const enBase: Omit<
     applyForCode: "No invite code? Apply for one",
     usernameHint: "Your username cannot be changed after registration",
     termsNote: "By registering you agree to the site rules and privacy policy",
+    windowSlots: "{left}/{total} spots left this round (invite signups don't count)",
+    windowUntil: "until {t}",
+    windowNoLimit: "No spot limit this round",
     termsNotePre: "By registering you agree to the ",
     termsNoteRules: "site rules",
     termsNotePrivacy: " and privacy policy",

@@ -72,19 +72,21 @@ async fn check_window(repo: &Repo) -> DomainResult<()> {
             )));
         }
     }
-    // 名额：窗口内已建账号数（含已封禁——名额是发号量，不是活跃量）
+    // 名额（P-684 口径）：窗口内**直接注册**数（invited_by IS NULL）——
+    // 邀请码注册消耗的是邀请人配额，不占开放轮名额（站长说「开放 100 人」
+    // 就是 100 个免邀请码入口）。含已封禁账号——名额是发号量不是活跃量。
     let slots = v.get("slots").and_then(|x| x.as_i64()).unwrap_or(0);
     if slots > 0 {
         let since = parse("open").unwrap_or(now - chrono::Duration::days(3650));
-        let used = gates_repo::users_created_since(repo, since)
+        let used = gates_repo::direct_signups_since(repo, since)
             .await
             .unwrap_or(0);
         if used >= slots {
             let close_hint = parse("close")
-                .map(|c| format!("，名额每轮重置（本轮至 {c}）"))
+                .map(|c| format!("，本轮至 {c}"))
                 .unwrap_or_default();
             return Err(DomainError::Validation(format!(
-                "「{label}」名额已满（{used}/{slots}）{close_hint}"
+                "「{label}」名额已满（{slots} 个免邀请码名额已全部用完）{close_hint}，可通过邀请码注册"
             )));
         }
     }
@@ -160,4 +162,52 @@ pub(crate) async fn record_ip_signup(repo: &Repo, ip: &str, user_id: i64) {
     {
         tracing::warn!(%e, user = user_id, "reg_ip_signups 留痕失败");
     }
+}
+
+/// 窗口此刻是否生效（P-686）：reg_window 的 open<=now<close 且未满额。
+/// 供注册口的邀请判定与 register-mode 投影共用同一口径；任何解析
+/// 失败/未配置都返回 false（fail-closed——预约配置写错时不放行）。
+pub(crate) async fn reg_window_active(repo: &Repo) -> bool {
+    let Some(raw) = setting(repo, "reg_window").await else {
+        return false;
+    };
+    let raw = raw.trim();
+    if raw.is_empty() || raw == "null" {
+        return false;
+    }
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(raw) else {
+        return false;
+    };
+    let parse = |k: &str| -> Option<chrono::DateTime<chrono::Utc>> {
+        v.get(k)
+            .and_then(|x| x.as_str())
+            .filter(|s| !s.trim().is_empty())
+            .and_then(|s| {
+                chrono::DateTime::parse_from_rfc3339(s.trim())
+                    .ok()
+                    .map(|d| d.with_timezone(&chrono::Utc))
+            })
+    };
+    let now = chrono::Utc::now();
+    if let Some(open) = parse("open") {
+        if now < open {
+            return false;
+        }
+    }
+    if let Some(close) = parse("close") {
+        if now >= close {
+            return false;
+        }
+    }
+    let slots = v.get("slots").and_then(|x| x.as_i64()).unwrap_or(0);
+    if slots > 0 {
+        let since = parse("open").unwrap_or(now - chrono::Duration::days(3650));
+        let used = gates_repo::direct_signups_since(repo, since)
+            .await
+            .unwrap_or(slots);
+        if used >= slots {
+            return false;
+        }
+    }
+    true
 }

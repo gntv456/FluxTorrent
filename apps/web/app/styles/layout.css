@@ -2776,3 +2776,21 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     grid-column: auto;
   }
 }
+
+/* P-684 注册页开放轮额度条 */
+.bz-regwindow-chip {
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--brand-orange) 45%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand-orange) 7%, transparent);
+  color: var(--text-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* 登录页横幅剩余名额强调 */
+.bz-open-reg-slots {
+  color: var(--brand-orange);
+  font-weight: 800;
+}
