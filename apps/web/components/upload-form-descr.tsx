@@ -72,7 +72,7 @@ export function UploadDescrBlock({
     ["var(--content-bb-purple)", "紫"],
     ["var(--content-bb-pink)", "粉"],
     ["var(--content-bb-brown)", "棕"],
-    ["var(--content-bb-sky)", "天蓝"],
+    ["var(--content-bb-sky)", dict.upload.bbColorSky],
   ];
   const BB_EMOJIS = [
     "😄",
@@ -143,9 +143,9 @@ export function UploadDescrBlock({
             <option value="">{dict.upload.bbFont}</option>
             <option value="SimSun">宋体</option>
             <option value="KaiTi">楷体</option>
-            <option value="SimHei">黑体</option>
+            <option value="SimHei">{dict.upload.bbFontSimHei}</option>
             <option value="serif">Serif</option>
-            <option value="monospace">等宽</option>
+            <option value="monospace">{dict.upload.bbFontMono}</option>
           </select>
           <select
             value=""
