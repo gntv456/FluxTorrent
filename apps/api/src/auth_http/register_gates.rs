@@ -95,10 +95,14 @@ async fn check_window(repo: &Repo) -> DomainResult<()> {
 
 /// 同 IP 闸：窗口内该 IP 摘要的注册数达上限即拒。
 async fn check_ip_limit(repo: &Repo, ip: &str) -> DomainResult<()> {
+    // 缺省 5（P-687，原 2）：家庭/办公宽带 NAT 出口后面是整个家庭乃至
+    // 楼宇——开放注册轮里「同 IP=2」会把第三个真实访客拦在门外
+    // （现网实测：两位会员注册后，同小区第三位被拦）。0=不限，后台
+    // 「同 IP 注册上限」可按站型收紧。
     let limit: i64 = setting(repo, "reg_ip_limit")
         .await
         .and_then(|v| v.trim().parse().ok())
-        .unwrap_or(2);
+        .unwrap_or(5);
     if limit <= 0 {
         return Ok(());
     }
@@ -112,7 +116,7 @@ async fn check_ip_limit(repo: &Repo, ip: &str) -> DomainResult<()> {
         .unwrap_or(0);
     if n >= limit {
         return Err(DomainError::Validation(format!(
-            "同一网络环境 {hours} 小时内最多注册 {limit} 个账号，请稍后再试"
+            "同一网络环境（如家庭/公司宽带）{hours} 小时内最多注册 {limit} 个账号。如确认非重复注册，可换用邀请码注册，或联系管理组协助"
         )));
     }
     Ok(())
