@@ -99,6 +99,21 @@ impl AuthRepo {
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| match e {
+            // P-688：unique 冲突按约束名分流——email 撞 users_email_key
+            // 时旧写法也报「用户名已被占用」，用户名明明没占，指着错误的
+            // 字字让用户改错东西（现网：gntv 用已注册邮箱，被引导去换
+            // 用户名，怎么换都失败）。
+            sqlx::Error::Database(db)
+                if db.is_unique_violation()
+                    && db.constraint().is_some_and(|c| {
+                        c.contains("email")
+                    }) =>
+            {
+                DomainError::Validation(
+                    "该邮箱已被注册（如忘记密码可在登录页找回，或换一个邮箱）"
+                        .into(),
+                )
+            }
             sqlx::Error::Database(db) if db.is_unique_violation() => {
                 DomainError::UsernameTaken
             }
