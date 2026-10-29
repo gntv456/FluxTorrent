@@ -2713,3 +2713,66 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
+
+/* P-683 登录/注册并排：bz-actions 升为两列网格（passkey 自动换行独占）。 */
+.bz-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.bz-actions > .bz-submit,
+.bz-actions > .bz-reg-btn {
+  grid-column: auto;
+}
+
+/* passkey 按钮跨满两列回到独立一行 */
+.bz-actions > button[type="button"]:last-child {
+  grid-column: 1 / -1;
+}
+
+/* 注册按钮（次级：邀请制/未知态） */
+.bz-reg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-body);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.bz-reg-btn:hover,
+.bz-reg-btn:focus-visible {
+  border-color: var(--brand-orange);
+  color: var(--brand-orange);
+}
+
+/* 注册按钮（主样式：开放注册态，与登录同为实心，视觉等权） */
+.bz-reg-btn--open {
+  border: 1px solid var(--brand-orange);
+  color: var(--brand-orange);
+  background: color-mix(in srgb, var(--brand-orange) 10%, transparent);
+}
+
+.bz-reg-btn--open:hover,
+.bz-reg-btn--open:focus-visible {
+  background: color-mix(in srgb, var(--brand-orange) 18%, transparent);
+}
+
+@media (max-width: 480px) {
+  .bz-actions {
+    grid-template-columns: 1fr;
+  }
+  .bz-actions > button[type="button"]:last-child {
+    grid-column: auto;
+  }
+}

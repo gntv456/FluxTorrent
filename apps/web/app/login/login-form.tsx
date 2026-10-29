@@ -72,6 +72,22 @@ export function LoginForm() {
   const [powWorking, setPowWorking] = useState(false); // 正在完成工作量证明
   const [showTotp, setShowTotp] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  // P-683：并排注册按钮的样式分级依据（与辅助链接卡同源判定；
+  // null=未知按邀请制弱化渲染，不虚报开放）
+  const [openReg, setOpenReg] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api
+      .get<{ mode?: string }>("/api/v1/register-mode")
+      .then((r) => {
+        if (alive)
+          setOpenReg(r.mode === "open" || r.mode === "email_verify");
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   // 上一轮解出的 PoW（token+solution）：后端 2012 或本地 attempts>=2 时求解，
   // 随登录体重提；服务端 GETDEL 一次性消费，失败后置空重取挑战
   const powRef = useRef<{ token: string; solution: string } | null>(null);
@@ -289,6 +305,14 @@ export function LoginForm() {
               ? dict.login.busy
               : dict.login.submit}
         </button>
+        {/* P-683：注册按钮与登录并排。开放注册时实心主按钮（拉新是一等动线），
+            邀请制时次级样式（仍可达，但弱于登录）。模式未知按邀请制渲染。 */}
+        <Link
+          href="/register"
+          className={openReg ? "bz-reg-btn bz-reg-btn--open" : "bz-reg-btn"}
+        >
+          {openReg ? dict.login.regBtnOpen : dict.login.regBtn}
+        </Link>
         <button
           type="button"
           disabled={busy}

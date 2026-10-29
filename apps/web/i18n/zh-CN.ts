@@ -493,6 +493,8 @@ const zhCnBase = {
     openRegNow: "现在开放注册，无需邀请码，立即加入",
     openRegNote: "本站现已开放注册，无需邀请码即可注册加入",
     openRegHero: "资源分享社区，现已开放注册",
+    regBtn: "注册",
+    regBtnOpen: "立即注册",
   },
 
   messages: {

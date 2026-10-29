@@ -559,6 +559,8 @@ const enBase: Omit<
     openRegNote:
       "Registration is currently open — sign up without an invite code",
     openRegHero: "A resource-sharing community — registration now open",
+    regBtn: "Sign up",
+    regBtnOpen: "Join now",
   },
 
   messages: {

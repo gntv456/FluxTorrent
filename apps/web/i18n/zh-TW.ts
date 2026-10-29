@@ -542,6 +542,8 @@ const zhTwBase: Omit<
     openRegNow: "現在開放註冊，無需邀請碼，立即加入",
     openRegNote: "本站現已開放註冊，無需邀請碼即可註冊加入",
     openRegHero: "資源分享社群，現已開放註冊",
+    regBtn: "註冊",
+    regBtnOpen: "立即註冊",
   },
 
   messages: {
