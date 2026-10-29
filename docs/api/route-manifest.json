@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 830,
+ "total": 834,
  "routes": [
   {
    "method": "POST",
@@ -2820,6 +2820,12 @@
   },
   {
    "method": "GET",
+   "path": "/games/bigsmall/trend",
+   "handler": "bigsmall_trend",
+   "file": "apps/api/src/games_http/casino_bigsmall.rs"
+  },
+  {
+   "method": "GET",
    "path": "/games/collection/{game}",
    "handler": "game_collection",
    "file": "apps/api/src/games_http/collection.rs"
@@ -3135,6 +3141,24 @@
    "path": "/auth/self-unban",
    "handler": "self_unban",
    "file": "apps/api/src/gaps_http/classes_public.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/contracts/tiers",
+   "handler": "contract_tiers",
+   "file": "apps/api/src/gaps_http/contract.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/contracts/sign",
+   "handler": "contract_sign",
+   "file": "apps/api/src/gaps_http/contract.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/contracts/mine",
+   "handler": "contract_mine",
+   "file": "apps/api/src/gaps_http/contract.rs"
   },
   {
    "method": "POST",
@@ -4766,7 +4790,7 @@
    "method": "DELETE",
    "path": "/torrents/{id}/bookmark",
    "handler": "delete_bookmark",
-   "file": "apps/api/src/torrent_http/interact.rs"
+   "file": "apps/api/src/torrent_http/interact_bookmark.rs"
   },
   {
    "method": "GET",
@@ -4910,7 +4934,7 @@
    "method": "GET",
    "path": "/works/{key}",
    "handler": "work_detail",
-   "file": "apps/api/src/torrent_http/works.rs"
+   "file": "apps/api/src/torrent_http/works_detail.rs"
   },
   {
    "method": "POST",
