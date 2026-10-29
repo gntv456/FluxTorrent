@@ -184,8 +184,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const serverCache =
     typeof window === "undefined" &&
     (init as { next?: { revalidate?: number } } | undefined)?.next?.revalidate;
+  // P-689 请求超时（浏览器侧 30s）：公网链路抖动时 fetch 会悬挂几十秒，
+  // 调用方的 busy 态永远不复位——用户看到的就是「按钮一直转圈」。
+  // 超时归一化为网络错误（catch 分支会复位表单并提示重试）。
+  // 调用方自带 signal 时以调用方为准；SSE/上传等长请求不受影响
+  //（它们不走本函数或显式传 signal——见 message_stream/upload 的裸 fetch）。
+  let signal = init?.signal ?? undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  if (!signal && typeof window !== "undefined") {
+    const ctrl = new AbortController();
+    timer = setTimeout(() => ctrl.abort(), 30_000);
+    signal = ctrl.signal;
+  }
+  try {
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
+    signal,
     headers: {
       "Content-Type": "application/json",
       ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
@@ -236,6 +250,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     maybeNotifySparkChanged(path, init?.method);
   }
   return body.data;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 /** 二进制下载（凭证由 HttpOnly cookie 自动携带）。实现搬在 blob-error.ts 的
