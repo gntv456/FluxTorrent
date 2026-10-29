@@ -68,6 +68,159 @@ fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
     shard.as_ref().map_or(true, |l| l.iter().any(|s| s == n))
 }
 
+/// 分片内才执行一次 job（不需要 `continue` 的版本，供 spawn 出的任务体使用）。
+async fn run_sharded<F, T>(
+    db: &PgPool,
+    shard: &Option<Vec<String>>,
+    key: &'static str,
+    fut: F,
+) where
+    F: std::future::Future<Output = anyhow::Result<T>>,
+{
+    if job_in_shard(key.trim_start_matches("job:"), shard) {
+        with_lock(db, key, fut).await;
+    }
+}
+
+/// 小时批：整体 spawn 出去，按原顺序逐条执行。
+/// 原来直接在 select 分支里 await，medal_backfill 一次要按「勋章×用户」
+/// 逐行回填（实测可跑数分钟），期间 60s 分支整个停摆——账单消费、
+/// 僵尸 peer 清扫、手动触发认领一起停。这正是文件头 P1-C 要防的形状。
+async fn hour_jobs(
+    db: PgPool,
+    mut redis: redis::aio::ConnectionManager,
+    shard: Option<Vec<String>>,
+) {
+    // 僵尸阈值同 tick 现算（seeding_reward 也要用）
+    let stale_secs = stale_peer_threshold_secs(&db).await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:seeding_reward",
+        seeding_reward(&db, stale_secs),
+    )
+    .await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:purge_old_login_events",
+        purge_old_login_events(&db),
+    )
+    .await;
+    run_sharded(&db, &shard, "job:ratio_watch", ratio_watch(&db)).await;
+    run_sharded(&db, &shard, "job:dormant_mark", dormant_mark(&db)).await;
+    run_sharded(&db, &shard, "job:request_expire", request_expire(&db)).await;
+    run_sharded(&db, &shard, "job:wishlist_notify", wishlist_notify(&db)).await;
+    run_sharded(&db, &shard, "job:highspeed_tag", highspeed_tag(&db)).await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:resurrection_settle",
+        resurrection_settle(&db),
+    )
+    .await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:social_team_settle",
+        social_team_settle(&db),
+    )
+    .await;
+    // 失败判定必须排在成功结算之后：恰好在期限内达标的队伍应算成功
+    run_sharded(
+        &db,
+        &shard,
+        "job:social_team_expire",
+        social_team_expire(&db),
+    )
+    .await;
+    // 0382 勋章自动成就：threshold 周期重算 + 回填推进。
+    // 两条都幂等可重跑（已授予即跳过、回填靠「扫到哪」续跑），
+    // 故挂 hourly 而非 daily——threshold 的周期口径含日/周，
+    // 一小时一轮才不会出现「周期内最后一天才达标的要等 24h」。
+    // 0382 做种事件桥：把「本小时新增做种时长」记成可计数事件。
+    // 放在 hourly 而非 announce 热路径——announce 每秒数千次，
+    // 在那里插 INSERT 是拿全站最热的写表换一个低频事件源。
+    run_sharded(
+        &db,
+        &shard,
+        "job:medal_seeding_bridge",
+        crate::jobs::medal_achv::record_seeding_hours(&db),
+    )
+    .await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:medal_threshold",
+        crate::jobs::medal_achv::threshold_sweep(&db),
+    )
+    .await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:medal_backfill",
+        crate::jobs::medal_achv::medal_backfill(&db),
+    )
+    .await;
+    // 0383 商城履约自愈：把卡在 frozen 且过了宽限的订单推进到终态
+    // 「钱不会被无限期占着」这条不变量的
+    // 唯一保证——没有它，三段式只是把「扣款后崩掉」换成了
+    // 「冻结后崩掉」。
+    run_sharded(
+        &db,
+        &shard,
+        "job:shop_fulfill_recover",
+        crate::jobs::shop_fulfill::recover(&db),
+    )
+    .await;
+    // 绩效月末结算挂 hourly（0106）：daily 首轮被跳过、重启后要等 24h
+    run_sharded(&db, &shard, "job:jixiao_settle", jixiao_settle(&db)).await;
+    run_sharded(&db, &shard, "job:preserve_settle", preserve_settle(&db)).await;
+    run_sharded(&db, &shard, "job:funding_settle", funding_settle(&db)).await;
+    run_sharded(&db, &shard, "job:refundable_settle", refundable_settle(&db))
+        .await;
+    run_sharded(&db, &shard, "job:achievement_grant", achievement_grant(&db))
+        .await;
+    // 每日做种满 6h 发口粮券（幂等靠发放表 PK）
+    run_sharded(&db, &shard, "job:game_coupons", grant_food_coupons(&db)).await;
+    // 字幕三扫（0148/0149）+ 卫生清理簇（邀请回收/凭证/日志/勋章）
+    run_sharded(&db, &shard, "job:subreq_sweep", subreq_sweep(&db)).await;
+    run_sharded(&db, &shard, "job:subawards", subawards_build(&db)).await;
+    run_sharded(&db, &shard, "job:subcert_sweep", subcert_sweep(&db)).await;
+    run_sharded(&db, &shard, "job:expire_medals", expire_medals(&db)).await;
+    run_sharded(&db, &shard, "job:expire_invites", expire_invites(&db)).await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:purge_expired_tokens",
+        purge_expired_tokens(&db),
+    )
+    .await;
+    run_sharded(
+        &db,
+        &shard,
+        "job:purge_runtime_logs",
+        purge_runtime_logs(&db),
+    )
+    .await;
+    // 审计日志归档（0357）：小时内检查，Redis 键节流每日最多一批
+    run_sharded(
+        &db,
+        &shard,
+        "job:audit_retain",
+        audit_retain_tick(&db, &redis),
+    )
+    .await;
+    // DLQ 积压告警（只进不出等于变相丢计费）
+    {
+        let (db2, mut r) = (db.clone(), redis.clone());
+        run_sharded(&db, &shard, "job:dlq_watch", async move {
+            dlq_watch(&db2, &mut r).await
+        })
+        .await;
+    }
+}
+
 /// 消费者组任务统一入口（0225 G30-B2）：组内投递唯一，多实例并发消费是
 /// 真分摊而非双计——不走 advisory 锁；mark_start/end 保留登记，面板
 /// executed_by 可见分实例。错误只记不中断（下一轮自然补消费）。
@@ -201,82 +354,12 @@ pub async fn run_all(
             bank_daily_gate(&db, &mut last_bank_day).await;
         }
         _ = hour_tick.tick() => {
-            // 首轮不跳过（幂等键护栏，重跑零副作用）；僵尸阈值同 tick 现算
-            let stale_secs = stale_peer_threshold_secs(&db).await;
-            shard_lock!(&db, "job:seeding_reward",
-                seeding_reward(&db, stale_secs), &shard);
-            shard_lock!(&db, "job:purge_old_login_events",
-                purge_old_login_events(&db), &shard);
-            shard_lock!(&db, "job:ratio_watch", ratio_watch(&db), &shard);
-            shard_lock!(&db, "job:dormant_mark", dormant_mark(&db), &shard);
-            shard_lock!(&db, "job:request_expire",
-                request_expire(&db), &shard);
-            shard_lock!(&db, "job:wishlist_notify",
-                wishlist_notify(&db), &shard);
-            shard_lock!(&db, "job:highspeed_tag",
-                highspeed_tag(&db), &shard);
-            shard_lock!(&db, "job:resurrection_settle",
-                resurrection_settle(&db), &shard);
-            shard_lock!(&db, "job:social_team_settle",
-                social_team_settle(&db), &shard);
-            // 失败判定必须排在成功结算之后：恰好在期限内达标的队伍应算成功
-            shard_lock!(&db, "job:social_team_expire",
-                social_team_expire(&db), &shard);
-            // 0382 勋章自动成就：threshold 周期重算 + 回填推进。
-            // 两条都幂等可重跑（已授予即跳过、回填靠「扫到哪」续跑），
-            // 故挂 hourly 而非 daily——threshold 的周期口径含日/周，
-            // 一小时一轮才不会出现「周期内最后一天才达标的要等 24h」。
-            // 0382 做种事件桥：把「本小时新增做种时长」记成可计数事件。
-            // 放在 hourly 而非 announce 热路径——announce 每秒数千次，
-            // 在那里插 INSERT 是拿全站最热的写表换一个低频事件源。
-            shard_lock!(&db, "job:medal_seeding_bridge",
-                crate::jobs::medal_achv::record_seeding_hours(&db), &shard);
-            shard_lock!(&db, "job:medal_threshold",
-                crate::jobs::medal_achv::threshold_sweep(&db), &shard);
-            shard_lock!(&db, "job:medal_backfill",
-                crate::jobs::medal_achv::medal_backfill(&db), &shard);
-            // 0383 商城履约自愈：把卡在 frozen 且过了宽限的订单推进到终态
-            // 「钱不会被无限期占着」这条不变量的
-            // 唯一保证——没有它，三段式只是把「扣款后崩掉」换成了
-            // 「冻结后崩掉」。
-            shard_lock!(&db, "job:shop_fulfill_recover",
-                crate::jobs::shop_fulfill::recover(&db), &shard);
-            // 绩效月末结算挂 hourly（0106）：daily 首轮被跳过、重启后要等 24h
-            shard_lock!(&db, "job:jixiao_settle",
-                jixiao_settle(&db), &shard);
-            shard_lock!(&db, "job:preserve_settle",
-                preserve_settle(&db), &shard);
-            shard_lock!(&db, "job:funding_settle",
-                funding_settle(&db), &shard);
-            shard_lock!(&db, "job:refundable_settle",
-                refundable_settle(&db), &shard);
-            shard_lock!(&db, "job:achievement_grant",
-                achievement_grant(&db), &shard);
-            // 每日做种满 6h 发口粮券（幂等靠发放表 PK）
-            shard_lock!(&db, "job:game_coupons",
-                grant_food_coupons(&db), &shard);
-            // 字幕三扫（0148/0149）+ 卫生清理簇（邀请回收/凭证/日志/勋章）
-            shard_lock!(&db, "job:subreq_sweep", subreq_sweep(&db), &shard);
-            shard_lock!(&db, "job:subawards", subawards_build(&db), &shard);
-            shard_lock!(&db, "job:subcert_sweep", subcert_sweep(&db), &shard);
-            shard_lock!(&db, "job:expire_medals", expire_medals(&db), &shard);
-            shard_lock!(&db, "job:expire_invites",
-                expire_invites(&db), &shard);
-            shard_lock!(&db, "job:purge_expired_tokens",
-                purge_expired_tokens(&db), &shard);
-            shard_lock!(&db, "job:purge_runtime_logs",
-                purge_runtime_logs(&db), &shard);
-            // 审计日志归档（0357）：小时内检查，Redis 键节流每日最多一批
-            shard_lock!(&db, "job:audit_retain",
-                audit_retain_tick(&db, &redis), &shard);
-            // DLQ 积压告警（只进不出等于变相丢计费）
-            {
-                let (db2, mut r) = (db.clone(), redis.clone());
-                with_lock(&db, "job:dlq_watch", async move {
-                    dlq_watch(&db2, &mut r).await
-                })
-                .await;
-            }
+            // 首轮不跳过（幂等键护栏，重跑零副作用）。整批 spawn 出去，
+            // 否则长任务（medal_backfill）会把 60s 分支一起卡住。
+            let (db2, r2, shard2) = (db.clone(), redis.clone(), shard.clone());
+            tokio::spawn(async move {
+                hour_jobs(db2, r2, shard2).await;
+            });
         }
         _ = tick5.tick() => {
             // 重型巡检（ZT81 从 60s 迁来）：O(全表)，300s 一轮且分离到后台
@@ -326,11 +409,14 @@ pub async fn run_all(
         }
         _ = tick6h.tick() => {
             if first_tick6h { first_tick6h = false; continue; }
-            // 对账告警必须先于 reconcile_snapshots：收敛会抹掉差异证据
-            shard_lock!(&db, "job:reconcile_diff_alert",
-                reconcile_diff_alert(&db), &shard);
-            shard_lock!(&db, "job:reconcile_snapshots",
-                reconcile_snapshots(&db), &shard);
+            let (db2, shard2) = (db.clone(), shard.clone());
+            tokio::spawn(async move {
+                // 对账告警必须先于 reconcile_snapshots：收敛会抹掉差异证据
+                run_sharded(&db2, &shard2, "job:reconcile_diff_alert",
+                            reconcile_diff_alert(&db2)).await;
+                run_sharded(&db2, &shard2, "job:reconcile_snapshots",
+                            reconcile_snapshots(&db2)).await;
+            });
         }
         _ = tick1d.tick() => {
             if first_tick1d { first_tick1d = false; continue; }
