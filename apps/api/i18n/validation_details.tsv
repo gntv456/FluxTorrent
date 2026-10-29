@@ -294,5 +294,6 @@ wasm 需为 1B–1569792 字节	wasm 需為 1B–1569792 字節	wasm must be bet
 契约类型必须是 seed/publish	契約類型必須是 seed/publish	Contract type must be seed or publish
 契约档位不存在或未启用	契約檔位不存在或未啟用	Contract tier does not exist or is not enabled
 注册满 30 天后才可参与契约	註冊滿 30 天後才可參與契約	You can enter a contract after 30 days of registration
+用户名 2-24 字符、邮箱有效、申请理由至少 20 字	用戶名 2-24 字符、郵箱有效、申請理由至少 20 字	Username 2-24 chars, a valid email, and a reason of at least 20 characters
 用户名 3-24 字符、邮箱有效、申请理由至少 20 字	用戶名 3-24 字符、郵箱有效、申請理由至少 20 字	Username 3-24 chars, a valid email, and a reason of at least 20 characters
 该邮箱已被注册（如忘记密码可在登录页找回，或换一个邮箱）	該郵箱已被註冊（如忘記密碼可在登入頁找回，或換一個郵箱）	This email is already registered (recover your password on the login page, or use another email)
