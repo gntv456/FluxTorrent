@@ -672,6 +672,8 @@ const enBase: Omit<
     windowSlots: "{left}/{total} spots left this round (invite signups don't count)",
     windowUntil: "until {t}",
     windowNoLimit: "No spot limit this round",
+    windowSoon:
+      "“{label}” opens for registration at {t} (an invite code is required until then)",
     termsNotePre: "By registering you agree to the ",
     termsNoteRules: "site rules",
     termsNotePrivacy: " and privacy policy",

@@ -47,7 +47,8 @@ pub(crate) async fn create_comment(
         auth.id,
         &body.body,
         body.parent_id,
-    ).await?;
+    )
+    .await?;
     // 0423 发布者正反馈：通知种主（详见 notify.rs）
     super::notify::notify_comment(&state.repo.db, tid, auth.id).await;
     // 详情页聚合缓存（2.5）：评论数/评论列表是 aggregate 的一部分，
@@ -107,9 +108,15 @@ pub(crate) async fn delete_comment(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    let action =
-        if is_owner { "comment.delete_own" } else { "comment.delete_staff" };
-    let _ = state.repo.audit(Some(auth.id), action, Some(comment_id)).await;
+    let action = if is_owner {
+        "comment.delete_own"
+    } else {
+        "comment.delete_staff"
+    };
+    let _ = state
+        .repo
+        .audit(Some(auth.id), action, Some(comment_id))
+        .await;
     // 聚合缓存：评论数与评论列表都在 aggregate 里
     super::aggregate::invalidate_tdetail_cache(&state, torrent_id).await;
     Ok(ok(serde_json::json!({ "deleted": comment_id })))
@@ -351,8 +358,10 @@ pub(crate) async fn request_reseed(
             .unwrap_or_else(|_| "user".into());
     let n = torrents::request_reseed(&state.repo.db, tid, (auth.id, username))
         .await?;
-    let _ =
-        state.repo.audit(Some(auth.id), "torrent.reseed", Some(tid)).await;
+    let _ = state
+        .repo
+        .audit(Some(auth.id), "torrent.reseed", Some(tid))
+        .await;
     Ok(ok(serde_json::json!({ "notified": n })))
 }
 
@@ -385,35 +394,4 @@ pub(crate) async fn do_bookmark(
     // 聚合缓存：bookmark_count 在 aggregate.detail 里
     super::aggregate::invalidate_tdetail_cache(&state, tid).await;
     Ok(ok(serde_json::json!({ "bookmarked": body.on })))
-}
-
-/// DELETE 对称口（0417 F5）：REST 客户端/第三方工具按直觉调
-/// DELETE /torrents/{id}/bookmark 取消收藏（旧口径只有 PUT {on:false}，
-/// 实测 404）。语义与 PUT on=false 完全一致：取消不设可见性闸门
-/// （种变不可见后仍要能清掉这一行），幂等（无行删 0 也回 false）。
-#[utoipa::path(
-    delete,
-    path = "/api/v1/torrents/{id}/bookmark",
-    tag = "种子",
-    description = "取消收藏（与 PUT {on:false} 同义；幂等）。",
-    params(
-        ("id" = i64, description = "种子 id"),
-    ),
-    responses(
-        (status = 200, description = "ok"),
-        (status = 401, description = "会话未登录（code 2001）"),
-        (status = 404, description = "种子不存在（code 1004）"),
-    )
-)]
-#[delete("/torrents/{id}/bookmark")]
-pub(crate) async fn delete_bookmark(
-    req: HttpRequest,
-    state: web::Data<std::sync::Arc<AppState>>,
-    path: web::Path<i64>,
-) -> DomainResult<impl Responder> {
-    let auth = require_auth(&req, &state).await?;
-    let tid = path.into_inner();
-    torrents::bookmark(&state.repo.db, tid, auth.id, false).await?;
-    super::aggregate::invalidate_tdetail_cache(&state, tid).await;
-    Ok(ok(serde_json::json!({ "bookmarked": false })))
 }

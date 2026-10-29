@@ -608,6 +608,7 @@ const zhCnBase = {
     windowSlots: "本轮开放名额剩余 {left}/{total}（邀请注册不占名额）",
     windowUntil: "截止 {t}",
     windowNoLimit: "本轮开放注册不限名额",
+    windowSoon: "「{label}」预约于 {t} 开放注册（当前可凭邀请码注册）",
     termsNotePre: "注册即代表同意",
     termsNoteRules: "站规",
     termsNotePrivacy: "与隐私政策",

@@ -5,6 +5,7 @@
 mod email;
 mod invitees;
 mod list;
+mod quota;
 
 pub use email::email_invite_handler;
 pub use invitees::list_invitees_handler;
@@ -22,8 +23,13 @@ use crate::state::AppState;
 
 // ============ 邀请（M23 P0 面） ============
 
+/// 周配额的周期口径（北京时间自然周，0204）：多处 SQL 共用，收口一处。
 /// 设置键点查（i64）：读不到/解析失败回退缺省。
-async fn setting_i64(db: &sqlx::PgPool, name: &str, default: i64) -> i64 {
+pub(super) async fn setting_i64(
+    db: &sqlx::PgPool,
+    name: &str,
+    default: i64,
+) -> i64 {
     sqlx::query_scalar("SELECT value FROM site_settings WHERE name = $1")
         .bind(name)
         .fetch_optional(db)
@@ -46,15 +52,7 @@ pub async fn invite_quota_limit(
     state: &web::Data<std::sync::Arc<AppState>>,
     auth: &AuthUser,
 ) -> i64 {
-    if crate::authz::can(state, auth, crate::authz::perm::INVITES_BONUS).await {
-        (setting_i64(&state.repo.db, "invites_weekly_bonus", 4).await)
-            .clamp(0, 100)
-    } else if auth.class_id >= 3 {
-        (setting_i64(&state.repo.db, "invites_weekly_class3", 2).await)
-            .clamp(0, 100)
-    } else {
-        0
-    }
+    quota::quota_limit(state, auth).await
 }
 
 /// 我的邀请概览（NP invite.php 顶部口径）：配额用量 + 魔力兑换现价 + 剩余额外配额。
@@ -66,13 +64,14 @@ pub async fn invites_status_handler(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let limit = invite_quota_limit(&state, &auth).await;
-    let (used, extra): (i32, i32) = sqlx::query_as(
+    let (used, extra): (i32, i32) = sqlx::query_as(&format!(
         "SELECT \
             COALESCE((SELECT used FROM invite_quota \
-                      WHERE user_id = $1 AND period = date_trunc('week', now() AT TIME ZONE 'Asia/Shanghai')::date), 0), \
+                      WHERE user_id = $1 AND period = {}), 0), \
             COALESCE(quota_extra, 0) \
          FROM users WHERE id = $1",
-    )
+        quota::WEEK_PERIOD,
+    ))
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
     .await
@@ -140,47 +139,15 @@ pub async fn issue_invite_handler(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     if extra.is_none() {
-        // 额外配额不够 → 走周配额原子占位（UPDATE 计数行防并发穿透）
-        let quota = invite_quota_limit(&state, &auth).await;
-        if quota == 0 {
-            return Err(DomainError::Validation(
-                "等级达到 LV3 后才能生成邀请码；也可用魔力兑换（不受等级限制）"
-                    .into(),
-            ));
-        }
-        sqlx::query(
-            "INSERT INTO invite_quota (user_id, period, used) \
-             VALUES ($1, date_trunc('week', now() AT TIME ZONE 'Asia/Shanghai')::date, 0) ON CONFLICT DO \
-             NOTHING",
-        )
-        .bind(auth.id)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        let taken: Option<i32> = sqlx::query_scalar(
-            "UPDATE invite_quota SET used = used + 1 WHERE user_id \
-             = $1 AND period = date_trunc('week', now() AT TIME ZONE 'Asia/Shanghai')::date AND used < $2 \
-             RETURNING used",
-        )
-        .bind(auth.id)
-        .bind(quota)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-        if taken.is_none() {
-            return Err(DomainError::Validation(
-                "本周邀请配额已用完，下周重置；也可用魔力兑换".into(),
-            ));
-        }
+        quota::take_week_quota(&state, &auth).await?;
     }
+
     let code = crate::domain::new_invite_code();
     let expires = chrono::Utc::now()
         + chrono::Duration::hours(invite_ttl_hours(&state.repo.db).await);
     let id = state.repo.issue_invite(auth.id, &code, expires).await?;
-    Ok(ok(
-        serde_json::json!({ "id": id, "code": code,
-            "expires_at": expires.to_rfc3339() }),
-    ))
+    Ok(ok(serde_json::json!({ "id": id, "code": code,
+            "expires_at": expires.to_rfc3339() })))
 }
 
 /// 撤销自己的未用邀请码（0204 P0）：status 0→3。
@@ -209,8 +176,10 @@ pub async fn revoke_invite_handler(
             "邀请码不存在、已使用或已撤销".into(),
         ));
     }
-    let _ =
-        state.repo.audit(Some(auth.id), "invite.revoke", Some(id)).await;
+    let _ = state
+        .repo
+        .audit(Some(auth.id), "invite.revoke", Some(id))
+        .await;
     Ok(ok(serde_json::json!({ "revoked": id })))
 }
 
@@ -269,12 +238,14 @@ pub async fn redeem_invite_handler(
     let expires = chrono::Utc::now()
         + chrono::Duration::hours(invite_ttl_hours(&state.repo.db).await);
     let id = state.repo.issue_invite(auth.id, &code, expires).await?;
-    let _ =
-        state.repo.audit(Some(auth.id), "invite_redeem", Some(id)).await;
-    Ok(ok(serde_json::json!({
-        "id": id, "code": code, "price": price,
-        "expires_at": expires.to_rfc3339(),
-    })))
+    let _ = state
+        .repo
+        .audit(Some(auth.id), "invite_redeem", Some(id))
+        .await;
+    Ok(ok(
+        serde_json::json!({ "id": id, "code": code, "price": price,
+        "expires_at": expires.to_rfc3339() }),
+    ))
 }
 
 #[cfg(test)]

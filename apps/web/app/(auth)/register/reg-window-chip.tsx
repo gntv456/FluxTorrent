@@ -28,7 +28,7 @@ export function RegWindowChip({
     windowSlots: string;
     windowUntil: string;
     windowNoLimit: string;
-  }; // 传 dict.register 命名空间即可（超集兼容）
+  }; // 传 dict.register 命名空间（其为超集，Pick 结构字段逐字对齐）
 }) {
   if (soon) {
     return (

@@ -652,6 +652,7 @@ const zhTwBase: Omit<
     windowSlots: "本輪開放名額剩餘 {left}/{total}（邀請註冊不佔名額）",
     windowUntil: "截止 {t}",
     windowNoLimit: "本輪開放註冊不限名額",
+    windowSoon: "「{label}」預約於 {t} 開放註冊（目前可憑邀請碼註冊）",
     termsNotePre: "註冊即代表同意",
     termsNoteRules: "站規",
     termsNotePrivacy: "與隱私政策",

@@ -101,8 +101,7 @@ pub(crate) async fn site_settings_put(
     if updated.is_none() {
         if name == "register_open" {
             crate::settings_http::key_links::sync_registration_mode(
-                &state,
-                &value,
+                &state, &value,
             )
             .await?;
             crate::staff_http::invalidate_site_profile_cache(&state).await;

@@ -5,7 +5,7 @@ use actix_web::{get, web, HttpRequest, Responder};
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
-use crate::http::{require_auth};
+use crate::http::require_auth;
 use crate::state::AppState;
 use crate::torrents::{promo, TorrentRow};
 
