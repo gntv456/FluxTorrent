@@ -287,7 +287,6 @@ pub async fn run_all(
     let mut tick1d = every(24 * 3600);
     let mut first_tick10 = true;
     let mut first_tick30 = true;
-    let mut first_tick6h = true;
     let mut first_tick1d = true;
     // 手动任务句柄收口（0224 G30）：停机时 drain 等待在跑任务，而非裸 spawn 弃置
     let mut manual_tasks = crate::shutdown::TaskSet::new();
@@ -408,7 +407,9 @@ pub async fn run_all(
             });
         }
         _ = tick6h.tick() => {
-            if first_tick6h { first_tick6h = false; continue; }
+            // 首轮不跳过：两支都幂等，且进程相对计时器每次重启都归零——
+            // worker 比 6h 更频繁地重建时对账永远不跑（实测 last_started
+            // 停在 08:40，快照漂移只能手工收敛）。重启即补一轮。
             let (db2, shard2) = (db.clone(), shard.clone());
             tokio::spawn(async move {
                 // 对账告警必须先于 reconcile_snapshots：收敛会抹掉差异证据
