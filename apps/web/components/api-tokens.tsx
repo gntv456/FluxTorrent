@@ -194,7 +194,10 @@ export function ApiTokens() {
       <p className="text-xs text-sub">{t.scopeHint}</p>
 
       {plain && (
-        <p className="rounded-[var(--r-md)] bg-sun/30 p-2 text-xs">
+        <p
+          className="rounded-[var(--r-md)] bg-[var(--tone-warn-soft)]
+            p-2 text-xs"
+        >
           {t.plainOnce}
           <code className="num ml-1 break-all font-bold">{plain}</code>
         </p>

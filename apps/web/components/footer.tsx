@@ -10,7 +10,7 @@ import { api } from "@/lib/api-client";
 
 /** 帮助区/快捷导航共用的链接样式（长类名抽常量守行宽门禁） */
 const FOOTER_LINK =
-  "inline-block py-1.5 text-sm text-sky hover:text-[var(--brand-orange)]";
+  "inline-block py-1.5 text-sm text-link hover:text-[var(--brand-orange)]";
 
 /**
  * 页脚：
@@ -157,7 +157,7 @@ export async function Footer() {
             })}{" "}
             <Link
               href="/about"
-              className="text-sky hover:text-[var(--brand-orange)]"
+              className="text-link hover:text-[var(--brand-orange)]"
             >
               {about
                 ? `Powered by ${about.product} ${about.version}`

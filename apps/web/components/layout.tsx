@@ -218,7 +218,7 @@ export async function MobileTabBar() {
             href={t.href}
             label={t.label}
             className="tablink flex min-h-[44px] flex-1 flex-col items-center
-              justify-center gap-0.5 py-1 text-[12px] text-sub active:text-sky"
+              justify-center gap-0.5 py-1 text-[12px] text-sub active:text-link"
           >
             <span
               aria-hidden
