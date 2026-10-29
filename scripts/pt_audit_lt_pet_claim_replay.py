@@ -144,7 +144,8 @@ ok("LT5 成文口径仍在（spend.rs 写明发放侧重放要当成失败回滚
    "当成失败" in spend_doc and "让所在事务一起回滚" in spend_doc,
    "那段口径注释被删了，本闸门判据的依据就没了")
 
-CTRL_SRC = """let out = earn_spark_tx(tx, uid, new_pending, "game", idem).await?;
+CTRL_SRC = """let out = earn_spark_tx(
+    tx, uid, new_pending, "game", idem).await?;
 if !matches!(out, SpendOutcome::Replayed) {
     earned = new_pending;
 }

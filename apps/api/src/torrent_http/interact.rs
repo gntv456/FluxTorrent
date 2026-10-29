@@ -36,9 +36,8 @@ pub(crate) async fn create_comment(
     body: web::Json<CommentReq>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    // 每条评论都会给种主发一条 torrent_comment 通知且无去重 ⇒ 没有频率闸时
-    // 单人就能把种主信箱灌满。按人 12 条/分（一次讨论远低于此），放在
-    // 内容校验/落库之前，洪水最贵的从来不是那行 INSERT。
+    // 评论通知无去重：按人 12 条/分（一次讨论远低于此），放在内容校验/
+    // 落库之前——单人即可把种主信箱灌满，洪水最贵的不止那行 INSERT。
     crate::http::throttle_limited(&state, format!("cmt:{}", auth.id), 12)
         .await?;
     let tid = path.into_inner();
@@ -48,8 +47,7 @@ pub(crate) async fn create_comment(
         auth.id,
         &body.body,
         body.parent_id,
-    )
-    .await?;
+    ).await?;
     // 0423 发布者正反馈：通知种主（详见 notify.rs）
     super::notify::notify_comment(&state.repo.db, tid, auth.id).await;
     // 详情页聚合缓存（2.5）：评论数/评论列表是 aggregate 的一部分，
@@ -109,18 +107,9 @@ pub(crate) async fn delete_comment(
         .execute(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    state
-        .repo
-        .audit(
-            Some(auth.id),
-            if is_owner {
-                "comment.delete_own"
-            } else {
-                "comment.delete_staff"
-            },
-            Some(comment_id),
-        )
-        .await;
+    let action =
+        if is_owner { "comment.delete_own" } else { "comment.delete_staff" };
+    let _ = state.repo.audit(Some(auth.id), action, Some(comment_id)).await;
     // 聚合缓存：评论数与评论列表都在 aggregate 里
     super::aggregate::invalidate_tdetail_cache(&state, torrent_id).await;
     Ok(ok(serde_json::json!({ "deleted": comment_id })))
@@ -362,10 +351,8 @@ pub(crate) async fn request_reseed(
             .unwrap_or_else(|_| "user".into());
     let n = torrents::request_reseed(&state.repo.db, tid, (auth.id, username))
         .await?;
-    state
-        .repo
-        .audit(Some(auth.id), "torrent.reseed", Some(tid))
-        .await;
+    let _ =
+        state.repo.audit(Some(auth.id), "torrent.reseed", Some(tid)).await;
     Ok(ok(serde_json::json!({ "notified": n })))
 }
 

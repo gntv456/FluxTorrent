@@ -178,7 +178,8 @@ pub async fn issue_invite_handler(
         + chrono::Duration::hours(invite_ttl_hours(&state.repo.db).await);
     let id = state.repo.issue_invite(auth.id, &code, expires).await?;
     Ok(ok(
-        serde_json::json!({ "id": id, "code": code, "expires_at": expires.to_rfc3339() }),
+        serde_json::json!({ "id": id, "code": code,
+            "expires_at": expires.to_rfc3339() }),
     ))
 }
 
@@ -208,16 +209,13 @@ pub async fn revoke_invite_handler(
             "邀请码不存在、已使用或已撤销".into(),
         ));
     }
-    state
-        .repo
-        .audit(Some(auth.id), "invite.revoke", Some(id))
-        .await;
+    let _ =
+        state.repo.audit(Some(auth.id), "invite.revoke", Some(id)).await;
     Ok(ok(serde_json::json!({ "revoked": id })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct RedeemInviteReq {
-    #[serde(default)]
     idempotency_key: Option<String>,
 }
 
@@ -271,12 +269,11 @@ pub async fn redeem_invite_handler(
     let expires = chrono::Utc::now()
         + chrono::Duration::hours(invite_ttl_hours(&state.repo.db).await);
     let id = state.repo.issue_invite(auth.id, &code, expires).await?;
-    state
-        .repo
-        .audit(Some(auth.id), "invite_redeem", Some(id))
-        .await;
+    let _ =
+        state.repo.audit(Some(auth.id), "invite_redeem", Some(id)).await;
     Ok(ok(serde_json::json!({
-        "id": id, "code": code, "expires_at": expires.to_rfc3339(), "price": price,
+        "id": id, "code": code, "price": price,
+        "expires_at": expires.to_rfc3339(),
     })))
 }
 

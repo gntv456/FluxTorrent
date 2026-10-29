@@ -155,7 +155,8 @@ pub(super) async fn settings_groups_put(
 
     // ---- 逐字段校验（任一失败 → 字段级错误，整体不落库） ----
     let mut errors: Vec<(String, String)> = Vec::new();
-    let mut pending: Vec<(String, String)> = Vec::new(); // (name, normalized_new)
+    // (name, normalized_new)
+    let mut pending: Vec<(String, String)> = Vec::new();
     for name in &names {
         let meta = &by_name[name];
         let raw = &body.values[name];
@@ -258,7 +259,8 @@ pub(super) async fn settings_groups_put(
         };
         sqlx::query(
             "INSERT INTO audit_log (id, actor_id, action, ref) \
-             VALUES (nextval('audit_log_id_seq'), $1, 'setting:update', $2::jsonb)",
+             VALUES (nextval('audit_log_id_seq'), $1, \
+                    'setting:update', $2::jsonb)",
         )
         .bind(auth.id)
         .bind(
@@ -275,38 +277,14 @@ pub(super) async fn settings_groups_put(
         .map_err(|e| DomainError::Internal(e.into()))?;
         changed.push(name.clone());
     }
-    // 键收敛（0214 P2-4.6）：site_name 是权威键，SITENAME（NP 旧口径，RSS 频道
-    // 名在读）随写同步——三个键此前各自为政，站长改一处另两处不动，RSS 与前台
-    // 品牌名就分叉了。只镜像 site_name→SITENAME 方向；直接改 SITENAME 不回写
-    // （旧键单改属罕见，且反向同步会在两键同改时产生写冲突）。
     if changed.iter().any(|n| n == "site_name") {
         if let Some((_, new)) = pending.iter().find(|(n, _)| n == "site_name") {
-            sqlx::query(
-                "UPDATE site_settings SET value = $2, updated_at = now() \
-                 WHERE name = 'SITENAME' AND value IS DISTINCT FROM $2",
-            )
-            .bind("SITENAME")
-            .bind(new)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+            super::key_links::mirror_sitename_tx(&mut *tx, new).await?;
         }
     }
-    // register_open 联动 registration_mode（P-680，与 admin_http/site_put 同款）：
-    // 「开放注册」开关打开而注册模式仍 invite_only 时，注册页照样强制邀请码
-    // ——两张脸必须同步。batch 口是后台卡片保存的主通道。
-    if changed.iter().any(|n| n == "register_open") {
-        if let Some((_, new)) = pending.iter().find(|(n, _)| n == "register_open") {
-            let target = if new == "yes" { "open" } else { "invite_only" };
-            sqlx::query(
-                "UPDATE site_settings SET value = $1, updated_at = now() \
-                 WHERE name = 'registration_mode' AND value IS DISTINCT FROM $1",
-            )
-            .bind(target)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-        }
+    // register_open 联动 registration_mode（P-680，收敛在 key_links）
+    if let Some((_, new)) = pending.iter().find(|(n, _)| n == "register_open") {
+        super::key_links::sync_registration_mode_tx(&mut *tx, new).await?;
     }
     // 乐观并发：任一携带版本戳的键不一致 → 整批拒绝（事务回滚防部分落库），
     // 冲突键列表随 5003 data 返回，前端提示刷新后重试

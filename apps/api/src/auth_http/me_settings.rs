@@ -94,13 +94,10 @@ pub async fn me_overview(
         }
     };
     let get_str = |col: &str| -> String {
-        match r.try_get::<String, _>(col) {
-            Ok(v) => v,
-            Err(e) => {
-                decode_warn(col, &e);
-                String::new()
-            }
-        }
+        r.try_get::<String, _>(col).unwrap_or_else(|e| {
+            decode_warn(col, &e);
+            String::new()
+        })
     };
     let get_ts = |col: &str| -> Option<String> {
         r.try_get::<chrono::DateTime<chrono::Utc>, _>(col)
@@ -146,11 +143,9 @@ pub async fn me_overview(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .into_iter()
-    .map(|(d, n)| (d, n))
     .collect::<Vec<_>>();
-    // 0417 F11：稀疏行补零成连续 30 格（SQL 只回有登录的日）。此前账号注册
-    // 两天就只回 1 个数据点——图表孤点、宽度塌陷，「30 天趋势」名不副实。
-    // 日界与上面 SQL 同一口径：北京时间今天往前数 30 天。
+    // 0417 F11：稀疏行补零成连续 30 格（SQL 只回有登录的日）——否则新账号
+    // 只回 1 个数据点，图表孤点塌陷。日界与上面 SQL 同口径（北京今天前 30 天）。
     let sparse: std::collections::HashMap<chrono::NaiveDate, i64> =
         trend.into_iter().collect();
     let today_cn =
@@ -163,7 +158,10 @@ pub async fn me_overview(
         .collect();
     let trend_json: Vec<serde_json::Value> = trend
         .iter()
-        .map(|(d, n)| serde_json::json!({ "date": d.format("%Y-%m-%d").to_string(), "count": n }))
+        .map(|(d, n)| {
+            serde_json::json!({ "date": d.format("%Y-%m-%d").to_string(),
+                "count": n })
+        })
         .collect();
     let login_total_30d: i64 = trend.iter().map(|(_, n)| n).sum();
     // 最近一次**成功**登录的 IP + 城市（样图 § ucp 概览「最后登录 … · 地点」）。
@@ -316,8 +314,7 @@ pub async fn me_overview(
         "parked": get_bool("parked"),
         "privacy": get_str("privacy"),
         "totp_enabled": get_bool("totp_enabled"),
-        // 凭据不外发全文：这个端点被首页/通知/我的/任务四处轮询，全文唯一
-        // 需要的地方是「复制进下载端」，走 /rss-info 按需取（P-448）。
+        // 凭据不外发全文（四处轮询口；全文走 /rss-info 按需取，P-448）
         "passkey_masked": get_str("passkey").chars().take(4).collect::<String>(),
         "last_ip": last_ip,
         "last_city": last_city,

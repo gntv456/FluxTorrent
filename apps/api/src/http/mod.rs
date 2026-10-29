@@ -146,8 +146,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::user_fields_update)
         .service(crate::auth_http::user_fields_delete)
         .service(crate::torrent_http::list)
-        .service(crate::torrent_http::works_list)
-        // ↑ 作品聚合（资源页作品视图）：独立端点，不进 /torrents 热路径
+        .service(crate::torrent_http::works_list) // 作品聚合三口(独立端点)
         .service(crate::torrent_http::work_detail)
         .service(crate::torrent_http::work_watch)
         // suggest 必须先于 detail：{id} 的 Path<i64> 解析失败会直接 404

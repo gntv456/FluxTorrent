@@ -89,11 +89,17 @@ pub async fn register(
     let window_active =
         super::register_gates::reg_window_active(&state.repo).await;
     let effective_open = reg_mode != "invite_only" || window_active;
-    if !effective_open && body.invite_code.trim().is_empty() {
+    // 带码注册永远走邀请分支（核销 + 绑邀请人 + 不占开放轮名额），
+    // 与窗口是否生效无关——开放期间邀请注册照常计邀请人的功。
+    // P-689：窗口/同 IP 这两道「开放轮治理闸」只约束免邀请码入口。
+    // 旧写法对带码请求也先跑 check_window / check_ip_limit，于是
+    // 「名额已满…可通过邀请码注册」「可换用邀请码注册」这两句指引
+    // 指向的出口本身也被同一道闸拦死（实测：窗口未开始/已结束/满额、
+    // 同 IP 超限时带有效邀请码一律 400）。
+    let using_invite = !body.invite_code.trim().is_empty();
+    if !effective_open && !using_invite {
         return Err(DomainError::InviteInvalid);
     }
-    // 带了邀请码就永远走邀请分支（核销 + 绑邀请人 + 不占开放轮名额），
-    // 与窗口是否生效无关——开放期间邀请注册照常计邀请人的功。
     // 验证码校验（防注册机）。0227 起按驱动分发：
     // - none（缺省）：自研算术题（captcha_id + captcha_answer）
     // - turnstile/recaptcha/hcaptcha：前端组件 token → 后端 siteverify
@@ -197,8 +203,10 @@ pub async fn register(
     throttle(&state, format!("register-ip:{ip}")).await?;
     // 注册治理四道闸（0370 M4）：注册窗口 / 同 IP 限额 / 一次性邮箱；
     // 用户总量（maxusers）在 register_user 事务内校验 + advisory 锁防超发。
-    super::register_gates::check_reg_gates(&state, &ip, &new_user.email)
-        .await?;
+    // P-689：窗口名额与同 IP 额度也是 check-then-insert（事务外先读后写），
+    // 突发并发会各自读到「还剩 1 个」一起建号（实测剩 1 个名额时 4 个
+    // 并发全部成功）。直接注册把「闸检查 → 建号」放进同一把 PG 会话锁，
+    // 邀请注册不占这两道额度、不取锁。
     let pass_hash = domain::hash_password(&new_user.password)?;
     // 单事务注册（repo 分层收编）：事务体在 repo/auth.rs register_user——
     // 建用户+消费邀请码+绑邀请人原子完成（审计修复口径不变），
@@ -206,51 +214,42 @@ pub async fn register(
     let user_repo = crate::repo::auth::AuthRepo {
         db: state.repo.db.clone(),
     };
-    let (user_id, _inviter) = user_repo
-        .register_user(
-            &new_user,
-            &pass_hash,
-            body.invite_code.trim(),
-            !body.invite_code.trim().is_empty(),
+    let gate = if using_invite {
+        None
+    } else {
+        super::register_gates::DirectGateLock::acquire(&state.repo.db).await?
+    };
+    let result = async {
+        super::register_gates::check_reg_gates(
+            &state,
+            &ip,
+            &new_user.email,
+            using_invite,
         )
         .await?;
+        user_repo
+            .register_user(
+                &new_user,
+                &pass_hash,
+                body.invite_code.trim(),
+                !body.invite_code.trim().is_empty(),
+            )
+            .await
+    }
+    .await;
+    if let Some(lock) = gate {
+        lock.release().await;
+    }
+    let (user_id, _inviter) = result?;
     // 同 IP 注册留痕（0370 M4）：只存 sha3-256 摘要，失败只告警不阻断
     super::register_gates::record_ip_signup(&state.repo, &ip, user_id).await;
-    // 字段值落库（required 已在前置校验；失败不回滚账号——附属数据）
-    {
-        // 与上面的 required 校验、与 `/register-fields` 三处同一口径
-        // （P-140）：模块关着的字段既不该要求填，也不该偷偷存下用户塞来的值
-        let defs: Vec<String> = sqlx::query_scalar(&format!(
-            "SELECT key FROM user_field_defs \
-             WHERE enabled AND show_on_register AND {}",
-            crate::modules::module_on_sql("")
-        ))
-        .fetch_all(&state.repo.db)
-        .await
-        .unwrap_or_default();
-        for key in defs {
-            if let Some(v) = body.fields.get(&key).filter(|v| !v.is_null()) {
-                // 账号已建成、这个值没落上——静默吞掉就是「用户填了却查无此值」
-                // （P-135 同族）：不回滚账号是既定口径，但必须留痕
-                if let Err(e) = sqlx::query(
-                    "INSERT INTO user_field_values (user_id, field_key,                      value) VALUES ($1, $2, $3) ON CONFLICT (user_id,                      field_key) DO NOTHING",
-                )
-                .bind(user_id)
-                .bind(&key)
-                .bind(v)
-                .execute(&state.repo.db)
-                .await
-                {
-                    tracing::warn!(
-                        %e,
-                        user = user_id,
-                        field = %key,
-                        "注册字段值落库失败（账号已建，该值丢失）"
-                    );
-                }
-            }
-        }
-    }
+    // 字段值落库（口径见 register_fields_store：三处同源、失败留痕不回滚）
+    super::register_fields_store::store_field_values(
+        &state,
+        user_id,
+        &body.fields,
+    )
+    .await;
     state
         .repo
         .audit(Some(user_id), "user_register", Some(user_id))

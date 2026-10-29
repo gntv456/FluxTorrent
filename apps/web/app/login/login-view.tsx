@@ -17,25 +17,12 @@ import { LoginForm } from "./login-form";
  *  站点挂着邀请制告示是直接矛盾的信息。mode 未知（探测失败）保持
  *  邀请制文案（fail-closed，不虚报开放）。 */
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
+import { useRegisterMode } from "@/lib/use-register-mode";
 
 export function LoginShell() {
   const { dict } = useI18n();
-  const [openReg, setOpenReg] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    api
-      .get<{ mode?: string }>("/api/v1/register-mode")
-      .then((r) => {
-        if (alive)
-          setOpenReg(r.mode === "open" || r.mode === "email_verify");
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // P-682：mode 未知（探测失败）按邀请制渲染（fail-closed，不虚报开放）
+  const openReg = useRegisterMode() ?? false;
   return (
     <main id="main-content">
       <AuthCanvas

@@ -30,20 +30,25 @@ pub async fn magic_pool_promo(db: &PgPool) -> anyhow::Result<u64> {
     let res = sqlx::query(
         r#"
         WITH prev AS (
-            SELECT to_char(date_trunc('month', $1::date) - interval '1 month', 'YYYY-MM') AS month
+            SELECT to_char(date_trunc('month', $1::date) 
+                   - interval '1 month', 'YYYY-MM') AS month
         ),
         pool AS (
             SELECT mp.month, mp.promo_started
             FROM magic_pool mp, prev
-            WHERE mp.month = prev.month AND mp.donated_total >= mp.goal AND NOT mp.promo_started
+            WHERE mp.month = prev.month 
+              AND mp.donated_total >= mp.goal 
+              AND NOT mp.promo_started
         ),
         started AS (
             UPDATE magic_pool mp SET promo_started = TRUE
             FROM pool WHERE mp.month = pool.month
             RETURNING mp.month
         )
-        INSERT INTO promotions (scope, torrent_id, kind, starts_at, ends_at, source)
-        SELECT 'global', NULL, 'x2free', now(), now() + interval '3 days', 'magic_pool'
+        INSERT INTO promotions 
+            (scope, torrent_id, kind, starts_at, ends_at, source)
+        SELECT 'global', NULL, 'x2free', now(), 
+               now() + interval '3 days', 'magic_pool'
         FROM started
         ON CONFLICT DO NOTHING
         "#,
@@ -105,7 +110,8 @@ pub async fn announce_site_promos(db: &PgPool) -> anyhow::Result<u64> {
                    WHEN 'x2half' THEN '促销开启：全站双倍上传 + 半量下载'
                    ELSE '促销开启：全站促销活动'
                END,
-               '促销已开启，截止 ' || to_char(claimed.ends_at AT TIME ZONE 'Asia/Shanghai',
+               '促销已开启，截止 ' 
+               || to_char(claimed.ends_at AT TIME ZONE 'Asia/Shanghai',
                                                'MM-DD HH24:mi') || '，抓紧时间下载！',
                'system'
         FROM claimed
@@ -152,7 +158,9 @@ pub async fn announce_site_promos(db: &PgPool) -> anyhow::Result<u64> {
                    WHEN 'x2half' THEN '🎉 全站 2x上传+50%下载已开启！'
                    ELSE '🎉 全站促销活动进行中！'
                END
-               || ' 截止 ' || to_char(fresh.ends_at AT TIME ZONE 'Asia/Shanghai', 'MM-DD HH24:mi')
+               || ' 截止 ' 
+               || to_char(fresh.ends_at AT TIME ZONE 'Asia/Shanghai', 
+                          'MM-DD HH24:mi')
                || '（promo:' || fresh.id || '）'
         FROM fresh CROSS JOIN staff
         "#,

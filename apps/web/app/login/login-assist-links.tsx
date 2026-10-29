@@ -16,11 +16,18 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
+import { useRegisterMode } from "@/lib/use-register-mode";
+
+/** register-mode 响应里辅助卡关心的字段（开放轮窗口） */
+type RegModeResp = {
+  mode?: string;
+  reg_window?: { slots_left?: number; slots_total?: number | null };
+};
 
 export function LoginAssistLinks() {
   const { dict } = useI18n();
   // null = 未知（探测中/失败），按邀请制渲染
-  const [openReg, setOpenReg] = useState<boolean | null>(null);
+  const openReg = useRegisterMode();
   // P-684 开放轮窗口（横幅里显示剩余名额）
   const [win, setWin] = useState<{
     slots_left?: number;
@@ -30,17 +37,16 @@ export function LoginAssistLinks() {
   useEffect(() => {
     let alive = true;
     api
-      .get<{ mode?: string; reg_window?: { slots_left?: number; slots_total?: number | null } }>(
-        "/api/v1/register-mode",
-      )
+      .get<RegModeResp>("/api/v1/register-mode")
       .then((r) => {
         if (!alive) return;
-        setOpenReg(r.mode === "open" || r.mode === "email_verify");
-        setWin(r.mode === "open" || r.mode === "email_verify"
-          ? (r.reg_window ?? null)
-          : null);
+        setWin(
+          r.mode === "open" || r.mode === "email_verify"
+            ? (r.reg_window ?? null)
+            : null,
+        );
       })
-      .catch(() => setOpenReg(null));
+      .catch(() => {});
     return () => {
       alive = false;
     };

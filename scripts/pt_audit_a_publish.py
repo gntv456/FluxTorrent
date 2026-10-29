@@ -151,7 +151,9 @@ if tid and passkey:
     def announce(**q):
         base = "http://127.0.0.1:7070/announce/%s" % passkey
         qs = urllib.parse.urlencode(q, quote_via=urllib.parse.quote)
-        req = urllib.request.Request(base + "?" + qs, headers={"User-Agent": "Transmission/4.0.3"})
+        req = urllib.request.Request(
+            base + "?" + qs,
+            headers={"User-Agent": "Transmission/4.0.3"})
         try:
             r = urllib.request.urlopen(req, timeout=10)
             return r.status, r.read()
@@ -177,7 +179,9 @@ if passkey:
     peer_id = b"-FL2600-AUDIT1234567"
     def announce_raw(qs):
         base = "http://127.0.0.1:7070/announce/%s" % passkey
-        req = urllib.request.Request(base + "?" + qs, headers={"User-Agent": "Transmission/4.0.3"})
+        req = urllib.request.Request(
+            base + "?" + qs,
+            headers={"User-Agent": "Transmission/4.0.3"})
         try:
             r = urllib.request.urlopen(req, timeout=10)
             return r.status, r.read()

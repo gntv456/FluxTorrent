@@ -116,7 +116,8 @@ async fn check_ip_limit(repo: &Repo, ip: &str) -> DomainResult<()> {
         .unwrap_or(0);
     if n >= limit {
         return Err(DomainError::Validation(format!(
-            "同一网络环境（如家庭/公司宽带）{hours} 小时内最多注册 {limit} 个账号。如确认非重复注册，可换用邀请码注册，或联系管理组协助"
+            "同一网络环境（如家庭/公司宽带）{hours} 小时内最多注册 {limit} 个账号。\
+             如确认非重复注册，可换用邀请码注册，或联系管理组协助"
         )));
     }
     Ok(())
@@ -148,15 +149,74 @@ async fn check_disposable(repo: &Repo, email: &str) -> DomainResult<()> {
 }
 
 /// 三道前置闸（用户总量在事务内另查）。在 register.rs 建号前调用。
+///
+/// P-689：`using_invite` 为真时跳过「注册窗口」「同 IP 限额」——这两道
+/// 闸约束的是免邀请码的开放入口，而拦截文案本身写着「可通过邀请码
+/// 注册」「可换用邀请码注册」；把邀请注册也拦掉会让指引变成死路。
+/// 一次性邮箱闸对两种入口都生效（站点邮箱政策与入站凭据无关）。
 pub(crate) async fn check_reg_gates(
     state: &AppState,
     ip: &str,
     email: &str,
+    using_invite: bool,
 ) -> DomainResult<()> {
-    check_window(&state.repo).await?;
-    check_ip_limit(&state.repo, ip).await?;
+    if !using_invite {
+        check_window(&state.repo).await?;
+        check_ip_limit(&state.repo, ip).await?;
+    }
     check_disposable(&state.repo, email).await?;
     Ok(())
+}
+
+/// 直接注册的「名额 / 同 IP 额度」临界区锁（P-689）。
+///
+/// 这两道闸是 check-then-insert：窗口名额与 IP 计数都在建号事务之外
+/// 先读后写，4 个并发请求会各自读到「还剩 1 个」并一起建号（实测
+/// 4/4 超额）。这里用 PG 会话级 advisory lock 把「检查 → 建号」
+/// 串成一段；锁连接**独立于连接池**（`connect_options` 新建），
+/// 因为持锁期间 `register_user` 还要从池里取连接——若锁也占池，
+/// 突发并发会把池抽干（N 个请求各持 1 个再等第 2 个）。
+/// 邀请注册不占名额/IP 额度，不取这把锁。
+pub(crate) struct DirectGateLock {
+    conn: sqlx::PgConnection,
+}
+
+/// 与 register_user 的 maxusers 锁（`0x7265_675f_6361_7001`）不同键：
+/// 两把锁的获取顺序固定为 GATE → CAP，不存在交叉等待。
+const DIRECT_GATE_LOCK: i64 = 0x7265_675f_6469_7201;
+
+impl DirectGateLock {
+    /// 取锁失败按 fail-open 降级（治理是加固，不能把注册整体打停）。
+    pub(crate) async fn acquire(
+        db: &sqlx::PgPool,
+    ) -> DomainResult<Option<Self>> {
+        use sqlx::Connection as _;
+        let opts = db.connect_options();
+        let mut conn = match sqlx::PgConnection::connect_with(&opts).await {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!(error = %e, "注册闸锁连接失败（降级无锁）");
+                return Ok(None);
+            }
+        };
+        if let Err(e) = sqlx::query("SELECT pg_advisory_lock($1)")
+            .bind(DIRECT_GATE_LOCK)
+            .execute(&mut conn)
+            .await
+        {
+            tracing::warn!(error = %e, "注册闸锁获取失败（降级无锁）");
+            return Ok(None);
+        }
+        Ok(Some(Self { conn }))
+    }
+
+    /// 显式解锁；即使解锁语句失败，连接随后 drop 关闭会话也会释放锁。
+    pub(crate) async fn release(mut self) {
+        let _ = sqlx::query("SELECT pg_advisory_unlock($1)")
+            .bind(DIRECT_GATE_LOCK)
+            .execute(&mut self.conn)
+            .await;
+    }
 }
 
 /// 建号成功后留痕（摘要）。失败只告警，不阻断注册（附属数据）。

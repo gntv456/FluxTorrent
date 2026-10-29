@@ -44,11 +44,11 @@ pub(crate) async fn work_watch(
     let key = path.into_inner();
     // 键形态与详情口同一白名单（valid_work_key）：此前只做了前缀裁剪，
     // n-key 永远匹配不到（形同 404），m/d/i 数字键还会与 group_id 撞车。
-    if !super::works::valid_work_key(&key) {
+    if !super::works_detail::valid_work_key(&key) {
         return Err(DomainError::NotFound(0));
     }
     let name: Option<String> =
-        super::works::keyword_for(&state.repo.read_db, &key)
+        super::works_detail::keyword_for(&state.repo.read_db, &key)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
     let Some(kw) = name else {

@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/form-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { RegisterBasicFields } from "./register-basic-fields";
+import { RegWindowChip } from "./reg-window-chip";
+import { mapRegisterError } from "./register-error-map";
 
 interface Captcha {
   captcha_id: string;
@@ -51,15 +53,6 @@ interface ModeInfo {
     not_started?: boolean;
   };
 }
-
-/** W-18：错误码→字段映射（2005 邀请码 / 2007 用户名；1002 走信封）。 */
-const CODE_TO_FIELD: Record<number, string> = {
-  2005: "invite_code", // 邀请码无效或已过期
-  2006: "invite_code", // 邀请码已被使用
-  2007: "username", // 用户名已被占用
-  1002: "", // 多字段信封，fieldErrorsFrom 解析
-};
-
 /** 注册页（M01 邀请制）：邀请码 + 算术验证码 + 账号密码，对接 POST /auth/register。
  *  W-18 表单协议试点：FormField 四槽位 + FieldErrors 汇总 + SubmitButton
  *  生命周期（busy 防双击）；错误按码映射到字段内联渲染。 */
@@ -166,29 +159,6 @@ export default function RegisterPage() {
     mountCaptchaWidget(driver, siteKey, setCaptchaToken);
   }, [driver, siteKey, gateNonce]);
 
-  /** W-18 错误路径：后端错 → 字段级 map。优先 1002 多字段信封
-   *  （fieldErrorsFrom），单错误码按 CODE_TO_FIELD 归字段；归不了的
-   *  落 form 键由 FieldErrors 顶部汇总渲染。 */
-  function mapError(err: unknown): Record<string, string[]> {
-    const fromEnvelope = fieldErrorsFrom(err);
-    if (fromEnvelope) {
-      return Object.fromEntries(
-        Object.entries(fromEnvelope).map(([f, v]) => [
-          f,
-          Array.isArray(v) ? v : [v],
-        ]),
-      );
-    }
-    if (err instanceof ApiError) {
-      // P-568：1002 的 message 是「参数校验失败: 具体判据」，取正文，
-      // 别用字典标签把「邮箱被禁用」这类可操作的正确原因盖掉。
-      const msg = apiErrorMessage(dict, err);
-      const field = CODE_TO_FIELD[err.code];
-      return field ? { [field]: [msg] } : { form: [msg] };
-    }
-    return { form: [dict.common.networkError] };
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -225,7 +195,7 @@ export default function RegisterPage() {
       setSessionCookie(true);
       router.push("/torrents");
     } catch (err) {
-      setFieldErrs(mapError(err));
+      setFieldErrs(mapRegisterError(dict, err));
       // 凭据一次性：验证码 token / 算术答案 / PoW 解与服务端 GETDEL 同寿命
       setCaptchaToken("");
       setCaptchaAnswer("");
@@ -236,6 +206,10 @@ export default function RegisterPage() {
   }
 
   const first = (f: string) => fieldErrs[f]?.[0];
+  // P-689：预约窗口未开始时，免邀请码入口并未开放（后端窗口闸会拒），
+  // 前端不能沿用 registration_mode=open 的「邀请码可空」——否则访客
+  // 填完表单才在提交处吃「尚未开始」。此时按邀请制渲染并给出开放预告。
+  const windowSoon = regWindow?.not_started === true;
 
   return (
     <AuthCanvas
@@ -258,26 +232,11 @@ export default function RegisterPage() {
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         {/* P-684 开放轮窗口条：生效中显示剩余额度与截止；预约窗口显示
             开放预告（未开始仍按当前模式注册，邀请码照常可用）。 */}
-        {openMode && regWindow && !regWindow.closed && (
-          <div className="bz-regwindow-chip" data-testid="reg-window">
-            {regWindow.slots_left !== undefined &&
-            regWindow.slots_left !== null ? (
-              <>
-                {fmt(dict.register.windowSlots, {
-                  left: regWindow.slots_left,
-                  total: regWindow.slots_total ?? regWindow.slots_left,
-                })}
-                {regWindow.close_at
-                  ? ` · ${fmt(dict.register.windowUntil, {
-                      t: new Date(regWindow.close_at).toLocaleString(),
-                    })}`
-                  : ""}
-              </>
-            ) : (
-              dict.register.windowNoLimit
-            )}
-          </div>
-        )}
+        <RegWindowChip
+          soon={windowSoon}
+          win={regWindow}
+          labels={dict.register}
+        />
         {/* W-18：表单级错误（含映射不出的码）走 FieldErrors 汇总 */}
         <FieldErrors fields={fieldErrs} />
         <RegisterBasicFields
@@ -289,7 +248,7 @@ export default function RegisterPage() {
             if (patch.password !== undefined) setPassword(patch.password);
           }}
           first={first}
-          openMode={openMode}
+          openMode={windowSoon ? false : openMode}
         />
         {/* 验证码（0227）：none=自研算术题；pow=自托管 PoW；其他=第三方组件 */}
         {driver === "pow" ? (

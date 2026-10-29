@@ -34,23 +34,27 @@ pub async fn direct_signups_since(
     since: chrono::DateTime<chrono::Utc>,
 ) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(
-        "SELECT count(*) FROM users          WHERE created_at >= $1 AND invited_by IS NULL",
+        "SELECT count(*) FROM users \
+         WHERE created_at >= $1 AND invited_by IS NULL",
     )
     .bind(since)
     .fetch_one(&repo.db)
     .await
 }
 
-/// 同 IP 闸：窗口小时内该 IP 摘要的注册数。
+/// 同 IP 闸：窗口小时内该 IP 的**直接注册**数（P-689）。
+/// 邀请注册不占这道额度——与招待所持的邀请配额是两套凭据，
+/// 和「换用邀请码注册」的拦截指引保持一致。
 pub async fn ip_signup_count(
     repo: &Repo,
     ip_hash: &str,
     hours: i64,
 ) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(
-        "SELECT count(*) FROM reg_ip_signups \
-         WHERE ip_hash = $1 \
-           AND created_at > now() - ($2::bigint * interval '1 hour')",
+        "SELECT count(*) FROM reg_ip_signups s \
+         JOIN users u ON u.id = s.user_id \
+         WHERE s.ip_hash = $1 AND u.invited_by IS NULL \
+           AND s.created_at > now() - ($2::bigint * interval '1 hour')",
     )
     .bind(ip_hash)
     .bind(hours)

@@ -49,6 +49,8 @@ mod request_expire;
 mod risk_backtest;
 mod risk_score;
 mod run;
+// hour_jobs：小时批任务清单（run.rs 448→313 行拆出，见行数门禁）
+mod hour_jobs;
 mod sanction_sweep;
 mod seeding;
 // 0354 邀请分润：seeding.rs 主结算后直接 super:: 调用，不对外 re-export
