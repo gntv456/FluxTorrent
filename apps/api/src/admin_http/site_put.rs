@@ -95,8 +95,23 @@ pub(crate) async fn site_settings_put(
     .fetch_optional(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 值未变（含旧版幂等写入）：不刷 updated_at、不记审计，直接成功
+    // 值未变（含旧版幂等写入）：不刷 updated_at、不记审计，直接成功——
+    // 但 register_open 的联动要对齐（P-680）：幂等重放也把 registration_mode
+    // 拉齐，否则「开关开着、模式还是 invite_only」的历史错位状态靠重放修不回来。
     if updated.is_none() {
+        if name == "register_open" {
+            let target =
+                if value == "yes" { "open" } else { "invite_only" };
+            sqlx::query(
+                "UPDATE site_settings SET value = $1, updated_at = now() \
+                 WHERE name = 'registration_mode' AND value IS DISTINCT FROM $1",
+            )
+            .bind(target)
+            .execute(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+            crate::staff_http::invalidate_site_profile_cache(&state).await;
+        }
         return Ok(ok(serde_json::json!({ "ok": true })));
     }
     // 留痕要对得上读侧（P-187）：/admin/settings/history 读的是
@@ -130,6 +145,21 @@ pub(crate) async fn site_settings_put(
             })),
         )
         .await;
+    // register_open 联动 registration_mode（P-680）：「开放注册」与「注册模式」
+    // 是同一件事的两张脸——NP 口径的 yesno 开关与三态枚举。此前零联动：
+    // 站长把「开放注册」打开，注册页仍按 registration_mode=invite_only 强制
+    // 邀请码，「设置说不用邀请码、注册页还是要」。
+    if name == "register_open" {
+        let target = if value == "yes" { "open" } else { "invite_only" };
+        sqlx::query(
+            "UPDATE site_settings SET value = $1, updated_at = now() \
+             WHERE name = 'registration_mode' AND value IS DISTINCT FROM $1",
+        )
+        .bind(target)
+        .execute(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    }
     // 站点档案缓存写失效：site_profile 把 20+ 条 settings/词表查询整包缓存
     // （300s），单项保存命中其中任何键都要立刻失效，否则站长改了站名/分类
     // 色要等 5 分钟才见效（2026-10-18 加缓存时的对价）。

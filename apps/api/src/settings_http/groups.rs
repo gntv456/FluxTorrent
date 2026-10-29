@@ -292,6 +292,22 @@ pub(super) async fn settings_groups_put(
             .map_err(|e| DomainError::Internal(e.into()))?;
         }
     }
+    // register_open 联动 registration_mode（P-680，与 admin_http/site_put 同款）：
+    // 「开放注册」开关打开而注册模式仍 invite_only 时，注册页照样强制邀请码
+    // ——两张脸必须同步。batch 口是后台卡片保存的主通道。
+    if changed.iter().any(|n| n == "register_open") {
+        if let Some((_, new)) = pending.iter().find(|(n, _)| n == "register_open") {
+            let target = if new == "yes" { "open" } else { "invite_only" };
+            sqlx::query(
+                "UPDATE site_settings SET value = $1, updated_at = now() \
+                 WHERE name = 'registration_mode' AND value IS DISTINCT FROM $1",
+            )
+            .bind(target)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
+        }
+    }
     // 乐观并发：任一携带版本戳的键不一致 → 整批拒绝（事务回滚防部分落库），
     // 冲突键列表随 5003 data 返回，前端提示刷新后重试
     if !conflicts.is_empty() {
