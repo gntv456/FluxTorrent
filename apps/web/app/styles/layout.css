@@ -2661,7 +2661,11 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   .navdrawer__link,
   .trow-card,
   .ftopic-card {
-    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.18);
+    -webkit-tap-highlight-color: color-mix(
+      in srgb,
+      var(--sky) 18%,
+      transparent
+    );
   }
   a:active:not(:disabled),
   button:active:not(:disabled),
@@ -2684,7 +2688,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border-radius: 8px;
   background: color-mix(in srgb, var(--brand-orange) 8%, transparent);
   text-decoration: none;
-  transition: background 0.15s ease;
+  transition: background var(--motion-fast, 0.15s) ease;
 }
 
 .bz-open-reg-banner:hover {
@@ -2700,7 +2704,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   padding: 2px 7px;
   border-radius: 999px;
   background: var(--brand-orange);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -2747,7 +2751,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   letter-spacing: 2px;
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: border-color var(--motion-fast, 0.15s) ease,
+    color var(--motion-fast, 0.15s) ease;
 }
 
 .bz-reg-btn:hover,
@@ -2768,7 +2773,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   background: color-mix(in srgb, var(--brand-orange) 18%, transparent);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .bz-actions {
     grid-template-columns: 1fr;
   }
