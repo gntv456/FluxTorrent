@@ -553,6 +553,12 @@ const enBase: Omit<
     activateLink: "Resend it",
     inviteOnly:
       "Invite-based private community — accounts are registered via invite codes",
+    /** P-682 open-registration copy on the login page (register-mode=open) */
+    openRegBadge: "Open",
+    openRegNow: "Registration is open — join now, no invite code needed",
+    openRegNote:
+      "Registration is currently open — sign up without an invite code",
+    openRegHero: "A resource-sharing community — registration now open",
   },
 
   messages: {

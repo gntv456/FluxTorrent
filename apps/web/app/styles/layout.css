@@ -2670,3 +2670,46 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     filter: brightness(0.92);
   }
 }
+
+/* P-682 开放注册横幅（登录页辅助卡首行）：register-mode=open 时
+ * 替换「邀请码注册」链接行——状态可见性是主诉求，配色走品牌橙
+ * 描边 + 轻底，克制在辅助卡的视觉层级内，不与登录主按钮争焦。 */
+.bz-open-reg-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--brand-orange);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand-orange) 8%, transparent);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.bz-open-reg-banner:hover {
+  background: color-mix(in srgb, var(--brand-orange) 15%, transparent);
+}
+
+.bz-open-reg-banner + .bz-assistance p {
+  border-top: none; /* 横幅自带分隔，首条虚线不叠 */
+}
+
+.bz-open-reg-badge {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--brand-orange);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.bz-open-reg-text {
+  color: var(--text-body);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}

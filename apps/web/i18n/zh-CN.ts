@@ -488,6 +488,11 @@ const zhCnBase = {
     activateIntro: "收不到激活邮件？",
     activateLink: "去激活页重发",
     inviteOnly: "本站为邀请制私有社区，账号由邀请码注册",
+    /** P-682 开放注册态的登录页文案（register-mode=open 时替换邀请制口径） */
+    openRegBadge: "开放注册",
+    openRegNow: "现在开放注册，无需邀请码，立即加入",
+    openRegNote: "本站现已开放注册，无需邀请码即可注册加入",
+    openRegHero: "资源分享社区，现已开放注册",
   },
 
   messages: {

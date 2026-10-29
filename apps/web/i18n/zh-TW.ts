@@ -537,6 +537,11 @@ const zhTwBase: Omit<
     activateIntro: "收不到啟用郵件？",
     activateLink: "去啟用頁重發",
     inviteOnly: "本站為邀請制私有社群，帳號由邀請碼註冊",
+    /** P-682 開放註冊態的登入頁文案（register-mode=open 時替換邀請制口徑） */
+    openRegBadge: "開放註冊",
+    openRegNow: "現在開放註冊，無需邀請碼，立即加入",
+    openRegNote: "本站現已開放註冊，無需邀請碼即可註冊加入",
+    openRegHero: "資源分享社群，現已開放註冊",
   },
 
   messages: {
