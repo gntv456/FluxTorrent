@@ -276,6 +276,18 @@ def sec_e_consume():
 def purge_user(uid):
     psql("DELETE FROM invites WHERE inviter_id=%d" % uid)
     psql("DELETE FROM traffic_ledger WHERE user_id=%d AND torrent_id=0" % uid)
+    # 清流水必须同步把快照收回「基线 + 剩余流水」口径：D1 发出去的 7GB
+    # 只活在 users.uploaded 与那条流水里，流水删了不快照，墓碑行就会
+    # 永久违反 MZ6（快照 == 基线+Σ流水）。
+    psql(
+        "UPDATE users u SET "
+        "uploaded = COALESCE((SELECT base_up FROM balance_baseline "
+        "WHERE user_id = u.id), 0) + COALESCE((SELECT sum(delta_up) "
+        "FROM traffic_ledger WHERE user_id = u.id), 0), "
+        "downloaded = COALESCE((SELECT base_down FROM balance_baseline "
+        "WHERE user_id = u.id), 0) + COALESCE((SELECT sum(delta_down) "
+        "FROM traffic_ledger WHERE user_id = u.id), 0) "
+        "WHERE id = %d" % uid)
     # 删号是墓碑化（users 行不删），donation_ledger 不会被级联带走，
     # 而它外键引用 donation_plans——探针套餐只有先清流水才删得掉。
     # audit_log 里的 donate_order 留痕按设计保留（链断不得）。

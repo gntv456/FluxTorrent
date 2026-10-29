@@ -25,16 +25,41 @@ pub(crate) async fn stale_peer_threshold_secs(db: &PgPool) -> i64 {
 /// 原本只在下一次 announce 时被覆盖 —— 客户端崩溃/卸载（无 stopped 事件）的行会永久保持
 /// seeding=true，导致 seeding_reward 空转发钱（live 证据：27 行 last_seen 2 天前仍在领收益）
 /// 与 torrents.seeders 虚高。阈值 = max(2h, 2×announce_interval)，远大于正常重汇报抖动。
+///
+/// 同一事务内把受影响 torrent 的三计数从 snatches 重算：只清标记会让
+/// torrents.seeders/leechers 虚高到下一次 6h 全量对账（MZ8 漂移）。
+/// 必须分两条语句——同一条语句里的数据修改 CTE 彼此看不到对方改后的行，
+/// 计数会按「清扫前」的快照算出来（实测仍残留 1）。
 pub(crate) async fn sweep_stale_peers(db: &PgPool) -> anyhow::Result<u64> {
     let threshold_secs = stale_peer_threshold_secs(db).await;
-    let res = sqlx::query(
+    let mut tx = db.begin().await?;
+    let swept: Vec<i64> = sqlx::query_scalar(
         "UPDATE snatches SET seeding = FALSE, leeching = FALSE \
-         WHERE (seeding OR leeching) AND last_seen_at < now() - ($1::bigint * interval '1 second')",
+         WHERE (seeding OR leeching) \
+           AND last_seen_at < now() - ($1::bigint * interval '1 second') \
+         RETURNING torrent_id",
     )
     .bind(threshold_secs)
-    .execute(db)
+    .fetch_all(&mut *tx)
     .await?;
-    Ok(res.rows_affected())
+    if !swept.is_empty() {
+        sqlx::query(
+            "UPDATE torrents t SET \
+             seeders = COALESCE((SELECT count(*) FROM snatches s \
+                 WHERE s.torrent_id = t.id AND s.seeding), 0), \
+             leechers = COALESCE((SELECT count(*) FROM snatches s \
+                 WHERE s.torrent_id = t.id AND s.leeching), 0), \
+             times_completed = COALESCE((SELECT count(*) FROM snatches s \
+                 WHERE s.torrent_id = t.id \
+                   AND s.completed_at IS NOT NULL), 0) \
+             WHERE t.id = ANY($1)",
+        )
+        .bind(&swept)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(swept.len() as u64)
 }
 
 /// 登录事件留存清理：IP 属个人信息，90 天后删除（每小时一次，幂等）。

@@ -419,12 +419,8 @@ def main() -> None:
     # 探针用户自愈（并行会话可能降级/清零）。⚠️ users.uploaded 是**快照列**：
     # worker 每 tick 按 base_up + Σtraffic_ledger.delta_up 重算——裸写 uploaded
     # 会在下一次 announce 消费时被冲掉（实测 50GB 归零）。所以自愈必须走
-    # balance_baseline + 清 ledger，与快照公式自洽。
-    psql(
-        "UPDATE users SET class_id = 9, "
-        "downloaded = GREATEST(downloaded, 2684354560), "
-        "spark_balance = 50000 WHERE id = 7346"
-    )
+    # balance_baseline + 清 ledger，且快照列写成与「基线+零流水」逐字节相等，
+    # 否则 MZ6 会把「快照比基线多 1GB」读成漂移。
     psql("DELETE FROM traffic_ledger WHERE user_id = 7346")
     # spark 也是「基线 + 流水」快照：只抬 balance 不清 ledger 会让
     # balance != base_spark + Σledger（dlforum 的恒等式因此假红）。
@@ -436,6 +432,10 @@ def main() -> None:
         "(7346, 53687091200, 2684354560, 50000, 0, now(), now()) "
         "ON CONFLICT (user_id) DO UPDATE SET base_up = 53687091200, "
         "base_down = 2684354560, base_spark = 50000, updated_at = now()"
+    )
+    psql(
+        "UPDATE users SET class_id = 9, uploaded = 53687091200, "
+        "downloaded = 2684354560, spark_balance = 50000 WHERE id = 7346"
     )
     psql("DELETE FROM invite_quota WHERE user_id = 7346")
     vip = mint(VIP_UID, 9)
