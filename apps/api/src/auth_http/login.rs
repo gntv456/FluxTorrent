@@ -16,14 +16,8 @@ use super::login_types::LoginReq;
 /// site_settings.login_lockout_threshold，缺省/非法回落 5；下限钳 3
 /// （低于 PoW 起答线+1 会让锁定先于 PoW 生效，白费算力闸）。
 async fn lockout_threshold(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
-    let v: Option<String> = sqlx::query_scalar(
-        "SELECT value FROM site_settings \
-         WHERE name = 'login_lockout_threshold'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten();
+    let v = crate::repo::settings::read(&state.repo, "login_lockout_threshold")
+        .await;
     v.and_then(|s| s.trim().parse::<i64>().ok())
         .filter(|n| *n >= 3)
         .unwrap_or(5)
