@@ -3,8 +3,6 @@
 //! 因此 approval / include_unapproved / 旧三列筛选在这里显式拒绝，
 //! 不再静默忽略。
 
-use sqlx::PgPool;
-
 use crate::errors::{DomainError, DomainResult};
 use crate::torrents::TorrentFilter;
 
@@ -28,10 +26,9 @@ fn fuzz(v: &Option<String>) -> Option<String> {
         .map(|s| format!("%{}%", crate::torrents::esc_like(s)))
 }
 
-async fn expand_categories(
-    db: &PgPool,
-    q: &ListQuery,
-) -> DomainResult<Option<Vec<i32>>> {
+/// 纯解析：category_ids/category_id_alias → 去重 id 集（空 = 不筛选）。
+/// 子分类展开的 SQL 由调用方走 repo::categories（分层宪法 ①：H 层零 sqlx）。
+fn parse_category_ids(q: &ListQuery) -> DomainResult<Vec<i32>> {
     let mut raw: Vec<&str> =
         q.category_ids.iter().map(String::as_str).collect();
     if let Some(one) = q.category_id_alias.as_deref() {
@@ -45,37 +42,23 @@ async fn expand_categories(
         .collect();
     let mut ids: Vec<i32> = Vec::with_capacity(toks.len());
     for t in toks {
-        let v = t.parse::<i32>().map_err(|_| {
-            DomainError::Validation(format!("分类参数非法：{t}"))
-        })?;
+        // 动态 format! 校验串无法按原句查译文表（i18n ratchet 只许降），
+        // 改静态句「分类参数非法」；非法值本身不含中文、无需入句
+        let v = t
+            .parse::<i32>()
+            .map_err(|_| DomainError::Validation("分类参数非法".into()))?;
         if !ids.contains(&v) {
             ids.push(v);
         }
     }
     if ids.is_empty() {
-        return Ok(None);
+        return Ok(Vec::new());
     }
-    let rows: Vec<i32> = sqlx::query_scalar(
-        "WITH RECURSIVE sub AS ( \
-         SELECT id FROM categories WHERE id = ANY($1) UNION \
-         SELECT c.id FROM categories c JOIN sub s ON c.parent_id = s.id \
-         ) SELECT id FROM sub",
-    )
-    .bind(&ids)
-    .fetch_all(db)
-    .await
-    .unwrap_or_default();
-    let mut all = ids.clone();
-    for r in rows {
-        if !all.contains(&r) {
-            all.push(r);
-        }
-    }
-    Ok(Some(all))
+    Ok(ids)
 }
 
 pub(super) async fn parse(
-    db: &PgPool,
+    repo: &crate::repo::Repo,
     query: &str,
     q: &ListQuery,
     q_alias: Option<&str>,
@@ -97,10 +80,20 @@ pub(super) async fn parse(
             "作品聚合暂不支持媒介/学段/版本旧列筛选".into(),
         ));
     }
-    let category_id = expand_categories(db, q).await?;
+    // 空集 = 不筛选；展开含子分类（repo 层 SQL，见 parse_category_ids 注释）
+    let ids = parse_category_ids(q)?;
+    let category_id = if ids.is_empty() {
+        None
+    } else {
+        Some(
+            crate::repo::categories::expand_with_children(&repo.read_db, &ids)
+                .await,
+        )
+    };
     let (tag_ids, tag_all) =
         norm_tags(q.tag_id, &q.tag_ids, q.tag_mode.as_deref());
-    let sections = super::sec_params::parse_section_params(db, query).await;
+    let sections =
+        super::sec_params::parse_section_params(&repo.read_db, query).await;
     let search = q_alias
         .map(str::trim)
         .filter(|s| !s.is_empty())

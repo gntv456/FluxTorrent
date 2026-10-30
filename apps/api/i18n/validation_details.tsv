@@ -297,3 +297,7 @@ wasm 需为 1B–1569792 字节	wasm 需為 1B–1569792 字節	wasm must be bet
 用户名 2-24 字符、邮箱有效、申请理由至少 20 字	用戶名 2-24 字符、郵箱有效、申請理由至少 20 字	Username 2-24 chars, a valid email, and a reason of at least 20 characters
 用户名 3-24 字符、邮箱有效、申请理由至少 20 字	用戶名 3-24 字符、郵箱有效、申請理由至少 20 字	Username 3-24 chars, a valid email, and a reason of at least 20 characters
 该邮箱已被注册（如忘记密码可在登录页找回，或换一个邮箱）	該郵箱已被註冊（如忘記密碼可在登入頁找回，或換一個郵箱）	This email is already registered (recover your password on the login page, or use another email)
+作品聚合只展示已过审资源；审核状态筛选请回到种子列表	作品聚合只展示已過審資源；審核狀態篩選請回到種子列表	Works only show approved resources; filter by review status in the torrent list
+作品聚合只展示已过审资源；include_unapproved 不适用	作品聚合只展示已過審資源；include_unapproved 不適用	Works only show approved resources; include_unapproved does not apply
+作品聚合暂不支持媒介/学段/版本旧列筛选	作品聚合暫不支援媒介/學段/版本舊列篩選	Works do not yet support the legacy medium/grade/edition column filters
+分类参数非法	分類參數非法	Invalid category parameter

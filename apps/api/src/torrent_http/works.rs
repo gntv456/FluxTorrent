@@ -176,7 +176,7 @@ pub(crate) async fn works_list(
     // 打成 500；助手把页码夹在 1..=1_000_000 并用饱和乘法 ⇒ 极端页码只是空页。
     let offset = crate::dto::page_offset(page, limit);
     let wf = works_filter::parse(
-        &state.repo.read_db,
+        &state.repo,
         req.query_string(),
         &q.filters,
         q.q.as_deref(),

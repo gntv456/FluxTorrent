@@ -137,8 +137,9 @@ pub(crate) async fn list(
                 .collect();
             let mut ids: Vec<i32> = Vec::with_capacity(toks.len());
             for t in toks {
+                // 与 works_filter.rs 同款：静态句入译文表，非法值不入句
                 let v = t.parse::<i32>().map_err(|_| {
-                    DomainError::Validation(format!("分类参数非法：{t}"))
+                    DomainError::Validation("分类参数非法".into())
                 })?;
                 if !ids.contains(&v) {
                     ids.push(v);
