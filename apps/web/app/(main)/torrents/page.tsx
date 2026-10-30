@@ -26,7 +26,7 @@ import {
   parsePageSize,
   parseView,
   toggleSort,
-  withParam,
+  withParam, withoutCursor,
   type SectionDictRow,
   type SectionKindMeta,
 } from "./_parts/torrents-utils";
@@ -38,21 +38,18 @@ const PILL_CLS =
   "flex min-h-[44px] items-center rounded-full" +
   " border border-line bg-[var(--surface-card)] px-6 text-sm text-sky-deep";
 
+/** 聚合视图不消费种子列表游标；不为此白跑一次 /torrents 查询。 */
+const EMPTY_PAGE: TorrentPage<TorrentListItem> = {
+  items: [], next_cursor: null, total_estimate: 0, hidden_dead: 0,
+};
+
 /** 种子页：常驻搜索行 + 折叠高级面板 + 已选条件摘要；拆件见 ./_parts/。 */
 /** 「看全部（含断种）」的链接：保留其余筛选，只把 alive 切到 0。
- *  RSC 页面用链接而不是 router.replace——本页没有 "use client"，
- *  引 useRouter 会把整个页面拖成客户端组件。 */
+ *  与筛选变更一样必须丢旧游标——旧游标绑定旧结果集。 */
 function hiddenDeadHref(
   sp: Record<string, string | undefined>,
-): string | null {
-  const u = new URLSearchParams();
-  for (const [k, v] of Object.entries(sp)) {
-    if (v === undefined || v === "" || k === "alive") continue;
-    u.set(k, v);
-  }
-  u.set("alive", "0");
-  const qs = u.toString();
-  return qs ? "?" + qs : "?alive=0";
+): string {
+  return withParam(withoutCursor(sp), "alive", "0");
 }
 
 export default async function TorrentsPage({
@@ -73,6 +70,7 @@ export default async function TorrentsPage({
   if (sp.view === "media") { sp.view = "poster"; sp.group = "1"; }
   if (sp.view === "torrents") { sp.view = "table"; sp.group = undefined; }
   const grouped = sp.group === "1";
+  if (grouped) sp.approval = undefined; // 作品层只展示过审资源
   const { dict, locale } = await getDict();
   // 视图/条数走 URL，未指定时回落用户偏好（0316）再回落默认；
   // 与字典链并行取（2026-10-18 提速：此前串行多等一个 API RTT）。
@@ -127,7 +125,9 @@ export default async function TorrentsPage({
           userPrefs?.per_page ? String(userPrefs.per_page) : "20",
         );
     let loadErr: unknown = null;
-    const page = await paged<TorrentListItem, TorrentPage<TorrentListItem>>(
+    const page = grouped
+      ? EMPTY_PAGE
+      : await paged<TorrentListItem, TorrentPage<TorrentListItem>>(
       "/api/v1/torrents",
       {
       limit: pageSize,
@@ -167,6 +167,7 @@ export default async function TorrentsPage({
       max_leechers: sp.max_leechers || undefined,
       min_completed: sp.min_completed || undefined,
       max_completed: sp.max_completed || undefined,
+      rating_min: sp.rating_min || undefined,
       anonymous: sp.anonymous || undefined,
       ...secParams,
     }).catch((e) => {
@@ -273,7 +274,6 @@ export default async function TorrentsPage({
           // 作品聚合本就不含断种过滤，这个入口在聚合态不成立
           if (n <= 0 || grouped) return null;
           const href = hiddenDeadHref(sp);
-          if (!href) return null;
           return (
             <a href={href} className="text-xs text-brand hover:underline">
               {fmt(dict.torrents.hiddenDead, { n })}
@@ -281,10 +281,10 @@ export default async function TorrentsPage({
           );
         })()}
         <div className="flex items-center gap-3">
-          {/* 用户级列设置（0316）：仅表格视图有列可调 */}
           {view === "table" && !grouped && (
             <TorrentsColSettings
               initialHidden={userPrefs?.hidden_cols ?? []}
+              siteHidden={profile?.view_hidden?.columns ?? []}
             />
           )}
           <TorrentsViewSwitch
@@ -350,7 +350,7 @@ export default async function TorrentsPage({
         <a
           href={`/getrss?${new URLSearchParams({
             keyword: sp.search ?? "",
-            cats: sp.category_id ?? "",
+            categories: sp.category_id ?? "",
             ...secParams,
           }).toString()}`}
           className="text-xs text-sky hover:underline"
@@ -361,7 +361,7 @@ export default async function TorrentsPage({
 
       {/* 双向翻页（0170）：正向页 = cursor + dir=prev 回上一页；反向页 =
           next_cursor 继续往回、删 dir 回正到游标原页。页码 p 仅作显示（服务端忽略） */}
-      {(() => {
+      {!grouped && (() => {
         const pageNo = Math.max(1, Number(sp.p ?? "1") || 1);
         const isPrev = sp.dir === "prev";
         // 上一页：正向页带 dir=prev；反向页沿反向继续（next_cursor 为锚）

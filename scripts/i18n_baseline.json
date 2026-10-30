@@ -938,7 +938,7 @@
  "app/(main)/torrents/_parts/torrents-search-box.tsx": [],
  "app/(main)/torrents/_parts/torrents-table-view.tsx": [],
  "app/(main)/torrents/_parts/torrents-table.tsx": [
-  53
+  54
  ],
  "app/(main)/torrents/_parts/torrents-view-switch.tsx": [],
  "app/(main)/torrent/[id]/page.tsx": [],

@@ -31,7 +31,7 @@ export interface SectionDictRow {
 /** 发布表单（NexusPHP 经典 rowhead/rowfollow 表格布局；分类与质量维度全部站点数据驱动）。
  *  按域拆出：parts（共用行）/ files（文件与元数据）/ descr（简介与工具条）/
  *  quality（分类与质量）；本文件只保留数据源加载、状态与提交逻辑。 */
-export function UploadForm() {
+export function UploadForm({ initialName }: { initialName?: string }) {
   const { dict, currency } = useI18n();
   // 分类/元数据源以 /site-profile 为准；tmdb（0358）为档案缺省兜底第五源
   const [profileCats, setProfileCats] = useState<ProfileCat[] | null>(null);
@@ -54,7 +54,7 @@ export function UploadForm() {
   const nfoRef = useRef<HTMLInputElement>(null);
   const descrRef = useRef<HTMLTextAreaElement>(null);
   const [fileName, setFileName] = useState("");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName ?? "");
   const [imdb, setImdb] = useState("");
   const [douban, setDouban] = useState("");
   const [tmdb, setTmdb] = useState("");

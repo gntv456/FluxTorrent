@@ -4,6 +4,7 @@ import type {
   WorkWithSeeds,
 } from "@fluxtorrent/domain-types";
 import { workFlags } from "@/components/work-flags";
+import { workTitle } from "@/components/work-chips";
 import { zhCN } from "@/i18n/zh-CN";
 
 function seed(
@@ -129,5 +130,10 @@ describe("workFlags", () => {
     expect(f.director).toEqual([]);
     expect(f.cast).toEqual([]);
     expect(f.ratings).toEqual([{ label: "评分", value: "6.5" }]);
+  });
+
+  it("前导标签不进入作品标题", () => {
+    expect(workTitle("【官种】阿凡达｜2009｜1080P")).toBe("阿凡达");
+    expect(workTitle("[Group] Movie.2024.1080p")).toBe("Movie 2024 1080p");
   });
 });

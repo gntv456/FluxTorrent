@@ -7,7 +7,8 @@
  * 取数独立端点 `/api/v1/works`：作品聚合要按归一化标题全表聚合，塞进
  * `/torrents` 会拖慢普通列表（后端注释见 works_sql.rs）。
  *
- * 与列表页其余视图共用 URL 参数：`p`（页码）、`search`、`category_id`。
+ * 与列表页其余视图共用 URL 参数：p（页码）、search、分类、标签、维度、
+ * 数值区间、促销、视角维度与 sort；approval 除外（作品层只展示过审资源）。
  */
 
 import Link from "next/link";
@@ -20,6 +21,35 @@ import type { Dict } from "@/i18n/zh-CN";
 import type { Locale } from "@/i18n/config";
 import type { TorrentsSP, TorrentView } from "./torrents-utils";
 import { WorkPosters, WorkRows } from "./torrents-work-views";
+
+/** 作品聚合与种子列表共用同一套筛选参数；approval 不在此列——
+ *  作品层只展示过审资源（后端会拒绝 approval 视图）。 */
+const FILTER_KEYS = [
+  "category_id",
+  "official",
+  "search_area",
+  "search_mode",
+  "alive",
+  "status",
+  "tag_mode",
+  "size_min",
+  "size_max",
+  "date_from",
+  "date_to",
+  "min_seeders",
+  "max_seeders",
+  "exclude",
+  "promo",
+  "owner",
+  "mine",
+  "bookmarked",
+  "min_leechers",
+  "max_leechers",
+  "min_completed",
+  "max_completed",
+  "anonymous",
+  "rating_min",
+] as const;
 
 export async function TorrentWorks({
   dict,
@@ -44,10 +74,16 @@ export async function TorrentWorks({
     page: String(pageNo),
   });
   if (sp.search) qs.set("q", sp.search);
-  // 作品层只吃单分类（多选分类在作品粒度下语义含糊，取第一个）
-  const cat = (sp.category_id ?? "").split(",").filter(Boolean)[0];
-  if (cat) qs.set("category_id", cat);
-  if (sp.sort === "seeders" || sp.sort === "size") qs.set("sort", sp.sort);
+  if (sp.sort) qs.set("sort", sp.sort);
+  for (const key of FILTER_KEYS) {
+    const v = sp[key];
+    if (v) qs.set(key, v);
+  }
+  const tagIds = sp.tag_ids ?? sp.tag_id;
+  if (tagIds) qs.set("tag_ids", tagIds);
+  for (const [k, v] of Object.entries(sp)) {
+    if (k.startsWith("sec_") && v) qs.set(k, v);
+  }
 
   let data: WorkPage | null = null;
   let err: unknown = null;

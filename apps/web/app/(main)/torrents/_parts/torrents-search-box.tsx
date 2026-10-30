@@ -52,9 +52,26 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
     withParam,
   } = props;
   const t2 = dict.torrents2;
+  // 清空筛选不是清空展示态：保留编排/视图/条数，避免「重置」掉回默认视图
+  const resetParams = new URLSearchParams();
+  for (const key of ["group", "view", "limit"]) {
+    const value = sp[key];
+    if (value) resetParams.set(key, value);
+  }
+  const resetQs = resetParams.toString();
+  const resetHref = resetQs ? `/torrents?${resetQs}` : "/torrents";
 
   return (
     <form action="/torrents" method="get" className="torrent-search-box">
+      {/* 表单只提交自身字段：编排/视图/条数是展示态，提交搜索时原样带回，
+          否则聚合/卡片墙一应用筛选就掉回默认视图。 */}
+      {sp.group === "1" && (
+        <input type="hidden" name="group" value="1" />
+      )}
+      {sp.view && <input type="hidden" name="view" value={sp.view} />}
+      {sp.limit && (
+        <input type="hidden" name="limit" value={sp.limit} />
+      )}
       {/* ── 常驻搜索行 ── */}
       <div className="tsb-bar">
         <label className="tsb-field tsb-field--scope">
@@ -121,7 +138,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
               </a>
             ))}
           </div>
-          <a href="/torrents" className="tsb-active__clear">
+          <a href={resetHref} className="tsb-active__clear">
             {t2.clearAll}
           </a>
         </div>
@@ -183,7 +200,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
 
           {/* 面板操作条 */}
           <div className="tsb-actions">
-            <a href="/torrents" className="tsb-reset">
+            <a href={resetHref} className="tsb-reset">
               {t2.advReset}
             </a>
             <button type="submit" className="brand-button">

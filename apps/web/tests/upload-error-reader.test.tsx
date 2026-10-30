@@ -103,6 +103,14 @@ async function submitTorrent() {
 }
 
 describe("发种拒单的读者（P-303）", () => {
+  it("作品卡带入的 initialName 会预填种子名", async () => {
+    render(<UploadForm initialName="阿凡达 2009" />);
+    await waitFor(() =>
+      expect(calls.some((u) => u.includes("site-profile"))).toBe(true),
+    );
+    expect(screen.getByDisplayValue("阿凡达 2009")).toBeTruthy();
+  });
+
   it("3003 的逐条原因必须露出来，不被共用码的粗标签顶掉", async () => {
     const text = await submitTorrent();
     expect(text).toContain("info.private");

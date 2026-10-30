@@ -39,7 +39,16 @@ export function RssBuilder() {
   const t = dict.getrss;
   const [info, setInfo] = useState<RssInfo | null>(null);
   const [failed, setFailed] = useState(false);
-  const [cats, setCats] = useState<number[]>([]);
+  // 种子列表「订阅当前结果」入口预填：?categories= 带入当前分类。
+  // 兼容旧参数的 cats 写法。
+  const sp = useSearchParams();
+  const rawCats = sp.get("categories") ?? sp.get("cats") ?? "";
+  const [cats, setCats] = useState<number[]>(
+    rawCats
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => n > 0),
+  );
   const [media, setMedia] = useState<number[]>([]);
   const [official, setOfficial] = useState(false);
   const [paid, setPaid] = useState<"0" | "1">("0");
@@ -47,7 +56,6 @@ export function RssBuilder() {
   const [linktype, setLinktype] = useState<"dl" | "page">("dl");
   // 种子列表「订阅当前结果」入口预填：?keyword= 带入当前搜索词；
   // sec_* 维度筛选（B3）原样透传进生成的订阅链接（后端 rss 已接同一谓词）
-  const sp = useSearchParams();
   const [search, setSearch] = useState(sp.get("keyword") ?? "");
   const secParams = useMemo(() => {
     const m: Record<string, string> = {};

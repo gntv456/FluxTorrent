@@ -10,8 +10,8 @@
 
 import type { Dict } from "@/i18n/zh-CN";
 import {
-  PAGE_SIZES,
-  TORRENT_VIEWS,
+  PAGE_SIZES, TORRENT_VIEWS,
+  withoutCursor,
   type TorrentView,
   type TorrentsSP,
 } from "./torrents-utils";
@@ -45,10 +45,8 @@ export function TorrentsViewSwitch({
     card: t.viewCard,
     poster: t.viewPoster,
   };
-  // 换形态/编排 = 回到第一页：先把 cursor 与 p 从参数集里剔除再拼链接
-  const base = Object.fromEntries(
-    Object.entries(sp).filter(([k]) => k !== "cursor" && k !== "p"),
-  ) as TorrentsSP;
+  // 换形态/编排 = 回到第一页：旧游标/页码/反向态一并丢弃再拼链接
+  const base = withoutCursor(sp);
   const href = (key: string, value: string | undefined) =>
     withParam(base, key, value);
   const groupHref = (on: boolean) =>
@@ -87,10 +85,7 @@ export function TorrentsViewSwitch({
               return (
                 <a
                   key={v}
-                  href={href(
-                    "view",
-                    v === "table" ? undefined : v,
-                  )}
+                  href={href("view", v)}
                   aria-current={on ? "page" : undefined}
                   className={`${PILL_CLS} ${
                     on ? ON_CLS : OFF_CLS
@@ -108,10 +103,7 @@ export function TorrentsViewSwitch({
             return (
               <a
                 key={n}
-                href={href(
-                  "limit",
-                  n === 20 ? undefined : String(n),
-                )}
+                href={href("limit", String(n))}
                 aria-current={on ? "page" : undefined}
                 className={`num rounded-full px-2 py-1 transition-colors ${
                   on ? ON_CLS : "hover:text-ink"
@@ -136,23 +128,17 @@ export function TorrentsViewSwitch({
         />
         <TorrentsViewSelect
           label={t.viewLabel}
-          current={href(
-            "view",
-            view === "table" ? undefined : view,
-          )}
+          current={href("view", view)}
           options={TORRENT_VIEWS.map((v) => ({
-            href: href("view", v === "table" ? undefined : v),
+            href: href("view", v),
             label: labels[v],
           }))}
         />
         <TorrentsViewSelect
           label={t.perPage.replace("{n}", "N")}
-          current={href(
-            "limit",
-            pageSize === 20 ? undefined : String(pageSize),
-          )}
+          current={href("limit", String(pageSize))}
           options={PAGE_SIZES.map((n) => ({
-            href: href("limit", n === 20 ? undefined : String(n)),
+            href: href("limit", String(n)),
             label: t.perPage.replace("{n}", String(n)),
           }))}
         />

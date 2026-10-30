@@ -126,12 +126,13 @@ export function TorrentActions({
    *  凭证窗口内可复用（0417 F3 与后端 hint 同义）；复制后本组件不留存。 */
   async function copyDlLink() {
     setBusy(true);
+    let abs = "";
     try {
       const r = await api.post<{
         download_url: string;
         ttl_minutes: number;
       }>(`/api/v1/torrents/${torrentId}/download-link`);
-      const abs = new URL(r.download_url, window.location.origin).href;
+      abs = new URL(r.download_url, window.location.origin).href;
       await navigator.clipboard.writeText(abs);
       setOpen(false);
       toast.success(
@@ -141,9 +142,11 @@ export function TorrentActions({
         ),
       );
     } catch (e) {
-      // 剪贴板权限被拒：凭证已签出，降级为可手动复制（toast 正文即直链）
-      if (e instanceof DOMException && e.name === "NotAllowedError") {
+      // 凭证已签出但剪贴板不可用：把直链放进 toast 让人手抄，
+      // 不能静默关菜单——用户会以为复制成功。
+      if (abs) {
         setOpen(false);
+        toast.info(abs, { duration: 15_000 });
         return;
       }
       toast.error(

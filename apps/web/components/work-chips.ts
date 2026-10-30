@@ -106,10 +106,15 @@ export function nameChips(name: string, subsLabel: string): NameChip[] {
   return out;
 }
 
-/** 作品名：切掉「｜」后的副题；纯英文的 dot 名把点换成空格（读起来才像片名）。 */
+/** 作品名：切掉「｜」后的副题；去掉前导的【官种】/[组] 等标签；
+ *  纯英文的 dot 名把点换成空格（读起来才像片名）。 */
 export function workTitle(name: string): string {
   const base = name.split("\uff5c")[0].split("|")[0].trim();
+  const stripped = base
+    .replace(/^(?:[\[\(（【][^\]\)）】]*[\]\)）】]\s*)+/, "")
+    .trim();
+  const title = stripped || base;
   // 含中文就原样（中文片名里的点通常是分隔符，换了反而怪）
-  if (/[\u4e00-\u9fa5]/.test(base)) return base;
-  return base.replace(/[._]+/g, " ").trim();
+  if (/[\u4e00-\u9fa5]/.test(title)) return title;
+  return title.replace(/[._]+/g, " ").trim();
 }

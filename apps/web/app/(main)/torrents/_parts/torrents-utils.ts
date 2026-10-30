@@ -81,7 +81,11 @@ export function withoutValue(
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s !== "" && s !== value);
-  return withParam(sp, key, kept.length ? kept.join(",") : undefined);
+  return withParam(
+    withoutCursor(sp),
+    key,
+    kept.length ? kept.join(",") : undefined,
+  );
 }
 
 /** 在现有参数上增量修改，保留其余筛选（修复翻页丢参数） */
@@ -97,4 +101,14 @@ export function withParam(
   if (value !== undefined && value !== "") qs.set(key, value);
   const s = qs.toString();
   return s ? `/torrents?${s}` : "/torrents";
+}
+
+/** 改筛选/排序 = 换数据集：旧游标绑定旧排序键与旧结果集，必须丢弃。
+ *  分页链接仍直接用 withParam，不能走这里。 */
+export function withoutCursor(sp: TorrentsSP): TorrentsSP {
+  const next = { ...sp };
+  delete next.cursor;
+  delete next.dir;
+  delete next.p;
+  return next;
 }

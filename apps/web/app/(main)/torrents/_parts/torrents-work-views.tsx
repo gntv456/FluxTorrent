@@ -27,7 +27,7 @@ function workHref(key: string): string {
 
 function workPoster(w: WorkWithSeeds): string | null {
   const meta = w.meta?.source ? w.meta : null;
-  return w.poster ?? meta?.poster ?? null;
+  return meta?.poster ?? w.poster ?? null;
 }
 
 function workYear(w: WorkWithSeeds): number | null {

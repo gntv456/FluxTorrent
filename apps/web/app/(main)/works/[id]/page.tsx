@@ -108,7 +108,7 @@ export default async function WorkDetailPage({
   // 作品层缓存（work_meta）优先：TMDB 拉回的年份/海报/简介最完整
   const meta = w.meta?.source ? w.meta : null;
   const year = meta?.year ?? w.year;
-  const poster = w.poster ?? meta?.poster ?? null;
+  const poster = meta?.poster ?? w.poster ?? null;
   const rating = meta?.rating != null ? meta.rating.toFixed(1) : w.rating;
   const crew = [
     [dict.works.director, meta?.director],
@@ -121,7 +121,7 @@ export default async function WorkDetailPage({
     ? { backgroundImage: `url(${poster})`, filter: `blur(${prof.hero.blur}px)` }
     : undefined;
   const syn = (meta?.synopsis ?? w.synopsis ?? "").trim();
-  const detail = (meta?.synopsis ?? w.detail ?? "").trim();
+  const detail = (w.detail ?? meta?.synopsis ?? "").trim();
   const latest = new Date(w.latest_at).toLocaleDateString(dateLocale(locale));
 
   return (

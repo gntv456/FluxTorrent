@@ -30,8 +30,11 @@ const COL_KEYS = [
 
 export function TorrentsColSettings({
   initialHidden,
+  siteHidden = [],
 }: {
   initialHidden: string[];
+  /** 站点级隐藏列：不可在个人层改动 */
+  siteHidden?: string[];
 }) {
   const { dict } = useI18n();
   const t = dict.torrents;
@@ -42,7 +45,7 @@ export function TorrentsColSettings({
   const [saving, setSaving] = useState(false);
 
   // 站点级已隐藏的列，用户不该在个人层「取消」——置灰提示
-  const siteHidden = new Set(initialHidden);
+  const siteHiddenSet = new Set(siteHidden);
 
   useEffect(() => {
     if (!open) return;
@@ -95,8 +98,8 @@ export function TorrentsColSettings({
                 <label className="torrents-colset__item">
                   <input
                     type="checkbox"
-                    checked={!hidden.has(k)}
-                    disabled={siteHidden.has(k)}
+                    checked={!hidden.has(k) && !siteHiddenSet.has(k)}
+                    disabled={siteHiddenSet.has(k)}
                     onChange={() => toggle(k)}
                   />
                   <span>{t.colNames[k] ?? k}</span>

@@ -10,8 +10,9 @@ import { useI18n } from "@/i18n/client";
  *   Enter  打开当前高亮条目
  *   Esc    清除高亮并失焦
  *
- * 可导航单元统一用 `[data-torrent-id]`（三种视图都带该属性）——这同时是
- * 竞品调研里被打分最高的「DOM 语义契约」：油猴脚本可据此零成本适配。
+ * 可导航单元统一用 `[data-torrent-id]`（三种种子视图）或
+ * `[data-work-key]`（作品聚合的三种视图）；两者都有时优先作品粒度。
+ * 这同时是竞品调研里被打分最高的「DOM 语义契约」：油猴脚本可据此零成本适配。
  * 打字时（input/textarea/select/contenteditable）不拦截 j/k，避免吃掉输入。
  */
 export function TorrentsHotkeys() {
@@ -19,8 +20,15 @@ export function TorrentsHotkeys() {
   const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
-    const items = () =>
-      Array.from(document.querySelectorAll<HTMLElement>("[data-torrent-id]"));
+    const items = () => {
+      const works = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-work-key]"),
+      );
+      if (works.length) return works;
+      return Array.from(
+        document.querySelectorAll<HTMLElement>("[data-torrent-id]"),
+      );
+    };
     let idx = -1;
 
     const clear = () => {
@@ -42,7 +50,9 @@ export function TorrentsHotkeys() {
       const a =
         el instanceof HTMLAnchorElement
           ? el
-          : el.querySelector<HTMLAnchorElement>('a[href^="/torrent/"]');
+          : el.querySelector<HTMLAnchorElement>(
+              'a[href^="/works/"], a[href^="/torrent/"]',
+            );
       a?.click();
     };
     const onKey = (e: KeyboardEvent) => {

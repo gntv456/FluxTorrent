@@ -9,7 +9,7 @@ import type {
   SectionKindMeta,
   TorrentsSP,
 } from "./torrents-utils";
-import { withoutValue } from "./torrents-utils";
+import { withoutCursor, withoutValue } from "./torrents-utils";
 
 export interface TorrentChip {
   /** 渲染用唯一键：多选参数会为同一 key 生成多个 chip，故不能直接用 key 当 React key */
@@ -30,9 +30,15 @@ export function buildTorrentChips(opts: {
 }): TorrentChip[] {
   const { sp, dict, categories, tags, secDict, dimKinds, withParam } = opts;
   const t2 = dict.torrents2;
+  const grouped = sp.group === "1";
   const chips: TorrentChip[] = [];
   const chip = (key: string, text: string) => {
-    chips.push({ id: key, key, text, href: withParam(sp, key, undefined) });
+    chips.push({
+      id: key,
+      key,
+      text,
+      href: withParam(withoutCursor(sp), key, undefined),
+    });
   };
   const areaLabels: Record<string, string> = {
     "0": t2.areaTitle,
@@ -73,9 +79,9 @@ export function buildTorrentChips(opts: {
     };
     chip("status", `${t2.statusLegend}：${stLabels[sp.status] ?? sp.status}`);
   }
-  if (sp.approval === "1")
+  if (sp.approval === "1" && !grouped)
     chip("approval", `${t2.approvalLegend}：${t2.approvalPassed}`);
-  if (sp.approval === "2")
+  if (sp.approval === "2" && !grouped)
     chip("approval", `${t2.approvalLegend}：${t2.approvalRejected}`);
   // 官种是导航频道（菜单/页脚都指 /torrents?official=1），不算可移除的
   // 高级筛选条件：不生成 chip，落地页也不因它自动展开高级搜索面板。
@@ -105,7 +111,7 @@ export function buildTorrentChips(opts: {
         id: "tag_mode",
         key: "tag_mode",
         text: `${t2.tagLabel}：${t2.tagMatchAll}`,
-        href: withParam(sp, "tag_mode", undefined),
+        href: withParam(withoutCursor(sp), "tag_mode", undefined),
       });
     }
   }
@@ -140,6 +146,8 @@ export function buildTorrentChips(opts: {
     chip("max_completed", `${t2.completedLegend} ≤ ${sp.max_completed}`);
   if (sp.date_from) chip("date_from", `${t2.dateLegend} ≥ ${sp.date_from}`);
   if (sp.date_to) chip("date_to", `${t2.dateLegend} ≤ ${sp.date_to}`);
+  if (sp.rating_min)
+    chip("rating_min", `${t2.ratingLegend} ≥ ${sp.rating_min}`);
   if (sp.owner) chip("owner", `${t2.ownerLegend}：${sp.owner}`);
   if (sp.exclude) chip("exclude", `${t2.excludeLegend}：${sp.exclude}`);
   if (sp.anonymous === "1") chip("anonymous", t2.anonOnly);

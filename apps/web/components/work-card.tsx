@@ -18,7 +18,7 @@ import { workFlags } from "@/components/work-flags";
 import type { WorkWithSeeds } from "@fluxtorrent/domain-types";
 import type { Dict } from "@/i18n/zh-CN";
 
-/** 「添加种子」落点：带作品名，上传页可预填组名（P-?? 由上传页解析） */
+/** 「添加种子」落点：带作品名，上传页预填种子名（便于同作品标题归一化）。 */
 function uploadHref(work: WorkWithSeeds): string {
   return `/upload?group=${encodeURIComponent(workTitle(work.name))}`;
 }
@@ -39,9 +39,9 @@ export function WorkCard({
   // 作品层缓存（work_meta）优先：TMDB 拉回的年份/海报比「片名抓年份」可靠
   const meta = work.meta?.source ? work.meta : null;
   const year = meta?.year ?? work.year;
-  const poster = work.poster ?? meta?.poster ?? null;
+  const poster = meta?.poster ?? work.poster ?? null;
   const date = new Date(work.latest_at).toLocaleDateString(dateLocale(locale));
-  const syn = (work.synopsis ?? "").trim();
+  const syn = (meta?.synopsis ?? work.synopsis ?? "").trim();
   const flags = workFlags(work, dict);
   const genreTags = flags.genres.slice(0, 4);
   const userTags = work.tags ?? [];

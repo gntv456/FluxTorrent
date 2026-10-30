@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useI18n } from "@/i18n/client";
+import { useI18n, apiErrorMessage } from "@/i18n/client";
+import { api, ApiError } from "@/lib/api-client";
+import { toast } from "@/components/ui/toast";
 import { useIsCompact } from "@/lib/hooks/use-media";
 import { useSwipe } from "@/lib/hooks/use-swipe";
 import { promotionBadge } from "@/lib/format";
@@ -43,18 +45,65 @@ function SwipeRow({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const { dict } = useI18n();
   const [offset, bind] = useSwipe(open, setOpen);
-  void t;
+  const fail = (e: unknown) =>
+    toast.error(
+      e instanceof ApiError
+        ? apiErrorMessage(dict, e)
+        : dict.common.networkError,
+      { requestId: e instanceof ApiError ? e.requestId : undefined },
+    );
+  async function download() {
+    setBusy(true);
+    try {
+      const data = await api.getBlob(`/api/v1/torrents/${t.id}/download`);
+      const url = URL.createObjectURL(
+        new Blob([data], { type: "application/x-bittorrent" }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${t.id}.torrent`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setOpen(false);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function bookmark() {
+    setBusy(true);
+    try {
+      await api.put(`/api/v1/torrents/${t.id}/bookmark`, { on: true });
+      toast.success(dict.torrents.bookmarked);
+      setOpen(false);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <div className="trow-swipe">
       <div className="trow-swipe__acts">
-        <a href={`/torrent/${t.id}?dl=1`} className="trow-swipe__act">
+        <button
+          type="button"
+          className="trow-swipe__act"
+          onClick={download}
+          disabled={busy}
+          aria-label={dict.torrents.download}
+        >
           ⬇
-        </a>
+        </button>
         <button
           type="button"
           className="trow-swipe__act is-fav"
-          onClick={() => setOpen(false)}
+          onClick={bookmark}
+          disabled={busy}
+          aria-label={dict.torrents.bookmark}
         >
           ☆
         </button>

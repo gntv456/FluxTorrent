@@ -40,7 +40,7 @@ export function WorkRelatedGrid({
           <Link key={r.key} href={`/works/${r.key}`} className="wk-rel">
             <span className="wk-rel-p">
               <PosterImage
-                src={r.poster ?? (r.meta?.source ? r.meta.poster : null)}
+                src={(r.meta?.source ? r.meta.poster : null) ?? r.poster}
                 alt=""
                 size="lg"
                 className="h-full w-full object-cover"

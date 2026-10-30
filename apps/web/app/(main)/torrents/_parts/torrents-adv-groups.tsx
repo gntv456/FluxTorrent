@@ -10,6 +10,7 @@ import type {
   SectionKindMeta,
   TorrentsSP,
 } from "./torrents-utils";
+import { withoutCursor } from "./torrents-utils";
 
 /** 高级分组共享的渲染上下文（由搜索盒传入） */
 export interface AdvGroupsCtx {
@@ -41,21 +42,22 @@ export function chipLabel(
   );
 }
 
-/** 行内数值区间（min/max 一对输入；name 前缀 + legend 拼装 aria） */
+/** 行内数值区间（min/max 一对输入；pair 形如 `date_from/date_to`） */
 export function rangeInputs(
   legend: string,
-  name: string,
+  pair: string,
   minPh: string,
   maxPh: string,
   minVal?: string,
   maxVal?: string,
   date = false,
 ) {
+  const [minName, maxName] = pair.split("/");
   return (
     <div className={date ? "tsb-range tsb-range--col" : "tsb-range"}>
       <input
         className="tsb-num"
-        name={`${name}_min`}
+        name={minName}
         type={date ? "date" : "number"}
         min={date ? undefined : 0}
         defaultValue={minVal}
@@ -67,7 +69,7 @@ export function rangeInputs(
       </span>
       <input
         className="tsb-num"
-        name={`${name}_max`}
+        name={maxName}
         type={date ? "date" : "number"}
         min={date ? undefined : 0}
         defaultValue={maxVal}
@@ -94,7 +96,7 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
               {selectedCats.size > 0 && (
                 <a
                   className="tsb-card__action"
-                  href={withParam(sp, "category_id", undefined)}
+                  href={withParam(withoutCursor(sp), "category_id", undefined)}
                 >
                   {t2.catClear}
                 </a>
@@ -130,8 +132,8 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </div>
           </section>
 
-          {/* 审核状态 */}
-          <section className="tsb-card">
+          {/* 审核状态（作品聚合只展示过审资源，聚合态隐藏） */}
+          <section className={sp.group === "1" ? "hidden" : "tsb-card"}>
             <header className="tsb-card__head">
               <h2 className="tsb-card__title">{t2.approvalLegend}</h2>
             </header>
@@ -200,7 +202,7 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </header>
             {rangeInputs(
               t2.dateLegend,
-              "date",
+              "date_from/date_to",
               t2.dateFrom,
               t2.dateTo,
               sp.date_from,
@@ -216,7 +218,7 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </header>
             {rangeInputs(
               t2.sizeLegend,
-              "size",
+              "size_min/size_max",
               t2.sizeFromPh,
               t2.sizeToPh,
               sp.size_min,
@@ -232,7 +234,7 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </header>
             {rangeInputs(
               t2.seedersLegend,
-              "min_seeders",
+              "min_seeders/max_seeders",
               t2.seedersFromPh,
               t2.seedersToPh,
               sp.min_seeders,
@@ -247,7 +249,7 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </header>
             {rangeInputs(
               t2.leechersLegend,
-              "leechers",
+              "min_leechers/max_leechers",
               t2.seedersFromPh,
               t2.seedersToPh,
               sp.min_leechers,
@@ -262,7 +264,7 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
             </header>
             {rangeInputs(
               t2.completedLegend,
-              "completed",
+              "min_completed/max_completed",
               t2.seedersFromPh,
               t2.seedersToPh,
               sp.min_completed,

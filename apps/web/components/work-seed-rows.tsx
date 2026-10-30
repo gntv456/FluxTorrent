@@ -117,7 +117,7 @@ export function WorkSeedRows({
       ) : (
         <div className="wk-shead">
           <span className="wk-name">{t.colTitle}</span>
-          <span className="wk-time">{t.alive}</span>
+          <span className="wk-time">{dict.torrents2.dateLegend}</span>
           <span className="wk-size">{t.colSize}</span>
           <span className="wk-seed">{t.colSeeders}</span>
           <span className="wk-leech">{t.colLeechers}</span>

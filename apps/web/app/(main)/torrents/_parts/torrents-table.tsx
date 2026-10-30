@@ -12,6 +12,7 @@ import { Icon } from "@/components/icons";
 import type { Dict } from "@/i18n/zh-CN";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import type { TorrentsSP } from "./torrents-utils";
+import { withoutCursor } from "./torrents-utils";
 
 export function TorrentsTable({
   dict,
@@ -53,7 +54,15 @@ export function TorrentsTable({
                 <th className="w-16" aria-label="封面" />
               )}
               <th>
-                <a href={withParam(sp, "sort", toggleSort(sp.sort, "name"))}>
+                <a
+                  href={
+                    withParam(
+                      withoutCursor(sp),
+                      "sort",
+                      toggleSort(sp.sort, "name"),
+                    )
+                  }
+                >
                   {t.colTitle}
                 </a>
               </th>
@@ -62,7 +71,7 @@ export function TorrentsTable({
                 <th className="w-16" title={t.colComments}>
                   <a
                     href={withParam(
-                      sp,
+                      withoutCursor(sp),
                       "sort",
                       toggleSort(sp.sort, "comments"),
                     )}
@@ -90,7 +99,13 @@ export function TorrentsTable({
                 <th className="w-20" title={t.colSize}>
                   <a
                     className="inline-flex items-center gap-1"
-                    href={withParam(sp, "sort", toggleSort(sp.sort, "size"))}
+                    href={
+                      withParam(
+                        withoutCursor(sp),
+                        "sort",
+                        toggleSort(sp.sort, "size"),
+                      )
+                    }
                   >
                     <Icon name="disc" size={15} />
                     <span className="tcol-label">{t.colSize}</span>
@@ -101,7 +116,13 @@ export function TorrentsTable({
                 <th className="w-16" title={t.colSeeders}>
                   <a
                     className="inline-flex items-center gap-1"
-                    href={withParam(sp, "sort", toggleSort(sp.sort, "seeders"))}
+                    href={
+                      withParam(
+                        withoutCursor(sp),
+                        "sort",
+                        toggleSort(sp.sort, "seeders"),
+                      )
+                    }
                   >
                     <Icon name="seed" size={15} />
                     <span className="tcol-label">{t.colSeeders}</span>
@@ -113,7 +134,7 @@ export function TorrentsTable({
                   <a
                     className="inline-flex items-center gap-1"
                     href={withParam(
-                      sp,
+                      withoutCursor(sp),
                       "sort",
                       toggleSort(sp.sort, "leechers"),
                     )}
@@ -128,7 +149,7 @@ export function TorrentsTable({
                   <a
                     className="inline-flex items-center gap-1"
                     href={withParam(
-                      sp,
+                      withoutCursor(sp),
                       "sort",
                       toggleSort(sp.sort, "completed"),
                     )}
