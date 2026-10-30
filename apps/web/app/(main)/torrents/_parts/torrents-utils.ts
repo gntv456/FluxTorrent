@@ -42,15 +42,15 @@ export function toggleSort(
 
 // ===== 列表形态（方案阶段二：三视图 + 每页条数可选） =====
 // 只影响呈现与单页数量，都不算「筛选条件」，故不进 chips。
+// 编排轴（是否按作品聚合）走 group=1，与下面的展示形态正交：
+// 不聚合 × 列表/卡片/海报墙 与 聚合 × 列表/卡片/海报墙 共 6 种组合。
 
-export type TorrentView = "table" | "card" | "poster" | "group";
+export type TorrentView = "table" | "card" | "poster";
 
 export const TORRENT_VIEWS: readonly TorrentView[] = [
   "table",
   "card",
   "poster",
-  // 作品聚合（资源页样图的 group 模式）：按作品归堆，种子挂在作品卡下
-  "group",
 ];
 
 /** 归一化视图参数（未知值/缺省 → table，与旧行为一致） */

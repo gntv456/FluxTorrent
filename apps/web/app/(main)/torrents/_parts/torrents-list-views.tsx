@@ -1,8 +1,8 @@
 /**
  * 种子列表的三种「种子粒度」视图（卡片 / 海报墙 / 表格）。
  *
- * 从 page.tsx 按域拆出（300 行门禁 + 作品聚合视图要往同一个分支里接第四种，
- * 留在页面里会把它顶出基线）。纯呈现：数据仍是列表接口那一份。
+ * 作品聚合（group=1）是正交的编排轴，走 TorrentWorks；这里只负责
+ * 不聚合时的展示形态。纯呈现：数据仍是列表接口那一份。
  */
 
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
@@ -23,7 +23,7 @@ export function TorrentListViews({
   hiddenCols,
 }: {
   /** 种子粒度视图（作品聚合不在这里，它走 TorrentWorks） */
-  view: Exclude<TorrentView, "group">;
+  view: TorrentView;
   items: TorrentListItem[];
   dict: Dict;
   sp: TorrentsSP;

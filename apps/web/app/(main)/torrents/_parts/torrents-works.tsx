@@ -1,7 +1,8 @@
 /**
  * 资源页「作品聚合」视图（样图 design/资源页-影视资料库样图.html 的 group 模式）：
- * 按作品归堆——每部作品一张卡（封面 + 片名 + 年份 + 分类 + 标签 + 简介 +
- * 统计），卡下直接挂该作品的种子行，每部最多 8 条，多余的走「查看全部」。
+ * 按作品归堆，展示形态跟随列表页的 view：
+ *   · 卡片=每部作品一张卡（封面 + 片名 + 标签 + 简介 + 卡内种子行）
+ *   · 列表=一行一部作品；海报墙=封面网格（见 torrents-work-views.tsx）
  *
  * 取数独立端点 `/api/v1/works`：作品聚合要按归一化标题全表聚合，塞进
  * `/torrents` 会拖慢普通列表（后端注释见 works_sql.rs）。
@@ -17,27 +18,29 @@ import { WorkCard } from "@/components/work-card";
 import type { WorkPage } from "@fluxtorrent/domain-types";
 import type { Dict } from "@/i18n/zh-CN";
 import type { Locale } from "@/i18n/config";
-import type { TorrentsSP } from "./torrents-utils";
-
-/** 每页作品数（样图是作品卡 + 卡内种子，粒度比种子列表粗，12 已够一屏） */
-const WORKS_PER_PAGE = 12;
+import type { TorrentsSP, TorrentView } from "./torrents-utils";
+import { WorkPosters, WorkRows } from "./torrents-work-views";
 
 export async function TorrentWorks({
   dict,
   locale,
   sp,
   cats,
+  view,
+  perPage,
   withParam,
 }: {
   dict: Dict;
   locale: Locale;
   sp: TorrentsSP;
   cats: { id: number; label: string }[];
+  view: TorrentView;
+  perPage: number;
   withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
 }) {
   const pageNo = Math.max(1, Number(sp.p ?? "1") || 1);
   const qs = new URLSearchParams({
-    limit: String(WORKS_PER_PAGE),
+    limit: String(perPage),
     page: String(pageNo),
   });
   if (sp.search) qs.set("q", sp.search);
@@ -73,22 +76,38 @@ export async function TorrentWorks({
 
   const catName = (id: number) =>
     cats.find((c) => c.id === id)?.label ?? "";
-  const totalPages = Math.max(1, Math.ceil(data.total / WORKS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(data.total / perPage));
 
   return (
     <div className="flex flex-col gap-2">
       <p className="wk-lead">
         {dict.works.countWorks.replace("{n}", String(data.total))}
       </p>
-      {data.items.map((w) => (
-        <WorkCard
-          key={w.key}
-          work={w}
+      {view === "table" ? (
+        <WorkRows
+          items={data.items}
           dict={dict}
           locale={locale}
-          catName={catName(w.category_id)}
+          catName={catName}
         />
-      ))}
+      ) : view === "poster" ? (
+        <WorkPosters
+          items={data.items}
+          dict={dict}
+          locale={locale}
+          catName={catName}
+        />
+      ) : (
+        data.items.map((w) => (
+          <WorkCard
+            key={w.key}
+            work={w}
+            dict={dict}
+            locale={locale}
+            catName={catName(w.category_id)}
+          />
+        ))
+      )}
       {totalPages > 1 && (
         <nav className="flex items-center justify-center gap-3 py-1">
           {pageNo > 1 && (

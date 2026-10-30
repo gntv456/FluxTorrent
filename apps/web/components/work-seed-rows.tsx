@@ -99,13 +99,13 @@ export function WorkSeedRows({
   return (
     <>
       <div className="wk-shead">
-        <span>{t.colTitle}</span>
-        <span>{t.alive}</span>
-        <span>{t.colSize}</span>
-        <span>{t.colSeeders}</span>
-        <span>{t.colLeechers}</span>
-        <span>{t.colCompleted}</span>
-        <span>{t.colActions}</span>
+        <span className="wk-name">{t.colTitle}</span>
+        <span className="wk-time">{t.alive}</span>
+        <span className="wk-size">{t.colSize}</span>
+        <span className="wk-seed">{t.colSeeders}</span>
+        <span className="wk-leech">{t.colLeechers}</span>
+        <span className="wk-done">{t.colCompleted}</span>
+        <span className="wk-act">{t.colActions}</span>
       </div>
       {items.map((row) => (
         <Row key={row.id} t={row} dict={dict} locale={locale} />

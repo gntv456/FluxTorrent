@@ -322,6 +322,8 @@ const zhTwBase: Omit<
     viewTable: "清單",
     viewCard: "卡片",
     viewPoster: "海報牆",
+    groupLabel: "編排",
+    groupOff: "不聚合",
     perPage: "每頁 {n} 條",
     hkSearch: "搜尋",
     hkMove: "移動",

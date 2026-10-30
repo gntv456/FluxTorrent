@@ -38,10 +38,7 @@ const PILL_CLS =
   "flex min-h-[44px] items-center rounded-full" +
   " border border-line bg-[var(--surface-card)] px-6 text-sm text-sky-deep";
 
-/** 种子页（参考站 torrents.php 复刻 + 0118 高级搜索重排）：
- *  常驻搜索行（范围/关键字/匹配/搜索）+ 折叠高级面板按语义分组（基础筛选 / 数值与时间 /
- *  发布者与状态 / 标签与排序 / 多维筛选），每组内卡片网格；已选条件摘要条置顶可逐个移除。
- *  搜索盒 / 表格 / chips 拼装 / URL 工具拆至 ./_parts/（300 行门禁）。 */
+/** 种子页：常驻搜索行 + 折叠高级面板 + 已选条件摘要；拆件见 ./_parts/。 */
 /** 「看全部（含断种）」的链接：保留其余筛选，只把 alive 切到 0。
  *  RSC 页面用链接而不是 router.replace——本页没有 "use client"，
  *  引 useRouter 会把整个页面拖成客户端组件。 */
@@ -71,19 +68,21 @@ export default async function TorrentsPage({
       Array.isArray(v) ? v.join(",") : v,
     ]),
   );
+  // 旧链接 view=group（曾是第四种平级视图）→ 归一为「聚合 + 卡片」
+  if (sp.view === "group") {
+    sp.view = "card";
+    sp.group = "1";
+  }
+  const grouped = sp.group === "1";
   const { dict, locale } = await getDict();
-  // 列表形态（方案阶段二）：视图与每页条数都走 URL，未知值回落默认（table / 20）
-  // 用户级列表偏好（0316）：URL 未显式指定时，回落用户偏好，再回落默认。
-  // 与三个站点级字典并行取（2026-10-18 主菜单切换提速：此前 list-prefs 先
-  // 串行一跳再发字典，RSC 首字节白等一整个 API RTT）。
+  // 视图/条数走 URL，未指定时回落用户偏好（0316）再回落默认；
+  // 与字典链并行取（2026-10-18 提速：此前串行多等一个 API RTT）。
   // 多维筛选参数转发（sec_{kind} → 后端通用解析）：不转发则筛选静默失效
   const secParams: Record<string, string> = {};
   for (const [k, v] of Object.entries(sp)) {
     if (k.startsWith("sec_") && v) secParams[k] = v;
   }
-  // 双链并发（2026-10-18 提速二段）：字典链与「偏好→列表」链并行——
-  // paged 依赖 view/pageSize（仅 URL 未指定时才回落 userPrefs），故链2
-  // 先取偏好再取列表；此前字典与列表串行，RSC 尾延 = 两段之和。
+  // 双链并发（2026-10-18）：字典与「偏好→列表」并行，尾延不再是两段之和。
   const dictsPromise = (async () => {
     const [profile, secDict, tagDict] = await Promise.all([
     loadPublic<{
@@ -185,8 +184,7 @@ export default async function TorrentsPage({
   const [dictsRes, listRes] = await Promise.all([dictsPromise, listChain]);
   const { profile, secDict, tagDict } = dictsRes;
   const { userPrefs, view, pageSize, page, loadErr } = listRes;
-  // E6 视图布局：站点级列隐藏集合（profile.view_hidden.columns；空=全显示）
-  // 用户级覆盖（0316）：叠加用户额外隐藏列（title/选择/行为列恒显，见表格门控）
+  // E6 视图布局：站点级列隐藏集合 + 用户级覆盖（0316，title/行为列恒显）
   const hiddenCols = new Set([
     ...(profile?.view_hidden?.columns ?? []),
     ...(userPrefs?.hidden_cols ?? []),
@@ -202,11 +200,9 @@ export default async function TorrentsPage({
   // 平行组别数组（0160 P2）：筛选面板按 attribute/content 分两行渲染
   const tagGroups =
     tagDict && !Array.isArray(tagDict) ? (tagDict.groups ?? []) : [];
-  // 半旧会话（cookie 无 token）或后端抖动时降级为空列表，页面骨架仍可用；
-  // 但要把「失败」与「确实没有结果」区分开（方案 P0-6：此前两者都渲染成空态）
-
-  // 分类只以 site-profile 为准（后台可改，与站型包同步）。拿不到就是空列表——
-  // 不再回落 i18n 字典：那是另一套筛选用词表，会把选项 id 指到不存在的分类上
+  // 半旧会话/后端抖动降级为空列表，但「失败」与「没有结果」要分开（P0-6）。
+  // 分类只以 site-profile 为准（后台可改），不回落 i18n 的筛选用词表——
+  // 否则选项 id 会指到不存在的分类上。
   const cats = profile?.categories ?? [];
   const categories = cats.map((c) => ({ id: c.id, label: catPath(cats, c) }));
   // 分类图标键（0166）：{category_id: icon_key}；站长后台可替换，空键回落首字
@@ -264,17 +260,19 @@ export default async function TorrentsPage({
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="num text-xs text-sub">
-          {fmt(dict.torrents.total, { n: page.total_estimate })}
+          {grouped
+            ? null
+            : fmt(dict.torrents.total, { n: page.total_estimate })}
         </span>
         {/* 0102 存活三态的可见性补齐：默认视图只给活种，不说清楚的话
             新会员会把「列表只有 N 条」当成「本站只有 N 个种」。提示只在
             服务端真的藏了断种时出现，点了直接切到「全部」。RSC 里用链接
             不用 useRouter（本页是服务端组件）。 */}
         {(() => {
-          // RSC：局部算一次 href（不能内联调两次，也不能用 useRouter——
-          // 本页是服务端组件，引 useRouter 会把整页拖成客户端组件）
+          // RSC 里用链接不用 useRouter（引它会拖成客户端组件）
           const n = page.hidden_dead ?? 0;
-          if (n <= 0) return null;
+          // 作品聚合本就不含断种过滤，这个入口在聚合态不成立
+          if (n <= 0 || grouped) return null;
           const href = hiddenDeadHref(sp);
           if (!href) return null;
           return (
@@ -285,7 +283,7 @@ export default async function TorrentsPage({
         })()}
         <div className="flex items-center gap-3">
           {/* 用户级列设置（0316）：仅表格视图有列可调 */}
-          {view === "table" && (
+          {view === "table" && !grouped && (
             <TorrentsColSettings
               initialHidden={userPrefs?.hidden_cols ?? []}
             />
@@ -294,6 +292,7 @@ export default async function TorrentsPage({
             dict={dict}
             sp={sp}
             view={view}
+            grouped={grouped}
             pageSize={pageSize}
             withParam={withParam}
           />
@@ -304,17 +303,17 @@ export default async function TorrentsPage({
       {/* 列表 hover 预览卡（阶段三）：事件委托整页生效 */}
       <TorrentHoverPreview />
 
-      {/* 四形态：表格 / 卡片 / 海报墙 / 作品聚合（M4 双栏 + 四态见下方分支） */}
+      {/* 编排轴 × 展示轴：聚合走作品粒度，不聚合走种子粒度 */}
       <TorrentSplitView items={page.items}>
-      {view === "group" ? (
-        // 作品聚合（样图 group 模式）：作品卡 + 卡内种子，取数走 /works。
-        // 必须先于「列表为空」分支判断——作品视图含断种，种子列表默认只给
-        // 活种，若先判空就会出现「有作品却显示空态」。
+      {grouped ? (
+        // 作品聚合：按 view 分形态渲染，含断种；必须先于「列表为空」判断。
         <TorrentWorks
           dict={dict}
           locale={locale}
           sp={sp}
           cats={categories}
+          view={view}
+          perPage={pageSize}
           withParam={withParam}
         />
       ) : page.items.length === 0 ? (

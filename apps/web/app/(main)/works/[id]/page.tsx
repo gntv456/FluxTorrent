@@ -127,7 +127,9 @@ export default async function WorkDetailPage({
   return (
     <div className="flex flex-col">
       <div className="wk-back">
-        <Link href="/torrents?view=group">{`‹ ${dict.works.back}`}</Link>
+        <Link href="/torrents?group=1&view=card">
+          {`‹ ${dict.works.back}`}
+        </Link>
       </div>
 
       <section className="wk-hero">

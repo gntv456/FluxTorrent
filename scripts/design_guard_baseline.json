@@ -295,10 +295,10 @@
  },
  "app/(main)/torrents/page.tsx": {
   "h1": [],
-  "h1First": 242,
+  "h1First": 238,
   "palette": [
    39,
-   358
+   357
   ],
   "color": []
  },
@@ -405,8 +405,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   67,
-   86
+   24
   ],
   "color": []
  },

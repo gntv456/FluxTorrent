@@ -305,6 +305,8 @@ const zhCnBase = {
     viewTable: "列表",
     viewCard: "卡片",
     viewPoster: "海报墙",
+    groupLabel: "编排",
+    groupOff: "不聚合",
     perPage: "每页 {n} 条",
     hkSearch: "搜索",
     hkMove: "移动",

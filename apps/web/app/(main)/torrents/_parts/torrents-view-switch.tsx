@@ -1,8 +1,10 @@
 /**
- * 列表形态切换（方案阶段二）：视图（列表/卡片/海报墙）+ 每页条数（20/50/100）。
+ * 列表形态切换（方案阶段二）：编排（不聚合 / 作品聚合）
+ * × 展示（列表/卡片/海报墙）+ 每页条数（20/50/100）。
  *
- * 两种偏好都写进 URL（可分享、可回退、刷新不丢），与筛选参数同一套 withParam。
- * 切换时**清掉 cursor**：条数/视图变了还停在上一次的游标上会让人以为「翻页丢内容」。
+ * 两个轴都写进 URL（可分享、可回退、刷新不丢），与筛选参数同一套
+ * withParam。换形态/编排/条数时清掉 cursor 与 p：游标是「(排序键,id)」
+ * 位置、p 是作品聚合的页码，换了数据集继续用只会让人以为「翻页丢内容」。
  * 无 hooks，保持 server component（纯链接，走整页 SSR 与筛选一致）。
  */
 
@@ -15,16 +17,25 @@ import {
 } from "./torrents-utils";
 import { TorrentsViewSelect } from "./torrents-view-select";
 
+const GROUP_CLS =
+  "flex items-center gap-0.5 rounded-full border border-line " +
+  "bg-[var(--surface-card)] p-0.5";
+const PILL_CLS = "rounded-full px-3 py-1 text-xs transition-colors";
+const ON_CLS = "bg-[var(--sky-soft)] font-semibold text-sky-deep";
+const OFF_CLS = "text-sub hover:text-ink";
+
 export function TorrentsViewSwitch({
   dict,
   sp,
   view,
+  grouped,
   pageSize,
   withParam,
 }: {
   dict: Dict;
   sp: TorrentsSP;
   view: TorrentView;
+  grouped: boolean;
   pageSize: number;
   withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
 }) {
@@ -33,45 +44,63 @@ export function TorrentsViewSwitch({
     table: t.viewTable,
     card: t.viewCard,
     poster: t.viewPoster,
-    group: dict.works.viewGroup,
   };
-  // 换形态 = 回到第一页：先把 cursor 从参数集里剔除再拼链接
-  // （游标是「(排序键,id)」位置，形态/条数变了继续用它只会让人以为翻页丢内容）
+  // 换形态/编排 = 回到第一页：先把 cursor 与 p 从参数集里剔除再拼链接
   const base = Object.fromEntries(
-    Object.entries(sp).filter(([k]) => k !== "cursor"),
+    Object.entries(sp).filter(([k]) => k !== "cursor" && k !== "p"),
   ) as TorrentsSP;
   const href = (key: string, value: string | undefined) =>
     withParam(base, key, value);
+  const groupHref = (on: boolean) =>
+    href("group", on ? "1" : undefined);
 
   return (
     <>
-      {/* 桌面/平板：药丸直选 */}
+      {/* 桌面/平板：两组药丸直选（编排 × 展示） */}
       <div className="hidden flex-wrap items-center justify-between gap-2 md:flex">
-        <div
-          className={
-            "flex items-center gap-0.5 rounded-full border border-line " +
-            "bg-[var(--surface-card)] p-0.5"
-          }
-          role="group"
-          aria-label={t.viewLabel}
-        >
-          {TORRENT_VIEWS.map((v) => {
-            const on = v === view;
-            return (
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className={GROUP_CLS}
+            role="group"
+            aria-label={t.groupLabel}
+          >
+            {[false, true].map((on) => (
               <a
-                key={v}
-                href={href("view", v === "table" ? undefined : v)}
-                aria-current={on ? "page" : undefined}
-                className={`rounded-full px-3 py-1 text-xs transition-colors ${
-                  on
-                    ? "bg-[var(--sky-soft)] font-semibold text-sky-deep"
-                    : "text-sub hover:text-ink"
+                key={String(on)}
+                href={groupHref(on)}
+                aria-current={on === grouped ? "page" : undefined}
+                className={`${PILL_CLS} ${
+                  on === grouped ? ON_CLS : OFF_CLS
                 }`}
               >
-                {labels[v]}
+                {on ? dict.works.viewGroup : t.groupOff}
               </a>
-            );
-          })}
+            ))}
+          </div>
+          <div
+            className={GROUP_CLS}
+            role="group"
+            aria-label={t.viewLabel}
+          >
+            {TORRENT_VIEWS.map((v) => {
+              const on = v === view;
+              return (
+                <a
+                  key={v}
+                  href={href(
+                    "view",
+                    v === "table" ? undefined : v,
+                  )}
+                  aria-current={on ? "page" : undefined}
+                  className={`${PILL_CLS} ${
+                    on ? ON_CLS : OFF_CLS
+                  }`}
+                >
+                  {labels[v]}
+                </a>
+              );
+            })}
+          </div>
         </div>
         <div className="flex items-center gap-1 text-xs text-sub">
           {PAGE_SIZES.map((n) => {
@@ -79,12 +108,13 @@ export function TorrentsViewSwitch({
             return (
               <a
                 key={n}
-                href={href("limit", n === 20 ? undefined : String(n))}
+                href={href(
+                  "limit",
+                  n === 20 ? undefined : String(n),
+                )}
                 aria-current={on ? "page" : undefined}
                 className={`num rounded-full px-2 py-1 transition-colors ${
-                  on
-                    ? "bg-[var(--sky-soft)] font-semibold text-sky-deep"
-                    : "hover:text-ink"
+                  on ? ON_CLS : "hover:text-ink"
                 }`}
                 title={t.perPage.replace("{n}", String(n))}
               >
@@ -94,11 +124,22 @@ export function TorrentsViewSwitch({
           })}
         </div>
       </div>
-      {/* 手机：两排药丸收成两个下拉（列表页首屏优先给种子内容） */}
-      <div className="flex items-center gap-1.5 md:hidden">
+      {/* 手机：药丸收成三个下拉（首屏优先给内容，窄屏允许换行） */}
+      <div className="flex flex-wrap items-center gap-1.5 md:hidden">
+        <TorrentsViewSelect
+          label={t.groupLabel}
+          current={groupHref(grouped)}
+          options={[false, true].map((on) => ({
+            href: groupHref(on),
+            label: on ? dict.works.viewGroup : t.groupOff,
+          }))}
+        />
         <TorrentsViewSelect
           label={t.viewLabel}
-          current={href("view", view === "table" ? undefined : view)}
+          current={href(
+            "view",
+            view === "table" ? undefined : view,
+          )}
           options={TORRENT_VIEWS.map((v) => ({
             href: href("view", v === "table" ? undefined : v),
             label: labels[v],

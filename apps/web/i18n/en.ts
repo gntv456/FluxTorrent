@@ -331,6 +331,8 @@ const enBase: Omit<
     viewTable: "List",
     viewCard: "Cards",
     viewPoster: "Posters",
+    groupLabel: "Grouping",
+    groupOff: "All torrents",
     perPage: "{n} per page",
     hkSearch: "Search",
     hkMove: "Move",

@@ -201,8 +201,7 @@ export function TorrentCards({
         <li
           key={t.id}
           data-torrent-id={t.id}
-          className={[WALL_LI_CLS,
-            promoSemanticClass(t.promotion),
+          className={[promoSemanticClass(t.promotion),
             t.seeders === 0 ? "torrent-dead" : undefined,
             t.official ? "torrent-official" : undefined,
           ]
