@@ -223,11 +223,6 @@ export default async function TorrentDetailPage({
   const catMap = byId(editCats);
   const category = dictName(catMap, t.category_id);
   const catC = catColor(colorMap(profile?.categories ?? []), t.category_id);
-  // 动态属性（0085/0087）：sections 带维度显示名与排序，直接铺进规格网格。
-  // R3-三步：旧三列翻译移除——0185 已迁数据，sections 是唯一展示源。
-  const secEntries = Object.entries(ext?.sections ?? {})
-    .map(([kind, v]) => ({ kind, ...v }))
-    .filter((v) => v.name);
   // 促销剩余时间（同类站「x天x时」口径）
   const left = t.promotion_ends_at
     ? (() => {
@@ -238,11 +233,6 @@ export default async function TorrentDetailPage({
         return `${dd}${d?.dayUnit}${hh}${d?.hourUnit}`;
       })()
     : null;
-  // 副题链（R3-三步）：sections 单源——取前三维度的名称拼接（与列表同口径）
-  const subtitleChain = secEntries
-    .slice(0, 3)
-    .map((v) => v.name)
-    .join(" · ");
   // 相对时间（同类站通用口径）：走 lib 的纯函数，别把闭包传过客户端边界
   const relTime = (iso: string) => rel(iso, d);
 
@@ -263,7 +253,7 @@ export default async function TorrentDetailPage({
         t={t} ext={ext} dict={dict} locale={locale} left={left}
         category={category}
         categoryColor={catC}
-        subtitleChain={subtitleChain} relTime={relTime} ripLogs={agg.logs}
+        relTime={relTime} ripLogs={agg.logs}
         tags={
           agg.tags.dict.length + agg.tags.mine.length > 0 ? (
             <TorrentTags torrentId={t.id} initial={agg.tags} />

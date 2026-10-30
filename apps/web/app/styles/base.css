@@ -945,15 +945,6 @@ a:hover {
 .td-head__sub {
   color: var(--text-muted);
   font-size: 13px;
-  /* 本地完善版样图 .td-head__sub：flex + gap（链与描述之间以 ·
-     分隔符作 flex item，间距由 gap 统一承担） */
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.td-head__chain {
-  color: var(--text-brand);
-  font-weight: 600;
 }
 .td-head__badges {
   display: flex;

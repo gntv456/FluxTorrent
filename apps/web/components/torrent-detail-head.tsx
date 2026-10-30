@@ -26,7 +26,6 @@ export function TorrentHead({
   left,
   category,
   categoryColor,
-  subtitleChain,
   relTime,
   tags,
   ripLogs,
@@ -43,8 +42,6 @@ export function TorrentHead({
   category: string;
   /** 分类色：page 侧按 categories.bg_color 解析 */
   categoryColor: string;
-  /** 副题链（学段 · 媒介 · 版本） */
-  subtitleChain: string;
   /** 相对时间（同类站通用口径：x 天前；完整时间放 title） */
   relTime: (iso: string) => string;
   /** 标签行（0173：副标题与发布人之间；undefined = 不渲染） */
@@ -71,14 +68,8 @@ export function TorrentHead({
 
       <div className="td-head__main">
         <h1 className="td-head__name font-display">{t.name}</h1>
-        {(t.small_descr || subtitleChain) && (
-          <p className="td-head__sub">
-            {subtitleChain && (
-              <span className="td-head__chain">{subtitleChain}</span>
-            )}
-            {subtitleChain && t.small_descr && <span aria-hidden> · </span>}
-            {t.small_descr}
-          </p>
+        {t.small_descr && (
+          <p className="td-head__sub">{t.small_descr}</p>
         )}
 
         {/* 标签行（0173：副标题与发布人之间） */}
