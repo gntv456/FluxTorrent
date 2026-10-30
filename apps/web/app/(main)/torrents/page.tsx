@@ -68,11 +68,10 @@ export default async function TorrentsPage({
       Array.isArray(v) ? v.join(",") : v,
     ]),
   );
-  // 旧链接 view=group（曾是第四种平级视图）→ 归一为「聚合 + 卡片」
-  if (sp.view === "group") {
-    sp.view = "card";
-    sp.group = "1";
-  }
+  // 旧/外部链接归一：group→聚合+卡片；media→聚合+海报墙；torrents→种子列表
+  if (sp.view === "group") { sp.view = "card"; sp.group = "1"; }
+  if (sp.view === "media") { sp.view = "poster"; sp.group = "1"; }
+  if (sp.view === "torrents") { sp.view = "table"; sp.group = undefined; }
   const grouped = sp.group === "1";
   const { dict, locale } = await getDict();
   // 视图/条数走 URL，未指定时回落用户偏好（0316）再回落默认；

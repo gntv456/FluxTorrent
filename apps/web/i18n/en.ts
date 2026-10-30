@@ -447,6 +447,7 @@ const enBase: Omit<
     tmdb: "TMDB",
     imdb: "IMDb",
     inWork: "Torrents in this work",
+    versions: "Matched versions",
     related: "Related works",
     openWork: "Open work",
     empty: "No works to group yet",

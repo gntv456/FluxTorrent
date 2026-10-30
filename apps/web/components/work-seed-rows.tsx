@@ -30,16 +30,21 @@ function Row({
   t,
   dict,
   locale,
+  relaxed,
 }: {
   t: TorrentListItem;
   dict: Dict;
   locale: Locale;
+  relaxed?: boolean;
 }) {
   const promo = promotionBadge(t.promotion);
   const chips = nameChips(t.name, dict.works.chipSubs);
   const date = new Date(t.created_at).toLocaleDateString(dateLocale(locale));
   return (
-    <div className="wk-row" data-torrent-id={t.id}>
+    <div
+      className={`wk-row${relaxed ? " wk-row--relaxed" : ""}`}
+      data-torrent-id={t.id}
+    >
       <div className="wk-name">
         <div className="wk-chips">
           {chips.map((c) => (
@@ -85,6 +90,7 @@ export function WorkSeedRows({
   locale,
   total,
   moreHref,
+  variant = "table",
 }: {
   items: TorrentListItem[];
   dict: Dict;
@@ -93,22 +99,40 @@ export function WorkSeedRows({
   total?: number;
   /** 「查看全部」落点（作品详情页） */
   moreHref?: string;
+  /** relaxed = 作品卡「宽松」行：标题/大小/做种/操作四列 */
+  variant?: "table" | "relaxed";
 }) {
   const t = dict.torrents;
   const n = total ?? items.length;
+  const relaxed = variant === "relaxed";
   return (
     <>
-      <div className="wk-shead">
-        <span className="wk-name">{t.colTitle}</span>
-        <span className="wk-time">{t.alive}</span>
-        <span className="wk-size">{t.colSize}</span>
-        <span className="wk-seed">{t.colSeeders}</span>
-        <span className="wk-leech">{t.colLeechers}</span>
-        <span className="wk-done">{t.colCompleted}</span>
-        <span className="wk-act">{t.colActions}</span>
-      </div>
+      {relaxed ? (
+        <div className="wk-shead wk-shead--relaxed">
+          <span className="wk-name">{t.colTitle}</span>
+          <span>{t.colSize}</span>
+          <span>{t.colSeeders}</span>
+          <span className="wk-act">{t.colActions}</span>
+        </div>
+      ) : (
+        <div className="wk-shead">
+          <span className="wk-name">{t.colTitle}</span>
+          <span className="wk-time">{t.alive}</span>
+          <span className="wk-size">{t.colSize}</span>
+          <span className="wk-seed">{t.colSeeders}</span>
+          <span className="wk-leech">{t.colLeechers}</span>
+          <span className="wk-done">{t.colCompleted}</span>
+          <span className="wk-act">{t.colActions}</span>
+        </div>
+      )}
       {items.map((row) => (
-        <Row key={row.id} t={row} dict={dict} locale={locale} />
+        <Row
+          key={row.id}
+          t={row}
+          dict={dict}
+          locale={locale}
+          relaxed={relaxed}
+        />
       ))}
       {n > items.length && moreHref && (
         <div className="wk-more">

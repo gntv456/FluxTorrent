@@ -10,6 +10,7 @@ import { dateLocale, type Locale } from "@/i18n/config";
 import { PosterImage } from "@/components/poster-image";
 import { Icon } from "@/components/icons";
 import { workTitle } from "@/components/work-chips";
+import { workFlags } from "@/components/work-flags";
 import type { WorkWithSeeds } from "@fluxtorrent/domain-types";
 import type { Dict } from "@/i18n/zh-CN";
 
@@ -47,6 +48,7 @@ export function WorkRows({ items, dict, locale, catName }: Props) {
       {items.map((w) => {
         const title = workTitle(w.name);
         const year = workYear(w);
+        const flags = workFlags(w, dict);
         return (
           <li key={w.key} className="wk-lrow" data-work-key={w.key}>
             <Link href={workHref(w.key)} className="wk-lcover">
@@ -66,11 +68,48 @@ export function WorkRows({ items, dict, locale, catName }: Props) {
               <Link href={workHref(w.key)} className="wk-ltitle">
                 {title}
               </Link>
+              {(flags.qualities.length > 0 ||
+                flags.promos.length > 0 ||
+                flags.official ||
+                flags.ratings.length > 0) && (
+                <span className="wk-lflags">
+                  {flags.qualities.slice(0, 1).map((q) => (
+                    <span key={q} className="wk-flag wk-flag--quality">
+                      {q}
+                    </span>
+                  ))}
+                  {flags.promos.slice(0, 1).map((p) => (
+                    <span
+                      key={p.key}
+                      className={`wk-flag wk-flag--${p.tone}`}
+                    >
+                      {p.label}
+                    </span>
+                  ))}
+                  {flags.official && (
+                    <span className="wk-flag wk-flag--official">
+                      {dict.torrents.officialTag}
+                    </span>
+                  )}
+                  {flags.ratings.slice(0, 1).map((r) => (
+                    <span
+                      key={r.label}
+                      className="wk-flag wk-flag--rating"
+                    >
+                      ★ {r.label} {r.value}
+                    </span>
+                  ))}
+                </span>
+              )}
               <span className="wk-lmeta">
                 {year ? (
                   <span className="wk-year">{year}</span>
                 ) : null}
                 <span>{catName(w.category_id)}</span>
+                {flags.genres.length > 0 && (
+                  <span>{flags.genres.slice(0, 2).join(" / ")}</span>
+                )}
+                {flags.region && <span>{flags.region}</span>}
                 <span>
                   {dict.works.seedsInWork.replace(
                     "{n}",
@@ -102,6 +141,7 @@ export function WorkPosters({ items, dict, locale, catName }: Props) {
         const title = workTitle(w.name);
         const year = workYear(w);
         const date = latestDate(w, locale);
+        const flags = workFlags(w, dict);
         return (
           <li
             key={w.key}
@@ -133,7 +173,46 @@ export function WorkPosters({ items, dict, locale, catName }: Props) {
               </span>
               <span className="wk-wall-bar">
                 <span className="wk-wall-t">{title}</span>
+                {(flags.qualities.length > 0 ||
+                  flags.promos.length > 0 ||
+                  flags.official ||
+                  flags.ratings.length > 0) && (
+                  <span className="wk-wall-flags">
+                    {flags.qualities.slice(0, 1).map((q) => (
+                      <span
+                        key={q}
+                        className="wk-flag wk-flag--quality"
+                      >
+                        {q}
+                      </span>
+                    ))}
+                    {flags.promos.slice(0, 1).map((p) => (
+                      <span
+                        key={p.key}
+                        className={`wk-flag wk-flag--${p.tone}`}
+                      >
+                        {p.label}
+                      </span>
+                    ))}
+                    {flags.official && (
+                      <span className="wk-flag wk-flag--official">
+                        {dict.torrents.officialTag}
+                      </span>
+                    )}
+                    {flags.ratings.slice(0, 1).map((r) => (
+                      <span
+                        key={r.label}
+                        className="wk-flag wk-flag--rating"
+                      >
+                        ★ {r.label} {r.value}
+                      </span>
+                    ))}
+                  </span>
+                )}
                 <span className="wk-wall-m">
+                  {flags.genres.length > 0
+                    ? `${flags.genres.slice(0, 2).join(" / ")} · `
+                    : ""}
                   {dict.works.seedsInWork.replace(
                     "{n}",
                     String(w.torrents),

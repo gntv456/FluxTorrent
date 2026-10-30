@@ -187,7 +187,7 @@
  "apps/web/app/(main)/users/[id]/page.tsx::wide": 1,
  "apps/web/app/(main)/users/[id]/_parts/profile-center.tsx::wide": 11,
  "apps/web/app/(main)/users/[id]/_parts/profile-hero.tsx::wide": 5,
- "apps/web/app/(main)/torrents/page.tsx": 419,
+ "apps/web/app/(main)/torrents/page.tsx": 418,
  "apps/web/app/(main)/torrents/_parts/torrents-cards.tsx": 306,
  "apps/web/app/(main)/torrents/_parts/torrents-view-switch.tsx::wide": 1,
  "apps/web/app/(main)/torrent/[id]/page.tsx": 430,

@@ -187,6 +187,124 @@
   font-weight: 700;
 }
 
+/* 宽松卡片：标题行右侧评分/新增种子、版本区与四列版本行 */
+.wk-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.wk-head-ratings {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.wk-head-actions .wk-add {
+  margin-left: 0;
+}
+.wk-tags .wk-genre {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.wk-versions {
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+}
+.wk-versions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.wk-versions-t {
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.wk-versions-n {
+  color: var(--sub);
+  font-size: 11.5px;
+}
+.wk-shead--relaxed,
+.wk-row--relaxed {
+  grid-template-columns: minmax(0, 1fr) 76px 56px 76px;
+}
+.wk-shead--relaxed {
+  border-top: none;
+}
+.wk-row--relaxed .wk-time,
+.wk-row--relaxed .wk-leech,
+.wk-row--relaxed .wk-done {
+  display: none;
+}
+
+/* ---------- 作品层信息（卡片 / 列表 / 海报墙共用） ---------- */
+.wk-flags,
+.wk-lflags,
+.wk-wall-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.wk-flags {
+  margin-top: 7px;
+}
+.wk-lflags {
+  margin-top: 2px;
+}
+.wk-wall-flags {
+  margin-top: 3px;
+}
+.wk-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-raised);
+  color: var(--sub);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.wk-lflags .wk-flag,
+.wk-wall-flags .wk-flag {
+  padding: 0 4px;
+}
+.wk-flag--quality {
+  background: var(--sky-soft);
+  color: var(--sky-deep);
+}
+.wk-flag--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.wk-flag--danger {
+  background: var(--coral-soft);
+  color: var(--coral);
+}
+.wk-flag--warn {
+  background: var(--sun-soft);
+  color: var(--sun);
+}
+.wk-flag--official {
+  background: var(--sun-soft);
+  color: var(--sun);
+}
+.wk-flag--rating {
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--sub);
+}
+.wk-media-meta {
+  margin-top: 7px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
 /* ---------- 作品内种子行 ---------- */
 .wk-shead,
 .wk-row {
@@ -543,6 +661,15 @@
   .wk-shead,
   .wk-row {
     grid-template-columns: minmax(0, 1fr) 62px 46px 52px;
+  }
+  .wk-shead--relaxed,
+  .wk-row--relaxed {
+    grid-template-columns: minmax(0, 1fr) 62px 46px 52px;
+  }
+  .wk-head-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
   }
   .wk-shead .wk-time,
   .wk-shead .wk-leech,

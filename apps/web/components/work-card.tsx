@@ -1,20 +1,20 @@
 /**
- * 作品卡（资源页「作品聚合」视图的一张卡，样图同一结构）：
- *   ┌ 封面列（海报 + 分类角标 + 最新日期徽章）
- *   └ 主区（片名 / 年份 / 分类 / 种子数 / 添加种子 → 标签 → 简介 →
- *           统计 → 该作品的种子行）
+ * 作品卡（资源页「作品聚合」视图，Colapt「宽松」式媒体行）：
+ *   左：海报 + 分类角标 + 最新日期；
+ *   右：片名/年份/官方/条目 ID/评分/新增种子 → 地区/导演/片长 →
+ *       类型 + 标签 → 简介 → 主演 → 「匹配的种子版本」四列种子行。
  *
  * 数据全部来自 `/api/v1/works`（作品行 + 前 8 条种子），不额外请求。
- * 服务端组件；行渲染交给 WorkSeedRows（同一份实现给作品详情页复用）。
+ * 服务端组件；种子行交给 WorkSeedRows（详情页复用同一实现）。
  */
 
 import Link from "next/link";
-import { formatBytes } from "@/lib/format";
 import { dateLocale, type Locale } from "@/i18n/config";
 import { PosterImage } from "@/components/poster-image";
 import { WorkSeedRows } from "@/components/work-seed-rows";
 import { WorkIds } from "@/components/work-ids";
 import { workTitle } from "@/components/work-chips";
+import { workFlags } from "@/components/work-flags";
 import type { WorkWithSeeds } from "@fluxtorrent/domain-types";
 import type { Dict } from "@/i18n/zh-CN";
 
@@ -42,6 +42,9 @@ export function WorkCard({
   const poster = work.poster ?? meta?.poster ?? null;
   const date = new Date(work.latest_at).toLocaleDateString(dateLocale(locale));
   const syn = (work.synopsis ?? "").trim();
+  const flags = workFlags(work, dict);
+  const genreTags = flags.genres.slice(0, 4);
+  const userTags = work.tags ?? [];
   return (
     <article className="wk-card" data-work-key={work.key}>
       <div className="wk-cover">
@@ -71,24 +74,74 @@ export function WorkCard({
             <Link href={href}>{title}</Link>
           </h3>
           {year ? <span className="wk-year">{year}</span> : null}
-          <span className="wk-cat">{catName}</span>
-          <span className="wk-stat">
-            {dict.works.seedsInWork.replace("{n}", String(work.torrents))}
-          </span>
-          {meta?.rating ? (
-            <span className="wk-stat">
-              ★ {meta.rating.toFixed(1)}
+          {flags.official && (
+            <span className="wk-flag wk-flag--official">
+              {dict.torrents.officialTag}
             </span>
-          ) : null}
+          )}
           <WorkIds work={work} dict={dict} />
-          <Link href={uploadHref(work)} className="wk-add">
-            ＋ {dict.works.addSeed}
-          </Link>
+          <span className="wk-head-actions">
+            {flags.ratings.length > 0 && (
+              <span className="wk-head-ratings">
+                {flags.ratings.map((r) => (
+                  <span
+                    key={r.label}
+                    className="wk-flag wk-flag--rating"
+                  >
+                    ★ {r.label} {r.value}
+                  </span>
+                ))}
+              </span>
+            )}
+            <Link href={uploadHref(work)} className="wk-add">
+              ＋ {dict.works.addSeed}
+            </Link>
+          </span>
         </div>
 
-        {(work.tags?.length ?? 0) > 0 && (
+        <div className="wk-media-meta">
+          {[
+            catName,
+            flags.region,
+            flags.director.length > 0
+              ? `${dict.works.director} ${flags.director
+                  .slice(0, 2)
+                  .join(" / ")}`
+              : null,
+            flags.runtime
+              ? `${flags.runtime} ${dict.works.min}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </div>
+
+        {(flags.qualities.length > 0 || flags.promos.length > 0) && (
+          <div className="wk-flags">
+            {flags.qualities.map((q) => (
+              <span key={q} className="wk-flag wk-flag--quality">
+                {q}
+              </span>
+            ))}
+            {flags.promos.map((p) => (
+              <span
+                key={p.key}
+                className={`wk-flag wk-flag--${p.tone}`}
+              >
+                {p.label}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {(genreTags.length > 0 || userTags.length > 0) && (
           <div className="wk-tags">
-            {work.tags.slice(0, 6).map((b) => (
+            {genreTags.map((g) => (
+              <span key={`g:${g}`} className="wk-genre">
+                {g}
+              </span>
+            ))}
+            {userTags.slice(0, 4).map((b) => (
               <span key={b.id}>{b.name}</span>
             ))}
           </div>
@@ -96,31 +149,34 @@ export function WorkCard({
 
         <p className="wk-syn">{syn || dict.works.noSynopsis}</p>
 
-        <div className="wk-stats">
-          <span>
-            {dict.torrents.colSeeders}{" "}
-            <b>{work.seeders}</b>
-          </span>
-          <span>
-            {dict.torrents.colLeechers}{" "}
-            <b>{work.leechers}</b>
-          </span>
-          <span>
-            {dict.torrents.colSize}{" "}
-            <b>{formatBytes(work.size)}</b>
-          </span>
-          <span>
-            {dict.works.latestAt.replace("{t}", date)}
-          </span>
-        </div>
+        {flags.cast.length > 0 && (
+          <div className="wk-crew">
+            <div>
+              <b>{dict.works.cast}</b>
+              {flags.cast.slice(0, 5).join(" / ")}
+            </div>
+          </div>
+        )}
 
-        <WorkSeedRows
-          items={work.seeds}
-          dict={dict}
-          locale={locale}
-          total={work.torrents}
-          moreHref={href}
-        />
+        <div className="wk-versions">
+          <div className="wk-versions-head">
+            <span className="wk-versions-t">{dict.works.versions}</span>
+            <span className="wk-versions-n">
+              {dict.works.seedsInWork.replace(
+                "{n}",
+                String(work.torrents),
+              )}
+            </span>
+          </div>
+          <WorkSeedRows
+            items={work.seeds}
+            dict={dict}
+            locale={locale}
+            total={work.torrents}
+            moreHref={href}
+            variant="relaxed"
+          />
+        </div>
       </div>
     </article>
   );

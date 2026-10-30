@@ -1698,6 +1698,7 @@ const zhCnBase = {
     tmdb: "TMDB",
     imdb: "IMDb",
     inWork: "本片资源",
+    versions: "匹配的种子版本",
     related: "相关推荐",
     openWork: "查看作品",
     empty: "还没有可聚合的作品",

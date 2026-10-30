@@ -435,6 +435,7 @@ const zhTwBase: Omit<
     tmdb: "TMDB",
     imdb: "IMDb",
     inWork: "本片資源",
+    versions: "匹配的種子版本",
     related: "相關推薦",
     openWork: "查看作品",
     empty: "還沒有可聚合的作品",
