@@ -4,10 +4,7 @@ import Link from "next/link";
 import { api, setSessionCookie, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import {
-  formatBytes,
-  formatRatio,
-  avatarFrameStyle,
-  FrameImageOverlay,
+  formatBytes, formatRatio, avatarFrameStyle, FrameImageOverlay,
 } from "@/lib/format";
 import { UserTools } from "@/components/user-tools";
 import { UserCheckin } from "@/components/user-checkin";
@@ -16,7 +13,7 @@ import { useSparkSync } from "@/lib/spark-event";
 import { MedalIcon } from "@/components/medal-icon";
 import { isStaffClass } from "@/lib/domain/user-class";
 
-/** /me 返回口径（http.rs me handler）+ spark_balance */
+/** /me 返回口径（me handler） */
 interface MeInfo {
   id: number;
   username: string;
@@ -36,24 +33,20 @@ interface MeInfo {
 // SSE unread 事件帧体（/me/messages/stream data 段）
 type SseUnread = { count?: number };
 /**
- * 头像弹窗（同类站 同类站布局口径，0147）：头像按钮弹宽下拉——摘要区
- * （大头像+用户名+勋章+等级+{magic}+退出）/ 数据条 / 快捷链接 / 信箱
- * 工具行（UserTools）。未登录回落登录链接；点外部/ESC 收起。
+ * 头像弹窗（同类站布局口径，0147）：按钮弹宽下拉——摘要区（大头像+
+ * 用户名+勋章+等级+{magic}+退出）/ 数据条 / 快捷链接 / 信箱工具行。
+ * 未登录回落登录链接；点外部/ESC 收起。
  */
 export function UserMenu({ loginLabel }: { loginLabel: string }) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
   const [meFailed, setMeFailed] = useState(false);
-  // 头像图床不可达标记：true 时回落首字母（见 avatar() 的 onError）
+  // 头像图床不可达：true 回落首字母（avatar() 的 onError）；换号重置
   const [avatarFailed, setAvatarFailed] = useState(false);
-  // 换号/重登后重置（不同号头像源不同）
-  useEffect(() => {
-    setAvatarFailed(false);
-  }, [me?.username]);
+  useEffect(() => setAvatarFailed(false), [me?.username]);
   // 模块开关（G2-7）：快捷链接按模块过滤（medals/tasks/jixiao）
   const [mods, setMods] = useState<Record<string, boolean>>({});
-  // 顶栏魔力 chip 开关（W-31 / IA-2 ①）：site_settings.topbar_spark_chip，
-  // 后端归一为布尔（缺省 true）；取档失败回落 true（非关键路径）
+  // 顶栏魔力 chip（W-31）：site_settings.topbar_spark_chip，缺省 true
   const [chipOn, setChipOn] = useState(true);
   useEffect(() => {
     fetch("/api/v1/site-profile")
@@ -93,8 +86,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
         setMeFailed(true);
       });
   }, []);
-  // 未读 SSE：连上即推+15s 轮询变化才推；onerror 静默重连；会话失效
-  // close 防僵尸连接（SseUnread 谓词与 /me unread_messages 同源）
+  // 未读 SSE：连上即推+15s 轮询变化才推；onerror 静默重连防僵尸
   useEffect(() => {
     if (!hasSessionCookie()) return;
     const es = new EventSource("/api/v1/me/messages/stream");
@@ -173,12 +165,11 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
     >
       {me.avatar_url && !avatarFailed ? (
         // eslint-disable-next-line @next/next/no-img-element
+        // 图床不可达回落首字母，不留空白框（onError 置 avatarFailed）
         <img
           src={me.avatar_url}
           alt=""
           className="h-full w-full rounded-full object-cover"
-          // 外链图床不可达（本例：xingyungept 对大陆不通）时回落首字母，
-          // 不留空白框——用户感知就是「头像没了」
           onError={() => setAvatarFailed(true)}
         />
       ) : (
