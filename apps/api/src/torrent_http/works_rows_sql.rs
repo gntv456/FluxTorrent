@@ -41,8 +41,7 @@ SELECT t.id, t.info_hash, t.pieces_hash, t.name, t.small_descr,
   LEFT JOIN users u ON u.id = t.owner_id
   {promo}
  WHERE t.approval_status = 1 AND {wk} = $1
- ORDER BY sticky_rank DESC, t.created_at DESC, t.id DESC
- LIMIT 100"#,
+ ORDER BY sticky_rank DESC, t.created_at DESC, t.id DESC"#,
         promo = promo_lateral,
         wk = WK
     )

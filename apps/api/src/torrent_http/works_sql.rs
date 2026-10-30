@@ -33,38 +33,57 @@ const META_SEL: &str = "jsonb_build_object(\
 const META_JOIN: &str = "LEFT JOIN work_meta wm ON wm.key = a.wk";
 pub(super) const WK: &str = r#"CASE
       WHEN t.group_id IS NOT NULL THEN 'g' || t.group_id::text
-      WHEN COALESCE(NULLIF(t.imdb_id, ''), t.media_info->>'imdb_id')
+      WHEN COALESCE(NULLIF(t.imdb_id, ''),
+                    NULLIF(t.media_info->>'imdb_id', ''))
            IS NOT NULL THEN 'i' || COALESCE(NULLIF(t.imdb_id, ''),
-                                            t.media_info->>'imdb_id')
+                    NULLIF(t.media_info->>'imdb_id', ''))
       WHEN NULLIF(t.media_info->>'tmdb_id', '') IS NOT NULL
            THEN 'm' || (t.media_info->>'tmdb_id')
       WHEN NULLIF(t.media_info->>'douban_id', '') IS NOT NULL
            THEN 'd' || (t.media_info->>'douban_id')
-      ELSE 'n' || md5(lower(btrim(
+      ELSE 'n' || md5(lower(COALESCE(NULLIF(btrim(
         regexp_replace(
           regexp_replace(
             regexp_replace(
-              split_part(split_part(t.name, '｜', 1), '|', 1),
-              '\s*[\[\(（【].*$', ''),
-            '\.(19|20)[0-9]{2}\..*$', ''),
-          '\.(2160p|1080p|1080i|720p|480p|WEB[-.]?DL|WEBRip|BluRay|Blu-ray|'
-          'REMUX|HDTV|HDRip|DVDRip|UHD|x26[45]|H\.?26[45]|HEVC|AVC|'
-          'S[0-9]{2}).*$',
-          '', 'i'))))
+              regexp_replace(
+                split_part(split_part(t.name, '｜', 1), '|', 1),
+                '^\s*(?:[\[\(（【][^\]\)）】]*[\]\)）】]\s*)+', ''),
+              '(\s*[\[\(（【][^\]\)）】]*[\]\)）】])+\s*$', ''),
+            '[._\s](19|20)[0-9]{2}([._\s].*)?$', '', 'i'),
+          '[._\s](2160p|1080p|1080i|720p|480p|WEB[-.]?DL|WEBRip|'
+          'BluRay|Blu-ray|REMUX|HDTV|HDRip|DVDRip|UHD|x26[45]|H\.?26[45]|'
+          'HEVC|AVC|S[0-9]{2}(E[0-9]{1,3})?)([._\s].*)?$', '', 'i')),
+        ''), btrim(split_part(split_part(t.name, '｜', 1), '|', 1)),
+        t.name)))
     END"#;
 
-/// 作品列表（分页）。`$1` 分类 / `$2` 标题模糊 / `$3` limit / `$4` offset。
-/// `sort` 由调用方从白名单里选好再内插（不接用户原串）。
-pub(super) fn list_sql(sort: &str) -> String {
+/// 作品列表（分页）。筛选谓词与列表侧共用槽位：
+/// `$1` 分类数组 / `$2` 官种 / `$3-$21` 高级筛选 / `$22` limit / `$23` offset。
+/// 筛选先落到 matched（作品键集合），再取该作品的全部过审种子聚合——
+/// 作品级筛选不应把同一部片的其它版本从卡里切掉。
+pub(super) fn list_sql(
+    sort: &str,
+    filter: &crate::torrents::TorrentFilter,
+    sec_sql: &str,
+    search_pred: &str,
+    viewer: i64,
+) -> String {
     format!(
         r#"
-WITH src AS (
+WITH matched AS (
+  SELECT DISTINCT {wk} AS wk
+    FROM torrents t
+    LEFT JOIN users u ON u.id = t.owner_id
+   WHERE t.approval_status = 1
+     {filters}
+),
+src AS (
   SELECT t.id, t.name, t.category_id, t.size, t.seeders, t.leechers,
-         t.created_at, t.small_descr, t.descr, t.media_info, t.group_id,
-         t.imdb_id, {wk} AS wk
+         t.times_completed, t.created_at, t.small_descr, t.descr,
+         t.media_info, t.group_id, t.imdb_id, {wk} AS wk
     FROM torrents t
    WHERE t.approval_status = 1
-     AND ($1::int IS NULL OR t.category_id = $1)
+     AND {wk} IN (SELECT wk FROM matched)
 ),
 agg AS (
   SELECT wk,
@@ -72,6 +91,7 @@ agg AS (
          sum(seeders)::bigint       AS seeders,
          sum(leechers)::bigint      AS leechers,
          sum(size)::bigint          AS size,
+         sum(times_completed)::bigint AS completed,
          max(created_at)            AS latest_at,
          max(id)                    AS top_id
     FROM src GROUP BY wk
@@ -103,30 +123,45 @@ SELECT a.wk AS key, r.name, r.poster, r.rating, r.category_id,
        {meta_sel}
   FROM agg a JOIN rep r ON r.wk = a.wk
   {meta_join}
- WHERE ($2::text IS NULL OR EXISTS (
-         SELECT 1 FROM src s WHERE s.wk = a.wk AND s.name ILIKE $2))
  ORDER BY {sort}
- LIMIT $3 OFFSET $4"#,
+ LIMIT $22 OFFSET $23"#,
         wk = WK,
+        filters = super::works_filter::filter_sql(
+            filter,
+            sec_sql,
+            search_pred,
+            viewer
+        ),
         meta_sel = META_SEL,
-        meta_join = META_JOIN
+        meta_join = META_JOIN,
+        sort = sort
     )
 }
 
-/// 作品计数（与列表同口径：同样的分类/关键字过滤）。
-pub(super) fn count_sql() -> String {
+/// 作品计数（与列表同口径：相同筛选后的作品键数）。
+pub(super) fn count_sql(
+    filter: &crate::torrents::TorrentFilter,
+    sec_sql: &str,
+    search_pred: &str,
+    viewer: i64,
+) -> String {
     format!(
         r#"
-WITH src AS (
-  SELECT t.name, t.group_id, {wk} AS wk
+WITH matched AS (
+  SELECT DISTINCT {wk} AS wk
     FROM torrents t
+    LEFT JOIN users u ON u.id = t.owner_id
    WHERE t.approval_status = 1
-     AND ($1::int IS NULL OR t.category_id = $1)
+     {filters}
 )
-SELECT count(DISTINCT wk)::bigint FROM src
- WHERE ($2::text IS NULL OR EXISTS (
-         SELECT 1 FROM src s WHERE s.wk = src.wk AND s.name ILIKE $2))"#,
-        wk = WK
+SELECT count(*)::bigint FROM matched"#,
+        wk = WK,
+        filters = super::works_filter::filter_sql(
+            filter,
+            sec_sql,
+            search_pred,
+            viewer
+        )
     )
 }
 
@@ -226,9 +261,11 @@ SELECT a.wk AS key, r.name, r.poster, r.category_id, a.torrents,
     )
 }
 
-/// 归一化标题表达式（0424 P1-2 抽出）：种名去「｜之后/括注/年份/规格尾」
-/// 的纯片名——作品订阅用它与 WK 的 n-键 md5 同一归一化，两侧不各写一份。
+/// 归一化标题表达式（0424 P1-2 抽出）：种名去「｜之后/前导标签」的纯片名——
+/// 作品订阅用它与 WK 的 n-键同一段前导括号归一，两侧不各写一份。
 pub(super) fn title_expr() -> &'static str {
-    r#"COALESCE(NULLIF(split_part(split_part(t.name, '｜', 1), '|', 1), ''),
+    r#"COALESCE(NULLIF(regexp_replace(
+             split_part(split_part(t.name, '｜', 1), '|', 1),
+             '^\s*(?:[\[\(（【][^\]\)）】]*[\]\)）】]\s*)+', ''), ''),
              t.name)"#
 }

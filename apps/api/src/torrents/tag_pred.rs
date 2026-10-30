@@ -4,7 +4,7 @@
 //! 槽位由调用方传入：列表侧 $9、计数侧 $8 不同。此前谓词把 $9 硬编码并
 //! 整段插进计数 SQL，与计数侧 size_min（bigint）撞同一槽 → prepare 失败
 //! 被 unwrap_or(0) 吞成「列表有行、总数恒 0」。
-pub(super) fn tag_pred(
+pub(crate) fn tag_pred(
     tag_ids: &Option<Vec<i32>>,
     tag_all: bool,
     slot: usize,

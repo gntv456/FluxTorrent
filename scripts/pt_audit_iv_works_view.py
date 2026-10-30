@@ -23,7 +23,9 @@
       列表口宽，把待审/被删的种随作品带出去；
   IV8 前端接线在册：`/torrents` 的 group 模式与 `/works/[id]` 两处调用点
       还在（后端改字段时这头要有读者）；
-  IV9 分页不重叠，且极端页码不 500（`page_offset` 助手防负 offset）。
+  IV9 分页不重叠，且极端页码不 500（`page_offset` 助手防负 offset）；
+  IV10 作品键归一化：前导括号/空格/点号/尾括号同键、纯标签名回退非空、
+      空 IMDb 不落裸 i（WK 表达式由源码提取后直接复算）。
 
 跑法：PYTHONIOENCODING=utf-8 python scripts/pt_audit_iv_works_view.py
 """
@@ -124,12 +126,18 @@ qs = urllib.parse.quote(word)
 s5, r5 = call("GET", "/works?q=%s&limit=5" % qs, token=tok)
 d5 = ((r5 or {}).get("data") or {}).get("items") or []
 like = "%%%s%%" % word.replace("'", "''")
+# 作品 q 现在与列表同源（默认范围 0 = 标题/简介/文件），
+# 判据也按同一组字段复算，不能只认 name。
+match = ("(t.name ILIKE '%s' OR COALESCE(t.small_descr, '') ILIKE '%s' "
+         "OR COALESCE(t.descr, '') ILIKE '%s' OR EXISTS(SELECT 1 FROM files f "
+         "WHERE f.torrent_id = t.id AND f.path ILIKE '%s'))"
+         % (like, like, like, like))
 expect = sval("SELECT count(DISTINCT (%s)) FROM torrents t WHERE "
-              "t.approval_status = 1 AND t.name ILIKE '%s';" % (WK, like))
+              "t.approval_status = 1 AND %s;" % (WK, match))
 leak = [w.get("key") for w in d5
         if sval("SELECT count(*) FROM torrents t WHERE t.approval_status=1 "
-                "AND (%s) = '%s' AND t.name ILIKE '%s'"
-                % (WK, w.get("key"), like)) == "0"]
+                "AND (%s) = '%s' AND %s"
+                % (WK, w.get("key"), match)) == "0"]
 # 正控：把关键字拉长成没人含的串，必须命中 0（否则 IV5「返回啥都算对」）
 ctl5 = call("GET", "/works?q=%s&limit=5"
             % urllib.parse.quote(word + "绝不可能出现的后缀zzq"), token=tok)
@@ -192,5 +200,34 @@ ok("IV9 page1/page2 无重叠键（重叠=%s，各 %d/%d 条），page=999999 �
    "（http=%s）" % (overlap[:3], len(k1), len(k2), pbig[0]),
    not overlap and pbig[0] == 200,
    str(pbig[1])[:90])
+
+print("== IV10 作品键归一化 ==")
+def keys_for(names):
+    rows = ",".join("('%s')" % n.replace("'", "''") for n in names)
+    sql = ("WITH t AS (SELECT v.name, NULL::bigint AS group_id, "
+           "NULL::text AS imdb_id, '{}'::jsonb AS media_info "
+           "FROM (VALUES %s) v(name)) "
+           "SELECT string_agg((%s), ',') FROM t;" % (rows, WK))
+    return sval(sql).split(",")
+same = keys_for([
+    "【官种】Movie 2024 1080p",
+    "Movie.2024.1080p.WEB-DL",
+    "Movie 2024 1080p WEB-DL",
+    "Movie (2024) [1080p]",
+])
+bracket = keys_for(["【官种】"])[0]
+imdb_sql = ("WITH t AS (SELECT v.name, NULL::bigint AS group_id, v.imdb_id, "
+            "'{}'::jsonb AS media_info FROM (VALUES ('Movie', NULL::text), "
+            "('Movie2', ''), ('Movie3', 'TT1234567')) "
+            "v(name, imdb_id)) SELECT count(*) FILTER "
+            "(WHERE (" + WK + ") LIKE 'i%') || '/' || count(*) FROM t;")
+imdb_cnt = sval(imdb_sql)
+ok("IV10 前导括号/空格/点号/尾括号归一为同一键（%s）；纯标签名回退非空键"
+   "（%s，len=%d）；空 IMDb 不落裸 i（%s）"
+   % (same, bracket, len(bracket), imdb_cnt),
+   len(set(same)) == 1 and len(same) == 4
+   and bracket.startswith("n") and len(bracket) == 33
+   and imdb_cnt == "1/3",
+   "same=%s bracket=%s imdb=%s" % (same[:3], bracket, imdb_cnt))
 
 summary()

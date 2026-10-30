@@ -22,31 +22,31 @@ pub(crate) fn esc_like(s: &str) -> String {
 /// 追加筛选的占位符槽位。列表与计数两条 SQL 的参数编号各自独立，
 /// 故谓词文本按槽位号生成（同一份语义，两套编号），避免手改编号串号。
 #[derive(Clone, Copy)]
-pub(super) struct ExtraSlots {
-    pub(super) size_min: u32,
-    pub(super) size_max: u32,
-    pub(super) date_from: u32,
-    pub(super) date_to: u32,
-    pub(super) min_seeders: u32,
-    pub(super) max_seeders: u32,
-    pub(super) exclude: u32,
-    pub(super) promo: u32,
-    pub(super) owner: u32,
-    pub(super) mine: u32,
-    pub(super) min_leechers: u32,
-    pub(super) max_leechers: u32,
-    pub(super) min_completed: u32,
-    pub(super) max_completed: u32,
-    pub(super) anonymous: u32,
+pub(crate) struct ExtraSlots {
+    pub(crate) size_min: u32,
+    pub(crate) size_max: u32,
+    pub(crate) date_from: u32,
+    pub(crate) date_to: u32,
+    pub(crate) min_seeders: u32,
+    pub(crate) max_seeders: u32,
+    pub(crate) exclude: u32,
+    pub(crate) promo: u32,
+    pub(crate) owner: u32,
+    pub(crate) mine: u32,
+    pub(crate) min_leechers: u32,
+    pub(crate) max_leechers: u32,
+    pub(crate) min_completed: u32,
+    pub(crate) max_completed: u32,
+    pub(crate) anonymous: u32,
     /// 标题必须命中（0267）：pattern 已由调用方转义/加通配
-    pub(super) title_like: u32,
+    pub(crate) title_like: u32,
     /// 媒体评分下界（0283 P1-5）：media_info->>'rating' 数值化比较
-    pub(super) rating_min: u32,
+    pub(crate) rating_min: u32,
 }
 
 /// 高级搜索增强谓词（体积/时间/做种数/排除词/优惠/发布者/仅我发布）。
 /// 全部走参数化绑定（`$n IS NULL OR ...`），无注入面；谓词是否生效由绑定的 None/Some 决定。
-pub(super) fn extra_preds(s: ExtraSlots) -> String {
+pub(crate) fn extra_preds(s: ExtraSlots) -> String {
     let mut out = String::new();
     out.push_str(&format!(
         " AND (${a}::bigint IS NULL OR t.size >= ${a})",

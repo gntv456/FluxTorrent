@@ -41,6 +41,7 @@ mod trump_admin;
 // 作品聚合（资源页「作品聚合」视图 + 作品详情）：同片多版本归一部作品
 mod works;
 mod works_detail;
+mod works_filter;
 mod works_rows_sql;
 pub(crate) mod works_sql;
 

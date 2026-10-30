@@ -76,7 +76,7 @@ pub(super) fn build_syn_pred(
 
 /// 主搜索谓词 + 同义词扩展段（E9 合成出口）：无同义词命中时输出与
 /// 原谓词逐字节一致，零行为变化。
-pub(super) async fn search_pred_with_syn(
+pub(crate) async fn search_pred_with_syn(
     db: &PgPool,
     search: Option<&str>,
     search_area: Option<i32>,

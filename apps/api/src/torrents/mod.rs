@@ -39,7 +39,12 @@ pub use delete_dispose::*;
 pub use detail::*;
 pub use interact::*;
 pub(crate) use list::esc_like;
+// 作品聚合筛选复用列表侧同一套谓词（works_filter.rs）
+pub(crate) use list::{extra_preds, ExtraSlots};
 pub use reseed::*;
+pub(crate) use syn_search::search_pred_with_syn;
+pub(crate) use tag_pred::tag_pred;
+pub(crate) use viewer_preds::{bookmark_pred, status_pred};
 pub(crate) mod view_scope;
 mod visibility;
 pub use list::*;

@@ -5,8 +5,8 @@
 //! 标题兜底——不新建实体、不需要站务额外维护。
 //!
 //! 端点：
-//!   · `GET /works?q=&category_id=&sort=&limit=&page=`  作品列表（分页）
-//!   · `GET /works/{key}`                               作品详情 + 种子行 + 相关
+//!   · `GET /works?...`  作品列表（分页；筛选参数与 `/torrents` 同源）
+//!   · `GET /works/{key}` 作品详情 + 种子行 + 相关
 //!
 //! 两处都要登录（与 `/torrents` 同口径：资源元数据不对外）。
 //! 作品键 `g12` / `n<hash>` 由 SQL 单源产出，前端原样回拼即可。
@@ -19,8 +19,10 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::{require_auth, Q};
 use crate::state::AppState;
-use crate::torrents::{esc_like, promo, TorrentRow};
+use crate::torrents::{promo, TorrentRow};
+use crate::torrents::{search_pred_with_syn, section_where};
 
+use super::works_filter;
 use super::works_rows_sql;
 use super::works_sql;
 
@@ -79,55 +81,79 @@ struct SeedRow {
     tor: TorrentRow,
 }
 
-#[derive(Debug, Deserialize)]
+/// 工品列表查询：`q` 是作品关键字（兼容列表 search），其余筛选直接复用
+/// `/torrents` 的 ListQuery 字段（分类多选/标签/维度/数值/排序/视角…）。
+#[derive(Deserialize)]
 pub struct WorksQuery {
-    /// 关键字（匹配组内任一种子名，模糊）
+    #[serde(flatten)]
+    pub filters: super::query::ListQuery,
     #[serde(default)]
     pub q: Option<String>,
-    /// 兼容 `/torrents?search=` 的写法
-    #[serde(default)]
-    pub search: Option<String>,
-    #[serde(default)]
-    pub category_id: Option<i32>,
-    /// latest（默认）/ seeders / size / torrents
-    #[serde(default)]
-    pub sort: Option<String>,
-    #[serde(default)]
-    pub limit: Option<i64>,
     #[serde(default)]
     pub page: Option<i64>,
 }
 
 /// 排序白名单：用户串只用来查表，永不内插（注入面为零）。
-fn order_of(sort: Option<&str>) -> &'static str {
-    match sort.map(str::trim) {
-        Some("seeders") => "a.seeders DESC, a.latest_at DESC",
-        Some("size") => "a.size DESC, a.latest_at DESC",
-        Some("torrents") => "a.torrents DESC, a.latest_at DESC",
-        _ => "a.latest_at DESC, a.wk ASC",
+/// 支持列表同款 `_asc` 后缀；作品层没有 comments 聚合，落到默认。
+fn order_of(sort: Option<&str>) -> String {
+    let (key, asc) = match sort.map(str::trim) {
+        Some(s) if s.ends_with("_asc") => (&s[..s.len() - 4], true),
+        Some(s) => (s, false),
+        None => ("", false),
+    };
+    let d = if asc { "ASC" } else { "DESC" };
+    let tie = format!(", a.latest_at DESC, a.wk ASC");
+    match key {
+        "seeders" => format!("a.seeders {d}{tie}"),
+        "leechers" => format!("a.leechers {d}{tie}"),
+        "size" => format!("a.size {d}{tie}"),
+        "torrents" => format!("a.torrents {d}{tie}"),
+        "completed" => format!("a.completed {d}{tie}"),
+        "name" => format!("r.name {d}{tie}"),
+        "created" | "latest" | "" => {
+            format!("a.latest_at {d}, a.wk ASC")
+        }
+        _ => "a.latest_at DESC, a.wk ASC".to_string(),
     }
 }
 
-/// 关键字 → ILIKE 模式（`%`/`_` 转义，与列表搜索同口径）
-fn like_of(q: &WorksQuery) -> Option<String> {
-    let raw = q.q.as_deref().or(q.search.as_deref())?;
-    let s = raw.trim();
-    if s.is_empty() {
-        return None;
-    }
-    Some(format!("%{}%", esc_like(s)))
+/// 与 filter_sql 的 $1..$21 槽位逐位对应；列表再补 $22/$23。
+macro_rules! bind_works_filter {
+    ($query:expr, $f:expr, $viewer:expr) => {
+        $query
+            .bind($f.filter.category_id.clone())
+            .bind($f.filter.official)
+            .bind($f.filter.size_min)
+            .bind($f.filter.size_max)
+            .bind($f.filter.date_from.as_deref())
+            .bind($f.pattern.as_deref())
+            .bind($f.filter.date_to.as_deref())
+            .bind($f.filter.min_seeders)
+            .bind($f.filter.max_seeders)
+            .bind($f.exclude_pat.as_deref())
+            .bind($f.filter.promo.as_deref())
+            .bind($f.owner_pat.as_deref())
+            .bind($f.filter.only_mine.then_some($viewer))
+            .bind($f.filter.min_leechers)
+            .bind($f.filter.max_leechers)
+            .bind($f.filter.min_completed)
+            .bind($f.filter.max_completed)
+            .bind($f.filter.anonymous)
+            .bind($f.filter.rating_min)
+            .bind($f.filter.tag_ids.clone())
+            .bind(None::<String>)
+    };
 }
 
 #[utoipa::path(
     get,
     path = "/api/v1/works",
     tag = "种子",
-    description = "作品聚合列表（同片多版本归为一部作品；group_id 优先，\
-            否则按归一化标题兜底）。",
+    description = "作品聚合列表（同片多版本归为一部作品；筛选与 /torrents 同源）。",
     params(
         ("q" = Option<String>, description = "关键字（模糊）"),
-        ("category_id" = Option<i32>, description = "分类"),
-        ("sort" = Option<String>, description = "latest/seeders/size/torrents"),
+        ("category_id" = Option<String>, description = "分类 id，逗号多选"),
+        ("sort" = Option<String>, description = "sort key; _asc reverses"),
         ("limit" = Option<i64>, description = "每页（默认 24，上限 100）"),
         ("page" = Option<i64>, description = "页码，从 1 起"),
     ),
@@ -142,31 +168,47 @@ pub(crate) async fn works_list(
     state: web::Data<std::sync::Arc<AppState>>,
     q: Q<WorksQuery>,
 ) -> DomainResult<impl Responder> {
-    let _auth = require_auth(&req, &state).await?;
-    let limit = q.limit.unwrap_or(24).clamp(1, 100);
+    let auth = require_auth(&req, &state).await?;
+    let limit = q.filters.limit.unwrap_or(24).clamp(1, 100);
     let page = q.page.unwrap_or(1).max(1);
     // 统一走分页助手：旧式手写偏移（页码减一乘每页条数）在极端页码下会
     // 绕成**负 offset**（release 构建）⇒ PG 报「OFFSET must not be negative」
     // 打成 500；助手把页码夹在 1..=1_000_000 并用饱和乘法 ⇒ 极端页码只是空页。
     let offset = crate::dto::page_offset(page, limit);
-    let pat = like_of(&q);
-
+    let wf = works_filter::parse(
+        &state.repo.read_db,
+        req.query_string(),
+        &q.filters,
+        q.q.as_deref(),
+    )
+    .await?;
+    let sec_sql = section_where(&state.repo.read_db, &wf.filter.sections).await;
+    let search_pred = search_pred_with_syn(
+        &state.repo.read_db,
+        wf.filter.search.as_deref(),
+        wf.filter.search_area,
+        wf.filter.search_mode == Some(2),
+        " ESCAPE chr(92)",
+    )
+    .await;
+    let sort = order_of(q.filters.sort.as_deref());
+    let sql =
+        works_sql::list_sql(&sort, &wf.filter, &sec_sql, &search_pred, auth.id);
     let items: Vec<WorkRow> =
-        sqlx::query_as(&works_sql::list_sql(order_of(q.sort.as_deref())))
-            .bind(q.category_id)
-            .bind(&pat)
+        bind_works_filter!(sqlx::query_as::<_, WorkRow>(&sql), &wf, auth.id)
             .bind(limit)
             .bind(offset)
             .fetch_all(&state.repo.read_db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
 
-    let total: i64 = sqlx::query_scalar(&works_sql::count_sql())
-        .bind(q.category_id)
-        .bind(&pat)
-        .fetch_one(&state.repo.read_db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    let count_sql =
+        works_sql::count_sql(&wf.filter, &sec_sql, &search_pred, auth.id);
+    let total: i64 =
+        bind_works_filter!(sqlx::query_scalar(&count_sql), &wf, auth.id)
+            .fetch_one(&state.repo.read_db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 每部作品挂前 8 个种子（单条窗口函数查询，避免 N+1）
     let keys: Vec<String> = items.iter().map(|w| w.key.clone()).collect();
@@ -198,4 +240,30 @@ pub(crate) async fn works_list(
         "limit": limit,
         "page": page,
     })))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// /works 复用列表 ListQuery：扁平反序列化必须真的收下分类/标签/
+    /// 存活/排序/评分这些参数，否则页面转发了也会静默失效。
+    #[test]
+    fn works_query_flattens_list_filters() {
+        let q = web::Query::<WorksQuery>::from_query(
+            "q=Audit&limit=5&page=2&category_id=1,2&alive=2\
+             &tag_ids=3&tag_mode=all&sort=seeders_asc&rating_min=8",
+        )
+        .expect("query")
+        .into_inner();
+        assert_eq!(q.q.as_deref(), Some("Audit"));
+        assert_eq!(q.page, Some(2));
+        assert_eq!(q.filters.limit, Some(5));
+        assert_eq!(q.filters.category_id_alias.as_deref(), Some("1,2"));
+        assert_eq!(q.filters.alive, Some(2));
+        assert_eq!(q.filters.tag_ids, vec!["3".to_string()]);
+        assert_eq!(q.filters.tag_mode.as_deref(), Some("all"));
+        assert_eq!(q.filters.sort.as_deref(), Some("seeders_asc"));
+        assert_eq!(q.filters.rating_min, Some(8.0));
+    }
 }

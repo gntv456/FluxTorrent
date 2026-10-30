@@ -8,6 +8,7 @@
 //!
 //! 只认有外部锚点的作品键：TMDB id（`m…`）与 IMDb id（`i…`，走 TMDB
 //! /find 反查）；豆瓣-only（`d…`）暂无结构化源，仍靠种子层兜底。
+//! 组键（`g…`）用组内种子的锚点回查，缓存键仍写 `g…`——组作品也有主创/评分。
 
 use sqlx::PgPool;
 
@@ -56,8 +57,8 @@ pub(crate) async fn upsert_for_torrent(
     let Some((key, tmdb_id, tmdb_url, imdb_id)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };
-    if !key.starts_with(['i', 'm', 'd']) {
-        // 组键/标题键没有外部锚点（组是站务手工口径），不拉
+    if !key.starts_with(['i', 'm', 'd', 'g']) {
+        // 标题键没有外部锚点；组键允许用组内种子的锚点回查（组仍是作品键）
         return Ok(None);
     }
     // 锚点优先级：TMDB 链接（movie/tv 精确）→ TMDB 裸 id（缺省 movie）

@@ -4,7 +4,7 @@
 
 /// 种子状态谓词：seeding/leeching/completed/incomplete/notseeding
 /// （0102，NP 口径；viewer=0 无人视角时全部恒空——上层保证 viewer 是真实 uid）。
-pub(super) fn status_pred(status: Option<&str>, viewer_sql: &str) -> String {
+pub(crate) fn status_pred(status: Option<&str>, viewer_sql: &str) -> String {
     let base = match status {
         Some("seeding") => {
             " AND EXISTS(SELECT 1 FROM snatches s \
@@ -34,7 +34,7 @@ pub(super) fn status_pred(status: Option<&str>, viewer_sql: &str) -> String {
 
 /// 书签谓词（阶段三筛选粒度）：bookmarked=1 只看我收藏的种。
 /// 倒序（未收藏）无竞品先例，不做。
-pub(super) fn bookmark_pred(viewer_sql: &str) -> String {
+pub(crate) fn bookmark_pred(viewer_sql: &str) -> String {
     " AND EXISTS(SELECT 1 FROM bookmarks b \
      WHERE b.torrent_id = t.id AND b.user_id = {viewer})"
         .replace("{viewer}", viewer_sql)
