@@ -190,7 +190,7 @@
  "apps/web/app/(main)/torrents/page.tsx": 418,
  "apps/web/app/(main)/torrents/_parts/torrents-cards.tsx": 306,
  "apps/web/app/(main)/torrents/_parts/torrents-view-switch.tsx::wide": 1,
- "apps/web/app/(main)/torrent/[id]/page.tsx": 430,
+ "apps/web/app/(main)/torrent/[id]/page.tsx": 420,
  "apps/web/app/(main)/top/page.tsx::wide": 8,
  "apps/web/app/(main)/textbooks/page.tsx::wide": 1,
  "apps/web/app/(main)/shop/page.tsx::wide": 1,
