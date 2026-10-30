@@ -31,7 +31,7 @@ EXEMPT_PATTERNS = [
 ]
 ALIVE_CONTROLS = ["announce_interval", "subtitle_workflow",
                   "arule_ads_keywords_enabled"]
-DEAD_CONTROLS = ["watermarkpos"]
+DEAD_CONTROLS = ["seeding_cap_hourly"]
 
 
 def load_blob():
@@ -75,32 +75,15 @@ ok("MB2 正控B：活键/动态键族不得被误报 %s" % ALIVE_CONTROLS, hit_b
    "被误报=%s" % [k for k in ALIVE_CONTROLS
                  if not (refs(blob, k) or exempt(k))])
 
-# 台账只放**本会话逐把核实过**的（键名零引用 + 有卡有值），
-# 其余按数记入基线棘轮——不 blanket 认领一份我没看过的清单。
+# 台账只放**本会话逐把核实过**的。B4（0439）后仅存的实测死卡是 10 把
+# 「TS / SQL 函数体消费」的留守键（MB 粗尺只扫 Rust blob，看不见这两面），
+# 台账语义 = 粗尺死卡登记 + 消费方明示；真死键已全部摘除（0438/0439）。
 LEDGER = {
-    "cheater_detection_level",
-    "imdb_language",
-    "largepro",
-    "guest_visit_type",
-    "savedirectorytype",
-    "thumbnailtype",
-    "watermark",
-    "watermarkpos",
-    "watermarkquality",
-    "add_watermark_to_thumbnail",
-    "tzero",
-    "vipstatus",
-    "thumbwidth",
-    "thumbheight",
-    "thumbquality",
-    "taxpercentage",
-    "tmp_invite_count",
-    "website",
-    # 最尖锐的一对：同屏两个只差一个字母的卡，其中这把没人读
-    # （近亲对通用判据另见 pt_audit_mn_twin_setting_keys.py）
-    "torrents_per_page_default",
-    "pm_per_page_default",
-    "posts_per_page_default",
+    "seeding_base_hourly", "seeding_bonus_scale", "seeding_cap_hourly",
+    "seeding_curve_k", "seeding_donor_mult", "seeding_rarity_exp",
+    "seeding_rarity_k", "seeding_vol_log_base_gb",   # seeding_params() 函数体
+    "bitbucket",   # web legacy-tool.ts
+    "website",     # web layout.tsx
 }
 ok("MB3 已核实死卡必须仍是死卡（台账 ⊆ 实测；某把被接了线就该从台账删号）",
    LEDGER.issubset(set(dead)),
@@ -110,28 +93,26 @@ ok("MB3 已核实死卡必须仍是死卡（台账 ⊆ 实测；某把被接了�
 # `format!("{id}_enabled")` 读走的，MB2 专门拿它当反控）。
 # 每核实一把：确认为死卡就并入 LEDGER，能接线/该撤卡就处理后从候选里消掉；
 # 数字下降只来自「逐把核实」，不来自把尺子调松。
-MEASURED_CEIL = 246
+MEASURED_CEIL = 10
 ok("MB4 键名零引用的**候选**数不得超过基线 %d（是候选上限，不是缺陷数；"
    "只降不升，降的方式是逐把核实）" % MEASURED_CEIL,
    len(dead) <= MEASURED_CEIL,
    "实测=%d（降到新数后请把基线一起下调）" % len(dead))
-ok("MB7 台账不得被悄悄清空：已核实死卡须 ≥ 15 把（现=%d）" % len(LEDGER),
-   len(LEDGER) >= 15, "台账=%d" % len(LEDGER))
+ok("MB7 台账不得被悄悄清空：粗尺死卡登记须 ≥ 10 把（现=%d）" % len(LEDGER),
+   len(LEDGER) >= 10, "台账=%d" % len(LEDGER))
 
 # 专门钉最尖锐的一条：功能在，旋钮不在链路上
 src = open("apps/api/src/admin_http/site.rs", encoding="utf-8",
            errors="replace").read()
-ok("MB5 作弊者探测：阈值写死在 SQL（500GB/100MB/s）而面板那把「探测等级」卡"
-   "无人读 ⇒ 要么接线要么撤卡，不许留着当装饰",
+ok("MB5 作弊探测：NP 时代『探测等级』卡已于 0438 撤卡（真实阈值写死在"
+   " site.rs SQL 的 500GB/100MB/s，档位化记 backlog）——键不得回潮",
    "536870912000" in src and not refs(blob, "cheater_detection_level"),
    "写死阈值在位=%s 键被引用=%s"
    % ("536870912000" in src, bool(refs(blob, "cheater_detection_level"))))
-ok("MB6 同屏易混对：topics_per_page_default 有读者、torrents_per_page_default 没有"
-   "（一把真生效一把纯装饰，站长必踩）",
-   bool(refs(blob, "topics_per_page_default"))
-   and not refs(blob, "torrents_per_page_default"),
-   "真键引用=%d 假键引用=%d" % (len(refs(blob, "topics_per_page_default")),
-                              len(refs(blob, "torrents_per_page_default"))))
+ok("MB6 同屏易混对已收口：torrents/pm/posts_per_page_default 三把假键已于"
+   " 0439 摘卡，真键 topics_per_page_default 必须仍在且有读者",
+   bool(refs(blob, "topics_per_page_default")),
+   "真键引用=%d" % len(refs(blob, "topics_per_page_default")))
 
 print("[读数] settings_meta∩site_settings 键数=%d，零消费者死卡=%d"
       % (len(keys), len(dead)))

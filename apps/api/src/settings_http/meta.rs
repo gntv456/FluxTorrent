@@ -82,30 +82,47 @@ pub(super) fn group_label<'a>(key: &'a str) -> &'a str {
         "forum" => "论坛",
         // 自动审种（0400）：总开关/规则三要素/词库名单/站型适配均在该组
         "auto_review" => "自动审种",
+        // B2（0437）：0107 之后陆续新增的分区补中文名——此前界面显示英文原名
+        "publishing" => "发布设定",
+        "payment" => "支付网关",
+        "ops" => "运营工具",
+        "module" => "模块开关",
+        "games" => "娱乐游戏",
+        // 0435 起「注册与邀请」是 grp 值本身（中文直接可用）
+        "注册与邀请" => "注册与邀请",
         other => other,
     }
 }
 
+// B2（0437）：按业务动线重排——建站配置 → 内容发布 → 社区互动 → 经济 →
+// 账号/权限/安全 → 基础设施 → 垂直域。旧内置序是 NP 十二分区原样，
+// 0107 后新增的分区全部漏登（追加尾部按字母序），本序为全量覆盖。
 const DEFAULT_GROUP_ORDER: &[&str] = &[
     "basic",
     "main",
-    "smtp",
-    "security",
-    "authority",
-    "tweak",
-    "bonus",
-    "account",
+    "注册与邀请",
+    "publishing",
     "torrent",
     "attachment",
-    "advertisement",
-    "anticheat",
+    "forum",
+    "bonus",
     "economy",
+    "account",
+    "authority",
+    "security",
+    "smtp",
+    "anticheat",
+    "auto_review",
+    "payment",
+    "ops",
+    "module",
+    "module_fun",
     "module_community",
     "module_economy",
-    "module_fun",
-    "module_ops",
+    "games",
     "appearance",
-    "auto_review",
+    "advertisement",
+    "tweak",
     "misc",
 ];
 

@@ -12,10 +12,24 @@ use crate::state::AppState;
 use super::login_origin::{is_form_body, origin_allowed};
 use super::login_types::LoginReq;
 
-/// 登录体既接受 JSON（本站前端）也接受 `application/x-www-form-urlencoded`
-/// （0267）：NexusPHP 生态的登录习惯是表单 POST（`takelogin.php`
-/// username/password），此前表单打进来会 400「Content type error」，
-/// 于是 MoviePilot / autobrr 这类按 NP 习惯登录的工具一个都进不来。
+/// 连续失败锁定阈值（0440 接线，原写死 5）：读
+/// site_settings.login_lockout_threshold，缺省/非法回落 5；下限钳 3
+/// （低于 PoW 起答线+1 会让锁定先于 PoW 生效，白费算力闸）。
+async fn lockout_threshold(state: &web::Data<std::sync::Arc<AppState>>) -> i64 {
+    let v: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings \
+         WHERE name = 'login_lockout_threshold'",
+    )
+    .fetch_optional(&state.repo.db)
+    .await
+    .ok()
+    .flatten();
+    v.and_then(|s| s.trim().parse::<i64>().ok())
+        .filter(|n| *n >= 3)
+        .unwrap_or(5)
+}
+
+/// 登录体既接受 JSON 也接受表单 POST（0267，NP 生态 takelogin.php 习惯）。
 #[post("/auth/login")]
 pub async fn login(
     req: HttpRequest,
@@ -43,9 +57,9 @@ pub async fn login(
             "IP 已被封禁，请联系管理组".into(),
         ));
     }
-    // 账户级失败锁定（P2 安全小补）：连续失败 5 次锁 15 分钟（Redis 计数，
-    // 成功登录即清零）。与既有 IP/用户名限流叠加——限流拦高频，锁定拦低慢
-    // 定向爆破。锁定期内连正确密码也拒（不给探测反馈）。
+    // 账户级失败锁定（P2 安全小补）：连续失败达阈值
+    // （login_lockout_threshold，缺省 5）锁 15 分钟（Redis 计数，成功登录即
+    // 清零）。限流拦高频，锁定拦低慢定向爆破；锁定期内正确密码也拒。
     let mut pow_token_used: Option<String> = None;
     {
         let lock_key = format!("acctlock:{}", body.username.to_lowercase());
@@ -53,7 +67,8 @@ pub async fn login(
         // 锁定判定形同虚设。改 fail-close：上方 throttle() 本就 fail-close，
         // Redis 不可用时登录根本到不了这里，不新增可用性风险。
         let fails: i64 = crate::http::counter_peek(&state, &lock_key).await?;
-        if fails >= 5 {
+        let threshold = lockout_threshold(&state).await;
+        if fails >= threshold {
             return Err(DomainError::Validation(
                 "该账号因连续登录失败已被临时锁定，请 15 分钟后再试".into(),
             ));
@@ -62,7 +77,7 @@ pub async fn login(
         // 要求 body 带有效 pow_token/pow_solution——每次尝试先付一段 CPU，
         // 把单账户定向爆破的成本从 0 抬到与合法用户同等算力。校验失败与
         // 密码错同点 counter_bump（token 经 GETDEL 一次性消费，防重放）。
-        if (crate::gaps_http::POW_FAILS_FROM..5).contains(&fails) {
+        if (crate::gaps_http::POW_FAILS_FROM..threshold).contains(&fails) {
             let token = body.pow_token.clone().unwrap_or_default();
             let sol = body.pow_solution.clone().unwrap_or_default();
             if let Err(e) =
