@@ -44,6 +44,12 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
   const [meFailed, setMeFailed] = useState(false);
+  // 头像图床不可达标记：true 时回落首字母（见 avatar() 的 onError）
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  // 换号/重登后重置（不同号头像源不同）
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [me?.username]);
   // 模块开关（G2-7）：快捷链接按模块过滤（medals/tasks/jixiao）
   const [mods, setMods] = useState<Record<string, boolean>>({});
   // 顶栏魔力 chip 开关（W-31 / IA-2 ①）：site_settings.topbar_spark_chip，
@@ -165,12 +171,15 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
           : avatarFrameStyle(me.avatar_frame_css)
       }
     >
-      {me.avatar_url ? (
+      {me.avatar_url && !avatarFailed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={me.avatar_url}
           alt=""
           className="h-full w-full rounded-full object-cover"
+          // 外链图床不可达（本例：xingyungept 对大陆不通）时回落首字母，
+          // 不留空白框——用户感知就是「头像没了」
+          onError={() => setAvatarFailed(true)}
         />
       ) : (
         me.username.slice(0, 1).toUpperCase()
