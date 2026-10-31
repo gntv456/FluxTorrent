@@ -50,6 +50,8 @@ export async function generateMetadata(): Promise<Metadata> {
     .filter(Boolean);
   return {
     ...(base ? { metadataBase: base } : {}),
+    // 站点指纹：第三方工具（如 auto_feed 适配层）据此识别 FluxTorrent
+    generator: "FluxTorrent",
     title: `${brandName} · ${dict.meta.titleSuffix}`,
     description: desc,
     ...(keywords.length ? { keywords } : {}),
