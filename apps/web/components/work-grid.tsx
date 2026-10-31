@@ -98,17 +98,17 @@ export function WorkGrid({
                 </div>
               </header>
               <WorkSeedMini seeds={shown} dict={dict} locale={locale} />
-              {rest > 0 && (
-                <footer className="wk-gfoot">
-                  <Link href={href} className="wk-gmore">
-                    {dict.works.moreVersions.replace(
-                      "{n}",
-                      String(rest),
-                    )}{" "}
-                    ›
-                  </Link>
-                </footer>
-              )}
+              <footer className="wk-gfoot">
+                <Link href={href} className="wk-gmore">
+                  {rest > 0
+                    ? dict.works.moreVersions.replace(
+                        "{n}",
+                        String(rest),
+                      )
+                    : dict.works.openWork}{" "}
+                  ›
+                </Link>
+              </footer>
             </article>
           </li>
         );
