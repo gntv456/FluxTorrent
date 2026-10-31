@@ -578,9 +578,9 @@ body {
   text-underline-offset: 3px;
 }
 
-/* 站点背景图（0445）：固定底层（z=0），内容壳 .site-shell 抬到 z=1。
+/* 站点背景图（0445）：固定底层（z=0），内容壳 .site-shell 抬到 z=10。
  * 负 z-index 会被 body 的不透明底盖住（html 有底色时 body 背景不上画布），
- * 所以固定用 0/1 两层，不靠负值。 */
+ * 所以固定用 0/10 两个语义档，不靠负值。 */
 .site-backdrop {
   position: fixed;
   z-index: 0;
@@ -593,7 +593,7 @@ body {
 
 .site-shell {
   position: relative;
-  z-index: 1;
+  z-index: 10;
 }
 
 h1,

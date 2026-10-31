@@ -36,8 +36,8 @@ export default async function MainLayout({
   });
   return (
     <>
-      {/* 站点背景图（0445）：固定底层（z=0），内容壳 z=1 压在上面；
-          空 URL 不渲染。负 z-index 会被 body 的不透明底盖住，所以用 0/1 分层。 */}
+      {/* 站点背景图（0445）：固定底层（z=0），内容壳 z=10 压在上面；
+          空 URL 不渲染。负 z-index 会被 body 的不透明底盖住，所以用 0/10 分层。 */}
       {(() => {
         const bg = cssBackgroundImage(profile?.backgrounds?.site?.url);
         if (!bg) return null;
