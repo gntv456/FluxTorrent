@@ -49,6 +49,11 @@ pub const DETAIL_SECTIONS: &[&str] = &[
     "comments",
 ];
 
+/// 作品聚合卡（「宽松」形态）的可隐藏字段。标题/海报/种子表是卡片骨架，
+/// 不开放关闭（与列表 title 列同理）；默认全显示，站长可逐项收起。
+pub const WORK_FIELDS: &[&str] =
+    &["year", "tags", "director", "synopsis", "cast", "ratings"];
+
 /// 键集下发（登录即可读）：编辑器据此渲染全部可配置项。
 /// 键显示名走前端 i18n（viewLayout.names），本端点只出键。
 #[get("/view-layout")]
@@ -60,6 +65,7 @@ pub async fn view_layout_keys(
     Ok(ok(serde_json::json!({
         "columns": TORRENT_COLUMNS,
         "sections": DETAIL_SECTIONS,
+        "works": WORK_FIELDS,
     })))
 }
 
@@ -91,6 +97,8 @@ struct ViewHiddenBody {
     columns: Vec<String>,
     #[serde(default)]
     sections: Vec<String>,
+    #[serde(default)]
+    works: Vec<String>,
 }
 
 /// 保存视图布局（sysop）：只存「隐藏项」集合，白名单校验后规范化。
@@ -110,12 +118,14 @@ pub async fn admin_view_hidden_put(
     .await?;
     if body.columns.len() > TORRENT_COLUMNS.len()
         || body.sections.len() > DETAIL_SECTIONS.len()
+        || body.works.len() > WORK_FIELDS.len()
     {
         return Err(DomainError::Validation("隐藏项数量超限".into()));
     }
     for (items, list, what) in [
         (&body.columns, TORRENT_COLUMNS, "列"),
         (&body.sections, DETAIL_SECTIONS, "段落"),
+        (&body.works, WORK_FIELDS, "字段"),
     ] {
         let mut seen = std::collections::HashSet::new();
         for k in items {
@@ -142,7 +152,9 @@ pub async fn admin_view_hidden_put(
         }
     }
     let value = serde_json::json!({
-        "columns": body.columns, "sections": body.sections,
+        "columns": body.columns,
+        "sections": body.sections,
+        "works": body.works,
     });
     sqlx::query(
         "INSERT INTO site_settings (name, value, descr, grp) VALUES \
@@ -184,6 +196,15 @@ mod tests {
         v.sort_unstable();
         v.dedup();
         assert_eq!(v.len(), n, "详情段落键重复");
+    }
+
+    #[test]
+    fn work_field_keys_unique() {
+        let mut v = WORK_FIELDS.to_vec();
+        let n = v.len();
+        v.sort_unstable();
+        v.dedup();
+        assert_eq!(v.len(), n, "作品卡字段键重复");
     }
 
     /// title 必须在列清单里（不可隐藏的最低可用列）

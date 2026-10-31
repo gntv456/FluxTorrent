@@ -28,11 +28,14 @@ export function WorkCard({
   dict,
   locale,
   catName,
+  hidden = [],
 }: {
   work: WorkWithSeeds;
   dict: Dict;
   locale: Locale;
   catName: string;
+  /** 站点级隐藏字段（view_hidden.works）：year/tags/director/… */
+  hidden?: readonly string[];
 }) {
   const title = workTitle(work.name);
   const href = `/works/${work.key}`;
@@ -45,6 +48,7 @@ export function WorkCard({
   const flags = workFlags(work, dict);
   const genreTags = flags.genres.slice(0, 4);
   const userTags = work.tags ?? [];
+  const off = (k: string) => hidden.includes(k);
   return (
     <article className="wk-card" data-work-key={work.key}>
       <div className="wk-cover">
@@ -54,16 +58,12 @@ export function WorkCard({
             alt=""
             size="lg"
             className="wk-poster-img h-full w-full object-cover"
-            // 无海报时站在 .wk-poster 的渐变底上，用片名当封面字（样图口径：
-            // 生成式海报），而不是全站默认的「占位底 + 唱片图标」
-            fallback={<span className="wk-poster-t">{title}</span>}
+            // 片名已在右侧标题里，海报上不再重复（2026-10-31）
+            fallback={null}
           />
           <span className="wk-eyebrow">{catName}</span>
-          <span className="wk-poster-t">{title}</span>
         </Link>
         <div className="wk-cover-note">
-          {title}
-          <br />
           <span className="wk-date">{date}</span>
         </div>
       </div>
@@ -73,7 +73,9 @@ export function WorkCard({
           <h3 className="wk-title">
             <Link href={href}>{title}</Link>
           </h3>
-          {year ? <span className="wk-year">{year}</span> : null}
+          {year && !off("year") ? (
+            <span className="wk-year">{year}</span>
+          ) : null}
           {flags.official && (
             <span className="wk-flag wk-flag--official">
               {dict.torrents.officialTag}
@@ -81,7 +83,7 @@ export function WorkCard({
           )}
           <WorkIds work={work} dict={dict} />
           <span className="wk-head-actions">
-            {flags.ratings.length > 0 && (
+            {!off("ratings") && flags.ratings.length > 0 && (
               <span className="wk-head-ratings">
                 {flags.ratings.map((r) => (
                   <span
@@ -103,7 +105,7 @@ export function WorkCard({
           {[
             catName,
             flags.region,
-            flags.director.length > 0
+            !off("director") && flags.director.length > 0
               ? `${dict.works.director} ${flags.director
                   .slice(0, 2)
                   .join(" / ")}`
@@ -134,7 +136,7 @@ export function WorkCard({
           </div>
         )}
 
-        {(genreTags.length > 0 || userTags.length > 0) && (
+        {!off("tags") && (genreTags.length > 0 || userTags.length > 0) && (
           <div className="wk-tags">
             {genreTags.map((g) => (
               <span key={`g:${g}`} className="wk-genre">
@@ -147,9 +149,11 @@ export function WorkCard({
           </div>
         )}
 
-        <p className="wk-syn">{syn || dict.works.noSynopsis}</p>
+        {!off("synopsis") && (
+          <p className="wk-syn">{syn || dict.works.noSynopsis}</p>
+        )}
 
-        {flags.cast.length > 0 && (
+        {!off("cast") && flags.cast.length > 0 && (
           <div className="wk-crew">
             <div>
               <b>{dict.works.cast}</b>

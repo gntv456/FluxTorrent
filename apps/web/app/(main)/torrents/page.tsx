@@ -44,11 +44,8 @@ const EMPTY_PAGE: TorrentPage<TorrentListItem> = {
 };
 
 /** 种子页：常驻搜索行 + 折叠高级面板 + 已选条件摘要；拆件见 ./_parts/。 */
-/** 「看全部（含断种）」的链接：保留其余筛选，只把 alive 切到 0。
- *  与筛选变更一样必须丢旧游标——旧游标绑定旧结果集。 */
-function hiddenDeadHref(
-  sp: Record<string, string | undefined>,
-): string {
+/** 「看全部（含断种）」：保留其余筛选，只把 alive 切到 0；换筛选丢旧游标。 */
+function hiddenDeadHref(sp: Record<string, string | undefined>): string {
   return withParam(withoutCursor(sp), "alive", "0");
 }
 
@@ -90,7 +87,9 @@ export default async function TorrentsPage({
         bg_color?: string | null;
       }[];
       metadata_sources?: string[];
-      view_hidden?: { columns?: string[]; sections?: string[] };
+      view_hidden?: {
+        columns?: string[]; sections?: string[]; works?: string[];
+      };
     }>("/api/v1/site-profile"),
     loadPublic<
       Record<string, SectionDictRow[]> & { kinds?: SectionKindMeta[] }
@@ -314,6 +313,7 @@ export default async function TorrentsPage({
           view={view}
           perPage={pageSize}
           withParam={withParam}
+          workFields={profile?.view_hidden?.works ?? []}
         />
       ) : page.items.length === 0 ? (
         loadErr !== null ? (

@@ -65,6 +65,7 @@ export async function TorrentWorks({
   view,
   perPage,
   withParam,
+  workFields,
 }: {
   dict: Dict;
   locale: Locale;
@@ -73,6 +74,8 @@ export async function TorrentWorks({
   view: TorrentView;
   perPage: number;
   withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
+  /** 站点级隐藏字段（view_hidden.works），透传给宽松卡 */
+  workFields: string[];
 }) {
   const pageNo = Math.max(1, Number(sp.p ?? "1") || 1);
   const qs = new URLSearchParams({
@@ -163,6 +166,7 @@ export async function TorrentWorks({
             dict={dict}
             locale={locale}
             catName={catName(w.category_id)}
+            hidden={workFields}
           />
         ))
       ) : view === "card" ? (

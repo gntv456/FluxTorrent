@@ -56,9 +56,7 @@ export function WorkGrid({
                     alt=""
                     size="sm"
                     className="h-full w-full object-cover"
-                    fallback={
-                      <span className="wk-gposter-t">{title}</span>
-                    }
+                    fallback={null}
                   />
                 </Link>
                 <div className="wk-ginfo">

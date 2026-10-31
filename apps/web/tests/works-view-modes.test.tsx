@@ -122,6 +122,7 @@ function work(): WorkWithSeeds {
 
 async function view(
   mode: "table" | "card" | "poster",
+  workFields: string[] = [],
 ): Promise<HTMLElement> {
   const node = await TorrentWorks({
     dict: zhCN,
@@ -131,6 +132,7 @@ async function view(
     view: mode,
     perPage: 20,
     withParam: () => "/torrents",
+    workFields,
   });
   const { container } = render(
     <LocaleProvider dict={zhCN} locale="zh-CN">
@@ -170,6 +172,35 @@ describe("作品聚合三形态", () => {
     expect(c.querySelector(".wk-seed-more")).toBeNull();
   });
 
+  it("宽松卡的海报上不重复片名", async () => {
+    const t = await view("table");
+    expect(
+      t.querySelector(".wk-poster")!.textContent,
+    ).not.toContain("尚公主");
+  });
+
+  it("站长隐藏字段：标签/导演/简介/演员/评分可收起，标题保留", async () => {
+    const c = await view("table", [
+      "tags",
+      "director",
+      "synopsis",
+      "cast",
+      "ratings",
+      "year",
+    ]);
+    expect(c.querySelector(".wk-tags")).toBeNull();
+    expect(c.querySelector(".wk-syn")).toBeNull();
+    expect(c.querySelector(".wk-crew")).toBeNull();
+    expect(c.querySelector(".wk-head-ratings")).toBeNull();
+    expect(c.querySelector(".wk-year")).toBeNull();
+    expect(
+      c.querySelector(".wk-media-meta")!.textContent,
+    ).not.toContain("导演");
+    expect(c.querySelector(".wk-title")!.textContent).toContain(
+      "尚公主",
+    );
+  });
+
   it("卡片 = 网格：作品卡只挂前两条种子 + 其余 N 个版本", async () => {
     const c = await view("card");
     expect(c.querySelector(".wk-grid")).not.toBeNull();
@@ -179,6 +210,10 @@ describe("作品聚合三形态", () => {
     expect(screen.getByText(/其余 2 个版本/)).toBeInTheDocument();
     // 网格卡不挂七列表头：那是「宽松」的形态
     expect(c.querySelector(".wk-shead")).toBeNull();
+    // 封面不重复片名（片名在右侧）
+    expect(
+      c.querySelector(".wk-gposter")!.textContent,
+    ).not.toContain("尚公主");
   });
 
   it("海报墙 = 瀑布：点封面就地展开版本面板，关闭即收起", async () => {
@@ -188,6 +223,10 @@ describe("作品聚合三形态", () => {
     expect(c.querySelector(".wk-grid")).toBeNull();
     expect(c.querySelectorAll(".wk-wall-it")).toHaveLength(1);
     expect(c.querySelector(".wk-wall-panel")).toBeNull();
+    // 封面不重复片名（片名在封面下方信息条）
+    expect(
+      c.querySelector(".wk-wall-poster")!.textContent,
+    ).not.toContain("尚公主");
     await userEvent.click(screen.getByTitle("尚公主"));
     const panel = c.querySelector(".wk-wall-panel");
     expect(panel).not.toBeNull();

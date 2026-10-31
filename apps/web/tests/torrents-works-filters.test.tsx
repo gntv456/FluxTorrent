@@ -52,6 +52,7 @@ describe("作品聚合筛选转发", () => {
       view: "card",
       perPage: 20,
       withParam: () => "/torrents",
+      workFields: [],
     });
     expect(calls).toHaveLength(1);
     const url = new URL(calls[0], "http://x");

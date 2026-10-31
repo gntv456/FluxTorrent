@@ -70,9 +70,7 @@ export function WorkWall({ items }: { items: WallItem[] }) {
                     size="lg"
                     className="h-full w-full object-cover"
                     sizes="(max-width: 640px) 45vw, 180px"
-                    fallback={
-                      <span className="wk-poster-t">{w.title}</span>
-                    }
+                    fallback={null}
                   />
                   <span className="wk-eyebrow">
                     {w.quality ?? w.cat}
@@ -104,9 +102,7 @@ export function WorkWall({ items }: { items: WallItem[] }) {
                       alt=""
                       size="sm"
                       className="h-full w-full object-cover"
-                      fallback={
-                        <span className="wk-gposter-t">{w.title}</span>
-                      }
+                      fallback={null}
                     />
                   </span>
                   <span className="wk-wp-info">

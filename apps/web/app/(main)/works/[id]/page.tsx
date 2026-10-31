@@ -152,7 +152,7 @@ export default async function WorkDetailPage({
               alt=""
               size="lg"
               className="h-full w-full object-cover"
-              fallback={<span className="wk-poster-t">{title}</span>}
+              fallback={null}
             />
           </div>
           <div className="wk-hero-info">

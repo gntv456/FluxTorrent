@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 
-type Kind = "columns" | "sections";
+type Kind = "columns" | "sections" | "works";
 
 const CHIP_CLS = "rounded-[var(--r-sm)] border px-3 py-1.5 text-xs";
 const CHIP_LOCKED =
@@ -30,6 +30,7 @@ export function ViewHiddenEditor() {
   const [hidden, setHidden] = useState<Record<Kind, string[]>>({
     columns: [],
     sections: [],
+    works: [],
   });
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,9 +47,12 @@ export function ViewHiddenEditor() {
         setHidden({
           columns: prof.view_hidden?.columns ?? [],
           sections: prof.view_hidden?.sections ?? [],
+          works: prof.view_hidden?.works ?? [],
         });
       })
-      .catch(() => setKeys({ columns: [], sections: [] }));
+      .catch(() =>
+        setKeys({ columns: [], sections: [], works: [] }),
+      );
   }, []);
 
   function toggle(kind: Kind, key: string) {
@@ -82,6 +86,7 @@ export function ViewHiddenEditor() {
   const groups: [Kind, string][] = [
     ["columns", t.columnsTitle],
     ["sections", t.sectionsTitle],
+    ["works", t.worksTitle],
   ];
 
   return (
@@ -129,7 +134,9 @@ export function ViewHiddenEditor() {
         <button
           type="button"
           className={RESET_CLS}
-          onClick={() => setHidden({ columns: [], sections: [] })}
+          onClick={() =>
+            setHidden({ columns: [], sections: [], works: [] })
+          }
         >
           {t.reset}
         </button>
