@@ -122,6 +122,13 @@ pub(crate) async fn backgrounds(db: &PgPool) -> Value {
             "opacity": setting_num(db, "login_bg_opacity", 50.0, 0.0, 100.0)
                 .await,
         },
+        "loginPage": {
+            "url": setting_text(db, "login_page_bg_url").await,
+            "opacity": setting_num(
+                db, "login_page_bg_opacity", 40.0, 0.0, 100.0,
+            )
+            .await,
+        },
     })
 }
 

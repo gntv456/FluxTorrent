@@ -37,12 +37,17 @@ function useSiteBrand() {
     /** 登录页左栏背景（0445）：CSS url() 字符串，空 = 不铺 */
     bg: string | null;
     bgOpacity: number;
+    /** 登录页主背景（0446）：画布之外的整页层，空 = 不铺 */
+    pageBg: string | null;
+    pageBgOpacity: number;
   }>({
     name: dict.common.brand,
     desc: dict.login.introDesc,
     logo: null,
     bg: null,
     bgOpacity: 50,
+    pageBg: null,
+    pageBgOpacity: 40,
   });
   useEffect(() => {
     let alive = true;
@@ -53,6 +58,7 @@ function useSiteBrand() {
         site_desc?: string | null;
         backgrounds?: {
           login?: { url?: string | null; opacity?: number };
+          loginPage?: { url?: string | null; opacity?: number };
         };
       }>("/api/v1/site-profile")
       .then((p) => {
@@ -65,6 +71,11 @@ function useSiteBrand() {
           bgOpacity: backgroundOpacity(
             p.backgrounds?.login?.opacity,
             50,
+          ),
+          pageBg: cssBackgroundImage(p.backgrounds?.loginPage?.url),
+          pageBgOpacity: backgroundOpacity(
+            p.backgrounds?.loginPage?.opacity,
+            40,
           ),
         });
       })
@@ -107,6 +118,16 @@ export function AuthCanvas({
   const logoSrc = b.logo ?? "/brand/logo-mark.png";
   return (
     <div className="bz-login-page">
+      {b.pageBg && (
+        <span
+          className="bz-login-page-bg"
+          aria-hidden
+          style={{
+            backgroundImage: b.pageBg,
+            opacity: b.pageBgOpacity / 100,
+          }}
+        />
+      )}
       <div className="bz-login-canvas">
         {/* 左：深色品牌 Hero */}
         <div className="bz-login-intro">

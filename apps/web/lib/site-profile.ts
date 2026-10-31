@@ -76,6 +76,7 @@ export interface SiteProfile {
   backgrounds?: {
     site?: { url?: string | null; opacity?: number };
     login?: { url?: string | null; opacity?: number };
+    loginPage?: { url?: string | null; opacity?: number };
   };
 }
 

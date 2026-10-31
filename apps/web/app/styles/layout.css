@@ -408,7 +408,9 @@
 /* ============ 登录页双栏画布（theme.css page-login 校准至 2170×1180 artwork）
 ============ */
 .bz-login-page {
+  position: relative;
   display: flex;
+  overflow: hidden;
   min-height: calc(100vh - 40px);
   align-items: center;
   justify-content: center;
@@ -420,7 +422,20 @@
     var(--brand-bg);
 }
 
+/* 登录页主背景（0446）：整页铺底，画布抬到 z=10；不透明度后台可调 */
+.bz-login-page-bg {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
 .bz-login-canvas {
+  position: relative;
+  z-index: 10;
   display: grid;
   grid-template-columns: 50.4% 49.6%;
   grid-template-rows: 52px minmax(0, 1fr);
