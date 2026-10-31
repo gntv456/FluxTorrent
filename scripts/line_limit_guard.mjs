@@ -43,6 +43,10 @@ const EXEMPT = [
   "target/",
   "target-test/",
   "packages/domain-types/", // 共享类型契约：单文件即契约文档，跨包拆分损导航
+  // 油猴脚本（auto_feed 适配层）：Tampermonkey 按单文件装载/分发，
+  // 适配层与上游补丁必须能整段贴进 dist，拆成模块反而破坏构建；
+  // 构建产物 dist/ 已在 .gitignore。与 app 源码无关，另立豁免。
+  "scripts/userscripts/",
 ];
 
 const groups = [
