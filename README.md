@@ -54,6 +54,7 @@ docker compose -f docker/docker-compose.yml up -d
 - **管理**：45 个后台工具签 / 待审与申诉队列 / 批量调整（幂等）/ 作弊检测四件套（cheat_audit/multi_ip/highspeed/leak_scan）+ 客户端黑白名单 / 审计日志 / 群发；
 - **自定义**：见 [docs/customize/](docs/customize/README.md)（字段/页面/菜单/站型/内容包/模块/适配器七篇）；
 - **生态兼容**：开放 API（Token 180 天/上限 3 枚/可续期）+ RSS（item 带 enclosure 直链）+ `/compat/nexusphp/*` NP 字段口径兼容 + NP 别名路径（getrss/takelogin/userdetails/details）+ PT-Plugin-Plus 用户信息端点 + **Torznab 出口（Prowlarr/Jackett/Sonarr/Radarr）** + 增量新种流 `/open/announces` + Token 化发种 `/open/torrents` + NexusPHP 数据导入器；对接契约见 [_doc/开放API接入指南.md](_doc/开放API接入指南.md)；**工具维护者对接页**（三行命令起测试实例 + 逐工具要点）见 [_doc/工具维护者对接页.md](_doc/工具维护者对接页.md)；
+- **转种工具**：auto_feed 油猴脚本适配版（详情页一键转载 / 发布页自动填充），构建与安装见 [scripts/userscripts/auto-feed-flux/README.md](scripts/userscripts/auto-feed-flux/README.md)；
 - **多机扩展**：计费流消费者组 + 任务分片（SKIP LOCKED + executed_by）+ tracker XFF 双档，三机配方已实证（`_doc/G30-多机部署三机配方.md`）。
 
 ## 运维

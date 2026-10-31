@@ -207,7 +207,7 @@ cd ~/FluxTorrent && docker compose -f docker/docker-compose.yml up -d
 
 | 记录类型 | 主机记录                   | 记录值            | TTL      |
 | :------- | :------------------------- | :---------------- | :------- |
-| A        | `@`（或你的子域如 `mfwg`） | 你的服务器公网 IP | 默认即可 |
+| A        | `@`（或你的子域如 `fluxtorrent`） | 你的服务器公网 IP | 默认即可 |
 
 **✅ 完成标志**：终端 `dig 你的域名 +short` 输出你的服务器 IP（刚加的要等几分钟到几小时，没生效就先做 G.2，回头再验）。
 
@@ -223,7 +223,7 @@ cd ~/FluxTorrent && docker compose -f docker/docker-compose.yml up -d
 
 | 表单项       | 填什么                              | 说明                                                             |
 | :----------- | :---------------------------------- | :--------------------------------------------------------------- |
-| 域名         | `mfwg.ptang.top`（你的域名）        | 一行一个；`www` 前缀想绑也再填一行                               |
+| 域名         | `fluxtorrent.ptang.top`（你的域名）        | 一行一个；`www` 前缀想绑也再填一行                               |
 | PHP 版本     | **纯静态**                          | 我们不需要 PHP                                                   |
 | 数据库 / FTP | **都不建**                          | 栈内自带 postgres                                                |
 | 站点目录     | **保持默认**（`/www/wwwroot/域名`） | 空壳而已：所有流量走反代进容器，目录不会被读取，也不用往里放文件 |
@@ -240,7 +240,7 @@ cd ~/FluxTorrent && docker compose -f docker/docker-compose.yml up -d
 
 **③ 申请证书**：点站点名 → **「SSL」标签页 → Let's Encrypt**：
 
-1. 前提自查：域名 A 记录已生效——终端 `dig mfwg.ptang.top +short` 能返回你的服务器 IP（`mfwg` → `37.120.176.130` 这种记录在域名商后台加；刚加的要等几分钟到几小时）；
+1. 前提自查：域名 A 记录已生效——终端 `dig fluxtorrent.ptang.top +short` 能返回你的服务器 IP（`fluxtorrent` → `37.120.176.130` 这种记录在域名商后台加；刚加的要等几分钟到几小时）；
 2. 文件验证方式默认即可，勾选域名 → 点「申请」。失败九成是 DNS 没生效或 80 端口没放行（G.2）；
 3. 成功后把 **「强制 HTTPS」开关打开**（宝塔会自动在 80 端口加跳转）。
 
@@ -251,7 +251,7 @@ cd ~/FluxTorrent && docker compose -f docker/docker-compose.yml up -d
 **方式 1（一键脚本，推荐）**——SSH 里一条命令（在仓库目录下）：
 
 ```bash
-bash scripts/reverse-proxy.sh --domain mfwg.ptang.top
+bash scripts/reverse-proxy.sh --domain fluxtorrent.ptang.top
 ```
 
 脚本会：自动检测宝塔/系统 Nginx → 在站点配置里写入带标记的**受管块**（`/api/` + `/announce/` 两条 location，端口自动读 `docker/.env`，改端口重跑即刷新）→ `nginx -t` 校验后重载 → 自动画像体检（`/api/v1/health` 经域名可达？`/announce/` 返回码正常？）→ 告诉你后台 Tracker 地址该填什么。幂等可重跑；想撤销就把标记块删掉。`--dry` 只看不做，`--status` 只体检不改。
