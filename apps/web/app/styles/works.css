@@ -768,7 +768,7 @@
 /* ---------- 作品聚合：网格形态（Colapt 网格口径） ---------- */
 .wk-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 12px;
   padding: 0;
   margin: 0;
