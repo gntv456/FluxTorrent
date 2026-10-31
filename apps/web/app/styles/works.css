@@ -228,22 +228,8 @@
   color: var(--sub);
   font-size: 11.5px;
 }
-.wk-shead--relaxed,
-.wk-row--relaxed {
-  grid-template-columns: minmax(0, 1fr) 76px 56px 76px;
-}
-.wk-shead--relaxed {
-  border-top: none;
-}
-.wk-row--relaxed .wk-time,
-.wk-row--relaxed .wk-leech,
-.wk-row--relaxed .wk-done {
-  display: none;
-}
-
 /* ---------- 作品层信息（卡片 / 列表 / 海报墙共用） ---------- */
 .wk-flags,
-.wk-lflags,
 .wk-wall-flags {
   display: flex;
   flex-wrap: wrap;
@@ -251,9 +237,6 @@
 }
 .wk-flags {
   margin-top: 7px;
-}
-.wk-lflags {
-  margin-top: 2px;
 }
 .wk-wall-flags {
   margin-top: 3px;
@@ -270,7 +253,6 @@
   line-height: 1.5;
   white-space: nowrap;
 }
-.wk-lflags .wk-flag,
 .wk-wall-flags .wk-flag {
   padding: 0 4px;
 }
@@ -310,7 +292,7 @@
 .wk-row {
   display: grid;
   grid-template-columns:
-    minmax(240px, 1fr) 64px 76px 56px 56px 56px 76px;
+    18px minmax(240px, 1fr) 64px 76px 56px 56px 56px 76px;
   align-items: center;
   gap: 8px;
   padding: 7px 12px;
@@ -419,6 +401,78 @@
   text-decoration: none;
 }
 .wk-more a:hover {
+  text-decoration: underline;
+}
+
+/* 宽松行：左侧展开箭头 + 就地展开的版本信息 */
+.wk-chev {
+  align-self: start;
+  width: 18px;
+  padding: 2px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.wk-chev:hover {
+  color: var(--sky-deep);
+}
+.wk-seed-more {
+  padding: 10px 12px 12px 42px;
+  border-top: 1px dashed var(--line);
+  background: var(--surface-raised);
+}
+.wk-sm-descr {
+  margin: 0 0 6px;
+  color: var(--text-body);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.wk-sm-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  color: var(--sub);
+  font-size: 11.5px;
+}
+.wk-sm-meta b {
+  margin-right: 4px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.wk-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  max-width: 720px;
+  margin-top: 9px;
+}
+.wk-shot {
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+.wk-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wk-sm-link {
+  margin-top: 8px;
+  text-align: right;
+}
+.wk-sm-link a {
+  color: var(--sky-deep);
+  font-size: 12px;
+  text-decoration: none;
+}
+.wk-sm-link a:hover {
   text-decoration: underline;
 }
 
@@ -660,11 +714,7 @@
   }
   .wk-shead,
   .wk-row {
-    grid-template-columns: minmax(0, 1fr) 62px 46px 52px;
-  }
-  .wk-shead--relaxed,
-  .wk-row--relaxed {
-    grid-template-columns: minmax(0, 1fr) 62px 46px 52px;
+    grid-template-columns: 18px minmax(0, 1fr) 62px 46px 52px;
   }
   .wk-head-actions {
     width: 100%;
@@ -715,110 +765,182 @@
   color: var(--sky-deep);
 }
 
-/* ---------- 作品聚合：列表形态 ---------- */
-.wk-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-.wk-lrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface-card);
-}
-.wk-lrow:hover {
-  background: var(--surface-hover);
-}
-.wk-lcover {
-  flex: 0 0 46px;
-  width: 46px;
-  overflow: hidden;
-  aspect-ratio: 3 / 4;
-  border-radius: 7px;
-  background:
-    linear-gradient(155deg, var(--wk-grad-a), var(--wk-grad-c));
-}
-.wk-lcover-fb {
-  display: flex;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  color: var(--on-dark);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.25;
-  text-align: center;
-  word-break: break-word;
-}
-.wk-lmain {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-.wk-ltitle {
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wk-ltitle:hover {
-  color: var(--sky-deep);
-}
-.wk-lmeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  color: var(--sub);
-  font-size: 11.5px;
-}
-.wk-lnums {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px 10px;
-  color: var(--sub);
-  font-size: 11.5px;
-}
-.wk-ldate {
-  color: var(--text-faint);
-}
-
-/* ---------- 作品聚合：海报墙 ---------- */
-.wk-wall {
+/* ---------- 作品聚合：网格形态（Colapt 网格口径） ---------- */
+.wk-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 12px;
   padding: 0;
   margin: 0;
   list-style: none;
 }
+.wk-grid-it {
+  min-width: 0;
+}
+.wk-gcard {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+.wk-ghead {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.wk-gposter {
+  display: block;
+  flex: 0 0 66px;
+  width: 66px;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border-radius: 8px;
+  background:
+    linear-gradient(155deg, var(--wk-grad-a), var(--wk-grad-c));
+}
+.wk-gposter-t {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  color: var(--on-dark);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  word-break: break-word;
+}
+.wk-ginfo {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+.wk-gtitle {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.wk-gtitle a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.wk-gtitle a:hover {
+  color: var(--sky-deep);
+}
+.wk-grow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+.wk-grate {
+  color: var(--sub);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.wk-gtags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  color: var(--sub);
+  font-size: 10.5px;
+}
+.wk-gcount {
+  margin-left: auto;
+  color: var(--text-faint);
+}
+.wk-gfoot {
+  margin-top: auto;
+  padding: 7px 12px 9px;
+  border-top: 1px dashed var(--line);
+  text-align: right;
+}
+.wk-gmore {
+  color: var(--sky-deep);
+  font-size: 11.5px;
+  text-decoration: none;
+}
+.wk-gmore:hover {
+  text-decoration: underline;
+}
+
+/* ---------- 作品聚合：迷你种子行（网格卡 / 瀑布面板共用） ---------- */
+.wk-mini {
+  padding: 0 12px;
+  margin: 0;
+  list-style: none;
+}
+.wk-mrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.wk-mini .wk-mrow:first-child {
+  border-top: none;
+}
+.wk-mrow-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.wk-mrow .wk-rtitle {
+  font-size: 12px;
+}
+.wk-mrow .wk-act {
+  flex: 0 0 auto;
+}
+.wk-mrow-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  color: var(--sub);
+  font-size: 10.5px;
+}
+
+/* ---------- 作品聚合：瀑布墙（Colapt 瀑布口径） ---------- */
+.wk-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  grid-auto-flow: row dense;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.wk-wall-it {
+  min-width: 0;
+}
 .wk-wall-a {
   display: block;
+  width: 100%;
+  padding: 0;
   overflow: hidden;
-  height: 100%;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface-card);
   color: inherit;
-  text-decoration: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-.wk-wall-a:hover {
+.wk-wall-a:hover,
+.wk-wall-a.is-open {
   border-color: var(--sky);
 }
 .wk-wall-poster {
@@ -828,7 +950,7 @@
   background:
     linear-gradient(155deg, var(--wk-grad-a), var(--wk-grad-c));
 }
-.wk-wall-year {
+.wk-wall-promo {
   position: absolute;
   top: 7px;
   right: 7px;
@@ -856,21 +978,128 @@
 }
 .wk-wall-m {
   display: block;
+  overflow: hidden;
   margin-top: 3px;
   color: var(--sub);
   font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.wk-wall-d {
+.wk-wall-n {
   display: block;
+  overflow: hidden;
   margin-top: 1px;
   color: var(--text-faint);
   font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+/* 瀑布预览面板：整行宽，插在所选作品之后 */
+.wk-wall-panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--sky);
+  border-radius: 14px;
+  background: var(--surface-card);
+}
+.wk-wp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+.wk-wp-poster {
+  display: block;
+  flex: 0 0 46px;
+  width: 46px;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  background:
+    linear-gradient(155deg, var(--wk-grad-a), var(--wk-grad-c));
+}
+.wk-wp-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wk-wp-info {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+.wk-wp-title {
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.wk-wp-title:hover {
+  color: var(--sky-deep);
+}
+.wk-wp-meta {
+  display: block;
+  margin-top: 3px;
+  color: var(--sub);
+  font-size: 11.5px;
+}
+.wk-wp-open {
+  color: var(--sky-deep);
+  font-size: 12px;
+  text-decoration: none;
+}
+.wk-wp-open:hover {
+  text-decoration: underline;
+}
+.wk-wp-close {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--sub);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.wk-wp-close:hover {
+  border-color: var(--sky);
+  color: var(--ink);
+}
+.wk-wall-panel .wk-mini {
+  padding: 0;
+}
+.wk-wp-group {
+  padding: 2px 0 4px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.wk-wp-group .num {
+  margin-left: 5px;
+  color: var(--sub);
+  font-weight: 600;
+}
+.wk-wall-panel .wk-more {
+  margin-top: 6px;
+}
+
 @media (max-width: 768px) {
-  .wk-lnums {
-    flex: 1 0 100%;
-    justify-content: flex-start;
-    padding-left: 56px;
+  .wk-grid {
+    grid-template-columns: 1fr;
+  }
+  .wk-seed-more {
+    padding-left: 12px;
+  }
+  .wk-wall {
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 8px;
   }
 }
 

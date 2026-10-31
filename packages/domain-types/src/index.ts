@@ -195,6 +195,9 @@ export interface TorrentListItem {
   poster: string | null;
   /** IMDB id（0148：种子页字幕面板按此合并同片字幕；缺省 null） */
   imdb_id: string | null;
+  /** 简介截图（发种时从 descr 提取的 http(s) 图 URL）。
+   *  作品聚合/作品详情的种子行只带前 4 张；其它列表口不带该键。 */
+  screenshots?: string[] | null;
   /** H&R 策略（评审 P1-5：详情页明示下载义务）；null = 站点默认策略，
    *  语义 {"enabled","days","seed_hours"} 见 worker jobs/hr.rs。列表端点不下发。 */
   hr_policy?: { enabled?: boolean; days?: number; seed_hours?: number } | null;

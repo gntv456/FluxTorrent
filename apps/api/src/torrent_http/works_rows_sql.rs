@@ -20,6 +20,11 @@ SELECT t.id, t.info_hash, t.pieces_hash, t.name, t.small_descr,
        t.media_info->>'rating' AS rating,
        t.media_info->>'poster' AS poster,
        t.imdb_id, t.created_at,
+       (CASE WHEN jsonb_typeof(t.screenshots) = 'array' THEN
+          (SELECT jsonb_agg(v ORDER BY ord) FROM (
+             SELECT v, ord FROM jsonb_array_elements_text(t.screenshots)
+               WITH ORDINALITY AS e(v, ord) ORDER BY ord LIMIT 4
+           ) s) END) AS screenshots,
        (SELECT COALESCE(json_agg(json_build_object(
             'id', d.id, 'name', d.name, 'kind', d.kind,
             'bg_color', d.bg_color, 'color', d.color)
@@ -74,6 +79,11 @@ SELECT {wk} AS work_key,
        t.media_info->>'rating' AS rating,
        t.media_info->>'poster' AS poster,
        t.imdb_id, t.created_at,
+       (CASE WHEN jsonb_typeof(t.screenshots) = 'array' THEN
+          (SELECT jsonb_agg(v ORDER BY ord) FROM (
+             SELECT v, ord FROM jsonb_array_elements_text(t.screenshots)
+               WITH ORDINALITY AS e(v, ord) ORDER BY ord LIMIT 4
+           ) s) END) AS screenshots,
        (SELECT COALESCE(json_agg(json_build_object(
             'id', d.id, 'name', d.name, 'kind', d.kind,
             'bg_color', d.bg_color, 'color', d.color)

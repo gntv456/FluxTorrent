@@ -1,8 +1,8 @@
 /**
- * 作品卡（资源页「作品聚合」视图，Colapt「宽松」式媒体行）：
+ * 作品卡（资源页「作品聚合」的「列表」形态，Colapt「宽松」式媒体行）：
  *   左：海报 + 分类角标 + 最新日期；
  *   右：片名/年份/官方/条目 ID/评分/新增种子 → 地区/导演/片长 →
- *       类型 + 标签 → 简介 → 主演 → 「匹配的种子版本」四列种子行。
+ *       类型 + 标签 → 简介 → 主演 → 「匹配的种子版本」七列种子行。
  *
  * 数据全部来自 `/api/v1/works`（作品行 + 前 8 条种子），不额外请求。
  * 服务端组件；种子行交给 WorkSeedRows（详情页复用同一实现）。
@@ -171,10 +171,8 @@ export function WorkCard({
           <WorkSeedRows
             items={work.seeds}
             dict={dict}
-            locale={locale}
             total={work.torrents}
             moreHref={href}
-            variant="relaxed"
           />
         </div>
       </div>

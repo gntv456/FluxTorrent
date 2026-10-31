@@ -118,3 +118,10 @@ export function workTitle(name: string): string {
   if (/[\u4e00-\u9fa5]/.test(title)) return title;
   return title.replace(/[._]+/g, " ").trim();
 }
+
+/** 促销 → chip 样式（免费绿系、2x 暖系、其余蓝系）；种子行共用 */
+export function promoCls(promotion: string | null): string {
+  if (promotion === "free" || promotion === "x2free") return "wk-cfree";
+  if (promotion === "x2" || promotion === "x2half") return "wk-cep";
+  return "wk-cweb";
+}

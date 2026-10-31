@@ -38,6 +38,12 @@ pub struct TorrentRow {
     pub poster: Option<String>,
     /// IMDB id（0148 C1：种子页字幕面板按此合并同片字幕）
     pub imdb_id: Option<String>,
+    /// 简介截图（torrents.screenshots：发种时从 descr 提取的 http(s)
+    /// 图 URL 数组）。作品聚合的种子行只下发前 4 张（与展开块同数），
+    /// 其它查询不选该列 → sqlx(default) 落 None、serde 不回显。
+    #[sqlx(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screenshots: Option<serde_json::Value>,
     /// H&R 策略（评审 P1-5：详情页需明示下载义务）。NULL = 站点默认策略，
     /// 语义见 worker jobs/hr.rs：{"enabled","days","seed_hours"}；仅详情 SELECT
     /// 输出该列，列表等其它用本行的查询不选 → sqlx(default) 落 None。

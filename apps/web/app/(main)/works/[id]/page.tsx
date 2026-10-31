@@ -265,7 +265,6 @@ export default async function WorkDetailPage({
         <WorkSeedRows
           items={data.items}
           dict={dict}
-          locale={locale}
         />
       </section>
 
