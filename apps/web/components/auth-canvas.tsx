@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { backgroundOpacity, cssBackgroundImage } from "@/lib/site-background";
+import { glassStyle } from "@/lib/site-glass";
 
 /**
  * 认证页共用画布（2026-10-18，对齐样图集 § 账户与认证）。
@@ -40,6 +42,8 @@ function useSiteBrand() {
     /** 登录页主背景（0446）：画布之外的整页层，空 = 不铺 */
     pageBg: string | null;
     pageBgOpacity: number;
+    /** 板块磨砂玻璃（0448）：容器内联变量，null = 不启用 */
+    glass: CSSProperties | null;
   }>({
     name: dict.common.brand,
     desc: dict.login.introDesc,
@@ -48,6 +52,7 @@ function useSiteBrand() {
     bgOpacity: 50,
     pageBg: null,
     pageBgOpacity: 40,
+    glass: null,
   });
   useEffect(() => {
     let alive = true;
@@ -60,6 +65,7 @@ function useSiteBrand() {
           login?: { url?: string | null; opacity?: number };
           loginPage?: { url?: string | null; opacity?: number };
         };
+        glass?: { alpha?: number; blur?: number };
       }>("/api/v1/site-profile")
       .then((p) => {
         if (!alive) return;
@@ -77,6 +83,7 @@ function useSiteBrand() {
             p.backgrounds?.loginPage?.opacity,
             40,
           ),
+          glass: glassStyle(p.glass),
         });
       })
       .catch(() => {});
@@ -117,7 +124,11 @@ export function AuthCanvas({
   const b = useSiteBrand();
   const logoSrc = b.logo ?? "/brand/logo-mark.png";
   return (
-    <div className="bz-login-page">
+    <div
+      className="bz-login-page"
+      data-glass={b.glass ? "on" : undefined}
+      style={b.glass ?? undefined}
+    >
       {b.pageBg && (
         <span
           className="bz-login-page-bg"

@@ -132,6 +132,19 @@ pub(crate) async fn backgrounds(db: &PgPool) -> Value {
     })
 }
 
+/// 板块磨砂玻璃（0448）：不透明度 0~100（100 = 关闭）+ 磨砂半径 0~30px。
+///
+/// 前端 `lib/site-glass.ts` 把这两个值变成 `--glass-alpha` / `--glass-blur`
+/// 内联变量并挂 `data-glass`；样式在 `app/styles/glass.css`。之所以由后端
+/// 夹紧：`settings_meta` 的 min/max 只在**保存时**校验，直接改库或内容包
+/// 导入都能留下越界值，而这里读出来的值会直接进 CSS calc()。
+pub(crate) async fn glass(db: &PgPool) -> Value {
+    serde_json::json!({
+        "alpha": setting_num(db, "glass_alpha", 88.0, 0.0, 100.0).await,
+        "blur": setting_num(db, "glass_blur", 12.0, 0.0, 30.0).await,
+    })
+}
+
 /// 主题令牌（0189 R4.6）：有值才下发，前端注入 `:root` 覆盖默认色。
 /// 只收 `#rrggbb`——这是站长能写进 CSS 的唯一入口，放开了就是注入面。
 pub(crate) async fn theme_tokens(db: &PgPool) -> Value {

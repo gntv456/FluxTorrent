@@ -78,6 +78,8 @@ export interface SiteProfile {
     login?: { url?: string | null; opacity?: number };
     loginPage?: { url?: string | null; opacity?: number };
   };
+  /** 板块磨砂玻璃（0448）：alpha 0~100（100 = 关）、blur 0~30px */
+  glass?: { alpha?: number; blur?: number };
 }
 
 /** 站型字典条目（id 由后端词表表给出，前端不做任何下标补偿） */

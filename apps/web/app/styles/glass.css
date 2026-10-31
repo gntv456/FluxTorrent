@@ -1,0 +1,120 @@
+/* ===== 板块磨砂玻璃（0448）=====
+   两个旋钮来自后台「外观与主题」：glass_alpha（不透明度）与 glass_blur
+   （磨砂半径），由 (main)/layout.tsx 与 auth-canvas.tsx 写成内联 CSS 变量，
+   并在同一个容器上挂 data-glass="on"（alpha=100 时不挂 → 整套规则不匹配）。
+
+   覆盖面（站长 2026-11-01 拍板）：板块 + 输入框 + 弹层/抽屉一起玻璃化。
+
+   机制两步：
+   ① 表面令牌整族换成同色带 alpha。全站板块都吃 --surface-card（--card /
+      --panel / --surface / --brand-paper / --field-bg 全是它的别名），输入
+      底与斑马行吃 --surface-sunken，所以只需在容器上重定义这一族，不必去
+      改 78 处消费点。为避免在这里重复两套主题的色值（会漂移），先在 html
+      上把原值另存为 --*-solid，再在容器上用 color-mix 混透明度。
+   ② 磨砂（backdrop-filter）必须逐元素声明，CSS 选不出「用了某变量的元素」，
+      所以下面那份清单是唯一的手工维护点。清单只放**容器**：backdrop-filter
+      会创建层叠上下文与包含块（fixed/absolute 子元素定位基准会变），挂在小
+      片上既费 GPU 又容易把浮层定位搞坏。 */
+
+/* 原值另存（供 ① 混透明度用，本身不改变任何渲染结果） */
+html {
+  --sc-solid: var(--surface-card);
+  --ss-solid: var(--surface-sunken);
+  --sr-solid: var(--surface-raised);
+  --sh-solid: var(--surface-hover);
+  --sf-solid: var(--surface-cream);
+}
+
+:is(.site-shell, .bz-login-page)[data-glass="on"] {
+  --glass-alpha: 1;
+  --glass-blur: 0px;
+  --glass-mix: calc(var(--glass-alpha) * 100%);
+  --surface-card: color-mix(in srgb, var(--sc-solid) var(--glass-mix),
+    transparent);
+  --surface-sunken: color-mix(in srgb, var(--ss-solid) var(--glass-mix),
+    transparent);
+  --surface-raised: color-mix(in srgb, var(--sr-solid) var(--glass-mix),
+    transparent);
+  --surface-hover: color-mix(in srgb, var(--sh-solid) var(--glass-mix),
+    transparent);
+  --surface-cream: color-mix(in srgb, var(--sf-solid) var(--glass-mix),
+    transparent);
+}
+
+/* 不支持 backdrop-filter：只保留透明度会糊成「字压在图上」，所以连透明度
+   一起回退成不透明（沿用 theme-tide.css 顶栏的同款回退思路） */
+@supports not (backdrop-filter: blur(2px)) {
+  :is(.site-shell, .bz-login-page)[data-glass="on"] {
+    --glass-alpha: 1;
+    --glass-blur: 0px;
+  }
+}
+
+/* 系统开了「减少透明度」（iOS/macOS 辅助功能）：尊重它，玻璃归零 */
+@media (prefers-reduced-transparency: reduce) {
+  :is(.site-shell, .bz-login-page)[data-glass="on"] {
+    --glass-alpha: 1;
+    --glass-blur: 0px;
+  }
+}
+
+/* 磨砂层：板块容器 + 表单控件 + 弹层/抽屉 */
+:is(.site-shell, .bz-login-page)[data-glass="on"] :is(
+  .ui-card,
+  .brand-panel,
+  .side-card,
+  .bz-login-canvas,
+  .bz-field,
+  .td-side-card,
+  .td-head,
+  .td-curate,
+  .td-specs,
+  .td-anchor,
+  .wk-panel,
+  .wk-card,
+  .wk-gcard,
+  .wk-wall-panel,
+  .mcard,
+  .gcard,
+  .trow-card,
+  .ftopic-card,
+  .hrcard,
+  .claimcard,
+  .ntf-card,
+  .client-card,
+  .rss-card,
+  .pting-card,
+  .up-card,
+  .task-panel,
+  .task-tier-card,
+  .task-shop-card,
+  .preserve-filter-card,
+  .preserve-list-card,
+  .home-resource-stats__metric,
+  .home-site-data__item,
+  .uc-metric,
+  .uc-cat-card,
+  .pgstats,
+  .toolbox,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea,
+  select,
+  .bsheet,
+  .more-sheet,
+  .navdrawer,
+  .tsb-sheet,
+  .gsearch__modal,
+  .home-news-modal__panel,
+  .langmenu__drop,
+  .mainmenu-drop,
+  .usermenu__drop,
+  .usertools-popover,
+  .torrents-colset__panel,
+  .tsb-adv__body,
+  [role="dialog"],
+  [role="menu"],
+  [role="listbox"]
+) {
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+}

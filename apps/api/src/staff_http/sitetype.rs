@@ -275,8 +275,8 @@ async fn site_profile_fresh(
         "subtitle_ai_badge": flag("subtitle_ai_badge", "1") != "0",
         "founded": founded, "backgrounds": profile_bits::backgrounds(db).await,
         "metadata_sources": sources,
-        // 作品页 Hero 磨砂底图（0403），后台「外观与主题」可调
-        "work_hero": profile_bits::work_hero(db).await,
+        "work_hero": profile_bits::work_hero(db).await, // 0403 作品页 Hero
+        "glass": profile_bits::glass(db).await,
         "site_desc": site_desc,
         "seo": seo,
         "categories": cats.iter().map(|(id, name, icon, bg, parent)| serde_json::json!({"id": id, "name": name, "icon_key": icon, "bg_color": bg, "parent_id": parent})).collect::<Vec<_>>(),

@@ -3,6 +3,7 @@ import { buildNav } from "@/lib/nav-menu";
 import { getMenuItems } from "@/lib/data";
 import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
 import { backgroundOpacity, cssBackgroundImage } from "@/lib/site-background";
+import { glassStyle } from "@/lib/site-glass";
 import { Footer } from "@/components/footer";
 import { MotionShell } from "@/components/motion";
 import { ScrollButtons } from "@/components/scroll-buttons";
@@ -34,6 +35,10 @@ export default async function MainLayout({
     dims: (k) => dims.includes(k),
     customItems,
   });
+  // 板块磨砂玻璃（0448）：变量与 data-glass 都挂在这个容器上，glass.css 的
+  // 规则只在 [data-glass="on"] 下匹配——alpha=100 时 glassStyle 返回 null，
+  // 整套 backdrop-filter 直接不参与渲染（几百个板块挂模糊是有代价的）。
+  const glass = glassStyle(profile?.glass);
   return (
     <>
       {/* 站点背景图（0445）：固定底层（z=0），内容壳 z=10 压在上面；
@@ -56,7 +61,11 @@ export default async function MainLayout({
           />
         );
       })()}
-      <div className="site-shell">
+      <div
+        className="site-shell"
+        data-glass={glass ? "on" : undefined}
+        style={glass ?? undefined}
+      >
         <Header />
         {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}
         <MotionShell />

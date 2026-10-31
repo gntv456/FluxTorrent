@@ -27,6 +27,11 @@
    全站共用故留在根链；页面专属样式不要往这里堆。 */
 @import "./styles/ui.css";
 
+/* 板块磨砂玻璃（0448）：排在链末——它要在 .site-shell 这一层重定义
+   --surface-card，晚出现不影响（消费点都在其子树内），但便于与
+   theme-tide/ui 两层的面板底色声明对照排错。 */
+@import "./styles/glass.css";
+
 /* ⚠️ 娱乐屋样式（arcade.css 55KB + arcade-sweet.css 68KB）已于 2026-10-03
    从本文件移出，改为路由级 import（见 (main)/games/layout.tsx 与
    (main)/gacha/layout.tsx）。原因：这两个文件只服务 games 与 gacha 两个路由，
