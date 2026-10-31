@@ -72,6 +72,11 @@ export interface SiteProfile {
     columns?: string[];
     sections?: string[];
   };
+  /** 背景图（0445）：url 为空 = 不启用；opacity 0~100（越大越清晰） */
+  backgrounds?: {
+    site?: { url?: string | null; opacity?: number };
+    login?: { url?: string | null; opacity?: number };
+  };
 }
 
 /** 站型字典条目（id 由后端词表表给出，前端不做任何下标补偿） */

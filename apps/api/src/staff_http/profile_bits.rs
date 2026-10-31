@@ -109,6 +109,22 @@ pub(crate) async fn terms(db: &PgPool) -> Value {
     )
 }
 
+/// 站点 / 登录页背景图（0445）：URL 空 = 不启用；不透明度 0~100。
+pub(crate) async fn backgrounds(db: &PgPool) -> Value {
+    serde_json::json!({
+        "site": {
+            "url": setting_text(db, "site_bg_url").await,
+            "opacity": setting_num(db, "site_bg_opacity", 25.0, 0.0, 100.0)
+                .await,
+        },
+        "login": {
+            "url": setting_text(db, "login_bg_url").await,
+            "opacity": setting_num(db, "login_bg_opacity", 50.0, 0.0, 100.0)
+                .await,
+        },
+    })
+}
+
 /// 主题令牌（0189 R4.6）：有值才下发，前端注入 `:root` 覆盖默认色。
 /// 只收 `#rrggbb`——这是站长能写进 CSS 的唯一入口，放开了就是注入面。
 pub(crate) async fn theme_tokens(db: &PgPool) -> Value {

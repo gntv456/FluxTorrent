@@ -2,6 +2,7 @@ import { Header, MobileTabBar } from "@/components/layout";
 import { buildNav } from "@/lib/nav-menu";
 import { getMenuItems } from "@/lib/data";
 import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
+import { backgroundOpacity, cssBackgroundImage } from "@/lib/site-background";
 import { Footer } from "@/components/footer";
 import { MotionShell } from "@/components/motion";
 import { ScrollButtons } from "@/components/scroll-buttons";
@@ -35,27 +36,49 @@ export default async function MainLayout({
   });
   return (
     <>
-      <Header />
-      {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}
-      <MotionShell />
-      {/* 2026-10-19 平板对齐手机：M4 细侧栏（tsidebar）退役——平板区间
-          改由底部 5 Tab + 顶栏汉堡抽屉承担导航（与手机同构），
-          侧栏让出内容宽度。桌面 ≥lg 仍是顶栏平铺。 */}
-      {/* 内容容器与页头/页脚同宽（1536）：此前内容 1280、页头页脚 1536，
-          1920 屏上内容比页头页脚窄一截，显得小气（2026-10-20 用户口径） */}
-      <div className="flex">
-        <main
-          id="main-content"
-          className="mx-auto min-w-0 w-full max-w-[1536px] flex-1 px-4 pb-24
-            pt-6 md:px-6"
-        >
-          {children}
-        </main>
+      {/* 站点背景图（0445）：固定底层（z=0），内容壳 z=1 压在上面；
+          空 URL 不渲染。负 z-index 会被 body 的不透明底盖住，所以用 0/1 分层。 */}
+      {(() => {
+        const bg = cssBackgroundImage(profile?.backgrounds?.site?.url);
+        if (!bg) return null;
+        return (
+          <div
+            className="site-backdrop"
+            aria-hidden
+            style={{
+              backgroundImage: bg,
+              opacity:
+                backgroundOpacity(
+                  profile?.backgrounds?.site?.opacity,
+                  25,
+                ) / 100,
+            }}
+          />
+        );
+      })()}
+      <div className="site-shell">
+        <Header />
+        {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}
+        <MotionShell />
+        {/* 2026-10-19 平板对齐手机：M4 细侧栏（tsidebar）退役——平板区间
+            改由底部 5 Tab + 顶栏汉堡抽屉承担导航（与手机同构），
+            侧栏让出内容宽度。桌面 ≥lg 仍是顶栏平铺。 */}
+        {/* 内容容器与页头/页脚同宽（1536）：此前内容 1280、页头页脚 1536，
+            1920 屏上内容比页头页脚窄一截，显得小气（2026-10-20 用户口径） */}
+        <div className="flex">
+          <main
+            id="main-content"
+            className="mx-auto min-w-0 w-full max-w-[1536px] flex-1 px-4
+              pb-24 pt-6 md:px-6"
+          >
+            {children}
+          </main>
+        </div>
+        <Footer />
+        {/* 右下角「至顶端 / 至底端」：滚动超过 240px 出现，移动端抬离底部 TabBar */}
+        <ScrollButtons />
+        <MobileTabBar />
       </div>
-      <Footer />
-      {/* 右下角「至顶端 / 至底端」：滚动超过 240px 出现，移动端抬离底部 TabBar */}
-      <ScrollButtons />
-      <MobileTabBar />
     </>
   );
 }

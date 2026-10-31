@@ -444,7 +444,9 @@
  * 不是深色块 —— 此前按深色改过一版，并排比对后确认样本是白→浅奶油）。
  * 背景沿用站内 sunken 底 + 两团品牌光晕，与样图的奶油渐变同构。 */
 .bz-login-intro {
+  position: relative;
   display: flex;
+  overflow: hidden;
   grid-column: 1;
   grid-row: 1 / 3;
   flex-direction: column;
@@ -459,7 +461,20 @@
     var(--surface-cream) 100%);
 }
 
+/* 登录页背景图（0445）：铺在左栏渐变之上、品牌文字之下；
+ * 不透明度由后台 site_profile.backgrounds.login.opacity 控制 */
+.bz-login-intro-bg {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
 .bz-login-intro-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex: 1;
   flex-direction: column;

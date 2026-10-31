@@ -273,7 +273,7 @@ async fn site_profile_fresh(
         "subtitle_workflow": flag("subtitle_workflow", "0") == "1",
         "subtitle_award": flag("subtitle_award", "0") == "1",
         "subtitle_ai_badge": flag("subtitle_ai_badge", "1") != "0",
-        "founded": founded,
+        "founded": founded, "backgrounds": profile_bits::backgrounds(db).await,
         "metadata_sources": sources,
         // 作品页 Hero 磨砂底图（0403），后台「外观与主题」可调
         "work_hero": profile_bits::work_hero(db).await,

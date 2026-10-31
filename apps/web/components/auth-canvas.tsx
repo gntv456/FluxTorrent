@@ -5,6 +5,7 @@ import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { backgroundOpacity, cssBackgroundImage } from "@/lib/site-background";
 
 /**
  * 认证页共用画布（2026-10-18，对齐样图集 § 账户与认证）。
@@ -33,10 +34,15 @@ function useSiteBrand() {
     name: string;
     desc: string;
     logo: string | null;
+    /** 登录页左栏背景（0445）：CSS url() 字符串，空 = 不铺 */
+    bg: string | null;
+    bgOpacity: number;
   }>({
     name: dict.common.brand,
     desc: dict.login.introDesc,
     logo: null,
+    bg: null,
+    bgOpacity: 50,
   });
   useEffect(() => {
     let alive = true;
@@ -45,6 +51,9 @@ function useSiteBrand() {
         brand?: string;
         site_logo?: string | null;
         site_desc?: string | null;
+        backgrounds?: {
+          login?: { url?: string | null; opacity?: number };
+        };
       }>("/api/v1/site-profile")
       .then((p) => {
         if (!alive) return;
@@ -52,6 +61,11 @@ function useSiteBrand() {
           name: p.brand?.trim() || dict.common.brand,
           desc: p.site_desc?.trim() || dict.login.introDesc,
           logo: p.site_logo?.trim() || null,
+          bg: cssBackgroundImage(p.backgrounds?.login?.url),
+          bgOpacity: backgroundOpacity(
+            p.backgrounds?.login?.opacity,
+            50,
+          ),
         });
       })
       .catch(() => {});
@@ -96,6 +110,16 @@ export function AuthCanvas({
       <div className="bz-login-canvas">
         {/* 左：深色品牌 Hero */}
         <div className="bz-login-intro">
+          {b.bg && (
+            <span
+              className="bz-login-intro-bg"
+              aria-hidden
+              style={{
+                backgroundImage: b.bg,
+                opacity: b.bgOpacity / 100,
+              }}
+            />
+          )}
           <div className="bz-login-intro-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
