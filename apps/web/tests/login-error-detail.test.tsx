@@ -30,7 +30,10 @@ vi.mock("@/lib/api-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api-client")>();
   return {
     ...actual,
-    api: { post, get: vi.fn() },
+    api: {
+      post,
+      get: vi.fn(() => Promise.resolve({ mode: "invite_only" })),
+    },
     setSessionCookie: vi.fn(),
     hasSessionCookie: () => false,
   };

@@ -9,6 +9,9 @@
 
 use sqlx::PgPool;
 
+mod probe;
+use probe::smtp_reachable;
+
 /// 邮件里「点开就到站内页面」的站点基址（P-100 收口）。
 ///
 /// 站内页面链接（找回密码 `/reset?token=`、邮箱激活 `/email-verify?token=`、
@@ -27,16 +30,24 @@ pub fn site_base() -> Option<String> {
 }
 
 /// 邮件能否真正投递到用户手里（P-102/P-104 的前置判据）：站点基址可解析，
-/// 且 SMTP 已配（开发态 FLUX_DEV=1 允许缺 SMTP 走日志闭环，方便本地自测）。
-/// 判据为假时，找回密码/邮箱激活等「必须发信」的动作应回
-/// `DomainError::MailUnconfigured`（503/4103），而不是 500 或静默建号。
+/// 且 SMTP 已配并能**连上**（NOOP 探测，含 TLS/认证）。开发态 FLUX_DEV=1
+/// 且未配 SMTP 时保留日志闭环，方便本地自测。
+/// 判据为假时，找回密码/邮箱激活/重发等「必须发信」的动作应回
+/// `DomainError::MailUnconfigured`（503/4103），而不是 500、静默建号或
+/// 假报 `sent:true`。只判「配置键非空」不够：SMTP 主机宕机/端口被封时
+/// 配置仍在，旧实现照样放行——实测配了连不上的 SMTP，注册 200 建号、
+/// 验证信发送失败，重发仍回 sent:true，用户被困在收不到信的激活页。
 pub async fn mail_deliverable(db: &PgPool) -> bool {
     if site_base().is_none() {
         return false;
     }
-    smtp_config(db).await.is_some()
-        || std::env::var("FLUX_DEV").unwrap_or_default() == "1"
+    match smtp_config(db).await {
+        Some(cfg) => smtp_reachable(&cfg.url).await,
+        None => std::env::var("FLUX_DEV").unwrap_or_default() == "1",
+    }
 }
+
+/// SMTP 可达性见 `probe.rs`（0416 起从本文件按行数门禁拆出）。
 
 /// 后台可配的 SMTP 形状（smtp_* 设定键装配；host/from 任一为空视为未配置）
 #[derive(Clone, Debug)]

@@ -74,7 +74,7 @@ export default function ApplyPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              minLength={2}
+              minLength={3}
               maxLength={24}
               className={INPUT_LG}
             />

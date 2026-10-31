@@ -77,20 +77,29 @@ pub(super) fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
             }
         }
         "enum" => {
-            let allowed: Vec<String> = m
-                .options
-                .as_ref()
-                .and_then(|o| o.as_array())
-                .map(|a| {
-                    a.iter()
-                        .filter_map(|x| {
-                            x.get("v")
-                                .and_then(|v| v.as_str())
-                                .map(String::from)
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
+            // settings_meta.options 有两种历史形态：
+            //   [{l,v}]                    —— registration_mode 等
+            //   {options:[{label,value}]} —— captcha_provider 等
+            // 旧实现只认数组形，对象形 as_array()=None ⇒ allowed 为空 ⇒
+            // **任意字符串都能存**（实测 captcha_provider=bogus 可保存，
+            // 随后注册页不渲染验证码、提交必失败）。两种形态都要校验。
+            let mut allowed: Vec<String> = Vec::new();
+            if let Some(o) = m.options.as_ref() {
+                let arr = o
+                    .as_array()
+                    .or_else(|| o.get("options").and_then(|x| x.as_array()));
+                if let Some(a) = arr {
+                    for x in a {
+                        let val = x
+                            .get("v")
+                            .or_else(|| x.get("value"))
+                            .and_then(|v| v.as_str());
+                        if let Some(v) = val {
+                            allowed.push(v.to_string());
+                        }
+                    }
+                }
+            }
             if !allowed.is_empty() && !allowed.iter().any(|x| x == &v) {
                 return Err(format!("取值须为 {}", allowed.join(" / ")));
             }
@@ -223,6 +232,38 @@ mod tests {
     fn text_without_rule_still_accepts_anything() {
         let m = text_meta(None);
         assert!(validate_field(&m, "(unclosed").is_ok());
+    }
+
+    fn enum_meta(options: serde_json::Value) -> MetaRow {
+        let mut m = text_meta(None);
+        m.kind = "enum".into();
+        m.options = Some(options);
+        m
+    }
+
+    /// 枚举选项两种历史形态都要校验。对象形（captcha_provider 用的
+    /// `{options:[{label,value}]}`）曾因只认数组形而放行任意值——实测
+    /// 后台可存 `bogus`，注册页不渲染验证码、提交必报「验证码错误」。
+    #[test]
+    fn enum_accepts_both_option_shapes_and_rejects_unknown() {
+        let arr = serde_json::json!([
+            {"l": "开", "v": "open"},
+            {"l": "关", "v": "off"}
+        ]);
+        let m_arr = enum_meta(arr);
+        assert!(validate_field(&m_arr, "open").is_ok());
+        assert!(validate_field(&m_arr, "bogus").is_err());
+        assert!(validate_field(&m_arr, "").is_err(), "空值不是合法枚举");
+
+        let obj = serde_json::json!({"options": [
+            {"label": "算术", "value": "none"},
+            {"label": "Turnstile", "value": "turnstile"}
+        ]});
+        let m_obj = enum_meta(obj);
+        assert!(validate_field(&m_obj, "none").is_ok());
+        assert!(validate_field(&m_obj, "turnstile").is_ok());
+        let e = validate_field(&m_obj, "bogus").unwrap_err();
+        assert!(e.contains("none"), "错误须列出允许值，实得={e}");
     }
 }
 

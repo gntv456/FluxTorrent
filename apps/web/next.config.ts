@@ -1,5 +1,32 @@
 import type { NextConfig } from "next";
 
+// 第三方真人验证（Turnstile / reCAPTCHA / hCaptcha）的域名白名单。
+// CSP 是构建期静态头，无法按库里的 captcha_provider 动态收窄；这里只
+// 放行三家厂商的必需域，未选中的驱动不会加载任何脚本。缺了这些域，
+// 注册页注入的组件脚本会被 CSP 直接拦掉——选 Turnstile 后页面无验证码、
+// 提交必报「请完成验证码」，等于把开放注册整条打停（2026-10-30 实测）。
+const CAPTCHA_SCRIPT_SRC = [
+  "https://challenges.cloudflare.com",
+  "https://www.google.com",
+  "https://www.gstatic.com",
+  "https://js.hcaptcha.com",
+];
+const CAPTCHA_FRAME_SRC = [
+  "https://challenges.cloudflare.com",
+  "https://www.google.com",
+  "https://recaptcha.google.com",
+  "https://newassets.hcaptcha.com",
+  "https://hcaptcha.com",
+];
+const CAPTCHA_CONNECT_SRC = [
+  "https://challenges.cloudflare.com",
+  "https://www.google.com",
+  "https://www.gstatic.com",
+  "https://hcaptcha.com",
+  "https://js.hcaptcha.com",
+  "https://newassets.hcaptcha.com",
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // 方案 §8.1：前端仅公开配置
@@ -59,14 +86,15 @@ const nextConfig: NextConfig = {
               // 受影响（build 不用 eval）。
               `script-src 'self' 'unsafe-inline'${
                 process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""
-              }`,
+              } ${CAPTCHA_SCRIPT_SRC.join(" ")}`,
               // Tailwind 产出与主题令牌 <style> 注入
               "style-src 'self' 'unsafe-inline'",
               // 附件/封面/头像可能来自站长配置的绝对 URL 或外域图床
               "img-src 'self' data: blob: http: https:",
               "font-src 'self' data:",
-              // API 走同源 /api 代理（rewrites/运行期 route），无需 connect-src 外域
-              "connect-src 'self'",
+              // API 走同源 /api 代理；第三方验证码组件自身的网络请求
+              // 需要放行厂商域，否则脚本能加载但拿不到 challenge。
+              `connect-src 'self' ${CAPTCHA_CONNECT_SRC.join(" ")}`,
               // 站内上传与字幕/论坛媒体播放（Range 206 那套）
               "media-src 'self' blob:",
               // 论坛/公告视频内嵌白名单（embed_rules）：只放行内置播放器域。
@@ -77,6 +105,7 @@ const nextConfig: NextConfig = {
                 "https://player.bilibili.com",
                 "https://www.youtube-nocookie.com",
                 "https://player.vimeo.com",
+                ...CAPTCHA_FRAME_SRC,
               ].join(" "),
               "object-src 'none'",
               "base-uri 'self'",

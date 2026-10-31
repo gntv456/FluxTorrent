@@ -45,13 +45,13 @@ pub(super) async fn apply_submit(
     }
     let username = body.username.trim().to_string();
     let email = body.email.trim().to_lowercase();
-    if username.chars().count() < 2
+    if username.chars().count() < 3
         || username.chars().count() > 24
         || !email.contains('@')
         || body.reason.trim().chars().count() < 20
     {
         return Err(DomainError::Validation(
-            "用户名 2-24 字符、邮箱有效、申请理由至少 20 字".into(),
+            "用户名 3-24 字符、邮箱有效、申请理由至少 20 字".into(),
         ));
     }
     // 同邮箱待审去重 + 用户名/邮箱已被占用拒绝

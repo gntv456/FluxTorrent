@@ -26,7 +26,10 @@ pub async fn register_mode_endpoint(
     }
     let mode =
         setting(&state.repo.db, "registration_mode", "invite_only").await;
-    let provider = setting(&state.repo.db, "captcha_provider", "none").await;
+    // 与注册口同一口径：未知驱动归一为 none，前端据此渲染算术题，
+    // 不会出现「驱动不认识 ⇒ 无组件但后端仍在等 token」的死路。
+    let provider =
+        crate::gaps_http::captcha_drivers::provider(&state.repo.db).await;
     let site_key = setting(&state.repo.db, "captcha_site_key", "").await;
     let app_open = setting(&state.repo.db, "application_signup", "off").await;
     // 0372 M5：答题闸的公开开关——前端据此决定是否渲染答题块
