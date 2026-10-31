@@ -39,6 +39,20 @@ html {
     transparent);
   --surface-cream: color-mix(in srgb, var(--sf-solid) var(--glass-mix),
     transparent);
+  /* 别名层必须在这里**重建一次**：base.css 的 --card / --panel / --surface /
+     --brand-paper / --field-bg … 声明在 html 上，代入的是 html 那层的实心
+     --surface-card，容器上再改 --surface-card 也追不回来（实测首页
+     .brand-panel 用的就是 --brand-paper，只改语义令牌时它仍是不透明白）。
+     同一元素上的代入发生在这一层，所以指回本容器的语义令牌即得玻璃值。 */
+  --card: var(--surface-card);
+  --panel: var(--surface-card);
+  --surface: var(--surface-card);
+  --field-bg: var(--surface-card);
+  --brand-paper: var(--surface-card);
+  --brand-cream: var(--surface-cream);
+  --cream: var(--surface-cream);
+  --fill-2: var(--surface-sunken);
+  --brand-bg-input: var(--surface-sunken);
 }
 
 /* 不支持 backdrop-filter：只保留透明度会糊成「字压在图上」，所以连透明度
