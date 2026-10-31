@@ -19,11 +19,11 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::{require_auth, Q};
 use crate::state::AppState;
-use crate::torrents::{promo, TorrentRow};
+use crate::torrents::promo;
 use crate::torrents::{search_pred_with_syn, section_where};
 
 use super::works_filter;
-use super::works_rows_sql;
+use super::works_rows_sql::{self, BatchSeedRow, WorkSeed};
 use super::works_sql;
 
 /// 作品行（列表与详情头同形）。字段刻意贴 TorrentListItem 口径
@@ -70,15 +70,7 @@ pub struct WorkRow {
 pub struct WorkWithSeeds {
     #[serde(flatten)]
     pub work: WorkRow,
-    pub seeds: Vec<TorrentRow>,
-}
-
-/// 批量行查询的中间行：作品键 + 种子行（sqlx 0.8 的 flatten 展开列集）
-#[derive(Debug, sqlx::FromRow)]
-struct SeedRow {
-    work_key: String,
-    #[sqlx(flatten)]
-    tor: TorrentRow,
+    pub seeds: Vec<WorkSeed>,
 }
 
 /// 工品列表查询：`q` 是作品关键字（兼容列表 search），其余筛选直接复用
@@ -212,18 +204,19 @@ pub(crate) async fn works_list(
 
     // 每部作品挂前 8 个种子（单条窗口函数查询，避免 N+1）
     let keys: Vec<String> = items.iter().map(|w| w.key.clone()).collect();
-    let mut by: std::collections::HashMap<String, Vec<TorrentRow>> =
+    let mut by: std::collections::HashMap<String, Vec<WorkSeed>> =
         std::collections::HashMap::new();
     if !keys.is_empty() {
-        let seeds: Vec<SeedRow> = sqlx::query_as(&works_rows_sql::batch_sql(
-            &promo::lateral_latest(),
-        ))
+        let seeds: Vec<BatchSeedRow> = sqlx::query_as(
+            &works_rows_sql::batch_sql(&promo::lateral_latest()),
+        )
         .bind(&keys)
         .fetch_all(&state.repo.read_db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        for s in seeds {
-            by.entry(s.work_key).or_default().push(s.tor);
+        for row in seeds {
+            let (key, seed) = row.into_parts();
+            by.entry(key).or_default().push(seed);
         }
     }
     let out: Vec<WorkWithSeeds> = items

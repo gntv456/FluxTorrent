@@ -7,10 +7,10 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
-use crate::torrents::{promo, TorrentRow};
+use crate::torrents::promo;
 
 use super::works::WorkRow;
-use super::works_rows_sql;
+use super::works_rows_sql::{self, WorkSeed};
 use super::works_sql;
 
 /// 作品详情：头部（作品行）+ 该作品的种子行 + 同分类相关作品。
@@ -88,12 +88,14 @@ pub(crate) async fn work_detail(
         return Err(DomainError::NotFound(0));
     };
 
-    let items: Vec<TorrentRow> =
+    let rows: Vec<works_rows_sql::SeedRow> =
         sqlx::query_as(&works_rows_sql::rows_sql(&promo::lateral_latest()))
             .bind(&key)
             .fetch_all(&state.repo.read_db)
             .await
             .map_err(|e| DomainError::Internal(e.into()))?;
+    let items: Vec<WorkSeed> =
+        rows.into_iter().map(|r| r.into_work_seed()).collect();
 
     let related: Vec<WorkRow> = sqlx::query_as(&works_sql::related_sql())
         .bind(work.category_id)

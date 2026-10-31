@@ -1,9 +1,61 @@
 //! 作品聚合的「种子行」查询（作品卡下挂的种子 + 批量取每部前 8 颗）。
 //! 从 works_sql.rs 按层拆出（300 行门禁）：那边是作品层（聚合/缓存），
 //! WK 表达式也从那里引（对 `t` 别名求值）。
-//! 这里是种子行层——列集合与 `/torrents` 列表行同形，前端复用同一套渲染。
+//! 这里是种子行层——列集合与 `/torrents` 列表行同形，再补一列简介截图。
+
+use serde::Serialize;
+
+use crate::torrents::TorrentRow;
 
 use super::works_sql::WK;
+
+/// 作品种子行 = 列表行 + 简介截图（前 4 张）。
+///
+/// 截图只属于作品聚合读口，不塞进共享的 `TorrentRow`（`/torrents` 列表与
+/// 详情共用那个结构，加列会让所有查询都带一个空字段；那个文件也已顶着
+/// 行数门禁）。序列化时 flatten 回与列表行同形的 JSON，前端一套渲染通吃。
+#[derive(Debug, Serialize)]
+pub(super) struct WorkSeed {
+    #[serde(flatten)]
+    tor: TorrentRow,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    screenshots: Option<serde_json::Value>,
+}
+
+impl WorkSeed {
+    fn new(tor: TorrentRow, screenshots: Option<serde_json::Value>) -> Self {
+        Self { tor, screenshots }
+    }
+}
+
+/// 详情腿的查询行：flatten 列表行 + 截图列。
+#[derive(Debug, sqlx::FromRow)]
+pub(super) struct SeedRow {
+    #[sqlx(flatten)]
+    tor: TorrentRow,
+    screenshots: Option<serde_json::Value>,
+}
+
+impl SeedRow {
+    pub(super) fn into_work_seed(self) -> WorkSeed {
+        WorkSeed::new(self.tor, self.screenshots)
+    }
+}
+
+/// 列表腿的批量行：多一列 work_key。
+#[derive(Debug, sqlx::FromRow)]
+pub(super) struct BatchSeedRow {
+    work_key: String,
+    #[sqlx(flatten)]
+    tor: TorrentRow,
+    screenshots: Option<serde_json::Value>,
+}
+
+impl BatchSeedRow {
+    pub(super) fn into_parts(self) -> (String, WorkSeed) {
+        (self.work_key, WorkSeed::new(self.tor, self.screenshots))
+    }
+}
 
 /// 作品下的种子行（`$1` = 作品键）。列与 `/torrents` 列表同形，
 /// 前端直接复用同一套行渲染（chips / 数字列 / 操作列）。
