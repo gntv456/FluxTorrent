@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1024"
+     preserveAspectRatio="xMidYMid slice" role="img" aria-label="">
+  <!-- 站点背景（site_bg_url）：卡片不透明，实际只露页边与页脚，所以元素
+       要「匀着撒」而不是堆一个焦点；整幅走饱和中间调（25% 不透明度下
+       饱和度比明度更活得下来）。母题＝潮间带＋做种：浪、苗、纸船、水滴、鱼。 -->
+  <defs>
+    <linearGradient id="sea" x1="0.04" y1="0" x2="0.96" y2="1">
+      <stop offset="0" stop-color="#d9f2ff"/>
+      <stop offset="0.3" stop-color="#a8e0f7"/>
+      <stop offset="0.58" stop-color="#6ec4ee"/>
+      <stop offset="0.82" stop-color="#3f9fd8"/>
+      <stop offset="1" stop-color="#2b7fc0"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.16" cy="0.12" r="0.5">
+      <stop offset="0" stop-color="#fff3c4" stop-opacity="0.85"/>
+      <stop offset="0.5" stop-color="#ffd97a" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffd97a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="dusk" cx="0.9" cy="0.92" r="0.55">
+      <stop offset="0" stop-color="#ff7ea8" stop-opacity="0.4"/>
+      <stop offset="0.55" stop-color="#7a5cff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#7a5cff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aqua" cx="0.62" cy="0.34" r="0.4">
+      <stop offset="0" stop-color="#5ff0d6" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#5ff0d6" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 母题零件 -->
+    <g id="drop">
+      <path d="M0 -16 C 8 -4 12 2 12 8 A 12 12 0 0 1 -12 8 C -12 2 -8 -4 0 -16 Z"
+            fill="#ffffff" fill-opacity="0.72"/>
+      <circle cx="-4" cy="8" r="3.4" fill="#8fd8ff" fill-opacity="0.9"/>
+    </g>
+    <g id="sprout">
+      <path d="M0 16 L 0 -2" stroke="#2f9e6a" stroke-width="3.4"
+            stroke-linecap="round" fill="none"/>
+      <path d="M0 2 C -14 -2 -18 -14 -16 -20 C -6 -18 0 -10 0 -2 Z" fill="#43c98a"/>
+      <path d="M0 6 C 12 4 18 -6 17 -13 C 7 -12 1 -5 0 2 Z" fill="#7ee0a8"/>
+    </g>
+    <g id="boat">
+      <path d="M-18 6 L 18 6 L 10 18 L -10 18 Z" fill="#ff8a3d"/>
+      <path d="M0 4 L 0 -18 L 15 4 Z" fill="#fff7e6"/>
+      <path d="M0 4 L -13 4 L 0 -12 Z" fill="#ffd166"/>
+    </g>
+    <g id="fish">
+      <path d="M-16 0 C -8 -11 8 -11 16 0 C 8 11 -8 11 -16 0 Z" fill="#ff6f91"/>
+      <path d="M16 0 L 27 -8 L 25 0 L 27 8 Z" fill="#ff9bb0"/>
+      <circle cx="-7" cy="-2" r="2.4" fill="#2b3a55"/>
+    </g>
+    <g id="spark">
+      <path d="M0 -13 L 3.4 -3.4 L 13 0 L 3.4 3.4 L 0 13 L -3.4 3.4 L -13 0
+               L -3.4 -3.4 Z" fill="#fff3b0"/>
+    </g>
+    <g id="bubble">
+      <circle r="11" fill="#ffffff" fill-opacity="0.34"/>
+      <circle r="11" fill="none" stroke="#ffffff" stroke-opacity="0.7"
+              stroke-width="1.6"/>
+      <circle cx="-3.6" cy="-4" r="2.6" fill="#ffffff" fill-opacity="0.9"/>
+    </g>
+    <g id="kelp">
+      <path d="M0 34 C -12 20 10 12 -2 -4 C -10 -14 6 -22 0 -34" fill="none"
+            stroke="#2fbf8f" stroke-width="5" stroke-linecap="round"
+            stroke-opacity="0.75"/>
+    </g>
+    <filter id="softA" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <filter id="grainA" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3"
+                    seed="11" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="1792" height="1024" fill="url(#sea)"/>
+  <rect width="1792" height="1024" fill="url(#sun)"/>
+  <rect width="1792" height="1024" fill="url(#aqua)"/>
+  <rect width="1792" height="1024" fill="url(#dusk)"/>
+
+  <!-- 浪带：四条错相的横浪 + 泡沫线，铺满全幅 -->
+  <g>
+    <path d="M-40 250 C 260 196 420 300 700 258 S 1180 176 1460 236
+             S 1720 292 1860 258 L 1860 340 C 1700 372 1500 300 1300 322
+             S 900 400 640 356 S 200 300 -40 344 Z"
+          fill="#ffffff" fill-opacity="0.2"/>
+    <path d="M-40 470 C 240 414 460 522 740 476 S 1200 396 1480 456
+             S 1740 512 1860 480 L 1860 566 C 1690 600 1480 526 1270 550
+             S 860 630 600 582 S 180 524 -40 566 Z"
+          fill="#ffffff" fill-opacity="0.26"/>
+    <path d="M-40 690 C 260 632 480 742 760 696 S 1220 612 1500 674
+             S 1750 730 1860 700 L 1860 790 C 1700 824 1490 752 1280 776
+             S 870 854 610 806 S 170 748 -40 790 Z"
+          fill="#1f6fb0" fill-opacity="0.2"/>
+    <path d="M-40 880 C 240 826 500 930 780 890 S 1240 806 1520 862
+             S 1760 916 1860 890 L 1860 1024 L -40 1024 Z"
+          fill="#17548f" fill-opacity="0.26"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <path d="M-40 254 C 260 200 420 304 700 262 S 1180 180 1460 240
+             S 1720 296 1860 262" stroke-opacity="0.75" stroke-width="3"/>
+    <path d="M-40 474 C 240 418 460 526 740 480 S 1200 400 1480 460
+             S 1740 516 1860 484" stroke-opacity="0.6" stroke-width="2.6"/>
+    <path d="M-40 694 C 260 636 480 746 760 700 S 1220 616 1500 678
+             S 1750 734 1860 704" stroke-opacity="0.42" stroke-width="2.2"/>
+    <path d="M-40 884 C 240 830 500 934 780 894 S 1240 810 1520 866
+             S 1760 920 1860 894" stroke-opacity="0.3" stroke-width="2"/>
+  </g>
+
+  <!-- 撒点：水滴/苗/纸船/鱼/火花/气泡/海草，均匀铺开、尺寸与角度打散 -->
+  <g>
+    <use href="#drop" transform="translate(120 130) scale(1.1)"/>
+    <use href="#drop" transform="translate(612 96) scale(0.8) rotate(-12)"/>
+    <use href="#drop" transform="translate(1180 150) scale(1.3) rotate(10)"/>
+    <use href="#drop" transform="translate(1660 210) scale(0.9)"/>
+    <use href="#drop" transform="translate(360 560) scale(1.05) rotate(8)"/>
+    <use href="#drop" transform="translate(940 610) scale(0.85)"/>
+    <use href="#drop" transform="translate(1420 790) scale(1.2) rotate(-8)"/>
+    <use href="#sprout" transform="translate(230 400) scale(1.15)"/>
+    <use href="#sprout" transform="translate(820 330) scale(0.9) rotate(6)"/>
+    <use href="#sprout" transform="translate(1520 420) scale(1.2) rotate(-7)"/>
+    <use href="#sprout" transform="translate(520 810) scale(1)"/>
+    <use href="#sprout" transform="translate(1120 930) scale(1.1) rotate(5)"/>
+    <use href="#boat" transform="translate(430 210) scale(1.05) rotate(-6)"/>
+    <use href="#boat" transform="translate(1020 480) scale(1.2) rotate(5)"/>
+    <use href="#boat" transform="translate(1610 620) scale(0.95) rotate(-4)"/>
+    <use href="#boat" transform="translate(150 720) scale(1.1) rotate(7)"/>
+    <use href="#fish" transform="translate(700 760) scale(1.1)"/>
+    <use href="#fish" transform="translate(1300 300) scale(0.9) rotate(-14)"/>
+    <use href="#fish" transform="translate(1740 860) scale(1) rotate(8)"/>
+    <use href="#fish" transform="translate(300 940) scale(0.85) rotate(-6)"/>
+    <use href="#spark" transform="translate(960 130) scale(1.1)"/>
+    <use href="#spark" transform="translate(1420 90) scale(0.8)"/>
+    <use href="#spark" transform="translate(1720 380) scale(1)"/>
+    <use href="#spark" transform="translate(60 470) scale(0.9)"/>
+    <use href="#spark" transform="translate(1240 640) scale(1.15)"/>
+    <use href="#spark" transform="translate(660 950) scale(0.85)"/>
+    <use href="#bubble" transform="translate(500 120)"/>
+    <use href="#bubble" transform="translate(760 210) scale(0.7)"/>
+    <use href="#bubble" transform="translate(1320 520) scale(1.2)"/>
+    <use href="#bubble" transform="translate(1560 160) scale(0.8)"/>
+    <use href="#bubble" transform="translate(120 300) scale(1)"/>
+    <use href="#bubble" transform="translate(880 830) scale(1.3)"/>
+    <use href="#bubble" transform="translate(1080 700) scale(0.75)"/>
+    <use href="#bubble" transform="translate(340 1000) scale(1.1)"/>
+    <use href="#kelp" transform="translate(60 880) scale(1.3)"/>
+    <use href="#kelp" transform="translate(1780 700) scale(1.1) rotate(6)"/>
+    <use href="#kelp" transform="translate(980 1010) scale(1.2)"/>
+  </g>
+
+  <!-- 远景飞鸟：给画面一点「天气」，也压住上半幅的空 -->
+  <g fill="none" stroke="#2b5f8f" stroke-opacity="0.5" stroke-width="3"
+     stroke-linecap="round" filter="url(#softA)">
+    <path d="M1560 120 c 14 -12 22 -12 34 0 c 12 -12 20 -12 34 0"/>
+    <path d="M1470 176 c 10 -9 16 -9 25 0 c 9 -9 15 -9 25 0"/>
+    <path d="M250 190 c 11 -10 18 -10 27 0 c 9 -10 16 -10 27 0"/>
+  </g>
+
+  <rect width="1792" height="1024" filter="url(#grainA)" opacity="0.05"/>
+</svg>

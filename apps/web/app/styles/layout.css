@@ -477,10 +477,16 @@
 }
 
 /* 登录页背景图（0445）：铺在左栏渐变之上、品牌文字之下；
- * 不透明度由后台 site_profile.backgrounds.login.opacity 控制 */
+ * 不透明度由后台 site_profile.backgrounds.login.opacity 控制。
+ * 必须压在**本主题**的左栏底色上再乘（实测：一张浅蓝图在深色主题 55% 时
+ * 说明文字只剩 1.2:1，标语 1.8:1——整栏糊成灰蓝、字读不出）。乘完的结果
+ * 再按 opacity 混回同一底色，于是浅色主题照常显图、深色主题自动收成暗纹，
+ * 站长只配一张图也能两套主题都保住文字对比度。 */
 .bz-login-intro-bg {
   position: absolute;
   inset: 0;
+  background-color: var(--surface-sunken);
+  background-blend-mode: multiply;
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;

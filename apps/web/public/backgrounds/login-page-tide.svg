@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1024"
+     preserveAspectRatio="xMidYMid slice" role="img" aria-label="">
+  <!-- 登录页主背景（login_page_bg_url）：登录卡是半透明白底、压在正中，
+       所以亮部全部推到四角与边带（月亮右上、鲸与河灯左下、天灯沿左缘），
+       中段只留渐变与稀星。走饱和暮色（紫→靛→青）而不是近黑——近黑压到
+       浅色主题上会变成一片灰。 -->
+  <defs>
+    <linearGradient id="dusk" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#5b3fbf"/>
+      <stop offset="0.24" stop-color="#4a3aa8"/>
+      <stop offset="0.44" stop-color="#2f56a8"/>
+      <stop offset="0.62" stop-color="#167ba6"/>
+      <stop offset="0.8" stop-color="#0f5f8f"/>
+      <stop offset="1" stop-color="#0a3f68"/>
+    </linearGradient>
+    <radialGradient id="afterglow" cx="0.5" cy="0.62" r="0.55">
+      <stop offset="0" stop-color="#ff9f6b" stop-opacity="0.4"/>
+      <stop offset="0.5" stop-color="#ff6f9c" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ff6f9c" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moonHalo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff6d5" stop-opacity="0.9"/>
+      <stop offset="0.35" stop-color="#ffe9a8" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="lantern" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd166" stop-opacity="0.95"/>
+      <stop offset="0.45" stop-color="#ff8a3d" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#ff8a3d" stop-opacity="0"/>
+    </radialGradient>
+    <g id="star">
+      <circle r="3" fill="#fff8e1"/>
+    </g>
+    <g id="twinkle">
+      <path d="M0 -11 L 2.6 -2.6 L 11 0 L 2.6 2.6 L 0 11 L -2.6 2.6 L -11 0
+               L -2.6 -2.6 Z" fill="#fff3b0"/>
+    </g>
+    <g id="whale">
+      <path d="M-90 0 C -70 -46 30 -58 78 -22 C 96 -8 96 10 78 18
+               C 30 40 -60 34 -90 0 Z" fill="#0f2c4d"/>
+      <path d="M78 -22 C 104 -44 128 -46 140 -30 C 128 -22 112 -18 96 -14 Z"
+            fill="#1b4a76"/>
+      <path d="M-90 0 C -112 -14 -128 -34 -122 -52 C -104 -42 -94 -24 -90 -6 Z"
+            fill="#1b4a76"/>
+      <path d="M-58 16 C -30 34 24 36 60 20 C 30 44 -26 46 -58 16 Z"
+            fill="#08203a"/>
+      <path d="M-46 -20 C -20 -34 20 -34 44 -22" stroke="#3f7bb0"
+            stroke-width="3" fill="none" stroke-opacity="0.5"/>
+      <circle cx="-40" cy="-14" r="5.4" fill="#e8f4ff"/>
+    </g>
+    <g id="skyLantern">
+      <ellipse rx="17" ry="21" fill="url(#lantern)"/>
+      <path d="M-11 -12 L 11 -12 L 8 12 L -8 12 Z" fill="#ffb45f"/>
+      <path d="M-11 -12 L 11 -12 L 9 -4 L -9 -4 Z" fill="#ffe08a"/>
+      <path d="M-6 12 L 6 12 L 4 20 L -4 20 Z" fill="#ff8a3d" fill-opacity="0.8"/>
+    </g>
+    <g id="boatL">
+      <path d="M-22 8 L 22 8 L 12 22 L -12 22 Z" fill="#f4f9ff"/>
+      <path d="M0 6 L 0 -22 L 18 6 Z" fill="#ff8a3d"/>
+      <path d="M0 6 L -16 6 L 0 -16 Z" fill="#ffd166"/>
+      <circle cx="0" cy="-26" r="5" fill="#fff3b0"/>
+    </g>
+    <g id="fishL">
+      <path d="M-17 0 C -9 -12 9 -12 17 0 C 9 12 -9 12 -17 0 Z" fill="#5fe0d0"/>
+      <path d="M17 0 L 29 -9 L 27 0 L 29 9 Z" fill="#8ff0e4"/>
+      <circle cx="-7" cy="-2" r="2.4" fill="#12304f"/>
+    </g>
+    <filter id="softB" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+    <filter id="grainB" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3"
+                    seed="23" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="1792" height="1024" fill="url(#dusk)"/>
+  <rect width="1792" height="1024" fill="url(#afterglow)"/>
+
+  <!-- 星野：上三分之一密一点，中段（卡片背后）几乎不留 -->
+  <g>
+    <use href="#star" transform="translate(96 88)"/>
+    <use href="#star" transform="translate(214 162) scale(0.7)"/>
+    <use href="#star" transform="translate(318 62) scale(1.2)"/>
+    <use href="#star" transform="translate(430 196) scale(0.8)"/>
+    <use href="#star" transform="translate(556 96)"/>
+    <use href="#star" transform="translate(672 156) scale(0.75)"/>
+    <use href="#star" transform="translate(788 72) scale(1.1)"/>
+    <use href="#star" transform="translate(902 132) scale(0.7)"/>
+    <use href="#star" transform="translate(1024 62)"/>
+    <use href="#star" transform="translate(1146 168) scale(0.85)"/>
+    <use href="#star" transform="translate(1268 92) scale(0.7)"/>
+    <use href="#star" transform="translate(1508 300) scale(0.9)"/>
+    <use href="#star" transform="translate(1662 128) scale(1.1)"/>
+    <use href="#star" transform="translate(1740 262) scale(0.7)"/>
+    <use href="#star" transform="translate(64 262) scale(0.85)"/>
+    <use href="#star" transform="translate(188 372) scale(0.7)"/>
+    <use href="#star" transform="translate(1618 452) scale(0.8)"/>
+    <use href="#star" transform="translate(1712 556) scale(0.7)"/>
+    <use href="#star" transform="translate(96 512) scale(0.8)"/>
+    <use href="#twinkle" transform="translate(392 300) scale(1.2)"/>
+    <use href="#twinkle" transform="translate(1560 210) scale(1)"/>
+    <use href="#twinkle" transform="translate(124 186) scale(0.9)"/>
+    <use href="#twinkle" transform="translate(1690 402) scale(0.8)"/>
+  </g>
+
+  <!-- 月亮与光晕：右上角 -->
+  <g>
+    <circle cx="1512" cy="176" r="190" fill="url(#moonHalo)"/>
+    <circle cx="1512" cy="176" r="62" fill="#fff6d5"/>
+    <circle cx="1490" cy="160" r="13" fill="#ffe9a8" fill-opacity="0.75"/>
+    <circle cx="1530" cy="196" r="8" fill="#ffe9a8" fill-opacity="0.6"/>
+    <circle cx="1508" cy="140" r="5" fill="#ffe9a8" fill-opacity="0.5"/>
+  </g>
+
+  <!-- 流星：给上半幅一点动势 -->
+  <g stroke-linecap="round" filter="url(#softB)">
+    <path d="M1180 96 L 1310 158" stroke="#ffffff" stroke-opacity="0.65"
+          stroke-width="4"/>
+    <path d="M1170 92 L 1192 100" stroke="#fff3b0" stroke-opacity="0.9"
+          stroke-width="7"/>
+  </g>
+
+  <!-- 云带（紫）：贴着地平线，避开正中 -->
+  <g fill="#8f7ad8" filter="url(#softB)">
+    <ellipse cx="230" cy="470" rx="210" ry="26" fill-opacity="0.34"/>
+    <ellipse cx="1560" cy="430" rx="180" ry="22" fill-opacity="0.3"/>
+    <ellipse cx="700" cy="500" rx="150" ry="16" fill-opacity="0.18"/>
+  </g>
+
+  <!-- 鲸：画在浪带**之前**，让海把它下半身盖住，才是「在水里游」而不是
+       「趴在浪上」 -->
+  <use href="#whale" transform="translate(300 606) scale(1.25)"/>
+
+  <!-- 海：三条浪带 + 泡沫，压在下缘（卡片下方只露一点点，但手机上是整屏） -->
+  <g>
+    <path d="M-40 640 C 240 596 460 672 740 640 S 1220 570 1500 630
+             S 1750 682 1860 654 L 1860 1024 L -40 1024 Z"
+          fill="#0d5b8c" fill-opacity="0.55"/>
+    <path d="M-40 760 C 260 716 500 792 800 758 S 1280 690 1560 748
+             S 1780 796 1860 774 L 1860 1024 L -40 1024 Z"
+          fill="#093f66" fill-opacity="0.7"/>
+    <path d="M-40 880 C 240 838 520 908 820 872 S 1320 800 1600 860
+             S 1800 902 1860 884 L 1860 1024 L -40 1024 Z"
+          fill="#062c4a"/>
+  </g>
+  <g fill="none" stroke="#a8e8ff" stroke-linecap="round">
+    <path d="M-40 644 C 240 600 460 676 740 644 S 1220 574 1500 634
+             S 1750 686 1860 658" stroke-opacity="0.5" stroke-width="3"/>
+    <path d="M-40 764 C 260 720 500 796 800 762 S 1280 694 1560 752
+             S 1780 800 1860 778" stroke-opacity="0.34" stroke-width="2.4"/>
+    <path d="M-40 884 C 240 842 520 912 820 876 S 1320 804 1600 864
+             S 1800 906 1860 888" stroke-opacity="0.22" stroke-width="2"/>
+  </g>
+
+  <!-- 月光在水面的反光：放在右侧边缘带，不穿正中 -->
+  <g fill="#ffe9a8">
+    <ellipse cx="1620" cy="700" rx="120" ry="6" fill-opacity="0.3"
+             filter="url(#softB)"/>
+    <ellipse cx="1690" cy="760" rx="90" ry="5" fill-opacity="0.22"
+             filter="url(#softB)"/>
+    <ellipse cx="1580" cy="820" rx="140" ry="7" fill-opacity="0.16"
+             filter="url(#softB)"/>
+  </g>
+
+  <!-- 喷泉水花：从头顶往左上散开 -->
+  <g fill="#bff0ff">
+    <use href="#star" transform="translate(268 520) scale(2.2)"/>
+    <use href="#star" transform="translate(240 486) scale(1.7)"/>
+    <use href="#star" transform="translate(296 470) scale(1.9)"/>
+    <use href="#star" transform="translate(222 442) scale(1.3)"/>
+    <use href="#star" transform="translate(276 428) scale(1.5)"/>
+    <use href="#star" transform="translate(318 500) scale(1.1)"/>
+  </g>
+  <use href="#fishL" transform="translate(1420 812) scale(1.1) rotate(-12)"/>
+  <use href="#fishL" transform="translate(560 906) scale(0.9) rotate(8)"/>
+
+  <!-- 河灯与纸船：沿左缘与右下排开，给夜色加暖 -->
+  <use href="#skyLantern" transform="translate(120 300) scale(1.15)"/>
+  <use href="#skyLantern" transform="translate(240 208) scale(0.85)"/>
+  <use href="#skyLantern" transform="translate(74 456) scale(0.7)"/>
+  <use href="#skyLantern" transform="translate(1700 620) scale(0.9)"/>
+  <use href="#boatL" transform="translate(600 690) scale(1.05) rotate(-5)"/>
+  <use href="#boatL" transform="translate(1180 700) scale(0.9) rotate(4)"/>
+  <use href="#boatL" transform="translate(920 856) scale(1.2) rotate(-3)"/>
+
+  <rect width="1792" height="1024" filter="url(#grainB)" opacity="0.07"/>
+</svg>

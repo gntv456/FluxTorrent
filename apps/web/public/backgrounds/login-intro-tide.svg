@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1280"
+     preserveAspectRatio="xMidYMid slice" role="img" aria-label="">
+  <!-- 登录页左栏背景（login_bg_url）：站标/标语/说明竖排在**垂直中段**
+       （实测文字落在画面 45%~70% 高度），所以热闹全安排在上下两端——
+       上半是白日天空（太阳、云、热气球、风筝、飞鸟），下半是潮汐苗圃
+       （浪、苗、海草、跃鱼、纸船、气泡），中间留一条干净的渐变给字。
+       深色主题下这一层会被 background-blend-mode: multiply 压成本主题
+       底色的暗纹，所以可以放心用饱和色。 -->
+  <defs>
+    <linearGradient id="sky" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#fff8e2"/>
+      <stop offset="0.18" stop-color="#e9f6ff"/>
+      <stop offset="0.42" stop-color="#f4fbff"/>
+      <stop offset="0.62" stop-color="#dceefb"/>
+      <stop offset="0.8" stop-color="#a4dbf6"/>
+      <stop offset="1" stop-color="#57b6e6"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff2b8" stop-opacity="0.95"/>
+      <stop offset="0.4" stop-color="#ffd166" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5fc9ef"/>
+      <stop offset="0.5" stop-color="#2f9fd8"/>
+      <stop offset="1" stop-color="#1b6ba8"/>
+    </linearGradient>
+    <radialGradient id="shallow" cx="0.72" cy="0.86" r="0.42">
+      <stop offset="0" stop-color="#7ff0dd" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#7ff0dd" stop-opacity="0"/>
+    </radialGradient>
+    <g id="dropC">
+      <path d="M0 -15 C 7 -4 11 1 11 7 A 11 11 0 0 1 -11 7 C -11 1 -7 -4 0 -15 Z"
+            fill="#ffffff" fill-opacity="0.85"/>
+      <circle cx="-3.4" cy="7" r="3" fill="#8fd8ff"/>
+    </g>
+    <g id="sproutC">
+      <path d="M0 20 L 0 -4" stroke="#2f9e6a" stroke-width="4"
+            stroke-linecap="round" fill="none"/>
+      <path d="M0 0 C -18 -4 -24 -18 -21 -26 C -8 -23 0 -13 0 -3 Z"
+            fill="#43c98a"/>
+      <path d="M0 5 C 16 2 23 -10 21 -19 C 9 -17 1 -8 0 -2 Z" fill="#7ee0a8"/>
+    </g>
+    <g id="seedC">
+      <ellipse rx="12" ry="16" fill="#c98b4b" transform="rotate(-18)"/>
+      <path d="M-6 -8 C 0 -2 4 4 4 12" stroke="#f0c79a" stroke-width="2.6"
+            fill="none" stroke-linecap="round"/>
+    </g>
+    <g id="boatC">
+      <path d="M-26 9 L 26 9 L 14 26 L -14 26 Z" fill="#ff8a3d"/>
+      <path d="M0 7 L 0 -26 L 22 7 Z" fill="#fff7e6"/>
+      <path d="M0 7 L -19 7 L 0 -18 Z" fill="#ffd166"/>
+    </g>
+    <g id="fishC">
+      <path d="M-20 0 C -11 -14 11 -14 20 0 C 11 14 -11 14 -20 0 Z"
+            fill="#ff6f91"/>
+      <path d="M20 0 L 34 -10 L 31 0 L 34 10 Z" fill="#ff9bb0"/>
+      <circle cx="-9" cy="-3" r="3" fill="#2b3a55"/>
+      <path d="M-2 6 C 4 10 10 10 15 6" stroke="#ff9bb0" stroke-width="2"
+            fill="none"/>
+    </g>
+    <g id="sparkC">
+      <path d="M0 -14 L 3.6 -3.6 L 14 0 L 3.6 3.6 L 0 14 L -3.6 3.6 L -14 0
+               L -3.6 -3.6 Z" fill="#fff3b0"/>
+    </g>
+    <g id="bubbleC">
+      <circle r="13" fill="#ffffff" fill-opacity="0.4"/>
+      <circle r="13" fill="none" stroke="#ffffff" stroke-opacity="0.85"
+              stroke-width="2"/>
+      <circle cx="-4.4" cy="-5" r="3.2" fill="#ffffff" fill-opacity="0.95"/>
+    </g>
+    <g id="kelpC">
+      <path d="M0 44 C -16 26 12 16 -3 -6 C -12 -18 8 -28 0 -44" fill="none"
+            stroke="#2fbf8f" stroke-width="6" stroke-linecap="round"/>
+      <path d="M0 20 C -12 16 -16 8 -14 2" stroke="#5fe0b0" stroke-width="4"
+            fill="none" stroke-linecap="round"/>
+    </g>
+    <g id="cloudC">
+      <ellipse cx="-34" cy="4" rx="34" ry="20" fill="#ffffff" fill-opacity="0.9"/>
+      <ellipse cx="6" cy="-8" rx="30" ry="24" fill="#ffffff" fill-opacity="0.95"/>
+      <ellipse cx="40" cy="6" rx="26" ry="17" fill="#ffffff" fill-opacity="0.85"/>
+    </g>
+    <filter id="softC" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <filter id="grainC" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3"
+                    seed="41" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1280" fill="url(#sky)"/>
+
+  <!-- 太阳：右上角（文字带之外） -->
+  <g>
+    <circle cx="856" cy="150" r="180" fill="url(#sunGlow)"/>
+    <circle cx="856" cy="150" r="58" fill="#fff4c2"/>
+    <g stroke="#ffd166" stroke-width="7" stroke-linecap="round"
+       stroke-opacity="0.85">
+      <path d="M856 44 L 856 20"/>
+      <path d="M856 256 L 856 280"/>
+      <path d="M750 150 L 726 150"/>
+      <path d="M962 150 L 986 150"/>
+      <path d="M781 75 L 764 58"/>
+      <path d="M931 225 L 948 242"/>
+      <path d="M781 225 L 764 242"/>
+    </g>
+  </g>
+
+  <!-- 云、热气球、风筝、飞鸟：上半幅 -->
+  <use href="#cloudC" transform="translate(190 210) scale(1.25)"/>
+  <use href="#cloudC" transform="translate(620 320) scale(0.9)"/>
+  <use href="#cloudC" transform="translate(120 430) scale(0.7)"/>
+  <g>
+    <path d="M262 470 C 236 470 218 448 218 424 C 218 396 240 372 262 372
+             C 284 372 306 396 306 424 C 306 448 288 470 262 470 Z"
+          fill="#ff6f91"/>
+    <path d="M262 372 C 246 396 246 448 262 470 C 278 448 278 396 262 372 Z"
+          fill="#ffd166" fill-opacity="0.85"/>
+    <path d="M236 470 L 288 470 L 280 492 L 244 492 Z" fill="#c98b4b"/>
+    <path d="M262 492 C 250 520 274 534 262 562" stroke="#5b7fa6"
+          stroke-width="2.6" fill="none" stroke-dasharray="7 6"/>
+  </g>
+  <g>
+    <path d="M700 200 L 748 236 L 700 292 L 652 236 Z" fill="#5fe0d0"/>
+    <path d="M700 200 L 748 236 L 700 246 Z" fill="#2f9fd8" fill-opacity="0.7"/>
+    <path d="M700 292 C 690 316 712 326 702 348" stroke="#5b7fa6"
+          stroke-width="2.4" fill="none" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="none" stroke="#2b5f8f" stroke-opacity="0.55" stroke-width="4"
+     stroke-linecap="round">
+    <path d="M420 150 c 16 -14 26 -14 40 0 c 14 -14 24 -14 40 0"/>
+    <path d="M520 214 c 12 -10 20 -10 30 0 c 10 -10 18 -10 30 0"/>
+    <path d="M340 300 c 10 -9 17 -9 26 0 c 9 -9 16 -9 26 0"/>
+  </g>
+  <use href="#sparkC" transform="translate(96 130) scale(1.1)"/>
+  <use href="#sparkC" transform="translate(470 96) scale(0.8)"/>
+  <use href="#sparkC" transform="translate(980 380) scale(0.9)"/>
+  <use href="#sparkC" transform="translate(560 470) scale(0.7)"/>
+  <use href="#dropC" transform="translate(940 500) scale(0.9)"/>
+  <use href="#dropC" transform="translate(60 340) scale(0.8)"/>
+
+  <!-- 潮汐苗圃：下半幅（文字带之下） -->
+  <path d="M-40 946 C 180 906 320 986 520 950 S 840 878 1064 934
+           L 1064 1280 L -40 1280 Z" fill="url(#tide)"/>
+  <path d="M-40 1046 C 160 1010 340 1082 560 1044 S 880 972 1064 1024
+           L 1064 1280 L -40 1280 Z" fill="#1b6ba8" fill-opacity="0.55"/>
+  <path d="M-40 1156 C 180 1122 380 1186 620 1150 S 900 1086 1064 1128
+           L 1064 1280 L -40 1280 Z" fill="#12507f" fill-opacity="0.6"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <path d="M-40 950 C 180 910 320 990 520 954 S 840 882 1064 938"
+          stroke-opacity="0.85" stroke-width="4"/>
+    <path d="M-40 1050 C 160 1014 340 1086 560 1048 S 880 976 1064 1028"
+          stroke-opacity="0.5" stroke-width="3"/>
+    <path d="M-40 1160 C 180 1126 380 1190 620 1154 S 900 1090 1064 1132"
+          stroke-opacity="0.32" stroke-width="2.4"/>
+  </g>
+  <rect width="1024" height="1280" fill="url(#shallow)"/>
+
+  <!-- 小岛与苗：站内「做种」的直译 -->
+  <g>
+    <ellipse cx="300" cy="1046" rx="126" ry="30" fill="#f0d9a8"/>
+    <ellipse cx="300" cy="1040" rx="104" ry="22" fill="#fbeecb"/>
+    <use href="#sproutC" transform="translate(244 1032) scale(1.35)"/>
+    <use href="#sproutC" transform="translate(312 1024) scale(1.7)"/>
+    <use href="#sproutC" transform="translate(372 1036) scale(1.15)"/>
+    <use href="#seedC" transform="translate(196 1046) scale(1.1)"/>
+    <use href="#seedC" transform="translate(420 1050) scale(0.9)"/>
+  </g>
+  <use href="#kelpC" transform="translate(96 1140) scale(1.4)"/>
+  <use href="#kelpC" transform="translate(160 1180) scale(1.1)"/>
+  <use href="#kelpC" transform="translate(940 1150) scale(1.5)"/>
+  <use href="#kelpC" transform="translate(860 1200) scale(1.05)"/>
+  <use href="#fishC" transform="translate(640 1010) scale(1.3) rotate(-16)"/>
+  <use href="#fishC" transform="translate(790 1120) scale(0.95) rotate(10)"/>
+  <use href="#boatC" transform="translate(560 1170) scale(1.25) rotate(-5)"/>
+  <use href="#dropC" transform="translate(686 926) scale(1.15)"/>
+  <use href="#dropC" transform="translate(742 968) scale(0.8)"/>
+  <use href="#bubbleC" transform="translate(520 1096) scale(1.1)"/>
+  <use href="#bubbleC" transform="translate(470 1150) scale(0.7)"/>
+  <use href="#bubbleC" transform="translate(880 1040) scale(0.9)"/>
+  <use href="#bubbleC" transform="translate(120 1030) scale(0.75)"/>
+  <use href="#sparkC" transform="translate(908 900) scale(0.9)"/>
+  <use href="#sparkC" transform="translate(120 900) scale(0.75)"/>
+
+  <rect width="1024" height="1280" filter="url(#grainC)" opacity="0.05"/>
+</svg>

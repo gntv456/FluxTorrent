@@ -36,6 +36,9 @@ function isAnonymousOk(pathname: string): boolean {
     // 内置品牌资产（站标/字标/OG 卡）：登录页品牌区与爬虫 OG 抓取都要匿名可达，
     // 否则站标图被 307 成登录页 HTML、分享卡抓取落空
     pathname.startsWith("/brand/") ||
+    // 内置背景图（0445/0447 的三张默认样图）：站长自托管在站内时，看的人正是
+    // **未登录**访客（登录页背景），被 307 成登录页 HTML 后浏览器只会静默丢图
+    pathname.startsWith("/backgrounds/") ||
     pathname.startsWith("/p/") ||
     [
       "/favicon.ico",
