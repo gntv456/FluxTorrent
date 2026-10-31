@@ -20,10 +20,11 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::{require_auth, Q};
 use crate::state::AppState;
 use crate::torrents::promo;
+use crate::torrents::works_seed::{self, WorkSeed};
 use crate::torrents::{search_pred_with_syn, section_where};
 
 use super::works_filter;
-use super::works_rows_sql::{self, BatchSeedRow, WorkSeed};
+use super::works_rows_sql;
 use super::works_sql;
 
 /// 作品行（列表与详情头同形）。字段刻意贴 TorrentListItem 口径
@@ -207,15 +208,14 @@ pub(crate) async fn works_list(
     let mut by: std::collections::HashMap<String, Vec<WorkSeed>> =
         std::collections::HashMap::new();
     if !keys.is_empty() {
-        let seeds: Vec<BatchSeedRow> = sqlx::query_as(
+        let seeds = works_seed::batch(
+            &state.repo.read_db,
             &works_rows_sql::batch_sql(&promo::lateral_latest()),
+            &keys,
         )
-        .bind(&keys)
-        .fetch_all(&state.repo.read_db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        for row in seeds {
-            let (key, seed) = row.into_parts();
+        for (key, seed) in seeds {
             by.entry(key).or_default().push(seed);
         }
     }

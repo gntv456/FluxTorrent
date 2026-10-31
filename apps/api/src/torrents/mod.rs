@@ -30,6 +30,8 @@ mod syn_search;
 mod tag_pred;
 mod types;
 mod viewer_preds;
+/// 作品聚合的种子行读口（行 = 列表行 + 简介截图）；SQL 构造在 H 层。
+pub(crate) mod works_seed;
 
 pub use cat_map::{newznab_name, CatMap, MediaMap, NEWZNAB_OTHER};
 pub use charge::*;
