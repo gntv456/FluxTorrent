@@ -276,6 +276,7 @@ export function UploadDescrBlock({
         </div>
         <textarea
           ref={descrRef}
+          name="descr"
           value={descr}
           onChange={(e) => setDescr(e.target.value)}
           placeholder={dict.upload.descrPlaceholder}

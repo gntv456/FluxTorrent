@@ -97,6 +97,7 @@ export function UploadQualityBlock({
         {/* FormRow 的 rowhead td 不构成编程关联，可达名就地补（axe select-name） */}
         <select
           aria-label={dict.upload.category}
+          name="category_id"
           value={categoryId}
           onChange={(e) => setCategoryId(Number(e.target.value))}
           className={fieldCls}

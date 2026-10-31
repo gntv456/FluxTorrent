@@ -1,13 +1,11 @@
 "use client";
 
 import type { RefObject } from "react";
-import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import { attachUpload } from "@/components/upload-attach-io";
 import { FormRow, fieldCls } from "@/components/upload-form-parts";
-import { UploadRipLogs } from "@/components/upload-form-riplogs";
+import { UploadNfoAttach } from "@/components/upload-form-nfo-attach";
 
 /** 发布表单·文件与 NFO / 附件块（从 upload-form.tsx 按域拆出，300 行门禁）：
  *  种子文件选择、标题/副标题、IMDb 与 PT-Gen、NFO、图床附件、MediaInfo、
@@ -72,25 +70,6 @@ export function UploadFilesBlock({
   metaSources: string[];
 }) {
   const { dict, currency } = useI18n();
-  const [nfoName, setNfoName] = useState("");
-  const [attachBusy, setAttachBusy] = useState(false);
-  const [attachMsg, setAttachMsg] = useState<string | null>(null);
-
-  /** 图床上传（0100）：成功把 [img]URL[/img] 追加进简介；文案 dict.upload */
-  async function uploadAttachment(file: File) {
-    setAttachBusy(true);
-    setAttachMsg(null);
-    try {
-      const r = await attachUpload(file, dict, setDescr);
-      setAttachMsg(r.msg);
-    } catch (e) {
-      setAttachMsg(
-        e instanceof Error && e.message ? e.message : dict.upload.attachFail,
-      );
-    } finally {
-      setAttachBusy(false);
-    }
-  }
 
   /** 元数据自动拉取（G7）：IMDb 链接失焦、且用户还没自己填 PT-Gen 链接时
    *  自动拉一次简介。手动按钮行为不变（仍可改链接后重拉）。 */
@@ -124,6 +103,7 @@ export function UploadFilesBlock({
           <label className="uf-drop uf-drop--required">
             <input
               ref={fileRef}
+              name="file"
               type="file"
               accept=".torrent,application/x-bittorrent"
               required
@@ -138,6 +118,7 @@ export function UploadFilesBlock({
         <div className="flex flex-col gap-1">
           <input
             type="text"
+            name="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={dict.upload.nameHint}
@@ -149,6 +130,7 @@ export function UploadFilesBlock({
       <FormRow label={dict.upload.smallDescr}>
         <input
           type="text"
+          name="small_descr"
           value={smallDescr}
           onChange={(e) => setSmallDescr(e.target.value)}
           placeholder={dict.upload.smallDescrPlaceholder}
@@ -161,6 +143,7 @@ export function UploadFilesBlock({
           <div className="flex flex-col gap-1">
             <input
               type="url"
+              name="imdb"
               value={imdb}
               onChange={(e) => setImdb(e.target.value)}
               onBlur={autoFill}
@@ -175,10 +158,12 @@ export function UploadFilesBlock({
       {(metaSources.includes("douban") || metaSources.includes("tmdb")) && (
         <FormRow label={dict.upload.metaIds}>
           <div className="flex flex-wrap gap-2">
-            <input value={douban} onChange={(e) => setDouban(e.target.value)}
+            <input value={douban} name="douban"
+              onChange={(e) => setDouban(e.target.value)}
               placeholder="movie.douban.com/subject/1292052" maxLength={300}
               className={`${fieldCls} min-w-0 flex-1`} />
-            <input value={tmdb} onChange={(e) => setTmdb(e.target.value)}
+            <input value={tmdb} name="tmdb"
+              onChange={(e) => setTmdb(e.target.value)}
               placeholder="themoviedb.org/movie/603" maxLength={300}
               className={`${fieldCls} min-w-0 flex-1`} />
           </div>
@@ -191,6 +176,7 @@ export function UploadFilesBlock({
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="url"
+                name="ptgen_url"
                 value={ptgenUrl}
                 onChange={(e) => setPtgenUrl(e.target.value)}
                 placeholder={
@@ -215,46 +201,13 @@ export function UploadFilesBlock({
           </div>
         </FormRow>
       )}
-      <FormRow label={dict.upload.nfo}>
-        <div className="flex flex-col gap-1">
-          <label className="uf-drop uf-drop--optional">
-            <input
-              ref={nfoRef}
-              type="file"
-              accept=".nfo,text/plain"
-              className="sr-only"
-              onChange={(e) => setNfoName(e.target.files?.[0]?.name ?? "")}
-            />
-            {nfoName ? `📄 ${nfoName}` : dict.upload.nfoHint}
-          </label>
-        </div>
-      </FormRow>
-      {/* 抓轨日志（0312）：站点未开检查时后端忽略这些 part */}
-      <UploadRipLogs />
-      <FormRow label={dict.upload.attachLabel}>
-        <div className="flex flex-col gap-1">
-          <label className="uf-drop uf-drop--optional">
-            <input
-              type="file"
-              className="sr-only"
-              accept="image/png,image/jpeg,image/gif,image/webp,image/avif,application/pdf,text/plain"
-              disabled={attachBusy}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void uploadAttachment(f);
-                e.currentTarget.value = "";
-              }}
-            />
-            {attachBusy ? dict.upload.attachUploading : dict.upload.attachHint}
-          </label>
-          {attachMsg && <p className="text-xs text-sky-deep">{attachMsg}</p>}
-        </div>
-      </FormRow>
+      <UploadNfoAttach nfoRef={nfoRef} setDescr={setDescr} />
       {/* MediaInfo（0209 P2-14）：影视向字段——站长在元数据源里去掉 mediainfo 即隐藏 */}
       {metaSources.includes("mediainfo") && (
         <FormRow label={dict.upload.mediainfoLabel ?? "MediaInfo"}>
           <textarea
             rows={4}
+            name="mediainfo"
             value={mediainfo}
             onChange={(e) => setMediainfo(e.target.value)}
             placeholder={dict.upload.mediainfoHint}
@@ -268,6 +221,7 @@ export function UploadFilesBlock({
           <div className="flex flex-wrap items-center gap-2">
             <input
               type="number"
+              name="price"
               aria-label={dict.upload.price}
               min={0}
               max={1000000}
@@ -286,6 +240,7 @@ export function UploadFilesBlock({
         <div className="flex flex-col gap-1">
           <input
             type="url"
+            name="poster"
             value={poster}
             onChange={(e) => setPoster(e.target.value)}
             placeholder={dict.upload.posterPh}
