@@ -122,6 +122,8 @@ const enBase: Omit<
     home: "Home",
     library: "Library",
     official: "Official",
+    libAll: "All",
+    libRes: "Resources",
     forums: "Forums",
     messages: "Messages",
     textbooks: "Textbooks",

@@ -16,7 +16,11 @@ import { useMediaQuery } from "@/lib/hooks/use-media";
  *  抽屉（与 <md 同款 compact 形态）。实测 820–1024 宽下 5 个一级项
  *  flex-wrap 竖排成 5 行、顶栏高 259px，占掉首屏近 1/3——平板这个
  *  宽度段「横排排不下、竖排太占地」，一级菜单只由 lg+ 桌面平铺承载。 */
-type NavItem = { href: string; label: string };
+type NavItem = {
+  href: string;
+  label: string;
+  sub?: { label: string; href: string; items: NavItem[] }[];
+};
 type NavGroup = { group: string; items: NavItem[] };
 
 export function MainMenu({
@@ -25,7 +29,7 @@ export function MainMenu({
   moreLabel,
   ariaLabel,
 }: {
-  items: { href: string; label: string }[];
+  items: NavItem[];
   /** 「更多 ▾」收纳域分组；缺省则不渲染下拉 */
   groups?: NavGroup[];
   moreLabel?: string;
@@ -103,8 +107,51 @@ export function MainMenu({
           if (compact) return null;
           const external = /^https?:\/\//i.test(n.href);
           return (
-            <li key={n.href}>
-              {external ? (
+            <li
+              key={n.href}
+              className={n.sub ? "relative libmenu" : undefined}
+            >
+              {n.sub ? (
+                // 资源库下拉（2026-10-31）：hover 展开（触屏点按，CSS 里
+                // 有 @media (hover:none) 的 click 口径）；面板二级=全部/
+                // 资源/官种三组，三级=全部+站型顶级分类叶子
+                <>
+                  <Link
+                    href={n.href}
+                    className="mainmenu-link"
+                    data-active={isActive(n.href) ? "true" : undefined}
+                  >
+                    {n.label} ▾
+                  </Link>
+                  <div className="mainmenu-drop mainmenu-drop--lib">
+                    {n.sub.map((g) => (
+                      <div key={g.label} className="mainmenu-drop__group">
+                        <Link
+                          href={g.href}
+                          className="mainmenu-drop__title
+                                     mainmenu-drop__title--link"
+                        >
+                          {g.label}
+                        </Link>
+                        <div className="mainmenu-drop__links">
+                          {g.items.map((leaf) => (
+                            <Link
+                              key={leaf.href + leaf.label}
+                              href={leaf.href}
+                              className="mainmenu-drop__link"
+                              data-active={
+                                isActive(leaf.href) ? "true" : undefined
+                              }
+                            >
+                              {leaf.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : external ? (
                 <a
                   href={n.href}
                   target="_blank"
@@ -135,7 +182,7 @@ export function MainMenu({
               aria-haspopup="true"
               onClick={() => setMoreOpen((v) => !v)}
             >
-              {moreLabel ?? "更多 ▾"}
+              {moreLabel}
             </button>
             {moreOpen && (
               <div className="mainmenu-drop">

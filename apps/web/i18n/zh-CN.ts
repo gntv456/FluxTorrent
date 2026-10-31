@@ -104,6 +104,8 @@ const zhCnBase = {
     home: "首页",
     library: "资源库",
     official: "官种",
+    libAll: "全部",
+    libRes: "资源",
     forums: "论坛",
     messages: "消息",
     textbooks: "课本",

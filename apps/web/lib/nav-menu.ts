@@ -7,15 +7,56 @@ import type { getMenuItems } from "@/lib/data";
  *  layout.tsx 与 nav-drawer 都消费本模块。自定义菜单（topbar）生效时
  *  一级/分组同样以这里为准。 */
 
-export type NavItem = { href: string; label: string };
+export type NavItem = {
+  href: string;
+  label: string;
+  /** 一级下拉（2026-10-31 资源库）：两级结构 [{label, href, items}]——
+   *  items 为三级叶子。目前仅资源库用（全部/资源/官种 × 站型分类）。 */
+  sub?: { label: string; href: string; items: NavItem[] }[];
+};
 export type NavGroup = { group: string; items: NavItem[] };
 export type MenuItem = Awaited<ReturnType<typeof getMenuItems>>[number];
+
+/** 顶级分类（无 parent 的）：资源库下拉的三级叶子数据源。
+ *  上限 12 个防长尾站型把下拉撑爆（超出走「全部分类」进列表页筛）。 */
+export type LibraryCat = { id: number; name: string };
+const LIB_CAT_CAP = 12;
+
+/** 资源库下拉（站长定调 2026-10-31）：二级=全部/资源/官种，
+ *  三级=全部 + 站型顶级分类。资源=非官种（official=0），官种=official=1，
+ *  全部=不过滤——与列表 API 的 official 三态谓词一一对应。 */
+export function librarySub(
+  nav: Record<string, string>,
+  cats: LibraryCat[],
+): NonNullable<NavItem["sub"]> {
+  const top = cats.filter((c) => c.name).slice(0, LIB_CAT_CAP);
+  const leaf = (extra: string) => [
+    { href: `/torrents${extra}`, label: nav.libAll },
+    ...top.map((c) => ({
+      href: `/torrents?category_id=${c.id}${extra}`,
+      label: c.name,
+    })),
+  ];
+  return [
+    { label: nav.libAll, href: "/torrents", items: leaf("") },
+    {
+      label: nav.libRes,
+      href: "/torrents?official=0",
+      items: leaf("&official=0"),
+    },
+    {
+      label: nav.official,
+      href: "/torrents?official=1",
+      items: leaf("&official=1"),
+    },
+  ];
+}
 
 /** 模块开关视图（U1 §6.2）：缺键视为开（T3 缺省=现状） */
 export type ModuleGate = (key: string) => boolean;
 
 /** 维度开关视图（0330）：条目依赖某个 section 维度是否存在时用。
- *  例：出品方页只在站型挂了 `network` 维度（纪录片站）时有意义——
+ *  例：出品方页只在站型挂了 `network` 维度（纪录片站）才有意义——
  *  在音乐站给一个空页面是「假成熟」，宁可整条不显示。 */
 export type DimGate = (kind: string) => boolean;
 
@@ -29,6 +70,8 @@ export type NavConfigInput = {
   /** 维度开关（可选）：缺省视为全闭，避免调用方漏传时凭空多出条目 */
   dims?: DimGate;
   customItems: MenuItem[];
+  /** 顶级分类（可选，2026-10-31 资源库下拉）：传了才给资源库挂子菜单 */
+  libraryCats?: LibraryCat[];
 };
 
 /** 自定义菜单归一：一级项 + 分组（带子项的一级项其子项收独立分组，
@@ -69,6 +112,7 @@ export function defaultNav({
   currency,
   modules,
   dims,
+  libraryCats,
 }: NavConfigInput): {
   primary: NavItem[];
   groups: NavGroup[];
@@ -79,7 +123,13 @@ export function defaultNav({
   const dimOn = (k: string) => dims?.(k) ?? false;
   const primary: NavItem[] = [
     { href: "/", label: nav.home },
-    { href: "/torrents", label: nav.library },
+    {
+      href: "/torrents",
+      label: nav.library,
+      ...(libraryCats?.length
+        ? { sub: librarySub(nav, libraryCats) }
+        : {}),
+    },
     ...(modules("forums") ? [{ href: "/forums", label: nav.forums }] : []),
     { href: "/upload", label: nav.upload },
   ];

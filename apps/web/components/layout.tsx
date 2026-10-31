@@ -45,7 +45,11 @@ export async function Header() {
         uploaded: `${Math.round((ov.uploaded ?? 0) / 1e9)}G`,
       }
     : null;
-  // 导航配置单源（M2）：桌面/抽屉/底 Tab「更多」共用 lib/nav-menu.ts
+  // 导航配置单源（M2）：桌面/抽屉/底 Tab「更多」共用 lib/nav-menu.ts。
+  // 顶级分类（2026-10-31 资源库下拉）：无 parent 的分类作三级叶子
+  const libCats = (profile.categories ?? [])
+    .filter((c) => !c.parent_id)
+    .map((c) => ({ id: c.id, name: c.name }));
   const { primary, groups } = buildNav({
     nav: dict.nav,
     tabbar: dict.tabbar,
@@ -53,6 +57,7 @@ export async function Header() {
     modules: mod,
     dims: (k) => dims.includes(k),
     customItems,
+    libraryCats: libCats,
   });
 
   return (

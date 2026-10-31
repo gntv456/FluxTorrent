@@ -122,6 +122,8 @@ const zhTwBase: Omit<
     home: "首頁",
     library: "資源庫",
     official: "官種",
+    libAll: "全部",
+    libRes: "資源",
     forums: "論壇",
     messages: "訊息",
     textbooks: "課本",

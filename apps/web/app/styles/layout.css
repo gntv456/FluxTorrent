@@ -123,6 +123,26 @@
   font-weight: 800;
   letter-spacing: 1px;
 }
+/* 资源库下拉（2026-10-31）：默认藏，hover 展开；触屏无 hover 用
+   :focus-within（点一级条目聚焦）兜底。一级仍是链接（点=进全部列表），
+   ▾ 只是视觉提示——与「更多」按钮型下拉区分。 */
+.libmenu > .mainmenu-drop {
+  display: none;
+}
+.libmenu:hover > .mainmenu-drop,
+.libmenu:focus-within > .mainmenu-drop {
+  display: grid;
+}
+.mainmenu-drop--lib {
+  min-width: min(560px, calc(100vw - 48px));
+}
+.mainmenu-drop__title--link {
+  display: inline-block;
+  text-decoration: none;
+}
+.mainmenu-drop__title--link:hover {
+  text-decoration: underline;
+}
 .mainmenu-drop__links {
   display: grid;
   gap: 2px;
