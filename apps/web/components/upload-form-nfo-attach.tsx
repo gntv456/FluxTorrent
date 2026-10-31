@@ -80,7 +80,9 @@ export function UploadNfoAttach({
               ? dict.upload.attachUploading
               : dict.upload.attachHint}
           </label>
-          {attachMsg && <p className="text-xs text-sky-deep">{attachMsg}</p>}
+          {attachMsg && (
+            <p className="text-xs text-[var(--sky-deep)]">{attachMsg}</p>
+          )}
         </div>
       </FormRow>
     </>
