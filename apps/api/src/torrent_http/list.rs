@@ -137,7 +137,7 @@ pub(crate) async fn list(
                 .collect();
             let mut ids: Vec<i32> = Vec::with_capacity(toks.len());
             for t in toks {
-                // 与 works_filter.rs 同款：静态句入译文表，非法值不入句
+                // 静态句入译文表（works_filter 同款），非法值不入句
                 let v = t.parse::<i32>().map_err(|_| {
                     DomainError::Validation("分类参数非法".into())
                 })?;
@@ -146,24 +146,16 @@ pub(crate) async fn list(
                 }
             }
             // 分类层级（0188 R4.3）：命中的分类递归展开子孙——筛父级包含
-            // 子级种子；无层级时子孙为空、行为与平表完全一致
+            // 子级种子；无层级时子孙为空、行为与平表完全一致。
+            // 展开口径统一走 repo::categories（works_filter 同源）
             let expanded: Vec<i32> = if ids.is_empty() {
                 Vec::new()
             } else {
-                let rows: Vec<i32> = sqlx::query_scalar(
-                    "WITH RECURSIVE sub AS (                      SELECT id FROM categories WHERE id = ANY($1)                      UNION                      SELECT c.id FROM categories c                      JOIN sub s ON c.parent_id = s.id                      ) SELECT id FROM sub",
+                crate::repo::categories::expand_with_children(
+                    &state.repo.read_db,
+                    &ids,
                 )
-                .bind(&ids)
-                .fetch_all(&state.repo.read_db)
                 .await
-                .unwrap_or_default();
-                let mut all = ids.clone();
-                for r in rows {
-                    if !all.contains(&r) {
-                        all.push(r);
-                    }
-                }
-                all
             };
             (!expanded.is_empty()).then_some(expanded)
         },
