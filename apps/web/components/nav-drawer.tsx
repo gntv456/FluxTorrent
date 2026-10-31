@@ -32,7 +32,6 @@ export function NavDrawer({
     username: string;
     className: string;
     uploaded: string;
-    spark: string;
   } | null;
 }) {
   const pathname = usePathname();
@@ -112,8 +111,7 @@ export function NavDrawer({
               </p>
               {summary && (
                 <p className="navdrawer__stat">
-                  {summary.className} · ↑ {summary.uploaded} · ★{" "}
-                  {summary.spark}
+                  {summary.className} · ↑ {summary.uploaded}
                 </p>
               )}
             </div>
@@ -127,8 +125,8 @@ export function NavDrawer({
             ✕
           </button>
         </div>
-        {/* 主菜单上的搜索框（与桌面顶栏同源 GlobalSearch）：2026-10-20
-            用户口径——抽屉里也要有直显搜索，不再走顶栏弹窗按钮。 */}
+        {/* 搜索（与桌面顶栏同源 GlobalSearch 弹窗形态）：2026-10-31 起
+            顶栏按钮 <md 也常驻，抽屉这枚是双保险入口。 */}
         <div className="navdrawer__search">
           <GlobalSearch
             placeholder={dict.common.globalSearchPh}
@@ -139,6 +137,7 @@ export function NavDrawer({
             tipSearching={dict.common.gsSearching}
             tipError={dict.common.gsError}
             retryLabel={dict.common.gsRetry}
+            searchLabel={dict.common.gsOpen}
           />
         </div>
         <nav className="navdrawer__body">

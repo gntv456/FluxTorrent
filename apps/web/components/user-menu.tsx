@@ -46,8 +46,8 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
   useEffect(() => setAvatarFailed(false), [me?.username]);
   // 模块开关（G2-7）：快捷链接按模块过滤（medals/tasks/jixiao）
   const [mods, setMods] = useState<Record<string, boolean>>({});
-  // 顶栏魔力 chip（W-31）：site_settings.topbar_spark_chip，缺省 true
-  const [chipOn, setChipOn] = useState(true);
+  // 顶栏魔力 chip（0446 缺省翻转）：topbar_spark_chip 显式 yes 才显示
+  const [chipOn, setChipOn] = useState(false);
   useEffect(() => {
     fetch("/api/v1/site-profile")
       .then((r) => r.json())
@@ -59,7 +59,7 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
           };
         }) => {
           setMods(b?.data?.modules ?? {});
-          setChipOn(b?.data?.topbar_spark_chip !== false);
+          setChipOn(b?.data?.topbar_spark_chip === true);
         },
       )
       .catch(() => setMods({}));

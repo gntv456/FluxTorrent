@@ -109,17 +109,36 @@ export function ExamCapsule() {
   }, []);
 
   if (!exam) return null;
+  // YemaPT 口径的环形进度（SVG 圆弧）：百分比一眼可读，颜色随进度走
+  // （<50% 橙 · <100% 蓝 · 达成绿）。 circumference=2πr, r=8。
+  const R = 8;
+  const C = 2 * Math.PI * R;
+  const dash = (Math.min(100, Math.max(0, exam.pct)) / 100) * C;
+  const ringColor =
+    exam.pct >= 100 ? "var(--success)" : exam.pct >= 50
+      ? "var(--sky)" : "var(--sun)";
   return (
     <Link
       href="/me/exams"
       title={`${exam.name} · ${dict.exams.capsuleTip}`}
-      className="exam-capsule hidden items-center gap-1.5 rounded-full
+      className="exam-capsule inline-flex items-center gap-1.5 rounded-full
         border border-[var(--sun)] px-2.5 py-1 text-[11.5px] font-semibold
-        text-[var(--gold-deep)] hover:bg-[var(--sun)]/10 md:inline-flex"
+        text-[var(--gold-deep)] hover:bg-[var(--sun)]/10"
     >
-      <span aria-hidden>⏳</span>
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r={R} fill="none"
+                stroke="var(--brand-line-soft)" strokeWidth="3" />
+        <circle cx="10" cy="10" r={R} fill="none"
+                stroke={ringColor} strokeWidth="3"
+                strokeDasharray={`${dash} ${C}`}
+                strokeLinecap="round"
+                transform="rotate(-90 10 10)" />
+        <text x="10" y="13" textAnchor="middle"
+              fontSize="8" fontWeight="700" fill="currentColor">
+          {exam.pct}
+        </text>
+      </svg>
       <span>{dict.exams.capsule}</span>
-      <b className="num">{exam.pct}%</b>
       {exam.daysLeft !== null && (
         <span className="num opacity-80">
           {dict.exams.capsuleDays.replace("{d}", String(exam.daysLeft))}

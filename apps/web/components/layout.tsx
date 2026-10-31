@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getDict } from "@/i18n/server";
-import { dateLocale } from "@/i18n/config";
 import { getSiteProfile, getSiteDims } from "@/lib/site-profile";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ExamCapsule } from "@/components/exam-capsule";
@@ -30,13 +29,13 @@ export async function Header() {
   const brand = profile.brand || dict.common.brand;
   // 自定义菜单（location=topbar，nav.custom_enabled 开启时接口才返回非空）
   const customItems = await getMenuItems("topbar");
-  // 抽屉用户摘要（M2）：失败回落游客文案，不阻塞页头
+  // 抽屉用户摘要（M2）：失败回落游客文案，不阻塞页头。
+  // 0446：摘要不再带 spark（主菜单不显魔力，余额在头像弹窗/我的火花）
   const ov = await api
     .get<{
       username?: string;
       class_name?: string;
       uploaded?: number;
-      spark_balance?: number;
     }>("/api/v1/me/overview")
     .catch(() => null);
   const me = ov?.username
@@ -44,7 +43,6 @@ export async function Header() {
         username: ov.username,
         className: ov.class_name ?? "",
         uploaded: `${Math.round((ov.uploaded ?? 0) / 1e9)}G`,
-        spark: (ov.spark_balance ?? 0).toLocaleString(dateLocale(locale)),
       }
     : null;
   // 导航配置单源（M2）：桌面/抽屉/底 Tab「更多」共用 lib/nav-menu.ts
@@ -100,9 +98,10 @@ export async function Header() {
               />
             </Suspense>
           </div>
-          {/* IA-1（W-30）：顶栏搜索直显框——/top 从一级让位给它。
-              <md 收进汉堡抽屉（右工具区在 375px 已超宽），桌面常驻。 */}
-          <div className="hidden w-44 shrink-0 md:block lg:w-56">
+          {/* IA-1（W-30 → 2026-10-31 弹窗化）：顶栏搜索按钮（放大镜），
+              点开弹窗搜索。<md 也显示——弹窗形态不占顶栏宽度，
+              移动端不再只靠底部 Tab 进资源库才能搜。 */}
+          <div className="shrink-0">
             <GlobalSearch
               placeholder={dict.common.globalSearchPh}
               tipTorrents={dict.common.gsTorrents}
@@ -112,6 +111,7 @@ export async function Header() {
               tipSearching={dict.common.gsSearching}
               tipError={dict.common.gsError}
               retryLabel={dict.common.gsRetry}
+              searchLabel={dict.common.gsOpen}
             />
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">

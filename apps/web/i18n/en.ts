@@ -65,6 +65,7 @@ const enBase: Omit<
     gsSearching: "Searching…",
     gsError: "Search request failed, please try again later",
     gsRetry: "Retry",
+    gsOpen: "Open search",
     gsMore: "See all results →",
     yes: "Yes",
     no: "No",

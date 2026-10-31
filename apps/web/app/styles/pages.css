@@ -3895,41 +3895,42 @@ input.batch-all {
   .pting-feed-pill { transition-duration: 0.01ms; }
 }
 
-/* 头栏全局搜索（0283 P1-6）：lg+ 常驻。与单行导航条并存时占一行高的
-   弹性区（Header 里 lg:block 包裹），下拉绝对定位。 */
-.gsearch {
-  position: relative;
-  max-width: 560px;
+/* 头栏全局搜索（0283 P1-6 → 2026-10-31 弹窗化）：放大镜按钮 + 弹窗。 */
+.gsearch { position: relative; }
+.gsearch__btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  border: 1px solid var(--brand-line); border-radius: 999px;
+  background: var(--surface-raised); color: var(--text-muted);
+  cursor: pointer; transition: all var(--motion-fast);
 }
-.gsearch__form {
-  display: flex;
+.gsearch__btn:hover,
+.gsearch__btn[aria-expanded="true"] {
+  color: var(--text-brand); border-color: var(--sky);
 }
-.gsearch__input {
-  width: 100%;
-  min-height: 36px;
-  padding: 2px 14px;
-  border: 1px solid var(--brand-line);
-  border-radius: 999px;
+.gsearch__modal { position: fixed; inset: 0; z-index: 90; }
+.gsearch__modal-mask {
+  position: absolute; inset: 0; background: rgb(10 20 40 / 32%);
+}
+.gsearch__pop {
+  position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--brand-line); border-radius: var(--r-md);
   background: var(--surface-raised);
-  color: inherit;
-  font-size: 13px;
+  box-shadow: 0 18px 44px rgb(17 34 68 / 22%); padding: 10px;
+}
+.gsearch__form { display: flex; }
+.gsearch__input {
+  width: 100%; min-height: 40px; padding: 2px 14px;
+  border: 1px solid var(--brand-line); border-radius: 999px;
+  background: var(--surface-card); color: inherit; font-size: 14px;
 }
 .gsearch__input:focus {
-  outline: 2px solid var(--sky-soft);
-  border-color: var(--sky);
+  outline: 2px solid var(--sky-soft); border-color: var(--sky);
 }
 .gsearch__drop {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 70;
-  max-height: 360px;
-  overflow-y: auto;
-  border: 1px solid var(--brand-line);
-  border-radius: var(--r-md);
-  background: var(--surface-raised);
-  box-shadow: 0 14px 32px rgb(17 34 68 / 16%);
+  position: static; margin-top: 8px; max-height: 360px; overflow-y: auto;
+  border-top: 1px solid var(--brand-line-soft);
 }
 .gsearch__cap {
   padding: 6px 12px 2px;

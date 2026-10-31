@@ -40,6 +40,7 @@ const zhCnBase = {
     gsSearching: "搜索中…",
     gsError: "搜索请求失败，请稍后重试",
     gsRetry: "重试",
+    gsOpen: "打开搜索",
     gsMore: "查看全部结果 →",
     yes: "是",
     no: "否",

@@ -65,6 +65,7 @@ const zhTwBase: Omit<
     gsSearching: "搜尋中…",
     gsError: "搜尋請求失敗，請稍後重試",
     gsRetry: "重試",
+    gsOpen: "打開搜尋",
     gsMore: "查看全部結果 →",
     yes: "是",
     no: "否",

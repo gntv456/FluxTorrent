@@ -6,15 +6,16 @@ import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
 
 /**
- * 头栏全局搜索（0283 P1-6 → W-25 四态化）：
- * 聚合联想——种子（/torrents/suggest）+ 论坛主题（/forums/search）双路，
+ * 头栏全局搜索（0283 P1-6 → W-25 四态化 → 2026-10-31 按钮弹窗化）：
+ * 顶栏只放一枚放大镜按钮，点开弹窗搜索（自动聚焦）——主菜单不常驻
+ * 输入框，走清爽路线（站长定调）。聚合联想与四态逻辑不变：
+ * 种子（/torrents/suggest）+ 论坛主题（/forums/search）双路，
  * 回车跳种子列表常规搜索；点候选项直达详情/帖子。
  *
- * W-25 三态补齐（原实现只有「静默吞错 + 空 recovery」两态）：
  *  - 搜索中：BusyLabel spinner（350ms 防抖后请求在途时）；
  *  - 无结果：EmptyState compact（tipEmpty 文案 + 图标圆底）；
  *  - 请求失败：EmptyState warn + 重试按钮（重发当前词）。
- *  fetch 失败不再静默——用户打了一堆字下拉却空白，比报错更迷惑。
+ *  ESC / 点遮罩关闭；重开保留上次关键词（继续翻候选）。
  */
 
 interface TorrentHit {
@@ -42,6 +43,7 @@ export function GlobalSearch({
   tipSearching,
   tipError,
   retryLabel,
+  searchLabel,
 }: {
   placeholder: string;
   tipTorrents: string;
@@ -52,6 +54,8 @@ export function GlobalSearch({
   tipSearching: string;
   tipError: string;
   retryLabel: string;
+  /** 弹窗化新增：按钮的可达名（放大镜） */
+  searchLabel: string;
 }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hits>(EMPTY);
@@ -59,7 +63,23 @@ export function GlobalSearch({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [nonce, setNonce] = useState(0); // 失败后「重试」重发当前词
-  const boxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // 弹窗打开即聚焦输入框（按钮 → 弹窗的关键动线）
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  // ESC 关弹窗（与主菜单「更多」下拉同口径）
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   useEffect(() => {
     const query = q.trim();
@@ -116,96 +136,128 @@ export function GlobalSearch({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node))
+      if (
+        open &&
+        rootRef.current &&
+        !rootRef.current.contains(e.target as Node)
+      )
         setOpen(false);
     };
     document.addEventListener("click", onDoc);
     return () => document.removeEventListener("click", onDoc);
-  }, []);
+  }, [open]);
 
   const typed = q.trim().length >= 2;
   const hasHits = hits.torrents.length + hits.topics.length > 0;
+  const allHref = `/torrents?search=${encodeURIComponent(q.trim())}`;
   return (
-    <div ref={boxRef} className="gsearch">
-      <form
-        action="/torrents"
-        method="get"
-        className="gsearch__form"
-        onSubmit={() => setOpen(false)}
+    <div ref={rootRef} className="gsearch">
+      <button
+        type="button"
+        className="gsearch__btn"
+        aria-label={searchLabel}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((v) => !v)}
       >
-        <input
-          type="search"
-          name="search"
-          className="gsearch__input"
-          placeholder={placeholder}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onFocus={() => typed && hasHits && setOpen(true)}
-          autoComplete="off"
-          aria-label={placeholder}
-        />
-      </form>
-      {open && typed && (
-        <div className="gsearch__drop" role="listbox">
-          {busy ? (
-            <div className="gsearch__state">
-              <BusyLabel label={tipSearching} />
-            </div>
-          ) : failed ? (
-            <div className="gsearch__state">
-              <EmptyState compact icon="warning" tone="warn" title={tipError} />
-              <button
-                type="button"
-                className="gsearch__retry"
-                onClick={() => setNonce((n) => n + 1)}
-              >
-                {retryLabel}
-              </button>
-            </div>
-          ) : (
-            <>
-              {!hasHits && (
-                <EmptyState compact icon="search" title={tipEmpty} />
-              )}
-              {hits.torrents.length > 0 && (
-                <>
-                  <div className="gsearch__cap">{tipTorrents}</div>
-                  {hits.torrents.map((t) => (
-                    <a
-                      key={t.id}
-                      href={`/torrent/${t.id}`}
-                      className="gsearch__item"
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+             aria-hidden="true">
+          <circle cx="11" cy="11" r="7" stroke="currentColor"
+                  strokeWidth="2" />
+          <path d="m20 20-3.8-3.8" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="gsearch__modal" role="dialog"
+             aria-label={searchLabel}>
+          <div className="gsearch__modal-mask" onClick={() => setOpen(false)} />
+          <div className="gsearch__pop">
+            <form
+              action="/torrents"
+              method="get"
+              className="gsearch__form"
+              onSubmit={() => setOpen(false)}
+            >
+              <input
+                ref={inputRef}
+                type="search"
+                name="search"
+                className="gsearch__input"
+                placeholder={placeholder}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                autoComplete="off"
+                aria-label={placeholder}
+              />
+            </form>
+            {typed && (
+              <div className="gsearch__drop" role="listbox">
+                {busy ? (
+                  <div className="gsearch__state">
+                    <BusyLabel label={tipSearching} />
+                  </div>
+                ) : failed ? (
+                  <div className="gsearch__state">
+                    <EmptyState compact icon="warning" tone="warn"
+                                title={tipError} />
+                    <button
+                      type="button"
+                      className="gsearch__retry"
+                      onClick={() => setNonce((n) => n + 1)}
                     >
-                      <span className="gsearch__name">{t.name}</span>
-                      {t.seeders > 0 && (
-                        <span className="gsearch__meta">{t.seeders} ↑</span>
-                      )}
-                    </a>
-                  ))}
-                  <a
-                    href={`/torrents?search=${encodeURIComponent(q.trim())}`}
-                    className="gsearch__item gsearch__item--more"
-                  >
-                    {tipMore}
-                  </a>
-                </>
-              )}
-              {hits.topics.length > 0 && (
-                <>
-                  <div className="gsearch__cap">{tipTopics}</div>
-                  {hits.topics.map((t) => (
-                    <a
-                      key={t.topic_id}
-                      href={`/forums/topic/${t.topic_id}`}
-                      className="gsearch__item"
-                    >
-                      <span className="gsearch__name">{t.title}</span>
-                    </a>
-                  ))}
-                </>
-              )}
-            </>
-          )}
+                      {retryLabel}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {!hasHits && (
+                      <EmptyState compact icon="search" title={tipEmpty} />
+                    )}
+                    {hits.torrents.length > 0 && (
+                      <>
+                        <div className="gsearch__cap">{tipTorrents}</div>
+                        {hits.torrents.map((t) => (
+                          <a
+                            key={t.id}
+                            href={`/torrent/${t.id}`}
+                            className="gsearch__item"
+                          >
+                            <span className="gsearch__name">{t.name}</span>
+                            {t.seeders > 0 && (
+                              <span className="gsearch__meta">
+                                {t.seeders} ↑
+                              </span>
+                            )}
+                          </a>
+                        ))}
+                        <a
+                          href={allHref}
+                          className="gsearch__item gsearch__item--more"
+                        >
+                          {tipMore}
+                        </a>
+                      </>
+                    )}
+                    {hits.topics.length > 0 && (
+                      <>
+                        <div className="gsearch__cap">{tipTopics}</div>
+                        {hits.topics.map((t) => (
+                          <a
+                            key={t.topic_id}
+                            href={`/forums/topic/${t.topic_id}`}
+                            className="gsearch__item"
+                          >
+                            <span className="gsearch__name">{t.title}</span>
+                          </a>
+                        ))}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

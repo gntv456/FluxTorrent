@@ -242,12 +242,12 @@ async fn site_profile_fresh(
     let terms = profile_bits::terms(db).await;
     // 视图布局（E6）：列表列/详情段落的隐藏项（空 = 全默认显示）
     let view_hidden = crate::http::view_layout::view_hidden_raw(db).await;
-    // 顶栏魔力 chip（W-31 / IA-2 ①）：topbar_spark_chip，yes/缺省=开
-    // no=关（yes/no 口径与 locale_switcher_enabled 同族）
+    // 顶栏魔力 chip（W-31 / IA-2 ①）：topbar_spark_chip，yes/缺省=关
+    // （0446 起缺省翻转：主菜单走清爽路线，余额在头像弹窗/我的火花页可查）
     let spark_chip = profile_bits::setting_text(db, "topbar_spark_chip")
         .await
-        .unwrap_or_else(|| "yes".into())
-        != "no";
+        .unwrap_or_else(|| "no".into())
+        == "yes";
     Ok(serde_json::json!({
         "theme_tokens": theme_tokens,        "terms": terms,
         "view_hidden": view_hidden,

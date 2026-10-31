@@ -19,7 +19,6 @@ export function MobileNavShell({
     username: string;
     className: string;
     uploaded: string;
-    spark: string;
   } | null;
 }) {
   const [open, setOpen] = useState(false);
