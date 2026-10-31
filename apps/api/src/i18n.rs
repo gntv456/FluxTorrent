@@ -157,8 +157,8 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
     (
         4103,
         "邮件服务当前不可用，请稍后重试或联系管理组",
-        "站點未開通郵件服務，請聯繫管理組",
-        "Mail service is not configured; contact staff",
+        "郵件服務目前無法使用，請稍後重試或聯繫管理組",
+        "Mail service is temporarily unavailable; retry later or contact staff",
     ),
 ];
 

@@ -29,6 +29,6 @@
 | 4002 | LedgerConflict | spark_ledger 乐观并发版本冲突，客户端应重试 | 流水冲突，请重试 | 流水衝突，請重試 | Ledger conflict, please retry | 409 CONFLICT |
 | 4101 | ModuleDisabled | 站点关闭了该功能模块（先模块后权限，§5.5） | 本站未开放此功能 | 本站未開放此功能 | This feature is not enabled on this site | 404 NOT_FOUND |
 | 4102 | PoolGuard | 抽卡池含保底综合返还率 >100% 被运行时拒绝（G31-B） | 奖池保底后的返还率超过 100%，已拒绝 | 獎池保底後的返還率超過 100%，已拒絕 | Pool return rate exceeds 100% after the guarantee; rejected | 409 CONFLICT |
-| 4103 | MailUnconfigured | 站点未配邮件服务却走了必须发信的链路（P-102） | 站点未开通邮件服务，请联系管理组 | 站點未開通郵件服務，請聯繫管理組 | Mail service is not configured; contact staff | 503 SERVICE_UNAVAILABLE |
+| 4103 | MailUnconfigured | 站点未配邮件服务却走了必须发信的链路（P-102） | 邮件服务当前不可用，请稍后重试或联系管理组 | 郵件服務目前無法使用，請稍後重試或聯繫管理組 | Mail service is temporarily unavailable; retry later or contact staff | 503 SERVICE_UNAVAILABLE |
 | 5002 | AlreadyThanked | 对同一资源重复提交感谢 | 已感谢过 | 已感謝過 | Already thanked | 400 BAD_REQUEST |
 | 5003 | VersionConflict | 设定保存携带的 expected updated_at 与库中不一致 | 配置已被其他人修改，请刷新后重试 | 配置已被其他人修改，請重新整理後重試 | This configuration was changed by someone else; please reload and retry | 409 CONFLICT |
