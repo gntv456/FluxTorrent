@@ -33,6 +33,8 @@ export function WorkSeedRows({
   const t = dict.torrents;
   const n = total ?? items.length;
   const rest = Math.max(0, n - items.length);
+  // 倒计时基准：服务端定死，客户端行只拿同一个 now 复算
+  const now = Date.now();
   return (
     <>
       <div className="wk-shead">
@@ -46,7 +48,7 @@ export function WorkSeedRows({
         <span className="wk-act">{t.colActions}</span>
       </div>
       {items.map((row) => (
-        <WorkSeedRow key={row.id} t={row} />
+        <WorkSeedRow key={row.id} t={row} now={now} />
       ))}
       {rest > 0 && moreHref && (
         <div className="wk-more">

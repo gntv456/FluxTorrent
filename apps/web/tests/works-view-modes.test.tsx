@@ -43,6 +43,7 @@ function seed(
   name: string,
   official = true,
   shots: string[] = [],
+  ends: string | null = null,
 ): TorrentListItem {
   return {
     id,
@@ -63,7 +64,7 @@ function seed(
     approval_status: 1,
     sticky: false,
     promotion: "free",
-    promotion_ends_at: null,
+    promotion_ends_at: ends,
     rating: null,
     poster: null,
     imdb_id: null,
@@ -113,7 +114,7 @@ function work(): WorkWithSeeds {
       seed(101, "Tigers.S01E18.2160p.WEB-DL.H.265", true, [
         "https://img.example/a.jpg",
         "https://img.example/b.jpg",
-      ]),
+      ], "2099-01-01T00:00:00Z"),
       seed(102, "Tigers.S01E17.2160p.WEB-DL.H.265"),
       seed(103, "Tigers.S01E16.2160p.WEB-DL.H.265", false),
     ],
@@ -158,6 +159,10 @@ describe("作品聚合三形态", () => {
     expect(head!.querySelector(".wk-leech")).not.toBeNull();
     expect(head!.querySelector(".wk-done")).not.toBeNull();
     expect(c.querySelectorAll(".wk-row")).toHaveLength(3);
+    // 促销徽标带紧凑倒计时（2099 截止 → 末尾 D）
+    expect(
+      c.querySelector(".wk-chip-left")!.textContent,
+    ).toMatch(/^\d+D$/);
   });
 
   it("宽松行可就地展开截图与发布者，再点收起", async () => {
@@ -214,6 +219,10 @@ describe("作品聚合三形态", () => {
     expect(
       c.querySelector(".wk-gposter")!.textContent,
     ).not.toContain("尚公主");
+    // 迷你种子行的促销徽标同样带倒计时
+    expect(
+      c.querySelector(".wk-mrow .wk-chip-left")!.textContent,
+    ).toMatch(/^\d+D$/);
   });
 
   it("海报墙 = 瀑布：点封面就地展开版本面板，关闭即收起", async () => {
@@ -236,6 +245,13 @@ describe("作品聚合三形态", () => {
     expect(panel!.textContent).not.toContain("S01E16");
     expect(panel!.textContent).toContain("查看作品");
     expect(panel!.textContent).toContain("其余 2 个版本");
+    // 面板内种子行与海报角标都带倒计时
+    expect(
+      panel!.querySelector(".wk-mrow .wk-chip-left")!.textContent,
+    ).toMatch(/^\d+D$/);
+    expect(
+      c.querySelector(".wk-wall-promo .wk-chip-left")!.textContent,
+    ).toMatch(/^\d+D$/);
     await userEvent.click(screen.getByLabelText("关闭预览"));
     expect(c.querySelector(".wk-wall-panel")).toBeNull();
   });

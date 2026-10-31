@@ -9,7 +9,11 @@
 
 import Link from "next/link";
 import type { PromotionKind } from "@fluxtorrent/domain-types";
-import { formatBytes, promotionBadge } from "@/lib/format";
+import {
+  formatBytes,
+  promoLeftCompact,
+  promotionBadge,
+} from "@/lib/format";
 import { dateLocale, type Locale } from "@/i18n/config";
 import { TorrentActions } from "@/components/torrent-actions";
 import { nameChips, promoCls } from "@/components/work-chips";
@@ -24,6 +28,8 @@ export interface MiniSeed {
   leechers: number;
   created_at: string;
   promotion: PromotionKind | null;
+  /** 促销截止时刻（ISO；无截止 = null）——倒计时用 */
+  promotion_ends_at: string | null;
   official: boolean;
 }
 
@@ -31,16 +37,20 @@ export function WorkSeedMini({
   seeds,
   dict,
   locale,
+  now,
 }: {
   seeds: MiniSeed[];
   dict: Dict;
   locale: Locale;
+  /** 服务端渲染时刻：倒计时以它为基准，服务端/客户端同值 */
+  now: number;
 }) {
   const t = dict.torrents;
   return (
     <ul className="wk-mini">
       {seeds.map((s) => {
         const promo = promotionBadge(s.promotion);
+        const promoLeft = promoLeftCompact(s.promotion_ends_at, now);
         const chips = nameChips(s.name, dict.works.chipSubs);
         const date = new Date(s.created_at).toLocaleDateString(
           dateLocale(locale),
@@ -57,6 +67,9 @@ export function WorkSeedMini({
                 {promo && (
                   <span className={`wk-chip ${promoCls(s.promotion)}`}>
                     {dict.promotion[promo.key]}
+                    {promoLeft && (
+                      <span className="wk-chip-left">{promoLeft}</span>
+                    )}
                   </span>
                 )}
                 {s.official && (

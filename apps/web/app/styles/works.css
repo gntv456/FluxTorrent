@@ -316,6 +316,12 @@
   font-weight: 700;
   white-space: nowrap;
 }
+/* 促销倒计时（Free 62D 口径）：贴在徽标文字后，数字等宽 */
+.wk-chip-left {
+  margin-left: 3px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 .wk-c4k {
   background: var(--ink);
   color: var(--on-dark);

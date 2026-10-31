@@ -31,6 +31,8 @@ export function WorkGrid({
   locale: Locale;
   catName: (id: number) => string;
 }) {
+  // 倒计时基准一次定死（服务端渲染时刻），卡片内所有种子行共用
+  const now = Date.now();
   return (
     <ul className="wk-grid">
       {items.map((w) => {
@@ -95,7 +97,12 @@ export function WorkGrid({
                   </div>
                 </div>
               </header>
-              <WorkSeedMini seeds={shown} dict={dict} locale={locale} />
+              <WorkSeedMini
+                seeds={shown}
+                dict={dict}
+                locale={locale}
+                now={now}
+              />
               <footer className="wk-gfoot">
                 <Link href={href} className="wk-gmore">
                   {rest > 0

@@ -99,6 +99,8 @@ describe("workFlags", () => {
       "success",
       "danger",
     ]);
+    // 作品级促销的截止时刻：两个种子都没有截止 → null
+    expect(f.promos.map((p) => p.ends)).toEqual([null, null]);
     expect(f.official).toBe(true);
     expect(f.ratings).toEqual([
       { label: "豆瓣", value: "7.9" },
@@ -130,6 +132,28 @@ describe("workFlags", () => {
     expect(f.director).toEqual([]);
     expect(f.cast).toEqual([]);
     expect(f.ratings).toEqual([{ label: "评分", value: "6.5" }]);
+  });
+
+  it("同一促销多颗种：作品级截止取最早的一颗", () => {
+    const f = workFlags(
+      work({
+        seeds: [
+          seed({
+            id: 1,
+            promotion: "free",
+            promotion_ends_at: "2026-11-05T00:00:00Z",
+          }),
+          seed({
+            id: 2,
+            promotion: "free",
+            promotion_ends_at: "2026-10-30T00:00:00Z",
+          }),
+        ],
+      }),
+      zhCN,
+    );
+    expect(f.promos).toHaveLength(1);
+    expect(f.promos[0].ends).toBe("2026-10-30T00:00:00Z");
   });
 
   it("前导标签不进入作品标题", () => {

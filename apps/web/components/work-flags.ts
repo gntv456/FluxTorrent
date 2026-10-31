@@ -18,7 +18,13 @@ export interface WorkFlagData {
   /** 作品内出现过的画质（最多两档，4K → 1080P → 720P） */
   qualities: string[];
   /** 作品内仍在进行的促销（Free/2x 等，最多两档） */
-  promos: { key: string; label: string; tone: string }[];
+  promos: {
+    key: string;
+    label: string;
+    tone: string;
+    /** 该促销在作品内的最早截止时刻（ISO；全部无截止 = null） */
+    ends: string | null;
+  }[];
   /** 是否含官方版本 */
   official: boolean;
   /** 豆瓣（media_info.rating）与 TMDB（work_meta.rating）评分 */
@@ -43,16 +49,27 @@ export function workFlags(
     if (hit) qualities.add(hit.text);
   }
 
-  const promos = new Map<string, { label: string; tone: string }>();
+  const promos = new Map<
+    string,
+    { label: string; tone: string; ends: string | null }
+  >();
   for (const s of work.seeds) {
     const badge = promotionBadge(s.promotion);
     if (!badge) continue;
     const label = dict.promotion[badge.key];
     if (!label) continue;
-    promos.set(badge.key, {
-      label,
-      tone: badge.tone,
-    });
+    const end = s.promotion_ends_at ?? null;
+    const prev = promos.get(badge.key);
+    if (!prev) {
+      promos.set(badge.key, { label, tone: badge.tone, ends: end });
+    } else if (
+      end &&
+      (!prev.ends ||
+        new Date(end).getTime() < new Date(prev.ends).getTime())
+    ) {
+      // 作品级角标取最早截止：不把「个别版本更早结束」当成整部都还能免
+      prev.ends = end;
+    }
   }
 
   const meta = work.meta?.source ? work.meta : null;

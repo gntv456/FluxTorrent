@@ -14,6 +14,7 @@ import Link from "next/link";
 import { PosterImage } from "@/components/poster-image";
 import { WorkSeedMini, type MiniSeed } from "@/components/work-seed-mini";
 import { useI18n } from "@/i18n/client";
+import { promoLeftCompact } from "@/lib/format";
 
 export interface WallItem {
   key: string;
@@ -25,6 +26,8 @@ export interface WallItem {
   quality: string | null;
   /** 进行中的促销（Free 62D 之类），画在海报右上 */
   promo: string | null;
+  /** 该促销的最早截止时刻（ISO；无截止 = null） */
+  promoEnds: string | null;
   ratings: { label: string; value: string }[];
   torrents: number;
   seeders: number;
@@ -32,7 +35,14 @@ export interface WallItem {
   seeds: MiniSeed[];
 }
 
-export function WorkWall({ items }: { items: WallItem[] }) {
+export function WorkWall({
+  items,
+  now,
+}: {
+  items: WallItem[];
+  /** 服务端渲染时刻：倒计时基准，客户端原样复算 */
+  now: number;
+}) {
   const { dict, locale } = useI18n();
   const [open, setOpen] = useState<string | null>(null);
   return (
@@ -53,6 +63,7 @@ export function WorkWall({ items }: { items: WallItem[] }) {
         const officials = w.seeds.filter((s) => s.official);
         const listed = officials.length > 0 ? officials : w.seeds;
         const rest = Math.max(0, w.torrents - listed.length);
+        const promoLeft = promoLeftCompact(w.promoEnds, now);
         return (
           <Fragment key={w.key}>
             <li className="wk-wall-it" data-work-key={w.key}>
@@ -76,7 +87,12 @@ export function WorkWall({ items }: { items: WallItem[] }) {
                     {w.quality ?? w.cat}
                   </span>
                   {w.promo && (
-                    <span className="wk-wall-promo">{w.promo}</span>
+                    <span className="wk-wall-promo">
+                      {w.promo}
+                      {promoLeft && (
+                        <span className="wk-chip-left">{promoLeft}</span>
+                      )}
+                    </span>
                   )}
                 </span>
                 <span className="wk-wall-bar">
@@ -144,6 +160,7 @@ export function WorkWall({ items }: { items: WallItem[] }) {
                   seeds={listed}
                   dict={dict}
                   locale={locale}
+                  now={now}
                 />
                 {rest > 0 && (
                   <div className="wk-more">

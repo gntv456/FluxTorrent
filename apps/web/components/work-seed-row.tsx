@@ -12,7 +12,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
-import { formatBytes, promotionBadge } from "@/lib/format";
+import {
+  formatBytes,
+  promoLeftCompact,
+  promotionBadge,
+} from "@/lib/format";
 import { dateLocale } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { TorrentActions } from "@/components/torrent-actions";
@@ -29,10 +33,18 @@ function shotUrls(t: TorrentListItem): string[] {
     .slice(0, MAX_SHOTS);
 }
 
-export function WorkSeedRow({ t }: { t: TorrentListItem }) {
+export function WorkSeedRow({
+  t,
+  now,
+}: {
+  t: TorrentListItem;
+  /** 服务端渲染时刻：客户端用同一 now 复算倒计时，水合不错位 */
+  now: number;
+}) {
   const { dict, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const promo = promotionBadge(t.promotion);
+  const promoLeft = promoLeftCompact(t.promotion_ends_at, now);
   const chips = nameChips(t.name, dict.works.chipSubs);
   const date = new Date(t.created_at).toLocaleDateString(dateLocale(locale));
   const published = new Date(t.created_at).toLocaleString(
@@ -63,6 +75,9 @@ export function WorkSeedRow({ t }: { t: TorrentListItem }) {
             {promo && (
               <span className={`wk-chip ${promoCls(t.promotion)}`}>
                 {dict.promotion[promo.key]}
+                {promoLeft && (
+                  <span className="wk-chip-left">{promoLeft}</span>
+                )}
               </span>
             )}
             {t.official && (

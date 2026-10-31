@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import { dateLocale, type Locale } from "@/i18n/config";
+import { promoLeftCompact } from "@/lib/format";
 import { PosterImage } from "@/components/poster-image";
 import { WorkSeedRows } from "@/components/work-seed-rows";
 import { WorkIds } from "@/components/work-ids";
@@ -49,6 +50,8 @@ export function WorkCard({
   const genreTags = flags.genres.slice(0, 4);
   const userTags = work.tags ?? [];
   const off = (k: string) => hidden.includes(k);
+  // 倒计时基准（服务端组件一次定死；种子行内另有各自的 now）
+  const now = Date.now();
   return (
     <article className="wk-card" data-work-key={work.key}>
       <div className="wk-cover">
@@ -125,14 +128,20 @@ export function WorkCard({
                 {q}
               </span>
             ))}
-            {flags.promos.map((p) => (
-              <span
-                key={p.key}
-                className={`wk-flag wk-flag--${p.tone}`}
-              >
-                {p.label}
-              </span>
-            ))}
+            {flags.promos.map((p) => {
+              const left = promoLeftCompact(p.ends, now);
+              return (
+                <span
+                  key={p.key}
+                  className={`wk-flag wk-flag--${p.tone}`}
+                >
+                  {p.label}
+                  {left && (
+                    <span className="wk-chip-left">{left}</span>
+                  )}
+                </span>
+              );
+            })}
           </div>
         )}
 

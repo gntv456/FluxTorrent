@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
-import { formatBytes, promotionBadge } from "@/lib/format";
+import { formatBytes, promoLeftCompact, promotionBadge } from "@/lib/format";
 import { promoSemanticClass } from "@/components/torrent-table";
 import { catColor } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
@@ -31,11 +31,9 @@ const CARD_TITLE_CLS =
 const STATS_CLS =
   "num flex flex-wrap items-center gap-x-3 gap-y-0.5 " +
   "text-[11.5px] text-sub";
-// 海报墙改流式列（0427 同类站 UI 对标采纳①）：flex-wrap + 百分比 basis +
-// min-width，零 media-query 实现 375px 三列 → 平板五列 → 宽屏六列的自动
-// 演进——列数由「容器宽度能塞下几张不小于 min-w 的卡」决定，断点表不再
-// 需要维护。basis 取 1/6 减去半格 gap（六列 5 个 gap 均摊），min-w 卡住
-// 移动端下限（约 343px 视口时 20%…16.7% 均小于 104px，自动落三列）。
+// 海报墙改流式列（0427 对标①）：flex-wrap + 百分比 basis + min-width，
+// 零断点实现 375px 三列 → 平板五列 → 宽屏六列；basis 取 1/6 减半格 gap，
+// min-w 卡住移动端下限（343px 视口自动落三列）。
 const WALL_CLS = "flex list-none flex-wrap gap-2.5 p-0";
 // 流式列的 basis/min-w 必须挂在 **li**（flex item 是它），Link 只承担视觉
 const WALL_LI_CLS =
@@ -112,11 +110,13 @@ function PromoBadges({ t, dict }: { t: TorrentListItem; dict: Dict }) {
     promo && promo.key === "free"
       ? "torrents-promo torrents-promo--free"
       : "torrents-promo";
+  const left = promoLeftCompact(t.promotion_ends_at);
   return (
     <span className="flex flex-wrap items-center gap-1">
       {promo && (
         <span className={promoCls}>
           {dict.promotion[promo.key]}
+          {left && <span className="torrents-promo-left">{left}</span>}
         </span>
       )}
       {t.official && (

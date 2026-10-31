@@ -134,6 +134,7 @@ export async function TorrentWorks({
       cat: catName(w.category_id),
       quality: flags.qualities[0] ?? null,
       promo: flags.promos[0]?.label ?? null,
+      promoEnds: flags.promos[0]?.ends ?? null,
       ratings: flags.ratings,
       torrents: w.torrents,
       seeders: w.seeders,
@@ -148,6 +149,7 @@ export async function TorrentWorks({
         leechers: s.leechers,
         created_at: s.created_at,
         promotion: s.promotion,
+        promotion_ends_at: s.promotion_ends_at,
         official: s.official,
       })),
     };
@@ -177,7 +179,10 @@ export async function TorrentWorks({
           catName={catName}
         />
       ) : (
-        <WorkWall items={data.items.map(toWallItem)} />
+        <WorkWall
+          items={data.items.map(toWallItem)}
+          now={Date.now()}
+        />
       )}
       {totalPages > 1 && (
         <nav className="flex items-center justify-center gap-3 py-1">

@@ -20,6 +20,20 @@ export function formatRatio(up: number, down: number): string {
   return r >= 100 ? "INF" : r.toFixed(2);
 }
 
+/** 促销剩余（紧凑口径：77D / 22H；无截止/已过期 → null）。
+ *  与种子表角标同口径（torrent-table 的 leftCompact）。页面在服务端把
+ *  now 算好随 props 下发，客户端用同一个 now 复算——SSR/水合不会跨边界。 */
+export function promoLeftCompact(
+  endsAt: string | null | undefined,
+  now: number = Date.now(),
+): string | null {
+  if (!endsAt) return null;
+  const ms = new Date(endsAt).getTime() - now;
+  if (ms <= 0) return null;
+  const h = Math.max(1, Math.ceil(ms / 3600000));
+  return h >= 48 ? Math.floor(h / 24) + "D" : h + "H";
+}
+
 /** 促销徽章（§7.3：免费=薄荷绿 / 2x=珊瑚橙）。label 由调用方按
  *  dict.promotion[key] 本地化。
  *  2026-10-16（S2 Badge）：返回 **tone/variant** 而非 Tailwind 色类串——
