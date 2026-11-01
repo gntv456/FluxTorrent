@@ -2074,11 +2074,15 @@ a:hover {
   gap: 14px;
 }
 
-/* PWA 安装引导条（E8）：顶部浮层，与 tabbar 同视觉语言 */
+/* PWA 安装引导条（E8）：顶部提示，与 tabbar 同视觉语言。
+ * 2026-11-01 修：原先是 `position: sticky; top: 0; z-index: 40`，而本条在
+ * DOM 里排在 {children}（含 .site-shell 内那条 sticky top:0 z-index:50 的
+ * 顶栏）之前 —— 两个 sticky 分属不同包含块，各自都往视口顶部贴，滚动后
+ * 顶栏整条压在它上面（实测重叠 41px = 它的全部高度）。sticky 抬到
+ * top:73px 也不行：它自然位置在 0，比阈值更靠上，sticky 永不生效。
+ * 正解是让它回到文档流：提示条随内容滚走，不再和主菜单抢同一行。
+ * （要「常驻」只能把它挪进 .site-shell 顶栏之后，那属于动页头，另议。） */
 .pwa-install-bar {
-  position: sticky;
-  top: 0;
-  z-index: 40;
   background: var(--panel, #fff);
   border-bottom: 1px solid var(--line);
 }
