@@ -40,6 +40,8 @@ export function TorrentsViewSwitch({
   withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
 }) {
   const t = dict.torrents;
+  // 官种开关的文案沿用高级筛选里的那一份（三语已同步）
+  const officialOnly = dict.torrents2.officialOnly;
   const labels: Record<TorrentView, string> = {
     table: t.viewTable,
     card: t.viewCard,
@@ -96,6 +98,20 @@ export function TorrentsViewSwitch({
               );
             })}
           </div>
+          {/* 官种独立筛选（0449）：与「编排 × 展示」同一排的一等开关，
+              谓词就是既有的 official=1（list_noclamp_as 的 $5 三态）。
+              它不属于形态轴，所以单独一组、点了只换筛选不丢当前形态。 */}
+          <div className={GROUP_CLS} role="group" aria-label={officialOnly}>
+            <a
+              href={href("official", sp.official === "1" ? undefined : "1")}
+              aria-pressed={sp.official === "1"}
+              className={`${PILL_CLS} ${
+                sp.official === "1" ? ON_CLS : OFF_CLS
+              }`}
+            >
+              {officialOnly}
+            </a>
+          </div>
         </div>
         <div className="flex items-center gap-1 text-xs text-sub">
           {PAGE_SIZES.map((n) => {
@@ -118,6 +134,15 @@ export function TorrentsViewSwitch({
       </div>
       {/* 手机：药丸收成三个下拉（首屏优先给内容，窄屏允许换行） */}
       <div className="flex flex-wrap items-center gap-1.5 md:hidden">
+        <a
+          href={href("official", sp.official === "1" ? undefined : "1")}
+          aria-pressed={sp.official === "1"}
+          className={`${PILL_CLS} border border-line ${
+            sp.official === "1" ? ON_CLS : OFF_CLS
+          }`}
+        >
+          {officialOnly}
+        </a>
         <TorrentsViewSelect
           label={t.groupLabel}
           current={groupHref(grouped)}
