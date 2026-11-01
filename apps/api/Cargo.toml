@@ -40,7 +40,7 @@ sha2 = "0.10"
 encoding_rs = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "blocking"] }
 base64 = "0.22"
-hkdf = "0.12"
+hkdf = "0.13"
 aes-gcm = "0.10"
 p256 = { version = "0.13", features = ["ecdh", "ecdsa"] }
 # 仅测试用：jwt_roundtrip_rs 需要在测试内生成 RSA 密钥对（CI 无挂卷密钥）
