@@ -125,8 +125,13 @@ if [[ $CHECK -eq 0 ]]; then
   ok "拉取镜像（不重建，通常 10~60 秒）"
   for s in $SERVICES; do
     img="$(registry_path "$s")"
-    docker pull "$img" >/dev/null \
-      || die "拉取 $img 失败（GHCR 不可达 / 版本不存在）"
+    if ! docker pull "$img" >/dev/null 2>&1; then
+      die "拉取 $img 失败。常见原因只有两种：
+       ① 包是私有的 —— 在 GitHub → Packages → 该包 → Package settings
+          把可见性改成 Public；或在服务器上 docker login ghcr.io -u 用户名
+          -p <带 read:packages 的 PAT>。未登录读私有包会表现成 not found。
+       ② 版本不存在 —— CI 只在推 v* tag 时发镜像，核对 Releases 有没有该 tag。"
+    fi
     ok "$s"
   done
   IMG_API="$(registry_path api)"

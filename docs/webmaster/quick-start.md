@@ -142,6 +142,9 @@ bash scripts/update.sh --tag v0.5.3  # 升到指定版本；填当前线上版�
 bash scripts/update.sh --yes         # 免确认（定时任务用）
 ```
 
+**前提**：镜像发布在 GHCR。包若是私有的，服务器要先 `docker login ghcr.io`
+（账号需 `read:packages`），否则拉取会报 `not found`；改成 Public 则免登录。
+
 两条必须知道的规矩：
 
 - **别裸跑 `docker compose up -d`**。compose 里镜像是 `${FLUX_VERSION:-latest}`，
