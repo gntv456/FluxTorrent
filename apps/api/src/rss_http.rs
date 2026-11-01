@@ -131,7 +131,8 @@ pub(crate) async fn rss_feed(
     // 列表口径漂移，正是审计里反复出现的病根）。
     let alive_only = crate::repo::rss::alive_only(&state.repo).await;
     let sql = format!(
-        "SELECT t.id, t.name, t.small_descr, t.size, t.created_at, \
+        "SELECT t.id, t.name, t.small_descr, t.size, \
+                COALESCE(t.approved_at, t.created_at) AS created_at, \
                 t.official_tag, pr.promotion, \
             CASE WHEN t.anonymous THEN NULL ELSE u.username END AS owner_name, \
             COALESCE((t.hr_policy->>'enabled') IN ('true', '1'), \
@@ -158,7 +159,8 @@ pub(crate) async fn rss_feed(
                 OR EXISTS (SELECT 1 FROM torrent_purchases tp \
                            WHERE tp.user_id = $8 AND tp.torrent_id = t.id)) \
            AND (NOT $9::bool OR t.seeders > 0) \
-         ORDER BY t.id DESC LIMIT $5"
+         ORDER BY COALESCE(t.approved_at, t.created_at) DESC, \
+                  t.id DESC LIMIT $5"
     );
     let search_pat = q
         .search
