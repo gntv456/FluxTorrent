@@ -28,10 +28,11 @@ jobs:
         id: tag
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
-          TAG="${{ github.event.workflow_run.head_branch }}"
+          # GET 即可；--input 会把请求变 PATCH 语义打 404（首跑实测踩坑）
           if gh api "repos/${{ github.repository }}/git/ref/tags/$TAG" \
-              --input - <<< '{}' >/dev/null 2>&1; then
+              >/dev/null 2>&1; then
             echo "valid=true" >> "$GITHUB_OUTPUT"
           else
             echo "tag $TAG 不存在，跳过" >&2
