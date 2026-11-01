@@ -1,7 +1,6 @@
 //! 社区模块 HTTP 接口（M14 勋章 + M15 论坛 + M16 短讯/好友）。
 //! 按域拆分（300 行门禁）：见各子模块头注释。
 use actix_web::web;
-mod work_subs;
 pub(crate) use follow_read::*;
 pub(crate) use forums_boards::*;
 pub(crate) use forums_mine::*;
@@ -9,7 +8,6 @@ pub(crate) use forums_side::*;
 pub(crate) use friend_action::*;
 pub(crate) use post_topic_delete::*;
 pub(crate) use sport_match_detail::*;
-pub(crate) use work_subs::*;
 // 名字与模块同名/与既有导出歧义时用别名
 pub(crate) use follow_read::follow_status as follow_status_op;
 pub(crate) use friend_action::friend_action as friend_action_op;
@@ -149,10 +147,6 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(my_medal_progress)
         .service(notice_prefs_get)
         .service(notice_prefs_set)
-        // 0450 作品追更订阅（列表 / 订阅 / 取消）
-        .service(work_sub_list)
-        .service(work_sub_add)
-        .service(work_sub_remove)
         .service(list_prefs_get)
         .service(list_prefs_set)
         .service(pool_honor)
