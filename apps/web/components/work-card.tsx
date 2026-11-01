@@ -14,7 +14,7 @@ import { promoLeftCompact } from "@/lib/format";
 import { PosterImage } from "@/components/poster-image";
 import { WorkSeedRows } from "@/components/work-seed-rows";
 import { WorkIds } from "@/components/work-ids";
-import { workTitle } from "@/components/work-chips";
+import { workDisplayTitle, workTitle } from "@/components/work-chips";
 import { workFlags } from "@/components/work-flags";
 import type { WorkWithSeeds } from "@fluxtorrent/domain-types";
 import type { Dict } from "@/i18n/zh-CN";
@@ -38,11 +38,13 @@ export function WorkCard({
   /** 站点级隐藏字段（view_hidden.works）：year/tags/director/… */
   hidden?: readonly string[];
 }) {
-  const title = workTitle(work.name);
   const href = `/works/${work.key}`;
   // 作品层缓存（work_meta）优先：TMDB 拉回的年份/海报比「片名抓年份」可靠
   const meta = work.meta?.source ? work.meta : null;
-  const year = meta?.year ?? work.year;
+  const title = workDisplayTitle(
+    workTitle(work.name),
+    meta?.year ?? work.year,
+  );
   const poster = meta?.poster ?? work.poster ?? null;
   const date = new Date(work.latest_at).toLocaleDateString(dateLocale(locale));
   const syn = (meta?.synopsis ?? work.synopsis ?? "").trim();
@@ -76,9 +78,6 @@ export function WorkCard({
           <h3 className="wk-title">
             <Link href={href}>{title}</Link>
           </h3>
-          {year && !off("year") ? (
-            <span className="wk-year">{year}</span>
-          ) : null}
           {flags.official && (
             <span className="wk-flag wk-flag--official">
               {dict.torrents.officialTag}

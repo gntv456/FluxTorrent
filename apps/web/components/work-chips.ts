@@ -106,6 +106,16 @@ export function nameChips(name: string, subsLabel: string): NameChip[] {
   return out;
 }
 
+/** 展示口径「片名（年份）」（2026-11-01 站长定调）：三视图统一。
+ *  年份缺失就只显示片名；片名本身已含括年份时不再重复追加。 */
+export function workDisplayTitle(
+  title: string,
+  year?: number | null,
+): string {
+  if (!year) return title;
+  return /\((19|20)\d{2}\)/.test(title) ? title : `${title}（${year}）`;
+}
+
 /** 作品名：切掉「｜」后的副题；去掉前导的【官种】/[组] 等标签；
  *  纯英文的 dot 名把点换成空格（读起来才像片名）。 */
 export function workTitle(name: string): string {

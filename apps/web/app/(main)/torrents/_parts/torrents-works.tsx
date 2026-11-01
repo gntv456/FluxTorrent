@@ -21,7 +21,7 @@ import { WorkGrid } from "@/components/work-grid";
 import { WorkWall } from "@/components/work-wall";
 import type { WallItem } from "@/components/work-wall";
 import { workFlags } from "@/components/work-flags";
-import { workTitle } from "@/components/work-chips";
+import { workDisplayTitle, workTitle } from "@/components/work-chips";
 import { dateLocale } from "@/i18n/config";
 import type { WorkPage, WorkWithSeeds } from "@fluxtorrent/domain-types";
 import type { Dict } from "@/i18n/zh-CN";
@@ -128,7 +128,7 @@ export async function TorrentWorks({
     const flags = workFlags(w, dict);
     return {
       key: w.key,
-      title: workTitle(w.name),
+      title: workDisplayTitle(workTitle(w.name), meta?.year ?? w.year),
       poster: meta?.poster ?? w.poster ?? null,
       year: meta?.year ?? w.year,
       cat: catName(w.category_id),

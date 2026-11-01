@@ -19,7 +19,7 @@ import { WorkRelatedGrid } from "@/components/work-related-grid";
 import { WorkSeedRows } from "@/components/work-seed-rows";
 import { WorkIds } from "@/components/work-ids";
 import { WorkWatchButton } from "@/components/work-watch-button";
-import { workTitle } from "@/components/work-chips";
+import { workDisplayTitle, workTitle } from "@/components/work-chips";
 import type { WorkDetail } from "@fluxtorrent/domain-types";
 
 export const dynamic = "force-dynamic";
@@ -157,8 +157,7 @@ export default async function WorkDetailPage({
           </div>
           <div className="wk-hero-info">
             <div className="wk-hero-title">
-              <span>{title}</span>
-              {year ? <span className="wk-year">{year}</span> : null}
+              <span>{workDisplayTitle(title, year)}</span>
               {rating ? <span>★ {rating}</span> : null}
               <WorkIds work={w} dict={dict} />
             </div>

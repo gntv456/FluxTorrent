@@ -236,7 +236,7 @@ describe("作品聚合三形态", () => {
     expect(
       c.querySelector(".wk-wall-poster")!.textContent,
     ).not.toContain("尚公主");
-    await userEvent.click(screen.getByTitle("尚公主"));
+    await userEvent.click(screen.getByTitle("尚公主（2026）"));
     const panel = c.querySelector(".wk-wall-panel");
     expect(panel).not.toBeNull();
     // 面板按「官方版本」分组：只列官方种（2 条），其余 2 条进计数链接

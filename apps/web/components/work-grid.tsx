@@ -10,7 +10,7 @@
 
 import Link from "next/link";
 import { PosterImage } from "@/components/poster-image";
-import { workTitle } from "@/components/work-chips";
+import { workDisplayTitle, workTitle } from "@/components/work-chips";
 import { workFlags } from "@/components/work-flags";
 import { WorkSeedMini } from "@/components/work-seed-mini";
 import type { WorkWithSeeds } from "@fluxtorrent/domain-types";
@@ -36,10 +36,12 @@ export function WorkGrid({
   return (
     <ul className="wk-grid">
       {items.map((w) => {
-        const title = workTitle(w.name);
         const href = `/works/${w.key}`;
         const meta = w.meta?.source ? w.meta : null;
-        const year = meta?.year ?? w.year;
+        const title = workDisplayTitle(
+          workTitle(w.name),
+          meta?.year ?? w.year,
+        );
         const poster = meta?.poster ?? w.poster ?? null;
         const flags = workFlags(w, dict);
         const shown = w.seeds.slice(0, MAX_SEEDS);
@@ -65,13 +67,9 @@ export function WorkGrid({
                   <h3 className="wk-gtitle">
                     <Link href={href}>{title}</Link>
                   </h3>
-                  {(year ||
-                    flags.official ||
+                  {(flags.official ||
                     flags.ratings.length > 0) && (
                     <div className="wk-grow">
-                      {year ? (
-                        <span className="wk-year">{year}</span>
-                      ) : null}
                       {flags.official && (
                         <span className="wk-flag wk-flag--official">
                           {dict.torrents.officialTag}

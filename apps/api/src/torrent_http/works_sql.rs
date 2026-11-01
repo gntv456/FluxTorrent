@@ -26,7 +26,7 @@ pub(crate) fn wk_expr() -> &'static str {
 /// 作品条目缓存列（work_meta 0399）：作品页零外呼读缓存；缺行给 null 对象，
 /// 前端按 `meta.source` 判有无（缺了回落 media_info/descr 口径）。
 const META_SEL: &str = "jsonb_build_object(\
-   'year', wm.year, 'rating', wm.rating, \
+   'name', wm.name, 'year', wm.year, 'rating', wm.rating, \
    'runtime', wm.runtime, 'region', wm.region, 'director', wm.director, \
    'cast_list', wm.cast_list, 'genres', wm.genres, 'poster', wm.poster, \
    'synopsis', wm.synopsis, 'source', wm.source) AS meta";
@@ -108,12 +108,15 @@ rep AS (
    ORDER BY wk, (media_info->>'poster') IS NOT NULL DESC,
             created_at DESC, id DESC
 )
-SELECT a.wk AS key, r.name, r.poster, r.rating, r.category_id,
+SELECT a.wk AS key, COALESCE(NULLIF(wm.name, ''), r.name) AS name,
+       r.poster, r.rating, r.category_id,
        r.small_descr AS synopsis, r.descr AS detail,
        r.imdb_id, r.tmdb_id, r.tmdb_url, r.douban_id,
        a.torrents, a.seeders, a.leechers,
        a.size, a.latest_at, a.top_id,
-       (substring(r.name from '((19|20)[0-9]{{2}})'))::int AS year,
+       COALESCE(wm.year,
+                (substring(r.name from '((19|20)[0-9]{{2}})'))::int
+       ) AS year,
        (SELECT COALESCE(json_agg(json_build_object(
             'id', d.id, 'name', d.name, 'kind', d.kind,
             'bg_color', d.bg_color, 'color', d.color)
@@ -195,12 +198,15 @@ rep AS (
    ORDER BY wk, (media_info->>'poster') IS NOT NULL DESC,
             created_at DESC, id DESC
 )
-SELECT a.wk AS key, r.name, r.poster, r.rating, r.category_id,
+SELECT a.wk AS key, COALESCE(NULLIF(wm.name, ''), r.name) AS name,
+       r.poster, r.rating, r.category_id,
        r.small_descr AS synopsis, r.descr AS detail,
        r.imdb_id, r.tmdb_id, r.tmdb_url, r.douban_id,
        a.torrents, a.seeders, a.leechers,
        a.size, a.latest_at, a.top_id,
-       (substring(r.name from '((19|20)[0-9]{{2}})'))::int AS year,
+       COALESCE(wm.year,
+                (substring(r.name from '((19|20)[0-9]{{2}})'))::int
+       ) AS year,
        (SELECT COALESCE(json_agg(json_build_object(
             'id', d.id, 'name', d.name, 'kind', d.kind,
             'bg_color', d.bg_color, 'color', d.color)
@@ -241,9 +247,12 @@ rep AS (
          media_info->>'poster' AS poster
     FROM src ORDER BY wk, created_at DESC, id DESC
 )
-SELECT a.wk AS key, r.name, r.poster, r.category_id, a.torrents,
+SELECT a.wk AS key, COALESCE(NULLIF(wm.name, ''), r.name) AS name,
+       r.poster, r.category_id, a.torrents,
        a.seeders, a.leechers, a.size, a.latest_at, a.top_id,
-       (substring(r.name from '((19|20)[0-9]{{2}})'))::int AS year,
+       COALESCE(wm.year,
+                (substring(r.name from '((19|20)[0-9]{{2}})'))::int
+       ) AS year,
        NULL::text AS rating, NULL::text AS synopsis,
        NULL::text AS detail, NULL::text AS imdb_id,
        NULL::text AS tmdb_id, NULL::text AS tmdb_url,
