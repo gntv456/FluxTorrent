@@ -156,8 +156,11 @@ export function LoginForm() {
     } catch (err) {
       powRef.current = null; // token 已被服务端消费，下轮重新取题
       if (err instanceof ApiError) {
+        // 与主路径同口径用 `||`：apiErrorMessage 查不到时回的是空串，
+        // 用 `??` 会把空串当有效值，界面弹一条没有字的错误条。
         setError(
-          apiErrorMessage(dict, err) ?? dict.login.fail,
+          apiErrorMessage(dict, err) ||
+            fmt(dict.login.fail, { code: err.code }),
         );
         if (err.code === 2004) setAttempts((n) => n + 1);
         if (err.code === 2010 || err.code === 2011) setShowTotp(true);
