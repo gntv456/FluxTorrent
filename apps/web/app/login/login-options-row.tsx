@@ -36,6 +36,7 @@ export function LoginOptionsRow({
         type="button"
         onClick={onToggleTotp}
         aria-expanded={showTotp}
+        title={dict.login.twoStepTooltip}
         className="bz-totp-toggle"
       >
         {dict.login.twoStepCode}

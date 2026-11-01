@@ -1,4 +1,8 @@
 import { getDict } from "@/i18n/server";
+/* 手机版认证页样式（2026-11-01 登录页重设计）：只服务认证族，按路由分包，
+   不挂 app/globals.css 根链（同 arcade.css 的先例）。/login 在 (auth) 组
+   之外，由 app/login/page.tsx 各自 import 同一份，Next 会去重。 */
+import "@/app/styles/auth-mobile.css";
 
 /**
  * 认证组布局（M5.2，2026-10-18 对齐样图 § 账户与认证）。

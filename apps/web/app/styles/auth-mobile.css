@@ -1,0 +1,536 @@
+/* ===== 手机版认证页（≤640px）：品牌带 + 磨砂抽屉（2026-11-01 重设计）
+   从 layout.css 整段搬出来——那份文件本来就 2858 行，加上这段会顶破
+   3000 行的文件门禁（scripts/line_limit_guard.mjs）。
+   加载位置有讲究：globals.css 里排在 layout.css 之后（要盖过桌面基线）、
+   glass.css 之前（磨砂清单必须留在最后，见那份文件的别名层注释）。
+   逐条口径与理由写在下面注释里。 */
+/* ============ 手机版认证页：品牌带 + 磨砂抽屉（2026-11-01 重设计）
+============ */
+/* 桌面双栏 artwork 在 390px 下只是被压扁：品牌占掉首屏三分之一、主按钮
+ * 以下 345px 全在折叠线外（实测整页 1189px / 视口 844）。≤640px 改三层：
+ * 整页潮汐底 → 品牌带（原左栏）→ 贴底磨砂抽屉（原右栏卡）。DOM 与桌面
+ * 是同一份，纯 CSS 重排，七页认证族一起走这套壳。 */
+
+/* 「更多帮助」触发行只在手机端出现（抽屉本体复用共用件 BottomSheet） */
+.bz-m-help {
+  display: none;
+}
+
+/* 手机壳（品牌带 + 贴底抽屉）同时服务**三折叠全展**：那种设备有两条竖缝
+   （在 1/3 与 2/3 处），双栏的列界线落在中段里、会被 2/3 那条缝切到表单，
+   所以让它走单列壳、再把整块收进中段（见下面 segments:3 那段）。
+   逗号 = 「任一命中」；不支持该特性的浏览器把它当未知特性 → 整段不匹配，
+   而 (max-width:640px) 那一项照常命中，不会拿到半套规则。 */
+@media (max-width: 640px), (horizontal-viewport-segments: 3) {
+  /* 内置潮汐底图：站长配了「登录页主背景图」时由 .bz-login-page-bg
+   * （真实元素，绘制在本伪元素之上）盖掉，未配时手机端也有品牌氛围。
+   * multiply 压在 --surface-sunken 上，与 .bz-login-intro-bg 同一配方：
+   * 浅色主题照常显图，深色主题自动收成暗纹，不至于亮图压白字。 */
+  .bz-login-page::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    background-color: var(--surface-sunken);
+    background-image: url("/backgrounds/login-intro-tide.svg");
+    background-blend-mode: multiply;
+    background-repeat: no-repeat;
+    background-position: top center;
+    background-size: cover;
+    pointer-events: none;
+  }
+
+  .bz-login-page {
+    min-height: 100vh;
+    min-height: 100svh;
+    align-items: flex-start;
+    padding: 0;
+    background: var(--surface-page);
+  }
+
+  /* 全站窄屏给 main 留了「底 Tab ≈64 + 安全区」的 80px 下内边距
+   * （ui.css 窄屏密度段）。认证族七页在 (main) 路由组之外、压根没有底
+   * Tab，这 92px（上 12 + 下 80）白吃首屏，贴底抽屉两侧还各留一道缝。
+   * 写成 main#main-content 是为了比 ui.css 那一条高一级特异性——本文件
+   * 走路由级 import，不该赌它在打包链里排前还是排后。 */
+  main#main-content {
+    padding: 0;
+  }
+
+  .bz-login-canvas {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* 品牌带：原左栏压成一行（logo 46 + 站名 + 标语 + 说明两行） */
+  .bz-login-intro {
+    z-index: 10;
+    flex: none;
+    min-height: 0;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 0;
+    border-right: 0;
+    border-bottom: 0;
+    background: none;
+  }
+
+  /* 左栏那张配置图在手机端让位给整页底图，两张叠着只会糊 */
+  .bz-login-intro-bg {
+    display: none;
+  }
+
+  .bz-login-intro-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: center;
+    gap: 0 11px;
+    padding: 0 108px 0 0;
+    text-align: left;
+  }
+
+  .bz-login-intro-mascot {
+    grid-row: span 3;
+    font-size: 46px;
+  }
+
+  img.bz-login-intro-mascot.bz-login-intro-logo {
+    width: 46px;
+    height: 46px;
+    padding: 5px;
+    border-radius: var(--r-md);
+  }
+
+  .bz-login-intro-brand {
+    font-size: 21px;
+    line-height: 1.25;
+    letter-spacing: -0.2px;
+  }
+
+  .bz-login-intro-tagline {
+    font-size: 13px;
+    line-height: 1.4;
+    letter-spacing: 0;
+  }
+
+  .bz-login-intro-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    max-width: none;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* 主题 / 语言：从独占一行改成压在品牌带右端的托盘里 */
+  .bz-login-lang-row {
+    position: absolute;
+    z-index: 30;
+    top: calc(12px + env(safe-area-inset-top));
+    right: 12px;
+    gap: 2px;
+    grid-column: auto;
+    grid-row: auto;
+    padding: 2px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    background: var(--surface-card);
+  }
+
+  .bz-login-lang-row button {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
+
+  /* 磨砂抽屉：原右栏卡贴底、顶角圆角，吃 --surface-card。玻璃开着时它
+   * 自动半透（透明度走 body 那层的令牌），blur 在 glass.css 里从画布搬到
+   * 本卡——画布整块糊掉的话，品牌带就透不出底图了。 */
+  .bz-login-card {
+    position: relative;
+    z-index: 10;
+    align-self: stretch;
+    flex: none;
+    width: 100%;
+    max-height: none;
+    margin-top: auto;
+    overflow: visible;
+    padding: 22px 16px calc(20px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border-soft);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    background: var(--surface-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* 站名已在品牌带上，卡内那行重复的 logo + 站名撤掉 */
+  .auth-card__brand {
+    display: none;
+  }
+
+  /* 触控热区：眼睛 30→44、2FA 胶囊 27→44、记住登录整行 44 */
+  .bz-pwd-toggle {
+    right: 6px;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    padding: 0;
+  }
+
+  .bz-pwd-toggle svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .bz-options,
+  .bz-remember {
+    min-height: var(--tap-min);
+  }
+
+  .bz-totp-toggle {
+    min-height: var(--tap-min);
+    padding: 0 14px;
+  }
+
+  /* 按钮：登录独占一行，注册 + Passkey 并排（省 132px 竖向空间） */
+  .bz-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bz-actions > .bz-submit {
+    grid-column: 1 / -1;
+  }
+
+  .bz-reg-btn {
+    min-height: var(--tap-min);
+    padding: 0 12px;
+    letter-spacing: 0.01em;
+  }
+
+  /* 辅助链接：桌面那张多行卡收进抽屉，开放注册横幅留在原位常显 */
+  .bz-account-links {
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  /* 开放注册横幅留在原位常显（P-682 的主入口），热区从 38 补到 44 */
+  .bz-open-reg-banner {
+    min-height: var(--tap-min);
+  }
+
+  .bz-no-account,
+  .bz-assist-desktop {
+    display: none;
+  }
+
+  .bz-m-help {
+    display: flex;
+    min-height: var(--tap-min);
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .bz-m-help-link {
+    display: inline-flex;
+    min-height: var(--tap-min);
+    align-items: center;
+    padding: 0 4px;
+    color: var(--text-brand);
+    font-weight: 700;
+    /* 虚线走 text-decoration 而不是 border-bottom：热区撑到 44px 之后，
+       border 会掉到盒子底边，看着像字下面悬了一条独立的线。 */
+    text-decoration: underline dashed;
+    text-underline-offset: 4px;
+  }
+
+  .bz-m-help-btn {
+    display: inline-flex;
+    min-height: var(--tap-min);
+    align-items: center;
+    gap: 5px;
+    padding: 0 8px;
+    color: var(--text-muted);
+    font: inherit;
+    font-weight: 700;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  .bz-m-help-sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--border-deep);
+  }
+
+  /* 安全告知留在原位（折叠线内本来就看得到），只把盒子压扁 */
+  .bz-login-notice {
+    margin-top: 12px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: left;
+  }
+}
+
+/* 抽屉里的帮助行：每条 ≥48px 热区，动作词右对齐统一口径 */
+.bz-help-row {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  color: var(--text-body);
+  font-size: 14px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+
+.bz-help-row:last-child {
+  border-bottom: 0;
+}
+
+.bz-help-row em {
+  margin-left: auto;
+  color: var(--text-brand);
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ============ 折叠屏：双折展开 / 三折叠全展 / 半折笔记本姿态 ============
+ *
+ * 判据一律用 viewport-segments，不用宽度：双折展开的内屏（Z Fold 约
+ * 830px）和 8" 平板的宽度段完全重叠，按宽度切会把 iPad 一起改走；而真正
+ * 决定排版的不是「多宽」，是「中缝有几条、落在哪」。这两件事在普通设备
+ * 上恰好同向，在折叠屏上不同向。
+ *
+ * 不支持该特性的浏览器：未知媒体特性 → 整段不匹配，落回「≤640 手机壳 /
+ * 否则桌面双栏」的既有行为，不会拿到半套规则。 */
+
+/* —— 双折展开（两段等宽，缝在视口正中）——
+ * 这一档唯一要做的事是**别把桌面双栏压成竖排**：layout.css 的
+ * ≤1024 段会堆叠成「hero 在上、表单在下」，于是内屏明明有 830px 宽、
+ * 却重新染上手机那个病（首屏被 artwork 吃掉、表单往下堆）。
+ * 留着双栏反而正好：50.4/49.6 的列界线落在缝附近，而右栏卡有 49px
+ * 左内边距（layout.css .bz-login-card），缝只会切在那道留白里，
+ * 切不到任何字或可点东西。实测（强制两栏后逐个量卡内可交互元素）：
+ * 内屏 653/768/830px 三档下，列界线与缝差 2/3/3px，卡内容起点距缝
+ * 51/52/52px，无一元素跨缝。 */
+@media (horizontal-viewport-segments: 2) {
+  .bz-login-page {
+    padding: 12px;
+  }
+
+  .bz-login-canvas {
+    display: grid;
+    grid-template-columns: 50.4% 49.6%;
+    grid-template-rows: 52px minmax(0, 1fr);
+    width: min(1132px, calc(100vw - 24px));
+    min-height: min(615px, calc(100vh - 80px));
+    overflow: hidden;
+    border: 1px solid var(--border-deep);
+    border-radius: var(--r-xl);
+    background-color: var(--surface-card);
+    box-shadow: 0 16px 45px var(--accent-shadow-soft);
+  }
+
+  .bz-login-intro {
+    z-index: auto;
+    flex: none;
+    grid-column: 1;
+    grid-row: 1 / 3;
+    min-height: 0;
+    padding: 0;
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+    /* 双栏档沿用桌面左栏的渐变底（内置潮汐底图只给单列壳用） */
+    background: linear-gradient(168deg, var(--surface-sunken) 0%,
+        var(--surface-sunken) 54%, var(--surface-cream) 100%);
+  }
+
+  .bz-login-intro-inner {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 40px 32px;
+    text-align: center;
+  }
+
+  .bz-login-intro-mascot {
+    grid-row: auto;
+    font-size: 96px;
+  }
+
+  img.bz-login-intro-mascot.bz-login-intro-logo {
+    width: 112px;
+    height: 112px;
+    padding: 8px;
+    border-radius: 24px;
+  }
+
+  .bz-login-intro-brand {
+    font-size: 34px;
+    letter-spacing: 1px;
+  }
+
+  .bz-login-intro-tagline {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+
+  .bz-login-intro-desc {
+    display: block;
+    max-width: 34ch;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .bz-login-lang-row {
+    position: static;
+    z-index: auto;
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    gap: 8px;
+    padding: 10px 20px 0;
+    border: 0;
+    border-radius: 0;
+    align-items: flex-start;
+    justify-content: flex-end;
+    background: none;
+  }
+
+  /* 右栏表单卡回到桌面形态：内滚、两侧留白把中缝挡在内容之外 */
+  .bz-login-card {
+    position: static;
+    z-index: auto;
+    display: block;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    width: auto;
+    max-height: calc(100vh - 180px);
+    margin-top: 0;
+    overflow: hidden auto;
+    padding: 0 59px 22px 49px;
+    border-top: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-deep) transparent;
+  }
+
+  /* 卡内品牌行回来（左栏此刻是「另一块屏」，右栏标一次身份不算重复） */
+  .auth-card__brand {
+    display: flex;
+  }
+
+  .bz-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bz-actions > .bz-submit {
+    grid-column: auto;
+  }
+
+  .bz-reg-btn {
+    min-height: 52px;
+    padding: 11px 12px;
+    letter-spacing: 2px;
+  }
+
+  .bz-options,
+  .bz-remember {
+    min-height: 28px;
+  }
+
+  .bz-totp-toggle {
+    min-height: 27px;
+    padding: 4px 10px;
+  }
+
+  .bz-pwd-toggle {
+    right: 17px;
+    width: 30px;
+    height: 30px;
+    padding: 3px;
+  }
+
+  .bz-pwd-toggle svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* 辅助链接回到那张多行卡，抽屉只在单列壳里出现 */
+  .bz-account-links {
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    background: var(--chip-veil-thin);
+    box-shadow: inset 0 0 0 1px var(--hairline-soft);
+  }
+
+  .bz-no-account,
+  .bz-assist-desktop {
+    display: block;
+  }
+
+  .bz-m-help {
+    display: none;
+  }
+
+  .bz-open-reg-banner {
+    min-height: 0;
+  }
+
+  .bz-login-notice {
+    margin-top: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.7;
+    text-align: center;
+  }
+}
+
+/* —— 三折叠全展（两条竖缝在 1/3、2/3）——
+ * 上面那段逗号查询已让它走单列壳，这里把整块收进**中段**：
+ * 两条缝都落在左右两段的美术留白里，表单与品牌一个字都不被切。
+ * 三段等宽是这类机型的物理事实（三块同规格面板），故用 1/3 不读 env：
+ * 草稿期的 env(viewport-segment-left) 那套名字在 Chrome 126 落地的
+ * 是 viewport-segment-offset-x-<n>，仓里 .hinge-safe 还在用旧名，
+ * 实际只退化成固定 24px 留白——这里不复制那个错。 */
+@media (horizontal-viewport-segments: 3) {
+  .bz-login-canvas {
+    width: calc(100vw / 3);
+    margin-inline: auto;
+  }
+
+  /* 内置底图铺满整块三段屏，中段只是画得最满的那一段——
+   * 左右两段透出同一张图，视觉上是一幅连续场景而非三块拼贴 */
+  .bz-login-card {
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+  }
+}
+
+/* —— 半折「笔记本」姿态：这里**故意不做** ——
+ * 直觉上该把抽屉收进下半段（缝在水平中线）。但量下来这条规则够不着
+ * 又不安全：手机壳只在 ≤640px 或三折叠全展时生效，而「上下两段」的
+ * 设备是双折展开后弯 90°，宽度 ≥641px、horizontal-viewport-segments=1
+ * ——它走的是桌面双栏，卡片是栅格项。此时把它改成 absolute 会让栅格
+ * 塌成只剩左栏。所以这个姿态留给双栏档本身处理（表单整块在右段内），
+ * 不另写一条只会帮倒忙的查询。 */

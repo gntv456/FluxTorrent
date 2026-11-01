@@ -501,6 +501,8 @@ const zhCnBase = {
     regBtn: "注册",
     regBtnOpen: "立即注册",
     openRegSlots: "（剩余 {n} 个名额）",
+    /** 手机版登录页：辅助出路折叠成底部抽屉的入口文案 */
+    moreHelp: "更多帮助",
   },
 
   messages: {

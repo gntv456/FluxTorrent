@@ -60,9 +60,7 @@ export function LoginForm() {
     next,
     onError: (e: unknown) =>
       setError(
-        e instanceof ApiError
-          ? (apiErrorMessage(dict, e))
-          : String(e),
+        e instanceof ApiError ? apiErrorMessage(dict, e) : String(e),
       ),
   });
 
@@ -275,13 +273,13 @@ export function LoginForm() {
         >
           {openReg ? dict.login.regBtnOpen : dict.login.regBtn}
         </Link>
+        {/* Passkey 与注册钮共用基座：原先它是全页唯一不吃 .bz-* 类的按钮，
+            内联 Tailwind 写死 min-h-40px，低于全站 --tap-min 44 的触控下限 */}
         <button
           type="button"
           disabled={busy}
           onClick={() => void runPasskeyLogin(username.trim())}
-          className="min-h-[40px] rounded-full border border-line px-4
-            text-sm text-sub transition-colors hover:border-accent
-            disabled:opacity-50"
+          className="bz-reg-btn bz-passkey-btn"
         >
           🔑 {dict.login.passkey}
         </button>

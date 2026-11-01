@@ -1,4 +1,6 @@
 import { LoginShell } from "./login-view";
+/* 手机版认证页样式（≤640px 的品牌带 + 磨砂抽屉），与 (auth) 组共用一份 */
+import "@/app/styles/auth-mobile.css";
 
 /**
  * 登录页（设计稿：参考站 2170×1180 artwork 双栏画布复刻）。

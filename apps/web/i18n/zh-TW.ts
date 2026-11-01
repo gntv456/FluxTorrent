@@ -558,6 +558,8 @@ const zhTwBase: Omit<
     regBtn: "註冊",
     regBtnOpen: "立即註冊",
     openRegSlots: "（剩餘 {n} 個名額）",
+    /** 手機版登入頁：把輔助出路摺疊成底部抽屜的入口文案 */
+    moreHelp: "更多協助",
   },
 
   messages: {

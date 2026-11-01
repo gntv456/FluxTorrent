@@ -154,3 +154,19 @@ html[data-glass="on"] :is(
      别名，computed backdrop-filter 直接是 none（磨砂整条失效）。前缀交给
      构建工具自己加，仓里 .tide-header / pages.css 的底条也都是这么写的。 */
 }
+
+/* 手机版认证页（≤640px，2026-11-01 重设计）：画布在那一档已改成透明壳
+   ——品牌带在上、磨砂抽屉（.bz-login-card）贴底。磨砂若继续挂在画布上，
+   会把整块底图连品牌带一起糊掉，抽屉外的留白就白留了，所以把 blur 从
+   画布搬到抽屉本体。两条与上面清单同特异性、写在清单之后，按层叠后者胜；
+   透明度不用另管——它走 body 那层的 --surface-card 令牌，本来就跟着
+   --glass-alpha 走，@supports 与 prefers-reduced-transparency 两条降级
+   也自动生效（blur 归零 + 令牌回实心）。 */
+@media (max-width: 640px) {
+  html[data-glass="on"] .bz-login-canvas {
+    backdrop-filter: none;
+  }
+  html[data-glass="on"] .bz-login-card {
+    backdrop-filter: blur(var(--glass-blur, 0px)) saturate(1.35);
+  }
+}

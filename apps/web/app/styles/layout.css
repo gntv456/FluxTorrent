@@ -2829,6 +2829,19 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   background: color-mix(in srgb, var(--brand-orange) 18%, transparent);
 }
 
+/* Passkey 登录钮：尺寸与描边由 .bz-reg-btn 给（原先它是全页唯一不吃
+ * .bz-* 类的按钮，且内联写死 40px 高、低于 --tap-min 44 的触控下限），
+ * 这里只补图标间距与禁用态——.bz-reg-btn 本体是 <a>，无 :disabled 可言。 */
+.bz-passkey-btn {
+  gap: 6px;
+  letter-spacing: 0.01em;
+}
+
+.bz-passkey-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 @media (max-width: 640px) {
   .bz-actions {
     grid-template-columns: 1fr;

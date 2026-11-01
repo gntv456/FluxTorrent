@@ -575,6 +575,8 @@ const enBase: Omit<
     regBtn: "Sign up",
     regBtnOpen: "Join now",
     openRegSlots: "({n} spots left)",
+    /** Mobile login: entry that opens the folded help sheet */
+    moreHelp: "More help",
   },
 
   messages: {
