@@ -6,7 +6,10 @@
 #   job rust-smoke  = cargo build + 起 api（自动跑迁移）+ 逐层 HTTP 冒烟（全部只依赖
 #                     schema + 引导数据，不依赖业务种子数据）
 #   job migrate-idempotency = 迁移幂等（连跑两次 api 启动不报 checksum/冲突）
-# 与 build-test.yml（纯编译+单测）互补，推送/PR 均触发。
+# 与 build-test.yml（纯编译+单测）互补。
+#
+# 分层（2026-11-01 流程提速）：push 只在后端面变化时跑（paths 已收窄）；
+# tag（v*）必跑——发版闸门不可省。日常纯前端/文档迭代不再等这条最贵的门。
 
 name: e2e-smoke
 
@@ -18,17 +21,8 @@ concurrency:
 
 on:
   push:
+    tags: ['v*']
     branches: [master]
-    paths:
-      - "apps/api/**"
-      - "apps/worker/**"
-      - "apps/tracker/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "docker/**"
-      - "scripts/**"
-      - ".github/workflows/e2e-smoke.yml"
-  pull_request:
     paths:
       - "apps/api/**"
       - "apps/worker/**"

@@ -1,0 +1,99 @@
+# 发版自动化（2026-11-01）：tag → publish 全绿 → 自动发 GitHub Release →
+# 通知部署端（webhook）自动更新。此前这条链全手工（发 Release / 上服务器 /
+# 验收各一步，单次发版约 1 小时人工值守）。
+#
+# 依赖：publish-images 的 manifest-merge 全绿（needs 链）。
+# Release 正文取 drafter 草稿正文（有则用）+ 固定升级说明。
+# 部署通知：POST secrets.DEPLOY_WEBHOOK_URL（服务器上的接收器），未配置时
+# 静默跳过——本地/新部署无 webhook 也不影响发版。
+name: release-automation
+
+on:
+  workflow_run:
+    workflows: [publish-images]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  release-and-notify:
+    runs-on: ubuntu-latest
+    # 仅 publish 成功的 tag 事件（workflow_run 不区分 tag/branch，需自查）
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    steps:
+      - name: 校验 tag 存在（防 draft/分支误触发）
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          if gh api "repos/${{ github.repository }}/git/ref/tags/$TAG" \
+              --input - <<< '{}' >/dev/null 2>&1; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag $TAG 不存在，跳过" >&2
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.tag.outputs.valid == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: 取 drafter 草稿正文（有则用）
+        if: steps.tag.outputs.valid == 'true'
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BODY=$(gh api "repos/${{ github.repository }}/releases" \
+            --jq '.[] | select(.draft==true) | .body' 2>/dev/null | head -50 || true)
+          {
+            echo "body<<NOTES_EOF"
+            if [ -n "$BODY" ] && [ "$BODY" != "## 变更" ] && [ "$BODY" != "No changes" ]; then
+              echo "$BODY"
+            fi
+            echo ""
+            echo "## 升级"
+            echo '```'
+            echo ".env 改 FLUX_VERSION=${{ github.event.workflow_run.head_branch }} →"
+            echo "docker compose pull && docker compose up -d（迁移自动应用）"
+            echo '```'
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 发布 GitHub Release
+        if: steps.tag.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          # 已有同 tag release（非 draft）则只补 latest 标记，不重复发
+          if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit "$TAG" -R "${{ github.repository }}" --latest
+          else
+            gh release create "$TAG" -R "${{ github.repository }}" \
+              --title "$TAG" --latest \
+              --notes "${{ steps.notes.outputs.body }}"
+          fi
+
+      - name: 通知部署端自动更新
+        if: steps.tag.outputs.valid == 'true'
+        env:
+          WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DEPLOY_WEBHOOK_URL 未配置，跳过部署通知（发版已完成）"
+            exit 0
+          fi
+          SIG=$(printf '%s' "$TAG" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
+          curl -sS -m 30 --fail-with-body -X POST "$WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: sha256=$SIG" \
+            -d "{\"version\": \"${TAG#v}\", \"ref\": \"$TAG\"}"
+          echo "部署端已通知"
