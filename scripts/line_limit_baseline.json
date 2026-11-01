@@ -421,7 +421,7 @@
  "apps/api/src/community_http/message.rs::wide": 9,
  "apps/api/src/community_http/message_box.rs::wide": 1,
  "apps/api/src/community_http/message_send.rs::wide": 3,
- "apps/api/src/community_http/mod.rs": 303,
+ "apps/api/src/community_http/mod.rs": 270,
  "apps/api/src/community_http/post_edit.rs::wide": 1,
  "apps/api/src/community_http/post_read.rs::wide": 28,
  "apps/api/src/community_http/shoutbox.rs::wide": 1,
