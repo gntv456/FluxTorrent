@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
+import { tokenSecondsLeft } from "@/lib/session-ttl";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { AuthCanvas } from "@/components/auth-canvas";
@@ -188,11 +189,12 @@ export default function RegisterPage() {
         return;
       }
       // 注册成功直接走登录（后端注册不返回 token）
-      await api.post<{ token: string }>("/api/v1/auth/login", {
+      const resp = await api.post<{ token: string }>("/api/v1/auth/login", {
         username: username.trim(),
         password,
       });
-      setSessionCookie(true);
+      // 标记跟着票长，别停在 12h 把有效票的人当游客（lib/session-ttl）
+      setSessionCookie(true, tokenSecondsLeft(resp.token));
       router.push("/torrents");
     } catch (err) {
       setFieldErrs(mapRegisterError(dict, err));

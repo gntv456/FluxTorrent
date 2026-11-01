@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, setSessionCookie } from "@/lib/api-client";
+import { tokenSecondsLeft } from "@/lib/session-ttl";
 import { useI18n } from "@/i18n/client";
 import { SetupStepFinish } from "./_parts/step-finish";
 import { SetupStepSite, type SiteDraft } from "./_parts/step-site";
@@ -64,11 +65,12 @@ export default function SetupWizard() {
     try {
       // 需先登录拿 token（向导完成端点要求 SITEPACKS_MANAGE）：登录响应
       // Set-Cookie 下发 HttpOnly flux_token，浏览器随后的同源请求自动携带
-      await api.post("/api/v1/auth/login", {
+      const resp = await api.post<{ token: string }>("/api/v1/auth/login", {
         username: draft.username,
         password: draft.password,
       });
-      setSessionCookie(true);
+      // 标记跟着票长（口径见 lib/session-ttl），别停在 12h 把有效票的人当游客
+      setSessionCookie(true, tokenSecondsLeft(resp.token));
       const res = await api.post<{
         purged: [string, number][];
         extras: [string, number][];

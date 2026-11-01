@@ -2,6 +2,7 @@
  *  从 login-form.tsx 拆出（300 行门禁）。错误统一抛给表单层展示。 */
 
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
+import { tokenSecondsLeft } from "@/lib/session-ttl";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
@@ -46,6 +47,7 @@ export function usePasskeyLogin(opts: {
           if (!assertion) throw new Error("浏览器取消了验证");
           const r = assertion.response as AuthenticatorAssertionResponse;
           const resp = await api.post<{
+            token: string;
             must_reset_password: boolean;
           }>("/api/v1/auth/passkey-login/finish", {
             cred_id: B64URL(assertion.rawId),
@@ -54,7 +56,9 @@ export function usePasskeyLogin(opts: {
             signature: B64URL(r.signature),
             sign_count: 0,
           });
-          setSessionCookie(true);
+          // 会话标记跟着票一起长（口径见 lib/session-ttl）：passkey 口读
+          // 同一个 jwt_ttl_hours，标记停在 12h 就会把有效票的人当游客
+          setSessionCookie(true, tokenSecondsLeft(resp.token));
           router.push(
             resp.must_reset_password ? "/my?tab=security" : opts.next,
           );

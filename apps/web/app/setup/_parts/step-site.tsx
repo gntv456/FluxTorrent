@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, setSessionCookie } from "@/lib/api-client";
+import { tokenSecondsLeft } from "@/lib/session-ttl";
 import type { Status } from "./setup-types";
 import {
   SetupAdminCredential,
@@ -99,7 +100,7 @@ export function SetupStepSite({
     }
     setBusy(true);
     try {
-      await api.post("/api/v1/auth/login", {
+      const resp = await api.post<{ token: string }>("/api/v1/auth/login", {
         username: cred.username,
         password: cred.password,
       });
@@ -107,7 +108,8 @@ export function SetupStepSite({
         old_password: cred.password,
         new_password: cred.newPassword,
       });
-      setSessionCookie(true);
+      // 标记跟着票长（lib/session-ttl），与登录口同一口径
+      setSessionCookie(true, tokenSecondsLeft(resp.token));
       setBusy(false);
       // 交回新口令：主组件用它重新登录完成安装
       onNext({
