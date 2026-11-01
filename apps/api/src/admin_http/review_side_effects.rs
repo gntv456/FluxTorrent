@@ -66,45 +66,6 @@ pub(crate) async fn apply_approval_side_effects(
     if let Err(e) = side {
         tracing::warn!(?e, torrent_id, "组订阅推送未写入（审核已过）");
     }
-    // 0450 作品追更：订阅者按「作品键」收信。WK 是 torrent_http 里那条
-    // 聚合表达式，这里只求一次（不在本文件另抄一份），再按它反查订阅。
-    // 同一用户同一作品 24h 内只推一条（notified_at 节流），偏好走
-    // u_notice_enabled 与其余订阅同口径。
-    if let Some(wk) =
-        crate::torrent_http::work_key::work_key_of(db, torrent_id).await
-    {
-        let side = sqlx::query(
-            r#"
-            INSERT INTO messages
-                   (sender_id, receiver_id, subject, body, kind, params)
-            SELECT NULL, ws.user_id, '你追更的作品有新资源',
-                   format('你追更的作品有新种子过审：#%s %s。',
-                          t.id, t.name),
-                   'work_update',
-                   jsonb_build_object('id', t.id, 'name', t.name)
-            FROM torrents t
-            JOIN work_subscriptions ws ON ws.work_key = $2
-            WHERE t.id = $1
-              AND u_notice_enabled(ws.user_id, 'work_update')
-              AND (ws.notified_at IS NULL
-                   OR ws.notified_at < now() - interval '24 hours')
-            "#,
-        )
-        .bind(torrent_id)
-        .bind(&wk)
-        .execute(db)
-        .await;
-        if let Err(e) = side {
-            tracing::warn!(?e, torrent_id, "作品追更推送未写入（审核已过）");
-        }
-        let _ = sqlx::query(
-            "UPDATE work_subscriptions SET notified_at = now()
-             WHERE work_key = $1 AND u_notice_enabled(user_id, 'work_update')",
-        )
-        .bind(&wk)
-        .execute(db)
-        .await;
-    }
     // 0332 厂牌订阅 / 0334 字幕组订阅推送：种子带 network / subtitle_group
     // 维度且该实体有人订阅 → 通知订阅者。与组订阅同口径（每人一信 + 通知
     // 偏好过滤）；实体值经 section_dict 反查 content_networks（枚举维度的

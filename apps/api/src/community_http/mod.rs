@@ -1,7 +1,6 @@
 //! 社区模块 HTTP 接口（M14 勋章 + M15 论坛 + M16 短讯/好友）。
 //! 按域拆分（300 行门禁）：见各子模块头注释。
 use actix_web::web;
-mod work_subs;
 pub(crate) use follow_read::*;
 pub(crate) use forums_boards::*;
 pub(crate) use forums_mine::*;
@@ -151,7 +150,6 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(list_prefs_get)
         .service(list_prefs_set)
         .service(pool_honor)
-        .configure(work_subs::configure)
         // M15 论坛
         .service(forum_list)
         .service(forum_boards)
