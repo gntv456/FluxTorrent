@@ -130,5 +130,9 @@ html {
   [role="listbox"]
 ) {
   backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  /* 不要在这里手写 -webkit-backdrop-filter：实测源码里两行都写时，
+     Lightning CSS 会把标准那行丢掉、只留前缀行，产物里成为
+     `{-webkit-backdrop-filter:blur(...)}` —— 而 Chrome 的 CSSOM 不认这个
+     别名，computed backdrop-filter 直接是 none（磨砂整条失效）。前缀交给
+     构建工具自己加，仓里 .tide-header / pages.css 的底条也都是这么写的。 */
 }
