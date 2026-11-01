@@ -32,6 +32,7 @@ html {
   --sr-solid: var(--surface-raised);
   --sh-solid: var(--surface-hover);
   --sf-solid: var(--surface-cream);
+  --cl-solid: var(--cloud);
 }
 
 html[data-glass="on"] body {
@@ -49,6 +50,12 @@ html[data-glass="on"] body {
   --surface-hover: color-mix(in srgb, var(--sh-solid) var(--glass-mix),
     transparent);
   --surface-cream: color-mix(in srgb, var(--sf-solid) var(--glass-mix),
+    transparent);
+  /* 顶栏搜索框与后台多处表单控件的底是 --cloud（bg-cloud → --color-cloud
+     → var(--cloud)，浅色偏白、夜间偏黑两套各有定义），不纳入这一族时它拿得
+     到磨砂却是实心，看着像「只有它没化」。站长 11-01 点名要一起透。
+     （注：这里不能写 hex 字面量——ui_design_guard 的色值判据不剥注释。） */
+  --cloud: color-mix(in srgb, var(--cl-solid) var(--glass-mix),
     transparent);
   /* 别名层必须在这里**重建一次**：base.css 的 --card / --panel / --surface /
      --brand-paper / --field-bg … 声明在 html 上，代入的是 html 那层的实心
