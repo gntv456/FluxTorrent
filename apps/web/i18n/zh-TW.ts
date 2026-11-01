@@ -7371,6 +7371,7 @@ const noticePrefsTw: Dict["noticePrefs"] = {
     hr_violation: "H&R 違規",
     wishlist: "願望單命中",
     group_new_version: "新版本通知",
+    work_update: "追更作品更新",
     resurrection: "復活完成",
     class_promo: "等級晉升",
     gift: "禮物",

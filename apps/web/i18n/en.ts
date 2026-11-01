@@ -7620,6 +7620,7 @@ const noticePrefsEn: Dict["noticePrefs"] = {
     hr_violation: "H&R violation",
     wishlist: "Wishlist hit",
     group_new_version: "New group version",
+    work_update: "Subscribed work updates",
     resurrection: "Resurrection done",
     class_promo: "Class promotion",
     gift: "Gifts",

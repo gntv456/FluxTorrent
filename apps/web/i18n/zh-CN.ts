@@ -7468,6 +7468,7 @@ export const zhCN = {
       hr_violation: "H&R 违规",
       wishlist: "心愿单命中",
       group_new_version: "新版本通知",
+      work_update: "追更作品更新",
       resurrection: "复活完成",
       class_promo: "等级晋升",
       gift: "礼物",
