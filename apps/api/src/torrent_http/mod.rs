@@ -39,6 +39,7 @@ mod torrent_delete;
 mod trump;
 mod trump_admin;
 // 作品聚合（资源页「作品聚合」视图 + 作品详情）：同片多版本归一部作品
+pub(crate) mod work_key;
 mod works;
 mod works_detail;
 mod works_filter;

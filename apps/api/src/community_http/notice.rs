@@ -29,11 +29,12 @@ pub(crate) async fn notice_prefs_get(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    const DEFAULT_ON: [&str; 16] = [
+    const DEFAULT_ON: [&str; 17] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
         "group_new_version",
+        "work_update",
         "network_new_release",
         "subgroup_new_release",
         "request_fulfilled",
@@ -85,11 +86,12 @@ pub(crate) async fn notice_prefs_set(
     body: web::Json<NoticePrefsSetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    const KEYS: [&str; 16] = [
+    const KEYS: [&str; 17] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
         "group_new_version",
+        "work_update",
         "network_new_release",
         "subgroup_new_release",
         "request_fulfilled",
