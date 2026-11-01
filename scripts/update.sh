@@ -14,7 +14,10 @@
 # 环境变量（一般不用动）：
 #   FLUX_REPO       默认 gntv456/FluxTorrent，从 GitHub 查最新 Release 用
 #   FLUX_SERVICES   默认 "api worker tracker web"
-#   FLUX_PUBLIC_URL 健康检查的站点地址，默认 http://127.0.0.1:3000
+#   FLUX_PUBLIC_URL 健康检查的站点地址，默认按 .env 的 FLUX_WEB_PORT 拼
+#                   127.0.0.1（没改端口就是 :3000）
+#   FLUX_API_HEALTH 健康检查的 api 地址，默认按 .env 的 FLUX_API_PORT 拼
+#                   127.0.0.1（没改端口就是 :8080/api/v1/health）
 #
 # 为什么有「迁移守卫」：api 启动就跑迁移，库里已应用到第 N 号而镜像里只到
 # M<N 时，sqlx 直接拒绝启动（"migration N was previously applied but is
@@ -29,7 +32,17 @@ STATE="$ROOT/docker/.flux-version"
 SERVICES="${FLUX_SERVICES:-api worker tracker web}"
 REPO="${FLUX_REPO:-gntv456/FluxTorrent}"
 PUBLIC_URL="${FLUX_PUBLIC_URL:-http://127.0.0.1:3000}"
-API_HEALTH="http://127.0.0.1:8080/api/v1/health"
+
+# 健康检查的端口跟着 compose 走：api/web 的宿主端口是 ${FLUX_API_PORT:-8080}
+# /${FLUX_WEB_PORT:-3000}，站长改过端口还硬编码 8080，健康检查必然失败，
+# 脚本会把一次好端端的升级「回滚」掉——假失败比没检查更糟。
+envget() { sed -n "s/^$1=//p" "$ENVFILE" 2>/dev/null | head -1 | tr -d '\r'; }
+API_PORT="${FLUX_API_PORT:-$(envget FLUX_API_PORT)}"
+API_HEALTH="${FLUX_API_HEALTH:-http://127.0.0.1:${API_PORT:-8080}/api/v1/health}"
+WEB_PORT="${FLUX_WEB_PORT:-$(envget FLUX_WEB_PORT)}"
+if [[ -z "${FLUX_PUBLIC_URL:-}" && -n "$WEB_PORT" && "$WEB_PORT" != "3000" ]]; then
+  PUBLIC_URL="http://127.0.0.1:$WEB_PORT"
+fi
 
 TAG=""
 CHECK=0
@@ -41,7 +54,7 @@ while [[ $# -gt 0 ]]; do
     --yes|-y) YES=1 ;;
     --tag) TAG="${2:-}"; shift ;;
     --no-rollback) WITH_ROLLBACK=0 ;;
-    -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "未知参数: $1（--help 看用法）" >&2; exit 2 ;;
   esac
   shift
@@ -110,6 +123,10 @@ if [[ -z "$TAG" ]]; then
 else
   say "2/6 使用指定版本"
 fi
+# Release tag 带 v（v0.5.3），CI 发的镜像 tag 不带（publish-images 用
+# ${TAG#v}，GHCR 上只有 0.5.3 / 0.5.3-amd64 / 0.5.3-arm64）。不剥这层 v，
+# 拉镜像必然 404，而报错文案指向「私有包/版本不存在」——两头都指错。
+TAG="${TAG#v}"
 ok "目标版本：$TAG"
 if [[ "$TAG" == "$PREV_API" ]]; then
   ok "线上已经是这个版本"
@@ -160,6 +177,18 @@ if [[ -n "$IMG_MIG" && "$DB_MIG" -gt "$IMG_MIG" ]]; then
      正解：换一个 ≥$DB_MIG 的版本 tag；若已误降级，先把库恢复到对应版本。"
 elif [[ -n "$IMG_MIG" && "$IMG_MIG" -gt "$DB_MIG" ]]; then
   warn "将应用 $((IMG_MIG - DB_MIG)) 号新迁移（服务启动时自动执行）"
+elif [[ -z "$IMG_MIG" ]]; then
+  # 「读不到上界」不是「方向安全」：守卫判不出就必须停手，否则这条
+  # 门禁在它最该起作用的时候（镜像残缺/没有 sh/没拉下来）正好沉默。
+  if [[ $CHECK -eq 1 ]]; then
+    warn "读不到目标镜像 $IMG_API 的迁移上界——方向无法判定，别照这句话的绿去升级"
+  else
+    die "读不到目标镜像 $IMG_API 里 /app/migrations 的上界。
+     判不出迁移方向就不切换：库里已应用到 $DB_MIG，而 sqlx 遇到
+     「库比镜像新」会直接崩溃循环、全站 500。
+     先确认镜像是完整的（docker pull $IMG_API，再看
+     docker run --rm --entrypoint sh $IMG_API -c 'ls /app/migrations | tail -1'）。"
+  fi
 else
   ok "迁移方向安全（无新增、无回退）"
 fi
