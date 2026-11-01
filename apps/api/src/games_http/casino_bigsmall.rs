@@ -177,7 +177,9 @@ pub(super) async fn bigsmall_trend(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let n = q.n.unwrap_or(20).clamp(1, 50);
-    let rows: Vec<(String, i64, i32, chrono::DateTime<chrono::Utc>)> =
+    // rarity 基表是 smallint：按 i32 解会当场 decode 失败，本口一旦有
+    // 开奖行就 500（同域 casino.rs / prize_view.rs 都按 i16 读）
+    let rows: Vec<(String, i64, i16, chrono::DateTime<chrono::Utc>)> =
         sqlx::query_as(
             "SELECT prize, spark, rarity, created_at FROM arcade_pool_rounds \
              WHERE game = 'bigsmall' ORDER BY id DESC LIMIT $1",
