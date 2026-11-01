@@ -59,6 +59,7 @@ pub async fn feed_rows(
     free_only: bool,
     exclude_paid: bool,
     user_id: i64,
+    since: Option<chrono::DateTime<chrono::Utc>>,
 ) -> Result<Vec<RssRow>, sqlx::Error> {
     sqlx::query_as::<_, RssRow>(sql)
         .bind(categories)
@@ -72,6 +73,7 @@ pub async fn feed_rows(
         .bind(exclude_paid)
         .bind(user_id)
         .bind(alive_only(repo).await)
+        .bind(since)
         .fetch_all(&repo.db)
         .await
 }

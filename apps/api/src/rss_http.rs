@@ -159,6 +159,8 @@ pub(crate) async fn rss_feed(
                 OR EXISTS (SELECT 1 FROM torrent_purchases tp \
                            WHERE tp.user_id = $8 AND tp.torrent_id = t.id)) \
            AND (NOT $9::bool OR t.seeders > 0) \
+           AND ($10::timestamptz IS NULL OR \
+                COALESCE(t.approved_at, t.created_at) > $10) \
          ORDER BY COALESCE(t.approved_at, t.created_at) DESC, \
                   t.id DESC LIMIT $5"
     );
@@ -181,6 +183,7 @@ pub(crate) async fn rss_feed(
         free_only,
         exclude_paid,
         user_id,
+        q.since_at(),
     )
     .await
     .unwrap_or_default();

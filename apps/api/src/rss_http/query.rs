@@ -26,6 +26,28 @@ pub struct RssQuery {
     /// 缺省 = 排除「付费且未购」的种子（深测 2026-10-03：付费种无差别推送会让
     /// 刷流器反复拿到 402，默认挡掉；需要全量监控付费种的用户显式传 paid=0）
     pub paid: Option<i32>,
+    /// 增量游标：只回「可见时间晚于它」的条目（RFC3339 或 YYYY-MM-DD）。
+    /// 刷流器不必每次拉 200 条再自己比对。
+    pub since: Option<String>,
+}
+
+impl RssQuery {
+    /// `since` 解析：RFC3339 或 YYYY-MM-DD（后者按当天 00:00 UTC）。
+    /// 解析不了就当没给——RSS 是只读订阅面，宁可少筛也不能因为一个坏参数
+    /// 让整条订阅源 400（同类站多这样处理，客户端侧无重试语义）。
+    pub fn since_at(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        let s = self.since.as_deref()?.trim();
+        if s.is_empty() {
+            return None;
+        }
+        if let Ok(d) = chrono::DateTime::parse_from_rfc3339(s) {
+            return Some(d.with_timezone(&chrono::Utc));
+        }
+        chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+            .ok()
+            .and_then(|d| d.and_hms_opt(0, 0, 0))
+            .map(|n| n.and_utc())
+    }
 }
 
 #[cfg(test)]
