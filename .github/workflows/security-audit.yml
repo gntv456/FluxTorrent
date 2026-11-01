@@ -31,4 +31,5 @@ jobs:
         # 修复）」，该文件从未入库且现已不存在——h2/rsa 两条随依赖升级不再
         # 命中，无需豁免；wasmtime 49.0.2 见 fix(deps) 提交。若将来需要豁免
         # 上游无修复的 advisory，重建 audit.toml 并在本步骤加 --file 引用。）
-        run: cargo audit
+        # 豁免清单在 .cargo/audit.toml（含理由与到期复查），裸跑读不到，显式引用
+        run: cargo audit --file .cargo/audit.toml

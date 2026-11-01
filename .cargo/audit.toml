@@ -13,6 +13,16 @@
 #   高精度测量密钥运算耗时（本运算仅处理本站自管 WebAuthn 断言与推送订阅协商，
 #   无外部攻击者可控的解密 oracle 路径）；告警级别 warning 级非漏洞级。
 #   到期后复查：p256 升 0.14 时一并移除本条。
+# RUSTSEC-2026-0402 / RUSTSEC-2026-0406（zstd-safe 7.x 多线程 context 的
+#   try_clone UAF 与堆溢出；修复版 8.2.0 仅存在于 zstd 0.14 线）：
+#   本树两处 zstd——actix-http 3.20 起已随 zstd 0.14 走 zstd-safe 8.2（已修）；
+#   剩 wasmtime 49→50.0.1 全系钉死 zstd ^0.13 → zstd-safe 7.3.0，7.x 无补丁版。
+#   暴露面评估：两条告警都在 CCtx::try_clone / 多线程压缩 context 路径——
+#   本站对 wasmtime 仅用「适配器沙箱加载用户 wasm」（compile + instantiate），
+#   wasmtime-cache 的 zstd 只用于**模块缓存文件的压缩读写**，从不 clone
+#   压缩 context、不启 zstdmt 多线程（单线程压缩）；且缓存目录仅本机可写。
+#   触发前提（在多线程 context 上调 try_clone）在本二进制中不存在。
+#   到期后复查：wasmtime 依赖 zstd 0.14 线（zstd-safe 8.2+）时移除本两条。
 [advisories]
 ignore = [
     "RUSTSEC-2026-0258",
@@ -22,4 +32,6 @@ ignore = [
     #   尚未发布修复（No fixed upgrade available），与全网 actix-web 生态一致。
     "RUSTSEC-2023-0071",
     "RUSTSEC-2026-0387",
+    "RUSTSEC-2026-0402",
+    "RUSTSEC-2026-0406",
 ]
