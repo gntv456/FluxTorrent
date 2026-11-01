@@ -70,8 +70,8 @@ for (const path of PAGES) {
         return { text: (b.textContent || "").trim().slice(0, 12),
           h: Math.round(r.height), w: Math.round(r.width) };
       });
-    return { vw, sw: doc.scrollWidth, bw: document.body.scrollWidth,
-      wide, btns };
+    return { vw, vh: window.innerHeight, sw: doc.scrollWidth,
+      docH: doc.scrollHeight, bw: document.body.scrollWidth, wide, btns };
   });
 
   const name = path.replace(/[^a-zA-Z0-9]+/g, "_");
@@ -88,12 +88,22 @@ for (const r of results) {
   // 404/410 = 动态路由无内容（非布局问题），跳过；横滚与 JS 异常才是目标
   const missing = r.http === 404 || r.http === 410;
   const btn = r.btns.find((b) => b.h >= 44);
-  const ok = missing || (!hs && r.errors.length === 0 &&
+  // 手机版登录页重设计（2026-11-01）的硬判据：**整页不产生纵向滚动**。
+  // 旧版在 390×844 下整页 1189px（溢出 345px：Passkey / 开放注册横幅 /
+  // 四行辅助链接 / 安全告知全在折叠线外），新壳是「品牌带 + 贴底抽屉」，
+  // 一屏完成登录是设计目标而非观感偏好。
+  // 判据选「整页高度」而不是「主按钮在不在首屏」——后者拿旧版一比就不
+  // 承重（旧版登录钮底边 644 < 844，本来就看得见），钉它等于钉了个恒真。
+  // 只让带主按钮的页参与判定：/reset 待邮件、/apply 未开放那类纯提示页
+  // 没有可提交的表单，高度天然短，判它们没意义。
+  const folded = !!btn && r.docH > r.vh + 1;
+  const ok = missing || (!hs && !folded && r.errors.length === 0 &&
     r.http >= 200 && r.http < 400);
   if (!ok) bad += 1;
   console.log(`${ok ? (missing ? "−" : "✓") : "✗"} ${r.path}  http=${r.http} ` +
     `scrollW=${r.sw}/${r.vw}${hs ? " ⚠️横滚" : ""} ` +
     `btn44=${btn ? `${btn.h}px「${btn.text}」` : "无≥44px主按钮"} ` +
+    `scrollH=${r.docH}/${r.vh}${folded ? " ⚠️超折叠线" : ""} ` +
     `err=${r.errors.length}`);
   for (const w of r.wide) console.log(`    超宽: ${w}`);
   for (const b of r.btns.slice(0, 3)) {
