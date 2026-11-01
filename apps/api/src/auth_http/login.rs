@@ -10,7 +10,7 @@ use crate::http::{client_ip, ip_banned, throttle};
 use crate::state::AppState;
 
 use super::login_origin::{is_form_body, origin_allowed};
-use super::login_types::LoginReq;
+use super::login_types::{session_ttl, LoginReq};
 
 /// 连续失败锁定阈值（0440 接线，原写死 5）：读
 /// site_settings.login_lockout_threshold，缺省/非法回落 5；下限钳 3
@@ -230,6 +230,9 @@ pub async fn login(
     .await
     .unwrap_or(24)
     .clamp(1, 720);
+    // 「记住登录」拉长后的实际会话时长。下面 JWT 的 exp 与 cookie 的
+    // Max-Age 都读这一个值——口径与「别拆岔」的理由见 session_ttl。
+    let eff_ttl = session_ttl(&body.remember, ttl_hours);
     // 成功登录清锁定计数（P2 账户级锁定配套）
     {
         let lock_key = format!("acctlock:{}", body.username.to_lowercase());
@@ -242,7 +245,7 @@ pub async fn login(
     }
     let token = state
         .jwt
-        .issue(user.id, user.class_id, ttl_hours)
+        .issue(user.id, user.class_id, eff_ttl)
         .map_err(DomainError::Internal)?;
     // 登录事件（控制面板账户概览 30 天活跃趋势；含 IP 供 ipcheck/maxlogin）
     let _ = sqlx::query(
@@ -269,7 +272,7 @@ pub async fn login(
     }));
     let cookie = actix_web::cookie::Cookie::build("flux_token", token)
         .path("/")
-        .max_age(actix_web::cookie::time::Duration::hours(ttl_hours))
+        .max_age(actix_web::cookie::time::Duration::hours(eff_ttl))
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
         // Secure flag（P2 安全小补）：请求已过 TLS（X-Forwarded-Proto=https 的

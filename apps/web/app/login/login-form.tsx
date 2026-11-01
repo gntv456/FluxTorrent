@@ -14,6 +14,8 @@ import { usePasskeyLogin } from "@/lib/use-passkey-login";
 import { solvePow, powFromErrorData } from "@/lib/pow-client";
 import { fmt } from "@/i18n/config";
 import { LoginAssistLinks } from "./login-assist-links";
+import { LoginOptionsRow } from "./login-options-row";
+import { tokenSecondsLeft } from "@/lib/session-ttl";
 import { useRegisterMode } from "@/lib/use-register-mode";
 import { IconUser, IconLock, IconShield } from "./login-icons";
 
@@ -47,6 +49,8 @@ export function LoginForm() {
   const [powWorking, setPowWorking] = useState(false); // 正在完成工作量证明
   const [showTotp, setShowTotp] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  // 「记住登录」：默认勾上（与旧装饰态视觉一致），现在真的进请求体
+  const [remember, setRemember] = useState(true);
   // P-683：并排注册按钮的样式分级依据（与辅助链接卡同源判定）
   const openReg = useRegisterMode();
   // 上一轮解出的 PoW（token+solution）：后端 2012 或本地 attempts>=2 时求解，
@@ -90,11 +94,13 @@ export function LoginForm() {
       const resp = await api.post<LoginResp>("/api/v1/auth/login", {
         username,
         password,
+        remember,
         totp_code: totp.trim() ? Number(totp.trim()) : undefined,
         pow_token: pow?.token,
         pow_solution: pow?.solution,
       });
-      setSessionCookie(true);
+      // 会话标记跟着票一起长：不勾 = 后端 24h 票 / 前端 12h 标记（原口径）
+      setSessionCookie(true, tokenSecondsLeft(resp.token));
       // 临时密码（P1 修复）：后端只放行改密/登出三条路径，落在业务页只会
       // 处处报「请先修改密码」——登录成功即引导直达「我的 → 安全」改密。
       router.push(resp.must_reset_password ? "/my?tab=security" : next);
@@ -140,11 +146,12 @@ export function LoginForm() {
       const resp = await api.post<LoginResp>("/api/v1/auth/login", {
         username,
         password,
+        remember,
         totp_code: totp.trim() ? Number(totp.trim()) : undefined,
         pow_token: pow?.token,
         pow_solution: pow?.solution,
       });
-      setSessionCookie(true);
+      setSessionCookie(true, tokenSecondsLeft(resp.token));
       router.push(resp.must_reset_password ? "/my?tab=security" : next);
     } catch (err) {
       powRef.current = null; // token 已被服务端消费，下轮重新取题
@@ -241,22 +248,13 @@ export function LoginForm() {
         )}
       </div>
 
-      {/* 记住登录 + 两步验证开关 行（theme.css .auth-form-options 双列网格） */}
-      <div className="bz-options">
-        <label className="bz-remember">
-          <input type="checkbox" defaultChecked />
-          <span className="bz-checkbox-mark" aria-hidden />
-          {dict.login.remember}
-        </label>
-        <button
-          type="button"
-          onClick={() => setShowTotp((v) => !v)}
-          aria-expanded={showTotp}
-          className="bz-totp-toggle"
-        >
-          {dict.login.twoStepCode}
-        </button>
-      </div>
+      {/* 记住登录 + 两步验证开关行（拆到 login-options-row，300 行门禁） */}
+      <LoginOptionsRow
+        remember={remember}
+        onRemember={setRemember}
+        showTotp={showTotp}
+        onToggleTotp={() => setShowTotp((v) => !v)}
+      />
 
       <div className="bz-actions">
         <button type="submit" disabled={busy} className="bz-submit">

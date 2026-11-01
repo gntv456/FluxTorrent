@@ -99,11 +99,14 @@ export function hasSessionCookie(): boolean {
     );
 }
 
-export function setSessionCookie(loggedIn: boolean): void {
+/** ttl 传登录响应里那枚票的剩余秒数（见 lib/session-ttl）：「记住登录」
+ * 时标记必须跟着票一起长，否则 middleware 会在 12h 后把还持有有效票的人
+ * 当游客。缺省仍是 12h 保守口径，其余调用点行为不变。 */
+export function setSessionCookie(loggedIn: boolean, ttl?: number): void {
   if (typeof document === "undefined") return;
   if (loggedIn) {
     document.cookie =
-      `${SESSION_COOKIE}=1; path=/; max-age=43200; samesite=lax`;
+      `${SESSION_COOKIE}=1; path=/; max-age=${ttl ?? 43200}; samesite=lax`;
   } else {
     document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
   }
