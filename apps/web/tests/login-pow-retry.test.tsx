@@ -133,4 +133,24 @@ describe("登录 PoW（P-502）", () => {
     expect(post.mock.calls[3][1]).toMatchObject({ pow_token: "tokB" });
     await waitFor(() => expect(push).toHaveBeenCalledWith("/torrents"));
   });
+
+  // bcdf5f51：2012 自动重提后的失败走的是另一条 catch。那条曾把
+  // apiErrorMessage 的**空串**当有效值（`??`），于是弹一条 role="alert"
+  // 却一个字都没有的错误条——用户知道错了，不知道错在哪。
+  it("自动重提失败时错误条不许是空的（未映射码 + 空 message）", async () => {
+    post
+      .mockRejectedValueOnce(deny(2012))
+      .mockRejectedValueOnce(
+        new ApiError(4999, "", null, 400, "t"), // 字典没这句、后端也没带话
+      );
+    solve.mockResolvedValueOnce({ token: "tok9", solution: "42" });
+    const btn = await mountAndFill();
+
+    await submit(btn, 1);
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent ?? "").not.toBe("");
+    expect(alert.textContent).toContain(zhCN.login.fail);
+  });
 });
