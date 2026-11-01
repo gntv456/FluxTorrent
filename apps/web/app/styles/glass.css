@@ -35,9 +35,11 @@ html {
 }
 
 html[data-glass="on"] body {
-  --glass-alpha: 1;
-  --glass-blur: 0px;
-  --glass-mix: calc(var(--glass-alpha) * 100%);
+  /* 默认值**只能写在用点的 fallback 里**，不能在这里声明 --glass-alpha: 1：
+     真实值由根布局内联在 <html> 上，而元素自身的声明永远赢过继承值，
+     在 body 上写默认值会把 html 传下来的那个直接盖掉（bd2523d9 上线实测
+     全站 blur(0px)、色值不带 alpha，就是这个原因）。 */
+  --glass-mix: calc(var(--glass-alpha, 1) * 100%);
   --surface-card: color-mix(in srgb, var(--sc-solid) var(--glass-mix),
     transparent);
   --surface-sunken: color-mix(in srgb, var(--ss-solid) var(--glass-mix),
@@ -138,7 +140,7 @@ html[data-glass="on"] :is(
   [role="menu"],
   [role="listbox"]
 ) {
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  backdrop-filter: blur(var(--glass-blur, 0px)) saturate(1.35);
   /* 不要在这里手写 -webkit-backdrop-filter：实测源码里两行都写时，
      Lightning CSS 会把标准那行丢掉、只留前缀行，产物里成为
      `{-webkit-backdrop-filter:blur(...)}` —— 而 Chrome 的 CSSOM 不认这个
