@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
+import { glassStyle } from "@/lib/site-glass";
 import { siteBase } from "@/lib/site-url";
 import { LocaleProvider } from "@/i18n/client";
 import { PwaInstallBar } from "@/components/pwa-install-bar";
@@ -204,8 +205,16 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const { dict, locale, currency } = await getDict();
   const profile = await getSiteProfile();
+  // 板块磨砂玻璃（0448）：作用域挂在 <html> 上——顶栏搜索框与部分弹层是
+  // portal 到 body 的，挂在 .site-shell 上会漏掉它们（见 glass.css 注释）。
+  const glass = glassStyle(profile?.glass);
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      data-glass={glass ? "on" : undefined}
+      style={glass ?? undefined}
+    >
       <head>
         <ThemeTokenStyle tokens={profile.theme_tokens} />
         {/* TIDE 字体（P5）：已改为**自托管**（见 app/styles/fonts-tide.css + public/fonts/），

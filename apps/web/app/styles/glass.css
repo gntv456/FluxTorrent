@@ -1,7 +1,11 @@
 /* ===== 板块磨砂玻璃（0448）=====
    两个旋钮来自后台「外观与主题」：glass_alpha（不透明度）与 glass_blur
-   （磨砂半径），由 (main)/layout.tsx 与 auth-canvas.tsx 写成内联 CSS 变量，
-   并在同一个容器上挂 data-glass="on"（alpha=100 时不挂 → 整套规则不匹配）。
+   （磨砂半径），由根布局 app/layout.tsx 写成 <html> 的内联 CSS 变量并挂
+   data-glass="on"（alpha=100 时不挂 → 整套规则不匹配）。
+
+   作用域必须是 <html> 而不是 .site-shell：顶栏搜索框与若干弹层是 portal
+   到 body 的，实测它们 closest('.site-shell') 为 null，挂在容器上时这些
+   输入框既拿不到半透明也拿不到磨砂（站长明确要输入框一起玻璃化）。
 
    覆盖面（站长 2026-11-01 拍板）：板块 + 输入框 + 弹层/抽屉一起玻璃化。
 
@@ -25,7 +29,7 @@ html {
   --sf-solid: var(--surface-cream);
 }
 
-:is(.site-shell, .bz-login-page)[data-glass="on"] {
+html[data-glass="on"] {
   --glass-alpha: 1;
   --glass-blur: 0px;
   --glass-mix: calc(var(--glass-alpha) * 100%);
@@ -58,7 +62,7 @@ html {
 /* 不支持 backdrop-filter：只保留透明度会糊成「字压在图上」，所以连透明度
    一起回退成不透明（沿用 theme-tide.css 顶栏的同款回退思路） */
 @supports not (backdrop-filter: blur(2px)) {
-  :is(.site-shell, .bz-login-page)[data-glass="on"] {
+  html[data-glass="on"] {
     --glass-alpha: 1;
     --glass-blur: 0px;
   }
@@ -66,14 +70,14 @@ html {
 
 /* 系统开了「减少透明度」（iOS/macOS 辅助功能）：尊重它，玻璃归零 */
 @media (prefers-reduced-transparency: reduce) {
-  :is(.site-shell, .bz-login-page)[data-glass="on"] {
+  html[data-glass="on"] {
     --glass-alpha: 1;
     --glass-blur: 0px;
   }
 }
 
 /* 磨砂层：板块容器 + 表单控件 + 弹层/抽屉 */
-:is(.site-shell, .bz-login-page)[data-glass="on"] :is(
+html[data-glass="on"] :is(
   .ui-card,
   .brand-panel,
   .side-card,
