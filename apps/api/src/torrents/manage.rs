@@ -214,20 +214,17 @@ pub async fn apply_torrent_tags(
     Ok(())
 }
 
-/// official_tag 物化列同步（0159）：列=「挂有 official-kind 标签」的纯派生值，
-/// 任何写 tags 的路径收口后调这里，杜绝列与关联表漂移（0044 双口径事故根因）。
-/// official-kind 标签缺失时列回落 false——回落即「免费」促销口径外的促销
-/// 判定不变，仅官种语义跟随标签。
+/// official_tag 物化列同步（0159，0449 起含制作组名单）：列值由 SQL 函数
+/// `refresh_official_tag` 唯一派生——「挂有 official-kind 标签」**或**
+/// 「制作组命中 site_settings.official_team_ids」。
+/// 派生放 SQL 而不是在 Rust 里再拼一条：promo / 自动置顶插件 / 首页统计 /
+/// NexusPHP 兼容口都直接读这一列，口径只许存在一份（0044 双口径事故根因）。
+/// 站长改名单后的全量重算走同一函数（传 NULL），见 settings 保存口。
 async fn sync_official_tag(db: &PgPool, torrent_id: i64) -> DomainResult<()> {
-    sqlx::query(
-        "UPDATE torrents SET official_tag = EXISTS ( \
-           SELECT 1 FROM tags tg JOIN tag_dict d ON d.id = tg.tag_id \
-           WHERE tg.torrent_id = $1 AND d.kind = 'official') \
-         WHERE id = $1",
-    )
-    .bind(torrent_id)
-    .execute(db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    sqlx::query("SELECT refresh_official_tag($1)")
+        .bind(torrent_id)
+        .execute(db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(())
 }
