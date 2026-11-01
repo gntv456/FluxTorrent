@@ -123,6 +123,35 @@ curl http://localhost:8080/api/v1/health
 
 ---
 
+## 升级到新版本
+
+**一条命令**（在服务器上、仓库目录里）：
+
+```bash
+bash scripts/update.sh
+```
+
+它会：查 GitHub 最新 Release → 从 GHCR 拉四个预构建镜像（不重建，1~3 分钟）→
+**核对迁移方向** → 切换服务 → 健康检查，失败自动回滚到上一个版本。
+
+三种常用变体：
+
+```bash
+bash scripts/update.sh --check       # 只看不动：当前版本 / 目标版本 / 会不会动迁移
+bash scripts/update.sh --tag v0.5.3  # 升到指定版本；填当前线上版本即空跑一次
+bash scripts/update.sh --yes         # 免确认（定时任务用）
+```
+
+两条必须知道的规矩：
+
+- **别裸跑 `docker compose up -d`**。compose 里镜像是 `${FLUX_VERSION:-latest}`，
+  不带版本就落到移动标签 `latest`，可能把现网换成旧构建；而 api 启动要跑迁移，
+  库里已经到第 N 号、旧镜像只到 M<N 时，sqlx 会拒绝启动 → **崩溃循环、全站 500**。
+  升级一律走 `scripts/update.sh`（它会在切换前把这种情况拦下并告诉你怎么修）。
+- 升级成功的版本号会写进 `docker/.flux-version`；想回滚就 `--tag` 填上一个版本号。
+
+---
+
 ## 常见问题
 
 **某个容器起不来 / 一直重启？**

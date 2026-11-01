@@ -95,3 +95,6 @@ _doc/_audit_zt81/_tokens.json
 
 # 安全审计卫生（2026-10-07）：本地铸造的测试 JWT 不入库不进镜像
 _jwt*
+
+# 升级记录（scripts/update.sh 写入：当前线上镜像 tag）
+docker/.flux-version
