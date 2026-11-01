@@ -30,10 +30,17 @@ export function librarySub(
   cats: LibraryCat[],
 ): NonNullable<NavItem["sub"]> {
   const top = cats.filter((c) => c.name).slice(0, LIB_CAT_CAP);
+  /* extra 是查询串（official=1 这种），不是连接符。叶子第一项没有别的
+     参数，得自己带问号：原先写成 /torrents + extra 且 extra 传的是
+     &official=1，于是渲染出 /torrents&official=1 —— 没有问号就整段算路径，
+     路由不存在，点「资源/官种」下的「全部」必 404（2026-11-01 站长报）。
+     分类叶子因为前面已有 ?category_id= 兜着，才一直没露出这个破口。 */
   const leaf = (extra: string) => [
-    { href: `/torrents${extra}`, label: nav.libAll },
+    { href: extra ? `/torrents?${extra}` : "/torrents", label: nav.libAll },
     ...top.map((c) => ({
-      href: `/torrents?category_id=${c.id}${extra}`,
+      href: extra
+        ? `/torrents?category_id=${c.id}&${extra}`
+        : `/torrents?category_id=${c.id}`,
       label: c.name,
     })),
   ];
@@ -42,12 +49,12 @@ export function librarySub(
     {
       label: nav.libRes,
       href: "/torrents?official=0",
-      items: leaf("&official=0"),
+      items: leaf("official=0"),
     },
     {
       label: nav.official,
       href: "/torrents?official=1",
-      items: leaf("&official=1"),
+      items: leaf("official=1"),
     },
   ];
 }
