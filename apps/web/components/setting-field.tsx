@@ -13,6 +13,7 @@ import {
   enumOptions,
   useFieldControl,
 } from "@/components/setting-field-controls";
+import { OfficialTeamsPicker } from "@/components/official-teams-picker";
 import type { SettingFieldMeta } from "@/components/setting-field-types";
 
 export type {
@@ -61,6 +62,17 @@ export function SettingField({
         enumOptions(field.options).length > 0 &&
         enumOptions(field.options).length <= 4));
 
+  // 官种制作组名单（0449）：存的是字典 ID 的 CSV，但让站长手抄 ID 不现实，
+  // 所以这一项换成制作组勾选；其余字段仍走通用控件。
+  const teamsPicker =
+    field.name === "official_team_ids" ? (
+      <OfficialTeamsPicker
+        value={value}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    ) : null;
+
   const { control, reveal, setReveal } = useFieldControl({
     field,
     value,
@@ -105,7 +117,7 @@ export function SettingField({
             </p>
           )}
         </div>
-        {control}
+        {teamsPicker ?? control}
         {onHistory && (
           <button
             type="button"
@@ -149,7 +161,7 @@ export function SettingField({
           </button>
         )}
       </div>
-      <div className="mt-2">{control}</div>
+      <div className="mt-2">{teamsPicker ?? control}</div>
       {askReveal && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[var(--r-sm)] border border-sun/60 bg-sun/10 p-2">
           <p className="text-[11px] font-bold text-ink">{s.revealConfirm}</p>
