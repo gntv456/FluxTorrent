@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         # 版本从根 package.json 的 packageManager 读取（与 lockfile 匹配；显式 version 会与其冲突）
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
