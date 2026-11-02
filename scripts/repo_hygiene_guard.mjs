@@ -13,6 +13,7 @@
 //      快照里解析到文件（mod x → x.rs 或 x/mod.rs，含目录链）。
 //   2) 迁移连续性：apps/api/migrations 已跟踪编号的最大值 = 全目录
 //      （含未跟踪）最大值——有未跟踪迁移就是断档（record_migration/
+//      2b) 同号迁移：一个编号两个文件（并行会话最容易撞），sqlx 启动即失败
 //      checksum 台账按编号顺序 apply）。
 //   3) include_bytes!/include_str! 的字面路径能否解析。
 //   4) pnpm workspace 成员 / tsconfig references 的目录存在性。
@@ -110,13 +111,35 @@ const trackedMigs = [...TRACKED]
   .map((f) => num(path.basename(f)))
   .filter((v) => v !== null);
 const diskMigs = [];
+const diskFiles = [];
 try {
   for (const f of readdirSync(path.join(ROOT, MIG_DIR))) {
     const v = num(f);
-    if (v !== null) diskMigs.push(v);
+    if (v !== null) {
+      diskMigs.push(v);
+      diskFiles.push(f);
+    }
   }
 } catch {
   diskMigs.push(0);
+}
+// ---------- 2b) 同号迁移（并行会话最容易撞的坑）----------
+// sqlx 按版本号记账：同一个号有两个文件，api 启动校验直接失败——
+// 表现与「未跟踪迁移入库」同级（现网崩溃循环）。断档查的是「缺号」，
+// 这一条查的是「重号」，两半都齐才算连续。
+const byNum = new Map();
+for (const f of diskFiles) {
+  const v = num(f);
+  if (!byNum.has(v)) byNum.set(v, []);
+  byNum.get(v).push(f);
+}
+for (const [v, list] of [...byNum.entries()].sort((a, b) => a[0] - b[0])) {
+  if (list.length > 1) {
+    problems.push(
+      `迁移重号：编号 ${v} 有 ${list.length} 个文件（${list.sort().join(" / ")}）` +
+      `——sqlx 按版本号记账，同号会让 api 启动即失败；后到的那个必须让号`,
+    );
+  }
 }
 const tMax = trackedMigs.length ? Math.max(...trackedMigs) : 0;
 const dMax = diskMigs.length ? Math.max(...diskMigs) : 0;
@@ -205,7 +228,7 @@ for (const file of TRACKED) {
 
 // ---------- 汇总 ----------
 if (problems.length > 0) {
-  console.error(`repo_hygiene_guard：${problems.length} 处「引用已提交、本体未 add」`);
+  console.error(`repo_hygiene_guard：${problems.length} 处仓库完整性问题（引用缺本体 / 迁移断档 / 重号）`);
   for (const p of problems) console.error("  - " + p);
   console.error(
     "\n修复：把上述文件 git add 进对应功能 commit。" +
