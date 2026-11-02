@@ -1,11 +1,13 @@
 import Link from "next/link";
+/* 首页移动端样式（2026-11-02 重设计）：路由级加载，只服务首页这一条路由
+   （同 arcade.css 的纪律：不挂 globals.css 根链让全站 90+ 页都下载）。 */
+import "@/app/styles/home-mobile.css";
 import { api, paged } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 import { dateLocale } from "@/i18n/config";
 import { getSiteProfile } from "@/lib/site-profile";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
-import { MobileHomeHeader } from "@/components/mobile-home-header";
 import {
   homeMeSummary,
   type HomeMeRaw,
@@ -87,7 +89,7 @@ export default async function HomePage() {
   const hasApproved = (homeData?.site_data?.torrents ?? 0) > 0;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="home-shell--mobile flex flex-col gap-4">
       {/* 置顶促销公告条：管理后台「置顶促销」配置的生效条目（标题可带链接/徽标） */}
       {promos.length > 0 && (
         <ul className="flex flex-col gap-1 rounded-[var(--r-md)] border border-sun/40 bg-sun/10 px-3 py-2">
@@ -115,11 +117,11 @@ export default async function HomePage() {
       {/* S1 语义修复：首页模块化布局无自然主标题——补唯一 sr-only h1
           （各区块头已由 h1 降为 h2），供 SEO 与读屏器锚定页面主题。 */}
       <h1 className="sr-only">{brandName}</h1>
-      {/* M3：<md 问候条 + 个人数据条 */}
-      <MobileHomeHeader brand={brandName} me={meSummary} />
       <HomeSections
         initialData={homeData}
         initialMods={profile?.modules ?? {}}
+        me={meSummary}
+        brand={brandName}
         latest={
           latest === null
             ? null

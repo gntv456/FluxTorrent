@@ -1,0 +1,938 @@
+/* ===== 首页移动端专用样式（2026-11-02 重设计） =====
+   路由级加载：只在 / （首页）import，挂在 globals.css 根链会让全站
+   90+ 页面都下载这十几 KB 无关样式（同 arcade.css 的纪律）。
+
+   改动起因：现网手机首页把每个板块都撑成 366px 满宽、逐个纵排，整页
+   3976px（视口 844 ⇒ 要滑 4.7 屏），第一块还是一张与「我」无关的 30 天
+   柱状图。本文件是手机端的新排版：
+     · 仪表盘（魔力 + 分享率处置线）取代问候条；
+     · 公告头条卡提到首屏；
+     · 签到压成一条，日历与万年历进抽屉；
+     · 聊天室进抽屉；
+     · 站点数据改两列网格 + 低位指标折叠；
+     · 30 天统计缩成 sparkline；海报墙改可滑轨（不再自动跑）。
+
+   纪律：色值一律走语义令牌（theme-tide.css），断点只用 md 档
+   （与 md:hidden 同口径 <768px），z-index 只用语义档。 */
+
+/* ============ 站点数据：桌面三列 / 手机两列网格 + 更多统计 ============ */
+.home-site-data__grid--m,
+.home-site-data__more {
+  display: none;
+}
+.home-site-data__more {
+  border-top: 1px solid var(--border-soft);
+}
+.home-site-data__more > summary {
+  padding: 9px 14px;
+  color: var(--sky);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.home-site-data__more > dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0 10px 12px;
+}
+
+/* ============ 手机端排布（单一 DOM，靠 order 重排） ============ */
+@media not all and (min-width: 768px) {
+  /* 桌面那几块在手机端让位给紧凑版（data-sec 是板块 key，home-sections 打标）。
+     隐去 = 整块不挂载：聊天室那块因此不再每 15 秒轮询。 */
+  .home-stack--mobile > .home-cell[data-sec="news"],
+  .home-stack--mobile > .home-cell[data-sec="attendance"],
+  .home-stack--mobile > .home-cell[data-sec="shoutbox"] {
+    display: none;
+  }
+  .mhome-hero {
+    order: -6;
+  }
+  .mhome-news-top {
+    order: -5;
+  }
+  .mhome-strip {
+    order: -4;
+  }
+  .mhome-quick {
+    order: -3;
+  }
+
+  /* 站点数据：满宽 15 行（691px）→ 两列 8 格 + 折叠 */
+  .home-site-data__grid {
+    display: none;
+  }
+  .home-site-data__grid--m {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 10px;
+  }
+  .home-site-data__grid--m .home-site-data__item {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 1px;
+    padding: 7px 9px;
+  }
+  .home-site-data__grid--m .home-site-data__item dt {
+    font-size: 11px;
+  }
+  .home-site-data__grid--m .home-site-data__item dd {
+    font-size: 14px;
+  }
+  .home-site-data__more {
+    display: block;
+  }
+  .home-site-data__more > summary {
+    font-size: 11.5px;
+  }
+
+  /* 海报墙：无限跑马灯改原生横滑（自动跑的动画在手机上既占位又抢注意力） */
+  .poster-marquee-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .poster-marquee {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ============ 折叠线渐隐：下一块被切时化进底色，不是硬边 ============
+   贴在底栏正上方（fixed）：底栏本身是 fixed，渐隐跟着视口走才对——
+   跟着文档走的渐隐在滚动后会落在页面末尾，等于没有。 */
+@media not all and (min-width: 768px) {
+  .home-shell--mobile::after {
+    content: "";
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    height: 38px;
+    z-index: 30;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      var(--surface-page)
+    );
+  }
+}
+
+/* ============ 仪表盘 ============ */
+.mhome-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  padding: 13px 14px 12px;
+  color: var(--text-on-accent);
+  background: linear-gradient(
+    140deg,
+    var(--sky-deep),
+    var(--sky) 62%,
+    var(--candy)
+  );
+  box-shadow: var(--shadow-card);
+}
+.mhome-hero__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.mhome-hero__lg {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: color-mix(in srgb, var(--text-on-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-on-accent) 28%, transparent);
+}
+.mhome-hero__hi {
+  flex: 1;
+  min-width: 0;
+}
+.mhome-hero__hi b {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.mhome-hero__hi i {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text-on-accent) 74%, transparent);
+}
+.mhome-hero__spark {
+  flex: none;
+  margin: 0;
+  text-align: right;
+}
+.mhome-hero__spark dt {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--text-on-accent) 74%, transparent);
+}
+.mhome-hero__spark dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+}
+.mhome-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 11px 0 0;
+}
+.mhome-hero__stats > div {
+  min-width: 0;
+  padding: 6px 8px 7px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--text-on-accent) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-on-accent) 16%, transparent);
+}
+.mhome-hero__stats dt {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--text-on-accent) 74%, transparent);
+}
+.mhome-hero__stats dd {
+  margin: 1px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 分享率处置线刻度条：柱子短于刻度线＝低于处置线 */
+.mhome-gauge {
+  margin-top: 9px;
+}
+.mhome-gauge__bar {
+  position: relative;
+  height: 5px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text-on-accent) 20%, transparent);
+}
+.mhome-gauge__bar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 99px;
+  background: var(--mint-soft);
+}
+.mhome-gauge__bar i.is-low {
+  background: var(--coral);
+}
+.mhome-gauge__bar u {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--text-on-accent);
+}
+.mhome-gauge__note {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: color-mix(in srgb, var(--text-on-accent) 82%, transparent);
+}
+.mhome-gauge__note.is-low {
+  color: var(--coral-soft);
+  font-weight: 600;
+}
+
+/* ============ 公告头条卡（手机端置顶） ============ */
+.mhome-news-top {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+.mhome-news-top__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 13px;
+  color: var(--text-on-accent);
+  background: repeating-linear-gradient(
+      45deg,
+      transparent 0 10px,
+      color-mix(in srgb, var(--text-on-accent) 16%, transparent) 10px 20px
+    ),
+    linear-gradient(90deg, var(--sky-deep), var(--sky));
+}
+.mhome-news-top__head h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+.mhome-news-top__head span {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.mhome-news-top__body {
+  padding: 11px 13px 9px;
+}
+.mhome-news-top__badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--sun);
+  background: var(--sun-soft);
+}
+.mhome-news-top__title {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-strong);
+}
+.mhome-news-top__sum {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mhome-news-top__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 13px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.mhome-news-top__unread {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--coral);
+  font-weight: 700;
+}
+.mhome-news-top__unread i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+
+/* ============ 快捷入口宫格 ============ */
+.mhome-quick {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 12px 8px 13px;
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+.mhome-quick__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 2px;
+  border-radius: var(--r-md);
+  color: var(--text-body);
+  text-decoration: none;
+}
+.mhome-quick__icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  color: var(--sky);
+  background: var(--sky-soft);
+}
+.mhome-quick__icon svg {
+  width: 19px;
+  height: 19px;
+}
+.mhome-quick__item span {
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mhome-quick__item.is-alt .mhome-quick__icon {
+  color: var(--sun);
+  background: var(--sun-soft);
+}
+.mhome-quick__item.is-alt2 .mhome-quick__icon {
+  color: var(--mint);
+  background: var(--mint-soft);
+}
+/* 聊天室＝活体入口（红点），与普通页面入口一眼分得开 */
+.mhome-quick__item.is-live .mhome-quick__icon {
+  position: relative;
+  color: var(--text-on-accent);
+  background: var(--coral);
+}
+.mhome-quick__item.is-live span {
+  color: var(--coral);
+}
+.mhome-quick__dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--sun);
+  border: 2px solid var(--surface-card);
+}
+
+/* ============ 签到条（手机端首屏） ============ */
+.mhome-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+.mhome-strip__ico {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  color: var(--sun);
+  background: var(--sun-soft);
+}
+.mhome-strip__ico svg {
+  width: 19px;
+  height: 19px;
+}
+.mhome-strip__txt {
+  flex: 1;
+  min-width: 0;
+}
+/* 直接子选择器：里程碑里的 <b> 是 <em> 的后代，不能被这条块级规则吃掉 */
+.mhome-strip__txt > b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.mhome-strip__txt > i {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mhome-strip__btn {
+  flex: none;
+  height: 32px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 99px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-on-accent);
+  background: linear-gradient(
+    135deg,
+    var(--brand-orange-bright),
+    var(--brand-orange-dark)
+  );
+  cursor: pointer;
+}
+.mhome-strip__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.mhome-strip__btn.is-done {
+  color: var(--mint);
+  background: var(--mint-soft);
+}
+
+/* ============ 30 天新增：迷你 sparkline ============ */
+.mhome-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px 13px 11px;
+}
+.mhome-spark__num {
+  flex: none;
+}
+.mhome-spark__num dt {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.mhome-spark__num dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.mhome-spark__num.is-a dd {
+  color: var(--sky);
+}
+.mhome-spark__num.is-b dd {
+  color: var(--sun);
+}
+.mhome-spark__bars {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 44px;
+}
+.mhome-spark__bars s {
+  flex: 1;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--border-deep);
+  text-decoration: none;
+}
+.mhome-spark__bars s.is-official {
+  background: var(--sky);
+}
+.mhome-spark__legend {
+  display: flex;
+  gap: 12px;
+  padding: 0 13px 11px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.mhome-spark__legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mhome-spark__legend em {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--border-deep);
+  font-style: normal;
+}
+.mhome-spark__legend em.is-official {
+  background: var(--sky);
+}
+
+/* ============ 公告头条卡：正文区是可点按钮（按钮默认样式要复位） ============ */
+.mhome-news-top__body {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ============ 万年历月历（签到日历抽屉内） ============ */
+.alm-cal {
+  padding: 10px 12px 8px;
+}
+.alm-cal__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.alm-cal__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.alm-cal__title em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.alm-cal__mv {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.alm-cal__wd {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.alm-cal__wd span {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.alm-cal__wd span.is-we {
+  color: var(--coral);
+}
+.alm-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.alm-cal__out {
+  min-height: 46px;
+}
+.alm-cal__cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-height: 46px;
+  padding: 3px 0 4px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.alm-cal__cell em {
+  display: block;
+  height: 9px;
+  font-style: normal;
+  font-size: 8px;
+  line-height: 1.15;
+  color: var(--mint);
+}
+.alm-cal__cell em.is-term {
+  color: var(--coral);
+}
+.alm-cal__cell b {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-strong);
+}
+.alm-cal__cell s {
+  font-size: 8px;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--text-faint);
+}
+.alm-cal__cell.is-done::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--mint);
+}
+.alm-cal__cell.is-sel {
+  background: var(--mint);
+}
+.alm-cal__cell.is-sel b {
+  color: var(--text-on-accent);
+  font-weight: 700;
+}
+.alm-cal__cell.is-sel s {
+  color: color-mix(in srgb, var(--text-on-accent) 78%, transparent);
+}
+.alm-cal__cell.is-sel em {
+  color: var(--text-on-accent);
+}
+.alm-cal__cell.is-sel.is-done::before {
+  background: var(--sun);
+}
+.alm-cal__legend {
+  display: flex;
+  gap: 12px;
+  padding: 8px 2px 0;
+  font-size: 9px;
+  color: var(--text-faint);
+}
+.alm-cal__legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.alm-cal__legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+}
+.alm-cal__legend i.is-done {
+  background: var(--mint);
+}
+.alm-cal__legend i.is-today {
+  background: var(--mint-soft);
+  border: 1px solid var(--mint);
+}
+.alm-cal__legend i.is-term {
+  background: var(--coral);
+}
+
+/* ============ 万年历明细 ============ */
+.alm-detail {
+  border-top: 1px solid var(--border-soft);
+  padding: 10px 13px 4px;
+}
+.alm-detail__solar {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.alm-detail__lunar {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.alm-detail__gz {
+  margin: 3px 0 8px;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.alm-detail__tri {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 0 0 8px;
+}
+.alm-detail__tri > div {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  padding: 5px 6px;
+  background: var(--surface-raised);
+}
+.alm-detail__tri dt {
+  font-size: 9px;
+  color: var(--text-faint);
+}
+.alm-detail__tri dd {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--mint);
+}
+.alm-detail__tri dd s {
+  font-weight: 500;
+  font-size: 9.5px;
+  text-decoration: none;
+  color: var(--text-faint);
+}
+.alm-detail__yj {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+.alm-detail__yj > b {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--text-on-accent);
+  background: var(--mint);
+}
+.alm-detail__yj.is-ji > b {
+  background: var(--coral);
+}
+.alm-detail__yj > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.alm-detail__yj s {
+  padding: 1.5px 6px;
+  border-radius: var(--r-sm);
+  font-size: 10px;
+  text-decoration: none;
+  color: var(--mint);
+  background: var(--mint-soft);
+}
+.alm-detail__yj.is-ji s {
+  color: var(--coral);
+  background: var(--coral-soft);
+}
+.alm-detail__jc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 7px 0 6px;
+}
+.alm-detail__jc s {
+  padding: 2px 5px;
+  border-radius: var(--r-sm);
+  font-size: 9.5px;
+  text-decoration: none;
+  color: var(--text-faint);
+  background: var(--surface-sunken);
+}
+.alm-detail__jc s.is-on {
+  color: var(--text-on-accent);
+  background: var(--mint);
+  font-weight: 700;
+}
+.alm-detail__pz {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.alm-detail__empty {
+  margin: 0;
+  padding: 14px 13px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ============ 签到条：里程碑进度 + 抽屉说明/操作行 ============ */
+.mhome-strip__txt {
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mhome-strip__ms {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 6px;
+}
+.mhome-strip__ms u {
+  display: block;
+  width: 82px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface-sunken);
+  text-decoration: none;
+}
+.mhome-strip__ms u i {
+  display: block;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--sun);
+}
+.mhome-strip__ms em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.mhome-strip__ms em b {
+  color: var(--sun);
+  font-weight: 700;
+}
+.mhome-sheet__note {
+  margin: 0;
+  padding: 0 13px 9px;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.mhome-sheet__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 13px 4px;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* ============ 新增资源统计：手机端压成一行三个数 + 44px sparkline ============
+   桌面是「3 个大数盒 + 112px 堆叠柱图」，在手机上占 406px 却与「我」无关。 */
+@media not all and (min-width: 768px) {
+  .home-resource-stats__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 12px 2px;
+  }
+  .home-resource-stats__metric {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .home-resource-stats__metric small {
+    display: none;
+  }
+  .home-resource-stats__metric strong {
+    font-size: 16px;
+  }
+  .home-resource-stats__legend {
+    grid-column: 1 / -1;
+    padding-top: 4px;
+  }
+  .home-resource-stats__chart {
+    height: 44px;
+    gap: 2px;
+  }
+  .rs-bar {
+    gap: 1px;
+  }
+}
+
+/* ============ 动效降级（UI 设计门禁第 5 条） ============
+   本文件只有一处动效声明（窄屏关掉海报墙跑马灯）；动效降级统一在这里
+   兜底：关动画时也别让任何 transition 残留。 */
+@media (prefers-reduced-motion: reduce) {
+  .poster-marquee {
+    animation: none;
+    transition: none;
+  }
+  .mhome-quick__item,
+  .alm-cal__cell {
+    transition: none;
+  }
+}
+
+/* ============ 手机端构件在桌面端一律不渲染 ============
+   这四个只在 <768px 出现。组件上已带 md:hidden，但本文件给它们写了
+   display（.mhome-strip 是 flex、.mhome-quick 是 grid），**同特异性下
+   后写的规则胜出** —— 会把 md:hidden 的 display:none 顶掉，桌面上就冒出
+   一排手机卡片。这条用两级类名（特异性高于各自的 display 声明），
+   无论写在文件哪个位置都压得住。 */
+@media (min-width: 768px) {
+  .home-stack--mobile .mhome-hero,
+  .home-stack--mobile .mhome-news-top,
+  .home-stack--mobile .mhome-strip,
+  .home-stack--mobile .mhome-quick {
+    display: none;
+  }
+}

@@ -92,7 +92,6 @@
  "apps/web/components/home-layout-editor.tsx::wide": 6,
  "apps/web/components/home-resource-stats.tsx::wide": 1,
  "apps/web/components/home-resub-button.tsx::wide": 5,
- "apps/web/components/home-site-data.tsx::wide": 1,
  "apps/web/components/icons.tsx": 705,
  "apps/web/components/icons.tsx::wide": 17,
  "apps/web/components/increment-bulk.tsx": 424,

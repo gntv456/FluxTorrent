@@ -36,8 +36,11 @@ interface BotCommand {
 }
 
 /** 聊天盒（shoutbox.php 复刻）：最近 50 条 + 发言框（1-300 字），15s 自动刷新
- *  0078：消息以 / 开头时额外调用 GET /shoutbox/bot/exec?cmd= 并把回话插入聊天流 */
-export function ShoutBox() {
+ *  0078：消息以 / 开头时额外调用 GET /shoutbox/bot/exec?cmd= 并把回话插入聊天流
+ *
+ *  2026-11-02：加 active 开关——手机端首页把聊天收进抽屉，抽屉外那份
+ *  （CSS 隐去）不该再每 15 秒轮询一次；抽屉里那份是独立实例，照常轮询。 */
+export function ShoutBox({ active = true }: { active?: boolean } = {}) {
   const { dict, locale } = useI18n();
   const t = dict.shoutbox;
   const tb = dict.shoutbot;
@@ -72,12 +75,13 @@ export function ShoutBox() {
     }
   }, []);
   useEffect(() => {
+    if (!active) return;
     load();
     timer.current = setInterval(load, 15000);
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [load]);
+  }, [load, active]);
 
   // 命令列表（占位提示 + 快捷按钮）；失败静默
   useEffect(() => {

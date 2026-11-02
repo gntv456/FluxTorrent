@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
+import { useIsCompact } from "@/lib/hooks/use-media";
 import { PosterImage } from "@/components/poster-image";
 
 /** 海报卡片数据（首页最新种子投影） */
@@ -73,11 +74,17 @@ function PosterCard({
   );
 }
 
-/** 首页「最新资源」海报墙：匀速横向滚动，悬停暂停 + 海报放大显示名称与评分 */
+/** 首页「最新资源」海报墙：横向滚动。
+ *
+ *  桌面是匀速无限跑马灯（悬停暂停 + 海报放大显示名称与评分）；手机端改成
+ *  原生横滑（CSS 关掉动画）——自动跑的动画在手机上既占位又抢注意力，
+ *  而且用户根本停不下来。窄屏不复制第二份内容（复制是跑马灯无缝的实现手段，
+ *  手动滑不需要），所以按 compact 只渲染一份。 */
 export function LatestPosters({ items }: { items: PosterItem[] }) {
   const { dict } = useI18n();
+  const compact = useIsCompact();
   if (items.length === 0) return null;
-  const loop = [...items, ...items]; // 双份内容实现无缝循环
+  const loop = compact ? items : [...items, ...items];
   return (
     <div className="poster-marquee-wrap overflow-x-hidden">
       <div
