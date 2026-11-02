@@ -15,6 +15,7 @@ import { getDict } from "@/i18n/server";
 import { formatBytes } from "@/lib/format";
 import { dateLocale } from "@/i18n/config";
 import { PosterImage } from "@/components/poster-image";
+import { posterSrc } from "@/lib/poster-src";
 import { WorkRelatedGrid } from "@/components/work-related-grid";
 import { WorkSeedRows } from "@/components/work-seed-rows";
 import { WorkIds } from "@/components/work-ids";
@@ -117,8 +118,12 @@ export default async function WorkDetailPage({
   const title = workTitle(w.name);
   const cat = prof.cats[w.category_id] ?? "";
   // Hero 磨砂底图（0400）：海报模糊 + 遮罩深度，后台「外观与主题」可调
+  // 豆瓣图床防盗链（2026-11）：hero 底图同样走 api 代理（lib/poster-src）
   const heroBg = poster
-    ? { backgroundImage: `url(${poster})`, filter: `blur(${prof.hero.blur}px)` }
+    ? {
+        backgroundImage: `url(${posterSrc(poster)})`,
+        filter: `blur(${prof.hero.blur}px)`,
+      }
     : undefined;
   const syn = (meta?.synopsis ?? w.synopsis ?? "").trim();
   const detail = (w.detail ?? meta?.synopsis ?? "").trim();

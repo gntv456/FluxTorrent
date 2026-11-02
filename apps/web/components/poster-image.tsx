@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/icons";
+import { posterSrc } from "@/lib/poster-src";
 
 /** 海报/封面统一渲染件（海报逻辑收敛：此前 5 处各自 <img> + 手写回退）。
  *  统一行为：2:3 海报口径宽高比 + object-cover + --surface-sunken 占位底、
@@ -53,6 +54,9 @@ export function PosterImage({
   fallback?: React.ReactNode;
 }) {
   const [broken, setBroken] = useState(false);
+  // 豆瓣图床防盗链（2026-11）：外链图床一律改走 api 代理出站
+  // （见 lib/poster-src）；站内/相对路径原样直出
+  const realSrc = posterSrc(src);
   const cls = [
     SIZE_CLS[size],
     "aspect-[2/3] object-cover bg-[var(--surface-sunken)]",
@@ -62,11 +66,11 @@ export function PosterImage({
     .filter(Boolean)
     .join(" ");
 
-  if (src && !broken) {
+  if (realSrc && !broken) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={src}
+        src={realSrc}
         alt={alt}
         loading="lazy"
         decoding="async"

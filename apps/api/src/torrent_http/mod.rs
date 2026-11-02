@@ -42,6 +42,7 @@ mod trump_admin;
 mod works;
 mod works_detail;
 mod works_filter;
+mod works_poster_proxy;
 mod works_rows_sql;
 pub(crate) mod works_sql;
 
@@ -74,6 +75,7 @@ pub use trump::*;
 pub use trump_admin::*;
 pub use works::*;
 pub use works_detail::*;
+pub use works_poster_proxy::*;
 pub(crate) use works_watch::work_watch;
 // ===== F4 utoipa 聚合出口（种子域 38 条路由的 #[utoipa::path] 入口）====
 // openapi_http 的 OpenApi 聚合要从 crate 外部引用这些 handler，
