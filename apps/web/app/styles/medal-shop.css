@@ -444,6 +444,40 @@
 .spec li b.is-price {
   color: var(--text-brand);
 }
+
+/* 窄屏规格摘要行（2026-11-02 手机端改造）
+   六行规格表在 390px 屏上把单卡拉到约 440px，二十枚就是十屏。窄屏收成
+   一行摘要（获取方式 · 价格 · 加成），点「详情」才展开完整规格（展开逻辑
+   在 medal-card.tsx；规格表仍只有一份 DOM，桌面端照旧常驻）。 */
+.mcard-sum {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.mcard-sum b {
+  font-weight: 700;
+  color: var(--text-body-deep);
+}
+.mcard-sum b.is-price {
+  color: var(--text-brand);
+}
+.mcard-sum b.is-bonus {
+  color: var(--sun);
+}
+.mcard-sum__more {
+  margin-left: auto;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--sky);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .mcard-ft {
   display: flex;
   align-items: center;

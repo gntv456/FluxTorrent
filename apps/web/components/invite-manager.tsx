@@ -6,6 +6,8 @@ import { useI18n } from "@/i18n/client";
 import { InviteQuotaPanel } from "@/components/invite-quota-panel";
 import { InviteeList, type Invitee } from "@/components/invite-invitees";
 import { InviteList, SendEmailDialog } from "@/components/invite-manager-parts";
+import { useInviteIssue } from "@/components/invite-manager-actions";
+import { useIsCompact } from "@/lib/hooks/use-media";
 import { clientUuid } from "@/lib/client-uuid";
 import { toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -51,12 +53,15 @@ export interface InviteStatus {
 export function InviteManager() {
   const { dict, currency } = useI18n();
   const t = dict.invites;
-  const inviteIdemRef = useRef<string | null>(null);
   const [status, setStatus] = useState<InviteStatus | null>(null);
   const [invites, setInvites] = useState<InviteItem[] | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<number | null>(null);
+  // 窄屏列表改卡片后，50 条一页在 390px 屏上仍然太长 ⇒ 手机每页 10 条
+  // （后端 /invites 的 per 参数，缺省仍是 50，桌面行为不变）。
+  const compact = useIsCompact();
+  const per = compact ? 10 : 50;
   const listSeqRef = useRef(0);
   const [invitees, setInvitees] = useState<Invitee[] | null>(null);
   const [inviteeTotal, setInviteeTotal] = useState(0);
@@ -75,7 +80,7 @@ export function InviteManager() {
     setInviteeErr(null);
     try {
       const r = await api.get<InviteeEnvelope>(
-        `/api/v1/invites/invitees?page=${p}`,
+        `/api/v1/invites/invitees?page=${p}&per=${per}`,
       );
       setInvitees(r.items);
       setInviteeTotal(r.total);
@@ -84,12 +89,13 @@ export function InviteManager() {
       setInviteeErr(e);
       setInvitees([]);
     }
-  }, []);
+  }, [per]);
   // W-19：撤销确认（ConfirmDialog；原 window.confirm + flash 行内提示
   // 一并退役——反馈走 toast 协议）
   const [askRevoke, setAskRevoke] = useState<InviteItem | null>(null);
-  const [busy, setBusy] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  // 发邮件有自己的闸（与生成/兑换互不相干）
+  const [mailBusy, setMailBusy] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [sendFor, setSendFor] = useState<InviteItem | null>(null);
   const [sendEmail, setSendEmail] = useState("");
@@ -109,7 +115,7 @@ export function InviteManager() {
       const [st, list] = await Promise.all([
         api.get<InviteStatus>("/api/v1/invites/status"),
         api.get<InvitesEnvelope>(
-          `/api/v1/invites?page=${p}${statusQ}`,
+          `/api/v1/invites?page=${p}&per=${per}${statusQ}`,
         ),
       ]);
       if (seq !== listSeqRef.current) return;
@@ -124,40 +130,16 @@ export function InviteManager() {
     }
     // 被邀请人独立分页：不跟邀请记录的 page 联动，两张表各翻各的
     void refreshInvitees();
-  }, [dict, filter, flashErr, refreshInvitees]);
+  }, [dict, filter, flashErr, refreshInvitees, per]);
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  async function issue() {
-    setBusy(true);
-    try {
-      const r = await api.post<{ code: string }>("/api/v1/invites", {});
-      flash(r.code);
-      await refresh();
-    } catch (e) {
-      flashErr(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function redeem() {
-    setBusy(true);
-    try {
-      // 幂等键：每次点击生成新 UUID（与 /shop/buy 同口径，防网络重试双扣款）
-      const r = await api.post<{ code?: string; replayed?: boolean }>(
-        "/api/v1/invites/redeem",
-        { idempotency_key: (inviteIdemRef.current ??= clientUuid()) },
-      );
-      flash(r.code ?? t.replayed);
-      await refresh();
-    } catch (e) {
-      flashErr(e instanceof ApiError ? e.message : dict.common.networkError);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const issueAct = useInviteIssue({
+    onDone: () => refresh(),
+    onError: (msg) => flashErr(msg || dict.common.networkError),
+    replayedText: t.replayed,
+  });
 
   async function copyCode(inv: InviteItem) {
     try {
@@ -186,7 +168,7 @@ export function InviteManager() {
 
   async function sendMail() {
     if (!sendFor) return;
-    setBusy(true);
+    setMailBusy(true);
     try {
       await api.post("/api/v1/invites/email", {
         invite_id: sendFor.id,
@@ -199,7 +181,7 @@ export function InviteManager() {
     } catch (e) {
       flashErr(e instanceof ApiError ? e.message : dict.common.networkError);
     } finally {
-      setBusy(false);
+      setMailBusy(false);
     }
   }
 
@@ -218,10 +200,10 @@ export function InviteManager() {
         levelOk={levelOk}
         quotaLeft={quotaLeft}
         canIssue={canIssue}
-        busy={busy}
+        busy={issueAct.busy}
         filter={filter}
-        onIssue={issue}
-        onRedeem={redeem}
+        onIssue={issueAct.issue}
+        onRedeem={issueAct.redeem}
         onFilter={(f) => setFilter((cur) => (cur === f ? null : f))}
       />
 
@@ -241,13 +223,13 @@ export function InviteManager() {
           onRevoke={(inv) => setAskRevoke(inv)}
         />
       )}
-      {/* 分页（0204：50/页） */}
-      {total > 50 && (
+      {/* 分页（0204：桌面 50/页；窄屏 10/页，见 per） */}
+      {total > per && (
         <Pager
           layout="compact"
           page={page}
-          pages={Math.ceil(total / 50)}
-          posLabel={`${page} / ${Math.ceil(total / 50)}`}
+          pages={Math.ceil(total / per)}
+          posLabel={`${page} / ${Math.ceil(total / per)}`}
           onStep={(p) => void refresh(p)}
         />
       )}
@@ -265,6 +247,7 @@ export function InviteManager() {
           t={t}
           total={inviteeTotal}
           page={inviteePage}
+          per={per}
           onPage={refreshInvitees}
           emptyTitle={dict.ui.emptyTitle}
           emptyDesc={dict.ui.emptyDesc}
@@ -277,7 +260,7 @@ export function InviteManager() {
           sendFor={sendFor}
           sendEmail={sendEmail}
           setSendEmail={setSendEmail}
-          busy={busy}
+          busy={mailBusy}
           onClose={() => setSendFor(null)}
           onSend={sendMail}
         />

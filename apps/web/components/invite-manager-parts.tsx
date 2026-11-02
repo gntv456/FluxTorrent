@@ -9,6 +9,7 @@ import { dateLocale } from "@/i18n/config";
 import type { InviteItem } from "@/components/invite-manager";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { InviteCards } from "@/components/invite-manager-cards";
 
 /** 邀请管理展示件（从 invite-manager.tsx 按域拆出）：
  *  邀请码列表表格 + 发送邀请邮件弹层（数据装载与动作留在原文件）。 */
@@ -77,7 +78,9 @@ export function InviteList({
           />
         </div>
       ) : (
-      <div className="brand-wide-table-scroll">
+      <>
+      {/* 桌面：五列表格（窄屏会横向溢出 220px，故另给一套卡片） */}
+      <div className="brand-wide-table-scroll hidden sm:block">
         <table className="nexus-table">
         <tbody>
           <tr>
@@ -161,6 +164,16 @@ export function InviteList({
           </tbody>
         </table>
       </div>
+      {/* 手机：卡片（码 / 状态 / 去向 / 到期 / 操作） */}
+      <InviteCards
+        invites={invites}
+        copiedId={copiedId}
+        busyId={busyId}
+        onCopy={onCopy}
+        onSend={onSend}
+        onRevoke={onRevoke}
+      />
+      </>
       )}
     </section>
   );

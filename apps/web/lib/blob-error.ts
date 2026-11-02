@@ -3,8 +3,8 @@ import {
   acceptLanguage,
   baseUrl,
   csrfHeaderAsync,
-  netMsg,
 } from "@/lib/api-client";
+import { netMsg } from "@/lib/net-msg";
 import type { ApiEnvelope } from "@fluxtorrent/domain-types";
 
 /** 失败响应归一化（批二百零三）：JSON 口与 blob 口共用一把尺。

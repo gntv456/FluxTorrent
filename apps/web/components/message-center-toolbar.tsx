@@ -24,6 +24,9 @@ export function ToolbarSwitcher({
   onToggleManage,
   managing,
   onCompose,
+  moreOpen,
+  onToggleMore,
+  bulk,
 }: {
   t: ReturnType<typeof useI18n>["dict"]["messages"];
   box: "inbox" | "sent";
@@ -39,6 +42,12 @@ export function ToolbarSwitcher({
   onToggleManage: () => void;
   managing: boolean;
   onCompose: () => void;
+  /** 窄屏「⋯」面板是否展开（2026-11-02：手机端把「只看未读 + 批量操作」
+   *  收进这个面板，桌面端不显示该按钮）。 */
+  moreOpen: boolean;
+  onToggleMore: () => void;
+  /** 批量操作条节点（窄屏放进「⋯」面板；桌面端由 MessageCenter 单独渲染） */
+  bulk?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -110,7 +119,7 @@ export function ToolbarSwitcher({
               placeholder={t.searchPh}
               className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm"
             />
-            <label className="flex min-h-[44px] items-center gap-1 text-xs text-sub">
+            <label className="hidden min-h-[44px] items-center gap-1 text-xs text-sub sm:flex">
               <input
                 type="checkbox"
                 checked={onlyUnread}
@@ -127,7 +136,43 @@ export function ToolbarSwitcher({
         >
           {t.compose}
         </button>
+        {/* 窄屏：把「只看未读 + 批量操作」收进「⋯」，别让操作条占掉第一整屏 */}
+        <button
+          type="button"
+          onClick={onToggleMore}
+          aria-expanded={moreOpen}
+          title={t.moreActions}
+          className={
+            "inline-flex h-11 w-11 items-center justify-center " +
+            "rounded-[10px] border border-[var(--brand-line)] " +
+            "bg-[var(--row-veil-soft)] text-ink sm:hidden"
+          }
+        >
+          <Icon name="more" size={18} />
+        </button>
       </div>
+      {moreOpen && (
+        <div
+          className={
+            "flex w-full flex-col gap-2 rounded-[var(--r-md)] " +
+            "border border-[var(--brand-line)] p-2 sm:hidden"
+          }
+        >
+          {box === "inbox" && (
+            <label
+              className="flex min-h-[44px] items-center gap-2 text-xs text-sub"
+            >
+              <input
+                type="checkbox"
+                checked={onlyUnread}
+                onChange={(e) => setOnlyUnread(e.target.checked)}
+              />
+              {t.onlyUnread}
+            </label>
+          )}
+          {bulk}
+        </div>
+      )}
     </div>
   );
 }

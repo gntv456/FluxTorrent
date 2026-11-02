@@ -3,6 +3,7 @@
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
+import { noticeText } from "@/components/message-center-notice";
 import dynamic from "next/dynamic";
 
 // W-33 代码分割：markdown-lite 渲染器（含视频内嵌客户端件）只在
@@ -66,25 +67,7 @@ export function MessageTable({
   const t = dict.messages;
   // 0288 / P1-9：系统通知带 kind 时按键现取译文 + 插值（切语言翻得动）；
   // 命中不到键（老消息、未知 kind）就回落后端存的成品文本。
-  const NOTICE: Record<string, { s: string; b: string }> = {
-    review_approved: { s: t.kindReviewApproved, b: t.bodyReviewApproved },
-    review_rejected: { s: t.kindReviewRejected, b: t.bodyReviewRejected },
-    group_new_version: { s: t.kindGroupNewVersion, b: t.bodyGroupNewVersion },
-    network_new_release: {
-      s: t.kindNetworkNewRelease,
-      b: t.bodyNetworkNewRelease,
-    },
-    subgroup_new_release: {
-      s: t.kindSubgroupNewRelease,
-      b: t.bodySubgroupNewRelease,
-    },
-  };
-  const keyed = (m: MessageRow, part: "s" | "b", fallback: string) => {
-    const k = m.kind ? NOTICE[m.kind] : undefined;
-    if (!k) return fallback;
-    const p = (m.params ?? {}) as Record<string, unknown>;
-    return k[part].replace(/\{(\w+)\}/g, (_x, key) => String(p[key] ?? ""));
-  };
+  // 取词逻辑与手机卡片共用（message-center-notice.ts），别各写一份。
   return (
     <table className="nexus-table">
       <thead>
@@ -151,12 +134,14 @@ export function MessageTable({
                       🔔
                     </span>
                   )}
-                  {keyed(m, "s", m.subject)}
+                  {noticeText(t, m, "s", m.subject)}
                 </button>
                 {openId === m.id && (
                   <div className="mt-2 rounded-[var(--r-sm)] border border-dashed border-[var(--brand-line)] bg-[var(--brand-cream)] p-2">
                     <div className="text-sm">
-                      <MarkdownRenderer source={keyed(m, "b", m.body)} />
+                      <MarkdownRenderer
+                    source={noticeText(t, m, "b", m.body)}
+                  />
                     </div>
                     <p className="mt-1 text-[12px] text-sub md:hidden">
                       {cp} · {time}

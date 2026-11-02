@@ -5,34 +5,14 @@ import { ApiError } from "@/lib/api-error";
 export { ApiError };
 import { apiServerBase } from "@/lib/api-upstream";
 import { blobRequest, toApiError } from "@/lib/blob-error";
-import { zhCN } from "@/i18n/zh-CN";
+import { netMsg } from "@/lib/net-msg";
+
+export { netMsg };
 
 /**
  * 统一 API 客户端（方案 §8.3.2：组件内禁止裸 fetch）。
  * 双地址：服务端 RSC 用内网直连（API_SERVER_URL），浏览器用公开地址（NEXT_PUBLIC_API_URL）。
  */
-
-/** 网络层兜底文案（i18n 收口批）：api-client 不在 React 树内拿不到
- *  LocaleProvider 字典，这里按 locale cookie 取对应字典的网络段；
- *  取不到（SSR 无 cookie 等）回落 zh-CN 源字典。en/zh-TW 字典整本
- *  数千键，顶层静态 import 会把它拖进每个页面的 bundle——按需
- *  require（webpack 分包）只在此分支命中时加载。 */
-const NET_DICTS: Record<string, () => { errors?: Record<string, string> }> = {
-  en: () => require("@/i18n/en").en as { errors?: Record<string, string> },
-  "zh-TW": () =>
-    require("@/i18n/zh-TW").zhTW as { errors?: Record<string, string> },
-};
-export function netMsg(
-  locale: string | undefined,
-  key: "httpServerError" | "httpDownloadFail" | "httpPleaseLogin",
-): string {
-  const load = locale ? NET_DICTS[locale] : undefined;
-  if (load) {
-    const v = load().errors?.[key];
-    if (v) return v;
-  }
-  return (zhCN.errors as unknown as Record<string, string>)?.[key] ?? "";
-}
 
 /** 浏览器侧：登录/登出时同步会话标记 cookie（12h，与 JWT 24h 保守对齐）。
  *  安全收敛（P1）：token 已不再进 localStorage/JS 可读 cookie——登录接口经
@@ -136,7 +116,12 @@ export const rawFetchHelpers = {
   csrf: (method?: string) => csrfHeaderAsync(method, null),
 };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  /** 分页头回收袋（见 pagedGet）：调用方给一个空壳，这里回填。 */
+  meta?: { total?: number | null; hasMore?: boolean },
+): Promise<T> {
   // 凭证（P1 收敛）：token 不再进 localStorage。浏览器依赖登录时 Set-Cookie 的
   // HttpOnly flux_token（同源 rewrites 转发，fetch 默认同源携带 cookie）；
   // 服务端 RSC 走 API_SERVER_URL 跨源直连，cookie 不随行——改为显式转发
@@ -186,6 +171,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw await toApiError(res, netMsg(lang, "httpServerError"));
   }
   const body = (await res.json()) as ApiEnvelope<T>;
+  // 分页头（X-Total-Count / X-Has-More）：部分列表接口把总数放在响应头里
+  // 而不是改 body 形状（body 形状被多个消费方共享，改了就打断它们）。
+  if (meta) {
+    const tc = res.headers.get("x-total-count");
+    meta.total = tc === null ? null : Number(tc);
+    meta.hasMore = res.headers.get("x-has-more") === "1";
+  }
   if (body.code !== 0) {
     // 全局 401（审计修复 P1）：token 过期/被吊销时旧版只抛错，用户停留在
     // 「僵尸会话」页反复报错。清会话并带回跳地址跳登录页（登录页自身的
@@ -270,6 +262,21 @@ export const api = {
     });
   },
 };
+
+/** 带分页头的 GET：数据形状不变（旧消费方零改动），另给总数与是否还有下一批。
+ *
+ *  后端的消息中心把总数放在 X-Total-Count / X-Has-More 两个响应头里
+ *  （body 是数组，被消息中心、通知中心、staff-box 三处同时消费，改形状
+ *  会一次打断三处）。此前没有消费方，于是「角标写 120、列表只 100 条」
+ *  那个缺口一直没人补——头一直在发，只是没人读。
+ */
+export async function pagedGet<T>(
+  path: string,
+): Promise<{ items: T[]; total: number | null; hasMore: boolean }> {
+  const meta = { total: null as number | null, hasMore: false };
+  const items = await request<T[]>(path, undefined, meta);
+  return { items, total: meta.total, hasMore: meta.hasMore };
+}
 
 /** 游标分页列表 */
 export async function paged<T, P extends Page<T> = Page<T>>(

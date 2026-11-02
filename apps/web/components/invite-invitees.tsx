@@ -28,6 +28,7 @@ export function InviteeList({
   t,
   total,
   page,
+  per,
   onPage,
   emptyTitle,
 }: {
@@ -35,12 +36,14 @@ export function InviteeList({
   t: Record<string, string>;
   total: number;
   page: number;
+  /** 页大小（桌面 50 / 窄屏 10） */
+  per: number;
   onPage: (p: number) => void;
   /** 空列表时面板仍在，只把表体换成这句话 */
   emptyTitle?: string;
   emptyDesc?: string;
 }) {
-  const pages = Math.ceil(total / 50);
+  const pages = Math.ceil(total / per);
   return (
     // 2026-10-17 对齐样图集 § tplInvite（panelFlat）：与邀请码表同样包一层
     // 既有 .brand-panel 原语（原来是裸 section + h2），标题走
@@ -53,7 +56,43 @@ export function InviteeList({
         <p className="p-4 text-center text-sm text-sub">{emptyTitle ?? "—"}</p>
       )}
       {invitees.length > 0 && (
-        <div className="brand-wide-table-scroll">
+        <>
+        {/* 手机：卡片（桌面那张五列表格在 390px 屏上要横滑才看得全） */}
+        <ul className="flex flex-col gap-2 p-2 sm:hidden">
+          {invitees.map((u) => (
+            <li
+              key={u.id}
+              className={
+                "rounded-[var(--r-md)] border border-[var(--brand-line)] " +
+                "bg-[var(--brand-paper)] p-3"
+              }
+            >
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/users/${u.id}`}
+                  className="text-[13px] font-bold text-sky-deep"
+                >
+                  {u.username}
+                </a>
+                {u.status >= 2 && (
+                  <Badge tone="neutral">{t.invBanned}</Badge>
+                )}
+                <span className="ml-auto text-[10.5px] text-sub">
+                  {u.class_name ?? "—"}
+                </span>
+              </div>
+              <p className="mt-1 text-[10.5px] text-sub">
+                {t.invUploaded} {fmtBytes(u.uploaded)}
+                {" · "}
+                {t.invDownloaded} {fmtBytes(u.downloaded)}
+                {" · "}
+                {new Date(u.created_at).toLocaleDateString()}
+              </p>
+            </li>
+          ))}
+        </ul>
+        {/* 桌面：五列表格 */}
+        <div className="brand-wide-table-scroll hidden sm:block">
           <table className="nexus-table">
             <tbody>
               <tr>
@@ -89,6 +128,7 @@ export function InviteeList({
             </tbody>
           </table>
         </div>
+        </>
       )}
       {pages > 1 && (
         <div className="p-3 pt-0">
