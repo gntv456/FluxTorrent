@@ -70,7 +70,7 @@ export function AdminTagDict() {
   return (
     <div className="flex flex-col gap-3">
       {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+        <p className="rounded-[var(--r-md)] bg-[var(--sky-soft)] p-3 text-sm text-ink">
           {msg}
         </p>
       )}
