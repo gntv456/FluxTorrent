@@ -133,6 +133,18 @@
 .libmenu:focus-within > .mainmenu-drop {
   display: grid;
 }
+/* 悬停桥（2026-11-02 站长报「鼠标一移动就消失」）：面板 top=
+   100%+10px，鼠标从一级条目下移会先落进这段 10px 空隙——li:hover
+   在空隙里当场断开，面板还没等人到就收起了。补一条同宽透明伪元素
+   把空隙并进 li 的命中区；只在 hover 时生成，不挡下方点击。 */
+.libmenu:hover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
 .mainmenu-drop--lib {
   min-width: min(560px, calc(100vw - 48px));
 }
