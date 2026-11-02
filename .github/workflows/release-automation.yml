@@ -75,10 +75,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ github.event.workflow_run.head_branch }}"
-          # 已有同 tag release（非 draft）则只补 latest 标记，不重复发
-          if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
-            # drafter 建的是 draft：GitHub 不许 draft 标 latest，先转正
-            gh release edit "$TAG" -R "${{ github.repository }}"               --draft=false --latest
+          # 已有同 tag release 则只补 latest 标记，不重复发。三态：
+          #   非 draft → 直接 --latest 补标记（幂等）
+          #   draft    → 先转正再标 latest。⚠️ 必须两条命令：gh release edit
+          #              把 --draft=false --latest 合在一条时，gh 对已存在
+          #              release 先发 make_latest 再发 draft=false（或反之），
+          #              API 拒绝「Latest release cannot be draft」422——
+          #              v0.5.4 实测踩坑，webhook 部署通知整步被跳过。
+          #   不存在   → create --latest 一步到位
+          if gh release view "$TAG" -R "${{ github.repository }}" \
+              --json isDraft --jq '.isDraft' 2>/dev/null | grep -q true; then
+            gh release edit "$TAG" -R "${{ github.repository }}" --draft=false
+            gh release edit "$TAG" -R "${{ github.repository }}" --latest
+          elif gh release view "$TAG" -R "${{ github.repository }}" \
+              >/dev/null 2>&1; then
+            gh release edit "$TAG" -R "${{ github.repository }}" --latest
           else
             gh release create "$TAG" -R "${{ github.repository }}" \
               --title "$TAG" --latest \
