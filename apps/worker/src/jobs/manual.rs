@@ -14,9 +14,14 @@ pub(crate) async fn run_named(
     Ok(match name {
         "expire_promotions" => n(expire_promotions(db).await?),
         "magic_pool_promo" => n(magic_pool_promo(db).await?),
+        // 1ede84ff 把这三条登记进了 catalog（面板因此看得见、给按钮），
+        // 但分派臂一直没补 ⇒ 点「执行」永远拿「未知任务 X」。接的是 worker
+        // 本体同一函数（文件头 G7 的口径），不是第二份 SQL。
+        "announce_site_promos" => n(announce_site_promos(db).await?),
         "preserve_exit" => n(preserve_exit(db).await?),
         "consume_announce" => n(consume_announce(db, redis).await?),
         "consume_agent_blocks" => n(consume_agent_blocks(db, redis).await?),
+        "consume_xreport" => n(consume_xreport(db, redis).await?),
         "backfill_pieces_hash" => n(backfill_pieces_hash(db).await?),
         "sweep_stale_peers" => n(sweep_stale_peers(db).await?),
         "collect_milestones" => n(collect_milestones(db).await?),
@@ -72,6 +77,9 @@ pub(crate) async fn run_named(
         "social_team_settle" => n(social_team_settle(db).await?),
         "social_team_expire" => n(social_team_expire(db).await?),
         "jixiao_settle" => n(jixiao_settle(db).await?),
+        // 月度契约结算（0424）：tick1d 早已在跑（job:contract_settle 同一把锁），
+        // 手触缺臂——面板「执行」下去只得到「未知任务」。
+        "contract_settle" => n(contract_settle(db).await?),
         "preserve_settle" => n(preserve_settle(db).await?),
         "funding_settle" => n(funding_settle(db).await?),
         "refundable_settle" => n(refundable_settle(db).await?),
