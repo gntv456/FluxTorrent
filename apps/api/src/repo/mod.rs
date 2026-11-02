@@ -270,7 +270,8 @@ impl Repo {
         }
     }
 }
-pub mod auth;pub mod categories;
+pub mod auth;
+pub mod categories;
 pub mod cheat_accuracy;
 pub mod cheat_appeals;
 pub mod cheat_reverse;
