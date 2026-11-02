@@ -77,7 +77,8 @@ jobs:
           TAG="${{ github.event.workflow_run.head_branch }}"
           # 已有同 tag release（非 draft）则只补 latest 标记，不重复发
           if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release edit "$TAG" -R "${{ github.repository }}" --latest
+            # drafter 建的是 draft：GitHub 不许 draft 标 latest，先转正
+            gh release edit "$TAG" -R "${{ github.repository }}"               --draft=false --latest
           else
             gh release create "$TAG" -R "${{ github.repository }}" \
               --title "$TAG" --latest \
