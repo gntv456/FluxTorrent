@@ -18,9 +18,13 @@ export type NavGroup = { group: string; items: NavItem[] };
 export type MenuItem = Awaited<ReturnType<typeof getMenuItems>>[number];
 
 /** 顶级分类（无 parent 的）：资源库下拉的三级叶子数据源。
- *  上限 12 个防长尾站型把下拉撑爆（超出走「全部分类」进列表页筛）。 */
+ *  上限防长尾站型把下拉撑爆（超出走「全部分类」进列表页筛）。
+ *  14 = 内置最大包（综合站 13 类，0455 加了短剧/有声书/教育资源）+ 1 余量：
+ *  内置分类被自己的上限截掉、只能去列表页筛，是产品缺角不是降级设计。
+ *  这条由 scripts/pt_audit_m_cat_key_audit.py 的 M5 判据钉住（包分类数
+ *  超过上限即红），别再靠人记。 */
 export type LibraryCat = { id: number; name: string };
-const LIB_CAT_CAP = 12;
+export const LIB_CAT_CAP = 14;
 
 /** 资源库下拉（站长定调 2026-10-31）：二级=全部/资源/官种，
  *  三级=全部 + 站型顶级分类。资源=非官种（official=0），官种=official=1，

@@ -61,6 +61,33 @@ for ln in rows:
                         % (code, key, pnewnz, cnewnz))
 
 print("已物化分类 %d 条（当前站型 %s）" % (len(rows), CURRENT))
+
+# ---- M5：内置包分类数 vs 资源库导航上限（LIB_CAT_CAP）----
+# 0455 把综合站加到 13 类，而上限当时是 12 ⇒ 「教育资源」从导航里被截掉，
+# 只能去列表页筛。内置分类被自己的常量截掉不是降级设计，是产品缺角。
+# 上限读前端常量（不在此写死第二个数），两边任一改动都会在这里对上。
+import os  # noqa: E402
+import re  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+nav_src = open(os.path.join(ROOT, "apps", "web", "lib", "nav-menu.ts"),
+               encoding="utf-8", errors="replace").read()
+mcap = re.search(r"LIB_CAT_CAP\s*=\s*(\d+)", nav_src)
+cap = int(mcap.group(1)) if mcap else 0
+packs = []
+PACK_COUNTS_SQL = ("SELECT code || '|' || jsonb_array_length(categories) "
+                   "FROM site_type_packs ORDER BY "
+                   "jsonb_array_length(categories) DESC, code")
+for ln in psql(PACK_COUNTS_SQL).splitlines():
+    if "|" in ln:
+        code, n = ln.split("|")
+        packs.append((code.strip(), int(n)))
+over = ["%s=%d 类 > 上限 %d" % (c, n, cap) for c, n in packs if n > cap]
+if not mcap:
+    over.append("nav-menu.ts 里找不到 LIB_CAT_CAP（常量被改名/删除，判据失效）")
+print("M5 导航上限 %s；最大内置包 %s" % (
+    cap, ("%s=%d" % packs[0]) if packs else "?"))
+
 if missing:
     print("[FAIL] %d 条 key 缺失：" % len(missing))
     for m in missing[:10]:
@@ -69,7 +96,12 @@ if mismatch:
     print("[FAIL] %d 条 newznab_id 错配：" % len(mismatch))
     for m in mismatch[:10]:
         print("   " + m)
-if not missing and not mismatch:
-    print("== ALL PASS（key 缺失 0、newznab 错配 0）==")
+if over:
+    print("[FAIL] %d 个包的分类数超过导航上限（该包分类在导航里被截）："
+          % len(over))
+    for o in over[:10]:
+        print("   " + o)
+if not missing and not mismatch and not over:
+    print("== ALL PASS（key 缺失 0、newznab 错配 0、导航截断 0）==")
     raise SystemExit(0)
 raise SystemExit(1)

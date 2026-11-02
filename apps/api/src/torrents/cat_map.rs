@@ -113,6 +113,9 @@ pub fn newznab_name(id: i32) -> &'static str {
         2040 => "Movies/HD",
         2045 => "Movies/UHD",
         3000 => "Audio",
+        // 有声书走 3020（Newznab 标准树的 Audio/AudioBook）：此前综合站与
+        // 电子书包都把「有声书」塞在 3030(Audio/MP3) 下，Prowlarr 侧归错类
+        3020 => "Audio/AudioBook",
         3030 => "Audio/MP3",
         3040 => "Audio/Lossless",
         4000 => "PC",
@@ -177,6 +180,9 @@ mod tests {
     fn newznab_names_are_total() {
         assert_eq!(newznab_name(2000), "Movies");
         assert_eq!(newznab_name(5070), "TV/Anime");
+        // 0455：有声书用标准树的 Audio/AudioBook，不再借用 MP3 号
+        assert_eq!(newznab_name(3020), "Audio/AudioBook");
+        assert_eq!(newznab_name(3030), "Audio/MP3");
         assert_eq!(newznab_name(99999), "Other");
         assert_eq!(newznab_name(NEWZNAB_OTHER), "Other");
     }
