@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FluxTorrent · 手机版首页重设计样图 · 2026-11-02</title>
+<style>
+:root{--seed-fg:#101722;--seed-muted:#5b6675;--border-standard:#d5dbe4;--border-subtle:#e7ebf1;--card-bg:#fff;--inset-bg:#f4f6f9;--seed-primary:#0f62c4;--viz-series-1:#c0392b;--viz-series-2:#b4790a;--font-sans:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;--font-code:ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--seed-fg:#e8edf5;--seed-muted:#93a0b4;--border-standard:#2c3648;--border-subtle:#232b3a;--card-bg:#161b24;--inset-bg:#11151d;--seed-primary:#47b3ff}}
+body{margin:0;padding:24px;background:var(--card-bg);color:var(--seed-fg)}
+</style>
+</head>
+<body>
+<div id="mhome-rd" class="rd" data-skin="day">
+<style>
+/* ===== 外层说明区 ===== */
+#mhome-rd{
+  --fg:var(--seed-fg); --mu:var(--seed-muted); --bd:var(--border-standard); --bds:var(--border-subtle);
+  font-family:var(--font-sans); color:var(--fg); line-height:1.6;
+  display:flex; flex-direction:column; gap:18px; padding:2px 0 8px;
+}
+#mhome-rd .rd-kicker{margin:0;font-size:12px;color:var(--mu);letter-spacing:.04em}
+#mhome-rd .rd-h{margin:0;font-size:18px;font-weight:500;letter-spacing:-.01em}
+#mhome-rd .rd-lede{margin:0;font-size:13px;max-width:74ch}
+#mhome-rd .rd-h3{margin:14px 0 0;font-size:13px;font-weight:500;color:var(--mu);letter-spacing:.06em;text-transform:uppercase}
+#mhome-rd .rd-note{margin:0;font-size:12px;color:var(--mu);max-width:78ch}
+#mhome-rd .rd-facts{display:flex;flex-wrap:wrap;gap:8px}
+#mhome-rd .rd-fact{
+  font-size:12px;padding:6px 10px;border-radius:8px;
+  background:var(--inset-bg);border:1px solid var(--bds);color:var(--fg)
+}
+#mhome-rd .rd-fact b{font-weight:500}
+#mhome-rd .rd-fact.bad b{color:var(--viz-series-1)}
+#mhome-rd .rd-fact.good b{color:#147d5f}
+#mhome-rd .rd-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:10px 12px;border:1px solid var(--bds);border-radius:10px;background:var(--card-bg)}
+#mhome-rd .rd-ctl fieldset{border:0;margin:0;padding:0;display:flex;align-items:center;gap:8px}
+#mhome-rd .rd-ctl legend{float:left;padding-right:8px;font-size:12px;color:var(--mu)}
+#mhome-rd .rd-seg{display:flex;gap:4px}
+#mhome-rd .rd-seg button{
+  font:inherit;font-size:12px;padding:5px 10px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--bd);background:transparent;color:var(--fg)
+}
+#mhome-rd .rd-seg button[aria-pressed="true"]{background:var(--seed-primary);border-color:var(--seed-primary);color:#fff}
+#mhome-rd .rd-rail{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+#mhome-rd .rd-shot{--s:1;display:flex;flex-direction:column;gap:8px;min-width:calc(390px * var(--s))}
+#mhome-rd .rd-shot > .ph{zoom:var(--s)}
+#mhome-rd .rd-cap{margin-top:8px;font-size:12px;color:var(--mu)}
+#mhome-rd .rd-cap b{display:block;font-weight:500;color:var(--fg);font-size:13px}
+#mhome-rd table.rd-tb{border-collapse:collapse;width:100%;font-size:12px}
+#mhome-rd table.rd-tb th,#mhome-rd table.rd-tb td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bds);vertical-align:top}
+#mhome-rd table.rd-tb th{color:var(--mu);font-weight:500;white-space:nowrap}
+#mhome-rd table.rd-tb td b{font-weight:500}
+#mhome-rd code{font-family:var(--font-code);font-size:11.5px}
+#mhome-rd ul.rd-list,#mhome-rd ol.rd-list{margin:0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+#mhome-rd .rd-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--mu)}
+#mhome-rd .rd-legend span{display:flex;gap:6px;align-items:baseline;max-width:38ch}
+#mhome-rd .rd-legend i{font-style:normal;display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--seed-primary);color:#fff;font-size:11px;flex:none}
+@media (max-width:880px){#mhome-rd .rd-shot{--s:.86}}
+@media (max-width:700px){#mhome-rd .rd-shot{--s:.74}}
+@media (max-width:460px){#mhome-rd .rd-shot{--s:.62}}
+
+/* ===== 产品令牌层：TIDE 实测值（apps/web/app/styles/theme-tide.css:28-114） ===== */
+#mhome-rd .scr{
+  --sky:#0f62c4; --sky-deep:#0a3d6b; --sky-soft:#e3edf9;
+  --sun:#b4790a; --sun-soft:#fbf0da;
+  --coral:#c0392b; --coral-soft:#fbeae7;
+  --mint:#147d5f; --mint-soft:#e2f3ed;
+  --candy:#0091a8;
+  --cloud:#f6f8fc; --cream:#fbfcfe; --card:#ffffff; --sunken:#edf2f9; --hover:#f1f6fc;
+  --th:#08131f; --tb:#33445c; --tm:#5a6b85; --tf:#7c8aa0; --tff:#9aa7ba;
+  --line:#e1e8f2; --line2:#c3d2e4; --onacc:#fff;
+  --grad:linear-gradient(135deg,#0a3d6b 0%,#0f62c4 55%,#2e86e0 100%);
+  --hero:linear-gradient(140deg,#0a3d6b 0%,#12629f 46%,#2e86e0 100%);
+  --shadow:0 1px 2px rgba(14,27,42,.06),0 10px 24px -12px rgba(14,27,42,.18);
+  --shadow-s:0 1px 2px rgba(14,27,42,.05);
+  --art-a:#8ec5f5; --art-b:#bfe0fb; --art-glow:#ffcf6b; --art-deep:#4a8fd0;
+  font-family:"Segoe UI",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  position:relative;width:390px;height:844px;overflow:hidden;
+  background:var(--cloud);color:var(--tb);
+  font-size:13px;line-height:1.45;
+}
+#mhome-rd .scr.night,#mhome-rd .rd[data-skin="night"] .scr:not(.dayonly){
+  --sky:#47b3ff; --sky-deep:#7fc6ff; --sky-soft:#12233c;
+  --sun:#f0b95c; --sun-soft:#2e2510;
+  --coral:#ff6b5e; --coral-soft:#3a1f24;
+  --mint:#43cda8; --mint-soft:#12312a;
+  --candy:#6cc0ff;
+  --cloud:#0b101f; --cream:#161d33; --card:#1a2036; --sunken:#111a2e; --hover:#212945;
+  --th:#f4f7fd; --tb:#c6d1e6; --tm:#94a3c0; --tf:#7382a0; --tff:#5c6a86;
+  --line:#2a3557; --line2:#3a4670; --onacc:#04101f;
+  --grad:linear-gradient(135deg,#03080f 0%,#0f2f57 55%,#1d5c9e 100%);
+  --hero:linear-gradient(140deg,#050c1a 0%,#0d2f57 48%,#1d5c9e 100%);
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 28px -14px rgba(0,0,0,.7);
+  --shadow-s:0 1px 2px rgba(0,0,0,.4);
+  --art-a:#123a63; --art-b:#0b2a4a; --art-glow:#ffd7a8; --art-deep:#6cc0ff;
+}
+
+/* ===== App Bar ===== */
+#mhome-rd .appbar{
+  position:relative;z-index:4;height:56px;display:flex;align-items:center;gap:10px;
+  padding:0 14px;background:var(--card);border-bottom:1px solid var(--line);
+}
+#mhome-rd .lg{width:32px;height:32px;flex:none;border-radius:9px;display:grid;place-items:center;
+  color:#fff;font-weight:800;font-size:13px;letter-spacing:-.5px;background:var(--grad);
+  box-shadow:0 4px 10px -4px var(--sky)}
+#mhome-rd .appname{font-size:16px;font-weight:700;color:var(--th);letter-spacing:-.3px;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mhome-rd .abtn{width:34px;height:34px;flex:none;border:0;background:transparent;border-radius:10px;
+  display:grid;place-items:center;color:var(--tm);cursor:default;position:relative}
+#mhome-rd .abtn .ic{width:20px;height:20px}
+#mhome-rd .ava{position:relative;width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(140deg,#f0a13c,#e2622a);color:#fff;font-weight:700;font-size:13px}
+#mhome-rd .dot{position:absolute;top:-5px;right:-7px;min-width:19px;height:16px;padding:0 4px;border-radius:99px;
+  background:var(--coral);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center;
+  border:2px solid var(--card)}
+#mhome-rd .scroll{position:absolute;left:0;right:0;top:56px;bottom:64px;overflow:hidden;padding:10px 14px 16px;
+  display:flex;flex-direction:column;gap:10px}
+#mhome-rd .scroll > *{flex:0 0 auto}
+/* 折叠线渐隐：下一块被切时不是硬边，而是化进底色 */
+#mhome-rd .scroll::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38px;
+  background:linear-gradient(180deg,rgba(246,248,252,0),var(--cloud));pointer-events:none;z-index:5}
+#mhome-rd .scr.old .scroll{gap:12px}
+
+/* ===== 通用卡 ===== */
+#mhome-rd .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-s)}
+#mhome-rd a{text-decoration:none;color:inherit}
+#mhome-rd .chead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px 0}
+#mhome-rd .chead h3{margin:0;font-size:13.5px;font-weight:700;color:var(--th);display:flex;align-items:center;gap:6px}
+#mhome-rd .chead .more{font-size:11.5px;color:var(--sky);font-weight:600;white-space:nowrap}
+#mhome-rd .cbody{padding:10px 13px 13px}
+
+/* ===== 1. Hero ===== */
+#mhome-rd .hero{position:relative;overflow:hidden;border-radius:16px;background:var(--hero);
+  padding:13px 14px 12px;color:#fff;box-shadow:0 8px 22px -12px rgba(10,61,107,.85)}
+#mhome-rd .hero .art{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#mhome-rd .hero > *{position:relative;z-index:2}
+#mhome-rd .hrow1{display:flex;align-items:center;gap:9px}
+#mhome-rd .hlg{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;
+  color:#fff;font-weight:800;font-size:12px;background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.28)}
+#mhome-rd .hhi{min-width:0;flex:1}
+#mhome-rd .hhi b{display:block;font-size:14.5px;font-weight:700;color:#fff;line-height:1.25}
+#mhome-rd .hhi i{display:block;font-style:normal;font-size:11px;color:rgba(255,255,255,.72)}
+#mhome-rd .hstar{text-align:right;flex:none}
+#mhome-rd .hstar b{display:block;font-size:19px;font-weight:800;color:#ffd98a;letter-spacing:-.4px;line-height:1.1;
+  font-variant-numeric:tabular-nums}
+#mhome-rd .hstar i{display:block;font-style:normal;font-size:10px;color:rgba(255,255,255,.72);letter-spacing:.04em}
+#mhome-rd .hmetrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px}
+#mhome-rd .hm{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);border-radius:9px;
+  padding:6px 8px 7px;min-width:0}
+#mhome-rd .hm dt{font-size:10px;color:rgba(255,255,255,.72);letter-spacing:.02em}
+#mhome-rd .hm dd{margin:1px 0 0;font-size:13px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mhome-rd .hm dd s{text-decoration:none;font-size:10px;font-weight:500;color:rgba(255,255,255,.7)}
+#mhome-rd .rbar{position:relative;height:5px;border-radius:99px;background:rgba(255,255,255,.2);margin-top:8px}
+#mhome-rd .rbar i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;
+  background:linear-gradient(90deg,#ff8a7d,#ef6a58)}
+#mhome-rd .rbar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:#fff;border-radius:2px;opacity:.9}
+#mhome-rd .rnote{display:flex;align-items:center;gap:5px;margin-top:6px;font-size:10.5px;color:#ffd0cb}
+#mhome-rd .rnote svg{width:12px;height:12px;flex:none}
+#mhome-rd .rnote b{font-weight:700;color:#ffd0cb}
+
+/* ===== 2. 签到条 ===== */
+#mhome-rd .checkin{display:flex;align-items:center;gap:10px;padding:10px 12px}
+#mhome-rd .ckico{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:var(--sun-soft);color:var(--sun)}
+#mhome-rd .ckico svg{width:19px;height:19px}
+#mhome-rd .cktxt{flex:1;min-width:0}
+#mhome-rd .cktxt > b{display:block;font-size:12.5px;font-weight:700;color:var(--th)}
+#mhome-rd .cktxt > i{display:block;font-style:normal;font-size:11px;color:var(--tm);margin-top:1px}
+#mhome-rd .ckbtn{flex:none;height:32px;padding:0 13px;border:0;border-radius:99px;cursor:default;
+  background:linear-gradient(135deg,#f0a13c,#e07b18);color:#fff;font-size:12px;font-weight:700;
+  font-family:inherit;box-shadow:0 4px 10px -4px rgba(224,123,24,.85)}
+#mhome-rd .ckbtn.done{background:var(--mint-soft);color:var(--mint);box-shadow:none}
+#mhome-rd .ckms{display:flex;align-items:center;gap:7px;margin-top:7px}
+#mhome-rd .ckms u{text-decoration:none;flex:none;width:82px;height:4px;border-radius:99px;background:var(--sunken)}
+#mhome-rd .ckms u i{font-style:normal;display:block;width:0;height:4px;border-radius:99px;background:var(--sun)}
+#mhome-rd .ckms em{font-style:normal;font-size:10px;color:var(--tf);white-space:nowrap;flex:none}
+#mhome-rd .ckms em b{color:var(--sun);font-weight:700}
+
+/* ===== 3. 快捷宫格 ===== */
+#mhome-rd .qgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:12px 8px 13px}
+#mhome-rd .q{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 2px;border-radius:11px}
+#mhome-rd .q .qi{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;
+  background:var(--sky-soft);color:var(--sky)}
+#mhome-rd .q .qi svg{width:19px;height:19px}
+#mhome-rd .q:nth-child(3n+2) .qi{background:var(--sun-soft);color:var(--sun)}
+#mhome-rd .q:nth-child(3n+3) .qi{background:var(--mint-soft);color:var(--mint)}
+#mhome-rd .q span{font-size:10.5px;color:var(--tb);font-weight:600;white-space:nowrap}
+
+/* ===== 4. 资源横滑 rail ===== */
+#mhome-rd .rail{display:flex;gap:9px;overflow:hidden;padding:11px 13px 13px}
+#mhome-rd .tcard{flex:none;width:132px;border:1px solid var(--line);border-radius:11px;overflow:hidden;
+  background:var(--cream)}
+#mhome-rd .tcard .cv{height:104px;position:relative;display:grid;place-items:center}
+#mhome-rd .tcard .cv svg{width:26px;height:26px;color:rgba(255,255,255,.9)}
+#mhome-rd .tcard .cv em{position:absolute;left:5px;top:5px;font-style:normal;font-size:9px;font-weight:700;
+  padding:1.5px 5px;border-radius:5px;background:rgba(255,255,255,.92);color:var(--sky-deep)}
+#mhome-rd .tcard .cv em.off{background:linear-gradient(135deg,#f0a13c,#e07b18);color:#fff}
+#mhome-rd .tcard .ti{padding:6px 7px 8px}
+#mhome-rd .tcard .ti b{display:block;font-size:11px;font-weight:600;color:var(--th);line-height:1.3;
+  height:29px;overflow:hidden}
+#mhome-rd .tcard .ti i{display:flex;align-items:center;gap:4px;font-style:normal;font-size:10px;color:var(--tf);
+  margin-top:3px}
+#mhome-rd .tcard .ti i s{text-decoration:none;margin-left:auto;color:var(--sun);font-weight:700}
+#mhome-rd .tcard .ti u{text-decoration:none;font-size:10px;color:var(--tf)}
+#mhome-rd .fade{position:absolute;right:0;top:0;bottom:0;width:22px;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,0),var(--card))}
+#mhome-rd .scr.night .fade,#mhome-rd .rd[data-skin="night"] .scr:not(.dayonly) .fade{
+  background:linear-gradient(90deg,rgba(26,32,54,0),var(--card))}
+
+/* ===== 5. 社区新鲜事 ===== */
+#mhome-rd .news{display:flex;gap:10px;padding:11px 13px 12px}
+#mhome-rd .nthumb{width:62px;height:62px;flex:none;border-radius:11px;position:relative;overflow:hidden;
+  background:linear-gradient(140deg,#0f62c4,#2e86e0);display:grid;place-items:center;color:#fff}
+#mhome-rd .nthumb svg{width:24px;height:24px}
+#mhome-rd .nbody{min-width:0;flex:1}
+#mhome-rd .nbody .nb{font-size:9.5px;font-weight:700;color:var(--sky);background:var(--sky-soft);
+  padding:1.5px 6px;border-radius:5px}
+#mhome-rd .nbody b{display:block;font-size:12.5px;font-weight:700;color:var(--th);margin-top:4px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.32}
+#mhome-rd .nbody p{margin:3px 0 0;font-size:11px;color:var(--tm);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#mhome-rd .nmore{display:flex;align-items:center;gap:6px;padding:8px 13px;border-top:1px solid var(--line);
+  font-size:11.5px;color:var(--tm)}
+#mhome-rd .nmore b{color:var(--sky);font-weight:600}
+
+/* ===== 6. 新增资源统计（迷你） ===== */
+#mhome-rd .mini{display:flex;align-items:flex-end;gap:10px;padding:10px 13px 11px}
+#mhome-rd .ms{flex:none}
+#mhome-rd .ms dt{font-size:10px;color:var(--tf)}
+#mhome-rd .ms dd{margin:0;font-size:16px;font-weight:700;color:var(--th);font-variant-numeric:tabular-nums;line-height:1.2}
+#mhome-rd .ms.s2 dd{color:var(--sky)}
+#mhome-rd .ms.s3 dd{color:var(--sun)}
+#mhome-rd .spark{flex:1;min-width:0;display:flex;align-items:flex-end;gap:2px;height:44px}
+#mhome-rd .spark s{text-decoration:none;flex:1;background:var(--line2);border-radius:2px 2px 0 0;min-height:2px}
+#mhome-rd .spark s.o{background:var(--sky)}
+#mhome-rd .spark s.f{background:var(--sun)}
+#mhome-rd .slegend{display:flex;gap:12px;padding:0 13px 11px;font-size:10px;color:var(--tf)}
+#mhome-rd .slegend span{display:flex;align-items:center;gap:5px}
+#mhome-rd .slegend em{font-style:normal;width:8px;height:8px;border-radius:2px;background:var(--line2)}
+#mhome-rd .slegend em.o{background:var(--sky)}
+#mhome-rd .slegend em.f{background:var(--sun)}
+
+/* ===== 7. 站点数据 2 列网格 ===== */
+#mhome-rd .sdgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:11px 13px 12px}
+#mhome-rd .sd{border:1px solid var(--line);border-radius:10px;padding:7px 9px;background:var(--cream);min-width:0}
+#mhome-rd .sd dt{font-size:10px;color:var(--tf);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mhome-rd .sd dd{margin:1px 0 0;font-size:14px;font-weight:700;color:var(--th);font-variant-numeric:tabular-nums}
+#mhome-rd .sd.pri{background:var(--sky-soft);border-color:transparent}
+#mhome-rd .sd.pri dt{color:var(--sky-deep)}
+#mhome-rd .sd.pri dd{color:var(--sky-deep)}
+#mhome-rd .sd.warn dd{color:var(--sun)}
+#mhome-rd .sd.dang dd{color:var(--coral)}
+#mhome-rd .sdmore{display:flex;align-items:center;justify-content:center;gap:5px;padding:8px;
+  border-top:1px solid var(--line);font-size:11.5px;color:var(--sky);font-weight:600}
+
+/* ===== 8/9. 折叠行 ===== */
+#mhome-rd .chat{display:flex;flex-direction:column;gap:0}
+#mhome-rd .crow{display:flex;align-items:center;gap:7px;padding:8px 13px;border-top:1px solid var(--line);
+  font-size:11.5px;color:var(--tb)}
+#mhome-rd .crow:first-child{border-top:0}
+#mhome-rd .crow u{text-decoration:none;width:20px;height:20px;flex:none;border-radius:50%;display:grid;
+  place-items:center;background:var(--sky-soft);color:var(--sky-deep);font-size:9.5px;font-weight:700}
+#mhome-rd .crow b{font-weight:600;color:var(--th);flex:none;max-width:96px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+#mhome-rd .crow s{text-decoration:none;color:var(--tm);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+#mhome-rd .crow em{font-style:normal;color:var(--tf);font-size:10px;flex:none}
+#mhome-rd .luck{display:flex;align-items:center;gap:9px;padding:11px 13px}
+#mhome-rd .luck .li{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(140deg,#f0a13c,#e07b18);color:#fff}
+#mhome-rd .luck .li svg{width:18px;height:18px}
+#mhome-rd .luck .lt{flex:1;min-width:0}
+#mhome-rd .luck .lt b{display:block;font-size:12px;font-weight:700;color:var(--th)}
+#mhome-rd .luck .lt i{display:block;font-style:normal;font-size:11px;color:var(--tm);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mhome-rd .luck .lt i s{text-decoration:none;color:var(--sun);font-weight:700}
+
+/* ===== 10. 页脚 ===== */
+#mhome-rd .foot{padding:4px 4px 2px;font-size:10.5px;color:var(--tf);line-height:1.6;margin-top:auto}
+#mhome-rd .foot p{margin:0 0 6px}
+#mhome-rd .foot a{color:var(--sky);text-decoration:none}
+#mhome-rd .foot .flinks{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px}
+
+/* ===== 底部 Tab Bar ===== */
+#mhome-rd .tabbar{position:absolute;left:0;right:0;bottom:0;height:64px;z-index:6;
+  background:var(--card);border-top:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-around;padding:0 4px}
+#mhome-rd .tb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--tm);
+  width:56px;padding-top:5px}
+#mhome-rd .tb svg{width:22px;height:22px}
+#mhome-rd .tb.on{color:var(--sky);font-weight:700}
+#mhome-rd .fab{width:52px;height:52px;margin-top:-22px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(140deg,#12629f,#2e86e0);color:#fff;border:4px solid var(--card);
+  box-shadow:0 6px 16px -6px rgba(15,98,196,.9)}
+#mhome-rd .fab svg{width:26px;height:26px}
+
+/* ===== 改造前（复原现状） ===== */
+#mhome-rd .scr.old .mhome-head{display:flex;flex-direction:column;gap:8px;margin-bottom:-2px}
+#mhome-rd .scr.old .mhome-head__hello{margin:0;font-size:15px;color:var(--tm)}
+#mhome-rd .scr.old .mhome-head__hello b{color:var(--th)}
+#mhome-rd .scr.old .mhome-head__stats{display:flex;gap:6px}
+#mhome-rd .scr.old .mhome-head__stats > div{flex:1;padding:7px 4px 8px;border-radius:10px;
+  background:var(--card);text-align:center;border:1px solid var(--line)}
+#mhome-rd .scr.old .mhome-head__stats dt{color:var(--tf);font-size:12px;line-height:1.3}
+#mhome-rd .scr.old .mhome-head__stats dd{margin:1px 0 0;font-size:13px;font-variant-numeric:tabular-nums}
+#mhome-rd .scr.old .mhome-head__stats i{font-style:normal;color:var(--th);font-weight:600}
+#mhome-rd .scr.old .ob{padding:12px 13px}
+#mhome-rd .scr.old .ob h4{margin:0;font-size:13.5px;font-weight:700;color:var(--th);display:flex;gap:6px}
+#mhome-rd .scr.old .ob h4 small{margin-left:auto;font-size:10.5px;font-weight:500;color:var(--tf)}
+#mhome-rd .scr.old .oboxes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+#mhome-rd .scr.old .obox{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--cream)}
+#mhome-rd .scr.old .obox dt{font-size:10.5px;color:var(--tf)}
+#mhome-rd .scr.old .obox dd{margin:2px 0 0;font-size:19px;font-weight:700;color:var(--th);
+  font-variant-numeric:tabular-nums}
+#mhome-rd .scr.old .obox i{display:block;font-style:normal;font-size:10px;color:var(--tf);margin-top:2px}
+#mhome-rd .scr.old .obar{display:flex;align-items:flex-end;gap:2px;height:96px;margin-top:14px}
+#mhome-rd .scr.old .obar s{text-decoration:none;flex:1;background:#9aa7ba;border-radius:2px 2px 0 0;min-height:2px}
+#mhome-rd .scr.old .oleg{display:flex;gap:14px;margin-top:10px;font-size:10.5px;color:var(--tf)}
+#mhome-rd .scr.old .oleg span{display:flex;align-items:center;gap:5px}
+#mhome-rd .scr.old .oleg em{font-style:normal;width:9px;height:9px;border-radius:2px;background:#9aa7ba}
+#mhome-rd .scr.old .oleg em.o{background:var(--sky)}
+#mhome-rd .scr.old .oposter{height:180px;border-radius:12px;margin:11px 13px 0;
+  background:linear-gradient(140deg,#0f62c4,#2e86e0);color:#fff;padding:16px;display:flex;flex-direction:column;
+  justify-content:center}
+#mhome-rd .scr.old .oposter b{font-size:24px;font-weight:800;letter-spacing:-.5px}
+#mhome-rd .scr.old .oposter i{font-style:normal;font-size:12px;margin-top:8px;opacity:.92}
+#mhome-rd .scr.old .onews{padding:9px 13px}
+#mhome-rd .scr.old .onews div{display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0}
+#mhome-rd .scr.old .onews em{font-style:normal;font-size:9.5px;font-weight:700;color:var(--sky);
+  background:var(--sky-soft);padding:1.5px 5px;border-radius:5px;flex:none}
+#mhome-rd .scr.old .onews time{margin-left:auto;color:var(--tf);font-size:10.5px;flex:none}
+#mhome-rd .scr.old .osd{padding:8px 13px 12px;display:flex;flex-direction:column;gap:5px}
+#mhome-rd .scr.old .osd div{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  border:1px solid var(--line);border-radius:8px;padding:6px 11px;background:var(--card);font-size:12px}
+#mhome-rd .scr.old .osd dt{color:var(--tb)}
+#mhome-rd .scr.old .osd dd{margin:0;font-weight:700;color:var(--th);font-variant-numeric:tabular-nums}
+#mhome-rd .scr.old .osd div.pri{border-color:var(--sky);color:var(--sky);font-weight:600}
+#mhome-rd .scr.old .osd div.pri dd{color:var(--sky)}
+#mhome-rd .scr.old .oatk{font-size:10px;color:var(--tf);padding:8px 13px 2px}
+
+
+/* ===== 置顶公告头条（复用站方 brand-panel__head--ribbon 的斜纹语言） ===== */
+#mhome-rd .nthead{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 10px, rgba(255,255,255,.14) 10px 20px),
+    linear-gradient(90deg,#c9820f,#b4790a);
+}
+#mhome-rd .nthead h3{margin:0;font-size:13.5px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px}
+#mhome-rd .nthead .more{font-size:11.5px;color:rgba(255,255,255,.92);font-weight:700}
+#mhome-rd .newsbody{padding:11px 13px 9px}
+#mhome-rd .newsbody .nb{display:inline-block;font-size:10px;font-weight:700;color:#b4790a;background:#fbf0da;
+  padding:2px 7px;border-radius:5px}
+#mhome-rd .newsbody b{display:block;font-size:15px;font-weight:700;color:var(--th);margin-top:6px;line-height:1.3;
+  letter-spacing:-.2px}
+#mhome-rd .newsbody p{margin:4px 0 0;font-size:11.5px;color:var(--tm);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#mhome-rd .nfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 13px;border-top:1px solid var(--line);font-size:11px;color:var(--tf)}
+#mhome-rd .nunread{display:flex;align-items:center;gap:5px;color:var(--coral);font-weight:700}
+#mhome-rd .nunread i{width:6px;height:6px;border-radius:50%;background:var(--coral);display:block}
+
+/* ===== 快捷宫格里的「活体」格（聊天室） ===== */
+#mhome-rd .q.live .qi{background:linear-gradient(140deg,#e05a4c,#c0392b);color:#fff;position:relative}
+#mhome-rd .q.live .qi svg{position:relative;z-index:1}
+#mhome-rd .q.live .qi i{position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;
+  background:#ffcf6b;border:2px solid var(--card);z-index:2}
+#mhome-rd .q.live span:last-child{color:var(--coral)}
+
+
+
+/* ===== 万年历签到抽屉（参考图配色：碧绿 #3d8f78 / 红 #c45a52 / 薄荷底 #a6ddcc） ===== */
+#mhome-rd .al-sheet{background:linear-gradient(178deg,#eaf7f0,#d6ece0);color:#1f2d28}
+#mhome-rd .al-sheet .bsheet__grab{background:transparent}
+#mhome-rd .al-sheet .bsheet__bar{background:rgba(63,143,120,.35)}
+#mhome-rd .al-sheet .bsheet__title{color:#2f7059}
+#mhome-rd .al-note{margin:0;padding:0 13px 9px;font-size:10px;line-height:1.55;color:#4e7168}
+#mhome-rd .al-note b{color:#2f7059}
+#mhome-rd .al-bar{display:flex;align-items:center;gap:8px;padding:0 13px 9px}
+#mhome-rd .al-bar .mv{margin-right:auto;font-size:13px;font-weight:700;color:#2f7059}
+#mhome-rd .al-bar .mv em{font-style:normal;font-weight:600;color:#5c7f74}
+#mhome-rd .al-btn{flex:none;height:26px;padding:0 11px;border:0;border-radius:99px;cursor:default;
+  font-size:11px;font-weight:700;font-family:inherit;color:#fff;background:#3d8f78}
+#mhome-rd .al-btn.ghost{background:rgba(63,143,120,.14);color:#2f7059}
+#mhome-rd .al-card{background:#fff;border-radius:12px;margin:0 10px 8px;padding:9px 8px 8px;
+  box-shadow:0 2px 10px -6px rgba(31,45,40,.35)}
+#mhome-rd .al-wd{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+#mhome-rd .al-wd span{text-align:center;font-size:10px;color:#7e9a91}
+#mhome-rd .al-wd span.we{color:#c45a52}
+#mhome-rd .al-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+#mhome-rd .al-cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:3px 0 4px;border-radius:8px;min-height:46px;font-style:normal}
+#mhome-rd .al-lb{display:block;font-style:normal;font-size:8px;line-height:1.15;height:9px;
+  color:#3d8f78;text-align:center;max-width:100%;overflow:hidden;white-space:nowrap}
+#mhome-rd .al-lb.is-red{color:#c45a52}
+#mhome-rd .al-cell b{font-size:12.5px;font-weight:600;color:#26332e;line-height:1.3;margin-top:1px}
+#mhome-rd .al-cell s{text-decoration:none;font-size:8px;color:#8aa79e;line-height:1.25;letter-spacing:-.2px;
+  white-space:nowrap}
+#mhome-rd .al-cell.is-done::before{content:"";position:absolute;top:4px;left:4px;width:4px;height:4px;
+  border-radius:50%;background:#3d8f78}
+#mhome-rd .al-cell.is-sel{background:#3d8f78}
+#mhome-rd .al-cell.is-sel b{color:#fff;font-weight:700}
+#mhome-rd .al-cell.is-sel s{color:rgba(255,255,255,.78)}
+#mhome-rd .al-cell.is-sel .al-lb{color:#fff}
+#mhome-rd .al-cell.is-sel.is-done::before{background:#ffd98a}
+#mhome-rd .al-lgd{display:flex;gap:12px;padding:8px 2px 0;font-size:9px;color:#8aa79e}
+#mhome-rd .al-lgd span{display:flex;align-items:center;gap:4px}
+#mhome-rd .al-lgd i{width:8px;height:8px;border-radius:50%;display:block}
+#mhome-rd .al-lgd i.dot-done{background:#3d8f78}
+#mhome-rd .al-lgd i.dot-today{background:#dfeae5;border:1px solid #b9cdc5}
+#mhome-rd .al-lgd i.dot-fest{background:#c45a52}
+#mhome-rd .al-detail{border-top:1px solid #e8f0ec;margin-top:7px;padding-top:8px}
+#mhome-rd .al-detail h4{margin:0 0 5px;font-size:12.5px;font-weight:700;color:#2f7059;
+  display:flex;align-items:center;gap:6px}
+#mhome-rd .al-detail h4 em{font-style:normal;margin-left:auto;font-size:10px;font-weight:600;color:#7e9a91}
+#mhome-rd .al-d1{margin:0;font-size:10.5px;color:#5c7f74}
+#mhome-rd .al-d2{margin:2px 0 0;font-size:13px;font-weight:700;color:#2f7059}
+#mhome-rd .al-d3{margin:3px 0 8px;font-size:10.5px;color:#7e9a91;letter-spacing:.02em}
+#mhome-rd .al-tri{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+#mhome-rd .al-tri div{border:1px solid #e2ede8;border-radius:8px;padding:5px 6px;background:#fbfdfc}
+#mhome-rd .al-tri dt{font-size:9px;color:#8aa79e}
+#mhome-rd .al-tri dd{margin:1px 0 0;font-size:11.5px;font-weight:700;color:#2f7059;line-height:1.3}
+#mhome-rd .al-tri dd s{text-decoration:none;font-weight:500;color:#7e9a91;font-size:9.5px}
+#mhome-rd .al-yj{display:flex;gap:6px;margin-bottom:6px;align-items:flex-start}
+#mhome-rd .al-yj > b{flex:none;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;
+  font-size:10px;color:#fff;background:#3d8f78}
+#mhome-rd .al-yj.ji > b{background:#c45a52}
+#mhome-rd .al-yj > span{display:flex;flex-wrap:wrap;gap:4px}
+#mhome-rd .al-yj > span s{text-decoration:none;font-size:10px;padding:1.5px 6px;border-radius:5px;
+  background:#eaf5f0;color:#2f7059}
+#mhome-rd .al-yj.ji > span s{background:#fbeeec;color:#b04a43}
+#mhome-rd .al-jc{display:flex;gap:3px;flex-wrap:wrap;margin:7px 0 6px}
+#mhome-rd .al-jc s{text-decoration:none;font-size:9.5px;padding:2px 5px;border-radius:4px;
+  background:#f1f6f4;color:#8aa79e}
+#mhome-rd .al-jc s.on{background:#3d8f78;color:#fff;font-weight:700}
+#mhome-rd .al-pz{margin:0;font-size:10px;color:#5c7f74;line-height:1.6}
+#mhome-rd .al-pz b{color:#2f7059}
+
+/* ===== 签到日历抽屉 ===== */
+#mhome-rd .cal{padding:4px 13px 0}
+#mhome-rd .cal__wd{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px}
+#mhome-rd .cal__wd span{text-align:center;font-size:10px;color:var(--tf)}
+#mhome-rd .cal__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+#mhome-rd .cal__grid i{font-style:normal;height:30px;border-radius:8px;display:grid;place-items:center;
+  font-size:11.5px;color:var(--tb);background:var(--sunken);font-variant-numeric:tabular-nums}
+#mhome-rd .cal__grid i.empty{background:transparent;color:var(--tff)}
+#mhome-rd .cal__grid i.on{background:var(--sun);color:#fff;font-weight:700}
+#mhome-rd .cal__grid i.today{background:transparent;border:1.5px dashed var(--coral);color:var(--coral);font-weight:700}
+#mhome-rd .cal__legend{display:flex;gap:12px;padding:9px 0 0;font-size:10px;color:var(--tf)}
+#mhome-rd .cal__legend span{display:flex;align-items:center;gap:4px}
+#mhome-rd .cal__legend i{width:9px;height:9px;border-radius:3px;background:var(--sunken);display:block}
+#mhome-rd .cal__legend i.on{background:var(--sun)}
+#mhome-rd .cal__legend i.today{background:transparent;border:1.5px dashed var(--coral)}
+
+/* ===== 底部抽屉 / 弹窗（复刻 bottom-sheet.tsx 与 home-news-modal.tsx） ===== */
+#mhome-rd .bsheet-root{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:flex-end}
+#mhome-rd .bsheet-mask{position:absolute;inset:0;background:rgba(8,19,31,.42)}
+#mhome-rd .bsheet{position:relative;background:var(--card);border-radius:18px 18px 0 0;
+  max-height:82%;display:flex;flex-direction:column;box-shadow:0 -8px 24px -12px rgba(14,27,42,.5)}
+#mhome-rd .bsheet.al-sheet{max-height:92%}
+#mhome-rd .al-sheet .bsheet__body{overflow:hidden;padding:0 0 6px}
+#mhome-rd .bsheet__grab{padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:5px}
+#mhome-rd .bsheet__bar{width:36px;height:4px;border-radius:99px;background:var(--line2)}
+#mhome-rd .bsheet__title{margin:0;font-size:13px;font-weight:700;color:var(--th)}
+#mhome-rd .bsheet__sub{font-size:10.5px;color:var(--tf);margin:-2px 0 0}
+#mhome-rd .bsheet__body{overflow:hidden;padding:0 0 10px}
+#mhome-rd .chatlist{display:flex;flex-direction:column;max-height:250px;overflow:hidden}
+#mhome-rd .chatlist .crow{border-top:1px solid var(--line)}
+#mhome-rd .chatlist .crow:first-child{border-top:0}
+#mhome-rd .chatform{display:flex;gap:7px;padding:9px 13px 0;border-top:1px solid var(--line);align-items:center}
+#mhome-rd .chatform input{flex:1;min-width:0;height:34px;border:1px solid var(--line);border-radius:99px;
+  padding:0 12px;font-size:12px;font-family:inherit;background:var(--cream);color:var(--tb)}
+#mhome-rd .chatform button{flex:none;height:34px;padding:0 15px;border:0;border-radius:99px;cursor:default;
+  font-size:12px;font-weight:700;font-family:inherit;color:#fff;
+  background:linear-gradient(135deg,#f0a13c,#e07b18);box-shadow:0 4px 10px -4px rgba(224,123,24,.85)}
+#mhome-rd .chatcmd{display:flex;flex-wrap:wrap;gap:5px;padding:8px 13px 0}
+#mhome-rd .chatcmd s{text-decoration:none;font-size:10.5px;font-weight:700;color:var(--sky);
+  background:var(--sky-soft);padding:2.5px 8px;border-radius:99px}
+/* 遮罩下的背景页（被弹层压住的那一屏） */
+#mhome-rd .scr.overlay .scroll{filter:blur(1px) saturate(.9);opacity:.5}
+</style>
+
+<div>
+  <p class="rd-kicker">FluxTorrent · 手机版首页 · 390×844（iPhone 14 Pro 逻辑视口）· 2026-11-02</p>
+  <h2 class="rd-h">把「桌面九宫格压成一列」换成「仪表盘 + 横滑 + 网格」</h2>
+  <p class="rd-lede">现状首页在手机上把每个板块都撑成 366px 满宽、逐个纵向堆叠：整页 3976px，视口 844px，要滑 4.7 屏；第一块内容是一张与「我」无关的 30 天柱状图，「我是谁、我的分享率安不安全、今天签了没」全被挤到第 5 屏以后。新版三件事：<b>公告提到签到上面</b>（首屏第 2 块，琥珀斜纹头条卡，不用往下翻）；<b>能弹的弹出去</b>（聊天室 / 签到日历 / 转盘流水改成弹层，首页不再常驻占位）；剩下的一块用横滑、两列网格和折叠拆开。首屏装得下，滚动从 4.7 屏降到 1.8 屏。</p></p>
+</div>
+
+<div class="rd-facts">
+  <span class="rd-fact bad">现状整页 <b>3976px</b> ／ 视口 844 → 需滑 <b>4.7 屏</b></span>
+  <span class="rd-fact bad">6 个板块全为 <b>366px 满宽</b>，<code>grid-column: auto/auto</code>（纯单列）</span>
+  <span class="rd-fact bad">根因：<code>layout.css:1675-1684</code> 在 ≤1024px 强制 <code>span-1/2/3</code> 全部 <code>grid-column:auto</code></span>
+  <span class="rd-fact bad">站点数据桌面是<b>三列</b>，移动端 <code>minmax(230px,1fr)</code> 塌成 1 列 → <b>15 行 / 691px</b></span>
+  <span class="rd-fact bad">现状首屏第一块＝<b>30 天柱状图</b>（406px），纯站点数字、与「我」无关</span>
+  <span class="rd-fact bad">社区新鲜事的海报占 <b>300px</b>，内容是「FluxTorrent / 新字幕上架」重复三遍</span>
+  <span class="rd-fact bad">聊天室原始日志与免责条款<b>同权重</b>平铺在末尾</span>
+  <span class="rd-fact good"><b>公告提到首屏第 2 块</b>（签到上面）：琥珀斜纹头条卡，不用往下翻</span>
+  <span class="rd-fact good"><b>3 块改弹层</b>：聊天室 / 签到日历 → BottomSheet，转盘流水 → Modal</span>
+  <span class="rd-fact good"><b>签到日历加万年历</b>：农历 / 干支 / 纳音 / 冲煞 / 值神 / 宜忌 / 建除 / 彭祖百忌</span>
+  <span class="rd-fact good">万年历数据<b>全部前端实算</b>（<code>lunar-javascript</code>），<b>后端零改动</b></span>
+  <span class="rd-fact good">新版整页实测 <b>1539px</b>（现状 3976px → 省 <b>61%</b>）</span>
+  <span class="rd-fact good">滚动 <b>4.7 屏 → 1.8 屏</b>；首屏完整装下 <b>仪表盘 + 公告 + 签到 + 宫格 = 645px</b></span>
+</div>
+
+<fieldset class="rd-ctl">
+  <legend>预览控制</legend>
+  <div class="rd-seg" role="group" aria-label="外观主题">
+    <button type="button" data-skin-set="day" aria-pressed="true">浅色</button>
+    <button type="button" data-skin-set="night" aria-pressed="false">深色</button>
+  </div>
+</fieldset>
+<p class="rd-note">数值全部取自现网实测（站点设置 <code>ratio_watch_threshold=0.4</code>、<code>ratio_gate=warn</code>、<code>ratio_gate_grace_days=7</code>、<code>attendance_streak=8</code>、<code>attendance_first=15</code>；个人数据来自 <code>/api/v1/me/overview</code>），不是随手编的占位数。</p>
+
+<h3 class="rd-h3">改造前 · 现网实测（2026-11-02 登录后 390×844 抓取）</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr old">
+        <div class="appbar">
+          <div class="lg">FT</div>
+          <div class="appname">FluxTorrent</div>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+          <div class="ava">R<span class="dot">99+</span></div>
+        </div>
+        <div class="scroll">
+          <div class="mhome-head">
+            <p class="mhome-head__hello">下午好，<b>FluxTorrent</b></p>
+            <dl class="mhome-head__stats">
+              <div><dt>上传</dt><dd><i>↑ 2.0 GB</i></dd></div>
+              <div><dt>下载</dt><dd><i>↓ 5.4 GB</i></dd></div>
+              <div><dt>分享率</dt><dd><i>∑ 0.37</i></dd></div>
+              <div><dt>魔力</dt><dd><i>★ 12,713</i></dd></div>
+            </dl>
+          </div>
+
+          <section class="card">
+            <div class="ob">
+              <h4>▥ 新增资源统计<small>近 30 天 · 每 5 分钟更新</small></h4>
+              <div class="oboxes">
+                <dl class="obox"><dt>今日新增</dt><dd>0</dd><i>截至当前</i></dl>
+                <dl class="obox"><dt>过去 7 日日均</dt><dd>1.1</dd><i>不含今天</i></dl>
+                <dl class="obox"><dt>近 30 日新增</dt><dd>212</dd><i>资源</i></dl>
+                <dl class="obox" style="display:flex;align-items:center;justify-content:center"><span style="display:flex;gap:10px;font-size:11px;color:var(--tm)"><em style="font-style:normal;width:9px;height:9px;border-radius:2px;background:#9aa7ba;display:inline-block"></em>普通资源 <em style="font-style:normal;width:9px;height:9px;border-radius:2px;background:var(--sky);display:inline-block"></em>官种</span></dl>
+              </div>
+              <div class="obar">
+                <s style="height:8%"></s><s style="height:14%"></s><s style="height:4%"></s><s style="height:3%"></s><s style="height:2%"></s>
+                <s style="height:46%"></s><s style="height:2%"></s><s style="height:30%"></s><s style="height:2%"></s><s style="height:2%"></s>
+                <s style="height:2%"></s><s style="height:8%"></s><s style="height:49%"></s><s style="height:20%"></s><s style="height:2%"></s>
+                <s style="height:2%"></s><s style="height:2%"></s><s style="height:15%"></s><s style="height:20%"></s><s style="height:2%"></s>
+                <s style="height:41%"></s><s style="height:2%"></s><s style="height:30%"></s><s style="height:2%"></s><s style="height:2%"></s>
+                <s style="height:2%"></s><s style="height:2%"></s><s style="height:2%"></s><s style="height:2%"></s><s style="height:2%"></s>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="ob" style="padding-bottom:0">
+              <h4>📣 社区新鲜事</h4>
+            </div>
+            <div class="oposter">
+              <b>FluxTorrent</b>
+              <i>新字幕上架</i><i>新字幕上架</i><i>新字幕上架</i>
+            </div>
+            <div class="onews">
+              <div><em>社区公告</em><span>新字幕上架</span><time>13:38</time></div>
+              <div><em>社区公告</em><span>新字幕上架</span><time>13:38</time></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="ob" style="padding-bottom:0">
+              <h4>▦ 站点数据<small>全站数据概览 · 每 5 分钟更新</small></h4>
+            </div>
+            <div class="osd">
+              <div class="pri"><dt>注册用户</dt><dd>101</dd></div>
+              <div><dt>种子</dt><dd>215</dd></div>
+              <div><dt>同伴</dt><dd>0</dd></div>
+              <div><dt>做种数</dt><dd>0</dd></div>
+              <div><dt>下载数</dt><dd>0</dd></div>
+              <div><dt>总下载量</dt><dd>8.075 GB</dd></div>
+              <div class="pri"><dt>注册用户</dt><dd>101</dd></div>
+              <div><dt>被警告用户</dt><dd>0</dd></div>
+              <div><dt>被禁用户</dt><dd>2,558</dd></div>
+              <div><dt>做种数 / 下载数比例</dt><dd>—</dd></div>
+              <div><dt>做种体积</dt><dd>273 GB</dd></div>
+              <div><dt>总数据量</dt><dd>65.648 GB</dd></div>
+              <div class="pri"><dt>未验证用户</dt><dd>4</dd></div>
+              <div><dt>总上传量</dt><dd>57.572 GB</dd></div>
+            </div>
+          </section>
+        </div>
+        <div class="tabbar">
+          <div class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</div>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>现状 · 六块满宽卡纵排</b>366px × 6 块，间距 12px；站点数据在桌面是三列，手机塌成一行一个。整页 3976px。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">改造后 · 首屏（公告置顶 / 仪表盘 / 签到 / 宫格 / 横滑）</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr new">
+        <div class="appbar">
+          <div class="lg">FT</div>
+          <div class="appname">FluxTorrent</div>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+          <div class="ava">R<span class="dot">99+</span></div>
+        </div>
+        <div class="scroll">
+
+          <!-- 1. Hero 仪表盘 -->
+          <section class="hero">
+            <svg class="art" viewBox="0 0 362 168" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="wg1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffffff" stop-opacity=".22"/>
+                  <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="wg2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#8ec5f5" stop-opacity=".05"/>
+                  <stop offset="1" stop-color="#8ec5f5" stop-opacity=".4"/>
+                </linearGradient>
+              </defs>
+              <circle cx="320" cy="26" r="54" fill="url(#wg1)"/>
+              <circle cx="46" cy="150" r="40" fill="url(#wg2)"/>
+              <path d="M0 126c26-18 48-18 74 0s48 18 74 0 48-18 74 0 48 18 74 0 48-18 66-6v48H0z" fill="#ffffff" opacity=".09"/>
+              <path d="M0 148c26-14 48-14 74 0s48 14 74 0 48-14 74 0 48 14 74 0 48-14 66-5v25H0z" fill="#ffffff" opacity=".07"/>
+              <g fill="#ffd98a">
+                <circle cx="298" cy="34" r="2.2" opacity=".9"/><circle cx="312" cy="52" r="1.4" opacity=".7"/>
+                <circle cx="282" cy="58" r="1.6" opacity=".6"/><circle cx="330" cy="24" r="1.2" opacity=".55"/>
+              </g>
+            </svg>
+            <div class="hrow1">
+              <div class="hlg">FT</div>
+              <div class="hhi">
+                <b>下午好，FluxTorrent</b>
+                <i>连续签到 0 天 · 累计签到 6 天</i>
+              </div>
+              <div class="hstar"><b>12,713</b><i>★ 魔力余额</i></div>
+            </div>
+            <dl class="hmetrics">
+              <div class="hm"><dt>上传</dt><dd>2.0 <s>GB</s></dd></div>
+              <div class="hm"><dt>下载</dt><dd>5.4 <s>GB</s></dd></div>
+              <div class="hm"><dt>分享率</dt><dd>0.37</dd></div>
+            </dl>
+            <div class="rbar">
+              <i style="width:61.6%"></i>
+              <u style="left:66.6%"></u>
+            </div>
+            <p class="rnote">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8.5v5M12 17h.01"/><path d="M10.3 3.9 2.6 17.4A1.9 1.9 0 0 0 4.3 20.3h15.4a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/></svg>
+              分享率 <b>0.37</b> 低于观察期阈值 <b>0.40</b>，还差 0.03
+            </p>
+          </section>
+
+          <!-- 2. 签到条 -->
+          <section class="card news-top">
+            <div class="nthead">
+              <h3><span aria-hidden="true">📣</span> 社区新鲜事</h3>
+              <span class="more">全部公告 ›</span>
+            </div>
+            <div class="newsbody">
+              <span class="nb">社区公告</span>
+              <b>年末资源盘点与新版字幕组上线说明</b>
+              <p>本次盘点覆盖全部已审资源与待审队列，字幕组同步开放申请，具体规则见公告正文。</p>
+            </div>
+            <div class="nfoot">
+              <span class="nunread"><i></i>3 条未读</span>
+              <span class="ntime">最近更新 13:38 · 点击标题看全文</span>
+            </div>
+          </section>
+          <section class="card checkin">
+            <div class="ckico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15.5" rx="2.4"/><path d="M3.5 9.6h17M8 3v4M16 3v4"/><path d="m9.4 14.4 1.9 1.9 3.4-3.6"/></svg></div>
+            <div class="cktxt">
+              <b>签到得魔力</b>
+              <i>今日未签 · 连签 0 天 · 累计 6 天</i>
+              <div class="ckms"><u><i style="width:0%"></i></u><em>里程碑 10 天 <b>+200 魔力</b></em></div>
+            </div>
+            <button class="ckbtn">签到 +8</button>
+          </section>
+
+
+
+          <section class="card qgrid">
+            <a class="q live" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v10.5H9.2L4 20z"/><path d="M8.6 10.6h.01M12 10.6h.01M15.4 10.6h.01"/></svg><i></i></span><span>聊天室</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v10.5H9.2L4 20z"/></svg></span><span>论坛</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2.6"/><path d="M7 11h4M7 14.5h8"/></svg></span><span>字幕</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20v-8M12 20V5M19 20v-5.5"/></svg></span><span>排行</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 9.6V8a2.6 2.6 0 0 0-2.6-2.6H6.2A3.2 3.2 0 0 0 3 8.6v6.8A3.2 3.2 0 0 0 6.2 18.6H18a2.6 2.6 0 0 0 2.6-2.6v-1.4"/><path d="M21.4 10.4h-4.2a2.1 2.1 0 0 0 0 4.2h4.2a.5.5 0 0 0 .5-.5v-3.2a.5.5 0 0 0-.5-.5Z"/></svg></span><span>银行</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v10"/><path d="m7.4 9.6 4.6 4.6 4.6-4.6"/><path d="M4.5 19.5h15"/></svg></span><span>求种</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9.5" cy="8" r="3.4"/><path d="M3.4 20c1.2-3.6 3.3-5.4 6.1-5.4 1 0 2 .2 2.8.7"/><path d="M17.5 14.5v6M14.5 17.5h6"/></svg></span><span>邀请</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.6" y="7.6" width="18.8" height="10" rx="4.4"/><path d="M7 11v3.2M5.4 12.6h3.2M15.6 12.2h.01M18.2 14h.01"/></svg></span><span>娱乐屋</span></a>
+          </section>
+          <!-- 4. 最新资源 横滑 -->
+          <section class="card" style="position:relative">
+            <div class="chead">
+              <h3>🎬 最新资源</h3>
+              <span class="more">查看全部 →</span>
+            </div>
+            <div class="rail">
+              <a class="tcard" href="#">
+                <div class="cv" style="background:linear-gradient(140deg,#1b3a6b,#3f7fd0)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.4"/><path d="M10 8.8 16 12l-6 3.2z"/></svg>
+                  <em class="off">官种</em>
+                </div>
+                <div class="ti"><b>沉默的深海 2160p 蓝光原盘 REMUX</b><i><u>48.2 GB</u><s>电影</s></i></div>
+              </a>
+              <a class="tcard" href="#">
+                <div class="cv" style="background:linear-gradient(140deg,#7a2e4e,#c0567f)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.4"/><path d="M10 8.8 16 12l-6 3.2z"/></svg>
+                </div>
+                <div class="ti"><b>山海经 第一季 1080P 动画剧集</b><i><u>18.7 GB</u><s>剧集</s></i></div>
+              </a>
+              <a class="tcard" href="#">
+                <div class="cv" style="background:linear-gradient(140deg,#0f5f56,#39a894)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.4"/><path d="M10 8.8 16 12l-6 3.2z"/></svg>
+                  <em class="off">官种</em>
+                </div>
+                <div class="ti"><b>DeepAudit.Pack.2026 1080p 探针包</b><i><u>50 MB</u><s>电影</s></i></div>
+              </a>
+              <div class="fade"></div>
+            </div>
+          </section>
+        </div>
+        <div class="tabbar">
+          <div class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</div>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>新版首屏</b>实测：仪表盘 170px + 公告头条 176px + 签到条 79px + 快捷宫格 171px + 间距/内边距 49px = <b>645px</b>，724px 可用区装完还余 79px，资源横滑在折叠线处渐隐露头。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">改造后 · 内容区（统计迷你 / 数据两列）</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr new">
+        <div class="appbar">
+          <div class="lg">FT</div>
+          <div class="appname">FluxTorrent</div>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+          <div class="ava">R<span class="dot">99+</span></div>
+        </div>
+        <div class="scroll">
+
+
+          <!-- 新增资源统计 迷你版 -->
+          <section class="card">
+            <div class="chead">
+              <h3>▥ 新增资源统计</h3>
+              <span class="more">近 30 天 · 每 5 分钟更新</span>
+            </div>
+            <div class="mini">
+              <dl class="ms"><dt>今日</dt><dd>0</dd></dl>
+              <dl class="ms s2"><dt>7 日均</dt><dd>1.1</dd></dl>
+              <dl class="ms s3"><dt>30 日</dt><dd>212</dd></dl>
+              <div class="spark">
+                <s style="height:8%"></s><s style="height:14%"></s><s style="height:4%"></s><s class="o" style="height:3%"></s><s style="height:2%"></s><s style="height:46%"></s><s class="o" style="height:2
+                %"></s><s style="height:30%"></s><s style="height:2%"></s><s class="o" style="height:2%"></s><s style="height:2%"></s><s style="height:8%"></s><s style="height:49%"></s><s class="o" style="h
+                eight:20%"></s><s style="height:2%"></s><s style="height:2%"></s><s style="height:2%"></s><s style="height:15%"></s><s style="height:20%"></s><s class="o" style="height:2%"></s><s style="hei
+                ght:41%"></s><s style="height:2%"></s><s class="o" style="height:30%"></s><s style="height:2%"></s><s style="height:2%"></s><s style="height:2%"></s><s style="height:2%"></s><s style="height
+                :2%"></s><s class="o" style="height:2%"></s><s style="height:2%"></s>
+              </div>
+            </div>
+            <div class="slegend">
+              <span><em></em>普通资源</span>
+              <span><em class="o"></em>官种</span>
+            </div>
+          </section>
+
+          <!-- 站点数据 两列网格 -->
+          <section class="card">
+            <div class="chead">
+              <h3>▦ 站点数据</h3>
+              <span class="more">全站概览 · 每 5 分钟更新</span>
+            </div>
+            <dl class="sdgrid">
+              <div class="sd pri"><dt>注册用户</dt><dd>101</dd></div>
+              <div class="sd"><dt>种子</dt><dd>215</dd></div>
+              <div class="sd"><dt>同伴</dt><dd>0</dd></div>
+              <div class="sd"><dt>做种数</dt><dd>0</dd></div>
+              <div class="sd"><dt>下载数</dt><dd>0</dd></div>
+              <div class="sd"><dt>做种体积</dt><dd>273 GB</dd></div>
+              <div class="sd"><dt>总数据量</dt><dd>65.6 GB</dd></div>
+              <div class="sd"><dt>总上传量</dt><dd>57.6 GB</dd></div>
+            </dl>
+            <div class="sdmore">更多统计（被警告 / 被禁用 / 未验证 / 做种比） ›</div>
+          </section>
+
+        </div>
+        <div class="tabbar">
+          <div class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</div>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>新版内容区 · 密度对齐桌面</b>实测：统计 139px（现状 406）、站点数据 343px（现状 691）、转盘 58px。公告已提到首屏第 1 块，这里不再出现。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">改造后 · 尾屏（折叠 + 页脚）</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr new">
+        <div class="appbar">
+          <div class="lg">FT</div>
+          <div class="appname">FluxTorrent</div>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+          <div class="ava">R<span class="dot">99+</span></div>
+        </div>
+        <div class="scroll">
+
+
+
+          <!-- 幸运大转盘 -->
+          <section class="card luck">
+            <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4v4.6l3 1.8"/></svg></div>
+            <div class="lt">
+              <b>幸运大转盘</b>
+              <i>刚刚 <s>root</s> 抽中 <s>50</s> 魔力</i>
+            </div>
+            <span class="more">去抽奖 →</span>
+          </section>
+
+          <!-- 页脚 -->
+          <div class="foot">
+            <div class="flinks">
+              <a href="#">友情链接</a>
+              <a href="#">申请链接</a>
+              <a href="#">站点规则</a>
+              <a href="#">常见问题</a>
+              <a href="#">封禁记录</a>
+              <a href="#">API 文档</a>
+            </div>
+            <p>本站列出的文件并没有保存在本站的服务器上，本站仅负责连接，对被传播文件的内容一无所知；本站的链接均由用户自发提供，管理员无法对用户的提交内容或其他行为负责。</p>
+            <p style="text-align:center;margin-top:10px">© FluxTorrent · Powered by FluxTorrent 0.3.2</p>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</div>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>新版尾屏 · 只剩该收的低频内容</b>聊天室与签到日历已改为弹层（首页零常驻版面），转盘压成一行，免责与友链收进页脚链接组。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">改造后 · 聊天室改成底部弹层（BottomSheet）</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr new overlay">
+        <div class="appbar">
+          <div class="lg">FT</div>
+          <div class="appname">FluxTorrent</div>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+          <div class="ava">R<span class="dot">99+</span></div>
+        </div>
+        <div class="scroll">
+
+          <section class="hero">
+            <svg class="art" viewBox="0 0 362 168" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="wg1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffffff" stop-opacity=".22"/>
+                  <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="wg2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#8ec5f5" stop-opacity=".05"/>
+                  <stop offset="1" stop-color="#8ec5f5" stop-opacity=".4"/>
+                </linearGradient>
+              </defs>
+              <circle cx="320" cy="26" r="54" fill="url(#wg1)"/>
+              <circle cx="46" cy="150" r="40" fill="url(#wg2)"/>
+              <path d="M0 126c26-18 48-18 74 0s48 18 74 0 48-18 74 0 48 18 74 0 48-18 66-6v48H0z" fill="#ffffff" opacity=".09"/>
+              <path d="M0 148c26-14 48-14 74 0s48 14 74 0 48-14 74 0 48 14 74 0 48-14 66-5v25H0z" fill="#ffffff" opacity=".07"/>
+              <g fill="#ffd98a">
+                <circle cx="298" cy="34" r="2.2" opacity=".9"/><circle cx="312" cy="52" r="1.4" opacity=".7"/>
+                <circle cx="282" cy="58" r="1.6" opacity=".6"/><circle cx="330" cy="24" r="1.2" opacity=".55"/>
+              </g>
+            </svg>
+            <div class="hrow1">
+              <div class="hlg">FT</div>
+              <div class="hhi">
+                <b>下午好，FluxTorrent</b>
+                <i>连续签到 0 天 · 累计签到 6 天</i>
+              </div>
+              <div class="hstar"><b>12,713</b><i>★ 魔力余额</i></div>
+            </div>
+            <dl class="hmetrics">
+              <div class="hm"><dt>上传</dt><dd>2.0 <s>GB</s></dd></div>
+              <div class="hm"><dt>下载</dt><dd>5.4 <s>GB</s></dd></div>
+              <div class="hm"><dt>分享率</dt><dd>0.37</dd></div>
+            </dl>
+            <div class="rbar">
+              <i style="width:61.6%"></i>
+              <u style="left:66.6%"></u>
+            </div>
+            <p class="rnote">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8.5v5M12 17h.01"/><path d="M10.3 3.9 2.6 17.4A1.9 1.9 0 0 0 4.3 20.3h15.4a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/></svg>
+              分享率 <b>0.37</b> 低于观察期阈值 <b>0.40</b>，还差 0.03
+            </p>
+          </section>
+
+          <section class="card news-top">
+            <div class="nthead">
+              <h3><span aria-hidden="true">📣</span> 社区新鲜事</h3>
+              <span class="more">全部公告 ›</span>
+            </div>
+            <div class="newsbody">
+              <span class="nb">社区公告</span>
+              <b>年末资源盘点与新版字幕组上线说明</b>
+              <p>本次盘点覆盖全部已审资源与待审队列，字幕组同步开放申请，具体规则见公告正文。</p>
+            </div>
+            <div class="nfoot">
+              <span class="nunread"><i></i>3 条未读</span>
+              <span class="ntime">最近更新 13:38 · 点击标题看全文</span>
+            </div>
+          </section>
+
+        </div>
+        <div class="tabbar">
+          <div class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</div>
+        </div>        <div class="bsheet-root">
+          <div class="bsheet-mask"></div>
+          <div class="bsheet">
+            <div class="bsheet__grab">
+              <span class="bsheet__bar"></span>
+              <p class="bsheet__title">💬 聊天室</p>
+              <p class="bsheet__sub">全站公共聊天 · 15 秒自动刷新</p>
+            </div>
+            <div class="bsheet__body">
+              <div class="chatlist">
+                <div class="crow"><u>R</u><b>root</b><s>全站双倍上传已开启！截止 10-29 13:37</s><em>07:38</em></div>
+                <div class="crow"><u>R</u><b>root</b><s>本站 FREE 已开启！截止 10-28 21:51</s><em>01:51</em></div>
+                <div class="crow"><u>R</u><b>root</b><s>本站全新站点欢迎新朋友们来玩！</s><em>23:12</em></div>
+                <div class="crow"><u>R</u><b>root</b><s>签到有惊喜，连续签到有额外魔力奖励</s><em>21:04</em></div>
+                <div class="crow"><u>R</u><b>root</b><s>资源区新种速报，30 天新增 212 个资源</s><em>19:48</em></div>
+              </div>
+              <div class="chatcmd"><s>/free</s><s>/stats</s><s>/me</s><s>/help</s></div>
+              <div class="chatform">
+                <input placeholder="说点什么…（1-300 字）"/>
+                <button>发言</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>聊天室 · 拉起即聊</b>首页只留宫格里的一个入口，聊天本体是 82% 高的底部抽屉：50 条历史 + 输入框 + 机器人快捷命令，15 秒自动刷新沿用现成 <code>ShoutBox</code>。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">改造后 · 签到日历改成底部弹层</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr new overlay">
+        <div class="appbar">
+          <div class="lg">FT</div>
+          <div class="appname">FluxTorrent</div>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+          <div class="ava">R<span class="dot">99+</span></div>
+        </div>
+        <div class="scroll">
+
+          <section class="hero">
+            <svg class="art" viewBox="0 0 362 168" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="wg1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffffff" stop-opacity=".22"/>
+                  <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="wg2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#8ec5f5" stop-opacity=".05"/>
+                  <stop offset="1" stop-color="#8ec5f5" stop-opacity=".4"/>
+                </linearGradient>
+              </defs>
+              <circle cx="320" cy="26" r="54" fill="url(#wg1)"/>
+              <circle cx="46" cy="150" r="40" fill="url(#wg2)"/>
+              <path d="M0 126c26-18 48-18 74 0s48 18 74 0 48-18 74 0 48 18 74 0 48-18 66-6v48H0z" fill="#ffffff" opacity=".09"/>
+              <path d="M0 148c26-14 48-14 74 0s48 14 74 0 48-14 74 0 48 14 74 0 48-14 66-5v25H0z" fill="#ffffff" opacity=".07"/>
+              <g fill="#ffd98a">
+                <circle cx="298" cy="34" r="2.2" opacity=".9"/><circle cx="312" cy="52" r="1.4" opacity=".7"/>
+                <circle cx="282" cy="58" r="1.6" opacity=".6"/><circle cx="330" cy="24" r="1.2" opacity=".55"/>
+              </g>
+            </svg>
+            <div class="hrow1">
+              <div class="hlg">FT</div>
+              <div class="hhi">
+                <b>下午好，FluxTorrent</b>
+                <i>连续签到 0 天 · 累计签到 6 天</i>
+              </div>
+              <div class="hstar"><b>12,713</b><i>★ 魔力余额</i></div>
+            </div>
+            <dl class="hmetrics">
+              <div class="hm"><dt>上传</dt><dd>2.0 <s>GB</s></dd></div>
+              <div class="hm"><dt>下载</dt><dd>5.4 <s>GB</s></dd></div>
+              <div class="hm"><dt>分享率</dt><dd>0.37</dd></div>
+            </dl>
+            <div class="rbar">
+              <i style="width:61.6%"></i>
+              <u style="left:66.6%"></u>
+            </div>
+            <p class="rnote">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8.5v5M12 17h.01"/><path d="M10.3 3.9 2.6 17.4A1.9 1.9 0 0 0 4.3 20.3h15.4a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/></svg>
+              分享率 <b>0.37</b> 低于观察期阈值 <b>0.40</b>，还差 0.03
+            </p>
+          </section>
+
+          <section class="card news-top">
+            <div class="nthead">
+              <h3><span aria-hidden="true">📣</span> 社区新鲜事</h3>
+              <span class="more">全部公告 ›</span>
+            </div>
+            <div class="newsbody">
+              <span class="nb">社区公告</span>
+              <b>年末资源盘点与新版字幕组上线说明</b>
+              <p>本次盘点覆盖全部已审资源与待审队列，字幕组同步开放申请，具体规则见公告正文。</p>
+            </div>
+            <div class="nfoot">
+              <span class="nunread"><i></i>3 条未读</span>
+              <span class="ntime">最近更新 13:38 · 点击标题看全文</span>
+            </div>
+          </section>
+
+        </div>
+        <div class="tabbar">
+          <div class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</div>
+        </div>        <div class="bsheet-root">
+          <div class="bsheet-mask"></div>
+          <div class="bsheet al-sheet">
+            <div class="bsheet__grab">
+              <span class="bsheet__bar"></span>
+              <p class="bsheet__title">📅 签到日历 · 万年历</p>
+            </div>
+            <p class="al-note">每天签到领<b>魔力</b>，连签奖励更多（上限 1000）。累计签到 <b>6</b> 天、连续 <b>0</b> 天；漏签可选取近 30 天内的日期补签（补签卡 0 张）。</p>
+            <div class="al-bar">
+              <span class="mv">‹　2026年 <em>11月</em>　›</span>
+              <button class="al-btn">签到 +8</button>
+              <button class="al-btn ghost">今天</button>
+            </div>
+            <div class="al-card">
+              <div class="al-wd">
+                <span>一</span><span>二</span><span>三</span><span>四</span><span class="we">五</span><span class="we">六</span><span class="we">日</span>
+              </div>
+              <div class="al-grid">
+            <i class="al-out"></i>
+            <i class="al-out"></i>
+            <i class="al-out"></i>
+            <i class="al-out"></i>
+            <i class="al-out"></i>
+            <i class="al-out"></i>
+            <i class="al-cell"><em class="al-lb"></em><b>1</b><s>廿三己卯</s></i>
+            <i class="al-cell is-sel is-today"><em class="al-lb"></em><b>2</b><s>廿四庚辰</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>3</b><s>廿五辛巳</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>4</b><s>廿六壬午</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>5</b><s>廿七癸未</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>6</b><s>廿八甲申</s></i>
+            <i class="al-cell"><em class="al-lb is-red">立冬</em><b>7</b><s>廿九乙酉</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>8</b><s>三十丙戌</s></i>
+            <i class="al-cell"><em class="al-lb">寒衣节</em><b>9</b><s>初一丁亥</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>10</b><s>初二戊子</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>11</b><s>初三己丑</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>12</b><s>初四庚寅</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>13</b><s>初五辛卯</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>14</b><s>初六壬辰</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>15</b><s>初七癸巳</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>16</b><s>初八甲午</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>17</b><s>初九乙未</s></i>
+            <i class="al-cell"><em class="al-lb">十成节</em><b>18</b><s>初十丙申</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>19</b><s>十一丁酉</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>20</b><s>十二戊戌</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>21</b><s>十三己亥</s></i>
+            <i class="al-cell"><em class="al-lb is-red">小雪</em><b>22</b><s>十四庚子</s></i>
+            <i class="al-cell"><em class="al-lb">下元节</em><b>23</b><s>十五辛丑</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>24</b><s>十六壬寅</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>25</b><s>十七癸卯</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>26</b><s>十八甲辰</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>27</b><s>十九乙巳</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>28</b><s>二十丙午</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>29</b><s>廿一丁未</s></i>
+            <i class="al-cell"><em class="al-lb"></em><b>30</b><s>廿二戊申</s></i>
+              </div>
+              <div class="al-lgd"><span><i class="dot-done"></i>已签到</span><span><i class="dot-today"></i>今天（待签）</span><span><i class="dot-fest"></i>节气/节日</span></div>
+              <div class="al-detail">
+                <h4>11月2日 · 万年历<em>点日期切换</em></h4>
+                <p class="al-d1">2026年11月2日 星期一 · 第306天 · 第45周</p>
+                <p class="al-d2">农历丙午（马）年九月廿四</p>
+                <p class="al-d3">年 丙午 / 月 戊戌 / 日 庚辰 · 甲戌旬 空亡 申酉 · 天蝎座</p>
+                <dl class="al-tri">
+                  <div><dt>纳音</dt><dd>白蜡金</dd></div>
+                  <div><dt>冲煞</dt><dd>冲狗 <s>煞南</s></dd></div>
+                  <div><dt>值神</dt><dd>青龙 <s>黄道吉</s></dd></div>
+                </dl>
+                <div class="al-yj"><b>宜</b><span><s>祭祀</s><s>沐浴</s><s>解除</s><s>破屋</s><s>坏垣</s><s>馀事勿取</s></span></div>
+                <div class="al-yj ji"><b>忌</b><span><s>开市</s><s>嫁娶</s></span></div>
+                <div class="al-jc"><s class="">建</s><s class="">除</s><s class="">满</s><s class="">平</s><s class="">定</s><s class="">执</s><s class="on">破</s><s class="">危</s><s class="">成</s><s class="">收</s><s class="">开</s><s class="">闭</s></div>
+                <p class="al-pz">彭祖百忌：<b>庚</b>不经络 织机虚张，<b>辰</b>不哭泣 必主重丧</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>签到日历 · 抽屉 + 万年历</b>首屏只留一条 79px 签到条；抽屉里是带万年历的月历——每格实算农历日与日干支，节气/节日标红（立冬·寒衣节·十成节·小雪·下元节），点某天出该日完整万年历（纳音 / 冲煞 / 值神 / 宜忌 / 建除十二神 / 彭祖百忌）。全屏 92% 高，省掉 490px 常驻版面。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">深色皮肤 · 首屏</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr new night">
+        <div class="appbar">
+          <div class="lg">FT</div>
+          <div class="appname">FluxTorrent</div>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+          <button class="abtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+          <div class="ava">R<span class="dot">99+</span></div>
+        </div>
+        <div class="scroll">
+          <section class="hero">
+            <svg class="art" viewBox="0 0 362 168" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="ng1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffffff" stop-opacity=".14"/>
+                  <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <circle cx="320" cy="26" r="54" fill="url(#ng1)"/>
+              <path d="M0 126c26-18 48-18 74 0s48 18 74 0 48-18 74 0 48 18 74 0 48-18 66-6v48H0z" fill="#47b3ff" opacity=".12"/>
+              <path d="M0 148c26-14 48-14 74 0s48 14 74 0 48-14 74 0 48 14 74 0 48-14 66-5v25H0z" fill="#47b3ff" opacity=".09"/>
+              <g fill="#ffd7a8"><circle cx="298" cy="34" r="2.2" opacity=".9"/><circle cx="312" cy="52" r="1.4" opacity=".7"/></g>
+            </svg>
+            <div class="hrow1">
+              <div class="hlg">FT</div>
+              <div class="hhi"><b>下午好，FluxTorrent</b><i>连续签到 0 天 · 累计签到 6 天</i></div>
+              <div class="hstar"><b>12,713</b><i>★ 魔力余额</i></div>
+            </div>
+            <dl class="hmetrics">
+              <div class="hm"><dt>上传</dt><dd>2.0 <s>GB</s></dd></div>
+              <div class="hm"><dt>下载</dt><dd>5.4 <s>GB</s></dd></div>
+              <div class="hm"><dt>分享率</dt><dd>0.37</dd></div>
+            </dl>
+            <div class="rbar"><i style="width:61.6%"></i><u style="left:66.6%"></u></div>
+            <p class="rnote">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8.5v5M12 17h.01"/><path d="M10.3 3.9 2.6 17.4A1.9 1.9 0 0 0 4.3 20.3h15.4a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/></svg>
+              分享率 <b>0.37</b> 低于观察期阈值 <b>0.40</b>，还差 0.03
+            </p>
+          </section>
+          <section class="card news-top">
+            <div class="nthead">
+              <h3><span aria-hidden="true">📣</span> 社区新鲜事</h3>
+              <span class="more">全部公告 ›</span>
+            </div>
+            <div class="newsbody">
+              <span class="nb">社区公告</span>
+              <b>年末资源盘点与新版字幕组上线说明</b>
+              <p>本次盘点覆盖全部已审资源与待审队列，字幕组同步开放申请，具体规则见公告正文。</p>
+            </div>
+            <div class="nfoot">
+              <span class="nunread"><i></i>3 条未读</span>
+              <span class="ntime">最近更新 13:38 · 点击标题看全文</span>
+            </div>
+          </section>
+          <section class="card checkin">
+            <div class="ckico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15.5" rx="2.4"/><path d="M3.5 9.6h17M8 3v4M16 3v4"/><path d="m9.4 14.4 1.9 1.9 3.4-3.6"/></svg></div>
+            <div class="cktxt">
+              <b>签到得魔力</b>
+              <i>今日未签 · 连签 0 天 · 累计 6 天</i>
+              <div class="ckms"><u><i style="width:0%"></i></u><em>里程碑 10 天 <b>+200 魔力</b></em></div>
+            </div>
+            <button class="ckbtn">签到 +8</button>
+          </section>
+
+          <section class="card qgrid">
+            <a class="q live" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v10.5H9.2L4 20z"/><path d="M8.6 10.6h.01M12 10.6h.01M15.4 10.6h.01"/></svg><i></i></span><span>聊天室</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v10.5H9.2L4 20z"/></svg></span><span>论坛</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2.6"/><path d="M7 11h4M7 14.5h8"/></svg></span><span>字幕</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20v-8M12 20V5M19 20v-5.5"/></svg></span><span>排行</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 9.6V8a2.6 2.6 0 0 0-2.6-2.6H6.2A3.2 3.2 0 0 0 3 8.6v6.8A3.2 3.2 0 0 0 6.2 18.6H18a2.6 2.6 0 0 0 2.6-2.6v-1.4"/><path d="M21.4 10.4h-4.2a2.1 2.1 0 0 0 0 4.2h4.2a.5.5 0 0 0 .5-.5v-3.2a.5.5 0 0 0-.5-.5Z"/></svg></span><span>银行</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v10"/><path d="m7.4 9.6 4.6 4.6 4.6-4.6"/><path d="M4.5 19.5h15"/></svg></span><span>求种</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9.5" cy="8" r="3.4"/><path d="M3.4 20c1.2-3.6 3.3-5.4 6.1-5.4 1 0 2 .2 2.8.7"/><path d="M17.5 14.5v6M14.5 17.5h6"/></svg></span><span>邀请</span></a>
+            <a class="q" href="#"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.6" y="7.6" width="18.8" height="10" rx="4.4"/><path d="M7 11v3.2M5.4 12.6h3.2M15.6 12.2h.01M18.2 14h.01"/></svg></span><span>娱乐屋</span></a>
+          </section>
+
+          <section class="card" style="position:relative">
+            <div class="chead"><h3>🎬 最新资源</h3><span class="more">查看全部 →</span></div>
+            <div class="rail">
+              <a class="tcard" href="#">
+                <div class="cv" style="background:linear-gradient(140deg,#1b3a6b,#3f7fd0)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.4"/><path d="M10 8.8 16 12l-6 3.2z"/></svg><em class="off">官种</em>
+                </div>
+                <div class="ti"><b>沉默的深海 2160p 蓝光原盘 REMUX</b><i><u>48.2 GB</u><s>电影</s></i></div>
+              </a>
+              <a class="tcard" href="#">
+                <div class="cv" style="background:linear-gradient(140deg,#7a2e4e,#c0567f)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.4"/><path d="M10 8.8 16 12l-6 3.2z"/></svg>
+                </div>
+                <div class="ti"><b>山海经 第一季 1080P 动画剧集</b><i><u>18.7 GB</u><s>剧集</s></i></div>
+              </a>
+              <a class="tcard" href="#">
+                <div class="cv" style="background:linear-gradient(140deg,#0f5f56,#39a894)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.4"/><path d="M10 8.8 16 12l-6 3.2z"/></svg><em class="off">官种</em>
+                </div>
+                <div class="ti"><b>DeepAudit.Pack.2026 1080p 探针包</b><i><u>50 MB</u><s>电影</s></i></div>
+              </a>
+              <div class="fade"></div>
+            </div>
+          </section>
+        </div>
+        <div class="tabbar">
+          <div class="tb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</div>
+          <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</div>
+          <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</div>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>深色皮肤</b>Hero 的深蓝渐变在夜间加深、金色魔力值提亮到 #ffd98a 保证对比度。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">改造方案 · 结构对照与落地清单</h3>
+<p class="rd-note">「现状」列的高度是 <b>2026-11-02 在现网登录后用 390×844 视口逐块量到的真实像素</b>（<code>getBoundingClientRect</code>，6 块合计 3035px）；「新版」列是本样图 DOM 的实测高度。两列都可复算。</p>
+<table class="rd-tb">
+  <thead><tr><th>板块</th><th>现状（手机）</th><th>现状高</th><th>新版</th><th>新版高</th></tr></thead>
+  <tbody>
+    <tr><td><b>社区新鲜事（公告）</b></td><td>排在第 2 块：巨幅海报 300px + 公告全展开</td><td>630px</td><td><b>提到首屏第 2 块</b>（签到上面）：琥珀斜纹头条卡 + 大标题 + 摘要 + 未读数，点击开正文弹窗</td><td><b>176px</b></td></tr>
+    <tr><td>问候 + 数据条</td><td>一行灰字 + 4 个白盒（<code>.mhome-head</code>）</td><td>110px</td><td>合并进 Hero 仪表盘：魔力余额升为主数字、分享率带阈值刻度与告警、上传下载降为次级</td><td><b>170px</b>（含全部信息）</td></tr>
+    <tr><td>新增资源统计</td><td>3 个大数盒 + 30 根柱 + 图例</td><td>406px</td><td>一行 3 个数字 + 44px sparkline，图例并入卡头</td><td><b>139px</b></td></tr>
+    <tr><td><b>聊天室</b></td><td>整段日志平铺在第 3 块</td><td>556px</td><td><b>改底部弹层</b>：首页只留宫格里一个入口，抽屉里是 50 条历史 + 输入框 + 机器人命令</td><td><b>0（首页）</b></td></tr>
+    <tr><td>站点数据</td><td>15 行满宽单列（桌面本为三列）</td><td>691px</td><td>2 列 × 8 格网格，低频 4 项收进「更多统计」</td><td><b>343px</b></td></tr>
+    <tr><td><b>签到日历</b></td><td>整月日历矩阵（只有阳历日 + 奖励数）+ 补签口</td><td>490px</td><td><b>改底部弹层并加万年历</b>：首屏只留 79px 签到条；抽屉里每格带实算农历日与日干支，节气/节日标红，点某天出该日完整万年历（纳音 / 冲煞 / 值神 / 宜忌 / 建除十二神 / 彭祖百忌）</td><td><b>79px（首页）</b></td></tr>
+    <tr><td>免责条款 + 友链</td><td>整宽正文段</td><td>262px</td><td>页脚链接组 + 小字免责</td><td><b>114px</b></td></tr>
+    <tr><td>最新资源</td><td>海报墙横向跑马灯（无限动画，模块开时）</td><td>—</td><td>可滑动卡片 rail（首屏露出即用），不再自动跑</td><td><b>223px</b></td></tr>
+    <tr><td>快捷入口</td><td>无（导航全靠 59 项抽屉 + 底部 5 tab）</td><td>—</td><td>新增 4×2 图标宫格，第一格是「聊天室」活体入口</td><td><b>171px</b></td></tr>
+    <tr><td><b>幸运大转盘</b></td><td>独立整宽卡列流水</td><td>—</td><td><b>改弹窗</b>：首页只留一行「刚刚 xxx 抽中 N 魔力」，点开看流水</td><td><b>58px（首页）</b></td></tr>
+  </tbody>
+</table>
+<p class="rd-note">新版合计 <b>1539px</b>（App Bar 与 Tab Bar 之外，3 块弹层不占常驻版面），现状同口径 <b>3976px</b>；首屏可用区 724px，完整装下<b>仪表盘 + 公告 + 签到 + 宫格 = 645px</b>，资源横滑在折叠线处渐隐露头。</p>
+
+<h3 class="rd-h3">落地到现有代码要动的地方</h3>
+<ul class="rd-list">
+  <li><b>新增</b> <code>apps/web/components/mobile-home-news-top.tsx</code>：公告头条卡，排在签到条之前渲染 <code>data.news[0]</code>，点击标题走现成 <code>HomeNewsModal</code>（已是原生 <code>&lt;dialog&gt;</code>，有 Esc / 焦点圈定）。</li>
+  <li><b>新增</b> <code>apps/web/components/mobile-home-hero.tsx</code>：读 <code>/api/v1/me/overview</code> 的个人四项 + 分享率阈值（新增 <code>/api/v1/home</code> 字段或复用 <code>site_settings</code> 只读口），渲染仪表盘。</li>
+  <li><b>新增</b> <code>apps/web/components/mobile-home-quick-grid.tsx</code>：4×2 图标宫格；第一格「聊天室」是活体入口（红点），点开拉起 BottomSheet，其余走现有路由。</li>
+  <li><b>改</b> <code>apps/web/components/home-sections.tsx</code>：把 <code>shoutbox</code> / 签到日历 / <code>lucky_draw</code> 三个 key 从排版流里摘出，改为弹层承载——它们不再占首页常驻版面。</li>
+  <li><b>复用</b> <code>apps/web/components/bottom-sheet.tsx</code>（现成：18px 圆角 + grabber + 82% 高 + 焦点圈定 + ESC + 下拉关闭）装聊天室与签到日历；<code>components/modal.tsx</code> 装转盘流水。</li>
+  <li><b>改</b> <code>apps/web/components/shout-box.tsx</code>：15 秒轮询改成「抽屉打开才轮询、关闭即停」，否则首页后台空转。</li>
+  <li><b>改</b> <code>apps/web/app/styles/layout.css:1675-1684</code>：那条 ≤1024px 的「span 全部 <code>grid-column:auto</code>」是塌成一列的根因，改为按 <code>home_sections</code> 的 span 语义在手机上折成两列（span=3 整行、span=2 半宽、span=1 落到窄列）。</li>
+  <li><b>改</b> <code>apps/web/components/home-site-data.tsx</code>：<code>home-site-data__grid</code> 的 <code>minmax(230px,1fr)</code> 在 366px 容器下只能排 1 列——手机侧改 <code>repeat(2,minmax(0,1fr))</code>，并把 15 项按「主指标 8 + 次要 4 + 其他 3」分组。</li>
+  <li><b>改</b> <code>apps/web/components/home-resource-stats.tsx</code>：柱图改 44px sparkline，三个统计盒改单行三列。</li>
+  <li><b>改</b> <code>apps/web/components/latest-posters.tsx</code>：跑马灯（<code>.poster-marquee</code> 无限动画）改可滑动 rail——自动跑的动画在手机上既占位又抢注意力。</li>
+  <li><b>改</b> <code>apps/web/components/home-attendance.tsx</code>：拆成首页 79px 紧凑签到条 + 抽屉里的完整月历与补签弹层。</li>
+  <li><b>加依赖</b> <code>apps/web</code> 装 <code>lunar-javascript@1.7.7</code>（MIT、无三方依赖、511KB）：<code>Solar.fromYmd(y,m,d).getLunar()</code> 出全部历法数据。<b>注意</b>：<code>Lunar.fromYmd</code> 收的是<b>农历</b>年月日，取太阳历必须走 <code>Solar.fromYmd().getLunar()</code>，用错会差两个月。</li>
+  <li><b>新增</b> <code>apps/web/components/home-almanac.tsx</code>：<code>almanacOf(dateStr)</code> 纯函数 + 月历网格 + 选中日明细面板。<b>不碰后端</b>——万年历是纯展示层数据，签到状态仍走 <code>/api/v1/attendance</code>。</li>
+  <li><b>注意</b> 两件事：① 库覆盖 <b>1900–2100</b>，越界要兜底；② 500KB 别进首屏 bundle，日历组件用 <code>dynamic(() =&gt; import(...), { ssr: false })</code> 懒加载；③ 万年历文案（纳音/冲煞/值神/宜/忌/建除/彭祖）要补 <code>zh-CN.ts</code> / <code>zh-TW.ts</code> / <code>en.ts</code> 三语。</li>
+  <li><b>改</b> 折叠线处理：首屏底部加渐隐遮罩，下一块被切时是化进底色而不是硬边。</li>
+</ul>
+
+<div class="rd-legend">
+  <span><i>1</i>公告排在签到上面（首屏第 2 块），琥珀斜纹头条卡 + 未读数</span>
+  <span><i>2</i>仪表盘：魔力主数字 + 分享率阈值告警</span>
+  <span><i>3</i>每日主动作（签到）在首屏，奖励额取站点设置真实值</span>
+  <span><i>4</i>快捷宫格第一格是「聊天室」活体入口</span>
+  <span><i>5</i>浏览型内容走横滑，不占纵向版面</span>
+  <span><i>6</i>30 天统计缩成 sparkline</span>
+  <span><i>7</i>站点数据两列网格，低频项折叠</span>
+  <span><i>8</i>聊天室 → 底部抽屉（82% 高，含输入框）</span>
+  <span><i>9</i>签到日历 → 底部抽屉，首屏只留 79px 签到条</span>
+  <span><i>10</i>抽屉内是带万年历的月历：每格农历日 + 日干支，节气节日标红，点某日出完整万年历</span>
+</div>
+
+<p class="rd-note">交互与数据口径说明：样图是<b>静态视觉稿</b>，横滑 rail、折叠、签到按钮为交互示意，尚未接线。分享率告警读的是站点真实设置 <code>ratio_watch_threshold</code>（0.4，跌破后进入 14 天观察期、到期仍跌破才限下载）与 <code>ratio_gate_max</code>（1.0，新号 7 天宽限）；签到奖励 <code>+8</code> 取自 <code>attendance_streak</code>（首次为 <code>attendance_first</code>=15），单日上限 <code>attendance_daily_cap</code>=1000。</p>
+
+<script>
+(function () {
+  var root = document.getElementById("mhome-rd");
+  if (!root) return;
+  var skins = root.querySelectorAll("[data-skin-set]");
+  Array.prototype.forEach.call(skins, function (b) {
+    b.addEventListener("click", function () {
+      root.setAttribute("data-skin", b.getAttribute("data-skin-set"));
+      Array.prototype.forEach.call(skins, function (x) {
+        x.setAttribute("aria-pressed", x === b ? "true" : "false");
+      });
+    });
+  });
+})();
+</script>
+</div>
+
+</body>
+</html>
