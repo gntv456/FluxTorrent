@@ -49,6 +49,11 @@ export interface HomeData {
   home_layout?: string;
   /** 板块单源清单（四审 L6）：键 + 推荐占宽 + 是否进默认排版，来自后端 */
   home_sections?: import("@/components/home-layout").HomeSectionMeta[];
+  /** 分享率处置线（ratio_watch_threshold，站点级）：仪表盘据此提示
+   *  「离停下载的线还差多少」。null = 后端没取到 ⇒ 前端不画该提示。 */
+  ratio_watch_threshold?: number | null;
+  /** 连签里程碑（站点级）：[{day, value}]，签到条显示「下一档还差几天」。 */
+  attendance_milestones?: { day: number; value: number }[];
 }
 
 /** 首页板块文案字典段（原文件里 ReturnType<typeof useI18n> 的等价类型） */

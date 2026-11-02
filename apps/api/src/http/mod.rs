@@ -1,8 +1,7 @@
 //! HTTP 接口层：路由 + handlers + 鉴权提取器 + 限流。
 //! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
 //! 按域拆分（300 行门禁）：鉴权/限流在 auth_infra.rs，me 杂项/统计/
-//! 举报/RSS 在 misc_handlers.rs，插件四件套 plugins.rs，公告/趣味盒/
-//! 友链 news_fun.rs，首页板块 home.rs；路由注册与 auth 见 v1_scope。
+//! 举报/RSS 在 misc_handlers.rs，插件在 plugins.rs，公告/趣味盒/友链 news_fun.rs，首页在 home.rs。
 
 pub(crate) mod write_origin;
 pub(crate) use write_origin::write_origin_mw;
@@ -15,6 +14,7 @@ pub(crate) mod home;
 mod home_attendance;
 mod home_layout;
 pub(crate) mod home_news;
+mod home_settings;
 pub mod idempotency;
 mod links;
 mod misc_handlers;

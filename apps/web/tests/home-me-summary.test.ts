@@ -61,7 +61,18 @@ describe("homeMeSummary（首页移动数据条）", () => {
       downloaded: formatBytes(0),
       ratio: formatRatio(0, 0),
       spark: (0).toLocaleString("zh-CN"),
+      // 仪表盘要拿分享率**数值**跟站点的处置线比（ratioValue：null = 没下载过）
+      ratioValue: null,
     });
+  });
+
+  it("ratioValue 与 formatRatio 同一支口径（没下载过 = null，不是 0）", () => {
+    const s = homeMeSummary(
+      { uploaded: 5 * GIB, downloaded: 2 * GIB }, "zh-CN");
+    expect(s?.ratioValue).toBeCloseTo(2.5, 6);
+    const inf = homeMeSummary({ uploaded: 5 * GIB, downloaded: 0 }, "zh-CN");
+    expect(inf?.ratioValue).toBeNull();
+    expect(inf?.ratio).toBe(formatRatio(5 * GIB, 0));
   });
 
   it("取数失败（null）仍回落 null：只渲染问候语", () => {

@@ -18,9 +18,11 @@ use redis::AsyncCommands;
 /// 首页共享段 Redis 缓存键（0152）：公告/资源统计/站点数据/娱乐流水/友链/排版。
 /// 写失效式（Gazelle 范式）：管理端 news/links/home_layout/promos 写操作 DEL 本键，
 /// TTL 300s 兜底覆盖种子发布（资源统计）与游戏流水这类无写入口的慢变化。
-pub const HOME_SHARED_CACHE_KEY: &str = "cache:home:shared:v2";
+pub const HOME_SHARED_CACHE_KEY: &str = "cache:home:shared:v3";
 // v1→v2：本批 payload 新增 home_sections（板块单源清单）。前端拿到缺该字段的
 // 旧缓存会把首页当「无板块」渲染，直接换 key 让旧条目一次性作废。
+// v2→v3：本批 payload 新增 ratio_watch_threshold（分享率处置线）。缺该字段的
+// 旧缓存会让仪表盘拿不到阈值（＝前端不画告警条），同样换 key 作废。
 
 /// 供管理端写路径主动失效（写失效式缓存，Gazelle 范式）
 pub async fn invalidate_home_cache(state: &AppState) {
@@ -244,6 +246,13 @@ async fn home_shared_fresh(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
 
+    // 站点级设置（处置线 / 签到里程碑）：不随人变 ⇒ 进共享段。
+    // 口径与「取不到就下发空」的兜底见 home_settings.rs 头注。
+    let ratio_watch_threshold =
+        super::home_settings::ratio_watch_threshold(db).await;
+    let attendance_milestones =
+        super::home_settings::attendance_milestones(db).await;
+
     Ok(serde_json::json!({
         "news": news_json,
         "latest_news_id": latest_news_id,
@@ -277,5 +286,7 @@ async fn home_shared_fresh(
         })).collect::<Vec<_>>(),
         "home_layout": crate::http::home_layout_raw(db).await,
         "home_sections": crate::http::home_sections_json(),
+        "ratio_watch_threshold": ratio_watch_threshold,
+        "attendance_milestones": attendance_milestones,
     }))
 }

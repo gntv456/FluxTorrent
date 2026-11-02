@@ -21,6 +21,9 @@ export interface HomeMeSummary {
   downloaded: string;
   ratio: string;
   spark: string;
+  /** 分享率**数值**（null = 还没下载过，formatRatio 口径下是 INF）。
+   *  仪表盘要拿它跟站点的处置线比，只给格式化字符串不够用。 */
+  ratioValue: number | null;
 }
 
 export function homeMeSummary(
@@ -35,5 +38,6 @@ export function homeMeSummary(
     downloaded: formatBytes(down),
     ratio: formatRatio(up, down),
     spark: (ov.spark_balance ?? 0).toLocaleString(locale),
+    ratioValue: down === 0 ? null : up / down,
   };
 }
