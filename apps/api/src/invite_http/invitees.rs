@@ -24,7 +24,7 @@ pub async fn list_invitees_handler(
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
-    let per = 50i64;
+    let per = q.per.unwrap_or(50).clamp(1, 50);
     type Row = (
         i64,
         String,

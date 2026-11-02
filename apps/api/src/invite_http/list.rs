@@ -29,6 +29,9 @@ struct InviteRow {
 #[derive(Deserialize)]
 struct ListInvitesQuery {
     page: Option<i64>,
+    /// 页大小：缺省 50（0204 的口径），手机端可传小值（列表改卡片后
+    /// 一页 50 条在 390px 屏上仍然太长）。夹到 [1, 50]。
+    per: Option<i64>,
     /// 0 待使用 / 1 已使用 / 2 已过期（缺省 = 全部）
     status: Option<i16>,
 }
@@ -55,9 +58,9 @@ pub async fn list_invites_handler(
             ));
         }
     }
-    // 0204 分页：此前 LIMIT 50 截断重度用户历史；页大小 50。
+    // 0204 分页：此前 LIMIT 50 截断重度用户历史；页大小 50（可被 per 调小）。
     let page = q.page.unwrap_or(1).clamp(1, 10_000);
-    let per = 50i64;
+    let per = q.per.unwrap_or(50).clamp(1, 50);
     // status=2（已过期）在下发时即时折算：过期未用的码视为失效
     //（注册侧已拒绝 expires_at > now()）。
     let rows_sql = format!(

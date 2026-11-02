@@ -111,6 +111,9 @@ pub async fn invites_status_handler(
 #[derive(Deserialize)]
 struct ListQuery {
     page: Option<i64>,
+    /// 页大小：缺省 50（0204 的口径），手机端可传小值（列表改卡片后
+    /// 一页 50 条在 390px 屏上仍然太长）。夹到 [1, 50]。
+    per: Option<i64>,
 }
 
 #[post("/invites")]
