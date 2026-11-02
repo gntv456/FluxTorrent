@@ -121,9 +121,7 @@ pub(super) async fn fetch_douban(
         200 => {}
         404 => {
             cache_put(ckey, None);
-            return Err(DomainError::Validation(format!(
-                "豆瓣条目 {id} 不存在"
-            )));
+            return Err(DomainError::Validation("豆瓣条目不存在".into()));
         }
         403 | 429 => {
             mark_banned();
@@ -131,10 +129,10 @@ pub(super) async fn fetch_douban(
                 "豆瓣反爬（连续请求过多），已进入 10 分钟退避".into(),
             ));
         }
-        s => {
-            return Err(DomainError::Validation(format!(
-                "豆瓣接口异常（HTTP {s}）"
-            )));
+        _ => {
+            return Err(DomainError::Validation(
+                "豆瓣接口异常（稍后重试）".into(),
+            ));
         }
     }
     let v: serde_json::Value = resp

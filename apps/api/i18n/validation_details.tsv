@@ -301,3 +301,7 @@ wasm 需为 1B–1569792 字节	wasm 需為 1B–1569792 字節	wasm must be bet
 作品聚合只展示已过审资源；include_unapproved 不适用	作品聚合只展示已過審資源；include_unapproved 不適用	Works only show approved resources; include_unapproved does not apply
 作品聚合暂不支持媒介/学段/版本旧列筛选	作品聚合暫不支援媒介/學段/版本舊列篩選	Works do not yet support the legacy medium/grade/edition column filters
 分类参数非法	分類參數非法	Invalid category parameter
+豆瓣反爬退避中（10 分钟），稍后再试或配置 TMDB key	豆瓣反爬退避中（10 分鐘），稍後再試或配置 TMDB key	Douban anti-scraping backoff (10 min); retry later or configure a TMDB key
+豆瓣反爬（连续请求过多），已进入 10 分钟退避	豆瓣反爬（連續請求過多），已進入 10 分鐘退避	Douban rate limit hit (too many requests); backing off for 10 minutes
+豆瓣条目不存在	豆瓣條目不存在	Douban entry not found
+豆瓣接口异常（稍后重试）	豆瓣接口異常（稍後重試）	Douban API error (retry later)
