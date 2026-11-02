@@ -228,7 +228,10 @@ for (const file of TRACKED) {
 
 // ---------- 汇总 ----------
 if (problems.length > 0) {
-  console.error(`repo_hygiene_guard：${problems.length} 处仓库完整性问题（引用缺本体 / 迁移断档 / 重号）`);
+  console.error(
+    `repo_hygiene_guard：${problems.length} 处仓库完整性问题` +
+    "（引用缺本体 / 迁移断档 / 同号迁移）",
+  );
   for (const p of problems) console.error("  - " + p);
   console.error(
     "\n修复：把上述文件 git add 进对应功能 commit。" +

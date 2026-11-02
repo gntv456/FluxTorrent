@@ -103,13 +103,20 @@ impl CatMap {
     }
 }
 
-/// Newznab/Torznab 标准分类号 → 官方英文名（caps 与 item 都要用）。
-/// 只枚举本项目映射会落到的号；其余一律视为 Other（宁可归类到 Other，
+/// Newznab/Torznab 分类号 → 官方英文名（caps 与 item 都要用）。
+///
+/// 这条表必须**覆盖 categories 实际用到的每一个号**：未命中的号会落进
+/// `_ => "Other"`，而 caps 是按库里的号逐条播的（`recon.rs::torznab_caps`），
+/// 于是界面症状是「几个分类全叫 Other」——客户端按名字选目录、站长按名字
+/// 判断映射对不对，两边都读不出真实类别。常驻闸门 M6
+/// （`scripts/pt_audit_m_cat_key_audit.py`）拿库里的distinct 号对这张表核。
+/// 其余一律视为 Other（宁可归类到 Other，
 /// 也不要在 item 里发一个客户端读不懂的分类名）。
 pub fn newznab_name(id: i32) -> &'static str {
     match id {
         2000 => "Movies",
         2010 => "Movies/Foreign",
+        2030 => "Movies/SD",
         2040 => "Movies/HD",
         2045 => "Movies/UHD",
         3000 => "Audio",
@@ -128,7 +135,15 @@ pub fn newznab_name(id: i32) -> &'static str {
         5080 => "TV/Documentary",
         5090 => "TV/Other",
         7000 => "Books",
+        // 杂志 / 漫画是电子书包自 0325 就在用的号，此前只落 Other：
+        // 现网 caps 实测 `<cat id="7010" name="Other">`、
+        // `<cat id="7030" name="Other">`，与 8000 Other 三条同名
+        7010 => "Books/Magazines",
         7020 => "Books/EBook",
+        7030 => "Books/Comics",
+        // 100000+ 是本站自定义号（标准树没有主机/掌机这条分支）
+        100010 => "Games/Console",
+        100020 => "Games/Handheld",
         8000 => "Other",
         _ => "Other",
     }
@@ -183,6 +198,12 @@ mod tests {
         // 0455：有声书用标准树的 Audio/AudioBook，不再借用 MP3 号
         assert_eq!(newznab_name(3020), "Audio/AudioBook");
         assert_eq!(newznab_name(3030), "Audio/MP3");
+        // 库里在用、此前一律落 Other 的四支号（M6 钉的正是这条覆盖）
+        assert_eq!(newznab_name(2030), "Movies/SD");
+        assert_eq!(newznab_name(7010), "Books/Magazines");
+        assert_eq!(newznab_name(7030), "Books/Comics");
+        assert_eq!(newznab_name(100010), "Games/Console");
+        assert_eq!(newznab_name(100020), "Games/Handheld");
         assert_eq!(newznab_name(99999), "Other");
         assert_eq!(newznab_name(NEWZNAB_OTHER), "Other");
     }
