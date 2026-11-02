@@ -57,13 +57,16 @@ export default async function FaqPage() {
         emptyIcon="doc"
       >
         {[...groups.entries()].map(([cat, rows]) => (
-          <section key={cat} className="brand-panel">
-            <div className="brand-panel__head">
+          <details
+            key={cat}
+            className="brand-panel brand-panel--fold faq-group"
+          >
+            <summary className="brand-panel__head">
               <h2>{cat === "default" ? t.defaultCat : cat}</h2>
               <span className="text-xs text-sub">
                 {fmt(t.groupCount, { n: rows.length })}
               </span>
-            </div>
+            </summary>
             {/* M6.3：FAQ 问答转 details 折叠（概念稿 §15.4）——
              *  桌面也用折叠（答案默认收起、点开阅读），窄屏长答案
              *  不再撑出 rowhead 38% + rowfollow 的双列横滚 */}
@@ -75,7 +78,7 @@ export default async function FaqPage() {
                 </details>
               ))}
             </div>
-          </section>
+          </details>
         ))}
       </ReadState>
     </div>

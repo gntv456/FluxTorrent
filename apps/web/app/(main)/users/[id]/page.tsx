@@ -1,3 +1,5 @@
+/* 用户主页窄屏样式（路由级加载，不回灌 pages.css） */
+import "@/app/styles/users-mobile.css";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
@@ -8,6 +10,12 @@ import type { PetSpecies } from "@/lib/pet-lines";
 import { ProfileHero, StatTiles } from "./_parts/profile-hero";
 import { CenterGrid } from "./_parts/profile-center";
 import { CommentsTab, PostsTab, TorrentListTable } from "./_parts/profile-tabs";
+import {
+  LIST_TABS,
+  LIST_VIEWS,
+  TorrentListPager,
+  fetchTorrentLists,
+} from "./_parts/profile-list";
 import {
   TABS,
   type ProfileData,
@@ -26,25 +34,17 @@ export default async function UserProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; tl_page?: string }>;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, tl_page: tlPageQ } = await searchParams;
   const uid = Number(id);
   if (!Number.isFinite(uid)) notFound();
   const active: Tab = (TABS as readonly string[]).includes(tab ?? "")
     ? (tab as Tab)
     : "center";
-  // 种子列表类 tab 才拉 torrentlist（NP userdetails Torrent History 口径）
-  const listTabs: Tab[] = [
-    "uploads",
-    "seeding",
-    "leeching",
-    "completed",
-    "incomplete",
-    "preserved",
-  ];
-
+  // 当前 tab 对应的种子列表视图（center/posts/comments 为 null）
+  const listView = LIST_VIEWS.find((v) => v.key === active);
   let data: ProfileData;
   try {
     data = await api.get<ProfileData>(
@@ -53,17 +53,21 @@ export default async function UserProfilePage({
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) notFound(); else throw e;
   }
+  // 种子列表翻页（2026-11-02）：此前一次 limit=100，窄屏那页要滚很久；
+  // 现在每页 20 条 + 翻页条。多取一条用来判「还有没有下一批」。
+  const tlPage = Math.max(1, Number(tlPageQ ?? 1) || 1);
   let torrents: TorrentLists | null = null;
-  if (listTabs.includes(active)) {
-    torrents = await api
-      .get<TorrentLists>(
-        `/api/v1/users/${encodeURIComponent(uid)}/torrentlist?limit=100`,
-      )
-      .catch(() => null);
+  let tlHasMore = false;
+  if (LIST_TABS.includes(active)) {
+    const r = await fetchTorrentLists(uid, tlPage);
+    torrents = r.torrents;
+    tlHasMore = listView ? (r.hasMore[listView.key] ?? false) : false;
   }
 
   const { dict, locale } = await getDict();
   const t = dict.userProfile2;
+  // 词表按键取值（空态文案由 LIST_VIEWS 指定键名）
+  const tt = t as unknown as Record<string, string>;
   // 宠物展示位（只读快照；没养过 / games 模块关闭 → 接口失败，不渲染）
   const pet = await api
     .get<{
@@ -219,60 +223,28 @@ export default async function UserProfilePage({
         />
       )}
 
-      {active === "uploads" && (
+      {listView && (
         <TorrentListTable
-          rows={torrents?.uploads ?? []}
-          emptyText={t.noUploads}
-          t={t as unknown as Record<string, string>}
+          rows={torrents?.[listView.key] ?? []}
+          emptyText={tt[listView.empty]}
+          t={tt}
           gb={gb}
           locale={locale}
-          withMeta
-          publicOnly
+          withMeta={listView.withMeta}
+          publicOnly={listView.publicOnly}
         />
       )}
-      {active === "seeding" && (
-        <TorrentListTable
-          rows={torrents?.seeding ?? []}
-          emptyText={t.noUploads}
-          t={t as unknown as Record<string, string>}
-          gb={gb}
-          locale={locale}
-        />
-      )}
-      {active === "leeching" && (
-        <TorrentListTable
-          rows={torrents?.leeching ?? []}
-          emptyText={t.noLeeching}
-          t={t as unknown as Record<string, string>}
-          gb={gb}
-          locale={locale}
-        />
-      )}
-      {active === "completed" && (
-        <TorrentListTable
-          rows={torrents?.completed ?? []}
-          emptyText={t.noCompleted}
-          t={t as unknown as Record<string, string>}
-          gb={gb}
-          locale={locale}
-        />
-      )}
-      {active === "incomplete" && (
-        <TorrentListTable
-          rows={torrents?.incomplete ?? []}
-          emptyText={t.noIncomplete}
-          t={t as unknown as Record<string, string>}
-          gb={gb}
-          locale={locale}
-        />
-      )}
-      {active === "preserved" && (
-        <TorrentListTable
-          rows={torrents?.preserved ?? []}
-          emptyText={t.noPreserved}
-          t={t as unknown as Record<string, string>}
-          gb={gb}
-          locale={locale}
+
+      {/* 种子列表翻页条（窄屏那页一次 20 条，底部翻页） */}
+      {LIST_TABS.includes(active) && (
+        <TorrentListPager
+          uid={uid}
+          tab={active}
+          page={tlPage}
+          hasMore={tlHasMore}
+          prevText={dict.common.prevPage}
+          nextText={dict.common.nextPage}
+          pageText={dict.common.pageX}
         />
       )}
 

@@ -6843,6 +6843,7 @@ const enBase: Omit<
     sub: "General terms + account/publish/seeding rules + penalties",
     loadFailed:
       "Rules endpoint is unreachable; the built-in default rules are shown, staff edits may not be reflected.",
+    tocTitle: "Table of contents",
     penTitle: "Penalty tiers",
     penColLevel: "Level",
     penColAction: "Measure",

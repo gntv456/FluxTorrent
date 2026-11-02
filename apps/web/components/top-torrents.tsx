@@ -74,7 +74,7 @@ function HotBoard({
       {rows.length === 0 ? (
         <p className="funbox__empty">{empty}</p>
       ) : (
-        <table className="w-full border-collapse">
+        <table className="top-board w-full border-collapse">
           <thead>
             <tr
               className={THEAD_ROW}

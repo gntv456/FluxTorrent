@@ -1,3 +1,5 @@
+/* 排行榜窄屏样式（路由级加载，不回灌 pages.css） */
+import "@/app/styles/top-mobile.css";
 import { getTopBoards, TopRow } from "@/lib/data";
 import { formatBytes, avatarFrameStyle, FrameImageOverlay } from "@/lib/format";
 import { getDict } from "@/i18n/server";
@@ -103,7 +105,7 @@ function Board({
       {rows.length === 0 ? (
         <p className="funbox__empty">{empty}</p>
       ) : (
-        <table className="w-full border-collapse">
+        <table className="top-board w-full border-collapse">
           <thead>
             <tr className="border-b border-[var(--border-soft)] text-[12px] text-[var(--text-faint)]">
               <th className="w-12 py-2 pl-3 text-left font-bold">

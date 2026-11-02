@@ -1,0 +1,19 @@
+/* ===== 站点规则页（/rules，路由级） =====
+   规则正文是十条长文本，整页摊开要滚六七屏。改成「目录 + 逐条折叠」：
+   首屏只留目录，点开一条看一条。
+
+   路由级加载（pages.css 已超 3000 行基线，页面专属样式不回灌全局链）。 */
+.rules-toc__list {
+  margin: 0;
+  padding: 8px 14px 12px 32px;
+  list-style: decimal;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.rules-toc__list a {
+  color: var(--sky);
+  text-decoration: none;
+}
+.rules-toc__list a:hover {
+  text-decoration: underline;
+}

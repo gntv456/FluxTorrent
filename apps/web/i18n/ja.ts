@@ -113,7 +113,7 @@ export const ja: DeepPartial<Dict> = {
     nextPage: "次へ",
     prevPage: "前へ",
     totalItems: "合計 {n} 件",
-    pageX: "ページ {x}",
+    pageX: "ページ {n}",
     pleaseLogin: "ログインしてください",
     loading: "読み込み中…",
     pageLoading: "ページを開いています…",

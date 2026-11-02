@@ -1,0 +1,32 @@
+/* ===== 用户公开主页（/users/[id]，路由级） =====
+   路由级加载（pages.css 已超 3000 行基线，页面专属样式不回灌全局链）。 */
+
+/* 种子列表翻页条（2026-11-02：一次 limit=100 改成每页 20 + 翻页） */
+.up-tl-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 0 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.up-tl-pager a {
+  color: var(--sky);
+  text-decoration: none;
+  font-weight: 600;
+}
+.up-tl-pager a:hover {
+  text-decoration: underline;
+}
+.up-tl-pager .is-dis {
+  opacity: 0.45;
+}
+
+/* 窄屏：「近期发布」只出前五条（完整列表在「发布种子」那个 tab）。
+   实测：把它折成两列反而让标签折行，单卡没矮多少 —— 撤回那版。 */
+@media not all and (min-width: 768px) {
+  .up-recent tbody tr:nth-child(n + 6) {
+    display: none;
+  }
+}

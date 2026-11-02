@@ -1,3 +1,5 @@
+/* 规则页样式（路由级加载，不回灌 pages.css） */
+import "@/app/styles/rules-page.css";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
@@ -52,15 +54,36 @@ export default async function RulesPage() {
           </p>
         )}
 
-        {(items ?? []).map((r) => (
-          <section key={r.id} className="brand-panel">
+        {/* 目录 + 逐条折叠：规则页正文是十条长文本，整页摊开要滚六七屏
+            （现网 6040px）。折叠后首屏只留目录，点开看单条。 */}
+        {(items ?? []).length > 0 && (
+          <nav className="brand-panel rules-toc" aria-label={t.tocTitle}>
             <div className="brand-panel__head">
-              <h2>{r.title}</h2>
+              <h2>{t.tocTitle}</h2>
             </div>
+            <ol className="rules-toc__list">
+              {(items ?? []).map((r) => (
+                <li key={r.id}>
+                  <a href={`#rule-${r.id}`}>{r.title}</a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
+
+        {(items ?? []).map((r) => (
+          <details
+            key={r.id}
+            id={`rule-${r.id}`}
+            className="brand-panel brand-panel--fold rules-item"
+          >
+            <summary className="brand-panel__head">
+              <h2>{r.title}</h2>
+            </summary>
             <div className="longform px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed">
               {r.body}
             </div>
-          </section>
+          </details>
         ))}
 
         {(items ?? []).length === 0 && (

@@ -6605,6 +6605,7 @@ const zhTwBase: Omit<
     sub: "總則 + 帳號/發布/做種規範 + 禁止行為 + 處罰分級",
     loadFailed:
       "規則介面暫時不可達，下面是內建的預設站規文字；管理組後台改過的内容可能沒同步。",
+    tocTitle: "規則目錄",
     penTitle: "處罰分級",
     penColLevel: "級別",
     penColAction: "措施",

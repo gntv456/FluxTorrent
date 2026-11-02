@@ -247,7 +247,7 @@ export function CenterGrid({
 
       {/* —— 近期发布（个人中心保留最近 10 条入口） —— */}
       <Card title={t.recentUploads} icon="☰" full>
-        <table className="nexus-table">
+        <table className="nexus-table up-recent">
           <thead>
             <tr>
               <td className="colhead">{t.recentUploads}</td>

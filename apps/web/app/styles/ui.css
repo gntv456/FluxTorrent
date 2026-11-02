@@ -1775,3 +1775,28 @@
     background: var(--overlay-scrim, rgba(8, 19, 31, 0.42));
   }
 }
+
+/* ===== 可折叠面板原语（.brand-panel--fold） =====
+   长文本区块（规则条目、FAQ 分类）整页摊开就是长龙：<details> + summary
+   走面板头样式，展开标记自己画（summary 的原生三角在 flex 头里会跑位）。 */
+.brand-panel--fold > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.brand-panel--fold > summary::-webkit-details-marker {
+  display: none;
+}
+.brand-panel--fold > summary::after {
+  content: "BE";
+  margin-left: auto;
+  padding-left: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.brand-panel--fold[open] > summary::after {
+  transform: rotate(180deg);
+}
+.brand-panel--fold > summary:hover::after {
+  color: var(--sky);
+}

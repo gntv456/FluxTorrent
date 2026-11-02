@@ -6652,6 +6652,7 @@ const zhCnBase = {
     sub: "总则 + 账号/发布/做种规范 + 禁止行为 + 处罚分级",
     loadFailed:
       "规则接口暂时不可达，下面是内置的默认站规文本；管理组后台改过的内容可能没同步。",
+    tocTitle: "规则目录",
     penTitle: "处罚分级",
     penColLevel: "级别",
     penColAction: "措施",

@@ -49,7 +49,7 @@ export function MoreInfoTable({
     }
   }
   return (
-    <details className="uc-more" open>
+    <details className="uc-more">
       <summary>{t.moreTitle}</summary>
       <div className="brand-wide-table-scroll">
       <table className="nexus-table nexus-form">

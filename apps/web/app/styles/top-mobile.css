@@ -1,0 +1,10 @@
+/* ===== 排行榜（/top，路由级） =====
+   窄屏每榜只出前 5 行：页头本来就写着「每榜 Top 5」，而接口一次给 10 行，
+   六榜六十行在 390px 屏上要滑五屏多（现网 4693px）。宽屏仍全出十行。
+
+   路由级加载（pages.css 已超 3000 行基线，页面专属样式不回灌全局链）。 */
+@media not all and (min-width: 768px) {
+  .top-board tbody tr:nth-child(n + 6) {
+    display: none;
+  }
+}
