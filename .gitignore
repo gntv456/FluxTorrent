@@ -54,6 +54,11 @@ _ck_probe.py
 __pycache__/
 target-headcheck/
 
+# apps/web 下的调试临时件（跑完即弃）。上面那组根锚定规则只管仓库根，
+# 管不到子目录——apps/web/_tmp_token.txt 里是登录令牌，谁 git add -A
+# 一下就入库了。同类 _tmp_* 一并挡掉。
+apps/web/_tmp_*
+
 # 设计参考与竞品素材（第三方版权风险，不入库；借鉴结论沉淀 _doc/）
 UI参考/
 同类站-admin-design/
