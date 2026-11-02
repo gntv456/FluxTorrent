@@ -130,6 +130,9 @@ importers:
       '@fluxtorrent/domain-types':
         specifier: workspace:*
         version: link:../../packages/domain-types
+      lunar-javascript:
+        specifier: 1.7.7
+        version: 1.7.7
       next:
         specifier: 15.3.8
         version: 15.3.8(@playwright/test@1.63.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -2641,6 +2644,9 @@ packages:
 
   lru_map@0.3.3:
     resolution: {integrity: sha512-Pn9cox5CsMYngeDbmChANltQl+5pi6XmTrraMSzhPmMBbmgcxmqWry0U3PGapCU1yB4/LqCcom7qhHZiF/jGfQ==}
+
+  lunar-javascript@1.7.7:
+    resolution: {integrity: sha512-u/KYiwPIBo/0bT+WWfU7qO1d+aqeB90Tuy4ErXenr2Gam0QcWeezUvtiOIyXR7HbVnW2I1DKfU0NBvzMZhbVQw==}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -6310,6 +6316,8 @@ snapshots:
   lru-cache@7.18.3: {}
 
   lru_map@0.3.3: {}
+
+  lunar-javascript@1.7.7: {}
 
   lz-string@1.5.0: {}
 
