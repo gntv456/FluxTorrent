@@ -63,12 +63,13 @@ export default async function MainLayout({
         {/* 2026-10-19 平板对齐手机：M4 细侧栏（tsidebar）退役——平板区间
             改由底部 5 Tab + 顶栏汉堡抽屉承担导航（与手机同构），
             侧栏让出内容宽度。桌面 ≥lg 仍是顶栏平铺。 */}
-        {/* 内容容器与页头/页脚同宽（1536）：此前内容 1280、页头页脚 1536，
-            1920 屏上内容比页头页脚窄一截，显得小气（2026-10-20 用户口径） */}
+        {/* 内容容器与页头/页脚同宽（1760）：此前内容 1280、页头页脚 1536，
+            1920 屏上内容比页头页脚窄一截（2026-10-20 用户口径）；2026-11-02
+            桌面端再放宽 1536→1760——更接近整页宽度，2560+ 屏仍留边不贴边。 */}
         <div className="flex">
           <main
             id="main-content"
-            className="mx-auto min-w-0 w-full max-w-[1536px] flex-1 px-4
+            className="mx-auto min-w-0 w-full max-w-[1760px] flex-1 px-4
               pb-24 pt-6 md:px-6"
           >
             {children}

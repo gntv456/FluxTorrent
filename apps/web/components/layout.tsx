@@ -64,7 +64,7 @@ export async function Header() {
     <>
       <header className="tide-header border-b border-line">
         {/* 单行导航条：品牌（logo）居左 + 一级/更多菜单 + 主题/语言/头像弹窗居右 */}
-        <div className="mx-auto flex min-h-[56px] w-full max-w-[1536px] items-center gap-3 px-3 py-1 md:min-h-[72px] md:gap-5 md:px-6 md:py-2">
+        <div className="mx-auto flex min-h-[56px] w-full max-w-[1760px] items-center gap-3 px-3 py-1 md:min-h-[72px] md:gap-5 md:px-6 md:py-2">
           {/* M1：品牌长站名在 375px 会把右侧工具区推出视口（brand + 工具 + 头像
               总宽 >375）。窄屏截断品牌字，min-w-0 允许收缩；完整名留在 logo title。
               ⚠️ min-w-0 必须挂在 Link 上：truncate 的 span 是 nowrap 文本，
