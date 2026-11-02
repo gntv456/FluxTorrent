@@ -149,7 +149,7 @@ async fn tags_dict_add(
         "INSERT INTO tag_dict (name, kind, scope, bg_color, color, \
          font_size, margin, padding, border_radius, sort, enabled, \
          mode_id, tag_group, scope_layer) \
-         VALUES ($1, COALESCE($2, 'plain'), $3, COALESCE($4, ''), COALESCE($5, '#ffffff'), \
+         VALUES ($1, COALESCE($2, 'plain'), $3, COALESCE($4, ''), COALESCE($5, ''), \
                  COALESCE($6, '12px'), COALESCE($7, '0 4px 0 0'), COALESCE($8, '1px 4px'), \
                  COALESCE($9, '2px'), COALESCE($10, 0), COALESCE($11, TRUE), $12, $13, $14) \
          RETURNING id",
