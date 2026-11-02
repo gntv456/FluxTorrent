@@ -305,3 +305,8 @@ wasm 需为 1B–1569792 字节	wasm 需為 1B–1569792 字節	wasm must be bet
 豆瓣反爬（连续请求过多），已进入 10 分钟退避	豆瓣反爬（連續請求過多），已進入 10 分鐘退避	Douban rate limit hit (too many requests); backing off for 10 minutes
 豆瓣条目不存在	豆瓣條目不存在	Douban entry not found
 豆瓣接口异常（稍后重试）	豆瓣接口異常（稍後重試）	Douban API error (retry later)
+缺少 url 参数	缺少 url 參數	Missing url parameter
+url 无效	url 無效	Invalid url
+仅支持图床白名单域（doubanio / image.tmdb.org）	僅支援圖床白名單域（doubanio / image.tmdb.org）	Only whitelisted image hosts (doubanio / image.tmdb.org) are supported
+图片超过 2MB 上限	圖片超過 2MB 上限	Image exceeds the 2MB limit
+非图片内容类型	非圖片內容類型	Not an image content type

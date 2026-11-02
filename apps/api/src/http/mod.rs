@@ -146,8 +146,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::auth_http::user_fields_delete)
         .service(crate::torrent_http::list)
         .service(crate::torrent_http::works_list) // 作品聚合三口(独立端点)
-        // 海报代理（2026-11-02 豆瓣图床防盗链）：白名单域出站，匿名可用
-        .service(crate::torrent_http::poster_proxy)
+        .service(crate::torrent_http::poster_proxy) // 海报代理(豆瓣防盗链,匿名)
         .service(crate::torrent_http::work_detail)
         .service(crate::torrent_http::work_watch)
         // suggest 必须先于 detail：{id} 的 Path<i64> 解析失败会直接 404
@@ -155,8 +154,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::torrent_http::detail)
         .service(crate::torrent_http::torrent_aggregate)
         .service(crate::torrent_http::torrent_detail_ext)
-        // 抓轨日志正文（0312）：详情页懒加载，四段路径不与 /torrents/{id} 冲突
-        .service(crate::torrent_http::torrent_log_body)
+        .service(crate::torrent_http::torrent_log_body) // 抓轨日志(0312,不与{id}冲突)
         .service(crate::torrent_http::torrent_peers)
         .service(crate::torrent_http::torrent_related)
         .service(crate::torrent_http::torrent_magnet)
