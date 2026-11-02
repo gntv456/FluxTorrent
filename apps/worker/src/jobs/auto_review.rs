@@ -33,17 +33,13 @@ async fn ruleset_ver(db: &PgPool) -> i16 {
     .unwrap_or(1)
 }
 
-/// ruleset +1（与 api 侧 settings_http/ruleset.rs 同一条 UPSERT——worker
-/// crate 不依赖 api，这里按同 SQL 复制，口径以 0400 §7 为准）。供降级/
-/// 熔断等写键旁路调用：它们改了组内键但不在设置组保存链上，不 bump 的话
-/// 台账 ruleset_ver 快照无法区分这些代际（2026-11-02 缺陷 #3）。
+/// ruleset +1（与 api 侧 ruleset.rs 同 SQL；worker 不依赖 api crate。
+/// 降级/熔断等写键旁路用——0400 §7，2026-11-02 缺陷 #3）。
 async fn ruleset_bump(db: &PgPool) {
     let _ = sqlx::query(
-        "INSERT INTO site_settings (name, value, descr, grp) \
-           VALUES ('auto_review_ruleset_ver', '1', \
-             '自动审种规则集版本（保存组内任一键自动 +1，系统维护）', \
-             'auto_review') \
-         ON CONFLICT (name) DO UPDATE SET \
+        "INSERT INTO site_settings (name, value, descr, grp) VALUES \
+           ('auto_review_ruleset_ver', '1', '自动审种规则集版本（系统维护）', \
+           'auto_review') ON CONFLICT (name) DO UPDATE SET \
            value = ((site_settings.value::int + 1)::text)",
     )
     .execute(db)
@@ -217,12 +213,10 @@ async fn build_snapshot(
     descr: String,
     cat: i64,
 ) -> TorrentSnapshot {
-    // P-466 → P-476：`torrent_files` 只有 (torrent_id, raw, created_at)——没有
-    // filename 列，旧查询恒失败被吞成空 Vec，于是「MediaInfo 声明含视频轨 ⇒
-    // 包内必须有视频文件」对**每个带 MediaInfo 的种**都成立。现在真解析归档的
-    // .torrent：`flux_shared::torrent_names::file_names(raw)` 取 info 里的
-    // name / files[].path。解析失败返回空 = **不知道**，下面那条规则用
-    // `!file_names.is_empty()` 把它和「确认没有视频」分开。
+    // P-466 → P-476：torrent_files 没有 filename 列，旧查询恒失败被吞成空
+    // Vec。现在真解析归档 .torrent（file_names(raw) 取 name/files[].path）。
+    // 解析失败返回空 = 不知道，下游用 !file_names.is_empty() 与「确认没有
+    // 视频」分开。
     let file_names: Vec<String> = sqlx::query_scalar::<_, Vec<u8>>(
         "SELECT raw FROM torrent_files WHERE torrent_id = $1 LIMIT 1",
     )
@@ -253,6 +247,7 @@ async fn build_snapshot(
     .ok()
     .flatten()
     .unwrap_or_else(|| "general".into());
+    // 站型当前仅作台账快照字段（引擎不读）；切站型后须手动套审种站型包
     TorrentSnapshot {
         torrent_id: id,
         owner_id: owner,
@@ -289,8 +284,7 @@ async fn load_profile(db: &PgPool, owner: i64) -> PublisherProfile {
     let registered_days = created
         .map(|d| (chrono::Utc::now().date_naive() - d).num_days().max(0) as i32)
         .unwrap_or(0);
-    // 近 90 天人工通过/被拒（ torrents.approved_at / deny 时间用
-    // modified_time 近似——被拒时 mtime 即拒绝时刻）
+    // 近 90 天通过/被拒（被拒时间用 modified_time 近似）
     let approved: i32 = sqlx::query_scalar(
         "SELECT count(*) FROM torrents WHERE owner_id = $1 \
           AND approval_status = 1 \
@@ -372,13 +366,10 @@ async fn handle(
     // H4 命中同步落 leak_events（§2.1：泄露证据供 staff 复核流，与
     // worker leak_scan 同表不自动处罚）——影子模式也落（证据记录不是
     // 「对种子动手」，且这条线索恰恰最需要人看）。
-    if a.hits.iter().any(|h| h.rule == "arule_leak_marker") {
+    if let Some(h) = a.hits.iter().find(|h| h.rule == "arule_leak_marker") {
         // detail 是 jsonb：包一层 {"detail": "..."}（列口径，score 默认 0）
         let evidence = serde_json::json!({
-            "detail": a.hits.iter()
-                .find(|h| h.rule == "arule_leak_marker")
-                .map(|h| h.detail.clone())
-                .unwrap_or_default(),
+            "detail": h.detail.clone(),
             "torrent_id": torrent_id,
         });
         let _ = sqlx::query(
@@ -421,9 +412,7 @@ async fn handle(
         return Ok(()); // 灰区：台账留意见，人工处理（暂缓不落 torrents）
     }
     // 执法：HTTP 内调 auto-decide（裁决同尺）。凭证三选一（compose 注入）：
-    //   FLUX_ENGINE_JWT（现成 token，RS256 站点用）> JWT_SECRET 现签（HS256）
-    //   > 无凭证（跳过执法，留人工——fail-safe）。api 不可达同理只 WARN：
-    // 台账已落，唯一索引已占，改日重试不可行，人工队列兜底。
+    // FLUX_ENGINE_JWT > JWT_SECRET 现签 > 无凭证（跳过执法留人工，fail-safe）。
     let token = engine_jwt(db).await;
     let Some(token) = token else {
         tracing::warn!(torrent = torrent_id,
@@ -431,7 +420,7 @@ async fn handle(
         return Ok(());
     };
     let base = std::env::var("AUTO_REVIEW_API")
-        .unwrap_or_else(|_| "http://flux-api:9000".into());
+        .unwrap_or("http://flux-api:9000".into());
     let payload = serde_json::json!({
         "torrent_id": torrent_id,
         "approve": should_approve,
@@ -474,6 +463,34 @@ async fn handle(
 /// 引擎凭证：FLUX_ENGINE_JWT 直用（RS256 站点）；否则 HS256 现签
 /// （claims 与 api 侧 auth::Claims 同构：sub=系统审核员、exp=+5min）。
 /// 手工铸 JWT 的 HS256 头/签名见 0214 五路修复批同款做法。
+/// URL-safe base64（无填充形态与 jsonwebtoken 一致）。
+fn b64url(bytes: &[u8]) -> String {
+    const T: &[u8] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let mut s = String::new();
+    for chunk in bytes.chunks(3) {
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
+        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
+        s.push(T[(n >> 18) as usize & 63] as char);
+        s.push(T[(n >> 12) as usize & 63] as char);
+        s.push(if chunk.len() > 1 {
+            T[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        s.push(if chunk.len() > 2 {
+            T[n as usize & 63] as char
+        } else {
+            '='
+        });
+    }
+    s
+}
+
 async fn engine_jwt(db: &PgPool) -> Option<String> {
     if let Ok(t) = std::env::var("FLUX_ENGINE_JWT") {
         if !t.trim().is_empty() {
@@ -491,67 +508,14 @@ async fn engine_jwt(db: &PgPool) -> Option<String> {
     let claims = serde_json::json!({
         "sub": sub, "class_id": 99, "exp": now + 300, "iat": now,
     });
-    let b64 = |v: &str| {
-        let bytes = v.as_bytes();
-        const T: &[u8] =
-            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-        let mut out = String::new();
-        for chunk in bytes.chunks(3) {
-            let b = [
-                chunk[0],
-                *chunk.get(1).unwrap_or(&0),
-                *chunk.get(2).unwrap_or(&0),
-            ];
-            let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
-            out.push(T[(n >> 18) as usize & 63] as char);
-            out.push(T[(n >> 12) as usize & 63] as char);
-            out.push(if chunk.len() > 1 {
-                T[(n >> 6) as usize & 63] as char
-            } else {
-                '='
-            });
-            out.push(if chunk.len() > 2 {
-                T[n as usize & 63] as char
-            } else {
-                '='
-            });
-        }
-        out
-    };
+    let b64 = |v: &str| b64url(v.as_bytes());
     let signing_input =
         format!("{}.{}", b64(&header.to_string()), b64(&claims.to_string()));
-    let sig = {
-        use hmac::{Hmac, Mac};
-        type HmacSha256 = Hmac<sha2::Sha256>;
-        let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).ok()?;
-        mac.update(signing_input.as_bytes());
-        let bytes = mac.finalize().into_bytes();
-        let mut s = String::new();
-        // URL-safe base64（无填充形态与 jsonwebtoken 一致）
-        const T: &str =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-        for chunk in bytes.chunks(3) {
-            let b = [
-                chunk[0],
-                *chunk.get(1).unwrap_or(&0),
-                *chunk.get(2).unwrap_or(&0),
-            ];
-            let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
-            s.push(T.as_bytes()[(n >> 18) as usize & 63] as char);
-            s.push(T.as_bytes()[(n >> 12) as usize & 63] as char);
-            s.push(if chunk.len() > 1 {
-                T.as_bytes()[(n >> 6) as usize & 63] as char
-            } else {
-                '='
-            });
-            s.push(if chunk.len() > 2 {
-                T.as_bytes()[n as usize & 63] as char
-            } else {
-                '='
-            });
-        }
-        s
-    };
+    use hmac::{Hmac, Mac};
+    type HmacSha256 = Hmac<sha2::Sha256>;
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).ok()?;
+    mac.update(signing_input.as_bytes());
+    let sig = b64url(&mac.finalize().into_bytes());
     Some(format!("{signing_input}.{sig}"))
 }
 
@@ -610,21 +574,18 @@ async fn sweep_overturns(db: &PgPool) {
         .await;
     }
     for (rule, n) in &per_rule {
-        let _ = sqlx::query(
-            "INSERT INTO auto_review_rule_health (rule, overturns)              VALUES ($1, $2) ON CONFLICT (rule) DO UPDATE SET              overturns = auto_review_rule_health.overturns + $2, updated_at = now()",
+        // 健康度累计 + 现值一条 CTE 拿回，省一次往返
+        let total: i32 = sqlx::query_scalar(
+            "WITH up AS (INSERT INTO auto_review_rule_health (rule, overturns) \
+             VALUES ($1, $2) ON CONFLICT (rule) DO UPDATE SET \
+             overturns = auto_review_rule_health.overturns + $2, \
+             updated_at = now() RETURNING overturns + 2 * appeal_wins) \
+             SELECT * FROM up",
         )
         .bind(rule)
         .bind(n)
-        .execute(db)
-        .await;
-        let total: i32 = sqlx::query_scalar(
-            "SELECT overturns + 2 * appeal_wins              FROM auto_review_rule_health WHERE rule = $1",
-        )
-        .bind(&rule)
-        .fetch_optional(db)
+        .fetch_one(db)
         .await
-        .ok()
-        .flatten()
         .unwrap_or(0);
         if total >= 10 {
             let key = format!("{rule}_action");
@@ -634,9 +595,7 @@ async fn sweep_overturns(db: &PgPool) {
             .bind(&key)
             .execute(db)
             .await;
-            // 降级改写了组内键：ruleset 代际 +1（0400 §7），台账快照才能
-            // 区分降级前后的裁决代际（2026-11-02 缺陷 #3——三条写键旁路
-            // 只在设置组保存链 bump，代际在这里失真）
+            // 降级改写组内键：ruleset +1，否则台账快照代际失真（缺陷 #3）
             ruleset_bump(db).await;
             let _ = sqlx::query(
                 "UPDATE auto_review_rule_health SET demoted_at = now() WHERE rule = $1",
@@ -657,9 +616,8 @@ async fn sweep_overturns(db: &PgPool) {
     .unwrap_or(5);
     if threshold > 0 {
         let today: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM auto_review_log \
-             WHERE human_decided_at >= \
-             (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
+            "SELECT count(*) FROM auto_review_log WHERE human_decided_at \
+             >= (date_trunc('day', now() AT TIME ZONE 'Asia/Shanghai') \
              AT TIME ZONE 'Asia/Shanghai')",
         )
         .bind(0)
@@ -677,12 +635,14 @@ async fn sweep_overturns(db: &PgPool) {
             .flatten()
             .unwrap_or_default();
             if mode == "full" {
-                let _ = sqlx::query(
-                    "UPDATE site_settings SET value = 'half'                      WHERE name = 'auto_review_mode'",
+                sqlx::query(
+                    "UPDATE site_settings SET value = 'half' \
+                     WHERE name = 'auto_review_mode'",
                 )
                 .execute(db)
-                .await;
-                // 熔断降级同样改写了组内键：ruleset 代际 +1（缺陷 #3 同批）
+                .await
+                .ok();
+                // 熔断降级同样改写组内键：ruleset +1（缺陷 #3 同批）
                 ruleset_bump(db).await;
                 tracing::warn!(
                     today,

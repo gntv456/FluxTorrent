@@ -10,8 +10,6 @@ use crate::state::AppState;
 
 use super::staff;
 
-// ============ P1-2 标签字典（参考站 tags 口径：名称 + 样式属性 + 作用域） ============
-
 #[derive(sqlx::FromRow, serde::Serialize)]
 struct TagDictRow {
     id: i32,
@@ -70,9 +68,23 @@ struct TagDictReq {
     /// 分组（0160 P2）：attribute/content，缺省 attribute
     #[serde(default)]
     tag_group: Option<String>,
-    /// 层级（0160 P2）：global/pack，缺省 pack（新词默认站型层，通用层只放运营裁决的六件套）
+    /// 层级（0160 P2）：global/pack，缺省 pack（通用层只放运营裁决的六件套）
     #[serde(default)]
     scope_layer: Option<String>,
+}
+
+async fn staff_manage(
+    req: &HttpRequest,
+    state: &web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<i64> {
+    let auth = staff(req, state).await?;
+    crate::authz::require_perm(
+        state,
+        &auth,
+        crate::authz::perm::CATEGORIES_MANAGE,
+    )
+    .await?;
+    Ok(auth.id)
 }
 
 #[get("/admin/tags-dict")]
@@ -80,13 +92,7 @@ async fn tags_dict_list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CATEGORIES_MANAGE,
-    )
-    .await?;
+    staff_manage(&req, &state).await?;
     let rows: Vec<TagDictRow> = sqlx::query_as(
         "SELECT d.id, d.name, d.kind, d.scope, d.bg_color, d.color, \
          d.font_size, d.margin, d.padding, d.border_radius, d.sort, \
@@ -107,13 +113,7 @@ async fn tags_dict_add(
     state: web::Data<std::sync::Arc<AppState>>,
     body: web::Json<TagDictReq>,
 ) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CATEGORIES_MANAGE,
-    )
-    .await?;
+    let auth = staff_manage(&req, &state).await?;
     let name = body.name.trim();
     if name.is_empty() {
         return Err(DomainError::Validation("标签名不能为空".into()));
@@ -173,7 +173,7 @@ async fn tags_dict_add(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "tagdict.add", Some(id as i64))
+        .audit(Some(auth), "tagdict.add", Some(id as i64))
         .await;
     Ok(ok(serde_json::json!({ "id": id })))
 }
@@ -185,13 +185,7 @@ async fn tags_dict_update(
     path: web::Path<i32>,
     body: web::Json<TagDictReq>,
 ) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CATEGORIES_MANAGE,
-    )
-    .await?;
+    let auth = staff_manage(&req, &state).await?;
     let id = path.into_inner();
     super::check_enum("kind", body.kind.as_deref(), &["plain", "official"])?;
     let scope = match body.scope.as_deref() {
@@ -239,7 +233,7 @@ async fn tags_dict_update(
     }
     state
         .repo
-        .audit(Some(auth.id), "tagdict.update", Some(id as i64))
+        .audit(Some(auth), "tagdict.update", Some(id as i64))
         .await;
     Ok(ok(serde_json::json!({ "ok": true })))
 }
@@ -250,37 +244,28 @@ async fn tags_dict_delete(
     state: web::Data<std::sync::Arc<AppState>>,
     path: web::Path<i32>,
 ) -> DomainResult<HttpResponse> {
-    let auth = staff(&req, &state).await?;
-    crate::authz::require_perm(
-        &state,
-        &auth,
-        crate::authz::perm::CATEGORIES_MANAGE,
-    )
-    .await?;
+    let auth = staff_manage(&req, &state).await?;
     let id = path.into_inner();
-    // global 层/官种标签禁删（0160 层语义 + 0449 官种派生链）：
-    // official 标签是 official_tag 物化列的派生源之一，删光会让 offer 转正
-    // 自动打官种变空数组静默 no-op（repo/offers.rs 的 official_tag_ids）；
-    // global 层是跨站型共享词表，pack apply 永不回灌——删了没有任何恢复
-    // 路径。两层词一律拒删，需要下线请用停用（enabled=false）。
-    let (scope_layer, kind): (String, String) =
-        sqlx::query_as("SELECT scope_layer, kind FROM tag_dict WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .ok_or(DomainError::NotFound(id as i64))?;
-    if scope_layer == "global" || kind == "official" {
+    // global 层/官种标签禁删：official 标签是 official_tag 派生源（删光会让
+    // offer 转正自动打官种静默 no-op）；global 层 pack 永不回灌，删了无恢复
+    // 路径。下线请走停用（enabled=false）。
+    let guarded: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM tag_dict WHERE id = $1 \
+           AND (scope_layer = 'global' OR kind = 'official'))",
+    )
+    .bind(id)
+    .fetch_one(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if guarded {
         return Err(DomainError::Validation(
-            "全局层/官种标签不可删除：官种标签是官种判定与转正自动打标的\
-             派生源，全局层词表跨站型共享且无恢复路径；如需下线请停用\
-             （enabled=false）"
+            "全局层/官种标签不可删除（官种判定与转正打标的派生源；全局层\
+             无恢复路径），下线请停用（enabled=false）"
                 .into(),
         ));
     }
-    // 先取受影响种子：删标签会连带抹掉它们的 tags 行，而详情页读的是
-    // 聚合缓存（2.5）。不失效的话，后台删完标签，前台那些种仍然挂着这个
-    // 标签名，直到缓存自然过期（2026-10-10 实测 SSR HTML 里还在）。
+    // 先取受影响种子：删标签连带抹 tags 行，详情页读聚合缓存（2.5），
+    // 不失效的话前台那些种仍挂旧标签名直到缓存过期（2026-10-10 实测）。
     let tids: Vec<i64> = sqlx::query_scalar(
         "SELECT torrent_id FROM tags WHERE tag_id = $1 LIMIT 2000",
     )
@@ -307,7 +292,7 @@ async fn tags_dict_delete(
     }
     state
         .repo
-        .audit(Some(auth.id), "tagdict.del", Some(id as i64))
+        .audit(Some(auth), "tagdict.del", Some(id as i64))
         .await;
     Ok(ok(serde_json::json!({ "deleted": id })))
 }
