@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""闸门 OF：官种派生的唯一口径（0449 名单 + 0450 team 维 + 0451 触发时机补全）。
+"""闸门 OF：官种派生的唯一口径（0449 名单 + 0450 team 维 + 0451 时机补全
++ 0452 按标题派生制作组）。
 
 为什么要有这一支：官种是「一个物化列被四处当事实尺子读」的典型承重面
 （促销 scope、发布自动置顶、首页统计、NexusPHP 兼容口），2026-11-01~02 新长
@@ -17,8 +18,8 @@
            脏名单/清空名单），并核对全站官种数随动。
   S4 账面：回滚后官种数、名单值、夹具行必须回到开局。
 
-0451 未应用时（api 还没重启）S3i 两条「插行/删行也要重算」记 PENDING，
-不当绿也不当红——那是待部署的缺陷本体。
+0451 / 0452 未应用时（api 还没重启）S3i「插行/删行也要重算」与
+S6b-d「新种按标题自动挂组」记 PENDING，不当绿也不当红——那是待部署的本体。
 """
 import os
 import sys
@@ -196,14 +197,78 @@ eq("S4b 名单值回到开局（空串=只认标签）",
 eq("S4c 夹具行（ordinal=99）一条不留",
    q("SELECT count(*) FROM torrent_sections WHERE ordinal=99"), "0")
 
+print("== S6 按标题派生制作组（0452，名单「有货」的前提）==")
+HAS_452 = os.path.exists(os.path.join(
+    SQLDIR, "0452_team_from_title.sql"))
+eq("S6a 0452 迁移文件在册", HAS_452, True)
+fn452 = q("SELECT count(*) FROM pg_proc WHERE proname='attach_team_from_name'")
+tri_tor = q("SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal "
+            "AND tgrelid='torrents'::regclass "
+            "AND tgname='torrents_team_derive'")
+if fn452 == "1" and tri_tor == "1":
+    r3 = {}
+    for ln in psql_stdin("""
+BEGIN;
+CREATE TEMP TABLE res3 (k text, v text);
+DO $t$ DECLARE nid bigint; hl int; nm text;
+BEGIN
+  SELECT coalesce(max(char_length(info_hash)), 40) INTO hl FROM torrents;
+  nid := (SELECT max(id) + 1 FROM torrents);
+  -- 真插一条最小行：触发器只能在 INSERT 事件上被验，克隆/模拟都不算
+  INSERT INTO torrents (id, name, info_hash, category_id, size)
+       VALUES (nid, 'Gate.Of.2026.1080p.WEB-DL.x264-HXWEB',
+               substr(replace(md5(random()::text),'-','')
+                 || replace(md5(clock_timestamp()::text),'-',''), 1, hl),
+               (SELECT min(id) FROM categories), 1024);
+  SELECT coalesce((SELECT d.name FROM torrent_sections s
+                     JOIN section_dict d ON d.id = s.dict_id
+                    WHERE s.torrent_id = nid AND s.kind='team'),'(没挂上)')
+    INTO nm;
+  INSERT INTO res3 SELECT 'derive', nm;
+  -- 会员显式选了别的组：write_one 先 DELETE 该维再 INSERT，派生行必须让位
+  DELETE FROM torrent_sections WHERE torrent_id=nid AND kind='team';
+  INSERT INTO torrent_sections (torrent_id, kind, dict_id, ordinal)
+       VALUES (nid,'team',
+               (SELECT min(id) FROM section_dict WHERE kind='team'), 1);
+  INSERT INTO res3 SELECT 'override_rows', count(*)::text
+    FROM torrent_sections WHERE torrent_id=nid AND kind='team';
+  -- 技术串不许硬认（-GROUP / x264 都不在字典）
+  nid := nid + 1;
+  INSERT INTO torrents (id, name, info_hash, category_id, size)
+       VALUES (nid, 'Gate.Of.2026.1080p.WEB-DL.x264-GROUP',
+               substr(replace(md5(random()::text),'-','')
+                 || replace(md5(clock_timestamp()::text),'-',''), 1, hl),
+               (SELECT min(id) FROM categories), 1024);
+  INSERT INTO res3 SELECT 'junk_rows', count(*)::text
+    FROM torrent_sections WHERE torrent_id=nid AND kind='team';
+END $t$;
+SELECT k || '=' || v FROM res3 ORDER BY k;
+ROLLBACK;
+""").splitlines():
+        if "=" in ln:
+            k, v = ln.split("=", 1)
+            r3[k] = v
+    eq("S6b 新种标题 -HXWEB ⇒ 触发器自动挂上 HXWEB（名单才有东西可判）",
+       r3.get("derive"), "HXWEB")
+    eq("S6c 会员显式选组后只剩 1 行（派生让位于人选，不双挂）",
+       r3.get("override_rows"), "1")
+    eq("S6d 结尾是技术串（-GROUP）时不硬认 ⇒ 0 行", r3.get("junk_rows"), "0")
+    mounted = q("SELECT count(DISTINCT torrent_id) FROM torrent_sections "
+                "WHERE kind='team'")
+    print("   team 维现网挂载 %s 颗（0=站长勾完名单仍看不到效果，需真实发布语料）"
+          % mounted)
+else:
+    print("   PENDING：0452 未应用（函数=%s 触发器=%s），S6b-d 不计入"
+          % (fn452, tri_tor))
+
 print("== S5 现网提醒（不计红）==")
 mounted = q("SELECT count(DISTINCT torrent_id) FROM torrent_sections "
             "WHERE kind='team'")
 modes = q("SELECT count(*) FROM mode_kinds WHERE kind='team' AND visible")
 if mounted == "0":
-    print("   NOTE：现网 team 维挂载 0 行。名单生效的前提是「种子挂了制作组」；")
-    print("         发布表单在 %s 个分类模式里露出该维度（非必填），存量种无回填路径。"
-          % modes)
+    print("   NOTE：现网 team 维挂载 0 行 ⇒ 站长勾完名单看不到效果。")
+    print("         0452（按标题派生 + 存量回填）未应用时这就是预期；发布表单"
+          "在 %s 个模式里露出该维度但非必填。" % modes)
 else:
     print("   team 维已挂载 %s 颗种子（名单对它们直接生效）。" % mounted)
 
