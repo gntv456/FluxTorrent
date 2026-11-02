@@ -143,13 +143,35 @@ pub(super) fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
                             return Err("须为合法 URL 或 host:port".into());
                         }
                     }
-                    // 背景图一类的「同源优先」地址（0449）：站内相对路径
+                    // 背景图一类的「同源优先」地址（0456）：站内相对路径
                     // （/backgrounds/x.jpg）或 http(s) 绝对地址。相对路径让
                     // 背景随访问入口同源加载，不必把公网域名写进配置。
+                    //
+                    // 这里故意不复用 looks_like_url：那条容忍裸 host:port 是给
+                    // **后端消费**的地址用的，而背景图的读者是浏览器——前端
+                    // lib/site-background.ts 只认 `/…` 与 http(s)://，其余一律
+                    // 不渲染。保存口放开浏览器用不了的值，症状就是「存了、回显
+                    // 了、界面没变化」的假开关。接受集与那条文件的拒绝集同尺。
                     "url_or_path" => {
-                        let rel = v.starts_with('/') && !v.starts_with("//");
-                        if !rel && !looks_like_url(&v) {
-                            return Err("须为站内路径（/…）或合法 URL".into());
+                        let low = v.to_ascii_lowercase();
+                        let rel = low.starts_with('/')
+                            && !v.starts_with("//")
+                            && !v.starts_with("/\\");
+                        let abs = low.starts_with("http://")
+                            || low.starts_with("https://");
+                        if !rel && !abs {
+                            return Err(
+                                "须为站内路径（/…）或 http(s) 绝对地址".into(),
+                            );
+                        }
+                        let bad_char = v
+                            .chars()
+                            .any(|c| c.is_whitespace() || "\"'\\".contains(c));
+                        if bad_char {
+                            return Err("地址不能含空白、引号或反斜杠".into());
+                        }
+                        if v.len() > 2048 {
+                            return Err("地址长度不得超过 2048".into());
                         }
                     }
                     "csv_ids" => {
@@ -186,94 +208,3 @@ pub(super) fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
         v
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn text_meta(options: Option<serde_json::Value>) -> MetaRow {
-        MetaRow {
-            name: "upload_title_pattern".into(),
-            kind: "text".into(),
-            label_zh: None,
-            label_en: None,
-            hint: None,
-            unit: None,
-            min: None,
-            max: None,
-            step: None,
-            options,
-            secret: false,
-            readonly: false,
-            group_key: Some("torrent".into()),
-            min_class: None,
-            grp: "torrent".into(),
-            value: String::new(),
-            updated_at: chrono::Utc::now(),
-        }
-    }
-
-    /// rule=regex：坏正则必须在**保存**这一刻被拒，而不是等会员发种才发现。
-    ///
-    /// 反面教材也是实测出来的：本用例第一版拿 `^[(\d]` 当「坏正则」，Rust
-    /// regex 收下了它（`[` 开字符类、`\d` 是类里的合法成员）⇒ 只钉真正编译
-    /// 不过的形状。
-    #[test]
-    fn regex_rule_rejects_bad_pattern() {
-        let m = text_meta(Some(serde_json::json!({ "rule": "regex" })));
-        let e = validate_field(&m, "(unclosed").unwrap_err();
-        assert!(e.contains("须为合法正则表达式"), "实得={e}");
-        assert!(validate_field(&m, "a{2,1}").is_err(), "区间倒挂须拒");
-        // 后查与反向引用是「Java 写法」里最常见的两条本站引擎不支持项
-        assert!(validate_field(&m, r"(?<=x)y").is_err(), "后查须拒");
-        assert!(validate_field(&m, r"^(a)\1$").is_err(), "反向引用须拒");
-        // 合法的放行（就是 0426 出厂说明里给的那条示例格式）
-        assert!(
-            validate_field(&m, r"^[^.]+\.[0-9]{4}\.(1080p|2160p)").is_ok(),
-            "示例格式须收下"
-        );
-        // 空串=不校验，既有语义不动
-        assert!(validate_field(&m, "").is_ok(), "空值仍表示不校验");
-    }
-
-    /// 正控：不带 rule 的 text 键不受影响——否则这条会把全站文本设定拦死。
-    #[test]
-    fn text_without_rule_still_accepts_anything() {
-        let m = text_meta(None);
-        assert!(validate_field(&m, "(unclosed").is_ok());
-    }
-
-    fn enum_meta(options: serde_json::Value) -> MetaRow {
-        let mut m = text_meta(None);
-        m.kind = "enum".into();
-        m.options = Some(options);
-        m
-    }
-
-    /// 枚举选项两种历史形态都要校验。对象形（captcha_provider 用的
-    /// `{options:[{label,value}]}`）曾因只认数组形而放行任意值——实测
-    /// 后台可存 `bogus`，注册页不渲染验证码、提交必报「验证码错误」。
-    #[test]
-    fn enum_accepts_both_option_shapes_and_rejects_unknown() {
-        let arr = serde_json::json!([
-            {"l": "开", "v": "open"},
-            {"l": "关", "v": "off"}
-        ]);
-        let m_arr = enum_meta(arr);
-        assert!(validate_field(&m_arr, "open").is_ok());
-        assert!(validate_field(&m_arr, "bogus").is_err());
-        assert!(validate_field(&m_arr, "").is_err(), "空值不是合法枚举");
-
-        let obj = serde_json::json!({"options": [
-            {"label": "算术", "value": "none"},
-            {"label": "Turnstile", "value": "turnstile"}
-        ]});
-        let m_obj = enum_meta(obj);
-        assert!(validate_field(&m_obj, "none").is_ok());
-        assert!(validate_field(&m_obj, "turnstile").is_ok());
-        let e = validate_field(&m_obj, "bogus").unwrap_err();
-        assert!(e.contains("none"), "错误须列出允许值，实得={e}");
-    }
-}
-
-// ============================================================================

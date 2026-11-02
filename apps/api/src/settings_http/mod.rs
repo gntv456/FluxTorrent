@@ -15,6 +15,9 @@ pub(crate) mod key_links;
 // 审种规则集版本递增（0400，从 groups.rs 拆出）
 #[cfg(test)]
 mod groups_tests;
+// 校验引擎 rule 分支的接受集（从 engine.rs 拆出）
+#[cfg(test)]
+mod engine_tests;
 mod history;
 mod meta;
 mod pack_assets;
