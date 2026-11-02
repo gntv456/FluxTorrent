@@ -33,6 +33,23 @@ async fn ruleset_ver(db: &PgPool) -> i16 {
     .unwrap_or(1)
 }
 
+/// ruleset +1（与 api 侧 settings_http/ruleset.rs 同一条 UPSERT——worker
+/// crate 不依赖 api，这里按同 SQL 复制，口径以 0400 §7 为准）。供降级/
+/// 熔断等写键旁路调用：它们改了组内键但不在设置组保存链上，不 bump 的话
+/// 台账 ruleset_ver 快照无法区分这些代际（2026-11-02 缺陷 #3）。
+async fn ruleset_bump(db: &PgPool) {
+    let _ = sqlx::query(
+        "INSERT INTO site_settings (name, value, descr, grp) \
+           VALUES ('auto_review_ruleset_ver', '1', \
+             '自动审种规则集版本（保存组内任一键自动 +1，系统维护）', \
+             'auto_review') \
+         ON CONFLICT (name) DO UPDATE SET \
+           value = ((site_settings.value::int + 1)::text)",
+    )
+    .execute(db)
+    .await;
+}
+
 /// 从 site_settings 装配引擎配置（键清单见 0400 迁移；缺键回缺省）。
 pub async fn load_config(db: &PgPool) -> EngineConfig {
     let mut cfg = EngineConfig::defaults();
@@ -617,6 +634,10 @@ async fn sweep_overturns(db: &PgPool) {
             .bind(&key)
             .execute(db)
             .await;
+            // 降级改写了组内键：ruleset 代际 +1（0400 §7），台账快照才能
+            // 区分降级前后的裁决代际（2026-11-02 缺陷 #3——三条写键旁路
+            // 只在设置组保存链 bump，代际在这里失真）
+            ruleset_bump(db).await;
             let _ = sqlx::query(
                 "UPDATE auto_review_rule_health SET demoted_at = now() WHERE rule = $1",
             )
@@ -661,6 +682,8 @@ async fn sweep_overturns(db: &PgPool) {
                 )
                 .execute(db)
                 .await;
+                // 熔断降级同样改写了组内键：ruleset 代际 +1（缺陷 #3 同批）
+                ruleset_bump(db).await;
                 tracing::warn!(
                     today,
                     threshold,

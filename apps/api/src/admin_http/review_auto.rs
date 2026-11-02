@@ -92,6 +92,9 @@ pub(crate) async fn sweep_overturns(db: &sqlx::PgPool) {
                 .bind(&key)
                 .execute(db)
                 .await;
+                // 降级改写了组内键：ruleset 代际 +1（2026-11-02 缺陷 #3，
+                // 与 worker 侧降级路径同批收口）
+                crate::settings_http::ruleset::bump(db).await;
                 let _ = sqlx::query(
                     "UPDATE auto_review_rule_health SET demoted_at = now()  \
                      WHERE rule = $1",
@@ -146,6 +149,8 @@ pub(crate) async fn sweep_overturns(db: &sqlx::PgPool) {
                 )
                 .execute(db)
                 .await;
+                // 熔断降级同样改写了组内键：ruleset 代际 +1（缺陷 #3 同批）
+                crate::settings_http::ruleset::bump(db).await;
                 staff_notify(
                     db,
                     "自动审种：熔断降级",

@@ -191,13 +191,21 @@ pub async fn site_pack_rollback(
     .await
     .unwrap_or_default();
     for cid in stale {
-        let _ = sqlx::query(
+        // 删除被外键拒绝（种子/促销/愿望单引用）或有子级时保留——宁残留
+        // 不破坏；但不再静默吞错（2026-11-02 缺陷 #6）：残留行无提示的话，
+        // 站长以为回滚干净了，实际「本想删没删掉」的分类还挂在列表里
+        if let Err(e) = sqlx::query(
             "DELETE FROM categories c WHERE c.id = $1 AND NOT EXISTS \
              (SELECT 1 FROM categories k WHERE k.parent_id = c.id)",
         )
         .bind(cid)
         .execute(&state.repo.db)
-        .await;
+        .await
+        {
+            tracing::warn!(cid, error = %e,
+                "site_type_pack rollback: 清理 stale 分类被拒（被引用或有\
+                 子级），已保留该行");
+        }
     }
     // 5) 标记已回滚（保留快照便于审计）+ 审计 + 模块开关缓存失效
     sqlx::query(

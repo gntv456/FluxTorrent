@@ -258,6 +258,26 @@ async fn tags_dict_delete(
     )
     .await?;
     let id = path.into_inner();
+    // global 层/官种标签禁删（0160 层语义 + 0449 官种派生链）：
+    // official 标签是 official_tag 物化列的派生源之一，删光会让 offer 转正
+    // 自动打官种变空数组静默 no-op（repo/offers.rs 的 official_tag_ids）；
+    // global 层是跨站型共享词表，pack apply 永不回灌——删了没有任何恢复
+    // 路径。两层词一律拒删，需要下线请用停用（enabled=false）。
+    let (scope_layer, kind): (String, String) =
+        sqlx::query_as("SELECT scope_layer, kind FROM tag_dict WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?
+            .ok_or(DomainError::NotFound(id as i64))?;
+    if scope_layer == "global" || kind == "official" {
+        return Err(DomainError::Validation(
+            "全局层/官种标签不可删除：官种标签是官种判定与转正自动打标的\
+             派生源，全局层词表跨站型共享且无恢复路径；如需下线请停用\
+             （enabled=false）"
+                .into(),
+        ));
+    }
     // 先取受影响种子：删标签会连带抹掉它们的 tags 行，而详情页读的是
     // 聚合缓存（2.5）。不失效的话，后台删完标签，前台那些种仍然挂着这个
     // 标签名，直到缓存自然过期（2026-10-10 实测 SSR HTML 里还在）。

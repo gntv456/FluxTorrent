@@ -448,7 +448,11 @@ pub fn title_elements(
     if !best_cjk.is_empty() {
         found.push("中文名");
     }
-    // 缺失 = 模板要求 - 已命中；required 覆盖模板要素集
+    // 缺失 = 模板要求 - 已命中；required 覆盖模板要素集。
+    // 未识别占位符（{话数}{字幕组} 等站型特有要素，词表在批 1.5 未落地）
+    // 不参与缺失判定——套用 anime/music 等站型包模板时，若把它们折叠成
+    // 「中文名」会让 wanted 出现多个中文名、无 CJK 标题被误判全缺
+    // （2026-11-02 缺陷 #4，0401 站型包模板与引擎词表脱节的现实场景）。
     let wanted: Vec<&str> = if required.is_empty() {
         template
             .split(|c: char| c == '{' || c == '}')
@@ -456,11 +460,11 @@ pub fn title_elements(
                 !s.is_empty()
                     && !s.chars().all(|c| "!@#$%^&*().,;:[] -".contains(c))
             })
-            .map(|s| match s {
-                "中文名" | "年份" | "分辨率" | "来源" | "编码" | "组名" => {
-                    s
-                }
-                _ => "中文名", // 未识别占位符不参与缺失判定
+            .filter(|s| {
+                matches!(
+                    *s,
+                    "中文名" | "年份" | "分辨率" | "来源" | "编码" | "组名"
+                )
             })
             .collect()
     } else {
@@ -479,7 +483,23 @@ pub fn title_elements(
             _ => "中文名",
         })
         .collect();
-    // 建议标题：把已提取要素按模板重排（缺的跳过）
+    // 建议标题：把已提取要素按模板重排。未提取/未识别的占位符（站型
+    // 特有要素 {话数}{字幕组} 等，2026-11-02 缺陷 #4）一律剥除——留在
+    // 建议文本里会以字面「第{话数}话」进台账与通知，发布者照抄就带着
+    // 花括号。已知占位符替换成取值或空串，剩下的 {...} 段全是剥除对象。
+    let strip_placeholders = |s: String| -> String {
+        let mut out = String::with_capacity(s.len());
+        let mut depth = 0usize;
+        for c in s.chars() {
+            match c {
+                '{' => depth += 1,
+                '}' => depth = depth.saturating_sub(1),
+                _ if depth == 0 => out.push(c),
+                _ => {}
+            }
+        }
+        out
+    };
     let suggested = if template.is_empty() || missing.is_empty() {
         None
     } else {
@@ -490,10 +510,11 @@ pub fn title_elements(
             ("{分辨率}", resolution.unwrap_or("").to_string()),
             ("{来源}", source.unwrap_or("").to_string()),
             ("{编码}", codec.unwrap_or("").to_string()),
-            ("{组名}", group.unwrap_or_default()),
+            ("{组名}", group.clone().unwrap_or_default()),
         ] {
             s = s.replace(ph, &val);
         }
+        s = strip_placeholders(s);
         // 清掉空占位符留下的「..」「--」
         while s.contains("..") {
             s = s.replace("..", ".");
@@ -986,6 +1007,36 @@ mod tests {
         assert!(missing.contains(&"年份") && missing.contains(&"分辨率"));
         let s = suggested.unwrap();
         assert!(s.contains("2023") || s.contains("流浪地球"));
+    }
+
+    #[test]
+    fn h6_unknown_placeholders_never_count_as_missing() {
+        // 0401 站型包模板带引擎不识别的占位符（{话数}{字幕组}{联赛} 等）：
+        // 它们不得参与缺失判定（旧实现折叠成「中文名」，纯外文标题会被
+        // 误判缺 3 个「中文名」），建议标题也不得残留字面占位符。
+        // 模板里识别占位符只剩 {中文名}，而该标题无 CJK 段——缺中文名
+        // 是真实判定，断言口径 = 未识别占位符不新增缺失项。
+        let title = "Oshi no Ko 2023 WEB-DL 1080p x264-GRP";
+        let (_, missing, suggested) =
+            title_elements(title, "{中文名} 第{话数}话 [{字幕组}]", &[]);
+        assert_eq!(
+            missing,
+            &["中文名"],
+            "未识别占位符不得折叠成中文名：missing={missing:?}"
+        );
+        if let Some(s) = suggested {
+            assert!(
+                !s.contains("{话数}") && !s.contains("{字幕组}"),
+                "建议标题不得残留未识别占位符：{s}"
+            );
+        }
+        // 对照组：有 CJK 段时同模板只命中中文名，不因占位符多报缺失
+        let (_, missing2, _) = title_elements(
+            "我推的孩子 2023 WEB-DL 1080p x264-GRP",
+            "{中文名} 第{话数}话 [{字幕组}]",
+            &[],
+        );
+        assert!(missing2.is_empty(), "missing={missing2:?}");
     }
 
     #[test]
