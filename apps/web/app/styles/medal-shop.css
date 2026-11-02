@@ -449,8 +449,10 @@
    六行规格表在 390px 屏上把单卡拉到约 440px，二十枚就是十屏。窄屏收成
    一行摘要（获取方式 · 价格 · 加成），点「详情」才展开完整规格（展开逻辑
    在 medal-card.tsx；规格表仍只有一份 DOM，桌面端照旧常驻）。 */
+/* 不用 display 声明：medal-shop.css 在 Tailwind 之后加载，
+   这里的 display:flex 会把 JSX 上的 sm:hidden（display:none）顶掉 ——
+   摘要行会在桌面上也显示出来。显示与否交给 Tailwind 那一层管。 */
 .mcard-sum {
-  display: flex;
   align-items: center;
   gap: 8px;
   margin: 8px 0 0;

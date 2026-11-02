@@ -101,7 +101,7 @@ export function MedalCard({
         </div>
         {m.description && <p className="mcard-desc">{m.description}</p>}
         {/* 窄屏：一行摘要 + 详情开关 */}
-        <div className="mcard-sum sm:hidden">
+        <div className="mcard-sum flex sm:hidden">
           <span>{getTypeText}</span>
           <b className={m.price ? "is-price" : ""}>{price}</b>
           <b className={m.bonus_addition_factor > 0 ? "is-bonus" : ""}>

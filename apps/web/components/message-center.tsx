@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, pagedGet } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { toast } from "@/components/ui/toast";
@@ -67,7 +67,11 @@ export function MessageCenter() {
 
   const compact = useIsCompact();
   const pageSize = compact ? PAGE_MOBILE : PAGE_DESKTOP;
+  // 并发守卫：窄屏（20/页）与桌面（100/页）两条请求会重叠，慢响应后到
+  // 会把窄屏那页覆盖成 100 条（页高翻三倍）。用序号只认最后一次。
+  const listSeqRef = useRef(0);
   const load = useCallback(() => {
+    const seq = ++listSeqRef.current;
     setRows(null);
     setErr(null);
     setSelected([]);
@@ -79,10 +83,14 @@ export function MessageCenter() {
     qs.set("offset", String((page - 1) * pageSize));
     pagedGet<MessageRow>(`/api/v1/messages/${box}?${qs.toString()}`)
       .then((r) => {
+        if (seq !== listSeqRef.current) return;
         setRows(r.items);
         setTotal(r.total);
       })
-      .catch((e) => setErr(apiErrorMessage(dict, e) || dict.common.loadFailed));
+      .catch((e) => {
+        if (seq !== listSeqRef.current) return;
+        setErr(apiErrorMessage(dict, e) || dict.common.loadFailed);
+      });
     api
       .get<PmBox[]>("/api/v1/messages/boxes")
       .then(setBoxes)
@@ -121,6 +129,23 @@ export function MessageCenter() {
   }
 
   const pages = total === null ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const bulkBar =
+    rows && rows.length > 0 ? (
+      <BulkBar
+        t={t}
+        box={box}
+        boxes={boxes}
+        selected={selected}
+        allSelected={selected.length === rows.length}
+        onToggleAll={(on) =>
+          setSelected(on ? rows.map((r) => r.id) : [])
+        }
+        busy={act.busy}
+        onMarkRead={() => void act.bulk("markread")}
+        onMove={(f) => void act.bulk("move", f)}
+        onDelete={() => setAskBulkDelete(true)}
+      />
+    ) : null;
   /** 回复/转发：先收起已展开的详情，再进写信态 */
   const startReply = (m: MessageRow, mode: "reply" | "forward") => {
     setOpenId(null);
@@ -163,24 +188,7 @@ export function MessageCenter() {
         onCompose={compose.open}
         moreOpen={moreOpen}
         onToggleMore={() => setMoreOpen((v) => !v)}
-        bulk={
-          rows && rows.length > 0 ? (
-            <BulkBar
-              t={t}
-              box={box}
-              boxes={boxes}
-              selected={selected}
-              allSelected={selected.length === rows.length}
-              onToggleAll={(on) =>
-                setSelected(on ? rows.map((r) => r.id) : [])
-              }
-              busy={act.busy}
-              onMarkRead={() => void act.bulk("markread")}
-              onMove={(f) => void act.bulk("move", f)}
-              onDelete={() => setAskBulkDelete(true)}
-            />
-          ) : null
-        }
+        bulk={bulkBar}
       />
       {/* 文件夹管理（建/改名/删除=清空名） */}
       {boxManage && (
@@ -211,25 +219,10 @@ export function MessageCenter() {
         />
       )}
 
-      {/* 批量操作条：桌面常驻，窄屏进工具条的「⋯」面板 */}
-      {rows && rows.length > 0 && (
-        <div className={moreOpen ? "block sm:hidden" : "hidden sm:block"}>
-          <BulkBar
-            t={t}
-            box={box}
-            boxes={boxes}
-            selected={selected}
-            allSelected={selected.length === rows.length}
-            onToggleAll={(on) =>
-              setSelected(on ? rows.map((r) => r.id) : [])
-            }
-            busy={act.busy}
-            onMarkRead={() => void act.bulk("markread")}
-            onMove={(f) => void act.bulk("move", f)}
-            onDelete={() => setAskBulkDelete(true)}
-          />
-        </div>
-      )}
+      {/* 批量操作条：桌面常驻，窄屏进工具条的「⋯」面板（同一份内容） */}
+      <div className={moreOpen ? "block sm:hidden" : "hidden sm:block"}>
+        {bulkBar}
+      </div>
 
       {/* 批量删除二次确认（W-16/W-23：danger 口径，遮罩不可点关） */}
       <ConfirmDialog
