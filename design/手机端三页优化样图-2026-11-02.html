@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FluxTorrent · 手机端三页优化样图 · 2026-11-02</title>
+<style>
+:root{--seed-fg:#101722;--seed-muted:#5b6675;--border-standard:#d5dbe4;--border-subtle:#e7ebf1;--card-bg:#fff;--inset-bg:#f4f6f9;--seed-primary:#0f62c4;--viz-series-1:#c0392b;--font-sans:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;--font-code:ui-monospace,Menlo,Consolas,monospace}
+body{margin:0;padding:24px;background:var(--card-bg);color:var(--seed-fg)}
+</style>
+</head>
+<body>
+<div id="m3-rd" class="rd" data-skin="day">
+<style>
+#m3-rd{
+  --fg:var(--seed-fg); --mu:var(--seed-muted); --bd:var(--border-standard); --bds:var(--border-subtle);
+  font-family:var(--font-sans); color:var(--fg); line-height:1.6;
+  display:flex; flex-direction:column; gap:18px; padding:2px 0 8px;
+}
+#m3-rd .rd-kicker{margin:0;font-size:12px;color:var(--mu);letter-spacing:.04em}
+#m3-rd .rd-h{margin:0;font-size:18px;font-weight:500;letter-spacing:-.01em}
+#m3-rd .rd-lede{margin:0;font-size:13px;max-width:76ch}
+#m3-rd .rd-h3{margin:14px 0 0;font-size:13px;font-weight:500;color:var(--mu);letter-spacing:.06em;text-transform:uppercase}
+#m3-rd .rd-note{margin:0;font-size:12px;color:var(--mu);max-width:80ch}
+#m3-rd .rd-facts{display:flex;flex-wrap:wrap;gap:8px}
+#m3-rd .rd-fact{font-size:12px;padding:6px 10px;border-radius:8px;background:var(--inset-bg);border:1px solid var(--bds);color:var(--fg)}
+#m3-rd .rd-fact b{font-weight:500}
+#m3-rd .rd-fact.bad b{color:var(--viz-series-1)}
+#m3-rd .rd-fact.good b{color:#147d5f}
+#m3-rd .rd-rail{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+#m3-rd .rd-shot{--s:1;display:flex;flex-direction:column;gap:8px;min-width:calc(390px * var(--s))}
+#m3-rd .rd-shot > .ph{zoom:var(--s)}
+#m3-rd .rd-cap{margin-top:8px;font-size:12px;color:var(--mu)}
+#m3-rd .rd-cap b{display:block;font-weight:500;color:var(--fg);font-size:13px}
+#m3-rd table.rd-tb{border-collapse:collapse;width:100%;font-size:12px}
+#m3-rd table.rd-tb th,#m3-rd table.rd-tb td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bds);vertical-align:top}
+#m3-rd table.rd-tb th{color:var(--mu);font-weight:500;white-space:nowrap}
+#m3-rd code{font-family:var(--font-code);font-size:11.5px}
+#m3-rd ul.rd-list{margin:0;padding-left:20px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+@media (max-width:880px){#m3-rd .rd-shot{--s:.86}}
+@media (max-width:700px){#m3-rd .rd-shot{--s:.74}}
+
+/* ===== 真机屏 ===== */
+#m3-rd .scr{
+  --sky:#0f62c4; --sky-deep:#0a3d6b; --sky-soft:#e3edf9;
+  --sun:#b4790a; --sun-soft:#fbf0da; --coral:#c0392b; --coral-soft:#fbeae7;
+  --mint:#147d5f; --mint-soft:#dff1eb;
+  --surface-page:#f6f8fc; --surface-card:#fff; --surface-sunken:#edf2f9; --surface-hover:#f1f6fc;
+  --text-strong:#0e1b2a; --text-body:#33445c; --text-muted:#5a6b85; --text-faint:#7c8aa0;
+  --border-soft:#e1e8f2; --line:#c3d2e4; --r-md:10px; --r-sm:6px; --r-lg:14px;
+  position:relative;width:390px;height:844px;overflow:hidden;background:var(--surface-page);
+  color:var(--text-body);font-family:"Segoe UI",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px;line-height:1.45;
+}
+#m3-rd .scr .bar{position:relative;z-index:4;height:56px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--surface-card);border-bottom:1px solid var(--border-soft)}
+#m3-rd .scr .lg{width:32px;height:32px;flex:none;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;background:linear-gradient(135deg,var(--sky-deep),var(--sky))}
+#m3-rd .scr .nm{font-size:16px;font-weight:700;color:var(--text-strong);flex:1}
+#m3-rd .scr .ic{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;color:var(--text-muted)}
+#m3-rd .scr .ic svg{width:20px;height:20px}
+#m3-rd .scr .av{position:relative;width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;background:linear-gradient(140deg,#f0a13c,#e2622a);color:#fff;font-weight:700;font-size:13px}
+#m3-rd .scr .av i{position:absolute;top:-5px;right:-7px;min-width:19px;height:16px;padding:0 4px;border-radius:99px;background:var(--coral);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center;border:2px solid var(--surface-card);font-style:normal}
+#m3-rd .scr .body{position:absolute;left:0;right:0;top:56px;bottom:0;overflow:hidden;padding:10px 14px 60px;display:flex;flex-direction:column;gap:10px}
+#m3-rd .scr .tab{position:absolute;left:0;right:0;bottom:0;height:60px;z-index:6;background:var(--surface-card);border-top:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-around}
+#m3-rd .scr .tab .t{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--text-muted)}
+#m3-rd .scr .tab .t.on{color:var(--sky);font-weight:700}
+#m3-rd .scr .tab .t svg{width:21px;height:21px}
+#m3-rd .scr .tab .fab{width:48px;height:48px;margin-top:-20px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(140deg,#12629f,#2e86e0);color:#fff;border:4px solid var(--surface-card)}
+
+/* 页头 */
+#m3-rd .ph{background:linear-gradient(140deg,#eaf4fc,#dceaf6);border-radius:var(--r-lg);padding:12px 14px;border:1px solid var(--border-soft)}
+#m3-rd .ph .eb{font-size:10px;letter-spacing:.16em;font-weight:700;color:var(--sky)}
+#m3-rd .ph h2{margin:2px 0 0;font-size:21px;font-weight:700;color:var(--text-strong);letter-spacing:-.3px}
+#m3-rd .ph p{margin:3px 0 0;font-size:11.5px;color:var(--text-muted)}
+#m3-rd .ph .as{margin-left:auto;text-align:right}
+
+/* 统计卡 2×2 */
+#m3-rd .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#m3-rd .stat{background:var(--surface-card);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:9px 11px}
+#m3-rd .stat span{display:block;font-size:11px;color:var(--text-muted)}
+#m3-rd .stat b{display:block;margin-top:2px;font-size:20px;font-weight:700;color:var(--text-strong)}
+#m3-rd .stat.is-hit{background:var(--mint-soft);border-color:var(--mint)}
+#m3-rd .stat.is-hit b{color:var(--mint)}
+
+/* 按钮 */
+#m3-rd .btn{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border:0;border-radius:99px;font-family:inherit;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#2e86e0,#0a3d6b)}
+#m3-rd .btn.ghost{background:var(--surface-card);color:var(--text-body);border:1px solid var(--border-soft)}
+#m3-rd .btn.sun{background:linear-gradient(135deg,#f0a13c,#e07b18)}
+
+/* 筛选条 */
+#m3-rd .tabs{display:flex;gap:6px;overflow:hidden}
+#m3-rd .tab1{flex:none;padding:5px 11px;border-radius:99px;border:1px solid var(--border-soft);background:var(--surface-card);font-size:11.5px;color:var(--text-body);white-space:nowrap}
+#m3-rd .tab1.on{background:var(--sky);border-color:var(--sky);color:#fff;font-weight:700}
+#m3-rd .chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#m3-rd .chip1{padding:4px 10px;border-radius:99px;border:1px solid var(--border-soft);background:var(--surface-card);font-size:11px;color:var(--text-body)}
+#m3-rd .chip1.on{background:var(--sky-soft);border-color:var(--sky);color:var(--sky-deep);font-weight:700}
+
+/* 表格（现状） */
+#m3-rd table.tb{width:100%;border-collapse:collapse;background:var(--surface-card);border-radius:var(--r-md);overflow:hidden;font-size:12px}
+#m3-rd table.tb th{background:var(--surface-sunken);color:var(--text-muted);font-weight:600;text-align:left;padding:7px 9px;white-space:nowrap}
+#m3-rd table.tb td{padding:7px 9px;border-top:1px solid var(--border-soft);white-space:nowrap}
+#m3-rd table.tb td b{font-weight:700;color:var(--sky-deep)}
+#m3-rd .cut{position:relative;overflow:hidden}
+#m3-rd .cut::after{content:"";position:absolute;right:0;top:0;bottom:0;width:46px;background:linear-gradient(90deg,rgba(255,255,255,0),var(--surface-card))}
+#m3-rd .pill2{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10.5px;font-weight:700}
+#m3-rd .pill2.ok{background:var(--mint-soft);color:var(--mint)}
+#m3-rd .pill2.use{background:var(--sky-soft);color:var(--sky-deep)}
+#m3-rd .pill2.exp{background:var(--coral-soft);color:var(--coral)}
+
+/* 卡片（新版） */
+#m3-rd .lst{display:flex;flex-direction:column;gap:8px}
+#m3-rd .card{background:var(--surface-card);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:10px 11px}
+#m3-rd .card .r1{display:flex;align-items:center;gap:8px}
+#m3-rd .card .r1 b{font-size:13px;font-weight:700;color:var(--text-strong);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#m3-rd .card .r2{margin-top:3px;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#m3-rd .card .r3{margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:10.5px;color:var(--text-faint)}
+#m3-rd .card .unread{width:7px;height:7px;border-radius:50%;background:var(--sky);flex:none}
+
+/* 勋章卡 */
+#m3-rd .mcard{background:var(--surface-card);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:10px 11px}
+#m3-rd .mcard .mt{display:flex;gap:10px;align-items:flex-start}
+#m3-rd .mcard .mb{width:44px;height:44px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:22px;font-weight:700;color:#8a6d1f;background:linear-gradient(140deg,#fbf0da,#f0dfae);border:1px solid var(--line)}
+#m3-rd .mcard .mt b{font-size:13.5px;font-weight:700;color:var(--text-strong);display:block}
+#m3-rd .mcard .mt p{margin:3px 0 0;font-size:11px;color:var(--text-muted)}
+#m3-rd .mcard .fl{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+#m3-rd .mcard .fl span{padding:1px 6px;border-radius:5px;font-size:10px;font-weight:700}
+#m3-rd .mcard .fl .r{background:var(--sun-soft);color:var(--sun)}
+#m3-rd .mcard .fl .o{background:var(--mint-soft);color:var(--mint)}
+#m3-rd .mcard .fl .l{background:var(--coral-soft);color:var(--coral)}
+#m3-rd .spec{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;font-size:11px}
+#m3-rd .spec li{display:flex;justify-content:space-between;gap:8px}
+#m3-rd .spec li span{color:var(--text-muted)}
+#m3-rd .spec li b{color:var(--text-strong);font-weight:600}
+#m3-rd .sum{margin:8px 0 0;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+#m3-rd .sum b{color:var(--text-strong);font-weight:600}
+#m3-rd .sum .more{margin-left:auto;color:var(--sky);font-weight:700}
+
+/* 分页条 */
+#m3-rd .pgr{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--text-muted);padding:2px 2px}
+#m3-rd .pgr .b{padding:5px 12px;border-radius:99px;border:1px solid var(--border-soft);background:var(--surface-card);color:var(--text-body)}
+#m3-rd .pgr .b.dis{opacity:.45}
+#m3-rd .note-in{margin:0;padding:8px 11px;border-radius:var(--r-md);background:var(--sun-soft);font-size:11px;color:var(--sun)}
+</style>
+
+<div>
+  <p class="rd-kicker">FluxTorrent · 手机端三页优化 · 390×844（iPhone 14 Pro 逻辑视口）· 2026-11-02</p>
+  <h2 class="rd-h">把「满宽长表格 / 长卡片」拆成「卡片 + 分页 + 折叠」</h2>
+  <p class="rd-lede">首页重设计跑完后的续作。巡检了现网 29 个页面的手机端：<b>横向溢出 0 处</b>（响应式底子扎实），问题全集中在一处——<b>长列表/长表格在窄屏不分页、不折叠</b>。这一批先做三个最严重的：<code>/invites</code>（510 行表格 + 横向溢出 220px）、<code>/medals</code>（10.5 屏）、<code>/messages</code>（100 行无分页）。桌面端视觉一律不动。</p>
+</div>
+
+<div class="rd-facts">
+  <span class="rd-fact bad"><code>/invites</code> 5187px ＝ <b>6.1 屏</b>，两张表各 51 行</span>
+  <span class="rd-fact bad"><code>/invites</code> 表格横向溢出 <b>220px</b>，右侧列被硬切</span>
+  <span class="rd-fact bad"><code>/medals</code> 8887px ＝ <b>10.5 屏</b>，每张卡摊开 6 行规格表</span>
+  <span class="rd-fact bad"><code>/messages</code> 4106px ＝ <b>4.9 屏</b>，100 行 6 列全展开</span>
+  <span class="rd-fact bad"><code>/messages</code> 接口支持 <code>limit/offset</code>，前端<b>从没用过</b>（121 封只能看 100 封）</span>
+  <span class="rd-fact good">三页合计 <b>18178px → 约 3300px</b></span>
+  <span class="rd-fact good">桌面端整页高度<b>逐页不变</b></span>
+  <span class="rd-fact good">后端只加一个 <code>per</code> 参数；<b>无新迁移</b></span>
+</div>
+
+<!-- ============ /invites ============ -->
+<h3 class="rd-h3">一、/invites 邀请管理</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr">
+        <div class="bar">
+          <div class="lg">FT</div><div class="nm">FluxTorrent</div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div class="av">R<i>99+</i></div>
+        </div>
+        <div class="body">
+          <div class="ph" style="background:var(--surface-card)">
+            <div class="eb">INVITES</div>
+            <h2>邀请管理</h2>
+            <p>LV3+ 每周可发 2 枚邀请</p>
+          </div>
+          <div class="grid2">
+            <div class="stat"><span>我的邀请配额</span><b>0 / 4 枚</b></div>
+            <div class="stat"><span>待使用</span><b>86</b></div>
+            <div class="stat"><span>已使用</span><b>957</b></div>
+            <div class="stat"><span>已过期</span><b>16</b></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span class="btn">生成新邀请</span>
+            <span class="btn ghost">魔力兑换一枚（50,000）</span>
+          </div>
+          <div class="cut">
+            <table class="tb">
+              <tbody>
+                <tr><td><b>j2frg5i82x····</b></td><td><span class="pill2 use">已使用</span></td><td>→ deleted-8432-a535ed13…</td></tr>
+                <tr><td><b>m5z3obhnzq····</b></td><td><span class="pill2 use">已使用</span></td><td>→ deleted-8430-2617883c…</td></tr>
+                <tr><td><b>auditquota····</b></td><td><span class="pill2 use">已使用</span></td><td>→ quota_invited2</td></tr>
+                <tr><td><b>tuzh9l0kpn····</b></td><td><span class="pill2 use">已使用</span></td><td>→ deleted-8217-f8872793…</td></tr>
+                <tr><td><b>ygapt1rwrq····</b></td><td><span class="pill2 use">已使用</span></td><td>→ deleted-8216-73794178…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="tab">
+          <span class="t on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</span>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</span>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>现状 · 6.1 屏</b>两张表各 51 行；表格右侧列被硬切（“→ deleted-8432-a535ed13…” 出屏，得横滑才看得到）；四个统计卡只是数字，点不动。</p>
+  </div>
+
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr">
+        <div class="bar">
+          <div class="lg">FT</div><div class="nm">FluxTorrent</div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div class="av">R<i>99+</i></div>
+        </div>
+        <div class="body">
+          <div class="ph" style="background:var(--surface-card)">
+            <div class="eb">INVITES</div>
+            <h2>邀请管理</h2>
+            <p>LV3+ 每周可发 2 枚邀请</p>
+          </div>
+          <div class="grid2">
+            <div class="stat is-hit"><span>待使用</span><b>86</b></div>
+            <div class="stat"><span>已使用</span><b>957</b></div>
+            <div class="stat"><span>已过期</span><b>16</b></div>
+            <div class="stat"><span>我的邀请配额</span><b>0 / 4 枚</b></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span class="btn">生成新邀请</span>
+            <span class="btn ghost">魔力兑换一枚（50,000）</span>
+          </div>
+          <div class="chips">
+            <span class="chip1 on">全部 1059</span>
+            <span class="chip1">待使用 86</span>
+            <span class="chip1">已使用 957</span>
+            <span class="chip1">已过期 16</span>
+          </div>
+          <div class="lst">
+            <div class="card">
+              <div class="r1"><b>j2frg5i82x····</b><span class="pill2 use">已使用</span></div>
+              <div class="r2">→ deleted-8432-a535ed13（已删号）</div>
+              <div class="r3"><span>2026-09-14 使用</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><b>m5z3obhnzq····</b><span class="pill2 use">已使用</span></div>
+              <div class="r2">→ deleted-8430-2617883c（已删号）</div>
+              <div class="r3"><span>2026-09-12 使用</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><b>auditquota····</b><span class="pill2 use">已使用</span></div>
+              <div class="r2">→ quota_invited2</div>
+              <div class="r3"><span>2026-09-10 使用</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><b>tuzh9l0kpn····</b><span class="pill2 use">已使用</span></div>
+              <div class="r2">→ deleted-8217-f8872793（已删号）</div>
+              <div class="r3"><span>2026-09-08 使用</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><b>8f2ka9mt····</b><span class="pill2 ok">待使用</span></div>
+              <div class="r2">发给 friend@example.com</div>
+              <div class="r3"><span>2026-10-30 到期</span><span>·</span><span>可发邮件</span></div>
+            </div>
+          </div>
+          <div class="pgr">
+            <span class="b dis">上一页</span>
+            <span>1 / 106</span>
+            <span class="b">下一页</span>
+          </div>
+        </div>
+        <div class="tab">
+          <span class="t on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</span>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</span>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>新版 · 约 1.4 屏</b>表格改卡片（邀请码 + 状态 + 去向 + 时间）；四个统计卡<b>变成筛选按钮</b>（点“待使用”直接筛）；手机每页 10 条；横向溢出归零。</p>
+  </div>
+</div>
+
+<!-- ============ /medals ============ -->
+<h3 class="rd-h3">二、/medals 勋章殿堂</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr">
+        <div class="bar">
+          <div class="lg">FT</div><div class="nm">FluxTorrent</div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div class="av">R<i>99+</i></div>
+        </div>
+        <div class="body">
+          <div class="ph" style="background:var(--surface-card)">
+            <div class="eb">MEDAL HALL</div>
+            <h2>勋章殿堂</h2>
+            <p>按分类分组，碑卡展示稀有度与获取方式</p>
+            <div class="as"><span class="pill2 use">已拥有 4/20</span></div>
+          </div>
+          <div class="tabs"><span class="tab1 on">全部 20</span><span class="tab1">其他勋章 6</span><span class="tab1">节令勋章 4</span></div>
+          <div class="chips"><span class="chip1 on">全部</span><span class="chip1">可兑换 6</span><span class="chip1">我已拥有 4</span></div>
+          <div class="mcard">
+            <div class="mt">
+              <div class="mb">开</div>
+              <div>
+                <b>开站勋章</b>
+                <div class="fl"><span class="r">传说</span><span class="l">限定</span></div>
+                <p>开站纪念勋章，仅授予首批注册用户。</p>
+              </div>
+            </div>
+            <ul class="spec">
+              <li><span>获取方式</span><b>管理员授予</b></li>
+              <li><span>勋章价格</span><b>非卖品</b></li>
+              <li><span>有效期</span><b>永久</b></li>
+              <li><span>剩余库存</span><b>100</b></li>
+              <li><span>加成</span><b>+10.00%</b></li>
+              <li><span>销售截止</span><b>2026/12/14</b></li>
+            </ul>
+          </div>
+        </div>
+        <div class="tab">
+          <span class="t on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</span>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</span>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>现状 · 10.5 屏</b>20 张卡每张摊开 6 行规格表（获取方式/价格/有效期/库存/加成/截止），单卡约 440px。绝大多数属性是“售罄即无关”的静态信息。</p>
+  </div>
+
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr">
+        <div class="bar">
+          <div class="lg">FT</div><div class="nm">FluxTorrent</div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div class="av">R<i>99+</i></div>
+        </div>
+        <div class="body">
+          <div class="ph" style="background:var(--surface-card)">
+            <div class="eb">MEDAL HALL</div>
+            <h2>勋章殿堂</h2>
+            <p>按分类分组，碑卡展示稀有度与获取方式</p>
+            <div class="as"><span class="pill2 use">已拥有 4/20</span></div>
+          </div>
+          <div class="tabs"><span class="tab1 on">全部 20</span><span class="tab1">其他勋章 6</span><span class="tab1">节令勋章 4</span></div>
+          <div class="chips"><span class="chip1 on">全部</span><span class="chip1">可兑换 6</span><span class="chip1">我已拥有 4</span></div>
+          <div class="mcard">
+            <div class="mt">
+              <div class="mb">开</div>
+              <div>
+                <b>开站勋章</b>
+                <div class="fl"><span class="r">传说</span><span class="l">限定</span></div>
+                <p>开站纪念勋章，仅授予首批注册用户。</p>
+              </div>
+            </div>
+            <div class="sum">
+              <span>管理员授予</span><span>·</span><b>非卖品</b><span>·</span><b>+10.00%</b>
+              <span class="more">详情 ›</span>
+            </div>
+          </div>
+          <div class="mcard">
+            <div class="mt">
+              <div class="mb">活</div>
+              <div>
+                <b>活跃先锋</b>
+                <div class="fl"><span class="r">史诗</span><span class="o">已拥有</span></div>
+                <p>连续活跃 30 天解锁。</p>
+              </div>
+            </div>
+            <div class="sum">
+              <span>活跃达成</span><span>·</span><b>8,000 魔力</b><span>·</span><b>+2.00%</b>
+              <span class="more">详情 ›</span>
+            </div>
+          </div>
+          <div class="mcard">
+            <div class="mt">
+              <div class="mb">霜</div>
+              <div>
+                <b>霜降</b>
+                <div class="fl"><span class="r">稀有</span></div>
+                <p>节气限定，仅在霜降前后可获取。</p>
+              </div>
+            </div>
+            <div class="sum">
+              <span>魔力兑换</span><span>·</span><b>3,000 魔力</b><span>·</span><b>+1.00%</b>
+              <span class="more">详情 ›</span>
+            </div>
+          </div>
+          <div class="pgr">
+            <span class="b">展开全部 20 枚 ›</span>
+          </div>
+        </div>
+        <div class="tab">
+          <span class="t on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</span>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</span>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>新版 · 约 2.4 屏</b>6 行规格表收成一行摘要（获取方式 · 价格 · 加成），点「详情」才展开；单卡 440px → 约 150px；默认先出 8 张，底部「展开全部 20 枚」。</p>
+  </div>
+</div>
+
+<!-- ============ /messages ============ -->
+<h3 class="rd-h3">三、/messages 站内消息</h3>
+<div class="rd-rail">
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr">
+        <div class="bar">
+          <div class="lg">FT</div><div class="nm">FluxTorrent</div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div class="av">R<i>99+</i></div>
+        </div>
+        <div class="body">
+          <div class="tabs"><span class="tab1 on">收件箱</span><span class="tab1">已发送</span><span class="tab1">管理文件夹</span></div>
+          <div style="display:flex;gap:8px">
+            <span class="tab1" style="flex:1">搜索主题/正文</span>
+            <span class="tab1">只看未读</span><span class="btn">写消息</span>
+          </div>
+          <div class="chips">
+            <span class="chip1">全选</span><span class="chip1">✓ 标记已读</span><span class="chip1">🗑 删除</span><span class="chip1">已选 0 封</span>
+          </div>
+          <div class="cut">
+            <table class="tb">
+              <thead><tr><th>全选</th><th>状态</th><th>主题</th><th>发件人</th><th>时间</th></tr></thead>
+              <tbody>
+                <tr><td>□</td><td>●</td><td>自动审种每日摘要</td><td>系统</td><td>10:24</td></tr>
+                <tr><td>□</td><td>●</td><td>自动审种每日摘要</td><td>系统</td><td>10:24</td></tr>
+                <tr><td>□</td><td></td><td>deep_staff_1793212562</td><td>admin</td><td>10:11</td></tr>
+                <tr><td>□</td><td></td><td>deep_pm_1793212562</td><td>admin</td><td>10:11</td></tr>
+                <tr><td>□</td><td>●</td><td>deep_flood_a</td><td>admin</td><td>10:09</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="tab">
+          <span class="t on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</span>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</span>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>现状 · 4.9 屏</b>100 行 6 列全展开，一次性拉全量（接口虽有 limit/offset，前端从未用过 ⇒ 121 封只看得到 100 封）；顶部操作条在手机上占掉整屏第一格。</p>
+  </div>
+
+  <div class="rd-shot">
+    <div class="ph">
+      <div class="scr">
+        <div class="bar">
+          <div class="lg">FT</div><div class="nm">FluxTorrent</div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div class="av">R<i>99+</i></div>
+        </div>
+        <div class="body">
+          <div class="tabs"><span class="tab1 on">收件箱</span><span class="tab1">已发送</span><span class="tab1">管理文件夹</span></div>
+          <div style="display:flex;gap:8px">
+            <span class="tab1" style="flex:1">搜索主题/正文</span>
+            <span class="btn">写消息</span>
+            <span class="btn ghost">⋯</span>
+          </div>
+          <div class="lst">
+            <div class="card">
+              <div class="r1"><i class="unread"></i><b>自动审种每日摘要</b><span class="pill2 use">系统</span></div>
+              <div class="r2">今日审核通过 3 枚、驳回 1 枚，详见审种队列…</div>
+              <div class="r3"><span>今天 10:24</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><i class="unread"></i><b>自动审种每日摘要</b><span class="pill2 use">系统</span></div>
+              <div class="r2">今日审核通过 2 枚，另有 4 枚待人工复核…</div>
+              <div class="r3"><span>今天 10:24</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><b>deep_staff_1793212562</b></div>
+              <div class="r2">来自 admin 的私信</div>
+              <div class="r3"><span>今天 10:11</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><b>deep_pm_1793212562</b></div>
+              <div class="r2">来自 admin 的私信</div>
+              <div class="r3"><span>今天 10:11</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><i class="unread"></i><b>deep_flood_a</b></div>
+              <div class="r2">来自 admin 的私信</div>
+              <div class="r3"><span>今天 10:09</span></div>
+            </div>
+            <div class="card">
+              <div class="r1"><i class="unread"></i><b>众筹已关闭</b><span class="pill2 exp">公告</span></div>
+              <div class="r2">该众筹已达目标，下线并进入结算…</div>
+              <div class="r3"><span>昨天 23:40</span></div>
+            </div>
+          </div>
+          <div class="pgr">
+            <span class="b dis">上一页</span>
+            <span>1 / 7</span>
+            <span class="b">下一页</span>
+          </div>
+        </div>
+        <div class="tab">
+          <span class="t on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>首页</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>资源</span>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4l3 3 3-3h5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1Z"/></svg>消息</span>
+          <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.4 7-5.4S17.8 16.4 19 20"/></svg>我的</span>
+        </div>
+      </div>
+    </div>
+    <p class="rd-cap"><b>新版 · 约 1.5 屏</b>表格改卡片（未读点 + 主题 + 摘要 + 时间）；接上接口已有的 limit/offset 做真分页（20 条/页，121 封全部可达）；「只看未读 / 全选 / 标记已读 / 删除」收进「⋯」。</p>
+  </div>
+</div>
+
+<h3 class="rd-h3">改动清单</h3>
+<table class="rd-tb">
+  <thead><tr><th>页</th><th>改什么</th><th>桌面端</th></tr></thead>
+  <tbody>
+    <tr><td><code>/invites</code></td><td>表格 → 卡片；四个统计卡改成筛选按钮（复用已有 <code>?status=</code>）；手机每页 10 条（后端 <code>/invites</code> 加 <code>per</code> 参数，夹到 [1,50]）</td><td>表格原样</td></tr>
+    <tr><td><code>/medals</code></td><td>6 行规格表 → 一行摘要 + 「详情」展开；默认出 8 张 + 「展开全部」</td><td>规格表原样</td></tr>
+    <tr><td><code>/messages</code></td><td>表格 → 卡片；接 <code>limit/offset</code>（后端已有 <code>X-Total-Count</code> 头，前端补读）；20 条/页；批量操作收进「⋯」</td><td>表格原样</td></tr>
+  </tbody>
+</table>
+
+<h3 class="rd-h3">落地清单</h3>
+<ul class="rd-list">
+  <li><b>后端</b>：<code>apps/api/src/invite_http/list.rs</code> 给 <code>ListInvitesQuery</code> 加 <code>per</code>（缺省 50，夹到 [1,50]）——只加查询参数，<b>无新迁移</b>。</li>
+  <li><b>前端 API 层</b>：<code>apps/web/lib/api-client.ts</code> 的 <code>request()</code> 已经拿到 <code>Response</code>，加一个「带响应头」的出口就能读 <code>X-Total-Count</code>／<code>X-Has-More</code>（这两个头后端 2026-10 起就在发，只是没人用）。</li>
+  <li><b>前端组件</b>：<code>invite-manager-parts.tsx</code>（265 行，已在 300 门禁边缘）拆出表格与卡片两份渲染，按 <code>useIsCompact()</code> 择一；<code>medal-hall.tsx</code>（279 行）同样需要拆；<code>message-center.tsx</code>（300 行）必须先拆。</li>
+  <li><b>i18n</b>：三页新增文案（详情 / 展开全部 / 分页文案 / 空态）三语同步。</li>
+  <li><b>验收口径</b>：三页手机端整页高度各自 ≤ 2.5 屏；桌面端整页高度与改前<b>逐页相同</b>（用 1440×900 抓改前改后两个高度对比）。</li>
+</ul>
+
+<p class="rd-note">数据来源说明：现状屏的数值取自现网 2026-11-02 登录后 390×844 实测（邀请 1059 条、勋章 20 枚、消息 100 行/接口总数 121）。新版的列表条目为示意样例（真实数据会在实现后按接口返回渲染）。</p>
+
+</div>
+</body>
+</html>
