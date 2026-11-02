@@ -1,9 +1,8 @@
 //! HTTP 接口层：路由 + handlers + 鉴权提取器 + 限流。
 //! 分层约束（§8.3.1）：本层只做协议适配，业务规则在 domain/repo。
-//! 按域拆分（300 行门禁）：鉴权/限流设施在 auth_infra.rs，me 杂项/统计/
-//! 举报/RSS 在 misc_handlers.rs，插件四件套在 plugins.rs，公告/趣味盒/
-//! 友链在 news_fun.rs，首页板块在 home.rs；v1_scope 路由注册留在此，
-//! auth 经 state.jwt 使用（0071 RS256 化后本层不再直接调用）。
+//! 按域拆分（300 行门禁）：鉴权/限流在 auth_infra.rs，me 杂项/统计/
+//! 举报/RSS 在 misc_handlers.rs，插件四件套 plugins.rs，公告/趣味盒/
+//! 友链 news_fun.rs，首页板块 home.rs；路由注册与 auth 见 v1_scope。
 
 pub(crate) mod write_origin;
 pub(crate) use write_origin::write_origin_mw;
@@ -303,7 +302,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(gomoku_create)
         .service(gomoku_join)
         .service(gomoku_move)
-        .service(gomoku_get).service(home_sections)
+        .service(gomoku_get)
+        .service(home_sections)
         .service(admin_home_layout_put)
         .service(admin_view_hidden_put)
         .service(view_layout_keys)
