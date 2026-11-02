@@ -60,7 +60,7 @@ describe("LIB_CAT_CAP 与内置包", () => {
     expect(LIB_CAT_CAP).toBeGreaterThanOrEqual(13);
   });
 
-  it("恰好等于上限的分类全出现；多一条才被截（降级是有意为之）", () => {
+  it("恰好等于上限：全出现，且不多出一条『更多分类…』", () => {
     const atCap = Array.from({ length: LIB_CAT_CAP }, (_, i) => ({
       id: i + 1,
       name: `c${i + 1}`,
@@ -68,11 +68,46 @@ describe("LIB_CAT_CAP 与内置包", () => {
     const g = librarySub(nav as never, atCap as never);
     // 每组 = 1 个「全部」叶子 + cap 个分类叶子
     expect(g[0].items?.length).toBe(LIB_CAT_CAP + 1);
-    const over = [...atCap, { id: 999, name: "c999" }];
-    const g2 = librarySub(nav as never, over as never);
-    expect(g2[0].items?.length).toBe(LIB_CAT_CAP + 1);
     expect(
-      (g2[0].items ?? []).some((i) => i.href.includes("category_id=999")),
+      g.every((x) => !(x.items ?? []).some((i) => i.label === "更多分类…")),
+    ).toBe(true);
+  });
+
+  /** 超上限的分类不能只是「消失」（0455 批站长报「综合站还缺三类」的真因）：
+   *  merge 模式下站点把历史各包的分类都留着（现网 70 条），cap 之后那些
+   *  后台在册、列表页能筛，唯独导航没入口。现在补一条落回列表页，
+   *  三档过滤各带自己的查询串。 */
+  it("超上限：每组末尾补一条『更多分类…』，且带着本组的过滤串", () => {
+    const atCap = Array.from({ length: LIB_CAT_CAP }, (_, i) => ({
+      id: i + 1,
+      name: `c${i + 1}`,
+    }));
+    const over = [...atCap, { id: 999, name: "c999" }];
+    const navX = { ...nav, moreCats: "更多分类…" };
+    const g2 = librarySub(navX as never, over as never);
+    expect(g2[0].items?.length).toBe(LIB_CAT_CAP + 2);
+    const tail = g2.map((g) => (g.items ?? []).slice(-1)[0]);
+    expect(tail.map((i) => i?.href)).toEqual([
+      "/torrents",
+      "/torrents?official=0",
+      "/torrents?official=1",
+    ]);
+    // 文案只从字典来（不许在 lib 里硬编码中文）
+    expect(tail.every((i) => i?.label === "更多分类…")).toBe(true);
+    // 被截掉的那条确实不在叶子里——它的入口就是这条「更多分类…」
+    expect(
+      g2[0].items?.some((i) => i.href.includes("category_id=999")),
     ).toBe(false);
+  });
+
+  it("字典缺 moreCats 时不挤出半个字（回落空串，由三语补齐保证有值）", () => {
+    const over = Array.from({ length: LIB_CAT_CAP + 1 }, (_, i) => ({
+      id: i + 1,
+      name: `c${i + 1}`,
+    }));
+    const g3 = librarySub(nav as never, over as never);
+    const last = (g3[0].items ?? []).slice(-1)[0];
+    expect(last?.href).toBe("/torrents");
+    expect(last?.label).toBe("");
   });
 });

@@ -33,12 +33,21 @@ export function librarySub(
   nav: Record<string, string>,
   cats: LibraryCat[],
 ): NonNullable<NavItem["sub"]> {
-  const top = cats.filter((c) => c.name).slice(0, LIB_CAT_CAP);
+  const all = cats.filter((c) => c.name);
+  const top = all.slice(0, LIB_CAT_CAP);
   /* extra 是查询串（official=1 这种），不是连接符。叶子第一项没有别的
      参数，得自己带问号：原先写成 /torrents + extra 且 extra 传的是
      &official=1，于是渲染出 /torrents&official=1 —— 没有问号就整段算路径，
      路由不存在，点「资源/官种」下的「全部」必 404（2026-11-01 站长报）。
      分类叶子因为前面已有 ?category_id= 兜着，才一直没露出这个破口。 */
+  // 超过上限的分类不能只是「看不见」。merge 模式下站点把历史各包的分类都留着
+  // （现网 70 条），cap 之后那些后台在册、列表页能筛，唯独导航没入口——站长
+  // 读到的症状就是「综合站还缺三类」。补一条「更多分类…」落回列表页（那里带
+  // 全量分类筛选），三档过滤各带自己的查询串，官种视图不会被这条丢掉。
+  const overflow =
+    all.length > LIB_CAT_CAP
+      ? [{ href: "/torrents", label: nav.moreCats ?? "" }]
+      : [];
   const leaf = (extra: string) => [
     { href: extra ? `/torrents?${extra}` : "/torrents", label: nav.libAll },
     ...top.map((c) => ({
@@ -46,6 +55,10 @@ export function librarySub(
         ? `/torrents?category_id=${c.id}&${extra}`
         : `/torrents?category_id=${c.id}`,
       label: c.name,
+    })),
+    ...overflow.map((o) => ({
+      href: extra ? `/torrents?${extra}` : o.href,
+      label: o.label,
     })),
   ];
   return [

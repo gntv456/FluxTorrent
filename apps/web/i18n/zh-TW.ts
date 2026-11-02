@@ -124,6 +124,7 @@ const zhTwBase: Omit<
     official: "官種",
     libAll: "全部",
     libRes: "資源",
+    moreCats: "更多分類…",
     forums: "論壇",
     messages: "訊息",
     textbooks: "課本",

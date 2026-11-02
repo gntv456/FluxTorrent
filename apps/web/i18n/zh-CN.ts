@@ -106,6 +106,7 @@ const zhCnBase = {
     official: "官种",
     libAll: "全部",
     libRes: "资源",
+    moreCats: "更多分类…",
     forums: "论坛",
     messages: "消息",
     textbooks: "课本",

@@ -124,6 +124,7 @@ const enBase: Omit<
     official: "Official",
     libAll: "All",
     libRes: "Resources",
+    moreCats: "All categories…",
     forums: "Forums",
     messages: "Messages",
     textbooks: "Textbooks",
