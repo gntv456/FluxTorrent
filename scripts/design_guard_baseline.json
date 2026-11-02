@@ -159,12 +159,12 @@
  },
  "app/(main)/page.tsx": {
   "h1": [],
-  "h1First": 117,
+  "h1First": 119,
   "palette": [
-   93,
-   100,
-   176,
-   184
+   95,
+   102,
+   178,
+   186
   ],
   "color": []
  },
@@ -4004,8 +4004,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   204,
-   229
+   208,
+   233
   ],
   "color": []
  },
@@ -5322,6 +5322,14 @@
   "h1": [],
   "h1First": null,
   "palette": [],
+  "color": []
+ },
+ "components/invite-manager-cards.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   50
+  ],
   "color": []
  }
 }
