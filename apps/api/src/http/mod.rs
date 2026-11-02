@@ -311,6 +311,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::publish_http::upload)
         .service(crate::publish_http::ptgen)
         .service(crate::publish_http::auto_meta)
+        .service(crate::publish_http::backfill_work_meta)
         .service(crate::publish_http::download)
         .service(crate::publish_http::download_link)
         .service(crate::invite_http::issue_invite_handler)

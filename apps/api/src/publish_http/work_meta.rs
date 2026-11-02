@@ -41,28 +41,52 @@ pub(crate) async fn upsert_for_torrent(
     torrent_id: i64,
 ) -> DomainResult<Option<String>> {
     let wk = crate::torrent_http::works_sql::wk_expr();
-    let row: Option<(String, Option<String>, Option<String>, Option<String>)> =
-        sqlx::query_as(&format!(
-            "SELECT {wk} AS key, \
-                    media_info->>'tmdb_id' AS tmdb_id, \
-                    media_info->>'tmdb_url' AS tmdb_url, \
-                    COALESCE(NULLIF(imdb_id, ''), \
-                             media_info->>'imdb_id') AS imdb_id \
-             FROM torrents t WHERE t.id = $1"
-        ))
-        .bind(torrent_id)
-        .fetch_optional(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((key, tmdb_id, tmdb_url, imdb_id)) = row else {
+    let row: Option<(
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )> = sqlx::query_as(&format!(
+        "SELECT {wk} AS key, \
+                media_info->>'tmdb_id' AS tmdb_id, \
+                media_info->>'tmdb_url' AS tmdb_url, \
+                COALESCE(NULLIF(imdb_id, ''), \
+                         media_info->>'imdb_id') AS imdb_id, \
+                media_info->>'douban_id' AS douban_id \
+         FROM torrents t WHERE t.id = $1"
+    ))
+    .bind(torrent_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((key, tmdb_id, tmdb_url, imdb_id, douban_id)) = row else {
         return Err(DomainError::NotFound(torrent_id));
     };
     if !key.starts_with(['i', 'm', 'd', 'g']) {
         // 标题键没有外部锚点；组键允许用组内种子的锚点回查（组仍是作品键）
         return Ok(None);
     }
+    // 豆瓣锚点（2026-11-02）：发种主流是豆瓣链接（内置解析器直取中文正名，
+    // 不依赖 TMDB key）；与 TMDB 锚点并存时 TMDB 优先（信息面更全），
+    // 豆瓣作为无 TMDB 时的中文兜底——中文名/年份/海报/导演/评分齐。
+    let no_tmdb_anchor =
+        tmdb_url.as_deref().map_or(true, |s| s.trim().is_empty())
+            && tmdb_id.as_deref().map_or(true, |s| s.trim().is_empty())
+            && imdb_id.as_deref().map_or(true, |s| s.trim().is_empty());
+    if no_tmdb_anchor {
+        if let Some(db) = douban_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            if let Some(up) = upsert_douban(state, &key, db).await? {
+                return Ok(Some(up));
+            }
+        }
+    }
     // 锚点优先级：TMDB 链接（movie/tv 精确）→ TMDB 裸 id（缺省 movie）
-    // → IMDb 反查（/find）。豆瓣没有官方 API，留空不猜。
+    // → IMDb 反查（/find）。
     let (kind, ext) = if let Some(u) = tmdb_url.filter(|s| !s.trim().is_empty())
     {
         let (k, i) = parse_tmdb_url(&u)?;
@@ -224,4 +248,37 @@ async fn upsert(db: &PgPool, key: &str, u: &WorkMetaUp) -> DomainResult<()> {
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(())
+}
+
+/// 豆瓣锚点回查（内置解析器直取中文正名，无需 TMDB key）：
+/// 条目 id 形如 movie/12345 或纯数字（缺省 movie；tv 条目由发种链接形态决定）。
+async fn upsert_douban(
+    state: &AppState,
+    key: &str,
+    douban_id: &str,
+) -> DomainResult<Option<String>> {
+    // 链接形态归一：subject/12345 → ('movie', 12345)；tv 书等子域暂不猜
+    let (kind, id) = match douban_id.split('/').last().unwrap_or("") {
+        n if !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()) => {
+            ("movie", n)
+        }
+        _ => ("movie", douban_id),
+    };
+    let m = super::douban_client::fetch_douban(kind, id).await?;
+    let up = WorkMetaUp {
+        source: "douban",
+        external_id: format!("{kind}/{id}"),
+        name: m.name,
+        year: m.year,
+        rating: m.rating,
+        runtime: None,
+        region: m.region,
+        director: m.directors,
+        cast_list: Vec::new(),
+        genres: m.genres,
+        poster: m.poster,
+        synopsis: None,
+    };
+    upsert(&state.repo.db, key, &up).await?;
+    Ok(Some(key.to_string()))
 }

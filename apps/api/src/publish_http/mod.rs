@@ -7,6 +7,7 @@ pub(crate) mod attachment;
 mod auto_meta;
 mod collections;
 mod descr_image;
+mod douban_client;
 mod download;
 mod group;
 mod ptgen;
@@ -17,6 +18,7 @@ mod ptgen_tmdb;
 mod tmdb_client;
 // 作品条目缓存（TMDB details 拉一次存 work_meta，作品页零外呼）
 mod upload;
+mod work_backfill;
 mod work_meta;
 // 发种前置校验（0288）：把「报错时种子已入库」的校验全部提到 INSERT 之前
 mod upload_body;
@@ -63,3 +65,4 @@ pub use download::*;
 pub use group::*;
 pub use ptgen::*;
 pub use upload::*;
+pub use work_backfill::*;
