@@ -35,6 +35,7 @@ export function TypeBadge({
 // TagChipData 已收编 @fluxtorrent/domain-types；re-export 保持既有导入路径
 export type { TagChipData } from "@fluxtorrent/domain-types";
 import type { TagChipData as _TCD } from "@fluxtorrent/domain-types";
+import { tagChipStyle } from "@/lib/tag-style";
 
 export function TagChip({
   tag,
@@ -47,10 +48,10 @@ export function TagChip({
     <span
       className={`inline-block font-bold leading-normal ${className}`}
       style={{
-        background: tag.bg_color || "var(--surface-sunken)",
-        color: tag.color || "var(--ink)",
+        // 字色跟着底色走（lib/tag-style）：站型包导入的标签不写配色，存进来
+        // 就是「空底 + 白字」，这里原先直接信存库值 ⇒ 论坛标签看不见字
+        ...tagChipStyle(tag),
         fontSize: tag.font_size || "11px",
-        margin: tag.margin || undefined,
         padding: tag.padding || "1px 6px",
         borderRadius: tag.border_radius || "9999px",
       }}

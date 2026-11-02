@@ -270,8 +270,7 @@ impl Repo {
         }
     }
 }
-pub mod auth;
-pub mod categories;
+pub mod auth;pub mod categories;
 pub mod cheat_accuracy;
 pub mod cheat_appeals;
 pub mod cheat_reverse;
@@ -299,4 +298,5 @@ pub mod torrent_download;
 pub mod user_prefs;
 pub mod user_privacy;
 pub mod webhook;
+pub mod works_meta;
 pub mod xseed;

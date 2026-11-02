@@ -8,6 +8,7 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
 import { EMPTY, type TagRow } from "./admin-tagdict-shared";
+import { tagChipStyle } from "@/lib/tag-style";
 
 /** 第八轮 P1-2：标签管理（从 components/admin-tagdict.tsx 按域拆出）：
  *  新建/编辑标签表单——名称/类型/作用域 + 样式属性
@@ -215,12 +216,8 @@ export function TagEditForm({
         <span className={PREVIEW_SHELL}>
           <span
             style={{
-              background: edit.f.bg_color || "transparent",
-              color: edit.f.color,
-              fontSize: edit.f.font_size,
-              margin: edit.f.margin,
-              padding: edit.f.padding,
-              borderRadius: edit.f.border_radius,
+              ...tagChipStyle(edit.f, "transparent"),
+              // 未配色时留一圈虚线：站长一眼看出「这条还没配底色」
               border: edit.f.bg_color ? undefined : "1px solid #ccc",
             }}
           >

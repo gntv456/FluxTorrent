@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
+import { tagChipStyle } from "@/lib/tag-style";
 import { fmt } from "@/i18n/config";
 
 import { TagEditForm } from "./admin-tagdict-form";
@@ -103,12 +104,8 @@ export function AdminTagDict() {
                 <span className={PREVIEW_SHELL}>
                   <span
                     style={{
-                      background: r.bg_color || "transparent",
-                      color: r.color,
-                      fontSize: r.font_size,
-                      padding: r.padding,
-                      margin: r.margin,
-                      borderRadius: r.border_radius,
+                      ...tagChipStyle(r, "transparent"),
+                      // 未配色时留一圈虚线，让站长看得出「这条没配底色」
                       border: r.bg_color ? undefined : "1px solid #ccc",
                       display: "inline-block",
                     }}

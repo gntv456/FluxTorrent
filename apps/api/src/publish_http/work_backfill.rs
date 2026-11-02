@@ -21,8 +21,9 @@ pub async fn backfill_work_meta(
     if auth.class_id < 90 {
         return Err(DomainError::Forbidden);
     }
-    // 候选查询下沉 douban_client（分层宪法：H 层零 sqlx）
-    let ids = super::douban_client::backfill_candidates(&state.repo.db).await?;
+    // 候选查询在 repo::works_meta（分层宪法：H 层零 sqlx）
+    let ids = crate::repo::works_meta::work_backfill_candidates(&state.repo.db)
+        .await?;
     let mut done = 0u32;
     let mut failed = 0u32;
     let mut last_err: Option<String> = None;
