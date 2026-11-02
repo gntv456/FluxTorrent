@@ -6,7 +6,6 @@
 use super::engine::validate_field;
 use super::meta::MetaRow;
 
-
 fn text_meta(options: Option<serde_json::Value>) -> MetaRow {
     MetaRow {
         name: "upload_title_pattern".into(),
