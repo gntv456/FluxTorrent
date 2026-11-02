@@ -21,23 +21,12 @@ pub async fn backfill_work_meta(
     if auth.class_id < 90 {
         return Err(DomainError::Forbidden);
     }
-    // 候选：有任何锚点的种子（同一作品键多个种子只取一个代表，省外呼）
-    let wk = crate::torrent_http::works_sql::wk_expr();
-    let ids: Vec<(i64,)> = sqlx::query_as(&format!(
-        "SELECT DISTINCT ON ({wk}) t.id FROM torrents t \
-         WHERE COALESCE(NULLIF(t.imdb_id,''), '') <> '' \
-            OR COALESCE(t.media_info->>'imdb_id', '') <> '' \
-            OR COALESCE(t.media_info->>'tmdb_id', '') <> '' \
-            OR COALESCE(t.media_info->>'douban_id', '') <> '' \
-         ORDER BY {wk}, t.id"
-    ))
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 候选查询下沉 douban_client（分层宪法：H 层零 sqlx）
+    let ids = super::douban_client::backfill_candidates(&state.repo.db).await?;
     let mut done = 0u32;
     let mut failed = 0u32;
     let mut last_err: Option<String> = None;
-    for (i, (id,)) in ids.iter().enumerate() {
+    for (i, id) in ids.iter().enumerate() {
         if i > 0 && i % 20 == 0 {
             // 批间节流：豆瓣反爬友好
             tokio::time::sleep(std::time::Duration::from_secs(3)).await;

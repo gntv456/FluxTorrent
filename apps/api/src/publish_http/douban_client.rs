@@ -189,3 +189,23 @@ fn names(v: Option<&serde_json::Value>) -> Vec<String> {
         })
         .unwrap_or_default()
 }
+
+/// 回填候选查询（repo 口径，work_backfill 的 SQL 下沉于此——分层宪法①：
+/// H 层零 sqlx；放 douban_client 侧因查询语义与回填源绑定）。
+pub(super) async fn backfill_candidates(
+    db: &sqlx::PgPool,
+) -> DomainResult<Vec<i64>> {
+    let wk = crate::torrent_http::works_sql::wk_expr();
+    let ids: Vec<(i64,)> = sqlx::query_as(&format!(
+        "SELECT DISTINCT ON ({wk}) t.id FROM torrents t \
+         WHERE COALESCE(NULLIF(t.imdb_id,''), '') <> '' \
+            OR COALESCE(t.media_info->>'imdb_id', '') <> '' \
+            OR COALESCE(t.media_info->>'tmdb_id', '') <> '' \
+            OR COALESCE(t.media_info->>'douban_id', '') <> '' \
+         ORDER BY {wk}, t.id"
+    ))
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ids.into_iter().map(|(i,)| i).collect())
+}
