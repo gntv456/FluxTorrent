@@ -68,21 +68,20 @@ pub(crate) async fn upsert_for_torrent(
         return Ok(None);
     }
     // 豆瓣锚点（2026-11-02）：发种主流是豆瓣链接（内置解析器直取中文正名，
-    // 不依赖 TMDB key）；与 TMDB 锚点并存时 TMDB 优先（信息面更全），
-    // 豆瓣作为无 TMDB 时的中文兜底——中文名/年份/海报/导演/评分齐。
-    let no_tmdb_anchor =
-        tmdb_url.as_deref().map_or(true, |s| s.trim().is_empty())
-            && tmdb_id.as_deref().map_or(true, |s| s.trim().is_empty())
-            && imdb_id.as_deref().map_or(true, |s| s.trim().is_empty());
-    if no_tmdb_anchor {
-        if let Some(db) = douban_id
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-        {
-            if let Some(up) = upsert_douban(state, &key, db).await? {
-                return Ok(Some(up));
-            }
+    // 不依赖 TMDB key）。**豆瓣优先**——PT 圈发种豆瓣是第一锚点（回填实测：
+    // 双锚点种子走 IMDb 反查在没有 tmdb_api_key 的站全挂）；失败再回落
+    // TMDB/IMDb 链（信息面更全但需要 key）。
+    if let Some(db) = douban_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        match upsert_douban(state, &key, db).await {
+            Ok(Some(up)) => return Ok(Some(up)),
+            Ok(None) => {}
+            Err(e) => tracing::warn!(
+                "work-meta douban fallback to tmdb for {key}: {e}"
+            ),
         }
     }
     // 锚点优先级：TMDB 链接（movie/tv 精确）→ TMDB 裸 id（缺省 movie）
