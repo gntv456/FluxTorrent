@@ -27,6 +27,9 @@ const zhCnBase = {
     save: "保存",
     themeToggle: "切换主题",
     language: "站点语言",
+    // W-42 主题注册表三档名 + 循环提示（theme-toggle.tsx 消费）
+    themeLight: "日间",
+    themeDark: "夜间",
     // W-42 主题名按注册表 id 起键（themeNameKey：brand→themeBrand、
     // brand-night→themeBrandNight；theme-toggle.tsx 从 THEME_IDS 驱动消费），
     // themeAuto 是模式词不是主题；三语齐全由 tests/theme-registry.test.ts 门禁
@@ -6652,7 +6655,6 @@ const zhCnBase = {
     sub: "总则 + 账号/发布/做种规范 + 禁止行为 + 处罚分级",
     loadFailed:
       "规则接口暂时不可达，下面是内置的默认站规文本；管理组后台改过的内容可能没同步。",
-    tocTitle: "规则目录",
     penTitle: "处罚分级",
     penColLevel: "级别",
     penColAction: "措施",

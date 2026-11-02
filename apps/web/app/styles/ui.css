@@ -1787,7 +1787,7 @@
   display: none;
 }
 .brand-panel--fold > summary::after {
-  content: "BE";
+  content: "\25BE";
   margin-left: auto;
   padding-left: 10px;
   color: var(--text-muted);

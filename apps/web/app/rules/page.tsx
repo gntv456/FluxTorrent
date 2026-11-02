@@ -1,5 +1,3 @@
-/* 规则页样式（路由级加载，不回灌 pages.css） */
-import "@/app/styles/rules-page.css";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
@@ -54,23 +52,10 @@ export default async function RulesPage() {
           </p>
         )}
 
-        {/* 目录 + 逐条折叠：规则页正文是十条长文本，整页摊开要滚六七屏
-            （现网 6040px）。折叠后首屏只留目录，点开看单条。 */}
-        {(items ?? []).length > 0 && (
-          <nav className="brand-panel rules-toc" aria-label={t.tocTitle}>
-            <div className="brand-panel__head">
-              <h2>{t.tocTitle}</h2>
-            </div>
-            <ol className="rules-toc__list">
-              {(items ?? []).map((r) => (
-                <li key={r.id}>
-                  <a href={`#rule-${r.id}`}>{r.title}</a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        )}
-
+        {/* 逐条折叠：规则页正文是十条长文本，整页摊开要滚六七屏
+            （现网 6040px）。折叠后每条只留标题，点开看单条。
+            （曾加过「规则目录」导航块：它与下面这排折叠标题逐条重复，
+             白占一屏，且链点过去不会展开那条规则——已整块删掉。） */}
         {(items ?? []).map((r) => (
           <details
             key={r.id}
