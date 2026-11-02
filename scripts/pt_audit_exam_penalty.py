@@ -49,9 +49,10 @@ def sh(*args):
 
 def psql(sql):
     if CI:
-        cmd = ["psql", os.environ["DATABASE_URL"], "-t", "-A", "-q"]
+        cmd = ["psql", os.environ["DATABASE_URL"], "-t", "-A",
+               "-q", "-v", "ON_ERROR_STOP=1"]
     else:
-        # ON_ERROR_STOP=1：psql 走 stdin 时语句出错也返回 0（只有 -c
+        # ON_ERROR_STOP=1（两个分支都要）：psql 走 stdin 时语句出错也返回 0（只有 -c
         # 才按错误码返回 1），不加这个开关则 SQL 写错也不报错——
         # 闸门读到空串照样能判绿。
         cmd = ["docker", "exec", "-i", "flux-postgres", "psql",

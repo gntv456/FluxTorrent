@@ -1,0 +1,6 @@
+{
+  "_说明": "psql_stdin_guard 的存量放行表（路径 → 放行理由）。只减不增：谁把调用点改成带 -v ON_ERROR_STOP=1 / 显式查 stderr，就从这里划掉。2026-11-02 建表时 22 个「-e ON_ERROR_STOP=1」假开关已全部改码修掉，本表里三条都不是那种假绿。",
+  "backup_drill.py": "SQL 走 run(cmd, …, input=) 包装函数，argv 在 main() 里的 `psql = [..., \"-v\", \"ON_ERROR_STOP=1\"]`（L54）已带开关；量具按调用点前后窗口取不到那个缩进常量（已人工核对 L22/L61-L76 全部 stdin 形态都带 flag，且 run() 非 0 即 sys.exit）。",
+  "pt_ep_notice_pref_guard.py": "SQL 走 sh(args, stdin) 包装，`PSQL` 常量本身不带开关、由各调用点拼上：L108 原本就带，L312/L326 的 `-tAq` 本批改码补上了（那两处是「SET 静默失败 → SELECT 读到旧值 → EP10 判成写 0 行」的真假绿形状）。包装站点按窗口判不出拼接后的 argv，故放行整文件。",
+  "pt_audit_nc_sql_plannable.py": "设计如此：这一支就是把 psql 的 ERROR 文本当测量数据（逐条 PREPARE 归因，PREPARE_FAIL/`ERROR:` 前缀都是结论的一部分），加 ON_ERROR_STOP 会让它只能报第一批错误、丢掉逐条归因。失败信号走 FAILURES.append，不是 print 后继续。"
+}

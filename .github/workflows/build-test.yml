@@ -57,6 +57,18 @@ jobs:
       # .audit(Some(u), "some_bad_name", None) 必须被拦。
       - name: Audit action guard
         run: node scripts/audit_action_guard.mjs
+      # 任务清单三向一致（0218 G7 / 0425）：catalog（面板据此渲染每行「执行」）、
+      # run_named 分派臂、定时调度三份名单必须同源。10-29 那笔（1ede84ff）只
+      # 登记了目录没补分派臂 ⇒ 面板有按钮、点下去只拿到「未知任务 X」，而 CI
+      # 一路绿灯——本门此前只活在 ci_local.sh 里。红测：删任一 match 臂即红。
+      - name: Job catalog guard
+        run: node scripts/job_catalog_guard.mjs
+      # psql 从 stdin 读 SQL 吞错误门禁（P-552）：`-e ON_ERROR_STOP=1` 是设给
+      # docker exec 的环境变量，psql 不读它——语句报错照样 rc=0、ERROR 只在
+      # stderr，闸门拿着空读数继续判绿。2026-11-02 实测 20 支闸门正中了这一招
+      # （其中 CI 分支那两条连 e2e-smoke 作业都会假绿）。
+      - name: psql stdin guard
+        run: python3 scripts/psql_stdin_guard.py
 
   web:
     if: github.actor != 'dependabot[bot]'

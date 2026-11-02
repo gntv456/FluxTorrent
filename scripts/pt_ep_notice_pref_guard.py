@@ -309,7 +309,7 @@ def _live(label, stmt, key, params, probe):
         _body = ("BEGIN; " + _setp + " " + _call + "; SELECT count(*) FROM "
                  "messages WHERE kind = " + _q + key + _q + " AND body LIKE "
                  + _q + probe + "%" + _q + "; ROLLBACK;")
-        _r = sh(PSQL + ["-tAq"], _body)
+        _r = sh(PSQL + ["-tAq", "-v", "ON_ERROR_STOP=1"], _body)
         if _r.returncode != 0:
             FAILURES.append("EP10 %s 偏好=%s 取证失败：%s"
                             % (label, _pref, (_r.stderr or "")[:140]))
@@ -323,7 +323,7 @@ def _live(label, stmt, key, params, probe):
        _res.get("false") == "0", "实读 %s" % _res.get("false"))
     ok("EP10 %s 偏好开 ⇒ 写 1 行（不是无脑不写）" % label,
        _res.get("true") == "1", "实读 %s" % _res.get("true"))
-    _chk = sh(PSQL + ["-tAq"],
+    _chk = sh(PSQL + ["-tAq", "-v", "ON_ERROR_STOP=1"],
         "SELECT notice_prefs::text FROM users WHERE id = %d;"
         % PROBE_USER)
     ok("EP10 %s 收尾：ROLLBACK 后探针偏好未被改写" % label,

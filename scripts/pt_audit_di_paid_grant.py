@@ -56,8 +56,9 @@ def rs_files():
 
 def psql(q):
     r = subprocess.run(
-        ["docker", "exec", "-i", "-e", "ON_ERROR_STOP=1", "flux-postgres",
-         "psql", "-U", "flux", "-q", "-d", "fluxtorrent", "-tA", "-f", "-"],
+        ["docker", "exec", "-i", "flux-postgres",
+         "psql", "-U", "flux", "-q", "-d", "fluxtorrent",
+         "-v", "ON_ERROR_STOP=1", "-tA", "-f", "-"],
         input=q, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
         raise RuntimeError("   psql 失败：%s" % (r.stderr or "").strip()[:220])

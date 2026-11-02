@@ -63,11 +63,20 @@ def ex(q):
 
 
 def sqlinput(sql):
-    """多语句必须走 -f -（-c 只回最后一条的输出）。"""
+    """多语句必须走 -f -（-c 只回最后一条的输出）。
+
+    `-v ON_ERROR_STOP=1` 是给 **psql** 的（不是 docker 的 `-e` 环境变量——
+    那种写法 psql 不认，语句错了照样 rc=0 继续跑下一句，本闸门 PX4 的
+    A/B 读数会缺标记）；psql 把错误写进 stderr，这里看见 ERROR 就抛，
+    不把「SQL 没跑成」读成「语义不对」。
+    """
     r = subprocess.run(
         ["docker", "exec", "-i", "flux-postgres", "psql", "-U", "flux",
-         "-d", "fluxtorrent", "-f", "-"],
+         "-d", "fluxtorrent", "-v", "ON_ERROR_STOP=1", "-f", "-"],
         input=sql, capture_output=True, text=True, encoding="utf-8")
+    if "ERROR" in (r.stderr or ""):
+        raise RuntimeError("sqlinput 里 psql 报错：%s"
+                           % r.stderr.strip()[:220])
     return r.stdout + r.stderr
 
 
