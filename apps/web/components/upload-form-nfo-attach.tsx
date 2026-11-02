@@ -18,9 +18,12 @@ const ATTACH_ACCEPT =
 export function UploadNfoAttach({
   nfoRef,
   setDescr,
+  rowCls = "",
 }: {
   nfoRef: RefObject<HTMLInputElement | null>;
   setDescr: (v: string | ((prev: string) => string)) => void;
+  /** 附加到本组件各行的类名（窄屏折叠用） */
+  rowCls?: string;
 }) {
   const { dict } = useI18n();
   const [nfoName, setNfoName] = useState("");
@@ -44,7 +47,7 @@ export function UploadNfoAttach({
 
   return (
     <>
-      <FormRow label={dict.upload.nfo}>
+      <FormRow label={dict.upload.nfo} className={rowCls}>
         <div className="flex flex-col gap-1">
           <label className="uf-drop uf-drop--optional">
             <input
@@ -61,7 +64,7 @@ export function UploadNfoAttach({
       </FormRow>
       {/* 抓轨日志（0312）：站点未开检查时后端忽略这些 part */}
       <UploadRipLogs />
-      <FormRow label={dict.upload.attachLabel}>
+      <FormRow label={dict.upload.attachLabel} className={rowCls}>
         <div className="flex flex-col gap-1">
           <label className="uf-drop uf-drop--optional">
             <input

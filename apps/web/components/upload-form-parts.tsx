@@ -11,13 +11,17 @@ import type { ReactNode } from "react";
 export function FormRow({
   label,
   children,
+  className,
 }: {
-  /** 文本或节点（维度行的必填星号等内联标记走节点） */
-  label: ReactNode;
+  /** 文本或节点（维度行的必填星号等内联标记走节点）；
+   *  省略 = 只给内容（窄屏折叠按钮那种整行只用一格的场合） */
+  label?: ReactNode;
   children: ReactNode;
+  /** 附加类名（窄屏折叠分组用，见 .uf-opt / .uf-more-toggle） */
+  className?: string;
 }) {
   return (
-    <tr>
+    <tr className={className}>
       <td className="rowhead">{label}</td>
       <td className="rowfollow">{children}</td>
     </tr>

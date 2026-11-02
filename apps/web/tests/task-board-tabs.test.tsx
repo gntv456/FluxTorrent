@@ -145,18 +145,19 @@ beforeEach(() => stubFetch());
 afterEach(() => vi.unstubAllGlobals());
 
 describe("任务页两组标签", () => {
-  it("默认只展开「规则」与「可领取任务」，另两块不进 DOM", async () => {
+  it("默认只展开「我的任务记录」与「可领取任务」，另两块不进 DOM", async () => {
     await mounted();
     // 两组标签各展开一个面板
     expect(screen.getAllByRole("tabpanel")).toHaveLength(2);
-    // 规则面板在
-    expect(screen.getByText(t.rules[0])).toBeInTheDocument();
+    // 规则面板不在（默认停在「我的任务记录」：先让人领任务，规则收进页签）
+    expect(screen.queryByText(t.rules[0])).toBeNull();
+    // 我的任务记录面板在
+    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
     // 可领取面板在（档位卡 + 名额说明）
     expect(screen.getByText("20GB 上传挑战 · 大师级")).toBeInTheDocument();
     expect(screen.getByText(/12 \/ 200/)).toBeInTheDocument();
-    // 未选中的两个面板不得存在
+    // 未选中的面板不得存在
     expect(screen.queryByText("上传加速卡")).toBeNull();
-    expect(screen.queryByText("烧糊涂·10GB 上传挑战")).toBeNull();
   });
 
   it("切到「任务商店」：商店卡进来、任务卡让位，且不影响另一组", async () => {
@@ -165,16 +166,16 @@ describe("任务页两组标签", () => {
     await user.click(screen.getByRole("tab", { name: t.shopTitle }));
     expect(screen.getByText("上传加速卡")).toBeInTheDocument();
     expect(screen.queryByText("20GB 上传挑战 · 大师级")).toBeNull();
-    // 组一仍停在「规则」
-    expect(screen.getByText(t.rules[0])).toBeInTheDocument();
+    // 组一仍停在「我的任务记录」
+    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
   });
 
-  it("切到「我的任务记录」：记录表进来，组二仍停在「可领取任务」", async () => {
+  it("切到「规则」：规则面板进来，组二仍停在「可领取任务」", async () => {
     const user = userEvent.setup();
     await mounted();
-    await user.click(screen.getByRole("tab", { name: t.historyTitle }));
-    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
-    expect(screen.queryByText(t.rules[0])).toBeNull();
+    await user.click(screen.getByRole("tab", { name: t.rulesTitle }));
+    expect(screen.getByText(t.rules[0])).toBeInTheDocument();
+    expect(screen.queryByText("烧糊涂·10GB 上传挑战")).toBeNull();
     expect(screen.getByText("20GB 上传挑战 · 大师级")).toBeInTheDocument();
   });
 
@@ -211,15 +212,15 @@ describe("任务页两组标签", () => {
       expect(bar.querySelectorAll('[aria-selected="true"]')).toHaveLength(1);
   });
 
-  it("方向键换标签：→ 从规则走到记录，← 走回来", async () => {
+  it("方向键换标签：← 从记录走到规则，→ 走回来", async () => {
     const user = userEvent.setup();
     await mounted();
-    const rulesTab = screen.getByRole("tab", { name: t.rulesTitle });
-    rulesTab.focus();
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
+    const historyTab = screen.getByRole("tab", { name: t.historyTitle });
+    historyTab.focus();
     await user.keyboard("{ArrowLeft}");
     expect(screen.getByText(t.rules[0])).toBeInTheDocument();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
   });
 
   it("最新动态与任务统计不被收进标签（样图里它们是独立网格）", async () => {

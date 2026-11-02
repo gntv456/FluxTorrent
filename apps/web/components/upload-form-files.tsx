@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import { api } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
@@ -11,6 +11,11 @@ import { UploadNfoAttach } from "@/components/upload-form-nfo-attach";
  *  种子文件选择、标题/副标题、IMDb 与 PT-Gen、NFO、图床附件、MediaInfo、
  *  封面 URL、价格。fileRef/nfoRef/fileName 由主表单传入（submit 读取）；
  *  descr 同理（PT-Gen 生成与图床插入都会追加进同一段简介）。 */
+
+/** 「更多选项」按钮的样式（单独提出来：写在 JSX 里那一行超 80 列） */
+const MORE_BTN_CLS =
+  "min-h-10 rounded-[var(--r-sm)] border border-[var(--brand-line)] " +
+  "px-3 text-sm font-bold text-ink";
 
 export function UploadFilesBlock({
   fileRef,
@@ -70,6 +75,8 @@ export function UploadFilesBlock({
   metaSources: string[];
 }) {
   const { dict, currency } = useI18n();
+  // 窄屏：辅助元数据字段默认折起（桌面照旧全展开）
+  const [moreOpen, setMoreOpen] = useState(false);
 
   /** 元数据自动拉取（G7）：IMDb 链接失焦、且用户还没自己填 PT-Gen 链接时
    *  自动拉一次简介。手动按钮行为不变（仍可改链接后重拉）。 */
@@ -157,21 +164,37 @@ export function UploadFilesBlock({
       )}
       {(metaSources.includes("douban") || metaSources.includes("tmdb")) && (
         <FormRow label={dict.upload.metaIds}>
-          <div className="flex flex-wrap gap-2">
+          {/* 窄屏上下堆叠：并排时两个 placeholder 都被截成
+              「movie.douban.com/s」「themoviedb.org/mov」，看不出该填什么 */}
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input value={douban} name="douban"
               onChange={(e) => setDouban(e.target.value)}
               placeholder="movie.douban.com/subject/1292052" maxLength={300}
-              className={`${fieldCls} min-w-0 flex-1`} />
+              className={`${fieldCls} min-w-0 sm:flex-1`} />
             <input value={tmdb} name="tmdb"
               onChange={(e) => setTmdb(e.target.value)}
               placeholder="themoviedb.org/movie/603" maxLength={300}
-              className={`${fieldCls} min-w-0 flex-1`} />
+              className={`${fieldCls} min-w-0 sm:flex-1`} />
           </div>
           <span className="text-xs text-sub">{dict.upload.metaIdsHint}</span>
         </FormRow>
       )}
+      {/* 窄屏：辅助元数据字段（PT-Gen / NFO / MediaInfo）折进「更多选项」，
+          桌面照旧全展开（桌面表格放得下）。 */}
+      <FormRow className="uf-more-toggle">
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          className={MORE_BTN_CLS}
+        >
+          {moreOpen ? dict.upload.lessOptions : dict.upload.moreOptions}
+        </button>
+      </FormRow>
       {metaSources.length > 0 && (
-        <FormRow label={dict.upload.ptgen ?? "PT-Gen"}>
+        <FormRow
+          label={dict.upload.ptgen ?? "PT-Gen"}
+          className={moreOpen ? "" : "uf-opt"}
+        >
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -201,10 +224,17 @@ export function UploadFilesBlock({
           </div>
         </FormRow>
       )}
-      <UploadNfoAttach nfoRef={nfoRef} setDescr={setDescr} />
+      <UploadNfoAttach
+        nfoRef={nfoRef}
+        setDescr={setDescr}
+        rowCls={moreOpen ? "" : "uf-opt"}
+      />
       {/* MediaInfo（0209 P2-14）：影视向字段——站长在元数据源里去掉 mediainfo 即隐藏 */}
       {metaSources.includes("mediainfo") && (
-        <FormRow label={dict.upload.mediainfoLabel ?? "MediaInfo"}>
+        <FormRow
+          label={dict.upload.mediainfoLabel ?? "MediaInfo"}
+          className={moreOpen ? "" : "uf-opt"}
+        >
           <textarea
             rows={4}
             name="mediainfo"

@@ -836,6 +836,8 @@ const zhTwBase: Omit<
     imdbHint: "來自 IMDb 的條目連結；用於詳情頁展示與搜尋區「IMDb」",
     metaIds: "豆瓣 / TMDB",
     metaIdsHint: "填條目 ID 或連結：作品聚合據此把同一部片的多版本歸到一起",
+    moreOptions: "更多選項（PT-Gen / NFO / MediaInfo）",
+    lessOptions: "收起更多選項",
     ptgen: "PT-Gen",
     ptgenPlaceholder: "貼上 imdb / douban / bangumi / indienova / tmdb 連結",
     ptgenBtn: "生成簡介",

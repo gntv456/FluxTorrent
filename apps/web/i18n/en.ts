@@ -880,6 +880,8 @@ const enBase: Omit<
     metaIds: "Douban / TMDB",
     metaIdsHint:
       "Entry ID or link — used to group versions of the same work",
+    moreOptions: "More options (PT-Gen / NFO / MediaInfo)",
+    lessOptions: "Hide extra options",
     ptgen: "PT-Gen",
     ptgenPlaceholder:
       "Paste an imdb / douban / bangumi / indienova / tmdb link",

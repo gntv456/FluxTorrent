@@ -1,0 +1,24 @@
+/* ===== 发布资源页·窄屏专用（2026-11-02） =====
+   路由级加载（只在 /upload 生效）：pages.css 已超 3000 行基线，
+   页面专属样式按仓库纪律走路由级 import，不回灌全局链。
+
+   两处：
+   1. 辅助元数据字段（PT-Gen / NFO / 附件 / MediaInfo）折进「更多选项」——
+      这些字段绝大多数人用不上，摊在首屏把必填项推出屏外；桌面照旧全展开。
+   2. 「更多选项」那一行只在窄屏出现。 */
+@media not all and (min-width: 768px) {
+  /* 选择器要比 .nexus-table:has(td.rowhead) tr（0,2,1）更 Specific：
+     表单行在窄屏会被那条规则改成 display:block，把 .uf-opt 顶掉。 */
+  .nexus-table:has(td.rowhead) tr.uf-opt {
+    display: none;
+  }
+  .uf-more-toggle > td {
+    padding: 8px 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  .uf-more-toggle {
+    display: none;
+  }
+}

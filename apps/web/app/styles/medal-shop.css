@@ -598,6 +598,46 @@
   gap: 14px;
   padding: 14px;
 }
+/* 窄屏商品网格改两列：auto-fill minmax(246px,1fr) 在 366px 的容器里
+   只排得下一列，商品一多整页就是一条长龙（现网 6391px ≈ 7.6 屏）。
+   卡片内容同步收窄：图标移到文字上方，底部价格/操作各占一行。 */
+@media not all and (min-width: 768px) {
+  .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+  .gcard-bd {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+  }
+  .gcard-ft {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  /* 提示语在两列宽下要折两行（37px），单卡因此 253px；收到一行 */
+  .gcard .hint {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  /* 图标盒与底部一起收：两列宽下 46px 的图标与三行页脚把单卡拉到 234px */
+  .gcard .gicon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+  .gcard-ft {
+    font-size: 11px;
+  }
+  .gcard-ft .unit {
+    font-size: 10px;
+  }
+}
+
 .gcard {
   position: relative;
   display: flex;

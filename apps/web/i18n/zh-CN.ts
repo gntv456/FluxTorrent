@@ -786,6 +786,8 @@ const zhCnBase = {
     nameHint: "不填将使用种子文件名；建议规范填写",
     imdb: "IMDb 链接",
     imdbHint: "来自 IMDb 的条目链接；用于详情页展示与搜索区「IMDb」",
+    moreOptions: "更多选项（PT-Gen / NFO / MediaInfo）",
+    lessOptions: "收起更多选项",
     ptgen: "PT-Gen",
     ptgenPlaceholder: "粘贴 imdb / douban / bangumi / indienova / tmdb 链接",
     ptgenBtn: "生成简介",

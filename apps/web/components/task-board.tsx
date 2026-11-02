@@ -28,7 +28,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
   const [tasks, setTasks] = useState<TaskRow[] | null>(null);
   const [ov, setOv] = useState<TaskOverview | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [infoTab, setInfoTab] = useState("rules");
+  const [infoTab, setInfoTab] = useState("history");
   const [boardTab, setBoardTab] = useState("tiers");
 
   const load = async () => {
@@ -90,30 +90,7 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
         </div>
       </section>
 
-      {/* 标签组一：规则 ｜ 我的任务记录 */}
-      <div className="task-tabblock">
-        <Tabs
-          idPrefix="taskinfo"
-          label={t.title}
-          value={infoTab}
-          onChange={setInfoTab}
-          items={[
-            { key: "rules", label: t.rulesTitle },
-            { key: "history", label: t.historyTitle },
-          ]}
-        />
-        {infoTab === "rules" ? (
-          <TabPanel idPrefix="taskinfo" tabKey="rules">
-            <TaskRulesPanel />
-          </TabPanel>
-        ) : (
-          <TabPanel idPrefix="taskinfo" tabKey="history">
-            <TaskHistory ov={ov} />
-          </TabPanel>
-        )}
-      </div>
-
-      {/* 标签组二：可领取任务 ｜ 任务商店 */}
+      {/* 标签组一：可领取任务 ｜ 任务商店（先于规则） */}
       <div className="task-tabblock">
         <Tabs
           idPrefix="taskboard"
@@ -136,6 +113,29 @@ export function TaskBoard({ sparkBalance }: { sparkBalance: number | null }) {
         ) : (
           <TabPanel idPrefix="taskboard" tabKey="shop">
             <TaskShopPanel shop={ov?.shop ?? []} />
+          </TabPanel>
+        )}
+      </div>
+
+      {/* 标签组二：规则 ｜ 我的任务记录（放在任务之后：先让人领任务） */}
+      <div className="task-tabblock">
+        <Tabs
+          idPrefix="taskinfo"
+          label={t.title}
+          value={infoTab}
+          onChange={setInfoTab}
+          items={[
+            { key: "rules", label: t.rulesTitle },
+            { key: "history", label: t.historyTitle },
+          ]}
+        />
+        {infoTab === "rules" ? (
+          <TabPanel idPrefix="taskinfo" tabKey="rules">
+            <TaskRulesPanel />
+          </TabPanel>
+        ) : (
+          <TabPanel idPrefix="taskinfo" tabKey="history">
+            <TaskHistory ov={ov} />
           </TabPanel>
         )}
       </div>
