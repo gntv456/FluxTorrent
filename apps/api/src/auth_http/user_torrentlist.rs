@@ -27,6 +27,7 @@ pub async fn user_torrentlist(
     // 「做种中/已完成」里，点名字 404（上传档在 P-525 已接同一口径）。
     let vis = crate::torrents::visibility_sql(Some((uid, auth.class_id >= 90)));
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
+    let offset = q.offset.unwrap_or(0).max(0);
     let uploads: Vec<SnatchRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
          false AS seeding, false AS leeching, NULL::timestamptz AS completed_at, 0::bigint AS uploaded_here, \
@@ -34,10 +35,11 @@ pub async fn user_torrentlist(
          FROM torrents t \
          LEFT JOIN categories c ON c.id = t.category_id \
          WHERE t.owner_id = $1 AND t.approval_status = 1 AND NOT t.anonymous \
-         ORDER BY t.id DESC LIMIT $2",
+         ORDER BY t.id DESC LIMIT $2 OFFSET $3",
     )
     .bind(uid)
     .bind(limit)
+    .bind(offset)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -47,10 +49,11 @@ pub async fn user_torrentlist(
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
              WHERE s.user_id = $1 AND s.seeding AND {vis} \
-             ORDER BY s.torrent_id DESC LIMIT $2"
+             ORDER BY s.torrent_id DESC LIMIT $2 OFFSET $3"
         ))
         .bind(uid)
         .bind(limit)
+        .bind(offset)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -65,10 +68,11 @@ pub async fn user_torrentlist(
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
              WHERE s.user_id = $1 AND s.leeching AND {vis} \
-             ORDER BY s.torrent_id DESC LIMIT $2"
+             ORDER BY s.torrent_id DESC LIMIT $2 OFFSET $3"
         ))
         .bind(uid)
         .bind(limit)
+        .bind(offset)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -81,10 +85,11 @@ pub async fn user_torrentlist(
              s.completed_at, s.uploaded AS uploaded_here \
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
              WHERE s.user_id = $1 AND s.completed_at IS NOT NULL AND {vis} \
-             ORDER BY s.completed_at DESC LIMIT $2"
+             ORDER BY s.completed_at DESC LIMIT $2 OFFSET $3"
         ))
         .bind(uid)
         .bind(limit)
+        .bind(offset)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -98,10 +103,11 @@ pub async fn user_torrentlist(
              FROM snatches s JOIN torrents t ON t.id = s.torrent_id \
              WHERE s.user_id = $1 AND s.completed_at IS NULL AND NOT s.seeding AND NOT s.leeching \
                AND {vis} \
-             ORDER BY s.last_seen_at DESC LIMIT $2"
+             ORDER BY s.last_seen_at DESC LIMIT $2 OFFSET $3"
         ))
         .bind(uid)
         .bind(limit)
+        .bind(offset)
         .fetch_all(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?
@@ -110,6 +116,7 @@ pub async fn user_torrentlist(
     };
     // 完成的保种区种子：seed_preserve 中该用户认领且尚未退出的记录
     // （认领本身公开；snatch 派生字段只对本人/staff 展示）
+    // 占位符次序：$1=uid $2=limit $3=reveal（下面 CASE WHEN 用它）$4=offset
     let preserved: Vec<SnatchRow> = sqlx::query_as(
         "SELECT t.id AS torrent_id, t.name, t.size, t.seeders, t.leechers, \
          CASE WHEN $3 THEN COALESCE(s.seeding, false) \
@@ -123,11 +130,12 @@ pub async fn user_torrentlist(
          LEFT JOIN snatches s ON s.torrent_id = sp.torrent_id AND s.user_id = $1 \
          WHERE sp.claimed_by = $1 AND sp.exited_at IS NULL \
            AND t.approval_status = 1 \
-         ORDER BY sp.torrent_id DESC LIMIT $2",
+         ORDER BY sp.torrent_id DESC LIMIT $2 OFFSET $4",
     )
     .bind(uid)
     .bind(limit)
     .bind(reveal)
+    .bind(offset)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -141,4 +149,8 @@ pub async fn user_torrentlist(
 pub(super) struct UserTorrentlistQuery {
     #[serde(default)]
     pub(super) limit: Option<i64>,
+    /// 偏移（翻页用）。此前只有 limit，一次给满 100 条，手机端一屏放不下
+    /// 也没法翻——窄屏那页要滚很久才看得到头。
+    #[serde(default)]
+    pub(super) offset: Option<i64>,
 }
