@@ -143,6 +143,15 @@ pub(super) fn validate_field(m: &MetaRow, raw: &str) -> Result<String, String> {
                             return Err("须为合法 URL 或 host:port".into());
                         }
                     }
+                    // 背景图一类的「同源优先」地址（0449）：站内相对路径
+                    // （/backgrounds/x.jpg）或 http(s) 绝对地址。相对路径让
+                    // 背景随访问入口同源加载，不必把公网域名写进配置。
+                    "url_or_path" => {
+                        let rel = v.starts_with('/') && !v.starts_with("//");
+                        if !rel && !looks_like_url(&v) {
+                            return Err("须为站内路径（/…）或合法 URL".into());
+                        }
+                    }
                     "csv_ids" => {
                         if !v
                             .split(',')

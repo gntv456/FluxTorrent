@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { backgroundOpacity, cssBackgroundImage } from "@/lib/site-background";
 
-/** 背景图设置 → CSS 值：只认 http(s) 绝对地址，引号/空白/伪协议一律拒绝
- *  （值会拼进 url("…")；后台 rule=url 是第一道，这里是渲染前最后一道）。 */
+/** 背景图设置 → CSS 值：收 http(s) 绝对地址与站内相对路径（0449，
+ *  相对路径随访问入口同源加载），引号/空白/伪协议/协议相对一律拒绝
+ *  （值会拼进 url("…")；后台 rule=url_or_path 是第一道，这里是最后一道）。 */
 describe("背景图 CSS 归一", () => {
   it("http(s) 绝对地址 → url(\"…\")", () => {
     expect(cssBackgroundImage(" https://cdn.example/bg.jpg ")).toBe(
@@ -13,12 +14,20 @@ describe("背景图 CSS 归一", () => {
     );
   });
 
-  it("相对路径/伪协议/引号注入/空白/超长 → 不渲染（负控）", () => {
+  it("站内相对路径 → 原样保留（同源加载）", () => {
+    expect(cssBackgroundImage("/backgrounds/site-tide-photo.jpg")).toBe(
+      'url("/backgrounds/site-tide-photo.jpg")',
+    );
+  });
+
+  it("协议相对/伪协议/引号注入/空白/超长 → 不渲染（负控）", () => {
     const bad = [
       "",
       null,
       undefined,
-      "/uploads/bg.jpg",
+      "//evil.example/bg.jpg",
+      "/a\".jpg",
+      "/a b.jpg",
       "cdn.example/bg.jpg",
       "javascript:alert(1)",
       'https://x/a".jpg',
