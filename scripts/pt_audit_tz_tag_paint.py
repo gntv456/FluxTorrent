@@ -61,7 +61,7 @@ if MIG == "1":
              "columns WHERE table_name='tag_dict' AND column_name='color'")
     eq("T1b color 列默认已改成空串", dflt, "''::text")
 else:
-    print("   PENDING：0453 未应用（api 未重启），现存隐形行=%s（%s）"
+    print("   PENDING：0454 未应用（api 未重启），现存隐形行=%s（%s）"
           % (naked, names))
 
 print("== T2 建口默认值：不配色的标签不许落一个白色 ==")
