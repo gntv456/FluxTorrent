@@ -7,10 +7,11 @@ import { useMediaQuery } from "@/lib/hooks/use-media";
 
 /** 导航（Seedlight §3）：一级平铺 + 「更多 ▾」分组下拉（点击展开，点外部/ESC 收起）。
  *
- *  选中态口径：裸路径条目（资源库 /torrents）与带参条目（官种
- *  /torrents?official=1）共享同一路径——带参条目仅当当前 URL 携带同参数
- *  才点亮；裸路径条目在同路径带参条目命中时「让位」，否则三个条目
- *  （资源库/官种/更多）会一起点亮（参数剥掉后匹配路径必然同真）。
+ *  选中态口径（2026-11-03 收敛）：带参条目（官种 /torrents?official=1、
+ *  资源库三级叶子 /torrents?category_id=7&official=1）按「键值全等」点亮
+ *  ——URL 与菜单项的筛选参数完全一致才亮，子集不算（子集口径下选
+ *  「资源-电影」会同时点亮全部-电影/资源-全部/资源-更多分类…四条）。
+ *  裸路径条目（资源库 /torrents）在任何带参条目命中时让位。
  *
  *  平板收敛（2026-10-19）：<lg（1023px 及以下）一级平铺也收进汉堡
  *  抽屉（与 <md 同款 compact 形态）。实测 820–1024 宽下 5 个一级项
@@ -47,19 +48,39 @@ export function MainMenu({
     p === "/"
       ? pathname === "/"
       : pathname === p || pathname.startsWith(`${p}/`);
-  /** 当前 URL 是否携带该 href query 的全部键值 */
+  /** 当前 URL 是否精确携带该 href 的 query（键值全等，非子集）。
+   *  2026-11-03 站长报「选资源-电影点亮四个按钮」：旧口径只查「href 的参数
+   *  都在 URL 里」，子集匹配——category_id=1&official=0 会同时命中
+   *  全部-电影（category_id 子集）/资源-全部（official 子集）/
+   *  资源-更多分类…（overflow href 同 official）四条。全等口径下
+   *  「URL 比菜单项多参数」不再算命中，同参组合唯一点亮。 */
   const queryActive = (href: string) => {
     const q = href.split("?")[1];
     if (!q) return false;
-    for (const [k, v] of new URLSearchParams(q)) {
-      if (sp.get(k) !== v) return false;
+    const want = new URLSearchParams(q);
+    // 菜单不关心的展示态/翻游标参数不参与比对：URL 带着它们时菜单条目
+    // 仍应点亮（翻到第 3 页不代表离开了「资源-电影」频道）
+    const ignore = new Set(["view", "limit", "cursor", "dir", "sort", "group"]);
+    const cur = new URLSearchParams();
+    for (const k of sp.keys()) {
+      if (!ignore.has(k)) cur.set(k, sp.get(k) ?? "");
+    }
+    if (cur.size !== want.size) return false;
+    for (const [k, v] of want) {
+      if (cur.get(k) !== v) return false;
     }
     return true;
   };
-  const allItems = [...items, ...(groups ?? []).flatMap((g) => g.items)];
-  // 命中的带参条目所占据的路径：裸路径条目在这些路径上让位
+  // 全部带参条目（含资源库下拉的三级叶子——MainMenu 渲染 sub 时也用
+  // isActive）各自「认领」自己的路径：裸路径条目在任何带参条目命中时让位，
+  // 否则资源库/官种/更多会一起点亮。
+  const allLeaves = [
+    ...items,
+    ...items.flatMap((i) => i.sub?.flatMap((g) => g.items ?? []) ?? []),
+    ...(groups ?? []).flatMap((g) => g.items),
+  ];
   const claimedPaths = new Set(
-    allItems
+    allLeaves
       .filter((i) => queryActive(i.href))
       .map((i) => i.href.split("?")[0]),
   );
@@ -67,14 +88,16 @@ export function MainMenu({
   const isActive = (href: string) => {
     const [path, query] = href.split("?");
     if (!pathActive(path)) return false;
-    if (query) {
-      for (const [k, v] of new URLSearchParams(query)) {
-        if (sp.get(k) !== v) return false;
-      }
-      return true;
-    }
+    if (query) return queryActive(href);
     return !claimedPaths.has(path);
   };
+  // 资源库（带 sub 的一级）：任一叶子命中即父亮——频道页里顶栏一级入口
+  // 保持「你在资源库里」的上下文（2026-11-03 三级下拉补的口径；此前裸
+  // /torrents 在 ?category_id=1 让位给叶子后，一级反而不亮了）。
+  // 叶子的 href 带查询串，直接复用 isActive 的全等判断。
+  const hasActiveLeaf = (n: NavItem) =>
+    !!n.sub &&
+    n.sub.some((g) => (g.items ?? []).some((leaf) => isActive(leaf.href)));
   const moreActive = (groups ?? []).some((g) =>
     g.items.some((i) => isActive(i.href)),
   );
@@ -119,7 +142,11 @@ export function MainMenu({
                   <Link
                     href={n.href}
                     className="mainmenu-link"
-                    data-active={isActive(n.href) ? "true" : undefined}
+                    data-active={
+                      isActive(n.href) || hasActiveLeaf(n)
+                        ? "true"
+                        : undefined
+                    }
                   >
                     {n.label} ▾
                   </Link>

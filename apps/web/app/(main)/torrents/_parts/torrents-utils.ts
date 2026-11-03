@@ -112,3 +112,29 @@ export function withoutCursor(sp: TorrentsSP): TorrentsSP {
   delete next.p;
   return next;
 }
+
+/** 导航参数白名单：只带这些落地 /torrents 不算「带筛选意图」。
+ *  category_id/official 是资源库下拉的导航频道（2026-11-03 站长报
+ *  「点三级菜单自动弹高级筛选」）；search 是常驻搜索行，自有回显；
+ *  其余是展示态/翻页游标，不是筛选条件。 */
+const NAV_ONLY_KEYS = new Set([
+  "category_id",
+  "official",
+  "search",
+  "view",
+  "limit",
+  "cursor",
+  "dir",
+  "sort",
+  "group",
+]);
+
+/** 高级面板是否自动展开：有真实筛选 chip 且 URL 里存在导航白名单之外的
+ *  筛选参数才展开。纯导航落地（资源-电影 → category_id+official）不弹
+ *  面板；owner/promo/tag 等真筛选参数在 URL 则照常展开。 */
+export function advAutoOpen(sp: TorrentsSP, nonSearchChips: number): boolean {
+  if (nonSearchChips === 0) return false;
+  return Object.entries(sp).some(
+    ([k, v]) => !NAV_ONLY_KEYS.has(k) && v !== undefined && v !== "",
+  );
+}

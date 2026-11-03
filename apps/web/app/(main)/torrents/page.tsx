@@ -22,11 +22,13 @@ import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
 import { TorrentHoverPreview } from "@/components/torrent-hover-preview";
 import { buildTorrentChips } from "./_parts/torrents-chips";
 import {
+  advAutoOpen,
   loadPublic,
   parsePageSize,
   parseView,
   toggleSort,
-  withParam, withoutCursor,
+  withParam,
+  withoutCursor,
   type SectionDictRow,
   type SectionKindMeta,
 } from "./_parts/torrents-utils";
@@ -227,8 +229,11 @@ export default async function TorrentsPage({
     dimKinds,
     withParam,
   });
-  const advancedOpen = chips.length > 0;
   const nonSearchChips = chips.filter((c) => c.key !== "search").length;
+  // 导航豁免（2026-11-03）：纯导航落地（category_id/official）不自动展开
+  // 高级面板——菜单点「资源-电影」是导航行为不是筛选行为。口径见
+  // advAutoOpen 的 NAV_ONLY_KEYS 注释；chips 侧 official 早已豁免。
+  const advancedOpen = advAutoOpen(sp, nonSearchChips);
   // IMDb 范围随站点元数据源显隐（与上传页条目输入同口径）
   const showImdb =
     !profile || (profile.metadata_sources ?? []).includes("imdb");
