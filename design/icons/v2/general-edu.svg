@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<path style="fill:var(--cat-general-edu-primary,#1FA372)" d="M12 3.2l9.8 5.2L12 13.6 2.2 8.4 12 3.2Z"/>
+<path style="fill:var(--cat-general-edu-primary,#1FA372)" d="M6.8 11.5v3.7c2.9 2.5 7.5 2.5 10.4 0v-3.7L12 14.2l-5.2-2.7Z"/>
+<path style="fill:var(--cat-general-edu-accent,#FFD84D)" d="M20.3 9h1.3v4.4h-1.3V9Z"/>
+<circle cx="21" cy="14.9" r="1.1" style="fill:var(--cat-general-edu-accent,#FFD84D)"/>
+</svg>

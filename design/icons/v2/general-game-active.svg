@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<rect x="2" y="2" width="20" height="20" rx="5.5" style="fill:var(--cat-general-game-primary,#4CA53C)"/>
+<path fill-rule="evenodd" style="fill:var(--cat-general-game-on,var(--cat-general-audiobook-on,var(--cat-general-music-on,var(--cat-general-anime-on,var(--cat-general-doc-on,var(--cat-general-variety-on,var(--cat-general-shortdrama-on,var(--cat-general-tv-on,var(--cat-general-movie-on,#FFFFFF)))))))))" d="M7.6 7.8h8.8a4.8 4.8 0 0 1 4.8 4.8v.8a4.8 4.8 0 0 1-4.8 4.8h-.8a3.2 3.2 0 0 1-2.4-1.1l-.8-1a1.8 1.8 0 0 0-1.4-.7h-2a1.8 1.8 0 0 0-1.4.7l-.8 1a3.2 3.2 0 0 1-2.4 1.1h-.8a4.8 4.8 0 0 1-4.8-4.8v-.8A4.8 4.8 0 0 1 7.6 7.8ZM6.9 10.5v1.9H5v1.6h1.9v1.9h1.5V14h1.9v-1.6H8.4v-1.9H6.9Zm8.4 0a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Zm2.7 2.4a1.15 1.15 0 1 0 0 2.3 1.15 1.15 0 0 0 0-2.3Z"/>
+</svg>

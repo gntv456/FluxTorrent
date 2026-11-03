@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<path style="fill:var(--cat-general-ebook-primary,#8E9820)" d="M12 5.4c-2.7-1.2-5.1-1.2-7.4 0v13.4c2.3-1.2 4.7-1.2 7.4 0 2.7-1.2 5.1-1.2 7.4 0V5.4c-2.3-1.2-4.7-1.2-7.4 0Z"/>
+<path style="fill:var(--cat-general-ebook-accent,#FFFFFF)" d="M6.4 7.2c1.6-.6 3.1-.6 4.7.1v9.9c-1.6-.7-3.1-.7-4.7-.1V7.2Zm11.2 0c-1.6-.6-3.1-.6-4.7.1v9.9c1.6-.7 3.1-.7 4.7-.1V7.2Z"/>
+<path d="M7.4 9.7h2.7M7.4 11.7h2.7M13.9 9.7h2.7M13.9 11.7h2.7" style="fill:none;stroke:var(--cat-general-ebook-primary,#8E9820);stroke-width:1;stroke-linecap:round"/>
+</svg>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>v3.1 音乐/有声书 拉开差异 · 复核预览</title>
+<style>
+  body { font: 13px/1.6 "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; background: #0a0f0d; color: #e8e2d5; padding: 24px; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .sub { color: #9a9484; font-size: 12px; margin-bottom: 18px; }
+  table { border-collapse: collapse; margin-bottom: 20px; }
+  th, td { padding: 8px 14px; text-align: center; border-top: 1px solid rgba(232,226,213,.12); }
+  th { border-top: none; font-size: 11px; color: #9a9484; }
+  td.n { text-align: left; }
+  img { display: block; }
+  .ok { color: #7fb069; } .bad { color: #d97706; }
+  .doc { background: rgba(232,226,213,.05); border: 1px solid rgba(232,226,213,.12); border-radius: 10px; padding: 14px 18px; max-width: 760px; }
+  .doc li { margin: 4px 0; }
+  code { background: rgba(232,226,213,.1); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>v3.1-props · music-audiobook-fix</h1>
+<p class="sub">变更范围：仅 <code>cat-music</code>（沿用旧编钟，原样重导出）与 <code>cat-audiobook</code>（新绘：青铜耳麦 + 竹简 + 声波弧）。其余 14 个分类未动、未重导出。暗底 #0a0f0d 实拍。</p>
+
+<table>
+  <tr><th></th><th>旧 音乐（编钟）</th><th>旧 有声书（钟铃）</th><th>新 音乐（编钟·未改）</th><th>新 有声书（耳麦+竹简）</th></tr>
+  <tr><td class="n">16px</td>
+    <td><img src="../png/cat-music-64.png" width="16" height="16"></td>
+    <td><img src="../png/cat-audiobook-64.png" width="16" height="16"></td>
+    <td><img src="png/cat-music-64.png" width="16" height="16"></td>
+    <td><img src="png/cat-audiobook-64.png" width="16" height="16"></td></tr>
+  <tr><td class="n">22px（列表实际档）</td>
+    <td><img src="../png/cat-music-64.png" width="22" height="22"></td>
+    <td><img src="../png/cat-audiobook-64.png" width="22" height="22"></td>
+    <td><img src="png/cat-music-64.png" width="22" height="22"></td>
+    <td><img src="png/cat-audiobook-64.png" width="22" height="22"></td></tr>
+  <tr><td class="n">32px</td>
+    <td><img src="../png/cat-music-128.png" width="32" height="32"></td>
+    <td><img src="../png/cat-audiobook-128.png" width="32" height="32"></td>
+    <td><img src="png/cat-music-128.png" width="32" height="32"></td>
+    <td><img src="png/cat-audiobook-128.png" width="32" height="32"></td></tr>
+  <tr><td class="n">48px</td>
+    <td><img src="../png/cat-music-128.png" width="48" height="48"></td>
+    <td><img src="../png/cat-audiobook-128.png" width="48" height="48"></td>
+    <td><img src="png/cat-music-128.png" width="48" height="48"></td>
+    <td><img src="png/cat-audiobook-128.png" width="48" height="48"></td></tr>
+</table>
+
+<div class="doc">
+  <ul>
+    <li><b>旧版根因</b>：编钟与钟铃同属钟形器物，剪影同族，22px 需第二眼、16px 不可分。</li>
+    <li><b>新方案</b>：有声书 = 青铜耳麦（Ω 形头梁 + 双耳罩）+ 竹简 + 两侧声波弧——弧/梁剪影与编钟的梯形钟体在轮廓层面完全不同；音乐维持编钟不动。</li>
+    <li><b>22px 结论</b>：并排一眼可分（梯形编钟 vs Ω 耳麦），<span class="ok">达标</span>；16px 靠「实心块 vs 环形弧」可区分大类，<span class="ok">较旧版明显改善</span>，但仍建议 16px 场景以文字为主。</li>
+    <li><b>风格一致性</b>：深底圆章 + 金箔勾线 + 石青填色 + 朱砂点饰 + 云纹四角，与其余 14 个一致；新有声书为全深底外框（与旧有声书一致），旧音乐的米色外框是其源图既有差异，未在本次范围内处理。</li>
+    <li><b>落位</b>：文件名不变（cat-music / cat-audiobook），将本目录 <code>png/</code> 两分类各档与 <code>svg/</code>、<code>ico/</code> 覆盖到 <code>public/cat-icons/shanhaijing/</code> 同名文件即可，<code>cat-icon-sets.ts</code> 映射无需改动。</li>
+  </ul>
+</div>
+</body>
+</html>

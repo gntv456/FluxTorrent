@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>FluxTorrent 分类图标 V4 · Aurora 流光种子</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky:#2fa8ff; --indigo:#5b6bf5; --candy:#ff8fc7;
+    --sun:#ffc93c; --coral:#ff7a59; --mint:#2fbf9b;
+    --page:#f5faff; --card:#ffffff; --ink:#1f2a44; --sub:#6b7a99; --line:#e1e8f2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--page);color:var(--ink);font-family:"Noto Sans SC",system-ui,sans-serif;line-height:1.6;padding:40px 24px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:36px;font-weight:700;letter-spacing:1px;text-align:center;
+     background:linear-gradient(135deg,#2fa8ff 0%,#5b6bf5 50%,#ff8fc7 100%);
+     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{text-align:center;color:var(--sub);font-size:13px;letter-spacing:3px;margin:8px 0 32px}
+  .tags{display:flex;gap:8px;justify-content:center;margin-bottom:40px;flex-wrap:wrap}
+  .tag{font-size:11px;letter-spacing:1px;color:var(--indigo);border:1px solid #dfe6ff;
+       padding:4px 12px;border-radius:999px;background:#fff}
+  h2{font-size:18px;font-weight:700;color:var(--ink);margin:40px 0 16px;
+     padding-left:12px;border-left:4px solid var(--sky)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;
+        padding:20px;text-align:center;transition:transform .2s, box-shadow .2s;
+        box-shadow:0 1px 2px rgba(14,27,42,.04)}
+  .card:hover{transform:translateY(-3px);box-shadow:0 12px 28px -12px rgba(91,107,245,.25)}
+  .card .ic{width:88px;height:88px;margin:0 auto 12px;border-radius:22px}
+  .card h3{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:2px}
+  .card .sym{font-size:11px;color:var(--sub);margin-bottom:8px}
+  .card code{display:inline-block;font-size:10.5px;color:var(--sub);background:var(--page);
+             padding:2px 8px;border-radius:6px;font-family:ui-monospace,Consolas,monospace}
+  .ladder{display:flex;align-items:flex-end;justify-content:center;gap:14px;
+          padding:16px 8px;border-top:1px dashed var(--line);margin-top:14px}
+  .ladder figure{text-align:center}
+  .ladder img{display:block;margin:0 auto 4px;border-radius:8px}
+  .ladder figcaption{font-size:10px;color:var(--sub)}
+  .darkpanel{background:#0e1b2a;border-radius:18px;padding:24px}
+  .darkpanel h3{color:#fff}
+  .darkpanel .sym{color:rgba(255,255,255,.6)}
+  .darkpanel code{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
+  .note{font-size:12px;color:var(--sub);text-align:center;margin-top:40px;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Aurora · 分类图标 V4</h1>
+  <p class="sub">流 光 种 子 · 极 光 渐 变 · 现 代 扁 平 App Icon</p>
+  <div class="tags">
+    <span class="tag">天空蓝 #2fa8ff</span>
+    <span class="tag">靛紫 #5b6bf5</span>
+    <span class="tag">糖果粉 #ff8fc7</span>
+    <span class="tag">珊瑚橙 #ff7a59</span>
+    <span class="tag">页面底 #f5faff</span>
+    <span class="tag">与 base.css Aurora token 同源</span>
+  </div>
+
+  <h2>其一 · 浅色 UI 主视（88px）</h2>
+  <div class="grid" id="grid-light"></div>
+
+  <h2>其二 · 深色 UI 适配（夜间模式）</h2>
+  <div class="darkpanel">
+    <div class="grid" id="grid-dark"></div>
+  </div>
+
+  <h2>其三 · 多尺寸阶梯（24 / 48 / 96 / 192 px）</h2>
+  <div class="grid" id="grid-ladder"></div>
+
+  <p class="note">FluxTorrent · design/icons/v4-aurora · 默认主题（Seedlight Aurora）分类图标套件</p>
+</div>
+
+<script>
+const ICONS = [
+  ["cat-default","默认","流光种子"],
+  ["cat-ebook","电子书","打开的书"],
+  ["cat-comic","漫画","对话气泡"],
+  ["cat-movie","电影","场记板"],
+  ["cat-documentary","纪录片","地球定位"],
+  ["cat-anime","动漫","闪光星星"],
+  ["cat-edu","教育","学士帽"],
+  ["cat-audiobook","有声书","头戴耳机"],
+  ["cat-software","软件","代码括号"],
+  ["cat-sports","体育","足球"],
+  ["cat-game","游戏","游戏手柄"],
+  ["cat-music","音乐","八分音符"],
+  ["cat-tv","剧集","电视播放"],
+  ["cat-shortdrama","短剧","快进胶片"],
+  ["cat-variety","综艺","派对面具"],
+  ["cat-other","其他","三点"],
+];
+const card = (key,zh,sym) => `
+  <div class="card">
+    <img class="ic" src="png/${key}.png" alt="${zh}">
+    <h3>${zh}</h3>
+    <div class="sym">${sym}</div>
+    <code>${key}</code>
+  </div>`;
+document.getElementById("grid-light").innerHTML = ICONS.map(i=>card(...i)).join("");
+document.getElementById("grid-dark").innerHTML  = ICONS.map(i=>card(...i)).join("");
+document.getElementById("grid-ladder").innerHTML = ICONS.map(([k,z,s])=>`
+  <div class="card">
+    <h3 style="margin-bottom:4px">${z}</h3>
+    <div class="sym">${s}</div>
+    <div class="ladder">
+      <figure><img src="png/${k}-64.png"  width="24"  height="24"><figcaption>24</figcaption></figure>
+      <figure><img src="png/${k}-128.png" width="48"  height="48"><figcaption>48</figcaption></figure>
+      <figure><img src="png/${k}-256.png" width="96"  height="96"><figcaption>96</figcaption></figure>
+      <figure><img src="png/${k}-512.png" width="192" height="192"><figcaption>192</figcaption></figure>
+    </div>
+  </div>`).join("");
+</script>
+</body>
+</html>

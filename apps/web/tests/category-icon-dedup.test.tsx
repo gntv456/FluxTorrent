@@ -21,16 +21,21 @@ describe("0458 分类图标解撞", () => {
     }
   });
 
-  it("CatBlock 对新键走图标渲染、未知键回落首字", () => {
+  it("CatBlock 对新键走位图图标渲染、未知键回落首字", () => {
+    // 2026-11 位图接线：内层由单色 <Icon>（svg）换为 <CatIcon>（img 位图），
+    // 断言点相应从 svg 改为 img src；0166 首字回落语义不变。
     const known = render(
       <CatBlock ico="shortdrama" name="短剧" color="#c084fc" />,
     );
-    expect(known.container.querySelector("svg")).toBeTruthy();
+    const img = known.container.querySelector("img");
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute("src")).toContain("/cat-icons/");
+    expect(img?.getAttribute("src")).toContain("cat-shortdrama");
 
     const fallback = render(
       <CatBlock ico="not-a-real-icon" name="有声书" color="#f472b6" />,
     );
-    expect(fallback.container.querySelector("svg")).toBeNull();
+    expect(fallback.container.querySelector("img")).toBeNull();
     expect(screen.getByText("有")).toBeTruthy();
   });
 });

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<path style="fill:var(--cat-general-tv-primary,#5B6BC4)" d="M8.9 3.1l2.6 3-1.1.9-2.6-3Zm6.2 0-2.6 3 1.1.9 2.6-3Z"/>
+<rect x="3.2" y="7.2" width="17.6" height="12" rx="3" style="fill:var(--cat-general-tv-primary,#5B6BC4)"/>
+<rect x="5.8" y="9.6" width="12.4" height="7.2" rx="1.4" style="fill:var(--cat-general-tv-accent,#DDE3FF)"/>
+<path style="fill:var(--cat-general-tv-primary,#5B6BC4)" d="M10.9 11.3l3.5 2-3.5 2v-4Z"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<rect x="7" y="2.4" width="10" height="19.2" rx="3" style="fill:var(--cat-general-shortdrama-primary,#E85A7E)"/>
+<rect x="8.7" y="4.9" width="6.6" height="13" rx="1.2" style="fill:var(--cat-general-shortdrama-accent,#FFFFFF)"/>
+<path style="fill:var(--cat-general-shortdrama-primary,#E85A7E)" d="M12 14.6s-2.9-1.8-2.9-3.7a1.65 1.65 0 0 1 2.9-1.1 1.65 1.65 0 0 1 2.9 1.1c0 1.9-2.9 3.7-2.9 3.7Z"/>
+<circle cx="12" cy="19.7" r="0.9" style="fill:var(--cat-general-shortdrama-accent,#FFFFFF)"/>
+</svg>

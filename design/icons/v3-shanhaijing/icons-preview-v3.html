@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>FluxTorrent 分类图标 V3 · 山海经岩彩长卷</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --xuan:#0a0f0d; --mo:#101914; --ka:#15211a;
+    --paper:#ece4cf; --paper-dim:#b7c0ad; --faint:#8b998a;
+    --shiqing:#2e7a8c; --shilv:#3fae8f; --zhusha:#d0442a; --jin:#d3a13f;
+    --jin-bright:#f0d795; --line:rgba(211,161,63,.26); --line-soft:rgba(211,161,63,.13);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--xuan);color:var(--paper);font-family:"Noto Serif SC",serif;line-height:1.6;padding:40px 24px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-family:"Ma Shan Zheng",serif;font-size:44px;letter-spacing:6px;font-weight:400;
+     background:linear-gradient(180deg,#f7ebc0 8%,var(--jin) 62%,#8a6420);
+     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-align:center}
+  .sub{text-align:center;color:var(--faint);font-size:13px;letter-spacing:4px;margin:8px 0 36px}
+  .tags{display:flex;gap:8px;justify-content:center;margin-bottom:40px;flex-wrap:wrap}
+  .tag{font-size:11px;letter-spacing:2px;color:var(--jin-bright);border:1px solid rgba(211,161,63,.4);
+       padding:4px 12px;border-radius:999px;background:rgba(10,15,13,.5)}
+  h2{font-family:"Ma Shan Zheng",serif;font-size:22px;letter-spacing:4px;color:var(--jin-bright);
+     margin:48px 0 18px;padding-left:14px;border-left:3px solid var(--jin)}
+  /* grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+  .card{background:linear-gradient(160deg,var(--ka),#0d1712);border:1px solid var(--line-soft);
+        border-radius:14px;padding:20px;text-align:center;transition:transform .25s, box-shadow .25s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 24px rgba(211,161,63,.12)}
+  .card .ic{width:96px;height:96px;margin:0 auto 12px;border-radius:50%;
+            box-shadow:0 0 0 1px var(--line), 0 8px 20px rgba(0,0,0,.5)}
+  .card h3{font-size:17px;font-weight:600;color:var(--paper);letter-spacing:2px;margin-bottom:2px}
+  .card .sym{font-size:12px;color:var(--shilv-bright,#63c9aa);letter-spacing:1px;margin-bottom:8px}
+  .card code{display:inline-block;font-size:10.5px;color:var(--faint);background:rgba(0,0,0,.4);
+             border:1px solid var(--line-soft);padding:2px 8px;border-radius:4px;font-family:ui-monospace,Consolas,monospace}
+  /* size ladder */
+  .ladder{display:flex;align-items:flex-end;justify-content:center;gap:14px;padding:18px 8px;border-top:1px dashed var(--line-soft);margin-top:14px}
+  .ladder figure{text-align:center}
+  .ladder img{display:block;margin:0 auto 4px;border-radius:6px}
+  .ladder figcaption{font-size:10px;color:var(--faint);letter-spacing:1px}
+  /* light panel */
+  .lightpanel{background:#ece4cf;border-radius:14px;padding:24px;border:1px solid rgba(0,0,0,.08)}
+  .lightpanel .card{background:#fff;border-color:rgba(0,0,0,.06)}
+  .lightpanel .card h3{color:#2b2b28}
+  .lightpanel .card .sym{color:#2c7a64}
+  .lightpanel .card code{background:#f0eee9;color:#666;border-color:rgba(0,0,0,.08)}
+  .note{font-size:12px;color:var(--faint);text-align:center;margin-top:48px;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>山海经 · 分类图标 V3</h1>
+  <p class="sub">岩 彩 长 卷 · 金 箔 浮 雕 · 十 四 神 兽 定 制</p>
+  <div class="tags">
+    <span class="tag">玄墨底 #0a0f0d</span>
+    <span class="tag">石青 #2e7a8c</span>
+    <span class="tag">石绿 #3fae8f</span>
+    <span class="tag">朱砂 #d0442a</span>
+    <span class="tag">金箔 #f0d795</span>
+    <span class="tag">1024 源图 / 512·256·128·64 PNG / 16·32·48·64·128 ICO</span>
+  </div>
+
+  <h2>其一 · 玄墨底主视（96px 徽章）</h2>
+  <div class="grid" id="grid-dark"></div>
+
+  <h2>其二 · 宣纸底反白（浅色 UI 适配）</h2>
+  <div class="lightpanel">
+    <div class="grid" id="grid-light"></div>
+  </div>
+
+  <h2>其三 · 多尺寸阶梯（24 / 48 / 96 / 192 px）</h2>
+  <div class="grid" id="grid-ladder"></div>
+
+  <p class="note">FluxTorrent · design/icons/v3-shanhaijing · 神兽映射：玄珠 / 玉简 / 重明鸟 / 烛龙 / 白泽 / 九尾狐 / 文昌笔 / 夔牛 / 木鸢 / 夸父 / 六博 / 凤凰钟 / 螣蛇 / 精卫 / 天吴 / 帝江</p>
+</div>
+
+<script>
+const ICONS = [
+  ["cat-default","默认","昆仑玄珠"],
+  ["cat-ebook","电子书","上古玉简"],
+  ["cat-comic","漫画","重明鸟"],
+  ["cat-movie","电影","烛龙睁眼"],
+  ["cat-documentary","纪录片","白泽知万物"],
+  ["cat-anime","动漫","九尾狐幻化"],
+  ["cat-edu","教育","文昌笔"],
+  ["cat-audiobook","有声书","夔牛雷音"],
+  ["cat-software","软件","鲁班木鸢"],
+  ["cat-sports","体育","夸父追日"],
+  ["cat-game","游戏","六博棋"],
+  ["cat-music","音乐","凤凰钟磬"],
+  ["cat-tv","剧集","螣蛇乘雾"],
+  ["cat-shortdrama","短剧","精卫衔石"],
+  ["cat-variety","综艺","天吴八首"],
+  ["cat-other","其他","帝江混沌"],
+];
+const card = (key,zh,sym,size=96) => `
+  <div class="card">
+    <img class="ic" src="png/${key}.png" alt="${zh}" width="${size}" height="${size}">
+    <h3>${zh}</h3>
+    <div class="sym">${sym}</div>
+    <code>${key}</code>
+  </div>`;
+document.getElementById("grid-dark").innerHTML  = ICONS.map(i=>card(...i,96)).join("");
+document.getElementById("grid-light").innerHTML = ICONS.map(i=>card(...i,96)).join("");
+document.getElementById("grid-ladder").innerHTML = ICONS.map(([k,z,s])=>`
+  <div class="card">
+    <h3 style="margin-bottom:4px">${z}</h3>
+    <div class="sym">${s}</div>
+    <div class="ladder">
+      <figure><img src="png/${k}-64.png"  width="24"  height="24"><figcaption>24</figcaption></figure>
+      <figure><img src="png/${k}-128.png" width="48"  height="48"><figcaption>48</figcaption></figure>
+      <figure><img src="png/${k}-256.png" width="96"  height="96"><figcaption>96</figcaption></figure>
+      <figure><img src="png/${k}-512.png" width="192" height="192"><figcaption>192</figcaption></figure>
+    </div>
+  </div>`).join("");
+</script>
+</body>
+</html>

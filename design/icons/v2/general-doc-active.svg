@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<rect x="2" y="2" width="20" height="20" rx="5.5" style="fill:var(--cat-general-doc-primary,#1F9E96)"/>
+<path fill-rule="evenodd" style="fill:var(--cat-general-doc-on,var(--cat-general-variety-on,var(--cat-general-shortdrama-on,var(--cat-general-tv-on,var(--cat-general-movie-on,#FFFFFF)))))" d="M6.5 5.2a1.3 1.3 0 0 0-1.3 1.3v1.1H5.2a2.4 2.4 0 0 0-2.4 2.4v4.8a2.4 2.4 0 0 0 2.4 2.4h8a2.4 2.4 0 0 0 2.4-2.4v-.4l4.8 2.5V7.9l-4.8 2.5v-.3a2.4 2.4 0 0 0-2.4-2.4h-2.1V6.5a1.3 1.3 0 0 0-1.3-1.3h-3.2ZM8.4 9.7a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Zm0 1.9a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6Z"/>
+</svg>

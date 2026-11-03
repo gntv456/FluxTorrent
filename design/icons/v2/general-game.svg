@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<path style="fill:var(--cat-general-game-primary,#4CA53C)" d="M7.6 7.8h8.8a4.8 4.8 0 0 1 4.8 4.8v.8a4.8 4.8 0 0 1-4.8 4.8h-.8a3.2 3.2 0 0 1-2.4-1.1l-.8-1a1.8 1.8 0 0 0-1.4-.7h-2a1.8 1.8 0 0 0-1.4.7l-.8 1a3.2 3.2 0 0 1-2.4 1.1h-.8a4.8 4.8 0 0 1-4.8-4.8v-.8A4.8 4.8 0 0 1 7.6 7.8Z"/>
+<path style="fill:var(--cat-general-game-accent,#FFFFFF)" d="M6.9 10.5h1.5v1.9h1.9V14H8.4v1.9H6.9V14H5v-1.6h1.9v-1.9Z"/>
+<circle cx="15.3" cy="11.6" r="1.15" style="fill:var(--cat-general-game-accent,#FFFFFF)"/>
+<circle cx="18" cy="14" r="1.15" style="fill:var(--cat-general-game-accent,#FFFFFF)"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<path style="fill:var(--cat-general-variety-primary,#D9910F)" d="M9 21l4.5-12.6 4.2 2.4L11.4 21.6a1.5 1.5 0 0 1-2.4-.6Z"/>
+<path style="fill:var(--cat-general-variety-accent,#FFFFFF)" d="M11.1 15l3.9 2.2-.8 1.4-3.9-2.2Z"/>
+<path style="fill:var(--cat-general-variety-accent,#FFFFFF);stroke:var(--cat-general-variety-primary,#D9910F);stroke-width:.9" d="M18.2 3.7l.75 1.75 1.75.75-1.75.75-.75 1.75-.75-1.75-1.75-.75 1.75-.75Z"/>
+<path style="fill:var(--cat-general-variety-accent,#FFFFFF);stroke:var(--cat-general-variety-primary,#D9910F);stroke-width:.8" d="M20.7 9.2l.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5Z"/>
+<circle cx="16.3" cy="10.7" r="0.9" style="fill:var(--cat-general-variety-accent,#FFFFFF);stroke:var(--cat-general-variety-primary,#D9910F);stroke-width:.7"/>
+</svg>

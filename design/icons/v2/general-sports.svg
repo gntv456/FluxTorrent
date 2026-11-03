@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="8.6" style="fill:var(--cat-general-sports-primary,#C77824)"/>
+<path d="M12 3.4v17.2M3.4 12h17.2M5.7 5.7c3.7 3.7 8.9 3.7 12.6 0M5.7 18.3c3.7-3.7 8.9-3.7 12.6 0" style="fill:none;stroke:var(--cat-general-sports-accent,#FFFFFF);stroke-width:1.4;stroke-linecap:round"/>
+<path d="M8.3 6.4a5.6 5.6 0 0 1 2.6-1.5" style="fill:none;stroke:var(--cat-general-sports-accent,#FFFFFF);stroke-width:1.5;stroke-linecap:round"/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<path d="M12.2 5.7c.1-1.7 1.4-2.7 3-2.6" style="fill:none;stroke:var(--cat-general-anime-primary,#E56A1B);stroke-width:1.5;stroke-linecap:round"/>
+<circle cx="12" cy="13.4" r="8.2" style="fill:var(--cat-general-anime-primary,#E56A1B)"/>
+<path style="fill:var(--cat-general-anime-accent,#FFD84D)" d="M8.8 10.5l.55 1.3 1.3.55-1.3.55-.55 1.3-.55-1.3-1.3-.55 1.3-.55Zm6.4 0 .55 1.3 1.3.55-1.3.55-.55 1.3-.55-1.3-1.3-.55 1.3-.55Z"/>
+<path d="M9.6 15.9c1.6 1.3 3.2 1.3 4.8 0" style="fill:none;stroke:var(--cat-general-anime-on,var(--cat-general-doc-on,var(--cat-general-variety-on,var(--cat-general-shortdrama-on,var(--cat-general-tv-on,var(--cat-general-movie-on,#FFFFFF))))));stroke-width:1.3;stroke-linecap:round"/>
+<circle cx="6.9" cy="14.7" r="0.7" style="fill:var(--cat-general-anime-accent,#FFD84D)"/>
+<circle cx="17.1" cy="14.7" r="0.7" style="fill:var(--cat-general-anime-accent,#FFD84D)"/>
+</svg>

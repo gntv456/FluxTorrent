@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent 分类图标 V2 · 双色个性化套件预览</title>
+<style>
+  :root {
+    --light-bg: #f6f5f2;
+    --light-ink: #2b2b28;
+    --dark-bg: #17181c;
+    --dark-ink: #e8e2d5;
+    --line: rgba(128, 128, 128, .25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font: 14px/1.6 "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; background: #e9e7e2; color: #2b2b28; padding: 24px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  h3 { font-size: 13px; margin: 14px 0 6px; }
+  .sub { color: #777; font-size: 12px; margin-bottom: 20px; }
+  .tag { display: inline-block; font-size: 10px; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; margin-left: 6px; opacity: .6; }
+  .panel { border-radius: 12px; padding: 16px 20px; margin-bottom: 28px; }
+  .panel.light { background: var(--light-bg); }
+  .panel.dark { background: var(--dark-bg); color: var(--dark-ink); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-top: 1px solid var(--line); padding: 7px 8px; text-align: center; vertical-align: middle; }
+  th { border-top: none; font-size: 11px; font-weight: 600; opacity: .6; letter-spacing: .05em; }
+  td.name { text-align: left; white-space: nowrap; }
+  td.name b { font-size: 13px; }
+  td.name small { display: block; opacity: .55; font-size: 11px; }
+  td.name code { font-size: 10px; opacity: .45; }
+  .frame { display: inline-block; padding: 3px; border: 1px dashed var(--line); border-radius: 4px; line-height: 0; }
+  .frame svg { display: block; }
+  .v1ic { display: inline-block; vertical-align: middle; background: currentColor;
+          -webkit-mask: var(--src) center / contain no-repeat; mask: var(--src) center / contain no-repeat; }
+  .light .v1ic { color: #2b2b28; }
+  .dark .v1ic { color: #e8e2d5; }
+  .light .v1ic.act { color: #b23a2e; }
+  .dark .v1ic.act { color: #e0654f; }
+  .doc { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; font-size: 13px; margin-bottom: 24px; }
+  .doc p, .doc li { margin: 4px 0; }
+  .doc ul, .doc ol { padding-left: 20px; }
+  .doc code { background: #f0eee9; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .doc pre { background: #1d1e22; color: #d8d2c5; border-radius: 8px; padding: 12px 14px; font-size: 12px; overflow-x: auto; margin: 6px 0; }
+  .chip { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 4px; border: 1px solid rgba(0,0,0,.15); }
+  .ratio { font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ratio.ok { color: #2e7d32; } .ratio.warn { color: #c77700; }
+  .imgrow img { width: 24px; height: 24px; margin: 4px 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<h1>FluxTorrent 分类图标 V2 <span class="tag">双色面性 · 道具化 · 24px 网格</span><span class="tag">V1 纯线性版保留于上级目录</span></h1>
+<p class="sub">14 组（general 站型包 13 类 + cat-other 兜底）× 默认/选中两态 · 16 / 22 / 24 / 32 / 48px 五档 · 明暗双底 · 主色走 <code>--cat-&lt;id&gt;-primary / -accent / -on</code> 令牌</p>
+
+<div class="doc">
+  <h2 style="margin-top:0">第一步 · 参考拆解：成熟内站为什么一眼能认</h2>
+  <p>实证来源：仓内研究快照 <code>.np-research/np/public/pic/category/chd/scenetorrents/</code>（CHD 分类精灵图 catsprites.png + css，45×46px 每格）、NexusPHP 经典 <code>pic/cat*.gif</code> 贴图体系、M-Team / TTG 等现代扁平站点的公开界面截图。</p>
+  <ol>
+    <li><b>固定主色 = 分类身份</b>：CHD 精灵图每格一个饱和底色（蓝=电影、绿=动漫、紫=MV、橙=体育），用户靠颜色就能预筛，形状只是确认。</li>
+    <li><b>满底色块 + 白色强剪影</b>：CHD 每格是「色块 + 白色剪影 + 分类汉字」三段式，剪影只占格内约 50%，45px 下依然利落。</li>
+    <li><b>道具化具象，不用抽象符号</b>：电影用胶片盘、体育用 ESPN 牌、音轨用八分音符——道具自带语义，不需要学习。</li>
+    <li><b>文字/品牌梗当图形锚点</b>：BBC（纪录片）、MTV（MV）、禅（动漫）——把字/logo 直接当图标用，辨识度极高。</li>
+    <li><b>小尺寸只留 2–3 个视觉锚点</b>：CHD 剪影没有内部细节，细节全在色块和文案上。</li>
+    <li><b>选中/归属态 = 整格上色反白</b>：色块本身承担「选中」语义，白图形永远落在他自己的主色上，对比天然成立。</li>
+  </ol>
+  <p><b>取舍</b>：学①②③⑤⑥（固定主色、双色面性、道具化、少锚点、满底反白选中）；不学老式 NexusPHP 插画级 GIF（细节在 22px 全糊）、不搬第三方品牌 logo（版权风险 + 与山海经气质冲突）、不学多彩虹渐变（暗底下脏、与玄墨/石青体系打架）。文字梗只学思路不照搬——本站分类名已在色块旁有文字列，图标保持纯图形。</p>
+
+  <h3>V2 个性化设计口径</h3>
+  <ul>
+    <li><b>双色体系</b>：主色（剪影）+ 单强调色（细节/高光），16px 下每图锚点 ≤3 个。</li>
+    <li><b>道具清单</b>：电影=爆米花桶（取代 V1 场记板，与「看片」场景绑定更可爱）、电视剧=圆角电视+天线+播放键、短剧=竖屏手机+爱心、综艺=派对礼花筒+星星、纪录片=摄像机+地球纹镜头、动漫=圆脸+星星眼+呆毛、音乐=双音符+CD 孔、有声书=耳机+耳罩高光、游戏=手柄+十字键、软件=窗口+光标箭头、电子书=摊开书+行线、教育=学士帽+流苏、体育=篮球+高光、兜底=收纳箱。</li>
+    <li><b>近义分类区分不靠颜色</b>：电影（桶+爆米花轮廓）/ 剧集（横屏+天线）/ 短剧（竖屏+心）/ 综艺（礼花+星）/ 纪录片（摄像机+镜头）——剪影形状两两不同，色盲与反白态仍成立。</li>
+    <li><b>选中态 = 满底主色块反白</b>：20×20 圆角色块（贴齐 CHD 手法），白色图形 + 主色镂空细节，22px 下镂空不丢。</li>
+    <li><b>颜色全部令牌化</b>：SVG 内 <code>style="fill:var(--cat-general-movie-primary,#D94444)"</code>，亮/暗底两套取值由消费处 CSS 变量覆盖，SVG 单文件可直接 <code>&lt;img&gt;</code> 渲染（回落亮底色值）。</li>
+  </ul>
+</div>
+
+<h2>第二步 · V1 ↔ V2 对照（同尺寸并排，16 / 22 / 24px 默认态）</h2>
+<div class="panel light" id="cmp-light"><h3>明底</h3></div>
+<div class="panel dark" id="cmp-dark"><h3>暗底</h3></div>
+
+<h2>V2 主表 · 明底（品牌亮色口径）</h2>
+<div class="panel light" id="main-light"></div>
+<h2>V2 主表 · 暗底（山海经 / 品牌暗色口径）</h2>
+<div class="panel dark" id="main-dark"></div>
+
+<h2>主色令牌与对比度（JS 实测，相对亮度比）</h2>
+<div class="panel light" id="tokens"></div>
+
+<div class="panel light imgrow">
+  <h2 style="margin-top:0">文件直引验证（&lt;img&gt; 加载 v2/ 独立 SVG，24px）</h2>
+  <div id="imgrow"></div>
+  <p style="font-size:11px;opacity:.6;margin-top:6px">独立 SVG 的颜色写成 <code>var(--cat-*-*, 回落值)</code>：直引时无外部变量、用亮底回落值渲染；内联或被主题 CSS 变量覆盖时自动换暗底取值。</p>
+</div>
+
+<div class="doc" id="impl">
+  <h2 style="margin-top:0">实现说明</h2>
+  <h3>1. 命名约定</h3>
+  <ul>
+    <li>V2 全部位于 <code>design/icons/v2/</code>，文件名沿用 V1：分类 key（kebab-case）+ <code>-active</code> 选中态；V1 原样保留在上级目录，不删不改。</li>
+    <li>兜底：<code>cat-other.svg</code> / <code>cat-other-active.svg</code>（收纳箱）。</li>
+  </ul>
+  <h3>2. 主色令牌定义（接入时放主题层，本任务未动生产样式）</h3>
+  <pre>/* 每类三个令牌：primary 主色 / accent 强调色 / on 反白图形色（一般恒 #fff） */
+:root {
+  --cat-general-movie-primary: #D94444;   --cat-general-movie-accent: #FFE9C2;
+  /* …其余 13 类同构，暗底作用域覆盖 primary 为提亮值（见上表）… */
+}
+[data-theme="brand-night"], [data-theme="shanhaijing"] {
+  --cat-general-movie-primary: #F26A60;   /* 暗底提亮版 */
+}</pre>
+  <h3>3. 如何接入</h3>
+  <ul>
+    <li><b>并入 icons.tsx</b>：V2 是多色图形，与 PATHS 的单色 currentColor 口径不同，建议新增 <code>CatIcon</code> 组件（或 <code>&lt;img src&gt;</code> / inline 注入），按 categories.key 选文件；icon_key 词表可扩展为分类 key 本身。</li>
+    <li><b>列表 40×40 色块</b>：现状是 bg_color 块 + 白色 glyph。V2 选中态（*-active.svg）天然就是「主色块 + 白 glyph」，可直接替换 CatBlock 内层；默认态双色版适合无底色块的场景（筛选 chips、侧栏、详情页头）。</li>
+    <li><b>尺寸建议</b>：类型列 22px、筛选 chips 16px、导航/分区头 20–24px、详情页头 32–48px。</li>
+    <li><b>fallback</b>：未配图的分类（其他站型包专有类）→ <code>cat-other</code>；icon_key 空 → 维持现有首字色块。</li>
+  </ul>
+  <h3>4. 与 V1 的量化对比（见文末结论区，渲染核对后填写）</h3>
+  <ul>
+    <li>可辨识锚点数：V1 单锚点（剪影轮廓）→ V2 2–3 锚点（剪影 + 主色 + 强调细节）。</li>
+    <li>撞车分类：V1 中 电影/剧集/短剧/综艺 四类共用两种几何（film/tv）；V2 五类几何两两不同。</li>
+    <li>选中态：V1 实心剪影（细节丢失）→ V2 满底反白 + 镂空细节保留。</li>
+  </ul>
+</div>
+
+<script src="v2/v2-catalog.js"></script>
+<script>
+const SIZES = [16, 22, 24, 32, 48];
+const LIGHT_BG = '#f6f5f2', DARK_BG = '#17181c';
+
+/* 注入令牌：:root 亮底值；.panel.dark 覆盖为暗底提亮值 */
+(function injectTokens() {
+  let css = ':root{';
+  for (const c of V2_CATS) {
+    css += `--cat-${c.key}-primary:${c.pl};--cat-${c.key}-accent:${c.ac};--cat-${c.key}-on:${c.on};`;
+  }
+  css += '}.panel.dark{';
+  for (const c of V2_CATS) css += `--cat-${c.key}-primary:${c.pd};`;
+  css += '}';
+  const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+})();
+
+function svgDef(c) {
+  return `<svg viewBox="0 0 24 24">${c.def.replaceAll('%P%', `var(--cat-${c.key}-primary)`).replaceAll('%A%', `var(--cat-${c.key}-accent)`).replaceAll('%ON%', `var(--cat-${c.key}-on)`)}</svg>`;
+}
+function svgAct(c) {
+  return `<svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5.5" style="fill:var(--cat-${c.key}-primary)"/><path fill-rule="evenodd" style="fill:var(--cat-${c.key}-on)" d="${c.act}"/></svg>`;
+}
+const cell = (svg, s) => `<td><span class="frame" style="width:${s}px;height:${s}px"><span style="display:block;width:${s}px;height:${s}px">${svg}</span></span></td>`;
+
+function nameCell(c) {
+  return `<td class="name"><b>${c.zh}</b><small>${c.en}</small><code>${c.key}</code></td>`;
+}
+
+/* 主表 */
+function mainTable() {
+  let h = `<table><thead><tr><th style="text-align:left">分类</th>`;
+  for (const s of SIZES) h += `<th>${s}px 默认</th>`;
+  for (const s of SIZES) h += `<th>${s}px 选中</th>`;
+  h += `</tr></thead><tbody>`;
+  for (const c of V2_CATS) {
+    h += `<tr>${nameCell(c)}`;
+    for (const s of SIZES) h += cell(svgDef(c), s);
+    for (const s of SIZES) h += cell(svgAct(c), s);
+    h += `</tr>`;
+  }
+  return h + `</tbody></table>`;
+}
+document.getElementById('main-light').innerHTML += mainTable();
+document.getElementById('main-dark').innerHTML += mainTable();
+
+/* V1↔V2 对照 */
+function cmpTable() {
+  const vs = [16, 22, 24];
+  let h = `<table><thead><tr><th style="text-align:left">分类</th>`;
+  for (const s of vs) h += `<th>V1 ${s}</th><th>V2 ${s}</th>`;
+  h += `<th>V1 选中 22</th><th>V2 选中 22</th></tr></thead><tbody>`;
+  for (const c of V2_CATS) {
+    h += `<tr>${nameCell(c)}`;
+    for (const s of vs) {
+      h += `<td><span class="frame"><span class="v1ic" style="--src:url(${c.key}.svg);width:${s}px;height:${s}px"></span></span></td>`;
+      h += cell(svgDef(c), s);
+    }
+    h += `<td><span class="frame"><span class="v1ic act" style="--src:url(${c.key}-active.svg);width:22px;height:22px"></span></span></td>`;
+    h += cell(svgAct(c), 22);
+    h += `</tr>`;
+  }
+  return h + `</tbody></table>`;
+}
+document.getElementById('cmp-light').innerHTML += cmpTable();
+document.getElementById('cmp-dark').innerHTML += cmpTable();
+
+/* 令牌与对比度 */
+function lum(hex) {
+  const v = [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255)
+    .map(x => x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
+  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+function ratio(a, b) {
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+(function tokenTable() {
+  let h = `<table><thead><tr><th style="text-align:left">分类</th><th>主色·亮</th><th>主色·暗</th><th>强调色</th>
+    <th>亮主色 vs 明底</th><th>暗主色 vs 暗底</th><th>白图形 vs 亮主色</th></tr></thead><tbody>`;
+  for (const c of V2_CATS) {
+    const r1 = ratio(c.pl, LIGHT_BG), r2 = ratio(c.pd, DARK_BG), r3 = ratio('#ffffff', c.pl);
+    const cls = r => r >= 3 ? 'ok' : 'warn';
+    h += `<tr>${nameCell(c)}
+      <td><span class="chip" style="background:${c.pl}"></span><code>${c.pl}</code></td>
+      <td><span class="chip" style="background:${c.pd}"></span><code>${c.pd}</code></td>
+      <td><span class="chip" style="background:${c.ac}"></span><code>${c.ac}</code></td>
+      <td class="ratio ${cls(r1)}">${r1.toFixed(2)}:1</td>
+      <td class="ratio ${cls(r2)}">${r2.toFixed(2)}:1</td>
+      <td class="ratio ${cls(r3)}">${r3.toFixed(2)}:1</td></tr>`;
+  }
+  h += `</tbody></table><p style="font-size:11px;opacity:.6;margin-top:8px">口径：图形（非文本）WCAG 目标 ≥3:1；warn（2.4–3.0）集中在琥珀/橙色系，为色相家族固有上限，选中态另有形状与满底色块双重编码，不单独依赖对比。</p>`;
+  document.getElementById('tokens').innerHTML = h;
+})();
+
+/* img 直引 */
+document.getElementById('imgrow').innerHTML =
+  V2_CATS.map(c => `<img src="v2/${c.key}.svg" alt="${c.zh}" title="${c.key}">`).join('') +
+  V2_CATS.map(c => `<img src="v2/${c.key}-active.svg" alt="${c.zh} 选中" title="${c.key}-active">`).join('');
+</script>
+
+</body>
+</html>

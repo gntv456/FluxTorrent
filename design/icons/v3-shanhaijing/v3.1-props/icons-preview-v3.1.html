@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>FluxTorrent 分类图标 V3.1 · 山海经直白道具版</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --xuan:#0a0f0d; --paper:#ece4cf; --faint:#8b998a;
+    --jin:#d3a13f; --jin-bright:#f0d795; --line:rgba(211,161,63,.26);
+    --line-soft:rgba(211,161,63,.13);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--xuan);color:var(--paper);font-family:"Noto Serif SC",serif;line-height:1.6;padding:40px 24px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-family:"Ma Shan Zheng",serif;font-size:40px;letter-spacing:6px;font-weight:400;text-align:center;
+     background:linear-gradient(180deg,#f7ebc0,var(--jin) 60%,#8a6420);
+     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{text-align:center;color:var(--faint);font-size:13px;letter-spacing:4px;margin:8px 0 20px}
+  .note-bar{background:rgba(211,161,63,.08);border:1px solid var(--line-soft);border-radius:10px;
+            padding:14px 18px;font-size:13px;color:var(--paper);margin-bottom:36px;line-height:1.8}
+  .note-bar b{color:var(--jin-bright)}
+  .tags{display:flex;gap:8px;justify-content:center;margin-bottom:36px;flex-wrap:wrap}
+  .tag{font-size:11px;letter-spacing:2px;color:var(--jin-bright);border:1px solid rgba(211,161,63,.4);
+       padding:4px 12px;border-radius:999px;background:rgba(10,15,13,.5)}
+  h2{font-family:"Ma Shan Zheng",serif;font-size:22px;letter-spacing:4px;color:var(--jin-bright);
+     margin:40px 0 16px;padding-left:14px;border-left:3px solid var(--jin)}
+  /* 重点：小尺寸校验表 */
+  .checktable{width:100%;border-collapse:collapse;background:#0d1712;border-radius:12px;overflow:hidden}
+  .checktable th,.checktable td{padding:10px 8px;text-align:center;border-top:1px solid var(--line-soft)}
+  .checktable th{border-top:none;font-size:11px;letter-spacing:2px;color:var(--faint);font-weight:400}
+  .checktable td.name{text-align:left;padding-left:16px}
+  .checktable td.name b{font-size:14px;color:var(--paper);font-weight:600}
+  .checktable td.name small{display:block;font-size:11px;color:var(--faint)}
+  .checktable img{display:block;margin:0 auto;border-radius:4px}
+  .checktable tr:hover{background:rgba(211,161,63,.04)}
+  /* 大尺寸网格 */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+  .card{background:linear-gradient(160deg,#15211a,#0d1712);border:1px solid var(--line-soft);
+        border-radius:14px;padding:18px;text-align:center}
+  .card .ic{width:88px;height:88px;margin:0 auto 10px;border-radius:50%;box-shadow:0 0 0 1px var(--line)}
+  .card h3{font-size:15px;color:var(--paper);font-weight:600;margin-bottom:2px}
+  .card .sym{font-size:11px;color:#63c9aa;margin-bottom:6px}
+  .card code{display:inline-block;font-size:10px;color:var(--faint);background:rgba(0,0,0,.4);
+             padding:2px 8px;border-radius:4px;font-family:ui-monospace,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>山海经 · V3.1 直白道具版</h1>
+  <p class="sub">小 尺 寸 校 验 优 化 · 保 留 岩 彩 金 箔 · 符 号 几 何 化</p>
+  <div class="note-bar">
+    <b>修复说明：</b>V3 神兽插画版在 16/22px 下糊成"暗砖加金斑"。V3.1 保留玄墨底+金箔+四正色岩彩质感，但把符号从神兽插画换成<b>直白几何道具</b>（场记板/毛笔/齿轮/编钟/面具等），确保 16px 下仍可辨。
+    <br>原版神兽版保留在上级目录，用于首页 Hero、勋章墙等大尺寸场景；V3.1 用于列表/导航等小尺寸 UI。
+  </div>
+  <div class="tags">
+    <span class="tag">16px 校验</span>
+    <span class="tag">22px 校验</span>
+    <span class="tag">32px 校验</span>
+    <span class="tag">96px 主视</span>
+  </div>
+
+  <h2>其一 · 小尺寸阶梯校验（16 / 22 / 32 px）</h2>
+  <table class="checktable" id="checktable">
+    <thead><tr><th style="text-align:left;padding-left:16px">分类</th><th>16px</th><th>22px</th><th>32px</th><th>96px 主视</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>其二 · 96px 主视（大尺寸场景）</h2>
+  <div class="grid" id="grid"></div>
+
+  <p style="text-align:center;color:var(--faint);font-size:11px;margin-top:40px;letter-spacing:2px">
+    FluxTorrent · design/icons/v3-shanhaijing/v3.1-props · 符号：昆仑镜/玉简/画轴/场记板/三山/四格/毛笔/铜铃/齿轮/蹴鞠/棋盘/编钟/屏幕/快进/面具/三点
+  </p>
+</div>
+
+<script>
+const ICONS = [
+  ["cat-default","默认","昆仑古镜"],
+  ["cat-ebook","电子书","竹简玉简"],
+  ["cat-comic","漫画","横卷画轴"],
+  ["cat-movie","电影","场记板"],
+  ["cat-documentary","纪录片","三山五岳"],
+  ["cat-anime","动漫","四格漫画"],
+  ["cat-edu","教育","毛笔"],
+  ["cat-audiobook","有声书","青铜铃铛"],
+  ["cat-software","软件","青铜齿轮"],
+  ["cat-sports","体育","古代蹴鞠"],
+  ["cat-game","游戏","六博棋盘"],
+  ["cat-music","音乐","青铜编钟"],
+  ["cat-tv","剧集","屏幕播放"],
+  ["cat-shortdrama","短剧","快进箭头"],
+  ["cat-variety","综艺","悲喜面具"],
+  ["cat-other","其他","三金圆点"],
+];
+document.querySelector("#checktable tbody").innerHTML = ICONS.map(([k,z,s])=>`
+  <tr>
+    <td class="name"><b>${z}</b><small>${s}</small></td>
+    <td><img src="png/${k}-64.png" width="16" height="16"></td>
+    <td><img src="png/${k}-64.png" width="22" height="22"></td>
+    <td><img src="png/${k}-64.png" width="32" height="32"></td>
+    <td><img src="png/${k}-256.png" width="96" height="96"></td>
+  </tr>`).join("");
+document.getElementById("grid").innerHTML = ICONS.map(([k,z,s])=>`
+  <div class="card">
+    <img class="ic" src="png/${k}.png">
+    <h3>${z}</h3><div class="sym">${s}</div><code>${k}</code>
+  </div>`).join("");
+</script>
+</body>
+</html>
