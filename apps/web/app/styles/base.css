@@ -187,7 +187,7 @@
      口径：--focus-ring = 实色描边（outline 与 0 0 0 3px 环形阴影专用）；
      --focus-ring-soft = 半透明外发光（输入框 focus 光晕等）。
      所有 :focus-visible / :focus 自绘轮廓只许引这两个令牌，禁止直引
-     --sky / 写死 hex。新增主题块必须覆写本令牌（山海经块 = var(--jin) 金环），
+     --sky / 写死 hex。新增主题块必须覆写本令牌（山海经块 = 金环色），
      否则焦点环会跟着默认蓝走、与主题冲突。 */
   --focus-ring: var(--sky);
   --focus-ring-soft: rgba(47, 168, 255, 0.14);
