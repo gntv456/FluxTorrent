@@ -111,10 +111,13 @@ pub fn default_on(k: &str) -> bool {
     !DEFAULT_OFF.contains(&k)
 }
 
-/// 缺省关的键（default_on 与契约测试共用的单一清单；0359 起 wiki 同档）
+/// 缺省关的键（default_on 与契约测试共用的单一清单；0359 起 wiki 同档）。
+/// showcase 不在此列（2026-11-03 全站深测）：它挂的是首页「最新资源」海报墙
+/// （page.tsx showcaseOn），而 home_sections 排版默认**包含** latest——缺省关
+/// 会让全新站点首页空着一大块，与排版层的 in_default 自相矛盾。要关海报墙
+/// 走后台排版编辑（把 latest 移出 home_layout），而不是模块缺省。
 const DEFAULT_OFF: &[&str] = &[
     "textbooks",
-    "showcase",
     "social",
     "farm",
     "gomoku",
@@ -277,11 +280,13 @@ mod tests {
         assert!(default_on(key::SUBTITLES));
         assert!(default_on(key::FORUMS));
         // 教育考核与重度娱乐缺省关（中立形态）；wiki（0359）同档。
+        // showcase 缺省开（首页最新资源海报墙，见 DEFAULT_OFF 注释）。
+        assert!(default_on(key::SHOWCASE));
         // 键集与 DEFAULT_OFF 完全对齐（互为全员断言缺省关）
         for k in DEFAULT_OFF {
             assert!(!default_on(k), "default_on({k}) 应为 false");
         }
-        assert_eq!(DEFAULT_OFF.len(), 9);
+        assert_eq!(DEFAULT_OFF.len(), 8);
     }
 
     /// 契约：键数量与 TS ModuleKey 一致（32 键——4 历史 + 27 新增口径，

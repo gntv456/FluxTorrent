@@ -211,12 +211,13 @@ pub(crate) async fn module_on(db: &PgPool, module: &str) -> bool {
             .unwrap_or(None);
     match v {
         // 显式配置按配置（no = 关）；查询失败/未配置回落默认值
-        // （0178 缺省 = general 中立矩阵：教育考核与重度娱乐关）
+        // （0178 缺省 = general 中立矩阵：教育考核与重度娱乐关；
+        //  showcase 2026-11-03 移出 = 首页最新资源海报墙缺省开，与
+        //  api::modules::DEFAULT_OFF 同步——两处清单必须一起改）
         Some(raw) => raw.trim() == "yes",
         None => !matches!(
             module,
             "textbooks"
-                | "showcase"
                 | "social"
                 | "farm"
                 | "gomoku"
