@@ -12,6 +12,11 @@ use crate::peers::{Peer, PeerKey, CONN_UNTESTED};
 /// 一起易主），再发一条 stopped 就能把从未停种的受害者抹出 swarm——10-06 补的
 /// `remove_owned` 因此被绕过；反过来也能把受害者「回连可达」的测量值搬到攻击
 /// 者身上，绕掉幽灵做种的 conn 判据（均实测复现）。
+///
+/// `Ok(true)` = 本次 announce 使 peer 跨越了 0 边界（leecher↔seeder 跃迁）。
+/// 主链路据此豁免事件合并窗（P2-1 的窗只该吞纯周期心跳；跃迁是状态语义，
+/// 被吞会让 worker 最长 900s 看不到在种翻转——seeders 计数与保种时长起算
+/// 都慢半拍，2026-11-03 全站深测实测）。
 pub(crate) async fn write_peer(
     state: &TrackerState,
     key: &PeerKey,
@@ -22,15 +27,20 @@ pub(crate) async fn write_peer(
     downloaded: i64,
     left: i64,
     user_id: i64,
-) -> Result<(), &'static str> {
+) -> Result<bool, &'static str> {
     if event == "stopped" {
         if crate::peers::external::external_enabled() {
             let mut r = state.redis.clone();
             let _ = crate::peers::external::remove(&mut r, key, user_id).await;
         }
         state.peers.remove_owned(key, user_id);
-        return Ok(());
+        return Ok(false);
     }
+    // 跃迁判定必须在 upsert **之前**读旧值（upsert 会覆盖 left）
+    let crossed = state
+        .peers
+        .left_of(key)
+        .is_some_and(|prev| (prev == 0) != (left == 0));
     let mut peer = Peer {
         key: key.clone(),
         v4: None,
@@ -57,7 +67,7 @@ pub(crate) async fn write_peer(
             "peer_id 与本站其他账号冲突，请在客户端重置 peer_id 后重新下载种子",
         );
     }
-    Ok(())
+    Ok(crossed)
 }
 
 /// announce 准入判定，一次给全结论（策略判断不散进 announce.rs）：

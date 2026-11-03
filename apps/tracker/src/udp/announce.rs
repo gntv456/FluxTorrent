@@ -226,13 +226,15 @@ pub(super) async fn announce(
     // peer 视图分裂。内存表仍同步维护（快照导出/降级路径不变）。
     // stopped 归属校验 + 顶号拒写也统一走 gate::write_peer（旧写法在这里
     // 自己抄了一份 upsert/remove，与 HTTP 侧各自演化）。
-    if let Err(msg) = crate::http_track::gate::write_peer(
+    // crossed = leecher↔seeder 跃迁（2026-11-03 与 HTTP 侧同批）：豁免合并窗。
+    let crossed = match crate::http_track::gate::write_peer(
         &t.state, &key, &ip, event, port, uploaded, downloaded, left, user_id,
     )
     .await
     {
-        return UdpTracker::err_pkt(transaction_id, msg);
-    }
+        Ok(crossed) => crossed,
+        Err(msg) => return UdpTracker::err_pkt(transaction_id, msg),
+    };
     let connectable = if crate::peers::external::external_enabled() {
         let mut r = t.state.redis.clone();
         crate::peers::external::connectable_of(&mut r, &key).await
@@ -240,8 +242,9 @@ pub(super) async fn announce(
         t.state.peers.connectable_of(&key)
     };
     // 事件合并（P2-1，与 HTTP 侧同语义）：周期 announce 触窗则不发事件，
-    // started/completed/stopped 不受影响。
+    // started/completed/stopped 不受影响；0 边界跃迁同样豁免。
     let merged = event.is_empty()
+        && !crossed
         && !t.state.claim_event_window(user_id, &info_hash_hex).await;
     if merged {
         t.state

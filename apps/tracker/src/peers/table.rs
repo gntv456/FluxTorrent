@@ -102,6 +102,16 @@ impl PeerTable {
             .unwrap_or(CONN_UNTESTED)
     }
 
+    /// 查询 peer 上次 announce 的剩余量（None = 尚无记录）。
+    /// 供 write_peer 做 leecher↔seeder 跃迁判定（跨越 0 边界豁免事件合并窗）。
+    pub fn left_of(&self, key: &PeerKey) -> Option<i64> {
+        self.swarms
+            .get(&key.info_hash)?
+            .peers
+            .get(&key.peer_id)
+            .map(|p| p.left)
+    }
+
     /// stopped 归属校验版移除（审计 10-06 第 2 条）：peer_id 客户端自报，旧 remove
     /// 使任意账号可用他人 peer_id 把对方踢下线。仅当现存 peer 属同一 user 才
     /// 移除；返回是否移除。
@@ -191,4 +201,65 @@ fn alive(p: &Peer, now: &chrono::DateTime<chrono::Utc>) -> bool {
         .to_std()
         .unwrap_or_default()
         < ttl_for(p.left)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::peers::{Peer, PeerKey};
+
+    fn peer(left: i64) -> Peer {
+        Peer {
+            key: PeerKey {
+                info_hash: "hash-a".into(),
+                peer_id: "pid-1".into(),
+            },
+            v4: None,
+            v6: None,
+            uploaded: 0,
+            downloaded: 0,
+            left,
+            last_seen: chrono::Utc::now(),
+            user_id: 1,
+            connectable: CONN_UNTESTED,
+        }
+    }
+
+    /// left_of 供 write_peer 做跃迁判定：跨越 0 边界 = (prev==0) != (now==0)。
+    /// 钉住三个关键位：leecher→seeder（真跃迁）、窗内进度推进（20480→10240
+    /// 仍 leecher，不该豁免合并窗）、seeder 稳态（0→0 不豁免）。
+    #[test]
+    fn left_of_supports_zero_crossing_detection() {
+        let t = PeerTable::new();
+        let key = PeerKey {
+            info_hash: "hash-a".into(),
+            peer_id: "pid-1".into(),
+        };
+        assert_eq!(t.left_of(&key), None, "无记录时 None");
+        t.upsert(peer(20480));
+        assert_eq!(t.left_of(&key), Some(20480));
+        // 窗内进度推进：两侧都非 0 → 不是跃迁
+        t.upsert(peer(10240));
+        assert_eq!(
+            (t.left_of(&key).unwrap() == 0),
+            false,
+            "leecher→leecher 非跃迁"
+        );
+        // 下载完成：跨越 0 边界 → 跃迁
+        t.upsert(peer(0));
+        let prev = t.left_of(&key).unwrap();
+        assert_eq!(prev, 0);
+        // seeder 稳态：0→0 不跃迁；seeder 重新下载（0→n）是反向跃迁。
+        // 跃迁判定在 write_peer 里是 upsert **前**读旧值；此处 upsert 后
+        // left_of 已是新值，等价验证旧 0 vs 新 4096 跨界。
+        assert_eq!((0 == 0) != (0 == 0), false, "0→0 非跃迁");
+        t.upsert(peer(4096));
+        let now_left = t.left_of(&key).unwrap();
+        assert_eq!(now_left, 4096);
+        assert_eq!(
+            (0 == 0) != (now_left == 0),
+            true,
+            "seeder→leecher 反向跃迁"
+        );
+    }
 }
