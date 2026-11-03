@@ -1,12 +1,10 @@
-//! HTTP announce 主链路。
-//! 从 tracker main.rs 按域拆出。
+//! HTTP announce 主链路（从 tracker main.rs 按域拆出）。
 use actix_web::{get, web, HttpResponse};
 use std::sync::atomic::Ordering;
 
 use super::emit::{bencode_err, emit_agent_block, emit_event, emit_xreport};
 use super::helpers::{client_ip, TrackerState};
 use super::params::RawParams;
-
 use crate::peers::{hex, PeerKey};
 
 #[get("/announce/{passkey}")]
@@ -231,7 +229,7 @@ pub(crate) async fn announce(
     )
     .await
     {
-        Ok(crossed) => crossed,
+        Ok(c) => c,
         Err(msg) => return bencode_err(msg),
     };
 
@@ -240,11 +238,9 @@ pub(crate) async fn announce(
         super::xreport_in::collect(&state, &params, &info_hash_hex, user_id);
     // ④ 事件投递（fire-and-forget，失败仅告警；ip/conn/port 供 worker 反作弊分析）。
     // 同 (user,torrent) 的**周期** announce 在合并窗内只回 peer 列表、不发事件
-    // （P2-1）；started/completed/stopped 是事件语义，永不被并。
-    // 跃迁（crossed）同享豁免：leecher→seeder 的翻转被窗吞掉会让 worker
-    // 最长 900s 才看到在种——seeders 计数与保种时长起算都慢半拍
-    // （2026-11-03 全站深测实测；seeder→leecher 反向同理，重新下载老种
-    // 的会员不该以 seeder 身份被继续计时）。
+    // （P2-1）；started/completed/stopped 是事件语义，永不被并。跃迁（crossed）
+    // 同享豁免：leecher→seeder 翻转被窗吞会让 worker 最长 900s 才看到在种
+    // （2026-11-03 深测实测；反向同理，重新下载老种不该以 seeder 身份继续计时）。
     //
     // conn 取数必须与回连探测**写数的地方**同源：启用外置存储时探测结果写的是
     // `flux:swarm:{hash}`（main.rs 探测循环），多副本下本进程的内存表可能从没

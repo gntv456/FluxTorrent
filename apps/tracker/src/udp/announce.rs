@@ -2,10 +2,9 @@
 use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
 
-use crate::peers::PeerKey;
-
 use super::core::UdpTracker;
 use super::pkt::{passkey_from_tracker_id, ANNOUNCE_ACTION};
+use crate::peers::PeerKey;
 
 pub(super) async fn announce(
     t: &UdpTracker,
@@ -223,16 +222,15 @@ pub(super) async fn announce(
     };
     // 0227 G31 审查遗留#1：外置模式（FLUX_TRACKER_PEER_STORE=redis）下 UDP
     // 与 HTTP 同读写 Redis swarm——此前 UDP 只进本进程内存，多副本/双协议下
-    // peer 视图分裂。内存表仍同步维护（快照导出/降级路径不变）。
-    // stopped 归属校验 + 顶号拒写也统一走 gate::write_peer（旧写法在这里
-    // 自己抄了一份 upsert/remove，与 HTTP 侧各自演化）。
+    // peer 视图分裂。内存表仍同步维护；stopped 归属校验 + 顶号拒写也统一走
+    // gate::write_peer（旧写法在这里自己抄 upsert/remove，与 HTTP 侧各自演化）。
     // crossed = leecher↔seeder 跃迁（2026-11-03 与 HTTP 侧同批）：豁免合并窗。
     let crossed = match crate::http_track::gate::write_peer(
         &t.state, &key, &ip, event, port, uploaded, downloaded, left, user_id,
     )
     .await
     {
-        Ok(crossed) => crossed,
+        Ok(c) => c,
         Err(msg) => return UdpTracker::err_pkt(transaction_id, msg),
     };
     let connectable = if crate::peers::external::external_enabled() {

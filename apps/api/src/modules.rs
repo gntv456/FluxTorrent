@@ -7,12 +7,11 @@
 //!   （0197 加 invites 时只改了 Rust、TS 漏改而无人报错，才补的这道门）；
 //! - T2 行为开关：module_* 关闭必须同时作用于 API（本守卫）、导航、页面、worker；
 //! - T3 缺省=general 中立矩阵（0178 翻转）：读不到 site_settings.module_<key> 时
-//!   回落本文件 `default_on()`——**开关真值只有 site_settings 一处**（0200 起
+//!   回落本文件的 `default_on()`——开关真值只有 site_settings 一处（0200 起
 //!   modules.is_on 已删，别再去找第二份）；
 //! - D4 fail-close：读取失败按「关」处理并告警。
 
 mod gateway;
-
 pub use gateway::module_gate_mw;
 
 use std::collections::HashMap;
@@ -112,10 +111,9 @@ pub fn default_on(k: &str) -> bool {
 }
 
 /// 缺省关的键（default_on 与契约测试共用的单一清单；0359 起 wiki 同档）。
-/// showcase 不在此列（2026-11-03 全站深测）：它挂的是首页「最新资源」海报墙
-/// （page.tsx showcaseOn），而 home_sections 排版默认**包含** latest——缺省关
-/// 会让全新站点首页空着一大块，与排版层的 in_default 自相矛盾。要关海报墙
-/// 走后台排版编辑（把 latest 移出 home_layout），而不是模块缺省。
+/// showcase 不在此列（2026-11-03 全站深测）：它挂首页「最新资源」海报墙，
+/// 与 home_sections 默认含 latest 的排版自相矛盾——缺省关会让新站首页空
+/// 一大块；要关海报墙走后台排版编辑把 latest 移出 home_layout。
 const DEFAULT_OFF: &[&str] = &[
     "textbooks",
     "social",
