@@ -62,7 +62,7 @@ const zhTwBase: Omit<
     themeNext: "點擊切換下一檔",
     // 分类图标集显示名/说明（lib/cat-icon-sets.ts 的 labelKey/noteKey 消费）
     catIconSetShanhaijing: "山海經·道具章紋套",
-    catIconSetShanhaijingNote: "深底圓章+單件金箔道具，22px 可辨",
+    catIconSetShanhaijingNote: "深底圓章+單件金箔道具，22px 清晰可讀",
     catIconSetAurora: "Aurora·漸變應用圖標套",
     catIconSetAuroraNote: "淺色圓角塊+漸變剪影，16px 可讀性好",
     globalSearchPh: "搜尋種子 / 帖子…",
