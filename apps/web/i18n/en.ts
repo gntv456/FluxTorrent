@@ -59,7 +59,8 @@ const enBase: Omit<
     themeBrandNight: "Dark",
     // 设计文档伍章指定名：拼音 "Shan Hai Jing" 对英文用户难读难记，
     // Mythica（神话志怪）短、有品牌感，切换器里与 Light/Dark 长度相称。
-    themeShanhaijing: "Mythica",
+    themeShanhaijing: "Mythica · Ink",
+    themeShanhaijingLight: "Mythica · Paper",
     themeAuto: "Follow system",
     themeNext: "click to cycle",
     // Category icon set names / notes (consumed via labelKey/noteKey in lib/cat-icon-sets.ts)
@@ -2398,13 +2399,14 @@ const enBase: Omit<
     insufficient: "Not enough",
     soldOut: "Sold out",
     stockLeft: "Only {n} left",
+    daysBadge: "{n} days",
     hints: {
       upload_credit: "Credited to your upload immediately, stackable",
-      vip: "Site badge and exclusive perks, duration stacks",
+      vip: "Site badge and exclusive perks, granted for the labeled days, stacks",
       app_vip: "Mobile app exclusive perks",
       ad_free: "No banners or popups site-wide, duration stacks",
       invite: "Permanent, invites one new user",
-      temp_invite: "Time-limited, expires",
+      temp_invite: "Time-limited invite voucher, valid 30 days (as labeled), expires",
       rename_card: "Change your username once, stock up",
       makeup_card: "Make up one missed check-in, stock up",
       custom_title: "A custom line next to your name",
@@ -5793,6 +5795,7 @@ const enBase: Omit<
       "vip.days": { label: "Duration (days)", ph: "30" },
       "app_vip.days": { label: "Duration (days)", ph: "30" },
       "ad_free.days": { label: "Duration (days)", ph: "15" },
+      "temp_invite.days": { label: "Voucher validity (days)", ph: "30" },
       "voucher_free.kind": { label: "Voucher kind" },
       "voucher_neutral.kind": { label: "Voucher kind" },
     } as Record<string, { label: string; ph?: string }>,

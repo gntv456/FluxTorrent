@@ -31,6 +31,9 @@ export const THEMES: Record<string, ThemeDef> = {
   // themeIdByScheme("dark") 取首个 dark 族，auto 深色档仍落 brand-night，
   // 山海经只作为用户手选档，不改变既有 auto 行为。
   shanhaijing: { chrome: "#0a0f0d", scheme: "dark" },
+  // design-cov-exempt: 山海经亮色档「宣纸」（2026-11-04）：scheme=light
+  // 但排在 brand 之后 → auto 亮色档仍落 brand，宣纸只作手选档。
+  "shanhaijing-light": { chrome: "#f7f3e8", scheme: "light" },
 };
 
 /** 注册表主题 id 列表（顺序即 UI 选项顺序） */
