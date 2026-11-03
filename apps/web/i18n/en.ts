@@ -57,6 +57,9 @@ const enBase: Omit<
     themeDark: "Dark",
     themeBrand: "Light",
     themeBrandNight: "Dark",
+    // 设计文档伍章指定名：拼音 "Shan Hai Jing" 对英文用户难读难记，
+    // Mythica（神话志怪）短、有品牌感，切换器里与 Light/Dark 长度相称。
+    themeShanhaijing: "Mythica",
     themeAuto: "Follow system",
     themeNext: "click to cycle",
     globalSearchPh: "Search torrents / posts…",
@@ -7039,7 +7042,7 @@ const enBase: Omit<
     banEmpty: "No bans yet.",
     renamePrompt: "Rename category:",
     iconKeyPrompt:
-      "Category icon key (film/tv/music/anime/game/app/book/sport/doc/edu, empty = initial-letter block):",
+      "Category icon key (film/tv/music/anime/game/app/book/sport/doc/edu/shortdrama/audiobook/variety, empty = initial-letter block):",
     bgColorPrompt: "Category colour (#rrggbb, empty = neutral grey):",
     sortPrompt: "Sort value (number, lower first; empty = keep):",
     newznabPrompt:

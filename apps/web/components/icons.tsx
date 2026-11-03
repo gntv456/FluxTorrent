@@ -652,6 +652,32 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M12 3.6c2.4 2.4 3.6 5.2 3.6 8.4s-1.2 6-3.6 8.4c-2.4-2.4-3.6-5.2-3.6-8.4S9.6 6 12 3.6Z" />
     </>
   ),
+  /* ---------- 分类图标补件（0458：短剧/有声书/综艺与剧集/音乐撞车解耦，
+      path 对齐 design/icons/ 设计稿） ---------- */
+  shortdrama: (
+    <>
+      {/* 竖屏短剧：9:16 竖屏 + 播放键（design/icons/general-shortdrama.svg） */}
+      <rect x="7.2" y="3.2" width="9.6" height="17.6" rx="2" />
+      <path d="M10.8 9.6l3.4 2-3.4 2v-4Z" />
+      <path d="M11 17.8h2" />
+    </>
+  ),
+  audiobook: (
+    <>
+      {/* 有声书：耳机叙事（design/icons/general-audiobook.svg） */}
+      <path d="M4.6 14.4v-1.2a7.4 7.4 0 0 1 14.8 0v1.2" />
+      <rect x="3.4" y="13.4" width="3.6" height="6" rx="1.6" />
+      <rect x="17" y="13.4" width="3.6" height="6" rx="1.6" />
+    </>
+  ),
+  variety: (
+    <>
+      {/* 综艺：屏中星 + 底座（design/icons/general-variety.svg） */}
+      <rect x="3.4" y="4.8" width="17.2" height="13" rx="2" />
+      <path d="M12 7.8l1.4 2.8 3.1.5-2.2 2.2.5 3.1-2.8-1.5-2.8 1.5.5-3.1-2.2-2.2 3.1-.5 1.4-2.8Z" />
+      <path d="M9.5 20.6h5" />
+    </>
+  ),
 };
 
 export type IconName = keyof typeof PATHS;

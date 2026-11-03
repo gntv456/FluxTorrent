@@ -35,6 +35,7 @@ const zhCnBase = {
     // themeAuto 是模式词不是主题；三语齐全由 tests/theme-registry.test.ts 门禁
     themeBrand: "日间",
     themeBrandNight: "夜间",
+    themeShanhaijing: "山海经",
     themeAuto: "跟随系统",
     themeNext: "点击切换下一档",
     globalSearchPh: "搜索种子 / 帖子…",
@@ -6844,7 +6845,7 @@ const zhCnBase = {
     banEmpty: "暂无封禁记录。",
     renamePrompt: "重命名分类：",
     iconKeyPrompt:
-      "分类图标键（film/tv/music/anime/game/app/book/sport/doc/edu，留空=首字色块）：",
+      "分类图标键（film/tv/music/anime/game/app/book/sport/doc/edu/shortdrama/audiobook/variety，留空=首字色块）：",
     bgColorPrompt: "分类色（#rrggbb，留空=中性灰）：",
     sortPrompt: "排序值（数字，小的在前；留空=不改）：",
     newznabPrompt:

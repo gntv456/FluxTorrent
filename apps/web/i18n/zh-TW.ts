@@ -57,6 +57,7 @@ const zhTwBase: Omit<
     themeDark: "夜間",
     themeBrand: "日間",
     themeBrandNight: "夜間",
+    themeShanhaijing: "山海經",
     themeAuto: "跟隨系統",
     themeNext: "點擊切換下一檔",
     globalSearchPh: "搜尋種子 / 帖子…",
@@ -6798,7 +6799,7 @@ const zhTwBase: Omit<
     banEmpty: "暫無封禁記錄。",
     renamePrompt: "重新命名分類：",
     iconKeyPrompt:
-      "分類圖示鍵（film/tv/music/anime/game/app/book/sport/doc/edu，留空=首字色塊）：",
+      "分類圖示鍵（film/tv/music/anime/game/app/book/sport/doc/edu/shortdrama/audiobook/variety，留空=首字色塊）：",
     bgColorPrompt: "分類色（#rrggbb，留空=中性灰）：",
     sortPrompt: "排序值（數字，小的在前；留空=不改）：",
     newznabPrompt:
