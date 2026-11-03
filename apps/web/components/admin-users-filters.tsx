@@ -51,16 +51,20 @@ export function UsersFilterBar({
   applied,
   set,
   onSearch,
+  onCollapse,
   total,
 }: {
   classes: [number, string][];
   /** 自定义字段（G4）：站长没建字段时整对控件不渲染 */
   fields: { key: string; label: string }[];
   values: FilterValues;
-  /** 最近一次「搜索」时冻结的已生效快照（父组件持有，摘要只认它） */
+  /** 最近一次生效（提交/防抖触发）的快照（父组件持有，摘要只认它） */
   applied: FilterValues;
+  /** 筛选变更：文本位父组件做 400ms 防抖，选择位立即生效 */
   set: <K extends keyof FilterValues>(k: K, v: FilterValues[K]) => void;
   onSearch: () => void;
+  /** 收起面板时通知父组件取消待触发的 debounce */
+  onCollapse?: () => void;
   /** 当前筛选条件下的结果总数（loading 时为 undefined） */
   total?: number;
 }) {
@@ -84,6 +88,7 @@ export function UsersFilterBar({
 
   function toggle() {
     const next = !open;
+    if (!next) onCollapse?.();
     setOpen(next);
     try {
       window.localStorage.setItem(FOLD_KEY, next ? "1" : "0");

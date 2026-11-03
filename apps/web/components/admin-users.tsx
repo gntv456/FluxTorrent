@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
@@ -11,6 +11,7 @@ import {
   buildUserFilterParams,
   useUserFilters,
 } from "@/components/admin-users-parts";
+import type { UserFilterValues } from "@/components/admin-users-parts";
 import { UsersPager } from "@/components/admin-users-pager";
 
 /** 第五轮：后台用户管理（同类站 /nexusphp user/users 口径）
@@ -56,15 +57,61 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   const [batchClass, setBatchClass] = useState("");
   /** 筛选状态（含 G4 自定义字段维）抽到 admin-users-parts.ts，主组件守 300 行 */
   const filters = useUserFilters();
-  /** 已生效的筛选快照：只有「搜索」或翻页/排序推进它，表单草稿不参与查询 */
+  /** 已生效的筛选快照：文本输入 debounce 后推进，选择项变更/搜索/翻页/排序立即推进；
+   *  表单草稿本身不参与查询（避免每次键入都发请求）。 */
   const [applied, setApplied] = useState(filters.values);
   /** 自定义字段清单（G4）：筛选项用；无权/未建字段时为空数组 */
   const [fields, setFields] = useState<{ key: string; label: string }[]>([]);
+  /** 文本输入防抖计时器 + 草稿最新值（同一事件内连改两次也不丢） */
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draft = useRef(filters.values);
+  /** 请求序号：慢响应回来时若序号已过期就丢弃，避免旧结果覆盖新结果 */
+  const seq = useRef(0);
 
   const flash = (m: string) => {
     setMsg(m);
     setTimeout(() => setMsg(null), 3000);
   };
+
+  /** 取消待触发的 debounce（点搜索 / 清空 / 收起 / 卸载时用） */
+  const cancelPending = useCallback(() => {
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }, []);
+
+  /** 推进生效快照：取消待触发请求、回到第 1 页（与旧「搜索」语义一致） */
+  const commit = useCallback(
+    (next: UserFilterValues) => {
+      cancelPending();
+      setApplied(next);
+      setPage(1);
+    },
+    [cancelPending],
+  );
+
+  /** 筛选项变更：文本位 400ms 防抖，选择位（下拉/开关）立即生效 */
+  const change = useCallback(
+    <K extends keyof UserFilterValues>(k: K, v: UserFilterValues[K]) => {
+      const next = { ...draft.current, [k]: v };
+      draft.current = next;
+      filters.set(k, v);
+      if (k === "q" || k === "fId" || k === "fVal") {
+        cancelPending();
+        timer.current = setTimeout(() => {
+          timer.current = null;
+          commit(next);
+        }, 400);
+      } else {
+        commit(next);
+      }
+    },
+    [filters, commit, cancelPending],
+  );
+
+  // 卸载/切页清理定时器：别让组件没了还发请求
+  useEffect(() => cancelPending, [cancelPending]);
 
   const load = useCallback(async () => {
     const params = buildUserFilterParams(applied, {
@@ -73,12 +120,16 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       page: String(page),
       per_page: "20",
     });
+    const my = ++seq.current;
     try {
-      setData(
-        await api.get<UsersPage>(`/api/v1/admin/users?${params.toString()}`),
+      const rs = await api.get<UsersPage>(
+        `/api/v1/admin/users?${params.toString()}`,
       );
+      if (my !== seq.current) return; // 过期响应：已被更新的查询取代
+      setData(rs);
       setSel(new Set());
     } catch (e) {
+      if (my !== seq.current) return;
       flash(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
   }, [applied, sort, desc, page, dict]);
@@ -179,11 +230,9 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         fields={fields}
         values={filters.values}
         applied={applied}
-        set={filters.set}
-        onSearch={() => {
-          setApplied({ ...filters.values });
-          setPage(1);
-        }}
+        set={change}
+        onSearch={() => commit(draft.current)}
+        onCollapse={cancelPending}
         total={data?.total}
       />
       {/* 批量操作（第八轮 P2-9）：onClick 走 askBatch 弹确认（P2 清偿） */}
