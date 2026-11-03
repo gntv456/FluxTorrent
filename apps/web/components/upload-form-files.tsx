@@ -14,7 +14,7 @@ import { UploadNfoAttach } from "@/components/upload-form-nfo-attach";
 
 /** 「更多选项」按钮的样式（单独提出来：写在 JSX 里那一行超 80 列） */
 const MORE_BTN_CLS =
-  "min-h-10 rounded-[var(--r-sm)] border border-[var(--brand-line)] " +
+  "min-h-10 rounded-[var(--r-sm)] border border-[var(--compat-line)] " +
   "px-3 text-sm font-bold text-ink";
 
 export function UploadFilesBlock({
@@ -209,13 +209,13 @@ export function UploadFilesBlock({
                   })
                 }
                 maxLength={300}
-                className="min-h-10 flex-1 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--brand-orange)]"
+                className="min-h-10 flex-1 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--compat-orange)]"
               />
               <button
                 type="button"
                 disabled={ptgenBusy || !ptgenUrl.trim()}
                 onClick={() => genDescr()}
-                className="min-h-10 rounded-[10px] border border-[var(--brand-line)] px-4 text-sm font-bold text-ink hover:border-[var(--brand-orange)] disabled:opacity-50"
+                className="min-h-10 rounded-[10px] border border-[var(--compat-line)] px-4 text-sm font-bold text-ink hover:border-[var(--compat-orange)] disabled:opacity-50"
               >
                 {ptgenBusy ? dict.upload.ptgenBusy : dict.upload.ptgenBtn}
               </button>
@@ -257,7 +257,7 @@ export function UploadFilesBlock({
               max={1000000}
               value={price}
               onChange={(e) => setPrice(Number(e.target.value))}
-              className="min-h-10 w-36 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--brand-orange)]"
+              className="min-h-10 w-36 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--compat-orange)]"
             />
             <span className="text-sm text-sub">
               {currency}（0 = 免费，最大 1000000）

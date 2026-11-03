@@ -14,7 +14,7 @@ const ATTACH_DROP =
   "flex min-h-[44px] cursor-pointer items-center justify-center "
   + "rounded-[var(--r-sm)] border border-dashed border-line "
   + "bg-[var(--head-b)] px-3 text-sm text-sub "
-  + "hover:border-[var(--brand-orange)]";
+  + "hover:border-[var(--compat-orange)]";
 const IMDB_INPUT =
   "w-40 rounded-[var(--r-sm)] border border-line px-2 py-1 text-sm";
 

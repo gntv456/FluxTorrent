@@ -81,9 +81,9 @@ export function RiskWatchlist() {
     b === "critical"
       ? "font-bold text-[var(--danger)]"
       : b === "high"
-        ? "font-bold text-[var(--brand-orange-dark)]"
+        ? "font-bold text-[var(--compat-orange-dark)]"
         : b === "watch"
-          ? "text-[var(--brand-orange-dark)]"
+          ? "text-[var(--compat-orange-dark)]"
           : "text-sub";
 
   const th = "px-3 py-2 text-left text-xs font-bold whitespace-nowrap";
@@ -91,7 +91,7 @@ export function RiskWatchlist() {
   const filterBtn = (w: boolean) =>
     "rounded-full border px-3 py-1 text-xs font-bold " +
     (watchOnly === w
-      ? "border-[var(--brand-orange)] text-[var(--brand-orange-dark)]"
+      ? "border-[var(--compat-orange)] text-[var(--compat-orange-dark)]"
       : "border-[var(--border-soft)] text-sub");
 
   return (
@@ -156,7 +156,7 @@ export function RiskWatchlist() {
                       <a
                         className={
                           "font-bold " +
-                          "text-[var(--brand-orange-dark)] " +
+                          "text-[var(--compat-orange-dark)] " +
                           "hover:underline"
                         }
                         href={`/users/${r.user_id}`}

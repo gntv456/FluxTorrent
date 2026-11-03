@@ -105,7 +105,7 @@ function frameNode(f: Frame, key: string): ReactNode {
       return (
         <blockquote
           key={key}
-          className="my-2 border-l-4 border-[var(--brand-line)] bg-[var(--head-b)] px-3 py-2 text-sub"
+          className="my-2 border-l-4 border-[var(--compat-line)] bg-[var(--head-b)] px-3 py-2 text-sub"
         >
           {f.children}
         </blockquote>
@@ -148,7 +148,7 @@ function renderBBCodeImpl(text: string): ReactNode[] {
     const tag = tagRaw.toLowerCase();
     if (tag === "hr") {
       cur().push(
-        <hr key={`e${key++}`} className="my-2 border-[var(--brand-line)]" />,
+        <hr key={`e${key++}`} className="my-2 border-[var(--compat-line)]" />,
       );
       last = m.index + full.length;
       continue;

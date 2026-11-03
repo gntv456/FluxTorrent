@@ -17,7 +17,7 @@ import { tagChipStyle } from "@/lib/tag-style";
 // 表单输入框底色 / 取消按钮
 const INP =
   "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
-  "bg-[var(--brand-paper)] px-2 text-sm outline-none " +
+  "bg-[var(--compat-paper)] px-2 text-sm outline-none " +
   "focus:border-[var(--sky)]";
 const BTN_CANCEL =
   BTN_SM_BOLD;

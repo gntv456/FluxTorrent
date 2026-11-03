@@ -8,6 +8,7 @@ import { dateLocale } from "@/i18n/config";
 import { getSiteProfile } from "@/lib/site-profile";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
+import { ShjHero } from "@/components/shj-hero";
 import {
   homeMeSummary,
   type HomeMeRaw,
@@ -117,6 +118,36 @@ export default async function HomePage() {
       {/* S1 语义修复：首页模块化布局无自然主标题——补唯一 sr-only h1
           （各区块头已由 h1 降为 h2），供 SEO 与读屏器锚定页面主题。 */}
       <h1 className="sr-only">{brandName}</h1>
+      {/* 山海经 Hero「山海图卷」：恒渲染、CSS 控显隐（其余三主题 display:none
+          零布局影响）。玉牌数据与「站点数据」区块同源（home.site_data） */}
+      <ShjHero
+        brand={brandName}
+        themeName={dict.common.themeShanhaijing}
+        kicker={dict.home.shjKicker}
+        sub={dict.home.shjSub}
+        jades={
+          homeData?.site_data
+            ? [
+                {
+                  label: dict.home.shjJadeUsers,
+                  value: homeData.site_data.users.toLocaleString(locale),
+                },
+                {
+                  label: dict.home.shjJadeTorrents,
+                  value: homeData.site_data.torrents.toLocaleString(locale),
+                },
+                {
+                  label: dict.home.shjJadeSeeders,
+                  value: homeData.site_data.seeders.toLocaleString(locale),
+                },
+                {
+                  label: dict.home.shjJadePeers,
+                  value: homeData.site_data.peers.toLocaleString(locale),
+                },
+              ]
+            : []
+        }
+      />
       <HomeSections
         initialData={homeData}
         initialMods={profile?.modules ?? {}}

@@ -104,7 +104,7 @@ export function ReportBox() {
         : null;
 
   const inputCls =
-    "min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--brand-orange)]";
+    "min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--compat-orange)]";
 
   const th = "px-3 py-2 text-left text-xs font-bold whitespace-nowrap";
   const td = "px-3 py-2 text-sm align-middle";

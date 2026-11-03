@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 export function GameStage({
   art,
   bg,
+  shjBg,
   children,
   className = "",
 }: {
@@ -13,6 +14,10 @@ export function GameStage({
   art?: string;
   /** 直接 CSS 背景值（渐变等）；给了它就忽略 `art` */
   bg?: string;
+  /** 山海经主题下的等效岩彩背景（CSS 渐变）：经内联自定义属性
+   *  --gs-shj-bg 下发，仅 [data-theme="shanhaijing"] 作用域的规则消费
+   *  （theme-shanhaijing.css），其余三主题继续用 art/bg 原值、零变化 */
+  shjBg?: string;
   children: ReactNode;
   className?: string;
 }) {
@@ -20,9 +25,12 @@ export function GameStage({
     <div className={`gs-stage ${className}`}>
       <div
         className="gs-art"
-        style={
-          bg ? { background: bg } : { backgroundImage: `url(${art ?? ""})` }
-        }
+        style={{
+          ...(bg ? { background: bg } : { backgroundImage: `url(${art ?? ""})` }),
+          ...(shjBg
+            ? { ["--gs-shj-bg" as string]: shjBg }
+            : {}),
+        }}
       />
       <div className="gs-scrim" />
       <span className="gs-corner tl" />

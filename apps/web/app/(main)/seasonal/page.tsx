@@ -11,7 +11,7 @@ const ROW_CLS =
 const TITLE_CLS = "min-w-0 flex-1 truncate font-bold";
 const TAB_CLS = "rounded-full border border-line px-3 py-0.5 text-xs";
 const TAB_ON_CLS =
-  "rounded-full bg-[var(--brand-orange)] px-3 py-0.5 text-xs " +
+  "rounded-full bg-[var(--compat-orange)] px-3 py-0.5 text-xs " +
   "font-bold text-white";
 
 interface SeasonItem {

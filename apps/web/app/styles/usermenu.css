@@ -57,7 +57,7 @@
   cursor: pointer;
 }
 .usermenu__trigger:hover {
-  border-color: var(--brand-line);
+  border-color: var(--compat-line);
   background: var(--surface-raised);
 }
 .usermenu__avatar {

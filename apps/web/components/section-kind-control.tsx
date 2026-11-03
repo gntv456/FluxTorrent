@@ -22,7 +22,7 @@ export interface SecKindOpt {
 const MULTI_BOX_CLS =
   "flex max-h-40 flex-wrap items-center gap-x-4 gap-y-1 "
   + "overflow-y-auto rounded-[var(--r-sm)] "
-  + "border border-[var(--brand-line)] px-3 py-1.5";
+  + "border border-[var(--compat-line)] px-3 py-1.5";
 
 export function SectionKindControl({
   type,
@@ -82,7 +82,7 @@ export function SectionKindControl({
                   aria-label={
                     ariaLabel ? `${ariaLabel} ${o.name}` : undefined
                   }
-                  className="h-4 w-4 accent-[var(--brand-orange)]"
+                  className="h-4 w-4 accent-[var(--compat-orange)]"
                 />
                 {o.name}
               </label>

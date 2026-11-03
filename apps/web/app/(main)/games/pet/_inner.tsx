@@ -166,6 +166,7 @@ export default function PetFocusPage({
         <div className="flex w-full flex-col items-center gap-3">
           <GameStage
             bg="radial-gradient(120% 130% at 50% 0%, #123a2e, #08170f 72%)"
+            shjBg="var(--shj-stage-pet)"
             className="w-full max-w-[460px] py-6"
           >
             {st ? (

@@ -33,9 +33,9 @@ export const BTN_LG_SKY =
 /** 次级按钮：44px 胶囊描边，hover 转橙（邀请「魔力兑换」等并列主按钮的次选）。
  *  2026-10-16 从 invite-manager.tsx 的 199 字符 Tailwind 串抽成常量。 */
 export const BTN_MD_GHOST_SKY =
-  "min-h-[44px] rounded-full border border-[var(--brand-line)]" +
-  " px-5 text-sm text-sky-deep hover:border-[var(--brand-orange)]" +
-  " hover:text-[var(--brand-orange)] disabled:opacity-50";
+  "min-h-[44px] rounded-full border border-[var(--compat-line)]" +
+  " px-5 text-sm text-sky-deep hover:border-[var(--compat-orange)]" +
+  " hover:text-[var(--compat-orange)] disabled:opacity-50";
 
 /** 迷你按钮：32px 胶囊描边 */
 export const BTN_XS_GHOST =
@@ -104,14 +104,14 @@ export const CELL_CARD_SUB =
 
 /** 旧版包子皮肤输入框（兼容） */
 export const INPUT_BRAND =
-  "min-h-[32px] rounded-[var(--r-sm)] border border-[var(--brand-line)]" +
-  " bg-[var(--brand-paper)] px-2 text-sm text-ink outline-none" +
-  " focus:border-[var(--brand-orange)]";
+  "min-h-[32px] rounded-[var(--r-sm)] border border-[var(--compat-line)]" +
+  " bg-[var(--compat-paper)] px-2 text-sm text-ink outline-none" +
+  " focus:border-[var(--compat-orange)]";
 
 /** 旧版包子皮肤面板（兼容） */
 export const PANEL_BRAND =
-  "rounded-[var(--r-md)] border border-[var(--brand-line-soft)]" +
-  " bg-[var(--brand-paper)] p-4 shadow-[var(--shadow-card)]";
+  "rounded-[var(--r-md)] border border-[var(--compat-line-soft)]" +
+  " bg-[var(--compat-paper)] p-4 shadow-[var(--shadow-card)]";
 
 // ---- 术语后台（0386 自 staff-terms.tsx 抽出：那个文件被治理面板顶到
 // 300 行门禁，样式常量按既有惯例集中到本文件而不是各写一份）----

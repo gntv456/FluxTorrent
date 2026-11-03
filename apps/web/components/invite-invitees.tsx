@@ -63,8 +63,8 @@ export function InviteeList({
             <li
               key={u.id}
               className={
-                "rounded-[var(--r-md)] border border-[var(--brand-line)] " +
-                "bg-[var(--brand-paper)] p-3"
+                "rounded-[var(--r-md)] border border-[var(--compat-line)] " +
+                "bg-[var(--compat-paper)] p-3"
               }
             >
               <div className="flex items-center gap-2">

@@ -88,7 +88,7 @@ export function CheatEventsTable() {
         <h3 className="text-sm font-bold text-ink">{t.eventsTitle}</h3>
         <button
           type="button"
-          className="text-xs text-[var(--brand-orange-dark)] hover:underline"
+          className="text-xs text-[var(--compat-orange-dark)] hover:underline"
           onClick={() => {
             const next = !showDone;
             setShowDone(next);
@@ -130,7 +130,7 @@ export function CheatEventsTable() {
                   <td className={td}>
                     <a
                       className={
-                        "font-bold text-[var(--brand-orange-dark)] " +
+                        "font-bold text-[var(--compat-orange-dark)] " +
                         "hover:underline"
                       }
                       href={`/users/${e.user_id}`}
@@ -171,7 +171,7 @@ export function CheatEventsTable() {
                           type="button"
                           className={
                             "text-xs font-bold " +
-                            "text-[var(--brand-orange-dark)] " +
+                            "text-[var(--compat-orange-dark)] " +
                             "hover:underline"
                           }
                           disabled={acting === e.id}
@@ -183,7 +183,7 @@ export function CheatEventsTable() {
                           type="button"
                           className={
                             "ml-2 text-xs font-bold " +
-                            "text-[var(--brand-orange-dark)] " +
+                            "text-[var(--compat-orange-dark)] " +
                             "hover:underline"
                           }
                           disabled={acting === e.id}

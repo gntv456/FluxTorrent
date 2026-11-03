@@ -99,7 +99,7 @@ export function DeskTable({
                 <summary className="cursor-pointer font-bold">
                   {m.subject}
                 </summary>
-                <p className="mt-2 whitespace-pre-wrap rounded-[var(--r-sm)] border border-dashed border-[var(--brand-line)] bg-[var(--brand-cream)] p-2 text-sm">
+                <p className="mt-2 whitespace-pre-wrap rounded-[var(--r-sm)] border border-dashed border-[var(--compat-line)] bg-[var(--compat-cream)] p-2 text-sm">
                   {m.body}
                 </p>
                 {m.answer && (
@@ -119,7 +119,7 @@ export function DeskTable({
                       placeholder={
                         t.answerPh
                       }
-                      className="min-h-[70px] rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 py-2 text-sm"
+                      className="min-h-[70px] rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 py-2 text-sm"
                     />
                     <button
                       type="button"

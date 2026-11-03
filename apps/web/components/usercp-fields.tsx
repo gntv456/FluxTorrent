@@ -20,7 +20,7 @@ interface FieldDef {
 }
 
 const FLD =
-  "w-full max-w-md rounded-[var(--r-sm)] border border-line bg-[var(--brand-bg-input)] px-2 py-1 text-sm text-ink";
+  "w-full max-w-md rounded-[var(--r-sm)] border border-line bg-[var(--compat-bg-input)] px-2 py-1 text-sm text-ink";
 
 export function UserFieldsTab() {
   const { dict } = useI18n();

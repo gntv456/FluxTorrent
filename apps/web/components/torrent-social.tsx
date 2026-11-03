@@ -273,7 +273,7 @@ export function TorrentSocial({
               key={v}
               onClick={() => tip(v)}
               disabled={busy || thanked}
-              className="min-h-[32px] rounded-full border border-[var(--brand-orange)] px-3 text-xs font-bold text-[var(--brand-orange-dark)] active:scale-[0.97] disabled:opacity-50"
+              className="min-h-[32px] rounded-full border border-[var(--compat-orange)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] active:scale-[0.97] disabled:opacity-50"
             >
               +{v}
             </button>

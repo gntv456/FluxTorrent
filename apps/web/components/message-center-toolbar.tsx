@@ -58,8 +58,8 @@ export function ToolbarSwitcher({
           aria-current={box === "inbox" ? "true" : undefined}
           className={`min-h-[44px] rounded-[10px] border px-4 text-sm font-bold ${
             box === "inbox"
-              ? "border-[var(--brand-orange)] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] text-white shadow-[0_5px_13px_var(--accent-shadow)]"
-              : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] text-ink hover:-translate-y-px hover:text-[var(--brand-orange)]"
+              ? "border-[var(--compat-orange)] bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] text-white shadow-[0_5px_13px_var(--accent-shadow)]"
+              : "border-[var(--compat-line)] bg-[var(--row-veil-soft)] text-ink hover:-translate-y-px hover:text-[var(--compat-orange)]"
           }`}
         >
           {t.inbox}
@@ -72,8 +72,8 @@ export function ToolbarSwitcher({
             aria-current={folder === b.id ? "true" : undefined}
             className={`min-h-[44px] rounded-[10px] border px-4 text-sm font-bold ${
               folder === b.id
-                ? "border-[var(--brand-orange)] bg-[var(--sky-soft)] text-[var(--brand-orange-dark)]"
-                : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] text-ink"
+                ? "border-[var(--compat-orange)] bg-[var(--sky-soft)] text-[var(--compat-orange-dark)]"
+                : "border-[var(--compat-line)] bg-[var(--row-veil-soft)] text-ink"
             }`}
           >
             {b.name} ({b.count})
@@ -85,8 +85,8 @@ export function ToolbarSwitcher({
           aria-current={box === "sent" ? "true" : undefined}
           className={`min-h-[44px] rounded-[10px] border px-4 text-sm font-bold ${
             box === "sent"
-              ? "border-[var(--brand-orange)] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] text-white"
-              : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] text-ink"
+              ? "border-[var(--compat-orange)] bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] text-white"
+              : "border-[var(--compat-line)] bg-[var(--row-veil-soft)] text-ink"
           }`}
         >
           {t.sent}
@@ -99,11 +99,11 @@ export function ToolbarSwitcher({
           className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px]
             border px-3 text-sm font-bold ${
               managing
-                ? "border-[var(--brand-orange)] bg-[var(--sky-soft)] " +
-                  "text-[var(--brand-orange-dark)]"
-                : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] " +
+                ? "border-[var(--compat-orange)] bg-[var(--sky-soft)] " +
+                  "text-[var(--compat-orange-dark)]"
+                : "border-[var(--compat-line)] bg-[var(--row-veil-soft)] " +
                   "text-ink hover:-translate-y-px " +
-                  "hover:text-[var(--brand-orange)]"
+                  "hover:text-[var(--compat-orange)]"
             }`}
         >
           <Icon name="folder" size={16} />
@@ -117,7 +117,7 @@ export function ToolbarSwitcher({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t.searchPh}
-              className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm"
+              className="min-h-[44px] w-40 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm"
             />
             <label className="hidden min-h-[44px] items-center gap-1 text-xs text-sub sm:flex">
               <input
@@ -132,7 +132,7 @@ export function ToolbarSwitcher({
         <button
           type="button"
           onClick={onCompose}
-          className="min-h-[44px] rounded-[10px] border border-[var(--brand-orange-dark)] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] px-4 text-sm font-bold text-white shadow-[var(--shadow-hover)] active:scale-[0.97]"
+          className="min-h-[44px] rounded-[10px] border border-[var(--compat-orange-dark)] bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] px-4 text-sm font-bold text-white shadow-[var(--shadow-hover)] active:scale-[0.97]"
         >
           {t.compose}
         </button>
@@ -144,7 +144,7 @@ export function ToolbarSwitcher({
           title={t.moreActions}
           className={
             "inline-flex h-11 w-11 items-center justify-center " +
-            "rounded-[10px] border border-[var(--brand-line)] " +
+            "rounded-[10px] border border-[var(--compat-line)] " +
             "bg-[var(--row-veil-soft)] text-ink sm:hidden"
           }
         >
@@ -155,7 +155,7 @@ export function ToolbarSwitcher({
         <div
           className={
             "flex w-full flex-col gap-2 rounded-[var(--r-md)] " +
-            "border border-[var(--brand-line)] p-2 sm:hidden"
+            "border border-[var(--compat-line)] p-2 sm:hidden"
           }
         >
           {box === "inbox" && (
@@ -215,7 +215,7 @@ export function BulkBar({
           type="button"
           disabled={selected.length === 0 || busy}
           onClick={onMarkRead}
-          className="min-h-[36px] rounded-full border border-[var(--brand-line)] px-3 font-bold disabled:opacity-40"
+          className="min-h-[36px] rounded-full border border-[var(--compat-line)] px-3 font-bold disabled:opacity-40"
         >
           ✓ {t.markRead}
         </button>
@@ -228,7 +228,7 @@ export function BulkBar({
             onMove(v === "" ? null : Number(v));
             e.target.value = "";
           }}
-          className="min-h-[36px] rounded-full border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 font-bold disabled:opacity-40"
+          className="min-h-[36px] rounded-full border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 font-bold disabled:opacity-40"
           defaultValue=""
         >
           <option value="">{t.moveTo}</option>

@@ -10,6 +10,7 @@ import { useSwipe } from "@/lib/hooks/use-swipe";
 import { promotionBadge } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { catColor } from "@/lib/site-profile";
+import { shjCatHue } from "@/components/torrent-table-badges";
 import { formatBytes } from "@/lib/format";
 import { PosterImage } from "@/components/poster-image";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
@@ -140,6 +141,7 @@ export function TorrentRowCard({
       href={`/torrent/${t.id}`}
       className="trow-card"
       style={{ ["--trow-cat" as string]: cat }}
+      data-shj-hue={shjCatHue(cat)}
     >
       {!hd.has("cover") && (
         <span className="trow-card__cover" aria-hidden>

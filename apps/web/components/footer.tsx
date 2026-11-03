@@ -10,7 +10,7 @@ import { api } from "@/lib/api-client";
 
 /** 帮助区/快捷导航共用的链接样式（长类名抽常量守行宽门禁） */
 const FOOTER_LINK =
-  "inline-block py-1.5 text-sm text-link hover:text-[var(--brand-orange)]";
+  "inline-block py-1.5 text-sm text-link hover:text-[var(--compat-orange)]";
 
 /**
  * 页脚：
@@ -57,7 +57,7 @@ export async function Footer() {
   ];
 
   return (
-    <footer className="mt-10 border-t border-line bg-[var(--brand-bg)] pb-20 lg:pb-6">
+    <footer className="mt-10 border-t border-line bg-[var(--compat-bg)] pb-20 lg:pb-6">
       <div className="mx-auto w-full max-w-[1760px] px-4 pt-6 md:px-6">
         {/* 三栏信息卡片 */}
         <div className="grid gap-4 md:grid-cols-3">
@@ -120,7 +120,7 @@ export async function Footer() {
 
         {/* 运行统计条（登录后可见） */}
         {stats && (
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 rounded-[var(--r-md)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-4 py-2 text-center text-xs font-bold text-[var(--brand-orange-dark)]">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 rounded-[var(--r-md)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-4 py-2 text-center text-xs font-bold text-[var(--compat-orange-dark)]">
             <span>👥 {fmt(dict.footer.statsUsers, { n: stats.users })}</span>
             <span>
               🌱 {fmt(dict.footer.statsTorrents, { n: stats.torrents })}
@@ -146,7 +146,7 @@ export async function Footer() {
         )}
 
         {/* 免责声明 + 版权条 */}
-        <div className="mt-4 border-t border-dashed border-[var(--brand-line-soft)] pt-3 text-center">
+        <div className="mt-4 border-t border-dashed border-[var(--compat-line-soft)] pt-3 text-center">
           <p className="text-[12px] leading-relaxed text-sub">
             {dict.footer.disclaimer}
           </p>
@@ -157,7 +157,7 @@ export async function Footer() {
             })}{" "}
             <Link
               href="/about"
-              className="text-link hover:text-[var(--brand-orange)]"
+              className="text-link hover:text-[var(--compat-orange)]"
             >
               {about
                 ? `Powered by ${about.product} ${about.version}`

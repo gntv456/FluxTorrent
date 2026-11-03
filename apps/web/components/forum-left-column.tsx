@@ -11,14 +11,16 @@ import type { Dict } from "@/i18n/server";
  *  节点两处复用，不复制 JSX。
  */
 
-/** 版块导航圆点色板（样图 f3b-nav__item i 的六色，按版块 id 取） */
+/** 版块导航圆点色板（样图 f3b-nav__item i 的六色，按版块 id 取）。
+ *  P2-5 令牌化：色值真源在 base.css --fhue-*（固定 hue 轮换，
+ *  明暗同值，口径见该处注释）。 */
 const NAV_DOTS = [
-  "#2fa8ff",
-  "#2fbf9b",
-  "#ffc93c",
-  "#5b6bf5",
-  "#ff8fc7",
-  "#ff7a59",
+  "var(--fhue-sky)",
+  "var(--fhue-mint)",
+  "var(--fhue-sun)",
+  "var(--fhue-indigo)",
+  "var(--fhue-candy)",
+  "var(--fhue-coral)",
 ];
 
 export interface BoardGroup {

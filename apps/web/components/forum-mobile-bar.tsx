@@ -34,7 +34,7 @@ export function ForumMobileBar({
 
   const btn =
     "fh-mbar__b flex min-h-[36px] items-center justify-center gap-1 " +
-    "rounded-full border border-line bg-[var(--brand-paper)] px-2 " +
+    "rounded-full border border-line bg-[var(--compat-paper)] px-2 " +
     "text-xs font-bold text-ink active:scale-[0.98]";
   const btnOn =
     "fh-mbar__b flex min-h-[36px] items-center justify-center gap-1 " +

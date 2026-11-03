@@ -253,6 +253,7 @@ export default function JggPage({
         <div className="flex w-full flex-col items-center gap-3">
           <GameStage
             art="/games/stage-jgg.jpg"
+            shjBg="var(--shj-stage-jgg)"
             className="w-full max-w-[460px] p-4"
           >
             <JggGrid

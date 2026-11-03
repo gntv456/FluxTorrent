@@ -244,6 +244,8 @@ export default async function TorrentsPage({
           dict={dict}
           sp={sp}
           categories={categories}
+          catIcons={catIcons}
+          catColors={catColors}
           tags={tags}
           tagGroups={tagGroups}
           secDict={secDict}

@@ -28,7 +28,7 @@ interface TitleState {
 
 const FLD =
   "w-full max-w-md rounded-[var(--r-sm)] border border-line " +
-  "bg-[var(--brand-bg-input)] px-2 py-1 text-sm text-ink";
+  "bg-[var(--compat-bg-input)] px-2 py-1 text-sm text-ink";
 
 export function TitleRow() {
   const { dict, locale } = useI18n();

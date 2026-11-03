@@ -13,28 +13,29 @@ export interface CapsulePrize {
   payout: number;
 }
 
-/** 穹顶里装饰用的扭蛋：固定散点 + 配色，纯视觉、不出货 */
+/** 穹顶里装饰用的扭蛋：固定散点 + 配色，纯视觉、不出货。
+ *  P2-5：色值收编 base.css --mood-egg-* / --mood-tier-*（氛围色口径①）。 */
 const DOME_EGGS: { x: number; y: number; c: string }[] = [
-  { x: 24, y: 70, c: "#ff8a63" },
-  { x: 60, y: 44, c: "#5aa9ff" },
-  { x: 96, y: 66, c: "#5ad0a0" },
-  { x: 130, y: 40, c: "#e0a13a" },
-  { x: 152, y: 78, c: "#ef6ab0" },
-  { x: 40, y: 92, c: "#a06bf0" },
-  { x: 84, y: 92, c: "#7d8698" },
-  { x: 118, y: 92, c: "#ff8a63" },
-  { x: 12, y: 40, c: "#5ad0a0" },
+  { x: 24, y: 70, c: "var(--mood-egg-coral)" },
+  { x: 60, y: 44, c: "var(--mood-tier-blue)" },
+  { x: 96, y: 66, c: "var(--mood-egg-mint)" },
+  { x: 130, y: 40, c: "var(--mood-egg-amber)" },
+  { x: 152, y: 78, c: "var(--mood-egg-pink)" },
+  { x: 40, y: 92, c: "var(--mood-tier-violet)" },
+  { x: 84, y: 92, c: "var(--mood-egg-gray)" },
+  { x: 118, y: 92, c: "var(--mood-egg-coral)" },
+  { x: 12, y: 40, c: "var(--mood-egg-mint)" },
 ];
 
 /** 档位配色：大奖金、高档紫、中档蓝、小档灰（与九宫格同一套稀有度语义） */
 function tierColor(v: number, tk: number): string {
-  if (v >= tk * 10) return "#e9b94e";
-  if (v >= tk * 3) return "#a06bf0";
-  if (v >= tk) return "#5aa9ff";
-  return "#8b93a6";
+  if (v >= tk * 10) return "var(--mood-tier-gold)";
+  if (v >= tk * 3) return "var(--mood-tier-violet)";
+  if (v >= tk) return "var(--mood-tier-blue)";
+  return "var(--mood-tier-gray)";
 }
 
-/** 蛋面高光 + 底色合成（抽成函数，避免超宽行） */
+/** 蛋面高光 + 底色合成（抽成函数，避免超宽行；hi 是固定白色半透明高光） */
 function eggBg(hi: string, c: string): string {
   return `radial-gradient(circle at 36% 28%, ${hi}, transparent 46%), ${c}`;
 }
@@ -102,7 +103,7 @@ export function CapsuleMachine({
   const picked = resultIndex !== null ? prizes[resultIndex] : undefined;
   const dropColor = picked
     ? tierColor(picked.value ?? picked.payout * ticket, ticket)
-    : "#8b93a6";
+    : "var(--mood-tier-gray)";
 
   return (
     <div className="cap-rig">

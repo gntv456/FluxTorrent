@@ -9,18 +9,20 @@ import {
   THEME_STORAGE_KEY,
   parseChoice,
   resolveTheme,
+  themeNameKey,
   type ThemeChoice,
   type ThemeId,
 } from "@/lib/themes";
+import { catIconSetForTheme } from "@/lib/cat-icon-sets";
 
 /** 主题切换（客户端）：读写 <html data-theme> + localStorage。
  *  初值由 layout 里的 no-flash 内联脚本在首绘前设定（localStorage >
  *  系统偏好），本组件挂载后同步当前值。
  *
- *  W-42 注册表制：档位从二值 toggle 改三选循环
- *  （亮 → 暗 → 跟随系统 → 亮），主题清单/浏览器界面色唯一真源在
- *  lib/themes.ts（THEMES 注册表），本组件只管状态机与 UI；
- *  显示名走 i18n（themeLight/themeDark/themeAuto 三语）。
+ *  W-42 注册表制：档位循环（…THEME_IDS → auto → 回到首项），
+ *  主题清单/浏览器界面色唯一真源在 lib/themes.ts（THEMES 注册表），
+ *  本组件只管状态机与 UI；显示名走 i18n，键名由 themeNameKey(id)
+ *  推导（themeBrand/themeBrandNight…），auto 固定 themeAuto。
  *  选 auto 时 data-theme 仍写解析后的具体主题（CSS 不需要认识
  *  "auto"），并监听系统偏好变化实时重解析。
  *  切换瞬间挂 .theme-anim 做约 320ms 的颜色过渡，并同步 PWA
@@ -46,6 +48,29 @@ function persist(choice: ThemeChoice) {
   }
 }
 
+/** 分类图标集按需预取：切换主题时 CatIcon 换目录（aurora ⇄ shanhaijing），
+ *  不预取会在切换瞬间闪「加载失败回退块」。触发时机=用户**悬停/聚焦**
+ *  切换按钮（已表露切换意图），且只预取**当前页面上已渲染**的那几枚
+ *  （绝不无条件预取两套全量）；本 Set 防同一 URL 重复插 <link>。 */
+const prefetchedIconUrls = new Set<string>();
+function prefetchVisibleCatIcons(nextTheme: string) {
+  if (!nextTheme || nextTheme === document.documentElement.dataset.theme)
+    return;
+  const set = catIconSetForTheme(nextTheme);
+  document
+    .querySelectorAll<HTMLImageElement>('img[src*="/cat-icons/"]')
+    .forEach((img) => {
+      const u = img.src.replace(/\/cat-icons\/[^/]+\//, `/cat-icons/${set}/`);
+      if (u === img.src || prefetchedIconUrls.has(u)) return;
+      prefetchedIconUrls.add(u);
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.as = "image";
+      link.href = u;
+      document.head.appendChild(link);
+    });
+}
+
 export function ThemeToggle({
   className = "",
   label,
@@ -61,7 +86,7 @@ export function ThemeToggle({
     const cur = document.documentElement.dataset.theme;
     const saved = parseChoice(localStorage.getItem(THEME_STORAGE_KEY));
     // 有具体主题标记且存的就是非 auto 档 → 保留；否则尊重 auto
-    if (saved !== "auto" && (cur === "brand" || cur === "brand-night")) {
+    if (saved !== "auto" && THEME_IDS.includes(cur ?? "")) {
       setChoice(saved);
     } else {
       setChoice("auto");
@@ -96,24 +121,37 @@ export function ThemeToggle({
     persist(next);
   }, [choice]);
 
-  // 档位 → 图标/文案（显示名走 i18n，注册表不含文案）
-  const names: Record<ThemeChoice, string> = {
-    brand: dict.common.themeLight,
-    "brand-night": dict.common.themeDark,
-    auto: dict.common.themeAuto,
-  };
+  // 档位 → 图标/文案（显示名走 i18n，注册表不含文案；键名 themeNameKey 推导）
+  const dictCommon = dict.common as Record<string, string>;
+  const names: Record<ThemeChoice, string> = Object.fromEntries([
+    ...THEME_IDS.map((id) => [id, dictCommon[themeNameKey(id)] ?? id]),
+    ["auto", dict.common.themeAuto],
+  ]);
   const icon =
-    choice === "brand-night" ? "moon" : choice === "auto" ? "auto" : "sun";
+    choice === "auto"
+      ? "auto"
+      : THEMES[choice]?.scheme === "dark"
+        ? "moon"
+        : "sun";
   const full = `${label}：${names[choice]}（${dict.common.themeNext}）`;
+
+  // 悬停/聚焦 = 切换意图：预取「下一档」主题对应的当前页可见分类图标
+  const primeNext = useCallback(() => {
+    const order: ThemeChoice[] = [...THEME_IDS, "auto"];
+    const next = order[(order.indexOf(choice) + 1) % order.length];
+    prefetchVisibleCatIcons(resolveTheme(next));
+  }, [choice]);
 
   return (
     <button
       type="button"
       onClick={cycle}
+      onMouseEnter={primeNext}
+      onFocus={primeNext}
       aria-label={full}
       title={full}
       suppressHydrationWarning
-      className={`flex h-9 min-h-[44px] w-9 items-center justify-center rounded-[10px] border border-line bg-[var(--surface-raised)] text-base transition-colors hover:border-[var(--brand-orange)] hover:text-[var(--brand-orange)] ${className}`}
+      className={`flex h-9 min-h-[44px] w-9 items-center justify-center rounded-[10px] border border-line bg-[var(--surface-raised)] text-base transition-colors hover:border-[var(--compat-orange)] hover:text-[var(--compat-orange)] ${className}`}
     >
       {/* mounted 前不渲染图标，避免 SSR/客户端不一致 */}
       {mounted ? (

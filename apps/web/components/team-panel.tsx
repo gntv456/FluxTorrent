@@ -184,7 +184,7 @@ export function TeamPanel() {
                         type="button"
                         disabled={busy !== null}
                         onClick={() => join(row.team_id)}
-                        className="min-h-[32px] rounded-full border border-[var(--brand-orange-dark)] px-3 text-xs font-bold text-[var(--brand-orange-dark)] disabled:opacity-50"
+                        className="min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
                       >
                         {t.joinBtn}
                       </button>

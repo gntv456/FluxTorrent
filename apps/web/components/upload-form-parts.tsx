@@ -29,4 +29,4 @@ export function FormRow({
 }
 
 export const fieldCls =
-  "min-h-10 w-full rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--brand-orange)]";
+  "min-h-10 w-full rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--compat-orange)]";

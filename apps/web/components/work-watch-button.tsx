@@ -10,7 +10,7 @@ import { useI18n } from "@/i18n/client";
 const BTN =
   "mt-2 w-full rounded-[var(--r-sm)] border border-line px-3 py-2 " +
   "text-xs font-bold text-ink transition hover:border-" +
-  "[var(--brand-orange)] hover:text-[var(--brand-orange)] " +
+  "[var(--compat-orange)] hover:text-[var(--compat-orange)] " +
   "disabled:opacity-60";
 
 export function WorkWatchButton({

@@ -11,12 +11,16 @@ import type {
   TorrentsSP,
 } from "./torrents-utils";
 import { withoutCursor } from "./torrents-utils";
+import { CatIcon } from "@/components/cat-icon";
 
 /** 高级分组共享的渲染上下文（由搜索盒传入） */
 export interface AdvGroupsCtx {
   dict: Dict;
   sp: TorrentsSP;
   categories: { id: number; label: string }[];
+  /** 分类图标键 / 分类色（分类 chip 图标位；可选，缺省纯文本 chip） */
+  catIcons?: Record<number, string>;
+  catColors?: Record<number, string>;
   tags: { id: number; name: string; kind: string }[];
   /** 平行数组（0160 P2）：与 tags 下标对齐 'attribute'|'content' */
   tagGroups?: string[];
@@ -26,17 +30,20 @@ export interface AdvGroupsCtx {
   withParam: (sp: TorrentsSP, key: string, value: string | undefined) => string;
 }
 
-/** 选项 chips（checkbox 多选 / radio 单选共用渲染） */
+/** 选项 chips（checkbox 多选 / radio 单选共用渲染）；
+ *  icon 可选：实测 chip 内高 24px，图标给到 22px 不破行高（任务①实测定案） */
 export function chipLabel(
   name: string,
   value: string,
   text: string,
   checked: boolean,
   type: "checkbox" | "radio" = "checkbox",
+  icon?: React.ReactNode,
 ) {
   return (
     <label key={`${name}-${value}`} className="tsb-chip">
       <input type={type} name={name} value={value} defaultChecked={checked} />
+      {icon}
       <span>{text}</span>
     </label>
   );
@@ -81,7 +88,8 @@ export function rangeInputs(
 }
 
 export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
-  const { dict, sp, categories, selectedCats, withParam } = ctx;
+  const { dict, sp, categories, catIcons, catColors, selectedCats, withParam } =
+    ctx;
   const t2 = dict.torrents2;
   return (
     <>
@@ -109,6 +117,16 @@ export function TorrentsAdvGroups(ctx: AdvGroupsCtx) {
                   String(c.id),
                   c.label,
                   selectedCats.has(c.id),
+                  "checkbox",
+                  // 图标装饰（chip 文本已带分类名，aria-hidden）；
+                  // 选中态 active 描边环 + 既有底色/边框态双重反馈
+                  <CatIcon
+                    iconKey={catIcons?.[c.id] ?? null}
+                    name={c.label}
+                    color={catColors?.[c.id]}
+                    size={22}
+                    active={selectedCats.has(c.id)}
+                  />,
                 ),
               )}
             </div>

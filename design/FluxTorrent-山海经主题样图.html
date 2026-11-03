@@ -26,7 +26,10 @@
   --jin-bright:#f0d795;    /* 金箔 */
   --paper:#ece4cf;         /* 宣纸·主文本 */
   --paper-dim:#b7c0ad;     /* 次文本 */
-  --faint:#7d8b7c;         /* 弱文本 */
+  --faint:#8b998a;         /* 弱文本（V1.1 提亮：玄底 ≈6.5:1，稳过 AA） */
+  --paper-ghost:#5a6659;   /* 幽·页脚版权等最弱信息 */
+  --focus-ring:var(--jin);        /* 焦点环归口：金环（对齐生产 --focus-ring 口径） */
+  --focus-ring-soft:rgba(211,161,63,.28); /* 焦点外发光 */
   --line:rgba(211,161,63,.26);
   --line-soft:rgba(211,161,63,.14);
   --glow-lv:rgba(63,174,143,.35);
@@ -47,6 +50,8 @@ body{
   overflow-x:hidden;
 }
 ::selection{background:var(--zhusha);color:var(--paper)}
+/* 全局焦点兜底：一切可聚焦元素键盘聚焦时现金环；组件级 :focus-visible 一律走 --focus-ring 令牌 */
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-track{background:var(--xuan)}
 ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#3d3423,#6b5527);border-radius:5px;border:2px solid var(--xuan)}
@@ -155,12 +160,12 @@ body{
   border-bottom:1px solid var(--line-soft);
 }
 .search{
-  flex:1;max-width:520px;display:flex;align-items:center;gap:10px;
+  flex:1;max-width:520px;min-width:0;display:flex;align-items:center;gap:10px;
   background:rgba(21,33,26,.9);border:1px solid var(--line);
   border-radius:999px;padding:8px 18px;transition:.25s;
 }
-.search:focus-within{border-color:var(--jin);box-shadow:0 0 0 3px rgba(211,161,63,.15),0 0 24px rgba(211,161,63,.12)}
-.search input{flex:1;background:none;border:none;outline:none;color:var(--paper);font-family:var(--font-body);font-size:14px}
+.search:focus-within{border-color:var(--jin);box-shadow:0 0 0 3px var(--focus-ring-soft),0 0 24px rgba(211,161,63,.12)}
+.search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--paper);font-family:var(--font-body);font-size:14px}
 .search input::placeholder{color:var(--faint);letter-spacing:1px}
 .search .s-ico{color:var(--jin);font-size:15px}
 .top-stats{display:flex;align-items:center;gap:14px;margin-left:auto}
@@ -210,7 +215,7 @@ body{
   border:1px solid rgba(211,161,63,.45);padding:4px 14px;border-radius:999px;background:rgba(10,15,13,.5)}
 .hero-tag::before{content:"";width:6px;height:6px;background:var(--zhusha);border-radius:1px;transform:rotate(45deg)}
 .hero-title{
-  font-family:var(--font-title);font-size:76px;line-height:1.1;margin:14px 0 6px;letter-spacing:6px;
+  font-family:var(--font-title);font-size:clamp(40px,9vw,76px);line-height:1.1;margin:14px 0 6px;letter-spacing:6px;
   background:linear-gradient(180deg,#f7ebc0 10%,var(--jin) 62%,#8a6420);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   text-shadow:0 8px 40px rgba(211,161,63,.15);
@@ -222,9 +227,16 @@ body{
   min-width:132px;padding:12px 18px;border-radius:var(--r-md);
   background:rgba(16,25,20,.72);backdrop-filter:blur(8px);
   border:1px solid rgba(63,174,143,.35);position:relative;overflow:hidden;
+  transition:transform .25s,border-color .25s,box-shadow .25s;
 }
 .jade::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
   background:linear-gradient(90deg,transparent,var(--shilv),transparent)}
+/* 玉质光泽：斜向微光带，hover 时掠过牌面（拟玉之温润反光） */
+.jade::after{content:"";position:absolute;top:-40%;left:-70%;width:55%;height:180%;
+  background:linear-gradient(105deg,transparent,rgba(236,228,207,.1),transparent);
+  transform:skewX(-18deg);transition:left .6s ease;pointer-events:none}
+.jade:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.4)}
+.jade:hover::after{left:130%}
 .jade b{display:block;font-family:var(--font-wei);font-size:23px;font-weight:400;color:var(--paper)}
 .jade b i{font-style:normal;font-size:12px;color:var(--shilv);margin-left:2px}
 .jade span{font-size:11px;letter-spacing:3px;color:var(--faint)}
@@ -245,8 +257,10 @@ body{
   flex:none;font-family:var(--font-title);font-size:15px;color:var(--paper);
   background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));
   padding:5px 10px;border-radius:5px;box-shadow:inset 0 0 0 1.5px rgba(236,228,207,.4);
-  transform:rotate(-2deg);letter-spacing:2px;
+  transform:rotate(-2deg);letter-spacing:2px;text-shadow:0 1px 0 rgba(0,0,0,.28);
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1);
 }
+.decree:hover .decree-seal{transform:rotate(0deg) scale(1.05)}
 .decree p{flex:1;font-size:14px;color:var(--paper)}
 .decree p b{color:var(--jin-bright);font-weight:600}
 .decree a{color:var(--shilv);text-decoration:none;border-bottom:1px dashed rgba(63,174,143,.5);font-size:13px;white-space:nowrap}
@@ -254,6 +268,12 @@ body{
 /* ===== 通用区块头：篆刻标题 + 云雷纹 ===== */
 .section{margin:34px 28px 0}
 .sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:18px}
+/* 序章印：每节一方朱印，卷册次第（对齐设计系统「印章斜置 -2°~-6°」） */
+.sec-seal{flex:none;align-self:center;width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-title);font-size:15px;color:var(--paper);border-radius:6px;
+  background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));transform:rotate(-3deg);
+  box-shadow:inset 0 0 0 1.5px rgba(236,228,207,.4),0 3px 10px rgba(0,0,0,.35);
+  text-shadow:0 1px 0 rgba(0,0,0,.28)}
 .sec-title{
   font-family:var(--font-title);font-size:33px;letter-spacing:4px;
   background:linear-gradient(180deg,var(--jin-bright),var(--jin));
@@ -292,8 +312,13 @@ body{
   background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));
   padding:3px 8px;border-radius:4px;transform:rotate(-6deg);
   box-shadow:inset 0 0 0 1.5px rgba(236,228,207,.45),0 3px 10px rgba(0,0,0,.4);
+  text-shadow:0 1px 0 rgba(0,0,0,.28); /* 白文压痕，拟印泥凹凸 */
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1);
 }
+/* 设计系统「印章 hover 回正放大（印泥回弹）」规约落到卡片上 */
+.spirit:hover .seal-stamp,.beast-card:hover .seal-stamp{transform:rotate(0deg) scale(1.07)}
 .seal-stamp.gold{background:linear-gradient(145deg,#a87e22,#7d5a12);}
+.seal-stamp.qing{background:linear-gradient(145deg,var(--shiqing),#1d5563)}
 
 /* ===== ⑥ 万兽谱 · 种子区 ===== */
 .bestiary-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -311,6 +336,7 @@ body{
   font-family:var(--font-body);letter-spacing:2px;transition:.2s;
 }
 .view-toggle button.on{background:linear-gradient(135deg,rgba(211,161,63,.28),rgba(211,161,63,.12));color:var(--jin-bright)}
+.view-toggle button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-2px} /* 内偏移保胶囊形 */
 
 /* —— 图鉴视图：异兽卡 —— */
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px}
@@ -339,17 +365,20 @@ body{
   font-size:10.5px;letter-spacing:2px;padding:2px 34px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
 
 /* —— 经纬视图：竹简表 —— */
-.slip-table{display:none;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;
-  background:var(--mo)}
+/* V1.1：竹简窄屏整表横滑（卷轴心智）——表头与数据行同一滚动容器，天然同步 */
+.slip-table{display:none;border:1px solid var(--line);border-radius:var(--r-md);
+  overflow-x:auto;overflow-y:hidden;background:var(--mo);scrollbar-width:thin}
 .slip-table.show{display:block}
+.slip-table:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
 .cards.hide{display:none}
 .slip-head,.slip-row{
   display:grid;grid-template-columns:64px 1fr 92px 70px 70px 70px 110px;
-  align-items:center;gap:10px;padding:0 18px;
+  align-items:center;gap:10px;padding:0 18px;min-width:600px;
 }
 .slip-head{
   height:44px;font-family:var(--font-wei);font-size:12px;letter-spacing:3px;color:var(--jin);
   background:linear-gradient(180deg,#16241c,#121d16);border-bottom:1px solid var(--line);
+  box-shadow:0 2px 0 rgba(211,161,63,.08); /* 表头下双线，简册压边 */
 }
 .slip-row{
   min-height:58px;padding-top:8px;padding-bottom:8px;border-bottom:1px solid rgba(211,161,63,.08);
@@ -359,6 +388,7 @@ body{
 .slip-row::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:2px;
   background:linear-gradient(180deg,transparent,rgba(211,161,63,.4),transparent)}
 .slip-row:hover{background-color:rgba(63,174,143,.07)}
+.slip-row:hover::before{background:linear-gradient(180deg,transparent,var(--jin),transparent)} /* hover 金编绳亮显 */
 .slip-row:last-child{border-bottom:none}
 .slip-cat{font-size:11.5px;color:var(--shilv);border:1px solid rgba(63,174,143,.4);border-radius:4px;
   text-align:center;padding:2px 0;letter-spacing:1px}
@@ -366,7 +396,9 @@ body{
 .slip-title .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slip-title .t:hover{color:var(--jin-bright)}
 .mini-seal{flex:none;font-family:var(--font-title);font-size:11px;color:var(--paper);
-  background:var(--zhusha);border-radius:3px;padding:1px 6px;transform:rotate(-3deg);letter-spacing:1px}
+  background:var(--zhusha);border-radius:3px;padding:1px 6px;transform:rotate(-3deg);letter-spacing:1px;
+  text-shadow:0 1px 0 rgba(0,0,0,.28);transition:transform .18s cubic-bezier(.34,1.56,.64,1)}
+.slip-row:hover .mini-seal{transform:rotate(0deg)}
 .mini-seal.gold{background:#8a6a1c} .mini-seal.qing{background:var(--shiqing)}
 .slip-num{font-family:var(--font-wei);font-size:13px}
 .slip-num.up{color:var(--shilv)} .slip-num.dn{color:var(--zhusha)} .slip-num.ok{color:var(--jin)}
@@ -426,13 +458,89 @@ body{
 .forum-item a:hover{color:var(--jin-bright)}
 .forum-item .f-n{flex:none;font-size:11.5px;color:var(--faint)}
 
+/* ===== ⑦·补 百器演武 · 组件态（V1.2 新增） ===== */
+.wares-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.wrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.wrow + .wrow{margin-top:12px}
+.wcap{font-size:12px;color:var(--faint);letter-spacing:1px;margin-top:14px;line-height:1.7}
+.wcap b{color:var(--jin);font-weight:400}
+/* 钮 · 四档（对齐设计系统叁章「一屏一主钮」） */
+.wbtn{padding:8px 20px;border-radius:999px;font-size:13.5px;cursor:pointer;font-family:var(--font-body);
+  letter-spacing:1px;transition:all .22s;border:1px solid transparent}
+.wbtn.primary{background:linear-gradient(135deg,var(--shilv),var(--shilv-deep));color:#08120e;font-weight:600;
+  box-shadow:0 4px 16px rgba(63,174,143,.28)}
+.wbtn.primary:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.wbtn.seal{background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));color:var(--paper);
+  box-shadow:inset 0 0 0 1.5px rgba(236,228,207,.35),0 4px 14px rgba(208,68,42,.3)}
+.wbtn.seal:hover{filter:brightness(1.1)}
+.wbtn.gold{border-color:var(--jin);color:var(--jin-bright);background:rgba(211,161,63,.08)}
+.wbtn.gold:hover{background:rgba(211,161,63,.16)}
+.wbtn.ghost{border-color:var(--line-soft);color:var(--paper-dim);background:none}
+.wbtn.ghost:hover{border-color:var(--jin);color:var(--jin-bright)}
+.wbtn:disabled{opacity:.45;cursor:not-allowed;transform:none!important;filter:none!important}
+/* 引 · 表单态 */
+.wfield{margin-bottom:14px}
+.wfield label{display:block;font-size:12px;letter-spacing:2px;color:var(--faint);margin-bottom:6px}
+.winput{width:100%;background:rgba(21,33,26,.9);border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:9px 14px;color:var(--paper);font-family:var(--font-body);font-size:14px;outline:none;transition:.25s}
+.winput::placeholder{color:var(--faint)}
+.winput:focus{border-color:var(--jin);box-shadow:0 0 0 3px var(--focus-ring-soft)}
+.winput.err{border-color:var(--zhusha);color:#e88d7a}
+.winput:disabled{opacity:.5;cursor:not-allowed;border-style:dashed}
+.werr{display:block;font-size:11.5px;color:var(--zhusha);margin-top:5px}
+.wswitch-row{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--paper-dim)}
+.wswitch{width:44px;height:24px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid var(--line-soft);
+  position:relative;cursor:pointer;transition:.25s;flex:none}
+.wswitch i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+  background:var(--paper-dim);transition:all .25s cubic-bezier(.34,1.56,.64,1)}
+.wswitch.on{background:rgba(63,174,143,.3);border-color:var(--shilv)}
+.wswitch.on i{left:22px;background:var(--shilv)}
+/* 幕 · 弹窗 */
+.dlg-scrim{position:fixed;inset:0;z-index:80;background:rgba(4,8,6,.68);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.dlg-scrim[hidden]{display:none}
+.dlg{width:min(440px,100%);background:linear-gradient(180deg,var(--ka-2),var(--ka));
+  border:1px solid var(--line);border-radius:var(--r-lg);padding:30px 30px 26px;position:relative;
+  box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 40px rgba(211,161,63,.08);
+  animation:dlgIn .32s cubic-bezier(.22,1,.36,1)}
+@keyframes dlgIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.dlg-seal{position:absolute;top:-16px;right:22px;width:44px;height:44px;border-radius:8px;
+  font-family:var(--font-title);font-size:19px;color:var(--paper);display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,var(--zhusha),var(--zhusha-deep));transform:rotate(-4deg);
+  box-shadow:inset 0 0 0 2px rgba(236,228,207,.4),0 6px 16px rgba(0,0,0,.45);text-shadow:0 1px 0 rgba(0,0,0,.28)}
+.dlg h3{font-family:var(--font-title);font-size:24px;letter-spacing:3px;margin-bottom:10px;
+  background:linear-gradient(180deg,var(--jin-bright),var(--jin));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.dlg p{font-size:13.5px;color:var(--paper-dim);line-height:1.8}
+.dlg p b{color:var(--jin-bright);font-weight:600}
+.dlg-acts{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+/* 讯 · Toast（仙鹤传书） */
+.toast-rail{position:fixed;top:76px;right:22px;z-index:90;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.wtoast{pointer-events:auto;min-width:240px;max-width:320px;padding:11px 16px 11px 14px;border-radius:var(--r-md);
+  background:rgba(16,25,20,.95);border:1px solid rgba(63,174,143,.4);border-left:3px solid var(--shilv);
+  font-size:13px;color:var(--paper);box-shadow:0 12px 32px rgba(0,0,0,.5);
+  animation:toastIn .3s cubic-bezier(.22,1,.36,1)}
+.wtoast.warn{border-color:rgba(211,161,63,.4);border-left-color:var(--jin)}
+.wtoast.bad{border-color:rgba(208,68,42,.45);border-left-color:var(--zhusha)}
+.wtoast.out{animation:toastOut .3s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateX(24px)}}
+/* 空态 */
+.wempty{border:1px dashed var(--line);border-radius:var(--r-md);padding:26px 20px;text-align:center}
+.wempty .e-seal{width:46px;height:46px;margin:0 auto 10px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-title);font-size:20px;color:var(--paper-dim);
+  border:2px dashed var(--line);transform:rotate(-4deg)}
+.wempty p{font-size:14px;color:var(--paper)}
+.wempty small{font-size:12px;color:var(--faint)}
+.wempty small a{color:var(--shilv);text-decoration:none;border-bottom:1px dashed rgba(63,174,143,.5)}
+
 /* ===== ⑧ 页脚 ===== */
 .footer{margin:46px 28px 0;padding:30px 0 38px;border-top:1px solid var(--line-soft);
   display:flex;flex-direction:column;align-items:center;gap:14px;position:relative}
 .footer-links{display:flex;gap:26px;flex-wrap:wrap;justify-content:center}
 .footer-links a{color:var(--faint);text-decoration:none;font-size:12.5px;letter-spacing:2px;transition:.2s}
 .footer-links a:hover{color:var(--jin-bright)}
-.footer p{font-size:11.5px;color:#5a6659;letter-spacing:1px}
+.footer p{font-size:11.5px;color:var(--paper-ghost);letter-spacing:1px}
 .footer-hex{opacity:.5}
 
 /* ===== 样图角标 ===== */
@@ -473,17 +581,96 @@ body{
   *{animation:none!important}
 }
 
-/* ===== 窄屏降级：图鉴收成符箓轨 ===== */
+/* ===== 移动帧组件（V1.1）：☰ 抽屉钮 / 遮罩 / 底部 TabBar —— 对齐生产 nav-drawer + 移动 TabBar ===== */
+.menu-btn{display:none;flex:none;width:38px;height:38px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:rgba(21,33,26,.9);color:var(--jin-bright);
+  font-size:17px;cursor:pointer;align-items:center;justify-content:center;font-family:var(--font-body)}
+.menu-btn:hover{border-color:var(--jin)}
+.scrim{position:fixed;inset:0;z-index:49;background:rgba(4,8,6,.62);opacity:0;pointer-events:none;transition:opacity .3s}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
+  background:rgba(13,20,16,.94);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar a{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  color:var(--faint);text-decoration:none;font-size:10px;letter-spacing:1px;padding:5px 0}
+.tabbar a .ti{font-size:18px;line-height:1.15}
+.tabbar a.on{color:var(--jin-bright)}
+.tabbar a .tb-dot{position:absolute;top:1px;right:calc(50% - 21px);min-width:15px;height:15px;border-radius:8px;
+  background:var(--zhusha);color:var(--paper);font-size:9.5px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* ===== 断点一 ≤1180px：图鉴收成符箓图标轨 ===== */
 @media (max-width:1180px){
   :root{--nav-w:74px}
   .atlas-brand .brand-txt,.atlas-gtitle .gt-txt,.atlas-gtitle .gline,.atlas-item .lb,.atlas-foot{display:none}
   .atlas-item{justify-content:center;padding:9px 0}
   .atlas-item .ico{font-size:18px;width:auto}
   .atlas-gtitle{justify-content:center}
+  .atlas-gtitle .gcaret{display:none} /* 图标轨下单列图标无折叠必要，去掉孤伶 caret */
   .atlas-items{grid-template-columns:1fr}
   .brand-seal{width:44px;height:44px;font-size:18px}
   .top-stats .tstat{display:none}
-  .hero-title{font-size:52px}
+  .hero-vertical{display:none} /* 设计系统贰章铁律：竖排 <1180px 自动隐藏 */
+}
+
+/* ===== 断点二 ≤1024px：紧凑 ===== */
+@media (max-width:1024px){
+  .topbar{padding:10px 18px;gap:12px}
+  .hero,.section,.decree,.footer,.impl{margin-left:20px;margin-right:20px}
+  .hero-inner{padding:36px 34px 28px}
+}
+
+/* ===== 断点三 ≤768px：移动帧 —— 图鉴变抽屉 + 底部 TabBar（对齐生产结构） ===== */
+@media (max-width:768px){
+  :root{--nav-w:0px}
+  .atlas{width:min(82vw,300px);transform:translateX(-105%);
+    transition:transform .32s cubic-bezier(.22,1,.36,1)}
+  .atlas.open{transform:none}
+  /* 抽屉内恢复完整文字（覆盖图标轨的隐藏规则） */
+  .atlas-brand .brand-txt{display:block}
+  .atlas-gtitle .gt-txt{display:inline}
+  .atlas-gtitle .gline{display:block}
+  .atlas-item .lb{display:inline}
+  .atlas-foot{display:flex}
+  .atlas-item{justify-content:flex-start;padding:7px 9px}
+  .atlas-gtitle{justify-content:flex-start}
+  .atlas-items{grid-template-columns:1fr 1fr}
+  .brand-seal{width:52px;height:52px;font-size:22px}
+  .scrim.show{opacity:1;pointer-events:auto}
+  .menu-btn{display:flex}
+  .tabbar{display:flex}
+  .topbar{padding:9px 12px;gap:10px}
+  .top-stats{display:none}
+  .hero{margin:14px 12px 0;min-height:340px}
+  .hero-inner{padding:28px 22px 22px}
+  .hero-tag{font-size:10.5px;letter-spacing:2px;padding:3px 10px}
+  .hero-slogan{font-size:14px;letter-spacing:1.5px}
+  .jade-stats{gap:10px;margin-top:20px}
+  .jade{min-width:calc(50% - 5px);flex:1;padding:10px 12px}
+  .jade b{font-size:19px}
+  .decree{margin:14px 12px 0;flex-wrap:wrap;gap:10px;padding:12px 16px}
+  .section{margin:26px 12px 0}
+  .sec-title{font-size:27px}
+  .footer{margin:36px 12px 0}
+  .impl{margin:28px 12px 96px} /* impl 是页末元素，让开固定底栏 TabBar（V1.2 修：原先只垫了 footer，impl 被遮） */
+  .toast-rail{top:auto;bottom:86px;right:12px;left:12px;align-items:stretch} /* Toast 避让底部 TabBar */
+  .wtoast{min-width:0;max-width:none}
+  .mock-badge{bottom:86px;right:12px;padding:6px 12px;font-size:11px}
+}
+
+/* ===== 断点四 ≤640px：单栏收敛 ===== */
+@media (max-width:640px){
+  .sec-head{flex-wrap:wrap;gap:8px 12px}
+  .sec-line{display:none}
+  .top-btn{display:none} /* 点卯/传讯已由底部 TabBar 承接 */
+  .impl-table{display:block;overflow-x:auto}
+  .impl-table tbody{display:table;width:100%;min-width:520px}
+}
+
+/* ===== 断点五 ≤400px（含 375）：收尾 ===== */
+@media (max-width:400px){
+  .top-user>div{display:none} /* 只留头像 */
+  .hero-title{letter-spacing:3px}
+  .jade b{font-size:17px}
 }
 </style>
 </head>
@@ -499,7 +686,7 @@ body{
 </div>
 
 <!-- ══════════ ① 山海图鉴 · 导航 ══════════ -->
-<aside class="atlas">
+<aside class="atlas" id="atlasNav" aria-label="山海图鉴导航">
   <div class="atlas-brand">
     <div class="brand-seal">山海</div>
     <div class="brand-txt">
@@ -598,11 +785,13 @@ body{
     <div class="theme-switch"><span>包子</span><span>潮汐</span><span class="on">山海经</span></div>
   </div>
 </aside>
+<div class="scrim" id="scrim" aria-hidden="true"></div>
 
 <div class="main">
 
   <!-- ══════════ ② 顶栏 ══════════ -->
   <header class="topbar">
+    <button class="menu-btn" id="menuBtn" aria-label="打开图鉴导航" aria-expanded="false" aria-controls="atlasNav">☰</button>
     <div class="search">
       <span class="s-ico">⌕</span>
       <input placeholder="寻踪觅宝：搜资源 / 求种 / 字幕 / 艺人…" />
@@ -654,6 +843,7 @@ body{
   <!-- ══════════ ⑤ 万灵图卷 · 海报墙 ══════════ -->
   <section class="section rise">
     <div class="sec-head">
+      <span class="sec-seal">壹</span>
       <h2 class="sec-title">万灵图卷</h2>
       <span class="sec-en">Latest Scrolls</span>
       <div class="sec-line"></div>
@@ -700,6 +890,7 @@ body{
   <!-- ══════════ ⑥ 万兽谱 · 种子区 ══════════ -->
   <section class="section rise">
     <div class="sec-head">
+      <span class="sec-seal">贰</span>
       <h2 class="sec-title">万兽谱</h2>
       <span class="sec-en">Bestiary of Torrents</span>
       <div class="sec-line"></div>
@@ -714,9 +905,9 @@ body{
       <button class="chip">动画</button>
       <button class="chip">音乐</button>
       <button class="chip">典籍</button>
-      <div class="view-toggle">
-        <button class="on" id="vCard">图鉴</button>
-        <button id="vSlip">经纬</button>
+      <div class="view-toggle" role="group" aria-label="万兽谱视图切换">
+        <button class="on" id="vCard" aria-pressed="true">图鉴</button>
+        <button id="vSlip" aria-pressed="false">经纬</button>
       </div>
     </div>
 
@@ -755,7 +946,7 @@ body{
 
       <div class="beast-card">
         <div class="bc-poster">
-          <div class="bc-seals"><span class="seal-stamp qing" style="background:linear-gradient(145deg,#2e7a8c,#1d5563)">热</span></div>
+          <div class="bc-seals"><span class="seal-stamp qing">热</span></div>
           <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Sci-fi%20movie%20poster%20art%2C%20astronaut%20facing%20a%20giant%20Chinese%20dragon%20in%20deep%20space%2C%20stars%20and%20nebula%2C%20cinematic%20lighting%2C%20no%20text&image_size=portrait_4_3" alt="">
         </div>
         <div class="bc-body">
@@ -814,7 +1005,7 @@ body{
     </div>
 
     <!-- 经纬视图（竹简） -->
-    <div class="slip-table" id="slipView">
+    <div class="slip-table" id="slipView" tabindex="0" role="region" aria-label="种子经纬表（窄屏可横向滑动）">
       <div class="slip-head"><span>门类</span><span>名号</span><span>体量</span><span>做种</span><span>下载</span><span>完成</span><span>入谱时辰</span></div>
       <div class="slip-row">
         <span class="slip-cat">影视</span>
@@ -857,6 +1048,12 @@ body{
 
   <!-- ══════════ ⑦ 四象：榜 / 卯 / 历 / 道 ══════════ -->
   <section class="section rise">
+    <div class="sec-head">
+      <span class="sec-seal">叁</span>
+      <h2 class="sec-title">四象杂览</h2>
+      <span class="sec-en">Four Boards</span>
+      <div class="sec-line"></div>
+    </div>
     <div class="quad">
 
       <div class="panel">
@@ -918,6 +1115,65 @@ body{
     </div>
   </section>
 
+  <!-- ══════════ ⑦·补 百器演武 · 组件态（V1.2 新增，对齐设计系统叁章） ══════════ -->
+  <section class="section rise" id="wares">
+    <div class="sec-head">
+      <span class="sec-seal">肆</span>
+      <h2 class="sec-title">百器演武</h2>
+      <span class="sec-en">Component States · 可点可试</span>
+      <div class="sec-line"></div>
+    </div>
+    <div class="wares-grid">
+
+      <div class="panel">
+        <h3>钮 <small>四档 · 一屏一主钮</small></h3>
+        <div class="wrow">
+          <button class="wbtn primary">立即下载</button>
+          <button class="wbtn seal">献宝发布</button>
+          <button class="wbtn gold">查看全卷</button>
+          <button class="wbtn ghost">稍后再说</button>
+          <button class="wbtn primary" disabled>已领完</button>
+        </div>
+        <p class="wcap"><b>规</b>：石绿主钮一屏一枚；朱砂钮仅承「不可逆」之举（发布 / 删除确认），取落印无悔之意；金边次级、幽灵最弱。</p>
+      </div>
+
+      <div class="panel">
+        <h3>引 <small>表单态 · 点一点</small></h3>
+        <div class="wfield"><label>名号 · 默认 / 聚焦金环</label><input class="winput" placeholder="例：昆仑墟 · 觉醒 2025 4K REMUX"></div>
+        <div class="wfield"><label>密令 · 错误态</label><input class="winput err" value="两次密令不符"><span class="werr">⚠ 两次输入的密令不一致</span></div>
+        <div class="wfield"><label>封号 · 禁用态</label><input class="winput" disabled value="封禁中 · 不可改"></div>
+        <div class="wswitch-row">
+          <div class="wswitch on" role="switch" aria-checked="true" tabindex="0"><i></i></div> 灵讯推送
+          <div class="wswitch" role="switch" aria-checked="false" tabindex="0"><i></i></div> 隐修模式
+        </div>
+        <p class="wcap"><b>规</b>：输入框聚焦时的光晕是主题金色，不用浏览器默认蓝；出错用朱砂描边、浅朱文字，看得清也读得清；开关打开呈石绿，带一点回弹手感。</p>
+      </div>
+
+      <div class="panel">
+        <h3>幕 <small>弹窗 · 真实可开合</small></h3>
+        <p style="font-size:13.5px;color:var(--paper-dim);line-height:1.8">发布、删档、清退护种——凡「落印无悔」之举皆经此幕二度确认。弹窗弹出时背景压暗、右上角悬一方朱印；点空白处或按 Esc 可退，关闭后焦点回到打开它的那个按钮。</p>
+        <div class="wrow" style="margin-top:16px">
+          <button class="wbtn seal" id="openDlg">开启「落印无悔」</button>
+        </div>
+        <p class="wcap"><b>规</b>：一幕一事；主行动钮居右且用朱砂；点空白处与按 Esc 都能关闭；打开期间 Tab 键只在弹窗内循环，不会跑到后面的页面；动画不超过 0.3 秒，系统开启「减弱动态效果」时自动免去动画。</p>
+      </div>
+
+      <div class="panel">
+        <h3>讯 <small>Toast 与空态</small></h3>
+        <div class="wrow">
+          <button class="wbtn gold" id="sendToast">放飞仙鹤 · 传书一封</button>
+        </div>
+        <div class="wempty" style="margin-top:16px">
+          <div class="e-seal">空</div>
+          <p>此卷尚无收录</p>
+          <small>成为第一个献宝之人 → <a href="#">前往发布</a></small>
+        </div>
+        <p class="wcap"><b>规</b>：提示气泡（Toast）左缘色条三色——绿报成、金报警、朱报败，3.5 秒自动消失；空状态必给一条可点的下一步出路，不让页面空站着。</p>
+      </div>
+
+    </div>
+  </section>
+
   <!-- ══════════ ⑧ 页脚 ══════════ -->
   <footer class="footer">
     <svg class="footer-hex" width="120" height="34" viewBox="0 0 120 34" aria-hidden="true">
@@ -930,7 +1186,7 @@ body{
     <div class="footer-links">
       <a href="#">站规</a><a href="#">FAQ</a><a href="#">Wiki</a><a href="#">联系管理组</a><a href="#">捐赠</a><a href="#">API</a><a href="#">RSS</a>
     </div>
-    <p>FluxTorrent · 山海经主题样图 V1 —— 观于山海，藏于万象 · 2026</p>
+    <p>FluxTorrent · 山海经主题样图 V1.2 —— 观于山海，藏于万象 · 2026（窄屏四档 + 移动帧 + 百器组件态修订）</p>
   </footer>
 
   <!-- ══════════ 落地说明 ══════════ -->
@@ -939,9 +1195,9 @@ body{
     <div class="impl-body">
       <h5>◈ 三步接入（现有机制原生支持，组件零改动）</h5>
       <ol class="impl-steps">
-        <li><span><code>lib/themes.ts</code> 注册表追加 <code>shanhaijing: { chrome: "#0a0f0d" }</code>；<code>resolveTheme()</code> 的 auto 深色分支可选指向它。</span></li>
+        <li><span><code>lib/themes.ts</code> 注册表追加 <code>shanhaijing: { chrome: "#0a0f0d", scheme: "dark" }</code>；scheme 已落注册表，auto 深色档经 <code>themeIdByScheme("dark")</code> 命中，无双真源。</span></li>
         <li><span>新建 <code>app/styles/theme-shanhaijing.css</code>，只写 <code>[data-theme="shanhaijing"]</code> 变量块（与 theme-tide.css 同法），挂到 globals.css @import 链末端。</span></li>
-        <li><span>i18n 三语补 <code>dict.common.themeShanhaijing</code>（中：山海经 / 英：Mythica / 繁：山海經），门禁自动校验。</span></li>
+        <li><span>i18n 三语补 <code>themeShanhaijing</code>（中：山海经 / 英：Mythica / 繁：山海經）；键名由 <code>themeNameKey(id)</code> 推导，<code>tests/theme-registry.test.ts</code> 门禁三语齐全。</span></li>
       </ol>
       <h5>◈ 令牌映射（核心 12 枚，其余派生层照潮汐版补齐）</h5>
       <table class="impl-table">
@@ -957,28 +1213,75 @@ body{
       </table>
       <h5>◈ 本样图超出令牌层的部分（需结构 CSS，同样走 data-theme 作用域，不动组件）</h5>
       <ol class="impl-steps">
-        <li><span>左侧「图鉴」竖排导航：在 layout.css 以 <code>[data-theme="shanhaijing"] .main-menu</code> 改写为 fixed 侧栏，窄屏（&lt;1180px）收成符箓图标轨。</span></li>
+        <li><span>左侧「图鉴」竖排导航：在 layout.css 以 <code>[data-theme="shanhaijing"] .main-menu</code> 改写为 fixed 侧栏；768–1180px 收成符箓图标轨，≤768px 变抽屉（☰ 唤起）+ 底部 TabBar——三态本样图已实演（缩放窗口即可见），与生产 nav-drawer + 移动 TabBar 结构对齐。</span></li>
         <li><span>图鉴 / 经纬双视图：种子列表新增视图切换（通用功能，非主题专属），山海经主题下表格渲染为竹简皮肤。</span></li>
         <li><span>印章促销标、云雷纹分隔、金箔标题、竖排卷签：纯 CSS（伪元素 + writing-mode + background-clip），随主题变量生效。</span></li>
         <li><span>字体：Ma Shan Zheng（题字）+ Noto Serif SC（正文）自托管进 <code>public/fonts/</code>，沿用 fonts-tide.css 的 unicode-range 分片纪律。</span></li>
       </ol>
+      <h5>◈ 响应式断点（V1.1 实演，缩放窗口可见）</h5>
+      <p style="margin-top:4px">五档：≤1180px 图鉴收图标轨 · ≤1024px 紧凑边距 · ≤768px 移动帧（抽屉 + 底部 TabBar，顶栏修为收起）· ≤640px 单栏收敛（区块头换行、落地表可横滑）· ≤400px 收尾（用户只留头像）。竹简表固定轨宽不再顶破页面：整表 <code>overflow-x:auto</code> 横滑（卷轴心智），表头与数据行同一滚动容器天然同步；Hero 题字 <code>clamp(40px,9vw,76px)</code> 随宽缩放。</p>
       <h5>◈ 兼容与降级</h5>
-      <p style="margin-top:4px">• <code>prefers-reduced-motion</code>：关闭视差与入场动效（本样图已实现）。• 异兽配图作 CSS mask 水印，失败时静默消失不阻塞。• 移动端：侧栏默认收为图标轨，底部 TabBar（首页/搜索/发布/传讯/我的）保持不变，主题只换肤不改交互。</p>
+      <p style="margin-top:4px">• 系统若开启「减弱动态效果」，自动关闭视差与入场动画（已实现）。• 异兽配图以水印方式呈现，加载失败自动隐藏，不影响页面。• 移动端（≤768px）：侧栏收进抽屉（点 ☰ 打开，点空白处或 Esc 关闭），底部保留 TabBar（首页/搜索/献宝/传讯/我的），与正式版结构一致——换主题不改操作习惯。• 双视图切换钮支持键盘操作，键盘聚焦时显示金色光环。• 全站聚焦光环统一为金色，口径与正式版 base.css 一致，不会出现有的组件有光环、有的没有。• 「百器演武」节的按钮、输入框、开关、弹窗、提示气泡、空态均可真实点按：弹窗支持 Esc 与点空白处关闭，关闭后焦点回到打开它的按钮，打开期间 Tab 键只在弹窗内循环；提示气泡 3.5 秒自动消失，读屏软件也能听到内容。• 「换肤」与「结构改造」两份范围/工作量清单见《山海经 UI 设计系统》伍章。</p>
     </div>
   </details>
 
 </div>
 
-<div class="mock-badge">设计样图 · 山海经主题 V1</div>
+<!-- ══════════ 移动底栏（≤768px 显示，对齐生产移动 TabBar 结构） ══════════ -->
+<nav class="tabbar" aria-label="移动主导航">
+  <a class="on" href="#"><span class="ti">⛰</span>首页</a>
+  <a href="#"><span class="ti">⌕</span>搜索</a>
+  <a href="#"><span class="ti">🎁</span>献宝</a>
+  <a href="#"><span class="ti">✉</span>传讯<span class="tb-dot">3</span></a>
+  <a href="#"><span class="ti">🦌</span>我的</a>
+</nav>
+
+<div class="mock-badge">设计样图 · 山海经主题 V1.2</div>
+
+<!-- ══════════ 幕 · 弹窗（百器演武演示） ══════════ -->
+<div class="dlg-scrim" id="dlgScrim" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="dlg-seal" aria-hidden="true">印</div>
+    <h3 id="dlgTitle">落印无悔</h3>
+    <p>献宝一经发布即录入万兽谱，<b>护种之责自此相随</b>。灵力冻结 500 作押，存活三十日奉还。确认落印？</p>
+    <div class="dlg-acts">
+      <button class="wbtn ghost" id="dlgCancel">再想想</button>
+      <button class="wbtn seal" id="dlgOk">落印 · 发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 讯 · Toast 栖架（aria-live  polite） ══════════ -->
+<div class="toast-rail" id="toastRail" aria-live="polite"></div>
 
 <script>
-// 图鉴 / 经纬 视图切换
+// 图鉴 / 经纬 视图切换（aria-pressed 同步；原生 button 自带 Tab 可达与 Enter/Space 激活）
 const vCard = document.getElementById('vCard');
 const vSlip = document.getElementById('vSlip');
 const cardsView = document.getElementById('cardsView');
 const slipView = document.getElementById('slipView');
-vCard.onclick = () => { vCard.classList.add('on'); vSlip.classList.remove('on'); cardsView.classList.remove('hide'); slipView.classList.remove('show'); };
-vSlip.onclick = () => { vSlip.classList.add('on'); vCard.classList.remove('on'); slipView.classList.add('show'); cardsView.classList.add('hide'); };
+function setView(card){
+  vCard.classList.toggle('on', card); vSlip.classList.toggle('on', !card);
+  vCard.setAttribute('aria-pressed', String(card));
+  vSlip.setAttribute('aria-pressed', String(!card));
+  cardsView.classList.toggle('hide', !card);
+  slipView.classList.toggle('show', !card);
+}
+vCard.onclick = () => setView(true);
+vSlip.onclick = () => setView(false);
+
+// 移动抽屉（≤768px 生效；☰ 唤起 / 点遮罩 / Esc 关闭）
+const atlasNav = document.getElementById('atlasNav');
+const menuBtn = document.getElementById('menuBtn');
+const scrim = document.getElementById('scrim');
+function setDrawer(open){
+  atlasNav.classList.toggle('open', open);
+  scrim.classList.toggle('show', open);
+  menuBtn.setAttribute('aria-expanded', String(open));
+}
+menuBtn.onclick = () => setDrawer(!atlasNav.classList.contains('open'));
+scrim.onclick = () => setDrawer(false);
+addEventListener('keydown', e => { if (e.key === 'Escape') setDrawer(false); });
 
 // 图鉴分组折叠
 document.querySelectorAll('.atlas-gtitle').forEach(t => {
@@ -997,6 +1300,59 @@ if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     if (y < 700) bg.style.transform = `translateY(${y * .18}px)`;
   }, { passive: true });
 }
+
+// 百器演武 · 开关（role=switch：点击与 Space/Enter 皆可）
+document.querySelectorAll('.wswitch').forEach(sw => {
+  const flip = () => { sw.classList.toggle('on'); sw.setAttribute('aria-checked', String(sw.classList.contains('on'))); };
+  sw.onclick = flip;
+  sw.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); } };
+});
+
+// 幕 · 弹窗：遮罩 / Esc / 按钮关闭，焦点归还触发钮
+const dlgScrim = document.getElementById('dlgScrim');
+const openDlgBtn = document.getElementById('openDlg');
+function setDlg(open){
+  dlgScrim.hidden = !open;
+  if (open) document.getElementById('dlgCancel').focus();
+  else openDlgBtn.focus();
+}
+openDlgBtn.onclick = () => setDlg(true);
+document.getElementById('dlgCancel').onclick = () => setDlg(false);
+document.getElementById('dlgOk').onclick = () => { setDlg(false); pushToast('✓ 已落印 · 献宝入谱，护种开始计时'); };
+dlgScrim.onclick = e => { if (e.target === dlgScrim) setDlg(false); };
+// 焦点圈禁：弹窗开着时，Tab / Shift+Tab 只在弹窗内的可聚焦元素间循环，不会跑到弹窗外
+addEventListener('keydown', e => {
+  if (dlgScrim.hidden) return;
+  if (e.key === 'Escape') { setDlg(false); return; }
+  if (e.key !== 'Tab') return;
+  const items = [...dlgScrim.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+  if (!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  else if (!dlgScrim.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+});
+
+// 讯 · Toast：3.5s 自隐，三态轮放演示
+const toastRail = document.getElementById('toastRail');
+const TOASTS = [
+  ['', '✓ 点卯成功，灵力 +120'],
+  ['warn', '◈ 分享率逼近红线 1.20，注意涵养'],
+  ['bad', '✕ 传送失败，请重试'],
+];
+let toastIdx = 0;
+function pushToast(text, cls = ''){
+  const t = document.createElement('div');
+  t.className = 'wtoast' + (cls ? ' ' + cls : '');
+  t.textContent = text;
+  toastRail.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); t.addEventListener('animationend', () => t.remove(), { once: true }); }, 3500);
+}
+document.getElementById('sendToast').onclick = () => {
+  const [cls, text] = TOASTS[toastIdx++ % TOASTS.length];
+  pushToast(text, cls);
+};
 </script>
 </body>
 </html>

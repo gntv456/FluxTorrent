@@ -51,7 +51,7 @@ export function TicketPanel({
             onClick={() => setTicketStatus(s)}
             className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${
               ticketStatus === s
-                ? "text-[var(--brand-orange-dark)] underline"
+                ? "text-[var(--compat-orange-dark)] underline"
                 : "text-sub"
             }`}
           >

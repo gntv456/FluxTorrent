@@ -159,12 +159,12 @@
  },
  "app/(main)/page.tsx": {
   "h1": [],
-  "h1First": 119,
+  "h1First": 120,
   "palette": [
-   95,
-   102,
-   178,
-   186
+   96,
+   103,
+   209,
+   217
   ],
   "color": []
  },
@@ -298,7 +298,7 @@
   "h1First": 237,
   "palette": [
    39,
-   356
+   358
   ],
   "color": []
  },
@@ -348,8 +348,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   28,
-   30
+   29,
+   31
   ],
   "color": []
  },
@@ -1045,8 +1045,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   286,
-   288
+   287,
+   289
   ],
   "color": [
    220
@@ -1176,8 +1176,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   305,
-   307
+   306,
+   308
   ],
   "color": []
  },
@@ -1298,8 +1298,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   336,
-   338
+   337,
+   339
   ],
   "color": [
    291
@@ -3168,37 +3168,18 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   94,
    96,
    98,
-   99
+   100,
+   101
   ],
-  "color": [
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   30,
-   31,
-   32,
-   33,
-   34
-  ]
+  "color": []
  },
  "components/forum-left-column.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
-  "color": [
-   16,
-   17,
-   18,
-   19,
-   20,
-   21
-  ]
+  "color": []
  },
  "components/forum-lottery.tsx": {
   "h1": [],
@@ -3579,9 +3560,7 @@
  "components/layout.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [
-   215
-  ],
+  "palette": [],
   "color": []
  },
  "components/link-apply.tsx": {
@@ -5034,22 +5013,8 @@
   "h1First": null,
   "palette": [],
   "color": [
-   18,
-   19,
-   20,
-   21,
-   22,
-   23,
-   24,
-   25,
-   26,
-   31,
-   32,
-   33,
-   34,
-   105,
-   133,
-   146
+   134,
+   147
   ]
  },
  "components/game/die-face.tsx": {
@@ -5099,41 +5064,8 @@
   "h1First": null,
   "palette": [],
   "color": [
-   27,
-   28,
-   29,
-   30,
-   62,
-   63,
-   64,
-   65,
-   89,
-   90,
-   91,
-   92,
-   98,
-   99,
-   100,
-   101,
-   107,
-   110,
-   116,
-   117,
-   122,
-   123,
-   159,
-   160,
-   163,
-   164,
-   167,
-   168,
-   182,
-   197,
-   218,
-   244,
-   266,
-   275,
-   276
+   289,
+   314
   ]
  },
  "components/game/fishing-side.tsx": {
@@ -5208,26 +5140,8 @@
   "h1First": null,
   "palette": [],
   "color": [
-   40,
-   41,
-   42,
-   43,
-   129,
-   130,
-   133,
-   134,
-   135,
-   140,
-   152,
-   168,
-   179,
-   192,
-   204,
-   205,
-   206,
-   208,
-   209,
-   210
+   227,
+   244
   ]
  },
  "components/game/pet-log.tsx": {
@@ -5331,6 +5245,12 @@
   "palette": [
    52
   ],
+  "color": []
+ },
+ "components/shj-atlas.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
   "color": []
  }
 }

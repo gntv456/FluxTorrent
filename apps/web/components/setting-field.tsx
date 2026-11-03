@@ -48,7 +48,7 @@ export function SettingField({
   const cid = `sf-${field.name}`;
 
   const base =
-    "min-h-[44px] rounded-[var(--r-sm)] border bg-[var(--surface-card)] px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-sky/40 disabled:bg-cloud disabled:text-sub";
+    "min-h-[44px] rounded-[var(--r-sm)] border bg-[var(--surface-card)] px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] disabled:bg-cloud disabled:text-sub";
   const border = error ? "border-danger" : "border-line";
   const inputCls = `${base} ${border} w-full`;
 

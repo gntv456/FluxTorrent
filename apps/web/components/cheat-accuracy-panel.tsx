@@ -85,7 +85,7 @@ export function CheatAccuracyPanel() {
             className={
               "rounded-full border px-3 py-1 text-xs font-bold " +
               (days === d
-                ? "border-[var(--brand-orange)] text-[var(--brand-orange-dark)]"
+                ? "border-[var(--compat-orange)] text-[var(--compat-orange-dark)]"
                 : "border-[var(--border-soft)] text-sub")
             }
             onClick={() => setDays(d)}

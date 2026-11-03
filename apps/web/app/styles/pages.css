@@ -5,12 +5,12 @@
   display: flex;
   align-items: center;
   padding: 14px 18px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--brand-glow),
-    var(--brand-orange-dark)
+    var(--compat-glow),
+    var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
 }
@@ -40,32 +40,32 @@
   min-height: 34px;
   align-items: center;
   padding: 4px 14px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 999px;
   background: var(--row-veil);
-  color: var(--brand-ink);
+  color: var(--compat-ink);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 .request-center__filter:hover {
-  border-color: var(--brand-orange);
-  color: var(--brand-orange);
+  border-color: var(--compat-orange);
+  color: var(--compat-orange);
 }
 .request-center__filter[data-active="true"],
 .request-center__filter[aria-current="page"] {
   background: var(--surface-sunken);
-  border-color: var(--brand-orange);
-  color: var(--brand-orange-dark);
-  box-shadow: inset 0 0 0 1px var(--brand-orange);
+  border-color: var(--compat-orange);
+  color: var(--compat-orange-dark);
+  box-shadow: inset 0 0 0 1px var(--compat-orange);
 }
 .request-center__filter--primary {
   color: var(--text-on-accent);
   border-color: transparent;
   background: linear-gradient(
     135deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark)
+    var(--compat-orange-bright),
+    var(--compat-orange-dark)
   );
 }
 .request-center__filter--primary:hover {
@@ -83,11 +83,11 @@
   min-width: 260px;
 }
 .request-center__name {
-  color: var(--brand-ink);
+  color: var(--compat-ink);
   font-weight: 800;
 }
 .request-center__name:hover {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 .request-center__descr {
   margin: 3px 0 0;
@@ -96,7 +96,7 @@
   line-height: 1.5;
 }
 .request-center__reward strong {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 14px;
 }
 .request-status {
@@ -149,7 +149,7 @@ table.brand-wide-table-scroll {
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   background: linear-gradient(90deg, var(--head-a), var(--head-b));
   box-shadow: var(--shadow-card);
@@ -166,8 +166,8 @@ table.brand-wide-table-scroll {
   font-weight: 900;
   background: linear-gradient(
     145deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark)
+    var(--compat-orange-bright),
+    var(--compat-orange-dark)
   );
 }
 .subtitles-head strong {
@@ -179,9 +179,9 @@ table.brand-wide-table-scroll {
   font-size: 12.5px;
 }
 .subtitles-rules {
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
   padding: 12px 16px;
 }
@@ -229,8 +229,8 @@ table.subtitles-upload-table {
   color: var(--text-on-accent);
   background: linear-gradient(
     135deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark)
+    var(--compat-orange-bright),
+    var(--compat-orange-dark)
   );
 }
 .subtitles-upload-table input.btn:disabled {
@@ -238,7 +238,7 @@ table.subtitles-upload-table {
 }
 .subtitles-upload-table input.btn2 {
   color: var(--text-brand);
-  background: var(--brand-soft);
+  background: var(--compat-soft);
 }
 .subtitles-msg {
   margin: 8px 2px 0;
@@ -261,7 +261,7 @@ table.subtitles-upload-table {
 .subtitles-search-form select {
   min-height: 36px;
   padding: 4px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   font-size: 13px;
@@ -274,7 +274,7 @@ table.subtitles-upload-table {
 .subtitles-letters button {
   min-width: 26px;
   min-height: 26px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 6px;
   background: var(--surface-card);
   color: var(--text-muted);
@@ -283,12 +283,12 @@ table.subtitles-upload-table {
   cursor: pointer;
 }
 .subtitles-letters button:hover {
-  border-color: var(--brand-orange);
-  color: var(--brand-orange);
+  border-color: var(--compat-orange);
+  color: var(--compat-orange);
 }
 .subtitles-letters button[data-active="true"] {
-  background: var(--brand-orange);
-  border-color: var(--brand-orange);
+  background: var(--compat-orange);
+  border-color: var(--compat-orange);
   color: var(--text-on-accent);
 }
 .subtitles-list-table td {
@@ -331,9 +331,9 @@ table.subtitles-upload-table {
   align-items: center;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 .tsb-field {
@@ -351,7 +351,7 @@ table.subtitles-upload-table {
 .tsb-select {
   min-height: 38px;
   padding: 2px 8px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   color: inherit;
@@ -362,7 +362,7 @@ table.subtitles-upload-table {
   min-width: 160px;
   min-height: 38px;
   padding: 4px 12px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   color: inherit;
@@ -390,7 +390,7 @@ table.subtitles-upload-table {
   z-index: 60;
   max-height: 320px;
   overflow-y: auto;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: var(--r-md);
   background: var(--surface-raised);
   box-shadow: 0 12px 28px rgb(17 34 68 / 14%);
@@ -402,7 +402,7 @@ table.subtitles-upload-table {
   padding: 8px 12px;
   color: inherit;
   font-size: 13px;
-  border-bottom: 1px solid var(--brand-line-soft);
+  border-bottom: 1px solid var(--compat-line-soft);
 }
 .tsb-suggest__item:last-child {
   border-bottom: none;
@@ -440,7 +440,7 @@ table.subtitles-upload-table {
   min-width: 38px;
   min-height: 38px;
   padding: 0 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   color: var(--text-sub, #8a7d6b);
@@ -450,8 +450,8 @@ table.subtitles-upload-table {
   user-select: none;
 }
 .tsb-adv-btn:hover {
-  border-color: var(--brand-orange);
-  color: var(--brand-orange);
+  border-color: var(--compat-orange);
+  color: var(--compat-orange);
 }
 .tsb-adv-btn__icon {
   font-size: 15px;
@@ -462,7 +462,7 @@ table.subtitles-upload-table {
   min-width: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--brand-orange);
+  background: var(--compat-orange);
   color: #fff;
   font-size: 10px;
   line-height: 15px;
@@ -476,7 +476,7 @@ table.subtitles-upload-table {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px dashed var(--brand-line);
+  border: 1px dashed var(--compat-line);
   border-radius: var(--r-md);
   background: var(--row-veil);
 }
@@ -497,9 +497,9 @@ table.subtitles-upload-table {
   align-items: center;
   gap: 6px;
   padding: 3px 9px 3px 11px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 999px;
-  background: var(--brand-soft);
+  background: var(--compat-soft);
   color: var(--text-brand);
   font-size: 12px;
   font-weight: 700;
@@ -542,9 +542,9 @@ table.subtitles-upload-table {
   gap: 6px;
   min-height: 38px;
   padding: 4px 14px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 999px;
-  background: var(--brand-soft);
+  background: var(--compat-soft);
   color: var(--text-brand);
   font-size: 13px;
   font-weight: 800;
@@ -583,7 +583,7 @@ table.subtitles-upload-table {
   gap: 14px;
   margin-top: 8px;
   padding: 14px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   background: var(--surface-card);
 }
@@ -601,7 +601,7 @@ table.subtitles-upload-table {
 }
 .tsb-group + .tsb-group {
   padding-top: 12px;
-  border-top: 1px dashed var(--brand-line);
+  border-top: 1px dashed var(--compat-line);
 }
 .tsb-group__title {
   margin: 0;
@@ -668,7 +668,7 @@ table.subtitles-upload-table {
   gap: 5px;
   min-height: 28px;
   padding: 2px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 999px;
   background: var(--surface-card);
   color: var(--text-body);
@@ -682,9 +682,16 @@ table.subtitles-upload-table {
 }
 .tsb-chip:has(input:checked) {
   border-color: var(--text-brand);
-  background: var(--brand-soft);
+  background: var(--compat-soft);
   color: var(--text-brand);
   font-weight: 700;
+}
+/* 分类 chip 图标的选中即时反馈：表单 GET 提交重渲染前，先由 :has 给描边环
+   （与 CatIcon active prop 同手法：--focus-ring 各主题自适应） */
+.tsb-chip:has(input:checked) img[src*="/cat-icons/"] {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  transform: scale(1.06);
 }
 .tsb-chip:hover {
   border-color: var(--text-brand);
@@ -708,7 +715,7 @@ table.subtitles-upload-table {
   min-width: 0;
   min-height: 34px;
   padding: 4px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-card);
   color: inherit;
@@ -755,7 +762,7 @@ table.subtitles-upload-table {
   justify-content: flex-end;
   gap: 10px;
   padding-top: 8px;
-  border-top: 1px dashed var(--brand-line);
+  border-top: 1px dashed var(--compat-line);
 }
 .tsb-reset {
   color: var(--text-sub, #8a7d6b);
@@ -772,7 +779,7 @@ table.subtitles-upload-table {
   padding: 2px 0;
 }
 .tsb-dim + .tsb-dim {
-  border-top: 1px dashed var(--brand-line);
+  border-top: 1px dashed var(--compat-line);
   margin-top: 2px;
   padding-top: 6px;
 }
@@ -841,18 +848,18 @@ table.subtitles-upload-table {
   flex: 0 0 auto;
   align-items: center;
   padding: 4px 14px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 999px;
   background: var(--row-veil);
-  color: var(--brand-ink);
+  color: var(--compat-ink);
   font-size: 13px;
   font-weight: 700;
 }
 .filter-chip[data-active="true"] {
   background: var(--surface-sunken);
-  border-color: var(--brand-orange);
-  color: var(--brand-orange-dark);
-  box-shadow: inset 0 0 0 1px var(--brand-orange);
+  border-color: var(--compat-orange);
+  color: var(--compat-orange-dark);
+  box-shadow: inset 0 0 0 1px var(--compat-orange);
 }
 .torrents-table th a {
   color: inherit;
@@ -884,7 +891,7 @@ table.subtitles-upload-table {
   width: 40px;
   height: 40px;
   border-radius: 6px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   color: #fff;
   font-size: 16px;
   font-weight: 700;
@@ -909,7 +916,7 @@ table.subtitles-upload-table {
   height: 69px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   object-fit: cover;
 }
 .torrents-cover--fallback {
@@ -1184,7 +1191,7 @@ table.subtitles-upload-table {
   font-size: 11.5px;
 }
 .torrents-uploader {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-weight: 700;
 }
 .torrents-meta-date {
@@ -1236,7 +1243,7 @@ table.subtitles-upload-table {
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 .torrents-menu button {
@@ -1312,12 +1319,12 @@ table.subtitles-upload-table {
   align-items: center;
   gap: 14px;
   padding: 16px 20px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--brand-glow),
-    var(--brand-orange-dark)
+    var(--compat-glow),
+    var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
 }
@@ -1357,9 +1364,9 @@ table.subtitles-upload-table {
 }
 .preserve-stats > div {
   padding: 12px 14px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 .preserve-stats strong {
@@ -1403,7 +1410,7 @@ table.subtitles-upload-table {
 .preserve-filter input[type="search"] {
   min-height: 38px;
   padding: 4px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   font-size: 13px;
@@ -1480,7 +1487,7 @@ table.preserve-list-table {
   width: 99%;
   min-height: 38px;
   padding: 4px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   font-size: 13.5px;
@@ -1496,7 +1503,7 @@ table.preserve-list-table {
   min-height: 28px;
   padding: 2px 8px;
   margin-right: 3px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 6px;
   background: var(--surface-card);
   color: var(--text-body);
@@ -1507,7 +1514,7 @@ textarea.bbcode {
   width: 100%;
   min-height: 320px;
   padding: 10px 12px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   font: 13.5px/1.7 inherit;
@@ -1516,7 +1523,7 @@ textarea.bbcode {
 .contactstaff-preview {
   margin-top: 10px;
   padding: 12px 14px;
-  border: 1px dashed var(--brand-line);
+  border: 1px dashed var(--compat-line);
   border-radius: 8px;
   background: var(--surface-card);
   color: var(--text-body);
@@ -1540,8 +1547,8 @@ textarea.bbcode {
   font-weight: 800;
   background: linear-gradient(
     135deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark)
+    var(--compat-orange-bright),
+    var(--compat-orange-dark)
   );
   cursor: pointer;
 }
@@ -1555,7 +1562,7 @@ textarea.bbcode {
   border-radius: 8px;
   color: var(--text-brand);
   font-weight: 800;
-  background: var(--brand-soft);
+  background: var(--compat-soft);
   cursor: pointer;
 }
 .contactstaff-hint {
@@ -1594,12 +1601,12 @@ textarea.bbcode {
   justify-content: space-between;
   gap: 14px;
   padding: 18px 22px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--brand-glow),
-    var(--brand-orange-dark)
+    var(--compat-glow),
+    var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
   color: var(--text-on-accent);
@@ -1643,9 +1650,9 @@ textarea.bbcode {
   font-weight: 900;
 }
 .task-panel {
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
   padding: 14px 18px;
 }
@@ -1663,7 +1670,7 @@ textarea.bbcode {
   gap: 10px;
 }
 .task-section-heading span {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
   font-size: 20px;
   font-weight: 900;
   opacity: 0.55;
@@ -1833,7 +1840,7 @@ textarea.bbcode {
   border-bottom: 0;
 }
 .task-feed strong {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 .task-feed time {
   color: var(--text-fainter);
@@ -1891,13 +1898,13 @@ textarea.bbcode {
 .task-stats-bars progress::-webkit-progress-value {
   background: linear-gradient(
     90deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark)
+    var(--compat-orange-bright),
+    var(--compat-orange-dark)
   );
   border-radius: 5px;
 }
 .task-stats-bars progress::-moz-progress-bar {
-  background: var(--brand-orange);
+  background: var(--compat-orange);
   border-radius: 5px;
 }
 .task-stats-bars b {
@@ -1987,8 +1994,8 @@ textarea.bbcode {
   min-width: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--brand-soft);
-  color: var(--brand-orange-dark);
+  background: var(--compat-soft);
+  color: var(--compat-orange-dark);
   font-size: 10.5px;
   text-align: center;
 }
@@ -2013,9 +2020,9 @@ textarea.bbcode {
   right: 0;
   width: min(420px, 92vw);
   padding: 12px 14px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 12px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: 0 14px 40px rgba(10, 25, 47, 0.25);
   z-index: 30;
 }
@@ -2043,7 +2050,7 @@ textarea.bbcode {
 .usertools-form textarea {
   min-height: 36px;
   padding: 4px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   font-size: 13px;
@@ -2078,7 +2085,7 @@ textarea.bbcode {
 .usertools-rss input {
   min-height: 34px;
   padding: 4px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   color: var(--text-body);
@@ -2105,7 +2112,7 @@ textarea.bbcode {
 .cmgmt-form textarea {
   min-height: 38px;
   padding: 6px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   font-size: 13.5px;
@@ -2118,7 +2125,7 @@ textarea.bbcode {
   min-height: 30px;
   margin-left: 6px;
   padding: 2px 12px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 999px;
   background: var(--surface-raised);
   color: var(--text-body);
@@ -2127,8 +2134,8 @@ textarea.bbcode {
   cursor: pointer;
 }
 .cmgmt-act:hover {
-  border-color: var(--brand-orange);
-  color: var(--brand-orange);
+  border-color: var(--compat-orange);
+  color: var(--compat-orange);
 }
 .cmgmt-act--danger {
   color: var(--danger);
@@ -2161,11 +2168,11 @@ textarea.bbcode {
 }
 .fun-status--funny {
   background: var(--surface-sunken);
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 .fun-status--veryfunny {
-  background: var(--brand-soft);
-  color: var(--brand-orange-dark);
+  background: var(--compat-soft);
+  color: var(--compat-orange-dark);
 }
 .fun-status--banned {
   background: var(--danger-soft);
@@ -2173,7 +2180,7 @@ textarea.bbcode {
 }
 .link-status--pending {
   background: var(--surface-sunken);
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 .link-status--active {
   background: var(--success-soft);
@@ -2238,7 +2245,7 @@ textarea.bbcode {
 .funbox__vote {
   min-height: 34px;
   padding: 4px 14px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 999px;
   background: var(--surface-card);
   font-size: 13px;
@@ -2267,7 +2274,7 @@ textarea.bbcode {
   border: 0;
   border-top: 1px solid var(--border-soft);
   background: var(--surface-card);
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
@@ -2342,7 +2349,7 @@ textarea.bbcode {
 }
 .shoutbox__list b {
   flex: 0 0 auto;
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 .shoutbox__text {
   flex: 1 1 auto;
@@ -2384,7 +2391,7 @@ textarea.bbcode {
   flex: 1 1 auto;
   min-height: 38px;
   padding: 6px 12px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-raised);
   font-size: 13.5px;
@@ -2405,9 +2412,9 @@ textarea.bbcode {
   flex-direction: column;
   gap: 10px;
   padding: 14px 12px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 .pting-sidenav h2 {
@@ -2435,7 +2442,7 @@ textarea.bbcode {
 }
 .pting-sidenav a:hover {
   background: var(--surface-hover);
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 .pting-sidenav__dot {
   display: flex;
@@ -2448,8 +2455,8 @@ textarea.bbcode {
   font-size: 12px;
   background: linear-gradient(
     145deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark)
+    var(--compat-orange-bright),
+    var(--compat-orange-dark)
   );
 }
 /* M1 快修 #1：feed pill——全局 a{color} 是未分层样式，优先级压过 Tailwind
@@ -2476,12 +2483,12 @@ textarea.bbcode {
   justify-content: space-between;
   gap: 12px;
   padding: 16px 20px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--brand-glow),
-    var(--brand-orange-dark)
+    var(--compat-glow),
+    var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
   color: var(--text-on-accent);
@@ -2507,9 +2514,9 @@ textarea.bbcode {
   flex-direction: column;
   gap: 8px;
   padding: 14px 16px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 /* 空版块（0 话题）降饱和：与有货版块拉开一眼可辨的差别，不靠加
@@ -2531,7 +2538,7 @@ textarea.bbcode {
   font-weight: 900;
 }
 .pting-card__title:hover {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 .pting-card__count {
   color: var(--text-faint);
@@ -2552,7 +2559,7 @@ textarea.bbcode {
 }
 .pting-card__latest-label {
   flex: 0 0 auto;
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 12px;
   font-weight: 800;
 }
@@ -2598,7 +2605,7 @@ textarea.bbcode {
   height: 44px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--warning-soft), var(--warning-soft));
-  border: 1px solid var(--brand-orange-dark);
+  border: 1px solid var(--compat-orange-dark);
   font-size: 22px;
   flex: none;
 }
@@ -2637,13 +2644,13 @@ textarea.bbcode {
   height: 64px;
   border-radius: 50%;
   border: 3px solid #d7dee8;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   font-size: 30px;
 }
 
 .avatar-frame-demo.frame-on {
-  border-color: var(--brand-orange-dark);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-color: var(--compat-orange-dark);
+  box-shadow: 0 0 0 3px var(--focus-ring-soft);
 }
 
 .gomoku-board {
@@ -2696,8 +2703,8 @@ textarea.bbcode {
   margin: 0;
   padding: 8px 10px;
   border-radius: 8px;
-  background: var(--brand-paper);
-  border: 1px dashed var(--brand-line);
+  background: var(--compat-paper);
+  border: 1px dashed var(--compat-line);
   list-style: none;
   font-size: 11.5px;
   color: var(--text-muted);
@@ -2714,7 +2721,7 @@ textarea.bbcode {
   flex-direction: column;
   gap: 6px;
   padding: 14px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 10px;
   background: var(--surface-raised);
 }
@@ -2730,7 +2737,7 @@ textarea.bbcode {
 .donate-plan__price {
   font-size: 18px;
   font-weight: 800;
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 .donate-plan button {
   min-height: 34px;
@@ -2738,8 +2745,8 @@ textarea.bbcode {
   border-radius: 999px;
   background: linear-gradient(
     135deg,
-    var(--brand-orange-bright),
-    var(--brand-orange)
+    var(--compat-orange-bright),
+    var(--compat-orange)
   );
   color: var(--text-on-accent);
   font-size: 12.5px;
@@ -2770,9 +2777,9 @@ textarea.bbcode {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border: 1px dashed var(--brand-line);
+  border: 1px dashed var(--compat-line);
   border-radius: 10px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
 }
 
 /* ==== 首页：聊天室 + 趣味盒 两栏等高 ==== */
@@ -2795,7 +2802,7 @@ textarea.bbcode {
 /* ==== 获取 RSS 页（同类站 getrss.php 复刻） ==== */
 .rss-card {
   padding: 16px 18px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 12px;
   background: var(--surface-card);
   box-shadow: var(--shadow-card);
@@ -2863,7 +2870,7 @@ textarea.bbcode {
 .rss-row input[type="text"] {
   min-height: 34px;
   padding: 0 8px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-card);
   color: inherit;
@@ -2890,9 +2897,9 @@ textarea.bbcode {
   flex: 1;
   min-height: 40px;
   padding: 0 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   color: inherit;
@@ -2936,7 +2943,7 @@ textarea.bbcode {
   flex: 1;
   min-height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-card);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -3264,7 +3271,7 @@ textarea.bbcode {
 }
 li[data-torrent-id].is-kbd-active > a,
 li[data-torrent-id].is-kbd-active > article {
-  outline: 2px solid var(--sky, #0075de);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 12px;
 }
@@ -3387,7 +3394,7 @@ input.batch-all {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  background: var(--brand-orange, #f60);
+  background: var(--compat-orange, #f60);
   color: #fff;
 }
 
@@ -3748,7 +3755,7 @@ input.batch-all {
   z-index: 50;
   min-height: 48px;
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--brand-orange, #f59e0b);
+  background: var(--compat-orange, #f59e0b);
   color: #fff;
   font-size: 15px;
   font-weight: 700;
@@ -3900,7 +3907,7 @@ input.batch-all {
 .gsearch__btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px;
-  border: 1px solid var(--brand-line); border-radius: 999px;
+  border: 1px solid var(--compat-line); border-radius: 999px;
   background: var(--surface-raised); color: var(--text-muted);
   cursor: pointer; transition: all var(--motion-fast);
 }
@@ -3915,22 +3922,22 @@ input.batch-all {
 .gsearch__pop {
   position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
   width: min(560px, calc(100vw - 32px));
-  border: 1px solid var(--brand-line); border-radius: var(--r-md);
+  border: 1px solid var(--compat-line); border-radius: var(--r-md);
   background: var(--surface-raised);
   box-shadow: 0 18px 44px rgb(17 34 68 / 22%); padding: 10px;
 }
 .gsearch__form { display: flex; }
 .gsearch__input {
   width: 100%; min-height: 40px; padding: 2px 14px;
-  border: 1px solid var(--brand-line); border-radius: 999px;
+  border: 1px solid var(--compat-line); border-radius: 999px;
   background: var(--surface-card); color: inherit; font-size: 14px;
 }
 .gsearch__input:focus {
-  outline: 2px solid var(--sky-soft); border-color: var(--sky);
+  outline: 2px solid var(--focus-ring); border-color: var(--sky);
 }
 .gsearch__drop {
   position: static; margin-top: 8px; max-height: 360px; overflow-y: auto;
-  border-top: 1px solid var(--brand-line-soft);
+  border-top: 1px solid var(--compat-line-soft);
 }
 .gsearch__cap {
   padding: 6px 12px 2px;
@@ -3945,7 +3952,7 @@ input.batch-all {
   padding: 8px 12px;
   color: inherit;
   font-size: 13px;
-  border-bottom: 1px solid var(--brand-line-soft);
+  border-bottom: 1px solid var(--compat-line-soft);
 }
 .gsearch__item:last-child {
   border-bottom: none;

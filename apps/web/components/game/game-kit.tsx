@@ -201,7 +201,7 @@ export function ChipSelect({
           onChange(Math.max(1, Math.min(maxBet, Number(e.target.value) || 1)))
         }
         aria-label={t.betLabel.replace("{magic}", currency)}
-        className="num min-h-[40px] w-24 rounded-full border border-line bg-[var(--surface-card)] px-3 text-right font-bold outline-none focus:ring-2 focus:ring-sky/40"
+        className="num min-h-[40px] w-24 rounded-full border border-line bg-[var(--surface-card)] px-3 text-right font-bold outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
       />
       <span className="text-xs text-sub">{currency}</span>
     </div>

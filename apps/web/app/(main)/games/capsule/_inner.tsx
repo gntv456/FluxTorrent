@@ -289,6 +289,7 @@ export default function CapsuleFocusPage({
         <div className="flex w-full flex-col items-center gap-3">
           <GameStage
             bg="radial-gradient(120% 130% at 50% 0%, #3a2a5e, #14101f 72%)"
+            shjBg="var(--shj-stage-capsule)"
             className="w-full max-w-[460px] py-6"
           >
             <CapsuleMachine

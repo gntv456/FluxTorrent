@@ -26,9 +26,9 @@
 /* ---------- 左列第一块：用户卡 ---------- */
 .fh-user {
   padding: 14px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 .fh-user__row {
@@ -261,7 +261,7 @@
   align-items: center;
   padding: 6px 12px;
   border-radius: 999px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   color: var(--sky-deep);
   font-size: 12px;
   font-weight: 800;
@@ -289,7 +289,7 @@
   padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   color: var(--sub);
   font-size: 12px;
   transition: border-color var(--motion-fast) var(--motion-ease),
@@ -313,7 +313,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 .fh-stream__head {
@@ -561,7 +561,7 @@
   padding: 28px 20px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
   text-align: center;
 }
@@ -630,7 +630,7 @@
   justify-content: center;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   color: var(--sky-deep);
   font-size: 13px;
   font-weight: 800;

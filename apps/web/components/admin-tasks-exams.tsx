@@ -160,7 +160,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
                 <td className="num">{e.reward_paid ?? "—"}</td>
                 <td>
                   {e.exempted_at ? (
-                    <span className="font-bold text-[var(--brand-orange-dark)]">
+                    <span className="font-bold text-[var(--compat-orange-dark)]">
                       {t.exempted}
                     </span>
                   ) : (

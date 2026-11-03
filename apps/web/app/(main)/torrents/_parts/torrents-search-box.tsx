@@ -22,6 +22,10 @@ export interface TorrentsSearchBoxProps {
   dict: Dict;
   sp: TorrentsSP;
   categories: { id: number; label: string }[];
+  /** 分类图标键 / 分类色（分类 chip 图标位；0166/0183 下发数据的透传。
+   *  可选：缺省即不上图标，纯文本 chip 兜底） */
+  catIcons?: Record<number, string>;
+  catColors?: Record<number, string>;
   tags: { id: number; name: string; kind: string }[];
   /** 平行数组（0160 P2）：与 tags 下标对齐 'attribute'|'content'；缺省全 attribute */
   tagGroups?: string[];
@@ -40,6 +44,8 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
     dict,
     sp,
     categories,
+    catIcons,
+    catColors,
     tags,
     tagGroups,
     secDict,
@@ -179,6 +185,8 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
             dict={dict}
             sp={sp}
             categories={categories}
+            catIcons={catIcons}
+            catColors={catColors}
             tags={tags}
             secDict={secDict}
             dimKinds={dimKinds}

@@ -84,6 +84,8 @@ export function NavDrawer({
     <Link
       href={href}
       className="navdrawer__link"
+      // 乙：当前页语义标记（样式按主题作用域走，既有主题视觉不变）
+      aria-current={pathname === href.split("?")[0] ? "page" : undefined}
       onClick={() => onClose()}
     >
       {label}

@@ -60,6 +60,11 @@ const zhTwBase: Omit<
     themeShanhaijing: "山海經",
     themeAuto: "跟隨系統",
     themeNext: "點擊切換下一檔",
+    // 分类图标集显示名/说明（lib/cat-icon-sets.ts 的 labelKey/noteKey 消费）
+    catIconSetShanhaijing: "山海經·道具章紋套",
+    catIconSetShanhaijingNote: "深底圓章+單件金箔道具，22px 可辨",
+    catIconSetAurora: "Aurora·漸變應用圖標套",
+    catIconSetAuroraNote: "淺色圓角塊+漸變剪影，16px 可讀性好",
     globalSearchPh: "搜尋種子 / 帖子…",
     globalSearchBtn: "搜尋",
     gsTorrents: "種子",
@@ -323,6 +328,13 @@ const zhTwBase: Omit<
     noRating: "暫無評分",
     empty: "網站剛剛發芽，還沒有資源",
     emptyAction: "發布第一個資源",
+    // 山海經 Hero 玉牌（乙 · 結構層；僅 shanhaijing 主題渲染該區塊，鍵隨主題走）
+    shjKicker: "山海圖卷",
+    shjSub: "山海有靈，萬物有譜",
+    shjJadeUsers: "山門修士",
+    shjJadeTorrents: "在冊靈獸",
+    shjJadeSeeders: "守種修士",
+    shjJadePeers: "往來修士",
   },
   torrents: {
     viewLabel: "檢視",

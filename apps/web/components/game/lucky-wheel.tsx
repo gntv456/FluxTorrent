@@ -34,13 +34,17 @@ function sector(a1: number, a2: number): string {
 }
 
 /** 档位配色（样图③粉彩板）：大奖金、高档紫、中档蓝、小档雾白；
- *  同档相邻扇区用亮/暗两档交错，避免连成一块。 */
+ *  同档相邻扇区用亮/暗两档交错，避免连成一块。
+ *  P2-5：色值收编 base.css --mood-wheel-* 令牌（氛围色口径①）。 */
 function segColor(v: number, tk: number, i: number): string {
   const alt = i % 2 === 0;
-  if (v >= tk * 10) return alt ? "#f2cf8a" : "#f7e2b2";
-  if (v >= tk * 3) return alt ? "#c3b4e6" : "#d5c9f0";
-  if (v >= tk) return alt ? "#a3c4e8" : "#bdd4ef";
-  return alt ? "#e7edf6" : "#f3f7fc";
+  if (v >= tk * 10)
+    return alt ? "var(--mood-wheel-gold-a)" : "var(--mood-wheel-gold-b)";
+  if (v >= tk * 3)
+    return alt ? "var(--mood-wheel-violet-a)" : "var(--mood-wheel-violet-b)";
+  if (v >= tk)
+    return alt ? "var(--mood-wheel-blue-a)" : "var(--mood-wheel-blue-b)";
+  return alt ? "var(--mood-wheel-mist-a)" : "var(--mood-wheel-mist-b)";
 }
 
 /** 扇区读数：魔力档 ×N、物品档显示图标（与九宫格一致） */
@@ -126,18 +130,38 @@ export function LuckyWheel({
         >
           <defs>
             <radialGradient id="lwRim" cx="0.5" cy="0.3" r="0.8">
-              <stop offset="0%" stopColor="#e8c888" />
-              <stop offset="100%" stopColor="#b08a4a" />
+              <stop
+                offset="0%"
+                style={{ stopColor: "var(--mood-wheel-rim-a)" }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "var(--mood-wheel-rim-b)" }}
+              />
             </radialGradient>
             <radialGradient id="lwGo" cx="0.35" cy="0.3" r="0.8">
-              <stop offset="0%" stopColor="#f7e6c0" />
-              <stop offset="60%" stopColor="#d4af7a" />
-              <stop offset="100%" stopColor="#b08a4a" />
+              <stop
+                offset="0%"
+                style={{ stopColor: "var(--mood-wheel-hub-a)" }}
+              />
+              <stop
+                offset="60%"
+                style={{ stopColor: "var(--mood-wheel-hub-b)" }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "var(--mood-wheel-rim-b)" }}
+              />
             </radialGradient>
           </defs>
           {/* 金色渐变外圈 */}
           <circle cx={CX} cy={CY} r={R + 8} fill="url(#lwRim)" />
-          <circle cx={CX} cy={CY} r={R + 3} fill="#fff" />
+          <circle
+            cx={CX}
+            cy={CY}
+            r={R + 3}
+            style={{ fill: "var(--mood-bright)" }}
+          />
           {/* 灯珠：金色与白色交替，沿外圈均匀分布 */}
           {Array.from({ length: 12 }).map((_, i) => {
             const a = (i * 360) / 12;
@@ -149,7 +173,11 @@ export function LuckyWheel({
                 cx={lx}
                 cy={ly}
                 r={3.5}
-                fill={isGold ? "#ffd700" : "#fff"}
+                style={{
+                  fill: isGold
+                    ? "var(--mood-wheel-lamp)"
+                    : "var(--mood-bright)",
+                }}
                 opacity={isGold ? 1 : 0.7}
               />
             );
@@ -164,8 +192,10 @@ export function LuckyWheel({
               <g key={i}>
                 <path
                   d={sector(a1, a2)}
-                  fill={segColor(v, ticket, i)}
-                  stroke="#fff"
+                  style={{
+                    fill: segColor(v, ticket, i),
+                    stroke: "var(--mood-bright)",
+                  }}
                   strokeWidth="2"
                 />
                 {/* 读数墨蓝（样图③）：浅粉彩扇区上白字会隐身 */}
@@ -176,8 +206,13 @@ export function LuckyWheel({
                   dominantBaseline="middle"
                   fontSize={seg > 60 ? 15 : 13}
                   fontWeight="800"
-                  fill={v >= ticket * 10 ? "#6b4a1a" : "#2c4a74"}
-                  style={{ fontVariantNumeric: "tabular-nums" }}
+                  style={{
+                    fill:
+                      v >= ticket * 10
+                        ? "var(--mood-wheel-text-gold)"
+                        : "var(--mood-wheel-text-ink)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
                 >
                   {glyph(p)}
                 </text>
@@ -201,13 +236,13 @@ export function LuckyWheel({
           style={{
             /* 样图③中心毂：白玉底 + 金环 + 墨蓝 GO（原金底白字与盘面抢色） */
             background:
-              "radial-gradient(circle at 35% 28%, #ffffff, " +
-              "#eef4fb 62%, #dbe7f4)",
-            border: "3px solid #d4af7a",
+              "radial-gradient(circle at 35% 28%, var(--mood-wheel-face-a), " +
+              "var(--mood-wheel-face-b) 62%, var(--mood-wheel-face-c))",
+            border: "3px solid var(--mood-wheel-hub-b)",
             boxShadow:
-              "0 6px 14px rgba(176,138,74,0.35), " +
+              "0 6px 14px var(--mood-wheel-hub-shadow), " +
               "inset 0 1px 2px rgba(255,255,255,0.85)",
-            color: "#2c4a74",
+            color: "var(--mood-wheel-text-ink)",
           }}
           aria-label={`${goLabel} · ${ticket}`}
         >

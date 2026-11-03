@@ -130,7 +130,7 @@ function ProgressCard({ d }: { d: ClassesData }) {
                 </span>
               </div>
               <progress
-                className="mt-2 h-1.5 w-full accent-[var(--brand)]"
+                className="mt-2 h-1.5 w-full accent-[var(--compat)]"
                 value={pct}
                 max={100}
               />

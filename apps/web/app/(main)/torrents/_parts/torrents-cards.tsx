@@ -11,6 +11,7 @@ import Link from "next/link";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
 import { formatBytes, promoLeftCompact, promotionBadge } from "@/lib/format";
 import { promoSemanticClass } from "@/components/torrent-table";
+import { shjCatHue } from "@/components/torrent-table-badges";
 import { catColor } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
 import { PosterImage } from "@/components/poster-image";
@@ -62,10 +63,12 @@ function Cover({
   sizes?: string;
   colors: Record<number, string>;
 }) {
+  const fallbackBg = catColor(colors, t.category_id);
   const fallback = (
     <span
       className={`${className} flex items-center justify-center text-white/85`}
-      style={{ background: catColor(colors, t.category_id) }}
+      style={{ background: fallbackBg }}
+      data-shj-hue={shjCatHue(fallbackBg)}
       aria-hidden
     >
       {/* 与表格视图同款 fallback：分类色块 + 唱片图标

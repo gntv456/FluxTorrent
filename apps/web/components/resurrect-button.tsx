@@ -66,7 +66,7 @@ export function ResurrectButton({
         }
         disabled={busy}
         title={t.note.replaceAll("{magic}", currency)}
-        className="min-h-[36px] rounded-full border border-[var(--brand-orange-dark)] px-4 text-xs font-bold text-[var(--brand-orange-dark)] transition-transform active:scale-[0.97] disabled:opacity-50"
+        className="min-h-[36px] rounded-full border border-[var(--compat-orange-dark)] px-4 text-xs font-bold text-[var(--compat-orange-dark)] transition-transform active:scale-[0.97] disabled:opacity-50"
       >
         {`🌱 ${t.claimBtn}`}
       </button>

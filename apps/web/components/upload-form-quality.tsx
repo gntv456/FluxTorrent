@@ -201,7 +201,7 @@ export function UploadQualityBlock({
                                   : [...prev, t.id],
                               )
                             }
-                            className="h-4 w-4 accent-[var(--brand-orange)]"
+                            className="h-4 w-4 accent-[var(--compat-orange)]"
                           />
                           {t.name}
                         </label>

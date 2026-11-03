@@ -152,7 +152,7 @@ export function StaffBox() {
         <h2 className="font-display text-xl">✉️ {t.title}</h2>
         <a
           href="/contactstaff"
-          className="min-h-[44px] rounded-[10px] border border-[var(--brand-orange-dark)] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] px-4 text-sm font-bold leading-[44px] text-white shadow-[var(--shadow-hover)] active:scale-[0.97]"
+          className="min-h-[44px] rounded-[10px] border border-[var(--compat-orange-dark)] bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] px-4 text-sm font-bold leading-[44px] text-white shadow-[var(--shadow-hover)] active:scale-[0.97]"
         >
           {t.composeLink}
         </a>
@@ -175,8 +175,8 @@ export function StaffBox() {
               aria-current={view === k ? "true" : undefined}
               className={`min-h-[44px] rounded-[10px] border px-4 text-sm font-bold ${
                 view === k
-                  ? "border-[var(--brand-orange)] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] text-white"
-                  : "border-[var(--brand-line)] bg-[var(--row-veil-soft)] text-ink"
+                  ? "border-[var(--compat-orange)] bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] text-white"
+                  : "border-[var(--compat-line)] bg-[var(--row-veil-soft)] text-ink"
               }`}
             >
               {label}
@@ -187,14 +187,14 @@ export function StaffBox() {
               <button
                 type="button"
                 onClick={() => setDeskTab(0)}
-                className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 0 ? "text-[var(--brand-orange-dark)] underline" : "text-sub"}`}
+                className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 0 ? "text-[var(--compat-orange-dark)] underline" : "text-sub"}`}
               >
                 {t.pending}
               </button>
               <button
                 type="button"
                 onClick={() => setDeskTab(1)}
-                className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 1 ? "text-[var(--brand-orange-dark)] underline" : "text-sub"}`}
+                className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 1 ? "text-[var(--compat-orange-dark)] underline" : "text-sub"}`}
               >
                 {t.answered}
               </button>
@@ -207,7 +207,7 @@ export function StaffBox() {
               type="button"
               disabled={deskSel.length === 0 || busy}
               onClick={() => bulkDesk("mark")}
-              className="min-h-[36px] rounded-full border border-[var(--brand-line)] px-3 font-bold disabled:opacity-40"
+              className="min-h-[36px] rounded-full border border-[var(--compat-line)] px-3 font-bold disabled:opacity-40"
             >
               ✓ {t.mark}
             </button>

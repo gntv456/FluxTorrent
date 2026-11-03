@@ -151,7 +151,7 @@ export function PushSettings() {
   return (
     <div className="brand-panel flex flex-col gap-3 p-4">
       <h3 className="text-base font-bold text-ink">{t.title}</h3>
-      {msg && <p className="text-xs text-[var(--brand-orange-dark)]">{msg}</p>}
+      {msg && <p className="text-xs text-[var(--compat-orange-dark)]">{msg}</p>}
       {enabled === false ? (
         <p className="text-xs text-sub">{t.serverDisabled}</p>
       ) : vapidFailed ? (

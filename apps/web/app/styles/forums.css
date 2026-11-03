@@ -72,7 +72,7 @@
    只有版块设了规则才渲染；正文是多行文本，故保留换行（white-space）。 */
 .fb-rules {
   padding: 12px 14px;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   background: var(--surface-raised);
   color: var(--sub);

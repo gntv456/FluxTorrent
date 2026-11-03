@@ -295,7 +295,7 @@ export function UploadForm({ initialName }: { initialName?: string }) {
                 type="checkbox"
                 checked={anonymous}
                 onChange={(e) => setAnonymous(e.target.checked)}
-                className="h-4 w-4 accent-[var(--brand-orange)]"
+                className="h-4 w-4 accent-[var(--compat-orange)]"
               />
               {dict.upload.anonymous}
             </label>
@@ -306,7 +306,7 @@ export function UploadForm({ initialName }: { initialName?: string }) {
                 type="checkbox"
                 checked={hrPunish}
                 onChange={(e) => setHrPunish(e.target.checked)}
-                className="h-4 w-4 accent-[var(--brand-orange)]"
+                className="h-4 w-4 accent-[var(--compat-orange)]"
               />
               {dict.upload.hrPunishHint}
             </label>

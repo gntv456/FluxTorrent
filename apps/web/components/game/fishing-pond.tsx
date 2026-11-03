@@ -9,7 +9,9 @@ export type FishPhase =
  *  16:10）共用一套元素画法，只换坐标——鱼群洄游 keyframes 随版式
  *  各配一套（区间按各自摆位 x 算，起止都在画外）。竖版比例与
  *  arcade-sweet.css 的 .fp-pond-svg 宽度公式（×0.8214）、横版与
- *  .fp-wide（×1.6）成对，改 viewBox 须同步那两个系数。 */
+ *  .fp-wide（×1.6）成对，改 viewBox 须同步那两个系数。
+ *  P2-5：全部场景色收编 base.css --mood-* 令牌（氛围色口径①），
+ *  此处只引令牌，不再出现色值字面量。 */
 const SCENE_TALL = {
   w: 460,
   h: 560,
@@ -24,10 +26,10 @@ const SCENE_TALL = {
   ],
   waves: [252, 308, 364],
   weeds: [
-    { d: "M 30 545 Q 35 430 25 340", c: "#2d6a4f", sw: 4 },
-    { d: "M 45 545 Q 50 450 42 360", c: "#40916c", sw: 3 },
-    { d: "M 420 545 Q 415 440 425 350", c: "#2d6a4f", sw: 4 },
-    { d: "M 405 545 Q 400 460 408 370", c: "#40916c", sw: 3 },
+    { d: "M 30 545 Q 35 430 25 340", c: "var(--mood-weed-deep)", sw: 4 },
+    { d: "M 45 545 Q 50 450 42 360", c: "var(--mood-weed)", sw: 3 },
+    { d: "M 420 545 Q 415 440 425 350", c: "var(--mood-weed-deep)", sw: 4 },
+    { d: "M 405 545 Q 400 460 408 370", c: "var(--mood-weed)", sw: 3 },
   ],
   bubbles: [
     [80, 400, 3],
@@ -59,10 +61,10 @@ const SCENE_WIDE = {
   ],
   waves: [170, 200, 230],
   weeds: [
-    { d: "M 40 390 Q 45 300 35 225", c: "#2d6a4f", sw: 4 },
-    { d: "M 55 390 Q 60 315 52 245", c: "#40916c", sw: 3 },
-    { d: "M 600 390 Q 595 305 605 230", c: "#2d6a4f", sw: 4 },
-    { d: "M 585 390 Q 580 320 588 250", c: "#40916c", sw: 3 },
+    { d: "M 40 390 Q 45 300 35 225", c: "var(--mood-weed-deep)", sw: 4 },
+    { d: "M 55 390 Q 60 315 52 245", c: "var(--mood-weed)", sw: 3 },
+    { d: "M 600 390 Q 595 305 605 230", c: "var(--mood-weed-deep)", sw: 4 },
+    { d: "M 585 390 Q 580 320 588 250", c: "var(--mood-weed)", sw: 3 },
   ],
   bubbles: [
     [95, 270, 3],
@@ -81,46 +83,100 @@ const SCENE_WIDE = {
 
 type FishKind = "blue" | "orange" | "far" | "tiny";
 
-/** 鱼体画法（坐标以鱼心为原点，摆位由外层 translate 控制） */
+/** 鱼体画法（坐标以鱼心为原点，摆位由外层 translate 控制）。
+ *  颜色走 style 而不是 presentation attribute：fill="var(--x)" 的
+ *  属性写法在部分浏览器不解析，style 写法全端可靠。 */
 function FishBody({ kind }: { kind: FishKind }) {
   if (kind === "blue")
     return (
       <>
-        <ellipse cx="0" cy="0" rx="18" ry="8" fill="#5a9fd4" />
-        <polygon points="-18,0 -28,-6 -28,6" fill="#4a8fc4" />
-        <circle cx="8" cy="-2" r="2" fill="#fff" />
-        <circle cx="9" cy="-2" r="1" fill="#000" />
+        <ellipse
+          cx="0"
+          cy="0"
+          rx="18"
+          ry="8"
+          style={{ fill: "var(--mood-fish-blue)" }}
+        />
+        <polygon
+          points="-18,0 -28,-6 -28,6"
+          style={{ fill: "var(--mood-fish-blue-deep)" }}
+        />
+        <circle cx="8" cy="-2" r="2" style={{ fill: "var(--mood-bright)" }} />
+        <circle cx="9" cy="-2" r="1" style={{ fill: "var(--mood-dark)" }} />
       </>
     );
   if (kind === "orange")
     return (
       <>
-        <ellipse cx="0" cy="0" rx="22" ry="10" fill="#e8945a" />
-        <polygon points="-22,0 -34,-8 -34,8" fill="#d8844a" />
-        <circle cx="10" cy="-3" r="2.5" fill="#fff" />
-        <circle cx="11" cy="-3" r="1.2" fill="#000" />
+        <ellipse
+          cx="0"
+          cy="0"
+          rx="22"
+          ry="10"
+          style={{ fill: "var(--mood-fish-orange)" }}
+        />
+        <polygon
+          points="-22,0 -34,-8 -34,8"
+          style={{ fill: "var(--mood-fish-orange-deep)" }}
+        />
+        <circle
+          cx="10"
+          cy="-3"
+          r="2.5"
+          style={{ fill: "var(--mood-bright)" }}
+        />
+        <circle cx="11" cy="-3" r="1.2" style={{ fill: "var(--mood-dark)" }} />
         <line
           x1="-5"
           y1="-8"
           x2="-5"
           y2="8"
-          stroke="#c8743a"
+          style={{ stroke: "var(--mood-fish-orange-stripe)" }}
           strokeWidth="1.5"
         />
-        <line x1="0" y1="-9" x2="0" y2="9" stroke="#c8743a" strokeWidth="1.5" />
+        <line
+          x1="0"
+          y1="-9"
+          x2="0"
+          y2="9"
+          style={{ stroke: "var(--mood-fish-orange-stripe)" }}
+          strokeWidth="1.5"
+        />
       </>
     );
   if (kind === "far")
     return (
       <>
-        <ellipse cx="0" cy="0" rx="10" ry="4" fill="#8ab4dd" opacity="0.6" />
-        <polygon points="-10,0 -16,-3 -16,3" fill="#7aa4cd" opacity="0.6" />
+        <ellipse
+          cx="0"
+          cy="0"
+          rx="10"
+          ry="4"
+          style={{ fill: "var(--mood-fish-far)" }}
+          opacity="0.6"
+        />
+        <polygon
+          points="-10,0 -16,-3 -16,3"
+          style={{ fill: "var(--mood-fish-far-deep)" }}
+          opacity="0.6"
+        />
       </>
     );
   return (
     <>
-      <ellipse cx="0" cy="0" rx="8" ry="3.5" fill="#b8a8d8" opacity="0.5" />
-      <polygon points="-8,0 -13,-2.5 -13,2.5" fill="#a898c8" opacity="0.5" />
+      <ellipse
+        cx="0"
+        cy="0"
+        rx="8"
+        ry="3.5"
+        style={{ fill: "var(--mood-fish-tiny)" }}
+        opacity="0.5"
+      />
+      <polygon
+        points="-8,0 -13,-2.5 -13,2.5"
+        style={{ fill: "var(--mood-fish-tiny-deep)" }}
+        opacity="0.5"
+      />
     </>
   );
 }
@@ -156,16 +212,31 @@ export function FishingPond({
       >
         <defs>
           <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0d1b3e" />
-            <stop offset="100%" stopColor="#1a3a6c" />
+            <stop offset="0%" style={{ stopColor: "var(--mood-pond-sky-a)" }} />
+            <stop
+              offset="100%"
+              style={{ stopColor: "var(--mood-pond-sky-b)" }}
+            />
           </linearGradient>
           <linearGradient id="waterG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2a5a9c" />
-            <stop offset="100%" stopColor="#0d2a5c" />
+            <stop
+              offset="0%"
+              style={{ stopColor: "var(--mood-pond-water-a)" }}
+            />
+            <stop
+              offset="100%"
+              style={{ stopColor: "var(--mood-pond-water-b)" }}
+            />
           </linearGradient>
           <radialGradient id="moonG" cx="0.4" cy="0.4" r="0.6">
-            <stop offset="0%" stopColor="#fff8e0" />
-            <stop offset="100%" stopColor="#e8d8a0" />
+            <stop
+              offset="0%"
+              style={{ stopColor: "var(--mood-pond-moon-a)" }}
+            />
+            <stop
+              offset="100%"
+              style={{ stopColor: "var(--mood-pond-moon-b)" }}
+            />
           </radialGradient>
         </defs>
 
@@ -179,7 +250,7 @@ export function FishingPond({
             cx={cx}
             cy={cy}
             r={r}
-            fill="#fff"
+            style={{ fill: "var(--mood-bright)" }}
             opacity="0.8"
           />
         ))}
@@ -194,7 +265,7 @@ export function FishingPond({
           cx={sc.moon.cx - 8}
           cy={sc.moon.cy - 5}
           r={sc.moon.r - 3}
-          fill="#0d1b3e"
+          style={{ fill: "var(--mood-pond-sky-a)" }}
           opacity="0.15"
         />
 
@@ -226,8 +297,7 @@ export function FishingPond({
             key={i}
             className={`fp-weed fp-wd${i + 1}`}
             d={wd.d}
-            stroke={wd.c}
-            strokeWidth={wd.sw}
+            style={{ stroke: wd.c, strokeWidth: wd.sw }}
             fill="none"
             strokeLinecap="round"
           />
@@ -263,7 +333,7 @@ export function FishingPond({
               y1={sc.waterTop}
               x2={sc.w / 2}
               y2={sc.lineBottom}
-              stroke="#fff"
+              style={{ stroke: "var(--mood-bright)" }}
               strokeWidth="1"
               opacity="0.6"
             />
@@ -272,8 +342,10 @@ export function FishingPond({
               cx={sc.w / 2}
               cy={sc.lineBottom}
               r={phase === "bite" ? 8 : 6}
-              fill="#e74c3c"
-              stroke="#fff"
+              style={{
+                fill: "var(--mood-bobber)",
+                stroke: "var(--mood-bright)",
+              }}
               strokeWidth="2"
               className={phase === "bite" ? "fp-bobber fp-bite" : "fp-bobber"}
             />

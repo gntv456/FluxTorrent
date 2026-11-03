@@ -95,7 +95,7 @@ export function CheatCaseDetail({
       <ul className="flex flex-col gap-1 text-xs">
         {detail.evidence.map((e) => (
           <li key={e.id} className="flex flex-wrap gap-2">
-            <code className="rounded bg-[var(--brand-paper)] px-1">
+            <code className="rounded bg-[var(--compat-paper)] px-1">
               {e.agent}
             </code>
             <span>{e.reason}</span>
@@ -125,7 +125,7 @@ export function CheatCaseDetail({
         <input
           className={
             "min-h-[36px] flex-1 rounded-[var(--r-sm)] border " +
-            "border-[var(--brand-line)] bg-[var(--brand-paper)] " +
+            "border-[var(--compat-line)] bg-[var(--compat-paper)] " +
             "px-2 text-sm"
           }
           placeholder={t.notePh}

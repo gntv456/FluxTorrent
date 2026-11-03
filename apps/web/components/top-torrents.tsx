@@ -13,7 +13,7 @@ const ROW_LINE = ROW_BASE;
 const TD_RANK = "py-2 pl-3 text-sm font-bold text-[var(--text-faint)]";
 const LINK_NAME =
   "block max-w-[280px] truncate text-sm font-bold " +
-  "text-ink hover:text-[var(--brand-orange)]";
+  "text-ink hover:text-[var(--compat-orange)]";
 
 /** 内容热榜三件套（0424 P1-1）：today=今日完成增量 / week=近7天完成增量
  *  / free=当前免费中按做种数。此前全站只有用户六榜，没有任何内容侧

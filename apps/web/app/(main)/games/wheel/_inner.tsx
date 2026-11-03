@@ -218,6 +218,7 @@ export default function WheelFocusPage({
         <div className="flex w-full flex-col items-center gap-3">
           <GameStage
             bg="radial-gradient(120% 130% at 50% 0%, #2a2130, #120f16 72%)"
+            shjBg="var(--shj-stage-wheel)"
             className="w-full max-w-[460px] py-6"
           >
             <LuckyWheel

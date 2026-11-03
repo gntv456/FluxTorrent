@@ -15,23 +15,25 @@ import type { ForumRecentTopic } from "@fluxtorrent/domain-types";
  *     这一类型，不为一枚装饰徽章凭空加字段（与版块页同一口径）。
  */
 
-/** 版块徽章色板（样图 bs 映射的六对，打散按 id 取） */
+/** 版块徽章色板（样图 bs 映射的六对，打散按 id 取）。
+ *  P2-5 令牌化：色值真源在 base.css --fbadge-*（固定 hue 轮换，
+ *  明暗同值，口径见该处注释）。 */
 const BADGE_PAIRS: [string, string][] = [
-  ["bg-[#e8f4ff]", "text-[#1e8ae8]"],
-  ["bg-[#dff7f0]", "text-[#1f9c7d]"],
-  ["bg-[#fff4d6]", "text-[#b8860b]"],
-  ["bg-[#eaebff]", "text-[#5b6bf5]"],
-  ["bg-[#ffe9f4]", "text-[#e06aa8]"],
-  ["bg-[#ffe9e2]", "text-[#e2553a]"],
+  ["bg-[var(--fbadge-sky-bg)]", "text-[var(--fbadge-sky-fg)]"],
+  ["bg-[var(--fbadge-mint-bg)]", "text-[var(--fbadge-mint-fg)]"],
+  ["bg-[var(--fbadge-sun-bg)]", "text-[var(--fbadge-sun-fg)]"],
+  ["bg-[var(--fbadge-indigo-bg)]", "text-[var(--fbadge-indigo-fg)]"],
+  ["bg-[var(--fbadge-candy-bg)]", "text-[var(--fbadge-candy-fg)]"],
+  ["bg-[var(--fbadge-coral-bg)]", "text-[var(--fbadge-coral-fg)]"],
 ];
 
-/** 头像渐变色板（样图 avColor 的五条，按用户名散列） */
+/** 头像渐变色板（样图 avColor 的五条，按用户名散列）；色源 --fhue-* */
 const AV_GRADIENTS = [
-  "linear-gradient(135deg,#2fa8ff,#5b6bf5)",
-  "linear-gradient(135deg,#2fbf9b,#2fa8ff)",
-  "linear-gradient(135deg,#ff7a59,#ffc93c)",
-  "linear-gradient(135deg,#5b6bf5,#ff8fc7)",
-  "linear-gradient(135deg,#ff7a59,#5b6bf5)",
+  "linear-gradient(135deg,var(--fhue-sky),var(--fhue-indigo))",
+  "linear-gradient(135deg,var(--fhue-mint),var(--fhue-sky))",
+  "linear-gradient(135deg,var(--fhue-coral),var(--fhue-sun))",
+  "linear-gradient(135deg,var(--fhue-indigo),var(--fhue-candy))",
+  "linear-gradient(135deg,var(--fhue-coral),var(--fhue-indigo))",
 ];
 
 const hash = (s: string) =>

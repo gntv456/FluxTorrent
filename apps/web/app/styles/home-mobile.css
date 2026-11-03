@@ -462,8 +462,8 @@
   color: var(--text-on-accent);
   background: linear-gradient(
     135deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark)
+    var(--compat-orange-bright),
+    var(--compat-orange-dark)
   );
   cursor: pointer;
 }

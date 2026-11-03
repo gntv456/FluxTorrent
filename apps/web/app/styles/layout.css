@@ -48,11 +48,11 @@
   flex: 0 0 auto;
   align-items: center;
   padding: 6px 14px;
-  color: var(--brand-ink);
+  color: var(--compat-ink);
   font-size: 15px;
   font-weight: 700;
   white-space: nowrap;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 10px;
   background: var(--row-veil-soft);
   box-shadow: 0 2px 0 rgba(70, 110, 165, 0.04);
@@ -63,8 +63,8 @@
     transform 0.16s ease;
 }
 .mainmenu-link:hover {
-  color: var(--brand-orange);
-  border-color: var(--brand-orange);
+  color: var(--compat-orange);
+  border-color: var(--compat-orange);
   background: var(--surface-raised);
   transform: translateY(-1px);
 }
@@ -93,7 +93,7 @@
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 
@@ -198,7 +198,7 @@
   cursor: pointer;
 }
 .langmenu__trigger:hover {
-  border-color: var(--brand-line);
+  border-color: var(--compat-line);
   background: var(--surface-raised);
   color: var(--ink);
 }
@@ -220,7 +220,7 @@
   padding: 5px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
 }
 .langmenu__item {
@@ -241,14 +241,14 @@
 }
 .langmenu__item:hover {
   background: var(--chip-veil);
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 .langmenu__item[data-active="true"] {
-  color: var(--brand-orange-dark);
-  background: var(--brand-soft);
+  color: var(--compat-orange-dark);
+  background: var(--compat-soft);
 }
 .langmenu__check {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
   font-weight: 900;
 }
 
@@ -258,9 +258,9 @@
   flex-wrap: wrap;
   align-items: stretch;
   gap: 0;
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
   /* 工具条弹层（举报信箱/获取RSS）挂在 userbar 内部，需允许溢出显示 */
   overflow: visible;
@@ -285,8 +285,8 @@
   font-weight: 800;
   border-radius: 50%;
   background:linear-gradient(145deg,
-    var(--brand-orange-bright),
-    var(--brand-orange));
+    var(--compat-orange-bright),
+    var(--compat-orange));
   box-shadow: inset 0 0 0 3px var(--hairline-strong);
   overflow: hidden;
 }
@@ -303,9 +303,9 @@
   gap: 2px;
   padding: 1px 8px;
   border-radius: 999px;
-  border: 1px solid var(--brand-line);
-  background: var(--brand-paper);
-  color: var(--brand-orange-dark);
+  border: 1px solid var(--compat-line);
+  background: var(--compat-paper);
+  color: var(--compat-orange-dark);
   font-size: 11px;
   font-weight: 700;
   vertical-align: middle;
@@ -322,7 +322,7 @@
   line-height: 1.35;
 }
 .userbar__welcome a.userbar__name {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 17px;
 }
 .userbar__welcome a.userbar__name:hover {
@@ -351,7 +351,7 @@
   font-weight: 600;
 }
 .userbar__shortcuts a:hover {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 /* 魔力胶囊（userbar__bonus） */
 .bonus-pill {
@@ -367,7 +367,7 @@
   background: var(--chip-veil);
 }
 .bonus-pill b {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 13px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -385,13 +385,13 @@
   gap: 8px;
   align-items: stretch;
   padding: 9px 18px 12px;
-  border-top: 1px solid var(--brand-line-soft);
-  background: var(--brand-paper);
+  border-top: 1px solid var(--compat-line-soft);
+  background: var(--compat-paper);
 }
 @media (min-width: 1024px) {
   .userbar__stats {
     border-top: 0;
-    border-left: 1px solid var(--brand-line-soft);
+    border-left: 1px solid var(--compat-line-soft);
   }
 }
 .userstat {
@@ -434,7 +434,7 @@
 }
 .userstat .leech-arrow {
   margin-left: 0.2em;
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 
 /* ============ 登录页双栏画布（theme.css page-login 校准至 2170×1180 artwork）
@@ -450,8 +450,8 @@
   background:
     radial-gradient(circle at 18% 12%, rgba(77, 149, 255, 0.06),
     transparent 42%), 
-    radial-gradient(circle at 84% 88%, var(--brand-glow-veil), transparent 46%),
-    var(--brand-bg);
+    radial-gradient(circle at 84% 88%, var(--compat-glow-veil), transparent 46%),
+    var(--compat-bg);
 }
 
 /* 登录页主背景（0446）：整页铺底，画布抬到 z=10；不透明度后台可调 */
@@ -653,11 +653,11 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   width: 25px;
   height: 22px;
   background:
-    linear-gradient(25deg, transparent 40%, var(--brand-orange) 42% 58%,
+    linear-gradient(25deg, transparent 40%, var(--compat-orange) 42% 58%,
     transparent 60%) 0 2px / 11px 6px no-repeat, 
-    linear-gradient(0deg, transparent 40%, var(--brand-orange) 42% 58%,
+    linear-gradient(0deg, transparent 40%, var(--compat-orange) 42% 58%,
     transparent 60%) 0 9px / 14px 5px no-repeat, 
-    linear-gradient(-25deg, transparent 40%, var(--brand-orange) 42% 58%,
+    linear-gradient(-25deg, transparent 40%, var(--compat-orange) 42% 58%,
     transparent 60%) 0 15px / 11px 6px no-repeat;
 }
 
@@ -741,7 +741,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 
 .bz-field input:focus {
-  border-color: var(--brand-orange);
+  border-color: var(--compat-orange);
   background: var(--row-veil);
   box-shadow: 0 0 0 3px var(--focus-ring-soft);
 }
@@ -792,7 +792,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 
 .bz-pwd-toggle:hover {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 
 .bz-pwd-toggle[aria-pressed="true"] .bz-toggle-slash {
@@ -839,10 +839,10 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 
 .bz-remember > input:checked + .bz-checkbox-mark {
-  border-color: var(--brand-orange);
+  border-color: var(--compat-orange);
   background:linear-gradient(145deg,
-    var(--brand-orange-bright),
-    var(--brand-orange));
+    var(--compat-orange-bright),
+    var(--compat-orange));
 }
 
 .bz-remember > input:checked + .bz-checkbox-mark::after {
@@ -867,7 +867,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   align-items: center;
   justify-self: end;
   padding: 4px 10px;
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
@@ -883,15 +883,15 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   height: 6px;
   margin-right: 6px;
   border-radius: 50%;
-  background: var(--brand-orange);
+  background: var(--compat-orange);
   box-shadow: 0 0 0 3px var(--focus-ring-soft);
 }
 
 .bz-totp-toggle:hover,
 .bz-totp-toggle[aria-expanded="true"] {
   color: var(--text-on-accent);
-  border-color: var(--brand-orange);
-  background: var(--brand-orange);
+  border-color: var(--compat-orange);
+  background: var(--compat-orange);
 }
 
 /* 巨型提交钮 */
@@ -909,11 +909,11 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-weight: 800;
   line-height: 1.35;
   letter-spacing: 4px;
-  border: 1px solid var(--brand-orange);
+  border: 1px solid var(--compat-orange);
   border-radius: 7px;
   background:linear-gradient(100deg,
-    var(--brand-orange-bright),
-    var(--brand-orange));
+    var(--compat-orange-bright),
+    var(--compat-orange));
   box-shadow: 0 8px 18px var(--accent-shadow-soft);
   cursor: pointer;
 }
@@ -921,8 +921,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .bz-submit:hover,
 .bz-submit:focus-visible {
   background:linear-gradient(100deg,
-    var(--brand-orange),
-    var(--brand-orange-dark));
+    var(--compat-orange),
+    var(--compat-orange-dark));
 }
 
 .bz-submit:disabled {
@@ -962,20 +962,20 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   left: 2px;
   width: 5px;
   height: 5px;
-  border: 1px solid var(--brand-orange);
+  border: 1px solid var(--compat-orange);
   transform: rotate(45deg);
 }
 
 .bz-assistance a {
   margin-left: 4px;
-  color: var(--brand-orange);
+  color: var(--compat-orange);
   font-weight: 800;
   padding-bottom: 1px;
   border-bottom: 1px dashed var(--accent-rule);
 }
 
 .bz-assistance a:hover {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   border-bottom-style: solid;
 }
 
@@ -1151,12 +1151,12 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   margin-bottom: 12px;
 }
 .usercp-error {
-  color: var(--brand-coral, var(--danger));
+  color: var(--compat-coral, var(--danger));
   font-size: 13px;
   font-weight: 700;
 }
 .usercp-loading {
-  color: var(--brand-sub, var(--text-muted));
+  color: var(--compat-sub, var(--text-muted));
   font-size: 13px;
 }
 .usercp-saved {
@@ -1168,11 +1168,11 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .uc-note {
   display: block;
   margin-top: 4px;
-  color: var(--brand-sub, var(--text-muted));
+  color: var(--compat-sub, var(--text-muted));
   font-size: 12px;
 }
 .uc-note b {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 /* 锚点直达高亮（2026-10-16）：从账户概览「访问令牌 → 创建」带 #tokens
    跳进安全面板时，目标行短暂描边，让用户在平铺的十余项里一眼看到它。
@@ -1207,7 +1207,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   max-width: 100%;
   min-height: 160px;
   padding: 8px 10px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 6px;
   background: var(--surface-raised);
   font: inherit;
@@ -1218,7 +1218,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .uc-num-input {
   width: 64px;
   padding: 2px 6px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 6px;
   background: var(--surface-raised);
 }
@@ -1237,8 +1237,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border: 0;
   border-radius: 8px;
   background:linear-gradient(135deg,
-    var(--brand-orange),
-    var(--brand-orange-dark));
+    var(--compat-orange),
+    var(--compat-orange-dark));
   cursor: pointer;
 }
 .usercp-form input[type="submit"]:disabled {
@@ -1250,7 +1250,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   width: 150px;
   height: 150px;
   object-fit: cover;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-hover);
 }
@@ -1260,8 +1260,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     45deg,
     var(--surface-hover),
     var(--surface-hover) 8px,
-    var(--brand-soft) 8px,
-    var(--brand-soft) 16px
+    var(--compat-soft) 8px,
+    var(--compat-soft) 16px
   );
 }
 
@@ -1289,7 +1289,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: var(--r-md);
   background: linear-gradient(100deg, var(--head-a), var(--surface-card) 72%);
 }
@@ -1303,7 +1303,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--text-on-accent);
-  background: var(--brand-orange);
+  background: var(--compat-orange);
   color: var(--text-on-accent);
   font-size: 22px;
   font-weight: 800;
@@ -1326,14 +1326,14 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .uc-profile-card > a {
   margin-left: auto;
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 13px;
   font-weight: 700;
 }
 .uc-ratio-card {
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   overflow: hidden;
 }
 .uc-ratio-card__content {
@@ -1402,9 +1402,9 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-size: 11px;
 }
 .uc-trend-card {
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   padding: 12px 16px;
 }
 .uc-trend-card header {
@@ -1423,7 +1423,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-weight: 600;
 }
 .uc-trend-card header > span {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 12.5px;
   font-weight: 700;
 }
@@ -1437,13 +1437,13 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   flex: 1;
   min-height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(180deg, var(--brand-orange), var(--brand-soft));
+  background: linear-gradient(180deg, var(--compat-orange), var(--compat-soft));
 }
 .uc-summary-card {
   padding: 12px 14px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
 }
 .uc-summary-card h3 {
   /* 对齐样图 § panel__head：标题带一条浅分隔线，卡片内部层次更清楚 */
@@ -1479,13 +1479,13 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   height: 100%;
   border-radius: 4px;
   background:linear-gradient(90deg,
-    var(--brand-orange),
-    var(--brand-orange-dark));
+    var(--compat-orange),
+    var(--compat-orange-dark));
 }
 .uc-more {
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
 }
 .uc-more summary {
   padding: 10px 14px;
@@ -1513,9 +1513,9 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   filter: none;
 }
 .uc-recent-topics {
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   padding: 12px 16px;
 }
 .uc-recent-topics h2 {
@@ -1531,7 +1531,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   gap: 12px;
 }
 .uc-cat-card {
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 10px;
   background: var(--surface-card);
   overflow: hidden;
@@ -1619,7 +1619,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     border-right: 1px solid var(--border-soft);
   }
   .usercp-nav a[data-active="true"] {
-    box-shadow: inset 0 -3px 0 var(--brand-orange);
+    box-shadow: inset 0 -3px 0 var(--compat-orange);
   }
 }
 
@@ -1685,9 +1685,9 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 /* brand-panel 通用面板：colhead 风标题条 */
 .brand-panel {
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
@@ -1732,8 +1732,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border: 0;
   border-radius: 999px;
   background:linear-gradient(135deg,
-    var(--brand-orange-bright),
-    var(--brand-orange-dark));
+    var(--compat-orange-bright),
+    var(--compat-orange-dark));
   box-shadow: 0 2px 6px var(--accent-shadow);
   cursor: pointer;
 }
@@ -1779,8 +1779,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     ),
     linear-gradient(
       145deg,
-      var(--brand-orange-bright),
-      var(--brand-orange-dark)
+      var(--compat-orange-bright),
+      var(--compat-orange-dark)
     );
 }
 .home-news__summary strong {
@@ -1816,7 +1816,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   cursor: pointer;
 }
 .home-news__item:hover {
-  border-color: var(--brand-orange);
+  border-color: var(--compat-orange);
   background: var(--surface-hover);
 }
 .home-news__badge {
@@ -1826,7 +1826,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   color: var(--text-on-accent);
   font-size: 11.5px;
   font-weight: 700;
-  background: var(--brand-orange);
+  background: var(--compat-orange);
 }
 .home-news__item strong {
   flex: 1 1 auto;
@@ -1904,17 +1904,17 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   background: var(--surface-sunken);
 }
 .attendance-calendar__day.is-done strong {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 .attendance-calendar__day.is-done small {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 .attendance-calendar__day.is-missed {
   opacity: 0.72;
 }
 .attendance-calendar__day.is-today {
-  border-color: var(--brand-orange);
-  box-shadow: inset 0 0 0 1.5px var(--brand-orange);
+  border-color: var(--compat-orange);
+  box-shadow: inset 0 0 0 1.5px var(--compat-orange);
 }
 .attendance-calendar__day.is-future,
 .attendance-calendar__day.is-outside {
@@ -1942,7 +1942,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .attendance-card__legend i.is-today {
   background: transparent;
-  border: 1.5px solid var(--brand-orange);
+  border: 1.5px solid var(--compat-orange);
 }
 
 /* ---- 新增资源统计 ---- */
@@ -1999,7 +1999,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   background: #a7a7a7;
 }
 .legend-swatch--official {
-  background: var(--brand-orange);
+  background: var(--compat-orange);
 }
 .home-resource-stats__figure {
   margin: 8px 14px 14px;
@@ -2028,7 +2028,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .rs-bar__official {
   display: block;
-  background: var(--brand-orange);
+  background: var(--compat-orange);
   min-height: 1px;
 }
 .rs-bar:hover .rs-bar__ordinary,
@@ -2071,12 +2071,12 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-weight: 800;
 }
 .home-site-data__item.is-primary {
-  border-color: var(--brand-orange);
+  border-color: var(--compat-orange);
   background: linear-gradient(100deg, var(--surface-sunken), var(--head-b));
 }
 .home-site-data__item.is-primary dt,
 .home-site-data__item.is-primary dd {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
 }
 .home-site-data__item.is-warning dt i,
 .home-site-data__item.is-danger dt i {
@@ -2114,10 +2114,10 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .home-lucky-draw__list .rainbow {
   background:linear-gradient(90deg,
-    var(--brand-orange),
+    var(--compat-orange),
     var(--warning),
     var(--success),
-    var(--brand-orange));
+    var(--compat-orange));
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
@@ -2126,9 +2126,9 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 /* ---- 免责条款 / 友情链接 ---- */
 .home-native-modules {
-  border: 1px solid var(--brand-line-soft);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: var(--shadow-card);
   padding: 12px 16px;
 }
@@ -2191,9 +2191,9 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   flex-direction: column;
   width: min(680px, 100%);
   max-height: 80vh;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 14px;
-  background: var(--brand-paper);
+  background: var(--compat-paper);
   box-shadow: 0 18px 50px rgba(10, 25, 47, 0.35);
   overflow: hidden;
 }
@@ -2207,7 +2207,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   background: linear-gradient(90deg, var(--head-a), var(--head-b));
 }
 .home-news-modal__head span {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   font-size: 11.5px;
   font-weight: 800;
 }
@@ -2219,7 +2219,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .home-news-modal__head button {
   width: 30px;
   height: 30px;
-  border: 1px solid var(--brand-line);
+  border: 1px solid var(--compat-line);
   border-radius: 8px;
   background: var(--surface-card);
   color: var(--text-muted);
@@ -2752,15 +2752,15 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   gap: 8px;
   margin: 0 0 6px;
   padding: 8px 10px;
-  border: 1px solid var(--brand-orange);
+  border: 1px solid var(--compat-orange);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--brand-orange) 8%, transparent);
+  background: color-mix(in srgb, var(--compat-orange) 8%, transparent);
   text-decoration: none;
   transition: background var(--motion-fast, 0.15s) ease;
 }
 
 .bz-open-reg-banner:hover {
-  background: color-mix(in srgb, var(--brand-orange) 15%, transparent);
+  background: color-mix(in srgb, var(--compat-orange) 15%, transparent);
 }
 
 .bz-open-reg-banner + .bz-assistance p {
@@ -2771,7 +2771,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   flex: none;
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--brand-orange);
+  background: var(--compat-orange);
   color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 800;
@@ -2825,20 +2825,20 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 .bz-reg-btn:hover,
 .bz-reg-btn:focus-visible {
-  border-color: var(--brand-orange);
-  color: var(--brand-orange);
+  border-color: var(--compat-orange);
+  color: var(--compat-orange);
 }
 
 /* 注册按钮（主样式：开放注册态，与登录同为实心，视觉等权） */
 .bz-reg-btn--open {
-  border: 1px solid var(--brand-orange);
-  color: var(--brand-orange);
-  background: color-mix(in srgb, var(--brand-orange) 10%, transparent);
+  border: 1px solid var(--compat-orange);
+  color: var(--compat-orange);
+  background: color-mix(in srgb, var(--compat-orange) 10%, transparent);
 }
 
 .bz-reg-btn--open:hover,
 .bz-reg-btn--open:focus-visible {
-  background: color-mix(in srgb, var(--brand-orange) 18%, transparent);
+  background: color-mix(in srgb, var(--compat-orange) 18%, transparent);
 }
 
 /* Passkey 登录钮：尺寸与描边由 .bz-reg-btn 给（原先它是全页唯一不吃
@@ -2866,9 +2866,9 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 /* P-684 注册页开放轮额度条 */
 .bz-regwindow-chip {
   padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--brand-orange) 45%, var(--line));
+  border: 1px solid color-mix(in srgb, var(--compat-orange) 45%, var(--line));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--brand-orange) 7%, transparent);
+  background: color-mix(in srgb, var(--compat-orange) 7%, transparent);
   color: var(--text-body);
   font-size: 12.5px;
   font-weight: 600;
@@ -2877,6 +2877,6 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 /* 登录页横幅剩余名额强调 */
 .bz-open-reg-slots {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
   font-weight: 800;
 }

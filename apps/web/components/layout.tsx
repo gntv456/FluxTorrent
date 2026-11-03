@@ -197,7 +197,7 @@ export async function MobileTabBar() {
   return (
     <nav
       aria-label={dict.tabbar.ariaBottom}
-      className="fixed inset-x-0 bottom-0 z-40 flex items-end border-t border-line bg-[var(--brand-paper)] pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="mobile-tabbar fixed inset-x-0 bottom-0 z-40 flex items-end border-t border-line bg-[var(--compat-paper)] pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {tabs.map((t) =>
         t.center ? (
@@ -210,7 +210,7 @@ export async function MobileTabBar() {
           >
             <span
               aria-hidden
-              className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-[var(--brand-paper)] leading-none text-white shadow-[0_8px_20px_var(--accent-shadow)]"
+              className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-[var(--compat-paper)] leading-none text-white shadow-[0_8px_20px_var(--accent-shadow)]"
               style={{ background: "var(--tide-sea, var(--sky))" }}
             >
               {t.icon}

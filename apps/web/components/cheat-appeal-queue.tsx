@@ -167,7 +167,7 @@ export function CheatAppealQueue() {
                   <td className={td}>
                     <a
                       className={
-                        "font-bold text-[var(--brand-orange-dark)] " +
+                        "font-bold text-[var(--compat-orange-dark)] " +
                         "hover:underline"
                       }
                       href={`/users/${r.user_id}`}

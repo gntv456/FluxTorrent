@@ -32,7 +32,7 @@ export function PmList({
             onClick={() => onToggleOpen(m.id)}
           >
             <span className="min-w-0 flex-1">
-              <b className="text-[var(--brand-orange-dark)]">
+              <b className="text-[var(--compat-orange-dark)]">
                 {m.counterpart ?? "Staff"}
               </b>
               <span className="ml-2 text-sm font-bold">{m.subject}</span>
@@ -48,7 +48,7 @@ export function PmList({
                 <button
                   type="button"
                   onClick={() => onReply(m)}
-                  className="min-h-[32px] rounded-full border border-[var(--brand-orange-dark)] px-3 text-xs font-bold text-[var(--brand-orange-dark)] hover:bg-[var(--brand-orange)] hover:text-white"
+                  className="min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] hover:bg-[var(--compat-orange)] hover:text-white"
                 >
                   ↩ {dict.messages.reply}
                 </button>
@@ -103,7 +103,7 @@ export function PmReplyForm({
           rows={4}
           value={replyBody}
           onChange={(e) => setReplyBody(e.target.value)}
-          className="min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 py-2 text-sm text-ink outline-none focus:border-[var(--brand-orange)]"
+          className="min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 py-2 text-sm text-ink outline-none focus:border-[var(--compat-orange)]"
         />
         <button
           type="submit"

@@ -127,7 +127,7 @@ export function ExamCapsule() {
     >
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
         <circle cx="10" cy="10" r={R} fill="none"
-                stroke="var(--brand-line-soft)" strokeWidth="3" />
+                stroke="var(--compat-line-soft)" strokeWidth="3" />
         <circle cx="10" cy="10" r={R} fill="none"
                 stroke={ringColor} strokeWidth="3"
                 strokeDasharray={`${dash} ${C}`}

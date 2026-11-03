@@ -38,6 +38,11 @@ const zhCnBase = {
     themeShanhaijing: "山海经",
     themeAuto: "跟随系统",
     themeNext: "点击切换下一档",
+    // 分类图标集显示名/说明（lib/cat-icon-sets.ts 的 labelKey/noteKey 消费）
+    catIconSetShanhaijing: "山海经·道具章纹套",
+    catIconSetShanhaijingNote: "深底圆章+单件金箔道具，22px 可辨",
+    catIconSetAurora: "Aurora·渐变应用图标套",
+    catIconSetAuroraNote: "浅色圆角块+渐变剪影，16px 可读性好",
     globalSearchPh: "搜索种子 / 帖子…",
     globalSearchBtn: "搜索",
     gsTorrents: "种子",
@@ -309,6 +314,13 @@ const zhCnBase = {
     noRating: "暂无评分",
     empty: "站点刚刚发芽，还没有资源",
     emptyAction: "发布第一个资源",
+    // 山海经 Hero 玉牌（乙 · 结构层；仅 shanhaijing 主题渲染该区块，键随主题走）
+    shjKicker: "山海图卷",
+    shjSub: "山海有灵，万物有谱",
+    shjJadeUsers: "山门修士",
+    shjJadeTorrents: "在册灵兽",
+    shjJadeSeeders: "守种修士",
+    shjJadePeers: "往来修士",
   },
   torrents: {
     viewLabel: "视图",

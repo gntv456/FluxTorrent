@@ -49,9 +49,9 @@ export function UploadDescrBlock({
     });
   }
   const bbBtn =
-    "min-h-10 min-w-[32px] rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-1.5 text-xs font-bold text-ink hover:border-[var(--brand-orange)]";
+    "min-h-10 min-w-[32px] rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-1.5 text-xs font-bold text-ink hover:border-[var(--compat-orange)]";
   const bbSelect =
-    "min-h-10 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--brand-orange)]";
+    "min-h-10 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-1 text-xs text-ink outline-none focus:border-[var(--compat-orange)]";
   // 色板（NP 颜色面板口径）：色块按钮，点击包住选区。
   // W-36：BBCode 色板是「用户内容词汇」——写进简介的 [color=red] 在
   // 夜间主题也必须是红，不随主题换肤；色值以 CSS 变量集中在 base.css
@@ -93,9 +93,9 @@ export function UploadDescrBlock({
   ];
   // 下拉面板通用样式：固定宽度 + 网格（防在窄单元格里竖排成一列）
   const bbPanel =
-    "absolute z-10 mt-1 grid w-56 max-w-[calc(100vw-2.5rem)] gap-1 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] p-2 shadow-[var(--shadow-card)]";
+    "absolute z-10 mt-1 grid w-56 max-w-[calc(100vw-2.5rem)] gap-1 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] p-2 shadow-[var(--shadow-card)]";
   const bbSwatch =
-    "flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-[var(--r-sm)] border border-[var(--brand-line)] text-[12px] text-ink hover:border-[var(--brand-orange)]";
+    "flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-[var(--r-sm)] border border-[var(--compat-line)] text-[12px] text-ink hover:border-[var(--compat-orange)]";
 
   return (
     <FormRow label={dict.upload.descr}>

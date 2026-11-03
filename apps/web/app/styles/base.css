@@ -6,7 +6,7 @@
    纪律（§7.6-1）：全站禁止硬编码色值，一律使用下列 CSS 变量。
    主题机制：<html data-theme="brand | brand-night"> 切换（沿用旧键名，用户已存的偏好不丢）；
    换新主题 = 追加一个 [data-theme] 块覆盖全部变量。
-   兼容层：--brand-* 旧变量名继续存在（映射到 Aurora 语义色），30+ 组件零改动换肤。 */
+   兼容层：--compat-* 旧变量名继续存在（映射到 Aurora 语义色），30+ 组件零改动换肤。 */
 
 :root,
 [data-theme="brand"] {
@@ -49,8 +49,8 @@
   --grad-rainbow:linear-gradient(90deg,  #ffc93c,  #ff7a59,  #ff8fc7,  #5b6bf5,
     #2fa8ff);
   --ribbon: var(--grad-rainbow);
-  --brand-glow: #5b6bf5;
-  --brand-soft: var(--indigo-soft);
+  --compat-glow: #5b6bf5;
+  --compat-soft: var(--indigo-soft);
   /* ===== 表面 ===== */
   --surface-page: #f5faff;
   --surface-cloud: #eef5fd;
@@ -165,10 +165,103 @@
   --hairline: rgba(255, 255, 255, 0.5);
   --hairline-soft: rgba(255, 255, 255, 0.38);
   --hairline-strong: rgba(255, 255, 255, 0.78);
-  --focus-ring: rgba(47, 168, 255, 0.22);
+  /* ===== 焦点环（P2-6 归口，2026-11-03）=====
+     口径：--focus-ring = 实色描边（outline 与 0 0 0 3px 环形阴影专用）；
+     --focus-ring-soft = 半透明外发光（输入框 focus 光晕等）。
+     所有 :focus-visible / :focus 自绘轮廓只许引这两个令牌，禁止直引
+     --sky / 写死 hex。新增主题块必须覆写本令牌（山海经块 = var(--jin) 金环），
+     否则焦点环会跟着默认蓝走、与主题冲突。 */
+  --focus-ring: var(--sky);
   --focus-ring-soft: rgba(47, 168, 255, 0.14);
+  /* ===== 氛围/展示色纪律（P2-5 口径，2026-11-03）=====
+     硬编码色值按用途三分：
+     ① 画布/粒子/氛围色（游戏 SVG 场景皮肤：钓场/转盘/扭蛋穹顶）
+        → mood-* 令牌，随主题切换；夜间块须给暗底等效色
+        （降饱和/提亮）。当前等效色 = 与浅色同值：现状硬编码即
+        明暗同图，先保零回归，夜间微调留待视觉走查后在夜间块覆写。
+     ② UI 展示色（论坛徽章渐变、导航圆点色板、等级条等实际可见
+        chrome）→ 必须令牌化（--fhue-* / --fbadge-*），禁止硬编码。
+        该色板是样图按 Aurora 六色做的固定 hue 轮换，此前硬编码即
+        不随主题变；令牌取同值（字面量、不引 --sky-soft 等主题变量），
+        brand / brand-night / tide 三主题渲染保持逐像素一致。
+        未来要主题化，覆写本组一处即可。
+     ③ 确实无法令牌化的内容色（如 i18n 管理端帮助串里的示例色值
+        「春 #f4a7bb / 夏 #2fa878 …」——是写给管理员看的文档内容，
+        不是渲染色）→ 沿用 content-* 纪律逐条注明，不新增
+        design-cov-exempt 洗白。 */
+  /* --- mood-* 画布氛围色（games 豁免域收编，只换色源不动渲染逻辑） --- */
+  --mood-bright: #fff; /* 星星/鱼眼白/钓线/灯珠白 */
+  --mood-dark: #000; /* 鱼瞳 */
+  /* 星夜钓场 */
+  --mood-pond-sky-a: #0d1b3e;
+  --mood-pond-sky-b: #1a3a6c;
+  --mood-pond-water-a: #2a5a9c;
+  --mood-pond-water-b: #0d2a5c;
+  --mood-pond-moon-a: #fff8e0;
+  --mood-pond-moon-b: #e8d8a0;
+  --mood-weed-deep: #2d6a4f;
+  --mood-weed: #40916c;
+  --mood-fish-blue: #5a9fd4;
+  --mood-fish-blue-deep: #4a8fc4;
+  --mood-fish-orange: #e8945a;
+  --mood-fish-orange-deep: #d8844a;
+  --mood-fish-orange-stripe: #c8743a;
+  --mood-fish-far: #8ab4dd;
+  --mood-fish-far-deep: #7aa4cd;
+  --mood-fish-tiny: #b8a8d8;
+  --mood-fish-tiny-deep: #a898c8;
+  --mood-bobber: #e74c3c;
+  /* 大转盘（样图③粉彩板 + 金边毂） */
+  --mood-wheel-gold-a: #f2cf8a;
+  --mood-wheel-gold-b: #f7e2b2;
+  --mood-wheel-violet-a: #c3b4e6;
+  --mood-wheel-violet-b: #d5c9f0;
+  --mood-wheel-blue-a: #a3c4e8;
+  --mood-wheel-blue-b: #bdd4ef;
+  --mood-wheel-mist-a: #e7edf6;
+  --mood-wheel-mist-b: #f3f7fc;
+  --mood-wheel-rim-a: #e8c888;
+  --mood-wheel-rim-b: #b08a4a;
+  --mood-wheel-hub-a: #f7e6c0;
+  --mood-wheel-hub-b: #d4af7a;
+  --mood-wheel-face-a: #ffffff;
+  --mood-wheel-face-b: #eef4fb;
+  --mood-wheel-face-c: #dbe7f4;
+  --mood-wheel-hub-shadow: rgba(176, 138, 74, 0.35);
+  --mood-wheel-lamp: #ffd700;
+  --mood-wheel-text-gold: #6b4a1a;
+  --mood-wheel-text-ink: #2c4a74;
+  /* 扭蛋机（穹顶散蛋装饰 + 稀有度档，与九宫格同语义） */
+  --mood-egg-coral: #ff8a63;
+  --mood-egg-mint: #5ad0a0;
+  --mood-egg-amber: #e0a13a;
+  --mood-egg-pink: #ef6ab0;
+  --mood-egg-gray: #7d8698;
+  --mood-tier-gold: #e9b94e;
+  --mood-tier-violet: #a06bf0;
+  --mood-tier-blue: #5aa9ff;
+  --mood-tier-gray: #8b93a6;
+  /* --- 论坛 hue 轮换 + 版块徽章色板（UI 展示色，见口径②） --- */
+  --fhue-sky: #2fa8ff;
+  --fhue-mint: #2fbf9b;
+  --fhue-sun: #ffc93c;
+  --fhue-indigo: #5b6bf5;
+  --fhue-candy: #ff8fc7;
+  --fhue-coral: #ff7a59;
+  --fbadge-sky-bg: #e8f4ff;
+  --fbadge-sky-fg: #1e8ae8;
+  --fbadge-mint-bg: #dff7f0;
+  --fbadge-mint-fg: #1f9c7d;
+  --fbadge-sun-bg: #fff4d6;
+  --fbadge-sun-fg: #b8860b;
+  --fbadge-indigo-bg: #eaebff;
+  --fbadge-indigo-fg: #5b6bf5;
+  --fbadge-candy-bg: #ffe9f4;
+  --fbadge-candy-fg: #e06aa8;
+  --fbadge-coral-bg: #ffe9e2;
+  --fbadge-coral-fg: #e2553a;
   --on-accent-glass: rgba(255, 255, 255, 0.2);
-  --brand-glow-veil: rgba(91, 107, 245, 0.1);
+  --compat-glow-veil: rgba(91, 107, 245, 0.1);
   --accent-shadow: rgba(91, 107, 245, 0.28);
   --accent-shadow-soft: rgba(91, 107, 245, 0.18);
   --accent-rule: rgba(47, 168, 255, 0.5);
@@ -201,21 +294,21 @@
   --field-bg: var(--surface-card);
   --surface: var(--surface-card);
   --gold-deep: var(--sweet-gold-deep, var(--sun));
-  --brand-bg-input: var(--surface-sunken);
-  --brand: var(--sky);
+  --compat-bg-input: var(--surface-sunken);
+  --compat: var(--sky);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  /* ===== 兼容层：--brand-* → Aurora 语义映射（30+ 组件零改动） ===== */
-  --brand-bg: var(--surface-page);
-  --brand-paper: var(--surface-card);
-  --brand-cream: var(--surface-cream);
-  --brand-line: #9ec8ee;
-  --brand-line-soft: var(--line);
-  --brand-orange: var(--sky);
-  --brand-orange-bright: #5cb8ff;
-  --brand-orange-dark: var(--sky-deep);
-  --brand-green: var(--mint);
-  --brand-blue: var(--info);
-  --brand-ink: var(--ink);
+  /* ===== 兼容层：--compat-* → Aurora 语义映射（30+ 组件零改动） ===== */
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #9ec8ee;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #5cb8ff;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
   /* 浮层遮罩（弹窗/抽屉背后的压暗层）：2026-10-03 抽成令牌，
      此前散落 3 处 rgba(8,19,31,.42) 硬编码，换主题时需逐处改。 */
   --overlay-scrim: rgba(8, 19, 31, 0.42);
@@ -249,8 +342,8 @@
   --grad-rainbow:linear-gradient(90deg,  #ffd35f,  #ff9072,  #ffa3d3,  #7d8aff,
     #47b3ff);
   --ribbon: var(--grad-rainbow);
-  --brand-glow: #7d8aff;
-  --brand-soft: var(--indigo-soft);
+  --compat-glow: #7d8aff;
+  --compat-soft: var(--indigo-soft);
   /* 表面 */
   --surface-page: #0f1424;
   --surface-cloud: #0b101f;
@@ -314,25 +407,29 @@
   --hairline: rgba(151, 170, 210, 0.16);
   --hairline-soft: rgba(151, 170, 210, 0.1);
   --hairline-strong: rgba(151, 170, 210, 0.24);
-  --focus-ring: rgba(103, 176, 255, 0.4);
+  --focus-ring: var(--sky);
   --focus-ring-soft: rgba(103, 176, 255, 0.24);
+  /* mood-* / fhue-* / fbadge-* 夜间等效色（P2-5 口径①②）：
+     现状 = 与浅色块同值（浅色块字面量声明，本块不覆写即继承）——
+     此前硬编码即明暗同图，保零回归；后续视觉走查若要暗底降饱和/
+     提亮，在本块逐个覆写对应令牌即可，勿改组件。 */
   --on-accent-glass: rgba(255, 255, 255, 0.14);
-  --brand-glow-veil: rgba(125, 138, 255, 0.1);
+  --compat-glow-veil: rgba(125, 138, 255, 0.1);
   --accent-shadow: rgba(125, 138, 255, 0.3);
   --accent-shadow-soft: rgba(125, 138, 255, 0.2);
   --accent-rule: rgba(103, 176, 255, 0.45);
   /* 兼容层 */
-  --brand-bg: var(--surface-page);
-  --brand-paper: var(--surface-card);
-  --brand-cream: var(--surface-cream);
-  --brand-line: #46609a;
-  --brand-line-soft: var(--line);
-  --brand-orange: var(--sky);
-  --brand-orange-bright: #6cc0ff;
-  --brand-orange-dark: #7fc6ff;
-  --brand-green: var(--mint);
-  --brand-blue: var(--info);
-  --brand-ink: var(--ink);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #46609a;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #6cc0ff;
+  --compat-orange-dark: #7fc6ff;
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
   /* 夜间遮罩更重（浅色遮罩压不住亮色内容） */
   --overlay-scrim: rgba(2, 6, 14, 0.62);
 }
@@ -361,8 +458,8 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
-  --color-brand-soft: var(--brand-soft);
-  --color-brand-glow: var(--brand-glow);
+  --color-brand-soft: var(--compat-soft);
+  --color-brand-glow: var(--compat-glow);
   --radius-xl: var(--r-xl);
   --radius-lg: var(--r-lg);
   --radius-md: var(--r-md);
@@ -504,7 +601,7 @@ html {
 
 /* ===== 全局键盘可达性：focus-visible 统一焦点环（鼠标点击不打扰） ===== */
 :focus-visible {
-  outline: 2px solid var(--brand-orange);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -528,13 +625,13 @@ textarea:focus-visible {
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--brand-orange);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
 /* ===== 选中文本：品牌蓝底白字（默认浏览器蓝在夜间主题下突兀） ===== */
 ::selection {
-  background: var(--brand-orange);
+  background: var(--compat-orange);
   color: var(--text-on-accent);
 }
 
@@ -564,11 +661,11 @@ select:focus-visible {
 body {
   color: var(--ink);
   background:
-    radial-gradient(1100px 560px at 82% -8%, var(--brand-glow-veil),
+    radial-gradient(1100px 560px at 82% -8%, var(--compat-glow-veil),
     transparent 60%), 
     radial-gradient(900px 480px at -8% 18%, var(--focus-ring-soft),
     transparent 62%), 
-    var(--brand-bg);
+    var(--compat-bg);
   background-attachment: fixed;
   font-family: var(--font-body);
   font-size: 14px;
@@ -603,11 +700,11 @@ h2 {
 
 /* 链接：包子深橙、无下划线（theme.css .theme-brandpt a） */
 a {
-  color: var(--brand-orange-dark);
+  color: var(--compat-orange-dark);
   text-decoration: none;
 }
 a:hover {
-  color: var(--brand-orange);
+  color: var(--compat-orange);
 }
 
 /* 数字表格对齐（统计数字 tabular-nums） */
@@ -675,9 +772,9 @@ a:hover {
   .s-premium,
 ) {
   border-width: 1px;
-  border-color: var(--brand-line);
-  background: var(--brand-paper);
-  color: var(--brand-orange-dark);
+  border-color: var(--compat-line);
+  background: var(--compat-paper);
+  color: var(--compat-orange-dark);
   box-shadow: none;
   transform: none;
 }
@@ -735,8 +832,8 @@ a:hover {
 .nexus-table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--brand-paper);
-  border: 1px solid var(--brand-line-soft);
+  background: var(--compat-paper);
+  border: 1px solid var(--compat-line-soft);
   border-radius: var(--r-md);
   overflow: hidden;
   box-shadow: var(--shadow-card);
@@ -766,7 +863,7 @@ a:hover {
   white-space: nowrap;
   padding: 8px 10px;
   text-align: left;
-  border-bottom: 1px solid var(--brand-line-soft);
+  border-bottom: 1px solid var(--compat-line-soft);
   background: linear-gradient(90deg, var(--head-a), var(--head-b));
 }
 .nexus-table tbody td {

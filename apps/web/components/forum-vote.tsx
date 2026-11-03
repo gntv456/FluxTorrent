@@ -187,7 +187,7 @@ export function PostTipButton({
         }
         disabled={busy}
         title={dict.forums.tipTitle}
-        className="inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 border-line text-sub hover:border-[var(--brand-orange)] hover:text-[var(--brand-orange-dark)]"
+        className="inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 border-line text-sub hover:border-[var(--compat-orange)] hover:text-[var(--compat-orange-dark)]"
       >
         <span aria-hidden="true">☕</span>
         {dict.forums.tipTitle}

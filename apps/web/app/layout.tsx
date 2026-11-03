@@ -13,6 +13,7 @@ import {
   THEMES,
   THEME_IDS,
   THEME_STORAGE_KEY,
+  themeIdByScheme,
 } from "@/lib/themes";
 
 /** 移动端方案 M1：viewport-fit=cover 让 env(safe-area-inset-*) 生效——
@@ -132,7 +133,8 @@ window.__fluxSwUpdated=false;location.reload();
  *  同时同步 PWA theme-color，并监听系统偏好变化（未手动选择时实时跟随）。
  *  W-42：chrome 色表与档位解析搬到 lib/themes.ts 注册表（唯一真源），
  *  本脚本序列化注册表下发（保持内联、零水合依赖）；"auto" 档存库值
- *  在首绘即解析为具体主题——CSS 与 meta theme-color 都不认识 "auto"。 */
+ *  在首绘即解析为具体主题——CSS 与 meta theme-color 都不认识 "auto"；
+ *  明暗族按 ThemeDef.scheme 查（themeIdByScheme），不靠注册表位置。 */
 function ThemeNoFlash() {
   const CH = JSON.stringify(
     Object.fromEntries(
@@ -140,20 +142,25 @@ function ThemeNoFlash() {
     ),
   );
   const ids = JSON.stringify(THEME_IDS);
+  // 明暗族 → 主题 id（scheme 字段唯一真源，不做 IDS[0]/IDS[1] 位置假设）
+  const SC = JSON.stringify({
+    light: themeIdByScheme("light"),
+    dark: themeIdByScheme("dark"),
+  });
   const script =
-    `(function(){var CH=${CH},IDS=${ids};` +
+    `(function(){var CH=${CH},IDS=${ids},SC=${SC};` +
     `function chrome(t){var m=document.querySelector('meta[name="theme-color"]');` +
     `if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}m.content=CH[t];}` +
     `function apply(t){document.documentElement.dataset.theme=t;chrome(t);}` +
-    `function pick(v){return (v==='auto'||IDS.indexOf(v)<0)?` +
-    `(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?IDS[1]:IDS[0]):v;}` +
+    `function sys(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?SC.dark:SC.light;}` +
+    `function pick(v){return (v==='auto'||IDS.indexOf(v)<0)?sys():v;}` +
     `try{var saved=localStorage.getItem('${THEME_STORAGE_KEY}');` +
     `apply(pick(saved));` +
     `if(!saved||saved==='auto'){` +
     `var mq=window.matchMedia('(prefers-color-scheme: dark)');` +
-    `if(mq.addEventListener){mq.addEventListener('change',function(e){` +
+    `if(mq.addEventListener){mq.addEventListener('change',function(){` +
     `try{var cur=localStorage.getItem('${THEME_STORAGE_KEY}');` +
-    `if(!cur||cur==='auto'){apply(e.matches?IDS[1]:IDS[0]);}}catch(_){}});}}` +
+    `if(!cur||cur==='auto'){apply(sys());}}catch(_){}});}}` +
     `}catch(e){}})();`;
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }
@@ -190,9 +197,9 @@ function ThemeTokenStyle({ tokens }: { tokens?: Record<string, string> }) {
         return `--ribbon:${v};--grad-rainbow:${v};`;
       }
       if (varName === "glow") {
-        // 键名去前缀是 glow，而全站 CSS 读的是 --brand-glow（base.css / pages.css /
+        // 键名去前缀是 glow，而全站 CSS 读的是 --compat-glow（base.css / pages.css /
         // theme-tide.css）——直注 --glow 没有任何消费方，后台改辉光色不生效。
-        return `--brand-glow:${v};--brand-glow-veil:${v}1a;`;
+        return `--compat-glow:${v};--compat-glow-veil:${v}1a;`;
       }
       return `--${varName}:${v};`;
     })

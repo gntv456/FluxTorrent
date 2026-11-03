@@ -72,8 +72,8 @@ export function CheatCasePanel() {
   const tabBtn = (k: TabKey) =>
     "rounded-full border px-3 py-1 text-xs font-bold " +
     (tab === k
-      ? "border-[var(--brand-orange)] " +
-        "text-[var(--brand-orange-dark)]"
+      ? "border-[var(--compat-orange)] " +
+        "text-[var(--compat-orange-dark)]"
       : "border-[var(--border-soft)] text-sub");
 
   return (
@@ -139,7 +139,7 @@ export function CheatCasePanel() {
                       <a
                         className={
                           "font-bold " +
-                          "text-[var(--brand-orange-dark)] " +
+                          "text-[var(--compat-orange-dark)] " +
                           "hover:underline"
                         }
                         href={`/users/${c.user_id}`}
@@ -153,7 +153,7 @@ export function CheatCasePanel() {
                           c.priority >= 2
                             ? "font-bold text-[var(--danger)]"
                             : c.priority === 1
-                              ? "text-[var(--brand-orange-dark)]"
+                              ? "text-[var(--compat-orange-dark)]"
                               : "text-sub"
                         }                      >
                         {priLabel(c.priority)}
@@ -207,7 +207,7 @@ export function CheatCasePanel() {
                           type="button"
                           className={
                             "ml-2 text-xs font-bold " +
-                            "text-[var(--brand-orange-dark)] " +
+                            "text-[var(--compat-orange-dark)] " +
                             "hover:underline"
                           }
                           disabled={busy === c.id}

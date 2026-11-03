@@ -6,6 +6,8 @@ import { backgroundOpacity, cssBackgroundImage } from "@/lib/site-background";
 import { Footer } from "@/components/footer";
 import { MotionShell } from "@/components/motion";
 import { ScrollButtons } from "@/components/scroll-buttons";
+import { ShjAtlas } from "@/components/shj-atlas";
+import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
 
 /**
@@ -24,16 +26,33 @@ export default async function MainLayout({
     getSiteDims(),
     getMenuItems("topbar").catch(() => []),
   ]);
-  // buildNav 此处仅为类型兼容保留调用链（Header 内部会再算一次，
-  // getSiteProfile/getDict 是 React cache 同请求去重，无二次请求）。
-  buildNav({
+  // 山海经图鉴侧栏（乙）与 Header 共用同一份 buildNav 产物；
+  // getSiteProfile/getDict 是 React cache 同请求去重，无二次请求。
+  const shjNav = buildNav({
     nav: dict.nav,
     tabbar: dict.tabbar,
     currency,
     modules: (k) => (profile?.modules?.[k] ?? true) !== false,
     dims: (k) => dims.includes(k),
     customItems,
+    libraryCats: (profile?.categories ?? [])
+      .filter((c) => !c.parent_id)
+      .map((c) => ({ id: c.id, name: c.name })),
   });
+  // 侧栏境界签用户摘要：与 Header 同一个 /me/overview（Next 请求记忆化，
+  // 同一渲染周期内相同 GET 只发一次，不产生第二个 RTT）；失败回落 null
+  const shjOv = await api
+    .get<{ username?: string; class_name?: string; uploaded?: number }>(
+      "/api/v1/me/overview",
+    )
+    .catch(() => null);
+  const shjMe = shjOv?.username
+    ? {
+        username: shjOv.username,
+        className: shjOv.class_name ?? "",
+        uploaded: `${Math.round((shjOv.uploaded ?? 0) / 1e9)}G`,
+      }
+    : null;
   return (
     <>
       {/* 站点背景图（0445）：固定底层（z=0），内容壳 z=10 压在上面；
@@ -56,6 +75,15 @@ export default async function MainLayout({
           />
         );
       })()}
+      {/* 山海经图鉴侧栏：仅 [data-theme="shanhaijing"] 下显示（其余主题
+          display:none 零影响）；fixed 定位，DOM 序在内容前保证 Tab 先导航。
+          默认渲染不增请求（nav 数据与本布局同源、摘要与 Header 请求记忆化去重） */}
+      <ShjAtlas
+        primary={shjNav.primary}
+        groups={shjNav.groups}
+        summary={shjMe}
+        brand={profile?.brand || dict.common.brand}
+      />
       <div className="site-shell">
         <Header />
         {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}

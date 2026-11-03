@@ -84,7 +84,7 @@ export function ComposeForm({
               placeholder={replyTo ? t.replyBodyPh : t.body}
               rows={4}
               maxLength={5000}
-              className="min-h-[100px] rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 py-2 text-sm text-ink outline-none focus:border-[var(--brand-orange)]"
+              className="min-h-[100px] rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 py-2 text-sm text-ink outline-none focus:border-[var(--compat-orange)]"
             />
             {replyTo && <p className="text-[11px] text-sub">{t.quoteHint}</p>}
             <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export function ComposeForm({
                 type="submit"
                 disabled={busy}
                 aria-busy={busy || undefined}
-                className="min-h-[44px] rounded-[10px] border border-[var(--brand-orange-dark)] bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                className="min-h-[44px] rounded-[10px] border border-[var(--compat-orange-dark)] bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
               >
                 <BusyLabel label={t.send} busy={busy} size="sm" />
               </button>
@@ -143,7 +143,7 @@ export function BoxManager({
         onChange={(e) => setNewBoxName(e.target.value)}
         placeholder={t.newBoxPh}
         maxLength={14}
-        className="min-h-[44px] w-44 rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm"
+        className="min-h-[44px] w-44 rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm"
       />
       <button
         type="button"
@@ -164,7 +164,7 @@ export function BoxManager({
             aria-label={`${t.renameBoxPh}: ${b.name}`}
             title={t.renameBoxPh}
             className="inline-flex min-h-[36px] items-center gap-1 rounded-full
-              border border-[var(--brand-line)] px-3 text-xs"
+              border border-[var(--compat-line)] px-3 text-xs"
           >
             <Icon name="edit" size={13} />
             {b.name}
@@ -204,7 +204,7 @@ export function BoxManager({
               onChange={(e) => setRenameTo(e.target.value)}
               maxLength={14}
               className="min-h-[40px] rounded-[var(--r-sm)] border
-                border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm"
+                border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm"
               data-autofocus
             />
           </label>

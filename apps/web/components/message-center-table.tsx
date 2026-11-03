@@ -39,7 +39,7 @@ export interface PmBox {
 
 /** 表单输入统一样式（写信/搜索共用的 44px 触控规格） */
 export const inputCls =
-  "min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--brand-line)] bg-[var(--brand-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--brand-orange)]";
+  "min-h-[44px] w-full rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm text-ink outline-none focus:border-[var(--compat-orange)]";
 
 /** 消息列表表格（从 components/message-center.tsx 按域拆出）：
  *  收/发件视图行渲染——未读高亮、系统通知 🔔、展开详情（markdown 渲染 +
@@ -118,7 +118,7 @@ export function MessageTable({
                         : "📭"}
                 </span>
                 <span
-                  className={`text-[12px] ${unread ? "font-bold text-[var(--brand-orange-dark)]" : "text-sub"}`}
+                  className={`text-[12px] ${unread ? "font-bold text-[var(--compat-orange-dark)]" : "text-sub"}`}
                 >
                   {status}
                 </span>
@@ -127,7 +127,7 @@ export function MessageTable({
                 <button
                   type="button"
                   onClick={() => onOpen(m)}
-                  className={`block max-w-full truncate text-left ${unread ? "font-bold text-[var(--brand-orange-dark)]" : "text-ink"}`}
+                  className={`block max-w-full truncate text-left ${unread ? "font-bold text-[var(--compat-orange-dark)]" : "text-ink"}`}
                 >
                   {box === "inbox" && m.is_system && (
                     <span aria-hidden className="mr-1" title={t.systemSender}>
@@ -137,7 +137,7 @@ export function MessageTable({
                   {noticeText(t, m, "s", m.subject)}
                 </button>
                 {openId === m.id && (
-                  <div className="mt-2 rounded-[var(--r-sm)] border border-dashed border-[var(--brand-line)] bg-[var(--brand-cream)] p-2">
+                  <div className="mt-2 rounded-[var(--r-sm)] border border-dashed border-[var(--compat-line)] bg-[var(--compat-cream)] p-2">
                     <div className="text-sm">
                       <MarkdownRenderer
                     source={noticeText(t, m, "b", m.body)}
@@ -152,14 +152,14 @@ export function MessageTable({
                         <button
                           type="button"
                           onClick={() => onReply(m)}
-                          className="min-h-[32px] rounded-full border border-[var(--brand-orange-dark)] px-3 text-xs font-bold text-[var(--brand-orange-dark)] hover:bg-[var(--brand-orange)] hover:text-white"
+                          className="min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] hover:bg-[var(--compat-orange)] hover:text-white"
                         >
                           ↩ {t.reply}
                         </button>
                         <button
                           type="button"
                           onClick={() => onForward(m)}
-                          className="min-h-[32px] rounded-full border border-[var(--brand-line)] px-3 text-xs font-bold text-sub hover:text-ink"
+                          className="min-h-[32px] rounded-full border border-[var(--compat-line)] px-3 text-xs font-bold text-sub hover:text-ink"
                         >
                           ↪ {t.forward}
                         </button>
@@ -177,7 +177,7 @@ export function MessageTable({
                 <button
                   type="button"
                   onClick={() => onOpen(m)}
-                  className="text-xs font-bold text-sky hover:text-[var(--brand-orange)]"
+                  className="text-xs font-bold text-sky hover:text-[var(--compat-orange)]"
                 >
                   {openId === m.id ? t.backToList : t.view}
                 </button>

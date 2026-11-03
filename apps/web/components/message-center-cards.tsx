@@ -15,18 +15,18 @@ const MarkdownRenderer = dynamic(
 
 /** 卡片壳（与站内其它卡片同底） */
 const CARD_CLS =
-  "rounded-[var(--r-md)] border border-[var(--brand-line)] " +
-  "bg-[var(--brand-paper)] p-3";
+  "rounded-[var(--r-md)] border border-[var(--compat-line)] " +
+  "bg-[var(--compat-paper)] p-3";
 const DOT_CLS =
-  "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--brand-orange)]";
+  "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--compat-orange)]";
 const BODY_CLS =
   "mt-2 rounded-[var(--r-sm)] border border-dashed " +
-  "border-[var(--brand-line)] bg-[var(--brand-cream)] p-2";
+  "border-[var(--compat-line)] bg-[var(--compat-cream)] p-2";
 const BTN_REPLY =
-  "min-h-[32px] rounded-full border border-[var(--brand-orange-dark)] " +
-  "px-3 text-xs font-bold text-[var(--brand-orange-dark)]";
+  "min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] " +
+  "px-3 text-xs font-bold text-[var(--compat-orange-dark)]";
 const BTN_FWD =
-  "min-h-[32px] rounded-full border border-[var(--brand-line)] " +
+  "min-h-[32px] rounded-full border border-[var(--compat-line)] " +
   "px-3 text-xs font-bold text-sub";
 
 /** 消息列表的**手机卡片**形态（2026-11-02）。
@@ -81,7 +81,7 @@ export function MessageCards({
                 className={
                   "min-w-0 flex-1 text-left text-[13px] leading-snug " +
                   (unread
-                    ? "font-bold text-[var(--brand-orange-dark)]"
+                    ? "font-bold text-[var(--compat-orange-dark)]"
                     : "text-ink")
                 }
               >

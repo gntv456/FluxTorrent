@@ -45,7 +45,7 @@ function Avatar({ u }: { u: TopRow }) {
         <img
           src={u.avatar_url}
           alt=""
-          className="h-8 w-8 rounded-full border border-[var(--brand-line)] object-cover"
+          className="h-8 w-8 rounded-full border border-[var(--compat-line)] object-cover"
         />
         <FrameImageOverlay url={u.avatar_frame_image} />
       </span>
@@ -53,7 +53,7 @@ function Avatar({ u }: { u: TopRow }) {
   }
   return (
     <span
-      className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-orange)]/15 text-sm font-black text-[var(--brand-orange-dark)]"
+      className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--compat-orange)]/15 text-sm font-black text-[var(--compat-orange-dark)]"
       style={style}
     >
       {u.username.slice(0, 1).toUpperCase()}
@@ -125,7 +125,7 @@ function Board({
                   u.rank === 1
                     ? "bg-[var(--promo-free-bg)]/60"
                     : u.rank === 2
-                      ? "bg-[var(--brand-cream)]"
+                      ? "bg-[var(--compat-cream)]"
                       : u.rank === 3
                         ? "bg-[var(--promo-x2-bg)]/40"
                         : ""
@@ -140,7 +140,7 @@ function Board({
                     <div className="min-w-0">
                       <a
                         href={`/users/${u.id}`}
-                        className="block max-w-[160px] truncate text-sm font-bold text-ink hover:text-[var(--brand-orange)]"
+                        className="block max-w-[160px] truncate text-sm font-bold text-ink hover:text-[var(--compat-orange)]"
                       >
                         {u.username}
                       </a>

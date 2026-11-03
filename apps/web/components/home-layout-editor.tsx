@@ -181,7 +181,7 @@ export function HomeLayoutEditor() {
               <button
                 type="button"
                 onClick={() => remove(it.key)}
-                className="min-h-[34px] rounded-[var(--r-sm)] border border-[var(--brand-orange)] px-2 text-xs text-[var(--brand-orange-dark)]"
+                className="min-h-[34px] rounded-[var(--r-sm)] border border-[var(--compat-orange)] px-2 text-xs text-[var(--compat-orange-dark)]"
               >
                 {t.hide}
               </button>

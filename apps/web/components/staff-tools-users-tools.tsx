@@ -12,7 +12,7 @@ import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 const RESET_PASS_CLS =
   "mt-3 rounded-[var(--r-md)] bg-sky-soft p-3 font-mono text-sm text-ink";
 const DD_BTN =
-  "min-h-[40px] rounded-full bg-[var(--brand-orange-dark)] px-5 " +
+  "min-h-[40px] rounded-full bg-[var(--compat-orange-dark)] px-5 " +
   "text-sm font-bold text-white disabled:opacity-50";
 
 export function ResetPassSection({

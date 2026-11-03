@@ -62,6 +62,11 @@ const enBase: Omit<
     themeShanhaijing: "Mythica",
     themeAuto: "Follow system",
     themeNext: "click to cycle",
+    // Category icon set names / notes (consumed via labelKey/noteKey in lib/cat-icon-sets.ts)
+    catIconSetShanhaijing: "Mythica · Gilt Prop Medallions",
+    catIconSetShanhaijingNote: "Dark medallions with gilt props; legible from 22px",
+    catIconSetAurora: "Aurora · Gradient App Icons",
+    catIconSetAuroraNote: "Light rounded tiles with gradient glyphs; legible at 16px",
     globalSearchPh: "Search torrents / posts…",
     globalSearchBtn: "Search",
     gsTorrents: "Torrents",
@@ -334,6 +339,13 @@ const enBase: Omit<
     noRating: "No rating",
     empty: "The site just sprouted — no resources yet",
     emptyAction: "Publish the first torrent",
+    // Mythica hero jade plaques (structure layer; rendered only under shanhaijing)
+    shjKicker: "The Atlas of Mountains & Seas",
+    shjSub: "Every being has its scroll",
+    shjJadeUsers: "Members",
+    shjJadeTorrents: "Torrents",
+    shjJadeSeeders: "Seeders",
+    shjJadePeers: "Peers",
   },
   torrents: {
     viewLabel: "View",

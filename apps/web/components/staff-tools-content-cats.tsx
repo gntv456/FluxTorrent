@@ -38,12 +38,12 @@ interface CatsPanelProps {
 const PACK_BTN_CLS =
   "min-h-[40px] rounded-full border px-4 text-xs font-bold disabled:opacity-50";
 const PACK_ON_CLS =
-  "border-[var(--brand-orange)] bg-[var(--brand-orange)] text-white";
+  "border-[var(--compat-orange)] bg-[var(--compat-orange)] text-white";
 /** 另存为自定义站型的小按钮 */
 const PACK_SAVE_CLS =
   "rounded-full border border-line px-3 text-xs text-sub disabled:opacity-50";
 const PACK_OFF_CLS =
-  "border-[var(--brand-orange)] text-[var(--brand-orange-dark)]";
+  "border-[var(--compat-orange)] text-[var(--compat-orange-dark)]";
 
 export function StaffCatsPanel({
   packs,

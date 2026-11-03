@@ -14,8 +14,8 @@ import type { InviteItem } from "@/components/invite-manager";
 
 /** 卡片壳（与站内其它卡片同底） */
 const CARD_CLS =
-  "rounded-[var(--r-md)] border border-[var(--brand-line)] " +
-  "bg-[var(--brand-paper)] p-3";
+  "rounded-[var(--r-md)] border border-[var(--compat-line)] " +
+  "bg-[var(--compat-paper)] p-3";
 
 export function InviteCards({
   invites,

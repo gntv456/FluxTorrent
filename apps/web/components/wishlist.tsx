@@ -83,8 +83,8 @@ export function WishlistButton({ keyword }: { keyword: string }) {
         title={t.note}
         className={`min-h-[36px] rounded-full px-4 text-xs font-bold transition-transform active:scale-[0.97] disabled:opacity-50 ${
           added
-            ? "border border-[var(--brand-orange)] text-[var(--brand-orange-dark)]"
-            : "bg-[linear-gradient(135deg,var(--brand-orange-bright),var(--brand-orange))] text-white"
+            ? "border border-[var(--compat-orange)] text-[var(--compat-orange-dark)]"
+            : "bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] text-white"
         }`}
       >
         {added ? `★ ${t.added}` : `☆ ${t.addBtn}`}
