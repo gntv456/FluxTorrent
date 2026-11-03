@@ -22,6 +22,28 @@ export { netMsg };
  *  require_auth 已接受 Cookie 凭证，见 token_from_request）。 */
 export const SESSION_COOKIE = "flux.session";
 
+/** 匿名可访问的页面：401 交调用方渲染空态/错误态，不做全局「会话过期」跳转。
+ *  封禁用户本来就不能登录，/appeals 与 /ban-log 是他们唯一的申诉通道。 */
+const ANON_PAGES = [
+  "/appeals",
+  "/ban-log",
+  "/login",
+  "/register",
+  "/forgot",
+  "/rules",
+  "/faq",
+];
+
+/** 浏览器侧是否存在会话标记。匿名请求拿到 401 属于正常权限结果，不是会话过期。 */
+function hasSession(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    document.cookie
+      .split(";")
+      .some((c) => c.trim().startsWith(`${SESSION_COOKIE}=`))
+  );
+}
+
 /** CSRF 双提交 cookie 名（后端 csrf.rs 的契约，后端改这里要同步）。 */
 export const CSRF_COOKIE = "flux_csrf";
 /** CSRF 请求头名（与后端 CSRF_HEADER 同源）。 */
@@ -179,13 +201,19 @@ async function request<T>(
     meta.hasMore = res.headers.get("x-has-more") === "1";
   }
   if (body.code !== 0) {
-    // 全局 401（审计修复 P1）：token 过期/被吊销时旧版只抛错，用户停留在
-    // 「僵尸会话」页反复报错。清会话并带回跳地址跳登录页（登录页自身的
-    // 401 与 auth/* 端点除外，避免登录前误跳）。
+    // 全局 401（P0-1 修复）：只在**确有会话标记**且当前页要求登录时才按
+    // 「会话过期」跳登录。匿名请求（含封禁用户访问 /appeals）的 401 是
+    // 正常权限结果，交由页面 catch 渲染空态；auth/* 与匿名页一律不跳。
     if (
       body.code === 2001 &&
       typeof window !== "undefined" &&
-      !path.startsWith("/api/v1/auth/")
+      !path.startsWith("/api/v1/auth/") &&
+      hasSession() &&
+      !ANON_PAGES.some(
+        (p) =>
+          window.location.pathname === p ||
+          window.location.pathname.startsWith(`${p}/`),
+      )
     ) {
       setSessionCookie(false);
       const next = encodeURIComponent(

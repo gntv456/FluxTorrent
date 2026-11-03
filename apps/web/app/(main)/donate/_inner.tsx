@@ -251,7 +251,7 @@ export default function DonatePage() {
           <p className="text-xs text-sub">{t.topupRange}</p>
           <div className="flex flex-wrap gap-2">
             {QUICK_AMOUNTS.map((v) => (
-              <button key={v} className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${amount === v ? "bg-sky text-white" : "border border-line"}`} onClick={() => setAmount(v)}>
+              <button key={v} className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${amount === v ? "bg-sky text-[var(--text-on-accent)]" : "border border-line"}`} onClick={() => setAmount(v)}>
                 {v} USD
               </button>
             ))}

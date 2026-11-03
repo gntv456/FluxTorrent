@@ -73,7 +73,7 @@ export function BankDepositPanel({
           type="button"
           disabled={busy || !amount}
           onClick={onDeposit}
-          className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
+          className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
         >
           {dict.bank.deposit}
         </button>

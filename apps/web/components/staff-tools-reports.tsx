@@ -80,7 +80,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
           ).map(([k, label]) => (
             <button
               key={k}
-              className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${rpStatus === k ? "bg-sky text-white" : "border border-line text-sub"}`}
+              className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${rpStatus === k ? "bg-sky text-[var(--text-on-accent)]" : "border border-line text-sub"}`}
               onClick={() => setRpStatus(k)}
             >
               {label}
@@ -169,7 +169,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                       </button>
                     )}
                     <button
-                      className="ml-1 min-h-[28px] rounded-full bg-sky px-3 font-bold text-white"
+                      className="ml-1 min-h-[28px] rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
                       onClick={() =>
                         guard(async () => {
                           await api.post("/api/v1/admin/reports/resolve", {

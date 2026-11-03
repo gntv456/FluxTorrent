@@ -88,7 +88,7 @@ export function AdminUserLogs() {
                 setSub(k);
                 setPage(1);
               }}
-              className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-white" : CELL_CARD_SUB}`}
+              className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-[var(--text-on-accent)]" : CELL_CARD_SUB}`}
             >
               {l}
             </button>

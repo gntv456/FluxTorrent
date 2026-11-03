@@ -117,7 +117,7 @@ export function LotteryWidget({
           className={`mt-2 min-h-[38px] rounded-full px-4 text-sm font-bold transition disabled:opacity-60 ${
             lottery.joined
               ? "border border-line bg-[var(--sky-soft)] text-sky"
-              : "bg-coral text-white active:scale-[0.97]"
+              : "bg-[var(--accent-surface)] text-[var(--accent-on)] active:scale-[0.97]"
           }`}
         >
           {lottery.joined

@@ -128,7 +128,7 @@ export function BankLoanPanel({
               type="button"
               disabled={busy || !loanAmount}
               onClick={onLoanApply}
-              className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
+              className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
             >
               {dict.bank.loanApply}
             </button>

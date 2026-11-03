@@ -127,7 +127,7 @@ export function SettingsToolbar({
             type="button"
             onClick={onSave}
             disabled={saving || dirtyCount === 0}
-            className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm font-bold text-white disabled:opacity-40"
+            className="min-h-[44px] rounded-full bg-sky-deep px-5 text-sm font-bold text-[var(--text-on-accent)] disabled:opacity-40"
           >
             {saving
               ? s.saving
@@ -155,7 +155,7 @@ export function SettingsToolbar({
               io.setExportPlain(true);
               io.setAskPlain(false);
             }}
-            className="min-h-[44px] rounded-full bg-danger px-4 text-xs font-bold text-white"
+            className="min-h-[44px] rounded-full bg-danger px-4 text-xs font-bold text-[var(--text-on-accent)]"
           >
             {s.revealConfirmYes}
           </button>

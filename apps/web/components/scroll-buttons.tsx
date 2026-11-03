@@ -46,7 +46,7 @@ export function ScrollButtons() {
   };
 
   const btnClass =
-    "flex h-10 w-10 items-center justify-center rounded-[8px] border border-[var(--border-soft)] " +
+    "flex h-11 w-11 items-center justify-center rounded-[8px] border border-[var(--border-soft)] " +
     "bg-[var(--surface-card)] text-[var(--text-muted)] shadow-[var(--shadow-card)] " +
     "transition-[background-color,border-color,color,transform,opacity] duration-150 " +
     "hover:border-[var(--border-deep)] hover:bg-[var(--sky-soft)] hover:text-[var(--sky-deep)] " +

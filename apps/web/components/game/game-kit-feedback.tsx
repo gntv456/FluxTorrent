@@ -64,7 +64,7 @@ export function GameToast({
     message.kind === "jackpot"
       ? "bg-sun text-ink"
       : message.kind === "win"
-        ? "bg-mint text-white"
+        ? "bg-mint text-[var(--text-on-accent)]"
         : message.kind === "tie"
           ? "bg-[var(--surface-card)] text-ink border border-[var(--border-deep)]"
           : "bg-[var(--surface-sunken)] text-sub border border-line";

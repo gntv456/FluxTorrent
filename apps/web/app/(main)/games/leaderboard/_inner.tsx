@@ -63,7 +63,7 @@ export default function LeaderboardPage({
             title={b.tip}
             className={`${pill} ${
               tab === b.key
-                ? "border-sky bg-sky text-white"
+                ? "border-sky bg-sky text-[var(--text-on-accent)]"
                 : "border-line bg-[var(--surface-card)] text-sub hover:text-ink"
             }`}
             aria-pressed={tab === b.key}

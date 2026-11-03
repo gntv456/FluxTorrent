@@ -148,8 +148,9 @@ export function AdminOverviewPanel({
               {a.trendTitle}
             </p>
             {/* 2026-10-03：此前 ov.trend 为空时是 500×220 纯空白框，
-                只有左下角图例，看起来像坏了。补「暂无数据」空态。 */}
-            {ov.trend?.length ? (
+                只有左下角图例，看起来像坏了。补「暂无数据」空态。
+                P2：14 天全 0 也会画出一排空柱，同样像坏了——按有值判断。 */}
+            {ov.trend?.some(([, u, t]) => u > 0 || t > 0) ? (
               <div className="flex h-24 items-end gap-1">
                 {(ov.trend ?? []).map(([d, u, t]) => {
                   const max = Math.max(

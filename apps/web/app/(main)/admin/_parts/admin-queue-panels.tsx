@@ -85,8 +85,8 @@ export function ReviewsPanel({
       />
       <ul className="flex flex-col divide-y divide-line">
         {reviews.map((t) => (
-          <li key={t.id} className="flex items-start gap-3 py-2">
-            <div className="flex-1">
+          <li key={t.id} className="flex flex-wrap items-start gap-2 py-2 sm:gap-3">
+            <div className="w-full min-w-0 sm:w-auto sm:flex-1">
               <p className="text-sm font-bold">{t.name}</p>
               <p className="text-xs text-sub">
                 #{t.id} ·{" "}
@@ -141,6 +141,7 @@ export function ReviewsPanel({
                 </p>
               ) : null}
             </div>
+            <div className="flex flex-wrap items-center gap-2">
             <a
               href={`/torrent/${t.id}`}
               target="_blank"
@@ -160,25 +161,26 @@ export function ReviewsPanel({
               <>
                 <button
                   onClick={() => onDecide(t.id, true)}
-                  className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"
+                  className="min-h-[var(--tap-min)] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
                 >
                   {a.approve}
                 </button>
                 <button
                   onClick={() => onDecide(t.id, false)}
-                  className="min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white"
+                  className="min-h-[var(--tap-min)] rounded-full bg-coral px-4 text-xs font-bold text-[var(--text-on-accent)]"
                 >
                   {a.reject}
                 </button>
                 {/* 0306：暂缓口（证据不足挂起），后端 v4_http 早已就绪 */}
                 <button
                   onClick={() => onPostpone(t.id)}
-                  className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+                  className="min-h-[var(--tap-min)] rounded-full border border-line px-3 text-xs font-bold text-sub"
                 >
                   {a.postpone}
                 </button>
               </>
             )}
+            </div>
           </li>
         ))}
         {reviews.length === 0 && (
@@ -211,8 +213,8 @@ export function AppealsPanel({
     <section className={PANEL_LG}>
       <ul className="flex flex-col divide-y divide-line">
         {appeals.map((ap) => (
-          <li key={ap.id} className="flex items-center gap-3 py-2">
-            <div className="flex-1">
+          <li key={ap.id} className="flex flex-wrap items-center gap-2 py-2 sm:gap-3">
+            <div className="w-full min-w-0 sm:w-auto sm:flex-1">
               <p className="text-sm">
                 <span className="rounded-full bg-sun/30 px-2 py-0.5 text-[10px]">
                   {KIND[ap.kind] ?? ap.kind}
@@ -246,13 +248,13 @@ export function AppealsPanel({
               <span className="flex gap-2">
                 <button
                   onClick={() => onHandle(ap.id, true)}
-                  className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white"
+                  className="min-h-[var(--tap-min)] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
                 >
                   {a.appealAccept}
                 </button>
                 <button
                   onClick={() => onHandle(ap.id, false)}
-                  className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-danger"
+                  className="min-h-[var(--tap-min)] rounded-full border border-line px-4 text-xs font-bold text-danger"
                 >
                   {a.appealReject}
                 </button>

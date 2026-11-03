@@ -177,7 +177,7 @@ export function SettingsImportDialog({
             type="button"
             onClick={onApply}
             disabled={busy || !diff || diff.length === 0}
-            className="min-h-[44px] rounded-full bg-sky-deep px-5 text-xs font-bold text-white disabled:opacity-40"
+            className="min-h-[44px] rounded-full bg-sky-deep px-5 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-40"
           >
             {busy ? s.saving : s.importConfirm}
           </button>

@@ -388,7 +388,7 @@ export function IncrementBulk() {
                           run: () => submit(false),
                         })
                       }
-                      className="min-h-[38px] rounded-full bg-sky px-6 text-sm font-bold text-white disabled:opacity-50"
+                      className="min-h-[38px] rounded-full bg-sky px-6 text-sm font-bold text-[var(--text-on-accent)] disabled:opacity-50"
                     >
                       {busy ? t.running : t.submit}
                     </button>

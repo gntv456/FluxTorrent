@@ -503,6 +503,9 @@ const enBase: Omit<
     emptyAliveTitle:
       "No live torrents in this view — resources may be unseeded",
     emptyAliveAction: "Show all (incl. dead)",
+    emptySearchTitle: "No torrents match “{q}”",
+    emptySearchHint:
+      "Try fewer keywords, check your spelling, or search within another category.",
     sticky: "Pinned",
     timeLeftDH: "{d}d {h}h",
     category: "Category",
@@ -4112,6 +4115,8 @@ const enBase: Omit<
     } as Record<string, string>,
     panelTitle: "Staff Panel",
     needAdmin: "Staff permission required",
+    needAdminHint:
+      "This account cannot open this admin tool. If you believe you have access, retry later or contact a site administrator.",
     actor: "Actor {id}",
     searchUsersFail: "User search failed",
     actionFailed: "Action failed",
@@ -6282,6 +6287,10 @@ const enBase: Omit<
     stBanned: "Banned",
     qPh: "Username / email",
     search: "Search",
+    filtersTitle: "Active filters",
+    filtersNone: "No filters",
+    filtersExpand: "Show filters",
+    filtersCollapse: "Hide filters",
     // Custom fields (G4: filter by field value + view/edit in detail panel)
     fField: "Custom field",
     fFieldVal: "Value contains",

@@ -182,7 +182,7 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                         ((g === null && !ov) ||
                         (g === true && ov?.granted === true) ||
                         (g === false && ov?.granted === false)
-                          ? "border-sky bg-sky text-white"
+                          ? "border-sky bg-sky text-[var(--text-on-accent)]"
                           : "border-line")
                       }
                       onClick={() =>

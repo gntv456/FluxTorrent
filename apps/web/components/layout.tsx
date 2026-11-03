@@ -145,7 +145,10 @@ export async function Header() {
                 必然失败的请求——与导航同一把模块闸。 */}
             {mod("exams") && <ExamCapsule />}
             {/* 头像弹窗（0147）：点击头像展开用户下拉（摘要/数据/快捷/信箱） */}
-            <UserMenu loginLabel={dict.common.login} />
+            <UserMenu
+              loginLabel={dict.common.login}
+              initialUsername={me?.username}
+            />
           </div>
         </div>
       </header>
@@ -210,7 +213,7 @@ export async function MobileTabBar() {
           >
             <span
               aria-hidden
-              className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-[var(--compat-paper)] leading-none text-white shadow-[0_8px_20px_var(--accent-shadow)]"
+              className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-[var(--compat-paper)] leading-none text-[var(--text-on-accent)] shadow-[0_8px_20px_var(--accent-shadow)]"
               style={{ background: "var(--tide-sea, var(--sky))" }}
             >
               {t.icon}

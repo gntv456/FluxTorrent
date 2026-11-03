@@ -67,6 +67,8 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  /** P1-7：导航/权限拉取失败时整页只给一张说明卡，不再继续渲染空面板。 */
+  const [blocked, setBlocked] = useState(false);
 
   // 初始工具：读 URL ?tool=，并把历史命名映射到新 tab_key（旧书签不失效）
   //
@@ -121,7 +123,9 @@ export default function AdminPage() {
       setRole(pnl.role);
       setClassId(pnl.class_id);
       setAppeals(aps);
+      setBlocked(false);
     } catch (e) {
+      setBlocked(true);
       setMsg(
         e instanceof ApiError && e.code === 2003
           ? a.needAdmin
@@ -426,8 +430,25 @@ export default function AdminPage() {
     >
       {/* 页头 h1 由 AdminShell 的 PageHeader 自持（= 当前工具名），
           此处不再挂 sr-only 标题，避免同一页两个 h1。 */}
-      {msg && <p className={MSG_CLS}>{msg}</p>}
-      {renderTool()}
+      {blocked ? (
+        <div className="mx-auto mt-10 max-w-md rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-8 text-center">
+          <p role="alert" className="text-base font-bold text-ink">
+            {msg ?? dict.common.loadFailed}
+          </p>
+          <p className="mt-2 text-sm text-sub">{a.needAdminHint}</p>
+          <button
+            onClick={() => load()}
+            className="mt-4 min-h-[var(--tap-min)] rounded-full bg-[var(--accent-surface)] px-5 text-sm font-bold text-[var(--accent-on)]"
+          >
+            {dict.common.retry}
+          </button>
+        </div>
+      ) : (
+        <>
+          {msg && <p className={MSG_CLS}>{msg}</p>}
+          {renderTool()}
+        </>
+      )}
       <AskDialog {...ask} />
     </AdminShell>
   );

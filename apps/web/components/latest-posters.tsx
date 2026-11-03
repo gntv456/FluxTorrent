@@ -74,6 +74,44 @@ function PosterCard({
   );
 }
 
+/** 首屏视觉带（决定三，2026-11-03）：页面顶部一条装饰性海报带。
+ *  有真实海报时铺真实封面；没有任何可展示资源时铺生成式主题海报
+ *  （posterArt + PosterImage，站内既有口径），首屏不退化成纯文字。
+ *  纯装饰：不可点（无对应种子），读屏器跳过；复用同一份 latest 数据源，
+ *  不新增请求维度。 */
+export function PosterRibbon({ items }: { items: PosterItem[] }) {
+  const compact = useIsCompact();
+  const seeds = Array.from({ length: 10 }, (_, i) => i + 1);
+  const base: PosterItem[] =
+    items.length > 0
+      ? items
+      : seeds.map((s) => ({ id: s, name: "", rating: null, poster: null }));
+  const loop = compact ? base : [...base, ...base];
+  return (
+    <div className="poster-marquee-wrap overflow-x-hidden" aria-hidden>
+      <div
+        className="poster-marquee flex w-max items-stretch gap-2 px-1 py-1"
+        style={
+          {
+            "--marquee-duration": `${Math.max(base.length * 4, 24)}s`,
+          } as React.CSSProperties
+        }
+      >
+        {loop.map((t, i) => (
+          <div
+            key={`${t.id}-${i}`}
+            className="poster-card relative block w-[88px] shrink-0
+              overflow-hidden rounded-[var(--r-sm)] border border-line
+              bg-[var(--surface-card)] shadow-[var(--shadow-card)] sm:w-[104px]"
+          >
+            <PosterImage src={t.poster || posterArt(t.id)} alt="" size="lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** 首页「最新资源」海报墙：横向滚动。
  *
  *  桌面是匀速无限跑马灯（悬停暂停 + 海报放大显示名称与评分）；手机端改成

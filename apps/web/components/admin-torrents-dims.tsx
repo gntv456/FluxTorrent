@@ -43,7 +43,7 @@ function toggleCsv(cur: string, v: string): string {
   return [...set].join(",");
 }
 
-const CHIP_ON = "bg-sky text-white border-sky";
+const CHIP_ON = "bg-sky text-[var(--text-on-accent)] border-sky";
 const CHIP_OFF = "border-line text-sub hover:border-sky";
 const CHIP_CLS =
   "inline-flex min-h-[30px] items-center rounded-full border px-3 text-xs";

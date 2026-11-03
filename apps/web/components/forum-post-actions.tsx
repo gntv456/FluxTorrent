@@ -245,7 +245,7 @@ export function PostActions({
           )}
           <div className="flex gap-2">
             <button
-              className="min-h-[30px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50"
+              className="min-h-[30px] rounded-full bg-sky px-3 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
               disabled={busy}
               onClick={save}
             >

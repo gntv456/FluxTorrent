@@ -44,7 +44,7 @@ export function ClaimButton({
             setBusy(false);
           }
         }}
-        className="min-h-[32px] rounded-full bg-sky-deep px-3 text-xs text-white disabled:opacity-50"
+        className="min-h-[32px] rounded-full bg-sky-deep px-3 text-xs text-[var(--text-on-accent)] disabled:opacity-50"
       >
         {label}
       </button>

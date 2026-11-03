@@ -49,13 +49,14 @@ export function MotionShell() {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let observer: IntersectionObserver | undefined;
-    let frame = 0;
+    let startTimer = 0;
     let fallbackRaf = 0;
     let onScrollFallback: (() => void) | undefined;
+    let onLoad: (() => void) | undefined;
     const marked: HTMLElement[] = [];
 
     if (!reduce && typeof IntersectionObserver !== "undefined") {
-      frame = window.requestAnimationFrame(() => {
+      const initReveal = () => {
         const candidates = Array.from(
           document.querySelectorAll<HTMLElement>(REVEAL_TARGETS),
         ).filter((el) => !SKIP_CLOSEST.some((sel) => el.closest(sel)));
@@ -119,14 +120,22 @@ export function MotionShell() {
         };
         revealIfVisible();
         window.addEventListener("scroll", onScrollFallback, { passive: true });
-      });
+      };
+      /* P2：延迟到 load 之后再打 .tide-reveal。直接在 rAF 里改 className 会
+         命中尚未 hydrate 的流式分片，React 报 server/client attributes mismatch。 */
+      onLoad = () => {
+        startTimer = window.setTimeout(initReveal, 450);
+      };
+      if (document.readyState === "complete") onLoad();
+      else window.addEventListener("load", onLoad, { once: true });
     }
 
     return () => {
-      if (frame) window.cancelAnimationFrame(frame);
+      if (startTimer) window.clearTimeout(startTimer);
       if (fallbackRaf) window.cancelAnimationFrame(fallbackRaf);
       observer?.disconnect();
       if (onScrollFallback) window.removeEventListener("scroll", onScrollFallback);
+      if (onLoad) window.removeEventListener("load", onLoad);
       window.removeEventListener("scroll", syncHeader);
     };
   }, [pathname]);

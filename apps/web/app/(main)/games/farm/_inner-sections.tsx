@@ -63,7 +63,7 @@ export function MyFieldSection({
               type="button"
               onClick={onHarvestAll}
               disabled={busy}
-              className="min-h-[34px] rounded-full bg-mint px-3 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
+              className="min-h-[34px] rounded-full bg-mint px-3 text-[11px] font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
             >
               {tf.harvestAll.replace("{n}", String(readyPlots.length))}
             </button>

@@ -117,7 +117,7 @@ export function AdminUserDetailPage() {
             aria-selected={tabs.tab === k}
             onClick={() => tabs.setTab(k)}
             className={`${TAB_BTN} ${
-              tabs.tab === k ? "bg-sky text-white" : TAB_BTN_OFF
+              tabs.tab === k ? "bg-sky text-[var(--text-on-accent)]" : TAB_BTN_OFF
             }`}
           >
             {label}

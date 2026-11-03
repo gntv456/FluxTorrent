@@ -75,7 +75,7 @@ export function SettingsGroupNav({
           aria-current={!searching && active === g.key}
           className={`flex min-h-[44px] flex-none items-center gap-2 rounded-[var(--r-sm)] px-3 text-xs font-bold md:w-full ${
             !searching && active === g.key
-              ? "bg-sky-deep text-white"
+              ? "bg-sky-deep text-[var(--text-on-accent)]"
               : "border border-line bg-[var(--surface-card)] text-sub md:border-0 md:text-ink"
           }`}
         >

@@ -44,6 +44,7 @@ export function UploadFilesBlock({
   price,
   setPrice,
   setMsg,
+  setFileErr,
   metaSources,
 }: {
   fileRef: RefObject<HTMLInputElement | null>;
@@ -72,6 +73,8 @@ export function UploadFilesBlock({
   price: number;
   setPrice: (v: number) => void;
   setMsg: (m: string | null) => void;
+  /** 选到文件后立刻撤掉「请先选择 .torrent」错误条（P1-4） */
+  setFileErr: (v: boolean) => void;
   metaSources: string[];
 }) {
   const { dict, currency } = useI18n();
@@ -107,7 +110,7 @@ export function UploadFilesBlock({
       <FormRow label={dict.upload.fileLabel}>
         <div className="flex flex-col gap-1">
           {/* 2026-10-03：必填/选填此前视觉完全一致，加 uf-drop* 区分 */}
-          <label className="uf-drop uf-drop--required">
+          <label className="uf-drop uf-drop--required" tabIndex={-1}>
             <input
               ref={fileRef}
               name="file"
@@ -115,7 +118,10 @@ export function UploadFilesBlock({
               accept=".torrent,application/x-bittorrent"
               required
               className="sr-only"
-              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
+              onChange={(e) => {
+                setFileName(e.target.files?.[0]?.name ?? "");
+                setFileErr(false);
+              }}
             />
             {fileName ? `📎 ${fileName}` : dict.upload.formFileHint}
           </label>

@@ -78,6 +78,8 @@ export function UploadForm({ initialName }: { initialName?: string }) {
   // 0424 发布者 H&R 惩罚开关（同类站对标 A1）：受罚者免罪时本发布者得分成
   const [hrPunish, setHrPunish] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // P1-4：文件缺失的可见错误条（提交前置校验，不依赖原生气泡）
+  const [fileErr, setFileErr] = useState(false);
   // W-18：字段级错误（后端 1002 信封；multipart 走裸 fetch 手工解）
   const [fieldErrs, setFieldErrs] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
@@ -155,9 +157,14 @@ export function UploadForm({ initialName }: { initialName?: string }) {
     e.preventDefault();
     const file = fileRef.current?.files?.[0];
     if (!file) {
-      setMsg(dict.upload.chooseFile);
+      // P1-4：原生 required 的气泡锚在 1×1 sr-only input 上，页面看不到提示。
+      // 表单加 noValidate 后由这里接管：顶部可见错误条 + 焦点落到文件选择块。
+      setFileErr(true);
+      setMsg(null);
+      fileRef.current?.closest("label")?.focus();
       return;
     }
+    setFileErr(false);
     setBusy(true);
     setMsg(null);
     setFieldErrs({});
@@ -231,7 +238,15 @@ export function UploadForm({ initialName }: { initialName?: string }) {
 
   return (
     <>
-    <form onSubmit={submit} id="upload-form">
+    <form onSubmit={submit} id="upload-form" noValidate>
+      {fileErr ? (
+        <p
+          role="alert"
+          className="mb-3 rounded-[var(--r-sm)] border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]"
+        >
+          {dict.upload.chooseFile}
+        </p>
+      ) : null}
       <div className="brand-wide-table-scroll">
       <table className="nexus-table nexus-form">
         <thead>
@@ -263,6 +278,7 @@ export function UploadForm({ initialName }: { initialName?: string }) {
             price={price}
             setPrice={setPrice}
             setMsg={setMsg}
+            setFileErr={setFileErr}
             metaSources={metaSources}
           />
           <UploadDescrBlock

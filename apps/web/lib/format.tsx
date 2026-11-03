@@ -83,9 +83,15 @@ export function avatarFrameStyle(
 ): React.CSSProperties {
   const style: Record<string, string> = {};
   if (!css) return style;
+  // P2：CSS 声明名 → React style 键名。此前直接塞 "border-color"/"box-shadow"，
+  // React 只会在开发态警告并丢弃，头像框自定义描边/阴影静默失效。
+  const KEYS: Record<string, string> = {
+    "border-color": "borderColor",
+    "box-shadow": "boxShadow",
+  };
   for (const decl of css.split(";")) {
     const [k, v] = decl.split(":").map((s) => s?.trim());
-    if (k && v && ["border-color", "box-shadow"].includes(k)) style[k] = v;
+    if (k && v && KEYS[k]) style[KEYS[k]] = v;
   }
   return style as React.CSSProperties;
 }

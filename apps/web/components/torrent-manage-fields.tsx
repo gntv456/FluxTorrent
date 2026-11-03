@@ -207,7 +207,7 @@ export function ManageMetaFields({
             type="button"
             disabled={ptgenBusy || !fPtgenUrl.trim()}
             onClick={onGen}
-            className={`${PILL} bg-sky text-white`}
+            className={`${PILL} bg-sky text-[var(--text-on-accent)]`}
           >
             {ptgenBusy ? u.ptgenBusy : u.ptgenBtn}
           </button>

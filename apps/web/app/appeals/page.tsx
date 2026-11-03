@@ -188,7 +188,7 @@ export default function AppealsPage() {
                 onChange={(e) => setCaptchaAnswer(e.target.value)}
                 required
                 inputMode="numeric"
-                className={`${inputCls} flex-1`}
+                className={`${inputCls} min-w-0 flex-1`}
                 placeholder={dict.appeals.captchaAnswer}
               />
             </div>

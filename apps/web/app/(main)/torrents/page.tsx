@@ -330,7 +330,11 @@ export default async function TorrentsPage({
             retryHref={withParam(sp, "cursor", undefined)}
           />
         ) : (
-          <EmptyTorrents aliveFiltered={sp.alive !== "0" && sp.alive !== "2"} />
+          <EmptyTorrents
+            aliveFiltered={sp.alive !== "0" && sp.alive !== "2"}
+            search={sp.search}
+            clearHref={withParam(withoutCursor(sp), "search", undefined)}
+          />
         )
       ) : (
         <TorrentListViews

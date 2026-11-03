@@ -383,7 +383,7 @@ export function AdminPanelEntries() {
           <button
             disabled={busy}
             onClick={() => void save()}
-            className="min-h-[36px] rounded-full bg-sky-deep px-4 text-sm text-white disabled:opacity-50"
+            className="min-h-[36px] rounded-full bg-sky-deep px-4 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
           >
             {c.save}
           </button>

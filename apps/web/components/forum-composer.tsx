@@ -196,7 +196,7 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
         onClick={() => setOpen(true)}
         className={
           forumId != null
-            ? "min-h-[44px] self-start rounded-full bg-coral px-5 text-sm font-bold text-white active:scale-[0.97]"
+            ? "min-h-[44px] self-start rounded-full bg-[var(--accent-surface)] px-5 text-sm font-bold text-[var(--accent-on)] active:scale-[0.97]"
             : "brand-button"
         }
       >
@@ -370,7 +370,7 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
           <button
             type="submit"
             disabled={busy}
-            className="min-h-[44px] rounded-full bg-sky px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+            className="min-h-[44px] rounded-full bg-sky px-5 text-sm font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
           >
             {busy ? dict.forums.posting : dict.forums.submitTopic}
           </button>

@@ -172,7 +172,7 @@ export function SettingField({
               setReveal(true);
               setAskReveal(false);
             }}
-            className="min-h-[44px] rounded-full bg-sky-deep px-3 text-[11px] font-bold text-white"
+            className="min-h-[44px] rounded-full bg-sky-deep px-3 text-[11px] font-bold text-[var(--text-on-accent)]"
           >
             {s.revealConfirmYes}
           </button>

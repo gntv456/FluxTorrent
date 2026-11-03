@@ -7,7 +7,7 @@ import {
   getTorrentDicts,
 } from "@/lib/site-profile";
 import { Icon } from "@/components/icons";
-import { dateLocale } from "@/i18n/config";
+import { dateLocale, fmt } from "@/i18n/config";
 import { Badge } from "@/components/ui/badge";
 
 /**
@@ -88,10 +88,34 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
  *  （评审 P0-2：同屏「共 0 个种子」+「发布种子 1」的口径打架）。 */
 export async function EmptyTorrents({
   aliveFiltered = false,
+  search,
+  clearHref = "/torrents",
 }: {
   aliveFiltered?: boolean;
+  /** P1-8：搜索无结果要独立文案，不能复用「站里没种子」的空态。 */
+  search?: string;
+  clearHref?: string;
 }) {
   const { dict } = await getDict();
+  if (search) {
+    return (
+      <div className="torrents-empty flex flex-col items-center gap-3 py-16 text-center">
+        <Icon name="search" size={64} className="text-[var(--text-faint)]" />
+        <h2 className="font-display text-xl text-ink">
+          {fmt(dict.torrent.emptySearchTitle, { q: search })}
+        </h2>
+        <p className="max-w-md text-sm text-sub">
+          {dict.torrent.emptySearchHint}
+        </p>
+        <a
+          href={clearHref}
+          className="rounded-full border border-line px-5 py-2 text-sm font-bold text-sky-deep hover:bg-[var(--surface-card)]"
+        >
+          {dict.torrents.clearSearch}
+        </a>
+      </div>
+    );
+  }
   return (
     <div
       className="torrents-empty flex flex-col items-center gap-3 py-16
@@ -113,7 +137,7 @@ export async function EmptyTorrents({
       ) : (
         <Link
           href="/upload"
-          className="rounded-full bg-coral px-5 py-2 text-sm font-bold text-white"
+          className="rounded-full bg-[var(--accent-surface)] px-5 py-2 text-sm font-bold text-[var(--accent-on)]"
         >
           {dict.common.publish}
         </Link>

@@ -149,7 +149,7 @@ export function BoxManager({
         type="button"
         disabled={busy || !newBoxName.trim()}
         onClick={() => onUpsert(null, newBoxName.trim())}
-        className="min-h-[44px] rounded-full bg-sky-deep px-4 text-xs font-bold text-white disabled:opacity-50"
+        className="min-h-[44px] rounded-full bg-sky-deep px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
       >
         {t.addBox}
       </button>

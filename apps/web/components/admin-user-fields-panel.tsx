@@ -28,7 +28,7 @@ interface FieldRow {
 }
 
 const SUBMIT_BTN =
-  "min-h-[32px] rounded-full bg-sky px-4 text-xs font-bold text-white " +
+  "min-h-[32px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)] " +
   "disabled:opacity-50";
 
 /** 值 → 控件文本（number/bool 等非字符串都折成可编辑字符串） */
@@ -113,7 +113,7 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
                 className={
                   "inline-flex min-h-[30px] items-center rounded-full " +
                   "border px-3 text-xs " +
-                  (hit ? "border-sky bg-sky text-white" : "border-line")
+                  (hit ? "border-sky bg-sky text-[var(--text-on-accent)]" : "border-line")
                 }
               >
                 {o.label ?? o.value}

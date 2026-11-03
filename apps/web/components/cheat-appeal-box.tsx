@@ -127,7 +127,7 @@ export function CheatAppealBox() {
           type="submit"
           disabled={busy}
           className="min-h-[44px] rounded-[var(--r-sm)] bg-sky px-4 text-sm
-            font-bold text-white disabled:opacity-50"
+            font-bold text-[var(--text-on-accent)] disabled:opacity-50"
         >
           {t.tokenSubmit}
         </button>

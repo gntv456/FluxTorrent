@@ -16,7 +16,7 @@ const BTN =
   "rounded-full border border-line px-3 py-1 text-xs font-bold text-sub " +
   "hover:border-sky hover:text-sky";
 const SAVE_BTN =
-  "rounded-full bg-sky px-4 py-1.5 text-xs font-bold text-white";
+  "rounded-full bg-sky px-4 py-1.5 text-xs font-bold text-[var(--text-on-accent)]";
 
 export function EmbedRuleEditor({
   editing,

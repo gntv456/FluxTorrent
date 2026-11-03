@@ -190,7 +190,7 @@ export function FundingPanel() {
             onClick={() => setStatusFilter(s)}
             className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${
               statusFilter === s
-                ? "bg-sky text-white"
+                ? "bg-sky text-[var(--text-on-accent)]"
                 : "border border-line text-sub"
             }`}
           >
@@ -294,7 +294,7 @@ export function FundingPanel() {
                               run: () => contribute(f),
                             })
                           }
-                          className="min-h-[30px] rounded-full bg-sky px-3 text-[11px] font-bold text-white disabled:opacity-50"
+                          className="min-h-[30px] rounded-full bg-sky px-3 text-[11px] font-bold text-[var(--text-on-accent)] disabled:opacity-50"
                         >
                           {t.contributeBtn}
                         </button>

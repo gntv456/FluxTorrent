@@ -61,7 +61,7 @@ export function PoolDonate() {
         type="button"
         disabled={busy}
         onClick={donate}
-        className="min-h-[44px] rounded-full bg-coral px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+        className="min-h-[44px] rounded-full bg-[var(--accent-surface)] px-5 text-sm font-bold text-[var(--accent-on)] active:scale-[0.97] disabled:opacity-50"
       >
         {busy ? t.donating : t.donate.replace("{magic}", currency)}
       </button>

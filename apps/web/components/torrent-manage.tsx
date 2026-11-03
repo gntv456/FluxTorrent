@@ -322,7 +322,7 @@ export function TorrentManage(p: TorrentManageProps) {
               type="button"
               disabled={busy}
               onClick={save}
-              className={`${PILL} bg-sky-deep px-5 text-white`}
+              className={`${PILL} bg-sky-deep px-5 text-[var(--text-on-accent)]`}
             >
               {t.save}
             </button>

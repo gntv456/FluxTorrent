@@ -65,17 +65,39 @@ export function GlobalSearch({
   const [nonce, setNonce] = useState(0); // 失败后「重试」重发当前词
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   // 弹窗打开即聚焦输入框（按钮 → 弹窗的关键动线）
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  // ESC 关弹窗（与主菜单「更多」下拉同口径）
+  // ESC 关弹窗 + Tab 焦点圈闭（P2：弹窗此前无 focus trap，Tab 会跑到地址栏）
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        btnRef.current?.focus();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const pop = document.querySelector<HTMLElement>(".gsearch__pop");
+      if (!pop) return;
+      const items = [
+        ...pop.querySelectorAll<HTMLElement>(
+          'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => !(el as HTMLButtonElement).disabled && el.offsetParent);
+      if (!items.length) return;
+      const i = items.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && i <= 0) {
+        e.preventDefault();
+        items[items.length - 1].focus();
+      } else if (!e.shiftKey && i === items.length - 1) {
+        e.preventDefault();
+        items[0].focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -153,6 +175,7 @@ export function GlobalSearch({
   return (
     <div ref={rootRef} className="gsearch">
       <button
+        ref={btnRef}
         type="button"
         className="gsearch__btn"
         aria-label={searchLabel}
@@ -169,7 +192,7 @@ export function GlobalSearch({
         </svg>
       </button>
       {open && (
-        <div className="gsearch__modal" role="dialog"
+        <div className="gsearch__modal" role="dialog" aria-modal="true"
              aria-label={searchLabel}>
           <div className="gsearch__modal-mask" onClick={() => setOpen(false)} />
           <div className="gsearch__pop">

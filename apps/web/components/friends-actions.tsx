@@ -90,7 +90,7 @@ export function FriendsActions() {
         <button
           type="button"
           disabled={busy || !addName.trim()}
-          className="min-h-[36px] rounded-full bg-sky px-3 text-xs font-bold text-white disabled:opacity-50"
+          className="min-h-[36px] rounded-full bg-sky px-3 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
           onClick={() =>
             void act("/api/v1/friends", {
               username: addName.trim(),
@@ -157,7 +157,7 @@ export function FriendsActions() {
               <button
                 type="button"
                 disabled={busy}
-                className="min-h-[28px] rounded-full bg-mint px-2 text-xs font-bold text-white"
+                className="min-h-[28px] rounded-full bg-mint px-2 text-xs font-bold text-[var(--text-on-accent)]"
                 onClick={() =>
                   void act("/api/v1/friends/action", {
                     username: r.username,

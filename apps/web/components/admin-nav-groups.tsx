@@ -134,7 +134,7 @@ export function AdminNavGroups({
             deep ? "pl-7 pr-2" : "px-2"
           } ${
             active
-              ? "bg-sky font-bold text-white"
+              ? "bg-sky font-bold text-[var(--text-on-accent)]"
               : "text-sub hover:bg-[var(--surface-raised)]"
           }`}
       >
@@ -144,7 +144,7 @@ export function AdminNavGroups({
             className={`shrink-0 rounded-full px-1.5
               text-[11px] ${
                 active
-                  ? "bg-white/25 text-white"
+                  ? "bg-white/25 text-[var(--text-on-accent)]"
                   : "bg-coral/20 text-danger"
               }`}
           >

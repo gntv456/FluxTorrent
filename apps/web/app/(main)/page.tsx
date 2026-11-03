@@ -14,7 +14,11 @@ import {
   type HomeMeRaw,
 } from "./_parts/home-me-summary";
 import type { HomeData } from "@/components/home-data";
-import { LatestPosters } from "@/components/latest-posters";
+import {
+  LatestPosters,
+  PosterRibbon,
+  type PosterItem,
+} from "@/components/latest-posters";
 import { Icon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -88,6 +92,15 @@ export default async function HomePage() {
   // 已通过审核的资源总数（home.site_data 同源计数）：空态据此区分「冷启动」
   // 与「有资源但都不是活种」两种口径
   const hasApproved = (homeData?.site_data?.torrents ?? 0) > 0;
+  /** 首屏视觉带与最新资源海报墙共用同一份投影（不新增请求） */
+  const posterItems: PosterItem[] = latest
+    ? latest.items.map((t) => ({
+        id: t.id,
+        name: t.name,
+        rating: t.rating ?? null,
+        poster: t.poster ?? null,
+      }))
+    : [];
 
   return (
     <div className="home-shell--mobile flex flex-col gap-4">
@@ -148,6 +161,8 @@ export default async function HomePage() {
             : []
         }
       />
+      {/* 首屏视觉带（决定三）：真实封面优先，无数据时主题化生成海报占位 */}
+      <PosterRibbon items={posterItems} />
       <HomeSections
         initialData={homeData}
         initialMods={profile?.modules ?? {}}
@@ -165,14 +180,7 @@ export default async function HomePage() {
                       {dict.home.viewAll}
                     </Link>
                   </div>
-                  <LatestPosters
-                    items={latest.items.map((t) => ({
-                      id: t.id,
-                      name: t.name,
-                      rating: t.rating ?? null,
-                      poster: t.poster ?? null,
-                    }))}
-                  />
+                  <LatestPosters items={posterItems} />
                 </section>
               )
               : (
@@ -214,8 +222,8 @@ export default async function HomePage() {
                           ) : (
                             <Link
                               href="/upload"
-                              className="rounded-full bg-coral px-5 py-2
-                                text-sm font-bold text-white"
+                              className="rounded-full bg-[var(--accent-surface)] px-5 py-2
+                                text-sm font-bold text-[var(--accent-on)]"
                             >
                               {dict.home.emptyAction}
                             </Link>

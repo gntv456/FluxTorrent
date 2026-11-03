@@ -434,6 +434,8 @@ const zhCnBase = {
     emptyTitle: "这里还空空的，去种下第一颗种子吧",
     emptyAliveTitle: "当前视图没有活种——站内资源可能暂时无人做种",
     emptyAliveAction: "查看全部（含断种）",
+    emptySearchTitle: "没有找到与「{q}」匹配的种子",
+    emptySearchHint: "试试减少关键词、检查拼写，或切换分类后再搜。",
     sticky: "置顶",
     timeLeftDH: "{d}天{h}时",
     category: "分类",
@@ -4030,6 +4032,8 @@ const zhCnBase = {
     } as Record<string, string>,
     panelTitle: "管理组面板",
     needAdmin: "需要管理员权限",
+    needAdminHint:
+      "当前账号无权打开这个管理工具。若确认已授权，请稍后重试或联系站点管理员。",
     actor: "操作人 {id}",
     searchUsersFail: "用户搜索失败",
     actionFailed: "操作失败",
@@ -6097,6 +6101,10 @@ const zhCnBase = {
     stBanned: "封禁",
     qPh: "用户名 / 邮箱",
     search: "搜索",
+    filtersTitle: "已选条件",
+    filtersNone: "未设筛选",
+    filtersExpand: "展开筛选",
+    filtersCollapse: "收起筛选",
     // 自定义字段（G4：按字段值筛人 + 详情面板查看/代改）
     fField: "自定义字段",
     fFieldVal: "字段值包含",

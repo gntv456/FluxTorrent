@@ -75,7 +75,7 @@ export function MessageTable({
           <th className="hidden w-10 sm:table-cell">
             <span className="sr-only">{t.selectAll}</span>
           </th>
-          <th className="hidden w-16 sm:table-cell">{t.readCol}</th>
+          <th className="hidden w-20 sm:table-cell">{t.readCol}</th>
           <th>{t.subject}</th>
           <th className="hidden sm:table-cell">
             {box === "inbox" ? t.fromCol : t.toCol}
@@ -118,7 +118,7 @@ export function MessageTable({
                         : "📭"}
                 </span>
                 <span
-                  className={`text-[12px] ${unread ? "font-bold text-[var(--compat-orange-dark)]" : "text-sub"}`}
+                  className={`whitespace-nowrap text-[12px] ${unread ? "font-bold text-[var(--compat-orange-dark)]" : "text-sub"}`}
                 >
                   {status}
                 </span>

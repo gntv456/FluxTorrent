@@ -22,7 +22,7 @@ const JOIN_INPUT =
   "min-h-[40px] w-32 rounded-[var(--r-md)] border border-line " +
   "px-3 text-sm";
 const JOIN_BTN =
-  "min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white";
+  "min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
 
 export function GomokuBoard({ meId }: { meId: number }) {
   const { dict } = useI18n();

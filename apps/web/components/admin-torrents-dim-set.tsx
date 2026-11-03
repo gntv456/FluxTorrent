@@ -15,7 +15,7 @@ import { useI18n } from "@/i18n/client";
 import { SectionKindBool } from "@/components/section-kind-bool";
 import type { SectionDictRow, SectionKindMeta } from "./admin-torrents-dims";
 
-const CHIP_ON = "bg-sky text-white border-sky";
+const CHIP_ON = "bg-sky text-[var(--text-on-accent)] border-sky";
 const CHIP_OFF = "border-line text-sub hover:border-sky";
 const CHIP_CLS =
   "inline-flex min-h-[32px] items-center rounded-full border px-3 text-xs";

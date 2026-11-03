@@ -1,11 +1,23 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { INPUT_MD } from "@/lib/ui-classes";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/config";
+import { useMediaQuery } from "@/lib/hooks/use-media";
 
 /** 后台用户管理·筛选面板（从 components/admin-users.tsx 按域拆出）：
  *  五维筛选（ID/等级/状态/启用/下载权限/挂起）+ 搜索（同类站「筛选条件」口径）。
- *  筛选值由父组件持有，搜索时重置回第一页并重新加载。 */
+ *  筛选值由父组件持有，搜索时重置回第一页并重新加载。
+ *
+ *  2026-11-03：筛选项多、展开态把表格推到首屏之外（1024/375 尤其明显）。
+ *  <1280 默认收起，表格上方保留一行摘要（已选条件 chips + 结果条数 +
+ *  展开按钮）；≥1280 默认展开。展开状态按用户偏好持久化（localStorage），
+ *  刷新后保持；查询串语义不变（仍由 admin-users-parts.ts 的单点映射生成）。
+ *  Esc 不绑定收起——避免误触把已填条件面板收掉。 */
+
+/** 折叠偏好键（与 flux-theme / flux-pwa-dismiss 同「flux-」前缀习惯） */
+const FOLD_KEY = "flux-admin-filters-open";
 
 // 筛选区输入/下拉底色
 const FILTER_INPUT = INPUT_MD;
@@ -13,7 +25,11 @@ const FILTER_SELECT =
   "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2";
 const SEARCH_BTN =
-  "min-h-[40px] rounded-full bg-sky px-4 text-xs font-bold text-white";
+  "min-h-[40px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
+const PANEL = "brand-panel grid grid-cols-2 gap-3 p-4 md:grid-cols-4";
+const TOGGLE_BTN =
+  "min-h-[var(--tap-min)] shrink-0 rounded-full border border-line px-3" +
+  " text-xs font-bold";
 
 export interface FilterValues {
   q: string;
@@ -34,6 +50,7 @@ export function UsersFilterBar({
   values,
   set,
   onSearch,
+  total,
 }: {
   classes: [number, string][];
   /** 自定义字段（G4）：站长没建字段时整对控件不渲染 */
@@ -41,10 +58,109 @@ export function UsersFilterBar({
   values: FilterValues;
   set: <K extends keyof FilterValues>(k: K, v: FilterValues[K]) => void;
   onSearch: () => void;
+  /** 当前筛选条件下的结果总数（loading 时为 undefined） */
+  total?: number;
 }) {
-  const at = useI18n().dict.adminUsers;
+  const { dict } = useI18n();
+  const at = dict.adminUsers;
+  /** SSR/首帧按窄屏处理（默认收起），挂载后由 matchMedia 校正到桌面展开 */
+  const narrow = useMediaQuery("(max-width: 1279px)", true);
+  const [open, setOpen] = useState(true);
+
+  /** 偏好优先；没有偏好时按断点默认（<1280 收起 / ≥1280 展开）。 */
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = window.localStorage.getItem(FOLD_KEY);
+    } catch {
+      /* 隐私模式禁用存储：退回断点默认 */
+    }
+    if (saved === "1" || saved === "0") setOpen(saved === "1");
+    else setOpen(!narrow);
+  }, [narrow]);
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    try {
+      window.localStorage.setItem(FOLD_KEY, next ? "1" : "0");
+    } catch {
+      /* 存不了就只在本页生效 */
+    }
+  }
+
+  /** 已选条件摘要：值与表单实时同步，搜索后与列表条件一致 */
+  const chips: string[] = [];
+  if (values.q.trim()) chips.push(`${at.fSearch}: ${values.q.trim()}`);
+  if (values.fId.trim()) chips.push(`ID: ${values.fId.trim()}`);
+  if (values.fClass) {
+    const label =
+      classes.find(([id]) => String(id) === values.fClass)?.[1] ?? values.fClass;
+    chips.push(`${at.fClass}: ${label}`);
+  }
+  if (values.fStatus) {
+    const label = [at.stNormal, at.stMuted, at.stBanned][
+      Number(values.fStatus) - 1
+    ];
+    chips.push(`${at.fStatus}: ${label ?? values.fStatus}`);
+  }
+  if (values.fEnabled)
+    chips.push(
+      `${at.fEnabled}: ${values.fEnabled === "yes" ? at.optYes : at.optNo}`,
+    );
+  if (values.fDownload)
+    chips.push(
+      `${at.fDownload}: ${values.fDownload === "yes" ? at.optHas : at.optNot}`,
+    );
+  if (values.fSuspended)
+    chips.push(
+      `${at.fSuspended}: ${values.fSuspended === "yes" ? at.optYes : at.optNo}`,
+    );
+  if (values.fField) {
+    const label =
+      fields.find((f) => f.key === values.fField)?.label ?? values.fField;
+    chips.push(
+      `${at.fField}: ${label}${values.fVal.trim() ? ` · ${values.fVal.trim()}` : ""}`,
+    );
+  }
+
   return (
-    <section className="brand-panel grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
+    <div className="flex flex-col gap-2">
+      {/* 摘要行（收起/展开两态都在）：chips + 结果条数 + 一键切换 */}
+      <div className="brand-panel flex flex-wrap items-center gap-2 px-3 py-2">
+        <span className="tsb-active__title">{at.filtersTitle}</span>
+        <div className="tsb-active__list">
+          {chips.length === 0 ? (
+            <span className="text-xs text-[var(--text-faint)]">
+              {at.filtersNone}
+            </span>
+          ) : (
+            chips.map((c, i) => (
+              <span key={`${i}-${c}`} className="tsb-active__chip">
+                {c}
+              </span>
+            ))
+          )}
+        </div>
+        {total !== undefined && (
+          <span className="text-xs font-bold text-[var(--text-muted)]">
+            {fmt(dict.common.totalItems, { n: total })}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-controls="admin-users-filters"
+          className={TOGGLE_BTN}
+        >
+          {open ? at.filtersCollapse : at.filtersExpand}
+        </button>
+      </div>
+      <section
+        id="admin-users-filters"
+        className={open ? PANEL : "hidden"}
+      >
       <label className="flex flex-col gap-1 text-xs">
         {at.fId}
         <input
@@ -161,6 +277,7 @@ export function UsersFilterBar({
           </label>
         </>
       )}
-    </section>
+      </section>
+    </div>
   );
 }

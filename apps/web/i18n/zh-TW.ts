@@ -488,6 +488,8 @@ const zhTwBase: Omit<
     emptyTitle: "這裡還空空的，去種下第一顆種子吧",
     emptyAliveTitle: "當前視圖沒有活種——站內資源可能暫時無人做種",
     emptyAliveAction: "查看全部（含斷種）",
+    emptySearchTitle: "找不到符合「{q}」的種子",
+    emptySearchHint: "試著減少關鍵字、檢查拼寫，或切換分類後再搜。",
     sticky: "置頂",
     timeLeftDH: "{d}天{h}時",
     category: "分類",
@@ -3999,6 +4001,8 @@ const zhTwBase: Omit<
     } as Record<string, string>,
     panelTitle: "管理組面板",
     needAdmin: "需要管理員權限",
+    needAdminHint:
+      "目前帳號無權開啟這個管理工具。若確認已授權，請稍後重試或聯絡站點管理員。",
     actor: "操作人 {id}",
     searchUsersFail: "用戶搜索失敗",
     actionFailed: "操作失敗",
@@ -6055,6 +6059,10 @@ const zhTwBase: Omit<
     stBanned: "封禁",
     qPh: "使用者名稱 / 信箱",
     search: "搜尋",
+    filtersTitle: "已選條件",
+    filtersNone: "未設篩選",
+    filtersExpand: "展開篩選",
+    filtersCollapse: "收起篩選",
     // 自訂欄位（G4：按欄位值篩人 + 詳情面板查看/代改）
     fField: "自訂欄位",
     fFieldVal: "欄位值包含",

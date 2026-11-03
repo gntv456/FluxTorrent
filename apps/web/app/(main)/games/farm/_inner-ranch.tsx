@@ -124,7 +124,7 @@ export function RanchSection({
                           tf.ranchGot.replace("{n}", String(a.yield)),
                         )
                       }
-                      className="min-h-[30px] rounded-full bg-mint px-3 text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                      className="min-h-[30px] rounded-full bg-mint px-3 text-[11px] font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
                     >
                       {tf.ranchCollect}
                     </button>
@@ -273,7 +273,7 @@ export function CraftSection({
                         () => {},
                       )
                     }
-                    className="min-h-[32px] rounded-full bg-mint text-[11px] font-bold text-white active:scale-[0.97] disabled:opacity-50"
+                    className="min-h-[32px] rounded-full bg-mint text-[11px] font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
                   >
                     {tf.craftDone}
                   </button>

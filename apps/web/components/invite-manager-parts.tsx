@@ -265,7 +265,7 @@ export function SendEmailDialog({
           </button>
           <button
             type="button"
-            className="min-h-[40px] rounded-full bg-sky-deep px-5 text-sm text-white disabled:opacity-50"
+            className="min-h-[40px] rounded-full bg-sky-deep px-5 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
             disabled={busy || !sendEmail.includes("@") || policyBlocked}
             onClick={onSend}
           >

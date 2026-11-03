@@ -10,7 +10,7 @@ import { useI18n } from "@/i18n/client";
 
 const CHIP_CLS =
   "inline-flex min-h-[30px] items-center rounded-full border px-3 text-xs";
-const CHIP_ON = "border-sky bg-sky text-white";
+const CHIP_ON = "border-sky bg-sky text-[var(--text-on-accent)]";
 const CHIP_OFF = "border-line text-sub hover:border-sky";
 
 export function SectionKindBool({

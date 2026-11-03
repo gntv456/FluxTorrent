@@ -252,7 +252,7 @@ export function TorrentSocial({
           <button
             type="submit"
             disabled={busy}
-            className="min-h-[44px] shrink-0 rounded-full bg-sky-deep px-5 text-sm font-bold text-white active:scale-[0.97] disabled:opacity-50"
+            className="min-h-[44px] shrink-0 rounded-full bg-sky-deep px-5 text-sm font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
           >
             {busy ? dict.torrent.commentBusy : dict.torrent.commentSubmit}
           </button>

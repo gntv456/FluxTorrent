@@ -118,7 +118,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       <div className="flex justify-end">
         <button
           className={
-            "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-white"
+            "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-[var(--text-on-accent)]"
           }
           onClick={() =>
             setCreating({ scene_key: "", subject: "", body: "", note: "" })

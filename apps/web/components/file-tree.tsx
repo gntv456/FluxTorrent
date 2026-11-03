@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { formatBytes } from "@/lib/format";
 
@@ -85,8 +85,8 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
         {groups.map((g) => {
           const isCollapsed = collapsed.has(g.dir);
           return (
-            <>
-              <tr key={g.dir} className="td-files__dir">
+            <Fragment key={g.dir}>
+              <tr className="td-files__dir">
                 <td>
                   <button
                     type="button"
@@ -107,7 +107,7 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
               </tr>
               {!isCollapsed &&
                 g.files.map((f) => (
-                  <tr key={f.file_index}>
+                  <tr key={`${g.dir}:${f.file_index}`}>
                     <td className="min-w-0 truncate pl-6">
                       {f.path.slice(g.dir.length + 1) || f.path}
                     </td>
@@ -116,7 +116,7 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
                     </td>
                   </tr>
                 ))}
-            </>
+            </Fragment>
           );
         })}
       </tbody>

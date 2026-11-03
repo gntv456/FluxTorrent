@@ -157,7 +157,7 @@ export function AdminHr() {
         <button
           disabled={busy || sel.size === 0}
           onClick={batchPardon}
-          className="min-h-[40px] rounded-full bg-mint px-5 text-sm font-bold text-white disabled:opacity-50"
+          className="min-h-[40px] rounded-full bg-mint px-5 text-sm font-bold text-[var(--text-on-accent)] disabled:opacity-50"
         >
           {fmt(at.pardonBtn, { n: sel.size })}
         </button>

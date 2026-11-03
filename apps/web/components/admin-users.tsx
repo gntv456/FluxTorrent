@@ -178,6 +178,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
           setPage(1);
           load();
         }}
+        total={data?.total}
       />
       {/* 批量操作（第八轮 P2-9）：onClick 走 askBatch 弹确认（P2 清偿） */}
       <UsersBatchBar

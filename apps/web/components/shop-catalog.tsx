@@ -159,6 +159,19 @@ export function ShopCatalog({
 
   const shown = grouped.filter((x) => !grp || x.g === grp);
 
+  /** 首屏视觉锚点（决定三）：分类图标 + 已有头像框样张，全部是站内现有
+   *  资产；没有位图时由 .gicon / FramePreview 的主题 CSS 兜底。
+   *  FramePreview 与商品卡共用同一份 /avatar-frames 模块级缓存，无新请求。 */
+  const anchorFrames = useMemo(
+    () =>
+      [...new Set(
+        items
+          .filter((i) => i.kind === "avatar_frame" && i.config?.frame_id != null)
+          .map((i) => i.config?.frame_id as number),
+      )].slice(0, 3),
+    [items],
+  );
+
   const card = (it: ShopItem) => {
     const g = KIND_GROUP[it.kind] ?? "other";
     const gb = it.kind === "upload_credit" ? gbOf(it.name) : null;
@@ -244,7 +257,7 @@ export function ShopCatalog({
   return (
     <div className="flex flex-col gap-3">
       <div className="pgtools">
-        <div className="tide-tabs" role="tablist">
+        <div className="tide-tabs shop-tabs" role="tablist">
           <button
             type="button"
             role="tab"
@@ -265,6 +278,17 @@ export function ShopCatalog({
             >
               {groupLabel(x.g)} {x.list.length}
             </button>
+          ))}
+        </div>
+        {/* 分类图标 + 头像框样张：首屏视觉锚点（装饰性，不参与筛选语义） */}
+        <div className="ml-auto flex flex-wrap items-center gap-1.5" aria-hidden>
+          {grouped.map((x) => (
+            <span key={x.g} className="gicon" data-group={x.g}>
+              {GROUP_ICON[x.g]}
+            </span>
+          ))}
+          {anchorFrames.map((id) => (
+            <FramePreview key={id} frameId={id} size={42} />
           ))}
         </div>
       </div>

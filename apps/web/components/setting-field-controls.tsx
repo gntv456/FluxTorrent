@@ -102,7 +102,7 @@ export function useFieldControl({
                 onClick={() => onChange(v)}
                 className={`min-h-[32px] min-w-[56px] rounded-full px-3 text-xs font-bold ${
                   on
-                    ? "bg-sky-deep text-white"
+                    ? "bg-sky-deep text-[var(--text-on-accent)]"
                     : "border border-line bg-[var(--surface-card)] text-sub hover:text-ink"
                 }`}
               >
@@ -134,7 +134,7 @@ export function useFieldControl({
                   onClick={() => onChange(o.v)}
                   className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${
                     on
-                      ? "bg-sky-deep text-white"
+                      ? "bg-sky-deep text-[var(--text-on-accent)]"
                       : "border border-line bg-[var(--surface-card)] text-sub hover:text-ink"
                   }`}
                 >

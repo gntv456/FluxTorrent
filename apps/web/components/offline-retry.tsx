@@ -27,4 +27,4 @@ export function OfflineRetry() {
 
 const BTN =
   "min-h-[44px] inline-flex items-center rounded-full px-6 font-bold" +
-  " bg-[var(--sky-deep)] text-white disabled:opacity-60";
+  " bg-[var(--sky-deep)] text-[var(--text-on-accent)] disabled:opacity-60";

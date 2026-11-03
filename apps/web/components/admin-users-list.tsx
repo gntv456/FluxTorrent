@@ -54,7 +54,7 @@ export function UsersBatchBar({
       <button
         disabled={busy || sel.size === 0}
         onClick={() => batch("status", 0)}
-        className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white disabled:opacity-50"
+        className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
       >
         {at.batchNormal}
       </button>

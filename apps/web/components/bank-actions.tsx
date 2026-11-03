@@ -180,7 +180,7 @@ export function BankCard() {
             type="button"
             disabled={busy}
             onClick={() => refresh()}
-            className="min-h-[44px] rounded-full bg-sky-deep px-6 text-sm text-white disabled:opacity-50"
+            className="min-h-[44px] rounded-full bg-sky-deep px-6 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
           >
             {dict.common.retry}
           </button>
@@ -250,7 +250,7 @@ export function BankCard() {
         <Stat label={dict.bank.loanDebt} value={fmt(ov.loan_outstanding)} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* 存款服务 */}
         <BankDepositPanel
           dict={dict}

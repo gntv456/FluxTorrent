@@ -104,7 +104,7 @@ export function TrumpButton({ torrentId }: { torrentId: number }) {
             </button>
             <button
               type="button"
-              className="min-h-[28px] rounded-full bg-danger px-3 text-xs font-bold text-white transition disabled:opacity-50"
+              className="min-h-[28px] rounded-full bg-danger px-3 text-xs font-bold text-[var(--text-on-accent)] transition disabled:opacity-50"
               disabled={busy}
               onClick={() => void submit()}
             >

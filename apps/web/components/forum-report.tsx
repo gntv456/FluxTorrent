@@ -74,7 +74,7 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
               type="button"
               onClick={() => void submit()}
               disabled={busy || !reason.trim()}
-              className="min-h-[28px] rounded-full bg-coral px-3 text-xs font-bold text-white transition disabled:opacity-50"
+              className="min-h-[28px] rounded-full bg-coral px-3 text-xs font-bold text-[var(--text-on-accent)] transition disabled:opacity-50"
             >
               {dict.usertools.reportSubmit}
             </button>

@@ -250,7 +250,7 @@ export function SettingsClient({ initialSchema }: { initialSchema: SettingsSchem
                     type="button"
                     onClick={testSmtp}
                     disabled={smtpTesting || !editable}
-                    className="min-h-[44px] rounded-full bg-sky-deep px-4 text-xs font-bold text-white disabled:opacity-40"
+                    className="min-h-[44px] rounded-full bg-sky-deep px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-40"
                   >
                     {smtpTesting ? s.smtpTestingBtn : s.smtpTestBtn}
                   </button>

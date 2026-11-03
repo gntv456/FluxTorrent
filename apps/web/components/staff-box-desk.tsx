@@ -127,7 +127,7 @@ export function DeskTable({
                         busy || (answeringId === m.id && !answerText.trim())
                       }
                       onClick={() => onSendAnswer(m.id)}
-                      className="min-h-[36px] w-fit rounded-full bg-sky-deep px-4 text-xs font-bold text-white disabled:opacity-50"
+                      className="min-h-[36px] w-fit rounded-full bg-sky-deep px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
                     >
                       {t.sendBtn}
                     </button>

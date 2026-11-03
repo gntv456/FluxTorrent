@@ -200,7 +200,7 @@ export default async function UserProfilePage({
             }
             className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
               active === m.key
-                ? "border-sky bg-sky text-white"
+                ? "border-sky bg-sky text-[var(--text-on-accent)]"
                 : "border-line bg-[var(--surface-card)] text-sub hover:text-ink"
             }`}
           >

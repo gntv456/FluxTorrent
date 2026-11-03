@@ -346,7 +346,7 @@ export function RequestBoard({
           />
           <button
             type="submit"
-            className="min-h-[40px] rounded-full bg-sky px-4 text-sm font-bold text-white"
+            className="min-h-[40px] rounded-full bg-sky px-4 text-sm font-bold text-[var(--text-on-accent)]"
             disabled={loading}
           >
             {t.search}

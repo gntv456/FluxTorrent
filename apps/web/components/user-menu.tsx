@@ -37,7 +37,14 @@ type SseUnread = { count?: number };
  * 用户名+勋章+等级+{magic}+退出）/ 数据条 / 快捷链接 / 信箱工具行。
  * 未登录回落登录链接；点外部/ESC 收起。
  */
-export function UserMenu({ loginLabel }: { loginLabel: string }) {
+export function UserMenu({
+  loginLabel,
+  initialUsername,
+}: {
+  loginLabel: string;
+  /** 服务端已拿到的用户名：首屏先渲染头像占位，避免 /me 到达前闪「登录」 */
+  initialUsername?: string | null;
+}) {
   const { dict, currency } = useI18n();
   const [me, setMe] = useState<MeInfo | null>(null);
   const [meFailed, setMeFailed] = useState(false);
@@ -143,12 +150,29 @@ export function UserMenu({ loginLabel }: { loginLabel: string }) {
   }
 
   if (!me && meFailed && hasSessionCookie()) return null;
-  if (!me)
+  if (!me) {
+    /* P2：layout 已从 /me/overview 拿到用户名，首屏先画头像占位；
+       /me 到达后替换成可交互按钮。避免已登录用户在 ~300ms 内看到「登录」。 */
+    if (initialUsername)
+      return (
+        <div className="usermenu">
+          <span
+            className="usermenu__trigger"
+            aria-label={initialUsername}
+            aria-busy="true"
+          >
+            <span className="usermenu__avatar" aria-hidden>
+              {initialUsername.slice(0, 1).toUpperCase()}
+            </span>
+          </span>
+        </div>
+      );
     return (
       <a href="/login" className="mainmenu-link usermenu-login">
         {loginLabel}
       </a>
     );
+  }
 
   const ratio = formatRatio(me.uploaded, me.downloaded);
   const t = dict.my;

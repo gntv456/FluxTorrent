@@ -18,7 +18,7 @@ import { AdminActionPanelsMore } from "./admin-user-detail-actions-forms-more";
 import { useI18n } from "@/i18n/client";
 
 /** 面板切换按钮（激活/默认）样式 */
-const ON_CLS = "bg-sky text-white";
+const ON_CLS = "bg-sky text-[var(--text-on-accent)]";
 const OFF_CLS = "border border-line";
 
 /** 圆角描边小按钮（普通/danger 文案用） */
@@ -27,15 +27,15 @@ const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-danger`;
 
 /** 下载/挂起切换按钮的两种态样式 */
 const DANGER_CLS = "border border-line text-danger";
-const MINT_CLS = "bg-mint text-white";
+const MINT_CLS = "bg-mint text-[var(--text-on-accent)]";
 /** 下载开关按钮整串（避免行内模板超宽） */
 const DL_BTN_CLS = `${TAB_BTN_CLS}${DANGER_CLS}`.trim();
 
 /** 圆角实底小按钮（薄荷绿/珊瑚红） */
 const SOLID_MINT_CLS =
-  "min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white";
+  "min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]";
 const SOLID_CORAL_CLS =
-  "min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-white";
+  "min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-[var(--text-on-accent)]";
 
 export interface AdminActionsProps {
   d: Detail;

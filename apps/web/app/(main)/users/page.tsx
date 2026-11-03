@@ -109,7 +109,7 @@ export default async function UsersPage({
           name="q"
           defaultValue={q}
           placeholder={t.searchPh}
-          className={`${INPUT_GROW} text-ink placeholder:text-sub`}
+          className={`${INPUT_GROW} min-w-[180px] text-ink placeholder:text-sub`}
         />
         <select
           name="class_id"

@@ -29,7 +29,7 @@ export function CheatersPanel({
       <p className="mb-2 text-xs text-sub">{a.cheatersNote}</p>
       <button
         onClick={onScan}
-        className="mb-3 min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-white"
+        className="mb-3 min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]"
       >
         {a.cheatersScan}
       </button>

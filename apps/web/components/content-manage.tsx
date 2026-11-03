@@ -152,7 +152,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             onClick={() => setTab(k)}
             className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${
               tab === k
-                ? "bg-sky text-white"
+                ? "bg-sky text-[var(--text-on-accent)]"
                 : CELL_CARD_SUB
             }`}
           >

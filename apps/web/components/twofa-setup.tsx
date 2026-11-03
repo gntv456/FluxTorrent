@@ -140,7 +140,7 @@ export function TwoFactorSetup() {
             type="button"
             disabled={busy || !password}
             onClick={beginSetup}
-            className="min-h-[36px] w-fit rounded-full bg-sky px-4 text-xs font-bold text-white disabled:opacity-50"
+            className="min-h-[36px] w-fit rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
           >
             {t.setup}
           </button>
@@ -171,7 +171,7 @@ export function TwoFactorSetup() {
               type="button"
               disabled={busy}
               onClick={enable}
-              className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-white disabled:opacity-50"
+              className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
             >
               {t.enable}
             </button>
