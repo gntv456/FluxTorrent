@@ -22,7 +22,10 @@ export interface UserFilterValues {
   fVal: string;
 }
 
-const EMPTY: UserFilterValues = {
+/** 全空筛选：既是初始值，也是「重置」的目标状态。
+ *  导出常量而非每次新建对象——applied 指向同一引用时 setState 是 no-op，
+ *  条件本来就空时点重置不会多发一次请求。 */
+export const EMPTY_FILTERS: UserFilterValues = {
   q: "",
   fId: "",
   fClass: "",
@@ -56,12 +59,14 @@ export function buildUserFilterParams(
 }
 
 export function useUserFilters() {
-  const [values, setValues] = useState<UserFilterValues>(EMPTY);
+  const [values, setValues] = useState<UserFilterValues>(EMPTY_FILTERS);
   const set = useCallback(
     <K extends keyof UserFilterValues>(k: K, v: UserFilterValues[K]): void =>
       setValues((prev) => ({ ...prev, [k]: v })),
     [],
   );
+  /** 重置回全空（共用同一常量，值相同则 state 引用不换） */
+  const reset = useCallback(() => setValues(EMPTY_FILTERS), []);
   // 引用稳定：调用方把 `filters` 放进 useCallback deps 时不至于每渲染都变
-  return useMemo(() => ({ values, set }), [values, set]);
+  return useMemo(() => ({ values, set, reset }), [values, set, reset]);
 }

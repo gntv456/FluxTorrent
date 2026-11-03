@@ -26,6 +26,13 @@ const FILTER_SELECT =
   "bg-[var(--surface-card)] px-2";
 const SEARCH_BTN =
   "min-h-[40px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
+/** 重置：次要按钮（描边 + 面板底），排在搜索左侧，不抢主操作；
+ *  禁用态用淡字 + 淡边，仍可辨认（不是隐身）。 */
+const RESET_BTN =
+  "min-h-[var(--tap-min)] shrink-0 rounded-full border border-line " +
+  "bg-[var(--surface-card)] px-4 text-xs font-bold text-[var(--text-body)] " +
+  "disabled:cursor-not-allowed disabled:border-[var(--border-soft)] " +
+  "disabled:text-[var(--text-faint)]";
 const PANEL = "brand-panel grid grid-cols-2 gap-3 p-4 md:grid-cols-4";
 const TOGGLE_BTN =
   "min-h-[var(--tap-min)] shrink-0 rounded-full border border-line px-3" +
@@ -51,6 +58,8 @@ export function UsersFilterBar({
   applied,
   set,
   onSearch,
+  onReset,
+  canReset,
   onCollapse,
   total,
 }: {
@@ -63,6 +72,10 @@ export function UsersFilterBar({
   /** 筛选变更：文本位父组件做 400ms 防抖，选择位立即生效 */
   set: <K extends keyof FilterValues>(k: K, v: FilterValues[K]) => void;
   onSearch: () => void;
+  /** 清空全部条件（草稿 + 已生效）并立即生效 */
+  onReset: () => void;
+  /** 是否有可清条件（无则重置按钮 disabled） */
+  canReset: boolean;
   /** 收起面板时通知父组件取消待触发的 debounce */
   onCollapse?: () => void;
   /** 当前筛选条件下的结果总数（loading 时为 undefined） */
@@ -70,6 +83,8 @@ export function UsersFilterBar({
 }) {
   const { dict } = useI18n();
   const at = dict.adminUsers;
+  /** 复用既有「重置全部」文案（torrents2.advReset，三语齐全），不新增近义键 */
+  const resetLabel = dict.torrents2.advReset;
   /** SSR/首帧按窄屏处理（默认收起），挂载后由 matchMedia 校正到桌面展开 */
   const narrow = useMediaQuery("(max-width: 1279px)", true);
   const [open, setOpen] = useState(true);
@@ -243,15 +258,23 @@ export function UsersFilterBar({
           <option value="no">{at.optNo}</option>
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-xs md:col-span-2">
+      <label className="col-span-2 flex flex-col gap-1 text-xs">
         {at.fSearch}
         <div className="flex gap-2">
           <input
             value={values.q}
             onChange={(e) => set("q", e.target.value)}
             placeholder={at.qPh}
-            className={`${FILTER_INPUT} flex-1`}
+            className={`${FILTER_INPUT} min-w-0 flex-1`}
           />
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={!canReset}
+            className={RESET_BTN}
+          >
+            {resetLabel}
+          </button>
           <button type="button" onClick={onSearch} className={SEARCH_BTN}>
             {at.search}
           </button>

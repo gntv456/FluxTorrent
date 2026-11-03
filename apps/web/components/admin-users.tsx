@@ -8,6 +8,7 @@ import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { UsersBatchBar, UsersTable } from "@/components/admin-users-list";
 import { UsersFilterBar } from "@/components/admin-users-filters";
 import {
+  EMPTY_FILTERS,
   buildUserFilterParams,
   useUserFilters,
 } from "@/components/admin-users-parts";
@@ -108,6 +109,34 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
       }
     },
     [filters, commit, cancelPending],
+  );
+
+  /** 重置：草稿与已生效快照一起清空，取消待触发 debounce，回第 1 页并立即生效。
+   *  目标恒为同一个 EMPTY_FILTERS 引用——本来就没条件时 setState 是 no-op，不发请求。 */
+  const resetFilters = useCallback(() => {
+    draft.current = EMPTY_FILTERS;
+    filters.reset();
+    commit(EMPTY_FILTERS);
+  }, [filters, commit]);
+
+  /** 有可清的条件（草稿或已生效）才让重置按钮可点：留 400ms 窗口内也能取消待触发查询 */
+  const hasFilters = Boolean(
+    filters.values.q.trim() ||
+      filters.values.fId.trim() ||
+      filters.values.fClass ||
+      filters.values.fStatus ||
+      filters.values.fEnabled ||
+      filters.values.fDownload ||
+      filters.values.fSuspended ||
+      filters.values.fField ||
+      applied.q.trim() ||
+      applied.fId.trim() ||
+      applied.fClass ||
+      applied.fStatus ||
+      applied.fEnabled ||
+      applied.fDownload ||
+      applied.fSuspended ||
+      applied.fField,
   );
 
   // 卸载/切页清理定时器：别让组件没了还发请求
@@ -232,6 +261,8 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         applied={applied}
         set={change}
         onSearch={() => commit(draft.current)}
+        onReset={resetFilters}
+        canReset={hasFilters}
         onCollapse={cancelPending}
         total={data?.total}
       />
