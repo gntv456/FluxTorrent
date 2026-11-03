@@ -27,6 +27,9 @@
   --on-dark-line: rgba(255, 255, 255, 0.16);
   --sun: #ffc93c;
   --sun-soft: #fff4d6;
+  /* 金石底上的字色（P1-6）：--sun 在潮汐是深琥珀 #b4790a，
+     原先写死的 #6b4e00 只有 2.09；改统一深墨（5.2:1）。 */
+  --on-sun: #1a1408;
   --coral: #ff7a59;
   --coral-soft: #ffe9e2;
   --mint: #2fbf9b;
@@ -68,8 +71,8 @@
   --text-body-deep: #35435e;
   --text-brand: #1e8ae8;
   --text-muted: #6b7a99;
-  --text-faint: #8493ad;
-  --text-fainter: #a3b1c6;
+  --text-faint: #5f6b86;
+  --text-fainter: #63708c;
   --text-on-accent: #fff;
   /* ===== 状态（续）：内容语义色（W-36）=====
      BBCode 色板 / 评级星标 / 画质档徽标：是「内容数据」而非 UI chrome，
@@ -146,6 +149,18 @@
   --tone-neutral-strong: var(--text-strong);
   --tone-neutral-soft: var(--muted-soft);
   --tone-on-accent: var(--text-on-accent);
+  /* 实心主操作底色/字色（P1-1）：与 --tone-brand 分开——后者是「品牌色
+     文字位」，直接作按钮底时白字不足 4.5。主题可按需整组覆写。 */
+  --accent-surface: var(--sky-deep);
+  --accent-surface-strong: var(--sky);
+  --accent-on: var(--text-on-accent);
+  /* Hero 身份卡（P1-1）：金箔渐变在山海经是「题字底」，白字不可读；
+     单独出组令牌，供主题整组覆写，避免动 --on-dark（图片压字还要用）。 */
+  --hero-bg: var(--grad-aurora);
+  --hero-on: var(--on-dark);
+  --hero-on-muted: var(--on-dark-muted);
+  --hero-on-line: var(--on-dark-line);
+  --hero-on-soft: var(--on-dark-soft);
   /* ===== 圆角（按钮统一胶囊 999，见 .btn 类） ===== */
   --r-xl: 24px;
   --r-lg: 20px;
@@ -306,6 +321,12 @@
   --compat-orange: var(--sky);
   --compat-orange-bright: #5cb8ff;
   --compat-orange-dark: var(--sky-deep);
+  /* 渐变"填充"位（背景）与"文字"位分家：夜间兼容色是提亮的文字位，
+     直接当渐变底压白字只有 1.8–2.0。填充位单独给令牌，夜间压深。 */
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
   --compat-green: var(--mint);
   --compat-blue: var(--info);
   --compat-ink: var(--ink);
@@ -355,8 +376,7 @@
   --head-a: #1e2a4d;
   --head-b: #1a2036;
   /* 文本（W-40 暗色 AA 校准：faint 76849f→8b99b3 达 5.2、
-     fainter 5c6a84→76849f 达 4.3——原值在卡片底只有 4.27/2.95，
-     10px 辅助角标也需 ≥3（AA large 下限），校准后全配对达标） */
+     fainter 5c6a84→7f8da6 把卡片底 11px 辅助字从 4.3 抬到 4.8） */
   --text-strong: #e8eef9;
   --text-heading: #f4f7fd;
   --text-body: #c6d1e6;
@@ -364,7 +384,7 @@
   --text-brand: #6cc0ff;
   --text-muted: #93a2bf;
   --text-faint: #8b99b3;
-  --text-fainter: #76849f;
+  --text-fainter: #7f8da6;
   --text-on-accent: #fff;
   /* 边框 */
   --border-soft: #262f4a;
@@ -427,6 +447,12 @@
   --compat-orange: var(--sky);
   --compat-orange-bright: #6cc0ff;
   --compat-orange-dark: #7fc6ff;
+  /* 夜间渐变填充位：兼容色是文字位（亮蓝），压白字仅 1.8–2.0，
+     填充位改深蓝（白字 5.89–11+），文字位不动。 */
+  --compat-fill-a: #0f62c4;
+  --compat-fill-mid: #0d4f9f;
+  --compat-fill-b: #0a2b4f;
+  --compat-fill-glow: #14417c;
   --compat-green: var(--mint);
   --compat-blue: var(--info);
   --compat-ink: var(--ink);
@@ -698,13 +724,17 @@ h2 {
   font-family: var(--font-display);
 }
 
-/* 链接：包子深橙、无下划线（theme.css .theme-brandpt a） */
-a {
-  color: var(--compat-orange-dark);
-  text-decoration: none;
-}
-a:hover {
-  color: var(--compat-orange);
+/* 链接：包子深橙、无下划线（theme.css .theme-brandpt a）。
+   P1-2：必须进 @layer base——无 layer 的规则优先级高于 Tailwind utilities，
+   会让 `<a class="bg-sky text-white">` 的 text-white 永远失效，颜色类失控。 */
+@layer base {
+  a {
+    color: var(--compat-orange-dark);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--compat-orange);
+  }
 }
 
 /* 数字表格对齐（统计数字 tabular-nums） */
@@ -723,7 +753,9 @@ a:hover {
   border-radius: 9px;
   border: 2px solid #fff;
   background: var(--indigo);
-  color: #fff;
+  /* P1-1：贴纸底是语义色（mint/coral/candy/indigo/sun），实心底上的字色
+     必须走令牌——山海经亮档底色需要深字，亮/暗主题仍是白字。 */
+  color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.5;
@@ -754,12 +786,12 @@ a:hover {
 }
 .sticker.s-hr,
 .sticker[data-variant="hr"] {
-  background: #7c8aa5;
+  background: #5a6783;
 }
 .sticker.s-premium,
 .sticker[data-variant="premium"] {
   background: var(--sun);
-  color: #6b4e00;
+  color: var(--on-sun);
 }
 /* 旧调用（纯文本贴纸，无 variant）保持低调样式，不与语义贴纸抢戏 */
 .sticker:not(
@@ -1636,7 +1668,7 @@ a:hover {
   border: 0;
   border-radius: var(--r-sm);
   background: var(--sky-deep, var(--text-brand));
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -1780,11 +1812,11 @@ a:hover {
 }
 .td-tag--on {
   background: var(--sky);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 .td-tag--on-official {
   background: var(--indigo);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 .td-tag--off {
   background: var(--muted-soft);
@@ -2073,7 +2105,7 @@ a:hover {
   height: 24px;
   border-radius: 50%;
   background: var(--grad-aurora);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 12px;
   font-weight: 800;
 }
@@ -2121,7 +2153,7 @@ a:hover {
   height: 32px;
   border-radius: 50%;
   background: var(--grad-aurora);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 14px;
   font-weight: 800;
 }

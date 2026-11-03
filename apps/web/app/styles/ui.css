@@ -1003,6 +1003,16 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+.ui-submit--brand {
+  background: var(--accent-surface);
+  color: var(--accent-on);
+}
+.ui-submit--brand:hover:not(:disabled) {
+  background: var(--accent-surface-strong);
+}
+.ui-submit--brand:active:not(:disabled) {
+  filter: brightness(0.95);
+}
 .ui-submit--compat {
   background: var(--tone-brand);
   color: var(--tone-on-accent);
@@ -1326,25 +1336,25 @@
      视觉锚点；样图里它是全页唯一的深色块，用来把人「钉」在页面顶部。
      用既有 --grad-aurora（深海军→主蓝→亮蓝），与样图的三段渐变同构，
      不另造硬编码色值。 */
-  background: var(--grad-aurora);
-  color: var(--on-dark);
+  background: var(--hero-bg);
+  color: var(--hero-on);
   box-shadow: var(--shadow-card);
 }
 /* 深色卡上的文字统一提亮：组件里写死的 text-sub / var(--text-strong) 等
    浅色主题令牌在这里必须被覆盖，否则黑字落在深蓝上读不清。 */
 .up-hero h1 {
-  color: var(--on-dark);
+  color: var(--hero-on);
 }
 .up-hero .text-sub,
 .up-hero__meta,
 .up-hero__meta i,
 .up-hero__class {
-  color: var(--on-dark-muted);
+  color: var(--hero-on-muted);
 }
 /* 等级/头衔 pill：浅蓝底换成半透明白底，白字 */
 .up-hero__class {
-  background: var(--on-dark-line);
-  color: var(--on-dark);
+  background: var(--hero-on-line);
+  color: var(--hero-on);
 }
 .up-hero__avatar {
   flex: 0 0 auto;
@@ -1352,7 +1362,7 @@
   height: 96px;
   border-radius: var(--r-md);
   overflow: hidden;
-  background: var(--on-dark-soft);
+  background: var(--hero-on-soft);
   display: flex;
   align-items: center;
   justify-content: center;

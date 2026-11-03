@@ -86,13 +86,15 @@
 }
 .usermenu__dot {
   position: absolute;
-  top: -4px;
-  right: -6px;
+  top: -2px;
+  right: -4px;
   min-width: 17px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #e5484d;
-  color: #fff;
+  /* P2：原 #e5484d + 白字 3.91（10px 正文不达标）。按危险色的 62% 压深一档，
+     三主题下白字实测均 ≥5.2，且不与「危险」语义脱钩。 */
+  background: color-mix(in srgb, var(--danger) 62%, #000);
+  color: var(--on-dark);
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;
@@ -106,7 +108,12 @@
   display: flex;
   width: min(352px, calc(100vw - 32px));
   flex-direction: column;
-  overflow: hidden;
+  /* P2：小屏（尤其 375×667）弹窗高度超过视口，底部「信箱工具」被截断；
+     改为可滚动，滚动链不传导到页面。 */
+  max-height: min(76vh, 640px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0;
   border: 1px solid var(--border-soft);
   border-radius: 14px;

@@ -124,7 +124,7 @@
   border: 2px solid var(--border-deep); background: var(--surface-card);
 }
 .arc-node.reached { border-color: var(--sky-deep); color: var(--sky-deep); }
-.arc-node.ready { background: var(--grad-aurora); color: #fff;
+.arc-node.ready { background: var(--grad-aurora); color: var(--text-on-accent);
   border-color: transparent; }
 .arc-node.lock { color: var(--sub, var(--text-sub)); }
 /* 串星的线：格子是「节点在上、标签在下」，线要绝对定位到节点中线，
@@ -1844,4 +1844,13 @@
 [data-theme="brand-night"] .arc-stub.locked .ct {
   color: var(--sun);
   border-color: var(--warning-border);
+}
+
+/* P1-3：移动端星轨节点 34/38 → 44（横向滚动轨道，不与相邻节点重叠）。
+   已达成/可领取节点在后面用 `.arc-node.reached/.ready`（0,2,0）钉了 38px，
+   单一 `.arc-node` 压不过它，必须同权重列一次。 */
+@media (max-width: 767px) {
+  .arc-node,
+  .arc-node.reached,
+  .arc-node.ready { width: var(--tap-min); height: var(--tap-min); }
 }

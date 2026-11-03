@@ -9,7 +9,7 @@
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--compat-glow),
+    var(--compat-fill-glow),
     var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
@@ -64,8 +64,8 @@
   border-color: transparent;
   background: linear-gradient(
     135deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark)
+    var(--compat-fill-a),
+    var(--compat-fill-b)
   );
 }
 .request-center__filter--primary:hover {
@@ -110,6 +110,23 @@
 }
 .brand-wide-table-scroll {
   overflow-x: auto;
+}
+/* P2：窄屏宽表默认看不出还能横滑。用 16px 右侧渐隐提示被裁掉的是内容，
+   而不是装饰；≥1280 内容不再被裁，取消渐隐。
+   裸表（admin-panel-content 直接子 table）只在 <768 挂渐隐：移动端滚动条
+   不可见且所有后台表都超宽；桌面保留原生滚动条，避免给不溢出的窄表
+   （如经济仪表 204px）平白裁掉右边缘。 */
+@media (max-width: 1279px) {
+  .admin-panel-content .brand-wide-table-scroll {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  }
+}
+@media (max-width: 767px) {
+  .admin-panel-content table {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  }
 }
 /* table 自挂本类（行数门禁下不便包裹 div 的场景）：块化后 overflow 生效 */
 table.brand-wide-table-scroll {
@@ -166,8 +183,8 @@ table.brand-wide-table-scroll {
   font-weight: 900;
   background: linear-gradient(
     145deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark)
+    var(--compat-fill-a),
+    var(--compat-fill-b)
   );
 }
 .subtitles-head strong {
@@ -229,8 +246,8 @@ table.subtitles-upload-table {
   color: var(--text-on-accent);
   background: linear-gradient(
     135deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark)
+    var(--compat-fill-a),
+    var(--compat-fill-b)
   );
 }
 .subtitles-upload-table input.btn:disabled {
@@ -697,6 +714,12 @@ table.subtitles-upload-table {
   border-color: var(--text-brand);
 }
 
+/* P1-3：移动端筛选 chip 的整枚标签作为命中区，抬到 44px；
+   桌面保持 28px 的信息密度。不与相邻 chip 重叠（纵向 flex 间距照旧）。 */
+@media (max-width: 767px) {
+  .tsb-chip { min-height: var(--tap-min); }
+}
+
 /* 数值 / 日期区间 */
 .tsb-range {
   display: flex;
@@ -959,7 +982,7 @@ table.subtitles-upload-table {
   padding: 0 6px;
   border-radius: 4px;
   background: var(--sun);
-  color: #6b4e00;
+  color: var(--on-sun);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.7;
@@ -1129,7 +1152,7 @@ table.subtitles-upload-table {
   padding: 0 6px;
   border-radius: 4px;
   background: var(--sun);
-  color: #6b4e00;
+  color: var(--on-sun);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.7;
@@ -1323,7 +1346,7 @@ table.subtitles-upload-table {
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--compat-glow),
+    var(--compat-fill-glow),
     var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
@@ -1547,8 +1570,8 @@ textarea.bbcode {
   font-weight: 800;
   background: linear-gradient(
     135deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark)
+    var(--compat-fill-a),
+    var(--compat-fill-b)
   );
   cursor: pointer;
 }
@@ -1605,7 +1628,7 @@ textarea.bbcode {
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--compat-glow),
+    var(--compat-fill-glow),
     var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
@@ -1898,8 +1921,8 @@ textarea.bbcode {
 .task-stats-bars progress::-webkit-progress-value {
   background: linear-gradient(
     90deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark)
+    var(--compat-fill-a),
+    var(--compat-fill-b)
   );
   border-radius: 5px;
 }
@@ -2455,8 +2478,8 @@ textarea.bbcode {
   font-size: 12px;
   background: linear-gradient(
     145deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark)
+    var(--compat-fill-a),
+    var(--compat-fill-b)
   );
 }
 /* M1 快修 #1：feed pill——全局 a{color} 是未分层样式，优先级压过 Tailwind
@@ -2487,7 +2510,7 @@ textarea.bbcode {
   border-radius: var(--r-md);
   background: linear-gradient(
     100deg,
-    var(--compat-glow),
+    var(--compat-fill-glow),
     var(--compat-orange-dark)
   );
   box-shadow: var(--shadow-card);
@@ -2745,7 +2768,7 @@ textarea.bbcode {
   border-radius: 999px;
   background: linear-gradient(
     135deg,
-    var(--compat-orange-bright),
+    var(--compat-fill-a),
     var(--compat-orange)
   );
   color: var(--text-on-accent);
@@ -3368,7 +3391,9 @@ input.batch-all {
   border: none;
   border-radius: 999px;
   background: var(--coral, #c0392b);
-  color: #fff;
+  /* P1-1：山海经下 --coral 是浅朱亮档，白字仅 2.46；改语义字色令牌
+     （亮色主题 = #fff，计算值不变；山海经 = 深字） */
+  color: var(--text-on-accent);
   font-weight: 700;
   cursor: pointer;
 }
@@ -3608,7 +3633,8 @@ input.batch-all {
   align-items: center;
   justify-content: center;
   background: var(--sky-deep, #0a3d6b);
-  color: #fff;
+  /* P1-1：山海经 --sky-deep 是亮档，白字 2.01；走语义字色令牌 */
+  color: var(--text-on-accent);
   font-size: 18px;
 }
 .trow-swipe__act.is-fav {
@@ -3906,7 +3932,9 @@ input.batch-all {
 .gsearch { position: relative; }
 .gsearch__btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px;
+  /* P1-3：视觉 34px 不变，命中区外扩到 44（用负 margin 抵消占位，
+     不推挤相邻顶栏控件）。 */
+  width: var(--tap-min); height: var(--tap-min); margin: -5px;
   border: 1px solid var(--compat-line); border-radius: 999px;
   background: var(--surface-raised); color: var(--text-muted);
   cursor: pointer; transition: all var(--motion-fast);

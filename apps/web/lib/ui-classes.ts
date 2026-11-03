@@ -27,7 +27,7 @@ export const BTN_MD_SKY =
 
 /** 主按钮：44px 天蓝实底（整行提交位） */
 export const BTN_LG_SKY =
-  "min-h-[44px] rounded-full bg-sky font-bold text-white" +
+  "min-h-[44px] rounded-full bg-sky font-bold text-[var(--text-on-accent)]" +
   " active:scale-[0.97] disabled:opacity-50";
 
 /** 次级按钮：44px 胶囊描边，hover 转橙（邀请「魔力兑换」等并列主按钮的次选）。
@@ -121,7 +121,7 @@ export const TERMS_FLD =
   "bg-cloud px-2 text-sm outline-none focus:border-sky";
 
 export const TERMS_BTN_PRIMARY =
-  "rounded-full bg-sky px-4 py-1.5 text-sm font-bold text-white " +
+  "rounded-full bg-sky px-4 py-1.5 text-sm font-bold text-[var(--text-on-accent)] " +
   "disabled:opacity-50";
 
 export const TERMS_BTN_GHOST =

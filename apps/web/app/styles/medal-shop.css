@@ -554,6 +554,22 @@
 }
 
 /* ---------- 6. 魔力商店 ---------- */
+/* 决定三（2026-11-03）：窄屏分类标签固定单行横滑。山海经主题的自托管
+   字体是 swap 加载，替换后标签文字变窄会少占一行，下面数千像素的商品区
+   随之上移（375 实测 CLS 0.19）。固定行数后，字体替换只改宽度不改高度。 */
+@media (max-width: 767px) {
+  .shop-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .shop-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .shop-tabs .tide-tab {
+    flex: 0 0 auto;
+  }
+}
 .shop-bal {
   display: flex;
   align-items: center;

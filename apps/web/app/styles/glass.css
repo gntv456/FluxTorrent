@@ -40,7 +40,10 @@ html[data-glass="on"] body {
      真实值由根布局内联在 <html> 上，而元素自身的声明永远赢过继承值，
      在 body 上写默认值会把 html 传下来的那个直接盖掉（bd2523d9 上线实测
      全站 blur(0px)、色值不带 alpha，就是这个原因）。 */
-  --glass-mix: calc(var(--glass-alpha, 1) * 100%);
+  /* 潮汐纹理只保留在非文字层：面板不透明度下限由主题令牌 --glass-floor 给
+     （brand / brand-night 0.94，其他主题 0）。站长设置低于下限时按下限合成，
+     高于下限时仍按站长值——不全局压低纹理，只兜住承载文字的底色。 */
+  --glass-mix: calc(max(var(--glass-alpha, 1), var(--glass-floor, 0)) * 100%);
   --surface-card: color-mix(in srgb, var(--sc-solid) var(--glass-mix),
     transparent);
   --surface-sunken: color-mix(in srgb, var(--ss-solid) var(--glass-mix),

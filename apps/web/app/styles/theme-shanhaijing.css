@@ -71,9 +71,22 @@
   --text-body-deep: #cfc8b1; /* 9.9:1 */
   --text-brand: #63c9aa; /* 石绿亮 · 链接 9.6:1 */
   --text-muted: #b7c0ad; /* 10.3:1 */
-  --text-faint: #8b998a; /* 5.6:1 */
-  --text-fainter: #7d8a7c; /* 4.6:1（辅助角标底线） */
+  --text-faint: #9aa697; /* 5.1:1（玻璃面板合成底） */
+  --text-fainter: #8f9a8d; /* 4.56:1（玻璃面板合成底，11.5px 辅助字底线） */
   --text-on-accent: #101914; /* 深字压亮钮（石绿底上 6.5:1） */
+
+  /* ===== 实心主操作 / Hero（P1-1）=====
+     --sky-deep #63c9aa 是「暗底文字位」，作按钮底白字只有 2.01；
+     语义底色沿用石绿亮档，字色切深（6.5:1）。Hero 金箔只做描边与
+     分隔，大面积文字底换成玄墨→黛绿渐变，白纸字 10.8:1。 */
+  --accent-surface: var(--sky-deep);
+  --accent-surface-strong: var(--sky);
+  --accent-on: var(--text-on-accent);
+  --hero-bg: linear-gradient(135deg, #14261d 0%, #1b3a2b 55%, #102018 100%);
+  --hero-on: var(--text-strong);
+  --hero-on-muted: rgba(244, 238, 221, 0.78);
+  --hero-on-line: rgba(244, 238, 221, 0.16);
+  --hero-on-soft: rgba(244, 238, 221, 0.1);
 
   /* ===== 边框：金线三档 ===== */
   --border-soft: rgba(211, 161, 63, 0.13);
@@ -449,9 +462,18 @@
 [data-theme="shanhaijing"] .shj-atlas__group {
   margin-top: 8px;
 }
+/* P2：顶栏已有「山海经」字标+印章，左栏再放一套品牌 = 同屏双 logo。
+   左栏只保留图鉴导航，隐藏重复品牌块。 */
+[data-theme="shanhaijing"] .shj-atlas__brand {
+  display: none;
+}
+[data-theme="shanhaijing"] .shj-atlas__scroll {
+  padding-top: 14px;
+}
 [data-theme="shanhaijing"] .shj-atlas__gtitle {
   display: flex;
   width: 100%;
+  min-height: var(--tap-min);
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -484,7 +506,7 @@
 /* ===== 条目 ===== */
 [data-theme="shanhaijing"] .shj-atlas__item {
   display: flex;
-  min-height: 36px;
+  min-height: var(--tap-min);
   align-items: center;
   gap: 9px;
   padding: 6px 10px;
@@ -673,6 +695,11 @@
   }
 }
 @media (min-width: 768px) and (max-width: 1179.98px) {
+  /* 轨宽 64px 扣掉 1px 边线与各 10px 内边距后条目只剩 43px，
+     内边距收窄 1px 让命中区补足 --tap-min(44)，且不产生横向溢出。 */
+  [data-theme="shanhaijing"] .shj-atlas__scroll {
+    padding-inline: 9px;
+  }
   [data-theme="shanhaijing"] .shj-atlas__item {
     justify-content: center;
     padding: 6px 0;
@@ -1041,19 +1068,22 @@
 /* ===== 分类色块岩彩化（乙）：站点配置的内联分类色按 data-shj-hue 散列位
    重映射到四正色深档（宣纸字实测 4.76–5.39:1 全过 AA）。
    !important 才能压内联 style；属性由组件恒输出，其余三主题不消费、零变化。 */
-[data-theme="shanhaijing"] [data-shj-hue="0"] {
+/* :not(.trow-card)——移动行卡把 data-shj-hue 当「亮档分类色」的取值钩子，
+   它自己的底必须是 surface-card；此前通配选择器把整张卡刷成实色色块，
+   ↑/↓/分类字全落在 #7a5f1a 等深色底上（实测 2.2–2.57）。 */
+[data-theme="shanhaijing"] [data-shj-hue="0"]:not(.trow-card) {
   background: #256571 !important; /* 石青深 */
   color: var(--shj-seal-on) !important;
 }
-[data-theme="shanhaijing"] [data-shj-hue="1"] {
+[data-theme="shanhaijing"] [data-shj-hue="1"]:not(.trow-card) {
   background: #256b56 !important; /* 石绿深 */
   color: var(--shj-seal-on) !important;
 }
-[data-theme="shanhaijing"] [data-shj-hue="2"] {
+[data-theme="shanhaijing"] [data-shj-hue="2"]:not(.trow-card) {
   background: #7a5f1a !important; /* 金深 */
   color: var(--shj-seal-on) !important;
 }
-[data-theme="shanhaijing"] [data-shj-hue="3"] {
+[data-theme="shanhaijing"] [data-shj-hue="3"]:not(.trow-card) {
   background: #a82e1c !important; /* 朱砂深 */
   color: var(--shj-seal-on) !important;
 }
@@ -1084,6 +1114,17 @@
   border-color: var(--sun);
   box-shadow: var(--shadow-hover);
   transform: translateY(-4px);
+}
+
+/* ===== 论坛标记徽章（P1-1）：sun-soft / coral 在玄墨底是深块，
+   原先的深棕字 / 白字分别只有 1.64 / 4.3 → 统一走 fbadge 暗底等效色 ===== */
+[data-theme="shanhaijing"] .fh-badge--ess {
+  background: var(--fbadge-sun-bg);
+  color: var(--fbadge-sun-fg);
+}
+[data-theme="shanhaijing"] .fh-badge--notice {
+  background: var(--fbadge-coral-bg);
+  color: var(--fbadge-coral-fg);
 }
 
 /* ===== 动效降级（乙结构层统一段） ===== */

@@ -451,6 +451,7 @@
   text-overflow: ellipsis;
 }
 .mhome-strip__btn {
+  position: relative;
   flex: none;
   height: 32px;
   padding: 0 13px;
@@ -462,14 +463,20 @@
   color: var(--text-on-accent);
   background: linear-gradient(
     135deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark)
+    var(--compat-fill-a),
+    var(--compat-fill-b)
   );
   cursor: pointer;
 }
 .mhome-strip__btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+/* P1-3：视觉高度保持 32，命中区上下外扩到 44（伪元素不参与布局）。 */
+.mhome-strip__btn::before {
+  content: "";
+  position: absolute;
+  inset: -6px -4px;
 }
 .mhome-strip__btn.is-done {
   color: var(--mint);

@@ -2693,6 +2693,11 @@
 [data-theme="shanhaijing"] [data-arcade="sweet"] .arc-hd h2 {
   color: #d3a13f;
 }
+/* P1-1：分组标题在甜梦皮肤里是写死的深海蓝 #2c5a8c，玄墨底上仅 2.71；
+   按色调令牌改金箔色（实测 8.3:1），不改皮肤外的任何主题。 */
+[data-theme="shanhaijing"] [data-arcade="sweet"] .gc-group-hd h2 {
+  color: var(--sweet-gold);
+}
 [data-theme="shanhaijing"] [data-arcade="sweet"] .arc-crest {
   border-color: var(--sweet-gold);
   background:

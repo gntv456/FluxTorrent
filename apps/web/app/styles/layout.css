@@ -285,7 +285,7 @@
   font-weight: 800;
   border-radius: 50%;
   background:linear-gradient(145deg,
-    var(--compat-orange-bright),
+    var(--compat-fill-a),
     var(--compat-orange));
   box-shadow: inset 0 0 0 3px var(--hairline-strong);
   overflow: hidden;
@@ -653,11 +653,11 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   width: 25px;
   height: 22px;
   background:
-    linear-gradient(25deg, transparent 40%, var(--compat-orange) 42% 58%,
+    linear-gradient(25deg, transparent 40%, var(--compat-fill-mid) 42% 58%,
     transparent 60%) 0 2px / 11px 6px no-repeat, 
-    linear-gradient(0deg, transparent 40%, var(--compat-orange) 42% 58%,
+    linear-gradient(0deg, transparent 40%, var(--compat-fill-mid) 42% 58%,
     transparent 60%) 0 9px / 14px 5px no-repeat, 
-    linear-gradient(-25deg, transparent 40%, var(--compat-orange) 42% 58%,
+    linear-gradient(-25deg, transparent 40%, var(--compat-fill-mid) 42% 58%,
     transparent 60%) 0 15px / 11px 6px no-repeat;
 }
 
@@ -777,13 +777,14 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   position: absolute;
   z-index: 3;
   top: 50%;
-  right: 17px;
+  right: 10px;
   display: flex;
-  width: 30px;
-  height: 30px;
+  /* P1-3：视觉 30px 不变，命中区 44px（绝对定位，不影响输入框布局）。 */
+  width: var(--tap-min);
+  height: var(--tap-min);
   align-items: center;
   justify-content: center;
-  padding: 3px;
+  padding: 7px;
   color: var(--text-faint);
   border: 0;
   background: transparent;
@@ -841,7 +842,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .bz-remember > input:checked + .bz-checkbox-mark {
   border-color: var(--compat-orange);
   background:linear-gradient(145deg,
-    var(--compat-orange-bright),
+    var(--compat-fill-a),
     var(--compat-orange));
 }
 
@@ -912,7 +913,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border: 1px solid var(--compat-orange);
   border-radius: 7px;
   background:linear-gradient(100deg,
-    var(--compat-orange-bright),
+    var(--compat-fill-a),
     var(--compat-orange));
   box-shadow: 0 8px 18px var(--accent-shadow-soft);
   cursor: pointer;
@@ -921,7 +922,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .bz-submit:hover,
 .bz-submit:focus-visible {
   background:linear-gradient(100deg,
-    var(--compat-orange),
+    var(--compat-fill-mid),
     var(--compat-orange-dark));
 }
 
@@ -1237,7 +1238,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border: 0;
   border-radius: 8px;
   background:linear-gradient(135deg,
-    var(--compat-orange),
+    var(--compat-fill-mid),
     var(--compat-orange-dark));
   cursor: pointer;
 }
@@ -1437,7 +1438,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   flex: 1;
   min-height: 2px;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(180deg, var(--compat-orange), var(--compat-soft));
+  background: linear-gradient(180deg, var(--compat-fill-mid), var(--compat-soft));
 }
 .uc-summary-card {
   padding: 12px 14px;
@@ -1479,7 +1480,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   height: 100%;
   border-radius: 4px;
   background:linear-gradient(90deg,
-    var(--compat-orange),
+    var(--compat-fill-mid),
     var(--compat-orange-dark));
 }
 .uc-more {
@@ -1732,8 +1733,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border: 0;
   border-radius: 999px;
   background:linear-gradient(135deg,
-    var(--compat-orange-bright),
-    var(--compat-orange-dark));
+    var(--compat-fill-a),
+    var(--compat-fill-b));
   box-shadow: 0 2px 6px var(--accent-shadow);
   cursor: pointer;
 }
@@ -1779,8 +1780,8 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
     ),
     linear-gradient(
       145deg,
-      var(--compat-orange-bright),
-      var(--compat-orange-dark)
+      var(--compat-fill-a),
+      var(--compat-fill-b)
     );
 }
 .home-news__summary strong {
@@ -2114,7 +2115,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .home-lucky-draw__list .rainbow {
   background:linear-gradient(90deg,
-    var(--compat-orange),
+    var(--compat-fill-mid),
     var(--warning),
     var(--success),
     var(--compat-orange));

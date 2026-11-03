@@ -24,6 +24,11 @@
 [data-theme="brand"] {
   color-scheme: light;
 
+  /* ===== 潮汐纹理：面板不透明度下限 =====
+     纹理（背景图 + 贝壳/砂砾底）只保留在页面背板与区块外边距；承载文字的
+     玻璃面板不得低于 94%，保证正文合成后 ≥4.5（见 design/_shots/fix3-contrast.mjs）。 */
+  --glass-floor: 0.94;
+
   /* ===== 品牌蓝阶 ===== */
   --sky: #0f62c4; /* 主交互蓝 */
   --sky-deep: #0a3d6b; /* 深海军：主文本/表头/实心按钮 */
@@ -78,8 +83,8 @@
   --text-body-deep: #26364c;
   --text-brand: #0a3d6b;
   --text-muted: #5a6b85;
-  --text-faint: #7c8aa0;
-  --text-fainter: #9aa7ba;
+  --text-faint: #5f6b86;
+  --text-fainter: #63708c;
   --text-on-accent: #ffffff;
 
   /* ===== 边框 ===== */
@@ -768,8 +773,13 @@ button.btn2:hover {
   --promo-x2-bg: #2e2510;
 
   /* ===== Tide 专有令牌：夜间反向（深靛 ↔ 亮蓝） ===== */
+  --glass-floor: 0.94; /* 同浅色：承载文字的面板不透明度下限 */
   --tide-abyss: #03080f;
   --tide-deep: #0f62c4;
+  /* 实心主操作（P1-1）：夜间 --sky-deep 是亮蓝文字位，作底压白字仅 1.98，
+     这里改回深蓝底（5.97），hover 略提亮到 4.73。 */
+  --accent-surface: #0f62c4;
+  --accent-surface-strong: #1a6fd1;
   --tide-sea: #47b3ff;
   --tide-surf: #6cc0ff;
   --tide-foam: #2e86e0;
