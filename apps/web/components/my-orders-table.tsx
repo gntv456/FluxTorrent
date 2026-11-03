@@ -129,7 +129,7 @@ export function MyOrdersTable({
                         className={
                           r.effect_applied
                             ? "text-xs text-success"
-                            : "text-xs text-danger"
+                            : "text-xs text-[var(--danger-text)]"
                         }
                       >
                         {r.effect_applied ? t.applied : t.pending}

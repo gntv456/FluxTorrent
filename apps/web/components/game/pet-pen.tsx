@@ -206,7 +206,7 @@ export function PetCustom({
           );
         })}
       </div>
-      {err && <p className="text-xs text-danger">{err}</p>}
+      {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
       <button
         type="button"
         className="arc-call sky pp-custom-save"

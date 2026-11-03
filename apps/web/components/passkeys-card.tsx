@@ -258,7 +258,7 @@ export function PasskeysCard() {
             type="button"
             disabled={busy}
             onClick={() => void remove(r.cred_id)}
-            className="shrink-0 text-danger disabled:opacity-50"
+            className="shrink-0 text-[var(--danger-text)] disabled:opacity-50"
           >
             {dict.usercp.security.webauthnUnbind}
           </button>

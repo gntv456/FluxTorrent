@@ -75,7 +75,7 @@ export function ForumModsField({
             <button
               type="button"
               disabled={busy}
-              className="font-bold text-danger"
+              className="font-bold text-[var(--danger-text)]"
               title={t.modRemoveTip}
               onClick={() => remove(m[1], m[2])}
             >

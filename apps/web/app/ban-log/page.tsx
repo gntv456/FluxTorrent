@@ -83,7 +83,7 @@ export default function BanLogPage() {
             />
           </label>
           {msg && (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-sm text-[var(--danger-text)]">
               {msg}
             </p>
           )}
@@ -100,7 +100,7 @@ export default function BanLogPage() {
               <span className="text-sub">{dict.banlog.currentStatus}</span>
               <span
                 className={`font-bold ${
-                  result.status === 2 ? "text-danger" : "text-mint"
+                  result.status === 2 ? "text-[var(--danger-text)]" : "text-mint"
                 }`}
               >
                 {statusLabel(result.status)}

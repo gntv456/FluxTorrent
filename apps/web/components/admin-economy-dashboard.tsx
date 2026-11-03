@@ -34,7 +34,7 @@ export function AdminEconomyDashboard() {
   }, [load]);
 
   if (err)
-    return <p className="py-8 text-center text-danger">{err}</p>;
+    return <p className="py-8 text-center text-[var(--danger-text)]">{err}</p>;
   if (!d) return <p className="py-8 text-center text-sub">…</p>;
 
   const maxAbs = Math.max(

@@ -178,7 +178,7 @@ export function LotteryWidget({
         </div>
       )}
       {err && (
-        <p role="alert" className="mt-2 text-xs text-danger">
+        <p role="alert" className="mt-2 text-xs text-[var(--danger-text)]">
           {err}
         </p>
       )}

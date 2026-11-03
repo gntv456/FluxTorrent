@@ -55,7 +55,7 @@ export function ResubButton({ cards }: { cards: number }) {
       >
         {t.btn}
         <span
-          className={`ml-1 rounded-full px-1.5 text-[10px] ${cards > 0 ? "bg-mint/30 text-ink" : "bg-coral/20 text-danger"}`}
+          className={`ml-1 rounded-full px-1.5 text-[10px] ${cards > 0 ? "bg-mint/30 text-ink" : "bg-coral/20 text-[var(--danger-text)]"}`}
         >
           ×{cards}
         </span>

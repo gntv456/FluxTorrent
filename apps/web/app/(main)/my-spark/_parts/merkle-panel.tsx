@@ -148,7 +148,7 @@ export function MerklePanel() {
         {resultLine && (
           <p
             className={`text-xs font-bold ${
-              verdict?.ok ? "text-success" : "text-danger"
+              verdict?.ok ? "text-success" : "text-[var(--danger-text)]"
             }`}
           >
             {resultLine}
@@ -211,7 +211,7 @@ export function MerklePanel() {
                             className={`num font-bold ${
                               r.amount >= 0
                                 ? "text-success"
-                                : "text-danger"
+                                : "text-[var(--danger-text)]"
                             }`}
                           >
                             {r.amount >= 0 ? "+" : ""}

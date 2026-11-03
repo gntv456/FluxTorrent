@@ -33,7 +33,7 @@ import { getTypeLabels } from "./admin-medals-shared";
 const PLAIN_BTN_CLS = BTN_SM_BOLD;
 /** 「限定」徽标 */
 const LIMITED_CHIP_CLS =
-  "ml-1 rounded-full bg-coral/20 px-1.5 text-[10px] text-danger";
+  "ml-1 rounded-full bg-coral/20 px-1.5 text-[10px] text-[var(--danger-text)]";
 
 export function AdminMedals() {
   const { currency, dict } = useI18n();

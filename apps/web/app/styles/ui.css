@@ -135,7 +135,7 @@
 .ui-btn--danger {
   color: var(--text-on-accent);
   background: var(--danger);
-  border-color: var(--danger);
+  border-color: var(--danger-text);
 }
 .ui-btn--danger:hover:not(:disabled) {
   filter: brightness(1.08);
@@ -143,7 +143,7 @@
 /* 破坏性操作（删除/清空）用 ghost + danger 色，
    视觉权重低于普通操作，替代此前「删除与编辑同样式」 */
 .ui-btn--danger-ghost {
-  color: var(--danger);
+  color: var(--danger-text);
   background: transparent;
   border-color: transparent;
 }

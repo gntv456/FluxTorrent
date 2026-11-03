@@ -97,7 +97,7 @@ export function TrumpButton({ torrentId }: { torrentId: number }) {
           <span className="flex items-center justify-end gap-2">
             <button
               type="button"
-              className="min-h-[28px] rounded-full border border-line px-3 text-xs font-bold text-sub transition hover:border-danger hover:text-danger"
+              className="min-h-[28px] rounded-full border border-line px-3 text-xs font-bold text-sub transition hover:border-danger hover:text-[var(--danger-text)]"
               onClick={() => setOpen(false)}
             >
               {t.reportCancel}

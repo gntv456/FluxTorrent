@@ -65,7 +65,7 @@ function ResetForm() {
   if (!token) {
     return (
       <div className="flex w-full flex-col items-center gap-3">
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-[var(--danger-text)]">
           {dict.reset.noToken}
         </p>
         <Link href="/forgot" className="font-bold text-sky">
@@ -112,7 +112,7 @@ function ResetForm() {
         <span className="text-xs text-sub">{dict.reset.confirmHint}</span>
       </label>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-[var(--danger-text)]">
           {error}
         </p>
       )}

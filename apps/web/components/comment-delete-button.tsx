@@ -51,12 +51,12 @@ export function CommentDeleteButton({
           })
         }
         disabled={busy}
-        className="min-h-[26px] rounded-full border border-[var(--danger-border)] px-2 text-[11px] font-bold text-danger disabled:opacity-50"
+        className="min-h-[26px] rounded-full border border-[var(--danger-border)] px-2 text-[11px] font-bold text-[var(--danger-text)] disabled:opacity-50"
       >
         🗑 {t.btn}
       </button>
       {msg && (
-        <span className="text-[11px] text-danger" role="status">
+        <span className="text-[11px] text-[var(--danger-text)]" role="status">
           {msg}
         </span>
       )}

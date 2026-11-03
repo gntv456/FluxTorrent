@@ -43,10 +43,10 @@ export function SettingsHistoryDrawer({
               <div className="mt-1 flex flex-col gap-1">
                 {/* diff 高亮：旧值红色划线，新值加粗 */}
                 <p className="flex flex-wrap items-baseline gap-1.5 break-all">
-                  <span className="shrink-0 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-danger">
+                  <span className="shrink-0 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-[var(--danger-text)]">
                     {s.historyOld}
                   </span>
-                  <span className="font-mono text-danger line-through">
+                  <span className="font-mono text-[var(--danger-text)] line-through">
                     {r.detail?.old ?? "—"}
                   </span>
                 </p>
@@ -150,7 +150,7 @@ export function SettingsImportDialog({
                       </span>
                     </p>
                     <p className="mt-0.5 break-all">
-                      <span className="font-mono text-danger line-through">
+                      <span className="font-mono text-[var(--danger-text)] line-through">
                         {d.old || "—"}
                       </span>
                       <span className="mx-1 text-sky">→</span>

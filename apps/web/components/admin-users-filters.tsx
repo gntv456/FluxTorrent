@@ -48,6 +48,7 @@ export function UsersFilterBar({
   classes,
   fields,
   values,
+  applied,
   set,
   onSearch,
   total,
@@ -56,6 +57,8 @@ export function UsersFilterBar({
   /** 自定义字段（G4）：站长没建字段时整对控件不渲染 */
   fields: { key: string; label: string }[];
   values: FilterValues;
+  /** 最近一次「搜索」时冻结的已生效快照（父组件持有，摘要只认它） */
+  applied: FilterValues;
   set: <K extends keyof FilterValues>(k: K, v: FilterValues[K]) => void;
   onSearch: () => void;
   /** 当前筛选条件下的结果总数（loading 时为 undefined） */
@@ -89,38 +92,39 @@ export function UsersFilterBar({
     }
   }
 
-  /** 已选条件摘要：值与表单实时同步，搜索后与列表条件一致 */
+  /** 已选条件摘要：只取已生效快照（点「搜索」时冻结），不随表单草稿变化 */
   const chips: string[] = [];
-  if (values.q.trim()) chips.push(`${at.fSearch}: ${values.q.trim()}`);
-  if (values.fId.trim()) chips.push(`ID: ${values.fId.trim()}`);
-  if (values.fClass) {
+  if (applied.q.trim()) chips.push(`${at.fSearch}: ${applied.q.trim()}`);
+  if (applied.fId.trim()) chips.push(`ID: ${applied.fId.trim()}`);
+  if (applied.fClass) {
     const label =
-      classes.find(([id]) => String(id) === values.fClass)?.[1] ?? values.fClass;
+      classes.find(([id]) => String(id) === applied.fClass)?.[1] ??
+      applied.fClass;
     chips.push(`${at.fClass}: ${label}`);
   }
-  if (values.fStatus) {
+  if (applied.fStatus) {
     const label = [at.stNormal, at.stMuted, at.stBanned][
-      Number(values.fStatus) - 1
+      Number(applied.fStatus) - 1
     ];
-    chips.push(`${at.fStatus}: ${label ?? values.fStatus}`);
+    chips.push(`${at.fStatus}: ${label ?? applied.fStatus}`);
   }
-  if (values.fEnabled)
+  if (applied.fEnabled)
     chips.push(
-      `${at.fEnabled}: ${values.fEnabled === "yes" ? at.optYes : at.optNo}`,
+      `${at.fEnabled}: ${applied.fEnabled === "yes" ? at.optYes : at.optNo}`,
     );
-  if (values.fDownload)
+  if (applied.fDownload)
     chips.push(
-      `${at.fDownload}: ${values.fDownload === "yes" ? at.optHas : at.optNot}`,
+      `${at.fDownload}: ${applied.fDownload === "yes" ? at.optHas : at.optNot}`,
     );
-  if (values.fSuspended)
+  if (applied.fSuspended)
     chips.push(
-      `${at.fSuspended}: ${values.fSuspended === "yes" ? at.optYes : at.optNo}`,
+      `${at.fSuspended}: ${applied.fSuspended === "yes" ? at.optYes : at.optNo}`,
     );
-  if (values.fField) {
+  if (applied.fField) {
     const label =
-      fields.find((f) => f.key === values.fField)?.label ?? values.fField;
+      fields.find((f) => f.key === applied.fField)?.label ?? applied.fField;
     chips.push(
-      `${at.fField}: ${label}${values.fVal.trim() ? ` · ${values.fVal.trim()}` : ""}`,
+      `${at.fField}: ${label}${applied.fVal.trim() ? ` · ${applied.fVal.trim()}` : ""}`,
     );
   }
 
@@ -243,7 +247,7 @@ export function UsersFilterBar({
             placeholder={at.qPh}
             className={`${FILTER_INPUT} flex-1`}
           />
-          <button onClick={onSearch} className={SEARCH_BTN}>
+          <button type="button" onClick={onSearch} className={SEARCH_BTN}>
             {at.search}
           </button>
         </div>

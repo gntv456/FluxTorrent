@@ -114,7 +114,7 @@ export function CheatAppealBox() {
             bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
         />
         {err && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-[var(--danger-text)]">
             {err}
           </p>
         )}

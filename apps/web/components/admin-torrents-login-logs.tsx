@@ -142,7 +142,7 @@ export function LoginLogs() {
                   <span className="text-sub">{at.lanUnknown}</span>
                 )}
               </td>
-              <td className={r.ok ? "text-mint" : "text-danger"}>
+              <td className={r.ok ? "text-mint" : "text-[var(--danger-text)]"}>
                 {r.ok ? at.okMsg : at.failMsg}
               </td>
               <td className="text-xs text-sub">

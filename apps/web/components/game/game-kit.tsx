@@ -42,7 +42,7 @@ export function BalanceBar({
               ? "text-sub"
               : todayNet > 0
                 ? "text-mint"
-                : "text-danger"
+                : "text-[var(--danger-text)]"
           }`}
         >
           {todayNet === null ? "—" : `${todayNet > 0 ? "+" : ""}${todayNet}`}

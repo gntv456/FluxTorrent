@@ -222,7 +222,7 @@ export default function MySparkPage() {
             </b>
             {" · "}
             {t.recentSpend}{" "}
-            <b className="num text-danger">
+            <b className="num text-[var(--danger-text)]">
               {spend !== undefined ? spend.toLocaleString() : "—"}
             </b>
           </span>
@@ -258,7 +258,7 @@ export default function MySparkPage() {
                   </td>
                   <td
                     className={`num font-bold ${
-                      r.amount >= 0 ? "text-success" : "text-danger"
+                      r.amount >= 0 ? "text-success" : "text-[var(--danger-text)]"
                     }`}
                   >
                     <span className="profilet__label">{t.ledgerAmount}</span>

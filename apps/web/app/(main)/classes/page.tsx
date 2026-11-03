@@ -163,7 +163,7 @@ export default function ClassesPage() {
       .catch((e) => setErr(String(e)));
   }, []);
 
-  if (err) return <p className="py-8 text-center text-danger">{err}</p>;
+  if (err) return <p className="py-8 text-center text-[var(--danger-text)]">{err}</p>;
   if (!d) return <p className="py-8 text-center text-sub">…</p>;
 
   // 阶梯只画有规则行的档；贵宾一类「捐赠/任命发放」档另起一句说明，

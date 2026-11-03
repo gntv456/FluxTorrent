@@ -685,7 +685,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .bz-form-error {
   margin: 0 0 10px;
   padding: 7px 11px;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 12.5px;
   font-weight: 700;
   line-height: 1.4;
@@ -1152,7 +1152,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   margin-bottom: 12px;
 }
 .usercp-error {
-  color: var(--compat-coral, var(--danger));
+  color: var(--compat-coral, var(--danger-text));
   font-size: 13px;
   font-weight: 700;
 }
@@ -1395,7 +1395,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   color: var(--success);
 }
 .uc-metric--download dd {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .uc-metric small {
   display: block;
@@ -1562,7 +1562,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .uc-browse-warning {
   margin: 0 0 10px;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 12.5px;
 }
 .uc-browse-grid {

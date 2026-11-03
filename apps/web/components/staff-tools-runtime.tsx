@@ -20,7 +20,7 @@ const LEVELS: string[] = ["", "WARN", "ERROR"];
 
 /** 级别配色：ERROR 红、WARN 黄、其余灰 */
 function levelCls(level: string): string {
-  if (level === "ERROR") return "font-bold text-danger";
+  if (level === "ERROR") return "font-bold text-[var(--danger-text)]";
   if (level === "WARN") return "font-bold text-warning";
   return "text-sub";
 }

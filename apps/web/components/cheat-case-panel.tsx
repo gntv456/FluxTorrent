@@ -151,7 +151,7 @@ export function CheatCasePanel() {
                       <span
                         className={
                           c.priority >= 2
-                            ? "font-bold text-[var(--danger)]"
+                            ? "font-bold text-[var(--danger-text)]"
                             : c.priority === 1
                               ? "text-[var(--compat-orange-dark)]"
                               : "text-sub"
@@ -182,7 +182,7 @@ export function CheatCasePanel() {
                         <span
                           className={
                             "font-bold " +
-                            "text-[var(--danger)]"
+                            "text-[var(--danger-text)]"
                           }
                         >
                           {t.slaBreached}

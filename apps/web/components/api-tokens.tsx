@@ -233,7 +233,7 @@ export function ApiTokens() {
                     type="button"
                     disabled={busy}
                     onClick={() => revoke(r.id)}
-                    className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-danger disabled:opacity-50"
+                    className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-[var(--danger-text)] disabled:opacity-50"
                   >
                     {t.revoke}
                   </button>

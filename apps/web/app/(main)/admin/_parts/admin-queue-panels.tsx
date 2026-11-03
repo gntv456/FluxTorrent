@@ -228,7 +228,7 @@ export function AppealsPanel({
                     className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${
                       ap.status === "accepted"
                         ? "bg-mint/30"
-                        : "bg-coral/20 text-danger"
+                        : "bg-coral/20 text-[var(--danger-text)]"
                     }`}
                   >
                     {ap.status === "accepted"
@@ -254,7 +254,7 @@ export function AppealsPanel({
                 </button>
                 <button
                   onClick={() => onHandle(ap.id, false)}
-                  className="min-h-[var(--tap-min)] rounded-full border border-line px-4 text-xs font-bold text-danger"
+                  className="min-h-[var(--tap-min)] rounded-full border border-line px-4 text-xs font-bold text-[var(--danger-text)]"
                 >
                   {a.appealReject}
                 </button>

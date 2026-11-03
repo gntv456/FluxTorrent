@@ -39,7 +39,7 @@ export function LedgerTable({ rows }: { rows: LedgerRow[] | undefined }) {
               {r.note ? ` · ${r.note}` : ""}
             </td>
             <td
-              className={`num font-bold ${r.amount_usd >= 0 ? "text-success" : "text-danger"}`}
+              className={`num font-bold ${r.amount_usd >= 0 ? "text-success" : "text-[var(--danger-text)]"}`}
             >
               {r.amount_usd >= 0 ? "+" : ""}
               {r.amount_usd.toFixed(2)}

@@ -22,7 +22,7 @@ import { PAGE_BTN_CLS } from "./staff-tools-sys-shared";
 
 /** 慢事务计数配色 */
 function slowCls(n: number) {
-  return `num text-2xl font-bold ${n > 0 ? "text-danger" : "text-success"}`;
+  return `num text-2xl font-bold ${n > 0 ? "text-[var(--danger-text)]" : "text-success"}`;
 }
 
 export function StaffSysPanel({
@@ -157,7 +157,7 @@ export function StaffSysPanel({
                   <td className="num">{r.users}</td>
                   <td className="num">
                     {r.failed > 0 ? (
-                      <span className="text-danger">{r.failed}</span>
+                      <span className="text-[var(--danger-text)]">{r.failed}</span>
                     ) : (
                       0
                     )}

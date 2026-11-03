@@ -186,7 +186,7 @@ export function AdminUserFieldsPanel({ userId }: { userId: number }) {
             <span className="text-sub">
               {r.label}
               {!r.enabled && (
-                <span className="ml-1 text-danger">{at.fieldsOff}</span>
+                <span className="ml-1 text-[var(--danger-text)]">{at.fieldsOff}</span>
               )}
               {r.visibility === "private" && (
                 <span className="ml-1 text-sub">{at.fieldsPrivate}</span>

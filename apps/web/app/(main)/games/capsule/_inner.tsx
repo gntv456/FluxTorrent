@@ -322,7 +322,7 @@ export default function CapsuleFocusPage({
             ]}
           />
           <SwPrizeStrip label={tc.prizeLb} items={prizeStripItems} />
-          {err && <p className="text-xs text-danger">{err}</p>}
+          {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
         </div>
       }
       controls={

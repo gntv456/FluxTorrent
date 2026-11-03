@@ -23,10 +23,10 @@ const OFF_CLS = "border border-line";
 
 /** 圆角描边小按钮（普通/danger 文案用） */
 const PLAIN_BTN_CLS = BTN_SM_BOLD;
-const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-danger`;
+const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-[var(--danger-text)]`;
 
 /** 下载/挂起切换按钮的两种态样式 */
-const DANGER_CLS = "border border-line text-danger";
+const DANGER_CLS = "border border-line text-[var(--danger-text)]";
 const MINT_CLS = "bg-mint text-[var(--text-on-accent)]";
 /** 下载开关按钮整串（避免行内模板超宽） */
 const DL_BTN_CLS = `${TAB_BTN_CLS}${DANGER_CLS}`.trim();

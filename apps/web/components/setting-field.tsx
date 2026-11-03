@@ -197,7 +197,7 @@ export function SettingField({
         </p>
       )}
       {error && (
-        <p className="mt-1.5 text-[11px] font-bold text-danger">{error}</p>
+        <p className="mt-1.5 text-[11px] font-bold text-[var(--danger-text)]">{error}</p>
       )}
     </div>
   );

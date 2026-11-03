@@ -163,7 +163,7 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
                       disabled={busy}
                       className={
                         "min-h-[28px] rounded-full border border-line " +
-                        "px-3 font-bold text-danger disabled:opacity-50"
+                        "px-3 font-bold text-[var(--danger-text)] disabled:opacity-50"
                       }
                       onClick={() =>
                         guard(async () => {

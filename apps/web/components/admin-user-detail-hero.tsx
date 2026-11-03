@@ -23,7 +23,7 @@ import {
 // 状态徽标的公共底色（含警示红与普通两种）
 const BADGE_DANGER = "rounded-full bg-coral/20 px-2 py-0.5 text-xs";
 const BADGE_PLAIN = "rounded-full px-2 py-0.5 text-xs";
-const BADGE_DANGER_TXT = `${BADGE_DANGER} text-danger`;
+const BADGE_DANGER_TXT = `${BADGE_DANGER} text-[var(--danger-text)]`;
 
 export function UserDetailHero({
   d,

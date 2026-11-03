@@ -216,7 +216,7 @@ table.brand-wide-table-scroll {
 }
 .subtitles-required-note {
   margin: 8px 0 0;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 12.5px;
   font-weight: 700;
 }
@@ -321,14 +321,14 @@ table.subtitles-upload-table {
 .subtitles-report {
   border: 0;
   background: transparent;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 14px;
   cursor: pointer;
 }
 
 /* 字幕表单必填红星 */
 .req-star {
-  color: var(--danger);
+  color: var(--danger-text);
   font-weight: 900;
 }
 
@@ -973,7 +973,7 @@ table.subtitles-upload-table {
   font-weight: 700;
 }
 .torrents-new {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1299,7 +1299,7 @@ table.subtitles-upload-table {
   color: var(--text-strong);
 }
 .torrents-menu button.danger {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .torrents-menu button.danger:hover {
   background: var(--danger-soft);
@@ -1739,7 +1739,7 @@ textarea.bbcode {
   border-color: var(--accent-purple);
 }
 .task-tier-card--extreme {
-  border-color: var(--danger);
+  border-color: var(--danger-text);
 }
 .task-tier-card--veteran {
   border-color: var(--warning);
@@ -2161,12 +2161,12 @@ textarea.bbcode {
   color: var(--compat-orange);
 }
 .cmgmt-act--danger {
-  color: var(--danger);
+  color: var(--danger-text);
   border-color: var(--danger-border);
 }
 .cmgmt-act--danger:hover {
-  border-color: var(--danger);
-  color: var(--danger);
+  border-color: var(--danger-text);
+  color: var(--danger-text);
 }
 .cmgmt-act--ok {
   color: var(--success);
@@ -2199,7 +2199,7 @@ textarea.bbcode {
 }
 .fun-status--banned {
   background: var(--danger-soft);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .link-status--pending {
   background: var(--surface-sunken);
@@ -2337,7 +2337,7 @@ textarea.bbcode {
   font-size: 11.5px;
 }
 .linkapply__note {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 12.5px;
   font-weight: 700;
 }
@@ -2400,7 +2400,7 @@ textarea.bbcode {
 }
 .shoutbox__msg {
   margin: 0 14px 6px;
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: 12.5px;
   font-weight: 700;
 }
@@ -2782,7 +2782,7 @@ textarea.bbcode {
 }
 .donate-plan__lack {
   font-size: 11px;
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .donate-vip-badge {
   display: inline-flex;

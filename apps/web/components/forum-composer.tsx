@@ -362,7 +362,7 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
           onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
         />
         {msg && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-[var(--danger-text)]">
             {msg}
           </p>
         )}

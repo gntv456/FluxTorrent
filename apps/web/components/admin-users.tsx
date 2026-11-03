@@ -7,7 +7,10 @@ import { fmt } from "@/i18n/config";
 import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 import { UsersBatchBar, UsersTable } from "@/components/admin-users-list";
 import { UsersFilterBar } from "@/components/admin-users-filters";
-import { useUserFilters } from "@/components/admin-users-parts";
+import {
+  buildUserFilterParams,
+  useUserFilters,
+} from "@/components/admin-users-parts";
 import { UsersPager } from "@/components/admin-users-pager";
 
 /** 第五轮：后台用户管理（同类站 /nexusphp user/users 口径）
@@ -53,6 +56,8 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   const [batchClass, setBatchClass] = useState("");
   /** 筛选状态（含 G4 自定义字段维）抽到 admin-users-parts.ts，主组件守 300 行 */
   const filters = useUserFilters();
+  /** 已生效的筛选快照：只有「搜索」或翻页/排序推进它，表单草稿不参与查询 */
+  const [applied, setApplied] = useState(filters.values);
   /** 自定义字段清单（G4）：筛选项用；无权/未建字段时为空数组 */
   const [fields, setFields] = useState<{ key: string; label: string }[]>([]);
 
@@ -62,7 +67,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
   };
 
   const load = useCallback(async () => {
-    const params = filters.params({
+    const params = buildUserFilterParams(applied, {
       sort,
       desc: String(desc),
       page: String(page),
@@ -76,7 +81,7 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
     } catch (e) {
       flash(e instanceof ApiError ? e.message : dict.common.loadFailed);
     }
-  }, [filters, sort, desc, page, dict]);
+  }, [applied, sort, desc, page, dict]);
 
   useEffect(() => {
     load();
@@ -173,10 +178,11 @@ export function AdminUsers({ classes }: { classes: [number, string][] }) {
         classes={classes}
         fields={fields}
         values={filters.values}
+        applied={applied}
         set={filters.set}
         onSearch={() => {
+          setApplied({ ...filters.values });
           setPage(1);
-          load();
         }}
         total={data?.total}
       />

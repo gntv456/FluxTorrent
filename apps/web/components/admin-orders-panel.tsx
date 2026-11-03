@@ -132,7 +132,7 @@ export function OrdersPanel() {
                 <td>
                   <span
                     className={
-                      r.effect_applied ? "text-success" : "text-danger"
+                      r.effect_applied ? "text-success" : "text-[var(--danger-text)]"
                     }
                   >
                     {r.effect_applied ? at.applied : at.pending}

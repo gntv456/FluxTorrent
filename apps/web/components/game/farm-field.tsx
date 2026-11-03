@@ -141,7 +141,7 @@ export function FarmPlot({
       <span
         className={`absolute bottom-1 right-1 ${BADGE_CLS} ${
           withered
-            ? "text-danger"
+            ? "text-[var(--danger-text)]"
             : ready
               ? "border border-sun text-mint"
               : "text-sub"

@@ -249,7 +249,7 @@ export function ForumCategoryPanel({
                     type="button"
                     disabled={busy}
                     title={f.delTip}
-                    className="shrink-0 text-xs font-bold text-danger"
+                    className="shrink-0 text-xs font-bold text-[var(--danger-text)]"
                     onClick={() => remove(c)}
                   >
                     ×

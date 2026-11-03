@@ -123,7 +123,7 @@ export function ForumBoardFields({
           ))}
         </div>
         <p
-          className={`mt-1 text-xs ${gatesBad ? "text-danger" : "text-sub"}`}
+          className={`mt-1 text-xs ${gatesBad ? "text-[var(--danger-text)]" : "text-sub"}`}
         >
           {gatesBad
             ? t.gatesBad

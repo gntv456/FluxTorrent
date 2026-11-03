@@ -195,7 +195,7 @@ export default function AppealsPage() {
           </label>
         ) : null}
         {msg && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-[var(--danger-text)]">
             {msg}
           </p>
         )}

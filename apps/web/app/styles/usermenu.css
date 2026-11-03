@@ -321,7 +321,7 @@
   color: var(--success-bright);
 }
 .usermenu__stats .userstat .leech-arrow {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 /* 快捷链接行：每颗 pill 自带浅蓝底（样图集口径），整行透明 */
 .usermenu__links {

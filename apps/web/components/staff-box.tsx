@@ -215,7 +215,7 @@ export function StaffBox() {
               type="button"
               disabled={deskSel.length === 0 || busy}
               onClick={() => bulkDesk("delete")}
-              className="min-h-[36px] rounded-full border border-[var(--danger-border)] px-3 font-bold text-danger disabled:opacity-40"
+              className="min-h-[36px] rounded-full border border-[var(--danger-border)] px-3 font-bold text-[var(--danger-text)] disabled:opacity-40"
             >
               🗑 {t.del}
             </button>

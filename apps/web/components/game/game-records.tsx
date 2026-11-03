@@ -183,7 +183,7 @@ function GameRecords({
                     r.net > 0
                       ? "text-mint"
                       : r.net < 0
-                        ? "text-danger"
+                        ? "text-[var(--danger-text)]"
                         : "text-sub"
                   }`}
                 >

@@ -168,7 +168,7 @@ function AdapterSection({
                         {s.adapterOn}
                       </span>
                     ) : (
-                      <span className="ml-1 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-danger">
+                      <span className="ml-1 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-[var(--danger-text)]">
                         {s.adapterOff}
                       </span>
                     )}
@@ -191,7 +191,7 @@ function AdapterSection({
                   onClick={() => onToggleAdapter(a.adapter_id, !a.enabled)}
                   className={`min-h-[36px] rounded-full px-3 text-[11px] font-bold ${
                     a.enabled
-                      ? "border border-danger/40 text-danger"
+                      ? "border border-danger/40 text-[var(--danger-text)]"
                       : "bg-sky-deep text-[var(--text-on-accent)]"
                   }`}
                 >
@@ -307,7 +307,7 @@ export function ContentPackDialog({
               </p>
             )}
             {(preview.errors?.length ?? 0) > 0 && (
-              <ul className="mt-1 list-disc pl-5 text-danger">
+              <ul className="mt-1 list-disc pl-5 text-[var(--danger-text)]">
                 {preview.errors?.map((e) => (
                   <li key={e.name}>
                     {e.name}: {e.message}
@@ -395,7 +395,7 @@ export function ContentPackDialog({
                       type="button"
                       disabled={busy}
                       onClick={() => onRollback(it.installed_row_id!)}
-                      className="min-h-[36px] rounded-full border border-danger/40 px-3 text-[11px] font-bold text-danger disabled:opacity-40"
+                      className="min-h-[36px] rounded-full border border-danger/40 px-3 text-[11px] font-bold text-[var(--danger-text)] disabled:opacity-40"
                     >
                       {s.packRollback}
                     </button>
@@ -446,7 +446,7 @@ export function ContentPackDialog({
                   type="button"
                   disabled={busy}
                   onClick={() => onRollback(r.id)}
-                  className="min-h-[36px] shrink-0 rounded-full border border-danger/40 px-3 text-[11px] font-bold text-danger disabled:opacity-40"
+                  className="min-h-[36px] shrink-0 rounded-full border border-danger/40 px-3 text-[11px] font-bold text-[var(--danger-text)] disabled:opacity-40"
                 >
                   {s.packRollback}
                 </button>

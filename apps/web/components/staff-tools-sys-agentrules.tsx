@@ -19,7 +19,7 @@ interface AgentRulesProps {
 
 /** 黑白名单删除小按钮 */
 const DEL_BTN_CLS =
-  "min-h-[28px] rounded-full border border-line px-3 font-bold text-danger";
+  "min-h-[28px] rounded-full border border-line px-3 font-bold text-[var(--danger-text)]";
 
 /** 黑白名单徽标配色 */
 function modeCls(mode: string) {

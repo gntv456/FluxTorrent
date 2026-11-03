@@ -34,6 +34,27 @@ const EMPTY: UserFilterValues = {
   fVal: "",
 };
 
+/** 「筛选项 ↔ 查询串」单点映射（纯函数）：列表加载用已生效快照拼参，
+ *  表单草稿不参与查询，避免每敲一个字就重查一次。 */
+export function buildUserFilterParams(
+  values: UserFilterValues,
+  extra: Record<string, string>,
+): URLSearchParams {
+  const p = new URLSearchParams(extra);
+  if (values.q.trim()) p.set("q", values.q.trim());
+  if (values.fId.trim()) p.set("id", values.fId.trim());
+  if (values.fClass) p.set("class_id", values.fClass);
+  if (values.fStatus) p.set("status", values.fStatus);
+  if (values.fEnabled) p.set("enabled", values.fEnabled);
+  if (values.fDownload) p.set("download", values.fDownload);
+  if (values.fSuspended) p.set("suspended", values.fSuspended);
+  if (values.fField) {
+    p.set("ffield", values.fField);
+    if (values.fVal.trim()) p.set("fval", values.fVal.trim());
+  }
+  return p;
+}
+
 export function useUserFilters() {
   const [values, setValues] = useState<UserFilterValues>(EMPTY);
   const set = useCallback(
@@ -41,25 +62,6 @@ export function useUserFilters() {
       setValues((prev) => ({ ...prev, [k]: v })),
     [],
   );
-  /** 拼查询串：空值跳过；字段筛选只在选了字段时才带 */
-  const params = useCallback(
-    (extra: Record<string, string>) => {
-      const p = new URLSearchParams(extra);
-      if (values.q.trim()) p.set("q", values.q.trim());
-      if (values.fId.trim()) p.set("id", values.fId.trim());
-      if (values.fClass) p.set("class_id", values.fClass);
-      if (values.fStatus) p.set("status", values.fStatus);
-      if (values.fEnabled) p.set("enabled", values.fEnabled);
-      if (values.fDownload) p.set("download", values.fDownload);
-      if (values.fSuspended) p.set("suspended", values.fSuspended);
-      if (values.fField) {
-        p.set("ffield", values.fField);
-        if (values.fVal.trim()) p.set("fval", values.fVal.trim());
-      }
-      return p;
-    },
-    [values],
-  );
   // 引用稳定：调用方把 `filters` 放进 useCallback deps 时不至于每渲染都变
-  return useMemo(() => ({ values, set, params }), [values, set, params]);
+  return useMemo(() => ({ values, set }), [values, set]);
 }

@@ -167,7 +167,7 @@ export function FishingSide({
           </button>
         )}
       </div>
-      {err && <p className="text-xs text-danger">{err}</p>}
+      {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
 
       <h2 className="mb-2 mt-3 font-display text-base">
         <span id="album">{tf.albumTitle}</span>

@@ -251,7 +251,7 @@ export function SendEmailDialog({
           className="mt-3 w-full rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-3 py-2 text-sm"
         />
         {blockedHint && (
-          <p className="mt-2 text-xs text-danger" role="alert">
+          <p className="mt-2 text-xs text-[var(--danger-text)]" role="alert">
             {blockedHint}
           </p>
         )}

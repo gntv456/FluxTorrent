@@ -177,7 +177,7 @@ export function UsersTable({
                 {u.username}
               </a>
               {u.status > 0 && (
-                <span className="ml-1 rounded-full bg-coral/20 px-2 py-0.5 text-[10px] text-danger">
+                <span className="ml-1 rounded-full bg-coral/20 px-2 py-0.5 text-[10px] text-[var(--danger-text)]">
                   {STATUS_LABELS[u.status] ?? u.status}
                 </span>
               )}

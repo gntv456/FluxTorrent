@@ -29,7 +29,7 @@ import type {
 const PLAIN_BTN_CLS = BTN_SM_BOLD;
 /** Redis 状态文案配色 */
 function redisCls(v: string) {
-  return `text-lg font-bold ${v === "up" ? "text-success" : "text-danger"}`;
+  return `text-lg font-bold ${v === "up" ? "text-success" : "text-[var(--danger-text)]"}`;
 }
 
 export function StaffSitePanel({

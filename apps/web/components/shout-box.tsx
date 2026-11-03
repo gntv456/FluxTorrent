@@ -176,7 +176,7 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
           {isStaffClass(meClass ?? undefined) && (
             <button
               type="button"
-              className="text-xs text-danger underline disabled:opacity-50"
+              className="text-xs text-[var(--danger-text)] underline disabled:opacity-50"
               disabled={busy || (items ?? []).length === 0}
               onClick={() =>
                 ask.open({

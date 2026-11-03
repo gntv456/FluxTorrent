@@ -327,7 +327,7 @@ export default function FishingPage({
             linkLabel={tf.albumLink}
             linkHref="/games/fishing#album"
           />
-          {err && <p className="text-xs text-danger">{err}</p>}
+          {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
         </div>
       }
       controls={

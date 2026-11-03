@@ -118,7 +118,7 @@ export function TopicModActions({
         </button>
       )}
       <button
-        className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-danger disabled:opacity-50"
+        className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
         disabled={busy}
         onClick={() => setAskDel(true)}
       >
@@ -200,7 +200,7 @@ export function PostActions({
       </button>
       {canMod && !isSelf && (
         <button
-          className="min-h-[30px] rounded-full border border-line px-3 text-xs font-bold text-danger disabled:opacity-50"
+          className="min-h-[30px] rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
           disabled={busy}
           onClick={() => setAskDel(true)}
         >
@@ -219,7 +219,7 @@ export function PostActions({
         message={dict.forums.delPostConfirm}
         busy={busy}
       />
-      {msg && <span className="text-xs text-danger">{msg}</span>}
+      {msg && <span className="text-xs text-[var(--danger-text)]">{msg}</span>}
       <Modal
         open={editing}
         onClose={() => setEditing(false)}
@@ -239,7 +239,7 @@ export function PostActions({
             onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
           />
           {msg && (
-            <p role="alert" className="text-xs text-danger">
+            <p role="alert" className="text-xs text-[var(--danger-text)]">
               {msg}
             </p>
           )}

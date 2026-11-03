@@ -134,7 +134,7 @@ export function VoucherPanel() {
         {message && (
           <p className="text-xs text-[var(--success)]">{message}</p>
         )}
-        {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
+        {error && <p className="text-xs text-[var(--danger-text)]">{error}</p>}
         {open.length === 0 && (
           <p className="text-sm text-sub">{dict.vouchers.empty}</p>
         )}

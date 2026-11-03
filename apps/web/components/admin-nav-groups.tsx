@@ -145,7 +145,7 @@ export function AdminNavGroups({
               text-[11px] ${
                 active
                   ? "bg-white/25 text-[var(--text-on-accent)]"
-                  : "bg-coral/20 text-danger"
+                  : "bg-coral/20 text-[var(--danger-text)]"
               }`}
           >
             {n}
@@ -181,7 +181,7 @@ export function AdminNavGroups({
                 {!expanded && groupBadges > 0 && (
                   <span
                     className={`shrink-0 rounded-full bg-coral/20 px-1.5
-                      text-[11px] text-danger`}
+                      text-[11px] text-[var(--danger-text)]`}
                   >
                     {groupBadges}
                   </span>

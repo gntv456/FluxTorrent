@@ -235,7 +235,7 @@ export function MedalImagePreview({ src }: { src?: string | null }) {
     );
   if (err)
     return (
-      <span className="max-w-xs pb-1 text-[11px] text-danger">
+      <span className="max-w-xs pb-1 text-[11px] text-[var(--danger-text)]">
         {at.imgFail}
       </span>
     );

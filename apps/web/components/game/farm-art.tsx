@@ -161,7 +161,7 @@ export function MarketCard({
       <p className="num mt-1 text-base font-black">
         {crop.market_price.toLocaleString()}
       </p>
-      <p className={`num text-[11px] ${up ? "text-danger" : "text-mint"}`}>
+      <p className={`num text-[11px] ${up ? "text-[var(--danger-text)]" : "text-mint"}`}>
         {up ? "↑ +" : "↓ "}
         {pct}% {"★".repeat(stars)}
       </p>

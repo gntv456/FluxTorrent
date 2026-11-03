@@ -77,7 +77,7 @@ export function ProfilePanels({
           {d.warned_until && (
             <div className="md:col-span-3">
               <dt className="text-sub">{u.warn}</dt>
-              <dd className="text-danger">
+              <dd className="text-[var(--danger-text)]">
                 {fmt(u.warnUntil, { date: dt(d.warned_until) })} ·{" "}
                 {d.warned_reason ?? u.noReason}
               </dd>
@@ -156,7 +156,7 @@ export function SparkPanel({
             {spark?.rows.map((r) => (
               <tr key={r.id}>
                 <td
-                  className={`num font-bold ${r.amount >= 0 ? "text-mint" : "text-danger"}`}
+                  className={`num font-bold ${r.amount >= 0 ? "text-mint" : "text-[var(--danger-text)]"}`}
                 >
                   {r.amount >= 0 ? "+" : ""}
                   {r.amount.toLocaleString()}
@@ -208,7 +208,7 @@ export function LoginsPanel({
             {logins?.rows.map((r) => (
               <tr key={r.id}>
                 <td className="font-mono">{r.ip}</td>
-                <td className={r.ok ? "text-mint" : "text-danger"}>
+                <td className={r.ok ? "text-mint" : "text-[var(--danger-text)]"}>
                   {r.ok ? u.loginOk : u.loginFail}
                 </td>
                 <td className="text-sub">{dt(r.created_at)}</td>
@@ -264,7 +264,7 @@ export function SeedingPanel({ seeds }: { seeds: SeedRow[] | null }) {
                 </td>
                 <td>
                   {s.hr_flag ? (
-                    <span className="text-danger">{u.hrHit}</span>
+                    <span className="text-[var(--danger-text)]">{u.hrHit}</span>
                   ) : (
                     "—"
                   )}

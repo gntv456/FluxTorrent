@@ -174,7 +174,7 @@ export function PromoIntentsPanel() {
                           disabled={busy}
                           onClick={() => reject(r.id)}
                           className="min-h-[28px] rounded-full border
-                            border-line px-3 font-bold text-danger
+                            border-line px-3 font-bold text-[var(--danger-text)]
                             disabled:opacity-50"
                         >
                           {t.rejectBtn}

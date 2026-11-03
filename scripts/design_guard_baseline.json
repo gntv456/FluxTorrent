@@ -28,7 +28,7 @@
  },
  "app/setup/page.tsx": {
   "h1": [],
-  "h1First": 105,
+  "h1First": 107,
   "palette": [],
   "color": []
  },
@@ -2868,16 +2868,14 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   167
+   172
   ],
   "color": []
  },
  "components/api-tokens.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [
-   166
-  ],
+  "palette": [],
   "color": []
  },
  "components/appeal-records.tsx": {
@@ -3133,7 +3131,6 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   199,
    223,
    250,
    261,
@@ -3185,7 +3182,6 @@
   "h1First": null,
   "palette": [
    119,
-   120,
    143,
    156,
    165
@@ -5093,8 +5089,7 @@
   "h1First": null,
   "palette": [
    44,
-   148,
-   204
+   148
   ],
   "color": []
  },

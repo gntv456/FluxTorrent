@@ -51,7 +51,7 @@ export default function SelfUnbanPage() {
             className={`rounded-[var(--r-md)] px-3 py-2 text-sm ${
               done
                 ? "bg-mint/10 text-mint-deep"
-                : "bg-danger/5 text-danger"
+                : "bg-danger/5 text-[var(--danger-text)]"
             }`}
           >
             {msg}

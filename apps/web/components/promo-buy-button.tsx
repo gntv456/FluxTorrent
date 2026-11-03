@@ -191,7 +191,7 @@ export function PromoBuyButton({
               {dict.common.cancel}
             </button>
           </div>
-          {msg && <p className="text-xs text-danger">{msg}</p>}
+          {msg && <p className="text-xs text-[var(--danger-text)]">{msg}</p>}
           {okMsg && <p className="text-xs text-mint">{okMsg}</p>}
         </div>
       </Modal>

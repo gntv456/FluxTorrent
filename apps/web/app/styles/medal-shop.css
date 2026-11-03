@@ -750,7 +750,7 @@
   font-variant-numeric: tabular-nums;
 }
 .unit.is-short {
-  color: var(--danger);
+  color: var(--danger-text);
   white-space: nowrap;
 }
 /* 快修 #2：角标贴卡片右上角会压住圆角——内收 6px 并让圆角只保留

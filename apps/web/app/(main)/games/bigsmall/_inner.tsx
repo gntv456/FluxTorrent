@@ -299,7 +299,7 @@ export default function BigSmallPage({
               },
             ]}
           />
-          {err && <p className="text-xs text-danger">{err}</p>}
+          {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
         </div>
       }
       controls={

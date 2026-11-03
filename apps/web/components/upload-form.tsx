@@ -242,7 +242,7 @@ export function UploadForm({ initialName }: { initialName?: string }) {
       {fileErr ? (
         <p
           role="alert"
-          className="mb-3 rounded-[var(--r-sm)] border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]"
+          className="mb-3 rounded-[var(--r-sm)] border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]"
         >
           {dict.upload.chooseFile}
         </p>

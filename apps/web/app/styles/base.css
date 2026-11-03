@@ -124,6 +124,9 @@
   --danger: #d60000;
   --danger-soft: #ffe9e2;
   --danger-border: #ffc7ba;
+  /* 文本位危险色：默认与 --danger 同值（brand/tide 视觉零变化）；
+     只有山海经把文本位单独提亮，实心底/边框/描边仍用 --danger */
+  --danger-text: var(--danger);
   --info: #1e8ae8;
   --muted-soft: #eef2f8;
   --accent-purple: #5b6bf5;
@@ -402,6 +405,7 @@
   --danger: #ff8f82;
   --danger-soft: #38160f;
   --danger-border: #6b2c26;
+  --danger-text: var(--danger);
   --info: #6cc0ff;
   --muted-soft: #232c4a;
   --accent-purple: #9aa8ff;
@@ -1102,7 +1106,7 @@ h2 {
 .td-head__left {
   font-size: 12px;
   font-weight: 700;
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .td-anon-sticker {
   background: var(--muted-soft);
@@ -1307,7 +1311,7 @@ h2 {
 .td-vitals__health.is-dead {
   /* 本地完善版样图：dead 用 coral-soft（与 --leech 数字同色系） */
   background: var(--coral-soft);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .td-vitals__health.is-dead::before {
   background: var(--danger);

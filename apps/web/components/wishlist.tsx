@@ -206,7 +206,7 @@ export function WishlistPanel() {
                     type="button"
                     disabled={busy}
                     onClick={() => remove(r.id)}
-                    className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold text-danger disabled:opacity-50"
+                    className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
                   >
                     {t.removeBtn}
                   </button>

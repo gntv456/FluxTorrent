@@ -199,13 +199,13 @@ export function BuyButton({
         ) : null}
         <p className="mt-2 flex items-baseline justify-between text-sm">
           <span className="text-sub">{t.total}</span>
-          <b className={totalOk ? "" : "text-danger"}>
+          <b className={totalOk ? "" : "text-[var(--danger-text)]"}>
             {total.toLocaleString()}{" "}
             <span className="text-xs font-normal text-sub">{currency}</span>
           </b>
         </p>
         {!totalOk && balance !== null && (
-          <p className="text-xs text-danger">
+          <p className="text-xs text-[var(--danger-text)]">
             {t.shortTotal.replace(
               "{n}",
               (total - balance).toLocaleString(),

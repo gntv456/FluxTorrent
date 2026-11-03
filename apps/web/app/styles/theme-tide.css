@@ -103,6 +103,7 @@
   --danger: #c0392b;
   --danger-soft: #fbeae7;
   --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
   --info: #0f62c4;
   --muted-soft: #eff3f8;
   --accent-purple: #0a3d6b;
@@ -140,7 +141,7 @@
 
   /* ===== 补齐：原主题未定义，导致 15 处落到旧 fallback 硬编码 ===== */
   --text-sub: #5a6b85; /* pages.css 11 处 var(--text-sub,#8a7d6b) */
-  --compat-coral: var(--danger); /* layout.css:1019 未定义 */
+  --compat-coral: var(--danger-text); /* layout.css:1019 未定义 */
   --compat-sub: var(--text-muted); /* layout.css:1024,1036 未定义 */
 
   /* ===== 兼容层：--compat-* → Tide 语义（30+ 组件零改动） ===== */
@@ -268,10 +269,10 @@
 .btn-danger {
   border-color: var(--danger-border);
   background: var(--danger-soft);
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .btn-danger:hover {
-  border-color: var(--danger);
+  border-color: var(--danger-text);
   background: var(--danger);
   /* 同上：--text-on-accent 在亮暗三主题均为 #fff，山海经为深字 */
   color: var(--text-on-accent);
@@ -435,7 +436,7 @@ button.btn2:hover {
   border-left-color: var(--warning);
 }
 .tide-toast[data-tone="err"] {
-  border-left-color: var(--danger);
+  border-left-color: var(--danger-text);
 }
 
 /* ---------- 2.6 骨架屏（原 .bz-form-skeleton 只有空壳高度，无动画） ---------- */
@@ -804,7 +805,8 @@ button.btn2:hover {
   --compat-green: var(--mint);
   --compat-blue: var(--info);
   --compat-ink: var(--ink);
-  --compat-coral: var(--danger);
+  --compat-coral: var(--danger-text);
+  --danger-text: var(--danger);
   --compat-sub: var(--text-muted);
   --text-sub: var(--text-muted);
 }

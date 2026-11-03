@@ -27,7 +27,7 @@ export function RegisterFields({
   return (
     <>
       {failedLabel && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-[var(--danger-text)]">
           {failedLabel}
         </p>
       )}

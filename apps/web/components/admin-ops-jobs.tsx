@@ -174,7 +174,7 @@ export function AdminOpsJobs() {
                           ? "text-sub"
                           : j.last_ok
                             ? "text-success"
-                            : "text-danger"
+                            : "text-[var(--danger-text)]"
                       }
                     >
                       {j.last_ok === null
@@ -232,7 +232,7 @@ export function AdminOpsJobs() {
                     <td
                       className={
                         r.status === "failed"
-                          ? "text-danger"
+                          ? "text-[var(--danger-text)]"
                           : r.status === "done"
                             ? "text-success"
                             : "text-sub"

@@ -48,7 +48,7 @@ export function ClaimButton({
       >
         {label}
       </button>
-      {msg && <span className="text-xs text-danger">{msg}</span>}
+      {msg && <span className="text-xs text-[var(--danger-text)]">{msg}</span>}
     </span>
   );
 }

@@ -46,7 +46,7 @@ export function ReviewQueueToolbar({
     "font-bold text-mint disabled:opacity-40";
   const batchDenyCls =
     "min-h-[36px] rounded-full border border-coral px-3 py-1 " +
-    "font-bold text-danger disabled:opacity-40";
+    "font-bold text-[var(--danger-text)] disabled:opacity-40";
   return (
     <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
       <span className="text-sub">{fmt(a.queueTotal, { n: total })}</span>

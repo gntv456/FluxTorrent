@@ -127,7 +127,7 @@ export function CheatAccuracyPanel() {
                       className={
                         r.false_positive > 0
                           ? `${td} font-bold ` +
-                            "text-[var(--danger)]"
+                            "text-[var(--danger-text)]"
                           : td
                       }
                     >

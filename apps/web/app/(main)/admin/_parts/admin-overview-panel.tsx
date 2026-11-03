@@ -93,7 +93,7 @@ export function AdminOverviewPanel({
             >
               <p className="text-xs text-sub">{s.label}</p>
               <p
-                className={`num mt-1 text-2xl ${s.warn ? "text-danger" : "text-sky"}`}
+                className={`num mt-1 text-2xl ${s.warn ? "text-[var(--danger-text)]" : "text-sky"}`}
               >
                 {s.v ?? "—"}
               </p>
@@ -127,13 +127,13 @@ export function AdminOverviewPanel({
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2.5 text-xs text-sub">
           <span>
             {a.dbLabel}{" "}
-            <b className={stats.db === "up" ? "text-mint" : "text-danger"}>
+            <b className={stats.db === "up" ? "text-mint" : "text-[var(--danger-text)]"}>
               {stats.db === "up" ? a.statusOk : a.statusBad}
             </b>
           </span>
           <span>
             Redis{" "}
-            <b className={stats.redis === "up" ? "text-mint" : "text-danger"}>
+            <b className={stats.redis === "up" ? "text-mint" : "text-[var(--danger-text)]"}>
               {stats.redis === "up" ? a.statusOk : a.statusBad}
             </b>
           </span>

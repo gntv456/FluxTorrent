@@ -37,7 +37,7 @@ export function SetupBootStatus({
   return (
     <div
       className="mt-4 rounded-md border border-danger/40 bg-danger/10
-        px-3 py-2 text-sm text-danger"
+        px-3 py-2 text-sm text-[var(--danger-text)]"
     >
       <p className="font-medium">{boot.error}</p>
       {boot.detail && (

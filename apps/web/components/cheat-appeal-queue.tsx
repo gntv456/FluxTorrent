@@ -124,7 +124,7 @@ export function CheatAppealQueue() {
         </p>
       )}
       {err && (
-        <p role="alert" className="mb-2 text-sm text-danger">
+        <p role="alert" className="mb-2 text-sm text-[var(--danger-text)]">
           {err}
         </p>
       )}

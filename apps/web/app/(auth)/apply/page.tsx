@@ -115,7 +115,7 @@ export default function ApplyPage() {
             <span className="text-xs text-sub">{dict.apply.reasonHint}</span>
           </label>
           {msg && (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-sm text-[var(--danger-text)]">
               {msg}
             </p>
           )}

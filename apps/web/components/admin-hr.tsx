@@ -221,7 +221,7 @@ export function AdminHr() {
                 {fmtHours(r.seeded_seconds)} / {fmtHours(r.required_seconds)}
               </td>
               <td
-                className={`num ${r.status === "violated" ? "text-danger" : ""}`}
+                className={`num ${r.status === "violated" ? "text-[var(--danger-text)]" : ""}`}
               >
                 {Math.max(0, r.required_seconds - r.seeded_seconds) > 0
                   ? fmtHours(r.required_seconds - r.seeded_seconds)
@@ -232,7 +232,7 @@ export function AdminHr() {
               </td>
               <td>
                 {r.status === "violated" ? (
-                  <span className="text-danger">
+                  <span className="text-[var(--danger-text)]">
                     {at.statusLabels.violated}
                   </span>
                 ) : r.status === "pardoned" && r.pardoned_name ? (

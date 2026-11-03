@@ -175,7 +175,7 @@ export function BoxManager({
             aria-label={`${t.deleteBox}: ${b.name}`}
             title={t.deleteBox}
             className="inline-flex min-h-[36px] items-center rounded-full border
-              border-[var(--danger-border)] px-2 text-danger"
+              border-[var(--danger-border)] px-2 text-[var(--danger-text)]"
           >
             <Icon name="close" size={14} />
           </button>

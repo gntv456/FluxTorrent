@@ -71,7 +71,7 @@ export function ResurrectButton({
         {`🌱 ${t.claimBtn}`}
       </button>
       {msg && (
-        <span className="mt-1 text-xs text-danger" role="status">
+        <span className="mt-1 text-xs text-[var(--danger-text)]" role="status">
           {msg}
         </span>
       )}

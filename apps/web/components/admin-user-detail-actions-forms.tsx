@@ -24,7 +24,7 @@ export const PANEL_BOX_CLS =
 export const PLAIN_FIELD_CLS = INPUT_MD;
 /** 圆角描边小按钮（普通/danger） */
 export const PLAIN_BTN_CLS = BTN_SM_BOLD;
-const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-danger`;
+const DANGER_BTN_CLS = `${PLAIN_BTN_CLS} text-[var(--danger-text)]`;
 /** 新增职务折叠框 */
 const DETAILS_BOX_CLS =
   "rounded-[var(--r-sm)] border border-dashed border-line p-2";

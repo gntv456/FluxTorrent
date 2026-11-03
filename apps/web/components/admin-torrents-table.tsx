@@ -112,7 +112,7 @@ export function TorrentTable(props: {
                 {t.name}
               </a>
               {t.deny_reason && (
-                <span className="ml-1 text-xs text-danger">
+                <span className="ml-1 text-xs text-[var(--danger-text)]">
                   {t.deny_reason}
                 </span>
               )}
@@ -152,14 +152,14 @@ export function TorrentTable(props: {
             </td>
             <td>
               {t.pick_type === 1 ? (
-                <span className="text-danger">{at.optPickRec}</span>
+                <span className="text-[var(--danger-text)]">{at.optPickRec}</span>
               ) : t.pick_type === 2 ? (
                 <span className="text-sun">{at.optPickClassic}</span>
               ) : (
                 "—"
               )}
             </td>
-            <td>{t.hr ? <span className="text-danger">H&R</span> : "—"}</td>
+            <td>{t.hr ? <span className="text-[var(--danger-text)]">H&R</span> : "—"}</td>
             <td>
               {t.approval_status === 0 && (
                 <>

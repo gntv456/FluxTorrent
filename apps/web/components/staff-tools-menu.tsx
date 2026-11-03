@@ -93,7 +93,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
                       setMParent(m.parent_id); setMTarget(m.target);
                       setMMinClass(m.min_class); setMSort(m.sort); setMEnabled(m.enabled);
                     }}>{mEditId === m.id ? t.cancelBtn : t.editBtn}</button>
-                  <button className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-danger"
+                  <button className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-[var(--danger-text)]"
                     onClick={() => guard(async () => {
                       await api.del(`/api/v1/admin/menu-items/${m.id}`);
                     }, t.deleted)}>{t.delBtn}</button>

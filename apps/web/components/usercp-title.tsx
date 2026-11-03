@@ -121,7 +121,7 @@ export function TitleRow() {
         <b>{dict.usercp.note}</b>
         {t.titleCost}
       </span>
-      {err && <p className="mt-1 text-xs text-danger">{err}</p>}
+      {err && <p className="mt-1 text-xs text-[var(--danger-text)]">{err}</p>}
       {msg && <p className="mt-1 text-xs text-sub">{msg}</p>}
     </Row>
   );

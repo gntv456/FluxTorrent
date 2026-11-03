@@ -244,7 +244,7 @@ export function BulkBar({
         type="button"
         disabled={selected.length === 0 || busy}
         onClick={onDelete}
-        className="min-h-[36px] rounded-full border border-[var(--danger-border)] px-3 font-bold text-danger disabled:opacity-40"
+        className="min-h-[36px] rounded-full border border-[var(--danger-border)] px-3 font-bold text-[var(--danger-text)] disabled:opacity-40"
       >
         🗑 {t.deleteSel}
       </button>

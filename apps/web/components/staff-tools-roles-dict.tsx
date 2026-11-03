@@ -30,7 +30,7 @@ const ROLE_CARD_BTN_EDIT =
   "text-[11px] font-bold text-sky";
 const ROLE_CARD_BTN_DEL =
   "min-h-[24px] rounded-full border border-line px-2 " +
-  "text-[11px] font-bold text-danger";
+  "text-[11px] font-bold text-[var(--danger-text)]";
 // 表单容器 / 表单输入框底色
 const ROLE_FORM_BOX = "cmgmt-form rounded-[var(--r-md)] border border-line p-3";
 const ROLE_INPUT =

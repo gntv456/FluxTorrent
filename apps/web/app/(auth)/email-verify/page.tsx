@@ -84,7 +84,7 @@ function VerifyInner() {
       {/* P-110：重发的失败必须有落点。旧版把错误写进 msg，而 msg 只在
           「验证失败」那一支渲染——空手进来（没带 token）的用户点重发，
           限流/未配邮件服务时界面一动不动，像按钮坏了。 */}
-      {rmsg && <p className="text-sm text-danger">{rmsg}</p>}
+      {rmsg && <p className="text-sm text-[var(--danger-text)]">{rmsg}</p>}
       {resent && (
         <p className="text-xs text-sub">{dict.emailVerify.resentNote}</p>
       )}
@@ -134,7 +134,7 @@ function VerifyInner() {
         )}
         {state === "err" && (
           <div className="flex flex-col gap-3">
-            <p className="text-sm text-danger">{msg}</p>
+            <p className="text-sm text-[var(--danger-text)]">{msg}</p>
             <p className="text-xs text-sub">{dict.emailVerify.expiredHint}</p>
             {resendForm}
           </div>

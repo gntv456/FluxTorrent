@@ -136,7 +136,7 @@ export function RegisterQuiz({
     >
       <div className="flex flex-col gap-2">
         {failed ? (
-          <p className="text-sm text-danger">{t.quizFailed}</p>
+          <p className="text-sm text-[var(--danger-text)]">{t.quizFailed}</p>
         ) : (
           <p className="text-sm font-bold">{data?.question ?? "…"}</p>
         )}

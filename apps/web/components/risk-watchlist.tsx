@@ -79,7 +79,7 @@ export function RiskWatchlist() {
 
   const bandCls = (b: string) =>
     b === "critical"
-      ? "font-bold text-[var(--danger)]"
+      ? "font-bold text-[var(--danger-text)]"
       : b === "high"
         ? "font-bold text-[var(--compat-orange-dark)]"
         : b === "watch"
