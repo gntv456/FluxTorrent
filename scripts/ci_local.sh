@@ -24,7 +24,7 @@ cargo test --workspace
 step "web: tsc --noEmit"
 (cd apps/web && npx tsc --noEmit)
 
-step "仓库门禁脚本（行数/宽度、i18n 基线、模块键/首页板块/术语规则单源、类型契约、迁移校验和）"
+step "仓库门禁脚本（行数/宽度、i18n 基线、模块键/首页板块/术语规则单源、类型契约、迁移校验和、迁移冻结）"
 node scripts/line_limit_guard.mjs
 node scripts/i18n_guard.mjs
 node scripts/zh_cn_variant_guard.mjs
@@ -39,6 +39,7 @@ node scripts/terms_guard.mjs
 node scripts/check_type_drift.mjs
 node scripts/openapi_cov_guard.mjs
 node scripts/audit_action_guard.mjs
+node scripts/migrations_frozen_guard.mjs
 python3 scripts/validation_i18n_guard.py
 python3 scripts/audit_migration_checksums.py
 python3 scripts/psql_stdin_guard.py

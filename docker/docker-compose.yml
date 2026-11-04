@@ -85,7 +85,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/api:${FLUX_VERSION:-latest}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/api:${FLUX_VERSION:-c84d4c02}
     build:
       context: ..
       dockerfile: docker/api.Dockerfile
@@ -173,7 +173,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-latest}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-c84d4c02}
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
@@ -211,7 +211,7 @@ services:
     restart: unless-stopped
 
   tracker:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/tracker:${FLUX_VERSION:-latest}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/tracker:${FLUX_VERSION:-c84d4c02}
     build:
       context: ..
       dockerfile: docker/tracker.Dockerfile
@@ -291,7 +291,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/web:${FLUX_VERSION:-latest}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/web:${FLUX_VERSION:-c84d4c02}
     build:
       context: ..
       dockerfile: docker/web.Dockerfile

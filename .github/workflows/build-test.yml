@@ -46,6 +46,12 @@ jobs:
       # 当日实测：种子编辑口 `PUT /torrents/{id}` 因此 100% 500。
       - name: SQL comment guard
         run: python3 scripts/sql_comment_guard.py apps
+      # 迁移冻结门禁（2026-11-04）：已入库迁移文件一字节都不许改，注释也算。
+      # 0448 仅把注释里的 --brand-paper 改成 --compat-paper，sqlx checksum 就从
+      # 38636f… 漂到 029773…，存量库遇到改写前镜像直接 `448 modified` 拒启。
+      # 新增迁移正常放行并提示 --touch 登记；删除已登记文件直接红。
+      - name: Migrations frozen guard
+        run: node scripts/migrations_frozen_guard.mjs
       # OpenAPI 覆盖门禁（FRAME-PLAN-01 F3 / W-49）：compat+开放两域的
       # #[utoipa::path] 注解集合 ⊇ 手写域 28 条路由——注解被误删/路径
       # 被改即红灯（产物侧另有 cargo 单测 openapi_json_covers_all_annotated_domains 双锁）。
