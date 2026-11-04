@@ -35,6 +35,7 @@ hmac = "0.12"
 ipnet = "2"
 data-encoding = "2"
 url = "2"
+percent-encoding = "2"
 sha2 = "0.10"
 # 抓轨日志码页解码（0312）：EAC 按系统区域写日志，GBK/Big5/Shift_JIS 都要认
 encoding_rs = "0.8"

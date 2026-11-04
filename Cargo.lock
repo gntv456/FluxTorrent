@@ -1349,6 +1349,7 @@ dependencies = [
  "maxminddb",
  "md-5",
  "p256",
+ "percent-encoding",
  "rand 0.8.8",
  "redis",
  "regex",

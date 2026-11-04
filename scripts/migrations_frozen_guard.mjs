@@ -33,7 +33,10 @@ import path from "node:path";
 const SCRIPT_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
 const DEFAULT_DIR = path.join(REPO_ROOT, "apps/api/migrations");
-const DEFAULT_BASELINE = path.join(SCRIPT_DIR, "migrations_frozen_baseline.json");
+const DEFAULT_BASELINE = path.join(
+  SCRIPT_DIR,
+  "migrations_frozen_baseline.json",
+);
 const MIGRATION_NAME = /^\d{4}_.*\.sql$/;
 
 function usage() {
@@ -45,14 +48,20 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  const out = { mode: "check", dir: DEFAULT_DIR, baseline: DEFAULT_BASELINE, files: [] };
+  const out = {
+    mode: "check",
+    dir: DEFAULT_DIR,
+    baseline: DEFAULT_BASELINE,
+    files: [],
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") out.mode = "help";
     else if (a === "--init") out.mode = "init";
     else if (a === "--touch" || a === "--add") {
       out.mode = "touch";
-      while (i + 1 < argv.length && !argv[i + 1].startsWith("--")) out.files.push(argv[++i]);
+      while (i + 1 < argv.length && !argv[i + 1].startsWith("--"))
+        out.files.push(argv[++i]);
     } else if (a === "--dir") out.dir = path.resolve(argv[++i]);
     else if (a === "--baseline") out.baseline = path.resolve(argv[++i]);
     else {
@@ -222,7 +231,8 @@ function main() {
   if (fresh.length) {
     console.log(`WARN: ${fresh.length} 个未登记的新迁移（正常放行；入库时请显式登记冻结值）：`);
     for (const name of fresh) console.log(`  - ${name}`);
-    console.log(`    登记：node scripts/migrations_frozen_guard.mjs --touch ${fresh.join(" ")}`);
+    const cmd = fresh.join(" ");
+    console.log(`    登记：--touch ${cmd}`);
   }
 
   if (errors.length) {
@@ -245,7 +255,8 @@ function main() {
     return 1;
   }
 
-  console.log(`PASS: migrations frozen 门禁通过（已登记 ${Object.keys(baseline).length} 个，未登记新迁移 ${fresh.length} 个）`);
+  const nOk = Object.keys(baseline).length;
+  console.log(`PASS: frozen 门禁通过（已登记 ${nOk} 个，未登记 ${fresh.length} 个）`);
   return 0;
 }
 
