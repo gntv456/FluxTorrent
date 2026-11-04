@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent 站点通知邮件 · 统一母版样图索引</title>
+<style>
+  :root {
+    --ink: #eef4ff;
+    --body: #b9c7dc;
+    --faint: #8fa0ba;
+    --line: rgba(255,255,255,.12);
+    --card: #121c2c;
+    --page: #0a111c;
+    --sky: #2fa8ff;
+    --gold: #e6c478;
+    --jade: #7be0c4;
+    --rose: #ff9d92;
+    --amber: #f0d48a;
+    --azure: #8fd0e6;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 15% -10%, rgba(47,168,255,.14), transparent 60%), var(--page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    line-height: 1.6;
+  }
+  a { color: var(--sky); }
+  .wrap { width: min(1360px, calc(100% - 40px)); margin: 0 auto; }
+  header.top { position: sticky; top: 0; z-index: 20; background: rgba(10,17,28,.88); border-bottom: 1px solid var(--line); backdrop-filter: blur(14px); }
+  .top-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 14px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .02em; }
+  .brand img { width: 34px; height: 34px; border-radius: 9px; background: #0d1b3e; }
+  .brand small { display: block; font-size: 11px; color: var(--faint); font-weight: 500; letter-spacing: 0; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+  nav a { display: inline-block; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--body); text-decoration: none; font-size: 12px; }
+  nav a:hover { border-color: var(--sky); color: var(--ink); }
+  .hero { padding: 56px 0 34px; }
+  .eyebrow { color: var(--sky); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  h1 { margin: 10px 0 12px; font-size: clamp(28px, 4vw, 44px); line-height: 1.2; letter-spacing: -.02em; }
+  .lede { margin: 0; max-width: 860px; color: var(--body); font-size: 15px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .tag { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--faint); font-size: 12px; }
+  .note { margin: 26px 0 0; padding: 16px 18px; border: 1px solid rgba(47,168,255,.32); background: rgba(47,168,255,.08); border-radius: 12px; color: var(--body); font-size: 13px; }
+  .note strong { color: var(--ink); }
+  .hero-note { margin: 18px 0 0; padding: 14px 18px; border-left: 3px solid var(--gold); background: rgba(211,161,63,.07); border-radius: 0 10px 10px 0; color: var(--body); font-size: 13px; }
+  .hero-note strong { color: var(--gold); }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 14px; }
+  .legend div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--faint); }
+  .legend b { display: block; color: var(--ink); font-size: 13px; margin-bottom: 2px; }
+  main { padding-bottom: 80px; }
+  .sec { padding: 34px 0 6px; border-top: 1px solid var(--line); }
+  .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .sec-head .idx { color: var(--sky); font-size: 12px; font-weight: 700; letter-spacing: .1em; }
+  .sec-head h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+  .sec-head p { margin: 0; color: var(--faint); font-size: 13px; max-width: 900px; flex-basis: 100%; }
+  .band-tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 4px; background: rgba(211,161,63,.14); border: 1px solid rgba(211,161,63,.4); color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: .06em; vertical-align: middle; }
+  .tier-daily .band-tag { background: rgba(123,224,196,.12); border-color: rgba(123,224,196,.38); color: var(--jade); }
+  .tier-alert .band-tag { background: rgba(255,157,146,.12); border-color: rgba(255,157,146,.38); color: var(--rose); }
+  .mail { margin: 24px 0 34px; }
+  .mail-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .mh-left { display: flex; align-items: center; gap: 9px; }
+  .mail-head .no { font-size: 12px; font-weight: 700; color: var(--sky); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .mail-head h3 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+  .links { margin-left: auto; display: flex; gap: 10px; }
+  .links a { font-size: 12px; text-decoration: none; border-bottom: 1px solid rgba(47,168,255,.5); padding-bottom: 1px; }
+  .mdesc { margin: 6px 0 8px; color: var(--faint); font-size: 13px; max-width: 900px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .stats span { padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .frames { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; padding-bottom: 8px; }
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.22); }
+  figcaption { padding: 9px 12px; font-size: 11px; color: var(--faint); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; letter-spacing: .02em; }
+  figcaption .w { color: var(--sky); font-variant-numeric: tabular-nums; }
+  iframe { display: block; border: 0; background: #f7f3e8; }
+  .matrix { margin-top: 18px; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+  .matrix:focus-visible { outline: 2px solid var(--sky); outline-offset: 3px; }
+  .scroll-hint { margin: 8px 0 0; color: var(--faint); font-size: 11px; }
+  table.m { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 720px; }
+  table.m.wide { min-width: 1180px; }
+  table.m td .why { display: block; margin-top: 3px; font-size: 11px; color: var(--faint); }
+  .st { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; border: 1px solid transparent; }
+  .st.meas { background: rgba(123,224,196,.16); color: var(--jade); border-color: rgba(123,224,196,.5); }
+  .st.guess { background: rgba(240,212,138,.14); color: var(--amber); border-color: rgba(240,212,138,.45); }
+  .st.no { background: rgba(255,157,146,.14); color: var(--rose); border-color: rgba(255,157,146,.45); }
+  .state-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; font-size: 12px; color: var(--faint); }
+  .state-legend > span { padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; }
+  table.m th, table.m td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.m th { color: var(--faint); font-weight: 600; background: rgba(255,255,255,.03); }
+  table.m td { color: var(--body); }
+  .pill { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .pill.gold { background: rgba(211,161,63,.16); color: var(--gold); }
+  .pill.jade { background: rgba(123,224,196,.14); color: var(--jade); }
+  .pill.rose { background: rgba(255,157,146,.14); color: var(--rose); }
+  .pill.amber { background: rgba(240,212,138,.14); color: var(--amber); }
+  .pill.azure { background: rgba(143,208,230,.14); color: var(--azure); }
+  .ok { color: var(--jade); font-variant-numeric: tabular-nums; }
+  footer { padding: 34px 0 60px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; }
+  footer strong { color: var(--body); }
+  @media (max-width: 760px) {
+    .wrap { width: calc(100% - 24px); }
+    nav { margin-left: 0; }
+    .links { margin-left: 0; }
+    .frames { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand">
+      <img src="../../apps/web/public/brand/logo-mark.png" alt="FluxTorrent">
+      <div>FluxTorrent<small>站点通知邮件 · 统一母版样图</small></div>
+    </div>
+    <nav>
+      <a href="#degrade">客户端降级矩阵</a>
+      <a href="#tier-first">第一印象 · 96px</a>
+      <a href="#tier-daily">日常通知 · 56px</a>
+      <a href="#tier-alert">警示 · 64px</a>
+      <a href="#spec">母版规范</a>
+      <a href="#measured">实测数据</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap hero">
+  <div class="eyebrow">Unified Master Template · 11 templates / 3 tiers</div>
+  <h1>11 封邮件，一套骨架</h1>
+  <p class="lede">
+    全部按真实邮件约束制作：600px 表格布局、内联样式、系统字体栈、无外部 CSS / JS / Web 字体、无追踪像素。
+    所有邮件共用同一个母版——玄墨装饰带（零文字）、宣纸卡面、同一套正文层级、信息块、金线、按钮与页脚；
+    差异只体现在装饰带高度与结论语义色。纹理全部由纯 CSS 生成，不加载任何背景图片。
+  </p>
+  <div class="meta">
+    <span class="tag">桌面 600px</span>
+    <span class="tag">移动 375px</span>
+    <span class="tag">图片屏蔽态</span>
+    <span class="tag">强制反色 invert(1) hue-rotate(180deg)</span>
+    <span class="tag">剥离 background* / bgcolor</span>
+    <span class="tag">zh-CN / zh-TW / en</span>
+  </div>
+
+  <div class="hero-note">
+    <strong>统一前后：</strong>上一轮只有邀请与找回密码是山海经风，其余 9 封是中性的潮汐风——深蓝 / 浅蓝 / 红 / 琥珀四套底图、四套按钮色，
+    收件人一眼能看出「不是同一套东西」。本轮取消风格分栏，11 封全部并入玄墨 + 宣纸 + 金线这一套母版，
+    层级改由装饰带高度（96 / 56 / 64px）区分，颜色只用来表达结果。
+  </div>
+
+  <div class="note">
+    <strong>三条不可协商的底线：</strong>① 装饰带内零文字、零图片，只有 CSS 纹理；
+    ② 正文永远落在纸色卡面（<code>#faf6ec</code>，并用 <code>bgcolor</code> 兜底），任何回退下都不会出现白底白字；
+    ③ 语义色只出现在三处——装饰带底边线、印章式结论标签、主 CTA（本轮统一为金底玄字，不参与语义）。
+  </div>
+
+  <div class="legend">
+    <div><b>为什么每封开头句式一样</b>都用「你收到这封邮件，是因为……」开头，收件人第一句就知道为什么收到、要不要处理。</div>
+    <div><b>层级靠尺寸，不靠换色</b>标题 26px / 正文 15px / 信息块 14px / 标签 12px 在 11 封里完全一致；三档只改装饰带高度。</div>
+    <div><b>语义色只表结果</b>通过=石绿、未通过=朱砂、警示=琥珀、待办=石青。正文一律墨色层级，不用语义色写句子。</div>
+    <div><b>暗色不换肤</b>暗色媒体查询把纸色钉住——避免「深色页面 + 客户端剥背景」组合出现浅字白底，因此暗色态与浅色态共用同一份实测值。</div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <section class="sec" id="degrade">
+    <div class="sec-head">
+      <div class="idx">DEGRADATION</div>
+      <h2>客户端降级矩阵</h2>
+      <p>8 个客户端 × 8 项能力。每格 = 三态标签 + 一句结果说明 + 「设计说明」条目号；标签同时用颜色与文字，不靠颜色单独传达。</p>
+    </div>
+
+    <div class="state-legend">
+      <span><span class="st meas">实测</span> 本机真实 Chrome 渲染或模拟回退后取值</span>
+      <span><span class="st guess">推断</span> 依据公开能力表与引擎文档，未进真机</span>
+      <span><span class="st no">已知不支持</span> 客户端明确不实现或会剥离，设计已为其退化</span>
+    </div>
+
+    <div class="matrix" tabindex="0" role="region" aria-label="客户端降级矩阵，窄屏可左右滚动">
+      <table class="m wide">
+        <thead>
+          <tr>
+            <th>客户端</th>
+            <th>渐变底</th>
+            <th>斜纹纹理</th>
+            <th>border-radius</th>
+            <th>bgcolor 兜底</th>
+            <th>Web 字体</th>
+            <th>暗色模式</th>
+            <th>强制反色</th>
+            <th>图片屏蔽</th>
+            <th>依据</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>其他/通用<span class="why">本机 Chrome（基准）</span></td>
+            <td><span class="st meas">实测</span><span class="why">完整</span></td>
+            <td><span class="st meas">实测</span><span class="why">完整</span></td>
+            <td><span class="st meas">实测</span><span class="why">6px</span></td>
+            <td><span class="st meas">实测</span><span class="why">剥 background* 后接管，5.18:1</span></td>
+            <td><span class="st meas">实测</span><span class="why">零外部字体，系统栈</span></td>
+            <td><span class="st meas">实测</span><span class="why">纸色钉住，同浅色</span></td>
+            <td><span class="st meas">实测</span><span class="why">invert 模拟 4.86:1</span></td>
+            <td><span class="st meas">实测</span><span class="why">visibleImgs=0，布局不垮</span></td>
+            <td>§10.6 / §12.7</td>
+          </tr>
+          <tr>
+            <td>Gmail 网页</td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">保留（清理器未实测）</span></td>
+            <td><span class="st no">已知不支持</span><span class="why">会剥外部字体（本模板未用）</span></td>
+            <td><span class="st guess">推断</span><span class="why">纸色声明优先</span></td>
+            <td><span class="st guess">推断</span><span class="why">不触发</span></td>
+            <td><span class="st guess">推断</span><span class="why">无图可屏蔽</span></td>
+            <td>§11.4 / §12.10</td>
+          </tr>
+          <tr>
+            <td>Gmail 移动<span class="why">iOS / Android</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">保留</span></td>
+            <td><span class="st no">已知不支持</span><span class="why">部分版本剥外部字体</span></td>
+            <td><span class="st guess">推断</span><span class="why">部分版本自动反色</span></td>
+            <td><span class="st guess">推断</span><span class="why">Android 强制深色可能翻转</span></td>
+            <td><span class="st guess">推断</span><span class="why">无图可屏蔽</span></td>
+            <td>§11.4 / §12.10</td>
+          </tr>
+          <tr>
+            <td>Apple Mail<span class="why">macOS / iOS</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">不做剥离</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持（本模板未用）</span></td>
+            <td><span class="st guess">推断</span><span class="why">尊重纸色声明</span></td>
+            <td><span class="st guess">推断</span><span class="why">仅系统高对比</span></td>
+            <td><span class="st guess">推断</span><span class="why">无图可屏蔽</span></td>
+            <td>§11.4</td>
+          </tr>
+          <tr>
+            <td>Outlook 桌面版<span class="why">Word 渲染引擎</span></td>
+            <td><span class="st no">已知不支持</span><span class="why">整条 background-image 丢弃</span></td>
+            <td><span class="st no">已知不支持</span><span class="why">纹理不显示</span></td>
+            <td><span class="st no">已知不支持</span><span class="why">退化为直角</span></td>
+            <td><span class="st guess">推断</span><span class="why">纯玄墨色块仍在</span></td>
+            <td><span class="st no">已知不支持</span><span class="why">忽略 @font-face</span></td>
+            <td><span class="st guess">推断</span><span class="why">不自动反色</span></td>
+            <td><span class="st no">已知不支持</span><span class="why">高对比模式替换系统色</span></td>
+            <td><span class="st guess">推断</span><span class="why">无图，无影响</span></td>
+            <td>§11.4 / §12.6 / §12.10</td>
+          </tr>
+          <tr>
+            <td>Outlook 网页<span class="why">Outlook.com / 移动</span></td>
+            <td><span class="st guess">推断</span><span class="why">渐变支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">一般支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">保留</span></td>
+            <td><span class="st guess">推断</span><span class="why">支持（本模板未用）</span></td>
+            <td><span class="st guess">推断</span><span class="why">跟随系统</span></td>
+            <td><span class="st guess">推断</span><span class="why">不触发</span></td>
+            <td><span class="st guess">推断</span><span class="why">无图可屏蔽</span></td>
+            <td>§11.4</td>
+          </tr>
+          <tr>
+            <td>QQ 邮箱</td>
+            <td><span class="st guess">推断</span><span class="why">内嵌 WebKit，预期支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期保留</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期支持（未用）</span></td>
+            <td><span class="st guess">推断</span><span class="why">自带深色主题可能反色</span></td>
+            <td><span class="st guess">推断</span><span class="why">未实测</span></td>
+            <td><span class="st guess">推断</span><span class="why">无图可屏蔽</span></td>
+            <td>§11.4（未实测）</td>
+          </tr>
+          <tr>
+            <td>网易邮箱</td>
+            <td><span class="st guess">推断</span><span class="why">内嵌 WebKit，预期支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期支持</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期保留</span></td>
+            <td><span class="st guess">推断</span><span class="why">预期支持（未用）</span></td>
+            <td><span class="st guess">推断</span><span class="why">自带深色主题可能反色</span></td>
+            <td><span class="st guess">推断</span><span class="why">未实测</span></td>
+            <td><span class="st guess">推断</span><span class="why">无图可屏蔽</span></td>
+            <td>§11.4（未实测）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="scroll-hint">窄屏下本表在容器内横向滚动（可用 Tab 聚焦后按 ←/→ 或 Shift+滚轮），页面本身不出现横向溢出。</p>
+
+    <div class="note">
+      <strong>实测环境：</strong>Windows + 真实 Chrome <strong>149.0.7827.197</strong>（headless，<code>--device-scale-factor=1</code>，本地 <code>file://</code>）。
+      暗色用 <code>emulateMedia({colorScheme:'dark'})</code>；强制反色用 <code>filter: invert(1) hue-rotate(180deg)</code> 模拟；
+      剥背景用正则删除所有内联 <code>background*</code>（保留 <code>bgcolor</code>）；图片屏蔽用 <code>img{display:none}</code>。
+      原始数据见 <code>_shots/verify-emails.json</code> 与 <code>_shots/email-mime-report.json</code>。
+      <br>
+      <strong>推断依据：</strong>公开能力表与各引擎文档——Word 渲染引擎不支持 <code>background-image</code>、<code>border-radius</code>、<code>@font-face</code>；
+      所标「推断」项均未进真机，不作为已验收结论。
+      <br>
+      <strong>尚未验证：</strong>Outlook（桌面 / 网页）、Gmail（网页 / iOS / Android）、Apple Mail、QQ 邮箱、网易邮箱的真机渲染；<code>bgcolor</code> 在 Gmail 清理器下的保留率；
+      真实强制反色算法（Android Force Dark / Outlook 高对比）；320px 视口；图片半加载；SPF / DKIM / DMARC 投递与垃圾箱判定。
+    </div>
+
+    <div class="sec-head" style="margin-top:26px">
+      <h2 style="font-size:17px">纯文本 part 表现</h2>
+      <p>每封邮件都是 <code>multipart/alternative</code>：text/plain 在前、text/html 在后。客户端按自身能力取最后一个能显示的 part；下表说明谁会看到纯文本。</p>
+    </div>
+    <div class="matrix" tabindex="0" role="region" aria-label="纯文本 part 表现，窄屏可左右滚动">
+      <table class="m">
+        <thead><tr><th>客户端 / 场景</th><th>纯文本何时被显示</th><th>纯文本里的链接形态</th></tr></thead>
+        <tbody>
+          <tr><td>Gmail 网页 / 移动</td><td>用户开启「纯文本模式」或邮件被安全策略剥掉 HTML 时</td><td>完整绝对 URL，自动识别为可点链接</td></tr>
+          <tr><td>Apple Mail</td><td>默认按 HTML；可手动「以纯文本显示」或由系统隐私代理剥离</td><td>完整绝对 URL</td></tr>
+          <tr><td>Outlook 桌面版</td><td>启用「以纯文本读取所有标准邮件」时；此外高对比模式下也只保留文本</td><td>完整绝对 URL</td></tr>
+          <tr><td>Outlook 网页</td><td>默认 HTML；企业租户的内容策略可能强制纯文本</td><td>完整绝对 URL</td></tr>
+          <tr><td>QQ 邮箱 / 网易邮箱</td><td>默认 HTML；企业网关或安全扫描会转为纯文本摘要</td><td>完整绝对 URL</td></tr>
+          <tr><td>纯文本客户端 / 脚本收信</td><td>Mutt、Alpine、<code>mail(1)</code>、IMAP 抓取脚本只取 text/plain</td><td>完整绝对 URL，逐行不折叠</td></tr>
+          <tr><td>其他 / 通用</td><td>遵守 RFC 2046：取「最后一个能支持」的 part，因此正常客户端显示 HTML</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="scroll-hint">
+      规则：纯文本按 68–72 列折行（URL 整行不折，URL-only 行 ≤120 列属明确例外）；不使用 Markdown 符号与 emoji；
+      所有链接写成 <code>{{base}}</code> 拼出的完整绝对 URL，不依赖「点这里」；纯文本不做 HTML 转义，<code>&amp;</code>、引号按原样呈现。
+    </p>
+  </section>
+
+  <section class="sec tier-first" id="tier-first">
+    <div class="sec-head">
+      <div class="idx">TIER 1</div>
+      <h2>第一印象<span class="band-tag">装饰带 96px</span></h2>
+      <p>对外第一印象与账号入口：装饰带最高，留白最多，山海意象可出现在开场一句。</p>
+    </div>
+
+  <div class="mail" id="invite">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">01</span>
+        <h3>邀请函</h3>
+        <span class="pill gold">金线</span>
+      </div>
+      <div class="links"><a href="invite.html" target="_blank">原文件</a><a href="invite.html#fx-noimg" target="_blank">图片屏蔽</a><a href="invite.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">会员主动发出，收件人还不是站内用户。第一行说明邀请人是谁、站点是什么、名额与有效期。</p>
+    <div class="stats"><span>600 / 946px</span><span>375 / 1091px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.16:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">946px</span></figcaption><iframe src="invite.html" width="600" height="946" loading="lazy" title="邀请函 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1091px</span></figcaption><iframe src="invite.html" width="375" height="1091" loading="lazy" title="邀请函 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="invite.html#fx-noimg" width="600" height="946" loading="lazy" title="邀请函 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="invite.html#fx-noimg" width="375" height="1091" loading="lazy" title="邀请函 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="invite.html#fx-inv" width="600" height="946" loading="lazy" title="邀请函 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="password-reset">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">02</span>
+        <h3>找回密码</h3>
+        <span class="pill gold">金线</span>
+      </div>
+      <div class="links"><a href="password-reset.html" target="_blank">原文件</a><a href="password-reset.html#fx-noimg" target="_blank">图片屏蔽</a><a href="password-reset.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">一次性链接 + 明确有效期；正文不显示用户名、邮箱等任何账号信息，避免邮件被转发时泄露。</p>
+    <div class="stats"><span>600 / 1013px</span><span>375 / 1220px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.07:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">1013px</span></figcaption><iframe src="password-reset.html" width="600" height="1013" loading="lazy" title="找回密码 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1220px</span></figcaption><iframe src="password-reset.html" width="375" height="1220" loading="lazy" title="找回密码 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="password-reset.html#fx-noimg" width="600" height="1013" loading="lazy" title="找回密码 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="password-reset.html#fx-noimg" width="375" height="1220" loading="lazy" title="找回密码 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="password-reset.html#fx-inv" width="600" height="1013" loading="lazy" title="找回密码 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="email-verify">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">03</span>
+        <h3>邮箱激活</h3>
+        <span class="pill azure">石青 · 待办</span>
+      </div>
+      <div class="links"><a href="email-verify.html" target="_blank">原文件</a><a href="email-verify.html#fx-noimg" target="_blank">图片屏蔽</a><a href="email-verify.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">注册后唯一一次「还差一步」的提醒：48 小时有效、未激活不能登录、过期可重发。</p>
+    <div class="stats"><span>600 / 970px</span><span>375 / 1089px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.37:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">970px</span></figcaption><iframe src="email-verify.html" width="600" height="970" loading="lazy" title="邮箱激活 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1089px</span></figcaption><iframe src="email-verify.html" width="375" height="1089" loading="lazy" title="邮箱激活 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="email-verify.html#fx-noimg" width="600" height="970" loading="lazy" title="邮箱激活 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="email-verify.html#fx-noimg" width="375" height="1089" loading="lazy" title="邮箱激活 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="email-verify.html#fx-inv" width="600" height="970" loading="lazy" title="邮箱激活 强制反色"></iframe></figure>
+    </div>
+  </div>
+  </section>
+
+  <section class="sec tier-daily" id="tier-daily">
+    <div class="sec-head">
+      <div class="idx">TIER 2</div>
+      <h2>日常通知<span class="band-tag">装饰带 56px</span></h2>
+      <p>审核、申请、申诉结果。装饰带压到 56px，把版面让给结论与可执行建议，语气直白。</p>
+    </div>
+
+  <div class="mail" id="review-approved">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">04</span>
+        <h3>种子审核通过</h3>
+        <span class="pill jade">石绿 · 通过</span>
+      </div>
+      <div class="links"><a href="review-approved.html" target="_blank">原文件</a><a href="review-approved.html#fx-noimg" target="_blank">图片屏蔽</a><a href="review-approved.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">结论放在标题与印章里，正文给出编号、标题、审核方式，主 CTA 直接进入种子详情。</p>
+    <div class="stats"><span>600 / 900px</span><span>375 / 977px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 5.52:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">900px</span></figcaption><iframe src="review-approved.html" width="600" height="900" loading="lazy" title="种子审核通过 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">977px</span></figcaption><iframe src="review-approved.html" width="375" height="977" loading="lazy" title="种子审核通过 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="review-approved.html#fx-noimg" width="600" height="900" loading="lazy" title="种子审核通过 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="review-approved.html#fx-noimg" width="375" height="977" loading="lazy" title="种子审核通过 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="review-approved.html#fx-inv" width="600" height="900" loading="lazy" title="种子审核通过 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="review-rejected">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">05</span>
+        <h3>种子审核未通过</h3>
+        <span class="pill rose">朱砂 · 未通过</span>
+      </div>
+      <div class="links"><a href="review-rejected.html" target="_blank">原文件</a><a href="review-rejected.html#fx-noimg" target="_blank">图片屏蔽</a><a href="review-rejected.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">拒因单独成块，不做「不符合规范」的笼统表述；下方给出三条可执行修改建议与申诉入口。</p>
+    <div class="stats"><span>600 / 1111px</span><span>375 / 1309px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.16:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">1111px</span></figcaption><iframe src="review-rejected.html" width="600" height="1111" loading="lazy" title="种子审核未通过 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1309px</span></figcaption><iframe src="review-rejected.html" width="375" height="1309" loading="lazy" title="种子审核未通过 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="review-rejected.html#fx-noimg" width="600" height="1111" loading="lazy" title="种子审核未通过 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="review-rejected.html#fx-noimg" width="375" height="1309" loading="lazy" title="种子审核未通过 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="review-rejected.html#fx-inv" width="600" height="1111" loading="lazy" title="种子审核未通过 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="application-approved">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">06</span>
+        <h3>入站申请通过</h3>
+        <span class="pill jade">石绿 · 通过</span>
+      </div>
+      <div class="links"><a href="application-approved.html" target="_blank">原文件</a><a href="application-approved.html#fx-noimg" target="_blank">图片屏蔽</a><a href="application-approved.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">邀请码单独放大展示，附有效期、绑定邮箱与名额；过期后可重新申请。</p>
+    <div class="stats"><span>600 / 986px</span><span>375 / 1150px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 5.52:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">986px</span></figcaption><iframe src="application-approved.html" width="600" height="986" loading="lazy" title="入站申请通过 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1150px</span></figcaption><iframe src="application-approved.html" width="375" height="1150" loading="lazy" title="入站申请通过 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="application-approved.html#fx-noimg" width="600" height="986" loading="lazy" title="入站申请通过 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="application-approved.html#fx-noimg" width="375" height="1150" loading="lazy" title="入站申请通过 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="application-approved.html#fx-inv" width="600" height="986" loading="lazy" title="入站申请通过 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="application-rejected">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">07</span>
+        <h3>入站申请未通过</h3>
+        <span class="pill rose">朱砂 · 未通过</span>
+      </div>
+      <div class="links"><a href="application-rejected.html" target="_blank">原文件</a><a href="application-rejected.html#fx-noimg" target="_blank">图片屏蔽</a><a href="application-rejected.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">明确「不影响再次申请」，给出审核意见与三条下一步建议，避免把门关死。</p>
+    <div class="stats"><span>600 / 1064px</span><span>375 / 1262px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.16:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">1064px</span></figcaption><iframe src="application-rejected.html" width="600" height="1064" loading="lazy" title="入站申请未通过 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1262px</span></figcaption><iframe src="application-rejected.html" width="375" height="1262" loading="lazy" title="入站申请未通过 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="application-rejected.html#fx-noimg" width="600" height="1064" loading="lazy" title="入站申请未通过 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="application-rejected.html#fx-noimg" width="375" height="1262" loading="lazy" title="入站申请未通过 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="application-rejected.html#fx-inv" width="600" height="1064" loading="lazy" title="入站申请未通过 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="appeal-accepted">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">08</span>
+        <h3>申诉成立</h3>
+        <span class="pill jade">石绿 · 通过</span>
+      </div>
+      <div class="links"><a href="appeal-accepted.html" target="_blank">原文件</a><a href="appeal-accepted.html#fx-noimg" target="_blank">图片屏蔽</a><a href="appeal-accepted.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">结论、编号、生效时间三件套；附带「若仍无法登录」的升级路径。</p>
+    <div class="stats"><span>600 / 1007px</span><span>375 / 1129px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 5.52:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">1007px</span></figcaption><iframe src="appeal-accepted.html" width="600" height="1007" loading="lazy" title="申诉成立 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1129px</span></figcaption><iframe src="appeal-accepted.html" width="375" height="1129" loading="lazy" title="申诉成立 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="appeal-accepted.html#fx-noimg" width="600" height="1007" loading="lazy" title="申诉成立 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="appeal-accepted.html#fx-noimg" width="375" height="1129" loading="lazy" title="申诉成立 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="appeal-accepted.html#fx-inv" width="600" height="1007" loading="lazy" title="申诉成立 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="appeal-rejected">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">09</span>
+        <h3>申诉未通过</h3>
+        <span class="pill rose">朱砂 · 未通过</span>
+      </div>
+      <div class="links"><a href="appeal-rejected.html" target="_blank">原文件</a><a href="appeal-rejected.html#fx-noimg" target="_blank">图片屏蔽</a><a href="appeal-rejected.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">说明维持原处理的依据，提示再次申诉需要新证据，并写明 7 天内的复核次数上限。</p>
+    <div class="stats"><span>600 / 986px</span><span>375 / 1083px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.16:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">986px</span></figcaption><iframe src="appeal-rejected.html" width="600" height="986" loading="lazy" title="申诉未通过 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1083px</span></figcaption><iframe src="appeal-rejected.html" width="375" height="1083" loading="lazy" title="申诉未通过 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="appeal-rejected.html#fx-noimg" width="600" height="986" loading="lazy" title="申诉未通过 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="appeal-rejected.html#fx-noimg" width="375" height="1083" loading="lazy" title="申诉未通过 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="appeal-rejected.html#fx-inv" width="600" height="986" loading="lazy" title="申诉未通过 强制反色"></iframe></figure>
+    </div>
+  </div>
+  </section>
+
+  <section class="sec tier-alert" id="tier-alert">
+    <div class="sec-head">
+      <div class="idx">TIER 3</div>
+      <h2>警示<span class="band-tag">装饰带 64px</span></h2>
+      <p>账号状态与 H&amp;R。装饰带 64px，可用朱砂 / 琥珀语义线，但骨架、纸面与字号层级不变。</p>
+    </div>
+
+  <div class="mail" id="account-status">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">10</span>
+        <h3>账号状态（封禁）</h3>
+        <span class="pill rose">朱砂 · 警示</span>
+      </div>
+      <div class="links"><a href="account-status.html" target="_blank">原文件</a><a href="account-status.html#fx-noimg" target="_blank">图片屏蔽</a><a href="account-status.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">处理原因、处理类型、生效时间、申诉期限全部落在正文；明确禁止开小号规避。</p>
+    <div class="stats"><span>600 / 1016px</span><span>375 / 1162px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.16:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">1016px</span></figcaption><iframe src="account-status.html" width="600" height="1016" loading="lazy" title="账号状态（封禁） 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1162px</span></figcaption><iframe src="account-status.html" width="375" height="1162" loading="lazy" title="账号状态（封禁） 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="account-status.html#fx-noimg" width="600" height="1016" loading="lazy" title="账号状态（封禁） 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="account-status.html#fx-noimg" width="375" height="1162" loading="lazy" title="账号状态（封禁） 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="account-status.html#fx-inv" width="600" height="1016" loading="lazy" title="账号状态（封禁） 强制反色"></iframe></figure>
+    </div>
+  </div>
+
+  <div class="mail" id="hr-warning">
+    <div class="mail-head">
+      <div class="mh-left">
+        <span class="no">11</span>
+        <h3>H&amp;R 预警</h3>
+        <span class="pill amber">琥珀 · 预警</span>
+      </div>
+      <div class="links"><a href="hr-warning.html" target="_blank">原文件</a><a href="hr-warning.html#fx-noimg" target="_blank">图片屏蔽</a><a href="hr-warning.html#fx-inv" target="_blank">强制反色</a></div>
+    </div>
+    <p class="mdesc">倒计时式标题 + 还差多少小时；给出「补满时长」与「魔力值消除」两条出路。</p>
+    <div class="stats"><span>600 / 913px</span><span>375 / 1063px</span><span>横向溢出 0</span><span>图片屏蔽 visibleImgs=0</span><span>最低对比 6.41:1（反色态）</span></div>
+
+    <div class="frames">
+      <figure><figcaption><span>桌面 · 600px</span><span class="w">913px</span></figcaption><iframe src="hr-warning.html" width="600" height="913" loading="lazy" title="H&amp;R 预警 600px"></iframe></figure>
+      <figure><figcaption><span>移动 · 375px</span><span class="w">1063px</span></figcaption><iframe src="hr-warning.html" width="375" height="1063" loading="lazy" title="H&amp;R 预警 375px"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 600px</span><span class="w">noimg</span></figcaption><iframe src="hr-warning.html#fx-noimg" width="600" height="913" loading="lazy" title="H&amp;R 预警 图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>图片屏蔽 · 375px</span><span class="w">noimg</span></figcaption><iframe src="hr-warning.html#fx-noimg" width="375" height="1063" loading="lazy" title="H&amp;R 预警 移动图片屏蔽"></iframe></figure>
+      <figure><figcaption><span>强制反色 · 600px</span><span class="w">invert</span></figcaption><iframe src="hr-warning.html#fx-inv" width="600" height="913" loading="lazy" title="H&amp;R 预警 强制反色"></iframe></figure>
+    </div>
+  </div>
+  </section>
+
+  <section class="sec" id="spec">
+    <div class="sec-head">
+      <div class="idx">SPEC</div>
+      <h2>统一母版规范</h2>
+      <p>骨架从上到下只有一条路径；每封邮件只允许在「装饰带高度」与「装饰带底边线 / 印章颜色」上不同。</p>
+    </div>
+    <div class="matrix">
+      <table class="m">
+        <thead><tr><th>层</th><th>结构</th><th>颜色令牌</th><th>允许差异</th></tr></thead>
+        <tbody>
+          <tr><td>页面底</td><td>100% 宽 table，纸色 + 直纹 CSS 纹理</td><td>#f7f3e8</td><td>无</td></tr>
+          <tr><td>卡片</td><td>600px max，1px 金线，6px 圆角</td><td>#faf6ec / #d3a13f</td><td>无</td></tr>
+          <tr><td>装饰带</td><td>零文字、零图片，竹简竖纹 + 金晕，<code>bgcolor</code> 兜底</td><td>#0a0f0d / #15211a / #101914</td><td>高度 96 / 56 / 64；底边线语义色</td></tr>
+          <tr><td>品牌行</td><td>34px logo + 站名 + 分类小字</td><td>#232d27 / #55605a</td><td>仅分类小字文案</td></tr>
+          <tr><td>印章标签</td><td>34×34 描边印 + 12px 字距标签</td><td>纸底 + 语义描边；标签 #6b4a1a</td><td>印章字与语义色</td></tr>
+          <tr><td>标题 / 正文</td><td>26px 700 / 15px 1.75 行高</td><td>#232d27 / #3a453e</td><td>无（文案除外）</td></tr>
+          <tr><td>信息块</td><td>纸色块 + 金线，标签 12px / 值 14px</td><td>#f1ecdd / #55605a / #232d27</td><td>行数与字段</td></tr>
+          <tr><td>结论块</td><td>仅结果类邮件出现，墨字不用语义色</td><td>#f2edde / #232d27 / #3a453e</td><td>有无该块</td></tr>
+          <tr><td>主 CTA</td><td>金底玄字，1px 深金描边</td><td>#d3a13f / #241a05 / #8a6a1c</td><td>无</td></tr>
+          <tr><td>安全兜底段</td><td>页脚前最后一块，标题 13px + 正文 13px</td><td>#f2edde / #232d27 / #3a453e</td><td>文案</td></tr>
+          <tr><td>页脚</td><td>必要通知说明 + 站名 / 站规 / 联系管理组</td><td>#55605a / #1f6e59</td><td>仅首句</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="matrix">
+      <table class="m">
+        <thead><tr><th>语义</th><th>含义</th><th>装饰带底边线（玄墨上）</th><th>印章 / 结论标签（纸面上）</th><th>用在哪些邮件</th></tr></thead>
+        <tbody>
+          <tr><td>金</td><td>无结论，纯品牌</td><td><span class="pill gold">#d3a13f</span></td><td><span class="pill rose">#a82e1c 朱砂印</span></td><td>邀请、找回密码</td></tr>
+          <tr><td>石青</td><td>待办 / 需补充</td><td><span class="pill azure">#5cb3c7</span></td><td><span class="pill azure">#23606f</span></td><td>邮箱激活</td></tr>
+          <tr><td>石绿</td><td>通过 / 成立</td><td><span class="pill jade">#3fae8f</span></td><td><span class="pill jade">#1f6e59</span></td><td>种子通过、申请通过、申诉成立</td></tr>
+          <tr><td>朱砂</td><td>未通过 / 驳回 / 封禁</td><td><span class="pill rose">#d0442a</span></td><td><span class="pill rose">#a82e1c</span></td><td>种子拒绝、申请拒绝、申诉驳回、账号封禁</td></tr>
+          <tr><td>琥珀</td><td>预警 / 待处理</td><td><span class="pill amber">#b07f1e</span></td><td><span class="pill amber">#6b5527</span></td><td>H&amp;R 预警</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec" id="measured">
+    <div class="sec-head">
+      <div class="idx">MEASURED</div>
+      <h2>逐封实测（最低对比度）</h2>
+      <p>每格取该状态下「标题 / 正文 / 信息块标签 / 结论标签 / 印章字 / 按钮文字 / 脚注」七个采样点里的最低值。判定线：正文 4.5:1，标题 3:1（实测均高于 4.5）。</p>
+    </div>
+    <div class="matrix">
+      <table class="m">
+        <thead><tr><th>邮件</th><th>浅色</th><th>暗色</th><th>强制反色</th><th>剥 background*</th><th>再剥 bgcolor</th><th>结论</th></tr></thead>
+        <tbody>
+          <tr><td>invite.html</td><td class="ok">6.16</td><td class="ok">6.16</td><td class="ok">4.86</td><td class="ok">6.16</td><td class="ok">6.83</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>password-reset.html</td><td class="ok">6.07</td><td class="ok">6.07</td><td class="ok">4.86</td><td class="ok">6.07</td><td class="ok">6.55</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>email-verify.html</td><td class="ok">6.37</td><td class="ok">6.37</td><td class="ok">4.86</td><td class="ok">5.98</td><td class="ok">7.06</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>review-approved.html</td><td class="ok">5.52</td><td class="ok">5.52</td><td class="ok">4.86</td><td class="ok">5.18</td><td class="ok">6.12</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>review-rejected.html</td><td class="ok">6.16</td><td class="ok">6.16</td><td class="ok">4.86</td><td class="ok">5.79</td><td class="ok">6.83</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>application-approved.html</td><td class="ok">5.52</td><td class="ok">5.52</td><td class="ok">4.86</td><td class="ok">5.52</td><td class="ok">6.12</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>application-rejected.html</td><td class="ok">6.16</td><td class="ok">6.16</td><td class="ok">4.86</td><td class="ok">5.79</td><td class="ok">6.83</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>appeal-accepted.html</td><td class="ok">5.52</td><td class="ok">5.52</td><td class="ok">4.86</td><td class="ok">5.18</td><td class="ok">6.12</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>appeal-rejected.html</td><td class="ok">6.16</td><td class="ok">6.16</td><td class="ok">4.86</td><td class="ok">5.79</td><td class="ok">6.83</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>account-status.html</td><td class="ok">6.16</td><td class="ok">6.16</td><td class="ok">4.86</td><td class="ok">5.79</td><td class="ok">6.83</td><td><span class="pill jade">全部达标</span></td></tr>
+          <tr><td>hr-warning.html</td><td class="ok">6.41</td><td class="ok">6.41</td><td class="ok">4.86</td><td class="ok">6.02</td><td class="ok">7.11</td><td><span class="pill jade">全部达标</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <strong>说明：</strong>本页是设计样图与验收记录，不是生产模板，也未接入发送链路；未发送任何真实邮件。
+    深色 / 反色 / 剥离背景等状态均由 Playwright + 真实 Chrome 渲染后取值，数据见 <code>_shots/verify-emails.json</code>；
+    真机邮件客户端（Outlook / Gmail / QQ / 网易）与 SPF / DKIM / DMARC 投递仍未实测，属于推断项。
+  </div>
+</footer>
+</body>
+</html>

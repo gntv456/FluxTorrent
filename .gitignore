@@ -103,3 +103,7 @@ _jwt*
 
 # 升级记录（scripts/update.sh 写入：当前线上镜像 tag）
 docker/.flux-version
+
+# 邮件联调捕获产物（.eml 报文与渲染截图，可再生）
+design/emails/_smtp_capture/
+design/emails/_shots/

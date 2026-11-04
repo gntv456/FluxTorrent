@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>激活你的 FluxTorrent 账号</title>
+<style>
+  /* 邮件正文只用内联样式；本段仅供 design 预览切换图片屏蔽态。
+     统一母版：玄墨装饰带 + 宣纸正文区。暗色模式下钉住纸色、不换肤——
+     避免「深色页面 + 客户端剥背景」组合出现浅字白底，四种回退态因此共用同一套实测值。 */
+  @media (prefers-color-scheme: dark) {
+    body { background-color: #f7f3e8 !important; }
+    .fx-bg { background-color: #f7f3e8 !important; background-image: repeating-linear-gradient(90deg,rgba(211,161,63,.09) 0 1px,rgba(211,161,63,0) 1px 7px) !important; }
+    .fx-card { background-color: #faf6ec !important; }
+  }
+  #fx-noimg:target ~ .fx-bg img { display: none !important; }
+  body:has(#fx-inv:target) { filter: invert(1) hue-rotate(180deg); }
+  @media (max-width: 480px) {
+    .fx-outer { padding: 16px 8px !important; }
+    .fx-pad { padding-left: 20px !important; padding-right: 20px !important; }
+    .fx-h1 { font-size: 22px !important; line-height: 1.35 !important; }
+    .fx-band { background-size: auto, auto, auto !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;width:100%;background-color:#f7f3e8;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<div id="fx-noimg"></div><div id="fx-inv"></div>
+
+<!-- 收件箱摘要：与正文不重复 -->
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f7f3e8;opacity:0;">48 小时内点击激活，之后才能登录 FluxTorrent。</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fx-bg fx-outer" bgcolor="#f7f3e8" style="background-color:#f7f3e8;background-image:repeating-linear-gradient(90deg,rgba(211,161,63,.09) 0 1px,rgba(211,161,63,0) 1px 7px);background-size:auto;">
+<tr><td align="center" style="padding:32px 12px;">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+
+    <!-- 纸面卡片：所有邮件同一个 600px 宽度、同一圈金线、同一个圆角 -->
+    <tr><td class="fx-card" bgcolor="#faf6ec" style="background-color:#faf6ec;border:1px solid #d3a13f;border-radius:6px;">
+
+      <!-- 装饰带：纯 CSS 纹理（竹简竖纹 + 金晕），零文字、零图片。
+           bgcolor 兜底 #0a0f0d，底边 1px 语义线：石绿=通过 / 朱砂=未通过 / 琥珀=警示 / 石青=待办 -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td class="fx-band" height="96" aria-hidden="true" bgcolor="#0a0f0d" style="height:96px;background-color:#0a0f0d;background-image:repeating-linear-gradient(90deg,rgba(211,161,63,.13) 0 1px,rgba(211,161,63,0) 1px 18px),radial-gradient(200px 130px at 78% 4%,rgba(211,161,63,.18) 0%,rgba(211,161,63,0) 72%),linear-gradient(180deg,#15211a 0%,#0a0f0d 58%,#101914 100%);border-radius:5px 5px 0 0;border-bottom:1px solid #5cb3c7;font-size:0;line-height:0;">&nbsp;</td>
+      </tr></table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td class="fx-pad" style="padding:30px 32px 32px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif;">
+
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+            <td width="40" valign="middle" style="width:40px;">
+              <img src="../../apps/web/public/brand/logo-mark.png" width="34" height="34" alt="FluxTorrent" style="display:block;width:34px;height:34px;border:0;border-radius:8px;">
+            </td>
+            <td valign="middle" style="padding-left:10px;">
+              <div style="font-size:16px;font-weight:700;line-height:1.3;color:#232d27;">FluxTorrent</div>
+              <div style="font-size:12px;line-height:1.4;color:#55605a;">注册验证</div>
+            </td>
+          </tr></table>
+
+          <!-- 印章式结论标签：描边而非实底，纸面作底，剥离任何背景后仍是深色字 -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 0 0;"><tr>
+            <td width="34" height="34" align="center" valign="middle" aria-hidden="true" bgcolor="#f7f3e8" style="width:34px;height:34px;background-color:#f7f3e8;border:1px solid #23606f;border-radius:3px;font-size:15px;font-weight:700;line-height:32px;color:#23606f;">验</td>
+            <td style="padding-left:10px;font-size:12px;font-weight:700;color:#6b4a1a;letter-spacing:0.14em;">注 册 验 证</td>
+          </tr></table>
+
+          <h1 class="fx-h1" style="margin:14px 0 8px 0;font-size:26px;line-height:1.35;font-weight:700;color:#232d27;">最后一步：验证你的邮箱</h1>
+
+          <p style="margin:0;font-size:15px;line-height:1.75;color:#3a453e;">
+            一步之遥。你收到这封邮件，是因为有人用这个邮箱注册了 FluxTorrent 账号。点击下方按钮激活邮箱，<strong style="color:#232d27;">激活后才能登录</strong>。
+          </p>
+
+          <!-- 关键信息块：纸色卡片，不看图片也能读到 -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1ecdd" style="margin:22px 0 0 0;background-color:#f1ecdd;border:1px solid #d3a13f;border-radius:6px;">
+            <tr><td style="padding:16px 18px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="76" valign="top" style="padding:3px 0;font-size:12px;color:#55605a;">账号</td>
+                  <td style="padding:3px 0;font-size:14px;color:#232d27;font-weight:700;">阿澈</td>
+                </tr>
+                <tr>
+                  <td width="76" valign="top" style="padding:3px 0;font-size:12px;color:#55605a;">有效期</td>
+                  <td style="padding:3px 0;font-size:14px;color:#3a453e;">48 小时</td>
+                </tr>
+                <tr>
+                  <td width="76" valign="top" style="padding:3px 0;font-size:12px;color:#55605a;">当前状态</td>
+                  <td style="padding:3px 0;font-size:14px;color:#3a453e;"><span class="fx-chip" style="display:inline-block;background-color:#faf6ec;border:1px solid #23606f;color:#23606f;font-size:12px;font-weight:700;line-height:1;padding:5px 8px;border-radius:3px;">待激活</span></td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <!-- 主 CTA：金底玄字，剥离背景色后深字仍落在纸面上 -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0 0;">
+            <tr><td class="fx-btn" bgcolor="#d3a13f" align="center" style="background-color:#d3a13f;border:1px solid #8a6a1c;border-radius:4px;padding:14px 30px;mso-padding-alt:14px 30px;">
+              <a class="fx-btn-text" href="https://fluxtorrent.ptang.top/email-verify?token=4c1e9a7b3d5f8c2e6a0b9d7f4c3e1a8b5d2f0c9e7a4b6d3f1c8e5a2b9d7f4c3e" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif;font-size:15px;font-weight:700;line-height:1;color:#241a05;text-decoration:none;display:inline-block;">激活邮箱</a>
+            </td></tr>
+          </table>
+
+          <p style="margin:20px 0 0 0;font-size:12px;line-height:1.8;color:#55605a;">
+            按钮点不开？复制下面的链接到浏览器打开：<br>
+            <a href="https://fluxtorrent.ptang.top/email-verify?token=4c1e9a7b3d5f8c2e6a0b9d7f4c3e1a8b5d2f0c9e7a4b6d3f1c8e5a2b9d7f4c3e" style="color:#1f6e59;text-decoration:underline;word-wrap:break-word;word-break:break-all;">https://fluxtorrent.ptang.top/email-verify?token=4c1e9a7b3d5f8c2e6a0b9d7f4c3e1a8b5d2f0c9e7a4b6d3f1c8e5a2b9d7f4c3e</a>
+          </p>
+
+          <!-- 金线分隔：结构靠实线，不靠底图 -->
+          <div style="margin:24px 0;border-top:1px solid #d3a13f;font-size:0;line-height:0;">&nbsp;</div>
+
+          <!-- 安全兜底段：所有邮件同一位置（页脚前最后一块） -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f2edde" style="background-color:#f2edde;border:1px solid #d3a13f;border-radius:6px;">
+            <tr><td style="padding:14px 16px;">
+              <div style="font-size:13px;font-weight:700;color:#232d27;line-height:1.5;">不是你注册的？</div>
+              <p style="margin:6px 0 0 0;font-size:13px;line-height:1.7;color:#3a453e;">忽略这封邮件即可，账号会保持未激活状态，不会生效。请不要把这封邮件或验证链接转发给他人。</p>
+              <p style="margin:8px 0 0 0;font-size:13px;line-height:1.7;color:#3a453e;">链接已经过期？打开 <a href="https://fluxtorrent.ptang.top/email-verify" style="color:#1f6e59;text-decoration:underline;">邮箱验证页</a> 可以重新发送一封新的验证邮件。</p>
+            </td></tr>
+          </table>
+
+        </td>
+      </tr></table>
+    </td></tr>
+
+    <!-- 页脚：同一位置、同一结构 -->
+    <tr><td style="padding:18px 8px 0 8px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif;">
+      <p style="margin:0;font-size:12px;line-height:1.9;color:#55605a;">
+        这是与你的注册流程相关的必要通知，不提供退订。<br>
+        <a href="https://fluxtorrent.ptang.top" style="color:#1f6e59;text-decoration:underline;">fluxtorrent.ptang.top</a>
+        ·
+        <a href="https://fluxtorrent.ptang.top/rules" style="color:#1f6e59;text-decoration:underline;">站规</a>
+        ·
+        <a href="https://fluxtorrent.ptang.top/contactstaff" style="color:#1f6e59;text-decoration:underline;">联系管理组</a>
+      </p>
+    </td></tr>
+
+  </table>
+</td></tr>
+</table>
+</body>
+</html>
