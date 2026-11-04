@@ -89,9 +89,11 @@ const FIELD_SPEC: Record<string, FieldSpec[]> = {
   vip: [{ key: "days", num: true }],
   app_vip: [{ key: "days", num: true }],
   ad_free: [{ key: "days", num: true }],
+  // 0460：券保质期天数（缺省 30；核销后邀请码 TTL 另走站点设置 invite_admin_ttl_days）
+  temp_invite: [{ key: "days", num: true }],
   voucher_free: [{ key: "kind", options: ["free"] }],
   voucher_neutral: [{ key: "kind", options: ["neutral"] }],
-  // invite / temp_invite / rename_card / makeup_card / rainbow_* 无额外字段
+  // invite / rename_card / makeup_card / rainbow_* 无额外字段
 };
 
 export const kindFields = (

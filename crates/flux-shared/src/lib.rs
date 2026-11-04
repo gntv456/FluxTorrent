@@ -285,9 +285,15 @@ pub async fn apply_item_effect(
         // VIP：days 显式 ::int——sqlx 把 i64 绑成 bigint，PG 的
         // make_interval(days =>) 只收 int4，无隐式转换。
         // 不 cast 就是「购买 500、扣款成功效果丢失」（商城审计 P0-1）。
+        // 缺省 0460 起收紧：贵宾待遇 7 天（0280 价 80000 是月卡价定错档，
+        // 「没写多少天」的投诉即此档；app_vip 档名自带 30 天口径）。
+        // 站长在道具管理改 config.days 即覆盖。
         "vip" | "app_vip" => {
-            let days =
-                config.get("days").and_then(|v| v.as_i64()).unwrap_or(30);
+            let default_days = if kind == "vip" { 7 } else { 30 };
+            let days = config
+                .get("days")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(default_days);
             sqlx::query(
                 "UPDATE users SET vip_until = \
                     GREATEST(COALESCE(vip_until, now()), now()) \
@@ -400,14 +406,38 @@ pub async fn apply_item_effect(
             }
         }
         "rename_card" | "temp_invite" => {
-            sqlx::query(
-                "INSERT INTO user_vouchers (user_id, kind, source) \
-                 VALUES ($1, $2, 'shop')",
-            )
-            .bind(user_id)
-            .bind(kind)
-            .execute(db)
-            .await?;
+            // temp_invite 券有效期（0460）：config.days 站长可配，缺省 30——
+            // 与 user_vouchers 表默认 interval '30 days' 同口径；此前写死
+            // 表默认、道具管理也没有该字段，站长改不了、买家也看不到。
+            // 改的是券本身的保质期；核销后邀请码的 TTL 另走
+            // invite_admin_ttl_days（voucher_use.rs）。其余券种（改名卡等）
+            // 维持表默认。
+            if kind == "temp_invite" {
+                let d = config
+                    .get("days")
+                    .and_then(|v| v.as_i64())
+                    .map(|v| v.clamp(1, 365))
+                    .unwrap_or(30);
+                sqlx::query(&format!(
+                    "INSERT INTO user_vouchers \
+                     (user_id, kind, source, expires_at) \
+                     VALUES ($1, $2, 'shop', \
+                     now() + make_interval(days => {d}::int))"
+                ))
+                .bind(user_id)
+                .bind(kind)
+                .execute(db)
+                .await?;
+            } else {
+                sqlx::query(
+                    "INSERT INTO user_vouchers (user_id, kind, source) \
+                     VALUES ($1, $2, 'shop')",
+                )
+                .bind(user_id)
+                .bind(kind)
+                .execute(db)
+                .await?;
+            }
         }
         // 抽卡券（0418，二轮深测 B2）：抽卡券此前只有签到 daily_free 一条
         // 获取路径（每天 1 张、攒 25 天才够一抽），商店无 SKU——gacha 对
@@ -596,5 +626,36 @@ mod tests {
     fn two_passkeys_differ() {
         // 极小概率撞车，但 crypto RNG 下不该恒等。
         assert_ne!(new_passkey(), new_passkey());
+    }
+
+    /// 0460 缺省口径锁：贵宾待遇没配 days 时是 7 天（app_vip 维持 30）。
+    /// 读法抽成纯函数前先用同一段解析式钉住，防止哪天「顺手统一成 30」
+    /// 又把 vip 的缺省改回去。
+    #[test]
+    fn vip_default_days_is_7_not_30() {
+        let read = |cfg: &Value, kind: &str| {
+            let default_days = if kind == "vip" { 7 } else { 30 };
+            cfg.get("days")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(default_days)
+        };
+        assert_eq!(read(&json!({}), "vip"), 7);
+        assert_eq!(read(&json!({}), "app_vip"), 30);
+        assert_eq!(read(&json!({"days": 90}), "vip"), 90);
+    }
+
+    /// temp_invite 券保质期 clamp：管理员在 config.days 里写离谱值不许直达 SQL。
+    #[test]
+    fn temp_invite_days_clamped_to_1_365() {
+        let d = |v: i64| {
+            serde_json::json!({ "days": v })
+                .get("days")
+                .and_then(|x| x.as_i64())
+                .map(|x| x.clamp(1, 365))
+                .unwrap_or(30)
+        };
+        assert_eq!(d(0), 1);
+        assert_eq!(d(99999), 365);
+        assert_eq!(d(14), 14);
     }
 }

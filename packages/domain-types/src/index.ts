@@ -397,6 +397,8 @@ export interface ShopItem {
     frame_id?: number;
     effect?: string;
     slot?: string;
+    /** 0460：时效类 SKU 的天数（vip/app_vip/ad_free 生效时长、temp_invite 券保质期） */
+    days?: number;
     [k: string]: unknown;
   };
   /** 0207b：装扮类商品当前用户是否已拥有（匿名恒 false） */

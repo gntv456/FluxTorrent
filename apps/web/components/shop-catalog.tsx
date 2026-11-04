@@ -73,7 +73,9 @@ const KIND_ICON: Record<string, string> = {
   charity: "🤝",
   gift_spark: "🎁",
 };
-
+/** 时效类 SKU（0460）：卡片展示 config.days 天数徽标——「贵宾待遇没写
+ *  多少天」的投诉即这组；天数由站长在道具管理 config.days 配 */
+const DAYS_KINDS = new Set(["vip", "app_vip", "ad_free", "temp_invite"]);
 const GROUP_ICON: Record<Group, string> = {
   upload: "📦",
   voucher: "🎟️",
@@ -83,7 +85,20 @@ const GROUP_ICON: Record<Group, string> = {
   other: "🧩",
 };
 
-/** 从商品名解析容量（端点不返回 config，故只能用名字；解析失败只是不显示单价） */
+/** 时效类 SKU（0460）的天数徽标；天数由站长在道具管理 config.days 配 */
+function daysBadgeOf(
+  it: ShopItem,
+  t: { daysBadge: string },
+  fmt: (s: string, v: Record<string, string>) => string,
+  num: (n: number) => string,
+): string | null {
+  const d = it.config?.days;
+  return d == null || !DAYS_KINDS.has(it.kind)
+    ? null
+    : fmt(t.daysBadge, { n: num(d) });
+}
+
+/** 从商品名解析容量（解析失败只是不显示单价） */
 function gbOf(name: string): number | null {
   const m = /(\d+(?:\.\d+)?)\s*GB/i.exec(name);
   if (!m) return null;
@@ -122,16 +137,13 @@ export function ShopCatalog({
     const m = new Map<Group, ShopItem[]>();
     for (const it of items) {
       const g = KIND_GROUP[it.kind] ?? "other";
-      const arr = m.get(g) ?? [];
-      arr.push(it);
-      m.set(g, arr);
+      (m.get(g) ?? m.set(g, []).get(g)!).push(it);
     }
     return GROUP_ORDER.filter((g) => m.has(g)).map((g) => ({
       g,
       list: m.get(g) as ShopItem[],
     }));
   }, [items]);
-
   // 组内单位价最低的一件 → 「单位最划算」角标
   const bestId = useMemo(() => {
     const up = items.filter((i) => i.kind === "upload_credit");
@@ -144,9 +156,8 @@ export function ShopCatalog({
     }
     return best?.id ?? null;
   }, [items]);
-
   const groupLabel = (g: Group) => {
-    const names: Record<Group, string> = {
+    const names = {
       upload: t.grpUpload,
       voucher: t.grpVoucher,
       right: t.grpRight,
@@ -156,7 +167,6 @@ export function ShopCatalog({
     };
     return names[g];
   };
-
   const shown = grouped.filter((x) => !grp || x.g === grp);
 
   /** 首屏视觉锚点（决定三）：分类图标 + 已有头像框样张，全部是站内现有
@@ -171,11 +181,12 @@ export function ShopCatalog({
       )].slice(0, 3),
     [items],
   );
-
   const card = (it: ShopItem) => {
     const g = KIND_GROUP[it.kind] ?? "other";
     const gb = it.kind === "upload_credit" ? gbOf(it.name) : null;
     const unit = gb ? Math.round(it.price / gb) : null;
+    // 时效徽标（0460）：贵宾待遇/APP VIP/去广告/临时邀请显示「N 天」
+    const days = daysBadgeOf(it, t, fmt, num);
     const owned = ownedIds.has(it.id);
     const short = bal !== null && bal < it.price;
     const soldOut = it.stock_left === 0;
@@ -186,9 +197,7 @@ export function ShopCatalog({
           <span className="gicon" data-group={g}>
             {it.kind === "animated_avatar" ? (
               <AnimatedAvatarPreview effect={it.config?.effect} />
-            ) : (
-              (KIND_ICON[it.kind] ?? GROUP_ICON[g])
-            )}
+            ) : (KIND_ICON[it.kind] ?? GROUP_ICON[g])}
           </span>
           <div className="txt">
             <h3>{it.name}</h3>
@@ -215,6 +224,7 @@ export function ShopCatalog({
             <span>{currency}</span>
           </div>
           {unit !== null && <span className="unit">{`${num(unit)} /GB`}</span>}
+          {days !== null && <span className="unit">{days}</span>}
           {it.stock_left != null && it.stock_left > 0 && (
             <span className="unit is-short">
               {t.stockLeft.replace("{n}", num(it.stock_left))}
@@ -222,8 +232,7 @@ export function ShopCatalog({
           )}
           <div className="acts">
             {owned ? (
-              <a
-                href="/dressup"
+              <a href="/dressup"
                 className="btn btn-sm btn-ghost whitespace-nowrap"
               >
                 {t.ownedGoWear}
@@ -258,23 +267,14 @@ export function ShopCatalog({
     <div className="flex flex-col gap-3">
       <div className="pgtools">
         <div className="tide-tabs shop-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            className="tide-tab"
-            aria-selected={grp === null}
-            onClick={() => setGrp(null)}
+          <button type="button" role="tab" className="tide-tab"
+            aria-selected={grp === null} onClick={() => setGrp(null)}
           >
             {t.all} {items.length}
           </button>
           {grouped.map((x) => (
-            <button
-              key={x.g}
-              type="button"
-              role="tab"
-              className="tide-tab"
-              aria-selected={grp === x.g}
-              onClick={() => setGrp(x.g)}
+            <button key={x.g} type="button" role="tab" className="tide-tab"
+              aria-selected={grp === x.g} onClick={() => setGrp(x.g)}
             >
               {groupLabel(x.g)} {x.list.length}
             </button>
