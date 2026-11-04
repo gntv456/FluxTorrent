@@ -218,16 +218,11 @@ async fn user_set_status(
                 )
                 .await;
                 if let Some(to) = email {
-                    let cfg = crate::mailer::smtp_config(&state.repo.db).await;
-                    let mail = mail.clone();
-                    actix_web::rt::spawn(async move {
-                        if let Some(cfg) = cfg {
-                            let _ = crate::gaps_http::send_generic_mail(
-                                &cfg.url, &cfg.from, &to, &mail,
-                            )
-                            .await;
-                        }
-                    });
+                    // 0461：配置与 Reply-To 先取好，随任务带走
+                    let db = &state.repo.db;
+                    let cfg = crate::mailer::smtp_config(db).await;
+                    let rt = crate::mailer::send::reply_to(db).await;
+                    crate::mailer::send::spawn_send(cfg, to, mail.clone(), rt);
                 }
             } else {
                 crate::mailer::notify(

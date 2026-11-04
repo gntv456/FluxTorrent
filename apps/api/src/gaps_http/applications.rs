@@ -243,11 +243,12 @@ pub(super) async fn apply_decide(
             )
         };
         let to = email.clone();
+        // 0461：Reply-To 随任务带走
+        let rt = crate::mailer::send::reply_to(&state.repo.db).await;
         actix_web::rt::spawn(async move {
-            let _ = crate::gaps_http::send_generic_mail(
-                &cfg.url, &cfg.from, &to, &mail,
-            )
-            .await;
+            let _ =
+                crate::mailer::send::send_rt(&cfg, &to, &mail, rt.as_deref())
+                    .await;
         });
     }
     state

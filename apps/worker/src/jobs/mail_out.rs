@@ -109,9 +109,29 @@ pub(crate) async fn send_user_mail(
     let Some((url, from)) = smtp_config(db).await else {
         return;
     };
-    if let Err(e) = send_via_smtp(&url, &from, to, mail).await {
+    let rt = contact_reply_to(db).await;
+    if let Err(e) = send_via_smtp(&url, &from, to, mail, rt.as_deref()).await {
         tracing::warn!(?e, to, subject = %mail.subject, "worker 邮件发送失败");
     }
+}
+
+/// 0461：Reply-To（contact_email 空/非法 = 不设；与 api send::reply_to
+/// 同口径，worker 侧本地一份避免跨 crate 依赖 actix 栈）。
+async fn contact_reply_to(db: &PgPool) -> Option<String> {
+    let v = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM site_settings WHERE name = 'contact_email'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()?
+    .trim()
+    .to_string();
+    if v.is_empty() || v.parse::<lettre::Address>().is_err() {
+        tracing::warn!(value = %v, "contact_email 非法，不设 Reply-To");
+        return None;
+    }
+    Some(v)
 }
 
 fn display_name(site: &str) -> Option<String> {
@@ -129,6 +149,7 @@ async fn send_via_smtp(
     from: &str,
     to: &str,
     mail: &flux_shared::mailtpl::Mail,
+    reply_to: Option<&str>,
 ) -> anyhow::Result<()> {
     use lettre::message::{Mailbox, MultiPart};
     use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
@@ -138,31 +159,32 @@ async fn send_via_smtp(
         .host_str()
         .ok_or_else(|| anyhow::anyhow!("SMTP_URL 缺少主机"))?
         .to_string();
-    let port =
-        url.port()
-            .unwrap_or(if url.scheme() == "smtps" { 465 } else { 25 });
-    let builder = if url.scheme() == "smtps" {
+    let smtps = url.scheme() == "smtps";
+    let port = url.port().unwrap_or(if smtps { 465 } else { 25 });
+    let builder = if smtps {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&host)?
     } else {
         AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&host)
     }
     .port(port);
+    use lettre::transport::smtp::authentication::Credentials;
     let builder = if !url.username().is_empty() {
-        builder.credentials(
-            lettre::transport::smtp::authentication::Credentials::new(
-                decode_userinfo(url.username()),
-                decode_userinfo(url.password().unwrap_or_default()),
-            ),
-        )
+        builder.credentials(Credentials::new(
+            decode_userinfo(url.username()),
+            decode_userinfo(url.password().unwrap_or_default()),
+        ))
     } else {
         builder
     };
     let mailer = builder.build();
     let addr: lettre::Address = from.parse()?;
-    let b = Message::builder()
+    let mut b = Message::builder()
         .from(Mailbox::new(display_name(&mail.site), addr))
         .to(to.parse()?)
         .subject(mail.subject.clone());
+    if let Some(rt) = reply_to {
+        b = b.reply_to(rt.parse()?);
+    }
     // 历史 outbox 行只有纯文本；新行才有 HTML part。
     let msg = if mail.html.is_empty() {
         b.body(mail.text.clone())?
@@ -182,36 +204,56 @@ async fn send_via_smtp(
 pub(crate) async fn mail_outbox_drain(db: &PgPool) -> anyhow::Result<u64> {
     // 认领一批（FOR UPDATE SKIP LOCKED 防双 worker 重发；行内 attempts
     // 即重试计数，退避 = 60s * 2^attempts，由 WHERE 谓词表达）
-    let rows: Vec<(i64, String, String, String)> = sqlx::query_as(
-        "SELECT id, to_email, subject, body FROM mail_outbox \
+    let rows: Vec<(i64, String, String, String, Option<String>)> =
+        sqlx::query_as(
+            "SELECT id, to_email, subject, body, html_part FROM mail_outbox \
          WHERE sent_at IS NULL AND attempts < 5 \
            AND (last_attempt_at IS NULL OR last_attempt_at < \
                 now() - make_interval(secs => 60 * power(2, attempts)::int8)) \
          ORDER BY id LIMIT 20 FOR UPDATE SKIP LOCKED",
-    )
-    .bind(0)
-    .fetch_all(db)
-    .await?;
+        )
+        .fetch_all(db)
+        .await?;
     if rows.is_empty() {
         return Ok(0);
     }
     let mut sent = 0u64;
     let (site, _base) = site_scope(db).await;
-    for (id, to, subject, body) in rows {
+    for (id, to, subject, body, html_part) in rows {
         let Some((url, from)) = smtp_config(db).await else {
             // SMTP 未配置：不算失败也不死信（配置问题，配置好了下一轮自然发）
             tracing::info!("mail_outbox: SMTP 未配置，待命");
             return Ok(sent);
         };
-        // 0404 之后的行是 JSON envelope（text+html）；更早的行是裸纯文本。
-        let (text, html) = flux_shared::mailtpl::open_envelope(&body);
+        // 三态（0461）：html_part 有=新行；空但 body 带 FLUXMAIL2 前缀
+        // =过渡行（解包回写拆列）；无前缀=纯文本老行。
+        let (text, html) = match &html_part {
+            Some(h) if !h.is_empty() => (body, h.clone()),
+            _ => {
+                let (t, h) = flux_shared::mailtpl::open_envelope(&body);
+                if !h.is_empty() {
+                    let _ = sqlx::query(
+                        "UPDATE mail_outbox \
+                         SET body = $2, html_part = $3 \
+                         WHERE id = $1 AND html_part IS NULL",
+                    )
+                    .bind(id)
+                    .bind(&t)
+                    .bind(&h)
+                    .execute(db)
+                    .await;
+                }
+                (t, h)
+            }
+        };
         let mail = flux_shared::mailtpl::Mail {
             subject,
             text,
             html,
             site: site.clone(),
         };
-        let r = send_via_smtp(&url, &from, &to, &mail).await;
+        let rt = contact_reply_to(db).await;
+        let r = send_via_smtp(&url, &from, &to, &mail, rt.as_deref()).await;
         let subject = mail.subject.clone();
         match r {
             Ok(()) => {

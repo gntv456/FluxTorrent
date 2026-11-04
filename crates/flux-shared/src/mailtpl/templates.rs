@@ -137,7 +137,14 @@ People here seed together and keep rare files alive.",
         ),
         row(c.t("邀请码", "邀請碼", "Invite code"), code, true),
     ];
-    let link = c.url(&format!("/register?invite={}", code));
+    // 0461 匿名收件人 i18n：注册落地链接带上语言标记——注册页读到
+    // ?lang= 即写 locale cookie，收件人落地后看到的界面与这封信同语言。
+    // 邮件语言本身由邀请人在发送口指定（缺省=邀请人自己的偏好）。
+    let link = c.url(&format!(
+        "/register?invite={}&lang={}",
+        code,
+        c.lang.url_code()
+    ));
     if let Some(u) = &link {
         m.cta = Some(Cta {
             label: c.t(

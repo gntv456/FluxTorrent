@@ -42,6 +42,24 @@ impl Lang {
             Lang::En => "en",
         }
     }
+
+    /// URL 参数形态（注册页 ?lang= 的取值；与前端 LOCALE_COOKIE 同集）。
+    pub fn url_code(self) -> &'static str {
+        match self {
+            Lang::ZhCn => "zh-CN",
+            Lang::ZhTw => "zh-TW",
+            Lang::En => "en",
+        }
+    }
+
+    /// 解析 URL/请求传入的语言标记（与 from_db 同宽容度：未知值 zh-CN）。
+    pub fn from_url(v: Option<&str>) -> Self {
+        match v.unwrap_or("").trim().to_ascii_lowercase().as_str() {
+            "en" => Lang::En,
+            "zh-tw" | "cht" => Lang::ZhTw,
+            _ => Lang::ZhCn,
+        }
+    }
 }
 
 /// 层级档位：层级靠留白（尺寸）表达，不靠换色。

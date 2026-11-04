@@ -21,7 +21,7 @@ pub async fn send_generic_mail(
     mail: &flux_shared::mailtpl::Mail,
 ) -> anyhow::Result<()> {
     let mailer = build_smtp(smtp_url)?;
-    crate::mailer::send::deliver(&mailer, from, to, mail).await
+    crate::mailer::send::deliver_rt(&mailer, from, to, mail, None).await
 }
 
 /// 由 SMTP_URL 构建投递器（smtps://user:pass@host:port 或 smtp://host:port）。

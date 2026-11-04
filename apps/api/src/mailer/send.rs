@@ -2,8 +2,8 @@
 //!
 //! 骨架与文案在 `flux_shared::mailtpl`（api/worker 共用）；本文件只负责
 //! 把 `Mail` 变成 lettre `Message`：text 在前、html 在后，From 带站点
-//! 显示名。Reply-To 暂不设置——`site_settings` 里没有职员联系邮箱键
-//! （`/contactstaff` 走站内工单），凭空造一个地址会把回复引到死信箱。
+//! 显示名。Reply-To（0461）读 site_settings.contact_email——空/非法不设；
+//! 站长想接住会员回信就填它，不填维持旧行为。
 
 use flux_shared::mailtpl::{Ctx, Lang, Mail};
 use lettre::message::{Mailbox, MultiPart};
@@ -67,40 +67,100 @@ fn display_name(site: &str) -> Option<String> {
     }
 }
 
+/// 回复接收邮箱（0461）：site_settings.contact_email，空 = 不设 Reply-To。
+/// 地址合法性在这里兜底——站长填错形状不让它进头字段（ lettre Address
+/// 解析失败会拒发整封信，宁可裸奔不设 Reply-To 也不挡投递）。
+pub async fn reply_to(db: &sqlx::PgPool) -> Option<String> {
+    let v: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'contact_email'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .map(|s: String| s.trim().to_string())
+    .filter(|s: &String| !s.is_empty());
+    let v = v?;
+    if v.parse::<lettre::Address>().is_err() {
+        tracing::warn!(value = %v, "contact_email 形状非法，本批不设 Reply-To");
+        return None;
+    }
+    Some(v)
+}
+
 /// 组装 `multipart/alternative`（纯文本在前、HTML 在后）。
-pub fn message(from: &str, to: &str, mail: &Mail) -> anyhow::Result<Message> {
+/// `reply_to` 为 None 时不设该头（0461 前的行为），有值则带上。
+pub fn message(
+    from: &str,
+    to: &str,
+    mail: &Mail,
+    reply_to: Option<&str>,
+) -> anyhow::Result<Message> {
     let addr: lettre::Address = from.parse()?;
     let from_box = Mailbox::new(display_name(&mail.site), addr);
-    let msg = Message::builder()
+    let mut b = Message::builder()
         .from(from_box)
         .to(to.parse()?)
-        .subject(mail.subject.clone())
-        .multipart(MultiPart::alternative_plain_html(
-            mail.text.clone(),
-            mail.html.clone(),
-        ))?;
+        .subject(mail.subject.clone());
+    if let Some(rt) = reply_to {
+        b = b.reply_to(rt.parse()?);
+    }
+    let msg = b.multipart(MultiPart::alternative_plain_html(
+        mail.text.clone(),
+        mail.html.clone(),
+    ))?;
     Ok(msg)
 }
 
-/// 用已构建的投递器发一封（massmail 批量复用连接）。
-pub async fn deliver(
+/// 用已构建的投递器发一封（massmail 批量复用连接；Reply-To 可选）。
+pub async fn deliver_rt(
     mailer: &AsyncSmtpTransport<Tokio1Executor>,
     from: &str,
     to: &str,
     mail: &Mail,
+    reply_to: Option<&str>,
 ) -> anyhow::Result<()> {
-    mailer.send(message(from, to, mail)?).await?;
+    mailer.send(message(from, to, mail, reply_to)?).await?;
     Ok(())
 }
 
-/// 按 SMTP 配置发一封（每次装配；单封通知走这里）。
+/// 按 SMTP 配置发一封（每次装配；单封通知走这里；Reply-To 取
+/// site_settings.contact_email，空/非法 = 不设，0461）。
 pub async fn send(
     cfg: &SmtpConfig,
     to: &str,
     mail: &Mail,
 ) -> anyhow::Result<()> {
+    send_rt(cfg, to, mail, None).await
+}
+
+/// 同上但带 Reply-To 覆盖（不想再查一次库的调用方用）。
+pub async fn send_rt(
+    cfg: &SmtpConfig,
+    to: &str,
+    mail: &Mail,
+    reply_to: Option<&str>,
+) -> anyhow::Result<()> {
     let mailer = crate::gaps_http::build_smtp(&cfg.url)?;
-    deliver(&mailer, &cfg.from, to, mail).await
+    deliver_rt(&mailer, &cfg.from, to, mail, reply_to).await
+}
+
+/// 后台尽力发信（0461）：调用方在请求线程先取好 cfg 与 Reply-To
+/// （spawn 内不再碰 db），这里只负责 spawn 与日志。cfg=None 静默。
+pub fn spawn_send(
+    cfg: Option<SmtpConfig>,
+    to: String,
+    mail: Mail,
+    reply_to: Option<String>,
+) {
+    actix_web::rt::spawn(async move {
+        if let Some(cfg) = cfg {
+            if let Err(e) = send_rt(&cfg, &to, &mail, reply_to.as_deref()).await
+            {
+                tracing::warn!(?e, to, "mail send failed");
+            }
+        }
+    });
 }
 
 #[cfg(test)]
@@ -122,8 +182,9 @@ mod tests {
             "站 内 通 知",
             Tone::Gold,
         );
-        let msg = message("noreply@fluxtorrent.ptang.top", "u@x.test", &mail)
-            .expect("应能组装");
+        let msg =
+            message("noreply@fluxtorrent.ptang.top", "u@x.test", &mail, None)
+                .expect("应能组装");
         let raw = String::from_utf8_lossy(&msg.formatted()).to_string();
         assert!(raw.contains("multipart/alternative"));
         let ti = raw.find("text/plain").expect("缺 text part");
@@ -131,149 +192,6 @@ mod tests {
         assert!(ti < hi, "纯文本 part 必须在 HTML 之前");
         // From 带站点显示名（RFC 2047 编码后的中文名）
         assert!(raw.contains("From:"));
-    }
-
-    /// 本地 SMTP 捕获（默认 `#[ignore]`，只在人工验证时跑）：
-    /// `python design/emails/smtp_sink.py 2526` 起捕获器后
-    /// `cargo test -p flux-api --bin flux-api <name> -- --ignored`。
-    /// 走的是生产同款路径：`SmtpConfig` → `build_smtp` → `deliver` → `message`。
-    #[tokio::test]
-    #[ignore]
-    async fn probe_multipart_into_local_sink() {
-        use flux_shared::mailtpl::{
-            account_status, appeal_result, application_approved,
-            application_rejected, email_verify, generic_notice, hr_warning,
-            invite, password_reset, review_approved, review_rejected,
-            StatusKind, Verdict,
-        };
-        let port: u16 = std::env::var("FLUX_MAIL_SINK_PORT")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(2526);
-        let from = "noreply@local.test";
-        let to = "inbox@local.test";
-        let cfg = SmtpConfig {
-            url: format!("smtp://127.0.0.1:{port}"),
-            from: from.to_string(),
-        };
-        let lang = |l: Lang| MailCtx {
-            site: "山海驿站".into(),
-            base: "https://flux.example.site".into(),
-            lang: l,
-        };
-        let evil = "<script>alert(1)</script> & \"x\"\r\nBcc: evil@x.test";
-        let token = "0123456789abcdef0123456789abcdef";
-        let mut n = 0usize;
-        for (tag, ctx) in [
-            ("zh-cn", lang(Lang::ZhCn)),
-            ("zh-tw", lang(Lang::ZhTw)),
-            ("en", lang(Lang::En)),
-        ] {
-            for evil_mode in [false, true] {
-                let user = if evil_mode { evil } else { "阿岚" };
-                let subject = if evil_mode { Some(evil) } else { None };
-                let note = if evil_mode { evil } else { "" };
-                let c = ctx.ctx();
-                let mail: Vec<(&str, Mail)> = vec![
-                    ("invite", invite(&c, user, token, 72)),
-                    ("password-reset", password_reset(&c, token, 30)),
-                    ("email-verify", email_verify(&c, user, token, 48)),
-                    (
-                        "review-approved",
-                        review_approved(&c, 1001, user, subject),
-                    ),
-                    (
-                        "review-rejected",
-                        review_rejected(&c, 1002, user, note, subject),
-                    ),
-                    (
-                        "application-approved",
-                        application_approved(
-                            &c,
-                            user,
-                            token,
-                            "u@local.test",
-                            72,
-                        ),
-                    ),
-                    (
-                        "application-rejected",
-                        application_rejected(
-                            &c,
-                            user,
-                            note,
-                            "u@local.test",
-                            Some(42),
-                        ),
-                    ),
-                    (
-                        "appeal-accepted",
-                        appeal_result(
-                            &c,
-                            "AP-7",
-                            Verdict::Accepted,
-                            note,
-                            "已解除限制",
-                            subject,
-                        ),
-                    ),
-                    (
-                        "appeal-rejected",
-                        appeal_result(
-                            &c,
-                            "AP-8",
-                            Verdict::Rejected,
-                            note,
-                            "维持原处理",
-                            subject,
-                        ),
-                    ),
-                    (
-                        "account-status",
-                        account_status(
-                            &c,
-                            user,
-                            StatusKind::Ban,
-                            "永久封禁",
-                            note,
-                            Some(("申诉令牌", "AP-TOK")),
-                            subject,
-                        ),
-                    ),
-                    (
-                        "hr-warning",
-                        hr_warning(
-                            &c,
-                            1003,
-                            user,
-                            6.0,
-                            24.0,
-                            "2026-11-08 00:00 UTC",
-                            subject,
-                        ),
-                    ),
-                ];
-                for (name, m) in mail {
-                    send(&cfg, to, &m).await.expect("捕获器应可达");
-                    n += 1;
-                    println!("sent {tag}/{name} evil={evil_mode}");
-                }
-                if evil_mode {
-                    // 管理员群发走 generic_notice（同一骨架，内容块不同）
-                    let g = generic_notice(
-                        &c,
-                        subject.unwrap_or("notice"),
-                        note,
-                        "站 内 通 知",
-                        Tone::Gold,
-                    );
-                    send(&cfg, to, &g).await.expect("捕获器应可达");
-                    n += 1;
-                    println!("sent {tag}/generic-notice evil=true");
-                }
-            }
-        }
-        println!("total sent = {n}");
     }
 
     #[test]

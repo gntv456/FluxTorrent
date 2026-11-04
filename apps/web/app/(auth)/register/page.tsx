@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { tokenSecondsLeft } from "@/lib/session-ttl";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
-import { fmt } from "@/i18n/config";
+import { fmt, LOCALE_COOKIE } from "@/i18n/config";
 import { AuthCanvas } from "@/components/auth-canvas";
 import { mountCaptchaWidget } from "@/lib/captcha-widget";
 import {
@@ -83,9 +83,8 @@ export default function RegisterPage() {
   // 把开放注册的访客挡在浏览器校验上；null = 不标必填，交后端裁决。
   const [openMode, setOpenMode] = useState<boolean | null>(null);
   // P-684 开放轮窗口（剩余额度/预约预告）
-  const [regWindow, setRegWindow] = useState<ModeInfo["reg_window"]>(
-    undefined,
-  );
+  const [regWindow, setRegWindow] =
+    useState<ModeInfo["reg_window"]>(undefined);
   // email_verify：注册成功后不硬登（guard_login 必然拦下），改落激活页
   const [verifyMode, setVerifyMode] = useState(false);
   // 0227：验证码驱动（none=自研算术题，其他=第三方组件 token）
@@ -120,28 +119,30 @@ export default function RegisterPage() {
   useEffect(() => {
     // ?invite=xxx 预填（邮件邀请链接落地，0204）
     const q = new URLSearchParams(window.location.search);
-    const inv = q.get("invite");
+    const inv = q.get("invite") ?? "";
     if (inv) setInviteCode(inv);
+    // ?lang=（0461）：邀请函同语言落地——写 locale cookie 后整页刷新
+    const lang = q.get("lang");
+    if (["zh-CN", "zh-TW", "en"].includes(lang ?? "")) {
+      document.cookie = `${LOCALE_COOKIE}=${lang}; path=/; samesite=lax`;
+      location.reload();
+      return;
+    }
     refreshCaptcha();
     fetch("/api/v1/register-fields")
       .then((r) => r.json())
-      .then((b: { data?: typeof regFields }) => {
-        setRegFields(b?.data ?? []);
-        setFieldsFailed(false);
-      })
-      .catch(() => {
-        setRegFields([]);
-        setFieldsFailed(true);
-      });
+      .then((b: { data?: typeof regFields }) =>
+        { setRegFields(b?.data ?? []); setFieldsFailed(false); })
+      .catch(() => { setRegFields([]); setFieldsFailed(true); });
     // 注册模式与后端 registration_mode 同步（open 下邀请码非必填）
     api
       .get<ModeInfo>("/api/v1/register-mode")
       .then((r) => {
-        setOpenMode(r.mode === "open" || r.mode === "email_verify");
+        const open = r.mode === "open" || r.mode === "email_verify";
+        setOpenMode(open);
         setVerifyMode(r.mode === "email_verify");
         setRegWindow(r.reg_window);
-        const prov = r.captcha_provider ?? "none";
-        setDriver(prov);
+        setDriver(r.captcha_provider ?? "none");
         setSiteKey(r.captcha_site_key ?? "");
         setQuizOn(r.reg_quiz_enabled === true);
         setQuizHard(r.reg_quiz_pass_required !== false);

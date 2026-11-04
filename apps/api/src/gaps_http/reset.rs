@@ -93,12 +93,14 @@ pub async fn password_forgot(
         let ctx =
             crate::mailer::send::mail_ctx(&state.repo.db, Some(uid)).await;
         let mail = flux_shared::mailtpl::password_reset(&ctx.ctx(), &token, 30);
+        // 0461：Reply-To 随任务带走
+        let rt = crate::mailer::send::reply_to(&state.repo.db).await;
         actix_web::rt::spawn(async move {
-            match crate::gaps_http::send_generic_mail(
-                &cfg.url,
-                &cfg.from,
+            match crate::mailer::send::send_rt(
+                &cfg,
                 &email_addr,
                 &mail,
+                rt.as_deref(),
             )
             .await
             {

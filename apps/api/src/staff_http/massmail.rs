@@ -84,6 +84,9 @@ pub async fn massmail_send(
                         Some(auth.id),
                     )
                     .await;
+                    // 0461：群发同批带上 Reply-To（contact_email 空=不设）
+                    let reply_to =
+                        crate::mailer::send::reply_to(&state.repo.db).await;
                     let rows: Vec<(i64, String, Option<String>)> =
                         sqlx::query_as(
                             "SELECT id, email, site_language FROM users \
@@ -107,8 +110,12 @@ pub async fn massmail_send(
                             "站 内 通 知",
                             flux_shared::mailtpl::Tone::Gold,
                         );
-                        match crate::mailer::send::deliver(
-                            &mailer, &cfg.from, to, &mail,
+                        match crate::mailer::send::deliver_rt(
+                            &mailer,
+                            &cfg.from,
+                            to,
+                            &mail,
+                            reply_to.as_deref(),
                         )
                         .await
                         {

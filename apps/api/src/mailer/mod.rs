@@ -14,6 +14,9 @@ use probe::smtp_reachable;
 
 /// 统一邮件投递（multipart/alternative）+ 渲染上下文（见 send.rs）。
 pub(crate) mod send;
+/// 本地 SMTP 捕获探针（#[ignore]，人工验证用）。
+#[cfg(test)]
+mod send_probe;
 
 /// 邮件里「点开就到站内页面」的站点基址（P-100 收口）。
 ///
@@ -190,6 +193,8 @@ pub async fn mail_rate_allow(
 /// 邮件入 outbox（0404 §17-2）：自动审种拒信等「丢了用户就不知情」的
 /// 邮件走这里——api 只入队，worker（job:mail_outbox）退避重试。
 /// dedupe_key 幂等：同键重复入队被吞（重放安全）。
+/// 0461 起拆列：text 进 body、html 进 html_part（envelope 前缀只是
+/// 851aedd2→0461 过渡期的存量形态，worker 读侧兼容三态）。
 pub async fn enqueue_mail_outbox(
     db: &sqlx::PgPool,
     user_id: i64,
@@ -197,16 +202,16 @@ pub async fn enqueue_mail_outbox(
     mail: &flux_shared::mailtpl::Mail,
     dedupe_key: &str,
 ) {
-    let body = flux_shared::mailtpl::envelope(&mail.text, &mail.html);
     let r = sqlx::query(
         "INSERT INTO mail_outbox (user_id, to_email, subject, body, \
-           dedupe_key) VALUES ($1, $2, $3, $4, $5) \
+           html_part, dedupe_key) VALUES ($1, $2, $3, $4, $5, $6) \
          ON CONFLICT (dedupe_key) DO NOTHING",
     )
     .bind(user_id)
     .bind(to_email)
     .bind(&mail.subject)
-    .bind(&body)
+    .bind(&mail.text)
+    .bind(&mail.html)
     .bind(dedupe_key)
     .execute(db)
     .await;
@@ -233,13 +238,16 @@ pub async fn notify_keyed(
     }
     if let Some(to) = email {
         let cfg = smtp_config(db).await;
+        // 0461：Reply-To 一次查好随任务带走（spawn 内不再碰 db）
+        let rt = send::reply_to(db).await;
         let mail = mail.clone();
         actix_web::rt::spawn(async move {
             let Some(cfg) = cfg else {
                 tracing::info!(to, subject = %mail.subject, "SMTP 未配置，邮件降级为日志");
                 return;
             };
-            if let Err(e) = send::send(&cfg, &to, &mail).await {
+            if let Err(e) = send::send_rt(&cfg, &to, &mail, rt.as_deref()).await
+            {
                 tracing::error!(?e, to, "mail send failed");
             }
         });
@@ -259,7 +267,8 @@ pub async fn send_mail(
     send::send(&cfg, to, mail).await
 }
 
-/// notify 等已有 db 句柄的调用方用（一次查询装配，站点设定优先）
+/// notify 等已有 db 句柄的调用方用（一次查询装配，站点设定优先；
+/// Reply-To 同批读取，0461）
 pub async fn send_mail_with(
     db: &PgPool,
     to: &str,
@@ -269,7 +278,8 @@ pub async fn send_mail_with(
         tracing::info!(to, subject = %mail.subject, "SMTP 未配置，邮件降级为日志");
         return Ok(());
     };
-    send::send(&cfg, to, mail).await
+    let rt = send::reply_to(db).await;
+    send::send_rt(&cfg, to, mail, rt.as_deref()).await
 }
 
 /// 无 db 句柄场景（后台线程无池）：直接读 env 兜底。

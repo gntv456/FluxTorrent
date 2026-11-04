@@ -13,6 +13,10 @@ use crate::state::AppState;
 pub(super) struct EmailInviteReq {
     pub invite_id: i64,
     pub email: String,
+    /// 收件人语言（0461 匿名 i18n）：zh-CN / zh-TW / en，缺省按邀请人
+    /// 偏好（旧行为）。邀请人最清楚朋友读哪种语言。
+    #[serde(default)]
+    pub lang: Option<String>,
 }
 
 /// SMTP 未配置时返回明确错误（开发态无邮件出口），前端提示改为复制邀请码。
@@ -114,13 +118,23 @@ pub(super) async fn email_invite_handler(
     let hours_left = (expires - chrono::Utc::now()).num_hours().max(1);
     // 统一母版：站点名/基址/语言一次取齐（邀请收件人尚非用户，
     // 语言按邀请人偏好，缺省 zh-CN）。
-    let ctx =
+    let mut ctx =
         crate::mailer::send::mail_ctx(&state.repo.db, Some(auth.id)).await;
+    if let Some(l) = body.lang.as_deref() {
+        ctx.lang = flux_shared::mailtpl::Lang::from_url(Some(l));
+    }
     let mail =
         flux_shared::mailtpl::invite(&ctx.ctx(), &inviter, &code, hours_left);
-    crate::gaps_http::send_generic_mail(&smtp, &from, &email, &mail)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    // 0461：Reply-To（contact_email 空=不设）
+    let rt = crate::mailer::send::reply_to(&state.repo.db).await;
+    crate::mailer::send::send_rt(
+        &crate::mailer::SmtpConfig { url: smtp, from },
+        &email,
+        &mail,
+        rt.as_deref(),
+    )
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query("UPDATE invites SET email = $2, emailed = true WHERE id = $1")
         .bind(body.invite_id)
         .bind(&email)
