@@ -12,6 +12,9 @@ use sqlx::PgPool;
 mod probe;
 use probe::smtp_reachable;
 
+/// 邀请函 HTML 卡片模板（2026-11-04 个性化邮件）；invite_http 消费。
+pub(crate) mod invite_letter;
+
 /// 邮件里「点开就到站内页面」的站点基址（P-100 收口）。
 ///
 /// 站内页面链接（找回密码 `/reset?token=`、邮箱激活 `/email-verify?token=`、

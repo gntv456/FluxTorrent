@@ -121,8 +121,33 @@ pub(super) async fn email_invite_handler(
             .await
             .unwrap_or_else(|_| "某人".into());
     let hours_left = (expires - chrono::Utc::now()).num_hours().max(1);
+    // 站点品牌三键（2026-11-04 邀请函个性化）：一次查齐给模板，
+    // logo/简介可空——模板对空值有占位回落（首字徽标/默认副标题）。
+    let brand: Vec<(String, String)> = sqlx::query_as(
+        "SELECT name, value FROM site_settings \
+         WHERE name IN ('site_logo', 'metadescription')",
+    )
+    .fetch_all(&state.repo.db)
+    .await
+    .unwrap_or_default();
+    let get_brand = |k: &str| {
+        brand
+            .iter()
+            .find(|(n, _)| n == k)
+            .map(|(_, v)| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+    };
+    let letter = crate::mailer::invite_letter::InviteLetter {
+        site: site.clone(),
+        logo: get_brand("site_logo"),
+        tagline: get_brand("metadescription"),
+        inviter: inviter.clone(),
+        link: link.clone(),
+        code: code.clone(),
+        hours_left,
+    };
     let mailer = crate::gaps_http::build_smtp(&smtp)?;
-    let letter = lettre::Message::builder()
+    let email_msg = lettre::Message::builder()
         .from(from.parse().map_err(|_| {
             DomainError::Validation("SMTP_FROM 配置无效".into())
         })?)
@@ -130,20 +155,11 @@ pub(super) async fn email_invite_handler(
             .parse()
             .map_err(|_| DomainError::Validation("邮箱地址无效".into()))?)
         .subject(format!("[{site}] {inviter} 邀请你加入"))
-        .body(format!(
-            "你的好友 {inviter} 邀请你加入 {site}！
-
-打开以下链接注册（邀请码 {hours_left} 小时内有效，仅可使用一次）：
-{link}
-
-邀请码：{code}
-
-如不认识对方请忽略本邮件。"
-        ))
+        .multipart(crate::mailer::invite_letter::invite_multipart(&letter))
         .map_err(|e| DomainError::Internal(e.into()))?;
     use lettre::AsyncTransport as _;
     mailer
-        .send(letter)
+        .send(email_msg)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query("UPDATE invites SET email = $2, emailed = true WHERE id = $1")
