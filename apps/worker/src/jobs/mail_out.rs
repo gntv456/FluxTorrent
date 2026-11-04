@@ -47,29 +47,90 @@ async fn smtp_config(db: &PgPool) -> Option<(String, String)> {
     Some((format!("{scheme}://{auth}{host}:{port}"), from))
 }
 
-/// 给单用户发邮件（尽力而为）：email 为 None / SMTP 未配置 / 投递失败都只记日志。
+/// 站点显示名与绝对基址（与 api `mailer::site_base` 同一组 env）。
+pub(crate) async fn site_scope(db: &PgPool) -> (String, String) {
+    let site: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM site_settings WHERE name = 'site_name'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten();
+    let base = ["PUBLIC_SITE_URL", "PUBLIC_WEB_URL", "PUBLIC_API_URL"]
+        .iter()
+        .find_map(|k| std::env::var(k).ok())
+        .map(|v| v.trim().trim_end_matches('/').to_string())
+        .filter(|v| !v.is_empty())
+        .unwrap_or_default();
+    (
+        site.map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "FluxTorrent".into()),
+        base,
+    )
+}
+
+/// percent 解码（与 api `decode_userinfo` 同口径）：装配 URL 时把账号里的
+/// `@` 编成 `%40`，url crate 读回不解码，不还原就是 535 Login fail。
+fn decode_userinfo(s: &str) -> String {
+    fn hex(b: u8) -> Option<u8> {
+        match b {
+            b'0'..=b'9' => Some(b - b'0'),
+            b'a'..=b'f' => Some(b - b'a' + 10),
+            b'A'..=b'F' => Some(b - b'A' + 10),
+            _ => None,
+        }
+    }
+    let src = s.as_bytes();
+    let mut out = Vec::with_capacity(src.len());
+    let mut i = 0;
+    while i < src.len() {
+        if src[i] == b'%' && i + 2 < src.len() {
+            if let (Some(h), Some(l)) = (hex(src[i + 1]), hex(src[i + 2])) {
+                out.push(h * 16 + l);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(src[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// 给单用户发一封（errand 尽力而为）：email 为 None / SMTP 未配置 /
+/// 投递失败都只记日志。
 pub(crate) async fn send_user_mail(
     db: &PgPool,
     email: Option<&str>,
-    subject: &str,
-    body: &str,
+    mail: &flux_shared::mailtpl::Mail,
 ) {
     let Some(to) = email else { return };
     let Some((url, from)) = smtp_config(db).await else {
         return;
     };
-    if let Err(e) = send_via_smtp(&url, &from, to, subject, body).await {
-        tracing::warn!(?e, to, subject, "worker 邮件发送失败");
+    if let Err(e) = send_via_smtp(&url, &from, to, mail).await {
+        tracing::warn!(?e, to, subject = %mail.subject, "worker 邮件发送失败");
     }
+}
+
+fn display_name(site: &str) -> Option<String> {
+    let clean: String = site
+        .chars()
+        .filter(|c| !c.is_control() && !matches!(c, '<' | '>'))
+        .take(64)
+        .collect();
+    let clean = clean.trim();
+    (!clean.is_empty()).then(|| clean.to_string())
 }
 
 async fn send_via_smtp(
     smtp_url: &str,
     from: &str,
     to: &str,
-    subject: &str,
-    body: &str,
+    mail: &flux_shared::mailtpl::Mail,
 ) -> anyhow::Result<()> {
+    use lettre::message::{Mailbox, MultiPart};
     use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 
     let url = url::Url::parse(smtp_url)?;
@@ -89,20 +150,29 @@ async fn send_via_smtp(
     let builder = if !url.username().is_empty() {
         builder.credentials(
             lettre::transport::smtp::authentication::Credentials::new(
-                url.username().to_string(),
-                url.password().unwrap_or_default().to_string(),
+                decode_userinfo(url.username()),
+                decode_userinfo(url.password().unwrap_or_default()),
             ),
         )
     } else {
         builder
     };
     let mailer = builder.build();
-    let email = Message::builder()
-        .from(from.parse()?)
+    let addr: lettre::Address = from.parse()?;
+    let b = Message::builder()
+        .from(Mailbox::new(display_name(&mail.site), addr))
         .to(to.parse()?)
-        .subject(subject.to_string())
-        .body(body.to_string())?;
-    mailer.send(email).await?;
+        .subject(mail.subject.clone());
+    // 历史 outbox 行只有纯文本；新行才有 HTML part。
+    let msg = if mail.html.is_empty() {
+        b.body(mail.text.clone())?
+    } else {
+        b.multipart(MultiPart::alternative_plain_html(
+            mail.text.clone(),
+            mail.html.clone(),
+        ))?
+    };
+    mailer.send(msg).await?;
     Ok(())
 }
 
@@ -126,13 +196,23 @@ pub(crate) async fn mail_outbox_drain(db: &PgPool) -> anyhow::Result<u64> {
         return Ok(0);
     }
     let mut sent = 0u64;
+    let (site, _base) = site_scope(db).await;
     for (id, to, subject, body) in rows {
         let Some((url, from)) = smtp_config(db).await else {
             // SMTP 未配置：不算失败也不死信（配置问题，配置好了下一轮自然发）
             tracing::info!("mail_outbox: SMTP 未配置，待命");
             return Ok(sent);
         };
-        let r = send_via_smtp(&url, &from, &to, &subject, &body).await;
+        // 0404 之后的行是 JSON envelope（text+html）；更早的行是裸纯文本。
+        let (text, html) = flux_shared::mailtpl::open_envelope(&body);
+        let mail = flux_shared::mailtpl::Mail {
+            subject,
+            text,
+            html,
+            site: site.clone(),
+        };
+        let r = send_via_smtp(&url, &from, &to, &mail).await;
+        let subject = mail.subject.clone();
         match r {
             Ok(()) => {
                 let _ = sqlx::query(

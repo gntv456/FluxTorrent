@@ -144,13 +144,21 @@ pub async fn settle_notify(
                 .await
                 .ok()
                 .flatten();
+        let ctx =
+            crate::mailer::send::mail_ctx(&state.repo.db, Some(user_id)).await;
+        let mail = flux_shared::mailtpl::generic_notice(
+            &ctx.ctx(),
+            "捐赠回馈已发放",
+            &format!("感谢支持！本次捐赠触发回馈档位 {summary}，已自动入账。"),
+            "赞 助 感 谢",
+            flux_shared::mailtpl::Tone::Pass,
+        );
         crate::mailer::notify_kind(
             &state.repo.db,
             user_id,
             "donate_tier",
             email,
-            "捐赠回馈已发放",
-            &format!("感谢支持！本次捐赠触发回馈档位 {summary}，已自动入账。"),
+            &mail,
         )
         .await;
         crate::ops_webhook::broadcast_ops_spawn(

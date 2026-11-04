@@ -202,18 +202,11 @@ pub async fn appeal_handle(
         return Err(DomainError::Validation("申诉不存在或已处理".into()));
     }
     if user_id > 0 {
-        let site: String = sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'site_name'), 'FluxTorrent')",
-        )
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or_else(|_| "FluxTorrent".into());
         let verdict = if body.accept {
             "已受理"
         } else {
             "未通过"
         };
-        let subject = format!("[{site}] 你的申诉{verdict}");
         // 回执必须说清真做了什么事：只回「已受理」而记录还在违规，
         // 会员会以为限制已解除，下一次下载才撞墙。
         let tail = if unbanned {
@@ -231,24 +224,23 @@ pub async fn appeal_handle(
         } else {
             ""
         };
-        let body_text = format!(
-            "你的申诉（#{id}）处理结果：{verdict}。\n处理说明：{note}\n{tail}",
-            id = body.appeal_id,
-            note = if body.note.trim().is_empty() {
-                "（无）"
+        let ctx =
+            crate::mailer::send::mail_ctx(&state.repo.db, Some(user_id)).await;
+        let subject = format!("[{}] 你的申诉{verdict}", ctx.site);
+        let mail = flux_shared::mailtpl::appeal_result(
+            &ctx.ctx(),
+            &format!("#{}", body.appeal_id),
+            if body.accept {
+                flux_shared::mailtpl::Verdict::Accepted
             } else {
-                body.note.trim()
+                flux_shared::mailtpl::Verdict::Rejected
             },
+            body.note.trim(),
+            if tail.is_empty() { "—" } else { tail },
+            Some(&subject),
         );
         // 被拒者可登录看 PM；仍被封者至少有邮件（未配 SMTP 则只留 PM）
-        crate::mailer::notify(
-            &state.repo.db,
-            user_id,
-            email,
-            &subject,
-            &body_text,
-        )
-        .await;
+        crate::mailer::notify(&state.repo.db, user_id, email, &mail).await;
     }
     state
         .repo

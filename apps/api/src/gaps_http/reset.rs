@@ -10,7 +10,6 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 use super::login_aux::hash_token;
-use super::mail::send_reset_mail;
 
 #[post("/auth/password/forgot")]
 pub async fn password_forgot(
@@ -49,7 +48,6 @@ pub async fn password_forgot(
         return Err(DomainError::MailUnconfigured);
     }
     // 开发态缺 SMTP 时的日志闭环沿用旧行为（token 只进日志，不入库外流）
-    let base = base.unwrap_or_default();
 
     let uid: Option<i64> =
         sqlx::query_scalar("SELECT id FROM users WHERE lower(email) = $1")
@@ -90,25 +88,17 @@ pub async fn password_forgot(
                 "message": "如邮箱存在，重置链接已发送（30 分钟有效）"
             })));
         };
-        // 真实投递（lettre）：基址走 mailer::site_base() 的统一口径
-        // （P-100：站内页面链接不能用 API 域名，那样点开后必然 404）。
-        let link = format!("{base}/reset?token={token}");
+        // 统一母版渲染（语言按 users.site_language；基址走 site_base()）
         let email_addr = body.email.trim().to_lowercase();
-        let site = sqlx::query_scalar::<_, String>(
-            "SELECT value FROM site_settings WHERE name = 'site_name'",
-        )
-        .fetch_optional(&state.repo.db)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| "FluxTorrent".into());
+        let ctx =
+            crate::mailer::send::mail_ctx(&state.repo.db, Some(uid)).await;
+        let mail = flux_shared::mailtpl::password_reset(&ctx.ctx(), &token, 30);
         actix_web::rt::spawn(async move {
-            match send_reset_mail(
+            match crate::gaps_http::send_generic_mail(
                 &cfg.url,
                 &cfg.from,
                 &email_addr,
-                &site,
-                &link,
+                &mail,
             )
             .await
             {

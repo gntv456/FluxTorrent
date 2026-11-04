@@ -520,6 +520,9 @@ fn pool_month(t: chrono::DateTime<chrono::Utc>) -> String {
     format!("{:04}-{:02}", t.year(), t.month())
 }
 
+/// 统一邮件母版：api 与 worker 共用，避免两处各写一份骨架而漂移。
+pub mod mailtpl;
+
 /// 自动审种·规则内核（0400）：api（裁决出口/回放）与 worker（取件评估）
 /// 共用的纯函数评估器。裁决同尺纪律见模块头。
 pub mod auto_review;

@@ -105,15 +105,6 @@ pub(super) async fn email_invite_handler(
                 .into(),
         ));
     }
-    let link = format!("{base}/register?invite={code}");
-    let site: String = sqlx::query_scalar(
-        "SELECT value FROM site_settings WHERE name = 'site_name'",
-    )
-    .fetch_optional(&state.repo.db)
-    .await
-    .ok()
-    .flatten()
-    .unwrap_or_else(|| "FluxTorrent".into());
     let inviter: String =
         sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
             .bind(auth.id)
@@ -121,45 +112,13 @@ pub(super) async fn email_invite_handler(
             .await
             .unwrap_or_else(|_| "某人".into());
     let hours_left = (expires - chrono::Utc::now()).num_hours().max(1);
-    // 站点品牌三键（2026-11-04 邀请函个性化）：一次查齐给模板，
-    // logo/简介可空——模板对空值有占位回落（首字徽标/默认副标题）。
-    let brand: Vec<(String, String)> = sqlx::query_as(
-        "SELECT name, value FROM site_settings \
-         WHERE name IN ('site_logo', 'metadescription')",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .unwrap_or_default();
-    let get_brand = |k: &str| {
-        brand
-            .iter()
-            .find(|(n, _)| n == k)
-            .map(|(_, v)| v.trim().to_string())
-            .filter(|v| !v.is_empty())
-    };
-    let letter = crate::mailer::invite_letter::InviteLetter {
-        site: site.clone(),
-        logo: get_brand("site_logo"),
-        tagline: get_brand("metadescription"),
-        inviter: inviter.clone(),
-        link: link.clone(),
-        code: code.clone(),
-        hours_left,
-    };
-    let mailer = crate::gaps_http::build_smtp(&smtp)?;
-    let email_msg = lettre::Message::builder()
-        .from(from.parse().map_err(|_| {
-            DomainError::Validation("SMTP_FROM 配置无效".into())
-        })?)
-        .to(email
-            .parse()
-            .map_err(|_| DomainError::Validation("邮箱地址无效".into()))?)
-        .subject(format!("[{site}] {inviter} 邀请你加入"))
-        .multipart(crate::mailer::invite_letter::invite_multipart(&letter))
-        .map_err(|e| DomainError::Internal(e.into()))?;
-    use lettre::AsyncTransport as _;
-    mailer
-        .send(email_msg)
+    // 统一母版：站点名/基址/语言一次取齐（邀请收件人尚非用户，
+    // 语言按邀请人偏好，缺省 zh-CN）。
+    let ctx =
+        crate::mailer::send::mail_ctx(&state.repo.db, Some(auth.id)).await;
+    let mail =
+        flux_shared::mailtpl::invite(&ctx.ctx(), &inviter, &code, hours_left);
+    crate::gaps_http::send_generic_mail(&smtp, &from, &email, &mail)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     sqlx::query("UPDATE invites SET email = $2, emailed = true WHERE id = $1")

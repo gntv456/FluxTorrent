@@ -185,45 +185,45 @@ async fn user_set_status(
                 .ok()
                 .flatten();
         if let Some((username, email)) = target {
-            let site: String = sqlx::query_scalar(
-                "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'site_name'), 'FluxTorrent')",
+            let reason_txt = body.reason.trim().to_string();
+            // 统一母版（警示档）：封禁=朱砂、禁言/警告=琥珀、恢复=石绿。
+            let ctx = crate::mailer::send::mail_ctx(
+                &state.repo.db,
+                Some(body.user_id),
             )
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or_else(|_| "FluxTorrent".into());
-            let reason_txt = if body.reason.trim().is_empty() {
-                "（未填写）".to_string()
-            } else {
-                body.reason.trim().to_string()
+            .await;
+            let kind = match body.status {
+                2 => flux_shared::mailtpl::StatusKind::Ban,
+                1 => flux_shared::mailtpl::StatusKind::Mute,
+                _ => flux_shared::mailtpl::StatusKind::Restore,
             };
-            let subject = format!("[{site}] 账号状态变更：{label}");
-            let body_text = match body.status {
-                2 => format!(
-                    "你好 {username}，你的账号已被{label}。\n理由：{reason_txt}\n如认为有误，可通过站点的申诉通道提交申诉。",
-                ),
-                1 => format!(
-                    "你好 {username}，你的账号已被{label}（发言受限，其余功能正常）。\n理由：{reason_txt}",
-                ),
-                _ => format!(
-                    "你好 {username}，你的账号状态已恢复正常。此前的限制已解除。",
-                ),
-            };
+            let subject = format!("[{}] 账号状态变更：{label}", ctx.site);
+            let mail = flux_shared::mailtpl::account_status(
+                &ctx.ctx(),
+                &username,
+                kind,
+                &label,
+                &reason_txt,
+                None,
+                Some(&subject),
+            );
             // 封禁：PM 也写（解封后可见历史）+ 邮件必发；其余：notify 双通道
             if body.status == 2 {
+                let db = &state.repo.db;
                 let _ = crate::mailer::site_message(
-                    &state.repo.db,
+                    db,
                     body.user_id,
-                    &subject,
-                    &body_text,
+                    &mail.subject,
+                    &mail.text,
                 )
                 .await;
                 if let Some(to) = email {
                     let cfg = crate::mailer::smtp_config(&state.repo.db).await;
-                    let (s, b) = (subject.clone(), body_text.clone());
+                    let mail = mail.clone();
                     actix_web::rt::spawn(async move {
                         if let Some(cfg) = cfg {
                             let _ = crate::gaps_http::send_generic_mail(
-                                &cfg.url, &cfg.from, &to, &s, &b,
+                                &cfg.url, &cfg.from, &to, &mail,
                             )
                             .await;
                         }
@@ -234,8 +234,7 @@ async fn user_set_status(
                     &state.repo.db,
                     body.user_id,
                     email,
-                    &subject,
-                    &body_text,
+                    &mail,
                 )
                 .await;
             }

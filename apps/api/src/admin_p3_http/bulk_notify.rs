@@ -30,15 +30,17 @@ pub(super) async fn pm_chunk(
                     .await
                     .ok()
                     .flatten();
-            crate::mailer::notify_kind(
-                db,
-                *uid,
-                "system",
-                em,
+            // 管理员自由文本仍套统一骨架（不加工内容，仅按空行分段）；
+            // 语言按收件人偏好，主题/正文原样保留。
+            let ctx = crate::mailer::send::mail_ctx(db, Some(*uid)).await;
+            let mail = flux_shared::mailtpl::generic_notice(
+                &ctx.ctx(),
                 subject.trim(),
                 text.trim(),
-            )
-            .await;
+                "站 内 通 知",
+                flux_shared::mailtpl::Tone::Gold,
+            );
+            crate::mailer::notify_kind(db, *uid, "system", em, &mail).await;
         } else {
             let sql = "INSERT INTO messages \
                        (sender_id, receiver_id, subject, body, kind) \

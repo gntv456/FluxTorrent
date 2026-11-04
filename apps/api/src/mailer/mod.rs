@@ -12,8 +12,8 @@ use sqlx::PgPool;
 mod probe;
 use probe::smtp_reachable;
 
-/// 邀请函 HTML 卡片模板（2026-11-04 个性化邮件）；invite_http 消费。
-pub(crate) mod invite_letter;
+/// 统一邮件投递（multipart/alternative）+ 渲染上下文（见 send.rs）。
+pub(crate) mod send;
 
 /// 邮件里「点开就到站内页面」的站点基址（P-100 收口）。
 ///
@@ -194,10 +194,10 @@ pub async fn enqueue_mail_outbox(
     db: &sqlx::PgPool,
     user_id: i64,
     to_email: &str,
-    subject: &str,
-    body: &str,
+    mail: &flux_shared::mailtpl::Mail,
     dedupe_key: &str,
 ) {
+    let body = flux_shared::mailtpl::envelope(&mail.text, &mail.html);
     let r = sqlx::query(
         "INSERT INTO mail_outbox (user_id, to_email, subject, body, \
            dedupe_key) VALUES ($1, $2, $3, $4, $5) \
@@ -205,45 +205,41 @@ pub async fn enqueue_mail_outbox(
     )
     .bind(user_id)
     .bind(to_email)
-    .bind(subject)
-    .bind(body)
+    .bind(&mail.subject)
+    .bind(&body)
     .bind(dedupe_key)
     .execute(db)
     .await;
     if let Err(e) = r {
         tracing::warn!(?e, user_id, "mail_outbox 入队失败（退化为尽力直发）");
-        let _ = send_mail_with(db, to_email, subject, body).await;
+        let _ = send_mail_with(db, to_email, mail).await;
     }
 }
 
-/// notify 的带键版：站内信按键落库 + 邮件尽力（邮件正文只能是成品文本，保持原样）
+/// notify 的带键版：站内信按键落库 + 邮件尽力（邮件正文用统一母版）
 pub async fn notify_keyed(
     db: &PgPool,
     to_user: i64,
     email: Option<String>,
-    subject: &str,
-    body: &str,
+    mail: &flux_shared::mailtpl::Mail,
     kind: &str,
     params: serde_json::Value,
 ) {
     if let Err(e) =
-        site_message_keyed(db, to_user, subject, body, kind, params).await
+        site_message_keyed(db, to_user, &mail.subject, &mail.text, kind, params)
+            .await
     {
         tracing::error!(?e, to_user, "site message failed");
     }
     if let Some(to) = email {
         let cfg = smtp_config(db).await;
-        let (s, b) = (subject.to_string(), body.to_string());
+        let mail = mail.clone();
         actix_web::rt::spawn(async move {
             let Some(cfg) = cfg else {
-                tracing::info!(to, subject = %s, "SMTP 未配置，邮件降级为日志");
+                tracing::info!(to, subject = %mail.subject, "SMTP 未配置，邮件降级为日志");
                 return;
             };
-            if let Err(e) = crate::gaps_http::send_generic_mail(
-                &cfg.url, &cfg.from, &to, &s, &b,
-            )
-            .await
-            {
+            if let Err(e) = send::send(&cfg, &to, &mail).await {
                 tracing::error!(?e, to, "mail send failed");
             }
         });
@@ -254,30 +250,26 @@ pub async fn notify_keyed(
 /// 持 db 句柄的调用方优先用 send_mail_with（读站点设定）。
 pub async fn send_mail(
     to: &str,
-    subject: &str,
-    body: &str,
+    mail: &flux_shared::mailtpl::Mail,
 ) -> anyhow::Result<()> {
     let Some(cfg) = smtp_config_common().await else {
-        tracing::info!(to, subject, "SMTP 未配置，邮件降级为日志");
+        tracing::info!(to, subject = %mail.subject, "SMTP 未配置，邮件降级为日志");
         return Ok(());
     };
-    crate::gaps_http::send_generic_mail(&cfg.url, &cfg.from, to, subject, body)
-        .await
+    send::send(&cfg, to, mail).await
 }
 
 /// notify 等已有 db 句柄的调用方用（一次查询装配，站点设定优先）
 pub async fn send_mail_with(
     db: &PgPool,
     to: &str,
-    subject: &str,
-    body: &str,
+    mail: &flux_shared::mailtpl::Mail,
 ) -> anyhow::Result<()> {
     let Some(cfg) = smtp_config(db).await else {
-        tracing::info!(to, subject, "SMTP 未配置，邮件降级为日志");
+        tracing::info!(to, subject = %mail.subject, "SMTP 未配置，邮件降级为日志");
         return Ok(());
     };
-    crate::gaps_http::send_generic_mail(&cfg.url, &cfg.from, to, subject, body)
-        .await
+    send::send(&cfg, to, mail).await
 }
 
 /// 无 db 句柄场景（后台线程无池）：直接读 env 兜底。

@@ -194,26 +194,21 @@ pub async fn cheat_case_approve(
             .ok()
             .flatten();
     if let Some((username, email)) = target {
-        let site: String = sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value FROM site_settings \
-             WHERE name = 'site_name'), 'FluxTorrent')",
-        )
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or_else(|_| "FluxTorrent".into());
-        crate::mailer::notify(
-            &state.repo.db,
-            uid,
-            email,
-            &format!("[{site}] 账号处罚通知"),
-            &format!(
-                "你好 {username}，管理组已对你的账号执行：{label}。\n\
-                 如对处置有异议，可在 {token_days} 天内凭以下申诉令牌在\
-                 申诉页提交复核（一次性有效，请勿外传）：\n{token}\n\
-                 令牌遗失或过期将无法通过本通道申诉。",
-            ),
-        )
-        .await;
+        // 统一母版（警示档·封禁）：申诉令牌属于用户凭据，只进信息块。
+        let ctx =
+            crate::mailer::send::mail_ctx(&state.repo.db, Some(uid)).await;
+        let subject = format!("[{}] 账号处罚通知", ctx.site);
+        let token_note = format!("{}（{} 天内有效）", token, token_days);
+        let mail = flux_shared::mailtpl::account_status(
+            &ctx.ctx(),
+            &username,
+            flux_shared::mailtpl::StatusKind::Ban,
+            &label,
+            "",
+            Some(("申诉令牌", &token_note)),
+            Some(&subject),
+        );
+        crate::mailer::notify(&state.repo.db, uid, email, &mail).await;
     }
     Ok(ok(serde_json::json!({
         "id": id,

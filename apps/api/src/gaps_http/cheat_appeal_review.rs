@@ -182,29 +182,33 @@ async fn notify_appellant(
     reversed: &[String],
 ) {
     let target = appeal_repo::username_email_of(&state.repo, uid).await;
-    let Some((username, email)) = target else {
+    let Some((_username, email)) = target else {
         return;
     };
-    let site: String = appeal_repo::site_name(&state.repo).await;
     let verdict = match outcome {
+        "overturned" => flux_shared::mailtpl::Verdict::Accepted,
+        "mitigated" => flux_shared::mailtpl::Verdict::Mitigated,
+        _ => flux_shared::mailtpl::Verdict::Rejected,
+    };
+    let label = match outcome {
         "overturned" => "推翻（处置已解除）",
         "mitigated" => "减轻",
         _ => "维持原处置",
     };
-    crate::mailer::notify(
-        &state.repo.db,
-        uid,
-        email,
-        &format!("[{site}] 你的作弊申诉复核结果"),
-        &format!(
-            "你好 {username}，申诉 #{appeal_id} 的复核结论：{verdict}。\n\
-             说明：{note}\n{}",
-            if reversed.is_empty() {
-                String::new()
-            } else {
-                format!("已执行：{}。", reversed.join("；"))
-            }
-        ),
-    )
-    .await;
+    let ctx = crate::mailer::send::mail_ctx(&state.repo.db, Some(uid)).await;
+    let subject = format!("[{}] 你的作弊申诉复核结果", ctx.site);
+    let effect = if reversed.is_empty() {
+        label.to_string()
+    } else {
+        format!("{}；已执行：{}。", label, reversed.join("；"))
+    };
+    let mail = flux_shared::mailtpl::appeal_result(
+        &ctx.ctx(),
+        &format!("#{}", appeal_id),
+        verdict,
+        note,
+        &effect,
+        Some(&subject),
+    );
+    crate::mailer::notify(&state.repo.db, uid, email, &mail).await;
 }

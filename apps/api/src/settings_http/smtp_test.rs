@@ -55,22 +55,20 @@ pub(super) async fn settings_smtp_test(
                     .into(),
             )
         })?;
-    let site: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings WHERE name = \
-         'site_name'), 'FluxTorrent')",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or_else(|_| "FluxTorrent".into());
-    let r = crate::gaps_http::send_generic_mail(
-        &cfg.url,
-        &cfg.from,
-        &to,
-        &format!("[{site}] SMTP 测试邮件"),
+    let ctx =
+        crate::mailer::send::mail_ctx(&state.repo.db, Some(auth.id)).await;
+    let subject = format!("[{}] SMTP 测试邮件", ctx.site);
+    let mail = flux_shared::mailtpl::generic_notice(
+        &ctx.ctx(),
+        &subject,
         "这是一封测试邮件：如果你收到了它，说明站点 SMTP 配置生效，\
          找回密码/邀请函等通知可以正常投递。",
-    )
-    .await;
+        "系 统 自 检",
+        flux_shared::mailtpl::Tone::Pending,
+    );
+    let r =
+        crate::gaps_http::send_generic_mail(&cfg.url, &cfg.from, &to, &mail)
+            .await;
     match r {
         Ok(()) => Ok(ok(serde_json::json!({
             "sent": true, "to": to, "from": cfg.from,

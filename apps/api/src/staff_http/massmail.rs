@@ -77,34 +77,45 @@ pub async fn massmail_send(
         Some(cfg) => {
             match crate::gaps_http::build_smtp(&cfg.url) {
                 Ok(mailer) => {
-                    let emails: Vec<String> = sqlx::query_scalar(
-                        "SELECT email FROM users WHERE status \
-                         < 2 AND email IS NOT NULL",
+                    // 群发是管理员自由文本：仍套统一骨架，语言逐收件人取。
+                    // 站点名/基址对所有收件人相同，只查一次。
+                    let scope = crate::mailer::send::mail_ctx(
+                        &state.repo.db,
+                        Some(auth.id),
                     )
-                    .fetch_all(&state.repo.db)
-                    .await
-                    .map_err(|e| DomainError::Internal(e.into()))?;
-                    for to in &emails {
-                        let msg = lettre::Message::builder()
-                            .from(cfg.from.parse().map_err(
-                                |e: lettre::address::AddressError| {
-                                    DomainError::Internal(e.into())
-                                },
-                            )?)
-                            .to(to.parse().map_err(
-                                |e: lettre::address::AddressError| {
-                                    DomainError::Internal(e.into())
-                                },
-                            )?)
-                            .subject(body.subject.trim())
-                            .body(body.body.clone())
-                            .map_err(|e| DomainError::Internal(e.into()))?;
-                        use lettre::AsyncTransport;
-                        match mailer.send(msg).await {
+                    .await;
+                    let rows: Vec<(i64, String, Option<String>)> =
+                        sqlx::query_as(
+                            "SELECT id, email, site_language FROM users \
+                             WHERE status < 2 AND email IS NOT NULL",
+                        )
+                        .fetch_all(&state.repo.db)
+                        .await
+                        .map_err(|e| DomainError::Internal(e.into()))?;
+                    for (uid, to, lang) in &rows {
+                        let ctx = flux_shared::mailtpl::Ctx {
+                            site: &scope.site,
+                            base: &scope.base,
+                            lang: flux_shared::mailtpl::Lang::from_db(
+                                lang.as_deref(),
+                            ),
+                        };
+                        let mail = flux_shared::mailtpl::generic_notice(
+                            &ctx,
+                            body.subject.trim(),
+                            &body.body,
+                            "站 内 通 知",
+                            flux_shared::mailtpl::Tone::Gold,
+                        );
+                        match crate::mailer::send::deliver(
+                            &mailer, &cfg.from, to, &mail,
+                        )
+                        .await
+                        {
                             Ok(_) => delivered += 1,
                             Err(e) => {
                                 mail_err = Some(format!(
-                                    "第 {delivered} 封后失败：{e}"
+                                    "第 {delivered} 封后失败（用户 {uid}）：{e}"
                                 ));
                                 break;
                             }

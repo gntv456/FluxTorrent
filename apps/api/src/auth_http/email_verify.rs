@@ -86,31 +86,18 @@ async fn send_verification_inner(
     .bind(TOKEN_TTL_HOURS)
     .execute(&state.repo.db)
     .await?;
-    let site: String = sqlx::query_scalar(
-        "SELECT COALESCE((SELECT value FROM site_settings \
-         WHERE name = 'site_name'), 'FluxTorrent')",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or_else(|_| "FluxTorrent".into());
-    // P-101：正文必须是「点开就到站内页面」的绝对链接。旧写法印的是相对
-    // API 路径 `/auth/email/verify?token=…`——邮件客户端不会把它连成链接，
-    // 用户手抄也没有协议主机可用；而站内其实有落地页 `/email-verify`
-    // （带重发表单），此前没有任何一条路能抵达它。
-    let base = crate::mailer::site_base().unwrap_or_default();
-    let body = format!(
-        "你好 {username}，欢迎注册 {site}。\n\n\
-         请在 48 小时内点击以下链接完成邮箱激活（激活后才能登录）：\n\
-         {base}/email-verify?token={plain}\n\n\
-         如果这不是你的操作，请忽略本邮件。"
+    // 统一母版：链接必须是「点开就到站内落地页」的绝对地址。
+    // 旧写法印的是相对 API 路径 `/auth/email/verify?token=…`——邮件
+    // 客户端不会把它连成链接，站内 `/email-verify` 落地页也永远到不了。
+    let ctx =
+        crate::mailer::send::mail_ctx(&state.repo.db, Some(user_id)).await;
+    let mail = flux_shared::mailtpl::email_verify(
+        &ctx.ctx(),
+        username,
+        &plain,
+        TOKEN_TTL_HOURS,
     );
-    crate::mailer::send_mail_with(
-        &state.repo.db,
-        email,
-        &format!("【{site}】邮箱激活"),
-        &body,
-    )
-    .await
+    crate::mailer::send_mail_with(&state.repo.db, email, &mail).await
 }
 
 /// 登录拦截点（login 调用）：email_verify 模式且该用户未激活 → Some。

@@ -94,39 +94,42 @@ pub(crate) async fn notify_review_result(
             .replace("{torrent}", &title)
             .replace("{reason}", reason)
     };
-    let (kind, subject, body_text) = if approve {
-        (
-            "review_approved",
-            if by_auto {
-                get("auto_review_mail_pass_subject")
-                    .map(|t| render(&t, ""))
-                    .unwrap_or_else(|| format!("种子已自动过审：{title}"))
-            } else {
-                format!("种子过审：{title}")
-            },
-            format!("你发布的种子已通过审核：#{torrent_id} {title}。"),
-        )
+    let ctx = crate::mailer::send::mail_ctx(db, Some(owner)).await;
+    let (kind, mail) = if approve {
+        let subject = if by_auto {
+            get("auto_review_mail_pass_subject")
+                .map(|t| render(&t, ""))
+                .unwrap_or_else(|| format!("种子已自动过审：{title}"))
+        } else {
+            format!("种子过审：{title}")
+        };
+        let mail = flux_shared::mailtpl::review_approved(
+            &ctx.ctx(),
+            torrent_id,
+            &title,
+            Some(&subject),
+        );
+        ("review_approved", mail)
     } else {
         let why = reason_text.clone().unwrap_or_else(|| "未注明".into());
         // 模板键是给自动审种用的（键名/出厂文案都带「自动」）：人工裁决即便
         // 选了 91-96 段的自动拒因，用户看到的也必须如实是人工结论——否则
         // 用户会误以为被机器拒了，走错申诉渠道（2026-10-21 种审员实测抓到）。
-        (
-            "review_rejected",
-            if by_auto {
-                get("auto_review_mail_deny_subject")
-                    .map(|t| render(&t, why.as_str()))
-                    .unwrap_or_else(|| format!("种子被自动拒绝：{title}"))
-            } else {
-                format!("种子被拒：{title}")
-            },
-            format!(
-                "你发布的种子未通过审核：#{torrent_id} {title}\n\
-                 原因：{why}\n\
-                 修改建议：请按原因补充或修正内容（描述可补充资源介绍/截图/MediaInfo；标题请按站规命名）。\n\
-                 修改后可在「我的发布」中重新提交；如有异议可通过站内工单申诉。"
-            ),
-        )
+        let subject = if by_auto {
+            get("auto_review_mail_deny_subject")
+                .map(|t| render(&t, why.as_str()))
+                .unwrap_or_else(|| format!("种子被自动拒绝：{title}"))
+        } else {
+            format!("种子被拒：{title}")
+        };
+        let mail = flux_shared::mailtpl::review_rejected(
+            &ctx.ctx(),
+            torrent_id,
+            &title,
+            &why,
+            Some(&subject),
+        );
+        ("review_rejected", mail)
     };
     // 0400 §4.2：自动拒因（字典 sort 91-96）的邮件走 1h/3 封限频——
     // 超限只发站内信；人工裁决（by_auto=false）一律不限频（逐条裁决自带节奏）。
@@ -178,8 +181,7 @@ pub(crate) async fn notify_review_result(
                 db,
                 owner,
                 &to,
-                &subject,
-                &body_text,
+                &mail,
                 &format!("auto_deny:{torrent_id}"),
             )
             .await;
@@ -189,8 +191,7 @@ pub(crate) async fn notify_review_result(
         db,
         owner,
         if is_auto_deny_mail { None } else { email },
-        &subject,
-        &body_text,
+        &mail,
         kind,
         serde_json::json!({
             "id": torrent_id,

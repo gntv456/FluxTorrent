@@ -84,27 +84,32 @@ pub async fn warn_user(
                 .ok()
                 .flatten();
         if let Some((username, email)) = target {
-            let site: String = sqlx::query_scalar(
-                "SELECT COALESCE((SELECT value FROM site_settings WHERE name = 'site_name'), 'FluxTorrent')",
-            )
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or_else(|_| "FluxTorrent".into());
-            let subject =
-                format!("[{site}] 你收到了一次警告（{} 周）", body.weeks);
-            let body_text = format!(
-                "你好 {username}，管理组对你的账号发出了为期 {} 周的警告。\n理由：{reason}\n警告期间请遵守站点规则；如有疑问可联系管理组。",
-                body.weeks,
-                reason = body.reason.as_deref().map(str::trim).filter(|s| !s.is_empty()).unwrap_or("（未填写）"),
-            );
-            crate::mailer::notify(
+            // 统一母版（警示档）：警告用琥珀，期限进信息块描边标签。
+            let ctx = crate::mailer::send::mail_ctx(
                 &state.repo.db,
-                body.user_id,
-                email,
-                &subject,
-                &body_text,
+                Some(body.user_id),
             )
             .await;
+            let subject =
+                format!("[{}] 你收到了一次警告（{} 周）", ctx.site, body.weeks);
+            let weeks = format!("{} 周", body.weeks);
+            let reason = body
+                .reason
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .unwrap_or("");
+            let mail = flux_shared::mailtpl::account_status(
+                &ctx.ctx(),
+                &username,
+                flux_shared::mailtpl::StatusKind::Warn,
+                &weeks,
+                reason,
+                None,
+                Some(&subject),
+            );
+            crate::mailer::notify(&state.repo.db, body.user_id, email, &mail)
+                .await;
         }
     }
     Ok(ok(

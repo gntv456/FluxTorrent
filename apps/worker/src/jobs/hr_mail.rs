@@ -1,4 +1,5 @@
 //! H&R 预警邮件通道（0283 P1-8，从 hr.rs 拆出守 300 行门禁）。
+//! 正文与 api 共用 `flux_shared::mailtpl` 的统一母版（本轮起不再是裸文本）。
 
 use sqlx::PgPool;
 
@@ -6,16 +7,25 @@ use sqlx::PgPool;
 /// prewarned_at 在 hr_enforce 主 SQL 已置位，本函数天然幂等；
 /// SMTP 装配与投递在 mail_out（尽力而为，失败只记日志）。
 pub(crate) async fn prewarn_mails(db: &PgPool, prewarn_hours: i32) {
-    let mails: Vec<(String, String)> = sqlx::query_as(
+    let (site, base) = super::mail_out::site_scope(db).await;
+    let rows: Vec<(
+        String,
+        Option<String>,
+        i64,
+        Option<String>,
+        f64,
+        f64,
+        String,
+    )> = sqlx::query_as(
         r#"
-        SELECT u.email, format(
-            '种子 #%s 距 H&R 截止不到 %s 小时（做种 %s/%s 小时），
-请恢复做种或用魔力免罪。详情见站内信。',
-            h.torrent_id, $1::int,
-            round(h.seeded_seconds / 3600.0, 1),
-            round(h.required_seconds / 3600.0, 1))
+        SELECT u.email, u.site_language, h.torrent_id, t.name,
+               round(h.seeded_seconds / 3600.0, 1)::float8,
+               round(h.required_seconds / 3600.0, 1)::float8,
+               to_char(h.deadline AT TIME ZONE 'Asia/Shanghai',
+                       'YYYY-MM-DD HH24:MI')
         FROM hr_snapshots h
         JOIN users u ON u.id = h.user_id
+        LEFT JOIN torrents t ON t.id = h.torrent_id
         WHERE h.prewarned_at > now() - interval '10 minutes'
           AND COALESCE((u.notice_prefs->>'hr_prewarn')::boolean, true)
         LIMIT 200
@@ -25,14 +35,35 @@ pub(crate) async fn prewarn_mails(db: &PgPool, prewarn_hours: i32) {
     .fetch_all(db)
     .await
     .unwrap_or_default();
-    for (email, body) in mails {
-        super::mail_out::send_user_mail(
-            db,
-            Some(&email),
-            "H&R 预警：请尽快补足做种",
-            &body,
-        )
-        .await;
+    for (email, lang, torrent_id, name, seeded, required, deadline) in rows {
+        let lang = flux_shared::mailtpl::Lang::from_db(lang.as_deref());
+        let title = name
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| {
+                match lang {
+                    flux_shared::mailtpl::Lang::ZhTw => "（標題不可用）",
+                    flux_shared::mailtpl::Lang::En => "(title unavailable)",
+                    _ => "（标题不可用）",
+                }
+                .to_string()
+            });
+        let ctx = flux_shared::mailtpl::Ctx {
+            site: &site,
+            base: &base,
+            lang,
+        };
+        let subject = format!("[{site}] H&R 预警：请尽快补足做种");
+        let mail = flux_shared::mailtpl::hr_warning(
+            &ctx,
+            torrent_id,
+            &title,
+            seeded,
+            required,
+            &deadline,
+            Some(&subject),
+        );
+        super::mail_out::send_user_mail(db, Some(&email), &mail).await;
     }
 }
 

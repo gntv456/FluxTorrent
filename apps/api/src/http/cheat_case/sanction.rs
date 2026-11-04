@@ -244,24 +244,21 @@ pub async fn cheat_case_resolve(
                 .ok()
                 .flatten();
         if let Some((username, email)) = target {
-            let site: String = sqlx::query_scalar(
-                "SELECT COALESCE((SELECT value FROM site_settings \
-                 WHERE name = 'site_name'), 'FluxTorrent')",
-            )
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or_else(|_| "FluxTorrent".into());
-            crate::mailer::notify(
-                &state.repo.db,
-                uid,
-                email,
-                &format!("[{site}] 你收到了一次警告（{warn_weeks} 周）"),
-                &format!(
-                    "你好 {username}，管理组对你的账号发出了为期 {warn_weeks} 周的警告。\n\
-                     理由：{note}\n警告期间请遵守站点规则；如有疑问可提交申诉。",
-                ),
-            )
-            .await;
+            // 统一母版（警示档·警告）：期限进标题，原因进结论块。
+            let ctx =
+                crate::mailer::send::mail_ctx(&state.repo.db, Some(uid)).await;
+            let subject =
+                format!("[{}] 你收到了一次警告（{} 周）", ctx.site, warn_weeks);
+            let mail = flux_shared::mailtpl::account_status(
+                &ctx.ctx(),
+                &username,
+                flux_shared::mailtpl::StatusKind::Warn,
+                &format!("警告 {} 周", warn_weeks),
+                note,
+                None,
+                Some(&subject),
+            );
+            crate::mailer::notify(&state.repo.db, uid, email, &mail).await;
         }
     }
     Ok(ok(serde_json::json!({

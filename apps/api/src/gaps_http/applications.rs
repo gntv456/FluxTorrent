@@ -216,43 +216,36 @@ pub(super) async fn apply_decide(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    // 结果邮件（尽力而为）
+    // 结果邮件（尽力而为；统一母版，申请人尚非用户→语言缺省 zh-CN）
     let cfg = crate::mailer::smtp_config(&state.repo.db).await;
     if let Some(cfg) = cfg {
-        let site: String = sqlx::query_scalar(
-            "SELECT COALESCE((SELECT value FROM site_settings \
-                WHERE name = 'site_name'), 'FluxTorrent')",
-        )
-        .fetch_one(&state.repo.db)
-        .await
-        .unwrap_or_else(|_| "FluxTorrent".into());
-        let (subject, body_text) = if approve {
-            (
-                format!("[{site}] 你的入站申请已通过"),
-                format!(
-                    "你好 {username}，你的入站申请已通过。\
-                     \n邀请码：{}\n（72 小时内有效，用邮箱 {} 注册）",
-                    invite_code.clone().unwrap_or_default(),
-                    email
-                ),
+        let note = body.note.trim().to_string();
+        let mail = if approve {
+            let code = invite_code.clone().unwrap_or_default();
+            flux_shared::mailtpl::application_approved(
+                &crate::mailer::send::mail_ctx(&state.repo.db, None)
+                    .await
+                    .ctx(),
+                &username,
+                &code,
+                &email,
+                72,
             )
         } else {
-            (
-                format!("[{site}] 你的入站申请未通过"),
-                format!(
-                    "你好 {username}，你的入站申请未通过。{}\n欢迎完善材料后再次申请。",
-                    if body.note.trim().is_empty() {
-                        String::new()
-                    } else {
-                        format!("理由：{}", body.note.trim())
-                    }
-                ),
+            flux_shared::mailtpl::application_rejected(
+                &crate::mailer::send::mail_ctx(&state.repo.db, None)
+                    .await
+                    .ctx(),
+                &username,
+                &note,
+                &email,
+                Some(body.id),
             )
         };
         let to = email.clone();
         actix_web::rt::spawn(async move {
             let _ = crate::gaps_http::send_generic_mail(
-                &cfg.url, &cfg.from, &to, &subject, &body_text,
+                &cfg.url, &cfg.from, &to, &mail,
             )
             .await;
         });
