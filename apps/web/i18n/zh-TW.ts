@@ -2728,7 +2728,8 @@ const zhTwBase: Omit<
     keywordNote: "只訂閱標題中包含此關鍵字的項目",
     resultTitle: "訂閱連結",
     securityNote:
-      "連結包含你的個人憑證（passkey），請勿洩露給他人；洩露後可在控制面板重置。",
+      "訂閱連結使用專用 RSS Token，可單獨撤銷；passkey 只用於 Tracker 匯報，不再拼進訂閱連結。",
+    tokenRequired: "請先在下方建立或輪換一枚 RSS Token，連結會帶目前篩選條件產生。",
     copy: "複製連結",
     copied: "已複製 ✓",
     tokenTitle: "RSS Token 管理",

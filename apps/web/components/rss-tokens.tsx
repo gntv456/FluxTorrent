@@ -19,8 +19,8 @@ interface TokenRow extends RssTokenMeta {
   plain?: string;
 }
 
-function buildUrl(base: string, cred: string): string {
-  return `${base}${cred}`;
+function buildUrl(base: string, cred: string, query: string): string {
+  return `${base}${cred}${query ? `?${query}` : ""}`;
 }
 
 /** 复制按钮（三个动作共用）：点击后短暂显示「已复制」 */
@@ -58,9 +58,13 @@ function CopyBtn({
 export function RssTokenPanel({
   base,
   initial,
+  query,
+  onPlain,
 }: {
   base: string;
   initial: RssTokenMeta[];
+  query: string;
+  onPlain: (plain: string) => void;
 }) {
   const { dict } = useI18n();
   const t = dict.getrss;
@@ -88,7 +92,9 @@ export function RssTokenPanel({
     try {
       const body: RssTokenCreateReq = { name: name.trim() };
       const r = await api.post<RssTokenCreated>("/api/v1/rss/tokens", body);
-      setRows((old) => [{ ...r }, ...old]);
+      // 明文只在创建响应出现一次：当场接进 plain（行内 URL/撤销守卫都依赖它）
+      setRows((old) => [{ ...r, plain: r.token }, ...old]);
+      onPlain(r.token);
       setName("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -104,10 +110,12 @@ export function RssTokenPanel({
       const r = await api.post<RssTokenCreated>(
         `/api/v1/rss/tokens/${id}/rotate`,
       );
-      await refresh();
-      setRows((old) =>
-        old.map((m) => (m.id === id ? { ...r } : m)),
-      );
+      // 轮换 = 吊销旧行 + 插入新行（新 id）：旧行删除、新行带上明文。
+      setRows((old) => [
+        { ...r, plain: r.token },
+        ...old.filter((m) => m.id !== id),
+      ]);
+      onPlain(r.token);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -120,7 +128,9 @@ export function RssTokenPanel({
     setErr("");
     try {
       await api.del(`/api/v1/rss/tokens/${id}`);
+      const removed = rows.find((m) => m.id === id);
       setRows((old) => old.filter((m) => m.id !== id));
+      if (removed?.plain) onPlain("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -156,7 +166,7 @@ export function RssTokenPanel({
                 <input
                   type="text"
                   readOnly
-                  value={buildUrl(base, m.plain)}
+                  value={buildUrl(base, m.plain, query)}
                   onFocus={(e) => e.target.select()}
                 />
               ) : (
@@ -167,7 +177,7 @@ export function RssTokenPanel({
               </small>
               {m.plain && (
                 <CopyBtn
-                  text={buildUrl(base, m.plain)}
+                  text={buildUrl(base, m.plain, query)}
                   label={t.copy}
                   copiedLabel={t.copied}
                 />

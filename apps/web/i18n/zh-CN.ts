@@ -2754,7 +2754,8 @@ const zhCnBase = {
     keywordNote: "只订阅标题中包含此关键字的项目",
     resultTitle: "订阅链接",
     securityNote:
-      "链接包含你的个人凭证（passkey），请勿泄露给他人；泄露后可在控制面板重置。",
+      "订阅链接使用专用 RSS Token，可单独撤销；passkey 只用于 Tracker 汇报，不再拼进订阅链接。",
+    tokenRequired: "请先在下方创建或轮换一枚 RSS Token，链接会带当前筛选条件生成。",
     copy: "复制链接",
     copied: "已复制 ✓",
     tokenTitle: "RSS Token 管理",

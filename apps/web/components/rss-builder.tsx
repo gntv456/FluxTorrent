@@ -8,10 +8,8 @@ import { catPath } from "@/lib/site-profile";
 import { RssTokenPanel, type RssTokenMeta } from "./rss-tokens";
 
 interface RssInfo {
-  urls: { label: string; url: string }[];
-  passkey: string;
   base: string;
-  /** 0352：用户有效 RSS token 元数据（无明文；面板内创建/轮换才暂存明文） */
+  /** 用户有效 RSS token 元数据（无明文；面板内创建/轮换才暂存明文） */
   tokens?: RssTokenMeta[];
 }
 
@@ -32,8 +30,8 @@ interface MediaDictRow {
 
 const SHOWROWS = [10, 50, 100, 200];
 
-/** 获取 RSS 页（同类站 getrss.php 复刻）：
- *  检索分类（分类/媒介多选）+ 官种 + 付费 + 标题格式 + 每页条数 + 关键字 → 生成带 passkey 的订阅链接 */
+/** 获取 RSS 页：筛选条件 + 专用 fxr token 生成订阅链接。
+ *  明文 token 只在创建/轮换时出现，所以链接由 token 面板回填。 */
 export function RssBuilder() {
   const { dict, currency } = useI18n();
   const t = dict.getrss;
@@ -65,6 +63,7 @@ export function RssBuilder() {
     return m;
   }, [sp]);
   const [copied, setCopied] = useState(false);
+  const [activeToken, setActiveToken] = useState("");
   // 0103：分类/媒介跟随站型配置（site-profile + section-dict），不再用 i18n 硬编码字典
   const [profile, setProfile] = useState<ProfileCats | null>(null);
   const [mediumOpts, setMediumOpts] = useState<MediaDictRow[]>([]);
@@ -96,8 +95,7 @@ export function RssBuilder() {
   const categories = profile?.categories ?? [];
   const mediums = mediumOpts;
 
-  const url = useMemo(() => {
-    if (!info) return "";
+  const query = useMemo(() => {
     const qs = new URLSearchParams();
     if (cats.length > 0 && cats.length < categories.length) {
       qs.set("categories", cats.join(","));
@@ -111,10 +109,8 @@ export function RssBuilder() {
     if (linktype === "page") qs.set("linktype", "page");
     if (search.trim()) qs.set("search", search.trim());
     for (const [k, v] of Object.entries(secParams)) qs.set(k, v);
-    const s = qs.toString();
-    return `${info.base}${info.passkey}${s ? `?${s}` : ""}`;
+    return qs.toString();
   }, [
-    info,
     cats,
     media,
     official,
@@ -126,12 +122,16 @@ export function RssBuilder() {
     mediums.length,
     secParams,
   ]);
+  const url = info && activeToken
+    ? `${info.base}${activeToken}${query ? `?${query}` : ""}`
+    : "";
 
   function toggle(list: number[], id: number, set: (v: number[]) => void) {
     set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   }
 
   async function copy() {
+    if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -243,35 +243,29 @@ export function RssBuilder() {
       <section className="rss-card rss-card--result">
         <h2 className="rss-card__title">{t.resultTitle}</h2>
         <p className="rss-hint">{t.securityNote}</p>
-        <div className="rss-url-row">
-          <input
-            type="text"
-            readOnly
-            value={url}
-            onFocus={(e) => e.target.select()}
-          />
-          <button type="button" onClick={copy} className="rss-copy">
-            {copied ? t.copied : t.copy}
-          </button>
-        </div>
-        <div className="rss-presets">
-          {info.urls.map((u) => (
-            <label key={u.url} className="rss-preset">
-              <span>{u.label}</span>
-              <input
-                type="text"
-                readOnly
-                value={u.url}
-                onFocus={(e) => e.target.select()}
-              />
-            </label>
-          ))}
-        </div>
+        {url ? (
+          <div className="rss-url-row">
+            <input
+              type="text"
+              readOnly
+              value={url}
+              onFocus={(e) => e.target.select()}
+            />
+            <button type="button" onClick={copy} className="rss-copy">
+              {copied ? t.copied : t.copy}
+            </button>
+          </div>
+        ) : (
+          <p className="rss-hint">{t.tokenRequired}</p>
+        )}
       </section>
 
-      {/* 0352：默认链接（passkey）之外的第二段——命名 token 管理。
-       *  passkey 直链保留在上方「订阅链接」区，旧 URL 永远兼容。 */}
-      <RssTokenPanel base={info.base} initial={info.tokens ?? []} />
+      <RssTokenPanel
+        base={info.base}
+        initial={info.tokens ?? []}
+        query={query}
+        onPlain={setActiveToken}
+      />
     </div>
   );
 }

@@ -26,7 +26,7 @@ const ENVELOPED = {
   message: "ok",
   request_id: "r1",
   data: {
-    info: { title: "FluxTorrent Open API", version: "1.4.0" },
+    info: { title: "FluxTorrent Open API", version: "1.5.0" },
     paths: {
       "/torrents": {
         get: { tags: ["种子"], summary: "种子列表" },
@@ -42,7 +42,7 @@ describe("openapi 取数与分组", () => {
   it("带 ok() 信封时从 data 里取", () => {
     const spec = unwrapSpec(ENVELOPED);
     expect(Object.keys(spec.paths ?? {})).toHaveLength(3);
-    expect(spec.info?.version).toBe("1.4.0");
+    expect(spec.info?.version).toBe("1.5.0");
   });
 
   it("没有信封的部署也照收（不能只认一种形状）", () => {

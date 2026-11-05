@@ -51,8 +51,6 @@ describe("RSS 构建器失败不演登录提示", () => {
         if (url.includes("/rss-info")) {
           return Promise.resolve(
             envelope({
-              urls: [],
-              passkey: "pk",
               base: "https://t.example/api/v1/rss/",
               tokens: [],
             }),

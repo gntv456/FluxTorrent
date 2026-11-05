@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("categories=7"),
@@ -27,10 +27,18 @@ describe("RSS 分类预填", () => {
         if (url.includes("/rss-info")) {
           return Promise.resolve(
             envelope({
-              urls: [],
-              passkey: "pk",
               base: "https://t.example/api/v1/rss/",
               tokens: [],
+            }),
+          );
+        }
+        if (url.includes("/rss/tokens")) {
+          return Promise.resolve(
+            envelope({
+              id: 1,
+              name: "home",
+              created_at: "2026-01-01T00:00:00Z",
+              token: "fxr_abc",
             }),
           );
         }
@@ -57,6 +65,17 @@ describe("RSS 分类预填", () => {
     expect((screen.getByLabelText("剧集") as HTMLInputElement).checked).toBe(
       false,
     );
+    fireEvent.change(
+      screen.getByPlaceholderText(zhCN.getrss.tokenNamePh),
+      { target: { value: "home" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: zhCN.getrss.tokenCreate }),
+    );
+    const links = await screen.findAllByDisplayValue(
+      /fxr_abc\?categories=7/,
+    );
+    expect(links.length).toBeGreaterThan(0);
     expect(
       container.querySelector<HTMLInputElement>(
         'input[readonly][value*="categories=7"]',

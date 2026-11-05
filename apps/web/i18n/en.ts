@@ -2813,7 +2813,9 @@ const enBase: Omit<
     keywordNote: "Only subscribe to items whose title contains this keyword",
     resultTitle: "Feed link",
     securityNote:
-      "The link contains your personal credential (passkey). Keep it private; reset it in settings if leaked.",
+      "Feeds use a dedicated RSS token that can be revoked on its own. Passkeys are only for tracker announces.",
+    tokenRequired:
+      "Create or rotate an RSS token below; the link will include the current filters.",
     copy: "Copy link",
     copied: "Copied ✓",
     tokenTitle: "RSS tokens",
