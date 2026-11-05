@@ -11,8 +11,8 @@
             边界：自发/不存在收件人/flood）
     ratio   分享率（真实两段式 announce 周期 → users.uploaded 增量 ==
             ledger Σdelta == 上报量；snatches/torrents 聚合对账；ratio 计算）
-    rss     订阅推送（RSS XML 结构/条目与 DB 一致/limit/分类/paid/坏 passkey/
-            torznab/Token 面）
+    rss     订阅推送（RSS XML 结构/条目与 DB 一致/limit/分类/paid/
+            fxr token 面/torznab）
     mall    商城消耗链（货架/扣费到账/订单/幂等/叠加限制/余额不足/赠礼回归/
             背包/代金券/流水）
     invite2 邀请注册链（发码→注册用码→关系绑定→配额→奖励→码状态→撤销）
@@ -304,8 +304,25 @@ def d_ratio(vip: str, root: str) -> None:
 
 def d_rss(vip: str, root: str) -> None:
     D = "rss"
-    # 站点 canonical 订阅路径是 /api/v1/rss/{passkey}（rss-info 口同款 base）
-    RSS = f"/api/v1/rss/{VIP_PASSKEY}"
+    # Token 面：fxr_ token 管理（真实路径 /api/v1/rss/tokens）
+    # 列表形状是 data.tokens；rows_of 只认 items/rows，旧清理匹配不到，
+    # deep_rss_* 会积到上限 5 把下一轮「建 Token」判红。
+    def _drop_deep_tokens() -> None:
+        st_t, js_t = call("GET", "/api/v1/rss/tokens", vip)
+        for r in (data_of(js_t).get("tokens") or []):
+            if (r.get("name") or "").startswith("deep_rss_"):
+                call("DELETE", f"/api/v1/rss/tokens/{r['id']}", vip)
+
+    st, js = call("GET", "/api/v1/rss/tokens", vip)
+    expect(D, "RSS Token 列表", st == 200, f"st={st}")
+    _drop_deep_tokens()
+    st, js = call("POST", "/api/v1/rss/tokens", vip,
+                  body={"name": f"deep_rss_{int(time.time())}"})
+    tok = data_of(js).get("token") if ok(D, "建 RSS Token", st, js) else None
+    if not tok:
+        expect(D, "RSS 订阅用 token 就绪", False, f"st={st}")
+        return
+    RSS = f"/api/v1/rss/{tok}"
     st, body = call("GET", RSS, vip, raw=True)
     xml = body.decode("utf-8", "replace") if isinstance(body,
         bytes) else str(body)
@@ -366,35 +383,21 @@ def d_rss(vip: str, root: str) -> None:
     xml6 = body.decode("utf-8", "replace") if isinstance(body,
         bytes) else str(body)
     expect(D, "RSS 关键字过滤", st == 200 and xml6.count("<item>") >= 0, f"st={st}")
-    # 坏 passkey / 非法形状
+    # 原始 passkey 一律被拒 / 非法 token 形状 400 / 未知 token 404
+    st, _ = call("GET", "/api/v1/rss/" + VIP_PASSKEY, vip, raw=True)
+    expect(D, "原始 passkey 被拒（400/404）", st in (400, 404), f"st={st}")
     st, _ = call("GET", "/api/v1/rss/deadbeefdeadbeefdeadbeefdeadbeef", vip,
         raw=True)
-    expect(D, "坏 passkey 404", st == 404, f"st={st}")
+    expect(D, "原始 32 位 passkey 形状被拒", st in (400, 404), f"st={st}")
     st, _ = call("GET", "/api/v1/rss/short", vip, raw=True)
-    expect(D, "非法形状 passkey 400", st == 400, f"st={st}")
-    # Token 面：fxr_ token 管理（真实路径 /api/v1/rss/tokens）
-    st, js = call("GET", "/api/v1/rss/tokens", vip)
-    expect(D, "RSS Token 列表", st == 200, f"st={st}")
-    # 列表形状是 data.tokens；rows_of 只认 items/rows ⇒ 旧清理永远
-    # 匹配不到，deep_rss_* 会积到上限 5 把下一轮「建 Token」判红。
-    def _drop_deep_tokens() -> None:
-        st_t, js_t = call("GET", "/api/v1/rss/tokens", vip)
-        for r in (data_of(js_t).get("tokens") or []):
-            if (r.get("name") or "").startswith("deep_rss_"):
-                call("DELETE", f"/api/v1/rss/tokens/{r['id']}", vip)
-
+    expect(D, "非法 token 形状 400", st == 400, f"st={st}")
+    st, body = call("GET", f"/api/v1/rss/{tok}", vip, raw=True)
+    expect(D, "fxr_ Token 可拉订阅", st == 200 and
+           b"<rss" in (body if isinstance(body, bytes) else b""), f"st={st}")
+    st, _ = call("GET", "/api/v1/rss/fxr_" + "0" * 32, vip, raw=True)
+    expect(D, "合法 fxr 形状但未知 token 404", st == 404, f"st={st}")
+    # 清理本次（含本轮之前的残留）
     _drop_deep_tokens()
-    st, js = call("POST", "/api/v1/rss/tokens", vip,
-                  body={"name": f"deep_rss_{int(time.time())}"})
-    if ok(D, "建 RSS Token", st, js):
-        tok = data_of(js).get("token")
-        if tok:
-            st, body = call("GET", f"/api/v1/rss/{tok}", vip, raw=True)
-            expect(D, "fxr_ Token 可拉订阅", st == 200 and
-                   b"<rss" in (body if isinstance(body, bytes) else b""),
-                   f"st={st}")
-        # 清理本次（含本轮之前的残留）
-        _drop_deep_tokens()
     # torznab（ caps 能力清单）
     st, _ = call("GET", "/api/v1/torznab?t=caps", vip, raw=True)
     expect(D, "torznab caps 可过", st == 200, f"st={st}")

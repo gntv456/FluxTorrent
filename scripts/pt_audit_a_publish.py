@@ -133,7 +133,7 @@ ok("拿到 passkey", bool(passkey))
 
 # 4) 下载 .torrent 文件（root 免费下载自己的种子）
 if tid and passkey:
-    s, raw = call("GET", "/torrents/%d/download?passkey=%s" % (tid, passkey), token=tok, raw=True)
+    s, raw = call("GET", "/torrents/%d/download" % tid, token=tok, raw=True)
     ok(".torrent 可下载", s == 200 and len(raw) > 100, "status=%s len=%s" % (s, len(raw)))
     if s == 200:
         # 私有种子应剥离非白名单 tracker 并含本站 announce

@@ -5,7 +5,7 @@
 现网（修前，镜像 `api:aa1024a`，2026-10-14 实测）：
     GET /admin/user-roles?user_id=abc  -> 400 text/plain
         "Query deserialize error: invalid digit found in string"
-    GET /rss/{passkey}?showrows=abc    -> 同上（且这条在鉴权之前就炸）
+    GET /rss/{fxr}?showrows=abc        -> 同上（且这条在鉴权之后才炸）
 ⇒ 破坏「所有 HTTP 响应都是 {code, message, request_id}」这条契约：
   · 前端（`/torrents` 那套 paged/api-client）读的是 code+message，
     拿到 text/plain 只能显示「未知错误」——2026-10-10 批九在 /torrents
@@ -30,17 +30,21 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
-    BASE, call, clear_register_rl, login, ok, summary)
+    BASE, call, clear_register_rl, login, mint_rss_token, ok,
+    revoke_rss_token, summary)
 
 ROOT = login()
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOKEN_NAME = "cr76_probe_token"
+FXR_ID, FXR = mint_rss_token(ROOT, "crrss%d" % (int(time.time())
+                                               % 100000), "crrss")
 
 
 def psql(q):
@@ -123,19 +127,18 @@ for p_ig in IGNORED_ADMIN:
     print("   WARN CR1 读数：`%s` → http=%s（该口查询结构里没有这个字段，"
           "未知参数被忽略；不是 Q<T> 收口证据，只记账）" % (p_ig, st_ig))
 
-# ===== CR2 对外侧：passkey / Token 端点更要紧（脚本按 JSON 解析）=====
+# ===== CR2 对外侧：fxr token 端点更要紧（脚本按 JSON 解析）=====
 PK = psql("SELECT passkey FROM users WHERE id=1")
-st_rss, ct_rss, body_rss = raw_get("/rss/%s?showrows=abc" % PK)
+st_rss, ct_rss, body_rss = raw_get("/rss/%s?showrows=abc" % FXR)
 good2, d2 = envelope(st_rss, ct_rss, body_rss)
-ok("CR2a RSS（passkey 端点）`?showrows=abc` 必须回信封而非 text/plain："
-   "http=%s ctype=%s —— 修前 400 text/plain，且炸在 passkey 校验之前"
-   % (st_rss, ct_rss), st_rss == 400 and "text/plain" not in ct_rss and good2,
-   d2)
-st_fake, ct_fake, body_fake = raw_get("/rss/not_a_real_passkey?showrows=abc")
-good3, d3 = envelope(st_fake, ct_fake, body_fake)
-ok("CR2b 无效 passkey + 畸形参数：必须先按鉴权口径回信封（http=%s，"
-   "不能是 text/plain）——未鉴权请求不该拿到内部解析细节" % st_fake,
-   "text/plain" not in ct_fake and good3, d3)
+ok("CR2a RSS（fxr 端点）`?showrows=abc` 必须回信封而非 text/plain："
+   "http=%s ctype=%s" % (st_rss, ct_rss),
+   st_rss == 400 and "text/plain" not in ct_rss and good2, d2)
+st_fake, ct_fake, body_fake = raw_get("/rss/%s?showrows=abc" % PK)
+good3 = b"Query deserialize error" not in body_fake
+ok("CR2b 原始 passkey 在参数解析前就被拒（http=%s，400/404；不得泄露"
+   "内部解析细节）" % st_fake,
+   st_fake in (400, 404) and good3, body_fake[:100])
 s_mk, b_mk = call("POST", "/me/tokens",
                   {"name": TOKEN_NAME, "scopes": ["read"],
                    "password": "password123"}, token=ROOT)
@@ -232,8 +235,12 @@ ok("CR7 HEAD 必须自洽：定义处 qenv.rs 在树里=%s、mod.rs 里 mod qenv
    "定义=%s 引用=%d" % (have_qenv, callers))
 
 # ===== CR6 残留：临时令牌删净 =====
+revoke_rss_token(ROOT, FXR_ID)
 psql("DELETE FROM api_tokens WHERE name='%s'" % TOKEN_NAME)
 tk = int(psql("SELECT count(*) FROM api_tokens WHERE name='%s'" % TOKEN_NAME))
 ok("CR6 临时令牌清干净（签发 http=%s，收尾残留=%d）" % (s_mk, tk), tk == 0)
+rl = int(psql("SELECT count(*) FROM rss_tokens WHERE name LIKE 'crrss%' "
+              "AND revoked_at IS NULL"))
+ok("CR6b 本轮 fxr Token 已撤销（残留=%d）" % rl, rl == 0, "残留=%d" % rl)
 
 summary()

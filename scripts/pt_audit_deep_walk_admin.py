@@ -10,6 +10,20 @@ from __future__ import annotations
 from pt_audit_deep_walk_base import *  # noqa: F401,F403
 import sys
 
+
+def _drop_dl_rss(vip: str) -> None:
+    st, js = call("GET", "/api/v1/rss/tokens", vip)
+    for r in (data_of(js).get("tokens") or []):
+        if (r.get("name") or "").startswith("deep_dl_rss_"):
+            call("DELETE", f"/api/v1/rss/tokens/{r['id']}", vip)
+
+
+def _mint_dl_rss(vip: str) -> str:
+    _drop_dl_rss(vip)
+    st, js = call("POST", "/api/v1/rss/tokens", vip,
+                  body={"name": f"deep_dl_rss_{int(time.time())}"})
+    return data_of(js).get("token") if st == 200 else ""
+
 # ---------------------------------------------------------------- 域：invite2
 
 def register_user(uname: str, code: str) -> tuple[int, object]:
@@ -249,11 +263,14 @@ def d_dlforum(vip: str, root: str) -> None:
     # ① 真实下载：download.php 是 RSS enclosure / 客户端拉种同款直链
     st, js = call("GET", "/api/v1/torrents?limit=1", vip)
     rows = rows_of(js)
-    if rows:
+    dl_tok = _mint_dl_rss(vip)
+    if not dl_tok:
+        rec(D, "WARN", "fxr token 签不出来，下载链跳过")
+    if rows and dl_tok:
         tid = rows[0]["id"]
         st, body = call("GET",
                         f"/api/v1/compat/nexusphp/download.php?id={tid}"
-                        f"&passkey={VIP_PASSKEY}", vip, raw=True)
+                        f"&token={dl_tok}", vip, raw=True)
         expect(D, "download.php 200", st == 200, f"st={st}")
         is_torrent = (isinstance(body, bytes) and body.startswith(b"d")
                       and b"announce" in body[:100])
@@ -263,10 +280,11 @@ def d_dlforum(vip: str, root: str) -> None:
         st2, _ = call("GET",
                       f"/api/v1/compat/nexusphp/download.php?id={tid}"
                       f"&passkey={'0' * 32}", vip, raw=True)
-        # 401 也是合法拒绝（未认证口径，compat 下载口按鉴权失败处理）
-        expect(D, "坏 passkey 下载拒", st2 in (400, 401, 403, 404), f"st={st2}")
-    else:
+        # 原始 passkey 一律 401（数据面拒绝，不是 200 发文件）
+        expect(D, "原始 passkey 下载 401", st2 == 401, f"st={st2}")
+    elif not rows:
         rec(D, "WARN", "无活种，下载链跳过")
+    _drop_dl_rss(vip)
 
     # ② 论坛深交互：发主题（!torrent 引用）→ 回帖 → 楼中楼 → 编辑 → 读回 → 删
     # （删帖是管理权限，作者本人 DELETE 吃 403，用 root——NP 同口径）

@@ -129,6 +129,24 @@ def http_get_raw(tok, path):
         return e.code, e.headers
 
 
+def mint_rss(sess):
+    """给探针号签一枚 fxr token；先撤同名残枚（每人上限 5）。"""
+    st, d = call(sess, "GET", "/rss/tokens")
+    for r in ((d.get("data") or {}).get("tokens") or []):
+        if (r.get("name") or "").startswith("e2e_rss"):
+            call(sess, "DELETE", "/rss/tokens/%s" % r.get("id"))
+    st, d = call(sess, "POST", "/rss/tokens",
+                 {"name": "e2e_rss_%d" % (int(time.time()) % 100000)})
+    return (d.get("data") or {}).get("token"), st
+
+
+def drop_rss(sess):
+    st, d = call(sess, "GET", "/rss/tokens")
+    for r in ((d.get("data") or {}).get("tokens") or []):
+        if (r.get("name") or "").startswith("e2e_rss"):
+            call(sess, "DELETE", "/rss/tokens/%s" % r.get("id"))
+
+
 def ensure_probe():
     """现场注册一个普通会员探针（口令已知），返回 uid。
 
@@ -249,16 +267,18 @@ def main():
         tname = psql("SELECT name FROM torrents WHERE id=%d" % TORRENT)
         psql("UPDATE torrents SET anonymous=TRUE WHERE id=%d" % TORRENT)
         feed = ""
+        fxr, st = mint_rss(jwt(PROBE, 1))
         try:
-            pk_probe = psql("SELECT passkey FROM users WHERE id=%d" % PROBE)
             # showrows 默认 50 且按 id 倒序：探针种是装站时留的老种子，
             # 排在 50 条窗外 → 拿默认参数必然「命中 0 条」（闸门在测窗外）
             req = urllib.request.Request("%s/rss/%s?showrows=200"
-                                         % (API, pk_probe))
+                                         % (API, fxr))
             with urllib.request.urlopen(req, timeout=25) as r:
                 feed = r.read().decode("utf-8", "replace")
         except Exception as e:  # noqa: BLE001
             print("     RSS 取回失败：%s" % e)
+        finally:
+            drop_rss(jwt(PROBE, 1))
         items = re.findall(r"<item>.*?</item>", feed, re.S)
         mine = [x for x in items if tname[:24] in x]
         check("J3 RSS 命中该匿名种", bool(mine),

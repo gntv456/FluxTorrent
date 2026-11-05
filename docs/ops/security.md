@@ -10,7 +10,7 @@
 | 会话 | JWT（HS256），签发密钥 `JWT_SECRET` ≥32 字节，生产模式启动即拒绝弱值 |
 | 2FA | TOTP（RFC 6238，开/关/管理员清除）+ WebAuthn passkey |
 | 登录防护 | Redis 滑窗限流（60s/5 次）+ 账户级失败锁定 |
-| passkey（tracker） | users.passkey CHAR(32)。两种轮换语义分开：**显式「重置密钥」**（自助 usercp 与后台代为重置）是安全处置动作，旧钥不再进宽限窗、当场作废（tracker 侧随 `flux:guard:ver` 轮询清快照，≤3s）；**改密顺带轮换**才给宽限窗（`PASSKEY_GRACE_HOURS`，默认 7 天，迁移 0302/0308）——passkey 烤在用户已下载的每一个 .torrent 里，改密不该让手上种子集体停种 |
+| passkey（tracker） | users.passkey CHAR(32)。**只用于 Tracker announce/scrape 与 .torrent 内嵌 announce**；RSS/下载/账号查询改用 fxr_ token。两种轮换语义分开：**显式「重置密钥」**（自助 usercp 与后台代为重置）是安全处置动作，旧钥不再进宽限窗、当场作废（tracker 侧随 `flux:guard:ver` 轮询清快照，≤3s）；**改密顺带轮换**才给宽限窗（`PASSKEY_GRACE_HOURS`，默认 7 天，迁移 0302/0308）——passkey 烤在用户已下载的每一个 .torrent 里，改密不该让手上种子集体停种 |
 | 注册防护 | 验证码四驱动（none/turnstile/recaptcha/hcaptcha）+ 一次性邮箱域名黑名单 + 邀请码邮箱绑定校验 |
 
 ## 传输与响应头
@@ -42,7 +42,19 @@ frame-ancestors 'none'
 - web 侧 `'unsafe-inline'`（script）来自 Next 内联引导脚本（主题 no-flash / SW 注册 / 主题令牌注入），全部在本仓 `layout.tsx` 内、无用户输入插值；升级 nonce 基建前以此基线斩断**外域**脚本/对象/框架注入面。
 - `img-src` 放开 http/https 是因为附件/封面/头像支持站长配置的绝对 URL（含外域图床）。
 - 外域视频 embed（论坛/公告）默认被 `frame-src 'self'` 收口；如站长启用了外域 embed 白名单，需在反向代理层为对应路径放宽 frame-src（文档见 [论坛视频内嵌] 章节）。
-- 访问日志不落凭据：actix Logger 用 `%m %U`（不含 query），防止 passkey/token/apikey 进日志。
+- 访问日志不落凭据：actix Logger 用 `%m %U`（不含 query），防止
+  token/apikey 进日志；`/rss/{token}` 前缀由 `exclude_regex` 整段排除。
+- **反向代理还要单独处理 `/announce/{passkey}`**：api 进程自己不记请求
+  路径，但 nginx/CDN 默认会把整条 path 写进 access log。该前缀必须关闭
+  access log 或按路径段掩码，不能只依赖 `$uri`。
+- 开放 API Token 不返回 passkey；兼容层下载/账号查询使用 `fxr_` token
+  或 API Token，RSS 只接受 `fxr_`。Tracker passkey 不再外借。
+- **Tracker 换域名**：旧域名能保留就继续直接反代到新 Tracker，不做 301；
+  已下载的 `.torrent` 不会自动更新。批量修复用：
+  `python scripts/tracker_domain_migrate.py qb --url http://127.0.0.1:8080
+  --old tr.old.com --new tr.new.com --user ... --password ...`
+  （默认 dry-run，加 `--apply` 才写回；Transmission 用子命令 `tr`）。
+  所有种子共用 `/announce/{passkey}`，只换 host，路径和 passkey 保留。
 
 ## 威胁模型：开源引擎下的反作弊（0309）
 

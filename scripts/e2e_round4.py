@@ -15,6 +15,7 @@
 import json
 import subprocess
 import sys
+import time
 import urllib.request
 import urllib.error
 
@@ -110,19 +111,23 @@ if price_tid:
     bal2 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
     check("A4 已购重复下载不双扣", s == 200 and bal2 == bal1)
 
-    # NP 兼容旁路同样扣费：先取 root 的 passkey，再对一个未购的新付费种走 download.php
-    passkey = psql("SELECT passkey FROM users WHERE username='root'")
+    # NP 兼容旁路同样扣费：签一枚 fxr token，再对未购的新付费种走 download.php
+    s, r = call("POST", "/rss/tokens",
+                {"name": "e2e4-%d" % int(time.time())}, token=tok)
+    d = (r.get("data") or {}) if isinstance(r, dict) else {}
+    fxr = d.get("token")
+    fxr_id = d.get("id")
     tid2 = psql(
         f"SELECT id FROM torrents WHERE price > 0 AND approval_status = 1 "
         "AND owner_id <> 1 AND id NOT IN (SELECT torrent_id FROM"
             "torrent_purchases WHERE user_id = 1)"
         f"AND id <> {tid} ORDER BY id LIMIT 1"
     )
-    if tid2:
+    if tid2 and fxr:
         price2 = int(psql(f"SELECT price FROM torrents WHERE id = {tid2}"))
         b0 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
         s, blob = call("GET",
-            f"/compat/nexusphp/download.php?id={tid2}&passkey={passkey}",
+            f"/compat/nexusphp/download.php?id={tid2}&token={fxr}",
                 raw=True)
         b1 = int(psql("SELECT spark_balance FROM users WHERE username='root'"))
         check("A5 NP兼容端点同口径扣费", s == 200 and b0 - b1 == price2,
@@ -149,8 +154,12 @@ if price_tid:
                 check("A6 临时凭证端点同口径扣费", s == 200 and c0 - c1 == price3)
             else:
                 check("A6 临时凭证端点同口径扣费", False, "签发凭证失败")
+    elif not fxr:
+        check("A5 NP兼容端点同口径扣费", False, "fxr token 签发失败")
     else:
         check("A5/A6 付费种旁路", True, "(库中无第二个付费种，跳过)")
+    if fxr_id:
+        call("DELETE", f"/rss/tokens/{fxr_id}", token=tok)
 else:
     check("A 付费种子链路", True, "(库中无 root 外付费种，跳过)")
 

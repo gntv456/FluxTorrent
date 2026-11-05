@@ -10,7 +10,7 @@
 | NP 兼容形状 | `GET /compat/nexusphp/*`（user.json / torrents.json / download.php） | 按 NexusPHP 字段口径工作的旧工具 |
 | NP 别名路径 | `getrss.php` / `takelogin.php` / `userdetails.php` / `details.php` | 硬编码 NexusPHP 路径的老脚本 |
 | Torznab 出口 | `GET /api/v1/torznab` + `/torznab/search` | Prowlarr / Jackett / Sonarr / Radarr / cross-seed |
-| RSS | `GET /api/v1/rss/{passkey}`（item 带 enclosure 直链） | qBittorrent RSS / autobrr feed / Flexget / 阅读器 |
+| RSS | `GET /api/v1/rss/{fxr_token}`（item 带 enclosure 直链） | qBittorrent RSS / autobrr feed / Flexget / 阅读器 |
 | 开放 API + 增量流 | `/openapi.json`、`/open/recent`、`/open/announces`、`/open/torrents` | 自写脚本 / 推送器 / 自动发种工具 |
 
 详细字段与用法：`_doc/开放API接入指南.md`。
@@ -23,8 +23,9 @@
    - 到其仓库 `pt-plugins/PT-depiler` 提交站点定义（site config JSON）；
    - 我们走自研站通道：用户信息卡用 `ptppUserInfo` 端点（朱雀口径，已验证的最短路径），
      搜索/推送走开放 API；
-   - 提交前自测：插件「用户信息」能拉到等级/上传量、且下载链能真的拉到 .torrent 即通
-     （模板里的 `passkey` 字段必须有值，见 `.research/ptpp-config-template/config.json`）。
+   - 提交前自测：插件「用户信息」能拉到等级/上传量、且下载链能真的拉到 .torrent 即通。
+     下载凭证不再从用户信息里取 passkey，改走
+     `POST /api/v1/downloads/keys` 换 30 分钟临时直链。
 2. **Jackett**：基于 UNIT3D/NexusPHP 通用定义改 FluxTorrent 定义——由于
    `/compat/nexusphp/torrents.json` 提供同形状输出，通用定义通常直接可用；
    更省事的是直接走 Torznab（caps 已合规，Prowlarr/Jackett 可直接添加索引器）。

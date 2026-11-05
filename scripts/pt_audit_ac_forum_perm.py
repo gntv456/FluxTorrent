@@ -4,7 +4,7 @@
 钉住三件事：
   F1 板块抬高 minclassread 后，六个读侧都不许漏出该板块的标题
      （/forums、/forums/boards、直读板块、/forums/feed、/forums/search、
-      /rss/forum/{passkey}）——RSS 出口不在模块/权限网关里，历来是漏点；
+      /rss/forum/{fxr}）——RSS 出口不在模块/权限网关里，历来是漏点；
   F2 版主治理：普通用户 manage/删他人主题一律 403；站长锁帖后回帖被拒，
      解锁后恢复；sticky/digest 落库；
   F3 关注链路：关注用户后对方发新主题要有站内信；关注主题后有人回帖要有站内信；
@@ -25,12 +25,13 @@ from urllib.parse import quote
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from pt_audit_lib import (call, clear_register_rl, login, ok,  # noqa: E402
-                         summary)
+from pt_audit_lib import (call, clear_register_rl, login, mint_rss_token,
+                          ok, revoke_rss_token, summary)  # noqa: E402
 
 ROOT = login()
 TAG = int(time.time()) % 100000
 CLEAN = []
+RSS = {"id": None, "tok": "", "sess": None}
 
 
 def psql(q):
@@ -74,6 +75,9 @@ def exec_sql(q):
 
 
 def cleanup():
+    if RSS["id"] and RSS["sess"]:
+        revoke_rss_token(RSS["sess"], RSS["id"])
+        RSS.update(id=None, tok="")
     for stmt in reversed(CLEAN):
         try:
             exec_sql(stmt)
@@ -149,6 +153,10 @@ if not LOW or not HI:
     cleanup()
     sys.exit(1)
 LT, LUID, _ = LOW
+RID, RTOK = mint_rss_token(LT, "acrss%d" % TAG, "acrss")
+RSS.update(id=RID, tok=RTOK, sess=LT)
+ok("F1 前置：低档成员 fxr Token 签出", bool(RTOK),
+   "签不出来 ⇒ RSS 出口判据不承重")
 HT, HUID, HUSER = HI
 CLEAN.append("DELETE FROM follows WHERE user_id IN (%s,%s)" % (LUID, HUID))
 CLEAN.append("DELETE FROM posts WHERE topic_id IN "
@@ -188,8 +196,7 @@ try:
     ok("F1 /forums/search 不命中受限主题",
        not any((x.get("title") or "") == TITLE for x in srows or []),
        str(srows)[:120])
-    pk = psql("SELECT passkey FROM users WHERE id = %s" % LUID)
-    s, body = call("GET", "/rss/forum/" + pk, token=LT, raw=True)
+    s, body = call("GET", "/rss/forum/" + RSS["tok"], token=LT, raw=True)
     text = (body or b"").decode("utf-8", "replace")
     ok("F1 RSS 论坛流不含受限主题（RSS 出口不在网关里，必须自证）",
        TITLE not in text, "http=%s len=%d" % (s, len(text)))

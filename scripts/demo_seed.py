@@ -128,6 +128,13 @@ def main():
     tok = (json.loads(b).get("data") or {}).get("token")
     chk("签发 read+upload Token", st == 200 and tok, f"HTTP {st}")
 
+    # 2b) 签 RSS/下载专用 token（passkey 只用于 Tracker 汇报）
+    st, _, b = req("POST", f"{base}{API}/rss/tokens",
+                   {**cookie_h, "Content-Type": "application/json"},
+                   json.dumps({"name": "demo-rss"}).encode())
+    rss = (json.loads(b).get("data") or {}).get("token")
+    chk("签发 RSS/下载 Token", st == 200 and rss, f"HTTP {st}")
+
     # 3) 生成并上传演示种子（幂等：重跑返回 duplicate=true）
     name = "FluxTorrent 对接自测种子 (demo)"
     tor = make_torrent(name, b"fluxtorrent-demo-payload" * 4)
@@ -157,18 +164,14 @@ def main():
     else:
         chk("种子已过审可直接用", True)
 
-    # 5) 拿 passkey（工具拼下载链要用）
-    st, d = jget(f"{base}{API}/compat/nexusphp/user.json", tok)
-    pk = (d.get("data") or {}).get("passkey", "<passkey>")
-
-    # 6) 冒烟：三条通道各打一发
+    # 5) 冒烟：三条通道各打一发
     st, d = jget(f"{base}{API}/compat/nexusphp/torrents.json?page=1", tok)
     n1 = len((d.get("data") or {}).get("items", []))
     chk("兼容层列表可见演示种子", n1 >= 1, f"items={n1}")
     st, _, b = req(
         "GET", f"{base}{API}/torznab/search?apikey={tok}&t=search&q=demo")
     chk("Torznab 可搜索", st == 200 and b"<item>" in b, f"HTTP {st}")
-    st, _, b = req("GET", f"{base}{API}/rss/{pk}")
+    st, _, b = req("GET", f"{base}{API}/rss/{rss}")
     chk("RSS 含 enclosure", st == 200 and b"<enclosure" in b, f"HTTP {st}")
 
     print(f"""
@@ -176,15 +179,15 @@ def main():
 站点基址        http://localhost:3000
 API 根          {base}
 演示 Token      {tok}
-passkey         {pk}
+RSS Token       {rss}
 Torrent id      {tid}
 
 Prowlarr/Jackett  索引器类型: Generic Torznab
                   URL:    {base}/torznab
                   APIKEY: {tok}
 
-RSS 订阅          {base}/rss/{pk}
-下载直链          {base}/api/v1/compat/nexusphp/download.php?id={tid}&passkey={pk}
+RSS 订阅          {base}/rss/{rss}
+下载直链          {base}/api/v1/compat/nexusphp/download.php?id={tid}&token={rss}
 
 机器可读契约      {base}/openapi.json
 架构自描述        {base}/compat/meta

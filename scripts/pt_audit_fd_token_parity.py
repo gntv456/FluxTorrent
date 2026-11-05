@@ -17,7 +17,7 @@
       不许再出现各处自己 sha3 一遍的写法（authz.rs 抽出就是为了防漂移）；
   FD3 活体：建 token → 拉订阅 → 取 enclosure（**按阅读器的方式反转义
       `&amp;`**）→ 下载必须 200 且首字节是 bencode 的 `d8:announce`；
-  FD4 活体对照：主 passkey 打同一个口仍 200（没被我改动打坏）；
+  FD4 活体对照：主 passkey 打下载口必须 401（token-only 边界）；
   FD5 活体：撤销后同一直链必须 401（文档承诺的整链失效）；伪造 token 形状
       与伪造 passkey 都必须 401，不得 500；
   FD6 收尾：本闸门建的 token 行必须为 0。
@@ -134,10 +134,9 @@ else:
         st_p, bp = req("GET", BASE + "/compat/nexusphp/download.php"
                        "?id=%s&passkey=%s" % (re.sub(r".*id=(\d+).*", r"\1",
                                                      encl or ""), pk))
-        ok("FD4 主 passkey 与 fxr_ token 打同一个口必须同码同因"
-           "（凭证对等；缺档时两边都得是缺档）",
-           st_p == st_d or (missing_archive and st_p == 400),
-           "passkey st=%s token st=%s 首字节=%r" % (st_p, st_d, bp[:60]))
+        ok("FD4 主 passkey 打下载口必须 401（Tracker 身份不再外借；"
+           "token 路已在 FD3 证通）",
+           st_p == 401, "passkey st=%s 首字节=%r" % (st_p, bp[:60]))
         req("DELETE", BASE + "/rss/tokens/%d" % tid, None, sess)
         st_r, br = req("GET", encl) if encl else (0, b"")
         ok("FD5a 撤销后同一直链必须 401（整链失效，文档口径）",

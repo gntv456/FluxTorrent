@@ -1,34 +1,7 @@
 # -*- coding: utf-8 -*-
-"""闸门 BF：NexusPHP 兼容层与三条下载路的对外契约（批四十二）。
-
-读代码 + 实测确认过的现网事实（不重复立案，只钉成常驻判据）：限流已
-fail-close（P-67）、approval 默认在安全侧、user.json 与 userdetails.php
-共用 np_user_json 所以字段不可能漂移、临时凭证路的账号校验落在共用层。
-
-本轮立的四条：P-161 的判据在本文件 S2，P-162~P-164 的判据在 BF2（下载路专卷）：
-
-  P-161 torrents.json 只认本站参数名 —— 实测 `?search=片名` 回 200 + 全站未筛
-        （total_estimate 仍是 69），`?cat=1`、`?incldead=0` 同理被 serde 静默丢掉。
-        NP 工具的 `search/cat/incldead/rowset` 必须双收：RSS 侧批十一就是这么修的
-        （rss_http/query.rs），兼容层内两处口径不一致比两处都缺更糟 —— 刷流脚本
-        拿到的是「没报错但内容不对」的列表。
-  P-162 扣费排在交付判定之前 —— 网页口/凭证口/批量口先 `charge_for_download`
-        再 `build_torrent_bytes`：付费种 + 被停下载/挂起/封禁的账号会先扣魔力、
-        写好已购，再被拒发；批量口一次最多把 50 个付费种全扣完回 404，已购记录
-        还让重试跳过扣费段。判据：同一账号（停下载 + 余额 0）打付费种，原话必须
-        是「下载权限已被暂停」而不是「魔力不足」，且探针号流水零增长。
-  P-163 同一份 .torrent 字节，compat/凭证两路口带 no-store，网页口与批量 zip
-        没有 —— 内嵌本人 passkey 的响应一律禁缓存。
-  P-164 download.php 把「停下载」报成 401 未认证（凭证其实没坏）—— 工具据此去
-        重置 passkey、把账号问题当对接问题查；现在三路同口径 400/403。
-
-本文件只管**只读契约**；三条下载路（字节一致 / no-store / 资格先扣费 /
-扣费正控与痕迹复原）在 `pt_audit_bf2_download_paths.py`，两个文件各自
-注册探针号与 Token、各自收尾，互不共享限流额度。
-
-段序：S0 前置 / S1 认证 / S2 参数名 / S3 分页 / S4 字段 / S5 限流 /
-     S7 别名链 / S8 meta 契约 / S9 收尾
-
+"""闸门 BF：NexusPHP 兼容层读口契约（P-161~P-164）。
+RSS/下载/账号查询用 fxr token，passkey 只用于 Tracker。
+下载路专卷见 pt_audit_bf2_download_paths.py。
 跑法：PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_bf_compat_nexus.py
 """
 import json, os, re, subprocess, sys, time, urllib.error, urllib.request
@@ -36,7 +9,8 @@ import json, os, re, subprocess, sys, time, urllib.error, urllib.request
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
-    BASE, call, clear_register_rl, login, ok, summary)
+    BASE, call, clear_register_rl, login, mint_rss_token, ok,
+    revoke_rss_token, summary)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
@@ -52,7 +26,6 @@ def psql(q):
     if r.returncode != 0:
         print("   psql 失败：%s / %s" % (q[:56], (r.stderr or "").strip()[:80]))
     return (r.stdout or "").strip()
-
 
 def cnt(t, w=None):
     return psql("SELECT count(*) FROM %s%s"
@@ -118,7 +91,7 @@ KW = psql("SELECT substring(name from 1 for 6) FROM torrents WHERE "
 # S5e 要拿真种打 download.php 的限流额度（只读，不扣费不写账）
 FREE = psql("SELECT id FROM torrents WHERE approval_status = 1 "
             "AND COALESCE(price,0) = 0 ORDER BY id LIMIT 1") or "0"
-NPDL = "/api/v1/compat/nexusphp/download.php?id=%s&passkey=%s"
+NPDL = "/api/v1/compat/nexusphp/download.php?id=%s&token=%s"
 TOTAL = int(psql("SELECT count(*) FROM torrents WHERE approval_status = 1"))
 KWN = int(psql("SELECT count(*) FROM torrents WHERE approval_status = 1 "
                "AND name LIKE '%s%%'" % KW.replace("'", "''")))
@@ -160,6 +133,9 @@ else:
 ok("S0b 探针成员就绪（uid=%s）%s" % (PU, WHY), PU > 0 and PTOK is not None,
    WHY or "注册没成功 ⇒ S4 三态判据不承重")
 PPK = psql("SELECT passkey FROM users WHERE id = %d" % PU) if PU else ""
+# 探针号自己的 fxr token：账号墓碑后旧凭据必须立刻读不到（S9b）
+PFR_ID, PFR = (mint_rss_token(PTOK, "bfr%d" % TAG, "bfr")
+               if PTOK else (None, None))
 
 MONTH = psql("SELECT to_char((now() at time zone 'utc+8'), 'YYYY-MM')")
 # 注意：全站 spark_ledger / audit_log 的总量**不进**残留判据 —— worker 每
@@ -189,11 +165,7 @@ def mint(pfx):
     plain = data(call("POST", "/me/tokens", body, token=ROOT)).get("token")
     if plain:
         return plain
-    # 产品口径：每人**最多 3 枚有效 token**（apps/api/src/openapi_http/tokens.rs）。
-    # 上一轮遗留/别的套件占满 3 枚时，签发口直接 400「有效 token 上限 3 枚」，
-    # 而旧写法不判结果就 int(tok_id()) → ValueError 崩在判据外，闸门红得
-    # 看不出因果。这里：撤掉**最老的一枚在册 token** 再签一次；
-    # 仍失败就把原因记进判据（而不是抛异常）。
+    # 在册上限 3 枚：占满时撤最老一枚再签一次，避免抛异常崩在判据外。
     old = psql("SELECT id FROM api_tokens WHERE user_id = 1 AND "
                "revoked_at IS NULL ORDER BY id LIMIT 1")
     if old and old.isdigit():
@@ -210,6 +182,14 @@ def tok_id(pfx):
 
 TKF = mint("bfp")
 ok("S0c 功能 Token 签出（开局先撤上几轮残枚，在册上限 3）", bool(TKF), "没撤干净会把签发口焊死")
+FXR_ID, FXR = mint_rss_token(ROOT, "bfs%d" % TAG, "bfs")
+ok("S0d fxr Token 签出（userdetails/download 共用）", bool(FXR),
+   "签不出来 ⇒ S4/S7 判据不承重")
+# 限流两枚独立 fxr token：前面的功能请求不能把额度打满
+FXL_ID, FXL = mint_rss_token(ROOT, "bfu%d" % TAG, "bfu")
+FXD_ID, FXD = mint_rss_token(ROOT, "bfd%d" % TAG, "bfd")
+ok("S0e 限流用 fxr Token 各自独立（userdetails / download）",
+   bool(FXL and FXD), "共用一枚会把 30/分 额度提前打满")
 
 # ============ S1 认证口径 ============
 st, _, t, _ = hit("/api/v1/compat/nexusphp/user.json")
@@ -291,9 +271,9 @@ ok("S3d 分页字段类型稳定（total_estimate int / has_more bool / page_siz
    and isinstance(d2.get("page_size"), int), blob(d2)[:90])
 
 # ============ S4 字段口径 ============
-def ud(passkey):
-    st, hd, t, _ = hit("/api/v1/compat/nexusphp/userdetails.php?passkey="
-                       + passkey)
+def ud(tok):
+    st, hd, t, _ = hit("/api/v1/compat/nexusphp/userdetails.php?token="
+                       + tok)
     try:
         return st, hd, json.loads(t).get("data") or {}
     except Exception:
@@ -301,30 +281,30 @@ def ud(passkey):
 
 
 KEYS = {"id", "username", "uploaded", "downloaded", "seedbonus", "class",
-        "class_name", "ratio", "ratio_infinite", "ratio_display", "passkey"}
-st, PHD, a = ud(PPK)
+        "class_name", "ratio", "ratio_infinite", "ratio_display"}
+st, PHD, a = ud(FXR)
 bj = json.loads(jget("/api/v1/compat/nexusphp/user.json", TKF)[2]).get(
     "data") or {}
 ok("S4a userdetails.php 与 user.json 键集合都等于 np_user_json 的形状",
    st == 200 and set(a) == KEYS and set(bj) == KEYS,
    "差异=%s" % sorted((set(a) ^ KEYS) | (set(bj) ^ KEYS)))
-ok("S4b 两口径都禁缓存（响应含 passkey，不得被中间层留存）",
+ok("S4b 两口径都禁缓存（账号数据不得被中间层留存）",
    "no-store" in (PHD.get("cache-control") or "").lower()
    and "no-store" in (UHD.get("cache-control") or "").lower(),
    "ud=%s uj=%s" % (PHD.get("cache-control"), UHD.get("cache-control")))
 OTHERS = [x for x in psql("SELECT passkey FROM users WHERE id <> %d "
                           "AND status < 2 AND passkey IS NOT NULL" % PU
                           ).splitlines() if x]
-ok("S4c 只回本人那枚 passkey（库里他人 %d 枚一枚都不许出现在响应里）"
-   % len(OTHERS), a.get("passkey") == PPK
-   and not any(x in blob(a) for x in OTHERS), "self=%s" % str(
-       a.get("passkey"))[:6])
+ok("S4c 响应里不含任何人（含本人）的 passkey（库里他人 %d 枚）"
+   % len(OTHERS), "passkey" not in a and PPK not in blob(a)
+   and not any(x in blob(a) for x in OTHERS),
+   "keys=%s" % sorted(a)[:12])
 
 
 def ratio_case(up, down, want, label):
     psql("UPDATE users SET uploaded = %d, downloaded = %d WHERE id = %d"
          % (up, down, PU))
-    _, _, x = ud(PPK)
+    _, _, x = ud(FXR)
     got = (x.get("ratio_display"), x.get("ratio"), x.get("ratio_infinite"))
     ok("S4d-%s 上传=%d 下载=%d → display=%s infinite=%s（旧实现回 -1.0 被"
        "工具当负数显示）" % (label, up, down, got[0], got[2]),
@@ -336,29 +316,30 @@ ratio_case(1000, 0, ("∞", True), "inf")
 ratio_case(0, 0, ("---", False), "zero")
 ratio_case(3000, 1000, ("3.0000", False), "real")
 
-# ============ S5 限流（passkey 维与 Token 维） ============
+# ============ S5 限流（fxr token 维与 API Token 维） ============
 def burn(path, n, tok=None):
     return [jget(path, tok)[0] if tok else hit(path)[0] for _ in range(n)]
 
 
-ud_codes = burn("/api/v1/compat/nexusphp/userdetails.php?passkey=" + PK, 33)
+UD = "/api/v1/compat/nexusphp/userdetails.php?token="
+ud_codes = burn(UD + FXL, 33)
 first = next((i + 1 for i, c in enumerate(ud_codes) if c == 429), None)
-st, hd, t, _ = hit("/api/v1/compat/nexusphp/userdetails.php?passkey=" + PK)
-ok("S5a 同一 passkey 第 %s 次撞 429（额度 30/分，P-67 那道 fail-close 闸）"
+st, hd, t, _ = hit(UD + FXL)
+ok("S5a 同一 fxr token 第 %s 次撞 429（额度 30/分，P-67 那道 fail-close 闸）"
    % first, first == 31 and 429 in ud_codes[-3:], "tail=%s" % ud_codes[-4:])
 ok("S5b 429 体口径与 meta 一致：code 1015 + Retry-After: 60",
    '"code":1015' in t.replace(" ", "") and hd.get("retry-after") == "60",
    "%s / %s" % (t[:60], hd.get("retry-after")))
-ok("S5c 换一枚 passkey 立刻可用（键按 passkey 分，不是按 IP 一锅端）",
-   ud(PPK)[0] == 200, "probe=%s" % ud(PPK)[0])
+ok("S5c 换一枚 fxr token 立刻可用（键按 token 分，不是按 IP 一锅端）",
+   ud(FXR)[0] == 200, "probe=%s" % ud(FXR)[0])
 okc, bad = 0, []
-for k in ["z" * 32, PK[:-1], PK + "x", "A" * 32, PK.replace("a", "b"), ""]:
-    c = hit("/api/v1/compat/nexusphp/userdetails.php?passkey=" + k)[0]
+for k in [PK, "z" * 32, PK[:-1], PK + "x", "A" * 32, ""]:
+    c = hit(UD + k)[0]
     okc += c == 401
     bad.append("%s→%s" % (len(k), c))
-ok("S5d 畸形/缺失 passkey 六种一律 401（不可枚举、不 500、不给 200 空体）",
+ok("S5d 原始/畸形/缺失 passkey 六种一律 401（不可枚举、不 500、不给 200 空体）",
    okc == 6, " ".join(bad))
-dcodes = burn(NPDL % (FREE, PK), 31)
+dcodes = burn(NPDL % (FREE, FXD), 31)
 ok("S5e download.php 同额度撞 429（末两次=%s）" % dcodes[-2:],
    429 in dcodes[-2:], "tail=%s" % dcodes[-6:])
 TKX = mint("bfz")
@@ -397,23 +378,32 @@ st, hd, _, _ = hit("/api/v1/compat/nexusphp/details.php?id=" + FREE)
 ok("S7d details.php → 302 到本站详情页（不伪造 HTML，诚实降级）",
    st == 302 and (hd.get("location") or "").endswith("/torrent/" + FREE),
    "%s loc=%s" % (st, hd.get("location")))
-st, hd, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?passkey=" + PK)
-ok("S7e getrss.php → 302 到 /api/v1/rss/{passkey}（其余参数原样透传）",
-   st == 302 and (hd.get("location") or "").startswith("/api/v1/rss/" + PK),
+st, hd, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?token=" + FXR)
+ok("S7e getrss.php?token=fxr → 302 到 /api/v1/rss/{fxr}（其余参数原样透传）",
+   st == 302 and (hd.get("location") or "").startswith("/api/v1/rss/" + FXR),
    "loc=%s" % (hd.get("location") or "")[:70])
+st, hd, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?passkey=" + FXR)
+ok("S7e2 旧参数名 passkey 承载 fxr 值仍受理（不接真实 passkey）",
+   st == 302 and (hd.get("location") or "").startswith("/api/v1/rss/" + FXR),
+   "loc=%s" % (hd.get("location") or "")[:70])
+st, hd, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?passkey=" + PK)
+ok("S7e3 原始 passkey 打 getrss.php 一律 401（不再换出订阅地址）",
+   st == 401 and not hd.get("location"), "%s loc=%s" % (
+       st, hd.get("location")))
 st, hd, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?passkey=" + "A" * 32)
 st2, hd2, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?passkey=a" + "/"
                      * 31)
-ok("S7f 别名层只转发合法形状：大写与含斜杠都 401 且不给出 Location（不照抄"
-   "调用方文本拼订阅地址）", st == 401 and not hd.get("location")
+ok("S7f 别名层只转发合法 token 形状：大写与含斜杠都 401 且不给出 Location"
+   "（不照抄调用方文本拼订阅地址）", st == 401 and not hd.get("location")
    and st2 == 401 and not hd2.get("location"),
    "%s loc=%s / %s loc=%s" % (st, hd.get("location"), st2,
                               hd2.get("location")))
-# 形状合法但不存在的 passkey：别名层不查库（判据只在被转发的那个端点有一份），
-# 所以它照常 302，由 /rss/{pk} 回 404 —— 这条把「两处实现」的边界钉住
-st, _, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?passkey=" + "z" * 32)
-st2, _, _, _ = hit("/api/v1/rss/" + "z" * 32)
-ok("S7g 合法但不存在的 passkey：别名 302 → 目标口 404（判据只有一份，转发层"
+# 形状合法但不存在的 token：别名层不查库（判据只在被转发的那个端点有一份），
+# 所以它照常 302，由 /rss/{fxr} 回 404 —— 这条把「两处实现」的边界钉住
+BADFX = "fxr_" + "z" * 32
+st, _, _, _ = hit("/api/v1/compat/nexusphp/getrss.php?token=" + BADFX)
+st2, _, _, _ = hit("/api/v1/rss/" + BADFX)
+ok("S7g 合法但不存在的 token：别名 302 → 目标口 404（判据只有一份，转发层"
    "不重复实现，也不 500/不 200 空源）", st == 302 and st2 == 404,
    "alias=%s target=%s" % (st, st2))
 
@@ -429,27 +419,38 @@ flat += [v for v in (eps.get("aliases") or {}).values()
 noo = [v for v in flat if "/api/v1" not in v]
 ok("S8c meta 声明的 %d 个口全部带 /api/v1 前缀（漏前缀=工具拼出 404 URL）"
    % len(flat), bool(flat) and not noo, blob(noo)[:110])
-ok("S8d meta 声称 download_by_passkey/temp_key/user_info 为真，且这三条路"
-   "本轮都实测通", all((meta.get("capabilities") or {}).get(k) is True for k
-                       in ("download_by_passkey", "download_temp_key",
-                           "user_info")), blob(meta.get("capabilities"))[:110])
+CAP = meta.get("capabilities") or {}
+ok("S8d meta 声称 download_by_token/download_temp_key 为真、"
+   "download_by_passkey 为假（原始 passkey 不再能下载）",
+   CAP.get("download_by_token") is True
+   and CAP.get("download_by_passkey") is False
+   and CAP.get("download_temp_key") is True, blob(CAP)[:130])
 
 # ============ S9 收尾 ============
 for pfx in ("bfp", "bfb", "bfz"):
     revoke_stale(pfx)
+for tid in (FXR_ID, FXL_ID, FXD_ID, PFR_ID):
+    revoke_rss_token(ROOT, tid)
 LEFT_TK = [n for n in ("bfp", "bfb", "bfz")
            if cnt("api_tokens", "user_id = 1 AND name LIKE '%s%%' AND "
                   "revoked_at IS NULL" % n) != "0"]
-ok("S9a 本轮三枚 Token 全撤净（只数自己前缀，别的闸门的残枚不算我的账）",
-   not LEFT_TK, "未撤=%s 在册总数=%s" % (LEFT_TK, cnt(
-       "api_tokens", "user_id = 1 AND revoked_at IS NULL")))
+LEFT_FX = [n for n in ("bfs", "bfu", "bfd")
+           if cnt("rss_tokens", "user_id = 1 AND name LIKE '%s%%' AND "
+                  "revoked_at IS NULL" % n) != "0"]
+ok("S9a 本轮 Token 全撤净（API 三枚 + fxr 三枚；只数自己前缀）",
+   not LEFT_TK and not LEFT_FX, "未撤 API=%s fxr=%s" % (
+       LEFT_TK, LEFT_FX))
+ok("S9b0 墓碑前 fxr token 可读本人账号（正控，防修成一律 401）",
+   bool(PFR) and ud(PFR)[0] == 200, "http=%s" % (ud(PFR)[0] if PFR else 0))
 call("POST", "/admin/users/status", {"user_id": PU, "status": 2}, token=ROOT)
 call("DELETE", "/admin/users/%d" % PU, None, token=ROOT)
 TOMB = psql("SELECT coalesce(passkey,'-') || '|' || pass_hash FROM users "
             "WHERE id = %d" % PU)
-ok("S9b 探针号走真实墓碑：passkey 作废后旧钥在 userdetails 读不到（401）",
-   TOMB.startswith("deleted-") and "|!" in TOMB and ud(PPK)[0] == 401,
-   "tomb=%s http=%s" % (TOMB[:20], ud(PPK)[0]))
+ok("S9b 探针号走真实墓碑：fxr token 作废后 userdetails 401（不是仍 200）",
+   TOMB.startswith("deleted-") and "|!" in TOMB
+   and bool(PFR) and ud(PFR)[0] == 401,
+   "tomb=%s http=%s" % (TOMB[:20], ud(PFR)[0] if PFR else 0))
+psql("DELETE FROM rss_tokens WHERE user_id = %d" % PU)
 psql("DELETE FROM download_keys WHERE user_id = 1 OR user_id = %d" % PU)
 if codes:
     psql(

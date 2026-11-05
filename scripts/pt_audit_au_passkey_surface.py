@@ -1,32 +1,14 @@
 # -*- coding: utf-8 -*-
-"""闸门 AU：passkey / 长期凭据面（批三十）。
+"""闸门 AU：长期凭据面（批三十）。
 
-钉住三件事：
-  S1 P-66 日志不泄 passkey：`/rss/{passkey}` 是**路径形态**的长期凭据，
-     access log 与 request_id 的「请求开始」行两条通道都不能出现整串
-     passkey（旧版两条都泄：actix 的 exclude 是 HashSet 精确匹配，
-     `/api/v1/rss` 与 `/api/v1/rss*` 都一条没挡）；
-  S2 封号即失效：userdetails.php / 论坛 RSS / 主 RSS 三个 passkey 出口都走
-     `user_by_passkey`（status<2）——被封/软删账号的 passkey 必须立刻在三个口
-     全部失效；`userdetails.php?…&id=别人` 不得变成读别人；
-  S3 P-67 计数 fail-close：全仓 8 处自写 `incr(...).unwrap_or(0)` 里取 4 处
-     代表（登录 acctlock 读侧、compat download.php 的 npdl 桶、论坛 RSS 的
-     rssforum 桶、开放 API 的 token 桶），用「把计数键 SET 成非数字」逼出
-     Redis 报错路径：修前静默放行，修后 5xx。其余站点共用同一 helper；
-  S5 P-72 键名契约：`rl:` 前缀只由 rate_window 加一次，实测键名必须等于
-     文档口径 `rl:<scope>:<id>:<窗口>`（双前缀 `rl:rl:*` 即红）；
-  S6 P-69 计数键 TTL 自愈；
-  S7 P-73 无 TTL 孤键不得等于永久拒绝（shoutbox/captcha/banlog/pwdforgot
-     四站从自写 Redis 收进 rate_window）。
+S1 日志不泄订阅 fxr token（access log + request_id 两通道）；
+S2 封号即失效：userdetails / 论坛 RSS / 主 RSS 都查 rss_tokens+status<2；
+S3 P-67 计数 fail-close：登录 / compat download / 论坛 RSS / 开放 API 四桶；
+S5 P-72 键名 rl:<scope>:<id>:<窗口>；S6 P-69 TTL 自愈；S7 P-73 孤键。
 
-诚实边界：不断言「Redis 真挂了」的行为（不敢为验证去重启承载 announce
-计费流的 Redis）；SET 造类型错误只能覆盖「命令报错」这一支，覆盖不到
-「连不上」。
-
-投毒键当场删、封号状态当场还原、Token 当场撤销、探针号墓碑。
-
-跑法：
-    PYTHONIOENCODING=utf-8 python scripts/pt_audit_au_passkey_surface.py
+诚实边界：SET 造类型错误只覆盖命令报错，不覆盖 Redis 连不上。
+投毒键/封号/Token/探针号当场复原。跑法：
+PYTHONIOENCODING=utf-8 python scripts/pt_audit_au_passkey_surface.py
 """
 import atexit
 import hashlib
@@ -39,7 +21,8 @@ import time
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
-    call, clear_register_rl, login, ok, summary)
+    call, clear_register_rl, login, mint_rss_token, ok, revoke_rss_token,
+    summary)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
@@ -49,6 +32,8 @@ CLEAN = []
 EXTRA_IDS = []
 TOKEN_ID = None
 MT = None
+RSS_ID = None
+RSS = None
 
 def q(sql):
     r = subprocess.run(
@@ -88,6 +73,8 @@ def unpoison():
 
 def cleanup():
     unpoison()
+    if RSS_ID and MT:
+        revoke_rss_token(MT, RSS_ID)
     if TOKEN_ID and MT:
         call("POST", "/me/tokens/revoke", {"id": TOKEN_ID}, token=MT)
     # S9 的正控那枚也当场撤掉（每人上限 3 枚，闸门不该把额度吃光）
@@ -250,12 +237,20 @@ for _ in range(10):
     time.sleep(7)
 PK = q("SELECT passkey FROM users WHERE id = %s" % MID) if MID else ""
 CLEAN.append("UPDATE users SET status = 2 WHERE id = %s" % MID)
-ok("探针成员可准备（注册/登录限流下）", bool(MT) and len(PK) == 32,
-   "uid=%s pk=%s…" % (MID, PK[:8]))
+RSS_ID, RSS = (mint_rss_token(MT, "aurss%d" % TAG, "aurss") if MT
+               else (None, None))
+ok("探针成员可准备（注册/登录限流下，原始 passkey 仅作否定判据）",
+   bool(MT) and len(PK) == 32, "uid=%s pk=%s…" % (MID, PK[:8]))
 if not (MT and PK):
     cleanup()
     summary()
     sys.exit(1)
+if not RSS:
+    ok("RSS fxr Token 可签发（S1/S2/S3 要用）", False)
+    cleanup()
+    summary()
+    sys.exit(1)
+ok("RSS fxr Token 可签发（S1/S2/S3 要用）", True)
 s, tr = call("POST", "/me/tokens", {"name": "AU闸门%d" % TAG,
                                     "scopes": ["read"],
                                     "rate_per_min": 60,
@@ -269,16 +264,16 @@ if TOKEN_ID:
 ok("开放 API Token 可签发（S3 第四处要用）", bool(PLAIN) and len(THASH) > 16,
    "http=%s %s" % (s, brief(tr)))
 
-print("== S1 passkey 不进日志（P-66）==")
-st, _ = call("GET", "/rss/%s?showrows=1" % PK, raw=True)
-st2, _ = call("GET", "/rss/forum/%s?forums=1" % PK, raw=True)
+print("== S1 RSS token 不进日志（P-66）==")
+st, _ = call("GET", "/rss/%s?showrows=1" % RSS, raw=True)
+st2, _ = call("GET", "/rss/forum/%s?forums=1" % RSS, raw=True)
 call("GET", "/forums", token=MT)
 time.sleep(1.5)
 log = logs_since()
 ok("S1 请求确实到了（主 RSS %s / 论坛 RSS %s）" % (st, st2),
    st in (200, 404) and st2 in (200, 404), "http=%s/%s" % (st, st2))
-ok("S1 整串 passkey 不在日志里（两条通道一起堵）", PK not in log,
-   "命中=%s" % (PK in log))
+ok("S1 整串 RSS token 不在日志里（两条通道一起堵）", RSS not in log,
+   "命中=%s" % (RSS in log))
 ok("S1 正控：脱敏后的 RSS 行确实在（说明请求被记过，不是没打日志）",
    "path=/api/v1/rss/*** " in log or "path=/api/v1/rss/***" in log,
    brief([l for l in log.split("\n") if "rss" in l][-1:]))
@@ -294,39 +289,39 @@ ok("S1/P-74 正控：access log 行里带 HTTP 方法",
 ok("S1/P-74 反控：没有被当字面量印出的 %m（形如 \"m /api/…\"）",
    not any('"m /api' in l for l in samp), brief(samp[-1:]))
 
-print("== S2 封号即失效 × 三个 passkey 出口 ==")
-s, r = call("GET", "/compat/nexusphp/userdetails.php?passkey=%s&id=1" % PK)
+print("== S2 封号即失效（userdetails / 主 RSS / 论坛 RSS）==")
+s, r = call("GET", "/compat/nexusphp/userdetails.php?token=%s&id=1" % RSS)
 own = (r.get("data") or {}).get("id")
 ok("S2 地基：userdetails 通，且 id 参数改不了归属（读的是自己）",
    s == 200 and str(own) == str(MID), "http=%s id=%s 应为 %s"
    % (s, own, MID))
 ex("UPDATE users SET status = 2 WHERE id = %s" % MID)
-s1, _ = call("GET", "/compat/nexusphp/userdetails.php?passkey=%s" % PK)
-s2b, _ = call("GET", "/rss/forum/%s?forums=1" % PK, raw=True)
-s3b, _ = call("GET", "/rss/%s?showrows=1" % PK, raw=True)
+s1, _ = call("GET", "/compat/nexusphp/userdetails.php?token=%s" % RSS)
+s2b, _ = call("GET", "/rss/forum/%s?forums=1" % RSS, raw=True)
+s3b, _ = call("GET", "/rss/%s?showrows=1" % RSS, raw=True)
 ex("UPDATE users SET status = 0 WHERE id = %s" % MID)
 ok("S2 封号后 userdetails 拒", s1 in (401, 403), "http=%s" % s1)
 ok("S2 封号后论坛 RSS 拒", s2b in (401, 404), "http=%s" % s2b)
 ok("S2 封号后主 RSS 拒", s3b in (401, 404), "http=%s" % s3b)
-s1, _ = call("GET", "/compat/nexusphp/userdetails.php?passkey=%s" % PK)
+s1, _ = call("GET", "/compat/nexusphp/userdetails.php?token=%s" % RSS)
 ok("S2 反控：解除封号后立刻恢复（判据不是恒拒）", s1 == 200, "http=%s" % s1)
 
 print("== S3 计数 fail-close（P-67）==")
-for k in both_shapes("rl:npdl", pk16(PK)):
+for k in both_shapes("rl:npdl", pk16(RSS)):
     poison(k)
-s, r = call("GET", "/compat/nexusphp/download.php?id=1&passkey=%s" % PK,
+s, r = call("GET", "/compat/nexusphp/download.php?id=1&token=%s" % RSS,
             raw=True)
 ok("S3 download.php：计数键报错时不得静默放行（旧版 unwrap_or(0) 继续下载）",
    500 <= s < 600, "http=%s %s" % (s, brief(r)[:110]))
-for k in both_shapes("rl:rssforum", pk16(PK)):
+for k in both_shapes("rl:rssforum", pk16(RSS)):
     poison(k)
-s, r = call("GET", "/rss/forum/%s?forums=1" % PK, raw=True)
+s, r = call("GET", "/rss/forum/%s?forums=1" % RSS, raw=True)
 ok("S3/P-68 论坛 RSS：限流服务报错不得回 429（把后端故障伪装成「你拉太快了」，"
    "订阅端据此退避 60s，排障方向从第一天就错）",
    s == 503, "http=%s %s" % (s, brief(r)[:90]))
-for k in both_shapes("rl:rss", pk16(PK)):
+for k in both_shapes("rl:rss", pk16(RSS)):
     poison(k)
-s, r = call("GET", "/rss/%s?showrows=1" % PK, raw=True)
+s, r = call("GET", "/rss/%s?showrows=1" % RSS, raw=True)
 ok("S3/P-68 主 RSS 同修", s == 503, "http=%s %s" % (s, brief(r)[:90]))
 if PLAIN and THASH:
     for k in both_shapes("rl:openapi", THASH[:16]):
@@ -347,13 +342,13 @@ ok("S3 正控：键干净后登录正常（fail-close 没把正常请求打挂�
    s == 200 and MT, "http=%s %s" % (s, brief(r)))
 s, _ = call("GET", "/open/me/overview?apikey=%s" % PLAIN, raw=True)
 ok("S3 正控：开放 API 照常", s == 200, "http=%s" % s)
-s, _ = call("GET", "/rss/forum/%s?forums=1" % PK, raw=True)
+s, _ = call("GET", "/rss/forum/%s?forums=1" % RSS, raw=True)
 ok("S3 正控：论坛 RSS 照常", s in (200, 404), "http=%s" % s)
 
 print("== S3b 真超限仍是 429（fail-close 没把限流改成一律 503）==")
 hits = []
 for _ in range(65):
-    s, _ = call("GET", "/rss/%s?showrows=1" % PK, raw=True)
+    s, _ = call("GET", "/rss/%s?showrows=1" % RSS, raw=True)
     hits.append(s)
 # 跨分钟边界时计数会分摊到相邻两桶，取 65 次保证较大那桶 ≥33 > 30
 ok("S3b 正控：真超限照样 429（不是把 503 当成万能回包）",
@@ -392,14 +387,14 @@ def live_keys(pat):
     return [k.strip() for k in out.split("\n") if k.strip()]
 
 
-s, _ = call("GET", "/compat/nexusphp/download.php?id=1&passkey=%s" % PK,
+s, _ = call("GET", "/compat/nexusphp/download.php?id=1&token=%s" % RSS,
             raw=True)
 dbl = live_keys("rl:rl:*")
 ok("S5 不存在双前缀限流键（rl:rl:*）——文档口径与实际键名同源", not dbl,
    brief(dbl))
 buckets = [k for k in live_keys("rl:npdl:*")
            if re.match(r"^rl:npdl:[0-9a-f]{16}:\d+$", k)]
-ok("S5 正控：npdl 桶存在，形状是 rl:<scope>:<passkey 哈希前 16>:<窗口>",
+ok("S5 正控：npdl 桶存在，形状是 rl:<scope>:<token 哈希前 16>:<窗口>",
    buckets, "命中=%s http=%s" % (len(buckets), s))
 win_now = int(time.time()) // 60
 wins = [int(k.rsplit(":", 1)[1]) for k in buckets]

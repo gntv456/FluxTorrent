@@ -2,10 +2,10 @@
 """闸门 HZ：RSS / Torznab 不许把「点下去必失败」的种当可下载广告出去（批二百零七）。
 
 现网实测（2026-10-20，root，只读，零写入）：
-    GET /api/v1/rss/{passkey}?limit=200
+    GET /api/v1/rss/{fxr_token}?limit=200
       -> 200，50 个 <item>，其中含 49417/49418/49419… 这些
          「approval_status=1 但 torrent_files 里没有原始 .torrent」的种，
-         而且照样给 <enclosure url="…/download.php?id=…&passkey=…"
+         而且照样给 <enclosure url="…/download.php?id=…&token=…"
          type="application/x-bittorrent">。
     真点那条 enclosure
       -> 400 {"code":1002,"message":"参数校验失败: 种子文件缺失
@@ -15,7 +15,7 @@
 为什么这对 PT 用户是真问题（不是界面提示那种小毛病）：RSS/Torznab 的消费者是
 qBittorrent / FlexGet / autobrr / Prowlarr+Sonarr，它们按 guid 轮询并**自动加种**，
 拿到非 bencode 就报「无效种子文件」，下一轮同一个 guid 再来一遍——永久噪声，
-且没人看得见那句中文「请联系管理组补档」。凭证还是本人 passkey（P-389 那条
+且没人看得见那句中文「请联系管理组补档」。凭证是 fxr token（P-389 那条
 口径），失败也不会掉凭证，只是无限重试。
 
 同族在册的另一半是数据：现网「过审 + 无存档」= 7 条（站长 _demo_works.sql 的
@@ -40,20 +40,22 @@ approval_status=1 且无 raw ⇒ 内容包一旦导入，这个数会成百地�
       加上共享谓词后必须 0 条——证明谓词本身真的排得掉，不是恒真/恒假。
 
 用法：`PYTHONIOENCODING=utf-8 python -u scripts/pt_audit_hz_rss_undeliverable.py`
-      HZ_LIVE=0 跳过 HZ1/HZ2/HZ3（都是只读 GET；passkey 不外传，输出里打码）。
+      HZ_LIVE=0 跳过 HZ1/HZ2/HZ3（都是只读 GET；token 不外传，输出里打码）。
 """
 import io
 import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from pt_audit_lib import BASE, login, ok, summary  # noqa: E402
+from pt_audit_lib import (  # noqa: E402
+    BASE, login, mint_rss_token, ok, revoke_rss_token, summary)
 
 LIVE = os.environ.get("HZ_LIVE", "1") != "0"
 RSS_RS = "apps/api/src/rss_http.rs"
@@ -168,47 +170,53 @@ ok("HZ7 真库 A/B：共享谓词真能排掉无存档种（加谓词前命中�
    % (leak_before[:6], leak_after[:6]))
 
 if LIVE:
-    login("root", "password123")  # 顺带验鉴权链活着（不打印 token）
-    pk = psql("SELECT passkey FROM users WHERE username='root';")
-    mask = pk[:4] + "…" + pk[-4:]
-    st, body = get("%s/rss/%s?limit=200" % (BASE, pk))
-    xml = (body or b"").decode("utf-8", "replace") if isinstance(body, bytes)\
-        else str(body)
-    enc = enclosures(xml)
-    hits = sorted(set(i for i, _u in enc) & set(no_raw_ids))
-    ok("HZ2 硬判据：RSS 给无存档种发的 enclosure 必须 0 条（P-433）",
-       st == 200 and not hits,
-       "feed http=%s item=%d；命中无存档 ids=%s（非空=修复未生效或镜像"
-       "仍是修复前构建，红账里的 id 就是被广告出去的坏种）"
-       % (st, len(enc), hits[:6]))
-    # 正控 + 违例：各取一条 enclosure 真点
-    bad_id = sorted(set(i for i, _u in enc) & set(no_raw_ids))
-    good_pair = [(i, u) for i, u in enc if i not in set(no_raw_ids)]
-    if good_pair:
-        gid, gu = good_pair[0]
-        s1, b1 = get(gu)
-        ok("HZ1 正控硬判据：有存档种的 enclosure 必须 200 且回 bencode"
-           "（id=%s）" % gid, is_bencode(s1, b1),
-           "http=%s 首字节=%r 字节数=%s（这条红=RSS→下载整条路坏了，"
-           "与无存档无关）" % (s1, (b1 or b"")[:1],
-                              len(b1) if isinstance(b1, bytes) else "-"))
-    else:
-        ok("HZ1 正控硬判据：本屏 feed 里没有可对照的有存档种（不算绿）",
-           False, "enclosure 全落在无存档集合里，取样面太窄")
-    if bad_id:
-        bu = dict(enc)[bad_id[0]]
-        s2, b2 = get(bu)
-        txt = (b2 or b"").decode("utf-8", "replace")[:120] \
-            if isinstance(b2, bytes) else str(b2)[:120]
-        print("   [镜像滞后] 无存档 enclosure 实测 id=%s http=%s 响应=%s"
-              % (bad_id[0], s2, txt.replace(pk, mask)))
-        print("   [镜像滞后] 消费者拿到的是错误信封而不是 .torrent："
-              "qBittorrent/FlexGet/autobrr 按 guid 轮询会无限重试同一枚种，"
-              "而「请联系管理组补档」这句中文只有本站界面看得到；"
-              "本条将在 api 镜像重建后转绿")
-    print("   [WARN] HZ3 Torznab 侧未做活体：现网 api_tokens=%s 枚全部是哈希，"
-          "没有明文可用；新建凭证属写操作，本闸门不擅自做（静态口径见 HZ4）"
-          % psql("SELECT count(*) FROM api_tokens;"))
+    ROOT = login("root", "password123")  # 顺带验鉴权链活着（不打印 token）
+    tid, tk = mint_rss_token(ROOT, "hzrss%d" % (int(time.time()) % 100000),
+                             "hzrss")
+    ok("HZ0 订阅用 fxr Token 签出（RSS 不再用 passkey）", bool(tk),
+       "签不出来 ⇒ HZ1/HZ2 活体不承重")
+    mask = (tk[:5] + "…" + tk[-4:]) if tk else "-"
+    try:
+        st, body = get("%s/rss/%s?limit=200" % (BASE, tk or "bad"))
+        xml = (body or b"").decode("utf-8", "replace") \
+            if isinstance(body, bytes) else str(body)
+        enc = enclosures(xml)
+        hits = sorted(set(i for i, _u in enc) & set(no_raw_ids))
+        ok("HZ2 硬判据：RSS 给无存档种发的 enclosure 必须 0 条（P-433）",
+           st == 200 and not hits,
+           "feed http=%s item=%d；命中无存档 ids=%s（非空=修复未生效或镜像"
+           "仍是修复前构建，红账里的 id 就是被广告出去的坏种）"
+           % (st, len(enc), hits[:6]))
+        # 正控 + 违例：各取一条 enclosure 真点
+        bad_id = sorted(set(i for i, _u in enc) & set(no_raw_ids))
+        good_pair = [(i, u) for i, u in enc if i not in set(no_raw_ids)]
+        if good_pair:
+            gid, gu = good_pair[0]
+            s1, b1 = get(gu)
+            ok("HZ1 正控硬判据：有存档种的 enclosure 必须 200 且回 bencode"
+               "（id=%s）" % gid, is_bencode(s1, b1),
+               "http=%s 首字节=%r 字节数=%s（这条红=RSS→下载整条路坏了，"
+               "与无存档无关）" % (s1, (b1 or b"")[:1],
+                                  len(b1) if isinstance(b1, bytes) else "-"))
+        else:
+            ok("HZ1 正控硬判据：本屏 feed 里没有可对照的有存档种（不算绿）",
+               False, "enclosure 全落在无存档集合里，取样面太窄")
+        if bad_id:
+            bu = dict(enc)[bad_id[0]]
+            s2, b2 = get(bu)
+            txt = (b2 or b"").decode("utf-8", "replace")[:120] \
+                if isinstance(b2, bytes) else str(b2)[:120]
+            print("   [镜像滞后] 无存档 enclosure 实测 id=%s http=%s 响应=%s"
+                  % (bad_id[0], s2, txt.replace(tk or "", mask)))
+            print("   [镜像滞后] 消费者拿到的是错误信封而不是 .torrent："
+                  "qBittorrent/FlexGet/autobrr 按 guid 轮询会无限重试同一枚种，"
+                  "而「请联系管理组补档」这句中文只有本站界面看得到；"
+                  "本条将在 api 镜像重建后转绿")
+        print("   [WARN] HZ3 Torznab 侧未做活体：现网 api_tokens=%s 枚全部是"
+              "哈希，没有明文可用；新建凭证属写操作，本闸门不擅自做"
+              "（静态口径见 HZ4）" % psql("SELECT count(*) FROM api_tokens;"))
+    finally:
+        revoke_rss_token(ROOT, tid)
 else:
     print("[HZ1/HZ2/HZ3] HZ_LIVE=0 跳过活体")
 

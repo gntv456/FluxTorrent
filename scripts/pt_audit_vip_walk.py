@@ -23,6 +23,29 @@ import urllib.request  # noqa: F401
 from pt_audit_vip_walk_write import (  # noqa: E402
     d_forumwrite, d_invite, d_shopbuy, d_subscribe)
 
+_RSS = {"id": None, "tok": ""}
+
+
+def _drop_vip_rss(vip: str) -> None:
+    st, js = call("GET", "/api/v1/rss/tokens", vip)
+    for r in (js.get("data") or {}).get("tokens") or []:
+        if (r.get("name") or "").startswith("pt_audit_vip_rss"):
+            call("DELETE", f"/api/v1/rss/tokens/{r['id']}", vip)
+    _RSS.update(id=None, tok="")
+
+
+def vip_rss(vip: str) -> str:
+    """本轮唯一 fxr token；RSS/下载链共用，收尾统一撤。"""
+    if _RSS["tok"]:
+        return _RSS["tok"]
+    _drop_vip_rss(vip)
+    st, js = call("POST", "/api/v1/rss/tokens", vip,
+                  body={"name": "pt_audit_vip_rss"})
+    d = js.get("data") or {}
+    if st == 200 and d.get("token"):
+        _RSS.update(id=d.get("id"), tok=d.get("token"))
+    return _RSS["tok"]
+
 
 # ---------------------------------------------------------------- 身份与总览
 def d_identity(vip: str, root: str) -> None:
@@ -169,17 +192,18 @@ def d_download(vip: str, root: str) -> None:
     if tid is None:
         expect(d, "有种子可下", False)
         return
-    # compat download.php：passkey 取种
+    # compat download.php：fxr token 取种（原始 passkey 已不再受理）
+    dl_tok = vip_rss(vip)
     st, raw = call("GET", f"/api/v1/compat/nexusphp/download.php?id={tid}&"
-        f"passkey=a17b2c3d4e5f60718293a4b5c6d7e8f9", vip, raw=True)
+        f"token={dl_tok}", vip, raw=True)
     ok = st == 200 and isinstance(raw, bytes) and raw[:1] == b"d"
     expect(d, "download.php 取 .torrent", ok,
         f"st={st} len={len(raw) if isinstance(raw, bytes) else '?'}")
-    # 错 passkey 必须拒
+    # 原始 passkey 必须拒
     bad_dl = (f"/api/v1/compat/nexusphp/download.php?id={tid}"
-              "&passkey=wrongkey")
+              "&passkey=a17b2c3d4e5f60718293a4b5c6d7e8f9")
     st, _ = call("GET", bad_dl, vip, raw=True)
-    expect(d, "错 passkey 拒发", st in (401, 403, 404), f"st={st}")
+    expect(d, "原始 passkey 拒发", st == 401, f"st={st}")
     # 新式：POST /downloads/keys 签发（fxo_ Token 向，第三方工具链）→ GET /downloads/{id}
     fxo = fxo_token()
     st, js = call("POST", "/api/v1/downloads/keys", fxo, {"torrent_id": tid},
@@ -290,13 +314,16 @@ def d_community(vip: str, root: str) -> None:
                "/api/v1/messages/inbox", "/api/v1/invites/status"]:
         st, js = call("GET", ep, vip)
         ok_envelope(d, f"GET {ep}", st, js)
-    # RSS passkey 面（限流 30/min）：32 位形状合规才受理
-    st, js = call("GET", "/api/v1/rss/a17b2c3d4e5f60718293a4b5c6d7e8f9", vip)
-    expect(d, "RSS passkey 取流(XML)", st == 200 and isinstance(js,
+    # RSS 面（限流 30/min）：路径只认 fxr token
+    st, js = call("GET", "/api/v1/rss/" + vip_rss(vip), vip)
+    expect(d, "RSS fxr token 取流(XML)", st == 200 and isinstance(js,
         str) and "<rss" in js,
            f"st={st} head={str(js)[:60]}")
     st, _ = call("GET", "/api/v1/rss/" + "0" * 32, vip)
-    expect(d, "RSS 形状合规但未知 passkey → 404", st == 404, f"st={st}")
+    expect(d, "原始 32 位 passkey 被拒（400/404）", st in (400, 404),
+           f"st={st}")
+    st, _ = call("GET", "/api/v1/rss/fxr_" + "0" * 32, vip)
+    expect(d, "合法 fxr 形状但未知 token → 404", st == 404, f"st={st}")
     st, _ = call("GET", "/api/v1/rss/short", vip)
     expect(d, "RSS 形状非法 → 400", st == 400, f"st={st}")
     # 开放 API 面要 fxo_ Token（会话 JWT 打不进）
@@ -389,6 +416,7 @@ def main() -> None:
             fn(vip, root)
     # 本轮探针 Token 收走：名字是本探针专属，撤销线（token_revocations.nbf）
     # 之后重跑会读不到旧行，留着只会攒悬行
+    _drop_vip_rss(vip)
     psql("DELETE FROM api_tokens WHERE user_id = 7346 AND name = 'pt_audit'")
     FXO[0] = ""
     fails = [r for r in RESULTS if r[1] == "FAIL"]

@@ -7,8 +7,8 @@
 全文唯一的读者是安全卡 usercp-overview-panels.tsx:90，而它只画
 `ov.passkey.slice(0, 4)` + 「••••」——**界面本来就只展示掩码**，
 服务端却把完整凭据发出去四次。
-RSS/下载客户端需要全文，走的是各自的专用端点（`/rss-info`、compat 的
-NpUser/PtppUser、`/me/passkey/rotate`），那些是用户主动取给客户端的口径。
+RSS/下载客户端需要全文，走的是本人的专用端点（`/rss-info`、`/me/passkey/
+rotate`）；compat 的 NpUser/PtppUser 已不再下发 passkey。
 
 为什么本批不代改：`me_settings.rs` 在站长的在途 diff 里（+21/−0，
 且已经在行数/行宽门禁上贡献 2 条违规）。把「2→掩码」塞进别人那次提交，
@@ -28,9 +28,9 @@ PANEL = "apps/web/components/usercp-overview-panels.tsx"
 DETAILS = "apps/web/components/usercp-overview-details.tsx"
 TYPE = "apps/web/components/usercp.tsx"
 SRV = "apps/api/src/auth_http/me_settings.rs"
-# 允许出现 passkey 全文的出口（合理口径）；me_settings 修好后应从台账里
-# 的「待摘除」变成「已摘除」，LZ4 用两个集合同时钉住方向
-LEDGER_FULL_OK = {"rss-info", "compat-np", "compat-ptpp", "passkey-rotate"}
+# 允许出现 passkey 全文的出口（合理口径）：compat NpUser/PtppUser 已随
+# fxr 凭据边界移除 passkey，只剩本人主动取用的两处。
+LEDGER_FULL_OK = {"rss-info", "passkey-rotate"}
 LEDGER_TO_MASK = {"me-overview"}
 
 
@@ -80,12 +80,30 @@ ok("LZ4 方向闸：/me/overview 要么已摘除全文，要么仍挂在「待�
    or (masked_out and not still_full),
    "仍发全文=%s 已加掩码字段=%s 该文件在途=%s"
    % (still_full, masked_out, in_wip))
-ok("LZ5 契约没被牵连：compat 的两个 schema 仍声明 passkey（那是客户端接口，"
-   "不属于本次收敛范围）",
-   read("apps/api/src/openapi_http/spec_schemas.rs").count(
-       '"passkey": { "type": "string" }') >= 2,
-   "声明数=%s" % read("apps/api/src/openapi_http/spec_schemas.rs").count(
-       '"passkey": { "type": "string" }'))
+def obj_block(src, key):
+    """从 spec_schemas.rs 取 `"<key>": { ... }` 的片段（花括号配对）。"""
+    i = src.index('"%s": {' % key)
+    i = src.index("{", i)
+    depth = 0
+    for j in range(i, len(src)):
+        if src[j] == "{":
+            depth += 1
+        elif src[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return src[i:j + 1]
+    return ""
+
+
+schemas = read("apps/api/src/openapi_http/spec_schemas.rs")
+np_block = obj_block(schemas, "NpUser")
+ptpp_block = obj_block(schemas, "PtppUser")
+ok("LZ5 契约已随凭据边界收敛：NpUser/PtppUser schema 不含 passkey，"
+   "本人取全文仍走 /rss-info（LZ2 已验）",
+   bool(np_block and ptpp_block)
+   and "passkey" not in np_block and "passkey" not in ptpp_block,
+   "NpUser=%s PtppUser=%s" % ("含" if "passkey" in np_block else "无",
+                              "含" if "passkey" in ptpp_block else "无"))
 
 print("BASE", BASE)
 print("\n-- 已落地的改点（P-448）--")

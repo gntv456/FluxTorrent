@@ -68,7 +68,7 @@ const DOMAIN_ROUTES = [
   ["GET", "/downloads/{torrent_id}"],
   ["GET", "/torznab"],
   ["GET", "/torznab/search"],
-  ["GET", "/rss/{passkey}"],
+  ["GET", "/rss/{token}"],
 ];
 
 // ---------- 1. 注解面形态：#[utoipa::path( 与 path = 数量一致 ----------

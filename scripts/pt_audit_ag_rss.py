@@ -21,7 +21,8 @@ import urllib.request
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_form import BOUNDARY, make_torrent, multipart  # noqa: E402
-from pt_audit_lib import BASE, call, login, ok, summary  # noqa: E402
+from pt_audit_lib import (  # noqa: E402
+    BASE, call, login, mint_rss_token, ok, revoke_rss_token, summary)
 
 ROOT = login()
 CLEAN = []
@@ -69,12 +70,11 @@ def upload(tok, name):
                 "raw": e.read()[:200].decode("utf-8", "replace")}
 
 
-def rss(path_qs, tok=None, pk=None, sub=""):
-    """拉 RSS 原文。passkey 在路径里，鉴权中间件本就放行 /rss；带 token
-    只是为了保持与站内其它探针同构。sub 是 /rss/ 下的子路径（forum/）。
+def rss(path_qs, tok=None, cred=None, sub=""):
+    """拉 RSS 原文。凭据是路径里的 fxr token；sub 是 forum/ 子路径。
     返回 (status, text, content_type, cache_control)。"""
-    url = BASE + path_qs if pk is None else \
-        BASE.replace("/api/v1", "") + "/api/v1/rss/" + sub + pk + (
+    url = BASE + path_qs if cred is None else \
+        BASE.replace("/api/v1", "") + "/api/v1/rss/" + sub + cred + (
             "?" + path_qs if path_qs else "")
     rq = urllib.request.Request(url)
     if tok:
@@ -92,12 +92,16 @@ def items_of(text):
     return text.count("<item>")
 
 
-print("== G0 语料与 passkey ==")
+print("== G0 语料与凭证 ==")
 PK = q("SELECT passkey FROM users WHERE class_id = 99 AND status < 2 "
        "ORDER BY id LIMIT 1")
-ok("G0 站长 passkey 可取（32 位小写 hex）",
+FXR_ID, FXR = mint_rss_token(ROOT, "agrss%d" % (int(time.time()) % 100000),
+                             "agrss")
+ok("G0 站长 passkey 可取（32 位小写 hex，仅用于否定判据）",
    len(PK) == 32 and all(c in "0123456789abcdef" for c in PK),
    "pk=%s…" % PK[:8])
+ok("G0 订阅用 fxr Token 签出（RSS/别名不再用 passkey）", bool(FXR),
+   "签不出来 ⇒ G1 起整段不承重")
 NAMES = ["agrss xinghe 1080P %d" % int(time.time()),
          "agrss pct%%50 x %d" % int(time.time())]
 IDS = {}
@@ -123,35 +127,38 @@ A1 = str(IDS[NAMES[0]])
 A2 = str(IDS[NAMES[1]])
 
 print("== G1 基线：内容类型 / 频道名 / 语料可见 ==")
-s, body, ct, _cc = rss("", ROOT, PK)
+s, body, ct, _cc = rss("", ROOT, FXR)
 ok("G1 RSS 200 且 content-type 为 rss+xml",
    s == 200 and "rss+xml" in (ct or ""), "http=%s ct=%s" % (s, ct))
 ok("G1 语料两颗都在 feed 里", A1 in body and A2 in body,
    "items=%d" % items_of(body))
-ok("G1 cache-control 带 no-store（enclosure 含 passkey 不可被中间层缓存）",
+ok("G1 cache-control 带 no-store（enclosure 含 token 不可被中间层缓存）",
    _cc is not None and "no-store" in _cc.lower(), "cc=%r" % _cc)
 
 print("== G2 search 的 LIKE 转义（本轮修复判据）==")
-s, body, _, _cc = rss("search=" + urllib.parse.quote("%"), ROOT, PK)
+s, body, _, _cc = rss("search=" + urllib.parse.quote("%"), ROOT, FXR)
 ok("G2 裸 % 不当通配（命中数不得等于全站，应为 0 或仅字面 % 的 A2）",
    s == 200 and items_of(body) <= 1,
    "items=%d" % items_of(body))
-s, body, _, _cc = rss("search=" + urllib.parse.quote("agrss pct%50"), ROOT, PK)
+s, body, _, _cc = rss("search=" + urllib.parse.quote("agrss pct%50"), ROOT, FXR)
 ok("G2 字面 % 的种名搜得到（转义没把合法用例打死）",
    s == 200 and A2 in body, "items=%d" % items_of(body))
-s, body, _, _cc = rss("search=" + urllib.parse.quote("agrss"), ROOT, PK)
+s, body, _, _cc = rss("search=" + urllib.parse.quote("agrss"), ROOT, FXR)
 ok("G2 正常关键词命中两颗", s == 200 and A1 in body and A2 in body,
    "items=%d" % items_of(body))
 s, body, _, _cc = rss("search=" + urllib.parse.quote(
-    "x' OR 1=1;--"), ROOT, PK)
+    "x' OR 1=1;--"), ROOT, FXR)
 ok("G2 注入串安全返回空集", s == 200 and items_of(body) == 0,
    "items=%d" % items_of(body))
 
 print("== G3 形状与限流闸 ==")
 s, body, _, _cc = rss("", ROOT, "!!!!short")
-ok("G3 非法 passkey 形状 400", s == 400, "http=%s" % s)
-s, body, _, _cc = rss("", ROOT, "0" * 32)
-ok("G3 合法形状但不存在的 passkey 404", s == 404, "http=%s" % s)
+ok("G3 非法 token 形状 400", s == 400, "http=%s" % s)
+s, body, _, _cc = rss("", ROOT, PK)
+ok("G3 原始 32 位 passkey 不再当订阅凭证（400/404）",
+   s in (400, 404), "http=%s" % s)
+s, body, _, _cc = rss("", ROOT, "fxr_" + "0" * 32)
+ok("G3 合法 fxr 形状但不存在 404", s == 404, "http=%s" % s)
 
 print("== G4 论坛 RSS：权限口径（本轮修复判据）==")
 BOARD = q("SELECT COALESCE((SELECT min(id) FROM forums WHERE "
@@ -167,7 +174,7 @@ ok("G4 探针帖可建", s == 200 and tid, brief(r) + " tid=%s" % tid)
 if tid:
     CLEAN.append("DELETE FROM topics WHERE id = %s" % tid)
     CLEAN.append("DELETE FROM posts WHERE topic_id = %s" % tid)
-s, body, _, _cc = rss("", ROOT, PK, sub="forum/")
+s, body, _, _cc = rss("", ROOT, FXR, sub="forum/")
 ok("G4 论坛 RSS 200 且探针帖可见（缺省=公告版）",
    s == 200 and TT in body, "http=%s" % s)
 
@@ -187,11 +194,12 @@ ok("G4 门槛版探针帖可建", s == 200 and tid2, brief(r))
 if tid2:
     CLEAN.append("DELETE FROM topics WHERE id = %s" % tid2)
     CLEAN.append("DELETE FROM posts WHERE topic_id = %s" % tid2)
-    s, body, _, _cc = rss("forums=%s" % FID, ROOT, PK, sub="forum/")
+    s, body, _, _cc = rss("forums=%s" % FID, ROOT, FXR, sub="forum/")
     ok("G4 站长（class 99）门槛版帖子在 RSS 里",
        s == 200 and TT2 in body, "items=%d" % items_of(body))
 
 STOK = None
+SFX_ID = None
 if tid2:
     user = "ag%d" % (int(time.time()) % 100000)
     pw = "Gate#123456"
@@ -207,37 +215,37 @@ if tid2:
     call("POST", "/me/password/change",
          {"old_password": pw, "new_password": pw + "x"}, token=t0)
     STOK = login(user, pw + "x")
-    SPK = q("SELECT passkey FROM users WHERE id = %s" % uid)
-    s, body, _, _cc = rss("forums=%s" % FID, STOK, SPK, sub="forum/")
+    SFX_ID, SFX = mint_rss_token(STOK, "agstaff%d" % (int(time.time())
+                                                       % 100000), "agstaff")
+    s, body, _, _cc = rss("forums=%s" % FID, STOK, SFX, sub="forum/")
     # class>=90 放行（修复判据）：网页能读的版块 RSS 也必须推——旧谓词
     # 只有 minclassread<=class，90<95 会把职员漏掉
     ok("G4 class 91 职员门槛版帖子在 RSS 里（can_read 放行口径复刻）",
        s == 200 and TT2 in body, "items=%d" % items_of(body))
     exec_sql("UPDATE users SET class_id = 1 WHERE id = %s" % uid)
-    SPK2 = q("SELECT passkey FROM users WHERE id = %s" % uid)
-    s, body, _, _cc = rss("forums=%s" % FID, STOK, SPK2, sub="forum/")
+    s, body, _, _cc = rss("forums=%s" % FID, STOK, SFX, sub="forum/")
     ok("G4 class 1 成员门槛版 RSS 无该帖（反向：不放行全量）",
        s == 200 and TT2 not in body, "items=%d" % items_of(body))
 
 print("== G6 NP 惯用参数名（批十一修复判据）==")
 # 语料两颗都在分类 1；分类 24 里没有 agrss 语料——若 cat 被静默忽略，
 # 两条断言会同为 2 条命中，红在这里
-s, body, _, _cc = rss("search=agrss&cat=1", ROOT, PK)
+s, body, _, _cc = rss("search=agrss&cat=1", ROOT, FXR)
 ok("G6 cat=1 生效（语料两颗命中）", s == 200 and items_of(body) == 2,
    "items=%d" % items_of(body))
-s, body, _, _cc = rss("search=agrss&cat=24", ROOT, PK)
+s, body, _, _cc = rss("search=agrss&cat=24", ROOT, FXR)
 ok("G6 cat=24 生效（该分类无语料 → 空集）",
    s == 200 and items_of(body) == 0, "items=%d" % items_of(body))
-s, body, _, _cc = rss("search=agrss&categories=1", ROOT, PK)
+s, body, _, _cc = rss("search=agrss&categories=1", ROOT, FXR)
 ok("G6 本站名 categories 同时受理（正控不被别名打死）",
    s == 200 and items_of(body) == 2, "items=%d" % items_of(body))
-s, body, _, _cc = rss("slot_number=3", ROOT, PK)
+s, body, _, _cc = rss("slot_number=3", ROOT, FXR)
 ok("G6 slot_number=3 限到 3 条（NP 条数名）",
    s == 200 and items_of(body) == 3, "items=%d" % items_of(body))
-# 别名转发链：getrss.php?passkey=…&cat=24 经 302 落到真端点后仍生效
+# 别名转发链：getrss.php?token=…&cat=24 经 302 落到真端点后仍生效
 import urllib.request
 al = BASE.replace("/api/v1", "") + (
-    "/api/v1/compat/nexusphp/getrss.php?passkey=%s&cat=24&search=agrss" % PK)
+    "/api/v1/compat/nexusphp/getrss.php?token=%s&cat=24&search=agrss" % FXR)
 try:
     r = urllib.request.urlopen(al, timeout=30)
     ab = r.read().decode("utf-8", "replace")
@@ -250,11 +258,14 @@ ok("G6 getrss.php 别名转发后 cat 仍生效（空集）",
 print("== G7 enclosure 端到端（订阅器只会照抄这个地址）==")
 import html as _html
 import re as _re
-s, body, _, _cc = rss("showrows=2", ROOT, PK)
+s, body, _, _cc = rss("showrows=2", ROOT, FXR)
 encs = [_html.unescape(x) for x in
         _re.findall(r'<enclosure url="([^"]+)"', body)]
 ok("G7 feed 里每条都带 enclosure 下载直链", s == 200 and len(encs) == 2,
    "enclosures=%d" % len(encs))
+ok("G7 enclosure 用 token= 且不再携带原始 passkey",
+   bool(encs) and all("token=" in u and "passkey=" not in u for u in encs),
+   encs[0][:90] if encs else "无")
 if encs:
     try:
         rr = urllib.request.urlopen(encs[0], timeout=40)
@@ -386,6 +397,9 @@ ok("G8 声明的 GET 口全部在册（≥6 条，无 404）",
        "checked=%d missing=%s" % (len(gets), missing or "无"))
 
 print("== G5 收尾 ==")
+revoke_rss_token(ROOT, FXR_ID)
+if STOK and SFX_ID:
+    revoke_rss_token(STOK, SFX_ID)
 for stmt in reversed(CLEAN):
     if stmt == "__revoke_token__":
         if TID:
@@ -400,6 +414,11 @@ ok("G5 本轮签发的 Token 已撤销（撤销是软撤，要数 revoked_at IS 
      "AND revoked_at IS NULL") == "0",
    q("SELECT count(*) FROM api_tokens WHERE name LIKE 'agtz%' "
      "AND revoked_at IS NULL"))
+ok("G5 本轮 fxr Token 已撤销",
+   q("SELECT count(*) FROM rss_tokens WHERE (name LIKE 'agrss%' "
+     "OR name LIKE 'agstaff%') AND revoked_at IS NULL") == "0",
+   q("SELECT count(*) FROM rss_tokens WHERE (name LIKE 'agrss%' "
+     "OR name LIKE 'agstaff%') AND revoked_at IS NULL"))
 ok("G5 探针版块无残留",
    q("SELECT count(*) FROM forums WHERE name = 'agrss 门槛版'") == "0",
    q("SELECT count(*) FROM forums WHERE name = 'agrss 门槛版'"))

@@ -61,6 +61,33 @@ def jwt():
     return (hdr + b"." + pay + b"." + b64(sig)).decode()
 
 
+def rss_token(jwt_tok):
+    """签一枚临时 fxr token；返回 (id, 明文)。"""
+    req = urllib.request.Request(
+        API + "/api/v1/rss/tokens", method="POST",
+        headers={"Authorization": "Bearer " + jwt_tok,
+                 "Content-Type": "application/json"},
+        data=json.dumps({"name": "perf-%d" % int(time.time())}).encode())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            d = (json.loads(r.read()).get("data") or {})
+        return d.get("id"), d.get("token")
+    except Exception:
+        return None, None
+
+
+def revoke_rss_token(jwt_tok, tid):
+    if not tid:
+        return
+    req = urllib.request.Request(
+        API + "/api/v1/rss/tokens/%d" % tid, method="DELETE",
+        headers={"Authorization": "Bearer " + jwt_tok})
+    try:
+        urllib.request.urlopen(req, timeout=30).read()
+    except Exception:
+        pass
+
+
 def clear_list_cache():
     """清列表缓存：保证测的是冷查询（否则第二次起全是 Redis 命中）"""
     pw = env("REDIS_PASSWORD")
@@ -101,7 +128,7 @@ CASES = [
 ]
 
 
-def build_cases(tid, passkey):
+def build_cases(tid, rss_cred):
     return CASES + [
         ("详情·主行", f"/api/v1/torrents/{tid}"),
         ("详情·聚合", f"/api/v1/torrents/{tid}/aggregate"),
@@ -109,7 +136,7 @@ def build_cases(tid, passkey):
         ("详情·感谢", f"/api/v1/torrents/{tid}/thanks"),
         ("详情·评论", f"/api/v1/torrents/{tid}/comments"),
         ("详情·NFO", f"/api/v1/torrents/{tid}/nfo"),
-        ("RSS·50 条", f"/api/v1/rss/{passkey}?showrows=50"),
+        ("RSS·50 条", f"/api/v1/rss/{rss_cred}?showrows=50"),
     ]
 
 
@@ -129,14 +156,16 @@ def main():
     a = ap.parse_args()
     tok = jwt()
     tid = a.torrent_id
-    passkey = psql("SELECT passkey FROM users WHERE id=2;")
+    rss_id, rss_cred = rss_token(tok)
 
     rows = []
-    for name, path in build_cases(tid, passkey):
+    for name, path in build_cases(tid, rss_cred or "bad"):
         p50, p95, status, size = timed(path, tok, a.rounds)
-        rows.append((name, path, p50, p95, status, size))
+        shown = path.replace(rss_cred, "***") if rss_cred else path
+        rows.append((name, shown, p50, p95, status, size))
         print(f"{name:<14} p50={p50:7.1f}ms p95={p95:7.1f}ms "
               f"status={status} {size}B")
+    revoke_rss_token(tok, rss_id)
 
     counts = {t: psql(f"SELECT count(*) FROM {t};")
               for t in ("torrents", "files", "users", "comments")}

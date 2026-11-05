@@ -30,13 +30,14 @@ import json, os, re, subprocess, sys, time, urllib.error, urllib.request
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
-    BASE, call, clear_register_rl, login, ok, summary)
+    BASE, call, clear_register_rl, login, mint_rss_token, ok,
+    revoke_rss_token, summary)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
 HOST = BASE.replace("/api/v1", "")
 DL = "/api/v1/torrents/%s/download"
-NPDL = "/api/v1/compat/nexusphp/download.php?id=%s&passkey=%s"
+NPDL = "/api/v1/compat/nexusphp/download.php?id=%s&token=%s"
 DKEY = "/api/v1/downloads/%s?token=%s"
 BATCH = "/api/v1/torrents/batch-download"
 JS = {"Content-Type": "application/json"}
@@ -207,6 +208,12 @@ PTK = data(call("POST", "/me/tokens", {"name": "bf2p%d" % TAG,
                 token=PTOK)).get("token")
 ok("S0d 探针号自己的 Token 签出（凭证口要用它的身份）", bool(PTK),
    "没签出来 ⇒ S2c 判据不承重")
+# 下载口只认 fxr token：root 与探针号各签一枚（探针号那枚跟账号状态走）
+RFR_ID, RFR = mint_rss_token(ROOT, "bf2r%d" % TAG, "bf2r")
+PFR_ID, PFR = (mint_rss_token(PTOK, "bf2pr%d" % TAG, "bf2pr")
+               if PTOK else (None, None))
+ok("S0e 下载用 fxr Token 签出（root / 探针号各一枚）",
+   bool(RFR and PFR), "签不出来 ⇒ S1/S2/S5 判据不承重")
 MONTH = psql("SELECT to_char((now() at time zone 'utc+8'), 'YYYY-MM')")
 B0 = {"users": cnt("users"), "live": cnt("users", "status < 2"),
       "keys": cnt("download_keys"), "ledger": cnt("spark_ledger"),
@@ -227,7 +234,7 @@ ok("S0c 开放 Token 签出（凭证口要用；先撤上几轮同名残枚）",
 
 # ============ S1 三路字节一致 + 禁缓存（P-163） ============
 st, h1, _, wb = hit(DL % FREE, RH)
-st2, h2, _, nb = hit(NPDL % (FREE, PK))
+st2, h2, _, nb = hit(NPDL % (FREE, RFR))
 K1 = issue_key(TKF, FREE)
 st3, h3, _, kb = hit(DKEY % (FREE, K1))
 ok("S1a 三路产出同一份 .torrent（网页 %d / 兼容 %d / 凭证 %d 全等，bencode "
@@ -271,7 +278,7 @@ else:
     st, _, t, _ = hit(DKEY % (PAID[0], K2))
     ok("S2c 临时凭证口同判据：%s" % st,
        st == 400 and "已被暂停" in t and "魔力不足" not in t, t[:100])
-st, _, t, _ = hit(NPDL % (PAID[0], PPK))
+st, _, t, _ = hit(NPDL % (PAID[0], PFR))
 ok("S2d 兼容口同判据（P-164）：凭证没坏就不再报 401，回 400 + 可行动原话",
    st == 400 and "已被暂停" in t, "%s %s" % (st, t[:100]))
 st, _, t, _ = hit(BATCH, dict(JH, **JS), "POST",
@@ -286,7 +293,7 @@ ok("S2f 三条路都没扣到钱（探针 spark_ledger / torrent_purchases 零�
                                 "user_id = %d" % PU)))
 call("PUT", "/admin/users/flags", {"user_id": PU, "suspended": True},
      token=ROOT)
-st, _, _, _ = hit(NPDL % (FREE, PPK))
+st, _, _, _ = hit(NPDL % (FREE, PFR))
 st2, _, _, _ = hit(DL % FREE, JH)
 st3, _, _, _ = hit(BATCH, dict(JH, **JS), "POST",
                    json.dumps({"ids": [int(FREE)]}).encode())
@@ -298,7 +305,7 @@ call("PUT", "/admin/users/flags", {"user_id": PU, "download_enabled": True},
      token=ROOT)
 
 # ============ S4 未过审与非法 id（拒得对，且不退化成 401） ============
-st, _, t, _ = hit(NPDL % (UN, PK))
+st, _, t, _ = hit(NPDL % (UN, RFR))
 st2, _, _, _ = hit(DL % UN, RH)
 st3, _, t3, _ = hit(BATCH, dict(RH, **JS), "POST",
                     json.dumps({"ids": [int(UN)]}).encode())
@@ -308,9 +315,9 @@ ok("S4a 未过审种：兼容口/网页口/批量口都 404（不是 200 空壳�
 ok("S4b 批量口全项失败时不静默回空 zip（400 + 点名「都没能打包」，不是 "
    "200+0 条目；P-432/HX 钉的就是这条文案）",
    st3 == 400 and "都没能打包" in t3, "batch=%s %s" % (st3, t3[:120]))
-st, _, t, _ = hit(NPDL % ("-1", PK))
+st, _, t, _ = hit(NPDL % ("-1", RFR))
 st2, _, _, _ = hit(NPDL % ("99999999", "z" * 32))
-ok("S4c 非法 id / 畸形 passkey 安全拒（400/401/404，不 500）",
+ok("S4c 非法 id / 原始 passkey 安全拒（400/401/404，不 500）",
    st in (400, 404) and st2 in (400, 401, 404), "%s / %s" % (st, st2))
 
 # ============ S5 正控：解冻后照常扣费（修顺序不许改坏 0086） ============
@@ -318,7 +325,7 @@ psql("UPDATE users SET spark_balance = 200000 WHERE id = %d" % PU)
 IDEM_S = "torrent-sell:%d:%s" % (PU, PAID[0])
 IDEM_B = "torrent-buy:%d:%s" % (PU, PAID[0])
 PRE_B = cnt("spark_ledger", "user_id = %d AND kind = 'torrent_buy'" % PU)
-st, hj, _, body = hit(NPDL % (PAID[0], PPK))
+st, hj, _, body = hit(NPDL % (PAID[0], PFR))
 DEBT = psql("SELECT coalesce(sum(amount),0) FROM spark_ledger WHERE "
             "idempotency_key = '%s'" % IDEM_B)
 NET = psql("SELECT amount FROM spark_ledger WHERE idempotency_key = '%s'"
@@ -333,7 +340,7 @@ ok("S5a 正控：解冻后 compat 下付费种 200，买方扣 -%d、卖方入�
                                                   NET, BUY))
 ok("S5b 凭证那一路响应也 no-store（同一份字节）", "no-store" in cc(hj),
    "cc=%s" % cc(hj)[:26])
-st, _, _, b2 = hit(NPDL % (PAID[0], PPK))
+st, _, _, b2 = hit(NPDL % (PAID[0], PFR))
 st2, _, _, _ = hit(DKEY % (PAID[0], issue_key(TKF, PAID[0])))
 BUYROWS2 = cnt("spark_ledger", "user_id = %d AND kind = 'torrent_buy'" % PU)
 ok("S5c 重放不二次扣费（已购记录跳过扣费段：买方流水仍 %s 条、已购仍 1 行）"
@@ -399,10 +406,15 @@ ok("S6d 签发限流每用户 10 次/分（末两次=%s，P-67 fail-close 那道
 # ============ S7 收尾 ============
 revoke_my("bf2t")
 revoke_my("bf2p", PTOK)
-ok("S7a 本轮自己签的 Token 全撤净（只数自己前缀，别把别的闸门算进来）",
-   not my_tokens("bf2t") and not my_tokens("bf2p", PTOK),
-   "root 侧=%s 探针侧=%s" % (len(my_tokens("bf2t")),
-                             len(my_tokens("bf2p", PTOK))))
+revoke_rss_token(ROOT, RFR_ID)
+revoke_rss_token(PTOK, PFR_ID)
+LEFT_RSS = [n for n in ("bf2r", "bf2pr")
+            if cnt("rss_tokens", "user_id = 1 AND name LIKE '%s%%' AND "
+                   "revoked_at IS NULL" % n) != "0"]
+ok("S7a 本轮自己签的 Token 全撤净（API + fxr；只数自己前缀）",
+   not my_tokens("bf2t") and not my_tokens("bf2p", PTOK)
+   and not LEFT_RSS, "root 侧=%s 探针侧=%s fxr=%s" % (
+       len(my_tokens("bf2t")), len(my_tokens("bf2p", PTOK)), LEFT_RSS))
 call("POST", "/admin/users/status", {"user_id": PU, "status": 2}, token=ROOT)
 sban, rban = call("POST", "/me/tokens", {"name": "bf2x%d" % TAG,
                                          "password": "password123"},
@@ -412,8 +424,8 @@ ok("S7b 被封禁的账号不能再签长期凭证（%s，探针 Token 的签发
 call("DELETE", "/admin/users/%d" % PU, None, token=ROOT)
 TOMB = psql("SELECT coalesce(passkey,'-') || '|' || pass_hash FROM users "
             "WHERE id = %d" % PU)
-st, _, _, _ = hit(NPDL % (FREE, PPK))
-ok("S7c 探针号走真实墓碑：passkey 作废后旧钥下载 401（不是仍发文件）",
+st, _, _, _ = hit(NPDL % (FREE, PFR))
+ok("S7c 探针号走真实墓碑：fxr token 随账号作废后旧钥下载 401（不是仍发文件）",
    TOMB.startswith("deleted-") and "|!" in TOMB and st == 401,
    "tomb=%s dl=%s" % (TOMB[:20], st))
 psql("DELETE FROM download_keys WHERE user_id = 1 OR user_id = %d" % PU)

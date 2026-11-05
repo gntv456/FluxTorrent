@@ -148,7 +148,7 @@ else:
     print("   现网口径参考：过审且付费的种 %s 枚" % paid)
 
 print("== ES5 批一百三十八 P-324：订阅出口的付费回收对等 ==")
-# Torznab 的 item 直接带 download.php?id&passkey，客户端会自动抓 enclosure，
+# Torznab 的 item 直接带 download.php?id&apikey，客户端会自动抓 enclosure，
 # 而 charge_for_download 是「首次下载即扣魔力」——列出来等于替用户花钱。
 # RSS 早在深测 2026-10-03 定了默认排除（exclude_paid），Torznab 当时漏接。
 SUB_FIX = "9b00d2a0"  # 修复提交；正控取 9b00d2a0^，别写 HEAD
@@ -174,12 +174,11 @@ ok("ES5f 订阅入口把 viewer 透传给 noclamp_as（谓词才有「本人」�
    re.search(r"list_torrents_noclamp_as\([^)]*viewer", ncl) is not None)
 ok("ES5g RSS 那条 exclude_paid 仍在（别把两边一起拆掉）",
    "exclude_paid" in here(RSF))
-# 同族未收口：compat torrents.json 也回显本人 passkey 供工具拼 download.php，
-# 但它是「站内列表镜像」口径，是否该一起排除付费种要站方拍板 —— 记读数不判红。
+# compat torrents.json 已不再回显 passkey；付费种可见性仍按站内列表镜像口径。
 nx = here("apps/api/src/compat_http/nexusphp.rs")
 bare = nx.count("list_torrents_noclamp(") - nx.count(
     "list_torrents_noclamp_for_sub(")
 print("   WARN 同族待裁：compat/nexusphp.rs 仍走 bare noclamp %s 处"
-      "（回显 passkey，付费种默认可见）" % bare)
+      "（已不暴露 passkey，付费种默认可见）" % bare)
 
 summary()

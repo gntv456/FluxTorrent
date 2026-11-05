@@ -3942,13 +3942,13 @@
   },
   {
    "method": "GET",
-   "path": "/rss/{passkey}",
+   "path": "/rss/{token}",
    "handler": "rss_feed",
    "file": "apps/api/src/rss_http.rs"
   },
   {
    "method": "GET",
-   "path": "/rss/forum/{passkey}",
+   "path": "/rss/forum/{token}",
    "handler": "forum_rss_feed",
    "file": "apps/api/src/rss_http/forum.rs"
   },

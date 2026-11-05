@@ -58,6 +58,14 @@ def lc(h):
     return {k.lower(): v for k, v in h.items()}
 
 
+def psql(sql):
+    p = subprocess.run(
+        ["docker", "exec", "flux-postgres", "psql", "-U", "flux",
+         "-d", "fluxtorrent", "-t", "-A", "-c", sql],
+        capture_output=True, text=True, encoding="utf-8")
+    return (p.stdout or "").strip()
+
+
 def jwt_root():
     secret = re.search(r"^JWT_SECRET=(.+)$",
                        open(f"{ROOT}/docker/.env", encoding="utf-8").read(),
@@ -91,6 +99,18 @@ def issue_token(jwt, name, scopes, rpm=600):
     return d["token"], d.get("id")
 
 
+def issue_rss(jwt_tok, name):
+    st, _, b = req("POST", f"{API}/rss/tokens",
+                   {"Authorization": f"Bearer {jwt_tok}",
+                    "Content-Type": "application/json"},
+                   json.dumps({"name": name}).encode())
+    try:
+        d = (json.loads(b).get("data") or {})
+    except Exception:
+        d = {}
+    return d.get("token"), d.get("id")
+
+
 def jget(url, tok):
     st, h, b = req("GET", url, {"Authorization": f"Token {tok}"})
     try:
@@ -116,13 +136,13 @@ RTOK, RTOK_ID = issue_token(jwt, "verify-rl", ["read"], rpm=1)
 TOK, TOK_ID = issue_token(jwt, "verify-main", ["read"])
 
 
-# ---------- 取 passkey ----------
-st, h, d = jget(f"{API}/compat/nexusphp/user.json", TOK)
-PK = d["data"]["passkey"]
+# ---------- 取 Tracker passkey（兼容 API 已不下发，测试直读库） ----------
+PK = psql("SELECT passkey FROM users WHERE id = 1;")
+FX, FX_ID = issue_rss(jwt, "verify-rss")
 # TOR's info_hash 现取（TOK 在发种段会被吊销腾名额，后取会 401）
 _, _, d_ih = jget(f"{API}/compat/nexusphp/torrent/40.json", TOK)
 IH_HEX = (d_ih.get("data") or {}).get("info_hash")
-print(f"\n[env] passkey={PK} info_hash={IH_HEX} tokens issued\n")
+print(f"\n[env] passkey={PK} rss={bool(FX)} info_hash={IH_HEX}\n")
 
 # ================= R-02 Torznab caps 合规 =================
 st, h, b = req("GET", f"{API}/torznab")
@@ -143,7 +163,8 @@ chk("R-03 item 含 downloadvolumefactor", "downloadvolumefactor" in sx)
 chk("R-03 item 含 infohash", 'name="infohash"' in sx)
 chk("R-04 item 分类非硬编码 8000",
     re.search(r'<category id="(\d+)"', sx).group(1) in {"2000", "4000", "5000"})
-chk("R-03 enclosure 带真实 passkey", f"passkey={PK}" in sx, "且 link 同址")
+chk("R-03 enclosure 使用调用方 API Token", f"apikey={TOK}" in sx,
+    "不再换出 Tracker passkey")
 
 st2, _, b2 = req(
     "GET", f"{API}/torznab/search?apikey={TOK}&t=tvsearch&q=e2e&season=1&ep=2")
@@ -189,15 +210,15 @@ chk("R-09 详情含双指纹",
     bool(d["data"].get("info_hash")) and "pieces_hash" in d["data"])
 
 # ================= R-01 RSS enclosure =================
-st, h, b = req("GET", f"{API}/rss/{PK}")
+st, h, b = req("GET", f"{API}/rss/{FX}")
 rss = b.decode()
 chk("R-01 RSS item 含 <enclosure>", "<enclosure" in rss)
 # 断言不绑死 id=40：RSS 按 id DESC 只出最新 50 条，开发库种子流动后旧 id 不在窗口内
-chk("R-01 enclosure 指向 download.php + passkey",
-    f"download.php?id=" in rss and f"passkey={PK}" in rss)
+chk("R-01 enclosure 指向 download.php + fxr token",
+    f"download.php?id=" in rss and f"token={FX}" in rss)
 chk("R-01 RSS 响应禁缓存",
     "no-store" in h.get("cache-control", ""), h.get("cache-control"))
-st, _, b = req("GET", f"{API}/rss/{PK}?linktype=page")
+st, _, b = req("GET", f"{API}/rss/{FX}?linktype=page")
 chk("R-01 linktype=page 保留详情页链接",
     "/torrent/" in b.decode() and "<enclosure" in b.decode())
 
@@ -227,15 +248,16 @@ chk("R-13 meta 列出 torznab/rss/open 端点",
 chk("R-13 meta 声明限流头契约", "rate_limit" in d)
 
 # ================= R-14 NP 别名 =================
-st, h, _ = req("GET", f"{API}/compat/nexusphp/getrss.php?passkey={PK}")
+st, h, _ = req("GET", f"{API}/compat/nexusphp/getrss.php?token={FX}")
 chk("R-14 getrss.php → 302 且 Location 正确",
-    st in (301, 302) and f"/api/v1/rss/{PK}" in h.get("location", ""),
+    st in (301, 302) and f"/api/v1/rss/{FX}" in h.get("location", ""),
     f"HTTP {st} {h.get('location')}")
 st, h, _ = req("GET", f"{API}/compat/nexusphp/getrss.php?passkey=bad")
-chk("R-14 getrss.php 拒绝畸形 passkey", st == 401, f"HTTP {st}")
-st, _, b = req("GET", f"{API}/compat/nexusphp/userdetails.php?passkey={PK}")
-chk("R-14 userdetails.php 返回 NP 口径 JSON",
-    st == 200 and json.loads(b)["data"].get("passkey") == PK, f"HTTP {st}")
+chk("R-14 getrss.php 拒绝畸形 token", st == 401, f"HTTP {st}")
+st, _, b = req("GET", f"{API}/compat/nexusphp/userdetails.php?token={FX}")
+chk("R-14 userdetails.php 返回 NP 口径 JSON 且不含 passkey",
+    st == 200 and "passkey" not in (json.loads(b)["data"] or {}),
+    f"HTTP {st}")
 st, h, _ = req("GET", f"{API}/compat/nexusphp/details.php?id=40")
 chk("R-14 details.php → 302", st in (301, 302), f"HTTP {st}")
 st, h, _ = req("POST", f"{API}/compat/nexusphp/takelogin.php",
@@ -290,7 +312,7 @@ spec = json.loads(b)["data"]
 paths = sorted(spec["paths"].keys())
 chk("D-1 openapi.json 覆盖兼容层/Torznab/RSS（不再半张图）",
     len(paths) >= 22 and "/compat/nexusphp/torrents.json" in paths
-    and "/torznab/search" in paths and "/rss/{passkey}" in paths,
+    and "/torznab/search" in paths and "/rss/{token}" in paths,
     f"paths={len(paths)}")
 
 st, _, d = jget(f"{API}/open/categories", TOK)
@@ -334,7 +356,7 @@ chk("D-5 overview 字段齐全（含 hr_open/unread）",
 # ================= S-1 scope 强制 =================
 # 先取一枚 .torrent 用作上传体
 st, _, tor = req("GET",
-                 f"{API}/compat/nexusphp/download.php?id=40&passkey={PK}")
+                 f"{API}/compat/nexusphp/download.php?id=40&apikey={TOK}")
 BOUND = "----verifyboundary"
 def multipart():
     return (f"--{BOUND}\r\n"
@@ -405,6 +427,9 @@ for tid in (TOK_ID, UTOK_ID, RTOK_ID):
             {"Authorization": f"Bearer {jwt}",
              "Content-Type": "application/json"},
             json.dumps({"id": tid}).encode())
+if FX_ID:
+    req("DELETE", f"{API}/rss/tokens/{FX_ID}",
+        {"Authorization": f"Bearer {jwt}"})
 
 print(f"\n===== {ok_n} PASS / {len(bad)} FAIL =====")
 for b_ in bad:

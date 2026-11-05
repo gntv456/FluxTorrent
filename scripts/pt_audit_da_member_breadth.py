@@ -47,7 +47,8 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
-    BASE, call, clear_register_rl, login, ok, summary)
+    BASE, call, clear_register_rl, login, mint_rss_token, ok,
+    revoke_rss_token, summary)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
@@ -150,13 +151,14 @@ FILL = {
     "/forums/{id}/topics": BOARD, "/open/torrents/{id}": TORRENT,
     "/compat/nexusphp/torrent/{id}.json": TORRENT,
     "/torrents/{id}/logs/{ordinal}": TORRENT, "/attachments/{sha}": SHA,
-    "/games/collection/{game}": GAME, "/rss/{passkey}": "probekey",
-    "/rss/forum/{passkey}": "probekey",
+    "/games/collection/{game}": GAME, "/rss/{token}": "probekey",
+    "/rss/forum/{token}": "probekey",
 }
-PASSKEY = psql("SELECT passkey FROM users WHERE id = %d" % ME)
-if PASSKEY:
-    FILL["/rss/{passkey}"] = PASSKEY
-    FILL["/rss/forum/{passkey}"] = PASSKEY
+FXR_ID, FXR = (mint_rss_token(MT, "dambrss%d" % TAG, "dambrss")
+               if MT else (None, None))
+if FXR:
+    FILL["/rss/{token}"] = FXR
+    FILL["/rss/forum/{token}"] = FXR
 
 
 def build(p):
@@ -165,7 +167,7 @@ def build(p):
     out = out.replace("{slug}", PAGE_SLUG if p.startswith("/pages/")
                       else WIKI_SLUG)
     for k, v in (("{topic_id}", TOPIC), ("{torrent_id}", TORRENT),
-                 ("{passkey}", PASSKEY or "probekey"), ("{sha}", SHA),
+                 ("{token}", FXR or ("fxr_" + "0" * 32)), ("{sha}", SHA),
                  ("{game}", GAME), ("{ordinal}", "1")):
         out = out.replace(k, v)
     return out
@@ -320,7 +322,7 @@ ok("DA8 400 一族没长出新面孔（缺参台账 %d 条，新增 %d 条）"
 # 确实服务外部客户端的，进 EXTERNAL 写明读者是谁（不许用白名单蒙过去）。
 EXTERNAL = {
     "/compat/nexusphp/details.php": "NexusPHP 系下载器/客户端的兼容入口",
-    "/compat/nexusphp/download.php": "同上（?id=&passkey= 由客户端拼）",
+    "/compat/nexusphp/download.php": "同上（?id=&token= 由客户端拼）",
     "/auth/email/verify": "读者是邮件里的链接，不经过前端",
     "/downloads/{torrent_id}": "辅助下载/cross-seed 的一次性 token 链接",
     "/donate/order-status": "支付网关同步回跳查单；页面轮询走 /donate/state",
@@ -474,6 +476,8 @@ for label, rows in (("成员", MINE), ("匿名", ANON)):
     print("   %s：%s" % (label, sorted(d.items())))
 
 # ---------- 收尾：探针走产品自己的墓碑，并断言本轮专属前缀无残留 ----------
+if FXR_ID and MT:
+    revoke_rss_token(MT, FXR_ID)
 if ME:
     call("POST", "/admin/users/status", {"user_id": ME, "status": 2},
          token=ROOT)
@@ -487,5 +491,9 @@ ok("DA9 探针已墓碑（tomb=%s/1）" % TB, TB == "1", "tomb=%s" % TB)
 REST = psql("SELECT count(*) FROM users WHERE username LIKE 'damb%d'" % TAG)
 ok("DA9b 本轮专属前缀无残留（damb%d* = %s）" % (TAG, REST), REST == "0",
    "rest=%s" % REST)
+RSSLEFT = psql("SELECT count(*) FROM rss_tokens WHERE name LIKE "
+               "'dambrss%d%%' AND revoked_at IS NULL" % TAG)
+ok("DA9c 本轮 fxr Token 已撤销（在册=%s）" % RSSLEFT, RSSLEFT == "0",
+   "rss_tokens 残留=%s" % RSSLEFT)
 
 summary()

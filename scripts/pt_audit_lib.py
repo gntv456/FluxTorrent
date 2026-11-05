@@ -62,6 +62,38 @@ def call_h(method, path, body=None, token=None):
         return status, {"raw": payload[:300].decode("utf-8", "replace")}, hdrs
 
 
+def _rss_token_rows(session):
+    """列本人有效 fxr token（明文不回流；只能按名字认领 id）。"""
+    s, r = call("GET", "/rss/tokens", token=session)
+    d = (r or {}).get("data") if isinstance(r, dict) else None
+    return (d or {}).get("tokens") or []
+
+
+def mint_rss_token(session, name, prefix=None):
+    """签一枚 fxr token（RSS/下载专用）；先撤同前缀残枚。
+
+    每人有效上限 5 枚：闸门按前缀自清，避免把签发口焊死。
+    返回 (id, 明文)；失败返回 (None, None) 并打印原因。
+    """
+    pfx = prefix or name
+    for it in _rss_token_rows(session):
+        if str(it.get("name") or "").startswith(pfx):
+            call("DELETE", "/rss/tokens/%s" % it.get("id"), token=session)
+    s, r = call("POST", "/rss/tokens", {"name": name}, token=session)
+    d = (r or {}).get("data") if isinstance(r, dict) else None
+    d = d or {}
+    if s != 200 or not d.get("token"):
+        print("   RSS token 签发失败：http=%s %s" % (s, str(r)[:90]))
+        return None, None
+    return d.get("id"), d.get("token")
+
+
+def revoke_rss_token(session, tid):
+    """撤一枚 fxr token（软撤；id 为空则跳过）。"""
+    if tid:
+        call("DELETE", "/rss/tokens/%s" % tid, token=session)
+
+
 def jwt_token(username="root"):
     """自铸职员令牌（HS256 + JWT_SECRET），口径同 `ci_m_ops_panels.py`。
 

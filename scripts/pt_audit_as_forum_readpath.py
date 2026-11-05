@@ -36,11 +36,13 @@ from urllib.parse import quote
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pt_audit_lib import (  # noqa: E402
-    call, clear_register_rl, login, ok, summary)
+    call, clear_register_rl, login, mint_rss_token, ok, revoke_rss_token,
+    summary)
 
 ROOT = login()
 TAG = int(time.time()) % 100000
 CLEAN = []
+RSS = {"low": None, "root": None}
 BV = "https://www.bilibili.com/video/BV1xx411c7mD"
 NON = "https://example.com/watch?v=deadbeef"
 
@@ -67,6 +69,10 @@ def exec_sql(q):
 
 def cleanup():
     """可重复执行：中途崩了 atexit 仍会把共享设置还原。"""
+    for k in ("low", "root"):
+        if RSS[k]:
+            revoke_rss_token(ROOT, RSS[k])
+            RSS[k] = None
     stmts = list(reversed(CLEAN))
     del CLEAN[:]
     for stmt in stmts:
@@ -198,9 +204,8 @@ def brief(x):
     return str(x)[:150]
 
 
-def rss_body(tok, uid, fid):
-    pk = psql("SELECT passkey FROM users WHERE id = %s" % uid)
-    s, raw = call("GET", "/rss/forum/%s?forums=%s" % (pk, fid),
+def rss_body(tok, cred, fid):
+    s, raw = call("GET", "/rss/forum/%s?forums=%s" % (cred, fid),
                   token=tok, raw=True)
     return s, (raw or b"").decode("utf-8", "replace")
 
@@ -224,6 +229,11 @@ if not (CAT and FID and LOW):
     cleanup()
     sys.exit(1)
 LT, LUID, _ = LOW
+RID, RTOK = mint_rss_token(LT, "asrss%d" % TAG, "asrss")
+ROOT_RID, ROOT_TOK = mint_rss_token(ROOT, "asroot%d" % TAG, "asroot")
+RSS.update(low=RID, root=ROOT_RID)
+ok("S0 前置：低档成员/站长 fxr Token 就绪", bool(RTOK and ROOT_TOK),
+   "签不出来 ⇒ RSS 出口判据不承重")
 CLEAN.append("DELETE FROM follows WHERE user_id = %s" % LUID)
 CLEAN.append("DELETE FROM posts WHERE topic_id IN (SELECT id FROM topics "
              "WHERE title LIKE 'AS闸门%%%s')" % TAG)
@@ -273,7 +283,7 @@ print("== S2 分区下架 × 四个分发口（P-52）==")
 # 「送不出去」可能是接口挂了而不是权限挡住了（本批真实踩过）。
 feed0 = call("GET", "/forums/feed", token=LT)[1].get("data") or {}
 items0 = feed0.get("items") if isinstance(feed0, dict) else feed0
-s0, xml0 = rss_body(LT, LUID, FID)
+s0, xml0 = rss_body(LT, RTOK, FID)
 ok("S2 地基：可见时搜索/关注流/RSS 三出口都送得出 T2",
    hit_of(search(LT, "ASHIDDEN%s" % TAG), T2, "ASHIDDEN") is not None
    and any(x.get("topic_id") == int(T2) for x in items0 or [])
@@ -292,11 +302,11 @@ fitems = feed.get("items") if isinstance(feed, dict) else feed
 ok("S2 关注流不送下架分区的主题",
    not any(x.get("topic_id") == int(T2) for x in fitems or []),
    brief(fitems))
-s, xml = rss_body(LT, LUID, FID)
+s, xml = rss_body(LT, RTOK, FID)
 ok("S2 RSS 不送下架分区的主题（RSS 出口不在网关里，必须自证）",
    s == 200 and "AS闸门T2%s" % TAG not in xml,
    "http=%s len=%d" % (s, len(xml)))
-sr, xmlr = rss_body(ROOT, 1, FID)
+sr, xmlr = rss_body(ROOT, ROOT_TOK, FID)
 ok("S2 正控：站长 RSS 仍推得到下架分区的主题（出口活着，判据按等级）",
    sr == 200 and "AS闸门T2%s" % TAG in xmlr, "http=%s len=%d"
    % (sr, len(xmlr)))
