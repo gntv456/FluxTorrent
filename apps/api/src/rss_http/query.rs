@@ -7,7 +7,7 @@
 //! 筛选静默丢掉退化成全站 50 条并回 200，只认 NP 名的老脚本拿到的是
 //! 「筛选没报错但内容不对」的订阅源，比拒单更难发现。
 
-/// `GET /rss/{passkey}` 的筛选参数。
+/// `GET /rss/{token}` 的筛选参数。
 #[derive(serde::Deserialize)]
 pub struct RssQuery {
     /// 旧版单值兼容（NP 口径同时认 `cat=`）

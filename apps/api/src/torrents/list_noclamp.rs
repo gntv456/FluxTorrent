@@ -29,8 +29,8 @@ pub async fn list_torrents_noclamp(
 /// 凭证类订阅出口专用（P-324）：在 noclamp 之上回收「付费且未购」的种，
 /// 以及「无原始存档、下载口必 400」的种（P-433）。
 ///
-/// 为什么必须回收：这类出口的 item 直接带 `download.php?id&passkey`（本人
-/// passkey），Prowlarr/Sonarr/Radarr 会**自动**抓 enclosure，而
+/// 为什么必须回收：这类出口的 item 直接带 `download.php?id&apikey`（调用方
+/// 自己的 API Token），Prowlarr/Sonarr/Radarr 会**自动**抓 enclosure，而
 /// `charge_for_download` 的口径是「首次下载即扣魔力、写已购流水」——把付费种
 /// 列出来等于替用户花钱，且客户端侧没有任何确认环节。RSS 在深测 2026-10-03
 /// （`rss_http.rs` 的 `exclude_paid`）就定了同一条口径，Torznab 当时漏接。

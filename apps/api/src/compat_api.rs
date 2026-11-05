@@ -37,7 +37,7 @@ use utoipa::OpenApi;
     tags(
         (name = "兼容层(NP)", description = "NexusPHP 口径 JSON / 别名 / 下载凭证"),
         (name = "Torznab", description = "Torznab caps/search（XML）"),
-        (name = "RSS", description = "个性化 RSS 订阅（passkey 路径鉴权）"),
+        (name = "RSS", description = "个性化 RSS 订阅（fxr token 路径鉴权）"),
         (name = "RSS Token", description = "/rss/tokens：订阅凭证管理（会话鉴权）"),
     )
 )]
@@ -71,7 +71,7 @@ mod tests {
             "/api/v1/downloads/{torrent_id}",
             "/api/v1/torznab",
             "/api/v1/torznab/search",
-            "/api/v1/rss/{passkey}",
+            "/api/v1/rss/{token}",
             // rss-tokens 域（FRAME §7 第 8 条分域起步，0352 端点注解化）
             "/api/v1/rss/tokens",
             "/api/v1/rss/tokens/{id}/rotate",

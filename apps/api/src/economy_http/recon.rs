@@ -181,14 +181,9 @@ async fn torznab_search_inner(
                 .unwrap_or_else(|| "http://127.0.0.1:8080".into())
         });
     let tk = require_token(&req, &state).await?;
-    // enclosure/link 的 passkey 用 Token 主人的真实 passkey
-    //（占位符会让 Prowlarr 拿到字面量 PASSKEY 而 401）
-    let passkey: String =
-        sqlx::query_scalar("SELECT passkey FROM users WHERE id = $1")
-            .bind(tk.uid)
-            .fetch_one(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
+    // 下载链接沿用调用方自己的 API Token（fxo_），不再换出 Tracker
+    // passkey。Token 字符集固定，可安全放进 query。
+    let raw_token = tk.raw.as_str();
 
     let get = |k: &str| -> Option<String> {
         q.get(k)
@@ -312,8 +307,8 @@ async fn torznab_search_inner(
             let promo_tag = crate::torrents::promo::label(kind);
             let (dlf, ulf) = crate::torrents::promo::factors(kind);
             let dl = format!(
-                "{}/api/v1/compat/nexusphp/download.php?id={}&passkey={}",
-                api_base, t.id, passkey
+                "{}/api/v1/compat/nexusphp/download.php?id={}&apikey={}",
+                api_base, t.id, raw_token
             );
             let mut attrs = String::new();
             attrs.push_str(&tattr("category", &nz.to_string()));

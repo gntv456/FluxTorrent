@@ -1,9 +1,7 @@
 //! RSS token 管理（0352）：可命名/可轮换/可撤销的订阅凭证。
-//! 动机：passkey 烤进每个 .torrent 的 announce 与订阅 URL，rotate 等于全量
-//! 换种；命名 token 泄露只需单独撤销，与主 passkey 解耦。
+//! RSS 与兼容下载只认命名 token，Tracker passkey 不再兼任通用凭证。
 //! 口径：明文 `fxr_` + 32 位随机（OsRng），落库仅 sha3-256 哈希，明文只在
-//! 创建/轮换响应出现一次。`/rss/{passkey}` 旧 URL 永远兼容（先查本表再
-//! 回落）。上限 5 个有效 token 走应用层校验（产品策略不锁进 schema）。
+//! 创建/轮换响应出现一次。上限 5 个有效 token 走应用层校验。
 
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use chrono::{DateTime, Utc};

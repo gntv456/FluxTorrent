@@ -150,18 +150,17 @@ pub async fn xseed_iyuu(
 
 /// GET /crossseed/iyuu/site —— 站点自描述（IYUU `sites/index` 形状）。
 ///
-/// IYUU 爬虫靠这份描述认出「这个站怎么抓」：详情页 URL 模板、下载
-/// 参数名、是否需要 passkey。本站走 NexusPHP 兼容路径，模板用
-/// `/torrents.php?id={id}` / `/torrents.php?id={id}&action=download`。
+/// IYUU 爬虫靠这份描述认出「这个站怎么抓」：详情页 URL 模板与下载
+/// 参数名。本站下载使用 fxr_ token，Tracker passkey 不外借。
 ///
 /// 不鉴权：这是公开的站点元数据（IYUU 的 `sites/index` 也不鉴权），
-/// 且不含任何凭据——passkey 字段名是常量，不是某个用户的 key。
+/// 且不含任何凭据——字段名是常量，不是某个用户的 key。
 #[utoipa::path(
     get,
     path = "/api/v1/crossseed/iyuu/site",
     tag = "辅种(crossseed)",
     description = "站点自描述（IYUU sites/index 形状）：详情页/下载 URL 模板与 \
-passkey 字段名。公开元数据，不含凭据。",
+token 字段名。公开元数据，不含凭据。",
     responses((status = 200, description = "站点描述对象"))
 )]
 #[actix_web::get("/crossseed/iyuu/site")]
@@ -172,19 +171,22 @@ pub async fn xseed_iyuu_site(_req: HttpRequest) -> impl actix_web::Responder {
     let base = std::env::var("PUBLIC_SITE_URL")
         .unwrap_or_else(|_| "{PUBLIC_SITE_URL}".into());
     let root = base.trim_end_matches('/').to_string();
-    // NexusPHP 兼容路由：详情与下载同入口，下载走 action=download
-    let detail_tpl = format!("{root}/torrents.php?id={{torrent_id}}");
-    let download_tpl =
-        format!("{root}/torrents.php?id={{torrent_id}}&action=download");
+    // 详情走 web 种子页；下载走 NP 兼容真路由（download.php?…&token=fxr_）。
+    // 旧模板 torrents.php…action=download 全仓无此路由（404），IYUU 按
+    // 自描述拼链必断——passkey_field=token 后必须指向真接受 token 的口。
+    let detail_tpl = format!("{root}/torrent/{{torrent_id}}");
+    let download_tpl = format!(
+        "{root}/api/v1/compat/nexusphp/download.php?id={{torrent_id}}&token="
+    );
     actix_web::HttpResponse::Ok().json(serde_json::json!({
         "site": "fluxtorrent",
         "name": "FluxTorrent",
         "base_url": base,
         "detail_url": detail_tpl,
         "download_url": download_tpl,
-        // passkey 参数名（NexusPHP 生态通行口径）
-        "passkey_field": "passkey",
-        "auth": "passkey",
+        // 下载凭证字段名；Tracker passkey 不再外借。
+        "passkey_field": "token",
+        "auth": "rss_token",
         // 本站辅种走 API 凭证（30 分钟临时 key），下载链接形态同上
         "download_via_api": true,
         "api_download_path": "/api/v1/crossseed/dl/{torrent_id}",

@@ -1,5 +1,5 @@
-//! M08 RSS 订阅：getrss 等价 —— 按 passkey 鉴权的个性化 RSS 2.0 输出。
-//! NexusPHP 口径：用户专属 token（复用 passkey）+ 可选过滤参数；刷流工具凭 URL 自动拉新种。
+//! M08 RSS 订阅：按 fxr_ token 鉴权的个性化 RSS 2.0 输出。
+//! 可选过滤参数；刷流工具凭 URL 自动拉新种。
 //! 参数对齐 getrss.php 常用子集：分类/媒介/官种/关键字/条数/标题格式/付费。
 //! NP 惯用名 `cat`/`slot_number` 经 serde alias 同时受理（见 query.rs）。
 //! B3（2026-09-25）起另认 `sec_{kind}` 六类型维度筛选——与前台列表、
@@ -26,17 +26,16 @@ pub fn mount_rss(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum::forum_rss_feed)
 }
 
-/// GET /rss/{passkey}?categories=1,2&mediums=3&official=&search=...
-/// passkey 即用户身份（BEP3 同源凭证，泄露可自助 rotate —— 与 tracker 一致的暴露面）
+/// GET /rss/{token}?categories=1,2&mediums=3&official=&search=...
+/// 只认可撤销的 fxr_ token；Tracker passkey 不得用于订阅。
 #[utoipa::path(
     get,
-    path = "/api/v1/rss/{passkey}",
+    path = "/api/v1/rss/{token}",
     tag = "RSS",
-    description = "个性化 RSS 订阅：item 含 <enclosure> 下载直链（qB RSS/\
-autobrr/Flexget 直接用）；passkey 在路径里，30 次/分钟。",
+    description = "个性化 RSS 订阅：item 含 <enclosure> 下载直链。\
+路径只接受 fxr_ token，30 次/分钟；原始 passkey 一律拒绝。",
     params(
-        ("passkey" = String, Path,
-         description = "32 位 passkey（或 fxr_ RSS token）"),
+        ("token" = String, Path, description = "fxr_ RSS token"),
         ("categories" = String, Query, description = "分类 id 逗号多选"),
         ("mediums" = String, Query, description = "媒介 id 逗号多选"),
         ("search" = String, Query, description = "关键字"),
@@ -47,30 +46,22 @@ autobrr/Flexget 直接用）；passkey 在路径里，30 次/分钟。",
     ),
     responses(
         (status = 200, description = "application/rss+xml"),
-        (status = 400, description = "passkey 形状非法"),
-        (status = 429, description = "限流（每 passkey 30 次/分钟）"),
+        (status = 400, description = "token 形状非法"),
+        (status = 429, description = "限流（每 token 30 次/分钟）"),
     )
 )]
-#[get("/rss/{passkey}")]
+#[get("/rss/{token}")]
 pub(crate) async fn rss_feed(
     req: HttpRequest,
     path: web::Path<String>,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<RssQuery>,
 ) -> HttpResponse {
-    let passkey = path.into_inner();
-    // 形状校验（0267/0352）：passkey 或 fxr_ token 二选一——与两个生成器
-    // 口径一致，非法形状早拒省一次查询
-    if !crate::compat_http::valid_passkey(&passkey)
-        && !tokens::valid_token_shape(&passkey)
-    {
-        return HttpResponse::BadRequest().body("invalid passkey");
+    let token = path.into_inner();
+    if !tokens::valid_token_shape(&token) {
+        return HttpResponse::BadRequest().body("invalid token");
     }
-    // 0267 安全补：RSS 此前**没有限流** —— 一枚泄露的 passkey 可无限拉订阅源
-    // （打库 + 放大信息面）。30 次/分钟对分钟级轮询的订阅器绰绰有余。
-    // P-68：旧写法把「限流服务不可用」也回成 429 + retry-after —— 订阅端
-    // 据此退避而真实故障在 Redis，症状被伪装成「你拉太快了」。分开回。
-    match crate::compat_http::limit_passkey(&state, &req, "rss", &passkey, 30)
+    match crate::compat_http::limit_passkey(&state, &req, "rss", &token, 30)
         .await
     {
         Ok(()) => {}
@@ -87,10 +78,8 @@ pub(crate) async fn rss_feed(
                 .body("rate limiter unavailable");
         }
     }
-    // 0352：token 优先（sha3 哈希查 rss_tokens，命中顺手节流打 last_used_at），
-    // miss 回落 user_by_passkey——旧 passkey URL 永远兼容
-    let Some(ident) = authz::resolve_identity(&state, &passkey).await else {
-        return HttpResponse::NotFound().body("unknown passkey");
+    let Some(ident) = authz::resolve_identity(&state, &token).await else {
+        return HttpResponse::NotFound().body("unknown token");
     };
     let user_id = ident.user_id;
 
@@ -244,10 +233,9 @@ pub(crate) async fn rss_feed(
         // （qBittorrent RSS / autobrr / Flexget）拿到 HTML → 刷流链路不可用。
         // 现在：link = NP 口径下载直链；enclosure = 同一地址。linktype=page
         // 时保留旧行为（注意：linktype 管**标题格式**，与下载链接无关）。
-        // 0352：直链凭证跟随鉴权路径——token 消费时放 token（订阅 URL 与
-        // 下载直链同凭证，撤销一个 token 即整链失效），passkey 时原样。
+        // 直链凭证跟随订阅 token；撤销 token 即整条订阅链失效。
         let dl = format!(
-            "{}/api/v1/compat/nexusphp/download.php?id={}&passkey={}",
+            "{}/api/v1/compat/nexusphp/download.php?id={}&token={}",
             api_base, r.id, ident.credential
         );
         let link = if verbose {
@@ -289,7 +277,7 @@ pub(crate) async fn rss_feed(
     );
     HttpResponse::Ok()
         .content_type("application/rss+xml; charset=utf-8")
-        // 0267：enclosure/link 里带本人 passkey，绝不能被中间层缓存
+        // enclosure/link 里带订阅 token，绝不能被中间层缓存
         .insert_header(("cache-control", "private, no-store, max-age=0"))
         .body(xml)
 }

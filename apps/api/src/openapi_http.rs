@@ -60,10 +60,12 @@ fn hex(bytes: &[u8]) -> String {
 /// 开放 API Token 鉴权上下文（0267）：除用户与配额外，附带本窗口已用次数，
 /// 供端点回写 `X-RateLimit-*` 头 —— 第三方客户端据此自适应退让，
 /// 而不是撞上 429 才知道要降速。
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TokenCtx {
     pub uid: i64,
     pub rpm: i32,
+    /// 本次请求携带的 Token 明文（Torznab 下载链复用同一鉴权）。
+    pub raw: String,
     /// 当前 60s 窗口内已用次数
     pub used: i64,
     /// 当前窗口剩余秒数（固定窗口按分钟边界复位）
@@ -121,9 +123,8 @@ pub fn with_rl(mut resp: HttpResponse, tk: &TokenCtx) -> HttpResponse {
 }
 
 /// 凭据类响应禁止中间层缓存（0267）。
-/// `.torrent` 内嵌本人 passkey、RSS 的 enclosure / 用户信息里也带 passkey ——
-/// 一旦被 CDN/反代缓存，就可能把甲的 passkey 发给乙。
-/// URL 虽然逐人不同（passkey 在路径/查询里），但「不缓存」是零成本的确定性防线。
+/// `.torrent` 内嵌本人 passkey，RSS/下载链带 fxr_ token 或临时 key ——
+/// 一旦被 CDN/反代缓存，就可能把甲的凭据发给乙。
 pub fn no_store(mut resp: HttpResponse) -> HttpResponse {
     resp.headers_mut().insert(
         actix_web::http::header::CACHE_CONTROL,
@@ -210,6 +211,7 @@ pub async fn require_token(
     Ok(TokenCtx {
         uid,
         rpm,
+        raw: token,
         used: n,
         // P-71：窗口进了键名 ⇒ 复位时刻就是分钟边界，报「距边界几秒」；
         // 此前恒 60 会让退让的客户端白等（边界可能 3 秒后就到）。

@@ -266,8 +266,8 @@ pub async fn rss_info(
             format!("http://{host}")
         }
     };
-    // 0352：加挂用户有效 RSS token 列表（id/name/created_at——不回明文，
-    // 明文只在创建/轮换响应里出现一次）。passkey 字段保留：旧 URL 永远兼容。
+    // RSS 只认命名 token：本口只回元数据，不回 token 明文。
+    // passkey 仍保留给网页里的 Tracker 配置复制，不再拼 RSS 链接。
     let tokens: Vec<(i64, String, chrono::DateTime<chrono::Utc>)> =
         sqlx::query_as(
             "SELECT id, name, created_at FROM rss_tokens \
@@ -288,13 +288,11 @@ pub async fn rss_info(
             })
         })
         .collect();
-    Ok(ok(serde_json::json!({
-        "urls": [
-            { "label": "全部种子", "url": format!("{}/api/v1/rss/{}", base, passkey) },
-            { "label": "官种", "url": format!("{}/api/v1/rss/{}?official=true", base, passkey) },
-        ],
+    // 响应体含长期 Tracker passkey：凭据类响应禁中间层缓存（与
+    // openapi_http::no_store 同口径——URL 与人无关，误存即串号）。
+    Ok(crate::openapi_http::no_store(ok(serde_json::json!({
         "passkey": passkey,
         "tokens": token_items,
         "base": format!("{}/api/v1/rss/", base),
-    })))
+    }))))
 }

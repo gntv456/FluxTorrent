@@ -6,9 +6,9 @@
 //!
 //! | 别名 | 行为 |
 //! |---|---|
-//! | `getrss.php?passkey=` | 302 → `/api/v1/rss/{passkey}`（其余参数原样透传） |
+//! | `getrss.php?token=` | 302 → `/api/v1/rss/{token}`（其余参数原样透传） |
 //! | `takelogin.php` | 307 → `/api/v1/auth/login`（保留 POST body，见 login 的表单兼容） |
-//! | `userdetails.php?passkey=` | 200 JSON（NP userdetails 字段口径） |
+//! | `userdetails.php?token=` | 200 JSON（NP userdetails 字段口径，不含 passkey） |
 //! | `details.php?id=` | 302 → 站点详情页 |
 
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
@@ -46,8 +46,8 @@ pub(crate) fn sane_host(h: &str) -> bool {
     ok && (h.contains('.') || h == "localhost")
 }
 
-/// 从 query string 取一个参数（原样返回，不做 URL 解码 —— passkey 是
-/// 32 位小写字母数字，无需解码；透传其它参数时也必须保持原样）。
+/// 从 query string 取一个参数（原样返回，不做 URL 解码 —— token 形状
+/// 固定；透传其它参数时也必须保持原样）。
 fn qs_get(qs: &str, key: &str) -> Option<String> {
     let prefix = format!("{key}=");
     qs.split('&')
@@ -65,32 +65,35 @@ fn qs_without(qs: &str, key: &str) -> String {
         .join("&")
 }
 
-/// GET /compat/nexusphp/getrss.php?passkey=xxx → 真 RSS 端点。
-/// 刷流脚本（auto_feed_js 等）习惯拼 `getrss.php?passkey=`，
-/// 此前打这个是 404 —— 现在 302 到 `/api/v1/rss/{passkey}`，其余筛选参数原样带过去。
-/// 限流在目标端点（`/rss/{passkey}`）统一计，别名层不重复计数。
+/// GET /compat/nexusphp/getrss.php?token=xxx → 真 RSS 端点。
+/// 旧参数名 `passkey=` 仍可传 token 值，但不接受真实 passkey。
 #[utoipa::path(
     get,
     path = "/api/v1/compat/nexusphp/getrss.php",
     tag = "兼容层(NP)",
-    description = "别名：getrss.php → 302 到 /rss/{passkey}，其余筛选参数原样\
-透传；限流在目标端点计。",
-    params(("passkey" = String, Query, description = "32 位 passkey（必填）")),
+    description = "别名：getrss.php → 302 到 /rss/{token}，其余筛选参数原样\
+透传；`token` 或旧字段名 `passkey` 传 fxr_ token。",
+    params(
+        ("token" = String, Query, description = "fxr_ RSS token（必填）"),
+        ("passkey" = String, Query,
+         description = "旧字段名，仅接受 fxr_ token"),
+    ),
     responses(
-        (status = 302, description = "302 重定向到 /rss/{passkey}"),
-        (status = 401, description = "passkey 形状非法（code 2001）"),
+        (status = 302, description = "302 重定向到 /rss/{token}"),
+        (status = 401, description = "token 形状非法（code 2001）"),
     )
 )]
 #[get("/compat/nexusphp/getrss.php")]
 async fn alias_getrss(req: HttpRequest) -> DomainResult<HttpResponse> {
     let qs = req.query_string();
-    let passkey = qs_get(qs, "passkey").ok_or(DomainError::Unauthorized)?;
-    // 形状校验：passkey 会被拼进 Location 头，畸形输入一律拒
-    if !super::valid_passkey(&passkey) {
+    let cred = qs_get(qs, "token")
+        .or_else(|| qs_get(qs, "passkey"))
+        .ok_or(DomainError::Unauthorized)?;
+    if !super::super::rss_http::tokens::valid_token_shape(&cred) {
         return Err(DomainError::Unauthorized);
     }
-    let rest = qs_without(qs, "passkey");
-    let mut loc = format!("/api/v1/rss/{passkey}");
+    let rest = qs_without(&qs_without(qs, "token"), "passkey");
+    let mut loc = format!("/api/v1/rss/{cred}");
     if !rest.is_empty() {
         loc.push('?');
         loc.push_str(&rest);
@@ -126,25 +129,24 @@ async fn alias_takelogin(req: HttpRequest) -> DomainResult<HttpResponse> {
         .finish())
 }
 
-/// GET /compat/nexusphp/userdetails.php?passkey=xxx
+/// GET /compat/nexusphp/userdetails.php?token=xxx
 ///
-/// NP 工具惯用「passkey 即身份」读用户数据。本站 passkey 与 tracker /
-/// download.php 同源（同一枚凭证已可下载与汇报），因此这里不额外扩大暴露面；
-/// 字段口径与 `user.json` 完全一致（共用 np_user_json）。
-///
-/// 0267 安全补：本端点**必须**限流 —— 此前无限流意味着拿到一枚 passkey
-/// 就能无限次读账号数据（打库 + 放大信息面）。现按 passkey 30 次/分钟，
-/// 与 download.php 同口径；响应禁缓存（含 passkey，不得被中间层留存）。
+/// 只接受专用 token；字段口径与 `user.json` 完全一致（共用 np_user_json）。
+/// Tracker passkey 不再能读取账号数据。
 #[utoipa::path(
     get,
     path = "/api/v1/compat/nexusphp/userdetails.php",
     tag = "兼容层(NP)",
-    description = "别名：userdetails.php?passkey= → 账号 JSON。passkey 即身份\
-（与 tracker/下载同源凭证）；30 次/分钟。",
-    params(("passkey" = String, Query, description = "32 位 passkey（必填）")),
+    description = "别名：userdetails.php → 账号 JSON。`token` 或旧字段名\
+ `passkey` 传 fxr_ token；原始 passkey 一律 401；30 次/分钟。",
+    params(
+        ("token" = String, Query, description = "fxr_ token（必填）"),
+        ("passkey" = String, Query,
+         description = "旧字段名，仅接受 fxr_ token"),
+    ),
     responses(
         (status = 200, description = "NpUser（与 user.json 同形状）"),
-        (status = 401, description = "passkey 无效（code 2001）"),
+        (status = 401, description = "token 无效（code 2001）"),
         (status = 429, description = "限流（code 1015），带 Retry-After: 60"),
     )
 )]
@@ -154,26 +156,22 @@ async fn alias_userdetails(
     req: HttpRequest,
     q: crate::http::Q<std::collections::HashMap<String, String>>,
 ) -> DomainResult<HttpResponse> {
-    let passkey = q
-        .get("passkey")
+    // 空值视同缺省（与 getrss 的 qs_get 同尺）：token=&passkey=fxr_ 时
+    // 必须能回落到 passkey 承载的 token，三口径不齐会产生「工具 A 能用
+    // 工具 B 401」的玄学。
+    let cred = q
+        .get("token")
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| q.get("passkey").filter(|s| !s.trim().is_empty()))
         .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
         .ok_or(DomainError::Unauthorized)?;
-    if !super::valid_passkey(&passkey) {
+    if !super::super::rss_http::tokens::valid_token_shape(&cred) {
         return Err(DomainError::Unauthorized);
     }
-    super::limit_passkey(&state, &req, "npud", &passkey, 30).await?;
-    // 判据收在视图 user_by_passkey（改密/重置后的宽限窗内旧钥仍可解析）
-    let uid: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
-    )
-    .bind(&passkey)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some(uid) = uid else {
-        return Err(DomainError::Unauthorized);
-    };
+    super::limit_passkey(&state, &req, "npud", &cred, 30).await?;
+    let uid = crate::rss_http::authz::resolve_user_id(&state, &cred)
+        .await?
+        .ok_or(DomainError::Unauthorized)?;
     let body = super::nexusphp::np_user_json(&state, uid).await?;
     Ok(crate::openapi_http::no_store(ok(body)))
 }

@@ -68,19 +68,20 @@ pub async fn request_id_mw(
 
 /// 日志里的路径脱敏（P-66）。
 ///
-/// 私有站的 passkey 走**路径**形态（`/rss/{passkey}`、`/rss/forum/{passkey}`、
-/// tracker `/announce/{passkey}`）。Logger 侧靠 `%U`（不含 query）+
-/// `exclude("/api/v1/rss*")` 挡，但这一行记的是原始 path——访问日志排除得
-/// 再干净，「请求开始」行照样把 64 位 passkey 写进日志（实测：
-/// `path=/api/v1/rss/c7b335dc…` 整串落盘）。passkey 是长期凭据：拿到即可
-/// 下种、订阅 RSS、替该账号 announce，等于账号级接管。
+/// RSS 与下载 token 走**路径**形态（`/rss/{fxr_}`、`/rss/forum/{fxr_}`）。
+/// Logger 侧靠 `%U`（不含 query）+ `exclude_regex("^/api/v1/rss")` 挡，
+/// 但这一行记的是原始 path——访问日志排除得再干净，「请求开始」行照样把
+/// 整枚 token 写进日志。拿到即可下种或拉订阅，等于订阅身份接管。
 ///
-/// 判据按**形态**不按端点名：≥32 字符且全字母数字的路径段一律掩成 `***`。
-/// 这样未来任何「凭据进路径」的端点都自动安全，不靠人记得加白名单。
-fn log_safe_path(p: &str) -> String {
+/// 判据按**形态**不按端点名：≥32 字符且全为字母数字/下划线的路径段一律
+/// 掩成 `***`（下划线是 fxr_ token 的形状组成部分——只认字母数字会放过
+/// 整枚订阅凭据）。这样未来任何「凭据进路径」的端点都自动安全，不靠人
+/// 记得加白名单。
+pub(crate) fn log_safe_path(p: &str) -> String {
     p.split('/')
         .map(|seg| {
-            if seg.len() >= 32 && seg.bytes().all(|b| b.is_ascii_alphanumeric())
+            if seg.len() >= 32
+                && seg.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
             {
                 "***"
             } else {
@@ -107,6 +108,16 @@ mod safe_path_tests {
         );
         assert_eq!(
             log_safe_path(&format!("/api/v1/rss/forum/{pk}")),
+            "/api/v1/rss/forum/***"
+        );
+        // fxr_ token 形态：36 位、含下划线（回归：只认字母数字会放过它）
+        let fxr = format!("fxr_{}", "a".repeat(32));
+        assert_eq!(
+            log_safe_path(&format!("/api/v1/rss/{fxr}")),
+            "/api/v1/rss/***"
+        );
+        assert_eq!(
+            log_safe_path(&format!("/api/v1/rss/forum/{fxr}")),
             "/api/v1/rss/forum/***"
         );
         // 普通路径不误伤
@@ -210,6 +221,7 @@ mod tests {
             Some("bad id with spaces"),
             "非法入站 id 必须忽略改自生成"
         );
-        assert!(rid.is_some_and(|v| !v.is_empty() && v != "bad id with spaces"));
+        let bad = "bad id with spaces";
+        assert!(rid.is_some_and(|v| !v.is_empty() && v != bad));
     }
 }

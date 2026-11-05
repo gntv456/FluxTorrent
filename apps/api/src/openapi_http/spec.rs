@@ -30,10 +30,14 @@ pub(super) fn build() -> Value {
         "openapi": "3.1.0",
         "info": {
             "title": "FluxTorrent Open API",
-            "version": "1.4.0",
+            "version": "1.5.0",
             "description": "第三方接口全集：开放数据 / 兼容层（NexusPHP 口径）\
-    / Torznab / RSS / Token 管理。鉴权三选一：Authorization: Token <fxo_>（推荐）、\
-    ?apikey=<fxo_>（Torznab 客户端习惯）、passkey（下载与 RSS，URL 内传递）。\
+    / Torznab / RSS / Token 管理。鉴权：Authorization: Token <fxo_>（推荐）或\
+    ?apikey=<fxo_>（Torznab 客户端习惯）；下载与 RSS 使用 fxr_ token，\
+    passkey 只用于 Tracker announce/scrape。\
+    1.5.0 破坏性变更：NpUser/PtppUser 不再返回 passkey；RSS 路径参数\
+    {passkey}→{token}（只认 fxr_）；download_by_passkey=false——原始 passkey\
+    不再是任何 HTTP 口的有效凭证。\
     限流响应带 X-RateLimit-Limit/Remaining/Reset；429 带 Retry-After: 60。\
     路径表由 #[utoipa::path] 注解生成（F3/W-49），schema 仍为手写组件。",
         },
@@ -76,7 +80,7 @@ mod tests {
             "/api/v1/compat/nexusphp/user.json",
             "/api/v1/downloads/keys/revoke",
             "/api/v1/torznab",
-            "/api/v1/rss/{passkey}",
+            "/api/v1/rss/{token}",
         ] {
             assert!(paths.contains_key(anchor), "缺锚点路径 {anchor}");
         }

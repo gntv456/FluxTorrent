@@ -8,8 +8,8 @@
 //!   ③ `/downloads/keys` + `/downloads/{id}` —— 30 分钟临时下载凭证（与长期 API Token 解耦）
 //!
 //! 鉴权：开放 API Token（`Authorization: Token fxo_...`，复用 openapi_http::require_token，
-//! 含时效/撤销/独立限流）；download.php 与凭证下载走 passkey / 一次性短 token ——
-//! 与 NexusPHP 生态工具的既有习惯一致。
+//! 含时效/撤销/独立限流）；download.php 走 fxr_ token，临时直链走 fxk_。
+//! Tracker passkey 不再作为下载/RSS/账号查询凭证。
 
 pub(crate) mod aliases;
 mod common;
@@ -18,8 +18,8 @@ pub(crate) mod nexusphp;
 mod np_query;
 pub(crate) mod ptpp;
 
-// 0267：passkey 维度限流与形状校验 —— RSS 等对外端点共用（避免各自实现漂移）
-pub(crate) use common::{limit_passkey, valid_passkey};
+// 凭据维度限流 —— RSS/下载等对外端点共用（避免各自实现漂移）
+pub(crate) use common::limit_passkey;
 
 use actix_web::{get, HttpResponse};
 
@@ -42,14 +42,18 @@ async fn compat_meta() -> DomainResult<HttpResponse> {
         "auth": {
             "token": "Authorization: Token <fxo_...>（网页端「我的 → API Token」签发，180 天有效，可 /me/tokens/refresh 续期）",
             "apikey": "同上一枚 Token，可用 ?apikey= 传（Prowlarr/Jackrabbit 等客户端习惯）",
-            "passkey": "download.php / getrss.php / tracker / userdetails.php 使用 passkey 查询参数（与 NexusPHP 工具习惯一致）"
+            "passkey": "仅用于 Tracker announce/scrape 与 .torrent 内嵌 announce；\
+    不得用于下载、RSS 或账号查询",
+            "rss_token": "fxr_ token：RSS 订阅与 download.php/getrss.php/\
+    userdetails.php 的专用凭证"
         },
         "capabilities": {
             "user_info": true,
             "search": true,
             "rss": true,
             "torznab": true,
-            "download_by_passkey": true,
+            "download_by_passkey": false,
+            "download_by_token": true,
             "download_temp_key": true,
             "incremental_feed": true,
             "upload": true,
@@ -59,19 +63,19 @@ async fn compat_meta() -> DomainResult<HttpResponse> {
             "user": "/api/v1/compat/nexusphp/user.json",
             "torrents": "/api/v1/compat/nexusphp/torrents.json?page=1",
             "torrent_detail": "/api/v1/compat/nexusphp/torrent/{id}.json",
-            "download": "/api/v1/compat/nexusphp/download.php?id={id}&passkey={passkey}",
+            "download": "/api/v1/compat/nexusphp/download.php?id={id}&token={fxr_token}",
             "download_key": "POST /api/v1/downloads/keys {torrent_id} → 30 分钟临时凭证",
             "ptpp_user_info": "/api/v1/plugins/ptppUserInfo（PT-Plugin-Plus 字段口径聚合端点）",
-            "rss": "/api/v1/rss/{passkey}（item 含 enclosure 直链；linktype=page 时 link 指详情页）",
+            "rss": "/api/v1/rss/{fxr_token}（item 含 enclosure 直链；linktype=page 时 link 指详情页）",
             "torznab_caps": "/api/v1/torznab",
             "torznab_search": "/api/v1/torznab/search?apikey={token}&t=search|tvsearch|movie&q=",
             "open_recent": "/api/v1/open/recent?limit=50",
             "open_announces": "/api/v1/open/announces?since_id={id}（增量新种流，autobrr 类轮询用）",
             "open_upload": "POST /api/v1/open/torrents（multipart: file=.torrent + 元数据查询参数；按 info_hash 幂等）",
             "aliases": {
-                "getrss": "/api/v1/compat/nexusphp/getrss.php?passkey={passkey}",
+                "getrss": "/api/v1/compat/nexusphp/getrss.php?token={fxr_token}",
                 "takelogin": "POST /api/v1/compat/nexusphp/takelogin.php（表单）",
-                "userdetails": "/api/v1/compat/nexusphp/userdetails.php?passkey={passkey}",
+                "userdetails": "/api/v1/compat/nexusphp/userdetails.php?token={fxr_token}",
                 "details": "/api/v1/compat/nexusphp/details.php?id={id}"
             }
         },

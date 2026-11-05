@@ -114,7 +114,7 @@ pub(super) async fn open_torrent_detail(
         "mediainfo": detail.mediainfo,
         "nfo": nfo,
         "download": format!(
-            "/api/v1/compat/nexusphp/download.php?id={id}&passkey=<passkey>"
+            "/api/v1/compat/nexusphp/download.php?id={id}&token=<fxr_token>"
         ),
         "files": files
             .into_iter()

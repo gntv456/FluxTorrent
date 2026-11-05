@@ -1,8 +1,7 @@
-//! RSS 端点共享鉴权（0352）：token 优先、passkey 回落的统一解析。
+//! RSS / 兼容下载共享鉴权：只认命名 token（fxr_）。
 //!
-//! 两个消费点（种子 RSS / 论坛 RSS）同款鉴权，抽到 rss_http 根模块，
-//! 避免 token→passkey 回落与 last_used_at 节流在两处各自漂移。
-//! 旧 passkey URL **永远兼容**：token miss 才回落 user_by_passkey。
+//! passkey 只用于 Tracker 汇报；RSS 与第三方下载口不得再把长期汇报
+//! 密钥当通用凭证。token 的撤销与账号状态闸在这里统一收口。
 
 use actix_web::web;
 
@@ -10,92 +9,64 @@ use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
 /// token 命中查询：按 sha3-256 哈希取有效 token 的 user_id。
+/// 撤销闸（revoked_at）与账号状态闸（status < 2）缺一不可——封禁用户
+/// 的订阅 token 必须同步失效，与下载口 resolve_user_id 同一把尺。
 /// （tokens.rs 单测锁定 `revoked_at IS NULL` 谓词，防止撤销口径漂移。）
-pub(crate) const AUTH_BY_TOKEN_SQL: &str = "SELECT user_id FROM rss_tokens \
-     WHERE token_hash = $1 AND revoked_at IS NULL";
+pub(crate) const AUTH_BY_TOKEN_SQL: &str =
+    "SELECT t.user_id FROM rss_tokens t \
+     JOIN users u ON u.id = t.user_id \
+     WHERE t.token_hash = $1 AND t.revoked_at IS NULL AND u.status < 2";
 
 /// last_used_at 节流写：仅当距上次打点超过 300s 才 UPDATE——订阅器
 /// 分钟级轮询下不打写放大（每次拉取都写一行 UPDATE 毫无价值）。
 const TOUCH_THROTTLE_SECS: i64 = 300;
 
-/// RSS 鉴权结果：user_id + 鉴权路径里的 passkey/token 明文（后续
-/// 拼 enclosure 直链需要——token 消费时种子直链里放的也是该 token，
-/// 保持「一个 URL 一个凭证」的自洽）。
+/// RSS 鉴权结果：user_id + 本次使用的 token 明文（enclosure 直链
+/// 必须跟随同一枚 token，撤销它即整条订阅链失效）。
 pub(crate) struct RssIdentity {
     pub user_id: i64,
     pub class_id: Option<i32>,
     pub credential: String,
 }
 
-/// 先按 token（fxr_ 前缀形状早拒非法输入），miss 回落 passkey。
-/// 返回 None = 双路径都未命中（调用方回 404 unknown）。
-/// DB 抖动按 miss 处理——鉴权失败路径与现状（unwrap_or(None)）一致。
+/// 只按 token 解析；passkey 形状在入口就被拒，不再回落。
+/// 返回 None = token 未命中（调用方回 404 unknown）。
 pub(crate) async fn resolve_identity(
     state: &web::Data<std::sync::Arc<AppState>>,
     path_cred: &str,
 ) -> Option<RssIdentity> {
-    if super::tokens::valid_token_shape(path_cred) {
-        let hash = super::tokens::token_hash_hex(path_cred);
-        let uid: Option<i64> = sqlx::query_scalar(AUTH_BY_TOKEN_SQL)
-            .bind(&hash)
-            .fetch_optional(&state.repo.db)
-            .await
-            .unwrap_or(None);
-        if let Some(user_id) = uid {
-            touch_last_used(state, user_id, &hash).await;
-            return Some(RssIdentity {
-                user_id,
-                class_id: None,
-                credential: path_cred.to_string(),
-            });
-        }
+    if !super::tokens::valid_token_shape(path_cred) {
+        return None;
     }
-    // 回落：旧 passkey URL（永远兼容）。token 形状不合法的输入走这条
-    // 依旧会被 valid_passkey 挡在调用方入口，不额外打 rss_tokens 表。
-    let row: Option<(i64, i32)> = sqlx::query_as(
-        "SELECT id, class_id FROM user_by_passkey \
-         WHERE passkey = $1 AND status < 2",
-    )
-    .bind(path_cred)
-    .fetch_optional(&state.repo.db)
-    .await
-    .unwrap_or(None);
-    row.map(|(user_id, class_id)| RssIdentity {
+    let hash = super::tokens::token_hash_hex(path_cred);
+    let uid: Option<i64> = sqlx::query_scalar(AUTH_BY_TOKEN_SQL)
+        .bind(&hash)
+        .fetch_optional(&state.repo.db)
+        .await
+        .unwrap_or(None);
+    let user_id = uid?;
+    touch_last_used(state, user_id, &hash).await;
+    Some(RssIdentity {
         user_id,
-        class_id: Some(class_id),
+        class_id: None,
         credential: path_cred.to_string(),
     })
 }
 
-/// 下载/兼容口的凭证 → 用户 id（`fxr_` 命名 token 与主 passkey 两条形状
-/// 同一把尺）。RSS 的 `<enclosure>` 直链里放的就是订阅用的那枚 token，
-/// `download.php` 若不认它，刷流器照直链一点就 401（P-389 实测：订阅 200、
-/// 直链 401 ⇒ token 用户的自动刷流整条断掉）。两条路径都必须过
-/// `status < 2`——换凭证不放宽状态闸（P-346 同口径）。
+/// 下载/兼容口的 token → 用户 id。撤销与账号状态两道闸缺一不可。
 pub(crate) async fn resolve_user_id(
     state: &web::Data<std::sync::Arc<AppState>>,
     cred: &str,
 ) -> DomainResult<Option<i64>> {
-    if super::tokens::valid_token_shape(cred) {
-        let hash = super::tokens::token_hash_hex(cred);
-        let uid: Option<i64> = sqlx::query_scalar(
-            "SELECT t.user_id FROM rss_tokens t \
-             JOIN users u ON u.id = t.user_id \
-             WHERE t.token_hash = $1 AND t.revoked_at IS NULL AND u.status < 2",
-        )
+    if !super::tokens::valid_token_shape(cred) {
+        return Ok(None);
+    }
+    let hash = super::tokens::token_hash_hex(cred);
+    let uid: Option<i64> = sqlx::query_scalar(AUTH_BY_TOKEN_SQL)
         .bind(&hash)
         .fetch_optional(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-        return Ok(uid);
-    }
-    let uid: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM user_by_passkey WHERE passkey = $1 AND status < 2",
-    )
-    .bind(cred)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(uid)
 }
 

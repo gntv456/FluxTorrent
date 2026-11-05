@@ -26,7 +26,7 @@ struct DownloadKeyReq {
     post,
     path = "/api/v1/downloads/keys",
     tag = "兼容层(NP)",
-    description = "签发 30 分钟临时下载凭证：把「下载」从长期 Token/passkey \
+    description = "签发 30 分钟临时下载凭证：把「下载」从长期 Token \
 里解耦，泄露窗口 30 分钟；每用户 10 次/分钟。body：{torrent_id}（JSON）。",
     request_body = DownloadKeyReq,
     responses(
@@ -111,7 +111,7 @@ pub(crate) async fn issue_download_key(
     post,
     path = "/api/v1/downloads/keys",
     tag = "兼容层(NP)",
-    description = "签发 30 分钟临时下载凭证：把「下载」从长期 Token/passkey \
+    description = "签发 30 分钟临时下载凭证：把「下载」从长期 Token \
 里解耦，泄露窗口 30 分钟；每用户 10 次/分钟。body：{torrent_id}（JSON）。",
     request_body = DownloadKeyReq,
     responses(

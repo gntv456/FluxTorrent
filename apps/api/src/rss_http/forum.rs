@@ -1,6 +1,6 @@
 //! 论坛 RSS（Phase3 窄版）：按版块的新帖 feed，接 TG Bot / RSS 阅读器。
 //!
-//! 口径与种子 RSS 完全同源：passkey 鉴权（泄露可自助 rotate，暴露面与 tracker 一致）、
+//! 口径与种子 RSS 完全同源：只认可撤销的 fxr_ token，passkey 不参与。
 //! XML 管线与频道名（SITENAME）复用。默认只推「站务公告」版（id=1）——主打通告转发场景，
 //! 想订阅别的版块自己加 ?forums=1,6。权限：逐条复刻 can_read（minclassread / 版主），
 //! passkey 主人无权读的版块不出现在 feed 里（与关注流同一越权口径）。
@@ -18,27 +18,20 @@ struct ForumRssQuery {
     showrows: Option<i64>,
 }
 
-#[get("/rss/forum/{passkey}")]
+#[get("/rss/forum/{token}")]
 async fn forum_rss_feed(
     req: HttpRequest,
     path: web::Path<String>,
     state: web::Data<std::sync::Arc<AppState>>,
     q: crate::http::Q<ForumRssQuery>,
 ) -> HttpResponse {
-    let passkey = path.into_inner();
-    // 四轮审计 M3（2026-10-07）：0267 限流补丁漏了论坛 RSS——主 RSS 有
-    // valid_passkey+双维限流，这里只查长度，匿名换随机 passkey 即无限
-    // 打 users 索引。对齐主 RSS 同款两闸。
-    // 0352：同款放行 fxr_ token（形状校验同主 RSS）。
-    if !crate::compat_http::valid_passkey(&passkey)
-        && !super::tokens::valid_token_shape(&passkey)
-    {
-        return HttpResponse::BadRequest().body("invalid passkey");
+    let token = path.into_inner();
+    if !super::tokens::valid_token_shape(&token) {
+        return HttpResponse::BadRequest().body("invalid token");
     }
-    // P-68：与主 RSS 同修——限流命中回 429，限流服务本身不可用回 503，
-    // 不要把后端故障伪装成「你太快了」。
+    // P-68：限流命中回 429，限流服务本身不可用回 503。
     match crate::compat_http::limit_passkey(
-        &state, &req, "rssforum", &passkey, 30,
+        &state, &req, "rssforum", &token, 30,
     )
     .await
     {
@@ -54,14 +47,12 @@ async fn forum_rss_feed(
                 .body("rate limiter unavailable");
         }
     }
-    // 0352：token 优先、miss 回落 passkey（与主 RSS 同一实现，口径不漂移）
-    let Some(ident) = super::authz::resolve_identity(&state, &passkey).await
+    let Some(ident) = super::authz::resolve_identity(&state, &token).await
     else {
-        return HttpResponse::NotFound().body("unknown passkey");
+        return HttpResponse::NotFound().body("unknown token");
     };
     let (uid, class_id) = (ident.user_id, ident.class_id);
-    // token 鉴权路径拿不到 class_id（rss_tokens 不存等级）——回查一次
-    // users 行。passkey 路径 user_by_passkey 已带回，不额外打表。
+    // token 表不存等级，权限判定前回查一次 users 行。
     let class_id = match class_id {
         Some(c) => c,
         None => sqlx::query_scalar(

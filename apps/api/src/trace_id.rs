@@ -75,7 +75,10 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let tid = short_trace_id();
-        let path = req.path().to_string();
+        // 路径脱敏与 request_id 同一把尺（log_safe_path）：RSS token 走路径
+        // 形态，这里不脱敏就是凭据进日志的第二通道（P-66 口径：只堵一条
+        // 等于没堵）。
+        let path = crate::request_id::log_safe_path(req.path());
         let method = req.method().to_string();
         let fut = self.service.call(req);
         Box::pin(async move {

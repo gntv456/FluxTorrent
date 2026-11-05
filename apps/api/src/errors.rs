@@ -222,7 +222,7 @@ impl ResponseError for DomainError {
         }));
         // 0267：限流响应必须自带 Retry-After —— 第三方客户端据此退避，
         // 否则只能盲目重试。本项目所有限流桶都是 60s 固定窗口
-        // （openapi 按 token、download.php 按 passkey、登录按用户名/IP）。
+        // （openapi 按 token、download.php 按 token、登录按用户名/IP）。
         if matches!(self, DomainError::RateLimited) {
             resp.headers_mut().insert(
                 actix_web::http::header::RETRY_AFTER,

@@ -15,8 +15,8 @@ use crate::state::AppState;
     get,
     path = "/api/v1/plugins/ptppUserInfo",
     tag = "兼容层(NP)",
-    description = "PT-Plugin-Plus 字段口径聚合端点：插件用户卡的全部字段，\
-含 passkey（拼下载链必须）。",
+    description = "PT-Plugin-Plus 字段口径聚合端点：插件用户卡的全部字段。\
+不返回 passkey；下载请先签临时下载凭证。",
     responses(
         (status = 200, description = "PtppUser"),
         (status = 401, description = "Token 无效/已撤销/未传（code 2001）"),
@@ -39,11 +39,10 @@ async fn ptpp_user_info(
         i64,
         i32,
         chrono::DateTime<chrono::Utc>,
-        String,
     )> = sqlx::query_as(
         "SELECT u.id, u.username, u.spark_balance, u.uploaded, u.downloaded, \
                 u.seeding_size, \
-                u.class_id, u.created_at, u.passkey \
+                u.class_id, u.created_at \
          FROM users u WHERE u.id = $1 AND u.status < 2",
     )
     .bind(uid)
@@ -59,7 +58,6 @@ async fn ptpp_user_info(
         seeding_size,
         class_id,
         join_time,
-        passkey,
     )) = row
     else {
         return Err(DomainError::Unauthorized);
@@ -88,7 +86,6 @@ async fn ptpp_user_info(
         .fetch_one(&state.repo.db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
-    // 含 passkey（插件拼下载链要用）：禁止中间层缓存
     Ok(no_store(with_rl(
         ok(serde_json::json!({
             // 插件契约字段（PT-Plugin-Plus TNode schema 口径）
@@ -104,10 +101,6 @@ async fn ptpp_user_info(
             "levelName": class_name,
             "joinTime": join_time,
             "messageCount": unread_messages,
-            // 0267：插件要拼 download.php 的下载链，必须拿到 passkey。
-            // NP 的 userdetails 页面本来就内含本人 passkey（同源暴露面），
-            // 而插件 config 里 `$passkey$` 取不到值时下载链会拼成空 passkey → 401。
-            "passkey": passkey,
             "isLogged": true,
         })),
         &tk,

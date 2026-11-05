@@ -16,8 +16,8 @@ pub(super) fn components() -> Value {
                 "description": "值形如 `Token fxo_xxx`；兼容层与开放接口通用" },
             "apikeyQuery": { "type": "apiKey", "in": "query", "name": "apikey",
                 "description": "同一枚 Token，Torznab 客户端习惯" },
-            "passkeyQuery": { "type": "apiKey", "in": "query", "name": "passkey",
-                "description": "下载/别名端点用；RSS 走路径段 /rss/{passkey}" },
+            "rssTokenQuery": { "type": "apiKey", "in": "query", "name": "token",
+                "description": "fxr_ token；下载/别名端点用，RSS 走路径段 /rss/{token}" },
         },
         "schemas": {
             "Envelope": { "type": "object", "properties": {
@@ -84,8 +84,7 @@ pub(super) fn components() -> Value {
                 "class_name": { "type": "string" },
                 "ratio": { "type": "number" },
                 "ratio_infinite": { "type": "boolean" },
-                "ratio_display": { "type": "string" },
-                "passkey": { "type": "string" } } },
+                "ratio_display": { "type": "string" } } },
             "NpTorrentDetail": { "type": "object", "properties": {
                 "id": { "type": "integer" }, "name": { "type": "string" },
                 "descr": { "type": "string", "nullable": true },
@@ -111,7 +110,6 @@ pub(super) fn components() -> Value {
                 "levelName": { "type": "string" },
                 "joinTime": { "type": "string" },
                 "messageCount": { "type": "integer" },
-                "passkey": { "type": "string" },
                 "isLogged": { "type": "boolean" } } },
             "DownloadKey": { "type": "object", "properties": {
                 "key": { "type": "string" },
