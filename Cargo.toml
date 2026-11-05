@@ -27,6 +27,7 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 argon2 = "0.5"
+bcrypt = "0.17"
 jsonwebtoken = "9"
 rand = "0.8"
 regex = "1"

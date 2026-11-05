@@ -10,6 +10,27 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::{bump_guard_ver, require_auth};
 use crate::state::AppState;
 
+/// 旧站迁移兼容：bcrypt 哈希登录成功后透明升级 argon2id。
+/// 失败静默（下次登录再试），不拦登录主链路；不复核旧密码——
+/// 能走到这里密码已经验过。
+pub(crate) async fn maybe_upgrade_bcrypt(
+    state: &std::sync::Arc<AppState>,
+    id: i64,
+    hash: &str,
+    password: &str,
+) {
+    if !domain::is_bcrypt_hash(hash) {
+        return;
+    }
+    if let Ok(new_hash) = domain::hash_password(password) {
+        let _ = sqlx::query("UPDATE users SET pass_hash = $2 WHERE id = $1")
+            .bind(id)
+            .bind(&new_hash)
+            .execute(&state.repo.db)
+            .await;
+    }
+}
+
 #[post("/me/passkey/rotate")]
 pub async fn rotate_passkey(
     req: HttpRequest,

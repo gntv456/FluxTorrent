@@ -145,6 +145,9 @@ pub async fn login(
         .await;
         return Err(DomainError::InvalidCredentials);
     }
+    super::me_security::maybe_upgrade_bcrypt(
+        &state, user.id, &user.pass_hash, &body.password,
+    ).await;
     // 2FA（启用者必须带 totp_code）。失败也落登录事件（reason=2：缺码/错码细分看返回错误）
     // 安全审计 P1-3（2026-10-06）：TOTP 失败同样递增账户锁定计数——旧版只在密码
     // 错误分支计数，密码已泄露者可对 6 位码低速持续爆破（换 IP 即绕 IP 维度限流）。

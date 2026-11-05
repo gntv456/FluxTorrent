@@ -68,6 +68,11 @@ pub fn hash_password(password: &str) -> DomainResult<String> {
 }
 
 pub fn verify_password(hash: &str, password: &str) -> bool {
+    // 旧站迁移兼容（好学站）：NexusPHP/Laravel 的 bcrypt 哈希（$2a/$2b/$2y）
+    // 原样迁入 pass_hash，登录成功后由 auth_http 透明升级 argon2id
+    if is_bcrypt_hash(hash) {
+        return bcrypt::verify(password, hash).unwrap_or(false);
+    }
     // 非法/占位哈希（如种子数据 "stub"）直接判失败，绝不让验证器 panic 拖垮 worker 线程
     let Ok(parsed) = argon2::PasswordHash::new(hash) else {
         return false;
@@ -78,6 +83,12 @@ pub fn verify_password(hash: &str, password: &str) -> bool {
         &parsed,
     )
     .is_ok()
+}
+
+/// bcrypt 迁移哈希判定：登录成功后触发 argon2id 升级的依据
+pub fn is_bcrypt_hash(hash: &str) -> bool {
+    const P: [&str; 3] = ["$2a$", "$2b$", "$2y$"];
+    P.iter().any(|p| hash.starts_with(p))
 }
 
 pub fn new_passkey() -> String {
@@ -184,6 +195,25 @@ mod tests {
         let h = hash_password("correct horse").unwrap();
         assert!(verify_password(&h, "correct horse"));
         assert!(!verify_password(&h, "wrong"));
+    }
+
+    #[test]
+    fn bcrypt_migration_hash_verify() {
+        // 旧站 Laravel $2y$ 口径样例（明文 password123），原样迁入后须可验证
+        let h = concat!(
+            "$2y$10$Ffk5RL6a2oIZiBElNHFEJeyQdjGsYov3BmIkF",
+            "/M.VCllxhEh0uC1K"
+        );
+        assert!(is_bcrypt_hash(h));
+        assert!(verify_password(h, "password123"));
+        assert!(!verify_password(h, "wrong"));
+        // $2b$ 同源；argon2 哈希不判 bcrypt
+        assert!(is_bcrypt_hash(
+            "$2b$10$Ffk5RL6a2oIZiBElNHFEJeyQdjGsYov3BmIkF/M.VCllxhEh0uC1K"
+        ));
+        assert!(!is_bcrypt_hash(
+            "$argon2id$v=19$m=19456,t=2,p=1$abc"
+        ));
     }
 
     #[test]
