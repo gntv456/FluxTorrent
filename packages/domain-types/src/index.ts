@@ -44,6 +44,9 @@ export const ErrorCode = {
   // 站点未开通邮件服务（SMTP 或对外地址未配）：找回密码/邮箱激活这类
   // 「必须发信」的链路应给这一码，而不是 1000 内部错误（HTTP 503）
   MAIL_UNCONFIGURED: 4103,
+  // 维护模式开启（0462）：非 staff 业务 API 被维护闸门拦下（HTTP 503）；
+  // tracker/RSS 不受影响，staff 穿透——前端据此引导到维护页
+  MAINTENANCE: 4104,
   // 5xxx 社区
   ALREADY_THANKED: 5002,
   // 站点设定乐观并发冲突（expected updated_at 不匹配，HTTP 409）：

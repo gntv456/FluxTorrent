@@ -99,6 +99,8 @@ pub(crate) async fn invalidate_cache(
     let _: () = conn.del("settings:all").await.unwrap_or(());
     // 模块开关（module_*）属 module 组：本进程缓存立即失效（U1 §5.1，最坏竞态由 TTL 兜底）
     state.module_flags.invalidate().await;
+    // 维护开关（0462）同套路：保存后本进程立即跟随，最坏竞态由 TTL 兜底
+    crate::maintenance::invalidate().await;
     // 0224 G30：settings:changed 零订阅者，改走 cfg:ver 版本通道（Redis 分区缓存 DEL 保留）
     crate::cfgver::bump(state.get_ref(), "modules").await;
     crate::staff_http::invalidate_site_profile_cache(state).await;

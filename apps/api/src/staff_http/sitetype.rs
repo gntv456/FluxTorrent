@@ -277,6 +277,9 @@ async fn site_profile_fresh(
         "metadata_sources": sources,
         "work_hero": profile_bits::work_hero(db).await, // 0403 作品页 Hero
         "glass": profile_bits::glass(db).await,
+        // 维护模式（0462）：前端根布局据此渲染维护页/staff 横幅。
+        // 该端点在维护闸门白名单里（维护页自身要能取到品牌与文案）
+        "maintenance": profile_bits::maintenance(db).await,
         "site_desc": site_desc,
         "seo": seo,
         "categories": cats.iter().map(|(id, name, icon, bg, parent)| serde_json::json!({"id": id, "name": name, "icon_key": icon, "bg_color": bg, "parent_id": parent})).collect::<Vec<_>>(),

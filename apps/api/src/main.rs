@@ -53,6 +53,7 @@ mod invite_http;
 mod logcheck;
 mod mailer;
 mod mailer_notify;
+mod maintenance;
 mod me_achievements;
 mod mediainfo_service;
 mod modules;
@@ -316,6 +317,9 @@ async fn main() -> anyhow::Result<()> {
             .wrap(actix_web::middleware::from_fn(crate::http::idempotency::idempotency_mw))
             .wrap(actix_web::middleware::from_fn(i18n::locale_mw)) // Accept-Language → task-local（错误消息三语）
             .wrap(actix_web::middleware::from_fn(setup_http::setup_gate_mw)) // U3 安装向导封锁（setup_done 未置位拦业务 API）
+            // 维护闸门（0462）：maintenance_mode=yes 时非 staff 业务 API 503/4104；
+            // tracker（独立进程）/RSS 刻意不拦——维护期做种不断（NP/Unit3D 同口径）
+            .wrap(actix_web::middleware::from_fn(maintenance::maintenance_mw))
             // P2（2026-10-06 安全审计）：写方法跨站来源闸——SameSite=Lax 在
             // 项目声明兼容的旧内核浏览器上会被忽略，此层把「Origin/Referer
             // 同源或白名单」作为 CSRF 纵深第二道防线（非浏览器客户端无该头，放行）

@@ -160,6 +160,13 @@ const MESSAGES: &[(i32, &str, &str, &str)] = &[
         "郵件服務目前無法使用，請稍後重試或聯繫管理組",
         "Mail service is temporarily unavailable; retry later or contact staff",
     ),
+    // 维护模式（0462）：非 staff 业务 API 被拦；做种/下载刻意不受影响
+    (
+        4104,
+        "站点维护中，请稍后再来——做种与下载不受影响",
+        "站點維護中，請稍後再來——做種與下載不受影響",
+        "Site is under maintenance; seeding and downloads are unaffected",
+    ),
 ];
 
 /// 按错误码取本地化消息（未知码回内部错误文案）

@@ -6757,6 +6757,21 @@ const enBase: Omit<
       "You appear to be offline. Check cached content or try again later.",
     home: "Back to home",
   },
+  maintenance: {
+    title: "Site under maintenance",
+    defaultMessage:
+      "The site is being upgraded and is temporarily unavailable. Please check back later — thanks for your patience.",
+    countdownNote:
+      "Estimated recovery time (for reference only; actual recovery may differ)",
+    recovering: "Recovering…",
+    seedNote:
+      "Seeding and downloads are unaffected — no need to close your client.",
+    footerNote: "Questions during the downtime? Contact the staff.",
+    login: "Staff sign in",
+    home: "Back to home",
+    banner:
+      "Maintenance mode is on: members see the maintenance page; staff access is unaffected.",
+  },
   errors: {
     1000: "Service error",
     1002: "Validation failed",
@@ -6779,6 +6794,7 @@ const enBase: Omit<
     4101: "This module is not enabled",
     4102: "Pool configuration rejected this draw",
     4103: "Mail service is currently unavailable. Please try again later or contact the admin.",
+    4104: "Site is under maintenance; seeding and downloads are unaffected",
     5003: "Settings were changed elsewhere; reload and retry",
     httpServerError: "Server error (HTTP {status})",
     httpDownloadFail: "Download failed (HTTP {status})",

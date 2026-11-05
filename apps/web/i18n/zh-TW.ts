@@ -6516,6 +6516,19 @@ const zhTwBase: Omit<
     subtitle: "目前網路不可用。看看已快取的內容，或稍後再試試～",
     home: "回首頁",
   },
+  maintenance: {
+    title: "站點維護中",
+    defaultMessage:
+      "站點正在升級維護，暫停對外服務。請稍後再來，感謝理解與支持～",
+    countdownNote: "預計恢復時間（僅供參考，以實際恢復為準）",
+    recovering: "恢復中…",
+    seedNote: "維護不影響做種與下載，用戶端無需關閉。",
+    footerNote: "恢復期間有任何疑問可聯絡管理組。",
+    login: "員工登入",
+    home: "回首頁",
+    banner:
+      "維護模式開啟中：站點對普通會員顯示維護頁，管理組可正常存取。",
+  },
   errors: {
     1000: "服務異常",
     1002: "參數校驗失敗",
@@ -6538,6 +6551,7 @@ const zhTwBase: Omit<
     4101: "該功能模組未開放",
     4102: "獎池設定異常，已拒絕本次抽取",
     4103: "郵件服務目前無法使用，請稍後重試或聯絡管理組",
+    4104: "站點維護中，請稍後再來——做種與下載不受影響",
     5003: "設定已被他人修改，請重新整理後重試",
     httpServerError: "服務異常（HTTP {status}）",
     httpDownloadFail: "下載失敗（HTTP {status}）",

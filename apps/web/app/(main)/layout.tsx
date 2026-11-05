@@ -9,14 +9,19 @@ import { ScrollButtons } from "@/components/scroll-buttons";
 import { ShjAtlas } from "@/components/shj-atlas";
 import { api } from "@/lib/api-client";
 import { getDict } from "@/i18n/server";
+import { requireNotMaintaining } from "@/lib/maintenance";
 
 /**
  * 站内布局：桌面顶栏 + 移动底部 Tab + 内容容器 + 页脚。
  * 认证类页面（/login /register /forgot /reset /offline）使用各自的纯净布局，不挂导航。
+ * 维护模式（0462）：maintenance_mode=yes 时非 staff 302 /maintenance；
+ * staff 穿透并在顶部看维护横幅（随时回后台关闭）。
  */
 export default async function MainLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // 维护闸门先于一切取数（维护中非 staff 不再付四次并发请求的 RTT）
+  const maintaining = await requireNotMaintaining();
   // 布局四路并发（2026-10-18 主菜单切换提速）：此前 dict→profile→dims→menu
   // 四连串行，每个导航 RSC 都白等 3 个 API RTT。getSiteProfile/getSiteDims
   // 是 React cache 同请求去重，页面侧同名调用不产生第二次请求。
@@ -85,6 +90,17 @@ export default async function MainLayout({
         brand={profile?.brand || dict.common.brand}
       />
       <div className="site-shell">
+        {/* 维护横幅（0462）：只有 staff 会走到这里（非 staff 已被闸门
+            302 走）——提醒「站现在对外是维护态」，别当普通通知弹 */}
+        {maintaining ? (
+          <div
+            role="status"
+            className="bg-[var(--amber,#b45309)]/12 px-4 py-2 text-center
+              text-sm text-[var(--amber,#b45309)]"
+          >
+            {dict.maintenance.banner}
+          </div>
+        ) : null}
         <Header />
         {/* 动效壳（P4）：无 DOM 输出，只做顶栏吸顶态 + 滚动进场（渐进增强，不隐藏 SSR 内容） */}
         <MotionShell />

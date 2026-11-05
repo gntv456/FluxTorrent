@@ -24,6 +24,9 @@ const PUBLIC_PATHS = [
   "/rules",
   "/faq",
   "/setup", // 安装向导（U3 §8.3）：冷启动期管理员未登录也要能进入
+  // 维护页（0462）：maintenance_mode=yes 时 (main) 布局把非 staff 302 到
+  // 这里，它自己必须匿名可达，否则死循环重定向
+  "/maintenance",
 ];
 
 function isAnonymousOk(pathname: string): boolean {

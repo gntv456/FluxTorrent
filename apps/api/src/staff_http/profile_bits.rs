@@ -145,6 +145,27 @@ pub(crate) async fn glass(db: &PgPool) -> Value {
     })
 }
 
+/// 维护模式（0462，NP site_online / Unit3D down 同口径）：
+/// `on` = maintenance_mode 为 yes；`message` 空串 / `until` null = 未设置
+/// （前端回落字典默认文案 / 不显示倒计时——不造假 ETA）。
+/// until 只收 RFC3339 解析得通的值，站长手滑填别的格式时宁可
+/// 不显示倒计时也不能渲染出一段错乱时间。
+pub(crate) async fn maintenance(db: &PgPool) -> Value {
+    let until_raw = setting_text(db, "maintenance_until").await;
+    // Some(Some(s)) = 合法 RFC3339 → 字符串；None（未设置/非法）→ null
+    let until_valid = until_raw
+        .as_deref()
+        .and_then(|v| chrono::DateTime::parse_from_rfc3339(v).ok())
+        .map(|_| until_raw.clone());
+    let mode_on = setting_text(db, "maintenance_mode").await;
+    serde_json::json!({
+        "on": mode_on.as_deref() == Some("yes"),
+        "message": setting_text(db, "maintenance_message").await
+            .unwrap_or_default(),
+        "until": until_valid.unwrap_or_default(),
+    })
+}
+
 /// 主题令牌（0189 R4.6）：有值才下发，前端注入 `:root` 覆盖默认色。
 /// 只收 `#rrggbb`——这是站长能写进 CSS 的唯一入口，放开了就是注入面。
 pub(crate) async fn theme_tokens(db: &PgPool) -> Value {

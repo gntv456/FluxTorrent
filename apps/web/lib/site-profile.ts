@@ -80,6 +80,10 @@ export interface SiteProfile {
   };
   /** 板块磨砂玻璃（0448）：alpha 0~100（100 = 关）、blur 0~30px */
   glass?: { alpha?: number; blur?: number };
+  /** 维护模式（0462）：on/message/until（message 空串、until null/空 =
+   *  未设置，不显示倒计时）。该端点在 API 维护闸门白名单里——
+   *  维护页自身要能取到品牌与文案 */
+  maintenance?: { on?: boolean; message?: string; until?: string | null };
 }
 
 /** 站型字典条目（id 由后端词表表给出，前端不做任何下标补偿） */

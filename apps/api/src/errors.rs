@@ -61,6 +61,11 @@ pub enum DomainError {
     /// 收紧到「真能连上」，文案同时覆盖未配置与连接失败。
     #[error("邮件服务当前不可用，请稍后重试或联系管理组")]
     MailUnconfigured,
+    /// 全站维护模式（0462，对标 NP site_online / Unit3D artisan down）：
+    /// maintenance_mode=yes 时非 staff 的业务 API 一律 503/4104。
+    /// tracker/RSS 刻意不拦（维护期做种不断）；staff（class>=90）穿透。
+    #[error("站点维护中，请稍后再来——做种与下载不受影响")]
+    Maintenance,
     /// 乐观并发冲突（site_settings expected updated_at 校验，5003）：
     /// 提交携带的版本戳与库中现值不一致 = 有人先改过，整批拒绝防静默覆盖；
     /// fields 随信封 data 带冲突键列表，前端提示刷新后重试
@@ -119,6 +124,8 @@ impl DomainError {
             DomainError::PoolGuard(_) => 4102,
             // 4103 MailUnconfigured：站点未配邮件服务却走了必须发信的链路（P-102）
             DomainError::MailUnconfigured => 4103,
+            // 4104 Maintenance：维护模式开启，非 staff 的业务 API 被维护闸门拦下（0462）
+            DomainError::Maintenance => 4104,
             // 5xxx 社区段：5003 = 设定乐观并发冲突（5001/5002 已占）
             // 5003 VersionConflict：设定保存携带的 expected updated_at 与库中不一致
             DomainError::VersionConflict(_) => 5003,
@@ -156,6 +163,9 @@ impl DomainError {
             DomainError::VersionConflict(_) => StatusCode::CONFLICT,
             // 邮件链路依赖的外部配置缺失：503 比 500 诚实（不是我们的 bug）
             DomainError::MailUnconfigured => StatusCode::SERVICE_UNAVAILABLE,
+            // 维护模式（0462）：语义就是「服务暂时不可用」，HTTP 503——
+            // 反代/监控看到 5xx 才不会把维护页当正常流量
+            DomainError::Maintenance => StatusCode::SERVICE_UNAVAILABLE,
             DomainError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
