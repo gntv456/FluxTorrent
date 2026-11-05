@@ -3,9 +3,21 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.13] - 2026-11-06
+
+定位：**旧站密码迁移兼容**——好学站（NexusPHP/Laravel）用户整体迁入时
+密码哈希无感续用，无需全员重置。
+
+### 兼容性：旧站 bcrypt 密码迁移（好学站 HxPT）
+
+从 NexusPHP/Laravel 站迁入的用户密码（bcrypt `$2a/$2b/$2y$` 哈希）原样
+落在 `users.pass_hash`，`verify_password` 按前缀分流：bcrypt 前缀走
+bcrypt 验证，argon2 走原路径。**登录成功即透明升级 argon2id**（失败静默，
+下次登录重试），存量用户无感知。非迁移部署零行为差异。
+
 ## [0.5.12] - 2026-11-06
 
-定位：**全站维护模式 + 旧站密码迁移兼容**——对标 NexusPHP `site_online` /
+定位：**全站维护模式**——对标 NexusPHP `site_online` /
 Unit3D `artisan down` 的 PT 特有口径，站长从此可以在后台一键把站点切进
 维护态，不必再停容器或改反代。**含迁移 0462（1 个），api 启动时自动执行**。
 
@@ -33,13 +45,6 @@ Unit3D `artisan down` 的 PT 特有口径，站长从此可以在后台一键把
   侧最长 60 秒恢复**（档案缓存设计权衡，刷新即可）
 - 站长误把 `maintenance_until` 填成非法格式：后端直接拒收（下发 null），
   维护页不显示倒计时，不会渲染错乱时间
-
-### 兼容性：旧站 bcrypt 密码迁移（好学站 HxPT）
-
-从 NexusPHP/Laravel 站迁入的用户密码（bcrypt `$2a/$2b/$2y$` 哈希）原样
-落在 `users.pass_hash`，`verify_password` 按前缀分流：bcrypt 前缀走
-bcrypt 验证，argon2 走原路径。**登录成功即透明升级 argon2id**（失败静默，
-下次登录重试），存量用户无感知、无需重置密码。非迁移部署零行为差异。
 
 ## [0.5.10] - 2026-11-04
 
