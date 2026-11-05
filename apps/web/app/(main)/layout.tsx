@@ -95,8 +95,9 @@ export default async function MainLayout({
         {maintaining ? (
           <div
             role="status"
-            className="bg-[var(--amber,#b45309)]/12 px-4 py-2 text-center
-              text-sm text-[var(--amber,#b45309)]"
+            className="border-b border-[var(--warning-border)]
+              bg-[var(--warning-soft)] px-4 py-2 text-center
+              text-sm text-[var(--warning)]"
           >
             {dict.maintenance.banner}
           </div>

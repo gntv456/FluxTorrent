@@ -50,9 +50,9 @@ const SEGMENT: &[&str] = &[
 /// `messages` 的前缀，会把一整族业务口放进维护期。
 fn path_allowed(path: &str) -> bool {
     EXACT.iter().any(|p| path == *p)
-        || SEGMENT.iter().any(|p| {
-            path == *p || path.starts_with(&format!("{}/", p))
-        })
+        || SEGMENT
+            .iter()
+            .any(|p| path == *p || path.starts_with(&format!("{}/", p)))
 }
 
 /// 维护开关缓存（TTL 30s + 保存口主动失效）。单值开关不需要 ModuleFlags
@@ -127,7 +127,9 @@ pub async fn maintenance_mw(
     if staff {
         return next.call(req).await;
     }
-    Err(actix_web::Error::from(crate::errors::DomainError::Maintenance))
+    Err(actix_web::Error::from(
+        crate::errors::DomainError::Maintenance,
+    ))
 }
 
 #[cfg(test)]
@@ -162,10 +164,9 @@ mod tests {
         }
         // RSS 口必须走「前缀排除」而不是混进白名单再排除——两者语义不同，
         // 这里锁的是「没人把 RSS 前缀误登进白名单」
-        assert!(
-            EXACT.iter().chain(SEGMENT).all(|a| {
-                !a.starts_with("/api/v1/rss")
-            })
-        );
+        assert!(EXACT
+            .iter()
+            .chain(SEGMENT)
+            .all(|a| { !a.starts_with("/api/v1/rss") }));
     }
 }
