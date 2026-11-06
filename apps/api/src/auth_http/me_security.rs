@@ -15,16 +15,15 @@ use crate::state::AppState;
 /// 能走到这里密码已经验过。
 pub(crate) async fn maybe_upgrade_bcrypt(
     state: &std::sync::Arc<AppState>,
-    id: i64,
-    hash: &str,
+    user: &domain::UserAccount,
     password: &str,
 ) {
-    if !domain::is_bcrypt_hash(hash) {
+    if !domain::is_bcrypt_hash(&user.pass_hash) {
         return;
     }
     if let Ok(new_hash) = domain::hash_password(password) {
         let _ = sqlx::query("UPDATE users SET pass_hash = $2 WHERE id = $1")
-            .bind(id)
+            .bind(user.id)
             .bind(&new_hash)
             .execute(&state.repo.db)
             .await;
