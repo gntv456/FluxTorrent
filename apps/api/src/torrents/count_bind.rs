@@ -176,7 +176,11 @@ pub(super) async fn counts_for(
              {tag_pred} \
              {sec_sql} {extra_sql}{cap}) sub",
             alive = alive,
-            cap = if cap > 0 { format!(" LIMIT {cap}") } else { String::new() },
+            cap = if cap > 0 {
+                format!(" LIMIT {cap}")
+            } else {
+                String::new()
+            },
         )
     };
     let total: i64 = fetch_count(&mk_sql(alive_pred), args, db)

@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic";
 /** 翻页按钮样式（0170 双向翻页；长 className 拆串守行宽门禁） */
 const PILL_CLS =
   "flex min-h-[44px] items-center rounded-full" +
-  " border border-line bg-[var(--surface-card)] px-6 text-sm text-sky-deep";
+  " border border-line bg-[var(--surface-card)] px-6 text-sm text-brand";
 
 /** 聚合视图不消费种子列表游标；不为此白跑一次 /torrents 查询。 */
 const EMPTY_PAGE: TorrentPage<TorrentListItem> = {
@@ -363,7 +363,7 @@ export default async function TorrentsPage({
             categories: sp.category_id ?? "",
             ...secParams,
           }).toString()}`}
-          className="text-xs text-sky hover:underline"
+          className="text-xs text-brand hover:underline"
         >
           📡 {dict.getrss.title}
         </a>
