@@ -44,3 +44,19 @@ no-flash 脚本、切换器、注册表门禁测试都从它消费。
 回滚：① 用户侧：切换器换档即恢复；② 代码侧：删 `globals.css` 里 `theme-shanhaijing.css` /
 `fonts-shanhaijing.css` 两行 @import + `themes.ts` 注册项 + `(main)/layout.tsx` 的
 `<ShjAtlas>` 与 `page.tsx` 的 `<ShjHero>`，即回到三套主题，无残留开关。
+
+2026-11-04 起切换器改为**下拉直选**（鼠标悬停不再误触展开），山海经档含
+「宣纸」亮色亚档。分类图标与主题联动：内置两套位图图标集（aurora /
+山海经），主题切档时 `CatIcon` 自动跟随。
+
+## 站点与登录页背景图（2026-10-31 起）
+
+后台「外观与主题」可配三处背景，URL 填站内附件或任意外链：
+
+| 键 | 作用面 | 缺省 |
+| :--- | :--- | :--- |
+| `site_bg_url` / `site_bg_opacity` | 全站内容底图（固定底层，内容壳浮在其上） | 无图；不透明度 25 |
+| `login_bg_url` / `login_bg_opacity` | 登录页背景 | 无图；50 |
+| `login_page_bg_url` / `login_page_bg_opacity` | 登录页**主视觉整页层**（比 login_bg 更靠前，做满屏 hero 用） | 无图；40 |
+
+不透明度 0–100（越大越清晰）；仓库 `public/backgrounds/` 自带三张默认样图可直接引用。
