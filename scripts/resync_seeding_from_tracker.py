@@ -73,18 +73,20 @@ def fetch_snapshot(pw: str) -> list:
 
 
 def psql(sql: str, pw: str, stdin_data: str | None = None) -> str:
-    """跑 SQL（走 stdin，不进命令行——12 万组 VALUES 会撑爆 argv）。"""
+    """跑 SQL（走 stdin，不进命令行——12 万组 VALUES 会撑爆 argv）。
+    带 -v ON_ERROR_STOP=1：SQL 报错即非零退出，防止半途错误被吞。"""
     proc = subprocess.run(
         [
             "docker", "exec", "-i", PG_CONTAINER,
             "psql", "-U", DB_USER, "-d", DB_NAME, "-A", "-t",
+            "-v", "ON_ERROR_STOP=1",
         ],
         capture_output=True,
         text=True,
         check=False,
         input=stdin_data if stdin_data is not None else sql,
     )
-    if proc.returncode != 0:
+    if proc.returncode != 0 or proc.stderr.strip():
         raise RuntimeError(proc.stderr.strip() or "psql failed")
     return proc.stdout
 
