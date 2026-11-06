@@ -211,9 +211,7 @@ mod tests {
         assert!(is_bcrypt_hash(
             "$2b$10$Ffk5RL6a2oIZiBElNHFEJeyQdjGsYov3BmIkF/M.VCllxhEh0uC1K"
         ));
-        assert!(!is_bcrypt_hash(
-            "$argon2id$v=19$m=19456,t=2,p=1$abc"
-        ));
+        assert!(!is_bcrypt_hash("$argon2id$v=19$m=19456,t=2,p=1$abc"));
     }
 
     #[test]
