@@ -157,10 +157,7 @@ async fn seal_day(db: &PgPool, day: NaiveDate) -> anyhow::Result<u64> {
 /// 分片感知（2026-11-06）：本循环**不经过 select 调度分支**，分片判定
 /// 若不在这里做一遍，分片 worker 也会照跑不误——FLUX_WORKER_JOBS 的语义
 /// 是「本实例只跑这些 job」，merkle 不在名单里就不该占用它的连接。
-pub(crate) async fn spark_merkle_loop(
-    db: PgPool,
-    shard: Option<Vec<String>>,
-) {
+pub(crate) async fn spark_merkle_loop(db: PgPool, shard: Option<Vec<String>>) {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(60));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     loop {

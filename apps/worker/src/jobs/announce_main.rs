@@ -5,8 +5,8 @@
 //! 多 worker 真分摊）；失败语义不变——不 ACK 留 PEL 重试，连续 6 次进
 //! DLQ 后 ACK；旧游标兼容迁移见 group.rs::ensure_group。
 
-use super::group::{self, ANNOUNCE_GROUP};
 use super::announce_handle::handle_entry;
+use super::group::{self, ANNOUNCE_GROUP};
 use sqlx::PgPool;
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -145,7 +145,8 @@ pub async fn consume_announce(
             let sem2 = sem.clone();
             rtasks.spawn(async move {
                 let _permit = sem2.acquire().await.ok();
-                let r = handle_entry(&db2, &mut r2, &sid, &payload, seed_cap).await;
+                let r =
+                    handle_entry(&db2, &mut r2, &sid, &payload, seed_cap).await;
                 (sid, r)
             });
         }

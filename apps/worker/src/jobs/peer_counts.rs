@@ -69,7 +69,9 @@ pub(crate) async fn refresh_peer_counts_in_tx(
 }
 
 /// 全量点刷（对账用）：按 id 分页扫 torrents，逐批重算。
-pub(crate) async fn refresh_all_peer_counts(db: &PgPool) -> anyhow::Result<u64> {
+pub(crate) async fn refresh_all_peer_counts(
+    db: &PgPool,
+) -> anyhow::Result<u64> {
     let mut changed = 0u64;
     let mut last_id = 0i64;
     loop {
@@ -144,7 +146,11 @@ async fn flush_chunk<'e, E>(
 where
     E: Executor<'e, Database = Postgres>,
 {
-    let sql = if with_completed { FLUSH_SQL_FULL } else { FLUSH_SQL_LIGHT };
+    let sql = if with_completed {
+        FLUSH_SQL_FULL
+    } else {
+        FLUSH_SQL_LIGHT
+    };
     let res = sqlx::query(sql).bind(ids).execute(executor).await?;
     Ok(res.rows_affected())
 }
