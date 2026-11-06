@@ -290,7 +290,7 @@
   "apps/api/src/auth_http/logout.rs": 1,
   "apps/api/src/auth_http/me.rs": 5,
   "apps/api/src/auth_http/me_history.rs": 2,
-  "apps/api/src/auth_http/me_security.rs": 8,
+  "apps/api/src/auth_http/me_security.rs": 9,
   "apps/api/src/auth_http/me_sessions.rs": 4,
   "apps/api/src/auth_http/me_settings.rs": 12,
   "apps/api/src/auth_http/me_settings_kv.rs": 3,
