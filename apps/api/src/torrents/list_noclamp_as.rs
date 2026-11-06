@@ -16,8 +16,12 @@ pub async fn list_torrents_noclamp_as(
     cursor: Option<ListCursor>,
     limit: i64,
     viewer: i64,
+    offset: i64,
+    count_cap: i64,
 ) -> DomainResult<TorrentPage> {
     let limit = limit.max(1);
+    // 页码模式（offset>0）：游标语义不适用，谓词置空、has_more 靠精确计数
+    let cursor = if offset > 0 { None } else { cursor };
     let viewer_sql = viewer.to_string();
     // 匹配模式（旧站 torrents.php 口径）：0/缺省 = AND 模糊；2 = 精确等值（不带通配）
     // 两种模式都要转义用户输入的 %/_：旧实现精确模式原样进 ILIKE，
@@ -162,6 +166,27 @@ pub async fn list_torrents_noclamp_as(
         // 评分下界（0283 P1-5）：列表侧最后一位
         rating_min: 28,
     });
+    // 计数侧同一份语义、另一套编号（$9..$25）——ExtraSlots 单源生成，
+    // 手抄曾漏四个谓词让 total 虚高、hidden_dead 恒 0（见 count_bind 头注）
+    let extra_count_sql = extra_preds(ExtraSlots {
+        size_min: 9,
+        size_max: 10,
+        date_from: 11,
+        date_to: 12,
+        min_seeders: 13,
+        max_seeders: 14,
+        exclude: 15,
+        promo: 16,
+        owner: 17,
+        mine: 18,
+        min_leechers: 19,
+        max_leechers: 20,
+        min_completed: 21,
+        max_completed: 22,
+        anonymous: 23,
+        title_like: 24,
+        rating_min: 25,
+    });
     // 促销两列（kind + 到期）：一次 LATERAL 取「命中的最高优先级促销」，
     // 替代此前两条除 SELECT 列外完全相同的 correlated 子查询（方案 P0-5，每行省一次 promotions 扫描）。
     let promo_lateral = promo::lateral_latest();
@@ -233,7 +258,7 @@ pub async fn list_torrents_noclamp_as(
           {sec_sql}
           {extra_sql}
         ORDER BY {order}
-        LIMIT $8
+        LIMIT $8 OFFSET $29
         "#
     );
     let rows = sqlx::query_as::<_, TorrentRow>(&sql)
@@ -267,98 +292,39 @@ pub async fn list_torrents_noclamp_as(
         .bind(&title_pat)
         // $28：评分下界（0283 P1-5）
         .bind(filter.rating_min)
+        // $29：页码偏移（页码模式；游标模式恒 0，PG 对 OFFSET 0 零成本）
+        .bind(offset)
         .fetch_all(db)
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
 
-    // 计数与列表同口径（0093）：此前 count 不计多维筛选/标签/搜索范围——
-    // 页面会显示「共 N 个」却零行。计数侧额外谓词编号 $9..$18（0118 后 $19..$23）
-    let extra_count_sql = extra_preds(ExtraSlots {
-        size_min: 9,
-        size_max: 10,
-        date_from: 11,
-        date_to: 12,
-        min_seeders: 13,
-        max_seeders: 14,
-        exclude: 15,
-        promo: 16,
-        owner: 17,
-        mine: 18,
-        min_leechers: 19,
-        max_leechers: 20,
-        min_completed: 21,
-        max_completed: 22,
-        anonymous: 23,
-        // 计数侧（$24 起；0283 P1-5 评分下界再 +1）
-        title_like: 24,
-        rating_min: 25,
-    });
-    // 计数降级（方案 P0-3）：此前每次列表请求都对「筛选后全量集合」做精确
-    // count(*)，搜索/深筛选下是一次无上界聚合。现在封顶采样：内层 LIMIT
-    // 10001，筛选后 ≤10000 条时仍为精确值，超过则计到 10000（前端展示
-    //「约」口径）——把 count 的代价上界从 O(筛选集) 压到 O(10001 行扫描)。
-    //
-    // 谓词集必须与列表侧同口径（medium/alive/approval/status 都在内——
-    // a5359d31 的续行重排曾误删其中四个，让 total 虚高、hidden_dead 恒 0）。
-    let count_sql = format!(
-        "SELECT count(*) FROM (SELECT 1 FROM torrents t \
-         LEFT JOIN users u ON u.id = t.owner_id \
-         WHERE {approval_gate_count} \
-         AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
-         AND {medium_pred} AND {grade_pred} AND {edition_pred} \
-         AND ($5::bool IS NULL OR t.official_tag = $5) \
-         {alive_pred} {approval_pred_count} {status_pred} \
-         {bookmark_pred} {search_pred} \
-         {tag_pred_count} \
-         {sec_sql} {extra_count_sql} LIMIT 10001) sub",
-    );
+    // 计数（自本文件迁入 count_bind::counts_for——SQL 组装与执行同源归拢，
+    // 谓词串仍是本文件构造的计数编号版本，口径与列表侧同源不变）。
+    // cap = site_settings.list_count_cap（缺省 10001 采样封顶；<=0 精确）。
     let count_args =
         super::count_bind::CountArgs::new(filter, pattern.as_deref(), viewer);
-    let total: i64 =
-        super::count_bind::fetch_count(&count_sql, &count_args, db)
-            .await
-            .unwrap_or_else(|e| {
-                // 计数失败此前静默成 0（页面「共 0 个」却有行）；给日志留痕
-                tracing::error!(error = %e, "列表计数查询失败，降级 total=0");
-                0
-            });
+    let (total, hidden_dead) = super::count_bind::counts_for(
+        db,
+        &count_args,
+        &super::count_bind::CountPreds {
+            approval_gate: approval_gate_count,
+            approval_pred: approval_pred_count,
+            medium_pred,
+            grade_pred,
+            edition_pred,
+            alive_pred,
+            status_pred,
+            bookmark_pred,
+            search_pred,
+            tag_pred: tag_pred_count,
+            sec_sql,
+            extra_sql: extra_count_sql,
+        },
+        count_cap,
+    )
+    .await;
 
-    // hidden_dead（0102 三态的可见性补齐）：同筛选条件下去掉存活谓词的计数。
-    // 差值就是「被藏起来的断种数」，让界面能说清「另有 N 条未显示」，
-    // 而不必翻转缺省（翻转会破坏「默认视图=活种」这个刻意的口径）。
-    //
-    // 只在**默认视图**（alive_pred 非空）时才有意义：用户显式要全部
-    // (alive=0) 或只要断种 (alive=2) 时隐藏数为 0，不做多余的查询。
-    let hidden_dead: i64 = if alive_pred.is_empty() {
-        0
-    } else {
-        let all_sql = format!(
-            "SELECT count(*) FROM (SELECT 1 FROM torrents t \
-             LEFT JOIN users u ON u.id = t.owner_id \
-             WHERE {approval_gate_count} \
-             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
-             AND {medium_pred} AND {grade_pred} AND {edition_pred} \
-             AND ($5::bool IS NULL OR t.official_tag = $5) \
-             {approval_pred_count} {status_pred} {bookmark_pred} {search_pred} \
-             {tag_pred_count} {sec_sql} {extra_count_sql} LIMIT 10001) sub",
-        );
-        let all_total: i64 =
-            super::count_bind::fetch_count(&all_sql, &count_args, db)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(error = %e, "hidden_dead 计数失败，降级 0");
-                    0
-                });
-        // 采样封顶 10001 时差值不再精确，宁可给 0 也不给一个
-        // 「看起来精确其实被截断」的数字。
-        if all_total > 10000 {
-            0
-        } else {
-            (all_total - total).max(0)
-        }
-    };
-
-    let has_more = rows.len() as i64 > limit;
+    let has_more = offset > 0 || rows.len() as i64 > limit;
     let mut items: Vec<TorrentRow> =
         rows.into_iter().take(limit as usize).collect();
     // 0170 反向页：行序反转回原方向输出；游标锚点随方向取首/末行 ——
@@ -366,7 +332,7 @@ pub async fn list_torrents_noclamp_as(
     if filter.reverse {
         items.reverse();
     }
-    let next_cursor = has_more.then(|| {
+    let next_cursor = (has_more && offset == 0).then(|| {
         let anchor = if filter.reverse {
             items.first()
         } else {

@@ -1,9 +1,8 @@
 //! 种子列表（M02）：/torrents 主查询接口。
 //! 从 torrent_http.rs 按域拆出；查询结构 ListQuery 与宽松反序列化助手在 query.rs。
 
-use actix_web::{get, web, HttpRequest, Responder};
+use actix_web::{get, web, HttpRequest};
 
-use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::http::require_auth;
 use crate::state::AppState;
@@ -56,7 +55,7 @@ pub async fn bump_list_cache_gen(state: &AppState) {
 pub(crate) async fn list(
     req: HttpRequest,
     state: web::Data<std::sync::Arc<AppState>>,
-) -> DomainResult<impl Responder> {
+) -> DomainResult<actix_web::HttpResponse> {
     // 站点准入收口：资源元数据不对外
     let auth = require_auth(&req, &state).await?;
     // 参数抽取失败要回站内统一信封：此前 `web::Query<ListQuery>` 形参在抽取
@@ -238,11 +237,15 @@ pub(crate) async fn list(
     // P-275：每页条数——URL 优先，其次「每页 X 条」偏好，都没有才 20
     let pref_limit = super::list_prefs::limit_from_pref(per_page);
     let limit = q.limit.or(pref_limit).unwrap_or(20);
-    // P1-4 读缓存（0071）：仅覆盖「首屏等价视图」——无筛选/无搜索/无游标/默认排序的第 1 页。
-    // 该视图不含用户视角字段（owner 匿名化在 SQL 层完成），全部登录用户看到的字节一致，可共享缓存。
-    // TTL 45s 兜底 + Redis 故障直查；带任何筛选条件时不走缓存（避免失效风暴复杂化）。
-    // 0170：反向页（reverse 需游标，逻辑上已被 cursor.is_none 排除，显式再挡一道）与
-    // 开关放行的视图不走首屏缓存 —— cache_key 固定，开关开了再写会让关闭后 45s 内 stale。
+    if q.page.is_some_and(|p| p > 1) {
+        return super::list_prefs::paged_offset(
+            &state, &filter, q.page, limit, auth.id,
+        )
+        .await;
+    }
+    // P1-4 首屏缓存（0071）：仅「无筛选/无游标/默认排序/第 1 页」等价视图，
+    // 全登录用户字节一致可共享；TTL 45s、Redis 故障直查。反向页与开关
+    // 放行视图不走（cache_key 固定，开了再写=关闭后 45s 内 stale）。
     let is_first_screen = crate::torrents::view_scope::shared_cache_safe(
         &filter,
         cursor.is_none(),
@@ -259,7 +262,7 @@ pub(crate) async fn list(
             if let Ok(page) =
                 serde_json::from_str::<torrents::TorrentPage>(&json)
             {
-                return Ok(ok(page));
+                return Ok(super::list_prefs::envelope(page));
             }
         }
         let page = torrents::list_torrents_as(
@@ -275,15 +278,11 @@ pub(crate) async fn list(
                 redis::AsyncCommands::set_ex(&mut c, cache_key, json, 45u64)
                     .await;
         }
-        return Ok(ok(page));
+        return Ok(super::list_prefs::envelope(page));
     }
-    // 扩展共享缓存（方案 P0-3）：此前只有「纯净首屏」走缓存，分类浏览/搜索/排序/翻页
-    // 等主路径全部穿透。凡不含用户视角语义（status/mine/bookmarked 三种 viewer 维度，
-    // 判定见 view_scope::viewer_scoped）的
-    // 请求，其结果对所有登录用户字节一致（owner 匿名化在 SQL 层完成、include_unapproved
-    // 已按权限归一进 filter），可按「filter+cursor+limit」哈希共享。TTL 20s 兜底，
-    // Redis 故障/序列化失败一律直查。
-    // 0170：show_pending/show_rejected/reverse 均在 filter 内，序列化自动进 hash key。
+    // 扩展共享缓存（P0-3）：非 viewer 维度（status/mine/bookmarked）请求
+    // 全登录用户字节一致，按「filter+cursor+limit」哈希共享，TTL 20s 兜底；
+    // filter 内的 show_pending/reverse 等自动进 hash key（0170）。
     if !crate::torrents::view_scope::viewer_scoped(&filter) {
         if let Ok(canonical) = serde_json::to_string(&(&filter, &cursor, limit))
         {
@@ -302,7 +301,7 @@ pub(crate) async fn list(
                 if let Ok(page) =
                     serde_json::from_str::<torrents::TorrentPage>(&json)
                 {
-                    return Ok(ok(page));
+                    return Ok(super::list_prefs::envelope(page));
                 }
             }
             let page = torrents::list_torrents_as(
@@ -319,7 +318,7 @@ pub(crate) async fn list(
                 )
                 .await;
             }
-            return Ok(ok(page));
+            return Ok(super::list_prefs::envelope(page));
         }
     }
     let page = torrents::list_torrents_as(
@@ -330,5 +329,5 @@ pub(crate) async fn list(
         auth.id,
     )
     .await?;
-    Ok(ok(page))
+    Ok(super::list_prefs::envelope(page))
 }

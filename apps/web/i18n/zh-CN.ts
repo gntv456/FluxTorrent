@@ -16,6 +16,8 @@ const zhCnBase = {
     prevPage: "上一页",
     totalItems: "共 {n} 条",
     pageX: "第 {n} 页",
+    pageOf: "第 {a} 页 / 共 {b} 页",
+    jumpTo: "跳转",
     pleaseLogin: "请先登录",
     loadFailed: "加载失败",
     loading: "加载中…",

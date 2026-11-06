@@ -71,6 +71,10 @@ pub(super) struct ListQuery {
     pub(super) cursor: Option<String>,
     #[serde(default, deserialize_with = "de_opt_num_lenient")]
     pub(super) limit: Option<i64>,
+    /// 页码模式（0468）：page>1 走 OFFSET 翻页（游标被忽略）；与 cursor
+    /// 二选一，page 优先——web 端跳页/总页数依赖它。
+    #[serde(default, deserialize_with = "de_opt_num_lenient")]
+    pub(super) page: Option<i64>,
     // ===== 高级搜索增强 =====
     /// 体积区间：支持 `1024`（字节）`500MB` `1.5GB` `2TB` 等带单位写法（见 parse_size）
     #[serde(default)]

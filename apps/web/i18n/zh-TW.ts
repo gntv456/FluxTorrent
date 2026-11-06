@@ -41,6 +41,9 @@ const zhTwBase: Omit<
     prevPage: "上一頁",
     totalItems: "共 {n} 條",
     pageX: "第 {n} 頁",
+    pageOf: "第 {a} 頁 / 共 {b} 頁",
+    jumpTo: "跳轉",
+
     pleaseLogin: "請先登入",
     loadFailed: "載入失敗",
     loading: "載入中…",

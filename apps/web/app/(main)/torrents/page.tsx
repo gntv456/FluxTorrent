@@ -148,9 +148,8 @@ export default async function TorrentsPage({
       // 标签多选（0159 P1）：tag_ids 逗号串优先，旧单值 tag_id 兜底（后端合并解析）
       tag_ids: sp.tag_ids || sp.tag_id || undefined,
       tag_mode: sp.tag_mode || undefined,
-      cursor: sp.cursor,
-      // 0170 双向翻页：dir=prev 取游标之前的页（服务端反向 keyset）
-      dir: sp.dir || undefined,
+      // 页码模式（0468）：page>1 走 OFFSET 跳页；cursor/dir 兼容旧链接保留
+      page: sp.p && Number(sp.p) > 1 ? sp.p : undefined,
       // 0105 高级搜索增强（体积带单位串 / 日期 YYYY-MM-DD / 数值区间 / 优惠 / 发布者 / 仅我）
       size_min: sp.size_min || undefined,
       size_max: sp.size_max || undefined,
@@ -370,56 +369,73 @@ export default async function TorrentsPage({
         </a>
       </div>
 
-      {/* 双向翻页（0170）：正向页 = cursor + dir=prev 回上一页；反向页 =
-          next_cursor 继续往回、删 dir 回正到游标原页。页码 p 仅作显示（服务端忽略） */}
+      {/* 页码翻页（0468）：OFFSET 跳页替代游标链——p 即页码（服务端
+          page 模式），总数取 total_estimate（cap=0 站点为精确值）。
+          跳页用原生 GET 表单（RSC 零 JS）：hidden 域携带现有筛选。 */}
       {!grouped && (() => {
-        const pageNo = Math.max(1, Number(sp.p ?? "1") || 1);
-        const isPrev = sp.dir === "prev";
-        // 上一页：正向页带 dir=prev；反向页沿反向继续（next_cursor 为锚）
-        const prevHref = isPrev
-          ? page.next_cursor
-            ? withParam(
-                {
-                  ...sp,
-                  cursor: page.next_cursor,
-                  p: String(Math.max(1, pageNo - 1)),
-                },
-                "dir",
-                "prev",
-              )
-            : null
-          : sp.cursor
-            ? withParam(sp, "dir", "prev")
-            : null;
-        // 下一页：正向 = next_cursor 前进；反向 = 删 dir 回正（cursor 保持）
-        const nextHref = isPrev
-          ? withParam(sp, "dir", undefined)
-          : page.next_cursor
-            ? withParam(
-                { ...sp, cursor: page.next_cursor, p: String(pageNo + 1) },
-                "dir",
-                undefined,
-              )
-            : null;
-        if (!prevHref && !nextHref) return null;
+        const total = page.total_estimate ?? 0;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const pageNo = Math.min(
+          Math.max(1, Number(sp.p ?? "1") || 1),
+          totalPages,
+        );
+        const base = withoutCursor(sp);
         return (
-          <nav className="flex items-center justify-center gap-3 py-1">
-            {prevHref && (
-              <a href={prevHref} className={PILL_CLS}>
+          <nav
+            className="flex flex-wrap items-center
+                       justify-center gap-3 py-1"
+          >
+            {pageNo > 1 ? (
+              <a
+                href={withParam(base, "p", String(pageNo - 1))}
+                className={PILL_CLS}
+              >
                 {dict.common.prevPage}
               </a>
-            )}
+            ) : null}
             <span className="text-sm text-sub">
-              {fmt(dict.common.pageX, { n: pageNo })}
-              {" · "}
-              {fmt(dict.common.totalItems, {
-                n: page.total_estimate ?? 0,
+              {fmt(dict.common.pageOf, {
+                a: pageNo,
+                b: totalPages,
               })}
+              {" · "}
+              {fmt(dict.common.totalItems, { n: total })}
             </span>
-            {nextHref && (
-              <a href={nextHref} className={PILL_CLS}>
+            {pageNo < totalPages ? (
+              <a
+                href={withParam(base, "p", String(pageNo + 1))}
+                className={PILL_CLS}
+              >
                 {dict.common.nextPage}
               </a>
+            ) : null}
+            {totalPages > 1 && (
+              <form
+                action="/torrents"
+                method="get"
+                className="flex items-center gap-2"
+              >
+                {Object.entries(base).map(([k, v]) =>
+                  v === undefined || k === "p" ? null : (
+                    <input key={k} type="hidden" name={k} value={v} />
+                  ),
+                )}
+                <input
+                  type="number"
+                  name="p"
+                  min={1}
+                  max={totalPages}
+                  defaultValue={pageNo}
+                  aria-label={dict.common.pageOf
+                    .replace("{a}", String(pageNo))
+                    .replace("{b}", String(totalPages))}
+                  className="w-20 rounded-md border border-line
+                             bg-[var(--surface-card)] px-2 py-1 text-sm"
+                />
+                <button type="submit" className={PILL_CLS}>
+                  {dict.common.jumpTo}
+                </button>
+              </form>
             )}
           </nav>
         );

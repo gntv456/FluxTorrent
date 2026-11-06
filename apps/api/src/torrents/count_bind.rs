@@ -1,21 +1,11 @@
 //! 列表计数侧 bind 链唯一真源（批一百五十二修复）。
 //!
-//! 背景：`hidden_dead` 落地时 `all_sql` 手抄了一份 `count_sql` 的 24 项
-//! bind 链，漏绑了 `$6`（标题 pattern），导致参数槽位整体错位、PG 报
-//! syntax error、列表接口现网 500。手抄两份 = 迟早再错一次。
-//!
-//! 现在两条计数 SQL 共用本模块的 `CountArgs` + `bind_count_args`：
-//! 槽位编号与绑定顺序写在同一张表里，加谓词只改一处。
-//!
-//! 槽位（计数侧，两条 SQL 共用同一编号——`all_sql` 只是少一个存活谓词，
-//! 不改编号）：
-//!   $1 category_id  $2 medium_id  $3 grade_id  $4 edition_id
-//!   $5 official     $6 pattern(标题/关键字)  $7 include_unapproved
-//!   $8 tag_ids      $9 size_min  $10 size_max  $11 date_from  $12 date_to
-//!   $13 min_seeders $14 max_seeders $15 exclude $16 promo $17 owner
-//!   $18 mine(viewer) $19 min_leechers $20 max_leechers
-//!   $21 min_completed $22 max_completed $23 anonymous
-//!   $24 title_like   $25 rating_min
+//! 背景：`all_sql` 曾手抄 count_sql 的 24 项 bind 链漏绑 $6 → 槽位错位
+//! → 现网 500。两条计数 SQL 共用 `CountArgs`（0468 起再合并进 counts_for
+//! 的同一模板），槽位编号与绑定顺序写在同一张表，加谓词只改一处。
+//! 槽位：$1 cat $2 med $3 grade $4 edit $5 official $6 pattern
+//! $7 unapproved $8 tags $9-14 size/date/seeders $15 exclude $16 promo
+//! $17 owner $18 mine $19-22 leech/complete $23 anon $24 title $25 rating
 
 use super::list::esc_like;
 use super::types::TorrentFilter;
@@ -145,6 +135,90 @@ pub(super) async fn fetch_count(
 ) -> sqlx::Result<i64> {
     let a = count_args(args);
     sqlx::query_scalar_with(sql, a).fetch_one(db).await
+}
+
+/// 计数总入口（自 list_noclamp_as 迁入）：total + hidden_dead 一次算完。
+/// 谓词串由列表侧原样传入（编号/口径与列表 SQL 同源，见调用方）；
+/// cap 语义同 cap_clause。失败降级 0（此前口径：留日志不留 500）。
+pub(super) async fn counts_for(
+    db: &PgPool,
+    args: &CountArgs,
+    preds: &CountPreds,
+    cap: i64,
+) -> (i64, i64) {
+    // 解包谓词：format! 裸名参数只认局部绑定
+    let CountPreds {
+        approval_gate,
+        approval_pred,
+        medium_pred,
+        grade_pred,
+        edition_pred,
+        alive_pred,
+        status_pred,
+        bookmark_pred,
+        search_pred,
+        tag_pred,
+        sec_sql,
+        extra_sql,
+    } = preds;
+    // 两条 SQL 仅差 alive_pred（hidden_dead = 去存活谓词的计数差值）——
+    // 同一模板，插空串即得 all_sql，杜绝手抄漂移。
+    let mk_sql = |alive: &str| {
+        format!(
+            "SELECT count(*) FROM (SELECT 1 FROM torrents t \
+             LEFT JOIN users u ON u.id = t.owner_id \
+             WHERE {approval_gate} \
+             AND ($1::int[] IS NULL OR t.category_id = ANY($1)) \
+             AND {medium_pred} AND {grade_pred} AND {edition_pred} \
+             AND ($5::bool IS NULL OR t.official_tag = $5) \
+             {alive} {approval_pred} {status_pred} \
+             {bookmark_pred} {search_pred} \
+             {tag_pred} \
+             {sec_sql} {extra_sql}{cap}) sub",
+            alive = alive,
+            cap = if cap > 0 { format!(" LIMIT {cap}") } else { String::new() },
+        )
+    };
+    let total: i64 = fetch_count(&mk_sql(alive_pred), args, db)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(error = %e, "列表计数查询失败，降级 total=0");
+            0
+        });
+    // hidden_dead（0102 三态可见性补齐）：仅默认视图（alive_pred 非空）
+    // 有意义；封顶采样下差值不精确，宁给 0 不给截断假数。
+    if alive_pred.is_empty() {
+        return (total, 0);
+    }
+    let all_total: i64 = fetch_count(&mk_sql(""), args, db)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!(error = %e, "hidden_dead 计数失败，降级 0");
+            0
+        });
+    let hidden = if cap > 0 && all_total >= cap {
+        0
+    } else {
+        (all_total - total).max(0)
+    };
+    (total, hidden)
+}
+
+/// 计数侧谓词包：与列表侧同一批字符串（计数编号 $7/$8/$9..），由
+/// list_noclamp_as 组装后原样传入——两条 SQL 间只差 alive_pred。
+pub(super) struct CountPreds {
+    pub(super) approval_gate: String,
+    pub(super) approval_pred: String,
+    pub(super) medium_pred: String,
+    pub(super) grade_pred: String,
+    pub(super) edition_pred: String,
+    pub(super) alive_pred: String,
+    pub(super) status_pred: String,
+    pub(super) bookmark_pred: String,
+    pub(super) search_pred: String,
+    pub(super) tag_pred: String,
+    pub(super) sec_sql: String,
+    pub(super) extra_sql: String,
 }
 #[cfg(test)]
 mod tests {

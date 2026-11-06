@@ -149,3 +149,39 @@ mod tests {
         assert!(!bookmarked_from_pref(7), "脏值按全部");
     }
 }
+
+/// 页码模式（0468，自 list.rs 拆入）：page>1 走 OFFSET 翻页（游标忽略），
+/// 计数封顶读 list_count_cap（<=0 = 精确全量）。信封与 dto::ok 同构。
+pub(super) async fn paged_offset(
+    state: &std::sync::Arc<crate::state::AppState>,
+    filter: &crate::torrents::TorrentFilter,
+    page: Option<i64>,
+    limit: i64,
+    viewer: i64,
+) -> crate::errors::DomainResult<actix_web::HttpResponse> {
+    let p = page.unwrap_or(1);
+    let cap: i64 = crate::repo::settings::read(&state.repo, "list_count_cap")
+        .await
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(10_001);
+    let offset = crate::dto::page_offset(p, limit);
+    let page = crate::torrents::list_torrents_paged(
+        &state.repo.read_db,
+        filter,
+        limit,
+        offset,
+        viewer,
+        cap,
+    )
+    .await?;
+    Ok(envelope(page))
+}
+
+/// 统一信封（与 dto::ok 同构；返回 HttpResponse 兼容页码分支提前返回）
+pub(super) fn envelope<T: serde::Serialize>(
+    data: T,
+) -> actix_web::HttpResponse {
+    actix_web::HttpResponse::Ok().json(serde_json::json!({
+        "code": 0, "message": "ok", "data": data,
+    }))
+}

@@ -41,6 +41,8 @@ const enBase: Omit<
     prevPage: "Previous page",
     totalItems: "{n} items in total",
     pageX: "Page {n}",
+    pageOf: "Page {a} of {b}",
+    jumpTo: "Go",
     pleaseLogin: "Please sign in first",
     loadFailed: "Failed to load",
     loading: "Loading…",

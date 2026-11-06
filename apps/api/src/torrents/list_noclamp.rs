@@ -17,13 +17,14 @@ pub const HAS_ARCHIVE_CLAUSE: &str =
 
 /// 不做 50 上限钳制的列表查询：仅供 Torznab 等需要 offset+limit>50 深翻页的外部端点，
 /// 调用方必须自行 clamp 防滥用（见 economy_http torznab_search）。viewer=0（无状态筛选视角）。
+/// 计数封顶取历史缺省 10001（外部端点不感知 list_count_cap 站点设置）。
 pub async fn list_torrents_noclamp(
     db: &PgPool,
     filter: &TorrentFilter,
     cursor: Option<ListCursor>,
     limit: i64,
 ) -> DomainResult<TorrentPage> {
-    list_torrents_noclamp_as(db, filter, cursor, limit, 0).await
+    list_torrents_noclamp_as(db, filter, cursor, limit, 0, 0, 10_001).await
 }
 
 /// 凭证类订阅出口专用（P-324）：在 noclamp 之上回收「付费且未购」的种，
@@ -50,7 +51,8 @@ pub async fn list_torrents_noclamp_for_sub(
     hide_paid: bool,
 ) -> DomainResult<TorrentPage> {
     let mut page =
-        list_torrents_noclamp_as(db, filter, cursor, limit, viewer).await?;
+        list_torrents_noclamp_as(db, filter, cursor, limit, viewer, 0, 10_001)
+            .await?;
     if page.items.is_empty() {
         return Ok(page);
     }

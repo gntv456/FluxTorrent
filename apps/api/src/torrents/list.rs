@@ -178,6 +178,7 @@ pub async fn list_torrents(
 }
 
 /// viewer 版本（0102 种子状态筛选需要 snatches.user_id 视角；0 = 无人视角 = 状态筛选空转）
+/// offset/count_cap 为页码模式扩展（0468）：调用方不传 offset 的老路径行为不变。
 pub async fn list_torrents_as(
     db: &PgPool,
     filter: &TorrentFilter,
@@ -186,5 +187,19 @@ pub async fn list_torrents_as(
     viewer: i64,
 ) -> DomainResult<TorrentPage> {
     let limit = limit.clamp(1, MAX_LIMIT);
-    list_torrents_noclamp_as(db, filter, cursor, limit, viewer).await
+    list_torrents_noclamp_as(db, filter, cursor, limit, viewer, 0, 10_001).await
+}
+
+/// 页码模式（0468）：offset 翻页 + 站点可配计数封顶（<=0 = 精确全量 count）。
+pub async fn list_torrents_paged(
+    db: &PgPool,
+    filter: &TorrentFilter,
+    limit: i64,
+    offset: i64,
+    viewer: i64,
+    count_cap: i64,
+) -> DomainResult<TorrentPage> {
+    let limit = limit.clamp(1, MAX_LIMIT);
+    list_torrents_noclamp_as(db, filter, None, limit, viewer, offset, count_cap)
+        .await
 }
