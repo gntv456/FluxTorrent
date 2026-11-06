@@ -174,20 +174,33 @@ pub async fn list_torrents(
     cursor: Option<ListCursor>,
     limit: i64,
 ) -> DomainResult<TorrentPage> {
-    list_torrents_as(db, filter, cursor, limit, 0).await
+    list_torrents_as(db, filter, cursor, limit, 0, 10_001).await
 }
 
 /// viewer 版本（0102 种子状态筛选需要 snatches.user_id 视角；0 = 无人视角 = 状态筛选空转）
-/// offset/count_cap 为页码模式扩展（0468）：调用方不传 offset 的老路径行为不变。
+/// count_cap（0468）：计数封顶（<=0 = 精确全量），由 HTTP 层读站点设置传入。
 pub async fn list_torrents_as(
     db: &PgPool,
     filter: &TorrentFilter,
     cursor: Option<ListCursor>,
     limit: i64,
     viewer: i64,
+    count_cap: i64,
 ) -> DomainResult<TorrentPage> {
     let limit = limit.clamp(1, MAX_LIMIT);
-    list_torrents_noclamp_as(db, filter, cursor, limit, viewer, 0, 10_001).await
+    list_torrents_noclamp_as(db, filter, cursor, limit, viewer, 0, count_cap)
+        .await
+}
+
+/// 老路径兼容（0468 前签名）：计数封顶用历史缺省。
+pub async fn list_torrents_as_default_cap(
+    db: &PgPool,
+    filter: &TorrentFilter,
+    cursor: Option<ListCursor>,
+    limit: i64,
+    viewer: i64,
+) -> DomainResult<TorrentPage> {
+    list_torrents_as(db, filter, cursor, limit, viewer, 10_001).await
 }
 
 /// 页码模式（0468）：offset 翻页 + 站点可配计数封顶（<=0 = 精确全量 count）。

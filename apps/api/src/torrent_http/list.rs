@@ -237,9 +237,16 @@ pub(crate) async fn list(
     // P-275：每页条数——URL 优先，其次「每页 X 条」偏好，都没有才 20
     let pref_limit = super::list_prefs::limit_from_pref(per_page);
     let limit = q.limit.or(pref_limit).unwrap_or(20);
+    // 计数封顶（0468）：站点设置 list_count_cap（<=0 = 精确全量），
+    // 全部分页路径（首屏/共享/直查/跳页）同一份。
+    let count_cap: i64 =
+        crate::repo::settings::read(&state.repo, "list_count_cap")
+            .await
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10_001);
     if q.page.is_some_and(|p| p > 1) {
         return super::list_prefs::paged_offset(
-            &state, &filter, q.page, limit, auth.id,
+            &state, &filter, q.page, limit, auth.id, count_cap,
         )
         .await;
     }
@@ -271,6 +278,7 @@ pub(crate) async fn list(
             cursor,
             limit,
             auth.id,
+            count_cap,
         )
         .await?;
         if let Ok(json) = serde_json::to_string(&page) {
@@ -280,45 +288,13 @@ pub(crate) async fn list(
         }
         return Ok(super::list_prefs::envelope(page));
     }
-    // 扩展共享缓存（P0-3）：非 viewer 维度（status/mine/bookmarked）请求
-    // 全登录用户字节一致，按「filter+cursor+limit」哈希共享，TTL 20s 兜底；
-    // filter 内的 show_pending/reverse 等自动进 hash key（0170）。
     if !crate::torrents::view_scope::viewer_scoped(&filter) {
-        if let Ok(canonical) = serde_json::to_string(&(&filter, &cursor, limit))
+        if let Some(resp) = super::list_prefs::shared_cached(
+            &state, &filter, &cursor, limit, count_cap, gen, auth.id,
+        )
+        .await
         {
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            std::hash::Hash::hash(&canonical, &mut hasher);
-            let shared_key = format!(
-                "cache:tlist:v2:{gen}:{:016x}",
-                std::hash::Hasher::finish(&hasher)
-            );
-            let mut c = state.redis.clone();
-            let hit: Option<String> =
-                redis::AsyncCommands::get(&mut c, &shared_key)
-                    .await
-                    .unwrap_or(None);
-            if let Some(json) = hit {
-                if let Ok(page) =
-                    serde_json::from_str::<torrents::TorrentPage>(&json)
-                {
-                    return Ok(super::list_prefs::envelope(page));
-                }
-            }
-            let page = torrents::list_torrents_as(
-                &state.repo.read_db,
-                &filter,
-                cursor,
-                limit,
-                auth.id,
-            )
-            .await?;
-            if let Ok(json) = serde_json::to_string(&page) {
-                let _: Result<(), _> = redis::AsyncCommands::set_ex(
-                    &mut c, shared_key, json, 20u64,
-                )
-                .await;
-            }
-            return Ok(super::list_prefs::envelope(page));
+            return Ok(resp);
         }
     }
     let page = torrents::list_torrents_as(
@@ -327,6 +303,7 @@ pub(crate) async fn list(
         cursor,
         limit,
         auth.id,
+        count_cap,
     )
     .await?;
     Ok(super::list_prefs::envelope(page))

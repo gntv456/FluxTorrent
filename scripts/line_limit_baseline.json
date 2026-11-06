@@ -302,7 +302,7 @@
  "apps/api/src/twofa_http/admin_misc.rs::wide": 1,
  "apps/api/src/torrent_http/aggregate.rs": 303,
  "apps/api/src/torrent_http/interact.rs": 397,
- "apps/api/src/torrent_http/list.rs": 333,
+ "apps/api/src/torrent_http/list.rs": 310,
  "apps/api/src/torrent_http/manage.rs": 464,
  "apps/api/src/torrent_http/manage.rs::wide": 1,
  "apps/api/src/torrent_http/suggest.rs::wide": 1,

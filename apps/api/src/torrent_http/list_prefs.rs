@@ -158,12 +158,9 @@ pub(super) async fn paged_offset(
     page: Option<i64>,
     limit: i64,
     viewer: i64,
+    cap: i64,
 ) -> crate::errors::DomainResult<actix_web::HttpResponse> {
     let p = page.unwrap_or(1);
-    let cap: i64 = crate::repo::settings::read(&state.repo, "list_count_cap")
-        .await
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(10_001);
     let offset = crate::dto::page_offset(p, limit);
     let page = crate::torrents::list_torrents_paged(
         &state.repo.read_db,
@@ -184,4 +181,51 @@ pub(super) fn envelope<T: serde::Serialize>(
     actix_web::HttpResponse::Ok().json(serde_json::json!({
         "code": 0, "message": "ok", "data": data,
     }))
+}
+
+/// 扩展共享缓存（P0-3，自 list.rs 拆入）：非 viewer 维度请求按
+/// 「filter+cursor+limit」哈希共享，TTL 20s；未命中执行查询并写回。
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn shared_cached(
+    state: &std::sync::Arc<crate::state::AppState>,
+    filter: &crate::torrents::TorrentFilter,
+    cursor: &Option<crate::torrents::ListCursor>,
+    limit: i64,
+    count_cap: i64,
+    gen: i64,
+    viewer: i64,
+) -> Option<actix_web::HttpResponse> {
+    let canonical = serde_json::to_string(&(filter, cursor, limit)).ok()?;
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    std::hash::Hash::hash(&canonical, &mut h);
+    let key = format!(
+        "cache:tlist:v2:{gen}:{:016x}",
+        std::hash::Hasher::finish(&h)
+    );
+    let mut c = state.redis.clone();
+    let hit: Option<String> = redis::AsyncCommands::get(&mut c, &key)
+        .await
+        .unwrap_or(None);
+    if let Some(json) = hit {
+        if let Ok(page) =
+            serde_json::from_str::<crate::torrents::TorrentPage>(&json)
+        {
+            return Some(envelope(page));
+        }
+    }
+    let page = crate::torrents::list_torrents_as(
+        &state.repo.read_db,
+        filter,
+        cursor.clone(),
+        limit,
+        viewer,
+        count_cap,
+    )
+    .await
+    .ok()?;
+    if let Ok(json) = serde_json::to_string(&page) {
+        let _: Result<(), _> =
+            redis::AsyncCommands::set_ex(&mut c, key, json, 20u64).await;
+    }
+    Some(envelope(page))
 }
