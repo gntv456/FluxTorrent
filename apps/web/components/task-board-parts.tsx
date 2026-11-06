@@ -113,13 +113,14 @@ export function fmtBytes(n: number): string {
   return `${v >= 100 ? v.toFixed(0) : v.toFixed(2)} ${units[i]}`;
 }
 
-/** 五档等级 key → 中文档名（与 DB subtitle 对应；NP 站档名即英文，这里展示中文更友好） */
+/** 五档等级 key → 中文档名（与 DB subtitle 对应；0469 改版：弃 NP「烧」
+ *  系梗，励志梯度命名——tier key 与英文 name 均不动，纯展示层） */
 const TIER_LABELS: Record<string, string> = {
-  master: "骨灰",
-  ultimate: "走火入魔",
-  extreme: "烧糊涂",
-  veteran: "高烧",
-  insane: "中烧",
+  master: "传奇境界",
+  ultimate: "大师之路",
+  extreme: "资深磨练",
+  veteran: "进阶历练",
+  insane: "入门挑战",
 };
 export function tierLabel(tier: string | null | undefined): string {
   if (!tier) return "";

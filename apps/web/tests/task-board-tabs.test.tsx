@@ -23,7 +23,7 @@ const GiB = 1024 ** 3;
 const TASKS = [
   {
     id: 11,
-    name: "骨灰",
+    name: "传奇境界",
     metric: {
       upload_delta: 20 * GiB,
       download_delta: 10 * GiB,
@@ -67,7 +67,7 @@ const OV = {
       stock: 50,
     },
   ],
-  feed: [{ user: "青柠", task: "烧糊涂", at: "2026-10-16T21:34:00Z" }],
+  feed: [{ user: "青柠", task: "资深磨练", at: "2026-10-16T21:34:00Z" }],
   stats: {
     ongoing: 1,
     done: 2,
@@ -77,7 +77,7 @@ const OV = {
   my_records: [
     {
       task_id: 11,
-      name: "烧糊涂·10GB 上传挑战",
+      name: "资深磨练·10GB 上传挑战",
       status: 0,
       claimed_at: "2026-10-02T14:21:00Z",
       settled_at: null,
@@ -91,7 +91,7 @@ const OV = {
     },
     {
       task_id: 13,
-      name: "高烧·已失败",
+      name: "进阶历练·已失败",
       status: 2,
       claimed_at: "2026-09-05T11:12:00Z",
       settled_at: "2026-10-05T00:00:00Z",
@@ -152,7 +152,7 @@ describe("任务页两组标签", () => {
     // 规则面板不在（默认停在「我的任务记录」：先让人领任务，规则收进页签）
     expect(screen.queryByText(t.rules[0])).toBeNull();
     // 我的任务记录面板在
-    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
+    expect(screen.getByText("资深磨练·10GB 上传挑战")).toBeInTheDocument();
     // 可领取面板在（档位卡 + 名额说明）
     expect(screen.getByText("20GB 上传挑战 · 大师级")).toBeInTheDocument();
     expect(screen.getByText(/12 \/ 200/)).toBeInTheDocument();
@@ -167,7 +167,7 @@ describe("任务页两组标签", () => {
     expect(screen.getByText("上传加速卡")).toBeInTheDocument();
     expect(screen.queryByText("20GB 上传挑战 · 大师级")).toBeNull();
     // 组一仍停在「我的任务记录」
-    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
+    expect(screen.getByText("资深磨练·10GB 上传挑战")).toBeInTheDocument();
   });
 
   it("切到「规则」：规则面板进来，组二仍停在「可领取任务」", async () => {
@@ -175,7 +175,7 @@ describe("任务页两组标签", () => {
     await mounted();
     await user.click(screen.getByRole("tab", { name: t.rulesTitle }));
     expect(screen.getByText(t.rules[0])).toBeInTheDocument();
-    expect(screen.queryByText("烧糊涂·10GB 上传挑战")).toBeNull();
+    expect(screen.queryByText("资深磨练·10GB 上传挑战")).toBeNull();
     expect(screen.getByText("20GB 上传挑战 · 大师级")).toBeInTheDocument();
   });
 
@@ -220,7 +220,7 @@ describe("任务页两组标签", () => {
     await user.keyboard("{ArrowLeft}");
     expect(screen.getByText(t.rules[0])).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByText("烧糊涂·10GB 上传挑战")).toBeInTheDocument();
+    expect(screen.getByText("资深磨练·10GB 上传挑战")).toBeInTheDocument();
   });
 
   it("最新动态与任务统计不被收进标签（样图里它们是独立网格）", async () => {
