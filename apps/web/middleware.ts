@@ -42,6 +42,9 @@ function isAnonymousOk(pathname: string): boolean {
     // 内置背景图（0445/0447 的三张默认样图）：站长自托管在站内时，看的人正是
     // **未登录**访客（登录页背景），被 307 成登录页 HTML 后浏览器只会静默丢图
     pathname.startsWith("/backgrounds/") ||
+    // 勋章图（public/medals/*）：勋章墙/勋章殿堂在未登录页也会渲染，
+    // 被 307 成登录页 HTML 时浏览器只报「图片加载失败」，勋章位整片空白
+    pathname.startsWith("/medals/") ||
     pathname.startsWith("/p/") ||
     [
       "/favicon.ico",

@@ -6,6 +6,7 @@
 
 mod achv_dormant;
 mod announce;
+mod announce_handle;
 mod announce_main;
 pub(crate) mod audit;
 mod audit_retain;
@@ -39,6 +40,7 @@ mod maintain;
 mod manual;
 mod medal_achv;
 mod merkle;
+mod peer_counts;
 mod preserve;
 mod process_event;
 mod promo_audit;

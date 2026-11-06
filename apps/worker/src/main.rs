@@ -70,6 +70,9 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("flux-worker started");
     // 0416 每日结算凭证：独立循环（run.rs 已是存量超限文件，只许瘦）
-    tokio::spawn(jobs::spark_merkle_loop(db.clone()));
+    // 分片判定随主循环同一口径传入（merkle 不在 FLUX_WORKER_JOBS 名单里
+    // 就不跑，避免分片实例白占连接）。
+    let shard = jobs::job_shard();
+    tokio::spawn(jobs::spark_merkle_loop(db.clone(), shard));
     jobs::run_all(db, redis).await
 }

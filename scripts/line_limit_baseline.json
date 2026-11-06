@@ -210,7 +210,7 @@
   "apps/web/app/styles/layout.css::wide": 2,
   "apps/web/app/styles/pages.css": 4096,
   "apps/web/app/styles/pages.css::wide": 2,
-  "apps/web/app/styles/theme-shanhaijing.css::wide": 14,
+  "apps/web/app/styles/theme-shanhaijing.css::wide": 10,
   "apps/web/app/setup/page.tsx::wide": 2,
   "apps/web/app/rules/page.tsx::wide": 3,
   "apps/web/app/offline/page.tsx::wide": 2,

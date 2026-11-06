@@ -3,6 +3,12 @@
 
 use super::staff_alert::staff_alert;
 use sqlx::PgPool;
+use std::collections::BTreeSet;
+
+/// 单批清理行数。批间独立事务 ⇒ 行锁持有时间与批大小同量级。
+const SWEEP_BATCH_ROWS: i64 = 5_000;
+/// 单轮清理的最大批数（5,000 × 200 = 100 万行上限，防失控循环）。
+const SWEEP_MAX_BATCHES: u32 = 200;
 
 /// 僵尸 peer 判定阈值（秒）= max(2h, 2×announce_interval)。
 /// 同时用于两处：① `sweep_stale_peers` 清理标记；② `seeding_reward` 结算前的数据新鲜度过滤
@@ -30,36 +36,96 @@ pub(crate) async fn stale_peer_threshold_secs(db: &PgPool) -> i64 {
 /// torrents.seeders/leechers 虚高到下一次 6h 全量对账（MZ8 漂移）。
 /// 必须分两条语句——同一条语句里的数据修改 CTE 彼此看不到对方改后的行，
 /// 计数会按「清扫前」的快照算出来（实测仍残留 1）。
+///
+/// ⚠️ 锁纪律（2026-11-06 线上事故）：本 job 必须**分批 + 批间提交**。
+/// 迁站导入的历史行全带 seeding=true 且 last_seen_at 是旧站时间戳，首轮
+/// 要清 8.5 万行 / 2.2 万个种子。旧写法（一个事务清完全部 + 逐行相关
+/// 子查询重算三计数）实测持锁 90 秒以上：
+///   ① `UPDATE snatches` 锁住 8.5 万行 → announce 的
+///      `SELECT ... FOR UPDATE`（ledger_guard 取基线）排在后面，30+
+///      会话同时等锁 → worker 连接池（DB_POOL_SIZE=32）被占满 → 新事件
+///      报 "pool timed out while waiting for an open connection"；
+///   ② 同事务里的 `UPDATE torrents` 持 FOR NO KEY UPDATE 锁，与 announce
+///      写 snatches 时 FK（torrent_id → torrents.id）要的 FOR KEY SHARE
+///      直接冲突。
+/// 现在改为：分批清标记（每批 5k 行、批间独立短事务）→ 一次聚合重算受
+/// 影响种子的 seeders/leechers（0464 部分索引支撑，扫描量与被清掉的行
+/// 同量级），点刷事务另设 lock_timeout，锁争用时给 announce 让路。
+///
+/// 点刷只重算 seeders/leechers：times_completed 取决于 completed_at，
+/// 清标记不改变它，重算纯属多扫一遍 70 万行。
 pub(crate) async fn sweep_stale_peers(db: &PgPool) -> anyhow::Result<u64> {
     let threshold_secs = stale_peer_threshold_secs(db).await;
-    let mut tx = db.begin().await?;
-    let swept: Vec<i64> = sqlx::query_scalar(
-        "UPDATE snatches SET seeding = FALSE, leeching = FALSE \
-         WHERE (seeding OR leeching) \
-           AND last_seen_at < now() - ($1::bigint * interval '1 second') \
-         RETURNING torrent_id",
-    )
-    .bind(threshold_secs)
-    .fetch_all(&mut *tx)
-    .await?;
-    if !swept.is_empty() {
-        sqlx::query(
-            "UPDATE torrents t SET \
-             seeders = COALESCE((SELECT count(*) FROM snatches s \
-                 WHERE s.torrent_id = t.id AND s.seeding), 0), \
-             leechers = COALESCE((SELECT count(*) FROM snatches s \
-                 WHERE s.torrent_id = t.id AND s.leeching), 0), \
-             times_completed = COALESCE((SELECT count(*) FROM snatches s \
-                 WHERE s.torrent_id = t.id \
-                   AND s.completed_at IS NOT NULL), 0) \
-             WHERE t.id = ANY($1)",
+    let mut swept_total: u64 = 0;
+    let mut affected: BTreeSet<i64> = BTreeSet::new();
+    // keyset 游标：按 last_seen_at 升序推进（partial index
+    // idx_snatches_last_seen_active 天然按该列有序，LIMIT 可提前收口）。
+    // 已清标记的行不再满足 (seeding OR leeching) → 自动退出候选集，
+    // 不会出现「同一批反复重放」的死循环。
+    let mut cursor: Option<chrono::DateTime<chrono::Utc>> = None;
+    for _ in 0..SWEEP_MAX_BATCHES {
+        let batch: Vec<(i64, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+            // raw string：换行与缩进原样保留。Rust 的 `\` 续行会吃掉下一行
+            // 的前导空白，SQL 里 `t\` + `SET …` 会拼成 `tSET …`（见
+            // peer_counts.rs 头注②），这类长 SQL 一律不用续行拼接。
+            r#"
+            WITH victims AS (
+                SELECT s.user_id, s.torrent_id, s.last_seen_at
+                  FROM snatches s
+                 WHERE (s.seeding OR s.leeching)
+                   AND s.last_seen_at < now() -
+                       ($1::bigint * interval '1 second')
+                   AND s.last_seen_at >=
+                       coalesce($2::timestamptz, '-infinity'::timestamptz)
+                 ORDER BY s.last_seen_at
+                 LIMIT $3
+            )
+            UPDATE snatches s
+               SET seeding = FALSE, leeching = FALSE
+              FROM victims v
+             WHERE s.user_id = v.user_id AND s.torrent_id = v.torrent_id
+            RETURNING s.torrent_id, s.last_seen_at
+            "#,
         )
-        .bind(&swept)
+        .bind(threshold_secs)
+        .bind(cursor)
+        .bind(SWEEP_BATCH_ROWS)
+        .fetch_all(db)
+        .await?;
+        if batch.is_empty() {
+            break;
+        }
+        // RETURNING 的顺序不保证与扫描序一致，游标取本批最大值。
+        if let Some(m) = batch.iter().map(|(_, s)| *s).max() {
+            cursor = Some(m);
+        }
+        for (tid, _) in &batch {
+            affected.insert(*tid);
+        }
+        swept_total += batch.len() as u64;
+    }
+    if !affected.is_empty() {
+        refresh_peer_counts(db, &affected).await?;
+    }
+    Ok(swept_total)
+}
+
+/// 点刷受影响种子的 seeders/leechers：一次聚合 + 哈希连接，替代逐行
+/// 相关子查询（后者对 2.2 万个种子做 3 次子查询 = 6.6 万次索引探查）。
+/// 独立事务 + lock_timeout：与 announce 争 FK 锁时主动让路，不把整条
+/// 计费链路拖停。分批与归零写回见 peer_counts.rs 头注。
+async fn refresh_peer_counts(
+    db: &PgPool,
+    affected: &BTreeSet<i64>,
+) -> anyhow::Result<()> {
+    let ids: Vec<i64> = affected.iter().copied().collect();
+    let mut tx = db.begin().await?;
+    sqlx::query("SET LOCAL lock_timeout = '5s'")
         .execute(&mut *tx)
         .await?;
-    }
+    super::peer_counts::refresh_peer_counts_in_tx(&mut tx, &ids).await?;
     tx.commit().await?;
-    Ok(swept.len() as u64)
+    Ok(())
 }
 
 /// 登录事件留存清理：IP 属个人信息，90 天后删除（每小时一次，幂等）。

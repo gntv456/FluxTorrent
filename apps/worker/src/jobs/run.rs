@@ -5,7 +5,7 @@ use super::*;
 use sqlx::PgPool;
 
 /// 角色分片（0225 G30-B1）：FLUX_WORKER_JOBS=逗号分隔 job 名；空缺省=全量。
-fn job_shard() -> Option<Vec<String>> {
+pub(crate) fn job_shard() -> Option<Vec<String>> {
     let v = std::env::var("FLUX_WORKER_JOBS").unwrap_or_default();
     let list: Vec<String> = v
         .split(',')
@@ -20,15 +20,20 @@ fn job_shard() -> Option<Vec<String>> {
 }
 
 /// 分片内才执行（with_lock 包装口）。
+///
+/// ⚠️ 分片判定**只跳这个 job**，不能跳整个 tick 分支（2026-11-06 实测事故）。
+/// 旧写法用 `continue`——宏展开在 select 的 tick 分支里，`continue` 命中的是
+/// 外层 `loop`，于是分片 worker（FLUX_WORKER_JOBS=xxx）第一个不匹配的
+/// shard_lock! 就把**整段 tick 掀掉**：后面的 consume_announce 永远轮不到。
+/// 现象是两个专用 announce 容器起来了却一条事件都没消费（Redis 消费者组里
+/// 连它们的 consumer 名都没有），lag 17 万条全压给主 worker；容器里只剩
+/// 不认分片的 spark_merkle 独立循环在跑（那是另一条线，与分片无关）。
+/// 现改用 job_in_shard（与 spawn_lock! / run_sharded 同一口径）。
 macro_rules! shard_lock {
     ($db:expr, $key:literal, $fut:expr, $shard:expr) => {
-        if let Some(list) = $shard {
-            let name = $key.trim_start_matches("job:");
-            if !list.iter().any(|s| s == name) {
-                continue;
-            }
+        if job_in_shard($key.trim_start_matches("job:"), $shard) {
+            with_lock($db, $key, $fut).await;
         }
-        with_lock($db, $key, $fut).await;
     };
 }
 
@@ -64,7 +69,7 @@ macro_rules! spawn_lock {
     };
 }
 
-fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
+pub(super) fn job_in_shard(n: &str, shard: &Option<Vec<String>>) -> bool {
     shard.as_ref().map_or(true, |l| l.iter().any(|s| s == n))
 }
 

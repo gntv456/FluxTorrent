@@ -187,13 +187,10 @@ pub async fn reconcile_snapshots(db: &PgPool) -> anyhow::Result<()> {
     )
     .execute(db)
     .await?;
-    sqlx::query(
-        "UPDATE torrents t SET \
-         seeders = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.seeding), 0), \
-         leechers = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.leeching), 0), \
-         times_completed = COALESCE((SELECT count(*) FROM snatches s WHERE s.torrent_id = t.id AND s.completed_at IS NOT NULL), 0)",
-    )
-    .execute(db)
-    .await?;
+    // 2026-11-06：点刷统一走 peer_counts（分批 + 归零写回 + raw string）。
+    // 旧写法全表 23,751 个种子逐个 count，实测 221 秒 ⇒ 6 小时一次的对账
+    // 任务把 worker 堵死近 4 分钟；同批补「归零写回」（对账是全量权威
+    // 口径，计数该落 0 却留着旧值就是漂移本身）。坑位说明见 peer_counts.rs。
+    super::peer_counts::refresh_all_peer_counts(db).await?;
     Ok(())
 }

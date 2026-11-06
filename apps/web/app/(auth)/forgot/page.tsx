@@ -75,6 +75,13 @@ export default function ForgotPage() {
           {dict.forgot.remembered}{" "}
           <Link href="/login">{dict.forgot.backToLogin}</Link>
         </span>
+        {/* 邮件通道不可用时的兜底引导（2026-11-06）：机房封了 SMTP 出站，
+            用户点完「发送重置邮件」永远收不到信。与其让用户反复重试，
+            直接把人引到管理组工单（后台 /admin?tool=resetpass 可代改密）。 */}
+        <span>
+          {dict.forgot.noEmail}{" "}
+          <Link href="/contactstaff">{dict.contactstaff.title}</Link>
+        </span>
       </div>
     </AuthCanvas>
   );

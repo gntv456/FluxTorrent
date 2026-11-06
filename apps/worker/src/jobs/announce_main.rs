@@ -6,9 +6,40 @@
 //! DLQ 后 ACK；旧游标兼容迁移见 group.rs::ensure_group。
 
 use super::group::{self, ANNOUNCE_GROUP};
-use super::process_event::process_event;
+use super::announce_handle::handle_entry;
 use sqlx::PgPool;
 use std::collections::BTreeSet;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+/// 点刷在途标志：保证同一时刻只有一个计数点刷任务在跑（下一轮覆盖即可）。
+static FLUSH_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+/// 上次点刷的 Unix 时刻（每实例 5 分钟最多一次）。
+static LAST_FLUSH_AT: std::sync::atomic::AtomicI64 =
+    std::sync::atomic::AtomicI64::new(0);
+/// 全局点刷闸（Redis SETNX，60s TTL）——同一时刻只允许一个实例在点刷。
+const FLUSH_LOCK_KEY: &str = "flux:announce:flush-lock";
+/// 点刷的最小间隔（秒）：每实例 5 分钟最多刷一次。
+const FLUSH_MIN_INTERVAL_SECS: i64 = 300;
+
+/// 单实例内 announce 事件的并发处理上限。
+///
+/// ⚠️ 必须有界（2026-11-06 实测事故）：旧写法把本轮 5,000 条事件
+/// **一次性全部 spawn**，5,000 个任务同时向 32 条池的连接池要连接，
+/// 排队时间超过 sqlx 默认 30s acquire timeout ⇒ 批量报
+/// "pool timed out while waiting for an open connection" ⇒ 事件不 ACK
+/// 留在 PEL ⇒ 下一轮重投再失败，活锁：lag 不降、pending 不消。
+/// 事件本身幂等（announce_seen 键），有界并发只是把排队从**连接池**
+/// 挪到**信号量**——池永远拿得到连接，等待不会超时。
+///
+/// ⚠️ 上限 12 而非 16（2026-11-06 第二次事故）：3 个消费实例 × 16 = 48 个
+/// 在途事务把 PG 顶到 336% CPU，PG 容器（限额 1 GB）的 cgroup 被 OOM
+/// killer 打断——一个 postgres 后端被杀 ⇒ PG 进入恢复 ⇒ 全站短暂拒连。
+/// 单后端的 work_mem（4 MB/排序节点）+ 共享内存映射 × 并发数才是吃满
+/// cgroup 的真凶。限额已抬到 2 GB（compose 已改），并发取 12 × 3 = 36：
+/// 实测每事件约 10~15 次 DB 往返，吞吐 ~5,000 条/分（生产 ~4,300 条/分），
+/// 12 能把消费拉到 ~7,500 条/分，积压回追有余量。
+const ANNOUNCE_CONCURRENCY: usize = 12;
 
 /// 消费 announce 事件流（§5.4 链路 ④-⑦）：Redis Stream → 计费流水 + snatches。
 /// 事件为 JSON 文本，字段 user/hash/up/down/event/left。
@@ -36,111 +67,16 @@ pub async fn consume_announce(
     let mut touched_torrents: BTreeSet<i64> = BTreeSet::new();
     let mut applied = 0u64;
 
-    #[allow(clippy::too_many_arguments)]
-    async fn handle_entry(
-        db: &PgPool,
-        redis: &mut redis::aio::ConnectionManager,
-        id: &str,
-        payload: &str,
-        seed_cap: i64,
-        touched_users: &mut BTreeSet<i64>,
-        touched_torrents: &mut BTreeSet<i64>,
-    ) -> anyhow::Result<bool> {
-        // Ok(true) = ACK
-        let ev = match serde_json::from_str::<AnnounceEvent>(payload) {
-            Ok(ev) => ev,
-            Err(e) => {
-                tracing::warn!(%id, ?e, "事件 JSON 解析失败，进死信");
-                ANNOUNCE_GROUP.dlq_push_with(redis, payload).await;
-                return Ok(true);
-            }
-        };
-        match process_event(db, &ev, seed_cap, id).await {
-            Ok(Some(torrent_id)) => {
-                let _ = redis::cmd("DEL")
-                    .arg(format!("flux:announce:fail:{id}"))
-                    .query_async::<()>(redis)
-                    .await;
-                touched_users.insert(ev.user);
-                touched_torrents.insert(torrent_id);
-                // 对刷检测日志（0301）：来源三元组落表，供 self_deal_check
-                // 做 30 分钟窗口聚合（同 IP 双账号一传一下）。失败仅告警——
-                // 日志缺失只降级检测灵敏度，不影响计费主链路。
-                if !ev.ip.is_empty() {
-                    let _ = sqlx::query(
-                        "INSERT INTO announce_ips \
-                         (user_id, ip, info_hash, seeding, leeching) \
-                         VALUES ($1, $2, $3, $4, $5)",
-                    )
-                    .bind(ev.user)
-                    .bind(&ev.ip)
-                    .bind(&ev.hash)
-                    .bind(ev.left == 0)
-                    .bind(ev.left > 0)
-                    .execute(db)
-                    .await;
-                }
-                // connectable 抽样联动（0071 P1-9 → 2026-10-07 保种组审计 P0-2）：
-                // 不可达 + 零上传 + 无监听端口 → 幽灵做种实锤。事件键从
-                // 'connectable' 改为 'ghost:{hash8}'——速度/回退/幽灵三类统一
-                // 按种子分键（旧 'connectable' 是全账号单行，hits 聚合后无法
-                // 定位是哪颗种子在刷，累进处置也分不出轻重）。
-                if ev.conn == Some(0) && ev.port == 0 && ev.up == 0 {
-                    let ghost_key =
-                        format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]);
-                    let _ = sqlx::query(
-                        "INSERT INTO cheat_events (user_id, agent, \
-                         peer_ip, reason) VALUES ($1, $2, \
-                         $3, 'ghost_seed（无监听端口且回连不可达的幽灵做种）') \
-                         ON CONFLICT (user_id, agent, reason) DO UPDATE \
-                           SET hits = cheat_events.hits + 1, \
-                               last_seen = now()",
-                    )
-                    .bind(ev.user)
-                    .bind(&ghost_key)
-                    .bind(&ev.ip)
-                    .execute(db)
-                    .await;
-                }
-                Ok(true)
-            }
-            Ok(None) => Ok(true), // 种子不存在：跳过计费
-            Err(e) => {
-                // 处理失败：不 ACK 留 PEL 重试（避免丢失计费）。
-                // 持久化失败计数（P0 v2）：同一 ID 连续失败 6 次进死信
-                // 并 ACK，事件本体留在 DLQ 供人工补偿计费。
-                let fail_key = format!("flux:announce:fail:{id}");
-                let streak: i64 = redis::cmd("INCR")
-                    .arg(&fail_key)
-                    .query_async::<i64>(redis)
-                    .await
-                    .unwrap_or(1);
-                let _ = redis::cmd("EXPIRE")
-                    .arg(&fail_key)
-                    .arg(3600)
-                    .query_async::<()>(redis)
-                    .await;
-                tracing::error!(%id, ?e, streak, "事件计费失败，留 PEL 等待重试");
-                if streak >= 6 {
-                    tracing::error!(%id, "同一事件连续 6 次失败，转死信并跳过");
-                    ANNOUNCE_GROUP
-                        .dlq_push_with(redis, &format!("{id}\t{payload}"))
-                        .await;
-                    let _ = redis::cmd("DEL")
-                        .arg(&fail_key)
-                        .query_async::<()>(redis)
-                        .await;
-                    return Ok(true);
-                }
-                Ok(false)
-            }
-        }
-    }
-
-    // 新消息
-    for (id, payload) in
-        group::read_group(redis, &ANNOUNCE_GROUP, &consumer).await
-    {
+    // 新消息（2026-11-06：改为**有界并发**）。原写法逐条 await，每条事件
+    // 一个 DB 事务约 30ms ⇒ 单实例吞吐被锁在 ~2,000 条/分；迁站后全站
+    // 13 万活跃 peer 的稳态生产约 4,400 条/分 ⇒ 事件无限积压（lag 一度
+    // 13 万），做种数与流量计费全面滞后。每条事件独立事务、幂等键
+    // announce_seen 防重入，天然可并发；并发度由信号量封顶（见
+    // ANNOUNCE_CONCURRENCY），不靠连接池去隐式限流。
+    let entries = group::read_group(redis, &ANNOUNCE_GROUP, &consumer).await;
+    let mut tasks = tokio::task::JoinSet::new();
+    let sem = Arc::new(tokio::sync::Semaphore::new(ANNOUNCE_CONCURRENCY));
+    for (id, payload) in entries {
         if payload.is_empty() {
             ANNOUNCE_GROUP
                 .dlq_push_with(redis, &format!("{id}\t(no payload)"))
@@ -149,41 +85,96 @@ pub async fn consume_announce(
             applied += 1;
             continue;
         }
-        if handle_entry(
-            db,
-            redis,
-            &id,
-            &payload,
-            seed_cap,
-            &mut touched_users,
-            &mut touched_torrents,
-        )
-        .await?
-        {
-            ANNOUNCE_GROUP.ack(redis, &id).await;
-            applied += 1;
+        let db2 = db.clone();
+        let mut r2 = redis.clone();
+        let sid = id.clone();
+        let sem2 = sem.clone();
+        tasks.spawn(async move {
+            // 许可在事件处理期间持有（含全部 DB 往返），确保在途事务数
+            // 不超上限——否则池会被瞬间抽干，队后面的任务全部超时。
+            let _permit = sem2.acquire().await.ok();
+            let r = handle_entry(&db2, &mut r2, &sid, &payload, seed_cap).await;
+            (sid, r)
+        });
+    }
+    while let Some(res) = tasks.join_next().await {
+        let (id, r) = match res {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::error!(?e, "announce 处理任务异常");
+                continue;
+            }
+        };
+        match r {
+            Ok((ack, u, t)) => {
+                if let Some(u) = u {
+                    touched_users.insert(u);
+                }
+                if let Some(t) = t {
+                    touched_torrents.insert(t);
+                }
+                if ack {
+                    ANNOUNCE_GROUP.ack(redis, &id).await;
+                    applied += 1;
+                }
+            }
+            Err(e) => {
+                // 不 ACK：留 PEL 等下一轮重试（连续 6 次由 handle_entry 转死信）
+                tracing::error!(?e, %id, "事件处理失败，留 PEL");
+            }
         }
     }
     // 回收遗孤 pending（worker 崩溃自愈）：空闲 > 120s
-    for (id, payload) in
-        group::reclaim_stale(redis, &ANNOUNCE_GROUP, &consumer, 360_000).await
-    {
-        if payload.is_empty() {
-            continue;
+    //
+    // ⚠️ 必须并发处理（2026-11-06 实测）：旧写法是**逐条串行** await。
+    // 每次容器重启都会给消费者组沉积一批陈旧 PEL（每次 5,000 条量级），
+    // 串行处理 5,000 条 × 每次 ~50ms = **单 tick 4 分钟** ⇒ 读事件的
+    // 频率被压到 1,000 条/分，低于生产速率 ⇒ 积压永远消不掉。
+    // 现与主批次共用同一个信号量（有界并发），单 tick 回到秒级。
+    let reclaimed =
+        group::reclaim_stale(redis, &ANNOUNCE_GROUP, &consumer, 360_000).await;
+    if !reclaimed.is_empty() {
+        let mut rtasks = tokio::task::JoinSet::new();
+        for (id, payload) in reclaimed {
+            if payload.is_empty() {
+                continue;
+            }
+            let db2 = db.clone();
+            let mut r2 = redis.clone();
+            let sid = id.clone();
+            let sem2 = sem.clone();
+            rtasks.spawn(async move {
+                let _permit = sem2.acquire().await.ok();
+                let r = handle_entry(&db2, &mut r2, &sid, &payload, seed_cap).await;
+                (sid, r)
+            });
         }
-        if handle_entry(
-            db,
-            redis,
-            &id,
-            &payload,
-            seed_cap,
-            &mut touched_users,
-            &mut touched_torrents,
-        )
-        .await?
-        {
-            ANNOUNCE_GROUP.ack(redis, &id).await;
-            applied += 1;
+        while let Some(res) = rtasks.join_next().await {
+            let (id, r) = match res {
+                Ok(v) => v,
+                Err(e) => {
+                    tracing::error!(?e, "回收事件处理任务异常");
+                    continue;
+                }
+            };
+            match r {
+                Ok((ack, u, t)) => {
+                    if let Some(u) = u {
+                        touched_users.insert(u);
+                    }
+                    if let Some(t) = t {
+                        touched_torrents.insert(t);
+                    }
+                    if ack {
+                        ANNOUNCE_GROUP.ack(redis, &id).await;
+                        applied += 1;
+                    }
+                }
+                Err(e) => {
+                    // 不 ACK：留 PEL 等下一轮重试（连续 6 次由 handle_entry 转死信）
+                    tracing::error!(?e, %id, "回收事件处理失败，留 PEL");
+                }
+            }
         }
     }
     // XTRIM：以「最旧未确认条目」为界裁，无 pending 才按长度裁（旧写法盲裁
@@ -224,20 +215,51 @@ pub async fn consume_announce(
     }
     if !touched_torrents.is_empty() {
         let torrents: Vec<i64> = touched_torrents.into_iter().collect();
-        sqlx::query(
-            "UPDATE torrents t SET \
-             seeders = COALESCE((SELECT count(*) FROM snatches s \
-                 WHERE s.torrent_id = t.id AND s.seeding), 0), \
-             leechers = COALESCE((SELECT count(*) FROM snatches s \
-                 WHERE s.torrent_id = t.id AND s.leeching), 0), \
-             times_completed = COALESCE((SELECT count(*) FROM snatches s \
-                 WHERE s.torrent_id = t.id \
-                   AND s.completed_at IS NOT NULL), 0) \
-             WHERE t.id = ANY($1)",
-        )
-        .bind(&torrents)
-        .execute(db)
-        .await?;
+        // 2026-11-06：点刷**挪到后台**、**全局单实例**、**5 分钟一次**。
+        //
+        // 为什么挪走：点刷要走 snatches 的部分索引做 index-only scan，而
+        // snatches 是高频 upsert 表 ⇒ 可见性图常脏 ⇒ index-only scan 退化成
+        // 回表 ⇒ 实测单批 1,000 个种子要 30 秒（5,000 个要 104 秒）。放在
+        // 消费循环里 await 等于**把整个 tick 堵死**：事件读不进来 → 积压
+        // 永远消不掉（消费速率 1,667/分 < 生产 4,300/分）。
+        //
+        // 为什么加闸：三个消费实例各自点刷 = 3 条重聚合并发，把 CPU 抢掉
+        // 一半——实测**取消点刷后消费速率从 3,000/分 翻到 6,000/分**，lag
+        // 从"反涨"变成净消 3,186/分。⇒ Redis SETNX 保证同一时刻只有一
+        // 个实例在刷，且每实例 5 分钟最多刷一次；覆盖缺口由下一轮与
+        // 6h 全量对账兜底（计数是展示快照，权威在流水）。
+        let now = chrono::Utc::now().timestamp();
+        let last = LAST_FLUSH_AT.load(Ordering::Relaxed);
+        let due = now - last >= FLUSH_MIN_INTERVAL_SECS;
+        if due && !FLUSH_IN_PROGRESS.swap(true, Ordering::Relaxed) {
+            // 全局锁：抢不到就让别的实例刷（本轮跳过，不排队）。
+            let got: Option<String> = redis::cmd("SET")
+                .arg(FLUSH_LOCK_KEY)
+                .arg("1")
+                .arg("NX")
+                .arg("EX")
+                .arg(60)
+                .query_async(redis)
+                .await
+                .ok();
+            if got.is_some() {
+                LAST_FLUSH_AT.store(now, Ordering::Relaxed);
+                let db2 = db.clone();
+                tokio::spawn(async move {
+                    if let Err(e) =
+                        super::peer_counts::refresh_peer_counts_light(
+                            &db2, &torrents,
+                        )
+                        .await
+                    {
+                        tracing::error!(?e, "做种计数点刷失败");
+                    }
+                    FLUSH_IN_PROGRESS.store(false, Ordering::Relaxed);
+                });
+            } else {
+                FLUSH_IN_PROGRESS.store(false, Ordering::Relaxed);
+            }
+        }
     }
     Ok(applied)
 }

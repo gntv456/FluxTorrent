@@ -36,7 +36,12 @@ pub(crate) const ANNOUNCE_GROUP: GroupCfg = GroupCfg {
     group: "fluxcg-announce",
     legacy_cursor: "flux:announce:cursor",
     dlq: "flux:announce:dlq",
-    batch: 200,
+    // 单轮拉取条数（2026-11-06：200 → 5000）。实测迁站后洪峰生产速率
+    // 约 4474 条/分（客户端集中 announce，每个在种 peer 一条），而消费上限
+    // = batch × 每分钟一次 tick ⇒ 200 条/分时事件流无限积压（一度 1.7 万条），
+    // 用户看到的「做种数」是十几小时前的旧值（0 / 偏小）。
+    // 5000 条/轮可压过洪峰速率，积压能被吃干净并跟上实时。
+    batch: 5000,
 };
 
 pub(crate) const AGENTBLOCK_GROUP: GroupCfg = GroupCfg {
