@@ -10,23 +10,53 @@ use crate::errors::{DomainError, DomainResult};
 use crate::http::{bump_guard_ver, require_auth};
 use crate::state::AppState;
 
-/// 旧站迁移兼容：bcrypt 哈希登录成功后透明升级 argon2id。
-/// 失败静默（下次登录再试），不拦登录主链路；不复核旧密码——
-/// 能走到这里密码已经验过。
+/// 登录双口径：先 argon2 直验；未命中再按旧站迁移哈希验证
+/// （bcrypt 前缀 / NexusPHP 双层 sha256(secret+sha256(pw))，
+/// legacy_secret 列随迁 0463）。命中返回 true 供登录主链放行。
+pub(crate) async fn verify_with_legacy(
+    state: &std::sync::Arc<AppState>,
+    user: &domain::UserAccount,
+    password: &str,
+) -> bool {
+    if domain::verify_password(&user.pass_hash, password) {
+        return true;
+    }
+    let secret: Option<Option<String>> =
+        sqlx::query_scalar("SELECT legacy_secret FROM users WHERE id = $1")
+            .bind(user.id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .ok()
+            .flatten();
+    match secret.flatten().as_deref() {
+        Some(s) => {
+            domain::verify_legacy_password(&user.pass_hash, Some(s), password)
+        }
+        None => domain::verify_legacy_password(&user.pass_hash, None, password),
+    }
+}
+
+/// 旧站迁移兼容：登录成功后透明升级 argon2id（bcrypt / NexusPHP
+/// sha256 命中任意迁移口径即触发）。失败静默（下次登录再试），不拦
+/// 登录主链路；不复核旧密码——能走到这里密码已经验过。
 pub(crate) async fn maybe_upgrade_bcrypt(
     state: &std::sync::Arc<AppState>,
     user: &domain::UserAccount,
     password: &str,
 ) {
-    if !domain::is_bcrypt_hash(&user.pass_hash) {
+    let is_argon2 = user.pass_hash.starts_with("$argon2");
+    if is_argon2 {
         return;
     }
     if let Ok(new_hash) = domain::hash_password(password) {
-        let _ = sqlx::query("UPDATE users SET pass_hash = $2 WHERE id = $1")
-            .bind(user.id)
-            .bind(&new_hash)
-            .execute(&state.repo.db)
-            .await;
+        let _ = sqlx::query(
+            "UPDATE users SET pass_hash = $2, legacy_secret = NULL \
+             WHERE id = $1",
+        )
+        .bind(user.id)
+        .bind(&new_hash)
+        .execute(&state.repo.db)
+        .await;
     }
 }
 

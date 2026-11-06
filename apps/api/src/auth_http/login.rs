@@ -11,7 +11,7 @@ use crate::state::AppState;
 
 use super::login_origin::{is_form_body, origin_allowed};
 use super::login_types::{session_ttl, LoginReq};
-use super::me_security::maybe_upgrade_bcrypt;
+use super::me_security::{maybe_upgrade_bcrypt, verify_with_legacy};
 
 /// 连续失败锁定阈值（0440 接线，原写死 5）：读
 /// site_settings.login_lockout_threshold，缺省/非法回落 5；下限钳 3
@@ -124,8 +124,9 @@ pub async fn login(
             return Err(e);
         }
     };
-    if !domain::verify_password(&user.pass_hash, &body.password) {
-        // 账户级锁定计数 +1（15 分钟窗口累计；命中 5 次后见上方拦截）
+    // 双口径（argon2 直验 → 旧站迁移哈希兜底）都在 helper 里，命中透明升级
+    if !verify_with_legacy(&state, &user, &body.password).await {
+        // 账户级锁定计数 +1（15 分钟窗口累计；命中 5 次后见上方拦截）。
         {
             let lock_key = format!("acctlock:{}", body.username.to_lowercase());
             // P-67：旧写法 `incr(...).unwrap_or(0)` 把「记不上失败数」当成

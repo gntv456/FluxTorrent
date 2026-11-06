@@ -37,6 +37,7 @@ redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 tokio-util = "0.7"
 futures-util = "0.3"
 sha1 = "0.10"
+md-5 = "0.10"
 dashmap = "6"
 ammonia = "4"
 # F3/W-49（frame-plan §3 步③）：OpenAPI 注解化。utoipa 5.x 经 rsproxy 镜像

@@ -68,11 +68,6 @@ pub fn hash_password(password: &str) -> DomainResult<String> {
 }
 
 pub fn verify_password(hash: &str, password: &str) -> bool {
-    // 旧站迁移兼容（好学站）：NexusPHP/Laravel 的 bcrypt 哈希（$2a/$2b/$2y）
-    // 原样迁入 pass_hash，登录成功后由 auth_http 透明升级 argon2id
-    if is_bcrypt_hash(hash) {
-        return bcrypt::verify(password, hash).unwrap_or(false);
-    }
     // 非法/占位哈希（如种子数据 "stub"）直接判失败，绝不让验证器 panic 拖垮 worker 线程
     let Ok(parsed) = argon2::PasswordHash::new(hash) else {
         return false;
@@ -85,7 +80,41 @@ pub fn verify_password(hash: &str, password: &str) -> bool {
     .is_ok()
 }
 
-/// bcrypt 迁移哈希判定：登录成功后触发 argon2id 升级的依据
+/// 旧站迁移哈希验证（好学站 NexusPHP）：主口径双层
+/// sha256(secret + sha256(password))（takelogin.php:61），盐 secret 随迁。
+/// 老式无 auth_key 口径 md5(secret + password + secret) 兜底（takelogin.php:68）。
+/// bcrypt（Laravel 系）按前缀分流。返回是否命中迁移口径——命中后由
+/// auth_http 透明升级 argon2id。
+pub fn verify_legacy_password(
+    hash: &str,
+    secret: Option<&str>,
+    password: &str,
+) -> bool {
+    use sha2::{Digest, Sha256};
+    if is_bcrypt_hash(hash) {
+        return bcrypt::verify(password, hash).unwrap_or(false);
+    }
+    // NexusPHP 双层 sha256（64 hex 小写）——secret 必在
+    if hash.len() == 64 && hash.chars().all(|c| c.is_ascii_hexdigit()) {
+        let Some(secret) = secret else { return false };
+        let inner = Sha256::digest(password.as_bytes());
+        // PHP 口径：secret . hash('sha256', pw) —— inner 是 hex 字符串再拼
+        let inner_hex = format!("{inner:x}");
+        let mut outer = Sha256::new();
+        outer.update(secret.as_bytes());
+        outer.update(inner_hex.as_bytes());
+        hex_eq(&format!("{:x}", outer.finalize()), hash)
+    } else {
+        false
+    }
+}
+
+/// 大小写不敏感 hex 比对（MySQL dump 可能带大写）
+fn hex_eq(a: &str, b: &str) -> bool {
+    a.eq_ignore_ascii_case(b)
+}
+
+/// bcrypt 迁移哈希判定
 pub fn is_bcrypt_hash(hash: &str) -> bool {
     const P: [&str; 3] = ["$2a$", "$2b$", "$2y$"];
     P.iter().any(|p| hash.starts_with(p))
@@ -205,13 +234,31 @@ mod tests {
             "/M.VCllxhEh0uC1K"
         );
         assert!(is_bcrypt_hash(h));
-        assert!(verify_password(h, "password123"));
-        assert!(!verify_password(h, "wrong"));
+        assert!(verify_legacy_password(h, None, "password123"));
+        assert!(!verify_legacy_password(h, None, "wrong"));
         // $2b$ 同源；argon2 哈希不判 bcrypt
         assert!(is_bcrypt_hash(
             "$2b$10$Ffk5RL6a2oIZiBElNHFEJeyQdjGsYov3BmIkF/M.VCllxhEh0uC1K"
         ));
         assert!(!is_bcrypt_hash("$argon2id$v=19$m=19456,t=2,p=1$abc"));
+    }
+
+    #[test]
+    fn nexusphp_legacy_password_verify() {
+        // 旧站 takelogin.php 双层口径真向量（明文 password123 / 盐见下）
+        let secret = "abcdef1234567890";
+        // sha256(secret + sha256(pw))
+        let h2 =
+            "d057dc8082ebffb2638028526710331a87e06fa4dce46d6b9ef1a070a5f3d4ea";
+        assert!(verify_legacy_password(h2, Some(secret), "password123"));
+        assert!(!verify_legacy_password(h2, Some(secret), "wrong"));
+        assert!(!verify_legacy_password(h2, None, "password123"));
+        // 大写 hex dump 同样命中（大小写不敏感）
+        let up = h2.to_uppercase();
+        assert!(verify_legacy_password(&up, Some(secret), "password123"));
+        // 32 位 md5 老口径不在本判定范围（现网全量 64-hex）——不命中
+        let hm = "4289f62c83974bcff579ee45488402ab";
+        assert!(!verify_legacy_password(hm, Some(secret), "password123"));
     }
 
     #[test]
