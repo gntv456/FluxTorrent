@@ -131,13 +131,14 @@ pub(crate) fn event_merge_pct() -> i64 {
 /// 为什么并得掉：一条事件 = 一个 PG 事务 + `FOR UPDATE` 行锁，而计账口径是
 /// 「客户端累计读数 − 上次锚点」，做种时长按相邻事件的时间差累计——相邻两条
 /// 合并成一条，流量与时长一分不差（差值口径的前提）。
-/// 下限 60s：interval 很短时不该压成「几乎不发事件」；上限 900s：再长就丢活跃度
-/// 读数（面板「正在下载」按 updated_at 排，站长看到的粒度不能太粗）。
+/// 下限 60s：interval 很短时不该压成「几乎不发事件」；上限 1800s（0475：
+/// 4 核小机在 13 万 peer 下被事件量打满，放宽一倍换 PG 活路——「正在下载」
+/// 面板的 updated_at 粒度变 30 分钟，站点全局设置可随时改回）。
 pub(crate) fn merge_window_secs(interval: i64, pct: i64) -> i64 {
     if pct <= 0 {
         return 0;
     }
-    interval.saturating_mul(pct).div_euclid(100).clamp(60, 900)
+    interval.saturating_mul(pct).div_euclid(100).clamp(60, 1800)
 }
 
 #[cfg(test)]
@@ -168,8 +169,9 @@ mod tests {
         assert_eq!(merge_window_secs(1800, 0), 0);
         // 下限 60s：interval 被配得很短时也不能「几乎不发」
         assert_eq!(merge_window_secs(60, 40), 60);
-        // 上限 900s：interval 配到 1h 时窗不该拖到 24min（活跃度粒度）
-        assert_eq!(merge_window_secs(3600, 40), 900);
+        // 上限 1800s（0475）：interval 配到 1h 时窗到 30min（小机容量换粒度）
+        assert_eq!(merge_window_secs(3600, 40), 1440);
+        assert_eq!(merge_window_secs(7200, 40), 1800);
         // 负数 interval（脏配置）不该 panic
         assert_eq!(merge_window_secs(-10, 40), 60);
     }
