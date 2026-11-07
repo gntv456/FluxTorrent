@@ -229,8 +229,11 @@ pub(crate) async fn process_event(
     // upsert 侧的 GREATEST 双保险——EXCLUDED.last_up 永远是「合法单调」的。
     .bind(anchor_up)
     .bind(anchor_down)
-    .bind(!seeding)
-    .bind(seeding)
+    // 0471 修：状态记「客户端事实」（left），与 verdict.seeding（含 phys_down
+    // 佐证门槛的收益资格）解耦——迁移用户 phys_down=0 → 资格 false →
+    // leeching 误写 true 与粘性 seeding 并存。资格链不变，展示归事实。
+    .bind(ev.left > 0)
+    .bind(ev.left == 0)
     .bind(completed)
     // 审计修复（P0 真根因）：$10 在 SQL 中是 bigint（时长容忍窗）、$11 是 boolean（stopped），
     // 旧代码把两者绑反（stopped 在第 10 位、seed_cap 在第 11 位），
