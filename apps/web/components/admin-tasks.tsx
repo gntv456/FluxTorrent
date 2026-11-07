@@ -1,6 +1,6 @@
 "use client";
 
-import { BTN_SM_BOLD } from "@/lib/ui-classes";
+import { BTN_SM_BOLD, INPUT_CLOUD } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
@@ -107,9 +107,6 @@ export function AdminTasks() {
     }
   }
 
-  const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
-    "px-2 text-sm outline-none focus:border-sky";
   const isExam = edit.f.kind !== "task";
 
   return (
@@ -117,7 +114,10 @@ export function AdminTasks() {
       <TasksForm edit={edit} setEdit={setEdit} save={save} busy={busy} />
       <div className="flex flex-col gap-3">
         {msg && (
-          <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+          <p
+            className="rounded-[var(--r-md)] bg-[var(--sky-soft)]
+                       p-3 text-sm text-[var(--ink)]"
+          >
             {msg}
           </p>
         )}
