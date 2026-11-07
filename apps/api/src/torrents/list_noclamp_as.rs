@@ -72,7 +72,7 @@ pub async fn list_torrents_noclamp_as(
     let sec_sql =
         super::section_pred::section_where(db, &filter.sections).await; // 搜索范围分流（旧站口径）：0=标题+全字段(默认) 1=副标题/简介 3=发布者 4=IMDb
                                                                         // 搜索谓词 + 同义词扩展（E9）：合成收在 syn_search（含白名单防注入说明）
-    let search_pred = super::syn_search::search_pred_with_syn(
+    let (search_pred, _short_search) = super::syn_search::search_pred_with_syn(
         db,
         filter.search.as_deref(),
         filter.search_area,

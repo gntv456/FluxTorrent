@@ -176,7 +176,7 @@ pub(crate) async fn works_list(
     )
     .await?;
     let sec_sql = section_where(&state.repo.read_db, &wf.filter.sections).await;
-    let search_pred = search_pred_with_syn(
+    let (search_pred, _short) = search_pred_with_syn(
         &state.repo.read_db,
         wf.filter.search.as_deref(),
         wf.filter.search_area,
