@@ -1,0 +1,18 @@
+
+/* mainmenu 教育四级：科目直达 chips（0473， tide/brand 等主题通用） */
+.mainmenu-drop__cell {
+  min-width: 0;
+}
+.mainmenu-drop__children {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding: 0 0 2px 14px;
+}
+.mainmenu-drop__child {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.mainmenu-drop__child:hover {
+  color: var(--text-strong);
+}

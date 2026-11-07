@@ -133,6 +133,8 @@ const zhTwBase: Omit<
   nav: {
     home: "首頁",
     library: "資源庫",
+    eduRes: "教育資源",
+    eduAll: "全部",    eduStNursery: "幼兒園",    eduStPrimary: "小學",    eduStJunior: "初中",    eduStSenior: "高中",    eduStUni: "大學",    eduGr0: "幼兒園",    eduGr1: "一年級",    eduGr2: "二年級",    eduGr3: "三年級",    eduGr4: "四年級",    eduGr5: "五年級",    eduGr6: "六年級",    eduGr7: "初一",    eduGr8: "初二",    eduGr9: "初三",    eduGr10: "高一",    eduGr11: "高二",    eduGr12: "高三",    eduSubjMath: "數學",    eduSubjChinese: "語文",    eduSubjEnglish: "英語",    eduSubjPhysics: "物理",    eduSubjChemistry: "化學",    eduSubjBiology: "生物",    eduSubjPolitics: "政治",    eduSubjHistory: "歷史",    eduSubjGeography: "地理",
     official: "官種",
     libAll: "全部",
     libRes: "資源",
@@ -5046,8 +5048,7 @@ const zhTwBase: Omit<
     >,
     formTitleNew: "新增任務/考核",
     formTitleEdit: "編輯 #{id}",
-    metricHint:
-      "可選指標鍵：upload_delta（上傳增量，位元組）· download_delta（累計口徑，位元組）· seed_seconds_delta（做種時長增量，秒，如 120h=432000）· seed_points_delta（做種積分，1 積分=1 小時做種）· uploads（發布數）· subtitles（字幕數）。至少配一個鍵，否則不可領取；tier 任務按累計口徑判定。",
+    metricHint: "勾選指標並按單位填數值即可（上傳/下載按 GB、做種時長按小時）。歷史手寫的 JSON 指標編輯任務時自動回顯。",
     fldKind: "類型",
     fldName: "任務名稱",
     fldMetric: "指標 metric",
@@ -5071,6 +5072,18 @@ const zhTwBase: Omit<
     penaltyTitle: "考核不達標處置",
     penaltyHint:
       "可多選組合。處置在考核到期且補救期過後仍未達標時自動執行，與後台人工處置寫同一批欄位；每項處置有稽核與站內信通知。普通任務不受影響。",
+    metricNames: {
+      upload_delta: "上傳增量",
+      download_delta: "下載增量",
+      seed_seconds_delta: "做種時長",
+      seed_points_delta: "做種積分",
+      uploads: "發布數",
+      subtitles: "字幕數",
+    },
+    metricUnitGB: "GB",
+    metricUnitHours: "小時",
+    metricUnitCount: "個",
+    metricEmpty: "至少勾選一項指標並填寫數值",
     penaltyKinds: {
       ban: "封禁帳號",
       suspend: "掛起帳號",

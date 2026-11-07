@@ -60,6 +60,10 @@ export interface PenaltyFormState {
       string,
       { amount?: string; target?: string; pages?: string }
     >;
+    /** 0472 指标可视化三件套（PenaltyMenuEdit 不消费，仅类型对齐） */
+    metricChecked: Record<string, boolean>;
+    metricValues: Record<string, string>;
+    metricExtra: Record<string, unknown>;
   };
 }
 

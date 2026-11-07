@@ -117,6 +117,8 @@ const zhCnBase = {
   nav: {
     home: "首页",
     library: "资源库",
+    eduRes: "教育资源",
+    eduAll: "全部",    eduStNursery: "幼儿园",    eduStPrimary: "小学",    eduStJunior: "初中",    eduStSenior: "高中",    eduStUni: "大学",    eduGr0: "幼儿园",    eduGr1: "一年级",    eduGr2: "二年级",    eduGr3: "三年级",    eduGr4: "四年级",    eduGr5: "五年级",    eduGr6: "六年级",    eduGr7: "初一",    eduGr8: "初二",    eduGr9: "初三",    eduGr10: "高一",    eduGr11: "高二",    eduGr12: "高三",    eduSubjMath: "数学",    eduSubjChinese: "语文",    eduSubjEnglish: "英语",    eduSubjPhysics: "物理",    eduSubjChemistry: "化学",    eduSubjBiology: "生物",    eduSubjPolitics: "政治",    eduSubjHistory: "历史",    eduSubjGeography: "地理",
     official: "官种",
     libAll: "全部",
     libRes: "资源",
@@ -5099,8 +5101,7 @@ const zhCnBase = {
     >,
     formTitleNew: "新建任务/考核",
     formTitleEdit: "编辑 #{id}",
-    metricHint:
-      "可选指标键：upload_delta（上传增量，字节）· download_delta（累计口径，字节）· seed_seconds_delta（做种时长增量，秒，如 120h=432000）· seed_points_delta（做种积分，1 积分=1 小时做种）· uploads（发布数）· subtitles（字幕数）。至少配一个键，否则不可领取；tier 任务按累计口径判定。",
+    metricHint: "勾选指标并按单位填数值即可（上传/下载按 GB、做种时长按小时）。历史手写的 JSON 指标编辑任务时自动回显。",
     fldKind: "类型",
     fldName: "任务名",
     fldMetric: "指标 metric",
@@ -5169,6 +5170,11 @@ const zhCnBase = {
     penaltyTitle: "考核不达标处置",
     penaltyHint:
       "可多选组合。处置在考核到期且补救期过后仍未达标时自动执行，与后台人工处置写同一批字段；每项处置有审计与站内信通知。普通任务不受影响。",
+    metricNames: { upload_delta: "上传增量", download_delta: "下载增量", seed_seconds_delta: "做种时长", seed_points_delta: "做种积分", uploads: "发布数", subtitles: "字幕数" },
+    metricUnitGB: "GB",
+    metricUnitHours: "小时",
+    metricUnitCount: "个",
+    metricEmpty: "至少勾选一项指标并填写数值",
   },
   /** 勋章管理：获取方式（admin-medals 系） */
   adminMedals: {

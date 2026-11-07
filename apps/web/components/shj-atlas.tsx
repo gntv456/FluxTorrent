@@ -100,6 +100,8 @@ export function ShjAtlas({
       /* 隐私模式读不到就默认展开 */
     }
   }, []);
+  // 教育四级树（0473）：学段折叠态（key = 学段名）
+  const [eduClosed, setEduClosed] = useState<Record<string, boolean>>({});
   const toggleRail = () =>
     setRail((r) => {
       try {
@@ -200,6 +202,61 @@ export function ShjAtlas({
           {primary.map((n) => (
             <li key={n.href}>
               <ItemLink {...n} />
+              {n.sub && (
+                <div className="shj-atlas__edutree">
+                  {n.sub.map((stage) => {
+                    const shut = !!eduClosed[stage.label];
+                    return (
+                      <section
+                        key={stage.label}
+                        className={
+                          `shj-atlas__group${shut ? " is-closed" : ""}`
+                        }
+                      >
+                        <button
+                          type="button"
+                          className="shj-atlas__gtitle"
+                          onClick={() =>
+                            setEduClosed((c) => ({
+                              ...c,
+                              [stage.label]: !c[stage.label],
+                            }))
+                          }
+                        >
+                          <span className="shj-atlas__gname">
+                            {stage.label}
+                          </span>
+                          <span className="shj-atlas__gline" aria-hidden />
+                          <span className="shj-atlas__gcaret" aria-hidden>
+                            ▾
+                          </span>
+                        </button>
+                        <ul className="shj-atlas__list" hidden={shut}>
+                          {stage.items.map((g) => (
+                            <li key={g.href + g.label}>
+                              <ItemLink href={g.href} label={g.label} />
+                              {g.children && (
+                                <div className="shj-atlas__edusub">
+                                  {g.children.map((c) => (
+                                    <Link
+                                      key={c.href + c.label}
+                                      href={c.href}
+                                      className="shj-atlas__item
+                                                 shj-atlas__edusubj"
+                                    >
+                                      {c.label}
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
             </li>
           ))}
         </ul>

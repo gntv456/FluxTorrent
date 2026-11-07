@@ -134,6 +134,8 @@ const enBase: Omit<
   nav: {
     home: "Home",
     library: "Library",
+    eduRes: "Education",
+    eduAll: "All",    eduStNursery: "Nursery",    eduStPrimary: "Primary",    eduStJunior: "Junior",    eduStSenior: "Senior",    eduStUni: "University",    eduGr0: "Nursery",    eduGr1: "Grade 1",    eduGr2: "Grade 2",    eduGr3: "Grade 3",    eduGr4: "Grade 4",    eduGr5: "Grade 5",    eduGr6: "Grade 6",    eduGr7: "Grade 7",    eduGr8: "Grade 8",    eduGr9: "Grade 9",    eduGr10: "Grade 10",    eduGr11: "Grade 11",    eduGr12: "Grade 12",    eduSubjMath: "Math",    eduSubjChinese: "Chinese",    eduSubjEnglish: "English",    eduSubjPhysics: "Physics",    eduSubjChemistry: "Chemistry",    eduSubjBiology: "Biology",    eduSubjPolitics: "Politics",    eduSubjHistory: "History",    eduSubjGeography: "Geography",
     official: "Official",
     libAll: "All",
     libRes: "Resources",
@@ -5230,8 +5232,7 @@ const enBase: Omit<
     } as Record<string, string>,
     formTitleNew: "New task / exam",
     formTitleEdit: "Edit #{id}",
-    metricHint:
-      "Available metric keys: upload_delta (upload increase, bytes) · download_delta (cumulative, bytes) · seed_seconds_delta (seeding-time increase, seconds, e.g. 120h=432000) · seed_points_delta (seed points, 1 point = 1 hour seeding) · uploads (publishes) · subtitles (subtitle count). Configure at least one key or the task cannot be claimed; tier tasks are judged on the cumulative basis.",
+    metricHint: "Check metrics and fill values by unit (upload/download in GB, seed time in hours). Hand-written JSON metrics from before are restored when editing.",
     fldKind: "Kind",
     fldName: "Task name",
     fldMetric: "Metric JSON",
@@ -5256,6 +5257,18 @@ const enBase: Omit<
     penaltyTitle: "Penalties on exam failure",
     penaltyHint:
       "Multi-select. Applied automatically when the exam expires with remedies exhausted, writing the same fields as manual admin actions; every item is audited and notified by PM. Regular tasks are unaffected.",
+    metricNames: {
+      upload_delta: "Upload",
+      download_delta: "Download",
+      seed_seconds_delta: "Seed time",
+      seed_points_delta: "Seed points",
+      uploads: "Torrents",
+      subtitles: "Subtitles",
+    },
+    metricUnitGB: "GB",
+    metricUnitHours: "hours",
+    metricUnitCount: "items",
+    metricEmpty: "Check at least one metric and fill in a value",
     penaltyKinds: {
       ban: "Ban account",
       suspend: "Suspend account",

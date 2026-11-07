@@ -9,7 +9,13 @@ import { ExamUsersPanel } from "@/components/admin-tasks-exams";
 import { TasksTable } from "./admin-tasks-table";
 import { TasksForm } from "./admin-tasks-form";
 import type { TaskRow } from "./admin-tasks-shared";
-import { EMPTY, fromPenaltyItems, toPenaltyItems } from "./admin-tasks-shared";
+import {
+  EMPTY,
+  fromMetricJson,
+  fromPenaltyItems,
+  toMetricJson,
+  toPenaltyItems,
+} from "./admin-tasks-shared";
 
 /** 任务定义 + 考核配置（tasks 表 CRUD，0093 起 kind/auto_assign/period 支撑考核引擎）。
  *  考核记录浏览拆出 admin-tasks-exams.tsx；列表拆至 ./admin-tasks-table.tsx；
@@ -47,11 +53,15 @@ export function AdminTasks() {
   }, [load]);
 
   async function save() {
-    let metric: unknown;
-    try {
-      metric = JSON.parse(edit.f.metric || "{}");
-    } catch {
-      flash(t.metricBadJson);
+    // 0472 指标可视化：勾选+数值由转换器换算（GB→字节/小时→秒），
+    // 六键外的历史手写键经 extra 原样保留
+    const metric = toMetricJson(
+      edit.f.metricChecked,
+      edit.f.metricValues,
+      edit.f.metricExtra,
+    );
+    if (Object.keys(metric).length === 0) {
+      flash(t.metricEmpty);
       return;
     }
     if (!edit.f.starts_at || !edit.f.ends_at) {

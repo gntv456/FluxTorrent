@@ -16,6 +16,7 @@ import {
   kindList,
   periodList,
   toLocalInput,
+  metricFormState,
 } from "./admin-tasks-shared";
 
 interface TasksTableProps {
@@ -48,6 +49,9 @@ interface TasksTableProps {
         string,
         { amount?: string; target?: string; pages?: string }
       >;
+      metricChecked: Record<string, boolean>;
+      metricValues: Record<string, string>;
+      metricExtra: Record<string, unknown>;
     };
   }) => void;
 }
@@ -138,6 +142,7 @@ export function TasksTable({
                     f: {
                       name: t.name,
                       metric: JSON.stringify(t.metric),
+                      ...metricFormState(t.metric),
                       starts_at: toLocalInput(t.starts_at),
                       ends_at: toLocalInput(t.ends_at),
                       target_class: String(t.target_class),

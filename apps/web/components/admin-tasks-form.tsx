@@ -5,6 +5,7 @@ import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 import { PenaltyMenuEdit } from "./admin-tasks-penalty-form";
 import { EMPTY, kindList, periodList } from "./admin-tasks-shared";
+import { MetricMenuEdit } from "./admin-tasks-metric-form";
 
 const inp = INPUT_CLOUD;
 
@@ -56,17 +57,10 @@ export function TasksForm(props: {
             className={`${inp} w-36`}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs">
+        <div className="flex flex-col gap-1 text-xs">
           {t.fldMetric}
-          <input
-            value={edit.f.metric}
-            onChange={(e) =>
-              setEdit({ ...edit, f: { ...edit.f, metric: e.target.value } })
-            }
-            placeholder='{"seed_seconds_delta":432000}'
-            className={`${inp} w-64 font-mono`}
-          />
-        </label>
+          <MetricMenuEdit edit={edit} setEdit={setEdit} />
+        </div>
         <label className="flex flex-col gap-1 text-xs">
           {t.fldStart}
           <input

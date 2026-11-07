@@ -1,11 +1,8 @@
 import type { getMenuItems } from "@/lib/data";
+import { eduPrimary, hasEduCat } from "./nav-edu";
 
-/** 导航配置单源（移动端方案 M2）：桌面 MainMenu / 移动抽屉 / 底 Tab「更多」
- *  三处共用同一份构建逻辑，杜绝三处命名漂移（管理端 i18n 三处不一致的教训）。
- *
- *  类型与分组构建从 components/layout.tsx 抽出，原逻辑一字未改——
- *  layout.tsx 与 nav-drawer 都消费本模块。自定义菜单（topbar）生效时
- *  一级/分组同样以这里为准。 */
+/** 导航配置单源（M2）：桌面 MainMenu / 移动抽屉 / 底 Tab 共用同一份构建
+ *  逻辑，杜绝命名漂移。自定义菜单（topbar）生效时一级/分组同样以这里为准。 */
 
 export type NavItem = {
   href: string;
@@ -13,6 +10,9 @@ export type NavItem = {
   /** 一级下拉（2026-10-31 资源库）：两级结构 [{label, href, items}]——
    *  items 为三级叶子。目前仅资源库用（全部/资源/官种 × 站型分类）。 */
   sub?: { label: string; href: string; items: NavItem[] }[];
+  /** 第四级（0473 教育资源）：年级叶子的科目直达（MainMenu 行内
+   *  科目 chips / 图鉴侧栏折叠子树各自消费） */
+  children?: NavItem[];
 };
 export type NavGroup = { group: string; items: NavItem[] };
 export type MenuItem = Awaited<ReturnType<typeof getMenuItems>>[number];
@@ -35,15 +35,10 @@ export function librarySub(
 ): NonNullable<NavItem["sub"]> {
   const all = cats.filter((c) => c.name);
   const top = all.slice(0, LIB_CAT_CAP);
-  /* extra 是查询串（official=1 这种），不是连接符。叶子第一项没有别的
-     参数，得自己带问号：原先写成 /torrents + extra 且 extra 传的是
-     &official=1，于是渲染出 /torrents&official=1 —— 没有问号就整段算路径，
-     路由不存在，点「资源/官种」下的「全部」必 404（2026-11-01 站长报）。
-     分类叶子因为前面已有 ?category_id= 兜着，才一直没露出这个破口。 */
-  // 超过上限的分类不能只是「看不见」。merge 模式下站点把历史各包的分类都留着
-  // （现网 70 条），cap 之后那些后台在册、列表页能筛，唯独导航没入口——站长
-  // 读到的症状就是「综合站还缺三类」。补一条「更多分类…」落回列表页（那里带
-  // 全量分类筛选），三档过滤各带自己的查询串，官种视图不会被这条丢掉。
+  /* extra 是查询串（official=1 这种）——叶子首项必须自带 ?（无 category_id
+     兜底，缺问号整段算路径必 404，2026-11-01 站长报）。超上限分类不能只
+     是「看不见」：merge 站点历史分类几十条，cap 后导航无入口=「综合站还
+     缺三类」，补「更多分类…」落回列表页全量筛选。 */
   const overflow =
     all.length > LIB_CAT_CAP
       ? [{ href: "/torrents", label: nav.moreCats ?? "" }]
@@ -154,6 +149,10 @@ export function defaultNav({
         ? { sub: librarySub(nav, libraryCats) }
         : {}),
     },
+    // 教育资源四级导航（0473）：教育板块站点（分类含 13）才挂出
+    ...(libraryCats && hasEduCat(libraryCats)
+      ? [eduPrimary(nav.eduRes, nav)]
+      : []),
     ...(modules("forums") ? [{ href: "/forums", label: nav.forums }] : []),
     { href: "/upload", label: nav.upload },
   ];

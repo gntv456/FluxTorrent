@@ -21,6 +21,8 @@ type NavItem = {
   href: string;
   label: string;
   sub?: { label: string; href: string; items: NavItem[] }[];
+  /** 第四级（0473 教育资源）：年级叶子下的科目直达 chips */
+  children?: NavItem[];
 };
 type NavGroup = { group: string; items: NavItem[] };
 
@@ -162,16 +164,33 @@ export function MainMenu({
                         </Link>
                         <div className="mainmenu-drop__links">
                           {g.items.map((leaf) => (
-                            <Link
+                            <div
                               key={leaf.href + leaf.label}
-                              href={leaf.href}
-                              className="mainmenu-drop__link"
-                              data-active={
-                                isActive(leaf.href) ? "true" : undefined
-                              }
+                              className="mainmenu-drop__cell"
                             >
-                              {leaf.label}
-                            </Link>
+                              <Link
+                                href={leaf.href}
+                                className="mainmenu-drop__link"
+                                data-active={
+                                  isActive(leaf.href) ? "true" : undefined
+                                }
+                              >
+                                {leaf.label}
+                              </Link>
+                              {leaf.children && (
+                                <div className="mainmenu-drop__children">
+                                  {leaf.children.map((c) => (
+                                    <Link
+                                      key={c.href + c.label}
+                                      href={c.href}
+                                      className="mainmenu-drop__child"
+                                    >
+                                      {c.label}
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>

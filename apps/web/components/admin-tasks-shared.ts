@@ -79,7 +79,79 @@ export const EMPTY = {
     string,
     { amount?: string; target?: string; pages?: string }
   >,
+  /** 0472 指标可视化：勾选集 + 单位化数值（上传/下载 GB、时长小时） */
+  metricChecked: {} as Record<string, boolean>,
+  metricValues: {} as Record<string, string>,
+  /** 历史手写的六键外指标（原样保留提交） */
+  metricExtra: {} as Record<string, unknown>,
 };
+
+/** ===== 0472 指标可视化配置 =====
+ *  管理员不写 JSON：勾选指标 + 按「直观单位」填数值，提交时换算成
+ *  worker settle.rs 消费的六键字节/秒/计数。单位表（前端只认 unit）：
+ *  GB = 1024³ 字节；小时 = 3600 秒；计数直填。 */
+export interface MetricItemDef {
+  key: string;
+  unit: "gb" | "hours" | "count";
+  step: string;
+}
+export const METRIC_ITEMS: MetricItemDef[] = [
+  { key: "upload_delta", unit: "gb", step: "0.1" },
+  { key: "download_delta", unit: "gb", step: "0.1" },
+  { key: "seed_seconds_delta", unit: "hours", step: "1" },
+  { key: "seed_points_delta", unit: "count", step: "1" },
+  { key: "uploads", unit: "count", step: "1" },
+  { key: "subtitles", unit: "count", step: "1" },
+];
+export const METRIC_KEYS = new Set(METRIC_ITEMS.map((m) => m.key));
+const GB = 1024 * 1024 * 1024;
+
+/** 表单勾选 + 数值 → metric JSON（未知键原样保留，兼容历史手写配置） */
+export function toMetricJson(
+  checked: Record<string, boolean>,
+  values: Record<string, string>,
+  extra: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...extra };
+  for (const m of METRIC_ITEMS) {
+    if (!checked[m.key]) continue;
+    const raw = Number(values[m.key]);
+    if (!Number.isFinite(raw) || raw <= 0) continue; // 勾了没填数＝不生效
+    if (m.unit === "gb") out[m.key] = Math.round(raw * GB);
+    else if (m.unit === "hours") out[m.key] = Math.round(raw * 3600);
+    else out[m.key] = Math.round(raw);
+  }
+  return out;
+}
+
+/** metric JSON → 表单勾选 + 数值（编辑回显）；六键外的键进 extra 保留 */
+export function fromMetricJson(metric: Record<string, unknown> | null): {
+  checked: Record<string, boolean>;
+  values: Record<string, string>;
+  extra: Record<string, unknown>;
+} {
+  const checked: Record<string, boolean> = {};
+  const values: Record<string, string> = {};
+  const extra: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(metric ?? {})) {
+    if (!METRIC_KEYS.has(k)) {
+      extra[k] = v;
+      continue;
+    }
+    if (typeof v !== "number" || v <= 0) continue;
+    checked[k] = true;
+    const def = METRIC_ITEMS.find((m) => m.key === k)!;
+    if (def.unit === "gb") {
+      const gb = v / GB;
+      values[k] = String(Number(gb.toFixed(2)));
+    } else if (def.unit === "hours") {
+      values[k] = String(Number((v / 3600).toFixed(1)));
+    } else {
+      values[k] = String(v);
+    }
+  }
+  return { checked, values, extra };
+}
 
 /** 任务种类 / 周期的取值键。显示名在 i18n `adminTasks.kinds` / `.periods`
  *  （三语），由 `kindList()` / `periodList()` 拼回原 `{v, label}` 形状 ——
@@ -165,4 +237,18 @@ export function toLocalInput(iso: string): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
+}
+
+/** metric JSON → EMPTY 表单的三个指标字段落（编辑回填用，0472） */
+export function metricFormState(metric: Record<string, unknown>): {
+  metricChecked: Record<string, boolean>;
+  metricValues: Record<string, string>;
+  metricExtra: Record<string, unknown>;
+} {
+  const { checked, values, extra } = fromMetricJson(metric);
+  return {
+    metricChecked: checked,
+    metricValues: values,
+    metricExtra: extra,
+  };
 }

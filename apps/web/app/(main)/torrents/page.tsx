@@ -148,8 +148,9 @@ export default async function TorrentsPage({
       // 标签多选（0159 P1）：tag_ids 逗号串优先，旧单值 tag_id 兜底（后端合并解析）
       tag_ids: sp.tag_ids || sp.tag_id || undefined,
       tag_mode: sp.tag_mode || undefined,
-      // 页码模式（0468）：page>1 走 OFFSET 跳页；cursor/dir 兼容旧链接保留
+      // 页码跳页（0468）+ 年级维度（0473 教育四级，ListQuery 原生）
       page: sp.p && Number(sp.p) > 1 ? sp.p : undefined,
+      grade_id: sp.grade_id || undefined,
       // 0105 高级搜索增强（体积带单位串 / 日期 YYYY-MM-DD / 数值区间 / 优惠 / 发布者 / 仅我）
       size_min: sp.size_min || undefined,
       size_max: sp.size_max || undefined,
