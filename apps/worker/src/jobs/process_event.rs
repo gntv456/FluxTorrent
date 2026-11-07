@@ -28,9 +28,16 @@ pub(crate) async fn process_event(
     if let Some(cached) = super::torrent_cache::get(&ev.hash) {
         return Ok(cached.map(|(id, _size)| id));
     }
+    // 0477b：OR 双口径改 UNION 两段等值——OR 使 PG 每次全新规划（实测
+    // Planning 163ms >> 执行 0.27ms）；UNION 等值段可复用通用计划。
     let torrent: Option<(i64, i64)> = sqlx::query_as(
-                "SELECT id, \
-         COALESCE(size, 0) FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1",
+        "SELECT id, size FROM ( \
+           (SELECT id, COALESCE(size, 0) AS size FROM torrents \
+             WHERE info_hash = $1 LIMIT 1) \
+           UNION ALL \
+           (SELECT id, COALESCE(size, 0) AS size FROM torrents \
+             WHERE raw_info_hash = $1 AND NOT (info_hash = $1) LIMIT 1) \
+         ) u LIMIT 1",
     )
     .bind(&ev.hash)
     .fetch_optional(db)
