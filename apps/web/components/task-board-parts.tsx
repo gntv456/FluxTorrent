@@ -113,18 +113,23 @@ export function fmtBytes(n: number): string {
   return `${v >= 100 ? v.toFixed(0) : v.toFixed(2)} ${units[i]}`;
 }
 
-/** 五档等级 key → 中文档名（与 DB subtitle 对应；0469 改版：弃 NP「烧」
- *  系梗，励志梯度命名——tier key 与英文 name 均不动，纯展示层） */
-const TIER_LABELS: Record<string, string> = {
-  master: "传奇境界",
-  ultimate: "大师之路",
-  extreme: "资深磨练",
-  veteran: "进阶历练",
-  insane: "入门挑战",
+/** 五档等级 key → i18n 键（0469 改版：弃 NP「烧」系梗，励志梯度命名）。
+ *  档名文案在 dict.tasks2.tier_*（三语字典），本组件不再持中文常量。 */
+const TIER_KEYS: Record<string, string> = {
+  master: "tierMaster",
+  ultimate: "tierUltimate",
+  extreme: "tierExtreme",
+  veteran: "tierVeteran",
+  insane: "tierInsane",
 };
-export function tierLabel(tier: string | null | undefined): string {
+export function tierLabel(
+  tier: string | null | undefined,
+  t?: { tierMaster?: string; [k: string]: string | string[] | undefined },
+): string {
   if (!tier) return "";
-  return TIER_LABELS[tier.toLowerCase()] ?? tier;
+  const key = TIER_KEYS[tier.toLowerCase()];
+  const v = t && key ? t[key] : undefined;
+  return (typeof v === "string" && v) || tier;
 }
 
 /** 01 最新动态 + 02 任务统计子面板（数据由 TaskBoard 的 ov 传入） */
@@ -187,7 +192,7 @@ export function TaskDashboard({ ov }: { ov: TaskOverview | null }) {
         <div className="task-stats-bars">
           {(ov?.stats.tiers ?? []).map((s) => (
             <div key={s.tier ?? "?"}>
-              <span>{tierLabel(s.tier)}</span>
+              <span>{tierLabel(s.tier, t)}</span>
               <progress max={100} value={s.pct} />
               <b className="num">{s.pct.toFixed(1)}%</b>
             </div>

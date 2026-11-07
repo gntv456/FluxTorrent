@@ -55,7 +55,7 @@ export function TaskTierPanel({
             className={`task-tier-card task-tier-card--${task.tier}`}
           >
             <header>
-              <h3>{tierLabel(task.tier)}</h3>
+              <h3>{tierLabel(task.tier, t)}</h3>
               <span>{task.subtitle}</span>
             </header>
             <dl>
@@ -160,7 +160,7 @@ export function TaskShopPanel({
               <div>
                 <dt>{t.shopRequire}</dt>
                 <dd>
-                  {tierLabel(s.require_tier)} × {s.require_count}
+                  {tierLabel(s.require_tier, t)} × {s.require_count}
                 </dd>
               </div>
               <div>

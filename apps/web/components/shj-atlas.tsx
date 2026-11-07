@@ -89,6 +89,26 @@ export function ShjAtlas({
   const { dict } = useI18n();
   // 折叠组：默认全展开；key = 组名（同源数据，组名稳定）
   const [closed, setClosed] = useState<Record<string, boolean>>({});
+  // 整栏折叠（0470）：宽屏用户手动在「236px 展开 ↔ 64px 图标轨」间切换，
+  // localStorage 持久化（与主题偏好同款模式）；轨态复用 768–1179 断点的
+  // 图标居中/浮层样式（.is-rail 类承载，CSS 同源）。
+  const [rail, setRail] = useState(false);
+  useEffect(() => {
+    try {
+      setRail(localStorage.getItem("flux-shj-rail") === "1");
+    } catch {
+      /* 隐私模式读不到就默认展开 */
+    }
+  }, []);
+  const toggleRail = () =>
+    setRail((r) => {
+      try {
+        localStorage.setItem("flux-shj-rail", r ? "0" : "1");
+      } catch {
+        /* 写不进不拦切换 */
+      }
+      return !r;
+    });
   // 图标轨（768–1179px）分组浮层：点按/悬浮展开带文字的第二列；
   // ≥1180px 展开态与 <768px 抽屉态均不渲染（CSS 同口径隐藏）
   const [flyout, setFlyout] = useState<string | null>(null);
@@ -162,7 +182,10 @@ export function ShjAtlas({
   );
 
   return (
-    <aside className="shj-atlas" aria-label={dict.nav.ariaPrimary}>
+    <aside
+      className={`shj-atlas${rail ? " is-rail" : ""}`}
+      aria-label={dict.nav.ariaPrimary}
+    >
       <Link href="/" className="shj-atlas__brand" title={brand}>
         <span className="shj-atlas__seal" aria-hidden>
           {brand.slice(0, 1)}
@@ -193,9 +216,9 @@ export function ShjAtlas({
               <button
                 type="button"
                 className="shj-atlas__gtitle"
-                aria-expanded={isWide ? !isClosed : isFly}
+                aria-expanded={isWide && !rail ? !isClosed : isFly}
                 onClick={() => {
-                  if (isWide) {
+                  if (isWide && !rail) {
                     setClosed((c) => ({ ...c, [g.group]: !c[g.group] }));
                   } else {
                     setFlyout(isFly ? null : g.group);
@@ -251,6 +274,19 @@ export function ShjAtlas({
           </Link>
         )}
         <ThemeToggle label={dict.common.themeToggle} />
+        {/* 整栏折叠钮（宽屏专属；窄断点由 CSS 隐藏——轨态本就是那段的缺省） */}
+        <button
+          type="button"
+          className="shj-atlas__fold"
+          onClick={toggleRail}
+          aria-expanded={!rail}
+          title={rail ? dict.nav.expandMenu : dict.nav.collapseMenu}
+        >
+          <span aria-hidden>{rail ? "»" : "«"}</span>
+          <span className="shj-atlas__foldtext">
+            {rail ? dict.nav.expandMenu : dict.nav.collapseMenu}
+          </span>
+        </button>
       </div>
     </aside>
   );
