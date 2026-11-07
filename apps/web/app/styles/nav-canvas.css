@@ -25,7 +25,7 @@
   --nvc-btn-fg: #fff;
   --nvc-r: 20px;
   --nvc-row-r: 9px;
-  --nvc-cap-font: var(--font);
+  --nvc-cap-font: var(--font-display, serif);
   --nvc-cap-ls: .6px;
   position: absolute;
   top: calc(100% + 6px);
