@@ -51,6 +51,7 @@ mod request_expire;
 mod risk_backtest;
 mod risk_score;
 mod run;
+mod torrent_cache;
 // hour_jobs：小时批任务清单（run.rs 448→313 行拆出，见行数门禁）
 mod hour_jobs;
 mod sanction_sweep;

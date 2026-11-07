@@ -1,5 +1,4 @@
-//! announce 事件计费处理。
-//! 从 jobs.rs 按域拆出。
+//! announce 事件计费处理（从 jobs.rs 按域拆出）。
 
 use super::announce_main::AnnounceEvent;
 use super::billing_mults::resolve_billing_mults;
@@ -9,16 +8,14 @@ use sqlx::PgPool;
 mod audit_hold;
 pub(crate) mod seeding_gate;
 
-/// ZT81（2026-10-02）：按**字符边界**截断。原实现用 `&s[..len.min(200)]` 按字节
-/// 切片，UA 含多字节 UTF-8 且恰好落在第 200 字节非边界时会 panic。
+/// ZT81：按字符边界截断（`&s[..200]` 字节切片在 UTF-8 边界会 panic）。
 fn truncate_chars(s: &str, n: usize) -> String {
     s.chars().take(n).collect()
 }
 
-/// 单事件计费（促销裁决 + snatch upsert + 流水 + 保种时长累计）
-/// 返回 torrent_id 供快照点刷收集（种子不存在/重复事件返回 None）。
-/// seed_cap：做种时长单次累计容忍窗（秒）= 2 × announce_interval，由 consume_announce 按站点设定算出
-/// event_id：Redis 流条目 id，作「恰好入账一次」的幂等键（0285）
+/// 单事件计费（促销裁决 + snatch upsert + 流水 + 保种时长累计）。
+/// 返回 torrent_id（不存在/重复事件返回 None）。
+/// seed_cap：累计容忍窗 = 2×interval；event_id：幂等键（0285）。
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn process_event(
     db: &PgPool,
@@ -26,9 +23,11 @@ pub(crate) async fn process_event(
     seed_cap: i64,
     event_id: &str,
 ) -> anyhow::Result<Option<i64>> {
-    // 未知种子的查询失败必须显式报错（重试），不能静默丢弃计费
-    // 审计修复（P1）：announce 哈希是客户端「原始字节」口径；库内 info_hash 为规范化
-    // 重编码口径（键序非排序的种子两者不同，此前静默丢计费）。双口径 OR 匹配。
+    // 种子查询失败必须报错重试（不静默丢计费）；P1：announce 哈希是原始
+    // 字节口径 vs 库内规范化口径 → OR 匹配。0477 缓存见 torrent_cache.rs。
+    if let Some(cached) = super::torrent_cache::get(&ev.hash) {
+        return Ok(cached.map(|(id, _size)| id));
+    }
     let torrent: Option<(i64, i64)> = sqlx::query_as(
                 "SELECT id, \
          COALESCE(size, 0) FROM torrents WHERE info_hash = $1 OR raw_info_hash = $1",
@@ -36,8 +35,9 @@ pub(crate) async fn process_event(
     .bind(&ev.hash)
     .fetch_optional(db)
     .await?;
+    super::torrent_cache::put(&ev.hash, torrent);
     let Some((torrent_id, torrent_size)) = torrent else {
-        return Ok(None); // 种子确实不存在：跳过
+        return Ok(None); // 不存在：跳过
     };
 
     let (up_mult, down_mult, kind, global) =
