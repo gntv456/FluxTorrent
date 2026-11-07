@@ -61,7 +61,42 @@ function isAnonymousOk(pathname: string): boolean {
   );
 }
 
-export function middleware(req: NextRequest) {
+/**
+ * 维护开关（0462 补漏）：middleware 跑在页面准入最前面，未登录访客
+ * 此前一律 307 /login，而 /login 用纯净布局、不挂 (main) 的维护门，
+ * 于是「开了维护模式仍看到登录页」。开关从公开端点 site-profile 读
+ * （该端点在 API 维护闸白名单里），30s TTL + fail-open：读挂按未维护
+ * 放行，避免 API 抖动把访客误关进维护页。
+ */
+let maintCached: { on: boolean; until: number } | null = null;
+
+async function siteMaintaining(req: NextRequest): Promise<boolean> {
+  const now = Date.now();
+  if (maintCached && now < maintCached.until) return maintCached.on;
+  let on = false;
+  try {
+    // 优先直连容器网（compose 给 web 注入 API_SERVER_URL）；缺失时
+    // 回落同源 /api（经 rewrites 转发），本地开发同样可用。
+    const base = process.env.API_SERVER_URL?.replace(/\/$/, "");
+    const url = base
+      ? `${base}/api/v1/site-profile`
+      : new URL("/api/v1/site-profile", req.url).toString();
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(1500),
+      cache: "no-store",
+    });
+    const body = (await res.json()) as {
+      data?: { maintenance?: { on?: boolean } };
+    };
+    on = Boolean(body?.data?.maintenance?.on);
+  } catch {
+    on = false;
+  }
+  maintCached = { on, until: now + 30_000 };
+  return on;
+}
+
+export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const hasSession = Boolean(req.cookies.get("flux.session")?.value);
 
@@ -78,6 +113,12 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/torrents", req.url));
     }
     return NextResponse.next();
+  }
+
+  // 维护中：匿名访客落维护页，而不是登录页。/login 仍在 PUBLIC_PATHS
+  // 里，staff 从维护页的「登录」入口进去照常登录（文档口径）。
+  if (await siteMaintaining(req)) {
+    return NextResponse.redirect(new URL("/maintenance", req.url));
   }
 
   const login = new URL("/login", req.url);
