@@ -1687,21 +1687,46 @@
    丁 · 教育四级树（0473）：教育资源组下的学段折叠 + 年级/科目子级。
    结构令牌全走甲乙层既有变量，无新色。
    ════════════════════════════════════════════════════════════ */
-[data-theme="shanhaijing"] .shj-atlas__edutree,
-[data-theme="shanhaijing-light"] .shj-atlas__edutree {
-  padding: 2px 6px 4px 14px;
-}
-[data-theme="shanhaijing"] .shj-atlas__edusub,
-[data-theme="shanhaijing-light"] .shj-atlas__edusub {
+
+/* ── 教育钻取视图（0474）：学段→年级→科目逐页下探 ── */
+[data-theme="shanhaijing"] .shj-atlas__drill,
+[data-theme="shanhaijing-light"] .shj-atlas__drill {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px 4px;
-  padding: 0 10px 4px 30px;
+  flex-direction: column;
+  padding: 8px 6px;
 }
-[data-theme="shanhaijing"] .shj-atlas__edusubj,
-[data-theme="shanhaijing-light"] .shj-atlas__edusubj {
-  min-height: 30px;
-  padding: 3px 8px;
-  font-size: 12.5px;
+[data-theme="shanhaijing"] .shj-atlas__drillback,
+[data-theme="shanhaijing-light"] .shj-atlas__drillback {
+  display: flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--sun);
+  cursor: pointer;
+  font-family: var(--font-wei);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: left;
+}
+[data-theme="shanhaijing"] .shj-atlas__drillback b,
+[data-theme="shanhaijing-light"] .shj-atlas__drillback b {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-weight: 400;
+  max-width: 110px;
+  white-space: nowrap;
+}
+[data-theme="shanhaijing"] .shj-atlas__drillrow,
+[data-theme="shanhaijing-light"] .shj-atlas__drillrow {
+  justify-content: space-between;
+  width: 100%;
+}
+[data-theme="shanhaijing"] .shj-atlas__drillmore,
+[data-theme="shanhaijing-light"] .shj-atlas__drillmore {
   color: var(--text-faint);
 }

@@ -134,6 +134,7 @@ const zhTwBase: Omit<
     home: "首頁",
     library: "資源庫",
     eduRes: "教育資源",
+    eduBack: "返回",    eduAllGrade: "全部年級",    eduAllStage: "全部學段資源",    eduAllRes: "全部教育資源",    eduBrowse: "分級瀏覽",
     eduAll: "全部",    eduStNursery: "幼兒園",    eduStPrimary: "小學",    eduStJunior: "初中",    eduStSenior: "高中",    eduStUni: "大學",    eduGr0: "幼兒園",    eduGr1: "一年級",    eduGr2: "二年級",    eduGr3: "三年級",    eduGr4: "四年級",    eduGr5: "五年級",    eduGr6: "六年級",    eduGr7: "初一",    eduGr8: "初二",    eduGr9: "初三",    eduGr10: "高一",    eduGr11: "高二",    eduGr12: "高三",    eduSubjMath: "數學",    eduSubjChinese: "語文",    eduSubjEnglish: "英語",    eduSubjPhysics: "物理",    eduSubjChemistry: "化學",    eduSubjBiology: "生物",    eduSubjPolitics: "政治",    eduSubjHistory: "歷史",    eduSubjGeography: "地理",
     official: "官種",
     libAll: "全部",

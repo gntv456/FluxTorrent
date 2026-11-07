@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { NavItem, NavGroup } from "@/lib/nav-menu";
+import { ShjAtlasEduDrill } from "@/components/shj-atlas-edu";
 
 /** 山海经「山海图鉴」竖排侧栏（乙 · 结构层）。
  *
@@ -100,8 +101,12 @@ export function ShjAtlas({
       /* 隐私模式读不到就默认展开 */
     }
   }, []);
-  // 教育四级树（0473）：学段折叠态（key = 学段名）
-  const [eduClosed, setEduClosed] = useState<Record<string, boolean>>({});
+  // 教育四级（0474）：钻取视图游标——null=关；stage:-1=学段页；
+  // stage:N=年级页；grade:N=科目页。路由变化由钻取组件自行关闭。
+  const [eduDrill, setEduDrill] = useState<{
+    stage: number;
+    grade: number | null;
+  } | null>(null);
   const toggleRail = () =>
     setRail((r) => {
       try {
@@ -147,6 +152,8 @@ export function ShjAtlas({
     setSearch(window.location.search);
   }, [pathname]);
   const sp = new URLSearchParams(search);
+  // 教育资源项（0474）：唯一带 sub 的一级项
+  const eduItem = primary.find((n) => n.sub) ?? null;
 
   const pathActive = (p: string) =>
     p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(`${p}/`);
@@ -198,68 +205,31 @@ export function ShjAtlas({
         </span>
       </Link>
       <nav className="shj-atlas__scroll">
+        {eduDrill && eduItem ? (
+          <ShjAtlasEduDrill
+            sub={eduItem.sub!}
+            onClose={() => setEduDrill(null)}
+          />
+        ) : (
         <ul className="shj-atlas__list shj-atlas__list--primary">
           {primary.map((n) => (
             <li key={n.href}>
               <ItemLink {...n} />
               {n.sub && (
-                <div className="shj-atlas__edutree">
-                  {n.sub.map((stage) => {
-                    const shut = !!eduClosed[stage.label];
-                    return (
-                      <section
-                        key={stage.label}
-                        className={
-                          `shj-atlas__group${shut ? " is-closed" : ""}`
-                        }
-                      >
-                        <button
-                          type="button"
-                          className="shj-atlas__gtitle"
-                          onClick={() =>
-                            setEduClosed((c) => ({
-                              ...c,
-                              [stage.label]: !c[stage.label],
-                            }))
-                          }
-                        >
-                          <span className="shj-atlas__gname">
-                            {stage.label}
-                          </span>
-                          <span className="shj-atlas__gline" aria-hidden />
-                          <span className="shj-atlas__gcaret" aria-hidden>
-                            ▾
-                          </span>
-                        </button>
-                        <ul className="shj-atlas__list" hidden={shut}>
-                          {stage.items.map((g) => (
-                            <li key={g.href + g.label}>
-                              <ItemLink href={g.href} label={g.label} />
-                              {g.children && (
-                                <div className="shj-atlas__edusub">
-                                  {g.children.map((c) => (
-                                    <Link
-                                      key={c.href + c.label}
-                                      href={c.href}
-                                      className="shj-atlas__item
-                                                 shj-atlas__edusubj"
-                                    >
-                                      {c.label}
-                                    </Link>
-                                  ))}
-                                </div>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    );
-                  })}
-                </div>
+                <button
+                  type="button"
+                  className="shj-atlas__eduedit"
+                  onClick={() => setEduDrill({ stage: -1, grade: null })}
+                  title={n.label}
+                >
+                  <span>{dict.nav.eduBrowse}</span>
+                  <span aria-hidden>›</span>
+                </button>
               )}
             </li>
           ))}
         </ul>
+        )}
         {groups.map((g) => {
           const isClosed = !!closed[g.group];
           const isFly = flyout === g.group;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useMediaQuery } from "@/lib/hooks/use-media";
+import { MainMenuEduDrop } from "@/components/main-menu-edu";
 
 /** 导航（Seedlight §3）：一级平铺 + 「更多 ▾」分组下拉（点击展开，点外部/ESC 收起）。
  *
@@ -99,7 +100,13 @@ export function MainMenu({
   // 叶子的 href 带查询串，直接复用 isActive 的全等判断。
   const hasActiveLeaf = (n: NavItem) =>
     !!n.sub &&
-    n.sub.some((g) => (g.items ?? []).some((leaf) => isActive(leaf.href)));
+    n.sub.some((g) =>
+      (g.items ?? []).some(
+        (leaf) =>
+          isActive(leaf.href) ||
+          (leaf.children ?? []).some((c) => isActive(c.href)),
+      ),
+    );
   const moreActive = (groups ?? []).some((g) =>
     g.items.some((i) => isActive(i.href)),
   );
@@ -136,7 +143,30 @@ export function MainMenu({
               key={n.href}
               className={n.sub ? "relative libmenu" : undefined}
             >
-              {n.sub ? (
+              {n.sub && n.sub.some((g) =>
+                (g.items ?? []).some((i) => i.children),
+              ) ? (
+                // 教育资源级联（0474）：四级树不再平铺，三列逐级展开——
+                // 学段（hover 切列）→ 年级 → 科目直达
+                <>
+                  <Link
+                    href={n.href}
+                    className="mainmenu-link"
+                    data-active={
+                      isActive(n.href) || hasActiveLeaf(n)
+                        ? "true"
+                        : undefined
+                    }
+                  >
+                    {n.label} ▾
+                  </Link>
+                  <MainMenuEduDrop
+                    sub={n.sub}
+                    isActive={isActive}
+                    topHref={n.href}
+                  />
+                </>
+              ) : n.sub ? (
                 // 资源库下拉（2026-10-31）：hover 展开（触屏点按，CSS 里
                 // 有 @media (hover:none) 的 click 口径）；面板二级=全部/
                 // 资源/官种三组，三级=全部+站型顶级分类叶子

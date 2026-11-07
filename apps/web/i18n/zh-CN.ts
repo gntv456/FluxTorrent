@@ -118,6 +118,7 @@ const zhCnBase = {
     home: "首页",
     library: "资源库",
     eduRes: "教育资源",
+    eduBack: "返回",    eduAllGrade: "全部年级",    eduAllStage: "全部学段资源",    eduAllRes: "全部教育资源",    eduBrowse: "分级浏览",
     eduAll: "全部",    eduStNursery: "幼儿园",    eduStPrimary: "小学",    eduStJunior: "初中",    eduStSenior: "高中",    eduStUni: "大学",    eduGr0: "幼儿园",    eduGr1: "一年级",    eduGr2: "二年级",    eduGr3: "三年级",    eduGr4: "四年级",    eduGr5: "五年级",    eduGr6: "六年级",    eduGr7: "初一",    eduGr8: "初二",    eduGr9: "初三",    eduGr10: "高一",    eduGr11: "高二",    eduGr12: "高三",    eduSubjMath: "数学",    eduSubjChinese: "语文",    eduSubjEnglish: "英语",    eduSubjPhysics: "物理",    eduSubjChemistry: "化学",    eduSubjBiology: "生物",    eduSubjPolitics: "政治",    eduSubjHistory: "历史",    eduSubjGeography: "地理",
     official: "官种",
     libAll: "全部",
