@@ -281,14 +281,16 @@ test("buildRawInfo 带标签 / PTGen / official", () => {
   assert.equal(raw.full_mediainfo, agg.detail.mediainfo);
 });
 
-test("转种跳过禁转/官种/首发", () => {
+test("转种跳过禁转/官种/首发/独家", () => {
   const tags = core.desiredTags({
     name: "X.2024",
-    tags: "中字,禁转,官种,首发,官方,DIY",
+    tags: "中字,禁转,官种,首发,官方,独家,DIY",
     official: "1",
-    descr: "禁转 首发 中字",
+    descr: "禁转 首发 中字 本资源为站内独家",
   });
   assert.deepEqual(tags.sort(), ["DIY", "中字"].sort());
+  assert.ok(core.isSkippedTag("独家"));
+  assert.ok(core.isSkippedTag("独家字幕"));
   const agg = {
     torrent: { name: "X", category_id: 1 },
     detail: { descr: "简介", sections: {} },
@@ -298,14 +300,16 @@ test("转种跳过禁转/官种/首发", () => {
         { id: 2, name: "禁转", kind: "plain" },
         { id: 3, name: "首发", kind: "plain" },
         { id: 4, name: "官种", kind: "official" },
+        { id: 5, name: "独家", kind: "plain" },
       ],
-      mine: [1, 2, 3, 4],
+      mine: [1, 2, 3, 4, 5],
     },
   };
   const raw = core.buildRawInfo(agg, { categories: LIVE_CATEGORIES }, "");
   assert.equal(raw.tags, "中字");
   assert.ok(!raw.descr.includes("禁转"), raw.descr);
   assert.ok(!raw.descr.includes("首发"), raw.descr);
+  assert.ok(!raw.descr.includes("标签：独家"), raw.descr);
   assert.ok(raw.descr.includes("中字"), raw.descr);
 });
 
@@ -463,6 +467,67 @@ test("buildRawInfo 从 aggregate 取字段", () => {
   assert.equal(raw.dburl, "https://movie.douban.com/subject/123/");
   assert.equal(raw.team_sel, "FLUX");
   assert.equal(raw.origin_site, "FluxTorrent");
+});
+
+test("种子内文件格式识别内容形态", () => {
+  const bstr = (s) => s.length + ":" + s;
+  const fake = (names, extra) =>
+    "d8:announce" + bstr("https://x/announce") + "4:infod" +
+    names.map((n) => "6:lengthi1e4:pathl" + bstr(n) + "ee").join("") +
+    "e" + (extra || "") + "e";
+  assert.equal(core.contentKindFromFiles(
+    fake(["Movie.2026.2160p.mkv", "Movie.nfo"])), "video");
+  assert.equal(core.contentKindFromFiles(
+    fake(["01.flac", "02.flac", "cover.jpg"])), "audio");
+  assert.equal(core.contentKindFromFiles(
+    fake(["book.pdf", "book.epub"])), "doc");
+  assert.equal(core.contentKindFromFiles(fake(["a.mkv", "b.flac"])),
+    "", "信号不明确应交回 type 兜底");
+  assert.equal(core.fileExtKind("X.MKV"), "video");
+  assert.equal(core.fileExtKind("X.ape"), "audio");
+  assert.equal(core.fileExtKind("X.nfo"), "");
+  // pieces 之类的长串整段跳过，里面裹着 .flac 也不算文件
+  const pieces = "4096:" + "x".repeat(4080) + "track.flac" +
+    "x".repeat(6);
+  assert.equal(pieces.length, 5 + 4096);
+  assert.equal(core.contentKindFromFiles(
+    fake(["Movie.mkv"], pieces)), "video");
+});
+
+test("影视类 media 固定选视频，音乐/学习各归其位", () => {
+  const dict = {
+    kinds: [
+      { kind: "media", label: "媒介" },
+      { kind: "source", label: "来源" },
+    ],
+    media: [
+      { id: 1, name: "视频" }, { id: 2, name: "音频" },
+      { id: 3, name: "文档" }, { id: 9, name: "其他" },
+    ],
+    source: [{ id: 10, name: "WEB-DL" }, { id: 30, name: "BluRay" }],
+  };
+  assert.ok(!core.isContentKindRows(LIVE_SECTIONS.media),
+    "直播站的媒介词表不能被当成内容形态维度");
+  assert.ok(core.isContentKindRows(dict.media));
+  for (const t of ["电影", "剧集", "综艺", "动漫", "纪录", "体育"]) {
+    const plan = core.planTargetFill(
+      { name: "X", type: t, medium_sel: "WEB-DL" },
+      { categories: LIVE_CATEGORIES }, dict);
+    assert.equal(plan.sections.media, "1", t + " 应归视频");
+    assert.equal(plan.sections.source, "10", t + " 媒介维度仍要命中");
+  }
+  const pick = (raw, profile) =>
+    core.planTargetFill(raw, profile || {}, dict).sections.media;
+  assert.equal(pick({ name: "X", type: "音乐" }), "2");
+  assert.equal(pick({ name: "X", type: "学习" }), "3");
+  // 无 type 时从种名/分类兜底
+  assert.equal(pick({ name: "Show.S01E01.1080p" },
+    { categories: LIVE_CATEGORIES }), "1");
+  // 种子格式优先：音乐分类但种子里装的是演唱会视频
+  assert.equal(pick({ name: "X", type: "音乐",
+    content_kind: "video" }), "1");
+  // 都推不出时不强选
+  assert.equal(pick({ name: "X" }), undefined);
 });
 
 console.log("all core tests passed");

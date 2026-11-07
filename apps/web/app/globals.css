@@ -37,6 +37,9 @@
    --surface-card，晚出现不影响（消费点都在其子树内），但便于与
    theme-tide/ui 两层的面板底色声明对照排错。 */
 @import "./styles/glass.css";
+/* 主菜单导航画布（2026-11-07）：两套渲染壳 + 四档主题令牌。
+   排链末，--nvc-* 变量覆盖不被前面的主题层反向影响。 */
+@import "./styles/nav-canvas.css";
 
 /* ⚠️ 娱乐屋样式（arcade.css 55KB + arcade-sweet.css 68KB）已于 2026-10-03
    从本文件移出，改为路由级 import（见 (main)/games/layout.tsx 与

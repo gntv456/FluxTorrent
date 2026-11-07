@@ -130,34 +130,34 @@ export function AdminShell({
     tab_key: "ops",
     min_class: STAFF_CLASS_MIN,
   };
-  // 首页排版（0089）入口：同样恒定注入（后端保存端点要求 SETTINGS_MANAGE=99，
-  // 无权时面板内保存报错；列表仅 sysop 可见，min_class=99）
+  // 首页排版（0089）/视图布局（E6）：保存端点要 layout.manage（0471 起 98 档），
+  // 兜底补注只给达到 min_class 的档位看（0421「外露必须打得开」轴）
   const homeLayoutEntry: PanelEntry = {
     section: "system",
     name: dict.homeLayout.title,
     url: "/admin?tool=homelayout",
     info: dict.homeLayout.hint,
     tab_key: "homelayout",
-    min_class: 99,
+    min_class: 98,
   };
-  // 视图布局（E6）入口：同 homelayout 恒定注入（保存端点 SETTINGS_MANAGE）
   const viewLayoutEntry: PanelEntry = {
     section: "system",
     name: dict.viewLayout.title,
     url: "/admin?tool=viewlayout",
     info: dict.viewLayout.hint,
     tab_key: "viewlayout",
-    min_class: 99,
+    min_class: 98,
   };
-  const withOps = entries.some((e) => e.tab_key === "ops")
-    ? entries
-    : [...entries, opsEntry];
-  const withHome = withOps.some((e) => e.tab_key === "homelayout")
-    ? withOps
-    : [...withOps, homeLayoutEntry];
-  const allEntries = withHome.some((e) => e.tab_key === "viewlayout")
-    ? withHome
-    : [...withHome, viewLayoutEntry];
+  const inject = (list: PanelEntry[], e: PanelEntry): PanelEntry[] =>
+    list.some((x) => x.tab_key === e.tab_key) ||
+    classId === undefined ||
+    classId < e.min_class
+      ? list
+      : [...list, e];
+  const allEntries = inject(
+    inject(inject(entries, opsEntry), homeLayoutEntry),
+    viewLayoutEntry,
+  );
 
   // 59 条过滤，成本可忽略；不用 useMemo —— 它的依赖（labelOf/tipOf/LABEL
   // 都随渲染重建）只会带来 useEffect 依赖陈旧的风险，换不来实际收益。

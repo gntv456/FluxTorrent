@@ -76,11 +76,11 @@ export async function Header() {
             className="flex min-w-0 max-w-[56%] shrink items-center
               gap-2 md:max-w-none"
           >
-            {/* 品牌标记：内置 FluxTorrent 站标（白字深底，浅色/夜间均可见）；
-                站点自定义 logo 走 site_settings.site_logo（登录页品牌图） */}
+            {/* 品牌标记：站点自定义 logo 优先（site_settings.site_logo），
+                空值回落内置站标——与登录页品牌图同一份配置 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/brand/logo-mark.png"
+              src={profile.site_logo?.trim() || "/brand/logo-mark.png"}
               alt=""
               width={30}
               height={30}

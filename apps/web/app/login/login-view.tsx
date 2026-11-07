@@ -19,13 +19,21 @@ import { LoginForm } from "./login-form";
 
 import { useRegisterMode } from "@/lib/use-register-mode";
 
-export function LoginShell() {
+export function LoginShell({
+  brandName,
+  brandLogo,
+}: {
+  brandName?: string | null;
+  brandLogo?: string | null;
+}) {
   const { dict } = useI18n();
   // P-682：mode 未知（探测失败）按邀请制渲染（fail-closed，不虚报开放）
   const openReg = useRegisterMode() ?? false;
   return (
     <main id="main-content">
       <AuthCanvas
+        brandName={brandName}
+        brandLogo={brandLogo}
         title={dict.login.loginTitle}
         desc={dict.login.subtitle}
         heroTag={dict.login.welcome}

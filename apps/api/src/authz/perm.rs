@@ -90,6 +90,9 @@ pub const WIKI_MANAGE: &str = "wiki.manage";
 pub const SUBTITLES_GRANT: &str = "subtitles.grant";
 pub const USERFIELDS_MANAGE: &str = "userfields.manage";
 pub const TERMS_MANAGE: &str = "terms.manage";
+/// 页面排版（0471）：首页排版与视图布局的站点级编辑，自 settings.manage
+/// 拆出——98 档（维护开发员）可保存排版，不连带解锁全部站点设定
+pub const LAYOUT_MANAGE: &str = "layout.manage";
 // 系统
 pub const AUDIT_VIEW: &str = "audit.view";
 pub const SYSLOG_VIEW: &str = "syslog.view";

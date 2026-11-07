@@ -18,6 +18,13 @@ import { advAutoOpen } from "@/app/(main)/torrents/_parts/torrents-utils";
 import { buildTorrentChips } from "@/app/(main)/torrents/_parts/torrents-chips";
 import { MainMenu } from "@/components/main-menu";
 import { zhCN } from "@/i18n/zh-CN";
+import {
+  buildNavTree,
+  claimedPaths,
+  isActive as nodeIsActive,
+  leavesOf,
+  pathToActive,
+} from "@/lib/nav-tree";
 
 // 资源库下拉形状（lib/nav-menu.ts librarySub 产物，取三组各两叶）
 const sub = [
@@ -47,52 +54,89 @@ const sub = [
   },
 ];
 
-/** 渲染 MainMenu 并收集 data-active 的条目文案（query 经 spHolder 注入） */
-function renderMenu(query: string): string[] {
-  spHolder.sp = new URLSearchParams(query);
-  const { container } = render(
-    <MainMenu
-      items={[
-        { href: "/", label: "首页" },
-        { href: "/torrents", label: "资源库", sub },
-      ]}
-      groups={[
-        {
-          group: "更多",
-          items: [{ href: "/torrents?official=1", label: "官种" }],
-        },
-      ]}
-      moreLabel="更多 ▾"
-      ariaLabel="主导航"
-    />,
-  );
-  return Array.from(
-    container.querySelectorAll<HTMLElement>('[data-active="true"]'),
-  ).map((el) => (el.textContent ?? "").trim());
+const menuItems = [
+  { href: "/", label: "首页" },
+  { href: "/torrents", label: "资源库", sub },
+];
+const menuGroups = [
+  {
+    group: "更多",
+    items: [{ href: "/torrents?official=1", label: "官种" }],
+  },
+];
+/* 2026-11-07 导航重构：下拉形态归一成 NavNode 树，点亮口径迁到
+ * lib/nav-tree.ts 的纯函数。原 DOM 断言改为树级断言（口径不变），
+ * 另留一条 DOM 冒烟确认一级条仍输出 data-active。 */
+const tree = buildNavTree(menuItems, menuGroups, "更多 ▾");
+const leaves = leavesOf(tree);
+
+function litLabels(query: string): string[] {
+  const sp = new URLSearchParams(query);
+  const claimed = claimedPaths(leaves, sp);
+  const test = (href: string) =>
+    nodeIsActive(href, "/torrents", sp, claimed);
+  const parents = tree
+    .filter(
+      (n) =>
+        n.children.length &&
+        (test(n.href) ||
+          leavesOf(n.children).some((c) => test(c.href))),
+    )
+    .map((n) => `${n.label} ▾`);
+  const hits = leaves
+    .filter((n) => !n.children.length && test(n.href))
+    .map((n) => n.label);
+  return parents.concat(hits);
 }
 
 describe("症状②：菜单点亮口径（键值全等）", () => {
   it("选「资源-电影」只点亮该叶子，全部-电影/资源-全部不再陪亮", () => {
-    const lit = renderMenu("category_id=1&official=0");
-    expect(lit).toEqual(["资源库 ▾", "电影"]);
+    expect(litLabels("category_id=1&official=0")).toEqual([
+      "资源库 ▾",
+      "电影",
+    ]);
   });
 
   it("全部-电影（单 category_id）与官种-电影（category_id+official=1）互不误亮", () => {
-    expect(renderMenu("category_id=1")).toEqual(["资源库 ▾", "电影"]);
-    expect(renderMenu("category_id=1&official=1")).toEqual([
+    expect(litLabels("category_id=1")).toEqual(["资源库 ▾", "电影"]);
+    expect(litLabels("category_id=1&official=1")).toEqual([
       "资源库 ▾",
       "电影",
     ]);
   });
 
   it("裸 /torrents（无参数）点亮「资源库」与全部组叶子", () => {
-    const lit = renderMenu("");
-    expect(lit).toEqual(["资源库 ▾", "全部"]);
+    expect(litLabels("")).toEqual(["资源库 ▾", "全部"]);
   });
 
   it("翻页/视图参数不破坏点亮（第 3 页仍在资源-电影频道）", () => {
-    const lit = renderMenu("category_id=1&official=0&cursor=abc&view=cards");
-    expect(lit).toEqual(["资源库 ▾", "电影"]);
+    expect(litLabels("category_id=1&official=0&cursor=abc&view=cards"))
+      .toEqual(["资源库 ▾", "电影"]);
+  });
+
+  it("首屏 path 展开到当前选中叶子所在层", () => {
+    const sp = new URLSearchParams("category_id=1&official=0");
+    const claimed = claimedPaths(leaves, sp);
+    const path = pathToActive(tree, (n) =>
+      nodeIsActive(n.href, "/torrents", sp, claimed));
+    expect(path.length).toBeGreaterThan(0);
+    expect(path[0]).toBe("p1");
+  });
+
+  it("一级条仍输出 data-active（DOM 冒烟）", () => {
+    spHolder.sp = new URLSearchParams("category_id=1&official=0");
+    const { container } = render(
+      <MainMenu
+        items={menuItems}
+        groups={menuGroups}
+        moreLabel="更多 ▾"
+        ariaLabel="主导航"
+      />,
+    );
+    const lit = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-active="true"]'),
+    ).map((el) => (el.textContent ?? "").trim());
+    expect(lit).toContain("资源库 ▾");
   });
 });
 

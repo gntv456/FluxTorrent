@@ -231,10 +231,13 @@ pub(crate) async fn dormant_mark(db: &PgPool) -> anyhow::Result<u64> {
     }
     // 档位动作（对已打标者执行；幂等——class_id/archived 条件天然收敛）
     if policy == "demote" {
+        // 只降成长档（class_rules 覆盖 0-12）：20 贵宾 / 21 养老组 /
+        // 91+ 职务档都是特殊身份，休眠不该把它们洗成 class 1。
+        // 旧条件 < 90 连 VIP 一起降（0473 补养老组后同样中招）。
         let demoted = sqlx::query(
             "UPDATE users SET class_id = 1 \
              WHERE dormant_at IS NOT NULL AND class_id > 1 \
-             AND class_id < 90",
+             AND class_id < 20",
         )
         .execute(db)
         .await?;

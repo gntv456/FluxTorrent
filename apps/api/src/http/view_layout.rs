@@ -1,6 +1,6 @@
 //! 视图布局（E6）：种子列表列显隐 + 详情页段落显隐的站点级配置。
 //! 范式照抄 home_layout：单源清单（本文件）+ site_settings 单键 JSON +
-//! sysop 保存端点 + site-profile 下发。**只做显隐不做顺序**——列表列序是
+//! layout.manage 保存端点 + site-profile 下发。**只做显隐不做顺序**——列表列序是
 //! 油猴脚本/爬虫的 DOM 契约（pro_* 语义类同源），段落顺序维持站型默认。
 //!
 //! 与模块开关（MODULE_KEYS）的层级关系：模块关 = 整域硬下线（页面/导航/
@@ -101,7 +101,7 @@ struct ViewHiddenBody {
     works: Vec<String>,
 }
 
-/// 保存视图布局（sysop）：只存「隐藏项」集合，白名单校验后规范化。
+/// 保存视图布局（layout.manage，0471）：只存「隐藏项」集合，白名单校验后规范化。
 /// 传空 = 全恢复默认（全部显示）。
 #[put("/admin/view-hidden")]
 pub async fn admin_view_hidden_put(
@@ -113,7 +113,7 @@ pub async fn admin_view_hidden_put(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SETTINGS_MANAGE,
+        crate::authz::perm::LAYOUT_MANAGE,
     )
     .await?;
     if body.columns.len() > TORRENT_COLUMNS.len()

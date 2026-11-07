@@ -27,8 +27,13 @@ import { backgroundOpacity, cssBackgroundImage } from "@/lib/site-background";
  * i18n 字典——认证页永不因后端故障而空版（同登录页原口径）。
  */
 
-/** 品牌区（站标 / 站名 / 站点说明），失败回落 i18n 字典 */
-function useSiteBrand() {
+/** 品牌区（站标 / 站名 / 站点说明），失败回落 i18n 字典。
+ *  服务端已取到档案的页面可传 initial：SSR 首屏就显示真实站名/logo，
+ *  不再等客户端 effect 拉接口（接口失败会静默留着默认 FluxTorrent）。 */
+function useSiteBrand(
+  initialName?: string | null,
+  initialLogo?: string | null,
+) {
   const { dict } = useI18n();
   const [brand, setBrand] = useState<{
     name: string;
@@ -41,9 +46,9 @@ function useSiteBrand() {
     pageBg: string | null;
     pageBgOpacity: number;
   }>({
-    name: dict.common.brand,
+    name: initialName?.trim() || dict.common.brand,
     desc: dict.login.introDesc,
-    logo: null,
+    logo: initialLogo?.trim() || null,
     bg: null,
     bgOpacity: 50,
     pageBg: null,
@@ -95,8 +100,13 @@ export function AuthCanvas({
   badge,
   notice,
   foot,
+  brandName,
+  brandLogo,
   children,
 }: {
+  /** 服务端预取的站名 / logo（SSR 首屏不回落默认品牌） */
+  brandName?: string | null;
+  brandLogo?: string | null;
   /** 卡片标题（= 页面标题，渲染为该页唯一 h1） */
   title: string;
   /** 卡片说明行（样图：标题下方的浅色副标题） */
@@ -114,7 +124,7 @@ export function AuthCanvas({
   children: React.ReactNode;
 }) {
   const { dict, locale } = useI18n();
-  const b = useSiteBrand();
+  const b = useSiteBrand(brandName, brandLogo);
   const logoSrc = b.logo ?? "/brand/logo-mark.png";
   return (
     <div className="bz-login-page">

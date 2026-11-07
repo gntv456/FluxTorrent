@@ -80,6 +80,8 @@ MATCH_LINES = """\
 // @match        *://fluxtorrent.ptang.top/*
 // @match        *://ft.ptang.top/*
 // @match        *://mfwg.ptang.top/*
+// @match        *://www.hxpt.org/*
+// @match        *://www.hxpt.top/*
 // @match        *://localhost:3000/*
 // @match        *://127.0.0.1:3000/*
 // @match        *://*/torrent/*
@@ -160,7 +162,7 @@ def patch_header(src: str) -> str:
     src = replace_once(
         src,
         "// @version      2.1.1.4",
-        "// @version      2.1.1.4.6",
+        "// @version      2.1.1.4.9",
         "header version",
     )
     src = replace_once(
@@ -212,6 +214,10 @@ def patch_host_prompt(src: str) -> str:
 
 
 def patch_registry(src: str) -> str:
+    # 好学已迁到 FluxTorrent 新架构（www.hxpt.org / www.hxpt.top 同站），
+    # 上游老 URL 恰好就是 https://www.hxpt.org/，注册行无需改；但其
+    # upload.php / NP 表单填充链路已失效，须并入 FluxTorrent 分支（见
+    # patch_jump_href / patch_dup_search / patch_fill_torrent / patch_show_data）。
     anchor = "'好学': {'url': 'https://www.hxpt.org/', 'enable': 1},"
     line = f"    'FluxTorrent': {{'url': '{LIVE_SITE}', 'enable': 1}},"
     return replace_once(
@@ -230,12 +236,50 @@ def patch_jump_href(src: str) -> str:
         "                } else if (key == 'MTeam' || key == 'RouSi') {\n"
         "                    forward_url = used_site_info[key].url + "
         "'upload';\n"
-        "                } else if (key == 'FluxTorrent') {\n"
+        "                } else if (key == 'FluxTorrent' || key == '好学') {\n"
         "                    forward_url = used_site_info[key].url + "
         "'upload';\n"
         "                } else if (key == '影') {"
     )
     return replace_once(src, anchor, added, "set_jump_href")
+
+
+# 查重模式两处默认分支（IMDb 循环 / 普通名循环）会拼 NP 老路径
+# torrents.php，FluxTorrent 架构没有该路由；两处默认 else 前统一插
+# FluxTorrent/好学特判，走 /torrents?search=（默认搜 name/small_descr/
+# descr，正合查重语义）。上游 .format() 的键是 url/.search_name。
+# search_name 含空格/&/#/+ 时必须编码，否则查询串被截断或串参。
+def patch_dup_search(src: str) -> str:
+    pairs = [
+        # IMDb 循环：search_name 即种名（get_search_name 已剥 junk）
+        ("search={url}&search_area=4&search_mode=0", "{'url': url}"),
+        # 普通名循环
+        (
+            "search={name}&search_area=0&search_mode=0",
+            "{'name': search_name}",
+        ),
+    ]
+    for tail, fmt in pairs:
+        anchor = (
+            "                    } else {\n"
+            "                        forward_url = used_site_info[key].url + "
+            f"'torrents.php?incldead=0&spstate=0&inclbookmarked=0&"
+            f"{tail}'.format({fmt});\n"
+            "                    }\n"
+        )
+        added = (
+            "                    } else if (key == 'FluxTorrent' || "
+            "key == '好学') {\n"
+            "                        forward_url = used_site_info[key].url + "
+            "`torrents?search=${encodeURIComponent(search_name)}`;\n"
+            "                    } else {\n"
+            "                        forward_url = used_site_info[key].url + "
+            f"'torrents.php?incldead=0&spstate=0&inclbookmarked=0&"
+            f"{tail}'.format({fmt});\n"
+            "                    }\n"
+        )
+        src = replace_once(src, anchor, added, "dup search " + tail[:24])
+    return src
 
 
 def patch_fill_torrent(src: str) -> str:
@@ -257,14 +301,35 @@ def patch_fill_torrent(src: str) -> str:
         "        $('input[accept=\".torrent\"]')[0].files = "
         "container.files;\n"
         "        $('input[accept=\".torrent\"]')[0].dispatchEvent(i_evt);\n"
-        "    } else if (forward_site == 'FluxTorrent') {\n"
-        "        var fluxInput = document.querySelector(\n"
-        "            '#upload-form input[type=\"file\"][accept*=\".torrent\"]'\n"
-        "        );\n"
+        "    } else if (forward_site == 'FluxTorrent' || "
+        "forward_site == '好学') {\n"
+        "        var fluxForm = document.querySelector('#upload-form');\n"
+        "        var fluxInput = (fluxForm && fluxForm.querySelector(\n"
+        "            'input[type=\"file\"][accept*=\".torrent\"]')) ||\n"
+        "            (fluxForm && fluxForm.querySelector(\n"
+        "            'input[name=\"file\"][type=\"file\"]')) ||\n"
+        "            document.querySelector('input[type=\"file\"]');\n"
         "        if (fluxInput) {\n"
         "            fluxInput.files = container.files;\n"
         "            fluxInput.dispatchEvent(new Event('change', "
         "{ bubbles: true }));\n"
+        "            fluxInput.dispatchEvent(new Event('input', "
+        "{ bubbles: true }));\n"
+        "            try {\n"
+        "                for (var fk in fluxInput) {\n"
+        "                    if (fk.indexOf('__reactProps$') !== 0) "
+        "continue;\n"
+        "                    if (fluxInput[fk] &&\n"
+        "                        typeof fluxInput[fk].onChange === "
+        "'function') {\n"
+        "                        fluxInput[fk].onChange(\n"
+        "                            { target: fluxInput });\n"
+        "                    }\n"
+        "                    break;\n"
+        "                }\n"
+        "            } catch (fluxEvtErr) {}\n"
+        "        } else {\n"
+        "            console.warn('auto_feed: torrent input not found');\n"
         "        }\n"
         "    } else {\n"
         "        $('input[name=file]')[0].files = container.files;\n"
@@ -324,6 +389,25 @@ def patch_auto_feed(src: str) -> str:
     return replace_once(src, old, new, "auto_feed entry")
 
 
+# build_blob_from_torrent 写根级 source 标签用 `forward_site.length`：
+# 这是 UTF-16 长度（'好学'→2），bencode 串长必须按 UTF-8 字节算（→6），
+# 否则产出 6:source2:好学… 长度错位、整枚种子 bdecode 失败。目标为
+# FluxTorrent 架构站（FluxTorrent/好学）时统一写 'FLUXTORRENT'。
+def patch_source_tag(src: str) -> str:
+    anchor = (
+        "        var new_source = `6:source${forward_site.length}:"
+        "${forward_site.toUpperCase()}`;\n"
+    )
+    added = (
+        "        var flux_src_site = (forward_site == 'FluxTorrent' || "
+        "forward_site == '好学')\n"
+        "            ? 'FLUXTORRENT' : forward_site.toUpperCase();\n"
+        "        var new_source = `6:source"
+        "${flux_src_site.length}:${flux_src_site}`;\n"
+    )
+    return replace_once(src, anchor, added, "source tag utf8")
+
+
 def validate(src: str) -> None:
     need = [
         "FluxAutoFeedCore",
@@ -331,10 +415,15 @@ def validate(src: str) -> None:
         "fluxIsTorrentSite",
         "'FluxTorrent': {'url': '" + LIVE_SITE,
         "@match        *://*/upload",
+        "@match        *://www.hxpt.org/*",
+        "@match        *://www.hxpt.top/*",
         "fluxInput.dispatchEvent",
         "torrent_b64_key",
         "flux_torrent_b64",
         "!fluxIsTorrentSite()",
+        "key == 'FluxTorrent' || key == '好学'",
+        "forward_site == 'FluxTorrent' || forward_site == '好学'",
+        "flux_src_site",
     ]
     for marker in need:
         if marker not in src:
@@ -361,8 +450,10 @@ def main() -> None:
     src = patch_host_prompt(src)
     src = patch_registry(src)
     src = patch_jump_href(src)
+    src = patch_dup_search(src)
     src = patch_fill_torrent(src)
     src = patch_add_torrent(src)
+    src = patch_source_tag(src)
     src = patch_auto_feed(src)
     validate(src)
 

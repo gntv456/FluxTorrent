@@ -28,8 +28,10 @@ pub(super) struct MetaRow {
     pub(super) updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-/// 站点设定默认可写门槛（sysop；字段级可经 settings_meta.min_class 放宽）
-pub(super) const SETTINGS_WRITE_MIN: i32 = 99;
+/// 站点设定默认可写门槛：维护开发员（98）起可写，与 0472 的权限档一致。
+/// 字段级可经 settings_meta.min_class 再放宽；admin_http 旧读口也用本常量，
+/// 避免「有 settings.manage 却回 editable=false」的两处漂移。
+pub(crate) const SETTINGS_WRITE_MIN: i32 = 98;
 /// 单次批量保存的字段上限
 pub(super) const MAX_BATCH: usize = 500;
 pub(super) const META_SELECT: &str = "SELECT s.name, m.type AS kind, m.label_zh, m.label_en, m.hint, m.unit, \
@@ -39,7 +41,7 @@ pub(super) const META_SELECT: &str = "SELECT s.name, m.type AS kind, m.label_zh,
         COALESCE(s.grp, 'misc') AS grp, s.value, s.updated_at \
      FROM site_settings s JOIN settings_meta m ON m.name = s.name";
 
-/// 字段可写门槛（meta.min_class 缺省 = sysop）
+/// 字段可写门槛（meta.min_class 缺省 = SETTINGS_WRITE_MIN）
 pub(super) fn write_min(m: &MetaRow) -> i32 {
     m.min_class.unwrap_or(SETTINGS_WRITE_MIN)
 }

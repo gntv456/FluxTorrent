@@ -8,8 +8,8 @@ var FluxAutoFeedCore = (function () {
 
   var LINK_SEP = "#linkstr#";
   // 转种时不自动勾选的标签（含官方同族）：这些是站方/发布组的行政标记，
-  // 不该随内容转载到目标站。
-  var SKIP_TAGS = ["禁转", "官种", "官方", "首发"];
+  // 不该随内容转载到目标站。「独家」是源站专属身份，同样不属于内容。
+  var SKIP_TAGS = ["禁转", "官种", "官方", "首发", "独家"];
 
   function text(v) {
     return v === null || v === undefined ? "" : String(v);
@@ -218,7 +218,7 @@ var FluxAutoFeedCore = (function () {
     if (/粤语|粵語|广东话|廣東話|cantonese/i.test(all)) add("粤语");
     if (/英字|英文字幕|英语字幕|英語字幕/i.test(all)) add("英字");
     if (/DIY/i.test(all)) add("DIY");
-    if (/独家|獨家/i.test(all)) add("独家");
+    // 「独家」是源站行政标记（SKIP_TAGS），不从简介推断带走
     if (/HDR/i.test(all)) add("HDR");
     if (/Dolby Vision|杜比视界/i.test(all)) add("杜比视界");
     if (/特效字幕/i.test(all)) add("特效字幕");
@@ -352,13 +352,16 @@ var FluxAutoFeedCore = (function () {
   function mediumCandidates(upstream) {
     switch (text(upstream)) {
       case "UHD":
-        return ["原盘", "原盤", "蓝光", "藍光", "Blu-ray", "UHD", "2160p"];
+        return ["原盘", "原盤", "蓝光", "藍光", "Blu-ray", "BluRay",
+          "UHD", "2160p"];
       case "Blu-ray":
-        return ["Blu-ray", "蓝光", "藍光", "原盘", "原盤"];
+        return ["Blu-ray", "BluRay", "蓝光", "藍光", "原盘", "原盤"];
       case "Remux":
-        return ["Remux", "原盘", "原盤", "蓝光", "藍光"];
+        return ["Remux", "原盘", "原盤", "蓝光", "藍光", "BluRay",
+          "Blu-ray"];
       case "Encode":
-        return ["重编码", "重編碼", "重压", "重壓", "Encode", "Blu-ray"];
+        return ["重编码", "重編碼", "重压", "重壓", "Encode", "Blu-ray",
+          "BluRay"];
       case "WEB-DL":
         return ["WEB-DL", "WEBRip"];
       case "WEBRip":
@@ -370,6 +373,70 @@ var FluxAutoFeedCore = (function () {
       default:
         return [];
     }
+  }
+
+  /* 内容形态维度（好学 media：视频/音频/文档）需要看种子里装的什么，
+   * 不能只靠分类。bencode 字符串是 <len>:<bytes>；bytesToBin 把每字节
+   * 映射成一个字符，只从 ASCII 数字开头的 token 扫，长串（pieces 哈希）
+   * 整段跳过，避免逐字节回退。同类占比 >= 60% 才算明确信号。 */
+  var VIDEO_EXTS = "|mkv|mp4|avi|ts|m2ts|mts|mov|wmv|flv|rmvb|rm|" +
+    "mpg|mpeg|vob|iso|m4v|webm|3gp|f4v|strm|mpls|";
+  var AUDIO_EXTS = "|flac|mp3|ape|wav|wv|dsf|dff|aiff|alac|" +
+    "m4a|aac|ogg|opus|tak|tta|";
+  var DOC_EXTS = "|pdf|epub|mobi|azw3|txt|chm|djvu|cbr|cbz|" +
+    "doc|docx|";
+
+  function fileExtKind(name) {
+    var m = /\.([a-z0-9]{1,5})$/i.exec(text(name));
+    if (!m) return "";
+    var e = "|" + m[1].toLowerCase() + "|";
+    if (VIDEO_EXTS.indexOf(e) >= 0) return "video";
+    if (AUDIO_EXTS.indexOf(e) >= 0) return "audio";
+    if (DOC_EXTS.indexOf(e) >= 0) return "doc";
+    return "";
+  }
+
+  function contentKindFromFiles(bin) {
+    var s = text(bin);
+    var count = { video: 0, audio: 0, doc: 0 };
+    var total = 0;
+    var i = 0;
+    while (i < s.length) {
+      var c = s.charCodeAt(i);
+      if (c < 48 || c > 57) {
+        i++;
+        continue;
+      }
+      var m = /^(\d{1,7}):/.exec(s.slice(i, i + 9));
+      if (!m) {
+        i++;
+        continue;
+      }
+      var len = parseInt(m[1], 10);
+      var start = i + m[1].length + 1;
+      if (len > 0 && len <= 512 && start + len <= s.length) {
+        var kind = fileExtKind(s.slice(start, start + len));
+        if (kind) {
+          count[kind]++;
+          total++;
+        }
+        i = start + len;
+      } else if (len > 512 && start + len <= s.length) {
+        i = start + len;
+      } else {
+        i++;
+      }
+    }
+    if (!total) return "";
+    var best = "";
+    var bestN = 0;
+    ["video", "audio", "doc"].forEach(function (k) {
+      if (count[k] > bestN) {
+        best = k;
+        bestN = count[k];
+      }
+    });
+    return bestN / total >= 0.6 ? best : "";
   }
 
   function standardCandidates(upstream) {
@@ -549,6 +616,42 @@ var FluxAutoFeedCore = (function () {
     return false;
   }
 
+  /* media/medium/format/source 这些 key 在两类站上语义相反：直播站的
+   * media 词表是 原盘/Blu-ray（媒介），好学是 视频/音频/文档（内容形态）。
+   * 按词表内容分辨，别按 key 硬切，否则会打断既有媒介映射。 */
+  var CONTENT_ROW_MARKS = ["视频", "視頻", "音频", "音頻", "文档",
+    "文檔", "图片", "圖片", "电子书", "電子書"];
+
+  function isContentKindRows(rows) {
+    for (var i = 0; i < rows.length; i++) {
+      if (hasAny(rows[i].name, CONTENT_ROW_MARKS)) return true;
+    }
+    return false;
+  }
+
+  /* 种子文件格式是最直接的证据（载荷 content_kind），分类/种名兜底。
+   * 影视类一律视频；音乐归音频，学习类归文档，推不出就不强选。 */
+  function contentCandidates(raw, profile, catId) {
+    var kind = text(raw.content_kind);
+    if (!kind) {
+      var t = text(raw.type) || guessType(raw.name) ||
+        categoryTypeOf(categoryName(profile.categories, catId));
+      var VIDEO_RE1 = /电影|電影|剧|劇|动漫|動漫|动画|動畫|综艺|綜藝/i;
+      var VIDEO_RE2 = /纪录|紀錄|体育|體育|影视|影視|视频|視頻|MV|短剧/i;
+      if (/音乐|音樂|audio|music/i.test(t)) {
+        kind = "audio";
+      } else if (VIDEO_RE1.test(t) || VIDEO_RE2.test(t)) {
+        kind = "video";
+      } else if (/电子书|電子書|书籍|書籍|图书|圖書|学习|學習/i.test(t)) {
+        kind = "doc";
+      }
+    }
+    if (kind === "video") return ["视频", "視頻", "影片"];
+    if (kind === "audio") return ["音频", "音頻", "音乐", "音樂"];
+    if (kind === "doc") return ["文档", "文檔", "电子书", "電子書"];
+    return [];
+  }
+
   function planTargetFill(raw, profile, secDict) {
     raw = raw || {};
     profile = profile || {};
@@ -581,9 +684,12 @@ var FluxAutoFeedCore = (function () {
       var rows = secDict[k.kind] || [];
       var cands = [];
       var isTeam = false;
-      if (kindMatches(k, ["media", "medium", "format"],
-        ["媒介", "媒体", "媒體", "介质", "介質", "片源", "格式", "media"])) {
-        cands = mediumCandidates(raw.medium_sel);
+      if (kindMatches(k, ["media", "medium", "format", "source"],
+        ["媒介", "媒体", "媒體", "介质", "介質", "片源", "来源", "來源",
+          "格式", "media"])) {
+        cands = isContentKindRows(rows)
+          ? contentCandidates(raw, profile, plan.category_id)
+          : mediumCandidates(raw.medium_sel);
       } else if (kindMatches(k, ["standard", "resolution", "quality"],
         ["分辨率", "解析度", "画质", "畫質", "清晰度", "standard"])) {
         cands = standardCandidates(raw.standard_sel);
@@ -676,6 +782,10 @@ var FluxAutoFeedCore = (function () {
     mediumCandidates: mediumCandidates,
     standardCandidates: standardCandidates,
     codecCandidates: codecCandidates,
+    fileExtKind: fileExtKind,
+    contentKindFromFiles: contentKindFromFiles,
+    isContentKindRows: isContentKindRows,
+    contentCandidates: contentCandidates,
     buildRawInfo: buildRawInfo,
     planTargetFill: planTargetFill,
     encodePayload: encodePayload,

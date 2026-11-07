@@ -7,17 +7,28 @@
  * site_url / location。
  */
 
+/* 部署域名白名单：仅作 meta 指纹缺失时的兜底（本地 dev 没跑 SSR、
+ * 出错页也可能没 head）。新上线的 FluxTorrent 部署（如好学）优先靠
+ * <meta name="generator" content="FluxTorrent"> 指纹识别，不必逐站登记。 */
 var FLUX_SITE_HOSTS = ["ft.ptang.top", "fluxtorrent.ptang.top",
-  "mfwg.ptang.top"];
+  "mfwg.ptang.top", "www.hxpt.org", "www.hxpt.top"];
 
 function fluxIsFluxHost(host) {
   return FLUX_SITE_HOSTS.indexOf(host) >= 0;
 }
 
-function fluxIsTorrentHost() {
+function fluxGeneratorMeta() {
   try {
     var meta = document.querySelector('meta[name="generator"]');
-    if (meta && /flux/i.test(meta.getAttribute("content") || "")) return true;
+    return !!(meta && /flux/i.test(meta.getAttribute("content") || ""));
+  } catch (e) {
+    return false;
+  }
+}
+
+function fluxIsTorrentHost() {
+  if (fluxGeneratorMeta()) return true;
+  try {
     var host = (location.hostname || "").toLowerCase();
     return fluxIsFluxHost(host) || host === "localhost" ||
       host === "127.0.0.1" || host === "::1";
@@ -28,9 +39,8 @@ function fluxIsTorrentHost() {
 
 function fluxIsTorrentSite() {
   if (!fluxIsTorrentHost()) return false;
+  if (fluxGeneratorMeta()) return true;
   try {
-    var meta = document.querySelector('meta[name="generator"]');
-    if (meta && /flux/i.test(meta.getAttribute("content") || "")) return true;
     var host = (location.hostname || "").toLowerCase();
     if (fluxIsFluxHost(host)) return true;
     return !!document.querySelector(
@@ -98,9 +108,16 @@ var FluxAutoFeedAdapter = (function () {
     state.b64Busy = false;
     var mode = fluxSiteMode();
     if (mode === 8) {
-      void handleSource();
+      void handleSource().catch(function (e) {
+        state.lastError = "source: " + errText(e);
+        console.error("[flux-auto-feed]", state.lastError, e);
+      });
     } else if (mode === 9) {
-      void handleTarget();
+      void handleTarget().catch(function (e) {
+        state.lastError = "target: " + errText(e);
+        console.error("[flux-auto-feed]", state.lastError, e);
+        showDiagPanel("自动填充中断：" + errText(e));
+      });
     }
   }
 
@@ -208,6 +225,10 @@ var FluxAutoFeedAdapter = (function () {
       if (bin.indexOf("7:privatei1e") < 0) {
         throw new Error("种子未标记私有");
       }
+      // 种子内文件扩展名是内容形态维度（好学 media：视频/音频/文档）
+      // 的直接证据，随载荷带到目标站；planTargetFill 优先采用它。
+      // 下面 ensureLinks 会重建链接，这里写入不会被旧载荷缓存挡掉。
+      raw.content_kind = core.contentKindFromFiles(bin);
       var safe = await buildSafeTorrent(bin);
       if (!safe) throw new Error("种子清洗失败");
       var key = String(Date.now()) + "-" +
@@ -433,6 +454,197 @@ var FluxAutoFeedAdapter = (function () {
   }
 
   // ------------------------------------------------------------- 目标站
+  /* 目标站直接填种子文件，不绕上游 addTorrent：那条路被
+   * `if (raw.torrent_url)` 挡着，且任一步抛错都会静默降级到跨站
+   * getBlob，用户只看到「文件没加载」却不知道为什么。这里把每一步
+   * 的失败原因带出来，并绕开 jQuery 选择器直接写原生文件框。 */
+  var TORRENT_CACHE_MAX_AGE = 30 * 60 * 1000;
+  var ADAPTER_BUILD = "2026-11-07e";
+
+  function torrentFileInput(form) {
+    var sels = [
+      'input[type="file"][accept*=".torrent"]',
+      'input[name="file"][type="file"]',
+      'input[type="file"]',
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      var el = form.querySelector(sels[i]);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function notifyReactFileInput(input) {
+    // React 的 valueTracker 只盯 value；直接赋 files 后派发原生 change
+    // 未必触发 onChange（文件名提示不更新）。再直接调 props.onChange
+    // 兜底，两路都派一次；onChange 只 setFileName/setFileErr，幂等。
+    try {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    } catch (e) { /* ignore */ }
+    try {
+      var keys = Object.keys(input);
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].indexOf("__reactProps$") !== 0) continue;
+        var props = input[keys[i]];
+        if (props && typeof props.onChange === "function") {
+          props.onChange({ target: input, currentTarget: input });
+        }
+        break;
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /* 异常一律转成结构化失败：绝不冒泡到 handleTarget 的 catch 把
+   * 整段填充标成失败，也不允许一个未回调的 Promise 把 await 挂死。 */
+  async function fillTorrentDirect(raw, form) {
+    try {
+      return await fillTorrentDirectInner(raw, form);
+    } catch (e) {
+      return { ok: false, reason: "直填异常：" + errText(e) };
+    }
+  }
+
+  /* 第三方 PT 站转入时源站不是 FluxTorrent，载荷里没有 b64 缓存键，
+   * 只能跨站拉源站直链。上游 getBlob 也做这件事，但 onerror 只
+   * console.log、拿到 HTML 也不校验，失败完全静默。这里自己拉一遍，
+   * 把 HTTP / 空内容 / 非 bencode / 超时 / 网络错分开报出来。 */
+  function fetchTorrentFromUrl(url) {
+    return new Promise(function (resolve, reject) {
+      if (typeof GM_xmlhttpRequest !== "function") {
+        return reject(new Error("GM_xmlhttpRequest 不可用"));
+      }
+      var done = false;
+      function finish(err, bin) {
+        if (done) return;
+        done = true;
+        if (err) reject(err);
+        else resolve(bin);
+      }
+      try {
+        GM_xmlhttpRequest({
+          method: "GET",
+          url: url,
+          responseType: "arraybuffer",
+          timeout: 20000,
+          onload: function (res) {
+            if (res.status < 200 || res.status >= 300) {
+              return finish(new Error("源站直链 HTTP " + res.status));
+            }
+            var buf = res.response;
+            if (!buf || !buf.byteLength) {
+              return finish(new Error("源站直链返回空内容"));
+            }
+            var bin = bytesToBin(new Uint8Array(buf));
+            if (bin.indexOf("8:announce") < 0) {
+              return finish(new Error(
+                "源站返回的不是 .torrent（登录失效/直链过期/被拦）"));
+            }
+            return finish(null, bin);
+          },
+          onerror: function () {
+            finish(new Error("跨站拉取失败（网络/被源站拒绝）"));
+          },
+          ontimeout: function () {
+            finish(new Error("跨站拉取超时（20s）"));
+          },
+        });
+      } catch (e) {
+        finish(e);
+      }
+    });
+  }
+
+  function buildAndFill(bin, raw, form, input) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = null;
+      function finish(ok, reason) {
+        if (done) return;
+        done = true;
+        if (timer) clearTimeout(timer);
+        resolve({ ok: ok, reason: reason || "" });
+      }
+      // 上游 build_blob_from_torrent 在某些种子上会 alert 后直接
+      // return，callback 永远不来；5 秒兜底，别让填充流程卡死。
+      timer = setTimeout(function () {
+        finish(false, "种子重建超时（5s）");
+      }, 5000);
+      try {
+        build_blob_from_torrent(
+          bin,
+          (location.origin || "") + "/announce",
+          "FluxTorrent", "application/x-bittorrent",
+          function (data) {
+            try {
+              var blob = data && data.data;
+              if (!blob) return finish(false, "种子重建无输出");
+              var name = core.text(raw.torrent_name || raw.name ||
+                "auto_feed") + ".torrent";
+              var file = new window.File([blob], name,
+                { type: "application/x-bittorrent" });
+              var dt = new DataTransfer();
+              dt.items.add(file);
+              input.files = dt.files;
+              notifyReactFileInput(input);
+              var ok = !!(input.files && input.files.length);
+              return finish(ok, ok ? "" : "文件框未接受文件");
+            } catch (e) {
+              return finish(false, "写入文件框失败：" + errText(e));
+            }
+          });
+      } catch (e) {
+        finish(false, "种子重建失败：" + errText(e));
+      }
+    });
+  }
+
+  async function fillTorrentDirectInner(raw, form) {
+    var key = core.text(raw.torrent_b64_key);
+    var bin = "";
+    if (key) {
+      if (typeof GM_getValue !== "function" ||
+        typeof atob !== "function") {
+        return { ok: false, reason: "脚本存储 API 不可用" };
+      }
+      var stored;
+      try {
+        stored = JSON.parse(GM_getValue("flux_torrent_b64") || "null");
+      } catch (e) {
+        return { ok: false, reason: "种子缓存损坏" };
+      }
+      if (!stored || !stored.b64) {
+        return { ok: false, reason: "无种子缓存，回源站重新生成链接" };
+      }
+      if (stored.key !== key) {
+        return { ok: false, reason: "缓存键不匹配（开了多个转载面板？）" };
+      }
+      if (Date.now() - (stored.at || 0) >= TORRENT_CACHE_MAX_AGE) {
+        return { ok: false, reason: "缓存超过 30 分钟，回源站重签" };
+      }
+      bin = atob(stored.b64);
+    } else if (raw.torrent_url) {
+      // 第三方源站：没有预存缓存，直接自己拉直链
+      try {
+        bin = await fetchTorrentFromUrl(raw.torrent_url);
+      } catch (e) {
+        return { ok: false,
+          reason: "源站直链拉取失败：" + errText(e) };
+      }
+    } else {
+      return { ok: false,
+        reason: "载荷无种子缓存键，也无种子直链" };
+    }
+    if (typeof build_blob_from_torrent !== "function") {
+      return { ok: false, reason: "种子重建函数缺失" };
+    }
+    var input = await waitUntil(function () {
+      return torrentFileInput(form);
+    }, 8000);
+    if (!input) return { ok: false, reason: "发布页没找到种子文件框" };
+    return buildAndFill(bin, raw, form, input);
+  }
+
   async function handleTarget() {
     var raw;
     try {
@@ -446,6 +658,17 @@ var FluxAutoFeedAdapter = (function () {
       toast("转载载荷无法解析", true);
       return;
     }
+    // 上游 addTorrent 的 b64 快路径读全局 raw_info（上游本来在 auto_feed()
+    // 目标分支里赋值，我们入口拦截后不会走到）：不同步写全局，种子就会落
+    // 到 getBlob 跨站拉源站签名直链（30 分钟过期/Cloudflare 必挂）。
+    // 适配层与上游 var raw_info 同文件、作用域链可达；strict 模式下链上
+    // 无声明会抛错，兜底挂 window。
+    try {
+      raw_info = raw;
+    } catch (e) {
+      window.raw_info = raw;
+    }
+    state.raw = raw;   // 供 F12 的 _test.diag() 查看载荷字段
     var form = await waitUntil(function () {
       return document.querySelector("#upload-form");
     }, 15000);
@@ -457,6 +680,11 @@ var FluxAutoFeedAdapter = (function () {
     // state 覆盖。fiber/props 键是 React 已接管该节点的可靠信号。
     await waitForHydration(form, 8000);
     toast("正在自动填充…", false);
+    // 种子最优先、独立执行：字段环节（profile/section-dict 两次网络
+    // 请求、分类/维度匹配）任何异常都不该连累种子填充。以前两者在
+    // 同一个 try 里，前面一挂后面全不执行 —— 表现就是「全部没加载」。
+    var seedOk = await fillTorrentSafely(raw, form);
+    var fieldsOk = true;
     try {
       var profile = await fetchProfile();
       var catSel = form.querySelector('select[name="category_id"]') ||
@@ -479,27 +707,47 @@ var FluxAutoFeedAdapter = (function () {
       await applyFields(form, plan);
       await applyTags(form, plan.tags);
       await applySections(form, plan, sec);
-      if (raw.torrent_url) {
-        if (typeof addTorrent === "function") {
-          addTorrent(
-            raw.torrent_url,
-            raw.torrent_name || raw.name,
-            "FluxTorrent",
-            (location.origin || "") + "/announce",
-          );
-        } else {
-          toast("未找到上游 addTorrent，请手动选择种子文件", true);
-          return;
-        }
-      } else {
-        toast("载荷里没有种子直链，请手动下载后选择 .torrent", true);
-        return;
-      }
-      toast("已自动填充，请核对后提交", false);
     } catch (e) {
-      toast("自动填充失败：" + errText(e), true);
-      console.warn("[flux-auto-feed] target failed:", e);
+      fieldsOk = false;
+      state.lastError = "fields: " + errText(e);
+      toast("字段填充失败：" + errText(e), true);
+      console.warn("[flux-auto-feed] fields failed:", e);
     }
+    toast(
+      (fieldsOk ? "字段已填充" : "字段失败") + " / " +
+      (seedOk ? "种子已加载" : "种子见诊断") +
+      " (" + ADAPTER_BUILD + ")",
+      !fieldsOk || !seedOk);
+  }
+
+  async function fillTorrentSafely(raw, form) {
+    var t;
+    try {
+      t = await fillTorrentDirect(raw, form);
+    } catch (e) {
+      t = { ok: false, reason: "直填异常：" + errText(e) };
+    }
+    if (t.ok) return true;
+    state.lastError = "torrent: " + t.reason;
+    console.warn("[flux-auto-feed] 种子未自动加载：" + t.reason);
+    if (raw.torrent_url && typeof addTorrent === "function") {
+      addTorrent(
+        raw.torrent_url,
+        raw.torrent_name || raw.name,
+        "FluxTorrent",
+        (location.origin || "") + "/announce",
+      );
+      // 上游链路可能同样静默失败：4 秒后复查文件框并弹出诊断
+      setTimeout(function () {
+        var inp = torrentFileInput(form);
+        if (!inp || !inp.files || !inp.files.length) {
+          showDiagPanel("种子仍未加载：" + t.reason);
+        }
+      }, 4000);
+    } else {
+      showDiagPanel("种子未自动加载：" + t.reason);
+    }
+    return false;
   }
 
   function hasPlanSections(plan) {
@@ -1079,7 +1327,163 @@ var FluxAutoFeedAdapter = (function () {
   }
 
   // ------------------------------------------------------------- 启动
+  /* F12 控制台跑 FluxAutoFeedAdapter._test.diag() 一次拿到排障状态，
+   * 不用逐个翻 GM 存储 / 载荷 / DOM。 */
+  function diag() {
+    var form = null;
+    var input = null;
+    var cached = null;
+    try {
+      form = document.querySelector("#upload-form");
+      input = form ? torrentFileInput(form) : null;
+    } catch (e) { /* ignore */ }
+    try {
+      cached = typeof GM_getValue === "function"
+        ? JSON.parse(GM_getValue("flux_torrent_b64") || "null")
+        : null;
+    } catch (e) { /* ignore */ }
+    var raw = state.raw;
+    return {
+      build: ADAPTER_BUILD,
+      href: location.href,
+      mode: fluxSiteMode(),
+      isFluxSite: fluxIsTorrentSite(),
+      hasForm: !!form,
+      hasFileInput: !!input,
+      fileCount: input && input.files ? input.files.length : -1,
+      payloadKey: raw ? core.text(raw.torrent_b64_key) : "",
+      cacheKey: cached ? cached.key : "",
+      cacheAgeSec: cached && cached.at
+        ? Math.round((Date.now() - cached.at) / 1000) : -1,
+      hasTorrentUrl: raw ? !!raw.torrent_url : false,
+      lastError: state.lastError || "",
+    };
+  }
+
+  /* 失败时自动弹出持久诊断浮层：不用开 F12，用户点「复制」即可
+   * 把整份状态发回来定位。 */
+  function showDiagPanel(reason) {
+    try {
+      if (state.diagPanel && state.diagPanel.parentNode) {
+        state.diagPanel.parentNode.removeChild(state.diagPanel);
+      }
+      var d = diag();
+      var box = document.createElement("div");
+      box.id = "flux-af-diag";
+      box.style.cssText = "position:fixed;right:16px;top:16px;" +
+        "z-index:2147483647;max-width:440px;padding:14px 16px;" +
+        "border-radius:10px;background:#111827;color:#f9fafb;" +
+        "font:13px/1.5 system-ui,sans-serif;" +
+        "box-shadow:0 12px 32px rgba(0,0,0,.35);" +
+        "border:1px solid #ef4444";
+      var lines = [
+        "auto_feed " + d.build,
+        "原因：" + reason,
+        "mode=" + d.mode + " isFlux=" + d.isFluxSite +
+          " form=" + d.hasForm + " fileInput=" + d.hasFileInput +
+          " files=" + d.fileCount,
+        "payloadKey=" + (d.payloadKey || "(空)") +
+          " cacheKey=" + (d.cacheKey || "(空)") +
+          " age=" + d.cacheAgeSec + "s",
+        "torrentUrl=" + d.hasTorrentUrl +
+          " lastError=" + (d.lastError || "-"),
+        "href=" + d.href.slice(0, 120),
+      ];
+      var pre = document.createElement("pre");
+      pre.textContent = lines.join("\n");
+      pre.style.cssText = "margin:0 0 10px;white-space:pre-wrap;" +
+        "word-break:break-all;font:12px/1.6 monospace";
+      box.appendChild(pre);
+      var copy = document.createElement("button");
+      copy.textContent = "复制诊断信息";
+      copy.style.cssText = "margin-right:8px;padding:4px 10px;" +
+        "cursor:pointer";
+      copy.onclick = function () {
+        try {
+          if (typeof GM_setClipboard === "function") {
+            GM_setClipboard(pre.textContent);
+            copy.textContent = "已复制";
+          }
+        } catch (e) { /* ignore */ }
+      };
+      box.appendChild(copy);
+      // 最终兜底：源站直链确实拉不到时，直接在这里选本地 .torrent，
+      // 由脚本写进被 sr-only 隐藏的正式文件框（省得用户去找）。
+      var hint = document.createElement("div");
+      hint.textContent = "或选本地 .torrent 手动填入：";
+      hint.style.cssText = "margin:10px 0 4px;opacity:.8";
+      box.appendChild(hint);
+      var pick = document.createElement("input");
+      pick.type = "file";
+      pick.accept = ".torrent,application/x-bittorrent";
+      pick.style.cssText = "display:block;font:12px system-ui";
+      pick.onchange = function () {
+        var f = pick.files && pick.files[0];
+        if (!f) return;
+        var target = null;
+        try {
+          var fm = document.querySelector("#upload-form");
+          target = fm ? torrentFileInput(fm) : null;
+        } catch (e) { /* ignore */ }
+        if (!target) {
+          toast("发布页没找到种子文件框", true);
+          return;
+        }
+        try {
+          var dt = new DataTransfer();
+          dt.items.add(f);
+          target.files = dt.files;
+          notifyReactFileInput(target);
+          toast("已手动选入 " + f.name, false);
+        } catch (e) {
+          toast("写入文件框失败：" + errText(e), true);
+        }
+      };
+      box.appendChild(pick);
+      var close = document.createElement("button");
+      close.textContent = "关闭";
+      close.style.cssText = "padding:4px 10px;cursor:pointer";
+      close.onclick = function () {
+        if (box.parentNode) box.parentNode.removeChild(box);
+      };
+      box.appendChild(close);
+      (document.body || document.documentElement).appendChild(box);
+      state.diagPanel = box;
+    } catch (e) {
+      toast(reason, true);
+    }
+  }
+
+  function showBuildBadge() {
+    try {
+      var el = document.createElement("div");
+      el.textContent = "auto_feed " + ADAPTER_BUILD;
+      el.style.cssText = "position:fixed;right:12px;bottom:12px;" +
+        "z-index:2147483647;padding:6px 10px;border-radius:6px;" +
+        "background:#111827;color:#f9fafb;font:12px/1.2 monospace;" +
+        "opacity:.92;pointer-events:none";
+      (document.body || document.documentElement).appendChild(el);
+      setTimeout(function () {
+        el.style.transition = "opacity .6s";
+        el.style.opacity = "0";
+        setTimeout(function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, 700);
+      }, 4000);
+    } catch (e) { /* ignore */ }
+  }
+
   function boot() {
+    console.info("[flux-auto-feed] adapter build " + ADAPTER_BUILD +
+      " (torrent direct-fill + content kind + diag)");
+    try {
+      window.addEventListener("error", function (ev) {
+        if (ev && ev.message) {
+          state.lastError = "window.onerror: " + ev.message;
+        }
+      });
+    } catch (e) { /* ignore */ }
+    if (fluxIsTorrentHost()) showBuildBadge();
     main();
     if (fluxIsTorrentHost()) {
       var lastHref = location.href;
@@ -1101,6 +1505,9 @@ var FluxAutoFeedAdapter = (function () {
       handleTarget: handleTarget,
       applyFields: applyFields,
       setValue: setValue,
+      fillTorrentDirect: fillTorrentDirect,
+      torrentFileInput: torrentFileInput,
+      diag: diag,
       state: state,
     },
   };

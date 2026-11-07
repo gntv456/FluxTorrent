@@ -211,8 +211,7 @@ export function AdminNavGroups({
                   </div>
                 ))}
                 {g.loose?.map((e) => itemRow(e, false))}
-                {(!g.subs || g.subs.length === 0) &&
-                  g.items.map((e) => itemRow(e, false))}
+                {!g.subs && g.items.map((e) => itemRow(e, false))}
               </div>
             )}
           </div>

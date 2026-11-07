@@ -230,12 +230,15 @@ pub async fn admin_reset_pass(
         data_encoding::BASE64URL_NOPAD.encode(&rand::random::<[u8; 16]>())
     );
     let hash = crate::domain::hash_password(&temp_pass)?;
+    // 0472：user.resetpass 下放 98 后，必须挡住「98 重置站长密码接管
+    // 99 账号」。与 ensure_outranks 同口径：目标等级须严格低于操作者。
     let n = sqlx::query(
-        "UPDATE users SET pass_hash=$2, \
-         must_reset_password=true WHERE id=$1 AND status<3",
+        "UPDATE users SET pass_hash=$2, must_reset_password=true \
+         WHERE id=$1 AND status<3 AND class_id < $3",
     )
     .bind(body.user_id)
     .bind(&hash)
+    .bind(auth.class_id)
     .execute(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -269,9 +272,13 @@ pub async fn admin_delete_disabled(
     // inviter_id / audit_log.actor_id）的账号都把整句顶成 500，部分 CASCADE 又静默丢
     // 数据 ⇒ 逐个走 admin_http::delete_user_cascade（同单删口）。`count(*) OVER()` 在
     // LIMIT 前求值：一次查询同时给出本批与存量，界面才报得出「还剩几个」。
+    // 0472：user.delete_disabled 下放 98 后，被封的 99 账号不能让 98
+    // 顺手删掉——目标等级须严格低于操作者（同 ensure_outranks 口径）。
     let ids: Vec<(i64, i64)> = sqlx::query_as(
-        "SELECT id, count(*) OVER() AS total FROM users          WHERE status = 2 ORDER BY id LIMIT 500",
+        "SELECT id, count(*) OVER() AS total FROM users \
+         WHERE status = 2 AND class_id < $1 ORDER BY id LIMIT 500",
     )
+    .bind(auth.class_id)
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;

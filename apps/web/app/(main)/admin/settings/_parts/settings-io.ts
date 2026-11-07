@@ -49,7 +49,7 @@ export function useSettingsTransfer({
   const [importDiff, setImportDiff] = useState<DiffRow[] | null>(null);
   const [importBusy, setImportBusy] = useState(false);
 
-  // ---- 导出（密文默认掩码；明文导出需二次确认且仅 sysop） ----
+  // ---- 导出（密文默认掩码；明文导出需二次确认且要 settings.manage） ----
   async function doExport() {
     try {
       const r = await api.get<ExportPayload>(

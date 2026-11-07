@@ -3,6 +3,7 @@ use serde::Deserialize;
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
+use crate::settings_http::meta::SETTINGS_WRITE_MIN;
 use crate::state::AppState;
 
 use super::guard::staff;
@@ -278,7 +279,7 @@ struct SiteSettingRow {
     grp: Option<String>,
 }
 
-/// 站点设定：sysop（99）只读 + 可写；administrator 只读
+/// 站点设定：98 起可写（0472，与 settings.manage 同档）；其余职员只读
 #[get("/admin/settings")]
 async fn site_settings_get(
     req: HttpRequest,
@@ -299,7 +300,7 @@ async fn site_settings_get(
     .map_err(|e| DomainError::Internal(e.into()))?;
     Ok(ok(serde_json::json!({
         "settings": rows,
-        "editable": auth.class_id >= 99,
+        "editable": auth.class_id >= SETTINGS_WRITE_MIN,
     })))
 }
 

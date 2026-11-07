@@ -117,8 +117,9 @@ struct HomeLayoutItem {
     span: i32,
 }
 
-/// 保存首页排版（sysop，0089）：校验 JSON 结构 + 键白名单 + 去重 + span 白名单，
-/// 规范化后存 site_settings.home_layout。items 传空数组 = 恢复默认排版。
+/// 保存首页排版（layout.manage，0089/0471）：校验 JSON 结构 + 键白名单 +
+/// 去重 + span 白名单，规范化后存 site_settings.home_layout。
+/// items 传空数组 = 恢复默认排版。
 #[put("/admin/home-layout")]
 pub async fn admin_home_layout_put(
     req: HttpRequest,
@@ -129,7 +130,7 @@ pub async fn admin_home_layout_put(
     crate::authz::require_perm(
         &state,
         &auth,
-        crate::authz::perm::SETTINGS_MANAGE,
+        crate::authz::perm::LAYOUT_MANAGE,
     )
     .await?;
     if body.len() > 20 {

@@ -64,7 +64,7 @@ export function SettingsToolbar({
           </p>
         </div>
         <span className="flex-1" />
-        {/* 导出 / 导入（P2 §4.3）：导出对 staff 开放，明文导出与导入仅 sysop */}
+        {/* 导出 / 导入：导出对 staff 开放，明文导出与导入随 editable（98+） */}
         {schema && (
           <>
             {editable && (

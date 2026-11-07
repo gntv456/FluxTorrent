@@ -23,7 +23,8 @@
 `require_perm`。NULL 只按 min_class 放行，于是 90/93 档看得到入口、
 点进去 403——入口与后端不是同一把钥匙。`NAV_REQUIRED_PERM` 是显式
 登记表：工具名 → 权限键；DB 里改坏、迁移漏写、tab_key 改名都会红。
-未登记的 NULL 条目只告警（工作台等确实没有权限判据）。
+未登记的 NULL 条目只告警（工作台等确实没有权限判据）。0472 把 98 档
+下放导航中 14 条 NULL 补成同款键并一并登记，撤键即收起入口。
 
 第五条轴（0421）：反方向也要对齐——有渲染分支（renderSimpleTool 的
 case / page.tsx 的内联分支）却没有 DB 导航项，等于功能只活在手敲的
@@ -64,8 +65,24 @@ NAV_REQUIRED_PERM = {
     "applications": "user.adjust",            # /admin/applications
     # 0421 补的三条（此前只有渲染分支、没有入口，导航与 Ctrl+K 都找不到）
     "ops": "settings.manage",                 # /admin/version + backups + jobs
-    "homelayout": "settings.manage",          # PUT /admin/home-layout
-    "viewlayout": "settings.manage",          # PUT /admin/view-hidden
+    "homelayout": "layout.manage",            # PUT /admin/home-layout
+    "viewlayout": "layout.manage",            # PUT /admin/view-hidden
+    # 0472：98 档下放的 19 条导航里，14 条历史 perm_key 为 NULL，
+    # 现已补成后端首屏读口那把键，登记进来守住「撤键即收起导航」。
+    "deldisabled": "user.delete_disabled",    # 删除被禁用户
+    "mail": "massmail",                       # /admin/massmail
+    "emailbans": "emailban.manage",           # /admin/email-bans
+    "syslog": "syslog.view",                  # /admin/syslog
+    "dbstats": "dbstats.view",                # /admin/db-stats
+    "cleanup": "cleanup.run",                 # /admin/cleanup
+    "maxlogin": "maxlogin.view",              # /admin/maxlogin
+    "locations": "locations.manage",          # /admin/locations
+    "plugins": "plugins.manage",              # /admin/plugins
+    "agentrules": "settings.manage",          # /admin/agent-rules
+    "perm": "settings.manage",                # /admin/permission-matrix
+    "trackers": "tracker.manage",             # /admin/tracker-urls
+    "onboarding": "settings.manage",          # /admin/onboarding
+    "economy": "settings.view",               # /admin/economy-dashboard
 }
 
 # 有意不做成后台导航入口的渲染分支。往这里写名字要带理由——

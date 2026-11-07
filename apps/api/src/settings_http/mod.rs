@@ -19,7 +19,8 @@ mod groups_tests;
 #[cfg(test)]
 mod engine_tests;
 mod history;
-mod meta;
+// 站点设定可写门槛常量被 admin_http 旧读口复用（0472）
+pub(crate) mod meta;
 mod pack_assets;
 mod pack_catalog;
 mod pack_embed;
