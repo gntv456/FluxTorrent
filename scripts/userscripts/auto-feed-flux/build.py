@@ -162,7 +162,7 @@ def patch_header(src: str) -> str:
     src = replace_once(
         src,
         "// @version      2.1.1.4",
-        "// @version      2.1.1.4.9",
+        "// @version      2.1.1.4.10",
         "header version",
     )
     src = replace_once(
@@ -356,15 +356,23 @@ def patch_add_torrent(src: str) -> str:
                     fluxObj.b64 && fluxAge >= 0 &&
                     fluxAge < 30 * 60 * 1000) {
                     var fluxBin = atob(fluxObj.b64);
+                    // 上游在函数后段才清洗 name（剥[源站]前缀、空格转点）；
+                    // 快路径提前 return 绕过了它，这里照抄同款清洗，
+                    // 否则文件名带着源站前缀。
+                    var fluxName = String(name || '')
+                        .replace(/^\\[.*?\\](\\.| )?/, '')
+                        .replace(/ /g, '.')
+                        .replace(/\\.-\\./, '-').trim();
                     build_blob_from_torrent(fluxBin, forward_announce,
                         forward_site, "application/x-bittorrent",
                         function (data) {
                             var fluxBlob = data.data;
                             var fluxFile = new window.File([fluxBlob],
-                                name + '.torrent', { type: fluxBlob.type });
+                                fluxName + '.torrent',
+                                { type: fluxBlob.type });
                             var fluxDt = new DataTransfer();
                             fluxDt.items.add(fluxFile);
-                            fill_torrent(forward_site, fluxDt, name);
+                            fill_torrent(forward_site, fluxDt, fluxName);
                         });
                     return;
                 }

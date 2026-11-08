@@ -43,7 +43,7 @@ test("头部：身份/版本/无自动更新", () => {
   assert.ok(src.includes("// @name         auto_feed (FluxTorrent)"));
   assert.ok(src.includes(
     "// @namespace    https://fluxtorrent.ptang.top/auto-feed"));
-  assert.ok(src.includes("// @version      2.1.1.4.9"));
+  assert.ok(src.includes("// @version      2.1.1.4.10"));
   assert.ok(!src.includes("@updateURL"));
   assert.ok(!/@require\s+https:\/\/greasyfork\.org\//.test(src));
 });
@@ -383,6 +383,79 @@ test("真实 addTorrent b64 快路径：全局 raw_info 命中时种子文件直
   assert.deepEqual(names, ["T.2026.1080p.torrent"], String(names));
   assert.equal(fileInput.dispatched, 2, "change + input 未派发");
   // 快路径命中时不应触发跨站 getBlob（此处无 GM_xmlhttpRequest 依赖即通过）
+});
+
+test("真实 addTorrent b64 快路径：源站[前缀]与空格从文件名剥掉", () => {
+  const at = extractFn(src, "addTorrent");
+  assert.ok(at, "未找到 addTorrent");
+  const fileInput = {
+    files: null,
+    dispatched: 0,
+    dispatchEvent() { this.dispatched++; return true; },
+  };
+  class FakeBlob {
+    constructor(parts) { this.parts = parts; this.type = "application/x-bittorrent"; }
+  }
+  class FakeFile extends FakeBlob {
+    constructor(parts, name) { super(parts); this.name = name; }
+  }
+  class FakeDT {
+    constructor() {
+      this._l = [];
+      const self = this;
+      this.items = { add(f) { self._l.push(f); } };
+    }
+    get files() { return this._l; }
+  }
+  const gmStore = {
+    flux_torrent_b64: JSON.stringify({
+      key: "k1", b64: "eA==", at: Date.now(),
+    }),
+  };
+  let seenSite = null;
+  const deps = {
+    GM_getValue: (k) => gmStore[k],
+    console,
+    alert: () => {},
+    raw_info: {
+      torrent_b64_key: "k1",
+      torrent_name: "[某站] Show 2026 S01 1080p WEB-DL H264-GRP",
+    },
+    atob: () => "x",
+    window: { File: FakeFile },
+    DataTransfer: FakeDT,
+    build_blob_from_torrent: (bin, ann, site, type, cb) => {
+      seenSite = site;
+      cb({ data: new FakeBlob([new Uint8Array([1])]) });
+    },
+    fill_torrent: null,
+  };
+  const fakeForm = { querySelector: () => fileInput };
+  const ftDeps = {
+    $: () => [{ files: null, dispatchEvent: () => true }],
+    document: {
+      querySelector: (sel) =>
+        sel.includes("#upload-form") ? fakeForm : fileInput,
+    },
+    Event: class { constructor(t) { this.type = t; } },
+  };
+  deps.fill_torrent = new Function(
+    ...Object.keys(ftDeps), extractFn(src, "fill_torrent") +
+      "\nreturn fill_torrent;",
+  )(...Object.values(ftDeps));
+  const atFn = new Function(
+    ...Object.keys(deps), at + "\nreturn addTorrent;",
+  )(...Object.values(deps));
+  atFn("https://expired.example/x",
+    "[某站] Show 2026 S01 1080p WEB-DL H264-GRP", "FluxTorrent",
+    "https://fluxtorrent.ptang.top/announce/xx");
+  const names = fileInput.files.map((f) => f.name);
+  // 前缀剥掉、空格转点；发布组尾缀保留（属内容，不剥）
+  assert.deepEqual(
+    names, ["Show.2026.S01.1080p.WEB-DL.H264-GRP.torrent"],
+    String(names),
+  );
+  assert.equal(seenSite, "FluxTorrent");
 });
 
 test("好学线上词表回放：source/standard/codec 全命中", () => {
@@ -780,7 +853,7 @@ test("产物 fill_torrent：Flux 分支多选择器 + React onChange 兜底", ()
 });
 
 test("产物含版本指纹与诊断口（F12 可确认已装新版）", () => {
-  assert.ok(src.includes("// @version      2.1.1.4.9"));
+  assert.ok(src.includes("// @version      2.1.1.4.10"));
   assert.ok(src.includes('ADAPTER_BUILD = "2026-11-07e"'),
     "缺少新版本指纹");
   assert.ok(src.includes("function diag()"), "缺少诊断口");
