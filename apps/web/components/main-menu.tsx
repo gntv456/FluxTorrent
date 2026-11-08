@@ -29,6 +29,8 @@ type Props = {
   groups?: NavGroup[];
   moreLabel?: string;
   ariaLabel: string;
+  /** 面板状态条「进入当前层」文案（dict.nav.goCurrent） */
+  goLabel?: string;
 };
 
 /** 主题偏好由 no-flash 内联脚本写 <html data-theme>，客户端跟随切换。 */
@@ -56,6 +58,7 @@ export function MainMenu({
   groups,
   moreLabel,
   ariaLabel,
+  goLabel = "进入",
 }: Props) {
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -111,6 +114,11 @@ export function MainMenu({
   }, [open]);
 
   const openAt = (id: string | null) => {
+    // 再点同一一级钮 = 收起（toggle）：aria-expanded 与操作语义一致
+    if (open && rootId === id) {
+      setOpen(false);
+      return;
+    }
     setRootId(id);
     setOpen(true);
   };
@@ -121,6 +129,7 @@ export function MainMenu({
     active,
     onClose: () => setOpen(false),
     onNavigate: navigate,
+    goLabel,
   };
 
   return (

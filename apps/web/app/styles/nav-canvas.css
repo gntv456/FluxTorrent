@@ -40,8 +40,31 @@
   font-size: 13px;
 }
 .nvc-anchor { position: relative; }
-.nvc--columns { width: min(1100px, calc(100vw - 36px)); }
+/* 面板宽度随列数收缩（fit-content），上限 1100——「更多」单列不再
+   拖着 85% 空白（2026-11-08 体验批）。lg+ 右锚对齐菜单条右缘：
+   1280 视口左锚会右溢 28px 把「进入」裁掉，右锚后向左展开永不溢出；
+   <lg 面板锚在 lone「更多」钮上，右锚会左溢视口，维持左锚。 */
+.nvc--columns {
+  width: fit-content;
+  max-width: min(1100px, calc(100vw - 36px));
+}
 .nvc--scroll { width: min(760px, calc(100vw - 36px)); }
+@media (min-width: 1024px) {
+  .nvc--columns { left: auto; right: 0; }
+  .nvc--scroll { left: auto; right: 0; }
+}
+/* 面板入场（样图 pop 规格）：轻落 + 渐显 */
+@keyframes nvc-pop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.nvc { animation: nvc-pop .16s ease-out; }
+/* 新列滑入（样图 colIn 规格）：列节点首次挂载才播，旧列复用不重放 */
+@keyframes nvc-colin {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: none; }
+}
+.nvc__col { animation: nvc-colin .16s ease-out; }
 .nvc__head,
 .nvc__crumb,
 .nvc__foot { display: flex; align-items: center; gap: 9px; }
@@ -64,7 +87,7 @@
 }
 .nvc__search {
   flex: 1;
-  min-width: 0;
+  min-width: 200px;
   padding: 7px 10px;
   color: var(--nvc-text);
   background: var(--nvc-input);
@@ -107,10 +130,12 @@
   color: var(--nvc-faint);
   font-size: 11px;
 }
-.nvc__body { position: relative; height: min(56vh, 430px); }
+/* 高度随内容生长、封顶 430（3 行的列不再拖着大片竖向空白）：
+   body 交出固定高，colwin/col 用 max-height 接力，等高拉伸靠 flex 默认 */
+.nvc__body { position: relative; }
 .nvc__colwin {
   display: flex;
-  height: 100%;
+  max-height: min(56vh, 430px);
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
@@ -118,7 +143,7 @@
 .nvc__col {
   flex: 0 0 232px;
   width: 232px;
-  height: 100%;
+  max-height: min(56vh, 430px);
   overflow-y: auto;
   padding: 10px 8px 16px;
   background: var(--nvc-col);
@@ -185,6 +210,58 @@
 }
 .nvc__nav--l { left: 8px; }
 .nvc__nav--r { right: 8px; }
+/* 状态条（2026-11-08）：当前展开层的直进口——一级层也给「进入」，
+ * 横向空间全留给列，当前选层与去向收进这一条 */
+.nvc__status {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 14px;
+  background: var(--nvc-root);
+  border-top: 1px solid var(--nvc-sep);
+}
+.nvc__status-ic {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--nvc-lv-fg);
+  background: var(--nvc-lv-bg);
+  border: 1px solid var(--nvc-line);
+  border-radius: 8px;
+}
+.nvc__status-txt {
+  flex: 1;
+  min-width: 0;
+}
+.nvc__status-txt b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nvc__status-txt i {
+  display: block;
+  overflow: hidden;
+  color: var(--nvc-faint);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nvc__status-go {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  color: var(--nvc-btn-fg);
+  background: var(--nvc-btn);
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.nvc__status-go:hover { filter: brightness(.94); }
 .nvc__scrollbody {
   max-height: min(62vh, 470px);
   padding: 0 14px 14px;
@@ -230,7 +307,8 @@
 }
 .nvc__tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
+  /* auto-fit：册页少时收缩空轨道撑满整行（auto-fill 会留白轨道） */
+  grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
   gap: 9px;
 }
 .nvc__tile {
@@ -278,12 +356,14 @@
   font-size: 11px;
 }
 @media (max-width: 1023px) {
-  .nvc--columns { width: calc(100vw - 24px); }
+  .nvc--columns { width: calc(100vw - 24px); max-width: none; }
   .nvc--scroll { width: calc(100vw - 24px); }
   .nvc__col { flex-basis: 190px; width: 190px; }
   .nvc__tiles { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .nvc { animation: none; }
+  .nvc__col { animation: none; }
   .nvc__colwin { scroll-behavior: auto; }
 }
 
@@ -336,6 +416,8 @@
   --nvc-leaf: #8fdcbd;
   --nvc-lv-bg: rgba(211, 161, 63, .16);
   --nvc-input: #0c1511;
+  --nvc-btn: #d3a13f;
+  --nvc-btn-fg: #241708;
 }
 [data-theme="shanhaijing-light"] .nvc {
   --nvc-active-fg: #a8432c;
@@ -356,6 +438,8 @@
   --nvc-leaf: #2c6b52;
   --nvc-lv-bg: #efe4c9;
   --nvc-input: #fffdf6;
+  --nvc-btn: #a8432c;
+  --nvc-btn-fg: #fff8ef;
   --nvc-r: 6px;
   --nvc-row-r: 3px;
 }

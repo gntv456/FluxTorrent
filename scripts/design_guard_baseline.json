@@ -215,7 +215,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   203
+   213
   ],
   "color": []
  },
@@ -2372,10 +2372,10 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   109,
-   116,
-   132,
-   198
+   113,
+   121,
+   137,
+   204
   ],
   "color": []
  },
@@ -2608,7 +2608,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   41
+   47
   ],
   "color": []
  },
@@ -2818,7 +2818,7 @@
   "h1First": null,
   "palette": [
    36,
-   120
+   122
   ],
   "color": []
  },
@@ -5245,6 +5245,26 @@
   "h1": [],
   "h1First": null,
   "palette": [],
+  "color": []
+ },
+ "components/nav-canvas.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/nav-canvas-parts.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/admin-tasks-metric-form.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   43
+  ],
   "color": []
  }
 }

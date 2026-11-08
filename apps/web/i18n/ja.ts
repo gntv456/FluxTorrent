@@ -100,6 +100,7 @@ export const ja: DeepPartial<Dict> = {
     fun: "エンタメ",
     tabbarMessages: "メッセージ",
     gachaDisclosure: "ガチャ公開",
+    goCurrent: "進む",
   },
   common: {
     brand: "FluxTorrent",

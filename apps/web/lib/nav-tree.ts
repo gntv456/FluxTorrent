@@ -183,6 +183,14 @@ export function nodeById(tree: NavNode[], id: string): NavNode | null {
   return null;
 }
 
+/** 沿 path 取链上节点（含一级）：状态条「进入当前层」要用一级
+ *  节点的 href， crumbs 只覆盖 path[1..]，一级得单独取。 */
+export function nodesAt(tree: NavNode[], path: string[]): NavNode[] {
+  return path
+    .map((id) => nodeById(tree, id))
+    .filter((n): n is NavNode => n !== null);
+}
+
 /** 跨层级搜索：返回命中节点及其完整路径标签。 */
 export function searchNodes(
   tree: NavNode[],
