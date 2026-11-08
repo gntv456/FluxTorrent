@@ -123,7 +123,7 @@ export function UploadFilesBlock({
                 setFileErr(false);
               }}
             />
-            {fileName ? `📎 ${fileName}` : dict.upload.formFileHint}
+            {fileName || dict.upload.formFileHint}
           </label>
         </div>
       </FormRow>
