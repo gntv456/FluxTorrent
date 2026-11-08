@@ -47,15 +47,19 @@ export default async function MainLayout({
   // 侧栏境界签用户摘要：与 Header 同一个 /me/overview（Next 请求记忆化，
   // 同一渲染周期内相同 GET 只发一次，不产生第二个 RTT）；失败回落 null
   const shjOv = await api
-    .get<{ username?: string; class_name?: string; uploaded?: number }>(
-      "/api/v1/me/overview",
-    )
+    .get<{
+      username?: string;
+      class_name?: string;
+      uploaded?: number;
+      avatar_url?: string | null;
+    }>("/api/v1/me/overview")
     .catch(() => null);
   const shjMe = shjOv?.username
     ? {
         username: shjOv.username,
         className: shjOv.class_name ?? "",
         uploaded: `${Math.round((shjOv.uploaded ?? 0) / 1e9)}G`,
+        avatarUrl: shjOv.avatar_url ?? null,
       }
     : null;
   return (
@@ -72,10 +76,8 @@ export default async function MainLayout({
             style={{
               backgroundImage: bg,
               opacity:
-                backgroundOpacity(
-                  profile?.backgrounds?.site?.opacity,
-                  25,
-                ) / 100,
+                backgroundOpacity(profile?.backgrounds?.site?.opacity, 25) /
+                100,
             }}
           />
         );

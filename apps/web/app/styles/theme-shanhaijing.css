@@ -126,10 +126,11 @@
   --r-sm: 4px;
 
   /* ===== 阴影：深黑投影 + hover 微量金晕 ===== */
-  --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.3),
-    0 14px 34px -12px rgba(0, 0, 0, 0.55);
-  --shadow-hover: 0 6px 14px rgba(0, 0, 0, 0.4),
-    0 24px 48px -14px rgba(0, 0, 0, 0.65), 0 0 30px rgba(211, 161, 63, 0.1);
+  --shadow-card:
+    0 2px 6px rgba(0, 0, 0, 0.3), 0 14px 34px -12px rgba(0, 0, 0, 0.55);
+  --shadow-hover:
+    0 6px 14px rgba(0, 0, 0, 0.4), 0 24px 48px -14px rgba(0, 0, 0, 0.65),
+    0 0 30px rgba(211, 161, 63, 0.1);
 
   /* ===== 半透明派生层（深色等效） ===== */
   --row-veil: rgba(21, 33, 26, 0.94);
@@ -272,11 +273,13 @@
      题字 Ma Shan Zheng 仅大字标题（--font-display 消费点均 ≥20px）；
      正文/按钮/表格统一 Noto Serif SC；签条层 ZCOOL XiaoWei 供乙结构层用，
      本层先注册令牌不强制消费。 */
-  --font-display: "Ma Shan Zheng", "Noto Serif SC", "Songti SC",
-    "Source Han Serif SC", "SimSun", serif;
-  --font-serif: "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun",
-    serif;
-  --font-body: "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun",
+  --font-display:
+    "Ma Shan Zheng", "Noto Serif SC", "Songti SC", "Source Han Serif SC",
+    "SimSun", serif;
+  --font-serif:
+    "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun", serif;
+  --font-body:
+    "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun",
     "PingFang SC", "Microsoft YaHei", serif;
   --font-wei: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", serif;
 }
@@ -360,11 +363,7 @@
     #14343a,
     #0a1414 72%
   );
-  --shj-stage-wheel: radial-gradient(
-    120% 130% at 50% 0%,
-    #33270f,
-    #12100a 72%
-  );
+  --shj-stage-wheel: radial-gradient(120% 130% at 50% 0%, #33270f, #12100a 72%);
   --shj-stage-pet: radial-gradient(120% 130% at 50% 0%, #123a2e, #08170f 72%);
 }
 
@@ -535,9 +534,7 @@
   font-size: 9px;
   transition: transform 0.25s;
 }
-[data-theme="shanhaijing"]
-  .shj-atlas__group.is-closed
-  .shj-atlas__gcaret,
+[data-theme="shanhaijing"] .shj-atlas__group.is-closed .shj-atlas__gcaret,
 [data-theme="shanhaijing-light"]
   .shj-atlas__group.is-closed
   .shj-atlas__gcaret {
@@ -622,6 +619,15 @@
   font-family: var(--font-display);
   font-size: 15px;
   transform: rotate(-3deg);
+  overflow: hidden;
+}
+/* 0480 境界签真头像：填满印章框；加载失败 onError 回落首字母，不占位 */
+[data-theme="shanhaijing"] .shj-atlas__rseal img,
+[data-theme="shanhaijing-light"] .shj-atlas__rseal img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
 }
 [data-theme="shanhaijing"] .shj-atlas__rtext,
 [data-theme="shanhaijing-light"] .shj-atlas__rtext {
@@ -651,7 +657,7 @@
 /* ===== 内容让位 + 顶栏/底栏收敛（仅山海经） ===== */
 @media (min-width: 1180px) {
   [data-theme="shanhaijing"] .site-shell,
-[data-theme="shanhaijing-light"] .site-shell {
+  [data-theme="shanhaijing-light"] .site-shell {
     margin-left: var(--shj-nav-w);
   }
 }
@@ -663,11 +669,11 @@
 @media (min-width: 768px) {
   /* ≥768 有侧栏/图标轨：汉堡与底部 TabBar 收起 */
   [data-theme="shanhaijing"] .tide-header .lg\:hidden,
-[data-theme="shanhaijing-light"] .tide-header .lg\:hidden {
+  [data-theme="shanhaijing-light"] .tide-header .lg\:hidden {
     display: none;
   }
   [data-theme="shanhaijing"] .mobile-tabbar,
-[data-theme="shanhaijing-light"] .mobile-tabbar {
+  [data-theme="shanhaijing-light"] .mobile-tabbar {
     display: none;
   }
 }
@@ -675,32 +681,32 @@
 /* ===== 图标轨（768–1179px）：同一份 DOM，文字全收、图标居中 ===== */
 @media (min-width: 768px) and (max-width: 1179.98px) {
   [data-theme="shanhaijing"] .site-shell,
-[data-theme="shanhaijing-light"] .site-shell {
+  [data-theme="shanhaijing-light"] .site-shell {
     margin-left: var(--shj-rail-w);
   }
   [data-theme="shanhaijing"] .shj-atlas,
-[data-theme="shanhaijing-light"] .shj-atlas {
+  [data-theme="shanhaijing-light"] .shj-atlas {
     width: var(--shj-rail-w);
   }
   [data-theme="shanhaijing"] .shj-atlas__brand,
-[data-theme="shanhaijing-light"] .shj-atlas__brand {
+  [data-theme="shanhaijing-light"] .shj-atlas__brand {
     justify-content: center;
     padding: 14px 6px 12px;
   }
   [data-theme="shanhaijing"] .shj-atlas__seal,
-[data-theme="shanhaijing-light"] .shj-atlas__seal {
+  [data-theme="shanhaijing-light"] .shj-atlas__seal {
     width: 38px;
     height: 38px;
     font-size: 16px;
   }
   [data-theme="shanhaijing"] .shj-atlas__brandtext,
-[data-theme="shanhaijing-light"] .shj-atlas__brandtext,
+  [data-theme="shanhaijing-light"] .shj-atlas__brandtext,
   [data-theme="shanhaijing"] .shj-atlas__label,
-[data-theme="shanhaijing-light"] .shj-atlas__label,
+  [data-theme="shanhaijing-light"] .shj-atlas__label,
   [data-theme="shanhaijing"] .shj-atlas__gname,
-[data-theme="shanhaijing-light"] .shj-atlas__gname,
+  [data-theme="shanhaijing-light"] .shj-atlas__gname,
   [data-theme="shanhaijing"] .shj-atlas__rtext,
-[data-theme="shanhaijing-light"] .shj-atlas__rtext {
+  [data-theme="shanhaijing-light"] .shj-atlas__rtext {
     position: absolute;
     overflow: hidden;
     width: 1px;
@@ -710,17 +716,17 @@
   }
   /* 轨态分组标题：点击/悬浮开浮层（带文字第二列） */
   [data-theme="shanhaijing"] .shj-atlas__gtitle,
-[data-theme="shanhaijing-light"] .shj-atlas__gtitle {
+  [data-theme="shanhaijing-light"] .shj-atlas__gtitle {
     justify-content: center;
     cursor: pointer;
   }
   [data-theme="shanhaijing"] .shj-atlas__gcaret,
-[data-theme="shanhaijing-light"] .shj-atlas__gcaret {
+  [data-theme="shanhaijing-light"] .shj-atlas__gcaret {
     display: none;
   }
   /* 轨态浮层：贴轨右缘的全高第二列（仅本宽度段显示） */
   [data-theme="shanhaijing"] .shj-atlas__flyout,
-[data-theme="shanhaijing-light"] .shj-atlas__flyout {
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout {
     position: fixed;
     top: 0;
     bottom: 0;
@@ -735,7 +741,7 @@
     scrollbar-width: thin;
   }
   [data-theme="shanhaijing"] .shj-atlas__ftitle,
-[data-theme="shanhaijing-light"] .shj-atlas__ftitle {
+  [data-theme="shanhaijing-light"] .shj-atlas__ftitle {
     margin: 2px 8px 8px;
     color: var(--sun);
     font-family: var(--font-wei);
@@ -744,7 +750,7 @@
   }
   /* 浮层里的条目文字不能被轨态裁剪规则误伤 */
   [data-theme="shanhaijing"] .shj-atlas__flyout .shj-atlas__label,
-[data-theme="shanhaijing-light"] .shj-atlas__flyout .shj-atlas__label {
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout .shj-atlas__label {
     position: static;
     overflow: hidden;
     width: auto;
@@ -753,7 +759,7 @@
     white-space: nowrap;
   }
   [data-theme="shanhaijing"] .shj-atlas__flyout .shj-atlas__item,
-[data-theme="shanhaijing-light"] .shj-atlas__flyout .shj-atlas__item {
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout .shj-atlas__item {
     justify-content: flex-start;
     padding: 6px 10px;
   }
@@ -761,7 +767,7 @@
 /* 非轨态宽度段：浮层恒隐藏（状态残留也不出声） */
 @media (max-width: 767.98px), (min-width: 1180px) {
   [data-theme="shanhaijing"] .shj-atlas__flyout,
-[data-theme="shanhaijing-light"] .shj-atlas__flyout {
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout {
     display: none;
   }
 }
@@ -769,16 +775,16 @@
   /* 轨宽 64px 扣掉 1px 边线与各 10px 内边距后条目只剩 43px，
      内边距收窄 1px 让命中区补足 --tap-min(44)，且不产生横向溢出。 */
   [data-theme="shanhaijing"] .shj-atlas__scroll,
-[data-theme="shanhaijing-light"] .shj-atlas__scroll {
+  [data-theme="shanhaijing-light"] .shj-atlas__scroll {
     padding-inline: 9px;
   }
   [data-theme="shanhaijing"] .shj-atlas__item,
-[data-theme="shanhaijing-light"] .shj-atlas__item {
+  [data-theme="shanhaijing-light"] .shj-atlas__item {
     justify-content: center;
     padding: 6px 0;
   }
   [data-theme="shanhaijing"] .shj-atlas__realm,
-[data-theme="shanhaijing-light"] .shj-atlas__realm {
+  [data-theme="shanhaijing-light"] .shj-atlas__realm {
     justify-content: center;
     padding: 6px;
   }
@@ -786,7 +792,7 @@
 @media (max-width: 767.98px) {
   /* <768：侧栏隐去，导航交还抽屉 + 底部 TabBar（与生产 M2 一致） */
   [data-theme="shanhaijing"] .shj-atlas,
-[data-theme="shanhaijing-light"] .shj-atlas {
+  [data-theme="shanhaijing-light"] .shj-atlas {
     display: none;
   }
 }
@@ -826,13 +832,13 @@
 /* ===== 动效降级 ===== */
 @media (prefers-reduced-motion: reduce) {
   [data-theme="shanhaijing"] .shj-atlas__item,
-[data-theme="shanhaijing-light"] .shj-atlas__item,
+  [data-theme="shanhaijing-light"] .shj-atlas__item,
   [data-theme="shanhaijing"] .shj-atlas__gcaret,
-[data-theme="shanhaijing-light"] .shj-atlas__gcaret {
+  [data-theme="shanhaijing-light"] .shj-atlas__gcaret {
     transition: none;
   }
   [data-theme="shanhaijing"] .shj-atlas__item:hover,
-[data-theme="shanhaijing-light"] .shj-atlas__item:hover {
+  [data-theme="shanhaijing-light"] .shj-atlas__item:hover {
     transform: none;
   }
 }
@@ -859,11 +865,31 @@
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(1px 1px at 12% 22%, rgba(240, 215, 149, 0.8) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 32% 12%, rgba(236, 228, 207, 0.6) 50%, transparent 51%),
-    radial-gradient(1px 1px at 56% 26%, rgba(240, 215, 149, 0.5) 50%, transparent 51%),
-    radial-gradient(1px 1px at 74% 16%, rgba(236, 228, 207, 0.7) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 90% 30%, rgba(240, 215, 149, 0.5) 50%, transparent 51%);
+    radial-gradient(
+      1px 1px at 12% 22%,
+      rgba(240, 215, 149, 0.8) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 32% 12%,
+      rgba(236, 228, 207, 0.6) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 56% 26%,
+      rgba(240, 215, 149, 0.5) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 74% 16%,
+      rgba(236, 228, 207, 0.7) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 90% 30%,
+      rgba(240, 215, 149, 0.5) 50%,
+      transparent 51%
+    );
   content: "";
   pointer-events: none;
 }
@@ -884,8 +910,20 @@
   height: 62%;
   background: var(--shj-mtn-a);
   clip-path: polygon(
-    0 100%, 0 62%, 9% 44%, 18% 60%, 27% 36%, 36% 58%, 46% 30%,
-    55% 56%, 64% 40%, 74% 62%, 84% 38%, 93% 58%, 100% 46%, 100% 100%
+    0 100%,
+    0 62%,
+    9% 44%,
+    18% 60%,
+    27% 36%,
+    36% 58%,
+    46% 30%,
+    55% 56%,
+    64% 40%,
+    74% 62%,
+    84% 38%,
+    93% 58%,
+    100% 46%,
+    100% 100%
   );
   opacity: 0.85;
 }
@@ -894,8 +932,18 @@
   height: 40%;
   background: var(--shj-mtn-b);
   clip-path: polygon(
-    0 100%, 0 58%, 12% 34%, 22% 62%, 33% 40%, 45% 66%, 57% 36%,
-    68% 60%, 79% 42%, 90% 64%, 100% 48%, 100% 100%
+    0 100%,
+    0 58%,
+    12% 34%,
+    22% 62%,
+    33% 40%,
+    45% 66%,
+    57% 36%,
+    68% 60%,
+    79% 42%,
+    90% 64%,
+    100% 48%,
+    100% 100%
   );
 }
 [data-theme="shanhaijing"] .shj-hero__inner,
@@ -968,7 +1016,7 @@
 }
 @media (max-width: 640px) {
   [data-theme="shanhaijing"] .shj-hero__jades,
-[data-theme="shanhaijing-light"] .shj-hero__jades {
+  [data-theme="shanhaijing-light"] .shj-hero__jades {
     gap: 8px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1028,7 +1076,7 @@
 }
 @media (min-width: 1180px) {
   [data-theme="shanhaijing"] .shj-hero__vtag,
-[data-theme="shanhaijing-light"] .shj-hero__vtag {
+  [data-theme="shanhaijing-light"] .shj-hero__vtag {
     display: block;
   }
 }
@@ -1091,20 +1139,24 @@
 [data-theme="shanhaijing-light"] .nexus-table.torrents-table tbody tr:hover {
   background-color: var(--shj-item-hover-bg);
 }
-[data-theme="shanhaijing"]
-  .nexus-table.torrents-table
-  tbody tr td:first-child,
+[data-theme="shanhaijing"] .nexus-table.torrents-table tbody tr td:first-child,
 [data-theme="shanhaijing-light"]
   .nexus-table.torrents-table
-  tbody tr td:first-child {
+  tbody
+  tr
+  td:first-child {
   box-shadow: inset 2px 0 0 var(--shj-slip-rope); /* 左缘编绳 */
 }
 [data-theme="shanhaijing"]
   .nexus-table.torrents-table
-  tbody tr:hover td:first-child,
+  tbody
+  tr:hover
+  td:first-child,
 [data-theme="shanhaijing-light"]
   .nexus-table.torrents-table
-  tbody tr:hover td:first-child {
+  tbody
+  tr:hover
+  td:first-child {
   box-shadow: inset 2px 0 0 var(--sun); /* hover 金编绳亮显 */
 }
 [data-theme="shanhaijing"] .nexus-table.torrents-table .torrents-name b,
@@ -1201,11 +1253,31 @@
   background-color: var(--surface-page) !important;
   background-image:
     linear-gradient(0deg, rgba(14, 29, 21, 0.85), transparent 34%),
-    radial-gradient(1px 1px at 12% 18%, rgba(240, 215, 149, 0.55) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 34% 9%, rgba(236, 228, 207, 0.45) 50%, transparent 51%),
-    radial-gradient(1px 1px at 58% 22%, rgba(240, 215, 149, 0.4) 50%, transparent 51%),
-    radial-gradient(1px 1px at 78% 13%, rgba(236, 228, 207, 0.5) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 91% 27%, rgba(240, 215, 149, 0.4) 50%, transparent 51%) !important;
+    radial-gradient(
+      1px 1px at 12% 18%,
+      rgba(240, 215, 149, 0.55) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 34% 9%,
+      rgba(236, 228, 207, 0.45) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 58% 22%,
+      rgba(240, 215, 149, 0.4) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 78% 13%,
+      rgba(236, 228, 207, 0.5) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 91% 27%,
+      rgba(240, 215, 149, 0.4) 50%,
+      transparent 51%
+    ) !important;
   background-size: 100% 100% !important;
   background-position: center !important;
 }
@@ -1271,7 +1343,10 @@
 /* ===== 图鉴卡（卡片视图皮肤微调：hover 金边浮起） ===== */
 [data-theme="shanhaijing"] ul li > article[class*="rounded-xl"],
 [data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"] {
-  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s,
+    border-color 0.3s;
 }
 [data-theme="shanhaijing"] ul li > article[class*="rounded-xl"]:hover,
 [data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"]:hover {
@@ -1296,25 +1371,25 @@
 /* ===== 动效降级（乙结构层统一段） ===== */
 @media (prefers-reduced-motion: reduce) {
   [data-theme="shanhaijing"] .shj-hero__inner,
-[data-theme="shanhaijing-light"] .shj-hero__inner {
+  [data-theme="shanhaijing-light"] .shj-hero__inner {
     animation: none;
   }
   [data-theme="shanhaijing"] .torrents-tag--official,
-[data-theme="shanhaijing-light"] .torrents-tag--official,
+  [data-theme="shanhaijing-light"] .torrents-tag--official,
   [data-theme="shanhaijing"] .torrents-tag--sticky,
-[data-theme="shanhaijing-light"] .torrents-tag--sticky,
+  [data-theme="shanhaijing-light"] .torrents-tag--sticky,
   [data-theme="shanhaijing"] .torrents-new,
-[data-theme="shanhaijing-light"] .torrents-new,
+  [data-theme="shanhaijing-light"] .torrents-new,
   [data-theme="shanhaijing"] .torrents-promo,
-[data-theme="shanhaijing-light"] .torrents-promo {
+  [data-theme="shanhaijing-light"] .torrents-promo {
     transform: none;
   }
   [data-theme="shanhaijing"] ul li > article[class*="rounded-xl"],
-[data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"] {
+  [data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"] {
     transition: none;
   }
   [data-theme="shanhaijing"] ul li > article[class*="rounded-xl"]:hover,
-[data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"]:hover {
+  [data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"]:hover {
     transform: none;
   }
 }
@@ -1412,10 +1487,11 @@
   --accent-purple: #46788a;
 
   /* ===== 阴影：宣纸浮起（浅投影 + 微金晕） ===== */
-  --shadow-card: 0 2px 6px rgba(58, 48, 20, 0.08),
-    0 14px 34px -12px rgba(58, 48, 20, 0.16);
-  --shadow-hover: 0 6px 14px rgba(58, 48, 20, 0.1),
-    0 24px 48px -14px rgba(58, 48, 20, 0.2), 0 0 30px rgba(176, 127, 30, 0.08);
+  --shadow-card:
+    0 2px 6px rgba(58, 48, 20, 0.08), 0 14px 34px -12px rgba(58, 48, 20, 0.16);
+  --shadow-hover:
+    0 6px 14px rgba(58, 48, 20, 0.1), 0 24px 48px -14px rgba(58, 48, 20, 0.2),
+    0 0 30px rgba(176, 127, 30, 0.08);
 
   /* ===== 半透明派生层（宣纸等效） ===== */
   --row-veil: rgba(250, 246, 236, 0.94);

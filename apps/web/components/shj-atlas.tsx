@@ -21,58 +21,29 @@ import { ShjAtlasEduDrill } from "@/components/shj-atlas-edu";
  *  useSearchParams——它会要求调用方包 Suspense；改用挂载后读
  *  window.location.search，结果一致且对路由组零侵入。 */
 
-/** href → 图标（emoji，对齐设计样图 V1.2 图鉴图标位） */
-const ICONS: Record<string, string> = {
-  "/": "🏠",
-  "/torrents": "📚",
-  "/forums": "💬",
-  "/upload": "📤",
-  "/top": "🏆",
-  "/requests": "🙏",
-  "/offers": "🎁",
-  "/networks": "📡",
-  "/artists": "🎤",
-  "/seasonal": "🌸",
-  "/subtitles": "📑",
-  "/subtitle-groups": "👥",
-  "/preserve": "🛡️",
-  "/endangered": "🆘",
-  "/teams": "🤝",
-  "/textbooks": "📖",
-  "/shop": "🛒",
-  "/bank": "🏦",
-  "/magic-pool": "🔮",
-  "/tasks": "✅",
-  "/my-spark": "✨",
-  "/me/sparks": "📒",
-  "/classes": "🎓",
-  "/me/exams": "📝",
-  "/me/achievements": "🏅",
-  "/resurrections": "💫",
-  "/medal-wall": "🎖️",
-  "/avatar-frames": "🖼️",
-  "/medals": "🏵️",
-  "/jixiao": "📊",
-  "/invites": "✉️",
-  "/games": "🎮",
-  "/gacha": "🥚",
-  "/farm": "🌾",
-  "/gomoku": "⚫",
-  "/contests": "🏁",
-  "/friends": "🧑‍🤝‍🧑",
-  "/messages": "📨",
-  "/myhr": "⚖️",
-  "/me/subscriptions": "📺",
-  "/faq": "❓",
-  "/clients": "🧭",
-  "/wiki": "📔",
-  "/donate": "💝",
-};
+/** href → 图标（emoji，对齐设计样图 V1.2 图鉴图标位）。46 项逐项字面量
+ *  会挤爆行数门禁，存成空白分隔的「路径 表情」对，启动期解析成 Map。 */
+const ICON_TOKS = `
+/ 🏠 /torrents 📚 /forums 💬 /upload 📤 /top 🏆 /requests 🙏 /offers 🎁
+/networks 📡 /artists 🎤 /seasonal 🌸 /subtitles 📑 /subtitle-groups 👥
+/preserve 🛡️ /endangered 🆘 /teams 🤝 /textbooks 📖 /shop 🛒 /bank 🏦
+/magic-pool 🔮 /tasks ✅ /my-spark ✨ /me/sparks 📒 /classes 🎓 /me/exams 📝
+/me/achievements 🏅 /resurrections 💫 /medal-wall 🎖️ /avatar-frames 🖼️
+/medals 🏵️ /jixiao 📊 /invites ✉️ /games 🎮 /gacha 🥚 /farm 🌾 /gomoku ⚫
+/contests 🏁 /friends 🧑‍🤝‍🧑 /messages 📨 /myhr ⚖️ /me/subscriptions 📺
+/faq ❓ /clients 🧭 /wiki 📔 /donate 💝
+`
+  .split(/\s+/)
+  .filter(Boolean);
+const ICONS = new Map<string, string>();
+for (let i = 0; i < ICON_TOKS.length; i += 2) {
+  ICONS.set(ICON_TOKS[i], ICON_TOKS[i + 1]);
+}
 
 function ico(href: string): string {
   const path = href.split("?")[0];
   if (href.includes("official=1")) return "🏅";
-  return ICONS[path] ?? "🔹";
+  return ICONS.get(path) ?? "🔹";
 }
 
 export function ShjAtlas({
@@ -83,11 +54,20 @@ export function ShjAtlas({
 }: {
   primary: NavItem[];
   groups: NavGroup[];
-  summary: { username: string; className: string; uploaded: string } | null;
+  summary: {
+    username: string;
+    className: string;
+    uploaded: string;
+    avatarUrl?: string | null;
+  } | null;
   brand: string;
 }) {
   const pathname = usePathname();
   const { dict } = useI18n();
+  // 境界签真头像（0480）：/me/overview 的 avatar_url 有图就渲染，加载失败
+  // 回落首字母印章（与 user-menu 同一套 onError 语义）；换号（URL 变化）重置
+  const [avaFailed, setAvaFailed] = useState(false);
+  useEffect(() => setAvaFailed(false), [summary?.avatarUrl]);
   // 折叠组：默认全展开；key = 组名（同源数据，组名稳定）
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   // 整栏折叠（0470）：宽屏用户手动在「236px 展开 ↔ 64px 图标轨」间切换，
@@ -156,7 +136,9 @@ export function ShjAtlas({
   const eduItem = primary.find((n) => n.sub) ?? null;
 
   const pathActive = (p: string) =>
-    p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(`${p}/`);
+    p === "/"
+      ? pathname === "/"
+      : pathname === p || pathname.startsWith(`${p}/`);
   const queryActive = (href: string) => {
     const q = href.split("?")[1];
     if (!q) return false;
@@ -211,24 +193,24 @@ export function ShjAtlas({
             onClose={() => setEduDrill(null)}
           />
         ) : (
-        <ul className="shj-atlas__list shj-atlas__list--primary">
-          {primary.map((n) => (
-            <li key={n.href}>
-              <ItemLink {...n} />
-              {n.sub && (
-                <button
-                  type="button"
-                  className="shj-atlas__eduedit"
-                  onClick={() => setEduDrill({ stage: -1, grade: null })}
-                  title={n.label}
-                >
-                  <span>{dict.nav.eduBrowse}</span>
-                  <span aria-hidden>›</span>
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+          <ul className="shj-atlas__list shj-atlas__list--primary">
+            {primary.map((n) => (
+              <li key={n.href}>
+                <ItemLink {...n} />
+                {n.sub && (
+                  <button
+                    type="button"
+                    className="shj-atlas__eduedit"
+                    onClick={() => setEduDrill({ stage: -1, grade: null })}
+                    title={n.label}
+                  >
+                    <span>{dict.nav.eduBrowse}</span>
+                    <span aria-hidden>›</span>
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
         {groups.map((g) => {
           const isClosed = !!closed[g.group];
@@ -288,9 +270,21 @@ export function ShjAtlas({
       </nav>
       <div className="shj-atlas__foot">
         {summary && (
-          <Link href="/my" className="shj-atlas__realm" title={summary.username}>
+          <Link
+            href="/my"
+            className="shj-atlas__realm"
+            title={summary.username}
+          >
             <span className="shj-atlas__rseal" aria-hidden>
-              {summary.username.slice(0, 1).toUpperCase()}
+              {summary.avatarUrl && !avaFailed ? (
+                <img
+                  src={summary.avatarUrl}
+                  alt=""
+                  onError={() => setAvaFailed(true)}
+                />
+              ) : (
+                summary.username.slice(0, 1).toUpperCase()
+              )}
             </span>
             <span className="shj-atlas__rtext">
               <b>{summary.username}</b>
