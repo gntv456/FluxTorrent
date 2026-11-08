@@ -1,12 +1,16 @@
-scrape_interval: 15s
+# 静态模板：真实 token 由 compose command 入口 sed 注入（prometheus 原生
+# 不支持 yml 变量展开，也没有 expand-env 特性——v3 实测 Unknown option）。
+# 占位符 __ANN_METRICS_TOKEN__ 与 api/tracker 同源（.env ANN_METRICS_TOKEN）。
+global:
+  scrape_interval: 15s
 
 scrape_configs:
   - job_name: flux-api
     metrics_path: /api/v1/metrics
-    # ANN_METRICS_TOKEN 与 api/tracker 同源（.env）；留空时 /metrics 404，本 job 抓不到
+    # 留空 token 时 /metrics 404，本 job 抓不到
     authorization:
       type: Bearer
-      credentials: ${ANN_METRICS_TOKEN}
+      credentials: __ANN_METRICS_TOKEN__
     static_configs:
       - targets: ["api:8080"]
 
@@ -14,6 +18,6 @@ scrape_configs:
     metrics_path: /metrics
     authorization:
       type: Bearer
-      credentials: ${ANN_METRICS_TOKEN}
+      credentials: __ANN_METRICS_TOKEN__
     static_configs:
       - targets: ["tracker:7070"]

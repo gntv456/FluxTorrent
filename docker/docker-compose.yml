@@ -355,10 +355,15 @@ services:
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      # prometheus 原生不展开 yml 里的 ${VAR}——Bearer token 用 .env 注入必须开它
-      - --enable-feature=expand-env
-      - --storage.tsdb.retention.time=30d
+      # 入口 sed 注入 Bearer token（prometheus 原生不展开 yml 变量，无 expand-env
+      # 特性）；模板挂载在 /etc/prometheus/prometheus.yml，产物写 /tmp 再启动
+      - /bin/sh
+      - -c
+      - |
+        sed "s/__ANN_METRICS_TOKEN__/$$ANN_METRICS_TOKEN/g" \
+          /etc/prometheus/prometheus.yml > /tmp/prometheus.yml \
+          && exec prometheus --config.file=/tmp/prometheus.yml \
+               --storage.tsdb.retention.time=30d
     deploy:
       resources:
         limits:
