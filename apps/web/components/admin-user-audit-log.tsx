@@ -4,8 +4,9 @@ import { useI18n } from "@/i18n/client";
 import type { AuditEntryRow } from "./admin-user-detail-shared";
 
 /** 审计现场 → 人话一行（0482）：理由 / 前后值 / 调整增量 / 警告周数，
- *  其余键原样带出（保留取证语义）；解析不了就回落原文。字节增量按 GB。 */
-function renderDetail(raw: string | null): string {
+ *  其余键原样带出（保留取证语义）；解析不了就回落原文。字节增量按 GB。
+ *  理由前缀走 i18n（auditReason）；前缀经参传入保持函数纯。 */
+function renderDetail(raw: string | null, reasonPrefix: string): string {
   if (!raw) return "—";
   let v: unknown;
   try {
@@ -22,7 +23,9 @@ function renderDetail(raw: string | null): string {
       ? `${(n / 1073741824).toFixed(2).replace(/\.?0+$/, "")}GB`
       : compact(n);
   const parts: string[] = [];
-  if (typeof o.reason === "string" && o.reason) parts.push(`理由：${o.reason}`);
+  if (typeof o.reason === "string" && o.reason) {
+    parts.push(`${reasonPrefix}${o.reason}`);
+  }
   if ("before" in o || "after" in o) {
     const side = (x: unknown): string =>
       x !== null && typeof x === "object"
@@ -87,7 +90,7 @@ export function UserAuditLogPanel({
           </thead>
           <tbody>
             {audit?.map((r) => {
-              const detail = renderDetail(r.detail);
+              const detail = renderDetail(r.detail, u.auditReason);
               return (
                 <tr key={r.id}>
                   <td className="text-sub">

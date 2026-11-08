@@ -3886,6 +3886,7 @@ const zhTwBase: Omit<
     tabPreserved: "完成的保種區種子",
     tabPosts: "論壇帖子",
     tabComments: "種子評論",
+    tabChanges: "變更記錄",
     torrentName: "種子",
     colSize: "體積",
     colSL: "做種/下載",
@@ -5638,6 +5639,7 @@ const zhTwBase: Omit<
     auditColActor: "操作者",
     auditColDetail: "詳情",
     auditEmpty: "暫無變更記錄",
+    auditReason: "理由：",
     // 0482 常見審計動作 → 人話；未收錄的回落原 key
     auditActions: {
       "user.rename": "改名",

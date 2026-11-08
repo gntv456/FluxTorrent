@@ -4002,6 +4002,7 @@ const enBase: Omit<
     tabPreserved: "Preserved",
     tabPosts: "Forum posts",
     tabComments: "Comments",
+    tabChanges: "Change log",
     torrentName: "Torrent",
     colSize: "Size",
     colSL: "S/L",
@@ -5853,6 +5854,7 @@ const enBase: Omit<
     auditColActor: "Operator",
     auditColDetail: "Detail",
     auditEmpty: "No change records",
+    auditReason: "Reason: ",
     // 0482 common audit actions → readable labels; unknown keys fall back
     auditActions: {
       "user.rename": "Rename",

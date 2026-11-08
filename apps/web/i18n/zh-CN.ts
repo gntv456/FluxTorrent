@@ -3912,6 +3912,7 @@ const zhCnBase = {
     tabPreserved: "完成的保种区种子",
     tabPosts: "论坛帖子",
     tabComments: "种子评论",
+    tabChanges: "变更记录",
     torrentName: "种子",
     colSize: "体积",
     colSL: "做种/下载",
@@ -5675,6 +5676,7 @@ const zhCnBase = {
     auditColActor: "操作者",
     auditColDetail: "详情",
     auditEmpty: "暂无变更记录",
+    auditReason: "理由：",
     // 0482 常见审计动作 → 人话；未收录的回落原 key
     auditActions: {
       "user.rename": "改名",

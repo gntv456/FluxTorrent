@@ -10,6 +10,8 @@ import type { PetSpecies } from "@/lib/pet-lines";
 import { ProfileHero, StatTiles } from "./_parts/profile-hero";
 import { CenterGrid } from "./_parts/profile-center";
 import { CommentsTab, PostsTab, TorrentListTable } from "./_parts/profile-tabs";
+import { UserAuditLogPanel } from "@/components/admin-user-audit-log";
+import type { AuditEntryRow } from "@/components/admin-user-detail-shared";
 import {
   LIST_TABS,
   LIST_VIEWS,
@@ -51,7 +53,8 @@ export default async function UserProfilePage({
       `/api/v1/users/${encodeURIComponent(uid)}`,
     );
   } catch (e) {
-    if (e instanceof ApiError && e.status === 404) notFound(); else throw e;
+    if (e instanceof ApiError && e.status === 404) notFound();
+    else throw e;
   }
   // 种子列表翻页（2026-11-02）：此前一次 limit=100，窄屏那页要滚很久；
   // 现在每页 20 条 + 翻页条。多取一条用来判「还有没有下一批」。
@@ -147,6 +150,11 @@ export default async function UserProfilePage({
     { key: "posts", label: t.tabPosts, count: data.recent_posts.length },
     { key: "comments", label: t.tabComments, count: p.comments },
   ];
+  // 变更记录（0482c）：仅本人或职员可见（接口同权限，这里只做显隐）
+  const canSeeChanges = !!(data.viewer?.self || data.viewer?.staff);
+  if (canSeeChanges) {
+    tabMeta.push({ key: "changes", label: dict.userDetail.tabAudit });
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -164,9 +172,11 @@ export default async function UserProfilePage({
       {pet?.exists && (
         <section className="up-pet">
           <span className="up-pet-face" aria-hidden>
-            {petLineOf(pet.species ?? "slime")[
-              Math.min((pet.level ?? 1) - 1, 9)
-            ]}
+            {
+              petLineOf(pet.species ?? "slime")[
+                Math.min((pet.level ?? 1) - 1, 9)
+              ]
+            }
           </span>
           <div className="up-pet-meta">
             <b>{pet.name || dict.games.cards.pet.title}</b>
@@ -262,6 +272,23 @@ export default async function UserProfilePage({
           t={t as unknown as Record<string, string>}
         />
       )}
+
+      {/* 变更记录（0482c）：本人/职员可见；SSR 直拉审计回查，失败静默隐卡 */}
+      {active === "changes" && canSeeChanges && <ChangesSection uid={uid} />}
     </div>
   );
+}
+
+/** 变更记录（0482c）：SSR 拉取后交共享审计面板渲染（时间/动作/操作者/详情）；
+ *  接口 403（会话过期等）时安静降级为空态，不炸整页。 */
+async function ChangesSection({ uid }: { uid: number }) {
+  let rows: AuditEntryRow[] = [];
+  try {
+    rows = await api.get<AuditEntryRow[]>(
+      `/api/v1/users/${encodeURIComponent(uid)}/changes`,
+    );
+  } catch {
+    rows = [];
+  }
+  return <UserAuditLogPanel audit={rows} />;
 }

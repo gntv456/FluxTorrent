@@ -71,6 +71,8 @@ export interface ProfileData {
   /** 站长自定义字段（0186）：public 且有值才下发 */
   user_fields?: UserField[];
   profile: Profile;
+  /** 0482c：观看者上下文——本人或职员可见「变更记录」tab */
+  viewer?: { self: boolean; staff: boolean };
   gender: string | null;
   country: string | null;
   isp: string | null;
@@ -132,7 +134,8 @@ export type TorrentLists = {
   preserved: TorrentHistRow[];
 };
 
-/** 憨憨式标签页：个人中心（默认）+ 发布种子/当前做种/当前下载/完成/未完成/保种区 + 论坛动态/评论 */
+/** 憨憨式标签页：个人中心（默认）+ 发布种子/当前做种/当前下载/完成/未完成/保种区 + 论坛动态/评论
+ *  changes = 变更记录（0482c）：本人或职员可见，服务端按 viewer 过滤后再挂 */
 export const TABS = [
   "center",
   "uploads",
@@ -143,5 +146,6 @@ export const TABS = [
   "preserved",
   "posts",
   "comments",
+  "changes",
 ] as const;
 export type Tab = (typeof TABS)[number];

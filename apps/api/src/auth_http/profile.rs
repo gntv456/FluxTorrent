@@ -17,13 +17,12 @@ pub async fn user_public_profile(
     path: web::Path<i64>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    // P2（2026-10-06）：档案页含聚合子查询，可被顺序遍历 id 拉全站——60 次/分
-    // per-user。P-61：这个 60 以前只在注释里，实际共用登录档 5 次/分。
+    // P2：档案页含聚合子查询可被顺序遍历 id 拉全站——60 次/分 per-viewer
+    // （P-61：此前共用登录档 5 次/分）。
     crate::http::throttle_limited(&state, format!("profile:{}", auth.id), 60)
         .await?;
     let uid = path.into_inner();
-    // P-339：观看者的「看头像 / 看签名」两档偏好。读口过去从未引用（两个
-    // 字段全仓只出现在 me_settings_kv 的写侧），因此用户勾掉后就是个无效开关。
+    // P-339：观看者的「看头像 / 看签名」两档偏好（读侧唯二消费点在此）。
     let (view_avatars, view_signatures): (bool, bool) = sqlx::query_as(
         "SELECT view_avatars, view_signatures FROM users WHERE id = $1",
     )
@@ -62,9 +61,8 @@ pub async fn user_public_profile(
         return Err(DomainError::NotFound(uid));
     };
     // —— 竞品口径补充（NP userdetails / UNIT3D profile 共性板块）——
-    // 个人档案列（users 表早已有、此前接口未回）：性别是 INT2 代码（0/1/2 → 保密/男/女），
-    // country/isp 是预留的字典 id（尚无关联表，直接回 id 供前端省略展示）。
-    // 在线判定用 COALESCE：last_seen_at 可能为 NULL（从未活动），NULL > x = NULL 解码进 bool 会炸。
+    // 性别=INT2 代码（0/1/2）；country/isp 是预留字典 id（无关联表，回 id）。
+    // 在线判定 COALESCE：last_seen_at 为 NULL（从未活动）时 NULL>x=NULL，bool 解码会炸。
     let extra: Option<(
         Option<i16>,
         Option<i32>,
@@ -288,6 +286,8 @@ pub async fn user_public_profile(
     let mut body = serde_json::json!({
         "user_fields": user_fields,
         "profile": profile,
+        // 0482c：观看者上下文——本人/职员可看「变更记录」tab（web 端只做显隐）
+        "viewer": { "self": auth.id == uid, "staff": auth.class_id >= 90 },
         "avatar_frame_css": profile.avatar_frame_css,
         "avatar_frame_image": profile.avatar_frame_image,
         "gender": gender, "country": null, "isp": null,
