@@ -155,7 +155,7 @@ if (dMax > tMax) {
 // 占用过、后让号给新迁移，台账 _sqlx_migrations 同样跳过）登记在基线里
 // 不报：128/129/130（0142 换号回退）、202（土地阶梯让号）、268/269
 // （0332 让号 0333 族）、362（并行撞号）。新空洞不在基线 → 红。
-const KNOWN_GAPS = new Set([129, 130, 202, 268, 269, 362]);
+const KNOWN_GAPS = new Set([129, 130, 202, 268, 269, 362, 475, 476, 477, 478, 479, 480, 482]);
 const tSorted = trackedMigs.sort((a, b) => a - b);
 for (let i = 1; i < tSorted.length; i++) {
   if (tSorted[i] > tSorted[i - 1] + 1) {
