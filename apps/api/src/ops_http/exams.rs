@@ -34,6 +34,7 @@ pub(super) async fn my_exams(
                  AND sub.created_at >= c.claimed_at) AS sub_since \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
          WHERE c.user_id = $1 AND t.kind IN ('onboard','periodic') \
+           AND c.canceled_at IS NULL \
          ORDER BY c.claimed_at DESC LIMIT 100",
     )
     .bind(auth.id)

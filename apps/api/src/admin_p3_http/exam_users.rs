@@ -26,6 +26,8 @@ struct ExamUserRow {
     reward_paid: Option<i64>,
     /// 0105 豁免标记：非空 = 暂不参与结算（对标 NP exam-users 的 avoid）
     exempted_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// 0481 收回标记：非空 = 已撤下（结算跳过、会员面板隐藏）
+    canceled_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// 考核记录浏览：kind IN ('onboard','periodic') 的 task_claims，可按用户/任务/状态筛选
@@ -41,7 +43,7 @@ async fn exam_users(
     let rows: Vec<ExamUserRow> = sqlx::query_as(
         "SELECT c.id AS claim_id, t.id AS task_id, t.name AS task_name, t.kind, t.period, \
                 u.id AS user_id, u.username, c.status, c.claimed_at, c.settled_at, c.reward_paid, \
-                c.exempted_at \
+                c.exempted_at, c.canceled_at \
          FROM task_claims c \
          JOIN tasks t ON t.id = c.task_id \
          JOIN users u ON u.id = c.user_id \
@@ -125,4 +127,84 @@ async fn exam_user_recover(
     Ok(ok(
         serde_json::json!({ "claim_id": claim_id, "exempted": false }),
     ))
+}
+
+/// 收回（2026-11-08）：撤下错发/误派的考核记录。
+/// open（status=0/2）：打 canceled 标记即同时离开结算流与会员面板；
+/// 已结算（status=1）且发过奖：标记 + clawback_spark_tx 追回奖励
+/// （地板 0、幂等键 exam_revoke:{claim_id}，流水与余额同一 applied 值）。
+/// 记录行保留不 DELETE：exam_assign 的 NOT EXISTS 以行存在为界——删行
+/// 会让窗口内用户在下个 tick 被重新派发，收回形同虚设。
+#[post("/admin/exam-users/{claim_id}/revoke")]
+async fn exam_user_revoke(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+    path: web::Path<i64>,
+) -> DomainResult<HttpResponse> {
+    let auth = staff(&req, &state).await?;
+    crate::authz::require_perm(&state, &auth, crate::authz::perm::TASK_MANAGE)
+        .await?;
+    let claim_id = path.into_inner();
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    let row: Option<(i64, i16, Option<i64>)> = sqlx::query_as(
+        "SELECT user_id, status, reward_paid FROM task_claims \
+         WHERE id = $1 FOR UPDATE",
+    )
+    .bind(claim_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let Some((user_id, status, reward_paid)) = row else {
+        return Err(DomainError::NotFound(claim_id));
+    };
+    let already: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM task_claims \
+         WHERE id = $1 AND canceled_at IS NOT NULL)",
+    )
+    .bind(claim_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    if already {
+        return Err(DomainError::Validation("该考核记录已被收回".to_string()));
+    }
+    // 追回：只对真发出去过的奖励动手（reward_paid>0 即 settle_complete 落账）
+    let mut clawback = 0i64;
+    if status == 1 {
+        if let Some(paid) = reward_paid.filter(|v| *v > 0) {
+            clawback = crate::economy_http::clawback_spark_tx(
+                &mut tx,
+                user_id,
+                paid,
+                "exam_revoke",
+                &format!("exam_revoke:{claim_id}"),
+            )
+            .await?;
+        }
+    }
+    sqlx::query(
+        "UPDATE task_claims SET canceled_at = now(), canceled_by = $2 \
+         WHERE id = $1",
+    )
+    .bind(claim_id)
+    .bind(auth.id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    state
+        .repo
+        .audit(Some(auth.id), "exam_user.revoke", Some(claim_id))
+        .await;
+    tracing::info!(claim_id, user_id, clawback, "exam claim revoked");
+    Ok(ok(serde_json::json!({
+        "claim_id": claim_id, "revoked": true, "clawback": clawback,
+    })))
 }

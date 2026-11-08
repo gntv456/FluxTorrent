@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ErrorPanel } from "@/components/ui/error-panel";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { kindList } from "./admin-tasks-shared";
 
 /** 考核记录面板（从 admin-tasks.tsx 按域拆出，300 门禁）：
- *  /admin/exam-users 浏览（对标 NP exam-users）+ 0105 豁免/恢复。 */
+ *  /admin/exam-users 浏览（对标 NP exam-users）+ 0105 豁免/恢复
+ *  + 0481 收回（撤下错发记录，已发奖自动走火花流水追回）。 */
 
 interface ExamUserRow {
   claim_id: number;
@@ -23,6 +25,8 @@ interface ExamUserRow {
   reward_paid: number | null;
   /** 0105 豁免标记：非空 = 暂不参与结算 */
   exempted_at: string | null;
+  /** 0481 收回标记：非空 = 已撤下（结算跳过、会员面板隐藏） */
+  canceled_at: string | null;
 }
 
 export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
@@ -37,6 +41,8 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
+  // 0481 收回确认弹窗：带追回提示（已结算发过奖的记录）
+  const [revoking, setRevoking] = useState<ExamUserRow | null>(null);
   const inp =
     "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
 
@@ -71,6 +77,27 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
         `/api/v1/admin/exam-users/${claimId}/${exempt ? "exempt" : "recover"}`,
       );
       flash(exempt ? t.exemptedMsg : t.recoveredMsg);
+      await loadExams();
+    } catch (e) {
+      flash(e instanceof ApiError ? e.message : t.actionFail);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** 收回（0481）：撤下错发记录；已结算发过奖的服务端自动追回。 */
+  async function revoke(claimId: number) {
+    setBusy(true);
+    try {
+      const r = await api.post<{ clawback: number }>(
+        `/api/v1/admin/exam-users/${claimId}/revoke`,
+      );
+      flash(
+        r.clawback > 0
+          ? t.revokedMsg.replace("{n}", r.clawback.toLocaleString())
+          : t.revokedNoClawbackMsg,
+      );
+      setRevoking(null);
       await loadExams();
     } catch (e) {
       flash(e instanceof ApiError ? e.message : t.actionFail);
@@ -145,11 +172,17 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
                 <td className="font-bold">{e.task_name}</td>
                 <td>{KINDS.find((k) => k.v === e.kind)?.label ?? e.kind}</td>
                 <td>
-                  {e.status === 0
-                    ? t.stOngoing
-                    : e.status === 1
-                      ? t.stDone
-                      : t.stFailed}
+                  {e.canceled_at ? (
+                    <span className="font-bold text-[var(--danger-text)]">
+                      {t.canceled}
+                    </span>
+                  ) : e.status === 0 ? (
+                    t.stOngoing
+                  ) : e.status === 1 ? (
+                    t.stDone
+                  ) : (
+                    t.stFailed
+                  )}
                 </td>
                 <td className="text-sub">
                   {new Date(e.claimed_at).toLocaleString()}
@@ -168,24 +201,35 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
                   )}
                 </td>
                 <td className="text-right">
-                  {e.status === 0 &&
-                    (e.exempted_at ? (
-                      <button
-                        className="cmgmt-act"
-                        disabled={busy}
-                        onClick={() => setExempt(e.claim_id, false)}
-                      >
-                        {t.recoverBtn}
-                      </button>
-                    ) : (
+                  {e.canceled_at ? null : (
+                    <>
                       <button
                         className="cmgmt-act cmgmt-act--danger"
                         disabled={busy}
-                        onClick={() => setExempt(e.claim_id, true)}
+                        onClick={() => setRevoking(e)}
                       >
-                        {t.exemptBtn}
+                        {t.revokeBtn}
                       </button>
-                    ))}
+                      {e.status === 0 &&
+                        (e.exempted_at ? (
+                          <button
+                            className="cmgmt-act"
+                            disabled={busy}
+                            onClick={() => setExempt(e.claim_id, false)}
+                          >
+                            {t.recoverBtn}
+                          </button>
+                        ) : (
+                          <button
+                            className="cmgmt-act cmgmt-act--danger"
+                            disabled={busy}
+                            onClick={() => setExempt(e.claim_id, true)}
+                          >
+                            {t.exemptBtn}
+                          </button>
+                        ))}
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -203,6 +247,26 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
           </tbody>
         </table>
       </div>
+      {/* 收回确认（0481）：已结算发过奖的记录提示将追回奖励 */}
+      <ConfirmDialog
+        open={revoking !== null}
+        onClose={() => {
+          if (!busy) setRevoking(null);
+        }}
+        onConfirm={() => revoking && void revoke(revoking.claim_id)}
+        title={t.revokeTitle}
+        message={t.revokeMsg.replace(
+          "{clawback}",
+          revoking && revoking.status === 1 && (revoking.reward_paid ?? 0) > 0
+            ? t.revokeClawback.replace(
+                "{n}",
+                (revoking.reward_paid ?? 0).toLocaleString(),
+              )
+            : "",
+        )}
+        busy={busy}
+        confirmLabel={t.revokeConfirm}
+      />
     </section>
   );
 }

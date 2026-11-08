@@ -42,7 +42,8 @@ pub(super) async fn records(
                  c.user_id AND sub.deleted_at IS NULL \
                  AND sub.created_at >= c.claimed_at) AS sub_since \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
-         WHERE c.user_id = $1 ORDER BY c.id DESC LIMIT 20",
+         WHERE c.user_id = $1 AND c.canceled_at IS NULL \
+         ORDER BY c.id DESC LIMIT 20",
     )
     .bind(uid)
     .fetch_all(&state.repo.db)

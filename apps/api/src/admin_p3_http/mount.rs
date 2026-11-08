@@ -91,6 +91,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(exam_users)
         .service(exam_user_exempt)
         .service(exam_user_recover)
+        .service(exam_user_revoke)
         .service(tracker_urls_list)
         .service(tracker_url_add)
         .service(tracker_url_update)

@@ -67,9 +67,11 @@ const enBase: Omit<
     themeNext: "click to cycle",
     // Category icon set names / notes (consumed via labelKey/noteKey in lib/cat-icon-sets.ts)
     catIconSetShanhaijing: "Mythica · Gilt Prop Medallions",
-    catIconSetShanhaijingNote: "Dark medallions with gilt props; legible from 22px",
+    catIconSetShanhaijingNote:
+      "Dark medallions with gilt props; legible from 22px",
     catIconSetAurora: "Aurora · Gradient App Icons",
-    catIconSetAuroraNote: "Light rounded tiles with gradient glyphs; legible at 16px",
+    catIconSetAuroraNote:
+      "Light rounded tiles with gradient glyphs; legible at 16px",
     globalSearchPh: "Search torrents / posts…",
     globalSearchBtn: "Search",
     gsTorrents: "Torrents",
@@ -135,8 +137,39 @@ const enBase: Omit<
     home: "Home",
     library: "Library",
     eduRes: "Education",
-    eduBack: "Back",    eduAllGrade: "All grades",    eduAllStage: "All resources",    eduAllRes: "All education",    eduBrowse: "Browse by level",
-    eduAll: "All",    eduStNursery: "Nursery",    eduStPrimary: "Primary",    eduStJunior: "Junior",    eduStSenior: "Senior",    eduStUni: "University",    eduGr0: "Nursery",    eduGr1: "Grade 1",    eduGr2: "Grade 2",    eduGr3: "Grade 3",    eduGr4: "Grade 4",    eduGr5: "Grade 5",    eduGr6: "Grade 6",    eduGr7: "Grade 7",    eduGr8: "Grade 8",    eduGr9: "Grade 9",    eduGr10: "Grade 10",    eduGr11: "Grade 11",    eduGr12: "Grade 12",    eduSubjMath: "Math",    eduSubjChinese: "Chinese",    eduSubjEnglish: "English",    eduSubjPhysics: "Physics",    eduSubjChemistry: "Chemistry",    eduSubjBiology: "Biology",    eduSubjPolitics: "Politics",    eduSubjHistory: "History",    eduSubjGeography: "Geography",
+    eduBack: "Back",
+    eduAllGrade: "All grades",
+    eduAllStage: "All resources",
+    eduAllRes: "All education",
+    eduBrowse: "Browse by level",
+    eduAll: "All",
+    eduStNursery: "Nursery",
+    eduStPrimary: "Primary",
+    eduStJunior: "Junior",
+    eduStSenior: "Senior",
+    eduStUni: "University",
+    eduGr0: "Nursery",
+    eduGr1: "Grade 1",
+    eduGr2: "Grade 2",
+    eduGr3: "Grade 3",
+    eduGr4: "Grade 4",
+    eduGr5: "Grade 5",
+    eduGr6: "Grade 6",
+    eduGr7: "Grade 7",
+    eduGr8: "Grade 8",
+    eduGr9: "Grade 9",
+    eduGr10: "Grade 10",
+    eduGr11: "Grade 11",
+    eduGr12: "Grade 12",
+    eduSubjMath: "Math",
+    eduSubjChinese: "Chinese",
+    eduSubjEnglish: "English",
+    eduSubjPhysics: "Physics",
+    eduSubjChemistry: "Chemistry",
+    eduSubjBiology: "Biology",
+    eduSubjPolitics: "Politics",
+    eduSubjHistory: "History",
+    eduSubjGeography: "Geography",
     official: "Official",
     libAll: "All",
     libRes: "Resources",
@@ -714,7 +747,8 @@ const enBase: Omit<
     applyForCode: "No invite code? Apply for one",
     usernameHint: "Your username cannot be changed after registration",
     termsNote: "By registering you agree to the site rules and privacy policy",
-    windowSlots: "{left}/{total} spots left this round (invite signups don't count)",
+    windowSlots:
+      "{left}/{total} spots left this round (invite signups don't count)",
     windowUntil: "until {t}",
     windowNoLimit: "No spot limit this round",
     windowSoon:
@@ -894,8 +928,10 @@ const enBase: Omit<
       "Self-serve promo slot, requires promotion permission; default 48h (1-720)",
     anonymous: "Publish anonymously",
     hrPunish: "H&R penalty",
-    hrPunishHint: "If enabled, you receive a share of the pardon fee when downloaders fail H&R",
-    bb2mdHint: "Convert BBCode tags in the description to Markdown in one click (unknown tags are kept)",
+    hrPunishHint:
+      "If enabled, you receive a share of the pardon fee when downloaders fail H&R",
+    bb2mdHint:
+      "Convert BBCode tags in the description to Markdown in one click (unknown tags are kept)",
     formFileHint: "Click to choose or drop a .torrent file here",
     submit: "Submit",
     busy: "Publishing…",
@@ -907,8 +943,7 @@ const enBase: Omit<
     imdbHint:
       "Item link from IMDb; shown on the detail page and searchable via the IMDb search area",
     metaIds: "Douban / TMDB",
-    metaIdsHint:
-      "Entry ID or link — used to group versions of the same work",
+    metaIdsHint: "Entry ID or link — used to group versions of the same work",
     moreOptions: "More options (PT-Gen / NFO / MediaInfo)",
     lessOptions: "Hide extra options",
     ptgen: "PT-Gen",
@@ -1034,7 +1069,8 @@ const enBase: Omit<
     sparkShort: "points",
     totalShort: "Total",
     milestoneNext: "{day}-day milestone",
-    mhomeNote: "Sign in daily for points; longer streaks earn more. {total} days total, {streak}-day streak. Missed days within the last 30 can be made up with a makeup card ({cards} held).",
+    mhomeNote:
+      "Sign in daily for points; longer streaks earn more. {total} days total, {streak}-day streak. Missed days within the last 30 can be made up with a makeup card ({cards} held).",
     closeModal: "Close announcement",
   },
   tsplit: {
@@ -1048,7 +1084,20 @@ const enBase: Omit<
     month: "",
     weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     weekHead: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    jianchu: ["Establish", "Remove", "Full", "Level", "Fix", "Hold", "Break", "Danger", "Achieve", "Collect", "Open", "Close"],
+    jianchu: [
+      "Establish",
+      "Remove",
+      "Full",
+      "Level",
+      "Fix",
+      "Hold",
+      "Break",
+      "Danger",
+      "Achieve",
+      "Collect",
+      "Open",
+      "Close",
+    ],
     solarFmt: "{y}-{m}-{d} {wd}",
     lunarFmt: "Lunar {gz} ({animal}) year {month} month {day}",
     calTitle: "{y}-{m}",
@@ -2319,6 +2368,7 @@ const enBase: Omit<
       pool_donate: "Free-pool donation",
       admin_grant: "Staff grant",
       task_reward: "Task/exam reward",
+      exam_revoke: "Exam revoke clawback",
       vote: "Voting",
       increment_bulk: "Bulk grant",
       game: "Arcade play",
@@ -2419,7 +2469,8 @@ const enBase: Omit<
       app_vip: "Mobile app exclusive perks",
       ad_free: "No banners or popups site-wide, duration stacks",
       invite: "Permanent, invites one new user",
-      temp_invite: "Time-limited invite voucher, valid 30 days (as labeled), expires",
+      temp_invite:
+        "Time-limited invite voucher, valid 30 days (as labeled), expires",
       rename_card: "Change your username once, stock up",
       makeup_card: "Make up one missed check-in, stock up",
       custom_title: "A custom line next to your name",
@@ -2588,7 +2639,8 @@ const enBase: Omit<
     videoInserting: "Inserting…",
     videoInserted: "Inserted {n} video(s)",
     videoPartial: "Inserted {a} video(s); {b} link(s) not in the allowlist",
-    videoNoHitInserted: "Inserted {n} link(s) without a player (not in the allowlist)",
+    videoNoHitInserted:
+      "Inserted {n} link(s) without a player (not in the allowlist)",
     videoMultiHint: "{n} links detected — each will be matched on insert",
     videoShortHint: "Bilibili short links are resolved automatically on insert",
     torrentInsertTitle: "Reference torrent",
@@ -2730,7 +2782,8 @@ const enBase: Omit<
     totalResults: "{n} results",
     claimedByCol: "Claimed by",
     action: "Action",
-    resurrectionHint: "Dead torrents beyond saving here? Try Resurrection missions — seed the full term for a one-time big reward →",
+    resurrectionHint:
+      "Dead torrents beyond saving here? Try Resurrection missions — seed the full term for a one-time big reward →",
   },
 
   tasks: {
@@ -4064,8 +4117,7 @@ const enBase: Omit<
       loadFailed: "Load failed",
       replayFailed: "Replay failed",
       restoreFailed: "Restore failed",
-      replaySummary:
-        "Replayed {n}: {same} unchanged, {changed} changed",
+      replaySummary: "Replayed {n}: {same} unchanged, {changed} changed",
       pickRuleFirst: "Pick or type a rule id in the filter box first",
       restoreSummary:
         "Rule {rule}: restored {n} torrents to pending (scanned {scanned})",
@@ -4088,7 +4140,8 @@ const enBase: Omit<
       thHits: "Hits",
       empty: "No entries yet - enable and upload to see shadow opinions",
       health: "Rule health",
-      statBar: "Today: auto-pass {pass} · auto-deny {deny} · postponed {postpone} · awaiting human {pending}; shadow agreement {agree}% ({samples} samples)",
+      statBar:
+        "Today: auto-pass {pass} · auto-deny {deny} · postponed {postpone} · awaiting human {pending}; shadow agreement {agree}% ({samples} samples)",
     },
     trendTitle: "14-day signups / uploads",
     trendEmpty: "No data yet",
@@ -4774,8 +4827,10 @@ const enBase: Omit<
     renameTip: "Rename",
     delTip: "Delete section",
     catNewBtn: "＋ New section",
-    gateNote: "Gate 0 = everyone; must satisfy read ≤ reply ≤ post, otherwise saving is rejected. Protected boards: from floor 2 the body is hidden from regular users (visible to moderators and staff).",
-    catTip: "Drag the handle or use the arrows to reorder — the order decides the front-end section order. After hiding, the section and its boards disappear from the front end while staying in the admin, so you can build first and reveal later.",
+    gateNote:
+      "Gate 0 = everyone; must satisfy read ≤ reply ≤ post, otherwise saving is rejected. Protected boards: from floor 2 the body is hidden from regular users (visible to moderators and staff).",
+    catTip:
+      "Drag the handle or use the arrows to reorder — the order decides the front-end section order. After hiding, the section and its boards disappear from the front end while staying in the admin, so you can build first and reveal later.",
     newNamePh: "New section name",
     createBtn: "Create",
     catRenamed: "Section renamed",
@@ -5233,7 +5288,8 @@ const enBase: Omit<
     } as Record<string, string>,
     formTitleNew: "New task / exam",
     formTitleEdit: "Edit #{id}",
-    metricHint: "Check metrics and fill values by unit (upload/download in GB, seed time in hours). Hand-written JSON metrics from before are restored when editing.",
+    metricHint:
+      "Check metrics and fill values by unit (upload/download in GB, seed time in hours). Hand-written JSON metrics from before are restored when editing.",
     fldKind: "Kind",
     fldName: "Task name",
     fldMetric: "Metric JSON",
@@ -5326,6 +5382,17 @@ const enBase: Omit<
     recoverBtn: "Recover",
     exemptedMsg: "Exempted (this record is held out of settlement)",
     recoveredMsg: "Recovered",
+    // 0481 revoke: pull a mis-dispatched exam record; paid rewards clawed back
+    canceled: "Revoked",
+    revokeBtn: "Revoke",
+    revokeTitle: "Revoke exam record",
+    revokeMsg:
+      "The record leaves the settlement flow and the member panel{clawback}. This action is audit-logged.",
+    revokeClawback:
+      ", and the paid reward of {n} sparks is clawed back (partially if balance is short)",
+    revokeConfirm: "Revoke",
+    revokedMsg: "Revoked ({n} sparks clawed back)",
+    revokedNoClawbackMsg: "Revoked",
     actionFail: "Action failed",
     examsEmpty: "No exam records",
     loadFail: "Load failed",
@@ -7582,7 +7649,8 @@ const enBase: Omit<
     subscribed: "Push enabled",
     unsubscribed: "Push disabled",
     testSent: "Test message sent",
-    testPartial: "Some devices did not get the test push; check notification settings.",
+    testPartial:
+      "Some devices did not get the test push; check notification settings.",
     testFailed: "Test push not delivered: push service error. Try again later.",
     testExpired: "Push subscription expired; enable push again.",
     prefs: {
@@ -7648,7 +7716,8 @@ const enBase: Omit<
     otherKind: "Other",
     loadMore: "Load more",
     merkleTitle: "Daily settlement proof",
-    merkleDesc: "Each day's spark ledger is sealed into a Merkle tree. You can recompute it in your own browser to confirm these entries were included that day and have not been altered since.",
+    merkleDesc:
+      "Each day's spark ledger is sealed into a Merkle tree. You can recompute it in your own browser to confirm these entries were included that day and have not been altered since.",
     merkleDate: "Settlement day",
     merkleLoad: "Load",
     merkleVerify: "Verify in browser",
@@ -7657,12 +7726,17 @@ const enBase: Omit<
     merkleLeaves: "{n} entries · {u} users that day",
     merkleBuiltAt: "Sealed at",
     merkleLeaf: "Leaf",
-    merkleNotBuilt: "This day has not been sealed yet (generated after the daily settlement).",
+    merkleNotBuilt:
+      "This day has not been sealed yet (generated after the daily settlement).",
     merkleNoRows: "You had no ledger entries that day.",
-    merkleOk: "Verified: all {n} of your entries are in the tree and match the public root.",
-    merkleBad: "Verification failed: your entries do not match the public root. Please open a ticket.",
-    merkleUnsupported: "WebCrypto is unavailable here, so local verification cannot run.",
-    merkleNote: "This proof only shows that the day's ledger was not altered afterwards; it does not prove the amount rules. No blockchain, no token (anchoring: none).",
+    merkleOk:
+      "Verified: all {n} of your entries are in the tree and match the public root.",
+    merkleBad:
+      "Verification failed: your entries do not match the public root. Please open a ticket.",
+    merkleUnsupported:
+      "WebCrypto is unavailable here, so local verification cannot run.",
+    merkleNote:
+      "This proof only shows that the day's ledger was not altered afterwards; it does not prove the amount rules. No blockchain, no token (anchoring: none).",
   },
   contests2: {
     title: "Contests",

@@ -74,7 +74,9 @@ pub async fn task_settle(db: &PgPool) -> anyhow::Result<u64> {
                 c.exam_stage_seq, c.exam_stage_started_at, \
                 c.exam_remedy_until, c.exam_extensions, t.fail_penalty \
          FROM task_claims c JOIN tasks t ON t.id = c.task_id \
-         WHERE c.status = 0 AND c.exempted_at IS NULL LIMIT $1",
+         WHERE c.status = 0 AND c.exempted_at IS NULL \
+           AND c.canceled_at IS NULL \
+         LIMIT $1",
     )
     .bind(crate::jobs::JOB_BATCH)
     .fetch_all(db)
