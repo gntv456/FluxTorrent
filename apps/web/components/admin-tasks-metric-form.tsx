@@ -24,7 +24,10 @@ export function MetricMenuEdit(props: {
   const mLabel = (key: string) =>
     (t.metricNames as Record<string, string> | undefined)?.[key] ?? key;
   return (
-    <div className="flex flex-col gap-1">
+    <div
+      className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3"
+      data-testid="metric-grid"
+    >
       {METRIC_ITEMS.map((m) => {
         const on = !!edit.f.metricChecked[m.key];
         const unitLabel =
@@ -33,8 +36,14 @@ export function MetricMenuEdit(props: {
             : m.unit === "hours"
               ? t.metricUnitHours
               : t.metricUnitCount;
+        const cell =
+          "flex min-h-[40px] items-center gap-2 rounded-[var(--r-sm)] " +
+          "border px-2 py-1.5 text-xs " +
+          (on
+            ? "border-sky bg-[var(--surface-card)]"
+            : "border-line bg-transparent");
         return (
-          <label key={m.key} className="flex items-center gap-2 text-xs">
+          <label key={m.key} className={cell}>
             <input
               type="checkbox"
               checked={on}
@@ -71,10 +80,10 @@ export function MetricMenuEdit(props: {
                       },
                     })
                   }
-                  className={`${inp} w-28`}
+                  className={`${inp} w-20 min-w-0 flex-1`}
                   placeholder="0"
                 />
-                <span className="text-sub">{unitLabel}</span>
+                <span className="shrink-0 text-sub">{unitLabel}</span>
               </>
             )}
           </label>

@@ -12,6 +12,8 @@ use super::guard::staff;
 struct AuditRow {
     id: i64,
     actor_id: Option<i64>,
+    /// 0482：操作者用户名（面板直读，免去前端二次查号）
+    actor_username: Option<String>,
     action: String,
     /// 审计现场（0285）：目标 id / 理由 / 附加上下文。旧版读模型不选这列，
     /// 面板只能看到「user.set_class」而不知道对谁做、为什么做。
@@ -65,12 +67,13 @@ async fn audit_query(
         Some(crate::http::like_pattern(&q.q))
     };
     let rows: Vec<AuditRow> = sqlx::query_as(
-        "SELECT id, actor_id, action, \
-         ref::text AS detail, created_at FROM audit_log \
-         WHERE ($1::text IS NULL OR action ILIKE $1) \
-           AND ($2::text IS NULL OR ref->>'id' = $2) \
-           AND ($3::bigint IS NULL OR actor_id = $3) \
-         ORDER BY id DESC LIMIT $4",
+        "SELECT a.id, a.actor_id, u.username AS actor_username, a.action, \
+         a.ref::text AS detail, a.created_at FROM audit_log a \
+         LEFT JOIN users u ON u.id = a.actor_id \
+         WHERE ($1::text IS NULL OR a.action ILIKE $1) \
+           AND ($2::text IS NULL OR a.ref->>'id' = $2) \
+           AND ($3::bigint IS NULL OR a.actor_id = $3) \
+         ORDER BY a.id DESC LIMIT $4",
     )
     .bind(pattern.as_deref())
     .bind(q.uid.map(|v| v.to_string()))

@@ -8,6 +8,7 @@
 
 import { ErrorPanel } from "@/components/ui/error-panel";
 import { useDetailTabs } from "./admin-user-detail-hooks";
+import { UserAuditLogPanel } from "./admin-user-audit-log";
 import {
   LoginsPanel,
   SeedingPanel,
@@ -24,9 +25,7 @@ export function DetailTabsBody({
   const fail = tabs.tabErr !== null;
   return (
     <>
-      {fail && (
-        <ErrorPanel error={tabs.tabErr} onRetry={tabs.reloadTab} />
-      )}
+      {fail && <ErrorPanel error={tabs.tabErr} onRetry={tabs.reloadTab} />}
 
       {tabs.tab === "spark" && !fail && (
         <SparkPanel
@@ -46,8 +45,11 @@ export function DetailTabsBody({
         />
       )}
 
-      {tabs.tab === "seeding" && !fail && (
-        <SeedingPanel seeds={tabs.seeds} />
+      {tabs.tab === "seeding" && !fail && <SeedingPanel seeds={tabs.seeds} />}
+
+      {/* 0482 用户日志：被改过什么 / 谁改的 / 何时（audit_log 按 uid 回查） */}
+      {tabs.tab === "audit" && !fail && (
+        <UserAuditLogPanel audit={tabs.audit} />
       )}
     </>
   );

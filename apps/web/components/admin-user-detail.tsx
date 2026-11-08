@@ -109,6 +109,7 @@ export function AdminUserDetailPage() {
             ["spark", fmt(dict.userDetail.tabSpark, { magic: currency })],
             ["logins", dict.userDetail.tabLogins],
             ["seeding", dict.userDetail.tabSeeding],
+            ["audit", dict.userDetail.tabAudit],
           ] as const
         ).map(([k, label]) => (
           <button
@@ -117,7 +118,9 @@ export function AdminUserDetailPage() {
             aria-selected={tabs.tab === k}
             onClick={() => tabs.setTab(k)}
             className={`${TAB_BTN} ${
-              tabs.tab === k ? "bg-sky text-[var(--text-on-accent)]" : TAB_BTN_OFF
+              tabs.tab === k
+                ? "bg-sky text-[var(--text-on-accent)]"
+                : TAB_BTN_OFF
             }`}
           >
             {label}

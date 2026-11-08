@@ -62,6 +62,15 @@ export interface SeedRow {
   seeding: boolean;
   hr_flag: boolean;
 }
+/** 0482 用户日志行：/admin/audit?uid= 的审计现场（动作/操作者/详情） */
+export interface AuditEntryRow {
+  id: number;
+  actor_id: number | null;
+  actor_username: string | null;
+  action: string;
+  detail: string | null;
+  created_at: string;
+}
 
 /** 用户状态显示名（按 status 作下标）；三语在 i18n `userDetail.statusLabels` */
 export const statusLabels = (labels?: string[]): string[] => labels ?? [];
@@ -89,5 +98,5 @@ export const itemKindLabels = (
   labels?: Record<string, string>,
 ): Record<string, string> => labels ?? {};
 
-/** 后台详情 tab 键（资料全景 / 火花流水 / 登录记录 / 做种下载） */
-export type DetailTab = "profile" | "spark" | "logins" | "seeding";
+/** 后台详情 tab 键（资料全景 / 火花流水 / 登录记录 / 做种下载 / 变更日志） */
+export type DetailTab = "profile" | "spark" | "logins" | "seeding" | "audit";

@@ -6,6 +6,7 @@ import { useI18n } from "@/i18n/client";
 
 import {
   PER_PAGE,
+  type AuditEntryRow,
   type Detail,
   type DetailTab,
   type LoginRow,
@@ -199,6 +200,8 @@ export function useDetailTabs(uid: number) {
   } | null>(null);
   const [loginsPage, setLoginsPage] = useState(1);
   const [seeds, setSeeds] = useState<SeedRow[] | null>(null);
+  // 0482 用户日志：audit_log?uid= 的审计现场（被改过什么/谁改的/何时）
+  const [audit, setAudit] = useState<AuditEntryRow[] | null>(null);
   const [tabErr, setTabErr] = useState<unknown>(null);
   const [tabTick, setTabTick] = useState(0);
 
@@ -225,8 +228,13 @@ export function useDetailTabs(uid: number) {
         .get<SeedRow[]>(`/api/v1/admin/users/${uid}/snatches`)
         .then(setSeeds)
         .catch((e) => setTabErr(e));
+    } else if (tab === "audit" && audit === null) {
+      api
+        .get<AuditEntryRow[]>(`/api/v1/admin/audit?uid=${uid}&limit=200`)
+        .then(setAudit)
+        .catch((e) => setTabErr(e));
     }
-  }, [tab, uid, sparkPage, loginsPage, seeds, tabTick]);
+  }, [tab, uid, sparkPage, loginsPage, seeds, audit, tabTick]);
 
   return {
     tab,
@@ -238,6 +246,7 @@ export function useDetailTabs(uid: number) {
     loginsPage,
     setLoginsPage,
     seeds,
+    audit,
     tabErr,
     reloadTab: () => setTabTick((v) => v + 1),
   };
