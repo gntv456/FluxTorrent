@@ -17,20 +17,25 @@
   color: var(--text-strong);
 }
 
-/* mainmenu 教育级联（0474）：三列逐级展开 */
+/* mainmenu 教育级联（0478）：列随层级展开自适应——容器宽度由已展开
+   列数决定（flex 无固定 min-width），下一级未 hover 不渲染空列。 */
 .mainmenu-edu {
   display: flex;
-  min-width: 460px;
+  align-items: stretch;
 }
 .mainmenu-edu__col {
   display: flex;
-  min-height: 260px;
   flex-direction: column;
-  min-width: 150px;
+  min-width: 132px;
+  max-width: 208px;
   padding: 8px;
 }
 .mainmenu-edu__col + .mainmenu-edu__col {
   border-left: 1px solid var(--border-soft);
+}
+.mainmenu-edu__col--hint {
+  min-width: 0;
+  padding: 0;
 }
 .mainmenu-edu__all {
   padding: 8px 10px;
@@ -38,13 +43,14 @@
   color: var(--text-heading);
   font-weight: 600;
   margin-bottom: 4px;
+  white-space: nowrap;
 }
 .mainmenu-edu__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 0;
   border-radius: var(--r-sm);
   background: none;
@@ -52,9 +58,15 @@
   cursor: pointer;
   font-size: 13px;
   text-align: left;
+  white-space: nowrap;
 }
 .mainmenu-edu__row:hover,
 .mainmenu-edu__row.is-on {
   background: var(--surface-hover);
   color: var(--text-strong);
+}
+.mainmenu-edu__caret {
+  color: var(--text-faint);
+  margin-left: auto;
+  padding-left: 6px;
 }
