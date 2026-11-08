@@ -183,6 +183,7 @@ mod user_ops;
 mod user_passkey;
 mod user_revoke;
 mod user_status;
+mod user_status_notify;
 mod user_vouchers;
 
 pub use agent_rules::*;
@@ -230,5 +231,6 @@ pub use user_ops::*;
 pub use user_passkey::*;
 pub use user_revoke::*;
 pub use user_status::*;
+pub use user_status_notify::*;
 pub use user_vouchers::*;
 pub use webhook_ops::*;

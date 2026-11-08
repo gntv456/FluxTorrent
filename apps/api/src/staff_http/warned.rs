@@ -72,7 +72,16 @@ pub async fn warn_user(
     }
     state
         .repo
-        .audit(Some(auth.id), "warn_user", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "warn_user",
+            Some(body.user_id),
+            body.reason
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty()),
+            Some(serde_json::json!({ "weeks": body.weeks })),
+        )
         .await;
     // 0209 P1-9：警告通知当事人（此前理由只进库，用户无感知）
     {
@@ -134,6 +143,17 @@ pub async fn unwarn_user(
         *path,
     )
     .await?;
+    // 0482 审计前后值：解警告记下被清掉的到期时间与理由
+    let before: Option<(
+        Option<chrono::DateTime<chrono::Utc>>,
+        Option<String>,
+    )> = sqlx::query_as(
+        "SELECT warned_until, warned_reason FROM users WHERE id = $1",
+    )
+    .bind(*path)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query(
         "UPDATE users SET warned_until = NULL, \
      warned_reason = NULL WHERE id = $1",
@@ -146,9 +166,21 @@ pub async fn unwarn_user(
     if n == 0 {
         return Err(DomainError::NotFound(*path));
     }
+    let (b_until, b_reason) = before.unwrap_or((None, None));
     state
         .repo
-        .audit(Some(auth.id), "unwarn_user", Some(*path))
+        .audit_detail(
+            Some(auth.id),
+            "unwarn_user",
+            Some(*path),
+            None,
+            Some(serde_json::json!({
+                "before": {
+                    "until": b_until.map(|t| t.to_rfc3339()),
+                    "reason": b_reason,
+                },
+            })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "unwarned": *path })))
 }

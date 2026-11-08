@@ -31,6 +31,14 @@ async fn user_flags(
     }
     // 挂起 / 禁下载属伤害性操作，须严格高于目标等级
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
+    // 0482 审计前后值：变更前快照（变更点只落 body 里的新值）
+    let before: Option<(bool, bool)> = sqlx::query_as(
+        "SELECT download_enabled, suspended FROM users WHERE id = $1",
+    )
+    .bind(body.user_id)
+    .fetch_optional(&state.repo.db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query(
         "UPDATE users SET \
             download_enabled = COALESCE($2, download_enabled), \
@@ -51,9 +59,21 @@ async fn user_flags(
     if n == 0 {
         return Err(DomainError::NotFound(body.user_id));
     }
+    let (b_dl, b_susp) = before.unwrap_or((true, false));
+    let after = serde_json::json!({
+        "before": { "no_dl": !b_dl, "suspended": b_susp },
+        "after": { "no_dl": !body.download_enabled.unwrap_or(b_dl),
+                   "suspended": body.suspended.unwrap_or(b_susp) },
+    });
     state
         .repo
-        .audit(Some(auth.id), "user.flags", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "user.flags",
+            Some(body.user_id),
+            None,
+            Some(after),
+        )
         .await;
     crate::admin_p3_http::modify_log(
         &state.repo.db,
@@ -112,6 +132,13 @@ async fn user_set_status(
     }
     // 操作者等级须严格大于目标用户（防同级/下级操作上级）
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
+    // 0482 审计前后值：变更前状态快照
+    let before_status: Option<i16> =
+        sqlx::query_scalar("SELECT status FROM users WHERE id = $1")
+            .bind(body.user_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     // 禁言必须落到论坛侧真正读的那面旗子：`users.forumpost`。
     // 旧版只写 status=1，而鉴权层只拦 status>=2、论坛/漂流瓶只看 forumpost
     // （且全仓没有任何写口）⇒ 点「禁言」后用户照样发帖回帖刷漂流瓶。
@@ -155,7 +182,16 @@ async fn user_set_status(
     state.user_status_cache.invalidate(body.user_id);
     state
         .repo
-        .audit(Some(auth.id), "user.set_status", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "user.set_status",
+            Some(body.user_id),
+            Some(&body.reason),
+            Some(serde_json::json!({
+                "before": before_status,
+                "after": body.status,
+            })),
+        )
         .await;
     let label = match body.status {
         1 => "禁言",
@@ -173,79 +209,18 @@ async fn user_set_status(
         },
     )
     .await;
-    // 0209 P1-9：状态变更通知当事人（此前理由只进内部 modify_log，
-    // 用户只能从公开 ban-log 猜状态）。封禁走邮件（已无法登录看 PM）；
-    // 禁言/恢复走 PM 必达 + 邮件尽力。
-    {
-        let target: Option<(String, Option<String>)> =
-            sqlx::query_as("SELECT username, email FROM users WHERE id = $1")
-                .bind(body.user_id)
-                .fetch_optional(&state.repo.db)
-                .await
-                .ok()
-                .flatten();
-        if let Some((username, email)) = target {
-            let reason_txt = body.reason.trim().to_string();
-            // 统一母版（警示档）：封禁=朱砂、禁言/警告=琥珀、恢复=石绿。
-            let ctx = crate::mailer::send::mail_ctx(
-                &state.repo.db,
-                Some(body.user_id),
-            )
-            .await;
-            let kind = match body.status {
-                2 => flux_shared::mailtpl::StatusKind::Ban,
-                1 => flux_shared::mailtpl::StatusKind::Mute,
-                _ => flux_shared::mailtpl::StatusKind::Restore,
-            };
-            let subject = format!("[{}] 账号状态变更：{label}", ctx.site);
-            let mail = flux_shared::mailtpl::account_status(
-                &ctx.ctx(),
-                &username,
-                kind,
-                &label,
-                &reason_txt,
-                None,
-                Some(&subject),
-            );
-            // 封禁：PM 也写（解封后可见历史）+ 邮件必发；其余：notify 双通道
-            if body.status == 2 {
-                let db = &state.repo.db;
-                let _ = crate::mailer::site_message(
-                    db,
-                    body.user_id,
-                    &mail.subject,
-                    &mail.text,
-                )
-                .await;
-                if let Some(to) = email {
-                    // 0461：配置与 Reply-To 先取好，随任务带走
-                    let db = &state.repo.db;
-                    let cfg = crate::mailer::smtp_config(db).await;
-                    let rt = crate::mailer::send::reply_to(db).await;
-                    crate::mailer::send::spawn_send(cfg, to, mail.clone(), rt);
-                }
-            } else {
-                crate::mailer::notify(
-                    &state.repo.db,
-                    body.user_id,
-                    email,
-                    &mail,
-                )
-                .await;
-            }
-            // E12 生命周期事件：状态变更广播管理侧（Discord/TG，尽力而为）
-            crate::ops_webhook::broadcast_ops_spawn(
-                &state,
-                format!(
-                    "用户 {username}（#{id}）{label}：{reason}",
-                    id = body.user_id,
-                    reason = reason_txt.clone(),
-                ),
-            );
-        }
-    }
-    Ok(ok(serde_json::json!({ "user_id": body.user_id,
-                             "status": body.status })))
+    // 0209 P1-9：状态变更通知当事人（渲染+投递段拆至 user_status_notify.rs）
+    crate::admin_http::notify_status_change(
+        &state,
+        body.user_id,
+        body.status,
+        &label,
+        body.reason.trim(),
+    )
+    .await;
+    Ok(ok(
+        serde_json::json!({ "user_id": body.user_id, "status": body.status }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -278,6 +253,13 @@ async fn user_set_class(
     }
     // 与目标同高或更低不可调整（站长改自己也应被拦）
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
+    // 0482 审计前后值：变更前等级快照
+    let before_class: Option<i32> =
+        sqlx::query_scalar("SELECT class_id FROM users WHERE id = $1")
+            .bind(body.user_id)
+            .fetch_optional(&state.repo.db)
+            .await
+            .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query(
         "UPDATE users SET class_id = $2 WHERE id = $1 AND class_id < 99",
     )
@@ -294,7 +276,16 @@ async fn user_set_class(
     state.user_status_cache.invalidate(body.user_id);
     state
         .repo
-        .audit(Some(auth.id), "user.set_class", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "user.set_class",
+            Some(body.user_id),
+            None,
+            Some(serde_json::json!({
+                "before": before_class,
+                "after": body.class_id,
+            })),
+        )
         .await;
     crate::admin_p3_http::modify_log(
         &state.repo.db,

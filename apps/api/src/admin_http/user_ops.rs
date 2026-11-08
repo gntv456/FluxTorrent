@@ -22,8 +22,7 @@ struct UserAdjustReq {
     invite_grant: Option<i32>,
     #[serde(default)]
     note: Option<String>,
-    /// 幂等键（0287 P1）：可选 8~120 字符——同键重试直接拒绝，
-    /// 防管理员手抖双击造成双份调整（与 amountbonus 口径一致）
+    /// 幂等键（0287 P1）：可选 8~120 字符，同键重试拒绝（防双击双份）
     #[serde(default)]
     idempotency_key: Option<String>,
 }
@@ -42,20 +41,15 @@ async fn user_adjust(
     {
         return Err(DomainError::Validation("至少提供一项调整".into()));
     }
-    // 留痕长度上限（批四十一 P-156/157 同族）：note 原样进 traffic_ledger.reason
-    // 与 user_modify_logs.content，实测 2000 字的 note 落成 2003 字符；同仓
-    // `audit_detail` 的 reason 是按 200 字截断的。管理侧的理由一律拒超长而非
-    // 静默截——截掉的正是纠纷仲裁要的那半句。
+    // 留痕长度上限（P-156/157 同族）：管理侧的理由一律拒超长而非静默截——
+    // 截掉的正是纠纷仲裁要的那半句（同仓 audit_detail reason 按 200 字截）。
     if let Some(n) = body.note.as_deref() {
         if n.chars().count() > 200 {
             return Err(DomainError::Validation("note 需 ≤200 字符".into()));
         }
     }
-    // 单次数值上限（P-154，实测红线）：旧实现只 `max(0)` 再 `as i64`，
-    // `uploaded_delta = i64::MAX` 直接 200 落库 ⇒ uploaded 变 9.2E18、
-    // traffic_ledger 照记这条天量流水。而余额权威是
-    // `balance_baseline + SUM(traffic_ledger)`，脏账不会自愈，还会污染
-    // 分享率 / H&R / 排行榜 / 促销资格。上限取 1 TiB（流量）与 10 亿（火花）。
+    // 单次数值上限（P-154）：旧 `max(0) as i64` 让 i64::MAX 直接落库成天量
+    // 脏账且不自愈（污染分享率/HR/排行）。上限 1 TiB（流量）与 10 亿（火花）。
     const MAX_TRAFFIC: i64 = 1_i64 << 40;
     const MAX_SPARK: i64 = 1_000_000_000;
     for (k, v, lim) in [
@@ -77,9 +71,8 @@ async fn user_adjust(
             )));
         }
     }
-    // 邀请上限要在动任何账之前拒掉。旧版是 `grant.min(50)` 静默截断，
-    // 再把**请求值**回显给站长（实测：要 100 拿到 50，响应写 100），
-    // 于是报表与库对不上，而且没人知道被截过。
+    // 邀请上限要在动任何账之前拒掉：旧版 min(50) 静默截断后回显请求值，
+    // 报表与库对不上（实测要 100 拿到 50，响应写 100）。
     if let Some(g) = body.invite_grant {
         if g.abs() > 50 {
             return Err(DomainError::Validation("邀请单次 ±50".into()));
@@ -88,8 +81,7 @@ async fn user_adjust(
     // 数值调整仅 sysop/管理员（等级 93+）
     crate::authz::require_perm(&state, &auth, crate::authz::perm::USER_ADJUST)
         .await?;
-    // 幂等占位（0287）：spark 侧落键 admin-adjust:{k}:{uid} 前缀查重；
-    // traffic 侧 reason 埋 admin-adjust:{k} 锚点
+    // 幂等占位（0287）：spark 侧落键 admin-adjust:{k}:{uid}、traffic 侧同锚点
     let idem = body
         .idempotency_key
         .as_deref()
@@ -119,9 +111,8 @@ async fn user_adjust(
     }
     // 数值调整同属伤害性操作，须严格高于目标等级
     ensure_outranks(&state.repo.db, auth.class_id, body.user_id).await?;
-    // 键的归属：只发邀请的请求不写任何流水，旧实现于是「同键连发两次各 5
-    // 张码 = 库里 10 张」（P-155 红线实拍）。复用本仓给「无流水的管理动作」
-    // 留的幂等位 `grant_batches`（idempotency_key 有唯一约束，撞键即 400）。
+    // 键的归属：只发邀请的请求不写任何流水，旧实现同键连发即双份（P-155）。
+    // 复用「无流水的管理动作」幂等位 grant_batches（撞键即 400）。
     if let Some(k) = idem {
         let batch_id = uuid::Uuid::new_v4().simple().to_string();
         crate::admin_p3_http::batch_open(
@@ -266,20 +257,33 @@ async fn user_adjust(
             .rows_affected() as i64;
         }
     }
+    let spark_d = spark - spark0;
+    let invite_d = granted_codes.len() as i64 - revoked_invites;
+    let note = body
+        .note
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     state
         .repo
-        .audit(Some(auth.id), "user.adjust", Some(body.user_id))
+        .audit_detail(
+            Some(auth.id),
+            "user.adjust",
+            Some(body.user_id),
+            note,
+            Some(serde_json::json!({
+                "up_delta": actual_up, "dl_delta": actual_down,
+                "spark_delta": spark_d, "invite_delta": invite_d,
+            })),
+        )
         .await;
     crate::admin_p3_http::modify_log(
         &state.repo.db,
         body.user_id,
         Some(auth.id),
         &format!(
-            "数值调整 up{:+}/down{:+}/spark{:+}/invite{:+}",
-            actual_up,
-            actual_down,
-            spark - spark0,
-            granted_codes.len() as i64 - revoked_invites,
+            "数值调整 up{actual_up:+}/down{actual_down:+}\
+             /spark{spark_d:+}/invite{invite_d:+}"
         ),
     )
     .await;

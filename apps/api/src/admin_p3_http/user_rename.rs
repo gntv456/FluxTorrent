@@ -92,7 +92,16 @@ async fn admin_user_rename(
     .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
-        .audit(Some(auth.id), "user.rename", Some(uid))
+        .audit_detail(
+            Some(auth.id),
+            "user.rename",
+            Some(uid),
+            None,
+            Some(serde_json::json!({
+                "before": old_name,
+                "after": new_name,
+            })),
+        )
         .await;
     modify_log(
         db,

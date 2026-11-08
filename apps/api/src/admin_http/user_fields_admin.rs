@@ -109,6 +109,19 @@ async fn admin_user_fields_put(
         return Err(DomainError::Validation("一次最多提交 64 个字段".into()));
     }
     let mut tx = state.repo.db.begin().await.map_err(internal)?;
+    // 0482 审计前后值：变更前字段值快照（一次读齐本次涉及的全部 key）
+    let keys: Vec<String> = body.values.keys().cloned().collect();
+    let before_rows: Vec<(String, serde_json::Value)> = sqlx::query_as(
+        "SELECT field_key, value FROM user_field_values \
+         WHERE user_id = $1 AND field_key = ANY($2)",
+    )
+    .bind(uid)
+    .bind(&keys)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(internal)?;
+    let before: serde_json::Map<String, serde_json::Value> =
+        before_rows.into_iter().collect();
     for (key, val) in &body.values {
         let def: Option<(String, String, bool, serde_json::Value)> =
             sqlx::query_as(
@@ -158,7 +171,13 @@ async fn admin_user_fields_put(
     tx.commit().await.map_err(internal)?;
     state
         .repo
-        .audit(Some(auth.id), "user.fields_update", Some(uid))
+        .audit_detail(
+            Some(auth.id),
+            "user.fields_update",
+            Some(uid),
+            None,
+            Some(serde_json::json!({ "before": before, "after": body.values })),
+        )
         .await;
     Ok(ok(serde_json::json!({ "saved": body.values.len() })))
 }
