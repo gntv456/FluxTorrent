@@ -119,9 +119,17 @@
 /* ── 赛季星轨 ── */
 .arc-track { display: flex; align-items: center; gap: 6px; overflow-x: auto; }
 .arc-node {
+  position: relative;
   width: 34px; height: 34px; border-radius: 50%; flex: none;
   display: grid; place-items: center; font-size: 13px;
   border: 2px solid var(--border-deep); background: var(--surface-card);
+}
+/* P1-3：节点视觉 34 不变，命中区外扩到 44（透明层不挡相邻标签点击） */
+.arc-node::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
 }
 .arc-node.reached { border-color: var(--sky-deep); color: var(--sky-deep); }
 .arc-node.ready { background: var(--grad-aurora); color: var(--text-on-accent);

@@ -693,6 +693,14 @@ table.subtitles-upload-table {
   cursor: pointer;
   user-select: none;
 }
+/* P1-3：触屏端命中区补足 44（复选框本体 13px 太小，chip 整体是点击面）；
+   桌面鼠标场景保持 28 视觉不变。 */
+@media (hover: none) and (pointer: coarse) {
+  .tsb-chip {
+    min-height: var(--tap-min);
+    padding-block: 8px;
+  }
+}
 .tsb-chip input {
   margin: 0;
   accent-color: var(--text-brand);
@@ -997,7 +1005,7 @@ table.subtitles-upload-table {
   padding: 0 6px;
   border-radius: 4px;
   background: var(--sun);
-  color: #6b4e00;
+  color: var(--on-sun); /* P1-6：原 #6b4e00 压 --sun 底 2.09，审计后 token 化漏改处 */
   font-size: 11px;
   font-weight: 800;
   line-height: 1.7;
@@ -3245,7 +3253,7 @@ textarea.bbcode {
 }
 .medal-rarity[data-tone="gold"] {
   background: var(--sun);
-  color: #6b4e00;
+  color: var(--on-sun); /* P1-6：同 .torrents-promo，token 化漏改处 */
 }
 .medal-rarity[data-tone="coral"] {
   background: var(--coral);

@@ -453,6 +453,8 @@
 .mhome-strip__btn {
   position: relative;
   flex: none;
+  /* P1-3：命中区 44（视觉随高度自然放大一点，胶囊形仍在条内） */
+  min-height: var(--tap-min);
   height: 32px;
   padding: 0 13px;
   border: 0;
