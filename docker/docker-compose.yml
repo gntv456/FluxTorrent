@@ -354,9 +354,10 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
+    entrypoint: []
     command:
-      # 入口 sed 注入 Bearer token（prometheus 原生不展开 yml 变量，无 expand-env
-      # 特性）；模板挂载在 /etc/prometheus/prometheus.yml，产物写 /tmp 再启动
+      # 镜像 ENTRYPOINT=prometheus 二进制，须清空才能跑 shell；入口 sed 注入
+      # Bearer token（prometheus 原生不展开 yml 变量，无 expand-env 特性）
       - /bin/sh
       - -c
       - |
