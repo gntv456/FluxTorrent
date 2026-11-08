@@ -82,9 +82,9 @@ export async function Header() {
             <img
               src={profile.site_logo?.trim() || "/brand/logo-mark.png"}
               alt=""
-              width={30}
-              height={30}
-              className="shrink-0"
+              width={44}
+              height={44}
+              className="h-10 w-10 shrink-0 object-contain md:h-11 md:w-11"
             />
             <span className="truncate font-display text-2xl text-ink">
               {brand}
