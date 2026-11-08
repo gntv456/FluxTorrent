@@ -356,7 +356,14 @@ services:
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
+      # prometheus 原生不展开 yml 里的 ${VAR}——Bearer token 用 .env 注入必须开它
+      - --enable-feature=expand-env
       - --storage.tsdb.retention.time=30d
+    deploy:
+      resources:
+        limits:
+          # 8GB 小机慎放：30d 保留 + 本 scrape 量实测调优
+          memory: ${FLUX_PROM_MEM:-768m}
     ports:
       - "127.0.0.1:${FLUX_PROM_PORT:-9090}:9090"
     restart: unless-stopped
@@ -377,6 +384,10 @@ services:
       - ./monitoring/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/provisioning/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
+    deploy:
+      resources:
+        limits:
+          memory: ${FLUX_GRAFANA_MEM:-384m}
     ports:
       - "127.0.0.1:${FLUX_GRAFANA_PORT:-3001}:3000"
     depends_on:
