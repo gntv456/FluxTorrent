@@ -579,9 +579,12 @@ var FluxAutoFeedAdapter = (function () {
             try {
               var blob = data && data.data;
               if (!blob) return finish(false, "种子重建无输出");
-              var name = core.text(raw.torrent_name || raw.name ||
-                "auto_feed") + ".torrent";
-              var file = new window.File([blob], name,
+              // 文件名走统一清洗（剥[源站]前缀、去 .torrent 尾缀、
+              // 空格转点），与上游 addTorrent 链路口径一致——否则转到
+              // 本架构站时文件框带着源站前缀和双后缀。
+              var name = core.cleanFileName(core.text(
+                raw.torrent_name || raw.name || "auto_feed"));
+              var file = new window.File([blob], name + ".torrent",
                 { type: "application/x-bittorrent" });
               var dt = new DataTransfer();
               dt.items.add(file);

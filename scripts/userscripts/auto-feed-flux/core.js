@@ -237,6 +237,39 @@ var FluxAutoFeedCore = (function () {
     return m ? m[1] : "";
   }
 
+  // 标题剥前缀：源站标题常带 [站名]/【站名】行政标记，实战中多组之间
+  // 还有逗号/点分隔（如 [Farmm],[沙滩男孩].Beach.Boys…），逐组连同中间
+  // 分隔符一起剥；结尾若带 .torrent（上游从下载锚文本抓的名）也去掉。
+  // 中文站上传者爱用竖条/色块做标题装饰。这里收录渲染成「黑色竖条」
+  // 的 Unicode 全家族（ASCII/全角/制表/丁巴/注音/竖排变体）加上常用
+  // 色块与符号，剥前缀时一并当作分隔装饰符处理。
+  var TITLE_DECOR =
+    "|｜丨│┃┇┊┋║❘❙❚∣ǀ⏐︱︳ㅣ" +
+    "▏▎▍▌▋▊▉█■□▪▫◆◇●○◉★☆";
+
+  function cleanTitle(name) {
+    var s = text(name).replace(/\.torrent$/i, "").trim();
+    var sep = "[\\s.·,，" + TITLE_DECOR + "]*";
+    var out = s.replace(
+      new RegExp("^(?:" + sep + "(?:\\[[^\\]]*\\]|【[^】]*】))+" + sep),
+      "",
+    );
+    // 没有括号组时，开头的装饰竖条/色块同样剥掉
+    out = out.replace(new RegExp("^[" + TITLE_DECOR + "]+[\\s.·,，]*"), "");
+    return out || s;
+  }
+
+  // 文件名清洗：标题清洗（剥前缀/去 .torrent 尾缀）后按上游 addTorrent
+  // 的文件名口径处理（空格转点、.-. 归一）。FT 目标站的 buildAndFill
+  // 与上游 addTorrent 两条链共用，保证转种文件名两站一致。
+  function cleanFileName(name) {
+    var s = cleanTitle(name)
+      .replace(/ /g, ".")
+      .replace(/\.-\./, "-")
+      .trim();
+    return s || text(name);
+  }
+
   // ------------------------------------------------------------ 分类映射
   var UPSTREAM_TYPES = {
     "电影": ["电影", "movie", "film", "影片"],
@@ -661,7 +694,8 @@ var FluxAutoFeedCore = (function () {
       category_id: null,
       sections: {},
     };
-    plan.fields.name = clamp(raw.name, 200);
+    // 标题剥源站[前缀]（FT 入库优先取表单 name，见 upload.rs:143）
+    plan.fields.name = clamp(cleanTitle(raw.name), 200);
     plan.fields.small_descr = clamp(raw.small_descr, 120);
     plan.fields.descr = clamp(raw.descr, 59000);
     var mi = text(raw.full_mediainfo).trim() ||
@@ -773,6 +807,8 @@ var FluxAutoFeedCore = (function () {
     isSkippedTag: isSkippedTag,
     SKIP_TAGS: SKIP_TAGS,
     releaseGroup: releaseGroup,
+    cleanTitle: cleanTitle,
+    cleanFileName: cleanFileName,
     categoryTypeOf: categoryTypeOf,
     guessType: guessType,
     pickCategory: pickCategory,

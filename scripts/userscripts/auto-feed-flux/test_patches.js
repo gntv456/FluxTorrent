@@ -43,7 +43,7 @@ test("头部：身份/版本/无自动更新", () => {
   assert.ok(src.includes("// @name         auto_feed (FluxTorrent)"));
   assert.ok(src.includes(
     "// @namespace    https://fluxtorrent.ptang.top/auto-feed"));
-  assert.ok(src.includes("// @version      2.1.1.4.10"));
+  assert.ok(src.includes("// @version      2.1.1.4.15"));
   assert.ok(!src.includes("@updateURL"));
   assert.ok(!/@require\s+https:\/\/greasyfork\.org\//.test(src));
 });
@@ -354,6 +354,7 @@ test("真实 addTorrent b64 快路径：全局 raw_info 命中时种子文件直
     GM_getValue: (k) => gmStore[k],
     console,
     alert: () => {},
+    FluxAutoFeedCore: core,
     raw_info: { torrent_b64_key: "k1", torrent_name: "T.2026.1080p" },
     atob: () => "x",
     window: { File: FakeFile },
@@ -417,6 +418,7 @@ test("真实 addTorrent b64 快路径：源站[前缀]与空格从文件名剥�
     GM_getValue: (k) => gmStore[k],
     console,
     alert: () => {},
+    FluxAutoFeedCore: core,
     raw_info: {
       torrent_b64_key: "k1",
       torrent_name: "[某站] Show 2026 S01 1080p WEB-DL H264-GRP",
@@ -456,6 +458,28 @@ test("真实 addTorrent b64 快路径：源站[前缀]与空格从文件名剥�
     String(names),
   );
   assert.equal(seenSite, "FluxTorrent");
+  // 全角【】与连续多组前缀同样剥掉
+  fileInput.files = null;
+  atFn("https://expired.example/x",
+    "【某站】[组] Show 2026 1080p-GRP", "FluxTorrent",
+    "https://fluxtorrent.ptang.top/announce/xx");
+  assert.deepEqual(
+    fileInput.files.map((f) => f.name),
+    ["Show.2026.1080p-GRP.torrent"],
+    String(fileInput.files && fileInput.files.map((f) => f.name)),
+  );
+  // 真实案例（2026-11-08 用户截图）：逗号分隔多组前缀 + torrent_name
+  // 自带 .torrent（上游从下载锚文本抓名）→ 不得产出双后缀
+  fileInput.files = null;
+  atFn("https://expired.example/x",
+    "[Farmm],[沙滩男孩].Beach.Boys.1997.S01.Complete.1080p.NF." +
+    "WEB-DL.H264.AAC-UBWEB.torrent", "FluxTorrent",
+    "https://fluxtorrent.ptang.top/announce/xx");
+  assert.deepEqual(
+    fileInput.files.map((f) => f.name),
+    ["Beach.Boys.1997.S01.Complete.1080p.NF.WEB-DL.H264.AAC-UBWEB.torrent"],
+    String(fileInput.files && fileInput.files.map((f) => f.name)),
+  );
 });
 
 test("好学线上词表回放：source/standard/codec 全命中", () => {
@@ -786,6 +810,22 @@ test("真实 fillTorrentDirect：缓存命中直填文件框并触发 onChange",
     assert.equal(input.files[0].name, "T.2026.torrent");
     assert.ok(input.dispatched.includes("change"));
     assert.equal(onChangeCalls.length, 1, "React onChange 未触发");
+    // FT 目标站文件名统一清洗（与上游 addTorrent 链路口径一致）：
+    // 逗号分隔多组前缀 + torrent_name 自带 .torrent（真实截图案例）
+    const dirty = {
+      torrent_name: "[Farmm],[沙滩男孩].Beach.Boys.1997.S01." +
+        "Complete.1080p.NF.WEB-DL.H264.AAC-UBWEB.torrent",
+      torrent_b64_key: "k1",
+    };
+    input.files = null;
+    const res2 = await fill(dirty, form);
+    assert.equal(res2.ok, true, res2.reason);
+    assert.equal(
+      input.files[0].name,
+      "Beach.Boys.1997.S01.Complete.1080p.NF.WEB-DL.H264.AAC-UBWEB" +
+        ".torrent",
+      input.files[0] && input.files[0].name,
+    );
     // 每一步失败都带原因，不再静默无反应
     assert.match((await fill({ name: "X" }, form)).reason,
       /缓存键/);
@@ -853,7 +893,7 @@ test("产物 fill_torrent：Flux 分支多选择器 + React onChange 兜底", ()
 });
 
 test("产物含版本指纹与诊断口（F12 可确认已装新版）", () => {
-  assert.ok(src.includes("// @version      2.1.1.4.10"));
+  assert.ok(src.includes("// @version      2.1.1.4.15"));
   assert.ok(src.includes('ADAPTER_BUILD = "2026-11-07e"'),
     "缺少新版本指纹");
   assert.ok(src.includes("function diag()"), "缺少诊断口");

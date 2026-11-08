@@ -115,6 +115,30 @@ test("目标填充计划命中直播站字典", () => {
     LIVE_SECTIONS);
   assert.equal(plan.category_id, 1);
   assert.equal(plan.fields.name, raw.name);
+  // 标题剥前缀：ASCII/全角/连续多组；正文括号注记与组尾缀保留
+  assert.equal(core.cleanTitle("[好学]美食教程视频"), "美食教程视频");
+  assert.equal(core.cleanTitle("【某站】Title 2024"), "Title 2024");
+  assert.equal(core.cleanTitle("[某站][组名]Show 2026 1080p-GRP"),
+    "Show 2026 1080p-GRP");
+  assert.equal(core.cleanTitle("Movie (2024) 蓝光原盘"), "Movie (2024) 蓝光原盘");
+  assert.equal(core.cleanTitle("[纯前缀]"), "[纯前缀]");
+  // 真实案例（2026-11-08 截图）：逗号分隔多组 + 自带 .torrent
+  assert.equal(core.cleanTitle(
+    "[Farmm],[沙滩男孩].Beach.Boys.1997.S01.Complete.1080p.NF." +
+    "WEB-DL.H264.AAC-UBWEB.torrent"),
+    "Beach.Boys.1997.S01.Complete.1080p.NF.WEB-DL.H264.AAC-UBWEB");
+  // 装饰竖条/色块（▎丨｜█…）：组后残留、无组开头都剥
+  assert.equal(core.cleanTitle(
+    "[Farmm],[沙滩男孩].▎Beach.Boys.1997"), "Beach.Boys.1997");
+  assert.equal(core.cleanTitle("▎[Farmm]Beach.Boys"), "Beach.Boys");
+  assert.equal(core.cleanTitle("丨Beach.Boys.1997"), "Beach.Boys.1997");
+  assert.equal(core.cleanFileName(
+    "[Farmm],[沙滩男孩].▎Beach.Boys.1997.S01-UBWEB.torrent"),
+    "Beach.Boys.1997.S01-UBWEB");
+  const prefixed = core.planTargetFill(
+    Object.assign({}, raw, { name: "[好学]Movie.2024.2160p" }),
+    { categories: LIVE_CATEGORIES }, LIVE_SECTIONS);
+  assert.equal(prefixed.fields.name, "Movie.2024.2160p");
   assert.equal(plan.fields.poster, "https://img.example/a.jpg");
   assert.equal(plan.fields.imdb,
     "https://www.imdb.com/title/tt15239678/");

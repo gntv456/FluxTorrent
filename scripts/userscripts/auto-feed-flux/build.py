@@ -162,7 +162,7 @@ def patch_header(src: str) -> str:
     src = replace_once(
         src,
         "// @version      2.1.1.4",
-        "// @version      2.1.1.4.10",
+        "// @version      2.1.1.4.15",
         "header version",
     )
     src = replace_once(
@@ -356,13 +356,12 @@ def patch_add_torrent(src: str) -> str:
                     fluxObj.b64 && fluxAge >= 0 &&
                     fluxAge < 30 * 60 * 1000) {
                     var fluxBin = atob(fluxObj.b64);
-                    // 上游在函数后段才清洗 name（剥[源站]前缀、空格转点）；
-                    // 快路径提前 return 绕过了它，这里照抄同款清洗，
-                    // 否则文件名带着源站前缀。
-                    var fluxName = String(name || '')
-                        .replace(/^\\[.*?\\](\\.| )?/, '')
-                        .replace(/ /g, '.')
-                        .replace(/\\.-\\./, '-').trim();
+                    // 上游在函数后段才清洗 name；快路径提前 return 绕过了
+                    // 它。统一走核心的 cleanFileName（剥[源站]前缀/装饰
+                    // 竖条、去 .torrent 尾缀、空格转点），与 FT 目标站的
+                    // buildAndFill 同一套规则，文件名两站一致。
+                    var fluxName =
+                        FluxAutoFeedCore.cleanFileName(String(name || ""));
                     build_blob_from_torrent(fluxBin, forward_announce,
                         forward_site, "application/x-bittorrent",
                         function (data) {
@@ -383,6 +382,18 @@ def patch_add_torrent(src: str) -> str:
     }
 """
     return replace_once(src, anchor, added, "addTorrent b64")
+
+
+# 上游回退路径（getBlob）的清洗行只剥一层 ASCII [前缀]；扩展成与快路径
+# 同款：全角【】、逗号分隔多组、结尾 .torrent 一并处理（锚点在上游唯一）。
+def patch_name_clean(src: str) -> str:
+    old = (
+        "    name = name.replace(/^\\[.*?\\](\\.| )?/, '')"
+        ".replace(/ /g, '.').replace(/\\.-\\./, '-').trim();\n"
+    )
+    # 回退路径（getBlob）同样收口到核心 cleanFileName，规则单一来源
+    new = "    name = FluxAutoFeedCore.cleanFileName(name);\n"
+    return replace_once(src, old, new, "addTorrent name clean")
 
 
 def patch_auto_feed(src: str) -> str:
@@ -432,6 +443,9 @@ def validate(src: str) -> None:
         "key == 'FluxTorrent' || key == '好学'",
         "forward_site == 'FluxTorrent' || forward_site == '好学'",
         "flux_src_site",
+        "fluxName",
+        "cleanTitle",
+        "cleanFileName",
     ]
     for marker in need:
         if marker not in src:
@@ -461,6 +475,7 @@ def main() -> None:
     src = patch_dup_search(src)
     src = patch_fill_torrent(src)
     src = patch_add_torrent(src)
+    src = patch_name_clean(src)
     src = patch_source_tag(src)
     src = patch_auto_feed(src)
     validate(src)
