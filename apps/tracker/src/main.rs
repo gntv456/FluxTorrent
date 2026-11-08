@@ -162,14 +162,20 @@ async fn run() -> anyhow::Result<()> {
         });
     }
 
-    // peer 快照周期落盘（60s）：tracker 是 SPOF，快照让重启从「全量重建」变「增量补齐」。
+    // peer 快照周期落盘：tracker 是 SPOF，快照让重启从「全量重建」变「增量补齐」。
     // 0225 G30-B12：外置模式（FLUX_TRACKER_PEER_STORE=redis）下停用——peer 权威
     // 已在 Redis Hash，这个「全量覆盖写同一个键」正是多副本互抹的根源。
+    // 间隔可调（2026-11-08）：14 万 peer 全量序列化 ≈44MB/次，60s 写放大过重；
+    // 大站可设 300s，崩溃多丢 ≤5min peer 增量（客户端 30min 重 announce 自愈）。
     if !peers::external::external_enabled() {
+        let snapshot_secs =
+            env_i64("FLUX_TRACKER_SNAPSHOT_SECS", 60).clamp(10, 3600) as u64;
+        tracing::info!(snapshot_secs, "peer snapshot loop started");
         {
             let st = state.clone();
             actix_web::rt::spawn(async move {
-                let mut tick = tokio::time::interval(Duration::from_secs(60));
+                let mut tick =
+                    tokio::time::interval(Duration::from_secs(snapshot_secs));
                 loop {
                     tick.tick().await;
                     let snap = st.peers.export();

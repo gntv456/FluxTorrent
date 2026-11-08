@@ -258,6 +258,8 @@ services:
       ALLOW_PRIVATE_PEER_IP: "${ALLOW_PRIVATE_PEER_IP:-}"
       # piece 级抽查预算（每 5min 抽查多少个 peer，0 = 只握手不传 piece）
       FLUX_TRACKER_PIECE_PROBE: "${FLUX_TRACKER_PIECE_PROBE:-8}"
+      # peer 快照全量落盘周期秒数（10-3600，缺省 60；大表站点建议 300 降写放大）
+      FLUX_TRACKER_SNAPSHOT_SECS: "${FLUX_TRACKER_SNAPSHOT_SECS:-60}"
       # UDP tracker 下发开关（api 侧 build_torrent_bytes 读取）：
       # 私有站 passkey 走 HTTP announce URL path；UDP 标准包不携带身份，仅对
       # 支持「URL path 填入 tracker_id」扩展约定的客户端可用。默认空 = 只发 HTTP tier；
