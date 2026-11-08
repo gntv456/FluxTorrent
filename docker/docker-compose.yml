@@ -27,7 +27,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1g
+          # 大表站点经 .env 上调（如 FLUX_PG_MEM=2g）——免改 compose 文件，
+          # 部署栈与仓库文件保持逐字一致（漂移即事故，见 2026-11-08 审查）。
+          memory: ${FLUX_PG_MEM:-1g}
     environment:
       POSTGRES_USER: flux
       POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
@@ -182,7 +184,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512m
+          # announce 事件积压消化速率与内存正相关，大站经 .env 上调（如 2g）
+          memory: ${FLUX_WORKER_MEM:-512m}
     environment:
       DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
       REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
