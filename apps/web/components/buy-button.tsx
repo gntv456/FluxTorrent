@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n, apiErrorMessage } from "@/i18n/client";
 import { clientUuid } from "@/lib/client-uuid";
@@ -51,6 +51,31 @@ export function BuyButton({
   const [toName, setToName] = useState("");
   const [busy, setBusy] = useState(false);
   const [bought, setBought] = useState(false);
+  // 0479：购买成功后 10s 倒计时回退到「购买」——stackable 可连买，
+  // 非叠加品期间父层 onBought 已刷新拥有态/库存，回退后按钮状态与
+  // 服务端一致（此前 bought 永不复位，按钮卡死在「已购买」）
+  const [cooldown, setCooldown] = useState(0);
+  const cdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(
+    () => () => {
+      if (cdTimer.current) clearInterval(cdTimer.current);
+    },
+    [],
+  );
+  function startCooldown() {
+    setCooldown(10);
+    if (cdTimer.current) clearInterval(cdTimer.current);
+    cdTimer.current = setInterval(() => {
+      setCooldown((c) => {
+        if (c <= 1) {
+          if (cdTimer.current) clearInterval(cdTimer.current);
+          setBought(false);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+  }
   // 幂等键：每次打开弹窗生成一次，弹窗内重试复用（§8.2 幂等语义）；
   // 购买成功后换新键（0207b：连买两单不再被幂等挡）
   const [idem, setIdem] = useState(() => `web-${itemId}-${clientUuid()}`);
@@ -73,11 +98,12 @@ export function BuyButton({
         idempotency_key: idem,
         ...(gift ? { to: toName.trim() } : {}),
       });
-      // 成功反馈落在卡片按钮「已购买 ✓」+ 父层刷新的余额上（0207b）；
-      // 换新幂等键，连买第二单不被上一单的键挡住
+      // 成功反馈落在卡片按钮「已购买 ✓」（10s 倒计时后回退「购买」）+
+      // 父层刷新的余额上（0207b）；换新幂等键，连买第二单不被上一单的键挡住
       setBought(true);
       setOpen(false);
       setIdem(`web-${itemId}-${clientUuid()}`);
+      startCooldown();
       onBought?.();
     } catch (err) {
       // W-18：购买失败（余额不足 4001 等）走全局 toast——错误需要用户
@@ -93,7 +119,9 @@ export function BuyButton({
   const label = busy
     ? dict.shop.buying
     : bought
-      ? dict.shop.bought
+      ? cooldown > 0
+        ? `${dict.shop.bought} ${cooldown}s`
+        : dict.shop.bought
       : affordable
         ? dict.shop.buy
         : dict.shop.insufficient;
@@ -106,7 +134,7 @@ export function BuyButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        disabled={busy || bought || !affordable}
+        disabled={busy || bought || cooldown > 0 || !affordable}
         className={`btn btn-sm${affordable ? " btn-primary" : ""}`}
       >
         {label}

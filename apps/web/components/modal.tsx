@@ -83,7 +83,9 @@ export function Modal({
     "shadow-[var(--shadow-card)] " +
     (align === "center"
       ? "rounded-[var(--r-md)] sm:mt-12"
-      : "border-y-0 border-r-0");
+      : // 右侧全高抽屉：内容超视口时在抽屉内滚动——否则溢出部分
+        // 画在卡片背景盒之外，隔着遮罩呈「半透明」状（管理导航实测）
+        "border-y-0 border-r-0 overflow-y-auto");
 
   if (!open || !mounted) return null;
   return createPortal(
