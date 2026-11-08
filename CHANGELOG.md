@@ -3,6 +3,32 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.16] - 2026-11-09
+
+定位：**运维与可观测性**——监控栈首次真正可跑、tracker 快照间隔可调、
+compose 内存参数化；UI 对比度/触摸目标补漏；ja 字典 my 段补全。
+
+### 功能
+- tracker peer 快照全量落盘周期可调：`FLUX_TRACKER_SNAPSHOT_SECS`
+  （10-3600s，缺省 60 不变；大表站点设 300 降写放大，崩溃多丢 ≤5min
+  peer 增量，客户端 30min 重 announce 自愈）
+- 监控栈（prometheus/grafana，`--profile monitoring`）首次真正可跑：
+  yml 结构修正（scrape_interval 入 global）+ Bearer token 入口 sed 注入
+  （prometheus 无 yml 变量展开）+ ENTRYPOINT 清空 + 内存限额参数化
+
+### 修复
+- UI 对比度两处漏改：金色角标/勋章稀有度 `#6b4e00` → `var(--on-sun)`
+  （2.09 → 5.2:1）
+- 触摸目标收尾三处：筛选 chip / 游戏节点 / 立即签到钮命中区补足 44px
+- ja 字典 my 段补全：44 个界面文案 + 30 个火花流水 kinds 日译
+  （原仅 1 键，段级回落致日文用户全看中文）
+- compose pg/worker 内存上限参数化（`FLUX_PG_MEM`/`FLUX_WORKER_MEM`），
+  部署栈免改文件、消除独立副本漂移
+
+### 文档
+- CHANGELOG 补 0.5.5-0.5.9/0.5.11 五个历史版本条目（按 tag 段回溯）
+- 运维日历 / 老用户公告草稿 / 召回圈选与评分口径实施方案（_doc/）
+
 ## [0.5.15] - 2026-11-08
 
 定位：**权限与审计治理**——维护开发员提为全权、用户变更日志全链、
