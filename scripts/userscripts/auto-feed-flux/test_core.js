@@ -135,6 +135,13 @@ test("目标填充计划命中直播站字典", () => {
   assert.equal(core.cleanFileName(
     "[Farmm],[沙滩男孩].▎Beach.Boys.1997.S01-UBWEB.torrent"),
     "Beach.Boys.1997.S01-UBWEB");
+  // 兜底规则：未知装饰符号剥到第一个名字内容字符为止
+  assert.equal(core.cleanTitle("❚[组]Beach.Boys"), "Beach.Boys");
+  assert.equal(core.cleanTitle("···︱Title 2024"), "Title 2024");
+  assert.equal(core.cleanTitle("▏▎▍Beach"), "Beach");
+  // 内容起始字符不被误伤：书名号/括号开头的正常标题
+  assert.equal(core.cleanTitle("《三体》2024"), "《三体》2024");
+  assert.equal(core.cleanTitle("(2024)重映版"), "(2024)重映版");
   const prefixed = core.planTargetFill(
     Object.assign({}, raw, { name: "[好学]Movie.2024.2160p" }),
     { categories: LIVE_CATEGORIES }, LIVE_SECTIONS);

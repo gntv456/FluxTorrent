@@ -162,7 +162,7 @@ def patch_header(src: str) -> str:
     src = replace_once(
         src,
         "// @version      2.1.1.4",
-        "// @version      2.1.1.4.15",
+        "// @version      2.1.1.4.17",
         "header version",
     )
     src = replace_once(

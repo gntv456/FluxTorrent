@@ -254,8 +254,12 @@ var FluxAutoFeedCore = (function () {
       new RegExp("^(?:" + sep + "(?:\\[[^\\]]*\\]|【[^】]*】))+" + sep),
       "",
     );
-    // 没有括号组时，开头的装饰竖条/色块同样剥掉
-    out = out.replace(new RegExp("^[" + TITLE_DECOR + "]+[\\s.·,，]*"), "");
+  // 先剥已知装饰（含 丨 这类汉字形竖条），再由兜底规则收掉剩余未知符号
+  out = out.replace(
+    new RegExp("^[" + TITLE_DECOR + "\s.·,，]+[\s.·,，]*"), "");
+  var m = out.match(/[\wÀ-ɏ㐀-鿿〇《〈（【「『\[(]/);
+  if (m && m.index > 0) out = out.slice(m.index);
+  if (m && m.index > 0) out = out.slice(m.index);
     return out || s;
   }
 
@@ -582,6 +586,11 @@ var FluxAutoFeedCore = (function () {
     var teamName = findSection(sec,
       ["team", "group", "release_group"],
       ["制作组", "製作組", "团队", "團隊", "发布组", "發布組"]);
+  // 简介顶部声明类引用块剥离：源站上传者常把「禁转XX / 转载请注明 /
+  // 仅供学习」这类行政声明放在简介最前面的 [quote] 块里，转种到目标站
+  // 既无意义又渲染成一块带左竖条的引用框（bbcode.tsx border-l-4）。
+  // 只剥开头的、可见文本命中声明词的 quote 块（可连续多个）；正文引用
+  // 与不含声明词的引用一律保留。MI 提取在剥离后进行，避免误吃。
     var descr0 = text(d.descr);
     var mediainfo = text(d.mediainfo).trim();
     if (!mediainfo) mediainfo = extractMediaInfo(descr0);

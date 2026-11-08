@@ -43,7 +43,7 @@ test("头部：身份/版本/无自动更新", () => {
   assert.ok(src.includes("// @name         auto_feed (FluxTorrent)"));
   assert.ok(src.includes(
     "// @namespace    https://fluxtorrent.ptang.top/auto-feed"));
-  assert.ok(src.includes("// @version      2.1.1.4.15"));
+  assert.ok(src.includes("// @version      2.1.1.4.17"));
   assert.ok(!src.includes("@updateURL"));
   assert.ok(!/@require\s+https:\/\/greasyfork\.org\//.test(src));
 });
@@ -893,7 +893,7 @@ test("产物 fill_torrent：Flux 分支多选择器 + React onChange 兜底", ()
 });
 
 test("产物含版本指纹与诊断口（F12 可确认已装新版）", () => {
-  assert.ok(src.includes("// @version      2.1.1.4.15"));
+  assert.ok(src.includes("// @version      2.1.1.4.17"));
   assert.ok(src.includes('ADAPTER_BUILD = "2026-11-07e"'),
     "缺少新版本指纹");
   assert.ok(src.includes("function diag()"), "缺少诊断口");
