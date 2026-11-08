@@ -213,6 +213,39 @@ services:
     stop_grace_period: 90s
     restart: unless-stopped
 
+  # —— announce 专职消费副本（2026-11-08 迁站洪峰批引入；此前是 compose 外
+  # 手工 docker run 的「隐形件」，全面审查时差点漏升级）。只挂
+  # consume_announce，与主 worker 同消费组竞争消费 Redis 流。
+  # 默认不启动：大站 .env 设 COMPOSE_PROFILES=announce-scale 开启。
+  worker-announce: &worker-announce
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-c84d4c02}
+    container_name: ${FLUX_WA1_CONTAINER:-flux-worker-announce}
+    logging: *default-logging
+    profiles: ["announce-scale"]
+    deploy:
+      resources:
+        limits:
+          memory: ${FLUX_WORKER_ANNOUNCE_MEM:-512m}
+    environment:
+      DATABASE_URL: postgres://flux:${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}@postgres:5432/fluxtorrent
+      REDIS_URL: redis://:${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}@redis:6379
+      RUST_LOG: info
+      FLUX_WORKER_JOBS: consume_announce
+      DB_POOL_SIZE: 16
+    healthcheck:
+      test: ["NONE"]
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    stop_grace_period: 90s
+    restart: unless-stopped
+  worker-announce2:
+    <<: *worker-announce
+    container_name: ${FLUX_WA2_CONTAINER:-flux-worker-announce2}
+
   tracker:
     image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/tracker:${FLUX_VERSION:-c84d4c02}
     build:

@@ -15,6 +15,14 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     labels: [chore, web]
+    # next 钉 15.3.8：Next 15.5.x 段级 loading 边界回归（以 fallback 提交，
+    # 2026-10-21 硬导航白屏事故 8888fc0 复发）。上游修复前压掉大/小版本
+    # 自动 PR（patch 仍放行）；eslint-config-next 与 next 同版联动一并压。
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /
