@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent 主菜单 · 山海经卷轴版结构变体样图（2026-11-07）</title>
+<style>
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff; --sky-line:#c4e0f7;
+  --mint:#2fbf9b; --mint-deep:#1d8f73;
+  --coral:#ff7a59; --coral-soft:#ffe9e2; --sun:#ffc93c; --sun-soft:#fff4d6;
+  --ink:#1f2a44; --sub:#6b7a99; --faint:#94a3b8;
+  --line:#e3edf7; --line-soft:#eef2f6;
+  --card:#fff; --page:#f5faff; --panel:#f8fafc;
+  --r-sm:10px; --r-md:14px; --r-lg:20px;
+  --sh-1:0 8px 24px rgba(31,42,68,.08);
+  --sh-2:0 18px 48px rgba(31,42,68,.16);
+  --font:-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+  --serif:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+  --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:14px;line-height:1.6;
+  color:var(--ink);background:#eef4fa}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+h1,h2,h3,h4{margin:0;line-height:1.35}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 80px}
+.doc-hd{background:linear-gradient(120deg,#173a66,#1e8ae8);color:#fff;
+  padding:34px 0 30px;margin-bottom:26px}
+.doc-hd .wrap{padding-bottom:0}
+.doc-hd .kicker{font-size:12px;letter-spacing:2px;color:#bfe0ff;font-weight:700}
+.doc-hd h1{font-size:27px;font-weight:800;margin:8px 0 8px}
+.doc-hd p{margin:0;color:#d3e8ff;font-size:13.5px;max-width:920px}
+.doc-hd .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.doc-hd .chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;padding:4px 12px;font-size:12px;color:#eaf6ff}
+.sec{margin:34px 0 0}
+.sec-hd{display:flex;align-items:baseline;gap:12px;margin:0 0 14px;flex-wrap:wrap}
+.sec-hd .no{font:700 12px/1 var(--mono);color:var(--sky-deep);
+  background:var(--sky-soft);border:1px solid var(--sky-line);
+  border-radius:6px;padding:6px 8px}
+.sec-hd h2{font-size:20px;font-weight:800}
+.sec-hd .note{color:var(--sub);font-size:12.5px}
+.card{background:#fff;border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--sh-1);padding:20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+th{color:var(--sub);font-size:12px;font-weight:700;letter-spacing:.5px;
+  background:var(--panel)}
+tr:last-child td{border-bottom:0}
+code{font:12px/1.5 var(--mono);background:#f1f6fc;color:#25527e;
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;
+  font-size:11.5px;font-weight:700}
+.pill--a{background:var(--sky-soft);color:var(--sky-deep)}
+.pill--b{background:#f6e6df;color:#a8432c}
+.anno{background:var(--sun-soft);border:1px solid #f5dfa4;border-radius:var(--r-md);
+  padding:12px 15px;font-size:12.5px;color:#7a5a12;margin-top:14px}
+.spec-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.spec-row .k{width:100px;flex-shrink:0;color:var(--sub);font-size:12.5px;font-weight:700}
+.spec-row .v{font-size:12.5px;flex:1}
+
+/* ============ 结构对比示意 ============ */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cmp__box{background:var(--page);border:1px dashed var(--sky-line);
+  border-radius:var(--r-md);padding:14px;min-height:190px}
+.cmp__box h3{font-size:13px;margin-bottom:4px}
+.cmp__box p{font-size:11.5px;color:var(--sub);margin:0 0 12px}
+.cmp--h{display:flex;gap:6px;align-items:flex-start}
+.cmp--h .c{flex:1;min-width:0;background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:6px}
+.cmp--h .c.on{background:var(--sky-soft);border-color:var(--sky)}
+.cmp--h .c i{display:block;height:5px;border-radius:3px;background:#dbe8f5;margin:4px 0}
+.cmp--h .c.on i{background:#a9d3f7}
+.cmp--v{display:flex;flex-direction:column;gap:7px}
+.cmp--v .v{display:flex;align-items:center;gap:8px;background:#fff;
+  border:1px solid var(--line);border-radius:4px;padding:7px 9px;font-size:11px}
+.cmp--v .v.on{border-color:#a8432c;background:#fbf0e9}
+.cmp--v .v .seal{width:18px;height:18px;border-radius:2px;background:#a8432c;
+  color:#fff;display:grid;place-items:center;font-size:10px;flex-shrink:0}
+.cmp--v .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:2px 0}
+.cmp--v .grid i{height:26px;border:1px solid var(--line);border-radius:3px;background:#fff}
+
+/* ============ 主题切换条 ============ */
+.themebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:#fff;border:1px solid var(--line);border-radius:var(--r-md);
+  padding:10px 14px;margin-bottom:14px;box-shadow:var(--sh-1)}
+.themebar__lab{font-size:12px;color:var(--sub);font-weight:800;margin-right:4px}
+.themebar button{border:1px solid var(--line);background:var(--panel);
+  color:var(--sub);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700}
+.themebar button[data-on="true"]{background:#a8432c;border-color:#a8432c;color:#fff}
+.themebar__cur{margin-left:auto;font-size:12px;color:#a8432c;font-weight:800}
+
+/* ============ 浏览器框 / 站点顶栏 ============ */
+.browser{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--sh-2);overflow:visible}
+.browser__bar{display:flex;align-items:center;gap:8px;background:#eaf1f8;
+  border-bottom:1px solid var(--line);padding:10px 14px;
+  border-radius:var(--r-lg) var(--r-lg) 0 0}
+.browser__bar i{width:9px;height:9px;border-radius:50%;background:#cbd8e6;display:block}
+.browser__url{flex:1;max-width:420px;background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:4px 10px;font:11px/1.5 var(--mono);color:var(--faint)}
+.browser__body{position:relative;background:var(--page);min-height:470px}
+.site-top{display:flex;align-items:center;gap:16px;padding:0 18px;height:56px;
+  background:#eaf4ff;border-bottom:1px solid var(--sky-line)}
+.site-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;
+  color:var(--sky-deep);white-space:nowrap;font-family:var(--serif)}
+.site-logo i{width:22px;height:22px;border-radius:4px;background:#a8432c;display:block}
+.site-nav{display:flex;gap:5px;flex:1}
+.site-nav button{border:1px solid var(--line);background:#fff;color:var(--ink);
+  font-size:13px;font-weight:700;border-radius:5px;padding:7px 13px;white-space:nowrap}
+.site-nav button[data-active="true"]{background:#a8432c;border-color:#a8432c;color:#fff}
+.site-top__search{border:1px solid var(--line);background:#fff;border-radius:5px;
+  padding:7px 12px;font-size:12px;color:var(--faint);min-width:120px;text-align:center}
+.fake-page{padding:22px 24px;color:var(--sub);font-size:12.5px}
+.fake-page h3{color:var(--ink);font-size:17px;margin-bottom:6px;font-family:var(--serif)}
+.fake-page .skeleton{height:10px;border-radius:2px;background:#e6eef7;margin:8px 0}
+
+/* ============ 卷轴面板 ============ */
+.scroll{position:absolute;top:60px;left:50%;transform:translateX(-50%);
+  width:min(760px,calc(100% - 36px));background:var(--sc-panel);
+  border:1px solid var(--sc-line);border-radius:var(--sc-r);
+  box-shadow:var(--sc-sh);z-index:20;overflow:hidden;
+  animation:unroll .2s ease-out}
+@keyframes unroll{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+.scroll[hidden]{display:none}
+.scroll__head{display:flex;align-items:center;gap:10px;padding:11px 14px;
+  border-bottom:1px solid var(--sc-line);background:var(--sc-head)}
+.scroll__mark{width:30px;height:30px;border:1px solid var(--sc-seal);
+  color:var(--sc-seal);display:grid;place-items:center;border-radius:2px;
+  font:800 13px/1 var(--serif);flex-shrink:0}
+.scroll__title{font:700 14px/1.3 var(--serif);letter-spacing:2px;color:var(--sc-text)}
+.scroll__title small{display:block;font:400 10.5px/1.5 var(--font);
+  letter-spacing:0;color:var(--sc-sub)}
+.scroll__search{flex:1;display:flex;align-items:center;gap:7px;
+  background:var(--sc-input);border:1px solid var(--sc-line);
+  border-radius:2px;padding:6px 9px;min-width:100px}
+.scroll__search input{border:0;outline:0;background:none;flex:1;min-width:0;
+  font-size:12px;font-family:inherit;color:var(--sc-text)}
+.scroll__search input::placeholder{color:var(--sc-faint)}
+.scroll__close{border:1px solid var(--sc-line);background:transparent;
+  color:var(--sc-sub);width:28px;height:28px;border-radius:2px;font-size:16px}
+/* 卷首路径：印章式面包屑 */
+.path{display:flex;align-items:center;gap:5px;padding:9px 14px;
+  border-bottom:1px solid var(--sc-line);background:var(--sc-strip);
+  overflow-x:auto;flex-wrap:wrap}
+.path button{border:1px solid var(--sc-line);background:var(--sc-card);
+  color:var(--sc-sub);font-size:11.5px;padding:3px 9px;border-radius:2px;
+  white-space:nowrap;font-family:var(--serif)}
+.path button:hover{border-color:var(--sc-jade);color:var(--sc-jade)}
+.path button.is-end{border-color:var(--sc-seal);color:var(--sc-seal);font-weight:800}
+.path .sep{color:var(--sc-faint);font-size:12px}
+.path .cnt{margin-left:auto;font:11px/1 var(--mono);color:var(--sc-faint);white-space:nowrap}
+/* 卷身：已展开层级收成题签 + 当前卷宫格 */
+.scroll__body{max-height:min(62vh,470px);overflow-y:auto;padding:0 14px 14px}
+.strip{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  border:0;border-bottom:1px solid var(--sc-line);background:transparent;
+  padding:9px 4px;color:var(--sc-sub);font-size:12px}
+.strip:hover{background:var(--sc-active)}
+.strip .seal{width:22px;height:22px;border:1px solid var(--sc-seal);
+  color:var(--sc-seal);display:grid;place-items:center;border-radius:2px;
+  font:800 11px/1 var(--serif);flex-shrink:0}
+.strip .nm{flex:1;font-family:var(--serif);font-size:12.5px;color:var(--sc-text)}
+.strip .hint{font-size:11px;color:var(--sc-faint)}
+.strip .undo{color:var(--sc-jade);font-size:11px}
+.vol{padding-top:14px;animation:volIn .18s ease-out}
+@keyframes volIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.vol,.scroll{animation:none}}
+.vol__hd{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;
+  border-bottom:1px solid var(--sc-line);padding-bottom:9px}
+.vol__hd .seal{width:30px;height:30px;border:1px solid var(--sc-seal);
+  color:var(--sc-seal);display:grid;place-items:center;border-radius:2px;
+  font:800 14px/1 var(--serif);flex-shrink:0}
+.vol__hd h3{font:800 16px/1.3 var(--serif);letter-spacing:2px;color:var(--sc-text)}
+.vol__hd p{font-size:11.5px;color:var(--sc-sub);margin-left:auto}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:9px}
+.tile{position:relative;display:flex;flex-direction:column;gap:5px;
+  min-height:78px;text-align:left;background:var(--sc-card);
+  border:1px solid var(--sc-line);border-radius:var(--sc-r);
+  padding:10px 11px;color:var(--sc-text);transition:border-color .15s,transform .15s}
+.tile:hover{border-color:var(--sc-jade);transform:translateY(-2px)}
+.tile.is-leaf{border-style:dashed}
+.tile__no{font:700 10px/1 var(--mono);color:var(--sc-gold);letter-spacing:1px}
+.tile__nm{font:700 13.5px/1.3 var(--serif);letter-spacing:.5px}
+.tile__meta{font-size:10.5px;color:var(--sc-faint);margin-top:auto}
+.tile__ar{position:absolute;right:9px;top:8px;color:var(--sc-faint);font-size:14px}
+.tile.is-leaf .tile__ar{color:var(--sc-jade)}
+.scroll__foot{display:flex;align-items:center;gap:10px;padding:9px 14px;
+  border-top:1px solid var(--sc-line);background:var(--sc-strip)}
+.scroll__foot .txt{flex:1;min-width:0}
+.scroll__foot h4{font:700 12.5px/1.3 var(--serif);color:var(--sc-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scroll__foot p{font:10.5px/1.4 var(--mono);color:var(--sc-faint);margin:1px 0 0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scroll__foot button{border:1px solid var(--sc-seal);background:var(--sc-seal);
+  color:#fff;font:700 12px/1 var(--serif);letter-spacing:1px;
+  border-radius:2px;padding:8px 15px;white-space:nowrap}
+.scroll__foot .keys{font-size:10.5px;color:var(--sc-faint)}
+.results{padding:12px 14px;max-height:min(62vh,470px);overflow-y:auto}
+.res{display:flex;align-items:center;gap:10px;padding:9px 10px;
+  border-bottom:1px solid var(--sc-line)}
+.res:hover{background:var(--sc-active)}
+.res__main{flex:1;min-width:0}
+.res__name{font:700 13px/1.4 var(--serif);color:var(--sc-text)}
+.res__name mark{background:var(--sun-soft);color:#a06a00;padding:0 2px}
+.res__path{font-size:11px;color:var(--sc-faint)}
+.res__depth{font:10.5px/1 var(--mono);color:var(--sc-seal);
+  border:1px solid var(--sc-seal);border-radius:2px;padding:3px 6px}
+.results[hidden],.scroll__foot[hidden],.scroll__body[hidden]{display:none}
+
+/* ============ 两档主题令牌（结构完全相同） ============ */
+html[data-sh="rock"]{
+  --sc-panel:#111c18; --sc-head:#16241e; --sc-strip:#0e1814;
+  --sc-card:#16241e; --sc-input:#0c1511; --sc-line:#3a5a4c;
+  --sc-text:#e8e2cd; --sc-sub:#a9bdae; --sc-faint:#7d9284;
+  --sc-gold:#e6c87a; --sc-jade:#8fdcbd; --sc-seal:#c9604a;
+  --sc-active:rgba(63,174,143,.16); --sc-r:3px;
+  --sc-sh:0 0 0 1px rgba(211,161,63,.28),0 20px 48px rgba(0,0,0,.55);
+}
+html[data-sh="paper"]{
+  --sc-panel:#fbf7ec; --sc-head:#f5efdf; --sc-strip:#f3ecd9;
+  --sc-card:#fffdf6; --sc-input:#fffdf6; --sc-line:#d9cfb6;
+  --sc-text:#2f2a20; --sc-sub:#6b6151; --sc-faint:#9a8f78;
+  --sc-gold:#8a6a1c; --sc-jade:#2c6b52; --sc-seal:#a8432c;
+  --sc-active:#f6e6df; --sc-r:4px;
+  --sc-sh:0 12px 32px rgba(90,70,35,.18);
+}
+html[data-sh] .browser__body{background:var(--sc-strip)}
+html[data-sh] .fake-page{color:var(--sc-sub)}
+html[data-sh] .fake-page h3{color:var(--sc-text)}
+html[data-sh] .fake-page .skeleton{background:var(--sc-line)}
+html[data-sh] .site-top{background:var(--sc-head);border-color:var(--sc-line)}
+html[data-sh] .site-logo{color:var(--sc-text)}
+html[data-sh] .site-nav button{background:var(--sc-card);
+  border-color:var(--sc-line);color:var(--sc-text);border-radius:2px}
+html[data-sh] .site-nav button[data-active="true"]{background:var(--sc-seal);
+  border-color:var(--sc-seal);color:#fff}
+html[data-sh] .site-top__search{background:var(--sc-input);
+  border-color:var(--sc-line);color:var(--sc-faint);border-radius:2px}
+@media(max-width:760px){
+  .cmp,.grid2{grid-template-columns:1fr}
+  .tiles{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+  .scroll{width:calc(100% - 20px)}
+}
+</style>
+</head>
+<body>
+
+<header class="doc-hd">
+  <div class="wrap">
+    <div class="kicker">FLUXTORRENT · NAVIGATION STRUCTURE VARIANT B · 2026-11-07</div>
+    <h1>主菜单 · 山海经卷轴版（第二套结构变体）</h1>
+    <p>第一套是「横向逐级列 + 四档换皮」；这一套是<b>主题驱动布局</b>：山海经两档（岩彩 / 宣纸）改用<b>纵向卷轴结构</b> —— 层级从上往下展卷，已展开层收成题签，当前层用册页宫格。数据树、<code>path</code> 状态、点击逐级展开的口径与第一套完全一致，变的只是信息架构与视觉语言。</p>
+    <div class="chips">
+      <span class="chip">一级展卷 → 二级 → 三级 → 四级 → 五级</span>
+      <span class="chip">已展开层 = 卷首题签，当前层 = 册页宫格</span>
+      <span class="chip">岩彩 / 宣纸 双档实时切换</span>
+      <span class="chip">状态：样图阶段，未改业务代码</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- 01 -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">01</span><h2>为什么要第二套结构</h2>
+    <span class="note">换皮解决不了「卷轴感」；竖排、题签、册页是结构层，不是令牌层</span></div>
+  <div class="card" style="padding:6px 0">
+    <table>
+      <thead><tr><th style="width:150px">维度</th><th>第一套 · 标准横向列</th><th>第二套 · 山海经卷轴</th></tr></thead>
+      <tbody>
+        <tr><td><b>层级方向</b></td><td>由左向右追加列，已展开列并列可见</td><td>由上向下展卷，已展开层收成窄题签，只有当前层铺开</td></tr>
+        <tr><td><b>当前层形态</b></td><td>竖排链接列表（每行一项）</td><td>册页宫格卡片（编号 / 名称 / 子级数 / 箭头）</td></tr>
+        <tr><td><b>路径呈现</b></td><td>顶部横向面包屑</td><td>卷首印章式路径 + 逐层朱文题签（壹贰叁肆伍）</td></tr>
+        <tr><td><b>溢出策略</b></td><td>第 5 列起列窗横向滚动</td><td>卷身纵向滚动并自动滚到最新卷；窄屏天然单列，无需第三套</td></tr>
+        <tr><td><b>动效</b></td><td>新列 160ms 横向滑入</td><td>新卷 180ms 自上而下展开（unroll）</td></tr>
+        <tr><td><b>不变的部分</b></td><td colspan="2">同一棵 <code>NavNode</code> 树、同一个 <code>path</code>、点击逐级展开、叶子才导航、跨层级搜索、面包屑可回退</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="anno"><b>取舍：</b>横向列擅长「同时比较多级」，卷轴擅长「层层深入、有仪式感」，代价是跨层比较要回滚。所以按主题分流：<b>brand / brand-night 用第一套</b>（效率优先），<b>shanhaijing / shanhaijing-light 用本套</b>（沉浸优先）。两套共用数据与状态，只替换渲染壳。</div>
+</section>
+
+<!-- 02 -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">02</span><h2>结构差异示意</h2></div>
+  <div class="card">
+    <div class="cmp">
+      <div class="cmp__box">
+        <h3>第一套 · 横向逐级列 <span class="pill pill--a">brand / night</span></h3>
+        <p>点一级 → 右侧加一列；列并列保留，宽度恒定</p>
+        <div class="cmp--h">
+          <div class="c on"><i></i><i></i><i style="width:60%"></i></div>
+          <div class="c on"><i></i><i style="width:70%"></i><i></i></div>
+          <div class="c"><i></i><i></i></div>
+          <div class="c"><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="cmp__box">
+        <h3>第二套 · 纵向卷轴 <span class="pill pill--b">岩彩 / 宣纸</span></h3>
+        <p>已展开层收成题签，当前层铺开成册页宫格</p>
+        <div class="cmp--v">
+          <div class="v"><span class="seal">壹</span>卷壹 · 教育资源 <span style="margin-left:auto;color:var(--faint)">✓ 已选</span></div>
+          <div class="v"><span class="seal">贰</span>卷贰 · 小学 <span style="margin-left:auto;color:var(--faint)">✓ 已选</span></div>
+          <div class="v on"><span class="seal">叁</span>卷叁 · 三年级（当前卷）</div>
+          <div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">03</span><h2>主样图 · 卷轴逐级展卷（可交互）</h2>
+    <span class="note">点顶栏一级开卷 → 点册页卡片展开下一卷 → 点题签或卷首路径回退 → 顶部搜索跨层级过滤；切换岩彩 / 宣纸看同结构两种皮肤</span></div>
+
+  <div class="themebar">
+    <span class="themebar__lab">山海经档（点切换）</span>
+    <button data-sh-btn="rock">岩彩 · 山海经</button>
+    <button data-sh-btn="paper">宣纸 · 绢本</button>
+    <span class="themebar__cur" id="shName">岩彩 · 山海经</span>
+  </div>
+  <p style="font-size:12.5px;color:var(--sub);margin:-4px 0 14px">
+    两档共用<b>同一个卷轴结构</b>；切换只改表面、文本、朱印与纸感。若在 <code>brand</code> / <code>brand-night</code> 档，站点应渲染第一套横向列 —— 映射规则见第 05 节。</p>
+
+  <div class="browser">
+    <div class="browser__bar"><i></i><i></i><i></i><div class="browser__url">https://www.hxpt.org/torrents?category_id=13</div></div>
+    <div class="browser__body">
+      <div class="site-top">
+        <div class="site-logo"><i></i>好学</div>
+        <div class="site-nav" id="siteNav"></div>
+        <div class="site-top__search">🔍 搜索种子</div>
+      </div>
+      <div class="fake-page">
+        <h3>教育资源</h3><div>按学段、年级、科目浏览全站教育资源</div>
+        <div class="skeleton" style="width:62%"></div><div class="skeleton" style="width:88%"></div>
+        <div class="skeleton" style="width:74%"></div>
+      </div>
+
+      <div class="scroll" id="scroll" hidden>
+        <div class="scroll__head">
+          <div class="scroll__mark">卷</div>
+          <div class="scroll__title">逐级展卷<small id="scrollSub">点击册页，展开下一卷</small></div>
+          <div class="scroll__search">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9a8f78" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="search" placeholder="搜索任意层级：三年级 / 数学 / 人教版…" autocomplete="off">
+          </div>
+          <button class="scroll__close" id="closeBtn" title="关闭 (Esc)">×</button>
+        </div>
+        <div class="path" id="path"></div>
+        <div class="scroll__body" id="scrollBody"></div>
+        <div class="results" id="results" hidden></div>
+        <div class="scroll__foot" id="foot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno"><b>逐级展卷规则：</b>第 1 卷是全部一级入口；点一张册页 → 该卷收成题签「卷壹 · 已选项 ✓」，下方展开<b>新的一卷</b>列出它的子级。已展开卷始终保留为可点回退的题签，卷首的印章式路径记录完整 <code>path</code>。试 <b>教育资源 → 小学 → 三年级 → 数学 → 人教版</b>，看 5 卷依次展开。</div>
+</section>
+
+<!-- 04 -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">04</span><h2>交互与视觉规格</h2></div>
+  <div class="grid2">
+    <div class="card"><h3 style="font-size:14px;margin-bottom:10px">布局 / 尺寸</h3>
+      <div class="spec-row"><span class="k">面板</span><span class="v"><code>min(760px, 100vw - 36px)</code>，居中，圆角 3–4px（方册页），金箔/纸纹外描边</span></div>
+      <div class="spec-row"><span class="k">题签</span><span class="v">已展开层级收成 40px 高窄条，朱文方印标层级（壹贰叁肆伍），点击回退到该层</span></div>
+      <div class="spec-row"><span class="k">当前卷</span><span class="v">册页宫格 <code>repeat(auto-fill, minmax(146px,1fr))</code>，卡片 78px 起，窄屏降到 120px</span></div>
+      <div class="spec-row"><span class="k">高度</span><span class="v"><code>min(62vh, 470px)</code>，卷身独立纵向滚动 + 自动滚到最新卷</span></div>
+      <div class="spec-row"><span class="k">动效</span><span class="v">新卷 180ms 自上而下展开；<code>prefers-reduced-motion</code> 下关闭</span></div>
+    </div>
+    <div class="card"><h3 style="font-size:14px;margin-bottom:10px">状态 / 无障碍</h3>
+      <div class="spec-row"><span class="k">触发</span><span class="v">点击展卷，不用 hover；点叶子卡片才导航，点带子级的卡片展开下一卷</span></div>
+      <div class="spec-row"><span class="k">路径</span><span class="v">卷首印章式面包屑 + 逐层题签双通道，任一段可点回退</span></div>
+      <div class="spec-row"><span class="k">字体</span><span class="v">卷题 / 册页名用宋体系（<code>--serif</code>），编号与元数据用等宽；两档同</span></div>
+      <div class="spec-row"><span class="k">键盘</span><span class="v">Esc 关闭 / ← 回退一卷 / 斜杠聚焦搜索；焦点陷阱、关闭后归还触发按钮</span></div>
+      <div class="spec-row"><span class="k">对比度</span><span class="v">岩彩深底正文用石绿亮档 <code>#8fdcbd</code>、金色 <code>#e6c87a</code>，避免原色在暗底不达标（沿用现有主题校准口径）</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">05</span><h2>主题 ↔ 布局映射与落地</h2>
+    <span class="note">确认样图后再动代码；两套共用数据与状态，按主题选渲染壳</span></div>
+  <div class="card" style="padding:6px 0">
+    <table>
+      <thead><tr><th style="width:210px">主题 id</th><th style="width:130px">渲染壳</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>brand</code></td><td><span class="pill pill--a">第一套 横向列</span></td><td>效率优先，四列并列比较；默认档</td></tr>
+        <tr><td><code>brand-night</code></td><td><span class="pill pill--a">第一套 横向列</span></td><td>同结构，仅换夜间令牌</td></tr>
+        <tr><td><code>shanhaijing</code></td><td><span class="pill pill--b">第二套 卷轴</span></td><td>岩彩深底 + 朱文题签 + 金线描边</td></tr>
+        <tr><td><code>shanhaijing-light</code></td><td><span class="pill pill--b">第二套 卷轴</span></td><td>宣纸米白 + 墨字 + 朱砂印；结构同岩彩</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card" style="margin-top:14px;padding:6px 0">
+    <table>
+      <thead><tr><th style="width:300px">落地位置</th><th>改造</th></tr></thead>
+      <tbody>
+        <tr><td><code>lib/nav-menu.ts</code></td><td>统一 <code>NavNode</code> 树（两套共用，唯一数据源），把 <code>sub</code>/<code>children</code>/<code>groups</code> 归一</td></tr>
+        <tr><td><code>components/main-menu.tsx</code></td><td>只管触发、<code>path</code>、URL 选中态；按 <code>data-theme</code> 选择 <code>NavColumns</code> 或 <code>NavScroll</code> 渲染壳</td></tr>
+        <tr><td><code>components/nav-columns.tsx</code>（新）</td><td>第一套：横向逐级列，<code>path.length+1</code> 列，列窗横向滚动</td></tr>
+        <tr><td><code>components/nav-scroll.tsx</code>（新）</td><td>第二套：题签 + 册页宫格，卷身纵向滚动</td></tr>
+        <tr><td>主题层</td><td>卷轴令牌 <code>--sc-*</code> 写进 <code>theme-shanhaijing.css</code> 的两档块；<b>不写结构规则</b>，避免主题文件里混布局</td></tr>
+        <tr><td>移动端</td><td>卷轴天然单列，窄屏直接收窄宫格；第一套仍降级为全屏钻取</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="anno"><b>本轮范围：</b>只出第二套结构样图，<b>没有修改任何业务代码</b>。主题偏好仍按现有机制纯浏览器 localStorage(<code>flux-theme</code>) → <code>&lt;html data-theme&gt;</code>，切换是前端即时生效、无需后端或 DB 字段。</div>
+</section>
+
+</div>
+
+<script>
+/* ============ 与第一套完全相同的树（结构变体不改数据） ============ */
+const SUBJECTS=["数学","语文","英语","物理","化学","生物","政治","历史","地理"];
+const VERSIONS=["人教版","北师大版","苏教版","沪教版","部编版"];
+const subject=(g,cat,gi)=>({id:g+"-sub",label:"科目",href:"/torrents?category_id="+cat+"&grade_id="+gi,
+  desc:"按科目筛选该年级资源",children:SUBJECTS.map(s=>({
+    id:g+"-"+s,label:s,href:"/torrents?category_id="+cat+"&grade_id="+gi+"&sec_subject="+s,
+    desc:g+" · "+s,children:(s==="数学"||s==="语文")?VERSIONS.map(v=>({
+      id:g+"-"+s+"-"+v,label:v,desc:g+" · "+s+" · "+v,children:[]})):[]}))});
+const grade=(stage,cat,i,label)=>({id:stage+"-g"+i,label,
+  href:"/torrents?category_id="+cat+"&grade_id="+i,desc:label+"全部资源",
+  children:[subject(stage+"-"+label,cat,i)]});
+const stage=(id,label,cat,grades)=>({id,label,href:"/torrents?category_id="+cat,
+  desc:label+"阶段全部教育资源",children:[
+    {id:id+"-all",label:"全部"+label,href:"/torrents?category_id="+cat,desc:label,children:[]},
+    ...grades.map((g,i)=>grade(id,cat,i,g))]});
+const TREE=[
+  {id:"home",label:"首页",icon:"⌂",href:"/",desc:"站点首页",children:[]},
+  {id:"lib",label:"资源库",icon:"▦",href:"/torrents",desc:"按分类浏览",children:[
+    {id:"lib-all",label:"全部资源",href:"/torrents",desc:"不过滤",children:[
+      ...["电影","电视剧","短剧","音乐","动漫","纪录片","电子书","有声书","体育","综艺","教育资源"]
+        .map((n,i)=>({id:"c"+i,label:n,href:"/torrents?category_id="+(i+1),desc:n,children:[]}))]},
+    {id:"lib-res",label:"资源（非官种）",href:"/torrents?official=0",desc:"official=0",children:[]},
+    {id:"lib-off",label:"官种",href:"/torrents?official=1",desc:"official=1",children:[]}]},
+  {id:"edu",label:"教育资源",icon:"✎",href:"/torrents?category_id=13",
+   desc:"学段 › 年级 › 科目 › 教材版本",children:[
+     stage("nursery","学前教育",101,["大班"]),
+     stage("primary","小学",102,["一年级","二年级","三年级","四年级","五年级","六年级"]),
+     stage("junior","初中",103,["初一","初二","初三"]),
+     stage("senior","高中",105,["高一","高二","高三"]),
+     stage("uni","大学",107,["通识","专业课"])]},
+  {id:"forums",label:"论坛",icon:"◌",href:"/forums",desc:"社区讨论",children:[]},
+  {id:"upload",label:"发布",icon:"＋",href:"/upload",desc:"发布种子",children:[]},
+  {id:"more",label:"更多",icon:"···",href:"",desc:"全站功能分组",children:[
+    {id:"g1",label:"资源发现",href:"",desc:"榜单 / 求种 / 聚合",children:
+      ["排行榜","官种","求种","候选","出品方","艺人","当季新番"].map((n,i)=>({id:"g1-"+i,label:n,desc:n,children:[]}))},
+    {id:"g2",label:"字幕与保种",href:"",desc:"字幕 / 保种 / 濒危",children:
+      ["字幕","字幕组","保种","濒危","发布组","教材"].map((n,i)=>({id:"g2-"+i,label:n,desc:n,children:[]}))},
+    {id:"g3",label:"魔力经济",href:"",desc:"商城 / 银行 / 任务",children:
+      ["商城","银行","魔力池","任务","我的魔力","魔力明细"].map((n,i)=>({id:"g3-"+i,label:n,desc:n,children:[]}))},
+    {id:"g4",label:"成长荣誉",href:"",desc:"等级 / 勋章 / 邀请",children:
+      ["等级要求","考核","成就","复活","勋章墙","邀请"].map((n,i)=>({id:"g4-"+i,label:n,desc:n,children:[]}))},
+    {id:"g5",label:"娱乐",href:"",desc:"娱乐屋与社交",children:
+      ["娱乐屋","抽卡","农场","活动","好友"].map((n,i)=>({id:"g5-"+i,label:n,desc:n,children:[]}))}]}
+];
+const CN=["壹","贰","叁","肆","伍","陆","柒","捌"];
+
+/* ============ 状态与工具 ============ */
+const byId={};
+(function index(nodes,pp){nodes.forEach(n=>{
+  byId[n.id]=Object.assign({},n,{parentPath:pp});
+  if(n.children&&n.children.length) index(n.children,pp.concat(n.id));
+});})(TREE,[]);
+const flat=Object.values(byId).filter(n=>n.id!=="home");
+/* path 与第一套同构：已展开节点 id 链。卷数 = path.length + 1 */
+const state={path:["edu","primary"],query:"",open:true,skin:"rock"};
+const $=(s)=>document.querySelector(s);
+const esc=(s)=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const node=(id)=>byId[id]||TREE[0];
+const kids=(n)=>!!(n.children&&n.children.length);
+const childrenOf=(id)=>(node(id).children||[]);
+function pathLabel(n){return n.parentPath.map(id=>node(id).label).concat(n.label).join(" › ");}
+const cn=(i)=>CN[i]||String(i+1);
+
+function renderNav(){
+  $("#siteNav").innerHTML=TREE.map(n=>
+    `<button data-open="${n.id}" data-active="${state.open&&state.path[0]===n.id}">`+
+    `${n.label}${kids(n)?" ▾":""}</button>`).join("");
+  $("#siteNav").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    state.path=[b.dataset.open]; state.open=true;
+    state.query=""; $("#search").value=""; renderAll();
+  });
+}
+
+/* 卷首：印章式路径 */
+function renderPath(){
+  const cs=state.path.map(id=>node(id));
+  $("#path").innerHTML=
+    `<button data-i="-1">卷首</button>`+(cs.length?`<span class="sep">›</span>`:"")+
+    cs.map((n,i)=>`<button data-i="${i}" class="${i===cs.length-1?"is-end":""}">`+
+      cn(i)+" · "+esc(n.label)+`</button>`+
+      (i<cs.length-1?`<span class="sep">›</span>`:"")).join("")+
+    `<span class="cnt">已展 ${cs.length+1} 卷 · 点击任一段回退</span>`;
+  $("#path").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i; state.path=i<0?[]:state.path.slice(0,i+1); renderAll();
+  });
+}
+
+/* 卷身：已展开层收成题签 + 当前卷宫格 */
+function renderBody(){
+  const strips=state.path.map((id,i)=>{
+    const n=node(id);
+    return `<button class="strip" data-i="${i}">
+      <span class="seal">${cn(i)}</span>
+      <span class="nm">卷${cn(i)} · ${esc(n.label)}</span>
+      <span class="hint">${(n.children||[]).length} 册</span>
+      <span class="undo">↩ 回到此卷</span></button>`;
+  }).join("");
+  const list=state.path.length?childrenOf(state.path[state.path.length-1]):TREE;
+  const parent=state.path.length?node(state.path[state.path.length-1]):null;
+  const vol=state.path.length;
+  const tiles=list.length?list.map((n,i)=>
+    `<button class="tile ${kids(n)?"":"is-leaf"}" data-id="${esc(n.id)}">
+      <span class="tile__no">${String(i+1).padStart(2,"0")}</span>
+      <span class="tile__nm">${esc(n.label)}</span>
+      <span class="tile__meta">${kids(n)?(n.children.length)+" 册子目":"直达"}</span>
+      <span class="tile__ar">${kids(n)?"›":"✓"}</span></button>`).join("") :
+    `<div style="padding:26px;text-align:center;color:var(--sc-faint);font-size:12px">
+      此卷已到末页，可直接进入</div>`;
+  $("#scrollBody").innerHTML=strips+
+    `<div class="vol"><div class="vol__hd">
+      <span class="seal">${cn(vol)}</span>
+      <h3>卷${cn(vol)} · ${esc(parent?parent.label:"一级导航")}</h3>
+      <p>共 ${list.length} 册 · 点击展开下一卷</p></div>
+      <div class="tiles">${tiles}</div></div>`;
+  $("#scrollBody").querySelectorAll(".strip").forEach(b=>b.onclick=()=>{
+    state.path=state.path.slice(0,+b.dataset.i+1); renderAll();
+  });
+  $("#scrollBody").querySelectorAll(".tile").forEach(b=>b.onclick=()=>{
+    const n=node(b.dataset.id);
+    if(kids(n)){ state.path=state.path.concat(n.id); renderAll(); }
+    else flash("直达："+pathLabel(n));
+  });
+  requestAnimationFrame(()=>{ const el=$(".vol"); if(el) el.scrollIntoView({block:"nearest"}); });
+}
+
+function renderFoot(){
+  const last=state.path.length?node(state.path[state.path.length-1]):null;
+  const label=last?last.label:"卷首 · 请选择一级入口";
+  $("#foot").innerHTML=`<div class="txt"><h4>${esc(label)}</h4>
+    <p>${esc(last?pathLabel(last)+" · 第 "+state.path.length+" 级":"点击册页，展下一卷")}</p></div>
+    <span class="keys">Esc 关闭 · ← 回退 · / 搜索</span>
+    <button id="footGo">进入 →</button>`;
+  $("#footGo").onclick=()=>flash(last?"直达："+pathLabel(last):"请先选一级入口");
+}
+
+function renderResults(q){
+  const box=$("#results"), body=$("#scrollBody"), foot=$("#foot");
+  if(!q){ box.hidden=true; body.hidden=false; foot.hidden=false; return; }
+  const hits=flat.filter(n=>n.label.toLowerCase().includes(q.toLowerCase())||
+    pathLabel(n).toLowerCase().includes(q.toLowerCase())).slice(0,40);
+  const hl=(s)=>esc(s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"ig"),
+    m=>`<mark>${m}</mark>`);
+  box.innerHTML=hits.length?hits.map(n=>
+    `<div class="res"><div class="res__main"><div class="res__name">${hl(n.label)}</div>
+      <div class="res__path">${hl(pathLabel(n))}</div></div>
+      <span class="res__depth">卷${cn(n.parentPath.length)}</span></div>`).join("") :
+    `<div style="padding:36px;text-align:center;color:var(--sc-faint);font-size:13px">
+      没有匹配项 · 试试「三年级」「数学」</div>`;
+  box.hidden=false; body.hidden=true; foot.hidden=true;
+}
+
+function renderAll(){
+  renderNav();
+  $("#scroll").hidden=!state.open;
+  if(!state.open) return;
+  renderPath(); renderBody(); renderFoot();
+  $("#scrollSub").textContent="已展 "+state.path.length+" 级 · 共 "+
+    (state.path.length+1)+" 卷";
+  renderResults(state.query);
+}
+
+let flashTimer;
+function flash(msg){
+  let el=$("#flash");
+  if(!el){ el=document.createElement("div"); el.id="flash";
+    el.style.cssText="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);"+
+      "background:#2f2a20;color:#fff;padding:10px 18px;border-radius:4px;"+
+      "font-size:13px;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.25)";
+    document.body.appendChild(el); }
+  el.textContent=msg; clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>el.remove(),1800);
+}
+
+$("#closeBtn").onclick=()=>{ state.open=false; renderAll(); };
+$("#search").addEventListener("input",e=>{
+  state.query=e.target.value.trim(); renderResults(state.query);
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){ state.open=false; renderAll(); return; }
+  if(e.key==="/"&&document.activeElement!==$("#search")){
+    e.preventDefault(); state.open=true; renderAll(); $("#search").focus();
+  }
+  if(!state.open||state.query) return;
+  if(e.key==="ArrowLeft"&&state.path.length){ state.path.pop(); renderAll(); }
+});
+
+/* ============ 岩彩 / 宣纸 双档切换（结构不变） ============ */
+const SKIN_LABEL={rock:"岩彩 · 山海经",paper:"宣纸 · 绢本"};
+function setSkin(id){
+  state.skin=id;
+  document.documentElement.setAttribute("data-sh",id);
+  document.querySelectorAll("[data-sh-btn]").forEach(b=>{
+    b.dataset.on=b.dataset.shBtn===id?"true":"false";
+  });
+  const lab=$("#shName"); if(lab) lab.textContent=SKIN_LABEL[id]||id;
+}
+document.querySelectorAll("[data-sh-btn]").forEach(b=>{
+  b.onclick=()=>setSkin(b.dataset.shBtn);
+});
+setSkin("rock");
+renderAll();
+</script>
+</body>
+</html>

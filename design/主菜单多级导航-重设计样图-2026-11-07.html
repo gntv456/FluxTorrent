@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent 主菜单多级导航 · 重设计与交互样图（2026-11-07）</title>
+<style>
+/* ============ 全站设计令牌（对齐 design/全站页面样图集-2026-10-15.html） ============ */
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff; --sky-line:#c4e0f7;
+  --mint:#2fbf9b; --mint-deep:#1d8f73; --mint-soft:#dff7f0;
+  --coral:#ff7a59; --coral-soft:#ffe9e2;
+  --sun:#ffc93c; --sun-soft:#fff4d6;
+  --indigo:#5b6bf5; --indigo-soft:#eaebff;
+  --ink:#1f2a44; --sub:#6b7a99; --faint:#94a3b8;
+  --line:#e3edf7; --line-soft:#eef2f6;
+  --card:#fff; --page:#f5faff; --panel:#f8fafc;
+  --r-xs:8px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:24px;
+  --sh-1:0 8px 24px rgba(31,42,68,.08);
+  --sh-2:0 18px 48px rgba(31,42,68,.16);
+  --font:-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--font);font-size:14px;line-height:1.6;
+  color:var(--ink);background:#eef4fa}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+h1,h2,h3,h4{margin:0;line-height:1.35}
+.wrap{max-width:1280px;margin:0 auto;padding:0 22px 80px}
+
+/* ============ 样图文档外壳 ============ */
+.doc-hd{background:linear-gradient(120deg,#173a66,#1e8ae8);color:#fff;
+  padding:34px 0 30px;margin-bottom:26px}
+.doc-hd .wrap{padding-bottom:0}
+.doc-hd .kicker{font-size:12px;letter-spacing:2px;color:#bfe0ff;font-weight:700}
+.doc-hd h1{font-size:27px;font-weight:800;margin:8px 0 8px}
+.doc-hd p{margin:0;color:#d3e8ff;font-size:13.5px;max-width:900px}
+.doc-hd .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.doc-hd .chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;padding:4px 12px;font-size:12px;color:#eaf6ff}
+.sec{margin:34px 0 0}
+.sec-hd{display:flex;align-items:baseline;gap:12px;margin:0 0 14px;flex-wrap:wrap}
+.sec-hd .no{font:700 12px/1 var(--mono);color:var(--sky-deep);
+  background:var(--sky-soft);border:1px solid var(--sky-line);
+  border-radius:6px;padding:6px 8px}
+.sec-hd h2{font-size:20px;font-weight:800}
+.sec-hd .note{color:var(--sub);font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--sh-1);padding:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.prob{border-left:4px solid var(--coral);padding:14px 16px;background:#fff;
+  border-radius:var(--r-md);box-shadow:var(--sh-1)}
+.prob h3{font-size:14.5px;margin-bottom:6px}
+.prob p{color:var(--sub);font-size:12.8px;margin:0}
+.prob .tag{display:inline-block;font:700 11px/1.4 var(--mono);color:var(--coral);
+  background:var(--coral-soft);border-radius:5px;padding:2px 7px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+th{color:var(--sub);font-size:12px;font-weight:700;letter-spacing:.5px;
+  background:var(--panel)}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;
+  font-weight:700}
+.pill--rec{background:var(--mint-soft);color:var(--mint-deep)}
+.pill--alt{background:var(--sky-soft);color:var(--sky-deep)}
+.pill--no{background:#f1f5f9;color:var(--faint)}
+code{font:12px/1.5 var(--mono);background:#f1f6fc;color:#25527e;
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+
+/* ============ 现状复刻（Before） ============ */
+.before-stage{background:var(--page);border:1px dashed var(--sky-line);
+  border-radius:var(--r-md);padding:18px;position:relative;min-height:238px}
+.before-bar{display:flex;gap:6px;margin-bottom:12px}
+.before-bar span{background:#fff;border:1px solid var(--line);border-radius:8px;
+  padding:6px 12px;font-size:12px;font-weight:700;color:var(--sub)}
+.before-bar span.on{background:var(--sky);color:#fff;border-color:var(--sky)}
+.before-drop{width:470px;max-width:100%;display:flex;background:#fff;
+  border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);
+  overflow:hidden}
+.before-col{min-width:112px;flex:1;padding:8px;border-right:1px solid var(--line-soft)}
+.before-col:last-child{border-right:0}
+.before-col h4{font-size:11px;color:var(--sky-deep);margin-bottom:6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.before-col a,.before-col span{display:block;font-size:11px;color:var(--sub);
+  padding:3px 4px;border-radius:4px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.before-col a.on{background:var(--sky-soft);color:var(--sky-deep);font-weight:700}
+.before-chips{display:flex;flex-wrap:wrap;gap:3px;padding-left:6px;margin-top:3px}
+.before-chips i{font-style:normal;font-size:9.5px;color:var(--faint);
+  background:#f5f8fc;border-radius:3px;padding:1px 4px}
+.before-flag{position:absolute;right:14px;bottom:12px;background:var(--coral-soft);
+  color:#b8432a;border:1px solid #ffc7b8;border-radius:8px;padding:7px 11px;
+  font-size:11.5px;font-weight:700;max-width:250px}
+
+/* ============ 主样图：浏览器框 + 站点顶栏 ============ */
+.browser{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--sh-2);overflow:visible}
+.browser__bar{display:flex;align-items:center;gap:8px;background:#eaf1f8;
+  border-bottom:1px solid var(--line);padding:10px 14px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.browser__bar i{width:9px;height:9px;border-radius:50%;background:#cbd8e6;display:block}
+.browser__url{flex:1;max-width:420px;background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:4px 10px;font:11px/1.5 var(--mono);color:var(--faint)}
+.browser__body{position:relative;background:var(--page);min-height:400px}
+.site-top{display:flex;align-items:center;gap:16px;padding:0 18px;height:56px;
+  background:linear-gradient(100deg,#eaf4ff,#f7fbff);
+  border-bottom:1px solid var(--sky-line)}
+.site-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;
+  color:var(--sky-deep);white-space:nowrap}
+.site-logo i{width:22px;height:22px;border-radius:7px;
+  background:linear-gradient(135deg,var(--sky),#7cc8ff);display:block;position:relative}
+.site-logo i::after{content:"";position:absolute;inset:7px;background:#fff;border-radius:2px}
+.site-nav{display:flex;gap:4px;flex:1}
+.site-nav button{border:1px solid var(--line);background:#fff;color:var(--ink);
+  font-size:13px;font-weight:700;border-radius:9px;padding:7px 13px;
+  white-space:nowrap;transition:.15s}
+.site-nav button:hover{border-color:var(--sky);color:var(--sky-deep)}
+.site-nav button[data-active="true"]{background:var(--sky);border-color:var(--sky);
+  color:#fff;box-shadow:0 4px 12px rgba(47,168,255,.25)}
+.site-top__search{border:1px solid var(--line);background:#fff;border-radius:9px;
+  padding:7px 12px;font-size:12px;color:var(--faint);min-width:130px;text-align:center}
+.site-top__avatar{width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,var(--mint),#7be0c5)}
+.fake-page{padding:22px 24px;color:var(--sub);font-size:12.5px}
+.fake-page h3{color:var(--ink);font-size:17px;margin-bottom:6px}
+.fake-page .skeleton{height:10px;border-radius:5px;background:#e6eef7;margin:8px 0}
+
+/* ============ 新方案：分层画布面板 ============ */
+.panel{position:absolute;top:60px;left:18px;width:min(1100px,calc(100% - 36px));
+  background:#fff;border:1px solid var(--sky-line);border-radius:var(--r-lg);
+  box-shadow:var(--sh-2);z-index:20;overflow:hidden;
+  animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.panel[hidden],.panel__body[hidden],.results[hidden],.panel__status[hidden]{display:none}
+.panel__head{display:flex;align-items:center;gap:10px;padding:12px 16px;
+  border-bottom:1px solid var(--line);background:linear-gradient(90deg,#f7fbff,#fff)}
+.panel__search{flex:1;display:flex;align-items:center;gap:8px;background:#fff;
+  border:1px solid var(--sky-line);border-radius:10px;padding:7px 11px}
+.panel__search svg{flex-shrink:0}
+.panel__search input{border:0;outline:0;flex:1;font-size:13px;font-family:inherit;
+  color:var(--ink);min-width:0}
+.panel__search input::placeholder{color:var(--faint)}
+.panel__kbd{font:11px/1 var(--mono);color:var(--faint);border:1px solid var(--line);
+  border-radius:5px;padding:3px 6px;background:var(--panel)}
+.panel__close{border:1px solid var(--line);background:#fff;border-radius:8px;
+  width:30px;height:30px;color:var(--sub);font-size:16px;line-height:1}
+.panel__close:hover{border-color:var(--coral);color:var(--coral)}
+.crumb{display:flex;align-items:center;gap:2px;padding:9px 16px;
+  border-bottom:1px solid var(--line-soft);background:#fbfdff;overflow-x:auto}
+.crumb button{border:0;background:none;color:var(--sub);font-size:12.5px;
+  padding:3px 7px;border-radius:6px;white-space:nowrap}
+.crumb button:hover{background:var(--sky-soft);color:var(--sky-deep)}
+.crumb button.is-end{color:var(--ink);font-weight:800;background:var(--sky-soft)}
+.crumb .sep{color:var(--faint);font-size:12px}
+.crumb .hint{margin-left:auto;font-size:11px;color:var(--faint);white-space:nowrap}
+/* 逐级展开：点一级出二级列，点二级出三级列……列宽固定、面板宽度恒定，
+   超过 4 列时列窗横向滚动 + 自动滚到最新列，历史由面包屑承接。 */
+.panel__body{position:relative;height:min(56vh,430px);overflow:hidden}
+.colwin{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;
+  scroll-behavior:smooth;scrollbar-width:thin}
+.col{flex:0 0 232px;width:232px;height:100%;overflow-y:auto;background:#fff;
+  padding:10px 8px 16px;border-right:1px solid var(--line-soft);
+  animation:colIn .16s ease-out}
+.col:last-child{border-right:0}
+.col--root{background:var(--panel)}
+@keyframes colIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.col{animation:none}.colwin{scroll-behavior:auto}}
+.col__cap{display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:2px 10px 9px;font-size:11px;color:var(--faint);font-weight:800;
+  letter-spacing:.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.col__cap .lv{color:var(--sky-deep);font:700 10.5px/1 var(--mono);
+  background:var(--sky-soft);border-radius:5px;padding:3px 6px;flex-shrink:0}
+.col__cap .nm{overflow:hidden;text-overflow:ellipsis}
+.col__cap b{color:var(--sky-deep);font:700 11px/1 var(--mono);flex-shrink:0}
+.row{display:flex;align-items:center;gap:8px;width:100%;border:0;
+  background:none;text-align:left;padding:8px 10px;border-radius:9px;
+  color:var(--ink);font-size:13px;font-weight:600;min-height:36px}
+.row:hover{background:var(--sky-soft)}
+.row.is-active{background:var(--sky-soft);color:var(--sky-deep);font-weight:800;
+  box-shadow:inset 3px 0 0 var(--sky)}
+.row.is-leaf{color:var(--mint-deep)}
+.row.is-leaf:hover{background:var(--mint-soft)}
+.row .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .arrow{color:var(--faint);font-size:15px}
+.row .tick{color:var(--mint-deep);font-size:13px}
+.col__empty{padding:26px 14px;color:var(--faint);font-size:12px;text-align:center;
+  line-height:1.8}
+.colnav{position:absolute;top:10px;z-index:3;width:26px;height:26px;border-radius:8px;
+  border:1px solid var(--sky-line);background:#fff;color:var(--sky-deep);
+  font-size:15px;line-height:1;box-shadow:var(--sh-1)}
+.colnav:hover{background:var(--sky-soft)}
+.colnav--l{left:8px}
+.colnav--r{right:8px}
+.colnav[disabled]{opacity:.35;cursor:default}
+/* 底部状态条：把横向空间全部留给列，仍交代「当前选的是什么、点进去到哪」 */
+.panel__status{display:flex;align-items:center;gap:11px;padding:9px 16px;
+  border-top:1px solid var(--line-soft);background:var(--panel)}
+.status__ic{width:30px;height:30px;border-radius:9px;background:var(--sky-soft);
+  border:1px solid var(--sky-line);display:grid;place-items:center;
+  color:var(--sky-deep);font-size:15px;flex-shrink:0}
+.status__txt{flex:1;min-width:0}
+.status__txt h4{font-size:12.8px;font-weight:800;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.status__txt p{font:10.5px/1.4 var(--mono);color:var(--faint);margin:1px 0 0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status__go{border:0;border-radius:8px;padding:7px 14px;background:var(--sky);
+  color:#fff;font-size:12px;font-weight:800;white-space:nowrap}
+.status__go:hover{background:var(--sky-deep)}
+.panel__foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:9px 16px;border-top:1px solid var(--line-soft);background:var(--panel);
+  font-size:11.3px;color:var(--faint)}
+.panel__foot kbd{font:10.5px/1 var(--mono);border:1px solid var(--line);
+  background:#fff;border-radius:4px;padding:2px 5px;color:var(--sub)}
+.results{padding:10px 14px;overflow-y:auto;height:min(56vh,430px)}
+.res{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;
+  border:1px solid transparent}
+.res:hover{background:var(--sky-soft);border-color:var(--sky-line)}
+.res__main{flex:1;min-width:0}
+.res__name{font-size:13px;font-weight:700}
+.res__name mark{background:var(--sun-soft);color:#a06a00;border-radius:3px;padding:0 2px}
+.res__path{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.res__depth{font:11px/1 var(--mono);color:var(--sky-deep);background:var(--sky-soft);
+  border-radius:5px;padding:4px 7px}
+.res__none{padding:40px;text-align:center;color:var(--faint);font-size:13px}
+
+/* ============ 移动端钻取样图 ============ */
+.phones{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;justify-items:center}
+.phone{width:230px;background:#fff;border:7px solid #20344f;border-radius:26px;
+  overflow:hidden;box-shadow:var(--sh-2)}
+.phone__bar{height:26px;background:#eaf1f8;display:flex;align-items:center;
+  justify-content:center;font:10px/1 var(--mono);color:var(--faint)}
+.phone__scr{height:330px;background:var(--page);display:flex;flex-direction:column}
+.phone__hd{display:flex;align-items:center;gap:7px;background:#fff;
+  border-bottom:1px solid var(--line);padding:9px 11px;font-size:12px;font-weight:800}
+.phone__hd button{border:0;background:none;color:var(--sky-deep);font-size:15px;padding:0 3px}
+.phone__crumb{font-size:10px;color:var(--faint);background:var(--panel);
+  padding:5px 11px;border-bottom:1px solid var(--line-soft);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.phone__list{flex:1;overflow-y:auto;padding:6px}
+.phone__row{display:flex;align-items:center;gap:8px;padding:9px 10px;
+  border-bottom:1px solid var(--line-soft);font-size:12px;font-weight:600}
+.phone__row .ar{margin-left:auto;color:var(--faint)}
+.phone__row.is-leaf{color:var(--mint-deep)}
+.phone__cap{text-align:center;font-size:11.5px;color:var(--sub);margin-top:8px}
+.phone__cap b{color:var(--sky-deep)}
+
+/* ============ 规格 / 落地 ============ */
+.spec-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 24px}
+.spec-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.spec-row .k{width:96px;flex-shrink:0;color:var(--sub);font-size:12.5px;font-weight:700}
+.spec-row .v{font-size:12.5px;flex:1}
+.anno{background:var(--sun-soft);border:1px solid #f5dfa4;border-radius:var(--r-md);
+  padding:12px 15px;font-size:12.5px;color:#7a5a12;margin-top:14px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--sub);
+  margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;
+  margin-right:5px;vertical-align:-1px}
+@media(max-width:1000px){
+  .grid3,.grid2,.spec-list{grid-template-columns:1fr}
+  .col{flex-basis:190px;width:190px}
+  .panel__body{height:min(50vh,360px)}
+  .phones{grid-template-columns:1fr}
+}
+/* ============ 主题层：同一套逐级展开结构，四档呈现风格 ============
+   只换令牌与局部形态（圆角 / 字体 / 列头纹样 / 选中标记），
+   列结构、path 状态、面包屑、点击行为四档完全一致。
+   主题 id 与取值口径对齐 apps/web/lib/themes.ts 注册表。 */
+.themebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:#fff;border:1px solid var(--line);border-radius:var(--r-md);
+  padding:10px 14px;margin-bottom:14px;box-shadow:var(--sh-1)}
+.themebar__lab{font-size:12px;color:var(--sub);font-weight:800;margin-right:4px}
+.themebar button{border:1px solid var(--line);background:var(--panel);
+  color:var(--sub);border-radius:999px;padding:6px 13px;font-size:12px;
+  font-weight:700}
+.themebar button[data-on="true"]{background:var(--sky);
+  border-color:var(--sky);color:#fff}
+.themebar__cur{margin-left:auto;font-size:12px;color:var(--sky-deep);
+  font-weight:800}
+html[data-theme="brand"]{
+  --nv-panel:#fff; --nv-root:#f8fafc; --nv-col:#fff; --nv-status:#f8fafc;
+  --nv-head:#f7fbff; --nv-crumb:#fbfdff; --nv-line:#c4e0f7;
+  --nv-sep:#eef2f6; --nv-text:#1f2a44; --nv-sub:#6b7a99; --nv-faint:#94a3b8;
+  --nv-active-bg:#e8f4ff; --nv-active-fg:#1e8ae8; --nv-bar:#2fa8ff;
+  --nv-hover:#e8f4ff; --nv-leaf:#1d8f73;
+  --nv-lv-bg:#e8f4ff; --nv-lv-fg:#1e8ae8;
+  --nv-input:#fff; --nv-btn:#2fa8ff; --nv-btn-fg:#fff;
+  --nv-navbtn:#fff; --nv-navbtn-fg:#1f2a44;
+  --nv-top:linear-gradient(100deg,#eaf4ff,#f7fbff);
+  --nv-r:20px; --nv-row-r:9px; --nv-cap-font:var(--font); --nv-cap-ls:.6px;
+  --nv-sh:0 18px 48px rgba(31,42,68,.16);
+}
+html[data-theme="brand-night"]{
+  --nv-panel:#151d30; --nv-root:#101827; --nv-col:#151d30; --nv-status:#131c2e;
+  --nv-head:#182238; --nv-crumb:#111a2c; --nv-line:#2a3a55;
+  --nv-sep:#243149; --nv-text:#e6edf8; --nv-sub:#9fb0c9; --nv-faint:#6f82a0;
+  --nv-active-bg:rgba(72,150,255,.18); --nv-active-fg:#8cc4ff; --nv-bar:#4b9bff;
+  --nv-hover:rgba(72,150,255,.12); --nv-leaf:#5fd0a8;
+  --nv-lv-bg:rgba(72,150,255,.18); --nv-lv-fg:#8cc4ff;
+  --nv-input:#101827; --nv-btn:#2f7fe0; --nv-btn-fg:#fff;
+  --nv-navbtn:#1a2740; --nv-navbtn-fg:#dbe6f5;
+  --nv-top:linear-gradient(100deg,#111a2c,#1a2740);
+  --nv-r:14px; --nv-row-r:8px; --nv-cap-font:var(--font); --nv-cap-ls:.6px;
+  --nv-sh:0 20px 50px rgba(0,0,0,.5);
+}
+html[data-theme="shanhaijing"]{
+  --nv-panel:#111c18; --nv-root:#0c1511; --nv-col:#111c18; --nv-status:#0e1814;
+  --nv-head:#16241e; --nv-crumb:#0e1814; --nv-line:#3a5a4c;
+  --nv-sep:#2c463a; --nv-text:#e8e2cd; --nv-sub:#a9bdae; --nv-faint:#7d9284;
+  --nv-active-bg:rgba(63,174,143,.18); --nv-active-fg:#8fdcbd; --nv-bar:#d3a13f;
+  --nv-hover:rgba(211,161,63,.10); --nv-leaf:#8fdcbd;
+  --nv-lv-bg:rgba(211,161,63,.16); --nv-lv-fg:#e6c87a;
+  --nv-input:#0c1511; --nv-btn:#3fae8f; --nv-btn-fg:#0c1511;
+  --nv-navbtn:#16241e; --nv-navbtn-fg:#e8e2cd;
+  --nv-top:linear-gradient(100deg,#0c1511,#182820);
+  --nv-r:4px; --nv-row-r:2px;
+  --nv-cap-font:"Noto Serif SC","Songti SC",serif; --nv-cap-ls:2px;
+  --nv-sh:0 0 0 1px rgba(211,161,63,.28),0 18px 40px rgba(0,0,0,.5);
+}
+html[data-theme="shanhaijing-light"]{
+  --nv-panel:#fbf7ec; --nv-root:#f3ecd9; --nv-col:#fbf7ec; --nv-status:#f5efdf;
+  --nv-head:#f5efdf; --nv-crumb:#f7f1e2; --nv-line:#d9cfb6;
+  --nv-sep:#e6dcc4; --nv-text:#2f2a20; --nv-sub:#6b6151; --nv-faint:#9a8f78;
+  --nv-active-bg:#f6e6df; --nv-active-fg:#a8432c; --nv-bar:#a8432c;
+  --nv-hover:#f3ead6; --nv-leaf:#2c6b52;
+  --nv-lv-bg:#efe4c9; --nv-lv-fg:#7a5a12;
+  --nv-input:#fffdf6; --nv-btn:#8a3a26; --nv-btn-fg:#fffaf0;
+  --nv-navbtn:#fffdf6; --nv-navbtn-fg:#2f2a20;
+  --nv-top:linear-gradient(100deg,#efe6d0,#f9f3e5);
+  --nv-r:6px; --nv-row-r:3px;
+  --nv-cap-font:"Noto Serif SC","Songti SC",serif; --nv-cap-ls:1.5px;
+  --nv-sh:0 10px 28px rgba(90,70,35,.14);
+}
+html[data-theme] .browser__body{background:var(--nv-root)}
+html[data-theme] .fake-page{color:var(--nv-sub)}
+html[data-theme] .fake-page h3{color:var(--nv-text)}
+html[data-theme] .fake-page .skeleton{background:var(--nv-sep)}
+html[data-theme] .site-top{background:var(--nv-top);border-color:var(--nv-line)}
+html[data-theme] .site-logo{color:var(--nv-lv-fg)}
+html[data-theme] .site-top__search{background:var(--nv-input);
+  border:1px solid var(--nv-line);color:var(--nv-faint)}
+html[data-theme] .site-nav button{background:var(--nv-navbtn);
+  border-color:var(--nv-line);color:var(--nv-navbtn-fg)}
+html[data-theme] .site-nav button[data-active="true"]{
+  background:var(--nv-btn);border-color:var(--nv-btn);color:var(--nv-btn-fg)}
+html[data-theme] .panel{background:var(--nv-panel);border-color:var(--nv-line);
+  border-radius:var(--nv-r);box-shadow:var(--nv-sh)}
+html[data-theme] .panel__head{background:var(--nv-head);border-color:var(--nv-sep)}
+html[data-theme] .panel__search{background:var(--nv-input);
+  border-color:var(--nv-input-line,var(--nv-line))}
+html[data-theme] .panel__search input{background:none;color:var(--nv-text)}
+html[data-theme] .panel__close{background:var(--nv-input);
+  border-color:var(--nv-line);color:var(--nv-sub)}
+html[data-theme] .crumb{background:var(--nv-crumb);border-color:var(--nv-sep)}
+html[data-theme] .crumb button{color:var(--nv-sub)}
+html[data-theme] .crumb button:hover{background:var(--nv-hover)}
+html[data-theme] .crumb button.is-end{color:var(--nv-active-fg);
+  background:var(--nv-active-bg)}
+html[data-theme] .crumb .sep,html[data-theme] .crumb .hint{color:var(--nv-faint)}
+html[data-theme] .col{background:var(--nv-col);border-color:var(--nv-sep)}
+html[data-theme] .col--root{background:var(--nv-root)}
+html[data-theme] .col__cap{font-family:var(--nv-cap-font);
+  letter-spacing:var(--nv-cap-ls);color:var(--nv-faint)}
+html[data-theme] .col__cap .lv{background:var(--nv-lv-bg);color:var(--nv-lv-fg)}
+html[data-theme] .col__cap b{color:var(--nv-lv-fg)}
+html[data-theme] .row{color:var(--nv-text);border-radius:var(--nv-row-r)}
+html[data-theme] .row:hover{background:var(--nv-hover)}
+html[data-theme] .row.is-active{background:var(--nv-active-bg);
+  color:var(--nv-active-fg);box-shadow:inset 3px 0 0 var(--nv-bar)}
+html[data-theme] .row.is-leaf{color:var(--nv-leaf)}
+html[data-theme] .row.is-leaf:hover{background:var(--nv-hover)}
+html[data-theme] .row .arrow{color:var(--nv-faint)}
+html[data-theme] .colnav{background:var(--nv-input);
+  border-color:var(--nv-line);color:var(--nv-active-fg)}
+html[data-theme] .panel__status,html[data-theme] .panel__foot{
+  background:var(--nv-status);border-color:var(--nv-sep);color:var(--nv-faint)}
+html[data-theme] .status__ic{background:var(--nv-lv-bg);
+  border-color:var(--nv-line);color:var(--nv-lv-fg)}
+html[data-theme] .status__txt h4{color:var(--nv-text)}
+html[data-theme] .status__txt p{color:var(--nv-faint)}
+html[data-theme] .status__go{background:var(--nv-btn);color:var(--nv-btn-fg)}
+html[data-theme] .panel__foot kbd{background:var(--nv-input);
+  border-color:var(--nv-line);color:var(--nv-sub)}
+html[data-theme] .results{background:var(--nv-panel)}
+html[data-theme] .res:hover{background:var(--nv-hover);border-color:var(--nv-line)}
+html[data-theme] .res__name{color:var(--nv-text)}
+html[data-theme] .res__path{color:var(--nv-faint)}
+html[data-theme] .res__depth{background:var(--nv-lv-bg);color:var(--nv-lv-fg)}
+</style>
+</head>
+<body>
+
+<header class="doc-hd">
+  <div class="wrap">
+    <div class="kicker">FLUXTORRENT · NAVIGATION REDESIGN · 2026-11-07</div>
+    <h1>主菜单多级导航 · 重设计与交互样图</h1>
+    <p>v2（站长口径）：<b>点击逐级展开</b>——一级点击出现二级，二级点击出现对应的三级，三级点击出现对应的四级，以此类推。列随点击依次出现、并列可见；面板宽度恒定，超过 4 列时列窗横向滚动，完整路径由面包屑承接。下方主样图可直接点击验证。</p>
+    <div class="chips">
+      <span class="chip">交互：点击逐级展开（非 hover）</span>
+      <span class="chip">一级 → 二级 → 三级 → 四级 → 五级</span>
+      <span class="chip">同结构 · 四档主题不同风格</span>
+      <span class="chip">数据：教育资源真实四级 + 第五级扩展位</span>
+      <span class="chip">状态：样图阶段，未改业务代码</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 1. 问题诊断 ============ -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">01</span><h2>现状诊断</h2>
+    <span class="note">依据 apps/web/components/main-menu.tsx、main-menu-edu.tsx、app/styles/layout.css、app/base.css</span></div>
+  <div class="grid3">
+    <div class="prob"><span class="tag">A · 宽度写死</span><h3>深度靠加列来堆</h3>
+      <p>教育级联 <code>.mainmenu-edu{min-width:460px}</code>、每列 150px；「更多」<code>min-width:680px</code>。第 4 级 chips、第 5 级只能继续往里塞，列被压窄、文字截断、整块 <code>max-height:480px</code> 内滚动。</p></div>
+    <div class="prob"><span class="tag">B · 无路径感</span><h3>hover 切列，状态易丢</h3>
+      <p>学段 hover 即重置年级、鼠标横移经过空隙面板就收起（现有 10px 悬停桥补丁）。没有面包屑、没有返回上级，用户不知道「我从哪进来的」，只能重新展开一遍。</p></div>
+    <div class="prob"><span class="tag">C · 心智分裂</span><h3>一个顶栏三套模型</h3>
+      <p>「更多」= 分组网格墙；资源库 = 3 组 × 14 分类 + 科目 chips；教育资源 = 三列级联。同一位置三种交互，移动端又统一塌成 fixed 两列，四级结构基本不可用。</p></div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3 style="font-size:14px;margin-bottom:12px">Before · 现状复刻（教育四级 + 科目 chips 塞进 470px 面板）</h3>
+    <div class="before-stage">
+      <div class="before-bar"><span>首页</span><span>资源库 ▾</span><span class="on">教育资源 ▾</span><span>论坛</span><span>发布</span><span>更多 ▾</span></div>
+      <div class="before-drop">
+        <div class="before-col"><h4>学段</h4><a>全部教育资源</a><a>学前教育 ›</a><a class="on">小学 ›</a><a>初中 ›</a><a>高中 ›</a><a>大学 ›</a></div>
+        <div class="before-col"><h4>年级</h4><a>全部小学</a><a>一年级 ›</a><a>二年级 ›</a><a class="on">三年级 ›</a><a>四年级 ›</a><a>五年级 ›</a><a>六年级 ›</a></div>
+        <div class="before-col"><h4>科目</h4><a>全部三年级</a><a>数学</a><a>语文</a><a>英语</a><a>物理</a><a>化学</a><a>生物</a>
+          <div class="before-chips"><i>人教版</i><i>北师大</i><i>苏教</i><i>沪教</i></div></div>
+        <div class="before-col"><h4>第 5 级…</h4><a>单元 1</a><a>单元 2</a><a>单元 3</a><span style="color:var(--coral)">↘ 继续加列？</span></div>
+      </div>
+      <div class="before-flag">每多一级就多一列 · 面板越宽越挤 · 无路径、无返回、hover 易丢</div>
+    </div>
+    <div class="legend"><span><i style="background:var(--coral)"></i>红框 = 层级溢出点</span><span><i style="background:var(--sky)"></i>蓝底 = 当前 hover 项（一移动就变）</span></div>
+  </div>
+</section>
+
+<!-- ============ 2. 方案对比 ============ -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">02</span><h2>方案取舍</h2><span class="note">主导航只保留一套模型，命令面板作为补充入口而非替代</span></div>
+  <div class="card" style="padding:6px 0">
+    <table>
+      <thead><tr><th style="width:170px">方案</th><th style="width:90px">结论</th><th>4~5 级表现</th><th>代价 / 适用</th></tr></thead>
+      <tbody>
+        <tr><td><b>A 点击逐级展开（本次采纳）</b><br><span style="color:var(--sub);font-size:11.5px">一级 → 二级 → 三级 → 四级，列依次出现</span></td>
+          <td><span class="pill pill--rec">采用</span></td>
+          <td>点一级出二级列、点二级出三级列、点三级出四级列，已展开的列并列可见、选中项逐级高亮；面板固定 1100px，第 5 列起列窗横向滚动并自动滚到最新列，面包屑保留完整路径。</td>
+          <td>点击而非 hover，状态不丢；桌面/移动共用同一份树与 <code>path</code> 状态。</td></tr>
+        <tr><td><b>B 纯钻取（一次一层）</b></td><td><span class="pill pill--alt">移动端采用</span></td>
+          <td>深度完全无感，但每次只看一层，跨层比较与「相邻年级」跳转变慢。</td>
+          <td>实现最简，适合窄屏；作为 A 的 <code>&lt;1024px</code> 降级形态。</td></tr>
+        <tr><td><b>C Mega Menu 全平铺</b></td><td><span class="pill pill--no">否决</span></td>
+          <td>2 级很爽，4 级必然变成链接墙；宽屏尚且拥挤，平板直接溢出。</td>
+          <td>现有「更多」网格就是它的退化版，问题源头。</td></tr>
+        <tr><td><b>D ⌘K 命令面板</b></td><td><span class="pill pill--alt">补充</span></td>
+          <td>搜索直达任意深度，绕开层级；但不能替代「浏览式」导航（用户常不知道要找什么）。</td>
+          <td>作为面板内搜索 + 全站快捷键并行存在，不做主导航。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 3. 主样图（可交互） ============ -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">03</span><h2>主样图 · 点击逐级展开（桌面 ≥1024px）</h2>
+    <span class="note">点顶栏一级 → 出现二级列；点二级项 → 出现三级列；点三级项 → 出现四级列；点四级项 → 出现五级列（自动横向滚动）。面包屑任一段可回退，顶部搜索跨层级过滤</span></div>
+
+  <div class="themebar">
+    <span class="themebar__lab">主题风格（点切换）</span>
+    <button data-theme-btn="brand">潮汐 · 品牌蓝</button>
+    <button data-theme-btn="brand-night">夜航 · 深蓝</button>
+    <button data-theme-btn="shanhaijing">山海经 · 岩彩</button>
+    <button data-theme-btn="shanhaijing-light">宣纸 · 绢本</button>
+    <span class="themebar__cur" id="themeName">潮汐 · 品牌蓝</span>
+  </div>
+  <p style="font-size:12.5px;color:var(--sub);margin:-4px 0 14px">
+    四档主题共用<b>同一套逐级展开结构</b>与同一份 <code>path</code> 状态；变化的只有令牌与局部形态（圆角、字体、列头纹样、选中标记）。主题 id 对齐 <code>apps/web/lib/themes.ts</code> 注册表。</p>
+
+  <div class="browser">
+    <div class="browser__bar"><i></i><i></i><i></i><div class="browser__url">https://www.hxpt.org/torrents?category_id=13</div></div>
+    <div class="browser__body">
+      <div class="site-top">
+        <div class="site-logo"><i></i>好学</div>
+        <div class="site-nav" id="siteNav"></div>
+        <div class="site-top__search">🔍 搜索种子 / 用户</div>
+        <div class="site-top__avatar"></div>
+      </div>
+      <div class="fake-page">
+        <h3>教育资源</h3>
+        <div>按学段、年级、科目浏览全站教育资源</div>
+        <div class="skeleton" style="width:62%"></div><div class="skeleton" style="width:88%"></div>
+        <div class="skeleton" style="width:74%"></div><div class="skeleton" style="width:52%"></div>
+      </div>
+
+      <!-- 新方案面板 -->
+      <div class="panel" id="panel" hidden>
+        <div class="panel__head">
+          <div class="panel__search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="search" placeholder="搜索任意层级：如「三年级」「数学」「人教版」…" autocomplete="off">
+            <span class="panel__kbd">/</span>
+          </div>
+          <button class="panel__close" id="closeBtn" title="关闭 (Esc)">×</button>
+        </div>
+        <div class="crumb" id="crumb"></div>
+        <div id="panelMain" class="panel__body"></div>
+        <div class="panel__status" id="status"></div>
+        <div class="results" id="results" hidden></div>
+        <div class="panel__foot">
+          <span style="color:var(--sky-deep);font-weight:800">鼠标点击逐列展开</span>
+          <span><kbd>点 ›</kbd> 右侧追加下一列</span>
+          <span><kbd>点面包屑</kbd> 回退</span>
+          <span><kbd>←</kbd> 回退一级</span>
+          <span><kbd>→</kbd> 看最新列</span>
+          <span><kbd>/</kbd> 搜索</span>
+          <span><kbd>Esc</kbd> 关闭</span>
+          <span style="margin-left:auto">列数随点击增长，面板宽度恒定</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno"><b>逐级展开规则：</b>第 1 列恒为一级导航；点某一级项（带 <b>›</b>）就在右侧追加它的子级列，并收掉该项之后更深的旧列。已展开的各级列<b>并列保留</b>，选中项逐级高亮，路径一眼可见 —— 这就是「一级点出二级、二级点出三级、三级点出四级」。面板固定 1100px，每列 232px，第 5 列起列窗横向滚动并自动滚到最新列，隐藏的层级仍在面包屑里，点面包屑或「‹」即可回看。</div>
+  <div class="legend">
+    <span><i style="background:var(--sky-soft)"></i>蓝底 = 该级当前选中项</span>
+    <span><i style="background:var(--mint-soft)"></i>绿字 = 叶子（点击直达）</span>
+    <span><i style="background:var(--sun-soft)"></i>黄标 = 搜索命中</span>
+    <span>带 <b>›</b> = 有子级，点击展开下一列；带 <b>✓</b> = 叶子</span>
+    <span>试：<b>教育资源 → 小学 → 三年级 → 数学 → 人教版</b>（完整 5 级）</span>
+  </div>
+</section>
+
+<!-- ============ 4. 移动端 ============ -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">04</span><h2>窄屏形态 · 全屏钻取（&lt;1024px）</h2>
+    <span class="note">同一份树与 path 状态，只换渲染壳：一次一层、顶部面包屑 + 返回，不再 fixed 两列</span></div>
+  <div class="card">
+    <div class="phones" id="phones"></div>
+    <div class="anno" style="background:var(--sky-soft);border-color:var(--sky-line);color:#1a5885">
+      <b>与现状的差别：</b>现在 <code>&lt;1024px</code> 把所有一级项塞进「更多」，下拉仍是 <code>position:fixed</code> 两列网格；四级树在手机上没有层级概念。新形态把「深度」变成「步骤」，每步一屏、可回退，搜索框常驻顶部。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. 规格 ============ -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">05</span><h2>交互与视觉规格</h2><span class="note">供实现阶段直接对齐，非最终视觉稿</span></div>
+  <div class="grid2">
+    <div class="card">
+      <h3 style="font-size:14px;margin-bottom:10px">布局 / 尺寸</h3>
+      <div class="spec-list" style="grid-template-columns:1fr">
+        <div class="spec-row"><span class="k">面板</span><span class="v"><code>min(1100px, 100vw - 36px)</code>，距顶栏 4px，圆角 20px，阴影 <code>--sh-2</code></span></div>
+        <div class="spec-row"><span class="k">列</span><span class="v">每列固定 232px（窄屏 190px），已展开的列并列保留；列头显示层级序号与父级名</span></div>
+        <div class="spec-row"><span class="k">溢出</span><span class="v">超过 4 列时列窗横向滚动、自动滚到最新列；「‹ / ›」可回看，面包屑保留全部层级</span></div>
+        <div class="spec-row"><span class="k">高度</span><span class="v"><code>min(56vh, 430px)</code>，每列独立纵向滚动；禁止整块面板滚动条</span></div>
+        <div class="spec-row"><span class="k">断点</span><span class="v">≥1024 逐级展开列；&lt;1024 全屏钻取一次一层；&lt;640 顶部搜索收成图标</span></div>
+        <div class="spec-row"><span class="k">动效</span><span class="v">新列 160ms 横向滑入 + 淡入；<code>prefers-reduced-motion</code> 下关闭</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;margin-bottom:10px">状态 / 无障碍</h3>
+      <div class="spec-list" style="grid-template-columns:1fr">
+        <div class="spec-row"><span class="k">触发</span><span class="v"><b>点击展开，不用 hover</b>：点带 › 的项追加下一列并截断该项之后的旧列；点叶子才导航</span></div>
+        <div class="spec-row"><span class="k">路径</span><span class="v">面包屑记录完整 path，任一段可点击截断回退；进入新层级不丢历史</span></div>
+        <div class="spec-row"><span class="k">选中态</span><span class="v">每一列各有一个蓝底选中项，逐级连成路径；绿字 = 叶子；沿用现有 <code>queryActive</code> 键值全等口径</span></div>
+        <div class="spec-row"><span class="k">搜索</span><span class="v">跨全部层级过滤，结果展示完整路径 + 层级数 + 关键词高亮；空态给「清空」</span></div>
+        <div class="spec-row"><span class="k">键盘</span><span class="v">↑↓ 移动 / → 进入 / ← 返回 / Enter 直达 / Esc 关闭 / 斜杠聚焦搜索</span></div>
+        <div class="spec-row"><span class="k">ARIA</span><span class="v"><code>role="menu"</code> + <code>aria-expanded</code> + <code>aria-current</code>；焦点陷阱、关闭后归还触发按钮</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. 落地映射 ============ -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">06</span><h2>落地映射（确认样图后再动代码）</h2></div>
+  <div class="card" style="padding:6px 0">
+    <table>
+      <thead><tr><th style="width:330px">现有文件</th><th>改造</th></tr></thead>
+      <tbody>
+        <tr><td><code>lib/nav-menu.ts</code></td><td>产生统一 <code>NavNode{id,label,href,desc?,icon?,children?}</code> 树；把 <code>sub</code> / <code>children</code> / <code>groups</code> 三套结构归一，<code>librarySub</code> 与 <code>eduSub</code> 都输出同一类型。</td></tr>
+        <tr><td><code>components/main-menu.tsx</code></td><td>删掉三套分支；只负责触发按钮、面板开关、<code>path</code> 状态与 URL 选中态（保留现有全等口径）。</td></tr>
+        <tr><td><code>components/main-menu-edu.tsx</code></td><td>三列硬编码级联 → 通用 <code>NavCanvas</code> 的中区列渲染；不再为教育单开组件。</td></tr>
+        <tr><td><code>app/styles/layout.css</code> / <code>app/base.css</code></td><td>移除 <code>.mainmenu-drop--lib</code> / <code>.mainmenu-edu__*</code> 等特例，换成 <code>.navcanvas__*</code> 一套；主题变量继续走现有 <code>--text-*</code> / <code>--surface-*</code>。</td></tr>
+        <tr><td>移动抽屉 / 底 Tab</td><td>复用同一棵树与 path，只替换外壳为 <code>DrillDown</code>（一次一层）；「更多」分组作为一级列里的第一项。</td></tr>
+        <tr><td>主题层 <code>--nv-*</code></td><td>四档主题（brand / brand-night / shanhaijing / shanhaijing-light）各给一组令牌，只覆盖面板表面、文本、边框、选中态、圆角与列头字体；列结构、列宽、点击行为零改动，新增主题不再碰组件。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="anno"><b>本轮范围：</b>只出样图与规格，<b>没有修改任何业务代码</b>。样图里的顶栏、面板、手机框均为静态 HTML 原型，交互由页内脚本驱动，可直接点击验证层级与搜索行为。</div>
+</section>
+
+<!-- ============ 7. 主题风格对照 ============ -->
+<section class="sec">
+  <div class="sec-hd"><span class="no">07</span><h2>不同主题 · 不同呈现风格</h2>
+    <span class="note">同一套逐级展开，四档皮肤；只换令牌与形态，不动结构</span></div>
+  <div class="card" style="padding:6px 0">
+    <table>
+      <thead><tr><th style="width:180px">主题 id</th><th style="width:60px">明暗</th><th>子菜单呈现风格</th><th style="width:210px">线上令牌来源</th></tr></thead>
+      <tbody>
+        <tr><td><b>brand</b><br><span style="color:var(--sub);font-size:11.5px">潮汐 · 品牌蓝</span></td>
+          <td>浅</td><td>20px 大圆角玻璃面板、浅蓝列头、蓝色左侧选中条；轻盈留白多，默认档。</td>
+          <td><code>theme-tide.css</code><br><code>[data-theme="brand"]</code></td></tr>
+        <tr><td><b>brand-night</b><br><span style="color:var(--sub);font-size:11.5px">夜航 · 深蓝</span></td>
+          <td>深</td><td>深蓝底、14px 圆角、半透明蓝选中态、冷色高亮；暗环境下不刺眼。</td>
+          <td><code>base.css</code> 夜间变量块</td></tr>
+        <tr><td><b>shanhaijing</b><br><span style="color:var(--sub);font-size:11.5px">山海经 · 岩彩</span></td>
+          <td>深</td><td>墨绿岩彩底、<b>4px 方角</b>、金线选中条、金色 L1/L2 列头、宋体列题、金箔外描边；卷轴感。</td>
+          <td><code>theme-shanhaijing.css</code><br>岩彩四正色</td></tr>
+        <tr><td><b>shanhaijing-light</b><br><span style="color:var(--sub);font-size:11.5px">宣纸 · 绢本</span></td>
+          <td>浅</td><td>米白宣纸底、6px 小圆角、<b>朱砂选中条</b>、墨色文字、宋体列题、细赭线分隔；绢本设色。</td>
+          <td><code>theme-shanhaijing.css</code><br>亮档块</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="anno"><b>边界：</b>四档共享同一份 <code>NavNode</code> 树、同一个 <code>path</code>、同一套点击逐级展开与面包屑逻辑；主题层只覆盖 <code>--nv-*</code> 令牌（表面 / 文本 / 边框 / 选中态 / 圆角 / 列头字体），<b>不改列数、不改列宽、不改交互</b>。新增主题只需追加一组变量、零结构改动 —— 与 <code>lib/themes.ts</code> 的「注册表加一项 + 变量块」纪律一致。若某档连布局也要变（例如宣纸档改竖排），那是结构层的事，需单独评估，不塞进令牌层。</div>
+</section>
+
+</div>
+
+<script>
+/* ============ 统一树：真实教育资源四级 + 第五级示意 + 「更多」六组 ============ */
+const SUBJECTS = ["数学","语文","英语","物理","化学","生物","政治","历史","地理"];
+const VERSIONS = ["人教版","北师大版","苏教版","沪教版","部编版"];
+const subject = (grade, cat, gi) => ({
+  id:`${grade}-sub`, label:"科目", href:`/torrents?category_id=${cat}&grade_id=${gi}`,
+  desc:"按科目筛选该年级的全部资源",
+  children: SUBJECTS.map(s=>({
+    id:`${grade}-${s}`, label:s,
+    href:`/torrents?category_id=${cat}&grade_id=${gi}&sec_subject=${s}`,
+    desc:`${grade} · ${s}`,
+    /* 第 5 级扩展位：教材版本（现阶段数据未挂，样图演示「再加一层也不炸」） */
+    children: (s==="数学"||s==="语文") ? VERSIONS.map(v=>({
+      id:`${grade}-${s}-${v}`, label:v,
+      href:`/torrents?category_id=${cat}&grade_id=${gi}&sec_subject=${s}&edition=${v}`,
+      desc:`${grade} · ${s} · ${v}`, children:[]
+    })) : []
+  }))
+});
+const gradeNode = (stageId,cat,gi,label)=>({
+  id:`${stageId}-g${gi}`, label,
+  href:`/torrents?category_id=${cat}&grade_id=${gi}`,
+  desc:`${label}全部资源`, children:[subject(`${stageId}-${label}`,cat,gi)]
+});
+const stage = (id,label,cat,grades)=>({
+  id, label, href:`/torrents?category_id=${cat}`, desc:`${label}阶段全部教育资源`,
+  children:[
+    {id:`${id}-all`,label:`全部${label}`,href:`/torrents?category_id=${cat}`,desc:`${label}全阶段资源`,children:[]},
+    ...grades.map((g,i)=>gradeNode(id,cat,i,g))
+  ]
+});
+
+const TREE = [
+  {id:"home",label:"首页",icon:"⌂",href:"/",desc:"站点首页与公告",children:[]},
+  {id:"lib",label:"资源库",icon:"▦",href:"/torrents",desc:"按分类与官种浏览全站种子",children:[
+    {id:"lib-all",label:"全部资源",href:"/torrents",desc:"不过滤",children:[
+      ...["电影","电视剧","短剧","音乐","动漫","纪录片","电子书","有声书","体育","综艺","教育资源"].map((n,i)=>({
+        id:"c"+i,label:n,href:`/torrents?category_id=${i+1}`,desc:`${n}分类`,children:[]}))
+    ]},
+    {id:"lib-res",label:"资源（非官种）",href:"/torrents?official=0",desc:"official=0",children:[]},
+    {id:"lib-off",label:"官种",href:"/torrents?official=1",desc:"official=1",children:[]}
+  ]},
+  {id:"edu",label:"教育资源",icon:"✎",href:"/torrents?category_id=13",
+   desc:"学段 › 年级 › 科目 › 教材版本，四级目录（含第 5 级扩展位）",
+   children:[
+     stage("nursery","学前教育",101,["大班"]),
+     stage("primary","小学",102,["一年级","二年级","三年级","四年级","五年级","六年级"]),
+     stage("junior","初中",103,["初一","初二","初三"]),
+     stage("senior","高中",105,["高一","高二","高三"]),
+     stage("uni","大学",107,["通识","专业课"])
+   ]},
+  {id:"forums",label:"论坛",icon:"◌",href:"/forums",desc:"社区讨论",children:[]},
+  {id:"upload",label:"发布",icon:"＋",href:"/upload",desc:"发布种子",children:[]},
+  {id:"more",label:"更多",icon:"···",href:"",desc:"全站功能分组",children:[
+    {id:"g1",label:"资源发现",href:"",desc:"榜单、求种、候选、聚合页",children:[
+      "排行榜","官种","求种","候选","出品方","艺人","当季新番"].map((n,i)=>({id:"g1-"+i,label:n,href:"/"+n,desc:n,children:[]}))},
+    {id:"g2",label:"字幕与保种",href:"",desc:"字幕、保种、濒危资源",children:[
+      "字幕","字幕组","保种","濒危","发布组","教材"].map((n,i)=>({id:"g2-"+i,label:n,href:"/"+n,desc:n,children:[]}))},
+    {id:"g3",label:"魔力经济",href:"",desc:"商城、银行、任务、明细",children:[
+      "商城","银行","魔力池","任务","我的魔力","魔力明细"].map((n,i)=>({id:"g3-"+i,label:n,href:"/"+n,desc:n,children:[]}))},
+    {id:"g4",label:"成长荣誉",href:"",desc:"等级、考核、勋章、邀请",children:[
+      "等级要求","考核","成就","复活","勋章墙","头像框","邀请"].map((n,i)=>({id:"g4-"+i,label:n,href:"/"+n,desc:n,children:[]}))},
+    {id:"g5",label:"娱乐",href:"",desc:"娱乐屋与社交",children:[
+      "娱乐屋","抽卡","农场","五子棋","活动","好友"].map((n,i)=>({id:"g5-"+i,label:n,href:"/"+n,desc:n,children:[]}))},
+    {id:"g6",label:"其他",href:"",desc:"消息、H&R、帮助",children:[
+      "消息","H&R 记录","追更中心","FAQ","客户端指南","Wiki"].map((n,i)=>({id:"g6-"+i,label:n,href:"/"+n,desc:n,children:[]}))}
+  ]}
+];
+
+/* ============ 状态与工具 ============ */
+const byId = {};
+(function index(nodes,parentPath){
+  nodes.forEach(n=>{
+    byId[n.id]=Object.assign({},n,{parentPath:parentPath});
+    if(n.children&&n.children.length) index(n.children,parentPath.concat(n.id));
+  });
+})(TREE,[]);
+const flat = Object.values(byId).filter(n=>n.id!=="home");
+/* path = 已点开的节点 id 链（从一级开始）。列数恒为 path.length + 1：
+   第 k 列列出 path[k-1] 的子级，选中项为 path[k]。点第 k 列 ⇒ 截断
+   该项之后的旧列并追加新列 —— 一级出二级、二级出三级、三级出四级。 */
+const state = { path:["edu","primary"], query:"", open:true, theme:"brand" };
+const $ = (s)=>document.querySelector(s);
+const esc = (s)=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const node = (id)=>byId[id]||TREE[0];
+const childrenOf = (id)=>(node(id).children||[]);
+const hasKids = (n)=>!!(n.children&&n.children.length);
+function pathLabel(n){
+  return n.parentPath.map(id=>node(id).label).concat(n.label).join(" › ");
+}
+const COL_W = 232;
+
+/* ============ 顶栏：点一级 → 出现二级列 ============ */
+function renderNav(){
+  $("#siteNav").innerHTML = TREE.map(n=>
+    `<button data-open="${n.id}" data-active="${state.open&&state.path[0]===n.id}">`+
+    `${n.label}${hasKids(n)?" ▾":""}</button>`).join("");
+  $("#siteNav").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    state.path=[b.dataset.open]; state.open=true;
+    state.query=""; $("#search").value=""; renderAll();
+  });
+}
+
+/* ============ 面包屑：完整路径，任一段回退 ============ */
+function renderCrumb(){
+  const cs=state.path.map(id=>node(id));
+  $("#crumb").innerHTML =
+    `<button data-i="-1">全站</button>`+
+    (cs.length?`<span class="sep">›</span>`:"")+
+    cs.map((n,i)=>
+      `<button data-i="${i}" class="${i===cs.length-1?"is-end":""}">${esc(n.label)}</button>`+
+      (i<cs.length-1?`<span class="sep">›</span>`:"")).join("")+
+    `<span class="hint">已展开 ${cs.length} 级 · 共 ${cs.length+1} 列 · 点击任一段回退</span>`;
+  $("#crumb").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i;
+    state.path=i<0?[]:state.path.slice(0,i+1);
+    renderAll();
+  });
+}
+
+/* ============ 逐级展开的列 ============ */
+function colHtml(k){
+  const list = k===0 ? TREE : childrenOf(state.path[k-1]);
+  const parent = k===0 ? null : node(state.path[k-1]);
+  const selected = state.path[k];
+  const cap = k===0 ? "一级导航" : (parent?parent.label:"");
+  const rows = list.length ? list.map(n=>{
+    const leaf=!hasKids(n);
+    return `<button class="row ${selected===n.id?"is-active":""} ${leaf?"is-leaf":""}" `+
+      `data-k="${k}" data-id="${esc(n.id)}">`+
+      `<span class="lbl">${esc(n.label)}</span>`+
+      `<span class="${leaf?"tick":"arrow"}">${leaf?"✓":"›"}</span></button>`;
+  }).join("") : `<div class="col__empty">这一层没有子级<br>可直接进入</div>`;
+  return `<div class="col ${k===0?"col--root":""}">
+    <div class="col__cap"><span class="lv">L${k+1}</span>
+      <span class="nm">${esc(cap)}</span><b>${list.length} 项</b></div>
+    ${rows}</div>`;
+}
+function renderColumns(){
+  const cols=[];
+  for(let k=0;k<=state.path.length;k++) cols.push(colHtml(k));
+  return `<button class="colnav colnav--l" id="colPrev" title="查看更早层级">‹</button>
+    <div class="colwin" id="colwin">${cols.join("")}</div>
+    <button class="colnav colnav--r" id="colNext" title="查看更新层级">›</button>`;
+}
+
+/* ============ 底部状态条 ============ */
+function renderStatus(){
+  const last=state.path.length?node(state.path[state.path.length-1]):null;
+  const label=last?last.label:"选择一个一级入口";
+  const sub=last?pathLabel(last)+" · 第 "+state.path.length+" 级":
+    "点击一级项，右侧出现二级列";
+  $("#status").innerHTML=`<div class="status__ic">${last&&last.icon?last.icon:"›"}</div>
+    <div class="status__txt"><h4>${esc(label)}</h4><p>${esc(sub)}</p></div>
+    <button class="status__go" id="statusGo">进入「${esc(label)}」→</button>`;
+  $("#statusGo").onclick=()=>flash(last?`直达：${pathLabel(last)}`:"请先选择一级入口");
+}
+
+/* ============ 搜索结果（跨层级） ============ */
+function renderResults(q){
+  const box=$("#results"), body=$("#panelMain"), st=$("#status");
+  if(!q){ box.hidden=true; body.hidden=false; st.hidden=false; return; }
+  const hits=flat.filter(n=>n.label.toLowerCase().includes(q.toLowerCase())||
+    pathLabel(n).toLowerCase().includes(q.toLowerCase())).slice(0,40);
+  const hl=(s)=>esc(s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"ig"),
+    m=>`<mark>${m}</mark>`);
+  box.innerHTML = hits.length ? hits.map(n=>
+    `<div class="res"><div class="res__main">
+      <div class="res__name">${hl(n.label)}</div>
+      <div class="res__path">${hl(pathLabel(n))}</div></div>
+      <span class="res__depth">L${n.parentPath.length+1}</span></div>`).join("") :
+    `<div class="res__none">没有匹配项 · 试试「三年级」「数学」「官种」</div>`;
+  box.hidden=false; body.hidden=true; st.hidden=true;
+}
+
+/* ============ 总渲染 ============ */
+function renderAll(){
+  renderNav();
+  $("#panel").hidden=!state.open;
+  if(!state.open) return;
+  renderCrumb();
+  $("#panelMain").innerHTML=renderColumns();
+  renderStatus();
+  $("#panelMain").querySelectorAll(".row").forEach(b=>b.onclick=()=>{
+    const k=+b.dataset.k, n=node(b.dataset.id);
+    if(hasKids(n)){
+      state.path=state.path.slice(0,k).concat(n.id);
+      renderAll();
+    } else {
+      flash(`直达：${pathLabel(n)}`);
+    }
+  });
+  const win=$("#colwin"), prev=$("#colPrev"), next=$("#colNext");
+  const sync=()=>{
+    prev.disabled=win.scrollLeft<=2;
+    next.disabled=win.scrollLeft+win.clientWidth>=win.scrollWidth-2;
+  };
+  win.addEventListener("scroll",sync);
+  prev.onclick=()=>{ win.scrollLeft-=COL_W; };
+  next.onclick=()=>{ win.scrollLeft+=COL_W; };
+  requestAnimationFrame(()=>{ win.scrollLeft=win.scrollWidth; sync(); });
+  renderResults(state.query);
+}
+
+/* 轻提示，避免样图里真的跳走 */
+let flashTimer;
+function flash(msg){
+  let el=$("#flash");
+  if(!el){ el=document.createElement("div"); el.id="flash";
+    el.style.cssText="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);"+
+      "background:#1f2a44;color:#fff;padding:10px 18px;border-radius:10px;"+
+      "font-size:13px;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.2)";
+    document.body.appendChild(el); }
+  el.textContent=msg; clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>el.remove(),1800);
+}
+
+$("#closeBtn").onclick=()=>{ state.open=false; renderAll(); };
+$("#search").addEventListener("input",e=>{
+  state.query=e.target.value.trim(); renderResults(state.query);
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){ state.open=false; renderAll(); return; }
+  if(e.key==="/"&&document.activeElement!==$("#search")){
+    e.preventDefault(); state.open=true; renderAll(); $("#search").focus();
+  }
+  if(!state.open||state.query) return;
+  if(e.key==="ArrowLeft"&&state.path.length){
+    state.path.pop(); renderAll();
+  }
+  if(e.key==="ArrowRight"){
+    const w=$("#colwin"); if(w) w.scrollLeft+=COL_W;
+  }
+});
+
+/* ============ 主题切换：同一套逐级展开，四档风格 ============ */
+const THEME_LABELS = {
+  brand:"潮汐 · 品牌蓝", "brand-night":"夜航 · 深蓝",
+  shanhaijing:"山海经 · 岩彩", "shanhaijing-light":"宣纸 · 绢本"
+};
+function setTheme(id){
+  state.theme=id;
+  document.documentElement.setAttribute("data-theme",id);
+  document.querySelectorAll("[data-theme-btn]").forEach(b=>{
+    b.dataset.on = b.dataset.themeBtn===id ? "true":"false";
+  });
+  const lab=$("#themeName"); if(lab) lab.textContent=THEME_LABELS[id]||id;
+}
+document.querySelectorAll("[data-theme-btn]").forEach(b=>{
+  b.onclick=()=>setTheme(b.dataset.themeBtn);
+});
+setTheme("brand");
+
+/* ============ 移动端三步钻取 ============ */
+const M_STEPS=[
+  {title:"全部分组",crumb:"主菜单",list:TREE.filter(n=>n.id!=="home").map(n=>({label:n.label,leaf:false}))},
+  {title:"教育资源",crumb:"全部分组 › 教育资源",list:["学前教育","小学","初中","高中","大学"].map(n=>({label:n,leaf:false}))},
+  {title:"小学",crumb:"… › 教育资源 › 小学",list:["全部小学","一年级","二年级","三年级","四年级","五年级","六年级"].map(n=>({label:n,leaf:false}))}
+];
+$("#phones").innerHTML=M_STEPS.map((s,i)=>`
+  <div><div class="phone"><div class="phone__bar">${i===0?"MENU · STEP 1":"DRILL · STEP "+(i+1)}</div>
+    <div class="phone__scr">
+      <div class="phone__hd">${i?"<button>‹</button>":"<span>☰</span>"}<span>${esc(s.title)}</span>
+        <span style="margin-left:auto;color:var(--faint);font-weight:400">🔍</span></div>
+      <div class="phone__crumb">${esc(s.crumb)}</div>
+      <div class="phone__list">${s.list.map(r=>
+        `<div class="phone__row ${r.leaf?"is-leaf":""}">${esc(r.label)}
+          <span class="ar">${r.leaf?"✓":"›"}</span></div>`).join("")}</div>
+    </div></div>
+    <div class="phone__cap">第 ${i+1} 步 · <b>一次只看一层</b></div></div>`).join("");
+
+renderAll();
+</script>
+</body>
+</html>
