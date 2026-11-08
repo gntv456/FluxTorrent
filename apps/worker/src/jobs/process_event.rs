@@ -6,6 +6,7 @@ use super::ledger_guard::ledger_guard;
 use sqlx::PgPool;
 
 mod audit_hold;
+mod prove;
 pub(crate) mod seeding_gate;
 
 /// ZT81：按字符边界截断（`&s[..200]` 字节切片在 UTF-8 边界会 panic）。
@@ -86,26 +87,12 @@ pub(crate) async fn process_event(
     // 本笔可再入账 = corroborated - 已入账。封顶后无法凭自报做高 ratio。
     // 兼容：客户端未发 xreport（表里无该用户行）时维持原自报口径，
     // 避免全站瞬间零计费——待客户端接入交叉上报后自动收紧。
-    let corroborated: Option<i64> = sqlx::query_scalar(
-        "SELECT bytes FROM upload_corroborated \
-         WHERE uploader_id = $1 AND torrent_id = $2",
-    )
-    .bind(ev.user)
-    .bind(torrent_id)
-    .fetch_optional(&mut *tx)
-    .await?;
+    // 2026-11-09 辅种通路批：证据取数收拢到 prove（佐证 + 喂出量 + 需求位）。
+    let pf = prove::gather(&mut *tx, ev.user, torrent_id).await?;
+    let corroborated = pf.corroborated;
     let mut corr_held = 0i64;
     if let Some(corr_total) = corroborated {
-        let acc_uploaded: i64 = sqlx::query_scalar(
-            "SELECT uploaded FROM snatches \
-             WHERE user_id = $1 AND torrent_id = $2",
-        )
-        .bind(ev.user)
-        .bind(torrent_id)
-        .fetch_optional(&mut *tx)
-        .await?
-        .unwrap_or(0);
-        let room = (corr_total - acc_uploaded).max(0);
+        let room = (corr_total - pf.uploaded_total).max(0);
         if credit_up > room {
             corr_held = credit_up - room;
             credit_up = room;
@@ -156,13 +143,17 @@ pub(crate) async fn process_event(
             had_baseline,
             conn_hard: seeding_gate::conn_gate_hard(),
             completed_event: ev.event == "completed",
+            uploaded_total: pf.uploaded_total,
+            has_demand: pf.has_demand,
         },
         torrent_size,
     );
     let (seeding, completed, ghost_note) =
         (v.seeding, v.completed, v.ghost_note);
-    // 幽灵签名留痕（2026-10-08 收紧）：left=0 却零下载**且无可信佐证**。
-    // 辅种者（佐证达门槛）不进待办；有下载未达 10.4% 的也不记（误触/秒删）。
+    // 幽灵签名留痕（2026-10-08 收紧，2026-11-09 加需求门槛）：left=0 却
+    // 零下载、零佐证、**零喂出**，且本种确有下载需求（判据在 verdict）。
+    // 冷启动跨种（没人下过 → 无佐证可得）不再记账；有人下过还零喂出
+    // 的才是真幽灵。辅种者喂出达 10.4% 直接判在种，辅种经济由此转起来。
     if ghost_note {
         audit_hold::note_ghost(&mut *tx, ev, g.raw_down, g.raw_up).await;
     }

@@ -17,6 +17,8 @@ fn x(phys_down: i64, corroborated: Option<i64>) -> Evidence {
         had_baseline: true,
         conn_hard: true,
         completed_event: false,
+        uploaded_total: 0,
+        has_demand: true,
     }
 }
 
@@ -135,4 +137,45 @@ fn corroboration_is_bounded_by_own_download() {
     assert_eq!(corr_room(GIB, 3 * GIB, 0), GIB);
     assert_eq!(corr_room(0, 3 * GIB, 0), 0);
     assert_eq!(corr_room(-1, 3 * GIB, 0), 0);
+}
+
+/// 2026-11-09 辅种通路批：喂出量是第三条 proven 通路，
+/// 幽灵留痕加需求门槛。四条反例各守一条边界。
+
+#[test]
+fn fed_bytes_prove_seeding() {
+    // 辅种者：本站零下载、零佐证，但真喂出过 1/4 体积（≥10.4%）
+    let mut e = x(0, None);
+    e.uploaded_total = SIZE / 4;
+    let v = verdict(&e, SIZE);
+    assert!(v.seeding, "真喂出过字节即物理证据——辅种经济由此转起来");
+    assert!(!v.ghost_note);
+}
+
+#[test]
+fn tiny_feed_proves_presence_but_not_coverage() {
+    // 1 字节喂出：证明「有真实对端交换」，但不达比例下限，不给在种
+    let mut e = x(0, None);
+    e.uploaded_total = 1;
+    let v = verdict(&e, SIZE);
+    assert!(!v.seeding, "喂出量与 phys_down 同一把 10.4% 尺子");
+    assert!(!v.ghost_note, "确有对端交换，不属幽灵画像");
+}
+
+#[test]
+fn cold_cross_seed_without_demand_is_not_noted() {
+    // 死种冷启动：没人下载过 → 无佐证可得 → 不该为「无从佐证」记账
+    let mut e = x(0, None);
+    e.has_demand = false;
+    let v = verdict(&e, SIZE);
+    assert!(!v.seeding, "没证据就不算在种（经济面不变）");
+    assert!(!v.ghost_note, "没有下载者就没有受害者，不留痕");
+}
+
+#[test]
+fn demand_gate_keeps_real_ghost_detection() {
+    // 回归护栏：有人下过的种上声称做种却零喂出 → 仍留痕
+    let v = verdict(&x(0, None), SIZE);
+    assert!(v.ghost_note);
+    assert!(!v.seeding);
 }

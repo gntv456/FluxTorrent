@@ -49,6 +49,16 @@ pub(crate) struct Evidence {
     pub(crate) conn_hard: bool,
     /// 本次是不是 `event=completed`
     pub(crate) completed_event: bool,
+    /// 该用户在本种的终身已入账上传（snatches.uploaded，速率钳后口径）。
+    /// 第三条 proven 通路——辅种者喂给 leecher 的真实字节。佐证管道
+    /// （xreport）尚无客户端接入时（线上 leecher_xreports 恒空），
+    /// 这是辅种经济唯一在转的证据面；它与计费信用同源（credit_up
+    /// 记的就是它），判「在种」与记「上传量」不再两套标准。
+    pub(crate) uploaded_total: i64,
+    /// 本种是否发生过真实下载行为（存在 downloaded>0 的 snatch）。
+    /// 幽灵留痕的需求门槛：没有下载者就没有受害者——冷启动的跨种
+    /// 种子「无从佐证」不该记账，跨种经济才不被误报淹没。
+    pub(crate) has_demand: bool,
 }
 
 /// 判据结论。
@@ -63,28 +73,37 @@ pub(crate) struct Verdict {
 /// 在种 / 完成判定。
 ///
 /// `seeding`（四条件）：left=0 且 port>0 且实测未被判不可达，且有物理下载量
-/// **或**可信佐证；比例下限同样两条路（辅种人群的数据来自外站，phys_down
-/// 恒 0，佐证就是他们的物理量）。
-/// `completed`：真发 completed 事件 + left=0 + 上面两条证据 + 已有 peer 行。
+/// **或**可信佐证**或喂出过字节**；比例下限三条路同口径（size×10.4%：
+/// 辅种人群的数据来自外站，phys_down 恒 0；佐证管道尚无客户端接入时，
+/// 「在该种真喂出过字节」就是他们在转的物理量）。
+/// `completed`：真发 completed 事件 + left=0 + 上面证据 + 已有 peer 行。
+/// `ghost_note`：unproven 才留痕，且**只在本种确有下载需求时**——
+/// 没有下载者就没有受害者，冷启动跨种无从佐证，记账只剩误伤。
 pub(crate) fn verdict(x: &Evidence, torrent_size: i64) -> Verdict {
     let has_payload = x.phys_down > 0;
     let vouched_ok = x
         .corroborated
         .is_some_and(|c| c >= corr_threshold(torrent_size));
+    let fed = x.uploaded_total > 0;
     // 比例下限与 H&R buffer 同口径（size×10.4%），整数运算避免浮点误差
     let ratio_ok = torrent_size <= 0
         || x.phys_down
             .saturating_mul(1000)
             .ge(&torrent_size.saturating_mul(104));
-    let proven = has_payload || vouched_ok;
-    let covered = ratio_ok || vouched_ok;
+    let fed_ok = torrent_size <= 0
+        || x.uploaded_total
+            .saturating_mul(1000)
+            .ge(&torrent_size.saturating_mul(104));
+    let proven = has_payload || vouched_ok || fed;
+    let covered = ratio_ok || vouched_ok || fed_ok;
     // 回连实测不可达只在 hard 档一票否决（缺省不否决，见 `conn_gate_hard`）。
     let reachable = !x.conn_hard || x.conn != Some(0);
     let seeding = x.left == 0 && x.port > 0 && reachable && proven && covered;
     let completed =
         x.completed_event && x.left == 0 && proven && covered && x.had_baseline;
-    // 幽灵签名：既没真下过、也没达到可信规模的佐证
-    let ghost_note = x.left == 0 && x.port > 0 && !has_payload && !vouched_ok;
+    // 幽灵签名：既没真下过、没被佐证、也没喂出过字节——
+    // 且种上确有下载需求（有人在下/下过）时才值得记
+    let ghost_note = x.left == 0 && x.port > 0 && !proven && x.has_demand;
     Verdict {
         seeding,
         completed,
