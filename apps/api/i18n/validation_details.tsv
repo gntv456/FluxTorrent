@@ -310,3 +310,7 @@ url 无效	url 無效	Invalid url
 仅支持图床白名单域（doubanio / image.tmdb.org）	僅支援圖床白名單域（doubanio / image.tmdb.org）	Only whitelisted image hosts (doubanio / image.tmdb.org) are supported
 图片超过 2MB 上限	圖片超過 2MB 上限	Image exceeds the 2MB limit
 非图片内容类型	非圖片內容類型	Not an image content type
+并发冲突：该行刚被本人领取或 worker 结算	並發衝突：該行剛被本人領取或 worker 結算	Concurrency conflict: this row was just claimed by its owner or settled by the worker
+该登记行已结算或已撤销，只能移除未结算的成员	該登記行已結算或已撤銷，只能移除未結算的成員	This roster row is settled or revoked; only unsettled members can be removed
+该登记行已结算或已撤销，无需再发	該登記行已結算或已撤銷，無需再發	This roster row is settled or revoked; no further payout is needed
+该考核记录已被收回	該考核記錄已被收回	This exam record has already been revoked

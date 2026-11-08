@@ -11,7 +11,6 @@
   "RP ID 不匹配",
   "RP ID 不匹配（前端 rpId 须与站点域名一致）",
   "SMTP 未配置：请先在「邮件」分组填写 SMTP 服务器与发件人",
-  "SMTP_FROM 配置无效",
   "Telegram chat_id 应为数字",
   "URL 需以 http(s):// 开头",
   "action 仅支持 approve / reject",

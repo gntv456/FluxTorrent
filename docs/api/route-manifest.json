@@ -2,7 +2,7 @@
  "note": "actix 路由宏静态提取：get/post/put/patch/delete/route 六种方法宏，含 #[actix_web::get] 全限定形态；handler 关联自宏后首条 fn；注释内的宏不计（被注释掉的路由是死代码）",
  "path_scope": "path=宏原始字面量（scope 相对路径）；/api/v1 等挂载前缀由 mount 侧拼接，清单不还原 mount 链",
  "grep_baseline_note": "口径对齐 grep -rE '#\\[(actix_web::)?(get|post|put|patch|delete|route)\\(' apps/api/src --include=*.rs；grep 会数到注释里的宏，total 若比 grep 少，差额即被注释掉的死宏",
- "total": 836,
+ "total": 840,
  "routes": [
   {
    "method": "POST",
@@ -875,6 +875,12 @@
    "file": "apps/api/src/admin_p3_http/exam_users.rs"
   },
   {
+   "method": "POST",
+   "path": "/admin/exam-users/{claim_id}/revoke",
+   "handler": "exam_user_revoke",
+   "file": "apps/api/src/admin_p3_http/exam_users.rs"
+  },
+  {
    "method": "GET",
    "path": "/admin/avatar-frames",
    "handler": "admin_avatar_frames",
@@ -939,6 +945,18 @@
    "path": "/admin/invites/revoke",
    "handler": "admin_invite_revoke",
    "file": "apps/api/src/admin_p3_http/invites.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/jixiao/remove",
+   "handler": "jixiao_remove",
+   "file": "apps/api/src/admin_p3_http/jixiao_members.rs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/jixiao/settle",
+   "handler": "jixiao_admin_settle",
+   "file": "apps/api/src/admin_p3_http/jixiao_members.rs"
   },
   {
    "method": "POST",
@@ -1545,6 +1563,12 @@
    "path": "/users/{id}",
    "handler": "user_public_profile",
    "file": "apps/api/src/auth_http/profile.rs"
+  },
+  {
+   "method": "GET",
+   "path": "/users/{id}/changes",
+   "handler": "user_changes",
+   "file": "apps/api/src/auth_http/profile_changes.rs"
   },
   {
    "method": "POST",
