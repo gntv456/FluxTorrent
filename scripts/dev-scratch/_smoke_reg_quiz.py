@@ -138,7 +138,8 @@ def captcha() -> tuple[str, int]:
     )
 
 
-def register(name: str, email: str, extra: dict | None = None) -> tuple[int, object]:
+def register(name: str, email: str, extra: dict | None = None) -> tuple[int,
+    object]:
     cid, ans = captcha()
     payload = {
         "username": name,

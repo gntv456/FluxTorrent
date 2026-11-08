@@ -48,7 +48,8 @@ def sh(cmd: str) -> str:
 def psql(sql: str) -> str:
     # -q 静默命令标签（INSERT...RETURNING 也会在 -t 下打 "INSERT 0 1"）
     out = sh(
-        f'docker exec flux-postgres psql -U flux -d fluxtorrent -t -A -q -c "{sql}"'
+        f'docker exec flux-postgres psql -U flux '
+        f'-d fluxtorrent -t -A -q -c "{sql}"'
     )
     return "\n".join(out.splitlines()).strip()
 
@@ -159,7 +160,8 @@ def score_row(uid: int) -> tuple[int, str]:
     return int(s), b
 
 
-def wait_score(uid: int, want_band: str, timeout: int = 240) -> tuple[int, str]:
+def wait_score(uid: int, want_band: str, timeout: int = 240) -> tuple[int,
+    str]:
     """轮询等分数行落到目标档位，返回 (score, band)。"""
     deadline = time.time() + timeout
     last = (-1, "")
@@ -193,7 +195,8 @@ def main() -> int:
             "INSERT INTO cheat_events (user_id, agent, reason, hits) "
             f"VALUES ({uid}, '{agent}', 'M2 冒烟证据', {hits})"
         )
-    check("证据行落库", all(score_row(u)[0] == -1 for u in (USER_C, USER_D, USER_E)))
+    check("证据行落库", all(score_row(u)[0] == -1 for u in (USER_C, USER_D,
+        USER_E)))
     check("手触 risk_score（增量轮）", trigger_job("risk_score"))
 
     print("== 2. 公式与档位 ==")
@@ -281,7 +284,8 @@ def main() -> int:
     psql(
         "UPDATE cheat_events SET last_seen = last_seen - interval '30 days' "
         f"WHERE user_id = {USER_C} AND agent LIKE '%{MARK}%'; "
-        "UPDATE user_risk_scores SET updated_at = updated_at - interval '31 days' "
+        "UPDATE user_risk_scores SET updated_at = updated_at "
+        "- interval '31 days' "
         f"WHERE user_id = {USER_C}"
     )
     check("手触 risk_score", trigger_job("risk_score"))

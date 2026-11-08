@@ -33,7 +33,8 @@ def sh(cmd: str) -> str:
 
 def psql(sql: str) -> str:
     r = subprocess.run(
-        f'docker exec flux-postgres psql -U flux -d fluxtorrent -t -A -q -c "{sql}"',
+        f'docker exec flux-postgres psql -U flux '
+        f'-d fluxtorrent -t -A -q -c "{sql}"',
         shell=True,
         capture_output=True,
         text=True,

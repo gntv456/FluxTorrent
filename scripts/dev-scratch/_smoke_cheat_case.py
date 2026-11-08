@@ -32,7 +32,8 @@ def psql(sql: str) -> str:
     # -q 静默命令标签（INSERT...RETURNING 也会在 -t 下打 "INSERT 0 1"），
     # 只留查询输出；多行结果保留全部行。
     out = sh(
-        f'docker exec flux-postgres psql -U flux -d fluxtorrent -t -A -q -c "{sql}"'
+        f'docker exec flux-postgres psql -U flux '
+        f'-d fluxtorrent -t -A -q -c "{sql}"'
     )
     return "\n".join(out.splitlines()).strip()
 

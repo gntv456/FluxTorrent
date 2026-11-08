@@ -680,6 +680,7 @@ table.subtitles-upload-table {
   padding-right: 2px;
 }
 .tsb-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -693,13 +694,10 @@ table.subtitles-upload-table {
   cursor: pointer;
   user-select: none;
 }
-/* P1-3：触屏端命中区补足 44（复选框本体 13px 太小，chip 整体是点击面）；
-   桌面鼠标场景保持 28 视觉不变。 */
-@media (hover: none) and (pointer: coarse) {
-  .tsb-chip {
-    min-height: var(--tap-min);
-    padding-block: 8px;
-  }
+/* P1-3：chip 命中区外扩到 44（复选框本体 13px；视觉不变，
+   透明层与相邻 chip 6px 间隙轻微互叠，同为筛选目标可接受） */
+.tsb-chip::before {
+  content: ""; position: absolute; inset: -8px; border-radius: 999px;
 }
 .tsb-chip input {
   margin: 0;
@@ -3664,15 +3662,9 @@ input.batch-all {
   gap: 12px;
   align-items: start;
 }
-@media not all and (min-width: 768px) {
-  .tsplit {
-    display: block;
-  }
-}
+@media not all and (min-width: 768px) { .tsplit { display: block; } }
 @media (min-width: 1024px) {
-  .tsplit {
-    display: block;
-  }
+  .tsplit { display: block; }
   /* ≥lg 桌面顶栏布局接管：右栏预览不渲染在文档流尾部 */
   .tsplit__detail {
     display: none;
