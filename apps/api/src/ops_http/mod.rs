@@ -5,7 +5,7 @@
 mod exams;
 mod jixiao;
 mod jixiao_claim;
-mod jixiao_compute;
+pub(crate) mod jixiao_compute;
 mod onboarding;
 mod preserve;
 mod resurrections;

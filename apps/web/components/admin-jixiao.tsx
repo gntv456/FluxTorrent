@@ -7,12 +7,14 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 
 import { Payroll, PayrollTab } from "./admin-jixiao-payroll";
+import { MemberActionsPanel, MemberRowActions } from "./admin-jixiao-members";
 
 /** 0106 绩效考核管理端补齐：
  *  岗位总览（本期登记/达标/发薪聚合 + 成员明细）
  *  + 批量分配（一个岗位一次登记多名用户，工作组口径）
  *  + 发薪记录（status=1 行 + 发放方式 worker/self）。
- *  发薪记录 tab 拆至 ./admin-jixiao-payroll.tsx。 */
+ *  发薪记录 tab 拆至 ./admin-jixiao-payroll.tsx；
+ *  成员管理（移除/手动结算）拆至 ./admin-jixiao-members.tsx（0482f）。 */
 
 interface OverviewType {
   type_id: number;
@@ -33,6 +35,8 @@ interface OverviewMember {
   amount: number | null;
   bonus: number | null;
   metrics_at_settle: Record<string, number>;
+  /** 0482f：行操作（移除/发薪）锚点 */
+  claim_id?: number;
 }
 
 interface Overview {
@@ -111,161 +115,169 @@ export function AdminJixiao() {
     types.find((t) => t.id === tid)?.name ?? `#${tid}`;
 
   return (
-    <div className="flex flex-col gap-3">
-      {msg && (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
-          {msg}
-        </p>
-      )}
-      <div className="flex gap-2">
-        {(
-          [
-            ["overview", at.tabOverview],
-            ["assign", at.tabAssign],
-            ["payroll", at.tabPayroll],
-          ] as const
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            className={
-              "min-h-[32px] rounded-full px-4 text-xs font-bold " +
-              `${tab === k ? "bg-sky text-cloud" : "border border-line"}`
-            }
-            onClick={() => setTab(k)}
-          >
-            {label}
-          </button>
-        ))}
-        {ov && (
-          <span className="ml-auto self-center text-xs text-sub">
-            {fmt(at.periodLabel, { period: ov.period })}
-          </span>
+    <MemberActionsPanel load={load} flash={flash}>
+      <div className="flex flex-col gap-3">
+        {msg && (
+          <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-sm text-ink">
+            {msg}
+          </p>
         )}
-      </div>
-
-      {tab === "overview" && ov && (
-        <>
-          <table className="nexus-table text-xs">
-            <thead>
-              <tr>
-                <td className="colhead">{at.thType}</td>
-                <td className="colhead">{at.thBasePay}</td>
-                <td className="colhead">{at.thAssigned}</td>
-                <td className="colhead">{at.thQualified}</td>
-                <td className="colhead">{at.thFailed}</td>
-                <td className="colhead">{at.thPending}</td>
-                <td className="colhead">{at.thPayrollTotal}</td>
-              </tr>
-            </thead>
-            <tbody>
-              {ov.types.map((t) => (
-                <tr key={t.type_id}>
-                  <td className="font-bold">{t.name}</td>
-                  <td className="num">{t.base_pay}</td>
-                  <td className="num">{t.assigned}</td>
-                  <td className="num">{t.qualified}</td>
-                  <td className="num">{t.failed}</td>
-                  <td className="num">{t.pending}</td>
-                  <td className="num">{t.payroll_total}</td>
-                </tr>
-              ))}
-              {ov.types.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-sub">
-                    {at.typesEmpty}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <table className="nexus-table text-xs">
-            <thead>
-              <tr>
-                <td className="colhead">{at.thType}</td>
-                <td className="colhead">{at.thUser}</td>
-                <td className="colhead">{at.thStatus}</td>
-                <td className="colhead">{at.thPay}</td>
-                <td className="colhead">{at.thBonus}</td>
-                <td className="colhead">{at.thMetrics}</td>
-              </tr>
-            </thead>
-            <tbody>
-              {ov.members.map((m, i) => (
-                <tr key={i}>
-                  <td>{typeName(m.type_id)}</td>
-                  <td>
-                    <a
-                      className="text-sky underline"
-                      href={`/users/${m.user_id}`}
-                    >
-                      {m.username}
-                    </a>
-                  </td>
-                  <td>
-                    {at.statusLabels[String(m.status)] ?? m.status}
-                  </td>
-                  <td className="num">{m.amount ?? "—"}</td>
-                  <td className="num">{m.bonus ?? "—"}</td>
-                  <td className="max-w-[320px] truncate font-mono text-sub">
-                    {Object.keys(m.metrics_at_settle).length
-                      ? JSON.stringify(m.metrics_at_settle)
-                      : at.notSettled}
-                  </td>
-                </tr>
-              ))}
-              {ov.members.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-6 text-center text-sub">
-                    {at.membersEmpty}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      {tab === "assign" && (
-        <section className="brand-panel cmgmt-form p-4">
-          <h2 className="mb-2 text-base font-bold">{at.assignTitle}</h2>
-          <p className="mb-2 text-xs text-sub">{at.assignHint}</p>
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs">
-              {at.labelType}
-              <select
-                value={form.type_id}
-                onChange={(e) => setForm({ ...form, type_id: e.target.value })}
-                className={`${inp.replace("font-mono ", "")} w-40`}
-              >
-                <option value="">{at.selectOne}</option>
-                {types.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              {at.labelUserIds}
-              <input
-                value={form.user_ids}
-                onChange={(e) => setForm({ ...form, user_ids: e.target.value })}
-                placeholder="3, 5, 8"
-                className={`${inp} w-72`}
-              />
-            </label>
+        <div className="flex gap-2">
+          {(
+            [
+              ["overview", at.tabOverview],
+              ["assign", at.tabAssign],
+              ["payroll", at.tabPayroll],
+            ] as const
+          ).map(([k, label]) => (
             <button
-              className="brand-button"
-              disabled={busy}
-              onClick={assignBatch}
+              key={k}
+              className={
+                "min-h-[32px] rounded-full px-4 text-xs font-bold " +
+                `${tab === k ? "bg-sky text-cloud" : "border border-line"}`
+              }
+              onClick={() => setTab(k)}
             >
-              {at.assign}
+              {label}
             </button>
-          </div>
-        </section>
-      )}
+          ))}
+          {ov && (
+            <span className="ml-auto self-center text-xs text-sub">
+              {fmt(at.periodLabel, { period: ov.period })}
+            </span>
+          )}
+        </div>
 
-      {tab === "payroll" && pay && <PayrollTab pay={pay} />}
-    </div>
+        {tab === "overview" && ov && (
+          <>
+            <table className="nexus-table text-xs">
+              <thead>
+                <tr>
+                  <td className="colhead">{at.thType}</td>
+                  <td className="colhead">{at.thBasePay}</td>
+                  <td className="colhead">{at.thAssigned}</td>
+                  <td className="colhead">{at.thQualified}</td>
+                  <td className="colhead">{at.thFailed}</td>
+                  <td className="colhead">{at.thPending}</td>
+                  <td className="colhead">{at.thPayrollTotal}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {ov.types.map((t) => (
+                  <tr key={t.type_id}>
+                    <td className="font-bold">{t.name}</td>
+                    <td className="num">{t.base_pay}</td>
+                    <td className="num">{t.assigned}</td>
+                    <td className="num">{t.qualified}</td>
+                    <td className="num">{t.failed}</td>
+                    <td className="num">{t.pending}</td>
+                    <td className="num">{t.payroll_total}</td>
+                  </tr>
+                ))}
+                {ov.types.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-sub">
+                      {at.typesEmpty}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <table className="nexus-table text-xs">
+              <thead>
+                <tr>
+                  <td className="colhead">{at.thType}</td>
+                  <td className="colhead">{at.thUser}</td>
+                  <td className="colhead">{at.thStatus}</td>
+                  <td className="colhead">{at.thPay}</td>
+                  <td className="colhead">{at.thBonus}</td>
+                  <td className="colhead">{at.thMetrics}</td>
+                  <td className="colhead text-right">{at.thActions}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {ov.members.map((m, i) => (
+                  <tr key={i}>
+                    <td>{typeName(m.type_id)}</td>
+                    <td>
+                      <a
+                        className="text-sky underline"
+                        href={`/users/${m.user_id}`}
+                      >
+                        {m.username}
+                      </a>
+                    </td>
+                    <td>{at.statusLabels[String(m.status)] ?? m.status}</td>
+                    <td className="num">{m.amount ?? "—"}</td>
+                    <td className="num">{m.bonus ?? "—"}</td>
+                    <td className="max-w-[320px] truncate font-mono text-sub">
+                      {Object.keys(m.metrics_at_settle).length
+                        ? JSON.stringify(m.metrics_at_settle)
+                        : at.notSettled}
+                    </td>
+                    <td className="text-right">
+                      <MemberRowActions m={m} />
+                    </td>
+                  </tr>
+                ))}
+                {ov.members.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-sub">
+                      {at.membersEmpty}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {tab === "assign" && (
+          <section className="brand-panel cmgmt-form p-4">
+            <h2 className="mb-2 text-base font-bold">{at.assignTitle}</h2>
+            <p className="mb-2 text-xs text-sub">{at.assignHint}</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-xs">
+                {at.labelType}
+                <select
+                  value={form.type_id}
+                  onChange={(e) =>
+                    setForm({ ...form, type_id: e.target.value })
+                  }
+                  className={`${inp.replace("font-mono ", "")} w-40`}
+                >
+                  <option value="">{at.selectOne}</option>
+                  {types.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                {at.labelUserIds}
+                <input
+                  value={form.user_ids}
+                  onChange={(e) =>
+                    setForm({ ...form, user_ids: e.target.value })
+                  }
+                  placeholder="3, 5, 8"
+                  className={`${inp} w-72`}
+                />
+              </label>
+              <button
+                className="brand-button"
+                disabled={busy}
+                onClick={assignBatch}
+              >
+                {at.assign}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {tab === "payroll" && pay && <PayrollTab pay={pay} />}
+      </div>
+    </MemberActionsPanel>
   );
 }

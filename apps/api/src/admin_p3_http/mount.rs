@@ -84,6 +84,8 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(jixiao_assign_batch)
         .service(jixiao_overview)
         .service(jixiao_payroll)
+        .service(jixiao_remove)
+        .service(jixiao_admin_settle)
         .service(tasks_list)
         .service(task_add)
         .service(task_update)

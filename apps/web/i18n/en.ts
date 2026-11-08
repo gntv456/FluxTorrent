@@ -215,6 +215,7 @@ const enBase: Omit<
     classes: "Class requirements",
     resurrections: "Resurrections",
     ariaPrimary: "Primary navigation",
+    goCurrent: "Go",
     collapseMenu: "Collapse menu",
     expandMenu: "Expand menu",
     more: "More",
@@ -6265,6 +6266,23 @@ const enBase: Omit<
     thWay: "Method",
     thPayTime: "Time",
     payrollEmpty: "No payroll this period",
+    // 0482f member management: remove + manual settle
+    thActions: "Actions",
+    removeBtn: "Remove",
+    settleBtn: "Pay",
+    removeTitle: "Remove workgroup member",
+    removeMsg:
+      "Remove {user} from this period's exam registry (revoke). The member is unsettled this period; historical pay and qualified months are unaffected.",
+    removeReasonPh: "Reason (optional)",
+    removeConfirm: "Remove",
+    removedMsg: "Removed {user}",
+    settleTitle: "Manual payroll",
+    settleMsg:
+      "Pay this period's salary on behalf of {user}. Defaults to the base pay {base}; you may override the amount (bonus recorded as 0 — use month-end auto settlement for bonuses).",
+    settleAmountLabel: "Amount",
+    settleConfirm: "Pay",
+    settledMsg: "Paid {amount} to {user}",
+    memberActionFail: "Action failed",
   },
   /** Message templates (admin-p2-tools-templates). fBody contains the literal
    *  {{username}} — render directly, never pass through fmt (it would eat

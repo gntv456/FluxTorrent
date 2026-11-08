@@ -51,6 +51,7 @@ async fn jixiao_overview(
     .map_err(|e| DomainError::Internal(e.into()))?;
 
     // 成员明细（仅本期 admin 登记行；每岗位至多 50 行，够管理端下钻）
+    // 0482f 带 claim_id：成员管理（移除/手动结算）按行操作
     type Member = (
         i64,
         i64,
@@ -59,11 +60,13 @@ async fn jixiao_overview(
         Option<i64>,
         Option<i64>,
         serde_json::Value,
+        i64,
     );
     let members: Vec<Member> = sqlx::query_as(
         "SELECT c.type_id, c.user_id, u.username, c.status, c.amount, \
     c.bonus_paid, \
-                COALESCE(c.metrics_at_settle, '{}'::jsonb) \
+                COALESCE(c.metrics_at_settle, '{}'::jsonb), \
+                c.id \
          FROM jixiao_claims c JOIN users u ON u.id = c.user_id \
          WHERE c.period = $1 AND c.metrics_snapshot->>'source' = 'admin' \
          ORDER BY c.type_id, c.status, u.username LIMIT 500",
@@ -87,13 +90,15 @@ async fn jixiao_overview(
         .collect();
     let members_json: Vec<serde_json::Value> = members
         .iter()
-        .map(|(tid, uid, username, status, amount, bonus, snap)| {
-            serde_json::json!({
-                "type_id": tid, "user_id": uid, "username": username,
-                "status": status, "amount": amount, "bonus": bonus,
-                "metrics_at_settle": snap,
-            })
-        })
+        .map(
+            |(tid, uid, username, status, amount, bonus, snap, claim_id)| {
+                serde_json::json!({
+                    "type_id": tid, "user_id": uid, "username": username,
+                    "status": status, "amount": amount, "bonus": bonus,
+                    "metrics_at_settle": snap, "claim_id": claim_id,
+                })
+            },
+        )
         .collect();
     Ok(ok(serde_json::json!({
         "period": period, "types": types, "members": members_json,

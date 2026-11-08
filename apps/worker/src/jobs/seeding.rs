@@ -91,6 +91,9 @@ pub async fn seeding_reward(
                   AND NOT EXISTS (
                       SELECT 1 FROM cheat_events c
                       WHERE c.user_id = u.id AND c.resolved_at IS NULL
+                        -- false_positive（0482e 事故纠偏标记）不算拉黑证据：
+                        -- tracker XFF 断链期间的同 IP 假阳性不应停真实用户收益
+                        AND NOT c.false_positive
                         AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%'
                              OR c.agent LIKE 'reset:%'
                              OR c.agent LIKE 'corr:%')

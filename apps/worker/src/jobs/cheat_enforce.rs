@@ -136,6 +136,7 @@ pub(crate) async fn cheat_enforce(db: &PgPool) -> anyhow::Result<u64> {
          FROM cheat_events c \
          JOIN users u ON u.id = c.user_id \
          WHERE c.resolved_at IS NULL AND c.hits >= 1 \
+           AND NOT c.false_positive \
            AND (c.agent LIKE 'ghost:%' OR c.agent LIKE 'speed:%' \
                 OR c.agent LIKE 'reset:%' OR c.agent LIKE 'torrent:%' \
                 OR c.agent LIKE 'corr:%' \

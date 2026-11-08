@@ -131,6 +131,7 @@ pub async fn member_evidence(
     sqlx::query_as::<_, MemberEvidence>(
         "SELECT agent, reason, hits, first_seen, last_seen \
          FROM cheat_events WHERE user_id = $1 AND resolved_at IS NULL \
+           AND NOT false_positive \
          ORDER BY hits DESC, last_seen DESC LIMIT 200",
     )
     .bind(uid)

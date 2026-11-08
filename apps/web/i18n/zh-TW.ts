@@ -212,6 +212,7 @@ const zhTwBase: Omit<
     classes: "等級要求",
     resurrections: "復活任務",
     ariaPrimary: "主導航",
+    goCurrent: "進入",
     collapseMenu: "收起圖鑑",
     expandMenu: "展開圖鑑",
     more: "更多",
@@ -6039,6 +6040,23 @@ const zhTwBase: Omit<
     thWay: "方式",
     thPayTime: "時間",
     payrollEmpty: "本期暫無發薪",
+    // 0482f 成員管理：移除 + 手動結算
+    thActions: "操作",
+    removeBtn: "移除",
+    settleBtn: "發薪",
+    removeTitle: "移除工作組成員",
+    removeMsg:
+      "將 {user} 從本期考核登記中移除（撤銷）。該成員本期未結算，不影響歷史工資與達標月數。",
+    removeReasonPh: "移除理由（選填）",
+    removeConfirm: "確認移除",
+    removedMsg: "已移除 {user}",
+    settleTitle: "手動結算工資",
+    settleMsg:
+      "替 {user} 發放本期酬勞。缺省按崗位底薪 {base}；可改為自訂實發額（加成記 0，如需加成走月末自動結算）。",
+    settleAmountLabel: "實發金額",
+    settleConfirm: "確認發放",
+    settledMsg: "已發放 {amount} 給 {user}",
+    memberActionFail: "操作失敗",
   },
   /** 訊息模板管理（admin-p2-tools-templates）。fBody 含 {{username}} 字面量，
    *  直接渲染、不經 fmt（fmt 會把 {username} 當佔位符吞掉）。 */

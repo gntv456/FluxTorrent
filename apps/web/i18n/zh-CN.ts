@@ -196,6 +196,8 @@ const zhCnBase = {
     classes: "等级要求",
     resurrections: "复活任务",
     ariaPrimary: "主导航",
+    // 导航面板状态条（2026-11-08）：当前展开层的直进按钮
+    goCurrent: "进入",
     collapseMenu: "收起图鉴",
     expandMenu: "展开图鉴",
     more: "更多",
@@ -6078,6 +6080,23 @@ const zhCnBase = {
     thWay: "方式",
     thPayTime: "时间",
     payrollEmpty: "本期暂无发薪",
+    // 0482f 成员管理：移除 + 手动结算
+    thActions: "操作",
+    removeBtn: "移除",
+    settleBtn: "发薪",
+    removeTitle: "移除工作组成员",
+    removeMsg:
+      "将 {user} 从本期考核登记中移除（撤销）。该成员本期未结算，不影响历史工资与达标月数。",
+    removeReasonPh: "移除理由（选填）",
+    removeConfirm: "确认移除",
+    removedMsg: "已移除 {user}",
+    settleTitle: "手动结算工资",
+    settleMsg:
+      "替 {user} 发放本期酬劳。缺省按岗位底薪 {base}；可改为自定义实发额（加成记 0，如需加成走月末自动结算）。",
+    settleAmountLabel: "实发金额",
+    settleConfirm: "确认发放",
+    settledMsg: "已发放 {amount} 给 {user}",
+    memberActionFail: "操作失败",
   },
   /** 消息模板管理（admin-p2-tools-templates）。fBody 含 {{username}} 字面量，
    *  直接渲染、不经 fmt（fmt 会把 {username} 当占位符吞掉）。 */
