@@ -921,6 +921,9 @@ const zhCnBase = {
     streak: "连续签到",
     totalDays: "累计签到",
     calendar: "签到日历",
+    prevMonth: "上一月",
+    nextMonth: "下一月",
+    yearMonth: "{y}年{m}月",
     weekdays: [
       "周一",
       "周二",

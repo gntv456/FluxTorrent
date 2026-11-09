@@ -14,6 +14,8 @@ import {
 } from "@/lib/nav-tree";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { ShjAtlasEduDrill } from "@/components/shj-atlas-edu";
+import { ico } from "@/components/shj-atlas-icons";
+import { ShjAtlasFoot } from "@/components/shj-atlas-foot";
 
 /** 山海经「山海图鉴」竖排侧栏（乙 · 结构层）。
  *
@@ -28,32 +30,7 @@ import { ShjAtlasEduDrill } from "@/components/shj-atlas-edu";
  *  useSearchParams——它会要求调用方包 Suspense；改用挂载后读
  *  window.location.search，结果一致且对路由组零侵入。 */
 
-/** href → 图标（emoji，对齐设计样图 V1.2 图鉴图标位）。46 项逐项字面量
- *  会挤爆行数门禁，存成空白分隔的「路径 表情」对，启动期解析成 Map。 */
-const ICON_TOKS = `
-/ 🏠 /torrents 📚 /forums 💬 /upload 📤 /top 🏆 /requests 🙏 /offers 🎁
-/networks 📡 /artists 🎤 /seasonal 🌸 /subtitles 📑 /subtitle-groups 👥
-/preserve 🛡️ /endangered 🆘 /teams 🤝 /textbooks 📖 /shop 🛒 /bank 🏦
-/magic-pool 🔮 /tasks ✅ /my-spark ✨ /me/sparks 📒 /classes 🎓 /me/exams 📝
-/me/achievements 🏅 /resurrections 💫 /medal-wall 🎖️ /avatar-frames 🖼️
-/medals 🏵️ /jixiao 📊 /invites ✉️ /games 🎮 /gacha 🥚 /farm 🌾 /gomoku ⚫
-/contests 🏁 /friends 🧑‍🤝‍🧑 /messages 📨 /myhr ⚖️ /me/subscriptions 📺
-/faq ❓ /clients 🧭 /wiki 📔 /donate 💝
-`
-  .split(/\s+/)
-  .filter(Boolean);
-const ICONS = new Map<string, string>();
-for (let i = 0; i < ICON_TOKS.length; i += 2) {
-  ICONS.set(ICON_TOKS[i], ICON_TOKS[i + 1]);
-}
 
-function ico(href: string): string {
-  const path = href.split("?")[0];
-  if (href.includes("official=1")) return "🏅";
-  // 教育资源与资源库同路径不同 query：按教育分类特判，避免两处都显示 📚
-  if (href.includes("category_id=13")) return "📖";
-  return ICONS.get(path) ?? "🔹";
-}
 
 export function ShjAtlas({
   primary,
@@ -322,47 +299,16 @@ export function ShjAtlas({
           );
         })}
       </nav>
-      <div className="shj-atlas__foot">
-        {summary && (
-          <Link
-            href="/my"
-            className="shj-atlas__realm"
-            title={summary.username}
-          >
-            <span className="shj-atlas__rseal" aria-hidden>
-              {summary.avatarUrl && !avaFailed ? (
-                <img
-                  src={summary.avatarUrl}
-                  alt=""
-                  onError={() => setAvaFailed(true)}
-                />
-              ) : (
-                summary.username.slice(0, 1).toUpperCase()
-              )}
-            </span>
-            <span className="shj-atlas__rtext">
-              <b>{summary.username}</b>
-              <i>
-                {summary.className} · ↑ {summary.uploaded}
-              </i>
-            </span>
-          </Link>
-        )}
-        <ThemeToggle label={dict.common.themeToggle} />
-        {/* 整栏折叠钮（宽屏专属；窄断点由 CSS 隐藏——轨态本就是那段的缺省） */}
-        <button
-          type="button"
-          className="shj-atlas__fold"
-          onClick={toggleRail}
-          aria-expanded={!rail}
-          title={rail ? dict.nav.expandMenu : dict.nav.collapseMenu}
-        >
-          <span aria-hidden>{rail ? "»" : "«"}</span>
-          <span className="shj-atlas__foldtext">
-            {rail ? dict.nav.expandMenu : dict.nav.collapseMenu}
-          </span>
-        </button>
-      </div>
+      <ShjAtlasFoot
+        summary={summary}
+        avaFailed={avaFailed}
+        setAvaFailed={setAvaFailed}
+        rail={rail}
+        toggleRail={toggleRail}
+        themeToggleLabel={dict.common.themeToggle}
+        expandLabel={dict.nav.expandMenu}
+        collapseLabel={dict.nav.collapseMenu}
+      />
     </aside>
   );
 }

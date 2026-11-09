@@ -143,6 +143,8 @@ export function defaultNav({
   const socialOn = modules("social");
   // 维度开关缺省全闭：调用方漏传 dims 时条目消失（宁可少一条，不可空页）
   const dimOn = (k: string) => dims?.(k) ?? false;
+  // 模块开关开时返回单条导航项，否则空数组（收口三行三元，控行数）
+  const g = (on: boolean, item: NavItem) => (on ? [item] : []);
   const primary: NavItem[] = [
     { href: "/", label: nav.home },
     {
@@ -202,20 +204,20 @@ export function defaultNav({
               { href: "/teams", label: nav.teams },
             ]
           : []),
-        ...(modules("textbooks")
-          ? [{ href: "/textbooks", label: nav.textbooks }]
-          : []),
+        ...g(modules("textbooks"), {
+          href: "/textbooks", label: nav.textbooks,
+        }),
       ],
     },
     {
       group: t(nav.spark),
       items: [
-        ...(modules("attendance") ? [{ href: "/checkin", label: nav.checkin }] : []),
+        ...g(modules("attendance"), { href: "/checkin", label: nav.checkin }),
         ...(modules("shop") ? [{ href: "/shop", label: tabbar.shop }] : []),
         ...(modules("bank") ? [{ href: "/bank", label: nav.bank }] : []),
-        ...(modules("magic_pool")
-          ? [{ href: "/magic-pool", label: nav.magicPool }]
-          : []),
+        ...g(modules("magic_pool"), {
+          href: "/magic-pool", label: nav.magicPool,
+        }),
         ...(modules("tasks") ? [{ href: "/tasks", label: nav.tasks }] : []),
         { href: "/my-spark", label: t(nav.spark) },
         // C5（0226）：魔力明细（触点 #11 积分透明化）
@@ -229,19 +231,13 @@ export function defaultNav({
         { href: "/classes", label: nav.classes },
         ...(modules("exams") ? [{ href: "/me/exams", label: nav.exams }] : []),
         { href: "/me/achievements", label: nav.achievements },
-        ...(modules("resurrections")
-          ? [{ href: "/resurrections", label: nav.resurrections }]
-          : []),
-        ...(modules("medals")
-          ? [{ href: "/medal-wall", label: nav.medalWall }]
-          : []),
-        ...(modules("dressup")
-          ? [{ href: "/avatar-frames", label: nav.frames }]
-          : []),
+        ...g(modules("resurrections"), {
+          href: "/resurrections", label: nav.resurrections,
+        }),
+        ...g(modules("medals"), { href: "/medal-wall", label: nav.medalWall }),
+        ...g(modules("dressup"), { href: "/avatar-frames", label: nav.frames }),
         ...(modules("medals") ? [{ href: "/medals", label: nav.medals }] : []),
-        ...(modules("jixiao")
-          ? [{ href: "/jixiao", label: nav.jixiao }]
-          : []),
+        ...g(modules("jixiao"), { href: "/jixiao", label: nav.jixiao }),
         ...(modules("invites")
           ? [{ href: "/invites", label: nav.invites }]
           : []),

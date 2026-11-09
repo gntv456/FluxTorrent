@@ -968,6 +968,9 @@ const zhTwBase: Omit<
     streak: "連續簽到",
     totalDays: "累計簽到",
     calendar: "簽到日曆",
+    prevMonth: "上個月",
+    nextMonth: "下個月",
+    yearMonth: "{y}年{m}月",
     weekdays: [
       "週一",
       "週二",

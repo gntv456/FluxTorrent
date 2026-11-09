@@ -76,7 +76,9 @@ describe("导航入口完整性（桌面 + <lg 抽屉）", () => {
       );
     }
     // 带子级的一级条必须有 aria-haspopup/aria-expanded（I1）
-    const triggers = container.querySelectorAll(".mainmenu-link[aria-haspopup]");
+    const triggers = container.querySelectorAll(
+      ".mainmenu-link[aria-haspopup]",
+    );
     expect(triggers.length).toBeGreaterThan(0);
     for (const t of Array.from(triggers)) {
       expect(t.getAttribute("aria-expanded")).toMatch(/true|false/);

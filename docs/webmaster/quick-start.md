@@ -147,8 +147,8 @@ bash scripts/update.sh --yes         # 免确认（定时任务用）
 
 两条必须知道的规矩：
 
-- **别裸跑 `docker compose up -d`**。compose 里镜像是 `${FLUX_VERSION:-latest}`，
-  不带版本就落到移动标签 `latest`，可能把现网换成旧构建；而 api 启动要跑迁移，
+- **别裸跑 `docker compose up -d`**。compose 里镜像是 `${FLUX_VERSION:-<固定 tag>}`，
+  不带版本会落到 compose / `docker/.env.example` 里 `FLUX_VERSION` 锁定的固定 tag（不是移动标签 `latest`；以当前值为准），可能把现网换成旧构建；而 api 启动要跑迁移，
   库里已经到第 N 号、旧镜像只到 M<N 时，sqlx 会拒绝启动 → **崩溃循环、全站 500**。
   升级一律走 `scripts/update.sh`（它会在切换前把这种情况拦下并告诉你怎么修）。
 - 升级成功的版本号会写进 `docker/.flux-version`；想回滚就 `--tag` 填上一个版本号。

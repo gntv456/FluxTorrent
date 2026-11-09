@@ -47,6 +47,14 @@ const EXEMPT = [
   // 适配层与上游补丁必须能整段贴进 dist，拆成模块反而破坏构建；
   // 构建产物 dist/ 已在 .gitignore。与 app 源码无关，另立豁免。
   "scripts/userscripts/",
+  // 主菜单重构的浏览器真实态截图/校验脚本（2026-11-09）：node file.mjs 直接顶跑
+  // （top-level await + process.exit），不进 playwright runner、不被 CI/package.json
+  // 引用，是一次性验证资产。按单文件装载拆分反破运行，与 userscripts 同理由豁免；
+  // 仅精确列这 4 个，不放开整个 e2e 目录。
+  "apps/web/e2e/nav-cascade-shots.mjs",
+  "apps/web/e2e/nav-menu-verify.mjs",
+  "apps/web/e2e/nav-a11y-verify.mjs",
+  "apps/web/e2e/nav-topbar-before-after.mjs",
 ];
 
 const groups = [

@@ -73,9 +73,12 @@ async fn admin_attendance(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
-    Ok(ok(
-        serde_json::json!({ "rows": rows, "total": total, "page": q.page.max(1), "per_page": q.per_page }),
-    ))
+    Ok(ok(serde_json::json!({
+        "rows": rows,
+        "total": total,
+        "page": q.page.max(1),
+        "per_page": q.per_page
+    })))
 }
 
 #[derive(Deserialize)]

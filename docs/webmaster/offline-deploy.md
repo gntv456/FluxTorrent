@@ -69,7 +69,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 ## 三个容易踩的坑
 
-1. **`.env` 的镜像前缀/版本要对得上**：打包机和目标机的 `docker/.env` 里 `FLUX_IMAGE_PREFIX` / `FLUX_VERSION` 必须一致，否则 compose 会因 tag 不符而去尝试拉取（目标机没网就起不来）。默认都是 `ghcr.io/gntv456/fluxtorrent` + `latest`，不动就一致。
+1. **`.env` 的镜像前缀/版本要对得上**：打包机和目标机的 `docker/.env` 里 `FLUX_IMAGE_PREFIX` / `FLUX_VERSION` 必须一致，否则 compose 会因 tag 不符而去尝试拉取（目标机没网就起不来）。默认前缀是 `ghcr.io/gntv456/fluxtorrent`，版本取 `docker/.env.example` 里 `FLUX_VERSION` 锁定的固定 tag（不是 `latest`），两边不动就一致。
 2. **千万别加 `--build`**：离线场景用 `up -d` 即可；加 `--build` 会触发重新构建、去拉 rust/node/nginx 基础镜像，目标机没网就卡死。
 3. **compose 版本别乱改**：包里含 `postgres:16-alpine` / `redis:7-alpine`，若你改了 compose 里的数据库版本，要和包里的一致，否则缺镜像。
 

@@ -281,20 +281,25 @@ struct ClassRuleRow {
     min_account_age_days: i32,
 }
 
-/// 等级门槛原始表（数据单源导出口径）。路径用 /class-rules：/classes 已被
-/// classes_public（等级要求公开页聚合）占用——actix 同路径双注册时先注册者
-/// 恒赢，曾致公开页拿到数组形态数据在前端渲染崩溃（「页面出错了」）。
+/// 等级门槛全表（复用：公开列表 + 进度判定）。路径走 /class-rules，
+/// 因 /classes 已被 classes_public 占用（actix 同路径先注册者赢）。
+async fn fetch_class_rules(
+    db: &sqlx::PgPool,
+) -> DomainResult<Vec<ClassRuleRow>> {
+    sqlx::query_as(
+        "SELECT class_id, name, min_uploaded, min_download_count, min_seed_hours, \
+         min_account_age_days FROM class_rules ORDER BY class_id",
+    )
+    .fetch_all(db)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))
+}
+
 #[get("/class-rules")]
 pub async fn class_rules_list(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
-    let rows: Vec<ClassRuleRow> = sqlx::query_as(
-        "SELECT class_id, name, min_uploaded, min_download_count, min_seed_hours, min_account_age_days \
-         FROM class_rules ORDER BY class_id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rows = fetch_class_rules(&state.repo.db).await?;
     Ok(ok(rows))
 }
 
@@ -315,9 +320,12 @@ pub async fn my_class_progress(
     let auth = require_auth(&req, &state).await?;
     let p: ProgressRow = sqlx::query_as(
         "SELECT u.class_id, u.uploaded, \
-                (SELECT count(*) FROM snatches s WHERE s.user_id = u.id AND s.completed_at IS NOT NULL) AS download_count, \
-                (SELECT COALESCE(sum(s.seeded_seconds), 0) / 3600 FROM snatches s WHERE s.user_id = u.id) AS seed_hours, \
-                EXTRACT(DAY FROM now() - u.created_at)::bigint AS account_age_days \
+         (SELECT count(*) FROM snatches s WHERE s.user_id = u.id \
+            AND s.completed_at IS NOT NULL) AS download_count, \
+         (SELECT COALESCE(sum(s.seeded_seconds), 0) / 3600 \
+            FROM snatches s WHERE s.user_id = u.id) AS seed_hours, \
+         EXTRACT(DAY FROM now() - u.created_at)::bigint \
+            AS account_age_days \
          FROM users u WHERE u.id = $1",
     )
     .bind(auth.id)
@@ -325,20 +333,14 @@ pub async fn my_class_progress(
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
     // 计算当前进度满足到哪一级
-    let rules: Vec<ClassRuleRow> = sqlx::query_as(
-        "SELECT class_id, name, min_uploaded, min_download_count, min_seed_hours, min_account_age_days \
-         FROM class_rules ORDER BY class_id",
-    )
-    .fetch_all(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
+    let rules = fetch_class_rules(&state.repo.db).await?;
     let mut qualified = 1i32;
     for r in &rules {
-        if p.uploaded >= r.min_uploaded
+        let ok = p.uploaded >= r.min_uploaded
             && p.download_count >= r.min_download_count as i64
             && p.seed_hours >= r.min_seed_hours as i64
-            && p.account_age_days >= r.min_account_age_days as i64
-        {
+            && p.account_age_days >= r.min_account_age_days as i64;
+        if ok {
             qualified = r.class_id;
         }
     }
@@ -348,8 +350,3 @@ pub async fn my_class_progress(
         "seed_hours": p.seed_hours, "account_age_days": p.account_age_days,
     })))
 }
-
-// ============ 附件/截图与媒体信息（种子上传时提交） ============
-// torrents.screenshots / media_info 列已由 0020 添加；上传表单扩展见 web 端。
-
-// ============ 教材愿望单（0074，U3D WishList 教育化） ============

@@ -29,7 +29,7 @@ pub(crate) async fn notice_prefs_get(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    const DEFAULT_ON: [&str; 16] = [
+    const DEFAULT_ON: [&str; 18] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
@@ -43,6 +43,9 @@ pub(crate) async fn notice_prefs_get(
         "comment_reply",
         "system",
         "donate_tier",
+        // 种子侧正反馈（0423 P0-3）：会发就要可关（notify.rs notify_comment/thanks）
+        "torrent_comment",
+        "torrent_thanks",
         "push_hr",
         "push_promo",
         "push_message",
@@ -85,7 +88,7 @@ pub(crate) async fn notice_prefs_set(
     body: web::Json<NoticePrefsSetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
-    const KEYS: [&str; 16] = [
+    const KEYS: [&str; 18] = [
         "hr_prewarn",
         "hr_violation",
         "wishlist",
@@ -99,6 +102,9 @@ pub(crate) async fn notice_prefs_set(
         "comment_reply",
         "system",
         "donate_tier",
+        // 种子侧正反馈（0423 P0-3）：会发就要可关
+        "torrent_comment",
+        "torrent_thanks",
         // Web Push 三 topic 的用户级开关（0283 P0-1；缺省 true）
         "push_hr",
         "push_promo",

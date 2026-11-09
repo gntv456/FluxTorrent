@@ -53,6 +53,7 @@ _ck_probe.py
 /_shots/
 __pycache__/
 target-headcheck/
+target-verify/
 
 # apps/web 下的调试临时件（跑完即弃）。上面那组根锚定规则只管仓库根，
 # 管不到子目录——apps/web/_tmp_token.txt 里是登录令牌，谁 git add -A

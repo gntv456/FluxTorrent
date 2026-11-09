@@ -259,7 +259,9 @@ async function TorrentTr({
                   .map((b) => b.name)
                   .join(" / ")}
               >
-                +{(t.tags ?? []).filter((b) => b.kind !== "official").length - 3}
+                +{(t.tags ?? []).filter(
+                  (b) => b.kind !== "official",
+                ).length - 3}
               </span>
             )}
           </span>

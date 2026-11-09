@@ -9,6 +9,7 @@ import { GlobalSearch } from "@/components/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import type { NavItem, NavGroup } from "@/lib/nav-menu";
+export { NavDrawerTrigger } from "@/components/nav-drawer-trigger";
 import {
   buildNavTree,
   claimedPaths,
@@ -159,8 +160,7 @@ export function NavDrawer({
 
   const tree = useMemo(
     () => buildNavTree(primary, groups, dict.nav.more),
-    [primary, groups, dict.nav.more],
-  );
+    [primary, groups, dict.nav.more]);
   // 选中态 query 部分：挂载后读真实地址（避开 useSearchParams 的 Suspense 要求）
   const [search, setSearch] = useState("");
   useEffect(() => {
@@ -169,8 +169,7 @@ export function NavDrawer({
   const sp = useMemo(() => new URLSearchParams(search), [search]);
   const claimed = useMemo(
     () => claimedPaths(leavesOf(tree), sp),
-    [tree, sp],
-  );
+    [tree, sp]);
   const active = useCallback(
     (href: string) => isActive(href, pathname, sp, claimed),
     [pathname, sp, claimed],
@@ -297,36 +296,5 @@ export function NavDrawer({
       </div>
     </div>,
     document.body,
-  );
-}
-
-/** 汉堡触发按钮（受控）：44px 触控目标 */
-export function NavDrawerTrigger({
-  onClick,
-  label,
-}: {
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      className="navdrawer-trigger"
-      aria-label={label}
-      aria-haspopup="dialog"
-      onClick={onClick}
-    >
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      >
-        <path d="M4 7h16M4 12h16M4 17h10" />
-      </svg>
-    </button>
   );
 }

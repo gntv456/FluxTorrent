@@ -57,7 +57,11 @@ export function CheckinPage() {
       .get<AttendanceStatus & { total_days?: number }>("/api/v1/attendance")
       .then((s) => {
         setStatus(s);
-        setTotalDays((s as { total_days?: number }).total_days ?? s.recent?.length ?? 0);
+        setTotalDays(
+          (s as { total_days?: number }).total_days ??
+            s.recent?.length ??
+            0,
+        );
       })
       .catch(() => {});
   };
@@ -65,12 +69,17 @@ export function CheckinPage() {
 
   // 逐月签到标记
   const isCurrentMonth =
-    cursor.y === Number(today.slice(0, 4)) && cursor.m === Number(today.slice(5, 7));
+    cursor.y === Number(today.slice(0, 4)) &&
+    cursor.m === Number(today.slice(5, 7));
   useEffect(() => {
     let alive = true;
     api
-      .get<{ ym: string; days: { date: string; done: boolean; reward: number }[] }>(
-        `/api/v1/attendance/calendar?ym=${cursor.y}-${String(cursor.m).padStart(2, "0")}`,
+      .get<{
+        ym: string;
+        days: { date: string; done: boolean; reward: number }[];
+      }>(
+        `/api/v1/attendance/calendar?ym=${cursor.y}-` +
+          `${String(cursor.m).padStart(2, "0")}`,
       )
       .then((r) => {
         if (!alive) return;

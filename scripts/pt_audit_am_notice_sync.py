@@ -121,7 +121,9 @@ ok("P-574：push_* 三键必须在推送设置页有开关（send 侧逐类过�
    "只存不拨=用户只能全收）", len(wired) == 3, "已接=%s" % wired)
 
 # P-584：带 kind 落库的系统通知，消息中心要有现取模板（否则切语言翻不动）。
-mc = read("apps/web/components/message-center-table.tsx")
+# 2026-11-10：模板取词逻辑已从 message-center-table.tsx 重构进
+# message-center-notice.ts（table 现 import noticeText），改扫真源文件。
+mc = read("apps/web/components/message-center-notice.ts")
 noticed = set(re.findall(r"^\s*([a-z_]+): \{\s*s: t\.kind", mc, re.M))
 need = {"group_new_version", "network_new_release", "subgroup_new_release"}
 ok("订阅推送三类 kind 都有消息中心模板", need <= noticed,

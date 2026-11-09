@@ -252,9 +252,6 @@ mod tests {
         // shown_streak 只看 (日期, streak)，补签行与普通行一视同仁：
         // 昨天（补签）streak=214 → 展示仍活（214），今天签到 baseline 取 214 → 215。
         assert_eq!(shown_streak(Some((yesterday, 214)), today), 214);
-        assert_eq!(
-            shown_streak(Some((yesterday, 214)), today) + 1,
-            215
-        );
+        assert_eq!(shown_streak(Some((yesterday, 214)), today) + 1, 215);
     }
 }
