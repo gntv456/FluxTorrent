@@ -3,6 +3,22 @@
 本文件记录面向部署者的显著变更。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 版本号在首个语义化 tag（v0.x）发布后启用。
 
+## [0.5.17] - 2026-11-09
+
+定位：**计费链路 P0 修复**——0477 引入的 worker 种子缓存在命中处提前
+`return`，把幂等键/snatches/流水/做种时长整条计费链路短路；同 hash
+TTL 1h 内只有第一条 announce 事件入账，其余静默丢。影响面（11-07 20:02
+起约 30 小时）：全站在种数虚低、流量计费按 ~1/小时·hash 取样、做种
+收益停发。修复后缓存只省一次 SELECT，计费漏斗一环不少；流量增量因
+差值锚点口径（客户端累计读数）在下一次真实入账时自动补齐，做种时长
+与 seeding 标记的窗口损失不可追溯。
+
+### 修复
+- **P0**：`process_event` 缓存命中不再提前返回——announce_seen 幂等键、
+  snatches upsert、traffic_ledger 流水、seeded_seconds 累计恢复全量执行
+- 同批：辅种通路三重收口（5f8c6087：proven 第三通路 uploaded_total、
+  幽灵留痕加需求门槛、证据取数拆 prove）
+
 ## [0.5.16] - 2026-11-09
 
 定位：**运维与可观测性**——监控栈首次真正可跑、tracker 快照间隔可调、

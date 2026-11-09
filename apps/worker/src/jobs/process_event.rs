@@ -25,25 +25,30 @@ pub(crate) async fn process_event(
     event_id: &str,
 ) -> anyhow::Result<Option<i64>> {
     // 种子查询失败必须报错重试（不静默丢计费）；P1：announce 哈希是原始
-    // 字节口径 vs 库内规范化口径 → OR 匹配。0477 缓存见 torrent_cache.rs。
-    if let Some(cached) = super::torrent_cache::get(&ev.hash) {
-        return Ok(cached.map(|(id, _size)| id));
-    }
-    // 0477b：OR 双口径改 UNION 两段等值——OR 使 PG 每次全新规划（实测
-    // Planning 163ms >> 执行 0.27ms）；UNION 等值段可复用通用计划。
-    let torrent: Option<(i64, i64)> = sqlx::query_as(
-        "SELECT id, size FROM ( \
-           (SELECT id, COALESCE(size, 0) AS size FROM torrents \
-             WHERE info_hash = $1 LIMIT 1) \
-           UNION ALL \
-           (SELECT id, COALESCE(size, 0) AS size FROM torrents \
-             WHERE raw_info_hash = $1 AND NOT (info_hash = $1) LIMIT 1) \
-         ) u LIMIT 1",
-    )
-    .bind(&ev.hash)
-    .fetch_optional(db)
-    .await?;
-    super::torrent_cache::put(&ev.hash, torrent);
+    // 字节口径 vs 库内规范化口径 → UNION 双口径等值（0477b）。
+    // ⚠️ 0477 事故（2026-11-09 P0）：旧写法在缓存命中处 `return`，把
+    // 幂等键/snatches/流水/做种时长整条计费链路一起短路——TTL 1h 内
+    // 同 hash 只有第一条事件入账。缓存只允许省这次 SELECT。
+    let torrent = match super::torrent_cache::get(&ev.hash) {
+        Some(cached) => cached,
+        None => {
+            let t = sqlx::query_as(
+                "SELECT id, size FROM ( \
+                   (SELECT id, COALESCE(size, 0) AS size FROM torrents \
+                     WHERE info_hash = $1 LIMIT 1) \
+                   UNION ALL \
+                   (SELECT id, COALESCE(size, 0) AS size FROM torrents \
+                     WHERE raw_info_hash = $1 \
+                       AND NOT (info_hash = $1) LIMIT 1) \
+                 ) u LIMIT 1",
+            )
+            .bind(&ev.hash)
+            .fetch_optional(db)
+            .await?;
+            super::torrent_cache::put(&ev.hash, t);
+            t
+        }
+    };
     let Some((torrent_id, torrent_size)) = torrent else {
         return Ok(None); // 不存在：跳过
     };
@@ -72,7 +77,6 @@ pub(crate) async fn process_event(
         tx.commit().await?;
         return Ok(None);
     }
-
     let g =
         ledger_guard(&mut tx, ev, torrent_id, torrent_size, seed_cap).await?;
     let (anchor_up, anchor_down) = (g.anchor_up, g.anchor_down);
@@ -105,9 +109,7 @@ pub(crate) async fn process_event(
     if corr_held > 0 {
         audit_hold::note_corr(&mut *tx, ev, torrent_id, corr_held).await;
     }
-
     // 超上限留痕：agent 沿用 cheat_audit 的 torrent:{id} 约定、speed: 前缀区分来源
-    //
     // 0380 盒子 speed_relax：经人工审核的盒子在加密/CGNAT 环境下速度波动
     // 本就大，走速规则误判率高。这里的口径是**放宽阈值，不是关闭检测**——
     // 扣量照扣（traffic 口径不变），只是不再把这次超速记成作弊线索。
@@ -150,10 +152,8 @@ pub(crate) async fn process_event(
     );
     let (seeding, completed, ghost_note) =
         (v.seeding, v.completed, v.ghost_note);
-    // 幽灵签名留痕（2026-10-08 收紧，2026-11-09 加需求门槛）：left=0 却
-    // 零下载、零佐证、**零喂出**，且本种确有下载需求（判据在 verdict）。
-    // 冷启动跨种（没人下过 → 无佐证可得）不再记账；有人下过还零喂出
-    // 的才是真幽灵。辅种者喂出达 10.4% 直接判在种，辅种经济由此转起来。
+    // 幽灵留痕（2026-11-09 加需求门槛）：零下载/零佐证/零喂出且有种上
+    // 需求才记（判据在 verdict）；辅种者喂出达 10.4% 直接判在种。
     if ghost_note {
         audit_hold::note_ghost(&mut *tx, ev, g.raw_down, g.raw_up).await;
     }
