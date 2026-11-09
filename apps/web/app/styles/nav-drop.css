@@ -1,0 +1,68 @@
+/* 传统级联下拉（2026-11-09）：hover 展开、子级右侧飞出。
+ * 复用 nav-canvas.css 的 --nvc-* 主题令牌（四档主题无感切换），
+ * 排在 nav-canvas.css 之后挂链即可继承变量。 */
+.nd-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 70;
+  display: none;
+  min-width: 208px;
+  max-height: min(60vh, 460px);
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--nvc-panel);
+  border: 1px solid var(--nvc-line);
+  border-radius: var(--nvc-r);
+  box-shadow: 0 18px 48px rgba(31, 42, 68, .16);
+}
+/* 子层右侧飞出：贴父行右缘、顶对齐。作用域严格限定在 .nd-list 内部
+   的行（顶栏一级 li 也带 .nd-has 挂第一层，不能被本规则改 top）。 */
+.nd-list .nd-has { position: relative; }
+.nd-list .nd-has > .nd-list {
+  top: -7px;
+  left: calc(100% - 6px);
+}
+@media screen and (max-width: 1280px) {
+  .nd-list .nd-has:last-child > .nd-list {
+    left: auto;
+    right: calc(100% - 6px);
+  }
+}
+/* 悬停/键盘聚焦链上展开（focus-within 让 Tab 也能走完整棵树）；
+   顶栏一级 li 自带 .relative 定位（main-menu 挂 .nd-has 同权生效） */
+.nd-has:hover > .nd-list,
+.nd-has:focus-within > .nd-list { display: block; }
+.nd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  color: var(--nvc-text);
+  background: none;
+  border: 0;
+  border-radius: var(--nvc-row-r);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+}
+.nd-row:hover { background: var(--nvc-hover); }
+.nd-row.is-lit {
+  color: var(--nvc-active-fg);
+  background: var(--nvc-active-bg);
+  box-shadow: inset 3px 0 0 var(--nvc-bar);
+}
+.nd-row.nd-leaf { color: var(--nvc-leaf); }
+.nd-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nd-caret { color: var(--nvc-faint); font-size: 14px; }

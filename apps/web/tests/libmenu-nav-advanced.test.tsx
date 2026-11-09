@@ -136,7 +136,9 @@ describe("症状②：菜单点亮口径（键值全等）", () => {
     const lit = Array.from(
       container.querySelectorAll<HTMLElement>('[data-active="true"]'),
     ).map((el) => (el.textContent ?? "").trim());
-    expect(lit).toContain("资源库 ▾");
+    // 2026-11-09 级联下拉改版：一级条是 Link 直进，▾ 移入独立
+    // span，textContent 带尾空白——断言改前缀包含
+    expect(lit.some((t) => t.startsWith("资源库"))).toBe(true);
   });
 });
 

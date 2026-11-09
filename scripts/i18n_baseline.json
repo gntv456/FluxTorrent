@@ -463,8 +463,8 @@
  ],
  "components/login-history.tsx": [],
  "components/main-menu.tsx": [
-  61,
-  172
+  62,
+  155
  ],
  "components/medal-actions.tsx": [],
  "components/medal-badge.tsx": [],
@@ -14829,5 +14829,6 @@
   42,
   75,
   77
- ]
+ ],
+ "components/nav-dropdown.tsx": []
 }

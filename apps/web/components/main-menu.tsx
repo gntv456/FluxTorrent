@@ -1,14 +1,14 @@
 "use client";
 
-/** 主菜单（2026-11-07 重构）：一级平铺 + 点击逐级展开的导航画布。
+/** 主菜单（2026-11-09 定稿）：一级平铺 + 传统 hover 级联下拉。
  *
- *  三套历史下拉（「更多」网格 / 资源库分组 / 教育三列级联）归一成
- *  一棵 NavNode 树，按主题选渲染壳：
- *    brand / brand-night → NavColumns（横向逐级列）
- *    shanhaijing 两档    → NavScroll（纵向卷轴 + 册页宫格）
+ *  桌面（≥lg）：带子级的一级条悬停正下弹第一层，子级悬停右侧飞出，
+ *  任意层级嵌套（形态参考经典纯 CSS 多级下拉，components/nav-dropdown.tsx）。
+ *  顶栏一级仍保留 Link 直进（点击=进该频道首页，悬停=浏览子级）——
+ *  hover 浏览与点击直达并存，不再互斥。
+ *
+ *  平板收敛（<lg）沿用画布面板：一级收进「更多」，点开逐级钻。
  *  选中态仍用 lib/nav-tree.ts 的键值全等口径（2026-11-03 定稿）。
- *
- *  平板收敛（<lg）沿用旧口径：一级收进「更多」，点开后从第一列逐级点。
  */
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -23,15 +23,7 @@ import {
   leavesOf,
 } from "@/lib/nav-tree";
 import { NavColumns, NavScroll } from "@/components/nav-canvas";
-
-type Props = {
-  items: NavItem[];
-  groups?: NavGroup[];
-  moreLabel?: string;
-  ariaLabel: string;
-  /** 面板状态条「进入当前层」文案（dict.nav.goCurrent） */
-  goLabel?: string;
-};
+import { NavDropList } from "@/components/nav-dropdown";
 
 /** 主题偏好由 no-flash 内联脚本写 <html data-theme>，客户端跟随切换。 */
 function useScrollShell() {
@@ -53,6 +45,15 @@ function useScrollShell() {
   return scroll;
 }
 
+type Props = {
+  items: NavItem[];
+  groups?: NavGroup[];
+  moreLabel?: string;
+  ariaLabel: string;
+  /** 面板状态条「进入当前层」文案（dict.nav.goCurrent） */
+  goLabel?: string;
+};
+
 export function MainMenu({
   items,
   groups,
@@ -65,9 +66,6 @@ export function MainMenu({
   const router = useRouter();
   const compact = useMediaQuery("(max-width: 1023px)", false);
   const scrollShell = useScrollShell();
-  const [open, setOpen] = useState(false);
-  const [rootId, setRootId] = useState<string | null>(null);
-  const wrapRef = useRef<HTMLElement>(null);
 
   const tree = useMemo(
     () => buildNavTree(items, groups ?? [], moreLabel),
@@ -88,13 +86,12 @@ export function MainMenu({
     [active],
   );
   const navigate = useCallback(
-    (href: string) => {
-      setOpen(false);
-      router.push(href);
-    },
+    (href: string) => router.push(href),
     [router],
   );
-
+  const [open, setOpen] = useState(false);
+  const [rootId, setRootId] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
@@ -112,9 +109,7 @@ export function MainMenu({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
   const openAt = (id: string | null) => {
-    // 再点同一一级钮 = 收起（toggle）：aria-expanded 与操作语义一致
     if (open && rootId === id) {
       setOpen(false);
       return;
@@ -122,41 +117,29 @@ export function MainMenu({
     setRootId(id);
     setOpen(true);
   };
-  const canvas = {
-    tree,
-    open,
-    rootId,
-    active,
-    onClose: () => setOpen(false),
-    onNavigate: navigate,
-    goLabel,
-  };
 
   return (
     <nav aria-label={ariaLabel} ref={wrapRef} className="nvc-anchor">
       <ul className="mainmenu">
         {!compact &&
           tree.map((n) => (
-            <li key={n.id} className="relative">
-              {n.children.length ? (
-                <button
-                  type="button"
-                  className="mainmenu-link"
-                  data-active={parentActive(n) ? "true" : undefined}
-                  aria-expanded={open && rootId === n.id}
-                  aria-haspopup="true"
-                  onClick={() => openAt(n.id)}
-                >
-                  {n.label} ▾
-                </button>
-              ) : (
-                <Link
-                  href={n.href}
-                  className="mainmenu-link"
-                  data-active={active(n.href) ? "true" : undefined}
-                >
-                  {n.label}
-                </Link>
+            <li key={n.id} className="relative nd-has">
+              <Link
+                href={n.href || "/"}
+                className="mainmenu-link"
+                data-active={parentActive(n) ? "true" : undefined}
+              >
+                {n.label}
+                {n.children.length > 0 && (
+                  <span className="nd-caret" aria-hidden>▾</span>
+                )}
+              </Link>
+              {n.children.length > 0 && (
+                <NavDropList
+                  node={n}
+                  active={active}
+                  onNavigate={navigate}
+                />
               )}
             </li>
           ))}
@@ -174,10 +157,34 @@ export function MainMenu({
           </li>
         )}
       </ul>
-      {scrollShell ? (
-        <NavScroll {...canvas} />
-      ) : (
-        <NavColumns {...canvas} />
+      {compact && (
+        scrollShell ? (
+          <NavScroll
+            tree={tree}
+            open={open}
+            rootId={rootId}
+            active={active}
+            onClose={() => setOpen(false)}
+            onNavigate={(href) => {
+              setOpen(false);
+              navigate(href);
+            }}
+            goLabel={goLabel}
+          />
+        ) : (
+          <NavColumns
+            tree={tree}
+            open={open}
+            rootId={rootId}
+            active={active}
+            onClose={() => setOpen(false)}
+            onNavigate={(href) => {
+              setOpen(false);
+              navigate(href);
+            }}
+            goLabel={goLabel}
+          />
+        )
       )}
     </nav>
   );

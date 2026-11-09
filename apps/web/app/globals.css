@@ -40,6 +40,8 @@
 /* 主菜单导航画布（2026-11-07）：两套渲染壳 + 四档主题令牌。
    排链末，--nvc-* 变量覆盖不被前面的主题层反向影响。 */
 @import "./styles/nav-canvas.css";
+/* 传统级联下拉（2026-11-09）：复用 --nvc-* 令牌，须排在 nav-canvas 之后。 */
+@import "./styles/nav-drop.css";
 
 /* ⚠️ 娱乐屋样式（arcade.css 55KB + arcade-sweet.css 68KB）已于 2026-10-03
    从本文件移出，改为路由级 import（见 (main)/games/layout.tsx 与
