@@ -384,6 +384,7 @@
   background: var(--shj-nav-bg);
   border-right: 1px solid var(--border-deep);
   box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+  transition: width 0.25s var(--ease-out, ease);
 }
 /* 宣纸档侧栏/浮层投影压浅（暗色投影在宣纸上是一堵黑边） */
 [data-theme="shanhaijing-light"] .shj-atlas,
@@ -491,11 +492,43 @@
 [data-theme="shanhaijing-light"] .shj-atlas__group {
   margin-top: 8px;
 }
-/* P2：顶栏已有「山海经」字标+印章，左栏再放一套品牌 = 同屏双 logo。
-   左栏只保留图鉴导航，隐藏重复品牌块。 */
-[data-theme="shanhaijing"] .shj-atlas__brand,
-[data-theme="shanhaijing-light"] .shj-atlas__brand {
+/* 2026-11-09 定稿：品牌区恢复，但仅 ≥1180 展开态显示；
+   轨态与 768–1179 一律隐藏（64px 无空间，且避免与顶栏 logo 重复）。 */
+[data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__brand,
+[data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__brand {
   display: none;
+}
+/* 分组折叠必须真的隐藏：作者样式的 display:flex 会盖过 UA 的
+   [hidden]{display:none}（2026-11-09 验收时发现 is-closed 不生效） */
+[data-theme="shanhaijing"] .shj-atlas__list[hidden],
+[data-theme="shanhaijing-light"] .shj-atlas__list[hidden] {
+  display: none;
+}
+/* 「浏览学段 ›」：教育资源专属虚线金框入口（样图口径），
+   轨态/窄断点隐藏，44px 触控高度 */
+[data-theme="shanhaijing"] .shj-atlas__eduedit,
+[data-theme="shanhaijing-light"] .shj-atlas__eduedit {
+  display: flex;
+  width: calc(100% - 8px);
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 4px 4px;
+  padding: 0 10px;
+  border: 1px dashed var(--border-deep);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--sun);
+  cursor: pointer;
+  font-family: var(--font-wei);
+  font-size: 11.5px;
+  letter-spacing: 0.5px;
+}
+[data-theme="shanhaijing"] .shj-atlas__eduedit:hover,
+[data-theme="shanhaijing-light"] .shj-atlas__eduedit:hover {
+  background: var(--sun-soft);
+  border-color: var(--sun);
 }
 [data-theme="shanhaijing"] .shj-atlas__scroll,
 [data-theme="shanhaijing-light"] .shj-atlas__scroll {
@@ -655,14 +688,21 @@
 }
 
 /* ===== 内容让位 + 顶栏/底栏收敛（仅山海经） ===== */
-/* 2026-11-09 站长定调：四档主题统一顶栏 hover 级联下拉（nav-drop.css）。
- * 侧栏图鉴默认收轨（64px 快捷图标列），导航子级全走顶栏下拉。
- * 展开态（点折叠钮）侧栏浮在内容上方（与顶栏下拉同语义，z-index 60）。
- * ≥768 让出 64px 轨宽；<768 侧栏是抽屉形态不让位。 */
+/* 2026-11-09 定稿：四档主题统一顶栏 hover 级联下拉（nav-drop.css）。
+ * 侧栏图鉴默认展开（236px，内容真实让位），用户可收轨为 64px 图标列。
+ * 768–1179px 恒为轨态；<768 侧栏是抽屉形态不让位。 */
 @media (min-width: 768px) {
   [data-theme="shanhaijing"] .site-shell,
   [data-theme="shanhaijing-light"] .site-shell {
     margin-left: var(--shj-rail-w);
+  }
+}
+/* ≥1180 且用户未收轨：内容真实让位 236px（2026-11-09 定稿，
+   取代「展开态浮在内容上方」的旧口径）。768–1179 恒为 64px。 */
+@media (min-width: 1180px) {
+  [data-theme="shanhaijing"] .shj-atlas:not(.is-rail) ~ .site-shell,
+  [data-theme="shanhaijing-light"] .shj-atlas:not(.is-rail) ~ .site-shell {
+    margin-left: var(--shj-nav-w);
   }
 }
 @media (min-width: 768px) {
@@ -686,14 +726,11 @@
   }
   [data-theme="shanhaijing"] .shj-atlas__brand,
   [data-theme="shanhaijing-light"] .shj-atlas__brand {
-    justify-content: center;
-    padding: 14px 6px 12px;
+    display: none;
   }
-  [data-theme="shanhaijing"] .shj-atlas__seal,
-  [data-theme="shanhaijing-light"] .shj-atlas__seal {
-    width: 38px;
-    height: 38px;
-    font-size: 16px;
+  [data-theme="shanhaijing"] .shj-atlas__eduedit,
+  [data-theme="shanhaijing-light"] .shj-atlas__eduedit {
+    display: none;
   }
   [data-theme="shanhaijing"] .shj-atlas__brandtext,
   [data-theme="shanhaijing-light"] .shj-atlas__brandtext,
@@ -760,17 +797,15 @@
     padding: 6px 10px;
   }
 }
-/* 非轨态：浮层恒隐藏（状态残留也不出声）。2026-11-09 起浮层跟随
-   .is-rail（≥768 收轨即可用），不再绑 1180 断点 */
-@media (max-width: 767.98px) {
-  [data-theme="shanhaijing"] .shj-atlas__flyout,
-  [data-theme="shanhaijing-light"] .shj-atlas__flyout {
+/* 展开态（≥1180 且未收轨）浮层恒隐藏（状态残留也不出声）。
+   注：768–1179 本就没有 .is-rail 类（该断点侧栏恒 64px），若一并套用
+   本规则，分组浮层在该宽度段永远打不开、分组条目不可达（2026-11-09
+   真机验收发现）——因此把隐藏限定回 ≥1180 展开态。 */
+@media (min-width: 1180px) {
+  [data-theme="shanhaijing"] .shj-atlas:not(.is-rail) .shj-atlas__flyout,
+  [data-theme="shanhaijing-light"] .shj-atlas:not(.is-rail) .shj-atlas__flyout {
     display: none;
   }
-}
-[data-theme="shanhaijing"] .shj-atlas:not(.is-rail) .shj-atlas__flyout,
-[data-theme="shanhaijing-light"] .shj-atlas:not(.is-rail) .shj-atlas__flyout {
-  display: none;
 }
 @media (min-width: 768px) and (max-width: 1179.98px) {
   /* 轨宽 64px 扣掉 1px 边线与各 10px 内边距后条目只剩 43px，
@@ -1702,7 +1737,7 @@
 }
 
 /* 轨态（.is-rail）：侧栏 64px + 文字视觉隐藏 + 图标居中。
-   2026-11-09 统一顶栏导航后默认收轨，≥768 全断点生效（<768 是抽屉态） */
+   2026-11-09 重定：未存偏好时 ≥1180 默认展开，手动收轨才进入本态 */
 @media (min-width: 768px) {
   [data-theme="shanhaijing"] .shj-atlas.is-rail,
   [data-theme="shanhaijing-light"] .shj-atlas.is-rail {
@@ -1716,14 +1751,11 @@
   }
   [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__brand,
   [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__brand {
-    justify-content: center;
-    padding: 14px 6px 12px;
+    display: none;
   }
-  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__seal,
-  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__seal {
-    width: 38px;
-    height: 38px;
-    font-size: 16px;
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__eduedit,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__eduedit {
+    display: none;
   }
   [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__brandtext,
   [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__label,

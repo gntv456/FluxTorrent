@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useI18n } from "@/i18n/client";
 import type { NavItem } from "@/lib/nav-menu";
 
@@ -16,18 +15,17 @@ type Stage = NonNullable<NavItem["sub"]>[number];
 export function ShjAtlasEduDrill(props: {
   /** 教育资源的 sub（5 个学段组，items=年级，年级 children=科目） */
   sub: NonNullable<NavItem["sub"]>;
+  /** 与顶栏/抽屉同一套选中口径（父级注入） */
+  active: (href: string) => boolean;
   /** 回主菜单（点返回到根/路由变化时由父级关闭） */
   onClose: () => void;
 }) {
-  const { sub, onClose } = props;
+  const { sub, active, onClose } = props;
   const { dict } = useI18n();
-  const pathname = usePathname();
   // 钻取游标：stage = 学段下标；grade = 年级在 stage.items 里的下标（null=年级页）
   const [cursor, setCursor] = useState<{ stage: number; grade: number | null }>(
     { stage: -1, grade: null },
   );
-  // 路由变化自动回主菜单（与父级抽屉/浮层同口径）
-  useEffect(() => onClose(), [pathname, onClose]);
 
   const stage = sub[cursor.stage];
   const grade =
@@ -51,13 +49,21 @@ export function ShjAtlasEduDrill(props: {
         />
         <ul className="shj-atlas__list">
           <li>
-            <Link href={grade.href} className="shj-atlas__item">
+            <Link
+              href={grade.href}
+              className="shj-atlas__item"
+              aria-current={active(grade.href) ? "page" : undefined}
+            >
               {dict.nav.eduAllGrade}
             </Link>
           </li>
           {(grade.children ?? []).map((s) => (
             <li key={s.href + s.label}>
-              <Link href={s.href} className="shj-atlas__item">
+              <Link
+                href={s.href}
+                className="shj-atlas__item"
+                aria-current={active(s.href) ? "page" : undefined}
+              >
                 {s.label}
               </Link>
             </li>
@@ -74,7 +80,11 @@ export function ShjAtlasEduDrill(props: {
         <BackRow onClick={() => setCursor({ stage: -1, grade: null })} title={stage.label} />
         <ul className="shj-atlas__list">
           <li>
-            <Link href={stage.href} className="shj-atlas__item">
+            <Link
+              href={stage.href}
+              className="shj-atlas__item"
+              aria-current={active(stage.href) ? "page" : undefined}
+            >
               {dict.nav.eduAllStage}
             </Link>
           </li>
@@ -92,7 +102,11 @@ export function ShjAtlasEduDrill(props: {
                   </span>
                 </button>
               ) : (
-                <Link href={g.href} className="shj-atlas__item">
+                <Link
+                  href={g.href}
+                  className="shj-atlas__item"
+                  aria-current={active(g.href) ? "page" : undefined}
+                >
                   {g.label}
                 </Link>
               )}
@@ -112,6 +126,9 @@ export function ShjAtlasEduDrill(props: {
           <Link
             href="/torrents?category_id=13"
             className="shj-atlas__item"
+            aria-current={
+              active("/torrents?category_id=13") ? "page" : undefined
+            }
           >
             {dict.nav.eduAllRes}
           </Link>

@@ -5266,5 +5266,17 @@
    43
   ],
   "color": []
+ },
+ "components/nav-dropdown.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/shj-atlas-edu.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
  }
 }

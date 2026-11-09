@@ -1,10 +1,8 @@
 /** 主菜单导航统一树（2026-11-07 导航重构阶段 1）。
  *
  *  把 main-menu.tsx 历史上三套形状（一级 sub / 四级 children /
- *  「更多」groups）归一成一棵 NavNode 树，供两套渲染壳共用：
- *    - nav-columns.tsx：brand / brand-night 的横向逐级列
- *    - nav-scroll.tsx ：shanhaijing 两档的纵向卷轴
- *  两套只换渲染壳，数据与 path 状态完全同源。
+ *  「更多」groups）归一成一棵 NavNode 树，供桌面级联下拉与 <lg 抽屉
+ *  共用——两套只换渲染壳，数据与选中口径完全同源。
  *
  *  选中态口径沿用 2026-11-03 定稿的「键值全等」：带参条目只有
  *  URL 参数集合与菜单项完全一致才点亮；裸路径条目在任何带参
@@ -24,9 +22,6 @@ export type NavNode = {
 const IGNORE_QUERY = new Set([
   "view", "limit", "cursor", "dir", "sort", "group",
 ]);
-
-const text = (v: unknown): string =>
-  v === null || v === undefined ? "" : String(v);
 
 /** URL 是否精确携带 href 的 query（忽略展示态/翻页参数）。 */
 export function queryActive(href: string, sp: URLSearchParams): boolean {
@@ -174,42 +169,13 @@ export function pathToActive(
   return best;
 }
 
-export function nodeById(tree: NavNode[], id: string): NavNode | null {
-  for (const n of tree) {
-    if (n.id === id) return n;
-    const hit = nodeById(n.children, id);
-    if (hit) return hit;
-  }
-  return null;
-}
-
-/** 沿 path 取链上节点（含一级）：状态条「进入当前层」要用一级
- *  节点的 href， crumbs 只覆盖 path[1..]，一级得单独取。 */
-export function nodesAt(tree: NavNode[], path: string[]): NavNode[] {
-  return path
-    .map((id) => nodeById(tree, id))
-    .filter((n): n is NavNode => n !== null);
-}
-
-/** 跨层级搜索：返回命中节点及其完整路径标签。 */
-export function searchNodes(
-  tree: NavNode[],
-  q: string,
-  limit = 40,
-): { node: NavNode; path: string }[] {
-  const needle = text(q).trim().toLowerCase();
-  if (!needle) return [];
-  const out: { node: NavNode; path: string }[] = [];
-  const walk = (list: NavNode[], trail: string[]) => {
-    for (const n of list) {
-      const path = trail.concat(n.label);
-      if (path.join(" › ").toLowerCase().includes(needle) ||
-        n.label.toLowerCase().includes(needle)) {
-        out.push({ node: n, path: path.join(" › ") });
-      }
-      if (out.length < limit && n.children.length) walk(n.children, path);
-    }
-  };
-  walk(tree, []);
-  return out.slice(0, limit);
+/** 子树里是否有命中的叶子（父链点亮口径，与桌面/侧栏共用）。 */
+export function subtreeActive(
+  nodes: NavNode[],
+  active: (href: string) => boolean,
+): boolean {
+  return nodes.some(
+    (n) =>
+      (n.href !== "" && active(n.href)) || subtreeActive(n.children, active),
+  );
 }

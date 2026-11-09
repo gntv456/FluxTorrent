@@ -6,20 +6,20 @@
  *    - 一级条挂在顶栏 .mainmenu 上（main-menu.tsx 渲染）；
  *    - 悬停带子级的一级 → 正下方弹第一层 ul；悬停带子级的行 →
  *      右侧飞出下一层 ul，任意层级无限嵌套（树多深展多深）；
- *    - 展开全由 CSS :hover/:focus-within 驱动，无 JS 状态机——
- *      键盘 Tab 走 focus-within 同样能展开（可达性不降级）。
+ *    - 展开由 CSS :hover/:focus-within 驱动，JS 只同步 aria 语义与
+ *      点击展开态；键盘 Tab 走 focus-within 同样能展开。
  *  数据还是 lib/nav-tree 的同一棵 NavNode 树；选中点亮口径不变
- *  （active 回调注入）。旧画布壳 NavColumns/NavScroll 保留给
- *  <lg 平板收敛口（compact 模式），桌面全面换本组件。
+ *  （active 回调注入，父链按子树命中上溯）。
  */
 
 import Link from "next/link";
-import type { NavNode } from "@/lib/nav-tree";
+import { useState } from "react";
+import { subtreeActive, type NavNode } from "@/lib/nav-tree";
 
 type Props = {
   node: NavNode;
-  /** 顶栏一级按钮（main-menu 渲染）；列内行自带样式 */
-  top?: boolean;
+  /** 一级面板是否右缘反手（最后一项挂「更多」，防 1024 出屏） */
+  flip?: boolean;
   active: (href: string) => boolean;
   onNavigate: (href: string) => void;
 };
@@ -27,25 +27,44 @@ type Props = {
 /** 单行：叶子=链接直达；带子级=悬停右飞。空 href（分组名）只展开。 */
 function DropRow({ node, active, onNavigate }: Props) {
   const hasKids = node.children.length > 0;
-  const lit = active(node.href);
+  const lit =
+    active(node.href) || (hasKids && subtreeActive(node.children, active));
+  const [open, setOpen] = useState(false);
   const inner = (
     <>
       <span className="nd-label">{node.label}</span>
       {hasKids && <span className="nd-caret" aria-hidden>›</span>}
     </>
   );
-  const cls = "nd-row" + (lit ? " is-lit" : "") + (hasKids ? "" : " nd-leaf");
+  const cls =
+    "nd-row" + (lit ? " is-lit" : "") + (hasKids ? "" : " nd-leaf");
   return (
-    <li className={hasKids ? "nd-has" : undefined}>
+    <li
+      className={hasKids ? "nd-has" : undefined}
+      data-open={open ? "true" : undefined}
+      onPointerEnter={() => hasKids && setOpen(true)}
+      onPointerLeave={() => setOpen(false)}
+      onFocusCapture={() => hasKids && setOpen(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       {hasKids || !node.href ? (
-        <button type="button" className={cls}
-          aria-haspopup={hasKids || undefined}>
+        <button
+          type="button"
+          className={cls}
+          aria-haspopup={hasKids || undefined}
+          aria-expanded={hasKids ? open : undefined}
+          // 空 href 且无子级时仅作分组标题，点击无动作
+          onClick={hasKids ? () => setOpen((o) => !o) : undefined}
+        >
           {inner}
         </button>
       ) : (
         <Link
           href={node.href}
           className={cls}
+          aria-current={lit ? "page" : undefined}
           data-active={lit ? "true" : undefined}
           onClick={() => onNavigate(node.href)}
         >
@@ -53,22 +72,39 @@ function DropRow({ node, active, onNavigate }: Props) {
         </Link>
       )}
       {hasKids && (
-        <NavDropList node={node} active={active} onNavigate={onNavigate} />
+        <NavDropList
+          node={node}
+          active={active}
+          onNavigate={onNavigate}
+        />
       )}
     </li>
   );
 }
 
-/** 一层 ul：一级层（top）正下弹，子层右侧飞。 */
+/** 一层 ul：一级层正下弹，子层右侧飞。叶子面板自带内滚动。 */
 export function NavDropList({
   node,
   active,
   onNavigate,
-}: Omit<Props, "top"> & { node: NavNode }) {
+  flip,
+}: Props) {
+  const leafOnly = node.children.every((c) => c.children.length === 0);
   return (
-    <ul className="nd-list">
+    <ul
+      className={
+        "nd-list" +
+        (flip ? " nd-list--flip" : "") +
+        (leafOnly ? " nd-list--scroll" : "")
+      }
+    >
       {node.children.map((c) => (
-        <DropRow key={c.id} node={c} active={active} onNavigate={onNavigate} />
+        <DropRow
+          key={c.id}
+          node={c}
+          active={active}
+          onNavigate={onNavigate}
+        />
       ))}
     </ul>
   );

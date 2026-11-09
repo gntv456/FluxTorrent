@@ -5,15 +5,15 @@
  *  桌面（≥lg）：带子级的一级条悬停正下弹第一层，子级悬停右侧飞出，
  *  任意层级嵌套（形态参考经典纯 CSS 多级下拉，components/nav-dropdown.tsx）。
  *  顶栏一级仍保留 Link 直进（点击=进该频道首页，悬停=浏览子级）——
- *  hover 浏览与点击直达并存，不再互斥。
+ *  hover 浏览与点击直达并存，不再互斥。空 href 的分组名（「更多」）渲染
+ *  为 button，只展开不下跳。
  *
- *  平板收敛（<lg）沿用画布面板：一级收进「更多」，点开逐级钻。
+ *  <lg 不再渲染本组件（抽屉承载全部同源入口，见 nav-drawer.tsx）。
  *  选中态仍用 lib/nav-tree.ts 的键值全等口径（2026-11-03 定稿）。
  */
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMediaQuery } from "@/lib/hooks/use-media";
 import type { NavGroup, NavItem } from "@/lib/nav-menu";
 import type { NavNode } from "@/lib/nav-tree";
 import {
@@ -22,36 +22,13 @@ import {
   isActive as nodeIsActive,
   leavesOf,
 } from "@/lib/nav-tree";
-import { NavColumns, NavScroll } from "@/components/nav-canvas";
 import { NavDropList } from "@/components/nav-dropdown";
-
-/** 主题偏好由 no-flash 内联脚本写 <html data-theme>，客户端跟随切换。 */
-function useScrollShell() {
-  const [scroll, setScroll] = useState(false);
-  useEffect(() => {
-    const read = () => {
-      const t = document.documentElement.getAttribute("data-theme");
-      setScroll(t === "shanhaijing" || t === "shanhaijing-light");
-    };
-    read();
-    if (typeof MutationObserver === "undefined") return;
-    const mo = new MutationObserver(read);
-    mo.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
-    return () => mo.disconnect();
-  }, []);
-  return scroll;
-}
 
 type Props = {
   items: NavItem[];
   groups?: NavGroup[];
   moreLabel?: string;
   ariaLabel: string;
-  /** 面板状态条「进入当前层」文案（dict.nav.goCurrent） */
-  goLabel?: string;
 };
 
 export function MainMenu({
@@ -59,13 +36,9 @@ export function MainMenu({
   groups,
   moreLabel,
   ariaLabel,
-  goLabel = "进入",
 }: Props) {
   const pathname = usePathname();
   const sp = useSearchParams();
-  const router = useRouter();
-  const compact = useMediaQuery("(max-width: 1023px)", false);
-  const scrollShell = useScrollShell();
 
   const tree = useMemo(
     () => buildNavTree(items, groups ?? [], moreLabel),
@@ -85,107 +58,145 @@ export function MainMenu({
       leavesOf(n.children).some((c) => active(c.href)),
     [active],
   );
-  const navigate = useCallback(
-    (href: string) => router.push(href),
-    [router],
-  );
-  const [open, setOpen] = useState(false);
-  const [rootId, setRootId] = useState<string | null>(null);
+
+  // 展开态：expanded=指针/焦点停留的一级项，pinned=点击展开的分组名。
+  // suppressed=Esc 收起后的抑制位，避免鼠标仍悬停时 :hover 又把面板弹开。
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<string | null>(null);
+  const [suppressed, setSuppressed] = useState(false);
+  const suppressRef = useRef(false);
   const wrapRef = useRef<HTMLElement>(null);
+
+  const release = useCallback(() => {
+    if (!suppressRef.current) return;
+    suppressRef.current = false;
+    setSuppressed(false);
+  }, []);
+
+  // Esc 收起（一份监听）+ 点外部收起，焦点回落触发元素
   useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+    const onDoc = (e: PointerEvent) => {
+      if (wrapRef.current?.contains(e.target as Node)) return;
+      setExpanded(null);
+      setPinned(null);
+      release();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      const id = pinned ?? expanded;
+      if (!id) return;
+      e.preventDefault();
+      suppressRef.current = true;
+      setSuppressed(true);
+      setExpanded(null);
+      setPinned(null);
+      wrapRef.current
+        ?.querySelector<HTMLElement>(`[data-nav-trigger="${id}"]`)
+        ?.focus();
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("pointerdown", onDoc);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
-  const openAt = (id: string | null) => {
-    if (open && rootId === id) {
-      setOpen(false);
-      return;
-    }
-    setRootId(id);
-    setOpen(true);
-  };
+  }, [expanded, pinned, release]);
 
   return (
-    <nav aria-label={ariaLabel} ref={wrapRef} className="nvc-anchor">
+    <nav
+      aria-label={ariaLabel}
+      ref={wrapRef}
+      className="nvc-anchor"
+      data-suppressed={suppressed ? "true" : undefined}
+      onKeyDown={(e) => {
+        if (e.key === "Tab") release();
+      }}
+      onPointerMove={release}
+    >
       <ul className="mainmenu">
-        {!compact &&
-          tree.map((n) => (
-            <li key={n.id} className="relative nd-has">
-              <Link
-                href={n.href || "/"}
-                className="mainmenu-link"
-                data-active={parentActive(n) ? "true" : undefined}
-              >
-                {n.label}
-                {n.children.length > 0 && (
-                  <span className="nd-caret" aria-hidden>▾</span>
-                )}
-              </Link>
-              {n.children.length > 0 && (
+        {tree.map((n, i) => {
+          const hasKids = n.children.length > 0;
+          const openNow = pinned === n.id || expanded === n.id;
+          const exact = active(n.href);
+          const body = (
+            <>
+              {n.label}
+              {hasKids && (
+                <span className="nd-caret" aria-hidden>▾</span>
+              )}
+            </>
+          );
+          const common = {
+            className: "mainmenu-link",
+            "data-active": parentActive(n) ? "true" : undefined,
+            "data-nav-trigger": n.id,
+          } as const;
+          return (
+            <li
+              key={n.id}
+              className={`relative nd-has${openNow ? " is-open" : ""}`}
+              data-open={openNow ? "true" : undefined}
+              onPointerEnter={() => {
+                if (!hasKids) return;
+                release();
+                setExpanded(n.id);
+              }}
+              onPointerLeave={() =>
+                setExpanded((prev) => (prev === n.id ? null : prev))
+              }
+              onFocusCapture={() => {
+                if (!suppressRef.current && hasKids) setExpanded(n.id);
+              }}
+              onBlurCapture={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setExpanded((prev) => (prev === n.id ? null : prev));
+              }}
+            >
+              {hasKids && !n.href ? (
+                <button
+                  type="button"
+                  {...common}
+                  aria-haspopup="true"
+                  aria-expanded={openNow}
+                  onClick={() => {
+                    if (pinned === n.id) {
+                      setPinned(null);
+                      setExpanded(null);
+                    } else {
+                      release();
+                      setPinned(n.id);
+                      setExpanded(n.id);
+                    }
+                  }}
+                >
+                  {body}
+                </button>
+              ) : (
+                <Link
+                  href={n.href || "/"}
+                  {...common}
+                  aria-haspopup={hasKids || undefined}
+                  aria-expanded={hasKids ? openNow : undefined}
+                  aria-current={exact ? "page" : undefined}
+                >
+                  {body}
+                </Link>
+              )}
+              {hasKids && (
                 <NavDropList
                   node={n}
                   active={active}
-                  onNavigate={navigate}
+                  onNavigate={() => {
+                    setExpanded(null);
+                    setPinned(null);
+                  }}
+                  flip={i === tree.length - 1}
                 />
               )}
             </li>
-          ))}
-        {compact && (
-          <li className="relative">
-            <button
-              type="button"
-              className="mainmenu-link"
-              aria-expanded={open}
-              aria-haspopup="true"
-              onClick={() => openAt(null)}
-            >
-              {moreLabel ?? "更多 ▾"}
-            </button>
-          </li>
-        )}
+          );
+        })}
       </ul>
-      {compact && (
-        scrollShell ? (
-          <NavScroll
-            tree={tree}
-            open={open}
-            rootId={rootId}
-            active={active}
-            onClose={() => setOpen(false)}
-            onNavigate={(href) => {
-              setOpen(false);
-              navigate(href);
-            }}
-            goLabel={goLabel}
-          />
-        ) : (
-          <NavColumns
-            tree={tree}
-            open={open}
-            rootId={rootId}
-            active={active}
-            onClose={() => setOpen(false)}
-            onNavigate={(href) => {
-              setOpen(false);
-              navigate(href);
-            }}
-            goLabel={goLabel}
-          />
-        )
-      )}
     </nav>
   );
 }

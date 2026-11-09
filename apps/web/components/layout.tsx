@@ -100,7 +100,6 @@ export async function Header() {
                 groups={groups}
                 moreLabel={`${dict.nav.more} ▾`}
                 ariaLabel={dict.nav.ariaPrimary}
-                goLabel={dict.nav.goCurrent}
               />
             </Suspense>
           </div>

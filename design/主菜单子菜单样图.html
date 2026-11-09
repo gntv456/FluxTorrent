@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxTorrent 主菜单 · 级联子菜单样图</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232fa8ff'/%3E%3Cpath d='M7 12l3 3 7-7' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --sky:#2fa8ff; --sky-deep:#1e8ae8; --sky-soft:#e8f4ff; --sky-line:#c4e0f7;
+  --mint:#2fbf9b; --mint-deep:#1d8f73;
+  --coral:#ff7a59;
+  --sun:#ffc93c;
+  --indigo:#5b6bf5; --indigo-soft:#eaebff;
+  --ink:#1f2a44; --sub:#6b7a99; --faint:#94a3b8;
+  --line:#e3edf7; --line-soft:#eef2f6;
+  --card:#ffffff; --page:#f5faff;
+  --r-xs:10px; --r-md:14px; --r-lg:20px;
+  --sh-1:0 8px 24px rgba(31,42,68,.08); --sh-2:0 16px 44px rgba(15,30,60,.22);
+  --font:-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#0d1b2e;color:var(--ink);font-size:14px;line-height:1.55}
+a{color:inherit;text-decoration:none}
+ul{list-style:none}
+.num{font-variant-numeric:tabular-nums}
+
+/* ===== 样图浏览壳 ===== */
+.gallery-top{position:sticky;top:0;z-index:60;background:linear-gradient(135deg,#0f2a4a,#16355c);border-bottom:1px solid rgba(255,255,255,.08);color:#fff;padding:0 16px}
+.gallery-top__row{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:12px;height:52px}
+.gallery-top__brand{font-weight:800;font-size:15px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.gallery-top__brand svg{flex-shrink:0}
+.gallery-top__tag{font-size:11.5px;background:rgba(30,138,232,.28);border:1px solid rgba(94,184,255,.4);color:#bfe0ff;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.gallery-top__hint{margin-left:auto;font-size:12px;color:#9fb6cc}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 16px 70px}
+.page-head{margin:2px 4px 16px}
+.page-head h1{font-size:22px;font-weight:800;color:#fff}
+.page-head .meta{font-size:12.5px;color:#7f97b3;margin-top:4px}
+.section-title{font-size:13px;letter-spacing:1px;color:#9fc6ec;font-weight:800;margin:26px 4px 10px;display:flex;align-items:center;gap:8px}
+.section-title::before{content:"";width:4px;height:14px;border-radius:2px;background:var(--sky)}
+
+/* ===== 站点帧 ===== */
+.frame{background:var(--page);border-radius:14px;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,.35)}
+.frame__bar{display:flex;align-items:center;gap:8px;background:#0d1b2e;padding:8px 12px}
+.frame__bar .brow{width:10px;height:10px;border-radius:50%;background:#3a5575}
+.frame__bar .btab{flex:1;max-width:360px;height:20px;background:#1c3555;border-radius:5px;display:flex;align-items:center;padding:0 8px;color:#6d87a5;font-size:10px}
+.frame__bar .bw{margin-left:auto;font-size:11px;color:#7f97b3;font-weight:700}
+
+/* ===== 真实顶栏（对齐 main-menu.tsx / nav-dropdown.tsx） ===== */
+.site-header{position:relative;background:linear-gradient(135deg,#0f2a4a,#173a66);color:#fff}
+.site-header__top{display:flex;align-items:center;gap:16px;padding:0 18px;height:56px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo{font-weight:800;font-size:16px;letter-spacing:.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo i{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--sky),#5bb8ff);display:inline-block;position:relative;box-shadow:0 4px 10px rgba(47,168,255,.4)}
+.logo i::after{content:"";position:absolute;left:7px;top:7px;width:10px;height:10px;border-radius:2px;background:rgba(255,255,255,.9)}
+
+/* 一级条 */
+.mainmenu{display:flex;align-items:center;gap:2px}
+.mainmenu>li{position:relative}
+.mainmenu-link{display:flex;align-items:center;gap:5px;height:56px;padding:0 13px;font-size:13.5px;color:#c3d6ea;cursor:pointer;border:none;background:none;font-family:inherit;white-space:nowrap;transition:color .15s}
+.mainmenu-link .caret{font-size:9px;opacity:.8}
+.mainmenu>li:hover>.mainmenu-link,.mainmenu>li:focus-within>.mainmenu-link{color:#fff}
+.mainmenu>li:hover>.mainmenu-link{box-shadow:inset 0 -2px 0 var(--sky)}
+.mainmenu-link.on{color:#fff;font-weight:700;box-shadow:inset 0 -2px 0 var(--sky)}
+
+/* 第一层下拉（正下弹） */
+.nd-list{position:absolute;top:100%;left:0;min-width:188px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:var(--sh-2);opacity:0;visibility:hidden;transform:translateY(6px);transition:opacity .16s,transform .16s,visibility .16s;z-index:80}
+li.nd-has:hover>.nd-list,li.nd-has:focus-within>.nd-list,li.nd-leaf:hover>.nd-list{opacity:1;visibility:visible;transform:translateY(0)}
+/* 一级条自身：hover 即展，正下弹（必须显式 left:0 覆盖右飞层的 left:100%） */
+.mainmenu>li.nd-has>.nd-list{top:100%;left:0}
+
+/* 行 */
+.nd-row{display:flex;align-items:center;justify-content:space-between;gap:18px;width:100%;padding:8px 11px;font-size:13px;color:var(--ink);border-radius:8px;cursor:pointer;white-space:nowrap;background:none;border:none;font-family:inherit;text-align:left}
+.nd-row .nd-label{display:flex;align-items:center;gap:8px}
+.nd-row .nd-label .grp-tag{font-size:10.5px;color:var(--faint);font-weight:600}
+.nd-row:hover{background:var(--sky-soft);color:var(--sky-deep)}
+.nd-row.is-lit{color:var(--sky-deep);font-weight:700;background:var(--sky-soft)}
+.nd-row .r-caret{font-size:11px;color:var(--faint)}
+.nd-row:hover .r-caret{color:var(--sky-deep)}
+.nd-row .dot{width:5px;height:5px;border-radius:50%;background:#cfdae8}
+.nd-row:hover .dot,.nd-row.is-lit .dot{background:var(--sky)}
+/* 分组名（空 href，只展开不跳转） */
+.nd-row.grouphead{font-size:11px;letter-spacing:1px;color:var(--faint);font-weight:800;cursor:default;pointer-events:none;padding:9px 11px 5px}
+.nd-row.grouphead:hover{background:none;color:var(--faint)}
+
+/* 右飞层（子级 absolute left:100%） */
+li.nd-has{position:relative}
+li.nd-has>.nd-list{left:100%;top:-6px;min-width:184px}
+li.nd-leaf>.nd-list{left:100%;top:-6px;min-width:176px}
+.nd-list .nd-list{border-radius:12px}
+
+/* 顶栏右侧 */
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.searchbox{display:flex;align-items:center;gap:7px;height:32px;width:220px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);padding:0 10px;color:#9fb6cc;font-size:12px}
+.bell{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#c3d6ea;font-size:14px;position:relative}
+.bell .dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--coral)}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#f2b01e,#f2711e);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff}
+
+/* body 占位 */
+.site-body{padding:46px 24px 60px;background:linear-gradient(180deg,#eef6ff,#f5faff);min-height:230px;position:relative}
+.placeholder{max-width:680px;margin:0 auto;text-align:center;color:var(--sub)}
+.placeholder b{color:var(--ink);font-size:16px}
+.placeholder p{font-size:12.5px;margin-top:6px}
+.placeholder .demo-tip{display:inline-block;margin-top:16px;font-size:12px;color:var(--sky-deep);background:var(--sky-soft);border:1px dashed var(--sky-line);border-radius:999px;padding:5px 14px}
+
+/* ===== 静态展开态标注稿 ===== */
+.spec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:1080px){.spec-grid{grid-template-columns:1fr}}
+.spec-card{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-1);overflow:hidden}
+.spec-card__head{padding:12px 14px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:8px}
+.spec-card__head .badge{font-size:10.5px;font-weight:800;color:#fff;background:var(--sky);border-radius:6px;padding:2px 7px}
+.spec-card__head h3{font-size:13.5px;font-weight:800}
+.spec-card__head .layers{margin-left:auto;font-size:10.5px;color:var(--faint)}
+.spec-card__body{padding:16px;background:#fbfdff}
+
+/* 静态菜单树展示 */
+.tree{position:relative}
+.tree .level{border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--sh-1);padding:5px;min-width:150px}
+.tree .level h4{font-size:10px;letter-spacing:1px;color:var(--faint);font-weight:800;padding:5px 8px 3px}
+.tree .r{display:flex;align-items:center;gap:8px;padding:6px 9px;font-size:12.5px;border-radius:7px;color:var(--ink)}
+.tree .r .k{margin-left:auto;font-size:9.5px;color:var(--faint)}
+.tree .r.lit{color:var(--sky-deep);font-weight:700;background:var(--sky-soft)}
+.tree .r.grp{color:var(--faint);font-size:10.5px;letter-spacing:.5px;font-weight:800;padding:7px 9px 3px}
+.tree .col-row{display:flex;gap:14px;align-items:flex-start}
+.arrow{color:var(--faint);font-size:15px;align-self:center;padding:0 2px}
+
+/* 标注 */
+.notes{padding:12px 14px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--sub);line-height:1.8}
+.notes b{color:var(--ink)}
+.notes .n{display:flex;gap:7px;margin-top:3px}
+.notes .n i{flex-shrink:0;width:16px;height:16px;border-radius:50%;background:var(--sky-soft);color:var(--sky-deep);font-style:normal;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+/* 规则条 */
+.rules{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:16px 18px;box-shadow:var(--sh-1);display:grid;grid-template-columns:repeat(2,1fr);gap:8px 24px;margin-top:16px}
+@media(max-width:880px){.rules{grid-template-columns:1fr}}
+.rule{display:flex;gap:9px;font-size:12.5px;color:var(--sub);line-height:1.6}
+.rule b{color:var(--ink)}
+.rule .ic{flex-shrink:0;width:22px;height:22px;border-radius:7px;background:var(--sky-soft);color:var(--sky-deep);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+</style>
+</head>
+<body>
+
+<div class="gallery-top">
+  <div class="gallery-top__row">
+    <span class="gallery-top__brand">
+      <svg width="18" height="18" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#2fa8ff"/><path d="M7 12l3 3 7-7" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      FluxTorrent 设计稿
+    </span>
+    <span class="gallery-top__tag">主菜单 · 级联子菜单</span>
+    <span class="gallery-top__hint">将鼠标悬停在下方顶栏的「资源库 / 教育资源 / 更多」上展开级联</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="page-head">
+    <h1>主菜单子菜单样图</h1>
+    <div class="meta">数据对齐 main-menu.tsx · nav-dropdown.tsx · nav-menu.ts · nav-edu.ts；文案对齐 i18n/zh-CN.ts 的 nav 段。桌面 ≥lg：一级平铺，hover 正下弹第一层、子级右侧飞出，任意层级嵌套；纯 CSS :hover/:focus-within 驱动。</div>
+  </div>
+
+  <!-- ============ 可交互顶栏 ============ -->
+  <div class="section-title">交互演示 · 真实顶栏（hover 体验级联）</div>
+  <div class="frame">
+    <div class="frame__bar">
+      <span class="brow"></span><span class="brow"></span><span class="brow"></span>
+      <span class="btab">flux.local — 教育资源站首页</span>
+      <span class="bw">1440 × 900</span>
+    </div>
+
+    <header class="site-header">
+      <div class="site-header__top">
+        <a class="logo" href="#"><i></i>FluxTorrent</a>
+
+        <ul class="mainmenu">
+          <!-- 首页：无叶子 -->
+          <li><button class="mainmenu-link">首页</button></li>
+
+          <!-- 资源库：第一层 全部/资源/官种，第二层分类 -->
+          <li class="nd-has">
+            <button class="mainmenu-link">资源库<span class="caret">▾</span></button>
+            <ul class="nd-list">
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label"><i class="dot"></i>全部</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">全部资源</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">电影</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">剧集</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">综艺</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">纪录片</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">动漫</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">音乐</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">游戏 / 软件</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">有声书</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">短剧</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">教育资源</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label" style="color:var(--sky-deep);font-weight:700">更多分类…</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label"><i class="dot"></i>资源</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">全部（非官种）</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">电影</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">剧集</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">纪录片</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">教育资源</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label" style="color:var(--sky-deep);font-weight:700">更多分类…</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label"><i class="dot"></i>官种</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">全部官种</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">电影</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">剧集</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">纪录片</span></button></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+
+          <!-- 教育资源：学段 → 年级 → 科目（四级） -->
+          <li class="nd-has">
+            <button class="mainmenu-link on">教育资源<span class="caret">▾</span></button>
+            <ul class="nd-list">
+              <li><button class="nd-row"><span class="nd-label"><i class="dot"></i>幼儿园</span></button></li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label"><i class="dot"></i>小学</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">全部小学</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">一年级</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">二年级</span></button></li>
+                  <li class="nd-has">
+                    <button class="nd-row is-lit"><span class="nd-label">三年级</span><span class="r-caret">›</span></button>
+                    <ul class="nd-list">
+                      <li><button class="nd-row"><span class="nd-label">数学</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">语文</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">英语</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">物理</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">化学</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">生物</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">政治</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">历史</span></button></li>
+                      <li><button class="nd-row"><span class="nd-label">地理</span></button></li>
+                    </ul>
+                  </li>
+                  <li><button class="nd-row"><span class="nd-label">四年级</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">五年级</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">六年级</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label"><i class="dot"></i>初中</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">全部初中</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">初一</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">初二</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">初三</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label"><i class="dot"></i>高中</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">全部高中</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">高一</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">高二</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">高三</span></button></li>
+                </ul>
+              </li>
+              <li><button class="nd-row"><span class="nd-label"><i class="dot"></i>大学</span></button></li>
+            </ul>
+          </li>
+
+          <li><button class="mainmenu-link">论坛</button></li>
+          <li><button class="mainmenu-link">发布</button></li>
+
+          <!-- 更多：六个分组名 → 组内条目 -->
+          <li class="nd-has">
+            <button class="mainmenu-link">更多<span class="caret">▾</span></button>
+            <ul class="nd-list" style="min-width:200px">
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label">资源发现</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">排行</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">官种</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">求种</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">候选</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label">字幕与保种</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">字幕</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">保种区</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">濒危预警</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">保种协作</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">课本</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label">魔力经济</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">商店</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">魔力银行</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">站免池</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">任务</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">我的魔力</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">魔力明细</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label">成长荣誉</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">等级要求</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">我的考核</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">成就墙</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">复活任务</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">勋章墙</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">头像挂件</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">绩效</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">邀请</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label">娱乐</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">娱乐屋</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">抽卡屋</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">农场</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">五子棋</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">大赛</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">社交</span></button></li>
+                </ul>
+              </li>
+              <li class="nd-has">
+                <button class="nd-row"><span class="nd-label">更多</span><span class="r-caret">›</span></button>
+                <ul class="nd-list">
+                  <li><button class="nd-row"><span class="nd-label">消息</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">我的H&R</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">追更中心</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">FAQ</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">客户端指南</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">Wiki</span></button></li>
+                  <li><button class="nd-row"><span class="nd-label">捐赠</span></button></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+
+        <div class="header-right">
+          <div class="searchbox">🔍 搜索种子、字幕、用户…</div>
+          <div class="bell">🔔<span class="dot"></span></div>
+          <div class="avatar">管</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="site-body">
+      <div class="placeholder">
+        <b>页面主体占位（此处为站点内容区）</b>
+        <p>本样图聚焦顶栏主菜单与级联下拉的形态、层级、选中态与文案。</p>
+        <span class="demo-tip">把鼠标移到「资源库 / 教育资源 / 更多」上，逐层右飞体验</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 静态展开态标注稿 ============ -->
+  <div class="section-title">展开态标注稿 · 三种最复杂级联（静态直出）</div>
+  <div class="spec-grid">
+
+    <!-- 资源库三级 -->
+    <div class="spec-card">
+      <div class="spec-card__head"><span class="badge">A</span><h3>资源库 · 三级</h3><span class="layers">3 层</span></div>
+      <div class="spec-card__body">
+        <div class="tree col-row">
+          <div class="level">
+            <h4>第一层（正下弹）</h4>
+            <div class="r">全部<span class="k">›</span></div>
+            <div class="r">资源<span class="k">›</span></div>
+            <div class="r">官种<span class="k">›</span></div>
+          </div>
+          <span class="arrow">→</span>
+          <div class="level">
+            <h4>第二层（右飞）</h4>
+            <div class="r lit">全部资源<span class="k"></span></div>
+            <div class="r">电影</div>
+            <div class="r">剧集</div>
+            <div class="r">纪录片</div>
+            <div class="r">教育资源</div>
+            <div class="r" style="color:var(--sky-deep);font-weight:700">更多分类…</div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="n"><i>1</i><span><b>全部 / 资源 / 官种</b> 对应列表 API 的 official 三态（不过滤 / official=0 / official=1）。</span></div>
+        <div class="n"><i>2</i><span>三级叶子首项自带 <b>?category_id=</b>，缺问号整条路径必 404。</span></div>
+        <div class="n"><i>3</i><span>分类超 14 条上限，末项以<b>「更多分类…」</b>落回列表页全量筛选。</span></div>
+      </div>
+    </div>
+
+    <!-- 教育资源四级 -->
+    <div class="spec-card">
+      <div class="spec-card__head"><span class="badge">B</span><h3>教育资源 · 四级</h3><span class="layers">4 层</span></div>
+      <div class="spec-card__body">
+        <div class="tree col-row">
+          <div class="level">
+            <h4>学段</h4>
+            <div class="r">幼儿园</div>
+            <div class="r lit">小学<span class="k">›</span></div>
+            <div class="r">初中<span class="k">›</span></div>
+            <div class="r">高中<span class="k">›</span></div>
+            <div class="r">大学</div>
+          </div>
+          <span class="arrow">→</span>
+          <div class="level">
+            <h4>年级</h4>
+            <div class="r">一年级</div>
+            <div class="r">二年级</div>
+            <div class="r lit">三年级<span class="k">›</span></div>
+            <div class="r">四年级</div>
+            <div class="r">五年级</div>
+            <div class="r">六年级</div>
+          </div>
+          <span class="arrow">→</span>
+          <div class="level">
+            <h4>科目</h4>
+            <div class="r">数学</div>
+            <div class="r">语文</div>
+            <div class="r">英语</div>
+            <div class="r">物理</div>
+            <div class="r">化学</div>
+            <div class="r">生物…</div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="n"><i>1</i><span>树多深展多深：<b>学段 → 年级 → 科目</b>，任意层级嵌套，无 JS 状态机。</span></div>
+        <div class="n"><i>2</i><span>幼儿园无年级层、大学直接科目直达；筛选走 <b>grade_id / sec_subject</b>。</span></div>
+        <div class="n"><i>3</i><span>仅当站点顶级分类含「教育资源(13)」时，该一级条才挂出。</span></div>
+      </div>
+    </div>
+
+    <!-- 更多分组 -->
+    <div class="spec-card">
+      <div class="spec-card__head"><span class="badge">C</span><h3>更多 · 分组右飞</h3><span class="layers">2 层</span></div>
+      <div class="spec-card__body">
+        <div class="tree col-row">
+          <div class="level">
+            <h4>分组名（空 href）</h4>
+            <div class="r grp">资源发现<span class="k">›</span></div>
+            <div class="r grp">字幕与保种<span class="k">›</span></div>
+            <div class="r grp">魔力经济<span class="k">›</span></div>
+            <div class="r grp">成长荣誉<span class="k">›</span></div>
+            <div class="r grp">娱乐<span class="k">›</span></div>
+            <div class="r grp">更多<span class="k">›</span></div>
+          </div>
+          <span class="arrow">→</span>
+          <div class="level">
+            <h4>组内叶子（示例：魔力经济）</h4>
+            <div class="r">商店</div>
+            <div class="r">魔力银行</div>
+            <div class="r">站免池</div>
+            <div class="r">任务</div>
+            <div class="r">我的魔力</div>
+            <div class="r lit">魔力明细</div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div class="n"><i>1</i><span><b>分组名 href 为空</b>：只展开不跳转（按钮而非链接）。</span></div>
+        <div class="n"><i>2</i><span>条目按<b>模块开关</b>显隐：缺键视为开，关掉的模块整行不出现。</span></div>
+        <div class="n"><i>3</i><span>仅在桌面端收进「更多▾」；平板 &lt;lg 改画布面板逐级钻。</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ 交互规则 ============ -->
+  <div class="section-title">交互与可达性规则</div>
+  <div class="rules">
+    <div class="rule"><span class="ic">1</span><span><b>hover 浏览 + 点击直达并存</b>：悬停带子级的一级条正下弹第一层；点击一级条本身仍进该频道首页，两者不互斥。</span></div>
+    <div class="rule"><span class="ic">2</span><span><b>纯 CSS 驱动</b>：展开全由 :hover / :focus-within 控制，无 JS 状态机；键盘 Tab 走 focus-within 同样能逐级展开，可达性不降级。</span></div>
+    <div class="rule"><span class="ic">3</span><span><b>叶子 = 链接直达；带子级行 = 悬停右飞（›）；分组名（空 href）= 只展开不跳转</b>，三类行形态严格区分。</span></div>
+    <div class="rule"><span class="ic">4</span><span><b>选中点亮口径</b>：带参条目仅当 URL 参数集合完全一致才点亮；带参条目命中时，裸路径的父级让位。当前页（如「三年级」）以 is-lit 高亮并上溯点亮父链。</span></div>
+  </div>
+
+</div>
+</body>
+</html>

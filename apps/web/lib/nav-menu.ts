@@ -7,6 +7,9 @@ import { eduPrimary, hasEduCat } from "./nav-edu";
 export type NavItem = {
   href: string;
   label: string;
+  /** 教育资源一级项标记（0473）：侧栏「浏览学段」按标记取项，
+   *  不能按首个带 sub 的一级项猜——资源库同样带 sub 且排在前面。 */
+  edu?: boolean;
   /** 一级下拉（2026-10-31 资源库）：两级结构 [{label, href, items}]——
    *  items 为三级叶子。目前仅资源库用（全部/资源/官种 × 站型分类）。 */
   sub?: { label: string; href: string; items: NavItem[] }[];

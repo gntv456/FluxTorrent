@@ -93,7 +93,12 @@ export const EDU_RES_CAT = 13;
 
 /** 教育资源一级项（categories 含 13 时由 buildNav 挂出） */
 export function eduPrimary(label: string, labels: Labels): NavItem {
-  return { href: "/torrents?category_id=13", label, sub: eduSub(labels) };
+  return {
+    href: "/torrents?category_id=13",
+    label,
+    edu: true,
+    sub: eduSub(labels),
+  };
 }
 
 /** 站点是否具备教育板块（顶级分类里有教育资源 13） */

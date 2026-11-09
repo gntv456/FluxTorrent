@@ -501,7 +501,7 @@ button.btn2:hover {
   pointer-events: none;
 }
 .tide-header .mainmenu-link {
-  border-radius: 8px;
+  border-radius: 0;
   border-color: transparent;
   background: transparent;
   font-weight: 600;
@@ -509,9 +509,8 @@ button.btn2:hover {
 .tide-header .mainmenu-link:hover {
   background: var(--surface-hover);
   color: var(--tide-deep);
-  transform: translateY(-1px);
 }
-/* 激活态：顶部 2px 标尺 + 浅蓝底（取代极光渐变实心块） */
+/* 激活态：底部 2px 标尺 + 浅蓝底（与四主题统一口径，2026-11-09） */
 .tide-header .mainmenu-link[data-active="true"] {
   position: relative;
   background: var(--sky-soft);
@@ -521,13 +520,11 @@ button.btn2:hover {
   font-weight: 700;
 }
 .tide-header .mainmenu-link[data-active="true"]::before {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 3px;
-  height: 2px;
-  border-radius: 2px;
+  content: none;
+}
+.tide-header .mainmenu-link:hover::after,
+.tide-header .mainmenu-link[data-active="true"]::after,
+.tide-header .mainmenu-link[aria-expanded="true"]::after {
   background: var(--tide-sea);
 }
 .tide-header .mainmenu-drop {

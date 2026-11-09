@@ -64,8 +64,14 @@ export function TorrentsHotkeys() {
           t.tagName === "SELECT" ||
           t.isContentEditable);
       if (e.key === "Escape") {
+        // 只在「本组件的快捷键语境」收手：有高亮项，或焦点落在可导航条目里。
+        // 否则（顶栏级联、抽屉、弹层）Esc 属各自的收起语义——此前无条件
+        // blur 会把菜单触发条的焦点抢走，导致级联收起判定失效（2026-11-09）。
+        const active = document.activeElement as HTMLElement | null;
+        const inItem = !!active?.closest("[data-torrent-id], [data-work-key]");
+        if (idx < 0 && !inItem) return;
         clear();
-        (document.activeElement as HTMLElement | null)?.blur?.();
+        active?.blur?.();
         return;
       }
       if (e.key === "/" && !typing) {

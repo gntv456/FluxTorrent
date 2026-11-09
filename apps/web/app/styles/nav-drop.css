@@ -102,20 +102,47 @@
   top: 100%;
   left: 0;
   z-index: 70;
-  display: none;
+  display: block;
   min-width: 208px;
-  max-height: min(60vh, 460px);
   margin: 0;
   padding: 6px;
-  /* ⚠️ 不能设 overflow：子级列表 absolute 挂在本列表的行 li 下，
+  /* ⚠️ 本层不能设 overflow：子级列表 absolute 挂在本列表的行 li 下，
      overflow 会把右侧飞出的整层裁掉（2026-11-09 真机破案——
-     「三级出不来」根因）。超长列表由 max-height + 每行独立滚动
-     不可行，改为不裁：教育 7 行/资源 17 行都在 460px 预算内。 */
+     「三级出不来」根因）。长列表由「叶子面板」内层滚动承接：
+     .nd-list--scroll（无子级时才加），见下方。 */
   list-style: none;
   background: var(--nvc-panel);
   border: 1px solid var(--nvc-line);
   border-radius: var(--nvc-r);
   box-shadow: 0 18px 48px rgba(31, 42, 68, .16);
+  /* 淡入 + 轻微下移；关闭立即隐藏（visibility 不参与过渡，避免焦点落进不可见层） */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition:
+    opacity .14s ease,
+    transform .14s ease;
+}
+/* 叶子面板：无子级可裁，安全内滚动（资源库 17 行 / 教育长列表） */
+.nd-list--scroll {
+  max-height: min(60vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* 靠右的一级（「更多」）整体反手：面板右缘对齐 + 所有子层向左飞，
+   保证 1024 宽下任意层级都不出屏（2026-11-09 验收 I6）。 */
+.nd-list.nd-list--flip {
+  left: auto;
+  right: 0;
+}
+.nd-list--flip .nd-has > .nd-list {
+  top: -6px;
+  left: auto;
+  right: 100%;
+  margin-right: -1px;
+  margin-left: 0;
 }
 /* 子层右侧飞出：紧贴父列表右缘（零缝隙，鼠标斜穿不断链——
    参考图口径）。作用域严格限定在 .nd-list 内部的行（顶栏一级 li
@@ -134,19 +161,32 @@
     margin-right: -1px;
   }
 }
-/* 更右列防出屏兜底：任何子层若超右缘，向下改挂（纯 CSS 无 JS 测宽，
-   用容器查询外的近似——第三层起默认右飞，最后一行左飞已覆盖多数场景） */
 /* 悬停/键盘聚焦链上展开（focus-within 让 Tab 也能走完整棵树）；
-   顶栏一级 li 自带 .relative 定位（main-menu 挂 .nd-has 同权生效） */
+   data-open 承接分组名（空 href）的点击展开。 */
 .nd-has:hover > .nd-list,
-.nd-has:focus-within > .nd-list { display: block; }
+.nd-has:focus-within > .nd-list,
+.nd-has[data-open="true"] > .nd-list {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
+/* Esc 收起后的抑制位：指针仍悬停/焦点仍在触发条时不重弹 */
+.nvc-anchor[data-suppressed="true"] .nd-has:hover > .nd-list,
+.nvc-anchor[data-suppressed="true"] .nd-has:focus-within > .nd-list,
+.nvc-anchor[data-suppressed="true"] .nd-has[data-open="true"] > .nd-list {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  pointer-events: none;
+}
 .nd-row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 34px;
-  padding: 6px 10px;
+  min-height: var(--tap-min, 44px);
+  padding: 8px 10px;
   color: var(--nvc-text);
   background: none;
   border: 0;
@@ -160,11 +200,13 @@
 .nd-row:hover { background: var(--nvc-hover); }
 /* 当前 hover 链上的父行保持高亮（视觉连续：知道自己在哪条链上） */
 .nd-has:hover > .nd-row,
-.nd-has:focus-within > .nd-row {
+.nd-has:focus-within > .nd-row,
+.nd-has[data-open="true"] > .nd-row {
   background: var(--nvc-hover);
 }
 .nd-has:hover > .nd-row .nd-caret,
-.nd-has:focus-within > .nd-row .nd-caret {
+.nd-has:focus-within > .nd-row .nd-caret,
+.nd-has[data-open="true"] > .nd-row .nd-caret {
   color: var(--nvc-active-fg);
 }
 .nd-row.is-lit {
@@ -181,3 +223,13 @@
   text-overflow: ellipsis;
 }
 .nd-caret { color: var(--nvc-faint); font-size: 14px; }
+
+/* 降低动态：淡入/位移与标尺过渡全部关闭 */
+@media (prefers-reduced-motion: reduce) {
+  .nd-list,
+  .nd-row,
+  .mainmenu-link,
+  .mainmenu-link::after {
+    transition: none;
+  }
+}
