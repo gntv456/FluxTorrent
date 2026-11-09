@@ -73,12 +73,15 @@ export function ShjAtlas({
   // 整栏折叠（0470）：宽屏用户手动在「236px 展开 ↔ 64px 图标轨」间切换，
   // localStorage 持久化（与主题偏好同款模式）；轨态复用 768–1179 断点的
   // 图标居中/浮层样式（.is-rail 类承载，CSS 同源）。
+  // 2026-11-09 统一顶栏导航：默认收轨（null=用户没存过偏好时收起），
+  // 顶栏 hover 级联承载全部导航，侧栏降为快捷浮层不再占位。
   const [rail, setRail] = useState(false);
   useEffect(() => {
     try {
-      setRail(localStorage.getItem("flux-shj-rail") === "1");
+      const saved = localStorage.getItem("flux-shj-rail");
+      setRail(saved === null ? true : saved === "1");
     } catch {
-      /* 隐私模式读不到就默认展开 */
+      /* 隐私模式读不到就默认收轨 */
     }
   }, []);
   // 教育四级（0474）：钻取视图游标——null=关；stage:-1=学段页；

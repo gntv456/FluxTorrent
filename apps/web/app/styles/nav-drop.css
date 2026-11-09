@@ -1,6 +1,102 @@
 /* 传统级联下拉（2026-11-09）：hover 展开、子级右侧飞出。
- * 复用 nav-canvas.css 的 --nvc-* 主题令牌（四档主题无感切换），
- * 排在 nav-canvas.css 之后挂链即可继承变量。 */
+ * ⚠️ 令牌作用域：--nvc-* 原本只挂 .nvc（画布面板容器），但 .nd-list
+ * 挂在顶栏 .nvc-anchor 下、不在任何 .nvc 里——取不到变量时
+ * background 解析成 rgba(0,0,0,0) 全透明（2026-11-09 站长报「看不清」
+ * 根因）。这里把同一组令牌挂到 .nvc-anchor（菜单条，nd-list 共同
+ * 祖先），主题覆盖在文件尾同构双挂。 */
+.nvc-anchor {
+  --nvc-panel: #fff;
+  --nvc-root: #f8fafc;
+  --nvc-col: #fff;
+  --nvc-head: #f7fbff;
+  --nvc-strip: #fbfdff;
+  --nvc-line: #c4e0f7;
+  --nvc-sep: #eef2f6;
+  --nvc-text: #1f2a44;
+  --nvc-sub: #6b7a99;
+  --nvc-faint: #94a3b8;
+  --nvc-active-bg: #e8f4ff;
+  --nvc-active-fg: #1e8ae8;
+  --nvc-bar: #2fa8ff;
+  --nvc-hover: #e8f4ff;
+  --nvc-leaf: #1d8f73;
+  --nvc-lv-bg: #e8f4ff;
+  --nvc-lv-fg: #1e8ae8;
+  --nvc-input: #fff;
+  --nvc-btn: #2fa8ff;
+  --nvc-btn-fg: #fff;
+  --nvc-r: 20px;
+  --nvc-row-r: 9px;
+  --nvc-cap-font: var(--font-display, serif);
+  --nvc-cap-ls: .6px;
+}
+[data-theme="brand-night"] .nvc-anchor {
+  --nvc-panel: #151d30;
+  --nvc-root: #101827;
+  --nvc-col: #151d30;
+  --nvc-head: #182238;
+  --nvc-strip: #111a2c;
+  --nvc-line: #2a3a55;
+  --nvc-sep: #243149;
+  --nvc-text: #e6edf8;
+  --nvc-sub: #9fb0c9;
+  --nvc-faint: #6f82a0;
+  --nvc-active-bg: rgba(72, 150, 255, .18);
+  --nvc-active-fg: #8cc4ff;
+  --nvc-bar: #4b9bff;
+  --nvc-hover: rgba(72, 150, 255, .12);
+  --nvc-leaf: #5fd0a8;
+  --nvc-lv-bg: rgba(72, 150, 255, .18);
+  --nvc-lv-fg: #8cc4ff;
+  --nvc-input: #101827;
+  --nvc-r: 14px;
+}
+[data-theme="shanhaijing"] .nvc-anchor {
+  --nvc-active-fg: #8fdcbd;
+  --nvc-bar: #d3a13f;
+  --nvc-lv-fg: #e6c87a;
+  --nvc-panel: #111c18;
+  --nvc-root: #0c1511;
+  --nvc-col: #111c18;
+  --nvc-head: #16241e;
+  --nvc-strip: #0e1814;
+  --nvc-line: #3a5a4c;
+  --nvc-sep: #2c463a;
+  --nvc-text: #e8e2cd;
+  --nvc-sub: #a9bdae;
+  --nvc-faint: #7d9284;
+  --nvc-active-bg: rgba(63, 174, 143, .18);
+  --nvc-hover: rgba(211, 161, 63, .1);
+  --nvc-leaf: #8fdcbd;
+  --nvc-lv-bg: rgba(211, 161, 63, .16);
+  --nvc-input: #0c1511;
+  --nvc-btn: #d3a13f;
+  --nvc-btn-fg: #241708;
+}
+[data-theme="shanhaijing-light"] .nvc-anchor {
+  --nvc-active-fg: #a8432c;
+  --nvc-bar: #a8432c;
+  --nvc-lv-fg: #7a5a12;
+  --nvc-panel: #fbf7ec;
+  --nvc-root: #f3ecd9;
+  --nvc-col: #fbf7ec;
+  --nvc-head: #f5efdf;
+  --nvc-strip: #f7f1e2;
+  --nvc-line: #d9cfb6;
+  --nvc-sep: #e6dcc4;
+  --nvc-text: #2f2a20;
+  --nvc-sub: #6b6151;
+  --nvc-faint: #9a8f78;
+  --nvc-active-bg: #f6e6df;
+  --nvc-hover: #f3ead6;
+  --nvc-leaf: #2c6b52;
+  --nvc-lv-bg: #efe4c9;
+  --nvc-input: #fffdf6;
+  --nvc-btn: #a8432c;
+  --nvc-btn-fg: #fff8ef;
+  --nvc-r: 6px;
+  --nvc-row-r: 3px;
+}
 .nd-list {
   position: absolute;
   top: 100%;
@@ -11,26 +107,35 @@
   max-height: min(60vh, 460px);
   margin: 0;
   padding: 6px;
-  overflow-y: auto;
+  /* ⚠️ 不能设 overflow：子级列表 absolute 挂在本列表的行 li 下，
+     overflow 会把右侧飞出的整层裁掉（2026-11-09 真机破案——
+     「三级出不来」根因）。超长列表由 max-height + 每行独立滚动
+     不可行，改为不裁：教育 7 行/资源 17 行都在 460px 预算内。 */
   list-style: none;
   background: var(--nvc-panel);
   border: 1px solid var(--nvc-line);
   border-radius: var(--nvc-r);
   box-shadow: 0 18px 48px rgba(31, 42, 68, .16);
 }
-/* 子层右侧飞出：贴父行右缘、顶对齐。作用域严格限定在 .nd-list 内部
-   的行（顶栏一级 li 也带 .nd-has 挂第一层，不能被本规则改 top）。 */
+/* 子层右侧飞出：紧贴父列表右缘（零缝隙，鼠标斜穿不断链——
+   参考图口径）。作用域严格限定在 .nd-list 内部的行（顶栏一级 li
+   也带 .nd-has 挂第一层，不能被本规则改 top）。 */
 .nd-list .nd-has { position: relative; }
 .nd-list .nd-has > .nd-list {
-  top: -7px;
-  left: calc(100% - 6px);
+  top: -6px;
+  left: 100%;
+  margin-left: -1px;
 }
-@media screen and (max-width: 1280px) {
+/* 右缘反手向左：屏幕 <1280 时最后一行子层向左飞（防出屏） */
+@media screen and (max-width: 1279.98px) {
   .nd-list .nd-has:last-child > .nd-list {
     left: auto;
-    right: calc(100% - 6px);
+    right: 100%;
+    margin-right: -1px;
   }
 }
+/* 更右列防出屏兜底：任何子层若超右缘，向下改挂（纯 CSS 无 JS 测宽，
+   用容器查询外的近似——第三层起默认右飞，最后一行左飞已覆盖多数场景） */
 /* 悬停/键盘聚焦链上展开（focus-within 让 Tab 也能走完整棵树）；
    顶栏一级 li 自带 .relative 定位（main-menu 挂 .nd-has 同权生效） */
 .nd-has:hover > .nd-list,
@@ -50,8 +155,18 @@
   font-weight: 600;
   text-align: left;
   text-decoration: none;
+  transition: background .12s ease;
 }
 .nd-row:hover { background: var(--nvc-hover); }
+/* 当前 hover 链上的父行保持高亮（视觉连续：知道自己在哪条链上） */
+.nd-has:hover > .nd-row,
+.nd-has:focus-within > .nd-row {
+  background: var(--nvc-hover);
+}
+.nd-has:hover > .nd-row .nd-caret,
+.nd-has:focus-within > .nd-row .nd-caret {
+  color: var(--nvc-active-fg);
+}
 .nd-row.is-lit {
   color: var(--nvc-active-fg);
   background: var(--nvc-active-bg);

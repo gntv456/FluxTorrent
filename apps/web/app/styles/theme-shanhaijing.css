@@ -655,16 +655,15 @@
 }
 
 /* ===== 内容让位 + 顶栏/底栏收敛（仅山海经） ===== */
-@media (min-width: 1180px) {
+/* 2026-11-09 站长定调：四档主题统一顶栏 hover 级联下拉（nav-drop.css）。
+ * 侧栏图鉴默认收轨（64px 快捷图标列），导航子级全走顶栏下拉。
+ * 展开态（点折叠钮）侧栏浮在内容上方（与顶栏下拉同语义，z-index 60）。
+ * ≥768 让出 64px 轨宽；<768 侧栏是抽屉形态不让位。 */
+@media (min-width: 768px) {
   [data-theme="shanhaijing"] .site-shell,
   [data-theme="shanhaijing-light"] .site-shell {
-    margin-left: var(--shj-nav-w);
+    margin-left: var(--shj-rail-w);
   }
-}
-/* 侧栏接管导航后：顶栏一级平铺整组隐藏（三态通用） */
-[data-theme="shanhaijing"] .tide-header .mainmenu,
-[data-theme="shanhaijing-light"] .tide-header .mainmenu {
-  display: none;
 }
 @media (min-width: 768px) {
   /* ≥768 有侧栏/图标轨：汉堡与底部 TabBar 收起 */
@@ -680,10 +679,7 @@
 
 /* ===== 图标轨（768–1179px）：同一份 DOM，文字全收、图标居中 ===== */
 @media (min-width: 768px) and (max-width: 1179.98px) {
-  [data-theme="shanhaijing"] .site-shell,
-  [data-theme="shanhaijing-light"] .site-shell {
-    margin-left: var(--shj-rail-w);
-  }
+  /* 窄断点侧栏恒为轨态（64px 图标列），shell 让位由基础规则统一给 */
   [data-theme="shanhaijing"] .shj-atlas,
   [data-theme="shanhaijing-light"] .shj-atlas {
     width: var(--shj-rail-w);
@@ -764,12 +760,17 @@
     padding: 6px 10px;
   }
 }
-/* 非轨态宽度段：浮层恒隐藏（状态残留也不出声） */
-@media (max-width: 767.98px), (min-width: 1180px) {
+/* 非轨态：浮层恒隐藏（状态残留也不出声）。2026-11-09 起浮层跟随
+   .is-rail（≥768 收轨即可用），不再绑 1180 断点 */
+@media (max-width: 767.98px) {
   [data-theme="shanhaijing"] .shj-atlas__flyout,
   [data-theme="shanhaijing-light"] .shj-atlas__flyout {
     display: none;
   }
+}
+[data-theme="shanhaijing"] .shj-atlas:not(.is-rail) .shj-atlas__flyout,
+[data-theme="shanhaijing-light"] .shj-atlas:not(.is-rail) .shj-atlas__flyout {
+  display: none;
 }
 @media (min-width: 768px) and (max-width: 1179.98px) {
   /* 轨宽 64px 扣掉 1px 边线与各 10px 内边距后条目只剩 43px，
@@ -1700,12 +1701,15 @@
   }
 }
 
-/* 宽屏手动轨态（.is-rail）：侧栏 64px + 文字视觉隐藏 + 图标居中 */
-@media (min-width: 1180px) {
+/* 轨态（.is-rail）：侧栏 64px + 文字视觉隐藏 + 图标居中。
+   2026-11-09 统一顶栏导航后默认收轨，≥768 全断点生效（<768 是抽屉态） */
+@media (min-width: 768px) {
   [data-theme="shanhaijing"] .shj-atlas.is-rail,
   [data-theme="shanhaijing-light"] .shj-atlas.is-rail {
     width: var(--shj-rail-w);
   }
+  /* is-rail 让位规则退役（2026-11-09 统一顶栏导航）：
+     保留选择器占位防误删相邻块，margin 归零 */
   [data-theme="shanhaijing"] .shj-atlas.is-rail ~ .site-shell,
   [data-theme="shanhaijing-light"] .shj-atlas.is-rail ~ .site-shell {
     margin-left: var(--shj-rail-w);
