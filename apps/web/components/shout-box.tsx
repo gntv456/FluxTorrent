@@ -61,6 +61,9 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
   const [commands, setCommands] = useState<BotCommand[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const replySeq = useRef(0);
+  // 可见刷新倒计时（秒级）：与轮询同一节拍，到 0 触发 load 并重置为 REFRESH_SECS
+  const REFRESH_SECS = 15;
+  const [countdown, setCountdown] = useState(REFRESH_SECS);
 
   // P-314：拉取失败此前 setItems([]) ⇒ 留言板显示「暂无留言」，把故障演成空板；
   // 会员会以为自己的留言被清了。failed 只用来换那一句文案。
@@ -77,7 +80,18 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
   useEffect(() => {
     if (!active) return;
     load();
-    timer.current = setInterval(load, 15000);
+    setCountdown(REFRESH_SECS);
+    // 单节拍驱动：每秒递减倒计时，归 0 即刷新并重置。倒计时与轮询天然同步，
+    // 避免两个独立 timer 各跑各的造成「数字到 0 了却没刷」的错位。
+    timer.current = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          load();
+          return REFRESH_SECS;
+        }
+        return n - 1;
+      });
+    }, 1000);
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
@@ -172,7 +186,9 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
           {t.title}
         </h2>
         <small className="flex items-center gap-2">
-          {t.note}
+          {t.refreshIn
+            ? t.refreshIn.replace("{n}", String(countdown))
+            : t.note}
           {isStaffClass(meClass ?? undefined) && (
             <button
               type="button"

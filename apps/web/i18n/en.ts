@@ -1,4 +1,4 @@
-﻿/** English dictionary (mirrors zh-CN structure) */
+/** English dictionary (mirrors zh-CN structure) */
 
 import type { Dict } from "./zh-CN";
 import { termsPanelEn } from "./terms-panel";
@@ -1676,7 +1676,8 @@ const enBase: Omit<
   },
   shoutbox: {
     title: "Shoutbox",
-    note: "Public chat · auto refresh 15s",
+    note: "Public chat",
+    refreshIn: "Public chat · refresh in {n}s",
     empty: "No messages yet — say hi!",
     placeholder: "Say something… (1-300 chars)",
     send: "Send",

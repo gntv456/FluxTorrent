@@ -1,4 +1,4 @@
-﻿/** 简体中文字典（源字典：其他语言以此结构为类型基准） */
+/** 简体中文字典（源字典：其他语言以此结构为类型基准） */
 
 import { termsPanelZh } from "./terms-panel";
 import { auditLabelsZh } from "./audit-labels";
@@ -1574,7 +1574,8 @@ const zhCnBase = {
   },
   shoutbox: {
     title: "聊天室",
-    note: "全站公共聊天 · 15 秒自动刷新",
+    note: "全站公共聊天",
+    refreshIn: "全站公共聊天 · {n} 秒后刷新",
     empty: "还没有人说话，来开个头吧",
     placeholder: "说点什么…（1-300 字）",
     send: "发言",

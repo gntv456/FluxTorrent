@@ -1,4 +1,4 @@
-﻿/** 繁體中文字典（與 zh-CN 同構） */
+/** 繁體中文字典（與 zh-CN 同構） */
 
 import type { Dict } from "./zh-CN";
 import { termsPanelTw } from "./terms-panel";
@@ -1621,7 +1621,8 @@ const zhTwBase: Omit<
   },
   shoutbox: {
     title: "聊天室",
-    note: "全站公共聊天 · 15 秒自動刷新",
+    note: "全站公共聊天",
+    refreshIn: "全站公共聊天 · {n} 秒後重新整理",
     empty: "還沒有人說話，來開個頭吧",
     placeholder: "說點什麼…（1-300 字）",
     send: "發言",
