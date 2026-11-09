@@ -210,6 +210,7 @@ export function defaultNav({
     {
       group: t(nav.spark),
       items: [
+        ...(modules("attendance") ? [{ href: "/checkin", label: nav.checkin }] : []),
         ...(modules("shop") ? [{ href: "/shop", label: tabbar.shop }] : []),
         ...(modules("bank") ? [{ href: "/bank", label: nav.bank }] : []),
         ...(modules("magic_pool")

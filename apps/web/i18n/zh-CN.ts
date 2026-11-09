@@ -175,6 +175,7 @@ const zhCnBase = {
     dressup: "装扮",
     tasks: "任务",
     bank: "魔力银行",
+    checkin: "签到日历",
     invites: "邀请",
     subtitles: "字幕",
     friends: "社交",

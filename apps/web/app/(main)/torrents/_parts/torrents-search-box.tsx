@@ -17,6 +17,7 @@ import { TorrentsAdvGroupsTail } from "./torrents-adv-groups-tail";
 import { AdvGear } from "./torrents-adv-gear";
 import { SearchSuggest } from "./search-suggest";
 import { AdvCollapseButton } from "./adv-collapse-button";
+import { AdvDetails } from "./adv-details";
 
 export interface TorrentsSearchBoxProps {
   dict: Dict;
@@ -153,12 +154,10 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
       {/* ── 高级搜索面板（0147：触发入口只剩常驻行的齿轮按钮，原 summary
             整行隐藏——details 仅作开合容器；有筛选条件时默认展开）。
             IA-4（W-20）：面板头补「已选 N 项」计数徽标 + 一键收起钮——
-            展开多组筛选后不用再滚回顶部找齿轮。 */}
-      <details
-        className="tsb-adv tsb-adv--gear"
-        id="tsb-adv"
-        open={advancedOpen}
-      >
+            展开多组筛选后不用再滚回顶部找齿轮。
+            受控壳 AdvDetails：软导航（换 URL）后按服务端判定回收/重开，
+            手开的 DOM 状态不再跨导航粘滞（2026-11-09）。 */}
+      <AdvDetails open={advancedOpen}>
         <summary className="tsb-adv__summary" title={t2.advanced}>
           <span className="tsb-adv__icon" aria-hidden="true">
             ⚙
@@ -216,7 +215,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
             </button>
           </div>
         </div>
-      </details>
+      </AdvDetails>
     </form>
   );
 }

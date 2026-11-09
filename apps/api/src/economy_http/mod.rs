@@ -29,6 +29,7 @@ pub fn mount_economy(scope: actix_web::Scope) -> actix_web::Scope {
         .service(bank_interest_records)
         .service(checkin)
         .service(checkin_status)
+        .service(checkin_calendar)
         .service(pool_status)
         .service(pool_donate)
         .service(dressup_list)

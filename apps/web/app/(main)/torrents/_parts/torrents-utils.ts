@@ -114,12 +114,15 @@ export function withoutCursor(sp: TorrentsSP): TorrentsSP {
 }
 
 /** 导航参数白名单：只带这些落地 /torrents 不算「带筛选意图」。
- *  category_id/official 是资源库下拉的导航频道（2026-11-03 站长报
- *  「点三级菜单自动弹高级筛选」）；search 是常驻搜索行，自有回显；
- *  其余是展示态/翻页游标，不是筛选条件。 */
+ *  category_id/official 是资源库下拉的导航频道；grade_id/sec_* 是教育
+ *  四级导航的年级/科目维度（0473；sec_ 前缀整体豁免——教育科目走
+ *  sec_subject，站型自建维度同链路；2026-11-09 站长报教育子菜单落地
+ *  弹高级筛选，同 2026-11-03 资源库病例）；search 是常驻搜索行，自有
+ *  回显；其余是展示态/翻页游标，不是筛选条件。 */
 const NAV_ONLY_KEYS = new Set([
   "category_id",
   "official",
+  "grade_id",
   "search",
   "view",
   "limit",
@@ -129,12 +132,22 @@ const NAV_ONLY_KEYS = new Set([
   "group",
 ]);
 
+/** sec_ 前缀（多维筛选参数）里有导航豁免权的维度 kind：教育科目的
+ *  subject（参数名 sec_subject）。其余 sec_* 是高级面板「多维筛选」
+ *  的站型自建维度，算真筛选。 */
+const NAV_ONLY_SEC_KINDS = new Set(["subject"]);
+
 /** 高级面板是否自动展开：有真实筛选 chip 且 URL 里存在导航白名单之外的
- *  筛选参数才展开。纯导航落地（资源-电影 → category_id+official）不弹
- *  面板；owner/promo/tag 等真筛选参数在 URL 则照常展开。 */
+ *  筛选参数才展开。纯导航落地（资源-电影 → category_id+official；
+ *  教育-初二数学 → category_id+grade_id+sec_subject）不弹面板；
+ *  owner/promo 等真筛选参数在 URL 则照常展开。 */
 export function advAutoOpen(sp: TorrentsSP, nonSearchChips: number): boolean {
   if (nonSearchChips === 0) return false;
   return Object.entries(sp).some(
-    ([k, v]) => !NAV_ONLY_KEYS.has(k) && v !== undefined && v !== "",
+    ([k, v]) =>
+      !NAV_ONLY_KEYS.has(k) &&
+      !(k.startsWith("sec_") && NAV_ONLY_SEC_KINDS.has(k.slice(4))) &&
+      v !== undefined &&
+      v !== "",
   );
 }

@@ -1,7 +1,10 @@
 /** 2026-11-03 站长报两症状的回归：
  *  ① 点资源库三级菜单自动弹高级筛选面板（导航行为被当筛选行为）；
  *  ② 选「资源-电影」点亮四个按钮（子集匹配四路命中）。
- *  advAutoOpen 抽成纯函数、MainMenu 的 isActive 口径在此各钉一组判据。 */
+ *  advAutoOpen 抽成纯函数、MainMenu 的 isActive 口径在此各钉一组判据。
+ *  2026-11-09 复发批（教育四级导航落地弹面板 + 手开面板跨导航粘滞）：
+ *  grade_id/sec_subject 进导航白名单、details 换受控壳 AdvDetails，
+ *  判据见下方「症状①（2026-11-09 复发）」与「受控壳」两组。 */
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 
@@ -16,6 +19,7 @@ vi.mock("next/navigation", () => ({
 
 import { advAutoOpen } from "@/app/(main)/torrents/_parts/torrents-utils";
 import { buildTorrentChips } from "@/app/(main)/torrents/_parts/torrents-chips";
+import { AdvDetails } from "@/app/(main)/torrents/_parts/adv-details";
 import { MainMenu } from "@/components/main-menu";
 import { zhCN } from "@/i18n/zh-CN";
 import {
@@ -168,5 +172,82 @@ describe("症状①：纯导航落地不自动展开高级面板", () => {
 
   it("无 chip 不展开（原语义保持）", () => {
     expect(advAutoOpen({}, 0)).toBe(false);
+  });
+});
+
+describe("症状①（2026-11-09 复发）：教育四级导航落地不弹面板", () => {
+  // 教育叶子 URL（lib/nav-edu.ts eduSub 产物）：
+  // 学段 category_id=101..107；年级 +grade_id；科目 +sec_subject
+  it("学段整段（全部小学）不展开", () => {
+    expect(advAutoOpen({ category_id: "102" }, 1)).toBe(false);
+  });
+  it("年级叶子（全部-小学-三年级）不展开", () => {
+    expect(advAutoOpen({ category_id: "102", grade_id: "3" }, 2)).toBe(false);
+  });
+  it("科目叶子（小学-三年级-数学）不展开", () => {
+    expect(
+      advAutoOpen(
+        { category_id: "102", grade_id: "3", sec_subject: "100" },
+        3,
+      ),
+    ).toBe(false);
+  });
+  it("大学无年级层（科目直达）不展开", () => {
+    expect(advAutoOpen({ category_id: "107", sec_subject: "100" }, 2)).toBe(
+      false,
+    );
+  });
+  it("站型自建维度（sec_ 前缀非科目）仍算真筛选照常展开", () => {
+    expect(advAutoOpen({ sec_resolution: "1080p" }, 1)).toBe(true);
+  });
+});
+
+describe("受控壳：手开的面板不跨导航粘滞（AdvDetails）", () => {
+  it("渲染后 DOM open 对齐 prop（true 开）", () => {
+    const { container } = render(
+      <AdvDetails open={true}>
+        <summary>x</summary>
+      </AdvDetails>,
+    );
+    expect(
+      (container.querySelector("details") as HTMLDetailsElement).open,
+    ).toBe(true);
+  });
+
+  it("软导航到手开态之外（false→false）：effect 强制收起", async () => {
+    // 复现路径：教育叶子落地弹开（修复前）→ 手动展开后切纯导航 URL。
+    // 手改 DOM 开 + prop 恒 false 的下一次渲染必须回收。
+    const { container, rerender } = render(
+      <AdvDetails open={false}>
+        <summary>x</summary>
+      </AdvDetails>,
+    );
+    const el = container.querySelector("details") as HTMLDetailsElement;
+    el.open = true; // 齿轮/summary 的直改 DOM 行为
+    rerender(
+      <AdvDetails open={false}>
+        <summary>x</summary>
+      </AdvDetails>,
+    );
+    // effect 在 commit 后跑；flush 微任务再断言
+    await Promise.resolve();
+    expect(el.open).toBe(false);
+  });
+
+  it("真筛选落地（prop true）在导航后强制展开（手关也不粘滞）", async () => {
+    const { container, rerender } = render(
+      <AdvDetails open={false}>
+        <summary>x</summary>
+      </AdvDetails>,
+    );
+    const el = container.querySelector("details") as HTMLDetailsElement;
+    el.open = false; // 用户手关后带了真筛选参数导航（如 promo=free）
+    rerender(
+      <AdvDetails open={true}>
+        <summary>x</summary>
+      </AdvDetails>,
+    );
+    await Promise.resolve();
+    expect(el.open).toBe(true);
   });
 });

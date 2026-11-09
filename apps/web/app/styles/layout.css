@@ -1871,6 +1871,73 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   font-size: 12.5px;
   font-weight: 700;
 }
+.checkin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.checkin-page__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg, 12px);
+  border: 1px solid var(--line);
+  background: var(--panel, transparent);
+}
+.checkin-page__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.checkin-page__stat strong {
+  color: var(--text-strong);
+  font-size: 22px;
+  font-weight: 800;
+}
+.checkin-page__stat span {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.checkin-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.checkin-page__almanac {
+  border-radius: var(--r-lg, 12px);
+  border: 1px solid var(--line);
+  padding: 12px;
+}
+.attendance-card__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 14px 0;
+}
+.attendance-card__nav strong {
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+.attendance-card__mv {
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.attendance-card__mv:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .attendance-card__summary {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -194,6 +194,7 @@ const enBase: Omit<
     dressup: "Dress-up",
     tasks: "Tasks",
     bank: "Bank",
+    checkin: "Check-in",
     invites: "Invites",
     subtitles: "Subtitles",
     friends: "Social",

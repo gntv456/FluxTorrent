@@ -1,7 +1,7 @@
 /** 主菜单/子菜单入口完整性（2026-11-09 验收 1）：
  *  导航数据同源构建后，每一个叶子入口必须同时能在「桌面顶栏级联」
- *  与「<lg 抽屉树」两条路径里构造出来；默认 6 组 37 条入口全覆盖。
- *  以后增删入口时此用例会自然报警——若是有意变更，同步更新 37 这个
+ *  与「<lg 抽屉树」两条路径里构造出来；默认 6 组 38 条入口全覆盖。
+ *  以后增删入口时此用例会自然报警——若是有意变更，同步更新 38 这个
  *  基线数字（而不是删断言）。 */
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
@@ -53,11 +53,11 @@ function anchorHrefs(root: ParentNode): Set<string> {
 afterEach(cleanup);
 
 describe("导航入口完整性（桌面 + <lg 抽屉）", () => {
-  it("默认配置仍是 6 组 37 条入口（有意增删请同步本基线）", () => {
+  it("默认配置仍是 6 组 38 条入口（有意增删请同步本基线）", () => {
     expect(built.groups.map((g) => g.group)).toHaveLength(6);
     expect(
       built.groups.reduce((n, g) => n + g.items.length, 0),
-    ).toBe(37);
+    ).toBe(38);
   });
 
   it("桌面顶栏级联：每个叶子 href 都在 DOM 中，且父级展开语义齐全", () => {

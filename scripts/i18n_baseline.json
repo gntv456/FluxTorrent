@@ -14830,5 +14830,6 @@
   75,
   77
  ],
- "components/nav-dropdown.tsx": []
+ "components/nav-dropdown.tsx": [],
+ "app/(main)/torrents/_parts/adv-details.tsx": []
 }

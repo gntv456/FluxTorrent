@@ -191,6 +191,7 @@ const zhTwBase: Omit<
     dressup: "裝扮",
     tasks: "任務",
     bank: "魔力銀行",
+    checkin: "簽到日曆",
     invites: "邀請",
     subtitles: "字幕",
     friends: "社交",

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
 import { ResubButton } from "@/components/home-resub-button";
 import { BottomSheet } from "@/components/bottom-sheet";
 import { Icon } from "@/components/icons";
@@ -46,13 +47,67 @@ export function AttendanceCard({
   checkinMsg: string | null;
 }) {
   const att = attOf(home);
-  // 周一开头对齐：本月 1 号之前补空位（周一=0）
-  const firstDate = new Date(att?.calendar[0]?.date ?? Date.now());
-  const leadingBlanks = (firstDate.getDay() + 6) % 7;
-  // ZT2（2026-10-03）：站点时区（UTC+8）的今天。此前在 map 里用
-  // `new Date().toISOString().slice(0,10)`（UTC）——对 UTC+8 用户，每天
-  // 00:00–08:00 会算成「昨天」，把今天的格子标成未来/漏签。改为固定 +8 偏移。
+  // 站点时区（UTC+8）的今天
   const today = todayStr();
+  // 翻月：cursor 指向当前展示的年月；days 为对应月逐日签到（初始用后端当月）
+  const [cursor, setCursor] = useState(() => {
+    const [y, m] = (att?.month ?? "").match(/(\d{4})年(\d{1,2})月/)
+      ? [
+          Number((att!.month.match(/(\d{4})年/) ?? [])[1]),
+          Number((att!.month.match(/年(\d{1,2})月/) ?? [])[1]),
+        ]
+      : [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
+    return { y, m };
+  });
+  const [days, setDays] = useState<AttendanceShape["calendar"]>(
+    att?.calendar ?? [],
+  );
+  const isCurrentMonth =
+    cursor.y === Number(today.slice(0, 4)) &&
+    cursor.m === Number(today.slice(5, 7));
+  // 翻到非当月时拉按月数据；回到当月用后端实时 att（含今日最新状态）
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (isCurrentMonth) {
+      setDays(att?.calendar ?? []);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    api
+      .get<{ ym: string; days: AttendanceShape["calendar"] }>(
+        `/api/v1/attendance/calendar?ym=${cursor.y}-${String(cursor.m).padStart(2, "0")}`,
+      )
+      .then((r) => {
+        if (alive) setDays(Array.isArray(r?.days) ? r.days : []);
+      })
+      .catch(() => {
+        if (alive) setDays([]);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [cursor.y, cursor.m, isCurrentMonth, att]);
+  const goMonth = (delta: number) => {
+    setCursor((c) => {
+      let y = c.y;
+      let m = c.m + delta;
+      if (m === 0) {
+        y -= 1;
+        m = 12;
+      } else if (m === 13) {
+        y += 1;
+        m = 1;
+      }
+      return { y, m };
+    });
+  };
+  // 周一开头对齐：展示月 1 号之前补空位（周一=0）
+  const firstDate = new Date(days[0]?.date ?? `${cursor.y}-${cursor.m}-01`);
+  const leadingBlanks = (firstDate.getDay() + 6) % 7;
   return (
     <aside className="brand-panel attendance-card">
       <header className="brand-panel__head">
@@ -76,12 +131,33 @@ export function AttendanceCard({
         </span>
       </header>
       {checkinMsg && <p className="attendance-msg">{checkinMsg}</p>}
+      <div className="attendance-card__nav">
+        <button
+          type="button"
+          className="attendance-card__mv"
+          aria-label="上一月"
+          onClick={() => goMonth(-1)}
+        >
+          ‹
+        </button>
+        <strong>
+          {cursor.y}年{cursor.m}月
+        </strong>
+        <button
+          type="button"
+          className="attendance-card__mv"
+          aria-label="下一月"
+          disabled={isCurrentMonth}
+          onClick={() => goMonth(1)}
+        >
+          ›
+        </button>
+      </div>
       <div className="attendance-card__summary">
         <div>
-          <strong>{att?.month}</strong>
-          <span>
+          <strong>
             {t.streak} {att?.streak} {dict.usercp.days}
-          </span>
+          </strong>
         </div>
         <div>
           <strong>{att?.total_days}</strong>
@@ -90,7 +166,7 @@ export function AttendanceCard({
       </div>
       <div
         className="attendance-calendar"
-        aria-label={`${att?.month}${t.calendar}`}
+        aria-label={`${cursor.y}年${cursor.m}月${t.calendar}`}
       >
         {t.weekdays.map((w) => (
           <span key={w} className="attendance-calendar__weekday">
@@ -103,7 +179,7 @@ export function AttendanceCard({
             className="attendance-calendar__day is-outside"
           />
         ))}
-        {att?.calendar.map((d) => {
+        {days.map((d) => {
           const isToday = d.date === today;
           const isFuture = d.date > today;
           const cls = [
@@ -251,10 +327,41 @@ export function AttendanceSheet({
     return { y: n.getUTCFullYear(), m: n.getUTCMonth() + 1 };
   });
   const [picked, setPicked] = useState(today);
-  const doneMap: Record<string, number> = {};
-  att?.calendar.forEach((d) => {
-    if (d.done) doneMap[d.date] = d.reward;
-  });
+  // 逐月签到标记（doneMap）：当月用后端实时 att；翻到其它月拉 /attendance/calendar
+  const [doneMap, setDoneMap] = useState<Record<string, number>>({});
+  const curY = Number(today.slice(0, 4));
+  const curM = Number(today.slice(5, 7));
+  const isCurrentMonth = cursor.y === curY && cursor.m === curM;
+  useEffect(() => {
+    if (!open) return;
+    if (isCurrentMonth) {
+      const m: Record<string, number> = {};
+      att?.calendar.forEach((d) => {
+        if (d.done) m[d.date] = d.reward;
+      });
+      setDoneMap(m);
+      return;
+    }
+    let alive = true;
+    api
+      .get<{ ym: string; days: { date: string; done: boolean; reward: number }[] }>(
+        `/api/v1/attendance/calendar?ym=${cursor.y}-${String(cursor.m).padStart(2, "0")}`,
+      )
+      .then((r) => {
+        if (!alive) return;
+        const m: Record<string, number> = {};
+        (r?.days ?? []).forEach((d) => {
+          if (d.done) m[d.date] = d.reward;
+        });
+        setDoneMap(m);
+      })
+      .catch(() => {
+        if (alive) setDoneMap({});
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open, cursor.y, cursor.m, isCurrentMonth, att]);
   return (
     <BottomSheet open={open} onClose={onClose} title={t.attendanceTitle}>
       {att ? (
