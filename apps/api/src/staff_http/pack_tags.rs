@@ -61,8 +61,16 @@ pub(super) async fn apply_pack_tags(
     .execute(&mut **tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    // 包定义的标签 upsert（同名并入 pack 层——运营手工建的站型词被收编）
+    // 包定义的标签 upsert（同名并入 pack 层——运营手工建的站型词被收编）。
+    // official 行例外（0484 唯一索引）：global 层「官种」是 official kind 的
+    // 唯一字典行，包里带 kind=official 的词（general/sports「官方」等 0317
+    // 种子）再插就是第二个 official 行，撞 uq_tag_dict_official——空库装站
+    // 向导 apply general 包即 500（2026-11-09 e2e S6 连红三提交）。跳过：
+    // 官种判定走「挂 official 标签」语义，具体叫官种还是官方由 global 层定。
     for (name, kind, group) in &packed_tags {
+        if kind == "official" {
+            continue;
+        }
         sqlx::query(
             "INSERT INTO tag_dict \
              (name, kind, scope, scope_layer, tag_group) \
