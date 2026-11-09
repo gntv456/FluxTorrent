@@ -1,5 +1,9 @@
 ARG BASE_REGISTRY=docker.1ms.run
-ARG NPM_REGISTRY=https://registry.npmmirror.com
+# 默认走官方 npm registry：GitHub Actions 构建机在海外，官方源最稳；此前默认
+# npmmirror（国内镜像）在 CI 侧间歇性 500（corepack 拉 pnpm 本体失败 → pnpm
+# install 直接 exit 1，2026-11-09 连续两版 web 构建卡在此）。国内构建可传
+# --build-arg NPM_REGISTRY=https://registry.npmmirror.com 覆盖。
+ARG NPM_REGISTRY=https://registry.npmjs.org
 FROM ${BASE_REGISTRY}/library/node:24-slim AS builder
 # 全局 ARG（FROM 前声明）在 stage 内不可见，必须在本 stage 重新声明才能
 # 被 ENV/RUN 引用——否则 COREPACK_NPM_REGISTRY 落空，corepack 回落
@@ -13,7 +17,7 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/domain-types/package.json ./packages/domain-types/
-RUN pnpm config set registry "${NPM_REGISTRY:-https://registry.npmmirror.com}" \
+RUN pnpm config set registry "${NPM_REGISTRY:-https://registry.npmjs.org}" \
     && pnpm install --frozen-lockfile
 COPY apps/web ./apps/web
 COPY packages/domain-types ./packages/domain-types
