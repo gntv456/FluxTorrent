@@ -124,13 +124,16 @@ pub fn next_streak(
     }
 }
 
-/// 展示用连签数（P-471）：最后一条非补签行落在**今天或昨天**才叫链条还活着，
+/// 展示用连签数（P-471）：最后一条记录落在**今天或昨天**才叫链条还活着，
 /// 照原计数展示；断了一天及以上 → 0。
 ///
 /// 断链边界必须与签到主流程一致（checkin.rs 里 `prev_date == Some(yesterday)`
 /// 那条），否则会员在首页看到「连签 12 天」、点下去回的是 `streak=1`——展示口
-/// 各写一份时忘了衰减，就是这个形状。补签行（makeup）由调用方先排除，
-/// 补签不续连签是 §9.3 定案（运营口径「不影响原始连续计数」）。
+/// 各写一份时忘了衰减，就是这个形状。
+///
+/// §9.3 修订：**补签行（makeup）也参与续签**——补签是用户花卡补的漏签日，理应
+/// 让连签接得上；历史重算已把补签行的 streak 填成真实连续值（不是 0）。因此
+/// 调用方取「最后一条记录」即可，不再排除 makeup。
 pub fn shown_streak(
     last: Option<(chrono::NaiveDate, i64)>,
     today: chrono::NaiveDate,
@@ -237,5 +240,21 @@ mod tests {
             let alive = shown_streak(prev, today) > 0;
             assert_eq!(next, if alive { 13 } else { 1 });
         }
+    }
+
+    #[test]
+    fn makeup_row_continues_streak() {
+        // §9.3 修订：补签行参与续签。最后一条记录是**昨天的补签行**（历史重算已把
+        // 其 streak 填成真实连续值，如 user 10556 的 11-08 补签 streak=214），今天
+        // 签到应续到 215，而非被打回 1。
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 11, 9).unwrap();
+        let yesterday = today - chrono::Duration::days(1);
+        // shown_streak 只看 (日期, streak)，补签行与普通行一视同仁：
+        // 昨天（补签）streak=214 → 展示仍活（214），今天签到 baseline 取 214 → 215。
+        assert_eq!(shown_streak(Some((yesterday, 214)), today), 214);
+        assert_eq!(
+            shown_streak(Some((yesterday, 214)), today) + 1,
+            215
+        );
     }
 }

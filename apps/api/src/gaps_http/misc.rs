@@ -164,13 +164,42 @@ pub async fn resub_use(
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;
     }
-    // 补签出勤行：streak 不续（补的是漏签日）、reward=0（火花在正常签到发放）
-    let att_rows = sqlx::query(
-        "INSERT INTO attendance (user_id, date, streak, reward, makeup) \
-         VALUES ($1, $2, 0, 0, TRUE) ON CONFLICT (user_id, date) DO NOTHING",
+    // 补签出勤行（§9.3 修订：补签参与续签）。streak 不再是 0 占位——按重算同规
+    // 则算出目标日应得的连签值写入，并在同事务内级联刷新该用户目标日之后所有行的
+    // streak（补哪天都能与历史重算口径保持一致）。
+    // 目标日 streak = 前一天有记录 ? 前一天streak+1 : 1
+    let prev_streak_for_day: Option<i64> = sqlx::query_scalar(
+        "SELECT streak::bigint FROM attendance \
+         WHERE user_id = $1 AND date < $2 ORDER BY date DESC LIMIT 1",
     )
     .bind(auth.id)
     .bind(date)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    // 前一天是否正好是 date-1（真连续）——只有连续才 +1
+    let prev_date_for_day: Option<chrono::NaiveDate> = sqlx::query_scalar(
+        "SELECT date FROM attendance \
+         WHERE user_id = $1 AND date < $2 ORDER BY date DESC LIMIT 1",
+    )
+    .bind(auth.id)
+    .bind(date)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    let day_streak: i64 =
+        if prev_date_for_day == Some(date - chrono::Duration::days(1)) {
+            prev_streak_for_day.unwrap_or(0) + 1
+        } else {
+            1
+        };
+    let att_rows = sqlx::query(
+        "INSERT INTO attendance (user_id, date, streak, reward, makeup) \
+         VALUES ($1, $2, $3, 0, TRUE) ON CONFLICT (user_id, date) DO NOTHING",
+    )
+    .bind(auth.id)
+    .bind(date)
+    .bind(day_streak as i32)
     .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
@@ -184,6 +213,32 @@ pub async fn resub_use(
             "该日已有签到记录，本次未消耗补签卡".into(),
         ));
     }
+    // 补签插入改变了该用户的签到链条，可能让后续行的连续段整体顺延。此处对本人
+    // 全量按历史重算同规则重排 streak（前一天有记录则 +1，否则重置 1；补签行同样
+    // 参与）：连续段内用 row_number 即当前段内序号。单用户行数有限，事务内一次
+    // UPDATE 足够，且与重算口径逐行一致，避免前端展示与签到基线错位。
+    sqlx::query(
+        "WITH seg AS ( \
+             SELECT id, \
+                    SUM(brk) OVER (PARTITION BY user_id ORDER BY date) AS grp \
+             FROM ( \
+                 SELECT id, user_id, date, \
+                        CASE WHEN LAG(date) OVER (PARTITION BY user_id ORDER BY date) \
+                                  = date - 1 THEN 0 ELSE 1 END AS brk \
+                 FROM attendance WHERE user_id = $1 \
+             ) b \
+         ), \
+         ranked AS ( \
+             SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, grp ORDER BY date)::int AS new_streak \
+             FROM seg \
+         ) \
+         UPDATE attendance t SET streak = r.new_streak \
+         FROM ranked r WHERE t.id = r.id AND t.streak <> r.new_streak",
+    )
+    .bind(auth.id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
     tx.commit()
         .await
         .map_err(|e| DomainError::Internal(e.into()))?;

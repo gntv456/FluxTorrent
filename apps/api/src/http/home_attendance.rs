@@ -2,7 +2,7 @@
 //! + 补签卡持有数。per-user 数据永不进共享缓存（UNIT3D 范式），每次实时算。
 //!
 //! 两处口径必须与 /attendance、/attendance/checkin 一致，历史上各修各的：
-//! - 连签基线取「最后一条非补签行」，补签行 streak=0 只是占位（P-90）；
+//! - 连签基线取「最后一条记录」，补签行也参与续签（§9.3 修订）；
 //! - 补签卡持有数走双源（商店未消耗订单 + 娱乐屋发放−消耗，0262），
 //!   只数商店订单会让刮刮乐抽到的卡在首页显示 0（P-91）。
 
@@ -76,10 +76,12 @@ pub async fn attendance_json(
     // P-471：断签后展示必须衰减到 0，边界与 /attendance、签到主流程同一条
     // （旧写法只把最后一格的计数端出来：库里 12 就一直显示 12）
     let streak = crate::economy_checkin::shown_streak(
+        // 取最后一条记录（补签行也参与续签，§9.3 修订）：补签行 streak 已被历史
+        // 重算填成真实连续值，不再排除。边界仍与签到主流程同一条（断一天归 0）。
         att.iter()
             .rev()
-            .find(|(_, _, _, mk)| !*mk)
-            .map(|(ad, s, _, _)| (*ad, *s as i64)),
+            .map(|(ad, s, _, _)| (*ad, *s as i64))
+            .next(),
         today,
     ) as i32;
     let total_days = att.len() as i32;

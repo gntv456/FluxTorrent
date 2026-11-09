@@ -36,10 +36,12 @@ async fn checkin(
     }
 
     let last: Option<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
-        // 跳过 makeup=true 的补签行读连签基线：admin 补签行 streak=0，
-        // 若被当作「最后一条」会让下一次签到的 streak 错误重置为 1
+        // 连签基线取「最后一条记录」——**补签行（makeup）也参与续签**（§9.3 修订）：
+        // 历史重算已把补签行的 streak 填成真实连续值（不是 0），补签是用户花补签卡
+        // 补的漏签日，理应让连签接得上。此前排除 makeup 会让「昨天补签、今天签到」
+        // 被判断链、200+ 天连签被打回 1（实测 user 10556）。
         "SELECT date, streak, (count(*) OVER ())::bigint FROM attendance \
-         WHERE user_id = $1 AND NOT makeup ORDER BY date DESC LIMIT 1",
+         WHERE user_id = $1 ORDER BY date DESC LIMIT 1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)
@@ -176,8 +178,8 @@ async fn checkin_status(
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
     let rows: Vec<(chrono::NaiveDate, i32, i64)> = sqlx::query_as(
-        // 审计修复（P2）：补签行 makeup=true 且 streak=0，被 last() 当作最新连签会让首页
-        // 在补签当天显示连签 0。recent 列表仍含补签行（日历要展示），streak 单独查非补签基线。
+        // recent 列表含补签行（日历要展示）；streak 基线另查最后一条记录（补签也参与
+        // 续签，§9.3 修订），见下方 last_live。
                 "SELECT date, streak, \
          reward FROM attendance WHERE user_id = $1 AND date >= current_date - interval '30 days' ORDER BY date",
     )
@@ -187,12 +189,12 @@ async fn checkin_status(
     .map_err(|e| DomainError::Internal(e.into()))?;
     let today = (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive(); // 站点时区 UTC+8
     let checked_today = rows.iter().any(|(d, _, _)| *d == today);
-    // streak 基线取最后一条非补签行（与签到主流程同口径），补签不重置显示。
+    // streak 基线取「最后一条记录」——补签行也参与续签（§9.3 修订，与签到主流程
+    // 同口径）。补签行 streak 已由历史重算填成真实连续值，不再作废。
     // P-471：断一天起展示必须归 0——旧写法把库里那格的旧计数原样端出去，
     // 会员首页看到「连签 12 天」、点下去回的却是 streak=1。
     let last_live: Option<(chrono::NaiveDate, i32)> = sqlx::query_as(
-        "SELECT date, streak FROM attendance WHERE user_id = $1 AND NOT \
-         makeup ORDER BY date DESC LIMIT 1",
+        "SELECT date, streak FROM attendance WHERE user_id = $1          ORDER BY date DESC LIMIT 1",
     )
     .bind(auth.id)
     .fetch_optional(&state.repo.db)

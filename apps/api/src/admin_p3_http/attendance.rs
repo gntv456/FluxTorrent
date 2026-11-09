@@ -115,19 +115,51 @@ async fn admin_attendance_makeup(
     if !exists {
         return Err(DomainError::NotFound(body.user_id));
     }
+    // §9.3 修订：补签参与续签。落 makeup=true、reward=0，并在同事务内对该用户全量
+    // 重排 streak（前一天有记录则 +1，否则 1；补签行同样参与），与历史重算口径一致。
+    let mut tx = state
+        .repo
+        .db
+        .begin()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     let n = sqlx::query(
         "INSERT INTO attendance (user_id, date, streak, reward, makeup) \
          VALUES ($1, $2, 0, 0, TRUE) ON CONFLICT (user_id, date) DO NOTHING",
     )
     .bind(body.user_id)
     .bind(body.date)
-    .execute(&state.repo.db)
+    .execute(&mut *tx)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?
     .rows_affected();
     if n == 0 {
         return Err(DomainError::Validation("该用户当日已有签到记录".into()));
     }
+    sqlx::query(
+        "WITH seg AS ( \
+             SELECT id, SUM(brk) OVER (PARTITION BY user_id ORDER BY date) AS grp \
+             FROM ( \
+                 SELECT id, user_id, date, \
+                        CASE WHEN LAG(date) OVER (PARTITION BY user_id ORDER BY date) \
+                                  = date - 1 THEN 0 ELSE 1 END AS brk \
+                 FROM attendance WHERE user_id = $1 \
+             ) b \
+         ), \
+         ranked AS ( \
+             SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, grp ORDER BY date)::int AS new_streak \
+             FROM seg \
+         ) \
+         UPDATE attendance t SET streak = r.new_streak \
+         FROM ranked r WHERE t.id = r.id AND t.streak <> r.new_streak",
+    )
+    .bind(body.user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DomainError::Internal(e.into()))?;
+    tx.commit()
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
     state
         .repo
         .audit(Some(auth.id), "attendance.makeup", Some(body.user_id))
