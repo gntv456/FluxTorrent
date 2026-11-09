@@ -233,25 +233,33 @@ async function TorrentTr({
               </span>
             )}
             {/* 用户标签徽标（0159 P1）：随行回显 ≤3 个 + 溢出计数，
-                消费字典样式列（与论坛 TagChip 同口径） */}
-            {(t.tags ?? []).slice(0, 3).map((b) => (
-              <span
-                key={b.id}
-                className="torrents-tag torrents-tag--user"
-                style={tagStyle(b)}
-              >
-                {b.name}
-              </span>
-            ))}
-            {(t.tags?.length ?? 0) > 3 && (
+                消费字典样式列（与论坛 TagChip 同口径）。
+                过滤 official 类（kind==='official'）：官种身份已由上方
+                t.official 的「官方」chip 单独表达，避免同一行重复显示
+                「官方」+「官种」两个官方类标记（2026-11-09）。 */}
+            {(t.tags ?? [])
+              .filter((b) => b.kind !== "official")
+              .slice(0, 3)
+              .map((b) => (
+                <span
+                  key={b.id}
+                  className="torrents-tag torrents-tag--user"
+                  style={tagStyle(b)}
+                >
+                  {b.name}
+                </span>
+              ))}
+            {(t.tags ?? []).filter((b) => b.kind !== "official").length >
+              3 && (
               <span
                 className="torrents-tag torrents-tag--user torrents-tag--more"
                 title={(t.tags ?? [])
+                  .filter((b) => b.kind !== "official")
                   .slice(3)
                   .map((b) => b.name)
                   .join(" / ")}
               >
-                +{t.tags!.length - 3}
+                +{(t.tags ?? []).filter((b) => b.kind !== "official").length - 3}
               </span>
             )}
           </span>
