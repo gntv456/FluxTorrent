@@ -12,9 +12,16 @@ import { ResubButton } from "@/components/home-resub-button";
  *  逐月签到标记走 GET /attendance/calendar?ym=YYYY-MM（翻到任意历史月都能看到
  *  当月签到，补签行也计入）；当月用 /attendance 的 recent 实时态。 */
 
-const AlmanacSection = dynamic(
+const AlmanacCalendar = dynamic(
   () =>
-    import("@/components/home-almanac-panel").then((m) => m.AlmanacSection),
+    import("@/components/home-almanac-panel").then((m) => m.AlmanacCalendar),
+  { ssr: false, loading: () => <p className="attendance-msg">…</p> },
+);
+const AlmanacDetailPanel = dynamic(
+  () =>
+    import("@/components/home-almanac-panel").then(
+      (m) => m.AlmanacDetailPanel,
+    ),
   { ssr: false, loading: () => <p className="attendance-msg">…</p> },
 );
 
@@ -112,12 +119,18 @@ export function CheckinPage() {
     <div className="checkin-page">
       <div className="checkin-page__summary">
         <div className="checkin-page__stat">
-          <strong>{status?.streak ?? 0}</strong>
-          <span>{t.streak}</span>
+          <span className="checkin-page__stat-ico" aria-hidden>🔥</span>
+          <div>
+            <strong>{status?.streak ?? 0}</strong>
+            <span>{t.streak}</span>
+          </div>
         </div>
         <div className="checkin-page__stat">
-          <strong>{totalDays}</strong>
-          <span>{t.totalDays}</span>
+          <span className="checkin-page__stat-ico" aria-hidden>📅</span>
+          <div>
+            <strong>{totalDays}</strong>
+            <span>{t.totalDays}</span>
+          </div>
         </div>
         <div className="checkin-page__actions">
           {status?.checked_today ? (
@@ -137,15 +150,23 @@ export function CheckinPage() {
       </div>
       {msg && <p className="attendance-msg">{msg}</p>}
       <div className="checkin-page__almanac">
-        <AlmanacSection
-          year={cursor.y}
-          month={cursor.m}
-          selected={picked}
-          today={today}
-          doneMap={doneMap}
-          onMonth={(y, m) => setCursor({ y, m })}
-          onPick={setPicked}
-        />
+        <div className="checkin-page__cal">
+          <AlmanacCalendar
+            year={cursor.y}
+            month={cursor.m}
+            selected={picked}
+            today={today}
+            doneMap={doneMap}
+            onMonth={(y, m) => setCursor({ y, m })}
+            onPick={setPicked}
+          />
+        </div>
+        <aside className="checkin-page__detail">
+          <h3 className="checkin-page__detail-title">
+            {picked} · 黄历
+          </h3>
+          <AlmanacDetailPanel date={picked} />
+        </aside>
       </div>
     </div>
   );

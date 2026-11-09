@@ -266,3 +266,27 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+
+/* 桌面签到页两栏：详情卡是独立卡片，去掉抽屉里用于分隔的顶边线；
+   日历卡内 alm-cal 的原窄屏内边距在宽屏收紧些。 */
+.checkin-page__detail .alm-detail {
+  border-top: 0;
+  padding-top: 0;
+}
+.checkin-page__cal .alm-cal {
+  padding: 0;
+}
+
+/* 桌面签到页：日历卡格子高度适中（宽卡里 7 列宽松好看，不强制收窄）。 */
+.checkin-page__cal .alm-cal__cell {
+  min-height: 54px;
+}
+
+.checkin-page__detail-title {
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft, var(--line));
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+}

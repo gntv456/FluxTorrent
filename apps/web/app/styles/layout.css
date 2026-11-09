@@ -1888,13 +1888,33 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .checkin-page__stat {
   display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.checkin-page__stat + .checkin-page__stat {
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+}
+.checkin-page__stat-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 19px;
+  background: var(--surface-sunken, rgba(0, 0, 0, 0.04));
+}
+.checkin-page__stat div {
+  display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 .checkin-page__stat strong {
   color: var(--text-strong);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
+  line-height: 1.1;
 }
 .checkin-page__stat span {
   color: var(--text-faint);
@@ -1907,9 +1927,28 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   margin-left: auto;
 }
 .checkin-page__almanac {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.checkin-page__cal,
+.checkin-page__detail {
   border-radius: var(--r-lg, 12px);
   border: 1px solid var(--line);
-  padding: 12px;
+  background: var(--surface-card, var(--panel, transparent));
+  padding: 14px 16px;
+  min-width: 0;
+}
+/* 宽屏：左日历 + 右农历明细两栏，页面更紧凑好看 */
+@media (min-width: 900px) {
+  .checkin-page__almanac {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+  .checkin-page__detail {
+    position: sticky;
+    top: 16px;
+  }
 }
 .attendance-card__nav {
   display: flex;
