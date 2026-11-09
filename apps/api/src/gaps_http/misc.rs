@@ -218,22 +218,25 @@ pub async fn resub_use(
     // 参与）：连续段内用 row_number 即当前段内序号。单用户行数有限，事务内一次
     // UPDATE 足够，且与重算口径逐行一致，避免前端展示与签到基线错位。
     sqlx::query(
+        // attendance 无 id 列（主键 (user_id, date)），按复合键关联更新。
         "WITH seg AS ( \
-             SELECT id, \
+             SELECT user_id, date, \
                     SUM(brk) OVER (PARTITION BY user_id ORDER BY date) AS grp \
              FROM ( \
-                 SELECT id, user_id, date, \
+                 SELECT user_id, date, \
                         CASE WHEN LAG(date) OVER (PARTITION BY user_id ORDER BY date) \
                                   = date - 1 THEN 0 ELSE 1 END AS brk \
                  FROM attendance WHERE user_id = $1 \
              ) b \
          ), \
          ranked AS ( \
-             SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, grp ORDER BY date)::int AS new_streak \
+             SELECT user_id, date, \
+                    ROW_NUMBER() OVER (PARTITION BY user_id, grp ORDER BY date)::int AS new_streak \
              FROM seg \
          ) \
          UPDATE attendance t SET streak = r.new_streak \
-         FROM ranked r WHERE t.id = r.id AND t.streak <> r.new_streak",
+         FROM ranked r \
+         WHERE t.user_id = r.user_id AND t.date = r.date AND t.streak <> r.new_streak",
     )
     .bind(auth.id)
     .execute(&mut *tx)

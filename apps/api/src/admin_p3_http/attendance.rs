@@ -137,21 +137,24 @@ async fn admin_attendance_makeup(
         return Err(DomainError::Validation("该用户当日已有签到记录".into()));
     }
     sqlx::query(
+        // attendance 无 id 列（主键 (user_id, date)），按复合键关联更新。
         "WITH seg AS ( \
-             SELECT id, SUM(brk) OVER (PARTITION BY user_id ORDER BY date) AS grp \
+             SELECT user_id, date, SUM(brk) OVER (PARTITION BY user_id ORDER BY date) AS grp \
              FROM ( \
-                 SELECT id, user_id, date, \
+                 SELECT user_id, date, \
                         CASE WHEN LAG(date) OVER (PARTITION BY user_id ORDER BY date) \
                                   = date - 1 THEN 0 ELSE 1 END AS brk \
                  FROM attendance WHERE user_id = $1 \
              ) b \
          ), \
          ranked AS ( \
-             SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, grp ORDER BY date)::int AS new_streak \
+             SELECT user_id, date, \
+                    ROW_NUMBER() OVER (PARTITION BY user_id, grp ORDER BY date)::int AS new_streak \
              FROM seg \
          ) \
          UPDATE attendance t SET streak = r.new_streak \
-         FROM ranked r WHERE t.id = r.id AND t.streak <> r.new_streak",
+         FROM ranked r \
+         WHERE t.user_id = r.user_id AND t.date = r.date AND t.streak <> r.new_streak",
     )
     .bind(body.user_id)
     .execute(&mut *tx)
