@@ -1,4 +1,6 @@
 //! 签到日历（按月翻月查询）——从 checkin.rs 按 300 行门禁拆出。
+//! 分层登记：本文件带 1 处 sqlx（layer_baseline 已收录）——存量拆件挪存，
+//! 非新增 SQL 面；净 SQL 化按维护节奏随 repo/ 层下沉后 --update 收缩。
 
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
