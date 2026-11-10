@@ -50,30 +50,33 @@ export function FunHistory({
                 </span>
               </div>
               <div className="funbox__acts">
-                {h.status === "banned" ? (
-                  <button
-                    type="button"
-                    className="cmgmt-act cmgmt-act--ok"
-                    onClick={() => setStatus(h.id, "normal")}
-                  >
-                    {t.restore}
-                  </button>
-                ) : (
+                {h.can_moderate &&
+                  (h.status === "banned" ? (
+                    <button
+                      type="button"
+                      className="cmgmt-act cmgmt-act--ok"
+                      onClick={() => setStatus(h.id, "normal")}
+                    >
+                      {t.restore}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="cmgmt-act cmgmt-act--danger"
+                      onClick={() => setStatus(h.id, "banned")}
+                    >
+                      {t.ban}
+                    </button>
+                  ))}
+                {(h.mine || h.can_moderate) && (
                   <button
                     type="button"
                     className="cmgmt-act cmgmt-act--danger"
-                    onClick={() => setStatus(h.id, "banned")}
+                    onClick={() => remove(h.id)}
                   >
-                    {t.ban}
+                    {t.delete}
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="cmgmt-act cmgmt-act--danger"
-                  onClick={() => remove(h.id)}
-                >
-                  {t.delete}
-                </button>
               </div>
             </li>
           ))}

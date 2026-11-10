@@ -24,6 +24,11 @@ export interface FunItem {
   fun_votes: number | null;
   dull_votes: number | null;
   my_vote: string | null;
+  /** 行级权限位（与写口守卫同尺）：编辑/删除 = mine || can_moderate，
+   *  禁止/恢复 = 仅 can_moderate。旧版按钮无条件渲染，普通用户点了才
+   *  吃 403，界面上演成「人人可操作」。 */
+  mine?: boolean;
+  can_moderate?: boolean;
 }
 
 /** 趣味盒前台（参考站 fun.php 复刻）：
@@ -242,20 +247,22 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
                   )}
                 </div>
                 <div className="funbox__acts">
-                  <button
-                    type="button"
-                    className="cmgmt-act"
-                    onClick={() =>
-                      setEditing({
-                        id: current.id,
-                        title: current.title,
-                        body: current.body ?? "",
-                      })
-                    }
-                  >
-                    {t.edit}
-                  </button>
-                  {current.status !== "banned" && (
+                  {(current.mine || current.can_moderate) && (
+                    <button
+                      type="button"
+                      className="cmgmt-act"
+                      onClick={() =>
+                        setEditing({
+                          id: current.id,
+                          title: current.title,
+                          body: current.body ?? "",
+                        })
+                      }
+                    >
+                      {t.edit}
+                    </button>
+                  )}
+                  {current.can_moderate && current.status !== "banned" && (
                     <button
                       type="button"
                       className="cmgmt-act cmgmt-act--danger"
@@ -264,13 +271,15 @@ export function FunBox({ embedded = false }: { embedded?: boolean }) {
                       {t.ban}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="cmgmt-act cmgmt-act--danger"
-                    onClick={() => remove(current.id)}
-                  >
-                    {t.delete}
-                  </button>
+                  {(current.mine || current.can_moderate) && (
+                    <button
+                      type="button"
+                      className="cmgmt-act cmgmt-act--danger"
+                      onClick={() => remove(current.id)}
+                    >
+                      {t.delete}
+                    </button>
+                  )}
                 </div>
               </footer>
             </>
