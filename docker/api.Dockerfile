@@ -1,4 +1,4 @@
-ARG BASE_REGISTRY=docker.1ms.run
+ARG BASE_REGISTRY=docker.io
 # cargo-chef 分层构建（六维强化方案 阶段三「构建提速」）：
 # planner 层产出 recipe.json（依赖清单指纹），cook 层只编依赖——
 # 改业务代码时 recipe 不变、依赖层直接命中缓存，不再全量重编译。

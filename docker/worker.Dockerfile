@@ -1,4 +1,4 @@
-ARG BASE_REGISTRY=docker.1ms.run
+ARG BASE_REGISTRY=docker.io
 # cargo-chef 分层构建（与 api.Dockerfile 同构；见该文件头注释）
 FROM ${BASE_REGISTRY}/library/rust:1.97-slim-bookworm AS chef
 WORKDIR /build

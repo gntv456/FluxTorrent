@@ -1,4 +1,4 @@
-ARG BASE_REGISTRY=docker.1ms.run
+ARG BASE_REGISTRY=docker.io
 # 默认走官方 npm registry：GitHub Actions 构建机在海外，官方源最稳；此前默认
 # npmmirror（国内镜像）在 CI 侧间歇性 500（corepack 拉 pnpm 本体失败 → pnpm
 # install 直接 exit 1，2026-11-09 连续两版 web 构建卡在此）。国内构建可传
