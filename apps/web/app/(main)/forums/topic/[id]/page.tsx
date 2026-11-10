@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPosts, getForums, getEmbedRules } from "@/lib/data";
 import { TopicModActions } from "@/components/forum-post-actions";
+import { TopicTitleEdit } from "@/components/forum-title-edit";
 import { ReplyBox } from "@/components/forum-reply-box";
 import { TypeBadge, TagChip, MarkBadge } from "@/components/forum-bits";
 import { Icon } from "@/components/icons";
@@ -120,6 +121,9 @@ export default async function TopicPage({
               favorites={detail.favorites ?? 0}
             />
             <ReportTopicButton topicId={topicId} />
+            {(detail.is_op || detail.can_mod) && (
+              <TopicTitleEdit topicId={topicId} initialTitle={detail.title} />
+            )}
           </>
         )}
       </div>

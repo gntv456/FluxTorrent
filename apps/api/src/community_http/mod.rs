@@ -68,6 +68,7 @@ mod tip;
 mod topic;
 mod topic_admin;
 mod topic_create;
+mod topic_title_edit;
 
 pub use artists::*;
 pub use bounty::*;
@@ -111,6 +112,7 @@ pub use tip::*;
 pub use topic::*;
 pub use topic_admin::*;
 pub use topic_create::*;
+pub use topic_title_edit::*;
 
 pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
     scope
@@ -158,6 +160,7 @@ pub fn mount_community(scope: actix_web::Scope) -> actix_web::Scope {
         .service(forum_search)
         .service(forum_recent)
         .service(topic_create)
+        .service(topic_title_edit)
         .service(topic_list)
         .service(topic_detail)
         .service(post_reply)

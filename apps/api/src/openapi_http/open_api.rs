@@ -108,6 +108,7 @@ use utoipa::OpenApi;
         crate::community_http::forum_tags_dict,
         crate::community_http::post_tip,
         crate::community_http::topic_create,
+        crate::community_http::topic_title_edit,
         crate::community_http::topic_manage_batch,
         crate::community_http::topic_delete,
         crate::community_http::topic_detail,
@@ -193,7 +194,6 @@ use utoipa::OpenApi;
     )
 )]
 pub(super) struct OpenApiOpen;
-
 /// 取本域路径表（serde_json 值），供 spec.rs::build() 合并。
 pub(super) fn paths() -> serde_json::Value {
     let doc = OpenApiOpen::openapi();
@@ -296,8 +296,8 @@ mod tests {
         // 0406/0409 批：+shoutbox_clear、+site_activity = 149
         // 0417（2026-10-24）：+DELETE /torrents/{id}/bookmark 对称口 = 150
         assert_eq!(
-            ops, 150,
-            "聚合应有 150 个操作（开放 17 + 种子 41 + 社区 92）"
+            ops, 151,
+            "聚合应有 151 个操作（开放 17 + 种子 41 + 社区 93）"
         );
     }
 }

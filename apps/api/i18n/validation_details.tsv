@@ -314,3 +314,4 @@ url 无效	url 無效	Invalid url
 该登记行已结算或已撤销，只能移除未结算的成员	該登記行已結算或已撤銷，只能移除未結算的成員	This roster row is settled or revoked; only unsettled members can be removed
 该登记行已结算或已撤销，无需再发	該登記行已結算或已撤銷，無需再發	This roster row is settled or revoked; no further payout is needed
 该考核记录已被收回	該考核記錄已被收回	This exam record has already been revoked
+标题最多 120 个字符	標題最多 120 個字元	The title cannot exceed 120 characters.

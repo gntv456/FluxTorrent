@@ -84,11 +84,12 @@ export const ANNOTATED_FILES = [
   "apps/api/src/community_http/topic.rs",
   "apps/api/src/community_http/topic_admin.rs",
   "apps/api/src/community_http/topic_create.rs",
+  "apps/api/src/community_http/topic_title_edit.rs",
 ];
 
 
 /**
- * 社区 85 条路由 ↔ #[utoipa::path] 注解对拍。
+ * 社区 93 条路由 ↔ #[utoipa::path] 注解对拍。
  *
  * 口径：route-manifest 里 file 落在 apps/api/src/community_http/ 的路由
  * 就是本域事实源；每一条都必须在某个 #[utoipa::path] 注解里出现。这样
@@ -103,9 +104,9 @@ export function checkCommunityCoverage(read, manifest) {
     r.file.startsWith("apps/api/src/community_http/"),
   );
   let fails = 0;
-  if (expected.length !== 92) {
+  if (expected.length !== 93) {
     console.log(
-      `FAIL  route-manifest 社区路由数为 ${expected.length}，预期 92` +
+      `FAIL  route-manifest 社区路由数为 ${expected.length}，预期 93` +
         `（新增社区路由请同步 open_api.rs 聚合并更新本判据）`,
     );
     fails++;
