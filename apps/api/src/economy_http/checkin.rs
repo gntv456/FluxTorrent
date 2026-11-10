@@ -229,16 +229,24 @@ async fn checkin_status(
     .unwrap_or(0);
     // 签到规则透出（2026-11-10）：签到页要展示「签一次得多少/里程碑哪天加送多少」，
     // 与 checkin 主流程同一套 CheckInParams（同键同回落），站长改配置页面即跟随。
+    // SQL 走 repo/settings::read_many（H 层零 SQL 棘轮：本次改动不得净增）。
+    let param_rows = crate::repo::settings::read_many(
+        &state.repo,
+        &[
+            "attendance_first",
+            "attendance_streak",
+            "attendance_daily_cap",
+            "attendance_continuous_day",
+            "attendance_continuous_value",
+        ],
+    )
+    .await
+    .unwrap_or_default();
     let params = crate::economy_checkin::CheckInParams::from_settings(
-        &sqlx::query_as::<_, (String, String)>(
-            "SELECT name, value FROM site_settings WHERE name IN \
-             ('attendance_first','attendance_streak', \
-              'attendance_daily_cap','attendance_continuous_day', \
-              'attendance_continuous_value')",
-        )
-        .fetch_all(&state.repo.db)
-        .await
-        .unwrap_or_default(),
+        &param_rows
+            .into_iter()
+            .map(|(k, v, _)| (k, v))
+            .collect::<Vec<_>>(),
     );
     Ok(ok(serde_json::json!({
         "checked_today": checked_today, "streak": current_streak,

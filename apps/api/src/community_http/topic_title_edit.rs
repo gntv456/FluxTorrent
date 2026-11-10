@@ -56,13 +56,10 @@ pub(crate) async fn topic_title_edit(
     // 发帖时标题与正文一起过闸；改标题是同一条绕过路径，必须同样过。
     check_banned_words(&state.repo.db, title).await?;
     let tid = path.into_inner();
-    let meta: Option<(Option<i64>, i64)> =
-        sqlx::query_as("SELECT user_id, forum_id FROM topics WHERE id = $1")
-            .bind(tid)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((op_id, fid)) = meta else {
+    let Some((op_id, fid)) =
+        crate::repo::community::topic_title_edit::topic_meta(&state.repo, tid)
+            .await?
+    else {
         return Err(DomainError::NotFound(tid));
     };
     let perm =
@@ -70,23 +67,15 @@ pub(crate) async fn topic_title_edit(
     if op_id != Some(auth.id) && !perm.can_mod {
         return Err(DomainError::Forbidden);
     }
-    sqlx::query("UPDATE topics SET title = $2 WHERE id = $1")
-        .bind(tid)
-        .bind(title)
-        .execute(&state.repo.db)
-        .await
-        .map_err(|e| DomainError::Internal(e.into()))?;
+    crate::repo::community::topic_title_edit::rename(&state.repo, tid, title)
+        .await?;
     // 版主改他人标题：自动 PM 通知楼主（与 post_edit 同口径）
     if let Some(uid) = op_id.filter(|u| *u != auth.id) {
-        let _ = sqlx::query(
-            "INSERT INTO messages (sender_id, receiver_id, \
-             subject, body) VALUES ($1, $2, $3, $4)",
+        crate::repo::community::topic_title_edit::notify_owner(
+            &state.repo,
+            auth.id,
+            uid,
         )
-        .bind(auth.id)
-        .bind(uid)
-        .bind("您的主题标题被编辑")
-        .bind("您的主题标题已被管理组成员编辑，请查看最新内容。")
-        .execute(&state.repo.db)
         .await;
     }
     state

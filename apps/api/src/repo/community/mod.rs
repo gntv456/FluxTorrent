@@ -16,4 +16,5 @@ pub mod forum_side;
 pub mod friends;
 pub mod matches;
 pub mod topic_delete;
+pub mod topic_title_edit;
 pub mod user_directory;
