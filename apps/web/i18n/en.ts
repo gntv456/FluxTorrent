@@ -1074,6 +1074,15 @@ const enBase: Omit<
     sparkShort: "points",
     totalShort: "Total",
     milestoneNext: "{day}-day milestone",
+    rulesTitle: "Check-in Rules",
+    rulesFirst: "First check-in: +{n} points",
+    rulesDaily: "Daily check-in: +{n} points",
+    rulesMilestone:
+      "Streak day {day} bonus: +{bonus} ({total} total that day)",
+    rulesCap: "Daily cap: {n} points",
+    rulesBreak:
+      "A missed day resets the streak; makeup cards (last 30 days) keep the streak alive but pay no reward",
+    rulesNextBadge: "Next: day {day}",
     mhomeNote:
       "Sign in daily for points; longer streaks earn more. {total} days total, {streak}-day streak. Missed days within the last 30 can be made up with a makeup card ({cards} held).",
     closeModal: "Close announcement",
@@ -2549,6 +2558,8 @@ const enBase: Omit<
     loadEarlier: "↑ Load earlier replies",
     uncategorized: "Uncategorized",
     postEditTitle: "Edit reply",
+    titleEdit: "Edit title",
+    titleEditEmpty: "Title cannot be empty",
     types: {
       bounty: "Bounty",
       poll: "Poll",

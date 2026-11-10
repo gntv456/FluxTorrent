@@ -979,6 +979,15 @@ const zhCnBase = {
     sparkShort: "魔力",
     totalShort: "累计",
     milestoneNext: "距 {day} 天里程碑",
+    rulesTitle: "签到规则",
+    rulesFirst: "首次签到 +{n} 魔力",
+    rulesDaily: "每日签到 +{n} 魔力",
+    rulesMilestone:
+      "连签 {day} 天当日加送 +{bonus}（当日合计 {total}）",
+    rulesCap: "单日封顶 {n} 魔力",
+    rulesBreak:
+      "中断后连签重新计算；漏签可用补签卡补近 30 天内的日期（补签不发当日奖励，但接续连签）",
+    rulesNextBadge: "下一档 {day} 天",
     mhomeNote:
       "每天签到领魔力，连签天数越多奖励越多。累计签到 {total} 天、连续 {streak} 天；漏签可选取近 30 天内的日期补签（补签卡 {cards} 张）。",
     closeModal: "关闭公告弹窗",
@@ -2490,6 +2499,8 @@ const zhCnBase = {
     loadEarlier: "↑ 加载更早的回复",
     uncategorized: "未分组",
     postEditTitle: "编辑回帖",
+    titleEdit: "编辑标题",
+    titleEditEmpty: "标题不能为空",
     types: {
       bounty: "悬赏",
       poll: "投票",

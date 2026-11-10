@@ -25,11 +25,22 @@ const AlmanacDetailPanel = dynamic(
   { ssr: false, loading: () => <p className="attendance-msg">…</p> },
 );
 
+interface AttendanceRules {
+  first: number;
+  streak: number;
+  daily_cap: number;
+  milestones: [number, number][];
+}
+
 interface AttendanceStatus {
   checked_today: boolean;
   streak: number;
   recent: [string, number, number][]; // [date, streak, reward]
   makeup_cards: number;
+  /** 签到规则（2026-11-10）：与签到主流程同一套 site_settings 参数，
+   *  站长改配置这里即跟随——旧版页面只字未提规则，用户连签 27 天
+   *  都以为每天固定 8 魔力是坏了（里程碑 10/20/30 天加送根本没人知道）。 */
+  rules?: AttendanceRules;
 }
 
 function todayStr(): string {
@@ -50,8 +61,13 @@ export function CheckinPage() {
   const [picked, setPicked] = useState(today);
   const [doneMap, setDoneMap] = useState<Record<string, number>>({});
   const [totalDays, setTotalDays] = useState(0);
+  // 规则卡高亮「下一档里程碑」用：以已展示的连签数为基线（签到成功会随 status 刷新）
+  const streakNow = status?.streak ?? 0;
 
-  // 状态（连签/累计/补签卡/今日是否已签）
+  // 状态（连签/累计/补签卡/今日是否已签）；失败静默但把已签态打捞回来——
+  // POST /checkin 撞幂等（1002「今天已经签到过啦」）说明库里今天已有行，
+  // 弱网下 GET 状态失败会让页面停留在「未签」初始态（SSR 直出 0/0），
+  // 用户看到的就是「已签到但日历未亮」（2026-11-10 线上报障）。
   const loadStatus = () => {
     api
       .get<AttendanceStatus & { total_days?: number }>("/api/v1/attendance")
@@ -118,7 +134,14 @@ export function CheckinPage() {
         setDoneMap((prev) => ({ ...prev, [today]: r.reward }));
       }
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : t.checkinFail);
+      // 撞幂等=库里已有今日行：视为已签成功，反查真实状态点亮日历
+      // （而不是让按钮回弹成可点——用户会反复点并一直看到「失败」）。
+      if (e instanceof ApiError && e.code === 1002) {
+        loadStatus();
+        setDoneMap((prev) => ({ ...prev, [today]: prev[today] ?? 0 }));
+      } else {
+        setMsg(e instanceof ApiError ? e.message : t.checkinFail);
+      }
     } finally {
       setBusy(false);
     }
@@ -158,6 +181,70 @@ export function CheckinPage() {
         </div>
       </div>
       {msg && <p className="attendance-msg">{msg}</p>}
+      {status?.rules ? (
+        <div className="checkin-page__rules">
+          <h4>{t.rulesTitle}</h4>
+          <ul>
+            <li>
+              {t.rulesFirst.replace(
+                "{n}",
+                String(status.rules.first),
+              )}
+            </li>
+            <li>
+              {t.rulesDaily.replace(
+                "{n}",
+                String(status.rules.streak),
+              )}
+            </li>
+            {(status.rules.milestones ?? [])
+              .slice()
+              .sort((a, b) => a[0] - b[0])
+              .map(([day, bonus]) => {
+                const total = Math.min(
+                  status.rules!.streak + bonus,
+                  status.rules!.daily_cap,
+                );
+                const isNext =
+                  day > streakNow &&
+                  day ===
+                    Math.min(
+                      ...(
+                        status.rules!.milestones.filter(
+                          ([d]) => d > streakNow,
+                        )
+                      ).map(([d]) => d),
+                    );
+                return (
+                  <li
+                    key={day}
+                    className={isNext ? "is-next" : undefined}
+                  >
+                    {isNext && (
+                      <span className="checkin-page__rules-next">
+                        {t.rulesNextBadge.replace(
+                          "{day}",
+                          String(day),
+                        )}
+                      </span>
+                    )}
+                    {t.rulesMilestone
+                      .replace("{day}", String(day))
+                      .replace("{bonus}", String(bonus))
+                      .replace("{total}", String(total))}
+                  </li>
+                );
+              })}
+            <li>
+              {t.rulesCap.replace(
+                "{n}",
+                String(status.rules.daily_cap),
+              )}
+            </li>
+            <li>{t.rulesBreak}</li>
+          </ul>
+        </div>
+      ) : null}
       <div className="checkin-page__almanac">
         <div className="checkin-page__cal">
           <AlmanacCalendar

@@ -1026,6 +1026,14 @@ const zhTwBase: Omit<
     sparkShort: "魔力",
     totalShort: "累計",
     milestoneNext: "距 {day} 天里程碑",
+    rulesTitle: "簽到規則",
+    rulesFirst: "首次簽到 +{n} 魔力",
+    rulesDaily: "每日簽到 +{n} 魔力",
+    rulesMilestone: "連簽 {day} 天當日加送 +{bonus}（當日合計 {total}）",
+    rulesCap: "單日封頂 {n} 魔力",
+    rulesBreak:
+      "中斷後連簽重新計算；漏簽可用補簽卡補近 30 天內的日期（補簽不發當日獎勵，但接續連簽）",
+    rulesNextBadge: "下一檔 {day} 天",
     mhomeNote:
       "每天簽到領魔力，連簽天數越多獎勵越多。累計簽到 {total} 天、連續 {streak} 天；漏簽可選取近 30 天內的日期補簽（補簽卡 {cards} 張）。",
     closeModal: "關閉公告彈窗",
@@ -2469,6 +2477,8 @@ const zhTwBase: Omit<
     loadEarlier: "↑ 載入更早的回覆",
     uncategorized: "未分組",
     postEditTitle: "編輯回覆",
+    titleEdit: "編輯標題",
+    titleEditEmpty: "標題不能為空",
     types: {
       bounty: "懸賞",
       poll: "投票",

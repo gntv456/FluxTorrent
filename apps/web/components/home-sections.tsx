@@ -111,6 +111,32 @@ export function HomeSections({
           .replace("{magic}", currency),
       );
       // 余额同步不在这里做：所有写口过 api-client 的统一广播（见 lib/spark-event）
+      // 乐观更新（2026-11-10）：签到行落库即成功，本地点亮日历与徽标——
+      // 弱网（CF↔源站间歇 stall）下 load() 挂起会让按钮回弹成「未签到」、
+      // 日历当日格不亮，用户以为签到失败重蹈今日已签仍显示未签的误报。
+      const today = new Date(Date.now() + 8 * 3600 * 1000)
+        .toISOString()
+        .slice(0, 10);
+      setData((prev) => {
+        if (!prev) return prev;
+        const a = prev.attendance as
+          | (HomeData["attendance"] & { off?: boolean })
+          | undefined;
+        if (!a || a.off || a.checked_today) return prev;
+        return {
+          ...prev,
+          attendance: {
+            ...a,
+            checked_today: true,
+            streak: r.streak,
+            total_days: (a.total_days ?? 0) + 1,
+            calendar: (a.calendar ?? []).map((d) =>
+              d.date === today ? { ...d, done: true, reward: r.reward } : d,
+            ),
+          },
+        };
+      });
+      // 后台对账刷新（失败不打扰——乐观态已在，下次进页自然校正）
       load();
     } catch {
       setCheckinMsg(t.checkinFail);

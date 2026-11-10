@@ -227,8 +227,26 @@ async fn checkin_status(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
+    // 签到规则透出（2026-11-10）：签到页要展示「签一次得多少/里程碑哪天加送多少」，
+    // 与 checkin 主流程同一套 CheckInParams（同键同回落），站长改配置页面即跟随。
+    let params = crate::economy_checkin::CheckInParams::from_settings(
+        &sqlx::query_as::<_, (String, String)>(
+            "SELECT name, value FROM site_settings WHERE name IN \
+             ('attendance_first','attendance_streak', \
+              'attendance_daily_cap','attendance_continuous_day', \
+              'attendance_continuous_value')",
+        )
+        .fetch_all(&state.repo.db)
+        .await
+        .unwrap_or_default(),
+    );
     Ok(ok(serde_json::json!({
         "checked_today": checked_today, "streak": current_streak,
         "recent": rows, "makeup_cards": makeup_cards,
+        "rules": {
+            "first": params.first, "streak": params.streak,
+            "daily_cap": params.daily_cap,
+            "milestones": params.milestones,
+        },
     })))
 }
