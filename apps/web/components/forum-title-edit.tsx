@@ -74,8 +74,8 @@ export function TopicTitleEdit({
               maxLength={120}
               autoFocus
               className="min-h-[44px] rounded-[var(--r-sm)] border
-                border-line bg-cloud px-3 text-sm outline-none
-                focus:border-sky"
+                border-line bg-[var(--cloud)] px-3 text-sm outline-none
+                focus:border-[var(--sky)]"
             />
           </label>
           {msg && (
@@ -85,7 +85,7 @@ export function TopicTitleEdit({
           )}
           <div className="flex gap-2">
             <button
-              className="min-h-[30px] rounded-full bg-sky px-3 text-xs
+              className="min-h-[30px] rounded-full bg-[var(--sky)] px-3 text-xs
                 font-bold text-[var(--text-on-accent)] disabled:opacity-50"
               disabled={busy}
               onClick={save}
