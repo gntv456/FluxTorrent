@@ -30,6 +30,29 @@ pub struct CheckInParams {
     pub milestones: Vec<(i64, i64)>,
 }
 
+impl CheckInParams {
+    /// 连签周期长度（站长口径 2026-11-10）：取里程碑最大档。满一个周期后
+    /// 次日从第 1 天重计，10/20/30 的加送循环可反复拿——30 天后永远 8 魔力
+    /// 的话，连签 400 天和 31 天拿得一样多，保连签只剩「怕断」没有奔头。
+    /// 站长改 `attendance_continuous_day` 加/减档，周期自动跟随，无独立键。
+    /// 空里程碑表回落 30（与缺省里程碑最大档一致）。
+    pub fn cycle_days(&self) -> i64 {
+        self.milestones.iter().map(|(d, _)| *d).max().unwrap_or(30)
+    }
+
+    /// 绝对连签数 → 周期内位置（1..=cycle）。存量超长连签（线上 1972 人
+    /// streak>30，最长 483）不回刷：483 天的人 `(483 % 30)=3`，当前周期
+    /// 走到第 3 天，下个加送档在第 10 天（绝对 490）。
+    pub fn cycle_pos(&self, streak: i64) -> i64 {
+        let c = self.cycle_days();
+        if c <= 0 {
+            return streak.max(1);
+        }
+        let pos = (streak - 1) % c + 1;
+        pos.max(1)
+    }
+}
+
 impl Default for CheckInParams {
     fn default() -> Self {
         Self {
@@ -86,6 +109,10 @@ impl CheckInParams {
 /// 签到奖励：首次 +first；连签每日 +streak（整日封顶 daily_cap）；
 /// 命中连签里程碑（`attendance_continuous_day`，缺省 10/20/30）当天
 /// 额外加送对应 value（缺省 200/500/1000）。
+///
+/// 周期制（2026-11-10）：里程碑按**周期内位置**判定而非绝对天数——满周期
+/// （最大档 30 天）后次日归位第 1 天，10/20/30 的加送循环可反复拿。
+/// `streak` 字段落库仍是绝对累计值（不破坏历史数据与展示口径）。
 pub fn checkin_reward(
     streak_after: i64,
     is_first_ever: bool,
@@ -96,11 +123,11 @@ pub fn checkin_reward(
     } else {
         params.streak
     };
-    // 连签额外奖励按里程碑判断（在达到该里程碑的当天发放）
+    // 连签额外奖励：按周期内位置命中里程碑（达到该档的当天发放，满周期循环）
     let streak_bonus = params
         .milestones
         .iter()
-        .find(|(day, _)| *day == streak_after)
+        .find(|(day, _)| *day == params.cycle_pos(streak_after))
         .map(|(_, bonus)| *bonus)
         .unwrap_or(0);
     let total = (base + streak_bonus).min(params.daily_cap);
@@ -143,115 +170,6 @@ pub fn shown_streak(
         _ => 0,
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn checkin_first_ever() {
-        let r = checkin_reward(1, true, &CheckInParams::default());
-        assert_eq!(r.total, 10);
-    }
-    #[test]
-    fn checkin_streak_milestones() {
-        let p = CheckInParams::default();
-        assert_eq!(checkin_reward(10, false, &p).total, 5 + 200);
-        assert_eq!(checkin_reward(20, false, &p).total, 5 + 500);
-        // 连签 30 天：5 + 1000 = 1005，但单日封顶 1000（旧站口径）
-        assert_eq!(checkin_reward(30, false, &p).total, 1000);
-        assert_eq!(checkin_reward(11, false, &p).total, 5); // 非里程碑日
-    }
-    #[test]
-    fn checkin_cap_1000() {
-        // 连签 30 天且首签叠加场景也不会超过封顶
-        let r = checkin_reward(30, true, &CheckInParams::default());
-        assert!(r.total <= 1000);
-    }
-    #[test]
-    fn checkin_params_come_from_settings() {
-        let rows = vec![
-            ("attendance_first".to_string(), "30".to_string()),
-            ("attendance_streak".to_string(), "8".to_string()),
-            ("attendance_daily_cap".to_string(), "500".to_string()),
-        ];
-        let p = CheckInParams::from_settings(&rows);
-        assert_eq!(checkin_reward(1, true, &p).total, 30);
-        assert_eq!(checkin_reward(11, false, &p).total, 8);
-        // 里程碑 200 + 每日 8 = 208 < 500 未触顶；30 天里程碑 1000 被日封顶截断
-        assert_eq!(checkin_reward(30, false, &p).total, 500);
-        // 脏值/缺键回落默认
-        let dirty = vec![("attendance_first".to_string(), "".to_string())];
-        assert_eq!(CheckInParams::from_settings(&dirty).first, 10);
-    }
-    #[test]
-    fn checkin_milestones_come_from_settings() {
-        let rows = vec![
-            ("attendance_continuous_day".to_string(), "2,5".to_string()),
-            (
-                "attendance_continuous_value".to_string(),
-                "50,150".to_string(),
-            ),
-        ];
-        let p = CheckInParams::from_settings(&rows);
-        // 第 2 天命中配置里的里程碑（默认 streak=5 + 50）
-        assert_eq!(checkin_reward(2, false, &p).total, 55);
-        // 内置的 10/20/30 让位给配置表
-        assert_eq!(checkin_reward(10, false, &p).streak_bonus, 0);
-        // 两边条数不齐 / 全脏 → 回落内置里程碑
-        let bad = vec![
-            ("attendance_continuous_day".to_string(), "10,20".to_string()),
-            ("attendance_continuous_value".to_string(), "200".to_string()),
-        ];
-        let q = CheckInParams::from_settings(&bad);
-        assert_eq!(checkin_reward(20, false, &q).streak_bonus, 500);
-    }
-    #[test]
-    fn streak_break_and_continue() {
-        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 8).unwrap();
-        let yesterday = today - chrono::Duration::days(1);
-        assert_eq!(next_streak(Some(yesterday), today), 2);
-        assert_eq!(
-            next_streak(Some(today - chrono::Duration::days(2)), today),
-            1
-        );
-        assert_eq!(next_streak(None, today), 1);
-    }
-    #[test]
-    fn shown_streak_decays_on_gap() {
-        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 8).unwrap();
-        let d = |n| Some((today - chrono::Duration::days(n), 12_i64));
-        // 今天已签 / 昨天签过：链条还活着，照原计数展示
-        assert_eq!(shown_streak(d(0), today), 12);
-        assert_eq!(shown_streak(d(1), today), 12);
-        // 断一天起必须归 0——旧写法把库里那个 12 原样端给首页和签到面板
-        assert_eq!(shown_streak(d(2), today), 0);
-        assert_eq!(shown_streak(d(30), today), 0);
-        assert_eq!(shown_streak(None, today), 0);
-        // 与签到主流程同一条边界（n=0 那档走不到：今日已签在落库前就被拒）。
-        // 展示 >0 的那天签到落 13，展示 =0 的那天签到落 1。
-        for n in 1..31 {
-            let prev = d(n);
-            let next = if (today - prev.unwrap().0).num_days() == 1 {
-                prev.unwrap().1 + 1
-            } else {
-                1
-            };
-            let alive = shown_streak(prev, today) > 0;
-            assert_eq!(next, if alive { 13 } else { 1 });
-        }
-    }
-
-    #[test]
-    fn makeup_row_continues_streak() {
-        // §9.3 修订：补签行参与续签。最后一条记录是**昨天的补签行**（历史重算已把
-        // 其 streak 填成真实连续值，如 user 10556 的 11-08 补签 streak=214），今天
-        // 签到应续到 215，而非被打回 1。
-        let today = chrono::NaiveDate::from_ymd_opt(2026, 11, 9).unwrap();
-        let yesterday = today - chrono::Duration::days(1);
-        // shown_streak 只看 (日期, streak)，补签行与普通行一视同仁：
-        // 昨天（补签）streak=214 → 展示仍活（214），今天签到 baseline 取 214 → 215。
-        assert_eq!(shown_streak(Some((yesterday, 214)), today), 214);
-        assert_eq!(shown_streak(Some((yesterday, 214)), today) + 1, 215);
-    }
-}
+#[path = "economy_checkin_tests.rs"]
+mod tests;

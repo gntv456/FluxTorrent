@@ -30,6 +30,12 @@ interface AttendanceRules {
   streak: number;
   daily_cap: number;
   milestones: [number, number][];
+  /** 周期制（2026-11-10）：满 cycle_days 次日归 1 重计，加送循环发。
+   *  cycle_pos=当前周期内位置；next_milestone_in_cycle=下一档在周期内的
+   *  天数（null=本周期已过最大档，下个周期第 10 天再来）。 */
+  cycle_days?: number;
+  cycle_pos?: number;
+  next_milestone_in_cycle?: number | null;
 }
 
 interface AttendanceStatus {
@@ -45,6 +51,74 @@ interface AttendanceStatus {
 
 function todayStr(): string {
   return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+/** 规则卡（拆出主组件，300 行门禁）：周期制口径——下一档按周期内位置判定。
+ *  streak=483 的人 cycle_pos=3，高亮的是「下一档 10 天」（本周期内），而不是
+ *  旧口径的「已过 30 无下一档」。 */
+function RulesCard({
+  rules,
+  streakNow,
+}: {
+  rules: AttendanceRules;
+  streakNow: number;
+}) {
+  const t = useI18n().dict.home2;
+  // 周期口径：后端给了 cycle_pos/next 就直接用；旧后端（缺字段）回落
+  // 绝对天数口径，保证灰度期两边都能渲染。
+  const cycle = rules.cycle_days;
+  const pos =
+    cycle && cycle > 0
+      ? (((Math.max(streakNow, 1) - 1) % cycle) + 1)
+      : undefined;
+  const nextDay =
+    rules.next_milestone_in_cycle ??
+    (rules.milestones ?? [])
+      .map(([d]) => d)
+      .filter((d) => d > (pos ?? streakNow))
+      .sort((a, b) => a - b)[0] ??
+    null;
+  return (
+    <div className="checkin-page__rules">
+      <h4>{t.rulesTitle}</h4>
+      <ul>
+        <li>{t.rulesFirst.replace("{n}", String(rules.first))}</li>
+        <li>{t.rulesDaily.replace("{n}", String(rules.streak))}</li>
+        {(rules.milestones ?? [])
+          .slice()
+          .sort((a, b) => a[0] - b[0])
+          .map(([day, bonus]) => {
+            const total = Math.min(
+              rules.streak + bonus,
+              rules.daily_cap,
+            );
+            const isNext = day === nextDay;
+            return (
+              <li key={day} className={isNext ? "is-next" : undefined}>
+                {isNext && (
+                  <span className="checkin-page__rules-next">
+                    {t.rulesNextBadge.replace("{day}", String(day))}
+                  </span>
+                )}
+                {t.rulesMilestone
+                  .replace("{day}", String(day))
+                  .replace("{bonus}", String(bonus))
+                  .replace("{total}", String(total))}
+              </li>
+            );
+          })}
+        <li>{t.rulesCap.replace("{n}", String(rules.daily_cap))}</li>
+        <li>{t.rulesBreak}</li>
+        {cycle ? (
+          <li>
+            {t.rulesCycle
+              .replace("{cycle}", String(cycle))
+              .replace("{pos}", String(pos ?? 1))}
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
 }
 
 export function CheckinPage() {
@@ -182,68 +256,7 @@ export function CheckinPage() {
       </div>
       {msg && <p className="attendance-msg">{msg}</p>}
       {status?.rules ? (
-        <div className="checkin-page__rules">
-          <h4>{t.rulesTitle}</h4>
-          <ul>
-            <li>
-              {t.rulesFirst.replace(
-                "{n}",
-                String(status.rules.first),
-              )}
-            </li>
-            <li>
-              {t.rulesDaily.replace(
-                "{n}",
-                String(status.rules.streak),
-              )}
-            </li>
-            {(status.rules.milestones ?? [])
-              .slice()
-              .sort((a, b) => a[0] - b[0])
-              .map(([day, bonus]) => {
-                const total = Math.min(
-                  status.rules!.streak + bonus,
-                  status.rules!.daily_cap,
-                );
-                const isNext =
-                  day > streakNow &&
-                  day ===
-                    Math.min(
-                      ...(
-                        status.rules!.milestones.filter(
-                          ([d]) => d > streakNow,
-                        )
-                      ).map(([d]) => d),
-                    );
-                return (
-                  <li
-                    key={day}
-                    className={isNext ? "is-next" : undefined}
-                  >
-                    {isNext && (
-                      <span className="checkin-page__rules-next">
-                        {t.rulesNextBadge.replace(
-                          "{day}",
-                          String(day),
-                        )}
-                      </span>
-                    )}
-                    {t.rulesMilestone
-                      .replace("{day}", String(day))
-                      .replace("{bonus}", String(bonus))
-                      .replace("{total}", String(total))}
-                  </li>
-                );
-              })}
-            <li>
-              {t.rulesCap.replace(
-                "{n}",
-                String(status.rules.daily_cap),
-              )}
-            </li>
-            <li>{t.rulesBreak}</li>
-          </ul>
-        </div>
+        <RulesCard rules={status.rules} streakNow={streakNow} />
       ) : null}
       <div className="checkin-page__almanac">
         <div className="checkin-page__cal">

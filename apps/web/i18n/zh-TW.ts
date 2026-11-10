@@ -1034,6 +1034,8 @@ const zhTwBase: Omit<
     rulesBreak:
       "中斷後連簽重新計算；漏簽可用補簽卡補近 30 天內的日期（補簽不發當日獎勵，但接續連簽）",
     rulesNextBadge: "下一檔 {day} 天",
+    rulesCycle:
+      "週期制：連簽滿 {cycle} 天後次日從第 1 天重新計算，里程碑加送每週期循環發放（當前週期第 {pos} 天）",
     mhomeNote:
       "每天簽到領魔力，連簽天數越多獎勵越多。累計簽到 {total} 天、連續 {streak} 天；漏簽可選取近 30 天內的日期補簽（補簽卡 {cards} 張）。",
     closeModal: "關閉公告彈窗",

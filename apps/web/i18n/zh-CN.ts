@@ -988,6 +988,8 @@ const zhCnBase = {
     rulesBreak:
       "中断后连签重新计算；漏签可用补签卡补近 30 天内的日期（补签不发当日奖励，但接续连签）",
     rulesNextBadge: "下一档 {day} 天",
+    rulesCycle:
+      "周期制：连签满 {cycle} 天后次日从第 1 天重新计算，里程碑加送每周期循环发放（当前周期第 {pos} 天）",
     mhomeNote:
       "每天签到领魔力，连签天数越多奖励越多。累计签到 {total} 天、连续 {streak} 天；漏签可选取近 30 天内的日期补签（补签卡 {cards} 张）。",
     closeModal: "关闭公告弹窗",

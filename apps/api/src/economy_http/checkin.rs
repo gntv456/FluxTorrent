@@ -248,6 +248,17 @@ async fn checkin_status(
             .map(|(k, v, _)| (k, v))
             .collect::<Vec<_>>(),
     );
+    // 周期视角（2026-11-10 循环制）：绝对连签 → 周期内位置与下一档。
+    // streak=483 的人 cycle_pos=3、next_at=10（绝对 490）——规则卡据此
+    // 显示「本周期第 3 天 · 下一档 10 天」，而不是永远停在「已过 30」。
+    let cycle = params.cycle_days();
+    let pos = params.cycle_pos(current_streak);
+    let next_in_cycle = params
+        .milestones
+        .iter()
+        .map(|(d, _)| *d)
+        .filter(|d| *d > pos)
+        .min();
     Ok(ok(serde_json::json!({
         "checked_today": checked_today, "streak": current_streak,
         "recent": rows, "makeup_cards": makeup_cards,
@@ -255,6 +266,10 @@ async fn checkin_status(
             "first": params.first, "streak": params.streak,
             "daily_cap": params.daily_cap,
             "milestones": params.milestones,
+            // 周期制：满 cycle_days 次日归 1 重计，加送循环发
+            "cycle_days": cycle,
+            "cycle_pos": pos,
+            "next_milestone_in_cycle": next_in_cycle,
         },
     })))
 }

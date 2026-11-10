@@ -1083,6 +1083,8 @@ const enBase: Omit<
     rulesBreak:
       "A missed day resets the streak; makeup cards (last 30 days) keep the streak alive but pay no reward",
     rulesNextBadge: "Next: day {day}",
+    rulesCycle:
+      "Cycles: after a full {cycle}-day streak the count restarts at day 1 and milestone bonuses recur every cycle (currently day {pos} of this cycle)",
     mhomeNote:
       "Sign in daily for points; longer streaks earn more. {total} days total, {streak}-day streak. Missed days within the last 30 can be made up with a makeup card ({cards} held).",
     closeModal: "Close announcement",

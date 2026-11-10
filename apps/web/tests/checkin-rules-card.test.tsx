@@ -32,6 +32,9 @@ vi.mock("@/lib/api-client", () => ({
             [20, 500],
             [30, 1000],
           ],
+          cycle_days: 30,
+          cycle_pos: 27,
+          next_milestone_in_cycle: 30,
         },
       };
     }),
@@ -55,6 +58,8 @@ vi.mock("@/i18n/client", () => ({
         rulesCap: "单日封顶 {n} 魔力",
         rulesBreak: "中断后连签重新计算",
         rulesNextBadge: "下一档 {day} 天",
+        rulesCycle:
+          "周期制：连签满 {cycle} 天后次日从第 1 天重新计算（当前周期第 {pos} 天）",
         yearMonth: "{y}年{m}月",
       },
       alm: {
@@ -113,5 +118,49 @@ describe("签到页规则卡", () => {
     // 10/20 已过，不标下一档
     expect(screen.queryByText("下一档 10 天")).toBeNull();
     expect(screen.queryByText("下一档 20 天")).toBeNull();
+  });
+  it("周期制：渲染周期说明行", async () => {
+    render(<CheckinPage />);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/连签满 30 天后次日从第 1 天重新计算/),
+      ).toBeTruthy(),
+    );
+    expect(screen.getByText(/当前周期第 27 天/)).toBeTruthy();
+  });
+  it("满周期者（streak=63→位置3）高亮的是下一周期第 10 天", async () => {
+    // 动态改 mock：cycle_pos=3, next=10（后端口径），前端必须高亮 10 而非 30
+    const { api } = await import("@/lib/api-client");
+    (api.get as ReturnType<typeof vi.fn>).mockImplementation(
+      async (url: string) => {
+        if (url.includes("/attendance/calendar")) {
+          return { ym: "2026-11", days: [] };
+        }
+        return {
+          checked_today: true,
+          streak: 63,
+          recent: [],
+          makeup_cards: 0,
+          rules: {
+            first: 15,
+            streak: 8,
+            daily_cap: 1000,
+            milestones: [
+              [10, 200],
+              [20, 500],
+              [30, 1000],
+            ],
+            cycle_days: 30,
+            cycle_pos: 3,
+            next_milestone_in_cycle: 10,
+          },
+        };
+      },
+    );
+    render(<CheckinPage />);
+    await waitFor(() =>
+      expect(screen.getByText("下一档 10 天")).toBeTruthy(),
+    );
+    expect(screen.getByText(/当前周期第 3 天/)).toBeTruthy();
   });
 });
