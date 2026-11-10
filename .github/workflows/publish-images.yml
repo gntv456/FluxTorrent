@@ -5,7 +5,8 @@
 # - geoip mmdb 不入仓库（.gitignore），CI 构建的 api 镜像内无 GeoLite2 文件 → GeoIP 功能静默降级（字段为 null），
 #   与本地构建行为一致（apps/api/src/geo.rs 缺失时降级）。
 # - arm64 跨平台构建（QEMU）对 Rust release 编译慢，故 arm64 拆到独立 job 用原生二级缓存串行构建，
-#   amd64 主矩阵保持不变（v0.2.0 起双平台）。
+#   amd64 主矩阵保持不变（v0.2.0 起双平台）。arm64 只对正式版跑（*-dev.* 测试 tag 跳过：
+#   自有服务器均为 x86_64，dev 镜像 arm64 无人消费，却把发布拖长 25 分钟+）。
 # - web 镜像的 NEXT_PUBLIC_API_URL 在 CI 构建时为空（默认同源 /api 反代），部署时经反代路径转发即可。
 # - Docker Hub 镜像同步（0276）：配置 secrets.DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 后，
 #   各服务多推一份 docker.io/<user>/fluxtorrent-<name>（Docker Hub 公开拉取计数，部署规模可观测）；
@@ -79,8 +80,10 @@ jobs:
 
   # arm64 追加 job（v0.2.0）：QEMU 慢但在可接受范围（cache-from 复用 amd64 层无效时全量编译）。
   # 失败不阻断 amd64 发布（continue-on-error 由 needs 关系天然保证：manifest 合并 job 单独放行）。
+  # dev 测试 tag（*-dev.*）跳过：自有服务器均为 x86_64，arm64 无人消费纯耗时间。
   arm64-native:
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, '-dev.') }}
     permissions:
       contents: read
       packages: write
