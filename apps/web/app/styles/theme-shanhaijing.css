@@ -384,7 +384,8 @@
   background: var(--shj-nav-bg);
   border-right: 1px solid var(--border-deep);
   box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
-  transition: width 0.25s var(--ease-out, ease);
+  /* 动效令牌（D5 棘轮）：侧栏收展 250ms 归 --motion-normal 档 */
+  transition: width var(--motion-normal) var(--ease-out, ease);
 }
 /* 宣纸档侧栏/浮层投影压浅（暗色投影在宣纸上是一堵黑边） */
 [data-theme="shanhaijing-light"] .shj-atlas,

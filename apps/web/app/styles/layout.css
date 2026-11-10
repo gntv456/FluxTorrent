@@ -74,7 +74,8 @@
   height: 2px;
   background: var(--sky);
   transform: scaleX(0);
-  transition: transform 0.16s ease;
+  /* 动效令牌（D5 棘轮，2026-11-09 级联下拉重构净增处迁令牌） */
+  transition: transform var(--motion-fast) ease;
 }
 .mainmenu-link:hover,
 .mainmenu-link[aria-expanded="true"] {

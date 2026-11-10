@@ -120,9 +120,11 @@
   visibility: hidden;
   transform: translateY(6px);
   pointer-events: none;
+  /* 动效令牌（D5 棘轮）：140ms 展开取 --motion-fast 档并吃到
+     reduced-motion 全局降级，不再散落裸时长 */
   transition:
-    opacity .14s ease,
-    transform .14s ease;
+    opacity var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
 }
 /* 叶子面板：无子级可裁，安全内滚动（资源库 17 行 / 教育长列表） */
 .nd-list--scroll {
@@ -195,7 +197,7 @@
   font-weight: 600;
   text-align: left;
   text-decoration: none;
-  transition: background .12s ease;
+  transition: background var(--motion-fast) ease;
 }
 .nd-row:hover { background: var(--nvc-hover); }
 /* 当前 hover 链上的父行保持高亮（视觉连续：知道自己在哪条链上） */
