@@ -292,7 +292,9 @@ def plugin():
     module, mod_name = _load_plugin_module(
         PLUGIN_DIR, "flux_crossseed_under_test")
     return types.SimpleNamespace(
-        FLUX_SITE_NAME=module.FLUX_SITE_NAME,
+        FLUX_SITE_NAME=module.FLUX_SITE_NAMES[0],
+        FLUX_SITE_NAMES=module.FLUX_SITE_NAMES,
+        FLUX_TOKEN_PREFIX=module.FLUX_TOKEN_PREFIX,
         CrossSeedHelper=module.CrossSeedHelper,
         CSSiteConfig=module.CSSiteConfig,
         TorInfo=module.TorInfo,
@@ -311,7 +313,9 @@ def plugin_v1():
     module, mod_name = _load_plugin_module(
         PLUGIN_DIR_V1, "flux_crossseed_v1_under_test")
     return types.SimpleNamespace(
-        FLUX_SITE_NAME=module.FLUX_SITE_NAME,
+        FLUX_SITE_NAME=module.FLUX_SITE_NAMES[0],
+        FLUX_SITE_NAMES=module.FLUX_SITE_NAMES,
+        FLUX_TOKEN_PREFIX=module.FLUX_TOKEN_PREFIX,
         CrossSeedHelper=module.CrossSeedHelper,
         CSSiteConfig=module.CSSiteConfig,
         TorInfo=module.TorInfo,

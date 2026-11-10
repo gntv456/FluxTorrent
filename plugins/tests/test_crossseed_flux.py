@@ -116,6 +116,50 @@ def test_is_flux_matches_exact_name(env):
     assert env.CSSiteConfig(name="").is_flux is False
 
 
+def test_hxpt_site_name_is_recognised(env):
+    """好学已迁移到 FluxTorrent 架构，站点名命中白名单。
+
+    两者对外契约完全一致（同一套 `/api/v1/crossseed/*` 开放 API），
+    故走同一条适配路径。
+    """
+    site = env.CSSiteConfig(
+        name="好学", url="https://www.hxpt.org", passkey="fxo_token")
+    assert site.is_flux is True
+    assert site.get_api_url() == \
+        "https://www.hxpt.org/api/v1/crossseed/lookup"
+    assert site.get_torrent_url("9") == \
+        "https://www.hxpt.org/api/v1/crossseed/dl/9"
+
+
+def test_fxo_credential_detects_flux_architecture(env):
+    """自定义站点名任意填时，凭据形态仍能正确分派。
+
+    MoviePilot 的自定义站点名可以随便填，只靠站点名会漏判；`fxo_` 开放
+    API 令牌只有 FluxTorrent 架构会签发，故凭据形态是可靠的第二判据。
+    """
+    site = env.CSSiteConfig(
+        name="我的站", url="https://pt.example.com", passkey="fxo_abc")
+    assert site.is_flux is True
+    assert site.get_api_url() == \
+        "https://pt.example.com/api/v1/crossseed/lookup"
+    assert site.get_torrent_url("1") == \
+        "https://pt.example.com/api/v1/crossseed/dl/1"
+
+
+def test_non_flux_site_with_non_flux_credential_stays_upstream(env):
+    """非白名单站点名 + 非 `fxo_` 凭据 ⇒ 不走 Flux 分派。"""
+    site = env.CSSiteConfig(
+        name="青蛙", url="https://pt.example.org/", passkey="np_passkey")
+    assert site.is_flux is False
+    assert site.get_api_url() == "https://pt.example.org/api/pieces-hash"
+
+
+def test_flux_token_prefix_constant(env):
+    """令牌前缀常量必须是站点实际签发的形态。"""
+    assert env.FLUX_TOKEN_PREFIX == "fxo_"
+    assert env.FLUX_SITE_NAMES == ("FluxTorrent", "好学")
+
+
 # ============ 响应解析 ============
 
 

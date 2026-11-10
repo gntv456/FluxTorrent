@@ -1,44 +1,46 @@
 diff --git a/package.json b/package.json
-index b38e2b4..5eb8b96 100644
+index b38e2b4..f17d2f8 100644
 --- a/package.json
 +++ b/package.json
-@@ -366,11 +366,12 @@
+@@ -366,11 +366,13 @@
      "name": "青蛙辅种助手",
      "description": "参考ReseedPuppy和IYUU辅种插件实现自动辅种，支持站点：青蛙、AGSVPT、麒麟、UBits、聆音、憨憨等。",
      "labels": "做种",
 -    "version": "2.4.1",
-+    "version": "2.4.2",
++    "version": "2.4.3",
      "icon": "qingwa.png",
      "author": "233@qingwa",
      "level": 2,
      "history": {
++      "v2.4.3": "FluxTorrent 站点适配扩展：新增「好学」站点名支持（好学已由 NexusPHP 迁移到 FluxTorrent 架构，对外契约一致），并支持按凭据形态（fxo_ 前缀）自动判别架构——自定义站点名任意填写时不再漏判",
 +      "v2.4.2": "新增 FluxTorrent 站点适配：站点名精确为 FluxTorrent 时改用站点原生开放 API（/api/v1/crossseed/lookup + /api/v1/crossseed/dl/{id}，凭据走 Authorization 头），其余站点行为不变",
        "v2.4.1": "限制辅种缓存大小并重置运行期校验队列，避免长期运行缓存无限增长",
        "v2.4": "支持qbittorrent 5",
        "v2.2": "站点停用后会同步暂停对该站点的辅种",
 diff --git a/package.v2.json b/package.v2.json
-index c40c340..946f0fd 100644
+index c40c340..4247541 100644
 --- a/package.v2.json
 +++ b/package.v2.json
-@@ -461,11 +461,12 @@
+@@ -461,11 +461,13 @@
      "name": "青蛙辅种助手",
      "description": "参考ReseedPuppy和IYUU辅种插件实现自动辅种，支持站点：青蛙、AGSVPT、麒麟、UBits、聆音、憨憨等。",
      "labels": "做种",
 -    "version": "3.0.3",
-+    "version": "3.0.4",
++    "version": "3.0.5",
      "icon": "qingwa.png",
      "author": "233@qingwa",
      "level": 2,
      "history": {
++      "v3.0.5": "FluxTorrent 站点适配扩展：新增「好学」站点名支持（好学已由 NexusPHP 迁移到 FluxTorrent 架构，对外契约一致），并支持按凭据形态（fxo_ 前缀）自动判别架构——自定义站点名任意填写时不再漏判",
 +      "v3.0.4": "新增 FluxTorrent 站点适配：站点名精确为 FluxTorrent 时改用站点原生开放 API（/api/v1/crossseed/lookup + /api/v1/crossseed/dl/{id}，凭据走 Authorization 头），其余站点行为不变",
        "v3.0.3": "限制辅种缓存大小并重置运行期校验队列，避免长期运行缓存无限增长",
        "v3.0.2": "更新依赖库",
        "v3.0.1": "遗漏了一个私有属性",
 diff --git a/plugins.v2/crossseed/__init__.py b/plugins.v2/crossseed/__init__.py
-index 7b6ef0e..2833f5e 100644
+index 7b6ef0e..990eef5 100644
 --- a/plugins.v2/crossseed/__init__.py
 +++ b/plugins.v2/crossseed/__init__.py
-@@ -23,13 +23,37 @@ from app.log import logger
+@@ -23,13 +23,45 @@ from app.log import logger
  from app.plugins import _PluginBase
  from app.schemas import NotificationType, ServiceInfo
  from app.schemas.types import EventType
@@ -47,10 +49,18 @@ index 7b6ef0e..2833f5e 100644
  from app.utils.timer import TimerUtils
  
  
-+# FluxTorrent 站点在 MoviePilot 站点列表里的**精确名称**。
-+# 站点名是上游唯一的分派依据（上游对「憨憨」也是这么做的），
-+# 所以这个名字必须与站点列表里填的一致，大小写敏感。
-+FLUX_SITE_NAME = "FluxTorrent"
++# FluxTorrent 架构站点在 MoviePilot 站点列表里的**精确名称**。
++# 站点名是上游主要的分派依据（上游对「憨憨」也是这么做的），
++# 所以这些名字必须与站点列表里填的一致，大小写敏感。
++#   - "FluxTorrent"：自建的 FluxTorrent 站
++#   - "好学"：好学（hxpt.org）已由 NexusPHP 整体迁移到 FluxTorrent 架构，
++#     对外契约与 FluxTorrent 完全一致，故复用同一条适配路径
++FLUX_SITE_NAMES = ("FluxTorrent", "好学")
++
++# FluxTorrent 开放 API 令牌前缀（站点【开放API】页签签发，形如 fxo_<uuid>）。
++# 该前缀只有 FluxTorrent 架构的站点会签发，故也能用来判别架构：自定义站点
++# 的名字可以任意填，只靠站点名会漏判，凭据形态则不会。
++FLUX_TOKEN_PREFIX = "fxo_"
 +
 +
  class CSSiteConfig(object):
@@ -76,14 +86,23 @@ index 7b6ef0e..2833f5e 100644
      """
  
      def __init__(
-@@ -52,12 +76,21 @@ class CSSiteConfig(object):
+@@ -52,12 +84,30 @@ class CSSiteConfig(object):
          self.proxy = proxy
          self.query_gap = query_gap
  
 +    @property
 +    def is_flux(self) -> bool:
-+        """是否 FluxTorrent 站点（站点名精确匹配）。"""
-+        return (self.name or "").strip() == FLUX_SITE_NAME
++        """是否 FluxTorrent 架构站点。
++
++        两条判据任一成立即认为是：
++
++        1. 站点名精确命中白名单（``FLUX_SITE_NAMES``）；
++        2. 凭据是 FluxTorrent 开放 API 令牌（``fxo_`` 前缀）——自定义站点名
++           可任意填写，只靠站点名会漏判，凭据形态则不会。
++        """
++        if (self.name or "").strip() in FLUX_SITE_NAMES:
++            return True
++        return (self.passkey or "").strip().startswith(FLUX_TOKEN_PREFIX)
 +
      def get_api_url(self):
 +        if self.is_flux:
@@ -98,7 +117,7 @@ index 7b6ef0e..2833f5e 100644
          return f"{self.url}download.php?id={torrent_id}&passkey={self.passkey}"
  
  
-@@ -150,6 +183,11 @@ class CrossSeedHelper(object):
+@@ -150,6 +200,11 @@ class CrossSeedHelper(object):
          }
          data = {"passkey": site.passkey, "pieces_hash": pieces_hash_set}
          remote_torrent_infos = []
@@ -110,7 +129,7 @@ index 7b6ef0e..2833f5e 100644
          try:
              response = requests.post(
                  site.get_api_url(),
-@@ -160,7 +198,10 @@ class CrossSeedHelper(object):
+@@ -160,7 +215,10 @@ class CrossSeedHelper(object):
              )
              response.raise_for_status()
              rsp_body = response.json()
@@ -122,7 +141,7 @@ index 7b6ef0e..2833f5e 100644
                  for pieces_hash, torrent_id in rsp_body["data"].items():
                      remote_torrent_infos.append(
                          TorInfo.remote(site.name, pieces_hash, torrent_id)
-@@ -170,6 +211,50 @@ class CrossSeedHelper(object):
+@@ -170,6 +228,50 @@ class CrossSeedHelper(object):
              return None, f"站点{site.name}请求失败：{e}"
          return remote_torrent_infos, None
  
@@ -173,27 +192,27 @@ index 7b6ef0e..2833f5e 100644
  
  class CrossSeed(_PluginBase):
      # 插件名称
-@@ -179,7 +264,7 @@ class CrossSeed(_PluginBase):
+@@ -179,7 +281,7 @@ class CrossSeed(_PluginBase):
      # 插件图标
      plugin_icon = "qingwa.png"
      # 插件版本
 -    plugin_version = "3.0.3"
-+    plugin_version = "3.0.4"
++    plugin_version = "3.0.5"
      # 插件作者
      plugin_author = "233@qingwa"
      # 作者主页
-@@ -703,7 +788,9 @@ class CrossSeed(_PluginBase):
+@@ -703,7 +805,9 @@ class CrossSeed(_PluginBase):
                                              'text': '1. 定时任务周期建议每次辅种间隔时间大于1天，不填写每天上午2点到7点随机辅种一次； '
                                                      '2. 支持辅种站点列表：青蛙、AGSVPT、红豆饭、麒麟、UBits、聆音等，配置passkey时，站点名称需严格和上面选项一致，只有选中的站点会辅种，passkey可保存多个； '
                                                      '3. 请勿与IYUU辅种插件同时添加相同站点，可能会有冲突，且意义不大；'
 -                                                    '4. 测试站点是否支持的方法：【站点域名/api/pieces-hash】接口访问返回405则大概率支持 '
 +                                                    '4. 测试站点是否支持的方法：【站点域名/api/pieces-hash】接口访问返回405则大概率支持；'
-+                                                    '5. FluxTorrent 站点（站点名须精确为 FluxTorrent）：配置格式 FluxTorrent:fxo_开头的开放API令牌，'
++                                                    '5. FluxTorrent 架构站点（FluxTorrent / 好学）：配置格式 站点名:fxo_开头的开放API令牌，'
 +                                                    '令牌需在站点【开放API】页签签发并勾选 crossseed 权限，注意这里填的不是 Tracker passkey； '
                                          }
                                      }
                                  ]
-@@ -1079,7 +1166,44 @@ class CrossSeed(_PluginBase):
+@@ -1079,7 +1183,44 @@ class CrossSeed(_PluginBase):
          logger.info(f"下载器 {service.name} 辅种完成")
  
      @staticmethod
@@ -239,7 +258,7 @@ index 7b6ef0e..2833f5e 100644
                     save_path: str) -> Optional[str]:
          """
          添加下载任务
-@@ -1132,12 +1256,20 @@ class CrossSeed(_PluginBase):
+@@ -1132,12 +1273,20 @@ class CrossSeed(_PluginBase):
          # 下载种子
          torrent_url = site_config.get_torrent_url(tor.torrent_id)
  
@@ -267,10 +286,10 @@ index 7b6ef0e..2833f5e 100644
          # 兼容种子无法访问的情况
          if not content or (isinstance(content, bytes) and "你没有该权限".encode(encoding="utf-8") in content):
 diff --git a/plugins/crossseed/__init__.py b/plugins/crossseed/__init__.py
-index 78a591e..3e765a1 100644
+index 78a591e..20f20b9 100644
 --- a/plugins/crossseed/__init__.py
 +++ b/plugins/crossseed/__init__.py
-@@ -24,13 +24,37 @@ from app.modules.transmission import Transmission
+@@ -24,13 +24,45 @@ from app.modules.transmission import Transmission
  from app.plugins import _PluginBase
  from app.schemas import NotificationType
  from app.schemas.types import EventType
@@ -279,10 +298,18 @@ index 78a591e..3e765a1 100644
  from app.utils.timer import TimerUtils
  
  
-+# FluxTorrent 站点在 MoviePilot 站点列表里的**精确名称**。
-+# 站点名是上游唯一的分派依据（上游对「憨憨」也是这么做的），
-+# 所以这个名字必须与站点列表里填的一致，大小写敏感。
-+FLUX_SITE_NAME = "FluxTorrent"
++# FluxTorrent 架构站点在 MoviePilot 站点列表里的**精确名称**。
++# 站点名是上游主要的分派依据（上游对「憨憨」也是这么做的），
++# 所以这些名字必须与站点列表里填的一致，大小写敏感。
++#   - "FluxTorrent"：自建的 FluxTorrent 站
++#   - "好学"：好学（hxpt.org）已由 NexusPHP 整体迁移到 FluxTorrent 架构，
++#     对外契约与 FluxTorrent 完全一致，故复用同一条适配路径
++FLUX_SITE_NAMES = ("FluxTorrent", "好学")
++
++# FluxTorrent 开放 API 令牌前缀（站点【开放API】页签签发，形如 fxo_<uuid>）。
++# 该前缀只有 FluxTorrent 架构的站点会签发，故也能用来判别架构：自定义站点
++# 的名字可以任意填，只靠站点名会漏判，凭据形态则不会。
++FLUX_TOKEN_PREFIX = "fxo_"
 +
 +
  class CSSiteConfig(object):
@@ -308,14 +335,23 @@ index 78a591e..3e765a1 100644
      """
  
      def __init__(
-@@ -53,12 +77,21 @@ class CSSiteConfig(object):
+@@ -53,12 +85,30 @@ class CSSiteConfig(object):
          self.proxy = proxy
          self.query_gap = query_gap
  
 +    @property
 +    def is_flux(self) -> bool:
-+        """是否 FluxTorrent 站点（站点名精确匹配）。"""
-+        return (self.name or "").strip() == FLUX_SITE_NAME
++        """是否 FluxTorrent 架构站点。
++
++        两条判据任一成立即认为是：
++
++        1. 站点名精确命中白名单（``FLUX_SITE_NAMES``）；
++        2. 凭据是 FluxTorrent 开放 API 令牌（``fxo_`` 前缀）——自定义站点名
++           可任意填写，只靠站点名会漏判，凭据形态则不会。
++        """
++        if (self.name or "").strip() in FLUX_SITE_NAMES:
++            return True
++        return (self.passkey or "").strip().startswith(FLUX_TOKEN_PREFIX)
 +
      def get_api_url(self):
 +        if self.is_flux:
@@ -330,7 +366,7 @@ index 78a591e..3e765a1 100644
          return f"{self.url}download.php?id={torrent_id}&passkey={self.passkey}"
  
  
-@@ -151,6 +184,11 @@ class CrossSeedHelper(object):
+@@ -151,6 +201,11 @@ class CrossSeedHelper(object):
          }
          data = {"passkey": site.passkey, "pieces_hash": pieces_hash_set}
          remote_torrent_infos = []
@@ -342,7 +378,7 @@ index 78a591e..3e765a1 100644
          try:
              response = requests.post(
                  site.get_api_url(),
-@@ -161,7 +199,10 @@ class CrossSeedHelper(object):
+@@ -161,7 +216,10 @@ class CrossSeedHelper(object):
              )
              response.raise_for_status()
              rsp_body = response.json()
@@ -354,7 +390,7 @@ index 78a591e..3e765a1 100644
                  for pieces_hash, torrent_id in rsp_body["data"].items():
                      remote_torrent_infos.append(
                          TorInfo.remote(site.name, pieces_hash, torrent_id)
-@@ -171,6 +212,50 @@ class CrossSeedHelper(object):
+@@ -171,6 +229,50 @@ class CrossSeedHelper(object):
              return None, f"站点{site.name}请求失败：{e}"
          return remote_torrent_infos, None
  
@@ -405,27 +441,27 @@ index 78a591e..3e765a1 100644
  
  class CrossSeed(_PluginBase):
      # 插件名称
-@@ -180,7 +265,7 @@ class CrossSeed(_PluginBase):
+@@ -180,7 +282,7 @@ class CrossSeed(_PluginBase):
      # 插件图标
      plugin_icon = "qingwa.png"
      # 插件版本
 -    plugin_version = "2.4.1"
-+    plugin_version = "2.4.2"
++    plugin_version = "2.4.3"
      # 插件作者
      plugin_author = "233@qingwa"
      # 作者主页
-@@ -688,7 +773,9 @@ class CrossSeed(_PluginBase):
+@@ -688,7 +790,9 @@ class CrossSeed(_PluginBase):
                                              'text': '1. 定时任务周期建议每次辅种间隔时间大于1天，不填写每天上午2点到7点随机辅种一次； '
                                                      '2. 支持辅种站点列表：青蛙、AGSVPT、红豆饭、麒麟、UBits、聆音等，配置passkey时，站点名称需严格和上面选项一致，只有选中的站点会辅种，passkey可保存多个； '
                                                      '3. 请勿与IYUU辅种插件同时添加相同站点，可能会有冲突，且意义不大；'
 -                                                    '4. 测试站点是否支持的方法：【站点域名/api/pieces-hash】接口访问返回405则大概率支持 '
 +                                                    '4. 测试站点是否支持的方法：【站点域名/api/pieces-hash】接口访问返回405则大概率支持；'
-+                                                    '5. FluxTorrent 站点（站点名须精确为 FluxTorrent）：配置格式 FluxTorrent:fxo_开头的开放API令牌，'
++                                                    '5. FluxTorrent 架构站点（FluxTorrent / 好学）：配置格式 站点名:fxo_开头的开放API令牌，'
 +                                                    '令牌需在站点【开放API】页签签发并勾选 crossseed 权限，注意这里填的不是 Tracker passkey； '
                                          }
                                      }
                                  ]
-@@ -1061,7 +1148,44 @@ class CrossSeed(_PluginBase):
+@@ -1061,7 +1165,44 @@ class CrossSeed(_PluginBase):
  
          logger.info(f"下载器 {downloader} 辅种完成")
  
@@ -471,7 +507,7 @@ index 78a591e..3e765a1 100644
                     save_path: str) -> Optional[str]:
          """
          添加下载任务
-@@ -1113,12 +1237,20 @@ class CrossSeed(_PluginBase):
+@@ -1113,12 +1254,20 @@ class CrossSeed(_PluginBase):
          # 下载种子
          torrent_url = site_config.get_torrent_url(tor.torrent_id)
  
