@@ -18,7 +18,13 @@
   flex-direction: column;
   gap: 12px;
 }
+/* 两翼滚动跟随（2026-11-11 对齐修复：右列原有 sticky 而左列没有——
+   滚动时右侧跟随、左侧定住，体验割裂）。align-self: flex-start 必须：
+   grid 子项默认 stretch 拉满整列高度，元素与列同高时 sticky 无位移
+   空间（永不触发）；收缩到内容高后 sticky 才有跟随余量。 */
+.fh-left,
 .fh-side {
+  align-self: flex-start;
   position: sticky;
   top: 12px;
 }
