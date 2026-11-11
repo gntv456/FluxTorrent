@@ -34,11 +34,11 @@ const STATS_CLS =
   "text-[11.5px] text-sub";
 // 海报墙（0427 流式列 → 2026-11-11 改自适应网格）：旧版硬编码 1/6 宽
 // （宽屏每格 220px+，显著大于聚合瀑布墙的 auto-fill 132px——「不聚合时
-// 卡片太大」）。改与 works.css .wk-wall 同口径的 auto-fill 网格：窄卡
-// 110px、宽屏自然排 8-10 列，密度随视口自适应，与聚合视图视觉一致。
+// 卡片太大」）。110px 首版被反馈「太密」——对齐聚合瀑布墙 .wk-wall 的
+// 同款密度：minmax(132px) + gap 12px，两视图视觉一致。
 const WALL_CLS =
-  "grid list-none gap-2.5 p-0 " +
-  "grid-cols-[repeat(auto-fill,minmax(110px,1fr))]";
+  "grid list-none gap-3 p-0 " +
+  "grid-cols-[repeat(auto-fill,minmax(132px,1fr))]";
 const WALL_LI_CLS = "min-w-0";
 const WALL_ITEM_CLS =
   "group relative block overflow-hidden rounded-xl border border-line " +
@@ -280,7 +280,7 @@ export function TorrentPosters({
               <Cover
                 t={t}
                 className="absolute inset-0 h-full w-full"
-                sizes="(max-width: 639px) 30vw, 150px"
+                sizes="(max-width: 639px) 30vw, 180px"
                 colors={colors}
               />
             </span>
