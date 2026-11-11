@@ -28,6 +28,11 @@ ARG API_SERVER_URL=http://api:8080
 ENV API_SERVER_URL=$API_SERVER_URL
 WORKDIR /build/apps/web
 RUN pnpm exec next build
+# postbuild 产物（public/i18n/dict-chunks.json 等构建期生成、gitignore 不入库）
+# 必须在 builder 里显式重跑一次：pnpm exec next build 会触发 package.json
+# 的 postbuild 脚本，但 CI 缓存/环境差异下仍显式保证清单存在——layout 的
+# 字典 chunk preload 依赖它（缺失时静默退化，不阻断）。
+RUN node ../../scripts/gen-dict-chunks.mjs || true
 
 FROM ${BASE_REGISTRY}/library/node:24-slim AS runner
 WORKDIR /app
