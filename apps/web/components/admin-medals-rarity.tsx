@@ -244,6 +244,8 @@ export function MedalImagePreview({ src }: { src?: string | null }) {
     <img
       src={url}
       alt={at.imgAlt}
+      loading="lazy"
+      decoding="async"
       className="h-10 w-10 rounded-[var(--r-sm)] border border-line bg-cloud object-cover"
       onError={() => setErr(true)}
     />

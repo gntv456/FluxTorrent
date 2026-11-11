@@ -95,6 +95,8 @@ function frameNode(f: Frame, key: string): ReactNode {
           key={key}
           src={u}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="my-1 max-w-full rounded-[var(--r-sm)]"
         />
       ) : (

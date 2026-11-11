@@ -9,6 +9,7 @@ import {
   THEME_STORAGE_KEY,
   parseChoice,
   resolveTheme,
+  syncThemeCss,
   themeNameKey,
   type ThemeChoice,
   type ThemeId,
@@ -133,6 +134,7 @@ export function ThemeToggle({
     const onChange = () => {
       const t = resolveTheme("auto");
       document.documentElement.dataset.theme = t;
+      syncThemeCss(t);
       applyChromeColor(t);
     };
     mq.addEventListener?.("change", onChange);
@@ -147,6 +149,7 @@ export function ThemeToggle({
     root.classList.add("theme-anim");
     const theme = resolveTheme(next);
     root.dataset.theme = theme;
+    syncThemeCss(theme);
     window.setTimeout(() => root.classList.remove("theme-anim"), 320);
     applyChromeColor(theme);
     persist(next);

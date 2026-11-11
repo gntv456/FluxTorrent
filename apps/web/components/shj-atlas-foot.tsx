@@ -42,6 +42,8 @@ export function ShjAtlasFoot({
               <img
                 src={summary.avatarUrl}
                 alt=""
+                loading="lazy"
+                decoding="async"
                 onError={() => setAvaFailed(true)}
               />
             ) : (

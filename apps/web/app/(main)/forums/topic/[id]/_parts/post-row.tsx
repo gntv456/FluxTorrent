@@ -78,6 +78,8 @@ export function PostRow({
                 <img
                   src={p.avatar_url}
                   alt={p.username ?? ""}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               ) : p.username ? (
@@ -225,6 +227,8 @@ export function PostRow({
                     <img
                       src={r.avatar_url}
                       alt={r.username ?? ""}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover"
                     />
                   ) : (

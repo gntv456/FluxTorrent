@@ -63,7 +63,7 @@ export function ForumUserCardBlock({
         <span className="fh-user__av">
           {me.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={me.avatar_url} alt="" />
+            <img src={me.avatar_url} alt="" loading="lazy" decoding="async" />
           ) : (
             me.username.slice(0, 1).toUpperCase()
           )}

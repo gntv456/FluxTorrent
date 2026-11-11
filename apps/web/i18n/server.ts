@@ -55,11 +55,11 @@ export async function getLocale(): Promise<Locale> {
 
 /** 站点档案里与「文案」有关的三项（0082 货币名 + 0205 术语规则 + 0146 字幕区显示名）：
  *  一次 getSiteProfile 拿全，别为几个字段各打一次。 */
-async function getSiteWords(): Promise<{
+const getSiteWords = cache(async (): Promise<{
   currency: string;
   terms: TermRule[];
   subtitleLabel: string | null;
-}> {
+}> => {
   try {
     const p = await getSiteProfile();
     return {
@@ -77,7 +77,18 @@ async function getSiteWords(): Promise<{
     // 站点档案不可用时全站仍需可用：默认货币名 + 不改写
     return { currency: "魔力", terms: [], subtitleLabel: null };
   }
-}
+});
+
+/** 术语改写规则全集（0205 站长规则 + 0146 字幕区改名），cache() 一次请求共用。
+ *  2026-11-11 第二轮瘦身：layout 把它以 prop 下发给 LocaleProvider——客户端
+ *  dict-impl 对懒加载的原始字典跑同一条 applyTerms，保证水合前后逐字一致
+ *  （RSC 文案与客户端文案的术语口径不打架）。 */
+export const getAllTerms = cache(async (): Promise<TermRule[]> => {
+  const { terms, subtitleLabel } = await getSiteWords();
+  return subtitleLabel
+    ? [...terms, ...subtitleRules(subtitleLabel)]
+    : terms;
+});
 
 /**
  * 取当前语言的字典。**术语表（0205 / 四审 L7）与字幕区显示名（0146/0208）
@@ -89,12 +100,8 @@ async function getSiteWords(): Promise<{
 export const getDict = cache(
   async (): Promise<{ dict: Dict; locale: Locale; currency: string }> => {
     const locale = await getLocale();
-    const { currency, terms, subtitleLabel } = await getSiteWords();
-    // 字幕区改名规则与站长术语规则合并（G9：复合词保护随规则一起注入，
-    // 长词优先保证「字幕组 / 字幕人」不被拆成生造词）
-    const allTerms = subtitleLabel
-      ? [...terms, ...subtitleRules(subtitleLabel)]
-      : terms;
+    const { currency } = await getSiteWords();
+    const allTerms = await getAllTerms();
     return { dict: applyTerms(DICTS[locale], allTerms), locale, currency };
   },
 );

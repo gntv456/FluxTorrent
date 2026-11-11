@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "gen:theme-css": "node ../../scripts/gen-theme-css.mjs",
+    "prebuild": "node ../../scripts/gen-theme-css.mjs",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint .",

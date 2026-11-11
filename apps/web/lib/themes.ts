@@ -78,3 +78,50 @@ export function resolveTheme(choice: ThemeChoice): ThemeId {
     window.matchMedia("(prefers-color-scheme: dark)").matches;
   return themeIdByScheme(dark ? "dark" : "light");
 }
+
+/* ---- 山海经主题 CSS 按需注入（2026-11-11 瘦身批）----------------------
+ * 字体（184 条 @font-face）与主题令牌只服务山海经两档，已移出 globals.css
+ * 全局链，改为运行时注入 public/theme-css/ 下的拷贝件（scripts/gen-theme-css.mjs
+ * 生成，文件名带内容 hash → 天然强缓存）。消费同一口径的三处：layout 的
+ * ThemeNoFlash 内联脚本（ES5 等价实现，见其注释）、theme-toggle 的 pick()、
+ * auto 档跟随系统的重解析。 */
+
+/** <link> 的查找标记（注入/移除都按它找，不碰其他 stylesheet） */
+export const THEME_CSS_ATTR = "data-theme-css";
+
+/** 山海经两份 CSS 的 URL（构建期 gen-theme-css.mjs 落 manifest；themeCssLinks
+ *  的消费方——内联 no-flash 脚本与 syncThemeCss——都从这两条短字符串取值。
+ *  文件名变化即内容 hash 变化，无缓存漂移窗口） */
+import themeCssManifestJson from "../public/theme-css/manifest.json";
+
+export const themeCssManifest = themeCssManifestJson as {
+  fonts: string;
+  theme: string;
+};
+
+const SHJ_LINKS = [themeCssManifest.fonts, themeCssManifest.theme];
+
+/** 主题 id → 需要注入的额外 CSS（空 = 无） */
+export function themeCssLinks(theme: ThemeId): string[] {
+  return theme.startsWith("shanhaijing") ? SHJ_LINKS : [];
+}
+
+/** 浏览器侧同步注入/移除山海经 <link>（幂等；SSR 侧 no-op）。 */
+export function syncThemeCss(theme: ThemeId): void {
+  if (typeof document === "undefined") return;
+  const want = themeCssLinks(theme);
+  const links = Array.from(
+    document.querySelectorAll(`link[${THEME_CSS_ATTR}]`),
+  ) as HTMLLinkElement[];
+  for (const href of want) {
+    if (links.some((l) => l.getAttribute("href") === href)) continue;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.setAttribute(THEME_CSS_ATTR, "");
+    document.head.appendChild(link);
+  }
+  for (const l of links) {
+    if (!want.includes(l.getAttribute("href") ?? "")) l.remove();
+  }
+}

@@ -1,0 +1,1845 @@
+/* ===== FluxTorrent · 山海经「岩彩长卷」主题 · 令牌层（甲） =====
+   产出范围（严格）：
+     ✅ 色彩 / 表面 / 文本 / 边框 / 状态 / 圆角 / 阴影 / 半透明派生层
+     ✅ --compat-* 兼容层跟随（30+ 组件零改动换肤）
+     ✅ --focus-ring / --focus-ring-soft 金环（base.css P2-6 口径）
+     ✅ --mood-* 画布氛围色暗底等效色（岩彩化：石青/石绿/朱砂/金）
+     ✅ --fhue-* / --fbadge-* 论坛色板暗底等效色
+     ✅ --tide-* 桥接：tide P2 结构类（.btn-primary / .tide-tab 等）写在
+        全局作用域、直接引用 --tide-* 变量；本主题必须给出等效值，
+        否则这些类在山海经下变量未定义、样式静默失效
+     ✅ 字体栈（Ma Shan Zheng 题字 / Noto Serif SC 正文 / ZCOOL XiaoWei 签条）
+     ❌ 不含任何结构层改造（侧栏 / 竹简表 / 印章化 / 竖排）→ 乙
+
+   机制：挂在 globals.css @import 链末（motion-tide.css 之后），与
+   base.css / theme-tide.css 的 [data-theme] 块同特异性、后出现者胜。
+   本文件只写 `[data-theme="shanhaijing"]` 族作用域，绝不用 :root 兜底——
+   三套既有主题（brand / brand-night / tide 覆盖层）逐像素不受影响。
+
+   2026-11-04 亮色档「山海经·宣纸」（shanhaijing-light）：绢本设色变体。
+   结构层（乙）与暗色档共用——全部选择器双匹配两档 id；差异只体现在
+   令牌：亮档块声明在暗档之后（同特异性、后者胜），把表面五阶换成宣纸
+   米白系、文本换墨色系、岩彩四正色压深一档进文字位。
+
+   与设计文档壹章映射表的偏差（全部为暗底 AA 校准，沿 brand-night W-40 惯例）：
+     · --sky-deep 文档给深档 #2c7a64，暗底作文字仅 2.2:1 → 取亮档 #63c9aa
+     · --danger / --coral 文档给朱砂原色 #d0442a（正文 2.9:1 不达标）
+       → 取亮朱 #e2705a（6.2:1）/ 浅朱 #e88d7a（6.7:1），文档「正文用亮档」
+       禁忌的落实；朱砂原色保留在 soft 底与印章（乙）里
+     · --indigo 文档给石青原色 #2e7a8c（3.6:1 仅大字可用）
+       → 取石青亮档 #5cb3c7（8.0:1），与 --candy / --info 归并同色
+   ============================================================ */
+
+[data-theme="shanhaijing"],
+[data-theme="shanhaijing-light"] {
+  color-scheme: dark;
+
+  /* ===== 四正色（岩彩） ===== */
+  --sky: #3fae8f; /* 石绿 · 主交互 */
+  --sky-deep: #63c9aa; /* 石绿亮档（暗底文字位，见头注） */
+  --sky-soft: rgba(63, 174, 143, 0.14);
+  --indigo: #5cb3c7; /* 石青亮档 · 次品牌 */
+  --indigo-soft: rgba(46, 122, 140, 0.16);
+  --sun: #d3a13f; /* 金 · 促销 FREE/2X */
+  --sun-soft: rgba(211, 161, 63, 0.12);
+  --coral: #e88d7a; /* 浅朱 · 危险亮档 */
+  --coral-soft: rgba(208, 68, 42, 0.14);
+  --mint: #3fae8f; /* 石绿归并（与主交互同色） */
+  --mint-soft: rgba(63, 174, 143, 0.14);
+  --candy: #5cb3c7; /* 石青亮 · 在线/进行中 */
+  --candy-soft: rgba(92, 179, 199, 0.14);
+
+  /* ===== 中性（--ink/--sub/--line/--cream 在 base.css 是别名，自动跟随） ===== */
+  --cloud: #101914;
+
+  /* ===== 渐变：金箔题字渐层 + 岩彩四色带 ===== */
+  --grad-aurora: linear-gradient(180deg, #f0d795, #d3a13f 60%, #8a6a1c);
+  --grad-rainbow: linear-gradient(90deg, #d3a13f, #e2705a, #3fae8f, #5cb3c7);
+  --ribbon: var(--grad-rainbow);
+  --brand-glow: #d3a13f;
+  --brand-soft: var(--indigo-soft);
+
+  /* ===== 表面：玄墨五阶（带青绿微染，禁纯灰） ===== */
+  --surface-page: #0a0f0d; /* 玄 */
+  --surface-cloud: #101914; /* 墨 */
+  --surface-card: #15211a; /* 皂 */
+  --surface-raised: #22362b; /* 黛 */
+  --surface-hover: #1a2a21; /* 苍 */
+  --surface-sunken: #101914;
+  --surface-cream: #1c2a21;
+  --head-a: #1a2a21;
+  --head-b: #15211a;
+
+  /* ===== 文本：宣纸五阶（实测对比度见交付说明，全档 ≥ AA） ===== */
+  --text-strong: #f4eedd; /* 16.7:1 */
+  --text-heading: #ece4cf; /* 13.1:1 */
+  --text-body: #d9d2ba; /* 11.0:1 */
+  --text-body-deep: #cfc8b1; /* 9.9:1 */
+  --text-brand: #63c9aa; /* 石绿亮 · 链接 9.6:1 */
+  --text-muted: #b7c0ad; /* 10.3:1 */
+  --text-faint: #9aa697; /* 5.1:1（玻璃面板合成底） */
+  --text-fainter: #8f9a8d; /* 4.56:1（玻璃面板合成底，11.5px 辅助字底线） */
+  --text-on-accent: #101914; /* 深字压亮钮（石绿底上 6.5:1） */
+
+  /* ===== 实心主操作 / Hero（P1-1）=====
+     --sky-deep #63c9aa 是「暗底文字位」，作按钮底白字只有 2.01；
+     语义底色沿用石绿亮档，字色切深（6.5:1）。Hero 金箔只做描边与
+     分隔，大面积文字底换成玄墨→黛绿渐变，白纸字 10.8:1。 */
+  --accent-surface: var(--sky-deep);
+  --accent-surface-strong: var(--sky);
+  --accent-on: var(--text-on-accent);
+  --hero-bg: linear-gradient(135deg, #14261d 0%, #1b3a2b 55%, #102018 100%);
+  --hero-on: var(--text-strong);
+  --hero-on-muted: rgba(244, 238, 221, 0.78);
+  --hero-on-line: rgba(244, 238, 221, 0.16);
+  --hero-on-soft: rgba(244, 238, 221, 0.1);
+
+  /* ===== 边框：金线三档 ===== */
+  --border-soft: rgba(211, 161, 63, 0.13);
+  --line-soft: rgba(211, 161, 63, 0.09);
+  --border-deep: rgba(211, 161, 63, 0.26);
+  --border-strong: rgba(211, 161, 63, 0.45);
+
+  /* ===== 状态：四态归四正色（danger/coral 取亮档，见头注） ===== */
+  --success: #3fae8f;
+  --success-bright: #63c9aa;
+  --success-soft: rgba(63, 174, 143, 0.14);
+  --success-border: rgba(63, 174, 143, 0.38);
+  --warning: #d3a13f;
+  --warning-soft: rgba(211, 161, 63, 0.12);
+  --warning-border: rgba(211, 161, 63, 0.38);
+  --danger: #e2705a;
+  --danger-soft: rgba(208, 68, 42, 0.14);
+  --danger-border: rgba(224, 112, 90, 0.4);
+  /* 文本位单独提亮（朱砂原色在深底仅 4.23:1）：
+     5.16:1 @ 面板 rgb(32,52,41)、7.52:1 @ 页面底；适用正文/小字（≤18.66px 常规字重）。
+     实心危险底（--danger #e2705a）+ 白字仍原样，改动文本位不影响实心底对比。 */
+  --danger-text: #ec8574;
+  --info: #5cb3c7;
+  --muted-soft: #1a2a21;
+  --accent-purple: #6fb2c2;
+
+  /* ===== 圆角：更方，近简牍 ===== */
+  --r-xl: 16px;
+  --r-lg: 10px;
+  --r-md: 6px;
+  --r-sm: 4px;
+
+  /* ===== 阴影：深黑投影 + hover 微量金晕 ===== */
+  --shadow-card:
+    0 2px 6px rgba(0, 0, 0, 0.3), 0 14px 34px -12px rgba(0, 0, 0, 0.55);
+  --shadow-hover:
+    0 6px 14px rgba(0, 0, 0, 0.4), 0 24px 48px -14px rgba(0, 0, 0, 0.65),
+    0 0 30px rgba(211, 161, 63, 0.1);
+
+  /* ===== 半透明派生层（深色等效） ===== */
+  --row-veil: rgba(21, 33, 26, 0.94);
+  --row-veil-soft: rgba(26, 42, 33, 0.84);
+  --row-veil-mist: rgba(26, 42, 33, 0.72);
+  --chip-veil: rgba(26, 42, 33, 0.9);
+  --chip-veil-thin: rgba(26, 42, 33, 0.66);
+  --label-veil: rgba(26, 42, 33, 0.45);
+  --label-veil-deep: rgba(26, 42, 33, 0.78);
+  --hairline: rgba(211, 161, 63, 0.18);
+  --hairline-soft: rgba(211, 161, 63, 0.1);
+  --hairline-strong: rgba(211, 161, 63, 0.28);
+
+  /* ===== 焦点环：金环（base.css P2-6 归口口径） ===== */
+  --focus-ring: #d3a13f;
+  --focus-ring-soft: rgba(211, 161, 63, 0.28);
+
+  /* ===== 派生 ===== */
+  --on-accent-glass: rgba(10, 15, 13, 0.22);
+  --brand-glow-veil: rgba(211, 161, 63, 0.1);
+  --accent-shadow: rgba(211, 161, 63, 0.28);
+  --accent-shadow-soft: rgba(211, 161, 63, 0.18);
+  --accent-rule: rgba(211, 161, 63, 0.5);
+  --overlay-scrim: rgba(3, 7, 5, 0.62);
+
+  /* ===== 补齐：原主题未定义槽位（同 tide P1 口径） ===== */
+  --text-sub: var(--text-muted);
+  --brand-coral: var(--danger);
+  --brand-sub: var(--text-muted);
+
+  /* ===== 促销行高亮：石绿淡底 / 金淡底 ===== */
+  --promo-free-bg: #122019;
+  --promo-x2-bg: #2a2113;
+
+  /* ===== 兼容层：--compat-* → 山海经语义（30+ 组件零改动） ===== */
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: rgba(211, 161, 63, 0.26);
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #63c9aa;
+  --compat-orange-dark: #8fd4bd;
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+
+  /* ===== mood-* 画布氛围色：暗底岩彩等效色 ===== */
+  --mood-bright: #f4eedd; /* 宣纸白，星点/鱼眼/灯珠 */
+  --mood-dark: #0a0f0d;
+  /* 星夜钓场 → 玄青夜塘 */
+  --mood-pond-sky-a: #0a1410;
+  --mood-pond-sky-b: #14231c;
+  --mood-pond-water-a: #1d4a42;
+  --mood-pond-water-b: #122f28;
+  --mood-pond-moon-a: #f7ebc0;
+  --mood-pond-moon-b: #d3a13f;
+  --mood-weed-deep: #2c7a64;
+  --mood-weed: #3fae8f;
+  --mood-fish-blue: #5cb3c7;
+  --mood-fish-blue-deep: #3d8a9c;
+  --mood-fish-orange: #dd835a;
+  --mood-fish-orange-deep: #c86f45;
+  --mood-fish-orange-stripe: #b86238;
+  --mood-fish-far: #7fa8b8;
+  --mood-fish-far-deep: #6b93a3;
+  --mood-fish-tiny: #bfb88f;
+  --mood-fish-tiny-deep: #a8a178;
+  --mood-bobber: #d0442a;
+  /* 大转盘 → 金毂石青面 */
+  --mood-wheel-gold-a: #e9c979;
+  --mood-wheel-gold-b: #f0d795;
+  --mood-wheel-violet-a: #a89cc8;
+  --mood-wheel-violet-b: #bcb0d6;
+  --mood-wheel-blue-a: #6fa8b8;
+  --mood-wheel-blue-b: #8abcc9;
+  --mood-wheel-mist-a: #dfe3d0;
+  --mood-wheel-mist-b: #ecefe0;
+  --mood-wheel-rim-a: #d3a13f;
+  --mood-wheel-rim-b: #8a6a1c;
+  --mood-wheel-hub-a: #f0d795;
+  --mood-wheel-hub-b: #c9a45f;
+  --mood-wheel-face-a: #f4eedd;
+  --mood-wheel-face-b: #e9e2cc;
+  --mood-wheel-face-c: #d9d2ba;
+  --mood-wheel-hub-shadow: rgba(138, 106, 28, 0.35);
+  --mood-wheel-lamp: #f0d795;
+  --mood-wheel-text-gold: #6b4a1a;
+  --mood-wheel-text-ink: #274236;
+  /* 扭蛋机 → 岩彩稀有度 */
+  --mood-egg-coral: #e2705a;
+  --mood-egg-mint: #63c9aa;
+  --mood-egg-amber: #d3a13f;
+  --mood-egg-pink: #c9a0c8;
+  --mood-egg-gray: #7d8698;
+  --mood-tier-gold: #d3a13f;
+  --mood-tier-violet: #a08ac8;
+  --mood-tier-blue: #5cb3c7;
+  --mood-tier-gray: #8b93a6;
+
+  /* ===== 论坛 hue 轮换 + 版块徽章：暗底等效色 ===== */
+  --fhue-sky: #5cb3c7;
+  --fhue-mint: #3fae8f;
+  --fhue-sun: #d3a13f;
+  --fhue-indigo: #6fb2c2;
+  --fhue-candy: #f0d795;
+  --fhue-coral: #e2705a;
+  --fbadge-sky-bg: rgba(92, 179, 199, 0.15);
+  --fbadge-sky-fg: #8acadd;
+  --fbadge-mint-bg: rgba(63, 174, 143, 0.16);
+  --fbadge-mint-fg: #7fd4b8;
+  --fbadge-sun-bg: rgba(211, 161, 63, 0.16);
+  --fbadge-sun-fg: #e8c06a;
+  --fbadge-indigo-bg: rgba(46, 122, 140, 0.2);
+  --fbadge-indigo-fg: #8fc4d0;
+  --fbadge-candy-bg: rgba(240, 215, 149, 0.12);
+  --fbadge-candy-fg: #f0d795;
+  --fbadge-coral-bg: rgba(208, 68, 42, 0.16);
+  --fbadge-coral-fg: #eba18f;
+
+  /* ===== --tide-* 桥接（见文件头注：全局 tide 结构类的变量供给） =====
+     取值口径：tide-deep 在 .tide-tab/.tide-pager 里作文字色 → 取亮档；
+     tide-sea 是 .btn-primary 实心底、组件内联 color:#fff 字面量 →
+     必须压得足够深（白字 5.2:1 过 AA），hover 的 surf 同理。 */
+  --tide-abyss: #060a08;
+  --tide-deep: #63c9aa;
+  --tide-sea: #2c7a64;
+  --tide-surf: #2e7a64;
+  --tide-foam: #8fd4bd;
+  --tide-mist: #1d3028;
+  --tide-haze: #142019;
+  --tide-signal: #5cb3c7;
+  --tide-up: #e2705a;
+  --tide-down: #63c9aa;
+  --tide-grid: rgba(63, 174, 143, 0.09);
+  --tide-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --tide-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ===== 字体栈（P5 同款分层；字库自托管见 fonts-shanhaijing.css） =====
+     题字 Ma Shan Zheng 仅大字标题（--font-display 消费点均 ≥20px）；
+     正文/按钮/表格统一 Noto Serif SC；签条层 ZCOOL XiaoWei 供乙结构层用，
+     本层先注册令牌不强制消费。 */
+  --font-display:
+    "Ma Shan Zheng", "Noto Serif SC", "Songti SC", "Source Han Serif SC",
+    "SimSun", serif;
+  --font-serif:
+    "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun", serif;
+  --font-body:
+    "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun",
+    "PingFang SC", "Microsoft YaHei", serif;
+  --font-wei: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", serif;
+}
+
+/* ===== 选中态 / 滚动条（作用域内，同 tide 2.12 手法） ===== */
+[data-theme="shanhaijing"] ::selection,
+[data-theme="shanhaijing-light"] ::selection {
+  background: rgba(208, 68, 42, 0.55);
+  color: #f4eedd;
+}
+[data-theme="shanhaijing"] ::-webkit-scrollbar-thumb,
+[data-theme="shanhaijing-light"] ::-webkit-scrollbar-thumb {
+  background: #3d3423;
+  border-radius: 999px;
+}
+[data-theme="shanhaijing"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="shanhaijing-light"] ::-webkit-scrollbar-thumb:hover {
+  background: #6b5527;
+}
+
+/* ════════════════════════════════════════════════════════════
+   乙 · 结构层（同一作用域文件，与令牌层同源共生）
+   范围：图鉴侧栏三态 / 抽屉与底栏换肤 / 内容区让位。
+   结构所需的新色值一律先在下方「结构令牌」声明，组件规则只引用 var()。
+   ════════════════════════════════════════════════════════════ */
+
+[data-theme="shanhaijing"],
+[data-theme="shanhaijing-light"] {
+  /* ===== 结构令牌：图鉴侧栏 ===== */
+  --shj-nav-w: 236px; /* 展开宽 */
+  --shj-rail-w: 64px; /* 图标轨宽 */
+  --shj-nav-bg: linear-gradient(180deg, #0d1410, #101a14 60%, #0c130e);
+  --shj-seal-a: #d0442a; /* 印章朱砂 */
+  --shj-seal-b: #a82e1c;
+  --shj-seal-on: #ece4cf; /* 印面宣纸字（大字/图标专用，见交付结论） */
+  --shj-item-hover-bg: rgba(63, 174, 143, 0.1);
+  --shj-item-hover-line: rgba(63, 174, 143, 0.25);
+  --shj-item-on-bg: linear-gradient(
+    135deg,
+    rgba(208, 68, 42, 0.28),
+    rgba(208, 68, 42, 0.12)
+  );
+  --shj-item-on-line: rgba(208, 68, 42, 0.5);
+  --shj-realm-bg: linear-gradient(
+    135deg,
+    rgba(46, 122, 140, 0.2),
+    rgba(63, 174, 143, 0.08)
+  );
+  --shj-realm-line: rgba(63, 174, 143, 0.3);
+
+  /* ===== 结构令牌：Hero 山海图卷 ===== */
+  --shj-hero-bg: linear-gradient(
+    165deg,
+    #0d1a13 0%,
+    #10251b 42%,
+    #0f1f16 68%,
+    #0a0f0d 100%
+  );
+  --shj-mtn-a: #152b1f; /* 远峦 */
+  --shj-mtn-b: #0e1d15; /* 近峦 */
+  --shj-jade-bg: linear-gradient(
+    160deg,
+    rgba(63, 174, 143, 0.22),
+    rgba(46, 122, 140, 0.12)
+  );
+  --shj-jade-line: rgba(63, 174, 143, 0.4);
+
+  /* ===== 结构令牌：印章与竹简 =====
+     小字印章的底色必须压深（朱砂原色 #d0442a 托宣纸字实测 3.65:1 不达标，
+     深朱 #a82e1c 托宣纸字 8.7:1；金印/绿印反过来用深字压亮底）。 */
+  --shj-seal-deep: #a82e1c;
+  --shj-seal-dark: #241a05; /* 金印/绿印上的深字 */
+  --shj-slip-head-bg: linear-gradient(180deg, #16241c, #121d16);
+  --shj-slip-braid: rgba(0, 0, 0, 0.28); /* 竹简编绳暗纹 */
+  --shj-slip-rope: rgba(211, 161, 63, 0.25); /* 左缘编绳 */
+
+  /* ===== 结构令牌：游戏舞台岩彩底（GameStage shjBg 消费） ===== */
+  --shj-stage-jgg: radial-gradient(120% 130% at 50% 0%, #2c2410, #17120a 72%);
+  --shj-stage-capsule: radial-gradient(
+    120% 130% at 50% 0%,
+    #14343a,
+    #0a1414 72%
+  );
+  --shj-stage-wheel: radial-gradient(120% 130% at 50% 0%, #33270f, #12100a 72%);
+  --shj-stage-pet: radial-gradient(120% 130% at 50% 0%, #123a2e, #08170f 72%);
+}
+
+/* ===== 图鉴侧栏骨架：默认隐藏，仅山海经 ≥768px 出现 ===== */
+.shj-atlas {
+  display: none;
+}
+[data-theme="shanhaijing"] .shj-atlas,
+[data-theme="shanhaijing-light"] .shj-atlas {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  width: var(--shj-nav-w);
+  flex-direction: column;
+  background: var(--shj-nav-bg);
+  border-right: 1px solid var(--border-deep);
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+  /* 动效令牌（D5 棘轮）：侧栏收展 250ms 归 --motion-normal 档 */
+  transition: width var(--motion-normal) var(--ease-out, ease);
+}
+/* 宣纸档侧栏/浮层投影压浅（暗色投影在宣纸上是一堵黑边） */
+[data-theme="shanhaijing-light"] .shj-atlas,
+[data-theme="shanhaijing-light"] .shj-atlas__flyout {
+  box-shadow: 8px 0 32px rgba(58, 48, 20, 0.18);
+}
+/* 右缘金线 */
+[data-theme="shanhaijing"] .shj-atlas::after,
+[data-theme="shanhaijing-light"] .shj-atlas::after {
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--sun) 30%,
+    var(--sun) 70%,
+    transparent
+  );
+  content: "";
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ===== 品牌印 ===== */
+[data-theme="shanhaijing"] .shj-atlas__brand,
+[data-theme="shanhaijing-light"] .shj-atlas__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+[data-theme="shanhaijing"] .shj-atlas__seal,
+[data-theme="shanhaijing-light"] .shj-atlas__seal {
+  display: flex;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(145deg, var(--shj-seal-a), var(--shj-seal-b));
+  box-shadow:
+    0 4px 14px rgba(208, 68, 42, 0.4),
+    inset 0 0 0 2px rgba(236, 228, 207, 0.35);
+  color: var(--shj-seal-on);
+  font-family: var(--font-display);
+  font-size: 21px;
+  transform: rotate(-3deg);
+}
+[data-theme="shanhaijing"] .shj-atlas__brandtext,
+[data-theme="shanhaijing-light"] .shj-atlas__brandtext {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.3;
+}
+[data-theme="shanhaijing"] .shj-atlas__brandtext b,
+[data-theme="shanhaijing-light"] .shj-atlas__brandtext b {
+  overflow: hidden;
+  background: var(--grad-aurora);
+  background-clip: text;
+  -webkit-background-clip: text;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-overflow: ellipsis;
+  -webkit-text-fill-color: transparent;
+  white-space: nowrap;
+}
+[data-theme="shanhaijing"] .shj-atlas__brandtext i,
+[data-theme="shanhaijing-light"] .shj-atlas__brandtext i {
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 3px;
+  color: var(--text-faint);
+}
+
+/* ===== 滚动区与分组 ===== */
+[data-theme="shanhaijing"] .shj-atlas__scroll,
+[data-theme="shanhaijing-light"] .shj-atlas__scroll {
+  flex: 1;
+  padding: 8px 10px 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+[data-theme="shanhaijing"] .shj-atlas__list,
+[data-theme="shanhaijing-light"] .shj-atlas__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-theme="shanhaijing"] .shj-atlas__list--primary,
+[data-theme="shanhaijing-light"] .shj-atlas__list--primary {
+  padding-bottom: 4px;
+}
+[data-theme="shanhaijing"] .shj-atlas__group,
+[data-theme="shanhaijing-light"] .shj-atlas__group {
+  margin-top: 8px;
+}
+/* 2026-11-09 定稿：品牌区恢复，但仅 ≥1180 展开态显示；
+   轨态与 768–1179 一律隐藏（64px 无空间，且避免与顶栏 logo 重复）。 */
+[data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__brand,
+[data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__brand {
+  display: none;
+}
+/* 分组折叠必须真的隐藏：作者样式的 display:flex 会盖过 UA 的
+   [hidden]{display:none}（2026-11-09 验收时发现 is-closed 不生效） */
+[data-theme="shanhaijing"] .shj-atlas__list[hidden],
+[data-theme="shanhaijing-light"] .shj-atlas__list[hidden] {
+  display: none;
+}
+/* 「浏览学段 ›」：教育资源专属虚线金框入口（样图口径），
+   轨态/窄断点隐藏，44px 触控高度 */
+[data-theme="shanhaijing"] .shj-atlas__eduedit,
+[data-theme="shanhaijing-light"] .shj-atlas__eduedit {
+  display: flex;
+  width: calc(100% - 8px);
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 4px 4px;
+  padding: 0 10px;
+  border: 1px dashed var(--border-deep);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--sun);
+  cursor: pointer;
+  font-family: var(--font-wei);
+  font-size: 11.5px;
+  letter-spacing: 0.5px;
+}
+[data-theme="shanhaijing"] .shj-atlas__eduedit:hover,
+[data-theme="shanhaijing-light"] .shj-atlas__eduedit:hover {
+  background: var(--sun-soft);
+  border-color: var(--sun);
+}
+[data-theme="shanhaijing"] .shj-atlas__scroll,
+[data-theme="shanhaijing-light"] .shj-atlas__scroll {
+  padding-top: 14px;
+}
+[data-theme="shanhaijing"] .shj-atlas__gtitle,
+[data-theme="shanhaijing-light"] .shj-atlas__gtitle {
+  display: flex;
+  width: 100%;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--sun);
+  cursor: pointer;
+  font-family: var(--font-wei);
+  font-size: 12.5px;
+  letter-spacing: 2px;
+}
+[data-theme="shanhaijing"] .shj-atlas__gtitle:hover,
+[data-theme="shanhaijing-light"] .shj-atlas__gtitle:hover {
+  background: var(--sun-soft);
+}
+[data-theme="shanhaijing"] .shj-atlas__gline,
+[data-theme="shanhaijing-light"] .shj-atlas__gline {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, var(--border-deep), transparent);
+}
+[data-theme="shanhaijing"] .shj-atlas__gcaret,
+[data-theme="shanhaijing-light"] .shj-atlas__gcaret {
+  color: var(--text-faint);
+  font-size: 9px;
+  transition: transform 0.25s;
+}
+[data-theme="shanhaijing"] .shj-atlas__group.is-closed .shj-atlas__gcaret,
+[data-theme="shanhaijing-light"]
+  .shj-atlas__group.is-closed
+  .shj-atlas__gcaret {
+  transform: rotate(-90deg);
+}
+
+/* ===== 条目 ===== */
+[data-theme="shanhaijing"] .shj-atlas__item,
+[data-theme="shanhaijing-light"] .shj-atlas__item {
+  display: flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    transform 0.2s;
+}
+[data-theme="shanhaijing"] .shj-atlas__item:hover,
+[data-theme="shanhaijing-light"] .shj-atlas__item:hover {
+  background: var(--shj-item-hover-bg);
+  border-color: var(--shj-item-hover-line);
+  color: var(--text-strong);
+  transform: translateX(2px);
+}
+[data-theme="shanhaijing"] .shj-atlas__item[aria-current="page"],
+[data-theme="shanhaijing-light"] .shj-atlas__item[aria-current="page"] {
+  background: var(--shj-item-on-bg);
+  border-color: var(--shj-item-on-line);
+  box-shadow: inset 3px 0 0 var(--shj-seal-a);
+  color: var(--text-strong);
+}
+[data-theme="shanhaijing"] .shj-atlas__ico,
+[data-theme="shanhaijing-light"] .shj-atlas__ico {
+  width: 20px;
+  flex: none;
+  font-size: 14px;
+  text-align: center;
+}
+[data-theme="shanhaijing"] .shj-atlas__label,
+[data-theme="shanhaijing-light"] .shj-atlas__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 底部：境界签 + 主题切换 ===== */
+[data-theme="shanhaijing"] .shj-atlas__foot,
+[data-theme="shanhaijing-light"] .shj-atlas__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+[data-theme="shanhaijing"] .shj-atlas__realm,
+[data-theme="shanhaijing-light"] .shj-atlas__realm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--shj-realm-line);
+  border-radius: var(--r-md);
+  background: var(--shj-realm-bg);
+}
+[data-theme="shanhaijing"] .shj-atlas__rseal,
+[data-theme="shanhaijing-light"] .shj-atlas__rseal {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: linear-gradient(145deg, var(--shj-seal-a), var(--shj-seal-b));
+  color: var(--shj-seal-on);
+  font-family: var(--font-display);
+  font-size: 15px;
+  transform: rotate(-3deg);
+  overflow: hidden;
+}
+/* 0480 境界签真头像：填满印章框；加载失败 onError 回落首字母，不占位 */
+[data-theme="shanhaijing"] .shj-atlas__rseal img,
+[data-theme="shanhaijing-light"] .shj-atlas__rseal img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+[data-theme="shanhaijing"] .shj-atlas__rtext,
+[data-theme="shanhaijing-light"] .shj-atlas__rtext {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.35;
+}
+[data-theme="shanhaijing"] .shj-atlas__rtext b,
+[data-theme="shanhaijing-light"] .shj-atlas__rtext b {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-family: var(--font-wei);
+  font-size: 13px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-theme="shanhaijing"] .shj-atlas__rtext i,
+[data-theme="shanhaijing-light"] .shj-atlas__rtext i {
+  color: var(--sun);
+  font-size: 10.5px;
+  font-style: normal;
+  letter-spacing: 1px;
+}
+
+/* ===== 内容让位 + 顶栏/底栏收敛（仅山海经） ===== */
+/* 2026-11-09 定稿：四档主题统一顶栏 hover 级联下拉（nav-drop.css）。
+ * 侧栏图鉴默认展开（236px，内容真实让位），用户可收轨为 64px 图标列。
+ * 768–1179px 恒为轨态；<768 侧栏是抽屉形态不让位。 */
+@media (min-width: 768px) {
+  [data-theme="shanhaijing"] .site-shell,
+  [data-theme="shanhaijing-light"] .site-shell {
+    margin-left: var(--shj-rail-w);
+  }
+}
+/* ≥1180 且用户未收轨：内容真实让位 236px（2026-11-09 定稿，
+   取代「展开态浮在内容上方」的旧口径）。768–1179 恒为 64px。 */
+@media (min-width: 1180px) {
+  [data-theme="shanhaijing"] .shj-atlas:not(.is-rail) ~ .site-shell,
+  [data-theme="shanhaijing-light"] .shj-atlas:not(.is-rail) ~ .site-shell {
+    margin-left: var(--shj-nav-w);
+  }
+}
+@media (min-width: 768px) {
+  /* ≥768 有侧栏/图标轨：汉堡与底部 TabBar 收起 */
+  [data-theme="shanhaijing"] .tide-header .lg\:hidden,
+  [data-theme="shanhaijing-light"] .tide-header .lg\:hidden {
+    display: none;
+  }
+  [data-theme="shanhaijing"] .mobile-tabbar,
+  [data-theme="shanhaijing-light"] .mobile-tabbar {
+    display: none;
+  }
+}
+
+/* ===== 图标轨（768–1179px）：同一份 DOM，文字全收、图标居中 ===== */
+@media (min-width: 768px) and (max-width: 1179.98px) {
+  /* 窄断点侧栏恒为轨态（64px 图标列），shell 让位由基础规则统一给 */
+  [data-theme="shanhaijing"] .shj-atlas,
+  [data-theme="shanhaijing-light"] .shj-atlas {
+    width: var(--shj-rail-w);
+  }
+  [data-theme="shanhaijing"] .shj-atlas__brand,
+  [data-theme="shanhaijing-light"] .shj-atlas__brand {
+    display: none;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__eduedit,
+  [data-theme="shanhaijing-light"] .shj-atlas__eduedit {
+    display: none;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__brandtext,
+  [data-theme="shanhaijing-light"] .shj-atlas__brandtext,
+  [data-theme="shanhaijing"] .shj-atlas__label,
+  [data-theme="shanhaijing-light"] .shj-atlas__label,
+  [data-theme="shanhaijing"] .shj-atlas__gname,
+  [data-theme="shanhaijing-light"] .shj-atlas__gname,
+  [data-theme="shanhaijing"] .shj-atlas__rtext,
+  [data-theme="shanhaijing-light"] .shj-atlas__rtext {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  /* 轨态分组标题：点击/悬浮开浮层（带文字第二列） */
+  [data-theme="shanhaijing"] .shj-atlas__gtitle,
+  [data-theme="shanhaijing-light"] .shj-atlas__gtitle {
+    justify-content: center;
+    cursor: pointer;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__gcaret,
+  [data-theme="shanhaijing-light"] .shj-atlas__gcaret {
+    display: none;
+  }
+  /* 轨态浮层：贴轨右缘的全高第二列（仅本宽度段显示） */
+  [data-theme="shanhaijing"] .shj-atlas__flyout,
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: var(--shj-rail-w);
+    z-index: 61;
+    width: 208px;
+    padding: 12px 10px;
+    overflow-y: auto;
+    background: var(--shj-nav-bg);
+    border-right: 1px solid var(--border-deep);
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+    scrollbar-width: thin;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__ftitle,
+  [data-theme="shanhaijing-light"] .shj-atlas__ftitle {
+    margin: 2px 8px 8px;
+    color: var(--sun);
+    font-family: var(--font-wei);
+    font-size: 12.5px;
+    letter-spacing: 2px;
+  }
+  /* 浮层里的条目文字不能被轨态裁剪规则误伤 */
+  [data-theme="shanhaijing"] .shj-atlas__flyout .shj-atlas__label,
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout .shj-atlas__label {
+    position: static;
+    overflow: hidden;
+    width: auto;
+    height: auto;
+    clip: auto;
+    white-space: nowrap;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__flyout .shj-atlas__item,
+  [data-theme="shanhaijing-light"] .shj-atlas__flyout .shj-atlas__item {
+    justify-content: flex-start;
+    padding: 6px 10px;
+  }
+}
+/* 展开态（≥1180 且未收轨）浮层恒隐藏（状态残留也不出声）。
+   注：768–1179 本就没有 .is-rail 类（该断点侧栏恒 64px），若一并套用
+   本规则，分组浮层在该宽度段永远打不开、分组条目不可达（2026-11-09
+   真机验收发现）——因此把隐藏限定回 ≥1180 展开态。 */
+@media (min-width: 1180px) {
+  [data-theme="shanhaijing"] .shj-atlas:not(.is-rail) .shj-atlas__flyout,
+  [data-theme="shanhaijing-light"] .shj-atlas:not(.is-rail) .shj-atlas__flyout {
+    display: none;
+  }
+}
+@media (min-width: 768px) and (max-width: 1179.98px) {
+  /* 轨宽 64px 扣掉 1px 边线与各 10px 内边距后条目只剩 43px，
+     内边距收窄 1px 让命中区补足 --tap-min(44)，且不产生横向溢出。 */
+  [data-theme="shanhaijing"] .shj-atlas__scroll,
+  [data-theme="shanhaijing-light"] .shj-atlas__scroll {
+    padding-inline: 9px;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__item,
+  [data-theme="shanhaijing-light"] .shj-atlas__item {
+    justify-content: center;
+    padding: 6px 0;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__realm,
+  [data-theme="shanhaijing-light"] .shj-atlas__realm {
+    justify-content: center;
+    padding: 6px;
+  }
+}
+@media (max-width: 767.98px) {
+  /* <768：侧栏隐去，导航交还抽屉 + 底部 TabBar（与生产 M2 一致） */
+  [data-theme="shanhaijing"] .shj-atlas,
+  [data-theme="shanhaijing-light"] .shj-atlas {
+    display: none;
+  }
+}
+
+/* ===== 抽屉 / 底栏换肤微调（结构不变，色随令牌） ===== */
+[data-theme="shanhaijing"] .navdrawer,
+[data-theme="shanhaijing-light"] .navdrawer {
+  background: var(--shj-nav-bg);
+  border-right-color: var(--border-deep);
+}
+[data-theme="shanhaijing"] .navdrawer__avatar,
+[data-theme="shanhaijing-light"] .navdrawer__avatar {
+  border-radius: 8px;
+  background: linear-gradient(145deg, var(--shj-seal-a), var(--shj-seal-b));
+  color: var(--shj-seal-on);
+  font-family: var(--font-display);
+  font-weight: 400;
+  transform: rotate(-3deg);
+}
+[data-theme="shanhaijing"] .navdrawer__gtitle,
+[data-theme="shanhaijing-light"] .navdrawer__gtitle {
+  color: var(--sun);
+  font-family: var(--font-wei);
+  font-weight: 400;
+  letter-spacing: 2px;
+}
+[data-theme="shanhaijing"] .navdrawer__link[aria-current="page"],
+[data-theme="shanhaijing-light"] .navdrawer__link[aria-current="page"] {
+  background: var(--shj-item-on-bg);
+  color: var(--text-strong);
+}
+[data-theme="shanhaijing"] .mobile-tabbar,
+[data-theme="shanhaijing-light"] .mobile-tabbar {
+  border-top-color: var(--border-deep);
+}
+
+/* ===== 动效降级 ===== */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="shanhaijing"] .shj-atlas__item,
+  [data-theme="shanhaijing-light"] .shj-atlas__item,
+  [data-theme="shanhaijing"] .shj-atlas__gcaret,
+  [data-theme="shanhaijing-light"] .shj-atlas__gcaret {
+    transition: none;
+  }
+  [data-theme="shanhaijing"] .shj-atlas__item:hover,
+  [data-theme="shanhaijing-light"] .shj-atlas__item:hover {
+    transform: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   乙 · Hero 山海图卷（恒渲染，仅山海经显示）
+   ════════════════════════════════════════════════════════════ */
+.shj-hero {
+  display: none;
+}
+[data-theme="shanhaijing"] .shj-hero,
+[data-theme="shanhaijing-light"] .shj-hero {
+  position: relative;
+  display: block;
+  margin: 4px 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--border-deep);
+  border-radius: var(--r-xl);
+  background: var(--shj-hero-bg);
+}
+/* 星点 */
+[data-theme="shanhaijing"] .shj-hero::before,
+[data-theme="shanhaijing-light"] .shj-hero::before {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(
+      1px 1px at 12% 22%,
+      rgba(240, 215, 149, 0.8) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 32% 12%,
+      rgba(236, 228, 207, 0.6) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 56% 26%,
+      rgba(240, 215, 149, 0.5) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 74% 16%,
+      rgba(236, 228, 207, 0.7) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 90% 30%,
+      rgba(240, 215, 149, 0.5) 50%,
+      transparent 51%
+    );
+  content: "";
+  pointer-events: none;
+}
+/* 远近两峦（CSS 剪影，零图片资产） */
+[data-theme="shanhaijing"] .shj-hero__inner::before,
+[data-theme="shanhaijing-light"] .shj-hero__inner::before,
+[data-theme="shanhaijing"] .shj-hero__inner::after,
+[data-theme="shanhaijing-light"] .shj-hero__inner::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  content: "";
+  pointer-events: none;
+}
+[data-theme="shanhaijing"] .shj-hero__inner::before,
+[data-theme="shanhaijing-light"] .shj-hero__inner::before {
+  height: 62%;
+  background: var(--shj-mtn-a);
+  clip-path: polygon(
+    0 100%,
+    0 62%,
+    9% 44%,
+    18% 60%,
+    27% 36%,
+    36% 58%,
+    46% 30%,
+    55% 56%,
+    64% 40%,
+    74% 62%,
+    84% 38%,
+    93% 58%,
+    100% 46%,
+    100% 100%
+  );
+  opacity: 0.85;
+}
+[data-theme="shanhaijing"] .shj-hero__inner::after,
+[data-theme="shanhaijing-light"] .shj-hero__inner::after {
+  height: 40%;
+  background: var(--shj-mtn-b);
+  clip-path: polygon(
+    0 100%,
+    0 58%,
+    12% 34%,
+    22% 62%,
+    33% 40%,
+    45% 66%,
+    57% 36%,
+    68% 60%,
+    79% 42%,
+    90% 64%,
+    100% 48%,
+    100% 100%
+  );
+}
+[data-theme="shanhaijing"] .shj-hero__inner,
+[data-theme="shanhaijing-light"] .shj-hero__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 46px 28px 40px;
+  text-align: center;
+}
+/* 文字与玉牌压在山峦剪影之上（inner 的 ::before/::after 是山峦） */
+[data-theme="shanhaijing"] .shj-hero__kicker,
+[data-theme="shanhaijing-light"] .shj-hero__kicker,
+[data-theme="shanhaijing"] .shj-hero__title,
+[data-theme="shanhaijing-light"] .shj-hero__title,
+[data-theme="shanhaijing"] .shj-hero__sub,
+[data-theme="shanhaijing-light"] .shj-hero__sub,
+[data-theme="shanhaijing"] .shj-hero__jades,
+[data-theme="shanhaijing-light"] .shj-hero__jades {
+  position: relative;
+  z-index: 1;
+}
+[data-theme="shanhaijing"] .shj-hero__kicker,
+[data-theme="shanhaijing-light"] .shj-hero__kicker {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 4px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: rgba(10, 15, 13, 0.55);
+  color: var(--warning);
+  font-family: var(--font-wei);
+  font-size: 12px;
+  letter-spacing: 5px;
+}
+[data-theme="shanhaijing"] .shj-hero__title,
+[data-theme="shanhaijing-light"] .shj-hero__title {
+  margin: 16px 0 4px;
+  background: var(--grad-aurora);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: var(--sun); /* 不支持 background-clip 的回退色 */
+  font-family: var(--font-display);
+  font-size: clamp(40px, 9vw, 76px);
+  font-weight: 400;
+  letter-spacing: 8px;
+  line-height: 1.1;
+  -webkit-text-fill-color: transparent;
+}
+[data-theme="shanhaijing"] .shj-hero__sub,
+[data-theme="shanhaijing-light"] .shj-hero__sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-wei);
+  font-size: 15px;
+  letter-spacing: 4px;
+}
+/* 玉牌（站点数据） */
+[data-theme="shanhaijing"] .shj-hero__jades,
+[data-theme="shanhaijing-light"] .shj-hero__jades {
+  display: grid;
+  margin: 26px 0 0;
+  padding: 0;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  list-style: none;
+}
+@media (max-width: 640px) {
+  [data-theme="shanhaijing"] .shj-hero__jades,
+  [data-theme="shanhaijing-light"] .shj-hero__jades {
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+[data-theme="shanhaijing"] .shj-hero__jade,
+[data-theme="shanhaijing-light"] .shj-hero__jade {
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--shj-jade-line);
+  border-radius: var(--r-md);
+  background: var(--shj-jade-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(236, 228, 207, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+}
+[data-theme="shanhaijing"] .shj-hero__jade b,
+[data-theme="shanhaijing-light"] .shj-hero__jade b {
+  display: block;
+  color: var(--text-strong);
+  font-family: var(--font-wei);
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: 1px;
+}
+[data-theme="shanhaijing"] .shj-hero__jade i,
+[data-theme="shanhaijing-light"] .shj-hero__jade i {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-style: normal;
+  letter-spacing: 2px;
+}
+/* 竖排卷签（题头竖排）：≥1180px 出现，窄屏自动隐藏（设计文档乙清单口径） */
+[data-theme="shanhaijing"] .shj-hero__vtag,
+[data-theme="shanhaijing-light"] .shj-hero__vtag {
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  z-index: 1;
+  display: none;
+  padding: 12px 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: rgba(10, 15, 13, 0.5);
+  color: var(--text-faint);
+  font-family: var(--font-wei);
+  font-size: 13px;
+  letter-spacing: 6px;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+}
+[data-theme="shanhaijing"] .shj-hero__vtag--r,
+[data-theme="shanhaijing-light"] .shj-hero__vtag--r {
+  right: 22px;
+  left: auto;
+}
+@media (min-width: 1180px) {
+  [data-theme="shanhaijing"] .shj-hero__vtag,
+  [data-theme="shanhaijing-light"] .shj-hero__vtag {
+    display: block;
+  }
+}
+/* 入场（reduced-motion 在文件尾降级段统一关掉） */
+@keyframes shj-hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+[data-theme="shanhaijing"] .shj-hero__inner,
+[data-theme="shanhaijing-light"] .shj-hero__inner {
+  animation: shj-hero-rise 0.6s var(--tide-ease-out, ease-out) both;
+}
+
+/* ════════════════════════════════════════════════════════════
+   乙 · 经纬竹简表（种子表格皮肤；容器横滑/表头同步是原生表格行为）
+   ════════════════════════════════════════════════════════════ */
+[data-theme="shanhaijing"] .nexus-table.torrents-table,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table {
+  border: 1px solid var(--border-deep);
+  border-radius: var(--r-md);
+}
+[data-theme="shanhaijing"] .nexus-table.torrents-table thead th,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table thead th {
+  background: var(--shj-slip-head-bg);
+  border-bottom: 1px solid var(--border-deep);
+  box-shadow: 0 3px 0 -1px var(--line-soft); /* 表头下双线，简册压边 */
+  color: var(--sun);
+  font-family: var(--font-wei);
+  font-weight: 400;
+  letter-spacing: 2px;
+}
+[data-theme="shanhaijing"] .nexus-table.torrents-table thead th a,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table thead th a {
+  color: var(--sun);
+}
+[data-theme="shanhaijing"] .nexus-table.torrents-table tbody tr,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table tbody tr {
+  /* 竹简编绳暗纹：47px 一痕（放 tr 整行连续；td 必须透明，base.css 的
+     .nexus-table tbody td{background:var(--row-veil)} 不透明会盖住纹理） */
+  background-color: var(--row-veil);
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 47px,
+    var(--shj-slip-braid) 47px 48px
+  );
+}
+[data-theme="shanhaijing"] .nexus-table.torrents-table tbody td,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table tbody td,
+[data-theme="shanhaijing"] .nexus-table.torrents-table tbody tr:hover td,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table tbody tr:hover td {
+  background: transparent; /* 让 tr 的编绳纹/hover 底色透上来 */
+}
+[data-theme="shanhaijing"] .nexus-table.torrents-table tbody tr:hover,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table tbody tr:hover {
+  background-color: var(--shj-item-hover-bg);
+}
+[data-theme="shanhaijing"] .nexus-table.torrents-table tbody tr td:first-child,
+[data-theme="shanhaijing-light"]
+  .nexus-table.torrents-table
+  tbody
+  tr
+  td:first-child {
+  box-shadow: inset 2px 0 0 var(--shj-slip-rope); /* 左缘编绳 */
+}
+[data-theme="shanhaijing"]
+  .nexus-table.torrents-table
+  tbody
+  tr:hover
+  td:first-child,
+[data-theme="shanhaijing-light"]
+  .nexus-table.torrents-table
+  tbody
+  tr:hover
+  td:first-child {
+  box-shadow: inset 2px 0 0 var(--sun); /* hover 金编绳亮显 */
+}
+[data-theme="shanhaijing"] .nexus-table.torrents-table .torrents-name b,
+[data-theme="shanhaijing-light"] .nexus-table.torrents-table .torrents-name b {
+  font-family: var(--font-body);
+}
+
+/* ════════════════════════════════════════════════════════════
+   乙 · 印章化（促销/官方/置顶/新 角标；小字章底色一律压深或深字压亮底）
+   ════════════════════════════════════════════════════════════ */
+[data-theme="shanhaijing"] .torrents-tag--official,
+[data-theme="shanhaijing-light"] .torrents-tag--official,
+[data-theme="shanhaijing"] .torrents-tag--sticky,
+[data-theme="shanhaijing-light"] .torrents-tag--sticky,
+[data-theme="shanhaijing"] .torrents-new,
+[data-theme="shanhaijing-light"] .torrents-new,
+[data-theme="shanhaijing"] .torrents-promo,
+[data-theme="shanhaijing-light"] .torrents-promo {
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(236, 228, 207, 0.28);
+  font-family: var(--font-wei);
+  font-weight: 400;
+  letter-spacing: 1px;
+  transform: rotate(-3deg);
+}
+/* 官方/被拒：深朱印（宣纸字 8.7:1） */
+[data-theme="shanhaijing"] .torrents-tag--official,
+[data-theme="shanhaijing-light"] .torrents-tag--official,
+[data-theme="shanhaijing"] .torrents-approval--rejected,
+[data-theme="shanhaijing-light"] .torrents-approval--rejected {
+  background: var(--shj-seal-deep);
+  color: var(--shj-seal-on);
+}
+/* 置顶/2X 系：金印深字（6+:1） */
+[data-theme="shanhaijing"] .torrents-tag--sticky,
+[data-theme="shanhaijing-light"] .torrents-tag--sticky {
+  background: var(--sun);
+  color: var(--shj-seal-dark);
+}
+/* FREE 系：石绿印深字（8:1） */
+[data-theme="shanhaijing"] .torrents-promo--free,
+[data-theme="shanhaijing-light"] .torrents-promo--free,
+[data-theme="shanhaijing"] .torrents-promo,
+[data-theme="shanhaijing-light"] .torrents-promo {
+  background: var(--success);
+  color: #08130e;
+}
+/* 2X 系：金印深字（6+:1，对齐样图 FREE 绿 / 2X 金 的分色） */
+[data-theme="shanhaijing"] .torrents-promo--x2,
+[data-theme="shanhaijing-light"] .torrents-promo--x2,
+[data-theme="shanhaijing"] .torrents-promo--x2free,
+[data-theme="shanhaijing-light"] .torrents-promo--x2free,
+[data-theme="shanhaijing"] .torrents-promo--x2half,
+[data-theme="shanhaijing-light"] .torrents-promo--x2half {
+  background: var(--sun);
+  color: var(--shj-seal-dark);
+}
+/* 半价/30%：石青印深字（8:1） */
+[data-theme="shanhaijing"] .torrents-promo--half,
+[data-theme="shanhaijing-light"] .torrents-promo--half,
+[data-theme="shanhaijing"] .torrents-promo--p30,
+[data-theme="shanhaijing-light"] .torrents-promo--p30 {
+  background: var(--candy);
+  color: #08130e;
+}
+/* 新：石青亮印深字（8:1） */
+[data-theme="shanhaijing"] .torrents-new,
+[data-theme="shanhaijing-light"] .torrents-new {
+  background: var(--candy);
+  color: #08130e;
+}
+/* 印章回正（hover 小趣味；reduced-motion 关闭） */
+[data-theme="shanhaijing"] tr:hover .torrents-promo,
+[data-theme="shanhaijing-light"] tr:hover .torrents-promo,
+[data-theme="shanhaijing"] tr:hover .torrents-new,
+[data-theme="shanhaijing-light"] tr:hover .torrents-new,
+[data-theme="shanhaijing"] tr:hover .torrents-tag--official,
+[data-theme="shanhaijing-light"] tr:hover .torrents-tag--official,
+[data-theme="shanhaijing"] tr:hover .torrents-tag--sticky,
+[data-theme="shanhaijing-light"] tr:hover .torrents-tag--sticky {
+  transform: rotate(0deg);
+}
+[data-theme="shanhaijing"] .torrents-promo .torrents-promo-left,
+[data-theme="shanhaijing-light"] .torrents-promo .torrents-promo-left {
+  color: inherit;
+}
+
+/* ===== 站点背景（乙 · 资产替换）：海滩摄影是 tide 期资产，山海经下收起，
+   换 CSS 生成的玄墨星峦纹——零下载、零授权风险、四档宽度天然适配。
+   内联 style 由站点设置注入（backgroundImage + opacity），必须用 !important 压。 */
+[data-theme="shanhaijing"] .site-backdrop,
+[data-theme="shanhaijing-light"] .site-backdrop {
+  opacity: 1 !important;
+  background-color: var(--surface-page) !important;
+  background-image:
+    linear-gradient(0deg, rgba(14, 29, 21, 0.85), transparent 34%),
+    radial-gradient(
+      1px 1px at 12% 18%,
+      rgba(240, 215, 149, 0.55) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 34% 9%,
+      rgba(236, 228, 207, 0.45) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 58% 22%,
+      rgba(240, 215, 149, 0.4) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1px 1px at 78% 13%,
+      rgba(236, 228, 207, 0.5) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 91% 27%,
+      rgba(240, 215, 149, 0.4) 50%,
+      transparent 51%
+    ) !important;
+  background-size: 100% 100% !important;
+  background-position: center !important;
+}
+
+/* ===== 分类色块岩彩化（乙）：站点配置的内联分类色按 data-shj-hue 散列位
+   重映射到四正色深档（宣纸字实测 4.76–5.39:1 全过 AA）。
+   !important 才能压内联 style；属性由组件恒输出，其余三主题不消费、零变化。 */
+/* :not(.trow-card)——移动行卡把 data-shj-hue 当「亮档分类色」的取值钩子，
+   它自己的底必须是 surface-card；此前通配选择器把整张卡刷成实色色块，
+   ↑/↓/分类字全落在 #7a5f1a 等深色底上（实测 2.2–2.57）。 */
+[data-theme="shanhaijing"] [data-shj-hue="0"]:not(.trow-card),
+[data-theme="shanhaijing-light"] [data-shj-hue="0"]:not(.trow-card) {
+  background: #256571 !important; /* 石青深 */
+  color: var(--shj-seal-on) !important;
+}
+[data-theme="shanhaijing"] [data-shj-hue="1"]:not(.trow-card),
+[data-theme="shanhaijing-light"] [data-shj-hue="1"]:not(.trow-card) {
+  background: #256b56 !important; /* 石绿深 */
+  color: var(--shj-seal-on) !important;
+}
+[data-theme="shanhaijing"] [data-shj-hue="2"]:not(.trow-card),
+[data-theme="shanhaijing-light"] [data-shj-hue="2"]:not(.trow-card) {
+  background: #7a5f1a !important; /* 金深 */
+  color: var(--shj-seal-on) !important;
+}
+[data-theme="shanhaijing"] [data-shj-hue="3"]:not(.trow-card),
+[data-theme="shanhaijing-light"] [data-shj-hue="3"]:not(.trow-card) {
+  background: #a82e1c !important; /* 朱砂深 */
+  color: var(--shj-seal-on) !important;
+}
+/* 移动行卡的分类色走 --trow-cat 自定义属性（内联注入）：它同时驱动
+   26% 淡染底与文字/图标色（pages.css:3423），所以这里用**亮档**四正色
+   （文本实测 5.7–8:1）；深档只用于实心色块（上方 data-shj-hue 规则）。
+   !important 的自定义属性声明压得过内联非 important 声明。 */
+[data-theme="shanhaijing"] .trow-card[data-shj-hue="0"],
+[data-theme="shanhaijing-light"] .trow-card[data-shj-hue="0"] {
+  --trow-cat: #5cb3c7 !important;
+}
+[data-theme="shanhaijing"] .trow-card[data-shj-hue="1"],
+[data-theme="shanhaijing-light"] .trow-card[data-shj-hue="1"] {
+  --trow-cat: #3fae8f !important;
+}
+[data-theme="shanhaijing"] .trow-card[data-shj-hue="2"],
+[data-theme="shanhaijing-light"] .trow-card[data-shj-hue="2"] {
+  --trow-cat: #d3a13f !important;
+}
+[data-theme="shanhaijing"] .trow-card[data-shj-hue="3"],
+[data-theme="shanhaijing-light"] .trow-card[data-shj-hue="3"] {
+  --trow-cat: #e2705a !important;
+}
+
+/* ===== 游戏舞台底图岩彩化（乙）：GameStage 的 art/bg 经内联样式注入，
+   各玩法经 --gs-shj-bg 内联自定义属性给岩彩等效底（未给的用通用玄墨渐变）。
+   作用域规则 + !important 压内联背景；其余三主题不消费该属性、原图原底不变。 */
+[data-theme="shanhaijing"] .gs-art,
+[data-theme="shanhaijing-light"] .gs-art {
+  background: var(
+    --gs-shj-bg,
+    radial-gradient(120% 130% at 50% 0%, #152b1f, #0a0f0d 72%)
+  ) !important;
+}
+
+/* ===== 图鉴卡（卡片视图皮肤微调：hover 金边浮起） ===== */
+[data-theme="shanhaijing"] ul li > article[class*="rounded-xl"],
+[data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"] {
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s,
+    border-color 0.3s;
+}
+[data-theme="shanhaijing"] ul li > article[class*="rounded-xl"]:hover,
+[data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"]:hover {
+  border-color: var(--sun);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-4px);
+}
+
+/* ===== 论坛标记徽章（P1-1）：sun-soft / coral 在玄墨底是深块，
+   原先的深棕字 / 白字分别只有 1.64 / 4.3 → 统一走 fbadge 暗底等效色 ===== */
+[data-theme="shanhaijing"] .fh-badge--ess,
+[data-theme="shanhaijing-light"] .fh-badge--ess {
+  background: var(--fbadge-sun-bg);
+  color: var(--fbadge-sun-fg);
+}
+[data-theme="shanhaijing"] .fh-badge--notice,
+[data-theme="shanhaijing-light"] .fh-badge--notice {
+  background: var(--fbadge-coral-bg);
+  color: var(--fbadge-coral-fg);
+}
+
+/* ===== 动效降级（乙结构层统一段） ===== */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="shanhaijing"] .shj-hero__inner,
+  [data-theme="shanhaijing-light"] .shj-hero__inner {
+    animation: none;
+  }
+  [data-theme="shanhaijing"] .torrents-tag--official,
+  [data-theme="shanhaijing-light"] .torrents-tag--official,
+  [data-theme="shanhaijing"] .torrents-tag--sticky,
+  [data-theme="shanhaijing-light"] .torrents-tag--sticky,
+  [data-theme="shanhaijing"] .torrents-new,
+  [data-theme="shanhaijing-light"] .torrents-new,
+  [data-theme="shanhaijing"] .torrents-promo,
+  [data-theme="shanhaijing-light"] .torrents-promo {
+    transform: none;
+  }
+  [data-theme="shanhaijing"] ul li > article[class*="rounded-xl"],
+  [data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"] {
+    transition: none;
+  }
+  [data-theme="shanhaijing"] ul li > article[class*="rounded-xl"]:hover,
+  [data-theme="shanhaijing-light"] ul li > article[class*="rounded-xl"]:hover {
+    transform: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   亮色档「山海经·宣纸」（shanhaijing-light）令牌覆盖块
+   （2026-11-04）：绢本设色——宣纸米白底 + 墨色文字 + 岩彩压深档。
+   声明在暗档之后（同特异性、后者胜），只覆盖需要翻转的令牌，
+   未列出的（字体栈/圆角/结构层 --shj-*）自动沿用上方共享值。
+   对比度按宣纸底 #f7f3e8 实测口径（≥AA）：
+     · 石绿文字位 #1f6e59（5.4:1）；实心底 #2c7a64 白字 5.2:1
+     · 朱砂文字位 #b8431f（5.9:1）；金文字位 #8a6a1c（5.6:1）
+     · 墨字 #26302b（12.4:1）/ 淡墨 #55605a（7.3:1）
+   ════════════════════════════════════════════════════════════ */
+
+[data-theme="shanhaijing-light"] {
+  color-scheme: light;
+
+  /* ===== 四正色（岩彩压深档，宣纸上的文字/实心位） ===== */
+  --sky: #2c7a64; /* 石绿深 · 主交互（实心底白字 5.2:1） */
+  --sky-deep: #1f6e59; /* 石绿文字位（宣纸底 5.4:1） */
+  --sky-soft: rgba(44, 122, 100, 0.12);
+  --indigo: #2e7a8c; /* 石青原色（亮底文字 4.6:1，大字/次品牌） */
+  --indigo-soft: rgba(46, 122, 140, 0.12);
+  --sun: #b07f1e; /* 金深 · 促销（亮底 4.8:1 大字位） */
+  --sun-soft: rgba(176, 127, 30, 0.12);
+  --coral: #c1512f; /* 朱砂深（亮底 5.1:1） */
+  --coral-soft: rgba(193, 81, 47, 0.1);
+  --mint: #2c7a64;
+  --mint-soft: rgba(44, 122, 100, 0.12);
+  --candy: #2e7a8c;
+  --candy-soft: rgba(46, 122, 140, 0.12);
+
+  /* ===== 中性 ===== */
+  --cloud: #efe9d8;
+
+  /* ===== 渐变：金箔压暗 + 岩彩四色带（宣纸上饱和度收敛） ===== */
+  --grad-aurora: linear-gradient(180deg, #d3a13f, #b07f1e 60%, #8a6a1c);
+  --grad-rainbow: linear-gradient(90deg, #b07f1e, #c1512f, #2c7a64, #2e7a8c);
+  --brand-glow: #b07f1e;
+  --brand-soft: var(--indigo-soft);
+
+  /* ===== 表面：宣纸五阶 ===== */
+  --surface-page: #f7f3e8; /* 宣纸 */
+  --surface-cloud: #efe9d8; /* 毛边纸 */
+  --surface-card: #faf6ec; /* 绢面 */
+  --surface-raised: #f1ecdd; /* 素笺 */
+  --surface-hover: #e9e2cf;
+  --surface-sunken: #e5deca;
+  --surface-cream: #f2edde;
+  --head-a: #ece5d2;
+  --head-b: #f1ecdd;
+
+  /* ===== 文本：墨色五阶 ===== */
+  --text-strong: #232d27; /* 浓墨 13.1:1 */
+  --text-heading: #2c3831; /* 重墨 11.8:1 */
+  --text-body: #3a453e; /* 墨 10.2:1 */
+  --text-body-deep: #47524a; /* 淡墨 8.6:1 */
+  --text-brand: #1f6e59; /* 石绿文字位 5.4:1 */
+  --text-muted: #55605a; /* 灰墨 7.3:1 */
+  --text-faint: #6a746d; /* 5.1:1 */
+  --text-fainter: #757f77; /* 4.6:1（辅助小字底线） */
+  --text-on-accent: #f7f3e8; /* 宣纸字压深色实心钮 */
+
+  /* ===== 实心主操作 / Hero ===== */
+  --accent-surface: var(--sky);
+  --accent-surface-strong: #235f4e;
+  --accent-on: var(--text-on-accent);
+  --hero-bg: linear-gradient(135deg, #e8dfc6 0%, #f2edde 55%, #dcd3b8 100%);
+  --hero-on: var(--text-strong);
+  --hero-on-muted: rgba(35, 45, 39, 0.72);
+  --hero-on-line: rgba(35, 45, 39, 0.14);
+  --hero-on-soft: rgba(35, 45, 39, 0.06);
+
+  /* ===== 边框：金线三档（宣纸上收敛） ===== */
+  --border-soft: rgba(138, 106, 28, 0.22);
+  --line-soft: rgba(138, 106, 28, 0.14);
+  --border-deep: rgba(138, 106, 28, 0.34);
+  --border-strong: rgba(138, 106, 28, 0.5);
+
+  /* ===== 状态 ===== */
+  --success: #2c7a64;
+  --success-bright: #1f6e59;
+  --success-soft: rgba(44, 122, 100, 0.12);
+  --success-border: rgba(44, 122, 100, 0.4);
+  --warning: #b07f1e;
+  --warning-soft: rgba(176, 127, 30, 0.12);
+  --warning-border: rgba(176, 127, 30, 0.4);
+  --danger: #c1512f;
+  --danger-soft: rgba(193, 81, 47, 0.1);
+  --danger-border: rgba(193, 81, 47, 0.38);
+  --danger-text: #b8431f; /* 朱砂文字位 5.9:1 */
+  --info: #2e7a8c;
+  --muted-soft: #e9e2cf;
+  --accent-purple: #46788a;
+
+  /* ===== 阴影：宣纸浮起（浅投影 + 微金晕） ===== */
+  --shadow-card:
+    0 2px 6px rgba(58, 48, 20, 0.08), 0 14px 34px -12px rgba(58, 48, 20, 0.16);
+  --shadow-hover:
+    0 6px 14px rgba(58, 48, 20, 0.1), 0 24px 48px -14px rgba(58, 48, 20, 0.2),
+    0 0 30px rgba(176, 127, 30, 0.08);
+
+  /* ===== 半透明派生层（宣纸等效） ===== */
+  --row-veil: rgba(250, 246, 236, 0.94);
+  --row-veil-soft: rgba(242, 237, 222, 0.84);
+  --row-veil-mist: rgba(242, 237, 222, 0.72);
+  --chip-veil: rgba(242, 237, 222, 0.9);
+  --chip-veil-thin: rgba(242, 237, 222, 0.66);
+  --label-veil: rgba(233, 226, 207, 0.45);
+  --label-veil-deep: rgba(233, 226, 207, 0.78);
+  --hairline: rgba(138, 106, 28, 0.26);
+  --hairline-soft: rgba(138, 106, 28, 0.16);
+  --hairline-strong: rgba(138, 106, 28, 0.36);
+
+  /* ===== 焦点环：金环压深 ===== */
+  --focus-ring: #b07f1e;
+  --focus-ring-soft: rgba(176, 127, 30, 0.24);
+
+  /* ===== 派生 ===== */
+  --on-accent-glass: rgba(247, 243, 232, 0.22);
+  --brand-glow-veil: rgba(176, 127, 30, 0.08);
+  --accent-shadow: rgba(176, 127, 30, 0.22);
+  --accent-shadow-soft: rgba(176, 127, 30, 0.14);
+  --accent-rule: rgba(176, 127, 30, 0.4);
+  --overlay-scrim: rgba(58, 48, 20, 0.32);
+
+  /* ===== 促销行高亮：宣纸淡彩 ===== */
+  --promo-free-bg: #e3ecdf;
+  --promo-x2-bg: #f0e6cd;
+
+  /* ===== 兼容层 ===== */
+  --compat-line: rgba(138, 106, 28, 0.34);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #2c7a64;
+  --compat-orange-dark: #1f6e59;
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+
+  /* ===== mood-* 画布氛围色：昼塘（宣纸上的游戏画布） ===== */
+  --mood-bright: #faf6ec;
+  --mood-dark: #2c3831;
+  --mood-pond-sky-a: #dceadf;
+  --mood-pond-sky-b: #cfe3d6;
+  --mood-pond-water-a: #9ec8b8;
+  --mood-pond-water-b: #7db4a0;
+  --mood-pond-moon-a: #f7ebc0;
+  --mood-pond-moon-b: #d3a13f;
+  --mood-weed-deep: #2c7a64;
+  --mood-weed: #3fae8f;
+  --mood-fish-blue: #2e7a8c;
+  --mood-fish-blue-deep: #23606f;
+  --mood-fish-orange: #c86f45;
+  --mood-fish-orange-deep: #b35a33;
+  --mood-fish-orange-stripe: #9c4d29;
+  --mood-fish-far: #7fa8b8;
+  --mood-fish-far-deep: #6b93a3;
+  --mood-fish-tiny: #bfb88f;
+  --mood-fish-tiny-deep: #a8a178;
+  --mood-bobber: #d0442a;
+  --mood-wheel-gold-a: #e9c979;
+  --mood-wheel-gold-b: #d3a13f;
+  --mood-wheel-violet-a: #a89cc8;
+  --mood-wheel-violet-b: #bcb0d6;
+  --mood-wheel-blue-a: #6fa8b8;
+  --mood-wheel-blue-b: #8abcc9;
+  --mood-wheel-mist-a: #f2edde;
+  --mood-wheel-mist-b: #faf6ec;
+  --mood-wheel-rim-a: #b07f1e;
+  --mood-wheel-rim-b: #8a6a1c;
+  --mood-wheel-hub-a: #e9c979;
+  --mood-wheel-hub-b: #c9a45f;
+  --mood-wheel-face-a: #faf6ec;
+  --mood-wheel-face-b: #f2edde;
+  --mood-wheel-face-c: #e9e2cf;
+  --mood-wheel-hub-shadow: rgba(138, 106, 28, 0.25);
+  --mood-wheel-lamp: #e9c979;
+  --mood-wheel-text-gold: #6b4a1a;
+  --mood-wheel-text-ink: #26302b;
+  --mood-egg-coral: #c1512f;
+  --mood-egg-mint: #2c7a64;
+  --mood-egg-amber: #b07f1e;
+  --mood-egg-pink: #b58ab4;
+  --mood-egg-gray: #7d8698;
+  --mood-tier-gold: #b07f1e;
+  --mood-tier-violet: #8a76b4;
+  --mood-tier-blue: #2e7a8c;
+  --mood-tier-gray: #6b7484;
+
+  /* ===== 论坛 hue/徽章：宣纸档 ===== */
+  --fhue-sky: #2e7a8c;
+  --fhue-mint: #2c7a64;
+  --fhue-sun: #b07f1e;
+  --fhue-indigo: #46788a;
+  --fhue-candy: #8a6a1c;
+  --fhue-coral: #c1512f;
+  --fbadge-sky-bg: rgba(46, 122, 140, 0.1);
+  --fbadge-sky-fg: #23606f;
+  --fbadge-mint-bg: rgba(44, 122, 100, 0.1);
+  --fbadge-mint-fg: #1f6e59;
+  --fbadge-sun-bg: rgba(176, 127, 30, 0.1);
+  --fbadge-sun-fg: #8a6a1c;
+  --fbadge-indigo-bg: rgba(70, 120, 138, 0.1);
+  --fbadge-indigo-fg: #3c6675;
+  --fbadge-candy-bg: rgba(138, 106, 28, 0.1);
+  --fbadge-candy-fg: #6b5527;
+  --fbadge-coral-bg: rgba(193, 81, 47, 0.1);
+  --fbadge-coral-fg: #b8431f;
+
+  /* ===== --tide-* 桥接：宣纸档（tide-sea 实心底白字 5.2:1） ===== */
+  --tide-abyss: #e5deca;
+  --tide-deep: #1f6e59;
+  --tide-sea: #2c7a64;
+  --tide-surf: #235f4e;
+  --tide-foam: #5d9c88;
+  --tide-mist: #ece5d2;
+  --tide-haze: #f2edde;
+  --tide-signal: #2e7a8c;
+  --tide-up: #c1512f;
+  --tide-down: #2c7a64;
+  --tide-grid: rgba(44, 122, 100, 0.1);
+
+  /* ===== 乙层结构令牌：宣纸档（0470 前补漏——侧栏/图卷/竹简此前
+     吃共用块暗色值，主菜单在宣纸下仍玄墨配色） ===== */
+  --shj-nav-bg: linear-gradient(180deg, #f4efdf, #efe8d3 60%, #ede5cd);
+  --shj-item-hover-bg: rgba(44, 122, 100, 0.08);
+  --shj-item-hover-line: rgba(44, 122, 100, 0.22);
+  --shj-item-on-bg: linear-gradient(
+    135deg,
+    rgba(193, 81, 47, 0.14),
+    rgba(193, 81, 47, 0.06)
+  );
+  --shj-item-on-line: rgba(193, 81, 47, 0.38);
+  --shj-realm-bg: linear-gradient(
+    135deg,
+    rgba(46, 122, 140, 0.12),
+    rgba(44, 122, 100, 0.05)
+  );
+  --shj-realm-line: rgba(44, 122, 100, 0.26);
+  --shj-hero-bg: linear-gradient(
+    165deg,
+    #ece5d2 0%,
+    #f2edde 42%,
+    #efe8d3 68%,
+    #e5deca 100%
+  );
+  --shj-mtn-a: #d8d0b6;
+  --shj-mtn-b: #c8bfa1;
+  --shj-jade-bg: linear-gradient(
+    160deg,
+    rgba(44, 122, 100, 0.14),
+    rgba(46, 122, 140, 0.08)
+  );
+  --shj-jade-line: rgba(44, 122, 100, 0.3);
+  --shj-slip-head-bg: linear-gradient(180deg, #ece5d2, #e5deca);
+  --shj-slip-braid: rgba(58, 48, 20, 0.1);
+  --shj-slip-rope: rgba(176, 127, 30, 0.3);
+}
+
+/* 选中态/滚动条（宣纸档覆盖） */
+[data-theme="shanhaijing-light"] ::selection {
+  background: rgba(193, 81, 47, 0.3);
+  color: #232d27;
+}
+[data-theme="shanhaijing-light"] ::-webkit-scrollbar-thumb {
+  background: #cfc4a4;
+  border-radius: 999px;
+}
+[data-theme="shanhaijing-light"] ::-webkit-scrollbar-thumb:hover {
+  background: #b3a582;
+}
+
+/* ════════════════════════════════════════════════════════════
+   丙 · 整栏折叠（0470）：宽屏用户手动收 236px ↔ 64px 图标轨。
+   轨态样式独立成块（不复用 768–1179 断点的媒体查询，避免选择器
+   改写连锁）；.is-rail 只在 ≥1180 生效，窄断点该钮隐藏。
+   ════════════════════════════════════════════════════════════ */
+
+/* 折叠钮（两档通用基础态） */
+[data-theme="shanhaijing"] .shj-atlas__fold,
+[data-theme="shanhaijing-light"] .shj-atlas__fold {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+[data-theme="shanhaijing"] .shj-atlas__fold:hover,
+[data-theme="shanhaijing-light"] .shj-atlas__fold:hover {
+  border-color: var(--border-deep);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+@media (max-width: 1179.98px) {
+  [data-theme="shanhaijing"] .shj-atlas__fold,
+  [data-theme="shanhaijing-light"] .shj-atlas__fold {
+    display: none; /* 窄断点轨态是缺省，无需开关 */
+  }
+}
+
+/* 轨态（.is-rail）：侧栏 64px + 文字视觉隐藏 + 图标居中。
+   2026-11-09 重定：未存偏好时 ≥1180 默认展开，手动收轨才进入本态 */
+@media (min-width: 768px) {
+  [data-theme="shanhaijing"] .shj-atlas.is-rail,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail {
+    width: var(--shj-rail-w);
+  }
+  /* is-rail 让位规则退役（2026-11-09 统一顶栏导航）：
+     保留选择器占位防误删相邻块，margin 归零 */
+  [data-theme="shanhaijing"] .shj-atlas.is-rail ~ .site-shell,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail ~ .site-shell {
+    margin-left: var(--shj-rail-w);
+  }
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__brand,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__brand {
+    display: none;
+  }
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__eduedit,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__eduedit {
+    display: none;
+  }
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__brandtext,
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__label,
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__gname,
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__rtext,
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__foldtext,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__brandtext,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__label,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__gname,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__rtext,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__foldtext {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__gtitle,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__gtitle {
+    justify-content: center;
+  }
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__gcaret,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__gcaret {
+    display: none;
+  }
+  /* 轨态浮层：贴轨右缘第二列（悬停分组展开，Esc/点外收起走 JS 既有逻辑） */
+  [data-theme="shanhaijing"] .shj-atlas.is-rail .shj-atlas__flyout,
+  [data-theme="shanhaijing-light"] .shj-atlas.is-rail .shj-atlas__flyout {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: var(--shj-rail-w);
+    z-index: 61;
+    display: block;
+    width: 208px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   丁 · 教育四级树（0473）：教育资源组下的学段折叠 + 年级/科目子级。
+   结构令牌全走甲乙层既有变量，无新色。
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 教育钻取视图（0474）：学段→年级→科目逐页下探 ── */
+[data-theme="shanhaijing"] .shj-atlas__drill,
+[data-theme="shanhaijing-light"] .shj-atlas__drill {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+}
+[data-theme="shanhaijing"] .shj-atlas__drillback,
+[data-theme="shanhaijing-light"] .shj-atlas__drillback {
+  display: flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--sun);
+  cursor: pointer;
+  font-family: var(--font-wei);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: left;
+}
+[data-theme="shanhaijing"] .shj-atlas__drillback b,
+[data-theme="shanhaijing-light"] .shj-atlas__drillback b {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-weight: 400;
+  max-width: 110px;
+  white-space: nowrap;
+}
+[data-theme="shanhaijing"] .shj-atlas__drillrow,
+[data-theme="shanhaijing-light"] .shj-atlas__drillrow {
+  justify-content: space-between;
+  width: 100%;
+}
+[data-theme="shanhaijing"] .shj-atlas__drillmore,
+[data-theme="shanhaijing-light"] .shj-atlas__drillmore {
+  color: var(--text-faint);
+}

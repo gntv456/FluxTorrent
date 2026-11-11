@@ -11,11 +11,11 @@ import {
   getSiteProfile,
   legacyDimName,
 } from "@/lib/site-profile";
-import { TorrentManage } from "@/components/torrent-manage";
+import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
+import { TorrentManageLazy, TorrentPeersLazy, FileTreeLazy } from
+  "@/components/torrent-detail-lazy";
 import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
-import { FileTree } from "@/components/file-tree";
-import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
 import {
   Descr, Spec, Fold, MiWarn, TorrentArtifacts,
 } from "@/components/torrent-detail-parts";
@@ -27,7 +27,6 @@ import { TorrentAnchorBar } from "@/components/torrent-anchor";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
 import { TorrentSubtitles } from "@/components/torrent-subtitles";
 import { FoldMobile } from "@/components/fold-mobile";
-import { TorrentPeers } from "@/components/torrent-peers";
 import { TorrentRelated } from "@/components/torrent-related";
 import {
   Comments,
@@ -265,7 +264,7 @@ export default async function TorrentDetailPage({
               torrentId={t.id}
               approved={t.approval_status === 1}
             />
-            <TorrentManage
+            {(isStaff || !!ext?.is_owner) && (<TorrentManageLazy
               torrentId={t.id} name={t.name} smallDescr={t.small_descr}
               descr={ext?.descr ?? null} anonymous={t.anonymous}
               categoryId={t.category_id} price={ext?.price ?? 0}
@@ -279,6 +278,7 @@ export default async function TorrentDetailPage({
               approved={t.approval_status === 1}
               metaSources={profile?.metadata_sources} autoOpen={sp.edit === "1"}
             />
+            )}
           </>
         }
       />
@@ -329,7 +329,7 @@ export default async function TorrentDetailPage({
       {/* ===== 当前在线（tracker swarm 快照：做种/下载者明细，非 staff IP 已脱敏） ===== */}
       {sectOn("peers") && (
         <Fold title={dict.torrents.peersTitle} id="td-sec-peers">
-          <TorrentPeers torrentId={t.id} />
+          <TorrentPeersLazy torrentId={t.id} />
         </Fold>
       )}
 
@@ -367,7 +367,7 @@ export default async function TorrentDetailPage({
           count={files.length || undefined}
           id="td-files"
         >
-          <FileTree files={files} />
+          <FileTreeLazy files={files} />
         </Fold>
       )}
 

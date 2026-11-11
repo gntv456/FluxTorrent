@@ -207,7 +207,13 @@ export function PersonalTab({
         <Row head={t.avatar}>
           {s.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.avatar_url} alt="" className="uc-avatar-preview" />
+            <img
+              src={s.avatar_url}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="uc-avatar-preview"
+            />
           ) : (
             <span className="uc-avatar-preview uc-avatar-preview--empty" />
           )}

@@ -78,34 +78,12 @@ export function Spec({
   );
 }
 
-/** 折叠分区（同类站通用口径：默认收起，summary 带计数） */
-export function Fold({
-  title,
-  count,
-  children,
-  open,
-  id,
-}: {
-  title: string;
-  count?: number;
-  children: React.ReactNode;
-  open?: boolean;
-  /** 锚点 id（侧栏「查看全部」定位目标，scroll-margin-top 见 base.css） */
-  id?: string;
-}) {
-  return (
-    <details className="td-fold" open={open} id={id}>
-      <summary>
-        <h2>{title}</h2>
-        {count !== undefined && (
-          <span className="td-fold__count num">{count}</span>
-        )}
-        <span className="td-fold__chev" aria-hidden />
-      </summary>
-      <div className="td-fold__body">{children}</div>
-    </details>
-  );
-}
+/** 折叠分区（同类站通用口径：默认收起，summary 带计数）。
+ *  2026-11-11 提速批迁往 components/fold.tsx 客户端门卫件（body 展开过才
+ *  挂载，折叠区内容零请求零 chunk），此处 re-export 保持既有 import 不动。 */
+import { Fold } from "./fold";
+
+export { Fold };
 
 /** 海报头分类角标与海报兜底（阳光口径：左海报，分类色） */
 export function PosterBlock({

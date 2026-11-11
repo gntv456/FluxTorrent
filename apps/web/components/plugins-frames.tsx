@@ -115,7 +115,13 @@ export function FrameShop({
               🙂
               {f.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={f.image_url} alt="" className={FRAME_IMG} />
+                <img
+                  src={f.image_url}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className={FRAME_IMG}
+                />
               ) : null}
             </span>
             <p className="text-xs font-bold text-ink">{f.name}</p>

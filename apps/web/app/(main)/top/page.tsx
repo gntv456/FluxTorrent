@@ -45,6 +45,8 @@ function Avatar({ u }: { u: TopRow }) {
         <img
           src={u.avatar_url}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="h-8 w-8 rounded-full border border-[var(--compat-line)] object-cover"
         />
         <FrameImageOverlay url={u.avatar_frame_image} />

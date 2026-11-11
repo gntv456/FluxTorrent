@@ -196,6 +196,8 @@ export default async function UsersPage({
                           <img
                             src={m.avatar_url}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className={AV_IMG}
                           />
                         ) : (

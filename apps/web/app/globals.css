@@ -8,9 +8,12 @@
    全部 woff2 落在 public/fonts/，保留原始 unicode-range 分片 → 浏览器仍按需加载，
    首访体积与用 Google Fonts 时相同，但**不再依赖外网**。 */
 @import "./styles/fonts-tide.css";
-/* 山海经字体自托管（甲 · 令牌层配套）：Ma Shan Zheng / ZCOOL XiaoWei 分片，
-   Noto Serif SC 复用上方 fonts-tide.css 已注册的族，不重复下载 */
-@import "./styles/fonts-shanhaijing.css";
+/* 山海经字体/主题 CSS（2026-11-11 瘦身批移出全局链）：山海经是手选主题，
+   Ma Shan Zheng / ZCOOL XiaoWei 共 184 条 @font-face + 完全 [data-theme]
+   作用域化的 theme-shanhaijing.css 只服务该主题两档——现在改为
+   ThemeNoFlash / theme-toggle 按需注入 <link>（public/theme-css/，见
+   scripts/gen-theme-css.mjs），默认主题用户不再下载这 ~105KB gzip。
+   Noto Serif SC 仍由上方 fonts-tide.css 全局注册（山海经正文栈引用它）。 */
 @import "./styles/base.css";
 @import "./styles/layout.css";
 @import "./styles/layout-tab-auth.css";
@@ -27,9 +30,8 @@
 @import "./styles/theme-tide.css";
 /* TIDE 动效层（P4）：排在令牌层之后，保证 reduced-motion 降级分支能压住前面的动画声明 */
 @import "./styles/motion-tide.css";
-/* 山海经「岩彩长卷」主题 · 甲令牌层（同 TIDE 链末同特异性覆盖手法；
-   只写 [data-theme="shanhaijing"] 作用域，既有三主题零影响） */
-@import "./styles/theme-shanhaijing.css";
+/* 山海经「岩彩长卷」主题令牌层：2026-11-11 瘦身批与字体 CSS 一起移出全局链，
+   改为按需注入（见上方 fonts-tide 后的说明与 scripts/gen-theme-css.mjs） */
 /* 勋章墙 / 勋章殿堂 / 魔力商店三页域（2026-09-23 改版；从 pages.css 拆出的新域） */
 @import "./styles/medal-shop.css";
 

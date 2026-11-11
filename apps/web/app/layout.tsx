@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "./globals.css";
-import { getDict } from "@/i18n/server";
+import { getAllTerms, getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import { glassStyle } from "@/lib/site-glass";
 import { siteBase } from "@/lib/site-url";
@@ -13,6 +14,7 @@ import {
   THEMES,
   THEME_IDS,
   THEME_STORAGE_KEY,
+  themeCssManifest,
   themeIdByScheme,
 } from "@/lib/themes";
 
@@ -134,7 +136,13 @@ window.__fluxSwUpdated=false;location.reload();
  *  W-42：chrome 色表与档位解析搬到 lib/themes.ts 注册表（唯一真源），
  *  本脚本序列化注册表下发（保持内联、零水合依赖）；"auto" 档存库值
  *  在首绘即解析为具体主题——CSS 与 meta theme-color 都不认识 "auto"；
- *  明暗族按 ThemeDef.scheme 查（themeIdByScheme），不靠注册表位置。 */
+ *  明暗族按 ThemeDef.scheme 查（themeIdByScheme），不靠注册表位置。
+ *
+ *  2026-11-11 瘦身批：山海经字体/主题 CSS 移出全局链后，apply(t) 里同步
+ *  按需注入/移除 <link>（ES5 等价于 lib/themes.ts 的 syncThemeCss；URL
+ *  清单从构建期 manifest 序列化进来）。同步 appendChild 的 <link> 加载
+ *  完成前该主题首帧会有短暂字体回落（Ma Shan Zheng → 楷体栈）——只影响
+ *  山海经用户自己的刷新，默认主题用户零感知、零下载。 */
 function ThemeNoFlash() {
   const CH = JSON.stringify(
     Object.fromEntries(
@@ -147,11 +155,29 @@ function ThemeNoFlash() {
     light: themeIdByScheme("light"),
     dark: themeIdByScheme("dark"),
   });
+  // 山海经 CSS 的注入清单（[themeId 前缀, fontsUrl, themeUrl]；同步
+  // scripts/gen-theme-css.mjs 的 manifest 键）
+  const SHJ = JSON.stringify([
+    "shanhaijing",
+    themeCssManifest.fonts,
+    themeCssManifest.theme,
+  ]);
   const script =
-    `(function(){var CH=${CH},IDS=${ids},SC=${SC};` +
+    `(function(){var CH=${CH},IDS=${ids},SC=${SC},SHJ=${SHJ};` +
     `function chrome(t){var m=document.querySelector('meta[name="theme-color"]');` +
     `if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}m.content=CH[t];}` +
-    `function apply(t){document.documentElement.dataset.theme=t;chrome(t);}` +
+    `function css(t){var want=(t&&t.indexOf(SHJ[0])===0)?[SHJ[1],SHJ[2]]:[];` +
+    `var ls=document.querySelectorAll('link[data-theme-css]');` +
+    `for(var i=0;i<want.length;i++){var ok=false;` +
+    `for(var j=0;j<ls.length;j++){var h=ls[j].getAttribute('href');` +
+    `if(h===want[i]){ok=true;break;}}` +
+    `if(!ok){var l=document.createElement('link');l.rel='stylesheet';` +
+    `l.href=want[i];l.setAttribute('data-theme-css','');` +
+    `document.head.appendChild(l);}}` +
+    `for(var k=ls.length-1;k>=0;k--){var hh=ls[k].getAttribute('href');` +
+    `if(want.indexOf(hh)<0)ls[k].parentNode.removeChild(ls[k]);}}` +
+    `function apply(t){document.documentElement.dataset.theme=t;` +
+    `chrome(t);css(t);}` +
     `function sys(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?SC.dark:SC.light;}` +
     `function pick(v){return (v==='auto'||IDS.indexOf(v)<0)?sys():v;}` +
     `try{var saved=localStorage.getItem('${THEME_STORAGE_KEY}');` +
@@ -210,7 +236,16 @@ function ThemeTokenStyle({ tokens }: { tokens?: Record<string, string> }) {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { dict, locale, currency } = await getDict();
+  const { locale, currency } = await getDict();
+  // 术语规则 prop 下发（TermRule 仅 canonical/replacement 两字段，hxpt 实测
+  // 0 条）：i18n/dict-impl.ts 用同一 applyTerms 改写懒加载的原始字典，与 RSC
+  // 出口的 getDict 同函数同输入 → 水合前后逐字一致。
+  // 第二轮瘦身的核心：字典不再作为 LocaleProvider 的 prop 进入 flight
+  // payload（曾按 174KB/页重复计费且 HTML 不可缓存），改为每语言一颗
+  // 懒加载 chunk（SW cache-first，服务端模块初始化预热、SSR 零挂起）。
+  // Suspense 只在字典未就绪时接住挂起，fallback 不写内容——预热使 promise
+  // 在抛出前已落定，React 同步重试，绝不显示空白。
+  const terms = await getAllTerms();
   const profile = await getSiteProfile();
   // 板块磨砂玻璃（0448）：作用域挂在 <html> 上——顶栏搜索框与部分弹层是
   // portal 到 body 的，挂在 .site-shell 上会漏掉它们（见 glass.css 注释）。
@@ -232,18 +267,20 @@ export default async function RootLayout({
         {/* 旧内核 polyfill 必须最先执行（先于 next 的路由器水合；见组件注释） */}
         <LegacyRuntimePolyfill />
         <ThemeNoFlash />
-        <LocaleProvider dict={dict} locale={locale} currency={currency}>
-          {/* 设计系统 W-01/W-04：SkipLink 是 Tab 第一站；ToastProvider
-              挂载一次，全站写操作反馈走 toast 协议（role=status/alert） */}
-          <SkipLink />
-          {/* 余额广播的 SSR 侧消费者（写魔力后广播一次，重取直出的数字） */}
-          <SparkBridge />
-          <ToastProvider>
-            <PwaInstallBar />
-            {children}
-            <ServiceWorkerRegister />
-          </ToastProvider>
-        </LocaleProvider>
+        <Suspense fallback={null}>
+          <LocaleProvider locale={locale} currency={currency} terms={terms}>
+            {/* 设计系统 W-01/W-04：SkipLink 是 Tab 第一站；ToastProvider
+                挂载一次，全站写操作反馈走 toast 协议（role=status/alert） */}
+            <SkipLink />
+            {/* 余额广播的 SSR 侧消费者（写魔力后广播一次，重取直出的数字） */}
+            <SparkBridge />
+            <ToastProvider>
+              <PwaInstallBar />
+              {children}
+              <ServiceWorkerRegister />
+            </ToastProvider>
+          </LocaleProvider>
+        </Suspense>
       </body>
     </html>
   );

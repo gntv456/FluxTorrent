@@ -110,6 +110,8 @@ export function FrameImageOverlay({ url }: { url: string | null | undefined }) {
       src={url}
       alt=""
       aria-hidden
+      loading="lazy"
+      decoding="async"
       draggable={false}
       className="pointer-events-none absolute inset-0 z-10 h-full w-full select-none object-fill"
     />

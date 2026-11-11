@@ -24,11 +24,15 @@ const byteLen = (s: string): number => encoder.encode(s).length;
 let sortedKey = "\u0000init";
 let sortedCache: TermRule[] = [];
 
+/** 规则集指纹（排序缓存与 dict-impl 双实现的改写结果缓存共用一把尺——
+ *  terms 数组每请求新引用，缓存必须按内容而不是引用对齐）。 */
+export function termsFingerprint(rules: TermRule[]): string {
+  return rules.map((r) => `${r.canonical}\u0001${r.replacement}`).join("\u0002");
+}
+
 /** 排成替换用的顺序（长词优先，同长按词典序），并按规则集指纹缓存一份 */
 export function sortRules(rules: TermRule[]): TermRule[] {
-  const key = rules.map((r) => `${r.canonical}\u0001${r.replacement}`).join(
-    "\u0002",
-  );
+  const key = termsFingerprint(rules);
   if (key === sortedKey) return sortedCache;
   const sorted = rules
     .filter((r) => r.canonical.length > 0 && r.replacement.length > 0)

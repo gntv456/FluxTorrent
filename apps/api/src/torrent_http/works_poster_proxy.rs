@@ -105,7 +105,9 @@ fn image_response(ct: String, body: Vec<u8>) -> HttpResponse {
         .content_type(ct)
         .insert_header((
             actix_web::http::header::CACHE_CONTROL,
-            "public, max-age=600",
+            // 2026-11-11 提速批 600→86400：海报 URL 稳定且内容基本不变，
+            // 浏览器/CF 边缘缓存一整天，重复访问零回源。换图 = 换 URL。
+            "public, max-age=86400",
         ))
         .body(body)
 }
@@ -133,11 +135,12 @@ async fn cache_put(state: &AppState, key: &str, ct: &str, data: &[u8]) {
     use redis::AsyncCommands;
     let mut c = state.redis.clone();
     // 二元组序列化用 redis 的 bulk 写法：SETEX 一个两元素数组
+    // （2026-11-11 提速批与 Cache-Control 同步 600→86400，见 image_response）
     let _: Result<(), _> = AsyncCommands::set_ex(
         &mut c,
         key,
         (ct.to_string(), data.to_vec()),
-        600,
+        86400,
     )
     .await;
 }

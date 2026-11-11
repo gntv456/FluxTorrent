@@ -13,14 +13,16 @@
  * 27 个 kind（shop / game / download / attendance / forum…全是流水里最常见的
  * 来源）在英文界面永远显示简体中文，属「翻了但没人读」。现在按调用方传进的
  * 当前字典取，回落仍由 i18n/server.ts 的深合并负责（未翻的键自动落 zh-CN）。
- */
+ *
+ * ⚠️ 2026-11-11 瘦身批：删除 zhCN 静态 import（它是三本 8000 行字典被拖进
+ * 客户端共享 chunk 的第二来源）。两个消费方都在 React 树内持有 useI18n()
+ * 字典，`my` 改为必传——不再有无字典可用的调用点。 */
 
-import { zhCN, type Dict } from "@/i18n/zh-CN";
+import type { Dict } from "@/i18n/zh-CN";
 
-/** 当前语种的 kind 标签；不传 `dict.my` 时退回 zh-CN 源。 */
+/** 当前语种的 kind 标签（调用方必传当前字典的 my 段）。 */
 export function sparkKindLabels(
-  my?: Pick<Dict["my"], "kinds">,
+  my: Pick<Dict["my"], "kinds">,
 ): Record<string, string> {
-  const src = (my ?? zhCN.my).kinds;
-  return (src ?? {}) as unknown as Record<string, string>;
+  return ((my ?? {}).kinds ?? {}) as unknown as Record<string, string>;
 }

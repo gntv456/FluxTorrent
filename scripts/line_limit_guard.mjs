@@ -55,6 +55,10 @@ const EXEMPT = [
   "apps/web/e2e/nav-menu-verify.mjs",
   "apps/web/e2e/nav-a11y-verify.mjs",
   "apps/web/e2e/nav-topbar-before-after.mjs",
+  // 山海经主题 CSS 拷贝件（2026-11-11 瘦身批）：gen-theme-css.mjs 从 styles/
+  // 源文件逐字拷贝（源文件的超宽行基线以 styles/ 为准），public/ 下的
+  // 构建产物不该重复记账——源文件的 368/426 条超宽行已在基线里。
+  "apps/web/public/theme-css/",
 ];
 
 const groups = [

@@ -101,13 +101,12 @@ describe("kind 标签必须来自调用方字典（P-425 接线）", () => {
   // 只测接线本身：旧实现把标签表硬绑 zh-CN 源字典，于是 i18n 的段级回落机制
   // 对这张表完全不起作用（将来补任何语种都不会生效）。这里不依赖词典内容，
   // 免得「某个语种恰好没翻」被读成「接线坏了」。
-  it("传入字典优先于源字典；不传时回落 zh-CN", () => {
+  it("传入字典优先于源字典（2026-11-11 起调用方必传，不再回落源字典）", () => {
     expect(sparkKindLabels({ kinds: { shop: "Shop purchase" } }).shop).toBe(
       "Shop purchase",
     );
-    const fallback = sparkKindLabels();
-    expect(Object.keys(fallback).length).toBeGreaterThan(30);
-    expect(fallback.shop).toBe(zhCN.my.kinds.shop);
+    expect(Object.keys(zhCN.my.kinds).length).toBeGreaterThan(30);
+    expect(zhCN.my.kinds.shop).toBeTruthy();
   });
   it("两个语种给同一批键时各取自己的文案", () => {
     const a = sparkKindLabels({ kinds: { forum: "AAA" } });
@@ -168,9 +167,9 @@ describe("kind 标签登记过人话，页面不直出裸键", () => {
     );
   }
 
-  // 页面取表走的是同一个 helper（不传参即回落 zh-CN 源字典），
+  // 页面取表走的是同一个 helper（调用方传当前字典），
   // 借它取值比直接下标稳：kinds 是字面量对象类型，动态键要 cast
-  const zhLabels = sparkKindLabels();
+  const zhLabels = sparkKindLabels(zhCN.my);
 
   it("真页面（zh-CN）：四行都渲染成中文，页面上找不到裸键", async () => {
     stubKindRows();

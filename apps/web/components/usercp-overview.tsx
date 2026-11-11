@@ -172,7 +172,7 @@ function ProfileCard({
       >
         {ov.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={ov.avatar_url} alt="" />
+          <img src={ov.avatar_url} alt="" loading="lazy" decoding="async" />
         ) : (
           <i className="uc-avatar-fallback">
             {ov.username.slice(0, 1).toUpperCase()}
