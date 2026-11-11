@@ -32,14 +32,14 @@ const CARD_TITLE_CLS =
 const STATS_CLS =
   "num flex flex-wrap items-center gap-x-3 gap-y-0.5 " +
   "text-[11.5px] text-sub";
-// 海报墙改流式列（0427 对标①）：flex-wrap + 百分比 basis + min-width，
-// 零断点实现 375px 三列 → 平板五列 → 宽屏六列；basis 取 1/6 减半格 gap，
-// min-w 卡住移动端下限（343px 视口自动落三列）。
-const WALL_CLS = "flex list-none flex-wrap gap-2.5 p-0";
-// 流式列的 basis/min-w 必须挂在 **li**（flex item 是它），Link 只承担视觉
-const WALL_LI_CLS =
-  "w-[calc((100%-50px)/6)] min-w-[104px] grow-0 shrink-0 " +
-  "basis-[calc((100%-50px)/6)]";
+// 海报墙（0427 流式列 → 2026-11-11 改自适应网格）：旧版硬编码 1/6 宽
+// （宽屏每格 220px+，显著大于聚合瀑布墙的 auto-fill 132px——「不聚合时
+// 卡片太大」）。改与 works.css .wk-wall 同口径的 auto-fill 网格：窄卡
+// 110px、宽屏自然排 8-10 列，密度随视口自适应，与聚合视图视觉一致。
+const WALL_CLS =
+  "grid list-none gap-2.5 p-0 " +
+  "grid-cols-[repeat(auto-fill,minmax(110px,1fr))]";
+const WALL_LI_CLS = "min-w-0";
 const WALL_ITEM_CLS =
   "group relative block overflow-hidden rounded-xl border border-line " +
   "bg-[var(--surface-card)]";
@@ -280,7 +280,7 @@ export function TorrentPosters({
               <Cover
                 t={t}
                 className="absolute inset-0 h-full w-full"
-                sizes="(max-width: 639px) 30vw, 220px"
+                sizes="(max-width: 639px) 30vw, 150px"
                 colors={colors}
               />
             </span>
