@@ -15,7 +15,8 @@
     "test:visual": "playwright test e2e/visual-regression.spec.ts",
     "test:visual:update": "playwright test e2e/visual-regression.spec.ts --update-snapshots",
     "vr": "playwright test e2e/visual-regression.spec.ts --reporter=line",
-    "vr:update": "playwright test e2e/visual-regression.spec.ts --reporter=line --update-snapshots"
+    "vr:update": "playwright test e2e/visual-regression.spec.ts --reporter=line --update-snapshots",
+    "postbuild": "node ../../scripts/gen-dict-chunks.mjs"
   },
   "dependencies": {
     "@fluxtorrent/domain-types": "workspace:*",

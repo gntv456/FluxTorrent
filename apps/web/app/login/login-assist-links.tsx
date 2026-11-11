@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
-import { useRegisterMode } from "@/lib/use-register-mode";
+import { getRegisterMode, useRegisterMode } from "@/lib/use-register-mode";
 import { BottomSheet } from "@/components/bottom-sheet";
 
 /** register-mode 响应里辅助卡关心的字段（开放轮窗口） */
@@ -46,8 +46,7 @@ export function LoginAssistLinks() {
 
   useEffect(() => {
     let alive = true;
-    api
-      .get<RegModeResp>("/api/v1/register-mode")
+    getRegisterMode<RegModeResp>()
       .then((r) => {
         if (!alive) return;
         setWin(

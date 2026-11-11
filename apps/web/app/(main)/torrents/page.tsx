@@ -19,7 +19,7 @@ import { TorrentsColSettings } from "./_parts/torrents-col-settings";
 import { TorrentListViews } from "./_parts/torrents-list-views";
 import { TorrentWorks } from "./_parts/torrents-works";
 import { TorrentsHotkeys } from "./_parts/torrents-hotkeys";
-import { TorrentHoverPreview } from "@/components/torrent-hover-preview";
+import { TorrentHoverMount } from "@/components/torrent-hover-mount";
 import { buildTorrentChips } from "./_parts/torrents-chips";
 import {
   advAutoOpen,
@@ -306,7 +306,7 @@ export default async function TorrentsPage({
       {/* 键盘快捷键（/ 搜索、j/k 移动、Enter 打开）：挂载后短暂提示，8s 自动消失 */}
       <TorrentsHotkeys />
       {/* 列表 hover 预览卡（阶段三）：事件委托整页生效 */}
-      <TorrentHoverPreview />
+      <TorrentHoverMount />
 
       {/* 编排轴 × 展示轴：聚合走作品粒度，不聚合走种子粒度 */}
       <TorrentSplitView items={page.items}>

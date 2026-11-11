@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { __resetRegisterModeCache } from "@/lib/use-register-mode";
 import { render, screen, waitFor } from "@testing-library/react";
 
 import RegisterPage from "@/app/(auth)/register/page";
@@ -55,6 +56,7 @@ function mount() {
 beforeEach(() => {
   MODE = "open";
   get.mockReset();
+  __resetRegisterModeCache();
   get.mockImplementation(route);
   vi.stubGlobal(
     "fetch",

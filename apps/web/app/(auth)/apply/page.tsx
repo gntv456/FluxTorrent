@@ -5,6 +5,7 @@ import { useI18n } from "@/i18n/client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getRegisterMode } from "@/lib/use-register-mode";
 import { api, ApiError } from "@/lib/api-client";
 import { AuthCanvas } from "@/components/auth-canvas";
 
@@ -28,8 +29,7 @@ export default function ApplyPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api
-      .get<{ application_signup?: string }>("/api/v1/register-mode")
+    getRegisterMode<{ application_signup?: string }>()
       .then((r) => setOpen(r.application_signup === "open"))
       .catch(() => setOpen(false));
   }, []);

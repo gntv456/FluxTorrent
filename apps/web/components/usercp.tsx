@@ -8,22 +8,40 @@ import type { NextClass } from "@/lib/usercp-level";
 import { USERCP_NAV, type UsercpTab } from "@/lib/usercp-nav";
 import { useI18n } from "@/i18n/client";
 import { LOCALE_COOKIE, siteLangToLocale, type Locale } from "@/i18n/config";
-import { WishlistPanel } from "@/components/wishlist";
 import { OverviewTab } from "@/components/usercp-overview";
-import { PersonalTab } from "@/components/usercp-personal";
-import { UserFieldsTab } from "@/components/usercp-fields";
-import { TrackerTab } from "@/components/usercp-tracker";
-import { ForumTab } from "@/components/usercp-forum";
-import { SecurityTab } from "@/components/usercp-security";
+import dynamic from "next/dynamic";
+import { SkeletonRows } from "@/components/ui/skeleton";
 import { Icon } from "@/components/icons";
 
-/** 控制面板 —— 像素级复刻 NexusPHP usercp（参考站）：
- *  左侧 ⚙控制面板 六项侧边导航（账户概览/个人资料/网站设定/论坛设定/安全设定）
- *  + 各 tab 的 rowhead/rowfollow 经典表格表单，字段与旧站一一对应。
- *  各 tab 面板按域拆出（300 行门禁）：usercp-overview.tsx（账户概览）、
- *  usercp-personal.tsx（个人资料）、usercp-tracker.tsx（网站设定，含
- *  种子列表浏览参数）、usercp-forum.tsx（论坛设定）、usercp-security.tsx
- *  （安全设定）；共用表格行在 usercp-row.tsx。 */
+/* 六个标签页内容件按需分片（2026-11-11 提速批）：/my 的 page chunk 曾
+ *  75KB raw——六个标签件全量 eager 进首屏，而用户一次只看一个标签。
+ *  overview 是默认落地页保留 eager；其余 dynamic，切标签瞬间才拉对应
+ *  小 chunk（骨架行高与表单行对齐防跳）。 */
+const dync = (f: () => Promise<unknown>) =>
+  dynamic(f as never, {
+    ssr: false,
+    loading: () => <SkeletonRows rows={6} />,
+  }) as unknown as React.ComponentType<Record<string, unknown>>;
+const WishlistPanel = dync(
+  () => import("@/components/wishlist").then((m) => m.WishlistPanel) as never);
+/* 标签页按需分片（2026-11-11 提速批）：/my 的 page chunk 曾 75KB——六
+ *  个标签件全量 eager 而用户一次只看一个。overview 保留 eager，其余
+ *  dynamic，切标签瞬间拉小 chunk（骨架行高与表单行对齐防跳）。 */
+const PersonalTab = dync(
+  () =>
+    import("@/components/usercp-personal").then((m) => m.PersonalTab) as never);
+const UserFieldsTab = dynamic(
+  () => import("@/components/usercp-fields").then((m) => m.UserFieldsTab),
+  { ssr: false, loading: () => <SkeletonRows rows={6} /> });
+const TrackerTab = dynamic(
+  () => import("@/components/usercp-tracker").then((m) => m.TrackerTab),
+  { ssr: false, loading: () => <SkeletonRows rows={6} /> });
+const ForumTab = dynamic(
+  () => import("@/components/usercp-forum").then((m) => m.ForumTab),
+  { ssr: false, loading: () => <SkeletonRows rows={4} /> });
+const SecurityTab = dynamic(
+  () => import("@/components/usercp-security").then((m) => m.SecurityTab),
+  { ssr: false, loading: () => <SkeletonRows rows={6} /> });
 
 // ============ 站点语言 ⇄ 前端 locale 映射 ============
 // 换算表已收敛到 i18n/config.siteLangToLocale（与后端 getLocale 默认语言回落共用）；
@@ -125,7 +143,7 @@ export interface Overview {
 }
 
 // ============ 主组件 ============
-
+/** 控制面板（NP 口径）：侧栏导航 + 七档内容件（标签页懒加载见 dync） */
 export function UsercpPanel({
   initialTab,
   nav,

@@ -13,11 +13,15 @@ UA = (
 OUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "apps/web/public/fonts"
 CSS_OUT = pathlib.Path(__file__).resolve().parents[1] / "apps/web/app/styles/fonts-tide.css"
 
-# 只取实际用到的字重：display 400（h1 默认）+ 700（加粗/板块标题）、mono 400/500
+# 实际用到的字重：display 可变 400..700 + mono 400/500 + Noto Serif **仅 700**
+# （2026-11-11 提速批实测：全站衬线消费点只有标题层 font-weight≥700——
+#   --font-serif 的 400 场景仅 medal-shop 3 处且已改系统衬线栈；400 的
+#   101 分片/5.7MB 从未被 700 之外的路由命中，删除后首屏零变化）。
+# 再跑本脚本会重新生成 400 分片——若维持瘦身，改回前先确认消费面。
 FAMILIES = [
     ("Bricolage+Grotesque:opsz,wght@12..96,400..700", "bricolage"),
     ("IBM+Plex+Mono:wght@400;500", "plexmono"),
-    ("Noto+Serif+SC:wght@400;700", "notoserifsc"),
+    ("Noto+Serif+SC:wght@700", "notoserifsc"),
 ]
 
 

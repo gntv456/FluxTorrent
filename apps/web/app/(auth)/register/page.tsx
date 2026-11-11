@@ -5,6 +5,7 @@ import { INPUT_LG } from "@/lib/ui-classes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getRegisterMode } from "@/lib/use-register-mode";
 import { api, setSessionCookie, ApiError } from "@/lib/api-client";
 import { tokenSecondsLeft } from "@/lib/session-ttl";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
@@ -135,8 +136,7 @@ export default function RegisterPage() {
         { setRegFields(b?.data ?? []); setFieldsFailed(false); })
       .catch(() => { setRegFields([]); setFieldsFailed(true); });
     // 注册模式与后端 registration_mode 同步（open 下邀请码非必填）
-    api
-      .get<ModeInfo>("/api/v1/register-mode")
+    getRegisterMode<ModeInfo>()
       .then((r) => {
         const open = r.mode === "open" || r.mode === "email_verify";
         setOpenMode(open);

@@ -10,6 +10,7 @@ import { PwaInstallBar } from "@/components/pwa-install-bar";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { SkipLink } from "@/components/ui/skip-link";
 import { SparkBridge } from "@/components/spark-bridge";
+import { readDictChunk } from "@/lib/dict-chunks";
 import {
   THEMES,
   THEME_IDS,
@@ -143,6 +144,7 @@ window.__fluxSwUpdated=false;location.reload();
  *  清单从构建期 manifest 序列化进来）。同步 appendChild 的 <link> 加载
  *  完成前该主题首帧会有短暂字体回落（Ma Shan Zheng → 楷体栈）——只影响
  *  山海经用户自己的刷新，默认主题用户零感知、零下载。 */
+
 function ThemeNoFlash() {
   const CH = JSON.stringify(
     Object.fromEntries(
@@ -250,6 +252,8 @@ export default async function RootLayout({
   // 板块磨砂玻璃（0448）：作用域挂在 <html> 上——顶栏搜索框与部分弹层是
   // portal 到 body 的，挂在 .site-shell 上会漏掉它们（见 glass.css 注释）。
   const glass = glassStyle(profile?.glass);
+  // 当前语言的字典 chunk URL（postbuild 清单；缺失时 undefined → 不注入）
+  const dictChunkHref = readDictChunk(locale);
   return (
     <html
       lang={locale}
@@ -259,6 +263,14 @@ export default async function RootLayout({
     >
       <head>
         <ThemeTokenStyle tokens={profile.theme_tokens} />
+        {/* 字典懒 chunk 提前发现（2026-11-11 提速批 #5）：i18n/dict-impl 的
+            import() 要等 eager JS 执行到 Provider 挂起才发起——劣化链路上
+            串行多一跳 RTT。postbuild 的 gen-dict-chunks.mjs 落清单，SSR 在
+            head 注入 preload 让字典与 eager JS 并行下载。清单缺失（本地
+            dev/旧构建）静默跳过，行为退化为现状。 */}
+        {dictChunkHref && (
+          <link rel="preload" href={dictChunkHref} as="script" />
+        )}
         {/* TIDE 字体（P5）：已改为**自托管**（见 app/styles/fonts-tide.css + public/fonts/），
             不再请求 Google Fonts —— 保留 unicode-range 分片，浏览器按需加载，
             首访体积不变但彻底摆脱外网依赖；回退链（Songti SC / SimSun）仍是衬线。 */}
