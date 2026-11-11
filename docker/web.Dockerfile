@@ -21,6 +21,9 @@ RUN pnpm config set registry "${NPM_REGISTRY:-https://registry.npmjs.org}" \
     && pnpm install --frozen-lockfile
 COPY apps/web ./apps/web
 COPY packages/domain-types ./packages/domain-types
+# gen-dict-chunks.mjs 需要进 builder（pnpm exec next build 不触发 npm
+# postbuild 钩子——上版只靠钩子，CI 镜像里清单缺失、preload 静默退化）
+COPY scripts/gen-dict-chunks.mjs ./scripts/gen-dict-chunks.mjs
 ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # rewrites 在 build 时求值并固化 —— 构建期就要给出容器内可达的 API 地址
@@ -28,11 +31,8 @@ ARG API_SERVER_URL=http://api:8080
 ENV API_SERVER_URL=$API_SERVER_URL
 WORKDIR /build/apps/web
 RUN pnpm exec next build
-# postbuild 产物（public/i18n/dict-chunks.json 等构建期生成、gitignore 不入库）
-# 必须在 builder 里显式重跑一次：pnpm exec next build 会触发 package.json
-# 的 postbuild 脚本，但 CI 缓存/环境差异下仍显式保证清单存在——layout 的
-# 字典 chunk preload 依赖它（缺失时静默退化，不阻断）。
-RUN node ../../scripts/gen-dict-chunks.mjs || true
+# 字典 chunk 清单（layout 的 preload 依赖；失败不阻断构建——preload 静默退化）
+RUN node ../../scripts/gen-dict-chunks.mjs
 
 FROM ${BASE_REGISTRY}/library/node:24-slim AS runner
 WORKDIR /app
