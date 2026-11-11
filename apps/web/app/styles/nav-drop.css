@@ -235,3 +235,20 @@
     transition: none;
   }
 }
+
+/* ── 山海经拆出件配套默认规则（2026-11-11 修复）───────────────────
+   dev.13 起 fonts/theme-shanhaijing.css 拆到 public/theme-css/ 按需注入
+   （仅山海经档拉取）。但该文件里有三条**无主题作用域的默认规则**——
+   「.shj-atlas/.shj-hero 恒渲染、默认 display:none，靠山海经 CSS 在本
+   主题下翻转为可见」。拆出后非山海经主题不注入这个文件 → 默认隐藏
+   规则消失 → 图卷侧栏/Hero 在日间/夜间主题下裸奔可见（175 元素整列
+   竖排菜单）。默认隐藏必须跟主链走，翻可见仍留在拆出件里。 */
+.shj-atlas,
+.shj-hero {
+  display: none;
+}
+/* 分组折叠必须真的隐藏：作者样式的 display:flex 会盖过 UA 的
+   [hidden] 默认（拆出件原条目，属于通用Reset，随默认规则上提） */
+[hidden] {
+  display: none;
+}

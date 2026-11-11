@@ -367,10 +367,8 @@
   --shj-stage-pet: radial-gradient(120% 130% at 50% 0%, #123a2e, #08170f 72%);
 }
 
-/* ===== 图鉴侧栏骨架：默认隐藏，仅山海经 ≥768px 出现 ===== */
-.shj-atlas {
-  display: none;
-}
+/* ===== 图鉴侧栏骨架（2026-11-11：默认 display:none 上提主链 nav-drop.css，
+   与拆出注入解耦——非山海经主题不注入本文件也必须隐藏） ===== */
 [data-theme="shanhaijing"] .shj-atlas,
 [data-theme="shanhaijing-light"] .shj-atlas {
   position: fixed;
@@ -502,10 +500,7 @@
 /* 分组折叠必须真的隐藏：作者样式的 display:flex 会盖过 UA 的
    [hidden]{display:none}（2026-11-09 验收时发现 is-closed 不生效） */
 [data-theme="shanhaijing"] .shj-atlas__list[hidden],
-[data-theme="shanhaijing-light"] .shj-atlas__list[hidden] {
-  display: none;
-}
-/* 「浏览学段 ›」：教育资源专属虚线金框入口（样图口径），
+[data-theme="shanhaijing-light"] .shj-atlas__list/* 「浏览学段 ›」：教育资源专属虚线金框入口（样图口径），
    轨态/窄断点隐藏，44px 触控高度 */
 [data-theme="shanhaijing"] .shj-atlas__eduedit,
 [data-theme="shanhaijing-light"] .shj-atlas__eduedit {
@@ -883,9 +878,6 @@
 /* ════════════════════════════════════════════════════════════
    乙 · Hero 山海图卷（恒渲染，仅山海经显示）
    ════════════════════════════════════════════════════════════ */
-.shj-hero {
-  display: none;
-}
 [data-theme="shanhaijing"] .shj-hero,
 [data-theme="shanhaijing-light"] .shj-hero {
   position: relative;
