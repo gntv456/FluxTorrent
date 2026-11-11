@@ -157,6 +157,8 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::torrent_http::torrent_log_body) // 抓轨日志(0312,不与{id}冲突)
         .service(crate::torrent_http::torrent_peers)
         .service(crate::torrent_http::torrent_related)
+        .service(crate::torrent_http::torrent_crossseed)
+        .service(crate::iyuu_icon::iyuu_icon)
         .service(crate::torrent_http::torrent_magnet)
         .service(crate::torrent_http::batch_download)
         .service(crate::torrent_http::torrent_files)

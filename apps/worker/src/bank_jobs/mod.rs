@@ -97,15 +97,27 @@ pub async fn bank_daily(db: &PgPool) {
         return;
     }
 
-    // 健康游标：当日结算完成时间 + 各任务行数（主键 run_date 天然幂等，重跑刷新计数）。
-    // run_date 取站点日（UTC+8，与调度侧 site_day、API 健康页 (now()+8h)::date 同口径）；
-    // 直接写 CURRENT_DATE（DB 为 UTC）会让 API 在整个站点日内查不到「今日已结」。
+    // 健康游标：当日结算完成时间 + 各任务行数（主键 run_date 天然幂等）。
+    // run_date 取站点日（UTC+8，与调度侧 site_day、API 健康页
+    // (now()+8h)::date 同口径）；直接写 CURRENT_DATE（DB 为 UTC）会让
+    // API 在整个站点日内查不到「今日已结」。
+    // 2026-11-11 现网实证：同日被多实例补跑时，后跑那轮子任务游标已
+    // 推进、全返 0，旧口径 EXCLUDED 直写会把首次结算的真实行数抹成 0。
+    // 改为取最大值兜底，空跑不再污染健康页（四列均 NOT NULL DEFAULT 0）。
     let _ = sqlx::query(
-        "INSERT INTO bank_settle_runs (run_date, demand_rows, fixed_rows, loan_rows, deduct_rows, finished_at) \
-         VALUES ((CURRENT_TIMESTAMP + interval '8 hours')::date, $1, $2, $3, $4, now()) \
+        "INSERT INTO bank_settle_runs (run_date, demand_rows, fixed_rows, \
+         loan_rows, deduct_rows, finished_at) \
+         VALUES ((CURRENT_TIMESTAMP + interval '8 hours')::date, \
+         $1, $2, $3, $4, now()) \
          ON CONFLICT (run_date) DO UPDATE SET \
-           demand_rows = EXCLUDED.demand_rows, fixed_rows = EXCLUDED.fixed_rows, \
-           loan_rows = EXCLUDED.loan_rows, deduct_rows = EXCLUDED.deduct_rows, \
+           demand_rows = GREATEST(bank_settle_runs.demand_rows, \
+           EXCLUDED.demand_rows), \
+           fixed_rows = GREATEST(bank_settle_runs.fixed_rows, \
+           EXCLUDED.fixed_rows), \
+           loan_rows = GREATEST(bank_settle_runs.loan_rows, \
+           EXCLUDED.loan_rows), \
+           deduct_rows = GREATEST(bank_settle_runs.deduct_rows, \
+           EXCLUDED.deduct_rows), \
            finished_at = EXCLUDED.finished_at",
     )
     .bind(demand_rows as i32)

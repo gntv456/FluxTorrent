@@ -10,10 +10,13 @@ import { formatBytes } from "@/lib/format";
  *
  * 数据源 = API 读 tracker 写进 Redis 的 swarm 快照（`flux:tracker:peers`），
  * 所以面板本身不接触 tracker 进程；15s 自动刷新让数字保持"活"。
- * 非 staff 的 IP 由后端脱敏（前端不做二次处理，避免两套口径）。
+ * 非 staff 的 IP 由后端脱敏（前端不做二次处理，避免两套口径）；
+ * 用户名与 /snatches 同口径，直链个人主页，做种者带「种」标签。
  */
 
 interface PeerItem {
+  user_id: number;
+  username: string;
   peer_id: string;
   client: string;
   ip: string;
@@ -128,6 +131,7 @@ export function TorrentPeers({ torrentId }: { torrentId: number }) {
           <table className="nexus-table td-peers__table">
             <thead>
               <tr>
+                <th className="w-32">{t.pkUser}</th>
                 <th className="w-32">{t.pkClient}</th>
                 <th>{t.pkAddress}</th>
                 <th className="w-20">{t.pkProgress}</th>
@@ -142,8 +146,24 @@ export function TorrentPeers({ torrentId }: { torrentId: number }) {
                   className={p.is_self ? "is-self" : undefined}
                 >
                   <td>
+                    {p.username.startsWith("#") ? (
+                      <span className="text-sub">{p.username}</span>
+                    ) : (
+                      <a href={`/users/${p.user_id}`} className="font-bold">
+                        {p.username}
+                      </a>
+                    )}
+                    {p.is_self && (
+                      <span className="ml-1 text-xs text-sub">
+                        {t.pkSelf}
+                      </span>
+                    )}
+                    {p.seeder && (
+                      <span className="td-peers__tag">{t.pkSeeder}</span>
+                    )}
+                  </td>
+                  <td>
                     <span className="td-peers__client">{p.client}</span>
-                    {p.seeder && <span className="td-peers__tag">种</span>}
                   </td>
                   <td className="num">{p.ip}:{p.port}</td>
                   <td className="num">{p.progress.toFixed(1)}%</td>

@@ -16,6 +16,7 @@ import { formatBytes } from "@/lib/format";
 import { dateLocale } from "@/i18n/config";
 import { PosterImage } from "@/components/poster-image";
 import { posterSrc } from "@/lib/poster-src";
+import { Descr } from "@/components/torrent-detail-parts";
 import { WorkRelatedGrid } from "@/components/work-related-grid";
 import { WorkSeedRows } from "@/components/work-seed-rows";
 import { WorkIds } from "@/components/work-ids";
@@ -255,9 +256,12 @@ export default async function WorkDetailPage({
       {detail && (
         <section className="wk-panel">
           <div className="wk-panel-t">{dict.works.fullSynopsis}</div>
-          {/* 完整简介按纯文本渲染（React 自动转义）：descr 可能含用户输入的
-              HTML/BBCode，作品页不做富文本注水——种子详情页才是它的正式渲染位 */}
-          <p className="wk-full">{detail}</p>
+          {/* 完整简介与种子详情页同源渲染（Descr）：descr 来自种子原始
+              简介，含 BBCode（quote/img/url…）时走渲染器而非裸文本，
+              React 自动转义天然免疫 XSS */}
+          <div className="wk-full">
+            <Descr text={detail} />
+          </div>
         </section>
       )}
 

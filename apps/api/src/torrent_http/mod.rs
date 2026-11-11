@@ -8,6 +8,8 @@
 
 mod aggregate;
 mod batch;
+// 详情页辅种行（可选插件，0486）
+mod crossseed_panel;
 mod comments_like;
 mod detail;
 mod interact;
@@ -83,6 +85,7 @@ pub(crate) use works_watch::work_watch;
 // 全改成 pub —— 后者会把内部结构一并暴露出去。
 pub(crate) use aggregate::torrent_aggregate;
 pub(crate) use batch::batch_download;
+pub(crate) use crossseed_panel::torrent_crossseed;
 pub(crate) use cue::cue_check;
 pub(crate) use detail::comments;
 pub(crate) use detail::torrent_detail_ext;

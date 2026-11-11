@@ -9,6 +9,9 @@ serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 sha2 = "0.10"
+# IYUU 客户端：签名用 sha1，出站用 reqwest（与 api 同版本同特性）
+sha1 = "0.10"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # 邀请码/passkey 用密码学 RNG（与 api 侧 domain::new_passkey 同口径）
 rand.workspace = true
 thiserror.workspace = true

@@ -5,6 +5,7 @@
 
 import { Comments, Thankers } from "@/components/torrent-detail-blocks";
 import { FoldMobile } from "@/components/fold-mobile";
+import { TorrentCrossseed } from "@/components/torrent-crossseed";
 import type { Dict } from "@/i18n/zh-CN";
 import type { Locale } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
@@ -52,6 +53,12 @@ export function TorrentDetailTail({
       )}
 
       {!thankersOn && infoHash}
+
+      {/* 0486：可选插件，未启用/无命中时组件自身返回 null */}
+      <TorrentCrossseed
+        torrentId={t.id}
+        label={dict.torrent.crossseed}
+      />
 
       {sectOn("comments") && (
         <FoldMobile

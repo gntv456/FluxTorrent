@@ -27,6 +27,14 @@ pub(super) async fn hour_jobs(
         purge_old_login_events(&db),
     )
     .await;
+    // IYUU 辅种查重：每小时刷一批最久没刷的种子（配额制，见 job 文档）
+    run_sharded(
+        &db,
+        &shard,
+        "job:iyuu_refresh",
+        iyuu_refresh(&db, redis.clone()),
+    )
+    .await;
     run_sharded(&db, &shard, "job:ratio_watch", ratio_watch(&db)).await;
     run_sharded(&db, &shard, "job:dormant_mark", dormant_mark(&db)).await;
     run_sharded(&db, &shard, "job:request_expire", request_expire(&db)).await;

@@ -1402,8 +1402,10 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "rand 0.8.8",
+ "reqwest",
  "serde",
  "serde_json",
+ "sha1 0.10.7",
  "sha2",
  "sqlx",
  "thiserror 2.0.20",

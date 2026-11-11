@@ -115,31 +115,38 @@ fn every(secs: u64) -> tokio::time::Interval {
 
 /// 银行结算日切门（原 run.rs 60s 分支内联块抽出）：
 /// 站点时区 UTC+8 自然日切换后跑一次；分钟级检查保证重启/宕机跨日也能补跑。
-async fn bank_daily_gate(db: &PgPool, last: &mut Option<chrono::NaiveDate>) {
-    let mut state = *last;
+///
+/// 2026-11-11 现网实证修复：此门原先不走分片判定，且「今日是否已结」
+/// 只靠每个进程独立的内存 state（仅启动时读一次 max(run_date)）。
+/// 三个 worker 实例（主 + 两个 FLUX_WORKER_JOBS=consume_announce 分片）
+/// 于是各自都判「今日未结」：A 结完发息写游标后释放 advisory 锁，
+/// B 下个 tick 抢到锁补跑一遍，各子任务因日期游标/幂等键已推进全返 0，
+/// ON CONFLICT DO UPDATE 把当天真实行数刷成 0（11-06~11-11 六天全 0，
+/// ctid 跳跃 + n_tup_upd=5 佐证）。资金因幂等键没多付，但健康页失真，
+/// 且专用 announce 容器本不该碰银行。
+async fn bank_daily_gate(db: &PgPool, shard: &Option<Vec<String>>) {
+    if !job_in_shard("bank_daily", shard) {
+        return;
+    }
     let site_day =
         (chrono::Utc::now() + chrono::Duration::hours(8)).date_naive();
-    if state.is_none() {
-        state = Some(init_bank_day(db).await);
+    // 库里的健康游标是唯一真源：每轮重查，跨实例/重启都不会误判。
+    // init_bank_day 今日已结返回今天，否则返回昨天；结算失败不写游标，
+    // 下一 tick 自然会整轮重跑（各子步骤自带游标，重跑安全）。
+    if init_bank_day(db).await >= site_day {
+        return;
     }
-    if state != Some(site_day) {
-        tracing::info!(?site_day, "bank_daily start");
-        // bank_daily 内部各子步骤自带日期游标/幂等键，锁内重跑安全
-        let db2 = db.clone();
-        with_lock(db, "job:bank_daily", async move {
+    tracing::info!(?site_day, "bank_daily start");
+    let db2 = db.clone();
+    with_lock(db, "job:bank_daily", async move {
+        // 锁内二次判定：抢锁期间别的实例可能已结完并写好游标。
+        // 与锁外判定配合，同一站点日只真正执行一次，又保留多实例兜底。
+        if init_bank_day(&db2).await < site_day {
             crate::bank_jobs::bank_daily(&db2).await;
-            Ok::<(), anyhow::Error>(())
-        })
-        .await;
-        let after: Option<chrono::NaiveDate> =
-            sqlx::query_scalar("SELECT max(run_date) FROM bank_settle_runs")
-                .fetch_one(db)
-                .await
-                .ok()
-                .flatten();
-        state = Some(after.unwrap_or(site_day - chrono::Duration::days(1)));
-    }
-    *last = state;
+        }
+        Ok::<(), anyhow::Error>(())
+    })
+    .await;
 }
 
 pub async fn run_all(
@@ -150,7 +157,6 @@ pub async fn run_all(
     // 重型巡检 O(全表) 300s；0071 反作弊/性能分档
     let mut tick5 = every(300);
     let mut hour_tick = every(3600);
-    let mut last_bank_day: Option<chrono::NaiveDate> = None;
     let mut tick10 = every(600);
     let mut tick30 = every(1800);
     let mut tick6h = every(6 * 3600);
@@ -220,7 +226,7 @@ pub async fn run_all(
                     }
                 });
             }
-            bank_daily_gate(&db, &mut last_bank_day).await;
+            bank_daily_gate(&db, &shard).await;
         }
         _ = hour_tick.tick() => {
             // 首轮不跳过（幂等键护栏，重跑零副作用）。整批 spawn 出去，

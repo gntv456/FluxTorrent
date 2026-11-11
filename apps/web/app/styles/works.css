@@ -1081,13 +1081,13 @@
   }
 }
 
-/* 作品详情：完整简介（纯文本，保留换行） */
+/* 作品详情：完整简介（与种子详情页同源 Descr 渲染：BBCode/段落自排，
+   只管留白与字号色，不再自作 pre-line——会与渲染器内排版打架） */
 .wk-full {
   padding: 0 16px 6px;
   color: var(--text-body);
   font-size: 12.5px;
   line-height: 1.85;
-  white-space: pre-line;
 }
 
 /* 外部条目徽标（豆瓣/TMDB/IMDb）：作品卡与作品详情共用 */

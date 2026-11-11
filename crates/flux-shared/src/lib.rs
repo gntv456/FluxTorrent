@@ -13,6 +13,8 @@
 //! 【不变的部分】生效语义与原先逐字一致：`has_effect` 的清单、
 //! 幂等键口径、防重 EXISTS 判据都不动，只是搬家。
 
+pub mod iyuu;
+
 use serde_json::Value;
 use sqlx::PgPool;
 

@@ -402,6 +402,9 @@ const enBase: Omit<
     hkMove: "Move",
     hkOpen: "Open",
     peersTitle: "Peers online",
+    pkUser: "User",
+    pkSelf: "you",
+    pkSeeder: "Seed",
     pkClient: "Client",
     pkAddress: "Address",
     pkProgress: "Progress",
@@ -555,6 +558,7 @@ const enBase: Omit<
     medium: "Media",
     grade: "Grade",
     edition: "Edition",
+    crossseed: "Cross-seed",
     infoHash: "Info Hash",
     numFiles: "Files",
     filesMissing:

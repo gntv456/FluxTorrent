@@ -86,6 +86,8 @@ mod storage;
 mod terms;
 mod torrent_http;
 mod torrents;
+mod iyuu_bridge;
+mod iyuu_icon;
 mod twofa_http;
 mod v4_http;
 

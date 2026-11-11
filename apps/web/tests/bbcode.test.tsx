@@ -36,4 +36,21 @@ describe("bbcode renderer", () => {
   it("tolerates unclosed tags (literal fallback, no crash)", () => {
     expect(renderText("a [b]b [i]c")).toBe("a b c");
   });
+
+  it("renders real-world descr (poster img + MediaInfo quote + url)", () => {
+    // 线上真实样例（走马上任 2026）：作品页曾按纯文本裸奔整段 BBCode
+    const src = [
+      "[quote][color=red][size=4][b]禁转PTTime[/b][/size][/color][/quote]",
+      "[img]https://img3.pixhost.cc/p.jpg[/img]",
+      "◎IMDb链接  [url=https://www.imdb.com/title/tt34423706/]imdb[/url]",
+      "[quote]Complete name : x.mkv[/quote]",
+    ].join("\n");
+    const html = render(<div>{renderBBCode(src)}</div>).container;
+    expect(html.querySelectorAll("img")).toHaveLength(1);
+    const imdb = "a[href='https://www.imdb.com/title/tt34423706/']";
+    expect(html.querySelector(imdb)).not.toBeNull();
+    expect(html.querySelectorAll("blockquote")).toHaveLength(2);
+    // 渲染后不该再露出任何裸标签
+    expect(html.textContent).not.toMatch(/\[(?:img|url|quote|b)\]/);
+  });
 });
