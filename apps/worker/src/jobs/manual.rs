@@ -117,6 +117,9 @@ pub(crate) async fn run_named(
         "auto_review_digest" => d(auto_review::auto_review_digest(db).await?),
         "spark_merkle" => n(spark_merkle_daily(db).await?),
         "mail_outbox" => n(mail_out::mail_outbox_drain(db).await?),
+        // 0487：IYUU 辅种查重此前只在 hour_jobs 定时里，手触缺臂——站长
+        // 配好凭据后没法立即跑一轮（要等下一个整点），首次冷启动尤其憋。
+        "iyuu_refresh" => n(iyuu_refresh(db, redis.clone()).await?),
         other => anyhow::bail!("未知任务 {other}"),
     })
 }

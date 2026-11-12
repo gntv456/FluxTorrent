@@ -273,6 +273,12 @@ pub const JOBS: &[JobDef] = &[
         name: "auto_review_digest",
         cadence: "24h",
     },
+    JobDef {
+        // 0487 IYUU 辅种查重：hour_jobs 每小时在跑，目录/手触此前都缺——
+        // 站长配好凭据后可在面板立即跑一轮，不用等整点。
+        name: "iyuu_refresh",
+        cadence: "1h",
+    },
     // 0382 勋章自动成就：threshold 周期重算（hourly 而非 daily——周期口径
     // 含日/周，daily 会让「周期最后一天达标的用户」白等 24h）
     JobDef {
