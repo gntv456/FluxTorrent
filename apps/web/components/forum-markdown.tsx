@@ -95,22 +95,27 @@ function heading(level: number, children: React.ReactNode, key: string) {
   const n = Math.min(Math.max(level, 1), 6);
   const Tag = `h${n}` as keyof React.JSX.IntrinsicElements;
   return (
-    <Tag key={key} className={cls}>
+    <Tag
+      key={key}
+      // 目录锚点（三栏改版）：id=块 key，右栏目录据此定位（forum-toc.ts）
+      id={`md-${key}`}
+      className={cls}
+    >
       {children}
     </Tag>
   );
 }
 
-const isFence = (l: string) => /^\s*(```|~~~)/.test(l);
-const isHeading = (l: string) => /^\s*#{1,6}\s+/.test(l);
-const isQuote = (l: string) => /^\s*>\s?/.test(l);
-const isUl = (l: string) => /^\s*[-*+]\s+/.test(l);
-const isOl = (l: string) => /^\s*\d+[.)]\s+/.test(l);
-const isHr = (l: string) => /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l);
+export const isFence = (l: string) => /^\s*(```|~~~)/.test(l);
+export const isHeading = (l: string) => /^\s*#{1,6}\s+/.test(l);
+export const isQuote = (l: string) => /^\s*>\s?/.test(l);
+export const isUl = (l: string) => /^\s*[-*+]\s+/.test(l);
+export const isOl = (l: string) => /^\s*\d+[.)]\s+/.test(l);
+export const isHr = (l: string) => /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l);
 
 /** 视频块识别（0189）：!video(URL) 显式 / 整段恰为一个 URL 的自动转换。
  *  返回 URL（SAFE_URL 已过）或 null（继续按普通块解析）。 */
-function videoLine(
+export function videoLine(
   line: string,
 ): string | null {
   const t = line.trim();
@@ -292,3 +297,4 @@ export function MarkdownRenderer({
   if (!source) return null;
   return <div className="text-ink">{parseBlocks(source, embedRules)}</div>;
 }
+

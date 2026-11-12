@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { MarkdownRenderer } from "@/components/forum-markdown";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { TagChip, TagChipData } from "@/components/forum-bits";
 import { VideoInsertRow } from "@/components/forum-video-insert";
 import { TorrentInsertRow } from "@/components/forum-torrent-insert";
 import { appendVideoBlock } from "@/lib/forum-video";
 import { Modal } from "@/components/modal";
+import { EditorToolbar } from "@/components/editor-toolbar";
+import { TagPicker } from "@/components/forum-tag-picker";
 /** 论坛发主题组件群（从 forum-composer.tsx 按域拆出）：
  *  发帖选标签 TagPicker + 发主题 TopicComposer（悬赏/投票/抽奖三型，
  *  0124/0125/0126）。视频插入行在 forum-video-insert.tsx；回帖/管理操作
@@ -29,10 +31,8 @@ function boardGroups(boards: CreatableBoard[], ungrouped: string) {
   const groups: { key: string; name: string; items: CreatableBoard[] }[] = [];
   const byKey = new Map<string, (typeof groups)[number]>();
   for (const b of boards) {
-    const key =
-      b.category_id != null && b.category_name
-        ? `cat-${b.category_id}`
-        : "cat-none";
+    const key = b.category_id != null && b.category_name
+      ? `cat-${b.category_id}` : "cat-none";
     let g = byKey.get(key);
     if (!g) {
       g = { key, name: b.category_name ?? ungrouped, items: [] };
@@ -44,66 +44,28 @@ function boardGroups(boards: CreatableBoard[], ungrouped: string) {
   return groups;
 }
 
-/** 发主题选标签：字典自取（公开接口 /forums/tags，含 tag_dict 样式列），最多选 5 个 */
-function TagPicker({
-  selected,
-  onToggle,
-}: {
-  selected: number[];
-  onToggle: (id: number) => void;
-}) {
-  const { dict } = useI18n();
-  const [dictRows, setDictRows] = useState<TagChipData[]>([]);
+/** 发主题弹窗：forumId 传=版块页入口（锁定版块）；不传=全局入口
+ *  （弹窗内先选版块）。对接 POST /forums/topics */
 
-  useEffect(() => {
-    let alive = true;
-    api
-      .get<TagChipData[]>("/api/v1/forums/tags")
-      .then((r) => {
-        if (alive) setDictRows(r ?? []);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
+const INP =
+  "min-h-[44px] w-full rounded-[var(--r-sm)] border border-line bg-cloud " +
+  "px-3 text-sm outline-none focus:border-sky";
+const INP_SM =
+  "min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+  "px-3 text-sm outline-none focus:border-sky";
+const BTN_GHOST =
+  "self-start rounded-full border border-line px-3 py-1 text-xs " +
+  "font-bold text-sub hover:border-sky hover:text-sky";
+const BTN_SUBMIT =
+  "min-h-[44px] rounded-full bg-sky px-5 text-sm font-bold " +
+  "text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50";
+const INP_W =
+  "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+  "px-3 text-sm outline-none focus:border-sky";
+const BTN_CANCEL =
+  "min-h-[40px] rounded-full border border-line px-5 text-sm " +
+  "text-sub active:scale-[0.97]";
 
-  if (dictRows.length === 0) return null;
-  const t = dict.forums;
-  const full = selected.length >= 5;
-
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-sm text-sub">{t.tagPick}</span>
-      <div className="flex flex-wrap gap-1.5">
-        {dictRows.map((d) => {
-          const on = selected.includes(d.id);
-          return (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => onToggle(d.id)}
-              disabled={!on && full}
-              aria-pressed={on}
-              className={`rounded-full transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                on
-                  ? "outline outline-2 outline-offset-1 outline-sky"
-                  : "opacity-70 hover:opacity-100"
-              }`}
-              title={on ? t.tagOn : t.tagOff}
-            >
-              <TagChip tag={d} />
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/** 发主题弹窗。forumId 传入 = 版块页入口（锁定该版块）；
- *  不传 = 全局入口（如论坛首页「发布新帖」），弹窗内先选版块。
- *  对接 POST /forums/topics */
 export function TopicComposer({ forumId }: { forumId?: number }) {
   const { dict } = useI18n();
   const router = useRouter();
@@ -116,6 +78,7 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
   );
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [tags, setTags] = useState<number[]>([]);
   // 悬赏（0124）：选了金额即 bounty 类型；金额空 = 普通帖
   const [bounty, setBounty] = useState("");
@@ -128,21 +91,20 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
   const [lotHours, setLotHours] = useState("24");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // 编辑器 tab（图1 口径）：write 正文 / live 实时预览 / done 静态预览
+  const [tab, setTab] = useState<"write" | "live" | "done">("write");
 
   // 全局入口：首次打开弹窗时拉一次可发帖版块（/forums 已带 can_create）
   useEffect(() => {
     if (forumId != null || !open || boards === null || boards.length > 0)
       return;
     let alive = true;
-    api
-      .get<{ forums: CreatableBoard[] }>("/api/v1/forums")
+    api.get<{ forums: CreatableBoard[] }>("/api/v1/forums")
       .then((r) => {
         if (alive) setBoards((r?.forums ?? []).filter((f) => f.can_create));
       })
       .catch(() => {});
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [open, forumId, boards]);
 
   async function submit(e: React.FormEvent) {
@@ -212,109 +174,159 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
       title={dict.forums.newTopic}
       size="lg"
     >
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        {boards !== null && (
+      {/* 两列（机窝口径）：左=标题+正文编辑器；右=发布设置（节点/标签/
+          类型挂件）+提交。≤900px 单列堆叠。 */}
+      <form onSubmit={submit} className="tp-comp">
+        {/* ── 左列 ── */}
+        <div className="tp-comp__main">
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-sub">{dict.forums2.pickBoard}</span>
-            <select
-              value={picked ?? ""}
-              onChange={(e) => setPicked(Number(e.target.value))}
+            <span className="text-sm text-sub">{dict.forums.topicTitle}</span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               required
-              className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
-            >
-              <option value="" disabled>
-                {dict.forums2.pickBoardPh}
-              </option>
-              {boards.length === 0 && (
-                <option value="">{dict.forums2.noBoard}</option>
-              )}
-              {boardGroups(boards, dict.forums.uncategorized).map((g) => (
-                <optgroup key={g.key} label={g.name}>
-                  {g.items.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              maxLength={120}
+              className={INP}
+            />
           </label>
-        )}
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.forums.topicTitle}</span>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            maxLength={120}
-            className="min-h-[44px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.forums.topicBody}</span>
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            required
-            rows={5}
-            maxLength={5000}
-            className="min-h-[100px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 py-2 text-sm outline-none focus:border-sky"
-          />
-        </label>
-        <TagPicker
-          selected={tags}
-          onToggle={(id) =>
-            setTags((ts) =>
-              ts.includes(id) ? ts.filter((x) => x !== id) : [...ts, id],
-            )
-          }
-        />
-        {/* 悬赏（0124）：填金额即悬赏帖，冻结立扣；留空 = 普通帖 */}
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.forums.bountyLabel}</span>
-          <input
-            type="number"
-            min={0}
-            max={1000000}
-            value={bounty}
-            onChange={(e) => setBounty(e.target.value)}
-            placeholder={dict.forums.bountyPh}
-            className="min-h-[44px] w-44 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
-          />
-        </label>
-        {/* 投票（0125）：≥2 个非空选项即投票帖；选项发帖后定死 */}
-        <div className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.forums.pollLabel}</span>
-          <div className="flex flex-col gap-1">
-            {pollOpts.map((v, i) => (
-              <input
-                key={i}
-                value={v}
-                onChange={(e) =>
-                  setPollOpts((os) =>
-                    os.map((x, j) => (j === i ? e.target.value : x)),
-                  )
-                }
-                maxLength={60}
-                placeholder={`${dict.forums.pollOption} ${i + 1}`}
-                className="min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+          {/* 编辑器卡（图1 形态）：tab 行（正文/实时预览/预览）+ 字数 +
+              编辑区（write）或渲染区（live/done 共用预览样式） */}
+          <div className="tp-edcard">
+            <div className="tp-edcard__tabs">
+              {(
+                [
+                  ["write", dict.forums2.edWrite],
+                  ["live", dict.forums2.edLive],
+                  ["done", dict.forums2.edDone],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={"tp-edcard__tab" + (tab === k ? " is-on" : "")}
+                  onClick={() => setTab(k)}
+                >
+                  {label}
+                </button>
+              ))}
+              <span className="tp-edcard__count num">{body.length} / 5000</span>
+            </div>
+            {tab === "write" ? (
+              <textarea
+                ref={bodyRef}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                required
+                rows={12}
+                maxLength={5000}
+                placeholder={dict.forums2.edPh}
+                className="tp-edcard__area"
               />
-            ))}
-            {pollOpts.length < 10 && (
-              <button
-                type="button"
-                onClick={() => setPollOpts((os) => [...os, ""])}
-                className="self-start rounded-full border border-line px-3 py-1 text-xs font-bold text-sub hover:border-sky hover:text-sky"
-              >
-                + {dict.forums.pollAddOption}
-              </button>
+            ) : (
+              /* 实时/静态预览共用渲染区；空正文给占位提示 */
+              <div className="tp-edcard__prev">
+                {body.trim() ? (
+                  <MarkdownRenderer source={body} />
+                ) : (
+                  <p className="tp-edcard__empty">{dict.forums2.edEmpty}</p>
+                )}
+              </div>
+            )}
+            {tab === "write" && (
+              <EditorToolbar areaRef={bodyRef} onChange={(t) => setBody(t)}>
+                <VideoInsertRow
+                  onInsert={(t) => setBody((b) => appendVideoBlock(b, t))} />
+                <TorrentInsertRow
+                  onInsert={(t) => setBody((b) => appendVideoBlock(b, t))} />
+              </EditorToolbar>
             )}
           </div>
         </div>
-        {/* 抽奖（0126）：填名额+奖金即抽奖帖（奖金池发布时冻结）；票价 0=免费参与 */}
-        <div className="flex flex-col gap-1">
-          <span className="text-sm text-sub">{dict.forums.lotLabel}</span>
-          <div className="flex flex-wrap gap-2">
+
+        {/* ── 右列：发布设置 ── */}
+        <div className="tp-comp__side">
+          <section className="side-card">
+            <h2 className="side-card__title">{dict.forums2.edSettings}</h2>
+            {boards !== null && (
+              <label className="flex flex-col gap-1">
+                <span className="text-sm text-sub">
+                {dict.forums2.pickBoard}
+              </span>
+                <select
+                  value={picked ?? ""}
+                  onChange={(e) => setPicked(Number(e.target.value))}
+                  required
+                  className={INP}
+                >
+                  <option value="" disabled>
+                    {dict.forums2.pickBoardPh}
+                  </option>
+                  {boards.length === 0 && (
+                    <option value="">{dict.forums2.noBoard}</option>
+                  )}
+                  {boardGroups(boards, dict.forums.uncategorized).map((g) => (
+                    <optgroup key={g.key} label={g.name}>
+                      {g.items.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+            )}
+            <TagPicker
+              selected={tags}
+              onToggle={(id) => setTags((ts) => ts.includes(id)
+                ? ts.filter((x) => x !== id) : [...ts, id])}
+            />
+            {/* 悬赏（0124）：填金额即悬赏帖（冻结立扣）；留空=普通帖 */}
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-sub">
+                {dict.forums.bountyLabel}
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={1000000}
+            value={bounty}
+            onChange={(e) => setBounty(e.target.value)}
+            placeholder={dict.forums.bountyPh}
+                className={INP}
+              />
+            </label>
+            {/* 投票（0125）：≥2 个非空选项即投票帖；选项发帖后定死 */}
+            <div className="flex flex-col gap-1">
+              <span className="text-sm text-sub">{dict.forums.pollLabel}</span>
+              <div className="flex flex-col gap-1">
+                {pollOpts.map((v, i) => (
+                  <input
+                    key={i}
+                    value={v}
+                    onChange={(e) =>
+                      setPollOpts((os) =>
+                        os.map((x, j) => (j === i ? e.target.value : x)),
+                      )
+                    }
+                    maxLength={60}
+                    placeholder={`${dict.forums.pollOption} ${i + 1}`}
+                    className={INP_SM}
+                  />
+                ))}
+                {pollOpts.length < 10 && (
+                  <button
+                    type="button"
+                    onClick={() => setPollOpts((os) => [...os, ""])}
+                    className={BTN_GHOST}
+                  >
+                    + {dict.forums.pollAddOption}
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* 抽奖（0126）：名额+奖金即抽奖帖（池冻结）；票价 0=免费 */}
+            <div className="flex flex-col gap-1">
+              <span className="text-sm text-sub">{dict.forums.lotLabel}</span>
+              <div className="flex flex-wrap gap-2">
             <input
               type="number"
               min={1}
@@ -322,7 +334,7 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
               value={lotWinners}
               onChange={(e) => setLotWinners(e.target.value)}
               placeholder={dict.forums.lotWinners}
-              className="min-h-[44px] w-28 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              className={`${INP} w-28`}
             />
             <input
               type="number"
@@ -331,7 +343,7 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
               value={lotPrize}
               onChange={(e) => setLotPrize(e.target.value)}
               placeholder={dict.forums.lotPrize}
-              className="min-h-[44px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              className={`${INP} w-32`}
             />
             <input
               type="number"
@@ -340,7 +352,7 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
               value={lotTicket}
               onChange={(e) => setLotTicket(e.target.value)}
               placeholder={dict.forums.lotTicket}
-              className="min-h-[44px] w-32 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              className={`${INP} w-32`}
             />
             <input
               type="number"
@@ -349,38 +361,25 @@ export function TopicComposer({ forumId }: { forumId?: number }) {
               value={lotHours}
               onChange={(e) => setLotHours(e.target.value)}
               placeholder={dict.forums.lotHours}
-              className="min-h-[44px] w-28 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+              className={INP_SM}
             />
           </div>
-        </div>
-        {/* 视频内嵌（0189/0190）：白名单链接或本地上传，插入 !video() 独立行 */}
-        <VideoInsertRow
-          onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
-        />
-        {/* 引用种子：搜索选择后插入 !torrent(id) 独立行（渲染为摘要卡） */}
-        <TorrentInsertRow
-          onInsert={(text) => setBody((b) => appendVideoBlock(b, text))}
-        />
-        {msg && (
-          <p role="alert" className="text-sm text-[var(--danger-text)]">
-            {msg}
-          </p>
-        )}
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={busy}
-            className="min-h-[44px] rounded-full bg-sky px-5 text-sm font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
-          >
-            {busy ? dict.forums.posting : dict.forums.submitTopic}
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="min-h-[44px] rounded-full border border-line px-5 text-sm text-sub active:scale-[0.97]"
-          >
-            {dict.forums.cancel}
-          </button>
+            </div>
+            {msg && (
+              <p role="alert" className="text-sm text-[var(--danger-text)]">{msg}</p>
+            )}
+            <div className="flex flex-col gap-2">
+              <button type="submit" disabled={busy} className={BTN_SUBMIT}>
+                {busy ? dict.forums.posting : dict.forums.submitTopic}
+              </button>
+              <button
+                type="button" onClick={() => setOpen(false)}
+                className={BTN_CANCEL}
+              >
+                {dict.forums.cancel}
+              </button>
+            </div>
+          </section>
         </div>
       </form>
     </Modal>

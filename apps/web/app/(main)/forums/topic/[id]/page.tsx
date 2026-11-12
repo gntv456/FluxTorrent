@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPosts, getForums, getEmbedRules } from "@/lib/data";
+import { getPosts, getForums, getEmbedRules, getTopics } from "@/lib/data";
+import { extractToc } from "@/components/forum-toc";
 import { TopicModActions } from "@/components/forum-post-actions";
 import { TopicTitleEdit } from "@/components/forum-title-edit";
 import { ReplyBox } from "@/components/forum-reply-box";
@@ -12,9 +13,17 @@ import { LotteryWidget } from "@/components/forum-lottery";
 import { ReportTopicButton } from "@/components/forum-report";
 import { FollowButton } from "@/components/forum-follow";
 import { PostRow } from "./_parts/post-row";
+import { TopicHeadMenu } from "./_parts/topic-head-menu";
+import { TopicSideActions } from "./_parts/topic-side";
+import { TopicSiblingList } from "./_parts/topic-sibling-list";
 import { getDict } from "@/i18n/server";
 import { requireModule } from "@/components/module-gate";
 import { api, ApiError } from "@/lib/api-client";
+import { fmt } from "@/i18n/config";
+
+// 三栏栅格与两翼 sticky 复用论坛首页那套（.pting-forums/.fh-left/.fh-side
+// + tp-* 帖子页专属块都在 forums-home.css；页面级导入作用域=本路由树）
+import "@/app/styles/forums-home.css";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +68,29 @@ export default async function TopicPage({
         .find((x) => x.id === replyToId) ?? null)
     : null;
 
+  // 三栏（2026-11-12 机窝口径）：左=同版块帖子列表；右=赞藏回+本文目录。
+  // 两路与上面互不依赖，并行取；失败/空 → 对应栏整块不渲染。
+  const [siblings, firstPost] = await Promise.all([
+    getTopics(detail.forum_id),
+    Promise.resolve(detail.posts[0]),
+  ]);
+  const toc = firstPost ? extractToc(firstPost.body) : [];
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="pting-forums tp-page">
+      {/* 左栏：本版帖子（≤1024 随右栏一起收起，与论坛首页同断点） */}
+      <div className="fh-left">
+        <TopicSiblingList
+          forumId={detail.forum_id}
+          forumName={detail.forum_name}
+          currentId={topicId}
+          topics={siblings?.topics ?? []}
+          dict={dict}
+        />
+      </div>
+
+      {/* 中栏：标题/标记/挂件/楼层/回复（原单栏主体） */}
+      <div className="tp-main flex flex-col gap-4">
       <div className="flex items-baseline gap-2">
         <Link href="/forums" className="text-sm text-sky">
           {dict.forums.backToForums}
@@ -76,8 +106,7 @@ export default async function TopicPage({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-display text-2xl">
-          {/* 标记统一用文字徽章（用户要求：不再要图钉/星形图标）：
-              公告 → 置顶 → 精华 各自出，锁定仍用锁图标（是状态不是标记） */}
+          {/* 标记=文字徽章（公告/置顶/精华）；锁定用锁图标（是状态） */}
           {detail.notice && (
             <span className="mr-2 inline-block align-[2px]">
               <MarkBadge kind="notice" label={dict.forums.markNotice} />
@@ -113,21 +142,25 @@ export default async function TopicPage({
           {detail.title}
         </h1>
         {authId > 0 && (
-          <>
-            <FollowButton targetType="topic" targetId={topicId} showCount />
-            <TopicFavoriteButton
-              topicId={topicId}
-              faved={detail.faved ?? false}
-              favorites={detail.favorites ?? 0}
-            />
-            <ReportTopicButton topicId={topicId} />
-            {(detail.is_op || detail.can_mod) && (
-              <TopicTitleEdit topicId={topicId} initialTitle={detail.title} />
-            )}
-          </>
+          <TopicHeadMenu
+            items={[
+              <FollowButton
+                key="follow" targetType="topic" targetId={topicId} showCount />,
+              <TopicFavoriteButton
+                key="fav" topicId={topicId} faved={detail.faved ?? false}
+                favorites={detail.favorites ?? 0} />,
+              <ReportTopicButton key="report" topicId={topicId} />,
+              ...(detail.is_op || detail.can_mod
+                ? [
+                    <TopicTitleEdit key="title" topicId={topicId}
+                      initialTitle={detail.title} />,
+                  ]
+                : []),
+            ]}
+          />
         )}
       </div>
-      {/* 悬赏卡（0124）：类型为 bounty 时展示赏金与状态；已采纳时点出中选楼层 */}
+      {/* 悬赏卡（0124）：bounty 且有赏金时展示；已采纳点出中选楼层 */}
       {detail.topic_type === "bounty" && (detail.bounty_spark ?? 0) > 0 && (
         <div
           className={`flex flex-wrap items-center gap-2 rounded-[var(--r-md)] border p-3 text-sm ${
@@ -169,7 +202,7 @@ export default async function TopicPage({
           forums={forums.map((f) => ({ id: f.id, name: f.name }))}
         />
       )}
-      {/* 投票挂件（0125）：poll 类型且有选项数据时渲染；楼主/版主可截止 */}
+      {/* 投票挂件（0125）：poll 且有选项时渲染；楼主/版主可截止 */}
       {detail.topic_type === "poll" &&
         detail.poll &&
         detail.poll.options?.length >= 2 && (
@@ -179,7 +212,7 @@ export default async function TopicPage({
             canClose={detail.is_op || detail.can_mod}
           />
         )}
-      {/* 抽奖挂件（0126）：lottery 类型且有数据时渲染；楼主/版主可提前开奖 */}
+      {/* 抽奖挂件（0126）：lottery 且有数据时渲染；可提前开奖 */}
       {detail.topic_type === "lottery" && detail.lottery && (
         <LotteryWidget
           topicId={topicId}
@@ -189,32 +222,42 @@ export default async function TopicPage({
           isOp={detail.is_op}
         />
       )}
-      {/* 长帖游标（NP 分页口径）：帖子按 id < before 取上一窗口，链接翻页保 SSR 简单可靠 */}
+      {/* 长帖游标（NP 分页口径）：id < before 取上一窗口，链接翻页保 SSR */}
       {detail.has_more && detail.posts[0] && (
         <Link
           href={`/forums/topic/${topicId}?before=${detail.posts[0].id}`}
-          className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-2 text-center text-sm text-sky hover:border-sky"
+          className="rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]
+            px-4 py-2 text-center text-sm text-sky hover:border-sky"
         >
           {dict.forums.loadEarlier}
         </Link>
       )}
-      <table className="nexus-table">
-        <tbody>
-          {detail.posts.map((p, i) => (
-            <PostRow
-              key={p.id}
-              p={p}
-              i={i}
-              detail={detail}
-              authId={authId}
-              dict={dict}
-              locale={locale}
-              currency={currency}
-              embedRules={embedRules}
-            />
-          ))}
-        </tbody>
-      </table>
+      {/* 主体/评论分离：首楼=楼主正文独立卡；其余楼层归「回复」段 */}
+      <section className="tp-op-card">
+        {detail.posts[0] && (
+          <PostRow p={detail.posts[0]} i={0} detail={detail}
+            authId={authId} dict={dict} locale={locale}
+            currency={currency} embedRules={embedRules} />
+        )}
+      </section>
+      {detail.posts.length > 1 && (
+        <section className="tp-replies">
+          <h2 className="tp-replies__head">
+            {fmt(dict.forums.repliesCount, {
+              n: String(detail.posts.length - 1),
+            })}
+          </h2>
+          <table className="nexus-table">
+            <tbody>
+              {detail.posts.slice(1).map((p, j) => (
+                <PostRow key={p.id} p={p} i={j + 1} detail={detail}
+                  authId={authId} dict={dict} locale={locale}
+                  currency={currency} embedRules={embedRules} />
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
       {detail.locked && !detail.can_mod ? (
         <p className="rounded-[var(--r-md)] bg-sky-soft p-3 text-center text-sm text-sub">
           {dict.forums.lockedNoReply}
@@ -233,6 +276,23 @@ export default async function TopicPage({
           {dict.forums.noReplyPermission}
         </p>
       )}
+      <span id="tp-reply-anchor" className="block" aria-hidden />
+      </div>
+
+      {/* 右栏：赞/藏/回 + 本文目录（交互在件内） */}
+      <div className="fh-side">
+        {firstPost && (
+          <TopicSideActions
+            firstPostId={firstPost.id}
+            likes={firstPost.likes ?? 0}
+            liked={firstPost.liked_by_me ?? false}
+            canLike={authId > 0}
+            favHref="#tp-reply-anchor"
+            replyHref="#tp-reply-anchor"
+            toc={toc} labels={dict.forums3}
+          />
+        )}
+      </div>
     </div>
   );
 }
