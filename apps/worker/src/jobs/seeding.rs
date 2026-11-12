@@ -43,7 +43,12 @@ pub async fn seeding_reward(
         FROM (
             -- MATERIALIZED：参数行必须只求值一次。若不显式物化，优化器可能把
             -- seeding_params() 内联进 nestloop 内层 → 每颗种子读 8 次 site_settings。
-            WITH p AS MATERIALIZED (SELECT * FROM seeding_params()),
+            -- 0488 官种倍率：与 API 预估同源调用 seeding_official_mult()，
+            -- 物化一次（STABLE 函数内联进 nestloop 会逐颗种子读 settings）。
+            WITH p AS MATERIALIZED (
+                SELECT *, seeding_official_mult() AS official_mult
+                FROM seeding_params()
+            ),
             per_torrent AS (
                 -- donor_privileged（0295）：真捐赠永久，或 vip_until / donor_until
                 -- 任一未过期。此前这里直接读 u.donor，而魔力购买 VIP 会顺带把
@@ -64,6 +69,10 @@ pub async fn seeding_reward(
                            (GREATEST(s.seeded_seconds, 0) / 3600.0)::double precision,
                            p.vol_base, p.rarity_k, p.rarity_exp, p.scale
                        ) * COALESCE(sb.bonus_factor, 1.0)
+                       -- 0488 官种倍率：单种加成乘数（1.0=关闭），仍进
+                       -- Σ → arctan 封顶；不叠加独立 A 值，避免击穿标定。
+                       * (CASE WHEN t.official_tag
+                               THEN p.official_mult ELSE 1.0 END)
                        -- 0425 发布者三档衰减（同类站对标 A-）：自发种按种龄
                        -- 乘 publisher 乘数；非发布者恒 1.0（函数内判）。
                        * seeding_publisher_mult(

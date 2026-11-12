@@ -11,14 +11,9 @@ import { SkeletonRows } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pager } from "@/components/ui/pager";
 import { MerklePanel } from "./_parts/merkle-panel";
-
-interface SparkInfo {
-  balance: number;
-  seeding_count: number;
-  hourly_estimate: number;
-  /** 收益构成：[规则名, 颗数]（worker 同源口径） */
-  reward_rules?: [string, number][];
-}
+import { SeedingCalc } from "./_parts/seeding-calc";
+import { ExcludedNote } from "./_parts/excluded-note";
+import type { SparkInfo } from "./_parts/spark-types";
 
 /** 与后端 /me/spark/ledger 的 per 固定值一致（50/页） */
 const LEDGER_PER = 50;
@@ -133,6 +128,13 @@ export default function MySparkPage() {
           <>
             <span className="pill">
               {t.seedingCount} {info ? info.seeding_count : "—"}
+              {info?.earning_seeding_count !== undefined &&
+                info.earning_seeding_count < info.seeding_count && (
+                  <>
+                    {" · "}
+                    {t.earningSplit} {info.earning_seeding_count}
+                  </>
+                )}
             </span>
             <span className="pill">
               {t.hourly} {info ? `+${info.hourly_estimate}` : "—"}
@@ -188,29 +190,9 @@ export default function MySparkPage() {
           {t.ctaPool}
         </Link>
       </div>
-      <div className="brand-panel">
-        <div className="brand-panel__head">
-          <h2>{t.ruleTitle}</h2>
-        </div>
-        <p className="p-4 text-xs leading-relaxed text-sub">
-          {t.rule.replace("{magic}", currency)}
-        </p>
-      </div>
-
-      {info?.reward_rules && info.reward_rules.length > 0 && (
-        <div className="brand-panel">
-          <div className="brand-panel__head">
-            <h2>{t.rewardRules}</h2>
-          </div>
-          <div className="flex flex-wrap gap-1.5 p-4">
-            {info.reward_rules.map(([name, cnt], i) => (
-              <span key={i} className="pill">
-                {name} ×{cnt}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* 未计收益要给原因和可行动的修法，见 excluded-note.tsx */}
+      {info && <ExcludedNote info={info} t={t} />}
+      {info && <SeedingCalc info={info} t={t} currency={currency} />}
 
       <div className="brand-panel">
         <div className="brand-panel__head">

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"
+     width="128" height="128" role="img" aria-label="像素星环">
+  <!-- 0207 动态头像·像素星环：站内兜底资源。
+       配色对齐 .aa-preview-pixel（ medal-shop.css:837 ）。
+       与 neon_pulse.svg 同为 128×128 站内路径，供 dressup.rs 回落使用。 -->
+  <title>动态头像 · 像素星环</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#123240" />
+      <stop offset="100%" stop-color="#09151c" />
+    </radialGradient>
+  </defs>
+  <style>
+    .ring { animation: aa-spin 6s linear infinite;
+            transform-origin: 64px 64px; }
+    .twinkle { animation: aa-twinkle 1.8s steps(2, end) infinite; }
+    @keyframes aa-spin { to { transform: rotate(360deg); } }
+    @keyframes aa-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+    @media (prefers-reduced-motion: reduce) {
+      .ring, .twinkle { animation: none; }
+    }
+  </style>
+  <rect width="128" height="128" rx="64" fill="url(#bg)" />
+  <circle class="ring" cx="64" cy="64" r="52" fill="none"
+          stroke="#37b6c9" stroke-width="4" stroke-dasharray="7 9"
+          stroke-linecap="square" />
+  <circle cx="64" cy="64" r="38" fill="#37b6c9" opacity=".1" />
+  <!-- 像素风四角星：8px 网格，保持「像素」语义而非平滑矢量 -->
+  <g class="twinkle" fill="#bff0f8" shape-rendering="crispEdges">
+    <rect x="60" y="36" width="8" height="16" />
+    <rect x="60" y="76" width="8" height="16" />
+    <rect x="36" y="60" width="16" height="8" />
+    <rect x="76" y="60" width="16" height="8" />
+    <rect x="52" y="52" width="24" height="24" />
+    <rect x="44" y="44" width="8" height="8" opacity=".65" />
+    <rect x="76" y="44" width="8" height="8" opacity=".65" />
+    <rect x="44" y="76" width="8" height="8" opacity=".65" />
+    <rect x="76" y="76" width="8" height="8" opacity=".65" />
+  </g>
+</svg>

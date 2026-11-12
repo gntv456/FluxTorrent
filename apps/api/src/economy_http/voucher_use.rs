@@ -199,6 +199,9 @@ async fn my_spark(
     .fetch_one(&state.repo.db)
     .await
     .unwrap_or(0);
+    // 0488：官种做种数与体积（只读展示，不参与结算）。
+    let (official_seeding_count, official_seeding_size) =
+        super::seeding_est::official_seeding(&state.repo.db, auth.id).await;
     // 与 worker 同口径的僵尸阈值：max(2h, 2×announce_interval)（详见 worker 的 stale_peer_threshold_secs）
     let announce: i64 = sqlx::query_scalar::<_, String>(
         "SELECT value FROM site_settings WHERE name = 'announce_interval'",
@@ -238,7 +241,10 @@ async fn my_spark(
                    END AS rule
             FROM snatches s
             WHERE s.user_id = $1 AND s.seeding
-              AND NOT (s.connectable = 0 AND s.uploaded = 0)
+              -- 与结算同口径（0488 核对）：构成表只统计真正计收益的种子，
+              -- 否则「构成」里的颗数会多于页面上的计收益颗数。
+              AND s.last_port > 0
+              AND NOT COALESCE(s.connectable = 0, false)
               AND s.last_seen_at > now() - ($2::bigint * interval '1 second')
         ) x GROUP BY rule ORDER BY count(*) DESC
         "#,
@@ -248,96 +254,38 @@ async fn my_spark(
     .fetch_all(&state.repo.db)
     .await
     .unwrap_or_default();
-    // 真实预估（与 worker 结算同一套 DB 函数 + 同一套过滤，迁移 0133）：
-    // 不再是 "10 + 颗数×2" 的粗估。
-    let hourly_estimate: i64 = sqlx::query_scalar(
-        r#"
-        WITH p AS MATERIALIZED (SELECT * FROM seeding_params()),
-        s AS (
-            SELECT sum(seeding_torrent_bonus(
-                       t.size, t.seeders,
-                       (EXTRACT(EPOCH FROM (now() - t.created_at)) / 86400.0)::double precision,
-                       t.times_completed,
-                       (GREATEST(sn.seeded_seconds, 0) / 3600.0)::double precision,
-                       p.vol_base, p.rarity_k, p.rarity_exp, p.scale)) AS bonus_raw,
-                   bool_or(donor_privileged(u.id)) AS donor
-            FROM snatches sn
-            JOIN torrents t ON t.id = sn.torrent_id
-            JOIN users u ON u.id = sn.user_id
-            CROSS JOIN p
-            WHERE sn.user_id = $1 AND sn.seeding
-              AND NOT (sn.connectable = 0 AND sn.uploaded = 0)
-              AND sn.last_seen_at > now() - ($2::bigint * interval '1 second')
-        )
-        SELECT seeding_hourly(COALESCE(bonus_raw, 0), p.base, p.cap, p.curve_k, p.donor_mult,
-                              COALESCE(donor, FALSE))
-        FROM s CROSS JOIN p
-        "#,
+    // 真实预估：语句与 worker 结算逐条镜像（见 seeding_est.rs 的 EST_SQL）。
+    let hourly_estimate = super::seeding_est::hourly_estimate(
+        &state.repo.db,
+        auth.id,
+        stale_secs,
     )
-    .bind(auth.id)
-    .bind(stale_secs)
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or(0);
-    // 结构化系数表（0417 F6）：档位/系数从 seeding_params()（站长可调）取真值，
-    // 阈值常量与 worker 结算 CASE 分支同源。formula_note 保留（人话全文），
-    // tiers 供前端渲染表格——此前只有一行长文，资深用户没法算账。
-    let (base, cap, curve_k, vol_base, rarity_k, scale, donor_mult): (
-        f64,
-        f64,
-        f64,
-        f64,
-        f64,
-        f64,
-        f64,
-    ) = sqlx::query_as(
-        "SELECT base::float8, cap::float8, curve_k::float8, \
-                vol_base::float8, rarity_k::float8, scale::float8, \
-                donor_mult::float8 FROM seeding_params()",
-    )
-    .fetch_one(&state.repo.db)
-    .await
-    .unwrap_or((10.0, 150.0, 0.12, 50.0, 0.6, 0.4, 2.0));
-    let tiers = serde_json::json!({
-        "formula": {
-            "base_per_hour": base,
-            "cap_per_hour": cap,
-            "curve_k": curve_k,
-            "scale": scale,
-            "donor_mult": donor_mult,
-            "note": "每小时 = 底薪 + (2/π)·封顶·atan(Σ加成 × 曲线系数)，捐赠者整笔翻倍",
-        },
-        "torrent_tier": [
-            { "name": "濒危保种", "score": 2.0, "cond": "做种者≤1 且 完成≥3" },
-            { "name": "高龄种",   "score": 1.5, "cond": "种龄 > 365 天" },
-            { "name": "老种",     "score": 1.0, "cond": "种龄 > 180 天" },
-            { "name": "大体积种", "score": 0.75, "cond": "体积 ≥ 100GB" },
-            { "name": "中体积种", "score": 0.5,  "cond": "体积 ≥ 25GB" },
-            { "name": "日常种",   "score": 0.25, "cond": "其余" },
-        ],
-        "seed_hours_tier": [
-            { "name": "≥1年",  "score": 2.0 },
-            { "name": "6-12月", "score": 1.0 },
-            { "name": "3-6月", "score": 0.75 },
-            { "name": "1-3月", "score": 0.5 },
-        ],
-        "volume": {
-            "vol_base": vol_base,
-            "note": "对数饱和：≥50GB 记满分，1GB 约 0.18",
-        },
-        "rarity": {
-            "k": rarity_k,
-            "note": "独苗 ×1.6、人多趋近 ×1.0",
-        },
-    });
+    .await;
+    // 「做种 6 颗，只有 4 颗计收益」必须说清是哪 2 颗、为什么 —— 直接扣掉
+    // 不给原因，用户只会以为站点算错。
+    let split: super::seeding_est::EarningSplit =
+        super::seeding_est::earning_split(&state.repo.db, auth.id, stale_secs)
+            .await;
+    // 0417 F6 / 0488：系数表构造按域拆到 spark_tiers.rs（300 行门禁）。
+    // 参数仍从 seeding_params() + seeding_official_mult() 取真值，与结算同源。
+    let tiers = super::spark_tiers::build_tiers(&state.repo.db).await;
     Ok(ok(serde_json::json!({
         "balance": balance,
         "seeding_count": seeding_count,
+        "earning_seeding_count": split.earning,
+        "seeding_excluded": {
+            "port_closed": split.port_closed,
+            "unreachable": split.unreachable,
+            "stale": split.stale,
+        },
+        "payout_suspended": split.suspended,
+        "official_seeding_count": official_seeding_count,
+        "official_seeding_size": official_seeding_size,
         "hourly_estimate": hourly_estimate,
         // 兼容旧消费点（my-spark pill 渲染）：保持 [规则名, 颗数] 数组形态
         "reward_rules": my_rules,
         "tiers": tiers,
-        "formula_note": "每小时 = 底薪 + (2/π)·封顶·atan(Σ加成 × 曲线系数)，捐赠者整笔翻倍。每颗种子加成 =（种子档位分 + 做种时长档位分）× 体积因子 × 稀有度加成 × 标定系数；种子档位：濒危保种 2.0 / 高龄种 1.5 / 老种 1.0 / 大体积 0.75 / 中体积 0.5 / 日常 0.25；做种时长档位：≥1年 +2.0 / 6-12月 +1.0 / 3-6月 +0.75 / 1-3月 +0.5；体积按对数饱和（≥50GB 记满分，1GB 约 0.18）；稀有度独苗 ×1.6、人多趋近 ×1.0。",
+        "formula_note": super::spark_tiers::FORMULA_NOTE,
     })))
 }
 

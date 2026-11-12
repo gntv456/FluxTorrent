@@ -97,6 +97,25 @@ struct WearReq {
     wear: bool,
 }
 
+/// 动态头像落地 URL：优先管理员填的 config.avatar_url；0207 两款内置
+/// 款式只有 effect，回落到站内 SVG 动图（否则买了也戴不上）。
+/// effect 走白名单，不把任意配置拼成站内路径。
+fn animated_avatar_url(cfg: &serde_json::Value) -> Option<String> {
+    if let Some(url) = cfg
+        .get("avatar_url")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+    {
+        return Some(url.to_string());
+    }
+    let path = match cfg.get("effect").and_then(|v| v.as_str()) {
+        Some("neon_pulse") => "/avatars/animated/neon_pulse.svg",
+        Some("pixel_ring") => "/avatars/animated/pixel_ring.svg",
+        _ => return None,
+    };
+    Some(path.to_string())
+}
+
 /// 佩戴/摘下（同类互斥由 DB 触发器保证：佩戴前先摘同类）
 #[post("/dressup/wear")]
 async fn dressup_wear(
@@ -201,15 +220,16 @@ async fn dressup_wear(
                 .map_err(|e| DomainError::Internal(e.into()))?;
             }
             ("animated_avatar", Some("avatar")) => {
-                let Some(url) = effect_url.as_deref().filter(|s| !s.is_empty())
-                else {
-                    return Err(DomainError::Validation(
-                        "该动态头像未配置图片（config.avatar_url），请联系管理员".into(),
-                    ));
-                };
+                let url = animated_avatar_url(&cfg).ok_or_else(|| {
+                    DomainError::Validation(
+                        "该动态头像未配置图片（请补 config.avatar_url，\
+                         或改用内置款式 effect），请联系管理组"
+                            .into(),
+                    )
+                })?;
                 sqlx::query("UPDATE users SET avatar_url = $2 WHERE id = $1")
                     .bind(auth.id)
-                    .bind(url)
+                    .bind(&url)
                     .execute(&mut *tx)
                     .await
                     .map_err(|e| DomainError::Internal(e.into()))?;
@@ -261,4 +281,20 @@ async fn dressup_wear(
     Ok(ok(
         serde_json::json!({ "item_id": body.item_id, "wearing": body.wear }),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::animated_avatar_url;
+    use serde_json::json;
+    #[test]
+    fn avatar_url_fallback() {
+        let f = |v| animated_avatar_url(&v);
+        let n = "/avatars/animated/neon_pulse.svg";
+        let p = "/avatars/animated/pixel_ring.svg";
+        assert_eq!(f(json!({"effect":"neon_pulse"})).as_deref(), Some(n));
+        assert_eq!(f(json!({"effect":"pixel_ring"})).as_deref(), Some(p));
+        assert_eq!(f(json!({"effect":"../evil"})), None);
+        assert_eq!(f(json!({"avatar_url":""})), None);
+    }
 }

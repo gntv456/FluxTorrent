@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"
+     width="128" height="128" role="img" aria-label="霓虹脉冲">
+  <!-- 0207 动态头像·霓虹脉冲：站内兜底资源。
+       配色对齐 .aa-preview-neon（ medal-shop.css:823 ）。
+       SVG 内 CSS 动画在 <img> 里同样生效；data: URI 会被
+       me_settings_kv 的头像协议白名单拦，故必须是站内路径。 -->
+  <title>动态头像 · 霓虹脉冲</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#2a1740" />
+      <stop offset="100%" stop-color="#0d0918" />
+    </radialGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffb9e2" />
+      <stop offset="100%" stop-color="#d94f9e" />
+    </linearGradient>
+  </defs>
+  <style>
+    .halo { animation: aa-neon 1.6s ease-in-out infinite;
+            transform-origin: 64px 64px; }
+    .core { animation: aa-breathe 1.6s ease-in-out infinite;
+            transform-origin: 64px 64px; }
+    @keyframes aa-neon {
+      0%, 100% { stroke-width: 3; stroke-opacity: .55; }
+      50%      { stroke-width: 6; stroke-opacity: 1; }
+    }
+    @keyframes aa-breathe {
+      0%, 100% { transform: scale(.92); opacity: .85; }
+      50%      { transform: scale(1.06); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .halo, .core { animation: none; }
+    }
+  </style>
+  <rect width="128" height="128" rx="64" fill="url(#bg)" />
+  <circle class="halo" cx="64" cy="64" r="52" fill="none"
+          stroke="#d94f9e" stroke-width="3" />
+  <circle cx="64" cy="64" r="40" fill="#d94f9e" opacity=".12" />
+  <g class="core">
+    <path d="M64 32 L72 56 L96 64 L72 72 L64 96 L56 72 L32 64 L56 56 Z"
+          fill="url(#star)" />
+    <circle cx="64" cy="64" r="7" fill="#fff6fc" />
+  </g>
+</svg>
