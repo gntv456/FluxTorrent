@@ -12,16 +12,15 @@ import {
   legacyDimName,
 } from "@/lib/site-profile";
 import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
-import { TorrentManageLazy, TorrentPeersLazy, FileTreeLazy } from
-  "@/components/torrent-detail-lazy";
+import { TorrentManageLazy, TorrentPeersLazy, FileTreeLazy }
+  from "@/components/torrent-detail-lazy";
 import { PromoBuyButton } from "@/components/promo-buy-button";
 import { SnatchList } from "@/components/snatch-list";
 import {
   Descr, Spec, Fold, MiWarn, TorrentArtifacts,
 } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
-import type { RipLog } from "@/components/torrent-rip-logs";
-import { TorrentRipLogs } from "@/components/torrent-rip-logs";
+import { TorrentRipLogs, type RipLog } from "@/components/torrent-rip-logs";
 import { TorrentPreviews } from "@/components/torrent-previews";
 import { TorrentAnchorBar } from "@/components/torrent-anchor";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
@@ -36,6 +35,7 @@ import {
   type ThankItem,
   type TorrentDetailExt,
 } from "@/components/torrent-detail-blocks";
+import { anchorDict, groupDict } from "@/components/torrent-detail-dict";
 import { relTime as rel } from "@/lib/rel-time";
 import { TorrentDetailTail } from "./_parts/torrent-detail-tail";
 import { TorrentDetailSide } from "./_parts/torrent-detail-side";
@@ -223,15 +223,14 @@ export default async function TorrentDetailPage({
   const category = dictName(catMap, t.category_id);
   const catC = catColor(colorMap(profile?.categories ?? []), t.category_id);
   // 促销剩余时间（同类站「x天x时」口径）
-  const left = t.promotion_ends_at
-    ? (() => {
-        const ms = new Date(t.promotion_ends_at).getTime() - Date.now();
-        if (ms <= 0) return null;
-        const dd = Math.floor(ms / 86400000);
-        const hh = Math.floor((ms % 86400000) / 3600000);
-        return `${dd}${d?.dayUnit}${hh}${d?.hourUnit}`;
-      })()
-    : null;
+  const leftMs = t.promotion_ends_at
+    ? new Date(t.promotion_ends_at).getTime() - Date.now()
+    : 0;
+  const left =
+    leftMs > 0
+      ? `${Math.floor(leftMs / 86400000)}${d?.dayUnit}` +
+        `${Math.floor((leftMs % 86400000) / 3600000)}${d?.hourUnit}`
+      : null;
   // 相对时间（同类站通用口径）：走 lib 的纯函数，别把闭包传过客户端边界
   const relTime = (iso: string) => rel(iso, d);
 
@@ -283,13 +282,14 @@ export default async function TorrentDetailPage({
         }
       />
 
-      {/* ===== 移动端锚点条（本地完善版样图：head 与 side 之间的网格行，
-          常驻吸顶；桌面返回 null 由右信息栏承担导航） ===== */}
+      {/* ===== 移动端锚点条（样图网格行，常驻吸顶；桌面返回 null，
+          导航由右信息栏承担；dict 传 5 键切片 anchorDict 防 RSC 泄漏） ===== */}
       <TorrentAnchorBar
         descr={sectOn("descr") && !!ext?.descr}
         files={sectOn("files") && files.length > 0 ? files.length : null}
         subtitles={subOn}
-        comments={sectOn("comments") ? comments.length : null} dict={dict}
+        comments={sectOn("comments") ? comments.length : null}
+        dict={anchorDict(dict)}
       />
       <div className="td-main">
       {/* ===== 规格徽章条（本地完善版：独立卡片，置主栏首位） ===== */}
@@ -333,9 +333,9 @@ export default async function TorrentDetailPage({
         </Fold>
       )}
 
-
       {sectOn("group") && group?.group && group.items.length > 0 && (
-        <GroupVersions group={group} dict={dict} />
+        /* RSC 瘦身：GroupVersions 是 client 边界，只消费三键（groupDict） */
+        <GroupVersions group={group} dict={groupDict(dict)} />
       )}
 
       {/* 试读 / 试听（0337）：清单懒加载，空清单且无管理权时整段不渲染 */}

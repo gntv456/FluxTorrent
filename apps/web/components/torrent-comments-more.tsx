@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Dict } from "@/i18n/server";
+import type { Dict } from "@/i18n/zh-CN";
 import type { TorrentComment } from "@fluxtorrent/domain-types";
 
 /** 评论区「加载更多」（聚合审计 P2-3，从 torrent-detail-blocks 拆出：
@@ -19,14 +19,16 @@ export function CommentsLoadMore({
   setComments: (next: TorrentComment[]) => void;
   torrentId: number;
   total: number;
-  dict: Dict;
+  /** 字典切片（RSC 瘦身 2026-11-11）：client 边界不收整本 Dict，
+   *  只带本组件三枚文案，避免整本字典序列化进 flight payload。 */
+  dict: Pick<Dict["torrent"], "commentBusy" | "commentsEnd" | "commentsMore">;
 }) {
   const [busy, setBusy] = useState(false);
   const remaining = total - comments.length;
   // 种子被删评/新评后 total 与已加载条数可能错位：只在明确还有余量时出按钮
   if (remaining <= 0) {
     if (total > 20) {
-      return <p className="td-comments__end">{dict.torrent.commentsEnd}</p>;
+      return <p className="td-comments__end">{dict.commentsEnd}</p>;
     }
     return null;
   }
@@ -53,8 +55,8 @@ export function CommentsLoadMore({
       disabled={busy}
     >
       {busy
-        ? dict.torrent.commentBusy
-        : dict.torrent.commentsMore.replace("{n}", String(remaining))}
+        ? dict.commentBusy
+        : dict.commentsMore.replace("{n}", String(remaining))}
     </button>
   );
 }

@@ -76,7 +76,13 @@ describe("TorrentAnchorBar（M6.2）", () => {
         files={3}
         subtitles
         comments={2}
-        dict={zhCN}
+        dict={{
+  descrTitle: zhCN.torrent.descrTitle,
+  filesTitle: zhCN.torrent.filesTitle,
+  commentsTitle: zhCN.torrent.commentsTitle,
+  anchorNav: zhCN.torrent.anchorNav,
+  panelTitle: zhCN.subtitles.panelTitle,
+}}
       />,
     );
     expect(container.querySelector(".td-anchor")).toBeNull();
@@ -90,7 +96,13 @@ describe("TorrentAnchorBar（M6.2）", () => {
         files={5}
         subtitles
         comments={1}
-        dict={zhCN}
+        dict={{
+  descrTitle: zhCN.torrent.descrTitle,
+  filesTitle: zhCN.torrent.filesTitle,
+  commentsTitle: zhCN.torrent.commentsTitle,
+  anchorNav: zhCN.torrent.anchorNav,
+  panelTitle: zhCN.subtitles.panelTitle,
+}}
       />,
     );
     const nav = document.querySelector(".td-anchor");
@@ -112,7 +124,13 @@ describe("TorrentAnchorBar（M6.2）", () => {
         files={null}
         subtitles
         comments={null}
-        dict={zhCN}
+        dict={{
+  descrTitle: zhCN.torrent.descrTitle,
+  filesTitle: zhCN.torrent.filesTitle,
+  commentsTitle: zhCN.torrent.commentsTitle,
+  anchorNav: zhCN.torrent.anchorNav,
+  panelTitle: zhCN.subtitles.panelTitle,
+}}
       />,
     );
     expect(screen.getAllByRole("button")).toHaveLength(1);
@@ -131,7 +149,13 @@ describe("TorrentAnchorBar（M6.2）", () => {
           files={2}
           subtitles={false}
           comments={null}
-          dict={zhCN}
+          dict={{
+  descrTitle: zhCN.torrent.descrTitle,
+  filesTitle: zhCN.torrent.filesTitle,
+  commentsTitle: zhCN.torrent.commentsTitle,
+  anchorNav: zhCN.torrent.anchorNav,
+  panelTitle: zhCN.subtitles.panelTitle,
+}}
         />
       </>,
     );

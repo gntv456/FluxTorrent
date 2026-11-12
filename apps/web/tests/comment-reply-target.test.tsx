@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Comments } from "@/components/torrent-detail-blocks";
+import { tailDict } from "@/components/torrent-detail-dict";
 import { TorrentSocial } from "@/components/torrent-social";
 import { LocaleProvider } from "@/i18n/client";
 import { zhCN } from "@/i18n/zh-CN";
@@ -61,7 +62,7 @@ function mount() {
       <Comments
         comments={COMMENTS}
         torrentId={7}
-        dict={zhCN}
+        dict={tailDict(zhCN)}
         locale="zh-CN"
         total={COMMENTS.length}
       />

@@ -10,13 +10,16 @@ import { CommentLikeButton } from "@/components/comment-like-button";
 import { CommentReplyButton } from "@/components/comment-reply-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { dateLocale, type Locale } from "@/i18n/config";
-import type { Dict } from "@/i18n/server";
+import type {
+  DetailBlocksDict,
+  GroupDict,
+} from "@/components/torrent-detail-dict";
 import type { TorrentComment } from "@fluxtorrent/domain-types";
 import { Badge } from "@/components/ui/badge";
 import { CommentsLoadMore } from "@/components/torrent-comments-more";
 
-/** 种子详情页交互区块（从 app/(main)/torrent/[id]/page.tsx 按域拆出）：
- *  详情扩展数据类型、同组版本表、感谢者名单、评论区。数据装载留在 page.tsx。 */
+/** 种子详情页交互区块（按域拆自 page.tsx）：扩展数据类型、同组版本表、
+ *  感谢者名单、评论区。数据装载留在 page.tsx。 */
 
 /** 详情扩展数据（/detail 接口；descr/MediaInfo/views 等非列表字段） */
 export interface TorrentDetailExt {
@@ -29,9 +32,8 @@ export interface TorrentDetailExt {
   price: number;
   purchased: boolean;
   is_owner: boolean;
-  /** 当前用户是否已收藏（详情个人段；收藏按钮初始态） */
+  /** 是否已收藏/已感谢（详情个人段；收藏与感谢按钮初始态） */
   bookmarked?: boolean;
-  /** 当前用户是否已感谢（详情个人段；感谢/答谢按钮初始态） */
   thanked?: boolean;
   /** 动态属性（0085/0087；B2 六类型）：kind → { dict_id, name, label, sort,
    *  field_type, values[] }。`name` = 首个展示值（向后兼容），多值看 `values`。 */
@@ -85,12 +87,11 @@ export function GroupVersions({
   dict,
 }: {
   group: GroupInfo;
-  dict: Dict;
+  dict: GroupDict;
 }) {
-  const d = dict.tdetail;
   return (
     <Fold
-      title={`${d?.groupTitle}：${group.group?.name}`}
+      title={`${dict.groupTitle}：${group.group?.name}`}
       count={group.items.length}
     >
       {/* 组订阅（0075）：新版本过审时通知 */}
@@ -115,14 +116,14 @@ export function GroupVersions({
                 )}
                 {g.official && (
                   <Badge tone="brand" variant="solid">
-                    {dict.torrent.official}
+                    {dict.official}
                   </Badge>
                 )}
                 {tierBadge(g.tier)}
               </td>
               <td className="num shrink-0 text-right text-sub">
                 {g.current ? (
-                  (d?.current)
+                  dict.current
                 ) : (
                   <>
                     <span className="text-green">{g.seeders}</span> ·{" "}
@@ -157,7 +158,7 @@ function tierBadge(tier?: string) {
   );
 }
 
-/** 感谢者（同类站通用口径：头像占位 + 用户名） */
+/** 感谢者（同类站口径：头像占位 + 用户名） */
 export function Thankers({
   thanks,
   count,
@@ -167,14 +168,13 @@ export function Thankers({
 }: {
   thanks: ThankItem[];
   count: number;
-  dict: Dict;
+  dict: DetailBlocksDict;
   locale: Locale;
-  /** 本地完善版：InfoHash 尾行挂折叠卡底部（细线分隔，见 base.css
-   *  .td-infohash）；无感谢者时由调用侧独立成段，保证 InfoHash 不丢 */
+  /** InfoHash 尾行挂折叠卡底部（.td-infohash）；无感谢者时由调用侧独立成段 */
   footer?: React.ReactNode;
 }) {
   return (
-    <Fold title={dict.torrent.thankersTitle} count={count}>
+    <Fold title={dict.thankersTitle} count={count}>
       <p className="flex flex-wrap gap-2">
         {thanks.map((th, i) => (
           <span
@@ -185,7 +185,7 @@ export function Thankers({
             <span className="td-thanker__avatar" aria-hidden>
               {(th.username ?? "?").slice(0, 1).toUpperCase()}
             </span>
-            {th.username ?? dict.torrent.anonymous}
+            {th.username ?? dict.anonymous}
           </span>
         ))}
       </p>
@@ -194,10 +194,10 @@ export function Thankers({
   );
 }
 
-/** 评论区（staff 删评按钮常显，无权限由后端 403 兜底；
- *  0156 嵌套回复：回复挂根楼层、组内缩进一层平铺 + 「回复 @xxx」标注）。
- *  聚合审计 P2-3：聚合口首屏只带 20 条，计数用调用侧传入的真实总数
- *  （torrent.comments）；更早楼层由 CommentsLoadMore 分页拉取。 */
+/** 评论区（staff 删评按钮常显，无权限由后端 403 兜底；0156 嵌套回复：
+ *  回复挂根楼层、组内缩进平铺 + 「回复 @xxx」标注。聚合审计 P2-3：
+ *  首屏只带 20 条，计数用调用侧传入的真实总数（torrent.comments），
+ *  更早楼层由 CommentsLoadMore 分页拉取。 */
 export function Comments({
   comments: initial,
   torrentId,
@@ -208,7 +208,7 @@ export function Comments({
 }: {
   comments: TorrentComment[];
   torrentId: number;
-  dict: Dict;
+  dict: DetailBlocksDict;
   locale: Locale;
   /** M5.8 移动端折叠内嵌：去掉 section/h2 外壳（标题由折叠条承担） */
   embedded?: boolean;
@@ -229,13 +229,13 @@ export function Comments({
               {(c.username ?? "?").slice(0, 1).toUpperCase()}
             </span>
             <p className="text-sm font-bold">
-              {c.username ?? dict.torrent.anonymous}
+              {c.username ?? dict.anonymous}
             </p>
             <p
               className="mt-1 text-[11px] text-sub"
               title={new Date(c.created_at).toLocaleString(dateLocale(locale))}
             >
-              {relTime(c.created_at, dict.tdetail)}
+              {relTime(c.created_at, dict)}
             </p>
             {/* staff 删评：按钮常显，无权限由后端 403 兜底 */}
             <CommentDeleteButton torrentId={torrentId} commentId={c.id} />
@@ -243,7 +243,7 @@ export function Comments({
           <p className="td-comment__body">
             {c.reply_to_user && (
               <span className="td-comment__replyto">
-                {dict.torrent.replyTo.replace("{user}", c.reply_to_user)}
+                {dict.replyTo.replace("{user}", c.reply_to_user)}
               </span>
             )}
             {c.body}
@@ -272,7 +272,7 @@ export function Comments({
            用户想评论不知道从哪下手。改用统一空态三件套。 */
         <EmptyState
           icon="topic"
-          title={dict.torrent.noComments}
+          title={dict.noComments}
           compact
         />
       )}
@@ -292,7 +292,7 @@ export function Comments({
   return (
     <section className="td-comments nexus-detail">
       <h2 className="td-sec-title">
-        {dict.torrent.commentsTitle.replace("{n}", String(totalCount))}
+        {dict.commentsTitle.replace("{n}", String(totalCount))}
       </h2>
       {inner}
     </section>

@@ -4,14 +4,13 @@
  */
 
 import { Comments, Thankers } from "@/components/torrent-detail-blocks";
+import { tailDict } from "@/components/torrent-detail-dict";
 import { FoldMobile } from "@/components/fold-mobile";
 import { TorrentCrossseed } from "@/components/torrent-crossseed";
 import type { Dict } from "@/i18n/zh-CN";
 import type { Locale } from "@/i18n/config";
 import type { TorrentListItem } from "@fluxtorrent/domain-types";
-import type {
-  ThankItem,
-} from "@/components/torrent-detail-blocks";
+import type { ThankItem } from "@/components/torrent-detail-blocks";
 import type { TorrentComment } from "@fluxtorrent/domain-types";
 
 export function TorrentDetailTail({
@@ -34,6 +33,8 @@ export function TorrentDetailTail({
   // 评论计数用 t.comments（真实总数，聚合口固定带 20 条；P2-3 口径修正）
   const cmtN = String(t.comments ?? comments.length);
   const thankersOn = sectOn("thankers") && thanks.length > 0;
+  // RSC 瘦身（2026-11-12）：client 边界传切片不传整本（tailDict 组装）
+  const slices = tailDict(dict);
   // 本地完善版：InfoHash 并入感谢者折叠卡底部；无感谢者时独立成段
   const infoHash = sectOn("infohash") ? (
     <p className="td-infohash">
@@ -46,7 +47,7 @@ export function TorrentDetailTail({
         <Thankers
           thanks={thanks}
           count={thanksCount}
-          dict={dict}
+          dict={slices}
           locale={locale}
           footer={infoHash}
         />
@@ -70,7 +71,7 @@ export function TorrentDetailTail({
             comments={comments}
             total={t.comments}
             torrentId={t.id}
-            dict={dict}
+            dict={slices}
             locale={locale}
             embedded
           />
