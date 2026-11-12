@@ -7642,7 +7642,7 @@ const zhCnBase = {
     calcOfficialTitle: "官种加成",
     calcOfficialMult: "当前官种倍率",
     calcOfficialMy: "我保的官种：{n} 个 · {size}",
-    calcOfficialMyEmpty: "你当前没有保官种，去保几个官种能显著提高时收益。",
+    calcOfficialMyEmpty: "你当前没有保官种，去保几个官种能明显提高时收益。",
     calcOfficialNote:
       "官种（官方种子）的单种加成额外 ×{mult}，仍计入总封顶；1.0 表示关闭。为做种人数少、体积大的官种做种收益最高。",
     ledger: "{magic}流水",
