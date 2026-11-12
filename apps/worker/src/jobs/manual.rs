@@ -120,6 +120,9 @@ pub(crate) async fn run_named(
         // 0487：IYUU 辅种查重此前只在 hour_jobs 定时里，手触缺臂——站长
         // 配好凭据后没法立即跑一轮（要等下一个整点），首次冷启动尤其憋。
         "iyuu_refresh" => n(iyuu_refresh(db, redis.clone()).await?),
+        // 0487 配套：辅种缓存死行清理的手触臂（catalog 已登记，缺这枝
+        // 面板点「执行」只会得到「未知任务」）
+        "iyuu_orphan_sweep" => n(iyuu_orphan_sweep(db).await?),
         other => anyhow::bail!("未知任务 {other}"),
     })
 }

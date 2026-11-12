@@ -5,7 +5,7 @@ use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::state::AppState;
 
-use super::guard::{ensure_outranks, staff};
+use super::guard::staff;
 
 // ============ 权限配置（角色权限矩阵 + 用户级权限分配） ============
 

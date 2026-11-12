@@ -279,6 +279,12 @@ pub const JOBS: &[JobDef] = &[
         name: "iyuu_refresh",
         cadence: "1h",
     },
+    JobDef {
+        // 0487 配套：删种后的辅种缓存死行清理，run.rs 日频兜底在跑——
+        // catalog 未登记会让面板看不见也不能手动补跑（catalog guard 报红）。
+        name: "iyuu_orphan_sweep",
+        cadence: "24h",
+    },
     // 0382 勋章自动成就：threshold 周期重算（hourly 而非 daily——周期口径
     // 含日/周，daily 会让「周期最后一天达标的用户」白等 24h）
     JobDef {

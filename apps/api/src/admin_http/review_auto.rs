@@ -15,9 +15,6 @@
 //! 【防滥用】端点同时校验内部来源头 + JWT，缺一不可：JWT 是身份，
 //! `x-flux-engine: auto-review` 是用途声明（审计里能看到是引擎调用）。
 
-use crate::errors::{DomainError, DomainResult};
-use crate::state::AppState;
-
 /// 人工推翻回填 + 熔断检查（0401 批 3，§6/§12）。
 /// 由 worker 每轮引擎 tick 顺带调用（同人机对照同一张台账）：
 ///   1. 找「机器 verdict 与 torrents 终态相反」的台账行 → 累计进

@@ -3,18 +3,15 @@
 //! `services::review_decide::decide_one`（与人工单条裁决同一函数）。
 //! 规则健康度 sweep 与引擎配置读取留在 review_auto.rs。
 
+use crate::dto::ok;
 use actix_web::{post, web, HttpRequest, HttpResponse};
 use serde::Deserialize;
-use sqlx::PgPool;
-
-use crate::dto::ok;
 
 use crate::errors::{DomainError, DomainResult};
 use crate::services::review_decide::{decide_one, DecideOutcome};
 use crate::state::AppState;
 
 use super::guard::staff;
-use super::review_auto::staff_notify;
 
 #[derive(Deserialize)]
 pub(super) struct EngineDecideReq {
@@ -57,7 +54,7 @@ async fn engine_decide(
         }
     }
     match decide_one(
-        &state,
+        state.get_ref(),
         auth.id,
         body.torrent_id,
         body.approve,

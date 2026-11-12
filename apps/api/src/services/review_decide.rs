@@ -42,9 +42,10 @@ pub(crate) enum DecideOutcome {
 /// 一致）。`batch` 只影响留痕 detail 是否带 `"batch": true` 标记。
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn decide_one(
-    // &web::Data<Arc<AppState>>：内部经 Deref 依旧用 state.repo；这样
-    // fire-and-forget 钩子（IYUU 即时查重）能 clone 整个 Arc 进 tokio::spawn
-    state: &actix_web::web::Data<std::sync::Arc<AppState>>,
+    // &Arc<AppState>（S 层禁 actix，layer guard ②零容忍）：H 层调用点
+    // 以 state.get_ref() 传裸 Arc；fire-and-forget 钩子（IYUU 即时查重）
+    // 仍可 clone 整个 Arc 进 tokio::spawn
+    state: &std::sync::Arc<AppState>,
     operator_id: i64,
     torrent_id: i64,
     approve: bool,
@@ -143,7 +144,7 @@ pub(crate) async fn decide_one(
         // 挂着，待审种在那里空转（approval_status≠1 直接返回），过审后要等
         // 小时批。此处补钩子——fire-and-forget，失败只记日志，不阻塞裁决。
         crate::iyuu_bridge::spawn_refresh_one(
-            state.get_ref().clone(),
+            std::sync::Arc::clone(state),
             torrent_id,
         );
     }

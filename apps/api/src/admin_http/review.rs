@@ -238,7 +238,7 @@ async fn review_decide(
     // 裁决的全部副作用收在服务层用例函数（F2 抽离，SQL 原样搬移；
     // 此前与批量口各自维护一份，靠 0288 人工同步纪律）
     match decide_one(
-        &state,
+        state.get_ref(),
         auth.id,
         body.torrent_id,
         body.approve,
