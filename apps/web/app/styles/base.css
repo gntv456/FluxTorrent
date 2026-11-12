@@ -2011,7 +2011,10 @@ h2 {
   font-weight: 700;
   color: var(--sky-deep);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  /* 动效令牌（ui_design_guard：时长禁裸值，只许引用 --motion-*） */
+  transition:
+    background var(--motion-fast) var(--tide-ease, ease),
+    border-color var(--motion-fast) var(--tide-ease, ease);
 }
 .td-tabs__tab:hover {
   border-color: var(--sky-deep);
