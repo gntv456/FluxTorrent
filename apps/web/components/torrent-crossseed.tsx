@@ -73,7 +73,9 @@ export function TorrentCrossseed({
       <b className="text-ink">{label}</b>
       {sites.map((s) => {
         const key = `${s.site}-${s.torrent_id}`;
-        const tip = s.domain ? `${s.domain} · #${s.torrent_id}` : `#${s.torrent_id}`;
+        const tip = s.domain
+          ? `${s.domain} · #${s.torrent_id}`
+          : `#${s.torrent_id}`;
         const cls =
           "inline-flex items-center rounded-full border border-line "
           + "px-2 py-0.5 text-muted";

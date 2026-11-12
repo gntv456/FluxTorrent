@@ -9,8 +9,8 @@
 mod aggregate;
 mod batch;
 // 详情页辅种行（可选插件，0486）
-mod crossseed_panel;
 mod comments_like;
+mod crossseed_panel;
 mod detail;
 mod interact;
 mod interact_tags;

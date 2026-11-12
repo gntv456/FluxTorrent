@@ -50,6 +50,8 @@ mod http;
 mod i18n;
 mod invite_http;
 // 抓轨日志识别与打分（0312 音乐站 Logchecker）
+mod iyuu_bridge;
+mod iyuu_icon;
 mod logcheck;
 mod mailer;
 mod mailer_notify;
@@ -86,8 +88,6 @@ mod storage;
 mod terms;
 mod torrent_http;
 mod torrents;
-mod iyuu_bridge;
-mod iyuu_icon;
 mod twofa_http;
 mod v4_http;
 
@@ -293,11 +293,10 @@ async fn main() -> anyhow::Result<()> {
             // 0424 traceId（同类站对标 B 批）：响应头 X-Trace-Id + 索引日志
             .wrap(crate::trace_id::TraceId)
             .wrap(build_cors()) // 来源白名单（CORS_ORIGINS）；空则开发态宽松 + 警告
-            // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略 / CSP
-            // （HSTS 由 TLS 终结的反代统一注入）。E1：API 只出 JSON 与文件流，
-            // 无任何脚本执行场景，CSP 直接最严形态——default-src 'none' +
-            // frame-ancestors 'none'，即便将来某响应被嗅探成 HTML 也无法引资源。
-            // 注意 base-uri/form-action 无意义（不返回 HTML），不加。
+            // 安全响应头基线（§5.7）：nosniff / 防点击劫持 / 引用策略 / CSP（HSTS 由 TLS
+            // 终结的反代统一注入）。E1：API 只出 JSON 与文件流、无脚本执行场景，CSP 直接
+            // 最严形态——default-src 'none' + frame-ancestors 'none'，将来某响应被嗅探成
+            // HTML 也引不了资源。base-uri/form-action 对不返回 HTML 的响应无意义，不加。
             .wrap(
                 actix_web::middleware::DefaultHeaders::new()
                     .add(("X-Content-Type-Options", "nosniff"))
@@ -307,11 +306,10 @@ async fn main() -> anyhow::Result<()> {
                         "Content-Security-Policy",
                         "default-src 'none'; frame-ancestors 'none'",
                     ))
-                    // 个性化 JSON 默认不可缓存（2026-10-20）：/me、/invites、
-                    // /torrents 等响应按 Cookie 区分用户，此前却没有任何
-                    // Cache-Control——共享缓存若只按 URI 命中会把 A 的响应
-                    // 发给 B。口径同 openapi_http::no_store；DefaultHeaders
-                    // 只补缺失项，视频附件长缓存与 SSE 的 no-transform 不受影响。
+                        // 个性化 JSON 默认不可缓存（2026-10-20）：/me、/invites、/torrents
+                        // 等响应按 Cookie 区分用户，此前却没有任何 Cache-Control——共享
+                        // 缓存若只按 URI 命中会把 A 的响应发给 B。口径同 openapi_http::no_store；
+                        // DefaultHeaders 只补缺失项；视频附件长缓存与 SSE no-transform 不受影响。
                     .add(("Cache-Control", "private, no-store, max-age=0")),
             )
             .wrap(actix_web::middleware::from_fn(request_id::request_id_mw)) // request_id 贯穿（信封/响应头/日志同源）

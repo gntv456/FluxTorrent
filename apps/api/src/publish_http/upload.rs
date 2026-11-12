@@ -314,8 +314,7 @@ async fn upload_core(
             .bind(price)
             .bind(imdb_id)
             .bind(serde_json::json!(shots))
-            // 0424：发布者 H&R 开关只在显式打开时写键（缺省不动 hr_policy，
-            // 站点缺省口径保持原语义——单向 opt-in）
+            // 0424：发布者 H&R 开关只在显式打开时写键（缺省不动 hr_policy，站点缺省原语义——单向 opt-in）
             .bind(if form.hr_punish {
                 serde_json::json!({ "publisher_enabled": true })
             } else {
@@ -360,8 +359,7 @@ async fn upload_core(
     super::upload_ids::persist(&state.repo.db, id, &form, &name).await?;
     // MoviePilot 口径：有 ID 就回查补全元数据（异步，不阻塞发种回包）
     super::upload_ids::maybe_enrich(std::sync::Arc::clone(state.get_ref()), id);
-    // P-346：发布带 MediaInfo 跑一致性判定（与编辑口同口径：提示不闸门，
-    // 解析失败不拦发布回包）。
+    // P-346：发布带 MediaInfo 跑一致性判定（与编辑口同口径：提示不闸门、解析失败不拦回包）。
     if let Some(t) = form
         .mediainfo
         .as_deref()

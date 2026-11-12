@@ -82,8 +82,7 @@ pub fn v1_scope() -> actix_web::Scope {
         .service(crate::admin_http::del_cidr)
         .service(crate::admin_http::reset)
         .service(crate::admin_http::deliveries)
-        // 反作弊规则集版本化 + 影子 + 回测（0391）：
-        // 改权重前先存草稿 → 影子跑一轮看会多判谁 → 回测历史 → 才切换。
+        // 反作弊规则集版本化 + 影子 + 回测（0391）：改权重前先存草稿 → 影子跑一轮看会多判谁 → 回测历史 → 才切换。
         .service(crate::admin_http::list_rulesets)
         .service(crate::admin_http::create_ruleset)
         .service(crate::admin_http::activate)
@@ -107,9 +106,8 @@ pub fn v1_scope() -> actix_web::Scope {
         // 邮箱激活通道（C7-#4）：verify 匿名点击（邮件链接）、resend 限流
         .service(crate::auth_http::email_verify)
         .service(crate::auth_http::email_resend)
-        // passkey（WebAuthn）第二通道（0227）
-        // passkey_list（GET /me/passkeys）在此前只进了 mount_passkey——而该
-        // mount 无调用者（逐个挂载时被遗漏），前端 passkeys-card 长期 404。
+        // passkey（WebAuthn）第二通道（0227）：passkey_list（GET /me/passkeys）此前只进了
+        // mount_passkey——该 mount 无调用者（逐个挂载时被遗漏），passkeys-card 长期 404。
         .service(crate::auth_http::passkey_list)
         .service(crate::auth_http::passkey_begin)
         .service(crate::auth_http::passkey_finish)

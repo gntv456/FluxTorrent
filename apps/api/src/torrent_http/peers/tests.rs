@@ -90,8 +90,7 @@ fn snapshot_with_v4_shape_survives_full_parse() {
             "user_id":7,"connectable":-1
         }]]]"#;
     type Snap = Vec<(String, Vec<SnapPeer>)>;
-    let snap: Snap =
-        serde_json::from_str(raw).expect("整份快照必须可解析");
+    let snap: Snap = serde_json::from_str(raw).expect("整份快照必须可解析");
     assert_eq!(snap.len(), 1);
     assert_eq!(snap[0].1.len(), 1);
     assert_eq!(snap[0].1[0].endpoint(), ("1.2.3.4", 6881));
