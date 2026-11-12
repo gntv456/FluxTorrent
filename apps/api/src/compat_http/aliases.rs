@@ -172,7 +172,7 @@ async fn alias_userdetails(
     let uid = crate::rss_http::authz::resolve_user_id(&state, &cred)
         .await?
         .ok_or(DomainError::Unauthorized)?;
-    let body = super::nexusphp::np_user_json(&state, uid).await?;
+    let body = super::nexusphp_user::np_user_json(&state, uid).await?;
     Ok(crate::openapi_http::no_store(ok(body)))
 }
 

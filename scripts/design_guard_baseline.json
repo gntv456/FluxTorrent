@@ -4785,9 +4785,7 @@
  "components/usercp-security.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [
-   167
-  ],
+  "palette": [],
   "color": []
  },
  "components/usercp-title.tsx": {
@@ -5274,6 +5272,12 @@
   "color": []
  },
  "components/shj-atlas-edu.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/usercp-security-credential.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],

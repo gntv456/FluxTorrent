@@ -36,60 +36,8 @@ async fn compat_np_user(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let tk = require_token(&req, &state).await?;
-    let body = np_user_json(&state, tk.uid).await?;
+    let body = super::nexusphp_user::np_user_json(&state, tk.uid).await?;
     Ok(no_store(with_rl(ok(body), &tk)))
-}
-
-/// NP userdetails 口径的用户 JSON（`user.json` 与别名 `userdetails.php` 共用，
-/// 保证两条路径的字段口径不可能漂移）。
-pub(super) async fn np_user_json(
-    state: &web::Data<std::sync::Arc<AppState>>,
-    uid: i64,
-) -> DomainResult<serde_json::Value> {
-    let row: Option<(i64, String, i64, i64, i64, i32)> = sqlx::query_as(
-        "SELECT id, username, uploaded, downloaded, \
-         COALESCE(spark_balance,0), class_id \
-         FROM users WHERE id = $1 AND status < 2",
-    )
-    .bind(uid)
-    .fetch_optional(&state.repo.db)
-    .await
-    .map_err(|e| DomainError::Internal(e.into()))?;
-    let Some((id, username, uploaded, downloaded, seedbonus, class_id)) = row
-    else {
-        return Err(DomainError::Unauthorized);
-    };
-    // 分享率：downloaded=0 时回 -1.0 会被工具当负数显示（0267）——
-    // 改恒非负 + 语义标记：真值给数值；只上传给 ∞；皆 0 给 "---"。
-    let (ratio, ratio_infinite, ratio_display) = if downloaded > 0 {
-        let r =
-            (uploaded as f64 / downloaded as f64 * 10000.0).round() / 10000.0;
-        (r, false, format!("{r:.4}"))
-    } else if uploaded > 0 {
-        (0.0, true, "∞".to_string())
-    } else {
-        (0.0, false, "---".to_string())
-    };
-    // 等级：NP 口径给可读等级名（class 数字对工具没有展示价值）
-    let class_name: String =
-        sqlx::query_scalar("SELECT name FROM user_classes WHERE id = $1")
-            .bind(class_id)
-            .fetch_optional(&state.repo.db)
-            .await
-            .map_err(|e| DomainError::Internal(e.into()))?
-            .unwrap_or_else(|| format!("LV{class_id}"));
-    Ok(serde_json::json!({
-        "id": id,
-        "username": username,
-        "uploaded": uploaded,
-        "downloaded": downloaded,
-        "seedbonus": seedbonus,
-        "class": class_id,
-        "class_name": class_name,
-        "ratio": ratio,
-        "ratio_infinite": ratio_infinite,
-        "ratio_display": ratio_display,
-    }))
 }
 
 /// 种子列表（NP torrents.php 字段口径，游标分页内部转 page 语义）

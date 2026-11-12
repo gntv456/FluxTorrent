@@ -9,6 +9,16 @@
 import type { Dict } from "./zh-CN";
 
 export const ja: DeepPartial<Dict> = {
+  forums3: {
+    sideLike: "いいね",
+    sideFav: "お気に入り",
+    sideReply: "返信",
+    tocTitle: "目次",
+    sideNoToc: "小見出しがありません",
+    sibTitle: "この板のスレッド",
+    sibReplies: "返信",
+    sibMore: "板へ",
+  },
   myspark: {
     otherKind: "その他",
     merkleTitle: "毎日の決済証明",
@@ -27,6 +37,45 @@ export const ja: DeepPartial<Dict> = {
     merkleBad: "検証失敗：記録が公開ルートと一致しません。サポートチケットを発行してください。",
     merkleUnsupported: "この環境では WebCrypto が使えないため、ローカル検証を実行できません。",
     merkleNote: "この証明はその日の台帳が事後に改変されていないことだけを示し、金額ルールの正しさは示しません。チェーンもトークンも使いません（anchoring: none）。",
+    calcTitle: "シード報酬の計算",
+    calcFormula: "計算式",
+    calcParams: "係数パラメータ",
+    calcTorrentTier: "トレント階層（種別ボーナス）",
+    calcSeedHours: "シード時間階層",
+    calcVolumeRarity: "容量と希少性",
+    colParam: "パラメータ",
+    colValue: "値",
+    colScore: "加算",
+    colCond: "条件",
+    colCount: "シード数",
+    colTier: "ティア",
+    earningSplit: "獲得対象",
+    excludedTitle: "{n} 件のシードが収益対象外です",
+    excludedPort: "ポート未開放",
+    excludedUnreach: "接続不可",
+    excludedStale: "報告途絶",
+    excludedFix: "理由と対処法",
+    excludedFixPort:
+      "ポート未開放：クライアントで待受ポートを開くか、ルーターでポート転送（UPnP または手動）を設定してください。ポートが閉じていると誰も接続できません。",
+    excludedFixUnreach:
+      "接続不可：クライアントの「厳格 NAT / ランダムポート」を無効にし、一般的なポート（例：51413）に変更してファイアウォールで許可してください。",
+    excludedFixStale:
+      "報告途絶：クライアントを起動したまま定期的にサイトへ報告する必要があります。再起動した直後なら次の報告で復帰します。",
+    payoutSuspended:
+      "収益の支払いを停止中です。アカウントの問題が解消されると自動的に再開します。",
+    paramBase: "基本報酬（1時間）",
+    paramCap: "上限（加算部分）",
+    paramCurveK: "曲線係数",
+    paramScale: "全体スケール",
+    paramDonorMult: "寄付者倍率",
+    paramOfficialMult: "公式トレント倍率",
+    calcOfficialTitle: "公式トレント加成",
+    calcOfficialMult: "公式トレント倍率",
+    calcOfficialMy: "自分がシード中の公式トレント：{n} 件 · {size}",
+    calcOfficialMyEmpty:
+      "現在公式トレントをシードしていません。いくつか保種すると時収益が大きく上がります。",
+    calcOfficialNote:
+      "公式トレント（官種）は単種加成にさらに ×{mult} を掛けます。上限はそのままで、1.0 で無効。シード数が少なく容量の大きい公式トレントほど高収益です。",
   },
   my: {
     title: "マイページ",

@@ -45,6 +45,10 @@ function isAnonymousOk(pathname: string): boolean {
     // 勋章图（public/medals/*）：勋章墙/勋章殿堂在未登录页也会渲染，
     // 被 307 成登录页 HTML 时浏览器只报「图片加载失败」，勋章位整片空白
     pathname.startsWith("/medals/") ||
+    // 动态头像（public/avatars/*）：用户主页、评论区在未登录态也渲染头像，
+    // 被 307 成登录页 HTML 时 img 静默失败、只剩首字母。目录内只有内置
+    // 资产（用户上传头像走对象存储），不涉及越权读取。
+    pathname.startsWith("/avatars/") ||
     // 山海经主题 CSS（2026-11-11 瘦身批从 globals.css 拆出、按需注入的
     // public/theme-css/*.css）：与 /fonts/ 同一类坑——被 307 成登录页 HTML
     // 时浏览器只报「样式表解码失败」，选山海经主题的用户整站无样式。

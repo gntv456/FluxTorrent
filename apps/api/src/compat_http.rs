@@ -15,6 +15,7 @@ pub(crate) mod aliases;
 mod common;
 pub(crate) mod download_keys;
 pub(crate) mod nexusphp;
+pub(crate) mod nexusphp_user;
 mod np_query;
 pub(crate) mod ptpp;
 
