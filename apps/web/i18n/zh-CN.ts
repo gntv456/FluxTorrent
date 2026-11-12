@@ -1931,6 +1931,25 @@ const zhCnBase = {
     /** 版块页顶部规则条（0392） */
     rulesTitle: "版块规则：",
     latestPhrase: "在 {forum} 回覆了 {topic}",
+    /** 回复/发帖编辑器工具栏（editor-toolbar，2026-11-13 收编 i18n 门禁）：
+     *  11 键提示 + 6 占位文字。键位清单只收渲染器真支持的语法。 */
+    etTitle: "标题",
+    etBold: "加粗",
+    etItalic: "斜体",
+    etStrike: "删除线",
+    etCode: "行内代码",
+    etCodeBlock: "代码块",
+    etQuote: "引用",
+    etLink: "链接",
+    etMention: "@提及",
+    etList: "列表",
+    etEmoji: "表情",
+    etPhBold: "加粗文字",
+    etPhItalic: "斜体文字",
+    etPhStrike: "删除文字",
+    etPhCode: "代码",
+    etPhLink: "链接文字",
+    etPhMention: "@用户名 ",
   },
   usercp: {
     activityTitle: "当前活动",
@@ -2953,6 +2972,7 @@ const zhCnBase = {
     lang: "语言",
     langSelect: "(请选择)",
     uploadBtn: "上传文件",
+    uploadBusy: "上传中…",
     downloadOk: "已下载 {title}",
     resetBtn: "重置",
     searchLabel: "给我搜",

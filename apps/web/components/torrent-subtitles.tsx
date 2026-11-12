@@ -15,15 +15,19 @@ import {
   langLabelOf,
   timeAgo,
 } from "@/components/subtitle-board-format";
-import { uploadAttachment } from "@/components/subtitle-attachment";
-import { LangSelect } from "@/components/subtitle-lang-select";
+import { SubtitleUploadDialog } from "@/components/subtitle-upload-dialog";
 import { TorrentSubtitleCards } from "@/components/torrent-subtitle-cards";
 import { useIsCompact } from "@/lib/hooks/use-media";
 
 /** 种子详情页字幕面板（0146 P0-6 → 0148 C1 IMDB 合并）。
  *  两组：「本种子字幕」（torrent_id 命中）+「本片字幕」（同 imdb_id 的
- *  其他版本，C1 自动合并）；快捷上传（带 torrent_id）。
- *  空态「暂无字幕」；面板始终渲染（模块开关已由页面 requireModule 与 API 网关把守）。 */
+ *  其他版本，C1 自动合并）。
+ *  空态「暂无字幕」；面板始终渲染（模块开关已由页面 requireModule 与
+ *  API 网关把守）。
+ *
+ *  2026-11-13 发布改弹窗（标签组省高改版续）：标题行右侧「上传字幕」
+ *  按钮弹 SubtitleUploadDialog 发布（表单/校验/busy 在弹窗件内，
+ *  300 行门禁拆件）；此前内联展开会把表格顶下去。 */
 
 export function TorrentSubtitles({
   torrentId,
@@ -32,24 +36,18 @@ export function TorrentSubtitles({
 }: {
   torrentId: number;
   imdbId?: string | null;
-  /** M5.8 移动端折叠内嵌：去掉 section/h2 外壳（标题由折叠条承担） */
+  /** tab panel / 折叠内嵌：标题行自持（head 共用），不再依赖外部 h2 */
   bare?: boolean;
 }) {
   const { dict, locale } = useI18n();
   const t = dict.subtitles;
   const [rows, setRows] = useState<SubtitleRow[] | null>(null);
   const [open, setOpen] = useState(false);
-  const [fTitle, setFTitle] = useState("");
-  const [fLang, setFLang] = useState("");
-  const [fFile, setFFile] = useState<File | null>(null);
-  const [fAnon, setFAnon] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   /** 拉取失败（与「确实没有字幕」区分开，见 load 内注释） */
   const [err, setErr] = useState(false);
   // M5.6 §13.6：窄屏（<640）字幕表降级为卡片列表（见 torrent-subtitle-cards）
   const compact = useIsCompact();
-
   const load = useCallback(async () => {
     // 三态（方案 P0-6）：此前失败与「确实没有字幕」都落到空表，用户无法区分是接口挂了还是本来没有
     setErr(false);
@@ -75,31 +73,26 @@ export function TorrentSubtitles({
     load();
   }, [load]);
 
-  async function upload() {
-    if (!fTitle.trim() || !fLang || !fFile) return;
-    setBusy(true);
-    setMsg(null);
-    try {
-      const sha = await uploadAttachment(fFile);
-      await api.post("/api/v1/subtitles", {
-        torrent_id: torrentId,
-        title: fTitle,
-        lang: fLang,
-        file_sha: sha,
-        anon: fAnon,
-      });
-      setFTitle("");
-      setFFile(null);
-      setMsg(t.uploadDone);
-      load();
-    } catch (e) {
-      setMsg(apiErrorMessage(dict, e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  /** 标题行（bare 与 section 共用）：标题 + 计数 + 右挂上传按钮 */
+  const head = (
+    <div className="td-sub-head">
+      <b className="td-sub-head__title">
+        {t.panelTitle ?? "Subtitles"}
+        {rows !== null && rows.length > 0 ? (
+          <span className="num td-sub-head__count">{rows.length}</span>
+        ) : null}
+      </b>
+      <button
+        type="button"
+        className="btn2 td-sub-head__btn"
+        onClick={() => setOpen(true)}
+      >
+        {t.uploadTitle}
+      </button>
+    </div>
+  );
 
-  const body = (
+  const bodyInner = (
     <>
       {err ? (
         <p className="py-4 text-center text-sub" role="status">
@@ -166,8 +159,8 @@ export function TorrentSubtitles({
                     <span
                       className={
                         s.cert_tier === "gold"
-                          ? "ml-1 text-[11px] font-bold text-amber-500"
-                          : "ml-1 text-[11px] font-bold text-mint"
+                          ? "ml-1 text-[11px] font-bold [color:var(--sun)]"
+                          : "ml-1 text-[11px] font-bold [color:var(--mint)]"
                       }
                     >
                       {s.cert_tier === "gold" ? "✎★" : "✎"}
@@ -207,69 +200,35 @@ export function TorrentSubtitles({
         </table>
         </div>
       )}
-      <div className="mt-2">
-        {!open ? (
-          <button
-            type="button"
-            className="btn2"
-            onClick={() => setOpen(true)}
-          >
-            {t.uploadTitle}
-          </button>
-        ) : (
-          <form
-            className="flex flex-wrap items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void upload();
-            }}
-          >
-            <input
-              type="file"
-              accept=".srt,.ass,.ssa,.sup,.idx,.sub,.cue,.zip,.rar,.7z,.lrc"
-              onChange={(e) => setFFile(e.target.files?.[0] ?? null)}
-              aria-label={t.file}
-            />
-            <input
-              type="text"
-              className="w-40"
-              placeholder={t.titleLabel}
-              value={fTitle}
-              onChange={(e) => setFTitle(e.target.value)}
-            />
-            <LangSelect value={fLang} onChange={setFLang} />
-            <label className="flex items-center gap-1 text-sm">
-              <input
-                type="checkbox"
-                checked={fAnon}
-                onChange={(e) => setFAnon(e.target.checked)}
-              />
-              {t.anonLabel ?? "Anonymous"}
-            </label>
-            <button type="submit" className="btn" disabled={busy}>
-              {t.uploadBtn}
-            </button>
-            <button
-              type="button"
-              className="btn2"
-              onClick={() => setOpen(false)}
-            >
-              {dict.common.cancel}
-            </button>
-          </form>
-        )}
-        {msg && <p className="mt-1 text-sm">{msg}</p>}
-      </div>
+      {/* 发布弹窗（2026-11-13）：表单/校验/busy 全在 SubtitleUploadDialog
+          （300 行门禁拆件）；成功后 onClose 收窗 + load 刷新列表 */}
+      <SubtitleUploadDialog
+        torrentId={torrentId}
+        open={open}
+        onClose={() => setOpen(false)}
+        onDone={load}
+      />
+      {msg && (
+        <p className="mt-1 text-sm" role="status">
+          {msg}
+        </p>
+      )}
     </>
   );
-  if (bare) return body;
+  if (bare) {
+    return (
+      <>
+        {head}
+        {bodyInner}
+      </>
+    );
+  }
   return (
     <section className="nexus-detail td-subtitles">
-      <h2 className="td-sec-title">
-        {t.panelTitle ?? "Subtitles"}
-        {rows !== null && rows.length > 0 ? ` (${rows.length})` : ""}
-      </h2>
-      {body}
+      {/* head 自带标题排版（td-sub-head）；不再套 h2——按钮/计数不是
+          标题内容，进了大纲反而打乱读屏器 */}
+      {head}
+      {bodyInner}
     </section>
   );
 }

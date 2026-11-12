@@ -10,8 +10,8 @@
   "h1First": null,
   "palette": [],
   "color": [
-   29,
-   31
+   30,
+   32
   ]
  },
  "app/not-found.tsx": {
@@ -736,9 +736,9 @@
  },
  "app/(main)/my-spark/page.tsx": {
   "h1": [
-   113
+   102
   ],
-  "h1First": 101,
+  "h1First": 90,
   "palette": [],
   "color": []
  },
@@ -1431,16 +1431,16 @@
  },
  "app/(main)/forums/topic/[id]/page.tsx": {
   "h1": [],
-  "h1First": 78,
+  "h1First": 108,
   "palette": [
-   65,
-   71,
-   135,
-   149,
-   155,
-   196,
-   219,
-   232
+   95,
+   101,
+   168,
+   182,
+   188,
+   230,
+   262,
+   275
   ],
   "color": []
  },
@@ -2586,22 +2586,18 @@
  "components/admin-tagdict-form.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [
-   19
-  ],
+  "palette": [],
   "color": [
-   125,
-   224
+   127,
+   222
   ]
  },
  "components/admin-tagdict.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [
-   72
-  ],
+  "palette": [],
   "color": [
-   112
+   110
   ]
  },
  "components/admin-tasks-exams.tsx": {
@@ -3131,17 +3127,14 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   223,
-   250,
-   261,
-   282,
-   300,
-   307,
-   325,
-   334,
-   343,
-   352,
-   373
+   51,
+   52,
+   54,
+   55,
+   58,
+   60,
+   63,
+   64
   ],
   "color": []
  },
@@ -3239,11 +3232,12 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   17,
+   15,
+   16,
    18,
-   20,
-   24,
-   79
+   21,
+   82,
+   106
   ],
   "color": []
  },
@@ -4684,8 +4678,8 @@
   "h1First": null,
   "palette": [],
   "color": [
-   120,
-   121
+   121,
+   122
   ]
  },
  "components/upload-form-files.tsx": {
@@ -4707,7 +4701,7 @@
   "h1First": null,
   "palette": [],
   "color": [
-   135
+   136
   ]
  },
  "components/upload-form-riplogs.tsx": {
@@ -5281,6 +5275,22 @@
   "h1": [],
   "h1First": null,
   "palette": [],
+  "color": []
+ },
+ "components/editor-toolbar.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   24
+  ],
+  "color": []
+ },
+ "app/(main)/my-spark/_parts/seeding-calc.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   85
+  ],
   "color": []
  }
 }

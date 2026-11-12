@@ -12,34 +12,28 @@ import {
   legacyDimName,
 } from "@/lib/site-profile";
 import { TorrentTags, type TagPayload } from "@/components/torrent-tags";
-import { TorrentManageLazy, TorrentPeersLazy, FileTreeLazy }
-  from "@/components/torrent-detail-lazy";
+import { TorrentManageLazy } from "@/components/torrent-detail-lazy";
 import { PromoBuyButton } from "@/components/promo-buy-button";
-import { SnatchList } from "@/components/snatch-list";
-import {
-  Descr, Spec, Fold, MiWarn, TorrentArtifacts,
-} from "@/components/torrent-detail-parts";
+import { Descr } from "@/components/torrent-detail-parts";
 import { TorrentHead } from "@/components/torrent-detail-head";
-import { TorrentRipLogs, type RipLog } from "@/components/torrent-rip-logs";
+import type { RipLog } from "@/components/torrent-rip-logs";
 import { TorrentPreviews } from "@/components/torrent-previews";
 import { TorrentAnchorBar } from "@/components/torrent-anchor";
 import { TorrentActionBarMount } from "@/components/torrent-actionbar-mount";
-import { TorrentSubtitles } from "@/components/torrent-subtitles";
+import { TorrentCrossseed } from "@/components/torrent-crossseed";
 import { FoldMobile } from "@/components/fold-mobile";
 import { TorrentRelated } from "@/components/torrent-related";
-import {
-  Comments,
-  GroupVersions,
-  Thankers,
-  type GroupInfo,
-  type ThankItem,
-  type TorrentDetailExt,
+import type {
+  GroupInfo,
+  ThankItem,
+  TorrentDetailExt,
 } from "@/components/torrent-detail-blocks";
-import { anchorDict, groupDict } from "@/components/torrent-detail-dict";
+import { anchorDict } from "@/components/torrent-detail-dict";
+import { TorrentSectionTabs } from "@/components/torrent-section-tabs";
 import { relTime as rel } from "@/lib/rel-time";
-import { TorrentDetailTail } from "./_parts/torrent-detail-tail";
 import { TorrentDetailSide } from "./_parts/torrent-detail-side";
 import { TorrentSpecs } from "./_parts/torrent-detail-specs";
+import { sectionTabs } from "./_parts/torrent-section-tabs-data";
 import { getDict } from "@/i18n/server";
 import type { SectionKindMeta } from "@/components/admin-sections-shared";
 import type {
@@ -47,7 +41,6 @@ import type {
   TorrentListItem,
 } from "@fluxtorrent/domain-types";
 import { isStaffClass } from "@/lib/domain/user-class";
-import { CollectionTagLink } from "@/components/collection-tag-link";
 
 export const dynamic = "force-dynamic";
 
@@ -200,6 +193,8 @@ export default async function TorrentDetailPage({
   const isStaff = isStaffClass(me?.class_id);
   // 字幕面板显隐（0146 模块开关 + view_hidden 双门，锚点条同源）
   const subOn = sectOn("subtitles") && profile?.modules?.subtitles !== false;
+  // MediaInfo 站型门（0184）：metaSources 含 mediainfo 才给 tab
+  const miOn = (profile?.metadata_sources ?? []).includes("mediainfo");
   // 分类/学段/媒介/版本词表全部取自站点档案（后端为唯一真值源）；
   // 档案不可用时 editCats 为空——下拉只剩「请选择」、名称回落 #id，
   // 不再拿另一套硬编码词表顶替（那正是分类显示 bug 的源头）
@@ -305,38 +300,18 @@ export default async function TorrentDetailPage({
         </FoldMobile>
       )}
 
-      {/* ===== MediaInfo（NP 详情页折叠块口径；0184 同发布页按站型 metaSources 显隐） ===== */}
-      {sectOn("mediainfo") && ext?.mediainfo &&
-        (profile?.metadata_sources ?? []).includes("mediainfo") && (
-          <Fold title="MediaInfo" id="td-sec-media">
-            <MiWarn agg={agg} d={d} />
-            <pre className="td-nfo">{ext.mediainfo}</pre>
-          </Fold>
-        )}
-
-
-      {sectOn("nfo") && agg.nfo && (
-        <Fold title="NFO">
-          <pre className="td-nfo">{agg.nfo}</pre>
-        </Fold>
-      )}
-
-      {/* 抓轨日志正文（0312/0337）：清单+按碟懒加载；无日志时组件自隐 */}
-      {sectOn("logs") && (
-        <TorrentRipLogs torrentId={t.id} logs={agg.logs} />
-      )}
-
-      {/* ===== 当前在线（tracker swarm 快照：做种/下载者明细，非 staff IP 已脱敏） ===== */}
-      {sectOn("peers") && (
-        <Fold title={dict.torrents.peersTitle} id="td-sec-peers">
-          <TorrentPeersLazy torrentId={t.id} />
-        </Fold>
-      )}
-
-      {sectOn("group") && group?.group && group.items.length > 0 && (
-        /* RSC 瘦身：GroupVersions 是 client 边界，只消费三键（groupDict） */
-        <GroupVersions group={group} dict={groupDict(dict)} />
-      )}
+      {/* ===== 主栏标签组（省高改版 2026-11-13）：简介之外的折叠段落收进
+          一个 tab 卡片——桌面 tab 切换（未访问 tab 零请求零 DOM，与 Fold
+          门卫同语义），≤768 回落平铺折叠（锚点条形态不变）。
+          自隐型组件（试读/辅种：清单客户端才知道空）不进 tabs，随其后
+          平铺渲染。节点数组由 _parts/torrent-section-tabs-data 服务端组装。 */}
+      <TorrentSectionTabs
+        navLabel={dict.torrent.anchorNav}
+        items={sectionTabs({
+          sectOn, subOn, miOn, dict, d, t, ext, files, agg, group,
+          comments, thanks, inCollections, locale,
+        })}
+      />
 
       {/* 试读 / 试听（0337）：清单懒加载，空清单且无管理权时整段不渲染 */}
       <TorrentPreviews
@@ -344,55 +319,15 @@ export default async function TorrentDetailPage({
         canManage={isStaff || !!ext?.is_owner}
       />
 
+      {/* 0486：辅种插件，未启用/无命中时组件自身返回 null */}
+      <TorrentCrossseed torrentId={t.id} label={dict.torrent.crossseed} />
 
-      {sectOn("collections") && inCollections.length > 0 && (
-        <section className="td-collections nexus-detail">
-          <h2 className="td-sec-title">{dict.collections.inTitle}</h2>
-          <div className="td-collections__list">
-            {inCollections.map((c) => (
-              <CollectionTagLink
-                key={c.id}
-                href={`/collections/${c.id}`}
-                name={c.name}
-                series={c.kind === "series"}
-              />
-            ))}
-          </div>
-        </section>
+      {/* InfoHash：无感谢者时 tabs 不收（thankers 段缺席），独立成段 */}
+      {sectOn("infohash") && thanks.length === 0 && (
+        <p className="td-infohash">
+          <b>{dict.torrent.infoHash}</b> · {t.info_hash.trim()}
+        </p>
       )}
-
-      {sectOn("files") && (
-        <Fold
-          title={dict.torrent.filesTitle}
-          count={files.length || undefined}
-          id="td-files"
-        >
-          <FileTreeLazy files={files} />
-        </Fold>
-      )}
-
-      <TorrentArtifacts agg={agg} d={d} />
-
-      {/* 字幕面板（0146 P0-6 + 0148 C1 同片合并；M5.8 移动端收折叠） */}
-      {subOn && (
-        <FoldMobile title={dict.subtitles.panelTitle} id="td-sec-subtitles">
-          <TorrentSubtitles torrentId={t.id} imdbId={t.imdb_id ?? null} bare />
-        </FoldMobile>
-      )}
-
-      {sectOn("snatches") && (
-        <FoldMobile title={dict.snatches2.title} id="td-sec-snatches">
-          <SnatchList torrentId={t.id} />
-        </FoldMobile>
-      )}
-
-
-      <TorrentDetailTail
-        t={t} thanks={thanks}
-        thanksCount={ext?.thanks_count ?? thanks.length}
-        comments={comments} dict={dict} locale={locale}
-        sectOn={sectOn}
-      />
       </div>
 
       {/* ===== 右信息栏上段（状态/文件/元信息，随页面滚动） ===== */}

@@ -176,12 +176,17 @@ export type ArtifactChildRow = {
 export function TorrentArtifacts({
   agg,
   d,
+  bare,
 }: {
   // `object` 而非结构形状：page.tsx 的 Aggregate 契约还没收进 domain-types
-  // （文件头注明「待后续批次」），而它的行数基线已顶到 432，加不动字段。
+  // （文件头注明「待后续批次」），而它的行数基线已到顶（420），加不动字段。
   // 全弱类型（属性全可选）会被 TS 的 weak-type 检查拒掉，这里自己收口。
   agg: object;
   d: Dict["tdetail"];
+  /** 标签组内嵌（2026-11-13）：去掉 Fold 外壳裸进 panel；调用侧
+   *  （torrent-section-tabs-data）已先探两叠非空才进 tab，空态自隐
+   *  语义由它承担 */
+  bare?: boolean;
 }) {
   const a = agg as {
     artifacts?: ArtifactRow[];
@@ -198,8 +203,8 @@ export function TorrentArtifacts({
         : k === "license"
           ? d.artKindLicense
           : d.artKindOther;
-  return (
-    <Fold title={d.artifactsTitle} id="td-sec-artifacts">
+  const body = (
+    <>
       {items.length > 0 && (
         <ul className="td-art__list">
           {items.map((a) => (
@@ -234,6 +239,12 @@ export function TorrentArtifacts({
           </ul>
         </div>
       )}
+    </>
+  );
+  if (bare) return body;
+  return (
+    <Fold title={d.artifactsTitle} id="td-sec-artifacts">
+      {body}
     </Fold>
   );
 }

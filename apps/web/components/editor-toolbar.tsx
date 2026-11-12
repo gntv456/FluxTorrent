@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode, type RefObject } from "react";
+import { useI18n } from "@/i18n/client";
 
 /** 回复/发帖编辑器工具栏（2026-11-12，参考机窝编辑器形态）。
  *
@@ -21,7 +22,7 @@ export interface ToolbarHandle {
 const BTN =
   "inline-flex h-7 min-w-7 items-center justify-center rounded px-1.5 " +
   "text-xs font-bold text-sub hover:bg-[var(--surface-sunken)] " +
-  "hover:text-sky";
+  "hover:text-[var(--sky)]";
 
 const EMOJIS = [
   "😀", "😂", "🤣", "😊", "😍", "🤔", "😎", "😢", "😭", "😡",
@@ -41,6 +42,9 @@ export function EditorToolbar({
   children?: ReactNode;
 }) {
   const emojiOpen = useRef<HTMLDetailsElement>(null);
+  // 工具栏提示与占位文案（2026-11-13 收编 i18n 门禁，四语同步；
+  // ja 段回落 zh-CN）
+  const et = useI18n().dict.forums3;
 
   function wrap(before: string, after: string, placeholder: string) {
     const el = areaRef.current;
@@ -96,43 +100,44 @@ export function EditorToolbar({
 
   return (
     <div className="tp-ed__bar">
-      <button type="button" className={BTN} title="标题"
+      <button type="button" className={BTN} title={et.etTitle}
         onClick={() => linePrefix("## ")}>
         H2
       </button>
-      <button type="button" className={BTN} title="加粗"
-        onClick={() => wrap("**", "**", "加粗文字")}>
+      <button type="button" className={BTN} title={et.etBold}
+        onClick={() => wrap("**", "**", et.etPhBold)}>
         <b>B</b>
       </button>
-      <button type="button" className={BTN} title="斜体"
-        onClick={() => wrap("*", "*", "斜体文字")}>
+      <button type="button" className={BTN} title={et.etItalic}
+        onClick={() => wrap("*", "*", et.etPhItalic)}>
         <i>I</i>
       </button>
-      <button type="button" className={BTN} title="删除线"
-        onClick={() => wrap("~~", "~~", "删除文字")}>
+      <button type="button" className={BTN} title={et.etStrike}
+        onClick={() => wrap("~~", "~~", et.etPhStrike)}>
         <s>S</s>
       </button>
-      <button type="button" className={BTN} title="行内代码"
+      <button type="button" className={BTN} title={et.etCode}
         onClick={() => wrap("`", "`", "code")}>
         {"<>"}
       </button>
-      <button type="button" className={BTN} title="代码块"
-        onClick={() => insert("\n```\n代码\n```\n", "代码")}>
+      <button type="button" className={BTN} title={et.etCodeBlock}
+        onClick={() =>
+          insert("\n```\n" + et.etPhCode + "\n```\n", et.etPhCode)}>
         {"{}"}
       </button>
-      <button type="button" className={BTN} title="引用"
+      <button type="button" className={BTN} title={et.etQuote}
         onClick={() => linePrefix("> ")}>
         ❝
       </button>
-      <button type="button" className={BTN} title="链接"
-        onClick={() => wrap("[", "](https://)", "链接文字")}>
+      <button type="button" className={BTN} title={et.etLink}
+        onClick={() => wrap("[", "](https://)", et.etPhLink)}>
         🔗
       </button>
-      <button type="button" className={BTN} title="@提及"
-        onClick={() => insert("@用户名 ", "@")}>
+      <button type="button" className={BTN} title={et.etMention}
+        onClick={() => insert(et.etPhMention, "@")}>
         @
       </button>
-      <button type="button" className={BTN} title="列表"
+      <button type="button" className={BTN} title={et.etList}
         onClick={() => linePrefix("- ")}>
         ≡
       </button>
@@ -141,7 +146,7 @@ export function EditorToolbar({
         className="tp-ed__emoji"
         onMouseLeave={() => emojiOpen.current?.removeAttribute("open")}
       >
-        <summary className={BTN} title="表情">😀</summary>
+        <summary className={BTN} title={et.etEmoji}>😀</summary>
         <div className="tp-ed__emoji-pop">
           {EMOJIS.map((e) => (
             <button

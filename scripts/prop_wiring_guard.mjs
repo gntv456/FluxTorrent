@@ -19,7 +19,7 @@ const R = (p) => path.join(ROOT, p);
 // 受管页面：详情页首屏 + 尾块（其它页面尚无「聚合喂组件」的形态，先不铺开）
 const PAGES = [
   "apps/web/app/(main)/torrent/[id]/page.tsx",
-  "apps/web/app/(main)/torrent/[id]/_parts/torrent-detail-tail.tsx",
+  "apps/web/app/(main)/torrent/[id]/_parts/torrent-section-tabs-data.tsx",
 ];
 // 组件索引扫描目录
 const COMP_DIRS = [
@@ -29,7 +29,16 @@ const COMP_DIRS = [
 // 有意不传的 prop（加条目必须写理由，且只许减不许加）：
 // - Fold.open：折叠区默认收起是有意行为（详情页只有简介默认展开）
 // - Spec.num：num=true 走等宽数字排版，仅数值型格子用（size/评分等已在传）
-const EXEMPT = new Set(["Fold.open", "Spec.num"]);
+// - FoldMobile.count：简介段无数可计（2026-11-13 省高改版后唯一无计数
+//   的受管调用点；其余段落计数由 TorrentSectionTabs items.count 统一喂）
+// - Badge.className：官种徽标默认样式即终态（标签组同组版本表镜像自
+//   torrent-detail-blocks，两处同款均无附加类）
+const EXEMPT = new Set([
+  "Fold.open",
+  "Spec.num",
+  "FoldMobile.count",
+  "Badge.className",
+]);
 
 const strip = process.argv.includes("--strip")
   ? process.argv[process.argv.indexOf("--strip") + 1]

@@ -22,7 +22,7 @@ const detailMain = readFileSync(
 const detailTail = readFileSync(
   path.join(
     ROOT,
-    "apps/web/app/(main)/torrent/[id]/_parts/torrent-detail-tail.tsx",
+    "apps/web/app/(main)/torrent/[id]/_parts/torrent-section-tabs-data.tsx",
   ),
   "utf8");
 const detail = detailMain + detailTail;

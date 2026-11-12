@@ -4,46 +4,31 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError, hasSessionCookie } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
-import { dateLocale, fmtCur } from "@/i18n/config";
+import { fmtCur } from "@/i18n/config";
 import { BTN_SM_BOLD, BTN_SM_GHOST } from "@/lib/ui-classes";
-import { StatePanel } from "@/components/ui/state-panel";
 import { SkeletonRows } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
-import { Pager } from "@/components/ui/pager";
+import { TabPanel, Tabs } from "@/components/ui/tabs";
 import { MerklePanel } from "./_parts/merkle-panel";
 import { SeedingCalc } from "./_parts/seeding-calc";
 import { ExcludedNote } from "./_parts/excluded-note";
+import { LedgerPanel } from "./_parts/ledger-panel";
+import {
+  LEDGER_PER,
+  sums,
+  type LedgerEnvelope,
+  type LedgerRow,
+  type Summary,
+} from "./_parts/ledger-types";
 import type { SparkInfo } from "./_parts/spark-types";
 
-/** 与后端 /me/spark/ledger 的 per 固定值一致（50/页） */
-const LEDGER_PER = 50;
-
-interface LedgerEnvelope {
-  items: LedgerRow[];
-  total: number;
-  page: number;
-  per: number;
-}
-
-interface LedgerRow {
-  amount: number;
-  kind: string;
-  balance_after: number | null;
-  created_at: string;
-  /** 商店消费带的商品名（其它流水为 null）——kind 全是 'shop' 分不清 */
-  item_name?: string | null;
-}
-
-type Summary = { income: number; spend: number };
-
-const sums = (rows: LedgerRow[]): Summary => ({
-  income: rows.filter((r) => r.amount > 0).reduce((s, r) => s + r.amount, 0),
-  spend: rows.filter((r) => r.amount < 0).reduce((s, r) => s + r.amount, 0),
-});
-
-/** 我的魔力（mybonus.php 口径）：余额卡片 + 收益估算 + 最近流水 */
+/** 我的魔力（mybonus.php 口径）：余额卡片 + 收益估算 + 最近流水。
+ *  2026-11-13 标签化（省高改版续）：统计条/CTA/排除提示常驻，正文三域
+ *  收进标签组（流水默认 / 收益计算 / 每日凭证）——复用 ui/tabs 回调档
+ *  + 挂载门卫（激活过的 tab 保持挂载，未访问零渲染零请求：Merkle 挂载
+ *  即拉 manifest，SeedingCalc 大表渲染也可观）。 */
 export default function MySparkPage() {
-  const { dict, locale, currency } = useI18n();
+  const { dict, currency } = useI18n();
   const t = dict.myspark;
   const [info, setInfo] = useState<SparkInfo | null>(null);
   const [rows, setRows] = useState<LedgerRow[]>([]);
@@ -56,6 +41,15 @@ export default function MySparkPage() {
   // 样图 § my-spark 的「兑换邀请（15,000）」：价格取 /invites/status 的
   // redeem_price 真值（invite_http.rs:119），取不到就只显示按钮名
   const [redeemPrice, setRedeemPrice] = useState<number | null>(null);
+  // 标签组：tab 状态 + 已访问集合（挂载门卫，语义同详情页标签组）
+  const [tab, setTab] = useState("ledger");
+  const [visited, setVisited] = useState<ReadonlySet<string>>(
+    () => new Set(["ledger"]),
+  );
+  const switchTab = (k: string) => {
+    setTab(k);
+    setVisited((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
+  };
   // 挂载门控：hasSessionCookie() 在**渲染期**读 document.cookie，SSR 环境下
   // document 不存在 → 恒返回 false → 服务端渲染「请先登录」而客户端渲染完整
   // 页面，两棵树不同 → React #418（hydration mismatch）。
@@ -115,9 +109,6 @@ export default function MySparkPage() {
     );
   }
 
-  const income = summary?.income;
-  const spend = summary?.spend;
-
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -153,13 +144,17 @@ export default function MySparkPage() {
         <div>
           <div className="k">{t.recentIncome}</div>
           <div className="v">
-            {income !== undefined ? income.toLocaleString() : "—"}
+            {summary?.income !== undefined
+              ? summary.income.toLocaleString()
+              : "—"}
           </div>
         </div>
         <div>
           <div className="k">{t.recentSpend}</div>
           <div className="v">
-            {spend !== undefined ? spend.toLocaleString() : "—"}
+            {summary?.spend !== undefined
+              ? summary.spend.toLocaleString()
+              : "—"}
           </div>
         </div>
         <div>
@@ -190,92 +185,49 @@ export default function MySparkPage() {
           {t.ctaPool}
         </Link>
       </div>
-      {/* 未计收益要给原因和可行动的修法，见 excluded-note.tsx */}
+      {/* 未计收益要给原因和可行动的修法，见 excluded-note.tsx
+          （行动告警不进 tab：任何 tab 下都要看得见） */}
       {info && <ExcludedNote info={info} t={t} />}
-      {info && <SeedingCalc info={info} t={t} currency={currency} />}
 
-      <div className="brand-panel">
-        <div className="brand-panel__head">
-          <h2>{t.ledger.replace("{magic}", currency)}</h2>
-          <span className="text-xs text-sub">
-            {t.recentIncome}{" "}
-            <b className="num text-success">
-              {income !== undefined ? `+${income.toLocaleString()}` : "—"}
-            </b>
-            {" · "}
-            {t.recentSpend}{" "}
-            <b className="num text-[var(--danger-text)]">
-              {spend !== undefined ? spend.toLocaleString() : "—"}
-            </b>
-          </span>
-        </div>
-        {/* M6.5：compact 档 CSS 双态（.profilet 同款：thead 隐藏+块化+小标签），
-         *  客户端组件但免 useIsCompact 双树——流水 4 列窄屏改行读。
-         *  A3 四态：流水表 loading 骨架 / 错误占位 / 空态走 StatePanel */}
-        <StatePanel
-          loading={rows.length === 0 && err === null}
-          error={rows.length === 0 ? err : null}
-          empty={rows.length === 0}
-          loadingFallback={<SkeletonRows rows={5} />}
+      {/* 正文三域标签化：流水（默认）/ 收益计算 / 每日凭证。
+          挂载门卫：激活过才挂载、切回不重拉；方向键/roving tabindex
+          由 ui/tabs 原语承担 */}
+      <Tabs
+        idPrefix="ms"
+        label={t.title.replace("{magic}", currency)}
+        value={tab}
+        onChange={switchTab}
+        items={[
+          { key: "ledger", label: t.ledger.replace("{magic}", currency) },
+          { key: "calc", label: t.calcTitle },
+          { key: "merkle", label: t.merkleTitle },
+        ]}
+      />
+
+      <TabPanel idPrefix="ms" tabKey="ledger">
+        <LedgerPanel
+          rows={rows}
+          total={total}
+          page={page}
+          setPage={setPage}
+          summary={summary}
+          err={err}
           onRetry={load}
-        >
-          <div className="brand-wide-table-scroll">
-            <table className="nexus-table profilet">
-              <tbody>
-                <tr>
-                  <td className="colhead">{t.ledgerKind}</td>
-                  <td className="colhead">{t.ledgerAmount}</td>
-                  <td className="colhead">{t.ledgerBalance}</td>
-                  <td className="colhead">{t.ledgerAt}</td>
-                </tr>
-                {rows.map((r, i) => (
-                <tr key={i}>
-                  <td>
-                    <span className="profilet__label">{t.ledgerKind}</span>
-                    <span className="pill">
-                      {r.item_name
-                        ? r.item_name
-                        : (dict.my.kinds[r.kind] ?? t.otherKind)}
-                    </span>
-                  </td>
-                  <td
-                    className={`num font-bold ${
-                      r.amount >= 0 ? "text-success" : "text-[var(--danger-text)]"
-                    }`}
-                  >
-                    <span className="profilet__label">{t.ledgerAmount}</span>
-                    {r.amount >= 0 ? "+" : ""}
-                    {r.amount.toLocaleString()}
-                  </td>
-                  <td className="num">
-                    <span className="profilet__label">{t.ledgerBalance}</span>
-                    {r.balance_after?.toLocaleString() ?? "—"}
-                  </td>
-                  <td className="text-xs text-sub">
-                    <span className="profilet__label">{t.ledgerAt}</span>
-                    {new Date(r.created_at).toLocaleString(
-                      dateLocale(locale),
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        </StatePanel>
+        />
+      </TabPanel>
+
+      {/* 收益计算：info 就绪才可看（无 tiers 时组件自隐，面板留空）。
+          id 对齐 ui/tabs 的 aria-controls（panel-ms-calc/merkle） */}
+      <div id="panel-ms-calc" role="tabpanel" hidden={tab !== "calc"}>
+        {(tab === "calc" || visited.has("calc")) && info && (
+          <SeedingCalc info={info} t={t} currency={currency} />
+        )}
       </div>
 
-      {total > LEDGER_PER && (
-        <Pager
-          layout="compact"
-          page={page}
-          pages={Math.ceil(total / LEDGER_PER)}
-          posLabel={`${page} / ${Math.ceil(total / LEDGER_PER)}`}
-          onStep={setPage}
-        />
-      )}
-
-      <MerklePanel />
+      {/* 每日凭证：挂载即拉 manifest——激活才挂载 */}
+      <div id="panel-ms-merkle" role="tabpanel" hidden={tab !== "merkle"}>
+        {(tab === "merkle" || visited.has("merkle")) && <MerklePanel />}
+      </div>
     </div>
   );
 }

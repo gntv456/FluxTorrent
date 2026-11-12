@@ -1975,6 +1975,123 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
+/* 主栏标签组（2026-11-13 省高改版）：折叠卡平铺改 tab 切换。tab 条
+   视觉与 <768 锚点条同语言（sky-soft 胶囊 / sky-deep 激活），但桌面
+   常态渲染；panel 顶线接 tab 条底边，内衬与折叠卡 body 同口径 */
+.td-tabs {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg, 16px);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.td-tabs__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: linear-gradient(100deg, var(--head-a), var(--surface-card) 72%);
+  border-bottom: 1px solid var(--line);
+}
+.td-tabs__bar::-webkit-scrollbar {
+  display: none;
+}
+.td-tabs__tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--sky-soft);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sky-deep);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.td-tabs__tab:hover {
+  border-color: var(--sky-deep);
+}
+.td-tabs__tab.is-on {
+  background: var(--sky-deep);
+  border-color: var(--sky-deep);
+  color: var(--text-on-accent);
+}
+.td-tabs__num {
+  font-size: 11px;
+  opacity: 0.72;
+}
+.td-tabs__panel {
+  padding: 16px 18px;
+}
+/* 平铺回落（≤768，TorrentSectionTabs compact 分支）：各段回到
+   FoldMobile 折叠卡——.td-tabs 本体不渲染，这里只兜 panel 内嵌套
+   table 的溢出（peers/snatches 宽表） */
+.td-tabs__panel .brand-wide-table-scroll {
+  overflow-x: auto;
+}
+
+/* 字幕面板标题行（2026-11-13 发布改弹窗续）：标题+计数左置、上传
+   按钮右挂——tab panel 与折叠 body 共用；section 模式下嵌在
+   td-sec-title 里，h2 的字级由外壳承担 */
+.td-sub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  margin-bottom: 8px;
+}
+.td-sub-head__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.td-sub-head__count {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+.td-sub-head__btn {
+  margin-left: auto;
+}
+/* 发布弹窗表单（ConfirmDialog children 槽）：标签列 + 控件列两栏，
+   窄弹窗纵向回落；复选行整行可点 */
+.td-sub-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 2px;
+}
+.td-sub-form__row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.td-sub-form__row > span:first-child {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.td-sub-form__row--check {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: 4px;
+}
+.td-sub-form__row--check > span:first-child {
+  color: var(--text-body);
+  font-weight: 400;
+}
+.td-sub-form__msg {
+  font-size: 12px;
+  color: var(--danger-text);
+}
+
 /* 头部「更多操作」面板（HeadActionsMore；M6.5 全断点面板）：
    trigger 桌面内联（.td-more-btn，与「感谢发布者」同款 ghost 胶囊），
    移动端 portal 进吸底操作条（复用 td-actionbar__btn）；面板恒挂载

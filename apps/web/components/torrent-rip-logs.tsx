@@ -41,9 +41,13 @@ interface RipLogBody extends RipLog {
 export function TorrentRipLogs({
   torrentId,
   logs,
+  bare,
 }: {
   torrentId: number;
   logs: RipLog[];
+  /** 标签组内嵌（2026-11-13）：去掉 Fold 外壳，正文裸进 panel；
+   *  ≤768 由 TorrentSectionTabs 包 FoldMobile（title 由折叠条承担） */
+  bare?: boolean;
 }) {
   const { dict } = useI18n();
   const d = dict.tdetail;
@@ -108,8 +112,8 @@ export function TorrentRipLogs({
 
   // 无日志行整段不渲染（与 mediainfo/nfo 同口径）；段落显隐门在调用方
   if (logs.length === 0) return null;
-  return (
-    <Fold title={d.ripLogs} count={logs.length}>
+  const panel = (
+    <>
       {msg && <p className="mb-1 text-xs text-sub">{msg}</p>}
       <ul className="td-riplogs">
         {logs.map((l) => {
@@ -170,6 +174,12 @@ export function TorrentRipLogs({
         })}
       </ul>
       <AskDialog {...ask} />
+    </>
+  );
+  if (bare) return panel;
+  return (
+    <Fold title={d.ripLogs} count={logs.length}>
+      {panel}
     </Fold>
   );
 }
