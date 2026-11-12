@@ -316,7 +316,10 @@ pub async fn run_all(
             // 反作弊规则集回测（P-471）：catalog 一直写着 24h，可这里从来没有
             // 它的分支——只有面板手点才会跑。接上日频，版本取表里最高的两版。
             shard_lock!(&db, "job:risk_backtest",
-                risk_backtest::backtest_latest(&db, 90), &shard); }        }
+                risk_backtest::backtest_latest(&db, 90), &shard);
+            // IYUU 辅种缓存孤儿清理（0487 配套）：删种后的死行，日频兜底
+            shard_lock!(&db, "job:iyuu_orphan_sweep",
+                iyuu_orphan_sweep(&db), &shard); }        }
     }
     manual_tasks.drain().await;
     tracing::info!("flux-worker 已排空，退出");

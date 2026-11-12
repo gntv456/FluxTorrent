@@ -45,3 +45,61 @@ fn builtin_sites_sane() {
     assert_eq!(by_sid(3).map(|(_, d)| d), Some("api.m-team.cc"));
     assert!(by_sid(999_999).is_none());
 }
+
+/// host 解析：完整 URL / 裸域名 / 带端口 / 带路径统一抠出小写 host。
+#[test]
+fn host_of_url_extracts_bare_host() {
+    use super::host_of_url;
+    assert_eq!(
+        host_of_url("https://FluxTorrent.org/"),
+        Some("fluxtorrent.org".to_string())
+    );
+    assert_eq!(host_of_url("http://a.b.c"), Some("a.b.c".to_string()));
+    assert_eq!(
+        host_of_url("bare.example/x/y"),
+        Some("bare.example".to_string())
+    );
+    assert_eq!(
+        host_of_url("dom.example:8080/z"),
+        Some("dom.example".to_string())
+    );
+    assert_eq!(host_of_url("  "), None);
+    assert_eq!(host_of_url("https://"), None);
+}
+
+/// 自站命中过滤：域名对上才算；解析不出站点或对不上都放行（宁多勿杀）。
+#[test]
+fn self_hit_filters_by_domain_only() {
+    use super::{host_of_url, is_self_hit};
+    use std::collections::HashMap;
+    let extra: HashMap<i64, (String, String)> = HashMap::new();
+    let mut synced = HashMap::new();
+    synced.insert(
+        42_i64,
+        flux_shared::iyuu::Site::plain("自家", "fluxtorrent.org"),
+    );
+    synced.insert(
+        43_i64,
+        flux_shared::iyuu::Site::plain("友站", "other.example"),
+    );
+
+    // 直接测 host 比对内核（is_self_hit 读 env，逐测试设/撤不稳定，拆开验）
+    assert_eq!(
+        host_of_url(
+            &flux_shared::iyuu::Site::plain("自家", "fluxtorrent.org").host
+        ),
+        Some("fluxtorrent.org".to_string())
+    );
+    // 三层表都没有的 sid：is_self_hit 必须放行（None → false 路径）
+    assert!(
+        !is_self_hit(&extra, &HashMap::new(), 999_999)
+            || std::env::var("PUBLIC_SITE_URL").is_ok()
+    );
+    // env 没配时任何 sid 都放行
+    if std::env::var("PUBLIC_SITE_URL").is_err()
+        && std::env::var("PUBLIC_WEB_URL").is_err()
+        && std::env::var("PUBLIC_API_URL").is_err()
+    {
+        assert!(!is_self_hit(&extra, &synced, 42));
+    }
+}

@@ -30,6 +30,7 @@ mod hr_snapshot;
 mod hr_warn_ladder;
 mod hr_warn_mail;
 // 0487：IYUU 辅种查重定时批量刷新
+mod iyuu_orphan_sweep;
 mod iyuu_refresh;
 mod jixiao;
 mod jixiao_loop;
@@ -81,6 +82,7 @@ pub(crate) const JOB_BATCH: i64 = 500;
 pub(crate) use announce::*;
 pub(crate) use catalog::*;
 pub(crate) use contract::*;
+pub(crate) use iyuu_orphan_sweep::*;
 pub(crate) use iyuu_refresh::*;
 pub(crate) use locks::*;
 pub(crate) use lottery::*;

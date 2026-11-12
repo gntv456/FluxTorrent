@@ -478,7 +478,7 @@ async fn upload_core(
     )
     .await;
     // 0487：新种立即查一次辅种（后台任务，不阻塞发布、失败只记日志）
-    crate::iyuu_bridge::spawn_refresh_one(&state, id);
+    crate::iyuu_bridge::spawn_refresh_one(state.get_ref().clone(), id);
     Ok(UploadOutcome::Created(serde_json::json!({
         "id": id,
         "approval_status": approval_status,

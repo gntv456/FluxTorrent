@@ -18,6 +18,14 @@
 //! 为什么放共享 crate：查重要限量（配额制），不能在详情页每次点开就打一次
 //! IYUU。真正的外呼由 worker 定时批量跑，api 只读库。两边必须用**同一份**
 //! 签名与解析，否则口径会漂。
+//!
+//! **协议能力边界（2026-11-12 核实，勿重查）**：IYUU **只按 info_hash 匹配**，
+//! 不收 pieces 指纹——别想着「补发 pieces_hash 命中换 source 重打包的同源
+//! 种」。IYUUPlus 客户端 `ReseedServices.php` 里 reseed() 的第二个参数
+//! `sha1` 是 **hash 列表的校验和**（`sha1(json_encode(info_hash数组))`，
+//! 用于服务端校验列表完整性），不是 `sha1(info.pieces)`。spider 站点协议
+//! （本模块走的）更是只有单数 `info_hash` 字段。跨站重打包的匹配面在
+//! `/api/v1/crossseed/lookup` 的 `pieces_sha1`（第三方直连我们时才用得上）。
 
 use std::collections::HashMap;
 use std::time::Duration;

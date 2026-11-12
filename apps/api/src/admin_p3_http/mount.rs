@@ -45,6 +45,7 @@ pub fn mount_p3_tools(scope: actix_web::Scope) -> actix_web::Scope {
         .service(admin_backups_list)
         .service(admin_backup_run)
         .service(admin_jobs_list)
+        .service(admin_iyuu_health)
         .service(admin_job_run)
         .service(admin_version)
         .service(admin_update_check)

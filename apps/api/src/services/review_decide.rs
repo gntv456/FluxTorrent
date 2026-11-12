@@ -42,7 +42,9 @@ pub(crate) enum DecideOutcome {
 /// 一致）。`batch` 只影响留痕 detail 是否带 `"batch": true` 标记。
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn decide_one(
-    state: &AppState,
+    // &web::Data<Arc<AppState>>：内部经 Deref 依旧用 state.repo；这样
+    // fire-and-forget 钩子（IYUU 即时查重）能 clone 整个 Arc 进 tokio::spawn
+    state: &actix_web::web::Data<std::sync::Arc<AppState>>,
     operator_id: i64,
     torrent_id: i64,
     approve: bool,
@@ -137,6 +139,13 @@ pub(crate) async fn decide_one(
             operator_id,
         )
         .await;
+        // IYUU 辅种即时查重（0487 配套）：过审前 spawn_refresh_one 只在发种口
+        // 挂着，待审种在那里空转（approval_status≠1 直接返回），过审后要等
+        // 小时批。此处补钩子——fire-and-forget，失败只记日志，不阻塞裁决。
+        crate::iyuu_bridge::spawn_refresh_one(
+            state.get_ref().clone(),
+            torrent_id,
+        );
     }
     // 种子操作记录：留痕失败不阻断裁决，但必须报出来（与 postpone/resume
     // 同形；单条口原口径 WARN，批量口原先静默——统一为 WARN，只多日志）

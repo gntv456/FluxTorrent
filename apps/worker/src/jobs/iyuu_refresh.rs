@@ -41,12 +41,21 @@ pub(crate) async fn iyuu_refresh(
     let mut r = redis.clone();
     refresh_site_table(&cfg, &mut r).await;
 
+    // 选种口径（P1 复核优先级）：三分队按「用户可见性」排预算。
+    //   1. 从没查过的（NULLS FIRST 原口径，新种/首扫最优先）；
+    //   2. 有命中的行——面板正在展示，对方删种后就是死链，必须勤复核；
+    //   3. 查过没命中的行——晚点刷无所谓，垫底。
+    // 纯 fetched_at 升序时 13k 种 ÷ 720 次/天 ≈ 19 天一轮，死链要挂 19
+    // 天；命中行提前后，展示中的数据 2~3 天必复核一次（死链窗口）。
     let rows: Vec<(i64, String)> = sqlx::query_as(
         "SELECT t.id, t.info_hash FROM torrents t \
          LEFT JOIN iyuu_crossseed c ON c.torrent_id = t.id \
          WHERE t.approval_status = 1 \
            AND COALESCE(t.info_hash, '') <> '' \
-         ORDER BY c.fetched_at NULLS FIRST \
+         ORDER BY c.fetched_at NULLS FIRST, \
+                  CASE WHEN COALESCE(jsonb_array_length(c.hits), 0) > 0 \
+                       THEN 0 ELSE 1 END, \
+                  c.fetched_at \
          LIMIT $1",
     )
     .bind(cfg.batch)
