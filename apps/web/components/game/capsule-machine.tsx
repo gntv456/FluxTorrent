@@ -87,6 +87,8 @@ export function CapsuleMachine({
   useEffect(() => {
     if (resultIndex === null) return;
     if (reduced) {
+      // 减少动效：直接呈现最终开箱态，跳过抖动/掉落动画
+      setPhase("open");
       onLanded?.();
       return;
     }

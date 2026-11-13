@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 /**
  * 甜梦奇境·样图组件三件：stat-row（三格数据宝石）/ 历史行列表 /
  * cta-row（单抽 + 十连）。供九宫格 / 刮刮乐 / 大转盘等专注页复用，
@@ -102,21 +104,55 @@ export function SwTenModal({
   rows,
   totalLabel,
   onClose,
+  closeLabel,
 }: {
   open: boolean;
   title: string;
   rows: { label: string; net: number }[];
   totalLabel: string;
   onClose: () => void;
+  closeLabel?: string;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prev?.focus?.();
+    };
+  }, [open, onClose]);
   if (!open) return null;
   const total = rows.reduce((s, r) => s + r.net, 0);
+  const titleId = "sw-ten-title";
   return (
-    <div className="sw-ten-overlay" role="presentation">
-      <div className="sw-ten" role="dialog" aria-label={title}>
+    <div
+      className="sw-ten-overlay"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        ref={panelRef}
+        className="sw-ten"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sw-ten-hd">
-          <h4>{title}</h4>
-          <button type="button" className="sw-ten-x" onClick={onClose}>
+          <h4 id={titleId}>{title}</h4>
+          <button
+            type="button"
+            className="sw-ten-x"
+            onClick={onClose}
+            aria-label={closeLabel ?? "close"}
+          >
             ✕
           </button>
         </div>

@@ -27,7 +27,10 @@ export function BalanceBar({
   const t = dict.games;
   return (
     <div className="gs-balance flex flex-wrap items-center gap-x-5 gap-y-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-4 py-3 shadow-[var(--shadow-card)]">
-      <span className="flex items-baseline gap-1.5">
+      <span
+        className="flex items-baseline gap-1.5"
+        aria-live="polite"
+      >
         <span aria-hidden>💎</span>
         <span className="num text-base font-black">
           {balance === null ? "—" : balance.toLocaleString()}

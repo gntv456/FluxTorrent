@@ -109,7 +109,14 @@ export function AdminShell({
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        inputRef.current?.focus();
+        // 移动端搜索在抽屉里：先开抽屉，等节点挂载后再聚焦
+        const el = inputRef.current;
+        if (el && el.offsetParent !== null) {
+          el.focus();
+        } else {
+          setNavOpen(true);
+          requestAnimationFrame(() => inputRef.current?.focus());
+        }
       }
     }
     window.addEventListener("keydown", onKey);
@@ -186,21 +193,27 @@ export function AdminShell({
     : undefined;
   const subLabels = a.navSubs as unknown as Record<string, string>;
 
+  // 搜索框与分组导航同处 navBody：桌面侧栏与移动抽屉共用同一份（此前
+  // 桌面独有，移动端无搜索；Ctrl+K 也会聚焦到 display:none 的隐藏节点）
   const navBody = (
-    <AdminNavGroups
-      grouped={grouped}
-      badges={badges}
-      tool={tool}
-      onTool={(t) => {
-        onTool(t);
-        setNavOpen(false);
-      }}
-      kwEmpty={kw === ""}
-      labelOf={labelOf}
-      tipOf={tipOf}
-      navEmpty={a.navEmpty}
-      subLabels={subLabels}
-    />
+    <>
+      <div className="px-1 pb-2">
+        <input
+          ref={inputRef} value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={a.navSearchPlaceholder}
+          aria-label={a.navSearchLabel}
+          className="min-h-[34px] w-full rounded-[var(--r-sm)] border
+            border-line bg-cloud px-2 text-xs outline-none focus:border-sky"
+        />
+      </div>
+      <AdminNavGroups
+        grouped={grouped} badges={badges} tool={tool}
+        onTool={(t) => { onTool(t); setNavOpen(false); }}
+        kwEmpty={kw === ""} labelOf={labelOf} tipOf={tipOf}
+        navEmpty={a.navEmpty} subLabels={subLabels}
+      />
+    </>
   );
 
   return (
@@ -254,18 +267,6 @@ export function AdminShell({
             <p className="px-2 py-1 text-xs font-bold text-ink">
               {a.navTitle}
             </p>
-            <div className="px-1 pb-2">
-              <input
-                ref={inputRef}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={a.navSearchPlaceholder}
-                aria-label={a.navSearchLabel}
-                className="min-h-[34px] w-full rounded-[var(--r-sm)] border
-                  border-line bg-cloud px-2 text-xs outline-none
-                  focus:border-sky"
-              />
-            </div>
             {navBody}
           </div>
         </nav>

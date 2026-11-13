@@ -100,6 +100,9 @@ export function LuckyWheel({
   useEffect(() => {
     if (resultIndex === null) return;
     if (reduced) {
+      // 减少动效：直接落到最终扇区（不转圈），仍呈现结果位置
+      const center = resultIndex * seg + seg / 2;
+      setRot((360 - center) % 360);
       onLanded?.();
       return;
     }
