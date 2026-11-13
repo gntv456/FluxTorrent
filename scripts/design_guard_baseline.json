@@ -5296,8 +5296,13 @@
  },
  "app/(main)/forums/(shell)/page.tsx": {
   "h1": [],
-  "h1First": 51,
-  "palette": [],
+  "h1First": 126,
+  "palette": [
+   93,
+   94,
+   95,
+   96
+  ],
   "color": []
  }
 }
