@@ -14,7 +14,8 @@ import {
   type StreamType,
 } from "@/components/forum-home-stream";
 import { ForumSideColumn } from "@/components/forum-home-aside";
-import { ForumLeftColumn, type BoardGroup } from "@/components/forum-left-column";
+import type { BoardGroup } from "@/components/forum-left-column";
+import { ForumLeftColumn } from "@/components/forum-left-column";
 import { ForumMobileBar } from "@/components/forum-mobile-bar";
 import { requireModule } from "@/components/module-gate";
 /* 页面专属样式走路由级 import（globals.css 尾注的纪律）：只有论坛首页
