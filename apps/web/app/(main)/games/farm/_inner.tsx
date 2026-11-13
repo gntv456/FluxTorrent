@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { dateLocale, fmt, fmtCur } from "@/i18n/config";
 import { countdownText, eggText, type EggPrize } from "@/lib/games";
+import { clientUuid } from "@/lib/client-uuid";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import type { FarmLand } from "@/components/game/farm-land";
 import { GameTabs } from "@/components/game/game-tabs";
@@ -80,6 +81,8 @@ export default function FarmPage({
     }[];
   } | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
+  // 领取幂等键：按任务码缓存，同一次领取意图复用；确认成功后才清
+  const qIdem = useRef<Record<string, string>>({});
   // 样图⑤四 Tab：田园 / 牧场 / 加工 / 图鉴（区块按 tab 切换，不平铺）
   const [tab, setTab] = useState("field");
 
@@ -241,18 +244,26 @@ export default function FarmPage({
   const questPeriod = questPack?.period ?? "";
 
   /** 领取农场周常：与大厅 ArcadeMeta 同一端点；领取后回读任务面与余额 */
-  async function claimQuest(code: string) {
+  async function claimQuest(code: string, reuse = false) {
     if (claiming) return;
     setClaiming(`quest:${code}`);
     setErr(null);
+    // 幂等键：首次领取生成并缓存，失败（网络/未知）复用同一键重试；
+    // 明确业务失败或成功后才清，避免重复扣/漏领。
+    if (!reuse || !qIdem.current[code]) {
+      qIdem.current[code] = clientUuid();
+    }
     try {
       await api.post(`/api/v1/games/arcade/quest/${code}/claim`, {
-        idempotency_key: `farm-q-${code}-${Date.now()}`,
+        idempotency_key: qIdem.current[code],
       });
+      delete qIdem.current[code];
       setMsg({ kind: "win", text: tf.questClaimed ?? "✓ 已领取" });
       await loadQuests();
       void loadMe();
     } catch (e) {
+      const bizFail = e instanceof ApiError && e.code !== 1000;
+      if (bizFail) delete qIdem.current[code];
       setErr(
         e instanceof ApiError
           ? (apiErrorMessage(dict, e))

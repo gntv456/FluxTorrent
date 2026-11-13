@@ -72,6 +72,8 @@ export default function WheelFocusPage({
   const [sessionPlays, setSessionPlays] = useState(0);
   const [streak, setStreak] = useState(0);
   const idem = useRef<string>("");
+  // 结果未知（网络/超时/网关错误）：保留幂等键，允许原键重查
+  const [unknown, setUnknown] = useState(false);
 
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -120,28 +122,39 @@ export default function WheelFocusPage({
             : ("sky" as const),
     }));
 
-  async function draw() {
+  async function draw(reuse = false) {
     if (busy) return;
     setBusy(true);
     setErr(null);
     setFlash(null);
     setRes(null);
-    idem.current =
-      clientUuid();
+    setUnknown(false);
+    // 幂等键：同一次抽奖意图复用同一 key；仅确认结算后才生成新键
+    if (!reuse || !idem.current) idem.current = clientUuid();
     try {
       const r = await api.post<DrawResult>("/api/v1/games/wheel", {
         idempotency_key: idem.current,
       });
       setRes(r);
     } catch (e) {
-      setErr(
-        e instanceof ApiError
-          ? e.code === 1002
+      // 明确业务失败（code!==1000）才复位，允许重开新局
+      if (e instanceof ApiError && e.code !== 1000) {
+        setErr(
+          e.code === 1002
             ? e.message
-            : (apiErrorMessage(dict, e))
-          : dict.common.networkError,
-      );
-      setBusy(false);
+            : (apiErrorMessage(dict, e)),
+        );
+        setBusy(false);
+      } else {
+        // 网络/超时/网关：结果未知，保留 key，供原键重查
+        setErr(
+          e instanceof ApiError
+            ? apiErrorMessage(dict, e)
+            : dict.common.networkError,
+        );
+        setUnknown(true);
+        setBusy(false);
+      }
     }
   }
 
@@ -243,7 +256,7 @@ export default function WheelFocusPage({
           <SwCtaRow
             primaryLabel={`${tw.go} · ${ticket}`}
             primaryDisabled={busy || prizes.length === 0}
-            onPrimary={draw}
+            onPrimary={() => void draw()}
             primaryGold
           />
           <SwStatRow
@@ -268,7 +281,20 @@ export default function WheelFocusPage({
             ]}
           />
           <SwPrizeStrip label={tw.prizeLb} items={prizeStripItems} />
-          {err && <p className="text-xs text-[var(--danger-text)]">{err}</p>}
+          {err && (
+            <p role="alert" className="text-xs text-[var(--danger-text)]">
+              {err}
+            </p>
+          )}
+          {unknown && (
+            <button
+              type="button"
+              onClick={() => void draw(true)}
+              className="min-h-[var(--tap-min)] rounded-full bg-sky px-3 py-1 text-xs font-bold text-[var(--text-on-accent)]"
+            >
+              {dict.common.retry}
+            </button>
+          )}
         </div>
       }
       controls={
