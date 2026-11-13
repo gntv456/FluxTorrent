@@ -2,7 +2,7 @@
 
 <img src="apps/web/public/brand/logo-wordmark.png" alt="FluxTorrent" width="400"/>
 
-**通用 PT 建站系统** —— 不偏向任何内容类型：选一个站型起步，其余全部可改。
+**通用 PT 建站系统** —— 选一个站型起步，分类、字段、模块全部可改。
 
 [![CI](https://github.com/gntv456/FluxTorrent/actions/workflows/build-test.yml/badge.svg)](https://github.com/gntv456/FluxTorrent/actions/workflows/build-test.yml)
 [![Release](https://img.shields.io/github/v/release/gntv456/FluxTorrent)](https://github.com/gntv456/FluxTorrent/releases)
