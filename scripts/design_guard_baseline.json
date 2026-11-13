@@ -1401,23 +1401,6 @@
   ],
   "color": []
  },
- "app/(main)/forums/[id]/loading.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/forums/[id]/page.tsx": {
-  "h1": [],
-  "h1First": 167,
-  "palette": [
-   152,
-   153,
-   154,
-   155
-  ],
-  "color": []
- },
  "app/(main)/forums/topic/[id]/loading.tsx": {
   "h1": [],
   "h1First": null,
@@ -5288,9 +5271,32 @@
   ],
   "color": []
  },
- "app/(main)/forums/[id]/_parts/board-head.tsx": {
+ "app/(main)/forums/(shell)/[id]/loading.tsx": {
   "h1": [],
   "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "app/(main)/forums/(shell)/[id]/page.tsx": {
+  "h1": [],
+  "h1First": 167,
+  "palette": [
+   152,
+   153,
+   154,
+   155
+  ],
+  "color": []
+ },
+ "app/(main)/forums/(shell)/[id]/_parts/board-head.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "app/(main)/forums/(shell)/page.tsx": {
+  "h1": [],
+  "h1First": 51,
   "palette": [],
   "color": []
  }
