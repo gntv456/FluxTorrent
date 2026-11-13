@@ -18,6 +18,15 @@
   flex-direction: column;
   gap: 12px;
 }
+/* 中栏竖排间距（2026-11-13 版块页三栏复用）：首页中栏各子块自带间距，
+   版块页中栏子块多且杂（页头/标题行/规则条/标签行/列表/分页），
+   统一在这里给 gap，子块不再各自设 margin。 */
+.pting-board {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
 /* 两翼滚动跟随（2026-11-11 对齐修复：右列原有 sticky 而左列没有——
    滚动时右侧跟随、左侧定住，体验割裂）。align-self: flex-start 必须：
    grid 子项默认 stretch 拉满整列高度，元素与列同高时 sticky 无位移

@@ -36,12 +36,16 @@ export function ForumLeftColumn({
   currency,
   groups,
   totalTopics,
+  activeId,
 }: {
   me: ForumUserCard | null;
   dict: Dict;
   currency: string;
   groups: BoardGroup[];
   totalTopics: number;
+  /** 当前版块高亮（2026-11-13 版块页三栏复用）：缺省 = 论坛首页
+   *  （「全部版块」项高亮）；传 forumId = 对应版块项高亮、全站项熄灭 */
+  activeId?: number;
 }) {
   return (
     <>
@@ -50,7 +54,10 @@ export function ForumLeftColumn({
         <h2>{dict.forums2.allNodes}</h2>
         <nav aria-label={dict.forums.title}>
           {/* 一级：全部版块（样图该项没有圆点，选中态 sky-soft） */}
-          <Link href="/forums" className="on">
+          <Link
+            href="/forums"
+            className={activeId === undefined ? "on" : undefined}
+          >
             {dict.forums2.navAll}
             <span className="fh-nav__cnt num">{totalTopics}</span>
           </Link>
@@ -68,10 +75,13 @@ export function ForumLeftColumn({
                 <Link
                   key={f.id}
                   href={`/forums/${f.id}`}
-                  className={
-                    "fh-nav__sub " +
-                    (g.hidden ? "fh-nav__hidden" : undefined)
-                  }
+                  className={[
+                    "fh-nav__sub",
+                    g.hidden ? "fh-nav__hidden" : "",
+                    activeId === f.id ? "on" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
                   {/* 二级圆点（样图 f3b-nav__item i：6px 实心圆，
                       按版块 id 取色板；pting-sidenav__dot 是 26px

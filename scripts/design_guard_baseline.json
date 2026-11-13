@@ -1409,17 +1409,12 @@
  },
  "app/(main)/forums/[id]/page.tsx": {
   "h1": [],
-  "h1First": 95,
+  "h1First": 167,
   "palette": [
-   90,
-   109,
-   110,
-   120,
-   121,
-   149,
-   150,
-   177,
-   178
+   152,
+   153,
+   154,
+   155
   ],
   "color": []
  },
@@ -5291,6 +5286,12 @@
   "palette": [
    85
   ],
+  "color": []
+ },
+ "app/(main)/forums/[id]/_parts/board-head.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
   "color": []
  }
 }
