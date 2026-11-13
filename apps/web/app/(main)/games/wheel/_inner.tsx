@@ -101,8 +101,7 @@ export default function WheelFocusPage({
   const prizes = ov?.wheel?.prizes ?? [];
   const ticket = ov?.wheel?.ticket ?? 100;
   const winRate = prizes.length
-    ? (100 - (prizes[0]?.weight_permille ?? 0) / 10).toFixed(1)
-    : "—";
+    ? (100 - (prizes[0]?.weight_permille ?? 0) / 10).toFixed(1) : "—";
   // 奖池条（样图 v3 转盘屏）：等值前 4 档横排
   const prizeStripItems = prizes
     .slice()
@@ -118,8 +117,7 @@ export default function WheelFocusPage({
         (p.value ?? p.payout * ticket) >= ticket * 10
           ? ("gold" as const)
           : (p.value ?? p.payout * ticket) >= ticket * 3
-            ? ("lilac" as const)
-            : ("sky" as const),
+            ? ("lilac" as const) : ("sky" as const),
     }));
 
   async function draw(reuse = false) {
@@ -137,24 +135,17 @@ export default function WheelFocusPage({
       });
       setRes(r);
     } catch (e) {
-      // 明确业务失败（code!==1000）才复位，允许重开新局
-      if (e instanceof ApiError && e.code !== 1000) {
-        setErr(
-          e.code === 1002
+      // 明确业务失败（code!==1000）才复位；网络/超时/网关保持 key 供重查
+      const bizFail = e instanceof ApiError && e.code !== 1000;
+      setErr(
+        e instanceof ApiError
+          ? e.code === 1002
             ? e.message
-            : (apiErrorMessage(dict, e)),
-        );
-        setBusy(false);
-      } else {
-        // 网络/超时/网关：结果未知，保留 key，供原键重查
-        setErr(
-          e instanceof ApiError
-            ? apiErrorMessage(dict, e)
-            : dict.common.networkError,
-        );
-        setUnknown(true);
-        setBusy(false);
-      }
+            : apiErrorMessage(dict, e)
+          : dict.common.networkError,
+      );
+      if (!bizFail) setUnknown(true);
+      setBusy(false);
     }
   }
 
@@ -165,13 +156,9 @@ export default function WheelFocusPage({
     if (!r) return;
     const won = r.value ?? r.payout;
     const kind: "win" | "lose" | "tie" | "jackpot" =
-      won >= ticket * 10
-        ? "jackpot"
-        : won > ticket
-          ? "win"
-          : won === ticket
-            ? "tie"
-            : "lose";
+      won >= ticket * 10 ? "jackpot"
+        : won > ticket ? "win"
+          : won === ticket ? "tie" : "lose";
     // 连胜（趣味性批）：>票价续 1、否则清零；jackpot 也算
     setStreak((s) => (won > ticket ? s + 1 : 0));
     setFlash({
@@ -221,10 +208,8 @@ export default function WheelFocusPage({
             active={tab}
             onChange={setTab}
           />
-          <PlayHint
-            sessionPlays={sessionPlays}
-            todayNet={ov?.me?.today_net ?? null}
-          />
+          <PlayHint sessionPlays={sessionPlays}
+            todayNet={ov?.me?.today_net ?? null} />
         </>
       }
       stage={
@@ -261,23 +246,15 @@ export default function WheelFocusPage({
           />
           <SwStatRow
             items={[
-              {
-                lb: tw.statLeft,
-                vl: ov?.me?.limit_left != null ? String(ov.me.limit_left) : "—",
-              },
-              {
-                lb: tw.statMax,
-                vl:
-                  prizes.length > 0
-                    ? `${Math.max(...prizes.map((p) => p.payout)).toFixed(1)}x`
-                    : "—",
-                tone: "gold",
-              },
-              {
-                lb: tw.statNet,
-                vl: String(ov?.me?.today_net ?? 0),
-                tone: "green",
-              },
+              { lb: tw.statLeft,
+                vl: ov?.me?.limit_left != null
+                  ? String(ov.me.limit_left) : "—" },
+              { lb: tw.statMax, tone: "gold",
+                vl: prizes.length > 0
+                  ? `${Math.max(...prizes.map((p) => p.payout)).toFixed(1)}x`
+                  : "—" },
+              { lb: tw.statNet, tone: "green",
+                vl: String(ov?.me?.today_net ?? 0) },
             ]}
           />
           <SwPrizeStrip label={tw.prizeLb} items={prizeStripItems} />
@@ -290,7 +267,8 @@ export default function WheelFocusPage({
             <button
               type="button"
               onClick={() => void draw(true)}
-              className="min-h-[var(--tap-min)] rounded-full bg-sky px-3 py-1 text-xs font-bold text-[var(--text-on-accent)]"
+              className="min-h-[var(--tap-min)] rounded-full bg-sky
+                px-3 py-1 text-xs font-bold text-[var(--text-on-accent)]"
             >
               {dict.common.retry}
             </button>
@@ -299,7 +277,6 @@ export default function WheelFocusPage({
       }
       controls={
         <div className={PANEL_LG}>
-          {/* 奖池口径：当前只有一张日常池，标签如实展示（不放假切换） */}
           <div className="mb-3">
             <span className="sw-pool-pill">{tw.poolPill}</span>
           </div>
@@ -313,8 +290,7 @@ export default function WheelFocusPage({
                     ? "bg-sun-soft text-[var(--warning)]"
                     : (p.value ?? p.payout * ticket) > ticket
                       ? "bg-mint-soft text-[var(--mint)]"
-                      : "bg-[var(--surface-sunken)] text-sub"
-                }`}
+                      : "bg-[var(--surface-sunken)] text-sub"}`}
               >
                 {p.label} {(p.weight_permille / 10).toFixed(1)}%
               </span>
@@ -329,8 +305,7 @@ export default function WheelFocusPage({
           <SwHist
             rows={hist.slice(0, 6).map((h) => ({
               t: (h.at ?? "").slice(11, 16) || "—",
-              txt: h.net > 0 ? tw.histWin : tw.histLose,
-              net: h.net,
+              txt: h.net > 0 ? tw.histWin : tw.histLose, net: h.net,
             }))}
             empty={t.historyEmpty}
           />

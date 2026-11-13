@@ -243,16 +243,12 @@ export default function FarmPage({
     }));
   const questPeriod = questPack?.period ?? "";
 
-  /** 领取农场周常：与大厅 ArcadeMeta 同一端点；领取后回读任务面与余额 */
+  /** 领取农场周常：幂等键首次生成并缓存，失败（网络/未知）复用同键重试 */
   async function claimQuest(code: string, reuse = false) {
     if (claiming) return;
     setClaiming(`quest:${code}`);
     setErr(null);
-    // 幂等键：首次领取生成并缓存，失败（网络/未知）复用同一键重试；
-    // 明确业务失败或成功后才清，避免重复扣/漏领。
-    if (!reuse || !qIdem.current[code]) {
-      qIdem.current[code] = clientUuid();
-    }
+    if (!reuse || !qIdem.current[code]) qIdem.current[code] = clientUuid();
     try {
       await api.post(`/api/v1/games/arcade/quest/${code}/claim`, {
         idempotency_key: qIdem.current[code],
@@ -262,12 +258,10 @@ export default function FarmPage({
       await loadQuests();
       void loadMe();
     } catch (e) {
-      const bizFail = e instanceof ApiError && e.code !== 1000;
-      if (bizFail) delete qIdem.current[code];
+      if (e instanceof ApiError && e.code !== 1000) delete qIdem.current[code];
       setErr(
         e instanceof ApiError
-          ? (apiErrorMessage(dict, e))
-          : dict.common.networkError,
+          ? apiErrorMessage(dict, e) : dict.common.networkError,
       );
     } finally {
       setClaiming(null);
@@ -304,11 +298,10 @@ export default function FarmPage({
     }
     setMsg({
       kind: doubled > 0 || eggs > 0 ? "jackpot" : "win",
-      text: `${fmtCur(tf.harvestAllOk, { n: total, c: readyPlots.length - failed }, currency)}${
-        doubled > 0 ? ` ${tf.doubled}` : ""
-      }${failed > 0 ? ` · ${tf.harvestAllFail.replace("{n}", String(failed))}` : ""}${
-        eggs > 0 ? fmt(tf.eggSome, { n: eggs }) : ""
-      }`,
+      text: `${fmtCur(tf.harvestAllOk, { n: total, c: readyPlots.length - failed }, currency)}` +
+        `${doubled > 0 ? ` ${tf.doubled}` : ""}` +
+        `${failed > 0 ? ` · ${tf.harvestAllFail.replace("{n}", String(failed))}` : ""}` +
+        `${eggs > 0 ? fmt(tf.eggSome, { n: eggs }) : ""}`,
     });
     setBusy(false);
     await refresh();
@@ -322,14 +315,10 @@ export default function FarmPage({
       return;
     }
     void act("/farm/plant", { slot, crop_id: cropId }, (d) =>
-      fmtCur(
-        tf.plantOk,
-        {
-          crop: (d as unknown as { crop: string }).crop,
-          cost: (d as unknown as { cost: number }).cost,
-        },
-        currency,
-      ),
+      fmtCur(tf.plantOk, {
+        crop: (d as unknown as { crop: string }).crop,
+        cost: (d as unknown as { cost: number }).cost,
+      }, currency),
     );
   }
 
