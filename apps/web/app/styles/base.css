@@ -12,7 +12,10 @@
 [data-theme="brand"] {
   color-scheme: light;
   /* ===== Aurora 品牌六色（Seedlight §2） ===== */
-  --sky: #2fa8ff;
+  /* 明色 AA 校准（2026-11-13 全站 UI 审查）：原亮蓝作文本
+     在白底仅 2.57:1，改为同色相深阶（白底 5.53）；
+     渐变 --grad-aurora 仍用字面亮蓝，不受影响。 */
+  --sky: #1f6da6;
   --sky-deep: #1e8ae8;
   --sky-soft: #e8f4ff;
 
@@ -69,8 +72,10 @@
   --text-heading: #141d33;
   --text-body: #40506e;
   --text-body-deep: #35435e;
-  --text-brand: #1e8ae8;
-  --text-muted: #6b7a99;
+  /* 明色 AA 校准：品牌蓝与次级灰原白底 3.59 / 4.31，
+     收到 5.79 / 6.13，浅底最差仍 ≥5.1。 */
+  --text-brand: #1768ae;
+  --text-muted: #56627a;
   --text-faint: #5f6b86;
   --text-fainter: #63708c;
   --text-on-accent: #fff;
@@ -127,7 +132,7 @@
   /* 文本位危险色：默认与 --danger 同值（brand/tide 视觉零变化）；
      只有山海经把文本位单独提亮，实心底/边框/描边仍用 --danger */
   --danger-text: var(--danger);
-  --info: #1e8ae8;
+  --info: #1768ae;
   --muted-soft: #eef2f8;
   --accent-purple: #5b6bf5;
   /* ===== 设计词汇层 tone（DS-PLAN-01 §3：原语 API 只认 tone/size）=====
@@ -760,7 +765,7 @@ h2 {
   /* P1-1：贴纸底是语义色（mint/coral/candy/indigo/sun），实心底上的字色
      必须走令牌——山海经亮档底色需要深字，亮/暗主题仍是白字。 */
   color: var(--text-on-accent);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.5;
   letter-spacing: 0.5px;
@@ -822,7 +827,7 @@ h2 {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: var(--tap-min);
   padding: 0 20px;
   border: none;
   border-radius: 999px;
@@ -882,11 +887,11 @@ h2 {
 }
 @media (max-width: 640px) {
   .nexus-table {
-    font-size: 11px;
+    font-size: 12px;
   }
   .nexus-table th,
   .nexus-table thead td {
-    font-size: 11px;
+    font-size: 12px;
     padding-left: 6px;
     padding-right: 6px;
   }
@@ -1269,7 +1274,7 @@ h2 {
   color: var(--text-strong);
 }
 .td-vitals__cell span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 .td-vitals__cell--seed b {
@@ -1321,7 +1326,7 @@ h2 {
   margin-top: 6px;
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .td-vitals__views b {
@@ -1350,7 +1355,7 @@ h2 {
   border-radius: 4px;
   background: var(--sky-soft);
   color: var(--sky-deep);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   text-align: center;
 }
@@ -1364,7 +1369,7 @@ h2 {
 }
 .td-files-mini__size {
   flex: none;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .td-files-mini__more {
@@ -1446,7 +1451,7 @@ h2 {
   overflow-wrap: anywhere;
 }
 .td-spec span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 
@@ -1558,7 +1563,7 @@ h2 {
     color: var(--text-on-accent);
   }
   .td-anchor__num {
-    font-size: 11px;
+    font-size: 12px;
     opacity: 0.72;
   }
   /* 锚点落点避让吸顶条：72 顶栏 + ~42 条高 + 间距 */
@@ -1688,7 +1693,7 @@ h2 {
 }
 .td-curate__hint {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 /* 工件清单与更新链（0323 UI 段）：行式清单，kind 走徽标底，
@@ -1715,7 +1720,7 @@ h2 {
   border-radius: var(--r-sm);
   background: var(--surface-sunken);
   color: var(--text-sub);
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .td-art__name {
@@ -1735,7 +1740,7 @@ h2 {
   color: var(--text-brand);
 }
 .td-art__sha {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .td-art__size,
@@ -1779,7 +1784,7 @@ h2 {
     font-size: 14px;
   }
   .td-crumbs {
-    font-size: 11px;
+    font-size: 12px;
   }
   /* 本地完善版：窄屏折叠卡收紧 + 简介不限高全展 */
   .td-fold > summary {
@@ -1805,7 +1810,7 @@ h2 {
 .td-tag {
   padding: 0 6px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.7;
   cursor: pointer;
@@ -1850,7 +1855,7 @@ h2 {
   background: var(--ink);
   color: var(--cloud);
   padding: 12px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
@@ -1883,13 +1888,13 @@ h2 {
 }
 .td-riplogs__meta,
 .td-riplogs__toggle {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sub);
 }
 .td-riplogs__issues {
   margin: 4px 0 0;
   padding-left: 16px;
-  font-size: 11px;
+  font-size: 12px;
   list-style: disc;
 }
 
@@ -2025,7 +2030,7 @@ h2 {
   color: var(--text-on-accent);
 }
 .td-tabs__num {
-  font-size: 11px;
+  font-size: 12px;
   opacity: 0.72;
 }
 .td-tabs__panel {
@@ -2045,7 +2050,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 28px;
+  min-height: var(--tap-min);
   margin-bottom: 8px;
 }
 .td-sub-head__title {
@@ -2239,7 +2244,7 @@ h2 {
 .td-infohash {
   border-top: 1px solid var(--line);
   padding-top: 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
   word-break: break-all;
   line-height: 1.7;

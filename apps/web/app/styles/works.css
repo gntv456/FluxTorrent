@@ -8,6 +8,15 @@
   --wk-grad-a: #1e8ae8;
   --wk-grad-b: #2fa8ff;
   --wk-grad-c: #5b6bf5;
+  --wk-hero-dim: #061626;
+}
+/* 山海经主题 Hero 不再沿用 Aurora 亮蓝（全站 UI 审查 2026-11-13）：
+   岩彩绿金阶，与 theme-shanhaijing.css 同族 */
+[data-theme="shanhaijing"],
+[data-theme="shanhaijing-light"] {
+  --wk-grad-a: var(--sky-deep);
+  --wk-grad-b: var(--mint);
+  --wk-grad-c: var(--sun);
 }
 [data-theme="brand-night"] {
   --wk-grad-a: #2e86e0;
@@ -68,7 +77,7 @@
 }
 .wk-cover-note {
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   text-align: center;
 }
@@ -79,7 +88,7 @@
   border-radius: 5px;
   background: var(--ink);
   color: var(--on-dark);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -112,7 +121,7 @@
   border-radius: 4px;
   background: var(--sun);
   color: var(--on-dark);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 .wk-cat {
@@ -150,7 +159,7 @@
   border-radius: 5px;
   background: var(--surface-raised);
   color: var(--ink);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 .wk-syn {
@@ -237,7 +246,7 @@
   border-radius: 4px;
   background: var(--surface-raised);
   color: var(--sub);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
   white-space: nowrap;
@@ -407,7 +416,7 @@
   border: 0;
   background: transparent;
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
   cursor: pointer;
 }
@@ -563,7 +572,7 @@
   border: 1px solid var(--on-dark-line);
   border-radius: 5px;
   background: var(--on-dark-soft);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 .wk-hero-syn {
@@ -650,7 +659,7 @@
   background:
     linear-gradient(150deg, var(--wk-grad-a), var(--wk-grad-c));
   color: var(--on-dark);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
 }
@@ -742,7 +751,7 @@
 .wk-pg {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--tap-min);
   padding: 4px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -824,7 +833,7 @@
 }
 .wk-grate {
   color: var(--sub);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 .wk-gtags {
@@ -833,7 +842,7 @@
   align-items: center;
   gap: 4px 6px;
   color: var(--sub);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 .wk-gcount {
   margin-left: auto;
@@ -888,7 +897,7 @@
   flex-wrap: wrap;
   gap: 2px 8px;
   color: var(--sub);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 /* ---------- 作品聚合：瀑布墙（Colapt 瀑布口径） ---------- */
@@ -959,7 +968,7 @@
   overflow: hidden;
   margin-top: 3px;
   color: var(--sub);
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -968,7 +977,7 @@
   overflow: hidden;
   margin-top: 1px;
   color: var(--text-faint);
-  font-size: 10px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1099,7 +1108,7 @@
 .wk-id {
   padding: 1px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
@@ -1150,7 +1159,7 @@
   position: absolute;
   z-index: 1;
   inset: 0;
-  background: #061626;
+  background: var(--wk-hero-dim);
 }
 .wk-hero-in {
   position: relative;

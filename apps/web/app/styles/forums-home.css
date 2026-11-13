@@ -104,7 +104,7 @@
 }
 .fh-user__stat span {
   color: var(--sub);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 /* 左列「我的」三条链接（关注流三标签的入口） */
 .fh-mine {
@@ -200,7 +200,7 @@
   border-radius: 50%;
   background: var(--sky-soft);
   color: var(--sky-deep);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 800;
 }
 /* 前三名用 coral（样图 .f3b-hot .row:nth-child(-n+3) .rk） */
@@ -224,7 +224,7 @@
 .fh-hot__rc {
   flex-shrink: 0;
   color: var(--sub);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .fh-lr__row {
@@ -249,7 +249,7 @@
 }
 .fh-lr__time {
   color: var(--text-faint);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 /* ---------- 右列第四块：新手必读（静态引导，样图里这段本就不走接口） ---------- */
@@ -470,20 +470,20 @@
   flex-shrink: 0;
   padding: 1px 8px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 .fh-topic__hot {
   flex-shrink: 0;
   color: var(--coral);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 .fh-topic__meta {
   margin-top: 3px;
   overflow: hidden;
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -515,7 +515,7 @@
 .fh-topic__last small {
   display: block;
   color: var(--text-faint);
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -528,7 +528,7 @@
   gap: 6px;
   padding: 8px 8px 3px;
   color: var(--text-faint);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
 }
@@ -543,7 +543,7 @@
 .fh-nav__cnt {
   margin-left: auto;
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 .fh-nav__hidden {
@@ -609,7 +609,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: var(--tap-min);
   padding: 0 10px;
   border-radius: var(--r-sm);
   color: var(--ink);
@@ -640,7 +640,7 @@
 }
 .fh-macts__a {
   display: flex;
-  min-height: 38px;
+  min-height: var(--tap-min);
   align-items: center;
   justify-content: center;
   border: 1px solid var(--line);
@@ -727,7 +727,7 @@
 }
 .tp-side__act {
   display: flex;
-  min-height: 36px;
+  min-height: var(--tap-min);
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -816,7 +816,7 @@
   line-height: 1.35;
 }
 .tp-sib__meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .tp-sib__more {
@@ -838,7 +838,7 @@
    ①头行 ⋯ 菜单：收纳关注/收藏/举报/编辑标题 */
 .tp-headmenu__trigger {
   display: inline-flex;
-  min-height: 32px;
+  min-height: var(--tap-min);
   min-width: 36px;
   align-items: center;
   justify-content: center;
@@ -875,9 +875,9 @@
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
-.tp-op-card table {
-  width: 100%;
-}
+.tp-op-card > article { width: 100%; }
+.tp-replies .nexus-table > li:not(:last-child) {
+  border-bottom: 1px solid var(--line); }
 .tp-replies__head {
   margin: 0 0 8px;
   font-size: 15px;
@@ -983,7 +983,7 @@
 }
 .tp-edcard__count {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .tp-edcard__area {

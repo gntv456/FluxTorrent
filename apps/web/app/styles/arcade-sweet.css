@@ -145,7 +145,7 @@
   align-items: center;
   gap: 4px;
   margin-top: 10px;
-  min-height: 32px;
+  min-height: var(--tap-min);
   padding: 4px 14px;
   border-radius: 999px;
   background: var(--surface-card);
@@ -303,7 +303,7 @@
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
   color: #6b4a1a;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   padding: 2px 6px;
   box-shadow: 0 2px 6px rgba(176, 138, 74, 0.35);
@@ -321,7 +321,7 @@
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
   color: #6b4a1a;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   padding: 2px 6px;
   letter-spacing: 0.1em;
@@ -343,7 +343,7 @@
   margin: 0;
   border-radius: 999px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: 12px;
 }
 /* 文案区：名称 + 副标两行，去「去玩→」；右缘给行尾角标留白防叠。
    基础皮肤 .gc-body 是竖排大卡（padding:12px 14px），横排小卡里左侧
@@ -464,7 +464,7 @@
   padding: 4px 14px;
   border-radius: 999px;
   font-family: var(--sweet-serif);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   box-shadow: var(--sweet-shadow-gold);
 }
@@ -788,7 +788,7 @@
 }
 [data-arcade="sweet"] .jgrid .lamp .bico i {
   font-style: normal;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: #2c4a74;
   vertical-align: 2px;
@@ -939,7 +939,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 34px;
+  min-height: var(--tap-min);
   padding: 4px 14px;
   border: none;
   border-radius: 10px;
@@ -1366,7 +1366,7 @@
   box-shadow: inset 0 0 0 1px var(--sweet-line);
 }
 .sw-stat-lb {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sweet-ink-soft);
 }
@@ -1559,7 +1559,7 @@
 }
 .sw-tier-s {
   margin-top: 2px;
-  font-size: 10px;
+  font-size: 12px;
   color: #8a9ab0;
 }
 
@@ -1578,7 +1578,7 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sweet-ink-soft);
 }
@@ -1587,7 +1587,7 @@
   align-items: center;
   justify-content: space-between;
   margin-top: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sweet-ink-soft);
 }
@@ -1595,7 +1595,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--sweet-sky-deep);
   text-decoration: underline;
@@ -1637,7 +1637,7 @@
   color: var(--sweet-gold-deep);
 }
 .sw-coat-face.decoy {
-  font-size: 11px;
+  font-size: 12px;
   color: #8a9ab0;
 }
 .sw-coat-lid {
@@ -1675,7 +1675,7 @@
   display: inline-block;
   padding: 4px 14px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
   color: #fff;
@@ -1705,7 +1705,7 @@
 }
 [data-arcade="sweet"] .lw-hub small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: #5a729a;
   margin-top: 2px;
 }
@@ -1722,7 +1722,7 @@
   grid-template-columns: 40px 1fr 44px;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 .sw-cap-r {
@@ -1755,7 +1755,7 @@
     var(--sweet-shadow);
 }
 .sw-cardbook-cap {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.15em;
   color: var(--sweet-ink-soft);
@@ -1792,7 +1792,7 @@
   margin-top: 12px;
 }
 .sw-synth-cap {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   margin-bottom: 8px;
   font-weight: 700;
@@ -1824,12 +1824,12 @@
   white-space: nowrap;
 }
 .sw-synth-note {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   margin: 0;
 }
 .sw-card-stars {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 2px;
   color: #fff;
 }
@@ -1843,11 +1843,11 @@
   height: 30px;
 }
 .sw-card-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 .sw-card-rank {
-  font-size: 9px;
+  font-size: 12px;
   opacity: 0.85;
 }
 
@@ -1863,7 +1863,7 @@
   cursor: pointer;
   border-radius: 999px;
   background: var(--surface-card);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   box-shadow:
     0 2px 6px rgba(74, 122, 176, 0.2),
@@ -1912,7 +1912,7 @@
   color: var(--sweet-lilac-deep);
 }
 .pp-hero-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   margin-top: 4px;
 }
@@ -1959,7 +1959,7 @@
   margin-bottom: 10px;
   padding: 8px 14px;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sweet-ink-soft);
   background: linear-gradient(90deg, #dcf0dc, #f6efd8);
@@ -2013,7 +2013,7 @@
   color: var(--sweet-gold-deep);
 }
 .bs-pick-s {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   margin-top: 2px;
 }
@@ -2044,7 +2044,7 @@
   bottom: -7px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   color: #6b4a1a;
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
@@ -2082,7 +2082,7 @@
   box-shadow: inset 0 0 0 1px var(--sweet-gold);
 }
 .sw-prize-lb {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.15em;
   color: var(--sweet-gold-deep);
@@ -2110,7 +2110,7 @@
   box-shadow: 0 3px 8px -3px rgba(44, 62, 92, 0.35);
 }
 .sw-prize-nm {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   font-weight: 700;
   overflow: hidden;
@@ -2118,7 +2118,7 @@
   white-space: nowrap;
 }
 .sw-prize-odds {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   opacity: 0.75;
 }
@@ -2134,7 +2134,7 @@
   padding: 10px 14px;
   border-radius: var(--r-md);
   background: #f4f8fd;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
 }
 .sw-rules b {
@@ -2154,7 +2154,7 @@
   margin-bottom: 10px;
   padding: 8px 12px;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sweet-ink-soft);
   background: linear-gradient(90deg, #e8f4e8, #f8f4e8);
@@ -2238,12 +2238,12 @@
   line-height: 1.25;
 }
 [data-arcade="sweet"] .sw-album-face-r {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   opacity: 0.85;
 }
 [data-arcade="sweet"] .sw-album-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   display: flex;
   flex-wrap: wrap;
@@ -2264,7 +2264,7 @@
   background: var(--surface-card);
   color: var(--sweet-ink);
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 4px 10px;
   cursor: pointer;
@@ -2362,11 +2362,11 @@
   background: linear-gradient(90deg, var(--sweet-gold), #f0d9a8);
   border: 1.5px solid #fff;
   color: #6b4a1a;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 .gc-qi-lb {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sweet-ink-soft);
 }
@@ -2426,7 +2426,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 26px;
+  min-height: var(--tap-min);
   padding: 3px 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -2486,7 +2486,7 @@
 .sw-cap-ctier {
   min-width: 34px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   color: #fff;
   border-radius: 6px;

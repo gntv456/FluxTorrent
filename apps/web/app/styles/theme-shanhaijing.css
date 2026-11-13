@@ -460,7 +460,7 @@
 }
 [data-theme="shanhaijing"] .shj-atlas__brandtext i,
 [data-theme="shanhaijing-light"] .shj-atlas__brandtext i {
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   letter-spacing: 3px;
   color: var(--text-faint);
@@ -560,7 +560,7 @@
 [data-theme="shanhaijing"] .shj-atlas__gcaret,
 [data-theme="shanhaijing-light"] .shj-atlas__gcaret {
   color: var(--text-faint);
-  font-size: 9px;
+  font-size: 12px;
   transition: transform 0.25s;
 }
 [data-theme="shanhaijing"] .shj-atlas__group.is-closed .shj-atlas__gcaret,
@@ -678,7 +678,7 @@
 [data-theme="shanhaijing"] .shj-atlas__rtext i,
 [data-theme="shanhaijing-light"] .shj-atlas__rtext i {
   color: var(--sun);
-  font-size: 10.5px;
+  font-size: 12px;
   font-style: normal;
   letter-spacing: 1px;
 }
@@ -1075,7 +1075,7 @@
   display: block;
   margin-top: 2px;
   color: var(--text-faint);
-  font-size: 10.5px;
+  font-size: 12px;
   font-style: normal;
   letter-spacing: 2px;
 }
@@ -1703,7 +1703,7 @@
 [data-theme="shanhaijing-light"] .shj-atlas__fold {
   display: flex;
   width: 100%;
-  min-height: 34px;
+  min-height: var(--tap-min);
   align-items: center;
   justify-content: center;
   gap: 8px;

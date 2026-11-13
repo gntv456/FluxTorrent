@@ -45,6 +45,8 @@ function stubFields(payload: unknown) {
       const isFields = String(url).includes("/api/v1/register-fields");
       if (isFields && payload instanceof Error) throw payload;
       return {
+        ok: true,
+        status: 200,
         json: async () => ({ data: isFields ? payload : [] }),
       };
     }),

@@ -457,11 +457,11 @@
 
   .bz-options,
   .bz-remember {
-    min-height: 28px;
+    min-height: var(--tap-min);
   }
 
   .bz-totp-toggle {
-    min-height: 27px;
+    min-height: var(--tap-min);
     padding: 4px 10px;
   }
 

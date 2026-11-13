@@ -60,7 +60,7 @@
 }
 
 .sw-stat-lb {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sweet-ink-soft);
 }
@@ -90,7 +90,7 @@
 }
 
 .sw-cardbook-cap {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.15em;
   color: var(--sweet-ink-soft);
@@ -131,7 +131,7 @@
 }
 
 .sw-synth-cap {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   margin-bottom: 8px;
   font-weight: 700;
@@ -168,13 +168,13 @@
 }
 
 .sw-synth-note {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   margin: 0;
 }
 
 .sw-card-stars {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 2px;
   color: #fff;
 }
@@ -191,12 +191,12 @@
 }
 
 .sw-card-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .sw-card-rank {
-  font-size: 9px;
+  font-size: 12px;
   opacity: 0.85;
 }
 
@@ -269,13 +269,13 @@
 }
 
 [data-arcade="sweet"] .sw-album-face-r {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   opacity: 0.85;
 }
 
 [data-arcade="sweet"] .sw-album-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sweet-ink-soft);
   display: flex;
   flex-wrap: wrap;
@@ -299,7 +299,7 @@
   background: #fff;
   color: var(--sweet-ink);
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 4px 10px;
   cursor: pointer;

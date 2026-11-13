@@ -58,7 +58,7 @@
 }
 
 .arc-note {
-  font-size: 11px; color: var(--sub, var(--text-sub));
+  font-size: 12px; color: var(--sub, var(--text-sub));
   text-align: center; margin-top: 8px;
 }
 
@@ -102,7 +102,7 @@
 /* 票根计数：样图 06 是挂在纸下缘的暗底金标，不是正文里的一行小字 */
 .arc-stub .ct {
   display: inline-block; margin-top: 6px; padding: 1px 8px;
-  font-size: 10px; font-weight: 700; color: var(--sun);
+  font-size: 12px; font-weight: 700; color: var(--sun);
   border: 1px solid color-mix(in srgb, var(--sun) 34%, transparent);
   border-radius: 6px; background: rgba(7, 10, 21, 0.86);
 }
@@ -217,7 +217,7 @@
   background: linear-gradient(90deg, transparent, var(--border-deep));
 }
 .arc-lab {
-  font-size: 10px; text-align: center; color: var(--sub, var(--text-sub));
+  font-size: 12px; text-align: center; color: var(--sub, var(--text-sub));
 }
 
 /* ── 外观货架 ── */
@@ -230,11 +230,11 @@
   padding: 10px; background: var(--surface-card); position: relative;
 }
 .arc-goods .zero {
-  position: absolute; top: 8px; right: 8px; font-size: 10px;
+  position: absolute; top: 8px; right: 8px; font-size: 12px;
   font-weight: 800; color: var(--mint);
 }
 .arc-goods .gn { font-size: 13px; font-weight: 700; }
-.arc-goods .gv { font-size: 11px; color: var(--sub, var(--text-sub)); }
+.arc-goods .gv { font-size: 12px; color: var(--sub, var(--text-sub)); }
 .arc-goods .gc { font-size: 22px; line-height: 1; margin-bottom: 4px; }
 /* 纹章面板：样图 06 的三段式承托。`crest-frame` 这个钩子一直在 DOM 里，
    但生产 CSS 从来没定义它 —— 所以圆章与两个读数像浮在页面上，没有面板。 */
@@ -268,7 +268,7 @@
     inset 0 0 0 4px color-mix(in srgb, var(--sun) 20%, transparent);
 }
 .arc-goods .qty {
-  margin-left: 5px; font-size: 10px; font-weight: 800;
+  margin-left: 5px; font-size: 12px; font-weight: 800;
   color: var(--ink); background: var(--sun-soft);
   border-radius: 999px; padding: 1px 6px;
 }
@@ -298,7 +298,7 @@
 }
 .arc-board-col .rk {
   flex: none; width: 18px; height: 18px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 10px; font-weight: 800;
+  display: grid; place-items: center; font-size: 12px; font-weight: 800;
   background: var(--surface-card); border: 1px solid var(--line);
 }
 .arc-board-col li:nth-child(1) .rk {
@@ -465,7 +465,7 @@
   bottom: 8px;
   z-index: 3;
   max-width: 52%;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.2;
   color: rgba(228, 236, 253, 0.78);
   white-space: nowrap;
@@ -588,7 +588,7 @@
   cursor: not-allowed;
 }
 .jgrid .go .tk {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   opacity: 0.9;
 }
@@ -656,7 +656,7 @@
   display: flex;
   justify-content: space-between;
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(228, 236, 253, 0.7);
 }
 .bs-plates {
@@ -751,7 +751,7 @@
 /* 注额 = 鼓筹码：条纹裙边 + 圆面高光，选中翻成金面 */
 .arc-chip {
   position: relative;
-  min-height: 40px;
+  min-height: var(--tap-min);
   padding: 0 15px;
   border-radius: 999px;
   border: 1px solid rgba(186, 206, 244, 0.3);
@@ -881,10 +881,10 @@
   background: var(--mint);
 }
 .arc-chk .dot.r { background: var(--coral); }
-.arc-chk .why { color: var(--sub, var(--text-sub)); font-size: 11px; }
+.arc-chk .why { color: var(--sub, var(--text-sub)); font-size: 12px; }
 
 .arc-btn {
-  min-height: 32px; border-radius: 999px; padding: 0 14px;
+  min-height: var(--tap-min); border-radius: 999px; padding: 0 14px;
   font-size: 12px; font-weight: 800;
   border: 1px solid var(--border-deep); background: var(--surface-card);
 }
@@ -892,9 +892,9 @@
   border-color: transparent; }
 .arc-btn:disabled { opacity: .5; }
 /* 背包里的小动作件：一件一个「使用」，不能抢主按钮的视觉权重 */
-.arc-btn.tiny { min-height: 24px; padding: 0 9px; font-size: 10px; }
+.arc-btn.tiny { min-height: var(--tap-min); padding: 0 9px; font-size: 12px; }
 .arc-chip.mini {
-  min-height: 20px; padding: 0 8px; font-size: 10px; font-weight: 700;
+  min-height: var(--tap-min); padding: 0 8px; font-size: 12px; font-weight: 700;
   cursor: default; opacity: .75;
 }
 
@@ -985,7 +985,7 @@
   color: var(--sun);
   text-shadow: 0 0 18px color-mix(in srgb, var(--sun) 46%, transparent);
 }
-.gc-hero-stat span { font-size: 11px; color: rgba(232, 240, 255, 0.7); }
+.gc-hero-stat span { font-size: 12px; color: rgba(232, 240, 255, 0.7); }
 /* 光晕球：头图右上的装饰，纯视觉、不占位、不参与点击 */
 .gc-hero-orb {
   position: absolute;
@@ -1016,7 +1016,7 @@
   );
 }
 .gc-group-n {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--sun);
   padding: 1px 9px;
@@ -1103,7 +1103,7 @@
   z-index: 2;
   padding: 2px 9px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.4px;
 }
@@ -1386,7 +1386,7 @@
   filter: saturate(0.5) brightness(0.85);
   cursor: not-allowed;
 }
-.lw-hub small { font-size: 10px; font-weight: 700; opacity: 0.92; }
+.lw-hub small { font-size: 12px; font-weight: 700; opacity: 0.92; }
 @media (prefers-reduced-motion: reduce) {
   .lw-disc.spin { transition: none; }
 }
@@ -1685,7 +1685,7 @@
   align-items: center;
   gap: 8px;
 }
-.pp-bar-lb { font-size: 11px; color: #cfe9dd; }
+.pp-bar-lb { font-size: 12px; color: #cfe9dd; }
 .pp-track {
   height: 10px;
   border-radius: 999px;
@@ -1696,7 +1696,7 @@
 .pp-fill.hunger { background: linear-gradient(90deg, #7ce0a0, #34b98c); }
 .pp-fill.exp { background: linear-gradient(90deg, #8fc7ff, #3f83d6); }
 .pp-bar-n {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #eaf4ff;
   text-align: right;
@@ -1708,7 +1708,7 @@
 /* ── 宠物档案 / 口粮券（0262 生态补全） ── */
 .pp-name { font-size: 13px; font-weight: 800; color: #eaf7ef; }
 .pp-species-tag {
-  font-size: 11px; color: #9fd8bc;
+  font-size: 12px; color: #9fd8bc;
   border: 1px solid var(--border-deep); border-radius: 999px;
   padding: 1px 10px;
 }
@@ -1741,7 +1741,7 @@
   background: none; border: none; cursor: pointer;
   color: var(--sub); font-size: 13px; padding: 2px 4px;
 }
-.pp-custom-lb { font-size: 11px; color: var(--sub); }
+.pp-custom-lb { font-size: 12px; color: var(--sub); }
 .pp-custom-input {
   background: var(--surface-sunken); border: 1px solid var(--line);
   border-radius: var(--r-sm); padding: 6px 10px; color: inherit;
@@ -1757,7 +1757,7 @@
   border-color: var(--mint); background: rgba(52, 185, 140, 0.12);
 }
 .pp-sp-line { font-size: 15px; }
-.pp-sp-name { font-size: 11px; font-weight: 700; }
+.pp-sp-name { font-size: 12px; font-weight: 700; }
 
 /* ── 钓鱼生态侧栏：渔汛横幅 / 鱼竿 / 渔获图鉴 ── */
 .fs-event {
@@ -1777,11 +1777,11 @@
 .fs-rod-bonus { color: var(--sub); }
 .fs-rod-up {
   flex-basis: 100%; text-align: center; white-space: nowrap;
-  padding: 4px 10px; font-size: 11px;
+  padding: 4px 10px; font-size: 12px;
 }
 .fs-album { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .fs-album-n {
-  margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--sub);
+  margin-left: 6px; font-size: 12px; font-weight: 700; color: var(--sub);
 }
 .fs-fish {
   position: relative; display: flex; flex-direction: column;
@@ -1796,9 +1796,9 @@
   box-shadow: 0 0 10px rgba(233, 185, 78, 0.35);
 }
 .fs-fish-face { font-size: 20px; }
-.fs-fish-name { font-size: 11px; font-weight: 700; }
-.fs-fish-ev { font-size: 9px; font-weight: 800; color: var(--mint); }
-.fs-fish-n { font-size: 10px; color: var(--sub); }
+.fs-fish-name { font-size: 12px; font-weight: 700; }
+.fs-fish-ev { font-size: 12px; font-weight: 800; color: var(--mint); }
+.fs-fish-n { font-size: 12px; color: var(--sub); }
 
 /* ── 稀有掉落播报（大厅 feed） ── */
 .arc-chk.rare { font-weight: 800; }
@@ -1818,7 +1818,7 @@
   border-bottom: 1px solid var(--line);
 }
 .lb-row:last-child { border-bottom: none; }
-.lb-head { font-size: 11px; color: var(--sub); }
+.lb-head { font-size: 12px; color: var(--sub); }
 .lb-row.top1 {
   background: linear-gradient(90deg, rgba(233, 185, 78, 0.16), transparent);
 }

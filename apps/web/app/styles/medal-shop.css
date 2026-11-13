@@ -100,7 +100,7 @@
   background: var(--sun);
   color: #fff;
   font-family: var(--font-body);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 15px;
   white-space: nowrap;
@@ -116,7 +116,7 @@
   background: var(--warning);
   color: #fff;
   font-family: var(--font-body);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 15px;
 }
@@ -165,7 +165,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -257,7 +257,7 @@
   text-decoration: underline;
 }
 .honor-rank {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-fainter);
   font-variant-numeric: tabular-nums;
 }
@@ -275,7 +275,7 @@
 }
 .honor-cnt span {
   display: block;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .honor-ft {
@@ -294,7 +294,7 @@
 }
 .honor-ft .tail {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-fainter);
   font-variant-numeric: tabular-nums;
 }
@@ -319,7 +319,7 @@
   border-radius: 6px;
   background: var(--tide-abyss);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   white-space: nowrap;
   opacity: 0;
@@ -408,7 +408,7 @@
 }
 .mcard-desc {
   margin: 0;
-  min-height: 34px;
+  min-height: var(--tap-min);
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-muted);
@@ -476,7 +476,7 @@
   background: none;
   color: var(--sky);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -538,7 +538,7 @@
   border-radius: 5px;
   background: var(--surface-sunken);
   color: var(--text-brand);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -647,10 +647,10 @@
     font-size: 18px;
   }
   .gcard-ft {
-    font-size: 11px;
+    font-size: 12px;
   }
   .gcard-ft .unit {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -763,7 +763,7 @@
   border-bottom-left-radius: 8px;
   background: var(--sky-deep);
   color: #fff;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 /* 券包 */
@@ -796,7 +796,7 @@
 }
 .vticket .l small {
   display: block;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--text-fainter);
 }
 .vticket .acts {

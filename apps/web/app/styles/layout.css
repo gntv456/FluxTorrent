@@ -180,7 +180,7 @@
 .mainmenu-drop__link {
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: var(--tap-min);
   padding: 2px 10px;
   color: var(--text-body);
   font-size: 13px;
@@ -207,7 +207,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  min-height: 36px;
+  min-height: var(--tap-min);
   padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -225,7 +225,7 @@
   font-weight: 800;
 }
 .langmenu__caret {
-  font-size: 10px;
+  font-size: 12px;
 }
 .langmenu__drop {
   position: absolute;
@@ -246,7 +246,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 34px;
+  min-height: var(--tap-min);
   padding: 0 10px;
   border: 0;
   border-radius: 8px;
@@ -324,7 +324,7 @@
   border: 1px solid var(--compat-line);
   background: var(--compat-paper);
   color: var(--compat-orange-dark);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   vertical-align: middle;
   white-space: nowrap;
@@ -364,7 +364,7 @@
 .userbar__shortcuts a {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
+  min-height: var(--tap-min);
   color: var(--text-body);
   font-weight: 600;
 }
@@ -392,7 +392,7 @@
 }
 .bonus-pill .bonus-hint {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 /* 票券统计（userstat：奶油底票券格子） */
@@ -613,10 +613,10 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 .bz-lang select {
   width: 122px;
-  min-height: 32px;
+  min-height: var(--tap-min);
   padding: 5px 10px;
   color: var(--text-body-deep);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   border: 1px solid var(--border-deep);
   border-radius: 7px;
@@ -822,7 +822,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .bz-options {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  min-height: 28px;
+  min-height: var(--tap-min);
   align-items: center;
   gap: 14px;
   margin-top: 15px;
@@ -882,7 +882,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 .bz-totp-toggle {
   display: inline-flex;
-  min-height: 27px;
+  min-height: var(--tap-min);
   align-items: center;
   justify-self: end;
   padding: 4px 10px;
@@ -1011,12 +1011,12 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 
 .bz-method {
   display: inline-flex;
-  min-height: 26px;
+  min-height: var(--tap-min);
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
   color: var(--text-faint);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   border: 1px dashed var(--border-deep);
   border-radius: 999px;
@@ -1418,7 +1418,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .uc-metric small {
   display: block;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .uc-trend-card {
   border: 1px solid var(--compat-line);
@@ -1454,7 +1454,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .uc-trend-chart i {
   flex: 1;
-  min-height: 2px;
+  min-height: var(--tap-min);
   border-radius: 2px 2px 0 0;
   background: linear-gradient(180deg, var(--compat-fill-mid), var(--compat-soft));
 }
@@ -1961,7 +1961,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   margin-right: 6px;
   padding: 1px 7px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-on-accent, #fff);
   background: var(--mint, var(--success));
@@ -2004,7 +2004,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .attendance-card__mv {
   min-width: 28px;
-  min-height: 28px;
+  min-height: var(--tap-min);
   border-radius: 999px;
   border: 1px solid var(--line);
   background: transparent;
@@ -2041,7 +2041,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 .attendance-calendar__weekday {
   padding: 2px 0;
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
 }
@@ -2061,7 +2061,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .attendance-calendar__day small {
   color: var(--text-fainter);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 .attendance-calendar__day.is-done {
   border-color: var(--warning-border);
@@ -2136,7 +2136,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .home-resource-stats__metric small {
   color: var(--text-fainter);
-  font-size: 11px;
+  font-size: 12px;
 }
 .home-resource-stats__legend {
   display: flex;
@@ -2188,12 +2188,12 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   display: block;
   border-radius: 2px 2px 0 0;
   background: #a7a7a7;
-  min-height: 1px;
+  min-height: var(--tap-min);
 }
 .rs-bar__official {
   display: block;
   background: var(--compat-orange);
-  min-height: 1px;
+  min-height: var(--tap-min);
 }
 .rs-bar:hover .rs-bar__ordinary,
 .rs-bar:hover .rs-bar__official {
@@ -2252,7 +2252,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   margin-left: 4px;
   border-radius: 50%;
   color: var(--text-on-accent);
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
 }
 .home-site-data__item.is-warning dt i {
@@ -2474,7 +2474,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   border-right: 0;
 }
 .pgstats .k {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }
@@ -2507,7 +2507,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: var(--tap-min);
   padding: 0 11px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -2535,7 +2535,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
   background: currentColor;
 }
 .pgsel {
-  min-height: 34px;
+  min-height: var(--tap-min);
   padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2617,7 +2617,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .navdrawer__stat {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sub);
 }
 .navdrawer__close {
@@ -2653,7 +2653,7 @@ img.bz-login-intro-mascot.bz-login-intro-logo {
 }
 .navdrawer__gtitle {
   margin: 10px 4px 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sub);
 }
@@ -2763,7 +2763,7 @@ button.navdrawer__link {
   gap: 2px;
   border-radius: var(--r-md);
   color: var(--sub);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 .tsidebar__item.is-active {
   background: var(--sky-soft, #e6f2ff);

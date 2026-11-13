@@ -19,6 +19,15 @@
 .thov__descr { color: var(--muted, #6b7280); }
 .thov__stats { display: flex; flex-wrap: wrap; gap: 8px; }
 .thov__owner { color: var(--muted, #6b7280); }
+/* 触屏/键盘等价入口：预览卡内「查看详情」链接 */
+.thov__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  color: var(--sky);
+  font-weight: 700;
+  text-decoration: underline;
+}
 @media (prefers-reduced-motion: reduce) {
   .thov { transition: none; }
 }

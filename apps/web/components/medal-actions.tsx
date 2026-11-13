@@ -26,12 +26,15 @@ export function MedalActions({
   giftFeeBp,
   globalGiftTaxBp,
   onWearChange,
+  saleStatus,
 }: {
   medalId: number;
   owned: boolean;
   wearing: boolean;
   price: number | null;
   getType: number;
+  /** 售卖状态：upcoming=未开售 / sold_out=售罄 → 不渲染购买按钮 */
+  saleStatus?: "on_sale" | "upcoming" | "sold_out" | string | null;
   /** 当前魔力余额（null=匿名/未知：不预判，购买交后端校验）。
    *  余额 < 价格时按钮禁用并显示「余额不足」（shop BuyButton 同款口径）。 */
   balance?: number | null;
@@ -48,6 +51,15 @@ export function MedalActions({
   const [msg, setMsg] = useState<string | null>(null);
   const [idem] = useState(() => `web-medal-${medalId}-${clientUuid()}`);
   const buyable = getType === 1 && price !== null;
+  // 未开售/售罄：不给购买按钮，改为状态说明（saleStatus 由调用方按库存/上架时间给）
+  const notOnSale =
+    saleStatus === "upcoming" || saleStatus === "sold_out";
+  const saleNote =
+    saleStatus === "upcoming"
+      ? dict.medals.notStarted
+      : saleStatus === "sold_out"
+        ? dict.medals.soldOut
+        : null;
   // 余额已知且不够 → 禁用购买（null 不预判，后端 4001 兜底）
   const affordable = balance == null || price == null || balance >= price;
   // P2 清偿：赠送对象采集（window.prompt 退役 → 输入槽）
@@ -165,6 +177,11 @@ export function MedalActions({
             >
               {isWearing ? dict.medals.wearing : dict.medals.wear}
             </button>
+            {giftBtn}
+          </>
+        ) : notOnSale ? (
+          <>
+            <span className="text-xs text-sub">{saleNote}</span>
             {giftBtn}
           </>
         ) : buyable ? (

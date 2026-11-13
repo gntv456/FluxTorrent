@@ -78,7 +78,7 @@
     padding: 7px 9px;
   }
   .home-site-data__grid--m .home-site-data__item dt {
-    font-size: 11px;
+    font-size: 12px;
   }
   .home-site-data__grid--m .home-site-data__item dd {
     font-size: 14px;
@@ -168,7 +168,7 @@
 .mhome-hero__hi i {
   display: block;
   font-style: normal;
-  font-size: 11px;
+  font-size: 12px;
   color: color-mix(in srgb, var(--text-on-accent) 74%, transparent);
 }
 .mhome-hero__spark {
@@ -177,7 +177,7 @@
   text-align: right;
 }
 .mhome-hero__spark dt {
-  font-size: 10px;
+  font-size: 12px;
   color: color-mix(in srgb, var(--text-on-accent) 74%, transparent);
 }
 .mhome-hero__spark dd {
@@ -201,7 +201,7 @@
   border: 1px solid color-mix(in srgb, var(--text-on-accent) 16%, transparent);
 }
 .mhome-hero__stats dt {
-  font-size: 10px;
+  font-size: 12px;
   color: color-mix(in srgb, var(--text-on-accent) 74%, transparent);
 }
 .mhome-hero__stats dd {
@@ -244,7 +244,7 @@
 }
 .mhome-gauge__note {
   margin: 6px 0 0;
-  font-size: 10.5px;
+  font-size: 12px;
   color: color-mix(in srgb, var(--text-on-accent) 82%, transparent);
 }
 .mhome-gauge__note.is-low {
@@ -290,7 +290,7 @@
   display: inline-block;
   padding: 2px 7px;
   border-radius: var(--r-sm);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--sun);
   background: var(--sun-soft);
@@ -320,7 +320,7 @@
   gap: 8px;
   padding: 8px 13px;
   border-top: 1px solid var(--border-soft);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .mhome-news-top__unread {
@@ -372,7 +372,7 @@
   height: 19px;
 }
 .mhome-quick__item span {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -443,7 +443,7 @@
 .mhome-strip__txt > i {
   display: block;
   font-style: normal;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 1px;
   white-space: nowrap;
@@ -496,7 +496,7 @@
   flex: none;
 }
 .mhome-spark__num dt {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .mhome-spark__num dd {
@@ -523,7 +523,7 @@
 }
 .mhome-spark__bars s {
   flex: 1;
-  min-height: 2px;
+  min-height: var(--tap-min);
   border-radius: 2px 2px 0 0;
   background: var(--border-deep);
   text-decoration: none;
@@ -535,7 +535,7 @@
   display: flex;
   gap: 12px;
   padding: 0 13px 11px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .mhome-spark__legend span {
@@ -595,7 +595,7 @@
 }
 .mhome-strip__ms em {
   font-style: normal;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-faint);
   white-space: nowrap;
 }
@@ -606,7 +606,7 @@
 .mhome-sheet__note {
   margin: 0;
   padding: 0 13px 9px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.55;
   color: var(--text-muted);
 }
