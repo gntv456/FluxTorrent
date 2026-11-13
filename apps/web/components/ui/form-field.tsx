@@ -94,7 +94,7 @@ export function FormField({
       </label>
       <div className="ui-field__ctl">{ctl}</div>
       {error ? (
-        <p className="ui-field__err" id={msgId}>
+        <p className="ui-field__err" id={msgId} role="alert">
           <Icon name="warning" size={11} />
           {error}
         </p>

@@ -30,8 +30,11 @@ function VerifyInner() {
   // P-567：注册成功后带 ?email 跳到本页，重发表单直接预填
   const [email, setEmail] = useState(sp.get("email") ?? "");
   const [resent, setResent] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const verify = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
     setMsg("");
     try {
       const r = await api.get<{ verified: boolean; already: boolean }>(
@@ -41,10 +44,14 @@ function VerifyInner() {
     } catch (e) {
       setState("err");
       setMsg(e instanceof ApiError ? e.message : String(e));
+    } finally {
+      setBusy(false);
     }
-  }, [token]);
+  }, [token, busy]);
 
   const resend = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
     setResent(false);
     setRmsg("");
     try {
@@ -52,8 +59,10 @@ function VerifyInner() {
       setResent(true);
     } catch (e) {
       setRmsg(e instanceof ApiError ? e.message : String(e));
+    } finally {
+      setBusy(false);
     }
-  }, [email]);
+  }, [email, busy]);
 
   const resendForm = (
     <div className="flex flex-col gap-2">
@@ -74,7 +83,8 @@ function VerifyInner() {
             className="min-h-[44px] shrink-0 rounded-full border
               border-line bg-[var(--surface-card)] px-4 text-xs font-bold
               text-ink disabled:opacity-40"
-            disabled={!email.includes("@")}
+            disabled={!email.includes("@") || busy}
+            aria-busy={busy}
             onClick={() => void resend()}
           >
             {dict.emailVerify.resendBtn}
@@ -84,9 +94,15 @@ function VerifyInner() {
       {/* P-110：重发的失败必须有落点。旧版把错误写进 msg，而 msg 只在
           「验证失败」那一支渲染——空手进来（没带 token）的用户点重发，
           限流/未配邮件服务时界面一动不动，像按钮坏了。 */}
-      {rmsg && <p className="text-sm text-[var(--danger-text)]">{rmsg}</p>}
+      {rmsg && (
+        <p role="alert" className="text-sm text-[var(--danger-text)]">
+          {rmsg}
+        </p>
+      )}
       {resent && (
-        <p className="text-xs text-sub">{dict.emailVerify.resentNote}</p>
+        <p role="status" className="text-xs text-sub">
+          {dict.emailVerify.resentNote}
+        </p>
       )}
     </div>
   );
@@ -108,6 +124,8 @@ function VerifyInner() {
           <button
             type="button"
             className={BTN_LG_SKY}
+            disabled={busy}
+            aria-busy={busy}
             onClick={() => void verify()}
           >
             {dict.emailVerify.verifyBtn}
@@ -115,7 +133,7 @@ function VerifyInner() {
         )}
         {state === "idle" && !token && resendForm}
         {state === "ok" && (
-          <p className="text-sm">
+          <p role="status" className="text-sm">
             {dict.emailVerify.okPrefix}
             <Link className="font-bold text-sky" href="/login">
               {dict.emailVerify.okLink}
@@ -124,7 +142,7 @@ function VerifyInner() {
           </p>
         )}
         {state === "already" && (
-          <p className="text-sm">
+          <p role="status" className="text-sm">
             {dict.emailVerify.alreadyPrefix}
             <Link className="font-bold text-sky" href="/login">
               {dict.emailVerify.alreadyLink}
@@ -134,7 +152,9 @@ function VerifyInner() {
         )}
         {state === "err" && (
           <div className="flex flex-col gap-3">
-            <p className="text-sm text-[var(--danger-text)]">{msg}</p>
+            <p role="alert" className="text-sm text-[var(--danger-text)]">
+              {msg}
+            </p>
             <p className="text-xs text-sub">{dict.emailVerify.expiredHint}</p>
             {resendForm}
           </div>

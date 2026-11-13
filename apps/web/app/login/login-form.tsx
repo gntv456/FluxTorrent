@@ -49,6 +49,9 @@ export function LoginForm() {
   const [powWorking, setPowWorking] = useState(false); // 正在完成工作量证明
   const [showTotp, setShowTotp] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  const pwdDict = dict.login as unknown as
+    Record<string, string | undefined>;
+  const pwdToggleLabel = pwdDict[showPwd ? "hidePwd" : "showPwd"] ?? "";
   // 「记住登录」：默认勾上（与旧装饰态视觉一致），现在真的进请求体
   const [remember, setRemember] = useState(true);
   // P-683：并排注册按钮的样式分级依据（与辅助链接卡同源判定）
@@ -74,6 +77,7 @@ export function LoginForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -193,11 +197,11 @@ export function LoginForm() {
       )}
 
       <div className="bz-fields">
-        <label className="bz-field">
-          <span className="bz-field-icon">
-            <IconUser />
-          </span>
+        <label className="bz-field" htmlFor="login-username">
+          <span className="bz-field-icon"><IconUser /></span>
+          <span className="sr-only">{dict.login.username}</span>
           <input
+            id="login-username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
@@ -205,11 +209,15 @@ export function LoginForm() {
             placeholder={dict.login.username}
           />
         </label>
-        <label className="bz-field">
-          <span className="bz-field-icon">
+        <div className="bz-field">
+          <label htmlFor="login-password" className="bz-field-icon">
             <IconLock />
-          </span>
+          </label>
+          <label htmlFor="login-password" className="sr-only">
+            {dict.login.password}
+          </label>
           <input
+            id="login-password"
             type={showPwd ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -221,7 +229,7 @@ export function LoginForm() {
             type="button"
             className="bz-pwd-toggle"
             aria-pressed={showPwd}
-            aria-label={dict.login.password}
+            aria-label={pwdToggleLabel}
             onClick={() => setShowPwd((v) => !v)}
           >
             <svg viewBox="0 0 24 24" aria-hidden>
@@ -230,13 +238,13 @@ export function LoginForm() {
               {!showPwd && <path d="M5 5l14 14" className="bz-toggle-slash" />}
             </svg>
           </button>
-        </label>
+        </div>
         {showTotp && (
-          <label className="bz-field">
-            <span className="bz-field-icon">
-              <IconShield />
-            </span>
+          <label className="bz-field" htmlFor="login-totp">
+            <span className="bz-field-icon"><IconShield /></span>
+            <span className="sr-only">{dict.login.twoStepCode}</span>
             <input
+              id="login-totp"
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"

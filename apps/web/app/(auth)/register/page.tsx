@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/form-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { RegisterBasicFields } from "./register-basic-fields";
+import { TermsFoot } from "./terms-foot";
 import { RegWindowChip } from "./reg-window-chip";
 import { mapRegisterError } from "./register-error-map";
 
@@ -131,10 +132,15 @@ export default function RegisterPage() {
     }
     refreshCaptcha();
     fetch("/api/v1/register-fields")
-      .then((r) => r.json())
-      .then((b: { data?: typeof regFields }) =>
-        { setRegFields(b?.data ?? []); setFieldsFailed(false); })
-      .catch(() => { setRegFields([]); setFieldsFailed(true); });
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((b: { data?: typeof regFields }) => {
+        setRegFields(b?.data ?? []);
+        setFieldsFailed(false);
+      })
+      .catch(() => {
+        setRegFields([]);
+        setFieldsFailed(true);
+      });
     // 注册模式与后端 registration_mode 同步（open 下邀请码非必填）
     getRegisterMode<ModeInfo>()
       .then((r) => {
@@ -163,6 +169,7 @@ export default function RegisterPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setFieldErrs({});
     try {
@@ -230,15 +237,13 @@ export default function RegisterPage() {
           </>
         ) : undefined
       }
-      foot={dict.register.termsNote}
+      foot={<TermsFoot />}
     >
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         {/* P-684 开放轮窗口条：生效中显示剩余额度与截止；预约窗口显示
             开放预告（未开始仍按当前模式注册，邀请码照常可用）。 */}
         <RegWindowChip
-          soon={windowSoon}
-          win={regWindow}
-          labels={dict.register}
+          soon={windowSoon} win={regWindow} labels={dict.register}
         />
         {/* W-18：表单级错误（含映射不出的码）走 FieldErrors 汇总 */}
         <FieldErrors fields={fieldErrs} />
@@ -259,13 +264,9 @@ export default function RegisterPage() {
             error={first("pow")} />
         ) : (
           <RegisterCaptcha
-            key={gateNonce}
-            driver={driver}
-            siteKey={siteKey}
-            captcha={captcha}
-            answer={captchaAnswer}
-            onAnswer={setCaptchaAnswer}
-            onRefresh={refreshCaptcha}
+            key={gateNonce} driver={driver} siteKey={siteKey}
+            captcha={captcha} answer={captchaAnswer}
+            onAnswer={setCaptchaAnswer} onRefresh={refreshCaptcha}
             error={first("captcha")}
           />
         )}
@@ -277,16 +278,14 @@ export default function RegisterPage() {
             error={first("quiz")}
           />
         )}
-        <SubmitButton
-          busy={busy}
-          label={dict.register.submit}
-          busyLabel={dict.register.busy}
-        />
         <RegisterFields
-          fields={regFields}
-          values={fieldVals}
+          fields={regFields} values={fieldVals}
           onChange={setFieldVals}
           failedLabel={fieldsFailed ? dict.common.loadFailed : null}
+        />
+        <SubmitButton
+          busy={busy} label={dict.register.submit}
+          busyLabel={dict.register.busy}
         />
       </form>
       <div className="auth-card__links">

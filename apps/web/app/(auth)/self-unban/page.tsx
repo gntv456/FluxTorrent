@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { BTN_LG_SKY } from "@/lib/ui-classes";
 import { AuthCanvas } from "@/components/auth-canvas";
 
@@ -22,6 +22,7 @@ export default function SelfUnbanPage() {
   const [done, setDone] = useState(false);
 
   async function unban() {
+    if (busy) return;
     setBusy(true);
     setMsg("");
     try {
@@ -29,7 +30,11 @@ export default function SelfUnbanPage() {
       setDone(true);
       setMsg(dict.selfUnban.done);
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : String(e));
+      setMsg(
+        e instanceof ApiError
+          ? apiErrorMessage(dict, e)
+          : dict.common.networkError,
+      );
     } finally {
       setBusy(false);
     }

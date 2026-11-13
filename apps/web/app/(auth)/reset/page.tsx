@@ -2,7 +2,7 @@
 
 import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -25,11 +25,17 @@ function ResetForm() {
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const timer = useRef<number | null>(null);
 
   // 兜底：已登录访问重置页直接回资源库
   useEffect(() => {
     if (hasSessionCookie()) router.replace("/torrents");
   }, [router]);
+  // 卸载时清理跳转定时器，避免在已离开页面后触发路由跳转
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,8 +52,12 @@ function ResetForm() {
         new_password: newPassword,
       });
       setOkMsg(dict.reset.success);
-      // 2 秒后跳登录页用新密码登录
-      setTimeout(() => router.push("/login"), 2000);
+      setDone(true);
+      // 2 秒后跳登录页用新密码登录（卸载时由上方 effect 清理）
+      timer.current = window.setTimeout(
+        () => router.push("/login"),
+        2000,
+      );
     } catch (err) {
       if (err instanceof ApiError) {
         setError(apiErrorMessage(dict, err));
@@ -123,7 +133,8 @@ function ResetForm() {
       )}
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || done}
+        aria-busy={busy}
         className={BTN_LG_SKY}
       >
         {busy ? dict.reset.busy : dict.reset.submit}

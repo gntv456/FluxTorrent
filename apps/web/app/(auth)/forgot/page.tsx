@@ -16,11 +16,14 @@ export default function ForgotPage() {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [msgIsErr, setMsgIsErr] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setMsg(null);
+    setMsgIsErr(false);
     try {
       const r = await api.post<{ message: string }>(
         "/api/v1/auth/password/forgot",
@@ -30,6 +33,7 @@ export default function ForgotPage() {
       );
       setMsg(r.message);
     } catch (err) {
+      setMsgIsErr(true);
       if (err instanceof ApiError) {
         setMsg(apiErrorMessage(dict, err));
       } else {
@@ -62,7 +66,12 @@ export default function ForgotPage() {
           <span className="text-xs text-sub">{dict.forgot.emailHint}</span>
         </label>
         {msg && (
-          <p role="status" className="text-sm text-sub">
+          <p
+            role={msgIsErr ? "alert" : "status"}
+            className={`text-sm ${
+              msgIsErr ? "text-[var(--danger-text)]" : "text-sub"
+            }`}
+          >
             {msg}
           </p>
         )}

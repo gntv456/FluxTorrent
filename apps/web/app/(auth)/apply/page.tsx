@@ -1,7 +1,7 @@
 "use client";
 
 import { BTN_LG_SKY, INPUT_LG } from "@/lib/ui-classes";
-import { useI18n } from "@/i18n/client";
+import { apiErrorMessage, useI18n } from "@/i18n/client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -36,6 +36,7 @@ export default function ApplyPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setMsg(null);
     setOkMsg(null);
@@ -48,7 +49,11 @@ export default function ApplyPage() {
       });
       setOkMsg(r.note);
     } catch (err) {
-      setMsg(err instanceof ApiError ? err.message : String(err));
+      setMsg(
+        err instanceof ApiError
+          ? apiErrorMessage(dict, err)
+          : dict.common.networkError,
+      );
     } finally {
       setBusy(false);
     }
