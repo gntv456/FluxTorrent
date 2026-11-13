@@ -26,15 +26,15 @@ const ROLE_CARD =
   "bg-[var(--surface-raised)] px-3 py-2";
 // 卡片上的小操作按钮（编辑=天蓝 / 删除=警示红）
 const ROLE_CARD_BTN_EDIT =
-  "min-h-[24px] rounded-full border border-line px-2 " +
-  "text-[11px] font-bold text-sky";
+  "min-h-11 rounded-full border border-line px-2 " +
+  "text-xs font-bold text-sky";
 const ROLE_CARD_BTN_DEL =
-  "min-h-[24px] rounded-full border border-line px-2 " +
-  "text-[11px] font-bold text-[var(--danger-text)]";
+  "min-h-11 rounded-full border border-line px-2 " +
+  "text-xs font-bold text-[var(--danger-text)]";
 // 表单容器 / 表单输入框底色
 const ROLE_FORM_BOX = "cmgmt-form rounded-[var(--r-md)] border border-line p-3";
 const ROLE_INPUT =
-  "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-cloud px-2 text-sm";
 // 次级描边按钮（新增/编辑表单的取消 / 新增职务虚线按钮共用）
 const BTN_OUTLINE_S = BTN_SM_BOLD;
@@ -66,7 +66,7 @@ export function RoleDictSection({
             <p className="text-sm font-bold text-ink">{r.name}</p>
             <p className="mt-0.5 text-xs text-sub">{r.descr}</p>
             <p className="mt-1 flex items-center justify-between">
-              <code className="text-[10px] text-sub">{r.key}</code>
+              <code className="text-xs text-sub">{r.key}</code>
               <span className="flex gap-1">
                 <button
                   className={ROLE_CARD_BTN_EDIT}

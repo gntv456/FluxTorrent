@@ -89,7 +89,7 @@ export function StaffCatEditDialog({
               value={d[k]}
               onChange={(e) => setD({ ...d, [k]: e.target.value })}
               data-autofocus={k === "name" ? true : undefined}
-              className="min-h-[36px] rounded-[var(--r-sm)] border
+              className="min-h-11 rounded-[var(--r-sm)] border
                 border-line bg-[var(--surface-card)] px-3 text-sm"
             />
           </label>

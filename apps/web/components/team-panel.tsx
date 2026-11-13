@@ -184,7 +184,7 @@ export function TeamPanel() {
                         type="button"
                         disabled={busy !== null}
                         onClick={() => join(row.team_id)}
-                        className="min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
+                        className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
                       >
                         {t.joinBtn}
                       </button>
@@ -247,7 +247,7 @@ export function TeamPanel() {
                       <td>
                         {m.username}
                         {m.is_leader && (
-                          <span className="ml-2 rounded-full bg-sky-soft px-2 text-[11px] text-ink">
+                          <span className="ml-2 rounded-full bg-sky-soft px-2 text-xs text-ink">
                             {t.leaderTag}
                           </span>
                         )}
@@ -258,7 +258,7 @@ export function TeamPanel() {
                     </tr>
                   ))}
                   <tr>
-                    <td className="colhead">{t.teamTotal}</td>
+                    <th scope="col" className="colhead">{t.teamTotal}</th>
                     <td className="colhead num text-right">
                       {Math.floor(totalDelta / 3600)} h
                     </td>
@@ -278,7 +278,7 @@ export function TeamPanel() {
                       run: () => leave(team.team_id),
                     })
                   }
-                  className="mt-2 min-h-[30px] rounded-full border border-line px-3 text-xs text-sub disabled:opacity-50"
+                  className="mt-2 min-h-11 rounded-full border border-line px-3 text-xs text-sub disabled:opacity-50"
                 >
                   {t.leaveBtn}
                 </button>

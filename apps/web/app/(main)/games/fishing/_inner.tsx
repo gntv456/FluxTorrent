@@ -364,7 +364,7 @@ export default function FishingPage({
               </button>
             )}
           </div>
-          <p className="text-[11px] text-sub">
+          <p className="text-xs text-sub">
             {tf.bait.replace("{n}", String(ticket))} · {tf.hintIdle}
           </p>
         </div>

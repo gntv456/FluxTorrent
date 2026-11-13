@@ -13,7 +13,7 @@ import type { PermDef, PermMatrixData, RoleDef } from "./staff-tools-perm";
  *  职务权限仅对持有该职务的用户生效。 */
 
 // 「未接入」徽标
-const NOT_IMPL_TAG = "ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink";
+const NOT_IMPL_TAG = "ml-1 rounded-full bg-sun/40 px-1.5 text-xs text-ink";
 // 角色列表头 / 权限类别的显示名在 i18n（adminPerm.roleHeads / adminPerm.cats）；
 // 取不到时回落后端下发的 name / 原始 key。
 
@@ -52,7 +52,7 @@ export function RoleMatrix({
                   <span className="block">
                     {t.roleHeads[r.role_key] ?? r.name}
                   </span>
-                  <span className="block text-[10px] font-normal">
+                  <span className="block text-xs font-normal">
                     {r.role_type === "class"
                       ? fmt(t.roleIsClass, { key: r.role_key })
                       : t.roleIsRole}
@@ -92,7 +92,7 @@ export function RoleMatrix({
                           {t.notImpl}
                         </span>
                       )}
-                      <span className="block font-mono text-[10px] text-sub">
+                      <span className="block font-mono text-xs text-sub">
                         {p.key}
                       </span>
                     </td>

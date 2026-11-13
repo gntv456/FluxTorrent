@@ -146,10 +146,10 @@ export function SparkPanel({
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{u.sparkChange}</td>
-              <td className="colhead">{u.sparkKind}</td>
-              <td className="colhead">{u.balanceAfter}</td>
-              <td className="colhead">{u.time}</td>
+              <th scope="col" className="colhead">{u.sparkChange}</th>
+              <th scope="col" className="colhead">{u.sparkKind}</th>
+              <th scope="col" className="colhead">{u.balanceAfter}</th>
+              <th scope="col" className="colhead">{u.time}</th>
             </tr>
           </thead>
           <tbody>
@@ -199,9 +199,9 @@ export function LoginsPanel({
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">IP</td>
-              <td className="colhead">{u.result}</td>
-              <td className="colhead">{u.time}</td>
+              <th scope="col" className="colhead">IP</th>
+              <th scope="col" className="colhead">{u.result}</th>
+              <th scope="col" className="colhead">{u.time}</th>
             </tr>
           </thead>
           <tbody>
@@ -236,11 +236,11 @@ export function SeedingPanel({ seeds }: { seeds: SeedRow[] | null }) {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{u.seedColTorrent}</td>
-              <td className="colhead w-24">{u.seedColSize}</td>
-              <td className="colhead w-24">{u.seedColStatus}</td>
-              <td className="colhead w-24">{u.seedColHours}</td>
-              <td className="colhead w-16">H&R</td>
+              <th scope="col" className="colhead">{u.seedColTorrent}</th>
+              <th scope="col" className="colhead w-24">{u.seedColSize}</th>
+              <th scope="col" className="colhead w-24">{u.seedColStatus}</th>
+              <th scope="col" className="colhead w-24">{u.seedColHours}</th>
+              <th scope="col" className="colhead w-16">H&R</th>
             </tr>
           </thead>
           <tbody>

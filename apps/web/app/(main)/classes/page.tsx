@@ -134,7 +134,7 @@ function ProgressCard({ d }: { d: ClassesData }) {
                 value={pct}
                 max={100}
               />
-              <p className="mt-1 font-mono text-[11px] text-sub">
+              <p className="mt-1 font-mono text-xs text-sub">
                 {fmtVal(k, mine[k])} / {fmtVal(k, need[k])}
               </p>
             </div>

@@ -166,8 +166,12 @@ export function StaffContentPanel({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.fldQuestion}</td>
-                <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+                <th scope="col" className="colhead">
+                  {t.fldQuestion}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {dict.cmgmt.colActions}
+                </th>
               </tr>
               {faqs.map((f) => (
                 <tr key={f.id}>

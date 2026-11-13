@@ -61,12 +61,12 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
       <p className="mb-3 text-xs text-sub">{t.intro}</p>
       <table className="nexus-table text-xs">
         <thead><tr>
-          <td className="colhead w-20">{t.colLoc}</td>
-          <td className="colhead">{t.colName}</td>
-          <td className="colhead w-24">{t.colParent}</td>
-          <td className="colhead w-16">{t.colClass}</td>
-          <td className="colhead w-14">{t.colSort}</td>
-          <td className="colhead w-14">{t.colStatus}</td>
+          <th scope="col" className="colhead w-20">{t.colLoc}</th>
+          <th scope="col" className="colhead">{t.colName}</th>
+          <th scope="col" className="colhead w-24">{t.colParent}</th>
+          <th scope="col" className="colhead w-16">{t.colClass}</th>
+          <th scope="col" className="colhead w-14">{t.colSort}</th>
+          <th scope="col" className="colhead w-14">{t.colStatus}</th>
           <td className="colhead w-32" />
         </tr></thead>
         <tbody>
@@ -85,7 +85,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
                 <td className="num">{m.sort}</td>
                 <td>{m.enabled ? t.statusOn : t.statusOff}</td>
                 <td>
-                  <button className="min-h-[28px] rounded-full border border-line px-3 font-bold text-sky"
+                  <button className="min-h-11 rounded-full border border-line px-3 font-bold text-sky"
                     onClick={() => {
                       if (mEditId === m.id) { setMEditId(null); return; }
                       setMEditId(m.id);
@@ -93,7 +93,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
                       setMParent(m.parent_id); setMTarget(m.target);
                       setMMinClass(m.min_class); setMSort(m.sort); setMEnabled(m.enabled);
                     }}>{mEditId === m.id ? t.cancelBtn : t.editBtn}</button>
-                  <button className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-[var(--danger-text)]"
+                  <button className="ml-1 min-h-11 rounded-full border border-line px-3 font-bold text-[var(--danger-text)]"
                     onClick={() => guard(async () => {
                       await api.del(`/api/v1/admin/menu-items/${m.id}`);
                     }, t.deleted)}>{t.delBtn}</button>
@@ -130,7 +130,7 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">{t.fldUrl}</span>
           <input value={mUrl} onChange={(e) => setMUrl(e.target.value)} maxLength={300} placeholder={t.urlPh}
-            className="min-h-[40px] w-64 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            className="min-h-11 w-64 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">{t.fldParent}</span>
@@ -153,12 +153,12 @@ export function StaffMenuPanel({ flash }: { flash: (m: string) => void }) {
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">{t.fldMinClass}</span>
           <input type="number" min={0} max={99} value={mMinClass} onChange={(e) => setMMinClass(Number(e.target.value))}
-            className="min-h-[40px] w-20 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            className="min-h-11 w-20 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-sub">{t.fldSort}</span>
           <input type="number" value={mSort} onChange={(e) => setMSort(Number(e.target.value))}
-            className="min-h-[40px] w-20 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
+            className="min-h-11 w-20 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky" />
         </label>
         <label className="flex items-center gap-2 pb-2 text-sm">
           <input type="checkbox" checked={mEnabled} onChange={(e) => setMEnabled(e.target.checked)} />

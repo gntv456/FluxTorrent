@@ -166,7 +166,7 @@ export function RecentTopics({
               <td className="colhead" style={{ width: "56%" }}>
                 {t.colTopic}
               </td>
-              <td className="colhead">{u.rtColBoard}</td>
+              <th scope="col" className="colhead">{u.rtColBoard}</th>
               <td className="colhead" style={{ textAlign: "center" }}>
                 {u.rtColReplies}
               </td>

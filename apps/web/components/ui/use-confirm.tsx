@@ -163,7 +163,7 @@ export function AskDialog({
             value={text}
             onChange={(e) => setText(e.target.value)}
             maxLength={ask.maxLength}
-            className="min-h-[40px] rounded-[var(--r-sm)] border
+            className="min-h-11 rounded-[var(--r-sm)] border
               border-line bg-[var(--surface-card)] px-3 text-sm"
             data-autofocus
           />

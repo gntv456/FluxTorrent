@@ -48,7 +48,8 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
     try {
       setRows(await api.get("/api/v1/admin/message-templates"));
     } catch {
-      setRows([]); flash(dict.common.loadFailed);
+      setRows([]);
+      flash(dict.common.loadFailed);
     }
   }, [dict, flash]);
   useEffect(() => {
@@ -118,7 +119,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       <div className="flex justify-end">
         <button
           className={
-            "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold text-[var(--text-on-accent)]"
+            "min-h-11 rounded-full bg-sky px-5 text-sm font-bold text-[var(--text-on-accent)]"
           }
           onClick={() =>
             setCreating({ scene_key: "", subject: "", body: "", note: "" })
@@ -224,7 +225,7 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
             <b>{at.preview}</b>
             <button
               className={
-                "min-h-[32px] rounded-full border border-line px-3 text-xs"
+                "min-h-11 rounded-full border border-line px-3 text-xs"
               }
               onClick={() => setPreview(null)}
             >
@@ -238,10 +239,10 @@ export function MsgTemplates({ flash }: { flash: (m: string) => void }) {
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{at.thSceneKey}</td>
-            <td className="colhead">{at.thSubject}</td>
-            <td className="colhead">{at.thNote}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thSceneKey}</th>
+            <th scope="col" className="colhead">{at.thSubject}</th>
+            <th scope="col" className="colhead">{at.thNote}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

@@ -142,7 +142,7 @@ export function FundingPanel() {
   const statusOf = (s: number) => statusLabel(s, t);
 
   const inputCls =
-    "min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky";
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-sm outline-none focus:border-sky";
 
   return (
     <section className="brand-panel flex flex-col gap-3 p-4">
@@ -161,7 +161,7 @@ export function FundingPanel() {
           </button>
           <button
             type="button"
-            className="brand-button min-h-[36px] text-xs"
+            className="brand-button min-h-11 text-xs"
             onClick={() => setCreateOpen((v) => !v)}
           >
             + {t.createBtn}
@@ -188,7 +188,7 @@ export function FundingPanel() {
             key={s}
             type="button"
             onClick={() => setStatusFilter(s)}
-            className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${
+            className={`min-h-11 rounded-full px-3 text-xs font-bold ${
               statusFilter === s
                 ? "bg-sky text-[var(--text-on-accent)]"
                 : "border border-line text-sub"
@@ -215,14 +215,14 @@ export function FundingPanel() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">#</td>
-              <td className="colhead">{t.torrentCol}</td>
-              <td className="colhead w-28">{t.goalCol}</td>
-              <td className="colhead w-28">{t.raisedCol}</td>
-              <td className="colhead w-20">{t.backersCol}</td>
-              <td className="colhead w-40">{t.endsCol}</td>
-              <td className="colhead w-24">{t.statusCol}</td>
-              <td className="colhead w-56">{t.actionCol}</td>
+              <th scope="col" className="colhead">#</th>
+              <th scope="col" className="colhead">{t.torrentCol}</th>
+              <th scope="col" className="colhead w-28">{t.goalCol}</th>
+              <th scope="col" className="colhead w-28">{t.raisedCol}</th>
+              <th scope="col" className="colhead w-20">{t.backersCol}</th>
+              <th scope="col" className="colhead w-40">{t.endsCol}</th>
+              <th scope="col" className="colhead w-24">{t.statusCol}</th>
+              <th scope="col" className="colhead w-56">{t.actionCol}</th>
             </tr>
           </thead>
           <tbody>
@@ -252,7 +252,7 @@ export function FundingPanel() {
                   </td>
                   <td className="rowfollow">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                         f.status === 0
                           ? "bg-sun/30"
                           : f.status === 1
@@ -280,7 +280,7 @@ export function FundingPanel() {
                               [f.id]: e.target.value,
                             }))
                           }
-                          className="min-h-[30px] w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-xs"
+                          className="min-h-11 w-24 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-xs"
                           aria-label={t.contributeBtn}
                         />
                         <button
@@ -294,7 +294,7 @@ export function FundingPanel() {
                               run: () => contribute(f),
                             })
                           }
-                          className="min-h-[30px] rounded-full bg-sky px-3 text-[11px] font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+                          className="min-h-11 rounded-full bg-sky px-3 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
                         >
                           {t.contributeBtn}
                         </button>

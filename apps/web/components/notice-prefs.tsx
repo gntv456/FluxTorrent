@@ -71,7 +71,7 @@ export function NoticePrefsCard() {
               aria-checked={prefs?.[k] ?? true}
               disabled={busy === k || prefs === null}
               onClick={() => toggle(k, !(prefs?.[k] ?? true))}
-              className={`relative h-[22px] w-[44px] shrink-0 rounded-full transition ${
+              className={`relative h-[var(--tap-min)] w-[44px] shrink-0 rounded-full transition ${
                 (prefs?.[k] ?? true)
                   ? "bg-mint"
                   : "bg-[var(--surface-raised)] border border-line"

@@ -32,12 +32,7 @@ function pagerOf(
 
 function FailNote({ t }: { t: Dict["forums3"] }) {
   return (
-    <EmptyState
-      icon="info"
-      tone="warn"
-      title={t.failTitle}
-      desc={t.failDesc}
-    />
+    <EmptyState icon="info" tone="warn" title={t.failTitle} desc={t.failDesc} />
   );
 }
 
@@ -70,10 +65,18 @@ export function MyTopicsPanel({
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{f.topicTitleFallback}</td>
-            <td className="colhead hidden w-28 sm:table-cell">{t.colBoard}</td>
-            <td className="colhead w-28 text-right">{t.colReplies}</td>
-            <td className="colhead w-28 text-right">{f.lastPost}</td>
+            <th scope="col" className="colhead">
+              {f.topicTitleFallback}
+            </th>
+            <th scope="col" className="colhead hidden w-28 sm:table-cell">
+              {t.colBoard}
+            </th>
+            <th scope="col" className="colhead w-28 text-right">
+              {t.colReplies}
+            </th>
+            <th scope="col" className="colhead w-28 text-right">
+              {f.lastPost}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -93,10 +96,7 @@ export function MyTopicsPanel({
                 )}
               </td>
               <td className="hidden text-xs text-sub sm:table-cell">
-                <Link
-                  href={`/forums/${r.forum_id}`}
-                  className="hover:text-sky"
-                >
+                <Link href={`/forums/${r.forum_id}`} className="hover:text-sky">
                   {r.forum_name}
                 </Link>
               </td>
@@ -109,12 +109,7 @@ export function MyTopicsPanel({
         </tbody>
       </table>
       {p.pages > 1 && (
-        <Pager
-          page={p.page}
-          pages={p.pages}
-          total={p.total}
-          hrefs={p.hrefs}
-        />
+        <Pager page={p.page} pages={p.pages} total={p.total} hrefs={p.hrefs} />
       )}
     </div>
   );
@@ -149,9 +144,15 @@ export function MyRepliesPanel({
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{f.topicTitleFallback}</td>
-            <td className="colhead">{t.colExcerpt}</td>
-            <td className="colhead w-28 text-right">{f.lastPost}</td>
+            <th scope="col" className="colhead">
+              {f.topicTitleFallback}
+            </th>
+            <th scope="col" className="colhead">
+              {t.colExcerpt}
+            </th>
+            <th scope="col" className="colhead w-28 text-right">
+              {f.lastPost}
+            </th>
           </tr>
         </thead>
         <tbody>

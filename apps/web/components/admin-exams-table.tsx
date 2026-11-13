@@ -45,13 +45,13 @@ export function ExamsTable({
     <table className="nexus-table text-xs">
       <thead>
         <tr>
-          <td className="colhead">ID</td>
-          <td className="colhead">{t.colPos}</td>
-          <td className="colhead">{t.colBasePay}</td>
-          <td className="colhead">{t.colGates}</td>
-          <td className="colhead">{t.colBonus}</td>
-          <td className="colhead">{t.colAssigned}</td>
-          <td className="colhead text-right">{t.colActions}</td>
+          <th scope="col" className="colhead">ID</th>
+          <th scope="col" className="colhead">{t.colPos}</th>
+          <th scope="col" className="colhead">{t.colBasePay}</th>
+          <th scope="col" className="colhead">{t.colGates}</th>
+          <th scope="col" className="colhead">{t.colBonus}</th>
+          <th scope="col" className="colhead">{t.colAssigned}</th>
+          <th scope="col" className="colhead text-right">{t.colActions}</th>
         </tr>
       </thead>
       <tbody>

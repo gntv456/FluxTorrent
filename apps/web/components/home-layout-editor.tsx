@@ -139,12 +139,12 @@ export function HomeLayoutEditor() {
           >
             <b className="min-w-20 text-sm">
               {(t.names as Record<string, string>)[it.key] ?? it.key}
-              <code className="ml-2 text-[10px] text-sub">{it.key}</code>
+              <code className="ml-2 text-xs text-sub">{it.key}</code>
             </b>
             <select
               value={it.span}
               onChange={(e) => setSpan(idx, Number(e.target.value))}
-              className="min-h-[34px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 text-xs"
+              className="min-h-11 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2 text-xs"
               aria-label={t.spanLabel}
             >
               {SPAN_OPTIONS.map(([v, label]) => (
@@ -164,7 +164,7 @@ export function HomeLayoutEditor() {
                 type="button"
                 onClick={() => move(idx, -1)}
                 disabled={idx === 0}
-                className="min-h-[34px] rounded-[var(--r-sm)] border border-line px-2 text-xs disabled:opacity-40"
+                className="min-h-11 rounded-[var(--r-sm)] border border-line px-2 text-xs disabled:opacity-40"
                 aria-label={t.up}
               >
                 ↑
@@ -173,7 +173,7 @@ export function HomeLayoutEditor() {
                 type="button"
                 onClick={() => move(idx, 1)}
                 disabled={idx === items.length - 1}
-                className="min-h-[34px] rounded-[var(--r-sm)] border border-line px-2 text-xs disabled:opacity-40"
+                className="min-h-11 rounded-[var(--r-sm)] border border-line px-2 text-xs disabled:opacity-40"
                 aria-label={t.down}
               >
                 ↓
@@ -181,7 +181,7 @@ export function HomeLayoutEditor() {
               <button
                 type="button"
                 onClick={() => remove(it.key)}
-                className="min-h-[34px] rounded-[var(--r-sm)] border border-[var(--compat-orange)] px-2 text-xs text-[var(--compat-orange-dark)]"
+                className="min-h-11 rounded-[var(--r-sm)] border border-[var(--compat-orange)] px-2 text-xs text-[var(--compat-orange-dark)]"
               >
                 {t.hide}
               </button>
@@ -198,7 +198,7 @@ export function HomeLayoutEditor() {
               key={k}
               type="button"
               onClick={() => add(k)}
-              className="min-h-[32px] rounded-full border border-line px-3 text-xs"
+              className="min-h-11 rounded-full border border-line px-3 text-xs"
             >
               + {(t.names as Record<string, string>)[k] ?? k}
             </button>
@@ -218,7 +218,7 @@ export function HomeLayoutEditor() {
         <button
           type="button"
           onClick={resetDefault}
-          className="min-h-[40px] rounded-full border border-line px-4 text-sm"
+          className="min-h-11 rounded-full border border-line px-4 text-sm"
         >
           {t.reset}
         </button>

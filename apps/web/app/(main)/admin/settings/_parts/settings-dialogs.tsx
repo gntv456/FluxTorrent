@@ -43,7 +43,7 @@ export function SettingsHistoryDrawer({
               <div className="mt-1 flex flex-col gap-1">
                 {/* diff 高亮：旧值红色划线，新值加粗 */}
                 <p className="flex flex-wrap items-baseline gap-1.5 break-all">
-                  <span className="shrink-0 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-[var(--danger-text)]">
+                  <span className="shrink-0 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-bold text-[var(--danger-text)]">
                     {s.historyOld}
                   </span>
                   <span className="font-mono text-[var(--danger-text)] line-through">
@@ -51,7 +51,7 @@ export function SettingsHistoryDrawer({
                   </span>
                 </p>
                 <p className="flex flex-wrap items-baseline gap-1.5 break-all">
-                  <span className="shrink-0 rounded-full bg-mint/15 px-2 py-0.5 text-[10px] font-bold text-ink">
+                  <span className="shrink-0 rounded-full bg-mint/15 px-2 py-0.5 text-xs font-bold text-ink">
                     {s.historyNew}
                   </span>
                   <span className="font-mono font-bold text-ink">
@@ -59,7 +59,7 @@ export function SettingsHistoryDrawer({
                   </span>
                 </p>
                 {r.detail?.via === "import" && (
-                  <span className="self-start rounded-full bg-sky-soft px-2 py-0.5 text-[10px] font-bold text-sub">
+                  <span className="self-start rounded-full bg-sky-soft px-2 py-0.5 text-xs font-bold text-sub">
                     {s.viaImport}
                   </span>
                 )}
@@ -102,7 +102,7 @@ export function SettingsImportDialog({
   const s = dict.settingsAdmin;
   return (
     <Modal open onClose={onClose} title={s.importTitle}>
-      <p className="mb-2 text-[11px] leading-snug text-sub">{s.importHint}</p>
+      <p className="mb-2 text-xs leading-snug text-sub">{s.importHint}</p>
         <input
           type="file"
           accept="application/json,.json"
@@ -114,16 +114,16 @@ export function SettingsImportDialog({
           onChange={(e) => onText(e.target.value)}
           rows={6}
           placeholder={s.importPlaceholder}
-          className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-[11px] text-ink"
+          className="w-full rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] p-2 font-mono text-xs text-ink"
         />
         {unknown.length > 0 && (
-          <p className="mt-2 rounded-[var(--r-sm)] border border-sun/60 bg-sun/10 p-2 text-[11px] text-ink">
+          <p className="mt-2 rounded-[var(--r-sm)] border border-sun/60 bg-sun/10 p-2 text-xs text-ink">
             {fmt(s.importUnknown, { n: unknown.length })}：
             {unknown.slice(0, 12).join(", ")}
           </p>
         )}
         {skipped.length > 0 && (
-          <p className="mt-2 rounded-[var(--r-sm)] border border-line bg-cloud p-2 text-[11px] text-sub">
+          <p className="mt-2 rounded-[var(--r-sm)] border border-line bg-cloud p-2 text-xs text-sub">
             {fmt(s.importSkipped, { n: skipped.length })}：{skipped.join(", ")}
           </p>
         )}
@@ -137,12 +137,12 @@ export function SettingsImportDialog({
             {diff.length > 0 && (
               <ul className="max-h-56 divide-y divide-line overflow-y-auto rounded-[var(--r-sm)] border border-line">
                 {diff.map((d) => (
-                  <li key={d.name} className="p-2 text-[11px]">
+                  <li key={d.name} className="p-2 text-xs">
                     <p className="flex flex-wrap items-baseline gap-1.5">
                       <span className="font-mono font-bold text-ink">
                         {d.name}
                       </span>
-                      <span className="rounded-full bg-sky-soft px-1.5 py-0.5 text-[10px] text-sub">
+                      <span className="rounded-full bg-sky-soft px-1.5 py-0.5 text-xs text-sub">
                         {(dict.admin.settingGroups[d.group] ?? d.group).replace(
                           "{magic}",
                           currency,

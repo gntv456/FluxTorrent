@@ -76,7 +76,7 @@ export function AdminTrackers() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
 
   return (
     <div className="flex flex-col gap-3">
@@ -171,13 +171,13 @@ export function AdminTrackers() {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thId}</td>
-            <td className="colhead">{at.thUrl}</td>
-            <td className="colhead">{at.thDefault}</td>
-            <td className="colhead">{at.thEnabled}</td>
-            <td className="colhead">{at.thPriority}</td>
-            <td className="colhead">{at.thUpdated}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thId}</th>
+            <th scope="col" className="colhead">{at.thUrl}</th>
+            <th scope="col" className="colhead">{at.thDefault}</th>
+            <th scope="col" className="colhead">{at.thEnabled}</th>
+            <th scope="col" className="colhead">{at.thPriority}</th>
+            <th scope="col" className="colhead">{at.thUpdated}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

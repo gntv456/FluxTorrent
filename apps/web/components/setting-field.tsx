@@ -103,14 +103,14 @@ export function SettingField({
           >
             {field.label}
             {field.readonly && (
-              <span className="ml-1.5 rounded-full bg-sky-soft px-1.5 py-0.5 text-[10px] font-bold text-sub">
+              <span className="ml-1.5 rounded-full bg-sky-soft px-1.5 py-0.5 text-xs font-bold text-sub">
                 {s.readonlyField}
               </span>
             )}
           </p>
           {field.hint && (
             <p
-              className="truncate text-[10px] leading-tight text-sub"
+              className="truncate text-xs leading-tight text-sub"
               title={field.hint}
             >
               {field.hint}
@@ -123,7 +123,7 @@ export function SettingField({
             type="button"
             onClick={onHistory}
             title={s.history}
-            className="shrink-0 text-[10px] font-bold text-sub underline hover:text-ink"
+            className="shrink-0 text-xs font-bold text-sub underline hover:text-ink"
           >
             {s.history}
           </button>
@@ -144,9 +144,9 @@ export function SettingField({
         <label htmlFor={cid} className="text-sm font-bold text-ink">
           {field.label}
         </label>
-        <span className="font-mono text-[11px] text-sub">{field.name}</span>
+        <span className="font-mono text-xs text-sub">{field.name}</span>
         {field.readonly && (
-          <span className="rounded-full bg-sky-soft px-2 py-0.5 text-[10px] font-bold text-sub">
+          <span className="rounded-full bg-sky-soft px-2 py-0.5 text-xs font-bold text-sub">
             {s.readonlyField}
           </span>
         )}
@@ -155,7 +155,7 @@ export function SettingField({
           <button
             type="button"
             onClick={onHistory}
-            className="text-[11px] font-bold text-sub underline hover:text-ink"
+            className="text-xs font-bold text-sub underline hover:text-ink"
           >
             {s.history}
           </button>
@@ -164,7 +164,7 @@ export function SettingField({
       <div className="mt-2">{teamsPicker ?? control}</div>
       {askReveal && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[var(--r-sm)] border border-sun/60 bg-sun/10 p-2">
-          <p className="text-[11px] font-bold text-ink">{s.revealConfirm}</p>
+          <p className="text-xs font-bold text-ink">{s.revealConfirm}</p>
           <span className="flex-1" />
           <button
             type="button"
@@ -172,32 +172,32 @@ export function SettingField({
               setReveal(true);
               setAskReveal(false);
             }}
-            className="min-h-[44px] rounded-full bg-sky-deep px-3 text-[11px] font-bold text-[var(--text-on-accent)]"
+            className="min-h-[44px] rounded-full bg-sky-deep px-3 text-xs font-bold text-[var(--text-on-accent)]"
           >
             {s.revealConfirmYes}
           </button>
           <button
             type="button"
             onClick={() => setAskReveal(false)}
-            className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-3 text-[11px] font-bold text-sub"
+            className="min-h-[44px] rounded-full border border-line bg-[var(--surface-card)] px-3 text-xs font-bold text-sub"
           >
             {s.cancel}
           </button>
         </div>
       )}
       {field.hint && (
-        <p className="mt-1.5 text-[11px] leading-snug text-sub">{field.hint}</p>
+        <p className="mt-1.5 text-xs leading-snug text-sub">{field.hint}</p>
       )}
       {field.type === "pair" && (
-        <p className="mt-1.5 text-[11px] leading-snug text-sub">{s.pairHint}</p>
+        <p className="mt-1.5 text-xs leading-snug text-sub">{s.pairHint}</p>
       )}
       {field.secret && !error && (
-        <p className="mt-1.5 text-[11px] leading-snug text-sub">
+        <p className="mt-1.5 text-xs leading-snug text-sub">
           {field.configured ? s.secretSet : s.unset} · {s.secretKeep}
         </p>
       )}
       {error && (
-        <p className="mt-1.5 text-[11px] font-bold text-[var(--danger-text)]">{error}</p>
+        <p className="mt-1.5 text-xs font-bold text-[var(--danger-text)]">{error}</p>
       )}
     </div>
   );

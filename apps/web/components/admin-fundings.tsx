@@ -39,7 +39,7 @@ const ST_TONE: Record<
 };
 
 const SEL_CLS =
-  "min-h-[36px] rounded-md border border-line bg-cloud px-2 text-sm";
+  "min-h-11 rounded-md border border-line bg-cloud px-2 text-sm";
 const ACT_REFUND = "text-sky-deep hover:underline disabled:opacity-40";
 const ACT_CLOSE = "text-tomato hover:underline disabled:opacity-40";
 
@@ -137,14 +137,14 @@ export function AdminFundings() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.thTorrent}</td>
-              <td className="colhead">{t.thCreator}</td>
-              <td className="colhead">{t.thProgress}</td>
-              <td className="colhead">{t.thBackers}</td>
-              <td className="colhead">{t.thStatus}</td>
-              <td className="colhead">{t.thEnds}</td>
-              <td className="colhead">{t.thAction}</td>
+              <th scope="col" className="colhead">ID</th>
+              <th scope="col" className="colhead">{t.thTorrent}</th>
+              <th scope="col" className="colhead">{t.thCreator}</th>
+              <th scope="col" className="colhead">{t.thProgress}</th>
+              <th scope="col" className="colhead">{t.thBackers}</th>
+              <th scope="col" className="colhead">{t.thStatus}</th>
+              <th scope="col" className="colhead">{t.thEnds}</th>
+              <th scope="col" className="colhead">{t.thAction}</th>
             </tr>
           </thead>
           <tbody>

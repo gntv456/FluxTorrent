@@ -45,7 +45,7 @@ export function TopicTitleEdit({
   }
 
   const btn =
-    "min-h-[30px] rounded-full border border-line px-3 text-xs " +
+    "min-h-11 rounded-full border border-line px-3 text-xs " +
     "font-bold text-sub active:scale-[0.97]";
 
   return (
@@ -85,7 +85,7 @@ export function TopicTitleEdit({
           )}
           <div className="flex gap-2">
             <button
-              className="min-h-[30px] rounded-full bg-[var(--sky)] px-3 text-xs
+              className="min-h-11 rounded-full bg-[var(--sky)] px-3 text-xs
                 font-bold text-[var(--text-on-accent)] disabled:opacity-50"
               disabled={busy}
               onClick={save}

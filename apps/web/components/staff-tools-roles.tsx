@@ -26,13 +26,13 @@ interface UserRoleRow {
 
 // 过滤/授予区的输入框与主按钮
 const INPUT_CLS =
-  "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-cloud px-3 text-sm outline-none focus:border-sky";
 const BTN_OUTLINE_M =
-  "min-h-[40px] rounded-full border border-line px-4 text-sm " +
+  "min-h-11 rounded-full border border-line px-4 text-sm " +
   "font-bold disabled:opacity-50";
 const BTN_SKY =
-  "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold " +
+  "min-h-11 rounded-full bg-sky px-5 text-sm font-bold " +
   "text-white disabled:opacity-50";
 
 export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
@@ -125,11 +125,21 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead w-20">{t.colUser}</td>
-              <td className="colhead w-24">{t.colRole}</td>
-              <td className="colhead w-20">{t.colGrantor}</td>
-              <td className="colhead">{t.colGrantedAt}</td>
-              <td className="colhead">{t.colExpires}</td>
+              <th scope="col" className="colhead w-20">
+                {t.colUser}
+              </th>
+              <th scope="col" className="colhead w-24">
+                {t.colRole}
+              </th>
+              <th scope="col" className="colhead w-20">
+                {t.colGrantor}
+              </th>
+              <th scope="col" className="colhead">
+                {t.colGrantedAt}
+              </th>
+              <th scope="col" className="colhead">
+                {t.colExpires}
+              </th>
               <td className="colhead w-20" />
             </tr>
           </thead>
@@ -162,7 +172,7 @@ export function StaffRolesPanel({ flash }: { flash: (m: string) => void }) {
                     <button
                       disabled={busy}
                       className={
-                        "min-h-[28px] rounded-full border border-line " +
+                        "min-h-11 rounded-full border border-line " +
                         "px-3 font-bold text-[var(--danger-text)] disabled:opacity-50"
                       }
                       onClick={() =>

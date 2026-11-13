@@ -126,7 +126,7 @@ export function FishingSide({
         {prizes.map((p, i) => (
           <span
             key={i}
-            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
               (p.value ?? p.payout * ticket) >= ticket * 5
                 ? "bg-sun-soft text-[var(--warning)]"
                 : (p.value ?? p.payout * ticket) > ticket
@@ -138,7 +138,7 @@ export function FishingSide({
           </span>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-sub">{tf.poolNote}</p>
+      <p className="mt-2 text-xs text-sub">{tf.poolNote}</p>
 
       <h2 className="mb-2 mt-3 font-display text-base">{tf.rodTitle}</h2>
       <div className="fs-rod">
@@ -197,7 +197,7 @@ export function FishingSide({
           </div>
         ))}
         {album && album.got === 0 && (
-          <p className="text-[11px] text-sub">{tf.albumEmpty}</p>
+          <p className="text-xs text-sub">{tf.albumEmpty}</p>
         )}
       </div>
 

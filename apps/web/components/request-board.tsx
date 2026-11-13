@@ -14,7 +14,7 @@ import { SkeletonRows } from "@/components/ui/skeleton";
 
 // 应求对话框输入框/行内小按钮（抽出防 JSX 行超 80 列）
 const TID_INPUT =
-  "min-h-[36px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-3 text-sm text-ink";
 const FILTERS = [
   ["all", "filterAll"],
@@ -24,8 +24,8 @@ const FILTERS = [
   ["my", "filterMy"],
 ] as const;
 const ROW_BTN =
-  "min-h-[28px] rounded-full border border-line px-2 " +
-  "text-[11px] font-bold text-sky-deep";
+  "min-h-11 rounded-full border border-line px-2 " +
+  "text-xs font-bold text-sky-deep";
 export interface RequestRow {
   id: number;
   username: string | null;
@@ -342,11 +342,11 @@ export function RequestBoard({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchPlaceholder}
-            className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
+            className="min-h-11 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
           />
           <button
             type="submit"
-            className="min-h-[40px] rounded-full bg-sky px-4 text-sm font-bold text-[var(--text-on-accent)]"
+            className="min-h-11 rounded-full bg-sky px-4 text-sm font-bold text-[var(--text-on-accent)]"
             disabled={loading}
           >
             {t.search}

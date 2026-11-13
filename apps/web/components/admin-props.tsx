@@ -17,10 +17,7 @@ import type {
   ShopItemRow,
   UserPropRow,
 } from "./admin-props-shared";
-import {
-  cfgField,
-  setCfgField,
-} from "./admin-props-shared";
+import { cfgField, setCfgField } from "./admin-props-shared";
 
 /** 第八轮 P2-8：道具管理（同类站 prop/props + prop/user-props 口径）
  *  道具 CRUD（上下架）+ 用户背包浏览与回收；头像框库拆出
@@ -132,7 +129,7 @@ export function AdminProps() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud " +
     "px-2 text-sm outline-none focus:border-sky";
 
   return (

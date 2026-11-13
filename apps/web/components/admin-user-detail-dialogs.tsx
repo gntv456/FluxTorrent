@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // 状态理由输入框样式（防 JSX 超宽）
 const ASK_INPUT =
-  "min-h-[36px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-3 text-sm text-ink";
 
 export type AskAct = "rename" | "resetPass" | "deleteUser";

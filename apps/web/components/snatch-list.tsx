@@ -64,7 +64,7 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
             setBusy(false);
           }
         }}
-        className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold text-sub disabled:opacity-50"
+        className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub disabled:opacity-50"
       >
         {busy ? t.loading : `👁 ${t.load}`}
       </button>
@@ -76,13 +76,13 @@ export function SnatchList({ torrentId }: { torrentId: number }) {
     <table className="nexus-table">
       <thead>
         <tr>
-          <td className="colhead">{t.colUser}</td>
-          <td className="colhead">{t.colProgress}</td>
-          <td className="colhead">{t.colUploaded}</td>
-          <td className="colhead">{t.colDownloaded}</td>
-          <td className="colhead">{t.colSeeded}</td>
-          <td className="colhead">{t.colClient}</td>
-          <td className="colhead">{t.colCompleted}</td>
+          <th scope="col" className="colhead">{t.colUser}</th>
+          <th scope="col" className="colhead">{t.colProgress}</th>
+          <th scope="col" className="colhead">{t.colUploaded}</th>
+          <th scope="col" className="colhead">{t.colDownloaded}</th>
+          <th scope="col" className="colhead">{t.colSeeded}</th>
+          <th scope="col" className="colhead">{t.colClient}</th>
+          <th scope="col" className="colhead">{t.colCompleted}</th>
         </tr>
       </thead>
       <tbody>

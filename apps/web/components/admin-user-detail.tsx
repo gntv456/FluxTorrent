@@ -29,7 +29,7 @@ import { DetailTabsBody } from "./admin-user-detail-tabs";
  *  详情加载 / 操作面板字典 / 关联 tab 拆至 ./admin-user-detail-hooks.ts。 */
 
 // tab 按钮两种形态（选中高亮 / 未选中描边）
-const TAB_BTN = "min-h-[40px] rounded-full px-4 text-sm font-bold";
+const TAB_BTN = "min-h-11 rounded-full px-4 text-sm font-bold";
 const TAB_BTN_OFF = CELL_CARD_SUB;
 // 临时密码提示条样式
 const TMP_PASS_CLS =

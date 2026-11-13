@@ -38,13 +38,13 @@ export function PayrollTab({ pay }: { pay: Payroll }) {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thClaimId}</td>
-            <td className="colhead">{at.thPayrollUser}</td>
-            <td className="colhead">{at.thPayrollType}</td>
-            <td className="colhead">{at.thPay}</td>
-            <td className="colhead">{at.thBonus}</td>
-            <td className="colhead">{at.thWay}</td>
-            <td className="colhead">{at.thPayTime}</td>
+            <th scope="col" className="colhead">{at.thClaimId}</th>
+            <th scope="col" className="colhead">{at.thPayrollUser}</th>
+            <th scope="col" className="colhead">{at.thPayrollType}</th>
+            <th scope="col" className="colhead">{at.thPay}</th>
+            <th scope="col" className="colhead">{at.thBonus}</th>
+            <th scope="col" className="colhead">{at.thWay}</th>
+            <th scope="col" className="colhead">{at.thPayTime}</th>
           </tr>
         </thead>
         <tbody>

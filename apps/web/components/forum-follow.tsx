@@ -104,7 +104,7 @@ export function FollowButton({
       disabled={busy}
       aria-pressed={on}
       title={on ? t.following : t.follow}
-      className={`inline-flex min-h-[32px] items-center gap-1 rounded-full border px-3 text-xs font-bold transition disabled:opacity-50 ${
+      className={`inline-flex min-h-11 items-center gap-1 rounded-full border px-3 text-xs font-bold transition disabled:opacity-50 ${
         on
           ? "border-transparent bg-[var(--sky-soft)] text-sky"
           : "border-line text-sub hover:border-sky hover:text-sky"

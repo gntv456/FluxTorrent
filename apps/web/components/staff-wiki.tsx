@@ -184,7 +184,7 @@ font-bold text-white disabled:opacity-50"
             </div>
             <pre
               className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap \
-font-mono text-[11px] text-sub"
+font-mono text-xs text-sub"
             >
               {r.body.slice(0, 500)}
             </pre>

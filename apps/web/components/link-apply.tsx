@@ -106,7 +106,7 @@ export function LinkApply() {
               />
               <input
                 type="reset"
-                className="min-h-[34px] ml-3 rounded-full border-0 bg-brand-soft px-4 text-xs font-bold text-[var(--text-brand)]"
+                className="min-h-11 ml-3 rounded-full border-0 bg-brand-soft px-4 text-xs font-bold text-[var(--text-brand)]"
                 value={t.reset}
               />
             </td>

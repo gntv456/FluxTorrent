@@ -63,8 +63,9 @@ export function ContestBoard() {
       toast.error(
         e instanceof ApiError ? e.message : dict.common.networkError,
         {
-        requestId: e instanceof ApiError ? e.requestId : undefined,
-      });
+          requestId: e instanceof ApiError ? e.requestId : undefined,
+        },
+      );
     } finally {
       setBusy(false);
     }
@@ -78,52 +79,68 @@ export function ContestBoard() {
         <p className="text-sm text-warn">{dict.common.loadFailed}</p>
       ) : (
         <div className="brand-wide-table-scroll">
-      <table className="nexus-table">
-        <tbody>
-          <tr>
-            <td className="colhead">{t.colTitle}</td>
-            <td className="colhead">{t.colPeriod}</td>
-            <td className="colhead">{t.colEntries}</td>
-            <td className="colhead">{t.colLeader}</td>
-            <td className="colhead text-right">{dict.cmgmt.colActions}</td>
-          </tr>
-          {rows.map((c) => (
-            <tr key={c.id}>
-              <td>
-                <span className="font-bold text-ink">{c.title}</span>
-                {c.live && <span className="contest-live">{t.live}</span>}
-                {c.descr && <p className="mt-1 text-xs text-sub">{c.descr}</p>}
-              </td>
-              <td className="text-xs text-sub">
-                {new Date(c.starts_at).toLocaleDateString(dateLocale(locale))}
-                {" ~ "}
-                {new Date(c.ends_at).toLocaleDateString(dateLocale(locale))}
-              </td>
-              <td className="num">{c.entries}</td>
-              <td>{c.leader ? `${c.leader} (${c.leader_score ?? 0})` : "—"}</td>
-              <td className="text-right">
-                {c.live && (
-                  <button
-                    className="cmgmt-act"
-                    disabled={busy}
-                    onClick={() => join(c.id)}
-                  >
-                    {t.btnJoin}
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-6 text-center text-sub">
-                {t.empty}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      </div>
+          <table className="nexus-table">
+            <tbody>
+              <tr>
+                <th scope="col" className="colhead">
+                  {t.colTitle}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.colPeriod}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.colEntries}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.colLeader}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {dict.cmgmt.colActions}
+                </th>
+              </tr>
+              {rows.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <span className="font-bold text-ink">{c.title}</span>
+                    {c.live && <span className="contest-live">{t.live}</span>}
+                    {c.descr && (
+                      <p className="mt-1 text-xs text-sub">{c.descr}</p>
+                    )}
+                  </td>
+                  <td className="text-xs text-sub">
+                    {new Date(c.starts_at).toLocaleDateString(
+                      dateLocale(locale),
+                    )}
+                    {" ~ "}
+                    {new Date(c.ends_at).toLocaleDateString(dateLocale(locale))}
+                  </td>
+                  <td className="num">{c.entries}</td>
+                  <td>
+                    {c.leader ? `${c.leader} (${c.leader_score ?? 0})` : "—"}
+                  </td>
+                  <td className="text-right">
+                    {c.live && (
+                      <button
+                        className="cmgmt-act"
+                        disabled={busy}
+                        onClick={() => join(c.id)}
+                      >
+                        {t.btnJoin}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-6 text-center text-sub">
+                    {t.empty}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

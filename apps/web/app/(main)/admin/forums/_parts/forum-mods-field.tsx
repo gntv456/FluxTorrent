@@ -92,12 +92,12 @@ export function ForumModsField({
             if (e.key === "Enter") add();
           }}
           placeholder={t.usernamePh}
-          className={`${INPUT_CLS} min-h-[32px] min-w-0 text-xs`}
+          className={`${INPUT_CLS} min-h-11 min-w-0 text-xs`}
         />
         <button
           type="button"
           disabled={busy || !draft.trim()}
-          className={`${BTN_SKY} min-h-[32px] shrink-0 px-3 text-xs`}
+          className={`${BTN_SKY} min-h-11 shrink-0 px-3 text-xs`}
           onClick={add}
         >
           {t.modAddBtn}

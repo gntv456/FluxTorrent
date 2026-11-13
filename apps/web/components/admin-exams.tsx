@@ -99,7 +99,7 @@ export function AdminExams() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud " +
     "px-2 text-sm outline-none focus:border-sky";
 
   return (

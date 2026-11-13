@@ -81,7 +81,7 @@ export function WishlistButton({ keyword }: { keyword: string }) {
         onClick={toggle}
         disabled={busy || !kw}
         title={t.note}
-        className={`min-h-[36px] rounded-full px-4 text-xs font-bold transition-transform active:scale-[0.97] disabled:opacity-50 ${
+        className={`min-h-11 rounded-full px-4 text-xs font-bold transition-transform active:scale-[0.97] disabled:opacity-50 ${
           added
             ? "border border-[var(--compat-orange)] text-[var(--compat-orange-dark)]"
             : "bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] text-white"
@@ -112,12 +112,13 @@ export function WishlistPanel() {
     try {
       const d = await api.get<WishRow[] | WishResp>("/api/v1/wishlist");
       setRows(readItems(d));
-      setHits(Array.isArray(d) ? [] : d.hits ?? []);
+      setHits(Array.isArray(d) ? [] : (d.hits ?? []));
     } catch {
       // P-314：心愿单拉取失败此前 setRows([]) ⇒ 第 217 行的空态分支会宣称
       // 「你还没有收藏」。置回 null（本 state 类型本就是 WishRow[] | null）
       // 让那条宣称不成立，再用面板已有的 msg 通道给一句可诊断提示。
-      setRows(null); setMsg(dict.common.loadFailed);
+      setRows(null);
+      setMsg(dict.common.loadFailed);
     }
   }, [dict]);
   useEffect(() => {
@@ -188,33 +189,37 @@ export function WishlistPanel() {
       )}
       {rows !== null && rows.length > 0 && (
         <div className="brand-wide-table-scroll">
-        <table className="nexus-table">
-          <tbody>
-            <tr>
-              <td className="colhead">#{t.title}</td>
-              <td className="colhead w-40">{dict.messages.timeCol}</td>
-              <td className="colhead w-24" />
-            </tr>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="rowfollow font-bold">{r.keyword}</td>
-                <td className="rowfollow text-xs text-sub">
-                  {new Date(r.created_at).toLocaleString(dateLocale(locale))}
-                </td>
-                <td className="rowfollow text-right">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => remove(r.id)}
-                    className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
-                  >
-                    {t.removeBtn}
-                  </button>
-                </td>
+          <table className="nexus-table">
+            <tbody>
+              <tr>
+                <th scope="col" className="colhead">
+                  #{t.title}
+                </th>
+                <th scope="col" className="colhead w-40">
+                  {dict.messages.timeCol}
+                </th>
+                <td className="colhead w-24" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="rowfollow font-bold">{r.keyword}</td>
+                  <td className="rowfollow text-xs text-sub">
+                    {new Date(r.created_at).toLocaleString(dateLocale(locale))}
+                  </td>
+                  <td className="rowfollow text-right">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => remove(r.id)}
+                      className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
+                    >
+                      {t.removeBtn}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       {rows !== null && rows.length === 0 && (
@@ -231,17 +236,20 @@ export function WishlistPanel() {
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.hitsTitle}</td>
-                <td className="colhead">{t.hitsKeyword}</td>
-                <td className="colhead">{t.hitsAt}</td>
+                <th scope="col" className="colhead">
+                  {t.hitsTitle}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.hitsKeyword}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.hitsAt}
+                </th>
               </tr>
               {hits.map((h) => (
                 <tr key={`${h.torrent_id}-${h.keyword}`}>
                   <td className="rowfollow">
-                    <a
-                      href={`/torrent/${h.torrent_id}`}
-                      className="text-link"
-                    >
+                    <a href={`/torrent/${h.torrent_id}`} className="text-link">
                       {h.torrent_name}
                     </a>
                   </td>

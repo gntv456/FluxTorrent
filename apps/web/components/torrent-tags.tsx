@@ -89,7 +89,7 @@ export function TorrentTags({
   if (state === "error") {
     return (
       <div className="td-tagcloud" role="status">
-        <span className="text-[11px] text-sub">{dict.common.loadFailed}</span>
+        <span className="text-xs text-sub">{dict.common.loadFailed}</span>
         <button
           type="button"
           className="td-tag td-tag--off"
@@ -130,7 +130,7 @@ export function TorrentTags({
           {t.addTag ?? t.showAll}
         </button>
         {msg && (
-          <span className="text-[11px] text-sub" role="status">
+          <span className="text-xs text-sub" role="status">
             {msg}
           </span>
         )}
@@ -192,7 +192,7 @@ export function TorrentTags({
         </button>
       )}
       {msg && (
-        <span className="text-[11px] text-sub" role="status">
+        <span className="text-xs text-sub" role="status">
           {msg}
         </span>
       )}

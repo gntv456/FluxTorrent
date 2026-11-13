@@ -9,7 +9,7 @@ import { MedalImagePreview } from "./admin-medals-rarity";
 
 /** 上传按钮：sky 描边小胶囊（与「清除图片」同级） */
 const UPLOAD_BTN_CLS =
-  "min-h-[32px] rounded-full border border-sky px-3 text-xs font-bold" +
+  "min-h-11 rounded-full border border-sky px-3 text-xs font-bold" +
   " text-sky disabled:opacity-40";
 
 /** 资源条容器：底部分隔线与表单主体隔开 */

@@ -10,10 +10,7 @@ import { BTN_SM_BOLD, INPUT_MD } from "@/lib/ui-classes";
  */
 
 import type { Detail } from "./admin-user-detail-shared";
-import {
-  categoryLabels,
-  itemKindLabels,
-} from "./admin-user-detail-shared";
+import { categoryLabels, itemKindLabels } from "./admin-user-detail-shared";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/config";
 
@@ -30,10 +27,11 @@ const DETAILS_BOX_CLS =
   "rounded-[var(--r-sm)] border border-dashed border-line p-2";
 
 /** 展开面板共用的圆角切换按钮样式（激活=天蓝、默认=描边） */
-export const TAB_BTN_CLS = "min-h-[36px] rounded-full px-4 text-xs font-bold ";
+export const TAB_BTN_CLS =
+  "min-h-11 rounded-full px-4 text-xs font-bold ";
 /** 下拉/输入框统一底样式（cmgmt 表单内） */
 export const FIELD_CLS =
-  "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2";
 
 export interface AdminPanelsProps {

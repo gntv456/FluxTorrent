@@ -49,7 +49,7 @@ const WALL_BAR_CLS =
 const WALL_TITLE_CLS =
   "block text-[12px] font-semibold leading-snug text-white";
 const WALL_STATS_CLS =
-  "num mt-0.5 flex items-center gap-2 text-[10.5px] text-white/80";
+  "num mt-0.5 flex items-center gap-2 text-xs text-white/80";
 
 /** 封面（外链 poster；无图/挂图回退分类色块 + 唱片图标） */
 function Cover({

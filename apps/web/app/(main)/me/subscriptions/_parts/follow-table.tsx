@@ -32,21 +32,19 @@ export function FollowTable({
   emptyDesc: string;
 }) {
   if (rows.length === 0) {
-    return (
-      <EmptyState
-        icon={emptyIcon}
-        title={emptyTitle}
-        desc={emptyDesc}
-      />
-    );
+    return <EmptyState icon={emptyIcon} title={emptyTitle} desc={emptyDesc} />;
   }
   return (
     <div className="brand-panel overflow-x-auto">
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{colLabel}</td>
-            <td className="colhead w-32 text-right">{actionLabel}</td>
+            <th scope="col" className="colhead">
+              {colLabel}
+            </th>
+            <th scope="col" className="colhead w-32 text-right">
+              {actionLabel}
+            </th>
           </tr>
         </thead>
         <tbody>

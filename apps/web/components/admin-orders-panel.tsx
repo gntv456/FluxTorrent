@@ -32,7 +32,7 @@ interface OrdersEnvelope {
 }
 
 const FILTER_CLS =
-  "min-h-[32px] rounded-full border border-line px-3 text-xs";
+  "min-h-11 rounded-full border border-line px-3 text-xs";
 
 export function OrdersPanel() {
   const { dict, locale, currency } = useI18n();

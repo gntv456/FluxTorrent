@@ -47,7 +47,7 @@ export function GroupSubscribeButton({
         type="button"
         onClick={toggle}
         disabled={busy}
-        className={`min-h-[30px] rounded-full px-3 text-xs font-bold transition-transform active:scale-[0.97] disabled:opacity-50 ${
+        className={`min-h-11 rounded-full px-3 text-xs font-bold transition-transform active:scale-[0.97] disabled:opacity-50 ${
           subscribed
             ? "border border-[var(--compat-orange)] text-[var(--compat-orange-dark)]"
             : "bg-[linear-gradient(135deg,var(--compat-orange-bright),var(--compat-orange))] text-white"
@@ -56,7 +56,7 @@ export function GroupSubscribeButton({
         {subscribed ? `🔔 ${t.subscribed}` : `🔕 ${t.subscribe}`}
       </button>
       {msg && (
-        <span className="text-[11px] text-sub" role="status">
+        <span className="text-xs text-sub" role="status">
           {msg}
         </span>
       )}

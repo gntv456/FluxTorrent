@@ -55,10 +55,10 @@ export function AppealRows({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead w-36">{t.colTime}</td>
-                <td className="colhead">{t.colKind}</td>
-                <td className="colhead w-24">{t.colStatus}</td>
-                <td className="colhead w-[30%]">{t.colResult}</td>
+                <th scope="col" className="colhead w-36">{t.colTime}</th>
+                <th scope="col" className="colhead">{t.colKind}</th>
+                <th scope="col" className="colhead w-24">{t.colStatus}</th>
+                <th scope="col" className="colhead w-[30%]">{t.colResult}</th>
               </tr>
               {rows.map((r) => (
                 <tr key={r.id}>

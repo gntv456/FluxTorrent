@@ -87,7 +87,7 @@ export default function AdminForumsPage() {
       headAside={
         <Link
           href="/admin"
-          className="min-h-[36px] rounded-full border border-line
+          className="min-h-11 rounded-full border border-line
             px-4 text-xs font-bold text-ink"
         >
           ‹ {dict.admin.backToAdmin}

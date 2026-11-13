@@ -39,12 +39,12 @@ function TierTable({
       <table className="nexus-table w-full text-xs">
         <thead>
           <tr>
-            <td className="colhead">{t.colTier}</td>
+            <th scope="col" className="colhead">{t.colTier}</th>
             <td className="colhead w-16 text-right">
               {t.colScore}
             </td>
             {withCond && (
-              <td className="colhead">{t.colCond}</td>
+              <th scope="col" className="colhead">{t.colCond}</th>
             )}
           </tr>
         </thead>
@@ -163,7 +163,7 @@ export function SeedingCalc({
               <table className="nexus-table w-full text-xs">
                 <thead>
                   <tr>
-                    <td className="colhead">{t.colParam}</td>
+                    <th scope="col" className="colhead">{t.colParam}</th>
                     <td className="colhead w-24 text-right">
                       {t.colValue}
                     </td>
@@ -222,7 +222,7 @@ export function SeedingCalc({
             <table className="nexus-table w-full text-xs">
               <thead>
                 <tr>
-                  <td className="colhead">{t.colTier}</td>
+                  <th scope="col" className="colhead">{t.colTier}</th>
                   <td className="colhead w-24 text-right">
                     {t.colCount}
                   </td>

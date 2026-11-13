@@ -42,7 +42,7 @@ const CROP_TINTS = [
 
 const BADGE_CLS =
   "num rounded-full bg-[var(--surface-card)]/90 px-1.5 py-0.5 " +
-  "text-[9px] font-black leading-none shadow-[0_1px_3px_rgba(44,62,92,0.25)]";
+  "text-xs font-black leading-none shadow-[0_1px_3px_rgba(44,62,92,0.25)]";
 
 const WATER_CHIP_CLS =
   "absolute bottom-1 left-1 grid h-6 w-6 place-items-center rounded-full " +
@@ -94,7 +94,7 @@ export function FarmPlot({
         <span aria-hidden className="text-xl leading-none text-sub">
           +
         </span>
-        <span className="text-[10px] font-bold leading-tight">
+        <span className="text-xs font-bold leading-tight">
           {t.plotEmpty.replace("{n}", String(slot))}
         </span>
       </button>
@@ -156,7 +156,7 @@ export function FarmPlot({
       {plot.watered && !ready && !withered && (
         <span
           aria-hidden
-          className="absolute right-1 top-1 text-[10px] opacity-70"
+          className="absolute right-1 top-1 text-xs opacity-70"
         >
           💧
         </span>
@@ -164,7 +164,7 @@ export function FarmPlot({
       {plot.fertilized && !ready && !withered && (
         <span
           aria-hidden
-          className="absolute right-6 top-1 text-[10px] opacity-70"
+          className="absolute right-6 top-1 text-xs opacity-70"
         >
           🌱
         </span>

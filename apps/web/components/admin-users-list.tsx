@@ -54,14 +54,14 @@ export function UsersBatchBar({
       <button
         disabled={busy || sel.size === 0}
         onClick={() => batch("status", 0)}
-        className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+        className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
       >
         {at.batchNormal}
       </button>
       <button
         disabled={busy || sel.size === 0}
         onClick={() => batch("status", 1)}
-        className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
+        className="min-h-11 rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
       >
         {at.batchMute}
       </button>
@@ -77,7 +77,7 @@ export function UsersBatchBar({
         <select
           value={batchClass}
           onChange={(e) => setBatchClass(e.target.value)}
-          className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
+          className="min-h-11 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-2"
         >
           <option value="">{at.pickClass}</option>
           {classes
@@ -141,17 +141,39 @@ export function UsersTable({
               }
             />
           </td>
-          <td className="colhead">{sortBtn("id", "Id")}</td>
-          <td className="colhead">{au.thUsername}</td>
-          <td className="colhead">{au.thEmail}</td>
-          <td className="colhead">{sortBtn("class", au.fClass)}</td>
-          <td className="colhead">{sortBtn("uploaded", ud.uploaded)}</td>
-          <td className="colhead">{sortBtn("downloaded", ud.downloaded)}</td>
-          <td className="colhead">{au.thStatus}</td>
-          <td className="colhead">{au.thDownload}</td>
-          <td className="colhead">{au.thSuspended}</td>
-          <td className="colhead">{sortBtn("created", ud.createdAt)}</td>
-          <td className="colhead">{au.thAction}</td>
+          <th scope="col" className="colhead">
+            {sortBtn("id", "Id")}
+          </th>
+          <th scope="col" className="colhead">
+            {au.thUsername}
+          </th>
+          <th scope="col" className="colhead">
+            {au.thEmail}
+          </th>
+          <th scope="col" className="colhead">
+            {sortBtn("class", au.fClass)}
+          </th>
+          <th scope="col" className="colhead">
+            {sortBtn("uploaded", ud.uploaded)}
+          </th>
+          <th scope="col" className="colhead">
+            {sortBtn("downloaded", ud.downloaded)}
+          </th>
+          <th scope="col" className="colhead">
+            {au.thStatus}
+          </th>
+          <th scope="col" className="colhead">
+            {au.thDownload}
+          </th>
+          <th scope="col" className="colhead">
+            {au.thSuspended}
+          </th>
+          <th scope="col" className="colhead">
+            {sortBtn("created", ud.createdAt)}
+          </th>
+          <th scope="col" className="colhead">
+            {au.thAction}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -177,7 +199,7 @@ export function UsersTable({
                 {u.username}
               </a>
               {u.status > 0 && (
-                <span className="ml-1 rounded-full bg-coral/20 px-2 py-0.5 text-[10px] text-[var(--danger-text)]">
+                <span className="ml-1 rounded-full bg-coral/20 px-2 py-0.5 text-xs text-[var(--danger-text)]">
                   {STATUS_LABELS[u.status] ?? u.status}
                 </span>
               )}

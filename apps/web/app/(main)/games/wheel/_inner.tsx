@@ -267,7 +267,7 @@ export default function WheelFocusPage({
             <button
               type="button"
               onClick={() => void draw(true)}
-              className="min-h-[var(--tap-min)] rounded-full bg-sky
+              className="min-h-11 rounded-full bg-sky
                 px-3 py-1 text-xs font-bold text-[var(--text-on-accent)]"
             >
               {dict.common.retry}
@@ -285,7 +285,7 @@ export default function WheelFocusPage({
             {prizes.map((p, i) => (
               <span
                 key={i}
-                className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                   (p.value ?? p.payout * ticket) >= ticket * 10
                     ? "bg-sun-soft text-[var(--warning)]"
                     : (p.value ?? p.payout * ticket) > ticket
@@ -296,7 +296,7 @@ export default function WheelFocusPage({
               </span>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-sub">{tw.poolNote}</p>
+          <p className="mt-2 text-xs text-sub">{tw.poolNote}</p>
         </div>
       }
       side={

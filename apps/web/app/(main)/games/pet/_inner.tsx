@@ -281,7 +281,7 @@ export default function PetFocusPage({
             />
           )}
           {st && st.level >= st.max_level && (
-            <p className="text-[11px] font-bold text-[var(--warning)]">
+            <p className="text-xs font-bold text-[var(--warning)]">
               {tp.full}
             </p>
           )}
@@ -307,7 +307,7 @@ export default function PetFocusPage({
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px] text-sub">
+          <p className="mt-3 text-xs text-sub">
             {tp.rule.replace("{magic}", currency)}
           </p>
         </div>

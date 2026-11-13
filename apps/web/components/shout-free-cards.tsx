@@ -69,7 +69,7 @@ export function ShoutFreeCards({ cards }: { cards: FreeCard[] }) {
                 {c.price} {currency}
               </span>
             )}
-            <span className="shrink-0 text-[11px] text-sub">
+            <span className="shrink-0 text-xs text-sub">
               {formatBytes(c.size)} · {dTorrent.seeding} {c.seeders}
             </span>
           </Link>

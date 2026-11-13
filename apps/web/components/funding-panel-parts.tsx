@@ -43,38 +43,44 @@ export function MineTable({
     <div>
       <h3 className="mb-2 text-sm font-bold">{t.mine}</h3>
       <div className="brand-wide-table-scroll">
-      <table className="nexus-table text-xs">
-        <tbody>
-          <tr>
-            <td className="colhead">#</td>
-            <td className="colhead">{t.raisedCol}</td>
-            <td className="colhead w-24">{t.statusCol}</td>
-          </tr>
-          {(mine ?? []).map((m, i) => (
-            <tr key={`${m[0]}-${i}`}>
-              <td className="rowfollow num">
-                <a className="text-link" href={`/torrents`}>
-                  #{m[0]}
-                </a>
-              </td>
-              <td className="rowfollow num">
-                {fmt(t.minePaid, {
-                  paid: m[1].toLocaleString(),
-                  tax: m[2].toLocaleString(),
-                })}
-              </td>
-              <td className="rowfollow">{statusOf(m[3])}</td>
-            </tr>
-          ))}
-          {mine !== null && mine.length === 0 && (
+        <table className="nexus-table text-xs">
+          <tbody>
             <tr>
-              <td colSpan={3} className="py-4 text-center text-sub">
-                {t.mineEmpty}
-              </td>
+              <th scope="col" className="colhead">
+                #
+              </th>
+              <th scope="col" className="colhead">
+                {t.raisedCol}
+              </th>
+              <th scope="col" className="colhead w-24">
+                {t.statusCol}
+              </th>
             </tr>
-          )}
-        </tbody>
-      </table>
+            {(mine ?? []).map((m, i) => (
+              <tr key={`${m[0]}-${i}`}>
+                <td className="rowfollow num">
+                  <a className="text-link" href={`/torrents`}>
+                    #{m[0]}
+                  </a>
+                </td>
+                <td className="rowfollow num">
+                  {fmt(t.minePaid, {
+                    paid: m[1].toLocaleString(),
+                    tax: m[2].toLocaleString(),
+                  })}
+                </td>
+                <td className="rowfollow">{statusOf(m[3])}</td>
+              </tr>
+            ))}
+            {mine !== null && mine.length === 0 && (
+              <tr>
+                <td colSpan={3} className="py-4 text-center text-sub">
+                  {t.mineEmpty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -153,7 +159,7 @@ export function CreateForm({
         <button
           type="submit"
           disabled={busy || !form.torrent_id}
-          className="brand-button min-h-[38px] text-xs disabled:opacity-50"
+          className="brand-button min-h-11 text-xs disabled:opacity-50"
         >
           {t.createBtn}
         </button>

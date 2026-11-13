@@ -63,7 +63,7 @@ export function MyFieldSection({
               type="button"
               onClick={onHarvestAll}
               disabled={busy}
-              className="min-h-[34px] rounded-full bg-mint px-3 text-[11px] font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
+              className="min-h-11 rounded-full bg-mint px-3 text-xs font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
             >
               {tf.harvestAll.replace("{n}", String(readyPlots.length))}
             </button>
@@ -250,14 +250,14 @@ export function FarmQuestSection({
             <span className="num text-xs text-sub">
               {q.done}/{q.target}
             </span>
-            <span className="num text-[11px] font-black text-[var(--sun)]">
+            <span className="num text-xs font-black text-[var(--sun)]">
               +{q.reward}
             </span>
             <button
               type="button"
               onClick={() => onClaim(q.code)}
               disabled={!q.ready || claiming === `quest:${q.code}`}
-              className={`min-h-[30px] rounded-full px-3 text-[11px] font-bold active:scale-[0.97] disabled:opacity-50 ${
+              className={`min-h-11 rounded-full px-3 text-xs font-bold active:scale-[0.97] disabled:opacity-50 ${
                 q.ready && !q.claimed
                   ? "bg-sun text-ink"
                   : "bg-[var(--surface-sunken)] text-sub"

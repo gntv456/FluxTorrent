@@ -9,10 +9,7 @@ import { getSiteProfile } from "@/lib/site-profile";
 import type { Page, TorrentListItem } from "@fluxtorrent/domain-types";
 import { HomeSections } from "@/components/home-sections";
 import { ShjHero } from "@/components/shj-hero";
-import {
-  homeMeSummary,
-  type HomeMeRaw,
-} from "./_parts/home-me-summary";
+import { homeMeSummary, type HomeMeRaw } from "./_parts/home-me-summary";
 import type { HomeData } from "@/components/home-data";
 import {
   LatestPosters,
@@ -52,9 +49,7 @@ export default async function HomePage() {
     promos = [];
   }
   // M3 移动问候条数据（/me/overview 摘要；失败回落 null 只渲染问候语）
-  const ov = await api
-    .get<HomeMeRaw>("/api/v1/me/overview")
-    .catch(() => null);
+  const ov = await api.get<HomeMeRaw>("/api/v1/me/overview").catch(() => null);
   const meSummary = homeMeSummary(ov, dateLocale(locale));
   const brandName = profile?.brand || dict.common.brand;
 
@@ -169,71 +164,69 @@ export default async function HomePage() {
         me={meSummary}
         brand={brandName}
         latest={
-          latest === null
-            ? null
-            : latest.items.length > 0
-              ? (
-                <section className="flex flex-col gap-1">
-                  <div className="flex items-baseline justify-between px-1">
-                    <h2 className="font-display">{dict.home.latest}</h2>
-                    <Link href="/torrents" className="text-xs">
-                      {dict.home.viewAll}
-                    </Link>
-                  </div>
-                  <LatestPosters items={posterItems} />
-                </section>
-              )
-              : (
-                <table className="nexus-table">
-                  <thead>
-                    <tr>
-                      <td className="colhead">{dict.home.latest}</td>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {/* G14：空态给行动链接（与资源库空态同口径）。站点有已通过
+          latest === null ? null : latest.items.length > 0 ? (
+            <section className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between px-1">
+                <h2 className="font-display">{dict.home.latest}</h2>
+                <Link href="/torrents" className="text-xs">
+                  {dict.home.viewAll}
+                </Link>
+              </div>
+              <LatestPosters items={posterItems} />
+            </section>
+          ) : (
+            <table className="nexus-table">
+              <thead>
+                <tr>
+                  <th scope="col" className="colhead">
+                    {dict.home.latest}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {/* G14：空态给行动链接（与资源库空态同口径）。站点有已通过
                           资源却显示空 → 默认视图只放活种，不能再说「还没有资源」，
                           否则与同屏「站点数据·种子 N」打架。 */}
-                      <td className="p-6">
-                        <div
-                          className="flex flex-col items-center gap-3 py-4
+                  <td className="p-6">
+                    <div
+                      className="flex flex-col items-center gap-3 py-4
                             text-center"
-                        >
-                          <Icon
-                            name="seed"
-                            size={56}
-                            className="text-[var(--sky)]"
-                          />
-                          <p className="text-sub">
-                            {hasApproved
-                              ? dict.torrent.emptyAliveTitle
-                              : dict.home.empty}
-                          </p>
-                          {hasApproved ? (
-                            <a
-                              href="/torrents?alive=0"
-                              className="rounded-full border border-line px-5
+                    >
+                      <Icon
+                        name="seed"
+                        size={56}
+                        className="text-[var(--sky)]"
+                      />
+                      <p className="text-sub">
+                        {hasApproved
+                          ? dict.torrent.emptyAliveTitle
+                          : dict.home.empty}
+                      </p>
+                      {hasApproved ? (
+                        <a
+                          href="/torrents?alive=0"
+                          className="rounded-full border border-line px-5
                                 py-2 text-sm font-bold text-sky-deep
                                 hover:bg-[var(--surface-card)]"
-                            >
-                              {dict.torrent.emptyAliveAction}
-                            </a>
-                          ) : (
-                            <Link
-                              href="/upload"
-                              className="rounded-full bg-[var(--accent-surface)] px-5 py-2
+                        >
+                          {dict.torrent.emptyAliveAction}
+                        </a>
+                      ) : (
+                        <Link
+                          href="/upload"
+                          className="rounded-full bg-[var(--accent-surface)] px-5 py-2
                                 text-sm font-bold text-[var(--accent-on)]"
-                            >
-                              {dict.home.emptyAction}
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              )
+                        >
+                          {dict.home.emptyAction}
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          )
         }
       />
     </div>

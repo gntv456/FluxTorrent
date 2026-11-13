@@ -107,13 +107,13 @@ export function MenuItems({ flash }: { flash: (m: string) => void }) {
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{at.thId}</td>
-            <td className="colhead">{at.thLoc}</td>
-            <td className="colhead">{at.thName}</td>
-            <td className="colhead">{at.thUrl}</td>
-            <td className="colhead">{at.thSort}</td>
-            <td className="colhead">{at.thEnabled}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thId}</th>
+            <th scope="col" className="colhead">{at.thLoc}</th>
+            <th scope="col" className="colhead">{at.thName}</th>
+            <th scope="col" className="colhead">{at.thUrl}</th>
+            <th scope="col" className="colhead">{at.thSort}</th>
+            <th scope="col" className="colhead">{at.thEnabled}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

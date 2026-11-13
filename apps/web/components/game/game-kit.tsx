@@ -96,7 +96,7 @@ export function GameShell({
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/games"
-          className="gs-back min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+          className="gs-back min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
         >
           ← {dict.games.back}
         </Link>
@@ -154,7 +154,7 @@ export function PlayHint({
       <button
         type="button"
         onClick={() => setDismissed(true)}
-        className="min-h-[32px] rounded-full border border-[var(--border-deep)] px-3 text-[11px] font-bold"
+        className="min-h-11 rounded-full border border-[var(--border-deep)] px-3 text-xs font-bold"
       >
         {t.hintOk}
       </button>
@@ -204,7 +204,7 @@ export function ChipSelect({
           onChange(Math.max(1, Math.min(maxBet, Number(e.target.value) || 1)))
         }
         aria-label={t.betLabel.replace("{magic}", currency)}
-        className="num min-h-[40px] w-24 rounded-full border border-line bg-[var(--surface-card)] px-3 text-right font-bold outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+        className="num min-h-11 w-24 rounded-full border border-line bg-[var(--surface-card)] px-3 text-right font-bold outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
       />
       <span className="text-xs text-sub">{currency}</span>
     </div>

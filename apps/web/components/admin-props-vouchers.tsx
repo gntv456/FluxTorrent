@@ -39,8 +39,9 @@ interface Props {
 }
 
 const UID_CLS =
-  "min-h-[32px] w-40 rounded-full border border-line px-3 text-xs";
-const N_CLS = "min-h-[32px] w-16 rounded-full border border-line px-2 text-xs";
+  "min-h-11 w-40 rounded-full border border-line px-3 text-xs";
+const N_CLS =
+  "min-h-11 w-16 rounded-full border border-line px-2 text-xs";
 
 export function VoucherPanel({ uid, setUid, flash }: Props) {
   const { dict, locale } = useI18n();
@@ -106,7 +107,7 @@ export function VoucherPanel({ uid, setUid, flash }: Props) {
           title={at.vVoidNHint}
         />
         <button
-          className="min-h-[32px] rounded-full border border-red-300
+          className="min-h-11 rounded-full border border-red-300
             px-3 text-xs font-bold text-red-600 disabled:opacity-40"
           disabled={busy || voidable.length === 0}
           onClick={() => {
@@ -146,11 +147,21 @@ export function VoucherPanel({ uid, setUid, flash }: Props) {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.vThKind}</td>
-            <td className="colhead">{at.vThSource}</td>
-            <td className="colhead">{at.vThGranted}</td>
-            <td className="colhead">{at.vThExpire}</td>
-            <td className="colhead">{at.vThState}</td>
+            <th scope="col" className="colhead">
+              {at.vThKind}
+            </th>
+            <th scope="col" className="colhead">
+              {at.vThSource}
+            </th>
+            <th scope="col" className="colhead">
+              {at.vThGranted}
+            </th>
+            <th scope="col" className="colhead">
+              {at.vThExpire}
+            </th>
+            <th scope="col" className="colhead">
+              {at.vThState}
+            </th>
           </tr>
         </thead>
         <tbody>

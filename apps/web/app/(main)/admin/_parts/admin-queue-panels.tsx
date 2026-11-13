@@ -66,7 +66,7 @@ export function ReviewsPanel({
   const postponed = status === 4;
   // 恢复按钮类名拆两行拼：单行会超 80 列门禁（行宽按 UTF-16 码元）
   const resumeCls =
-    "min-h-[36px] rounded-full border border-sun px-4 " +
+    "min-h-11 rounded-full border border-sun px-4 " +
     "text-xs font-bold text-ink";
   return (
     <section className={PANEL_LG}>
@@ -161,20 +161,20 @@ export function ReviewsPanel({
               <>
                 <button
                   onClick={() => onDecide(t.id, true)}
-                  className="min-h-[var(--tap-min)] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
+                  className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
                 >
                   {a.approve}
                 </button>
                 <button
                   onClick={() => onDecide(t.id, false)}
-                  className="min-h-[var(--tap-min)] rounded-full bg-coral px-4 text-xs font-bold text-[var(--text-on-accent)]"
+                  className="min-h-11 rounded-full bg-coral px-4 text-xs font-bold text-[var(--text-on-accent)]"
                 >
                   {a.reject}
                 </button>
                 {/* 0306：暂缓口（证据不足挂起），后端 v4_http 早已就绪 */}
                 <button
                   onClick={() => onPostpone(t.id)}
-                  className="min-h-[var(--tap-min)] rounded-full border border-line px-3 text-xs font-bold text-sub"
+                  className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
                 >
                   {a.postpone}
                 </button>
@@ -216,7 +216,7 @@ export function AppealsPanel({
           <li key={ap.id} className="flex flex-wrap items-center gap-2 py-2 sm:gap-3">
             <div className="w-full min-w-0 sm:w-auto sm:flex-1">
               <p className="text-sm">
-                <span className="rounded-full bg-sun/30 px-2 py-0.5 text-[10px]">
+                <span className="rounded-full bg-sun/30 px-2 py-0.5 text-xs">
                   {KIND[ap.kind] ?? ap.kind}
                 </span>{" "}
                 <b>{ap.username}</b>
@@ -225,7 +225,7 @@ export function AppealsPanel({
                 )}
                 {ap.status !== "open" && (
                   <span
-                    className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${
+                    className={`ml-1 rounded-full px-2 py-0.5 text-xs ${
                       ap.status === "accepted"
                         ? "bg-mint/30"
                         : "bg-coral/20 text-[var(--danger-text)]"
@@ -248,13 +248,13 @@ export function AppealsPanel({
               <span className="flex gap-2">
                 <button
                   onClick={() => onHandle(ap.id, true)}
-                  className="min-h-[var(--tap-min)] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
+                  className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]"
                 >
                   {a.appealAccept}
                 </button>
                 <button
                   onClick={() => onHandle(ap.id, false)}
-                  className="min-h-[var(--tap-min)] rounded-full border border-line px-4 text-xs font-bold text-[var(--danger-text)]"
+                  className="min-h-11 rounded-full border border-line px-4 text-xs font-bold text-[var(--danger-text)]"
                 >
                   {a.appealReject}
                 </button>

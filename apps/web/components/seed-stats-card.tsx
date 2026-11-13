@@ -102,9 +102,9 @@ export function SeedStatsCard() {
           <table className="nexus-table w-full text-xs">
             <thead>
               <tr>
-                <td className="colhead w-12">#</td>
-                <td className="colhead">用户</td>
-                <td className="colhead w-24">做种数</td>
+                <th scope="col" className="colhead w-12">#</th>
+                <th scope="col" className="colhead">用户</th>
+                <th scope="col" className="colhead w-24">做种数</th>
               </tr>
             </thead>
             <tbody>

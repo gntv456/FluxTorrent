@@ -14,7 +14,7 @@ import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
 
 /** UID 过滤输入框样式 */
 const UID_FILTER_CLS =
-  "min-h-[32px] w-40 rounded-full border border-line px-3 text-xs";
+  "min-h-11 w-40 rounded-full border border-line px-3 text-xs";
 
 interface PropsPanelProps {
   props: UserPropRow[];
@@ -54,13 +54,13 @@ export function PropsPanel({
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thOrder}</td>
-            <td className="colhead">{at.bagUser}</td>
-            <td className="colhead">{at.thItem}</td>
-            <td className="colhead">{at.thKind}</td>
-            <td className="colhead">{at.bagPrice}</td>
-            <td className="colhead">{at.bagTime}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thOrder}</th>
+            <th scope="col" className="colhead">{at.bagUser}</th>
+            <th scope="col" className="colhead">{at.thItem}</th>
+            <th scope="col" className="colhead">{at.thKind}</th>
+            <th scope="col" className="colhead">{at.bagPrice}</th>
+            <th scope="col" className="colhead">{at.bagTime}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

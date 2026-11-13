@@ -27,9 +27,9 @@ import type { Locale } from "@/i18n/config";
 /** 长类名提常量（行宽门禁 ≤80） */
 const FOOT =
   "mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 " +
-  "border-t border-line pt-2 text-[11px] text-sub";
+  "border-t border-line pt-2 text-xs text-sub";
 const REPLY_BTN =
-  "inline-flex min-h-[30px] items-center rounded-full border border-line " +
+  "inline-flex min-h-11 items-center rounded-full border border-line " +
   "px-3 text-xs font-bold text-sub hover:border-sky";
 const REPLIES_BOX =
   "mt-2 flex flex-col gap-2 rounded-[var(--r-md)] " +
@@ -83,7 +83,7 @@ export function PostRow({
                   className="h-full w-full object-cover"
                 />
               ) : p.username ? (
-                <span className="text-[11px] font-bold text-deep">
+                <span className="text-xs font-bold text-deep">
                   {p.username.slice(0, 1)}
                 </span>
               ) : (
@@ -103,31 +103,23 @@ export function PostRow({
               </span>
             )}
             {p.class_name && (
-              <span className="text-[11px] font-bold text-sub">
-                {p.class_name}
-              </span>
+              <span className="text-xs font-bold text-sub">{p.class_name}</span>
             )}
             {p.worn_medals && p.worn_medals.length > 0 && (
               <span className="flex flex-wrap gap-1">
                 {p.worn_medals.slice(0, 5).map((m) => (
                   <span key={m.name} className="medal-chip" title={m.name}>
                     {m.asset_ref ? (
-                      <MedalIcon
-                        src={m.asset_ref}
-                        size={14}
-                        title={m.name}
-                      />
+                      <MedalIcon src={m.asset_ref} size={14} title={m.name} />
                     ) : (
-                      <b className="text-[10px] text-ink">
-                        {m.name.slice(0, 1)}
-                      </b>
+                      <b className="text-xs text-ink">{m.name.slice(0, 1)}</b>
                     )}
                   </span>
                 ))}
               </span>
             )}
             {p.author_joined_at && (
-              <span className="text-[10px] text-fainter">
+              <span className="text-xs text-fainter">
                 {dict.forums.joinedShort}
                 {new Date(p.author_joined_at).toLocaleDateString(
                   dateLocale(locale),
@@ -180,15 +172,14 @@ export function PostRow({
           )}
           {/* 编辑/删除（2026-09-23 用户要求：编辑放在赞前面）：
               PostActions 用 display:contents 融入本操作行 */}
-          {(detail.can_mod || p.user_id === authId) &&
-            p.body !== "……" && (
-              <PostActions
-                postId={p.id}
-                canMod={detail.can_mod}
-                isSelf={p.user_id === authId}
-                initialBody={p.body}
-              />
-            )}
+          {(detail.can_mod || p.user_id === authId) && p.body !== "……" && (
+            <PostActions
+              postId={p.id}
+              canMod={detail.can_mod}
+              isSelf={p.user_id === authId}
+              initialBody={p.body}
+            />
+          )}
           {authId > 0 && (
             <span className="flex items-center gap-2">
               {/* 打赏（0127）：非本人的楼都可打赏（匿名楼 user_id 为空不渲染） */}
@@ -232,13 +223,13 @@ export function PostRow({
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <span className="text-[11px] font-bold text-deep">
+                    <span className="text-xs font-bold text-deep">
                       {(r.username ?? "?").slice(0, 1)}
                     </span>
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] leading-5">
+                  <p className="text-xs leading-5">
                     {r.user_id ? (
                       <Link
                         href={`/users/${r.user_id}`}
@@ -254,7 +245,7 @@ export function PostRow({
                     )}
                   </p>
                   <MarkdownRenderer source={r.body} embedRules={embedRules} />
-                  <p className="text-[10px] text-fainter">
+                  <p className="text-xs text-fainter">
                     {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                   </p>
                 </div>

@@ -157,7 +157,7 @@ export function AdminHr() {
         <button
           disabled={busy || sel.size === 0}
           onClick={batchPardon}
-          className="min-h-[40px] rounded-full bg-mint px-5 text-sm font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+          className="min-h-11 rounded-full bg-mint px-5 text-sm font-bold text-[var(--text-on-accent)] disabled:opacity-50"
         >
           {fmt(at.pardonBtn, { n: sel.size })}
         </button>
@@ -165,15 +165,15 @@ export function AdminHr() {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead w-10"></td>
-            <td className="colhead">{at.thUser}</td>
-            <td className="colhead">{at.thTorrent}</td>
-            <td className="colhead">{at.thUpDown}</td>
-            <td className="colhead">{at.thRatio}</td>
-            <td className="colhead">{at.thSeededReq}</td>
-            <td className="colhead">{at.thRemain}</td>
-            <td className="colhead">{at.thDeadline}</td>
-            <td className="colhead">{at.thStatus}</td>
+            <th scope="col" className="colhead w-10"></th>
+            <th scope="col" className="colhead">{at.thUser}</th>
+            <th scope="col" className="colhead">{at.thTorrent}</th>
+            <th scope="col" className="colhead">{at.thUpDown}</th>
+            <th scope="col" className="colhead">{at.thRatio}</th>
+            <th scope="col" className="colhead">{at.thSeededReq}</th>
+            <th scope="col" className="colhead">{at.thRemain}</th>
+            <th scope="col" className="colhead">{at.thDeadline}</th>
+            <th scope="col" className="colhead">{at.thStatus}</th>
           </tr>
         </thead>
         <tbody>

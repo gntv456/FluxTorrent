@@ -109,7 +109,7 @@ export function AdminDonateOrders() {
               setStatus(e.target.value);
               setPage(1);
             }}
-            className="min-h-[36px] rounded-md border border-line bg-cloud px-2 text-sm"
+            className="min-h-11 rounded-md border border-line bg-cloud px-2 text-sm"
           >
             <option value="">{t.optAll}</option>
             <option value="pending">{t.stPending}</option>
@@ -126,7 +126,7 @@ export function AdminDonateOrders() {
             }}
             inputMode="numeric"
             placeholder={t.optAll}
-            className="min-h-[36px] w-32 rounded-md border border-line bg-cloud px-2 text-sm"
+            className="min-h-11 w-32 rounded-md border border-line bg-cloud px-2 text-sm"
           />
         </label>
         <span className="ml-auto text-xs text-sub">
@@ -137,13 +137,13 @@ export function AdminDonateOrders() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{t.thOrder}</td>
-              <td className="colhead">{t.thUser}</td>
-              <td className="colhead">{t.thAmount}</td>
-              <td className="colhead">{t.thStatus}</td>
-              <td className="colhead">{t.thTrade}</td>
-              <td className="colhead">{t.thCreated}</td>
-              <td className="colhead">{t.thAction}</td>
+              <th scope="col" className="colhead">{t.thOrder}</th>
+              <th scope="col" className="colhead">{t.thUser}</th>
+              <th scope="col" className="colhead">{t.thAmount}</th>
+              <th scope="col" className="colhead">{t.thStatus}</th>
+              <th scope="col" className="colhead">{t.thTrade}</th>
+              <th scope="col" className="colhead">{t.thCreated}</th>
+              <th scope="col" className="colhead">{t.thAction}</th>
             </tr>
           </thead>
           <tbody>
@@ -196,9 +196,7 @@ export function AdminDonateOrders() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-6 text-center text-sub">
-                  {t.empty}
-                </td>
+                <td colSpan={7} className="py-6 text-center text-sub">{t.empty}</td>
               </tr>
             )}
           </tbody>
@@ -287,7 +285,7 @@ export function AdminPanelEntries() {
   }
 
   const inp =
-    "min-h-[36px] rounded-md border border-line bg-cloud px-2 text-sm";
+    "min-h-11 rounded-md border border-line bg-cloud px-2 text-sm";
 
   return (
     <div className="flex flex-col gap-3">
@@ -301,36 +299,25 @@ export function AdminPanelEntries() {
         <section className="brand-panel flex flex-wrap items-end gap-2 p-3">
           <label className="flex flex-col gap-1 text-xs">
             {t.fSection}
-            <input
-              value={edit.section ?? ""}
-              onChange={(e) => setEdit({ ...edit, section: e.target.value })}
-              className={`${inp} w-28`}
-            />
+            <input value={edit.section ?? ""} className={`${inp} w-28`}
+              onChange={(e) =>
+                setEdit({ ...edit, section: e.target.value })} />
           </label>
           <label className="flex flex-col gap-1 text-xs">
             {t.fName}
-            <input
-              value={edit.name ?? ""}
-              onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-              className={`${inp} w-36`}
-            />
+            <input value={edit.name ?? ""} className={`${inp} w-36`}
+              onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
           </label>
           <label className="flex flex-col gap-1 text-xs">
             URL
-            <input
-              value={edit.url ?? ""}
-              onChange={(e) => setEdit({ ...edit, url: e.target.value })}
-              placeholder="/admin?tool=xxx"
+            <input value={edit.url ?? ""} placeholder="/admin?tool=xxx"
               className={`${inp} w-52`}
-            />
+              onChange={(e) => setEdit({ ...edit, url: e.target.value })} />
           </label>
           <label className="flex flex-col gap-1 text-xs">
             {t.fInfo}
-            <input
-              value={edit.info ?? ""}
-              onChange={(e) => setEdit({ ...edit, info: e.target.value })}
-              className={`${inp} w-44`}
-            />
+            <input value={edit.info ?? ""} className={`${inp} w-44`}
+              onChange={(e) => setEdit({ ...edit, info: e.target.value })} />
           </label>
           <label className="flex flex-col gap-1 text-xs">
             tab_key
@@ -383,13 +370,13 @@ export function AdminPanelEntries() {
           <button
             disabled={busy}
             onClick={() => void save()}
-            className="min-h-[36px] rounded-full bg-sky-deep px-4 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
+            className="min-h-11 rounded-full bg-sky-deep px-4 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
           >
             {c.save}
           </button>
           <button
             onClick={() => setEdit(null)}
-            className="min-h-[36px] rounded-full border border-line px-4 text-sm text-sub"
+            className="min-h-11 rounded-full border border-line px-4 text-sm text-sub"
           >
             {c.cancel}
           </button>
@@ -409,7 +396,7 @@ export function AdminPanelEntries() {
               min_class: STAFF_CLASS_MIN,
             })
           }
-          className="min-h-[36px] rounded-full border border-line px-4 text-sm text-sky-deep"
+          className="min-h-11 rounded-full border border-line px-4 text-sm text-sky-deep"
         >
           + {t.add}
         </button>
@@ -418,15 +405,27 @@ export function AdminPanelEntries() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.fSection}</td>
-              <td className="colhead">{t.fName}</td>
-              <td className="colhead">URL</td>
-              <td className="colhead">tab_key</td>
-              <td className="colhead">min_class</td>
-              <td className="colhead">perm_key</td>
-              <td className="colhead">module_key</td>
-              <td className="colhead">{t.thAction}</td>
+              <th scope="col" className="colhead">
+                ID
+              </th>
+              <th scope="col" className="colhead">{t.fSection}</th>
+              <th scope="col" className="colhead">{t.fName}</th>
+              <th scope="col" className="colhead">
+                URL
+              </th>
+              <th scope="col" className="colhead">
+                tab_key
+              </th>
+              <th scope="col" className="colhead">
+                min_class
+              </th>
+              <th scope="col" className="colhead">
+                perm_key
+              </th>
+              <th scope="col" className="colhead">
+                module_key
+              </th>
+              <th scope="col" className="colhead">{t.thAction}</th>
             </tr>
           </thead>
           <tbody>
@@ -469,9 +468,7 @@ export function AdminPanelEntries() {
             ))}
             {rows?.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-sub">
-                  {t.empty}
-                </td>
+                <td colSpan={9} className="py-6 text-center text-sub">{t.empty}</td>
               </tr>
             )}
           </tbody>

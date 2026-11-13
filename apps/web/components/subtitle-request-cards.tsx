@@ -53,7 +53,7 @@ export function SubtitleRequestCards({
               <span className="shrink-0 text-sm font-bold">
                 {r.bounty} {currency}
                 {r.offer_free && (
-                  <span className="ml-1 text-[11px] text-mint">Free</span>
+                  <span className="ml-1 text-xs text-mint">Free</span>
                 )}
               </span>
             </div>

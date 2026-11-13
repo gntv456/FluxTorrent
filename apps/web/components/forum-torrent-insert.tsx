@@ -113,7 +113,7 @@ export function TorrentInsertRow({
           aria-expanded={open}
           aria-controls="fti-list"
           className={
-            "w-full min-h-[38px] rounded-[var(--r-sm)] border " +
+            "w-full min-h-11 rounded-[var(--r-sm)] border " +
             "border-line bg-cloud px-3 text-sm outline-none " +
             "focus:border-sky"
           }

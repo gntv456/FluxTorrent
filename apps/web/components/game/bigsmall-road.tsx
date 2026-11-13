@@ -59,7 +59,7 @@ export function BigsmallRoadPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/games/bigsmall"
-          className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+          className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
         >
           ← {t.title}
         </Link>
@@ -129,7 +129,7 @@ export function BigsmallRoadPage() {
               {rows.slice(0, 20).map((r, i) => (
                 <span
                   key={i}
-                  className={`grid h-7 w-7 place-items-center rounded-full text-[11px] font-black text-white ${
+                  className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black text-white ${
                     r.net > 0
                       ? "bg-[var(--coral)]"
                       : r.net < 0

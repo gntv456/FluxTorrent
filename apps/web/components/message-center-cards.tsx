@@ -23,10 +23,10 @@ const BODY_CLS =
   "mt-2 rounded-[var(--r-sm)] border border-dashed " +
   "border-[var(--compat-line)] bg-[var(--compat-cream)] p-2";
 const BTN_REPLY =
-  "min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] " +
+  "min-h-11 rounded-full border border-[var(--compat-orange-dark)] " +
   "px-3 text-xs font-bold text-[var(--compat-orange-dark)]";
 const BTN_FWD =
-  "min-h-[32px] rounded-full border border-[var(--compat-line)] " +
+  "min-h-11 rounded-full border border-[var(--compat-line)] " +
   "px-3 text-xs font-bold text-sub";
 
 /** 消息列表的**手机卡片**形态（2026-11-02）。
@@ -57,15 +57,12 @@ export function MessageCards({
     <ul className="flex flex-col gap-2 sm:hidden">
       {rows.map((m) => {
         const cp = m.counterpart ?? t.systemSender;
-        const time = new Date(m.created_at).toLocaleString(
-          dateLocale(locale),
-          {
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          },
-        );
+        const time = new Date(m.created_at).toLocaleString(dateLocale(locale), {
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
         const unread = box === "inbox" && (m.unread ?? !m.read_at);
         return (
           <li key={m.id} className={CARD_CLS}>
@@ -93,7 +90,7 @@ export function MessageCards({
                 {noticeText(t, m, "s", m.subject)}
               </button>
             </div>
-            <p className="mt-1 pl-4 text-[11px] text-sub">
+            <p className="mt-1 pl-4 text-xs text-sub">
               {cp}
               {" · "}
               {time}

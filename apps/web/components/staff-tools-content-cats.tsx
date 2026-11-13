@@ -36,7 +36,7 @@ interface CatsPanelProps {
 
 /** 类型包切换按钮（激活=橙底白字） */
 const PACK_BTN_CLS =
-  "min-h-[40px] rounded-full border px-4 text-xs font-bold disabled:opacity-50";
+  "min-h-11 rounded-full border px-4 text-xs font-bold disabled:opacity-50";
 const PACK_ON_CLS =
   "border-[var(--compat-orange)] bg-[var(--compat-orange)] text-white";
 /** 另存为自定义站型的小按钮 */
@@ -219,7 +219,7 @@ export function StaffCatsPanel({
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               maxLength={32}
-              className="min-h-[40px] rounded-[var(--r-sm)] border
+              className="min-h-11 rounded-[var(--r-sm)] border
                 border-line bg-[var(--surface-card)] px-3 text-sm"
               data-autofocus
             />
@@ -274,12 +274,14 @@ export function StaffCatsPanel({
         <table className="nexus-table mt-3">
           <tbody>
             <tr>
-              <td className="colhead">#</td>
-              <td className="colhead">{t.fldCatName}</td>
-              <td className="colhead">{t.fldCatSort}</td>
-              <td className="colhead">{t.colNewznab}</td>
-              <td className="colhead">{t.catTorrents}</td>
-              <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+              <th scope="col" className="colhead">
+                #
+              </th>
+              <th scope="col" className="colhead">{t.fldCatName}</th>
+              <th scope="col" className="colhead">{t.fldCatSort}</th>
+              <th scope="col" className="colhead">{t.colNewznab}</th>
+              <th scope="col" className="colhead">{t.catTorrents}</th>
+              <th scope="col" className="colhead text-right">{dict.cmgmt.colActions}</th>
             </tr>
             {cats.map((c) => (
               <tr key={c.id}>
@@ -293,10 +295,7 @@ export function StaffCatsPanel({
                 <td className="num">{c.newznab_id ?? "—"}</td>
                 <td className="num">{c.torrents}</td>
                 <td className="text-right">
-                  <button
-                    className="cmgmt-act"
-                    onClick={() => setEditing(c)}
-                  >
+                  <button className="cmgmt-act" onClick={() => setEditing(c)}>
                     {dict.cmgmt.btnEdit}
                   </button>
                   <button

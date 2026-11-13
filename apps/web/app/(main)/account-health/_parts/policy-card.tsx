@@ -54,7 +54,7 @@ export function PolicyCard({
       </div>
       <div className="flex flex-col gap-2 p-4 text-sm">
         <p className="-mt-1 text-xs text-sub">{t.policySub}</p>
-        <p className="font-mono text-[11px] text-sub">
+        <p className="font-mono text-xs text-sub">
           {fmt(t.policyVersion, { version: policy.version })}
         </p>
         <p className="text-xs text-sub">

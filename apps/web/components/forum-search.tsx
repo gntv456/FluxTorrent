@@ -79,12 +79,12 @@ export function ForumSearch({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={placeholder}
-          className="min-h-[36px] flex-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-3 text-sm text-ink placeholder:text-sub"
+          className="min-h-11 flex-1 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] px-3 text-sm text-ink placeholder:text-sub"
         />
         <button
           type="submit"
           disabled={busy}
-          className="min-h-[36px] rounded-full bg-sky-deep px-4 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
+          className="min-h-11 rounded-full bg-sky-deep px-4 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
         >
           {button}
         </button>

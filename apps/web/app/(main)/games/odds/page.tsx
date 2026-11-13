@@ -99,7 +99,7 @@ export default async function OddsPage() {
               <td className="py-1.5">
                 {p.label}
                 {hint && (
-                  <span className="block text-[11px] text-sub">
+                  <span className="block text-xs text-sub">
                     {hint}
                   </span>
                 )}

@@ -39,7 +39,8 @@ export function PromoIntentsPanel() {
         ),
       );
     } catch {
-      setRows([]); setMsg(dict.common.loadFailed);
+      setRows([]);
+      setMsg(dict.common.loadFailed);
     }
   }, [status, dict]);
 
@@ -54,11 +55,7 @@ export function PromoIntentsPanel() {
       setMsg(t.approved);
       load();
     } catch (e) {
-      setMsg(
-        e instanceof ApiError
-          ? (apiErrorMessage(dict, e))
-          : a.actionFailed,
-      );
+      setMsg(e instanceof ApiError ? apiErrorMessage(dict, e) : a.actionFailed);
     } finally {
       setBusy(false);
     }
@@ -76,11 +73,7 @@ export function PromoIntentsPanel() {
       setMsg(t.rejected);
       load();
     } catch (e) {
-      setMsg(
-        e instanceof ApiError
-          ? (apiErrorMessage(dict, e))
-          : a.actionFailed,
-      );
+      setMsg(e instanceof ApiError ? apiErrorMessage(dict, e) : a.actionFailed);
     } finally {
       setBusy(false);
     }
@@ -111,7 +104,7 @@ export function PromoIntentsPanel() {
           <button
             key={s}
             onClick={() => setStatus(s)}
-            className={`min-h-[28px] rounded-full border px-3 text-xs
+            className={`min-h-11 rounded-full border px-3 text-xs
               font-bold ${
                 status === s
                   ? "border-sky bg-sky-soft text-link"
@@ -126,13 +119,27 @@ export function PromoIntentsPanel() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead w-24">{t.colKind}</td>
-              <td className="colhead">{t.colScope}</td>
-              <td className="colhead">{t.colRequester}</td>
-              <td className="colhead">{t.colStart}</td>
-              <td className="colhead">{t.colEnd}</td>
-              <td className="colhead w-20">{t.colStatus}</td>
-              <td className="colhead">{t.colActions}</td>
+              <th scope="col" className="colhead w-24">
+                {t.colKind}
+              </th>
+              <th scope="col" className="colhead">
+                {t.colScope}
+              </th>
+              <th scope="col" className="colhead">
+                {t.colRequester}
+              </th>
+              <th scope="col" className="colhead">
+                {t.colStart}
+              </th>
+              <th scope="col" className="colhead">
+                {t.colEnd}
+              </th>
+              <th scope="col" className="colhead w-20">
+                {t.colStatus}
+              </th>
+              <th scope="col" className="colhead">
+                {t.colActions}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -164,7 +171,7 @@ export function PromoIntentsPanel() {
                         <button
                           disabled={busy}
                           onClick={() => approve(r.id)}
-                          className="min-h-[28px] rounded-full border
+                          className="min-h-11 rounded-full border
                             border-line px-3 font-bold text-link
                             disabled:opacity-50"
                         >
@@ -173,7 +180,7 @@ export function PromoIntentsPanel() {
                         <button
                           disabled={busy}
                           onClick={() => reject(r.id)}
-                          className="min-h-[28px] rounded-full border
+                          className="min-h-11 rounded-full border
                             border-line px-3 font-bold text-[var(--danger-text)]
                             disabled:opacity-50"
                         >
@@ -186,7 +193,7 @@ export function PromoIntentsPanel() {
                           setNotes((m) => ({ ...m, [r.id]: e.target.value }))
                         }
                         placeholder={t.notePh}
-                        className="min-h-[28px] rounded-[var(--r-md)] border
+                        className="min-h-11 rounded-[var(--r-md)] border
                           border-line bg-cloud px-2 text-xs"
                       />
                     </div>

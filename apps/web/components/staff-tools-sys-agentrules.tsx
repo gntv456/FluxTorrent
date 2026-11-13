@@ -19,7 +19,7 @@ interface AgentRulesProps {
 
 /** 黑白名单删除小按钮 */
 const DEL_BTN_CLS =
-  "min-h-[28px] rounded-full border border-line px-3 font-bold text-[var(--danger-text)]";
+  "min-h-11 rounded-full border border-line px-3 font-bold text-[var(--danger-text)]";
 
 /** 黑白名单徽标配色 */
 function modeCls(mode: string) {
@@ -155,12 +155,12 @@ export function AgentRulesPanel({
         <table className="nexus-table mt-3 text-xs">
           <thead>
             <tr>
-              <td className="colhead">{ar.mode}</td>
-              <td className="colhead">{ar.pattern}</td>
-              <td className="colhead">{ar.note}</td>
-              <td className="colhead">{ar.versionMin}</td>
-              <td className="colhead">{ar.versionMax}</td>
-              <td className="colhead">{ar.priority}</td>
+              <th scope="col" className="colhead">{ar.mode}</th>
+              <th scope="col" className="colhead">{ar.pattern}</th>
+              <th scope="col" className="colhead">{ar.note}</th>
+              <th scope="col" className="colhead">{ar.versionMin}</th>
+              <th scope="col" className="colhead">{ar.versionMax}</th>
+              <th scope="col" className="colhead">{ar.priority}</th>
               <td className="colhead" />
             </tr>
           </thead>

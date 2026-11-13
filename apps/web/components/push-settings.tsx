@@ -14,7 +14,7 @@ import { useI18n } from "@/i18n/client";
 const PUSH_KEYS = ["push_hr", "push_promo", "push_message"] as const;
 type PushKey = (typeof PUSH_KEYS)[number];
 const SWITCH_BASE =
-  "relative h-[22px] w-[44px] shrink-0 rounded-full transition";
+  "relative h-[var(--tap-min)] w-[44px] shrink-0 rounded-full transition";
 const SWITCH_KNOB =
   "absolute top-[2px] h-[18px] w-[18px] rounded-full bg-white " +
   "shadow transition-all";
@@ -202,7 +202,7 @@ export function PushSettings() {
             {subscribed ? (
               <>
                 <button
-                  className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
+                  className="min-h-11 rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
                   disabled={busy}
                   onClick={sendTest}
                 >

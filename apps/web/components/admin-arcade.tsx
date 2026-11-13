@@ -155,7 +155,7 @@ export function AdminArcade() {
           {d.defs.milestones.length}（{d.defs.season_key}）· {t.defStubs}：
           {d.defs.stub_total} · {t.defClaims}：{d.defs.claims_total}
         </p>
-        <p className="mt-1 text-[11px] text-sub">
+        <p className="mt-1 text-xs text-sub">
           {t.defsNote.replace("{magic}", currency)}
         </p>
       </div>

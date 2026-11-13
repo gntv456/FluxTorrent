@@ -37,18 +37,28 @@ export function FeedLatestPanel({
   return (
     <div className="flex flex-col gap-3">
       {items.length === 0 ? (
-        <p className="rounded-[var(--r-md)] bg-sky-soft p-6 text-center
-          text-sm text-sub">
+        <p
+          className="rounded-[var(--r-md)] bg-sky-soft p-6 text-center
+          text-sm text-sub"
+        >
           {t.feedEmpty}
         </p>
       ) : (
         <table className="nexus-table">
           <thead>
             <tr>
-              <td className="colhead">{t.topicTitleFallback}</td>
-              <td className="colhead hidden w-28 sm:table-cell">{t.via}</td>
-              <td className="colhead w-28">{t.author}</td>
-              <td className="colhead w-28 text-right">{t.lastPost}</td>
+              <th scope="col" className="colhead">
+                {t.topicTitleFallback}
+              </th>
+              <th scope="col" className="colhead hidden w-28 sm:table-cell">
+                {t.via}
+              </th>
+              <th scope="col" className="colhead w-28">
+                {t.author}
+              </th>
+              <th scope="col" className="colhead w-28 text-right">
+                {t.lastPost}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -125,9 +135,7 @@ export function FeedLatestPanel({
             <span />
           )}
           <Link
-            href={`/forums/feed?before=${encodeURIComponent(
-              feed.next_before,
-            )}`}
+            href={`/forums/feed?before=${encodeURIComponent(feed.next_before)}`}
             className="rounded-[var(--r-md)] border border-line
               bg-[var(--surface-card)] px-4 py-2 text-sm text-sky
               hover:border-sky"

@@ -64,19 +64,19 @@ export function TorrentTable(props: {
       <table className={multi ? "nexus-table is-multiselect" : "nexus-table"}>
       <thead>
         <tr>
-          <td className="colhead w-10"></td>
-          <td className="colhead">ID</td>
-          <td className="colhead">{at.fName}</td>
-          <td className="colhead">{at.fOwner}</td>
-          <td className="colhead">{at.dimsCol}</td>
-          <td className="colhead">{at.thSize}</td>
-          <td className="colhead">{at.thSeeders}</td>
-          <td className="colhead">{at.fStatus}</td>
-          <td className="colhead">{at.fPos}</td>
-          <td className="colhead">{at.fPromo}</td>
-          <td className="colhead">{at.fPick}</td>
-          <td className="colhead">H&R</td>
-          <td className="colhead">{at.thAction}</td>
+          <th scope="col" className="colhead w-10"></th>
+          <th scope="col" className="colhead">ID</th>
+          <th scope="col" className="colhead">{at.fName}</th>
+          <th scope="col" className="colhead">{at.fOwner}</th>
+          <th scope="col" className="colhead">{at.dimsCol}</th>
+          <th scope="col" className="colhead">{at.thSize}</th>
+          <th scope="col" className="colhead">{at.thSeeders}</th>
+          <th scope="col" className="colhead">{at.fStatus}</th>
+          <th scope="col" className="colhead">{at.fPos}</th>
+          <th scope="col" className="colhead">{at.fPromo}</th>
+          <th scope="col" className="colhead">{at.fPick}</th>
+          <th scope="col" className="colhead">H&R</th>
+          <th scope="col" className="colhead">{at.thAction}</th>
         </tr>
       </thead>
       <tbody>

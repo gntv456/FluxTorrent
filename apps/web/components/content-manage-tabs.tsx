@@ -108,11 +108,11 @@ export function FunTab({
       <table className="nexus-table">
         <tbody>
           <tr>
-            <td className="colhead">{t.fldTitle}</td>
-            <td className="colhead">{t.funAuthor}</td>
-            <td className="colhead">{t.funVotes}</td>
-            <td className="colhead">{t.funStatus}</td>
-            <td className="colhead text-right">{t.colActions}</td>
+            <th scope="col" className="colhead">{t.fldTitle}</th>
+            <th scope="col" className="colhead">{t.funAuthor}</th>
+            <th scope="col" className="colhead">{t.funVotes}</th>
+            <th scope="col" className="colhead">{t.funStatus}</th>
+            <th scope="col" className="colhead text-right">{t.colActions}</th>
           </tr>
           {fun.map((f) => (
             <tr key={f.id}>
@@ -222,12 +222,12 @@ export function LinksTab({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{t.linkName}</td>
-              <td className="colhead">URL</td>
-              <td className="colhead">{t.linkAdmin}</td>
-              <td className="colhead">{t.linkEmail}</td>
-              <td className="colhead">{t.fldStatus}</td>
-              <td className="colhead text-right">{t.colActions}</td>
+              <th scope="col" className="colhead">{t.linkName}</th>
+              <th scope="col" className="colhead">URL</th>
+              <th scope="col" className="colhead">{t.linkAdmin}</th>
+              <th scope="col" className="colhead">{t.linkEmail}</th>
+              <th scope="col" className="colhead">{t.fldStatus}</th>
+              <th scope="col" className="colhead text-right">{t.colActions}</th>
             </tr>
             {links.map((l) => (
               <tr key={l.id}>

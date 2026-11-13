@@ -87,8 +87,12 @@ export function StaffSysPanel({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.dsState}</td>
-                <td className="colhead">{t.dsCount}</td>
+                <th scope="col" className="colhead">
+                  {t.dsState}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.dsCount}
+                </th>
               </tr>
               {dbStats.connections.map((c) => (
                 <tr key={c.state}>
@@ -108,9 +112,15 @@ export function StaffSysPanel({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.dsTable}</td>
-                <td className="colhead">{t.dsRows}</td>
-                <td className="colhead text-right">{t.dsTableSize}</td>
+                <th scope="col" className="colhead">
+                  {t.dsTable}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.dsRows}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {t.dsTableSize}
+                </th>
               </tr>
               {dbStats.tables.map((tb) => (
                 <tr key={tb.relname}>
@@ -142,11 +152,21 @@ export function StaffSysPanel({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.loNet}</td>
-                <td className="colhead">{t.loLogins}</td>
-                <td className="colhead">{t.ipAccounts}</td>
-                <td className="colhead">{t.loFailed}</td>
-                <td className="colhead">{t.ipLastSeen}</td>
+                <th scope="col" className="colhead">
+                  {t.loNet}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.loLogins}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.ipAccounts}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.loFailed}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.ipLastSeen}
+                </th>
               </tr>
               {locData?.items.map((r) => (
                 <tr key={`${r.net}/${r.netmask}`}>
@@ -157,7 +177,9 @@ export function StaffSysPanel({
                   <td className="num">{r.users}</td>
                   <td className="num">
                     {r.failed > 0 ? (
-                      <span className="text-[var(--danger-text)]">{r.failed}</span>
+                      <span className="text-[var(--danger-text)]">
+                        {r.failed}
+                      </span>
                     ) : (
                       0
                     )}

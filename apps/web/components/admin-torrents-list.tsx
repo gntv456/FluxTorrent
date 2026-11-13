@@ -27,12 +27,12 @@ import { appendDims, useDecide, useDims } from "./admin-torrents-list-parts";
 
 /** 搜索按钮（实底天蓝） */
 const SKY_BTN_CLS =
-  "min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
+  "min-h-11 rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
 /** 种子名搜索输入框 */
 const Q_INPUT_CLS =
-  "min-h-[36px] w-40 rounded-[var(--r-sm)] border border-line px-2";
+  "min-h-11 w-40 rounded-[var(--r-sm)] border border-line px-2";
 const sel_input =
-  "min-h-[36px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2 text-xs";
 
 export function TorrentList({ flash }: { flash: (m: string) => void }) {

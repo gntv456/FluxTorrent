@@ -71,17 +71,17 @@ export function TasksTable({
     <table className="nexus-table text-xs">
       <thead>
         <tr>
-          <td className="colhead">{d.colId}</td>
-          <td className="colhead">{d.colTask}</td>
-          <td className="colhead">{d.colKind}</td>
-          <td className="colhead">{d.colRange}</td>
-          <td className="colhead">{d.colTargetClass}</td>
-          <td className="colhead">{d.colReward}</td>
-          <td className="colhead">{d.colClaimLimit}</td>
-          <td className="colhead">{d.colWindow}</td>
-          <td className="colhead">{d.colAutoAssign}</td>
-          <td className="colhead">{d.colPenalty}</td>
-          <td className="colhead text-right">{d.colActions}</td>
+          <th scope="col" className="colhead">{d.colId}</th>
+          <th scope="col" className="colhead">{d.colTask}</th>
+          <th scope="col" className="colhead">{d.colKind}</th>
+          <th scope="col" className="colhead">{d.colRange}</th>
+          <th scope="col" className="colhead">{d.colTargetClass}</th>
+          <th scope="col" className="colhead">{d.colReward}</th>
+          <th scope="col" className="colhead">{d.colClaimLimit}</th>
+          <th scope="col" className="colhead">{d.colWindow}</th>
+          <th scope="col" className="colhead">{d.colAutoAssign}</th>
+          <th scope="col" className="colhead">{d.colPenalty}</th>
+          <th scope="col" className="colhead text-right">{d.colActions}</th>
         </tr>
       </thead>
       <tbody>

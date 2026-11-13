@@ -122,7 +122,7 @@ export function BoardTagRow({
       <Link
         href={`/forums/${forumId}${qs({ tag: undefined })}`}
         aria-current={!tag ? "true" : undefined}
-        className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+        className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
           !tag
             ? "border-[var(--sky)] bg-[var(--sky-soft)] text-[var(--sky)]"
             : "border-line text-sub hover:text-[var(--sky)]"

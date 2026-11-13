@@ -11,11 +11,7 @@ import type {
   ModeRow,
   SectionKindMeta,
 } from "./admin-sections-shared";
-import {
-  fallbackKinds,
-  FIELD_INPUT_CLS,
-  FLAGS,
-} from "./admin-sections-shared";
+import { fallbackKinds, FIELD_INPUT_CLS, FLAGS } from "./admin-sections-shared";
 
 /** 第八轮 P3-12：维度管理（同类站 Section 组口径）
  *  分类模式（维度开关 + 归属分类 + 自动过审）+ 七维字典 CRUD。
@@ -134,11 +130,21 @@ export function AdminSections() {
           <table className="nexus-table mt-3 text-xs">
             <thead>
               <tr>
-                <td className="colhead">ID</td>
-                <td className="colhead">{at.thName}</td>
-                <td className="colhead">{at.thVisibleKinds}</td>
-                <td className="colhead">{at.thCategories}</td>
-                <td className="colhead text-right">{at.thAction}</td>
+                <th scope="col" className="colhead">
+                  ID
+                </th>
+                <th scope="col" className="colhead">
+                  {at.thName}
+                </th>
+                <th scope="col" className="colhead">
+                  {at.thVisibleKinds}
+                </th>
+                <th scope="col" className="colhead">
+                  {at.thCategories}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {at.thAction}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -148,8 +154,8 @@ export function AdminSections() {
                 const shown =
                   m.visible_kinds && m.visible_kinds.length > 0
                     ? m.visible_kinds
-                    : FLAGS.filter(([k]) => Boolean(m[k])).map(
-                        ([, l]) => l.toLowerCase(),
+                    : FLAGS.filter(([k]) => Boolean(m[k])).map(([, l]) =>
+                        l.toLowerCase(),
                       );
                 const shownSet = new Set(shown);
                 return (
@@ -184,9 +190,7 @@ export function AdminSections() {
                                 );
                               }}
                             />
-                            <span className="whitespace-nowrap">
-                              {k.label}
-                            </span>
+                            <span className="whitespace-nowrap">{k.label}</span>
                           </label>
                         ))}
                       </div>

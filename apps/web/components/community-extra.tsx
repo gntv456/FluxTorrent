@@ -71,7 +71,7 @@ export function PollBox({ empty }: { empty: string }) {
                       type="button"
                       disabled={p.my_vote !== null}
                       onClick={() => vote(p.id, i)}
-                      className={`w-full min-h-[36px] rounded-[var(--r-sm)] border px-3 text-left text-sm ${
+                      className={`w-full min-h-11 rounded-[var(--r-sm)] border px-3 text-left text-sm ${
                         mine
                           ? "border-sky-deep bg-sky-soft"
                           : "border-line bg-[var(--surface-card)]"

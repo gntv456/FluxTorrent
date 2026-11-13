@@ -36,7 +36,7 @@ export function ForumCatCreate({
     return (
       <button
         type="button"
-        className={`${BTN_LINE} mt-2 min-h-[32px] w-full text-xs`}
+        className={`${BTN_LINE} mt-2 min-h-11 w-full text-xs`}
         onClick={() => setOpen(true)}
       >
         {f.catNewBtn}
@@ -55,19 +55,19 @@ export function ForumCatCreate({
           if (e.key === "Escape") setOpen(false);
         }}
         placeholder={f.newNamePh}
-        className={`${INPUT_CLS} min-h-[32px] min-w-0 text-xs`}
+        className={`${INPUT_CLS} min-h-11 min-w-0 text-xs`}
       />
       <button
         type="button"
         disabled={busy || !name.trim()}
-        className={`${BTN_SKY} min-h-[32px] shrink-0 px-3 text-xs`}
+        className={`${BTN_SKY} min-h-11 shrink-0 px-3 text-xs`}
         onClick={submit}
       >
         {f.createBtn}
       </button>
       <button
         type="button"
-        className={`${BTN_LINE} min-h-[32px] shrink-0 px-2 text-xs`}
+        className={`${BTN_LINE} min-h-11 shrink-0 px-2 text-xs`}
         onClick={() => {
           setOpen(false);
           setName("");

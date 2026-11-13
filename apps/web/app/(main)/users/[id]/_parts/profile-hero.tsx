@@ -68,7 +68,7 @@ export function ProfileHero({
             </span>
           ))}
           <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
               data.online
                 ? "bg-[var(--mint-soft)] text-mint"
                 : "bg-[var(--surface-sunken)] text-sub"

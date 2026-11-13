@@ -238,10 +238,10 @@ export function AdminArcadePool({
           {msg}
         </p>
       )}
-      <p className="text-[11px] text-sub">{t.note}</p>
-      {seededOnly && <p className="text-[11px] text-sub">{t.seedCapFarm}</p>}
+      <p className="text-xs text-sub">{t.note}</p>
+      {seededOnly && <p className="text-xs text-sub">{t.seedCapFarm}</p>}
       {derived && (
-        <p className="text-[11px] text-sub">{t.farmGateNote}</p>
+        <p className="text-xs text-sub">{t.farmGateNote}</p>
       )}
     </div>
   );

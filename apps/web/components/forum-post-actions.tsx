@@ -63,7 +63,7 @@ export function TopicModActions({
   }
 
   const btn =
-    "min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub active:scale-[0.97] disabled:opacity-50";
+    "min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub active:scale-[0.97] disabled:opacity-50";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -99,7 +99,7 @@ export function TopicModActions({
         aria-label={dict.forums.moveTo}
         value={moveTo}
         onChange={(e) => setMoveTo(e.target.value)}
-        className="min-h-[36px] rounded-full border border-line bg-cloud px-3 text-xs outline-none focus:border-sky"
+        className="min-h-11 rounded-full border border-line bg-cloud px-3 text-xs outline-none focus:border-sky"
       >
         <option value="">{dict.forums.moveTo}</option>
         {forums.map((f) => (
@@ -118,7 +118,7 @@ export function TopicModActions({
         </button>
       )}
       <button
-        className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
+        className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
         disabled={busy}
         onClick={() => setAskDel(true)}
       >
@@ -164,7 +164,7 @@ export function PostActions({
   if (!canMod && !isSelf) return null;
 
   const btn =
-    "min-h-[30px] rounded-full border border-line px-3 text-xs font-bold text-sub active:scale-[0.97] disabled:opacity-50";
+    "min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub active:scale-[0.97] disabled:opacity-50";
 
   async function save() {
     setBusy(true);
@@ -200,7 +200,7 @@ export function PostActions({
       </button>
       {canMod && !isSelf && (
         <button
-          className="min-h-[30px] rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
+          className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
           disabled={busy}
           onClick={() => setAskDel(true)}
         >
@@ -245,7 +245,7 @@ export function PostActions({
           )}
           <div className="flex gap-2">
             <button
-              className="min-h-[30px] rounded-full bg-sky px-3 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+              className="min-h-11 rounded-full bg-sky px-3 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
               disabled={busy}
               onClick={save}
             >

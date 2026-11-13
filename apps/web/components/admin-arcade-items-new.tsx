@@ -51,7 +51,7 @@ const BAR =
   "border border-line p-2";
 
 const BTN =
-  "rounded-full border border-line px-3 py-1 text-[11px] " +
+  "rounded-full border border-line px-3 py-1 text-xs " +
   "font-bold disabled:opacity-50";
 
 export function AdminArcadeItemsNew({
@@ -88,7 +88,7 @@ export function AdminArcadeItemsNew({
   return (
     <div className="flex flex-col gap-1">
       <div className={BAR}>
-        <span className="text-[11px] font-bold text-sub">{t.newTitle}</span>
+        <span className="text-xs font-bold text-sub">{t.newTitle}</span>
         <input
           className={CELL + " w-28"}
           placeholder="key"
@@ -136,7 +136,7 @@ export function AdminArcadeItemsNew({
             setDraft({ ...draft, per_user: Number(e.target.value) || 1 })
           }
         />
-        <label className="flex items-center gap-1 text-[11px]">
+        <label className="flex items-center gap-1 text-xs">
           <input
             type="checkbox"
             checked={draft.unlimited}
@@ -146,7 +146,7 @@ export function AdminArcadeItemsNew({
           />
           {t.colUnlimited}
         </label>
-        <label className="flex items-center gap-1 text-[11px]">
+        <label className="flex items-center gap-1 text-xs">
           {t.colUse}
           <select
             className={CELL + " w-24"}
@@ -177,7 +177,7 @@ export function AdminArcadeItemsNew({
           {busySelf ? t.saving : t.create}
         </button>
       </div>
-      {msg && <p className="text-[11px] text-sub">{msg}</p>}
+      {msg && <p className="text-xs text-sub">{msg}</p>}
     </div>
   );
 }

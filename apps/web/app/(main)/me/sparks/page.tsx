@@ -191,34 +191,36 @@ export default function MySparksPage() {
       ) : data === null ? (
         <SkeletonRows />
       ) : rows.length === 0 ? (
-        <EmptyState
-          icon="info"
-          title={t.empty}
-          desc={t.emptyHint}
-        />
+        <EmptyState icon="info" title={t.empty} desc={t.emptyHint} />
       ) : (
         <div className="brand-panel overflow-x-auto">
           <table className="nexus-table">
             <thead>
               <tr>
-                <td className="colhead w-32">{t.colTime}</td>
-                <td className="colhead w-28">{t.colKind}</td>
-                <td className="colhead">{t.colSummary}</td>
-                <td className="colhead w-24 text-right">{t.colDelta}</td>
-                <td className="colhead w-24 text-right">{t.colBalance}</td>
+                <th scope="col" className="colhead w-32">
+                  {t.colTime}
+                </th>
+                <th scope="col" className="colhead w-28">
+                  {t.colKind}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.colSummary}
+                </th>
+                <th scope="col" className="colhead w-24 text-right">
+                  {t.colDelta}
+                </th>
+                <th scope="col" className="colhead w-24 text-right">
+                  {t.colBalance}
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={`${r.created_at}-${i}`}>
                   <td className="num text-xs text-sub">
-                    {new Date(r.created_at).toLocaleString(
-                      dateLocale(locale),
-                    )}
+                    {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                   </td>
-                  <td className="text-xs">
-                    {kindLabels[r.kind] ?? r.kind}
-                  </td>
+                  <td className="text-xs">{kindLabels[r.kind] ?? r.kind}</td>
                   <td className="text-xs text-body">{summary(r)}</td>
                   <td
                     className={`num text-right ${

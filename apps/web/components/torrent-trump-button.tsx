@@ -97,14 +97,14 @@ export function TrumpButton({ torrentId }: { torrentId: number }) {
           <span className="flex items-center justify-end gap-2">
             <button
               type="button"
-              className="min-h-[28px] rounded-full border border-line px-3 text-xs font-bold text-sub transition hover:border-danger hover:text-[var(--danger-text)]"
+              className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub transition hover:border-danger hover:text-[var(--danger-text)]"
               onClick={() => setOpen(false)}
             >
               {t.reportCancel}
             </button>
             <button
               type="button"
-              className="min-h-[28px] rounded-full bg-danger px-3 text-xs font-bold text-[var(--text-on-accent)] transition disabled:opacity-50"
+              className="min-h-11 rounded-full bg-danger px-3 text-xs font-bold text-[var(--text-on-accent)] transition disabled:opacity-50"
               disabled={busy}
               onClick={() => void submit()}
             >
@@ -113,7 +113,7 @@ export function TrumpButton({ torrentId }: { torrentId: number }) {
           </span>
         </span>
       </Modal>
-      {msg && <span className="text-[11px] text-success">{msg}</span>}
+      {msg && <span className="text-xs text-success">{msg}</span>}
     </span>
   );
 }

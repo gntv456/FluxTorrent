@@ -129,7 +129,7 @@ export function AdminNavGroups({
         key={e.tab_key}
         onClick={() => onTool(e.tab_key)}
         title={tipOf(e)}
-        className={`flex min-h-[34px] items-center justify-between
+        className={`flex min-h-11 items-center justify-between
           gap-2 rounded-[var(--r-md)] text-left text-[13px] transition ${
             deep ? "pl-7 pr-2" : "px-2"
           } ${
@@ -142,7 +142,7 @@ export function AdminNavGroups({
         {n > 0 && (
           <span
             className={`shrink-0 rounded-full px-1.5
-              text-[11px] ${
+              text-xs ${
                 active
                   ? "bg-white/25 text-[var(--text-on-accent)]"
                   : "bg-coral/20 text-[var(--danger-text)]"
@@ -181,12 +181,12 @@ export function AdminNavGroups({
                 {!expanded && groupBadges > 0 && (
                   <span
                     className={`shrink-0 rounded-full bg-coral/20 px-1.5
-                      text-[11px] text-[var(--danger-text)]`}
+                      text-xs text-[var(--danger-text)]`}
                   >
                     {groupBadges}
                   </span>
                 )}
-                <span className="text-[10px]">{expanded ? "▾" : "▸"}</span>
+                <span className="text-xs">{expanded ? "▾" : "▸"}</span>
               </span>
             </button>
             {expanded && (
@@ -196,7 +196,7 @@ export function AdminNavGroups({
                     <div
                       className="mx-1 mb-0.5 mt-1.5 flex items-center gap-1.5
                         rounded-[5px] bg-[var(--surface-raised)] px-2 py-1
-                        text-[10.5px] font-extrabold tracking-wider
+                        text-xs font-extrabold tracking-wider
                         text-[var(--text-brand)]"
                     >
                       <span

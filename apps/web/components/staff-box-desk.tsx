@@ -127,7 +127,7 @@ export function DeskTable({
                         busy || (answeringId === m.id && !answerText.trim())
                       }
                       onClick={() => onSendAnswer(m.id)}
-                      className="min-h-[36px] w-fit rounded-full bg-sky-deep px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+                      className="min-h-11 w-fit rounded-full bg-sky-deep px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
                     >
                       {t.sendBtn}
                     </button>
@@ -136,11 +136,11 @@ export function DeskTable({
               </details>
             </td>
             <td className="text-sky">{m.username ?? "—"}</td>
-            <td className="hidden text-[11px] text-sub md:table-cell">
+            <td className="hidden text-xs text-sub md:table-cell">
               {new Date(m.created_at).toLocaleString(dateLocale(locale))}
             </td>
             {deskTab === 1 && (
-              <td className="text-[11px]">{m.answered_by ?? "—"}</td>
+              <td className="text-xs">{m.answered_by ?? "—"}</td>
             )}
           </tr>
         ))}

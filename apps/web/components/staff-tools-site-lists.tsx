@@ -86,10 +86,10 @@ export function StaffSiteLists({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.mlUser}</td>
-              <td className="colhead">{t.ncTorrents}</td>
-              <td className="colhead">{t.ncLastSeen}</td>
+              <th scope="col" className="colhead">ID</th>
+              <th scope="col" className="colhead">{t.mlUser}</th>
+              <th scope="col" className="colhead">{t.ncTorrents}</th>
+              <th scope="col" className="colhead">{t.ncLastSeen}</th>
             </tr>
             {notConnectRows.map((r) => (
               <tr key={r.id}>
@@ -122,11 +122,11 @@ export function StaffSiteLists({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.mlUser}</td>
-              <td className="colhead">{t.ulpUploads}</td>
-              <td className="colhead">{t.stSeeding}</td>
-              <td className="colhead">{t.ulpSize}</td>
+              <th scope="col" className="colhead">ID</th>
+              <th scope="col" className="colhead">{t.mlUser}</th>
+              <th scope="col" className="colhead">{t.ulpUploads}</th>
+              <th scope="col" className="colhead">{t.stSeeding}</th>
+              <th scope="col" className="colhead">{t.ulpSize}</th>
             </tr>
             {uploaderRows.map((r) => (
               <tr key={r.id}>
@@ -155,8 +155,8 @@ export function StaffSiteLists({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{t.agAgent}</td>
-              <td className="colhead">{t.agPeers}</td>
+              <th scope="col" className="colhead">{t.agAgent}</th>
+              <th scope="col" className="colhead">{t.agPeers}</th>
             </tr>
             {agentRows.map((r) => (
               <tr key={r.agent}>
@@ -180,10 +180,10 @@ export function StaffSiteLists({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">ID</td>
-              <td className="colhead">{t.plQuestion}</td>
-              <td className="colhead">{t.plVotes}</td>
-              <td className="colhead">{t.plStatus}</td>
+              <th scope="col" className="colhead">ID</th>
+              <th scope="col" className="colhead">{t.plQuestion}</th>
+              <th scope="col" className="colhead">{t.plVotes}</th>
+              <th scope="col" className="colhead">{t.plStatus}</th>
             </tr>
             {pollRows.map((p) => (
               <tr key={p.id}>

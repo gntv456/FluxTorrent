@@ -75,7 +75,7 @@ export function PollWidget({
         <span className="font-bold text-ink">
           📊 {dict.forums.pollTitle}
           {poll.closed && (
-            <span className="ml-2 rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] text-sub">
+            <span className="ml-2 rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-xs text-sub">
               {dict.forums.pollClosed}
             </span>
           )}
@@ -96,7 +96,7 @@ export function PollWidget({
                 type="button"
                 onClick={() => vote(idx)}
                 disabled={busy}
-                className="min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-left text-sm transition hover:border-sky hover:text-sky disabled:opacity-50"
+                className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-3 text-left text-sm transition hover:border-sky hover:text-sky disabled:opacity-50"
               >
                 {opt}
               </button>

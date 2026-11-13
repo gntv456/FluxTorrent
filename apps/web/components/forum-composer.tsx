@@ -51,7 +51,7 @@ const INP =
   "min-h-[44px] w-full rounded-[var(--r-sm)] border border-line bg-cloud " +
   "px-3 text-sm outline-none focus:border-sky";
 const INP_SM =
-  "min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud " +
   "px-3 text-sm outline-none focus:border-sky";
 const BTN_GHOST =
   "self-start rounded-full border border-line px-3 py-1 text-xs " +
@@ -63,7 +63,7 @@ const INP_W =
   "min-h-[44px] rounded-[var(--r-sm)] border border-line bg-cloud " +
   "px-3 text-sm outline-none focus:border-sky";
 const BTN_CANCEL =
-  "min-h-[40px] rounded-full border border-line px-5 text-sm " +
+  "min-h-11 rounded-full border border-line px-5 text-sm " +
   "text-sub active:scale-[0.97]";
 
 export function TopicComposer({ forumId }: { forumId?: number }) {

@@ -48,7 +48,7 @@ export function PmList({
                 <button
                   type="button"
                   onClick={() => onReply(m)}
-                  className="min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] hover:bg-[var(--compat-orange)] hover:text-white"
+                  className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] hover:bg-[var(--compat-orange)] hover:text-white"
                 >
                   ↩ {dict.messages.reply}
                 </button>

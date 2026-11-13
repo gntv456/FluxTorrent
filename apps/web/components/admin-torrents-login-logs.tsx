@@ -122,12 +122,12 @@ export function LoginLogs() {
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{at.thUser}</td>
-            <td className="colhead">IP</td>
-            <td className="colhead">{at.thGeo}</td>
-            <td className="colhead">{at.thResult}</td>
-            <td className="colhead">{at.thTime}</td>
-            <td className="colhead">{at.thIpAction}</td>
+            <th scope="col" className="colhead">{at.thUser}</th>
+            <th scope="col" className="colhead">IP</th>
+            <th scope="col" className="colhead">{at.thGeo}</th>
+            <th scope="col" className="colhead">{at.thResult}</th>
+            <th scope="col" className="colhead">{at.thTime}</th>
+            <th scope="col" className="colhead">{at.thIpAction}</th>
           </tr>
         </thead>
         <tbody>

@@ -124,7 +124,7 @@ export function CheatCaseDetail({
       <div className="flex gap-2">
         <input
           className={
-            "min-h-[36px] flex-1 rounded-[var(--r-sm)] border " +
+            "min-h-11 flex-1 rounded-[var(--r-sm)] border " +
             "border-[var(--compat-line)] bg-[var(--compat-paper)] " +
             "px-2 text-sm"
           }

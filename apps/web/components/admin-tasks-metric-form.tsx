@@ -37,7 +37,7 @@ export function MetricMenuEdit(props: {
               ? t.metricUnitHours
               : t.metricUnitCount;
         const cell =
-          "flex min-h-[40px] items-center gap-2 rounded-[var(--r-sm)] " +
+          "flex min-h-11 items-center gap-2 rounded-[var(--r-sm)] " +
           "border px-2 py-1.5 text-xs " +
           (on
             ? "border-sky bg-[var(--surface-card)]"

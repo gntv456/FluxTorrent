@@ -59,7 +59,7 @@ function TorrentCardSkeleton() {
     >
       <div
         className={
-          "h-[46px] w-[31px] shrink-0 rounded " +
+          "h-[46px] w-[var(--tap-min)] shrink-0 rounded " +
           "bg-[var(--surface-sunken)]"
         }
       />

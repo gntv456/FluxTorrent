@@ -133,10 +133,18 @@ export function StaffSecurityPanel({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.fldIp}</td>
-                <td className="colhead">{t.fldReason}</td>
-                <td className="colhead">{t.banBy}</td>
-                <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+                <th scope="col" className="colhead">
+                  {t.fldIp}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.fldReason}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.banBy}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {dict.cmgmt.colActions}
+                </th>
               </tr>
               {bans.map((b) => (
                 <tr key={b.id}>
@@ -211,10 +219,18 @@ export function StaffSecurityPanel({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.fldSubject}</td>
-                <td className="colhead">{t.mailRecipients}</td>
-                <td className="colhead">{t.mailSender}</td>
-                <td className="colhead">{t.mailAt}</td>
+                <th scope="col" className="colhead">
+                  {t.fldSubject}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.mailRecipients}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.mailSender}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.mailAt}
+                </th>
               </tr>
               {mails.map((m) => (
                 <tr key={m.id}>

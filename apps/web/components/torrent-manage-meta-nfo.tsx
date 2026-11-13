@@ -59,7 +59,7 @@ export function MetaNfoFields({
           onChange={(e) => setFNfo(e.target.value)}
           className={MONO_AREA}
         />
-        <span className="text-[11px] text-sub">{t.nfoKeepHint}</span>
+        <span className="text-xs text-sub">{t.nfoKeepHint}</span>
       </label>
     </>
   );

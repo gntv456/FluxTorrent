@@ -82,10 +82,10 @@ export function UserAuditLogPanel({
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{u.auditColTime}</td>
-              <td className="colhead">{u.auditColAction}</td>
-              <td className="colhead">{u.auditColActor}</td>
-              <td className="colhead">{u.auditColDetail}</td>
+              <th scope="col" className="colhead">{u.auditColTime}</th>
+              <th scope="col" className="colhead">{u.auditColAction}</th>
+              <th scope="col" className="colhead">{u.auditColActor}</th>
+              <th scope="col" className="colhead">{u.auditColDetail}</th>
             </tr>
           </thead>
           <tbody>

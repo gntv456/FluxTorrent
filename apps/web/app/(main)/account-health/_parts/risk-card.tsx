@@ -132,7 +132,7 @@ export function RiskCard({
                     <Badge tone="warn" size="sm">
                       {fmt(t.hits, { n: r.hits })}
                     </Badge>
-                    <span className="ml-auto text-[11px] text-sub">
+                    <span className="ml-auto text-xs text-sub">
                       {t.lastSeen}: {day(locale, r.last_seen)}
                     </span>
                   </div>
@@ -141,7 +141,7 @@ export function RiskCard({
                   )}
                   {r.torrent_ids.length > 0 && (
                     <p
-                      className="mt-1 flex flex-wrap gap-x-2 text-[11px]
+                      className="mt-1 flex flex-wrap gap-x-2 text-xs
                         text-sub"
                     >
                       <span>{t.torrents}:</span>

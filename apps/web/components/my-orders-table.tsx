@@ -92,12 +92,12 @@ export function MyOrdersTable({
         <table className="nexus-table profilet">
           <tbody>
             <tr>
-              <td className="colhead">{t.colNo}</td>
-              <td className="colhead">{t.colItem}</td>
-              <td className="colhead">{t.colKind}</td>
-              <td className="colhead">{t.colPrice}</td>
-              <td className="colhead">{t.colStatus}</td>
-              <td className="colhead">{t.colAt}</td>
+              <th scope="col" className="colhead">{t.colNo}</th>
+              <th scope="col" className="colhead">{t.colItem}</th>
+              <th scope="col" className="colhead">{t.colKind}</th>
+              <th scope="col" className="colhead">{t.colPrice}</th>
+              <th scope="col" className="colhead">{t.colStatus}</th>
+              <th scope="col" className="colhead">{t.colAt}</th>
             </tr>
             {rows.map((r) => {
               const badge = fulfillBadge(r.fulfill_state, t);

@@ -9,11 +9,10 @@ import { toast } from "@/components/ui/toast";
 
 /** 样式常量（抽出来避免 JSX 内联 className 行超 80 列门禁） */
 const CARD =
-  "rounded-[var(--r-md)] border border-line " +
-  "bg-[var(--surface-card)] p-3";
+  "rounded-[var(--r-md)] border border-line " + "bg-[var(--surface-card)] p-3";
 const FULFILL_BTN =
-  "min-h-[28px] rounded-full border border-line px-2 " +
-  "text-[11px] font-bold text-sky-deep";
+  "min-h-11 rounded-full border border-line px-2 " +
+  "text-xs font-bold text-sky-deep";
 const ROW = "flex justify-between gap-2";
 
 export interface RequestCardRow {
@@ -76,12 +75,9 @@ export function RequestCardList({
         onChanged();
       })
       .catch((e: unknown) => {
-        toast.error(
-          t.bidFailed + (e instanceof Error ? e.message : ""),
-          {
-            requestId: e instanceof ApiError ? e.requestId : undefined,
-          },
-        );
+        toast.error(t.bidFailed + (e instanceof Error ? e.message : ""), {
+          requestId: e instanceof ApiError ? e.requestId : undefined,
+        });
       });
   }
 
@@ -105,12 +101,9 @@ export function RequestCardList({
         onChanged();
       })
       .catch((e: unknown) => {
-        toast.error(
-          t.fulfillFailed + (e instanceof Error ? e.message : ""),
-          {
-            requestId: e instanceof ApiError ? e.requestId : undefined,
-          },
-        );
+        toast.error(t.fulfillFailed + (e instanceof Error ? e.message : ""), {
+          requestId: e instanceof ApiError ? e.requestId : undefined,
+        });
       });
   }
 
@@ -159,9 +152,7 @@ export function RequestCardList({
               </span>
             ) : (
               <span className="flex items-center gap-1">
-                <span className="request-status is-progress">
-                  {t.pending}
-                </span>
+                <span className="request-status is-progress">{t.pending}</span>
                 <button
                   type="button"
                   className={FULFILL_BTN}
@@ -196,7 +187,7 @@ export function RequestCardList({
             inputMode="numeric"
             placeholder="#"
             autoFocus
-            className="min-h-[36px] rounded-[var(--r-sm)] border border-line
+            className="min-h-11 rounded-[var(--r-sm)] border border-line
               bg-[var(--surface-card)] px-3 text-sm text-ink"
           />
         </label>
@@ -217,7 +208,7 @@ export function RequestCardList({
             inputMode="numeric"
             placeholder="100"
             autoFocus
-            className="min-h-[36px] rounded-[var(--r-sm)] border border-line
+            className="min-h-11 rounded-[var(--r-sm)] border border-line
               bg-[var(--surface-card)] px-3 text-sm text-ink"
           />
         </label>

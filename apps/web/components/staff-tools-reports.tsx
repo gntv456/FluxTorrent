@@ -80,7 +80,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
           ).map(([k, label]) => (
             <button
               key={k}
-              className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${rpStatus === k ? "bg-sky text-[var(--text-on-accent)]" : "border border-line text-sub"}`}
+              className={`min-h-11 rounded-full px-3 text-xs font-bold ${rpStatus === k ? "bg-sky text-[var(--text-on-accent)]" : "border border-line text-sub"}`}
               onClick={() => setRpStatus(k)}
             >
               {label}
@@ -93,18 +93,18 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
         <input
           value={rpNote}
           onChange={(e) => setRpNote(e.target.value)}
-          className="min-h-[32px] flex-1 rounded-full border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
+          className="min-h-11 flex-1 rounded-full border border-line bg-cloud px-3 text-sm outline-none focus:border-sky"
         />
       </label>
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead w-12">#</td>
-            <td className="colhead">{t.colTarget}</td>
-            <td className="colhead w-24">{t.colReporter}</td>
-            <td className="colhead">{t.colReason}</td>
-            <td className="colhead w-36">{t.colTime}</td>
-            <td className="colhead w-40">{t.colAction}</td>
+            <th scope="col" className="colhead w-12">#</th>
+            <th scope="col" className="colhead">{t.colTarget}</th>
+            <th scope="col" className="colhead w-24">{t.colReporter}</th>
+            <th scope="col" className="colhead">{t.colReason}</th>
+            <th scope="col" className="colhead w-36">{t.colTime}</th>
+            <th scope="col" className="colhead w-40">{t.colAction}</th>
           </tr>
         </thead>
         <tbody>
@@ -134,12 +134,12 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
               <td className="text-sub">
                 {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                 {r.status === 2 && r.claimed_name && (
-                  <p className="text-[11px] text-sky">
+                  <p className="text-xs text-sky">
                     {fmt(t.claimedBy, { name: r.claimed_name })}
                   </p>
                 )}
                 {r.status === 1 && r.handled_name && (
-                  <p className="text-[11px]">
+                  <p className="text-xs">
                     {fmt(t.handledBy, {
                       name: r.handled_name,
                       at: r.handled_at
@@ -156,7 +156,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                   <>
                     {r.status === 0 && (
                       <button
-                        className="min-h-[28px] rounded-full border border-sky px-3 font-bold text-sky"
+                        className="min-h-11 rounded-full border border-sky px-3 font-bold text-sky"
                         onClick={() =>
                           guard(async () => {
                             await api.post("/api/v1/admin/reports/claim", {
@@ -169,7 +169,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                       </button>
                     )}
                     <button
-                      className="ml-1 min-h-[28px] rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
+                      className="ml-1 min-h-11 rounded-full bg-sky px-3 font-bold text-[var(--text-on-accent)]"
                       onClick={() =>
                         guard(async () => {
                           await api.post("/api/v1/admin/reports/resolve", {
@@ -184,7 +184,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                       {t.actBtn}
                     </button>
                     <button
-                      className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-sub"
+                      className="ml-1 min-h-11 rounded-full border border-line px-3 font-bold text-sub"
                       onClick={() =>
                         guard(async () => {
                           await api.post("/api/v1/admin/reports/resolve", {
@@ -200,7 +200,7 @@ export function StaffReportsPanel({ flash }: { flash: (m: string) => void }) {
                     </button>
                     {r.status === 2 && (
                       <button
-                        className="ml-1 min-h-[28px] rounded-full border border-line px-3 font-bold text-sub"
+                        className="ml-1 min-h-11 rounded-full border border-line px-3 font-bold text-sub"
                         onClick={() =>
                           guard(async () => {
                             await api.post("/api/v1/admin/reports/release", {

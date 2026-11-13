@@ -109,7 +109,7 @@ export function AdminJixiao() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
+    "min-h-11 rounded-[var(--r-sm)] border border-line " +
     "bg-cloud px-2 font-mono text-sm outline-none focus:border-sky";
   const typeName = (tid: number) =>
     types.find((t) => t.id === tid)?.name ?? `#${tid}`;
@@ -133,7 +133,7 @@ export function AdminJixiao() {
             <button
               key={k}
               className={
-                "min-h-[32px] rounded-full px-4 text-xs font-bold " +
+                "min-h-11 rounded-full px-4 text-xs font-bold " +
                 `${tab === k ? "bg-sky text-cloud" : "border border-line"}`
               }
               onClick={() => setTab(k)}
@@ -153,13 +153,13 @@ export function AdminJixiao() {
             <table className="nexus-table text-xs">
               <thead>
                 <tr>
-                  <td className="colhead">{at.thType}</td>
-                  <td className="colhead">{at.thBasePay}</td>
-                  <td className="colhead">{at.thAssigned}</td>
-                  <td className="colhead">{at.thQualified}</td>
-                  <td className="colhead">{at.thFailed}</td>
-                  <td className="colhead">{at.thPending}</td>
-                  <td className="colhead">{at.thPayrollTotal}</td>
+                  <th scope="col" className="colhead">{at.thType}</th>
+                  <th scope="col" className="colhead">{at.thBasePay}</th>
+                  <th scope="col" className="colhead">{at.thAssigned}</th>
+                  <th scope="col" className="colhead">{at.thQualified}</th>
+                  <th scope="col" className="colhead">{at.thFailed}</th>
+                  <th scope="col" className="colhead">{at.thPending}</th>
+                  <th scope="col" className="colhead">{at.thPayrollTotal}</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,9 +176,7 @@ export function AdminJixiao() {
                 ))}
                 {ov.types.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-sub">
-                      {at.typesEmpty}
-                    </td>
+                    <td colSpan={7} className="py-6 text-center text-sub">{at.typesEmpty}</td>
                   </tr>
                 )}
               </tbody>
@@ -186,13 +184,13 @@ export function AdminJixiao() {
             <table className="nexus-table text-xs">
               <thead>
                 <tr>
-                  <td className="colhead">{at.thType}</td>
-                  <td className="colhead">{at.thUser}</td>
-                  <td className="colhead">{at.thStatus}</td>
-                  <td className="colhead">{at.thPay}</td>
-                  <td className="colhead">{at.thBonus}</td>
-                  <td className="colhead">{at.thMetrics}</td>
-                  <td className="colhead text-right">{at.thActions}</td>
+                  <th scope="col" className="colhead">{at.thType}</th>
+                  <th scope="col" className="colhead">{at.thUser}</th>
+                  <th scope="col" className="colhead">{at.thStatus}</th>
+                  <th scope="col" className="colhead">{at.thPay}</th>
+                  <th scope="col" className="colhead">{at.thBonus}</th>
+                  <th scope="col" className="colhead">{at.thMetrics}</th>
+                  <th scope="col" className="colhead text-right">{at.thActions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,9 +220,7 @@ export function AdminJixiao() {
                 ))}
                 {ov.members.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-sub">
-                      {at.membersEmpty}
-                    </td>
+                    <td colSpan={7} className="py-6 text-center text-sub">{at.membersEmpty}</td>
                   </tr>
                 )}
               </tbody>

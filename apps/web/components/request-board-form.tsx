@@ -71,7 +71,7 @@ export function RequestForm({
           onChange={(e) => setFtTitle(e.target.value)}
           maxLength={200}
           required
-          className="min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-3"
+          className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-3"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
@@ -91,21 +91,17 @@ export function RequestForm({
           min={0}
           value={ftBounty}
           onChange={(e) => setFtBounty(e.target.value)}
-          className="min-h-[40px] w-40 rounded-[var(--r-sm)] border border-line bg-cloud px-3"
+          className="min-h-11 w-40 rounded-[var(--r-sm)] border border-line bg-cloud px-3"
         />
       </label>
       <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={ftBusy}
-          className={BTN_MD_SKY}
-        >
+        <button type="submit" disabled={ftBusy} className={BTN_MD_SKY}>
           {ftBusy ? t.formBusy : t.formSubmit}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="min-h-[40px] rounded-full border border-line px-4 text-sm"
+          className="min-h-11 rounded-full border border-line px-4 text-sm"
         >
           {t.formCancel}
         </button>

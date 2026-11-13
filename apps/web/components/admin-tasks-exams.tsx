@@ -44,7 +44,7 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
   // 0481 收回确认弹窗：带追回提示（已结算发过奖的记录）
   const [revoking, setRevoking] = useState<ExamUserRow | null>(null);
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
 
   const loadExams = useCallback(async () => {
     setErr(null);
@@ -152,15 +152,15 @@ export function ExamUsersPanel({ flash }: { flash: (m: string) => void }) {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{t.colUser}</td>
-              <td className="colhead">{t.colExam}</td>
-              <td className="colhead">{t.colKind}</td>
-              <td className="colhead">{t.colStatus}</td>
-              <td className="colhead">{t.colAssignTime}</td>
-              <td className="colhead">{t.colSettleTime}</td>
-              <td className="colhead">{t.colRewardPaid}</td>
-              <td className="colhead">{t.colExempt}</td>
-              <td className="colhead text-right">{t.colActions}</td>
+              <th scope="col" className="colhead">{t.colUser}</th>
+              <th scope="col" className="colhead">{t.colExam}</th>
+              <th scope="col" className="colhead">{t.colKind}</th>
+              <th scope="col" className="colhead">{t.colStatus}</th>
+              <th scope="col" className="colhead">{t.colAssignTime}</th>
+              <th scope="col" className="colhead">{t.colSettleTime}</th>
+              <th scope="col" className="colhead">{t.colRewardPaid}</th>
+              <th scope="col" className="colhead">{t.colExempt}</th>
+              <th scope="col" className="colhead text-right">{t.colActions}</th>
             </tr>
           </thead>
           <tbody>

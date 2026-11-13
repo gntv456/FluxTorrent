@@ -17,7 +17,7 @@ export interface HelpFieldsValue {
 }
 
 const FLD =
-  "min-h-[38px] w-full rounded-[var(--r-sm)] border " +
+  "min-h-11 w-full rounded-[var(--r-sm)] border " +
   "border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
 
 export function HelpFieldsEditor({

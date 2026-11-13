@@ -56,7 +56,7 @@ export function PostVoteBar({
       disabled={busy}
       aria-pressed={on}
       title={dict.forums.like}
-      className={`inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 ${
+      className={`inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 ${
         on
           ? "border-transparent bg-[var(--coral-soft)] text-coral"
           : "border-line text-sub hover:border-coral hover:text-coral"
@@ -116,7 +116,7 @@ export function TopicFavoriteButton({
       disabled={busy}
       aria-pressed={on}
       title={dict.forums.favorite}
-      className={`inline-flex min-h-[32px] items-center gap-1 rounded-full border px-3 text-xs font-bold transition disabled:opacity-50 ${
+      className={`inline-flex min-h-11 items-center gap-1 rounded-full border px-3 text-xs font-bold transition disabled:opacity-50 ${
         on
           ? "border-transparent bg-[var(--coral-soft)] text-coral"
           : "border-line text-sub hover:border-coral hover:text-coral"
@@ -187,7 +187,7 @@ export function PostTipButton({
         }
         disabled={busy}
         title={dict.forums.tipTitle}
-        className="inline-flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 border-line text-sub hover:border-[var(--compat-orange)] hover:text-[var(--compat-orange-dark)]"
+        className="inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 text-xs font-bold transition disabled:opacity-50 border-line text-sub hover:border-[var(--compat-orange)] hover:text-[var(--compat-orange-dark)]"
       >
         <span aria-hidden="true">☕</span>
         {dict.forums.tipTitle}
@@ -247,7 +247,7 @@ export function BountyAcceptButton({
         onClick={accept}
         disabled={busy}
         title={dict.forums.bountyAccept}
-        className="inline-flex min-h-[30px] items-center gap-1 rounded-full border border-coral bg-transparent px-3 text-xs font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
+        className="inline-flex min-h-11 items-center gap-1 rounded-full border border-coral bg-transparent px-3 text-xs font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
       >
         <span aria-hidden="true">💰</span>
         {dict.forums.bountyAccept}

@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { dateLocale } from "@/i18n/config";
-import {
-  PAGE_BTN_CLS,
-  type RuntimeLogPage,
-} from "./staff-tools-sys-shared";
+import { PAGE_BTN_CLS, type RuntimeLogPage } from "./staff-tools-sys-shared";
 import { Pager } from "@/components/ui/pager";
 
 /** 运行日志面板（0218 G6）：api/worker 的 WARN+ tracing 事件（runtime_logs）。
@@ -28,7 +25,7 @@ function levelCls(level: string): string {
 /** 档位按钮：选中态用品牌底色，未选中复用分页描边口径 */
 function segCls(on: boolean): string {
   return on
-    ? "min-h-[36px] rounded-full bg-sky-soft px-4 text-xs font-bold " +
+    ? "min-h-11 rounded-full bg-sky-soft px-4 text-xs font-bold " +
         "text-ink"
     : PAGE_BTN_CLS;
 }
@@ -76,9 +73,7 @@ export function RuntimeLogPanel() {
               }}
             >
               {lv || t.rlAll}
-              {lv !== "" && (
-                <span className="num ml-1">{countOf(lv)}</span>
-              )}
+              {lv !== "" && <span className="num ml-1">{countOf(lv)}</span>}
             </button>
           ))}
           {hasInstances && (
@@ -86,7 +81,7 @@ export function RuntimeLogPanel() {
               <span className="text-xs text-sub">{t.rlInstance}</span>
               <select
                 className={
-                  "min-h-[36px] rounded-full border border-line " +
+                  "min-h-11 rounded-full border border-line " +
                   "bg-surface px-3 text-xs"
                 }
                 value={instance}
@@ -125,23 +120,33 @@ export function RuntimeLogPanel() {
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead w-40">{t.rlTime}</td>
-              <td className="colhead w-20">{t.rlLevel}</td>
-              <td className="colhead w-24">{t.rlSrc}</td>
+              <th scope="col" className="colhead w-40">
+                {t.rlTime}
+              </th>
+              <th scope="col" className="colhead w-20">
+                {t.rlLevel}
+              </th>
+              <th scope="col" className="colhead w-24">
+                {t.rlSrc}
+              </th>
               {hasInstances && (
-                <td className="colhead w-24">{t.rlInstance}</td>
+                <th scope="col" className="colhead w-24">
+                  {t.rlInstance}
+                </th>
               )}
-              <td className="colhead w-48">{t.rlTarget}</td>
-              <td className="colhead">{t.rlMsg}</td>
+              <th scope="col" className="colhead w-48">
+                {t.rlTarget}
+              </th>
+              <th scope="col" className="colhead">
+                {t.rlMsg}
+              </th>
             </tr>
             {data?.items.map((r) => (
               <tr key={r.id}>
                 <td className="text-xs text-sub">
                   {new Date(r.ts).toLocaleString(dateLocale(locale))}
                 </td>
-                <td className={`text-xs ${levelCls(r.level)}`}>
-                  {r.level}
-                </td>
+                <td className={`text-xs ${levelCls(r.level)}`}>{r.level}</td>
                 <td className="font-mono text-xs">{r.source}</td>
                 {hasInstances && (
                   <td className="font-mono text-xs">{r.instance || "—"}</td>
@@ -152,9 +157,7 @@ export function RuntimeLogPanel() {
                 <td className="text-xs break-all">
                   {r.message}
                   {r.repeat > 1 && (
-                    <span className="num ml-1 text-sub">
-                      ×{r.repeat}
-                    </span>
+                    <span className="num ml-1 text-sub">×{r.repeat}</span>
                   )}
                 </td>
               </tr>

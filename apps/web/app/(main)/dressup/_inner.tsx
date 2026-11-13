@@ -168,7 +168,7 @@ export default function DressupPage() {
                     <p className="text-sm font-bold">
                       {d.name}
                       {d.wearing && (
-                        <span className="ml-1 rounded-full bg-sun px-2 py-0.5 text-[10px] text-ink">
+                        <span className="ml-1 rounded-full bg-sun px-2 py-0.5 text-xs text-ink">
                           {dict.dressup.wearing}
                         </span>
                       )}

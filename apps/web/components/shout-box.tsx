@@ -246,7 +246,7 @@ export function ShoutBox({ active = true }: { active?: boolean } = {}) {
               type="button"
               title={c.desc}
               onClick={() => setText(c.cmd)}
-              className="min-h-[26px] rounded-full border border-line px-2 text-[11px] font-bold text-sub hover:border-sky hover:text-sky"
+              className="min-h-11 rounded-full border border-line px-2 text-xs font-bold text-sub hover:border-sky hover:text-sky"
             >
               {c.cmd}
             </button>

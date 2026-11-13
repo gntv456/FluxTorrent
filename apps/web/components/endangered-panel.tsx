@@ -164,7 +164,7 @@ export function EndangeredPanel() {
                         type="button"
                         disabled={busy !== null}
                         onClick={() => createTeam(it.torrent_id)}
-                        className="min-h-[30px] rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
+                        className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
                       >
                         {busy === it.torrent_id ? "…" : t.startTeam}
                       </button>

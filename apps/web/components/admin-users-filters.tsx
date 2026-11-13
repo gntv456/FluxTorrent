@@ -22,20 +22,20 @@ const FOLD_KEY = "flux-admin-filters-open";
 // 筛选区输入/下拉底色
 const FILTER_INPUT = INPUT_MD;
 const FILTER_SELECT =
-  "min-h-[40px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2";
 const SEARCH_BTN =
-  "min-h-[40px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
+  "min-h-11 rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]";
 /** 重置：次要按钮（描边 + 面板底），排在搜索左侧，不抢主操作；
  *  禁用态用淡字 + 淡边，仍可辨认（不是隐身）。 */
 const RESET_BTN =
-  "min-h-[var(--tap-min)] shrink-0 rounded-full border border-line " +
+  "min-h-11 shrink-0 rounded-full border border-line " +
   "bg-[var(--surface-card)] px-4 text-xs font-bold text-[var(--text-body)] " +
   "disabled:cursor-not-allowed disabled:border-[var(--border-soft)] " +
   "disabled:text-[var(--text-faint)]";
 const PANEL = "brand-panel grid grid-cols-2 gap-3 p-4 md:grid-cols-4";
 const TOGGLE_BTN =
-  "min-h-[var(--tap-min)] shrink-0 rounded-full border border-line px-3" +
+  "min-h-11 shrink-0 rounded-full border border-line px-3" +
   " text-xs font-bold";
 
 export interface FilterValues {

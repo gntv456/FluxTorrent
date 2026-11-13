@@ -346,7 +346,7 @@ export default function ScratchPage({
         <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
           <SwHist rows={histRows} empty={t.historyEmpty} />
-          <p className="mt-3 text-[11px] text-sub">
+          <p className="mt-3 text-xs text-sub">
             {scratchPoolText(ov?.scratch?.prizes, ts.poolLabel) || ts.pool}
           </p>
         </div>

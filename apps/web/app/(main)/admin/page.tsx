@@ -438,7 +438,7 @@ export default function AdminPage() {
           <p className="mt-2 text-sm text-sub">{a.needAdminHint}</p>
           <button
             onClick={() => load()}
-            className="mt-4 min-h-[var(--tap-min)] rounded-full bg-[var(--accent-surface)] px-5 text-sm font-bold text-[var(--accent-on)]"
+            className="mt-4 min-h-11 rounded-full bg-[var(--accent-surface)] px-5 text-sm font-bold text-[var(--accent-on)]"
           >
             {dict.common.retry}
           </button>

@@ -232,7 +232,7 @@ export function Comments({
               {c.username ?? dict.anonymous}
             </p>
             <p
-              className="mt-1 text-[11px] text-sub"
+              className="mt-1 text-xs text-sub"
               title={new Date(c.created_at).toLocaleString(dateLocale(locale))}
             >
               {relTime(c.created_at, dict)}

@@ -166,7 +166,7 @@ export function PasskeysCard() {
           type="button"
           disabled={busy}
           onClick={() => setStep(true)}
-          className="min-h-[32px] rounded-full bg-sky-deep px-3 text-xs
+          className="min-h-11 rounded-full bg-sky-deep px-3 text-xs
             font-bold text-white disabled:opacity-50"
         >
           {dict.usercp.security.webauthnBind}
@@ -178,7 +178,7 @@ export function PasskeysCard() {
             {dict.usercp.security.webauthnStepUpHint}
           </p>
           <input
-            className="min-h-[32px] rounded border border-line bg-cloud px-3
+            className="min-h-11 rounded border border-line bg-cloud px-3
               text-xs"
             type="password"
             autoComplete="current-password"
@@ -188,7 +188,7 @@ export function PasskeysCard() {
           />
           {twofa !== false && (
             <input
-              className="min-h-[32px] rounded border border-line bg-cloud
+              className="min-h-11 rounded border border-line bg-cloud
                 px-3 text-xs"
               inputMode="numeric"
               autoComplete="one-time-code"

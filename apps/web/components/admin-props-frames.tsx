@@ -55,7 +55,7 @@ export function FramesPanel({
   };
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
 
   async function saveFrame() {
     setBusy(true);
@@ -200,14 +200,14 @@ export function FramesPanel({
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thId}</td>
-            <td className="colhead">{at.thPreview}</td>
-            <td className="colhead">{at.thName}</td>
-            <td className="colhead">{at.thPrice}</td>
-            <td className="colhead">{at.thSort}</td>
-            <td className="colhead">{at.thWorn}</td>
-            <td className="colhead">{at.thStyle}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thId}</th>
+            <th scope="col" className="colhead">{at.thPreview}</th>
+            <th scope="col" className="colhead">{at.thName}</th>
+            <th scope="col" className="colhead">{at.thPrice}</th>
+            <th scope="col" className="colhead">{at.thSort}</th>
+            <th scope="col" className="colhead">{at.thWorn}</th>
+            <th scope="col" className="colhead">{at.thStyle}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

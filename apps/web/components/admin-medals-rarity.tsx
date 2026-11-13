@@ -19,7 +19,7 @@ import { fmt } from "@/i18n/config";
 
 /** 表单输入基线样式（原 admin-medals.tsx 的 RARITY_INP 常量） */
 const RARITY_INP =
-  "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud " +
   "px-2 text-sm outline-none focus:border-sky";
 
 /** 稀有度下拉里的「自定义…」哨兵值（真实值由旁边的文本框输入） */
@@ -87,7 +87,7 @@ export function RarityDict({
     <section className="brand-panel p-4">
       <div className="mb-2 flex flex-wrap items-baseline gap-2">
         <h3 className="text-sm font-bold">{at.rarityTitle}</h3>
-        <span className="text-[11px] text-sub">{at.rarityHint}</span>
+        <span className="text-xs text-sub">{at.rarityHint}</span>
       </div>
       <div className="mb-3 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">
@@ -149,12 +149,12 @@ export function RarityDict({
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thKey}</td>
-            <td className="colhead">{at.thLabel}</td>
-            <td className="colhead">{at.thTone}</td>
-            <td className="colhead">{at.thSort}</td>
-            <td className="colhead">{at.thUsed}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thKey}</th>
+            <th scope="col" className="colhead">{at.thLabel}</th>
+            <th scope="col" className="colhead">{at.thTone}</th>
+            <th scope="col" className="colhead">{at.thSort}</th>
+            <th scope="col" className="colhead">{at.thUsed}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>
@@ -231,11 +231,11 @@ export function MedalImagePreview({ src }: { src?: string | null }) {
   }, [url]);
   if (!url)
     return (
-      <span className="pb-1 text-[11px] text-sub">{at.noImage}</span>
+      <span className="pb-1 text-xs text-sub">{at.noImage}</span>
     );
   if (err)
     return (
-      <span className="max-w-xs pb-1 text-[11px] text-[var(--danger-text)]">
+      <span className="max-w-xs pb-1 text-xs text-[var(--danger-text)]">
         {at.imgFail}
       </span>
     );

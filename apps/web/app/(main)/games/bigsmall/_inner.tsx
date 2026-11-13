@@ -350,7 +350,7 @@ export default function BigSmallPage({
               赔率 win_mult 由后端下发，区间划分与 bigsmall.rs 的三区常量一致 */}
           <div className="mb-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3">
             <h3 className="mb-2 text-xs font-bold text-sub">赔率表</h3>
-            <div className="grid grid-cols-1 gap-1 text-[11px]">
+            <div className="grid grid-cols-1 gap-1 text-xs">
               <div className="flex justify-between">
                 <span className="text-sub">{tg.bsPickSmall} (1-49)</span>
                 <b className="num text-[var(--sky-deep)]">
@@ -379,7 +379,7 @@ export default function BigSmallPage({
             empty={t.historyEmpty}
           />
           {hist.length > 0 && (
-            <p className="num mt-2 text-[11px] text-sub">
+            <p className="num mt-2 text-xs text-sub">
               {tg.statLine
                 .replace("{n}", String(hist.length))
                 .replace("{w}", String(stats.w))
@@ -388,7 +388,7 @@ export default function BigSmallPage({
                 .replace("{p}", String(hitRate))}
             </p>
           )}
-          <p className="mt-2 text-[11px] text-sub">{tg.rule}</p>
+          <p className="mt-2 text-xs text-sub">{tg.rule}</p>
         </div>
       }
     />

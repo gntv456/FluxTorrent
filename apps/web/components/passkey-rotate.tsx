@@ -9,7 +9,7 @@ const INPUT_CLS =
   "w-40 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2 py-1 text-sm";
 const BTN_CLS =
-  "min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold " +
+  "min-h-11 rounded-full bg-coral px-4 text-xs font-bold " +
   "text-white disabled:opacity-50";
 
 /** 重置下载密钥（P-409）：轮换一次就发新钥、废旧钥、撤下载键与 RSS。

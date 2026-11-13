@@ -22,11 +22,7 @@ import {
   type QuizRow,
 } from "./staff-tools-regquiz-parts";
 
-export function StaffRegQuizPanel({
-  flash,
-}: {
-  flash: (m: string) => void;
-}) {
+export function StaffRegQuizPanel({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
   const t = dict.stafftools;
   const [data, setData] = useState<ListResp | null>(null);
@@ -94,12 +90,24 @@ export function StaffRegQuizPanel({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{t.rqColId}</td>
-              <td className="colhead">{t.rqColCategory}</td>
-              <td className="colhead">{t.rqColQuestion}</td>
-              <td className="colhead">{t.rqColAnswer}</td>
-              <td className="colhead">{t.rqColEnabled}</td>
-              <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+              <th scope="col" className="colhead">
+                {t.rqColId}
+              </th>
+              <th scope="col" className="colhead">
+                {t.rqColCategory}
+              </th>
+              <th scope="col" className="colhead">
+                {t.rqColQuestion}
+              </th>
+              <th scope="col" className="colhead">
+                {t.rqColAnswer}
+              </th>
+              <th scope="col" className="colhead">
+                {t.rqColEnabled}
+              </th>
+              <th scope="col" className="colhead text-right">
+                {dict.cmgmt.colActions}
+              </th>
             </tr>
             {(data?.items ?? []).map((r) => (
               <tr key={r.id}>

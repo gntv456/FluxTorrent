@@ -42,7 +42,7 @@ export function PropBar({
     <div className="flex flex-col gap-1.5">
       <span className="text-xs text-sub">{tg.propsLabel}</span>
       {props.length === 0 ? (
-        <span className="text-[11px] text-sub">{tg.propEmpty}</span>
+        <span className="text-xs text-sub">{tg.propEmpty}</span>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {props.map((p) => (

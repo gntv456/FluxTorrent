@@ -64,11 +64,11 @@ export function AdminTrumps() {
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">ID</td>
-                <td className="colhead">{d.reportColTarget}</td>
-                <td className="colhead">{d.reportColReason}</td>
-                <td className="colhead">{d.reportColNote}</td>
-                <td className="colhead">{d.reportButton}</td>
+                <th scope="col" className="colhead">ID</th>
+                <th scope="col" className="colhead">{d.reportColTarget}</th>
+                <th scope="col" className="colhead">{d.reportColReason}</th>
+                <th scope="col" className="colhead">{d.reportColNote}</th>
+                <th scope="col" className="colhead">{d.reportButton}</th>
               </tr>
               {rows.map((r) => (
                 <tr key={r.id}>

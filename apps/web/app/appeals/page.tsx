@@ -135,7 +135,7 @@ export default function AppealsPage() {
             ))}
           </select>
           {guest ? (
-            <span className="text-[11px] text-sub">
+            <span className="text-xs text-sub">
               {dict.appeals.guestKindLocked}
             </span>
           ) : null}

@@ -216,7 +216,7 @@ export function VideoInsertRow({
                   type="button"
                   aria-label={t.videoRemove}
                   onClick={() => removeRow(i)}
-                  className={`${PILL_BTN} min-h-[34px]`}
+                  className={`${PILL_BTN} min-h-11`}
                 >
                   ×
                 </button>
@@ -239,7 +239,7 @@ export function VideoInsertRow({
           type="button"
           disabled={total === 0 || busy || rules === null}
           onClick={insertLinks}
-          className={`${PILL_BTN} min-h-[38px] disabled:opacity-40`}
+          className={`${PILL_BTN} min-h-11 disabled:opacity-40`}
         >
           {busy ? t.videoInserting : t.videoInsert}
         </button>
@@ -247,7 +247,7 @@ export function VideoInsertRow({
           type="button"
           disabled={urls.length >= 10}
           onClick={addRow}
-          className={`${PILL_BTN} min-h-[38px] disabled:opacity-40`}
+          className={`${PILL_BTN} min-h-11 disabled:opacity-40`}
         >
           + {t.videoAdd}
         </button>

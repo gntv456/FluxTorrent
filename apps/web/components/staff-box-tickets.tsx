@@ -49,7 +49,7 @@ export function TicketPanel({
             key={s}
             type="button"
             onClick={() => setTicketStatus(s)}
-            className={`min-h-[32px] rounded-full px-3 text-xs font-bold ${
+            className={`min-h-11 rounded-full px-3 text-xs font-bold ${
               ticketStatus === s
                 ? "text-[var(--compat-orange-dark)] underline"
                 : "text-sub"
@@ -71,13 +71,27 @@ export function TicketPanel({
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead w-12">#</td>
-              <td className="colhead">{dict.messages.subject}</td>
-              <td className="colhead w-24">{t.from}</td>
-              <td className="colhead w-20">{tk.priority}</td>
-              <td className="colhead w-28">{tk.assignedTo}</td>
-              <td className="colhead w-28">{tk.statusLabel}</td>
-              <td className="colhead w-40">{dict.messages.timeCol}</td>
+              <th scope="col" className="colhead w-12">
+                #
+              </th>
+              <th scope="col" className="colhead">
+                {dict.messages.subject}
+              </th>
+              <th scope="col" className="colhead w-24">
+                {t.from}
+              </th>
+              <th scope="col" className="colhead w-20">
+                {tk.priority}
+              </th>
+              <th scope="col" className="colhead w-28">
+                {tk.assignedTo}
+              </th>
+              <th scope="col" className="colhead w-28">
+                {tk.statusLabel}
+              </th>
+              <th scope="col" className="colhead w-40">
+                {dict.messages.timeCol}
+              </th>
               <td className="colhead w-24" />
             </tr>
           </thead>
@@ -91,7 +105,7 @@ export function TicketPanel({
                 <td className="text-sub">{m.assigned_to ?? tk.unassigned}</td>
                 <td>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                       m.ticket_status === 0
                         ? "bg-sun/30"
                         : m.ticket_status === 1
@@ -104,14 +118,14 @@ export function TicketPanel({
                     {ticketStatusLabel(tk, m.ticket_status)}
                   </span>
                 </td>
-                <td className="text-[11px] text-sub">
+                <td className="text-xs text-sub">
                   {new Date(m.created_at).toLocaleString(dateLocale(locale))}
                 </td>
                 <td className="text-right">
                   <button
                     type="button"
                     onClick={() => onEditToggle(m.id)}
-                    className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold"
+                    className="min-h-11 rounded-full border border-line px-3 text-xs font-bold"
                   >
                     {tk.updateBtn}
                   </button>
@@ -143,7 +157,7 @@ export function TicketPanel({
                 onChange={(e) =>
                   setTicketForm({ ...ticketForm, priority: e.target.value })
                 }
-                className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-cloud px-2"
+                className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2"
               >
                 <option value="">—</option>
                 {tk.priorityNames.map((p, i) => (
@@ -163,7 +177,7 @@ export function TicketPanel({
                     ticket_status: e.target.value,
                   })
                 }
-                className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-cloud px-2"
+                className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2"
               >
                 <option value="">—</option>
                 <option value="1">{tk.setProgress}</option>
@@ -180,14 +194,14 @@ export function TicketPanel({
                   setTicketForm({ ...ticketForm, assign: e.target.value })
                 }
                 placeholder={tk.assignPh}
-                className="min-h-[36px] w-48 rounded-[var(--r-sm)] border border-line bg-cloud px-2"
+                className="min-h-11 w-48 rounded-[var(--r-sm)] border border-line bg-cloud px-2"
               />
             </label>
             <button
               type="button"
               disabled={ticketBusy}
               onClick={() => onUpdate(ticketEdit)}
-              className="brand-button min-h-[36px] text-xs disabled:opacity-50"
+              className="brand-button min-h-11 text-xs disabled:opacity-50"
             >
               {tk.updateBtn}
             </button>

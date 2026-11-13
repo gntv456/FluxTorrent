@@ -97,9 +97,15 @@ export default async function RulesPage() {
             <table className="nexus-table">
               <tbody>
                 <tr>
-                  <td className="colhead w-32">{t.penColLevel}</td>
-                  <td className="colhead">{t.penColAction}</td>
-                  <td className="colhead w-[28%]">{t.penColScope}</td>
+                  <th scope="col" className="colhead w-32">
+                    {t.penColLevel}
+                  </th>
+                  <th scope="col" className="colhead">
+                    {t.penColAction}
+                  </th>
+                  <th scope="col" className="colhead w-[28%]">
+                    {t.penColScope}
+                  </th>
                 </tr>
                 {t.penalties.map((p) => (
                   <tr key={p.level}>
@@ -117,7 +123,10 @@ export default async function RulesPage() {
 
         <p className="mt-3 text-xs text-sub">
           {t.appealHint}{" "}
-          <Link href="/appeals" className="font-bold text-[var(--sky)] underline">
+          <Link
+            href="/appeals"
+            className="font-bold text-[var(--sky)] underline"
+          >
             {t.appealLink}
           </Link>{" "}
           ·{" "}

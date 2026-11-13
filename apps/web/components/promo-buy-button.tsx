@@ -134,7 +134,7 @@ export function PromoBuyButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="min-h-[36px] rounded-full bg-sun px-4 text-xs font-bold text-ink active:scale-[0.97]"
+        className="min-h-11 rounded-full bg-sun px-4 text-xs font-bold text-ink active:scale-[0.97]"
       >
         {t.title}
       </button>
@@ -157,7 +157,7 @@ export function PromoBuyButton({
                         aria-pressed={on}
                         onClick={() => setPick(key)}
                         className={
-                          "min-h-[36px] rounded-full border px-3 " +
+                          "min-h-11 rounded-full border px-3 " +
                           "text-xs font-bold transition-colors " +
                           (on
                             ? "border-sun bg-sun text-ink"
@@ -178,7 +178,7 @@ export function PromoBuyButton({
               type="button"
               disabled={busy || !pick}
               onClick={() => void buy()}
-              className="min-h-[36px] rounded-full bg-sky-deep px-5 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+              className="min-h-11 rounded-full bg-sky-deep px-5 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
             >
               {busy ? t.busy : t.buy}
             </button>
@@ -186,7 +186,7 @@ export function PromoBuyButton({
               type="button"
               disabled={busy}
               onClick={() => setOpen(false)}
-              className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold text-sub disabled:opacity-50"
+              className="min-h-11 rounded-full border border-line px-4 text-xs font-bold text-sub disabled:opacity-50"
             >
               {dict.common.cancel}
             </button>

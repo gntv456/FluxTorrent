@@ -61,20 +61,20 @@ export function SubtitleCardList({
               </a>
               {s.verified && (
                 <span
-                  className="ml-1 text-[11px] font-bold text-mint"
+                  className="ml-1 text-xs font-bold text-mint"
                   title={t.verifiedTip ?? "verified"}
                 >
                   ✓
                 </span>
               )}
               {s.award_rank === 1 && (
-                <span className="ml-1 text-[11px]" title={t.goldTip ?? "gold"}>
+                <span className="ml-1 text-xs" title={t.goldTip ?? "gold"}>
                   👑
                 </span>
               )}
               {s.ai_state && s.ai_state !== "human" && (
                 <span
-                  className="ml-1 text-[11px] text-sub"
+                  className="ml-1 text-xs text-sub"
                   title={
                     s.ai_state === "ai_proofread"
                       ? (t.aiProofreadTip ?? "AI + proofread")

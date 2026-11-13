@@ -28,7 +28,7 @@ export function ResultFlash({
     <p
       role="status"
       aria-live="polite"
-      className={`flex min-h-[36px] items-center justify-center gap-1.5 text-center text-base font-black ${cls}`}
+      className={`flex min-h-11 items-center justify-center gap-1.5 text-center text-base font-black ${cls}`}
     >
       {text && (
         <>

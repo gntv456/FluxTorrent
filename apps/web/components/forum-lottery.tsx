@@ -85,7 +85,7 @@ export function LotteryWidget({
         <span className="font-bold text-ink">
           🎁 {dict.forums.lotTitle}
           {!open && (
-            <span className="ml-2 rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-[11px] text-sub">
+            <span className="ml-2 rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-xs text-sub">
               {lottery.status === "drawn"
                 ? dict.forums.lotDrawn
                 : dict.forums.lotCancelled}
@@ -114,7 +114,7 @@ export function LotteryWidget({
           type="button"
           onClick={join}
           disabled={busy || lottery.joined}
-          className={`mt-2 min-h-[38px] rounded-full px-4 text-sm font-bold transition disabled:opacity-60 ${
+          className={`mt-2 min-h-11 rounded-full px-4 text-sm font-bold transition disabled:opacity-60 ${
             lottery.joined
               ? "border border-line bg-[var(--sky-soft)] text-sky"
               : "bg-[var(--accent-surface)] text-[var(--accent-on)] active:scale-[0.97]"
@@ -140,7 +140,7 @@ export function LotteryWidget({
             })
           }
           disabled={busy}
-          className="ml-2 mt-2 min-h-[38px] rounded-full border border-coral px-4 text-sm font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
+          className="ml-2 mt-2 min-h-11 rounded-full border border-coral px-4 text-sm font-bold text-coral transition hover:bg-[var(--coral-soft)] disabled:opacity-50"
         >
           {dict.forums.lotDrawNow}
         </button>

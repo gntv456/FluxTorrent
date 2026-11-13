@@ -63,10 +63,10 @@ export function LedgerPanel({
             <table className="nexus-table profilet">
               <tbody>
                 <tr>
-                  <td className="colhead">{t.ledgerKind}</td>
-                  <td className="colhead">{t.ledgerAmount}</td>
-                  <td className="colhead">{t.ledgerBalance}</td>
-                  <td className="colhead">{t.ledgerAt}</td>
+                  <th scope="col" className="colhead">{t.ledgerKind}</th>
+                  <th scope="col" className="colhead">{t.ledgerAmount}</th>
+                  <th scope="col" className="colhead">{t.ledgerBalance}</th>
+                  <th scope="col" className="colhead">{t.ledgerAt}</th>
                 </tr>
                 {rows.map((r, i) => (
                   <tr key={i}>

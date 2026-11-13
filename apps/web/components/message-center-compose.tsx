@@ -86,7 +86,7 @@ export function ComposeForm({
               maxLength={5000}
               className="min-h-[100px] rounded-[var(--r-sm)] border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 py-2 text-sm text-ink outline-none focus:border-[var(--compat-orange)]"
             />
-            {replyTo && <p className="text-[11px] text-sub">{t.quoteHint}</p>}
+            {replyTo && <p className="text-xs text-sub">{t.quoteHint}</p>}
             <div className="flex items-center gap-3">
               {/* W-10：busy 态走 BusyLabel 原语（spinner 与文案同色同行，
                   替代裸文字切换），提交语义仍由本表单掌握 */}
@@ -163,7 +163,7 @@ export function BoxManager({
             }}
             aria-label={`${t.renameBoxPh}: ${b.name}`}
             title={t.renameBoxPh}
-            className="inline-flex min-h-[36px] items-center gap-1 rounded-full
+            className="inline-flex min-h-11 items-center gap-1 rounded-full
               border border-[var(--compat-line)] px-3 text-xs"
           >
             <Icon name="edit" size={13} />
@@ -174,7 +174,7 @@ export function BoxManager({
             onClick={() => setAsk({ kind: "delete", id: b.id, name: b.name })}
             aria-label={`${t.deleteBox}: ${b.name}`}
             title={t.deleteBox}
-            className="inline-flex min-h-[36px] items-center rounded-full border
+            className="inline-flex min-h-11 items-center rounded-full border
               border-[var(--danger-border)] px-2 text-[var(--danger-text)]"
           >
             <Icon name="close" size={14} />
@@ -203,7 +203,7 @@ export function BoxManager({
               value={renameTo}
               onChange={(e) => setRenameTo(e.target.value)}
               maxLength={14}
-              className="min-h-[40px] rounded-[var(--r-sm)] border
+              className="min-h-11 rounded-[var(--r-sm)] border
                 border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 text-sm"
               data-autofocus
             />

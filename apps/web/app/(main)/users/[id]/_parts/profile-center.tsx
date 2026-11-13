@@ -250,8 +250,12 @@ export function CenterGrid({
         <table className="nexus-table up-recent">
           <thead>
             <tr>
-              <td className="colhead">{t.recentUploads}</td>
-              <td className="colhead w-28 text-right">{t.colSize}</td>
+              <th scope="col" className="colhead">
+                {t.recentUploads}
+              </th>
+              <th scope="col" className="colhead w-28 text-right">
+                {t.colSize}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -283,4 +287,3 @@ export function CenterGrid({
     </div>
   );
 }
-

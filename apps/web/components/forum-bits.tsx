@@ -22,7 +22,7 @@ export function TypeBadge({
   if (!meta) return null;
   return (
     <span
-      className={`inline-flex items-center gap-0.5 rounded-full border border-line bg-[var(--surface-sunken)] px-1.5 py-0.5 text-[11px] font-bold ${className}`}
+      className={`inline-flex items-center gap-0.5 rounded-full border border-line bg-[var(--surface-sunken)] px-1.5 py-0.5 text-xs font-bold ${className}`}
       style={{ color: meta.color }}
       title={label ?? type}
     >

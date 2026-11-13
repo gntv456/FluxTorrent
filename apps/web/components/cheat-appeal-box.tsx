@@ -167,7 +167,7 @@ export function CheatAppealBox() {
                       {r.result_note}
                     </p>
                   )}
-                  <p className="mt-1 text-[11px] text-sub">
+                  <p className="mt-1 text-xs text-sub">
                     {new Date(r.created_at).toLocaleString()}
                   </p>
                 </li>

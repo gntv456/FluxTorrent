@@ -91,7 +91,7 @@ export function FileTree({ files }: { files: FileRowItem[] }) {
                   <button
                     type="button"
                     onClick={() => toggle(g.dir)}
-                    className="flex min-h-[28px] w-full items-center gap-1 text-left font-bold text-sky-deep"
+                    className="flex min-h-11 w-full items-center gap-1 text-left font-bold text-sky-deep"
                     aria-expanded={!isCollapsed}
                   >
                     <span aria-hidden>{isCollapsed ? "▸" : "▾"}</span>

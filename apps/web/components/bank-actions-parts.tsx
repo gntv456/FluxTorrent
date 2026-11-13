@@ -60,7 +60,7 @@ export function DepositRow({
           type="button"
           disabled={busy}
           onClick={() => onWithdraw(d.id)}
-          className="min-h-[36px] rounded-full border border-line px-4 text-sm text-sky-deep disabled:opacity-50"
+          className="min-h-11 rounded-full border border-line px-4 text-sm text-sky-deep disabled:opacity-50"
         >
           {dict.bank.withdraw}
         </button>

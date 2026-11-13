@@ -84,11 +84,11 @@ export function InviteList({
         <table className="nexus-table">
         <tbody>
           <tr>
-            <td className="colhead">{t.colCode}</td>
-            <td className="colhead">{t.colStatus}</td>
-            <td className="colhead">{t.colSentTo}</td>
-            <td className="colhead">{t.colExpires}</td>
-            <td className="colhead">{t.colAction}</td>
+            <th scope="col" className="colhead">{t.colCode}</th>
+            <th scope="col" className="colhead">{t.colStatus}</th>
+            <th scope="col" className="colhead">{t.colSentTo}</th>
+            <th scope="col" className="colhead">{t.colExpires}</th>
+            <th scope="col" className="colhead">{t.colAction}</th>
           </tr>
           {invites.map((i) => (
             <tr key={i.id}>
@@ -258,14 +258,14 @@ export function SendEmailDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="min-h-[40px] rounded-full px-4 text-sm text-sub hover:text-ink"
+            className="min-h-11 rounded-full px-4 text-sm text-sub hover:text-ink"
             onClick={onClose}
           >
             {t.cancel}
           </button>
           <button
             type="button"
-            className="min-h-[40px] rounded-full bg-sky-deep px-5 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
+            className="min-h-11 rounded-full bg-sky-deep px-5 text-sm text-[var(--text-on-accent)] disabled:opacity-50"
             disabled={busy || !sendEmail.includes("@") || policyBlocked}
             onClick={onSend}
           >

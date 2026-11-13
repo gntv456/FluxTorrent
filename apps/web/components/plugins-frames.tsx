@@ -23,10 +23,10 @@ const FRAME_GRID =
 // 卡片容器 / 卡片上的两种操作按钮
 const FRAME_CARD = "brand-panel flex flex-col items-center gap-2 p-4";
 const FRAME_BTN_OFF =
-  "min-h-[32px] rounded-full border border-line px-3 " +
+  "min-h-11 rounded-full border border-line px-3 " +
   "text-xs font-bold disabled:opacity-50";
 const FRAME_BTN_ON =
-  "min-h-[32px] rounded-full bg-sky px-3 text-xs " +
+  "min-h-11 rounded-full bg-sky px-3 text-xs " +
   "font-bold text-white disabled:opacity-50";
 // 挂件预览图（absolute 铺满卡片图标）
 const FRAME_IMG =

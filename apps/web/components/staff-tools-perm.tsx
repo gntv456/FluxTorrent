@@ -49,12 +49,12 @@ interface UserPermData {
 
 // 用户级权限区：输入框 / 加载按钮 / 三态操作按钮底色
 const UP_INPUT =
-  "min-h-[40px] w-32 rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 w-32 rounded-[var(--r-sm)] border border-line " +
   "bg-cloud px-3 text-sm outline-none focus:border-sky";
 const UP_LOAD_BTN =
-  "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold " +
+  "min-h-11 rounded-full bg-sky px-5 text-sm font-bold " +
   "text-white disabled:opacity-50";
-const NOT_IMPL_TAG = "ml-1 rounded-full bg-sun/40 px-1.5 text-[10px] text-ink";
+const NOT_IMPL_TAG = "ml-1 rounded-full bg-sun/40 px-1.5 text-xs text-ink";
 
 export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
   const { dict } = useI18n();
@@ -153,7 +153,9 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                   <td className="colhead" style={{ minWidth: 200 }}>
                     {t.colPerm}
                   </td>
-                  <td className="colhead w-28">{t.colState}</td>
+                  <th scope="col" className="colhead w-28">
+                    {t.colState}
+                  </th>
                   <td className="colhead" style={{ minWidth: 220 }}>
                     {t.colOverride}
                   </td>
@@ -177,7 +179,7 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                       key={label}
                       disabled={busy}
                       className={
-                        "mr-1 min-h-[28px] rounded-full border px-3 " +
+                        "mr-1 min-h-11 rounded-full border px-3 " +
                         "font-bold disabled:opacity-50 " +
                         ((g === null && !ov) ||
                         (g === true && ov?.granted === true) ||
@@ -211,7 +213,7 @@ export function StaffPermPanel({ flash }: { flash: (m: string) => void }) {
                         {!p.implemented && (
                           <span className={NOT_IMPL_TAG}>{t.notImpl}</span>
                         )}
-                        <span className="block font-mono text-[10px] text-sub">
+                        <span className="block font-mono text-xs text-sub">
                           {p.key}
                         </span>
                       </td>

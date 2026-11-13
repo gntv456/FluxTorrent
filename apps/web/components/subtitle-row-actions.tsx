@@ -165,7 +165,7 @@ export function SubtitleVoteSelect({
   const t = dict.subtitles;
   return (
     <select
-      className="ml-1 border-0 bg-transparent text-[11px] text-sub"
+      className="ml-1 border-0 bg-transparent text-xs text-sub"
       aria-label={t.voteLabel}
       defaultValue=""
       onChange={async (e) => {

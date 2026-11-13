@@ -48,11 +48,11 @@ const HEAD_CLS =
   "border-line pt-3";
 const CHIP_CLS =
   "flex items-center gap-2 rounded-full border border-line bg-cloud " +
-  "px-3 py-1 text-[11px]";
+  "px-3 py-1 text-xs";
 const IDLE_CLS =
   "flex items-center rounded-full border border-dashed border-line " +
-  "px-3 py-1 text-[11px] text-sub";
-const BUY_CLS = `${BTN_SM_BOLD} min-h-[30px] rounded-full px-3 text-[11px]`;
+  "px-3 py-1 text-xs text-sub";
+const BUY_CLS = `${BTN_SM_BOLD} min-h-11 rounded-full px-3 text-xs`;
 
 /** 土地阶梯条：我的地块（等级/周转/升级报价）+ 按阶梯买下一块。
  *  挂在「我的田地」面板底部，自己不再套一层 panel。
@@ -118,10 +118,7 @@ export function FarmLandStrip({
 
       <div className="mt-2 flex flex-wrap gap-2">
         {land.plots.map((p) => (
-          <span
-            key={p.slot}
-            className={CHIP_CLS}
-          >
+          <span key={p.slot} className={CHIP_CLS}>
             <b className="font-display">{fmt(tf.landSlot, { n: p.slot })}</b>
             <span>{fmt(tf.landLv, { n: p.level })}</span>
             {p.level > 1 && (
@@ -130,18 +127,18 @@ export function FarmLandStrip({
               </span>
             )}
             {p.bought && (
-              <span className="rounded-full bg-sun-soft px-2 text-[10px]">
+              <span className="rounded-full bg-sun-soft px-2 text-xs">
                 {tf.landBoughtTag}
               </span>
             )}
             {p.maxed ? (
-              <span className="text-[10px] text-sub">{tf.landMax}</span>
+              <span className="text-xs text-sub">{tf.landMax}</span>
             ) : (
               <button
                 type="button"
                 onClick={() => upgrade(p)}
                 disabled={busy}
-                className={`${BTN_SM_GHOST} min-h-[26px] px-2 text-[10px]`}
+                className={`${BTN_SM_GHOST} min-h-11 px-2 text-xs`}
               >
                 {fmtCur(tf.landUp, { cost: p.next_upgrade_price }, currency)}
               </button>
@@ -172,9 +169,7 @@ export function FarmLandStrip({
         )}
       </div>
 
-      <p className="mt-2 text-[11px] leading-relaxed text-sub">
-        {tf.landNote}
-      </p>
+      <p className="mt-2 text-xs leading-relaxed text-sub">{tf.landNote}</p>
     </>
   );
 }

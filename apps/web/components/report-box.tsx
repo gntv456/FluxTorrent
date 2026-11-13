@@ -169,7 +169,7 @@ export function ReportBox() {
                       <td className={td}>
                         <button
                           type="button"
-                          className="min-h-[36px] rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
+                          className="min-h-11 rounded-full border border-line px-4 text-xs font-bold disabled:opacity-50"
                           disabled={busy}
                           onClick={() => void resolve(r.id)}
                         >

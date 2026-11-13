@@ -46,7 +46,7 @@ function cadenceRank(c: string): number {
 }
 
 const BTN_SM =
-  "min-h-[32px] rounded-full border border-line px-3 text-xs " +
+  "min-h-11 rounded-full border border-line px-3 text-xs " +
   "font-bold disabled:opacity-50";
 
 export function AdminOpsJobs() {
@@ -116,17 +116,14 @@ export function AdminOpsJobs() {
     else byCadence.set(j.cadence, [j]);
   }
   const groups = [...byCadence.entries()].sort(
-    (a, b) =>
-      cadenceRank(a[0]) - cadenceRank(b[0]) || a[0].localeCompare(b[0]),
+    (a, b) => cadenceRank(a[0]) - cadenceRank(b[0]) || a[0].localeCompare(b[0]),
   );
 
   return (
     <div className="brand-panel flex flex-col gap-2 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-bold">⚙️ {t.jobsTitle}</h2>
-        {active && (
-          <span className="text-xs text-sub">{t.jobsPolling}</span>
-        )}
+        {active && <span className="text-xs text-sub">{t.jobsPolling}</span>}
       </div>
       <p className="text-xs text-sub">{t.jobsNote}</p>
       {msg && (
@@ -153,11 +150,21 @@ export function AdminOpsJobs() {
             <table className="nexus-table text-xs">
               <tbody>
                 <tr>
-                  <td className="colhead">{t.jobsJob}</td>
-                  <td className="colhead w-44">{t.jobsLast}</td>
-                  <td className="colhead w-16">{t.jobsState}</td>
-                  <td className="colhead w-28">{t.jobsBy}</td>
-                  <td className="colhead">{t.jobsResult}</td>
+                  <th scope="col" className="colhead">
+                    {t.jobsJob}
+                  </th>
+                  <th scope="col" className="colhead w-44">
+                    {t.jobsLast}
+                  </th>
+                  <th scope="col" className="colhead w-16">
+                    {t.jobsState}
+                  </th>
+                  <th scope="col" className="colhead w-28">
+                    {t.jobsBy}
+                  </th>
+                  <th scope="col" className="colhead">
+                    {t.jobsResult}
+                  </th>
                   <td className="colhead w-20" />
                 </tr>
                 {items.map((j) => (
@@ -180,9 +187,9 @@ export function AdminOpsJobs() {
                       {j.last_ok === null
                         ? // NULL = 从未执行（多为所属模块关闭，worker 注册目录但不跑）
                           // ——与「执行过但失败」区分，避免面板满屏红叉误导
-                          (j.last_started_at === null
-                            ? t.jobsIdle
-                            : "—")
+                          j.last_started_at === null
+                          ? t.jobsIdle
+                          : "—"
                         : j.last_ok
                           ? t.jobsOk
                           : t.jobsFail}
@@ -218,12 +225,24 @@ export function AdminOpsJobs() {
             <table className="nexus-table text-xs">
               <tbody>
                 <tr>
-                  <td className="colhead w-10">#</td>
-                  <td className="colhead">{t.jobsJob}</td>
-                  <td className="colhead w-16">{t.jobsState}</td>
-                  <td className="colhead w-44">{t.jobsRequested}</td>
-                  <td className="colhead w-44">{t.jobsFinished}</td>
-                  <td className="colhead">{t.jobsResult}</td>
+                  <th scope="col" className="colhead w-10">
+                    #
+                  </th>
+                  <th scope="col" className="colhead">
+                    {t.jobsJob}
+                  </th>
+                  <th scope="col" className="colhead w-16">
+                    {t.jobsState}
+                  </th>
+                  <th scope="col" className="colhead w-44">
+                    {t.jobsRequested}
+                  </th>
+                  <th scope="col" className="colhead w-44">
+                    {t.jobsFinished}
+                  </th>
+                  <th scope="col" className="colhead">
+                    {t.jobsResult}
+                  </th>
                 </tr>
                 {triggers.map((r) => (
                   <tr key={r.id}>
@@ -242,9 +261,7 @@ export function AdminOpsJobs() {
                     </td>
                     <td className="text-sub">{timeOf(r.requested_at)}</td>
                     <td className="text-sub">{timeOf(r.finished_at)}</td>
-                    <td className="break-all text-sub">
-                      {r.result ?? "—"}
-                    </td>
+                    <td className="break-all text-sub">{r.result ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

@@ -193,7 +193,7 @@
   59,
   76,
   79,
-  110
+  113
  ],
  "components/admin-arcade-crops.tsx": [],
  "components/admin-arcade-items-new.tsx": [],
@@ -286,7 +286,7 @@
  "components/admin-sections-kinds.tsx": [],
  "components/admin-sections.tsx": [],
  "components/admin-shell.tsx": [
-  288
+  293
  ],
  "components/admin-subtitles-awards.tsx": [],
  "components/admin-tagdict-form.tsx": [],
@@ -363,7 +363,7 @@
  "components/content-manage.tsx": [
   68,
   110,
-  216
+  212
  ],
  "components/custom-menu.tsx": [],
  "components/download-button.tsx": [],
@@ -384,7 +384,7 @@
  "components/forum-report.tsx": [],
  "components/forum-search.tsx": [],
  "components/forum-topic-list.tsx": [
-  150
+  148
  ],
  "components/forum-video-embed.tsx": [],
  "components/forum-video-insert.tsx": [],
@@ -574,10 +574,10 @@
  "components/staff-tools-ops-forms.tsx": [],
  "components/staff-tools-ops.tsx": [],
  "components/staff-tools-pack-applies.tsx": [
-  52,
-  55,
-  58,
-  60
+  66,
+  69,
+  72,
+  74
  ],
  "components/staff-tools-perm-matrix.tsx": [],
  "components/staff-tools-perm.tsx": [],

@@ -327,7 +327,7 @@ export default function FarmPage({
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/games"
-          className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+          className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
         >
           ← {tg.back}
         </Link>

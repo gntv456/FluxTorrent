@@ -235,9 +235,9 @@ export function StaffEmailDomainsPanel({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{t.edColDomain}</td>
-              <td className="colhead">{t.edColSource}</td>
-              <td className="colhead">{t.edColTime}</td>
+              <th scope="col" className="colhead">{t.edColDomain}</th>
+              <th scope="col" className="colhead">{t.edColSource}</th>
+              <th scope="col" className="colhead">{t.edColTime}</th>
               <td className="colhead text-right">
                 {dict.cmgmt.colActions}
               </td>

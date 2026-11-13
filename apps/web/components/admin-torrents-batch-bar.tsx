@@ -35,18 +35,18 @@ interface BatchBarProps {
 
 /** 批量工具条输入/下拉统一样式 */
 const BATCH_INPUT_CLS =
-  "min-h-[36px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2 text-xs";
 /** 批量工具条通用的描边小按钮样式 */
 const OUTLINE_BTN =
-  "min-h-[36px] rounded-full border border-line px-4 text-xs " +
+  "min-h-11 rounded-full border border-line px-4 text-xs " +
   "font-bold disabled:opacity-50";
 /** 批量工具条通用的实底小按钮样式（天蓝/珊瑚红） */
 const SKY_BTN =
-  "min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold " +
+  "min-h-11 rounded-full bg-sky px-4 text-xs font-bold " +
   "text-white disabled:opacity-50";
 const CORAL_BTN =
-  "min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold " +
+  "min-h-11 rounded-full bg-coral px-4 text-xs font-bold " +
   "text-white disabled:opacity-50";
 
 export function BatchBar(props: BatchBarProps) {

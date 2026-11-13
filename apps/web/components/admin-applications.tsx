@@ -97,7 +97,10 @@ export function AdminApplications() {
           </div>
           <p className="text-xs text-sub">
             佐证：
-            {a.proof_links.split(/\n|,|\s{2,}/).filter(Boolean).join(" ｜ ")}
+            {a.proof_links
+              .split(/\n|,|\s{2,}/)
+              .filter(Boolean)
+              .join(" ｜ ")}
           </p>
           <p className="text-xs">{a.reason}</p>
           {a.status === 0 && (
@@ -115,7 +118,7 @@ export function AdminApplications() {
                 type="button"
                 disabled={busy === a.id}
                 onClick={() => void decide(a.id, "approve")}
-                className="min-h-[32px] rounded-full bg-sky-deep px-3 text-xs
+                className="min-h-11 rounded-full bg-sky-deep px-3 text-xs
                   font-bold text-white disabled:opacity-50"
               >
                 通过（发邀请码）
@@ -124,7 +127,7 @@ export function AdminApplications() {
                 type="button"
                 disabled={busy === a.id}
                 onClick={() => void decide(a.id, "reject")}
-                className="min-h-[32px] rounded-full bg-coral px-3 text-xs
+                className="min-h-11 rounded-full bg-coral px-3 text-xs
                   font-bold text-white disabled:opacity-50"
               >
                 拒绝

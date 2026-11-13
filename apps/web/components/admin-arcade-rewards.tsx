@@ -65,7 +65,7 @@ const QUEST_REFS = [
 ] as const;
 
 const BTN =
-  "rounded-full border border-line px-3 py-1 text-[11px] " +
+  "rounded-full border border-line px-3 py-1 text-xs " +
   "font-bold disabled:opacity-50";
 
 export function AdminArcadeRewards({ onChanged }: { onChanged?: () => void }) {
@@ -262,8 +262,8 @@ export function AdminArcadeRewards({ onChanged }: { onChanged?: () => void }) {
           </tbody>
         </table>
       </div>
-      {msg && <p className="text-[11px] text-sub">{msg}</p>}
-      <p className="text-[11px] text-sub">{t.note}</p>
+      {msg && <p className="text-xs text-sub">{msg}</p>}
+      <p className="text-xs text-sub">{t.note}</p>
     </div>
   );
 }

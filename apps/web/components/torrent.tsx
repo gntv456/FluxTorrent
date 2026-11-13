@@ -26,7 +26,7 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
       {/* 左：分类色块（34px 圆角 9px） */}
       <span
         aria-hidden
-        className="h-[34px] w-[34px] shrink-0 rounded-[9px]"
+        className="h-[var(--tap-min)] w-[var(--tap-min)] shrink-0 rounded-[9px]"
         style={{ background: catColor(dicts.colors, t.category_id) }}
       />
       {/* 中：主区 */}
@@ -54,13 +54,13 @@ export async function TorrentRow({ t }: { t: TorrentListItem }) {
         )}
         {/* 维度链（R3-三步）：sections 单源——站型任意维度名拼接 */}
         {(t.sec_names?.length ?? 0) > 0 && (
-          <p className="mt-0.5 flex flex-wrap gap-1.5 text-[11px] text-sub">
+          <p className="mt-0.5 flex flex-wrap gap-1.5 text-xs text-sub">
             {(t.sec_names ?? []).slice(0, 3).map((n, i) => (
               <span key={i}>{n}</span>
             ))}
           </p>
         )}
-        <p className="mt-0.5 text-[11px] text-sub">
+        <p className="mt-0.5 text-xs text-sub">
           {t.anonymous ? dict.torrent.anonymous : (t.owner_name ?? "—")} ·{" "}
           {new Date(t.created_at).toLocaleDateString(dateLocale(locale))}
         </p>

@@ -81,7 +81,7 @@ export function FriendsActions() {
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-sub">{t.addTitle}</span>
           <input
-            className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm"
+            className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm"
             value={addName}
             onChange={(e) => setAddName(e.target.value)}
             placeholder={t.addPlaceholder}
@@ -90,7 +90,7 @@ export function FriendsActions() {
         <button
           type="button"
           disabled={busy || !addName.trim()}
-          className="min-h-[36px] rounded-full bg-sky px-3 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+          className="min-h-11 rounded-full bg-sky px-3 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
           onClick={() =>
             void act("/api/v1/friends", {
               username: addName.trim(),
@@ -103,7 +103,7 @@ export function FriendsActions() {
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-sub">{t.blackTitle}</span>
           <input
-            className="min-h-[36px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm"
+            className="min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm"
             value={blackName}
             onChange={(e) => setBlackName(e.target.value)}
             placeholder={t.addPlaceholder}
@@ -112,7 +112,7 @@ export function FriendsActions() {
         <button
           type="button"
           disabled={busy || !blackName.trim()}
-          className="min-h-[36px] rounded-full bg-line px-3 text-xs font-bold text-ink disabled:opacity-50"
+          className="min-h-11 rounded-full bg-line px-3 text-xs font-bold text-ink disabled:opacity-50"
           onClick={() =>
             void act("/api/v1/friends/action", {
               username: blackName.trim(),
@@ -157,7 +157,7 @@ export function FriendsActions() {
               <button
                 type="button"
                 disabled={busy}
-                className="min-h-[28px] rounded-full bg-mint px-2 text-xs font-bold text-[var(--text-on-accent)]"
+                className="min-h-11 rounded-full bg-mint px-2 text-xs font-bold text-[var(--text-on-accent)]"
                 onClick={() =>
                   void act("/api/v1/friends/action", {
                     username: r.username,
@@ -170,7 +170,7 @@ export function FriendsActions() {
               <button
                 type="button"
                 disabled={busy}
-                className="min-h-[28px] rounded-full bg-line px-2 text-xs font-bold text-ink"
+                className="min-h-11 rounded-full bg-line px-2 text-xs font-bold text-ink"
                 onClick={() =>
                   void act("/api/v1/friends/action", {
                     username: r.username,

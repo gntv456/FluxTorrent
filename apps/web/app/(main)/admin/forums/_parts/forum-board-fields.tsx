@@ -96,7 +96,7 @@ export function ForumBoardFields({
             ] as const
           ).map(([k, label]) => (
             <label key={k} className="flex flex-col gap-1">
-              <span className="text-[11px] text-sub">{label}</span>
+              <span className="text-xs text-sub">{label}</span>
               {gateOpts.length > 0 ? (
                 <select
                   value={form[k]}

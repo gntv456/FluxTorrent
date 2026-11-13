@@ -163,7 +163,7 @@ export function AdminAttendance() {
             value={mkUid}
             onChange={(e) => setMkUid(e.target.value)}
             placeholder="4"
-            className="min-h-[40px] w-24 rounded-[var(--r-sm)] border border-line px-2"
+            className="min-h-11 w-24 rounded-[var(--r-sm)] border border-line px-2"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs">
@@ -184,12 +184,24 @@ export function AdminAttendance() {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thUser}</td>
-            <td className="colhead">{at.thDate}</td>
-            <td className="colhead">{at.thStreak}</td>
-            <td className="colhead">{fmt(at.thReward, { magic: currency })}</td>
-            <td className="colhead">{at.thType}</td>
-            <td className="colhead">{at.thOp}</td>
+            <th scope="col" className="colhead">
+              {at.thUser}
+            </th>
+            <th scope="col" className="colhead">
+              {at.thDate}
+            </th>
+            <th scope="col" className="colhead">
+              {at.thStreak}
+            </th>
+            <th scope="col" className="colhead">
+              {fmt(at.thReward, { magic: currency })}
+            </th>
+            <th scope="col" className="colhead">
+              {at.thType}
+            </th>
+            <th scope="col" className="colhead">
+              {at.thOp}
+            </th>
           </tr>
         </thead>
         <tbody>

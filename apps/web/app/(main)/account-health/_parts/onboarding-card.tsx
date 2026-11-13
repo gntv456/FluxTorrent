@@ -32,7 +32,7 @@ export function OnboardingCard({
     <section className="brand-panel">
       <div className="brand-panel__head">
         <h2>{t.onboardTitle}</h2>
-        <span className="text-[11px] font-semibold text-sub">
+        <span className="text-xs font-semibold text-sub">
           {data.completed
             ? t.onboardAllDone
             : fmt(t.onboardProgress, {

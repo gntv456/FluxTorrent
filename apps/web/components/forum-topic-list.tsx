@@ -4,11 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { BoardBrief, Topic } from "@fluxtorrent/domain-types";
-import {
-  TypeBadge,
-  TagChip,
-  MarkBadge,
-} from "@/components/forum-bits";
+import { TypeBadge, TagChip, MarkBadge } from "@/components/forum-bits";
 import { Icon } from "@/components/icons";
 import { dateLocale } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
@@ -39,9 +35,7 @@ export function ForumTopicList({
   const pageIds = topics.map((t) => t.id);
 
   function toggle(id: number) {
-    setPicked((p) =>
-      p.includes(id) ? p.filter((x) => x !== id) : [...p, id],
-    );
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   }
 
   return (
@@ -86,118 +80,122 @@ export function ForumTopicList({
           ))}
         </div>
       ) : (
-      <div className="brand-wide-table-scroll">
-      <table className="nexus-table">
-        <thead>
-          <tr>
-            {canMod && <td className="colhead w-8" />}
-            <td className="colhead">{dict.forums.topicTitleFallback}</td>
-            <td className="colhead w-32">{dict.forums.author}</td>
-            <td className="colhead w-16 text-right">
-              {dict.forums.replies.replace("{n}", "").trim() ||
-                dict.forums.replies}
-            </td>
-            <td className="colhead hidden w-20 text-right sm:table-cell">
-              {dict.forums.views.replace("{n}", "").trim() ||
-                dict.forums.views}
-            </td>
-            <td className="colhead hidden w-28 text-right sm:table-cell">
-              {dict.forums.lastPost}
-            </td>
-          </tr>
-        </thead>
-        <tbody>
-          {topics.map((t) => (
-            <tr
-              key={t.id}
-              className={
-                t.notice
-                  ? "bg-coral-soft"
-                  : t.sticky
-                    ? "bg-sky-soft"
-                    : t.digest
-                      ? "bg-sun-soft"
-                      : undefined
-              }
-            >
-              {canMod && (
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(t.id)}
-                    onChange={() => toggle(t.id)}
-                    aria-label={`${dict.forums.topicTitleFallback}: ${t.title}`}
-                  />
+        <div className="brand-wide-table-scroll">
+          <table className="nexus-table">
+            <thead>
+              <tr>
+                {canMod && <td className="colhead w-8" />}
+                <th scope="col" className="colhead">
+                  {dict.forums.topicTitleFallback}
+                </th>
+                <th scope="col" className="colhead w-32">
+                  {dict.forums.author}
+                </th>
+                <td className="colhead w-16 text-right">
+                  {dict.forums.replies.replace("{n}", "").trim() ||
+                    dict.forums.replies}
                 </td>
-              )}
-              <td>
-                {/* 标记只用文字徽章（用户要求：不再要星形图标）；
-                    公告/置顶/精华各自出，多个标记并存就都显示 */}
-                {t.notice && (
-                  <MarkBadge kind="notice" label={dict.forums.markNotice} />
-                )}
-                {t.sticky && (
-                  <MarkBadge kind="pin" label={dict.forums.markPin} />
-                )}
-                {t.digest && (
-                  <MarkBadge kind="ess" label={dict.forums.markEss} />
-                )}
-                {t.locked && (
-                  <Icon
-                    name="lock"
-                    size={13}
-                    className="mr-1 inline align-[-2px]"
-                    title="已锁定"
-                  />
-                )}
-                <TypeBadge
-                  type={t.topic_type}
-                  label={
-                    t.topic_type
-                      ? (dict.forums.types as Record<string, string>)[
-                          t.topic_type
-                        ]
-                      : undefined
+                <td className="colhead hidden w-20 text-right sm:table-cell">
+                  {dict.forums.views.replace("{n}", "").trim() ||
+                    dict.forums.views}
+                </td>
+                <td className="colhead hidden w-28 text-right sm:table-cell">
+                  {dict.forums.lastPost}
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              {topics.map((t) => (
+                <tr
+                  key={t.id}
+                  className={
+                    t.notice
+                      ? "bg-coral-soft"
+                      : t.sticky
+                        ? "bg-sky-soft"
+                        : t.digest
+                          ? "bg-sun-soft"
+                          : undefined
                   }
-                  className="mr-1 align-middle"
-                />
-                {t.tags?.map((tg) => (
-                  <TagChip
-                    key={tg.id}
-                    tag={tg}
-                    className="mr-1 align-middle"
-                  />
-                ))}
-                <Link
-                  href={`/forums/topic/${t.id}`}
-                  className="font-bold text-ink hover:text-sky"
                 >
-                  {t.title}
-                </Link>
-              </td>
-              <td className="text-sub">{t.username ?? "—"}</td>
-              <td className="num text-right">{Math.max(t.replies, 0)}</td>
-              <td className="num hidden text-right sm:table-cell">
-                {t.views}
-              </td>
-              {/* 日期按**访问者本地时区**渲染，容器（UTC）与浏览器必然渲染出
+                  {canMod && (
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(t.id)}
+                        onChange={() => toggle(t.id)}
+                        aria-label={`${dict.forums.topicTitleFallback}: ${t.title}`}
+                      />
+                    </td>
+                  )}
+                  <td>
+                    {/* 标记只用文字徽章（用户要求：不再要星形图标）；
+                    公告/置顶/精华各自出，多个标记并存就都显示 */}
+                    {t.notice && (
+                      <MarkBadge kind="notice" label={dict.forums.markNotice} />
+                    )}
+                    {t.sticky && (
+                      <MarkBadge kind="pin" label={dict.forums.markPin} />
+                    )}
+                    {t.digest && (
+                      <MarkBadge kind="ess" label={dict.forums.markEss} />
+                    )}
+                    {t.locked && (
+                      <Icon
+                        name="lock"
+                        size={13}
+                        className="mr-1 inline align-[-2px]"
+                        title="已锁定"
+                      />
+                    )}
+                    <TypeBadge
+                      type={t.topic_type}
+                      label={
+                        t.topic_type
+                          ? (dict.forums.types as Record<string, string>)[
+                              t.topic_type
+                            ]
+                          : undefined
+                      }
+                      className="mr-1 align-middle"
+                    />
+                    {t.tags?.map((tg) => (
+                      <TagChip
+                        key={tg.id}
+                        tag={tg}
+                        className="mr-1 align-middle"
+                      />
+                    ))}
+                    <Link
+                      href={`/forums/topic/${t.id}`}
+                      className="font-bold text-ink hover:text-sky"
+                    >
+                      {t.title}
+                    </Link>
+                  </td>
+                  <td className="text-sub">{t.username ?? "—"}</td>
+                  <td className="num text-right">{Math.max(t.replies, 0)}</td>
+                  <td className="num hidden text-right sm:table-cell">
+                    {t.views}
+                  </td>
+                  {/* 日期按**访问者本地时区**渲染，容器（UTC）与浏览器必然渲染出
                   不同文本 —— 这是有意的差异，非 bug。抑制 hydration 告警
                   （React 对时间戳场景的官方建议）。 */}
-              <td
-                className="num hidden text-right text-sub sm:table-cell"
-                suppressHydrationWarning
-              >
-                {t.last_post_at
-                  ? new Date(t.last_post_at).toLocaleDateString(
-                      dateLocale(locale),
-                    )
-                  : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </div>
+                  <td
+                    className="num hidden text-right text-sub sm:table-cell"
+                    suppressHydrationWarning
+                  >
+                    {t.last_post_at
+                      ? new Date(t.last_post_at).toLocaleDateString(
+                          dateLocale(locale),
+                        )
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

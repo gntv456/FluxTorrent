@@ -137,13 +137,19 @@ export function StaffUsersPanel({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">ID</td>
-                <td className="colhead">
-                  {t.warnUserCol}
-                </td>
-                <td className="colhead">{t.warnUntil}</td>
-                <td className="colhead">{t.fldReason}</td>
-                <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+                <th scope="col" className="colhead">
+                  ID
+                </th>
+                <td className="colhead">{t.warnUserCol}</td>
+                <th scope="col" className="colhead">
+                  {t.warnUntil}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.fldReason}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {dict.cmgmt.colActions}
+                </th>
               </tr>
               {warned.map((w) => (
                 <tr key={w.id}>
@@ -188,10 +194,18 @@ export function StaffUsersPanel({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{t.fldIp}</td>
-              <td className="colhead">{t.ipAccounts}</td>
-              <td className="colhead">{t.ipUsers}</td>
-              <td className="colhead">{t.ipLastSeen}</td>
+              <th scope="col" className="colhead">
+                {t.fldIp}
+              </th>
+              <th scope="col" className="colhead">
+                {t.ipAccounts}
+              </th>
+              <th scope="col" className="colhead">
+                {t.ipUsers}
+              </th>
+              <th scope="col" className="colhead">
+                {t.ipLastSeen}
+              </th>
             </tr>
             {ipRows.map((r, i) => (
               <tr key={i}>
@@ -221,9 +235,15 @@ export function StaffUsersPanel({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{t.mlUser}</td>
-              <td className="colhead">{t.fldIp}</td>
-              <td className="colhead">{t.mailAt}</td>
+              <th scope="col" className="colhead">
+                {t.mlUser}
+              </th>
+              <th scope="col" className="colhead">
+                {t.fldIp}
+              </th>
+              <th scope="col" className="colhead">
+                {t.mailAt}
+              </th>
             </tr>
             {failRows.map((r) => (
               <tr key={r.id}>

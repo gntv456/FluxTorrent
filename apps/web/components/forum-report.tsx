@@ -48,7 +48,7 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
         }}
         aria-expanded={open}
         title={dict.forums.report}
-        className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-line px-3 text-xs font-bold text-sub transition hover:border-coral hover:text-coral"
+        className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line px-3 text-xs font-bold text-sub transition hover:border-coral hover:text-coral"
       >
         <span aria-hidden="true">🚩</span>
         {dict.forums.report}
@@ -74,17 +74,17 @@ export function ReportTopicButton({ topicId }: { topicId: number }) {
               type="button"
               onClick={() => void submit()}
               disabled={busy || !reason.trim()}
-              className="min-h-[28px] rounded-full bg-coral px-3 text-xs font-bold text-[var(--text-on-accent)] transition disabled:opacity-50"
+              className="min-h-11 rounded-full bg-coral px-3 text-xs font-bold text-[var(--text-on-accent)] transition disabled:opacity-50"
             >
               {dict.usertools.reportSubmit}
             </button>
-            <span className="num text-[11px] text-sub">
+            <span className="num text-xs text-sub">
               {reason.length}/500
             </span>
           </span>
         </span>
       </Modal>
-      {msg && <span className="text-[11px] text-mint">{msg}</span>}
+      {msg && <span className="text-xs text-mint">{msg}</span>}
     </span>
   );
 }

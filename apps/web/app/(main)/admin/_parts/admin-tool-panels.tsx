@@ -29,7 +29,7 @@ export function CheatersPanel({
       <p className="mb-2 text-xs text-sub">{a.cheatersNote}</p>
       <button
         onClick={onScan}
-        className="mb-3 min-h-[36px] rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]"
+        className="mb-3 min-h-11 rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)]"
       >
         {a.cheatersScan}
       </button>
@@ -37,11 +37,21 @@ export function CheatersPanel({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{a.cheaterUser}</td>
-              <td className="colhead">{a.cheaterTorrent}</td>
-              <td className="colhead">{a.cheaterSpeed}</td>
-              <td className="colhead">{a.cheaterDelta}</td>
-              <td className="colhead">{a.cheaterAt}</td>
+              <th scope="col" className="colhead">
+                {a.cheaterUser}
+              </th>
+              <th scope="col" className="colhead">
+                {a.cheaterTorrent}
+              </th>
+              <th scope="col" className="colhead">
+                {a.cheaterSpeed}
+              </th>
+              <th scope="col" className="colhead">
+                {a.cheaterDelta}
+              </th>
+              <th scope="col" className="colhead">
+                {a.cheaterAt}
+              </th>
             </tr>
             {cheaters.map((row) => (
               <tr key={`${row.user_id}-${row.torrent_id}`}>
@@ -90,8 +100,19 @@ export function CheatersPanel({
 function briefDetail(raw?: string | null): string {
   if (!raw) return "";
   const KEYS = [
-    "id", "uid", "kind", "amount", "affected", "targets", "voided",
-    "item_id", "item_name", "medal_id", "days", "reason", "batch_id",
+    "id",
+    "uid",
+    "kind",
+    "amount",
+    "affected",
+    "targets",
+    "voided",
+    "item_id",
+    "item_name",
+    "medal_id",
+    "days",
+    "reason",
+    "batch_id",
   ];
   try {
     const o = JSON.parse(raw) as Record<string, unknown>;
@@ -148,7 +169,7 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
             setLimit(100);
           }}
           placeholder={a.auditSearchPh}
-          className="min-h-[34px] min-w-[200px] flex-1 rounded-[var(--r-sm)]
+          className="min-h-11 min-w-[200px] flex-1 rounded-[var(--r-sm)]
             border border-line bg-cloud px-3 text-sm outline-none
             focus:border-sky"
         />
@@ -166,7 +187,7 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
               {labelOf(row.action)}
               {/* 未收录动作：尾巴带 mono key，提示去 audit-labels.ts 补文案 */}
               {!labels[row.action] && (
-                <code className="ml-1 font-mono text-[10px] text-sub">
+                <code className="ml-1 font-mono text-xs text-sub">
                   {row.action}
                 </code>
               )}
@@ -174,7 +195,7 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
                   此前界面不渲染，等于白存 */}
               {briefDetail(row.detail) && (
                 <code
-                  className="ml-2 break-all font-mono text-[10px] text-sub"
+                  className="ml-2 break-all font-mono text-xs text-sub"
                   title={row.detail ?? ""}
                 >
                   {briefDetail(row.detail)}
@@ -195,7 +216,7 @@ export function AuditListPanel({ audit }: { audit: AuditRow[] }) {
         <button
           type="button"
           onClick={() => setLimit((n) => n + 100)}
-          className="mt-2 min-h-[34px] w-full rounded-[var(--r-sm)] border
+          className="mt-2 min-h-11 w-full rounded-[var(--r-sm)] border
             border-line text-xs font-bold text-sky hover:bg-cloud"
         >
           {a.auditShowMore}

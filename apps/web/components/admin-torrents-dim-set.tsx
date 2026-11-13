@@ -18,7 +18,7 @@ import type { SectionDictRow, SectionKindMeta } from "./admin-torrents-dims";
 const CHIP_ON = "bg-sky text-[var(--text-on-accent)] border-sky";
 const CHIP_OFF = "border-line text-sub hover:border-sky";
 const CHIP_CLS =
-  "inline-flex min-h-[32px] items-center rounded-full border px-3 text-xs";
+  "inline-flex min-h-11 items-center rounded-full border px-3 text-xs";
 
 /** 按 field_type 组装单维度载荷；空值形态 = 后端「清空该维度」 */
 function payload(k: SectionKindMeta, raw: string): Record<string, unknown> {
@@ -131,7 +131,7 @@ export function DimSetPanel({
       <button
         disabled={busy || !k || raw === ""}
         onClick={() => k && onApply({ [k.kind]: payload(k, raw) })}
-        className="min-h-[32px] rounded-full bg-sky px-4 text-xs font-bold
+        className="min-h-11 rounded-full bg-sky px-4 text-xs font-bold
          text-white disabled:opacity-50"
       >
         {at.dimSetApply}
@@ -139,7 +139,7 @@ export function DimSetPanel({
       <button
         disabled={busy || !k}
         onClick={() => k && onApply({ [k.kind]: payload(k, "") })}
-        className="min-h-[32px] rounded-full border border-line px-4 text-xs
+        className="min-h-11 rounded-full border border-line px-4 text-xs
          font-bold disabled:opacity-50"
       >
         {at.dimSetClear}

@@ -42,7 +42,8 @@ export function ResurrectionPanel() {
       setDead(await api.get<DeadRow[]>("/api/v1/resurrections"));
     } catch {
       // P-314：读失败不能再演成「没有待救的种」，走本面板已有的 msg 通道
-      setDead([]); setMsg(dict.common.loadFailed);
+      setDead([]);
+      setMsg(dict.common.loadFailed);
     }
   }, [dict]);
   useEffect(() => {
@@ -53,7 +54,8 @@ export function ResurrectionPanel() {
     try {
       setMine(await api.get<MineRow[]>("/api/v1/resurrections/mine"));
     } catch {
-      setMine([]); setMsg(dict.common.loadFailed);
+      setMine([]);
+      setMsg(dict.common.loadFailed);
     }
   }, [dict]);
 
@@ -116,7 +118,9 @@ export function ResurrectionPanel() {
             <tr>
               <th>{t.colTorrent}</th>
               <th className="w-24">{t.colSize}</th>
-              <td className="colhead w-24">{dict.torrents.colActions}</td>
+              <th scope="col" className="colhead w-24">
+                {dict.torrents.colActions}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -126,11 +130,15 @@ export function ResurrectionPanel() {
                   <Link href={`/torrent/${r.torrent_id}`} className="text-link">
                     {r.name}
                   </Link>
-                  <div className="text-[11px] text-sub">
-                    {fmtCur(t.contract, {
-                      h: String(r.required_hours),
-                      sparks: String(r.reward_sparks),
-                    }, currency)}
+                  <div className="text-xs text-sub">
+                    {fmtCur(
+                      t.contract,
+                      {
+                        h: String(r.required_hours),
+                        sparks: String(r.reward_sparks),
+                      },
+                      currency,
+                    )}
                   </div>
                 </td>
                 <td className="num text-sub">{formatBytes(r.size)}</td>
@@ -151,7 +159,7 @@ export function ResurrectionPanel() {
                           run: () => claim(r.torrent_id),
                         })
                       }
-                      className="min-h-[32px] rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
+                      className="min-h-11 rounded-full border border-[var(--compat-orange-dark)] px-3 text-xs font-bold text-[var(--compat-orange-dark)] disabled:opacity-50"
                     >
                       {t.claimBtn}
                     </button>
@@ -176,10 +184,18 @@ export function ResurrectionPanel() {
           <table className="nexus-table text-xs">
             <tbody>
               <tr>
-                <td className="colhead">{t.colTorrent}</td>
-                <td className="colhead w-28">{t.colRequired}</td>
-                <td className="colhead w-28">{t.colSeeded}</td>
-                <td className="colhead w-24">{t.colStatus}</td>
+                <th scope="col" className="colhead">
+                  {t.colTorrent}
+                </th>
+                <th scope="col" className="colhead w-28">
+                  {t.colRequired}
+                </th>
+                <th scope="col" className="colhead w-28">
+                  {t.colSeeded}
+                </th>
+                <th scope="col" className="colhead w-24">
+                  {t.colStatus}
+                </th>
               </tr>
               {(mine ?? []).map((m, i) => (
                 <tr key={`${m[0]}-${i}`}>

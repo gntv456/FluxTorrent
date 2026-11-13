@@ -17,7 +17,7 @@ interface AboutInfo {
 const CARD =
   "rounded-[var(--r-md)] border border-line bg-[var(--surface-card)] p-3";
 const ROW = "flex items-baseline justify-between gap-3 px-4 py-2";
-const FOOT_NOTE = "border-t border-dashed border-line pt-3 text-[11px]";
+const FOOT_NOTE = "border-t border-dashed border-line pt-3 text-xs";
 
 /** 版本页（aboutnexus.php 口径）：页尾「Powered by」的落点。
  *  展示本站运行的程序版本 + 站点信息 + 开源地址与文档——站长与用户都能据此报障。

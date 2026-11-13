@@ -102,12 +102,12 @@ export function StickyPromos({ flash }: { flash: (m: string) => void }) {
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{at.thId}</td>
-            <td className="colhead">{at.thTitle}</td>
-            <td className="colhead">{at.thBadge}</td>
-            <td className="colhead">{at.thRange}</td>
-            <td className="colhead">{at.thEnabled}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thId}</th>
+            <th scope="col" className="colhead">{at.thTitle}</th>
+            <th scope="col" className="colhead">{at.thBadge}</th>
+            <th scope="col" className="colhead">{at.thRange}</th>
+            <th scope="col" className="colhead">{at.thEnabled}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

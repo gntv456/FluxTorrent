@@ -15,7 +15,7 @@ const TXT_CLS =
   "min-h-[180px] rounded-[var(--r-sm)] border border-line bg-cloud " +
   "px-3 py-2 text-sm outline-none focus:border-sky";
 const SUBMIT_CLS =
-  "min-h-[40px] rounded-full bg-sky px-5 text-sm font-bold " +
+  "min-h-11 rounded-full bg-sky px-5 text-sm font-bold " +
   "text-white active:scale-[0.97] disabled:opacity-50";
 const REPLY_BADGE =
   "flex items-center gap-2 rounded-[var(--r-sm)] bg-sky-soft " +

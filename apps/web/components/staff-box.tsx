@@ -187,14 +187,14 @@ export function StaffBox() {
               <button
                 type="button"
                 onClick={() => setDeskTab(0)}
-                className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 0 ? "text-[var(--compat-orange-dark)] underline" : "text-sub"}`}
+                className={`min-h-11 rounded-full px-3 text-xs font-bold ${deskTab === 0 ? "text-[var(--compat-orange-dark)] underline" : "text-sub"}`}
               >
                 {t.pending}
               </button>
               <button
                 type="button"
                 onClick={() => setDeskTab(1)}
-                className={`min-h-[36px] rounded-full px-3 text-xs font-bold ${deskTab === 1 ? "text-[var(--compat-orange-dark)] underline" : "text-sub"}`}
+                className={`min-h-11 rounded-full px-3 text-xs font-bold ${deskTab === 1 ? "text-[var(--compat-orange-dark)] underline" : "text-sub"}`}
               >
                 {t.answered}
               </button>
@@ -207,7 +207,7 @@ export function StaffBox() {
               type="button"
               disabled={deskSel.length === 0 || busy}
               onClick={() => bulkDesk("mark")}
-              className="min-h-[36px] rounded-full border border-[var(--compat-line)] px-3 font-bold disabled:opacity-40"
+              className="min-h-11 rounded-full border border-[var(--compat-line)] px-3 font-bold disabled:opacity-40"
             >
               ✓ {t.mark}
             </button>
@@ -215,7 +215,7 @@ export function StaffBox() {
               type="button"
               disabled={deskSel.length === 0 || busy}
               onClick={() => bulkDesk("delete")}
-              className="min-h-[36px] rounded-full border border-[var(--danger-border)] px-3 font-bold text-[var(--danger-text)] disabled:opacity-40"
+              className="min-h-11 rounded-full border border-[var(--danger-border)] px-3 font-bold text-[var(--danger-text)] disabled:opacity-40"
             >
               🗑 {t.del}
             </button>

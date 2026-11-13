@@ -97,7 +97,7 @@ function LazyIframe({
     "transition group-hover:scale-110";
   const ORIGIN_LINK =
     "absolute right-2 top-2 rounded-full bg-black/40 px-2 py-0.5 " +
-    "text-[10px] text-white/90 hover:bg-black/60";
+    "text-xs text-white/90 hover:bg-black/60";
   const CLICK_AREA =
     "group absolute inset-0 flex w-full flex-col items-center " +
     "justify-center gap-2";

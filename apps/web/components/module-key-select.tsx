@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
 
 const SEL =
-  "min-h-[32px] rounded-[var(--r-sm)] border border-line bg-transparent px-2";
+  "min-h-11 rounded-[var(--r-sm)] border border-line bg-transparent px-2";
 
 /** 「自建产物 → 挂模块键」选择器（0199）。
  *  选项来自 site-profile.modules（就是后台「模块开关」那张表的键集），

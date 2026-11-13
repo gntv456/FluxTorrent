@@ -17,17 +17,17 @@ import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
  */
 
 const BTN =
-  "min-h-[32px] rounded-full border border-line bg-[var(--surface-card)] " +
+  "min-h-11 rounded-full border border-line bg-[var(--surface-card)] " +
   "px-3 text-xs font-bold text-sub active:scale-[0.97] " +
   "disabled:opacity-40";
 
 const SELECT =
-  "min-h-[32px] rounded-full border border-line bg-cloud px-3 " +
+  "min-h-11 rounded-full border border-line bg-cloud px-3 " +
   "text-xs outline-none focus:border-sky disabled:opacity-40";
 
 const PICKED_TAG =
   "rounded-full border border-[var(--border-strong)] " +
-  "bg-[var(--surface-card)] px-2 py-0.5 text-[11px] " +
+  "bg-[var(--surface-card)] px-2 py-0.5 text-xs " +
   "font-bold text-[var(--sky-deep)]";
 
 /** 下拉标签带上分区名。

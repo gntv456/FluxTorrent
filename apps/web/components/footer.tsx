@@ -10,7 +10,7 @@ import { api } from "@/lib/api-client";
 
 /** 帮助区/快捷导航共用的链接样式（长类名抽常量守行宽门禁） */
 const FOOTER_LINK =
-  "inline-flex min-h-[var(--tap-min)] items-center py-1.5 text-sm text-link hover:text-[var(--compat-orange)]";
+  "inline-flex min-h-11 items-center py-1.5 text-sm text-link hover:text-[var(--compat-orange)]";
 
 /**
  * 页脚：

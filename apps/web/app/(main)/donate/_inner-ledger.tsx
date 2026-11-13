@@ -27,10 +27,10 @@ export function LedgerTable({ rows }: { rows: LedgerRow[] | undefined }) {
       <table className="nexus-table">
         <tbody>
         <tr>
-          <td className="colhead">{t.ledgerKind}</td>
-          <td className="colhead">{t.ledgerAmount}</td>
-          <td className="colhead">{t.balance}</td>
-          <td className="colhead">{t.ledgerAt}</td>
+          <th scope="col" className="colhead">{t.ledgerKind}</th>
+          <th scope="col" className="colhead">{t.ledgerAmount}</th>
+          <th scope="col" className="colhead">{t.balance}</th>
+          <th scope="col" className="colhead">{t.ledgerAt}</th>
         </tr>
         {(rows ?? []).map((r) => (
           <tr key={r.id}>

@@ -46,9 +46,9 @@ function toggleCsv(cur: string, v: string): string {
 const CHIP_ON = "bg-sky text-[var(--text-on-accent)] border-sky";
 const CHIP_OFF = "border-line text-sub hover:border-sky";
 const CHIP_CLS =
-  "inline-flex min-h-[30px] items-center rounded-full border px-3 text-xs";
+  "inline-flex min-h-11 items-center rounded-full border px-3 text-xs";
 const IN_CLS =
-  "min-h-[34px] rounded-[var(--r-sm)] border border-line " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line " +
   "bg-[var(--surface-card)] px-2 text-xs";
 /** 维度名标签宽度统一，让各类型控件左边缘对齐 */
 const LBL_CLS = "w-24 shrink-0 text-xs text-sub";

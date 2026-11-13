@@ -44,14 +44,14 @@ export function TorrentSubtitleCards({
               </a>
               {s.torrent_id !== torrentId && (
                 <span
-                  className="ml-1 text-[11px] text-sub"
+                  className="ml-1 text-xs text-sub"
                   title={t.fromSameFilm ?? "same film"}
                 >
                   {t.sameFilmBadge ?? "same film"}
                 </span>
               )}
               {s.ai_state && s.ai_state !== "human" && (
-                <span className="ml-1 text-[11px] text-sub">
+                <span className="ml-1 text-xs text-sub">
                   {s.ai_state === "ai_proofread"
                     ? (t.aiBadgeProof ?? "MT✓")
                     : (t.aiBadgePure ?? "MT")}

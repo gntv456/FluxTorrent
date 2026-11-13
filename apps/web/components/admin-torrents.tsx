@@ -46,7 +46,7 @@ export function AdminTorrents() {
             role="tab"
             aria-selected={sub === k}
             onClick={() => setSub(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-[var(--text-on-accent)]" : CELL_CARD_SUB}`}
+            className={`min-h-11 rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-[var(--text-on-accent)]" : CELL_CARD_SUB}`}
           >
             {label}
           </button>

@@ -77,11 +77,11 @@ export function InviteeList({
                 {u.status >= 2 && (
                   <Badge tone="neutral">{t.invBanned}</Badge>
                 )}
-                <span className="ml-auto text-[10.5px] text-sub">
+                <span className="ml-auto text-xs text-sub">
                   {u.class_name ?? "—"}
                 </span>
               </div>
-              <p className="mt-1 text-[10.5px] text-sub">
+              <p className="mt-1 text-xs text-sub">
                 {t.invUploaded} {fmtBytes(u.uploaded)}
                 {" · "}
                 {t.invDownloaded} {fmtBytes(u.downloaded)}
@@ -96,11 +96,11 @@ export function InviteeList({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.invUser}</td>
-                <td className="colhead">{t.invLevel}</td>
-                <td className="colhead">{t.invUploaded}</td>
-                <td className="colhead">{t.invDownloaded}</td>
-                <td className="colhead">{t.invJoined}</td>
+                <th scope="col" className="colhead">{t.invUser}</th>
+                <th scope="col" className="colhead">{t.invLevel}</th>
+                <th scope="col" className="colhead">{t.invUploaded}</th>
+                <th scope="col" className="colhead">{t.invDownloaded}</th>
+                <th scope="col" className="colhead">{t.invJoined}</th>
               </tr>
               {invitees.map((u) => (
                 <tr key={u.id}>

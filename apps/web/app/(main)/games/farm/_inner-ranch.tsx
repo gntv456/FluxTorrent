@@ -106,7 +106,7 @@ export function RanchSection({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{a.name}</p>
-                <p className="num text-[11px] text-sub">
+                <p className="num text-xs text-sub">
                   {tf.ranchCycle.replace("{n}", String(a.cycle_mins))} ·+
                   {a.yield} {currency}
                 </p>
@@ -124,7 +124,7 @@ export function RanchSection({
                           tf.ranchGot.replace("{n}", String(a.yield)),
                         )
                       }
-                      className="min-h-[30px] rounded-full bg-mint px-3 text-[11px] font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
+                      className="min-h-11 rounded-full bg-mint px-3 text-xs font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
                     >
                       {tf.ranchCollect}
                     </button>
@@ -139,7 +139,7 @@ export function RanchSection({
                           tf.ranchFed,
                         )
                       }
-                      className="min-h-[30px] rounded-full bg-sky-soft px-3 text-[11px] font-bold text-ink active:scale-[0.97] disabled:opacity-50"
+                      className="min-h-11 rounded-full bg-sky-soft px-3 text-xs font-bold text-ink active:scale-[0.97] disabled:opacity-50"
                     >
                       {tf.ranchFeed} · {left}
                     </button>
@@ -156,7 +156,7 @@ export function RanchSection({
                       tf.ranchBought.replace("{n}", a.name),
                     )
                   }
-                  className="min-h-[30px] shrink-0 rounded-full bg-sun px-3 text-[11px] font-bold text-ink active:scale-[0.97] disabled:opacity-50"
+                  className="min-h-11 shrink-0 rounded-full bg-sun px-3 text-xs font-bold text-ink active:scale-[0.97] disabled:opacity-50"
                 >
                   {tf.ranchBuy} · {a.price}
                 </button>
@@ -247,7 +247,7 @@ export function CraftSection({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold">{r.name}</p>
-                  <p className="num text-[11px] text-sub">
+                  <p className="num text-xs text-sub">
                     {r.in} → +{r.out} ·{" "}
                     {tf.craftMins.replace("{n}", String(r.mins))}
                   </p>
@@ -273,12 +273,12 @@ export function CraftSection({
                         () => {},
                       )
                     }
-                    className="min-h-[32px] rounded-full bg-mint text-[11px] font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
+                    className="min-h-11 rounded-full bg-mint text-xs font-bold text-[var(--text-on-accent)] active:scale-[0.97] disabled:opacity-50"
                   >
                     {tf.craftDone}
                   </button>
                 ) : (
-                  <p className="num text-center text-[11px] font-bold text-sub">
+                  <p className="num text-center text-xs font-bold text-sub">
                     {tf.craftBusy} · {left}
                   </p>
                 )
@@ -289,7 +289,7 @@ export function CraftSection({
                   onClick={() =>
                     void act("/farm/craft", { recipe: r.key }, () => {})
                   }
-                  className="min-h-[32px] rounded-full bg-sun text-[11px] font-bold text-ink active:scale-[0.97] disabled:opacity-50"
+                  className="min-h-11 rounded-full bg-sun text-xs font-bold text-ink active:scale-[0.97] disabled:opacity-50"
                 >
                   {tf.craftStart} · {r.in}
                 </button>
@@ -372,7 +372,7 @@ export function FarmAlbumSection({ tf }: { tf: Record<string, string> }) {
             }`}
             title={c.name}
           >
-            <span className="text-[11px] font-bold leading-tight">
+            <span className="text-xs font-bold leading-tight">
               {c.lit ? c.name : "???"}
             </span>
           </div>

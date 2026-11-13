@@ -91,7 +91,7 @@ export function SessionsCard() {
             })
           }
           disabled={busy || rows.length === 0}
-          className="min-h-[32px] rounded-full border border-coral px-3
+          className="min-h-11 rounded-full border border-coral px-3
             text-xs font-bold text-coral disabled:opacity-50"
         >
           {s.revokeBtn}
@@ -102,7 +102,7 @@ export function SessionsCard() {
           </span>
         )}
       </div>
-      <p className="text-[11px] text-sub">{s.hint}</p>
+      <p className="text-xs text-sub">{s.hint}</p>
       <AskDialog {...ask} />
     </div>
   );

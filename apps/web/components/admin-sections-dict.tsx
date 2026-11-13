@@ -93,10 +93,10 @@ export function SectionDictPanel(props: DictPanelProps) {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thId}</td>
-            <td className="colhead">{at.thName}</td>
-            <td className="colhead">{at.thSort}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thId}</th>
+            <th scope="col" className="colhead">{at.thName}</th>
+            <th scope="col" className="colhead">{at.thSort}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>
@@ -184,11 +184,11 @@ export function SectionCatsPanel({ cats, modes, busy, act }: CatsPanelProps) {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thId}</td>
-            <td className="colhead">{at.thCats}</td>
-            <td className="colhead">{at.thTorrents}</td>
-            <td className="colhead">{at.thMode}</td>
-            <td className="colhead">{at.thAuto}</td>
+            <th scope="col" className="colhead">{at.thId}</th>
+            <th scope="col" className="colhead">{at.thCats}</th>
+            <th scope="col" className="colhead">{at.thTorrents}</th>
+            <th scope="col" className="colhead">{at.thMode}</th>
+            <th scope="col" className="colhead">{at.thAuto}</th>
           </tr>
         </thead>
         <tbody>

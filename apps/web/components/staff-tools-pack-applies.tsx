@@ -36,13 +36,27 @@ export function StaffPackAppliesPanel({ rows, busy, guard }: PackAppliesProps) {
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">#</td>
-              <td className="colhead">{t.fldApplyTime}</td>
-              <td className="colhead">{t.packTitle}</td>
-              <td className="colhead">{t.packMode}</td>
-              <td className="colhead">{t.fldApplyChanges}</td>
-              <td className="colhead">{t.fldApplyActor}</td>
-              <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+              <th scope="col" className="colhead">
+                #
+              </th>
+              <th scope="col" className="colhead">
+                {t.fldApplyTime}
+              </th>
+              <th scope="col" className="colhead">
+                {t.packTitle}
+              </th>
+              <th scope="col" className="colhead">
+                {t.packMode}
+              </th>
+              <th scope="col" className="colhead">
+                {t.fldApplyChanges}
+              </th>
+              <th scope="col" className="colhead">
+                {t.fldApplyActor}
+              </th>
+              <th scope="col" className="colhead text-right">
+                {dict.cmgmt.colActions}
+              </th>
             </tr>
             {rows.map((r) => {
               // 0317 H2：changes 里除键值行还有分类段行（改名/新增/失活），

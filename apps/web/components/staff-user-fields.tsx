@@ -36,7 +36,7 @@ const TYPES: { v: FieldDef["type"]; zh: string; en: string }[] = [
 ];
 
 const FLD =
-  "min-h-[38px] w-full rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
+  "min-h-11 w-full rounded-[var(--r-sm)] border border-line bg-cloud px-2 text-sm outline-none focus:border-sky";
 
 interface Draft {
   key: string;

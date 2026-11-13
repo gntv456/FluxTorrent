@@ -42,10 +42,10 @@ export function ReviewQueueToolbar({
   const postponed = status === 4;
   // 两个批量按钮类名拆行拼：单行超 80 列门禁（行宽按 UTF-16 码元计）
   const batchPassCls =
-    "min-h-[36px] rounded-full border border-mint px-3 py-1 " +
+    "min-h-11 rounded-full border border-mint px-3 py-1 " +
     "font-bold text-mint disabled:opacity-40";
   const batchDenyCls =
-    "min-h-[36px] rounded-full border border-coral px-3 py-1 " +
+    "min-h-11 rounded-full border border-coral px-3 py-1 " +
     "font-bold text-[var(--danger-text)] disabled:opacity-40";
   return (
     <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">

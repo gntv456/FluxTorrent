@@ -137,14 +137,14 @@ export function TorrentSubtitles({
                   {/* C1 合并标记：非本种子的同片字幕注明来源 */}
                   {s.torrent_id !== torrentId && (
                     <span
-                      className="ml-1 text-[11px] text-sub"
+                      className="ml-1 text-xs text-sub"
                       title={t.fromSameFilm ?? "same film"}
                     >
                       {t.sameFilmBadge ?? "same film"}
                     </span>
                   )}
                   {s.ai_state && s.ai_state !== "human" && (
-                    <span className="ml-1 text-[11px] text-sub">
+                    <span className="ml-1 text-xs text-sub">
                       {s.ai_state === "ai_proofread"
                         ? (t.aiBadgeProof ?? "MT✓")
                         : (t.aiBadgePure ?? "MT")}
@@ -159,8 +159,8 @@ export function TorrentSubtitles({
                     <span
                       className={
                         s.cert_tier === "gold"
-                          ? "ml-1 text-[11px] font-bold [color:var(--sun)]"
-                          : "ml-1 text-[11px] font-bold [color:var(--mint)]"
+                          ? "ml-1 text-xs font-bold [color:var(--sun)]"
+                          : "ml-1 text-xs font-bold [color:var(--mint)]"
                       }
                     >
                       {s.cert_tier === "gold" ? "✎★" : "✎"}

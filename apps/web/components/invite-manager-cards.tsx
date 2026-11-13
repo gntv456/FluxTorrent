@@ -73,10 +73,10 @@ export function InviteCards({
                     : t.expired}
             </Badge>
           </div>
-          <p className="mt-1 truncate text-[11px] text-sub">
+          <p className="mt-1 truncate text-xs text-sub">
             {i.status === 1 && i.used_by ? `→ ${i.used_by}` : (i.email ?? "—")}
           </p>
-          <p className="mt-0.5 text-[10.5px] text-sub">
+          <p className="mt-0.5 text-xs text-sub">
             {t.colExpires} {fmtDate(i.expires_at)}
           </p>
           {i.status === 0 && (

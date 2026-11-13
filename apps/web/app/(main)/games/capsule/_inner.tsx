@@ -332,7 +332,7 @@ export default function CapsuleFocusPage({
             {prizes.map((p, i) => (
               <span
                 key={i}
-                className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                   (p.value ?? p.payout * ticket) >= ticket * 10
                     ? "bg-sun-soft text-[var(--warning)]"
                     : (p.value ?? p.payout * ticket) > ticket
@@ -344,7 +344,7 @@ export default function CapsuleFocusPage({
               </span>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-sub">{tc.poolNote}</p>
+          <p className="mt-2 text-xs text-sub">{tc.poolNote}</p>
           <div className="sw-cap-meters">
             {rarityMeters.map((m) => (
               <div key={m.r} className="sw-cap-meter">

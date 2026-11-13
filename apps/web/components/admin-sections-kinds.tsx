@@ -102,15 +102,15 @@ export function SectionKindsPanel(props: {
       <table className="nexus-table mt-3 text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thKindKey}</td>
-            <td className="colhead">{at.thKindLabel}</td>
-            <td className="colhead">{at.thFieldType}</td>
-            <td className="colhead">{at.thRequired}</td>
-            <td className="colhead">{at.thMultiple}</td>
-            <td className="colhead">{at.thEnabled}</td>
-            <td className="colhead">{at.thCount}</td>
-            <td className="colhead">{at.thSort}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thKindKey}</th>
+            <th scope="col" className="colhead">{at.thKindLabel}</th>
+            <th scope="col" className="colhead">{at.thFieldType}</th>
+            <th scope="col" className="colhead">{at.thRequired}</th>
+            <th scope="col" className="colhead">{at.thMultiple}</th>
+            <th scope="col" className="colhead">{at.thEnabled}</th>
+            <th scope="col" className="colhead">{at.thCount}</th>
+            <th scope="col" className="colhead">{at.thSort}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

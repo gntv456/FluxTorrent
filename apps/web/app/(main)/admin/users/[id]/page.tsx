@@ -35,7 +35,7 @@ export default async function Page() {
       headAside={
         <Link
           href="/admin?tool=users"
-          className="min-h-[36px] rounded-full border border-line
+          className="min-h-11 rounded-full border border-line
             px-4 text-xs font-bold text-ink"
         >
           ‹ {u.backToUsers}

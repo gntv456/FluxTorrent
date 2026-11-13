@@ -85,16 +85,16 @@ export function AdminTagDict() {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">ID</td>
-            <td className="colhead">{at.thPreview}</td>
-            <td className="colhead">{at.thKind}</td>
-            <td className="colhead">{at.thScope}</td>
-            <td className="colhead">{at.thLayer}</td>
-            <td className="colhead">{at.thUsage}</td>
-            <td className="colhead">{at.thStyle}</td>
-            <td className="colhead">{at.thMode}</td>
-            <td className="colhead">{at.thStatus}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">ID</th>
+            <th scope="col" className="colhead">{at.thPreview}</th>
+            <th scope="col" className="colhead">{at.thKind}</th>
+            <th scope="col" className="colhead">{at.thScope}</th>
+            <th scope="col" className="colhead">{at.thLayer}</th>
+            <th scope="col" className="colhead">{at.thUsage}</th>
+            <th scope="col" className="colhead">{at.thStyle}</th>
+            <th scope="col" className="colhead">{at.thMode}</th>
+            <th scope="col" className="colhead">{at.thStatus}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

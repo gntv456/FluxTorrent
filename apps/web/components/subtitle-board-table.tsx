@@ -88,13 +88,13 @@ export function SubtitleListTable({
       <table className="nexus-table subtitles-list-table">
         <tbody>
           <tr>
-            <td className="colhead">{t.colLang}</td>
-            <td className="colhead text-center">{t.colTitle}</td>
-            <td className="colhead text-center">{t.colTime}</td>
-            <td className="colhead text-center">{t.colSize}</td>
-            <td className="colhead text-center">{t.colHits}</td>
-            <td className="colhead text-center">{t.colUploader}</td>
-            <td className="colhead text-center">{t.colReport}</td>
+            <th scope="col" className="colhead">{t.colLang}</th>
+            <th scope="col" className="colhead text-center">{t.colTitle}</th>
+            <th scope="col" className="colhead text-center">{t.colTime}</th>
+            <th scope="col" className="colhead text-center">{t.colSize}</th>
+            <th scope="col" className="colhead text-center">{t.colHits}</th>
+            <th scope="col" className="colhead text-center">{t.colUploader}</th>
+            <th scope="col" className="colhead text-center">{t.colReport}</th>
           </tr>
           {rows.map((s) => (
             <tr key={s.id}>
@@ -137,7 +137,7 @@ export function SubtitleListTable({
                 </a>
                 {s.verified && (
                   <span
-                    className="ml-1 text-[11px] font-bold text-mint"
+                    className="ml-1 text-xs font-bold text-mint"
                     title={t.verifiedTip ?? "verified"}
                   >
                     ✓
@@ -145,7 +145,7 @@ export function SubtitleListTable({
                 )}
                 {s.award_rank === 1 && (
                   <span
-                    className="ml-1 text-[11px]"
+                    className="ml-1 text-xs"
                     title={t.goldTip ?? "gold"}
                   >
                     👑
@@ -153,7 +153,7 @@ export function SubtitleListTable({
                 )}
                 {s.ai_state && s.ai_state !== "human" && (
                   <span
-                    className="ml-1 text-[11px] text-sub"
+                    className="ml-1 text-xs text-sub"
                     title={
                       s.ai_state === "ai_proofread"
                         ? (t.aiProofreadTip ?? "AI + proofread")
@@ -166,7 +166,7 @@ export function SubtitleListTable({
                   </span>
                 )}
                 {typeof s.rating === "number" && s.rating > 0 && (
-                  <span className="ml-1 text-[11px] text-sub">
+                  <span className="ml-1 text-xs text-sub">
                     ★ {s.rating}
                     {s.rating_count ? `(${s.rating_count})` : ""}
                   </span>
@@ -194,8 +194,8 @@ export function SubtitleListTable({
                     <span
                       className={
                         s.cert_tier === "gold"
-                          ? "ml-1 text-[11px] font-bold text-amber-500"
-                          : "ml-1 text-[11px] font-bold text-mint"
+                          ? "ml-1 text-xs font-bold text-amber-500"
+                          : "ml-1 text-xs font-bold text-mint"
                       }
                       title={
                         s.cert_tier === "gold"

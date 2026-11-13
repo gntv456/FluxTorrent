@@ -97,7 +97,7 @@ export default function LeaderboardPage({
             <p className="arc-note">{tl.empty}</p>
           )}
         </div>
-        <p className="text-[11px] text-sub">{tl.note}</p>
+        <p className="text-xs text-sub">{tl.note}</p>
       </div>
 
       <div className="flex flex-wrap gap-x-5 gap-y-2">

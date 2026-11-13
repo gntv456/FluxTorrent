@@ -60,8 +60,9 @@ export default function OffersPage() {
       toast.error(
         e instanceof ApiError ? e.message : dict.common.networkError,
         {
-        requestId: e instanceof ApiError ? e.requestId : undefined,
-      });
+          requestId: e instanceof ApiError ? e.requestId : undefined,
+        },
+      );
     } finally {
       setBusy(false);
     }
@@ -116,66 +117,80 @@ export default function OffersPage() {
         loadingFallback={<SkeletonRows rows={5} />}
       >
         <div className="brand-wide-table-scroll">
-        <table className="nexus-table">
-        <tbody>
-          <tr>
-            <td className="colhead">{t.colTorrent}</td>
-            <td className="colhead">{t.colUser}</td>
-            <td className="colhead">{t.colVotes}</td>
-            <td className="colhead">{t.colAt}</td>
-            <td className="colhead text-right">{dict.cmgmt.colActions}</td>
-          </tr>
-          {(rows ?? []).map((o) => (
-            <tr key={o.id}>
-              <td>
-                <a href={`/torrent/${o.torrent_id}`} className="text-sky">
-                  {o.torrent_name ?? `#${o.torrent_id}`}
-                </a>
-              </td>
-              <td>{o.username ?? "—"}</td>
-              <td className="num font-bold">{o.votes}</td>
-              <td className="text-xs text-sub">
-                {new Date(o.created_at).toLocaleDateString(dateLocale(locale))}
-              </td>
-              <td className="text-right">
-                <button
-                  className="cmgmt-act"
-                  disabled={busy}
-                  onClick={() =>
-                    guard(async () => {
-                      await api.post("/api/v1/offers/vote", { offer_id: o.id });
-                    }, t.voted)
-                  }
-                >
-                  {t.btnVote}
-                </button>
-                {isStaff && (
-                  <button
-                    className="cmgmt-act cmgmt-act--ok"
-                    disabled={busy}
-                    onClick={() =>
-                      guard(async () => {
-                        await api.post("/api/v1/offers/promote", {
-                          offer_id: o.id,
-                        });
-                      }, t.promoted)
-                    }
-                  >
-                    {t.btnPromote}
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-          {(rows ?? []).length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-6 text-center text-sub">
-                {t.empty}
-              </td>
-            </tr>
-          )}
-        </tbody>
-        </table>
+          <table className="nexus-table">
+            <tbody>
+              <tr>
+                <th scope="col" className="colhead">
+                  {t.colTorrent}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.colUser}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.colVotes}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.colAt}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {dict.cmgmt.colActions}
+                </th>
+              </tr>
+              {(rows ?? []).map((o) => (
+                <tr key={o.id}>
+                  <td>
+                    <a href={`/torrent/${o.torrent_id}`} className="text-sky">
+                      {o.torrent_name ?? `#${o.torrent_id}`}
+                    </a>
+                  </td>
+                  <td>{o.username ?? "—"}</td>
+                  <td className="num font-bold">{o.votes}</td>
+                  <td className="text-xs text-sub">
+                    {new Date(o.created_at).toLocaleDateString(
+                      dateLocale(locale),
+                    )}
+                  </td>
+                  <td className="text-right">
+                    <button
+                      className="cmgmt-act"
+                      disabled={busy}
+                      onClick={() =>
+                        guard(async () => {
+                          await api.post("/api/v1/offers/vote", {
+                            offer_id: o.id,
+                          });
+                        }, t.voted)
+                      }
+                    >
+                      {t.btnVote}
+                    </button>
+                    {isStaff && (
+                      <button
+                        className="cmgmt-act cmgmt-act--ok"
+                        disabled={busy}
+                        onClick={() =>
+                          guard(async () => {
+                            await api.post("/api/v1/offers/promote", {
+                              offer_id: o.id,
+                            });
+                          }, t.promoted)
+                        }
+                      >
+                        {t.btnPromote}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {(rows ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-6 text-center text-sub">
+                    {t.empty}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </StatePanel>
     </div>

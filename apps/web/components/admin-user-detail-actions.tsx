@@ -33,9 +33,9 @@ const DL_BTN_CLS = `${TAB_BTN_CLS}${DANGER_CLS}`.trim();
 
 /** 圆角实底小按钮（薄荷绿/珊瑚红） */
 const SOLID_MINT_CLS =
-  "min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]";
+  "min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)]";
 const SOLID_CORAL_CLS =
-  "min-h-[36px] rounded-full bg-coral px-4 text-xs font-bold text-[var(--text-on-accent)]";
+  "min-h-11 rounded-full bg-coral px-4 text-xs font-bold text-[var(--text-on-accent)]";
 
 export interface AdminActionsProps {
   d: Detail;

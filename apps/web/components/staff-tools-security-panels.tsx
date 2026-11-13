@@ -101,10 +101,18 @@ export function StaffSecPanels({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.ebPattern}</td>
-                <td className="colhead">{t.ebMode}</td>
-                <td className="colhead">{t.ebNote}</td>
-                <td className="colhead text-right">{dict.cmgmt.colActions}</td>
+                <th scope="col" className="colhead">
+                  {t.ebPattern}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.ebMode}
+                </th>
+                <th scope="col" className="colhead">
+                  {t.ebNote}
+                </th>
+                <th scope="col" className="colhead text-right">
+                  {dict.cmgmt.colActions}
+                </th>
               </tr>
               {emailBans.map((e) => (
                 <tr key={e.id}>

@@ -30,14 +30,14 @@ export function PropsTable(props: {
     <table className="nexus-table text-xs">
       <thead>
         <tr>
-          <td className="colhead">{at.thId}</td>
-          <td className="colhead">{at.thName}</td>
-          <td className="colhead">{at.thKind}</td>
-          <td className="colhead">{at.thPrice}</td>
-          <td className="colhead">{at.thConfig}</td>
-          <td className="colhead">{at.thStock}</td>
-          <td className="colhead">{at.thStatus}</td>
-          <td className="colhead text-right">{at.thAction}</td>
+          <th scope="col" className="colhead">{at.thId}</th>
+          <th scope="col" className="colhead">{at.thName}</th>
+          <th scope="col" className="colhead">{at.thKind}</th>
+          <th scope="col" className="colhead">{at.thPrice}</th>
+          <th scope="col" className="colhead">{at.thConfig}</th>
+          <th scope="col" className="colhead">{at.thStock}</th>
+          <th scope="col" className="colhead">{at.thStatus}</th>
+          <th scope="col" className="colhead text-right">{at.thAction}</th>
         </tr>
       </thead>
       <tbody>

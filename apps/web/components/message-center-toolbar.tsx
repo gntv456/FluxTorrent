@@ -215,7 +215,7 @@ export function BulkBar({
           type="button"
           disabled={selected.length === 0 || busy}
           onClick={onMarkRead}
-          className="min-h-[36px] rounded-full border border-[var(--compat-line)] px-3 font-bold disabled:opacity-40"
+          className="min-h-11 rounded-full border border-[var(--compat-line)] px-3 font-bold disabled:opacity-40"
         >
           ✓ {t.markRead}
         </button>
@@ -228,7 +228,7 @@ export function BulkBar({
             onMove(v === "" ? null : Number(v));
             e.target.value = "";
           }}
-          className="min-h-[36px] rounded-full border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 font-bold disabled:opacity-40"
+          className="min-h-11 rounded-full border border-[var(--compat-line)] bg-[var(--compat-paper)] px-3 font-bold disabled:opacity-40"
           defaultValue=""
         >
           <option value="">{t.moveTo}</option>
@@ -244,7 +244,7 @@ export function BulkBar({
         type="button"
         disabled={selected.length === 0 || busy}
         onClick={onDelete}
-        className="min-h-[36px] rounded-full border border-[var(--danger-border)] px-3 font-bold text-[var(--danger-text)] disabled:opacity-40"
+        className="min-h-11 rounded-full border border-[var(--danger-border)] px-3 font-bold text-[var(--danger-text)] disabled:opacity-40"
       >
         🗑 {t.deleteSel}
       </button>

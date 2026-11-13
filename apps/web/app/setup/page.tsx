@@ -157,7 +157,7 @@ export default function SetupWizard() {
                 <div className="mt-1 text-xs text-muted">
                   {p.description}
                 </div>
-                <div className="mt-2 font-mono text-[10px] text-muted">
+                <div className="mt-2 font-mono text-xs text-muted">
                   {p.code}
                 </div>
               </button>

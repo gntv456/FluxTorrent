@@ -199,19 +199,26 @@ export function AdminShell({
     <>
       <div className="px-1 pb-2">
         <input
-          ref={inputRef} value={q}
+          ref={inputRef}
+          value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={a.navSearchPlaceholder}
           aria-label={a.navSearchLabel}
-          className="min-h-[34px] w-full rounded-[var(--r-sm)] border
+          className="min-h-11 w-full rounded-[var(--r-sm)] border
             border-line bg-cloud px-2 text-xs outline-none focus:border-sky"
         />
       </div>
       <AdminNavGroups
         grouped={grouped} badges={badges} tool={tool}
-        onTool={(t) => { onTool(t); setNavOpen(false); }}
-        kwEmpty={kw === ""} labelOf={labelOf} tipOf={tipOf}
-        navEmpty={a.navEmpty} subLabels={subLabels}
+        onTool={(t) => {
+          onTool(t);
+          setNavOpen(false);
+        }}
+        kwEmpty={kw === ""}
+        labelOf={labelOf}
+        tipOf={tipOf}
+        navEmpty={a.navEmpty}
+        subLabels={subLabels}
       />
     </>
   );
@@ -243,7 +250,7 @@ export function AdminShell({
             <button
               onClick={() => setNavOpen(!navOpen)}
               aria-expanded={navOpen}
-              className="min-h-[38px] shrink-0 rounded-[var(--r-md)] border
+              className="min-h-11 shrink-0 rounded-[var(--r-md)] border
                 border-line px-3 text-sm font-bold lg:hidden"
             >
               {a.navToggle}
@@ -264,9 +271,7 @@ export function AdminShell({
             className="rounded-[var(--r-md)] border border-line
               bg-[var(--surface-card)] p-2 shadow-[var(--shadow-card)]"
           >
-            <p className="px-2 py-1 text-xs font-bold text-ink">
-              {a.navTitle}
-            </p>
+            <p className="px-2 py-1 text-xs font-bold text-ink">{a.navTitle}</p>
             {navBody}
           </div>
         </nav>

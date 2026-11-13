@@ -120,7 +120,7 @@ export function ForumCategoryPanel({
     "flex items-center gap-0.5 rounded-[var(--r-sm)] px-1.5 py-1.5 " +
     "border border-transparent hover:bg-cloud";
   /** 拖拽手柄 + 被拖行淡出，是「可拖动」唯一的视觉线索（面板太窄放不下独立列） */
-  const GRIP = "shrink-0 select-none text-[10px] leading-none text-sub";
+  const GRIP = "shrink-0 select-none text-xs leading-none text-sub";
   const CURSOR = " cursor-grab active:cursor-grabbing";
   /** 行内操作平时隐身；选中 / 编辑 / hover / 键盘聚焦时显现 */
   const reveal = (active: boolean) =>
@@ -197,7 +197,7 @@ export function ForumCategoryPanel({
                     if (e.key === "Enter") rename(c);
                     if (e.key === "Escape") setEditing(null);
                   }}
-                  className={`${INPUT_CLS} min-h-[26px] w-24 text-xs`}
+                  className={`${INPUT_CLS} min-h-11 w-24 text-xs`}
                 />
               ) : (
                 <span

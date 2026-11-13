@@ -13,7 +13,7 @@ type Dict = ReturnType<typeof useI18n>["dict"];
  *  upload-form-quality 同口径）；推荐位（NP 挑选）staff 专属。 */
 
 export const FLD =
-  "min-h-[36px] rounded-[var(--r-sm)] border border-line px-2 text-sm";
+  "min-h-11 rounded-[var(--r-sm)] border border-line px-2 text-sm";
 
 /** 操作按钮（pill 形态）：编辑/补种/删除/保存/取消行共用 */
 
@@ -28,7 +28,7 @@ export const ATTACH_ACCEPT = [
 ].join(",");
 
 export const PILL =
-  "min-h-[36px] rounded-full px-4 text-xs font-bold disabled:opacity-50";
+  "min-h-11 rounded-full px-4 text-xs font-bold disabled:opacity-50";
 
 /** 标签整组编辑（0159 P1 + 0184 分组）：普通标签 checkbox；
  *  official 类不出现（详情页 toggle 走 staff 口径） */
@@ -56,7 +56,7 @@ export function ManageTagsBlock({
         .map((g) => (
           <div key={g} className="flex flex-wrap items-center gap-1.5">
             {dictRows.some((d) => d.group === "content") && (
-              <span className="text-[11px] font-bold text-sub">
+              <span className="text-xs font-bold text-sub">
                 {g === "attribute"
                   ? dict.upload.tagGroupAttr
                   : dict.upload.tagGroupContent}
@@ -65,8 +65,7 @@ export function ManageTagsBlock({
             )}
             {dictRows
               .filter(
-                (d) =>
-                  d.kind !== "official" && (d.group ?? "attribute") === g,
+                (d) => d.kind !== "official" && (d.group ?? "attribute") === g,
               )
               .map((d) => {
                 const on = fTags.includes(d.id);
@@ -74,8 +73,8 @@ export function ManageTagsBlock({
                   <label
                     key={d.id}
                     className={`td-tag torrents-tag--user ${
-                    on ? "" : "td-tag--off"
-                  }`}
+                      on ? "" : "td-tag--off"
+                    }`}
                     style={{
                       background: on ? d.bg_color || "var(--sky)" : undefined,
                       color: on ? d.color || "#fff" : undefined,
@@ -168,7 +167,7 @@ export function ManagePickBlock({
           </select>
         </label>
       </div>
-      <span className="text-[11px] text-sub">{dict.upload.recommendHint}</span>
+      <span className="text-xs text-sub">{dict.upload.recommendHint}</span>
     </fieldset>
   );
 }
@@ -187,7 +186,8 @@ export function useAttachmentUpload(
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/v1/attachments", {
-        method: "POST", body: fd,
+        method: "POST",
+        body: fd,
         headers: await rawFetchHelpers.csrf("POST"),
       });
       const j = (await res.json()) as {
@@ -212,7 +212,6 @@ export function useAttachmentUpload(
   }
   return { busy, msg, upload };
 }
-
 
 /** 多维属性编辑状态 + 分类联动（0184 从 torrent-manage.tsx 拆出）：
  *  换分类按 mode_id 重取 section-dict（归属模式决定该分类能填哪些维度），
@@ -261,9 +260,7 @@ export function useEditSections(
     if (fCat === categoryId) return; // 初始分类直接用服务端传入的字典
     let alive = true;
     api
-      .get<
-        Record<string, unknown> & { kinds?: SectionKindMeta[] }
-      >(
+      .get<Record<string, unknown> & { kinds?: SectionKindMeta[] }>(
         `/api/v1/section-dict?category_id=${fCat}`,
       )
       .then((d) => {
@@ -293,8 +290,7 @@ export function useEditSections(
                 .split(",")
                 .map((s) => Number(s.trim()))
                 .filter(
-                  (n) =>
-                    n > 0 && (rest[k.kind] ?? []).some((r) => r.id === n),
+                  (n) => n > 0 && (rest[k.kind] ?? []).some((r) => r.id === n),
                 );
               if (ids.length > 0) kept[k.kind] = ids.join(",");
             } else {

@@ -41,18 +41,22 @@ export function MyBookmarks({ rows }: { rows: BookmarkRow[] | null }) {
         <table className="nexus-table">
           <thead>
             <tr>
-              <td className="colhead">{t.colName}</td>
-              <td className="colhead w-24 text-right">
-                {dict.mytl.colSize}
-              </td>
+              <th scope="col" className="colhead">
+                {t.colName}
+              </th>
+              <td className="colhead w-24 text-right">{dict.mytl.colSize}</td>
               <td className="colhead w-16 text-right">
                 {dict.mytl.colSeeders}
               </td>
               <td className="colhead w-16 text-right">
                 {dict.mytl.colLeechers}
               </td>
-              <td className="colhead w-40">{t.colSavedAt}</td>
-              <td className="colhead w-24 text-right">{t.colAction}</td>
+              <th scope="col" className="colhead w-40">
+                {t.colSavedAt}
+              </th>
+              <th scope="col" className="colhead w-24 text-right">
+                {t.colAction}
+              </th>
             </tr>
           </thead>
           <tbody>

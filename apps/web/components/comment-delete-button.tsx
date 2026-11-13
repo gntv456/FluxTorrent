@@ -36,7 +36,7 @@ export function CommentDeleteButton({
     }
   }
 
-  if (gone) return <span className="text-[11px] text-sub">{t.ok}</span>;
+  if (gone) return <span className="text-xs text-sub">{t.ok}</span>;
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
       <button
@@ -51,12 +51,12 @@ export function CommentDeleteButton({
           })
         }
         disabled={busy}
-        className="min-h-[26px] rounded-full border border-[var(--danger-border)] px-2 text-[11px] font-bold text-[var(--danger-text)] disabled:opacity-50"
+        className="min-h-11 rounded-full border border-[var(--danger-border)] px-2 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
       >
         🗑 {t.btn}
       </button>
       {msg && (
-        <span className="text-[11px] text-[var(--danger-text)]" role="status">
+        <span className="text-xs text-[var(--danger-text)]" role="status">
           {msg}
         </span>
       )}

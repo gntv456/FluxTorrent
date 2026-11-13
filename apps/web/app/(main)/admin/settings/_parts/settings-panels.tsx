@@ -85,7 +85,7 @@ export function SettingsGroupNav({
               currency,
             )}
           </span>
-          <span className="ml-auto text-[10px] font-normal">{g.count}</span>
+          <span className="ml-auto text-xs font-normal">{g.count}</span>
         </button>
       ))}
     </nav>
@@ -142,7 +142,7 @@ export function SettingsSearchResults({
       {matches.length === 0 && <p className={PANEL_CENTER}>{s.searchEmpty}</p>}
       {matches.map((m) => (
         <div key={`${m.group}-${m.field.name}`}>
-          <p className="mb-1 text-[11px] font-bold text-sub">{m.groupLabel}</p>
+          <p className="mb-1 text-xs font-bold text-sub">{m.groupLabel}</p>
           {renderField(m.field)}
         </div>
       ))}
@@ -192,7 +192,7 @@ export function SettingsGroupCards({
                 "{magic}",
                 currency,
               )}
-              <span className="text-[11px] font-normal text-sub">
+              <span className="text-xs font-normal text-sub">
                 {c.fields.length}
               </span>
             </h2>

@@ -34,7 +34,7 @@ const CELL =
 const NUM = `${CELL} w-20 text-right`;
 
 const BTN =
-  "rounded-full border border-line px-3 py-1 text-[11px] " +
+  "rounded-full border border-line px-3 py-1 text-xs " +
   "font-bold disabled:opacity-50";
 
 export function AdminArcadeCrops({ onChanged }: { onChanged?: () => void }) {
@@ -115,7 +115,7 @@ export function AdminArcadeCrops({ onChanged }: { onChanged?: () => void }) {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-bold">{t.title}</h3>
-        <span className="text-[11px] text-sub">
+        <span className="text-xs text-sub">
           {t.unitLine.replace("{n}", String(unit)).replace("{magic}", currency)}
           {cap > 0 && ` · ${t.capLine.replace("{c}", cap.toFixed(2))}`}
         </span>
@@ -262,7 +262,7 @@ export function AdminArcadeCrops({ onChanged }: { onChanged?: () => void }) {
           {msg}
         </p>
       )}
-      <p className="text-[11px] text-sub">{t.note}</p>
+      <p className="text-xs text-sub">{t.note}</p>
     </div>
   );
 }

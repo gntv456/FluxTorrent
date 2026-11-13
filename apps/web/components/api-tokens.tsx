@@ -139,7 +139,7 @@ export function ApiTokens() {
           onChange={(e) => setName(e.target.value)}
           placeholder={t.namePlaceholder}
           aria-label={t.namePlaceholder}
-          className="min-h-[36px] w-56 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
+          className="min-h-11 w-56 rounded-[var(--r-sm)] border border-line bg-[var(--surface-card)] px-3 text-sm"
         />
         <input
           value={pw}
@@ -148,7 +148,7 @@ export function ApiTokens() {
           autoComplete="current-password"
           aria-label={sec.webauthnPwPh}
           placeholder={sec.webauthnPwPh}
-          className="min-h-[36px] w-40 rounded-[var(--r-sm)] border
+          className="min-h-11 w-40 rounded-[var(--r-sm)] border
             border-line bg-[var(--surface-card)] px-3 text-sm"
         />
         {twofa !== false && (
@@ -160,7 +160,7 @@ export function ApiTokens() {
             autoComplete="one-time-code"
             aria-label={sec.webauthnCodePh}
             placeholder={sec.webauthnCodePh}
-            className="min-h-[36px] w-32 rounded-[var(--r-sm)] border
+            className="min-h-11 w-32 rounded-[var(--r-sm)] border
               border-line bg-[var(--surface-card)] px-3 text-sm"
           />
         )}
@@ -213,8 +213,8 @@ export function ApiTokens() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{t.title}</td>
-              <td className="colhead">QPM</td>
+              <th scope="col" className="colhead">{t.title}</th>
+              <th scope="col" className="colhead">QPM</th>
               <td className="colhead" />
             </tr>
           </thead>
@@ -233,7 +233,7 @@ export function ApiTokens() {
                     type="button"
                     disabled={busy}
                     onClick={() => revoke(r.id)}
-                    className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-[var(--danger-text)] disabled:opacity-50"
+                    className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-[var(--danger-text)] disabled:opacity-50"
                   >
                     {t.revoke}
                   </button>

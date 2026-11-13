@@ -33,7 +33,7 @@ import { getTypeLabels } from "./admin-medals-shared";
 const PLAIN_BTN_CLS = BTN_SM_BOLD;
 /** 「限定」徽标 */
 const LIMITED_CHIP_CLS =
-  "ml-1 rounded-full bg-coral/20 px-1.5 text-[10px] text-[var(--danger-text)]";
+  "ml-1 rounded-full bg-coral/20 px-1.5 text-xs text-[var(--danger-text)]";
 
 export function AdminMedals() {
   const { currency, dict } = useI18n();
@@ -112,7 +112,7 @@ export function AdminMedals() {
   }
 
   const inp =
-    "min-h-[40px] rounded-[var(--r-sm)] border border-line bg-cloud " +
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud " +
     "px-2 text-sm outline-none focus:border-sky";
 
   return (
@@ -142,16 +142,36 @@ export function AdminMedals() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{at.thId}</td>
-              <td className="colhead">{at.thIcon}</td>
-              <td className="colhead">{at.thName}</td>
-              <td className="colhead">{at.thGetType}</td>
-              <td className="colhead">{at.thRarity}</td>
-              <td className="colhead">{at.thPrice}</td>
-              <td className="colhead">{at.thBonus}</td>
-              <td className="colhead">{at.thDuration}</td>
-              <td className="colhead">{at.thHeld}</td>
-              <td className="colhead text-right">{at.thAction}</td>
+              <th scope="col" className="colhead">
+                {at.thId}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thIcon}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thName}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thGetType}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thRarity}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thPrice}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thBonus}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thDuration}
+              </th>
+              <th scope="col" className="colhead">
+                {at.thHeld}
+              </th>
+              <th scope="col" className="colhead text-right">
+                {at.thAction}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -164,9 +184,7 @@ export function AdminMedals() {
                 <td className="font-bold">
                   {m.name}
                   {m.limited && (
-                    <span className={LIMITED_CHIP_CLS}>
-                      {at.limitedChip}
-                    </span>
+                    <span className={LIMITED_CHIP_CLS}>{at.limitedChip}</span>
                   )}
                 </td>
                 <td>{GET_TYPE[m.get_type] ?? m.get_type}</td>

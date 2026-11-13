@@ -154,7 +154,7 @@ export function ManageBasicFields({
             onChange={(e) => setFPrice(Number(e.target.value) || 0)}
             className={`${FLD} w-28`}
           />
-          <span className="max-w-40 text-[11px] text-sub">
+          <span className="max-w-40 text-xs text-sub">
             {currency}（0 = 免费）
           </span>
         </label>
@@ -211,7 +211,7 @@ export function ManageMetaFields({
           >
             {ptgenBusy ? u.ptgenBusy : u.ptgenBtn}
           </button>
-          <span className="text-[11px] text-sub">{u.ptgenHint}</span>
+          <span className="text-xs text-sub">{u.ptgenHint}</span>
         </div>
       )}
       {/* 图床附件（0184 对齐发布页）：上传成功追加进简介 */}
@@ -232,7 +232,7 @@ export function ManageMetaFields({
           {attach.busy ? dict.upload.attachUploading : u.attachHint}
         </label>
         {attach.msg && (
-          <p className="text-[11px] text-sky-deep">{attach.msg}</p>
+          <p className="text-xs text-sky-deep">{attach.msg}</p>
         )}
       </div>
       {/* MediaInfo + NFO 两域（批 B 拆出，见新文件头注释的行数缘由） */}
@@ -253,7 +253,7 @@ export function ManageMetaFields({
             }
             className={IMDB_INPUT}
           />
-          <span className="text-[11px] text-sub">{t.fieldImdbNote}</span>
+          <span className="text-xs text-sub">{t.fieldImdbNote}</span>
         </label>
       )}
     </>

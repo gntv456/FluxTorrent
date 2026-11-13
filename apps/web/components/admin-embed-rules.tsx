@@ -138,12 +138,12 @@ export function AdminEmbedRules() {
                 <td className="font-bold">
                   {r.name_zh}
                   {r.builtin && (
-                    <span className="ml-1 text-[10px] text-sub">
+                    <span className="ml-1 text-xs text-sub">
                       ({t.builtin})
                     </span>
                   )}
                 </td>
-                <td className="max-w-[280px] truncate font-mono text-[11px]">
+                <td className="max-w-[280px] truncate font-mono text-xs">
                   {r.url_pattern}
                 </td>
                 <td>{r.render_kind}</td>

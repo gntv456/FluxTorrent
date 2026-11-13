@@ -54,7 +54,7 @@ export function SubscribeNetworkButton({
         type="button"
         onClick={toggle}
         disabled={busy}
-        className={`min-h-[30px] rounded-full px-3 text-xs font-bold
+        className={`min-h-11 rounded-full px-3 text-xs font-bold
           transition-transform active:scale-[0.97] disabled:opacity-50 ${
             on
               ? "border border-[var(--compat-orange)] " +
@@ -66,7 +66,7 @@ export function SubscribeNetworkButton({
         {on ? `🔔 ${t.subscribed}` : `🔕 ${t.subscribe}`}
       </button>
       {msg && (
-        <span className="text-[11px] text-sub" role="status">
+        <span className="text-xs text-sub" role="status">
           {msg}
         </span>
       )}

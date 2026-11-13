@@ -60,9 +60,9 @@ export function StaffSeedStatsPanel() {
               <table className="nexus-table w-full text-xs">
                 <thead>
                   <tr>
-                    <td className="colhead w-12">#</td>
-                    <td className="colhead">{t.colUser}</td>
-                    <td className="colhead w-24">{t.colSeeding}</td>
+                    <th scope="col" className="colhead w-12">#</th>
+                    <th scope="col" className="colhead">{t.colUser}</th>
+                    <th scope="col" className="colhead w-24">{t.colSeeding}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -95,9 +95,9 @@ export function StaffSeedStatsPanel() {
               <table className="nexus-table w-full text-xs">
                 <thead>
                   <tr>
-                    <td className="colhead w-12">#</td>
-                    <td className="colhead">{t.colUser}</td>
-                    <td className="colhead w-28">{t.colHours}</td>
+                    <th scope="col" className="colhead w-12">#</th>
+                    <th scope="col" className="colhead">{t.colUser}</th>
+                    <th scope="col" className="colhead w-28">{t.colHours}</th>
                   </tr>
                 </thead>
                 <tbody>

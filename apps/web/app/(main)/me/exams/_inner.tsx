@@ -204,13 +204,13 @@ function ExamsPanel() {
               <table className="nexus-table">
                 <thead>
                   <tr>
-                    <td className="colhead">{t.colName}</td>
-                    <td className="colhead">{t.colStatus}</td>
-                    <td className="colhead">{t.colProgress}</td>
-                    <td className="colhead">{t.colClaimedAt}</td>
-                    <td className="colhead">{t.colSettled}</td>
-                    <td className="colhead">{t.colDeadline}</td>
-                    <td className="colhead">{t.colReward}</td>
+                    <th scope="col" className="colhead">{t.colName}</th>
+                    <th scope="col" className="colhead">{t.colStatus}</th>
+                    <th scope="col" className="colhead">{t.colProgress}</th>
+                    <th scope="col" className="colhead">{t.colClaimedAt}</th>
+                    <th scope="col" className="colhead">{t.colSettled}</th>
+                    <th scope="col" className="colhead">{t.colDeadline}</th>
+                    <th scope="col" className="colhead">{t.colReward}</th>
                   </tr>
                 </thead>
                 <tbody>

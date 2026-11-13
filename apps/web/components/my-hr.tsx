@@ -159,13 +159,13 @@ export function MyHrTable({
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.colTorrent}</td>
-                <td className="colhead">{t.colRequired}</td>
-                <td className="colhead">{t.colSeeded}</td>
-                <td className="colhead">{t.colDeadline}</td>
-                <td className="colhead">{t.colDownloaded}</td>
-                <td className="colhead">{t.colRemaining}</td>
-                <td className="colhead">{t.colStatus}</td>
+                <th scope="col" className="colhead">{t.colTorrent}</th>
+                <th scope="col" className="colhead">{t.colRequired}</th>
+                <th scope="col" className="colhead">{t.colSeeded}</th>
+                <th scope="col" className="colhead">{t.colDeadline}</th>
+                <th scope="col" className="colhead">{t.colDownloaded}</th>
+                <th scope="col" className="colhead">{t.colRemaining}</th>
+                <th scope="col" className="colhead">{t.colStatus}</th>
                 <td className="colhead" />
               </tr>
               {rows.map((r) => {
@@ -217,7 +217,7 @@ export function MyHrTable({
                           type="button"
                           disabled={busyId === r.torrent_id}
                           onClick={() => setAskTid(r.torrent_id)}
-                          className="min-h-[28px] rounded-full border border-line px-3 text-[11px] font-bold text-[var(--sky-deep)] disabled:opacity-50"
+                          className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-[var(--sky-deep)] disabled:opacity-50"
                           title={dict.myhr2.pardonNote.replace(
                             "{magic}",
                             currency,

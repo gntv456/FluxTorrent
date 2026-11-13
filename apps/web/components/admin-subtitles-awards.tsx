@@ -41,7 +41,8 @@ export function AdminSubtitlesAwards() {
       );
       setRows(r.items ?? []);
     } catch {
-      setRows([]); setMsg(dict.common.loadFailed);
+      setRows([]);
+      setMsg(dict.common.loadFailed);
     }
   }, [period, dict]);
 
@@ -127,11 +128,21 @@ export function AdminSubtitlesAwards() {
             <table className="nexus-table">
               <thead>
                 <tr>
-                  <td className="colhead">{t.colTitle}</td>
-                  <td className="colhead w-24">{t.colUser}</td>
-                  <td className="colhead w-20 text-center">{t.colScore}</td>
-                  <td className="colhead w-20 text-center">{t.colRank}</td>
-                  <td className="colhead w-44">{t.colAction}</td>
+                  <th scope="col" className="colhead">
+                    {t.colTitle}
+                  </th>
+                  <th scope="col" className="colhead w-24">
+                    {t.colUser}
+                  </th>
+                  <th scope="col" className="colhead w-20 text-center">
+                    {t.colScore}
+                  </th>
+                  <th scope="col" className="colhead w-20 text-center">
+                    {t.colRank}
+                  </th>
+                  <th scope="col" className="colhead w-44">
+                    {t.colAction}
+                  </th>
                 </tr>
               </thead>
               <tbody>

@@ -245,7 +245,7 @@ export function SubtitleRequestPanel({
                   <td className="num">
                     {r.bounty} {currency}
                     {r.offer_free && (
-                      <span className="ml-1 text-[11px] text-mint">Free</span>
+                      <span className="ml-1 text-xs text-mint">Free</span>
                     )}
                   </td>
                   <SubtitleRequestActions
@@ -289,7 +289,7 @@ export function SubtitleRequestPanel({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               autoFocus
-              className="min-h-[36px] rounded-[var(--r-sm)] border
+              className="min-h-11 rounded-[var(--r-sm)] border
                 border-line bg-[var(--surface-card)] px-3 text-sm text-ink"
             />
           </label>

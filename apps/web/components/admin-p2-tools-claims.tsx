@@ -88,14 +88,14 @@ export function Claims({ flash }: { flash: (m: string) => void }) {
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{at.thTorrent}</td>
-            <td className="colhead">{at.thSeeders}</td>
-            <td className="colhead">{at.thClaimedBy}</td>
-            <td className="colhead">{at.thClaimedAt}</td>
-            <td className="colhead">{at.thSeedSince}</td>
-            <td className="colhead">{at.thUploadSince}</td>
-            <td className="colhead">{at.thStatus}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thTorrent}</th>
+            <th scope="col" className="colhead">{at.thSeeders}</th>
+            <th scope="col" className="colhead">{at.thClaimedBy}</th>
+            <th scope="col" className="colhead">{at.thClaimedAt}</th>
+            <th scope="col" className="colhead">{at.thSeedSince}</th>
+            <th scope="col" className="colhead">{at.thUploadSince}</th>
+            <th scope="col" className="colhead">{at.thStatus}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

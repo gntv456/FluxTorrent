@@ -229,8 +229,8 @@ export function AdminOpsPanel() {
           <table className="nexus-table text-xs">
             <thead>
               <tr>
-                <td className="colhead">{t.backupsFile}</td>
-                <td className="colhead w-28">{t.backupsSize}</td>
+                <th scope="col" className="colhead">{t.backupsFile}</th>
+                <th scope="col" className="colhead w-28">{t.backupsSize}</th>
               </tr>
             </thead>
             <tbody>

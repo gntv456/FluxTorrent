@@ -58,9 +58,7 @@ export function MerklePanel() {
     setUnsupported(false);
     try {
       const q = day ? `?date=${encodeURIComponent(day)}` : "";
-      const m = await api.get<Manifest>(
-        `/api/v1/me/spark/ledger/manifest${q}`,
-      );
+      const m = await api.get<Manifest>(`/api/v1/me/spark/ledger/manifest${q}`);
       setData(m);
       setDate(m.date);
     } catch (e) {
@@ -97,10 +95,7 @@ export function MerklePanel() {
   };
 
   const resultLine = verdict
-    ? (verdict.ok ? t.merkleOk : t.merkleBad).replace(
-        "{n}",
-        String(verdict.n),
-      )
+    ? (verdict.ok ? t.merkleOk : t.merkleBad).replace("{n}", String(verdict.n))
     : null;
 
   return (
@@ -177,9 +172,7 @@ export function MerklePanel() {
                   <>
                     {" · "}
                     {t.merkleBuiltAt}{" "}
-                    {new Date(data.built_at).toLocaleString(
-                      dateLocale(locale),
-                    )}
+                    {new Date(data.built_at).toLocaleString(dateLocale(locale))}
                   </>
                 )}
               </p>
@@ -190,10 +183,18 @@ export function MerklePanel() {
                   <table className="nexus-table profilet">
                     <tbody>
                       <tr>
-                        <td className="colhead">{t.ledgerAt}</td>
-                        <td className="colhead">{t.ledgerKind}</td>
-                        <td className="colhead">{t.ledgerAmount}</td>
-                        <td className="colhead">{t.merkleLeaf}</td>
+                        <th scope="col" className="colhead">
+                          {t.ledgerAt}
+                        </th>
+                        <th scope="col" className="colhead">
+                          {t.ledgerKind}
+                        </th>
+                        <th scope="col" className="colhead">
+                          {t.ledgerAmount}
+                        </th>
+                        <th scope="col" className="colhead">
+                          {t.merkleLeaf}
+                        </th>
                       </tr>
                       {data.rows.map((r) => (
                         <tr key={r.idx}>
@@ -218,9 +219,7 @@ export function MerklePanel() {
                             {r.amount.toLocaleString()}
                           </td>
                           <td className="text-xs text-sub">
-                            <code title={r.leaf}>
-                              {r.leaf.slice(0, 12)}…
-                            </code>
+                            <code title={r.leaf}>{r.leaf.slice(0, 12)}…</code>
                           </td>
                         </tr>
                       ))}
@@ -228,9 +227,7 @@ export function MerklePanel() {
                   </table>
                 </div>
               )}
-              <p className="text-xs leading-relaxed text-sub">
-                {t.merkleNote}
-              </p>
+              <p className="text-xs leading-relaxed text-sub">{t.merkleNote}</p>
             </div>
           )}
         </StatePanel>

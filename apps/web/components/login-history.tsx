@@ -57,10 +57,10 @@ export function LoginHistory() {
       <table className="nexus-table">
         <tbody>
           <tr>
-            <td className="colhead">{t.loginAt}</td>
-            <td className="colhead">IP</td>
-            <td className="colhead">{t.loginResult}</td>
-            <td className="colhead">{t.loginClient}</td>
+            <th scope="col" className="colhead">{t.loginAt}</th>
+            <th scope="col" className="colhead">IP</th>
+            <th scope="col" className="colhead">{t.loginResult}</th>
+            <th scope="col" className="colhead">{t.loginClient}</th>
           </tr>
           {rows.map((r, i) => (
             <tr key={i}>

@@ -89,7 +89,7 @@ export function ForumBoardTable({
         <span className="flex-1" />
         <button
           type="button"
-          className={`${BTN_SKY} min-h-[30px] px-3 text-xs`}
+          className={`${BTN_SKY} min-h-11 px-3 text-xs`}
           onClick={onNew}
         >
           {t.newBoardBtn}
@@ -100,11 +100,11 @@ export function ForumBoardTable({
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{t.colBoard}</td>
-              <td className="colhead">{t.colDescr}</td>
-              <td className="colhead w-32">{t.colStats}</td>
-              <td className="colhead w-20">{t.colStatus}</td>
-              <td className="colhead w-28">{t.colOps}</td>
+              <th scope="col" className="colhead">{t.colBoard}</th>
+              <th scope="col" className="colhead">{t.colDescr}</th>
+              <th scope="col" className="colhead w-32">{t.colStats}</th>
+              <th scope="col" className="colhead w-20">{t.colStatus}</th>
+              <th scope="col" className="colhead w-28">{t.colOps}</th>
             </tr>
           </thead>
           <tbody>

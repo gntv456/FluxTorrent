@@ -7,22 +7,12 @@ import { PageHeader } from "@/components/ui/page-header";
 import { FilterLinks } from "@/components/ui/filter-links";
 import { Pager } from "@/components/ui/pager";
 import { ReadState } from "@/components/ui/read-state";
-import {
-  BTN_SM_BOLD,
-  INPUT_CARD,
-  INPUT_GROW,
-} from "@/lib/ui-classes";
+import { BTN_SM_BOLD, INPUT_CARD, INPUT_GROW } from "@/lib/ui-classes";
 
 export const dynamic = "force-dynamic";
 
 const PER = 25;
-const SORTS = [
-  "created",
-  "class",
-  "uploaded",
-  "last_seen",
-  "seeding",
-] as const;
+const SORTS = ["created", "class", "uploaded", "last_seen", "seeding"] as const;
 
 function num(n: number) {
   return n.toLocaleString();
@@ -80,8 +70,9 @@ export default async function UsersPage({
   };
   const sortHref = (v: string) => `/users${qs({ sort: v })}`;
   const pages = data ? Math.max(1, Math.ceil(data.total / PER)) : 1;
-  const hrefs = Array.from({ length: pages }, (_, i) =>
-    `/users${qs({ page: i > 0 ? String(i + 1) : undefined })}`,
+  const hrefs = Array.from(
+    { length: pages },
+    (_, i) => `/users${qs({ page: i > 0 ? String(i + 1) : undefined })}`,
   );
 
   return (
@@ -123,10 +114,7 @@ export default async function UsersPage({
             </option>
           ))}
         </select>
-        <button
-          type="submit"
-          className={BTN_SM_BOLD}
-        >
+        <button type="submit" className={BTN_SM_BOLD}>
           {t.searchBtn}
         </button>
       </form>
@@ -169,18 +157,36 @@ export default async function UsersPage({
           <table className="nexus-table">
             <thead>
               <tr>
-                <td className="colhead">{t.colUser}</td>
-                <td className="colhead w-24">{t.colClass}</td>
-                <td className="colhead w-24 text-right">{t.colUp}</td>
-                <td className="colhead w-24 text-right">{t.colDown}</td>
-                <td className="colhead w-16 text-right">{t.colRatio}</td>
-                <td className="colhead w-16 text-right">{t.colSeeding}</td>
+                <th scope="col" className="colhead">
+                  {t.colUser}
+                </th>
+                <th scope="col" className="colhead w-24">
+                  {t.colClass}
+                </th>
+                <th scope="col" className="colhead w-24 text-right">
+                  {t.colUp}
+                </th>
+                <th scope="col" className="colhead w-24 text-right">
+                  {t.colDown}
+                </th>
+                <th scope="col" className="colhead w-16 text-right">
+                  {t.colRatio}
+                </th>
+                <th scope="col" className="colhead w-16 text-right">
+                  {t.colSeeding}
+                </th>
                 <td className="colhead w-24 text-right">
                   {fmtCur(t.colSpark, {}, currency)}
                 </td>
-                <td className="colhead w-24">{t.colJoined}</td>
-                <td className="colhead w-24">{t.colLastSeen}</td>
-                <td className="colhead w-20 text-right">{t.colAction}</td>
+                <th scope="col" className="colhead w-24">
+                  {t.colJoined}
+                </th>
+                <th scope="col" className="colhead w-24">
+                  {t.colLastSeen}
+                </th>
+                <th scope="col" className="colhead w-20 text-right">
+                  {t.colAction}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -276,5 +282,4 @@ export default async function UsersPage({
 /** 列表行头像（样图 § users 的用户列）：尺寸走工具类，不为一列头像开 CSS */
 const AV = "size-7 shrink-0 overflow-hidden rounded-full bg-soft";
 const AV_IMG = "h-full w-full object-cover";
-const AV_FALLBACK =
-  "flex h-full w-full items-center justify-center text-xs";
+const AV_FALLBACK = "flex h-full w-full items-center justify-center text-xs";

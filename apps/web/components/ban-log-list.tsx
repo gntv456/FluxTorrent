@@ -155,10 +155,7 @@ export function BanLogList() {
       {needLogin && (
         <p className="px-4 py-6 text-center text-sm text-sub">
           {t.needLogin}{" "}
-          <Link
-            href="/login"
-            className="font-bold text-[var(--sky)] underline"
-          >
+          <Link href="/login" className="font-bold text-[var(--sky)] underline">
             {dict.forgot.backToLogin}
           </Link>
         </p>
@@ -171,11 +168,7 @@ export function BanLogList() {
       )}
 
       {data && rows.length === 0 && (
-        <EmptyState
-          icon="shield"
-          title={t.listEmpty}
-          desc={t.listEmptyHint}
-        />
+        <EmptyState icon="shield" title={t.listEmpty} desc={t.listEmptyHint} />
       )}
 
       {data && rows.length > 0 && (
@@ -183,12 +176,24 @@ export function BanLogList() {
           <table className="nexus-table">
             <tbody>
               <tr>
-                <td className="colhead">{t.colUser}</td>
-                <td className="colhead w-20">{t.colKind}</td>
-                <td className="colhead w-28">{t.colCause}</td>
-                <td className="colhead w-36">{t.colDate}</td>
-                <td className="colhead w-24">{t.colTerm}</td>
-                <td className="colhead w-16 text-right">{t.colAction}</td>
+                <th scope="col" className="colhead">
+                  {t.colUser}
+                </th>
+                <th scope="col" className="colhead w-20">
+                  {t.colKind}
+                </th>
+                <th scope="col" className="colhead w-28">
+                  {t.colCause}
+                </th>
+                <th scope="col" className="colhead w-36">
+                  {t.colDate}
+                </th>
+                <th scope="col" className="colhead w-24">
+                  {t.colTerm}
+                </th>
+                <th scope="col" className="colhead w-16 text-right">
+                  {t.colAction}
+                </th>
               </tr>
               {rows.map((r, i) => (
                 <tr key={`${r.name_masked}-${i}`}>
@@ -199,14 +204,10 @@ export function BanLogList() {
                   <td className="text-xs">
                     {r.status === 2 ? t.banned : t.muted}
                   </td>
-                  <td className="text-sm">
-                    {causeLabel(t, r.cause)}
-                  </td>
+                  <td className="text-sm">{causeLabel(t, r.cause)}</td>
                   <td className="text-xs text-sub">
                     {r.acted_at
-                      ? new Date(r.acted_at).toLocaleString(
-                          dateLocale(locale),
-                        )
+                      ? new Date(r.acted_at).toLocaleString(dateLocale(locale))
                       : t.dateUnknown}
                   </td>
                   <td className="text-xs">{term(r)}</td>
@@ -242,10 +243,7 @@ export function BanLogList() {
 
 /** 类别码 → 人话。未知码原样显示（后端加了新码时这里会立刻看见，
  *  而不是静默画成「管理组处置」把新种类糊掉）。 */
-function causeLabel(
-  t: Record<string, string>,
-  cause: string,
-): string {
+function causeLabel(t: Record<string, string>, cause: string): string {
   if (cause === "cheat") return t.causeCheat;
   if (cause === "mute") return t.causeMute;
   if (cause === "admin") return t.causeAdmin;

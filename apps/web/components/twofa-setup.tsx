@@ -140,7 +140,7 @@ export function TwoFactorSetup() {
             type="button"
             disabled={busy || !password}
             onClick={beginSetup}
-            className="min-h-[36px] w-fit rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+            className="min-h-11 w-fit rounded-full bg-sky px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
           >
             {t.setup}
           </button>
@@ -153,7 +153,7 @@ export function TwoFactorSetup() {
           <code className="num break-all rounded-[var(--r-sm)] bg-cloud px-2 py-1 text-xs">
             {setup.secret}
           </code>
-          <code className="break-all text-[10px] text-sub">
+          <code className="break-all text-xs text-sub">
             {setup.otpauth_uri}
           </code>
           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -171,7 +171,7 @@ export function TwoFactorSetup() {
               type="button"
               disabled={busy}
               onClick={enable}
-              className="min-h-[36px] rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
+              className="min-h-11 rounded-full bg-mint px-4 text-xs font-bold text-[var(--text-on-accent)] disabled:opacity-50"
             >
               {t.enable}
             </button>

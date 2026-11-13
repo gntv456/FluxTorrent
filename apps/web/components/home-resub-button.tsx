@@ -48,14 +48,14 @@ export function ResubButton({ cards }: { cards: number }) {
     <>
       <button
         type="button"
-        className="min-h-[32px] rounded-full border border-line px-3 text-xs font-bold text-sub disabled:opacity-50"
+        className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub disabled:opacity-50"
         title={dict.attResub2.note}
         disabled={busy}
         onClick={() => setOpen(!open)}
       >
         {t.btn}
         <span
-          className={`ml-1 rounded-full px-1.5 text-[10px] ${cards > 0 ? "bg-mint/30 text-ink" : "bg-coral/20 text-[var(--danger-text)]"}`}
+          className={`ml-1 rounded-full px-1.5 text-xs ${cards > 0 ? "bg-mint/30 text-ink" : "bg-coral/20 text-[var(--danger-text)]"}`}
         >
           ×{cards}
         </span>
@@ -81,7 +81,7 @@ export function ResubButton({ cards }: { cards: number }) {
                     key={d}
                     disabled={busy}
                     onClick={() => doResub(d)}
-                    className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold disabled:opacity-50 hover:border-sky"
+                    className="min-h-11 rounded-full border border-line px-3 text-xs font-bold disabled:opacity-50 hover:border-sky"
                   >
                     {d.slice(5)}
                   </button>

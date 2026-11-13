@@ -98,10 +98,10 @@ export function FreeleechPanel() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead w-24">{t.colKind}</td>
-              <td className="colhead w-28">{t.colScope}</td>
-              <td className="colhead">{t.colStart}</td>
-              <td className="colhead">{t.colEnd}</td>
+              <th scope="col" className="colhead w-24">{t.colKind}</th>
+              <th scope="col" className="colhead w-28">{t.colScope}</th>
+              <th scope="col" className="colhead">{t.colStart}</th>
+              <th scope="col" className="colhead">{t.colEnd}</th>
               <td className="colhead w-20" />
             </tr>
           </thead>
@@ -125,7 +125,7 @@ export function FreeleechPanel() {
                   <button
                     disabled={busy}
                     onClick={() => remove(r.id)}
-                    className="min-h-[28px] rounded-full border border-line px-3 font-bold text-[var(--danger-text)] disabled:opacity-50"
+                    className="min-h-11 rounded-full border border-line px-3 font-bold text-[var(--danger-text)] disabled:opacity-50"
                   >
                     {t.removeBtn}
                   </button>

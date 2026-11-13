@@ -10,7 +10,7 @@ import { useI18n } from "@/i18n/client";
 import type { EmbedRuleAdmin } from "@/components/admin-embed-rules";
 
 const INPUT =
-  "min-h-[38px] rounded-[var(--r-sm)] border border-line bg-cloud px-3 " +
+  "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-3 " +
   "text-sm outline-none focus:border-sky";
 const BTN =
   "rounded-full border border-line px-3 py-1 text-xs font-bold text-sub " +

@@ -21,7 +21,7 @@ interface HeldPanelProps {
 
 /** UID 过滤输入框样式 */
 const UID_FILTER_CLS =
-  "min-h-[32px] w-40 rounded-full border border-line px-3 text-xs";
+  "min-h-11 w-40 rounded-full border border-line px-3 text-xs";
 
 export function MedalHeldPanel({
   held,
@@ -48,12 +48,12 @@ export function MedalHeldPanel({
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thUser}</td>
-            <td className="colhead">{at.thMedal}</td>
-            <td className="colhead">{at.thSource}</td>
-            <td className="colhead">{at.thWearing}</td>
-            <td className="colhead">{at.thExpiry}</td>
-            <td className="colhead text-right">{at.thAction}</td>
+            <th scope="col" className="colhead">{at.thUser}</th>
+            <th scope="col" className="colhead">{at.thMedal}</th>
+            <th scope="col" className="colhead">{at.thSource}</th>
+            <th scope="col" className="colhead">{at.thWearing}</th>
+            <th scope="col" className="colhead">{at.thExpiry}</th>
+            <th scope="col" className="colhead text-right">{at.thAction}</th>
           </tr>
         </thead>
         <tbody>

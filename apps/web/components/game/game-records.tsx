@@ -119,7 +119,7 @@ function GameRecords({
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/games/${game}`}
-            className="min-h-[36px] rounded-full border border-line px-3 text-xs font-bold text-sub"
+            className="min-h-11 rounded-full border border-line px-3 text-xs font-bold text-sub"
           >
             ← {gameTitle}
           </Link>
@@ -215,10 +215,10 @@ function GameRecords({
                     : "border-dashed border-[var(--border-deep)] opacity-55"
                 }`}
               >
-                <span className="text-[11px] font-bold leading-tight">
+                <span className="text-xs font-bold leading-tight">
                   {e.count > 0 ? e.label : "???"}
                 </span>
-                <span className="num text-[10px] text-sub">
+                <span className="num text-xs text-sub">
                   {e.mult > 0 ? `×${e.mult}` : "物品"} · {t.countLabel}{" "}
                   {e.count}
                 </span>

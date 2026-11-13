@@ -215,11 +215,11 @@ export function TaskHistory({ ov }: { ov: TaskOverview | null }) {
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{t.hTask}</td>
-              <td className="colhead">{t.hStatus}</td>
-              <td className="colhead">{dict.exams.colProgress}</td>
-              <td className="colhead">{t.hClaimedAt}</td>
-              <td className="colhead">{t.hSettledAt}</td>
+              <th scope="col" className="colhead">{t.hTask}</th>
+              <th scope="col" className="colhead">{t.hStatus}</th>
+              <th scope="col" className="colhead">{dict.exams.colProgress}</th>
+              <th scope="col" className="colhead">{t.hClaimedAt}</th>
+              <th scope="col" className="colhead">{t.hSettledAt}</th>
             </tr>
             {(ov?.my_records ?? []).map((r, i) => (
               <tr key={i}>

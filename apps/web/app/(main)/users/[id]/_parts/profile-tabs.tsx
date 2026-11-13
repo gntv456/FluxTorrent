@@ -37,11 +37,25 @@ export function TorrentListTable({
       <table className="nexus-table profilet">
         <thead>
           <tr>
-            <td className="colhead">{label}</td>
-            <td className="colhead w-28 text-right">{t.colSize}</td>
-            <td className="colhead w-20 text-right">{t.colSL}</td>
-            {withMeta && <td className="colhead w-20">{t.colCategory}</td>}
-            {withMeta && <td className="colhead w-24">{t.colTime}</td>}
+            <th scope="col" className="colhead">
+              {label}
+            </th>
+            <th scope="col" className="colhead w-28 text-right">
+              {t.colSize}
+            </th>
+            <th scope="col" className="colhead w-20 text-right">
+              {t.colSL}
+            </th>
+            {withMeta && (
+              <th scope="col" className="colhead w-20">
+                {t.colCategory}
+              </th>
+            )}
+            {withMeta && (
+              <th scope="col" className="colhead w-24">
+                {t.colTime}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -112,7 +126,9 @@ export function PostsTab({
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{t.recentPosts}</td>
+            <th scope="col" className="colhead">
+              {t.recentPosts}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -125,7 +141,7 @@ export function PostsTab({
                 >
                   {r.topic_title}
                 </Link>
-                <p className="text-[11px] text-sub">
+                <p className="text-xs text-sub">
                   <Link
                     href={`/forums/${r.forum_id}`}
                     className="hover:underline"
@@ -165,7 +181,9 @@ export function CommentsTab({
       <table className="nexus-table">
         <thead>
           <tr>
-            <td className="colhead">{t.recentComments}</td>
+            <th scope="col" className="colhead">
+              {t.recentComments}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -179,7 +197,7 @@ export function CommentsTab({
                   #{c.torrent_id}
                 </Link>
                 <p className="text-sm whitespace-pre-wrap">{c.body}</p>
-                <p className="text-[11px] text-sub">
+                <p className="text-xs text-sub">
                   {new Date(c.created_at).toLocaleString(dateLocale(locale))}
                 </p>
               </td>

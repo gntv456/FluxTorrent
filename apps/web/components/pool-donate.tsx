@@ -52,7 +52,7 @@ export function PoolDonate() {
           key={v}
           type="button"
           onClick={() => setAmount(String(v))}
-          className="num min-h-[36px] rounded-full border border-line bg-[var(--surface-card)] px-3 text-xs text-sub active:scale-[0.97]"
+          className="num min-h-11 rounded-full border border-line bg-[var(--surface-card)] px-3 text-xs text-sub active:scale-[0.97]"
         >
           {v.toLocaleString(dateLocale(locale))}
         </button>

@@ -52,7 +52,7 @@ export function SettingsToolbar({
       <div className="sticky top-[84px] z-10 flex flex-wrap items-center gap-3 rounded-[var(--r-md)] border border-line bg-[var(--surface-card)]/95 p-3 backdrop-blur shadow-[var(--shadow-card)]">
         <div>
           <p className="font-display text-xl">{s.title}</p>
-          <p className="text-[11px] text-sub">
+          <p className="text-xs text-sub">
             {schema
               ? fmt(s.groupFieldCount, {
                   g: schema.group_count,
@@ -68,7 +68,7 @@ export function SettingsToolbar({
         {schema && (
           <>
             {editable && (
-              <label className="flex items-center gap-1.5 text-[11px] font-bold text-sub">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-sub">
                 <input
                   type="checkbox"
                   checked={io.exportPlain}
@@ -109,7 +109,7 @@ export function SettingsToolbar({
         )}
         {dirtyCount > 0 && (
           <>
-            <span className="rounded-full bg-sun/40 px-3 py-1 text-[11px] font-bold text-ink">
+            <span className="rounded-full bg-sun/40 px-3 py-1 text-xs font-bold text-ink">
               {fmt(dict.settingsAdmin.unsavedTitle, { n: dirtyCount })} ·{" "}
               {dirtyCount}
             </span>

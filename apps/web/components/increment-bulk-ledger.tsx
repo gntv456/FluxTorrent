@@ -41,7 +41,8 @@ interface LedgerProps {
   tick?: number;
 }
 
-const btn = "min-h-[30px] rounded-full border border-line px-3 text-xs";
+const btn =
+  "min-h-11 rounded-full border border-line px-3 text-xs";
 
 export function BulkLedger({ kindLabel, tick = 0 }: LedgerProps) {
   const t = useI18n().dict.adminBulk;
@@ -110,13 +111,27 @@ export function BulkLedger({ kindLabel, tick = 0 }: LedgerProps) {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{t.lgThTime}</td>
-            <td className="colhead">{t.lgThActor}</td>
-            <td className="colhead">{t.lgThWhat}</td>
-            <td className="colhead">{t.lgThTargets}</td>
-            <td className="colhead">{t.lgThAffected}</td>
-            <td className="colhead">{t.lgThStatus}</td>
-            <td className="colhead text-right">{t.lgThAction}</td>
+            <th scope="col" className="colhead">
+              {t.lgThTime}
+            </th>
+            <th scope="col" className="colhead">
+              {t.lgThActor}
+            </th>
+            <th scope="col" className="colhead">
+              {t.lgThWhat}
+            </th>
+            <th scope="col" className="colhead">
+              {t.lgThTargets}
+            </th>
+            <th scope="col" className="colhead">
+              {t.lgThAffected}
+            </th>
+            <th scope="col" className="colhead">
+              {t.lgThStatus}
+            </th>
+            <th scope="col" className="colhead text-right">
+              {t.lgThAction}
+            </th>
           </tr>
         </thead>
         <tbody>

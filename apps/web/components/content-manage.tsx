@@ -126,9 +126,7 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             flash(t.newsDeleted);
             load();
           } catch (e) {
-            flash(
-              e instanceof ApiError ? e.message : dict.common.networkError,
-            );
+            flash(e instanceof ApiError ? e.message : dict.common.networkError);
           }
         })();
       },
@@ -150,10 +148,8 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             role="tab"
             aria-selected={tab === k}
             onClick={() => setTab(k)}
-            className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${
-              tab === k
-                ? "bg-sky text-[var(--text-on-accent)]"
-                : CELL_CARD_SUB
+            className={`min-h-11 rounded-full px-4 text-sm font-bold ${
+              tab === k ? "bg-sky text-[var(--text-on-accent)]" : CELL_CARD_SUB
             }`}
           >
             {label}
@@ -223,44 +219,52 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
             </div>
           </section>
           <div className="brand-wide-table-scroll">
-          <table className="nexus-table">
-            <tbody>
-              <tr>
-                <td className="colhead">{t.fldTitle}</td>
-                <td className="colhead">{t.fldBadge}</td>
-                <td className="colhead">{t.fldDate}</td>
-                <td className="colhead text-right">{t.colActions}</td>
-              </tr>
-              {news.map((n) => (
-                <tr key={n.id}>
-                  <td>{n.title}</td>
-                  <td>{n.badge}</td>
-                  <td className="text-sub">{n.date}</td>
-                  <td className="text-right">
-                    <button
-                      className="cmgmt-act"
-                      onClick={() =>
-                        setNEdit({
-                          id: n.id,
-                          title: n.title,
-                          body: n.body,
-                          badge: n.badge,
-                        })
-                      }
-                    >
-                      {t.btnEdit}
-                    </button>
-                    <button
-                      className="cmgmt-act cmgmt-act--danger"
-                      onClick={() => delNews(n.id)}
-                    >
-                      {t.btnDelete}
-                    </button>
-                  </td>
+            <table className="nexus-table">
+              <tbody>
+                <tr>
+                  <th scope="col" className="colhead">
+                    {t.fldTitle}
+                  </th>
+                  <th scope="col" className="colhead">
+                    {t.fldBadge}
+                  </th>
+                  <th scope="col" className="colhead">
+                    {t.fldDate}
+                  </th>
+                  <th scope="col" className="colhead text-right">
+                    {t.colActions}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                {news.map((n) => (
+                  <tr key={n.id}>
+                    <td>{n.title}</td>
+                    <td>{n.badge}</td>
+                    <td className="text-sub">{n.date}</td>
+                    <td className="text-right">
+                      <button
+                        className="cmgmt-act"
+                        onClick={() =>
+                          setNEdit({
+                            id: n.id,
+                            title: n.title,
+                            body: n.body,
+                            badge: n.badge,
+                          })
+                        }
+                      >
+                        {t.btnEdit}
+                      </button>
+                      <button
+                        className="cmgmt-act cmgmt-act--danger"
+                        onClick={() => delNews(n.id)}
+                      >
+                        {t.btnDelete}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}

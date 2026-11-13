@@ -220,14 +220,14 @@ export function AdminInvites() {
       <table className="nexus-table text-xs">
         <thead>
           <tr>
-            <td className="colhead">{at.thId}</td>
-            <td className="colhead">{at.thInviter}</td>
-            <td className="colhead">{at.thCode}</td>
-            <td className="colhead">{at.thStatus}</td>
-            <td className="colhead">{at.thUsedBy}</td>
-            <td className="colhead">{at.thEmail}</td>
-            <td className="colhead">{at.thExpires}</td>
-            <td className="colhead">{canAdjust ? at.thAction : ""}</td>
+            <th scope="col" className="colhead">{at.thId}</th>
+            <th scope="col" className="colhead">{at.thInviter}</th>
+            <th scope="col" className="colhead">{at.thCode}</th>
+            <th scope="col" className="colhead">{at.thStatus}</th>
+            <th scope="col" className="colhead">{at.thUsedBy}</th>
+            <th scope="col" className="colhead">{at.thEmail}</th>
+            <th scope="col" className="colhead">{at.thExpires}</th>
+            <th scope="col" className="colhead">{canAdjust ? at.thAction : ""}</th>
           </tr>
         </thead>
         <tbody>
@@ -280,9 +280,7 @@ export function AdminInvites() {
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={8} className="py-6 text-center text-sub">
-                {at.empty}
-              </td>
+              <td colSpan={8} className="py-6 text-center text-sub">{at.empty}</td>
             </tr>
           )}
         </tbody>

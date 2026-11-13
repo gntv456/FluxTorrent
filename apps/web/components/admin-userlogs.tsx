@@ -88,7 +88,7 @@ export function AdminUserLogs() {
                 setSub(k);
                 setPage(1);
               }}
-              className={`min-h-[40px] rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-[var(--text-on-accent)]" : CELL_CARD_SUB}`}
+              className={`min-h-11 rounded-full px-4 text-sm font-bold ${sub === k ? "bg-sky text-[var(--text-on-accent)]" : CELL_CARD_SUB}`}
             >
               {l}
             </button>
@@ -112,12 +112,12 @@ export function AdminUserLogs() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{at.thId}</td>
-              <td className="colhead">{at.thUser}</td>
-              <td className="colhead">{at.thOldName}</td>
-              <td className="colhead">{at.thNewName}</td>
-              <td className="colhead">{at.thOperator}</td>
-              <td className="colhead">{at.thTime}</td>
+              <th scope="col" className="colhead">{at.thId}</th>
+              <th scope="col" className="colhead">{at.thUser}</th>
+              <th scope="col" className="colhead">{at.thOldName}</th>
+              <th scope="col" className="colhead">{at.thNewName}</th>
+              <th scope="col" className="colhead">{at.thOperator}</th>
+              <th scope="col" className="colhead">{at.thTime}</th>
             </tr>
           </thead>
           <tbody>
@@ -153,11 +153,11 @@ export function AdminUserLogs() {
         <table className="nexus-table text-xs">
           <thead>
             <tr>
-              <td className="colhead">{at.thId}</td>
-              <td className="colhead">{at.thUser}</td>
-              <td className="colhead">{at.thContent}</td>
-              <td className="colhead">{at.thOperator}</td>
-              <td className="colhead">{at.thTime}</td>
+              <th scope="col" className="colhead">{at.thId}</th>
+              <th scope="col" className="colhead">{at.thUser}</th>
+              <th scope="col" className="colhead">{at.thContent}</th>
+              <th scope="col" className="colhead">{at.thOperator}</th>
+              <th scope="col" className="colhead">{at.thTime}</th>
             </tr>
           </thead>
           <tbody>

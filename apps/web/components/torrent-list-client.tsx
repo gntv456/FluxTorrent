@@ -156,9 +156,7 @@ export function TorrentListClient({
     return (
       <div className="md:hidden">
         {strip}
-        <TorrentRowList
-          items={rows.map((r) => ({ ...r, id: r.torrent_id }))}
-        />
+        <TorrentRowList items={rows.map((r) => ({ ...r, id: r.torrent_id }))} />
         {hint}
       </div>
     );
@@ -170,27 +168,23 @@ export function TorrentListClient({
         <table className="nexus-table">
           <tbody>
             <tr>
-              <td className="colhead">{dict.mytl.colName}</td>
+              <th scope="col" className="colhead">{dict.mytl.colName}</th>
               {kind === "uploads" && (
-                <td className="colhead w-20">{dict.mytl.colCategory}</td>
+                <th scope="col" className="colhead w-20">{dict.mytl.colCategory}</th>
               )}
-              <td className="colhead">{dict.mytl.colSize}</td>
-              <td className="colhead">{dict.mytl.colSeeders}</td>
-              <td className="colhead">{dict.mytl.colLeechers}</td>
+              <th scope="col" className="colhead">{dict.mytl.colSize}</th>
+              <th scope="col" className="colhead">{dict.mytl.colSeeders}</th>
+              <th scope="col" className="colhead">{dict.mytl.colLeechers}</th>
               {kind === "uploads" ? (
-                <td className="colhead w-24">{dict.mytl.colStatus}</td>
+                <th scope="col" className="colhead w-24">{dict.mytl.colStatus}</th>
               ) : (
-                <td className="colhead">{dict.mytl.colDone}</td>
+                <th scope="col" className="colhead">{dict.mytl.colDone}</th>
               )}
               <td className="colhead w-28">
-                {kind === "uploads"
-                  ? dict.mytl.colPublished
-                  : dict.mytl.colAt}
+                {kind === "uploads" ? dict.mytl.colPublished : dict.mytl.colAt}
               </td>
               {kind === "uploads" && (
-                <td className="colhead w-20 text-right">
-                  {dict.mytl.colAction}
-                </td>
+                <td className="colhead w-20 text-right">{dict.mytl.colAction}</td>
               )}
             </tr>
             {rows.map((r) => (
@@ -230,10 +224,7 @@ export function TorrentListClient({
                       <Badge tone="success">{dict.mytl.statsApproved}</Badge>
                     )}
                     {r.approval_status === 2 && (
-                      <Badge
-                        tone="danger"
-                        title={r.deny_reason ?? ""}
-                      >
+                      <Badge tone="danger" title={r.deny_reason ?? ""}>
                         {dict.mytl.badgeRejected}
                         {r.deny_reason ? `：${r.deny_reason}` : ""}
                       </Badge>
@@ -242,9 +233,7 @@ export function TorrentListClient({
                 ) : (
                   <td className="num text-xs">{formatBytes(r.done)}</td>
                 )}
-                <td className="text-xs text-sub">
-                  {timeCell(r, kind, locale)}
-                </td>
+                <td className="text-xs text-sub">{timeCell(r, kind, locale)}</td>
                 {kind === "uploads" && (
                   <td className="text-right">
                     <div
@@ -263,8 +252,8 @@ export function TorrentListClient({
                           onClick={() => void resubmit(r.torrent_id)}
                           disabled={busyId === r.torrent_id}
                           className={
-                            "ml-1 rounded-full border border-line px-2 "
-                            + "py-[1px] text-[10px] disabled:opacity-40"
+                            "ml-1 rounded-full border border-line px-2 " +
+                            "py-[1px] text-xs disabled:opacity-40"
                           }
                         >
                           {dict.mytl.resubmit}
@@ -294,7 +283,5 @@ function timeCell(
   locale: Parameters<typeof dateLocale>[0],
 ) {
   const iso = kind === "uploads" ? r.published_at : r.completed_at;
-  return iso
-    ? new Date(iso).toLocaleDateString(dateLocale(locale))
-    : "—";
+  return iso ? new Date(iso).toLocaleDateString(dateLocale(locale)) : "—";
 }

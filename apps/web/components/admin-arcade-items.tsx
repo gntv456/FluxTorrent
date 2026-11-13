@@ -38,10 +38,10 @@ const CELL =
 const ITEM_KINDS = ["economic", "voucher", "cosmetic"] as const;
 
 const BTN =
-  "rounded-full border border-line px-3 py-1 text-[11px] " +
+  "rounded-full border border-line px-3 py-1 text-xs " +
   "font-bold disabled:opacity-50";
 
-const LBL = "mt-1 flex items-center justify-end gap-1 text-[10px]";
+const LBL = "mt-1 flex items-center justify-end gap-1 text-xs";
 
 export function AdminArcadeItems({ onChanged }: { onChanged?: () => void }) {
   const { dict } = useI18n();
@@ -142,7 +142,7 @@ export function AdminArcadeItems({ onChanged }: { onChanged?: () => void }) {
                     value={r.name}
                     onChange={(e) => set(i, { name: e.target.value })}
                   />
-                  <span className="text-[10px] text-sub">{r.key}</span>
+                  <span className="text-xs text-sub">{r.key}</span>
                 </td>
                 <td className="py-1 pr-1">
                   {/* kind 三值闭集（后端 arcade_items_write.rs）：
@@ -179,7 +179,7 @@ export function AdminArcadeItems({ onChanged }: { onChanged?: () => void }) {
                       })
                     }
                   />
-                  <span className="block text-[10px] text-sub">
+                  <span className="block text-xs text-sub">
                     {r.anchor_src}
                   </span>
                 </td>
@@ -206,7 +206,7 @@ export function AdminArcadeItems({ onChanged }: { onChanged?: () => void }) {
                 </td>
                 <td className="py-1 pr-1 text-right">
                   {r.unlimited ? (
-                    <span className="text-[11px] text-sub">{t.unlimited}</span>
+                    <span className="text-xs text-sub">{t.unlimited}</span>
                   ) : (
                     <input
                       type="number"
@@ -281,7 +281,7 @@ export function AdminArcadeItems({ onChanged }: { onChanged?: () => void }) {
           {msg}
         </p>
       )}
-      <p className="text-[11px] text-sub">{t.note}</p>
+      <p className="text-xs text-sub">{t.note}</p>
     </div>
   );
 }

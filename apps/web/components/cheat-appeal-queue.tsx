@@ -94,7 +94,7 @@ export function CheatAppealQueue() {
   const th = "px-3 py-2 text-left text-xs font-bold whitespace-nowrap";
   const td = "px-3 py-2 text-sm align-middle";
   const inputCls =
-    "min-h-[36px] rounded-[var(--r-sm)] border border-line bg-cloud px-2 " +
+    "min-h-11 rounded-[var(--r-sm)] border border-line bg-cloud px-2 " +
     "text-sm outline-none focus:border-sky";
 
   if (noPerm) {

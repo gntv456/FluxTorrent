@@ -127,7 +127,7 @@ const MARKET_CARD_CLS =
   "p-3 shadow-[var(--shadow-card)]";
 
 const PLANT_BTN_CLS =
-  "mt-2 min-h-[34px] w-full rounded-full bg-sun px-3 text-[11px] " +
+  "mt-2 min-h-11 w-full rounded-full bg-sun px-3 text-xs " +
   "font-bold text-ink active:scale-[0.97]";
 
 /** 作物图鉴卡（行情） */
@@ -153,7 +153,7 @@ export function MarketCard({
     <div className={MARKET_CARD_CLS}>
       <CropArt cropId={crop.id} stage={3} />
       <p className="mt-1 font-display text-sm">{crop.name}</p>
-      <p className="text-[11px] text-sub">
+      <p className="text-xs text-sub">
         {t.growInfo
           .replace("{h}", String(crop.grow_hours))
           .replace("{p}", String(crop.seed_price))}
@@ -161,7 +161,7 @@ export function MarketCard({
       <p className="num mt-1 text-base font-black">
         {crop.market_price.toLocaleString()}
       </p>
-      <p className={`num text-[11px] ${up ? "text-[var(--danger-text)]" : "text-mint"}`}>
+      <p className={`num text-xs ${up ? "text-[var(--danger-text)]" : "text-mint"}`}>
         {up ? "↑ +" : "↓ "}
         {pct}% {"★".repeat(stars)}
       </p>

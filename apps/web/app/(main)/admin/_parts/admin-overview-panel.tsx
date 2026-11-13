@@ -180,7 +180,7 @@ export function AdminOverviewPanel({
                 <EmptyState icon="ranking" title={a.trendEmpty} compact />
               </div>
             )}
-            <p className="mt-1 text-[10px] text-sub">
+            <p className="mt-1 text-xs text-sub">
               <span className={`mr-2 ${DOT} bg-sky/70`} />
               {a.trendReg}
               <span className={`mx-2 ${DOT} bg-mint/70`} />
