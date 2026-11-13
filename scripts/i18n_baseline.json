@@ -938,9 +938,7 @@
  "app/(main)/torrents/_parts/torrents-hotkeys.tsx": [],
  "app/(main)/torrents/_parts/torrents-search-box.tsx": [],
  "app/(main)/torrents/_parts/torrents-table-view.tsx": [],
- "app/(main)/torrents/_parts/torrents-table.tsx": [
-  54
- ],
+ "app/(main)/torrents/_parts/torrents-table.tsx": [],
  "app/(main)/torrents/_parts/torrents-view-switch.tsx": [],
  "app/(main)/torrent/[id]/page.tsx": [],
  "app/(main)/torrent/[id]/_parts/torrent-detail-collections.tsx": [],
@@ -959,9 +957,7 @@
  "app/(main)/resurrections/page.tsx": [],
  "app/(main)/requests/page.tsx": [],
  "app/(main)/reports/page.tsx": [],
- "app/(main)/preserve/page.tsx": [
-  165
- ],
+ "app/(main)/preserve/page.tsx": [],
  "app/(main)/p/[slug]/page.tsx": [],
  "app/(main)/offers/page.tsx": [],
  "app/(main)/offers/_inner.tsx": [],
@@ -1024,7 +1020,7 @@
   266
  ],
  "app/(main)/games/farm/_inner.tsx": [
-  261
+  257
  ],
  "app/(main)/games/capsule/page.tsx": [],
  "app/(main)/games/capsule/_inner.tsx": [],

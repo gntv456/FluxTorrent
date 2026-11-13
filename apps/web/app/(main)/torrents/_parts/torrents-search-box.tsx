@@ -95,6 +95,9 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
             {showImdb && <option value="4">IMDb</option>}
           </select>
         </label>
+        <label htmlFor="searchinput" className="sr-only">
+          {t2.searchTitle}
+        </label>
         <input
           id="searchinput"
           name="search"
@@ -102,6 +105,7 @@ export function TorrentsSearchBox(props: TorrentsSearchBoxProps) {
           className="tsb-input"
           defaultValue={sp.search}
           placeholder={t2.keywordPh}
+          aria-label={t2.searchTitle}
           autoComplete="off"
           data-autofocus
         />

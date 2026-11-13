@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from "react";
  * 服务端组件包裹层的 input 保持受控于 form——本组件只做 overlay，不改表单语义。
  */
 
+export const SUGGEST_LIST_ID = "search-suggest-list";
+
 interface SuggestItem {
   id: number;
   name: string;
@@ -83,22 +85,47 @@ export function SearchSuggest({
       }
     };
 
+    // combobox 语义：输入框声明弹出列表与展开态/激活项
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-haspopup", "listbox");
+    input.setAttribute("aria-controls", SUGGEST_LIST_ID);
     input.addEventListener("input", onInput);
     input.addEventListener("keydown", onKey);
     document.addEventListener("click", onDocClick);
     return () => {
       aborted = true;
       if (timer) clearTimeout(timer);
+      input.removeAttribute("role");
+      input.removeAttribute("aria-autocomplete");
+      input.removeAttribute("aria-haspopup");
+      input.removeAttribute("aria-controls");
+      input.removeAttribute("aria-expanded");
+      input.removeAttribute("aria-activedescendant");
       input.removeEventListener("input", onInput);
       input.removeEventListener("keydown", onKey);
       document.removeEventListener("click", onDocClick);
     };
   }, [inputId, open, items.length, active]);
 
+  // 展开态与激活项同步到输入框（供读屏播报）
+  useEffect(() => {
+    const input = document.getElementById(
+      inputId,
+    ) as HTMLInputElement | null;
+    if (!input) return;
+    const shown = open && items.length > 0;
+    input.setAttribute("aria-expanded", shown ? "true" : "false");
+    const act = shown && active >= 0 ? items[active] : null;
+    if (act) input.setAttribute("aria-activedescendant", `sug-${act.id}`);
+    else input.removeAttribute("aria-activedescendant");
+  }, [open, items, active, inputId]);
+
   if (!open || items.length === 0) return null;
   return (
     <div
       ref={wrapRef}
+      id={SUGGEST_LIST_ID}
       className="tsb-suggest"
       role="listbox"
       aria-label="search suggestions"
@@ -106,6 +133,7 @@ export function SearchSuggest({
       {items.map((it, i) => (
         <a
           key={it.id}
+          id={`sug-${it.id}`}
           href={`/torrent/${it.id}`}
           role="option"
           aria-selected={i === active}

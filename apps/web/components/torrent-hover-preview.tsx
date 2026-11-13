@@ -96,11 +96,23 @@ export function TorrentHoverPreview({ dict: _d }: { dict?: unknown }) {
       setCard(null);
     };
 
+    // 键盘可达：焦点进入链接也弹卡，离开/按 Esc 收起
+    const onFocusIn = (e: Event) => onOver(e);
+    const onFocusOut = (e: Event) => onOut(e);
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCard(null);
+    };
     document.addEventListener("mouseover", onOver);
     document.addEventListener("mouseout", onOut);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    document.addEventListener("keydown", onEsc);
     return () => {
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseout", onOut);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("keydown", onEsc);
       if (timer.current) clearTimeout(timer.current);
     };
   }, [touch]);
@@ -116,6 +128,8 @@ export function TorrentHoverPreview({ dict: _d }: { dict?: unknown }) {
 
   return (
     <div
+      id="thov-tip"
+      role="tooltip"
       className="thov"
       style={{ left: x, top: card.y }}
       data-torrent-preview={card.id}
@@ -148,6 +162,9 @@ export function TorrentHoverPreview({ dict: _d }: { dict?: unknown }) {
               ? dict.torrent.anonymous
               : (d.owner_name ?? "—")}
           </p>
+          <a className="thov__more" href={`/torrent/${card.id}`}>
+            {dict.torrents.detail}
+          </a>
         </>
       )}
     </div>

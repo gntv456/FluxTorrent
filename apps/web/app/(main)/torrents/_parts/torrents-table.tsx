@@ -34,6 +34,13 @@ export function TorrentsTable({
 }) {
   const t = dict.torrents;
   const hd = hiddenCols ?? new Set<string>();
+  // 排序列语义：当前列升序=ascending、降序=descending，其余 none
+  const ariaSort = (key: string): "ascending" | "descending" | "none" =>
+    sp.sort === key
+      ? "descending"
+      : sp.sort === `${key}_asc`
+        ? "ascending"
+        : "none";
   return (
     <>
       {/* 批量下载（阶段三）：选中行后出现操作条；仅表格视图提供多选 */}
@@ -51,9 +58,9 @@ export function TorrentsTable({
               </th>
               {!hd.has("cat") && <th className="w-12">{t.colType}</th>}
               {!hd.has("cover") && (
-                <th className="w-16" aria-label="封面" />
+                <th className="w-16" aria-label={dict.torrents2.coverLabel} />
               )}
-              <th>
+              <th aria-sort={ariaSort("name")}>
                 <a
                   href={
                     withParam(
@@ -68,7 +75,8 @@ export function TorrentsTable({
               </th>
               {/* 表头点击排序（NP colhead 口径）：同列再点反转升降序 */}
               {!hd.has("comments") && (
-                <th className="w-16" title={t.colComments}>
+                <th className="w-16" title={t.colComments}
+                  aria-sort={ariaSort("comments")}>
                   <a
                     href={withParam(
                       withoutCursor(sp),
@@ -96,7 +104,8 @@ export function TorrentsTable({
                   藏在 title 属性里，扫读时无法判断哪列是什么。改为
                   图标 + 可见文字，窄屏由 CSS 隐藏文字保留图标。 */}
               {!hd.has("size") && (
-                <th className="w-20" title={t.colSize}>
+                <th className="w-20" title={t.colSize}
+                  aria-sort={ariaSort("size")}>
                   <a
                     className="inline-flex items-center gap-1"
                     href={
@@ -113,7 +122,8 @@ export function TorrentsTable({
                 </th>
               )}
               {!hd.has("seeders") && (
-                <th className="w-16" title={t.colSeeders}>
+                <th className="w-16" title={t.colSeeders}
+                  aria-sort={ariaSort("seeders")}>
                   <a
                     className="inline-flex items-center gap-1"
                     href={
@@ -130,7 +140,8 @@ export function TorrentsTable({
                 </th>
               )}
               {!hd.has("leechers") && (
-                <th className="w-16" title={t.colLeechers}>
+                <th className="w-16" title={t.colLeechers}
+                  aria-sort={ariaSort("leechers")}>
                   <a
                     className="inline-flex items-center gap-1"
                     href={withParam(
@@ -145,7 +156,8 @@ export function TorrentsTable({
                 </th>
               )}
               {!hd.has("completed") && (
-                <th className="w-16" title={t.colCompleted}>
+                <th className="w-16" title={t.colCompleted}
+                  aria-sort={ariaSort("completed")}>
                   <a
                     className="inline-flex items-center gap-1"
                     href={withParam(

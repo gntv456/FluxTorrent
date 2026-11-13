@@ -35,6 +35,12 @@ export default async function PreservePage({
     const s = Array.isArray(v) ? v[0] : v;
     return s && s !== "all" && s !== "current" ? s : undefined;
   };
+  // 受控回填：把当前筛选值回显到表单控件（避免刷新后选择丢失）
+  const rawVal = (k: string, dflt: string): string => {
+    const v = spRaw[k];
+    const s = Array.isArray(v) ? v[0] : v;
+    return s ?? dflt;
+  };
   // P-286：取数失败必须显式报错，不能演成「暂无保种需求」
   let data: Awaited<ReturnType<typeof getPreserve>>;
   try {
@@ -107,7 +113,7 @@ export default async function PreservePage({
         <form className="preserve-filter" action="/preserve" method="get">
           <label>
             <span>{dict.preserve.scope}</span>
-            <select name="scope">
+            <select name="scope" defaultValue={rawVal("scope", "all")}>
               <option value="all">{dict.preserve.scopeAll}</option>
               <option value="official">{dict.preserve.stOfficial}</option>
               <option value="general">{dict.preserve.stGeneral}</option>
@@ -115,7 +121,7 @@ export default async function PreservePage({
           </label>
           <label>
             <span>{dict.preserve.status}</span>
-            <select name="status">
+            <select name="status" defaultValue={rawVal("status", "current")}>
               <option value="current">{dict.preserve.statusCurrent}</option>
               <option value="active">{dict.preserve.stPreserving}</option>
               <option value="grace">{dict.preserve.stContinued}</option>
@@ -124,7 +130,7 @@ export default async function PreservePage({
           </label>
           <label>
             <span>{dict.preserve.category}</span>
-            <select name="category">
+            <select name="category" defaultValue={rawVal("category", "0")}>
               <option value="0">{dict.preserve.categoryAll}</option>
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -138,6 +144,7 @@ export default async function PreservePage({
             <input
               type="search"
               name="keyword"
+              defaultValue={rawVal("keyword", "")}
               maxLength={100}
               placeholder={dict.preserve.keywordPh}
               autoComplete="off"
