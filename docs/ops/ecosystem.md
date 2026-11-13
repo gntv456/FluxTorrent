@@ -13,9 +13,9 @@
 | RSS | `GET /api/v1/rss/{fxr_token}`（item 带 enclosure 直链） | qBittorrent RSS / autobrr feed / Flexget / 阅读器 |
 | 开放 API + 增量流 | `/openapi.json`、`/open/recent`、`/open/announces`、`/open/torrents` | 自写脚本 / 推送器 / 自动发种工具 |
 
-详细字段与用法：`_doc/开放API接入指南.md`。
+详细字段与用法：[开放 API 接入指南](../integrations/open-api.md)。
 **给工具维护者的对接页**（三行命令起测试实例 + 逐工具对接要点 + 已备好的收录材料）：
-`_doc/工具维护者对接页.md` —— 用户来提收录请求时，把这一页甩过去即可。
+[工具维护者对接页](../integrations/tool-maintainers.md) —— 用户来提收录请求时，把这一页甩过去即可。
 
 ## 提交收录（站长可选的对外动作）
 

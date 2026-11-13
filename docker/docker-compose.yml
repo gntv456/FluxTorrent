@@ -87,7 +87,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/api:${FLUX_VERSION:-c84d4c02}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/api:${FLUX_VERSION:-0.5.17}
     build:
       context: ..
       dockerfile: docker/api.Dockerfile
@@ -175,7 +175,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-c84d4c02}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-0.5.17}
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
@@ -218,7 +218,7 @@ services:
   # consume_announce，与主 worker 同消费组竞争消费 Redis 流。
   # 默认不启动：大站 .env 设 COMPOSE_PROFILES=announce-scale 开启。
   worker-announce: &worker-announce
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-c84d4c02}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/worker:${FLUX_VERSION:-0.5.17}
     container_name: ${FLUX_WA1_CONTAINER:-flux-worker-announce}
     logging: *default-logging
     profiles: ["announce-scale"]
@@ -247,7 +247,7 @@ services:
     container_name: ${FLUX_WA2_CONTAINER:-flux-worker-announce2}
 
   tracker:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/tracker:${FLUX_VERSION:-c84d4c02}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/tracker:${FLUX_VERSION:-0.5.17}
     build:
       context: ..
       dockerfile: docker/tracker.Dockerfile
@@ -329,7 +329,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/web:${FLUX_VERSION:-c84d4c02}
+    image: ${FLUX_IMAGE_PREFIX:-ghcr.io/gntv456/fluxtorrent}/web:${FLUX_VERSION:-0.5.17}
     build:
       context: ..
       dockerfile: docker/web.Dockerfile

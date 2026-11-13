@@ -8,5 +8,6 @@
 | [user/](user/README.md) | 站点终端用户 | 从注册到顶级等级的用户指南（24 个生命周期触点） |
 | [customize/](customize/README.md) | 站长（自定义） | 字段 / 页面 / 菜单 / 站型包 / 内容包 / 适配器六篇 How-to |
 | [ops/](ops/README.md) | 运维 | 监控告警 / 任务面板 / 性能基线 / 工具生态收录 |
+| [integrations/](integrations/README.md) | 工具/脚本开发者 | 开放 API / RSS / Torznab / NP 兼容层契约与对接指南 |
 
-最快路径：[webmaster/快速开始](webmaster/quick-start.md) → 装好后在浏览器打开 `http://localhost:3000/setup` 完成三步向导。
+最快路径：[webmaster/快速开始](webmaster/quick-start.md) → 装好后在浏览器打开 `http://localhost:3000/setup` 完成四步向导。

@@ -5,7 +5,7 @@
 > 没验「工具的消费路径」。修订后按第三方工具的真实用法逐项复测。
 >
 > 验证方式：`scripts/redteam_compat_0267.py`（48 项断言，本地 docker 栈实测）。
-> 相关：[ecosystem.md](ecosystem.md)（收录视角）· `_doc/开放API接入指南.md`（字段与用法）
+> 相关：[ecosystem.md](ecosystem.md)（收录视角）· [开放 API 接入指南](../integrations/open-api.md)（字段与用法）
 
 ## 矩阵（0267 复测后）
 
@@ -40,7 +40,7 @@
   凭证下载 20/min、凭证签发 10/min、发种 20/min。
   响应带 `X-RateLimit-Limit/Remaining/Reset`；429 带 `Retry-After: 60`。
 
-## 安全要点（详见 `_doc/第三方工具适配视角-对接需求与改进建议-2026-10-02.md` §7）
+## 安全要点
 
 - `api_tokens.scopes` 自 0267 起**真正强制**（`upload` 才能发种）；签发时白名单校验。
 - `fxr_` token 端点（RSS / download.php / userdetails.php）已补限流；

@@ -1,0 +1,240 @@
+# G30 多机部署三机配方（0224 落地版 · 2026-09-27）
+
+配套：[`docker/compose.multi-node.yml`](../../docker/compose.multi-node.yml)（编排）、`docker/nginx/lb.conf.sample`（LB 样例）。本配方源自内部开发方案 G30，落地时经 13 项断言实证（JWT 互认 / 双域 bump / 故障切换等）。
+
+**能力口径**：本配方交付的是「多机高可用部署」——单台应用实例故障或重启时站点不中断。
+它**不是**横向扩容：吞吐仍受 Postgres 单写限制，worker 多副本是热备不是分摊（判定依据与
+B 轨边界见闭环策划方案附录 D）。
+
+## 0. 机器分工
+
+| 机 | profile | 跑什么 | 说明 |
+|---|---|---|---|
+| M1 边缘+应用 | `edge`+`app` | nginx（LB）、web×2、api×2 | nginx 装宿主机；web/api 用 compose 起 |
+| M2 任务+tracker | `jobs` | worker（主备可 2）、tracker（**单副本**） | announce 公网直连 M2 的 7070/6969，不进 LB |
+| M3 数据层 | `data` | PostgreSQL、Redis | 或换托管服务（RDS/ElastiCache 等），改 .env 指向即可 |
+
+**硬约束**：web 与 api 必须同机（M1）——`API_SERVER_URL` 在 `docker/web.Dockerfile` 构建期
+烘焙进 Next 产物，跨机拆分需要 B 轨改造。tracker 必须单副本——peer 表在进程内，多副本互相
+覆盖写会坏做种计费。
+
+## 1. 前置条件
+
+- 三机互通的内网（或隧道），M3 的 5432/6379 仅对 M1/M2 内网开放（沿用 127.0.0.1 收口口径
+  时经 SSH 隧道，改内网监听时用防火墙白名单）。
+- 附件必须切对象存储：`storage_backend=s3`（MinIO/OSS/R2 均可，0104 起支持）。多副本共享
+  本地卷不成立。最小 MinIO 示例：
+
+```yaml
+# M3 上追加（或用云服务）
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: flux
+      MINIO_ROOT_PASSWORD: <强密码>
+    volumes: [minio-data:/data]
+    ports: ["127.0.0.1:9000:9000"]
+```
+
+`.env` 里配 `S3_ENDPOINT=http://<M3内网IP>:9000`、`S3_BUCKET=flux-attachments`、
+`S3_KEY/S3_SECRET`，再经后台「站点设定 → storage_backend = s3」切换（运行时可切，兼容回落）。
+
+## 2. .env（三机各自一份，M1/M2 的差异项已标注）
+
+```ini
+DB_PASSWORD=<强密码>
+REDIS_PASSWORD=<强密码>
+JWT_SECRET=<≥32字节随机值，三机必须一致>   # hs256 下各副本同 secret 即互认
+
+# --- M2/M3 专属：数据层指向 M3（M1 也一样）---
+FLUX_DB_HOST=<M3内网IP>
+FLUX_REDIS_HOST=<M3内网IP>
+
+# --- M1 专属 ---
+TRUST_PROXY=1          # LB 后必开：限流/封禁/风控改信 XFF 首值
+CORS_ORIGINS=https://你的域名
+PUBLIC_SITE_URL=https://你的域名
+PUBLIC_TRACKER_URL=http://<M2公网IP>:7070
+
+# --- 多副本实例标识（每台/每副本不同；M1 的两个 api 副本分别 m1-api-1 / m1-api-2）---
+FLUX_INSTANCE_ID=m1-api-1
+
+# --- 迁移单飞：首台 api 保持 1，第二副本起置 0（跳过启动迁移与种子）---
+FLUX_BOOT_MIGRATIONS=0
+```
+
+`DB_POOL_SIZE` 默认 10/副本：预算表 = api 副本数 × 10 + worker 数 × 5 ≤ PG `max_connections`
+（默认 100：2×10+2×5=30，充裕）。超标自检：
+
+```bash
+docker exec flux-postgres psql -U flux -At -c \
+  "select count(*) from pg_stat_activity where datname='fluxtorrent'"
+```
+
+## 3. 起栈（每台机器）
+
+```bash
+# M1（首启；第二副本起在 .env 加 FLUX_BOOT_MIGRATIONS=0）
+docker compose -f docker/compose.multi-node.yml --profile app up -d --scale api=2 --scale web=2
+
+# M2
+docker compose -f docker/compose.multi-node.yml --profile jobs up -d
+
+# M3
+docker compose -f docker/compose.multi-node.yml --profile data up -d
+```
+
+注意 compose 的 `--profile data` 服务（postgres/redis）在 M1/M2 上不会启动，但 DNS 名
+`postgres`/`redis` 由 `FLUX_DB_HOST`/`FLUX_REDIS_HOST` env 改写为 M3 IP。
+
+nginx（M1 宿主）按 `docker/nginx/lb.conf.sample` 配置：web/api 双 upstream、XFF 追加、
+tracker 不进 LB。健康拨测：`GET /health`（web，0224 新增）与 `GET /api/v1/health`（api）。
+
+## 4. 发布流程（滚动更新不中断）
+
+1. LB 侧摘掉目标副本（nginx `down` 或 docker scale 减 1）；
+2. `docker stop`（compose 已配 `stop_grace_period`：api 45s / worker 90s / tracker·web 20s）——
+   api 走 actix 默认 SIGTERM drain（30s），worker 停止认领新任务并给在跑手动任务 60s 收尾；
+3. 换镜像 `docker compose ... up -d`（该副本）；
+4. 回 LB，观察 healthcheck 绿后再动下一副本。
+
+worker 的长结算任务（银行结息等）不等待强杀——恢复路径是 30 分钟中断回收 + 流水幂等键，
+**发布窗口避开每日结息时刻**。
+
+## 5. 已知边界（如实告知，勿过度承诺）
+
+- **worker >30 分钟的慢任务**仍会被他实例的回收标 failed（中间态误报，任务结束写回真实
+  状态）；租约/心跳机制列 B 轨。
+- **rs256 破坏性变更（0224）**：`JWT_ALG=rs256` 找不到密钥（env PEM 或挂卷文件）会拒绝启动。
+  多副本场景推荐直接用默认 hs256 + 共享 secret；坚持 rs256 的先生成一次密钥对放进挂卷：
+  ```bash
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_rs_private.pem
+  openssl rsa -in jwt_rs_private.pem -pubout -out jwt_rs_public.pem
+  ```
+- **配置变更跨副本生效 ≤5s**（flux:cfg:ver 版本键 + 3s 轮询，0224 起）；Redis 故障时降级回
+  30s TTL 行为，不会更糟。
+- **备份**在 M2 单点（`FLUX_BACKUP_DIR`）：可接受，建议后续切对象存储（G16 同域）。
+
+## 6. 实证（上生产前必跑一次）
+
+本机模拟双 api 副本的 13 项断言实证：JWT 互认 / cfg:ver 两域 bump /
+syslog 实例筛选 / SKIP LOCKED 与 claimed_by 落库。前提：本机 docker 栈起着、
+`cargo build -p flux-api` 出了新二进制。
+
+## 6.5 B 轨能力（0225 起随批落地）
+
+0225 批把附录 D 档三的四个障碍处理掉了三个半，多 worker 从「热备」升级为
+「真分摊」：
+
+- **计费流消费者组**（worker）：`flux:announce` / `flux:agent_block` 改
+  XREADGROUP 消费者组——组内投递唯一，N 台 worker 并发消费是真分摊而非
+  双计；worker 崩溃后其 pending 由存活实例 XAUTOCLAIM 接手（>120s 遗孤）。
+  失败语义不变（留 PEL 重试、6 次进 DLQ）；旧全局游标首次启动自动迁移。
+- **角色分片**：`FLUX_WORKER_JOBS=a,b,c`（job 名，无 job: 前缀）让本实例
+  只跑清单内定时任务——例如一台专吃计费流、另一台跑结算。空 = 全量
+  （单实例行为不变）。任务面板的「最近运行」新增 executed_by 可见分实例。
+- **tracker 挂 LB**：HTTP announce 支持 `TRUST_PROXY=1` 取 X-Forwarded-For
+  首值——peer IP 不再被记成 LB 地址。UDP 侧无代理场景（直连公网）不需要。
+- **web 上游运行期可换**：`/api` 走 `app/api/[...path]/route.ts` 运行期
+  转发（API_SERVER_URL 改环境变量、重启容器即生效），构建期 rewrites 降为
+  兜底。web 与 api 同机的硬约束就此解除——但同机仍是推荐形态。
+
+**0225 收尾批补齐（原「仍属长期」两项已落地）**：
+
+- **tracker peer 外置**：`FLUX_TRACKER_PEER_STORE=redis` 启用 swarm 级 Redis
+  Hash（`flux:swarm:{info_hash}`，field=peer_id）——多 tracker 副本读写同一份，
+  互见不互抹；旧「60s 全量覆盖快照」在外置模式下停用（它正是互抹根源）。
+  缺省空 = 内存单机（行为不变）。双 tracker 实测：B 写入的 peer 在 C 的
+  announce 响应可见（complete=2）、外置 hash 两 field。
+- **60s 分支并发化**：独立任务 JoinSet 并发（900s 慢任务不再堵住同轮后续；
+  advisory 锁/超时/分片语义不变；结算先于过期的顺序链在 hour 分支保留串行）。
+  连带修复：worker 连接池 5→16（`DB_POOL_SIZE` 可配）——并发调度后 5 连接
+  必打满，PoolTimedOut 曾被 run_guarded 的笼统文案误报成「另一实例锁冲突」。
+
+多 tracker 部署配方：两台各起一个 tracker（都设 FLUX_TRACKER_PEER_STORE=
+redis），LB 对 7070/6969 做 UDP/TCP 双协议轮询，TRUST_PROXY=1。
+
+## 7. 容量边界（定性，XBTIT 式声明）
+
+- tracker 单副本 + announce 走 Redis Stream 异步计费：中小型站点（千级用户、万级挂种）
+  单副本无压力迹象；**量化数字待压测批次补**，不拍脑袋。
+- 触发升级评估的信号：api 5xx 率抬头且 CPU 未满（查连接池）、announce P95 > 1s、
+  worker 任务面板频繁「另一实例正在跑」（此时才考虑 B 轨）。
+- 纵向加配（CPU/内存/更快的盘）永远优先于加机器——PG 单写下，加应用副本不增吞吐。
+
+## 8. 数据层规模矩阵（0227 G31：通用建站产品口径——同一份代码伺候大小站）
+
+站长按量级对号入座；代码不按量级写死，升级=改配置/换配方。
+
+| 档 | 用户量级 | 数据层形态 | 关键动作 |
+|---|---|---|---|
+| **S** | <1k | 单 PG（同机） | 缺省 compose 原样；`ledger_retain_months=0`（永久） |
+| **M** | 1k~2 万 | PG+Redis 独立机 | `max_connections=200`；连接预算按副本数×池记账（§2）；计费已异步无需其它 |
+| **L** | 2 万~10 万（典型 PT） | 主+只读副本 | `DATABASE_REPLICA_URL` 指副本（热点读自动分流，见 §8.1）；PgBouncer 可选；`ledger_retain_months=12~24` |
+| **XL** | 10 万+ | 托管 PG 高可用 + 多副本 | L 全部 + CDN 前置 web；tracker 多副本（§6.5）+ UDP 多核收包（已落地，见 §8.4） |
+
+**不做的**：业务分库/分片/换分布式数据库——计费流水是追加型时序数据，冷热
+分层（`ledger_retain_months`）+ 只读副本已覆盖可预见量级；分片对账/事务边界
+重设计是负资产。写入文档即承诺。
+
+### 8.1 读写分离（L 档起）
+
+- 配置：`DATABASE_REPLICA_URL=postgres://...@replica:5432/...`（流复制只读
+  实例或托管服务副本）。未配置 = 零行为变化（read_db 与主池同句柄）。
+- 已分流的热点读（0227）：种子列表 `/torrents`、种子详情系（detail/files/
+  thanks/nfo）、首页板块、用户公开主页——占读流量大头且无写后立读问题。
+- **钉主库清单（复制延迟敏感，禁止切 read_db）**：发布/编辑后的跳转查询、
+  支付与充值订单状态、私信已读、任何「刚写完就读」的路径、鉴权与封禁查
+  （auth_infra 系全部）、后台管理写后列表刷新。新增读接口时默认用 db，
+  显式评估后才可切。
+- 副本故障：启动时连不上自动退化主池（warn 日志）；运行中断连由 sqlx 池
+  重连——热点读短暂回主库或报错，属可接受降级。
+
+### 8.2 流水归档（M 档起建议）
+
+- `ledger_retain_months`（站点设定「系统调度」卡，0=永久缺省）：worker 每日
+  ensure_partitions 时对超期分区**先 DETACH（秒级、可 ATTACH 回滚）下周期
+  再 DROP**——两步给误配窗口留缓冲。对账快照已聚合，删的是明细流水。
+  **归档范围仅 traffic_ledger 与 spark_ledger 两张真流水表**；posts（论坛
+  正文）虽同为分区表但属业务数据，绝不归档（审查修正——首版曾误圈入）。
+- 调小前备份：`pg_dump -t traffic_ledger_2024_06` 按分区导出即可。
+
+### 8.3 连接预算（M 档起记账）
+
+api×N（池 10）+ worker×M（池 16）+ PgBouncer（如启用）≤ max_connections。
+例：2 api + 2 worker = 52 连接，PG 200 上限充裕；再往上先上 PgBouncer
+（transaction 模式）而不是无脑加 max_connections。
+
+### 8.4 UDP 多核收包（XL 档，已落地）
+
+- `TRACKER_UDP_WORKERS=4`（缺省 1）：SO_REUSEPORT 起 N 个 socket，内核对
+  announce 包负载均衡；会话表在进程内 Arc 共享，多循环无一致性开销。
+  **仅 Unix**（Windows dev 自动钳回 1 并 warn）。
+- ⚠️ **0230 批修复的真 bug**：UDP connect 魔数此前误写为 0x41727109807a
+  （BEP-15 规定 0x41727101980）——所有标准客户端的 UDP 请求被静默丢弃，
+  **UDP tracker 自上线起不可用**（缺省不下发 UDP tier 故未暴露）。修复后
+  宿主实测 workers=1/4 均通（connect action=0 → announce 回业务响应）。
+- Linux 宿主验证命令（Docker Desktop 的 UDP 回程不可用于验证）：
+  `TRACKER_UDP_BIND=0.0.0.0:6969 TRACKER_UDP_WORKERS=4 ./flux-tracker` 后用
+  qBittorrent 挂一枚种子，或 python `struct.pack('!QII',0x41727101980,0,tid)`
+  发 connect 应收到 action=0 应答。
+
+### 8.5 审查遗留清单（2026-09-28 全量代码审查后未修项，按优先级）
+
+已修（本批）：归档年月解析死代码、posts 误圈入归档（P0）、balance_baseline
+余额基线（快照是流水 SUM 派生非独立权威——P0）、ensure_group 游标读失败
+fail-hard（P0）、reclaim 错峰恢复 6 轮 DLQ 节奏（P0）、external upsert Lua
+原子化（P1）、detail 主查钉主库（P1）、compose tracker 段补 TRUST_PROXY（P1）。
+
+**遗留清零（0230 审查批 P2 全部随手修掉）**：
+
+1. ~~UDP peer 外置分裂~~ 已闭环（见上）。
+2. ~~dlq 混队~~：agent_block 死信分键 `flux:agentblock:dlq`，dlq_watch 双队列
+   统计、文案分源。
+3. ~~external sample_probes 口径~~：注释改准（筛选在内存侧，外置只补坐标）。
+4. ~~XAUTOCLAIM 形态~~：确认 items[1] 对 Redis 6.2/7 双形态兼容，注释记明。
+5. ~~分片双轨~~：shard_lock!（loop 内 continue 语义）与 job_in_shard（JoinSet
+   spawn 前置过滤）各有存在理由，注释说明后保留双形态。
+6. cfgver "settings" 域空转：onboarding 属并行会话未提交文件，不动；其提交
+   时应二选一（删 bump 或补消费）。

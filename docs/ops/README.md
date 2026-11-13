@@ -9,3 +9,4 @@
 - [兼容矩阵](compat-matrix.md)：生态工具协议级冒烟实证（PTPP/cross-seed/NP 系客户端全绿）
 - [运维事件订阅](events.md)：生命周期事件 webhook 矩阵（注册/封禁/H&R/捐赠）
 - [安全姿态](security.md)：认证/响应头/CSP 基线/限流/审计与开站自查清单
+- [多机部署](multi-node.md)：三机高可用配方（边缘+应用 / 任务+tracker / 数据库）
