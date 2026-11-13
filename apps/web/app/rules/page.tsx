@@ -95,18 +95,20 @@ export default async function RulesPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="nexus-table">
-              <tbody>
-                <tr>
-                  <th scope="col" className="colhead w-32">
-                    {t.penColLevel}
-                  </th>
-                  <th scope="col" className="colhead">
-                    {t.penColAction}
-                  </th>
-                  <th scope="col" className="colhead w-[28%]">
-                    {t.penColScope}
-                  </th>
-                </tr>
+              <thead>
+        <tr>
+        <th scope="col" className="colhead w-32">
+        {t.penColLevel}
+        </th>
+        <th scope="col" className="colhead">
+        {t.penColAction}
+        </th>
+        <th scope="col" className="colhead w-[28%]">
+        {t.penColScope}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
                 {t.penalties.map((p) => (
                   <tr key={p.level}>
                     <td className="font-bold text-[var(--sky-deep)]">

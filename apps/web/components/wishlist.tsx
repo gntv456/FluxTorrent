@@ -190,16 +190,18 @@ export function WishlistPanel() {
       {rows !== null && rows.length > 0 && (
         <div className="brand-wide-table-scroll">
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  #{t.title}
-                </th>
-                <th scope="col" className="colhead w-40">
-                  {dict.messages.timeCol}
-                </th>
-                <td className="colhead w-24" />
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        #{t.title}
+        </th>
+        <th scope="col" className="colhead w-40">
+        {dict.messages.timeCol}
+        </th>
+        <td className="colhead w-24" />
+        </tr>
+        </thead>
+      <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="rowfollow font-bold">{r.keyword}</td>

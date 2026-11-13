@@ -233,15 +233,17 @@ export function StaffEmailDomainsPanel({
         </div>
 
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">{t.edColDomain}</th>
-              <th scope="col" className="colhead">{t.edColSource}</th>
-              <th scope="col" className="colhead">{t.edColTime}</th>
-              <td className="colhead text-right">
-                {dict.cmgmt.colActions}
-              </td>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.edColDomain}</th>
+        <th scope="col" className="colhead">{t.edColSource}</th>
+        <th scope="col" className="colhead">{t.edColTime}</th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
             {(rows ?? []).map((r) => (
               <tr key={r.domain}>
                 <td className="font-mono">{r.domain}</td>

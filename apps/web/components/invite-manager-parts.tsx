@@ -82,14 +82,16 @@ export function InviteList({
       {/* 桌面：五列表格（窄屏会横向溢出 220px，故另给一套卡片） */}
       <div className="brand-wide-table-scroll hidden sm:block">
         <table className="nexus-table">
-        <tbody>
-          <tr>
-            <th scope="col" className="colhead">{t.colCode}</th>
-            <th scope="col" className="colhead">{t.colStatus}</th>
-            <th scope="col" className="colhead">{t.colSentTo}</th>
-            <th scope="col" className="colhead">{t.colExpires}</th>
-            <th scope="col" className="colhead">{t.colAction}</th>
-          </tr>
+        <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.colCode}</th>
+        <th scope="col" className="colhead">{t.colStatus}</th>
+        <th scope="col" className="colhead">{t.colSentTo}</th>
+        <th scope="col" className="colhead">{t.colExpires}</th>
+        <th scope="col" className="colhead">{t.colAction}</th>
+        </tr>
+        </thead>
+      <tbody>
           {invites.map((i) => (
             <tr key={i.id}>
               <td>

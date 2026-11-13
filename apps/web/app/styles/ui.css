@@ -1300,7 +1300,7 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--sky);
+  color: var(--sky-text);
 }
 /* 页头信息药丸（已拥有 x/y、佩戴中、当前加成） */
 .pill {
@@ -1523,7 +1523,7 @@
 }
 .usercp-nav a:hover {
   background: var(--sky-soft);
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .usercp-nav a[data-active="true"] {
   /* 蓝底白字（样图 § ucp-side a.on）：原先是灰底 + 橙色左边条，与全站
@@ -1650,7 +1650,7 @@
     background var(--motion-fast) var(--motion-ease);
 }
 .seg-item:hover {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .seg-item--on {
   background: var(--sky-soft);
@@ -1808,5 +1808,5 @@
   transform: rotate(180deg);
 }
 .brand-panel--fold > summary:hover::after {
-  color: var(--sky);
+  color: var(--sky-text);
 }

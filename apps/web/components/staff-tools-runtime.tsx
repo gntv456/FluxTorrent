@@ -118,29 +118,31 @@ export function RuntimeLogPanel() {
 
       <div className="brand-wide-table-scroll">
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead w-40">
-                {t.rlTime}
-              </th>
-              <th scope="col" className="colhead w-20">
-                {t.rlLevel}
-              </th>
-              <th scope="col" className="colhead w-24">
-                {t.rlSrc}
-              </th>
-              {hasInstances && (
-                <th scope="col" className="colhead w-24">
-                  {t.rlInstance}
-                </th>
-              )}
-              <th scope="col" className="colhead w-48">
-                {t.rlTarget}
-              </th>
-              <th scope="col" className="colhead">
-                {t.rlMsg}
-              </th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead w-40">
+        {t.rlTime}
+        </th>
+        <th scope="col" className="colhead w-20">
+        {t.rlLevel}
+        </th>
+        <th scope="col" className="colhead w-24">
+        {t.rlSrc}
+        </th>
+        {hasInstances && (
+        <th scope="col" className="colhead w-24">
+        {t.rlInstance}
+        </th>
+        )}
+        <th scope="col" className="colhead w-48">
+        {t.rlTarget}
+        </th>
+        <th scope="col" className="colhead">
+        {t.rlMsg}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
             {data?.items.map((r) => (
               <tr key={r.id}>
                 <td className="text-xs text-sub">

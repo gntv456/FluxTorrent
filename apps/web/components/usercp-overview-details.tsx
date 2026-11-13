@@ -161,22 +161,20 @@ export function RecentTopics({
       <div className="uc-recent-topics__wrap">
         <div className="brand-wide-table-scroll">
         <table className="nexus-table">
-          <tbody>
+          <thead>
             <tr>
-              <td className="colhead" style={{ width: "56%" }}>
-                {t.colTopic}
-              </td>
+              <th scope="col" className="colhead"
+                style={{ width: "56%" }}>{t.colTopic}</th>
               <th scope="col" className="colhead">{u.rtColBoard}</th>
-              <td className="colhead" style={{ textAlign: "center" }}>
-                {u.rtColReplies}
-              </td>
-              <td
-                className="colhead"
-                style={{ width: "20%", textAlign: "center" }}
-              >
+              <th scope="col" className="colhead"
+                style={{ textAlign: "center" }}>{u.rtColReplies}</th>
+              <th scope="col" className="colhead"
+                style={{ width: "20%", textAlign: "center" }}>
                 {u.rtColRead}
-              </td>
+              </th>
             </tr>
+          </thead>
+          <tbody>
             {list.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-4 text-center text-sub">

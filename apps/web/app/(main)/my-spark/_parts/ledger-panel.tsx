@@ -61,13 +61,15 @@ export function LedgerPanel({
         >
           <div className="brand-wide-table-scroll">
             <table className="nexus-table profilet">
-              <tbody>
-                <tr>
-                  <th scope="col" className="colhead">{t.ledgerKind}</th>
-                  <th scope="col" className="colhead">{t.ledgerAmount}</th>
-                  <th scope="col" className="colhead">{t.ledgerBalance}</th>
-                  <th scope="col" className="colhead">{t.ledgerAt}</th>
-                </tr>
+              <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.ledgerKind}</th>
+        <th scope="col" className="colhead">{t.ledgerAmount}</th>
+        <th scope="col" className="colhead">{t.ledgerBalance}</th>
+        <th scope="col" className="colhead">{t.ledgerAt}</th>
+        </tr>
+        </thead>
+      <tbody>
                 {rows.map((r, i) => (
                   <tr key={i}>
                     <td>

@@ -2727,7 +2727,7 @@ button.navdrawer__link {
 }
 .navdrawer__link[aria-current="page"],
 .navdrawer__link[data-active="true"] {
-  color: var(--sky);
+  color: var(--sky-text);
   background: var(--sky-soft, #e6f2ff);
   font-weight: 700;
 }

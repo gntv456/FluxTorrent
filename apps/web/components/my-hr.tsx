@@ -157,17 +157,19 @@ export function MyHrTable({
       {!compact && (
         <div className="brand-wide-table-scroll">
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">{t.colTorrent}</th>
-                <th scope="col" className="colhead">{t.colRequired}</th>
-                <th scope="col" className="colhead">{t.colSeeded}</th>
-                <th scope="col" className="colhead">{t.colDeadline}</th>
-                <th scope="col" className="colhead">{t.colDownloaded}</th>
-                <th scope="col" className="colhead">{t.colRemaining}</th>
-                <th scope="col" className="colhead">{t.colStatus}</th>
-                <td className="colhead" />
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.colTorrent}</th>
+        <th scope="col" className="colhead">{t.colRequired}</th>
+        <th scope="col" className="colhead">{t.colSeeded}</th>
+        <th scope="col" className="colhead">{t.colDeadline}</th>
+        <th scope="col" className="colhead">{t.colDownloaded}</th>
+        <th scope="col" className="colhead">{t.colRemaining}</th>
+        <th scope="col" className="colhead">{t.colStatus}</th>
+        <td className="colhead" />
+        </tr>
+        </thead>
+      <tbody>
               {rows.map((r) => {
                 return (
                   <tr key={r.torrent_id}>

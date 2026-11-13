@@ -88,27 +88,29 @@ export function StaffRegQuizPanel({ flash }: { flash: (m: string) => void }) {
           </p>
         )}
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">
-                {t.rqColId}
-              </th>
-              <th scope="col" className="colhead">
-                {t.rqColCategory}
-              </th>
-              <th scope="col" className="colhead">
-                {t.rqColQuestion}
-              </th>
-              <th scope="col" className="colhead">
-                {t.rqColAnswer}
-              </th>
-              <th scope="col" className="colhead">
-                {t.rqColEnabled}
-              </th>
-              <th scope="col" className="colhead text-right">
-                {dict.cmgmt.colActions}
-              </th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.rqColId}
+        </th>
+        <th scope="col" className="colhead">
+        {t.rqColCategory}
+        </th>
+        <th scope="col" className="colhead">
+        {t.rqColQuestion}
+        </th>
+        <th scope="col" className="colhead">
+        {t.rqColAnswer}
+        </th>
+        <th scope="col" className="colhead">
+        {t.rqColEnabled}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
             {(data?.items ?? []).map((r) => (
               <tr key={r.id}>
                 <td className="num">{r.id}</td>

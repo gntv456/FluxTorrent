@@ -118,24 +118,26 @@ export default function OffersPage() {
       >
         <div className="brand-wide-table-scroll">
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  {t.colTorrent}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.colUser}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.colVotes}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.colAt}
-                </th>
-                <th scope="col" className="colhead text-right">
-                  {dict.cmgmt.colActions}
-                </th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.colTorrent}
+        </th>
+        <th scope="col" className="colhead">
+        {t.colUser}
+        </th>
+        <th scope="col" className="colhead">
+        {t.colVotes}
+        </th>
+        <th scope="col" className="colhead">
+        {t.colAt}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
               {(rows ?? []).map((o) => (
                 <tr key={o.id}>
                   <td>

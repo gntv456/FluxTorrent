@@ -55,13 +55,15 @@ export function LoginHistory() {
   return (
     <div className="brand-wide-table-scroll">
       <table className="nexus-table">
-        <tbody>
-          <tr>
-            <th scope="col" className="colhead">{t.loginAt}</th>
-            <th scope="col" className="colhead">IP</th>
-            <th scope="col" className="colhead">{t.loginResult}</th>
-            <th scope="col" className="colhead">{t.loginClient}</th>
-          </tr>
+        <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.loginAt}</th>
+        <th scope="col" className="colhead">IP</th>
+        <th scope="col" className="colhead">{t.loginResult}</th>
+        <th scope="col" className="colhead">{t.loginClient}</th>
+        </tr>
+        </thead>
+      <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
               <td className="num text-xs">

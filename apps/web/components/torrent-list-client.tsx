@@ -166,27 +166,29 @@ export function TorrentListClient({
       {strip}
       <div className="brand-wide-table-scroll">
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">{dict.mytl.colName}</th>
-              {kind === "uploads" && (
-                <th scope="col" className="colhead w-20">{dict.mytl.colCategory}</th>
-              )}
-              <th scope="col" className="colhead">{dict.mytl.colSize}</th>
-              <th scope="col" className="colhead">{dict.mytl.colSeeders}</th>
-              <th scope="col" className="colhead">{dict.mytl.colLeechers}</th>
-              {kind === "uploads" ? (
-                <th scope="col" className="colhead w-24">{dict.mytl.colStatus}</th>
-              ) : (
-                <th scope="col" className="colhead">{dict.mytl.colDone}</th>
-              )}
-              <td className="colhead w-28">
-                {kind === "uploads" ? dict.mytl.colPublished : dict.mytl.colAt}
-              </td>
-              {kind === "uploads" && (
-                <td className="colhead w-20 text-right">{dict.mytl.colAction}</td>
-              )}
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">{dict.mytl.colName}</th>
+        {kind === "uploads" && (
+        <th scope="col" className="colhead w-20">{dict.mytl.colCategory}</th>
+        )}
+        <th scope="col" className="colhead">{dict.mytl.colSize}</th>
+        <th scope="col" className="colhead">{dict.mytl.colSeeders}</th>
+        <th scope="col" className="colhead">{dict.mytl.colLeechers}</th>
+        {kind === "uploads" ? (
+        <th scope="col" className="colhead w-24">{dict.mytl.colStatus}</th>
+        ) : (
+        <th scope="col" className="colhead">{dict.mytl.colDone}</th>
+        )}
+        <th scope="col" className="colhead w-28">
+        {kind === "uploads" ? dict.mytl.colPublished : dict.mytl.colAt}
+        </th>
+        {kind === "uploads" && (
+        <th scope="col" className="colhead w-20 text-right">{dict.mytl.colAction}</th>
+        )}
+        </tr>
+        </thead>
+      <tbody>
             {rows.map((r) => (
               <tr key={r.torrent_id}>
                 <td className="max-w-[420px] truncate">

@@ -181,21 +181,23 @@ export function MerklePanel() {
               ) : (
                 <div className="brand-wide-table-scroll">
                   <table className="nexus-table profilet">
-                    <tbody>
-                      <tr>
-                        <th scope="col" className="colhead">
-                          {t.ledgerAt}
-                        </th>
-                        <th scope="col" className="colhead">
-                          {t.ledgerKind}
-                        </th>
-                        <th scope="col" className="colhead">
-                          {t.ledgerAmount}
-                        </th>
-                        <th scope="col" className="colhead">
-                          {t.merkleLeaf}
-                        </th>
-                      </tr>
+                    <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.ledgerAt}
+        </th>
+        <th scope="col" className="colhead">
+        {t.ledgerKind}
+        </th>
+        <th scope="col" className="colhead">
+        {t.ledgerAmount}
+        </th>
+        <th scope="col" className="colhead">
+        {t.merkleLeaf}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
                       {data.rows.map((r) => (
                         <tr key={r.idx}>
                           <td className="text-xs text-sub">

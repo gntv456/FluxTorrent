@@ -272,17 +272,17 @@ export function StaffCatsPanel({
           </button>
         </div>
         <table className="nexus-table mt-3">
-          <tbody>
+          <thead>
             <tr>
-              <th scope="col" className="colhead">
-                #
-              </th>
+              <th scope="col" className="colhead">#</th>
               <th scope="col" className="colhead">{t.fldCatName}</th>
               <th scope="col" className="colhead">{t.fldCatSort}</th>
               <th scope="col" className="colhead">{t.colNewznab}</th>
               <th scope="col" className="colhead">{t.catTorrents}</th>
               <th scope="col" className="colhead text-right">{dict.cmgmt.colActions}</th>
             </tr>
+          </thead>
+          <tbody>
             {cats.map((c) => (
               <tr key={c.id}>
                 <td className="num">{c.id}</td>

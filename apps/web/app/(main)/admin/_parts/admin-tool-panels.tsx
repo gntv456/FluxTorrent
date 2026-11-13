@@ -35,24 +35,26 @@ export function CheatersPanel({
       </button>
       <div className="brand-wide-table-scroll">
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">
-                {a.cheaterUser}
-              </th>
-              <th scope="col" className="colhead">
-                {a.cheaterTorrent}
-              </th>
-              <th scope="col" className="colhead">
-                {a.cheaterSpeed}
-              </th>
-              <th scope="col" className="colhead">
-                {a.cheaterDelta}
-              </th>
-              <th scope="col" className="colhead">
-                {a.cheaterAt}
-              </th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {a.cheaterUser}
+        </th>
+        <th scope="col" className="colhead">
+        {a.cheaterTorrent}
+        </th>
+        <th scope="col" className="colhead">
+        {a.cheaterSpeed}
+        </th>
+        <th scope="col" className="colhead">
+        {a.cheaterDelta}
+        </th>
+        <th scope="col" className="colhead">
+        {a.cheaterAt}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
             {cheaters.map((row) => (
               <tr key={`${row.user_id}-${row.torrent_id}`}>
                 <td className="rowfollow">

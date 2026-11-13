@@ -34,30 +34,32 @@ export function StaffPackAppliesPanel({ rows, busy, guard }: PackAppliesProps) {
         <p className="text-xs text-sub">{t.packAppliesEmpty}</p>
       ) : (
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">
-                #
-              </th>
-              <th scope="col" className="colhead">
-                {t.fldApplyTime}
-              </th>
-              <th scope="col" className="colhead">
-                {t.packTitle}
-              </th>
-              <th scope="col" className="colhead">
-                {t.packMode}
-              </th>
-              <th scope="col" className="colhead">
-                {t.fldApplyChanges}
-              </th>
-              <th scope="col" className="colhead">
-                {t.fldApplyActor}
-              </th>
-              <th scope="col" className="colhead text-right">
-                {dict.cmgmt.colActions}
-              </th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        #
+        </th>
+        <th scope="col" className="colhead">
+        {t.fldApplyTime}
+        </th>
+        <th scope="col" className="colhead">
+        {t.packTitle}
+        </th>
+        <th scope="col" className="colhead">
+        {t.packMode}
+        </th>
+        <th scope="col" className="colhead">
+        {t.fldApplyChanges}
+        </th>
+        <th scope="col" className="colhead">
+        {t.fldApplyActor}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
             {rows.map((r) => {
               // 0317 H2：changes 里除键值行还有分类段行（改名/新增/失活），
               // 与切换向导的 diff 渲染同口径

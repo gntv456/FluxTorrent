@@ -81,7 +81,8 @@ const PAIRS = [
   ["危险 danger/软底", "--danger", "--danger-soft"],
   ["危险 danger/卡片", "--danger", "--surface-card"],
   ["信息 info/卡片", "--info", "--surface-card"],
-  ["信息 sky/卡片", "--sky", "--surface-card"],
+  // --sky 是装饰色（渐变/边框），正文用 --sky-text（2026-11-13 拆分）
+  ["信息 sky 文本/卡片", "--sky-text", "--surface-card"],
   ["表格正文 body-deep/行底", "--text-body-deep", "--surface-card"],
   ["表头 brand/表头底", "--text-brand", "--head-a"],
 ];

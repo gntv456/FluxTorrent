@@ -12,11 +12,13 @@
 [data-theme="brand"] {
   color-scheme: light;
   /* ===== Aurora 品牌六色（Seedlight §2） ===== */
-  /* 明色 AA 校准（2026-11-13 全站 UI 审查）：原亮蓝作文本
-     在白底仅 2.57:1，改为同色相深阶（白底 5.53）；
-     渐变 --grad-aurora 仍用字面亮蓝，不受影响。 */
-  --sky: #1f6da6;
+  /* --sky 是品牌装饰色（头像渐变 / 边框 / 强调线，见 forums-home.css
+     等 30+ 处），保持原亮蓝不动；正文用 --sky-text（白底 5.53:1）。
+     2026-11-13 全站 UI 审查：此前把 --sky 整体压深会连带改暗装饰
+     渐变，属误伤，已拆成两个令牌。 */
+  --sky: #2fa8ff;
   --sky-deep: #1e8ae8;
+  --sky-text: #1f6da6;
   --sky-soft: #e8f4ff;
 
   /* ===== 深色表面上的前景色（Hero 身份卡等）=====
@@ -350,6 +352,8 @@
   --sky: #47b3ff;
   --sky-deep: #6cc0ff;
   --sky-soft: #12233c;
+  /* 夜间 --sky 作正文已达 7.0:1，文本令牌与装饰色同值即可 */
+  --sky-text: #47b3ff;
   --sun: #ffd35f;
   --sun-soft: #33290f;
   --coral: #ff9072;

@@ -131,21 +131,23 @@ export function StaffSecurityPanel({
             </div>
           </section>
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  {t.fldIp}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.fldReason}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.banBy}
-                </th>
-                <th scope="col" className="colhead text-right">
-                  {dict.cmgmt.colActions}
-                </th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.fldIp}
+        </th>
+        <th scope="col" className="colhead">
+        {t.fldReason}
+        </th>
+        <th scope="col" className="colhead">
+        {t.banBy}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
               {bans.map((b) => (
                 <tr key={b.id}>
                   <td className="font-mono">{b.ip}</td>

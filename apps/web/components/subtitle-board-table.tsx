@@ -86,16 +86,18 @@ export function SubtitleListTable({
       role="region"
     >
       <table className="nexus-table subtitles-list-table">
-        <tbody>
-          <tr>
-            <th scope="col" className="colhead">{t.colLang}</th>
-            <th scope="col" className="colhead text-center">{t.colTitle}</th>
-            <th scope="col" className="colhead text-center">{t.colTime}</th>
-            <th scope="col" className="colhead text-center">{t.colSize}</th>
-            <th scope="col" className="colhead text-center">{t.colHits}</th>
-            <th scope="col" className="colhead text-center">{t.colUploader}</th>
-            <th scope="col" className="colhead text-center">{t.colReport}</th>
-          </tr>
+        <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.colLang}</th>
+        <th scope="col" className="colhead text-center">{t.colTitle}</th>
+        <th scope="col" className="colhead text-center">{t.colTime}</th>
+        <th scope="col" className="colhead text-center">{t.colSize}</th>
+        <th scope="col" className="colhead text-center">{t.colHits}</th>
+        <th scope="col" className="colhead text-center">{t.colUploader}</th>
+        <th scope="col" className="colhead text-center">{t.colReport}</th>
+        </tr>
+        </thead>
+      <tbody>
           {rows.map((s) => (
             <tr key={s.id}>
               <td className="text-center" title={langLabelOf(s.lang)}>

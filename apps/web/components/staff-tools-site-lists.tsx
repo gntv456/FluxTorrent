@@ -84,13 +84,15 @@ export function StaffSiteLists({
           </div>
         )}
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">ID</th>
-              <th scope="col" className="colhead">{t.mlUser}</th>
-              <th scope="col" className="colhead">{t.ncTorrents}</th>
-              <th scope="col" className="colhead">{t.ncLastSeen}</th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">ID</th>
+        <th scope="col" className="colhead">{t.mlUser}</th>
+        <th scope="col" className="colhead">{t.ncTorrents}</th>
+        <th scope="col" className="colhead">{t.ncLastSeen}</th>
+        </tr>
+        </thead>
+      <tbody>
             {notConnectRows.map((r) => (
               <tr key={r.id}>
                 <td className="num">{r.id}</td>

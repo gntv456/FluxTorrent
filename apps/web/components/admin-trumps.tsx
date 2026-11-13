@@ -62,14 +62,16 @@ export function AdminTrumps() {
       {rows && rows.length > 0 && (
         <div className="brand-wide-table-scroll">
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">ID</th>
-                <th scope="col" className="colhead">{d.reportColTarget}</th>
-                <th scope="col" className="colhead">{d.reportColReason}</th>
-                <th scope="col" className="colhead">{d.reportColNote}</th>
-                <th scope="col" className="colhead">{d.reportButton}</th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">ID</th>
+        <th scope="col" className="colhead">{d.reportColTarget}</th>
+        <th scope="col" className="colhead">{d.reportColReason}</th>
+        <th scope="col" className="colhead">{d.reportColNote}</th>
+        <th scope="col" className="colhead">{d.reportButton}</th>
+        </tr>
+        </thead>
+      <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="rowfollow">{r.id}</td>

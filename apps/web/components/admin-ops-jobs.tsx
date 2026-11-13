@@ -148,25 +148,27 @@ export function AdminOpsJobs() {
           </h3>
           <div className="brand-wide-table-scroll">
             <table className="nexus-table text-xs">
-              <tbody>
-                <tr>
-                  <th scope="col" className="colhead">
-                    {t.jobsJob}
-                  </th>
-                  <th scope="col" className="colhead w-44">
-                    {t.jobsLast}
-                  </th>
-                  <th scope="col" className="colhead w-16">
-                    {t.jobsState}
-                  </th>
-                  <th scope="col" className="colhead w-28">
-                    {t.jobsBy}
-                  </th>
-                  <th scope="col" className="colhead">
-                    {t.jobsResult}
-                  </th>
-                  <td className="colhead w-20" />
-                </tr>
+              <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.jobsJob}
+        </th>
+        <th scope="col" className="colhead w-44">
+        {t.jobsLast}
+        </th>
+        <th scope="col" className="colhead w-16">
+        {t.jobsState}
+        </th>
+        <th scope="col" className="colhead w-28">
+        {t.jobsBy}
+        </th>
+        <th scope="col" className="colhead">
+        {t.jobsResult}
+        </th>
+        <td className="colhead w-20" />
+        </tr>
+        </thead>
+      <tbody>
                 {items.map((j) => (
                   <tr key={j.job}>
                     <td className="font-mono">{j.job}</td>

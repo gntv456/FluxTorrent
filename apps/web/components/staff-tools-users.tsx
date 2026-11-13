@@ -135,22 +135,24 @@ export function StaffUsersPanel({
             </div>
           </section>
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  ID
-                </th>
-                <td className="colhead">{t.warnUserCol}</td>
-                <th scope="col" className="colhead">
-                  {t.warnUntil}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.fldReason}
-                </th>
-                <th scope="col" className="colhead text-right">
-                  {dict.cmgmt.colActions}
-                </th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        ID
+        </th>
+        <th scope="col" className="colhead">{t.warnUserCol}</th>
+        <th scope="col" className="colhead">
+        {t.warnUntil}
+        </th>
+        <th scope="col" className="colhead">
+        {t.fldReason}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
               {warned.map((w) => (
                 <tr key={w.id}>
                   <td className="num">{w.id}</td>

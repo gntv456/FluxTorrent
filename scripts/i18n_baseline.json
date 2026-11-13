@@ -574,10 +574,10 @@
  "components/staff-tools-ops-forms.tsx": [],
  "components/staff-tools-ops.tsx": [],
  "components/staff-tools-pack-applies.tsx": [
-  66,
-  69,
-  72,
-  74
+  68,
+  71,
+  74,
+  76
  ],
  "components/staff-tools-perm-matrix.tsx": [],
  "components/staff-tools-perm.tsx": [],
@@ -1020,7 +1020,7 @@
   266
  ],
  "app/(main)/games/farm/_inner.tsx": [
-  257
+  259
  ],
  "app/(main)/games/capsule/page.tsx": [],
  "app/(main)/games/capsule/_inner.tsx": [],

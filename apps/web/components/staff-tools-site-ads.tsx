@@ -108,21 +108,23 @@ export function SiteAdsTab(props: {
         </div>
       </section>
       <table className="nexus-table">
-        <tbody>
-          <tr>
-            <th scope="col" className="colhead">
-              {dict.cmgmt.fldTitle}
-            </th>
-            <th scope="col" className="colhead">
-              {t.adsPosition}
-            </th>
-            <th scope="col" className="colhead">
-              {t.adsEnabled}
-            </th>
-            <th scope="col" className="colhead text-right">
-              {dict.cmgmt.colActions}
-            </th>
-          </tr>
+        <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {dict.cmgmt.fldTitle}
+        </th>
+        <th scope="col" className="colhead">
+        {t.adsPosition}
+        </th>
+        <th scope="col" className="colhead">
+        {t.adsEnabled}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
           {ads.map((a) => (
             <tr key={a.id}>
               <td>{a.title}</td>

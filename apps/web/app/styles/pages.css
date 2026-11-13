@@ -1826,7 +1826,7 @@ textarea.bbcode {
   white-space: nowrap;
 }
 .task-history td.task-history__st--ongoing {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .task-history td.task-history__st--done {
   color: var(--success);

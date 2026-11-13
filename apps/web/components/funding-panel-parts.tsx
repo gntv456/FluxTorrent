@@ -44,18 +44,20 @@ export function MineTable({
       <h3 className="mb-2 text-sm font-bold">{t.mine}</h3>
       <div className="brand-wide-table-scroll">
         <table className="nexus-table text-xs">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">
-                #
-              </th>
-              <th scope="col" className="colhead">
-                {t.raisedCol}
-              </th>
-              <th scope="col" className="colhead w-24">
-                {t.statusCol}
-              </th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        #
+        </th>
+        <th scope="col" className="colhead">
+        {t.raisedCol}
+        </th>
+        <th scope="col" className="colhead w-24">
+        {t.statusCol}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
             {(mine ?? []).map((m, i) => (
               <tr key={`${m[0]}-${i}`}>
                 <td className="rowfollow num">

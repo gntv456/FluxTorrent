@@ -53,13 +53,15 @@ export function AppealRows({
         <div className="overflow-x-auto">
           {/* 样图这四列；申诉正文跟在类型下面一行，太长截断、title 给全文 */}
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead w-36">{t.colTime}</th>
-                <th scope="col" className="colhead">{t.colKind}</th>
-                <th scope="col" className="colhead w-24">{t.colStatus}</th>
-                <th scope="col" className="colhead w-[30%]">{t.colResult}</th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead w-36">{t.colTime}</th>
+        <th scope="col" className="colhead">{t.colKind}</th>
+        <th scope="col" className="colhead w-24">{t.colStatus}</th>
+        <th scope="col" className="colhead w-[30%]">{t.colResult}</th>
+        </tr>
+        </thead>
+      <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="text-xs text-sub">

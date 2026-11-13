@@ -174,27 +174,29 @@ export function BanLogList() {
       {data && rows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  {t.colUser}
-                </th>
-                <th scope="col" className="colhead w-20">
-                  {t.colKind}
-                </th>
-                <th scope="col" className="colhead w-28">
-                  {t.colCause}
-                </th>
-                <th scope="col" className="colhead w-36">
-                  {t.colDate}
-                </th>
-                <th scope="col" className="colhead w-24">
-                  {t.colTerm}
-                </th>
-                <th scope="col" className="colhead w-16 text-right">
-                  {t.colAction}
-                </th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.colUser}
+        </th>
+        <th scope="col" className="colhead w-20">
+        {t.colKind}
+        </th>
+        <th scope="col" className="colhead w-28">
+        {t.colCause}
+        </th>
+        <th scope="col" className="colhead w-36">
+        {t.colDate}
+        </th>
+        <th scope="col" className="colhead w-24">
+        {t.colTerm}
+        </th>
+        <th scope="col" className="colhead w-16 text-right">
+        {t.colAction}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
               {rows.map((r, i) => (
                 <tr key={`${r.name_masked}-${i}`}>
                   <td className="max-w-[200px] truncate font-bold">

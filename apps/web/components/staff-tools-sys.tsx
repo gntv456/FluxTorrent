@@ -85,15 +85,17 @@ export function StaffSysPanel({
             </div>
           </div>
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  {t.dsState}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.dsCount}
-                </th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.dsState}
+        </th>
+        <th scope="col" className="colhead">
+        {t.dsCount}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
               {dbStats.connections.map((c) => (
                 <tr key={c.state}>
                   <td className="font-mono text-xs">{c.state}</td>

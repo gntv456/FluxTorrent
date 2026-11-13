@@ -82,15 +82,17 @@ export function ContentRulesTab(props: {
         </div>
       </section>
       <table className="nexus-table">
-        <tbody>
-          <tr>
-            <th scope="col" className="colhead">
-              {dict.cmgmt.fldTitle}
-            </th>
-            <th scope="col" className="colhead text-right">
-              {dict.cmgmt.colActions}
-            </th>
-          </tr>
+        <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {dict.cmgmt.fldTitle}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
           {rules.map((r) => (
             <tr key={r.id}>
               <td>{r.title}</td>

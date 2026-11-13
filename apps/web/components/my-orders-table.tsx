@@ -90,15 +90,17 @@ export function MyOrdersTable({
       </div>
       <div className="brand-wide-table-scroll">
         <table className="nexus-table profilet">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">{t.colNo}</th>
-              <th scope="col" className="colhead">{t.colItem}</th>
-              <th scope="col" className="colhead">{t.colKind}</th>
-              <th scope="col" className="colhead">{t.colPrice}</th>
-              <th scope="col" className="colhead">{t.colStatus}</th>
-              <th scope="col" className="colhead">{t.colAt}</th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.colNo}</th>
+        <th scope="col" className="colhead">{t.colItem}</th>
+        <th scope="col" className="colhead">{t.colKind}</th>
+        <th scope="col" className="colhead">{t.colPrice}</th>
+        <th scope="col" className="colhead">{t.colStatus}</th>
+        <th scope="col" className="colhead">{t.colAt}</th>
+        </tr>
+        </thead>
+      <tbody>
             {rows.map((r) => {
               const badge = fulfillBadge(r.fulfill_state, t);
               return (

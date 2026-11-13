@@ -220,21 +220,23 @@ export function ContentManage({ initialTab }: { initialTab?: MgmtTab }) {
           </section>
           <div className="brand-wide-table-scroll">
             <table className="nexus-table">
-              <tbody>
-                <tr>
-                  <th scope="col" className="colhead">
-                    {t.fldTitle}
-                  </th>
-                  <th scope="col" className="colhead">
-                    {t.fldBadge}
-                  </th>
-                  <th scope="col" className="colhead">
-                    {t.fldDate}
-                  </th>
-                  <th scope="col" className="colhead text-right">
-                    {t.colActions}
-                  </th>
-                </tr>
+              <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.fldTitle}
+        </th>
+        <th scope="col" className="colhead">
+        {t.fldBadge}
+        </th>
+        <th scope="col" className="colhead">
+        {t.fldDate}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {t.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
                 {news.map((n) => (
                   <tr key={n.id}>
                     <td>{n.title}</td>

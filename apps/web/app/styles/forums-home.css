@@ -133,7 +133,7 @@
   transition: color var(--motion-fast) var(--motion-ease);
 }
 .fh-mine__a:hover {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .fh-mine__caret {
   color: var(--text-faint);
@@ -219,7 +219,7 @@
   transition: color var(--motion-fast) var(--motion-ease);
 }
 .fh-hot__tt:hover {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .fh-hot__rc {
   flex-shrink: 0;
@@ -464,7 +464,7 @@
   white-space: nowrap;
 }
 .fh-topic__t:hover {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .fh-topic__board {
   flex-shrink: 0;
@@ -741,7 +741,7 @@
 }
 .tp-side__act:hover {
   border-color: var(--sky);
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .tp-side__act--like.is-on {
   border-color: var(--coral);
@@ -768,11 +768,11 @@
   line-height: 1.4;
 }
 .tp-toc__a:hover {
-  color: var(--sky);
+  color: var(--sky-text);
   background: var(--surface-sunken);
 }
 .tp-toc__a.is-on {
-  color: var(--sky);
+  color: var(--sky-text);
   font-weight: 600;
 }
 .tp-toc__sub .tp-toc__a {
@@ -824,7 +824,7 @@
   margin-top: 6px;
   padding: 2px 8px;
   font-size: 12px;
-  color: var(--sky);
+  color: var(--sky-text);
 }
 /* 手机端两翼由 .pting-forums 断点统一隐藏；右栏操作组降级为
    头部操作行（真身一直在），目录在短屏价值低，一并隐藏即可 */
@@ -852,7 +852,7 @@
 }
 .tp-headmenu__trigger:hover {
   border-color: var(--sky);
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .tp-headmenu__drop {
   right: 0;
@@ -885,6 +885,11 @@
   color: var(--muted);
 }
 .tp-replies .nexus-table {
+  /* 回复段由 <table> 改为 <ol>（2026-11-13 修 tr/td 越界水合错误）：
+     ol 默认带序号与缩进，这里复位成表格观感 */
+  list-style: none;
+  margin: 0;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface-card);
@@ -974,10 +979,10 @@
   color: var(--muted);
 }
 .tp-edcard__tab:hover {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .tp-edcard__tab.is-on {
-  color: var(--sky);
+  color: var(--sky-text);
   font-weight: 600;
   background: var(--sky-soft);
 }

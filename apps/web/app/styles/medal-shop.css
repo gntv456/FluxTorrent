@@ -289,7 +289,7 @@
   font-size: 12px;
 }
 .honor-ft .lk {
-  color: var(--sky);
+  color: var(--sky-text);
   font-weight: 600;
 }
 .honor-ft .tail {
@@ -474,7 +474,7 @@
   padding: 2px 0;
   border: 0;
   background: none;
-  color: var(--sky);
+  color: var(--sky-text);
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;

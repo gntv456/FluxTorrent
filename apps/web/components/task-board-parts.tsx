@@ -213,14 +213,16 @@ export function TaskHistory({ ov }: { ov: TaskOverview | null }) {
     <section className="task-panel task-history">
       <div className="brand-wide-table-scroll">
         <table className="nexus-table">
-          <tbody>
-            <tr>
-              <th scope="col" className="colhead">{t.hTask}</th>
-              <th scope="col" className="colhead">{t.hStatus}</th>
-              <th scope="col" className="colhead">{dict.exams.colProgress}</th>
-              <th scope="col" className="colhead">{t.hClaimedAt}</th>
-              <th scope="col" className="colhead">{t.hSettledAt}</th>
-            </tr>
+          <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.hTask}</th>
+        <th scope="col" className="colhead">{t.hStatus}</th>
+        <th scope="col" className="colhead">{dict.exams.colProgress}</th>
+        <th scope="col" className="colhead">{t.hClaimedAt}</th>
+        <th scope="col" className="colhead">{t.hSettledAt}</th>
+        </tr>
+        </thead>
+      <tbody>
             {(ov?.my_records ?? []).map((r, i) => (
               <tr key={i}>
                 <td>{r.name}</td>

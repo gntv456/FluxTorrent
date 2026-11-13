@@ -68,11 +68,12 @@ export function ConfirmDialog({
   useEffect(() => setMounted(true), []);
   useFocusTrap(open, cardRef);
 
-  // Esc 关闭（焦点陷阱已管 Tab；Esc 是对话框通用退出语义）
+  // Esc 关闭（焦点陷阱已管 Tab；Esc 是对话框通用退出语义）。
+  // busy 期间不响应：请求在途时关框会让错误无处显示（2026-11-13 审查）。
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !busy) onClose();
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -81,7 +82,7 @@ export function ConfirmDialog({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open, onClose, busy]);
 
   // 重开时清空二次输入（上次的输入不残留）
   useEffect(() => {
@@ -100,7 +101,7 @@ export function ConfirmDialog({
       role="presentation"
       onClick={() => {
         // danger 不响应遮罩误触：必须显式点取消/确认
-        if (tone !== "danger") onClose();
+        if (tone !== "danger" && !busy) onClose();
       }}
     >
       <div

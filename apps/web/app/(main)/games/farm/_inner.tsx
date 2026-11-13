@@ -65,6 +65,7 @@ export default function FarmPage({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState<number | null>(null);
+  const [claimUnknown, setClaimUnknown] = useState<string | null>(null);
 
   // 农场周常任务（样图⑤任务卡）：arcade-meta 的 quests 里筛 farm 系行。
   // 大厅组件 ArcadeMeta 也会拉同一端点，但它是另一棵树 —— 这里独立拉取。
@@ -243,11 +244,12 @@ export default function FarmPage({
     }));
   const questPeriod = questPack?.period ?? "";
 
-  /** 领取农场周常：幂等键首次生成并缓存，失败（网络/未知）复用同键重试 */
+  /** 领取周常：幂等键首次生成并缓存，失败（网络/未知）复用同键重试 */
   async function claimQuest(code: string, reuse = false) {
     if (claiming) return;
     setClaiming(`quest:${code}`);
     setErr(null);
+    setClaimUnknown(null);
     if (!reuse || !qIdem.current[code]) qIdem.current[code] = clientUuid();
     try {
       await api.post(`/api/v1/games/arcade/quest/${code}/claim`, {
@@ -258,18 +260,17 @@ export default function FarmPage({
       await loadQuests();
       void loadMe();
     } catch (e) {
+      // 业务失败才清键；网络/未知保留键并给重试入口（防重复/漏领）
       if (e instanceof ApiError && e.code !== 1000) delete qIdem.current[code];
-      setErr(
-        e instanceof ApiError
-          ? apiErrorMessage(dict, e) : dict.common.networkError,
-      );
+      else setClaimUnknown(code);
+      setErr(e instanceof ApiError
+        ? apiErrorMessage(dict, e) : dict.common.networkError);
     } finally {
       setClaiming(null);
     }
   }
 
-  /** 一键收获：逐块调同一 harvest 端点（后端幂等 + 行锁，重复点也安全）；
-   *  单块失败不中断其余（例如某块刚好被并发收走）。 */
+  /** 一键收获：逐块调 harvest（后端幂等+行锁）；单块失败不中断其余 */
   async function harvestAll() {
     if (busy || readyPlots.length === 0) return;
     setBusy(true);
@@ -350,30 +351,29 @@ export default function FarmPage({
         balance={me?.balance ?? null}
         todayNet={me?.today_net ?? null}
         limitLeft={data.hour_left ?? null}
-        limitText={
-          data.hour_left === undefined
-            ? undefined
-            : tf.hourLeft.replace("{n}", String(data.hour_left))
-        }
+        limitText={data.hour_left === undefined ? undefined
+          : tf.hourLeft.replace("{n}", String(data.hour_left))}
       />
 
       {/* 样图⑤：田园/牧场/加工/图鉴四 Tab（不平铺） */}
-      <GameTabs
+      <GameTabs active={tab} onChange={setTab}
         tabs={[
           { key: "field", label: tf.tabField, icon: "🌾" },
           { key: "ranch", label: tf.tabRanch, icon: "🐄" },
           { key: "craft", label: tf.tabCraft, icon: "🏭" },
           { key: "album", label: tf.tabAlbum, icon: "📖" },
-        ]}
-        active={tab}
-        onChange={setTab}
-      />
+        ]} />
 
-      {/* 错误放在顶部（长页面里底部提示会跑出视野） */}
       {err && (
-        <p className="rounded-[var(--r-md)] bg-coral-soft px-3 py-2 text-xs font-bold text-ink">
-          {err}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p role="alert" className="rounded-[var(--r-md)] bg-coral-soft
+            px-3 py-2 text-xs font-bold text-ink">{err}</p>
+          {claimUnknown && (
+            <button type="button" onClick={() => void claimQuest(claimUnknown, true)}
+              className="min-h-11 rounded-full bg-sky px-3 text-xs font-bold
+                text-[var(--text-on-accent)]">{dict.common.retry}</button>
+          )}
+        </div>
       )}
 
       {/* 农情条（样图⑤天气条的落地版）：站点没有天气系统，文案用

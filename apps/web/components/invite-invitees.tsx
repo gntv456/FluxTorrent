@@ -94,14 +94,16 @@ export function InviteeList({
         {/* 桌面：五列表格 */}
         <div className="brand-wide-table-scroll hidden sm:block">
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">{t.invUser}</th>
-                <th scope="col" className="colhead">{t.invLevel}</th>
-                <th scope="col" className="colhead">{t.invUploaded}</th>
-                <th scope="col" className="colhead">{t.invDownloaded}</th>
-                <th scope="col" className="colhead">{t.invJoined}</th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">{t.invUser}</th>
+        <th scope="col" className="colhead">{t.invLevel}</th>
+        <th scope="col" className="colhead">{t.invUploaded}</th>
+        <th scope="col" className="colhead">{t.invDownloaded}</th>
+        <th scope="col" className="colhead">{t.invJoined}</th>
+        </tr>
+        </thead>
+      <tbody>
               {invitees.map((u) => (
                 <tr key={u.id}>
                   <td>

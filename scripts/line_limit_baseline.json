@@ -175,7 +175,7 @@
  "apps/web/components/task-board-parts.tsx::wide": 2,
  "apps/web/components/team-panel.tsx::wide": 3,
  "apps/web/components/theme-toggle.tsx::wide": 1,
- "apps/web/components/torrent-list-client.tsx::wide": 4,
+ "apps/web/components/torrent-list-client.tsx::wide": 2,
  "apps/web/components/torrent-manage-parts.tsx": 309,
  "apps/web/components/torrent-manage.tsx": 348,
  "apps/web/components/torrent-manage.tsx::wide": 1,

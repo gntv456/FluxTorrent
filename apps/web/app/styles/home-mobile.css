@@ -25,7 +25,7 @@
 }
 .home-site-data__more > summary {
   padding: 9px 14px;
-  color: var(--sky);
+  color: var(--sky-text);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -364,7 +364,7 @@
   display: grid;
   place-items: center;
   border-radius: var(--r-md);
-  color: var(--sky);
+  color: var(--sky-text);
   background: var(--sky-soft);
 }
 .mhome-quick__icon svg {
@@ -508,7 +508,7 @@
   font-variant-numeric: tabular-nums;
 }
 .mhome-spark__num.is-a dd {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .mhome-spark__num.is-b dd {
   color: var(--sun);

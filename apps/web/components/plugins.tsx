@@ -80,24 +80,26 @@ export function ContestBoard() {
       ) : (
         <div className="brand-wide-table-scroll">
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  {t.colTitle}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.colPeriod}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.colEntries}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.colLeader}
-                </th>
-                <th scope="col" className="colhead text-right">
-                  {dict.cmgmt.colActions}
-                </th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.colTitle}
+        </th>
+        <th scope="col" className="colhead">
+        {t.colPeriod}
+        </th>
+        <th scope="col" className="colhead">
+        {t.colEntries}
+        </th>
+        <th scope="col" className="colhead">
+        {t.colLeader}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
               {rows.map((c) => (
                 <tr key={c.id}>
                   <td>

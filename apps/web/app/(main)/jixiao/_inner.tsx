@@ -205,7 +205,7 @@ export default function JixiaoPage() {
                 </tr>
               )}
               {!compact && (
-                <>
+                <thead>
                   <tr>
                     <th scope="col" className="colhead">{t.colName}</th>
                     <th scope="col" className="colhead">{t.colPeriod}</th>
@@ -213,6 +213,10 @@ export default function JixiaoPage() {
                     <th scope="col" className="colhead">{t.colPaidBy}</th>
                     <th scope="col" className="colhead">{t.colAt}</th>
                   </tr>
+                </thead>
+              )}
+              {!compact && (
+                <>
                   {claims.map((c) => (
                     <tr key={c.id}>
                       <td>{c.type_name}</td>

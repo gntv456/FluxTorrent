@@ -12,14 +12,9 @@ import { useConfirm, AskDialog } from "@/components/ui/use-confirm";
  *  按域拆出，300 门禁）。 */
 
 interface FunItem {
-  id: number;
-  username: string | null;
-  title: string;
-  body: string | null;
-  status: string;
-  added: string;
-  fun_votes: number | null;
-  dull_votes: number | null;
+  id: number; username: string | null; title: string;
+  body: string | null; status: string; added: string;
+  fun_votes: number | null; dull_votes: number | null;
   my_vote: string | null;
 }
 
@@ -32,7 +27,7 @@ interface LinkItem {
   admin_name: string | null;
   email: string | null;
   reason: string | null;
-}/** 趣味盒：编辑器 + 列表（禁言站口径：有趣/无聊投票 + 封禁/恢复） */
+} /** 趣味盒：编辑器 + 列表（禁言站口径：有趣/无聊投票 + 封禁/恢复） */
 export function FunTab({
   fun,
   load,
@@ -105,86 +100,90 @@ export function FunTab({
         </div>
       </section>
       <div className="brand-wide-table-scroll">
-      <table className="nexus-table">
-        <tbody>
-          <tr>
-            <th scope="col" className="colhead">{t.fldTitle}</th>
-            <th scope="col" className="colhead">{t.funAuthor}</th>
-            <th scope="col" className="colhead">{t.funVotes}</th>
-            <th scope="col" className="colhead">{t.funStatus}</th>
-            <th scope="col" className="colhead text-right">{t.colActions}</th>
-          </tr>
-          {fun.map((f) => (
-            <tr key={f.id}>
-              <td>{f.title}</td>
-              <td className="text-sub">{f.username ?? "—"}</td>
-              <td className="num">
-                😂 {f.fun_votes ?? 0} / 😑 {f.dull_votes ?? 0}
-              </td>
-              <td>
-                <span className={`fun-status fun-status--${f.status}`}>
-                  {t.funSt[f.status] ?? f.status}
-                </span>
-              </td>
-              <td className="text-right">
-                <button
-                  className="cmgmt-act"
-                  onClick={() =>
-                    setFEdit({ id: f.id, title: f.title, body: f.body ?? "" })
-                  }
-                >
-                  {t.btnEdit}
-                </button>
-                {f.status !== "banned" ? (
+        <table className="nexus-table">
+          <thead>
+            <tr>
+              <th scope="col" className="colhead">{t.fldTitle}</th>
+              <th scope="col" className="colhead">{t.funAuthor}</th>
+              <th scope="col" className="colhead">{t.funVotes}</th>
+              <th scope="col" className="colhead">{t.funStatus}</th>
+              <th scope="col" className="colhead text-right">{t.colActions}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fun.map((f) => (
+              <tr key={f.id}>
+                <td>{f.title}</td>
+                <td className="text-sub">{f.username ?? "—"}</td>
+                <td className="num">
+                  😂 {f.fun_votes ?? 0} / 😑 {f.dull_votes ?? 0}
+                </td>
+                <td>
+                  <span className={`fun-status fun-status--${f.status}`}>
+                    {t.funSt[f.status] ?? f.status}
+                  </span>
+                </td>
+                <td className="text-right">
+                  <button
+                    className="cmgmt-act"
+                    onClick={() =>
+                      setFEdit({ id: f.id, title: f.title, body: f.body ?? "" })
+                    }
+                  >
+                    {t.btnEdit}
+                  </button>
+                  {f.status !== "banned" ? (
+                    <button
+                      className="cmgmt-act cmgmt-act--danger"
+                      onClick={() =>
+                        void api
+                          .put(`/api/v1/fun/items/${f.id}/status`, {
+                            status: "banned",
+                          })
+                          .then(load)
+                          .catch((e) => toast.error(apiErrorMessage(dict, e)))
+                      }
+                    >
+                      {t.btnBan}
+                    </button>
+                  ) : (
+                    <button
+                      className="cmgmt-act cmgmt-act--ok"
+                      onClick={() =>
+                        void api
+                          .put(`/api/v1/fun/items/${f.id}/status`, {
+                            status: "normal",
+                          })
+                          .then(load)
+                          .catch((e) => toast.error(apiErrorMessage(dict, e)))
+                      }
+                    >
+                      {t.btnUnban}
+                    </button>
+                  )}
                   <button
                     className="cmgmt-act cmgmt-act--danger"
                     onClick={() =>
-                      void api
-                        .put(`/api/v1/fun/items/${f.id}/status`, {
-                          status: "banned",
-                        })
-                        .then(load)
-                        .catch((e) => toast.error(apiErrorMessage(dict, e)))
+                      ask.open({
+                        title: t.confirmDelete,
+                        tone: "danger",
+                        run: () =>
+                          void api
+                            .del(`/api/v1/fun/items/${f.id}`)
+                            .then(load)
+                            .catch((e) =>
+                              toast.error(apiErrorMessage(dict, e)),
+                            ),
+                      })
                     }
                   >
-                    {t.btnBan}
+                    {t.btnDelete}
                   </button>
-                ) : (
-                  <button
-                    className="cmgmt-act cmgmt-act--ok"
-                    onClick={() =>
-                      void api
-                        .put(`/api/v1/fun/items/${f.id}/status`, {
-                          status: "normal",
-                        })
-                        .then(load)
-                        .catch((e) => toast.error(apiErrorMessage(dict, e)))
-                    }
-                  >
-                    {t.btnUnban}
-                  </button>
-                )}
-                <button
-                  className="cmgmt-act cmgmt-act--danger"
-                  onClick={() =>
-                    ask.open({
-                      title: t.confirmDelete,
-                      tone: "danger",
-                      run: () =>
-                        void api
-                          .del(`/api/v1/fun/items/${f.id}`)
-                          .then(load)
-                          .catch((e) => toast.error(apiErrorMessage(dict, e))),
-                    })
-                  }
-                >
-                  {t.btnDelete}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <AskDialog {...ask} />
     </>
@@ -223,7 +222,9 @@ export function LinksTab({
           <tbody>
             <tr>
               <th scope="col" className="colhead">{t.linkName}</th>
-              <th scope="col" className="colhead">URL</th>
+              <th scope="col" className="colhead">
+                URL
+              </th>
               <th scope="col" className="colhead">{t.linkAdmin}</th>
               <th scope="col" className="colhead">{t.linkEmail}</th>
               <th scope="col" className="colhead">{t.fldStatus}</th>

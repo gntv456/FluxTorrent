@@ -125,12 +125,12 @@ section("2. 硬编码色值（只减不增）");
   const perFile = {};
   for (const f of allCss) {
     const s = read(f);
-    // 排除 #! 与 url(#id) 这类非颜色用法
-    const n = (s.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).filter(
-      (x) => !/^#[0-9a-fA-F]{1,2}$/.test(x) || true,
-    ).length;
-    const nHex = (s.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).length;
-    const nRgba = (s.match(/rgba?\([^)]*\)/g) ?? []).length;
+    // 令牌定义行（--x: #fff;）是**声明**而非硬编码使用：令牌层本身就
+    // 是字面量的唯一合法归宿，计入会让「新增令牌」被判为退化
+    // （2026-11-13 拆 --sky-text 时实测 +2 误报）。
+    const stripped = s.replace(/^\s*--[\w-]+\s*:\s*[^;]+;/gm, "");
+    const nHex = (stripped.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).length;
+    const nRgba = (stripped.match(/rgba?\([^)]*\)/g) ?? []).length;
     perFile[f] = nHex + nRgba;
     total += nHex + nRgba;
   }

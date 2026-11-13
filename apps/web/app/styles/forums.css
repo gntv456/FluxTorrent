@@ -55,7 +55,7 @@
   transition: color var(--motion-fast) var(--motion-ease);
 }
 .ff-side__name:hover {
-  color: var(--sky);
+  color: var(--sky-text);
 }
 /* 标题右侧的计数徽标（"我关注的版块 4"） */
 .ff-side__n {

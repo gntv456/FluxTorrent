@@ -99,21 +99,23 @@ export function StaffSecPanels({
             </div>
           </section>
           <table className="nexus-table">
-            <tbody>
-              <tr>
-                <th scope="col" className="colhead">
-                  {t.ebPattern}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.ebMode}
-                </th>
-                <th scope="col" className="colhead">
-                  {t.ebNote}
-                </th>
-                <th scope="col" className="colhead text-right">
-                  {dict.cmgmt.colActions}
-                </th>
-              </tr>
+            <thead>
+        <tr>
+        <th scope="col" className="colhead">
+        {t.ebPattern}
+        </th>
+        <th scope="col" className="colhead">
+        {t.ebMode}
+        </th>
+        <th scope="col" className="colhead">
+        {t.ebNote}
+        </th>
+        <th scope="col" className="colhead text-right">
+        {dict.cmgmt.colActions}
+        </th>
+        </tr>
+        </thead>
+      <tbody>
               {emailBans.map((e) => (
                 <tr key={e.id}>
                   <td className="font-mono">{e.pattern}</td>

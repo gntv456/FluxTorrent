@@ -384,7 +384,7 @@
 .usermenu__tools .userbar-tool:hover {
   border-color: var(--sky);
   background: var(--sky-soft);
-  color: var(--sky);
+  color: var(--sky-text);
 }
 .usermenu__tools .userbar-tool__icon {
   width: 17px;
