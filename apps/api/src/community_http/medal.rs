@@ -26,6 +26,9 @@ struct MedalRow {
     sale_begin_at: Option<chrono::DateTime<chrono::Utc>>,
     sale_end_at: Option<chrono::DateTime<chrono::Utc>>,
     inventory: Option<i32>,
+    /// 销售状态（服务端按 now() 计算：upcoming/ended/sold_out/on_sale）。
+    /// 前端据此决定是否显示购买按钮，避免「尚未开售」仍有可点购买的问题。
+    sale_status: String,
     bonus_addition_factor: f64,
     category_id: i32,
     category_name: Option<String>,
@@ -99,9 +102,20 @@ pub(crate) async fn medal_list(
     let auth = require_auth(&req, &state).await.ok();
     let uid = auth.map(|a| a.id);
     let rows = sqlx::query_as::<_, MedalRow>(
+        // inventory 对前台是「剩余库存」：medals.inventory 存的是限量总额，
+        // 已售量 = user_medals 持有行数。此前直接回原始列 ⇒ 买完库存不掉，
+        // 与购买/赠送口的限量判定（inv_used >= inventory）口径也不一致。
                 "SELECT m.id, m.name, m.price, m.rarity, m.limited, \
          m.description, m.duration_days, m.get_type, m.sale_begin_at, \
-         m.sale_end_at, m.inventory, m.bonus_addition_factor::float8, \
+         m.sale_end_at, \
+         CASE WHEN m.inventory IS NULL THEN NULL \
+              ELSE GREATEST(m.inventory - (SELECT count(*) FROM user_medals um2 WHERE um2.medal_id = m.id), 0)::int \
+         END AS inventory, \
+         CASE WHEN m.sale_begin_at IS NOT NULL AND now() < m.sale_begin_at THEN 'upcoming' \
+              WHEN m.sale_end_at IS NOT NULL AND now() > m.sale_end_at THEN 'ended' \
+              WHEN m.inventory IS NOT NULL AND m.inventory - (SELECT count(*) FROM user_medals um3 WHERE um3.medal_id = m.id) <= 0 THEN 'sold_out' \
+              ELSE 'on_sale' END AS sale_status, \
+         m.bonus_addition_factor::float8, \
          m.category_id, c.name AS category_name, m.asset_ref, m.gift_fee_bp, \
          ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND (um.expires_at IS NULL OR um.expires_at > now()))) AS owned, \
          ($1::bigint IS NOT NULL AND EXISTS(SELECT 1 FROM user_medals um WHERE um.medal_id = m.id AND um.user_id = $1 AND um.wearing AND (um.expires_at IS NULL OR um.expires_at > now()))) AS wearing FROM medals m LEFT JOIN medal_categories c ON c.id = m.category_id ORDER BY m.category_id, \

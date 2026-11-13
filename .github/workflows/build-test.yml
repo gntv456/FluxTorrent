@@ -103,6 +103,14 @@ jobs:
       # 否则红灯（防「拆完又被 --update 兜底松回去」）；基线清零即达标。
       - name: Line limit guard
         run: node ../../scripts/line_limit_guard.mjs
+      # UI/UX 审查 2026-11-13 新增三门禁：触摸目标 / <12px 字号 / 明色对比度。
+      # 均为棘轮口径（存量登记 baseline，只许减不许增），基线文件随提交入库。
+      - name: Tap target guard
+        run: node ../../scripts/check_tap_target.mjs
+      - name: Tiny text guard
+        run: node ../../scripts/check_tiny_text.mjs
+      - name: Light contrast guard
+        run: node ../../scripts/check_light_contrast.mjs
       - name: tsc 类型检查（0 错误基线）
         run: pnpm exec tsc --noEmit
       # RSC 边界门禁（2026-10-27 现网翻车建门）：服务端可达模块从 "use client"

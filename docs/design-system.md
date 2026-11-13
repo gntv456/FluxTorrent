@@ -71,6 +71,9 @@ node scripts/i18n_guard.mjs           # 文案防新增硬编码中文
 node scripts/design_cov_guard.mjs     # 覆盖率四指标只许向好
 node scripts/ui_design_guard.mjs      # 令牌层退化六则 + tsx hex 棘轮
 node scripts/check_dark_contrast.mjs  # 暗色 AA 回潮 + 明色债棘轮
+node scripts/check_light_contrast.mjs --strict  # 明色 AA 零债（2026-11-13 新增）
+node scripts/check_tap_target.mjs    # <44px 小热区棘轮（2026-11-13 新增）
+node scripts/check_tiny_text.mjs     # <12px 正文字号棘轮（2026-11-13 新增）
 node scripts/route_manifest.mjs --check      # 路由清单防漂移
 node scripts/check_type_drift.mjs     # 前后端契约漂移对拍
 node scripts/error_registry.mjs --check      # 错误码注册表对拍

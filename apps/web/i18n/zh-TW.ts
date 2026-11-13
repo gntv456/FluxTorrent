@@ -229,6 +229,7 @@ const zhTwBase: Omit<
     wiki: "Wiki",
   },
   setup: {
+    donePurged: "（清理 {purged}）",
     title: "站點安裝嚮導",
     subtitle: "四步完成建站：選擇站型 → 站點資訊 → 新手模板 → 合規確認",
     step1: "選擇站型",
@@ -578,6 +579,8 @@ const zhTwBase: Omit<
     thanksCount: "感謝",
   },
   login: {
+    showPwd: "顯示密碼",
+    hidePwd: "隱藏密碼",
     loginTitle: "用戶登入",
     remember: "記住登入",
     forgotLink: "找回密碼",
@@ -1131,6 +1134,7 @@ const zhTwBase: Omit<
     sortCreated: "發布時間（新→舊）",
   },
   torrents2: {
+    coverLabel: "封面",
     aliveLegend: "存活",
     aliveAll: "全部",
     aliveDead: "僅斷種",
@@ -2695,6 +2699,9 @@ const zhTwBase: Omit<
     grantOnly: "僅授予",
     synthOnly: "僅合成",
     emptyFilter: "沒有符合條件的勳章。",
+    notStarted: "尚未開售",
+    saleEnded: "已結束銷售",
+    soldOut: "已售罄",
   },
   textbooks: {
     title: "課本中心",
@@ -4655,6 +4662,7 @@ const zhTwBase: Omit<
       "perm_key 非空時，使用者還需持有該權限（可在「權限配置」裡做使用者級授予/拒絕）；module_key 非空時受模組開關控制。",
   },
   adminEmbedRules: {
+    fAspect: "畫面比例",
     title: "影片內嵌規則",
     hint: "帖內影片白名單：正則命中 URL 後由範本產生播放器。內建規則可停用不可刪；新平台先加規則再發帖。",
     loadFailed: "載入失敗：可能缺少「論壇管理」權限（需 forums.manage）",
@@ -5337,6 +5345,7 @@ const zhTwBase: Omit<
   },
   /** 考核崗位：指標目錄（key 與後端 JIXIAO_METRIC_KEYS 白名單對應） */
   adminExams: {
+    tableCaption: "考核崗位表",
     metrics: {
       uploaded: { label: "上傳增量", unit: "GB", hint: "考核期內新增上傳量" },
       downloaded: { label: "下載增量", unit: "GB", hint: "考核期內新增下載量" },
@@ -6237,6 +6246,8 @@ const zhTwBase: Omit<
   },
   /** 使用者管理·詳情面板特有鍵（admin-users-detail；欄位名複用 userDetail） */
   adminUsers: {
+    tableCaption: "使用者清單",
+    selectAll: "全選",
     detailTitle: "使用者詳情 · {name}（#{id}）",
     close: "關閉",
     klass: "等級",
@@ -7319,6 +7330,7 @@ const zhTwBase: Omit<
     days: "{n} 天",
     inventory: "庫存 {n}",
     bonusAddition: "{magic}加成 +{n}%",
+    saleFrom: "銷售開始",
     saleUntil: "銷售截止",
   },
   medalwall: {

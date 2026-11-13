@@ -1,0 +1,27 @@
+{
+  "capturedAt": "2026-11-13T02:26:04.790Z",
+  "files": {
+    "tsx": 901,
+    "css": 32,
+    "total": 1109
+  },
+  "colhead": 680,
+  "thScope": 0,
+  "caption": 2,
+  "thTag": 225,
+  "smallTap": 282,
+  "tinyTextTsx": 245,
+  "tinyTextCss": 233,
+  "truncate": 74,
+  "emojiJsx": 157,
+  "ariaLive": 27,
+  "roleAlert": 1,
+  "roleStatus": 2,
+  "ariaLabel": 205,
+  "placeholder": 230,
+  "label": 461,
+  "htmlImg": 30,
+  "nextImage": 0,
+  "reducedMotion": 40,
+  "tapMin": 10
+}

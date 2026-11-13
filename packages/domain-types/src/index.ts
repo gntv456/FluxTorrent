@@ -423,7 +423,10 @@ export interface Medal {
   get_type: number;
   sale_begin_at: string | null;
   sale_end_at: string | null;
+  /** 剩余库存（medals.inventory 总额 − user_medals 持有数；null=不限量，0=售罄） */
   inventory: number | null;
+  /** 销售状态（服务端按当前时间计算：upcoming=未开售 / ended=已结束 / sold_out=售罄 / on_sale=在售） */
+  sale_status: "upcoming" | "ended" | "sold_out" | "on_sale";
   bonus_addition_factor: number;
   category_id: number;
   category_name: string | null;

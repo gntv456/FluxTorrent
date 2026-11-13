@@ -232,6 +232,7 @@ const enBase: Omit<
     wiki: "Wiki",
   },
   setup: {
+    donePurged: "(purged: {purged})",
     title: "Site Setup Wizard",
     subtitle:
       "Four steps: pick a site type → site info → onboarding preset → compliance",
@@ -597,6 +598,8 @@ const enBase: Omit<
     thanksCount: "Thanks",
   },
   login: {
+    showPwd: "Show password",
+    hidePwd: "Hide password",
     loginTitle: "Sign in",
     remember: "Remember me",
     forgotLink: "Forgot password",
@@ -1180,6 +1183,7 @@ const enBase: Omit<
     sortCreated: "Newest uploads",
   },
   torrents2: {
+    coverLabel: "Cover",
     aliveLegend: "Aliveness",
     aliveAll: "All",
     aliveDead: "dead only",
@@ -2782,6 +2786,9 @@ const enBase: Omit<
     grantOnly: "Grant only",
     synthOnly: "Merge only",
     emptyFilter: "No medals match the filter.",
+    notStarted: "Not on sale yet",
+    saleEnded: "Sales ended",
+    soldOut: "Sold out",
   },
   textbooks: {
     title: "Textbook Center",
@@ -4838,6 +4845,7 @@ const enBase: Omit<
       "When perm_key is set the user must also hold that permission (grant/deny per user in Permission Config); module_key subjects the entry to its module switch.",
   },
   adminEmbedRules: {
+    fAspect: "Aspect ratio",
     title: "Video Embed Rules",
     hint: "Allowlist for in-post videos: a URL matched by a regex renders via the template. Built-in rules can be disabled but not deleted; add a rule before posting from a new platform.",
     loadFailed: "Load failed: may lack forums.manage permission",
@@ -5534,6 +5542,7 @@ const enBase: Omit<
   },
   /** Exam positions: metric catalogue ({magic} = site currency name) */
   adminExams: {
+    tableCaption: "Exam positions",
     metrics: {
       uploaded: {
         label: "Upload increase",
@@ -6472,6 +6481,8 @@ const enBase: Omit<
   },
   /** User management detail panel (admin-users-detail; field names reuse userDetail) */
   adminUsers: {
+    tableCaption: "User list",
+    selectAll: "Select all",
     detailTitle: "User detail · {name} (#{id})",
     close: "Close",
     klass: "Class",
@@ -7576,6 +7587,7 @@ const enBase: Omit<
     days: "{n} days",
     inventory: "Stock {n}",
     bonusAddition: "{magic} bonus +{n}%",
+    saleFrom: "On sale from",
     saleUntil: "On sale until",
   },
   medalwall: {

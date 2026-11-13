@@ -214,6 +214,7 @@ const zhCnBase = {
     wiki: "Wiki",
   },
   setup: {
+    donePurged: "（清理 {purged}）",
     title: "站点安装向导",
     subtitle: "四步完成建站：选择站型 → 站点信息 → 新手模板 → 合规确认",
     step1: "选择站型",
@@ -524,6 +525,8 @@ const zhCnBase = {
     thanksCount: "感谢",
   },
   login: {
+    showPwd: "显示密码",
+    hidePwd: "隐藏密码",
     loginTitle: "用户登录",
     forgotLink: "找回密码",
     introTagline: "分享 · 交流 · 共建",
@@ -1085,6 +1088,7 @@ const zhCnBase = {
     sortCreated: "发布时间（新→旧）",
   },
   torrents2: {
+    coverLabel: "封面",
     aliveLegend: "存活",
     aliveAll: "全部",
     aliveDead: "仅断种",
@@ -2721,6 +2725,9 @@ const zhCnBase = {
     grantOnly: "仅授予",
     synthOnly: "仅合成",
     emptyFilter: "没有符合条件的勋章。",
+    notStarted: "尚未开售",
+    saleEnded: "已结束销售",
+    soldOut: "已售罄",
     insufficient: "余额不足",
   },
   textbooks: {
@@ -4697,6 +4704,7 @@ const zhCnBase = {
       "perm_key 非空时，用户还需持有该权限（可在「权限配置」里做用户级授予/拒绝）；module_key 非空时受模块开关控制。",
   },
   adminEmbedRules: {
+    fAspect: "画面比例",
     title: "视频内嵌规则",
     hint: "帖内视频白名单：正则命中 URL 后由模板生成播放器。内置规则可停用不可删；新平台先加规则再发帖。",
     loadFailed: "加载失败：可能缺少「论坛管理」权限（需 forums.manage）",
@@ -5376,6 +5384,7 @@ const zhCnBase = {
   /** 考核岗位：指标目录（key 与后端 JIXIAO_METRIC_KEYS 白名单对应）。
    *  {magic} 占位符由 metricOptions() 替换为站点货币名。 */
   adminExams: {
+    tableCaption: "考核岗位表",
     metrics: {
       uploaded: { label: "上传增量", unit: "GB", hint: "考核期内新增上传量" },
       downloaded: { label: "下载增量", unit: "GB", hint: "考核期内新增下载量" },
@@ -6279,6 +6288,8 @@ const zhCnBase = {
   },
   /** 用户管理·详情面板特有键（admin-users-detail；字段名复用 userDetail） */
   adminUsers: {
+    tableCaption: "用户列表",
+    selectAll: "全选",
     detailTitle: "用户详情 · {name}（#{id}）",
     close: "关闭",
     klass: "等级",
@@ -7359,6 +7370,7 @@ const zhCnBase = {
     days: "{n} 天",
     inventory: "库存 {n}",
     bonusAddition: "{magic}加成 +{n}%",
+    saleFrom: "销售开始",
     saleUntil: "销售截止",
     gift: "赠送",
     giftTo: "赠送给（用户名）",

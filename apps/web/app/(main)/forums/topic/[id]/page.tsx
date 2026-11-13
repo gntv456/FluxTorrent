@@ -247,15 +247,15 @@ export default async function TopicPage({
               n: String(detail.posts.length - 1),
             })}
           </h2>
-          <table className="nexus-table">
-            <tbody>
-              {detail.posts.slice(1).map((p, j) => (
-                <PostRow key={p.id} p={p} i={j + 1} detail={detail}
+          <ol className="nexus-table">
+            {detail.posts.slice(1).map((p, j) => (
+              <li key={p.id}>
+                <PostRow p={p} i={j + 1} detail={detail}
                   authId={authId} dict={dict} locale={locale}
                   currency={currency} embedRules={embedRules} />
-              ))}
-            </tbody>
-          </table>
+              </li>
+            ))}
+          </ol>
         </section>
       )}
       {detail.locked && !detail.can_mod ? (

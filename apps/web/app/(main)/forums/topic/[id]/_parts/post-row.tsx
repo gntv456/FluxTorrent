@@ -63,8 +63,8 @@ export function PostRow({
   embedRules?: import("@/lib/data-forum").EmbedRule[] | null;
 }) {
   return (
-    <tr id={`p${p.id}`} className="align-top">
-      <td className="p-3">
+    <article id={`p${p.id}`} className="align-top">
+      <div className="p-3">
         {/* 正文（独占整行宽） */}
         <MarkdownRenderer source={p.body} embedRules={embedRules} />
 
@@ -262,7 +262,7 @@ export function PostRow({
             ))}
           </div>
         )}
-      </td>
-    </tr>
+      </div>
+    </article>
   );
 }

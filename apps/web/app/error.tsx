@@ -31,7 +31,10 @@ export default function GlobalRouteError({
   }, [error]);
 
   return (
-    <main className="grid min-h-[60vh] place-items-center px-4">
+    <main
+      id="main-content"
+      className="grid min-h-[60vh] place-items-center px-4"
+    >
       <div className="w-full max-w-md">
         <EmptyState
           icon="warning"

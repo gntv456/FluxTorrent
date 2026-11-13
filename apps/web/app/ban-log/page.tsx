@@ -59,7 +59,10 @@ export default function BanLogPage() {
         : dict.banlog.normal;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <main
+      id="main-content"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-4"
+    >
       <PageHeader
         eyebrow={dict.banlog.eyebrow}
         title={dict.banlog.title}
@@ -130,6 +133,6 @@ export default function BanLogPage() {
       </section>
 
       <BanLogList />
-    </div>
+    </main>
   );
 }
