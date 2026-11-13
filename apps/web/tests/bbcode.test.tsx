@@ -1,11 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { hasBBCode, renderBBCode } from "../lib/bbcode";
+import { LocaleProvider } from "@/i18n/client";
+import { zhCN } from "@/i18n/zh-CN";
 
+/** [img] 走 ZoomImage（客户端件，读字典取 aria-label）⇒ 必须挂在
+ *  LocaleProvider 里渲染。 */
 function renderText(text: string): string {
-  return render(<div data-testid="bb">{renderBBCode(text)}</div>).getByTestId(
-    "bb",
-  ).textContent;
+  return render(
+    <LocaleProvider dict={zhCN} locale="zh-CN">
+      <div data-testid="bb">{renderBBCode(text)}</div>
+    </LocaleProvider>,
+  ).getByTestId("bb").textContent;
+}
+
+function renderBB(text: string): HTMLElement {
+  return render(
+    <LocaleProvider dict={zhCN} locale="zh-CN">
+      <div>{renderBBCode(text)}</div>
+    </LocaleProvider>,
+  ).container;
 }
 
 describe("bbcode renderer", () => {
@@ -23,13 +37,9 @@ describe("bbcode renderer", () => {
   });
 
   it("rejects javascript: urls in [url] and [img]", () => {
-    const html = render(
-      <div>{renderBBCode("[url=javascript:alert(1)]x[/url]")}</div>,
-    ).container;
+    const html = renderBB("[url=javascript:alert(1)]x[/url]");
     expect(html.querySelector("a[href='javascript:alert(1)']")).toBeNull();
-    const html2 = render(
-      <div>{renderBBCode("[img]javascript:alert(1)[/img]")}</div>,
-    ).container;
+    const html2 = renderBB("[img]javascript:alert(1)[/img]");
     expect(html2.querySelector("img")).toBeNull();
   });
 
@@ -45,7 +55,7 @@ describe("bbcode renderer", () => {
       "◎IMDb链接  [url=https://www.imdb.com/title/tt34423706/]imdb[/url]",
       "[quote]Complete name : x.mkv[/quote]",
     ].join("\n");
-    const html = render(<div>{renderBBCode(src)}</div>).container;
+    const html = renderBB(src);
     expect(html.querySelectorAll("img")).toHaveLength(1);
     const imdb = "a[href='https://www.imdb.com/title/tt34423706/']";
     expect(html.querySelector(imdb)).not.toBeNull();

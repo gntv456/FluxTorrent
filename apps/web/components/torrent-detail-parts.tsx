@@ -2,6 +2,7 @@ import { hasBBCode, renderBBCode } from "@/lib/bbcode";
 import { formatBytes } from "@/lib/format";
 import { Icon } from "@/components/icons";
 import { PosterImage } from "@/components/poster-image";
+import { RichText } from "@/components/rich-text";
 import type { Dict } from "@/i18n/zh-CN";
 
 /** 种子详情页展示件（从 app/(main)/torrent/[id]/page.tsx 按域拆出）：
@@ -9,13 +10,15 @@ import type { Dict } from "@/i18n/zh-CN";
 
 /** 简介 markdown-lite 渲染：标题/列表/段落（descr 为简单 markdown 文本，无需完整 parser）
  *  含 BBCode 标签时走 BBCode 渲染器（NP 口径：颜色/字体/字号/引用/代码/图片/链接…）
- *  超长简介默认折叠（同类站通用口径：展开按钮在底部） */
+ *  统一套 RichText：超长限高 + 展开全部，BBCode 图走缩略图 + 点击放大 */
 export function Descr({ text }: { text: string }) {
   if (hasBBCode(text)) {
     return (
-      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-        {renderBBCode(text)}
-      </div>
+      <RichText>
+        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+          {renderBBCode(text)}
+        </div>
+      </RichText>
     );
   }
   const lines = text.split("\n");
@@ -57,7 +60,11 @@ export function Descr({ text }: { text: string }) {
     }
   });
   flushList(lines.length);
-  return <div className="text-sm leading-relaxed">{out}</div>;
+  return (
+    <RichText>
+      <div className="text-sm leading-relaxed">{out}</div>
+    </RichText>
+  );
 }
 
 /** 规格网格单元（阳光站口径：数值 + 下方灰字说明） */

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { ZoomImage } from "@/components/zoom-image";
+
 /**
  * BBCode 子集渲染器（NP 口径：b/i/u/s/color/size/font/url/img/quote/code/center/hr）。
  * 直接产出 React 节点，不走 dangerouslySetInnerHTML——URL 白名单 + style 传参，天然免疫 XSS。
@@ -91,14 +93,7 @@ function frameNode(f: Frame, key: string): ReactNode {
     case "img": {
       const u = safeUrl(text);
       return u ? (
-        <img
-          key={key}
-          src={u}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="my-1 max-w-full rounded-[var(--r-sm)]"
-        />
+        <ZoomImage key={key} src={u} />
       ) : (
         <span key={key}>[img]</span>
       );

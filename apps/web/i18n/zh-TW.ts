@@ -123,6 +123,18 @@ const zhTwBase: Omit<
     confirmDelete: "刪除",
     confirmTypeTo: "輸入「{text}」以確認",
     optimisticRollback: "操作未生效，已恢復原狀",
+    // 富文本簡介 + 圖片放大（RichText / ZoomImage / ImageLightbox）
+    expandAll: "展開全部",
+    collapseAll: "收起",
+    zoomImage: "放大圖片",
+    imageViewer: "圖片檢視",
+    prevImage: "上一張",
+    nextImage: "下一張",
+    zoomFit: "適應視窗",
+    zoomActual: "原始尺寸",
+    viewOriginal: "檢視原圖",
+    imageFailed: "圖片載入失敗",
+    closeViewer: "關閉",
   },
   navDrawer: {
     open: "開啟導航選單",

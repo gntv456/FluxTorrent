@@ -107,6 +107,18 @@ const zhCnBase = {
     confirmTypeTo: "输入「{text}」以确认",
     // 乐观更新回滚（W-17）
     optimisticRollback: "操作未生效，已恢复原状",
+    // 富文本简介 + 图片放大（RichText / ZoomImage / ImageLightbox）
+    expandAll: "展开全部",
+    collapseAll: "收起",
+    zoomImage: "放大图片",
+    imageViewer: "图片查看",
+    prevImage: "上一张",
+    nextImage: "下一张",
+    zoomFit: "适应窗口",
+    zoomActual: "原始尺寸",
+    viewOriginal: "查看原图",
+    imageFailed: "图片加载失败",
+    closeViewer: "关闭",
   },
   navDrawer: {
     open: "打开导航菜单",

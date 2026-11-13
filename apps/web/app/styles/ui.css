@@ -1810,3 +1810,222 @@
 .brand-panel--fold > summary:hover::after {
   color: var(--sky-text);
 }
+
+/* ===== 富文本正文（种子简介 / 作品简介）+ 图片放大浮层 =====
+   简介正文此前是 320px 内滚：读者「看不到什么内容」，内滚套内滚也难用。
+   改为限高 560px + 底部渐隐 + 「展开全部」，展开后整段摊开。
+   简介图常是 1920px 宽的截图，直接铺满会把正文顶没——收成缩略图，
+   点击进浮层看原图（浮层两档缩放 + 多图切图 + 键盘 ← →）。 */
+.rt {
+  position: relative;
+}
+.rt__body {
+  max-height: 560px;
+  overflow: hidden;
+}
+.rt.is-open .rt__body {
+  max-height: none;
+}
+.rt__more {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+}
+.rt__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 88px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--surface-card));
+}
+.rt__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap-min);
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rt__toggle:hover {
+  border-color: var(--sky-deep);
+  color: var(--sky-text);
+}
+.rt__chev {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.rt__chev.is-up {
+  transform: rotate(180deg);
+}
+@media (max-width: 640px) {
+  .rt__body {
+    max-height: 440px;
+  }
+}
+
+/* 简介图缩略图：限宽限高 + 右下角放大角标（角标底色走 TSX 侧令牌类） */
+.rt-zoom {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--head-b);
+  cursor: zoom-in;
+  vertical-align: top;
+}
+.rt-zoom:hover {
+  border-color: var(--sky-deep);
+}
+.rt-zoom__img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 420px);
+  max-height: 260px;
+  border-radius: var(--r-sm);
+  object-fit: contain;
+}
+.rt-zoom__img.is-bad {
+  display: none;
+}
+.rt-zoom__bad {
+  display: block;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.rt-zoom__badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+/* 图片放大浮层：深色底 + 顶栏工具 + 居中图 + 两侧切图 */
+.ilb {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-nested);
+  display: flex;
+  flex-direction: column;
+  background: var(--ilb-scrim);
+}
+.ilb__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+}
+.ilb__count {
+  color: var(--on-dark-muted);
+  font-size: 13px;
+}
+.ilb__acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ilb__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--on-dark-line);
+  border-radius: var(--r-sm);
+  background: var(--on-dark-soft);
+  color: var(--on-dark);
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ilb__btn:hover {
+  background: var(--on-dark-muted);
+  color: var(--on-dark);
+}
+.ilb__btn--icon {
+  width: 36px;
+  padding: 0;
+}
+.ilb__stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 8px 60px 28px;
+  overflow: auto;
+}
+.ilb__img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+.ilb__img--full {
+  max-width: none;
+  max-height: none;
+  cursor: zoom-in;
+}
+.ilb__hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  background: var(--on-dark-soft);
+  color: var(--on-dark);
+  font-size: 13px;
+}
+.ilb__err {
+  color: var(--on-dark);
+  text-align: center;
+}
+.ilb__err a {
+  color: var(--on-dark);
+  text-decoration: underline;
+}
+.ilb__nav {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 1px solid var(--on-dark-line);
+  border-radius: 999px;
+  background: var(--on-dark-soft);
+  color: var(--on-dark);
+  cursor: pointer;
+}
+.ilb__nav--prev {
+  left: 12px;
+}
+.ilb__nav--next {
+  right: 12px;
+}
+.ilb__nav .is-left {
+  transform: rotate(180deg);
+}

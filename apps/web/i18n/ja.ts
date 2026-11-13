@@ -273,6 +273,19 @@ export const ja: DeepPartial<Dict> = {
     yes: "はい",
     no: "いいえ",
   },
+  ui: {
+    expandAll: "すべて表示",
+    collapseAll: "折りたたむ",
+    zoomImage: "画像を拡大",
+    imageViewer: "画像ビューア",
+    prevImage: "前の画像",
+    nextImage: "次の画像",
+    zoomFit: "画面に合わせる",
+    zoomActual: "原寸大",
+    viewOriginal: "元の画像を開く",
+    imageFailed: "画像を読み込めませんでした",
+    closeViewer: "閉じる",
+  },
   meta: {
     titleSuffix: "次世代 PT サイト",
     description:

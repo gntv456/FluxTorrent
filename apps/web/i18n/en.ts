@@ -126,6 +126,18 @@ const enBase: Omit<
     confirmDelete: "Delete",
     confirmTypeTo: 'Type "{text}" to confirm',
     optimisticRollback: "The action did not go through; changes were reverted",
+    // Rich text description + image zoom (RichText / ZoomImage / ImageLightbox)
+    expandAll: "Expand all",
+    collapseAll: "Collapse",
+    zoomImage: "Zoom image",
+    imageViewer: "Image viewer",
+    prevImage: "Previous image",
+    nextImage: "Next image",
+    zoomFit: "Fit to window",
+    zoomActual: "Actual size",
+    viewOriginal: "Open original",
+    imageFailed: "Image failed to load",
+    closeViewer: "Close",
   },
   navDrawer: {
     open: "Open navigation menu",

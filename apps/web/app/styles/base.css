@@ -343,6 +343,8 @@
   /* 浮层遮罩（弹窗/抽屉背后的压暗层）：2026-10-03 抽成令牌，
      此前散落 3 处 rgba(8,19,31,.42) 硬编码，换主题时需逐处改。 */
   --overlay-scrim: rgba(8, 19, 31, 0.42);
+  /* 图片放大浮层底色：比通用遮罩更深——看图时页面内容不能透出来抢注意力 */
+  --ilb-scrim: rgba(4, 8, 16, 0.92);
 }
 
 /* ===== 夜间主题：Aurora Night（Seedlight §9）—— 深夜蓝底，品牌六色提亮 +8% ===== */
@@ -1790,7 +1792,7 @@ h2 {
   .td-crumbs {
     font-size: 12px;
   }
-  /* 本地完善版：窄屏折叠卡收紧 + 简介不限高全展 */
+  /* 本地完善版：窄屏折叠卡收紧（简介限高在 .rt__body 里另有一套） */
   .td-fold > summary {
     padding: 12px 14px;
   }
@@ -1799,7 +1801,6 @@ h2 {
   }
   .td-descr__body {
     padding: 12px 14px;
-    max-height: none;
   }
 }
 .td-tagcloud {
@@ -1844,11 +1845,10 @@ h2 {
   }
 }
 
-/* 简介区（本地完善版：桌面限高 320px 内滚，<640 全展） */
+/* 简介区：限高交给正文容器 .rt__body（RichText：560px 限高 + 展开全部，
+   见 ui.css）——此前这里压 320px 内滚，读者「看不到什么内容」。 */
 .td-descr__body {
   padding: 14px 16px;
-  max-height: 320px;
-  overflow-y: auto;
 }
 
 /* NFO（本地完善版：限高 260px） */
