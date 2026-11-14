@@ -19,10 +19,15 @@ export interface NewsItem {
 export function HomeNewsPanel({
   items,
   onOpen,
+  brand,
 }: {
   items: NewsItem[];
   /** 打开公告正文弹窗 */
   onOpen: (id: number) => void;
+  /** 站点品牌名（海报署名）：跟随 site_name（站长后台可改），
+   *  由 HomeSections 从 RSC 的 profile.brand 贯通进来；
+   *  缺省回落字典 brand（FluxTorrent）保客户端独用时仍有值 */
+  brand?: string;
 }) {
   const { dict } = useI18n();
   const t = dict.home2;
@@ -37,7 +42,7 @@ export function HomeNewsPanel({
       </header>
       <div className="home-news__body">
         <HomeNewsPoster
-          brand={dict.common.brand}
+          brand={brand || dict.common.brand}
           items={rest.slice(0, 3).map((n) => ({ id: n.id, title: n.title }))}
         />
         <div className="home-news__content">

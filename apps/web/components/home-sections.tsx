@@ -165,7 +165,13 @@ export function HomeSections({
   function renderSection(key: string): React.ReactNode {
     switch (key) {
       case "news":
-        return <HomeNewsPanel items={home.news} onOpen={setModal} />;
+        return (
+          <HomeNewsPanel
+            items={home.news}
+            onOpen={setModal}
+            brand={brand}
+          />
+        );
       case "attendance":
         return (
           <div id="attendance" key="attendance-anchor">
