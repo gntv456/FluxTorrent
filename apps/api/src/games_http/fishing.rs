@@ -18,7 +18,9 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::casino::{award_kind, settle_tx};
-use super::helpers::{check_bet, check_rate, eco_i64, idem_key};
+use super::helpers::{
+    check_bet, check_minclass, check_rate, eco_i64, idem_key,
+};
 use super::pool::{dberr, load_pool};
 
 #[derive(Deserialize)]
@@ -39,6 +41,7 @@ pub(super) async fn fishing_cast(
     body: web::Json<CastReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "fishing", auth.class_id).await?;
     let db = &state.repo.db;
     // 渔汛：周末窗口开着就抽活动塘；开着但本周做种未达标 → 明确拒绝并给差值
     let (ev_on, ev_ok, ev_hours, ev_need) =
@@ -157,6 +160,7 @@ pub(super) async fn fishing_reel(
     body: web::Json<ReelReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "fishing", auth.class_id).await?;
     let db = &state.repo.db;
     // 锁行 + 取「已过去多久」（时机由服务端算，不信客户端报的毫秒数）
     let mut tx = db.begin().await.map_err(dberr)?;

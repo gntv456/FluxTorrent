@@ -15,7 +15,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::casino::{award_kind, settle_tx};
-use super::helpers::{check_rate, eco_i64, idem_key};
+use super::helpers::{check_minclass, check_rate, eco_i64, idem_key};
 use super::pool::{dberr, load_pool};
 
 #[derive(Deserialize)]
@@ -107,6 +107,7 @@ pub(super) async fn jgg(
     body: crate::http::OptJson<DrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "jgg", auth.class_id).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
     Ok(ok(pool_round(&state, auth.id, "jgg", client_idem).await?))
 }
@@ -119,6 +120,7 @@ pub(super) async fn capsule(
     body: crate::http::OptJson<DrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "capsule", auth.class_id).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
     Ok(ok(
         pool_round(&state, auth.id, "capsule", client_idem).await?
@@ -133,6 +135,7 @@ pub(super) async fn wheel(
     body: crate::http::OptJson<DrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "wheel", auth.class_id).await?;
     let client_idem = body.and_then(|b| b.idempotency_key.clone());
     Ok(ok(pool_round(&state, auth.id, "wheel", client_idem).await?))
 }

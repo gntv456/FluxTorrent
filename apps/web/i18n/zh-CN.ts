@@ -3660,6 +3660,7 @@ const zhCnBase = {
       groupInstant: "即时开奖",
       groupSession: "养成经营",
       soon: "即将开放",
+      locked: "{n} 级解锁",
       funBoxEntry: "趣味盒 · 段子投票",
       count: "{n} 款玩法",
       hot: "热门",

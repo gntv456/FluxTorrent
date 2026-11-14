@@ -101,6 +101,19 @@ pub(super) async fn games_overview(
         "max_bet": max_bet,
         "registry": registry,
         "max_plays_per_hour": max_plays,
+        // 逐游戏等级门槛（0490）：大厅卡片据此置灰标「N 级解锁」；
+        // key 与 games-registry.ts 的 GAMES[].key 一一对应
+        "minclass": {
+            "bigsmall": super::helpers::minclass_of(&state, "bigsmall").await,
+            "scratch": super::helpers::minclass_of(&state, "scratch").await,
+            "jgg": super::helpers::minclass_of(&state, "jgg").await,
+            "capsule": super::helpers::minclass_of(&state, "capsule").await,
+            "wheel": super::helpers::minclass_of(&state, "wheel").await,
+            "farm": super::helpers::minclass_of(&state, "farm").await,
+            "gacha": super::helpers::minclass_of(&state, "gacha").await,
+            "pet": super::helpers::minclass_of(&state, "pet").await,
+            "fishing": super::helpers::minclass_of(&state, "fishing").await,
+        },
         "scratch": { "name": "刮刮乐", "max_bet": max_bet,
             "min_bet": spool.ticket,
             "ticket": spool.ticket,

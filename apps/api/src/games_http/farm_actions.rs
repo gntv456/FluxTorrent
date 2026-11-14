@@ -16,6 +16,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::farm::{get_crop, get_plantable_crop, PlantReq};
+use super::helpers::check_minclass;
 use super::helpers::{check_rate_scoped, eco_i64, farm_wither_days, RateScope};
 
 #[post("/farm/plant")]
@@ -25,6 +26,7 @@ pub(super) async fn farm_plant(
     body: web::Json<PlantReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "farm", auth.class_id).await?;
     // 审计修复（P1 印钞）：农场种植此前不进 games 限流（对照 scratch/dice/jgg），
     // 确定性市场价可被脚本以 6 槽 × 高频轮种套取波动收益。现独立计数（rl:farm），
     // 与即时赌局额度分开 —— 否则种满 6 块地就吃掉 6 次下注额度。
@@ -120,6 +122,7 @@ pub(super) async fn farm_water(
     body: web::Json<SlotReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "farm", auth.class_id).await?;
     // 枯萎地块不能浇水（有效期已过，救不回来）；**已成熟也不能浇**（P1 坑钱，
     // 与同文件 /farm/fertilize 同式）：旧版少了这道闸门，对 ready_at 已过的
     // 地块仍然 rows_affected=1 并扣 farm_water_spark——收获时刻一点没提前，
@@ -216,6 +219,7 @@ pub(super) async fn farm_fertilize(
     body: web::Json<SlotReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "farm", auth.class_id).await?;
     let wither_days = farm_wither_days(&state).await;
     // 施肥：每茬一次，催熟 30 分钟（浇水 10 分钟）；只对未成熟、未枯萎地块。
     // wither 守卫与浇水同式：ready_at 加枯萎期仍在未来 = 还没枯。
@@ -305,6 +309,7 @@ pub(super) async fn farm_harvest(
     body: web::Json<SlotReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "farm", auth.class_id).await?;
     let wither_days = farm_wither_days(&state).await;
     // 单事务（P1 收口）：地块行锁、入账、清地块、留痕同生共死。旧版 FOR UPDATE 用在
     // autocommit 连接上锁立即失效（重复收获实际只靠 earn 幂等键兜底），且 earn 与

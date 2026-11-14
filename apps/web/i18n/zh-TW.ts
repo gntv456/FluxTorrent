@@ -3631,6 +3631,7 @@ const zhTwBase: Omit<
       groupInstant: "即時開獎",
       groupSession: "養成經營",
       soon: "即將開放",
+      locked: "{n} 級解鎖",
       funBoxEntry: "趣味盒 · 段子投票",
       count: "{n} 款玩法",
       hot: "熱門",

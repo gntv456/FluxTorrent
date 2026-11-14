@@ -1,9 +1,6 @@
-//! 宠物养成（娱乐屋第 9 款）。
-//!
-//! 经济定位：**回收口**。宠物「卖萌」产出的魔力只来自你喂进去的「能量」，且返回
-//! 比例恒 < 1000‰（等级越高封顶 950‰）—— 最多把你喂的 95% 还给你，永不增发。
-//! 它的意义是**养成**（等级/外观），不是套利。
-//!
+//! 宠物养成（娱乐屋第 9 款）。经济定位：**回收口**——「卖萌」产出的魔力只来自
+//! 你喂进去的「能量」，返还比例恒 < 1000‰（等级越高封顶 950‰），永不增发；
+//! 意义是**养成**（等级/外观），不是套利。
 //! 时间推进不依赖 worker：每次读取/喂食/领取，按 `last_tick` → 此刻的间隔结算一次
 //! （消化能量进 pending、衰减饥饿）。领取的入账与 pending 清零在**同一事务**内，
 //! 行锁串行化并发领取，幂等键挡重放。
@@ -19,7 +16,9 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::food_coupon::{expect_fresh, pay_feed_tx};
-use super::helpers::{check_rate_scoped, eco_i64, idem_key, RateScope};
+use super::helpers::{
+    check_minclass, check_rate_scoped, eco_i64, idem_key, RateScope,
+};
 use super::pool::dberr;
 
 const MAX_LEVEL: i32 = 10;
@@ -186,6 +185,7 @@ pub(super) async fn pet_status(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "pet", auth.class_id).await?;
     let (feed, dig) = tune(&state).await;
     let (p, _) = tick(&state.repo.db, auth.id, dig, None).await?;
     let coupons: i64 = sqlx::query_scalar(
@@ -201,12 +201,11 @@ pub(super) async fn pet_status(
 }
 
 #[derive(Deserialize)]
-// P-642：`use_coupon` 打错＝静默按扣魔力执行，投喂这一笔花的币种不许由解析失败决定
 #[serde(deny_unknown_fields)]
 struct PetActionReq {
+    /// 幂等键；use_coupon=用口粮券抵扣本次投喂（P-642：币种不许由解析失败决定）
     #[serde(default)]
     idempotency_key: Option<String>,
-    /// 用口粮券抵扣本次投喂（仅投喂读取；行为联动消耗出口）
     #[serde(default)]
     use_coupon: bool,
 }
@@ -219,9 +218,10 @@ pub(super) async fn pet_feed(
     body: crate::http::OptJson<PetActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "pet", auth.class_id).await?;
     let db = &state.repo.db;
-    // 限次（2026-10 审计 P2）：宠物投喂此前不限次，是唯一扣魔力的
-    // 无限互动；与农场同档慢节奏（pet_max_feeds_per_hour，缺省 30/时）
+    // 限次（2026-10 审计 P2）：投喂曾不限次（唯一扣魔力的无限互动），
+    // 与农场同档慢节奏（pet_max_feeds_per_hour，缺省 30/时）
     check_rate_scoped(&state, &state.redis, auth.id, RateScope::Pet).await?;
     let (feed, dig) = tune(&state).await;
     let (client, use_coupon) = match body.into_inner() {
@@ -284,6 +284,7 @@ pub(super) async fn pet_claim(
     body: crate::http::OptJson<PetActionReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "pet", auth.class_id).await?;
     let (feed, dig) = tune(&state).await;
     let client = body.and_then(|b| b.idempotency_key.clone());
     let idem = idem_key("pet-claim", auth.id, &client);

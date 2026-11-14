@@ -17,6 +17,10 @@ use crate::state::AppState;
 pub(super) const ARCADE_WEEK_SQL: &str =
     "SELECT to_char(now() AT TIME ZONE 'Asia/Shanghai', 'IYYY-\"W\"IW')";
 
+/// 逐游戏等级门槛（0490）：实现拆至 minclass.rs（300 行门禁），
+/// 此处 re-export 保持调用面 `super::helpers::check_minclass` 不变。
+pub(crate) use super::minclass::{check_minclass, minclass_of};
+
 /// 读取游戏经济设置键（0109 参数化；缺省回落代码默认值 T3）。
 /// ⚠️ 键缺失回落 default 是正常态（站长没配）；**查询失败**也回落则是
 /// fail-open：DB 抖一下限次/上限就按代码缺省放行。查询错误改成

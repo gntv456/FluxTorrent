@@ -11,7 +11,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::helpers::{
-    eco_i64, farm_market_hours, farm_wither_days, limit_used,
+    check_minclass, eco_i64, farm_market_hours, farm_wither_days, limit_used,
 };
 
 pub(super) async fn get_crop(
@@ -53,6 +53,7 @@ pub(super) async fn farm_overview(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "farm", auth.class_id).await?;
     let now = chrono::Utc::now().timestamp();
     let hours = farm_market_hours(&state).await;
     let window = games::market_window_start_with(now, hours);
@@ -156,6 +157,7 @@ pub(super) async fn farm_harvest_log(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "farm", auth.class_id).await?;
     let rows: Vec<(String, i32, i32, bool, chrono::DateTime<chrono::Utc>)> =
         sqlx::query_as(
             "SELECT c.name, h.amount, h.market_price, h.doubled, h.created_at \

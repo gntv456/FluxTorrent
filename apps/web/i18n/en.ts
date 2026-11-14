@@ -3747,6 +3747,7 @@ const enBase: Omit<
       groupInstant: "Instant",
       groupSession: "Idle & Collector",
       soon: "Coming soon",
+      locked: "Level {n} required",
       funBoxEntry: "Fun Box · joke voting",
       count: "{n} games",
       hot: "Hot",

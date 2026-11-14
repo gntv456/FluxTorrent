@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { api } from "@/lib/api-client";
+import { fmt } from "@/i18n/config";
 import { getDict } from "@/i18n/server";
 import { getSiteProfile } from "@/lib/site-profile";
 import { requireModule } from "@/components/module-gate";
@@ -12,29 +13,29 @@ import {
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { SCENES } from "@/lib/game-scenes";
 
+interface PickView {
+  ticket: number;
+  prizes: { payout: number; value?: number }[];
+}
+
 interface HallOverview {
   scratch?: { ticket?: number; prizes: ScratchPrize[] };
-  jgg?: { ticket: number; prizes: { payout: number; value?: number }[] };
+  jgg?: PickView;
   bigsmall?: { win_mult: number };
   farm?: { unit?: number; prizes?: { payout: number; value?: number }[] };
-  capsule?: { ticket: number; prizes: { payout: number; value?: number }[] };
-  wheel?: { ticket: number; prizes: { payout: number; value?: number }[] };
-  fishing?: { ticket: number; prizes: { payout: number; value?: number }[] };
+  capsule?: PickView;
+  wheel?: PickView;
+  fishing?: PickView;
   /** 后端下发的大厅清单（arcade_games）；空则用前端注册表兜底 */
   registry?: RegRow[];
+  /** 逐游戏等级门槛（0490）：key 与注册表一致；缺 0 = 不限 */
+  minclass?: Record<string, number>;
 }
 
 /** 后端清单行：展示字段，与 lib/games-registry 的 GameEntry 一一对应 */
 interface RegRow {
-  key: string;
-  title_key: string;
-  icon: string;
-  href: string;
-  tone: string;
-  grp: string;
-  module: string;
-  badge: string;
-  hot: boolean;
+  key: string; title_key: string; icon: string; href: string;
+  tone: string; grp: string; module: string; badge: string; hot: boolean;
 }
 
 function toEntry(r: RegRow): GameEntry {
@@ -66,7 +67,16 @@ export default async function GamesPage() {
   const profile = await getSiteProfile();
   // 模块开关口径与 requireModule / 页脚一致：缺键视为开
   const mod = (k: string) => profile.modules[k] !== false;
-  const ov = await api.get<HallOverview>("/api/v1/games").catch(() => null);
+  // 等级门槛（0490）：置灰只是入口显隐，API 侧另有硬闸；匿名全展示
+  const [ov, me] = await Promise.all([
+    api.get<HallOverview>("/api/v1/games").catch(() => null),
+    api.get<{ class_id: number }>("/api/v1/me").catch(() => null),
+  ]);
+  const myClass = me?.class_id ?? null;
+  const lockedAt = (e: GameEntry): number =>
+    ov?.minclass?.[e.key] && myClass !== null && myClass < ov.minclass[e.key]
+      ? ov.minclass[e.key]
+      : 0;
 
   /** 角标要的是「最高等值」而不是「最高魔力倍数」：0245 之后物品位 payout 恒为 0，
    *  按 payout 排会把 120 倍等值的免考核卡整个漏掉。三个玩法同一把尺，只留一份算法。 */
@@ -107,10 +117,8 @@ export default async function GamesPage() {
         return null;
     }
   };
-  const cards = dict.games.cards as Record<
-    string,
-    { title: string; sub: string }
-  >;
+  type Card = { title: string; sub: string };
+  const cards = dict.games.cards as Record<string, Card>;
   // 卡片副标题里的 {magic} 占位符按站点货币名替换
   const subOf = (e: GameEntry) =>
     (cards[e.key]?.sub ?? "").replace("{magic}", currency);
@@ -190,6 +198,7 @@ export default async function GamesPage() {
             <div className="gc-grid">
               {items.map((e) => {
                 const badge = badgeOf(e);
+                const locked = lockedAt(e);
                 const rawTitle = cards[e.key]?.title ?? e.key;
                 const title = rawTitle.replace("{magic}", currency);
                 const Scene = SCENES[e.key];
@@ -202,11 +211,16 @@ export default async function GamesPage() {
                           <ArcadeGlyph k={e.key} />
                         </span>
                       )}
-                      {e.hot && e.live && (
+                      {e.hot && e.live && !locked && (
                         <span className="gc-hot">{dict.games.hall.hot}</span>
                       )}
-                      {badge && e.live && (
+                      {badge && e.live && !locked && (
                         <span className="gc-badge num">{badge}</span>
+                      )}
+                      {locked > 0 && (
+                        <span className="gc-soon num">
+                          {fmt(dict.games.hall.locked, { n: locked })}
+                        </span>
                       )}
                       {!e.live && (
                         <span className="gc-soon">{dict.games.hall.soon}</span>
@@ -222,7 +236,7 @@ export default async function GamesPage() {
                     </div>
                   </>
                 );
-                return e.live ? (
+                return e.live && !locked ? (
                   <Link
                     key={e.key}
                     href={e.href}

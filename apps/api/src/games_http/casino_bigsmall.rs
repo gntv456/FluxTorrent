@@ -15,7 +15,7 @@ use crate::http::require_auth;
 use crate::state::AppState;
 
 use super::casino::{award_kind, meta_rarity, settle_tx};
-use super::helpers::{check_bet, check_rate, idem_key};
+use super::helpers::{check_bet, check_minclass, check_rate, idem_key};
 use super::pool::{dberr, load_table};
 
 #[derive(Deserialize)]
@@ -40,6 +40,7 @@ pub(super) async fn guess_bigsmall(
     body: web::Json<GuessReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "bigsmall", auth.class_id).await?;
     let db = &state.repo.db;
     // 三区档位来自 arcade_pools(game='bigsmall')：**纯魔力**（物品位在读侧被拒），
     // 配坏则整桌拒绝服务（load_table 里过关）
@@ -176,6 +177,7 @@ pub(super) async fn bigsmall_trend(
     q: web::Query<TrendQ>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "bigsmall", auth.class_id).await?;
     let n = q.n.unwrap_or(20).clamp(1, 50);
     // rarity 基表是 smallint：按 i32 解会当场 decode 失败，本口一旦有
     // 开奖行就 500（同域 casino.rs / prize_view.rs 都按 i16 读）

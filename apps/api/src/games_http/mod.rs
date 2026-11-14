@@ -35,9 +35,12 @@ mod fishing;
 mod fishing_extra;
 mod food_coupon;
 mod fun;
-mod helpers;
+// pub(crate)：gacha_http/draw 也走同一把等级门（0490）
+pub(crate) mod helpers;
 mod item_use;
 mod linkage;
+// 逐游戏等级门（0490）：helpers re-export，gacha_http 也消费
+pub(crate) mod minclass;
 mod overview;
 mod pet_custom;
 mod pet_log;

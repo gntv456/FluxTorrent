@@ -37,6 +37,7 @@ pub(super) async fn pet_customize(
     body: crate::http::OptJson<CustomizeReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    super::helpers::check_minclass(&state, "pet", auth.class_id).await?;
     let b = body.unwrap_or(CustomizeReq {
         name: None,
         species: None,

@@ -17,6 +17,10 @@ pub(super) async fn gacha_me(
     req: HttpRequest,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 等级门槛（0490）：与 POST /gacha/draw 同一把尺；公示面（rates/pool）
+    // 保持匿名可读不拦——门槛锁的是玩，不是看
+    crate::games_http::helpers::check_minclass(&state, "gacha", auth.class_id)
+        .await?;
     let uid = auth.id;
     let ticket: i32 = sqlx::query_scalar(
         "SELECT COALESCE((SELECT balance FROM gacha_ticket_balance \

@@ -13,6 +13,7 @@ use serde::Deserialize;
 use crate::dto::ok;
 use crate::errors::{DomainError, DomainResult};
 use crate::gacha_math;
+use crate::games_http::helpers::check_minclass;
 use crate::http::require_auth;
 use crate::state::AppState;
 
@@ -35,6 +36,8 @@ pub(super) async fn gacha_draw(
     body: web::Json<DrawReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    // 等级门槛（0490）：抽卡与娱乐屋同一把尺（键 games_minclass_gacha）
+    check_minclass(&state, "gacha", auth.class_id).await?;
     let user_id = auth.id;
     let count = body.count;
     if !(1..=10).contains(&count) {

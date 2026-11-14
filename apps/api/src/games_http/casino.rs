@@ -11,7 +11,7 @@ use crate::games::{self, Guess};
 use crate::http::require_auth;
 use crate::state::AppState;
 
-use super::helpers::{check_bet, check_rate, idem_key, BetReq};
+use super::helpers::{check_bet, check_minclass, check_rate, idem_key, BetReq};
 use super::pool::{dberr, grant_item_tx, load_pool, load_table, GrantOutcome};
 
 /// 档位展示元数据 (rarity, image_url) 里取稀有度；越界回落 1（未中奖不发光）
@@ -123,6 +123,7 @@ pub(super) async fn scratch(
     body: web::Json<BetReq>,
 ) -> DomainResult<HttpResponse> {
     let auth = require_auth(&req, &state).await?;
+    check_minclass(&state, "scratch", auth.class_id).await?;
     // 档位与概率在 arcade_pools(game='scratch')：不合法直接拒服务，
     // 不再从设置键回落缺省表（0248 之前那条静默回落等于「改错一个字就当没事」）
     let pool = load_pool(&state.repo.db, "scratch").await?;
