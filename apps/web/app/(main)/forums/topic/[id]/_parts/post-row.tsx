@@ -13,6 +13,7 @@ import Link from "next/link";
 import { MedalIcon } from "@/components/medal-icon";
 import { Icon } from "@/components/icons";
 import { MarkdownRenderer } from "@/components/forum-markdown";
+import { hasBBCode, renderBBCode } from "@/lib/bbcode";
 import { PostActions } from "@/components/forum-post-actions";
 import {
   PostVoteBar,
@@ -23,6 +24,24 @@ import type { Post, TopicDetail } from "@fluxtorrent/domain-types";
 import type { Dict } from "@/i18n/server";
 import { dateLocale, fmt } from "@/i18n/config";
 import type { Locale } from "@/i18n/config";
+
+/** 楼层正文双路渲染（好学迁移帖是 NP BBCode 口径）：
+ *  含 BBCode 标签走 BBCode 渲染器（React 节点，XSS 天然免疫），
+ *  否则维持 forum-markdown 的 markdown-lite。与 Wiki/种子简介同口径。 */
+function PostBody({
+  body,
+  embedRules,
+}: {
+  body: string;
+  embedRules: import("@/lib/data-forum").EmbedRule[] | null;
+}) {
+  if (hasBBCode(body)) {
+    return (
+      <div className="text-ink whitespace-pre-wrap">{renderBBCode(body)}</div>
+    );
+  }
+  return <MarkdownRenderer source={body} embedRules={embedRules} />;
+}
 
 /** 长类名提常量（行宽门禁 ≤80） */
 const FOOT =
@@ -66,7 +85,7 @@ export function PostRow({
     <article id={`p${p.id}`} className="align-top">
       <div className="p-3">
         {/* 正文（独占整行宽） */}
-        <MarkdownRenderer source={p.body} embedRules={embedRules} />
+        <PostBody body={p.body} embedRules={embedRules} />
 
         {/* 楼层底部条：内容以外的一切都收在这里 */}
         <div className={FOOT}>
@@ -244,7 +263,7 @@ export function PostRow({
                       <span className="text-sub"> 回复 @{r.reply_to_name}</span>
                     )}
                   </p>
-                  <MarkdownRenderer source={r.body} embedRules={embedRules} />
+                  <PostBody body={r.body} embedRules={embedRules} />
                   <p className="text-xs text-fainter">
                     {new Date(r.created_at).toLocaleString(dateLocale(locale))}
                   </p>
