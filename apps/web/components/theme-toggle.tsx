@@ -7,77 +7,49 @@ import {
   THEMES,
   THEME_IDS,
   THEME_STORAGE_KEY,
+  THEME_GROUP_ORDER,
   parseChoice,
   resolveTheme,
   syncThemeCss,
   themeNameKey,
+  themeGroupOf,
+  themeGroupKey,
   type ThemeChoice,
+  type ThemeGroup,
   type ThemeId,
 } from "@/lib/themes";
+import {
+  applyCustomStyle,
+  clearCustomColor,
+  readCustomColor,
+  saveCustomColor,
+} from "@/lib/theme-custom";
 import { catIconSetForTheme } from "@/lib/cat-icon-sets";
+import {
+  applyChromeColor,
+  applyThemeDom,
+  persistThemeChoice as persist,
+  prefetchVisibleCatIcons,
+  THEME_SYNC_EVENT,
+} from "@/lib/theme-dom";
+import { PastelGroups } from "@/components/theme-pastel-groups";
+import { ClassicGroup } from "@/components/theme-classic-group";
 
-/** 主题选择（客户端）：下拉菜单直选，读写 <html data-theme> + localStorage。
+/** 主题选择（客户端）：分组卡片面板（QQ 超级调色盘对标，2026-11-14）。
  *  初值由 layout 里的 no-flash 内联脚本在首绘前设定（localStorage >
  *  系统偏好），本组件挂载后同步当前值。
  *
- *  W-42 注册表制：选项 = THEMES 顺序 + auto（跟随系统）固定末位，
- *  主题清单/浏览器界面色唯一真源在 lib/themes.ts（THEMES 注册表），
- *  本组件只管状态机与 UI；显示名走 i18n，键名由 themeNameKey(id)
- *  推导（themeBrand/themeBrandNight…），auto 固定 themeAuto。
- *  （2026-11-04 用户体验批：原「档位循环按钮」选山海经平均要点 2-3 下
- *  且不知道循环到哪了，改下拉直选；菜单样式沿用 usermenu 弹层范式。）
- *  选 auto 时 data-theme 仍写解析后的具体主题（CSS 不需要认识
- *  "auto"），并监听系统偏好变化实时重解析。
- *  切换瞬间挂 .theme-anim 做约 320ms 的颜色过渡，并同步 PWA
- *  theme-color。 */
+ *  面板结构：经典组（4 主题 + auto，行式）在前，fresh/ink/dream 三组
+ *  色卡网格在后；末位「自选颜色」卡接原生 <input type="color">（custom
+ *  档：data-theme 落 brand + 派生令牌 inline 覆盖，见 lib/theme-custom.ts）。
+ *  注册表/分组唯一真源在 lib/themes.ts（THEMES + ThemeDef.group），
+ *  本组件只管状态机与 UI；显示名/组名走 i18n（themeNameKey/themeGroupKey）。
+ *  选 auto 时 data-theme 仍写解析后的具体主题（CSS 不需要认识 "auto"），
+ *  并监听系统偏好变化实时重解析。
+ *  切换瞬间挂 .theme-anim 做约 320ms 的颜色过渡，并同步 PWA theme-color。 */
 
-function applyChromeColor(theme: ThemeId) {
-  let meta = document.querySelector<HTMLMetaElement>(
-    'meta[name="theme-color"]',
-  );
-  if (!meta) {
-    meta = document.createElement("meta");
-    meta.name = "theme-color";
-    document.head.appendChild(meta);
-  }
-  meta.content = THEMES[theme]?.chrome ?? THEMES.brand.chrome;
-}
-
-function persist(choice: ThemeChoice) {
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, choice);
-  } catch {
-    /* 隐私模式等存不了就算了，当前会话仍生效 */
-  }
-}
-
-/** 分类图标集按需预取：切换主题时 CatIcon 换目录（aurora ⇄ shanhaijing），
- *  不预取会在切换瞬间闪「加载失败回退块」。触发时机=用户**打开菜单**
- *  （已表露切换意图），一次性预取全部两套候选里**当前页面上已渲染**的
- *  图标（绝不无条件预取全量）；本 Set 防同一 URL 重复插 <link>。 */
-const prefetchedIconUrls = new Set<string>();
-function prefetchVisibleCatIcons(themes: string[]) {
-  const cur = document.documentElement.dataset.theme ?? "";
-  for (const t of themes) {
-    if (!t || t === cur) continue;
-    const set = catIconSetForTheme(t);
-    document
-      .querySelectorAll<HTMLImageElement>('img[src*="/cat-icons/"]')
-      .forEach((img) => {
-        const u = img.src.replace(
-          /\/cat-icons\/[^/]+\//,
-          `/cat-icons/${set}/`,
-        );
-        if (u === img.src || prefetchedIconUrls.has(u)) return;
-        prefetchedIconUrls.add(u);
-        const link = document.createElement("link");
-        link.rel = "prefetch";
-        link.as = "image";
-        link.href = u;
-        document.head.appendChild(link);
-      });
-  }
-}
+/** 主题 DOM 工具（applyChromeColor/persist/预取/同步事件/applyThemeDom）
+ *  在 lib/theme-dom.ts，本组件只留状态机与面板 UI（行数门禁拆件）。 */
 
 export function ThemeToggle({
   className = "",
@@ -88,15 +60,22 @@ export function ThemeToggle({
 }) {
   const { dict } = useI18n();
   const [choice, setChoice] = useState<ThemeChoice>("auto");
+  const [customColor, setCustomColor] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  // 应用一档（预设/auto）：DOM 侧封装见 lib/theme-dom.ts
+  const applyTheme = useCallback(applyThemeDom, []);
 
   useEffect(() => {
     const cur = document.documentElement.dataset.theme;
     const saved = parseChoice(localStorage.getItem(THEME_STORAGE_KEY));
-    // 有具体主题标记且存的就是非 auto 档 → 保留；否则尊重 auto
-    if (saved !== "auto" && THEME_IDS.includes(cur ?? "")) {
+    const color = readCustomColor();
+    // 有具体主题标记且存的就是非 auto 档 → 保留；custom 无存色退 auto
+    if (saved === "custom" && color) {
+      setChoice("custom");
+      setCustomColor(color);
+    } else if (saved !== "auto" && THEME_IDS.includes(cur ?? "")) {
       setChoice(saved);
     } else {
       setChoice("auto");
@@ -133,50 +112,98 @@ export function ThemeToggle({
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
       const t = resolveTheme("auto");
-      document.documentElement.dataset.theme = t;
-      syncThemeCss(t);
-      applyChromeColor(t);
+      applyTheme(t);
+      applyCustomStyle(null); // auto 重解析不需要 custom 覆盖
     };
     mq.addEventListener?.("change", onChange);
     return () => mq.removeEventListener?.("change", onChange);
+  }, [choice, applyTheme]);
+
+  // 跨实例同步：页面挂两份 ThemeToggle（顶栏 + 抽屉/图鉴侧栏），各自独立
+  // useState 会在切换后互不跟随（本页实测：顶栏切 seablue，抽屉标签仍留
+  // 旧档）。storage 事件同 tab 不触发，但两实例共用同一 DOM——直接监听
+  // flux-theme 键的自定义事件（pick/pickCustom 派发）互相同步档位显示。
+  useEffect(() => {
+    const onSync = (e: Event) => {
+      const detail = (e as CustomEvent<ThemeChoice>).detail;
+      if (detail && detail !== choice) setChoice(detail);
+    };
+    window.addEventListener(THEME_SYNC_EVENT, onSync);
+    return () => window.removeEventListener(THEME_SYNC_EVENT, onSync);
   }, [choice]);
 
-  /** 直选一档：应用 + 持久化 + 关菜单。复用原 cycle 的过渡处理。 */
-  const pick = useCallback((next: ThemeChoice) => {
-    setChoice(next);
-    const root = document.documentElement;
-    // 平滑过渡：瞬间挂 class，320ms 后移除（避免常驻 transition 开销）
-    root.classList.add("theme-anim");
-    const theme = resolveTheme(next);
-    root.dataset.theme = theme;
-    syncThemeCss(theme);
-    window.setTimeout(() => root.classList.remove("theme-anim"), 320);
-    applyChromeColor(theme);
-    persist(next);
-    setOpen(false);
-  }, []);
+  /** 直选预设档：应用 + 清 custom 覆盖 + 持久化 + 关面板 */
+  const pick = useCallback(
+    (next: ThemeChoice) => {
+      setChoice(next);
+      applyTheme(resolveTheme(next));
+      if (next !== "custom") {
+        clearCustomColor();
+        setCustomColor(null);
+      }
+      persist(next);
+      window.dispatchEvent(
+        new CustomEvent(THEME_SYNC_EVENT, { detail: next }),
+      );
+      setOpen(false);
+    },
+    [applyTheme],
+  );
 
-  // 菜单选项：注册表顺序 + auto 末位
-  const options: ThemeChoice[] = [...THEME_IDS, "auto"];
-  // 档位 → 图标/文案（显示名走 i18n，注册表不含文案；键名 themeNameKey 推导）
+  /** 自选颜色提交（原生取色器 onChange；停止前不关面板便于微调） */
+  const pickCustom = useCallback(
+    (hex: string) => {
+      const up = hex.toUpperCase();
+      setChoice("custom");
+      setCustomColor(up);
+      saveCustomColor(up);
+      persist("custom");
+      applyTheme("brand");
+      applyCustomStyle(up);
+      window.dispatchEvent(
+        new CustomEvent(THEME_SYNC_EVENT, { detail: "custom" }),
+      );
+    },
+    [applyTheme],
+  );
+
+  // 面板分组：classic（注册表原序）+ fresh/ink/dream（注册表顺序）
+  const groups: ThemeGroup[] = THEME_GROUP_ORDER;
+  const byGroup = useCallback(
+    (g: ThemeGroup) => THEME_IDS.filter((id) => themeGroupOf(id) === g),
+    [],
+  );
   const dictCommon = dict.common as Record<string, string>;
-  const names: Record<ThemeChoice, string> = Object.fromEntries([
-    ...THEME_IDS.map((id) => [id, dictCommon[themeNameKey(id)] ?? id]),
-    ["auto", dict.common.themeAuto],
-  ]);
-  const icon =
-    choice === "auto"
-      ? "auto"
-      : THEMES[choice]?.scheme === "dark"
-        ? "moon"
-        : "sun";
-  const current = names[choice] ?? choice;
+  const nameOf = useCallback(
+    (id: ThemeId) => dictCommon[themeNameKey(id)] ?? id,
+    [dictCommon],
+  );
+  const autoName = dict.common.themeAuto;
+  const customName =
+    (dict.common as Record<string, string>).themeCustom ?? "Custom";
+  const groupName = (g: ThemeGroup) =>
+    (dictCommon[themeGroupKey(g)] as string | undefined) ?? g;
+  const currentLabel =
+    choice === "custom"
+      ? customName
+      : choice === "auto"
+        ? autoName
+        : nameOf(choice);
+  const triggerIcon =
+    choice === "custom"
+      ? "palette"
+      : choice === "auto"
+        ? "auto"
+        : THEMES[choice]?.scheme === "dark"
+          ? "moon"
+          : "sun";
 
   // 打开菜单 = 切换意图：预取各候选主题对应的当前页可见分类图标
   const primeAll = useCallback(() => {
-    prefetchVisibleCatIcons(options.map(resolveTheme));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choice]);
+    prefetchVisibleCatIcons(THEME_IDS.map(resolveTheme));
+  }, []);
+
+  const classicIds = byGroup("classic");
 
   return (
     <div className={`thmenu ${className}`} ref={rootRef}>
@@ -185,47 +212,47 @@ export function ThemeToggle({
         className="thmenu__trigger"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`${label}：${current}`}
-        title={`${label}：${current}`}
+        aria-label={`${label}：${currentLabel}`}
+        title={`${label}：${currentLabel}`}
         suppressHydrationWarning
         onClick={() => {
           if (!open) primeAll();
           setOpen(!open);
         }}
       >
-        {mounted ? <Icon name={icon} size={17} className="leading-none" /> : null}
+        {mounted ? (
+          <Icon name={triggerIcon} size={17} className="leading-none" />
+        ) : null}
         <span className="thmenu__caret" aria-hidden />
       </button>
       {open ? (
-        <div className="thmenu__drop" role="menu" aria-label={label}>
-          {options.map((opt) => {
-            const active = opt === choice;
-            return (
-              <button
-                key={opt}
-                type="button"
-                role="menuitemradio"
-                aria-checked={active}
-                className={`thmenu__opt${active ? " is-active" : ""}`}
-                onClick={() => pick(opt)}
-              >
-                <Icon
-                  name={
-                    opt === "auto"
-                      ? "auto"
-                      : THEMES[opt]?.scheme === "dark"
-                        ? "moon"
-                        : "sun"
-                  }
-                  size={15}
-                />
-                <span className="thmenu__name">{names[opt] ?? opt}</span>
-                {active ? (
-                  <Icon name="check" size={14} className="thmenu__check" />
-                ) : null}
-              </button>
-            );
-          })}
+        <div
+          className="thmenu__drop thmenu__drop--panel"
+          role="menu"
+          aria-label={label}
+        >
+          {/* 经典组：行式（4 档 + auto，沿用原下拉选项契约） */}
+          <ClassicGroup
+            ids={classicIds}
+            choice={choice}
+            nameOf={nameOf}
+            autoName={autoName}
+            classicLabel={groupName("classic")}
+            onPick={pick}
+          />
+
+          {/* 淡彩三组：色卡网格（fresh 5 / ink 4 / dream 4）+ 自选颜色卡 */}
+          <PastelGroups
+            groups={groups}
+            byGroup={byGroup}
+            choice={choice}
+            customColor={customColor}
+            nameOf={nameOf}
+            groupName={groupName}
+            customLabel={customName}
+            onPick={pick}
+            onPickCustom={pickCustom}
+          />
         </div>
       ) : null}
     </div>

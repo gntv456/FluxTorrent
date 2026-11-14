@@ -506,6 +506,178 @@
 .thmenu__name {
   white-space: nowrap;
 }
+
+/* ---- 分组卡片面板（QQ 调色盘对标，2026-11-14）----
+   经典组沿用上方行式 .thmenu__opt（新加 .thsw 色点）；fresh/ink/dream
+   三组走 .thmenu__grid 色卡网格。非激活主题读不到对方变量——17 个
+   预览渐变（.thsw--<id>）必须按 id 手写色值类，不能引 var。 */
+.thmenu__drop--panel {
+  min-width: 316px;
+  max-width: calc(100vw - 24px);
+  max-height: min(560px, calc(100vh - 96px));
+  overflow-y: auto;
+  padding: 10px;
+}
+.thmenu__grp {
+  margin-top: 10px;
+}
+.thmenu__grp-name {
+  padding: 2px 6px 6px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+.thmenu__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+/* 行式选项里的小色点（经典组） */
+.thsw {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+/* 色卡（淡彩三组） */
+.thcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+.thcard:hover {
+  background: var(--surface-raised);
+  border-color: var(--border-soft);
+}
+.thcard.is-active {
+  border-color: var(--compat-orange);
+  background: var(--surface-hover);
+}
+.thcard__sw {
+  position: relative;
+  width: 100%;
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  overflow: hidden;
+}
+.thcard__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+.thcard__name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-body);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.thcard.is-active .thcard__name {
+  color: var(--text-brand);
+  font-weight: 800;
+}
+/* 自选颜色卡：三色拼接占位（未选色时无固定色可预览）+ 隐藏取色器。
+   input type=color 铺满色卡（opacity 0）→ 点卡片即弹原生取色器。 */
+.thcard--custom .thcard__sw {
+  display: flex;
+}
+.thcard__sw--custom {
+  border-style: dashed;
+}
+.thcard__sw-c1 {
+  flex: 1;
+  background: #f6d365;
+}
+.thcard__sw-c2 {
+  flex: 1;
+  background: #8ec5fc;
+}
+.thcard__sw-c3 {
+  flex: 1;
+  background: #e0a8f0;
+}
+.thcard__picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ---- 17 个预览渐变（按 id 手写色值；对齐 theme-pastel.css 逐款 --grad-aurora）---- */
+.thsw--brand,
+.thsw--auto {
+  background: linear-gradient(135deg, #2fa8ff, #5b6bf5, #ff8fc7);
+}
+.thsw--brand-night {
+  background: linear-gradient(135deg, #12233c, #0f1424);
+}
+.thsw--shanhaijing {
+  background: linear-gradient(135deg, #1c2f26, #0a0f0d);
+}
+.thsw--shanhaijing-light {
+  background: linear-gradient(135deg, #e8e0cc, #f7f3e8);
+}
+.thsw--seablue {
+  background: linear-gradient(135deg, #1c4e80, #2e7fd4, #5aa8ea);
+}
+.thsw--sakura {
+  background: linear-gradient(135deg, #7c2d4e, #c2527a, #ec9ab8);
+}
+.thsw--sprout {
+  background: linear-gradient(135deg, #24583a, #3d8f5f, #7cc296);
+}
+.thsw--summer {
+  background: linear-gradient(135deg, #2f6616, #4f9e2e, #8cc86a);
+}
+.thsw--dragon {
+  background: linear-gradient(135deg, #7c3a14, #b8622e, #e8a86a);
+}
+.thsw--gold {
+  background: linear-gradient(135deg, #6b4e12, #a07828, #d4b470);
+}
+.thsw--lilac {
+  background: linear-gradient(135deg, #543e86, #8a68c0, #bca0e2);
+}
+.thsw--bean-green {
+  background: linear-gradient(135deg, #33553f, #5f8a6e, #94bca2);
+}
+.thsw--cinnabar {
+  background: linear-gradient(135deg, #7c2f28, #b5544a, #e89a90);
+}
+.thsw--orange-pop {
+  background: linear-gradient(135deg, #8c4410, #d47628, #f2b45e);
+}
+.thsw--calm-green {
+  background: linear-gradient(135deg, #2c5e3c, #559e6c, #90ccb0);
+}
+.thsw--blue-mood {
+  background: linear-gradient(135deg, #284e86, #4a86d8, #94bce8);
+}
+.thsw--purple-you {
+  background: linear-gradient(135deg, #5e3a8c, #a06cc8, #d4aaea);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .thmenu__trigger,
   .thmenu__opt {

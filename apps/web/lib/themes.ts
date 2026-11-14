@@ -15,11 +15,40 @@
  *    auto 是模式词不是主题，固定 dict.common.themeAuto），三语齐全由
  *    tests/theme-registry.test.ts 门禁保证。 */
 
+/** 主题分组（QQ 超级调色盘对标，2026-11-14）：classic=经典四档（不可拆），
+ *  fresh/ink/dream = 13 款淡彩渐变配色。UI 选项顺序与面板分组由本字段驱动，
+ *  分组显示名走 i18n（themeGroupKey 推导，dict.common）。 */
+export type ThemeGroup = "classic" | "fresh" | "ink" | "dream";
+
+/** 分组的固定展示顺序（classic 恒首位）；面板渲染与测试都消费它 */
+export const THEME_GROUP_ORDER: ThemeGroup[] = [
+  "classic",
+  "fresh",
+  "ink",
+  "dream",
+];
+
+/** 主题 id → 分组（注册表 group 字段的扁平视图，避免散落消费方各自 filter） */
+export function themeGroupOf(id: ThemeId): ThemeGroup {
+  return THEMES[id].group ?? "classic";
+}
+
+/** 分组 → i18n 显示名键（dict.common 下）。
+ *  fresh → themeGroupFresh；ink → themeGroupInk。 */
+export function themeGroupKey(g: ThemeGroup): string {
+  const camel = g.replace(/(^|-)([a-z])/g, (_, _d, c: string) =>
+    c.toUpperCase(),
+  );
+  return `themeGroup${camel}`;
+}
+
 export interface ThemeDef {
   /** 浏览器界面色（meta theme-color 用，平台字面量） */
   chrome: string;
   /** 明暗族：auto 档解析依据 */
   scheme: "light" | "dark";
+  /** 面板分组：缺省 classic（经典四档不带 group 字段，注册表保持瘦） */
+  group?: ThemeGroup;
 }
 
 export const THEMES: Record<string, ThemeDef> = {
@@ -34,6 +63,38 @@ export const THEMES: Record<string, ThemeDef> = {
   // design-cov-exempt: 山海经亮色档「宣纸」（2026-11-04）：scheme=light
   // 但排在 brand 之后 → auto 亮色档仍落 brand，宣纸只作手选档。
   "shanhaijing-light": { chrome: "#f7f3e8", scheme: "light" },
+
+  /* ---- QQ 调色盘对标 13 款（2026-11-14）：全部 scheme=light 且排在
+   * 末尾 → themeIdByScheme 取首项，auto 亮/暗档仍落 brand/brand-night，
+   * 新配色只作手选档，不改变既有 auto 行为。chrome 取各自页面底主调。
+   * 色值定义在 app/styles/theme-pastel.css（13-id 共享结构块 + 逐款色块），
+   * 分组面板 UI 由 ThemeDef.group 驱动。 ---- */
+  // design-cov-exempt: 同上
+  seablue: { chrome: "#eaf3fd", scheme: "light", group: "fresh" },
+  // design-cov-exempt: 同上
+  sakura: { chrome: "#fdeef6", scheme: "light", group: "fresh" },
+  // design-cov-exempt: 同上
+  sprout: { chrome: "#eaf7ee", scheme: "light", group: "fresh" },
+  // design-cov-exempt: 同上
+  summer: { chrome: "#e8f7e0", scheme: "light", group: "fresh" },
+  // design-cov-exempt: 同上
+  dragon: { chrome: "#f8ede4", scheme: "light", group: "fresh" },
+  // design-cov-exempt: 同上
+  gold: { chrome: "#f3ead8", scheme: "light", group: "ink" },
+  // design-cov-exempt: 同上
+  lilac: { chrome: "#efe9f7", scheme: "light", group: "ink" },
+  // design-cov-exempt: 同上
+  "bean-green": { chrome: "#e9f0e6", scheme: "light", group: "ink" },
+  // design-cov-exempt: 同上
+  cinnabar: { chrome: "#f8e9e4", scheme: "light", group: "ink" },
+  // design-cov-exempt: 同上
+  "orange-pop": { chrome: "#fdefe4", scheme: "light", group: "dream" },
+  // design-cov-exempt: 同上
+  "calm-green": { chrome: "#e9f6ea", scheme: "light", group: "dream" },
+  // design-cov-exempt: 同上
+  "blue-mood": { chrome: "#e8f0fc", scheme: "light", group: "dream" },
+  // design-cov-exempt: 同上
+  "purple-you": { chrome: "#f0ebfa", scheme: "light", group: "dream" },
 };
 
 /** 注册表主题 id 列表（顺序即 UI 选项顺序） */
@@ -41,17 +102,24 @@ export const THEME_IDS = Object.keys(THEMES);
 
 export type ThemeId = (typeof THEME_IDS)[number];
 
-/** 用户可选档位：具体主题 或 auto（跟随系统） */
-export type ThemeChoice = ThemeId | "auto";
+/** 用户可选档位：具体主题 / auto（跟随系统）/ custom（用户自选主色，
+ *  派生逻辑在 lib/theme-custom.ts；DOM 永远只写具体 ThemeId + inline
+ *  覆盖，CSS 不认识 "custom"） */
+export type ThemeChoice = ThemeId | "auto" | "custom";
 
 export const THEME_AUTO: ThemeChoice = "auto";
+
+/** 自选颜色的存储键：存 #rrggbb；flux-theme 存 "custom" 时生效 */
+export const CUSTOM_COLOR_STORAGE_KEY = "flux-custom-color";
 
 /** localStorage 键（沿用旧键名，存量用户偏好不丢；新增 "auto" 档） */
 export const THEME_STORAGE_KEY = "flux-theme";
 
 /** 存储值 → 选择档：非法/缺省值一律归 auto（跟随系统） */
 export function parseChoice(v: string | null): ThemeChoice {
-  return v && (v === "auto" || v in THEMES) ? (v as ThemeChoice) : "auto";
+  return v && (v === "auto" || v === "custom" || v in THEMES)
+    ? (v as ThemeChoice)
+    : "auto";
 }
 
 /** 明暗族 → 主题 id：auto 解析的唯一实现（服务端/内联脚本同用）。
@@ -69,8 +137,10 @@ export function themeNameKey(id: ThemeId): string {
   return `theme${camel}`;
 }
 
-/** auto 档解析：跟随系统深色偏好落到具体主题（需在客户端调用） */
+/** auto/custom 档解析为具体主题：auto 跟随系统深色偏好；custom 落 brand
+ *  （日间亮色底）再由 theme-custom.ts 派生令牌 inline 覆盖。需在客户端调用 */
 export function resolveTheme(choice: ThemeChoice): ThemeId {
+  if (choice === "custom") return "brand";
   if (choice !== "auto") return choice;
   const dark =
     typeof window !== "undefined" &&

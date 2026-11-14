@@ -46,6 +46,10 @@
 /* 传统级联下拉（2026-11-09）：--nvc-* 令牌与级联结构都收在本文件，
    排在 glass 之后（面板底色覆盖不被主题层反向影响）。 */
 @import "./styles/nav-drop.css";
+/* 淡彩渐变 13 款（QQ 调色盘对标，2026-11-14）：必须在链末——与 base/tide
+   的 [data-theme] 块同特异性、后出现者胜。全文件 [data-theme] 作用域化，
+   默认主题用户零额外渲染开销（仅多一份 ~8KB gzip 令牌声明）。 */
+@import "./styles/theme-pastel.css";
 
 /* ⚠️ 娱乐屋样式（arcade.css 55KB + arcade-sweet.css 68KB）已于 2026-10-03
    从本文件移出，改为路由级 import（见 (main)/games/layout.tsx 与

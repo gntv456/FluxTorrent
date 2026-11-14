@@ -633,6 +633,15 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   moon: <path d="M19.4 14.6A8 8 0 0 1 9.4 4.6a8.4 8.4 0 1 0 10 10Z" />,
+  palette: (
+    <>
+      {/* 调色盘（自选颜色档，2026-11-14）：画板 + 三色点 + 拇指孔 */}
+      <path d="M12 3.6a8.4 8.4 0 1 0 0 16.8c1.3 0 2-.8 2-1.7 0-.8-.5-1.3-1.1-1.9-.5-.5-.9-1-.9-1.8 0-1 .8-1.8 1.9-1.8h1.7a4.8 4.8 0 0 0 4.8-4.8c0-2.9-3.5-4.8-8.4-4.8Z" />{" "}
+      <circle cx="7.6" cy="10.2" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="7.2" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="15.4" cy="8.4" r="0.9" fill="currentColor" stroke="none" />
+    </>
+  ),
   auto: (
     <>
       {/* 跟随系统（W-42）：左实日右虚月 + 竖分界 */}

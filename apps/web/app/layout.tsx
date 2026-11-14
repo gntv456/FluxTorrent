@@ -11,13 +11,7 @@ import { ToastProvider } from "@/components/ui/toast-provider";
 import { SkipLink } from "@/components/ui/skip-link";
 import { SparkBridge } from "@/components/spark-bridge";
 import { readDictChunk } from "@/lib/dict-chunks";
-import {
-  THEMES,
-  THEME_IDS,
-  THEME_STORAGE_KEY,
-  themeCssManifest,
-  themeIdByScheme,
-} from "@/lib/themes";
+import { ThemeNoFlash } from "@/lib/theme-no-flash";
 
 /** 移动端方案 M1：viewport-fit=cover 让 env(safe-area-inset-*) 生效——
  *  layout.tsx 底 Tab/操作条的 safe-area 内边距此前在 iOS 全面屏完全不工作。 */
@@ -131,67 +125,6 @@ window.__fluxSwUpdated=false;location.reload();
   );
 }
 
-/** 主题 no-flash：首绘前读 localStorage（缺省跟随系统 prefers-color-scheme）
- *  并写入 <html data-theme>，避免夜间用户刷新时白屏闪烁；
- *  同时同步 PWA theme-color，并监听系统偏好变化（未手动选择时实时跟随）。
- *  W-42：chrome 色表与档位解析搬到 lib/themes.ts 注册表（唯一真源），
- *  本脚本序列化注册表下发（保持内联、零水合依赖）；"auto" 档存库值
- *  在首绘即解析为具体主题——CSS 与 meta theme-color 都不认识 "auto"；
- *  明暗族按 ThemeDef.scheme 查（themeIdByScheme），不靠注册表位置。
- *
- *  2026-11-11 瘦身批：山海经字体/主题 CSS 移出全局链后，apply(t) 里同步
- *  按需注入/移除 <link>（ES5 等价于 lib/themes.ts 的 syncThemeCss；URL
- *  清单从构建期 manifest 序列化进来）。同步 appendChild 的 <link> 加载
- *  完成前该主题首帧会有短暂字体回落（Ma Shan Zheng → 楷体栈）——只影响
- *  山海经用户自己的刷新，默认主题用户零感知、零下载。 */
-
-function ThemeNoFlash() {
-  const CH = JSON.stringify(
-    Object.fromEntries(
-      Object.entries(THEMES).map(([k, v]) => [k, v.chrome]),
-    ),
-  );
-  const ids = JSON.stringify(THEME_IDS);
-  // 明暗族 → 主题 id（scheme 字段唯一真源，不做 IDS[0]/IDS[1] 位置假设）
-  const SC = JSON.stringify({
-    light: themeIdByScheme("light"),
-    dark: themeIdByScheme("dark"),
-  });
-  // 山海经 CSS 的注入清单（[themeId 前缀, fontsUrl, themeUrl]；同步
-  // scripts/gen-theme-css.mjs 的 manifest 键）
-  const SHJ = JSON.stringify([
-    "shanhaijing",
-    themeCssManifest.fonts,
-    themeCssManifest.theme,
-  ]);
-  const script =
-    `(function(){var CH=${CH},IDS=${ids},SC=${SC},SHJ=${SHJ};` +
-    `function chrome(t){var m=document.querySelector('meta[name="theme-color"]');` +
-    `if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}m.content=CH[t];}` +
-    `function css(t){var want=(t&&t.indexOf(SHJ[0])===0)?[SHJ[1],SHJ[2]]:[];` +
-    `var ls=document.querySelectorAll('link[data-theme-css]');` +
-    `for(var i=0;i<want.length;i++){var ok=false;` +
-    `for(var j=0;j<ls.length;j++){var h=ls[j].getAttribute('href');` +
-    `if(h===want[i]){ok=true;break;}}` +
-    `if(!ok){var l=document.createElement('link');l.rel='stylesheet';` +
-    `l.href=want[i];l.setAttribute('data-theme-css','');` +
-    `document.head.appendChild(l);}}` +
-    `for(var k=ls.length-1;k>=0;k--){var hh=ls[k].getAttribute('href');` +
-    `if(want.indexOf(hh)<0)ls[k].parentNode.removeChild(ls[k]);}}` +
-    `function apply(t){document.documentElement.dataset.theme=t;` +
-    `chrome(t);css(t);}` +
-    `function sys(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?SC.dark:SC.light;}` +
-    `function pick(v){return (v==='auto'||IDS.indexOf(v)<0)?sys():v;}` +
-    `try{var saved=localStorage.getItem('${THEME_STORAGE_KEY}');` +
-    `apply(pick(saved));` +
-    `if(!saved||saved==='auto'){` +
-    `var mq=window.matchMedia('(prefers-color-scheme: dark)');` +
-    `if(mq.addEventListener){mq.addEventListener('change',function(){` +
-    `try{var cur=localStorage.getItem('${THEME_STORAGE_KEY}');` +
-    `if(!cur||cur==='auto'){apply(sys());}}catch(_){}});}}` +
-    `}catch(e){}})();`;
-  return <script dangerouslySetInnerHTML={{ __html: script }} />;
-}
 
 /** 旧内核运行时兜底（2026-10-04 生产站实测）：Next.js 15 预编译的路由器
  *  内部用了 Array.prototype.at()（Chrome 92+ 才支持），且这段 runtime 不经过

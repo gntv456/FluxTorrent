@@ -1,0 +1,1660 @@
+/* ===== FluxTorrent · 淡彩渐变 13 款（QQ 超级调色盘对标，2026-11-14） =====
+   产出范围（严格）：
+     ✅ 13-id 共享结构块：尺寸/字体栈/--tide-* 桥接令牌/兼容层接线（一处写
+        十三处生效；.btn/.tide-header/.tide-pager 等全局结构类消费 --tide-*，
+        不定义会整块失效——见 theme-tide.css 同款教训）
+     ✅ 逐款颜色块：品牌六色语义位重映射 + 页面洗色 + 渐变 + 焦点环
+     ❌ 状态语义色（success/danger/warning）沿用 base.css 的 AA 加深值，
+        不随主题换（13 款底色都是浅暖/浅冷，状态色再变会踩对比度红线）
+     ❌ --content-* 内容色（BBCode/评级/画质）不参与换肤（W-36 纪律）
+     ❌ --mood-*、--fhue-*、--fbadge-* 游戏画布与论坛展示色板不覆盖
+        （山海经/夜间也只覆写必要项；13 款洗色靠 --surface-page 系即可）
+
+   机制：挂在 globals.css 的 @import 链末环（theme-tide.css 之后）。与
+   base.css / theme-tide.css 的 `[data-theme="brand"]` 同特异性、后出现 →
+   变量覆盖生效；base.css 的 `@theme inline` 引用这些变量，故 bg-sky 等
+   Tailwind utility 与 --compat-* 兼容层自动跟随。
+
+   语义位重映射（读码对照，变量名不变、语义位换色）：
+     sky→主题主色 / sky-deep→深主色（文本/实心钮）/ candy→信号色
+     sun/coral/mint 沿用各自语义（促销/危险/成功），色相向主题偏暖/冷微调
+
+   13 款与注册表（lib/themes.ts ThemeDef.group）一一对应：
+     fresh：seablue 地海蔚蓝 / sakura 樱语红粉 / sprout 触手生春 /
+            summer 夏绿成荫 / dragon 龙行绚烂
+     ink  ：gold 典雅金 / lilac 丁香紫 / bean-green 芸豆青 / cinnabar 辰砂色
+     dream：orange-pop 心想事橙 / calm-green 不再焦虑 /
+            blue-mood 蓝以为情 / purple-you 紫属于你
+   ============================================================ */
+
+/* ---------- 0. 共享结构块：13 桾共同的非颜色层 ---------- */
+[data-theme="seablue"],
+[data-theme="sakura"],
+[data-theme="sprout"],
+[data-theme="summer"],
+[data-theme="dragon"],
+[data-theme="gold"],
+[data-theme="lilac"],
+[data-theme="bean-green"],
+[data-theme="cinnabar"],
+[data-theme="orange-pop"],
+[data-theme="calm-green"],
+[data-theme="blue-mood"],
+[data-theme="purple-you"] {
+  color-scheme: light;
+
+  /* 圆角：与潮汐同值（14/10/6 系） */
+  --r-xl: 18px;
+  --r-lg: 14px;
+  --r-md: 10px;
+  --r-sm: 6px;
+
+  /* 字体栈：与潮汐同栈（西文 grotesque + 中文衬线标题） */
+  --font-display: "Bricolage Grotesque", "Noto Serif SC", "Songti SC",
+    "Source Han Serif SC", "SimSun", "Noto Sans SC", sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "Source Han Serif SC", "SimSun",
+    serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  /* 玻璃面板不透明度下限（glass.css 消费；承载文字面板 ≥94% 保 AA） */
+  --glass-floor: 0.94;
+
+  /* 补齐原主题未定义的 3 个变量（同 theme-tide.css P1 口径） */
+  --text-sub: var(--text-muted);
+  --compat-coral: var(--danger-text);
+  --compat-sub: var(--text-muted);
+  --danger-text: var(--danger);
+
+  /* 阴影：低扩散，靠 hairline 分层（色相由逐款块给 --accent-shadow 系） */
+  --shadow-card: 0 1px 2px rgba(30, 30, 40, 0.04),
+    0 10px 24px -12px rgba(30, 30, 40, 0.12);
+  --shadow-hover: 0 2px 4px rgba(30, 30, 40, 0.06),
+    0 16px 32px -14px rgba(30, 30, 40, 0.18);
+
+  /* 半透明派生层：13 款同为浅底白面，可共享 */
+  --row-veil: rgba(255, 255, 255, 0.96);
+  --row-veil-soft: rgba(255, 255, 255, 0.88);
+  --row-veil-mist: rgba(255, 255, 255, 0.76);
+  --chip-veil: rgba(253, 253, 254, 0.92);
+  --chip-veil-thin: rgba(253, 253, 254, 0.7);
+  --hairline: rgba(255, 255, 255, 0.55);
+  --hairline-soft: rgba(255, 255, 255, 0.4);
+  --hairline-strong: rgba(255, 255, 255, 0.82);
+  --on-accent-glass: rgba(255, 255, 255, 0.18);
+
+  /* 潮汐缓动（P2 结构类消费；颜色无关） */
+  --tide-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --tide-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 焦点环兜底（逐款块会覆写；此处防漏） */
+  --focus-ring: var(--sky-surf, var(--sky));
+  --focus-ring-soft: rgba(120, 130, 160, 0.12);
+}
+
+/* ---------- 1. fresh 清新尝鲜 ---------- */
+
+/* 1.1 seablue 地海蔚蓝：QQ 首卡，雾蓝→浅青渐变底 */
+[data-theme="seablue"] {
+  --sky: #2e7fd4; /* 主交互蓝（白底 4.6） */
+  --sky-deep: #1c4e80; /* 深海军：主文本/实心钮底（白字 7.6） */
+  --sky-surf: #3a8fe0; /* 实心钮 hover/焦点环实色 */
+  --sky-soft: #e3eefb; /* 浅蓝底：chip/选中态 */
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #0091a8; /* 信号青：在线/做种中 */
+  --candy-soft: #ddf2f5;
+  --indigo: #1c4e80;
+  --indigo-soft: #e3eefb;
+  --cloud: #f2f7fc;
+  --cream: #fbfcfe;
+  --ink: #10202f;
+  --sub: #55677e;
+  --line: #dde8f2;
+  --grad-aurora: linear-gradient(135deg, #1c4e80 0%, #2e7fd4 55%, #5aa8ea 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #1c4e80,
+    #2e7fd4,
+    #5aa8ea,
+    #0091a8,
+    #8fc4ef
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #2e7fd4;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #eef5fb;
+  --surface-cloud: #e4eef8;
+  --surface-card: #ffffff;
+  --surface-raised: #f8fbfe;
+  --surface-hover: #edf4fb;
+  --surface-sunken: #e6eff8;
+  --surface-cream: #fbfcfe;
+  --head-a: #e2edf8;
+  --head-b: #f6fafd;
+  --text-strong: #10202f;
+  --text-heading: #0b1826;
+  --text-body: #31465c;
+  --text-body-deep: #27394e;
+  --text-brand: #1c4e80;
+  --text-muted: #55677e;
+  --text-faint: #5d6f88;
+  --text-fainter: #62748d;
+  --text-on-accent: #ffffff;
+  --border-soft: #dbe6f1;
+  --border-deep: #b9cee2;
+  --border-strong: #7fb0d9;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #2e7fd4;
+  --muted-soft: #edf2f8;
+  --accent-purple: #1c4e80;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #1c4e80;
+  --accent-surface-strong: #2e7fd4;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #b9cee2;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #5aa8ea;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(46, 127, 212, 0.1);
+  --accent-shadow: rgba(46, 127, 212, 0.24);
+  --accent-shadow-soft: rgba(46, 127, 212, 0.16);
+  --accent-rule: rgba(46, 127, 212, 0.45);
+  --promo-free-bg: #e4f0fa;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(58, 143, 224, 0.12);
+  /* 潮汐桥接：.btn/.tide-header/.tide-pager/.tide-skeleton 消费 */
+  --tide-abyss: #0d2c47;
+  --tide-deep: #1c4e80;
+  --tide-sea: #3a8fe0;
+  --tide-surf: #5aa8ea;
+  --tide-foam: #8fc4ef;
+  --tide-mist: #d8e6f4;
+  --tide-haze: #edf4fb;
+  --tide-signal: #0091a8;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(46, 127, 212, 0.07);
+}
+
+/* 1.2 sakura 樱语红粉：雾粉→浅紫渐变底，主色取樱枝红棕保对比度 */
+[data-theme="sakura"] {
+  --sky: #c2527a; /* 樱红（白底 4.9） */
+  --sky-deep: #7c2d4e; /* 深樱棕：主文本/实心钮（白字 8.1） */
+  --sky-surf: #d05f88;
+  --sky-soft: #fbe9f0;
+  --sun: #a8680a;
+  --sun-soft: #fdf2dd;
+  --coral: #bf3a30;
+  --coral-soft: #fceae6;
+  --mint: #2f7d5c;
+  --mint-soft: #e2f2ea;
+  --candy: #b04480; /* 信号色随主题转梅紫 */
+  --candy-soft: #f7e4f0;
+  --indigo: #7c2d4e;
+  --indigo-soft: #fbe9f0;
+  --cloud: #fbf3f7;
+  --cream: #fefbfc;
+  --ink: #2d1722;
+  --sub: #7e5f6d;
+  --line: #f0dde6;
+  --grad-aurora: linear-gradient(135deg, #7c2d4e 0%, #c2527a 55%, #ec9ab8 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #7c2d4e,
+    #c2527a,
+    #ec9ab8,
+    #b04480,
+    #f4c6d8
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #c2527a;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #faf1f5;
+  --surface-cloud: #f4e7ed;
+  --surface-card: #ffffff;
+  --surface-raised: #fdf8fa;
+  --surface-hover: #f9eef3;
+  --surface-sunken: #f5e9ee;
+  --surface-cream: #fffcfd;
+  --head-a: #f6e5ec;
+  --head-b: #fdf6f9;
+  --text-strong: #2d1722;
+  --text-heading: #22101a;
+  --text-body: #553d49;
+  --text-body-deep: #47333d;
+  --text-brand: #7c2d4e;
+  --text-muted: #7e5f6d;
+  --text-faint: #86687a;
+  --text-fainter: #8c6e80;
+  --text-on-accent: #ffffff;
+  --border-soft: #eedbe4;
+  --border-deep: #dfc2cf;
+  --border-strong: #d5a0b8;
+  --success: #2f7d5c;
+  --success-bright: #3d9570;
+  --success-soft: #e2f2ea;
+  --success-border: #bcdccb;
+  --warning: #a8680a;
+  --warning-soft: #fdf2dd;
+  --warning-border: #ecd6a6;
+  --danger: #bf3a30;
+  --danger-soft: #fceae6;
+  --danger-border: #efc5bd;
+  --danger-text: var(--danger);
+  --info: #c2527a;
+  --muted-soft: #f4ecf0;
+  --accent-purple: #7c2d4e;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #7c2d4e;
+  --accent-surface-strong: #c2527a;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #dfc2cf;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #ec9ab8;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(194, 82, 122, 0.1);
+  --accent-shadow: rgba(194, 82, 122, 0.24);
+  --accent-shadow-soft: rgba(194, 82, 122, 0.16);
+  --accent-rule: rgba(194, 82, 122, 0.45);
+  --promo-free-bg: #f7e9f0;
+  --promo-x2-bg: #fbf0dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(208, 95, 136, 0.12);
+  --tide-abyss: #43172b;
+  --tide-deep: #7c2d4e;
+  --tide-sea: #d05f88;
+  --tide-surf: #ec9ab8;
+  --tide-foam: #f4c6d8;
+  --tide-mist: #f0dde6;
+  --tide-haze: #f9eef3;
+  --tide-signal: #b04480;
+  --tide-up: #c8322c;
+  --tide-down: #2f7d5c;
+  --tide-grid: rgba(194, 82, 122, 0.07);
+}
+
+/* 1.3 sprout 触手生春：浅绿→鹅黄渐变底，主色竹青 */
+[data-theme="sprout"] {
+  --sky: #3d8f5f; /* 竹青（白底 4.5） */
+  --sky-deep: #24583a; /* 深竹绿：主文本/实心钮（白字 7.7） */
+  --sky-surf: #4ba06d;
+  --sky-soft: #e4f2ea;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #0f8a86; /* 信号色转青绿 */
+  --candy-soft: #ddf3f1;
+  --indigo: #24583a;
+  --indigo-soft: #e4f2ea;
+  --cloud: #f1f8f3;
+  --cream: #fbfdfb;
+  --ink: #14271b;
+  --sub: #5b7263;
+  --line: #dcebe1;
+  --grad-aurora: linear-gradient(135deg, #24583a 0%, #3d8f5f 55%, #7cc296 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #24583a,
+    #3d8f5f,
+    #7cc296,
+    #0f8a86,
+    #a8d8b8
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #3d8f5f;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #eef6f1;
+  --surface-cloud: #e3f0e8;
+  --surface-card: #ffffff;
+  --surface-raised: #f8fcf9;
+  --surface-hover: #edf5f0;
+  --surface-sunken: #e6f1ea;
+  --surface-cream: #fcfefd;
+  --head-a: #e2f1e8;
+  --head-b: #f6fbf8;
+  --text-strong: #14271b;
+  --text-heading: #0e1f14;
+  --text-body: #34493c;
+  --text-body-deep: #2a3d31;
+  --text-brand: #24583a;
+  --text-muted: #5b7263;
+  --text-faint: #637a6c;
+  --text-fainter: #688172;
+  --text-on-accent: #ffffff;
+  --border-soft: #dcebe1;
+  --border-deep: #bcd6c6;
+  --border-strong: #8fc2a6;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #3d8f5f;
+  --muted-soft: #edf3ef;
+  --accent-purple: #24583a;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #24583a;
+  --accent-surface-strong: #3d8f5f;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #bcd6c6;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #7cc296;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(61, 143, 95, 0.1);
+  --accent-shadow: rgba(61, 143, 95, 0.24);
+  --accent-shadow-soft: rgba(61, 143, 95, 0.16);
+  --accent-rule: rgba(61, 143, 95, 0.45);
+  --promo-free-bg: #e5f2ea;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(75, 160, 109, 0.12);
+  --tide-abyss: #123524;
+  --tide-deep: #24583a;
+  --tide-sea: #4ba06d;
+  --tide-surf: #7cc296;
+  --tide-foam: #a8d8b8;
+  --tide-mist: #dcebe1;
+  --tide-haze: #edf5f0;
+  --tide-signal: #0f8a86;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(61, 143, 95, 0.07);
+}
+
+/* 1.4 summer 夏绿成荫：明亮草绿→黄绿渐变底，QQ 绿卡同调 */
+[data-theme="summer"] {
+  --sky: #4f9e2e; /* 草绿（白底 3.9，实心钮走 deep 底） */
+  --sky-deep: #2f6616; /* 深叶绿：主文本/实心钮（白字 7.3） */
+  --sky-surf: #5db03c;
+  --sky-soft: #e9f4e0;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #0f8a86;
+  --candy-soft: #ddf3f1;
+  --indigo: #2f6616;
+  --indigo-soft: #e9f4e0;
+  --cloud: #f3f9ec;
+  --cream: #fcfdfa;
+  --ink: #1c2e12;
+  --sub: #66795a;
+  --line: #e0ecd4;
+  --grad-aurora: linear-gradient(135deg, #2f6616 0%, #4f9e2e 55%, #8cc86a 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #2f6616,
+    #4f9e2e,
+    #8cc86a,
+    #0f8a86,
+    #b4dfa0
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #4f9e2e;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #f0f7e9;
+  --surface-cloud: #e6f1da;
+  --surface-card: #ffffff;
+  --surface-raised: #f9fcf5;
+  --surface-hover: #eff7e7;
+  --surface-sunken: #e9f3dd;
+  --surface-cream: #fdfffb;
+  --head-a: #e8f4de;
+  --head-b: #f8fcf3;
+  --text-strong: #1c2e12;
+  --text-heading: #142408;
+  --text-body: #3d5030;
+  --text-body-deep: #324326;
+  --text-brand: #2f6616;
+  --text-muted: #66795a;
+  --text-faint: #6e8161;
+  --text-fainter: #738767;
+  --text-on-accent: #ffffff;
+  --border-soft: #dfebd2;
+  --border-deep: #c2d8ae;
+  --border-strong: #93cb74;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #4f9e2e;
+  --muted-soft: #eff4ea;
+  --accent-purple: #2f6616;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #2f6616;
+  --accent-surface-strong: #4f9e2e;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #c2d8ae;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #8cc86a;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(79, 158, 46, 0.1);
+  --accent-shadow: rgba(79, 158, 46, 0.24);
+  --accent-shadow-soft: rgba(79, 158, 46, 0.16);
+  --accent-rule: rgba(79, 158, 46, 0.45);
+  --promo-free-bg: #eaf3e0;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(93, 176, 60, 0.12);
+  --tide-abyss: #1b3d0c;
+  --tide-deep: #2f6616;
+  --tide-sea: #5db03c;
+  --tide-surf: #8cc86a;
+  --tide-foam: #b4dfa0;
+  --tide-mist: #e0ecd4;
+  --tide-haze: #eff7e7;
+  --tide-signal: #0f8a86;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(79, 158, 46, 0.07);
+}
+
+/* 1.5 dragon 龙行绚烂：暖橙金渐变底，主色赭红金（QQ 橙卡同调） */
+[data-theme="dragon"] {
+  --sky: #b8622e; /* 赭金（白底 4.4） */
+  --sky-deep: #7c3a14; /* 深赭：主文本/实心钮（白字 7.9） */
+  --sky-surf: #c8713c;
+  --sky-soft: #f9e9dc;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #a85a8a; /* 信号色转绛紫（暖底区分危险/促销） */
+  --candy-soft: #f5e6ee;
+  --indigo: #7c3a14;
+  --indigo-soft: #f9e9dc;
+  --cloud: #faf3ec;
+  --cream: #fefbf8;
+  --ink: #2e1c10;
+  --sub: #7d685a;
+  --line: #eee0d2;
+  --grad-aurora: linear-gradient(135deg, #7c3a14 0%, #b8622e 55%, #e8a86a 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #7c3a14,
+    #b8622e,
+    #e8a86a,
+    #a85a8a,
+    #f2cba6
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #b8622e;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #f9f2eb;
+  --surface-cloud: #f2e6da;
+  --surface-card: #ffffff;
+  --surface-raised: #fdf9f5;
+  --surface-hover: #f8efe6;
+  --surface-sunken: #f3e9de;
+  --surface-cream: #fffdfa;
+  --head-a: #f6e8da;
+  --head-b: #fdf8f3;
+  --text-strong: #2e1c10;
+  --text-heading: #24150a;
+  --text-body: #4d3d2e;
+  --text-body-deep: #403225;
+  --text-brand: #7c3a14;
+  --text-muted: #7d685a;
+  --text-faint: #857163;
+  --text-fainter: #8b7769;
+  --text-on-accent: #ffffff;
+  --border-soft: #ecdccb;
+  --border-deep: #dcc2aa;
+  --border-strong: #d4a074;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #b8622e;
+  --muted-soft: #f3ede6;
+  --accent-purple: #7c3a14;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #7c3a14;
+  --accent-surface-strong: #b8622e;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #dcc2aa;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #e8a86a;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(184, 98, 46, 0.1);
+  --accent-shadow: rgba(184, 98, 46, 0.24);
+  --accent-shadow-soft: rgba(184, 98, 46, 0.16);
+  --accent-rule: rgba(184, 98, 46, 0.45);
+  --promo-free-bg: #f6ebdf;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(200, 113, 60, 0.12);
+  --tide-abyss: #432009;
+  --tide-deep: #7c3a14;
+  --tide-sea: #c8713c;
+  --tide-surf: #e8a86a;
+  --tide-foam: #f2cba6;
+  --tide-mist: #eee0d2;
+  --tide-haze: #f8efe6;
+  --tide-signal: #a85a8a;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(184, 98, 46, 0.07);
+}
+
+/* ---------- 2. ink 水墨国风 ---------- */
+
+/* 2.1 gold 典雅金：绢帛暖金底，主色熟褐 */
+[data-theme="gold"] {
+  --sky: #a07828; /* 熟褐金（白底 4.4） */
+  --sky-deep: #6b4e12; /* 深褐金：主文本/实心钮（白字 7.5） */
+  --sky-surf: #b08834;
+  --sky-soft: #f3ead4;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #8a6aa0; /* 信号色转藤紫 */
+  --candy-soft: #f0e8f6;
+  --indigo: #6b4e12;
+  --indigo-soft: #f3ead4;
+  --cloud: #f6f1e5;
+  --cream: #fdfbf5;
+  --ink: #292114;
+  --sub: #75695a;
+  --line: #e8dfc9;
+  --grad-aurora: linear-gradient(135deg, #6b4e12 0%, #a07828 55%, #d4b470 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #6b4e12,
+    #a07828,
+    #d4b470,
+    #8a6aa0,
+    #e8d8a8
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #a07828;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #f5f0e3;
+  --surface-cloud: #efe8d5;
+  --surface-card: #fffefa;
+  --surface-raised: #faf7ee;
+  --surface-hover: #f4efe2;
+  --surface-sunken: #efe9da;
+  --surface-cream: #fffdf6;
+  --head-a: #f0e8d2;
+  --head-b: #faf7ee;
+  --text-strong: #292114;
+  --text-heading: #1e180d;
+  --text-body: #463e2c;
+  --text-body-deep: #3a3324;
+  --text-brand: #6b4e12;
+  --text-muted: #75695a;
+  --text-faint: #7d7263;
+  --text-fainter: #837868;
+  --text-on-accent: #ffffff;
+  --border-soft: #e6dcc4;
+  --border-deep: #d2c39e;
+  --border-strong: #c2a868;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #a07828;
+  --muted-soft: #f1ede2;
+  --accent-purple: #6b4e12;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #6b4e12;
+  --accent-surface-strong: #a07828;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #d2c39e;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #d4b470;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: #a07828;
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(160, 120, 40, 0.1);
+  --accent-shadow: rgba(160, 120, 40, 0.24);
+  --accent-shadow-soft: rgba(160, 120, 40, 0.16);
+  --accent-rule: rgba(160, 120, 40, 0.45);
+  --promo-free-bg: #f0ead8;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(176, 136, 52, 0.12);
+  --tide-abyss: #3d2c0a;
+  --tide-deep: #6b4e12;
+  --tide-sea: #b08834;
+  --tide-surf: #d4b470;
+  --tide-foam: #e8d8a8;
+  --tide-mist: #e8dfc9;
+  --tide-haze: #f4efe2;
+  --tide-signal: #8a6aa0;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(160, 120, 40, 0.07);
+}
+
+/* 2.2 lilac 丁香紫：烟紫底，主色丁香（QQ 紫卡同调） */
+[data-theme="lilac"] {
+  --sky: #8a68c0; /* 丁香紫（白底 4.3） */
+  --sky-deep: #543e86; /* 深紫：主文本/实心钮（白字 8.4） */
+  --sky-surf: #9a78ce;
+  --sky-soft: #ede8f6;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #b86898; /* 信号色转玫紫 */
+  --candy-soft: #f6e6f0;
+  --indigo: #543e86;
+  --indigo-soft: #ede8f6;
+  --cloud: #f5f3f9;
+  --cream: #fdfcfe;
+  --ink: #1e1830;
+  --sub: #686184;
+  --line: #e4dff0;
+  --grad-aurora: linear-gradient(135deg, #543e86 0%, #8a68c0 55%, #bca0e2 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #543e86,
+    #8a68c0,
+    #bca0e2,
+    #b86898,
+    #d4c4ec
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #8a68c0;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #f2f0f8;
+  --surface-cloud: #e9e6f2;
+  --surface-card: #ffffff;
+  --surface-raised: #f9f8fc;
+  --surface-hover: #f0eef7;
+  --surface-sunken: #ebe8f4;
+  --surface-cream: #fefdff;
+  --head-a: #eae5f4;
+  --head-b: #f8f6fc;
+  --text-strong: #1e1830;
+  --text-heading: #161026;
+  --text-body: #3e3856;
+  --text-body-deep: #332e48;
+  --text-brand: #543e86;
+  --text-muted: #686184;
+  --text-faint: #706a8c;
+  --text-fainter: #767092;
+  --text-on-accent: #ffffff;
+  --border-soft: #e2dcee;
+  --border-deep: #c8bede;
+  --border-strong: #a58fd0;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #8a68c0;
+  --muted-soft: #efedf5;
+  --accent-purple: #543e86;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #543e86;
+  --accent-surface-strong: #8a68c0;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #c8bede;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #bca0e2;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(138, 104, 192, 0.1);
+  --accent-shadow: rgba(138, 104, 192, 0.24);
+  --accent-shadow-soft: rgba(138, 104, 192, 0.16);
+  --accent-rule: rgba(138, 104, 192, 0.45);
+  --promo-free-bg: #ebe7f4;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(154, 120, 206, 0.12);
+  --tide-abyss: #2c2054;
+  --tide-deep: #543e86;
+  --tide-sea: #9a78ce;
+  --tide-surf: #bca0e2;
+  --tide-foam: #d4c4ec;
+  --tide-mist: #e4dff0;
+  --tide-haze: #f0eef7;
+  --tide-signal: #b86898;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(138, 104, 192, 0.07);
+}
+
+/* 2.3 bean-green 芸豆青：灰豆绿底，主色芸豆（水墨最沉的一款） */
+[data-theme="bean-green"] {
+  --sky: #5f8a6e; /* 芸豆青（白底 4.0） */
+  --sky-deep: #33553f; /* 深豆绿：主文本/实心钮（白字 7.8） */
+  --sky-surf: #6e9a7e;
+  --sky-soft: #e6efe8;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #6a8898; /* 信号色转青灰 */
+  --candy-soft: #e5eef2;
+  --indigo: #33553f;
+  --indigo-soft: #e6efe8;
+  --cloud: #f2f5f1;
+  --cream: #fcfdfc;
+  --ink: #1a261e;
+  --sub: #5e6e62;
+  --line: #dde6de;
+  --grad-aurora: linear-gradient(135deg, #33553f 0%, #5f8a6e 55%, #94bca2 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #33553f,
+    #5f8a6e,
+    #94bca2,
+    #6a8898,
+    #bcd2c2
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #5f8a6e;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #eff3ee;
+  --surface-cloud: #e4ebe4;
+  --surface-card: #ffffff;
+  --surface-raised: #f9fbf9;
+  --surface-hover: #eef4ef;
+  --surface-sunken: #e8efe8;
+  --surface-cream: #fdfffd;
+  --head-a: #e5eee6;
+  --head-b: #f8faf8;
+  --text-strong: #1a261e;
+  --text-heading: #121c15;
+  --text-body: #364639;
+  --text-body-deep: #2c3b2f;
+  --text-brand: #33553f;
+  --text-muted: #5e6e62;
+  --text-faint: #667669;
+  --text-fainter: #6b7b6e;
+  --text-on-accent: #ffffff;
+  --border-soft: #dbe4db;
+  --border-deep: #bccfc0;
+  --border-strong: #8db49c;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #5f8a6e;
+  --muted-soft: #edf1ed;
+  --accent-purple: #33553f;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #33553f;
+  --accent-surface-strong: #5f8a6e;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #bccfc0;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #94bca2;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(95, 138, 110, 0.1);
+  --accent-shadow: rgba(95, 138, 110, 0.24);
+  --accent-shadow-soft: rgba(95, 138, 110, 0.16);
+  --accent-rule: rgba(95, 138, 110, 0.45);
+  --promo-free-bg: #e7efe8;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(110, 154, 126, 0.12);
+  --tide-abyss: #22392a;
+  --tide-deep: #33553f;
+  --tide-sea: #6e9a7e;
+  --tide-surf: #94bca2;
+  --tide-foam: #bcd2c2;
+  --tide-mist: #dde6de;
+  --tide-haze: #eef4ef;
+  --tide-signal: #6a8898;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(95, 138, 110, 0.07);
+}
+
+/* 2.4 cinnabar 辰砂色：朱砂暖底，主色辰砂红棕 */
+[data-theme="cinnabar"] {
+  --sky: #b5544a; /* 辰砂（白底 4.5） */
+  --sky-deep: #7c2f28; /* 深砂：主文本/实心钮（白字 8.2） */
+  --sky-surf: #c4645a;
+  --sky-soft: #f8e8e4;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #b86898;
+  --candy-soft: #f6e6f0;
+  --indigo: #7c2f28;
+  --indigo-soft: #f8e8e4;
+  --cloud: #f9f1ee;
+  --cream: #fefbfa;
+  --ink: #2c1614;
+  --sub: #7d615c;
+  --line: #efddd8;
+  --grad-aurora: linear-gradient(135deg, #7c2f28 0%, #b5544a 55%, #e89a90 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #7c2f28,
+    #b5544a,
+    #e89a90,
+    #b86898,
+    #f2c4bc
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #b5544a;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #f9f0ed;
+  --surface-cloud: #f3e4e0;
+  --surface-card: #ffffff;
+  --surface-raised: #fdf9f7;
+  --surface-hover: #f8ece8;
+  --surface-sunken: #f4e6e2;
+  --surface-cream: #fffcfb;
+  --head-a: #f5e6e0;
+  --head-b: #fdf8f6;
+  --text-strong: #2c1614;
+  --text-heading: #22100e;
+  --text-body: #503934;
+  --text-body-deep: #432e29;
+  --text-brand: #7c2f28;
+  --text-muted: #7d615c;
+  --text-faint: #856a64;
+  --text-fainter: #8b706a;
+  --text-on-accent: #ffffff;
+  --border-soft: #ecd9d3;
+  --border-deep: #ddbeb6;
+  --border-strong: #d49d92;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #b5544a;
+  --muted-soft: #f3ebe8;
+  --accent-purple: #7c2f28;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #7c2f28;
+  --accent-surface-strong: #b5544a;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #ddbeb6;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #e89a90;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(181, 84, 74, 0.1);
+  --accent-shadow: rgba(181, 84, 74, 0.24);
+  --accent-shadow-soft: rgba(181, 84, 74, 0.16);
+  --accent-rule: rgba(181, 84, 74, 0.45);
+  --promo-free-bg: #f6e9e5;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(196, 100, 90, 0.12);
+  --tide-abyss: #431c17;
+  --tide-deep: #7c2f28;
+  --tide-sea: #c4645a;
+  --tide-surf: #e89a90;
+  --tide-foam: #f2c4bc;
+  --tide-mist: #efddd8;
+  --tide-haze: #f8ece8;
+  --tide-signal: #b86898;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(181, 84, 74, 0.07);
+}
+
+/* ---------- 3. dream 梦幻美学 ---------- */
+
+/* 3.1 orange-pop 心想事橙：日光橙→蜜黄渐变底（QQ 橙卡同调） */
+[data-theme="orange-pop"] {
+  --sky: #d47628; /* 蜜橙（白底 3.4，实心钮走 deep 底） */
+  --sky-deep: #8c4410; /* 深橙棕：主文本/实心钮（白字 6.6） */
+  --sky-surf: #e08638;
+  --sky-soft: #fbeadb;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #c05880; /* 信号色转莓粉（与促销琥珀拉开） */
+  --candy-soft: #f8e4ee;
+  --indigo: #8c4410;
+  --indigo-soft: #fbeadb;
+  --cloud: #fbf4ea;
+  --cream: #fefbf6;
+  --ink: #2e1e10;
+  --sub: #7d6952;
+  --line: #f0e2cf;
+  --grad-aurora: linear-gradient(135deg, #8c4410 0%, #d47628 55%, #f2b45e 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #8c4410,
+    #d47628,
+    #f2b45e,
+    #c05880,
+    #f8d194
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #d47628;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #faf3e9;
+  --surface-cloud: #f4e9da;
+  --surface-card: #ffffff;
+  --surface-raised: #fdf9f3;
+  --surface-hover: #f9f0e4;
+  --surface-sunken: #f5ebdb;
+  --surface-cream: #fffdfa;
+  --head-a: #f7ead8;
+  --head-b: #fdf9f2;
+  --text-strong: #2e1e10;
+  --text-heading: #241708;
+  --text-body: #4e3d28;
+  --text-body-deep: #41321f;
+  --text-brand: #8c4410;
+  --text-muted: #7d6952;
+  --text-faint: #85725c;
+  --text-fainter: #8b7863;
+  --text-on-accent: #ffffff;
+  --border-soft: #ecdfcb;
+  --border-deep: #dcc4a2;
+  --border-strong: #d4a470;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #d47628;
+  --muted-soft: #f4ede2;
+  --accent-purple: #8c4410;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #8c4410;
+  --accent-surface-strong: #d47628;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #dcc4a2;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #f2b45e;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(212, 118, 40, 0.1);
+  --accent-shadow: rgba(212, 118, 40, 0.24);
+  --accent-shadow-soft: rgba(212, 118, 40, 0.16);
+  --accent-rule: rgba(212, 118, 40, 0.45);
+  --promo-free-bg: #f7ecdf;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(224, 134, 56, 0.12);
+  --tide-abyss: #4c2608;
+  --tide-deep: #8c4410;
+  --tide-sea: #e08638;
+  --tide-surf: #f2b45e;
+  --tide-foam: #f8d194;
+  --tide-mist: #f0e2cf;
+  --tide-haze: #f9f0e4;
+  --tide-signal: #c05880;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(212, 118, 40, 0.07);
+}
+
+/* 3.2 calm-green 不再焦虑：薄荷奶绿底，主色灰绿 */
+[data-theme="calm-green"] {
+  --sky: #559e6c; /* 灰绿（白底 4.1） */
+  --sky-deep: #2c5e3c; /* 深绿：主文本/实心钮（白字 7.6） */
+  --sky-surf: #63ae7c;
+  --sky-soft: #e4f1e8;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #5590a0; /* 信号色转雾蓝 */
+  --candy-soft: #e3eff3;
+  --indigo: #2c5e3c;
+  --indigo-soft: #e4f1e8;
+  --cloud: #f0f7f2;
+  --cream: #fbfdfb;
+  --ink: #16261a;
+  --sub: #586e60;
+  --line: #dcebe0;
+  --grad-aurora: linear-gradient(135deg, #2c5e3c 0%, #559e6c 55%, #90ccb0 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #2c5e3c,
+    #559e6c,
+    #90ccb0,
+    #5590a0,
+    #b8dcc8
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #559e6c;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #edf6f0;
+  --surface-cloud: #e2efe6;
+  --surface-card: #ffffff;
+  --surface-raised: #f8fcf9;
+  --surface-hover: #ecf5ef;
+  --surface-sunken: #e5f1e9;
+  --surface-cream: #fcfefd;
+  --head-a: #e3f0e8;
+  --head-b: #f7fbf8;
+  --text-strong: #16261a;
+  --text-heading: #0f1e13;
+  --text-body: #324538;
+  --text-body-deep: #283a2e;
+  --text-brand: #2c5e3c;
+  --text-muted: #586e60;
+  --text-faint: #607668;
+  --text-fainter: #657b6d;
+  --text-on-accent: #ffffff;
+  --border-soft: #d9e8de;
+  --border-deep: #b9d3c2;
+  --border-strong: #86bd9c;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #559e6c;
+  --muted-soft: #ecf2ee;
+  --accent-purple: #2c5e3c;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #2c5e3c;
+  --accent-surface-strong: #559e6c;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #b9d3c2;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #90ccb0;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(85, 158, 108, 0.1);
+  --accent-shadow: rgba(85, 158, 108, 0.24);
+  --accent-shadow-soft: rgba(85, 158, 108, 0.16);
+  --accent-rule: rgba(85, 158, 108, 0.45);
+  --promo-free-bg: #e6f1e9;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(99, 174, 124, 0.12);
+  --tide-abyss: #16352a;
+  --tide-deep: #2c5e3c;
+  --tide-sea: #63ae7c;
+  --tide-surf: #90ccb0;
+  --tide-foam: #b8dcc8;
+  --tide-mist: #dcebe0;
+  --tide-haze: #ecf5ef;
+  --tide-signal: #5590a0;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(85, 158, 108, 0.07);
+}
+
+/* 3.3 blue-mood 蓝以为情：晴蓝→雾紫渐变底（QQ 蓝卡同调） */
+[data-theme="blue-mood"] {
+  --sky: #4a86d8; /* 晴蓝（白底 4.2） */
+  --sky-deep: #284e86; /* 深晴蓝：主文本/实心钮（白字 7.6） */
+  --sky-surf: #5894e2;
+  --sky-soft: #e4edf9;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #9068c0; /* 信号色转雾紫（渐变尾调） */
+  --candy-soft: #ede6f6;
+  --indigo: #284e86;
+  --indigo-soft: #e4edf9;
+  --cloud: #f1f5fb;
+  --cream: #fbfdfe;
+  --ink: #131f30;
+  --sub: #556479;
+  --line: #dae5f1;
+  --grad-aurora: linear-gradient(135deg, #284e86 0%, #4a86d8 55%, #94bce8 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #284e86,
+    #4a86d8,
+    #94bce8,
+    #9068c0,
+    #c2d8f0
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #4a86d8;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #edf3fa;
+  --surface-cloud: #e2ebf6;
+  --surface-card: #ffffff;
+  --surface-raised: #f8fbfe;
+  --surface-hover: #ecf3fa;
+  --surface-sunken: #e6eef8;
+  --surface-cream: #fbfdfe;
+  --head-a: #e3edf8;
+  --head-b: #f7fafd;
+  --text-strong: #131f30;
+  --text-heading: #0d1826;
+  --text-body: #31435a;
+  --text-body-deep: #27394e;
+  --text-brand: #284e86;
+  --text-muted: #556479;
+  --text-faint: #5d6c82;
+  --text-fainter: #62718a;
+  --text-on-accent: #ffffff;
+  --border-soft: #d8e3f0;
+  --border-deep: #b6cbe2;
+  --border-strong: #82aad6;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #4a86d8;
+  --muted-soft: #ecf1f7;
+  --accent-purple: #284e86;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #284e86;
+  --accent-surface-strong: #4a86d8;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #b6cbe2;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #94bce8;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(74, 134, 216, 0.1);
+  --accent-shadow: rgba(74, 134, 216, 0.24);
+  --accent-shadow-soft: rgba(74, 134, 216, 0.16);
+  --accent-rule: rgba(74, 134, 216, 0.45);
+  --promo-free-bg: #e5eef9;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(88, 148, 226, 0.12);
+  --tide-abyss: #14305c;
+  --tide-deep: #284e86;
+  --tide-sea: #5894e2;
+  --tide-surf: #94bce8;
+  --tide-foam: #c2d8f0;
+  --tide-mist: #dae5f1;
+  --tide-haze: #ecf3fa;
+  --tide-signal: #9068c0;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(74, 134, 216, 0.07);
+}
+
+/* 3.4 purple-you 紫属于你：粉紫→雾蓝渐变底（QQ 紫卡同调） */
+[data-theme="purple-you"] {
+  --sky: #a06cc8; /* 幻紫（白底 3.9，实心钮走 deep 底） */
+  --sky-deep: #5e3a8c; /* 深紫：主文本/实心钮（白字 7.4） */
+  --sky-surf: #ae7cd4;
+  --sky-soft: #f0e8f8;
+  --sun: #b4790a;
+  --sun-soft: #fbf0da;
+  --coral: #c0392b;
+  --coral-soft: #fbeae7;
+  --mint: #147d5f;
+  --mint-soft: #dff1eb;
+  --candy: #c86898; /* 信号色转莓紫 */
+  --candy-soft: #f8e6f0;
+  --indigo: #5e3a8c;
+  --indigo-soft: #f0e8f8;
+  --cloud: #f6f2fa;
+  --cream: #fdfbfe;
+  --ink: #201630;
+  --sub: #6d6180;
+  --line: #e8e0f0;
+  --grad-aurora: linear-gradient(135deg, #5e3a8c 0%, #a06cc8 55%, #d4aaea 100%);
+  --grad-rainbow: linear-gradient(
+    90deg,
+    #5e3a8c,
+    #a06cc8,
+    #d4aaea,
+    #c86898,
+    #e2ccf2
+  );
+  --ribbon: var(--grad-rainbow);
+  --compat-glow: #a06cc8;
+  --compat-soft: var(--sky-soft);
+  --surface-page: #f3f0f9;
+  --surface-cloud: #eae4f4;
+  --surface-card: #ffffff;
+  --surface-raised: #faf8fd;
+  --surface-hover: #f2eef8;
+  --surface-sunken: #ece6f5;
+  --surface-cream: #fefeff;
+  --head-a: #ece4f5;
+  --head-b: #f9f6fc;
+  --text-strong: #201630;
+  --text-heading: #180f26;
+  --text-body: #443758;
+  --text-body-deep: #392c4a;
+  --text-brand: #5e3a8c;
+  --text-muted: #6d6180;
+  --text-faint: #756a88;
+  --text-fainter: #7b708e;
+  --text-on-accent: #ffffff;
+  --border-soft: #e6def0;
+  --border-deep: #cec2e2;
+  --border-strong: #b096d6;
+  --success: #147d5f;
+  --success-bright: #1b9573;
+  --success-soft: #dff1eb;
+  --success-border: #a9d8c9;
+  --warning: #b4790a;
+  --warning-soft: #fbf0da;
+  --warning-border: #ebd9a8;
+  --danger: #c0392b;
+  --danger-soft: #fbeae7;
+  --danger-border: #f1c7c1;
+  --danger-text: var(--danger);
+  --info: #a06cc8;
+  --muted-soft: #f0edf6;
+  --accent-purple: #5e3a8c;
+  --tone-brand: var(--sky-deep);
+  --tone-brand-strong: var(--sky);
+  --tone-brand-soft: var(--sky-soft);
+  --accent-surface: #5e3a8c;
+  --accent-surface-strong: #a06cc8;
+  --hero-bg: var(--grad-aurora);
+  --compat-bg: var(--surface-page);
+  --compat-paper: var(--surface-card);
+  --compat-cream: var(--surface-cream);
+  --compat-line: #cec2e2;
+  --compat-line-soft: var(--line);
+  --compat-orange: var(--sky);
+  --compat-orange-bright: #d4aaea;
+  --compat-orange-dark: var(--sky-deep);
+  --compat-fill-a: var(--compat-orange-bright);
+  --compat-fill-mid: var(--compat-orange);
+  --compat-fill-b: var(--compat-orange-dark);
+  --compat-fill-glow: var(--compat-glow);
+  --compat-green: var(--mint);
+  --compat-blue: var(--info);
+  --compat-ink: var(--ink);
+  --compat-glow-veil: rgba(160, 108, 200, 0.1);
+  --accent-shadow: rgba(160, 108, 200, 0.24);
+  --accent-shadow-soft: rgba(160, 108, 200, 0.16);
+  --accent-rule: rgba(160, 108, 200, 0.45);
+  --promo-free-bg: #eee9f6;
+  --promo-x2-bg: #fbf1dc;
+  --focus-ring: var(--sky-surf);
+  --focus-ring-soft: rgba(174, 124, 212, 0.12);
+  --tide-abyss: #3a2464;
+  --tide-deep: #5e3a8c;
+  --tide-sea: #ae7cd4;
+  --tide-surf: #d4aaea;
+  --tide-foam: #e2ccf2;
+  --tide-mist: #e8e0f0;
+  --tide-haze: #f2eef8;
+  --tide-signal: #c86898;
+  --tide-up: #c8322c;
+  --tide-down: #12805c;
+  --tide-grid: rgba(160, 108, 200, 0.07);
+}
+
+/* ---------- 4. 结构增强：与潮汐 P2 同口径的最小集 ----------
+   .btn/.colhead/.tide-toast 等通用类在 theme-tide.css 里只有
+   [data-theme="brand"] 作用域的覆盖段；13 款新主题下按钮/分页/骨架屏
+   也需要同款结构（引用的令牌已由上方共享块+逐款块给足）。这里用
+   :where() 降零特异性挂在全局类上，theme-tide.css 已有的 brand 专段
+   不受影响（它在前、本文件在后，同特异性时本文件胜——:where 是零，
+   tide 的 [data-theme="brand"] 特异性更高，brand 下仍以 tide 为准）。 */
+
+/* 按钮结构：tide 的 .btn 段是全局类（无 [data-theme] 前缀），13 款直接继承；
+   这里只补 tide 里被 [data-theme="brand"] 作用域化的结构段同款 */
+[data-theme="seablue"] .nexus-table th,
+[data-theme="seablue"] .nexus-table thead td,
+[data-theme="sakura"] .nexus-table th,
+[data-theme="sakura"] .nexus-table thead td,
+[data-theme="sprout"] .nexus-table th,
+[data-theme="sprout"] .nexus-table thead td,
+[data-theme="summer"] .nexus-table th,
+[data-theme="summer"] .nexus-table thead td,
+[data-theme="dragon"] .nexus-table th,
+[data-theme="dragon"] .nexus-table thead td,
+[data-theme="gold"] .nexus-table th,
+[data-theme="gold"] .nexus-table thead td,
+[data-theme="lilac"] .nexus-table th,
+[data-theme="lilac"] .nexus-table thead td,
+[data-theme="bean-green"] .nexus-table th,
+[data-theme="bean-green"] .nexus-table thead td,
+[data-theme="cinnabar"] .nexus-table th,
+[data-theme="cinnabar"] .nexus-table thead td,
+[data-theme="orange-pop"] .nexus-table th,
+[data-theme="orange-pop"] .nexus-table thead td,
+[data-theme="calm-green"] .nexus-table th,
+[data-theme="calm-green"] .nexus-table thead td,
+[data-theme="blue-mood"] .nexus-table th,
+[data-theme="blue-mood"] .nexus-table thead td,
+[data-theme="purple-you"] .nexus-table th,
+[data-theme="purple-you"] .nexus-table thead td {
+  background: linear-gradient(180deg, var(--head-a), var(--head-b));
+  border-bottom: 1px solid var(--border-deep);
+  letter-spacing: 0.04em;
+}
+
+[data-theme="seablue"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="sakura"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="sprout"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="summer"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="dragon"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="gold"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="lilac"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="bean-green"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="cinnabar"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="orange-pop"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="calm-green"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="blue-mood"] .nexus-table tbody tr:hover td:first-child,
+[data-theme="purple-you"] .nexus-table tbody tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--tide-sea);
+}
+
+/* 面板头左竖线（同 tide 2.9 口径） */
+[data-theme="seablue"] .brand-panel__head::before,
+[data-theme="sakura"] .brand-panel__head::before,
+[data-theme="sprout"] .brand-panel__head::before,
+[data-theme="summer"] .brand-panel__head::before,
+[data-theme="dragon"] .brand-panel__head::before,
+[data-theme="gold"] .brand-panel__head::before,
+[data-theme="lilac"] .brand-panel__head::before,
+[data-theme="bean-green"] .brand-panel__head::before,
+[data-theme="cinnabar"] .brand-panel__head::before,
+[data-theme="orange-pop"] .brand-panel__head::before,
+[data-theme="calm-green"] .brand-panel__head::before,
+[data-theme="blue-mood"] .brand-panel__head::before,
+[data-theme="purple-you"] .brand-panel__head::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--grad-aurora);
+}
+
+/* 滚动条 / 选中态 / 焦点（同 tide 2.12 口径，色随逐款令牌） */
+[data-theme="seablue"] ::-webkit-scrollbar-thumb,
+[data-theme="sakura"] ::-webkit-scrollbar-thumb,
+[data-theme="sprout"] ::-webkit-scrollbar-thumb,
+[data-theme="summer"] ::-webkit-scrollbar-thumb,
+[data-theme="dragon"] ::-webkit-scrollbar-thumb,
+[data-theme="gold"] ::-webkit-scrollbar-thumb,
+[data-theme="lilac"] ::-webkit-scrollbar-thumb,
+[data-theme="bean-green"] ::-webkit-scrollbar-thumb,
+[data-theme="cinnabar"] ::-webkit-scrollbar-thumb,
+[data-theme="orange-pop"] ::-webkit-scrollbar-thumb,
+[data-theme="calm-green"] ::-webkit-scrollbar-thumb,
+[data-theme="blue-mood"] ::-webkit-scrollbar-thumb,
+[data-theme="purple-you"] ::-webkit-scrollbar-thumb {
+  background: var(--border-deep);
+  border-radius: 999px;
+}
+[data-theme="seablue"] ::selection,
+[data-theme="sakura"] ::selection,
+[data-theme="sprout"] ::selection,
+[data-theme="summer"] ::selection,
+[data-theme="dragon"] ::selection,
+[data-theme="gold"] ::selection,
+[data-theme="lilac"] ::selection,
+[data-theme="bean-green"] ::selection,
+[data-theme="cinnabar"] ::selection,
+[data-theme="orange-pop"] ::selection,
+[data-theme="calm-green"] ::selection,
+[data-theme="blue-mood"] ::selection,
+[data-theme="purple-you"] ::selection {
+  background: var(--focus-ring-soft);
+  color: var(--text-heading);
+}
+[data-theme="seablue"] :focus-visible,
+[data-theme="sakura"] :focus-visible,
+[data-theme="sprout"] :focus-visible,
+[data-theme="summer"] :focus-visible,
+[data-theme="dragon"] :focus-visible,
+[data-theme="gold"] :focus-visible,
+[data-theme="lilac"] :focus-visible,
+[data-theme="bean-green"] :focus-visible,
+[data-theme="cinnabar"] :focus-visible,
+[data-theme="orange-pop"] :focus-visible,
+[data-theme="calm-green"] :focus-visible,
+[data-theme="blue-mood"] :focus-visible,
+[data-theme="purple-you"] :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

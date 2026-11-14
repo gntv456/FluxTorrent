@@ -53,6 +53,22 @@ export const THEME_TO_CAT_ICON_SET: Record<ThemeId, CatIconSetId> = {
   brand: "aurora",
   "brand-night": "aurora",
   shanhaijing: "shanhaijing",
+  // QQ 调色盘 13 款（2026-11-14）：全是 brand 亮色的洗色变体（独立 id），
+  // 图标沿用 aurora 套。Record<ThemeId,...> 全键约束：新注册主题不补行
+  // 编译即炸（本表注释③的守门口径）。
+  seablue: "aurora",
+  sakura: "aurora",
+  sprout: "aurora",
+  summer: "aurora",
+  dragon: "aurora",
+  gold: "aurora",
+  lilac: "aurora",
+  "bean-green": "aurora",
+  cinnabar: "aurora",
+  "orange-pop": "aurora",
+  "calm-green": "aurora",
+  "blue-mood": "aurora",
+  "purple-you": "aurora",
 };
 
 /** 未知/未来主题 id 的兜底集（含 tide 待确认项） */
