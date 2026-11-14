@@ -30,9 +30,12 @@ export function BigsmallRoadPage() {
 
   useEffect(() => {
     void api
-      .get<RoundRow[]>("/api/v1/games/rounds?game=bigsmall&limit=50")
+      .get<RoundRow[] | { rows: RoundRow[] }>(
+        "/api/v1/games/rounds?game=bigsmall&limit=50",
+      )
       .then((r) => {
-        setRows(r);
+        // /games/rounds 现返回 {rows, streak}；裸数组是旧容器回滚时的形状
+        setRows(Array.isArray(r) ? r : (r.rows ?? []));
         setFailed(false);
       })
       // 失败演成空路单 + 全零走势，会员会以为自己的对局没上账

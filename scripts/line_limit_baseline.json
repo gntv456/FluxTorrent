@@ -97,7 +97,6 @@
  "apps/web/components/forum-post-actions.tsx::wide": 7,
  "apps/web/components/forum-report.tsx::wide": 3,
  "apps/web/components/forum-search.tsx::wide": 4,
- "apps/web/components/forum-topic-list.tsx::wide": 1,
  "apps/web/components/forum-vote.tsx::wide": 4,
  "apps/web/components/friends-actions.tsx::wide": 7,
  "apps/web/components/fun-box-history.tsx::wide": 1,
@@ -239,7 +238,7 @@
  "apps/web/app/(main)/games/scratch/_inner.tsx": 352,
  "apps/web/app/(main)/games/pet/_inner.tsx": 315,
  "apps/web/app/(main)/games/jgg/_inner.tsx": 328,
- "apps/web/app/(main)/games/fishing/_inner.tsx": 375,
+ "apps/web/app/(main)/games/fishing/_inner.tsx": 373,
  "apps/web/app/(main)/games/farm/_inner-ranch.tsx": 396,
  "apps/web/app/(main)/games/farm/_inner-ranch.tsx::wide": 14,
  "apps/web/app/(main)/games/farm/_inner-sections.tsx::wide": 4,
@@ -609,6 +608,5 @@
  "scripts/mobile/_mdiag2.js::wide": 4,
  "scripts/mobile/_mdiag3.js::wide": 4,
  "scripts/mobile/_mdiag4.js::wide": 4,
- "scripts/mobile/_mdiag5.js::wide": 1,
- "apps/web/app/(main)/forums/(shell)/page.tsx::wide": 1
+ "scripts/mobile/_mdiag5.js::wide": 1
 }

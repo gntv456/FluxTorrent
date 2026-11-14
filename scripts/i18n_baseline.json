@@ -751,7 +751,7 @@
  ],
  "components/game/bigsmall-props.tsx": [],
  "components/game/bigsmall-road.tsx": [
-  140
+  143
  ],
  "components/game/capsule-machine.tsx": [],
  "components/game/die-face.tsx": [],
@@ -763,7 +763,7 @@
  "components/game/game-kit-feedback.tsx": [],
  "components/game/game-kit.tsx": [],
  "components/game/game-records.tsx": [
-  222
+  225
  ],
  "components/game/game-stage.tsx": [],
  "components/game/game-tabs.tsx": [],

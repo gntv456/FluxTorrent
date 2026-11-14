@@ -101,18 +101,16 @@ export default function FishingPage({
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   const loadMeta = useCallback(async () => {
-    try {
-      setOv(await api.get<Overview>("/api/v1/games"));
-    } catch {
-      /* ignore */
-    }
-    try {
-      setHist(
-        await api.get<RoundRow[]>("/api/v1/games/rounds?game=fishing&limit=10"),
-      );
-    } catch {
-      /* ignore */
-    }
+    const [ov, rounds] = await Promise.all([
+      api.get<Overview>("/api/v1/games").catch(() => null),
+      api
+        .get<RoundRow[] | { rows: RoundRow[] }>(
+          "/api/v1/games/rounds?game=fishing&limit=10",
+        )
+        .catch(() => null),
+    ]);
+    if (ov) setOv(ov);
+    setHist(Array.isArray(rounds) ? rounds : (rounds?.rows ?? []));
   }, []);
 
   useEffect(() => {
