@@ -178,6 +178,7 @@
  "apps/api/src/games_http/helpers.rs": 2,
  "apps/api/src/games_http/item_use.rs": 6,
  "apps/api/src/games_http/linkage.rs": 7,
+ "apps/api/src/games_http/minclass.rs": 1,
  "apps/api/src/games_http/overview.rs": 7,
  "apps/api/src/games_http/pets.rs": 9,
  "apps/api/src/games_http/pet_custom.rs": 4,
