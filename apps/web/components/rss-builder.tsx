@@ -228,6 +228,7 @@ export function RssBuilder() {
           </label>
         </div>
 
+        {/* 搜索行在 rss-rows 网格外独占整行 */}
         <label className="rss-row rss-row--search">
           <span>{t.keyword}</span>
           <input

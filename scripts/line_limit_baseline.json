@@ -210,7 +210,7 @@
   "apps/web/app/styles/fonts-shanhaijing.css::wide": 368,
   "apps/web/app/styles/fonts-tide.css::wide": 225,
   "apps/web/app/styles/layout.css::wide": 2,
-  "apps/web/app/styles/pages.css": 4096,
+  "apps/web/app/styles/pages.css": 4095,
   "apps/web/app/styles/pages.css::wide": 2,
   "apps/web/app/setup/page.tsx::wide": 2,
   "apps/web/app/rules/page.tsx::wide": 2,

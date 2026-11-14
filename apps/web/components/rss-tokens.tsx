@@ -142,7 +142,9 @@ export function RssTokenPanel({
     <section className="rss-card">
       <h2 className="rss-card__title">{t.tokenTitle}</h2>
       <p className="rss-hint">{t.tokenNote}</p>
-      <div className="rss-rows">
+      {/* 名称输入与创建键成组：满行输入 + 右侧按钮（旧 rss-rows 网格
+          会把按钮挤成孤置一格，移动端尤其松散） */}
+      <div className="rss-url-row">
         <input
           type="text"
           value={name}
@@ -150,7 +152,12 @@ export function RssTokenPanel({
           onChange={(e) => setName(e.target.value)}
           placeholder={t.tokenNamePh}
         />
-        <button type="button" disabled={busy} onClick={create}>
+        <button
+          type="button"
+          className="rss-copy"
+          disabled={busy}
+          onClick={create}
+        >
           {t.tokenCreate}
         </button>
       </div>
@@ -172,30 +179,33 @@ export function RssTokenPanel({
               ) : (
                 <small className="rss-hint">{t.tokenPlainGone}</small>
               )}
+              {/* 动作组整行铺开右对齐（网格 nth-of-type 会被复制键序号干扰） */}
+              <div className="rss-preset__actions">
+                {m.plain && (
+                  <CopyBtn
+                    text={buildUrl(base, m.plain, query)}
+                    label={t.copy}
+                    copiedLabel={t.copied}
+                  />
+                )}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => rotate(m.id)}
+                >
+                  {t.tokenRotate}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => revoke(m.id)}
+                >
+                  {t.tokenRevoke}
+                </button>
+              </div>
               <small className="rss-hint">
                 {new Date(m.created_at).toLocaleString()}
               </small>
-              {m.plain && (
-                <CopyBtn
-                  text={buildUrl(base, m.plain, query)}
-                  label={t.copy}
-                  copiedLabel={t.copied}
-                />
-              )}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => rotate(m.id)}
-              >
-                {t.tokenRotate}
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => revoke(m.id)}
-              >
-                {t.tokenRevoke}
-              </button>
             </li>
           ))}
         </ul>

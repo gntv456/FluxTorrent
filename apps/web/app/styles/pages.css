@@ -2858,13 +2858,13 @@ textarea.bbcode {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-sub, #6b7280);
-  padding: 0;
 }
 
 .rss-checks {
+  /* 流式勾选墙（auto-fit 大列会在 70 项时留白难扫读） */
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
+  gap: 2px 18px;
 }
 
 .rss-check {
@@ -2877,11 +2877,17 @@ textarea.bbcode {
 }
 
 .rss-rows {
+  /* 2 列基准、宽屏 4 列：标签恒在控件左侧同一行内 */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
 }
 
+@media (min-width: 900px) {
+  .rss-rows {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
 .rss-row {
   display: flex;
   align-items: center;
@@ -2896,7 +2902,9 @@ textarea.bbcode {
 }
 
 .rss-row select,
-.rss-row input[type="text"] {
+.rss-row input[type="text"],
+.rss-url-row input,
+.rss-preset input {
   min-height: var(--tap-min);
   padding: 0 8px;
   border: 1px solid var(--compat-line);
@@ -2904,13 +2912,14 @@ textarea.bbcode {
   background: var(--surface-card);
   color: inherit;
   font-size: 13px;
-}
-
-.rss-row--search input[type="text"] {
   flex: 1;
-  min-width: 200px;
+  min-width: 0;
 }
-
+.rss-url-row input,
+.rss-preset input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
 .rss-hint {
   font-size: 12px;
   color: var(--text-sub, #6b7280);
@@ -2920,18 +2929,6 @@ textarea.bbcode {
   display: flex;
   gap: 8px;
   align-items: stretch;
-}
-
-.rss-url-row input {
-  flex: 1;
-  min-height: var(--tap-min);
-  padding: 0 10px;
-  border: 1px solid var(--compat-line);
-  border-radius: 8px;
-  background: var(--compat-paper);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  color: inherit;
 }
 
 .rss-copy {
@@ -2957,27 +2954,29 @@ textarea.bbcode {
 }
 
 .rss-preset {
-  display: flex;
+  /* token 行两段式网格（旧 flex 单行在窄屏把日期与按钮挤出容器） */
+  display: grid;
+  grid-template-columns: minmax(64px, auto) 1fr;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.rss-preset span {
-  min-width: 72px;
-  color: var(--text-sub, #6b7280);
-}
-
-.rss-preset input {
-  flex: 1;
-  min-height: var(--tap-min);
-  padding: 0 8px;
+  gap: 4px 10px;
+  padding: 8px 10px;
   border: 1px solid var(--compat-line);
-  border-radius: 8px;
-  background: var(--surface-card);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  color: inherit;
+  border-radius: 10px;
+  background: var(--compat-paper, var(--surface-card));
+}
+.rss-preset > span {
+  color: var(--text-sub, #6b7280);
+  word-break: break-all;
+}
+.rss-preset__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rss-preset > small {
+  grid-column: 1 / -1;
 }
 
 /* 指标磁贴：宽屏自适应铺满，窄屏自动降列 */
