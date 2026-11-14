@@ -147,6 +147,14 @@ export function MedalCard({
                 {bonus}
               </b>
             </li>
+            {m.sale_begin_at && (
+              <li>
+                <span>{g.saleFrom}</span>
+                <b suppressHydrationWarning>
+                  {isoDay(m.sale_begin_at, locale)}
+                </b>
+              </li>
+            )}
             {m.sale_end_at && (
               <li>
                 <span>{g.saleUntil}</span>
@@ -165,6 +173,7 @@ export function MedalCard({
           wearing={m.wearing}
           price={m.price}
           getType={m.get_type}
+          saleStatus={m.sale_status}
           balance={balance}
           giftFeeBp={m.gift_fee_bp ?? null}
           globalGiftTaxBp={globalGiftTaxBp}

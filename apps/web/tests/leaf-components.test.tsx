@@ -143,6 +143,35 @@ describe("MedalActions", () => {
     expect(screen.getByText(/已售罄/)).toBeInTheDocument();
   });
 
+  it("已结束销售（ended）→ 不渲染购买按钮，显示「已结束销售」", () => {
+    render(
+      <MedalActions
+        medalId={5}
+        owned={false}
+        wearing={false}
+        price={1000}
+        getType={1}
+        saleStatus="ended"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /购买/ })).toBeNull();
+    expect(screen.getByText(/已结束销售/)).toBeInTheDocument();
+  });
+
+  it("在售（on_sale）→ 正常渲染购买按钮", () => {
+    render(
+      <MedalActions
+        medalId={5}
+        owned={false}
+        wearing={false}
+        price={1000}
+        getType={1}
+        saleStatus="on_sale"
+      />,
+    );
+    expect(screen.getByRole("button", { name: /购买/ })).toBeEnabled();
+  });
+
   it("余额不足 → 按钮禁用并显示「余额不足」，不发起购买", async () => {
     const { api } = await import("@/lib/api-client");
     const buySpy = vi
