@@ -1,22 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { BoardBrief, Topic } from "@fluxtorrent/domain-types";
-import { TypeBadge, TagChip, MarkBadge } from "@/components/forum-bits";
-import { Icon } from "@/components/icons";
-import { dateLocale } from "@/i18n/config";
+import { TypeBadge, TagChip } from "@/components/forum-bits";
 import { useI18n } from "@/i18n/client";
-import { useIsCompact } from "@/lib/hooks/use-media";
+import { ForumTopicRow } from "@/components/forum-topic-row";
+import { topicStamp } from "@/lib/topic-stamp";
 import { ForumModBar } from "./forum-mod-bar";
 
 /** 版块页主题列表（客户端）。
  *
- *  为什么必须是客户端组件：`can_mod` 时列表要承载**勾选态**（批量管理的输入），
- *  而 RSC 的 `<table>` 无法持有交互状态。展示内容与改造前的 SSR 版本一致。
+ *  为什么必须是客户端组件：`can_mod` 时列表要承载**勾选态**（批量管理的输入）。
  *
- *  行内勾选框只在 `canMod` 时渲染 —— 普通用户看到的表格与从前完全一样。
+ *  行样式已收编到 forum-topic-row.tsx——与首页话题流同一套 fh-topic
+ *  行式（用户口径：两处只是内容不同，样式不该两样）。本列表装配版块页
+ *  特有内容：类型/标签徽章 + 回复/浏览数字右列；版主勾选占行首。
  */
 export function ForumTopicList({
   topics,
@@ -28,8 +27,7 @@ export function ForumTopicList({
   /** can_mod 时才有值：批量「移动到」下拉的数据源（全站可读版块） */
   forums: BoardBrief[];
 }) {
-  const { dict, locale } = useI18n();
-  const compact = useIsCompact();
+  const { dict } = useI18n();
   const router = useRouter();
   const [picked, setPicked] = useState<number[]>([]);
   const pageIds = topics.map((t) => t.id);
@@ -50,104 +48,28 @@ export function ForumTopicList({
         />
       )}
 
-      {compact ? (
-        <div className="ftopic-cards">
-          {topics.map((t) => (
-            <a
-              key={t.id}
-              href={`/forums/topic/${t.id}`}
-              className="ftopic-card"
-            >
-              <p className="ftopic-card__title">
-                {t.notice && (
-                  <MarkBadge kind="notice" label={dict.forums.markNotice} />
-                )}
-                {t.sticky && (
-                  <MarkBadge kind="pin" label={dict.forums.markPin} />
-                )}
-                {t.digest && (
-                  <MarkBadge kind="ess" label={dict.forums.markEss} />
-                )}
-                {t.title}
-              </p>
-              <p className="ftopic-card__meta">
-                <span>{t.username ?? dict.torrent.anonymous}</span>
-                <span className="ftopic-card__nums">
-                  💬 {Math.max(0, t.replies)} · 👁 {t.views}
-                </span>
-              </p>
-            </a>
-          ))}
-        </div>
+      {topics.length === 0 ? (
+        <p className="fh-stream__empty">{dict.forums.noTopics}</p>
       ) : (
-        <div className="brand-wide-table-scroll">
-          <table className="nexus-table">
-            <thead>
-              <tr>
-                {canMod && <td className="colhead w-8" />}
-                <th scope="col" className="colhead">
-                  {dict.forums.topicTitleFallback}
-                </th>
-                <th scope="col" className="colhead w-32">
-                  {dict.forums.author}
-                </th>
-                <td className="colhead w-16 text-right">
-                  {dict.forums.replies.replace("{n}", "").trim() ||
-                    dict.forums.replies}
-                </td>
-                <td className="colhead hidden w-20 text-right sm:table-cell">
-                  {dict.forums.views.replace("{n}", "").trim() ||
-                    dict.forums.views}
-                </td>
-                <td className="colhead hidden w-28 text-right sm:table-cell">
-                  {dict.forums.lastPost}
-                </td>
-              </tr>
-            </thead>
-            <tbody>
-              {topics.map((t) => (
-                <tr
-                  key={t.id}
-                  className={
-                    t.notice
-                      ? "bg-coral-soft"
-                      : t.sticky
-                        ? "bg-sky-soft"
-                        : t.digest
-                          ? "bg-sun-soft"
-                          : undefined
-                  }
-                >
-                  {canMod && (
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={picked.includes(t.id)}
-                        onChange={() => toggle(t.id)}
-                        aria-label={`${dict.forums.topicTitleFallback}: ${t.title}`}
-                      />
-                    </td>
-                  )}
-                  <td>
-                    {/* 标记只用文字徽章（用户要求：不再要星形图标）；
-                    公告/置顶/精华各自出，多个标记并存就都显示 */}
-                    {t.notice && (
-                      <MarkBadge kind="notice" label={dict.forums.markNotice} />
-                    )}
-                    {t.sticky && (
-                      <MarkBadge kind="pin" label={dict.forums.markPin} />
-                    )}
-                    {t.digest && (
-                      <MarkBadge kind="ess" label={dict.forums.markEss} />
-                    )}
-                    {t.locked && (
-                      <Icon
-                        name="lock"
-                        size={13}
-                        className="mr-1 inline align-[-2px]"
-                        title="已锁定"
-                      />
-                    )}
+        <div className="fh-stream__list">
+          {topics.map((t) => (
+            <ForumTopicRow
+              key={t.id}
+              topic={t}
+              picked={picked.includes(t.id)}
+              onPick={canMod ? () => toggle(t.id) : undefined}
+              pickLabel={`${dict.forums.topicTitleFallback}: ${t.title}`}
+              marks={{
+                notice: dict.forums.markNotice,
+                pin: dict.forums.markPin,
+                ess: dict.forums.markEss,
+                locked: dict.forums.locked,
+              }}
+              slots={{
+                // 版块页接口不回 created_at，meta 时间以最后发言兜底
+                metaTime: topicStamp(t.last_post_at),
+                metaExtra: (
+                  <>
                     <TypeBadge
                       type={t.topic_type}
                       label={
@@ -166,35 +88,27 @@ export function ForumTopicList({
                         className="mr-1 align-middle"
                       />
                     ))}
-                    <Link
-                      href={`/forums/topic/${t.id}`}
-                      className="font-bold text-ink hover:text-sky"
-                    >
-                      {t.title}
-                    </Link>
-                  </td>
-                  <td className="text-sub">{t.username ?? "—"}</td>
-                  <td className="num text-right">{Math.max(t.replies, 0)}</td>
-                  <td className="num hidden text-right sm:table-cell">
-                    {t.views}
-                  </td>
-                  {/* 日期按**访问者本地时区**渲染，容器（UTC）与浏览器必然渲染出
-                  不同文本 —— 这是有意的差异，非 bug。抑制 hydration 告警
-                  （React 对时间戳场景的官方建议）。 */}
-                  <td
-                    className="num hidden text-right text-sub sm:table-cell"
-                    suppressHydrationWarning
-                  >
-                    {t.last_post_at
-                      ? new Date(t.last_post_at).toLocaleDateString(
-                          dateLocale(locale),
-                        )
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </>
+                ),
+                right: (
+                  <div className="fh-topic__nums">
+                    {/* 右列数字块：回复 / 浏览上下两行，列头文案取
+                        「回复 {n}」剥掉占位符后的裸词（与旧表格列头同源） */}
+                    <span>
+                      <b className="num">{Math.max(t.replies, 0)}</b>{" "}
+                      {dict.forums.replies.replace("{n}", "").trim() ||
+                        dict.forums.replies}
+                    </span>
+                    <span>
+                      <b className="num">{t.views}</b>{" "}
+                      {dict.forums.views.replace("{n}", "").trim() ||
+                        dict.forums.views}
+                    </span>
+                  </div>
+                ),
+              }}
+            />
+          ))}
         </div>
       )}
     </div>

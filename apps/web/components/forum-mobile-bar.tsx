@@ -23,8 +23,10 @@ export function ForumMobileBar({
   titles,
   panels,
 }: {
-  /** 筛选按钮上显示的当前档名（全部话题/只看公告/…） */
-  filterLabel: string;
+  /** 筛选按钮上显示的当前档名（全部话题/只看公告/…）。ReactNode
+   *  是为论坛三栏壳准备的：壳在切版块时不重建，档名由客户端按
+   *  searchParams 现算。 */
+  filterLabel: ReactNode;
   labels: { nav: string; more: string; search: string };
   titles: Record<MobilePanel, string>;
   panels: Record<MobilePanel, ReactNode>;

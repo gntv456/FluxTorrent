@@ -518,6 +518,28 @@
   font-size: 12px;
   white-space: nowrap;
 }
+/* 版主勾选框（行首占位，与头像同宽同高，保持行内对齐） */
+.fh-topic__pick {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  margin: 0;
+}
+/* 右列数字块（版块页口径：回复数 / 浏览数上下两行 + 最后回复时间）。
+   首页话题流的右列复用 .fh-topic__last（回复人+时间），版块页用
+   .fh-topic__nums（数字统计）——同一行式骨架，只换右列内容。 */
+.fh-topic__nums {
+  display: block;
+  min-width: 92px;
+  color: var(--sub);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+.fh-topic__nums b {
+  color: var(--ink);
+  font-weight: 700;
+}
 
 /* ---------- 左栏版块导航（样图 f3b-nav：全部版块 + 分组 + 各版块计数） ----------
  * 挂在既有 .pting-sidenav 卡内（pages.css），这里只补分组标签、

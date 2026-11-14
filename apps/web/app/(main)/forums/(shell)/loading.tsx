@@ -1,8 +1,9 @@
 import { getDict } from "@/i18n/server";
 import { SkeletonBlock, SkeletonRows } from "@/components/ui/skeleton";
 
-/** app/(main)/forums/[id] 路由级加载态（DS §9 验收第 2 条清偿）：RSC 流式入口——
- *  首屏先出骨架（IA-4：带「正在获取」heading），数据到位后替换。 */
+/** 论坛三栏壳的中栏加载态（首页与版块页共用；DS §9 验收第 2 条）：
+ *  骨架落在 (shell)/layout.tsx 的 children 槽里，切版块时左列/右列
+ *  保持原位，只有中栏先出骨架（IA-4：带「正在获取」heading）。 */
 export default async function Loading() {
   const { dict } = await getDict();
   const t = dict.forums.title;

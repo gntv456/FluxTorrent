@@ -1,34 +1,18 @@
-import Link from "next/link";
-import type { Forum } from "@fluxtorrent/domain-types";
 import { ForumMineLinks, ForumUserCardBlock } from "./forum-home-aside";
+import { ForumNav, type BoardGroup } from "./forum-nav";
 import type { ForumUserCard } from "@/lib/data-forum";
 import type { Dict } from "@/i18n/server";
 
-/** 论坛首页左列（样图集 § tplForum 左栏三块）：用户卡 + 版块导航 + 我的。
+/** 论坛左列（样图集 § tplForum 左栏三块）：用户卡 + 版块导航 + 我的。
  *
  *  抽成独立组件是因为它要出现两次：桌面落在 `.fh-left` 列里，
  *  手机端放进「版块」弹窗（见 forum-mobile-bar.tsx）——同一份 RSC
  *  节点两处复用，不复制 JSX。
- */
+ *
+ *  当前版块高亮由 ForumNav 在客户端按 pathname 现算：本组件活在
+ *  三栏壳 layout 里，切版块时不会重新渲染。 */
 
-/** 版块导航圆点色板（样图 f3b-nav__item i 的六色，按版块 id 取）。
- *  P2-5 令牌化：色值真源在 base.css --fhue-*（固定 hue 轮换，
- *  明暗同值，口径见该处注释）。 */
-const NAV_DOTS = [
-  "var(--fhue-sky)",
-  "var(--fhue-mint)",
-  "var(--fhue-sun)",
-  "var(--fhue-indigo)",
-  "var(--fhue-candy)",
-  "var(--fhue-coral)",
-];
-
-export interface BoardGroup {
-  key: string;
-  name: string;
-  hidden: boolean;
-  items: Forum[];
-}
+export type { BoardGroup };
 
 export function ForumLeftColumn({
   me,
@@ -36,69 +20,26 @@ export function ForumLeftColumn({
   currency,
   groups,
   totalTopics,
-  activeId,
 }: {
   me: ForumUserCard | null;
   dict: Dict;
   currency: string;
   groups: BoardGroup[];
   totalTopics: number;
-  /** 当前版块高亮（2026-11-13 版块页三栏复用）：缺省 = 论坛首页
-   *  （「全部版块」项高亮）；传 forumId = 对应版块项高亮、全站项熄灭 */
-  activeId?: number;
 }) {
   return (
     <>
       <ForumUserCardBlock me={me} dict={dict} currency={currency} />
-      <aside className="pting-sidenav">
-        <h2>{dict.forums2.allNodes}</h2>
-        <nav aria-label={dict.forums.title}>
-          {/* 一级：全部版块（样图该项没有圆点，选中态 sky-soft） */}
-          <Link
-            href="/forums"
-            className={activeId === undefined ? "on" : undefined}
-          >
-            {dict.forums2.navAll}
-            <span className="fh-nav__cnt num">{totalTopics}</span>
-          </Link>
-          {groups.map((g) => (
-            <div key={g.key}>
-              <div className="fh-nav__group">
-                {g.name}
-                {g.hidden && (
-                  <span className="pting-card__count">
-                    {dict.forums2.hiddenTag}
-                  </span>
-                )}
-              </div>
-              {g.items.map((f) => (
-                <Link
-                  key={f.id}
-                  href={`/forums/${f.id}`}
-                  className={[
-                    "fh-nav__sub",
-                    g.hidden ? "fh-nav__hidden" : "",
-                    activeId === f.id ? "on" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  {/* 二级圆点（样图 f3b-nav__item i：6px 实心圆，
-                      按版块 id 取色板；pting-sidenav__dot 是 26px
-                      渐变方块，给字母用的，这里不能复用） */}
-                  <span
-                    className="fh-nav__dot"
-                    style={{ background: NAV_DOTS[f.id % NAV_DOTS.length] }}
-                    aria-hidden="true"
-                  />
-                  {f.name}
-                  <span className="fh-nav__cnt num">{f.topics}</span>
-                </Link>
-              ))}
-            </div>
-          ))}
-        </nav>
-      </aside>
+      <ForumNav
+        groups={groups}
+        totalTopics={totalTopics}
+        labels={{
+          title: dict.forums.title,
+          allNodes: dict.forums2.allNodes,
+          navAll: dict.forums2.navAll,
+          hiddenTag: dict.forums2.hiddenTag,
+        }}
+      />
       <ForumMineLinks dict={dict} />
     </>
   );
