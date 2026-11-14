@@ -521,6 +521,31 @@
 .thmenu__grp {
   margin-top: 10px;
 }
+/* 窄视口（抽屉内挂载）：抽屉宽 min(78vw,320px) 装不下 316px 面板 +
+   right:0 定位会左溢出屏（375 视口实测 left=-50）。
+   两层坑，都在 fixed 包含块上：
+   ① .navdrawer 开了磨砂（glass.css 清单 backdrop-filter）→ 它是 fixed
+      后代的包含块，面板 fixed 坐标按抽屉（293px）解而非视口；
+   ② .navdrawer 的入场动画带 transform（Chrome 动画残留），同样锁包含块。
+   解法：抽屉内的 .thmenu 改 static → 面板的包含块沿 DOM 上提到
+   .navdrawer-root（portal 到 body 的 fixed 全屏层，无磨砂无 transform），
+   面板 fixed left/bottom 即真实视口坐标。mobile 断点下顶栏主题钮隐藏、
+   抽屉是唯一挂载点，覆盖 .thmenu 不伤桌面。 */
+@media (max-width: 640px) {
+  .navdrawer .thmenu {
+    position: static;
+  }
+  .thmenu__drop--panel {
+    position: fixed;
+    left: 12px;
+    right: auto;
+    top: auto;
+    bottom: 12px;
+    min-width: 0;
+    max-width: min(360px, calc(100vw - 24px));
+    max-height: min(62vh, 520px);
+  }
+}
 .thmenu__grp-name {
   padding: 2px 6px 6px;
   color: var(--text-muted);
