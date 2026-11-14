@@ -736,19 +736,9 @@
  "components/usercp-title.tsx": [],
  "components/usercp-tracker-browse.tsx": [],
  "components/usercp-tracker.tsx": [
-  13,
-  14,
-  15,
-  16,
-  17,
-  18,
-  19,
-  20,
-  21,
-  22,
-  154,
-  155,
-  206
+  166,
+  167,
+  218
  ],
  "components/usercp.tsx": [],
  "components/view-hidden-editor.tsx": [],
@@ -784,7 +774,7 @@
  "components/game/pet-pen.tsx": [],
  "components/game/runway.tsx": [],
  "components/game/scratch-coat.tsx": [
-  66
+  86
  ],
  "components/game/streak-pill.tsx": [],
  "components/game/subpage-link.tsx": [],
@@ -1027,15 +1017,13 @@
  "app/(main)/games/capsule/records/page.tsx": [],
  "app/(main)/games/bigsmall/page.tsx": [],
  "app/(main)/games/bigsmall/_inner.tsx": [
-  352
+  334
  ],
  "app/(main)/games/bigsmall/road/page.tsx": [],
  "app/(main)/gacha/layout.tsx": [],
  "app/(main)/gacha/page.tsx": [],
  "app/(main)/gacha/_inner.tsx": [],
  "app/(main)/friends/page.tsx": [],
- "app/(main)/forums/page.tsx": [],
- "app/(main)/forums/[id]/page.tsx": [],
  "app/(main)/forums/topic/[id]/page.tsx": [],
  "app/(main)/forums/topic/[id]/_parts/post-row.tsx": [],
  "app/(main)/forums/new/page.tsx": [],
@@ -15140,5 +15128,7 @@
   21,
   22,
   23
- ]
+ ],
+ "app/(main)/forums/(shell)/[id]/page.tsx": [],
+ "app/(main)/forums/(shell)/page.tsx": []
 }

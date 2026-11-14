@@ -34,7 +34,8 @@ name='topics_per_page_default';` 即可，不必改代码。
             （未设置/负数/2/50/100000/1 六档；这是行为不是文本）
   G3        SQL 层：同一段 WHERE 只换 LIMIT，现网版块 1 的行数随之变
             ⇒ 「这一个数」确实决定这一页给几条
-  G4        前端成环：forums/[id]/page.tsx 画 Pager 用的是回显的 data.per
+  G4        前端成环：forums/(shell)/[id]/page.tsx 画 Pager 用的是回显的
+            data.per
             （后端改了、前端还按 50 画页码＝只修了一半）
   G5        台账联动：topics_per_page 已移出死开关台账，剥注释后 reader
             扫描命中 topic.rs 与 repo/user_prefs.rs
@@ -60,8 +61,8 @@ from pt_audit_lib import BASE, ok, summary  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOPIC = "apps/api/src/community_http/topic.rs"
 PREFS = "apps/api/src/repo/user_prefs.rs"
-WEBPAGE = os.path.join("apps", "web", "app", "(main)", "forums", "[id]",
-                       "page.tsx")
+WEBPAGE = os.path.join("apps", "web", "app", "(main)", "forums", "(shell)",
+                       "[id]", "page.tsx")
 FIX = "0c87e1ce"           # 本批修复的提交（G0 从它的父提交取旧形状）
 UID = int(os.environ.get("PROBE_UID", "6273"))
 LIVE = "--live" in sys.argv
