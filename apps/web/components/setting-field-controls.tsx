@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/i18n/client";
+import { useClassNames } from "@/lib/hooks/use-class-names";
 import type { SettingFieldMeta } from "@/components/setting-field-types";
 
 /** 设定字段 9 类控件分发（从 components/setting-field.tsx 按域拆出）：
@@ -78,6 +79,8 @@ export function useFieldControl({
 }) {
   const { dict } = useI18n();
   const s = dict.settingsAdmin;
+  // classlevel 下拉的等级名：user_classes 真名（站长可改），不再读 i18n 写死名单
+  const classList = useClassNames();
   const [reveal, setReveal] = useState(false);
   const lock = disabled || field.readonly || !field.writable;
 
@@ -172,7 +175,7 @@ export function useFieldControl({
           onBlur={onBlur}
           className={`${inputCls} max-w-xs`}
         >
-          {dict.admin.classList.map(([id, label]) => (
+          {classList.map(([id, label]) => (
             <option key={id} value={id}>
               {label}（{id}）
             </option>

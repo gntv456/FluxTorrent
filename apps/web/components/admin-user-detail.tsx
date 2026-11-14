@@ -15,6 +15,7 @@ import {
   useDetailLoad,
   useDetailTabs,
 } from "./admin-user-detail-hooks";
+import { useClassNames } from "@/lib/hooks/use-class-names";
 import { UserDetailHero } from "./admin-user-detail-hero";
 import { ProfilePanels } from "./admin-user-detail-panels";
 import { DetailTabsBody } from "./admin-user-detail-tabs";
@@ -38,8 +39,8 @@ const TMP_PASS_CLS =
 export function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const { locale, dict, currency } = useI18n();
-  const classList = (dict.admin as unknown as { classList: [number, string][] })
-    .classList;
+  // 等级名来自 user_classes（站长可改），不再读 i18n 写死名单
+  const classList = useClassNames();
   const uid = Number(params.id);
   const [adjust, setAdjust] = useState(false);
   const [adj, setAdj] = useState({

@@ -16,8 +16,9 @@ import {
   type MedalDef,
   type RoleDef,
 } from "./increment-bulk-idem";
-import { BulkLedger } from "./increment-bulk-ledger";
 import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
+import { useClassNames } from "@/lib/hooks/use-class-names";
+import { BulkLedger } from "./increment-bulk-ledger";
 
 /** 第八轮 0065：批量发放（同类站 increment-bulk.php 口径）
  *  合并原「魔力增减 / 上传量增减」两个页签：火花/上传量/邀请/补签卡
@@ -27,8 +28,7 @@ export function IncrementBulk() {
   const { dict, currency } = useI18n();
   const t = dict.adminBulk;
   const KINDS = kindsOf(currency, t);
-  const classList = (dict.admin as unknown as { classList: [number, string][] })
-    .classList;
+  const classList = useClassNames();
   const [kind, setKind] = useState("spark");
   const [amount, setAmount] = useState("100");
   const [days, setDays] = useState(""); // 临时邀请：N 天有效直发邀请码（kind=invite 时可选）

@@ -16,9 +16,18 @@ import type { ReactNode } from "react";
 import { useI18n } from "@/i18n/client";
 import type { ToolTab } from "@/components/staff-tools";
 import { LAZY_PANELS } from "./admin-tool-map";
+import { useClassNames } from "@/lib/hooks/use-class-names";
 
 /** page.tsx 的 STAFF_TOOL_TABS 分支用的 staff-tools 懒壳（同源防重） */
 export const StaffToolsLazy = LAZY_PANELS.StaffTools;
+
+/** 用户管理面板的等级名单供给壳：renderSimpleTool 是普通函数不能挂 hook，
+ *  AdminUsers 保持懒加载（C 批首屏 JS 清偿），名单改由 user_classes 真名
+ *  （lib/hooks/use-class-names.ts）供给，不再读 i18n 写死名单。 */
+function AdminUsersPanel() {
+  const classes = useClassNames();
+  return <LAZY_PANELS.AdminUsers classes={classes} />;
+}
 
 /** 由 staff-tools 承载的工具页签（tab_key 与 ToolTab 同名）
  *
@@ -47,7 +56,7 @@ export function renderSimpleTool(
   const P = LAZY_PANELS;
   switch (tool) {
     case "users":
-      return <P.AdminUsers classes={dict.admin.classList} />;
+      return <AdminUsersPanel />;
     case "torrents":
       return <P.AdminTorrents />;
     // 举报处理（0336 trumping 的版主入口；导航项见迁移 0339）

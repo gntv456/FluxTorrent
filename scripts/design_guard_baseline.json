@@ -80,18 +80,6 @@
   "palette": [],
   "color": []
  },
- "app/maintenance/loading.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/maintenance/page.tsx": {
-  "h1": [],
-  "h1First": 30,
-  "palette": [],
-  "color": []
- },
  "app/login/loading.tsx": {
   "h1": [],
   "h1First": null,
@@ -105,18 +93,6 @@
   "color": []
  },
  "app/login/login-form.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/login/login-icons.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/login/login-options-row.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -144,8 +120,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   106,
-   125
+   103,
+   122
   ],
   "color": []
  },
@@ -183,11 +159,11 @@
  },
  "app/(main)/page.tsx": {
   "h1": [],
-  "h1First": 128,
+  "h1First": 133,
   "palette": [
-   104,
-   111,
-   210
+   109,
+   116,
+   217
   ],
   "color": []
  },
@@ -268,12 +244,6 @@
   ],
   "color": []
  },
- "app/(main)/users/[id]/_parts/profile-list.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "app/(main)/users/[id]/_parts/profile-moreinfo.tsx": {
   "h1": [],
   "h1First": null,
@@ -286,9 +256,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   68,
-   140,
-   195
+   54,
+   124,
+   177
   ],
   "color": []
  },
@@ -325,16 +295,13 @@
  "app/(main)/torrents/page.tsx": {
   "h1": [],
   "h1First": 242,
-  "palette": [],
+  "palette": [
+   41,
+   367
+  ],
   "color": []
  },
  "app/(main)/torrents/_parts/adv-collapse-button.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/torrents/_parts/adv-details.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -477,7 +444,7 @@
   "palette": [],
   "color": []
  },
- "app/(main)/torrent/[id]/_parts/torrent-section-tabs-data.tsx": {
+ "app/(main)/torrent/[id]/_parts/torrent-detail-tail.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -699,7 +666,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   144
+   131
   ],
   "color": []
  },
@@ -775,30 +742,10 @@
   "palette": [],
   "color": []
  },
- "app/(main)/my-spark/_parts/excluded-note.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/my-spark/_parts/ledger-panel.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "app/(main)/my-spark/_parts/merkle-panel.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
-  "color": []
- },
- "app/(main)/my-spark/_parts/seeding-calc.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [
-   85
-  ],
   "color": []
  },
  "app/(main)/my/loading.tsx": {
@@ -933,12 +880,6 @@
   "palette": [],
   "color": []
  },
- "app/(main)/me/exams/_inner.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "app/(main)/me/achievements/loading.tsx": {
   "h1": [],
   "h1First": null,
@@ -1003,7 +944,7 @@
    129,
    152,
    159,
-   254
+   250
   ],
   "color": []
  },
@@ -1103,12 +1044,11 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   270,
-   290,
-   292
+   287,
+   289
   ],
   "color": [
-   218
+   220
   ]
  },
  "app/(main)/games/wheel/records/loading.tsx": {
@@ -1337,8 +1277,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   369,
-   373
+   374
   ],
   "color": []
  },
@@ -1445,10 +1384,21 @@
   "palette": [],
   "color": []
  },
- "app/(main)/forums/[id]/loading.tsx": {
+ "app/(main)/forums/loading.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
+  "color": []
+ },
+ "app/(main)/forums/page.tsx": {
+  "h1": [],
+  "h1First": 125,
+  "palette": [
+   92,
+   93,
+   94,
+   95
+  ],
   "color": []
  },
  "app/(main)/forums/topic/[id]/loading.tsx": {
@@ -1479,27 +1429,9 @@
    33,
    96,
    101,
-   145,
-   236
+   153,
+   245
   ],
-  "color": []
- },
- "app/(main)/forums/topic/[id]/_parts/topic-head-menu.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/forums/topic/[id]/_parts/topic-sibling-list.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/forums/topic/[id]/_parts/topic-side.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
   "color": []
  },
  "app/(main)/forums/new/loading.tsx": {
@@ -1538,13 +1470,13 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   41,
-   72,
-   95,
-   102,
-   130,
-   140,
-   141
+   40,
+   62,
+   85,
+   92,
+   120,
+   132,
+   133
   ],
   "color": []
  },
@@ -1552,51 +1484,11 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   88,
-   99,
-   164,
-   170
+   85,
+   98,
+   163,
+   169
   ],
-  "color": []
- },
- "app/(main)/forums/(shell)/loading.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/forums/(shell)/page.tsx": {
-  "h1": [],
-  "h1First": 126,
-  "palette": [
-   93,
-   94,
-   95,
-   96
-  ],
-  "color": []
- },
- "app/(main)/forums/(shell)/[id]/loading.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/forums/(shell)/[id]/page.tsx": {
-  "h1": [],
-  "h1First": 167,
-  "palette": [
-   152,
-   153,
-   154,
-   155
-  ],
-  "color": []
- },
- "app/(main)/forums/(shell)/[id]/_parts/board-head.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
   "color": []
  },
  "app/(main)/farm/loading.tsx": {
@@ -1763,18 +1655,6 @@
   "palette": [],
   "color": []
  },
- "app/(main)/checkin/loading.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(main)/checkin/page.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "app/(main)/cheaterbox/loading.tsx": {
   "h1": [],
   "h1First": null,
@@ -1897,9 +1777,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   98,
-   110,
-   197
+   105,
+   117,
+   190
   ],
   "color": []
  },
@@ -1940,9 +1820,9 @@
   "h1First": null,
   "palette": [
    32,
-   175,
-   176,
-   222
+   152,
+   153,
+   199
   ],
   "color": []
  },
@@ -2038,10 +1918,10 @@
   "palette": [
    167,
    195,
-   290,
-   362,
-   367,
-   386
+   291,
+   363,
+   368,
+   387
   ],
   "color": []
  },
@@ -2191,7 +2071,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   58
+   53
   ],
   "color": []
  },
@@ -2205,9 +2085,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   81,
-   95,
-   130
+   71,
+   85,
+   120
   ],
   "color": []
  },
@@ -2223,19 +2103,7 @@
   "palette": [],
   "color": []
  },
- "app/(auth)/register/reg-window-chip.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "app/(auth)/register/register-basic-fields.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "app/(auth)/register/terms-foot.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -2263,8 +2131,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   138,
-   147
+   120,
+   129
   ],
   "color": []
  },
@@ -2278,7 +2146,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   128
+   123
   ],
   "color": []
  },
@@ -2287,8 +2155,8 @@
   "h1First": null,
   "palette": [
    91,
-   121,
-   130
+   118,
+   127
   ],
   "color": []
  },
@@ -2348,7 +2216,7 @@
   "h1First": null,
   "palette": [
    125,
-   223
+   211
   ],
   "color": []
  },
@@ -2375,12 +2243,12 @@
    112,
    129,
    189,
-   288,
-   293,
-   373,
-   399,
-   446,
-   461
+   290,
+   295,
+   386,
+   412,
+   447,
+   462
   ],
   "color": []
  },
@@ -2470,12 +2338,6 @@
   ],
   "color": []
  },
- "components/admin-jixiao-members.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/admin-jixiao-payroll.tsx": {
   "h1": [],
   "h1First": null,
@@ -2491,7 +2353,7 @@
    113,
    121,
    137,
-   202
+   204
   ],
   "color": []
  },
@@ -2557,7 +2419,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   131
+   134
   ],
   "color": []
  },
@@ -2598,7 +2460,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   122
+   121
   ],
   "color": []
  },
@@ -2656,9 +2518,9 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   132,
-   133,
-   165
+   135,
+   136,
+   168
   ],
   "color": []
  },
@@ -2678,7 +2540,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   98
+   102
   ],
   "color": []
  },
@@ -2686,9 +2548,10 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   208,
-   238,
-   239
+   218,
+   219,
+   265,
+   266
   ],
   "color": []
  },
@@ -2729,14 +2592,6 @@
   "palette": [],
   "color": []
  },
- "components/admin-tasks-metric-form.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [
-   43
-  ],
-  "color": []
- },
  "components/admin-tasks-penalty-form.tsx": {
   "h1": [],
   "h1First": null,
@@ -2752,7 +2607,11 @@
  "components/admin-tasks.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
+  "palette": [
+   101,
+   102,
+   110
+  ],
   "color": []
  },
  "components/admin-terms-governance.tsx": {
@@ -2860,12 +2719,6 @@
   "palette": [],
   "color": []
  },
- "components/admin-user-audit-log.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/admin-user-detail-actions-forms-more.tsx": {
   "h1": [],
   "h1First": null,
@@ -2948,8 +2801,8 @@
   "h1First": null,
   "palette": [
    31,
-   117,
-   212
+   116,
+   208
   ],
   "color": []
  },
@@ -2975,7 +2828,7 @@
   "h1First": null,
   "palette": [
    57,
-   202
+   180
   ],
   "color": []
  },
@@ -3071,12 +2924,6 @@
   "palette": [],
   "color": []
  },
- "components/cat-icon.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/cheat-accuracy-panel.tsx": {
   "h1": [],
   "h1First": null,
@@ -3126,12 +2973,6 @@
   "color": []
  },
  "components/cheater-box.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/checkin-page.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -3201,8 +3042,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   152,
-   160
+   155,
+   164
   ],
   "color": []
  },
@@ -3218,12 +3059,6 @@
   "palette": [],
   "color": []
  },
- "components/editor-toolbar.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/endangered-panel.tsx": {
   "h1": [],
   "h1First": null,
@@ -3231,12 +3066,6 @@
    115,
    153
   ],
-  "color": []
- },
- "components/exam-capsule.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
   "color": []
  },
  "components/file-tree.tsx": {
@@ -3253,16 +3082,17 @@
   "palette": [],
   "color": []
  },
- "components/fold.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/footer.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
+  "palette": [
+   74,
+   85,
+   99,
+   107,
+   115,
+   163
+  ],
   "color": []
  },
  "components/forum-bits.tsx": {
@@ -3410,26 +3240,14 @@
   ],
   "color": []
  },
- "components/forum-tag-picker.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/forum-title-edit.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/forum-topic-list.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [
-   113,
    115,
    117,
-   171
+   119,
+   173
   ],
   "color": []
  },
@@ -3571,24 +3389,6 @@
   "palette": [],
   "color": []
  },
- "components/home-almanac-panel.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/home-attendance-sheet.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/home-attendance-strip.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/home-attendance.tsx": {
   "h1": [],
   "h1First": null,
@@ -3615,19 +3415,7 @@
   "palette": [],
   "color": []
  },
- "components/home-news-panel.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/home-news-poster.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/home-panels.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -3697,15 +3485,7 @@
   "h1First": null,
   "palette": [
    73,
-   112
-  ],
-  "color": []
- },
- "components/invite-manager-cards.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [
-   52
+   110
   ],
   "color": []
  },
@@ -3714,8 +3494,8 @@
   "h1First": null,
   "palette": [
    63,
-   101,
-   270
+   99,
+   268
   ],
   "color": []
  },
@@ -3766,7 +3546,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   74
+   72
   ],
   "color": []
  },
@@ -3782,12 +3562,6 @@
   "palette": [],
   "color": []
  },
- "components/maintenance-countdown.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/medal-actions.tsx": {
   "h1": [],
   "h1First": null,
@@ -3795,12 +3569,6 @@
   "color": []
  },
  "components/medal-badge.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/medal-card.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -3842,12 +3610,6 @@
   "palette": [],
   "color": []
  },
- "components/message-center-cards.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/message-center-compose.tsx": {
   "h1": [],
   "h1First": null,
@@ -3878,18 +3640,6 @@
   "color": []
  },
  "components/mobile-home-header.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/mobile-home-news-top.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/mobile-home-quick-grid.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -3943,19 +3693,7 @@
   "palette": [],
   "color": []
  },
- "components/nav-drawer-trigger.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/nav-drawer.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/nav-dropdown.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -3967,12 +3705,6 @@
   "palette": [
    76
   ],
-  "color": []
- },
- "components/official-teams-picker.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
   "color": []
  },
  "components/offline-retry.tsx": {
@@ -4025,7 +3757,9 @@
  "components/pool-donate.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
+  "palette": [
+   64
+  ],
   "color": []
  },
  "components/poster-image.tsx": {
@@ -4111,7 +3845,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   15
+   16
   ],
   "color": []
  },
@@ -4127,8 +3861,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   108,
-   147
+   106,
+   139
   ],
   "color": []
  },
@@ -4163,12 +3897,6 @@
    13,
    14
   ],
-  "color": []
- },
- "components/section-kind-control.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
   "color": []
  },
  "components/seed-stats-card.tsx": {
@@ -4211,30 +3939,6 @@
    166,
    175
   ],
-  "color": []
- },
- "components/shj-atlas-edu.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/shj-atlas-foot.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/shj-atlas.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/shj-hero.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
   "color": []
  },
  "components/shop-catalog.tsx": {
@@ -4298,13 +4002,13 @@
   "h1First": null,
   "palette": [
    64,
-   103,
-   110,
-   112,
-   114,
-   160,
-   180,
-   197
+   89,
+   96,
+   98,
+   100,
+   146,
+   166,
+   183
   ],
   "color": []
  },
@@ -4410,7 +4114,7 @@
    53,
    55,
    57,
-   187
+   185
   ],
   "color": []
  },
@@ -4463,7 +4167,7 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   28
+   31
   ],
   "color": []
  },
@@ -4581,8 +4285,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   142,
-   200
+   140,
+   198
   ],
   "color": []
  },
@@ -4653,12 +4357,6 @@
   "palette": [],
   "color": []
  },
- "components/subtitle-upload-dialog.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/subtitle-upload-form.tsx": {
   "h1": [],
   "h1First": null,
@@ -4713,12 +4411,6 @@
   "palette": [],
   "color": []
  },
- "components/top-torrents.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/torrent-actionbar-mount.tsx": {
   "h1": [],
   "h1First": null,
@@ -4749,12 +4441,6 @@
   "palette": [],
   "color": []
  },
- "components/torrent-crossseed.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/torrent-curate.tsx": {
   "h1": [],
   "h1First": null,
@@ -4779,12 +4465,6 @@
   "palette": [],
   "color": []
  },
- "components/torrent-detail-lazy.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/torrent-detail-parts.tsx": {
   "h1": [],
   "h1First": null,
@@ -4792,12 +4472,6 @@
   "color": []
  },
  "components/torrent-head-more.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/torrent-hover-mount.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -4835,7 +4509,7 @@
   "h1First": null,
   "palette": [],
   "color": [
-   80
+   81
   ]
  },
  "components/torrent-manage-submit.tsx": {
@@ -4892,12 +4566,6 @@
   "palette": [],
   "color": []
  },
- "components/torrent-section-tabs.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/torrent-social.tsx": {
   "h1": [],
   "h1First": null,
@@ -4918,7 +4586,9 @@
  "components/torrent-subtitles.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
+  "palette": [
+   170
+  ],
   "color": []
  },
  "components/torrent-table-badges.tsx": {
@@ -4993,13 +4663,9 @@
  "components/upload-form-files.tsx": {
   "h1": [],
   "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/upload-form-nfo-attach.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
+  "palette": [
+   250
+  ],
   "color": []
  },
  "components/upload-form-parts.tsx": {
@@ -5088,12 +4754,6 @@
   "palette": [],
   "color": []
  },
- "components/usercp-security-credential.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/usercp-security.tsx": {
   "h1": [],
   "h1First": null,
@@ -5144,17 +4804,11 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   175
+   174
   ],
   "color": []
  },
  "components/work-card.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/work-grid.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -5172,31 +4826,7 @@
   "palette": [],
   "color": []
  },
- "components/work-seed-mini.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/work-seed-row.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
  "components/work-seed-rows.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/work-wall.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/work-watch-button.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -5221,12 +4851,6 @@
   "color": []
  },
  "components/ui/confirm-dialog.tsx": {
-  "h1": [],
-  "h1First": null,
-  "palette": [],
-  "color": []
- },
- "components/ui/data-table.tsx": {
   "h1": [],
   "h1First": null,
   "palette": [],
@@ -5354,8 +4978,8 @@
   "h1First": null,
   "palette": [],
   "color": [
-   136,
-   149
+   134,
+   147
   ]
  },
  "components/game/die-face.tsx": {
@@ -5396,7 +5020,7 @@
   "h1First": null,
   "palette": [
    50,
-   130
+   133
   ],
   "color": []
  },
@@ -5434,8 +5058,8 @@
   "h1": [],
   "h1First": null,
   "palette": [
-   47,
-   151
+   44,
+   148
   ],
   "color": []
  },
@@ -5480,8 +5104,8 @@
   "h1First": null,
   "palette": [],
   "color": [
-   230,
-   247
+   227,
+   244
   ]
  },
  "components/game/pet-log.tsx": {
@@ -5571,6 +5195,114 @@
   "h1": [],
   "h1First": null,
   "palette": [],
+  "color": []
+ },
+ "components/section-kind-control.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/invite-manager-cards.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   52
+  ],
+  "color": []
+ },
+ "components/shj-atlas.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/nav-canvas.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/nav-canvas-parts.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/admin-tasks-metric-form.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   43
+  ],
+  "color": []
+ },
+ "components/nav-dropdown.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/shj-atlas-edu.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/usercp-security-credential.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "components/editor-toolbar.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   24
+  ],
+  "color": []
+ },
+ "app/(main)/my-spark/_parts/seeding-calc.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [
+   85
+  ],
+  "color": []
+ },
+ "app/(main)/forums/(shell)/[id]/loading.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "app/(main)/forums/(shell)/[id]/page.tsx": {
+  "h1": [],
+  "h1First": 167,
+  "palette": [
+   152,
+   153,
+   154,
+   155
+  ],
+  "color": []
+ },
+ "app/(main)/forums/(shell)/[id]/_parts/board-head.tsx": {
+  "h1": [],
+  "h1First": null,
+  "palette": [],
+  "color": []
+ },
+ "app/(main)/forums/(shell)/page.tsx": {
+  "h1": [],
+  "h1First": 126,
+  "palette": [
+   93,
+   94,
+   95,
+   96
+  ],
   "color": []
  }
 }

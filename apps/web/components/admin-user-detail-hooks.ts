@@ -18,8 +18,8 @@ import {
  *  从 components/admin-user-detail.tsx 按域拆出：
  *  1) useDetailLoad —— 用户详情本体加载；
  *  2) useAdminPanelDicts —— NP 级管理操作面板（class/role/perm/medal/
- *     item/jixiao）的开关、表单值与字典/现状按需拉取（等级字典来自
- *     i18n classList，无需请求）；
+ *     item/jixiao）的开关、表单值与字典/现状按需拉取（等级下拉名单来自
+ *     useClassNames，见 lib/hooks/use-class-names.ts）；
  *  3) useDetailTabs —— 关联数据 tab（火花流水 / 登录记录 / 做种列表）
  *     的翻页与数据拉取。 */
 
@@ -92,7 +92,7 @@ export function useAdminPanelDicts(uid: number) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
 
-  // 打开各操作面板时按需拉取字典/现状（等级字典来自 i18n classList，无需请求）
+  // 打开各操作面板时按需拉取字典/现状（等级下拉名单来自 useClassNames）
   useEffect(() => {
     if (panel === "role" && roles.length === 0) {
       api

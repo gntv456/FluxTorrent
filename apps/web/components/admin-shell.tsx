@@ -10,6 +10,7 @@ import {
   type NavGroup,
 } from "./admin-nav-groups";
 import { STAFF_CLASS_MIN } from "@/lib/domain/user-class";
+import { classNameOf, useClassNames } from "@/lib/hooks/use-class-names";
 /** 管理面板条目（后端 /admin/staffpanel 返回，已按 min_class 过滤） */
 export interface PanelEntry {
   section: string;
@@ -81,11 +82,10 @@ export function AdminShell({
     string,
     { label: string; tip: string } | undefined
   >;
-  // 徽章优先显示真实等级名（等级体系已扩到 12 级用户层 + 管理职级）
-  const classLabel =
-    classId !== undefined
-      ? dict.admin.classList.find(([id]) => id === classId)?.[1]
-      : undefined;
+  // 徽章优先显示真实等级名（user_classes.name，站长可改；名单来自
+  // 公开等级端点，请求失败回落职务角色名）
+  const classNames = useClassNames();
+  const classLabel = classNameOf(classNames, classId);
   const ROLE_LABEL: Record<string, string> = {
     sysop: a.roleSysop,
     administrator: a.roleAdmin,
