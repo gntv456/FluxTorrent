@@ -83,9 +83,14 @@ pub(crate) async fn rss_feed(
     };
     let user_id = ident.user_id;
 
-    // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category
+    // 多选分类/媒介：逗号分隔 → 数组（空 = 不过滤）；兼容旧版单值 category。
+    // 全缺省时回落用户 browsecat 偏好（2026-11-14 救活：与前台列表的
+    // 「默认分类」同口径——订阅器显式传 cat 的老用法不受影响）。
     let categories = match parse_ids(q.categories.as_deref()) {
-        Ok(v) => v.or_else(|| q.category.map(|c| vec![c])),
+        Ok(v) => match v.or_else(|| q.category.map(|c| vec![c])) {
+            Some(ids) => Some(ids),
+            None => crate::repo::rss::browsecat_of(&state.repo, user_id).await,
+        },
         Err(msg) => return HttpResponse::BadRequest().body(msg),
     };
     let mediums = match parse_ids(q.mediums.as_deref()) {

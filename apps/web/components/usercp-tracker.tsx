@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { Row } from "@/components/usercp-row";
 import { BrowseSettingsRow } from "@/components/usercp-tracker-browse";
@@ -7,20 +9,16 @@ import type { UserSettings } from "@/components/usercp";
 
 /** 网站设定面板（从 usercp.tsx 按域拆出，300 行门禁）：
  *  默认分类 / 样式与语言 / 详情页开关等；
- *  种子列表浏览参数拆至 usercp-tracker-browse.tsx。 */
+ *  种子列表浏览参数拆至 usercp-tracker-browse.tsx。
+ *
+ *  分类名单来自 /site-profile（categories 表真数据，站型跟随、站长可改）。
+ *  2026-11-14 硬编码清偿：原 TRACKER_CATS 写死旧站 cat401-410 编号，
+ *  与现库 categories（id 1-10）id 空间对不上，勾选从未生效过。 */
 
-const TRACKER_CATS = [
-  { id: "401", name: "电影" },
-  { id: "402", name: "剧集" },
-  { id: "403", name: "综艺" },
-  { id: "404", name: "纪录片" },
-  { id: "405", name: "动漫" },
-  { id: "406", name: "音乐视频" },
-  { id: "407", name: "体育运动" },
-  { id: "408", name: "高品质音频" },
-  { id: "410", name: "短剧" },
-  { id: "409", name: "其他" },
-];
+interface ProfileCat {
+  id: number;
+  name: string;
+}
 
 export function TrackerTab({
   s,
@@ -31,7 +29,19 @@ export function TrackerTab({
 }) {
   const { dict, currency } = useI18n();
   const t = dict.usercp.tracker;
-  const cats = (s.browsecat ?? "").split(",").filter(Boolean);
+  const [profileCats, setProfileCats] = useState<ProfileCat[]>([]);
+  useEffect(() => {
+    api
+      .get<{ categories?: ProfileCat[] }>("/api/v1/site-profile")
+      .then((r) => setProfileCats(r.categories ?? []))
+      .catch(() => setProfileCats([]));
+  }, []);
+  // 勾选状态 = browsecat 里**仍存在于现分类集**的 id：旧站的 401-410
+  // 存量（id 空间对不上）与站长已删的分类自动失效，不会存进下一次保存
+  const validIds = new Set(profileCats.map((c) => String(c.id)));
+  const cats = (s.browsecat ?? "")
+    .split(",")
+    .filter((c) => validIds.has(c));
   const toggleCat = (id: string, on: boolean) => {
     const next = on
       ? [...new Set([...cats, id])]
@@ -52,12 +62,14 @@ export function TrackerTab({
                 <tbody>
                   <tr>
                     <td className="bottom" colSpan={5}>
-                      {TRACKER_CATS.map((c) => (
+                      {profileCats.map((c) => (
                         <label key={c.id} className="uc-cat-item">
                           <input
                             type="checkbox"
-                            checked={cats.includes(c.id)}
-                            onChange={(e) => toggleCat(c.id, e.target.checked)}
+                            checked={cats.includes(String(c.id))}
+                            onChange={(e) =>
+                              toggleCat(String(c.id), e.target.checked)
+                            }
                           />
                           {c.name}
                         </label>

@@ -46,6 +46,29 @@ pub async fn alive_only(repo: &Repo) -> bool {
     .unwrap_or(false)
 }
 
+/// 用户的默认分类偏好（2026-11-14 救活 browsecat）：RSS 请求未带
+/// categories/cat 时按它初始化过滤——与前台列表回落口径一致。
+/// 空 / NULL / 读失败一律 None（= 不过滤，订阅源全量，宁多勿缺）。
+pub async fn browsecat_of(repo: &Repo, user_id: i64) -> Option<Vec<i32>> {
+    let raw: Option<String> =
+        sqlx::query_scalar("SELECT browsecat FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&repo.db)
+            .await
+            .ok()
+            .flatten()
+            .flatten();
+    let ids: Vec<i32> = raw?
+        .split(',')
+        .filter_map(|s| s.trim().parse::<i32>().ok())
+        .collect();
+    if ids.is_empty() {
+        None
+    } else {
+        Some(ids)
+    }
+}
+
 /// 条目列表。`sql` 由 H 层 format! 拼好（谓词片段的构造权留在那一侧）。
 #[allow(clippy::too_many_arguments)]
 pub async fn feed_rows(

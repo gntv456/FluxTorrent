@@ -21,6 +21,20 @@ export interface SectionKindMeta {
 /** 归一化后的种子页查询参数（重复参数合并为逗号串） */
 export type TorrentsSP = Record<string, string | undefined>;
 
+/** me/list-prefs 响应体（0316 偏好 + 2026-11-14 救活 browsecat 下发） */
+export interface ListPrefs {
+  view?: string;
+  per_page?: number;
+  hidden_cols?: string[];
+  /** NP 惯例「默认分类」：URL 未给 category_id 时的初始筛选 */
+  browsecat?: string;
+}
+
+/** 默认分类初值解析用的 site-profile 切片（只要 categories.id） */
+export interface CatIds {
+  categories?: { id: number }[];
+}
+
 /** 匿名公开接口统一抓取（api.get 自带 SSR 内网直连 API_SERVER_URL；失败时隐藏对应筛选区） */
 export async function loadPublic<T>(path: string): Promise<T | null> {
   try {
@@ -39,6 +53,27 @@ export function toggleSort(
   if (cur === `${key}_asc`) return undefined;
   return key;
 }
+
+/** 分类筛选初值（2026-11-14 救活 browsecat）：URL 未显式给 category_id
+ *  时按用户偏好（me/list-prefs.browsecat，NP 惯例「默认分类」）初始化。
+ *  存量过滤到现分类集——分类随站型/后台可变，失效 id 若下发，后端
+ *  ANY 空命中会让列表全空（parse_category_ids 不做存在性校验）。
+ *  返回 undefined = 不筛选。 */
+export function resolveCatFilter(
+  urlCat: string | undefined,
+  pref: string | undefined | null,
+  siteCatIds: number[],
+): string | undefined {
+  if (urlCat) return urlCat;
+  if (!pref) return undefined;
+  const valid = new Set(siteCatIds);
+  const ids = pref
+    .split(",")
+    .map((s) => Number(s.trim()))
+    .filter((n) => valid.has(n));
+  return ids.length > 0 ? ids.join(",") : undefined;
+}
+
 
 // ===== 列表形态（方案阶段二：三视图 + 每页条数可选） =====
 // 只影响呈现与单页数量，都不算「筛选条件」，故不进 chips。

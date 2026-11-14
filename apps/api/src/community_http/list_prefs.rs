@@ -29,7 +29,10 @@ const COL_KEYS: [&str; 8] = [
 const VIEW_KEYS: [&str; 3] = ["table", "card", "poster"];
 const PER_PAGE: [i64; 3] = [20, 50, 100];
 
-/// 我的列表偏好（缺省 = 空对象，前端回落站点默认）
+/// 我的列表偏好（缺省 = 空对象，前端回落站点默认）。
+/// browsecat 顺带下发（2026-11-14 救活 browsecat 批）：资源列表在 URL
+/// 未显式给 category_id 时按它初始化分类筛选——NP 惯例的「默认分类」
+/// 个人偏好。users 同行一列，零新表。
 #[utoipa::path(
     get,
     path = "/api/v1/me/list-prefs",
@@ -44,13 +47,23 @@ pub(crate) async fn list_prefs_get(
     state: web::Data<std::sync::Arc<AppState>>,
 ) -> DomainResult<impl Responder> {
     let auth = require_auth(&req, &state).await?;
-    let prefs: serde_json::Value =
-        sqlx::query_scalar("SELECT list_prefs FROM users WHERE id = $1")
-            .bind(auth.id)
-            .fetch_one(&state.repo.db)
-            .await
-            .unwrap_or(serde_json::json!({}));
-    Ok(ok(prefs))
+    let (prefs, browsecat): (serde_json::Value, Option<String>) =
+        sqlx::query_as(
+            "SELECT COALESCE(list_prefs, '{}'), browsecat \
+             FROM users WHERE id = $1",
+        )
+        .bind(auth.id)
+        .fetch_one(&state.repo.db)
+        .await
+        .unwrap_or((serde_json::json!({}), None));
+    let mut body = prefs;
+    if let Some(obj) = body.as_object_mut() {
+        obj.insert(
+            "browsecat".into(),
+            serde_json::json!(browsecat.unwrap_or_default()),
+        );
+    }
+    Ok(ok(body))
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]

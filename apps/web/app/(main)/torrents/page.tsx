@@ -26,9 +26,11 @@ import {
   loadPublic,
   parsePageSize,
   parseView,
+  resolveCatFilter,
   toggleSort,
   withParam,
   withoutCursor,
+  type CatIds, type ListPrefs,
   type SectionDictRow,
   type SectionKindMeta,
 } from "./_parts/torrents-utils";
@@ -110,21 +112,20 @@ export default async function TorrentsPage({
     return { profile, secDict, tagDict };
   })();
   const listChain = (async () => {
-    const userPrefs = await api
-      .get<{
-        view?: string;
-        per_page?: number;
-        hidden_cols?: string[];
-      }>("/api/v1/me/list-prefs")
-      .catch(() => null);
+    const [userPrefs, profile0] = await Promise.all([
+      // browsecat（NP「默认分类」）：URL 未给 category_id 时的初值
+      api.get<ListPrefs>("/api/v1/me/list-prefs").catch(() => null),
+      loadPublic<CatIds>("/api/v1/site-profile").catch(() => null),
+    ]);
     const view = sp.view
       ? parseView(sp.view)
       : parseView(userPrefs?.view ?? "table");
-    const pageSize = sp.limit
-      ? parsePageSize(sp.limit)
-      : parsePageSize(
-          userPrefs?.per_page ? String(userPrefs.per_page) : "20",
-        );
+    const pageSize = parsePageSize(
+      sp.limit ?? (userPrefs?.per_page != null
+        ? String(userPrefs.per_page) : undefined),
+    );
+    const catFilter = resolveCatFilter(sp.category_id, userPrefs?.browsecat,
+      (profile0?.categories ?? []).map((c) => c.id));
     let loadErr: unknown = null;
     const page = grouped
       ? EMPTY_PAGE
@@ -132,8 +133,7 @@ export default async function TorrentsPage({
       "/api/v1/torrents",
       {
       limit: pageSize,
-      // 多选分类（0088）：后端 category_ids 兼容逗号串
-      category_id: sp.category_id,
+      category_id: catFilter,
       official: sp.official ? sp.official === "1" : undefined,
       search: sp.search,
       // 搜索范围/匹配模式（NP 口径 0=标题 1=简介 3=发布者 4=IMDb；mode 2=精确）：
