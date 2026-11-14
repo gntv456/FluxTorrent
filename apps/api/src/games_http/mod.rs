@@ -21,6 +21,7 @@ mod arcade_rewards;
 mod arcade_rewards_write;
 mod arcade_stubs;
 mod bigsmall_props;
+mod career;
 mod casino;
 mod casino_bigsmall;
 mod collection;
@@ -57,6 +58,7 @@ use arcade_items_write::*;
 use arcade_leaderboard::*;
 use arcade_meta::*;
 use arcade_rewards_write::*;
+use career::*;
 use casino::*;
 use casino_bigsmall::*;
 use collection::*;
@@ -83,6 +85,7 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(games_overview)
         .service(game_history)
         .service(game_rounds)
+        .service(game_career)
         .service(scratch)
         .service(guess_bigsmall)
         // 0424 走势看板（同类站对标小件）
@@ -115,6 +118,7 @@ pub fn mount_games(scope: actix_web::Scope) -> actix_web::Scope {
         .service(craft_start)
         .service(craft_collect)
         .service(farm_harvest)
+        .service(farm_harvest_log)
         .service(farm_land_buy)
         .service(farm_land_upgrade)
         .service(fun_polls)

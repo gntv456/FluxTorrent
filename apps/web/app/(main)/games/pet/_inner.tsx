@@ -1,5 +1,4 @@
 "use client";
-
 import { useCallback, useEffect, useState } from "react";
 import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
 import { api, ApiError } from "@/lib/api-client";
@@ -12,7 +11,6 @@ import { GameToast } from "@/components/game/game-kit-feedback";
 import { PetCustom, PetPen, type PetStatus } from "@/components/game/pet-pen";
 import { GameStage } from "@/components/game/game-stage";
 import { clientUuid } from "@/lib/client-uuid";
-
 export type { PetStatus };
 
 /**
@@ -167,7 +165,7 @@ export default function PetFocusPage({
           <GameStage
             bg="radial-gradient(120% 130% at 50% 0%, #123a2e, #08170f 72%)"
             shjBg="var(--shj-stage-pet)"
-            className="w-full max-w-[460px] py-6"
+            className="w-full max-w-[460px] py-6 relative jgg-scene-host"
           >
             {st ? (
               <PetPen
@@ -289,7 +287,9 @@ export default function PetFocusPage({
       }
       side={
         <div className={PANEL_LG}>
-          {/* 我的宠舍（样图⑨）：当前物种占一格 + 虚线空位到 6 */}
+          {/* 我的宠舍（波1 修真）：后端一人一宠（arcade_pets 单行），
+              原先「1/6 + 5 个虚线假格子」是不存在的容量承诺——改为
+              单宠一格 + 一格「更多宠舍敬请期待」诚实口径 */}
           <div className="pp-pen-cap">{tp.penCap}</div>
           <div className="pp-pen-grid">
             <div className="pp-pen-cell on" aria-label={st?.name ?? ""}>
@@ -301,11 +301,9 @@ export default function PetFocusPage({
                     ? "🐲"
                     : "🥚"}
             </div>
-            {[2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="pp-pen-cell empty" aria-hidden>
-                +
-              </div>
-            ))}
+            <div className="pp-pen-cell empty" aria-hidden>
+              🔒
+            </div>
           </div>
           <p className="mt-3 text-xs text-sub">
             {tp.rule.replace("{magic}", currency)}

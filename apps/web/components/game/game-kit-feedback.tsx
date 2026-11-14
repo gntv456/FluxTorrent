@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useI18n } from "@/i18n/client";
 import { JackpotBurst } from "@/components/game/jackpot-burst";
+import { WinBurst } from "@/components/game/win-burst";
+import { playSfx } from "@/lib/sfx";
 
 /** 娱乐屋反馈件（从 game-kit.tsx 按域拆出）：
  *  结果飘字 / 轻量浮层提示 / 战绩条（外壳与余额条留在 game-kit.tsx）。 */
 
 /** 结果飘字：赢/平/输/大奖 四态，颜色之外另有文案与图标（色觉无障碍）。
- *  jackpot 态叠全屏彩带庆祝时刻（趣味性批；reduced-motion 下 CSS 降级） */
+ *  jackpot 态叠全屏彩带、win 态叠星屑小迸发（庆祝分级；reduced-motion 下 CSS 降级）。
+ *  声音线索在这里统一发——六个下注玩法共用本件，音效开关默认关（lib/sfx.ts）。 */
 export function ResultFlash({
   kind,
   text,
@@ -16,6 +19,14 @@ export function ResultFlash({
   kind: "win" | "lose" | "tie" | "jackpot" | null;
   text: string | null;
 }) {
+  // kind 变化即发声：tie 不发声（无结果意义），首帧不发声
+  const prevKind = useRef(kind);
+  useEffect(() => {
+    if (kind && kind !== prevKind.current) {
+      playSfx(kind === "tie" ? "pop" : kind);
+    }
+    prevKind.current = kind;
+  }, [kind]);
   const cls =
     kind === "jackpot"
       ? "text-[var(--warning)]"
@@ -28,11 +39,12 @@ export function ResultFlash({
     <p
       role="status"
       aria-live="polite"
-      className={`flex min-h-11 items-center justify-center gap-1.5 text-center text-base font-black ${cls}`}
+      className="relative flex min-h-11 items-center justify-center gap-1.5 text-center text-base font-black"
     >
       {text && (
         <>
-          <span className="animate-[fly_.28s_ease-out]">{text}</span>
+          <span className={`animate-[fly_.28s_ease-out] ${cls}`}>{text}</span>
+          {kind === "win" && <WinBurst fire key={`w${text}`} />}
           {kind === "jackpot" && (
             <JackpotBurst fire key={text} label={text} />
           )}

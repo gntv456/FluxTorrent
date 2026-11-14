@@ -1,10 +1,10 @@
 "use client";
-
 import { PANEL_LG } from "@/lib/ui-classes";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useTenDraw } from "@/lib/ten-draw";
+import { GameRules } from "@/components/game/game-rules";
+import { useRounds } from "@/components/game/use-rounds";
 import {
   SwCtaRow,
   SwHist,
@@ -26,7 +26,6 @@ import {
 } from "@/components/game/capsule-machine";
 import { GameStage } from "@/components/game/game-stage";
 import { clientUuid } from "@/lib/client-uuid";
-
 export interface Overview {
   me?: {
     balance: number;
@@ -35,14 +34,6 @@ export interface Overview {
     limit_left: number;
   };
   capsule?: { ticket: number; prizes: CapsulePrize[] };
-}
-
-interface RoundRow {
-  game: string;
-  bet: number;
-  payout: number;
-  net: number;
-  at?: string;
 }
 
 interface DrawResult {
@@ -54,7 +45,6 @@ interface DrawResult {
   value?: number;
   fell_back?: string | null;
 }
-
 /** 扭蛋机专注页：投币 → 震机 → 掉蛋 → 开壳揭晓。 */
 export default function CapsuleFocusPage({
   initialOver,
@@ -66,7 +56,8 @@ export default function CapsuleFocusPage({
   const tc = dict.games.capsule;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  const [hist, setHist] = useState<RoundRow[]>([]);
+  // 战绩 + 连胜（波3）：服务端算连胜，刷新不丢（use-rounds 统一消费口）
+  const { hist, streak, reload: reloadRounds } = useRounds("capsule");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<DrawResult | null>(null);
   const [flash, setFlash] = useState<{
@@ -78,7 +69,6 @@ export default function CapsuleFocusPage({
   const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
-  const [streak, setStreak] = useState(0);
   // 个人收集（趣味性批）：本人真实抽中数，替代纯概率的收集感。
   // 数据来自通用图鉴端点 /games/collection/capsule（与 jgg/scratch/wheel 同源）
   const [collect, setCollect] = useState<{
@@ -122,14 +112,8 @@ export default function CapsuleFocusPage({
     } catch {
       /* ignore */
     }
-    try {
-      setHist(
-        await api.get<RoundRow[]>("/api/v1/games/rounds?game=capsule&limit=10"),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    void reloadRounds();
+  }, [reloadRounds]);
 
   useEffect(() => {
     void loadMeta();
@@ -240,8 +224,6 @@ export default function CapsuleFocusPage({
               ? tc.again
               : tc.thanks,
     });
-    // 连胜（趣味性批）：>票价续 1、否则清零
-    setStreak((st) => (won > ticket ? st + 1 : 0));
     void loadMeta();
     void loadCollect();
   }
@@ -290,7 +272,7 @@ export default function CapsuleFocusPage({
           <GameStage
             bg="radial-gradient(120% 130% at 50% 0%, #3a2a5e, #14101f 72%)"
             shjBg="var(--shj-stage-capsule)"
-            className="w-full max-w-[460px] py-6"
+            className="w-full max-w-[460px] py-6 relative jgg-scene-host"
           >
             <CapsuleMachine
               prizes={prizes}
@@ -399,6 +381,7 @@ export default function CapsuleFocusPage({
             }))}
             empty={t.historyEmpty}
           />
+          <GameRules game="capsule" />
         </div>
       }
       foot={

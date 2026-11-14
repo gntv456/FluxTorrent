@@ -10,10 +10,10 @@
  * （sw-album-*），文案收编 i18n（原先硬编码中文）。
  */
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
 import { useI18n } from "@/i18n/client";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
+import { GachaRecent } from "@/components/gacha-recent";
 import type { GachaRarityRow } from "@/app/(main)/gacha/_inner";
 
 export interface MyCard {
@@ -36,6 +36,14 @@ export interface MePayload {
   cards: MyCard[];
   litCount: number;
   litTotal: number;
+  /** 近 30 抽（波1 起前端开始渲染；此前后端一直下发、前端丢弃） */
+  recent?: Array<{
+    seq: number;
+    output_type: string;
+    rarity: string | null;
+    shards: number;
+    was_pity: boolean;
+  }>;
 }
 
 export function GachaAlbum({
@@ -180,9 +188,30 @@ export function GachaAlbum({
           )}
         </div>
       </section>
-      <Link href="/games/jgg" className="sw-album-cta">
+      {/* CTA 直指本页卡池 tab 的抽卡区（/gacha#draw）——原先错链 /games/jgg
+          是九宫格，抽卡玩法根本不在那（波1 P0 修复） */}
+      <a href="/gacha#draw" className="sw-album-cta">
         {tg.gachaDrawCta}
-      </Link>
+      </a>
+      {me.recent && me.recent.length > 0 && (
+        <section className="sw-album-panel">
+          <header className="sw-album-head">
+            <h2>{tg.gachaRecentCap}</h2>
+          </header>
+          <GachaRecent
+            rows={me.recent.map((r) => ({
+              seq: r.seq,
+              type: r.output_type,
+              rarity: r.rarity,
+              shards: r.shards,
+              wasPity: r.was_pity,
+            }))}
+            starOf={(r) =>
+              rarities.find((x) => x.key === r)?.stars ?? 1
+            }
+          />
+        </section>
+      )}
     </div>
   );
 }

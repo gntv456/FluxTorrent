@@ -1,5 +1,4 @@
 "use client";
-
 import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,10 +13,11 @@ import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { SwHist, SwStatRow } from "@/components/game/sw-panels";
 import { DieFace } from "@/components/game/die-face";
+import { SceneBigsmall } from "@/components/game/scene-a";
+import { useRounds } from "@/components/game/use-rounds";
 import { StreakPill } from "@/components/game/streak-pill";
 import { PropBar, type PropView } from "@/components/game/bigsmall-props";
 import { clientUuid } from "@/lib/client-uuid";
-
 export interface Overview {
   max_bet: number;
   bigsmall?: { win_mult: number; expected_value: number };
@@ -28,16 +28,6 @@ export interface Overview {
     today_plays: number;
     limit_left: number;
   };
-}
-
-interface RoundRow {
-  game: string;
-  bet: number;
-  payout: number;
-  net: number;
-  at?: string;
-  /** 服务端局记录里带的点数（有则近 5 局走势直接显大/小） */
-  number?: number;
 }
 
 interface GuessResult {
@@ -66,7 +56,8 @@ export default function BigSmallPage({
   const tg = dict.games.bigsmall;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  const [hist, setHist] = useState<RoundRow[]>([]);
+  // 战绩 + 连胜（波3）：服务端算连胜，刷新不丢（use-rounds 统一消费口）
+  const { hist, streak, reload: reloadRounds } = useRounds("bigsmall", 20);
   const [bet, setBet] = useState(100);
   const [busy, setBusy] = useState(false);
   const [num, setNum] = useState<number | null>(null);
@@ -78,7 +69,6 @@ export default function BigSmallPage({
     kind: "win" | "lose" | "tie";
     text: string;
   } | null>(null);
-  const [streak, setStreak] = useState(0);
   /** 本次会话已完成的局数（防沉迷软提示用） */
   const [sessionPlays, setSessionPlays] = useState(0);
   const [err, setErr] = useState<string | null>(null);
@@ -97,16 +87,8 @@ export default function BigSmallPage({
     } catch {
       /* ignore */
     }
-    try {
-      setHist(
-        await api.get<RoundRow[]>(
-          "/api/v1/games/rounds?game=bigsmall&limit=20",
-        ),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    void reloadRounds();
+  }, [reloadRounds]);
 
   useEffect(() => {
     void loadMeta();
@@ -191,7 +173,6 @@ export default function BigSmallPage({
           kind: r.triple ? "tie" : r.player_win ? "win" : "lose",
           text: base + hint,
         });
-        setStreak((s) => (r.player_win ? s + 1 : 0));
         setSessionPlays((n) => n + 1);
         setBusy(false);
         void loadMeta();
@@ -252,14 +233,15 @@ export default function BigSmallPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-2">
+          <SceneBigsmall className="gs-artsvg" />
           {/* 样图⑥：题注在上，三骰居中，近5局缀下 */}
           <p className="bs-dice-cap">
             {num == null ? tg.bsDiceWait : tg.bsNow.replace("{n}", String(num))}
           </p>
-          {/* 三颗六面骰（与后端三骰机制一致）：点数和 3-18，小 3-10 / 大 11-18 / 三同豹子 */}
+          {/* 三骰=后端机制；roll=busy 开奖滚动晃动（纯视觉，arcade-fx.css） */}
           <div className="bs-dice" aria-hidden>
             {dice.map((d, i) => (
-              <DieFace key={i} n={d} />
+              <DieFace key={i} n={d} roll={busy} />
             ))}
           </div>
           {hist.length > 0 && (

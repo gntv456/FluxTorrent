@@ -87,6 +87,9 @@ async fn pool_round(
     Ok(serde_json::json!({
         "index": draw.index,
         "prize": draw.prize.label,
+        // 真稀有序（波1 三兄弟拉齐）：前端此前按「等值/票价」猜色调，
+        // 现在直接读奖池 meta（与 collection 图鉴同一把尺）
+        "rarity": super::casino::meta_rarity(&pool.meta, draw.index),
         "kind": award_kind(&draw, fell_back),
         "fell_back": fell_back,
         "replay": replay,

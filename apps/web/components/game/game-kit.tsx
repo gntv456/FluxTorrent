@@ -3,12 +3,42 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
+import {
+  useSfxToggle,
+  useSfx,
+} from "@/components/game/use-sfx";
 
 /**
  * 娱乐屋公共 UI 件（Aurora token 口径，组件内不硬编码色值）。
  * 四个玩法专注页共用：外壳 / 余额条 / 筹码 / 结果飘字 / 战绩条。
  * （结果飘字 / 浮层提示 / 战绩条拆到 game-kit-feedback.tsx）
  */
+
+/** 音效开关（默认关口径）：偏好落 localStorage.arcade_sfx，全玩法共用一份。
+ *  aria-label 走 dict，图标外显状态；开通瞬间那一声 tick 正是手势内解锁。 */
+function SfxToggle() {
+  const { dict } = useI18n();
+  const { on, toggle } = useSfxToggle();
+  const label = `${dict.games.sfx.label}：${
+    on ? dict.games.sfx.on : dict.games.sfx.off
+  }`;
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={`ml-auto min-h-11 rounded-full border px-3 text-xs font-bold ${
+        on
+          ? "border-[var(--sky-deep)] bg-sky-soft text-[var(--sky-deep)]"
+          : "border-line text-sub"
+      }`}
+    >
+      <span aria-hidden>{on ? "🔊" : "🔇"}</span>
+    </button>
+  );
+}
 
 /** 余额条：余额 + 今日净收 + 剩余次数（下注前先看得见，防沉迷设计的一部分）。
  *  `limitText` 覆盖默认文案 —— 农场用的是它自己的限流配额（rl:farm），口径不同。 */
@@ -107,6 +137,7 @@ export function GameShell({
           {title}
         </h1>
         {subtitle && <span className="text-sm text-sub">{subtitle}</span>}
+        <SfxToggle />
       </div>
       <BalanceBar balance={balance} todayNet={todayNet} limitLeft={limitLeft} />
       {notice}
@@ -175,6 +206,7 @@ export function ChipSelect({
   disabled?: boolean;
 }) {
   const { dict, currency } = useI18n();
+  const { play } = useSfx();
   const t = dict.games;
   const presets = [10, 50, 100, 500, maxBet].filter(
     (v, i, a) => v <= maxBet && a.indexOf(v) === i,
@@ -187,7 +219,10 @@ export function ChipSelect({
           key={v}
           type="button"
           disabled={disabled}
-          onClick={() => onChange(v)}
+          onClick={() => {
+            play("tick");
+            onChange(v);
+          }}
           aria-pressed={value === v}
           className="arc-chip num"
         >

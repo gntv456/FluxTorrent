@@ -1,5 +1,4 @@
 "use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
@@ -9,6 +8,7 @@ import { clientUuid } from "@/lib/client-uuid";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import type { FarmLand } from "@/components/game/farm-land";
 import { GameTabs } from "@/components/game/game-tabs";
+import { FarmHarvestLog } from "@/components/game/farm-harvest-log";
 import { BalanceBar } from "@/components/game/game-kit";
 import { GameToast } from "@/components/game/game-kit-feedback";
 import { CraftSection, FarmAlbumSection, RanchSection } from "./_inner-ranch";
@@ -432,7 +432,7 @@ export default function FarmPage({
             claiming={claiming}
             onClaim={claimQuest}
           />
-
+          <FarmHarvestLog />
           <MarketSection
             crops={data.crops}
             onPlant={plant}

@@ -11,6 +11,8 @@ export interface CapsulePrize {
   qty?: number;
   weight_permille: number;
   payout: number;
+  /** 真稀有序（波1）：奖池 meta 下发（1-4），与 collection 图鉴同尺 */
+  rarity?: number;
 }
 
 /** 穹顶里装饰用的扭蛋：固定散点 + 配色，纯视觉、不出货。
@@ -27,8 +29,14 @@ const DOME_EGGS: { x: number; y: number; c: string }[] = [
   { x: 12, y: 40, c: "var(--mood-egg-mint)" },
 ];
 
-/** 档位配色：大奖金、高档紫、中档蓝、小档灰（与九宫格同一套稀有度语义） */
-function tierColor(v: number, tk: number): string {
+/** 档位配色：真稀有序优先（meta 1-4），无 meta 时退「等值/票价」猜法 */
+function tierColor(v: number, tk: number, rarity?: number): string {
+  if (rarity != null) {
+    if (rarity >= 4) return "var(--mood-tier-gold)";
+    if (rarity === 3) return "var(--mood-tier-violet)";
+    if (rarity === 2) return "var(--mood-tier-blue)";
+    return "var(--mood-tier-gray)";
+  }
   if (v >= tk * 10) return "var(--mood-tier-gold)";
   if (v >= tk * 3) return "var(--mood-tier-violet)";
   if (v >= tk) return "var(--mood-tier-blue)";
@@ -104,7 +112,7 @@ export function CapsuleMachine({
 
   const picked = resultIndex !== null ? prizes[resultIndex] : undefined;
   const dropColor = picked
-    ? tierColor(picked.value ?? picked.payout * ticket, ticket)
+    ? tierColor(picked.value ?? picked.payout * ticket, ticket, picked.rarity)
     : "var(--mood-tier-gray)";
 
   return (

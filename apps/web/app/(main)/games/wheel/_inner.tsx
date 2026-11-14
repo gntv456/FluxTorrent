@@ -1,5 +1,4 @@
 "use client";
-
 import { PANEL_LG } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,6 +13,9 @@ import { fmtCur } from "@/i18n/config";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { StreakPill } from "@/components/game/streak-pill";
+import { WheelTen } from "@/components/game/wheel-ten";
+import { GameRules } from "@/components/game/game-rules";
+import { useRounds } from "@/components/game/use-rounds";
 import type { WheelPrize } from "@/components/game/lucky-wheel";
 import dynamic from "next/dynamic";
 import { SkeletonBlock } from "@/components/ui/skeleton";
@@ -33,10 +35,6 @@ export interface Overview {
   wheel?: { ticket: number; prizes: WheelPrize[] };
 }
 
-interface RoundRow {
-  game: string; bet: number; payout: number; net: number; at?: string;
-}
-
 interface DrawResult {
   index: number;
   prize: string;
@@ -46,7 +44,6 @@ interface DrawResult {
   value?: number;
   fell_back?: string | null;
 }
-
 /** 大转盘专注页：盘面旋转后停格揭晓。 */
 export default function WheelFocusPage({
   initialOver,
@@ -58,7 +55,8 @@ export default function WheelFocusPage({
   const tw = dict.games.wheel;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  const [hist, setHist] = useState<RoundRow[]>([]);
+  // 战绩 + 连胜（波3）：服务端算连胜，刷新不丢（use-rounds 统一消费口）
+  const { hist, streak, reload: reloadRounds } = useRounds("wheel");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<DrawResult | null>(null);
   const [flash, setFlash] = useState<{
@@ -70,7 +68,6 @@ export default function WheelFocusPage({
   const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
   const [sessionPlays, setSessionPlays] = useState(0);
-  const [streak, setStreak] = useState(0);
   const idem = useRef<string>("");
   // 结果未知（网络/超时/网关错误）：保留幂等键，允许原键重查
   const [unknown, setUnknown] = useState(false);
@@ -85,14 +82,8 @@ export default function WheelFocusPage({
     } catch {
       /* ignore */
     }
-    try {
-      setHist(
-        await api.get<RoundRow[]>("/api/v1/games/rounds?game=wheel&limit=10"),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    void reloadRounds();
+  }, [reloadRounds]);
 
   useEffect(() => {
     void loadMeta();
@@ -159,8 +150,6 @@ export default function WheelFocusPage({
       won >= ticket * 10 ? "jackpot"
         : won > ticket ? "win"
           : won === ticket ? "tie" : "lose";
-    // 连胜（趣味性批）：>票价续 1、否则清零；jackpot 也算
-    setStreak((s) => (won > ticket ? s + 1 : 0));
     setFlash({
       kind,
       text:
@@ -217,7 +206,7 @@ export default function WheelFocusPage({
           <GameStage
             bg="radial-gradient(120% 130% at 50% 0%, #2a2130, #120f16 72%)"
             shjBg="var(--shj-stage-wheel)"
-            className="w-full max-w-[460px] py-6"
+            className="w-full max-w-[460px] py-6 relative jgg-scene-host"
           >
             <LuckyWheel
               prizes={prizes}
@@ -244,6 +233,7 @@ export default function WheelFocusPage({
             onPrimary={() => void draw()}
             primaryGold
           />
+          <WheelTen ticket={ticket} disabled={busy || prizes.length === 0} />
           <SwStatRow
             items={[
               { lb: tw.statLeft,
@@ -277,9 +267,6 @@ export default function WheelFocusPage({
       }
       controls={
         <div className={PANEL_LG}>
-          <div className="mb-3">
-            <span className="sw-pool-pill">{tw.poolPill}</span>
-          </div>
           <h2 className="mb-2 font-display text-base">{tw.prizePool}</h2>
           <div className="flex flex-wrap gap-1.5">
             {prizes.map((p, i) => (
@@ -309,6 +296,7 @@ export default function WheelFocusPage({
             }))}
             empty={t.historyEmpty}
           />
+          <GameRules game="wheel" />
         </div>
       }
     />

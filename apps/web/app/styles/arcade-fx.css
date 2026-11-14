@@ -1,0 +1,379 @@
+/**
+ * 娱乐屋手感批（2026-11-13）：骰子滚动 / 刮格错峰 / 普通赢星屑 / 连胜脉冲。
+ *
+ * 为什么是独立文件：arcade.css 与 arcade-sweet.css 都被行数基线看管
+ * （arcade-sweet 已 93% 满），本文件承载新增动效，两份旧表一行不动；
+ * 由 games/layout.tsx 路由级加载，不进全站 @import 链。
+ * 全部只动 transform/opacity；prefers-reduced-motion 统一降级。
+ */
+
+/* ── 掷骰滚动：busy 期间三骰晃动，结果落地即停（DieFace roll prop → .rolling） ── */
+.bs-die.rolling {
+  animation: fxDieShake 0.36s ease-in-out infinite;
+}
+@keyframes fxDieShake {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) rotate(-7deg);
+  }
+  60% {
+    transform: translateY(2px) rotate(6deg);
+  }
+}
+
+/* ── 刮格错峰：一键全开（一次 +≥2 格）时逐格延迟揭开，悬念来自节奏 ── */
+.sw-coat-grid[data-stagger] .sw-coat-cell.open {
+  animation-delay: calc(var(--ci, 0) * 40ms);
+}
+.sw-coat-grid[data-stagger] .sw-coat-cell:nth-child(2).open {
+  animation-delay: 40ms;
+}
+.sw-coat-grid[data-stagger] .sw-coat-cell:nth-child(3).open {
+  animation-delay: 80ms;
+}
+.sw-coat-grid[data-stagger] .sw-coat-cell:nth-child(4).open {
+  animation-delay: 120ms;
+}
+.sw-coat-grid[data-stagger] .sw-coat-cell:nth-child(5).open {
+  animation-delay: 160ms;
+}
+.sw-coat-grid[data-stagger] .sw-coat-cell:nth-child(6).open {
+  animation-delay: 200ms;
+}
+
+/* ── 普通赢星屑（WinBurst）：从飘字处向上迸开，1.2s 收场 ── */
+.wburst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.wburst-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 9999px;
+  opacity: 0;
+  animation: fxSparkUp 1s ease-out forwards;
+}
+@keyframes fxSparkUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--wdx, 0px)), -46px) scale(1);
+  }
+}
+
+/* ── 连胜脉冲：streak-pill 本身只在 ≥3 连胜时渲染（streak-pill.tsx），
+      胶囊存在即热态，直接呼吸缩放，只动 transform，2s 一循环 ── */
+.streak-pill {
+  animation: fxStreakGlow 2s ease-in-out infinite;
+}
+@keyframes fxStreakGlow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+/* ── 抽卡揭晓（波1）：卡片翻转逐张错峰，70ms/张；was_pity/金档挂 WinBurst ── */
+.gc-flip {
+  position: relative;
+  animation: gcFlipIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes gcFlipIn {
+  0% {
+    opacity: 0;
+    transform: rotateY(70deg) scale(0.86);
+  }
+  100% {
+    opacity: 1;
+    transform: rotateY(0deg) scale(1);
+  }
+}
+.sw-gacha {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sw-gacha-acts {
+  display: flex;
+  gap: 10px;
+}
+.sw-gacha-acts .sw-album-btn {
+  flex: 1;
+  min-height: 44px;
+}
+.sw-gacha-err {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  color: var(--danger-text, #b04);
+}
+.sw-gacha-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+.sw-gacha-pity {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: var(--sun, #e8c878);
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--ink, #333);
+}
+.sw-recent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sw-recent-item {
+  min-width: 30px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-deep, #ccc);
+  background: var(--surface-card);
+  font-size: 11px;
+  font-weight: 700;
+}
+.sw-recent-item.gold {
+  border-color: var(--sun, #e8c878);
+  background: color-mix(in srgb, var(--sun, #e8c878) 18%, transparent);
+}
+.sw-recent-empty {
+  margin: 0;
+  padding: 10px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-sub, #888);
+}
+.sw-harvest-log h2 {
+  margin-bottom: 8px;
+}
+
+/* ── 波2 舞台艺术区：内联 SVG（stage-art.tsx），铺在 GameStage 交互层之下 ── */
+.gs-artsvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* 大厅卡面第二层纹理：细点阵（波2）——网格线已有，叠点阵出「机台面板」质感 */
+.gc-art-grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.14) 1px,
+    transparent 1.4px
+  );
+  background-size: 11px 11px;
+  mask-image: radial-gradient(120% 90% at 50% 10%, #000 30%, transparent 78%);
+}
+
+/* ══ 游戏化视觉（波·机台化）：卡面从「列表项」变回「游戏机台」 ══
+   甜梦皮肤把 gc-art 压成 42px 图标块（照样图①的紧凑列表卡），
+   玩家反馈「不像正常游戏」——此处恢复竖排大卡 + 机台画面（scene）。
+   scene 画的是这台机器在做什么（骰盅待开/转盘待转），不是装饰纹样。 */
+
+/* 卡体：竖排，画布占上半 */
+[data-arcade="sweet"] .gc-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+[data-arcade="sweet"] .gc-card:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+/* 画布：恢复大机台屏，scene 铺满 */
+[data-arcade="sweet"] .gc-art {
+  position: relative;
+  height: 120px;
+  width: 100%;
+  border-radius: 0;
+  display: block;
+}
+[data-arcade="sweet"] .gc-art::after {
+  display: block;
+}
+[data-arcade="sweet"] .gc-art-grid {
+  display: block;
+}
+.gc-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* 玻璃高光罩在 scene 上层（机台屏幕反光） */
+.gc-art::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 5px;
+  height: 42%;
+  border-radius: 40px 40px 60% 60%;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  z-index: 2;
+}
+/* badge/热门锚到画布右上 */
+[data-arcade="sweet"] .gc-badge {
+  top: 10px;
+}
+[data-arcade="sweet"] .gc-hot {
+  top: 10px;
+  left: 10px;
+  right: auto;
+}
+/* 文案区：紧凑底栏 */
+[data-arcade="sweet"] .gc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px 12px;
+}
+[data-arcade="sweet"] .gc-title {
+  font-size: 15px;
+}
+[data-arcade="sweet"] .gc-sub {
+  font-size: 11px;
+}
+
+/* 快捷入口：小方块 → 微缩机台（画布 44px + scene 缩略） */
+.gc-qi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 2px 6px -3px rgba(44, 62, 92, 0.15);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.gc-qi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -8px rgba(74, 122, 176, 0.4);
+}
+.gc-qi-ic {
+  position: relative;
+  width: 52px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: block;
+}
+.gc-qi-ic .gc-scene {
+  position: absolute;
+  inset: 0;
+}
+.gc-qi-lb {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* 大厅氛围：全站照片背景压暗退后（内容是主角，背景是氛围） */
+[data-arcade="sweet"] .site-backdrop {
+  opacity: 0.55;
+  filter: saturate(0.8);
+}
+
+/* 九宫格/转盘舞台：甜梦层撤了底图→纯白不像游戏。
+   不用 scene 铺底（会被盘面遮碎），改「游戏厅聚光」底：
+   深蓝夜色 + 顶部聚光 + 微点阵，盘面浮在灯下（零遮挡、纯 CSS）。 */
+.jgg-scene-host {
+  position: relative;
+}
+[data-arcade="sweet"] .jgg-scene-host.gs-stage:has(.jgrid) .gs-art,
+[data-arcade="sweet"] .jgg-scene-host.gs-stage:has(.lw-disc) .gs-art {
+  background:
+    radial-gradient(
+      90% 70% at 50% 12%,
+      rgba(255, 244, 214, 0.5),
+      transparent 60%
+    ),
+    radial-gradient(
+      130% 110% at 50% 100%,
+      var(--sky-deep) 0%,
+      #2a3c5c 70%,
+      #1d2c46 100%
+    ) !important;
+}
+[data-arcade="sweet"] .jgg-scene-host .gs-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.1) 1px,
+    transparent 1.4px
+  );
+  background-size: 12px 12px;
+  pointer-events: none;
+}
+.jgg-scene-host .jgrid {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-flip {
+    animation: gcFlipFade 0.4s ease-out both;
+  }
+  .bs-die.rolling,
+  .streak-pill {
+    animation: none;
+  }
+  /* 星屑降级为一次性透明度闪现，不位移；错峰延迟归零（内容立即可见） */
+  .wburst-spark {
+    animation: fxSparkFade 0.5s ease-out forwards;
+  }
+  .sw-coat-grid[data-stagger] .sw-coat-cell.open {
+    animation-delay: 0ms;
+  }
+}
+@keyframes fxSparkFade {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes gcFlipFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

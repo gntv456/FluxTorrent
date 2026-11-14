@@ -267,5 +267,16 @@ pub(super) async fn game_rounds(
     .fetch_all(&state.repo.db)
     .await
     .map_err(|e| DomainError::Internal(e.into()))?;
-    Ok(ok(rows))
+    // 当前连胜（波3 留存层）：从最近一局向前数连续 net>0 的局数。
+    // 此前四页 StreakPill 是 useState——刷新即丢；现在服务端按流水算，
+    // 刷新/换设备口径一致。rows 按 id DESC 有序，线性扫即可。
+    let mut streak = 0i64;
+    for r in &rows {
+        if r.net > 0 {
+            streak += 1;
+        } else {
+            break;
+        }
+    }
+    Ok(ok(serde_json::json!({ "rows": rows, "streak": streak })))
 }

@@ -10,6 +10,7 @@ import {
   type ArcadeMeta as ArcadeMetaData,
 } from "@/components/arcade/arcade-meta";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
+import { SCENES } from "@/lib/game-scenes";
 
 interface HallOverview {
   scratch?: { ticket?: number; prizes: ScratchPrize[] };
@@ -164,7 +165,10 @@ export default async function GamesPage() {
             aria-label={cards[e.key]?.title ?? e.key}
           >
             <span className="gc-qi-ic">
-              <ArcadeGlyph k={e.key} />
+              {(() => {
+                const S = SCENES[e.key];
+                return S ? <S className="gc-scene" /> : null;
+              })()}
             </span>
             <span className="gc-qi-lb">
               {(cards[e.key]?.title ?? e.key).replace("{magic}", currency)}
@@ -188,13 +192,16 @@ export default async function GamesPage() {
                 const badge = badgeOf(e);
                 const rawTitle = cards[e.key]?.title ?? e.key;
                 const title = rawTitle.replace("{magic}", currency);
+                const Scene = SCENES[e.key];
                 const inner = (
                   <>
                     <div className={`gc-art gc-tone-${e.tone}`}>
-                      <span className="gc-art-grid" aria-hidden />
-                      <span className="gc-glyph" aria-hidden>
-                        <ArcadeGlyph k={e.key} />
-                      </span>
+                      {Scene && <Scene className="gc-scene" />}
+                      {!Scene && (
+                        <span className="gc-glyph" aria-hidden>
+                          <ArcadeGlyph k={e.key} />
+                        </span>
+                      )}
                       {e.hot && e.live && (
                         <span className="gc-hot">{dict.games.hall.hot}</span>
                       )}
@@ -266,6 +273,12 @@ export default async function GamesPage() {
           className="text-xs font-bold text-[var(--sky-deep)]"
         >
           {dict.games.hall.lbEntry} →
+        </Link>
+        <Link
+          href="/games/career"
+          className="text-xs font-bold text-[var(--sky-deep)]"
+        >
+          {dict.games.careerTitle} →
         </Link>
       </div>
     </div>

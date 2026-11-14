@@ -146,3 +146,33 @@ pub(super) struct PlotRow {
     /// 成熟后超过 `farm_wither_days` 天未收获 → 枯萎（收获作废、清空地块）
     pub(super) withered: bool,
 }
+
+/// 我的收成记录（波1 P0）：农场此前全站唯一没有任何历史的玩法——
+/// `/games/rounds` 以负数下注行为锚，而收获是纯入账行进不了那个形状；
+/// `farm_harvests` 表本来就在写（0011 起），这里补上读口。
+#[get("/farm/harvests")]
+pub(super) async fn farm_harvest_log(
+    req: HttpRequest,
+    state: web::Data<std::sync::Arc<AppState>>,
+) -> DomainResult<HttpResponse> {
+    let auth = require_auth(&req, &state).await?;
+    let rows: Vec<(String, i32, i32, bool, chrono::DateTime<chrono::Utc>)> =
+        sqlx::query_as(
+            "SELECT c.name, h.amount, h.market_price, h.doubled, h.created_at \
+             FROM farm_harvests h JOIN farm_crops c ON c.id = h.crop_id \
+             WHERE h.user_id = $1 ORDER BY h.id DESC LIMIT 30",
+        )
+        .bind(auth.id)
+        .fetch_all(&state.repo.db)
+        .await
+        .map_err(|e| DomainError::Internal(e.into()))?;
+    Ok(ok(serde_json::json!(rows
+        .iter()
+        .map(|(name, amount, price, doubled, at)| {
+            serde_json::json!({
+                "crop": name, "earn": amount, "price": price,
+                "doubled": doubled, "at": at,
+            })
+        })
+        .collect::<Vec<_>>())))
+}

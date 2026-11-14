@@ -1,0 +1,297 @@
+/* ════════════════════════════════════════════════════════════════
+   娱乐屋「夜场」皮肤（波·成熟化）：深色赌场夜场风整体换血。
+   原理：在 data-arcade="sweet" 容器作用域内**重定义 TIDE 表面/边框/
+   文字令牌**——存量组件（GameShell/SwPanel/卡/表/弹窗）全部自动跟随，
+   不逐元素贴样式。visual hierarchy：夜色底 → 金线面板 → 发光内容。
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── ① 令牌换血：夜场色板 ── */
+[data-arcade="sweet"] {
+  /* 表面：夜色三级 */
+  --surface-page: #101828;
+  --surface-card: #1a2438;
+  --surface-raised: #223050;
+  --surface-sunken: #0c1220;
+  --surface-hover: #24335a;
+  --surface-cream: #1a2438;
+  /* 边框：暗金线 */
+  --border-soft: #3a4a72;
+  --border-deep: #5a6c9c;
+  /* 文字：夜色反转 */
+  --text-strong: #f2f6ff;
+  --text-muted: #8fa0c5;
+  --ink: #f2f6ff;
+  --sub: #8fa0c5;
+  /* 强调色提亮（深底上浅色更亮眼） */
+  --sky-deep: #5aa8f0;
+  --mint: #3ddba8;
+  --sun: #ffc45c;
+  /* 甜梦皮肤自有令牌：金/雾同步夜场化 */
+  --sweet-gold: #e8c476;
+  --sweet-line: #4a5c8c;
+  --sweet-mist: #2c3c64;
+}
+
+/* 页面骨架：夜空底 + 星点氛围（替代白底） */
+[data-arcade="sweet"] .games-shell,
+[data-arcade="sweet"] main {
+  background:
+    radial-gradient(
+      1100px 500px at 70% -8%,
+      rgba(90, 140, 220, 0.16),
+      transparent 65%
+    ),
+    radial-gradient(
+      900px 420px at 12% 110%,
+      rgba(232, 196, 118, 0.09),
+      transparent 60%
+    ),
+    #101828;
+}
+
+/* ── ② 面板质感：暗玻璃 + 金细线 + 深投影 ── */
+/* 舞台盒：sweet 层的白珍珠渐变带 !important，这里同权重后加载覆盖 */
+[data-arcade="sweet"] .gs-stage-box {
+  background: linear-gradient(165deg, #1e2a44 0%, #182238 100%) !important;
+  border-color: #3a4a72 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 32px -16px rgba(0, 0, 0, 0.6) !important;
+}
+[data-arcade="sweet"] .gs-shell,
+[data-arcade="sweet"] .sw-album-panel,
+[data-arcade="sweet"] .sw-cardbook,
+[data-arcade="sweet"] .gs-balance,
+[data-arcade="sweet"] [class*="PANEL_LG"],
+[data-arcade="sweet"] .rounded-\[var\(--r-lg\)\],
+[data-arcade="sweet"] .rounded-\[var\(--r-md\)\] {
+  background: linear-gradient(165deg, #1e2a44 0%, #182238 100%);
+  border: 1px solid #3a4a72;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 32px -16px rgba(0, 0, 0, 0.6);
+}
+
+/* ── ③ 大厅卡：夜场机台（金框 + 深底 + 悬浮发光） ── */
+[data-arcade="sweet"] .gc-card {
+  background: linear-gradient(170deg, #223050 0%, #182238 100%);
+  border: 1px solid #4a5c8c;
+  box-shadow:
+    0 10px 30px -14px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(232, 196, 118, 0.12);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+[data-arcade="sweet"] .gc-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(232, 196, 118, 0.55);
+  box-shadow:
+    0 18px 44px -16px rgba(0, 0, 0, 0.8),
+    0 0 24px -6px rgba(232, 196, 118, 0.25);
+}
+[data-arcade="sweet"] .gc-title {
+  color: #f2f6ff;
+}
+[data-arcade="sweet"] .gc-sub {
+  color: #8fa0c5;
+}
+[data-arcade="sweet"] .gc-go {
+  color: var(--sun);
+}
+/* scene 画布内的令牌跟随夜场（scene 用 var() 上色，自动生效） */
+
+/* 快捷入口夜场化 */
+[data-arcade="sweet"] .gc-qi {
+  background: linear-gradient(170deg, #223050, #182238);
+  border: 1px solid #3a4a72;
+}
+[data-arcade="sweet"] .gc-qi:hover {
+  border-color: rgba(232, 196, 118, 0.5);
+}
+
+/* ── ④ 玩法舞台：机台屏（深底 + 金描边 + 内发光） ── */
+[data-arcade="sweet"] .gs-stage {
+  background: linear-gradient(170deg, #16203a 0%, #101828 100%);
+  border: 1px solid #4a5c8c;
+  border-radius: var(--r-lg);
+  box-shadow:
+    inset 0 0 60px rgba(10, 16, 30, 0.8),
+    0 16px 40px -18px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(232, 196, 118, 0.15);
+}
+/* 九宫格/转盘聚光底适配夜场（原浅色聚光换金色光束） */
+[data-arcade="sweet"] .jgg-scene-host .gs-art {
+  background:
+    radial-gradient(
+      85% 60% at 50% 8%,
+      rgba(255, 214, 130, 0.22),
+      transparent 62%
+    ),
+    radial-gradient(
+      120% 100% at 50% 105%,
+      #0c1424 0%,
+      #16203a 60%,
+      #101828 100%
+    ) !important;
+}
+[data-arcade="sweet"] .jgg-scene-host .gs-art::before {
+  background-image: radial-gradient(
+    rgba(232, 196, 118, 0.16) 1px,
+    transparent 1.4px
+  );
+}
+
+/* ── ⑤ 玩法件夜场化：骰/蛋/卡面/灯阵 ── */
+/* 转盘扇区：夜场宝石色（原浅粉彩在深底上像贴纸） */
+[data-arcade="sweet"] {
+  --mood-wheel-gold-a: #e8b84e;
+  --mood-wheel-gold-b: #f4d488;
+  --mood-wheel-violet-a: #7c6cb8;
+  --mood-wheel-violet-b: #9688d0;
+  --mood-wheel-blue-a: #3a5a94;
+  --mood-wheel-blue-b: #4a6cae;
+  --mood-wheel-mist-a: #2a3a64;
+  --mood-wheel-mist-b: #344672;
+  --mood-bright: #0c1424;
+}
+/* 骰面：象牙白 + 金边在深底上更「实体」 */
+[data-arcade="sweet"] .bs-die svg rect {
+  fill: #f6f1e4;
+  stroke: #e8c476;
+}
+[data-arcade="sweet"] .bs-die svg circle {
+  fill: #2c3e5c;
+}
+/* 九宫格灯球：深底玻璃球（jgrid 球体走内联样式的不动，这里补球阵间隙底纹） */
+[data-arcade="sweet"] .jgrid {
+  --jg-gap: 10px;
+}
+
+/* SwTenModal / 结果浮层 */
+[data-arcade="sweet"] .sw-ten,
+[data-arcade="sweet"] [role="dialog"] {
+  background: #1a2438;
+  border: 1px solid #4a5c8c;
+  color: #f2f6ff;
+}
+
+/* ── ⑥ Hero：夜场霓虹横幅（替换浅蓝渐变） ── */
+[data-arcade="sweet"] .gc-hero {
+  background:
+    radial-gradient(
+      700px 300px at 82% 10%,
+      rgba(232, 196, 118, 0.2),
+      transparent 60%
+    ),
+    radial-gradient(
+      600px 280px at 10% 90%,
+      rgba(90, 168, 240, 0.18),
+      transparent 60%
+    ),
+    linear-gradient(165deg, #1e2c4c 0%, #14203a 100%);
+  border: 1px solid rgba(232, 196, 118, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 44px -20px rgba(0, 0, 0, 0.7);
+}
+[data-arcade="sweet"] .gc-hero h1 {
+  color: #f6e6c2;
+  text-shadow: 0 0 24px rgba(232, 196, 118, 0.35);
+}
+[data-arcade="sweet"] .gc-hero-sub {
+  color: #aebbdd;
+}
+[data-arcade="sweet"] .gc-hero-cta {
+  background: linear-gradient(135deg, #e8c476, #c89c4e);
+  color: #1a2438;
+  border: none;
+  box-shadow: 0 6px 20px -8px rgba(232, 196, 118, 0.6);
+}
+[data-arcade="sweet"] .gc-hero-cta:hover {
+  box-shadow: 0 8px 26px -8px rgba(232, 196, 118, 0.85);
+}
+[data-arcade="sweet"] .gc-hero-stat {
+  color: #cdd8ee;
+}
+[data-arcade="sweet"] .gc-hero-stat b {
+  color: var(--sun);
+  text-shadow: 0 0 18px rgba(232, 196, 118, 0.45);
+}
+[data-arcade="sweet"] .gc-hero-orb {
+  opacity: 0.7;
+}
+
+/* ── ⑦ 分组标题线：金虚线 ── */
+[data-arcade="sweet"] .gc-group-hd h2 {
+  color: #f2f6ff;
+}
+[data-arcade="sweet"] .gc-group-line {
+  background: linear-gradient(90deg, rgba(232, 196, 118, 0.6), transparent);
+}
+[data-arcade="sweet"] .gc-group-n {
+  background: rgba(232, 196, 118, 0.16);
+  color: var(--sun);
+  border: 1px solid rgba(232, 196, 118, 0.4);
+}
+
+/* ── ⑧ 文字/链接层 ── */
+[data-arcade="sweet"] .text-sub,
+[data-arcade="sweet"] p.text-sub {
+  color: #8fa0c5;
+}
+[data-arcade="sweet"] a.text-xs.font-bold,
+[data-arcade="sweet"] .text-\[\--sky-deep\] {
+  color: #7cb8f5;
+}
+
+/* ── ⑨ BalanceBar / ChipSelect / 按钮件 ── */
+[data-arcade="sweet"] .arc-chip {
+  background: #223050;
+  border: 1px solid #4a5c8c;
+  color: #f2f6ff;
+}
+[data-arcade="sweet"] .arc-chip[aria-pressed="true"] {
+  background: linear-gradient(135deg, #e8c476, #c89c4e);
+  color: #1a2438;
+  border-color: transparent;
+  box-shadow: 0 4px 14px -6px rgba(232, 196, 118, 0.6);
+}
+[data-arcade="sweet"] .gs-back {
+  background: #1e2a44;
+  border-color: #3a4a72;
+  color: #aebbdd;
+}
+[data-arcade="sweet"] input.bg-\[--surface-card\],
+[data-arcade="sweet"] input[type="number"] {
+  background: #101828;
+  border-color: #3a4a72;
+  color: #f2f6ff;
+}
+
+/* ── ⑩ 场景画（scene-a/b/c）：深底 → 「亮着的机台屏幕」质感。
+   夜场里屏幕是自发光体：降饱和 + 内晕影 + 顶部金光反射 + 夜色基底。 */
+[data-arcade="sweet"] .gc-scene {
+  background: #16203a;
+  filter: brightness(0.92) saturate(0.85) contrast(1.06);
+  box-shadow:
+    inset 0 0 40px rgba(5, 10, 22, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+[data-arcade="sweet"] .gc-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 70% at 50% -10%,
+      rgba(255, 226, 160, 0.14),
+      transparent 55%
+    ),
+    linear-gradient(180deg, rgba(10, 16, 30, 0.3) 0%, transparent 32%);
+}
+
+/* ── ⑪ reduced-motion 不受影响（本文件无动画，只有过渡） ── */

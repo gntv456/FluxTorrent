@@ -44,17 +44,25 @@ pub(super) async fn arcade_leaderboard(
     require_auth(&req, &state).await?;
     let db = &state.repo.db;
     // 欧皇：本周单笔最大派彩。只认**对局派彩**（排除宠物领取/退款/补偿类
-    // 的 kind='game' 入账——它们不是赌局结果，混进来会靠喂猫登顶）
+    // 的 kind='game' 入账——它们不是赌局结果，混进来会靠喂猫登顶）。
+    // 波3：抽卡金档也入榜——UNION gacha_draws 本周金档（gold_rank 达线），
+    // 值用卡档 star 数不与魔力派彩可比，gacha 行单列（kind 区分）。
     let lucky = board(
         db,
         &format!(
-            "SELECT l.user_id, max(l.amount) AS v FROM spark_ledger l \
-              WHERE l.kind = 'game' AND l.amount > 0 \
-                AND (l.ref_type IN ('scratch','bigsmall','jgg','capsule',\
-                     'wheel','fishing','farm') \
-                     OR l.idempotency_key LIKE 'game-fishing-win:%') \
-                AND {WEEK} \
-              GROUP BY l.user_id"
+            "SELECT user_id, max(v) AS v FROM ( \
+               SELECT l.user_id, l.amount AS v FROM spark_ledger l \
+                WHERE l.kind = 'game' AND l.amount > 0 \
+                  AND (l.ref_type IN ('scratch','bigsmall','jgg','capsule',\
+                       'wheel','fishing','farm') \
+                       OR l.idempotency_key LIKE 'game-fishing-win:%') \
+                  AND {WEEK} \
+               UNION ALL \
+               SELECT d.user_id, r.gold_rank::bigint AS v FROM gacha_draws d \
+                JOIN gacha_rarities r ON r.key = d.rarity \
+                WHERE d.rarity IS NOT NULL AND r.gold_rank > 0 \
+                  AND d.created_at >= date_trunc('week', now()) \
+             ) t GROUP BY user_id"
         ),
     )
     .await

@@ -68,6 +68,14 @@ pub(super) async fn sync_stubs(
     .bind(uid)
     .fetch_one(db)
     .await?;
+    // 抽卡次数（波3）：抽卡走独立账（gacha_draws），不在 spark_ledger——
+    // 票根 metric 独立一行查，不挤 spark_ledger 的 10 元组
+    let gacha_draws: i64 = sqlx::query_scalar(
+        "SELECT count(*)::bigint FROM gacha_draws WHERE user_id = $1",
+    )
+    .bind(uid)
+    .fetch_one(db)
+    .await?;
     let metric_of = |k: &str| -> Option<i64> {
         match k {
             "game_plays" => Some(m.0),
@@ -79,6 +87,7 @@ pub(super) async fn sync_stubs(
             "capsule_plays" => Some(m.6),
             "wheel_plays" => Some(m.7),
             "fishing_plays" => Some(m.8),
+            "gacha_draws" => Some(gacha_draws),
             "pet_feeds" => Some(m.9),
             _ => None,
         }

@@ -1,5 +1,4 @@
 "use client";
-
 import { PANEL_LG, PANEL_LG_COL } from "@/lib/ui-classes";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,6 +11,7 @@ import { GameRecordsPanel } from "@/components/game/game-records";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
 import { ResultFlash } from "@/components/game/game-kit-feedback";
 import { ScratchCoat, type CoatOutcome } from "@/components/game/scratch-coat";
+import { SceneScratch } from "@/components/game/scene-a";
 import {
   SwCtaRow,
   SwHist,
@@ -22,6 +22,8 @@ import {
 import { useTenDraw } from "@/lib/ten-draw";
 import { scratchPoolText, type ScratchPrize } from "@/lib/games";
 import { SwPrizeStrip } from "@/components/game/sw-enrich";
+import { GameRules } from "@/components/game/game-rules";
+import { useRounds } from "@/components/game/use-rounds";
 import { clientUuid } from "@/lib/client-uuid";
 
 export interface Overview {
@@ -34,15 +36,6 @@ export interface Overview {
   };
   scratch?: { prizes: ScratchPrize[]; empty_pct: number };
 }
-
-interface RoundRow {
-  game: string;
-  bet: number;
-  payout: number;
-  net: number;
-  at?: string;
-}
-
 interface ScratchResp {
   multiplier: number;
   payout: number;
@@ -62,7 +55,8 @@ export default function ScratchPage({
   const ts = dict.games.scratch;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  const [hist, setHist] = useState<RoundRow[]>([]);
+  // 战绩（波3）：use-rounds 统一消费口（连胜由有连胜 pill 的页面取）
+  const { hist, reload: reloadRounds } = useRounds("scratch");
   const [bet, setBet] = useState(100);
   const [phase, setPhase] = useState<
     "idle" | "buying" | "scratchable" | "done"
@@ -87,14 +81,8 @@ export default function ScratchPage({
     } catch {
       /* 顶栏数据取不到不影响玩 */
     }
-    try {
-      setHist(
-        await api.get<RoundRow[]>("/api/v1/games/rounds?game=scratch&limit=10"),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    void reloadRounds();
+  }, [reloadRounds]);
 
   useEffect(() => {
     void loadMeta();
@@ -247,6 +235,7 @@ export default function ScratchPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
+          <SceneScratch className="gs-artsvg" />
           <div className="sw-envelope">
             <div className="sw-env-head">
               <span>
@@ -346,9 +335,7 @@ export default function ScratchPage({
         <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
           <SwHist rows={histRows} empty={t.historyEmpty} />
-          <p className="mt-3 text-xs text-sub">
-            {scratchPoolText(ov?.scratch?.prizes, ts.poolLabel) || ts.pool}
-          </p>
+          <GameRules game="scratch" />
         </div>
       }
       foot={

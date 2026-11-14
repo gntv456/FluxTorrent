@@ -42,6 +42,10 @@ interface Overview {
     prizes?: Prize[];
     expected_value: number;
   };
+  /** 波1 补齐：三款池玩法后端一直下发（overview.rs），前端此前丢弃 */
+  capsule?: { ticket: number; prizes: Prize[]; expected_value: number };
+  wheel?: { ticket: number; prizes: Prize[]; expected_value: number };
+  fishing?: { ticket: number; prizes: Prize[]; expected_value: number };
   rate_limit?: string;
 }
 
@@ -129,6 +133,32 @@ export default async function OddsPage() {
       game: dict.games.jgg.title,
       ev: ov.jgg.expected_value,
       body: prizeTable(ov.jgg.prizes, ov.jgg.ticket),
+    });
+  }
+
+  // 波1 补齐：capsule/wheel/fishing 与 jgg 同一份池投影（pool_ev 同算式），
+  // 公示覆盖从 4/9 到 7/9（gacha 有自己的双列综合公示页，pet 确定性无需公示）
+  if (ov?.capsule?.prizes?.length) {
+    rows.push({
+      game: dict.games.capsule.title,
+      ev: ov.capsule.expected_value,
+      body: prizeTable(ov.capsule.prizes, ov.capsule.ticket),
+    });
+  }
+
+  if (ov?.wheel?.prizes?.length) {
+    rows.push({
+      game: dict.games.wheel.title,
+      ev: ov.wheel.expected_value,
+      body: prizeTable(ov.wheel.prizes, ov.wheel.ticket),
+    });
+  }
+
+  if (ov?.fishing?.prizes?.length) {
+    rows.push({
+      game: dict.games.fishing.title,
+      ev: ov.fishing.expected_value,
+      body: prizeTable(ov.fishing.prizes, ov.fishing.ticket),
     });
   }
 

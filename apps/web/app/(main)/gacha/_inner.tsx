@@ -2,8 +2,10 @@ import { getDict } from "@/i18n/server";
 import { api } from "@/lib/api-client";
 import { GachaRates } from "@/components/gacha-rates";
 import { GachaAlbum } from "@/components/gacha-album";
+import { GachaDraw } from "@/components/gacha-draw";
 import { GachaTabbed } from "@/components/gacha-tabbed";
 import { ArcadeGlyph } from "@/components/arcade/arcade-glyph";
+import { SceneGacha } from "@/components/game/scene-b";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
@@ -157,6 +159,22 @@ export default async function GachaDisclosurePage() {
         album={<GachaAlbum rarities={rarities} initial={me} />}
         pool={
           <>
+            {/* 抽卡主玩法（波1 P0）：后端 /gacha/draw 全链在位，前端此前
+                零调用——整局玩法 Web 上玩不了。锚点 #draw 供卡册 CTA 回跳 */}
+            {first && me && (
+              <section id="draw" className="sw-cardbook">
+                <div className="sw-cardbook-cap">
+                  {dict.games.gachaDrawCap} · {bannerName}
+                </div>
+                <SceneGacha className="gs-artsvg" />
+                <GachaDraw
+                  bannerId={first.banner.id}
+                  ticketCost={first.banner.ticketCost}
+                  ticketBalance={me.ticketBalance}
+                  rarities={rarities}
+                />
+              </section>
+            )}
             {/* 新手首抽体验价：未抽过卡的用户单抽 1 券（后端放行） */}
             {me && (me.cards?.length ?? 0) === 0 && (
               <p className="rounded-[var(--r-md)] bg-mint-soft px-3 py-2 text-xs font-bold text-ink">

@@ -1,7 +1,5 @@
 "use client";
-
 import { PANEL_LG } from "@/lib/ui-classes";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import { useTenDraw } from "@/lib/ten-draw";
@@ -14,6 +12,8 @@ import {
 } from "@/components/game/sw-panels";
 import { apiErrorMessage, useI18n } from "@/i18n/client";
 import { fmtCur } from "@/i18n/config";
+import { GameRules } from "@/components/game/game-rules";
+import { useRounds } from "@/components/game/use-rounds";
 import { GameShell, PlayHint } from "@/components/game/game-kit";
 import { GameTabs } from "@/components/game/game-tabs";
 import { GameRecordsPanel } from "@/components/game/game-records";
@@ -34,15 +34,6 @@ export interface Overview {
   };
   jgg?: { ticket: number; prizes: JggPrize[] };
 }
-
-interface RoundRow {
-  game: string;
-  bet: number;
-  payout: number;
-  net: number;
-  at?: string;
-}
-
 interface DrawResult {
   index: number;
   prize: string;
@@ -55,7 +46,6 @@ interface DrawResult {
   /** 返本档（×1）：不占灯格，灯阵跳过直接按返本演出 */
   replay?: boolean;
 }
-
 /** 九宫格专注页：3×3 灯阵 + 跑马灯 + 翻牌揭晓 */
 export default function JggPage({
   initialOver,
@@ -67,7 +57,8 @@ export default function JggPage({
   const tj = dict.games.jgg;
 
   const [ov, setOv] = useState<Overview | null>(initialOver);
-  const [hist, setHist] = useState<RoundRow[]>([]);
+  // 战绩 + 连胜（波3）：服务端算连胜，刷新不丢（use-rounds 统一消费口）
+  const { hist, streak, reload: reloadRounds } = useRounds("jgg");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<DrawResult | null>(null);
   const [flash, setFlash] = useState<{
@@ -78,7 +69,6 @@ export default function JggPage({
   // 样图手机版：主玩法 / 记录图鉴 双 tab
   const [tab, setTab] = useState("play");
   const [reduced, setReduced] = useState(false);
-  const [streak, setStreak] = useState(0);
   /** 本次会话已完成的局数（防沉迷软提示用） */
   const [sessionPlays, setSessionPlays] = useState(0);
   const idem = useRef<string>("");
@@ -93,19 +83,12 @@ export default function JggPage({
     } catch {
       /* ignore */
     }
-    try {
-      setHist(
-        await api.get<RoundRow[]>("/api/v1/games/rounds?game=jgg&limit=10"),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    void reloadRounds();
+  }, [reloadRounds]);
 
   useEffect(() => {
     void loadMeta();
   }, [loadMeta]);
-
   const prizes = ov?.jgg?.prizes ?? [];
   const ticket = ov?.jgg?.ticket ?? 100;
   const winRate = prizes.length
@@ -171,8 +154,6 @@ export default function JggPage({
           : won === ticket
             ? "tie"
             : "lose";
-    // 连胜（趣味性批）：>票价续 1、否则清零
-    setStreak((st) => (won > ticket ? st + 1 : 0));
     setFlash({
       kind,
       text:
@@ -251,10 +232,11 @@ export default function JggPage({
       }
       stage={
         <div className="flex w-full flex-col items-center gap-3">
+          {/* 甜梦层置空舞台底图（样图口径→纯白不像游戏），铺灯阵场景作底 */}
           <GameStage
             art="/games/stage-jgg.jpg"
             shjBg="var(--shj-stage-jgg)"
-            className="w-full max-w-[460px] p-4"
+            className="w-full max-w-[460px] p-4 relative jgg-scene-host"
           >
             <JggGrid
               prizes={prizes}
@@ -329,6 +311,7 @@ export default function JggPage({
         <div className={PANEL_LG}>
           <h2 className="mb-2 font-display text-base">{t.history}</h2>
           <SwHist rows={histRows} empty={t.historyEmpty} />
+          <GameRules game="jgg" />
         </div>
       }
       foot={

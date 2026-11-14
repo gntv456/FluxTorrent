@@ -11,6 +11,12 @@ import "@/app/styles/arcade-sweet.css";
    arcade-gacha.css 是从 arcade-sweet.css 拆出的抽卡专用规则，
    同样走路由级加载。 */
 import "@/app/styles/arcade-gacha.css";
+/* arcade-fx.css：手感批（骰子滚动/刮格错峰/赢局星屑/连胜脉冲），
+   独立成文件避免撑爆 arcade-sweet.css 的行数门禁（93% 满）。 */
+import "@/app/styles/arcade-fx.css";
+/* arcade-night.css：夜场赌场皮肤（波·成熟化）——令牌换血 + 金线面板 +
+   发光交互，全部压在 arcade-fx 之后加载（覆盖 sweet 浅色遗留）。 */
+import "@/app/styles/arcade-night.css";
 
 /**
  * 娱乐屋路由布局：在 /games/* 下挂 data-arcade="sweet" 属性，
