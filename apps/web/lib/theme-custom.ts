@@ -66,6 +66,10 @@ export function deriveCustomVars(hex: string): Record<string, string> | null {
   const soft = hsl1(clamp(Math.round(s * 0.62), 20, 46), 92);
   const mist = hsl1(clamp(Math.round(s * 0.55), 18, 42), 90);
   const haze = hsl1(clamp(Math.round(s * 0.45), 14, 36), 96);
+  /* 二轮（2026-11-15）：对齐 theme-pastel.css 的 hue 派生口径——卡面带
+     5-16% 色相（首版只有页底洗色，用户实测「还是主要白色」）、行纱/chip
+     纱改色相纱、边框全线带色相。值域与 pastel 的 color-mix 混白比例
+     一致（L 90-97 ≈ 混白 90-95%）。 */
   return {
     "--sky": sky,
     "--sky-deep": skyDeep,
@@ -91,10 +95,32 @@ export function deriveCustomVars(hex: string): Record<string, string> | null {
       `linear-gradient(90deg, ${skyDeep}, ${sky}, ${hsl1(s, 55)}, ` +
       `${hsl1(s, 66)}, ${hsl1(s, 78)})`,
     "--ribbon": "var(--grad-rainbow)",
+    /* 表面系：卡面 5% / raised 8% / hover 12% / cloud 14% / sunken 16%
+       （与 pastel 共享块的混色比例逐档一致） */
     "--surface-page": haze,
     "--surface-cloud": mist,
+    "--surface-card": hsl1(s, 95),
+    "--surface-raised": hsl1(s, 92),
+    "--surface-hover": hsl1(clamp(Math.round(s * 0.55), 18, 42), 88),
+    "--surface-sunken": hsl1(clamp(Math.round(s * 0.5), 16, 38), 84),
+    "--surface-cream": hsl1(clamp(Math.round(s * 0.45), 14, 36), 96),
     "--head-a": soft,
     "--head-b": haze,
+    /* 边框系带色相 */
+    "--border-soft": mist,
+    "--line-soft": hsl1(clamp(Math.round(s * 0.5), 16, 38), 91),
+    "--border-deep": hsl1(s, 70),
+    "--muted-soft": hsl1(clamp(Math.round(s * 0.5), 16, 38), 90),
+    "--compat-line": hsl1(s, 66),
+    /* 行纱/chip 纱：色相纱（列表行跟染） */
+    "--row-veil": hsl1(clamp(Math.round(s * 0.6), 20, 44), 94, 0.97),
+    "--row-veil-soft": hsl1(s, 90, 0.9),
+    "--row-veil-mist": hsl1(s, 88, 0.8),
+    "--chip-veil": hsl1(clamp(Math.round(s * 0.6), 20, 44), 92, 0.93),
+    "--chip-veil-thin": hsl1(s, 90, 0.72),
+    /* 促销行高亮：免费行带主色、2x 行带琥珀（与 pastel 同构） */
+    "--promo-free-bg": hsl1(s, 88),
+    "--promo-x2-bg": hsl1(43, 90),
     /* 潮汐桥接令牌：.btn/.tide-header/.tide-pager 等全局结构类消费它们，
        不覆盖会残留 brand 的潮汐蓝（theme-tide.css 的值） */
     "--tide-sea": skySurf,
@@ -102,7 +128,7 @@ export function deriveCustomVars(hex: string): Record<string, string> | null {
     "--tide-surf": hsl1(s, 55),
     "--tide-foam": hsl1(s, 66),
     "--tide-mist": mist,
-    "--tide-haze": haze,
+    "--tide-haze": hsl1(clamp(Math.round(s * 0.55), 18, 42), 88),
     "--tide-grid": hsl1(s, 50, 0.07),
   };
 }
