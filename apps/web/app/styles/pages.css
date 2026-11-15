@@ -2883,7 +2883,7 @@ textarea.bbcode {
   gap: 10px 24px;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .rss-rows {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

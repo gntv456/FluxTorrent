@@ -65,6 +65,9 @@ export function ScratchCoat({
             }`}
             disabled={disabled || open || outcome === null}
             onClick={() => onReveal(i)}
+            /* CSS 错峰延迟读取 --ci（第几格），变量在此注入；
+               ui_design_guard 要求引用处有定义 */
+            style={{ "--ci": i } as React.CSSProperties}
             aria-label={open ? undefined : "scratch"}
           >
             <span className="sw-coat-face">

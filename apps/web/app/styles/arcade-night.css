@@ -294,4 +294,16 @@
     linear-gradient(180deg, rgba(10, 16, 30, 0.3) 0%, transparent 32%);
 }
 
-/* ── ⑪ reduced-motion 不受影响（本文件无动画，只有过渡） ── */
+/* ── ⑪ reduced-motion：本文件无关键帧动画，但有 hover 位移/发光过渡，
+        对前庭敏感用户一并降级（位移与光晕归零，保留底色对比） ── */
+@media (prefers-reduced-motion: reduce) {
+  [data-arcade="sweet"] .gc-card,
+  [data-arcade="sweet"] .gc-card:hover {
+    transform: none;
+    transition: none;
+  }
+  [data-arcade="sweet"] .gc-card:hover,
+  [data-arcade="sweet"] .gc-hero-cta:hover {
+    box-shadow: none;
+  }
+}

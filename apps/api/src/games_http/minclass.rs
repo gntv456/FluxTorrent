@@ -36,7 +36,12 @@ pub(crate) async fn check_minclass(
 ) -> Result<(), DomainError> {
     let need = minclass_of(state, game).await;
     if auth_class < need {
-        return Err(DomainError::Validation(format!("该玩法 {need} 级解锁")));
+        // 校验详情必须整句可查 validation_details.tsv，不能用 format! 拼
+        // （validation_i18n_guard 锁动态串条数不增）；具体门槛值进日志。
+        // 前端大厅卡片对锁定的游戏本来就显示「N 级解锁」（games.hall.locked），
+        // 这里给的是硬闯 API 时的兜底话术。
+        tracing::warn!(game, need, auth_class, "game blocked by minclass gate");
+        return Err(DomainError::Validation("该玩法等级不足".into()));
     }
     Ok(())
 }
