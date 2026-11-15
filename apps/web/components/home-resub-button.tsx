@@ -17,11 +17,12 @@ export function ResubButton({ cards }: { cards: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  // 可补日期：过去 7 天内（YYYY-MM-DD），按近到远。
+  // 可补日期：过去 30 天内（YYYY-MM-DD），按近到远——与后端 resub 窗口
+  // （gaps_http/misc.rs 1..=30，2026-11-15 工单 8221 对齐旧站 30 天口径）。
   // 按站点时区（UTC+8）取日：此前直接 toISOString 切 UTC 日期——北京
   // 0-8 点窗口「昨天」不在列表、尾项落到第 8 天（后端必拒），与
   // home-attendance.tsx 的 todayStr 口径对齐。
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const days = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(Date.now() + 8 * 3600e3 - (i + 1) * 86400e3);
     return d.toISOString().slice(0, 10);
   });

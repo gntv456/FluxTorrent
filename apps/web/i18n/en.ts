@@ -4197,8 +4197,8 @@ const enBase: Omit<
   },
   attResub2: {
     btn: "Make up",
-    prompt: "Date to make up (YYYY-MM-DD, last 7 days)",
-    note: "Uses a makeup card (shop item); covers missed days in the last 7 days",
+    prompt: "Date to make up (YYYY-MM-DD, last 30 days)",
+    note: "Uses a makeup card (shop item); covers missed days in the last 30 days",
     ok: "Made up",
     holdSuffix: " (holding {n})",
   },

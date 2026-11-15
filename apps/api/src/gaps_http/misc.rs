@@ -28,12 +28,13 @@ pub async fn resub_use(
     let auth = require_auth(&req, &state).await?;
     let date = chrono::NaiveDate::parse_from_str(&body.target_date, "%Y-%m-%d")
         .map_err(|_| DomainError::Validation("日期格式 YYYY-MM-DD".into()))?;
-    // 只能补过去 7 天内
+    // 只能补过去 30 天内（2026-11-15 工单 8221：旧站口径 30 天，7 天窗口
+    // 与补签卡发放量不匹配——断签一个月直接无力回天，现与签到日历说明统一）
     let days_ago =
         ((chrono::Utc::now() + chrono::Duration::hours(8)).date_naive() - date)
             .num_days();
-    if !(1..=7).contains(&days_ago) {
-        return Err(DomainError::Validation("只能补过去 7 天内".into()));
+    if !(1..=30).contains(&days_ago) {
+        return Err(DomainError::Validation("只能补过去 30 天内".into()));
     }
     // 先判「该日是否已签」再判持有数（P-94）：用完最后一张卡再点同一天，旧
     // 顺序先撞「没有可用补签卡」，用户以为卡被吞；真因是日期已占。
