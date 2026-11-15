@@ -187,11 +187,16 @@ pub(crate) async fn ledger_guard(
     // 认可了重置 ⇒ 让 upsert 侧把 reset_last_at 置为 now（频次窗的游标）
     let reset_accepted = anchor.reset_up || anchor.reset_down;
     if anchor.refused {
+        // 留痕 24h 去重（2026-11-15 误伤纠偏）：refused 后锚点钉死在旧高位，
+        // 客户端每次 announce 都继续低于锚点 → 旧写法每 30 分钟 hits+1 永不
+        // 自愈（实测单用户刷出 1197 hits）。同 (user,torrent) 一天只记一笔，
+        // 证据按天积累；WHERE 不满足时 DO UPDATE 静默跳过，行缺省照常建。
         let _ = sqlx::query(
             "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
              VALUES ($1, $2, $3, 'counter_reset（累计读数回退且非近零值，疑似搬动基线刷量）') \
              ON CONFLICT (user_id, agent, reason) DO UPDATE \
-               SET hits = cheat_events.hits + 1, last_seen = now()",
+               SET hits = cheat_events.hits + 1, last_seen = now() \
+             WHERE cheat_events.last_seen < now() - interval '24 hours'",
         )
         .bind(ev.user)
         .bind(format!("reset:{torrent_id}"))

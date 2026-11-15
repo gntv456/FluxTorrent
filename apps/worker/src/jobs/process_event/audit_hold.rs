@@ -1,9 +1,15 @@
 //! 计账扣量留痕（从 process_event.rs 拆出，同受 300 行门禁约束）。
 //!
-//! 两条留痕同为 `cheat_events` 的 upsert 聚合，只差 agent 前缀与 reason，
+//! 三条留痕同为 `cheat_events` 的 upsert 聚合，只差 agent 前缀与 reason，
 //! 集中在此可保证「reason 必须是固定文案」这条约束不被写歪——reason 是去重
 //! 键的一部分，内嵌每次都变的数值会让 ON CONFLICT 恒不命中 → hits 聚合失效、
 //! 行无限膨胀，管理端前 200 条可被「每次超一点」的攻击冲掉（告警稀释）。
+//!
+//! 留痕 24h 去重（2026-11-15 误伤纠偏）：这三类都由**计账钳制**伴生——
+//! 客户端只要持续超速率/持续无佐证，每次 announce 都会命中一次，旧写法
+//! 每 30 分钟 hits+1（实测高带宽盒子与卡死锚点各刷出上千 hits）。统一加
+//! `DO UPDATE … WHERE last_seen < now()-'24h'` 闸：同 (user,torrent) 一天
+//! 只记一笔，证据按天积累、钳制本身照常每笔生效，只杀信箱洪水。
 
 use crate::jobs::announce_main::AnnounceEvent;
 
@@ -19,7 +25,8 @@ pub(super) async fn note_corr<'c>(
          VALUES ($1, $2, $3, \
            'uncorroborated_upload（自报上传量超出 leecher 佐证上限，超出部分未入账）') \
          ON CONFLICT (user_id, agent, reason) DO UPDATE \
-           SET hits = cheat_events.hits + 1, last_seen = now()",
+           SET hits = cheat_events.hits + 1, last_seen = now() \
+         WHERE cheat_events.last_seen < now() - interval '24 hours'",
     )
     .bind(ev.user)
     .bind(format!("corr:{torrent_id}"))
@@ -47,7 +54,8 @@ pub(super) async fn note_speed<'c>(
         "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
          VALUES ($1, $2, $3, $4) \
          ON CONFLICT (user_id, agent, reason) DO UPDATE \
-           SET hits = cheat_events.hits + 1, last_seen = now()",
+           SET hits = cheat_events.hits + 1, last_seen = now() \
+         WHERE cheat_events.last_seen < now() - interval '24 hours'",
     )
     .bind(ev.user)
     .bind(format!("speed:{torrent_id}"))
@@ -87,7 +95,8 @@ pub(super) async fn note_ghost<'c>(
         "INSERT INTO cheat_events (user_id, agent, peer_ip, reason) \
          VALUES ($1, $2, $3, $4) \
          ON CONFLICT (user_id, agent, reason) DO UPDATE \
-           SET hits = cheat_events.hits + 1, last_seen = now()",
+           SET hits = cheat_events.hits + 1, last_seen = now() \
+         WHERE cheat_events.last_seen < now() - interval '24 hours'",
     )
     .bind(ev.user)
     .bind(format!("ghost:{}", &ev.hash[..8.min(ev.hash.len())]))
